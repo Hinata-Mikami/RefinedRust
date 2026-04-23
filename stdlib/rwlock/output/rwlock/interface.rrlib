@@ -1,0 +1,38 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "std",
+        "sync",
+        "rwlock",
+        "RwLock"
+      ],
+      "rtype": "(RwLock_inv_t_rt)",
+      "semtype": "RwLock_inv_t",
+      "syntype": "RwLock_sls"
+    },
+    {
+      "kind": "method",
+      "name": "RwLock_T_new",
+      "path": [
+        "std",
+        "sync",
+        "rwlock",
+        "RwLock",
+        "new"
+      ],
+      "spec": "type_of_RwLock_T_new",
+      "trait_req_incl": "trait_incl_of_RwLock_T_new"
+    }
+  ],
+  "module_dependencies": [],
+  "refinedrust_module": "generated_specs_rwlock",
+  "refinedrust_name": "rwlock",
+  "refinedrust_path": "rrstd.rwlock.rwlock.generated"
+}

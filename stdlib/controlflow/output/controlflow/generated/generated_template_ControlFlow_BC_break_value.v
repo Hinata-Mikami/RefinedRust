@@ -1,0 +1,45 @@
+From radium Require Import lang notation.
+From refinedrust Require Import typing shims.
+From rrstd.option.option.generated Require Export generated_specs_option.
+From rrstd.result.result.generated Require Export generated_specs_result.
+From rrstd.controlflow.controlflow Require Export generated_code_controlflow generated_specs_controlflow.
+
+Set Default Proof Using "Type".
+
+Section proof.
+Context `{RRGS : !refinedrustGS Σ}.
+Definition ControlFlow_BC_break_value_lemma (π : thread_id) : Prop :=
+  ∀ `(B_rt : !RT) `(C_rt : !RT) `(B_st : !syn_type) `(C_st : !syn_type) , 
+  syn_type_is_layoutable (B_st) →
+  syn_type_is_layoutable (C_st) →
+  syn_type_is_layoutable (((ControlFlow_els (B_st) (C_st)) : syn_type)) →
+  syn_type_is_layoutable (((Option_els (B_st)) : syn_type)) →
+  ⊢ typed_function π (ControlFlow_BC_break_value_def B_st  C_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), fn_spec_add_late_pre (type_of_ControlFlow_BC_break_value B_rt C_rt B_st C_st  <TY> B_ty <TY> C_ty <INST!>) (λ π, ((typaram_wf B_rt B_st B_ty)
+  ∗ (typaram_wf C_rt C_st C_ty))
+  ∗ (⌜((trait_incl_of_ControlFlow_BC_break_value (B_rt) (C_rt) (B_st) (C_st)) <TY> B_ty <TY> C_ty <INST!>)%Z⌝))).
+End proof.
+
+Ltac ControlFlow_BC_break_value_prelude :=
+  unfold ControlFlow_BC_break_value_lemma;
+  set (FN_NAME := FUNCTION_NAME "ControlFlow_BC_break_value");
+  intros B_rt C_rt B_st C_st;
+  intros;
+  iStartProof;
+  let ϝ := fresh "ϝ" in
+  let B_ty := fresh "B_ty" in
+  let C_ty := fresh "C_ty" in
+  let self := fresh "self" in
+  start_function "ControlFlow_BC_break_value" ϝ ( [] ) ( [B_ty [C_ty [] ] ] ) (  self ) (  self );
+  intros arg_self;
+  let π := get_π in
+  let Σ := get_Σ in
+  specialize (pose_bb_inv (PolyNil)) as loop_map;
+  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_tyvars ( <[
+      "B" :=
+  existT _ (B_ty)
+      ]>%E $ <[
+      "C" :=
+  existT _ (C_ty)
+      ]>%E $ ∅ );
+  unfold_generic_inst; simpl.

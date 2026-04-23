@@ -1,0 +1,239 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "allowed_attrs": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {},
+      "name": "Tuple",
+      "path": [
+        "core",
+        "marker",
+        "Tuple"
+      ]
+    },
+    {
+      "allowed_attrs": [],
+      "attrs_dependent": false,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "call": "trait_incl_of_Fn_call"
+      },
+      "name": "Fn",
+      "path": [
+        "core",
+        "ops",
+        "Fn"
+      ]
+    },
+    {
+      "allowed_attrs": [],
+      "attrs_dependent": false,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "call_mut": "trait_incl_of_FnMut_call_mut"
+      },
+      "name": "FnMut",
+      "path": [
+        "core",
+        "ops",
+        "FnMut"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "Params",
+        "Pre",
+        "Post",
+        "PostMut"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "call_once": "trait_incl_of_FnOnce_call_once"
+      },
+      "name": "FnOnce",
+      "path": [
+        "core",
+        "ops",
+        "FnOnce"
+      ]
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Param": 2
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "call": [
+          "REFFasFnA_call",
+          "type_of_REFFasFnA_call",
+          "trait_incl_of_REFFasFnA_call"
+        ]
+      },
+      "name": "REFFasFnA",
+      "trait_path": {
+        "args": [
+          {
+            "Param": 1
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Fn"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Param": 2
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "call_mut": [
+          "REFFasFnMutA_call_mut",
+          "type_of_REFFasFnMutA_call_mut",
+          "trait_incl_of_REFFasFnMutA_call_mut"
+        ]
+      },
+      "name": "REFFasFnMutA",
+      "trait_path": {
+        "args": [
+          {
+            "Param": 1
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "FnMut"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Param": 2
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "call_once": [
+          "REFFasFnOnceA_call_once",
+          "type_of_REFFasFnOnceA_call_once",
+          "trait_incl_of_REFFasFnOnceA_call_once"
+        ]
+      },
+      "name": "REFFasFnOnceA",
+      "trait_path": {
+        "args": [
+          {
+            "Param": 1
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "FnOnce"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Mut",
+          {
+            "Param": 2
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "call_mut": [
+          "REFmutFasFnMutA_call_mut",
+          "type_of_REFmutFasFnMutA_call_mut",
+          "trait_incl_of_REFmutFasFnMutA_call_mut"
+        ]
+      },
+      "name": "REFmutFasFnMutA",
+      "trait_path": {
+        "args": [
+          {
+            "Param": 1
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "FnMut"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Mut",
+          {
+            "Param": 2
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "call_once": [
+          "REFmutFasFnOnceA_call_once",
+          "type_of_REFmutFasFnOnceA_call_once",
+          "trait_incl_of_REFmutFasFnOnceA_call_once"
+        ]
+      },
+      "name": "REFmutFasFnOnceA",
+      "trait_path": {
+        "args": [
+          {
+            "Param": 1
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "FnOnce"
+        ]
+      }
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.closures.theories"
+  ],
+  "refinedrust_module": "generated_specs_closures",
+  "refinedrust_name": "closures",
+  "refinedrust_path": "rrstd.closures.closures.generated"
+}

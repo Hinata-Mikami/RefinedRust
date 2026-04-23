@@ -1,0 +1,377 @@
+From radium Require Import lang notation.
+From refinedrust Require Import typing shims.
+From rrstd.closures.theories Require Export closures.
+From rrstd.closures.closures Require Export generated_code_closures.
+
+Record Tuple_spec_attrs `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} : Type := mk_Tuple_spec_attrs {
+}.
+#[global] Arguments Tuple_spec_attrs : clear implicits.
+
+#[global] Arguments Tuple_spec_attrs {_ _}.
+
+#[global] Arguments mk_Tuple_spec_attrs  {_} {_} {_}.
+
+
+
+
+Record FnMut_spec_attrs `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} `{Args_rt : !RT} `{FnOnce_Self_Args_Output_rt : !RT} : Type := mk_FnMut_spec_attrs {
+}.
+#[global] Arguments FnMut_spec_attrs : clear implicits.
+
+#[global] Arguments FnMut_spec_attrs {_ _}.
+
+#[global] Arguments mk_FnMut_spec_attrs  {_} {_} {_} {_} {_}.
+
+
+Record Fn_spec_attrs `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} `{Args_rt : !RT} `{FnOnce_Self_Args_Output_rt : !RT} : Type := mk_Fn_spec_attrs {
+}.
+#[global] Arguments Fn_spec_attrs : clear implicits.
+
+#[global] Arguments Fn_spec_attrs {_ _}.
+
+#[global] Arguments mk_Fn_spec_attrs  {_} {_} {_} {_} {_}.
+
+
+Section attrs.
+Context `{RRGS : !refinedrustGS Σ}.
+Program Definition REFFasFnOnceA_spec_attrs `{RRGS : !(refinedrustGS Σ)} (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (Fn_F_A_spec_attrs: (Fn_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) : ((FnOnce_spec_attrs ((place_rfnRT (F_rt))) ((A_rt)) ((FnOnce_F_A_Output_rt)))) :=
+  {|
+    FnOnce_Params  :=
+      (FnOnce_F_A_spec_attrs.(FnOnce_Params)) : ((FnOnce_Params_sig ((place_rfnRT (F_rt))) ((A_rt)) ((FnOnce_F_A_Output_rt))));
+    FnOnce_Pre  :=
+      (FnOnce_F_A_spec_attrs.(FnOnce_Pre)) : ((FnOnce_Pre_sig ((place_rfnRT (F_rt))) ((A_rt)) ((FnOnce_F_A_Output_rt)) (_)));
+    FnOnce_Post  :=
+      (FnOnce_F_A_spec_attrs.(FnOnce_Post)) : ((FnOnce_Post_sig ((place_rfnRT (F_rt))) ((A_rt)) ((FnOnce_F_A_Output_rt)) (_) (_)));
+    FnOnce_PostMut  :=
+      (λ π p s args s2 ret, (⌜s2 = s⌝ ∗ FnOnce_F_A_spec_attrs.(FnOnce_Post) π p s args ret)%I) : ((FnOnce_PostMut_sig ((place_rfnRT (F_rt))) ((A_rt)) ((FnOnce_F_A_Output_rt)) (_) (_) (_)));
+  |}
+.
+
+
+End attrs.
+
+Section attrs.
+Context `{RRGS : !refinedrustGS Σ}.
+Program Definition REFmutFasFnOnceA_spec_attrs `{RRGS : !(refinedrustGS Σ)} (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) : ((FnOnce_spec_attrs (((place_rfnRT (F_rt)) * gname)%type) ((A_rt)) ((FnOnce_F_A_Output_rt)))) :=
+  {|
+    FnOnce_Params  :=
+      (FnOnce_F_A_spec_attrs.(FnOnce_Params)) : ((FnOnce_Params_sig (((place_rfnRT (F_rt)) * gname)%type) ((A_rt)) ((FnOnce_F_A_Output_rt))));
+    FnOnce_Pre  :=
+      (λ π p s args, FnOnce_F_A_spec_attrs.(FnOnce_Pre) π p s.cur args) : ((FnOnce_Pre_sig (((place_rfnRT (F_rt)) * gname)%type) ((A_rt)) ((FnOnce_F_A_Output_rt)) (_)));
+    FnOnce_Post  :=
+      (λ π p s args ret, (∃ s2, FnOnce_F_A_spec_attrs.(FnOnce_PostMut) π p s.cur args s2 ret ∗ gvar_pobs s.ghost ($# s2))%I) : ((FnOnce_Post_sig (((place_rfnRT (F_rt)) * gname)%type) ((A_rt)) ((FnOnce_F_A_Output_rt)) (_) (_)));
+    FnOnce_PostMut  :=
+      (λ π p s args s2 ret, (FnOnce_F_A_spec_attrs.(FnOnce_PostMut) π p s.cur args s2.cur ret ∗ ⌜s.ghost = s2.ghost⌝)%I) : ((FnOnce_PostMut_sig (((place_rfnRT (F_rt)) * gname)%type) ((A_rt)) ((FnOnce_F_A_Output_rt)) (_) (_) (_)));
+  |}
+.
+
+
+End attrs.
+
+Section attrs.
+Context `{RRGS : !refinedrustGS Σ}.
+Program Definition REFFasFnMutA_spec_attrs `{RRGS : !(refinedrustGS Σ)} (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (Fn_F_A_spec_attrs: (Fn_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) : ((FnMut_spec_attrs ((place_rfnRT (F_rt))) ((A_rt)) ((FnOnce_F_A_Output_rt)))) :=
+  mk_FnMut_spec_attrs.
+
+
+End attrs.
+
+Section attrs.
+Context `{RRGS : !refinedrustGS Σ}.
+Program Definition REFmutFasFnMutA_spec_attrs `{RRGS : !(refinedrustGS Σ)} (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) : ((FnMut_spec_attrs (((place_rfnRT (F_rt)) * gname)%type) ((A_rt)) ((FnOnce_F_A_Output_rt)))) :=
+  mk_FnMut_spec_attrs.
+
+
+End attrs.
+
+Section attrs.
+Context `{RRGS : !refinedrustGS Σ}.
+Program Definition REFFasFnA_spec_attrs `{RRGS : !(refinedrustGS Σ)} (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (Fn_F_A_spec_attrs: (Fn_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) : ((Fn_spec_attrs ((place_rfnRT (F_rt))) ((A_rt)) ((FnOnce_F_A_Output_rt)))) :=
+  mk_Fn_spec_attrs.
+
+
+End attrs.
+
+Section closure_attrs.
+Context `{RRGS : !refinedrustGS Σ}.
+End closure_attrs.
+
+(* Included specifications from configured file extra_specs.v *)
+
+Section extra_specs.
+Context `{RRGS : !refinedrustGS Σ}.
+Definition FnOnce_default_attrs {Self_rt Args_rt Output_rt : RT} : FnOnce_spec_attrs (RRGS:=RRGS) Self_rt Args_rt Output_rt :=
+  mk_FnOnce_spec_attrs unit%type (λ _ _ _ _, True%I) (λ _ _ _ _ _, True%I) (λ _ _ _ _ _ _, True%I).
+Definition FnMut_default_attrs {Self_rt Args_rt Output_rt : RT} :
+  FnMut_spec_attrs (RRGS:=RRGS) Self_rt Args_rt Output_rt :=
+  mk_FnMut_spec_attrs.
+Definition Fn_default_attrs {Self_rt Args_rt Output_rt : RT} :
+  Fn_spec_attrs (RRGS:=RRGS) Self_rt Args_rt Output_rt :=
+  mk_Fn_spec_attrs.
+End extra_specs.
+Record Tuple_spec `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} : Type := mk_Tuple_spec {
+}.
+#[global] Arguments Tuple_spec : clear implicits.
+
+#[global] Arguments Tuple_spec {_ _}.
+
+
+Record FnOnce_spec `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} `{Args_rt : !RT} `{Output_rt : !RT} : Type := mk_FnOnce_spec {
+  FnOnce_call_once_spec  : (spec_with 0 [] fn_spec);
+}.
+#[global] Arguments FnOnce_spec : clear implicits.
+
+#[global] Arguments FnOnce_spec {_ _}.
+
+
+Record FnMut_spec `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} `{Args_rt : !RT} `{FnOnce_Self_Args_Output_rt : !RT} : Type := mk_FnMut_spec {
+  FnMut_call_mut_spec  : (spec_with 1 [] fn_spec);
+}.
+#[global] Arguments FnMut_spec : clear implicits.
+
+#[global] Arguments FnMut_spec {_ _}.
+
+
+Record Fn_spec `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} `{Args_rt : !RT} `{FnOnce_Self_Args_Output_rt : !RT} : Type := mk_Fn_spec {
+  Fn_call_spec  : (spec_with 1 [] fn_spec);
+}.
+#[global] Arguments Fn_spec : clear implicits.
+
+#[global] Arguments Fn_spec {_ _}.
+
+
+Section Tuple.
+Context `{RRGS : !refinedrustGS Σ}.
+Definition Tuple_spec_incl `{Self_rt : !RT} (spec1: ((Tuple_spec (Self_rt)))) (spec2: ((Tuple_spec (Self_rt)))) : Prop :=
+  True.
+Instance Tuple_spec_incl_preorder `{Self_rt : !RT} : (PreOrder (Tuple_spec_incl (Self_rt := Self_rt))).
+Proof.
+  split.
+  all: apply _.
+Qed.
+
+Definition Tuple_base_spec (Self_rt: RT) (Self_st: syn_type) (_ATTRS: ((Tuple_spec_attrs ((Self_rt))))) : (spec_with _ _ (Tuple_spec ((Self_rt)))) :=
+  spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), (@mk_Tuple_spec _ _ ((Self_rt))).
+
+End Tuple.
+
+Section FnOnce.
+Context `{RRGS : !refinedrustGS Σ}.
+Definition FnOnce_spec_incl `{Self_rt : !RT} `{Args_rt : !RT} `{Output_rt : !RT} (spec1: ((FnOnce_spec (Self_rt) (Args_rt) (Output_rt)))) (spec2: ((FnOnce_spec (Self_rt) (Args_rt) (Output_rt)))) : Prop :=
+  ((function_subtype (spec1.(FnOnce_call_once_spec)) (spec2.(FnOnce_call_once_spec)))).
+Instance FnOnce_spec_incl_preorder `{Self_rt : !RT} `{Args_rt : !RT} `{Output_rt : !RT} : (PreOrder (FnOnce_spec_incl (Self_rt := Self_rt) (Args_rt := Args_rt) (Output_rt := Output_rt))).
+Proof.
+  split.
+  all: apply _.
+Qed.
+
+Definition FnOnce_call_once_base_spec (Self_rt: RT) (Args_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Args_st: syn_type) (Output_st: syn_type) (FnOnce_Self_Args_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (Output_rt) )) :=
+  fn(∀ ( *[]) : 0 | ( *[Self_ty; Args_ty; Output_ty]) : ([(Self_rt, Self_st); (Args_rt, Args_st); (Output_rt, Output_st)] : list (RT * syn_type)%type) | 
+      (* params....... *) (p, self, args) : ((_ * _ * _)),
+      (* elctx........ *) (λ ϝ, []);
+      (* args......... *) self :@: Self_ty, args :@: Args_ty;
+      (* precondition. *) (λ π : thread_id, (FnOnce_Self_Args_spec_attrs.(FnOnce_Pre) π p self args)) |
+      (* trait reqs... *) (λ π : thread_id, True)) →
+      (* existential.. *) ∃ (ret) : ((_)), ret @ Output_ty;
+      (* postcondition *) (λ π : thread_id, (FnOnce_Self_Args_spec_attrs.(FnOnce_Post) π p self args ret)).
+
+Definition FnOnce_base_spec (Self_rt: RT) (Args_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Args_st: syn_type) (Output_st: syn_type) (_ATTRS: ((FnOnce_spec_attrs ((Self_rt)) ((Args_rt)) ((Output_rt))))) : (spec_with _ _ (FnOnce_spec ((Self_rt)) ((Args_rt)) ((Output_rt)))) :=
+  spec! ( *[]) : 0 | ( *[Self_ty; Args_ty; Output_ty]) : ([Self_rt; Args_rt; Output_rt] : list RT), {|
+      FnOnce_call_once_spec  :=
+        (FnOnce_call_once_base_spec ((Self_rt)) ((Args_rt)) ((Output_rt)) (Self_st) (Args_st) (Output_st)) _ATTRS 
+           <TY> Self_ty <TY> Args_ty <TY> Output_ty : (spec_with 0 [] fn_spec);
+    |}
+.
+
+End FnOnce.
+
+Section FnMut.
+Context `{RRGS : !refinedrustGS Σ}.
+Definition FnMut_spec_incl `{Self_rt : !RT} `{Args_rt : !RT} `{FnOnce_Self_Args_Output_rt : !RT} (spec1: ((FnMut_spec (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt)))) (spec2: ((FnMut_spec (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt)))) : Prop :=
+  ((function_subtype (spec1.(FnMut_call_mut_spec)) (spec2.(FnMut_call_mut_spec)))).
+Instance FnMut_spec_incl_preorder `{Self_rt : !RT} `{Args_rt : !RT} `{FnOnce_Self_Args_Output_rt : !RT} : (PreOrder (FnMut_spec_incl (Self_rt := Self_rt) (Args_rt := Args_rt) (FnOnce_Self_Args_Output_rt := FnOnce_Self_Args_Output_rt))).
+Proof.
+  split.
+  all: apply _.
+Qed.
+
+Definition FnMut_call_mut_base_spec (Self_rt: RT) (Args_rt: RT) (FnOnce_Self_Args_Output_rt: RT) (Self_st: syn_type) (Args_st: syn_type) (FnOnce_Self_Args_Output_st: syn_type) (FnOnce_Self_Args_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) )) (FnMut_Self_Args_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) )) :=
+  fn(∀ ( *[ulft_1]) : 1 | ( *[Self_ty; Args_ty; FnOnce_Self_Args_Output_ty]) : ([(Self_rt, Self_st); (Args_rt, Args_st); (FnOnce_Self_Args_Output_rt, FnOnce_Self_Args_Output_st)] : list (RT * syn_type)%type) | 
+      (* params....... *) (p, self, args) : ((_ * _ * _)),
+      (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
+      (* args......... *) self :@: (mut_ref ulft_1 Self_ty), args :@: Args_ty;
+      (* precondition. *) (λ π : thread_id, (FnOnce_Self_Args_spec_attrs.(FnOnce_Pre) π p self.cur args)) |
+      (* trait reqs... *) (λ π : thread_id, True)) →
+      (* existential.. *) ∃ (m', ret) : ((_ * _)), ret @ FnOnce_Self_Args_Output_ty;
+      (* postcondition *) (λ π : thread_id, (FnOnce_Self_Args_spec_attrs.(FnOnce_PostMut) π p self.cur args m' ret)
+      ∗ (gvar_pobs self.ghost ($# m'))).
+
+Definition FnMut_base_spec (Self_rt: RT) (Args_rt: RT) (FnOnce_Self_Args_Output_rt: RT) (Self_st: syn_type) (Args_st: syn_type) (FnOnce_Self_Args_Output_st: syn_type) (FnOnce_Self_Args_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) )) (_ATTRS: ((FnMut_spec_attrs ((Self_rt)) ((Args_rt)) ((FnOnce_Self_Args_Output_rt))))) : (spec_with _ _ (FnMut_spec ((Self_rt)) ((Args_rt)) ((FnOnce_Self_Args_Output_rt)))) :=
+  spec! ( *[]) : 0 | ( *[Self_ty; Args_ty; FnOnce_Self_Args_Output_ty]) : ([Self_rt; Args_rt; FnOnce_Self_Args_Output_rt] : list RT), {|
+      FnMut_call_mut_spec  :=
+        (FnMut_call_mut_base_spec ((Self_rt)) ((Args_rt)) ((FnOnce_Self_Args_Output_rt)) (Self_st) (Args_st) (FnOnce_Self_Args_Output_st)) FnOnce_Self_Args_spec_attrs _ATTRS 
+           <TY> Self_ty <TY> Args_ty <TY> FnOnce_Self_Args_Output_ty : (spec_with 1 [] fn_spec);
+    |}
+.
+
+End FnMut.
+
+Section Fn.
+Context `{RRGS : !refinedrustGS Σ}.
+Definition Fn_spec_incl `{Self_rt : !RT} `{Args_rt : !RT} `{FnOnce_Self_Args_Output_rt : !RT} (spec1: ((Fn_spec (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt)))) (spec2: ((Fn_spec (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt)))) : Prop :=
+  ((function_subtype (spec1.(Fn_call_spec)) (spec2.(Fn_call_spec)))).
+Instance Fn_spec_incl_preorder `{Self_rt : !RT} `{Args_rt : !RT} `{FnOnce_Self_Args_Output_rt : !RT} : (PreOrder (Fn_spec_incl (Self_rt := Self_rt) (Args_rt := Args_rt) (FnOnce_Self_Args_Output_rt := FnOnce_Self_Args_Output_rt))).
+Proof.
+  split.
+  all: apply _.
+Qed.
+
+Definition Fn_call_base_spec (Self_rt: RT) (Args_rt: RT) (FnOnce_Self_Args_Output_rt: RT) (Self_st: syn_type) (Args_st: syn_type) (FnOnce_Self_Args_Output_st: syn_type) (FnOnce_Self_Args_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) )) (FnMut_Self_Args_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) )) (Fn_Self_Args_spec_attrs: (Fn_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) )) :=
+  fn(∀ ( *[ulft_1]) : 1 | ( *[Self_ty; Args_ty; FnOnce_Self_Args_Output_ty]) : ([(Self_rt, Self_st); (Args_rt, Args_st); (FnOnce_Self_Args_Output_rt, FnOnce_Self_Args_Output_st)] : list (RT * syn_type)%type) | 
+      (* params....... *) (p, self, args) : ((_ * _ * _)),
+      (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
+      (* args......... *) self :@: (shr_ref ulft_1 Self_ty), args :@: Args_ty;
+      (* precondition. *) (λ π : thread_id, (FnOnce_Self_Args_spec_attrs.(FnOnce_Pre) π p self args)) |
+      (* trait reqs... *) (λ π : thread_id, True)) →
+      (* existential.. *) ∃ (ret) : ((_)), ret @ FnOnce_Self_Args_Output_ty;
+      (* postcondition *) (λ π : thread_id, (FnOnce_Self_Args_spec_attrs.(FnOnce_Post) π p self args ret)).
+
+Definition Fn_base_spec (Self_rt: RT) (Args_rt: RT) (FnOnce_Self_Args_Output_rt: RT) (Self_st: syn_type) (Args_st: syn_type) (FnOnce_Self_Args_Output_st: syn_type) (FnOnce_Self_Args_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) )) (FnMut_Self_Args_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) )) (_ATTRS: ((Fn_spec_attrs ((Self_rt)) ((Args_rt)) ((FnOnce_Self_Args_Output_rt))))) : (spec_with _ _ (Fn_spec ((Self_rt)) ((Args_rt)) ((FnOnce_Self_Args_Output_rt)))) :=
+  spec! ( *[]) : 0 | ( *[Self_ty; Args_ty; FnOnce_Self_Args_Output_ty]) : ([Self_rt; Args_rt; FnOnce_Self_Args_Output_rt] : list RT), {|
+      Fn_call_spec  :=
+        (Fn_call_base_spec ((Self_rt)) ((Args_rt)) ((FnOnce_Self_Args_Output_rt)) (Self_st) (Args_st) (FnOnce_Self_Args_Output_st)) FnOnce_Self_Args_spec_attrs FnMut_Self_Args_spec_attrs _ATTRS 
+           <TY> Self_ty <TY> Args_ty <TY> FnOnce_Self_Args_Output_ty : (spec_with 1 [] fn_spec);
+    |}
+.
+
+End Fn.
+
+Section Tuple_trait_req_incls.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+End Tuple_trait_req_incls.
+
+Section FnOnce_trait_req_incls.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition trait_incl_of_FnOnce_call_once (Self_rt: RT) (Args_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Args_st: syn_type) (Output_st: syn_type) (FnOnce_Self_Args_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (Output_rt) )) (FnOnce_Self_Args_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (Self_rt) (Args_rt) (Output_rt)))) : (spec_with _ _ Prop) :=
+    spec! ( *[]) : 0 | ( *[Self_ty; Args_ty; Output_ty]) : ([Self_rt; Args_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_Self_Args_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (Self_rt) (Args_rt) (Output_rt) Self_st Args_st Output_st FnOnce_Self_Args_spec_attrs<TY> Self_ty <TY> Args_ty <TY> Output_ty <INST!>)))).
+End FnOnce_trait_req_incls.
+
+Section FnMut_trait_req_incls.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition trait_incl_of_FnMut_call_mut (Self_rt: RT) (Args_rt: RT) (FnOnce_Self_Args_Output_rt: RT) (Self_st: syn_type) (Args_st: syn_type) (FnOnce_Self_Args_Output_st: syn_type) (FnOnce_Self_Args_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) )) (FnOnce_Self_Args_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt)))) (FnMut_Self_Args_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) )) (FnMut_Self_Args_spec: (spec_with 0 [] (FnMut_spec (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt)))) : (spec_with _ _ Prop) :=
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Args_ty; FnOnce_Self_Args_Output_ty]) : ([Self_rt; Args_rt; FnOnce_Self_Args_Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_Self_Args_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) Self_st Args_st FnOnce_Self_Args_Output_st FnOnce_Self_Args_spec_attrs<TY> Self_ty <TY> Args_ty <TY> FnOnce_Self_Args_Output_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl FnMut_spec_incl FnMut_Self_Args_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnMut_base_spec (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) Self_st Args_st FnOnce_Self_Args_Output_st FnOnce_Self_Args_spec_attrs FnMut_Self_Args_spec_attrs<TY> Self_ty <TY> Args_ty <TY> FnOnce_Self_Args_Output_ty <INST!>)))).
+End FnMut_trait_req_incls.
+
+Section Fn_trait_req_incls.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition trait_incl_of_Fn_call (Self_rt: RT) (Args_rt: RT) (FnOnce_Self_Args_Output_rt: RT) (Self_st: syn_type) (Args_st: syn_type) (FnOnce_Self_Args_Output_st: syn_type) (FnOnce_Self_Args_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) )) (FnOnce_Self_Args_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt)))) (FnMut_Self_Args_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) )) (FnMut_Self_Args_spec: (spec_with 0 [] (FnMut_spec (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt)))) (Fn_Self_Args_spec_attrs: (Fn_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) )) (Fn_Self_Args_spec: (spec_with 0 [] (Fn_spec (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt)))) : (spec_with _ _ Prop) :=
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Args_ty; FnOnce_Self_Args_Output_ty]) : ([Self_rt; Args_rt; FnOnce_Self_Args_Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_Self_Args_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) Self_st Args_st FnOnce_Self_Args_Output_st FnOnce_Self_Args_spec_attrs<TY> Self_ty <TY> Args_ty <TY> FnOnce_Self_Args_Output_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl FnMut_spec_incl FnMut_Self_Args_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnMut_base_spec (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) Self_st Args_st FnOnce_Self_Args_Output_st FnOnce_Self_Args_spec_attrs FnMut_Self_Args_spec_attrs<TY> Self_ty <TY> Args_ty <TY> FnOnce_Self_Args_Output_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl Fn_spec_incl Fn_Self_Args_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Fn_base_spec (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) Self_st Args_st FnOnce_Self_Args_Output_st FnOnce_Self_Args_spec_attrs FnMut_Self_Args_spec_attrs Fn_Self_Args_spec_attrs<TY> Self_ty <TY> Args_ty <TY> FnOnce_Self_Args_Output_ty <INST!>)))).
+End Fn_trait_req_incls.
+
+Section specs.
+Context `{RRGS : !refinedrustGS Σ}.
+
+
+Definition trait_incl_of_REFFasFnA_call (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (A_st: syn_type) (F_st: syn_type) (FnOnce_F_A_Output_st: syn_type) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnOnce_F_A_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt)))) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec: (spec_with 0 [] (FnMut_spec (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt)))) (Fn_F_A_spec_attrs: (Fn_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (Fn_F_A_spec: (spec_with 0 [] (Fn_spec (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1; ulft_2]) : 2 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (A_rt) (FnOnce_F_A_Output_rt) F_st A_st FnOnce_F_A_Output_st FnOnce_F_A_spec_attrs<TY> F_ty <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl FnMut_spec_incl FnMut_F_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnMut_base_spec (F_rt) (A_rt) (FnOnce_F_A_Output_rt) F_st A_st FnOnce_F_A_Output_st FnOnce_F_A_spec_attrs FnMut_F_A_spec_attrs<TY> F_ty <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl Fn_spec_incl Fn_F_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Fn_base_spec (F_rt) (A_rt) (FnOnce_F_A_Output_rt) F_st A_st FnOnce_F_A_Output_st FnOnce_F_A_spec_attrs FnMut_F_A_spec_attrs Fn_F_A_spec_attrs<TY> F_ty <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>)))).
+
+Definition type_of_REFFasFnA_call (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (A_st: syn_type) (F_st: syn_type) (FnOnce_F_A_Output_st: syn_type) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (Fn_F_A_spec_attrs: (Fn_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) :=
+  spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT),((Fn_base_spec ((place_rfnRT (F_rt))) ((A_rt)) ((FnOnce_F_A_Output_rt)) (PtrSynType) (A_st) (FnOnce_F_A_Output_st) ((REFFasFnOnceA_spec_attrs ((A_rt)) ((F_rt)) ((FnOnce_F_A_Output_rt)) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs) (Fn_F_A_spec_attrs))) ((REFFasFnMutA_spec_attrs ((A_rt)) ((F_rt)) ((FnOnce_F_A_Output_rt)) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs) (Fn_F_A_spec_attrs))) ((REFFasFnA_spec_attrs (A_rt) (F_rt) (FnOnce_F_A_Output_rt) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs) (Fn_F_A_spec_attrs))))
+     <TY> (shr_ref ulft_0 F_ty) <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>).(Fn_call_spec)   <MERGE!>.
+
+Definition trait_incl_of_REFFasFnMutA_call_mut (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (A_st: syn_type) (F_st: syn_type) (FnOnce_F_A_Output_st: syn_type) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnOnce_F_A_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt)))) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec: (spec_with 0 [] (FnMut_spec (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt)))) (Fn_F_A_spec_attrs: (Fn_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (Fn_F_A_spec: (spec_with 0 [] (Fn_spec (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1; ulft_2]) : 2 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (A_rt) (FnOnce_F_A_Output_rt) F_st A_st FnOnce_F_A_Output_st FnOnce_F_A_spec_attrs<TY> F_ty <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl FnMut_spec_incl FnMut_F_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnMut_base_spec (F_rt) (A_rt) (FnOnce_F_A_Output_rt) F_st A_st FnOnce_F_A_Output_st FnOnce_F_A_spec_attrs FnMut_F_A_spec_attrs<TY> F_ty <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl Fn_spec_incl Fn_F_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Fn_base_spec (F_rt) (A_rt) (FnOnce_F_A_Output_rt) F_st A_st FnOnce_F_A_Output_st FnOnce_F_A_spec_attrs FnMut_F_A_spec_attrs Fn_F_A_spec_attrs<TY> F_ty <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>)))).
+
+Definition type_of_REFFasFnMutA_call_mut (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (A_st: syn_type) (F_st: syn_type) (FnOnce_F_A_Output_st: syn_type) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (Fn_F_A_spec_attrs: (Fn_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) :=
+  spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT),((FnMut_base_spec ((place_rfnRT (F_rt))) ((A_rt)) ((FnOnce_F_A_Output_rt)) (PtrSynType) (A_st) (FnOnce_F_A_Output_st) ((REFFasFnOnceA_spec_attrs ((A_rt)) ((F_rt)) ((FnOnce_F_A_Output_rt)) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs) (Fn_F_A_spec_attrs))) ((REFFasFnMutA_spec_attrs (A_rt) (F_rt) (FnOnce_F_A_Output_rt) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs) (Fn_F_A_spec_attrs))))
+     <TY> (shr_ref ulft_0 F_ty) <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>).(FnMut_call_mut_spec)   <MERGE!>.
+
+Definition trait_incl_of_REFmutFasFnMutA_call_mut (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (A_st: syn_type) (F_st: syn_type) (FnOnce_F_A_Output_st: syn_type) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnOnce_F_A_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt)))) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec: (spec_with 0 [] (FnMut_spec (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1; ulft_2]) : 2 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (A_rt) (FnOnce_F_A_Output_rt) F_st A_st FnOnce_F_A_Output_st FnOnce_F_A_spec_attrs<TY> F_ty <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl FnMut_spec_incl FnMut_F_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnMut_base_spec (F_rt) (A_rt) (FnOnce_F_A_Output_rt) F_st A_st FnOnce_F_A_Output_st FnOnce_F_A_spec_attrs FnMut_F_A_spec_attrs<TY> F_ty <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>)))).
+
+Definition type_of_REFmutFasFnMutA_call_mut (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (A_st: syn_type) (F_st: syn_type) (FnOnce_F_A_Output_st: syn_type) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) :=
+  spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT),((FnMut_base_spec (((place_rfnRT (F_rt)) * gname)%type) ((A_rt)) ((FnOnce_F_A_Output_rt)) (PtrSynType) (A_st) (FnOnce_F_A_Output_st) ((REFmutFasFnOnceA_spec_attrs ((A_rt)) ((F_rt)) ((FnOnce_F_A_Output_rt)) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs))) ((REFmutFasFnMutA_spec_attrs (A_rt) (F_rt) (FnOnce_F_A_Output_rt) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs))))
+     <TY> (mut_ref ulft_0 F_ty) <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>).(FnMut_call_mut_spec)   <MERGE!>.
+
+Definition trait_incl_of_REFFasFnOnceA_call_once (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (A_st: syn_type) (F_st: syn_type) (FnOnce_F_A_Output_st: syn_type) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnOnce_F_A_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt)))) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec: (spec_with 0 [] (FnMut_spec (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt)))) (Fn_F_A_spec_attrs: (Fn_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (Fn_F_A_spec: (spec_with 0 [] (Fn_spec (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (A_rt) (FnOnce_F_A_Output_rt) F_st A_st FnOnce_F_A_Output_st FnOnce_F_A_spec_attrs<TY> F_ty <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl FnMut_spec_incl FnMut_F_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnMut_base_spec (F_rt) (A_rt) (FnOnce_F_A_Output_rt) F_st A_st FnOnce_F_A_Output_st FnOnce_F_A_spec_attrs FnMut_F_A_spec_attrs<TY> F_ty <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl Fn_spec_incl Fn_F_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Fn_base_spec (F_rt) (A_rt) (FnOnce_F_A_Output_rt) F_st A_st FnOnce_F_A_Output_st FnOnce_F_A_spec_attrs FnMut_F_A_spec_attrs Fn_F_A_spec_attrs<TY> F_ty <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>)))).
+
+Definition type_of_REFFasFnOnceA_call_once (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (A_st: syn_type) (F_st: syn_type) (FnOnce_F_A_Output_st: syn_type) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (Fn_F_A_spec_attrs: (Fn_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) :=
+  spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT),((FnOnce_base_spec ((place_rfnRT (F_rt))) ((A_rt)) ((FnOnce_F_A_Output_rt)) (PtrSynType) (A_st) (FnOnce_F_A_Output_st) ((REFFasFnOnceA_spec_attrs (A_rt) (F_rt) (FnOnce_F_A_Output_rt) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs) (Fn_F_A_spec_attrs))))
+     <TY> (shr_ref ulft_0 F_ty) <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>).(FnOnce_call_once_spec)   <MERGE!>.
+
+Definition trait_incl_of_REFmutFasFnOnceA_call_once (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (A_st: syn_type) (F_st: syn_type) (FnOnce_F_A_Output_st: syn_type) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnOnce_F_A_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt)))) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec: (spec_with 0 [] (FnMut_spec (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (A_rt) (FnOnce_F_A_Output_rt) F_st A_st FnOnce_F_A_Output_st FnOnce_F_A_spec_attrs<TY> F_ty <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl FnMut_spec_incl FnMut_F_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnMut_base_spec (F_rt) (A_rt) (FnOnce_F_A_Output_rt) F_st A_st FnOnce_F_A_Output_st FnOnce_F_A_spec_attrs FnMut_F_A_spec_attrs<TY> F_ty <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>)))).
+
+Definition type_of_REFmutFasFnOnceA_call_once (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (A_st: syn_type) (F_st: syn_type) (FnOnce_F_A_Output_st: syn_type) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) :=
+  spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT),((FnOnce_base_spec (((place_rfnRT (F_rt)) * gname)%type) ((A_rt)) ((FnOnce_F_A_Output_rt)) (PtrSynType) (A_st) (FnOnce_F_A_Output_st) ((REFmutFasFnOnceA_spec_attrs (A_rt) (F_rt) (FnOnce_F_A_Output_rt) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs))))
+     <TY> (mut_ref ulft_0 F_ty) <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>).(FnOnce_call_once_spec)   <MERGE!>.
+
+
+
+End specs.
+Section REFFasFnA_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition REFFasFnA_spec (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (A_st: syn_type) (F_st: syn_type) (FnOnce_F_A_Output_st: syn_type) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (Fn_F_A_spec_attrs: (Fn_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) : (spec_with _ _ (Fn_spec ((place_rfnRT (F_rt))) ((A_rt)) ((FnOnce_F_A_Output_rt)))) :=
+    spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), {|
+        Fn_call_spec  :=
+          (type_of_REFFasFnA_call ((A_rt)) ((F_rt)) ((FnOnce_F_A_Output_rt)) (A_st) (F_st) (FnOnce_F_A_Output_st)) FnOnce_F_A_spec_attrs FnMut_F_A_spec_attrs Fn_F_A_spec_attrs 
+             <TY> A_ty <TY> F_ty <TY> FnOnce_F_A_Output_ty <LFT> ulft_0 : (spec_with 1 [] fn_spec);
+      |}
+  .
+  Definition REFFasFnA_spec_subsumption  :=
+    ∀ `(A_rt : !RT) `(F_rt : !RT) `(FnOnce_F_A_Output_rt : !RT) `(A_st : !syn_type) `(F_st : !syn_type) `(FnOnce_F_A_Output_st : !syn_type) `(FnOnce_F_A_spec_attrs : !(FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) `(FnMut_F_A_spec_attrs : !(FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) `(Fn_F_A_spec_attrs : !(Fn_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )), trait_incl_marker (lift_trait_incl Fn_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), (REFFasFnA_spec (A_rt) (F_rt) (FnOnce_F_A_Output_rt) (A_st) (F_st) (FnOnce_F_A_Output_st) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs) (Fn_F_A_spec_attrs)) <TY> A_ty <TY> F_ty <TY> FnOnce_F_A_Output_ty <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), (Fn_base_spec (place_rfnRT (F_rt)) (A_rt) (FnOnce_F_A_Output_rt) PtrSynType A_st FnOnce_F_A_Output_st (REFFasFnOnceA_spec_attrs ((A_rt)) ((F_rt)) ((FnOnce_F_A_Output_rt)) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs) (Fn_F_A_spec_attrs)) (REFFasFnMutA_spec_attrs ((A_rt)) ((F_rt)) ((FnOnce_F_A_Output_rt)) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs) (Fn_F_A_spec_attrs)) (REFFasFnA_spec_attrs (A_rt) (F_rt) (FnOnce_F_A_Output_rt) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs) (Fn_F_A_spec_attrs))<TY> (shr_ref ulft_0 F_ty) <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>))).
+End REFFasFnA_spec.
+
+Section REFFasFnMutA_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition REFFasFnMutA_spec (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (A_st: syn_type) (F_st: syn_type) (FnOnce_F_A_Output_st: syn_type) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (Fn_F_A_spec_attrs: (Fn_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) : (spec_with _ _ (FnMut_spec ((place_rfnRT (F_rt))) ((A_rt)) ((FnOnce_F_A_Output_rt)))) :=
+    spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), {|
+        FnMut_call_mut_spec  :=
+          (type_of_REFFasFnMutA_call_mut ((A_rt)) ((F_rt)) ((FnOnce_F_A_Output_rt)) (A_st) (F_st) (FnOnce_F_A_Output_st)) FnOnce_F_A_spec_attrs FnMut_F_A_spec_attrs Fn_F_A_spec_attrs 
+             <TY> A_ty <TY> F_ty <TY> FnOnce_F_A_Output_ty <LFT> ulft_0 : (spec_with 1 [] fn_spec);
+      |}
+  .
+  Definition REFFasFnMutA_spec_subsumption  :=
+    ∀ `(A_rt : !RT) `(F_rt : !RT) `(FnOnce_F_A_Output_rt : !RT) `(A_st : !syn_type) `(F_st : !syn_type) `(FnOnce_F_A_Output_st : !syn_type) `(FnOnce_F_A_spec_attrs : !(FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) `(FnMut_F_A_spec_attrs : !(FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) `(Fn_F_A_spec_attrs : !(Fn_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )), trait_incl_marker (lift_trait_incl FnMut_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), (REFFasFnMutA_spec (A_rt) (F_rt) (FnOnce_F_A_Output_rt) (A_st) (F_st) (FnOnce_F_A_Output_st) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs) (Fn_F_A_spec_attrs)) <TY> A_ty <TY> F_ty <TY> FnOnce_F_A_Output_ty <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), (FnMut_base_spec (place_rfnRT (F_rt)) (A_rt) (FnOnce_F_A_Output_rt) PtrSynType A_st FnOnce_F_A_Output_st (REFFasFnOnceA_spec_attrs ((A_rt)) ((F_rt)) ((FnOnce_F_A_Output_rt)) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs) (Fn_F_A_spec_attrs)) (REFFasFnMutA_spec_attrs (A_rt) (F_rt) (FnOnce_F_A_Output_rt) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs) (Fn_F_A_spec_attrs))<TY> (shr_ref ulft_0 F_ty) <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>))).
+End REFFasFnMutA_spec.
+
+Section REFFasFnOnceA_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition REFFasFnOnceA_spec (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (A_st: syn_type) (F_st: syn_type) (FnOnce_F_A_Output_st: syn_type) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (Fn_F_A_spec_attrs: (Fn_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) : (spec_with _ _ (FnOnce_spec ((place_rfnRT (F_rt))) ((A_rt)) ((FnOnce_F_A_Output_rt)))) :=
+    spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), let Output_rt := (FnOnce_F_A_Output_rt) in {|
+        FnOnce_call_once_spec  :=
+          (type_of_REFFasFnOnceA_call_once ((A_rt)) ((F_rt)) ((FnOnce_F_A_Output_rt)) (A_st) (F_st) (FnOnce_F_A_Output_st)) FnOnce_F_A_spec_attrs FnMut_F_A_spec_attrs Fn_F_A_spec_attrs 
+             <TY> A_ty <TY> F_ty <TY> FnOnce_F_A_Output_ty <LFT> ulft_0 : (spec_with 0 [] fn_spec);
+      |}
+  .
+  Definition REFFasFnOnceA_spec_subsumption  :=
+    ∀ `(A_rt : !RT) `(F_rt : !RT) `(FnOnce_F_A_Output_rt : !RT) `(A_st : !syn_type) `(F_st : !syn_type) `(FnOnce_F_A_Output_st : !syn_type) `(FnOnce_F_A_spec_attrs : !(FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) `(FnMut_F_A_spec_attrs : !(FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) `(Fn_F_A_spec_attrs : !(Fn_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )), trait_incl_marker (lift_trait_incl FnOnce_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), (REFFasFnOnceA_spec (A_rt) (F_rt) (FnOnce_F_A_Output_rt) (A_st) (F_st) (FnOnce_F_A_Output_st) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs) (Fn_F_A_spec_attrs)) <TY> A_ty <TY> F_ty <TY> FnOnce_F_A_Output_ty <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), (FnOnce_base_spec (place_rfnRT (F_rt)) (A_rt) (FnOnce_F_A_Output_rt) PtrSynType A_st FnOnce_F_A_Output_st (REFFasFnOnceA_spec_attrs (A_rt) (F_rt) (FnOnce_F_A_Output_rt) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs) (Fn_F_A_spec_attrs))<TY> (shr_ref ulft_0 F_ty) <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>))).
+End REFFasFnOnceA_spec.
+
+Section REFmutFasFnMutA_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition REFmutFasFnMutA_spec (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (A_st: syn_type) (F_st: syn_type) (FnOnce_F_A_Output_st: syn_type) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) : (spec_with _ _ (FnMut_spec (((place_rfnRT (F_rt)) * gname)%type) ((A_rt)) ((FnOnce_F_A_Output_rt)))) :=
+    spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), {|
+        FnMut_call_mut_spec  :=
+          (type_of_REFmutFasFnMutA_call_mut ((A_rt)) ((F_rt)) ((FnOnce_F_A_Output_rt)) (A_st) (F_st) (FnOnce_F_A_Output_st)) FnOnce_F_A_spec_attrs FnMut_F_A_spec_attrs 
+             <TY> A_ty <TY> F_ty <TY> FnOnce_F_A_Output_ty <LFT> ulft_0 : (spec_with 1 [] fn_spec);
+      |}
+  .
+  Definition REFmutFasFnMutA_spec_subsumption  :=
+    ∀ `(A_rt : !RT) `(F_rt : !RT) `(FnOnce_F_A_Output_rt : !RT) `(A_st : !syn_type) `(F_st : !syn_type) `(FnOnce_F_A_Output_st : !syn_type) `(FnOnce_F_A_spec_attrs : !(FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) `(FnMut_F_A_spec_attrs : !(FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )), trait_incl_marker (lift_trait_incl FnMut_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), (REFmutFasFnMutA_spec (A_rt) (F_rt) (FnOnce_F_A_Output_rt) (A_st) (F_st) (FnOnce_F_A_Output_st) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs)) <TY> A_ty <TY> F_ty <TY> FnOnce_F_A_Output_ty <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), (FnMut_base_spec ((place_rfnRT (F_rt)) * gname)%type (A_rt) (FnOnce_F_A_Output_rt) PtrSynType A_st FnOnce_F_A_Output_st (REFmutFasFnOnceA_spec_attrs ((A_rt)) ((F_rt)) ((FnOnce_F_A_Output_rt)) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs)) (REFmutFasFnMutA_spec_attrs (A_rt) (F_rt) (FnOnce_F_A_Output_rt) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs))<TY> (mut_ref ulft_0 F_ty) <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>))).
+End REFmutFasFnMutA_spec.
+
+Section REFmutFasFnOnceA_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition REFmutFasFnOnceA_spec (A_rt: RT) (F_rt: RT) (FnOnce_F_A_Output_rt: RT) (A_st: syn_type) (F_st: syn_type) (FnOnce_F_A_Output_st: syn_type) (FnOnce_F_A_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) (FnMut_F_A_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) : (spec_with _ _ (FnOnce_spec (((place_rfnRT (F_rt)) * gname)%type) ((A_rt)) ((FnOnce_F_A_Output_rt)))) :=
+    spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), let Output_rt := (FnOnce_F_A_Output_rt) in {|
+        FnOnce_call_once_spec  :=
+          (type_of_REFmutFasFnOnceA_call_once ((A_rt)) ((F_rt)) ((FnOnce_F_A_Output_rt)) (A_st) (F_st) (FnOnce_F_A_Output_st)) FnOnce_F_A_spec_attrs FnMut_F_A_spec_attrs 
+             <TY> A_ty <TY> F_ty <TY> FnOnce_F_A_Output_ty <LFT> ulft_0 : (spec_with 0 [] fn_spec);
+      |}
+  .
+  Definition REFmutFasFnOnceA_spec_subsumption  :=
+    ∀ `(A_rt : !RT) `(F_rt : !RT) `(FnOnce_F_A_Output_rt : !RT) `(A_st : !syn_type) `(F_st : !syn_type) `(FnOnce_F_A_Output_st : !syn_type) `(FnOnce_F_A_spec_attrs : !(FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )) `(FnMut_F_A_spec_attrs : !(FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (A_rt) (FnOnce_F_A_Output_rt) )), trait_incl_marker (lift_trait_incl FnOnce_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), (REFmutFasFnOnceA_spec (A_rt) (F_rt) (FnOnce_F_A_Output_rt) (A_st) (F_st) (FnOnce_F_A_Output_st) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs)) <TY> A_ty <TY> F_ty <TY> FnOnce_F_A_Output_ty <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[A_ty; F_ty; FnOnce_F_A_Output_ty]) : ([A_rt; F_rt; FnOnce_F_A_Output_rt] : list RT), (FnOnce_base_spec ((place_rfnRT (F_rt)) * gname)%type (A_rt) (FnOnce_F_A_Output_rt) PtrSynType A_st FnOnce_F_A_Output_st (REFmutFasFnOnceA_spec_attrs (A_rt) (F_rt) (FnOnce_F_A_Output_rt) (FnOnce_F_A_spec_attrs) (FnMut_F_A_spec_attrs))<TY> (mut_ref ulft_0 F_ty) <TY> A_ty <TY> FnOnce_F_A_Output_ty <INST!>))).
+End REFmutFasFnOnceA_spec.
+

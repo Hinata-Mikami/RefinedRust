@@ -1,0 +1,24 @@
+{
+  "export_libs": [],
+  "items": [],
+  "module_dependencies": [
+    "rrstd.alloc.alloc.generated",
+    "rrstd.alloc.theories",
+    "rrstd.clone.clone.generated",
+    "rrstd.closures.closures.generated",
+    "rrstd.closures.theories",
+    "rrstd.mem.mem.generated",
+    "rrstd.mem.theories",
+    "rrstd.num.num.generated",
+    "rrstd.option.option.generated",
+    "rrstd.ptr.ptr.generated",
+    "rrstd.ptr.theories",
+    "rrstd.result.result.generated",
+    "rrstd.result.theories",
+    "rrstd.rr_internal.theories",
+    "rrstd.sized.sized.generated"
+  ],
+  "refinedrust_module": "generated_specs_rr_internal",
+  "refinedrust_name": "rr_internal",
+  "refinedrust_path": "rrstd.rr_internal.rr_internal.generated"
+}

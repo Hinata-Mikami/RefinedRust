@@ -1,0 +1,200 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "alloc",
+        "alloc",
+        "Global"
+      ],
+      "rtype": "(Global_rt)",
+      "semtype": "Global_ty",
+      "syntype": "Global_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "alloc",
+        "alloc",
+        "Layout"
+      ],
+      "rtype": "(layout_Layout_inv_t_rt)",
+      "semtype": "layout_Layout_inv_t",
+      "syntype": "layout_Layout_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "alloc",
+        "alloc",
+        "LayoutError"
+      ],
+      "rtype": "(layout_LayoutError_rt)",
+      "semtype": "layout_LayoutError_ty",
+      "syntype": "layout_LayoutError_sls"
+    },
+    {
+      "kind": "method",
+      "name": "layout_Layout_align",
+      "path": [
+        "alloc",
+        "alloc",
+        "Layout",
+        "align"
+      ],
+      "spec": "type_of_layout_Layout_align",
+      "trait_req_incl": "trait_incl_of_layout_Layout_align"
+    },
+    {
+      "kind": "method",
+      "name": "layout_Layout_from_size_align",
+      "path": [
+        "alloc",
+        "alloc",
+        "Layout",
+        "from_size_align"
+      ],
+      "spec": "type_of_layout_Layout_from_size_align",
+      "trait_req_incl": "trait_incl_of_layout_Layout_from_size_align"
+    },
+    {
+      "kind": "method",
+      "name": "layout_Layout_from_size_align_unchecked",
+      "path": [
+        "alloc",
+        "alloc",
+        "Layout",
+        "from_size_align_unchecked"
+      ],
+      "spec": "type_of_layout_Layout_from_size_align_unchecked",
+      "trait_req_incl": "trait_incl_of_layout_Layout_from_size_align_unchecked"
+    },
+    {
+      "kind": "method",
+      "name": "layout_Layout_new",
+      "path": [
+        "alloc",
+        "alloc",
+        "Layout",
+        "new"
+      ],
+      "spec": "type_of_layout_Layout_new",
+      "trait_req_incl": "trait_incl_of_layout_Layout_new"
+    },
+    {
+      "kind": "method",
+      "name": "layout_Layout_size",
+      "path": [
+        "alloc",
+        "alloc",
+        "Layout",
+        "size"
+      ],
+      "spec": "type_of_layout_Layout_size",
+      "trait_req_incl": "trait_incl_of_layout_Layout_size"
+    },
+    {
+      "kind": "function",
+      "name": "alloc_alloc",
+      "path": [
+        "alloc",
+        "alloc",
+        "alloc"
+      ],
+      "spec": "type_of_alloc_alloc",
+      "trait_req_incl": "trait_incl_of_alloc_alloc"
+    },
+    {
+      "kind": "function",
+      "name": "alloc_dealloc",
+      "path": [
+        "alloc",
+        "alloc",
+        "dealloc"
+      ],
+      "spec": "type_of_alloc_dealloc",
+      "trait_req_incl": "trait_incl_of_alloc_dealloc"
+    },
+    {
+      "kind": "function",
+      "name": "realloc",
+      "path": [
+        "alloc",
+        "alloc",
+        "realloc"
+      ],
+      "spec": "type_of_realloc",
+      "trait_req_incl": "trait_incl_of_realloc"
+    },
+    {
+      "allowed_attrs": [
+        "FreeablePerm"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {},
+      "name": "Allocator",
+      "path": [
+        "alloc",
+        "alloc",
+        "Allocator"
+      ]
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [],
+          "path": [
+            "alloc",
+            "alloc",
+            "Global"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "GlobalasAllocator",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "alloc",
+          "alloc",
+          "Allocator"
+        ]
+      }
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.alloc.theories",
+    "rrstd.clone.clone.generated",
+    "rrstd.closures.closures.generated",
+    "rrstd.closures.theories",
+    "rrstd.mem.mem.generated",
+    "rrstd.mem.theories",
+    "rrstd.num.num.generated",
+    "rrstd.option.option.generated",
+    "rrstd.ptr.ptr.generated",
+    "rrstd.ptr.theories",
+    "rrstd.result.result.generated",
+    "rrstd.result.theories",
+    "rrstd.sized.sized.generated"
+  ],
+  "refinedrust_module": "generated_specs_alloc",
+  "refinedrust_name": "alloc",
+  "refinedrust_path": "rrstd.alloc.alloc.generated"
+}

@@ -1,0 +1,802 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "mem",
+        "Alignment"
+      ],
+      "rtype": "(alignment_Alignment_inv_t_rt)",
+      "semtype": "alignment_Alignment_inv_t",
+      "syntype": "alignment_Alignment_sls"
+    },
+    {
+      "kind": "method",
+      "name": "alignment_Alignment_as_usize",
+      "path": [
+        "core",
+        "mem",
+        "Alignment",
+        "as_usize"
+      ],
+      "spec": "type_of_alignment_Alignment_as_usize",
+      "trait_req_incl": "trait_incl_of_alignment_Alignment_as_usize"
+    },
+    {
+      "kind": "method",
+      "name": "alignment_Alignment_new",
+      "path": [
+        "core",
+        "mem",
+        "Alignment",
+        "new"
+      ],
+      "spec": "type_of_alignment_Alignment_new",
+      "trait_req_incl": "trait_incl_of_alignment_Alignment_new"
+    },
+    {
+      "kind": "method",
+      "name": "alignment_Alignment_of",
+      "path": [
+        "core",
+        "mem",
+        "Alignment",
+        "of"
+      ],
+      "spec": "type_of_alignment_Alignment_of",
+      "trait_req_incl": "trait_incl_of_alignment_Alignment_of"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_add",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "add"
+      ],
+      "spec": "type_of_const_ptr_add",
+      "trait_req_incl": "trait_incl_of_const_ptr_add"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_addr",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "addr"
+      ],
+      "spec": "type_of_const_ptr_addr",
+      "trait_req_incl": "trait_incl_of_const_ptr_addr"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_cast",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "cast"
+      ],
+      "spec": "type_of_const_ptr_cast",
+      "trait_req_incl": "trait_incl_of_const_ptr_cast"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_cast_mut",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "cast_mut"
+      ],
+      "spec": "type_of_const_ptr_cast_mut",
+      "trait_req_incl": "trait_incl_of_const_ptr_cast_mut"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_is_null",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "is_null"
+      ],
+      "spec": "type_of_const_ptr_is_null",
+      "trait_req_incl": "trait_incl_of_const_ptr_is_null"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_offset",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "offset"
+      ],
+      "spec": "type_of_const_ptr_offset",
+      "trait_req_incl": "trait_incl_of_const_ptr_offset"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_read",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "read"
+      ],
+      "spec": "type_of_const_ptr_read",
+      "trait_req_incl": "trait_incl_of_const_ptr_read"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_read_volatile",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "read_volatile"
+      ],
+      "spec": "type_of_const_ptr_read_volatile",
+      "trait_req_incl": "trait_incl_of_const_ptr_read_volatile"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_sub",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "sub"
+      ],
+      "spec": "type_of_const_ptr_sub",
+      "trait_req_incl": "trait_incl_of_const_ptr_sub"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_with_addr",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "with_addr"
+      ],
+      "spec": "type_of_const_ptr_with_addr",
+      "trait_req_incl": "trait_incl_of_const_ptr_with_addr"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_wrapping_add",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "wrapping_add"
+      ],
+      "spec": "type_of_const_ptr_wrapping_add",
+      "trait_req_incl": "trait_incl_of_const_ptr_wrapping_add"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_wrapping_byte_add",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "wrapping_byte_add"
+      ],
+      "spec": "type_of_const_ptr_wrapping_byte_add",
+      "trait_req_incl": "trait_incl_of_const_ptr_wrapping_byte_add"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_wrapping_byte_offset",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "wrapping_byte_offset"
+      ],
+      "spec": "type_of_const_ptr_wrapping_byte_offset",
+      "trait_req_incl": "trait_incl_of_const_ptr_wrapping_byte_offset"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_wrapping_byte_sub",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "wrapping_byte_sub"
+      ],
+      "spec": "type_of_const_ptr_wrapping_byte_sub",
+      "trait_req_incl": "trait_incl_of_const_ptr_wrapping_byte_sub"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_wrapping_offset",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "wrapping_offset"
+      ],
+      "spec": "type_of_const_ptr_wrapping_offset",
+      "trait_req_incl": "trait_incl_of_const_ptr_wrapping_offset"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_wrapping_sub",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "wrapping_sub"
+      ],
+      "spec": "type_of_const_ptr_wrapping_sub",
+      "trait_req_incl": "trait_incl_of_const_ptr_wrapping_sub"
+    },
+    {
+      "kind": "function",
+      "name": "copy_nonoverlapping",
+      "path": [
+        "core",
+        "ptr",
+        "copy_nonoverlapping"
+      ],
+      "spec": "type_of_copy_nonoverlapping",
+      "trait_req_incl": "trait_incl_of_copy_nonoverlapping"
+    },
+    {
+      "kind": "function",
+      "name": "dangling",
+      "path": [
+        "core",
+        "ptr",
+        "dangling"
+      ],
+      "spec": "type_of_dangling",
+      "trait_req_incl": "trait_incl_of_dangling"
+    },
+    {
+      "kind": "function",
+      "name": "dangling_mut",
+      "path": [
+        "core",
+        "ptr",
+        "dangling_mut"
+      ],
+      "spec": "type_of_dangling_mut",
+      "trait_req_incl": "trait_incl_of_dangling_mut"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_add",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "add"
+      ],
+      "spec": "type_of_mut_ptr_add",
+      "trait_req_incl": "trait_incl_of_mut_ptr_add"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_addr",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "addr"
+      ],
+      "spec": "type_of_mut_ptr_addr",
+      "trait_req_incl": "trait_incl_of_mut_ptr_addr"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_cast",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "cast"
+      ],
+      "spec": "type_of_mut_ptr_cast",
+      "trait_req_incl": "trait_incl_of_mut_ptr_cast"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_cast_const",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "cast_const"
+      ],
+      "spec": "type_of_mut_ptr_cast_const",
+      "trait_req_incl": "trait_incl_of_mut_ptr_cast_const"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_is_null",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "is_null"
+      ],
+      "spec": "type_of_mut_ptr_is_null",
+      "trait_req_incl": "trait_incl_of_mut_ptr_is_null"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_offset",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "offset"
+      ],
+      "spec": "type_of_mut_ptr_offset",
+      "trait_req_incl": "trait_incl_of_mut_ptr_offset"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_read",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "read"
+      ],
+      "spec": "type_of_mut_ptr_read",
+      "trait_req_incl": "trait_incl_of_mut_ptr_read"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_read_volatile",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "read_volatile"
+      ],
+      "spec": "type_of_mut_ptr_read_volatile",
+      "trait_req_incl": "trait_incl_of_mut_ptr_read_volatile"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_sub",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "sub"
+      ],
+      "spec": "type_of_mut_ptr_sub",
+      "trait_req_incl": "trait_incl_of_mut_ptr_sub"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_with_addr",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "with_addr"
+      ],
+      "spec": "type_of_mut_ptr_with_addr",
+      "trait_req_incl": "trait_incl_of_mut_ptr_with_addr"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_wrapping_add",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "wrapping_add"
+      ],
+      "spec": "type_of_mut_ptr_wrapping_add",
+      "trait_req_incl": "trait_incl_of_mut_ptr_wrapping_add"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_wrapping_byte_add",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "wrapping_byte_add"
+      ],
+      "spec": "type_of_mut_ptr_wrapping_byte_add",
+      "trait_req_incl": "trait_incl_of_mut_ptr_wrapping_byte_add"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_wrapping_byte_offset",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "wrapping_byte_offset"
+      ],
+      "spec": "type_of_mut_ptr_wrapping_byte_offset",
+      "trait_req_incl": "trait_incl_of_mut_ptr_wrapping_byte_offset"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_wrapping_byte_sub",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "wrapping_byte_sub"
+      ],
+      "spec": "type_of_mut_ptr_wrapping_byte_sub",
+      "trait_req_incl": "trait_incl_of_mut_ptr_wrapping_byte_sub"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_wrapping_offset",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "wrapping_offset"
+      ],
+      "spec": "type_of_mut_ptr_wrapping_offset",
+      "trait_req_incl": "trait_incl_of_mut_ptr_wrapping_offset"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_wrapping_sub",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "wrapping_sub"
+      ],
+      "spec": "type_of_mut_ptr_wrapping_sub",
+      "trait_req_incl": "trait_incl_of_mut_ptr_wrapping_sub"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_write",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "write"
+      ],
+      "spec": "type_of_mut_ptr_write",
+      "trait_req_incl": "trait_incl_of_mut_ptr_write"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_write_volatile",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "write_volatile"
+      ],
+      "spec": "type_of_mut_ptr_write_volatile",
+      "trait_req_incl": "trait_incl_of_mut_ptr_write_volatile"
+    },
+    {
+      "kind": "function",
+      "name": "read",
+      "path": [
+        "core",
+        "ptr",
+        "read"
+      ],
+      "spec": "type_of_read",
+      "trait_req_incl": "trait_incl_of_read"
+    },
+    {
+      "kind": "function",
+      "name": "read_volatile",
+      "path": [
+        "core",
+        "ptr",
+        "read_volatile"
+      ],
+      "spec": "type_of_read_volatile",
+      "trait_req_incl": "trait_incl_of_read_volatile"
+    },
+    {
+      "kind": "function",
+      "name": "without_provenance",
+      "path": [
+        "core",
+        "ptr",
+        "without_provenance"
+      ],
+      "spec": "type_of_without_provenance",
+      "trait_req_incl": "trait_incl_of_without_provenance"
+    },
+    {
+      "kind": "function",
+      "name": "without_provenance_mut",
+      "path": [
+        "core",
+        "ptr",
+        "without_provenance_mut"
+      ],
+      "spec": "type_of_without_provenance_mut",
+      "trait_req_incl": "trait_incl_of_without_provenance_mut"
+    },
+    {
+      "kind": "function",
+      "name": "write",
+      "path": [
+        "core",
+        "ptr",
+        "write"
+      ],
+      "spec": "type_of_write",
+      "trait_req_incl": "trait_incl_of_write"
+    },
+    {
+      "kind": "function",
+      "name": "write_volatile",
+      "path": [
+        "core",
+        "ptr",
+        "write_volatile"
+      ],
+      "spec": "type_of_write_volatile",
+      "trait_req_incl": "trait_incl_of_write_volatile"
+    },
+    {
+      "kind": "method",
+      "name": "alignment_Alignment_new_unchecked",
+      "path": [
+        "core",
+        "mem",
+        "Alignment",
+        "new_unchecked"
+      ],
+      "spec": "type_of_alignment_Alignment_new_unchecked",
+      "trait_req_incl": "trait_incl_of_alignment_Alignment_new_unchecked"
+    },
+    {
+      "kind": "function",
+      "name": "mem_replace",
+      "path": [
+        "core",
+        "mem",
+        "replace"
+      ],
+      "spec": "type_of_mem_replace",
+      "trait_req_incl": "trait_incl_of_mem_replace"
+    },
+    {
+      "kind": "function",
+      "name": "mem_swap",
+      "path": [
+        "core",
+        "mem",
+        "swap"
+      ],
+      "spec": "type_of_mem_swap",
+      "trait_req_incl": "trait_incl_of_mem_swap"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_is_aligned",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "is_aligned"
+      ],
+      "spec": "type_of_const_ptr_is_aligned",
+      "trait_req_incl": "trait_incl_of_const_ptr_is_aligned"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_is_aligned_to",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "is_aligned_to"
+      ],
+      "spec": "type_of_const_ptr_is_aligned_to",
+      "trait_req_incl": "trait_incl_of_const_ptr_is_aligned_to"
+    },
+    {
+      "kind": "function",
+      "name": "copy",
+      "path": [
+        "core",
+        "ptr",
+        "copy"
+      ],
+      "spec": "type_of_copy",
+      "trait_req_incl": "trait_incl_of_copy"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_is_aligned",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "is_aligned"
+      ],
+      "spec": "type_of_mut_ptr_is_aligned",
+      "trait_req_incl": "trait_incl_of_mut_ptr_is_aligned"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_is_aligned_to",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "is_aligned_to"
+      ],
+      "spec": "type_of_mut_ptr_is_aligned_to",
+      "trait_req_incl": "trait_incl_of_mut_ptr_is_aligned_to"
+    },
+    {
+      "kind": "function",
+      "name": "ptr_null",
+      "path": [
+        "core",
+        "ptr",
+        "null"
+      ],
+      "spec": "type_of_ptr_null",
+      "trait_req_incl": "trait_incl_of_ptr_null"
+    },
+    {
+      "kind": "function",
+      "name": "ptr_null_mut",
+      "path": [
+        "core",
+        "ptr",
+        "null_mut"
+      ],
+      "spec": "type_of_ptr_null_mut",
+      "trait_req_incl": "trait_incl_of_ptr_null_mut"
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [],
+          "path": [
+            "core",
+            "mem",
+            "Alignment"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "alignment_Alignmentasstd_clone_Clone_clone",
+          "type_of_alignment_Alignmentasstd_clone_Clone_clone",
+          "trait_incl_of_alignment_Alignmentasstd_clone_Clone_clone"
+        ]
+      },
+      "name": "alignment_Alignmentasstd_clone_Clone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [],
+          "path": [
+            "core",
+            "mem",
+            "Alignment"
+          ]
+        }
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "alignment_Alignmentasstd_marker_Copy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [],
+          "path": [
+            "core",
+            "mem",
+            "AlignmentEnum"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "alignment_AlignmentEnumasstd_clone_Clone_clone",
+          "type_of_alignment_AlignmentEnumasstd_clone_Clone_clone",
+          "trait_incl_of_alignment_AlignmentEnumasstd_clone_Clone_clone"
+        ]
+      },
+      "name": "alignment_AlignmentEnumasstd_clone_Clone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [],
+          "path": [
+            "core",
+            "mem",
+            "AlignmentEnum"
+          ]
+        }
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "alignment_AlignmentEnumasstd_marker_Copy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "marker",
+          "Copy"
+        ]
+      }
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.clone.clone.generated",
+    "rrstd.closures.closures.generated",
+    "rrstd.closures.theories",
+    "rrstd.mem.mem.generated",
+    "rrstd.mem.theories",
+    "rrstd.num.num.generated",
+    "rrstd.option.option.generated",
+    "rrstd.ptr.theories",
+    "rrstd.result.result.generated",
+    "rrstd.result.theories",
+    "rrstd.sized.sized.generated"
+  ],
+  "refinedrust_module": "generated_specs_ptr",
+  "refinedrust_name": "ptr",
+  "refinedrust_path": "rrstd.ptr.ptr.generated"
+}

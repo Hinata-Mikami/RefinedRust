@@ -1,0 +1,46 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "ops",
+        "Range"
+      ],
+      "rtype": "(Range_inv_t_rt)",
+      "semtype": "Range_inv_t",
+      "syntype": "Range_sls"
+    },
+    {
+      "kind": "method",
+      "name": "Range_Idx_is_empty",
+      "path": [
+        "core",
+        "ops",
+        "Range",
+        "is_empty"
+      ],
+      "spec": "type_of_Range_Idx_is_empty",
+      "trait_req_incl": "trait_incl_of_Range_Idx_is_empty"
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.clone.clone.generated",
+    "rrstd.closures.closures.generated",
+    "rrstd.closures.theories",
+    "rrstd.cmp.cmp.generated",
+    "rrstd.cmp.theories",
+    "rrstd.option.option.generated",
+    "rrstd.result.result.generated",
+    "rrstd.result.theories",
+    "rrstd.sized.sized.generated"
+  ],
+  "refinedrust_module": "generated_specs_range",
+  "refinedrust_name": "range",
+  "refinedrust_path": "rrstd.range.range.generated"
+}

@@ -1,0 +1,49 @@
+From radium Require Import lang notation.
+From refinedrust Require Import typing shims.
+From rrstd.closures.closures.generated Require Export generated_specs_closures.
+From rrstd.cmp.theories Require Export ordering.
+From rrstd.option.option.generated Require Export generated_specs_option.
+From rrstd.cmp.cmp Require Export generated_code_cmp generated_specs_cmp.
+
+Set Default Proof Using "Type".
+
+Section proof.
+Context `{RRGS : !refinedrustGS Σ}.
+Definition REFAasPartialEqREFB_eq_lemma (π : thread_id) : Prop :=
+  ∀ `(A_rt : !RT) `(B_rt : !RT) `(A_st : !syn_type) `(B_st : !syn_type) `(PartialEq_A_B_spec_attrs : !(PartialEq_spec_attrs (RRGS:=RRGS) (A_rt) (B_rt) )) `(PartialEq_A_B_spec : !(spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (A_rt) (B_rt)))) (PartialEq_A_B_eq_loc : loc) , 
+  syn_type_is_layoutable (A_st) →
+  syn_type_is_layoutable (B_st) →
+  PartialEq_A_B_eq_loc ◁ᵥ{π, MetaNone} PartialEq_A_B_eq_loc @ function_ptr [PtrSynType; PtrSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((PartialEq_eq_spec (RRGS:=RRGS) (PartialEq_A_B_spec <INST!>))   <LFT> late_lft_0 <LFT> late_lft_1 <INST!>) (λ π, (True)
+  ∗ (⌜(True)%Z⌝))%I) -∗
+  typed_function π (REFAasPartialEqREFB_eq_def PartialEq_A_B_eq_loc  A_st  B_st  ) (<tag_type> spec! ( *[ulft_1; ulft_2; ulft_3; ulft_4]) : 4 | ( *[A_ty; B_ty]) : ([A_rt; B_rt] : list RT), fn_spec_add_late_pre (type_of_REFAasPartialEqREFB_eq A_rt B_rt A_st B_st PartialEq_A_B_spec_attrs  <TY> A_ty <TY> B_ty <LFT> ulft_1 <LFT> ulft_2 <LFT> ulft_3 <LFT> ulft_4 <INST!>) (λ π, ((typaram_wf A_rt A_st A_ty)
+  ∗ (typaram_wf B_rt B_st B_ty))
+  ∗ (⌜((trait_incl_of_REFAasPartialEqREFB_eq (A_rt) (B_rt) (A_st) (B_st) (PartialEq_A_B_spec_attrs) (PartialEq_A_B_spec)) <TY> A_ty <TY> B_ty <LFT> ulft_1 <LFT> ulft_2 <LFT> ulft_3 <LFT> ulft_4 <INST!>)%Z⌝))).
+End proof.
+
+Ltac REFAasPartialEqREFB_eq_prelude :=
+  unfold REFAasPartialEqREFB_eq_lemma;
+  set (FN_NAME := FUNCTION_NAME "REFAasPartialEqREFB_eq");
+  intros A_rt B_rt A_st B_st PartialEq_A_B_spec_attrs PartialEq_A_B_spec;
+  intros;
+  iStartProof;
+  let ϝ := fresh "ϝ" in
+  let ulft_1 := fresh "ulft_1" in
+  let ulft_2 := fresh "ulft_2" in
+  let ulft_3 := fresh "ulft_3" in
+  let ulft_4 := fresh "ulft_4" in
+  let A_ty := fresh "A_ty" in
+  let B_ty := fresh "B_ty" in
+  start_function "REFAasPartialEqREFB_eq" ϝ ( [ulft_1 [ulft_2 [ulft_3 [ulft_4 [] ] ] ] ] ) ( [A_ty [B_ty [] ] ] ) ( ? ) (  );
+  intros arg_self arg_other;
+  let π := get_π in
+  let Σ := get_Σ in
+  specialize (pose_bb_inv (PolyNil)) as loop_map;
+  init_lfts (named_lft_update "ulft_1" ulft_1 $ named_lft_update "ulft_2" ulft_2 $ named_lft_update "ulft_3" ulft_3 $ named_lft_update "ulft_4" ulft_4 $ named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_tyvars ( <[
+      "A" :=
+  existT _ (A_ty)
+      ]>%E $ <[
+      "B" :=
+  existT _ (B_ty)
+      ]>%E $ ∅ );
+  unfold_generic_inst; simpl.

@@ -1,0 +1,22 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "allowed_attrs": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": true,
+      "kind": "trait",
+      "method_trait_incl_decls": {},
+      "name": "Sized",
+      "path": [
+        "core",
+        "marker",
+        "Sized"
+      ]
+    }
+  ],
+  "module_dependencies": [],
+  "refinedrust_module": "generated_specs_sized",
+  "refinedrust_name": "sized",
+  "refinedrust_path": "rrstd.sized.sized.generated"
+}

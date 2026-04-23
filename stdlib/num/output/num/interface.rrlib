@@ -1,0 +1,369 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "kind": "method",
+      "name": "i128_is_negative",
+      "path": [
+        "core",
+        "num",
+        "i128",
+        "is_negative"
+      ],
+      "spec": "type_of_i128_is_negative",
+      "trait_req_incl": "trait_incl_of_i128_is_negative"
+    },
+    {
+      "kind": "method",
+      "name": "i128_is_positive",
+      "path": [
+        "core",
+        "num",
+        "i128",
+        "is_positive"
+      ],
+      "spec": "type_of_i128_is_positive",
+      "trait_req_incl": "trait_incl_of_i128_is_positive"
+    },
+    {
+      "kind": "method",
+      "name": "i16_is_negative",
+      "path": [
+        "core",
+        "num",
+        "i16",
+        "is_negative"
+      ],
+      "spec": "type_of_i16_is_negative",
+      "trait_req_incl": "trait_incl_of_i16_is_negative"
+    },
+    {
+      "kind": "method",
+      "name": "i16_is_positive",
+      "path": [
+        "core",
+        "num",
+        "i16",
+        "is_positive"
+      ],
+      "spec": "type_of_i16_is_positive",
+      "trait_req_incl": "trait_incl_of_i16_is_positive"
+    },
+    {
+      "kind": "method",
+      "name": "i32_is_negative",
+      "path": [
+        "core",
+        "num",
+        "i32",
+        "is_negative"
+      ],
+      "spec": "type_of_i32_is_negative",
+      "trait_req_incl": "trait_incl_of_i32_is_negative"
+    },
+    {
+      "kind": "method",
+      "name": "i32_is_positive",
+      "path": [
+        "core",
+        "num",
+        "i32",
+        "is_positive"
+      ],
+      "spec": "type_of_i32_is_positive",
+      "trait_req_incl": "trait_incl_of_i32_is_positive"
+    },
+    {
+      "kind": "method",
+      "name": "i64_is_negative",
+      "path": [
+        "core",
+        "num",
+        "i64",
+        "is_negative"
+      ],
+      "spec": "type_of_i64_is_negative",
+      "trait_req_incl": "trait_incl_of_i64_is_negative"
+    },
+    {
+      "kind": "method",
+      "name": "i64_is_positive",
+      "path": [
+        "core",
+        "num",
+        "i64",
+        "is_positive"
+      ],
+      "spec": "type_of_i64_is_positive",
+      "trait_req_incl": "trait_incl_of_i64_is_positive"
+    },
+    {
+      "kind": "method",
+      "name": "i8_is_negative",
+      "path": [
+        "core",
+        "num",
+        "i8",
+        "is_negative"
+      ],
+      "spec": "type_of_i8_is_negative",
+      "trait_req_incl": "trait_incl_of_i8_is_negative"
+    },
+    {
+      "kind": "method",
+      "name": "i8_is_positive",
+      "path": [
+        "core",
+        "num",
+        "i8",
+        "is_positive"
+      ],
+      "spec": "type_of_i8_is_positive",
+      "trait_req_incl": "trait_incl_of_i8_is_positive"
+    },
+    {
+      "kind": "method",
+      "name": "isize_is_negative",
+      "path": [
+        "core",
+        "num",
+        "isize",
+        "is_negative"
+      ],
+      "spec": "type_of_isize_is_negative",
+      "trait_req_incl": "trait_incl_of_isize_is_negative"
+    },
+    {
+      "kind": "method",
+      "name": "isize_is_positive",
+      "path": [
+        "core",
+        "num",
+        "isize",
+        "is_positive"
+      ],
+      "spec": "type_of_isize_is_positive",
+      "trait_req_incl": "trait_incl_of_isize_is_positive"
+    },
+    {
+      "kind": "method",
+      "name": "u128_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "u128",
+        "abs_diff"
+      ],
+      "spec": "type_of_u128_abs_diff",
+      "trait_req_incl": "trait_incl_of_u128_abs_diff"
+    },
+    {
+      "kind": "method",
+      "name": "u16_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "u16",
+        "abs_diff"
+      ],
+      "spec": "type_of_u16_abs_diff",
+      "trait_req_incl": "trait_incl_of_u16_abs_diff"
+    },
+    {
+      "kind": "method",
+      "name": "u32_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "u32",
+        "abs_diff"
+      ],
+      "spec": "type_of_u32_abs_diff",
+      "trait_req_incl": "trait_incl_of_u32_abs_diff"
+    },
+    {
+      "kind": "method",
+      "name": "u64_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "u64",
+        "abs_diff"
+      ],
+      "spec": "type_of_u64_abs_diff",
+      "trait_req_incl": "trait_incl_of_u64_abs_diff"
+    },
+    {
+      "kind": "method",
+      "name": "u8_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "u8",
+        "abs_diff"
+      ],
+      "spec": "type_of_u8_abs_diff",
+      "trait_req_incl": "trait_incl_of_u8_abs_diff"
+    },
+    {
+      "kind": "method",
+      "name": "usize_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "usize",
+        "abs_diff"
+      ],
+      "spec": "type_of_usize_abs_diff",
+      "trait_req_incl": "trait_incl_of_usize_abs_diff"
+    },
+    {
+      "kind": "method",
+      "name": "i128_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "i128",
+        "abs_diff"
+      ],
+      "spec": "type_of_i128_abs_diff",
+      "trait_req_incl": "trait_incl_of_i128_abs_diff"
+    },
+    {
+      "kind": "method",
+      "name": "i16_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "i16",
+        "abs_diff"
+      ],
+      "spec": "type_of_i16_abs_diff",
+      "trait_req_incl": "trait_incl_of_i16_abs_diff"
+    },
+    {
+      "kind": "method",
+      "name": "i32_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "i32",
+        "abs_diff"
+      ],
+      "spec": "type_of_i32_abs_diff",
+      "trait_req_incl": "trait_incl_of_i32_abs_diff"
+    },
+    {
+      "kind": "method",
+      "name": "i64_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "i64",
+        "abs_diff"
+      ],
+      "spec": "type_of_i64_abs_diff",
+      "trait_req_incl": "trait_incl_of_i64_abs_diff"
+    },
+    {
+      "kind": "method",
+      "name": "i8_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "i8",
+        "abs_diff"
+      ],
+      "spec": "type_of_i8_abs_diff",
+      "trait_req_incl": "trait_incl_of_i8_abs_diff"
+    },
+    {
+      "kind": "method",
+      "name": "isize_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "isize",
+        "abs_diff"
+      ],
+      "spec": "type_of_isize_abs_diff",
+      "trait_req_incl": "trait_incl_of_isize_abs_diff"
+    },
+    {
+      "kind": "method",
+      "name": "u128_is_power_of_two",
+      "path": [
+        "core",
+        "num",
+        "u128",
+        "is_power_of_two"
+      ],
+      "spec": "type_of_u128_is_power_of_two",
+      "trait_req_incl": "trait_incl_of_u128_is_power_of_two"
+    },
+    {
+      "kind": "method",
+      "name": "u16_is_power_of_two",
+      "path": [
+        "core",
+        "num",
+        "u16",
+        "is_power_of_two"
+      ],
+      "spec": "type_of_u16_is_power_of_two",
+      "trait_req_incl": "trait_incl_of_u16_is_power_of_two"
+    },
+    {
+      "kind": "method",
+      "name": "u32_is_power_of_two",
+      "path": [
+        "core",
+        "num",
+        "u32",
+        "is_power_of_two"
+      ],
+      "spec": "type_of_u32_is_power_of_two",
+      "trait_req_incl": "trait_incl_of_u32_is_power_of_two"
+    },
+    {
+      "kind": "method",
+      "name": "u64_is_power_of_two",
+      "path": [
+        "core",
+        "num",
+        "u64",
+        "is_power_of_two"
+      ],
+      "spec": "type_of_u64_is_power_of_two",
+      "trait_req_incl": "trait_incl_of_u64_is_power_of_two"
+    },
+    {
+      "kind": "method",
+      "name": "u8_is_power_of_two",
+      "path": [
+        "core",
+        "num",
+        "u8",
+        "is_power_of_two"
+      ],
+      "spec": "type_of_u8_is_power_of_two",
+      "trait_req_incl": "trait_incl_of_u8_is_power_of_two"
+    },
+    {
+      "kind": "method",
+      "name": "usize_is_power_of_two",
+      "path": [
+        "core",
+        "num",
+        "usize",
+        "is_power_of_two"
+      ],
+      "spec": "type_of_usize_is_power_of_two",
+      "trait_req_incl": "trait_incl_of_usize_is_power_of_two"
+    }
+  ],
+  "module_dependencies": [],
+  "refinedrust_module": "generated_specs_num",
+  "refinedrust_name": "num",
+  "refinedrust_path": "rrstd.num.num.generated"
+}

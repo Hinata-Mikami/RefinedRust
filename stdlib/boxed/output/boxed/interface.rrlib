@@ -1,0 +1,102 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "alloc",
+        "boxed",
+        "Box"
+      ],
+      "rtype": "(Box_inv_t_rt)",
+      "semtype": "Box_inv_t",
+      "syntype": "Box_sls"
+    },
+    {
+      "kind": "method",
+      "name": "Box_T_from_raw",
+      "path": [
+        "alloc",
+        "boxed",
+        "Box",
+        "from_raw"
+      ],
+      "spec": "type_of_Box_T_from_raw",
+      "trait_req_incl": "trait_incl_of_Box_T_from_raw"
+    },
+    {
+      "kind": "method",
+      "name": "Box_TA_from_raw_in",
+      "path": [
+        "alloc",
+        "boxed",
+        "Box",
+        "from_raw_in"
+      ],
+      "spec": "type_of_Box_TA_from_raw_in",
+      "trait_req_incl": "trait_incl_of_Box_TA_from_raw_in"
+    },
+    {
+      "kind": "method",
+      "name": "Box_T_new",
+      "path": [
+        "alloc",
+        "boxed",
+        "Box",
+        "new"
+      ],
+      "spec": "type_of_Box_T_new",
+      "trait_req_incl": "trait_incl_of_Box_T_new"
+    },
+    {
+      "kind": "method",
+      "name": "Box_T_into_raw",
+      "path": [
+        "alloc",
+        "boxed",
+        "Box",
+        "into_raw"
+      ],
+      "spec": "type_of_Box_T_into_raw",
+      "trait_req_incl": "trait_incl_of_Box_T_into_raw"
+    },
+    {
+      "kind": "method",
+      "name": "Box_TA_into_raw_with_allocator",
+      "path": [
+        "alloc",
+        "boxed",
+        "Box",
+        "into_raw_with_allocator"
+      ],
+      "spec": "type_of_Box_TA_into_raw_with_allocator",
+      "trait_req_incl": "trait_incl_of_Box_TA_into_raw_with_allocator"
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.alloc.alloc.generated",
+    "rrstd.alloc.theories",
+    "rrstd.clone.clone.generated",
+    "rrstd.closures.closures.generated",
+    "rrstd.closures.theories",
+    "rrstd.mem.mem.generated",
+    "rrstd.mem.theories",
+    "rrstd.num.num.generated",
+    "rrstd.option.option.generated",
+    "rrstd.ptr.ptr.generated",
+    "rrstd.ptr.theories",
+    "rrstd.ptr_advanced.ptr_advanced.generated",
+    "rrstd.result.result.generated",
+    "rrstd.result.theories",
+    "rrstd.rr_internal.rr_internal.generated",
+    "rrstd.rr_internal.theories",
+    "rrstd.sized.sized.generated"
+  ],
+  "refinedrust_module": "generated_specs_boxed",
+  "refinedrust_name": "boxed",
+  "refinedrust_path": "rrstd.boxed.boxed.generated"
+}

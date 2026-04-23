@@ -1,0 +1,2308 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "cmp",
+        "Ordering",
+        "Equal"
+      ],
+      "rtype": "(Ordering_Equal_rt)",
+      "semtype": "Ordering_Equal_ty",
+      "syntype": "Ordering_Equal_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "cmp",
+        "Ordering",
+        "Greater"
+      ],
+      "rtype": "(Ordering_Greater_rt)",
+      "semtype": "Ordering_Greater_ty",
+      "syntype": "Ordering_Greater_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "cmp",
+        "Ordering",
+        "Less"
+      ],
+      "rtype": "(Ordering_Less_rt)",
+      "semtype": "Ordering_Less_ty",
+      "syntype": "Ordering_Less_sls"
+    },
+    {
+      "info": {
+        "enum_name": "Ordering_enum",
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "cmp",
+        "Ordering"
+      ],
+      "rtype": "(Ordering_rt)",
+      "semtype": "Ordering_ty",
+      "syntype": "Ordering_els"
+    },
+    {
+      "kind": "function",
+      "name": "Eq_assert_fields_are_eq",
+      "path": [
+        "core",
+        "cmp",
+        "Eq",
+        "assert_fields_are_eq"
+      ],
+      "spec": "Eq_assert_fields_are_eq_base_spec",
+      "trait_req_incl": "trait_incl_of_Eq_assert_fields_are_eq"
+    },
+    {
+      "kind": "function",
+      "name": "Ord_clamp",
+      "path": [
+        "core",
+        "cmp",
+        "Ord",
+        "clamp"
+      ],
+      "spec": "Ord_clamp_base_spec",
+      "trait_req_incl": "trait_incl_of_Ord_clamp"
+    },
+    {
+      "kind": "function",
+      "name": "Ord_max",
+      "path": [
+        "core",
+        "cmp",
+        "Ord",
+        "max"
+      ],
+      "spec": "Ord_max_base_spec",
+      "trait_req_incl": "trait_incl_of_Ord_max"
+    },
+    {
+      "kind": "function",
+      "name": "Ord_min",
+      "path": [
+        "core",
+        "cmp",
+        "Ord",
+        "min"
+      ],
+      "spec": "Ord_min_base_spec",
+      "trait_req_incl": "trait_incl_of_Ord_min"
+    },
+    {
+      "kind": "method",
+      "name": "Ordering_is_eq",
+      "path": [
+        "core",
+        "cmp",
+        "Ordering",
+        "is_eq"
+      ],
+      "spec": "type_of_Ordering_is_eq",
+      "trait_req_incl": "trait_incl_of_Ordering_is_eq"
+    },
+    {
+      "kind": "method",
+      "name": "Ordering_is_ge",
+      "path": [
+        "core",
+        "cmp",
+        "Ordering",
+        "is_ge"
+      ],
+      "spec": "type_of_Ordering_is_ge",
+      "trait_req_incl": "trait_incl_of_Ordering_is_ge"
+    },
+    {
+      "kind": "method",
+      "name": "Ordering_is_gt",
+      "path": [
+        "core",
+        "cmp",
+        "Ordering",
+        "is_gt"
+      ],
+      "spec": "type_of_Ordering_is_gt",
+      "trait_req_incl": "trait_incl_of_Ordering_is_gt"
+    },
+    {
+      "kind": "method",
+      "name": "Ordering_is_le",
+      "path": [
+        "core",
+        "cmp",
+        "Ordering",
+        "is_le"
+      ],
+      "spec": "type_of_Ordering_is_le",
+      "trait_req_incl": "trait_incl_of_Ordering_is_le"
+    },
+    {
+      "kind": "method",
+      "name": "Ordering_is_lt",
+      "path": [
+        "core",
+        "cmp",
+        "Ordering",
+        "is_lt"
+      ],
+      "spec": "type_of_Ordering_is_lt",
+      "trait_req_incl": "trait_incl_of_Ordering_is_lt"
+    },
+    {
+      "kind": "method",
+      "name": "Ordering_is_ne",
+      "path": [
+        "core",
+        "cmp",
+        "Ordering",
+        "is_ne"
+      ],
+      "spec": "type_of_Ordering_is_ne",
+      "trait_req_incl": "trait_incl_of_Ordering_is_ne"
+    },
+    {
+      "kind": "function",
+      "name": "PartialEq_ne",
+      "path": [
+        "core",
+        "cmp",
+        "PartialEq",
+        "ne"
+      ],
+      "spec": "PartialEq_ne_base_spec",
+      "trait_req_incl": "trait_incl_of_PartialEq_ne"
+    },
+    {
+      "kind": "function",
+      "name": "PartialOrd_ge",
+      "path": [
+        "core",
+        "cmp",
+        "PartialOrd",
+        "ge"
+      ],
+      "spec": "PartialOrd_ge_base_spec",
+      "trait_req_incl": "trait_incl_of_PartialOrd_ge"
+    },
+    {
+      "kind": "function",
+      "name": "PartialOrd_gt",
+      "path": [
+        "core",
+        "cmp",
+        "PartialOrd",
+        "gt"
+      ],
+      "spec": "PartialOrd_gt_base_spec",
+      "trait_req_incl": "trait_incl_of_PartialOrd_gt"
+    },
+    {
+      "kind": "function",
+      "name": "PartialOrd_le",
+      "path": [
+        "core",
+        "cmp",
+        "PartialOrd",
+        "le"
+      ],
+      "spec": "PartialOrd_le_base_spec",
+      "trait_req_incl": "trait_incl_of_PartialOrd_le"
+    },
+    {
+      "kind": "function",
+      "name": "PartialOrd_lt",
+      "path": [
+        "core",
+        "cmp",
+        "PartialOrd",
+        "lt"
+      ],
+      "spec": "PartialOrd_lt_base_spec",
+      "trait_req_incl": "trait_incl_of_PartialOrd_lt"
+    },
+    {
+      "kind": "function",
+      "name": "max",
+      "path": [
+        "core",
+        "cmp",
+        "max"
+      ],
+      "spec": "type_of_max",
+      "trait_req_incl": "trait_incl_of_max"
+    },
+    {
+      "kind": "function",
+      "name": "max_by",
+      "path": [
+        "core",
+        "cmp",
+        "max_by"
+      ],
+      "spec": "type_of_max_by",
+      "trait_req_incl": "trait_incl_of_max_by"
+    },
+    {
+      "kind": "function",
+      "name": "min",
+      "path": [
+        "core",
+        "cmp",
+        "min"
+      ],
+      "spec": "type_of_min",
+      "trait_req_incl": "trait_incl_of_min"
+    },
+    {
+      "kind": "function",
+      "name": "min_by",
+      "path": [
+        "core",
+        "cmp",
+        "min_by"
+      ],
+      "spec": "type_of_min_by",
+      "trait_req_incl": "trait_incl_of_min_by"
+    },
+    {
+      "allowed_attrs": [
+        "PEq_refl",
+        "PEq_sym",
+        "PEq_trans",
+        "PEq_leibniz"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "assert_fields_are_eq": "trait_incl_of_Eq_assert_fields_are_eq"
+      },
+      "name": "Eq",
+      "path": [
+        "core",
+        "cmp",
+        "Eq"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "Ord",
+        "Ord_POrd",
+        "Ord_lt_trans",
+        "Ord_eq_trans",
+        "Ord_gt_trans",
+        "Ord_antisym"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "clamp": "trait_incl_of_Ord_clamp",
+        "cmp": "trait_incl_of_Ord_cmp",
+        "max": "trait_incl_of_Ord_max",
+        "min": "trait_incl_of_Ord_min"
+      },
+      "name": "Ord",
+      "path": [
+        "core",
+        "cmp",
+        "Ord"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "PEq"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "eq": "trait_incl_of_PartialEq_eq",
+        "ne": "trait_incl_of_PartialEq_ne"
+      },
+      "name": "PartialEq",
+      "path": [
+        "core",
+        "cmp",
+        "PartialEq"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "POrd",
+        "POrd_eq_cons"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "ge": "trait_incl_of_PartialOrd_ge",
+        "gt": "trait_incl_of_PartialOrd_gt",
+        "le": "trait_incl_of_PartialOrd_le",
+        "lt": "trait_incl_of_PartialOrd_lt",
+        "partial_cmp": "trait_incl_of_PartialOrd_partial_cmp"
+      },
+      "name": "PartialOrd",
+      "path": [
+        "core",
+        "cmp",
+        "PartialOrd"
+      ]
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Param": 1
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "REFAasEq",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Eq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Param": 1
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "cmp": [
+          "REFAasOrd_cmp",
+          "type_of_REFAasOrd_cmp",
+          "trait_incl_of_REFAasOrd_cmp"
+        ]
+      },
+      "name": "REFAasOrd",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Ord"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Param": 2
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "REFAasPartialEqREFB_eq",
+          "type_of_REFAasPartialEqREFB_eq",
+          "trait_incl_of_REFAasPartialEqREFB_eq"
+        ],
+        "ne": [
+          "REFAasPartialEqREFB_ne",
+          "type_of_REFAasPartialEqREFB_ne",
+          "trait_incl_of_REFAasPartialEqREFB_ne"
+        ]
+      },
+      "name": "REFAasPartialEqREFB",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Param": 3
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Param": 2
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "REFAasPartialEqREFmutB_eq",
+          "type_of_REFAasPartialEqREFmutB_eq",
+          "trait_incl_of_REFAasPartialEqREFmutB_eq"
+        ],
+        "ne": [
+          "REFAasPartialEqREFmutB_ne",
+          "type_of_REFAasPartialEqREFmutB_ne",
+          "trait_incl_of_REFAasPartialEqREFmutB_ne"
+        ]
+      },
+      "name": "REFAasPartialEqREFmutB",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Mut",
+              {
+                "Param": 3
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Param": 2
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "ge": [
+          "REFAasPartialOrdREFB_ge",
+          "type_of_REFAasPartialOrdREFB_ge",
+          "trait_incl_of_REFAasPartialOrdREFB_ge"
+        ],
+        "gt": [
+          "REFAasPartialOrdREFB_gt",
+          "type_of_REFAasPartialOrdREFB_gt",
+          "trait_incl_of_REFAasPartialOrdREFB_gt"
+        ],
+        "le": [
+          "REFAasPartialOrdREFB_le",
+          "type_of_REFAasPartialOrdREFB_le",
+          "trait_incl_of_REFAasPartialOrdREFB_le"
+        ],
+        "lt": [
+          "REFAasPartialOrdREFB_lt",
+          "type_of_REFAasPartialOrdREFB_lt",
+          "trait_incl_of_REFAasPartialOrdREFB_lt"
+        ],
+        "partial_cmp": [
+          "REFAasPartialOrdREFB_partial_cmp",
+          "type_of_REFAasPartialOrdREFB_partial_cmp",
+          "trait_incl_of_REFAasPartialOrdREFB_partial_cmp"
+        ]
+      },
+      "name": "REFAasPartialOrdREFB",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Param": 3
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialOrd"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Mut",
+          {
+            "Param": 2
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "REFmutAasPartialEqREFB_eq",
+          "type_of_REFmutAasPartialEqREFB_eq",
+          "trait_incl_of_REFmutAasPartialEqREFB_eq"
+        ],
+        "ne": [
+          "REFmutAasPartialEqREFB_ne",
+          "type_of_REFmutAasPartialEqREFB_ne",
+          "trait_incl_of_REFmutAasPartialEqREFB_ne"
+        ]
+      },
+      "name": "REFmutAasPartialEqREFB",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Param": 3
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Mut",
+          {
+            "Param": 2
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "REFmutAasPartialEqREFmutB_eq",
+          "type_of_REFmutAasPartialEqREFmutB_eq",
+          "trait_incl_of_REFmutAasPartialEqREFmutB_eq"
+        ],
+        "ne": [
+          "REFmutAasPartialEqREFmutB_ne",
+          "type_of_REFmutAasPartialEqREFmutB_ne",
+          "trait_incl_of_REFmutAasPartialEqREFmutB_ne"
+        ]
+      },
+      "name": "REFmutAasPartialEqREFmutB",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Mut",
+              {
+                "Param": 3
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": "Bool",
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "boolasEq",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Eq"
+        ]
+      }
+    },
+    {
+      "for_type": "Bool",
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "boolasPartialEq_eq",
+          "type_of_boolasPartialEq_eq",
+          "trait_incl_of_boolasPartialEq_eq"
+        ],
+        "ne": [
+          "boolasPartialEq_ne",
+          "type_of_boolasPartialEq_ne",
+          "trait_incl_of_boolasPartialEq_ne"
+        ]
+      },
+      "name": "boolasPartialEq",
+      "trait_path": {
+        "args": [
+          "Bool"
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "i128asEq",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Eq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "cmp": [
+          "i128asOrd_cmp",
+          "type_of_i128asOrd_cmp",
+          "trait_incl_of_i128asOrd_cmp"
+        ]
+      },
+      "name": "i128asOrd",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Ord"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "i128asPartialEq_eq",
+          "type_of_i128asPartialEq_eq",
+          "trait_incl_of_i128asPartialEq_eq"
+        ],
+        "ne": [
+          "i128asPartialEq_ne",
+          "type_of_i128asPartialEq_ne",
+          "trait_incl_of_i128asPartialEq_ne"
+        ]
+      },
+      "name": "i128asPartialEq",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I128"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "ge": [
+          "i128asPartialOrd_ge",
+          "type_of_i128asPartialOrd_ge",
+          "trait_incl_of_i128asPartialOrd_ge"
+        ],
+        "gt": [
+          "i128asPartialOrd_gt",
+          "type_of_i128asPartialOrd_gt",
+          "trait_incl_of_i128asPartialOrd_gt"
+        ],
+        "le": [
+          "i128asPartialOrd_le",
+          "type_of_i128asPartialOrd_le",
+          "trait_incl_of_i128asPartialOrd_le"
+        ],
+        "lt": [
+          "i128asPartialOrd_lt",
+          "type_of_i128asPartialOrd_lt",
+          "trait_incl_of_i128asPartialOrd_lt"
+        ],
+        "partial_cmp": [
+          "i128asPartialOrd_partial_cmp",
+          "type_of_i128asPartialOrd_partial_cmp",
+          "trait_incl_of_i128asPartialOrd_partial_cmp"
+        ]
+      },
+      "name": "i128asPartialOrd",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I128"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialOrd"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "i16asEq",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Eq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "cmp": [
+          "i16asOrd_cmp",
+          "type_of_i16asOrd_cmp",
+          "trait_incl_of_i16asOrd_cmp"
+        ]
+      },
+      "name": "i16asOrd",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Ord"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "i16asPartialEq_eq",
+          "type_of_i16asPartialEq_eq",
+          "trait_incl_of_i16asPartialEq_eq"
+        ],
+        "ne": [
+          "i16asPartialEq_ne",
+          "type_of_i16asPartialEq_ne",
+          "trait_incl_of_i16asPartialEq_ne"
+        ]
+      },
+      "name": "i16asPartialEq",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I16"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "ge": [
+          "i16asPartialOrd_ge",
+          "type_of_i16asPartialOrd_ge",
+          "trait_incl_of_i16asPartialOrd_ge"
+        ],
+        "gt": [
+          "i16asPartialOrd_gt",
+          "type_of_i16asPartialOrd_gt",
+          "trait_incl_of_i16asPartialOrd_gt"
+        ],
+        "le": [
+          "i16asPartialOrd_le",
+          "type_of_i16asPartialOrd_le",
+          "trait_incl_of_i16asPartialOrd_le"
+        ],
+        "lt": [
+          "i16asPartialOrd_lt",
+          "type_of_i16asPartialOrd_lt",
+          "trait_incl_of_i16asPartialOrd_lt"
+        ],
+        "partial_cmp": [
+          "i16asPartialOrd_partial_cmp",
+          "type_of_i16asPartialOrd_partial_cmp",
+          "trait_incl_of_i16asPartialOrd_partial_cmp"
+        ]
+      },
+      "name": "i16asPartialOrd",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I16"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialOrd"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "i32asEq",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Eq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "cmp": [
+          "i32asOrd_cmp",
+          "type_of_i32asOrd_cmp",
+          "trait_incl_of_i32asOrd_cmp"
+        ]
+      },
+      "name": "i32asOrd",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Ord"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "i32asPartialEq_eq",
+          "type_of_i32asPartialEq_eq",
+          "trait_incl_of_i32asPartialEq_eq"
+        ],
+        "ne": [
+          "i32asPartialEq_ne",
+          "type_of_i32asPartialEq_ne",
+          "trait_incl_of_i32asPartialEq_ne"
+        ]
+      },
+      "name": "i32asPartialEq",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I32"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "ge": [
+          "i32asPartialOrd_ge",
+          "type_of_i32asPartialOrd_ge",
+          "trait_incl_of_i32asPartialOrd_ge"
+        ],
+        "gt": [
+          "i32asPartialOrd_gt",
+          "type_of_i32asPartialOrd_gt",
+          "trait_incl_of_i32asPartialOrd_gt"
+        ],
+        "le": [
+          "i32asPartialOrd_le",
+          "type_of_i32asPartialOrd_le",
+          "trait_incl_of_i32asPartialOrd_le"
+        ],
+        "lt": [
+          "i32asPartialOrd_lt",
+          "type_of_i32asPartialOrd_lt",
+          "trait_incl_of_i32asPartialOrd_lt"
+        ],
+        "partial_cmp": [
+          "i32asPartialOrd_partial_cmp",
+          "type_of_i32asPartialOrd_partial_cmp",
+          "trait_incl_of_i32asPartialOrd_partial_cmp"
+        ]
+      },
+      "name": "i32asPartialOrd",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I32"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialOrd"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "i64asEq",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Eq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "cmp": [
+          "i64asOrd_cmp",
+          "type_of_i64asOrd_cmp",
+          "trait_incl_of_i64asOrd_cmp"
+        ]
+      },
+      "name": "i64asOrd",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Ord"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "i64asPartialEq_eq",
+          "type_of_i64asPartialEq_eq",
+          "trait_incl_of_i64asPartialEq_eq"
+        ],
+        "ne": [
+          "i64asPartialEq_ne",
+          "type_of_i64asPartialEq_ne",
+          "trait_incl_of_i64asPartialEq_ne"
+        ]
+      },
+      "name": "i64asPartialEq",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I64"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "ge": [
+          "i64asPartialOrd_ge",
+          "type_of_i64asPartialOrd_ge",
+          "trait_incl_of_i64asPartialOrd_ge"
+        ],
+        "gt": [
+          "i64asPartialOrd_gt",
+          "type_of_i64asPartialOrd_gt",
+          "trait_incl_of_i64asPartialOrd_gt"
+        ],
+        "le": [
+          "i64asPartialOrd_le",
+          "type_of_i64asPartialOrd_le",
+          "trait_incl_of_i64asPartialOrd_le"
+        ],
+        "lt": [
+          "i64asPartialOrd_lt",
+          "type_of_i64asPartialOrd_lt",
+          "trait_incl_of_i64asPartialOrd_lt"
+        ],
+        "partial_cmp": [
+          "i64asPartialOrd_partial_cmp",
+          "type_of_i64asPartialOrd_partial_cmp",
+          "trait_incl_of_i64asPartialOrd_partial_cmp"
+        ]
+      },
+      "name": "i64asPartialOrd",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I64"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialOrd"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "i8asEq",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Eq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "cmp": [
+          "i8asOrd_cmp",
+          "type_of_i8asOrd_cmp",
+          "trait_incl_of_i8asOrd_cmp"
+        ]
+      },
+      "name": "i8asOrd",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Ord"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "i8asPartialEq_eq",
+          "type_of_i8asPartialEq_eq",
+          "trait_incl_of_i8asPartialEq_eq"
+        ],
+        "ne": [
+          "i8asPartialEq_ne",
+          "type_of_i8asPartialEq_ne",
+          "trait_incl_of_i8asPartialEq_ne"
+        ]
+      },
+      "name": "i8asPartialEq",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I8"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "ge": [
+          "i8asPartialOrd_ge",
+          "type_of_i8asPartialOrd_ge",
+          "trait_incl_of_i8asPartialOrd_ge"
+        ],
+        "gt": [
+          "i8asPartialOrd_gt",
+          "type_of_i8asPartialOrd_gt",
+          "trait_incl_of_i8asPartialOrd_gt"
+        ],
+        "le": [
+          "i8asPartialOrd_le",
+          "type_of_i8asPartialOrd_le",
+          "trait_incl_of_i8asPartialOrd_le"
+        ],
+        "lt": [
+          "i8asPartialOrd_lt",
+          "type_of_i8asPartialOrd_lt",
+          "trait_incl_of_i8asPartialOrd_lt"
+        ],
+        "partial_cmp": [
+          "i8asPartialOrd_partial_cmp",
+          "type_of_i8asPartialOrd_partial_cmp",
+          "trait_incl_of_i8asPartialOrd_partial_cmp"
+        ]
+      },
+      "name": "i8asPartialOrd",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I8"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialOrd"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "isizeasEq",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Eq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "cmp": [
+          "isizeasOrd_cmp",
+          "type_of_isizeasOrd_cmp",
+          "trait_incl_of_isizeasOrd_cmp"
+        ]
+      },
+      "name": "isizeasOrd",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Ord"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "isizeasPartialEq_eq",
+          "type_of_isizeasPartialEq_eq",
+          "trait_incl_of_isizeasPartialEq_eq"
+        ],
+        "ne": [
+          "isizeasPartialEq_ne",
+          "type_of_isizeasPartialEq_ne",
+          "trait_incl_of_isizeasPartialEq_ne"
+        ]
+      },
+      "name": "isizeasPartialEq",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "Isize"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "ge": [
+          "isizeasPartialOrd_ge",
+          "type_of_isizeasPartialOrd_ge",
+          "trait_incl_of_isizeasPartialOrd_ge"
+        ],
+        "gt": [
+          "isizeasPartialOrd_gt",
+          "type_of_isizeasPartialOrd_gt",
+          "trait_incl_of_isizeasPartialOrd_gt"
+        ],
+        "le": [
+          "isizeasPartialOrd_le",
+          "type_of_isizeasPartialOrd_le",
+          "trait_incl_of_isizeasPartialOrd_le"
+        ],
+        "lt": [
+          "isizeasPartialOrd_lt",
+          "type_of_isizeasPartialOrd_lt",
+          "trait_incl_of_isizeasPartialOrd_lt"
+        ],
+        "partial_cmp": [
+          "isizeasPartialOrd_partial_cmp",
+          "type_of_isizeasPartialOrd_partial_cmp",
+          "trait_incl_of_isizeasPartialOrd_partial_cmp"
+        ]
+      },
+      "name": "isizeasPartialOrd",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "Isize"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialOrd"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "u128asEq",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Eq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "cmp": [
+          "u128asOrd_cmp",
+          "type_of_u128asOrd_cmp",
+          "trait_incl_of_u128asOrd_cmp"
+        ]
+      },
+      "name": "u128asOrd",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Ord"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "u128asPartialEq_eq",
+          "type_of_u128asPartialEq_eq",
+          "trait_incl_of_u128asPartialEq_eq"
+        ],
+        "ne": [
+          "u128asPartialEq_ne",
+          "type_of_u128asPartialEq_ne",
+          "trait_incl_of_u128asPartialEq_ne"
+        ]
+      },
+      "name": "u128asPartialEq",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U128"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "ge": [
+          "u128asPartialOrd_ge",
+          "type_of_u128asPartialOrd_ge",
+          "trait_incl_of_u128asPartialOrd_ge"
+        ],
+        "gt": [
+          "u128asPartialOrd_gt",
+          "type_of_u128asPartialOrd_gt",
+          "trait_incl_of_u128asPartialOrd_gt"
+        ],
+        "le": [
+          "u128asPartialOrd_le",
+          "type_of_u128asPartialOrd_le",
+          "trait_incl_of_u128asPartialOrd_le"
+        ],
+        "lt": [
+          "u128asPartialOrd_lt",
+          "type_of_u128asPartialOrd_lt",
+          "trait_incl_of_u128asPartialOrd_lt"
+        ],
+        "partial_cmp": [
+          "u128asPartialOrd_partial_cmp",
+          "type_of_u128asPartialOrd_partial_cmp",
+          "trait_incl_of_u128asPartialOrd_partial_cmp"
+        ]
+      },
+      "name": "u128asPartialOrd",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U128"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialOrd"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "u16asEq",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Eq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "cmp": [
+          "u16asOrd_cmp",
+          "type_of_u16asOrd_cmp",
+          "trait_incl_of_u16asOrd_cmp"
+        ]
+      },
+      "name": "u16asOrd",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Ord"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "u16asPartialEq_eq",
+          "type_of_u16asPartialEq_eq",
+          "trait_incl_of_u16asPartialEq_eq"
+        ],
+        "ne": [
+          "u16asPartialEq_ne",
+          "type_of_u16asPartialEq_ne",
+          "trait_incl_of_u16asPartialEq_ne"
+        ]
+      },
+      "name": "u16asPartialEq",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U16"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "ge": [
+          "u16asPartialOrd_ge",
+          "type_of_u16asPartialOrd_ge",
+          "trait_incl_of_u16asPartialOrd_ge"
+        ],
+        "gt": [
+          "u16asPartialOrd_gt",
+          "type_of_u16asPartialOrd_gt",
+          "trait_incl_of_u16asPartialOrd_gt"
+        ],
+        "le": [
+          "u16asPartialOrd_le",
+          "type_of_u16asPartialOrd_le",
+          "trait_incl_of_u16asPartialOrd_le"
+        ],
+        "lt": [
+          "u16asPartialOrd_lt",
+          "type_of_u16asPartialOrd_lt",
+          "trait_incl_of_u16asPartialOrd_lt"
+        ],
+        "partial_cmp": [
+          "u16asPartialOrd_partial_cmp",
+          "type_of_u16asPartialOrd_partial_cmp",
+          "trait_incl_of_u16asPartialOrd_partial_cmp"
+        ]
+      },
+      "name": "u16asPartialOrd",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U16"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialOrd"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "u32asEq",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Eq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "cmp": [
+          "u32asOrd_cmp",
+          "type_of_u32asOrd_cmp",
+          "trait_incl_of_u32asOrd_cmp"
+        ]
+      },
+      "name": "u32asOrd",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Ord"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "u32asPartialEq_eq",
+          "type_of_u32asPartialEq_eq",
+          "trait_incl_of_u32asPartialEq_eq"
+        ],
+        "ne": [
+          "u32asPartialEq_ne",
+          "type_of_u32asPartialEq_ne",
+          "trait_incl_of_u32asPartialEq_ne"
+        ]
+      },
+      "name": "u32asPartialEq",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U32"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "ge": [
+          "u32asPartialOrd_ge",
+          "type_of_u32asPartialOrd_ge",
+          "trait_incl_of_u32asPartialOrd_ge"
+        ],
+        "gt": [
+          "u32asPartialOrd_gt",
+          "type_of_u32asPartialOrd_gt",
+          "trait_incl_of_u32asPartialOrd_gt"
+        ],
+        "le": [
+          "u32asPartialOrd_le",
+          "type_of_u32asPartialOrd_le",
+          "trait_incl_of_u32asPartialOrd_le"
+        ],
+        "lt": [
+          "u32asPartialOrd_lt",
+          "type_of_u32asPartialOrd_lt",
+          "trait_incl_of_u32asPartialOrd_lt"
+        ],
+        "partial_cmp": [
+          "u32asPartialOrd_partial_cmp",
+          "type_of_u32asPartialOrd_partial_cmp",
+          "trait_incl_of_u32asPartialOrd_partial_cmp"
+        ]
+      },
+      "name": "u32asPartialOrd",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U32"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialOrd"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "u64asEq",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Eq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "cmp": [
+          "u64asOrd_cmp",
+          "type_of_u64asOrd_cmp",
+          "trait_incl_of_u64asOrd_cmp"
+        ]
+      },
+      "name": "u64asOrd",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Ord"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "u64asPartialEq_eq",
+          "type_of_u64asPartialEq_eq",
+          "trait_incl_of_u64asPartialEq_eq"
+        ],
+        "ne": [
+          "u64asPartialEq_ne",
+          "type_of_u64asPartialEq_ne",
+          "trait_incl_of_u64asPartialEq_ne"
+        ]
+      },
+      "name": "u64asPartialEq",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U64"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "ge": [
+          "u64asPartialOrd_ge",
+          "type_of_u64asPartialOrd_ge",
+          "trait_incl_of_u64asPartialOrd_ge"
+        ],
+        "gt": [
+          "u64asPartialOrd_gt",
+          "type_of_u64asPartialOrd_gt",
+          "trait_incl_of_u64asPartialOrd_gt"
+        ],
+        "le": [
+          "u64asPartialOrd_le",
+          "type_of_u64asPartialOrd_le",
+          "trait_incl_of_u64asPartialOrd_le"
+        ],
+        "lt": [
+          "u64asPartialOrd_lt",
+          "type_of_u64asPartialOrd_lt",
+          "trait_incl_of_u64asPartialOrd_lt"
+        ],
+        "partial_cmp": [
+          "u64asPartialOrd_partial_cmp",
+          "type_of_u64asPartialOrd_partial_cmp",
+          "trait_incl_of_u64asPartialOrd_partial_cmp"
+        ]
+      },
+      "name": "u64asPartialOrd",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U64"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialOrd"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "u8asEq",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Eq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "cmp": [
+          "u8asOrd_cmp",
+          "type_of_u8asOrd_cmp",
+          "trait_incl_of_u8asOrd_cmp"
+        ]
+      },
+      "name": "u8asOrd",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Ord"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "u8asPartialEq_eq",
+          "type_of_u8asPartialEq_eq",
+          "trait_incl_of_u8asPartialEq_eq"
+        ],
+        "ne": [
+          "u8asPartialEq_ne",
+          "type_of_u8asPartialEq_ne",
+          "trait_incl_of_u8asPartialEq_ne"
+        ]
+      },
+      "name": "u8asPartialEq",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U8"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "ge": [
+          "u8asPartialOrd_ge",
+          "type_of_u8asPartialOrd_ge",
+          "trait_incl_of_u8asPartialOrd_ge"
+        ],
+        "gt": [
+          "u8asPartialOrd_gt",
+          "type_of_u8asPartialOrd_gt",
+          "trait_incl_of_u8asPartialOrd_gt"
+        ],
+        "le": [
+          "u8asPartialOrd_le",
+          "type_of_u8asPartialOrd_le",
+          "trait_incl_of_u8asPartialOrd_le"
+        ],
+        "lt": [
+          "u8asPartialOrd_lt",
+          "type_of_u8asPartialOrd_lt",
+          "trait_incl_of_u8asPartialOrd_lt"
+        ],
+        "partial_cmp": [
+          "u8asPartialOrd_partial_cmp",
+          "type_of_u8asPartialOrd_partial_cmp",
+          "trait_incl_of_u8asPartialOrd_partial_cmp"
+        ]
+      },
+      "name": "u8asPartialOrd",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U8"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialOrd"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "usizeasEq",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Eq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "cmp": [
+          "usizeasOrd_cmp",
+          "type_of_usizeasOrd_cmp",
+          "trait_incl_of_usizeasOrd_cmp"
+        ]
+      },
+      "name": "usizeasOrd",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Ord"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "usizeasPartialEq_eq",
+          "type_of_usizeasPartialEq_eq",
+          "trait_incl_of_usizeasPartialEq_eq"
+        ],
+        "ne": [
+          "usizeasPartialEq_ne",
+          "type_of_usizeasPartialEq_ne",
+          "trait_incl_of_usizeasPartialEq_ne"
+        ]
+      },
+      "name": "usizeasPartialEq",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "Usize"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "ge": [
+          "usizeasPartialOrd_ge",
+          "type_of_usizeasPartialOrd_ge",
+          "trait_incl_of_usizeasPartialOrd_ge"
+        ],
+        "gt": [
+          "usizeasPartialOrd_gt",
+          "type_of_usizeasPartialOrd_gt",
+          "trait_incl_of_usizeasPartialOrd_gt"
+        ],
+        "le": [
+          "usizeasPartialOrd_le",
+          "type_of_usizeasPartialOrd_le",
+          "trait_incl_of_usizeasPartialOrd_le"
+        ],
+        "lt": [
+          "usizeasPartialOrd_lt",
+          "type_of_usizeasPartialOrd_lt",
+          "trait_incl_of_usizeasPartialOrd_lt"
+        ],
+        "partial_cmp": [
+          "usizeasPartialOrd_partial_cmp",
+          "type_of_usizeasPartialOrd_partial_cmp",
+          "trait_incl_of_usizeasPartialOrd_partial_cmp"
+        ]
+      },
+      "name": "usizeasPartialOrd",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "Usize"
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialOrd"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "std",
+            "option",
+            "Option"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "std_option_OptionTasEq",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Eq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "std",
+            "option",
+            "Option"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "cmp": [
+          "std_option_OptionTasOrd_cmp",
+          "type_of_std_option_OptionTasOrd_cmp",
+          "trait_incl_of_std_option_OptionTasOrd_cmp"
+        ]
+      },
+      "name": "std_option_OptionTasOrd",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Ord"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "std",
+            "option",
+            "Option"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": [
+          "std_option_OptionTasPartialEq_eq",
+          "type_of_std_option_OptionTasPartialEq_eq",
+          "trait_incl_of_std_option_OptionTasPartialEq_eq"
+        ]
+      },
+      "name": "std_option_OptionTasPartialEq",
+      "trait_path": {
+        "args": [
+          {
+            "Adt": {
+              "args": [
+                {
+                  "Param": 0
+                }
+              ],
+              "path": [
+                "std",
+                "option",
+                "Option"
+              ]
+            }
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "std",
+            "option",
+            "Option"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "partial_cmp": [
+          "std_option_OptionTasPartialOrd_partial_cmp",
+          "type_of_std_option_OptionTasPartialOrd_partial_cmp",
+          "trait_incl_of_std_option_OptionTasPartialOrd_partial_cmp"
+        ]
+      },
+      "name": "std_option_OptionTasPartialOrd",
+      "trait_path": {
+        "args": [
+          {
+            "Adt": {
+              "args": [
+                {
+                  "Param": 0
+                }
+              ],
+              "path": [
+                "std",
+                "option",
+                "Option"
+              ]
+            }
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialOrd"
+        ]
+      }
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.clone.clone.generated",
+    "rrstd.closures.closures.generated",
+    "rrstd.closures.theories",
+    "rrstd.cmp.theories",
+    "rrstd.option.option.generated",
+    "rrstd.result.result.generated",
+    "rrstd.result.theories",
+    "rrstd.sized.sized.generated"
+  ],
+  "refinedrust_module": "generated_specs_cmp",
+  "refinedrust_name": "cmp",
+  "refinedrust_path": "rrstd.cmp.cmp.generated"
+}

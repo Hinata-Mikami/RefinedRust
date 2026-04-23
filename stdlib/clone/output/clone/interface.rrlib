@@ -1,0 +1,766 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "kind": "function",
+      "name": "Clone_clone_from",
+      "path": [
+        "core",
+        "clone",
+        "Clone",
+        "clone_from"
+      ],
+      "spec": "Clone_clone_from_base_spec",
+      "trait_req_incl": "trait_incl_of_Clone_clone_from"
+    },
+    {
+      "allowed_attrs": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "clone": "trait_incl_of_Clone_clone",
+        "clone_from": "trait_incl_of_Clone_clone_from"
+      },
+      "name": "Clone",
+      "path": [
+        "core",
+        "clone",
+        "Clone"
+      ]
+    },
+    {
+      "allowed_attrs": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": true,
+      "kind": "trait",
+      "method_trait_incl_decls": {},
+      "name": "Copy",
+      "path": [
+        "core",
+        "marker",
+        "Copy"
+      ]
+    },
+    {
+      "for_type": {
+        "RawPtr": [
+          "Not",
+          {
+            "Param": 0
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "constTasClone_clone",
+          "type_of_constTasClone_clone",
+          "trait_incl_of_constTasClone_clone"
+        ]
+      },
+      "name": "constTasClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "RawPtr": [
+          "Not",
+          {
+            "Param": 0
+          }
+        ]
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "constTasCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "RawPtr": [
+          "Mut",
+          {
+            "Param": 0
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "mutTasClone_clone",
+          "type_of_mutTasClone_clone",
+          "trait_incl_of_mutTasClone_clone"
+        ]
+      },
+      "name": "mutTasClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "RawPtr": [
+          "Mut",
+          {
+            "Param": 0
+          }
+        ]
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "mutTasCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": "Bool",
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "boolasClone_clone",
+          "type_of_boolasClone_clone",
+          "trait_incl_of_boolasClone_clone"
+        ]
+      },
+      "name": "boolasClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": "Bool",
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "boolasCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": "Char",
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "charasClone_clone",
+          "type_of_charasClone_clone",
+          "trait_incl_of_charasClone_clone"
+        ]
+      },
+      "name": "charasClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": "Char",
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "charasCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "i128asClone_clone",
+          "type_of_i128asClone_clone",
+          "trait_incl_of_i128asClone_clone"
+        ]
+      },
+      "name": "i128asClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "i128asCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "i16asClone_clone",
+          "type_of_i16asClone_clone",
+          "trait_incl_of_i16asClone_clone"
+        ]
+      },
+      "name": "i16asClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "i16asCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "i32asClone_clone",
+          "type_of_i32asClone_clone",
+          "trait_incl_of_i32asClone_clone"
+        ]
+      },
+      "name": "i32asClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "i32asCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "i64asClone_clone",
+          "type_of_i64asClone_clone",
+          "trait_incl_of_i64asClone_clone"
+        ]
+      },
+      "name": "i64asClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "i64asCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "i8asClone_clone",
+          "type_of_i8asClone_clone",
+          "trait_incl_of_i8asClone_clone"
+        ]
+      },
+      "name": "i8asClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "i8asCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "isizeasClone_clone",
+          "type_of_isizeasClone_clone",
+          "trait_incl_of_isizeasClone_clone"
+        ]
+      },
+      "name": "isizeasClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "isizeasCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "u128asClone_clone",
+          "type_of_u128asClone_clone",
+          "trait_incl_of_u128asClone_clone"
+        ]
+      },
+      "name": "u128asClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "u128asCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "u16asClone_clone",
+          "type_of_u16asClone_clone",
+          "trait_incl_of_u16asClone_clone"
+        ]
+      },
+      "name": "u16asClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "u16asCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "u32asClone_clone",
+          "type_of_u32asClone_clone",
+          "trait_incl_of_u32asClone_clone"
+        ]
+      },
+      "name": "u32asClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "u32asCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "u64asClone_clone",
+          "type_of_u64asClone_clone",
+          "trait_incl_of_u64asClone_clone"
+        ]
+      },
+      "name": "u64asClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "u64asCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "u8asClone_clone",
+          "type_of_u8asClone_clone",
+          "trait_incl_of_u8asClone_clone"
+        ]
+      },
+      "name": "u8asClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "u8asCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "usizeasClone_clone",
+          "type_of_usizeasClone_clone",
+          "trait_incl_of_usizeasClone_clone"
+        ]
+      },
+      "name": "usizeasClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "usizeasCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "std",
+            "marker",
+            "PhantomData"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "std_marker_PhantomDataTasClone_clone",
+          "type_of_std_marker_PhantomDataTasClone_clone",
+          "trait_incl_of_std_marker_PhantomDataTasClone_clone"
+        ]
+      },
+      "name": "std_marker_PhantomDataTasClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "std",
+            "marker",
+            "PhantomData"
+          ]
+        }
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "std_marker_PhantomDataTasCopy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "marker",
+          "Copy"
+        ]
+      }
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.sized.sized.generated"
+  ],
+  "refinedrust_module": "generated_specs_clone",
+  "refinedrust_name": "clone",
+  "refinedrust_path": "rrstd.clone.clone.generated"
+}

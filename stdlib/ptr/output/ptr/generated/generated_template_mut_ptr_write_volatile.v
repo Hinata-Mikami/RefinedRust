@@ -1,0 +1,43 @@
+From radium Require Import lang notation.
+From refinedrust Require Import typing shims.
+From rrstd.clone.clone.generated Require Export generated_specs_clone.
+From rrstd.mem.mem.generated Require Export generated_specs_mem.
+From rrstd.num.num.generated Require Export generated_specs_num.
+From rrstd.option.option.generated Require Export generated_specs_option.
+From rrstd.ptr.theories Require Export alignment shims specs.
+From rrstd.ptr.ptr Require Export generated_code_ptr generated_specs_ptr.
+
+Set Default Proof Using "Type".
+
+Section proof.
+Context `{RRGS : !refinedrustGS Σ}.
+Definition mut_ptr_write_volatile_lemma (π : thread_id) : Prop :=
+  ∀ `(T_rt : !RT) `(T_st : !syn_type) (write_volatile_T_loc : loc) , 
+  syn_type_is_layoutable (T_st) →
+  write_volatile_T_loc ◁ᵥ{π, MetaNone} write_volatile_T_loc @ function_ptr [PtrSynType; T_st] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_write_volatile (RRGS:=RRGS) ((T_rt)) (T_st)  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
+  ∗ (⌜(trait_incl_of_write_volatile ((T_rt)) (T_st)  <TY> T_ty <INST!>)%Z⌝))%I) -∗
+  typed_function π (mut_ptr_write_volatile_def write_volatile_T_loc  T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_mut_ptr_write_volatile T_rt T_st  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
+  ∗ (⌜((trait_incl_of_mut_ptr_write_volatile (T_rt) (T_st)) <TY> T_ty <INST!>)%Z⌝))).
+End proof.
+
+Ltac mut_ptr_write_volatile_prelude :=
+  unfold mut_ptr_write_volatile_lemma;
+  set (FN_NAME := FUNCTION_NAME "mut_ptr_write_volatile");
+  intros T_rt T_st;
+  intros;
+  iStartProof;
+  let ϝ := fresh "ϝ" in
+  let T_ty := fresh "T_ty" in
+  let dst := fresh "dst" in
+  let src := fresh "src" in
+  start_function "mut_ptr_write_volatile" ϝ ( [] ) ( [T_ty [] ] ) ( [  dst src ] ) (  dst src );
+  intros arg_dst arg_src;
+  let π := get_π in
+  let Σ := get_Σ in
+  specialize (pose_bb_inv (PolyNil)) as loop_map;
+  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_tyvars ( <[
+      "T" :=
+  existT _ (T_ty)
+      ]>%E $ ∅ );
+  unfold_generic_inst; simpl.

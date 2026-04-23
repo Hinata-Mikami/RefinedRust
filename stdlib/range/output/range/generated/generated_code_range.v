@@ -1,0 +1,63 @@
+From radium Require Import lang notation.
+From refinedrust Require Import typing shims.
+From rrstd.cmp.cmp.generated Require Export generated_specs_cmp.
+From rrstd.option.option.generated Require Export generated_specs_option.
+Section Range_sls.
+  Context `{RRGS : !refinedrustGS Σ}.
+
+  Definition Range_sls (Idx_st: syn_type) : struct_layout_spec :=
+    let Range_st (Idx_st: syn_type) := UnitSynType in
+    mk_sls "Range" [
+    ("start", Idx_st);
+    ("end", Idx_st)] StructReprRust.
+  Definition Range_st (Idx_st: syn_type) : syn_type := Range_sls Idx_st.
+End Range_sls.
+
+Section code.
+Context `{RRGS : !refinedrustGS Σ}.
+Open Scope printing_sugar.
+
+Program Definition Range_Idx_is_empty_def (PartialOrd_Idx_Idx_lt_loc: loc) (Idx_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("self", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ BoolSynType } "__0";
+      annot{ 1 }: CopyLftNameAnnot "plft5" "ulft_1"; (* initialization *)
+      local_live{ BoolSynType } "__2";
+      local_live{ PtrSynType } "__3";
+      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft5"; (* composite *)
+      "__3" <-{ PtrOp } &ref{ Shr, Some (RSTTyVar "Idx"), "vlft3" } ((!{ PtrOp } ( "self" )) at{ (Range_sls (Idx_st)) } "start");
+      annot{ 1 }: CopyLftNameAnnot "plft6" "vlft3"; (* post-assignment *)
+      local_live{ PtrSynType } "__4";
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft5"; (* composite *)
+      "__4" <-{ PtrOp } &ref{ Shr, Some (RSTTyVar "Idx"), "vlft4" } ((!{ PtrOp } ( "self" )) at{ (Range_sls (Idx_st)) } "end");
+      annot{ 1 }: CopyLftNameAnnot "plft7" "vlft4"; (* post-assignment *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft6"; (* function_call *)
+      annot{ 1 }: CopyLftNameAnnot "vlft9" "plft7"; (* function_call *)
+      "__2" <-{ BoolOp } CallE PartialOrd_Idx_Idx_lt_loc ["vlft8"; "vlft9"] [RSTTyVar "Idx"] [@{expr} move{ PtrOp } ("__3"); move{ PtrOp } ("__4")];
+      Goto "_bb1"
+     ]>%E $
+     <[
+     "_bb1" :=
+      local_dead "__4";
+      local_dead "__3";
+      "__0" <-{ BoolOp } UnOp (NotBoolOp) (BoolOp) (move{ BoolOp } ("__2"));
+      local_dead "__2";
+      return (move{ BoolOp } ("__0"))
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+(* closure shims *)
+End code.

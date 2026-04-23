@@ -1,0 +1,478 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "slice",
+        "iter",
+        "Iter"
+      ],
+      "rtype": "(Iter_inv_t_rt)",
+      "semtype": "Iter_inv_t",
+      "syntype": "Iter_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "slice",
+        "iter",
+        "IterMut"
+      ],
+      "rtype": "(IterMut_inv_t_rt)",
+      "semtype": "IterMut_inv_t",
+      "syntype": "IterMut_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "alloc",
+        "vec",
+        "Vec"
+      ],
+      "rtype": "(Vec_inv_t_rt)",
+      "semtype": "Vec_inv_t",
+      "syntype": "Vec_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "alloc",
+        "vec",
+        "into_iter",
+        "IntoIter"
+      ],
+      "rtype": "(IntoIter_inv_t_rt)",
+      "semtype": "IntoIter_inv_t",
+      "syntype": "IntoIter_sls"
+    },
+    {
+      "kind": "method",
+      "name": "Vec_TA_is_empty",
+      "path": [
+        "alloc",
+        "vec",
+        "Vec",
+        "is_empty"
+      ],
+      "spec": "type_of_Vec_TA_is_empty",
+      "trait_req_incl": "trait_incl_of_Vec_TA_is_empty"
+    },
+    {
+      "kind": "method",
+      "name": "Vec_TA_insert",
+      "path": [
+        "alloc",
+        "vec",
+        "Vec",
+        "insert"
+      ],
+      "spec": "type_of_Vec_TA_insert",
+      "trait_req_incl": "trait_incl_of_Vec_TA_insert"
+    },
+    {
+      "kind": "method",
+      "name": "Vec_TA_len",
+      "path": [
+        "alloc",
+        "vec",
+        "Vec",
+        "len"
+      ],
+      "spec": "type_of_Vec_TA_len",
+      "trait_req_incl": "trait_incl_of_Vec_TA_len"
+    },
+    {
+      "kind": "method",
+      "name": "Vec_T_new",
+      "path": [
+        "alloc",
+        "vec",
+        "Vec",
+        "new"
+      ],
+      "spec": "type_of_Vec_T_new",
+      "trait_req_incl": "trait_incl_of_Vec_T_new"
+    },
+    {
+      "kind": "method",
+      "name": "Vec_TA_pop",
+      "path": [
+        "alloc",
+        "vec",
+        "Vec",
+        "pop"
+      ],
+      "spec": "type_of_Vec_TA_pop",
+      "trait_req_incl": "trait_incl_of_Vec_TA_pop"
+    },
+    {
+      "kind": "method",
+      "name": "Vec_TA_push",
+      "path": [
+        "alloc",
+        "vec",
+        "Vec",
+        "push"
+      ],
+      "spec": "type_of_Vec_TA_push",
+      "trait_req_incl": "trait_incl_of_Vec_TA_push"
+    },
+    {
+      "kind": "method",
+      "name": "Vec_TA_remove",
+      "path": [
+        "alloc",
+        "vec",
+        "Vec",
+        "remove"
+      ],
+      "spec": "type_of_Vec_TA_remove",
+      "trait_req_incl": "trait_incl_of_Vec_TA_remove"
+    },
+    {
+      "kind": "method",
+      "name": "Vec_TA_swap_remove",
+      "path": [
+        "alloc",
+        "vec",
+        "Vec",
+        "swap_remove"
+      ],
+      "spec": "type_of_Vec_TA_swap_remove",
+      "trait_req_incl": "trait_incl_of_Vec_TA_swap_remove"
+    },
+    {
+      "kind": "method",
+      "name": "Vec_T_with_capacity",
+      "path": [
+        "alloc",
+        "vec",
+        "Vec",
+        "with_capacity"
+      ],
+      "spec": "type_of_Vec_T_with_capacity",
+      "trait_req_incl": "trait_incl_of_Vec_T_with_capacity"
+    },
+    {
+      "kind": "function",
+      "name": "vec_from_elem",
+      "path": [
+        "alloc",
+        "vec",
+        "from_elem"
+      ],
+      "spec": "type_of_vec_from_elem",
+      "trait_req_incl": "trait_incl_of_vec_from_elem"
+    },
+    {
+      "allowed_attrs": [
+        "SliceIndexProj",
+        "SliceIndexInj"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "get": "trait_incl_of_SliceIndex_get",
+        "get_mut": "trait_incl_of_SliceIndex_get_mut",
+        "index": "trait_incl_of_SliceIndex_index",
+        "index_mut": "trait_incl_of_SliceIndex_index_mut"
+      },
+      "name": "SliceIndex",
+      "path": [
+        "core",
+        "slice",
+        "index",
+        "SliceIndex"
+      ]
+    },
+    {
+      "allowed_attrs": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {},
+      "name": "private_slice_index_Sealed",
+      "path": [
+        "core",
+        "slice",
+        "index",
+        "private_slice_index",
+        "SliceIndex"
+      ]
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            },
+            {
+              "Param": 1
+            }
+          ],
+          "path": [
+            "alloc",
+            "vec",
+            "into_iter",
+            "IntoIter"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "next": [
+          "IntoIterTAasstd_iter_Iterator_next",
+          "type_of_IntoIterTAasstd_iter_Iterator_next",
+          "trait_incl_of_IntoIterTAasstd_iter_Iterator_next"
+        ]
+      },
+      "name": "IntoIterTAasstd_iter_Iterator",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "iter",
+          "Iterator"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            null,
+            {
+              "Param": 1
+            }
+          ],
+          "path": [
+            "core",
+            "slice",
+            "iter",
+            "Iter"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "all": [
+          "IteraTasstd_iter_Iterator_all",
+          "type_of_IteraTasstd_iter_Iterator_all",
+          "trait_incl_of_IteraTasstd_iter_Iterator_all"
+        ],
+        "next": [
+          "IteraTasstd_iter_Iterator_next",
+          "type_of_IteraTasstd_iter_Iterator_next",
+          "trait_incl_of_IteraTasstd_iter_Iterator_next"
+        ],
+        "position": [
+          "IteraTasstd_iter_Iterator_position",
+          "type_of_IteraTasstd_iter_Iterator_position",
+          "trait_incl_of_IteraTasstd_iter_Iterator_position"
+        ]
+      },
+      "name": "IteraTasstd_iter_Iterator",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "iter",
+          "Iterator"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            null,
+            {
+              "Param": 1
+            }
+          ],
+          "path": [
+            "core",
+            "slice",
+            "iter",
+            "IterMut"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "next": [
+          "IterMutaTasstd_iter_Iterator_next",
+          "type_of_IterMutaTasstd_iter_Iterator_next",
+          "trait_incl_of_IterMutaTasstd_iter_Iterator_next"
+        ]
+      },
+      "name": "IterMutaTasstd_iter_Iterator",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "iter",
+          "Iterator"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            },
+            {
+              "Param": 1
+            }
+          ],
+          "path": [
+            "alloc",
+            "vec",
+            "Vec"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "into_iter": [
+          "VecTAasstd_iter_IntoIterator_into_iter",
+          "type_of_VecTAasstd_iter_IntoIterator_into_iter",
+          "trait_incl_of_VecTAasstd_iter_IntoIterator_into_iter"
+        ]
+      },
+      "name": "VecTAasstd_iter_IntoIterator",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "iter",
+          "IntoIterator"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            },
+            {
+              "Adt": {
+                "args": [],
+                "path": [
+                  "std",
+                  "alloc",
+                  "Global"
+                ]
+              }
+            }
+          ],
+          "path": [
+            "alloc",
+            "vec",
+            "Vec"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "from_iter": [
+          "VecTasstd_iter_FromIteratorT_from_iter",
+          "type_of_VecTasstd_iter_FromIteratorT_from_iter",
+          "trait_incl_of_VecTasstd_iter_FromIteratorT_from_iter"
+        ]
+      },
+      "name": "VecTasstd_iter_FromIteratorT",
+      "trait_path": {
+        "args": [
+          {
+            "Param": 0
+          }
+        ],
+        "path": [
+          "std",
+          "iter",
+          "FromIterator"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "usizeasprivate_slice_index_Sealed",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "slice",
+          "index",
+          "private_slice_index",
+          "SliceIndex"
+        ]
+      }
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.alloc.alloc.generated",
+    "rrstd.alloc.theories",
+    "rrstd.clone.clone.generated",
+    "rrstd.closures.closures.generated",
+    "rrstd.closures.theories",
+    "rrstd.cmp.cmp.generated",
+    "rrstd.cmp.theories",
+    "rrstd.controlflow.controlflow.generated",
+    "rrstd.index.index.generated",
+    "rrstd.iterator.iterator.generated",
+    "rrstd.iterator.theories",
+    "rrstd.mem.mem.generated",
+    "rrstd.mem.theories",
+    "rrstd.num.num.generated",
+    "rrstd.option.option.generated",
+    "rrstd.ptr.ptr.generated",
+    "rrstd.ptr.theories",
+    "rrstd.ptr_advanced.ptr_advanced.generated",
+    "rrstd.range.range.generated",
+    "rrstd.result.result.generated",
+    "rrstd.result.theories",
+    "rrstd.rr_internal.rr_internal.generated",
+    "rrstd.rr_internal.theories",
+    "rrstd.sized.sized.generated",
+    "rrstd.vec.theories"
+  ],
+  "refinedrust_module": "generated_specs_vec",
+  "refinedrust_name": "vec",
+  "refinedrust_path": "rrstd.alloc.vec.generated"
+}

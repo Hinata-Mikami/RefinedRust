@@ -1,0 +1,45 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "allowed_attrs": [
+        "IndexProj"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "index": "trait_incl_of_Index_index"
+      },
+      "name": "Index",
+      "path": [
+        "core",
+        "ops",
+        "Index"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "IndexMutInj"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "index_mut": "trait_incl_of_IndexMut_index_mut"
+      },
+      "name": "IndexMut",
+      "path": [
+        "core",
+        "ops",
+        "IndexMut"
+      ]
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.sized.sized.generated"
+  ],
+  "refinedrust_module": "generated_specs_index",
+  "refinedrust_name": "index",
+  "refinedrust_path": "rrstd.index.index.generated"
+}

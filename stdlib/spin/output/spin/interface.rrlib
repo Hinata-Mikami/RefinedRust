@@ -1,0 +1,311 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "spin",
+        "once",
+        "Once"
+      ],
+      "rtype": "(once_Once_inv_t_rt)",
+      "semtype": "once_Once_inv_t",
+      "syntype": "once_Once_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "spin",
+        "relax",
+        "Spin"
+      ],
+      "rtype": "(relax_Spin_rt)",
+      "semtype": "relax_Spin_ty",
+      "syntype": "relax_Spin_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "spin",
+        "rwlock",
+        "RwLock"
+      ],
+      "rtype": "(rwlock_RwLock_inv_t_rt)",
+      "semtype": "rwlock_RwLock_inv_t",
+      "syntype": "rwlock_RwLock_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "spin",
+        "rwlock",
+        "RwLockReadGuard"
+      ],
+      "rtype": "(rwlock_RwLockReadGuard_inv_t_rt)",
+      "semtype": "rwlock_RwLockReadGuard_inv_t",
+      "syntype": "rwlock_RwLockReadGuard_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "spin",
+        "rwlock",
+        "RwLockWriteGuard"
+      ],
+      "rtype": "(rwlock_RwLockWriteGuard_inv_t_rt)",
+      "semtype": "rwlock_RwLockWriteGuard_inv_t",
+      "syntype": "rwlock_RwLockWriteGuard_sls"
+    },
+    {
+      "kind": "method",
+      "name": "once_Once_TR_call_once",
+      "path": [
+        "spin",
+        "once",
+        "Once",
+        "call_once"
+      ],
+      "spec": "type_of_once_Once_TR_call_once",
+      "trait_req_incl": "trait_incl_of_once_Once_TR_call_once"
+    },
+    {
+      "kind": "method",
+      "name": "once_Once_TR_get",
+      "path": [
+        "spin",
+        "once",
+        "Once",
+        "get"
+      ],
+      "spec": "type_of_once_Once_TR_get",
+      "trait_req_incl": "trait_incl_of_once_Once_TR_get"
+    },
+    {
+      "kind": "method",
+      "name": "once_Once_TR_initialized",
+      "path": [
+        "spin",
+        "once",
+        "Once",
+        "initialized"
+      ],
+      "spec": "type_of_once_Once_TR_initialized",
+      "trait_req_incl": "trait_incl_of_once_Once_TR_initialized"
+    },
+    {
+      "kind": "method",
+      "name": "once_Once_TR_is_completed",
+      "path": [
+        "spin",
+        "once",
+        "Once",
+        "is_completed"
+      ],
+      "spec": "type_of_once_Once_TR_is_completed",
+      "trait_req_incl": "trait_incl_of_once_Once_TR_is_completed"
+    },
+    {
+      "kind": "method",
+      "name": "once_Once_TR_new",
+      "path": [
+        "spin",
+        "once",
+        "Once",
+        "new"
+      ],
+      "spec": "type_of_once_Once_TR_new",
+      "trait_req_incl": "trait_incl_of_once_Once_TR_new"
+    },
+    {
+      "kind": "method",
+      "name": "rwlock_RwLock_TR_new",
+      "path": [
+        "spin",
+        "rwlock",
+        "RwLock",
+        "new"
+      ],
+      "spec": "type_of_rwlock_RwLock_TR_new",
+      "trait_req_incl": "trait_incl_of_rwlock_RwLock_TR_new"
+    },
+    {
+      "kind": "method",
+      "name": "rwlock_RwLock_TR_read",
+      "path": [
+        "spin",
+        "rwlock",
+        "RwLock",
+        "read"
+      ],
+      "spec": "type_of_rwlock_RwLock_TR_read",
+      "trait_req_incl": "trait_incl_of_rwlock_RwLock_TR_read"
+    },
+    {
+      "kind": "method",
+      "name": "rwlock_RwLock_TR_write",
+      "path": [
+        "spin",
+        "rwlock",
+        "RwLock",
+        "write"
+      ],
+      "spec": "type_of_rwlock_RwLock_TR_write",
+      "trait_req_incl": "trait_incl_of_rwlock_RwLock_TR_write"
+    },
+    {
+      "allowed_attrs": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "relax": "trait_incl_of_relax_RelaxStrategy_relax"
+      },
+      "name": "relax_RelaxStrategy",
+      "path": [
+        "spin",
+        "relax",
+        "RelaxStrategy"
+      ]
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [],
+          "path": [
+            "spin",
+            "relax",
+            "Spin"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "relax": [
+          "relax_Spinasrelax_RelaxStrategy_relax",
+          "type_of_relax_Spinasrelax_RelaxStrategy_relax",
+          "trait_incl_of_relax_Spinasrelax_RelaxStrategy_relax"
+        ]
+      },
+      "name": "relax_Spinasrelax_RelaxStrategy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "spin",
+          "relax",
+          "RelaxStrategy"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            null,
+            {
+              "Param": 1
+            },
+            {
+              "Param": 2
+            }
+          ],
+          "path": [
+            "spin",
+            "rwlock",
+            "RwLockWriteGuard"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "deref": [
+          "rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_deref",
+          "type_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_deref",
+          "trait_incl_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_deref"
+        ]
+      },
+      "name": "rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "ops",
+          "Deref"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            null,
+            {
+              "Param": 1
+            },
+            {
+              "Param": 2
+            }
+          ],
+          "path": [
+            "spin",
+            "rwlock",
+            "RwLockWriteGuard"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "deref_mut": [
+          "rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_deref_mut",
+          "type_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_deref_mut",
+          "trait_incl_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_deref_mut"
+        ]
+      },
+      "name": "rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "ops",
+          "DerefMut"
+        ]
+      }
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.arithops.arithops.generated",
+    "rrstd.clone.clone.generated",
+    "rrstd.closures.closures.generated",
+    "rrstd.closures.theories",
+    "rrstd.option.option.generated",
+    "rrstd.result.result.generated",
+    "rrstd.result.theories",
+    "rrstd.sized.sized.generated",
+    "rrstd.spin.theories.once"
+  ],
+  "refinedrust_module": "generated_specs_spin",
+  "refinedrust_name": "spin",
+  "refinedrust_path": "rrstd.spin.spin.generated"
+}

@@ -1,0 +1,255 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "option",
+        "Option",
+        "None"
+      ],
+      "rtype": "(Option_None_rt)",
+      "semtype": "Option_None_ty",
+      "syntype": "Option_None_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "option",
+        "Option",
+        "Some"
+      ],
+      "rtype": "(Option_Some_rt)",
+      "semtype": "Option_Some_ty",
+      "syntype": "Option_Some_sls"
+    },
+    {
+      "info": {
+        "enum_name": "Option_enum",
+        "needs_trait_attrs": false
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "option",
+        "Option"
+      ],
+      "rtype": "(Option_rt)",
+      "semtype": "Option_ty",
+      "syntype": "Option_els"
+    },
+    {
+      "kind": "method",
+      "name": "Option_T_filter",
+      "path": [
+        "core",
+        "option",
+        "Option",
+        "filter"
+      ],
+      "spec": "type_of_Option_T_filter",
+      "trait_req_incl": "trait_incl_of_Option_T_filter"
+    },
+    {
+      "kind": "method",
+      "name": "Option_OptionT_flatten",
+      "path": [
+        "core",
+        "option",
+        "Option",
+        "flatten"
+      ],
+      "spec": "type_of_Option_OptionT_flatten",
+      "trait_req_incl": "trait_incl_of_Option_OptionT_flatten"
+    },
+    {
+      "kind": "method",
+      "name": "Option_T_map",
+      "path": [
+        "core",
+        "option",
+        "Option",
+        "map"
+      ],
+      "spec": "type_of_Option_T_map",
+      "trait_req_incl": "trait_incl_of_Option_T_map"
+    },
+    {
+      "kind": "method",
+      "name": "Option_T_unwrap",
+      "path": [
+        "core",
+        "option",
+        "Option",
+        "unwrap"
+      ],
+      "spec": "type_of_Option_T_unwrap",
+      "trait_req_incl": "trait_incl_of_Option_T_unwrap"
+    },
+    {
+      "kind": "method",
+      "name": "Option_T_unwrap_or",
+      "path": [
+        "core",
+        "option",
+        "Option",
+        "unwrap_or"
+      ],
+      "spec": "type_of_Option_T_unwrap_or",
+      "trait_req_incl": "trait_incl_of_Option_T_unwrap_or"
+    },
+    {
+      "kind": "method",
+      "name": "Option_T_is_none",
+      "path": [
+        "core",
+        "option",
+        "Option",
+        "is_none"
+      ],
+      "spec": "type_of_Option_T_is_none",
+      "trait_req_incl": "trait_incl_of_Option_T_is_none"
+    },
+    {
+      "kind": "method",
+      "name": "Option_T_is_some",
+      "path": [
+        "core",
+        "option",
+        "Option",
+        "is_some"
+      ],
+      "spec": "type_of_Option_T_is_some",
+      "trait_req_incl": "trait_incl_of_Option_T_is_some"
+    },
+    {
+      "kind": "method",
+      "name": "Option_T_take",
+      "path": [
+        "core",
+        "option",
+        "Option",
+        "take"
+      ],
+      "spec": "type_of_Option_T_take",
+      "trait_req_incl": "trait_incl_of_Option_T_take"
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "core",
+            "option",
+            "Option"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": [
+          "OptionTasstd_clone_Clone_clone",
+          "type_of_OptionTasstd_clone_Clone_clone",
+          "trait_incl_of_OptionTasstd_clone_Clone_clone"
+        ]
+      },
+      "name": "OptionTasstd_clone_Clone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "core",
+            "option",
+            "Option"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "fmt": [
+          "OptionTasstd_fmt_Debug_fmt",
+          "type_of_OptionTasstd_fmt_Debug_fmt",
+          "trait_incl_of_OptionTasstd_fmt_Debug_fmt"
+        ]
+      },
+      "name": "OptionTasstd_fmt_Debug",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "fmt",
+          "Debug"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "core",
+            "option",
+            "Option"
+          ]
+        }
+      },
+      "has_semantic_interp": true,
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "OptionTasstd_marker_Copy",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "marker",
+          "Copy"
+        ]
+      }
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.clone.clone.generated",
+    "rrstd.closures.closures.generated",
+    "rrstd.closures.theories",
+    "rrstd.result.result.generated",
+    "rrstd.result.theories",
+    "rrstd.sized.sized.generated"
+  ],
+  "refinedrust_module": "generated_specs_option",
+  "refinedrust_name": "option",
+  "refinedrust_path": "rrstd.option.option.generated"
+}

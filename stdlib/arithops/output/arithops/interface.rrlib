@@ -1,0 +1,7150 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "allowed_attrs": [
+        "AddOpDefined",
+        "AddOp"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "add": "trait_incl_of_Add_add"
+      },
+      "name": "Add",
+      "path": [
+        "core",
+        "ops",
+        "Add"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "AddAssignOpDefined",
+        "AddAssignOp"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "add_assign": "trait_incl_of_AddAssign_add_assign"
+      },
+      "name": "AddAssign",
+      "path": [
+        "core",
+        "ops",
+        "AddAssign"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "DerefInto"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "deref": "trait_incl_of_Deref_deref"
+      },
+      "name": "Deref",
+      "path": [
+        "core",
+        "ops",
+        "Deref"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "DerefMutInject"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "deref_mut": "trait_incl_of_DerefMut_deref_mut"
+      },
+      "name": "DerefMut",
+      "path": [
+        "core",
+        "ops",
+        "DerefMut"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "MulOpDefined",
+        "MulOp"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "mul": "trait_incl_of_Mul_mul"
+      },
+      "name": "Mul",
+      "path": [
+        "core",
+        "ops",
+        "Mul"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "MulAssignOpDefined",
+        "MulAssignOp"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "mul_assign": "trait_incl_of_MulAssign_mul_assign"
+      },
+      "name": "MulAssign",
+      "path": [
+        "core",
+        "ops",
+        "MulAssign"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "SubOpDefined",
+        "SubOp"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "sub": "trait_incl_of_Sub_sub"
+      },
+      "name": "Sub",
+      "path": [
+        "core",
+        "ops",
+        "Sub"
+      ]
+    },
+    {
+      "allowed_attrs": [
+        "SubAssignOpDefined",
+        "SubAssignOp"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "sub_assign": "trait_incl_of_SubAssign_sub_assign"
+      },
+      "name": "SubAssign",
+      "path": [
+        "core",
+        "ops",
+        "SubAssign"
+      ]
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Param": 1
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "deref": [
+          "REFTasDeref_deref",
+          "type_of_REFTasDeref_deref",
+          "trait_incl_of_REFTasDeref_deref"
+        ]
+      },
+      "name": "REFTasDeref",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "ops",
+          "Deref"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "I128"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFi128asAddREFai128_add",
+          "type_of_REFi128asAddREFai128_add",
+          "trait_incl_of_REFi128asAddREFai128_add"
+        ]
+      },
+      "name": "REFi128asAddREFai128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "I128"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFi128asAddi128_add",
+          "type_of_REFi128asAddi128_add",
+          "trait_incl_of_REFi128asAddi128_add"
+        ]
+      },
+      "name": "REFi128asAddi128",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "I128"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFi128asMulREFai128_mul",
+          "type_of_REFi128asMulREFai128_mul",
+          "trait_incl_of_REFi128asMulREFai128_mul"
+        ]
+      },
+      "name": "REFi128asMulREFai128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "I128"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFi128asMuli128_mul",
+          "type_of_REFi128asMuli128_mul",
+          "trait_incl_of_REFi128asMuli128_mul"
+        ]
+      },
+      "name": "REFi128asMuli128",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "I128"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFi128asSubREFai128_sub",
+          "type_of_REFi128asSubREFai128_sub",
+          "trait_incl_of_REFi128asSubREFai128_sub"
+        ]
+      },
+      "name": "REFi128asSubREFai128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "I128"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFi128asSubi128_sub",
+          "type_of_REFi128asSubi128_sub",
+          "trait_incl_of_REFi128asSubi128_sub"
+        ]
+      },
+      "name": "REFi128asSubi128",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "I16"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFi16asAddREFai16_add",
+          "type_of_REFi16asAddREFai16_add",
+          "trait_incl_of_REFi16asAddREFai16_add"
+        ]
+      },
+      "name": "REFi16asAddREFai16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "I16"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFi16asAddi16_add",
+          "type_of_REFi16asAddi16_add",
+          "trait_incl_of_REFi16asAddi16_add"
+        ]
+      },
+      "name": "REFi16asAddi16",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "I16"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFi16asMulREFai16_mul",
+          "type_of_REFi16asMulREFai16_mul",
+          "trait_incl_of_REFi16asMulREFai16_mul"
+        ]
+      },
+      "name": "REFi16asMulREFai16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "I16"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFi16asMuli16_mul",
+          "type_of_REFi16asMuli16_mul",
+          "trait_incl_of_REFi16asMuli16_mul"
+        ]
+      },
+      "name": "REFi16asMuli16",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "I16"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFi16asSubREFai16_sub",
+          "type_of_REFi16asSubREFai16_sub",
+          "trait_incl_of_REFi16asSubREFai16_sub"
+        ]
+      },
+      "name": "REFi16asSubREFai16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "I16"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFi16asSubi16_sub",
+          "type_of_REFi16asSubi16_sub",
+          "trait_incl_of_REFi16asSubi16_sub"
+        ]
+      },
+      "name": "REFi16asSubi16",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "I32"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFi32asAddREFai32_add",
+          "type_of_REFi32asAddREFai32_add",
+          "trait_incl_of_REFi32asAddREFai32_add"
+        ]
+      },
+      "name": "REFi32asAddREFai32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "I32"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFi32asAddi32_add",
+          "type_of_REFi32asAddi32_add",
+          "trait_incl_of_REFi32asAddi32_add"
+        ]
+      },
+      "name": "REFi32asAddi32",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "I32"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFi32asMulREFai32_mul",
+          "type_of_REFi32asMulREFai32_mul",
+          "trait_incl_of_REFi32asMulREFai32_mul"
+        ]
+      },
+      "name": "REFi32asMulREFai32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "I32"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFi32asMuli32_mul",
+          "type_of_REFi32asMuli32_mul",
+          "trait_incl_of_REFi32asMuli32_mul"
+        ]
+      },
+      "name": "REFi32asMuli32",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "I32"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFi32asSubREFai32_sub",
+          "type_of_REFi32asSubREFai32_sub",
+          "trait_incl_of_REFi32asSubREFai32_sub"
+        ]
+      },
+      "name": "REFi32asSubREFai32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "I32"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFi32asSubi32_sub",
+          "type_of_REFi32asSubi32_sub",
+          "trait_incl_of_REFi32asSubi32_sub"
+        ]
+      },
+      "name": "REFi32asSubi32",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "I64"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFi64asAddREFai64_add",
+          "type_of_REFi64asAddREFai64_add",
+          "trait_incl_of_REFi64asAddREFai64_add"
+        ]
+      },
+      "name": "REFi64asAddREFai64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "I64"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFi64asAddi64_add",
+          "type_of_REFi64asAddi64_add",
+          "trait_incl_of_REFi64asAddi64_add"
+        ]
+      },
+      "name": "REFi64asAddi64",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "I64"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFi64asMulREFai64_mul",
+          "type_of_REFi64asMulREFai64_mul",
+          "trait_incl_of_REFi64asMulREFai64_mul"
+        ]
+      },
+      "name": "REFi64asMulREFai64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "I64"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFi64asMuli64_mul",
+          "type_of_REFi64asMuli64_mul",
+          "trait_incl_of_REFi64asMuli64_mul"
+        ]
+      },
+      "name": "REFi64asMuli64",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "I64"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFi64asSubREFai64_sub",
+          "type_of_REFi64asSubREFai64_sub",
+          "trait_incl_of_REFi64asSubREFai64_sub"
+        ]
+      },
+      "name": "REFi64asSubREFai64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "I64"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFi64asSubi64_sub",
+          "type_of_REFi64asSubi64_sub",
+          "trait_incl_of_REFi64asSubi64_sub"
+        ]
+      },
+      "name": "REFi64asSubi64",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "I8"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFi8asAddREFai8_add",
+          "type_of_REFi8asAddREFai8_add",
+          "trait_incl_of_REFi8asAddREFai8_add"
+        ]
+      },
+      "name": "REFi8asAddREFai8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "I8"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFi8asAddi8_add",
+          "type_of_REFi8asAddi8_add",
+          "trait_incl_of_REFi8asAddi8_add"
+        ]
+      },
+      "name": "REFi8asAddi8",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "I8"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFi8asMulREFai8_mul",
+          "type_of_REFi8asMulREFai8_mul",
+          "trait_incl_of_REFi8asMulREFai8_mul"
+        ]
+      },
+      "name": "REFi8asMulREFai8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "I8"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFi8asMuli8_mul",
+          "type_of_REFi8asMuli8_mul",
+          "trait_incl_of_REFi8asMuli8_mul"
+        ]
+      },
+      "name": "REFi8asMuli8",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "I8"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFi8asSubREFai8_sub",
+          "type_of_REFi8asSubREFai8_sub",
+          "trait_incl_of_REFi8asSubREFai8_sub"
+        ]
+      },
+      "name": "REFi8asSubREFai8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "I8"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFi8asSubi8_sub",
+          "type_of_REFi8asSubi8_sub",
+          "trait_incl_of_REFi8asSubi8_sub"
+        ]
+      },
+      "name": "REFi8asSubi8",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "Isize"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFisizeasAddREFaisize_add",
+          "type_of_REFisizeasAddREFaisize_add",
+          "trait_incl_of_REFisizeasAddREFaisize_add"
+        ]
+      },
+      "name": "REFisizeasAddREFaisize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "Isize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "Isize"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFisizeasAddisize_add",
+          "type_of_REFisizeasAddisize_add",
+          "trait_incl_of_REFisizeasAddisize_add"
+        ]
+      },
+      "name": "REFisizeasAddisize",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "Isize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "Isize"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFisizeasMulREFaisize_mul",
+          "type_of_REFisizeasMulREFaisize_mul",
+          "trait_incl_of_REFisizeasMulREFaisize_mul"
+        ]
+      },
+      "name": "REFisizeasMulREFaisize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "Isize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "Isize"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFisizeasMulisize_mul",
+          "type_of_REFisizeasMulisize_mul",
+          "trait_incl_of_REFisizeasMulisize_mul"
+        ]
+      },
+      "name": "REFisizeasMulisize",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "Isize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Int": "Isize"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFisizeasSubREFaisize_sub",
+          "type_of_REFisizeasSubREFaisize_sub",
+          "trait_incl_of_REFisizeasSubREFaisize_sub"
+        ]
+      },
+      "name": "REFisizeasSubREFaisize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "Isize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Int": "Isize"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFisizeasSubisize_sub",
+          "type_of_REFisizeasSubisize_sub",
+          "trait_incl_of_REFisizeasSubisize_sub"
+        ]
+      },
+      "name": "REFisizeasSubisize",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "Isize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Mut",
+          {
+            "Param": 1
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "deref": [
+          "REFmutTasDeref_deref",
+          "type_of_REFmutTasDeref_deref",
+          "trait_incl_of_REFmutTasDeref_deref"
+        ]
+      },
+      "name": "REFmutTasDeref",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "ops",
+          "Deref"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Mut",
+          {
+            "Param": 1
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "deref_mut": [
+          "REFmutTasDerefMut_deref_mut",
+          "type_of_REFmutTasDerefMut_deref_mut",
+          "trait_incl_of_REFmutTasDerefMut_deref_mut"
+        ]
+      },
+      "name": "REFmutTasDerefMut",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "ops",
+          "DerefMut"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "U128"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFu128asAddREFau128_add",
+          "type_of_REFu128asAddREFau128_add",
+          "trait_incl_of_REFu128asAddREFau128_add"
+        ]
+      },
+      "name": "REFu128asAddREFau128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "U128"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFu128asAddu128_add",
+          "type_of_REFu128asAddu128_add",
+          "trait_incl_of_REFu128asAddu128_add"
+        ]
+      },
+      "name": "REFu128asAddu128",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "U128"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFu128asMulREFau128_mul",
+          "type_of_REFu128asMulREFau128_mul",
+          "trait_incl_of_REFu128asMulREFau128_mul"
+        ]
+      },
+      "name": "REFu128asMulREFau128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "U128"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFu128asMulu128_mul",
+          "type_of_REFu128asMulu128_mul",
+          "trait_incl_of_REFu128asMulu128_mul"
+        ]
+      },
+      "name": "REFu128asMulu128",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "U128"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFu128asSubREFau128_sub",
+          "type_of_REFu128asSubREFau128_sub",
+          "trait_incl_of_REFu128asSubREFau128_sub"
+        ]
+      },
+      "name": "REFu128asSubREFau128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "U128"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFu128asSubu128_sub",
+          "type_of_REFu128asSubu128_sub",
+          "trait_incl_of_REFu128asSubu128_sub"
+        ]
+      },
+      "name": "REFu128asSubu128",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "U16"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFu16asAddREFau16_add",
+          "type_of_REFu16asAddREFau16_add",
+          "trait_incl_of_REFu16asAddREFau16_add"
+        ]
+      },
+      "name": "REFu16asAddREFau16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "U16"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFu16asAddu16_add",
+          "type_of_REFu16asAddu16_add",
+          "trait_incl_of_REFu16asAddu16_add"
+        ]
+      },
+      "name": "REFu16asAddu16",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "U16"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFu16asMulREFau16_mul",
+          "type_of_REFu16asMulREFau16_mul",
+          "trait_incl_of_REFu16asMulREFau16_mul"
+        ]
+      },
+      "name": "REFu16asMulREFau16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "U16"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFu16asMulu16_mul",
+          "type_of_REFu16asMulu16_mul",
+          "trait_incl_of_REFu16asMulu16_mul"
+        ]
+      },
+      "name": "REFu16asMulu16",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "U16"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFu16asSubREFau16_sub",
+          "type_of_REFu16asSubREFau16_sub",
+          "trait_incl_of_REFu16asSubREFau16_sub"
+        ]
+      },
+      "name": "REFu16asSubREFau16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "U16"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFu16asSubu16_sub",
+          "type_of_REFu16asSubu16_sub",
+          "trait_incl_of_REFu16asSubu16_sub"
+        ]
+      },
+      "name": "REFu16asSubu16",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "U32"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFu32asAddREFau32_add",
+          "type_of_REFu32asAddREFau32_add",
+          "trait_incl_of_REFu32asAddREFau32_add"
+        ]
+      },
+      "name": "REFu32asAddREFau32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "U32"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFu32asAddu32_add",
+          "type_of_REFu32asAddu32_add",
+          "trait_incl_of_REFu32asAddu32_add"
+        ]
+      },
+      "name": "REFu32asAddu32",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "U32"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFu32asMulREFau32_mul",
+          "type_of_REFu32asMulREFau32_mul",
+          "trait_incl_of_REFu32asMulREFau32_mul"
+        ]
+      },
+      "name": "REFu32asMulREFau32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "U32"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFu32asMulu32_mul",
+          "type_of_REFu32asMulu32_mul",
+          "trait_incl_of_REFu32asMulu32_mul"
+        ]
+      },
+      "name": "REFu32asMulu32",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "U32"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFu32asSubREFau32_sub",
+          "type_of_REFu32asSubREFau32_sub",
+          "trait_incl_of_REFu32asSubREFau32_sub"
+        ]
+      },
+      "name": "REFu32asSubREFau32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "U32"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFu32asSubu32_sub",
+          "type_of_REFu32asSubu32_sub",
+          "trait_incl_of_REFu32asSubu32_sub"
+        ]
+      },
+      "name": "REFu32asSubu32",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "U64"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFu64asAddREFau64_add",
+          "type_of_REFu64asAddREFau64_add",
+          "trait_incl_of_REFu64asAddREFau64_add"
+        ]
+      },
+      "name": "REFu64asAddREFau64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "U64"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFu64asAddu64_add",
+          "type_of_REFu64asAddu64_add",
+          "trait_incl_of_REFu64asAddu64_add"
+        ]
+      },
+      "name": "REFu64asAddu64",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "U64"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFu64asMulREFau64_mul",
+          "type_of_REFu64asMulREFau64_mul",
+          "trait_incl_of_REFu64asMulREFau64_mul"
+        ]
+      },
+      "name": "REFu64asMulREFau64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "U64"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFu64asMulu64_mul",
+          "type_of_REFu64asMulu64_mul",
+          "trait_incl_of_REFu64asMulu64_mul"
+        ]
+      },
+      "name": "REFu64asMulu64",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "U64"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFu64asSubREFau64_sub",
+          "type_of_REFu64asSubREFau64_sub",
+          "trait_incl_of_REFu64asSubREFau64_sub"
+        ]
+      },
+      "name": "REFu64asSubREFau64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "U64"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFu64asSubu64_sub",
+          "type_of_REFu64asSubu64_sub",
+          "trait_incl_of_REFu64asSubu64_sub"
+        ]
+      },
+      "name": "REFu64asSubu64",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "U8"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFu8asAddREFau8_add",
+          "type_of_REFu8asAddREFau8_add",
+          "trait_incl_of_REFu8asAddREFau8_add"
+        ]
+      },
+      "name": "REFu8asAddREFau8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "U8"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFu8asAddu8_add",
+          "type_of_REFu8asAddu8_add",
+          "trait_incl_of_REFu8asAddu8_add"
+        ]
+      },
+      "name": "REFu8asAddu8",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "U8"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFu8asMulREFau8_mul",
+          "type_of_REFu8asMulREFau8_mul",
+          "trait_incl_of_REFu8asMulREFau8_mul"
+        ]
+      },
+      "name": "REFu8asMulREFau8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "U8"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFu8asMulu8_mul",
+          "type_of_REFu8asMulu8_mul",
+          "trait_incl_of_REFu8asMulu8_mul"
+        ]
+      },
+      "name": "REFu8asMulu8",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "U8"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFu8asSubREFau8_sub",
+          "type_of_REFu8asSubREFau8_sub",
+          "trait_incl_of_REFu8asSubREFau8_sub"
+        ]
+      },
+      "name": "REFu8asSubREFau8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "U8"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFu8asSubu8_sub",
+          "type_of_REFu8asSubu8_sub",
+          "trait_incl_of_REFu8asSubu8_sub"
+        ]
+      },
+      "name": "REFu8asSubu8",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "Usize"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFusizeasAddREFausize_add",
+          "type_of_REFusizeasAddREFausize_add",
+          "trait_incl_of_REFusizeasAddREFausize_add"
+        ]
+      },
+      "name": "REFusizeasAddREFausize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "Usize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "Usize"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "REFusizeasAddusize_add",
+          "type_of_REFusizeasAddusize_add",
+          "trait_incl_of_REFusizeasAddusize_add"
+        ]
+      },
+      "name": "REFusizeasAddusize",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "Usize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "Usize"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFusizeasMulREFausize_mul",
+          "type_of_REFusizeasMulREFausize_mul",
+          "trait_incl_of_REFusizeasMulREFausize_mul"
+        ]
+      },
+      "name": "REFusizeasMulREFausize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "Usize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "Usize"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "REFusizeasMulusize_mul",
+          "type_of_REFusizeasMulusize_mul",
+          "trait_incl_of_REFusizeasMulusize_mul"
+        ]
+      },
+      "name": "REFusizeasMulusize",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "Usize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          1,
+          "Not",
+          {
+            "Uint": "Usize"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFusizeasSubREFausize_sub",
+          "type_of_REFusizeasSubREFausize_sub",
+          "trait_incl_of_REFusizeasSubREFausize_sub"
+        ]
+      },
+      "name": "REFusizeasSubREFausize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "Usize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Uint": "Usize"
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "REFusizeasSubusize_sub",
+          "type_of_REFusizeasSubusize_sub",
+          "trait_incl_of_REFusizeasSubusize_sub"
+        ]
+      },
+      "name": "REFusizeasSubusize",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "Usize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "i128asAddREFai128_add",
+          "type_of_i128asAddREFai128_add",
+          "trait_incl_of_i128asAddREFai128_add"
+        ]
+      },
+      "name": "i128asAddREFai128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "i128asAdd_add",
+          "type_of_i128asAdd_add",
+          "trait_incl_of_i128asAdd_add"
+        ]
+      },
+      "name": "i128asAdd",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "i128asAddAssignREFi128_add_assign",
+          "type_of_i128asAddAssignREFi128_add_assign",
+          "trait_incl_of_i128asAddAssignREFi128_add_assign"
+        ]
+      },
+      "name": "i128asAddAssignREFi128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "i128asAddAssign_add_assign",
+          "type_of_i128asAddAssign_add_assign",
+          "trait_incl_of_i128asAddAssign_add_assign"
+        ]
+      },
+      "name": "i128asAddAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "i128asMulREFai128_mul",
+          "type_of_i128asMulREFai128_mul",
+          "trait_incl_of_i128asMulREFai128_mul"
+        ]
+      },
+      "name": "i128asMulREFai128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "i128asMul_mul",
+          "type_of_i128asMul_mul",
+          "trait_incl_of_i128asMul_mul"
+        ]
+      },
+      "name": "i128asMul",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "i128asMulAssignREFi128_mul_assign",
+          "type_of_i128asMulAssignREFi128_mul_assign",
+          "trait_incl_of_i128asMulAssignREFi128_mul_assign"
+        ]
+      },
+      "name": "i128asMulAssignREFi128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "i128asMulAssign_mul_assign",
+          "type_of_i128asMulAssign_mul_assign",
+          "trait_incl_of_i128asMulAssign_mul_assign"
+        ]
+      },
+      "name": "i128asMulAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "i128asSubREFai128_sub",
+          "type_of_i128asSubREFai128_sub",
+          "trait_incl_of_i128asSubREFai128_sub"
+        ]
+      },
+      "name": "i128asSubREFai128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "i128asSub_sub",
+          "type_of_i128asSub_sub",
+          "trait_incl_of_i128asSub_sub"
+        ]
+      },
+      "name": "i128asSub",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "i128asSubAssignREFi128_sub_assign",
+          "type_of_i128asSubAssignREFi128_sub_assign",
+          "trait_incl_of_i128asSubAssignREFi128_sub_assign"
+        ]
+      },
+      "name": "i128asSubAssignREFi128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "i128asSubAssign_sub_assign",
+          "type_of_i128asSubAssign_sub_assign",
+          "trait_incl_of_i128asSubAssign_sub_assign"
+        ]
+      },
+      "name": "i128asSubAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "i16asAddREFai16_add",
+          "type_of_i16asAddREFai16_add",
+          "trait_incl_of_i16asAddREFai16_add"
+        ]
+      },
+      "name": "i16asAddREFai16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "i16asAdd_add",
+          "type_of_i16asAdd_add",
+          "trait_incl_of_i16asAdd_add"
+        ]
+      },
+      "name": "i16asAdd",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "i16asAddAssignREFi16_add_assign",
+          "type_of_i16asAddAssignREFi16_add_assign",
+          "trait_incl_of_i16asAddAssignREFi16_add_assign"
+        ]
+      },
+      "name": "i16asAddAssignREFi16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "i16asAddAssign_add_assign",
+          "type_of_i16asAddAssign_add_assign",
+          "trait_incl_of_i16asAddAssign_add_assign"
+        ]
+      },
+      "name": "i16asAddAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "i16asMulREFai16_mul",
+          "type_of_i16asMulREFai16_mul",
+          "trait_incl_of_i16asMulREFai16_mul"
+        ]
+      },
+      "name": "i16asMulREFai16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "i16asMul_mul",
+          "type_of_i16asMul_mul",
+          "trait_incl_of_i16asMul_mul"
+        ]
+      },
+      "name": "i16asMul",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "i16asMulAssignREFi16_mul_assign",
+          "type_of_i16asMulAssignREFi16_mul_assign",
+          "trait_incl_of_i16asMulAssignREFi16_mul_assign"
+        ]
+      },
+      "name": "i16asMulAssignREFi16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "i16asMulAssign_mul_assign",
+          "type_of_i16asMulAssign_mul_assign",
+          "trait_incl_of_i16asMulAssign_mul_assign"
+        ]
+      },
+      "name": "i16asMulAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "i16asSubREFai16_sub",
+          "type_of_i16asSubREFai16_sub",
+          "trait_incl_of_i16asSubREFai16_sub"
+        ]
+      },
+      "name": "i16asSubREFai16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "i16asSub_sub",
+          "type_of_i16asSub_sub",
+          "trait_incl_of_i16asSub_sub"
+        ]
+      },
+      "name": "i16asSub",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "i16asSubAssignREFi16_sub_assign",
+          "type_of_i16asSubAssignREFi16_sub_assign",
+          "trait_incl_of_i16asSubAssignREFi16_sub_assign"
+        ]
+      },
+      "name": "i16asSubAssignREFi16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "i16asSubAssign_sub_assign",
+          "type_of_i16asSubAssign_sub_assign",
+          "trait_incl_of_i16asSubAssign_sub_assign"
+        ]
+      },
+      "name": "i16asSubAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "i32asAddREFai32_add",
+          "type_of_i32asAddREFai32_add",
+          "trait_incl_of_i32asAddREFai32_add"
+        ]
+      },
+      "name": "i32asAddREFai32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "i32asAdd_add",
+          "type_of_i32asAdd_add",
+          "trait_incl_of_i32asAdd_add"
+        ]
+      },
+      "name": "i32asAdd",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "i32asAddAssignREFi32_add_assign",
+          "type_of_i32asAddAssignREFi32_add_assign",
+          "trait_incl_of_i32asAddAssignREFi32_add_assign"
+        ]
+      },
+      "name": "i32asAddAssignREFi32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "i32asAddAssign_add_assign",
+          "type_of_i32asAddAssign_add_assign",
+          "trait_incl_of_i32asAddAssign_add_assign"
+        ]
+      },
+      "name": "i32asAddAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "i32asMulREFai32_mul",
+          "type_of_i32asMulREFai32_mul",
+          "trait_incl_of_i32asMulREFai32_mul"
+        ]
+      },
+      "name": "i32asMulREFai32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "i32asMul_mul",
+          "type_of_i32asMul_mul",
+          "trait_incl_of_i32asMul_mul"
+        ]
+      },
+      "name": "i32asMul",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "i32asMulAssignREFi32_mul_assign",
+          "type_of_i32asMulAssignREFi32_mul_assign",
+          "trait_incl_of_i32asMulAssignREFi32_mul_assign"
+        ]
+      },
+      "name": "i32asMulAssignREFi32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "i32asMulAssign_mul_assign",
+          "type_of_i32asMulAssign_mul_assign",
+          "trait_incl_of_i32asMulAssign_mul_assign"
+        ]
+      },
+      "name": "i32asMulAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "i32asSubREFai32_sub",
+          "type_of_i32asSubREFai32_sub",
+          "trait_incl_of_i32asSubREFai32_sub"
+        ]
+      },
+      "name": "i32asSubREFai32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "i32asSub_sub",
+          "type_of_i32asSub_sub",
+          "trait_incl_of_i32asSub_sub"
+        ]
+      },
+      "name": "i32asSub",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "i32asSubAssignREFi32_sub_assign",
+          "type_of_i32asSubAssignREFi32_sub_assign",
+          "trait_incl_of_i32asSubAssignREFi32_sub_assign"
+        ]
+      },
+      "name": "i32asSubAssignREFi32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "i32asSubAssign_sub_assign",
+          "type_of_i32asSubAssign_sub_assign",
+          "trait_incl_of_i32asSubAssign_sub_assign"
+        ]
+      },
+      "name": "i32asSubAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "i64asAddREFai64_add",
+          "type_of_i64asAddREFai64_add",
+          "trait_incl_of_i64asAddREFai64_add"
+        ]
+      },
+      "name": "i64asAddREFai64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "i64asAdd_add",
+          "type_of_i64asAdd_add",
+          "trait_incl_of_i64asAdd_add"
+        ]
+      },
+      "name": "i64asAdd",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "i64asAddAssignREFi64_add_assign",
+          "type_of_i64asAddAssignREFi64_add_assign",
+          "trait_incl_of_i64asAddAssignREFi64_add_assign"
+        ]
+      },
+      "name": "i64asAddAssignREFi64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "i64asAddAssign_add_assign",
+          "type_of_i64asAddAssign_add_assign",
+          "trait_incl_of_i64asAddAssign_add_assign"
+        ]
+      },
+      "name": "i64asAddAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "i64asMulREFai64_mul",
+          "type_of_i64asMulREFai64_mul",
+          "trait_incl_of_i64asMulREFai64_mul"
+        ]
+      },
+      "name": "i64asMulREFai64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "i64asMul_mul",
+          "type_of_i64asMul_mul",
+          "trait_incl_of_i64asMul_mul"
+        ]
+      },
+      "name": "i64asMul",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "i64asMulAssignREFi64_mul_assign",
+          "type_of_i64asMulAssignREFi64_mul_assign",
+          "trait_incl_of_i64asMulAssignREFi64_mul_assign"
+        ]
+      },
+      "name": "i64asMulAssignREFi64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "i64asMulAssign_mul_assign",
+          "type_of_i64asMulAssign_mul_assign",
+          "trait_incl_of_i64asMulAssign_mul_assign"
+        ]
+      },
+      "name": "i64asMulAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "i64asSubREFai64_sub",
+          "type_of_i64asSubREFai64_sub",
+          "trait_incl_of_i64asSubREFai64_sub"
+        ]
+      },
+      "name": "i64asSubREFai64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "i64asSub_sub",
+          "type_of_i64asSub_sub",
+          "trait_incl_of_i64asSub_sub"
+        ]
+      },
+      "name": "i64asSub",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "i64asSubAssignREFi64_sub_assign",
+          "type_of_i64asSubAssignREFi64_sub_assign",
+          "trait_incl_of_i64asSubAssignREFi64_sub_assign"
+        ]
+      },
+      "name": "i64asSubAssignREFi64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "i64asSubAssign_sub_assign",
+          "type_of_i64asSubAssign_sub_assign",
+          "trait_incl_of_i64asSubAssign_sub_assign"
+        ]
+      },
+      "name": "i64asSubAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "i8asAddREFai8_add",
+          "type_of_i8asAddREFai8_add",
+          "trait_incl_of_i8asAddREFai8_add"
+        ]
+      },
+      "name": "i8asAddREFai8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "i8asAdd_add",
+          "type_of_i8asAdd_add",
+          "trait_incl_of_i8asAdd_add"
+        ]
+      },
+      "name": "i8asAdd",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "i8asAddAssignREFi8_add_assign",
+          "type_of_i8asAddAssignREFi8_add_assign",
+          "trait_incl_of_i8asAddAssignREFi8_add_assign"
+        ]
+      },
+      "name": "i8asAddAssignREFi8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "i8asAddAssign_add_assign",
+          "type_of_i8asAddAssign_add_assign",
+          "trait_incl_of_i8asAddAssign_add_assign"
+        ]
+      },
+      "name": "i8asAddAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "i8asMulREFai8_mul",
+          "type_of_i8asMulREFai8_mul",
+          "trait_incl_of_i8asMulREFai8_mul"
+        ]
+      },
+      "name": "i8asMulREFai8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "i8asMul_mul",
+          "type_of_i8asMul_mul",
+          "trait_incl_of_i8asMul_mul"
+        ]
+      },
+      "name": "i8asMul",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "i8asMulAssignREFi8_mul_assign",
+          "type_of_i8asMulAssignREFi8_mul_assign",
+          "trait_incl_of_i8asMulAssignREFi8_mul_assign"
+        ]
+      },
+      "name": "i8asMulAssignREFi8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "i8asMulAssign_mul_assign",
+          "type_of_i8asMulAssign_mul_assign",
+          "trait_incl_of_i8asMulAssign_mul_assign"
+        ]
+      },
+      "name": "i8asMulAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "i8asSubREFai8_sub",
+          "type_of_i8asSubREFai8_sub",
+          "trait_incl_of_i8asSubREFai8_sub"
+        ]
+      },
+      "name": "i8asSubREFai8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "i8asSub_sub",
+          "type_of_i8asSub_sub",
+          "trait_incl_of_i8asSub_sub"
+        ]
+      },
+      "name": "i8asSub",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "i8asSubAssignREFi8_sub_assign",
+          "type_of_i8asSubAssignREFi8_sub_assign",
+          "trait_incl_of_i8asSubAssignREFi8_sub_assign"
+        ]
+      },
+      "name": "i8asSubAssignREFi8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "I8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "I8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "i8asSubAssign_sub_assign",
+          "type_of_i8asSubAssign_sub_assign",
+          "trait_incl_of_i8asSubAssign_sub_assign"
+        ]
+      },
+      "name": "i8asSubAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "I8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "isizeasAddREFaisize_add",
+          "type_of_isizeasAddREFaisize_add",
+          "trait_incl_of_isizeasAddREFaisize_add"
+        ]
+      },
+      "name": "isizeasAddREFaisize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "Isize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "isizeasAdd_add",
+          "type_of_isizeasAdd_add",
+          "trait_incl_of_isizeasAdd_add"
+        ]
+      },
+      "name": "isizeasAdd",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "Isize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "isizeasAddAssignREFisize_add_assign",
+          "type_of_isizeasAddAssignREFisize_add_assign",
+          "trait_incl_of_isizeasAddAssignREFisize_add_assign"
+        ]
+      },
+      "name": "isizeasAddAssignREFisize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "Isize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "isizeasAddAssign_add_assign",
+          "type_of_isizeasAddAssign_add_assign",
+          "trait_incl_of_isizeasAddAssign_add_assign"
+        ]
+      },
+      "name": "isizeasAddAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "Isize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "isizeasMulREFaisize_mul",
+          "type_of_isizeasMulREFaisize_mul",
+          "trait_incl_of_isizeasMulREFaisize_mul"
+        ]
+      },
+      "name": "isizeasMulREFaisize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "Isize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "isizeasMul_mul",
+          "type_of_isizeasMul_mul",
+          "trait_incl_of_isizeasMul_mul"
+        ]
+      },
+      "name": "isizeasMul",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "Isize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "isizeasMulAssignREFisize_mul_assign",
+          "type_of_isizeasMulAssignREFisize_mul_assign",
+          "trait_incl_of_isizeasMulAssignREFisize_mul_assign"
+        ]
+      },
+      "name": "isizeasMulAssignREFisize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "Isize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "isizeasMulAssign_mul_assign",
+          "type_of_isizeasMulAssign_mul_assign",
+          "trait_incl_of_isizeasMulAssign_mul_assign"
+        ]
+      },
+      "name": "isizeasMulAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "Isize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "isizeasSubREFaisize_sub",
+          "type_of_isizeasSubREFaisize_sub",
+          "trait_incl_of_isizeasSubREFaisize_sub"
+        ]
+      },
+      "name": "isizeasSubREFaisize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "Isize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "isizeasSub_sub",
+          "type_of_isizeasSub_sub",
+          "trait_incl_of_isizeasSub_sub"
+        ]
+      },
+      "name": "isizeasSub",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "Isize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "isizeasSubAssignREFisize_sub_assign",
+          "type_of_isizeasSubAssignREFisize_sub_assign",
+          "trait_incl_of_isizeasSubAssignREFisize_sub_assign"
+        ]
+      },
+      "name": "isizeasSubAssignREFisize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Int": "Isize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Int": "Isize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "isizeasSubAssign_sub_assign",
+          "type_of_isizeasSubAssign_sub_assign",
+          "trait_incl_of_isizeasSubAssign_sub_assign"
+        ]
+      },
+      "name": "isizeasSubAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Int": "Isize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "u128asAddREFau128_add",
+          "type_of_u128asAddREFau128_add",
+          "trait_incl_of_u128asAddREFau128_add"
+        ]
+      },
+      "name": "u128asAddREFau128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "u128asAdd_add",
+          "type_of_u128asAdd_add",
+          "trait_incl_of_u128asAdd_add"
+        ]
+      },
+      "name": "u128asAdd",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "u128asAddAssignREFu128_add_assign",
+          "type_of_u128asAddAssignREFu128_add_assign",
+          "trait_incl_of_u128asAddAssignREFu128_add_assign"
+        ]
+      },
+      "name": "u128asAddAssignREFu128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "u128asAddAssign_add_assign",
+          "type_of_u128asAddAssign_add_assign",
+          "trait_incl_of_u128asAddAssign_add_assign"
+        ]
+      },
+      "name": "u128asAddAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "u128asMulREFau128_mul",
+          "type_of_u128asMulREFau128_mul",
+          "trait_incl_of_u128asMulREFau128_mul"
+        ]
+      },
+      "name": "u128asMulREFau128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "u128asMul_mul",
+          "type_of_u128asMul_mul",
+          "trait_incl_of_u128asMul_mul"
+        ]
+      },
+      "name": "u128asMul",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "u128asMulAssignREFu128_mul_assign",
+          "type_of_u128asMulAssignREFu128_mul_assign",
+          "trait_incl_of_u128asMulAssignREFu128_mul_assign"
+        ]
+      },
+      "name": "u128asMulAssignREFu128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "u128asMulAssign_mul_assign",
+          "type_of_u128asMulAssign_mul_assign",
+          "trait_incl_of_u128asMulAssign_mul_assign"
+        ]
+      },
+      "name": "u128asMulAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "u128asSubREFau128_sub",
+          "type_of_u128asSubREFau128_sub",
+          "trait_incl_of_u128asSubREFau128_sub"
+        ]
+      },
+      "name": "u128asSubREFau128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "u128asSub_sub",
+          "type_of_u128asSub_sub",
+          "trait_incl_of_u128asSub_sub"
+        ]
+      },
+      "name": "u128asSub",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "u128asSubAssignREFu128_sub_assign",
+          "type_of_u128asSubAssignREFu128_sub_assign",
+          "trait_incl_of_u128asSubAssignREFu128_sub_assign"
+        ]
+      },
+      "name": "u128asSubAssignREFu128",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U128"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U128"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "u128asSubAssign_sub_assign",
+          "type_of_u128asSubAssign_sub_assign",
+          "trait_incl_of_u128asSubAssign_sub_assign"
+        ]
+      },
+      "name": "u128asSubAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U128"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "u16asAddREFau16_add",
+          "type_of_u16asAddREFau16_add",
+          "trait_incl_of_u16asAddREFau16_add"
+        ]
+      },
+      "name": "u16asAddREFau16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "u16asAdd_add",
+          "type_of_u16asAdd_add",
+          "trait_incl_of_u16asAdd_add"
+        ]
+      },
+      "name": "u16asAdd",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "u16asAddAssignREFu16_add_assign",
+          "type_of_u16asAddAssignREFu16_add_assign",
+          "trait_incl_of_u16asAddAssignREFu16_add_assign"
+        ]
+      },
+      "name": "u16asAddAssignREFu16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "u16asAddAssign_add_assign",
+          "type_of_u16asAddAssign_add_assign",
+          "trait_incl_of_u16asAddAssign_add_assign"
+        ]
+      },
+      "name": "u16asAddAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "u16asMulREFau16_mul",
+          "type_of_u16asMulREFau16_mul",
+          "trait_incl_of_u16asMulREFau16_mul"
+        ]
+      },
+      "name": "u16asMulREFau16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "u16asMul_mul",
+          "type_of_u16asMul_mul",
+          "trait_incl_of_u16asMul_mul"
+        ]
+      },
+      "name": "u16asMul",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "u16asMulAssignREFu16_mul_assign",
+          "type_of_u16asMulAssignREFu16_mul_assign",
+          "trait_incl_of_u16asMulAssignREFu16_mul_assign"
+        ]
+      },
+      "name": "u16asMulAssignREFu16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "u16asMulAssign_mul_assign",
+          "type_of_u16asMulAssign_mul_assign",
+          "trait_incl_of_u16asMulAssign_mul_assign"
+        ]
+      },
+      "name": "u16asMulAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "u16asSubREFau16_sub",
+          "type_of_u16asSubREFau16_sub",
+          "trait_incl_of_u16asSubREFau16_sub"
+        ]
+      },
+      "name": "u16asSubREFau16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "u16asSub_sub",
+          "type_of_u16asSub_sub",
+          "trait_incl_of_u16asSub_sub"
+        ]
+      },
+      "name": "u16asSub",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "u16asSubAssignREFu16_sub_assign",
+          "type_of_u16asSubAssignREFu16_sub_assign",
+          "trait_incl_of_u16asSubAssignREFu16_sub_assign"
+        ]
+      },
+      "name": "u16asSubAssignREFu16",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U16"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U16"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "u16asSubAssign_sub_assign",
+          "type_of_u16asSubAssign_sub_assign",
+          "trait_incl_of_u16asSubAssign_sub_assign"
+        ]
+      },
+      "name": "u16asSubAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U16"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "u32asAddREFau32_add",
+          "type_of_u32asAddREFau32_add",
+          "trait_incl_of_u32asAddREFau32_add"
+        ]
+      },
+      "name": "u32asAddREFau32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "u32asAdd_add",
+          "type_of_u32asAdd_add",
+          "trait_incl_of_u32asAdd_add"
+        ]
+      },
+      "name": "u32asAdd",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "u32asAddAssignREFu32_add_assign",
+          "type_of_u32asAddAssignREFu32_add_assign",
+          "trait_incl_of_u32asAddAssignREFu32_add_assign"
+        ]
+      },
+      "name": "u32asAddAssignREFu32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "u32asAddAssign_add_assign",
+          "type_of_u32asAddAssign_add_assign",
+          "trait_incl_of_u32asAddAssign_add_assign"
+        ]
+      },
+      "name": "u32asAddAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "u32asMulREFau32_mul",
+          "type_of_u32asMulREFau32_mul",
+          "trait_incl_of_u32asMulREFau32_mul"
+        ]
+      },
+      "name": "u32asMulREFau32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "u32asMul_mul",
+          "type_of_u32asMul_mul",
+          "trait_incl_of_u32asMul_mul"
+        ]
+      },
+      "name": "u32asMul",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "u32asMulAssignREFu32_mul_assign",
+          "type_of_u32asMulAssignREFu32_mul_assign",
+          "trait_incl_of_u32asMulAssignREFu32_mul_assign"
+        ]
+      },
+      "name": "u32asMulAssignREFu32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "u32asMulAssign_mul_assign",
+          "type_of_u32asMulAssign_mul_assign",
+          "trait_incl_of_u32asMulAssign_mul_assign"
+        ]
+      },
+      "name": "u32asMulAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "u32asSubREFau32_sub",
+          "type_of_u32asSubREFau32_sub",
+          "trait_incl_of_u32asSubREFau32_sub"
+        ]
+      },
+      "name": "u32asSubREFau32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "u32asSub_sub",
+          "type_of_u32asSub_sub",
+          "trait_incl_of_u32asSub_sub"
+        ]
+      },
+      "name": "u32asSub",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "u32asSubAssignREFu32_sub_assign",
+          "type_of_u32asSubAssignREFu32_sub_assign",
+          "trait_incl_of_u32asSubAssignREFu32_sub_assign"
+        ]
+      },
+      "name": "u32asSubAssignREFu32",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U32"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U32"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "u32asSubAssign_sub_assign",
+          "type_of_u32asSubAssign_sub_assign",
+          "trait_incl_of_u32asSubAssign_sub_assign"
+        ]
+      },
+      "name": "u32asSubAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U32"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "u64asAddREFau64_add",
+          "type_of_u64asAddREFau64_add",
+          "trait_incl_of_u64asAddREFau64_add"
+        ]
+      },
+      "name": "u64asAddREFau64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "u64asAdd_add",
+          "type_of_u64asAdd_add",
+          "trait_incl_of_u64asAdd_add"
+        ]
+      },
+      "name": "u64asAdd",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "u64asAddAssignREFu64_add_assign",
+          "type_of_u64asAddAssignREFu64_add_assign",
+          "trait_incl_of_u64asAddAssignREFu64_add_assign"
+        ]
+      },
+      "name": "u64asAddAssignREFu64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "u64asAddAssign_add_assign",
+          "type_of_u64asAddAssign_add_assign",
+          "trait_incl_of_u64asAddAssign_add_assign"
+        ]
+      },
+      "name": "u64asAddAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "u64asMulREFau64_mul",
+          "type_of_u64asMulREFau64_mul",
+          "trait_incl_of_u64asMulREFau64_mul"
+        ]
+      },
+      "name": "u64asMulREFau64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "u64asMul_mul",
+          "type_of_u64asMul_mul",
+          "trait_incl_of_u64asMul_mul"
+        ]
+      },
+      "name": "u64asMul",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "u64asMulAssignREFu64_mul_assign",
+          "type_of_u64asMulAssignREFu64_mul_assign",
+          "trait_incl_of_u64asMulAssignREFu64_mul_assign"
+        ]
+      },
+      "name": "u64asMulAssignREFu64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "u64asMulAssign_mul_assign",
+          "type_of_u64asMulAssign_mul_assign",
+          "trait_incl_of_u64asMulAssign_mul_assign"
+        ]
+      },
+      "name": "u64asMulAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "u64asSubREFau64_sub",
+          "type_of_u64asSubREFau64_sub",
+          "trait_incl_of_u64asSubREFau64_sub"
+        ]
+      },
+      "name": "u64asSubREFau64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "u64asSub_sub",
+          "type_of_u64asSub_sub",
+          "trait_incl_of_u64asSub_sub"
+        ]
+      },
+      "name": "u64asSub",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "u64asSubAssignREFu64_sub_assign",
+          "type_of_u64asSubAssignREFu64_sub_assign",
+          "trait_incl_of_u64asSubAssignREFu64_sub_assign"
+        ]
+      },
+      "name": "u64asSubAssignREFu64",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U64"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U64"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "u64asSubAssign_sub_assign",
+          "type_of_u64asSubAssign_sub_assign",
+          "trait_incl_of_u64asSubAssign_sub_assign"
+        ]
+      },
+      "name": "u64asSubAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U64"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "u8asAddREFau8_add",
+          "type_of_u8asAddREFau8_add",
+          "trait_incl_of_u8asAddREFau8_add"
+        ]
+      },
+      "name": "u8asAddREFau8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "u8asAdd_add",
+          "type_of_u8asAdd_add",
+          "trait_incl_of_u8asAdd_add"
+        ]
+      },
+      "name": "u8asAdd",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "u8asAddAssignREFu8_add_assign",
+          "type_of_u8asAddAssignREFu8_add_assign",
+          "trait_incl_of_u8asAddAssignREFu8_add_assign"
+        ]
+      },
+      "name": "u8asAddAssignREFu8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "u8asAddAssign_add_assign",
+          "type_of_u8asAddAssign_add_assign",
+          "trait_incl_of_u8asAddAssign_add_assign"
+        ]
+      },
+      "name": "u8asAddAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "u8asMulREFau8_mul",
+          "type_of_u8asMulREFau8_mul",
+          "trait_incl_of_u8asMulREFau8_mul"
+        ]
+      },
+      "name": "u8asMulREFau8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "u8asMul_mul",
+          "type_of_u8asMul_mul",
+          "trait_incl_of_u8asMul_mul"
+        ]
+      },
+      "name": "u8asMul",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "u8asMulAssignREFu8_mul_assign",
+          "type_of_u8asMulAssignREFu8_mul_assign",
+          "trait_incl_of_u8asMulAssignREFu8_mul_assign"
+        ]
+      },
+      "name": "u8asMulAssignREFu8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "u8asMulAssign_mul_assign",
+          "type_of_u8asMulAssign_mul_assign",
+          "trait_incl_of_u8asMulAssign_mul_assign"
+        ]
+      },
+      "name": "u8asMulAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "u8asSubREFau8_sub",
+          "type_of_u8asSubREFau8_sub",
+          "trait_incl_of_u8asSubREFau8_sub"
+        ]
+      },
+      "name": "u8asSubREFau8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "u8asSub_sub",
+          "type_of_u8asSub_sub",
+          "trait_incl_of_u8asSub_sub"
+        ]
+      },
+      "name": "u8asSub",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "u8asSubAssignREFu8_sub_assign",
+          "type_of_u8asSubAssignREFu8_sub_assign",
+          "trait_incl_of_u8asSubAssignREFu8_sub_assign"
+        ]
+      },
+      "name": "u8asSubAssignREFu8",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "U8"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "U8"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "u8asSubAssign_sub_assign",
+          "type_of_u8asSubAssign_sub_assign",
+          "trait_incl_of_u8asSubAssign_sub_assign"
+        ]
+      },
+      "name": "u8asSubAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "U8"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "usizeasAddREFausize_add",
+          "type_of_usizeasAddREFausize_add",
+          "trait_incl_of_usizeasAddREFausize_add"
+        ]
+      },
+      "name": "usizeasAddREFausize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "Usize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add": [
+          "usizeasAdd_add",
+          "type_of_usizeasAdd_add",
+          "trait_incl_of_usizeasAdd_add"
+        ]
+      },
+      "name": "usizeasAdd",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "Usize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Add"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "usizeasAddAssignREFusize_add_assign",
+          "type_of_usizeasAddAssignREFusize_add_assign",
+          "trait_incl_of_usizeasAddAssignREFusize_add_assign"
+        ]
+      },
+      "name": "usizeasAddAssignREFusize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "Usize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "add_assign": [
+          "usizeasAddAssign_add_assign",
+          "type_of_usizeasAddAssign_add_assign",
+          "trait_incl_of_usizeasAddAssign_add_assign"
+        ]
+      },
+      "name": "usizeasAddAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "Usize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "AddAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "usizeasMulREFausize_mul",
+          "type_of_usizeasMulREFausize_mul",
+          "trait_incl_of_usizeasMulREFausize_mul"
+        ]
+      },
+      "name": "usizeasMulREFausize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "Usize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul": [
+          "usizeasMul_mul",
+          "type_of_usizeasMul_mul",
+          "trait_incl_of_usizeasMul_mul"
+        ]
+      },
+      "name": "usizeasMul",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "Usize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Mul"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "usizeasMulAssignREFusize_mul_assign",
+          "type_of_usizeasMulAssignREFusize_mul_assign",
+          "trait_incl_of_usizeasMulAssignREFusize_mul_assign"
+        ]
+      },
+      "name": "usizeasMulAssignREFusize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "Usize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "mul_assign": [
+          "usizeasMulAssign_mul_assign",
+          "type_of_usizeasMulAssign_mul_assign",
+          "trait_incl_of_usizeasMulAssign_mul_assign"
+        ]
+      },
+      "name": "usizeasMulAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "Usize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "MulAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "usizeasSubREFausize_sub",
+          "type_of_usizeasSubREFausize_sub",
+          "trait_incl_of_usizeasSubREFausize_sub"
+        ]
+      },
+      "name": "usizeasSubREFausize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "Usize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub": [
+          "usizeasSub_sub",
+          "type_of_usizeasSub_sub",
+          "trait_incl_of_usizeasSub_sub"
+        ]
+      },
+      "name": "usizeasSub",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "Usize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Sub"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "usizeasSubAssignREFusize_sub_assign",
+          "type_of_usizeasSubAssignREFusize_sub_assign",
+          "trait_incl_of_usizeasSubAssignREFusize_sub_assign"
+        ]
+      },
+      "name": "usizeasSubAssignREFusize",
+      "trait_path": {
+        "args": [
+          {
+            "Ref": [
+              0,
+              "Not",
+              {
+                "Uint": "Usize"
+              }
+            ]
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Uint": "Usize"
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "sub_assign": [
+          "usizeasSubAssign_sub_assign",
+          "type_of_usizeasSubAssign_sub_assign",
+          "trait_incl_of_usizeasSubAssign_sub_assign"
+        ]
+      },
+      "name": "usizeasSubAssign",
+      "trait_path": {
+        "args": [
+          {
+            "Uint": "Usize"
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "SubAssign"
+        ]
+      }
+    }
+  ],
+  "module_dependencies": [],
+  "refinedrust_module": "generated_specs_arithops",
+  "refinedrust_name": "arithops",
+  "refinedrust_path": "rrstd.arithops.arithops.generated"
+}
