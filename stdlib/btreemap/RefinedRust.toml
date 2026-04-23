@@ -1,2 +1,2 @@
 generate_dune_project = false
-lib_load_paths = ["../alloc", "../option"]
+lib_load_paths = ["../alloc", "../option", "../cmp", "../clone"]

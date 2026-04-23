@@ -226,7 +226,7 @@
           {
             pname = "stdlib-btreemap";
             src = ./stdlib/btreemap;
-            libDeps = with packages; [stdlib-alloc stdlib-option];
+            libDeps = with packages; [stdlib-alloc stdlib-option stdlib-clone stdlib-cmp];
           }
           {
             pname = "stdlib-clone";
