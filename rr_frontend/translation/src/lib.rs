@@ -2095,7 +2095,7 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<()
         match spec {
             Ok((spec, deps)) => {
                 let ordered_did = OrderedDefId::new(vcx.tcx, did);
-                vcx.trait_impls.insert(ordered_did, spec);
+                vcx.trait_impls.insert(ordered_did.clone(), spec);
                 vcx.trait_impl_deps.insert(ordered_did, deps);
             },
             Err(base::TranslationError::ErrorReported(err)) => {

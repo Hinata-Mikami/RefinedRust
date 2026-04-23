@@ -34,9 +34,9 @@ impl<'def> Scope<'def> {
     pub(crate) fn get_static(
         &self,
         tcx: ty::TyCtxt<'_>,
-        did: OrderedDefId,
+        did: &OrderedDefId,
     ) -> Result<&code::StaticMeta<'def>, TranslationError> {
-        self.statics.get(&did).ok_or_else(|| {
+        self.statics.get(did).ok_or_else(|| {
             TranslationError::ErrorReported(tcx.dcx().err(Message::MissingRegisteredStatic(format!(
                 "Did not find a registered static for did {did:?}; registered: {:?}",
                 self.statics

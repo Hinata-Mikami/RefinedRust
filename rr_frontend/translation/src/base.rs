@@ -9,10 +9,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use rr_rustc_interface::errors::ErrorGuaranteed;
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::hir::definitions::DefPathHash;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::{borrowck, polonius_engine};
 use topological_sort::TopologicalSort;
+
+use crate::shims;
 
 /// Strip symbols from an identifier to be compatible with Coq.
 /// In particular things like ' or ::.
@@ -28,31 +29,75 @@ pub(crate) fn strip_coq_ident(s: &str) -> String {
 pub(crate) type Region = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Origin;
 pub(crate) type PointIndex = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Point;
 
-/// Ordered `DefId`s, ordered by their `DefPathHash`, which should be stable across compilations.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+fn normalize_logical_path_segment(seg: &str) -> String {
+    if matches!(seg, "core" | "alloc" | "std") { "std".to_owned() } else { seg.to_owned() }
+}
+
+pub(crate) fn normalize_def_path_str(def_path: &str) -> String {
+    let mut segments = def_path.split("::");
+    if let Some(seg) = segments.next()
+        && matches!(seg, "core" | "alloc" | "std")
+    {
+        return format!("std::{}", segments.collect::<Vec<_>>().join("::"));
+    }
+    def_path.to_owned()
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub(crate) struct LogicalDefKey {
+    pub path: Vec<String>,
+    pub as_method: bool,
+}
+
+impl LogicalDefKey {
+    pub(crate) fn new(tcx: ty::TyCtxt<'_>, did: DefId) -> Self {
+        let export_path = shims::flat::get_export_path_for_did(tcx, did);
+        let path = export_path
+            .path
+            .path
+            .into_iter()
+            .enumerate()
+            .map(|(idx, seg)| if idx == 0 { normalize_logical_path_segment(&seg) } else { seg })
+            .collect();
+
+        Self {
+            path,
+            as_method: export_path.as_method,
+        }
+    }
+}
+
+/// Ordered `DefId`s by their logical/export path.
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) struct OrderedDefId {
     pub def_id: DefId,
-    pub def_path_hash: DefPathHash,
+    pub logical_key: LogicalDefKey,
+    pub normalized_def_path: String,
 }
 
 impl OrderedDefId {
     pub(crate) fn new(tcx: ty::TyCtxt<'_>, did: DefId) -> Self {
-        let def_path_hash = tcx.def_path_hash(did);
+        let logical_key = LogicalDefKey::new(tcx, did);
+        let normalized_def_path = normalize_def_path_str(&tcx.def_path_str(did));
         Self {
             def_id: did,
-            def_path_hash,
+            logical_key,
+            normalized_def_path,
         }
     }
 }
 
 impl Ord for OrderedDefId {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.def_path_hash.cmp(&other.def_path_hash).then_with(|| {
-            self.def_id
-                .krate
-                .cmp(&other.def_id.krate)
-                .then_with(|| self.def_id.index.cmp(&other.def_id.index))
-        })
+        self.logical_key
+            .cmp(&other.logical_key)
+            .then_with(|| self.normalized_def_path.cmp(&other.normalized_def_path))
+            .then_with(|| {
+                self.def_id
+                    .krate
+                    .cmp(&other.def_id.krate)
+                    .then_with(|| self.def_id.index.cmp(&other.def_id.index))
+            })
     }
 }
 
@@ -64,9 +109,13 @@ impl PartialOrd<Self> for OrderedDefId {
 
 pub(crate) fn sort_def_ids(tcx: ty::TyCtxt<'_>, dids: &mut [DefId]) {
     dids.sort_by(|a, b| {
-        let hash_a = tcx.def_path_hash(*a);
-        let hash_b = tcx.def_path_hash(*b);
-        hash_a.cmp(&hash_b)
+        LogicalDefKey::new(tcx, *a)
+            .cmp(&LogicalDefKey::new(tcx, *b))
+            .then_with(|| {
+                normalize_def_path_str(&tcx.def_path_str(*a))
+                    .cmp(&normalize_def_path_str(&tcx.def_path_str(*b)))
+            })
+            .then_with(|| a.krate.cmp(&b.krate).then_with(|| a.index.cmp(&b.index)))
     });
 }
 

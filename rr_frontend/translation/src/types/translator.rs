@@ -612,7 +612,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         for (did, (_, su, _, is_of_enum)) in self.variant_registry.borrow().iter() {
             // skip structs belonging to enums
             if !is_of_enum {
-                defs.insert(*did, *su);
+                defs.insert(did.clone(), *su);
             }
         }
         defs
@@ -622,7 +622,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     pub(crate) fn get_variant_defs(&self) -> BTreeMap<OrderedDefId, specs::structs::AbstractRef<'def>> {
         let mut defs = BTreeMap::new();
         for (did, (_, su, _, _)) in self.variant_registry.borrow().iter() {
-            defs.insert(*did, *su);
+            defs.insert(did.clone(), *su);
         }
         defs
     }
@@ -631,7 +631,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     pub(crate) fn get_enum_defs(&self) -> BTreeMap<OrderedDefId, specs::enums::AbstractRef<'def>> {
         let mut defs = BTreeMap::new();
         for (did, (_, su, _)) in self.enum_registry.borrow().iter() {
-            defs.insert(*did, *su);
+            defs.insert(did.clone(), *su);
         }
         defs
     }
@@ -999,7 +999,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let ordered_did = OrderedDefId::new(self.tcx, ty.def_id);
         self.variant_registry
             .borrow_mut()
-            .insert(ordered_did, (struct_name.clone(), &*struct_def_init, ty, false));
+            .insert(ordered_did.clone(), (struct_name.clone(), &*struct_def_init, ty, false));
         // TODO: can we also add the literal already?
 
         let translate_adt = || {
@@ -1365,7 +1365,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let ordered_did = OrderedDefId::new(self.tcx, def.did());
         self.enum_registry
             .borrow_mut()
-            .insert(ordered_did, (enum_name.clone(), &*enum_def_init, def));
+            .insert(ordered_did.clone(), (enum_name.clone(), &*enum_def_init, def));
 
         let translate_variants = || {
             let mut variant_attrs = Vec::new();

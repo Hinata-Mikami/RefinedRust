@@ -426,7 +426,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             );
 
             let mut scope = self.trait_decls.borrow_mut();
-            scope.insert(ordered_did, decl);
+            scope.insert(ordered_did.clone(), decl);
             Ok(())
         };
 

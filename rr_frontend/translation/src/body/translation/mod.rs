@@ -333,7 +333,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // generate dependencies on statics
         for did in &self.collected_statics {
-            let s = self.const_registry.get_static(self.tcx, *did)?;
+            let s = self.const_registry.get_static(self.tcx, did)?;
             self.translated_fn.require_static(s.to_owned());
         }
 
