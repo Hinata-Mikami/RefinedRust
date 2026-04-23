@@ -383,7 +383,8 @@ Definition cast_to_bool (ot: op_type) (v: val) (st: heap_state) : option bool :=
   end.
 
 (** ** MemCast: Transforming bytes read from memory.
-  [mem_cast] should only be called with length of [v] matching [ot] *)
+  [mem_cast] should only be called with length of [v] matching [ot] 
+  The dependence on [st] is not necessary right now, but should one day make it easier to support exposed provenance casts. *)
 Fixpoint mem_cast (v : val) (ot : op_type) (st : (gset addr * heap_state)) : val :=
   default (replicate (length v) MPoison) (
   match ot with
