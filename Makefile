@@ -7,7 +7,7 @@ CASE_STUDIES = case_studies/paper_examples case_studies/tests case_studies/miniv
 all: frontend typesystem stdlib.proof
 .PHONY: all
 
-generate_all: generate_stdlib generate_case_studies
+generate_all: frontend generate_stdlib generate_case_studies
 .PHONY: generate_all
 
 clean: clean_case_studies clean_stdlib
@@ -18,6 +18,11 @@ clean: clean_case_studies clean_stdlib
 all_with_examples: frontend generate_stdlib generate_case_studies
 	dune build --display short
 .PHONY: all_with_examples
+
+build:
+	dune build --display short
+.PHONY: build
+
 
 ### Project setup
 setup-nix:

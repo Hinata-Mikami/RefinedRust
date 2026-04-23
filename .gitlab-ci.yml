@@ -4,6 +4,10 @@ stages: [ nix-cache, build, lint, tests ]
   rules:
     - if: '$CI_PROJECT_PATH == "lgaeher/refinedrust-dev" && ($CI_PIPELINE_SOURCE != "merge_request_event" && $CI_PIPELINE_SOURCE != "trigger" && $CI_PIPELINE_SOURCE != "schedule" && $CI_PIPELINE_SOURCE != "api")'
 
+.main_only: &main_only
+  rules:
+    - if: '$CI_PROJECT_PATH == "lgaeher/refinedrust-dev" && $CI_COMMIT_BRANCH == "main" && ($CI_PIPELINE_SOURCE != "merge_request_event" && $CI_PIPELINE_SOURCE != "trigger" && $CI_PIPELINE_SOURCE != "schedule" && $CI_PIPELINE_SOURCE != "api")'
+
 .nightly_only: &nightly_only
   rules:
     - if: '$CI_PROJECT_PATH == "lgaeher/refinedrust-dev" && ($CI_PIPELINE_SOURCE == "trigger" || $CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "api")'
@@ -138,6 +142,7 @@ case-studies:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.{evenint,hillel,minivec,paper-examples,linkedlist,tests,iterators,knights-tour}
 
 ace:
+  <<: *main_only
   extends: [ .nix, .build_to_nix_artifacts ]
   stage: tests
   needs: [ stdlib ]
@@ -167,11 +172,15 @@ nix-shell:
     CPU_CORES: "1"
     # DENY_WARNINGS: "1"
     OCAML: "ocaml-variants.4.14.2+options ocaml-option-flambda"
+    MAKE_TARGET: "build"
 
   script:
    - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
    - make setup-dune-workspace
    - source "$HOME/.cargo/env"
+   - make generate_all
+   - git status --porcelain=v1 --untracked-files=all -- stdlib
+   - test -z "$(git status --porcelain=v1 --untracked-files=all -- stdlib)"
    - ci/buildjob
 
   #cache:
@@ -184,7 +193,6 @@ build-opam-rocq.9.1.0:
   tags: [ fp ]
   variables:
     OPAM_PINS: "rocq-core version 9.1.0 dune version 3.21.0"
-    MAKE_TARGET: "all_with_examples"
 
 build-opam-rocq.9.1.0-timing:
   <<: *upstream_only
@@ -192,7 +200,6 @@ build-opam-rocq.9.1.0-timing:
   tags: [ fp-timing ]
   variables:
     OPAM_PINS: "rocq-core version 9.1.0 dune version 3.21.0"
-    MAKE_TARGET: "all_with_examples"
 
 build-opam-iris.dev:
   <<: *nightly_only
@@ -203,10 +210,12 @@ build-opam-iris.dev:
     IRIS_REPO: "iris/iris"
     OPAMIGNOREPINDEPENDS: "true" # so that the pins below don't get overridden
     OPAM_PINS: "rocq-core version 9.1.0 rocq-stdlib version 9.0.0 git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV   git+https://gitlab.mpi-sws.org/$IRIS_REPO#$IRIS_REV git+https://gitlab.mpi-sws.org/iris/iris-contrib git+https://gitlab.mpi-sws.org/iris/lambda-rust"
-    MAKE_TARGET: "all_with_examples"
   script:
    - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
    - make setup-dune-workspace
    - source "$HOME/.cargo/env"
    - scripts/update-rust-toolchain.sh # update rust toolchain
+   - make generate_all
+   - git status --porcelain=v1 --untracked-files=all -- stdlib
+   - test -z "$(git status --porcelain=v1 --untracked-files=all -- stdlib)"
    - ci/buildjob
