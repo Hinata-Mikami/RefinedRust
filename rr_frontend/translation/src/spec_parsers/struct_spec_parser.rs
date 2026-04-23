@@ -31,6 +31,7 @@ pub(crate) const INVARIANT_SPEC_ATTRS: &[&str] = &[
     "mode",
     "refines",
     "context",
+    "export_as",
 ];
 
 pub(crate) const FIELD_SPEC_ATTRS: &[&str] = &["field"];

@@ -129,7 +129,7 @@ mod tests {
             "refined_by",
         ]);
 
-        assert!(res.is_ok());
+        res.unwrap();
     }
 
     #[test]
