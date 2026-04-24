@@ -193,9 +193,9 @@ nix-shell:
    - source "$HOME/.cargo/env"
    - ci/buildjob
 
-  #cache:
-    #key: "$CI_JOB_NAME"
-    #paths: [ "_opam/" ]
+  cache:
+    key: "$CI_JOB_NAME"
+    paths: [ "_opam/" ]
 
 check-generated-files:
   image: $CI_REGISTRY/gaeher/rust-ci
