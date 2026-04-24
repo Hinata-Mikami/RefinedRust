@@ -226,22 +226,16 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     }
 
     /// Register a function.
-    pub(crate) fn register_function(&mut self, did: DefId, meta: Meta) -> Result<(), TranslationError> {
+    pub(crate) fn register_function(&mut self, did: DefId, meta: Meta) {
         if rrconfig::no_assumption() && meta.mode.is_assumed() {
             self.tcx.dcx().span_err(self.tcx.def_span(did), Message::NoAssumptionAllowed(meta.mode));
         }
 
         if self.name_map.insert(self.get_ordered_did(did), meta).is_some() {
-            Err(self
-                .tcx
-                .dcx()
-                .err(Message::ProcedureRegistry(format!(
-                    "function for defid {:?} has already been registered",
-                    did
-                )))
-                .into())
-        } else {
-            Ok(())
+            self.tcx.dcx().span_bug(
+                self.tcx.def_span(did),
+                format!("function for defid {did:?} has already been registered"),
+            );
         }
     }
 

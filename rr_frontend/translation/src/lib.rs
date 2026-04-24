@@ -32,13 +32,14 @@ mod types;
 mod unification;
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::fs;
 use std::fs::File;
-use std::io::{Read as _, Write as _};
+use std::io::{self, Read as _, Write as _};
 use std::path::{Path, PathBuf};
-use std::{fs, io};
 
 use log::{error, info, trace, warn};
 use radium::{code, coq, lang, specs};
+use rr_rustc_interface::errors::ErrorGuaranteed;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::{queries, ty};
 use rr_rustc_interface::span::Span;
@@ -83,6 +84,18 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
     /// trait implementations we generated
     trait_impls: BTreeMap<OrderedDefId, specs::traits::ImplSpec<'rcx>>,
     trait_impl_deps: BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>,
+}
+
+#[derive(Debug)]
+pub enum PipelineError {
+    Io(io::Error),
+    Reported(ErrorGuaranteed),
+}
+
+impl From<io::Error> for PipelineError {
+    fn from(err: io::Error) -> Self {
+        Self::Io(err)
+    }
 }
 
 impl<'rcx> VerificationCtxt<'_, 'rcx> {
@@ -1028,7 +1041,7 @@ fn find_external_export_attr_span(tcx: ty::TyCtxt<'_>, did: DefId) -> Option<Spa
 }
 
 /// Register shims in the procedure registry.
-fn register_shims(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), base::TranslationError> {
+fn register_shims(vcx: &mut VerificationCtxt<'_, '_>) {
     for shim in vcx.shim_registry.get_function_shims() {
         let did = resolve_shim(vcx, &shim.path, shim.is_method);
 
@@ -1045,7 +1058,7 @@ fn register_shims(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), base::Transl
                     false,
                     false,
                 );
-                vcx.procedure_registry.register_function(did, meta)?;
+                vcx.procedure_registry.register_function(did, meta);
             },
             _ => {
                 warn!("cannot find defid for shim {:?}, skipping", shim.path);
@@ -1149,7 +1162,7 @@ fn register_shims(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), base::Transl
                     false,
                 );
 
-                vcx.procedure_registry.register_function(method_did, meta)?;
+                vcx.procedure_registry.register_function(method_did, meta);
             }
         }
     }
@@ -1159,8 +1172,6 @@ fn register_shims(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), base::Transl
         .extend(vcx.shim_registry.get_extra_exports().iter().map(|export| (export.clone(), true)));
     // add the extra dependencies
     vcx.extra_dependencies.extend(vcx.shim_registry.get_extra_dependencies().iter().cloned());
-
-    Ok(())
 }
 
 /// Check if this is a function whose implementation we always skip, asserting just a
@@ -1219,14 +1230,19 @@ fn get_most_restrictive_function_mode(vcx: &VerificationCtxt<'_, '_>, did: DefId
 }
 
 /// Register functions of the crate in the procedure registry.
-fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), base::TranslationError> {
+fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
     for (f, is_closure) in vcx
         .functions
         .iter()
         .map(|did| (did, false))
         .chain(vcx.closures.iter().map(|did| (did, true)))
     {
-        if !check_consider_function(&*vcx, *f)? {
+        let should_register = match check_consider_function(&*vcx, *f) {
+            Ok(should_register) => should_register,
+            Err(base::TranslationError::ErrorReported(_)) => false,
+            Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
+        };
+        if !should_register {
             continue;
         }
 
@@ -1273,7 +1289,7 @@ fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), base::Tr
                 is_default_trait_impl,
                 is_closure,
             );
-            vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
+            vcx.procedure_registry.register_function(f.to_def_id(), meta);
 
             continue;
         }
@@ -1293,7 +1309,7 @@ fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), base::Tr
                 is_default_trait_impl,
                 is_closure,
             );
-            vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
+            vcx.procedure_registry.register_function(f.to_def_id(), meta);
 
             continue;
         }
@@ -1332,7 +1348,7 @@ fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), base::Tr
                     is_default_trait_impl,
                     is_closure,
                 );
-                vcx.procedure_registry.register_function(export_did, meta)?;
+                vcx.procedure_registry.register_function(export_did, meta);
             } else {
                 let span = find_external_export_attr_span(vcx.tcx, f.to_def_id())
                     .unwrap_or_else(|| vcx.tcx.def_span(f.to_def_id()));
@@ -1356,14 +1372,14 @@ fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), base::Tr
             is_closure,
         );
 
-        vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
+        vcx.procedure_registry.register_function(f.to_def_id(), meta);
     }
 
     Ok(())
 }
 
 /// Translate functions of the crate, assuming they were previously registered.
-fn translate_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), ()> {
+fn translate_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
     // First translate closures, then functions: the function translation assumes that closures
     // they contain have been translated already.
     for &f in vcx.closures.iter().chain(vcx.functions.iter()) {
@@ -1375,7 +1391,10 @@ fn translate_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), ()> {
     Ok(())
 }
 
-fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId) -> Result<(), ()> {
+fn translate_function<'tcx>(
+    vcx: &mut VerificationCtxt<'tcx, '_>,
+    f: LocalDefId,
+) -> Result<(), PipelineError> {
     let proc = environment::get_procedure(vcx.tcx, f.to_def_id());
     let fname = environment::get_item_name(vcx.tcx, f.to_def_id());
     let meta = vcx.procedure_registry.lookup_function(f.to_def_id()).unwrap();
@@ -1458,7 +1477,7 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
                 );
                 Ok(())
             },
-            Err(base::TranslationError::Tainted(_)) => Err(()),
+            Err(base::TranslationError::Tainted(err)) => Err(PipelineError::Reported(err)),
         }
     } else {
         // Fully translate the function
@@ -1480,7 +1499,7 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
                 );
                 Ok(())
             },
-            Err(base::TranslationError::Tainted(_)) => Err(()),
+            Err(base::TranslationError::Tainted(err)) => Err(PipelineError::Reported(err)),
         }
     }
 }
@@ -1563,7 +1582,7 @@ fn check_consider_function(
 }
 
 /// Get constants in the current scope.
-pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), ()> {
+pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), PipelineError> {
     let statics = environment::get_statics(vcx.tcx);
 
     for s in &statics {
@@ -1574,10 +1593,11 @@ pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(),
             continue;
         }
         attrs::check_tool_attrs(&const_attrs, CONST_ATTRS.iter().copied()).map_err(|err| {
-            vcx.tcx.dcx().span_err(
+            let err = vcx.tcx.dcx().span_err(
                 err.span,
                 error::Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
             );
+            PipelineError::Reported(err)
         })?;
 
         let ty = ty.skip_binder();
@@ -1595,7 +1615,8 @@ pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(),
                 let const_spec = const_parser
                     .parse_const_attrs(*s, vcx.tcx.def_span(s.to_def_id()), &const_attrs)
                     .map_err(|err| {
-                        vcx.tcx.dcx().span_err(err.span, error::Message::ConstSpecParse(err.err));
+                        let err = vcx.tcx.dcx().span_err(err.span, error::Message::ConstSpecParse(err.err));
+                        PipelineError::Reported(err)
                     })?;
 
                 let name = const_spec.name;
@@ -1621,7 +1642,7 @@ pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(),
 }
 
 /// Register traits.
-fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), ()> {
+fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
     let traits = environment::get_traits(vcx.tcx);
 
     // order according to dependencies first
@@ -1661,13 +1682,18 @@ fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), ()> {
             continue;
         }
 
-        registered_traits.push(t);
-
-        vcx.trait_registry.preregister_trait(t).map_err(|_| ())?;
+        match vcx.trait_registry.preregister_trait(t) {
+            Ok(()) => registered_traits.push(t),
+            Err(base::TranslationError::ErrorReported(_)) => (),
+            Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
+        }
     }
     // then properly translate them
     for t in registered_traits {
-        vcx.trait_registry.register_trait(t, &mut vcx.procedure_registry).map_err(|_| ())?;
+        match vcx.trait_registry.register_trait(t, &mut vcx.procedure_registry) {
+            Ok(()) | Err(base::TranslationError::ErrorReported(_)) => (),
+            Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
+        }
     }
     Ok(())
 }
@@ -1804,7 +1830,7 @@ fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) {
 }
 
 /// Generate closure trait instances.
-fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) -> Result<(), ()> {
+fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) -> Result<(), PipelineError> {
     if !are_closures_available(vcx) {
         return Ok(());
     }
@@ -1881,7 +1907,7 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) ->
                     info.generated_impls.push(spec);
                     Ok(())
                 },
-                Err(base::TranslationError::Tainted(_)) => Err(()),
+                Err(base::TranslationError::Tainted(err)) => Err(PipelineError::Reported(err)),
                 Err(err) => {
                     vcx.tcx.dcx().span_warn(
                         vcx.tcx.def_span(*closure_did),
@@ -1914,7 +1940,7 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) ->
 }
 
 /// Generate trait instances.
-fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), ()> {
+fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), PipelineError> {
     let trait_impl_ids = environment::get_trait_impls(vcx.tcx);
 
     for trait_impl_id in trait_impl_ids {
@@ -2053,7 +2079,7 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<()
                     error::Message::SkippedTraitImplDueToPreviousFailure(did),
                 );
             },
-            Err(base::TranslationError::Tainted(_)) => return Err(()),
+            Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
         }
     }
 
@@ -2061,7 +2087,7 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<()
 }
 
 /// Get and parse all module attributes.
-fn get_module_attributes(tcx: ty::TyCtxt<'_>) -> Result<BTreeMap<OrderedDefId, ModuleAttrs>, ()> {
+fn get_module_attributes(tcx: ty::TyCtxt<'_>) -> Result<BTreeMap<OrderedDefId, ModuleAttrs>, PipelineError> {
     let modules = environment::get_modules(tcx);
     let mut attrs = BTreeMap::new();
     info!("collected modules: {:?}", modules);
@@ -2072,8 +2098,8 @@ fn get_module_attributes(tcx: ty::TyCtxt<'_>) -> Result<BTreeMap<OrderedDefId, M
         let module_spec = match module_parser.parse_module_attrs(*m, &module_attrs) {
             Ok(spec) => spec,
             Err(err) => {
-                tcx.dcx().span_err(err.span, error::Message::ModuleSpecParse(err.err));
-                return Err(());
+                let err = tcx.dcx().span_err(err.span, error::Message::ModuleSpecParse(err.err));
+                return Err(PipelineError::Reported(err));
             },
         };
         let ordered_did = OrderedDefId::new(tcx, m.to_def_id());
@@ -2096,7 +2122,7 @@ fn add_builtin_shims(registry: &mut shim_registry::SR<'_>) {
 }
 
 /// Translate a crate, creating a `VerificationCtxt` in the process.
-pub fn generate_coq_code<'tcx, F>(tcx: ty::TyCtxt<'tcx>, continuation: F) -> Result<(), ()>
+pub fn generate_coq_code<'tcx, F>(tcx: ty::TyCtxt<'tcx>, continuation: F) -> Result<(), PipelineError>
 where
     F: Fn(VerificationCtxt<'tcx, '_>),
 {
@@ -2110,8 +2136,8 @@ where
     let crate_spec = match crate_parser.parse_crate_attrs(&crate_attrs, crate_span) {
         Ok(spec) => spec,
         Err(err) => {
-            tcx.dcx().span_err(err.span, error::Message::CrateSpecParse(err.err));
-            return Err(());
+            let err = tcx.dcx().span_err(err.span, error::Message::CrateSpecParse(err.err));
+            return Err(PipelineError::Reported(err));
         },
     };
 
@@ -2122,7 +2148,7 @@ where
     info!("Setting dune package: {:?}", package);
 
     // get module attributes
-    let module_attrs = get_module_attributes(tcx).map_err(|_| ())?;
+    let module_attrs = get_module_attributes(tcx)?;
 
     let mut include_spans = crate_spec.include_spans.clone();
     let mut export_include_spans = crate_spec.export_include_spans.clone();
@@ -2187,7 +2213,7 @@ where
     // add includes to the shim registry
     let library_load_paths = rrconfig::lib_load_paths();
     info!("Loading libraries from {:?}", library_load_paths);
-    let found_libs = shims::scan_loadpaths(&library_load_paths).map_err(|_| ())?;
+    let found_libs = shims::scan_loadpaths(&library_load_paths).map_err(PipelineError::from)?;
     info!("Found the following RefinedRust libraries in the loadpath: {:?}", found_libs);
 
     let mut included_libs = BTreeSet::new();
@@ -2209,10 +2235,16 @@ where
             }
             continue;
         };
-        included_libs.insert(incl);
+        included_libs.insert(incl.clone());
 
-        let f = File::open(p).map_err(|_| ())?;
-        if let Some(new_includes) = shim_registry.add_source(f).map_err(|_| ())? {
+        let f = File::open(p).map_err(PipelineError::from)?;
+        let new_includes = shim_registry.add_source(f).map_err(|err| {
+            let err = tcx.dcx().err(error::Message::AttributeError(format!(
+                "failed to load RefinedRust library {incl}: {err}"
+            )));
+            PipelineError::Reported(err)
+        })?;
+        if let Some(new_includes) = new_includes {
             for incl in new_includes {
                 if !included_libs.contains(&incl) {
                     includes.insert(incl);
@@ -2241,14 +2273,20 @@ where
             continue;
         };
         let skip = included_libs.contains(&incl);
-        export_included_libs.insert(incl);
+        export_included_libs.insert(incl.clone());
 
         if skip {
             continue;
         }
 
-        let f = File::open(p).map_err(|_| ())?;
-        if let Some(new_includes) = shim_registry.add_source(f).map_err(|_| ())? {
+        let f = File::open(p).map_err(PipelineError::from)?;
+        let new_includes = shim_registry.add_source(f).map_err(|err| {
+            let err = tcx.dcx().err(error::Message::AttributeError(format!(
+                "failed to load exported RefinedRust library {incl}: {err}"
+            )));
+            PipelineError::Reported(err)
+        })?;
+        if let Some(new_includes) = new_includes {
             for incl in new_includes {
                 if !included_libs.contains(&incl) && !export_included_libs.contains(&incl) {
                     export_includes.insert(incl);
@@ -2278,9 +2316,9 @@ where
     };
 
     // this needs to be first, in order to ensure consistent ADT use
-    register_shims(&mut vcx).map_err(|_| ())?;
+    register_shims(&mut vcx);
 
-    register_functions(&mut vcx).map_err(|_| ())?;
+    register_functions(&mut vcx)?;
 
     register_traits(&mut vcx)?;
 
