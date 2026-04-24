@@ -53,11 +53,7 @@ pub(crate) struct GenericTraitUse<'tcx, 'def> {
 impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
     /// Get the associated type instantiation of an associated type given by [did] for this instantiation.
     /// This is used in the translation of symbolic `TyKind::Alias`.
-    pub(crate) fn get_associated_type_use(
-        &self,
-        tcx: ty::TyCtxt<'tcx>,
-        did: DefId,
-    ) -> specs::Type<'def> {
+    pub(crate) fn get_associated_type_use(&self, tcx: ty::TyCtxt<'tcx>, did: DefId) -> specs::Type<'def> {
         let Some(type_name) = environment::get_assoc_item_name(tcx, did) else {
             traits::raise_not_an_assoc_type(tcx, did);
         };
@@ -283,8 +279,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         })?;
 
         // make the literal we are going to use
-        let lit_trait_spec = self
-            .make_literal_trait_spec(did.to_def_id(), trait_name, valid_attrs, has_semantic_interp, attrs_dependent);
+        let lit_trait_spec = self.make_literal_trait_spec(
+            did.to_def_id(),
+            trait_name,
+            valid_attrs,
+            has_semantic_interp,
+            attrs_dependent,
+        );
         // already register it for use
         // In particular, this is also needed to be able to register the methods of this trait
         // below, as they need to be able to access the associated types of this trait already.
@@ -310,9 +311,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         }
 
         // lookup the pre-registered literal
-        let lit_trait_spec_ref = self
-            .lookup_trait(did.to_def_id())
-            .unwrap_or_else(|| traits::raise_not_a_trait(self.tcx, did.to_def_id()));
+        let lit_trait_spec_ref = self.lookup_trait(did.to_def_id()).ok_or_else(|| {
+            self.tcx.dcx().span_err(
+                self.tcx.def_span(did),
+                error::Message::TraitNotRegisteredWithRefinedRust(did.to_def_id()),
+            )
+        })?;
 
         let trait_name = strip_coq_ident(&environment::get_absolute_item_name(self.tcx, did.to_def_id()));
         let trait_attrs = attrs::filter_for_tool(environment::get_attributes(self.tcx, did.into()));
@@ -530,8 +534,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         );
         let trait_did = self.tcx.impl_trait_id(impl_did);
 
-        self.lookup_trait(trait_did)
-            .unwrap_or_else(|| traits::raise_not_a_trait(self.tcx, trait_did));
+        self.lookup_trait(trait_did).ok_or_else(|| {
+            self.tcx.dcx().span_err(
+                self.tcx.def_span(trait_did),
+                error::Message::TraitNotRegisteredWithRefinedRust(trait_did),
+            )
+        })?;
 
         let mut assoc_args = Vec::new();
         // get associated types of this impl
@@ -644,9 +652,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let closure_kind = search::get_closure_kind_of_trait_did(self.tcx, trait_did)
             .unwrap_or_else(|| traits::raise_not_a_closure_trait(self.tcx, trait_did));
 
-        let (closure_impl, _) = self
-            .lookup_closure_impl(closure_did, closure_kind)
-            .unwrap_or_else(|| traits::raise_not_a_closure_trait_impl(self.tcx, closure_did, closure_kind));
+        let (closure_impl, _) = self.lookup_closure_impl(closure_did, closure_kind).ok_or_else(|| {
+            self.tcx.dcx().span_err(
+                self.tcx.def_span(closure_did),
+                error::Message::ClosureImplNotRegisteredWithRefinedRust(closure_did, closure_kind),
+            )
+        })?;
 
         // compute associated type instantiation
         let mut assoc_args = Vec::new();
@@ -706,9 +717,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     ) -> Result<ResolvedTraitReq<'tcx, 'def>, TranslationError<'tcx>> {
         let current_typing_env: ty::TypingEnv<'tcx> = state.get_typing_env(self.tcx);
 
-        let trait_spec = self
-            .lookup_trait(trait_did)
-            .unwrap_or_else(|| traits::raise_not_a_trait(self.tcx, trait_did));
+        let trait_spec = self.lookup_trait(trait_did).ok_or_else(|| {
+            self.tcx.dcx().span_err(
+                self.tcx.def_span(trait_did),
+                error::Message::TraitNotRegisteredWithRefinedRust(trait_did),
+            )
+        })?;
 
         if let Some((impl_did, impl_args, kind)) =
             resolution::resolve_trait(self.tcx, current_typing_env, trait_did, trait_args, below_binders)
@@ -1067,12 +1081,18 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         //let trait_args
 
         // check if we registered this impl previously
-        let trait_spec_ref = self
-            .lookup_trait(trait_did)
-            .unwrap_or_else(|| traits::raise_not_a_trait(self.tcx, trait_did));
-        let (impl_ref, _) = self
-            .lookup_closure_impl(closure_did, kind)
-            .unwrap_or_else(|| traits::raise_not_a_closure_trait_impl(self.tcx, closure_did, kind));
+        let trait_spec_ref = self.lookup_trait(trait_did).ok_or_else(|| {
+            self.tcx.dcx().span_err(
+                self.tcx.def_span(trait_did),
+                error::Message::TraitNotRegisteredWithRefinedRust(trait_did),
+            )
+        })?;
+        let (impl_ref, _) = self.lookup_closure_impl(closure_did, kind).ok_or_else(|| {
+            self.tcx.dcx().span_err(
+                self.tcx.def_span(closure_did),
+                error::Message::ClosureImplNotRegisteredWithRefinedRust(closure_did, kind),
+            )
+        })?;
 
         // This should be computable directly from the closure's scope
         // - includes the generics of the parent
@@ -1160,9 +1180,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let subject = self.tcx.impl_trait_header(trait_impl_did);
         let trait_ref = subject.trait_ref.skip_binder();
 
-        let trait_spec_ref = self
-            .lookup_trait(trait_ref.def_id)
-            .unwrap_or_else(|| traits::raise_not_a_trait(self.tcx, trait_ref.def_id));
+        let trait_spec_ref = self.lookup_trait(trait_ref.def_id).ok_or_else(|| {
+            self.tcx.dcx().span_err(
+                self.tcx.def_span(trait_ref.def_id),
+                error::Message::TraitNotRegisteredWithRefinedRust(trait_ref.def_id),
+            )
+        })?;
 
         let self_ty = trait_ref.self_ty();
         let ty::TyKind::Adt(def, _) = self_ty.kind() else {
@@ -1253,9 +1276,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let trait_did = self.tcx.impl_trait_id(trait_impl_did);
 
         // check if we registered this impl previously
-        let trait_spec_ref = self
-            .lookup_trait(trait_did)
-            .unwrap_or_else(|| traits::raise_not_a_trait(self.tcx, trait_did));
+        let trait_spec_ref = self.lookup_trait(trait_did).ok_or_else(|| {
+            self.tcx.dcx().span_err(
+                self.tcx.def_span(trait_did),
+                error::Message::TraitNotRegisteredWithRefinedRust(trait_did),
+            )
+        })?;
         let impl_ref = self
             .lookup_impl(trait_impl_did)
             .unwrap_or_else(|| traits::raise_not_a_trait_impl(self.tcx, trait_impl_did));

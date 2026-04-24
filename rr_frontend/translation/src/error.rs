@@ -121,6 +121,12 @@ pub(crate) enum Message<'tcx> {
     #[display("Attribute is ill-formed: {}", _0)]
     AttributeError(String),
 
+    #[display("Skipping function due to `#[rr::skip]`")]
+    SkipWarn,
+
+    #[display("Skipping function due to `#[rr::skip]` on enclosing impl")]
+    SkipOnImplWarn,
+
     #[display("Skipping function due to previous failure: {}", _0)]
     SkippedDueToPreviousFailure(String),
 
@@ -166,8 +172,15 @@ pub(crate) enum Message<'tcx> {
     #[display("An error occurred when parsing the specification of the trait impl {:?}: {:?}", _0, _1)]
     TraitImplSpec(DefId, String),
 
-    #[display("This trait {:?} has not been registered yet", _0)]
-    UnregisteredTrait(DefId),
+    #[display("Trait {:?} has not been registered with RefinedRust yet", _0)]
+    TraitNotRegisteredWithRefinedRust(DefId),
+
+    #[display(
+        "Closure impl for {:?} with kind {:?} has not been registered with RefinedRust yet; add a specification for it?",
+        _0,
+        _1
+    )]
+    ClosureImplNotRegisteredWithRefinedRust(DefId, ty::ClosureKind),
 
     #[display("This trait impl {:?} of {:?} has not been registered yet", _0, _1)]
     UnregisteredImpl(DefId, DefId),

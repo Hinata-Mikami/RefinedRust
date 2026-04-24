@@ -41,6 +41,7 @@ use log::{error, info, trace, warn};
 use radium::{code, coq, lang, specs};
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::{queries, ty};
+use rr_rustc_interface::span::Span;
 use rr_rustc_interface::{hir, span};
 use typed_arena::Arena;
 
@@ -520,7 +521,13 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                         writeln!(spec_file, "{}", fun.spec.generate_trait_req_incl_def()).unwrap();
                         writeln!(spec_file, "{}", fun.spec).unwrap();
                     } else {
-                        warn!("No specification for {}", fun.name());
+                        self.tcx.dcx().span_warn(
+                            self.tcx.def_span(did.def_id),
+                            error::Message::AttributeError(format!(
+                                "no specification provided for {}",
+                                fun.name()
+                            )),
+                        );
 
                         writeln!(spec_file, "(* No specification provided for {} *)", fun.name()).unwrap();
                     }
@@ -1003,6 +1010,23 @@ fn resolve_shim(vcx: &VerificationCtxt<'_, '_>, path: &[&str], is_method: bool) 
     }
 }
 
+fn find_tool_attr_span(tcx: ty::TyCtxt<'_>, did: DefId, name: &str) -> Option<Span> {
+    attrs::filter_for_tool(environment::get_attributes(tcx, did))
+        .into_iter()
+        .find(|attr| attrs::get_tool_attr_name(attr) == Some(name))
+        .map(|attr| attr.span)
+}
+
+fn find_external_export_attr_span(tcx: ty::TyCtxt<'_>, did: DefId) -> Option<Span> {
+    find_tool_attr_span(tcx, did, "export_as").or_else(|| {
+        let surrounding_did = tcx
+            .impl_of_assoc(did)
+            .or_else(|| tcx.trait_of_assoc(did))
+            .or_else(|| tcx.opt_parent(did))?;
+        find_tool_attr_span(tcx, surrounding_did, "export_as")
+    })
+}
+
 /// Register shims in the procedure registry.
 fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base::TranslationError<'tcx>> {
     for shim in vcx.shim_registry.get_function_shims() {
@@ -1090,14 +1114,13 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
 
         let Some(did) = trait_impl_did else {
             warn!(
-                "Warning: cannot find defid for implementation of {:?} for {:?}",
+                "cannot find implementation of {:?} for {:?} required by included shim library",
                 shim.trait_path, for_type
             );
             continue;
         };
 
-        vcx.trait_registry
-            .register_impl_shim(did, shim.specs.clone());
+        vcx.trait_registry.register_impl_shim(did, shim.specs.clone());
 
         // now register all the method shims
         let impl_assoc_items: &ty::AssocItems = vcx.tcx.associated_items(did);
@@ -1221,7 +1244,14 @@ fn register_functions<'tcx>(
         let is_default_trait_impl = vcx.tcx.trait_of_assoc(f.to_def_id()).is_some();
 
         if mode == procedures::Mode::Shim && is_default_trait_impl {
-            warn!("ignoring rr::shim attribute on default trait impl");
+            let span = find_tool_attr_span(vcx.tcx, f.to_def_id(), "shim")
+                .unwrap_or_else(|| vcx.tcx.def_span(f.to_def_id()));
+            vcx.tcx.dcx().span_warn(
+                span,
+                error::Message::AttributeError(
+                    "ignoring rr::shim attribute on default trait item".to_owned(),
+                ),
+            );
             mode = procedures::Mode::Prove;
         }
         if mode == procedures::Mode::Shim {
@@ -1277,7 +1307,16 @@ fn register_functions<'tcx>(
         }
 
         if mode.is_shim() || mode.is_code_shim() {
-            warn!("Nonsensical shim attribute on impl; ignoring");
+            let impl_did = vcx.tcx.impl_of_assoc(f.to_def_id()).unwrap();
+            let span = find_tool_attr_span(vcx.tcx, impl_did, "shim")
+                .or_else(|| find_tool_attr_span(vcx.tcx, impl_did, "code_shim"))
+                .unwrap_or_else(|| vcx.tcx.def_span(impl_did));
+            vcx.tcx.dcx().span_warn(
+                span,
+                error::Message::AttributeError(
+                    "ignoring rr::shim/rr::code_shim attribute on impl".to_owned(),
+                ),
+            );
             mode = procedures::Mode::Prove;
         }
 
@@ -1297,7 +1336,14 @@ fn register_functions<'tcx>(
                 );
                 vcx.procedure_registry.register_function(export_did, meta)?;
             } else {
-                warn!("Could not resolve annotated export path {interned_path:?}");
+                let span = find_external_export_attr_span(vcx.tcx, f.to_def_id())
+                    .unwrap_or_else(|| vcx.tcx.def_span(f.to_def_id()));
+                vcx.tcx.dcx().span_warn(
+                    span,
+                    error::Message::AttributeError(format!(
+                        "could not resolve annotated export path {interned_path:?}"
+                    )),
+                );
             }
         }
 
@@ -1455,7 +1501,7 @@ fn check_consider_function<'tcx>(
     id: LocalDefId,
 ) -> Result<bool, base::TranslationError<'tcx>> {
     if environment::has_tool_attribute(vcx.tcx, id.to_def_id(), "skip") {
-        warn!("Function {:?} will be skipped due to a rr::skip annotation", id);
+        vcx.tcx.dcx().span_warn(vcx.tcx.def_span(id), error::Message::SkipWarn);
         return Ok(false);
     }
     let has_any_attribute = environment::has_any_tool_attribute(vcx.tcx, id.to_def_id());
@@ -1466,7 +1512,7 @@ fn check_consider_function<'tcx>(
     };
 
     if environment::has_tool_attribute(vcx.tcx, impl_did, "skip") {
-        warn!("Function {:?} will be skipped due to a rr::skip annotation on impl", id);
+        vcx.tcx.dcx().span_warn(vcx.tcx.def_span(impl_did), error::Message::SkipOnImplWarn);
         return Ok(false);
     }
 
@@ -1938,7 +1984,6 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> bool {
                         if let Some(spec) = vcx.procedure_registry.lookup_function_spec(fn_item.def_id) {
                             methods.insert(x.name().as_str().to_owned(), specs::traits::InstanceMethodSpec::Defined(spec));
                         } else {
-                            warn!("Incomplete specification for {}", fn_item.name());
                             let err = vcx.tcx.dcx().span_err(
                                 vcx.tcx.def_span(did),
                                 error::Message::IncompleteTraitImplSpec(did),
@@ -2088,6 +2133,13 @@ where
     // get module attributes
     let module_attrs = get_module_attributes(tcx)?;
 
+    let mut include_spans = crate_spec.include_spans.clone();
+    let mut export_include_spans = crate_spec.export_include_spans.clone();
+    for module_attr in module_attrs.values() {
+        include_spans.extend(module_attr.include_spans.clone());
+        export_include_spans.extend(module_attr.export_include_spans.clone());
+    }
+
     // process exports
     let mut exports: BTreeSet<coq::module::Export> = BTreeSet::new();
 
@@ -2152,7 +2204,18 @@ where
         let incl = includes.iter().next().unwrap().to_owned();
         includes.remove(&incl);
         let Some(p) = found_libs.get(&incl) else {
-            warn!("did not find library {} in loadpath", incl);
+            if let Some(span) = include_spans.get(&incl).copied() {
+                tcx.dcx().span_warn(
+                    span,
+                    error::Message::AttributeError(format!(
+                        "did not find included library {incl} in loadpath"
+                    )),
+                );
+            } else {
+                tcx.dcx().warn(error::Message::AttributeError(format!(
+                    "did not find included library {incl} in loadpath"
+                )));
+            }
             continue;
         };
         included_libs.insert(incl);
@@ -2172,7 +2235,18 @@ where
         let incl = export_includes.iter().next().unwrap().to_owned();
         export_includes.remove(&incl);
         let Some(p) = found_libs.get(&incl) else {
-            warn!("did not find library {} in loadpath", incl);
+            if let Some(span) = export_include_spans.get(&incl).copied() {
+                tcx.dcx().span_warn(
+                    span,
+                    error::Message::AttributeError(format!(
+                        "did not find exported included library {incl} in loadpath"
+                    )),
+                );
+            } else {
+                tcx.dcx().warn(error::Message::AttributeError(format!(
+                    "did not find exported included library {incl} in loadpath"
+                )));
+            }
             continue;
         };
         let skip = included_libs.contains(&incl);

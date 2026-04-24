@@ -226,10 +226,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         // restrict the scope of the borrow
         let (trait_use_ref, bound_regions_inst, mapped_early_regions) = {
             let mut scope = self.scope.borrow_mut();
-            let entry = scope
-                .generic_scope
-                .trait_scope()
-                .lookup_trait_use(tcx, trait_did, trait_args.as_slice());
+            let entry =
+                scope.generic_scope.trait_scope().lookup_trait_use(tcx, trait_did, trait_args.as_slice());
             let trait_use_ref = entry.trait_use;
 
             let typing_env = ty::TypingEnv::post_analysis(tcx, scope.did);
@@ -437,9 +435,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             let tcx = self.translator.tcx();
             let trait_did = tcx.parent(alias_ty.def_id);
             let param_scope = self.scope.borrow().make_params_scope();
-            let entry = param_scope
-                .trait_scope()
-                .lookup_trait_use(tcx, trait_did, alias_ty.args);
+            let entry = param_scope.trait_scope().lookup_trait_use(tcx, trait_did, alias_ty.args);
             let assoc_type = entry.get_associated_type_use(tcx, alias_ty.def_id);
             if let specs::Type::LiteralParam(mut lit) = assoc_type {
                 lit.set_origin(specs::TyParamOrigin::Direct);

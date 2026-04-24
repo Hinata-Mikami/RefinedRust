@@ -19,13 +19,11 @@ use crate::base::*;
 use crate::error::Message;
 use crate::spec_parsers::parse_utils::{ParamLookup, RustPath, RustPathElem};
 use crate::spec_parsers::verbose_function_spec_parser::TraitReqHandler;
-use crate::traits;
-use crate::traits::requirements;
 use crate::traits::registry::GenericTraitUse;
-use crate::traits::registry;
+use crate::traits::{registry, requirements};
 use crate::types::translator::TX;
 use crate::types::tyvars::TyRegionEraseFolder;
-use crate::{environment, regions};
+use crate::{environment, regions, traits};
 
 /// Key used for resolving early-bound parameters for function calls.
 /// Invariant: All regions contained in these types should be erased, as type parameter instantiation is
@@ -575,7 +573,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             // TODO: do we get into trouble with recursive trait requirements somewhere?
             // lookup the trait in the trait registry
             let Some(trait_spec) = trait_registry.lookup_trait(req.trait_ref.def_id) else {
-                return Err(tcx.dcx().err(Message::UnregisteredTrait(req.trait_ref.def_id)).into());
+                return Err(tcx
+                    .dcx()
+                    .err(Message::TraitNotRegisteredWithRefinedRust(req.trait_ref.def_id))
+                    .into());
             };
 
             let key = (req.trait_ref.def_id, generate_args_inst_key(tcx, req.trait_ref.args).unwrap());

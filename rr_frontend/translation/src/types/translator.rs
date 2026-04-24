@@ -359,10 +359,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         args: &[ty::GenericArg<'tcx>],
     ) -> &registry::GenericTraitUse<'tcx, 'def> {
         //trace!("Enter lookup_trait_use for trait_did = {trait_did:?}, args = {args:?}, self = {self:?}");
-        let res = self
-            .param_scope()
-            .trait_scope()
-            .lookup_trait_use(tcx, trait_did, args);
+        let res = self.param_scope().trait_scope().lookup_trait_use(tcx, trait_did, args);
         //trace!("Leave lookup_trait_use for trait_did = {trait_did:?}, args = {args:?} with res = {res:?}");
         res
     }

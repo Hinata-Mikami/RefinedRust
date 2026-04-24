@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 use attribute_parse::parse;
 use derive_more::Display;
@@ -55,6 +55,8 @@ pub(crate) struct CrateAttrs {
     pub prefix: Option<String>,
     pub includes: HashSet<String>,
     pub export_includes: HashSet<String>,
+    pub include_spans: BTreeMap<String, Span>,
+    pub export_include_spans: BTreeMap<String, Span>,
     pub package: Option<String>,
 }
 
@@ -75,6 +77,8 @@ impl CrateAttrParser for VerboseCrateAttrParser {
         let mut exports: Vec<coq::module::Export> = Vec::new();
         let mut includes: HashSet<String> = HashSet::new();
         let mut export_includes: HashSet<String> = HashSet::new();
+        let mut include_spans: BTreeMap<String, Span> = BTreeMap::new();
+        let mut export_include_spans: BTreeMap<String, Span> = BTreeMap::new();
         let mut prefix: Option<String> = None;
         let mut package: Option<String> = None;
 
@@ -96,11 +100,15 @@ impl CrateAttrParser for VerboseCrateAttrParser {
                 },
                 "include" => {
                     let name: parse::LitStr = buffer.parse(&()).map_err(|e| parse_err(attr_span, e))?;
-                    includes.insert(name.value());
+                    let name = name.value();
+                    includes.insert(name.clone());
+                    include_spans.entry(name).or_insert(attr_span);
                 },
                 "export_include" => {
                     let name: parse::LitStr = buffer.parse(&()).map_err(|e| parse_err(attr_span, e))?;
-                    export_includes.insert(name.value());
+                    let name = name.value();
+                    export_includes.insert(name.clone());
+                    export_include_spans.entry(name).or_insert(attr_span);
                 },
                 "coq_prefix" => {
                     let path: parse::LitStr = buffer.parse(&()).map_err(|e| parse_err(attr_span, e))?;
@@ -127,6 +135,8 @@ impl CrateAttrParser for VerboseCrateAttrParser {
             prefix,
             includes,
             export_includes,
+            include_spans,
+            export_include_spans,
             package,
         })
     }
