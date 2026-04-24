@@ -19,8 +19,10 @@ use crate::base::*;
 use crate::error::Message;
 use crate::spec_parsers::parse_utils::{ParamLookup, RustPath, RustPathElem};
 use crate::spec_parsers::verbose_function_spec_parser::TraitReqHandler;
+use crate::traits;
+use crate::traits::requirements;
 use crate::traits::registry::GenericTraitUse;
-use crate::traits::{self, registry};
+use crate::traits::registry;
 use crate::types::translator::TX;
 use crate::types::tyvars::TyRegionEraseFolder;
 use crate::{environment, regions};
@@ -548,7 +550,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     ) -> Result<(), TranslationError<'tcx>> {
         let typing_env = ty::TypingEnv::post_analysis(tcx, did);
         let is_trait = tcx.is_trait(did);
-        let requirements = traits::requirements::get_trait_requirements_with_origin(tcx, did);
+        let requirements = requirements::get_trait_requirements_with_origin(tcx, did);
 
         // pre-register all the requirements, in order to resolve dependencies
         for req in &requirements {
@@ -915,17 +917,17 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
         tcx: ty::TyCtxt<'tcx>,
         trait_did: DefId,
         args: &[ty::GenericArg<'tcx>],
-    ) -> Result<&GenericTraitUse<'tcx, 'def>, traits::Error<'tcx>> {
+    ) -> &GenericTraitUse<'tcx, 'def> {
         if !tcx.is_trait(trait_did) {
-            return Err(traits::Error::NotATrait(trait_did));
+            traits::raise_not_a_trait(tcx, trait_did);
         }
 
         let key = (trait_did, generate_args_inst_key(tcx, args).unwrap());
         trace!("looking up trait use {key:?} in {:?}", self.used_traits);
         if let Some(trait_ref) = self.used_traits.get(&key) {
-            Ok(trait_ref)
+            trait_ref
         } else {
-            Err(traits::Error::UnknownLocalInstance(trait_did, tcx.mk_args(args)))
+            traits::raise_unknown_local_instance(tcx, trait_did, tcx.mk_args(args))
         }
     }
 

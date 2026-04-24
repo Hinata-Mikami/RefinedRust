@@ -6,7 +6,6 @@
 
 use std::collections::HashMap;
 
-use derive_more::Display;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
@@ -16,110 +15,59 @@ pub(crate) mod registry;
 pub(crate) mod requirements;
 pub(crate) mod resolution;
 
-#[derive(Debug, Clone, Display, Eq, PartialEq)]
-pub(crate) enum Error<'tcx> {
-    /// This `DefId` is not a trait
-    #[display("The given `DefId` {:?} is not a trait", _0)]
-    NotATrait(DefId),
-
-    /// This `DefId` is not an impl of a trait
-    #[display("The given `DefId` {:?} is not a trait implementation", _0)]
-    NotATraitImpl(DefId),
-
-    /// This closure does not implement the closure trait
-    #[display("Did not find trait impl of {:?} for closure {:?}", _1, _0)]
-    NotAClosureTraitImpl(DefId, ty::ClosureKind),
-
-    /// This `DefId` does not represent a closure trait, when it was expected to.
-    #[display("This DefId does not represent a closure trait {:?}", _0)]
-    NotAClosureTrait(DefId),
-
-    /// The trait for this closure kind could not be found
-    #[display("Could not find the trait for closure kind {:?}", _0)]
-    CouldNotFindClosureTrait(ty::ClosureKind),
-
-    /// This `DefId` is not a trait method
-    #[display("The given `DefId` {:?} is not a trait method", _0)]
-    NotATraitMethod(DefId),
-
-    /// This `DefId` is not an assoc type
-    #[display("The given `DefId` {:?} is not an associated type", _0)]
-    NotAnAssocType(DefId),
-
-    /// We encountered an associated constant
-    #[display("Associated constants are not supported")]
-    AssocConstNotSupported,
-
-    /// This trait already exists
-    #[display("This trait {:?} already has been registered", _0)]
-    TraitAlreadyExists(DefId),
-
-    /// This trait impl already exists
-    #[display("This trait impl {:?} already has been registered", _0)]
-    ImplAlreadyExists(DefId),
-
-    /// This closure trait impl already exists
-    #[display("This closure ({:?}, {:?}) already has been registered", _0, _1)]
-    ClosureImplAlreadyExists(DefId, ty::ClosureKind),
-
-    /// Cannot find this trait instance in the local environment
-    #[display("An instance for this trait {:?} cannot by found with generic args {:?}", _0, _1)]
-    UnknownLocalInstance(DefId, ty::GenericArgsRef<'tcx>),
+pub(crate) fn raise_unknown_local_instance<'tcx>(tcx: ty::TyCtxt<'tcx>, trait_did: DefId, args: ty::GenericArgsRef<'tcx>) -> ! {
+    tcx.dcx().bug(format!("could not find local instance for trait {trait_did:?} with generic args {args:?}"))
 }
 
-impl<'tcx> Error<'tcx> {
-    pub(crate) fn raise(self, tcx: ty::TyCtxt<'tcx>) -> ! {
-        match self {
-            Self::UnknownLocalInstance(trait_did, args) => tcx.dcx().bug(format!(
-                "could not find local instance for trait {trait_did:?} with generic args {args:?}"
-            )),
-            Self::NotATrait(did) => {
-                tcx.dcx().span_bug(tcx.def_span(did), format!("expected trait, found non-trait item: {did:?}"))
-            },
-            Self::NotATraitImpl(did) => tcx.dcx().span_bug(
-                tcx.def_span(did),
-                format!("expected trait impl, found non-trait impl item: {did:?}"),
-            ),
-            Self::NotAClosureTraitImpl(closure_did, closure_kind) => tcx.dcx().span_bug(
-                tcx.def_span(closure_did),
-                format!(
-                    "expected registered closure impl for {closure_did:?} with kind {closure_kind:?}, but none was found"
-                ),
-            ),
-            Self::NotAClosureTrait(did) => tcx.dcx().span_bug(
-                tcx.def_span(did),
-                format!("expected closure trait, found non-closure trait item: {did:?}"),
-            ),
-            Self::CouldNotFindClosureTrait(kind) => {
-                tcx.dcx().bug(format!("could not resolve lang-item closure trait for kind {kind:?}"))
-            },
-            Self::NotATraitMethod(did) => tcx.dcx().span_bug(
-                tcx.def_span(did),
-                format!("expected trait method, found non-trait method item: {did:?}"),
-            ),
-            Self::NotAnAssocType(did) => tcx.dcx().span_bug(
-                tcx.def_span(did),
-                format!("expected associated type, found different associated item: {did:?}"),
-            ),
-            Self::AssocConstNotSupported => tcx
-                .dcx()
-                .bug("associated constants in trait translation should have been rejected earlier".to_owned()),
-            Self::TraitAlreadyExists(did) => tcx.dcx().span_bug(
-                tcx.def_span(did),
-                format!("trait shim already registered for {did:?}"),
-            ),
-            Self::ImplAlreadyExists(did) => {
-                tcx.dcx().span_bug(tcx.def_span(did), format!("trait impl shim already registered for {did:?}"))
-            },
-            Self::ClosureImplAlreadyExists(closure_did, closure_kind) => tcx.dcx().span_bug(
-                tcx.def_span(closure_did),
-                format!("closure impl already registered for {closure_did:?} with kind {closure_kind:?}"),
-            ),
-        }
-    }
+pub(crate) fn raise_not_a_trait(tcx: ty::TyCtxt<'_>, did: DefId) -> ! {
+    tcx.dcx().span_bug(tcx.def_span(did), format!("expected trait, found non-trait item: {did:?}"))
 }
 
-pub(crate) type TraitResult<'tcx, T> = Result<T, Error<'tcx>>;
+pub(crate) fn raise_not_a_trait_impl(tcx: ty::TyCtxt<'_>, did: DefId) -> ! {
+    tcx.dcx().span_bug(tcx.def_span(did), format!("expected trait impl, found non-trait impl item: {did:?}"))
+}
+
+pub(crate) fn raise_not_a_closure_trait_impl(tcx: ty::TyCtxt<'_>, closure_did: DefId, closure_kind: ty::ClosureKind) -> ! {
+    tcx.dcx().span_bug(
+        tcx.def_span(closure_did),
+        format!("expected registered closure impl for {closure_did:?} with kind {closure_kind:?}, but none was found"),
+    )
+}
+
+pub(crate) fn raise_not_a_closure_trait(tcx: ty::TyCtxt<'_>, did: DefId) -> ! {
+    tcx.dcx().span_bug(tcx.def_span(did), format!("expected closure trait, found non-closure trait item: {did:?}"))
+}
+
+pub(crate) fn raise_could_not_find_closure_trait(tcx: ty::TyCtxt<'_>, kind: ty::ClosureKind) -> ! {
+    tcx.dcx().bug(format!("could not resolve lang-item closure trait for kind {kind:?}"))
+}
+
+pub(crate) fn raise_not_a_trait_method(tcx: ty::TyCtxt<'_>, did: DefId) -> ! {
+    tcx.dcx().span_bug(tcx.def_span(did), format!("expected trait method, found non-trait method item: {did:?}"))
+}
+
+pub(crate) fn raise_not_an_assoc_type(tcx: ty::TyCtxt<'_>, did: DefId) -> ! {
+    tcx.dcx().span_bug(tcx.def_span(did), format!("expected associated type, found different associated item: {did:?}"))
+}
+
+pub(crate) fn raise_assoc_const_not_supported(tcx: ty::TyCtxt<'_>) -> ! {
+    tcx.dcx().bug("associated constants in trait translation should have been rejected earlier".to_owned())
+}
+
+pub(crate) fn raise_trait_already_exists(tcx: ty::TyCtxt<'_>, did: DefId) -> ! {
+    tcx.dcx().span_bug(tcx.def_span(did), format!("trait shim already registered for {did:?}"))
+}
+
+pub(crate) fn raise_impl_already_exists(tcx: ty::TyCtxt<'_>, did: DefId) -> ! {
+    tcx.dcx().span_bug(tcx.def_span(did), format!("trait impl shim already registered for {did:?}"))
+}
+
+pub(crate) fn raise_closure_impl_already_exists(tcx: ty::TyCtxt<'_>, closure_did: DefId, closure_kind: ty::ClosureKind) -> ! {
+    tcx.dcx().span_bug(
+        tcx.def_span(closure_did),
+        format!("closure impl already registered for {closure_did:?} with kind {closure_kind:?}"),
+    )
+}
 
 /// Given a particular reference to a trait, get the associated type constraints for this trait reference.
 pub(crate) fn get_trait_assoc_constraints<'tcx>(

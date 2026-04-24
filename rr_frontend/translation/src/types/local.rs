@@ -229,8 +229,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             let entry = scope
                 .generic_scope
                 .trait_scope()
-                .lookup_trait_use(tcx, trait_did, trait_args.as_slice())
-                .unwrap_or_else(|e| e.raise(tcx));
+                .lookup_trait_use(tcx, trait_did, trait_args.as_slice());
             let trait_use_ref = entry.trait_use;
 
             let typing_env = ty::TypingEnv::post_analysis(tcx, scope.did);
@@ -440,10 +439,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             let param_scope = self.scope.borrow().make_params_scope();
             let entry = param_scope
                 .trait_scope()
-                .lookup_trait_use(tcx, trait_did, alias_ty.args)
-                .unwrap_or_else(|e| e.raise(tcx));
-            let assoc_type =
-                entry.get_associated_type_use(tcx, alias_ty.def_id).unwrap_or_else(|e| e.raise(tcx));
+                .lookup_trait_use(tcx, trait_did, alias_ty.args);
+            let assoc_type = entry.get_associated_type_use(tcx, alias_ty.def_id);
             if let specs::Type::LiteralParam(mut lit) = assoc_type {
                 lit.set_origin(specs::TyParamOrigin::Direct);
                 scope.add_ty_param(lit.clone());

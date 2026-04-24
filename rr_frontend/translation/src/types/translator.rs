@@ -362,8 +362,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         let res = self
             .param_scope()
             .trait_scope()
-            .lookup_trait_use(tcx, trait_did, args)
-            .unwrap_or_else(|e| e.raise(tcx));
+            .lookup_trait_use(tcx, trait_did, args);
         //trace!("Leave lookup_trait_use for trait_did = {trait_did:?}, args = {args:?} with res = {res:?}");
         res
     }
@@ -1756,9 +1755,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
                         let trait_did = self.tcx.parent(alias_ty.def_id);
                         let entry = &state.lookup_trait_use(self.tcx, trait_did, alias_ty.args);
-                        let assoc_type = entry
-                            .get_associated_type_use(self.tcx, alias_ty.def_id)
-                            .unwrap_or_else(|e| e.raise(self.tcx));
+                        let assoc_type = entry.get_associated_type_use(self.tcx, alias_ty.def_id);
 
                         info!("Resolved projection to {assoc_type:?}");
 

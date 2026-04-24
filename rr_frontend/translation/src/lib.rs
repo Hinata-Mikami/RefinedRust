@@ -814,7 +814,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         base_dir_path.push(stem);
 
         if fs::read_dir(base_dir_path.as_path()).is_err() {
-            warn!("Output directory {:?} does not exist, creating directory", base_dir_path.display());
+            info!("Output directory {:?} does not exist, creating directory", base_dir_path.display());
             fs::create_dir_all(base_dir_path.as_path()).unwrap();
         }
 
@@ -891,7 +891,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         // write generated (subdirectory "generated")
         info!("outputting generated code to {}", generated_dir_path.to_str().unwrap());
         if fs::read_dir(generated_dir_path).is_err() {
-            warn!("Output directory {} does not exist, creating directory", generated_dir_path.display());
+            info!("Output directory {} does not exist, creating directory", generated_dir_path.display());
         } else {
             // purge contents
             info!("Removing the contents of the generated directory");
@@ -941,7 +941,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         // write proofs (subdirectory "proofs")
         info!("using {} as proof directory", proof_dir_path.to_str().unwrap());
         if fs::read_dir(proof_dir_path).is_err() {
-            warn!("Output directory {} does not exist, creating directory", proof_dir_path.display());
+            info!("Output directory {} does not exist, creating directory", proof_dir_path.display());
             fs::create_dir_all(proof_dir_path).unwrap();
         }
 
@@ -976,7 +976,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                     }
                 }
 
-                warn!("Proof file {filename} does not have a matching Rust function to verify");
+                info!("Proof file {filename} does not have a matching Rust function to verify");
             }
         }
 
@@ -1062,7 +1062,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
                 method_trait_incl_decls: shim.method_trait_incl_decls.clone(),
             };
 
-            vcx.trait_registry.register_shim(did, spec).unwrap_or_else(|e| e.raise(vcx.tcx));
+            vcx.trait_registry.register_shim(did, spec);
         } else {
             warn!("cannot find defid for shim {:?}, skipping", shim.path);
         }
@@ -1097,8 +1097,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
         };
 
         vcx.trait_registry
-            .register_impl_shim(did, shim.specs.clone())
-            .unwrap_or_else(|e| e.raise(vcx.tcx));
+            .register_impl_shim(did, shim.specs.clone());
 
         // now register all the method shims
         let impl_assoc_items: &ty::AssocItems = vcx.tcx.associated_items(did);
@@ -1651,7 +1650,7 @@ fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), String> {
 
 /// Register trait impls of all registered traits.
 /// Precondition: traits have already been registered.
-fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
+fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) {
     let trait_impl_ids = environment::get_trait_impls(vcx.tcx);
     info!("Found trait impls: {:?}", trait_impl_ids);
 
@@ -1686,13 +1685,9 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
                 registered.has_semantic_interp,
             );
 
-            vcx.trait_registry
-                .register_impl_shim(did, impl_lit)
-                .map_err(|x| ToString::to_string(&x))?;
+            vcx.trait_registry.register_impl_shim(did, impl_lit);
         }
     }
-
-    Ok(())
 }
 
 /// Check if the `RefinedRust` closure library is available
@@ -1713,10 +1708,10 @@ fn are_closures_available(vcx: &VerificationCtxt<'_, '_>) -> bool {
 }
 
 /// Register all closure impls.
-fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
+fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) {
     if !are_closures_available(vcx) {
         warn!("The RefinedRust closure library has not been imported, you will not be able to use closures.");
-        return Ok(());
+        return;
     }
 
     for closure_did in vcx.closures {
@@ -1736,7 +1731,7 @@ fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> 
         let clos_args = environment::get_closure_args(vcx.tcx, closure_did.to_def_id());
         let kind = clos_args.kind();
 
-        let make_impl = |kind| -> Result<(), String> {
+        let make_impl = |kind| {
             // make names for the spec and inclusion proof
             let impl_lit = specs::traits::LiteralImpl::new(
                 base::strip_coq_ident(&format!("{}_{kind:?}", environment::get_item_name(vcx.tcx, did))),
@@ -1764,29 +1759,24 @@ fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> 
                 false,
             );
 
-            vcx.trait_registry
-                .register_closure_impl(did, kind, impl_lit, fn_lit)
-                .map_err(|x| ToString::to_string(&x))?;
-            Ok(())
+            vcx.trait_registry.register_closure_impl(did, kind, impl_lit, fn_lit);
         };
 
         match kind {
             ty::ClosureKind::FnOnce => {
-                make_impl(ty::ClosureKind::FnOnce)?;
+                make_impl(ty::ClosureKind::FnOnce);
             },
             ty::ClosureKind::FnMut => {
-                make_impl(ty::ClosureKind::FnOnce)?;
-                make_impl(ty::ClosureKind::FnMut)?;
+                make_impl(ty::ClosureKind::FnOnce);
+                make_impl(ty::ClosureKind::FnMut);
             },
             ty::ClosureKind::Fn => {
-                make_impl(ty::ClosureKind::FnOnce)?;
-                make_impl(ty::ClosureKind::FnMut)?;
-                make_impl(ty::ClosureKind::Fn)?;
+                make_impl(ty::ClosureKind::FnOnce);
+                make_impl(ty::ClosureKind::FnMut);
+                make_impl(ty::ClosureKind::Fn);
             },
         }
     }
-
-    Ok(())
 }
 
 /// Generate closure trait instances.
@@ -2229,9 +2219,9 @@ where
 
     register_traits(&mut vcx)?;
 
-    register_trait_impls(&vcx)?;
+    register_trait_impls(&vcx);
 
-    register_closure_impls(&vcx)?;
+    register_closure_impls(&vcx);
 
     // after trait impls, as type translation may depend on trait impls
     register_consts(&mut vcx)?;
