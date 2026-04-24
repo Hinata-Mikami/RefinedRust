@@ -357,11 +357,15 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         trait_did: DefId,
         args: &[ty::GenericArg<'tcx>],
-    ) -> Result<&registry::GenericTraitUse<'tcx, 'def>, TranslationError<'tcx>> {
+    ) -> &registry::GenericTraitUse<'tcx, 'def> {
         //trace!("Enter lookup_trait_use for trait_did = {trait_did:?}, args = {args:?}, self = {self:?}");
-        let res = self.param_scope().trait_scope().lookup_trait_use(tcx, trait_did, args)?;
+        let res = self
+            .param_scope()
+            .trait_scope()
+            .lookup_trait_use(tcx, trait_did, args)
+            .unwrap_or_else(|e| e.raise(tcx));
         //trace!("Leave lookup_trait_use for trait_did = {trait_did:?}, args = {args:?} with res = {res:?}");
-        Ok(res)
+        res
     }
 
     /// Lookup a type parameter in the current state
@@ -490,7 +494,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
             },
             STInner::TranslateAdt(_scope) => {
                 info!("Translating region: ReVar {:?} as None (outside of function)", v);
-                Err(InternalError::PoloniusRegionOutsideFunction(v).into())
+                tcx.dcx().bug(format!("encountered Polonius region outside function translation: {v:?}"))
             },
             STInner::CalleeTranslation(_) => Ok(coq::Ident::new("DUMMY")),
         }
@@ -1751,8 +1755,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                         );
 
                         let trait_did = self.tcx.parent(alias_ty.def_id);
-                        let entry = &state.lookup_trait_use(self.tcx, trait_did, alias_ty.args)?;
-                        let assoc_type = entry.get_associated_type_use(self.tcx, alias_ty.def_id)?;
+                        let entry = &state.lookup_trait_use(self.tcx, trait_did, alias_ty.args);
+                        let assoc_type = entry
+                            .get_associated_type_use(self.tcx, alias_ty.def_id)
+                            .unwrap_or_else(|e| e.raise(self.tcx));
 
                         info!("Resolved projection to {assoc_type:?}");
 

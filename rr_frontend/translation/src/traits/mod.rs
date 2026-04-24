@@ -67,6 +67,58 @@ pub(crate) enum Error<'tcx> {
     UnknownLocalInstance(DefId, ty::GenericArgsRef<'tcx>),
 }
 
+impl<'tcx> Error<'tcx> {
+    pub(crate) fn raise(self, tcx: ty::TyCtxt<'tcx>) -> ! {
+        match self {
+            Self::UnknownLocalInstance(trait_did, args) => tcx.dcx().bug(format!(
+                "could not find local instance for trait {trait_did:?} with generic args {args:?}"
+            )),
+            Self::NotATrait(did) => {
+                tcx.dcx().span_bug(tcx.def_span(did), format!("expected trait, found non-trait item: {did:?}"))
+            },
+            Self::NotATraitImpl(did) => tcx.dcx().span_bug(
+                tcx.def_span(did),
+                format!("expected trait impl, found non-trait impl item: {did:?}"),
+            ),
+            Self::NotAClosureTraitImpl(closure_did, closure_kind) => tcx.dcx().span_bug(
+                tcx.def_span(closure_did),
+                format!(
+                    "expected registered closure impl for {closure_did:?} with kind {closure_kind:?}, but none was found"
+                ),
+            ),
+            Self::NotAClosureTrait(did) => tcx.dcx().span_bug(
+                tcx.def_span(did),
+                format!("expected closure trait, found non-closure trait item: {did:?}"),
+            ),
+            Self::CouldNotFindClosureTrait(kind) => {
+                tcx.dcx().bug(format!("could not resolve lang-item closure trait for kind {kind:?}"))
+            },
+            Self::NotATraitMethod(did) => tcx.dcx().span_bug(
+                tcx.def_span(did),
+                format!("expected trait method, found non-trait method item: {did:?}"),
+            ),
+            Self::NotAnAssocType(did) => tcx.dcx().span_bug(
+                tcx.def_span(did),
+                format!("expected associated type, found different associated item: {did:?}"),
+            ),
+            Self::AssocConstNotSupported => tcx
+                .dcx()
+                .bug("associated constants in trait translation should have been rejected earlier".to_owned()),
+            Self::TraitAlreadyExists(did) => tcx.dcx().span_bug(
+                tcx.def_span(did),
+                format!("trait shim already registered for {did:?}"),
+            ),
+            Self::ImplAlreadyExists(did) => {
+                tcx.dcx().span_bug(tcx.def_span(did), format!("trait impl shim already registered for {did:?}"))
+            },
+            Self::ClosureImplAlreadyExists(closure_did, closure_kind) => tcx.dcx().span_bug(
+                tcx.def_span(closure_did),
+                format!("closure impl already registered for {closure_did:?} with kind {closure_kind:?}"),
+            ),
+        }
+    }
+}
+
 pub(crate) type TraitResult<'tcx, T> = Result<T, Error<'tcx>>;
 
 /// Given a particular reference to a trait, get the associated type constraints for this trait reference.

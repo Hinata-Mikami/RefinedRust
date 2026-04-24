@@ -1062,7 +1062,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
                 method_trait_incl_decls: shim.method_trait_incl_decls.clone(),
             };
 
-            vcx.trait_registry.register_shim(did, spec)?;
+            vcx.trait_registry.register_shim(did, spec).unwrap_or_else(|e| e.raise(vcx.tcx));
         } else {
             warn!("cannot find defid for shim {:?}, skipping", shim.path);
         }
@@ -1096,7 +1096,9 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
             continue;
         };
 
-        vcx.trait_registry.register_impl_shim(did, shim.specs.clone())?;
+        vcx.trait_registry
+            .register_impl_shim(did, shim.specs.clone())
+            .unwrap_or_else(|e| e.raise(vcx.tcx));
 
         // now register all the method shims
         let impl_assoc_items: &ty::AssocItems = vcx.tcx.associated_items(did);
@@ -1415,22 +1417,7 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
                 true
             },
             Err(base::TranslationError::Tainted(_)) => false,
-            Err(base::TranslationError::Internal(err)) => {
-                vcx.tcx.dcx().span_warn(
-                    vcx.tcx.def_span(f.to_def_id()),
-                    error::Message::UnsupportedFeature(format!(
-                        "failed to translate function {fname}, skipping: {err:?}"
-                    )),
-                );
-                if !rrconfig::skip_unsupported_features() {
-                    vcx.tcx.dcx().span_err(
-                        vcx.tcx.def_span(f.to_def_id()),
-                        error::Message::UnsupportedFeature(format!("failed to translate function {fname}")),
-                    );
-                    return false;
-                }
-                true
-            },
+            Err(base::TranslationError::_Marker(_)) => unreachable!(),
         }
     } else {
         // Fully translate the function
@@ -1453,22 +1440,7 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
                 true
             },
             Err(base::TranslationError::Tainted(_)) => false,
-            Err(base::TranslationError::Internal(err)) => {
-                vcx.tcx.dcx().span_warn(
-                    vcx.tcx.def_span(f.to_def_id()),
-                    error::Message::UnsupportedFeature(format!(
-                        "failed to translate function {fname}, skipping: {err:?}"
-                    )),
-                );
-                if !rrconfig::skip_unsupported_features() {
-                    vcx.tcx.dcx().span_err(
-                        vcx.tcx.def_span(f.to_def_id()),
-                        error::Message::UnsupportedFeature(format!("failed to translate function {fname}")),
-                    );
-                    return false;
-                }
-                true
-            },
+            Err(base::TranslationError::_Marker(_)) => unreachable!(),
         }
     }
 }
@@ -1518,7 +1490,10 @@ fn check_consider_function<'tcx>(
 
     // Check if this is part of an impl of a derive trait for an ADT
     if !vcx.tcx.impl_is_of_trait(impl_did) {
-        return Err(base::InternalError::Trait(traits::Error::NotATraitImpl(impl_did)).into());
+        vcx.tcx.dcx().span_bug(
+            vcx.tcx.def_span(impl_did),
+            format!("expected trait impl while checking derive trait annotations: {impl_did:?}"),
+        );
     }
     let trait_ref = vcx.tcx.impl_trait_ref(impl_did).skip_binder();
 
@@ -1894,10 +1869,7 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) ->
                     true
                 },
                 Err(base::TranslationError::Tainted(_)) => false,
-                Err(base::TranslationError::Internal(err)) => {
-                    error!("Encountered internal error in closure impl translation: {err:?}");
-                    false
-                },
+                Err(base::TranslationError::_Marker(_)) => unreachable!(),
                 Err(err) => {
                     vcx.tcx.dcx().span_warn(
                         vcx.tcx.def_span(*closure_did),
@@ -2052,15 +2024,7 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> bool {
                 );
             },
             Err(base::TranslationError::Tainted(_)) => return false,
-            Err(base::TranslationError::Internal(err)) => {
-                vcx.tcx.dcx().span_warn(
-                    vcx.tcx.def_span(did),
-                    error::Message::UnsupportedFeature(format!(
-                        "failed to translate trait impl {did:?}, skipping: {err:?}"
-                    )),
-                );
-                return false;
-            },
+            Err(base::TranslationError::_Marker(_)) => unreachable!(),
         }
     }
 

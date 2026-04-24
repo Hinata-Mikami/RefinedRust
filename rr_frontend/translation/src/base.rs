@@ -6,6 +6,7 @@
 
 use std::cmp;
 use std::collections::{BTreeMap, BTreeSet};
+use std::marker::PhantomData;
 
 use derive_more::Display;
 use rr_rustc_interface::errors::ErrorGuaranteed;
@@ -15,8 +16,6 @@ use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::{borrowck, polonius_engine};
 use topological_sort::TopologicalSort;
 
-use crate::environment::borrowck::facts;
-use crate::traits::Error as TraitError;
 /// Strip symbols from an identifier to be compatible with Coq.
 /// In particular things like ' or ::.
 pub(crate) fn strip_coq_ident(s: &str) -> String {
@@ -119,33 +118,12 @@ pub(crate) enum TranslationError<'tcx> {
     #[display("Error reported (tainted state)")]
     Tainted(ErrorGuaranteed),
 
-    #[display("Internal error: {}", _0)]
-    Internal(InternalError<'tcx>),
-}
-
-#[derive(Clone, Debug, Display)]
-pub(crate) enum InternalError<'tcx> {
-    #[display("Encountered Polonius region outside function: {:?}", _0)]
-    PoloniusRegionOutsideFunction(facts::Region),
-
-    #[display("Trait error: {}", _0)]
-    Trait(TraitError<'tcx>),
+    #[display("translation error marker")]
+    _Marker(PhantomData<&'tcx ()>),
 }
 
 impl From<ErrorGuaranteed> for TranslationError<'_> {
     fn from(x: ErrorGuaranteed) -> Self {
         Self::ErrorReported(x)
-    }
-}
-
-impl<'tcx> From<TraitError<'tcx>> for TranslationError<'tcx> {
-    fn from(x: TraitError<'tcx>) -> Self {
-        Self::Internal(InternalError::Trait(x))
-    }
-}
-
-impl<'tcx> From<InternalError<'tcx>> for TranslationError<'tcx> {
-    fn from(x: InternalError<'tcx>) -> Self {
-        Self::Internal(x)
     }
 }

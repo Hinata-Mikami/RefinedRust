@@ -19,7 +19,7 @@ use crate::body::translation::{ExprInfo, ExprWithInfo};
 use crate::environment::borrowck::facts;
 use crate::error::Message;
 use crate::traits::registry::ResolvedTraitReq;
-use crate::traits::{self, resolution};
+use crate::traits::resolution;
 use crate::types::STInner;
 use crate::{procedures, regions, search, types};
 
@@ -125,7 +125,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         {
             // Fixup: We need a matching workaround as we do in the encoding of the function type
             // in an impl member, to deal with quirks around lifetime elision.
-            let expected_sig = self.trait_registry.get_expected_sig_for_impl_fn(callee_did)?;
+            let expected_sig = self.trait_registry.get_expected_sig_for_impl_fn(callee_did);
             expected_sig.bound_vars().as_slice()
         } else {
             let fn_ty: ty::EarlyBinder<'_, ty::Ty<'_>> = tcx.type_of(callee_did);
@@ -393,8 +393,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         );
 
         let trait_did = self.tcx.parent(call_fn_did);
-        let closure_kind = search::get_closure_kind_of_trait_did(self.tcx, trait_did)
-            .ok_or(InternalError::Trait(traits::Error::NotAClosureTrait(trait_did)))?;
+        let Some(closure_kind) = search::get_closure_kind_of_trait_did(self.tcx, trait_did) else {
+            self.tcx.dcx().span_bug(
+                self.tcx.def_span(trait_did),
+                format!("expected closure trait, found non-closure trait: {trait_did:?}"),
+            )
+        };
 
         trace!("determined closure kind: {closure_kind:?}");
 

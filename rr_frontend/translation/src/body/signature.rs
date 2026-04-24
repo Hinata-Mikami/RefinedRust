@@ -464,7 +464,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             // lifetime elision behaves strangely.
 
             // We compute the expected signature this function *should* have
-            let expected_sig = trait_registry.get_expected_sig_for_impl_fn(proc.get_id())?;
+            let expected_sig = trait_registry.get_expected_sig_for_impl_fn(proc.get_id());
             info!("expected sig: {expected_sig:?}");
 
             // Important: use the fn's sig here.

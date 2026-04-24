@@ -279,18 +279,20 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         })?;
 
         // make the literal we are going to use
-        let lit_trait_spec = self.make_literal_trait_spec(
-            did.to_def_id(),
-            trait_name,
-            valid_attrs,
-            has_semantic_interp,
-            attrs_dependent,
-        )?;
+        let lit_trait_spec = self
+            .make_literal_trait_spec(
+                did.to_def_id(),
+                trait_name,
+                valid_attrs,
+                has_semantic_interp,
+                attrs_dependent,
+            )
+            .unwrap_or_else(|e| e.raise(self.tcx));
         // already register it for use
         // In particular, this is also needed to be able to register the methods of this trait
         // below, as they need to be able to access the associated types of this trait already.
         // (in fact, their environment contains their self instance)
-        self.register_shim(did.to_def_id(), lit_trait_spec)?;
+        self.register_shim(did.to_def_id(), lit_trait_spec).unwrap_or_else(|e| e.raise(self.tcx));
         Ok(())
     }
 
@@ -311,8 +313,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         }
 
         // lookup the pre-registered literal
-        let lit_trait_spec_ref =
-            self.lookup_trait(did.to_def_id()).ok_or_else(|| Error::NotATrait(did.to_def_id()))?;
+        let lit_trait_spec_ref = self
+            .lookup_trait(did.to_def_id())
+            .ok_or_else(|| Error::NotATrait(did.to_def_id()))
+            .unwrap_or_else(|e| e.raise(self.tcx));
 
         let trait_name = strip_coq_ident(&environment::get_absolute_item_name(self.tcx, did.to_def_id()));
         let trait_attrs = attrs::filter_for_tool(environment::get_attributes(self.tcx, did.into()));
@@ -361,7 +365,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
                     // get function name
                     let method_name = environment::get_assoc_item_name(self.tcx, c.def_id)
-                        .ok_or(Error::NotATraitMethod(c.def_id))?;
+                        .ok_or(Error::NotATraitMethod(c.def_id))
+                        .unwrap_or_else(|e| e.raise(self.tcx));
                     let method_name = strip_coq_ident(&method_name);
 
                     let name = format!("{trait_name}_{method_name}");
@@ -389,12 +394,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 } else if let ty::AssocKind::Type { .. } = c.kind {
                     // get name
                     let type_name = environment::get_assoc_item_name(self.tcx, c.def_id)
-                        .ok_or(Error::NotAnAssocType(c.def_id))?;
+                        .ok_or(Error::NotAnAssocType(c.def_id))
+                        .unwrap_or_else(|e| e.raise(self.tcx));
                     let type_name = strip_coq_ident(&type_name);
                     let lit = specs::LiteralTyParam::new(&type_name);
                     assoc_types.push(lit);
                 } else {
-                    return Err(Error::AssocConstNotSupported.into());
+                    Error::AssocConstNotSupported.raise(self.tcx);
                 }
             }
 
@@ -530,7 +536,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         );
         let trait_did = self.tcx.impl_trait_id(impl_did);
 
-        self.lookup_trait(trait_did).ok_or(Error::NotATrait(trait_did))?;
+        self.lookup_trait(trait_did)
+            .ok_or(Error::NotATrait(trait_did))
+            .unwrap_or_else(|e| e.raise(self.tcx));
 
         let mut assoc_args = Vec::new();
         // get associated types of this impl
@@ -641,11 +649,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trait_args: ty::GenericArgsRef<'tcx>,
     ) -> Result<(specs::traits::SpecializedImpl<'def>, Vec<ty::Ty<'tcx>>), TranslationError<'tcx>> {
         let closure_kind = search::get_closure_kind_of_trait_did(self.tcx, trait_did)
-            .ok_or(Error::NotAClosureTrait(trait_did))?;
+            .ok_or(Error::NotAClosureTrait(trait_did))
+            .unwrap_or_else(|e| e.raise(self.tcx));
 
         let (closure_impl, _) = self
             .lookup_closure_impl(closure_did, closure_kind)
-            .ok_or(Error::NotAClosureTraitImpl(closure_did, closure_kind))?;
+            .ok_or(Error::NotAClosureTraitImpl(closure_did, closure_kind))
+            .unwrap_or_else(|e| e.raise(self.tcx));
 
         // compute associated type instantiation
         let mut assoc_args = Vec::new();
@@ -705,7 +715,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     ) -> Result<ResolvedTraitReq<'tcx, 'def>, TranslationError<'tcx>> {
         let current_typing_env: ty::TypingEnv<'tcx> = state.get_typing_env(self.tcx);
 
-        let trait_spec = self.lookup_trait(trait_did).ok_or(Error::NotATrait(trait_did))?;
+        let trait_spec = self
+            .lookup_trait(trait_did)
+            .ok_or(Error::NotATrait(trait_did))
+            .unwrap_or_else(|e| e.raise(self.tcx));
 
         if let Some((impl_did, impl_args, kind)) =
             resolution::resolve_trait(self.tcx, current_typing_env, trait_did, trait_args, below_binders)
@@ -771,7 +784,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     info!("Param associated types: {:?}", assoc_types);
 
                     let trait_use =
-                        quantified_state.lookup_trait_use(self.tcx, trait_did, trait_args.as_slice())?;
+                        quantified_state.lookup_trait_use(self.tcx, trait_did, trait_args.as_slice());
                     let trait_use_ref = trait_use.trait_use;
 
                     trace!(
@@ -1047,8 +1060,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trace!(
             "enter get_closure_trait_impl_info for closure_did={closure_did:?} and kind={kind:?} with info={info:?}"
         );
-        let trait_did =
-            search::get_closure_trait_did(self.tcx, kind).ok_or(Error::CouldNotFindClosureTrait(kind))?;
+        let trait_did = search::get_closure_trait_did(self.tcx, kind)
+            .ok_or(Error::CouldNotFindClosureTrait(kind))
+            .unwrap_or_else(|e| e.raise(self.tcx));
 
         let self_ty = info.self_ty;
         //self.tcx.mk_ty_from_kind(ty::TyKind::Closure(closure_did, closure_args.args));
@@ -1064,10 +1078,14 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         //let trait_args
 
         // check if we registered this impl previously
-        let trait_spec_ref = self.lookup_trait(trait_did).ok_or(Error::NotATrait(trait_did))?;
+        let trait_spec_ref = self
+            .lookup_trait(trait_did)
+            .ok_or(Error::NotATrait(trait_did))
+            .unwrap_or_else(|e| e.raise(self.tcx));
         let (impl_ref, _) = self
             .lookup_closure_impl(closure_did, kind)
-            .ok_or(Error::NotAClosureTraitImpl(closure_did, kind))?;
+            .ok_or(Error::NotAClosureTraitImpl(closure_did, kind))
+            .unwrap_or_else(|e| e.raise(self.tcx));
 
         // This should be computable directly from the closure's scope
         // - includes the generics of the parent
@@ -1155,7 +1173,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let subject = self.tcx.impl_trait_header(trait_impl_did);
         let trait_ref = subject.trait_ref.skip_binder();
 
-        let trait_spec_ref = self.lookup_trait(trait_ref.def_id).ok_or(Error::NotATrait(trait_ref.def_id))?;
+        let trait_spec_ref = self
+            .lookup_trait(trait_ref.def_id)
+            .ok_or(Error::NotATrait(trait_ref.def_id))
+            .unwrap_or_else(|e| e.raise(self.tcx));
 
         let self_ty = trait_ref.self_ty();
         let ty::TyKind::Adt(def, _) = self_ty.kind() else {
@@ -1199,11 +1220,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Get the expected signature for a trait impl function.
-    pub(crate) fn get_expected_sig_for_impl_fn(
-        &self,
-        did: DefId,
-    ) -> Result<ty::PolyFnSig<'tcx>, TranslationError<'tcx>> {
-        let impl_did = self.tcx.impl_of_assoc(did).ok_or(Error::NotATraitMethod(did))?;
+    pub(crate) fn get_expected_sig_for_impl_fn(&self, did: DefId) -> ty::PolyFnSig<'tcx> {
+        let impl_did = self
+            .tcx
+            .impl_of_assoc(did)
+            .ok_or(Error::NotATraitMethod(did))
+            .unwrap_or_else(|e| e.raise(self.tcx));
 
         let subject = self.tcx.impl_trait_header(impl_did);
         let trait_ref = subject.trait_ref.skip_binder();
@@ -1231,9 +1253,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trace!("method args = {method_args:?}");
 
         let subst_fn_ty = self.tcx.mk_ty_from_kind(ty::TyKind::FnDef(trait_item_did, method_args));
-        let fn_sig = subst_fn_ty.fn_sig(self.tcx);
-
-        Ok(fn_sig)
+        subst_fn_ty.fn_sig(self.tcx)
     }
 
     /// Get information on a trait implementation and create its Radium encoding.
@@ -1248,8 +1268,14 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let trait_did = self.tcx.impl_trait_id(trait_impl_did);
 
         // check if we registered this impl previously
-        let trait_spec_ref = self.lookup_trait(trait_did).ok_or(Error::NotATrait(trait_did))?;
-        let impl_ref = self.lookup_impl(trait_impl_did).ok_or(Error::NotATraitImpl(trait_impl_did))?;
+        let trait_spec_ref = self
+            .lookup_trait(trait_did)
+            .ok_or(Error::NotATrait(trait_did))
+            .unwrap_or_else(|e| e.raise(self.tcx));
+        let impl_ref = self
+            .lookup_impl(trait_impl_did)
+            .ok_or(Error::NotATraitImpl(trait_impl_did))
+            .unwrap_or_else(|e| e.raise(self.tcx));
 
         // get all associated items
         let assoc_items: &'tcx ty::AssocItems = self.tcx.associated_items(trait_impl_did);
