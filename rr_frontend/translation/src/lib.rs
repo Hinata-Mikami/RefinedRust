@@ -98,6 +98,10 @@ impl From<io::Error> for PipelineError {
     }
 }
 
+fn recover_or_fail(err: ErrorGuaranteed) -> Result<(), PipelineError> {
+    if rrconfig::skip_unsupported_features() { Ok(()) } else { Err(PipelineError::Reported(err)) }
+}
+
 impl<'rcx> VerificationCtxt<'_, 'rcx> {
     fn get_path_for_shim(&self, did: DefId) -> (Vec<&str>, bool) {
         let path = shims::flat::get_export_path_for_did(self.tcx, did);
@@ -1080,8 +1084,11 @@ fn register_shims(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineErro
             info: shim.info.clone(),
         };
 
-        if let Err(base::TranslationError::Tainted(e)) = vcx.type_translator.register_adt_shim(did, &lit) {
-            return Err(PipelineError::Reported(e));
+        match vcx.type_translator.register_adt_shim(did, &lit) {
+            Ok(()) => (),
+            Err(base::TranslationError::ErrorReported(err) | base::TranslationError::Tainted(err)) => {
+                return Err(PipelineError::Reported(err));
+            },
         }
 
         info!("Resolved ADT shim {:?} as {:?} did", shim, did);
@@ -1341,6 +1348,19 @@ fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipeline
             let interned_path = vcx.shim_registry.intern_path(export_path.path.path);
             info!("Looking up annotated shim {interned_path:?} for is_method={:?}", export_path.as_method);
             if let Some(export_did) = resolve_shim(vcx, &interned_path, export_path.as_method) {
+                if export_did == f.to_def_id()
+                    || vcx.procedure_registry.lookup_function_mode(export_did).is_some()
+                {
+                    let span = find_external_export_attr_span(vcx.tcx, f.to_def_id())
+                        .unwrap_or_else(|| vcx.tcx.def_span(f.to_def_id()));
+                    let err = vcx.tcx.dcx().span_err(
+                        span,
+                        error::Message::AttributeError(format!(
+                            "annotated export path {interned_path:?} resolves to an already registered function"
+                        )),
+                    );
+                    return Err(PipelineError::Reported(err));
+                }
                 let meta = procedures::Meta::new(
                     spec_name.clone(),
                     code_name.clone(),
@@ -1472,12 +1492,12 @@ fn translate_function<'tcx>(
                 }
                 Ok(())
             },
-            Err(base::TranslationError::ErrorReported(_)) => {
+            Err(base::TranslationError::ErrorReported(err)) => {
                 vcx.tcx.dcx().span_warn(
                     vcx.tcx.def_span(f.to_def_id()),
                     error::Message::SkippedDueToPreviousFailure(fname),
                 );
-                Ok(())
+                recover_or_fail(err)
             },
             Err(base::TranslationError::Tainted(err)) => Err(PipelineError::Reported(err)),
         }
@@ -1494,12 +1514,12 @@ fn translate_function<'tcx>(
                 }
                 Ok(())
             },
-            Err(base::TranslationError::ErrorReported(_)) => {
+            Err(base::TranslationError::ErrorReported(err)) => {
                 vcx.tcx.dcx().span_warn(
                     vcx.tcx.def_span(f.to_def_id()),
                     error::Message::SkippedDueToPreviousFailure(fname),
                 );
-                Ok(())
+                recover_or_fail(err)
             },
             Err(base::TranslationError::Tainted(err)) => Err(PipelineError::Reported(err)),
         }
@@ -1686,14 +1706,15 @@ fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineErr
 
         match vcx.trait_registry.preregister_trait(t) {
             Ok(()) => registered_traits.push(t),
-            Err(base::TranslationError::ErrorReported(_)) => (),
+            Err(base::TranslationError::ErrorReported(err)) => recover_or_fail(err)?,
             Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
         }
     }
     // then properly translate them
     for t in registered_traits {
         match vcx.trait_registry.register_trait(t, &mut vcx.procedure_registry) {
-            Ok(()) | Err(base::TranslationError::ErrorReported(_)) => (),
+            Ok(()) => (),
+            Err(base::TranslationError::ErrorReported(err)) => recover_or_fail(err)?,
             Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
         }
     }
@@ -1910,14 +1931,14 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) ->
                     Ok(())
                 },
                 Err(base::TranslationError::Tainted(err)) => Err(PipelineError::Reported(err)),
-                Err(err) => {
+                Err(base::TranslationError::ErrorReported(err)) => {
                     vcx.tcx.dcx().span_warn(
                         vcx.tcx.def_span(*closure_did),
                         error::Message::UnsupportedFeature(format!(
                             "failed to translate closure impl {closure_did:?}, skipping: {err:?}"
                         )),
                     );
-                    Ok(())
+                    recover_or_fail(err)
                 },
             }
         };
@@ -2075,11 +2096,12 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<()
                 vcx.trait_impls.insert(ordered_did, spec);
                 vcx.trait_impl_deps.insert(ordered_did, deps);
             },
-            Err(base::TranslationError::ErrorReported(_)) => {
+            Err(base::TranslationError::ErrorReported(err)) => {
                 vcx.tcx.dcx().span_warn(
                     vcx.tcx.def_span(did),
                     error::Message::SkippedTraitImplDueToPreviousFailure(did),
                 );
+                recover_or_fail(err)?;
             },
             Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
         }
