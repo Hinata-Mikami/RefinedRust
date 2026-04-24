@@ -1041,7 +1041,7 @@ fn find_external_export_attr_span(tcx: ty::TyCtxt<'_>, did: DefId) -> Option<Spa
 }
 
 /// Register shims in the procedure registry.
-fn register_shims(vcx: &mut VerificationCtxt<'_, '_>) {
+fn register_shims(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
     for shim in vcx.shim_registry.get_function_shims() {
         let did = resolve_shim(vcx, &shim.path, shim.is_method);
 
@@ -1080,8 +1080,8 @@ fn register_shims(vcx: &mut VerificationCtxt<'_, '_>) {
             info: shim.info.clone(),
         };
 
-        if let Err(e) = vcx.type_translator.register_adt_shim(did, &lit) {
-            warn!("{}", e);
+        if let Err(base::TranslationError::Tainted(e)) = vcx.type_translator.register_adt_shim(did, &lit) {
+            return Err(PipelineError::Reported(e));
         }
 
         info!("Resolved ADT shim {:?} as {:?} did", shim, did);
@@ -1172,6 +1172,8 @@ fn register_shims(vcx: &mut VerificationCtxt<'_, '_>) {
         .extend(vcx.shim_registry.get_extra_exports().iter().map(|export| (export.clone(), true)));
     // add the extra dependencies
     vcx.extra_dependencies.extend(vcx.shim_registry.get_extra_dependencies().iter().cloned());
+
+    Ok(())
 }
 
 /// Check if this is a function whose implementation we always skip, asserting just a
@@ -2316,7 +2318,7 @@ where
     };
 
     // this needs to be first, in order to ensure consistent ADT use
-    register_shims(&mut vcx);
+    register_shims(&mut vcx)?;
 
     register_functions(&mut vcx)?;
 
