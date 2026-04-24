@@ -1363,20 +1363,19 @@ fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), base::Tr
 }
 
 /// Translate functions of the crate, assuming they were previously registered.
-/// Returns `false` if translation hit a fatal cross-function error.
-fn translate_functions(vcx: &mut VerificationCtxt<'_, '_>) -> bool {
+fn translate_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), ()> {
     // First translate closures, then functions: the function translation assumes that closures
     // they contain have been translated already.
     for &f in vcx.closures.iter().chain(vcx.functions.iter()) {
-        if vcx.procedure_registry.lookup_function(f.to_def_id()).is_some() && !translate_function(vcx, f) {
-            return false;
+        if vcx.procedure_registry.lookup_function(f.to_def_id()).is_some() {
+            translate_function(vcx, f)?;
         }
     }
 
-    true
+    Ok(())
 }
 
-fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId) -> bool {
+fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId) -> Result<(), ()> {
     let proc = environment::get_procedure(vcx.tcx, f.to_def_id());
     let fname = environment::get_item_name(vcx.tcx, f.to_def_id());
     let meta = vcx.procedure_registry.lookup_function(f.to_def_id()).unwrap();
@@ -1389,10 +1388,10 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
 
     let mode = meta.get_mode();
     if mode.is_shim() {
-        return true;
+        return Ok(());
     }
     if mode.is_ignore() {
-        return true;
+        return Ok(());
     }
 
     info!("\nTranslating function {}", fname);
@@ -1450,16 +1449,16 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
                     let ordered_did = OrderedDefId::new(vcx.tcx, f.to_def_id());
                     vcx.procedure_registry.closure_info.insert(ordered_did, info);
                 }
-                true
+                Ok(())
             },
             Err(base::TranslationError::ErrorReported(_)) => {
                 vcx.tcx.dcx().span_warn(
                     vcx.tcx.def_span(f.to_def_id()),
                     error::Message::SkippedDueToPreviousFailure(fname),
                 );
-                true
+                Ok(())
             },
-            Err(base::TranslationError::Tainted(_)) => false,
+            Err(base::TranslationError::Tainted(_)) => Err(()),
         }
     } else {
         // Fully translate the function
@@ -1472,22 +1471,18 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
                     let ordered_did = OrderedDefId::new(vcx.tcx, f.to_def_id());
                     vcx.procedure_registry.closure_info.insert(ordered_did, info);
                 }
-                true
+                Ok(())
             },
             Err(base::TranslationError::ErrorReported(_)) => {
                 vcx.tcx.dcx().span_warn(
                     vcx.tcx.def_span(f.to_def_id()),
                     error::Message::SkippedDueToPreviousFailure(fname),
                 );
-                true
+                Ok(())
             },
-            Err(base::TranslationError::Tainted(_)) => false,
+            Err(base::TranslationError::Tainted(_)) => Err(()),
         }
     }
-}
-
-fn abort_after_reported_error(context: impl Into<String>) -> String {
-    format!("Aborting after {}", context.into())
 }
 
 /// Get all functions and closures in the current crate that have attributes on them and are not
@@ -1568,7 +1563,7 @@ fn check_consider_function(
 }
 
 /// Get constants in the current scope.
-pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), String> {
+pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), ()> {
     let statics = environment::get_statics(vcx.tcx);
 
     for s in &statics {
@@ -1579,11 +1574,10 @@ pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(),
             continue;
         }
         attrs::check_tool_attrs(&const_attrs, CONST_ATTRS.iter().copied()).map_err(|err| {
-            let err = vcx.tcx.dcx().span_err(
+            vcx.tcx.dcx().span_err(
                 err.span,
                 error::Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
             );
-            abort_after_reported_error(format!("const specification parse error: {err:?}"))
         })?;
 
         let ty = ty.skip_binder();
@@ -1598,17 +1592,11 @@ pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(),
                 let _full_name = base::strip_coq_ident(&environment::get_item_name(vcx.tcx, s.to_def_id()));
 
                 let mut const_parser = VerboseConstAttrParser::new();
-                let const_spec =
-                    match const_parser.parse_const_attrs(*s, vcx.tcx.def_span(s.to_def_id()), &const_attrs) {
-                        Ok(spec) => spec,
-                        Err(err) => {
-                            vcx.tcx.dcx().span_err(err.span, error::Message::ConstSpecParse(err.err));
-                            let const_name = environment::get_item_name(vcx.tcx, s.to_def_id());
-                            return Err(abort_after_reported_error(format!(
-                                "const specification parse error for {const_name}"
-                            )));
-                        },
-                    };
+                let const_spec = const_parser
+                    .parse_const_attrs(*s, vcx.tcx.def_span(s.to_def_id()), &const_attrs)
+                    .map_err(|err| {
+                        vcx.tcx.dcx().span_err(err.span, error::Message::ConstSpecParse(err.err));
+                    })?;
 
                 let name = const_spec.name;
                 let loc_name = format!("{name}_loc");
@@ -1633,7 +1621,7 @@ pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(),
 }
 
 /// Register traits.
-fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), String> {
+fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), ()> {
     let traits = environment::get_traits(vcx.tcx);
 
     // order according to dependencies first
@@ -1675,17 +1663,11 @@ fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), String> {
 
         registered_traits.push(t);
 
-        vcx.trait_registry
-            .preregister_trait(t)
-            .map_err(|x| format!("{x:?}"))
-            .map_err(|e| format!("{e:?}"))?;
+        vcx.trait_registry.preregister_trait(t).map_err(|_| ())?;
     }
     // then properly translate them
     for t in registered_traits {
-        vcx.trait_registry
-            .register_trait(t, &mut vcx.procedure_registry)
-            .map_err(|x| format!("{x:?}"))
-            .map_err(|e| format!("{e:?}"))?;
+        vcx.trait_registry.register_trait(t, &mut vcx.procedure_registry).map_err(|_| ())?;
     }
     Ok(())
 }
@@ -1822,10 +1804,9 @@ fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) {
 }
 
 /// Generate closure trait instances.
-/// Returns `false` if translation hit a fatal cross-function error.
-fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) -> bool {
+fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) -> Result<(), ()> {
     if !are_closures_available(vcx) {
-        return true;
+        return Ok(());
     }
 
     let generator =
@@ -1898,9 +1879,9 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) ->
                     info.generated_functions.push(fn_def);
                     // store the trait impl
                     info.generated_impls.push(spec);
-                    true
+                    Ok(())
                 },
-                Err(base::TranslationError::Tainted(_)) => false,
+                Err(base::TranslationError::Tainted(_)) => Err(()),
                 Err(err) => {
                     vcx.tcx.dcx().span_warn(
                         vcx.tcx.def_span(*closure_did),
@@ -1908,39 +1889,32 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) ->
                             "failed to translate closure impl {closure_did:?}, skipping: {err:?}"
                         )),
                     );
-                    true
+                    Ok(())
                 },
             }
         };
 
         match kind {
             ty::ClosureKind::FnOnce => {
-                if !register_impl(ty::ClosureKind::FnOnce) {
-                    return false;
-                }
+                register_impl(ty::ClosureKind::FnOnce)?;
             },
             ty::ClosureKind::FnMut => {
-                if !register_impl(ty::ClosureKind::FnOnce) || !register_impl(ty::ClosureKind::FnMut) {
-                    return false;
-                }
+                register_impl(ty::ClosureKind::FnOnce)?;
+                register_impl(ty::ClosureKind::FnMut)?;
             },
             ty::ClosureKind::Fn => {
-                if !register_impl(ty::ClosureKind::FnOnce)
-                    || !register_impl(ty::ClosureKind::FnMut)
-                    || !register_impl(ty::ClosureKind::Fn)
-                {
-                    return false;
-                }
+                register_impl(ty::ClosureKind::FnOnce)?;
+                register_impl(ty::ClosureKind::FnMut)?;
+                register_impl(ty::ClosureKind::Fn)?;
             },
         }
     }
 
-    true
+    Ok(())
 }
 
 /// Generate trait instances.
-/// Returns `false` if translation hit a fatal cross-function error.
-fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> bool {
+fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), ()> {
     let trait_impl_ids = environment::get_trait_impls(vcx.tcx);
 
     for trait_impl_id in trait_impl_ids {
@@ -2079,15 +2053,15 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> bool {
                     error::Message::SkippedTraitImplDueToPreviousFailure(did),
                 );
             },
-            Err(base::TranslationError::Tainted(_)) => return false,
+            Err(base::TranslationError::Tainted(_)) => return Err(()),
         }
     }
 
-    true
+    Ok(())
 }
 
 /// Get and parse all module attributes.
-fn get_module_attributes(tcx: ty::TyCtxt<'_>) -> Result<BTreeMap<OrderedDefId, ModuleAttrs>, String> {
+fn get_module_attributes(tcx: ty::TyCtxt<'_>) -> Result<BTreeMap<OrderedDefId, ModuleAttrs>, ()> {
     let modules = environment::get_modules(tcx);
     let mut attrs = BTreeMap::new();
     info!("collected modules: {:?}", modules);
@@ -2099,10 +2073,7 @@ fn get_module_attributes(tcx: ty::TyCtxt<'_>) -> Result<BTreeMap<OrderedDefId, M
             Ok(spec) => spec,
             Err(err) => {
                 tcx.dcx().span_err(err.span, error::Message::ModuleSpecParse(err.err));
-                let module_name = environment::get_item_name(tcx, m.to_def_id());
-                return Err(abort_after_reported_error(format!(
-                    "module specification parse error for {module_name}"
-                )));
+                return Err(());
             },
         };
         let ordered_did = OrderedDefId::new(tcx, m.to_def_id());
@@ -2125,7 +2096,7 @@ fn add_builtin_shims(registry: &mut shim_registry::SR<'_>) {
 }
 
 /// Translate a crate, creating a `VerificationCtxt` in the process.
-pub fn generate_coq_code<'tcx, F>(tcx: ty::TyCtxt<'tcx>, continuation: F) -> Result<(), String>
+pub fn generate_coq_code<'tcx, F>(tcx: ty::TyCtxt<'tcx>, continuation: F) -> Result<(), ()>
 where
     F: Fn(VerificationCtxt<'tcx, '_>),
 {
@@ -2140,7 +2111,7 @@ where
         Ok(spec) => spec,
         Err(err) => {
             tcx.dcx().span_err(err.span, error::Message::CrateSpecParse(err.err));
-            return Err(abort_after_reported_error("crate specification parse error"));
+            return Err(());
         },
     };
 
@@ -2151,7 +2122,7 @@ where
     info!("Setting dune package: {:?}", package);
 
     // get module attributes
-    let module_attrs = get_module_attributes(tcx)?;
+    let module_attrs = get_module_attributes(tcx).map_err(|_| ())?;
 
     let mut include_spans = crate_spec.include_spans.clone();
     let mut export_include_spans = crate_spec.export_include_spans.clone();
@@ -2216,7 +2187,7 @@ where
     // add includes to the shim registry
     let library_load_paths = rrconfig::lib_load_paths();
     info!("Loading libraries from {:?}", library_load_paths);
-    let found_libs = shims::scan_loadpaths(&library_load_paths).map_err(|e| e.to_string())?;
+    let found_libs = shims::scan_loadpaths(&library_load_paths).map_err(|_| ())?;
     info!("Found the following RefinedRust libraries in the loadpath: {:?}", found_libs);
 
     let mut included_libs = BTreeSet::new();
@@ -2240,8 +2211,8 @@ where
         };
         included_libs.insert(incl);
 
-        let f = File::open(p).map_err(|e| e.to_string())?;
-        if let Some(new_includes) = shim_registry.add_source(f).map_err(|e| e.to_string())? {
+        let f = File::open(p).map_err(|_| ())?;
+        if let Some(new_includes) = shim_registry.add_source(f).map_err(|_| ())? {
             for incl in new_includes {
                 if !included_libs.contains(&incl) {
                     includes.insert(incl);
@@ -2276,8 +2247,8 @@ where
             continue;
         }
 
-        let f = File::open(p).map_err(|e| e.to_string())?;
-        if let Some(new_includes) = shim_registry.add_source(f).map_err(|e| e.to_string())? {
+        let f = File::open(p).map_err(|_| ())?;
+        if let Some(new_includes) = shim_registry.add_source(f).map_err(|_| ())? {
             for incl in new_includes {
                 if !included_libs.contains(&incl) && !export_included_libs.contains(&incl) {
                     export_includes.insert(incl);
@@ -2307,9 +2278,9 @@ where
     };
 
     // this needs to be first, in order to ensure consistent ADT use
-    register_shims(&mut vcx).map_err(|x| x.to_string())?;
+    register_shims(&mut vcx).map_err(|_| ())?;
 
-    register_functions(&mut vcx).map_err(|x| x.to_string())?;
+    register_functions(&mut vcx).map_err(|_| ())?;
 
     register_traits(&mut vcx)?;
 
@@ -2320,20 +2291,13 @@ where
     // after trait impls, as type translation may depend on trait impls
     register_consts(&mut vcx)?;
 
-    let translated_functions = translate_functions(&mut vcx);
-    if !translated_functions {
-        return Err("Aborting after fatal cross-function error in function translation".to_owned());
-    }
+    translate_functions(&mut vcx)?;
 
     // important: happens after all functions have been translated, as this uses the translated
     // function specs
-    if !assemble_trait_impls(&mut vcx) {
-        return Err("Aborting after fatal cross-function error in trait impl translation".to_owned());
-    }
+    assemble_trait_impls(&mut vcx)?;
 
-    if !assemble_closure_impls(&mut vcx) {
-        return Err("Aborting after fatal cross-function error in closure impl translation".to_owned());
-    }
+    assemble_closure_impls(&mut vcx)?;
 
     continuation(vcx);
 
