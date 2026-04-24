@@ -29,7 +29,7 @@ in
 
       RR_GENERATE_DUNE_PROJECT = true;
       RR_LIB_LOAD_PATHS =
-        pkgs.lib.concatStringsSep ":" (libDeps ++ pkgs.lib.optionals withStdlib rrPkgs.stdlib.propagatedBuildInputs);
+        pkgs.lib.concatStringsSep ":" (libDeps ++ pkgs.lib.optionals withStdlib ["${rrPkgs.stdlib}/share"]);
 
       installPhase = ''
         RR_OUTPUT_DIR=$(cargo refinedrust --show-config | grep output_dir | cut -d' ' -f3 | tr '"' ' ')

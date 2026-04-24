@@ -70,56 +70,7 @@
     in rec {
       inherit lib;
 
-      packages = let
-        stdlibPkgs = lib.attrsets.attrValues (lib.filterAttrs (name: _: lib.strings.hasPrefix "stdlib-" name) packages);
-
-        mkStdlib = {
-          pname,
-          opam-name ? pname,
-          rocqTheoriesArgs ? {},
-          withTheories ? false,
-          ...
-        } @ origArgs: let
-          args = builtins.removeAttrs origArgs ["rocqTheoriesArgs"];
-        in
-          lib.rocq.mkRefinedRust ({
-              inherit meta version;
-
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
-
-              cargoRefinedRustArgs = {
-                toolchain = rust.toolchain.build;
-
-                preBuild = ''
-                  sed -i -e 's/rr::package("refinedrust-stdlib")/rr::package("${opam-name}")/g' ./src/lib.rs
-                '';
-              };
-            }
-            // (
-              if withTheories
-              then {
-                rocqTheoriesArgs =
-                  {
-                    preBuild = ''
-                      find . -name "dune" -exec sed -i -e '3s|.*|  (package ${opam-name}-theories)|g' {} \;
-                      cat << EOF > dune-project
-                      (lang dune 3.21)
-                      (using rocq 0.11)
-                      (name ${opam-name}-theories)
-                      (package (name ${opam-name}-theories))
-                      EOF
-                    '';
-                  }
-                  // rocqTheoriesArgs;
-              }
-              else rocqTheoriesArgs
-            )
-            // args);
-      in
-        {
+      packages = {
           theories = let
             stdpp = lib.rocq.mkDepDerivation rocq.stdpp {
               pname = "stdpp";
@@ -197,7 +148,7 @@
                     --set LD_LIBRARY_PATH ${toolchain}/lib \
                     --set DYLD_FALLBACK_LIBRARY_PATH ${toolchain}/lib \
                     --set PATH "$out/bin" \
-                    --set RR_NIX_STDLIB $out/share/stdlib
+                    --set RR_NIX_STDLIB $out/share
                 '';
 
                 passthru = {
@@ -206,138 +157,17 @@
                 };
               };
             in mkRefinedRust rust.toolchain.build;
-        }
-        // lib.mapToAttrs lib.id mkStdlib [
-          {
-            pname = "stdlib-alloc";
-            src = ./stdlib/alloc;
-            libDeps = with packages; [stdlib-ptr stdlib-result stdlib-clone stdlib-mem stdlib-closures];
-            withTheories = true;
-          }
-          {
-            pname = "stdlib-arithops";
-            src = ./stdlib/arithops;
-          }
-          {
-            pname = "stdlib-boxed";
-            src = ./stdlib/boxed;
-            libDeps = with packages; [stdlib-alloc stdlib-option stdlib-mem stdlib-ptr stdlib-rr_internal stdlib-ptr-advanced];
-          }
-          {
-            pname = "stdlib-btreemap";
-            src = ./stdlib/btreemap;
-            libDeps = with packages; [stdlib-alloc stdlib-option stdlib-clone stdlib-cmp];
-          }
-          {
-            pname = "stdlib-clone";
-            src = ./stdlib/clone;
-            libDeps = with packages; [stdlib-sized];
-          }
-          {
-            pname = "stdlib-closures";
-            src = ./stdlib/closures;
-            withTheories = true;
-          }
-          {
-            pname = "stdlib-cmp";
-            src = ./stdlib/cmp;
-            libDeps = with packages; [stdlib-closures stdlib-option];
-            withTheories = true;
-          }
-          {
-            pname = "stdlib-controlflow";
-            src = ./stdlib/controlflow;
-            libDeps = with packages; [stdlib-option stdlib-result];
-          }
-          {
-            pname = "stdlib-iterator";
-            src = ./stdlib/iterator;
-            libDeps = with packages; [stdlib-clone stdlib-closures stdlib-cmp stdlib-option stdlib-range stdlib-result stdlib-controlflow];
-            withTheories = true;
-          }
-          {
-            pname = "stdlib-sized";
-            src = ./stdlib/sized;
-          }
-          {
-            pname = "stdlib-index";
-            src = ./stdlib/index;
-            libDeps = with packages; [stdlib-sized];
-          }
-          {
-            pname = "stdlib-mem";
-            src = ./stdlib/mem;
-            withTheories = true;
-          }
-          {
-            pname = "stdlib-option";
-            src = ./stdlib/option;
-            libDeps = with packages; [stdlib-closures stdlib-clone stdlib-result];
-          }
-          {
-            pname = "stdlib-ptr";
-            src = ./stdlib/ptr;
-            libDeps = with packages; [stdlib-mem stdlib-clone stdlib-num stdlib-option];
-            withTheories = true;
-          }
-          {
-            pname = "stdlib-ptr-advanced";
-            src = ./stdlib/ptr_advanced;
-            libDeps = with packages; [stdlib-mem stdlib-ptr stdlib-option stdlib-clone];
-          }
-          {
-            pname = "stdlib-sized";
-            src = ./stdlib/sized;
-          }
-          {
-            pname = "stdlib-result";
-            src = ./stdlib/result;
-            libDeps = with packages; [stdlib-clone stdlib-closures];
-            withTheories = true;
-          }
-          {
-            pname = "stdlib-range";
-            src = ./stdlib/range;
-            libDeps = with packages; [stdlib-cmp stdlib-option];
-          }
-          {
-            pname = "stdlib-rr_internal";
-            src = ./stdlib/rr_internal;
-            libDeps = with packages; [stdlib-alloc stdlib-ptr];
-            withTheories = true;
-          }
-          {
-            pname = "stdlib-rwlock";
-            src = ./stdlib/rwlock;
-            withStdlib = false;
-          }
-          {
-            pname = "stdlib-num";
-            src = ./stdlib/num;
-          }
-          {
-            pname = "stdlib-spin";
-            src = ./stdlib/spin;
-            libDeps = with packages; [stdlib-option stdlib-closures stdlib-arithops];
-            withTheories = true;
+          stdlib = pkgs.rocqPackages.mkRocqDerivation {
+            inherit meta version;
 
-            rocqTheoriesArgs = {
-              src = ./stdlib/spin/theories/once;
-            };
-          }
-          {
-            pname = "stdlib-vec";
-            src = ./stdlib/vec;
-            libDeps = with packages; [stdlib-alloc stdlib-iterator stdlib-option stdlib-rr_internal stdlib-closures stdlib-index stdlib-cmp stdlib-ptr-advanced stdlib-clone stdlib-controlflow];
-            withTheories = true;
-          }
-          {
             pname = "stdlib";
             opam-name = "refinedrust-stdlib";
-            src = ./stdlib/stdlib;
-            libDeps = stdlibPkgs;
-          }
-        ];
+            src = ./stdlib;
+
+            propagatedBuildInputs = [packages.theories];
+            useDune = true;
+          };
+        };
 
       checks = let
         mkCaseStudies = let
