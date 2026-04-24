@@ -1075,7 +1075,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                         return Err(self
                             .tcx
                             .dcx()
-                            .err(error::Message::RecursiveTypeWithoutInvariant(ty.def_id))
+                            .span_err(
+                                self.tcx.def_span(ty.def_id),
+                                error::Message::RecursiveTypeWithoutInvariant(ty.def_id),
+                            )
                             .into());
                     }
 
