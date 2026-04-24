@@ -35,6 +35,8 @@ stages: [ nix-cache, build, lint, tests ]
 
   variables:
     DEPENDENCIES: ".#theories.inputDerivation .#frontend.inputDerivation .#frontend.cargoArtifacts nixpkgs#gnumake nixpkgs#gnupatch nixpkgs#gnused"
+    NIX_PATH_INFO_FLAGS: ""
+    NIX_PATH_FILTER_REGEX: ""
     NIX_PLATFORM: "$(eval nix-instantiate --eval --expr 'builtins.currentSystem')"
     NIX_STORE_ARTIFACTS_PATH: ".ci_nix_artifacts"
     NIX_STORE_CACHE_PATH: ".ci_nix_cache"
@@ -69,7 +71,16 @@ stages: [ nix-cache, build, lint, tests ]
    #  1. Using OverlayFS (with `local-overlay` feature), but SYS_ADMIN capability is required
    #  2. Moving files around, which is not the best way to do
    - mkdir -p "${NIX_STORE_ARTIFACTS_PATH}/nar"
-   - nix path-info $(eval echo ${NIX_DERIVATION}) | xargs -r basename -a | cut -d'-' -f1 | xargs -r printf -- "${NIX_STORE_CACHE_PATH}/%s.narinfo\0" | xargs -r0 mv -v -t "${NIX_STORE_ARTIFACTS_PATH}" || true
+   - |
+      nix path-info ${NIX_PATH_INFO_FLAGS} $(eval echo ${NIX_DERIVATION}) \
+        | {
+            if [ -n "${NIX_PATH_FILTER_REGEX}" ]; then
+              grep -E -- "${NIX_PATH_FILTER_REGEX}" || true
+            else
+              cat
+            fi
+          } \
+        | xargs -r basename -a | cut -d'-' -f1 | xargs -r printf -- "${NIX_STORE_CACHE_PATH}/%s.narinfo\0" | xargs -r0 mv -v -t "${NIX_STORE_ARTIFACTS_PATH}" || true
    - find "${NIX_STORE_ARTIFACTS_PATH}" -name "*.narinfo" -type f -print0 | xargs -r0 grep -oPh "(?<=URL:\ ).*" | xargs -r printf -- "${NIX_STORE_CACHE_PATH}/%s\0" | xargs -r0 mv -v -t ${NIX_STORE_ARTIFACTS_PATH}/nar || true
 
 nix-cache:
@@ -98,6 +109,8 @@ stdlib:
   needs: [ theories, frontend ]
   variables:
     NIX_DERIVATION: .#stdlib
+    NIX_PATH_INFO_FLAGS: -r
+    NIX_PATH_FILTER_REGEX: '-rocq-core9\.1-stdlib-.*-dev$'
 
 clippy:
   extends: [ .nix, .build_to_nix_artifacts ]

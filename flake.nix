@@ -70,7 +70,51 @@
     in rec {
       inherit lib;
 
-      packages = {
+      packages = let
+        mkStdlib = {
+          pname,
+          opam-name ? pname,
+          libDeps ? [],
+          # `stdlib/stdlib` is the central RefinedRust library surface and needs the
+          # leaf `.rrlib` files next to its own interface so frontend load-path
+          # scanning can discover the exported libraries from a single package.
+          exportRrlibDeps ? false,
+          ...
+        } @ origArgs: let
+          args = builtins.removeAttrs origArgs ["exportRrlibDeps" "libDeps" "opam-name"];
+        in
+          pkgs.rocqPackages.mkRocqDerivation ({
+              inherit meta version;
+
+              inherit pname opam-name;
+              propagatedBuildInputs = [packages.theories] ++ libDeps;
+              useDune = true;
+
+              preBuild = ''
+                find . -name dune -exec sed -i -e 's/(package refinedrust-stdlib)/(package ${opam-name})/g' {} \;
+                cat << EOF > dune-project
+                (lang dune 3.21)
+                (using rocq 0.11)
+                (name ${opam-name})
+                (package (name ${opam-name}))
+                EOF
+              '';
+
+              postInstall = ''
+                mkdir -p $out/share/${opam-name}
+                find . -name "interface.rrlib" -exec cp {} $out/share/${opam-name}/. \;
+              '' + pkgs.lib.optionalString exportRrlibDeps (
+                pkgs.lib.concatMapStringsSep "\n" (dep: ''
+                  cp -R ${dep}/share/. $out/share/
+                '') libDeps
+              );
+            }
+            // args);
+
+        stdlibLeafPkgs =
+          lib.attrsets.attrValues
+          (lib.filterAttrs (name: _: lib.strings.hasPrefix "stdlib-" name && name != "stdlib-stdlib") packages);
+      in {
           theories = let
             stdpp = lib.rocq.mkDepDerivation rocq.stdpp {
               pname = "stdpp";
@@ -157,17 +201,124 @@
                 };
               };
             in mkRefinedRust rust.toolchain.build;
-          stdlib = pkgs.rocqPackages.mkRocqDerivation {
-            inherit meta version;
-
-            pname = "stdlib";
+          # Expose the actual checked-in `stdlib/stdlib` package as the public
+          # stdlib package. This mirrors the RefinedRust-level structure, where
+          # `stdlib` re-exports the leaf stdlib libraries.
+          stdlib = packages.stdlib-stdlib;
+        }
+        // lib.mapToAttrs lib.id mkStdlib [
+          {
+            pname = "stdlib-alloc";
+            src = ./stdlib/alloc;
+            libDeps = with packages; [stdlib-ptr stdlib-result stdlib-clone stdlib-mem stdlib-closures];
+          }
+          {
+            pname = "stdlib-arithops";
+            src = ./stdlib/arithops;
+          }
+          {
+            pname = "stdlib-boxed";
+            src = ./stdlib/boxed;
+            libDeps = with packages; [stdlib-alloc stdlib-option stdlib-mem stdlib-ptr stdlib-rr_internal stdlib-ptr-advanced];
+          }
+          {
+            pname = "stdlib-btreemap";
+            src = ./stdlib/btreemap;
+            libDeps = with packages; [stdlib-alloc stdlib-option stdlib-clone stdlib-cmp];
+          }
+          {
+            pname = "stdlib-clone";
+            src = ./stdlib/clone;
+            libDeps = with packages; [stdlib-sized];
+          }
+          {
+            pname = "stdlib-closures";
+            src = ./stdlib/closures;
+          }
+          {
+            pname = "stdlib-cmp";
+            src = ./stdlib/cmp;
+            libDeps = with packages; [stdlib-closures stdlib-option];
+          }
+          {
+            pname = "stdlib-controlflow";
+            src = ./stdlib/controlflow;
+            libDeps = with packages; [stdlib-option stdlib-result];
+          }
+          {
+            pname = "stdlib-iterator";
+            src = ./stdlib/iterator;
+            libDeps = with packages; [stdlib-clone stdlib-closures stdlib-cmp stdlib-option stdlib-range stdlib-result stdlib-controlflow];
+          }
+          {
+            pname = "stdlib-sized";
+            src = ./stdlib/sized;
+          }
+          {
+            pname = "stdlib-index";
+            src = ./stdlib/index;
+            libDeps = with packages; [stdlib-sized];
+          }
+          {
+            pname = "stdlib-mem";
+            src = ./stdlib/mem;
+          }
+          {
+            pname = "stdlib-option";
+            src = ./stdlib/option;
+            libDeps = with packages; [stdlib-closures stdlib-clone stdlib-result];
+          }
+          {
+            pname = "stdlib-ptr";
+            src = ./stdlib/ptr;
+            libDeps = with packages; [stdlib-mem stdlib-clone stdlib-num stdlib-option];
+          }
+          {
+            pname = "stdlib-ptr-advanced";
+            src = ./stdlib/ptr_advanced;
+            libDeps = with packages; [stdlib-mem stdlib-ptr stdlib-option stdlib-clone];
+          }
+          {
+            pname = "stdlib-result";
+            src = ./stdlib/result;
+            libDeps = with packages; [stdlib-clone stdlib-closures];
+          }
+          {
+            pname = "stdlib-range";
+            src = ./stdlib/range;
+            libDeps = with packages; [stdlib-cmp stdlib-option];
+          }
+          {
+            pname = "stdlib-rr_internal";
+            src = ./stdlib/rr_internal;
+            libDeps = with packages; [stdlib-alloc stdlib-ptr];
+          }
+          {
+            pname = "stdlib-rwlock";
+            src = ./stdlib/rwlock;
+          }
+          {
+            pname = "stdlib-num";
+            src = ./stdlib/num;
+          }
+          {
+            pname = "stdlib-spin";
+            src = ./stdlib/spin;
+            libDeps = with packages; [stdlib-option stdlib-closures stdlib-arithops];
+          }
+          {
+            pname = "stdlib-vec";
+            src = ./stdlib/vec;
+            libDeps = with packages; [stdlib-alloc stdlib-iterator stdlib-option stdlib-rr_internal stdlib-closures stdlib-index stdlib-cmp stdlib-ptr-advanced stdlib-clone stdlib-controlflow];
+          }
+          {
+            pname = "stdlib-stdlib";
             opam-name = "refinedrust-stdlib";
-            src = ./stdlib;
-
-            propagatedBuildInputs = [packages.theories];
-            useDune = true;
-          };
-        };
+            src = ./stdlib/stdlib;
+            libDeps = stdlibLeafPkgs;
+            exportRrlibDeps = true;
+          }
+        ];
 
       checks = let
         mkCaseStudies = let
