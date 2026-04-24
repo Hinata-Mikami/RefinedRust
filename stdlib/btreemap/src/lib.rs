@@ -9,7 +9,6 @@
 #![rr::include("option")]
 #![rr::include("cmp")]
 #![rr::include("clone")]
-#![rr::include("cmp")]
 
 #![feature(allocator_api)]
 
