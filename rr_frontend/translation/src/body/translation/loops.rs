@@ -68,7 +68,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn check_for_iter_next(
         &self,
         bb: mir::BasicBlock,
-    ) -> Result<Option<LoopIteratorInfo<'def>>, TranslationError<'tcx>> {
+    ) -> Result<Option<LoopIteratorInfo<'def>>, TranslationError> {
         let proc = self.proc;
         let mir = proc.get_mir();
         let bb_data = &mir.basic_blocks[bb];
@@ -143,7 +143,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn check_is_for_loop(
         &self,
         loop_head: mir::BasicBlock,
-    ) -> Result<Option<LoopIteratorInfo<'def>>, TranslationError<'tcx>> {
+    ) -> Result<Option<LoopIteratorInfo<'def>>, TranslationError> {
         let proc = self.proc;
         let succs = proc.successors(loop_head);
 
@@ -160,7 +160,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &self,
         loop_head: mir::BasicBlock,
         did: Option<DefId>,
-    ) -> Result<specs::LoopSpec, TranslationError<'tcx>> {
+    ) -> Result<specs::LoopSpec, TranslationError> {
         // Note that StorageDead will not help us for determining initialization/ making it invariant, since
         // it only applies to full stack slots, not individual paths. one thing that makes it more
         // complicated in the frontend: initialization may in practice also be path-dependent.
@@ -240,7 +240,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(crate) fn find_loop_spec_closure(
         &self,
         head_bb: mir::BasicBlock,
-    ) -> Result<Option<DefId>, TranslationError<'tcx>> {
+    ) -> Result<Option<DefId>, TranslationError> {
         let bodies = self.proc.loop_info().get_loop_body(head_bb);
         let basic_blocks = &self.proc.get_mir().basic_blocks;
 

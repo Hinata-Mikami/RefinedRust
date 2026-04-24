@@ -76,7 +76,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         closure_meta: &procedures::Meta,
         closure_spec: &specs::functions::Spec<'def>,
         ref_self: &ShimRefSelf,
-    ) -> Result<(), base::TranslationError<'tcx>> {
+    ) -> Result<(), base::TranslationError> {
         let (tupled_upvars_ty, self_is_ref) = match &info.tl_self_var_ty {
             specs::Type::MutRef(ty, _) | specs::Type::ShrRef(ty, _) => ((**ty).clone(), true),
             _ => (info.tl_self_var_ty.clone(), false),
@@ -307,7 +307,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         closure_did: DefId,
         closure_meta: &procedures::Meta,
         closure_spec: &specs::functions::Spec<'def>,
-    ) -> Result<code::UsedProcedure<'def>, base::TranslationError<'tcx>> {
+    ) -> Result<code::UsedProcedure<'def>, base::TranslationError> {
         // explicit instantiation is needed sometimes
         let spec_term = code::UsedProcedureSpec::Literal(
             closure_meta.get_spec_name().to_owned(),
@@ -417,7 +417,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         closure_spec: &specs::functions::Spec<'def>,
         impl_info: &specs::traits::RefInst<'def>,
         info: &procedures::ClosureImplInfo<'tcx, 'def>,
-    ) -> Result<code::Function<'def>, base::TranslationError<'tcx>> {
+    ) -> Result<code::Function<'def>, base::TranslationError> {
         // Assemble the inner spec, using the default spec of the closure traits and the impl info
         // we have already assembled before
         let method_name = match to_impl {

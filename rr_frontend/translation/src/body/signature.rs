@@ -67,7 +67,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         attrs: &'a [&'a hir::AttrItem],
         ty_translator: &'def types::TX<'def, 'tcx>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
-    ) -> Result<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>, TranslationError<'tcx>> {
+    ) -> Result<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>, TranslationError> {
         // use a dummy name as we're never going to use the code.
         let mut translated_fn = code::FunctionBuilder::new(name, "dummy", spec_name, trait_req_incl_name);
 
@@ -204,7 +204,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         trait_registry: &'def registry::TR<'tcx, 'def>,
         proc_registry: &'a procedures::Scope<'tcx, 'def>,
         const_registry: &'a consts::Scope<'def>,
-    ) -> Result<(Self, procedures::ClosureImplInfo<'tcx, 'def>), TranslationError<'tcx>> {
+    ) -> Result<(Self, procedures::ClosureImplInfo<'tcx, 'def>), TranslationError> {
         let mut translated_fn = code::FunctionBuilder::new(
             meta.get_name(),
             meta.get_code_name(),
@@ -422,7 +422,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         trait_registry: &'def registry::TR<'tcx, 'def>,
         proc_registry: &'a procedures::Scope<'tcx, 'def>,
         const_registry: &'a consts::Scope<'def>,
-    ) -> Result<Self, TranslationError<'tcx>> {
+    ) -> Result<Self, TranslationError> {
         let mut translated_fn = code::FunctionBuilder::new(
             meta.get_name(),
             meta.get_code_name(),
@@ -617,7 +617,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(crate) fn translate(
         self,
         spec_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
-    ) -> Result<code::Function<'def>, TranslationError<'tcx>> {
+    ) -> Result<code::Function<'def>, TranslationError> {
         let translator = translation::TX::new(
             self.tcx,
             self.procedure_registry,
@@ -636,7 +636,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translation that only generates a specification.
     pub(crate) fn generate_spec(
         self,
-    ) -> Result<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>, TranslationError<'tcx>> {
+    ) -> Result<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>, TranslationError> {
         self.translated_fn
             .try_into()
             .map_err(|err| self.tcx.dcx().err(Message::AttributeError(err)).into())
@@ -664,7 +664,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         translated_fn: &mut code::FunctionBuilder<'def>,
         region_substitution: regions::EarlyLateRegionMap<'def>,
         info: Option<&'def PoloniusInfo<'def, 'tcx>>,
-    ) -> Result<types::FunctionState<'tcx, 'def>, TranslationError<'tcx>> {
+    ) -> Result<types::FunctionState<'tcx, 'def>, TranslationError> {
         // enter the procedure
         let type_scope = types::FunctionState::new_with_traits(
             proc_did,
@@ -709,7 +709,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         output: ty::Ty<'tcx>,
         arg_names: &[String],
         meta: ClosureMetaInfo<'_, 'tcx, 'def>,
-    ) -> Result<ClosureSpecInfo, TranslationError<'tcx>> {
+    ) -> Result<ClosureSpecInfo, TranslationError> {
         trace!("entering process_closure_attrs");
         let v = self.attrs;
 
@@ -744,7 +744,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 v,
                 COMMON_FUNCTION_SPEC_ATTRS.iter().copied().chain(CLOSURE_SPEC_ATTRS.iter().copied()),
             )
-            .map_err(|err| -> TranslationError<'tcx> {
+            .map_err(|err| -> TranslationError {
                 ty_translator
                     .translator
                     .tcx()
@@ -771,7 +771,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 .parse_closure_spec(v, &mut spec_builder, meta, |x| {
                     ty_translator.make_tuple_use(x, Some(&mut tuple_uses))
                 })
-                .map_err(|err| -> TranslationError<'tcx> {
+                .map_err(|err| -> TranslationError {
                     ty_translator
                         .translator
                         .tcx()
@@ -800,7 +800,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         arg_names: &[String],
         inputs: &[ty::Ty<'tcx>],
         output: ty::Ty<'tcx>,
-    ) -> Result<specs::functions::LiteralSpecBuilder<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::functions::LiteralSpecBuilder<'def>, TranslationError> {
         info!("inputs: {:?}, output: {:?}", inputs, output);
 
         let mut translated_arg_types: Vec<specs::Type<'def>> = Vec::new();
@@ -823,7 +823,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     attrs,
                     COMMON_FUNCTION_SPEC_ATTRS.iter().copied().chain(FUNCTION_SPEC_ATTRS.iter().copied()),
                 )
-                .map_err(|err| -> TranslationError<'tcx> {
+                .map_err(|err| -> TranslationError {
                     ty_translator
                         .translator
                         .tcx()
@@ -849,7 +849,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         );
 
                     parser.parse_function_spec(attrs, &mut spec_builder).map_err(
-                        |err| -> TranslationError<'tcx> {
+                        |err| -> TranslationError {
                             ty_translator
                                 .translator
                                 .tcx()
@@ -874,7 +874,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &self,
     ) -> Result<
         Option<(specs::traits::InstantiatedFunctionSpec<'def>, coq::binder::BinderList)>,
-        TranslationError<'tcx>,
+        TranslationError,
     > {
         let did = self.proc.get_id();
 

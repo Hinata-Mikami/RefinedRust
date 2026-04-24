@@ -120,7 +120,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         mut inclusion_tracker: InclusionTracker<'a, 'tcx>,
         mut translated_fn: code::FunctionBuilder<'def>,
-    ) -> Result<Self, TranslationError<'tcx>> {
+    ) -> Result<Self, TranslationError> {
         let body = proc.get_mir();
 
         // map to translate between locals and the string names we use in radium:
@@ -180,9 +180,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
         info!("radium name map: {:?}", variable_map);
         // create the function
-        let return_name = opt_return_name.ok_or_else(|| -> TranslationError<'tcx> {
-            tcx.dcx().err(Message::MissingReturnValueLocal).into()
-        })?;
+        let return_name = opt_return_name
+            .ok_or_else(|| -> TranslationError { tcx.dcx().err(Message::MissingReturnValueLocal).into() })?;
 
         // add lifetime parameters to the map
         let typing_env = ty::TypingEnv::post_analysis(tcx, proc.get_id());
@@ -224,7 +223,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(crate) fn translate(
         mut self,
         spec_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
-    ) -> Result<code::Function<'def>, TranslationError<'tcx>> {
+    ) -> Result<code::Function<'def>, TranslationError> {
         // add loop info
         let loop_info = self.proc.loop_info();
         loop_info.dump_body_head();
@@ -445,7 +444,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         _loc: &mir::Location,
         target: mir::BasicBlock,
-    ) -> Result<code::Stmt, TranslationError<'tcx>> {
+    ) -> Result<code::Stmt, TranslationError> {
         self.enqueue_basic_block(target);
         let mut res_stmt = code::Stmt::GotoBlock(target.as_usize());
 
@@ -491,7 +490,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Get the type of a local in a body.
-    fn get_type_of_local(&self, local: mir::Local) -> Result<ty::Ty<'tcx>, TranslationError<'tcx>> {
+    fn get_type_of_local(&self, local: mir::Local) -> Result<ty::Ty<'tcx>, TranslationError> {
         self.proc
             .get_mir()
             .local_decls
@@ -511,7 +510,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Check if a local is used for a spec closure.
-    fn is_spec_closure_local(&self, l: mir::Local) -> Result<Option<DefId>, TranslationError<'tcx>> {
+    fn is_spec_closure_local(&self, l: mir::Local) -> Result<Option<DefId>, TranslationError> {
         // check if we should ignore this
         let local_type = self.get_type_of_local(l)?;
 

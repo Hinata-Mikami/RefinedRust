@@ -1028,7 +1028,7 @@ fn find_external_export_attr_span(tcx: ty::TyCtxt<'_>, did: DefId) -> Option<Spa
 }
 
 /// Register shims in the procedure registry.
-fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base::TranslationError<'tcx>> {
+fn register_shims(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), base::TranslationError> {
     for shim in vcx.shim_registry.get_function_shims() {
         let did = resolve_shim(vcx, &shim.path, shim.is_method);
 
@@ -1219,9 +1219,7 @@ fn get_most_restrictive_function_mode(vcx: &VerificationCtxt<'_, '_>, did: DefId
 }
 
 /// Register functions of the crate in the procedure registry.
-fn register_functions<'tcx>(
-    vcx: &mut VerificationCtxt<'tcx, '_>,
-) -> Result<(), base::TranslationError<'tcx>> {
+fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), base::TranslationError> {
     for (f, is_closure) in vcx
         .functions
         .iter()
@@ -1462,7 +1460,6 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
                 true
             },
             Err(base::TranslationError::Tainted(_)) => false,
-            Err(base::TranslationError::_Marker(_)) => unreachable!(),
         }
     } else {
         // Fully translate the function
@@ -1485,7 +1482,6 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
                 true
             },
             Err(base::TranslationError::Tainted(_)) => false,
-            Err(base::TranslationError::_Marker(_)) => unreachable!(),
         }
     }
 }
@@ -1496,10 +1492,10 @@ fn abort_after_reported_error(context: impl Into<String>) -> String {
 
 /// Get all functions and closures in the current crate that have attributes on them and are not
 /// skipped due to `rr::skip` attributes.
-fn check_consider_function<'tcx>(
-    vcx: &VerificationCtxt<'tcx, '_>,
+fn check_consider_function(
+    vcx: &VerificationCtxt<'_, '_>,
     id: LocalDefId,
-) -> Result<bool, base::TranslationError<'tcx>> {
+) -> Result<bool, base::TranslationError> {
     if environment::has_tool_attribute(vcx.tcx, id.to_def_id(), "skip") {
         vcx.tcx.dcx().span_warn(vcx.tcx.def_span(id), error::Message::SkipWarn);
         return Ok(false);
@@ -1905,7 +1901,6 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) ->
                     true
                 },
                 Err(base::TranslationError::Tainted(_)) => false,
-                Err(base::TranslationError::_Marker(_)) => unreachable!(),
                 Err(err) => {
                     vcx.tcx.dcx().span_warn(
                         vcx.tcx.def_span(*closure_did),
@@ -1962,88 +1957,114 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> bool {
 
         trace!("Assembling trait impl {trait_impl_id:?}");
 
-        let process_impl = || -> Result<(specs::traits::ImplSpec<'_>, BTreeSet<OrderedDefId>), base::TranslationError<'tcx>> {
-            let (impl_info, deps, context_items) = vcx.trait_registry.get_trait_impl_info(did)?;
-            let assoc_items: &'tcx ty::AssocItems = vcx.tcx.associated_items(did);
-            trace!("impl assoc items: {assoc_items:?}");
+        let process_impl =
+            || -> Result<(specs::traits::ImplSpec<'_>, BTreeSet<OrderedDefId>), base::TranslationError> {
+                let (impl_info, deps, context_items) = vcx.trait_registry.get_trait_impl_info(did)?;
+                let assoc_items: &'tcx ty::AssocItems = vcx.tcx.associated_items(did);
+                trace!("impl assoc items: {assoc_items:?}");
 
-            let trait_assoc_items: &'tcx ty::AssocItems = vcx.tcx.associated_items(trait_did);
+                let trait_assoc_items: &'tcx ty::AssocItems = vcx.tcx.associated_items(trait_did);
 
-            let mut methods = BTreeMap::new();
+                let mut methods = BTreeMap::new();
 
-            let sorted_trait_assoc_items = traits::sort_assoc_items(vcx.tcx, trait_assoc_items);
-            for x in sorted_trait_assoc_items {
-                if x.tag() == ty::AssocTag::Fn {
-                    let fn_item = assoc_items.filter_by_name_unhygienic_and_kind(
-                        x.ident(vcx.tcx).name,
-                        ty::AssocTag::Fn,
-                    ).find(|y| y.trait_item_def_id() == Some(x.def_id));
-                    trace!("Translating item {x:?}, fn_item = {fn_item:?}");
+                let sorted_trait_assoc_items = traits::sort_assoc_items(vcx.tcx, trait_assoc_items);
+                for x in sorted_trait_assoc_items {
+                    if x.tag() == ty::AssocTag::Fn {
+                        let fn_item = assoc_items
+                            .filter_by_name_unhygienic_and_kind(x.ident(vcx.tcx).name, ty::AssocTag::Fn)
+                            .find(|y| y.trait_item_def_id() == Some(x.def_id));
+                        trace!("Translating item {x:?}, fn_item = {fn_item:?}");
 
-                    if let Some(fn_item) = fn_item {
-                        if let Some(spec) = vcx.procedure_registry.lookup_function_spec(fn_item.def_id) {
-                            methods.insert(x.name().as_str().to_owned(), specs::traits::InstanceMethodSpec::Defined(spec));
-                        } else {
-                            let err = vcx.tcx.dcx().span_err(
-                                vcx.tcx.def_span(did),
-                                error::Message::IncompleteTraitImplSpec(did),
-                            );
-                            return Err(base::TranslationError::ErrorReported(err));
-                        }
-                    } else {
-                        // this uses a default impl
-                        let fn_name = base::strip_coq_ident(vcx.tcx.item_name(x.def_id).as_str());
-                        let spec = specs::traits::InstantiatedFunctionSpec::new(impl_info.clone(), fn_name);
-
-                        let assoc_item = trait_assoc_items.find_by_ident_and_kind(vcx.tcx, x.ident(vcx.tcx), ty::AssocTag::Fn, trait_did).unwrap();
-
-                        trace!("assemble_trait_impls: trait_assoc_item = {:?}", assoc_item.def_id);
-                        trace!("assemble_trait_impls: default spec: {spec:?}");
-                        if let Some(default_meta) = vcx.procedure_registry.lookup_function(assoc_item.def_id) {
-                            // now build the generic scope for this item.
-                            let ty = vcx.tcx.type_of(assoc_item.def_id).instantiate_identity();
-                            let ty::TyKind::FnDef(_, params) = ty.kind() else {
-                                unimplemented!();
-                            };
-                            let mut generics = scope::Params::new_from_generics(vcx.tcx, params, Some(assoc_item.def_id));
-                            generics.add_param_env(assoc_item.def_id, vcx.tcx, vcx.type_translator, vcx.trait_registry)?;
-                            // TODO: We don't respect dependencies of the direct scope on the
-                            // surrounding scope here. For instance for assoc type constraints.
-                            //
-                            // Dirty fix: I introduce let bindings in the translation for the inst
-                            // => let's just do this for now.
-                            //
-                            // Better: we should already substitute suitably in Rust.
-                            // But how do I do that? This seems a bit difficult.
-
-                            // add late bounds
-                            let sig = ty.fn_sig(vcx.tcx);
-                            let bound_vars = sig.bound_vars();
-                            let mut bound_regions = Vec::new();
-                            for x in bound_vars {
-                                bound_regions.push(x.expect_region());
+                        if let Some(fn_item) = fn_item {
+                            if let Some(spec) = vcx.procedure_registry.lookup_function_spec(fn_item.def_id) {
+                                methods.insert(
+                                    x.name().as_str().to_owned(),
+                                    specs::traits::InstanceMethodSpec::Defined(spec),
+                                );
+                            } else {
+                                let err = vcx.tcx.dcx().span_err(
+                                    vcx.tcx.def_span(did),
+                                    error::Message::IncompleteTraitImplSpec(did),
+                                );
+                                return Err(base::TranslationError::ErrorReported(err));
                             }
-                            drop(generics.translate_bound_regions(vcx.tcx, &bound_regions));
+                        } else {
+                            // this uses a default impl
+                            let fn_name = base::strip_coq_ident(vcx.tcx.item_name(x.def_id).as_str());
+                            let spec =
+                                specs::traits::InstantiatedFunctionSpec::new(impl_info.clone(), fn_name);
 
-                            let scope: specs::GenericScope<'_> = generics.into();
+                            let assoc_item = trait_assoc_items
+                                .find_by_ident_and_kind(
+                                    vcx.tcx,
+                                    x.ident(vcx.tcx),
+                                    ty::AssocTag::Fn,
+                                    trait_did,
+                                )
+                                .unwrap();
 
-                            methods.insert(x.name().as_str().to_owned(), specs::traits::InstanceMethodSpec::DefaultSpec(Box::new(spec), scope, default_meta.get_spec_name().to_owned()));
-                        }
-                        else {
-                            // this can happen for incompletely specified traits from stdlib, let's
-                            // ignore this
+                            trace!("assemble_trait_impls: trait_assoc_item = {:?}", assoc_item.def_id);
+                            trace!("assemble_trait_impls: default spec: {spec:?}");
+                            if let Some(default_meta) =
+                                vcx.procedure_registry.lookup_function(assoc_item.def_id)
+                            {
+                                // now build the generic scope for this item.
+                                let ty = vcx.tcx.type_of(assoc_item.def_id).instantiate_identity();
+                                let ty::TyKind::FnDef(_, params) = ty.kind() else {
+                                    unimplemented!();
+                                };
+                                let mut generics = scope::Params::new_from_generics(
+                                    vcx.tcx,
+                                    params,
+                                    Some(assoc_item.def_id),
+                                );
+                                generics.add_param_env(
+                                    assoc_item.def_id,
+                                    vcx.tcx,
+                                    vcx.type_translator,
+                                    vcx.trait_registry,
+                                )?;
+                                // TODO: We don't respect dependencies of the direct scope on the
+                                // surrounding scope here. For instance for assoc type constraints.
+                                //
+                                // Dirty fix: I introduce let bindings in the translation for the inst
+                                // => let's just do this for now.
+                                //
+                                // Better: we should already substitute suitably in Rust.
+                                // But how do I do that? This seems a bit difficult.
+
+                                // add late bounds
+                                let sig = ty.fn_sig(vcx.tcx);
+                                let bound_vars = sig.bound_vars();
+                                let mut bound_regions = Vec::new();
+                                for x in bound_vars {
+                                    bound_regions.push(x.expect_region());
+                                }
+                                drop(generics.translate_bound_regions(vcx.tcx, &bound_regions));
+
+                                let scope: specs::GenericScope<'_> = generics.into();
+
+                                methods.insert(
+                                    x.name().as_str().to_owned(),
+                                    specs::traits::InstanceMethodSpec::DefaultSpec(
+                                        Box::new(spec),
+                                        scope,
+                                        default_meta.get_spec_name().to_owned(),
+                                    ),
+                                );
+                            } else {
+                                // this can happen for incompletely specified traits from stdlib, let's
+                                // ignore this
+                            }
                         }
                     }
                 }
-            }
-            let instance_spec = specs::traits::InstanceSpec::new(methods);
+                let instance_spec = specs::traits::InstanceSpec::new(methods);
 
-            // assemble the spec and register it
-            let spec = specs::traits::ImplSpec::new(impl_info,
-                instance_spec,
-                context_items);
-            Ok((spec, deps))
-        };
+                // assemble the spec and register it
+                let spec = specs::traits::ImplSpec::new(impl_info, instance_spec, context_items);
+                Ok((spec, deps))
+            };
 
         let spec = process_impl();
         match spec {
@@ -2059,7 +2080,6 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> bool {
                 );
             },
             Err(base::TranslationError::Tainted(_)) => return false,
-            Err(base::TranslationError::_Marker(_)) => unreachable!(),
         }
     }
 

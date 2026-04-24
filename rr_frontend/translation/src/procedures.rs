@@ -226,7 +226,7 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     }
 
     /// Register a function.
-    pub(crate) fn register_function(&mut self, did: DefId, meta: Meta) -> Result<(), TranslationError<'tcx>> {
+    pub(crate) fn register_function(&mut self, did: DefId, meta: Meta) -> Result<(), TranslationError> {
         if rrconfig::no_assumption() && meta.mode.is_assumed() {
             self.tcx.dcx().span_err(self.tcx.def_span(did), Message::NoAssumptionAllowed(meta.mode));
         }

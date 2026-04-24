@@ -31,11 +31,11 @@ impl<'def> Scope<'def> {
         self.statics.insert(did, meta);
     }
 
-    pub(crate) fn get_static<'tcx>(
+    pub(crate) fn get_static(
         &self,
-        tcx: ty::TyCtxt<'tcx>,
+        tcx: ty::TyCtxt<'_>,
         did: OrderedDefId,
-    ) -> Result<&code::StaticMeta<'def>, TranslationError<'tcx>> {
+    ) -> Result<&code::StaticMeta<'def>, TranslationError> {
         self.statics.get(&did).ok_or_else(|| {
             tcx.dcx()
                 .err(Message::MissingRegisteredStatic(format!(

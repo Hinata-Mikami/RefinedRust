@@ -76,7 +76,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         op: &mir::Operand<'tcx>,
         dest: &mir::Place<'tcx>,
-    ) -> Result<Vec<code::PrimStmt>, TranslationError<'tcx>> {
+    ) -> Result<Vec<code::PrimStmt>, TranslationError> {
         let (translated_op, _) = self.translate_operand(op, false)?;
         let ty = self.get_type_of_operand(op);
 
@@ -126,7 +126,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         term: &mir::Terminator<'tcx>,
         loc: mir::Location,
         dying_loans: Vec<facts::Loan>,
-    ) -> Result<code::Stmt, TranslationError<'tcx>> {
+    ) -> Result<code::Stmt, TranslationError> {
         let mut endlfts = self.generate_endlfts(dying_loans.into_iter());
 
         match &term.kind {

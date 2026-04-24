@@ -35,7 +35,7 @@ pub(crate) type GenericsKey<'tcx> = Vec<ty::Ty<'tcx>>;
 pub(crate) fn generate_args_inst_key<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     ty_params: &[ty::GenericArg<'tcx>],
-) -> Result<GenericsKey<'tcx>, TranslationError<'tcx>> {
+) -> Result<GenericsKey<'tcx>, TranslationError> {
     // erase parameters to their syntactic types
     let mut key = Vec::new();
     let mut region_eraser = TyRegionEraseFolder::new(tcx);
@@ -502,7 +502,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         &mut self,
         typing_env: ty::TypingEnv<'tcx>,
         type_translator: &TX<'def, 'tcx>,
-    ) -> Result<(), TranslationError<'tcx>> {
+    ) -> Result<(), TranslationError> {
         let clauses = typing_env.param_env.caller_bounds();
         for cl in clauses {
             let cl_kind = cl.kind();
@@ -545,7 +545,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         tcx: ty::TyCtxt<'tcx>,
         type_translator: &TX<'def, 'tcx>,
         trait_registry: &registry::TR<'tcx, 'def>,
-    ) -> Result<(), TranslationError<'tcx>> {
+    ) -> Result<(), TranslationError> {
         let typing_env = ty::TypingEnv::post_analysis(tcx, did);
         let is_trait = tcx.is_trait(did);
         let requirements = requirements::get_trait_requirements_with_origin(tcx, did);
@@ -747,7 +747,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         tcx: ty::TyCtxt<'tcx>,
         type_translator: &TX<'def, 'tcx>,
         trait_registry: &registry::TR<'tcx, 'def>,
-    ) -> Result<(), TranslationError<'tcx>> {
+    ) -> Result<(), TranslationError> {
         trace!("Enter add_param_env for did = {did:?}");
         let typing_env = ty::TypingEnv::post_analysis(tcx, did);
 

@@ -255,7 +255,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Pre-register trait to account for mutually recursive traits.
-    pub(crate) fn preregister_trait(&'def self, did: LocalDefId) -> Result<(), TranslationError<'tcx>> {
+    pub(crate) fn preregister_trait(&'def self, did: LocalDefId) -> Result<(), TranslationError> {
         {
             let scope = self.trait_decls.borrow();
             let ordered_did = OrderedDefId::new(self.tcx, did.to_def_id());
@@ -299,7 +299,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         &'def self,
         did: LocalDefId,
         proc_registry: &mut procedures::Scope<'tcx, 'def>,
-    ) -> Result<(), TranslationError<'tcx>> {
+    ) -> Result<(), TranslationError> {
         trace!("enter TR::register_trait for did={did:?}");
 
         let ordered_did = OrderedDefId::new(self.tcx, did.to_def_id());
@@ -328,7 +328,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             TranslationError::Tainted(err)
         })?;
 
-        let mut cont = || -> Result<(), TranslationError<'tcx>> {
+        let mut cont = || -> Result<(), TranslationError> {
             // get generics
             let trait_generics: &'tcx ty::Generics = self.tcx.generics_of(did.to_def_id());
             let mut param_scope = scope::Params::from(trait_generics.own_params.as_slice());
@@ -528,7 +528,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         impl_did: DefId,
         impl_args: &[ty::GenericArg<'tcx>],
         trait_args: &[ty::GenericArg<'tcx>],
-    ) -> Result<(specs::traits::SpecializedImpl<'def>, Vec<ty::Ty<'tcx>>), TranslationError<'tcx>> {
+    ) -> Result<(specs::traits::SpecializedImpl<'def>, Vec<ty::Ty<'tcx>>), TranslationError> {
         trace!(
             "enter TR::get_impl_spec_term for impl_did={impl_did:?} impl_args={impl_args:?} trait_args={trait_args:?}"
         );
@@ -648,7 +648,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trait_did: DefId,
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         trait_args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<(specs::traits::SpecializedImpl<'def>, Vec<ty::Ty<'tcx>>), TranslationError<'tcx>> {
+    ) -> Result<(specs::traits::SpecializedImpl<'def>, Vec<ty::Ty<'tcx>>), TranslationError> {
         let closure_kind = search::get_closure_kind_of_trait_did(self.tcx, trait_did)
             .unwrap_or_else(|| traits::raise_not_a_closure_trait(self.tcx, trait_did));
 
@@ -714,7 +714,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         bound_regions: &[ty::BoundRegionKind<'tcx>],
         origin: specs::TyParamOrigin,
         assoc_constraints: &[Option<ty::Ty<'tcx>>],
-    ) -> Result<ResolvedTraitReq<'tcx, 'def>, TranslationError<'tcx>> {
+    ) -> Result<ResolvedTraitReq<'tcx, 'def>, TranslationError> {
         let current_typing_env: ty::TypingEnv<'tcx> = state.get_typing_env(self.tcx);
 
         let trait_spec = self.lookup_trait(trait_did).ok_or_else(|| {
@@ -882,7 +882,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         did: DefId,
         params: ty::GenericArgsRef<'tcx>,
         include_self: bool,
-    ) -> Result<Vec<ResolvedTraitReq<'tcx, 'def>>, TranslationError<'tcx>> {
+    ) -> Result<Vec<ResolvedTraitReq<'tcx, 'def>>, TranslationError> {
         trace!(
             "Enter resolve_trait_requirements_in_state with did={did:?} and params={params:?}, in state={state:?}"
         );
@@ -979,7 +979,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
         params_inst: ty::GenericArgsRef<'tcx>,
-    ) -> Result<specs::GenericScopeInst<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::GenericScopeInst<'def>, TranslationError> {
         let mut scope_inst = specs::GenericScopeInst::empty();
 
         // pass the args for this specific impl
@@ -1000,7 +1000,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
         trait_req: specs::traits::ReqInst<'def, ty::Ty<'tcx>>,
-    ) -> Result<specs::traits::ReqInst<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::traits::ReqInst<'def>, TranslationError> {
         let mut assoc_inst = Vec::new();
         for ty in trait_req.assoc_ty_inst {
             let ty = self.type_translator().translate_type_in_state(ty, state)?;
@@ -1020,7 +1020,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         state: types::ST<'_, '_, 'def, 'tcx>,
         did: DefId,
         params_inst: ty::GenericArgsRef<'tcx>,
-    ) -> Result<Vec<specs::traits::ReqInst<'def, specs::Type<'def>>>, TranslationError<'tcx>> {
+    ) -> Result<Vec<specs::traits::ReqInst<'def, specs::Type<'def>>>, TranslationError> {
         let mut trait_reqs = Vec::new();
         for trait_req in self.resolve_trait_requirements_in_state(state, did, params_inst, false)? {
             // compute the new scope including the bound regions.
@@ -1042,7 +1042,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         state: types::ST<'_, '_, 'def, 'tcx>,
         did: DefId,
         params_inst: ty::GenericArgsRef<'tcx>,
-    ) -> Result<specs::GenericScopeInst<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::GenericScopeInst<'def>, TranslationError> {
         let mut scope_inst = self.compute_scope_inst_in_state_without_traits(state, params_inst)?;
 
         for trait_req in self.resolve_radium_trait_requirements_in_state(state, did, params_inst)? {
@@ -1060,7 +1060,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         kind: ty::ClosureKind,
         info: &procedures::ClosureImplInfo<'tcx, 'def>,
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
-    ) -> Result<specs::traits::RefInst<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::traits::RefInst<'def>, TranslationError> {
         trace!(
             "enter get_closure_trait_impl_info for closure_did={closure_did:?} and kind={kind:?} with info={info:?}"
         );
@@ -1176,7 +1176,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     pub(crate) fn check_for_derive_trait_attrs(
         &self,
         trait_impl_did: DefId,
-    ) -> Result<Option<(specs::traits::SpecAttrsInst, coq::binder::BinderList)>, TranslationError<'tcx>> {
+    ) -> Result<Option<(specs::traits::SpecAttrsInst, coq::binder::BinderList)>, TranslationError> {
         let subject = self.tcx.impl_trait_header(trait_impl_did);
         let trait_ref = subject.trait_ref.skip_binder();
 
@@ -1271,7 +1271,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trait_impl_did: DefId,
     ) -> Result<
         (specs::traits::RefInst<'def>, BTreeSet<OrderedDefId>, coq::binder::BinderList),
-        TranslationError<'tcx>,
+        TranslationError,
     > {
         let trait_did = self.tcx.impl_trait_id(trait_impl_did);
 
@@ -1487,7 +1487,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         typing_env: ty::TypingEnv<'tcx>,
         //state: types::ST<'_, '_, 'def, 'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
-    ) -> Result<(), TranslationError<'tcx>> {
+    ) -> Result<(), TranslationError> {
         trace!("enter finalize_trait_use for {:?}", trait_use.did);
         trace!("current scope={scope:?}");
 

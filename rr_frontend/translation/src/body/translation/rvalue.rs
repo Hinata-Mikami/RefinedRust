@@ -22,7 +22,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         kind: &mir::AggregateKind<'tcx>,
         op: &index::IndexVec<abi::FieldIdx, mir::Operand<'tcx>>,
-    ) -> Result<code::Expr, TranslationError<'tcx>> {
+    ) -> Result<code::Expr, TranslationError> {
         // translate operands
         let mut translated_ops: Vec<code::Expr> = Vec::new();
         let mut operand_types: Vec<ty::Ty<'tcx>> = Vec::new();
@@ -146,7 +146,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         kind: mir::CastKind,
         op: &mir::Operand<'tcx>,
         to_ty: ty::Ty<'tcx>,
-    ) -> Result<code::Expr, TranslationError<'tcx>> {
+    ) -> Result<code::Expr, TranslationError> {
         let op_ty = self.get_type_of_operand(op);
         let op_st = self.ty_translator.translate_type_to_syn_type(op_ty)?;
         let op_ot = op_st.into();
@@ -246,7 +246,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         op: &mir::Operand<'tcx>,
         to_rvalue: bool,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
         match op {
             // In Caesium: typed_place needs deref (not use) for place accesses.
             // use is used top-level to convert an lvalue to an rvalue, which is why we use it here.
@@ -302,7 +302,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         loc: mir::Location,
         rval: &mir::Rvalue<'tcx>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
         match rval {
             mir::Rvalue::Use(op) => {
                 // converts an lvalue to an rvalue
@@ -429,7 +429,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &self,
         _bk: mir::BorrowKind,
         pl: &mir::Place<'tcx>,
-    ) -> Result<Option<code::RustType>, TranslationError<'tcx>> {
+    ) -> Result<Option<code::RustType>, TranslationError> {
         //let mir::BorrowKind::Mut { .. } = bk else {
         //return Ok(None);
         //};
@@ -451,7 +451,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         op: mir::BinOp,
         e1: &mir::Operand<'tcx>,
         e2: &mir::Operand<'tcx>,
-    ) -> Result<code::Expr, TranslationError<'tcx>> {
+    ) -> Result<code::Expr, TranslationError> {
         let e1_ty = self.get_type_of_operand(e1);
         let e2_ty = self.get_type_of_operand(e2);
         let e1_st = self.ty_translator.translate_type_to_syn_type(e1_ty)?;
@@ -545,10 +545,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Get the inner type of a type to which we can apply the offset operator.
-    fn get_offset_ty(
-        tcx: ty::TyCtxt<'tcx>,
-        ty: ty::Ty<'tcx>,
-    ) -> Result<ty::Ty<'tcx>, TranslationError<'tcx>> {
+    fn get_offset_ty(tcx: ty::TyCtxt<'tcx>, ty: ty::Ty<'tcx>) -> Result<ty::Ty<'tcx>, TranslationError> {
         match ty.kind() {
             ty::TyKind::Array(t, _) | ty::TyKind::Slice(t) | ty::TyKind::Ref(_, t, _) => Ok(*t),
             ty::TyKind::RawPtr(ty, _) => Ok(*ty),
@@ -561,7 +558,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         op: mir::UnOp,
         ty: ty::Ty<'tcx>,
-    ) -> Result<code::Unop, TranslationError<'tcx>> {
+    ) -> Result<code::Unop, TranslationError> {
         match op {
             mir::UnOp::Not => match ty.kind() {
                 ty::TyKind::Bool => Ok(code::Unop::NotBool),
@@ -580,7 +577,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn translate_borrow_kind(
         tcx: ty::TyCtxt<'tcx>,
         kind: mir::BorrowKind,
-    ) -> Result<code::BorKind, TranslationError<'tcx>> {
+    ) -> Result<code::BorKind, TranslationError> {
         match kind {
             mir::BorrowKind::Shared => Ok(code::BorKind::Shared),
             mir::BorrowKind::Fake(_) => {

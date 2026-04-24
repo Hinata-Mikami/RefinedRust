@@ -6,7 +6,6 @@
 
 use std::cmp;
 use std::collections::{BTreeMap, BTreeSet};
-use std::marker::PhantomData;
 
 use derive_more::Display;
 use rr_rustc_interface::errors::ErrorGuaranteed;
@@ -111,18 +110,15 @@ pub(crate) fn order_defs_with_deps(
 /// Error type used for the MIR to Caesium translation.
 //TODO: add location info based on Span
 #[derive(Clone, Debug, Display)]
-pub(crate) enum TranslationError<'tcx> {
+pub(crate) enum TranslationError {
     #[display("Error reported")]
     ErrorReported(ErrorGuaranteed),
 
     #[display("Error reported (tainted state)")]
     Tainted(ErrorGuaranteed),
-
-    #[display("translation error marker")]
-    _Marker(PhantomData<&'tcx ()>),
 }
 
-impl From<ErrorGuaranteed> for TranslationError<'_> {
+impl From<ErrorGuaranteed> for TranslationError {
     fn from(x: ErrorGuaranteed) -> Self {
         Self::ErrorReported(x)
     }

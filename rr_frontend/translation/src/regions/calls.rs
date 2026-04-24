@@ -215,7 +215,7 @@ pub(crate) fn compute_unconstrained_region_annots<'tcx>(
     loc: mir::Location,
     unconstrained_regions: BTreeSet<facts::Region>,
     early_region_map: &BTreeMap<coq::Ident, usize>,
-) -> Result<(Vec<code::Annotation>, BTreeSet<facts::Region>), TranslationError<'tcx>> {
+) -> Result<(Vec<code::Annotation>, BTreeSet<facts::Region>), TranslationError> {
     let info = inclusion_tracker.info();
     let midpoint = info.interner.get_point_index(&facts::Point {
         location: loc,

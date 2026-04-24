@@ -340,7 +340,7 @@ pub(crate) fn make_unconstrained_region_annotations<'tcx>(
     unconstrained_regions: BTreeSet<Region>,
     loc: mir::Location,
     rhs: Option<&mir::Rvalue<'tcx>>,
-) -> Result<(Vec<code::Annotation>, Vec<specs::Lft>), TranslationError<'tcx>> {
+) -> Result<(Vec<code::Annotation>, Vec<specs::Lft>), TranslationError> {
     let mut annotations = Vec::new();
 
     let info = inclusion_tracker.info();

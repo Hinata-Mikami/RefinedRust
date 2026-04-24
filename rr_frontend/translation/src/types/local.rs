@@ -64,37 +64,28 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     pub(crate) fn translate_type_to_syn_type(
         &self,
         ty: ty::Ty<'tcx>,
-    ) -> Result<lang::SynType, TranslationError<'tcx>> {
+    ) -> Result<lang::SynType, TranslationError> {
         let mut scope = self.scope.borrow_mut();
         let mut state = STInner::InFunction(&mut scope);
         self.translator.translate_type_to_syn_type(ty, &mut state)
     }
 
     /// Translate a region in the scope of the current function.
-    pub(crate) fn translate_region(
-        &self,
-        region: ty::Region<'tcx>,
-    ) -> Result<specs::Lft, TranslationError<'tcx>> {
+    pub(crate) fn translate_region(&self, region: ty::Region<'tcx>) -> Result<specs::Lft, TranslationError> {
         let mut scope = self.scope.borrow_mut();
         let mut scope = STInner::InFunction(&mut scope);
         TX::translate_region(self.translator.tcx(), &mut scope, region)
     }
 
     /// Translate a Polonius region variable in the scope of the current function.
-    pub(crate) fn translate_region_var(
-        &self,
-        region: facts::Region,
-    ) -> Result<specs::Lft, TranslationError<'tcx>> {
+    pub(crate) fn translate_region_var(&self, region: facts::Region) -> Result<specs::Lft, TranslationError> {
         let mut scope = self.scope.borrow_mut();
         let scope = STInner::InFunction(&mut scope);
         scope.lookup_polonius_var(self.translator.tcx(), region)
     }
 
     /// Translate type.
-    pub(crate) fn translate_type(
-        &self,
-        ty: ty::Ty<'tcx>,
-    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
+    pub(crate) fn translate_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError> {
         let mut scope = self.scope.borrow_mut();
         self.translator.translate_type(ty, &mut scope)
     }
@@ -105,7 +96,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         variant: Option<abi::VariantIdx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         let mut scope = self.scope.borrow_mut();
         self.translator.generate_structlike_use(ty, variant, &mut scope)
     }
@@ -116,7 +107,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         adt_def: ty::AdtDef<'tcx>,
         args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         let mut scope = self.scope.borrow_mut();
         self.translator.generate_enum_use(adt_def, args, &mut scope)
     }
@@ -129,7 +120,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         let mut scope = self.scope.borrow_mut();
         self.translator.generate_struct_use(variant_id, args, &mut scope)
     }
@@ -140,7 +131,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         let mut scope = self.scope.borrow_mut();
         self.translator.generate_enum_variant_use(variant_id, args, &mut scope)
     }
@@ -159,7 +150,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     pub(crate) fn generate_tuple_use<F>(
         &self,
         tys: F,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>>
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError>
     where
         F: IntoIterator<Item = ty::Ty<'tcx>>,
     {
@@ -208,7 +199,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             BTreeMap<specs::Lft, usize>,
             ty::GenericArgsRef<'tcx>,
         ),
-        TranslationError<'tcx>,
+        TranslationError,
     > {
         let Some(trait_did) = tcx.trait_of_assoc(trait_method_did) else {
             tcx.dcx().span_bug(
@@ -294,7 +285,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         late_bounds: &[ty::BoundVariableKind<'tcx>],
         trait_reqs: Vec<ResolvedTraitReq<'tcx, 'def>>,
         with_surrounding_deps: bool,
-    ) -> Result<AbstractedGenerics<'def>, TranslationError<'tcx>> {
+    ) -> Result<AbstractedGenerics<'def>, TranslationError> {
         trace!(
             "enter get_generic_abstraction_for_procedure with callee_did={callee_did:?} and method_params={method_params:?}"
         );
@@ -533,7 +524,7 @@ pub(crate) fn normalize_in_function<'tcx, T>(
     function_did: DefId,
     tcx: ty::TyCtxt<'tcx>,
     ty: T,
-) -> Result<T, TranslationError<'tcx>>
+) -> Result<T, TranslationError>
 where
     T: ty::TypeFoldable<ty::TyCtxt<'tcx>>,
 {

@@ -22,7 +22,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         bb_idx: mir::BasicBlock,
         bb: &mir::BasicBlockData<'tcx>,
-    ) -> Result<code::Stmt, TranslationError<'tcx>> {
+    ) -> Result<code::Stmt, TranslationError> {
         let mut prim_stmts = Vec::new();
 
         for (idx, stmt) in bb.statements.iter().enumerate() {

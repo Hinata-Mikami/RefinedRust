@@ -105,7 +105,7 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
         type_translator: &TX<'def, 'tcx>,
         trait_registry: &registry::TR<'tcx, 'def>,
         info: Option<&'def PoloniusInfo<'def, 'tcx>>,
-    ) -> Result<Self, TranslationError<'tcx>> {
+    ) -> Result<Self, TranslationError> {
         info!("Entering procedure with ty_params {:?} and lifetimes {:?}", ty_params, lifetimes);
         let mut generics = scope::Params::new_from_generics(tcx, ty_params, Some(did));
 
@@ -342,7 +342,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         &self,
         tcx: ty::TyCtxt<'tcx>,
         ty: ty::Ty<'tcx>,
-    ) -> Result<ty::Ty<'tcx>, TranslationError<'tcx>> {
+    ) -> Result<ty::Ty<'tcx>, TranslationError> {
         let typing_env = self.get_typing_env(tcx);
         tcx.try_normalize_erasing_regions(typing_env, ty).map_err(|e| {
             tcx.dcx()
@@ -369,7 +369,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         &self,
         tcx: ty::TyCtxt<'tcx>,
         param_ty: ty::ParamTy,
-    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError> {
         let ty = self
             .param_scope()
             .lookup_ty_param_idx(param_ty.index)
@@ -382,7 +382,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         &self,
         tcx: ty::TyCtxt<'tcx>,
         region: ty::EarlyParamRegion,
-    ) -> Result<specs::Lft, TranslationError<'tcx>> {
+    ) -> Result<specs::Lft, TranslationError> {
         trace!("lookup_early_region in state={self:?}");
         match self {
             STInner::InFunction(scope) => {
@@ -417,7 +417,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         binder: usize,
         var: usize,
-    ) -> Result<specs::Lft, TranslationError<'tcx>> {
+    ) -> Result<specs::Lft, TranslationError> {
         match self {
             STInner::InFunction(scope) => {
                 info!("Looking up late lifetime ({binder:?}, {var:?}) in scope {:?}", scope.lifetime_scope);
@@ -448,7 +448,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         &self,
         tcx: ty::TyCtxt<'tcx>,
         v: facts::Region,
-    ) -> Result<specs::Lft, TranslationError<'tcx>> {
+    ) -> Result<specs::Lft, TranslationError> {
         match self {
             STInner::InFunction(scope) => {
                 if let Some(info) = scope.polonius_info {
@@ -583,7 +583,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         &self,
         did: DefId,
         lit: &specs::types::Literal,
-    ) -> Result<(), TranslationError<'tcx>> {
+    ) -> Result<(), TranslationError> {
         let lit_ref = self.intern_literal(lit.clone());
         let mut shims = self.adt_shims.borrow_mut();
         let ordered_did = OrderedDefId::new(self.tcx, did);
@@ -657,7 +657,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn get_enum_representation(
         tcx: ty::TyCtxt<'tcx>,
         repr: &abi::ReprOptions,
-    ) -> Result<specs::enums::Repr, TranslationError<'tcx>> {
+    ) -> Result<specs::enums::Repr, TranslationError> {
         if repr.c() {
             return Ok(specs::enums::Repr::C);
         }
@@ -700,7 +700,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn get_struct_representation(
         tcx: ty::TyCtxt<'tcx>,
         repr: &abi::ReprOptions,
-    ) -> Result<specs::structs::Repr, TranslationError<'tcx>> {
+    ) -> Result<specs::structs::Repr, TranslationError> {
         if repr.c() {
             return Ok(specs::structs::Repr::C);
         }
@@ -744,7 +744,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         translation_state: ST<'_, '_, 'def, 'tcx>,
         region: ty::Region<'tcx>,
-    ) -> Result<specs::Lft, TranslationError<'tcx>> {
+    ) -> Result<specs::Lft, TranslationError> {
         match region.kind() {
             ty::RegionKind::ReEarlyParam(early) => {
                 info!("Translating region: EarlyParam {:?}", early);
@@ -782,10 +782,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn lookup_adt_variant(
         &self,
         did: DefId,
-    ) -> Result<
-        (specs::structs::AbstractRef<'def>, Option<specs::types::LiteralRef<'def>>),
-        TranslationError<'tcx>,
-    > {
+    ) -> Result<(specs::structs::AbstractRef<'def>, Option<specs::types::LiteralRef<'def>>), TranslationError>
+    {
         let ordered_did = OrderedDefId::new(self.tcx, did);
         if let Some((_n, st, _, _)) = self.variant_registry.borrow().get(&ordered_did) {
             let lit = self.lookup_adt_shim(did);
@@ -799,10 +797,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn lookup_enum(
         &self,
         did: DefId,
-    ) -> Result<
-        (specs::enums::AbstractRef<'def>, Option<specs::types::LiteralRef<'def>>),
-        TranslationError<'tcx>,
-    > {
+    ) -> Result<(specs::enums::AbstractRef<'def>, Option<specs::types::LiteralRef<'def>>), TranslationError>
+    {
         let ordered_did = OrderedDefId::new(self.tcx, did);
         if let Some((_n, st, _)) = self.enum_registry.borrow().get(&ordered_did) {
             let lit = self.lookup_adt_shim(did);
@@ -820,7 +816,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         ty: ty::Ty<'tcx>,
         variant: Option<abi::VariantIdx>,
         st: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError> {
         match ty.kind() {
             ty::TyKind::Adt(adt, args) => {
                 // Check if we have a shim
@@ -875,7 +871,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         adt_def: ty::AdtDef<'tcx>,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<specs::enums::AbstractUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::enums::AbstractUse<'def>, TranslationError> {
         info!("generating enum use for {:?}", adt_def.did());
         self.register_adt(adt_def)?;
 
@@ -894,7 +890,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<specs::structs::AbstractUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::structs::AbstractUse<'def>, TranslationError> {
         info!("generating struct use for {:?}", variant_id);
 
         let (struct_ref, lit_ref) = self.lookup_adt_variant(variant_id)?;
@@ -916,7 +912,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         variant_idx: abi::VariantIdx,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<specs::structs::AbstractUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::structs::AbstractUse<'def>, TranslationError> {
         info!("generating variant use for variant {:?} of {:?}", variant_idx, adt_id);
 
         let variant_idx = variant_idx.as_usize();
@@ -941,7 +937,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         &self,
         tys: F,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>>
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError>
     where
         F: IntoIterator<Item = ty::Ty<'tcx>>,
     {
@@ -984,7 +980,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Register an ADT that is being used by the program.
-    fn register_adt(&self, def: ty::AdtDef<'tcx>) -> Result<(), TranslationError<'tcx>> {
+    fn register_adt(&self, def: ty::AdtDef<'tcx>) -> Result<(), TranslationError> {
         trace!("Registering ADT {:?}", def.did());
 
         if def.is_union() {
@@ -1011,11 +1007,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Register a struct ADT type that is used by the program.
-    fn register_struct(
-        &self,
-        ty: &'tcx ty::VariantDef,
-        adt: ty::AdtDef<'_>,
-    ) -> Result<(), TranslationError<'tcx>> {
+    fn register_struct(&self, ty: &'tcx ty::VariantDef, adt: ty::AdtDef<'_>) -> Result<(), TranslationError> {
         if self.is_registered_adt(ty.def_id) {
             // already there, that's fine.
             return Ok(());
@@ -1065,7 +1057,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 let attrs = environment::get_attributes(self.tcx, ty.def_id);
                 let attrs = attrs::filter_for_tool(attrs);
                 let extra_deps =
-                    spec_parsers::get_depends_on_attrs(&attrs).map_err(|err| -> TranslationError<'tcx> {
+                    spec_parsers::get_depends_on_attrs(&attrs).map_err(|err| -> TranslationError {
                         self.tcx.dcx().err(error::Message::AttributeError(err)).into()
                     })?;
                 for dep in extra_deps {
@@ -1122,10 +1114,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         adt: ty::AdtDef<'_>,
         state: ST<'_, '_, 'def, 'tcx>,
         //st: &mut TranslateAdtState<'_, 'tcx, 'def>,
-    ) -> Result<
-        (specs::structs::AbstractVariant<'def>, Option<specs::invariants::Spec>),
-        TranslationError<'tcx>,
-    > {
+    ) -> Result<(specs::structs::AbstractVariant<'def>, Option<specs::invariants::Spec>), TranslationError>
+    {
         info!("adt variant: {:?}", ty);
 
         // check for representation flags
@@ -1255,7 +1245,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         def: ty::AdtDef<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         signed: bool,
-    ) -> Result<HashMap<String, specs::enums::Int128>, TranslationError<'tcx>> {
+    ) -> Result<HashMap<String, specs::enums::Int128>, TranslationError> {
         let mut map: HashMap<String, specs::enums::Int128> = HashMap::new();
         let variants = def.variants();
 
@@ -1385,7 +1375,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Register an enum ADT
-    fn register_enum(&self, def: ty::AdtDef<'tcx>) -> Result<(), TranslationError<'tcx>> {
+    fn register_enum(&self, def: ty::AdtDef<'tcx>) -> Result<(), TranslationError> {
         if self.is_registered_adt(def.did()) {
             // already there, that's fine.
             return Ok(());
@@ -1577,7 +1567,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         adt: ty::AdtDef<'tcx>,
         substs: ty::GenericArgsRef<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError> {
         let Some(shim) = self.lookup_adt_shim(adt.did()) else {
             return Err(self.tcx.dcx().err(error::Message::UnknownAdtShim(adt.did())).into());
         };
@@ -1592,7 +1582,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn evaluate_constant_as_uint(
         tcx: ty::TyCtxt<'tcx>,
         v: ty::Const<'tcx>,
-    ) -> Result<u128, TranslationError<'tcx>> {
+    ) -> Result<u128, TranslationError> {
         match v.kind() {
             ty::ConstKind::Value(v) => {
                 // this doesn't contain the necessary structure anymore. Need to reconstruct using the
@@ -1624,7 +1614,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError> {
         match ty.kind() {
             ty::TyKind::Bool => Ok(specs::Type::Bool),
             ty::TyKind::Char => Ok(specs::Type::Char),
@@ -1875,7 +1865,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         f: abi::FieldIdx,
         ty: ty::Ty<'tcx>,
         variant: Option<usize>,
-    ) -> Result<String, TranslationError<'tcx>> {
+    ) -> Result<String, TranslationError> {
         let tcx = self.tcx;
         match ty.kind() {
             ty::TyKind::Adt(def, _) => {
@@ -1925,7 +1915,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         ty: ty::Ty<'tcx>,
         variant: abi::VariantIdx,
-    ) -> Result<String, TranslationError<'tcx>> {
+    ) -> Result<String, TranslationError> {
         match ty.kind() {
             ty::TyKind::Adt(def, _) => {
                 info!("getting variant name of {:?} at {}", variant, ty);
@@ -1945,7 +1935,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         scope: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<lang::SynType, TranslationError<'tcx>> {
+    ) -> Result<lang::SynType, TranslationError> {
         self.translate_type_in_state(ty, scope).map(lang::SynType::from)
     }
 
@@ -1954,7 +1944,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         scope: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError> {
         self.translate_type_in_state(ty, &mut STInner::InFunction(&mut *scope))
     }
 
@@ -1964,7 +1954,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         scope: &scope::Params<'tcx, 'def>,
         typing_env: ty::TypingEnv<'tcx>,
         ty: ty::Ty<'tcx>,
-    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError> {
         let mut deps = BTreeSet::new();
         let state = AdtState::new(&mut deps, scope, &typing_env);
         self.translate_type_in_state(ty, &mut STInner::TranslateAdt(state))
@@ -1977,7 +1967,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         ty: ty::Ty<'tcx>,
         variant: Option<abi::VariantIdx>,
         scope: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         match ty.kind() {
             ty::TyKind::Adt(adt, args) => {
                 if adt.is_struct() {
@@ -2025,7 +2015,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         adt_def: ty::AdtDef<'tcx>,
         args: ty::GenericArgsRef<'tcx>,
         state: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         info!("generating enum use for {:?}", adt_def.did());
         self.register_adt(adt_def)?;
 
@@ -2057,7 +2047,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
         scope: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         info!("generating struct use for {:?}", variant_id);
 
         let params = self.trait_registry().compute_scope_inst_in_state(
@@ -2084,7 +2074,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
         scope: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         info!("generating enum variant use for {:?}", variant_id);
 
         let params = self.trait_registry().compute_scope_inst_in_state(

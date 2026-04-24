@@ -20,7 +20,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         sc: ty::ScalarInt,
         ty: ty::Ty<'tcx>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
         // TODO: Use `TryFrom` instead
         fn translate_literal<'def, 'tcx, T>(sc: T, fptr: fn(T) -> code::Literal) -> ExprWithInfo<'tcx, 'def> {
             (code::Expr::Literal(fptr(sc)), None)
@@ -78,13 +78,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         sc: &mir::interpret::Scalar,
         ty: ty::Ty<'tcx>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
         // TODO: Use `TryFrom` instead
         fn translate_literal<'def, 'tcx, T>(
             tcx: ty::TyCtxt<'tcx>,
             sc: mir::interpret::InterpResult<'tcx, T>,
             fptr: fn(T) -> code::Literal,
-        ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
+        ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
             sc.discard_err().map_or_else(
                 || Err(tcx.dcx().err(Message::InvalidLayout).into()),
                 |lit| Ok((code::Expr::Literal(fptr(lit)), None)),
@@ -177,7 +177,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         v: mir::ConstValue,
         ty: ty::Ty<'tcx>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
         match v {
             mir::ConstValue::Scalar(sc) => self.translate_scalar(&sc, ty),
             mir::ConstValue::ZeroSized => {
@@ -206,7 +206,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(crate) fn translate_constant(
         &mut self,
         constant: &mir::Const<'tcx>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
         match constant {
             mir::Const::Ty(_const_ty, v) => {
                 match v.kind() {

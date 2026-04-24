@@ -31,7 +31,7 @@ pub(crate) fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     typing_env: &ty::TypingEnv<'tcx>,
     callee_did: DefId,
     ty_params: &[ty::GenericArg<'tcx>],
-) -> Result<Vec<lang::SynType>, TranslationError<'tcx>> {
+) -> Result<Vec<lang::SynType>, TranslationError> {
     // Get the type of the callee, fully instantiated
     let full_ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = tcx.type_of(callee_did);
     let full_ty = full_ty.instantiate(tcx, ty_params);
@@ -109,7 +109,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         callee_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
         trait_specs: Vec<ResolvedTraitReq<'tcx, 'def>>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
         trace!("enter register_use_procedure callee_did={callee_did:?} ty_params={ty_params:?}");
         // The key does not include the associated types, as the resolution of the associated types
         // should always be unique for one combination of type parameters, as long as we remain in
@@ -149,11 +149,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         if let Some(proc_use) = self.collected_procedures.get(&tup) {
             res = proc_use.loc_name.clone();
         } else {
-            let meta = self.procedure_registry.lookup_function(callee_did).ok_or_else(
-                || -> TranslationError<'tcx> {
+            let meta =
+                self.procedure_registry.lookup_function(callee_did).ok_or_else(|| -> TranslationError {
                     self.tcx.dcx().err(Message::UnknownProcedure(format!("{:?}", callee_did))).into()
-                },
-            )?;
+                })?;
             // explicit instantiation is needed sometimes
             let spec_term = code::UsedProcedureSpec::Literal(
                 meta.get_spec_name().to_owned(),
@@ -206,7 +205,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         callee_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
         trait_specs: Vec<ResolvedTraitReq<'tcx, 'def>>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
         trace!("enter register_use_trait_method did={:?} ty_params={:?}", callee_did, ty_params);
         // Does not include the associated types in the key; see `register_use_procedure` for an
         // explanation.
@@ -294,7 +293,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         kind: ty::ClosureKind,
         params: ty::GenericArgsRef<'tcx>,
-    ) -> Result<types::AbstractedGenerics<'def>, TranslationError<'tcx>> {
+    ) -> Result<types::AbstractedGenerics<'def>, TranslationError> {
         trace!("enter create_closure_impl_abstraction with closure_args={closure_args:?}, params={params:?}");
 
         // we lift the scope, all the generics below to the trait impl, not to the trait method itself.
@@ -387,7 +386,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         call_fn_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
         _trait_specs: Vec<ResolvedTraitReq<'tcx, 'def>>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
         trace!(
             "enter register_use_closure closure_did={closure_did:?}, closure_args={closure_args:?}, call_fn_did={call_fn_did:?}, ty_params={ty_params:?}"
         );
@@ -420,7 +419,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             res = proc_use.loc_name.clone();
         } else {
             let (_, meta) = self.trait_registry.lookup_closure_impl(closure_did, closure_kind).ok_or_else(
-                || -> TranslationError<'tcx> {
+                || -> TranslationError {
                     self.tcx
                         .dcx()
                         .span_err(
@@ -488,7 +487,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         did: DefId,
         params: ty::GenericArgsRef<'tcx>,
         include_self: bool,
-    ) -> Result<Vec<ResolvedTraitReq<'tcx, 'def>>, TranslationError<'tcx>> {
+    ) -> Result<Vec<ResolvedTraitReq<'tcx, 'def>>, TranslationError> {
         let mut scope = self.ty_translator.scope.borrow_mut();
         let mut state = STInner::InFunction(&mut scope);
         // NB: include the `Self` requirement to handle trait default fns
@@ -501,7 +500,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(crate) fn translate_fn_def_use(
         &mut self,
         ty: ty::Ty<'tcx>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
         let ty::TyKind::FnDef(defid, params) = ty.kind() else {
             return Err(self.tcx.dcx().err(Message::ExpectedFnDefType).into());
         };
@@ -585,10 +584,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn call_expr_op_split_inst(
         &self,
         constant: &mir::Const<'tcx>,
-    ) -> Result<
-        (DefId, ty::PolyFnSig<'tcx>, ty::GenericArgsRef<'tcx>, ty::PolyFnSig<'tcx>),
-        TranslationError<'tcx>,
-    > {
+    ) -> Result<(DefId, ty::PolyFnSig<'tcx>, ty::GenericArgsRef<'tcx>, ty::PolyFnSig<'tcx>), TranslationError>
+    {
         match constant {
             mir::Const::Ty(ty, _) | mir::Const::Val(_, ty) => {
                 match ty.kind() {
@@ -628,7 +625,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         target: Option<mir::BasicBlock>,
         loc: mir::Location,
         endlfts: Vec<code::PrimStmt>,
-    ) -> Result<code::Stmt, TranslationError<'tcx>> {
+    ) -> Result<code::Stmt, TranslationError> {
         let startpoint = self.info.interner.get_point_index(&facts::Point {
             location: loc,
             typ: facts::PointType::Start,

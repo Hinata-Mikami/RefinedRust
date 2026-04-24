@@ -17,15 +17,12 @@ use crate::types;
 #[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a place to a Caesium lvalue.
-    pub(crate) fn translate_place(
-        &self,
-        pl: &mir::Place<'tcx>,
-    ) -> Result<code::Expr, TranslationError<'tcx>> {
+    pub(crate) fn translate_place(&self, pl: &mir::Place<'tcx>) -> Result<code::Expr, TranslationError> {
         // Get the type of the underlying local. We will use this to
         // get the necessary layout information for dereferencing
         let mut cur_ty = self.get_type_of_local(pl.local).map(mir::PlaceTy::from_ty)?;
 
-        let local_name = self.variable_map.get(&pl.local).ok_or_else(|| -> TranslationError<'tcx> {
+        let local_name = self.variable_map.get(&pl.local).ok_or_else(|| -> TranslationError {
             self.tcx.dcx().err(Message::UnknownVar(format!("{:?}", pl.local))).into()
         })?;
 
