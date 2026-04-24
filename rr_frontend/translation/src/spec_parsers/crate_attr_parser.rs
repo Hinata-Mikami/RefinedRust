@@ -15,9 +15,6 @@ use rr_rustc_interface::span::Span;
 use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{self, attr_args_tokens, str_err};
 
-#[expect(dead_code)]
-pub(crate) const CRATE_ATTRS: &[&str] = &["import", "include", "export_include", "coq_prefix", "package"];
-
 #[derive(Clone, Debug, Eq, PartialEq, Display)]
 pub(crate) enum ParserError {
     #[display("parse error: {}", _0)]

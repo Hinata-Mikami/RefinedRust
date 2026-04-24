@@ -19,7 +19,6 @@ use crate::spec_parsers::trait_attr_parser::ParserError as TraitParserError;
 use crate::spec_parsers::trait_impl_attr_parser::ParserError as TraitImplParserError;
 use crate::{base, procedures};
 
-#[expect(dead_code)]
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub(crate) enum Message<'tcx> {
     #[display("No assumption is allowed, but this function is annotated with `#[rr::{}]`", _0)]
@@ -91,9 +90,6 @@ pub(crate) enum Message<'tcx> {
     #[display("Unknown procedure: {}", _0)]
     UnknownProcedure(String),
 
-    #[display("Procedure could not be registered: {}", _0)]
-    ProcedureRegistry(String),
-
     #[display("Did not find a registered static: {}", _0)]
     MissingRegisteredStatic(String),
 
@@ -154,9 +150,6 @@ pub(crate) enum Message<'tcx> {
     #[display("Failed to parse trait specification: {}", _0)]
     TraitSpecParse(TraitParserError),
 
-    #[display("Failed to const-evaluate discriminant: {}", _0)]
-    DiscriminantConstEval(String),
-
     #[display("Failed to parse enum spec: {}", _0)]
     EnumSpecParse(EnumParserError),
 
@@ -165,9 +158,6 @@ pub(crate) enum Message<'tcx> {
 
     #[display("Could not parse loop spec: {}", _0)]
     LoopSpec(LoopParserError),
-
-    #[display("An error occurred when parsing the specification of the trait {:?}: {:?}", _0, _1)]
-    TraitSpec(DefId, String),
 
     #[display("An error occurred when parsing the specification of the trait impl {:?}: {:?}", _0, _1)]
     TraitImplSpec(DefId, String),

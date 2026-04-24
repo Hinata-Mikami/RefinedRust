@@ -18,10 +18,6 @@ use crate::spec_parsers::parse_utils::{
     IProp, ParamLookup, RRParams, RustPath, RustPathElem, attr_args_tokens, str_err,
 };
 
-#[expect(dead_code)]
-pub(crate) const LOOP_ATTRS: &[&str] =
-    &["params", "exists", "inv", "invariant", "inv_var", "inv_vars", "ignore"];
-
 #[derive(Clone, Eq, PartialEq, Debug, derive_more::Display)]
 pub(crate) enum ParserError {
     #[display("{}", _0)]
