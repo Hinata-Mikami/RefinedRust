@@ -30,7 +30,7 @@ pub(crate) enum Message<'tcx> {
     #[display("ADT shim was overridden for {:?}", _0)]
     OverriddenAdtShim(DefId),
 
-    #[display("Cannot translate unknown region: {:?}", _0)]
+    #[display("Cannot translate unknown region: {}", _0)]
     UnknownRegion(ty::Region<'tcx>),
 
     #[display("Cannot translate placeholder region")]
@@ -159,14 +159,14 @@ pub(crate) enum Message<'tcx> {
     #[display("Could not parse loop spec: {}", _0)]
     LoopSpec(LoopParserError),
 
-    #[display("An error occurred when parsing the specification of the trait impl {:?}: {:?}", _0, _1)]
+    #[display("An error occurred when parsing the specification of the trait impl {:?}: {}", _0, _1)]
     TraitImplSpec(DefId, String),
 
     #[display("Trait {:?} has not been registered with RefinedRust yet", _0)]
     TraitNotRegisteredWithRefinedRust(DefId),
 
     #[display(
-        "Closure impl for {:?} with kind {:?} has not been registered with RefinedRust yet; add a specification for it?",
+        "Closure impl for {:?} with kind {} has not been registered with RefinedRust yet; add a specification for it?",
         _0,
         _1
     )]
