@@ -457,10 +457,9 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             if let Some(extra_specs_path) = rrconfig::extra_specs_file() {
                 let displayed_extra_specs_path = rrconfig::absolute_work_dir()
                     .ok()
-                    .and_then(|project_dir| {
-                        extra_specs_path.strip_prefix(project_dir).ok().map(Path::to_path_buf)
-                    })
-                    .unwrap_or_else(|| extra_specs_path.clone());
+                    .and_then(|project_dir| extra_specs_path.strip_prefix(project_dir).ok())
+                    .unwrap_or(&extra_specs_path)
+                    .to_path_buf();
 
                 writeln!(
                     spec_file,
