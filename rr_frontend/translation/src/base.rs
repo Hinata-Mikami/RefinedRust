@@ -113,9 +113,3 @@ pub(crate) enum TranslationError {
 
     Tainted(ErrorGuaranteed),
 }
-
-impl From<ErrorGuaranteed> for TranslationError {
-    fn from(x: ErrorGuaranteed) -> Self {
-        Self::ErrorReported(x)
-    }
-}

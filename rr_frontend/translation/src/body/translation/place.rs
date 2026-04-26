@@ -22,8 +22,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // get the necessary layout information for dereferencing
         let mut cur_ty = self.get_type_of_local(pl.local).map(mir::PlaceTy::from_ty)?;
 
-        let local_name = self.variable_map.get(&pl.local).ok_or_else(|| -> TranslationError {
-            self.tcx.dcx().err(Message::UnknownVar(format!("{:?}", pl.local))).into()
+        let local_name = self.variable_map.get(&pl.local).ok_or_else(|| {
+            TranslationError::ErrorReported(
+                self.tcx.dcx().err(Message::UnknownVar(format!("{:?}", pl.local))),
+            )
         })?;
 
         let mut acc_expr = code::Expr::Var(local_name.to_owned());
@@ -38,14 +40,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     {
                         // extract the type parameters
                         let [ty, alloc] = args.as_slice() else {
-                            return Err(self
-                                .tcx
-                                .dcx()
-                                .err(Message::UnsupportedFeature(format!(
+                            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                                Message::UnsupportedFeature(format!(
                                     "wrong arguments for Box ADT {:?}",
                                     cur_ty.ty
-                                )))
-                                .into());
+                                )),
+                            )));
                         };
 
                         let translated_ty = self.ty_translator.translate_type_to_syn_type(ty.expect_ty())?;
@@ -84,26 +84,24 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 },
                 mir::ProjectionElem::Index(_v) => {
                     //TODO
-                    return Err(self
-                        .tcx
-                        .dcx()
-                        .err(Message::UnsupportedFeature("places: implement index access".to_owned()))
-                        .into());
+                    return Err(TranslationError::ErrorReported(
+                        self.tcx
+                            .dcx()
+                            .err(Message::UnsupportedFeature("places: implement index access".to_owned())),
+                    ));
                 },
                 mir::ProjectionElem::ConstantIndex { .. } => {
                     //TODO
-                    return Err(self
-                        .tcx
-                        .dcx()
-                        .err(Message::UnsupportedFeature("places: implement const index access".to_owned()))
-                        .into());
+                    return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                        Message::UnsupportedFeature("places: implement const index access".to_owned()),
+                    )));
                 },
                 mir::ProjectionElem::Subslice { .. } => {
-                    return Err(self
-                        .tcx
-                        .dcx()
-                        .err(Message::UnsupportedFeature("places: implement subslicing".to_owned()))
-                        .into());
+                    return Err(TranslationError::ErrorReported(
+                        self.tcx
+                            .dcx()
+                            .err(Message::UnsupportedFeature("places: implement subslicing".to_owned())),
+                    ));
                 },
                 mir::ProjectionElem::Downcast(_, variant_idx) => {
                     info!("Downcast of ty {:?} to {:?}", cur_ty, variant_idx);
@@ -121,25 +119,27 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                                 e: Box::new(acc_expr),
                             }
                         } else {
-                            return Err(self.tcx.dcx().err(Message::AdtDowncastOnNonEnumType).into());
+                            return Err(TranslationError::ErrorReported(
+                                self.tcx.dcx().err(Message::AdtDowncastOnNonEnumType),
+                            ));
                         }
                     } else {
-                        return Err(self.tcx.dcx().err(Message::AdtDowncastOnNonEnumType).into());
+                        return Err(TranslationError::ErrorReported(
+                            self.tcx.dcx().err(Message::AdtDowncastOnNonEnumType),
+                        ));
                     }
                 },
                 mir::ProjectionElem::OpaqueCast(_) => {
-                    return Err(self
-                        .tcx
-                        .dcx()
-                        .err(Message::UnsupportedFeature("places: implement opaque casts".to_owned()))
-                        .into());
+                    return Err(TranslationError::ErrorReported(
+                        self.tcx
+                            .dcx()
+                            .err(Message::UnsupportedFeature("places: implement opaque casts".to_owned())),
+                    ));
                 },
                 mir::ProjectionElem::UnwrapUnsafeBinder(_) => {
-                    return Err(self
-                        .tcx
-                        .dcx()
-                        .err(Message::UnsupportedFeature("places: implement UnwrapUnsafeBinder".to_owned()))
-                        .into());
+                    return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                        Message::UnsupportedFeature("places: implement UnwrapUnsafeBinder".to_owned()),
+                    )));
                 },
             }
             // update cur_ty

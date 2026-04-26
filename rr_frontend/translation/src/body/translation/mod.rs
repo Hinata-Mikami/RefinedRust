@@ -180,8 +180,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
         info!("radium name map: {:?}", variable_map);
         // create the function
-        let return_name = opt_return_name
-            .ok_or_else(|| -> TranslationError { tcx.dcx().err(Message::MissingReturnValueLocal).into() })?;
+        let return_name = opt_return_name.ok_or_else(|| {
+            TranslationError::ErrorReported(tcx.dcx().err(Message::MissingReturnValueLocal))
+        })?;
 
         // add lifetime parameters to the map
         let typing_env = ty::TypingEnv::post_analysis(tcx, proc.get_id());
@@ -491,12 +492,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     /// Get the type of a local in a body.
     fn get_type_of_local(&self, local: mir::Local) -> Result<ty::Ty<'tcx>, TranslationError> {
-        self.proc
-            .get_mir()
-            .local_decls
-            .get(local)
-            .map(|decl| decl.ty)
-            .ok_or_else(|| self.tcx.dcx().err(Message::UnknownVar(format!("{local:?}"))).into())
+        self.proc.get_mir().local_decls.get(local).map(|decl| decl.ty).ok_or_else(|| {
+            TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnknownVar(format!("{local:?}"))))
+        })
     }
 
     /// Get the type of a place expression.

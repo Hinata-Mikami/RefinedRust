@@ -55,20 +55,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     return Ok((code::Expr::Literal(code::Literal::ZST), None));
                 }
 
-                Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
-                    "RefinedRust does currently not support compound construction of tuples using literals (got: {:?})",
-                    ty
-                ))).into())
+                Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                    format!(
+                        "RefinedRust does currently not support compound construction of tuples using literals (got: {:?})",
+                        ty
+                    ),
+                ))))
             },
 
-            _ => Err(self
-                .tcx
-                .dcx()
-                .err(Message::UnsupportedFeature(format!(
-                    "RefinedRust does currently not support layout for const value: (got: {:?})",
-                    ty
-                )))
-                .into()),
+            _ => Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                format!("RefinedRust does currently not support layout for const value: (got: {:?})", ty),
+            )))),
         }
     }
 
@@ -86,7 +83,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             fptr: fn(T) -> code::Literal,
         ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
             sc.discard_err().map_or_else(
-                || Err(tcx.dcx().err(Message::InvalidLayout).into()),
+                || Err(TranslationError::ErrorReported(tcx.dcx().err(Message::InvalidLayout))),
                 |lit| Ok((code::Expr::Literal(fptr(lit)), None)),
             )
         }
@@ -123,10 +120,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     return Ok((code::Expr::Literal(code::Literal::ZST), None));
                 }
 
-                Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
-                    "RefinedRust does currently not support compound construction of tuples using literals (got: {:?})",
-                    ty
-                ))).into())
+                Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                    format!(
+                        "RefinedRust does currently not support compound construction of tuples using literals (got: {:?})",
+                        ty
+                    ),
+                ))))
             },
 
             ty::TyKind::Ref(_, _, _) => match sc {
@@ -148,27 +147,26 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         },
                         mir::interpret::GlobalAlloc::Memory(_) => {
                             // TODO: this is needed
-                            Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                            Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                                format!(
+                                    "RefinedRust does currently not support GlobalAlloc {:?} for scalar {:?} at type {:?}",
+                                    glob_alloc, sc, ty
+                                ),
+                            ))))
+                        },
+                        _ => Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                            format!(
                                 "RefinedRust does currently not support GlobalAlloc {:?} for scalar {:?} at type {:?}",
                                 glob_alloc, sc, ty
-                            ))).into())
-                        },
-                        _ => Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
-                            "RefinedRust does currently not support GlobalAlloc {:?} for scalar {:?} at type {:?}",
-                            glob_alloc, sc, ty
-                        ))).into()),
+                            ),
+                        )))),
                     }
                 },
             },
 
-            _ => Err(self
-                .tcx
-                .dcx()
-                .err(Message::UnsupportedFeature(format!(
-                    "RefinedRust does currently not support layout for const value: (got: {:?})",
-                    ty
-                )))
-                .into()),
+            _ => Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                format!("RefinedRust does currently not support layout for const value: (got: {:?})", ty),
+            )))),
         }
     }
 
@@ -193,11 +191,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             _ => {
                 // TODO: do we actually care about this case or is this just something that can
                 // appear as part of CTFE/MIRI?
-                Err(self
-                    .tcx
-                    .dcx()
-                    .err(Message::UnsupportedFeature(format!("Unsupported Constant: ConstValue; {:?}", v)))
-                    .into())
+                Err(TranslationError::ErrorReported(
+                    self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                        "Unsupported Constant: ConstValue; {:?}",
+                        v
+                    ))),
+                ))
             },
         }
     }
@@ -215,21 +214,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         // type.
                         match v.valtree.try_to_leaf() {
                             Some(sc) => self.translate_scalar_int(sc, v.ty),
-                            _ => Err(self
-                                .tcx
-                                .dcx()
-                                .err(Message::UnsupportedFeature(format!(
-                                    "const value not supported: {:?}",
-                                    v
-                                )))
-                                .into()),
+                            _ => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                                Message::UnsupportedFeature(format!("const value not supported: {:?}", v)),
+                            ))),
                         }
                     },
-                    _ => Err(self
-                        .tcx
-                        .dcx()
-                        .err(Message::UnsupportedFeature("Unsupported ConstKind".to_owned()))
-                        .into()),
+                    _ => Err(TranslationError::ErrorReported(
+                        self.tcx.dcx().err(Message::UnsupportedFeature("Unsupported ConstKind".to_owned())),
+                    )),
                 }
             },
             mir::Const::Val(val, ty) => self.translate_constant_value(*val, *ty),
@@ -239,16 +231,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 match self.tcx.const_eval_resolve(typing_env, *c, span::DUMMY_SP) {
                     Ok(res) => self.translate_constant_value(res, *ty),
                     Err(e) => match e {
-                        mir::interpret::ErrorHandled::Reported(_, _) => Err(self
-                            .tcx
-                            .dcx()
-                            .err(Message::UnsupportedFeature("Cannot interpret constant".to_owned()))
-                            .into()),
-                        mir::interpret::ErrorHandled::TooGeneric(_) => Err(self
-                            .tcx
-                            .dcx()
-                            .err(Message::UnsupportedFeature("Const use is too generic".to_owned()))
-                            .into()),
+                        mir::interpret::ErrorHandled::Reported(_, _) => Err(TranslationError::ErrorReported(
+                            self.tcx
+                                .dcx()
+                                .err(Message::UnsupportedFeature("Cannot interpret constant".to_owned())),
+                        )),
+                        mir::interpret::ErrorHandled::TooGeneric(_) => Err(TranslationError::ErrorReported(
+                            self.tcx
+                                .dcx()
+                                .err(Message::UnsupportedFeature("Const use is too generic".to_owned())),
+                        )),
                     },
                 }
             },

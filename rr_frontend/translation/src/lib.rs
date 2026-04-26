@@ -1476,7 +1476,9 @@ fn translate_function<'tcx>(
                 Err(err) => Err(err),
             }
         },
-        _ => Err(vcx.tcx.dcx().err(error::Message::UnknownFunctionKind).into()),
+        _ => {
+            Err(base::TranslationError::ErrorReported(vcx.tcx.dcx().err(error::Message::UnknownFunctionKind)))
+        },
     };
 
     if mode.is_only_spec() {

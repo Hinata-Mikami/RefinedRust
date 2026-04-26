@@ -129,14 +129,18 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
             let cl_kind = cl_kind.skip_binder();
 
             if let ty::ClauseKind::RegionOutlives(region_pred) = cl_kind {
-                let region1 = t
-                    .lifetime_scope
-                    .translate_region_to_polonius(region_pred.0)
-                    .ok_or_else(|| tcx.dcx().err(error::Message::UnknownRegion(region_pred.0)))?;
-                let region2 = t
-                    .lifetime_scope
-                    .translate_region_to_polonius(region_pred.1)
-                    .ok_or_else(|| tcx.dcx().err(error::Message::UnknownRegion(region_pred.1)))?;
+                let region1 =
+                    t.lifetime_scope.translate_region_to_polonius(region_pred.0).ok_or_else(|| {
+                        TranslationError::ErrorReported(
+                            tcx.dcx().err(error::Message::UnknownRegion(region_pred.0)),
+                        )
+                    })?;
+                let region2 =
+                    t.lifetime_scope.translate_region_to_polonius(region_pred.1).ok_or_else(|| {
+                        TranslationError::ErrorReported(
+                            tcx.dcx().err(error::Message::UnknownRegion(region_pred.1)),
+                        )
+                    })?;
 
                 t.lifetime_scope.constraints.push(LftConstr::RegionOutlives(region1, region2));
 
@@ -145,10 +149,12 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
             if let ty::ClauseKind::TypeOutlives(outlives_pred) = cl_kind {
                 let mut st = STInner::InFunction(&mut t);
                 let translated_ty = type_translator.translate_type_in_state(outlives_pred.0, &mut st)?;
-                let translated_lft = t
-                    .lifetime_scope
-                    .translate_region_to_polonius(outlives_pred.1)
-                    .ok_or_else(|| tcx.dcx().err(error::Message::UnknownRegion(outlives_pred.1)))?;
+                let translated_lft =
+                    t.lifetime_scope.translate_region_to_polonius(outlives_pred.1).ok_or_else(|| {
+                        TranslationError::ErrorReported(
+                            tcx.dcx().err(error::Message::UnknownRegion(outlives_pred.1)),
+                        )
+                    })?;
 
                 t.lifetime_scope.constraints.push(LftConstr::TypeOutlives(translated_ty, translated_lft));
                 info!("type outlives: {:?} {:?}", outlives_pred.0, outlives_pred.1);
@@ -345,9 +351,9 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
     ) -> Result<ty::Ty<'tcx>, TranslationError> {
         let typing_env = self.get_typing_env(tcx);
         tcx.try_normalize_erasing_regions(typing_env, ty).map_err(|e| {
-            tcx.dcx()
-                .err(error::Message::TraitResolution(format!("normalization error: {:?}", e)))
-                .into()
+            TranslationError::ErrorReported(
+                tcx.dcx().err(error::Message::TraitResolution(format!("normalization error: {:?}", e))),
+            )
         })
     }
 
@@ -370,10 +376,11 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         param_ty: ty::ParamTy,
     ) -> Result<specs::Type<'def>, TranslationError> {
-        let ty = self
-            .param_scope()
-            .lookup_ty_param_idx(param_ty.index)
-            .ok_or_else(|| tcx.dcx().err(error::Message::UnknownGenericParam(format!("{param_ty:?}"))))?;
+        let ty = self.param_scope().lookup_ty_param_idx(param_ty.index).ok_or_else(|| {
+            TranslationError::ErrorReported(
+                tcx.dcx().err(error::Message::UnknownGenericParam(format!("{param_ty:?}"))),
+            )
+        })?;
         Ok(specs::Type::LiteralParam(ty.clone()))
     }
 
@@ -387,24 +394,24 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         match self {
             STInner::InFunction(scope) => {
                 info!("Looking up lifetime {region:?} in scope {:?}", scope.lifetime_scope);
-                let lft = scope
-                    .lifetime_scope
-                    .lookup_early_region(region.index as usize)
-                    .ok_or_else(|| tcx.dcx().err(error::Message::UnknownEarlyRegion(region)))?;
+                let lft =
+                    scope.lifetime_scope.lookup_early_region(region.index as usize).ok_or_else(|| {
+                        TranslationError::ErrorReported(
+                            tcx.dcx().err(error::Message::UnknownEarlyRegion(region)),
+                        )
+                    })?;
                 Ok(lft.lft().to_owned())
             },
             STInner::TranslateAdt(scope) => {
-                let lft = scope
-                    .scope
-                    .lookup_region_idx(region.index as usize)
-                    .ok_or_else(|| tcx.dcx().err(error::Message::UnknownEarlyRegion(region)))?;
+                let lft = scope.scope.lookup_region_idx(region.index as usize).ok_or_else(|| {
+                    TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnknownEarlyRegion(region)))
+                })?;
                 Ok(lft.lft().to_owned())
             },
             STInner::TraitReqs(scope) => {
-                let lft = scope
-                    .scope
-                    .lookup_region_idx(region.index as usize)
-                    .ok_or_else(|| tcx.dcx().err(error::Message::UnknownEarlyRegion(region)))?;
+                let lft = scope.scope.lookup_region_idx(region.index as usize).ok_or_else(|| {
+                    TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnknownEarlyRegion(region)))
+                })?;
                 Ok(lft.lft().to_owned())
             },
             STInner::CalleeTranslation(_) => Ok(coq::Ident::new("DUMMY")),
@@ -421,21 +428,26 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         match self {
             STInner::InFunction(scope) => {
                 info!("Looking up late lifetime ({binder:?}, {var:?}) in scope {:?}", scope.lifetime_scope);
-                let lft = scope
-                    .lifetime_scope
-                    .lookup_late_region(binder, var)
-                    .ok_or_else(|| tcx.dcx().err(error::Message::UnknownLateRegion(binder, var)))?;
+                let lft = scope.lifetime_scope.lookup_late_region(binder, var).ok_or_else(|| {
+                    TranslationError::ErrorReported(
+                        tcx.dcx().err(error::Message::UnknownLateRegion(binder, var)),
+                    )
+                })?;
                 Ok(lft.lft().to_owned())
             },
             STInner::TranslateAdt(scope) => {
                 let lft = scope.scope.lookup_late_region_idx(binder, var).ok_or_else(|| {
-                    tcx.dcx().err(error::Message::UnknownLateRegionOutsideFunction(binder, var))
+                    TranslationError::ErrorReported(
+                        tcx.dcx().err(error::Message::UnknownLateRegionOutsideFunction(binder, var)),
+                    )
                 })?;
                 Ok(lft.lft().to_owned())
             },
             STInner::TraitReqs(scope) => {
                 let lft = scope.scope.lookup_late_region_idx(binder, var).ok_or_else(|| {
-                    tcx.dcx().err(error::Message::UnknownLateRegionOutsideFunction(binder, var))
+                    TranslationError::ErrorReported(
+                        tcx.dcx().err(error::Message::UnknownLateRegionOutsideFunction(binder, var)),
+                    )
                 })?;
                 Ok(lft.lft().to_owned())
             },
@@ -459,10 +471,11 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                     Ok(r)
                 } else {
                     // otherwise, just use the universal scope
-                    let r = scope
-                        .lifetime_scope
-                        .lookup_region(v)
-                        .ok_or_else(|| tcx.dcx().err(error::Message::UnknownPoloniusRegion(v)))?;
+                    let r = scope.lifetime_scope.lookup_region(v).ok_or_else(|| {
+                        TranslationError::ErrorReported(
+                            tcx.dcx().err(error::Message::UnknownPoloniusRegion(v)),
+                        )
+                    })?;
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
                     Ok(r.lft().to_owned())
                 }
@@ -479,9 +492,17 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                     let r = scope
                         .lifetime_scope
                         .as_ref()
-                        .ok_or_else(|| tcx.dcx().err(error::Message::UnknownPoloniusRegion(v)))?
+                        .ok_or_else(|| {
+                            TranslationError::ErrorReported(
+                                tcx.dcx().err(error::Message::UnknownPoloniusRegion(v)),
+                            )
+                        })?
                         .lookup_region(v)
-                        .ok_or_else(|| tcx.dcx().err(error::Message::UnknownPoloniusRegion(v)))?;
+                        .ok_or_else(|| {
+                            TranslationError::ErrorReported(
+                                tcx.dcx().err(error::Message::UnknownPoloniusRegion(v)),
+                            )
+                        })?;
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
                     Ok(r.lft().to_owned())
                     //info!("Translating region: ReVar {:?} as None (trait)", v);
@@ -588,7 +609,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let mut shims = self.adt_shims.borrow_mut();
         let ordered_did = OrderedDefId::new(self.tcx, did);
         if let Some(_old) = shims.insert(ordered_did, lit_ref) {
-            Err(self.tcx.dcx().err(error::Message::OverriddenAdtShim(did)).into())
+            Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::OverriddenAdtShim(did))))
         } else {
             Ok(())
         }
@@ -667,30 +688,21 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
 
         if repr.simd() {
-            return Err(tcx
-                .dcx()
-                .err(error::Message::UnsupportedFeature(
-                    "RefinedRust does currently not support the SIMD flag".to_owned(),
-                ))
-                .into());
+            return Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnsupportedFeature(
+                "RefinedRust does currently not support the SIMD flag".to_owned(),
+            ))));
         }
 
         if repr.packed() {
-            return Err(tcx
-                .dcx()
-                .err(error::Message::UnsupportedFeature(
-                    "RefinedRust does currently not support the repr(packed) flag".to_owned(),
-                ))
-                .into());
+            return Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnsupportedFeature(
+                "RefinedRust does currently not support the repr(packed) flag".to_owned(),
+            ))));
         }
 
         if repr.linear() {
-            return Err(tcx
-                .dcx()
-                .err(error::Message::UnsupportedFeature(
-                    "RefinedRust does currently not support the linear flag".to_owned(),
-                ))
-                .into());
+            return Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnsupportedFeature(
+                "RefinedRust does currently not support the linear flag".to_owned(),
+            ))));
         }
 
         Ok(specs::enums::Repr::Rust)
@@ -710,30 +722,21 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
 
         if repr.simd() {
-            return Err(tcx
-                .dcx()
-                .err(error::Message::UnsupportedFeature(
-                    "RefinedRust does currently not support the SIMD flag".to_owned(),
-                ))
-                .into());
+            return Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnsupportedFeature(
+                "RefinedRust does currently not support the SIMD flag".to_owned(),
+            ))));
         }
 
         if repr.packed() {
-            return Err(tcx
-                .dcx()
-                .err(error::Message::UnsupportedFeature(
-                    "RefinedRust does currently not support the repr(packed) flag".to_owned(),
-                ))
-                .into());
+            return Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnsupportedFeature(
+                "RefinedRust does currently not support the repr(packed) flag".to_owned(),
+            ))));
         }
 
         if repr.linear() {
-            return Err(tcx
-                .dcx()
-                .err(error::Message::UnsupportedFeature(
-                    "RefinedRust does currently not support the linear flag".to_owned(),
-                ))
-                .into());
+            return Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnsupportedFeature(
+                "RefinedRust does currently not support the linear flag".to_owned(),
+            ))));
         }
 
         Ok(specs::structs::Repr::Rust)
@@ -763,7 +766,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             ty::RegionKind::RePlaceholder(placeholder) => {
                 // TODO: not sure if any placeholders should remain at this stage.
                 info!("Translating region: Placeholder {:?}", placeholder);
-                Err(tcx.dcx().err(error::Message::PlaceholderRegion).into())
+                Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::PlaceholderRegion)))
             },
 
             ty::RegionKind::ReStatic => Ok(coq::Ident::new("static")),
@@ -773,7 +776,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
             _ => {
                 info!("Translating region: {:?}", region);
-                Err(tcx.dcx().err(error::Message::UnknownRegion(region)).into())
+                Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnknownRegion(region))))
             },
         }
     }
@@ -789,7 +792,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let lit = self.lookup_adt_shim(did);
             Ok((*st, lit))
         } else {
-            Err(self.tcx.dcx().err(error::Message::UnknownAdt(did)).into())
+            Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnknownAdt(did))))
         }
     }
 
@@ -804,7 +807,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let lit = self.lookup_adt_shim(did);
             Ok((*st, lit))
         } else {
-            Err(self.tcx.dcx().err(error::Message::UnknownAdt(did)).into())
+            Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnknownAdt(did))))
         }
     }
 
@@ -835,11 +838,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
                 if adt.is_enum() {
                     let Some(variant) = variant else {
-                        return Err(self
-                            .tcx
-                            .dcx()
-                            .err(error::Message::ExpectedStructlike("a non-downcast enum".to_owned()))
-                            .into());
+                        return Err(TranslationError::ErrorReported(
+                            self.tcx
+                                .dcx()
+                                .err(error::Message::ExpectedStructlike("a non-downcast enum".to_owned())),
+                        ));
                     };
 
                     self.register_adt(*adt)?;
@@ -849,18 +852,16 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                         .map(specs::Type::Struct);
                 }
 
-                Err(self
-                    .tcx
-                    .dcx()
-                    .err(error::Message::UnsupportedType(
-                        "non-{enum, struct, tuple} ADTs are not supported".to_owned(),
-                    ))
-                    .into())
+                Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnsupportedType(
+                    "non-{enum, struct, tuple} ADTs are not supported".to_owned(),
+                ))))
             },
 
             ty::TyKind::Tuple(args) => self.generate_tuple_use(*args, st).map(specs::Type::Literal),
 
-            _ => Err(self.tcx.dcx().err(error::Message::ExpectedStructlike(format!("{ty}"))).into()),
+            _ => Err(TranslationError::ErrorReported(
+                self.tcx.dcx().err(error::Message::ExpectedStructlike(format!("{ty}"))),
+            )),
         }
     }
 
@@ -984,11 +985,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         trace!("Registering ADT {:?}", def.did());
 
         if def.is_union() {
-            Err(self
-                .tcx
-                .dcx()
-                .err(error::Message::Unimplemented("union ADTs are not yet supported".to_owned()))
-                .into())
+            Err(TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .err(error::Message::Unimplemented("union ADTs are not yet supported".to_owned())),
+            ))
         } else if def.is_enum() {
             self.register_enum(def)
         } else if def.is_struct() {
@@ -998,11 +999,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             }
             Ok(())
         } else {
-            Err(self
-                .tcx
-                .dcx()
-                .err(error::Message::Unimplemented(format!("unhandled ADT kind: {:?}", def)))
-                .into())
+            Err(TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .err(error::Message::Unimplemented(format!("unhandled ADT kind: {:?}", def))),
+            ))
         }
     }
 
@@ -1056,10 +1057,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 // check for extra annotated dependencies
                 let attrs = environment::get_attributes(self.tcx, ty.def_id);
                 let attrs = attrs::filter_for_tool(attrs);
-                let extra_deps =
-                    spec_parsers::get_depends_on_attrs(&attrs).map_err(|err| -> TranslationError {
-                        self.tcx.dcx().err(error::Message::AttributeError(err)).into()
-                    })?;
+                let extra_deps = spec_parsers::get_depends_on_attrs(&attrs).map_err(|err| {
+                    TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::AttributeError(err)))
+                })?;
                 for dep in extra_deps {
                     if let Some(did) = search::try_resolve_did(self.tcx, dep.path.as_slice()) {
                         deps.insert(OrderedDefId::new(self.tcx, did));
@@ -1072,14 +1072,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     if !struct_def.has_invariant() {
                         // this is an error, we need an invariant on recursive types
                         self.variant_registry.borrow_mut().remove(&ordered_did);
-                        return Err(self
-                            .tcx
-                            .dcx()
-                            .span_err(
-                                self.tcx.def_span(ty.def_id),
-                                error::Message::RecursiveTypeWithoutInvariant(ty.def_id),
-                            )
-                            .into());
+                        return Err(TranslationError::ErrorReported(self.tcx.dcx().span_err(
+                            self.tcx.def_span(ty.def_id),
+                            error::Message::RecursiveTypeWithoutInvariant(ty.def_id),
+                        )));
                     }
 
                     // remove it
@@ -1187,14 +1183,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 if let Some(rfn) = field_spec.rfn {
                     field_refinements.push(rfn);
                 } else {
-                    return Err(self
-                        .tcx
-                        .dcx()
-                        .span_err(
-                            self.tcx.def_span(f.did),
-                            error::Message::MissingFieldRefinement(f_name.clone()),
-                        )
-                        .into());
+                    return Err(TranslationError::ErrorReported(self.tcx.dcx().span_err(
+                        self.tcx.def_span(f.did),
+                        error::Message::MissingFieldRefinement(f_name.clone()),
+                    )));
                 }
             }
         }
@@ -1268,15 +1260,19 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                             span::DUMMY_SP,
                         )
                         .map_err(|err| {
-                            self.tcx.dcx().err(error::Message::UnsupportedFeature(format!(
-                                "Failed to const-evaluate discriminant: {:?}",
-                                err
-                            )))
+                            TranslationError::ErrorReported(self.tcx.dcx().err(
+                                error::Message::UnsupportedFeature(format!(
+                                    "Failed to const-evaluate discriminant: {:?}",
+                                    err
+                                )),
+                            ))
                         })?;
 
                     let evaluated_discr = evaluated_discr.map_err(|_err| {
-                        self.tcx.dcx().err(error::Message::UnsupportedFeature(
-                            "Failed to const-evaluate discriminant".to_owned(),
+                        TranslationError::ErrorReported(self.tcx.dcx().err(
+                            error::Message::UnsupportedFeature(
+                                "Failed to const-evaluate discriminant".to_owned(),
+                            ),
                         ))
                     })?;
 
@@ -1572,7 +1568,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         state: ST<'_, '_, 'def, 'tcx>,
     ) -> Result<specs::Type<'def>, TranslationError> {
         let Some(shim) = self.lookup_adt_shim(adt.did()) else {
-            return Err(self.tcx.dcx().err(error::Message::UnknownAdtShim(adt.did())).into());
+            return Err(TranslationError::ErrorReported(
+                self.tcx.dcx().err(error::Message::UnknownAdtShim(adt.did())),
+            ));
         };
 
         let params = self.trait_registry().compute_scope_inst_in_state(state, adt.did(), substs)?;
@@ -1593,21 +1591,18 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 match v.valtree.try_to_leaf() {
                     Some(sc) => match v.ty.kind() {
                         ty::TyKind::Uint(_) => Ok(sc.to_u128()),
-                        _ => Err(tcx.dcx().err(error::Message::InvalidLayout).into()),
+                        _ => {
+                            Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::InvalidLayout)))
+                        },
                     },
-                    _ => Err(tcx
-                        .dcx()
-                        .err(error::Message::UnsupportedFeature(format!(
-                            "const value not supported: {:?}",
-                            v
-                        )))
-                        .into()),
+                    _ => Err(TranslationError::ErrorReported(tcx.dcx().err(
+                        error::Message::UnsupportedFeature(format!("const value not supported: {:?}", v)),
+                    ))),
                 }
             },
-            _ => Err(tcx
-                .dcx()
-                .err(error::Message::UnsupportedFeature(format!("Unsupported ConstKind: {v:?}")))
-                .into()),
+            _ => Err(TranslationError::ErrorReported(
+                tcx.dcx().err(error::Message::UnsupportedFeature(format!("Unsupported ConstKind: {v:?}"))),
+            )),
         }
     }
 
@@ -1680,11 +1675,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     return self.generate_enum_use_noshim(*adt, substs, &mut *state).map(specs::Type::Enum);
                 }
 
-                Err(self
-                    .tcx
-                    .dcx()
-                    .err(error::Message::UnsupportedFeature(format!("unsupported ADT {:?}", ty)))
-                    .into())
+                Err(TranslationError::ErrorReported(
+                    self.tcx
+                        .dcx()
+                        .err(error::Message::UnsupportedFeature(format!("unsupported ADT {:?}", ty))),
+                ))
             },
 
             ty::TyKind::Closure(_def, closure_args) => {
@@ -1705,11 +1700,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
             ty::TyKind::Param(param_ty) => state.lookup_ty_param(self.tcx, *param_ty),
 
-            ty::TyKind::Float(_) => Err(self
-                .tcx
-                .dcx()
-                .err(error::Message::UnsupportedType("RefinedRust does not support floats".to_owned()))
-                .into()),
+            ty::TyKind::Float(_) => Err(TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .err(error::Message::UnsupportedType("RefinedRust does not support floats".to_owned())),
+            )),
 
             ty::TyKind::Array(ty, num) => {
                 let num_eval = Self::evaluate_constant_as_uint(self.tcx, *num)?;
@@ -1720,11 +1715,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
             ty::TyKind::Slice(_) => {
                 // TODO this should really be a fat ptr?
-                Err(self
-                    .tcx
-                    .dcx()
-                    .err(error::Message::UnsupportedFeature("RefinedRust does not support slices".to_owned()))
-                    .into())
+                Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnsupportedFeature(
+                    "RefinedRust does not support slices".to_owned(),
+                ))))
             },
 
             ty::TyKind::Alias(kind, alias_ty) => {
@@ -1751,81 +1744,67 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
                         Ok(assoc_type)
                     },
-                    _ => Err(self
-                        .tcx
-                        .dcx()
-                        .err(error::Message::UnsupportedType(format!(
+                    _ => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                        error::Message::UnsupportedType(format!(
                             "RefinedRust does not support Alias types of kind {kind:?}"
-                        )))
-                        .into()),
+                        )),
+                    ))),
                 }
             },
 
-            ty::TyKind::Foreign(_) => Err(self
-                .tcx
-                .dcx()
-                .err(error::Message::UnsupportedType("RefinedRust does not support extern types".to_owned()))
-                .into()),
+            ty::TyKind::Foreign(_) => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                error::Message::UnsupportedType("RefinedRust does not support extern types".to_owned()),
+            ))),
 
-            ty::TyKind::Str => Err(self
-                .tcx
-                .dcx()
-                .err(error::Message::UnsupportedType("RefinedRust does not support str".to_owned()))
-                .into()),
+            ty::TyKind::Str => Err(TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .err(error::Message::UnsupportedType("RefinedRust does not support str".to_owned())),
+            )),
 
-            ty::TyKind::Pat(_, _) => Err(self
-                .tcx
-                .dcx()
-                .err(error::Message::Unimplemented("RefinedRust does not support Pat".to_owned()))
-                .into()),
+            ty::TyKind::Pat(_, _) => Err(TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .err(error::Message::Unimplemented("RefinedRust does not support Pat".to_owned())),
+            )),
 
-            ty::TyKind::FnDef(_, _) => Err(self
-                .tcx
-                .dcx()
-                .err(error::Message::Unimplemented("RefinedRust does not support FnDef".to_owned()))
-                .into()),
+            ty::TyKind::FnDef(_, _) => Err(TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .err(error::Message::Unimplemented("RefinedRust does not support FnDef".to_owned())),
+            )),
 
-            ty::TyKind::FnPtr(..) => Err(self
-                .tcx
-                .dcx()
-                .err(error::Message::Unimplemented("RefinedRust does not support FnPtr".to_owned()))
-                .into()),
+            ty::TyKind::FnPtr(..) => Err(TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .err(error::Message::Unimplemented("RefinedRust does not support FnPtr".to_owned())),
+            )),
 
-            ty::TyKind::Dynamic(_, _) => Err(self
-                .tcx
-                .dcx()
-                .err(error::Message::UnsupportedType("RefinedRust does not support trait objects".to_owned()))
-                .into()),
+            ty::TyKind::Dynamic(_, _) => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                error::Message::UnsupportedType("RefinedRust does not support trait objects".to_owned()),
+            ))),
 
-            ty::TyKind::UnsafeBinder(_) => Err(self
-                .tcx
-                .dcx()
-                .err(error::Message::UnsupportedType("RefinedRust does not support UnsafeBinder".to_owned()))
-                .into()),
+            ty::TyKind::UnsafeBinder(_) => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                error::Message::UnsupportedType("RefinedRust does not support UnsafeBinder".to_owned()),
+            ))),
 
             ty::TyKind::Coroutine(_, _)
             | ty::TyKind::CoroutineWitness(_, _)
-            | ty::TyKind::CoroutineClosure(_, _) => Err(self
-                .tcx
-                .dcx()
-                .err(error::Message::UnsupportedType(
+            | ty::TyKind::CoroutineClosure(_, _) => {
+                Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnsupportedType(
                     "RefinedRust does currently not support coroutines".to_owned(),
-                ))
-                .into()),
+                ))))
+            },
 
-            ty::TyKind::Infer(_) => Err(self
-                .tcx
-                .dcx()
-                .err(error::Message::UnsupportedType("RefinedRust does not support infer types".to_owned()))
-                .into()),
+            ty::TyKind::Infer(_) => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                error::Message::UnsupportedType("RefinedRust does not support infer types".to_owned()),
+            ))),
 
-            ty::TyKind::Bound(_, _) | ty::TyKind::Placeholder(_) | ty::TyKind::Error(_) => Err(self
-                .tcx
-                .dcx()
-                .err(error::Message::UnsupportedType(
+            ty::TyKind::Bound(_, _) | ty::TyKind::Placeholder(_) | ty::TyKind::Error(_) => {
+                Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnsupportedType(
                     "RefinedRust does not support higher-ranked types".to_owned(),
-                ))
-                .into()),
+                ))))
+            },
         }
     }
 
@@ -1876,29 +1855,29 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 if def.is_struct() {
                     let i = def.variants().get(abi::VariantIdx::from_usize(0)).unwrap();
                     i.fields.get(f).map(|f| f.ident(tcx).to_string()).ok_or_else(|| {
-                        self.tcx
-                            .dcx()
-                            .err(error::Message::UnknownField(format!("{f:?}"), format!("{ty}")))
-                            .into()
+                        TranslationError::ErrorReported(
+                            self.tcx
+                                .dcx()
+                                .err(error::Message::UnknownField(format!("{f:?}"), format!("{ty}"))),
+                        )
                     })
                 } else if def.is_enum() {
                     let variant = variant.unwrap();
                     let i = def.variants().get(abi::VariantIdx::from_usize(variant)).unwrap();
                     i.fields.get(f).map(|f| f.ident(tcx).to_string()).ok_or_else(|| {
-                        self.tcx
-                            .dcx()
-                            .err(error::Message::UnknownField(format!("{f:?}"), format!("{ty}")))
-                            .into()
+                        TranslationError::ErrorReported(
+                            self.tcx
+                                .dcx()
+                                .err(error::Message::UnknownField(format!("{f:?}"), format!("{ty}"))),
+                        )
                     })
                 } else {
-                    Err(self
-                        .tcx
-                        .dcx()
-                        .err(error::Message::UnsupportedFeature(format!(
+                    Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                        error::Message::UnsupportedFeature(format!(
                             "unsupported field access {:?}to ADT {:?}",
                             f, ty
-                        )))
-                        .into())
+                        )),
+                    )))
                 }
             },
 
@@ -1909,7 +1888,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 Ok(f.index().to_string())
             },
 
-            _ => Err(self.tcx.dcx().err(error::Message::InvalidLayout).into()),
+            _ => Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::InvalidLayout))),
         }
     }
 
@@ -1925,7 +1904,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 let i = def.variants().get(variant).unwrap();
                 Ok(i.name.to_string())
             },
-            _ => Err(tcx.dcx().err(error::Message::InvalidLayout).into()),
+            _ => Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::InvalidLayout))),
         }
     }
 }
@@ -1984,20 +1963,16 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
                         let v = &adt.variants()[variant];
                         self.generate_enum_variant_use(v.def_id, args, scope)
                     } else {
-                        Err(self
-                            .tcx
-                            .dcx()
-                            .err(error::Message::ExpectedStructlike("a non-downcast enum".to_owned()))
-                            .into())
+                        Err(TranslationError::ErrorReported(
+                            self.tcx
+                                .dcx()
+                                .err(error::Message::ExpectedStructlike("a non-downcast enum".to_owned())),
+                        ))
                     }
                 } else {
-                    Err(self
-                        .tcx
-                        .dcx()
-                        .err(error::Message::UnsupportedType(
-                            "non-{enum, struct, tuple} ADTs are not supported".to_owned(),
-                        ))
-                        .into())
+                    Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnsupportedType(
+                        "non-{enum, struct, tuple} ADTs are not supported".to_owned(),
+                    ))))
                 }
             },
             ty::TyKind::Tuple(args) => self.generate_tuple_use(*args, &mut STInner::InFunction(scope)),
@@ -2007,7 +1982,9 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
                 let upvars = closure_args.upvar_tys();
                 self.generate_tuple_use(upvars, &mut STInner::InFunction(scope))
             },
-            _ => Err(self.tcx.dcx().err(error::Message::ExpectedStructlike(format!("{ty}"))).into()),
+            _ => Err(TranslationError::ErrorReported(
+                self.tcx.dcx().err(error::Message::ExpectedStructlike(format!("{ty}"))),
+            )),
         }
     }
 
@@ -2022,9 +1999,10 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         info!("generating enum use for {:?}", adt_def.did());
         self.register_adt(adt_def)?;
 
-        let enum_ref: specs::types::LiteralRef<'def> = self
-            .lookup_adt_shim(adt_def.did())
-            .ok_or_else(|| self.tcx.dcx().err(error::Message::UnknownAdt(adt_def.did())))?;
+        let enum_ref: specs::types::LiteralRef<'def> =
+            self.lookup_adt_shim(adt_def.did()).ok_or_else(|| {
+                TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnknownAdt(adt_def.did())))
+            })?;
         let params = self.trait_registry().compute_scope_inst_in_state(
             &mut STInner::InFunction(state),
             adt_def.did(),
@@ -2061,9 +2039,10 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         let ordered_did = OrderedDefId::new(self.tcx, variant_id);
         let key = scope::AdtUseKey::new_from_inst(ordered_did, &params);
 
-        let struct_ref: specs::types::LiteralRef<'def> = self
-            .lookup_adt_shim(variant_id)
-            .ok_or_else(|| self.tcx.dcx().err(error::Message::UnknownAdt(variant_id)))?;
+        let struct_ref: specs::types::LiteralRef<'def> =
+            self.lookup_adt_shim(variant_id).ok_or_else(|| {
+                TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnknownAdt(variant_id)))
+            })?;
         let struct_use = specs::types::LiteralUse::new(struct_ref, params);
 
         scope.shim_uses.entry(key).or_insert_with(|| struct_use.clone());
@@ -2087,9 +2066,10 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         )?;
         //let _key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 
-        let struct_ref: specs::types::LiteralRef<'def> = self
-            .lookup_adt_shim(variant_id)
-            .ok_or_else(|| self.tcx.dcx().err(error::Message::UnknownAdt(variant_id)))?;
+        let struct_ref: specs::types::LiteralRef<'def> =
+            self.lookup_adt_shim(variant_id).ok_or_else(|| {
+                TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnknownAdt(variant_id)))
+            })?;
         let struct_use = specs::types::LiteralUse::new(struct_ref, params);
 
         // TODO: track?

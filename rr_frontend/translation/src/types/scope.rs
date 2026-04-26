@@ -51,12 +51,9 @@ pub(crate) fn generate_args_inst_key<'tcx>(
                 key.push(t_erased);
             },
             ty::GenericArgKind::Const(_c) => {
-                return Err(tcx
-                    .dcx()
-                    .err(Message::UnsupportedFeature(
-                        "RefinedRust does not support const generics".to_owned(),
-                    ))
-                    .into());
+                return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(
+                    "RefinedRust does not support const generics".to_owned(),
+                ))));
             },
         }
     }
@@ -510,12 +507,16 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
             if let ty::ClauseKind::RegionOutlives(region_pred) = cl_kind {
                 info!("region outlives: {:?} {:?}", region_pred.0, region_pred.1);
-                let lft1 = self
-                    .translate_region(region_pred.0)
-                    .ok_or_else(|| type_translator.tcx().dcx().err(Message::UnknownRegion(region_pred.0)))?;
-                let lft2 = self
-                    .translate_region(region_pred.1)
-                    .ok_or_else(|| type_translator.tcx().dcx().err(Message::UnknownRegion(region_pred.1)))?;
+                let lft1 = self.translate_region(region_pred.0).ok_or_else(|| {
+                    TranslationError::ErrorReported(
+                        type_translator.tcx().dcx().err(Message::UnknownRegion(region_pred.0)),
+                    )
+                })?;
+                let lft2 = self.translate_region(region_pred.1).ok_or_else(|| {
+                    TranslationError::ErrorReported(
+                        type_translator.tcx().dcx().err(Message::UnknownRegion(region_pred.1)),
+                    )
+                })?;
 
                 let constr = specs::LftConstr::LftOutlives(
                     specs::UniversalLft::Local(lft2),
@@ -528,7 +529,9 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 let translated_ty =
                     type_translator.translate_type_in_scope(&*self, typing_env, outlives_pred.0)?;
                 let lft = self.translate_region(outlives_pred.1).ok_or_else(|| {
-                    type_translator.tcx().dcx().err(Message::UnknownRegion(outlives_pred.1))
+                    TranslationError::ErrorReported(
+                        type_translator.tcx().dcx().err(Message::UnknownRegion(outlives_pred.1)),
+                    )
                 })?;
 
                 let constr = specs::LftConstr::TypeOutlives(translated_ty, specs::UniversalLft::Local(lft));
@@ -573,10 +576,9 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             // TODO: do we get into trouble with recursive trait requirements somewhere?
             // lookup the trait in the trait registry
             let Some(trait_spec) = trait_registry.lookup_trait(req.trait_ref.def_id) else {
-                return Err(tcx
-                    .dcx()
-                    .err(Message::TraitNotRegisteredWithRefinedRust(req.trait_ref.def_id))
-                    .into());
+                return Err(TranslationError::ErrorReported(
+                    tcx.dcx().err(Message::TraitNotRegisteredWithRefinedRust(req.trait_ref.def_id)),
+                ));
             };
 
             let key = (req.trait_ref.def_id, generate_args_inst_key(tcx, req.trait_ref.args).unwrap());

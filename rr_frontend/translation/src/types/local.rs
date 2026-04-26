@@ -531,6 +531,9 @@ where
     let typing_env = ty::TypingEnv::post_analysis(tcx, function_did);
     info!("Normalizing type {ty:?} in env {typing_env:?}");
 
-    resolution::normalize_type(tcx, typing_env, ty)
-        .map_err(|e| tcx.dcx().err(Message::TraitResolution(format!("normalization error: {:?}", e))).into())
+    resolution::normalize_type(tcx, typing_env, ty).map_err(|e| {
+        TranslationError::ErrorReported(
+            tcx.dcx().err(Message::TraitResolution(format!("normalization error: {:?}", e))),
+        )
+    })
 }

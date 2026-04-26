@@ -149,10 +149,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         if let Some(proc_use) = self.collected_procedures.get(&tup) {
             res = proc_use.loc_name.clone();
         } else {
-            let meta =
-                self.procedure_registry.lookup_function(callee_did).ok_or_else(|| -> TranslationError {
-                    self.tcx.dcx().err(Message::UnknownProcedure(format!("{:?}", callee_did))).into()
-                })?;
+            let meta = self.procedure_registry.lookup_function(callee_did).ok_or_else(|| {
+                TranslationError::ErrorReported(
+                    self.tcx.dcx().err(Message::UnknownProcedure(format!("{:?}", callee_did))),
+                )
+            })?;
             // explicit instantiation is needed sometimes
             let spec_term = code::UsedProcedureSpec::Literal(
                 meta.get_spec_name().to_owned(),
@@ -418,17 +419,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         if let Some(proc_use) = self.collected_procedures.get(&tup) {
             res = proc_use.loc_name.clone();
         } else {
-            let (_, meta) = self.trait_registry.lookup_closure_impl(closure_did, closure_kind).ok_or_else(
-                || -> TranslationError {
-                    self.tcx
-                        .dcx()
-                        .span_err(
-                            self.tcx.def_span(closure_did),
-                            Message::ClosureImplNotRegisteredWithRefinedRust(closure_did, closure_kind),
-                        )
-                        .into()
-                },
-            )?;
+            let (_, meta) =
+                self.trait_registry.lookup_closure_impl(closure_did, closure_kind).ok_or_else(|| {
+                    TranslationError::ErrorReported(self.tcx.dcx().span_err(
+                        self.tcx.def_span(closure_did),
+                        Message::ClosureImplNotRegisteredWithRefinedRust(closure_did, closure_kind),
+                    ))
+                })?;
 
             // explicit instantiation is needed sometimes
             let spec_term = code::UsedProcedureSpec::Literal(
@@ -502,7 +499,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         ty: ty::Ty<'tcx>,
     ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
         let ty::TyKind::FnDef(defid, params) = ty.kind() else {
-            return Err(self.tcx.dcx().err(Message::ExpectedFnDefType).into());
+            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::ExpectedFnDefType)));
         };
 
         let current_typing_env = ty::TypingEnv::post_analysis(self.tcx, self.proc.get_id());
@@ -530,11 +527,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             params,
             ty::Binder::dummy(()),
         ) else {
-            return Err(self
-                .tcx
-                .dcx()
-                .err(Message::TraitResolution(format!("Could not resolve trait {:?}", defid)))
-                .into());
+            return Err(TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .err(Message::TraitResolution(format!("Could not resolve trait {:?}", defid))),
+            ));
         };
 
         info!(
@@ -602,18 +599,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         Ok((*def, ident_sig, args, instantiated_sig))
                     },
                     // TODO handle FnPtr, closure
-                    _ => Err(self
-                        .tcx
-                        .dcx()
-                        .err(Message::Unimplemented("implement function pointers".to_owned()))
-                        .into()),
+                    _ => Err(TranslationError::ErrorReported(
+                        self.tcx.dcx().err(Message::Unimplemented("implement function pointers".to_owned())),
+                    )),
                 }
             },
-            mir::Const::Unevaluated(_, _) => Err(self
-                .tcx
-                .dcx()
-                .err(Message::Unimplemented("implement ConstantKind::Unevaluated".to_owned()))
-                .into()),
+            mir::Const::Unevaluated(_, _) => Err(TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .err(Message::Unimplemented("implement ConstantKind::Unevaluated".to_owned())),
+            )),
         }
     }
 
@@ -632,14 +627,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         });
 
         let mir::Operand::Constant(box func_constant) = func else {
-            return Err(self
-                .tcx
-                .dcx()
-                .err(Message::UnsupportedFeature(format!(
-                    "RefinedRust does currently not support this kind of call operand (got: {:?})",
-                    func
-                )))
-                .into());
+            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                format!("RefinedRust does currently not support this kind of call operand (got: {:?})", func),
+            ))));
         };
 
         // Get the type of the return value from the function
@@ -778,14 +768,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 regions::calls::CallRegionKind::Intersection(rs) => {
                     match rs.len() {
                         0 => {
-                            return Err(self
-                                .tcx
-                                .dcx()
-                                .err(Message::UnsupportedFeature(
+                            return Err(TranslationError::ErrorReported(
+                                self.tcx.dcx().err(Message::UnsupportedFeature(
                                     "RefinedRust does currently not support unconstrained lifetime"
                                         .to_owned(),
-                                ))
-                                .into());
+                                )),
+                            ));
                         },
                         1 => {
                             // this is really just an equality constraint

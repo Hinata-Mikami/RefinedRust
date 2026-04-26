@@ -139,9 +139,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             info!("Ignoring Assume: {:?}", intrinsic);
                         },
                         mir::NonDivergingIntrinsic::CopyNonOverlapping(_) => {
-                            return Err(self.tcx.dcx().err(Message::UnsupportedFeature(
-                                "RefinedRust does currently not support the CopyNonOverlapping Intrinsic".to_owned(),
-                            )).into());
+                            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                                Message::UnsupportedFeature(
+                                    "RefinedRust does currently not support the CopyNonOverlapping Intrinsic"
+                                        .to_owned(),
+                                ),
+                            )));
                         },
                     }
                 },
@@ -156,9 +159,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     variant_index: _variant_index,
                 } => {
                     // TODO
-                    return Err(self.tcx.dcx().err(Message::UnsupportedFeature(
-                        "RefinedRust does currently not support SetDiscriminant".to_owned(),
-                    )).into());
+                    return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                        Message::UnsupportedFeature(
+                            "RefinedRust does currently not support SetDiscriminant".to_owned(),
+                        ),
+                    )));
                 },
 
                 | mir::StatementKind::StorageLive(l) => {
