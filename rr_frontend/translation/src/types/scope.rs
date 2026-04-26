@@ -576,9 +576,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             // TODO: do we get into trouble with recursive trait requirements somewhere?
             // lookup the trait in the trait registry
             let Some(trait_spec) = trait_registry.lookup_trait(req.trait_ref.def_id) else {
-                return Err(TranslationError::ErrorReported(
-                    tcx.dcx().err(Message::TraitNotRegisteredWithRefinedRust(req.trait_ref.def_id)),
-                ));
+                return Err(TranslationError::ErrorReported(tcx.dcx().span_err(
+                    tcx.def_span(req.trait_ref.def_id),
+                    Message::TraitNotRegisteredWithRefinedRust,
+                )));
             };
 
             let key = (req.trait_ref.def_id, generate_args_inst_key(tcx, req.trait_ref.args).unwrap());

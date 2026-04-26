@@ -423,7 +423,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 self.trait_registry.lookup_closure_impl(closure_did, closure_kind).ok_or_else(|| {
                     TranslationError::ErrorReported(self.tcx.dcx().span_err(
                         self.tcx.def_span(closure_did),
-                        Message::ClosureImplNotRegisteredWithRefinedRust(closure_did, closure_kind),
+                        Message::ClosureImplNotRegisteredWithRefinedRust(closure_kind),
                     ))
                 })?;
 

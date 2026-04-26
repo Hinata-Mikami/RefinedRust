@@ -24,11 +24,11 @@ pub(crate) enum Message<'tcx> {
     #[display("No assumption is allowed, but this function is annotated with `#[rr::{}]`", _0)]
     NoAssumptionAllowed(procedures::Mode),
 
-    #[display("Unknown ADT: {:?}", _0)]
-    UnknownAdt(DefId),
+    #[display("This ADT has not been registered yet")]
+    UnknownAdt,
 
-    #[display("ADT shim was overridden for {:?}", _0)]
-    OverriddenAdtShim(DefId),
+    #[display("ADT shim was overridden")]
+    OverriddenAdtShim,
 
     #[display("Cannot translate unknown region: {}", _0)]
     UnknownRegion(ty::Region<'tcx>),
@@ -54,8 +54,8 @@ pub(crate) enum Message<'tcx> {
     #[display("No refinement annotated for field {}", _0)]
     MissingFieldRefinement(String),
 
-    #[display("generate_adt_shim_use called for unknown adt shim {:?}", _0)]
-    UnknownAdtShim(DefId),
+    #[display("generate_adt_shim_use called for unknown adt shim")]
+    UnknownAdtShim,
 
     #[display("Could not get field {} of {}", _0, _1)]
     UnknownField(String, String),
@@ -108,8 +108,8 @@ pub(crate) enum Message<'tcx> {
     #[display("Cannot take offset of {}", _0)]
     OffsetOnUnsupportedType(String),
 
-    #[display("Recursive type does not have an invariant: {:?}", _0)]
-    RecursiveTypeWithoutInvariant(DefId),
+    #[display("Recursive type does not have an invariant")]
+    RecursiveTypeWithoutInvariant,
 
     #[display("Application of UnOp::Not to non-{{Int, Bool}}")]
     UnOpNotOnUnsupportedType,
@@ -123,11 +123,11 @@ pub(crate) enum Message<'tcx> {
     #[display("Skipping function due to `#[rr::skip]` on enclosing impl")]
     SkipOnImplWarn,
 
-    #[display("Skipping function due to previous failure: {}", _0)]
-    SkippedDueToPreviousFailure(String),
+    #[display("Skipping function due to previous failure")]
+    SkippedFunctionDueToPreviousFailure,
 
-    #[display("Skipping trait impl due to previous failure: {:?}", _0)]
-    SkippedTraitImplDueToPreviousFailure(DefId),
+    #[display("Skipping trait impl due to previous failure")]
+    SkippedTraitImplDueToPreviousFailure,
 
     #[display("Failed to parse struct invariant spec: {}", _0)]
     StructInvariantSpecParse(StructParserError),
@@ -159,24 +159,23 @@ pub(crate) enum Message<'tcx> {
     #[display("Could not parse loop spec: {}", _0)]
     LoopSpec(LoopParserError),
 
-    #[display("An error occurred when parsing the specification of the trait impl {:?}: {}", _0, _1)]
-    TraitImplSpec(DefId, String),
+    #[display("No specification provided for trait impl")]
+    TraitImplSpec,
 
-    #[display("Trait {:?} has not been registered with RefinedRust yet", _0)]
-    TraitNotRegisteredWithRefinedRust(DefId),
+    #[display("Trait has not been registered with RefinedRust yet")]
+    TraitNotRegisteredWithRefinedRust,
 
     #[display(
-        "Closure impl for {:?} with kind {} has not been registered with RefinedRust yet; add a specification for it?",
-        _0,
-        _1
+        "Closure impl with kind {} has not been registered with RefinedRust yet; add a specification for it?",
+        _0
     )]
-    ClosureImplNotRegisteredWithRefinedRust(DefId, ty::ClosureKind),
+    ClosureImplNotRegisteredWithRefinedRust(ty::ClosureKind),
 
-    #[display("This trait impl {:?} of {:?} has not been registered yet", _0, _1)]
-    UnregisteredImpl(DefId, DefId),
+    #[display("This trait impl of {:?} has not been registered yet", _0)]
+    UnregisteredImpl(DefId),
 
-    #[display("Incomplete specification for trait impl {:?}", _0)]
-    IncompleteTraitImplSpec(DefId),
+    #[display("Incomplete specification for trait impl")]
+    IncompleteTraitImplSpec,
 }
 
 impl From<Message<'_>> for DiagMessage {

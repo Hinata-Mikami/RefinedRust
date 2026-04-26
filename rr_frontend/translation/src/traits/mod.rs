@@ -20,23 +20,23 @@ pub(crate) fn raise_unknown_local_instance<'tcx>(
     trait_did: DefId,
     args: ty::GenericArgsRef<'tcx>,
 ) -> ! {
-    tcx.dcx()
-        .bug(format!("could not find local instance for trait {trait_did:?} with generic args {args:?}"))
+    tcx.dcx().span_bug(
+        tcx.def_span(trait_did),
+        format!("could not find local instance for trait with generic args {args:?}"),
+    )
 }
 
 pub(crate) fn raise_not_a_trait(tcx: ty::TyCtxt<'_>, did: DefId) -> ! {
-    tcx.dcx()
-        .span_bug(tcx.def_span(did), format!("expected trait, found non-trait item: {did:?}"))
+    tcx.dcx().span_bug(tcx.def_span(did), "expected trait, found non-trait item")
 }
 
 pub(crate) fn raise_not_a_trait_impl(tcx: ty::TyCtxt<'_>, did: DefId) -> ! {
-    tcx.dcx()
-        .span_bug(tcx.def_span(did), format!("expected trait impl, found non-trait impl item: {did:?}"))
+    tcx.dcx().span_bug(tcx.def_span(did), "expected trait impl, found non-trait impl item")
 }
 
 pub(crate) fn raise_not_a_closure_trait(tcx: ty::TyCtxt<'_>, did: DefId) -> ! {
     tcx.dcx()
-        .span_bug(tcx.def_span(did), format!("expected closure trait, found non-closure trait item: {did:?}"))
+        .span_bug(tcx.def_span(did), "expected closure trait, found non-closure trait item")
 }
 
 pub(crate) fn raise_could_not_find_closure_trait(tcx: ty::TyCtxt<'_>, kind: ty::ClosureKind) -> ! {
@@ -45,29 +45,25 @@ pub(crate) fn raise_could_not_find_closure_trait(tcx: ty::TyCtxt<'_>, kind: ty::
 
 pub(crate) fn raise_not_a_trait_method(tcx: ty::TyCtxt<'_>, did: DefId) -> ! {
     tcx.dcx()
-        .span_bug(tcx.def_span(did), format!("expected trait method, found non-trait method item: {did:?}"))
+        .span_bug(tcx.def_span(did), "expected trait method, found non-trait method item")
 }
 
 pub(crate) fn raise_not_an_assoc_type(tcx: ty::TyCtxt<'_>, did: DefId) -> ! {
-    tcx.dcx().span_bug(
-        tcx.def_span(did),
-        format!("expected associated type, found different associated item: {did:?}"),
-    )
+    tcx.dcx()
+        .span_bug(tcx.def_span(did), "expected associated type, found different associated item")
 }
 
 pub(crate) fn raise_assoc_const_not_supported(tcx: ty::TyCtxt<'_>) -> ! {
     tcx.dcx()
-        .bug("associated constants in trait translation should have been rejected earlier".to_owned())
+        .bug("associated constants in trait translation should have been rejected earlier")
 }
 
 pub(crate) fn raise_trait_already_exists(tcx: ty::TyCtxt<'_>, did: DefId) -> ! {
-    tcx.dcx()
-        .span_bug(tcx.def_span(did), format!("trait shim already registered for {did:?}"))
+    tcx.dcx().span_bug(tcx.def_span(did), "trait shim already registered")
 }
 
 pub(crate) fn raise_impl_already_exists(tcx: ty::TyCtxt<'_>, did: DefId) -> ! {
-    tcx.dcx()
-        .span_bug(tcx.def_span(did), format!("trait impl shim already registered for {did:?}"))
+    tcx.dcx().span_bug(tcx.def_span(did), "trait impl shim already registered")
 }
 
 pub(crate) fn raise_closure_impl_already_exists(

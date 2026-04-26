@@ -1497,7 +1497,7 @@ fn translate_function<'tcx>(
             Err(base::TranslationError::ErrorReported(err)) => {
                 vcx.tcx.dcx().span_warn(
                     vcx.tcx.def_span(f.to_def_id()),
-                    error::Message::SkippedDueToPreviousFailure(fname),
+                    error::Message::SkippedFunctionDueToPreviousFailure,
                 );
                 recover_or_fail(err)
             },
@@ -1519,7 +1519,7 @@ fn translate_function<'tcx>(
             Err(base::TranslationError::ErrorReported(err)) => {
                 vcx.tcx.dcx().span_warn(
                     vcx.tcx.def_span(f.to_def_id()),
-                    error::Message::SkippedDueToPreviousFailure(fname),
+                    error::Message::SkippedFunctionDueToPreviousFailure,
                 );
                 recover_or_fail(err)
             },
@@ -2007,10 +2007,10 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<()
                                     specs::traits::InstanceMethodSpec::Defined(spec),
                                 );
                             } else {
-                                let err = vcx.tcx.dcx().span_err(
-                                    vcx.tcx.def_span(did),
-                                    error::Message::IncompleteTraitImplSpec(did),
-                                );
+                                let err = vcx
+                                    .tcx
+                                    .dcx()
+                                    .span_err(vcx.tcx.def_span(did), error::Message::IncompleteTraitImplSpec);
                                 return Err(base::TranslationError::ErrorReported(err));
                             }
                         } else {
@@ -2099,10 +2099,9 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<()
                 vcx.trait_impl_deps.insert(ordered_did, deps);
             },
             Err(base::TranslationError::ErrorReported(err)) => {
-                vcx.tcx.dcx().span_warn(
-                    vcx.tcx.def_span(did),
-                    error::Message::SkippedTraitImplDueToPreviousFailure(did),
-                );
+                vcx.tcx
+                    .dcx()
+                    .span_warn(vcx.tcx.def_span(did), error::Message::SkippedTraitImplDueToPreviousFailure);
                 recover_or_fail(err)?;
             },
             Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),

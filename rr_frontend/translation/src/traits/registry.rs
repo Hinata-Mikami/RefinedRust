@@ -312,10 +312,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         // lookup the pre-registered literal
         let lit_trait_spec_ref = self.lookup_trait(did.to_def_id()).ok_or_else(|| {
-            TranslationError::ErrorReported(self.tcx.dcx().span_err(
-                self.tcx.def_span(did),
-                error::Message::TraitNotRegisteredWithRefinedRust(did.to_def_id()),
-            ))
+            TranslationError::ErrorReported(
+                self.tcx
+                    .dcx()
+                    .span_err(self.tcx.def_span(did), error::Message::TraitNotRegisteredWithRefinedRust),
+            )
         })?;
 
         let trait_name = strip_coq_ident(&environment::get_absolute_item_name(self.tcx, did.to_def_id()));
@@ -535,10 +536,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let trait_did = self.tcx.impl_trait_id(impl_did);
 
         self.lookup_trait(trait_did).ok_or_else(|| {
-            TranslationError::ErrorReported(self.tcx.dcx().span_err(
-                self.tcx.def_span(trait_did),
-                error::Message::TraitNotRegisteredWithRefinedRust(trait_did),
-            ))
+            TranslationError::ErrorReported(
+                self.tcx.dcx().span_err(
+                    self.tcx.def_span(trait_did),
+                    error::Message::TraitNotRegisteredWithRefinedRust,
+                ),
+            )
         })?;
 
         let mut assoc_args = Vec::new();
@@ -564,7 +567,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             specs::traits::SpecializedImpl::new(impl_spec, scope_inst)
         } else {
             return Err(TranslationError::ErrorReported(
-                self.tcx.dcx().err(error::Message::UnregisteredImpl(impl_did, trait_did)),
+                self.tcx
+                    .dcx()
+                    .span_err(self.tcx.def_span(impl_did), error::Message::UnregisteredImpl(trait_did)),
             ));
         };
 
@@ -657,7 +662,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let (closure_impl, _) = self.lookup_closure_impl(closure_did, closure_kind).ok_or_else(|| {
             TranslationError::ErrorReported(self.tcx.dcx().span_err(
                 self.tcx.def_span(closure_did),
-                error::Message::ClosureImplNotRegisteredWithRefinedRust(closure_did, closure_kind),
+                error::Message::ClosureImplNotRegisteredWithRefinedRust(closure_kind),
             ))
         })?;
 
@@ -719,12 +724,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     ) -> Result<ResolvedTraitReq<'tcx, 'def>, TranslationError> {
         let current_typing_env: ty::TypingEnv<'tcx> = state.get_typing_env(self.tcx);
 
-        let trait_spec = self.lookup_trait(trait_did).ok_or_else(|| {
-            TranslationError::ErrorReported(self.tcx.dcx().span_err(
-                self.tcx.def_span(trait_did),
-                error::Message::TraitNotRegisteredWithRefinedRust(trait_did),
-            ))
-        })?;
+        let trait_spec =
+            self.lookup_trait(trait_did).ok_or_else(|| {
+                TranslationError::ErrorReported(self.tcx.dcx().span_err(
+                    self.tcx.def_span(trait_did),
+                    error::Message::TraitNotRegisteredWithRefinedRust,
+                ))
+            })?;
 
         if let Some((impl_did, impl_args, kind)) =
             resolution::resolve_trait(self.tcx, current_typing_env, trait_did, trait_args, below_binders)
@@ -1079,16 +1085,17 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         //let trait_args
 
         // check if we registered this impl previously
-        let trait_spec_ref = self.lookup_trait(trait_did).ok_or_else(|| {
-            TranslationError::ErrorReported(self.tcx.dcx().span_err(
-                self.tcx.def_span(trait_did),
-                error::Message::TraitNotRegisteredWithRefinedRust(trait_did),
-            ))
-        })?;
+        let trait_spec_ref =
+            self.lookup_trait(trait_did).ok_or_else(|| {
+                TranslationError::ErrorReported(self.tcx.dcx().span_err(
+                    self.tcx.def_span(trait_did),
+                    error::Message::TraitNotRegisteredWithRefinedRust,
+                ))
+            })?;
         let (impl_ref, _) = self.lookup_closure_impl(closure_did, kind).ok_or_else(|| {
             TranslationError::ErrorReported(self.tcx.dcx().span_err(
                 self.tcx.def_span(closure_did),
-                error::Message::ClosureImplNotRegisteredWithRefinedRust(closure_did, kind),
+                error::Message::ClosureImplNotRegisteredWithRefinedRust(kind),
             ))
         })?;
 
@@ -1181,7 +1188,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let trait_spec_ref = self.lookup_trait(trait_ref.def_id).ok_or_else(|| {
             TranslationError::ErrorReported(self.tcx.dcx().span_err(
                 self.tcx.def_span(trait_ref.def_id),
-                error::Message::TraitNotRegisteredWithRefinedRust(trait_ref.def_id),
+                error::Message::TraitNotRegisteredWithRefinedRust,
             ))
         })?;
 
@@ -1274,12 +1281,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let trait_did = self.tcx.impl_trait_id(trait_impl_did);
 
         // check if we registered this impl previously
-        let trait_spec_ref = self.lookup_trait(trait_did).ok_or_else(|| {
-            TranslationError::ErrorReported(self.tcx.dcx().span_err(
-                self.tcx.def_span(trait_did),
-                error::Message::TraitNotRegisteredWithRefinedRust(trait_did),
-            ))
-        })?;
+        let trait_spec_ref =
+            self.lookup_trait(trait_did).ok_or_else(|| {
+                TranslationError::ErrorReported(self.tcx.dcx().span_err(
+                    self.tcx.def_span(trait_did),
+                    error::Message::TraitNotRegisteredWithRefinedRust,
+                ))
+            })?;
         let impl_ref = self
             .lookup_impl(trait_impl_did)
             .unwrap_or_else(|| traits::raise_not_a_trait_impl(self.tcx, trait_impl_did));
@@ -1314,8 +1322,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             || super::is_derive_trait_with_annotations(self.tcx, trait_did) == Some(true)
         {
             let Some((attrs, context_items)) = self.check_for_derive_trait_attrs(trait_impl_did)? else {
-                let err =
-                    error::Message::TraitImplSpec(trait_impl_did, "No specification provided".to_owned());
+                let err = error::Message::TraitImplSpec;
                 return Err(TranslationError::ErrorReported(
                     self.tcx.dcx().span_err(self.tcx.def_span(trait_impl_did), err),
                 ));
@@ -1324,7 +1331,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         } else if trait_spec_ref.declared_attrs.is_empty() {
             (specs::traits::SpecAttrsInst::new(BTreeMap::new()), coq::binder::BinderList::empty())
         } else {
-            let err = error::Message::TraitImplSpec(trait_impl_did, "No specification provided".to_owned());
+            let err = error::Message::TraitImplSpec;
             return Err(TranslationError::ErrorReported(
                 self.tcx.dcx().span_err(self.tcx.def_span(trait_impl_did), err),
             ));

@@ -609,7 +609,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let mut shims = self.adt_shims.borrow_mut();
         let ordered_did = OrderedDefId::new(self.tcx, did);
         if let Some(_old) = shims.insert(ordered_did, lit_ref) {
-            Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::OverriddenAdtShim(did))))
+            Err(TranslationError::ErrorReported(
+                self.tcx.dcx().span_err(self.tcx().def_span(did), error::Message::OverriddenAdtShim),
+            ))
         } else {
             Ok(())
         }
@@ -792,7 +794,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let lit = self.lookup_adt_shim(did);
             Ok((*st, lit))
         } else {
-            Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnknownAdt(did))))
+            Err(TranslationError::ErrorReported(
+                self.tcx.dcx().span_err(self.tcx().def_span(did), error::Message::UnknownAdt),
+            ))
         }
     }
 
@@ -807,7 +811,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let lit = self.lookup_adt_shim(did);
             Ok((*st, lit))
         } else {
-            Err(TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnknownAdt(did))))
+            Err(TranslationError::ErrorReported(
+                self.tcx.dcx().span_err(self.tcx().def_span(did), error::Message::UnknownAdt),
+            ))
         }
     }
 
@@ -1074,7 +1080,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                         self.variant_registry.borrow_mut().remove(&ordered_did);
                         return Err(TranslationError::ErrorReported(self.tcx.dcx().span_err(
                             self.tcx.def_span(ty.def_id),
-                            error::Message::RecursiveTypeWithoutInvariant(ty.def_id),
+                            error::Message::RecursiveTypeWithoutInvariant,
                         )));
                     }
 
@@ -1569,7 +1575,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     ) -> Result<specs::Type<'def>, TranslationError> {
         let Some(shim) = self.lookup_adt_shim(adt.did()) else {
             return Err(TranslationError::ErrorReported(
-                self.tcx.dcx().err(error::Message::UnknownAdtShim(adt.did())),
+                self.tcx.dcx().span_err(self.tcx().def_span(adt.did()), error::Message::UnknownAdtShim),
             ));
         };
 
@@ -2001,7 +2007,9 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
 
         let enum_ref: specs::types::LiteralRef<'def> =
             self.lookup_adt_shim(adt_def.did()).ok_or_else(|| {
-                TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnknownAdt(adt_def.did())))
+                TranslationError::ErrorReported(
+                    self.tcx.dcx().span_err(self.tcx().def_span(adt_def.did()), error::Message::UnknownAdt),
+                )
             })?;
         let params = self.trait_registry().compute_scope_inst_in_state(
             &mut STInner::InFunction(state),
@@ -2041,7 +2049,9 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
 
         let struct_ref: specs::types::LiteralRef<'def> =
             self.lookup_adt_shim(variant_id).ok_or_else(|| {
-                TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnknownAdt(variant_id)))
+                TranslationError::ErrorReported(
+                    self.tcx.dcx().span_err(self.tcx().def_span(variant_id), error::Message::UnknownAdt),
+                )
             })?;
         let struct_use = specs::types::LiteralUse::new(struct_ref, params);
 
@@ -2068,7 +2078,9 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
 
         let struct_ref: specs::types::LiteralRef<'def> =
             self.lookup_adt_shim(variant_id).ok_or_else(|| {
-                TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::UnknownAdt(variant_id)))
+                TranslationError::ErrorReported(
+                    self.tcx.dcx().span_err(self.tcx().def_span(variant_id), error::Message::UnknownAdt),
+                )
             })?;
         let struct_use = specs::types::LiteralUse::new(struct_ref, params);
 
