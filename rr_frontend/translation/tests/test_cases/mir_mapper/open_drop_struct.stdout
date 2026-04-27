@@ -1,0 +1,17 @@
+Mapping for function open_drop_struct:
+summary: total=14 mapped=14 unmapped=0
+
+bb0[0] StorageLive(_2) -> FoldedFrom(bb0[1] StorageLive(_2))
+bb0[1] _2 = move (_1.0: std::boxed::Box<u32>) -> FoldedFrom(bb0[2] _2 = move (_1.0: std::boxed::Box<u32>))
+bb0[2] StorageLive(_3) -> FoldedFrom(bb0[3] StorageLive(_3))
+bb0[3] StorageLive(_4) -> FoldedFrom(bb0[4] StorageLive(_4))
+bb0[4] _4 = move _2 -> FoldedFrom(bb0[5] _4 = move _2)
+bb0[5] _3 = std::mem::drop::<std::boxed::Box<u32>>(move _4) -> [return: bb1, unwind: bb4] -> Source(bb0[6] _3 = std::mem::drop::<std::boxed::Box<u32>>(move _4) -> [return: bb1, unwind: bb4])
+bb1[0] StorageDead(_4) -> Source(bb1[0] StorageDead(_4))
+bb1[1] StorageDead(_3) -> Source(bb1[1] StorageDead(_3))
+bb1[2] _0 = const () -> Source(bb1[2] _0 = const ())
+bb1[3] StorageDead(_2) -> FoldedFrom(bb2[0] StorageDead(_2))
+bb1[4] drop((_1.1: std::boxed::Box<u32>)) -> [return: bb3, unwind: bb2] -> SplitFrom(bb2[1] drop(_1) -> [return: bb3, unwind: bb7])
+bb2[0] resume -> Source(bb7[0] resume)
+bb3[0] return -> Source(bb3[0] return)
+bb4[0] drop((_1.1: std::boxed::Box<u32>)) -> [return: bb2, unwind terminate(cleanup)] -> SplitFrom(bb6[0] drop(_1) -> [return: bb7, unwind terminate(cleanup)])

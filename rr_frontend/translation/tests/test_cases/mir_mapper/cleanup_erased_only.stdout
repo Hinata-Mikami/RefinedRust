@@ -1,0 +1,13 @@
+Mapping for function cleanup_erased_only:
+summary: total=10 mapped=10 unmapped=0
+
+bb0[0] _2 = discriminant(_1) -> FoldedFrom(bb0[1] _2 = discriminant(_1))
+bb0[1] switchInt(move _2) -> [1: bb1, otherwise: bb2] -> Source(bb0[2] switchInt(move _2) -> [1: bb1, otherwise: bb3])
+bb1[0] StorageLive(_3) -> FoldedFrom(bb2[0] StorageLive(_3))
+bb1[1] _3 = copy ((_1 as Some).0: i32) -> FoldedFrom(bb2[1] _3 = copy ((_1 as Some).0: i32))
+bb1[2] _0 = copy _3 -> FoldedFrom(bb2[2] _0 = copy _3)
+bb1[3] StorageDead(_3) -> FoldedFrom(bb2[3] StorageDead(_3))
+bb1[4] goto -> bb3 -> Source(bb1[0] falseEdge -> [real: bb2, imaginary: bb3])
+bb2[0] _0 = const 0_i32 -> Source(bb3[0] _0 = const 0_i32)
+bb2[1] goto -> bb3 -> Source(bb3[1] goto -> bb4)
+bb3[0] return -> Source(bb4[0] return)

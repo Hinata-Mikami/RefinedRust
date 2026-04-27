@@ -1,0 +1,30 @@
+Mapping for function open_drop_enum:
+summary: total=27 mapped=27 unmapped=0
+
+bb0[0] _6 = const false -> Inserted
+bb0[1] _6 = const true -> Inserted
+bb0[2] _2 = discriminant(_1) -> FoldedFrom(bb0[1] _2 = discriminant(_1))
+bb0[3] switchInt(move _2) -> [0: bb1, otherwise: bb3] -> Source(bb0[2] switchInt(move _2) -> [0: bb1, otherwise: bb4])
+bb1[0] StorageLive(_3) -> FoldedFrom(bb2[0] StorageLive(_3))
+bb1[1] _3 = move ((_1 as Left).0: std::boxed::Box<u32>) -> FoldedFrom(bb2[1] _3 = move ((_1 as Left).0: std::boxed::Box<u32>))
+bb1[2] StorageLive(_4) -> FoldedFrom(bb2[2] StorageLive(_4))
+bb1[3] StorageLive(_5) -> FoldedFrom(bb2[3] StorageLive(_5))
+bb1[4] _5 = move _3 -> FoldedFrom(bb2[4] _5 = move _3)
+bb1[5] _4 = std::mem::drop::<std::boxed::Box<u32>>(move _5) -> [return: bb2, unwind: bb11] -> FoldedFrom(bb2[5] _4 = std::mem::drop::<std::boxed::Box<u32>>(move _5) -> [return: bb3, unwind: bb8])
+bb2[0] StorageDead(_5) -> Source(bb3[0] StorageDead(_5))
+bb2[1] StorageDead(_4) -> Source(bb3[1] StorageDead(_4))
+bb2[2] _0 = const () -> Source(bb3[2] _0 = const ())
+bb2[3] StorageDead(_3) -> FoldedFrom(bb5[0] StorageDead(_3))
+bb2[4] goto -> bb8 -> SplitFrom(bb6[0] drop(_1) -> [return: bb7, unwind: bb11])
+bb3[0] _0 = const () -> Source(bb4[0] _0 = const ())
+bb3[1] goto -> bb8 -> Source(bb4[1] goto -> bb6)
+bb4[0] resume -> Source(bb11[0] resume)
+bb5[0] return -> Source(bb7[0] return)
+bb6[0] drop(((_1 as Left).1: std::boxed::Box<u32>)) -> [return: bb5, unwind: bb4] -> SplitFrom(bb6[0] drop(_1) -> [return: bb7, unwind: bb11])
+bb7[0] drop(_1) -> [return: bb5, unwind: bb4] -> SplitFrom(bb6[0] drop(_1) -> [return: bb7, unwind: bb11])
+bb8[0] _7 = discriminant(_1) -> SplitFrom(bb6[0] drop(_1) -> [return: bb7, unwind: bb11])
+bb8[1] switchInt(move _7) -> [0: bb6, otherwise: bb7] -> SplitFrom(bb6[0] drop(_1) -> [return: bb7, unwind: bb11])
+bb9[0] drop(((_1 as Left).1: std::boxed::Box<u32>)) -> [return: bb4, unwind terminate(cleanup)] -> SplitFrom(bb10[0] drop(_1) -> [return: bb11, unwind terminate(cleanup)])
+bb10[0] drop(_1) -> [return: bb4, unwind terminate(cleanup)] -> SplitFrom(bb10[0] drop(_1) -> [return: bb11, unwind terminate(cleanup)])
+bb11[0] _9 = discriminant(_1) -> SplitFrom(bb10[0] drop(_1) -> [return: bb11, unwind terminate(cleanup)])
+bb11[1] switchInt(move _9) -> [0: bb9, otherwise: bb10] -> SplitFrom(bb10[0] drop(_1) -> [return: bb11, unwind terminate(cleanup)])

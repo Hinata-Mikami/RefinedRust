@@ -1,0 +1,28 @@
+Mapping for function eliminated_drop_stop_at_join:
+summary: total=25 mapped=25 unmapped=0
+
+bb0[0] _7 = const false -> Inserted
+bb0[1] StorageLive(_3) -> Source(bb0[0] StorageLive(_3))
+bb0[2] _7 = const true -> Inserted
+bb0[3] _3 = move _2 -> Source(bb0[1] _3 = move _2)
+bb0[4] StorageLive(_4) -> Source(bb0[3] StorageLive(_4))
+bb0[5] _4 = copy _1 -> Source(bb0[4] _4 = copy _1)
+bb0[6] switchInt(move _4) -> [0: bb3, otherwise: bb1] -> Source(bb0[5] switchInt(move _4) -> [0: bb3, otherwise: bb1])
+bb1[0] StorageLive(_5) -> Source(bb1[0] StorageLive(_5))
+bb1[1] StorageLive(_6) -> Source(bb1[1] StorageLive(_6))
+bb1[2] _7 = const false -> Inserted
+bb1[3] _6 = move _3 -> Source(bb1[2] _6 = move _3)
+bb1[4] _5 = std::mem::drop::<std::boxed::Box<u32>>(move _6) -> [return: bb2, unwind: bb6] -> Source(bb1[3] _5 = std::mem::drop::<std::boxed::Box<u32>>(move _6) -> [return: bb2, unwind: bb7])
+bb2[0] StorageDead(_6) -> Source(bb2[0] StorageDead(_6))
+bb2[1] StorageDead(_5) -> Source(bb2[1] StorageDead(_5))
+bb2[2] _0 = const () -> Source(bb2[2] _0 = const ())
+bb2[3] goto -> bb4 -> Source(bb2[3] goto -> bb4)
+bb3[0] _0 = const () -> Source(bb3[0] _0 = const ())
+bb3[1] goto -> bb4 -> Source(bb3[1] goto -> bb4)
+bb4[0] StorageDead(_4) -> Source(bb4[0] StorageDead(_4))
+bb4[1] switchInt(copy _7) -> [0: bb5, otherwise: bb7] -> SplitFrom(bb4[1] drop(_3) -> [return: bb5, unwind: bb9])
+bb5[0] _7 = const false -> Inserted
+bb5[1] StorageDead(_3) -> Source(bb5[0] StorageDead(_3))
+bb5[2] return -> FoldedFrom(bb6[0] return)
+bb6[0] resume -> FoldedFrom(bb10[0] resume)
+bb7[0] drop(_3) -> [return: bb5, unwind: bb6] -> SplitFrom(bb4[1] drop(_3) -> [return: bb5, unwind: bb9])

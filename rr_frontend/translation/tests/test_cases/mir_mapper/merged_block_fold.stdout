@@ -1,0 +1,24 @@
+Mapping for function merged_block_fold:
+summary: total=21 mapped=21 unmapped=0
+
+bb0[0] _6 = const false -> Inserted
+bb0[1] _6 = const true -> Inserted
+bb0[2] StorageLive(_3) -> Source(bb0[0] StorageLive(_3))
+bb0[3] _3 = copy _1 -> Source(bb0[1] _3 = copy _1)
+bb0[4] switchInt(move _3) -> [0: bb2, otherwise: bb1] -> Source(bb0[2] switchInt(move _3) -> [0: bb4, otherwise: bb1])
+bb1[0] StorageLive(_4) -> Source(bb1[0] StorageLive(_4))
+bb1[1] _6 = const false -> Inserted
+bb1[2] _4 = move _2 -> Source(bb1[1] _4 = move _2)
+bb1[3] StorageLive(_5) -> Source(bb1[3] StorageLive(_5))
+bb1[4] _5 = move _4 -> Source(bb1[4] _5 = move _4)
+bb1[5] _0 = std::option::Option::<std::boxed::Box<u32>>::Some(move _5) -> Source(bb1[5] _0 = std::option::Option::<std::boxed::Box<u32>>::Some(move _5))
+bb1[6] StorageDead(_5) -> FoldedFrom(bb2[0] StorageDead(_5))
+bb1[7] StorageDead(_4) -> FoldedFrom(bb3[0] StorageDead(_4))
+bb1[8] goto -> bb3 -> FoldedFrom(bb3[1] goto -> bb5)
+bb2[0] _0 = std::option::Option::<std::boxed::Box<u32>>::None -> Source(bb4[0] _0 = std::option::Option::<std::boxed::Box<u32>>::None)
+bb2[1] goto -> bb3 -> Source(bb4[1] goto -> bb5)
+bb3[0] StorageDead(_3) -> Source(bb5[0] StorageDead(_3))
+bb3[1] switchInt(copy _6) -> [0: bb4, otherwise: bb6] -> SplitFrom(bb5[1] drop(_2) -> [return: bb6, unwind: bb9])
+bb4[0] return -> Source(bb6[0] return)
+bb5[0] resume -> Source(bb9[0] resume)
+bb6[0] drop(_2) -> [return: bb4, unwind: bb5] -> SplitFrom(bb5[1] drop(_2) -> [return: bb6, unwind: bb9])
