@@ -13,7 +13,7 @@ use derive_more::{Constructor, Debug};
 use log::{info, trace};
 use radium::{coq, lang, push_str_list, specs};
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::middle::{bug, mir, ty};
 use rr_rustc_interface::{abi, ast, span};
 use typed_arena::Arena;
 
@@ -367,16 +367,16 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
     }
 
     /// Lookup a type parameter in the current state
-    fn lookup_ty_param(&self, tcx: ty::TyCtxt<'tcx>, param_ty: ty::ParamTy) -> specs::Type<'def> {
+    fn lookup_ty_param(&self, param_ty: ty::ParamTy) -> specs::Type<'def> {
         let ty = self
             .param_scope()
             .lookup_ty_param_idx(param_ty.index)
-            .unwrap_or_else(|| tcx.dcx().bug(format!("Unknown type parameter {param_ty:?}")));
+            .unwrap_or_else(|| bug!("Unknown type parameter {param_ty:?}"));
         specs::Type::LiteralParam(ty.clone())
     }
 
     /// Lookup an early-bound region.
-    fn lookup_early_region(&self, tcx: ty::TyCtxt<'tcx>, region: ty::EarlyParamRegion) -> specs::Lft {
+    fn lookup_early_region(&self, region: ty::EarlyParamRegion) -> specs::Lft {
         trace!("lookup_early_region in state={self:?}");
         match self {
             STInner::InFunction(scope) => {
@@ -384,21 +384,21 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                 let lft = scope
                     .lifetime_scope
                     .lookup_early_region(region.index as usize)
-                    .unwrap_or_else(|| tcx.dcx().bug(format!("Unknown early region {region:?}")));
+                    .unwrap_or_else(|| bug!("Unknown early region {region:?}"));
                 lft.lft().to_owned()
             },
             STInner::TranslateAdt(scope) => {
                 let lft = scope
                     .scope
                     .lookup_region_idx(region.index as usize)
-                    .unwrap_or_else(|| tcx.dcx().bug(format!("Unknown early region {region:?}")));
+                    .unwrap_or_else(|| bug!("Unknown early region {region:?}"));
                 lft.lft().to_owned()
             },
             STInner::TraitReqs(scope) => {
                 let lft = scope
                     .scope
                     .lookup_region_idx(region.index as usize)
-                    .unwrap_or_else(|| tcx.dcx().bug(format!("Unknown early region {region:?}")));
+                    .unwrap_or_else(|| bug!("Unknown early region {region:?}"));
                 lft.lft().to_owned()
             },
             STInner::CalleeTranslation(_) => coq::Ident::new("DUMMY"),
@@ -406,26 +406,28 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
     }
 
     /// Lookup a late-bound region.
-    fn lookup_late_region(&self, tcx: ty::TyCtxt<'tcx>, binder: usize, var: usize) -> specs::Lft {
+    fn lookup_late_region(&self, binder: usize, var: usize) -> specs::Lft {
         match self {
             STInner::InFunction(scope) => {
                 info!("Looking up late lifetime ({binder:?}, {var:?}) in scope {:?}", scope.lifetime_scope);
                 let lft = scope
                     .lifetime_scope
                     .lookup_late_region(binder, var)
-                    .unwrap_or_else(|| tcx.dcx().bug(format!("Unknown late region {var:?}")));
+                    .unwrap_or_else(|| bug!("Unknown late region {var:?}"));
                 lft.lft().to_owned()
             },
             STInner::TranslateAdt(scope) => {
-                let lft = scope.scope.lookup_late_region_idx(binder, var).unwrap_or_else(|| {
-                    tcx.dcx().bug("Unknown late region outside function: ({{binder:?}, {var:?})")
-                });
+                let lft = scope
+                    .scope
+                    .lookup_late_region_idx(binder, var)
+                    .unwrap_or_else(|| bug!("Unknown late region outside function: ({binder:?}, {var:?})"));
                 lft.lft().to_owned()
             },
             STInner::TraitReqs(scope) => {
-                let lft = scope.scope.lookup_late_region_idx(binder, var).unwrap_or_else(|| {
-                    tcx.dcx().bug("Unknown late region outside function: ({{binder:?}, {var:?})")
-                });
+                let lft = scope
+                    .scope
+                    .lookup_late_region_idx(binder, var)
+                    .unwrap_or_else(|| bug!("Unknown late region outside function: ({binder:?}, {var:?})"));
                 lft.lft().to_owned()
             },
             STInner::CalleeTranslation(_) => coq::Ident::new("DUMMY"),
@@ -433,7 +435,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
     }
 
     /// Try to translate a Polonius region variable to a Caesium lifetime.
-    pub(crate) fn lookup_polonius_var(&self, tcx: ty::TyCtxt<'tcx>, v: facts::Region) -> specs::Lft {
+    pub(crate) fn lookup_polonius_var(&self, v: facts::Region) -> specs::Lft {
         match self {
             STInner::InFunction(scope) => {
                 if let Some(info) = scope.polonius_info {
@@ -447,7 +449,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                     let r = scope
                         .lifetime_scope
                         .lookup_region(v)
-                        .unwrap_or_else(|| tcx.dcx().bug(format!("Unknown Polonius region: {v:?}")));
+                        .unwrap_or_else(|| bug!("Unknown Polonius region: {v:?}"));
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
                     r.lft().to_owned()
                 }
@@ -464,9 +466,9 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                     let r = scope
                         .lifetime_scope
                         .as_ref()
-                        .unwrap_or_else(|| tcx.dcx().bug("Lifetime scope has not been initialized"))
+                        .unwrap_or_else(|| bug!("Lifetime scope has not been initialized"))
                         .lookup_region(v)
-                        .unwrap_or_else(|| tcx.dcx().bug(format!("Unknown Polonius region: {v:?}")));
+                        .unwrap_or_else(|| bug!("Unknown Polonius region: {v:?}"));
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
                     r.lft().to_owned()
                     //info!("Translating region: ReVar {:?} as None (trait)", v);
@@ -475,7 +477,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
             },
             STInner::TranslateAdt(_scope) => {
                 info!("Translating region: ReVar {:?} as None (outside of function)", v);
-                tcx.dcx().bug(format!("encountered Polonius region outside function translation: {v:?}"))
+                bug!("encountered Polonius region outside function translation: {v:?}")
             },
             STInner::CalleeTranslation(_) => coq::Ident::new("DUMMY"),
         }
@@ -710,34 +712,33 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Try to translate a region to a Caesium lifetime.
     pub(crate) fn translate_region(
-        tcx: ty::TyCtxt<'tcx>,
         translation_state: ST<'_, '_, 'def, 'tcx>,
         region: ty::Region<'tcx>,
     ) -> specs::Lft {
         match region.kind() {
             ty::RegionKind::ReEarlyParam(early) => {
                 info!("Translating region: EarlyParam {:?}", early);
-                translation_state.lookup_early_region(tcx, early)
+                translation_state.lookup_early_region(early)
             },
 
             ty::RegionKind::ReBound(idx, r) => {
                 info!("Translating region: Bound {:?} {:?}", idx, r);
                 if let ty::BoundVarIndexKind::Bound(idx) = idx {
-                    translation_state.lookup_late_region(tcx, usize::from(idx), r.var.index())
+                    translation_state.lookup_late_region(usize::from(idx), r.var.index())
                 } else {
                     unimplemented!("cannot handle Canonicalized binders");
                 }
             },
             ty::RegionKind::ReStatic => coq::Ident::new("static"),
 
-            ty::RegionKind::ReVar(v) => translation_state.lookup_polonius_var(tcx, v.into()),
+            ty::RegionKind::ReVar(v) => translation_state.lookup_polonius_var(v.into()),
 
             _ => {
                 info!("Translating region: {:?}", region);
                 if let STInner::CalleeTranslation(_) = *translation_state {
                     coq::Ident::new("DUMMY")
                 } else {
-                    tcx.dcx().bug(format!("Unhandled region {region:?} in translation"))
+                    bug!("Unhandled region {region:?} in translation")
                 }
             },
         }
@@ -1616,7 +1617,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
                 let translated_ty = self.translate_type_in_state(*ty, &mut *state)?;
 
-                let lft = TX::translate_region(self.tcx, &mut *state, *region);
+                let lft = TX::translate_region(&mut *state, *region);
 
                 match mutability {
                     ast::ast::Mutability::Mut => Ok(specs::Type::MutRef(Box::new(translated_ty), lft)),
@@ -1664,7 +1665,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 self.generate_tuple_use(params.iter(), &mut *state).map(specs::Type::Literal)
             },
 
-            ty::TyKind::Param(param_ty) => Ok(state.lookup_ty_param(self.tcx, *param_ty)),
+            ty::TyKind::Param(param_ty) => Ok(state.lookup_ty_param(*param_ty)),
 
             ty::TyKind::Float(_) => Err(TranslationError::ErrorReported(
                 self.tcx

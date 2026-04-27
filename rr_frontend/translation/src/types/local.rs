@@ -74,14 +74,14 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     pub(crate) fn translate_region(&self, region: ty::Region<'tcx>) -> specs::Lft {
         let mut scope = self.scope.borrow_mut();
         let mut scope = STInner::InFunction(&mut scope);
-        TX::translate_region(self.translator.tcx(), &mut scope, region)
+        TX::translate_region(&mut scope, region)
     }
 
     /// Translate a Polonius region variable in the scope of the current function.
     pub(crate) fn translate_region_var(&self, region: facts::Region) -> specs::Lft {
         let mut scope = self.scope.borrow_mut();
         let scope = STInner::InFunction(&mut scope);
-        scope.lookup_polonius_var(self.translator.tcx(), region)
+        scope.lookup_polonius_var(region)
     }
 
     /// Translate type.
@@ -231,7 +231,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             let mut mapped_early_regions = BTreeMap::new();
             for (early, polonius) in early_regions_inst {
                 let mut scope = STInner::InFunction(&mut scope);
-                let polonius_lft = TX::translate_region(self.translator.tcx(), &mut scope, polonius);
+                let polonius_lft = TX::translate_region(&mut scope, polonius);
                 mapped_early_regions.insert(polonius_lft, early);
             }
 

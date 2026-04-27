@@ -12,8 +12,8 @@ use derive_more::{Constructor, Debug};
 use log::{info, trace, warn};
 use radium::{coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeFoldable as _;
+use rr_rustc_interface::middle::{span_bug, ty};
 
 use crate::base::*;
 use crate::error::Message;
@@ -23,7 +23,7 @@ use crate::traits::registry::GenericTraitUse;
 use crate::traits::{registry, requirements};
 use crate::types::translator::TX;
 use crate::types::tyvars::TyRegionEraseFolder;
-use crate::{environment, regions, traits};
+use crate::{environment, regions};
 
 /// Key used for resolving early-bound parameters for function calls.
 /// Invariant: All regions contained in these types should be erased, as type parameter instantiation is
@@ -923,7 +923,7 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
         args: &[ty::GenericArg<'tcx>],
     ) -> &GenericTraitUse<'tcx, 'def> {
         if !tcx.is_trait(trait_did) {
-            traits::raise_not_a_trait(tcx, trait_did);
+            span_bug!(tcx.def_span(trait_did), "expected trait, found non-trait item");
         }
 
         let key = (trait_did, generate_args_inst_key(tcx, args).unwrap());
@@ -931,7 +931,11 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
         if let Some(trait_ref) = self.used_traits.get(&key) {
             trait_ref
         } else {
-            traits::raise_unknown_local_instance(tcx, trait_did, tcx.mk_args(args))
+            span_bug!(
+                tcx.def_span(trait_did),
+                "could not find local instance for trait with generic args {:?}",
+                tcx.mk_args(args)
+            )
         }
     }
 

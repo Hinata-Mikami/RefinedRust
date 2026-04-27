@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, btree_map};
 use log::{info, trace};
 use radium::{coq, specs};
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
-use rr_rustc_interface::middle::ty;
+use rr_rustc_interface::middle::{bug, span_bug, ty};
 use traits::resolution;
 use typed_arena::Arena;
 
@@ -55,10 +55,10 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
     /// This is used in the translation of symbolic `TyKind::Alias`.
     pub(crate) fn get_associated_type_use(&self, tcx: ty::TyCtxt<'tcx>, did: DefId) -> specs::Type<'def> {
         let Some(type_name) = environment::get_assoc_item_name(tcx, did) else {
-            traits::raise_not_an_assoc_type(tcx, did);
+            span_bug!(tcx.def_span(did), "expected associated type, found different associated item");
         };
         let Some(type_idx) = environment::get_trait_associated_type_index(tcx, did) else {
-            traits::raise_not_an_assoc_type(tcx, did);
+            span_bug!(tcx.def_span(did), "expected associated type, found different associated item");
         };
 
         // this is an associated type of the trait that is currently being declared
@@ -235,7 +235,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             if let ty::AssocKind::Fn { .. } = c.kind {
                 // get function name
                 let Some(method_name) = environment::get_assoc_item_name(self.tcx, c.def_id) else {
-                    traits::raise_not_a_trait_method(self.tcx, c.def_id);
+                    span_bug!(
+                        self.tcx.def_span(c.def_id),
+                        "expected trait method, found non-trait method item"
+                    );
                 };
                 let method_name = strip_coq_ident(&method_name);
 
@@ -365,8 +368,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     );
 
                     // get function name
-                    let method_name = environment::get_assoc_item_name(self.tcx, c.def_id)
-                        .unwrap_or_else(|| traits::raise_not_a_trait_method(self.tcx, c.def_id));
+                    let method_name =
+                        environment::get_assoc_item_name(self.tcx, c.def_id).unwrap_or_else(|| {
+                            span_bug!(
+                                self.tcx.def_span(c.def_id),
+                                "expected trait method, found non-trait method item"
+                            )
+                        });
                     let method_name = strip_coq_ident(&method_name);
 
                     let name = format!("{trait_name}_{method_name}");
@@ -393,13 +401,18 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     methods.insert(method_name, specs::traits::InstanceMethodSpec::Defined(&*spec_ref));
                 } else if let ty::AssocKind::Type { .. } = c.kind {
                     // get name
-                    let type_name = environment::get_assoc_item_name(self.tcx, c.def_id)
-                        .unwrap_or_else(|| traits::raise_not_an_assoc_type(self.tcx, c.def_id));
+                    let type_name =
+                        environment::get_assoc_item_name(self.tcx, c.def_id).unwrap_or_else(|| {
+                            span_bug!(
+                                self.tcx.def_span(c.def_id),
+                                "expected associated type, found different associated item"
+                            )
+                        });
                     let type_name = strip_coq_ident(&type_name);
                     let lit = specs::LiteralTyParam::new(&type_name);
                     assoc_types.push(lit);
                 } else {
-                    traits::raise_assoc_const_not_supported(self.tcx);
+                    bug!("associated constants in trait translation should have been rejected earlier");
                 }
             }
 
@@ -440,13 +453,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         spec: specs::traits::LiteralSpec,
     ) -> specs::traits::LiteralSpecRef<'def> {
         if !self.tcx.is_trait(did) {
-            traits::raise_not_a_trait(self.tcx, did);
+            span_bug!(self.tcx.def_span(did), "expected trait, found non-trait item");
         }
 
         let ordered_did = OrderedDefId::new(self.tcx, did);
         let mut trait_literals = self.trait_literals.borrow_mut();
         if trait_literals.get(&ordered_did).is_some() {
-            traits::raise_trait_already_exists(self.tcx, did);
+            span_bug!(self.tcx.def_span(did), "trait shim already registered");
         }
 
         let spec = self.trait_arena.alloc(spec);
@@ -462,13 +475,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         spec: specs::traits::LiteralImpl,
     ) -> specs::traits::LiteralImplRef<'def> {
         if !self.tcx.impl_is_of_trait(did) {
-            traits::raise_not_a_trait_impl(self.tcx, did);
+            span_bug!(self.tcx.def_span(did), "expected trait impl, found non-trait impl item");
         }
 
         let ordered_did = OrderedDefId::new(self.tcx, did);
         let mut impl_literals = self.impl_literals.borrow_mut();
         if impl_literals.get(&ordered_did).is_some() {
-            traits::raise_impl_already_exists(self.tcx, did);
+            span_bug!(self.tcx.def_span(did), "trait impl shim already registered");
         }
 
         let spec = self.impl_arena.alloc(spec);
@@ -489,7 +502,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         let mut impl_literals = self.closure_impls.borrow_mut();
         if impl_literals.get(&(closure_did, closure_kind)).is_some() {
-            traits::raise_closure_impl_already_exists(self.tcx, closure_did, closure_kind);
+            span_bug!(
+                self.tcx.def_span(closure_did),
+                "closure impl already registered for {:?} with kind {:?}",
+                closure_did,
+                closure_kind
+            );
         }
 
         impl_literals.insert((closure_did, closure_kind), (&*spec, fn_lit));
@@ -656,8 +674,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         trait_args: ty::GenericArgsRef<'tcx>,
     ) -> Result<(specs::traits::SpecializedImpl<'def>, Vec<ty::Ty<'tcx>>), TranslationError> {
-        let closure_kind = search::get_closure_kind_of_trait_did(self.tcx, trait_did)
-            .unwrap_or_else(|| traits::raise_not_a_closure_trait(self.tcx, trait_did));
+        let closure_kind = search::get_closure_kind_of_trait_did(self.tcx, trait_did).unwrap_or_else(|| {
+            span_bug!(self.tcx.def_span(trait_did), "expected closure trait, found non-closure trait item")
+        });
 
         let (closure_impl, _) = self.lookup_closure_impl(closure_did, closure_kind).ok_or_else(|| {
             TranslationError::ErrorReported(self.tcx.dcx().span_err(
@@ -694,13 +713,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let inst = self.compute_closure_late_bound_inst(state, closure_args, trait_args);
         trace!("get_closure_impl_spec_term: found late bound unification {inst:?}");
         for region in inst {
-            let translated_region = types::TX::translate_region(self.tcx, state, region);
+            let translated_region = types::TX::translate_region(state, region);
             scope_inst.add_lft_param(translated_region);
         }
 
         let extern_inst = self.compute_closure_extern_inst(state, closure_did, closure_args);
         for r in extern_inst {
-            let lft = types::TX::translate_region(self.tcx, state, r);
+            let lft = types::TX::translate_region(state, r);
             scope_inst.add_lft_param(lft);
         }
 
@@ -816,8 +835,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     // lookup the instances in the `binders` scope for the new trait assumption
                     let mut mapped_inst = Vec::new();
                     for region in inst {
-                        let translated_region =
-                            types::TX::translate_region(self.tcx, &mut quantified_state, region);
+                        let translated_region = types::TX::translate_region(&mut quantified_state, region);
                         mapped_inst.push(translated_region);
                     }
                     let mapped_inst = specs::traits::ReqScopeInst::new(mapped_inst);
@@ -992,7 +1010,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 let ty = self.type_translator().translate_type_in_state(ty, state)?;
                 scope_inst.add_direct_ty_param(ty);
             } else if let Some(lft) = arg.as_region() {
-                let lft = types::TX::translate_region(self.tcx, state, lft);
+                let lft = types::TX::translate_region(state, lft);
                 scope_inst.add_lft_param(lft);
             }
         }
@@ -1069,7 +1087,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             "enter get_closure_trait_impl_info for closure_did={closure_did:?} and kind={kind:?} with info={info:?}"
         );
         let trait_did = search::get_closure_trait_did(self.tcx, kind)
-            .unwrap_or_else(|| traits::raise_could_not_find_closure_trait(self.tcx, kind));
+            .unwrap_or_else(|| bug!("could not resolve lang-item closure trait for kind {kind:?}"));
 
         let self_ty = info.self_ty;
         //self.tcx.mk_ty_from_kind(ty::TyKind::Closure(closure_did, closure_args.args));
@@ -1235,10 +1253,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
     /// Get the expected signature for a trait impl function.
     pub(crate) fn get_expected_sig_for_impl_fn(&self, did: DefId) -> ty::PolyFnSig<'tcx> {
-        let impl_did = self
-            .tcx
-            .impl_of_assoc(did)
-            .unwrap_or_else(|| traits::raise_not_a_trait_method(self.tcx, did));
+        let impl_did = self.tcx.impl_of_assoc(did).unwrap_or_else(|| {
+            span_bug!(self.tcx.def_span(did), "expected trait method, found non-trait method item")
+        });
 
         let subject = self.tcx.impl_trait_header(impl_did);
         let trait_ref = subject.trait_ref.skip_binder();
@@ -1288,9 +1305,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     error::Message::TraitNotRegisteredWithRefinedRust,
                 ))
             })?;
-        let impl_ref = self
-            .lookup_impl(trait_impl_did)
-            .unwrap_or_else(|| traits::raise_not_a_trait_impl(self.tcx, trait_impl_did));
+        let impl_ref = self.lookup_impl(trait_impl_did).unwrap_or_else(|| {
+            span_bug!(self.tcx.def_span(trait_impl_did), "expected trait impl, found non-trait impl item")
+        });
 
         // get all associated items
         let assoc_items: &'tcx ty::AssocItems = self.tcx.associated_items(trait_impl_did);
