@@ -180,10 +180,7 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
 
             trace!("found impl {:?}", impl_ref);
             if let Some(solution) = solution {
-                println!(
-                    "Warning: Ambiguous resolution for impl of trait {:?} on type {:?}; solution {:?} but found also {:?}",
-                    trait_did, for_type, solution, impl_ref.def_id,
-                );
+                tcx.dcx().span_warn(tcx.def_span(trait_did), format!("Library import: ambiguous resolution for impl of trait on type {:?}; solution {:?} but found also {:?}", for_type, solution, impl_ref.def_id));
             } else {
                 solution = Some(*did);
             }
@@ -231,10 +228,7 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
 
                 trace!("found impl {:?}", impl_ref);
                 if let Some(solution) = solution {
-                    println!(
-                        "Warning: Ambiguous resolution for impl of trait {:?} on type {:?}; solution {:?} but found also {:?}",
-                        trait_did, for_type, solution, impl_ref.def_id,
-                    );
+                    tcx.dcx().span_warn(tcx.def_span(trait_did), format!("Library import: ambiguous resolution for impl of trait on type {:?}; solution {:?} but found also {:?}", for_type, solution, impl_ref.def_id));
                 } else {
                     solution = Some(*did);
                 }
