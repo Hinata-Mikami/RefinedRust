@@ -214,25 +214,21 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let scope = self.ty_translator.scope.borrow();
         let mut parser = VerboseLoopAttrParser::new(locals_with_initialization, &*scope, iterator_info);
 
-        if let Some(did) = did {
-            let attrs = environment::get_attributes(self.tcx, did);
-            let attrs = attrs::filter_for_tool(attrs);
-            info!("attrs for loop {:?}: {:?}", loop_head, attrs);
-            match parser.parse_loop_attrs(attrs.as_slice()) {
-                Ok(spec) => Ok(spec),
-                Err(err) => {
-                    let err = self.tcx.dcx().span_err(err.span, Message::LoopSpec(err.err));
-                    Err(TranslationError::ErrorReported(err))
-                },
-            }
-        } else {
-            match parser.parse_loop_attrs(&[]) {
-                Ok(spec) => Ok(spec),
-                Err(err) => {
-                    let err = self.tcx.dcx().span_err(err.span, Message::LoopSpec(err.err));
-                    Err(TranslationError::ErrorReported(err))
-                },
-            }
+        let mut make_spec = |attrs| {
+            parser.parse_loop_attrs(attrs).map_err(|err| {
+                let err = self.tcx.dcx().span_err(err.span, Message::LoopSpec(err.err));
+                TranslationError::ErrorReported(err)
+            })
+        };
+
+        match did {
+            Some(did) => {
+                let attrs = environment::get_attributes(self.tcx, did);
+                let attrs = attrs::filter_for_tool(attrs);
+                info!("attrs for loop {:?}: {:?}", loop_head, attrs);
+                make_spec(attrs.as_slice())
+            },
+            None => make_spec(&[]),
         }
     }
 
