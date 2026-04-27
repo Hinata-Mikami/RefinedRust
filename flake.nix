@@ -74,21 +74,19 @@
         mkStdlib = {
           pname,
           opam-name ? pname,
-          libDeps ? [],
-          # `stdlib/stdlib` is the central RefinedRust library surface and needs the
-          # leaf `.rrlib` files next to its own interface so frontend load-path
-          # scanning can discover the exported libraries from a single package.
-          exportRrlibDeps ? false,
           ...
         } @ origArgs: let
-          args = builtins.removeAttrs origArgs ["exportRrlibDeps" "libDeps" "opam-name"];
+          args = builtins.removeAttrs origArgs ["pname" "opam-name"];
         in
-          pkgs.rocqPackages.mkRocqDerivation ({
+          lib.rocq.mkRefinedRust ({
               inherit meta version;
 
               inherit pname opam-name;
-              propagatedBuildInputs = [packages.theories] ++ libDeps;
+
+              withStdlib = false;
+              generateFiles = false;
               useDune = true;
+              propagatedBuildInputs = [packages.theories];
 
               preBuild = ''
                 find . -name dune -exec sed -i -e 's/(package refinedrust-stdlib)/(package ${opam-name})/g' {} \;
@@ -99,15 +97,6 @@
                 (package (name ${opam-name}))
                 EOF
               '';
-
-              postInstall = ''
-                mkdir -p $out/share/${opam-name}
-                find . -name "interface.rrlib" -exec cp {} $out/share/${opam-name}/. \;
-              '' + pkgs.lib.optionalString exportRrlibDeps (
-                pkgs.lib.concatMapStringsSep "\n" (dep: ''
-                  cp -R ${dep}/share/. $out/share/
-                '') libDeps
-              );
             }
             // args);
 
@@ -201,9 +190,10 @@
                 };
               };
             in mkRefinedRust rust.toolchain.build;
-          # Expose the actual checked-in `stdlib/stdlib` package as the public
-          # stdlib package. This mirrors the RefinedRust-level structure, where
-          # `stdlib` re-exports the leaf stdlib libraries.
+          # Expose the checked-in `stdlib/stdlib` package as the public stdlib
+          # entry point. This matches the RefinedRust-level structure, where
+          # `stdlib` is the logical top-level library, while the frontend finds
+          # leaf stdlib libraries through the propagated stdlib load paths.
           stdlib = packages.stdlib-stdlib;
         }
         // lib.mapToAttrs lib.id mkStdlib [
@@ -316,7 +306,6 @@
             opam-name = "refinedrust-stdlib";
             src = ./stdlib/stdlib;
             libDeps = stdlibLeafPkgs;
-            exportRrlibDeps = true;
           }
         ];
 
