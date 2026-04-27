@@ -1,5 +1,5 @@
 Mapping for function open_drop_target_join_rejected:
-summary: total=79 mapped=63 unmapped=16
+summary: total=79 mapped=79 unmapped=0
 
 bb0[0] _17 = const false -> Inserted
 bb0[1] _18 = const false -> Inserted
@@ -56,29 +56,27 @@ bb8[3] StorageDead(_11) -> FoldedFrom(bb16[0] StorageDead(_11))
 bb8[4] goto -> bb11 -> FoldedFrom(bb16[1] goto -> bb17)
 bb9[0] _0 = const () -> Source(bb15[0] _0 = const ())
 bb9[1] goto -> bb11 -> Source(bb15[1] goto -> bb17)
+bb10[0] resume -> Source(bb26[0] resume)
 bb11[0] _19 = discriminant(_3) -> Inserted
 bb11[1] _14 = const false -> Inserted
 bb11[2] StorageDead(_3) -> FoldedFrom(bb18[0] StorageDead(_3))
 bb11[3] _21 = discriminant(_2) -> Inserted
-bb11[4] switchInt(move _21) -> [0: bb15, otherwise: bb19] -> Inserted
-bb21[0] _23 = discriminant(_3) -> Inserted
-bb21[1] _24 = discriminant(_2) -> Inserted
-bb21[2] switchInt(move _24) -> [0: bb23, otherwise: bb26] -> Inserted
-
-Unmapped:
-bb10[0] resume
-bb12[0] return
-bb13[0] drop(((_2 as Left).1: std::boxed::Box<u32>)) -> [return: bb10, unwind terminate(cleanup)]
-bb14[0] drop(((_2 as Left).1: std::boxed::Box<u32>)) -> [return: bb12, unwind: bb10]
-bb15[0] switchInt(copy _16) -> [0: bb14, otherwise: bb16]
-bb16[0] drop(((_2 as Left).0: std::boxed::Box<u32>)) -> [return: bb14, unwind: bb13]
-bb17[0] drop(((_2 as Right).1: std::boxed::Box<u32>)) -> [return: bb10, unwind terminate(cleanup)]
-bb18[0] drop(((_2 as Right).1: std::boxed::Box<u32>)) -> [return: bb12, unwind: bb10]
-bb19[0] switchInt(copy _18) -> [0: bb18, otherwise: bb20]
-bb20[0] drop(((_2 as Right).0: std::boxed::Box<u32>)) -> [return: bb18, unwind: bb17]
-bb22[0] drop(((_2 as Left).1: std::boxed::Box<u32>)) -> [return: bb10, unwind terminate(cleanup)]
-bb23[0] switchInt(copy _16) -> [0: bb22, otherwise: bb24]
-bb24[0] drop(((_2 as Left).0: std::boxed::Box<u32>)) -> [return: bb22, unwind terminate(cleanup)]
-bb25[0] drop(((_2 as Right).1: std::boxed::Box<u32>)) -> [return: bb10, unwind terminate(cleanup)]
-bb26[0] switchInt(copy _18) -> [0: bb25, otherwise: bb27]
-bb27[0] drop(((_2 as Right).0: std::boxed::Box<u32>)) -> [return: bb25, unwind terminate(cleanup)]
+bb11[4] switchInt(move _21) -> [0: bb15, otherwise: bb19] -> SplitFrom(bb18[1] drop(_2) -> [return: bb19, unwind: bb26])
+bb12[0] return -> Source(bb19[0] return)
+bb13[0] drop(((_2 as Left).1: std::boxed::Box<u32>)) -> [return: bb10, unwind terminate(cleanup)] -> SplitFrom(bb18[1] drop(_2) -> [return: bb19, unwind: bb26])
+bb14[0] drop(((_2 as Left).1: std::boxed::Box<u32>)) -> [return: bb12, unwind: bb10] -> SplitFrom(bb18[1] drop(_2) -> [return: bb19, unwind: bb26])
+bb15[0] switchInt(copy _16) -> [0: bb14, otherwise: bb16] -> SplitFrom(bb18[1] drop(_2) -> [return: bb19, unwind: bb26])
+bb16[0] drop(((_2 as Left).0: std::boxed::Box<u32>)) -> [return: bb14, unwind: bb13] -> SplitFrom(bb18[1] drop(_2) -> [return: bb19, unwind: bb26])
+bb17[0] drop(((_2 as Right).1: std::boxed::Box<u32>)) -> [return: bb10, unwind terminate(cleanup)] -> SplitFrom(bb18[1] drop(_2) -> [return: bb19, unwind: bb26])
+bb18[0] drop(((_2 as Right).1: std::boxed::Box<u32>)) -> [return: bb12, unwind: bb10] -> SplitFrom(bb18[1] drop(_2) -> [return: bb19, unwind: bb26])
+bb19[0] switchInt(copy _18) -> [0: bb18, otherwise: bb20] -> SplitFrom(bb18[1] drop(_2) -> [return: bb19, unwind: bb26])
+bb20[0] drop(((_2 as Right).0: std::boxed::Box<u32>)) -> [return: bb18, unwind: bb17] -> SplitFrom(bb18[1] drop(_2) -> [return: bb19, unwind: bb26])
+bb21[0] _23 = discriminant(_3) -> SplitFrom(bb25[0] drop(_2) -> [return: bb26, unwind terminate(cleanup)])
+bb21[1] _24 = discriminant(_2) -> SplitFrom(bb25[0] drop(_2) -> [return: bb26, unwind terminate(cleanup)])
+bb21[2] switchInt(move _24) -> [0: bb23, otherwise: bb26] -> SplitFrom(bb25[0] drop(_2) -> [return: bb26, unwind terminate(cleanup)])
+bb22[0] drop(((_2 as Left).1: std::boxed::Box<u32>)) -> [return: bb10, unwind terminate(cleanup)] -> SplitFrom(bb25[0] drop(_2) -> [return: bb26, unwind terminate(cleanup)])
+bb23[0] switchInt(copy _16) -> [0: bb22, otherwise: bb24] -> SplitFrom(bb25[0] drop(_2) -> [return: bb26, unwind terminate(cleanup)])
+bb24[0] drop(((_2 as Left).0: std::boxed::Box<u32>)) -> [return: bb22, unwind terminate(cleanup)] -> SplitFrom(bb25[0] drop(_2) -> [return: bb26, unwind terminate(cleanup)])
+bb25[0] drop(((_2 as Right).1: std::boxed::Box<u32>)) -> [return: bb10, unwind terminate(cleanup)] -> SplitFrom(bb25[0] drop(_2) -> [return: bb26, unwind terminate(cleanup)])
+bb26[0] switchInt(copy _18) -> [0: bb25, otherwise: bb27] -> SplitFrom(bb25[0] drop(_2) -> [return: bb26, unwind terminate(cleanup)])
+bb27[0] drop(((_2 as Right).0: std::boxed::Box<u32>)) -> [return: bb25, unwind terminate(cleanup)] -> SplitFrom(bb25[0] drop(_2) -> [return: bb26, unwind terminate(cleanup)])

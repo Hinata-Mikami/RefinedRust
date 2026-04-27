@@ -13,6 +13,8 @@
 
 #![allow(dead_code)]
 
+use std::collections::VecDeque;
+
 use rr_rustc_interface::data_structures::fx::{FxHashMap, FxHashSet};
 use rr_rustc_interface::middle::mir::{self, BasicBlock, Body, Local};
 
@@ -110,7 +112,6 @@ struct Mapper<'a, 'tcx> {
     visited: FxHashSet<(BasicBlock, BasicBlock)>,
     box_deref_aliases: FxHashMap<Local, BoxDerefAlias>,
     bc_predecessors: FxHashMap<BasicBlock, Vec<BasicBlock>>,
-    de_predecessors: FxHashMap<BasicBlock, Vec<BasicBlock>>,
 }
 
 #[derive(Clone)]
@@ -124,9 +125,34 @@ struct OpenDropBlock {
     mark_statements: bool,
 }
 
+struct SourceDropCtx {
+    drop_bb: BasicBlock,
+    place: NormalizedPlace,
+    ret: BasicBlock,
+    unwind: Option<BasicBlock>,
+}
+
 struct OpenDropMatch {
+    root_place: NormalizedPlace,
     blocks: Vec<OpenDropBlock>,
-    leaf_blocks: Vec<BasicBlock>,
+    normal_exits: Vec<BasicBlock>,
+    unwind_exits: Vec<BasicBlock>,
+}
+
+enum OpenDropNode {
+    LinearGoto {
+        target: BasicBlock,
+    },
+    Dispatch {
+        observed_place: Option<NormalizedPlace>,
+        targets: Vec<BasicBlock>,
+    },
+    DropStep {
+        place: NormalizedPlace,
+        target: BasicBlock,
+        unwind: Option<BasicBlock>,
+    },
+    Unsupported,
 }
 
 impl<'a, 'tcx> Mapper<'a, 'tcx> {
@@ -139,7 +165,6 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             visited: Default::default(),
             box_deref_aliases: Default::default(),
             bc_predecessors: compute_predecessors(bc),
-            de_predecessors: compute_predecessors(de),
         }
     }
 
@@ -423,49 +448,22 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
     }
 
     fn try_align_open_drop_subgraph(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
-        let Some(target_root_place) = self.open_drop_root_place(bb_t) else {
+        let Some(open_drop_match) = self.match_open_drop_target(bb_t) else {
             return false;
         };
 
-        let Some(source_drop_bb) = self.find_linear_source_drop_matching(bb_s, &target_root_place) else {
+        let Some(source_drop) = self.find_source_drop_ctx(bb_s, &open_drop_match.root_place) else {
             return false;
         };
 
-        let ts = self.bc.basic_blocks[source_drop_bb].terminator();
-        let mir::TerminatorKind::Drop {
-            place: source_place,
-            target: ret_s,
-            unwind: unwind_s,
-            ..
-        } = &ts.kind
-        else {
+        if open_drop_match.normal_exits.is_empty() {
             return false;
-        };
-
-        let source_place = self.normalize_source_place(*source_place);
-        let Some(open_drop_match) = self.match_open_drop_target(bb_t, &source_place) else {
+        }
+        if !open_drop_match.unwind_exits.is_empty() && source_drop.unwind.is_none() {
             return false;
-        };
-
-        for &leaf_bb in &open_drop_match.leaf_blocks {
-            let leaf_term = self.de.basic_blocks[leaf_bb].terminator();
-            let mir::TerminatorKind::Drop {
-                target: ret_t,
-                unwind: unwind_t,
-                ..
-            } = &leaf_term.kind
-            else {
-                return false;
-            };
-
-            if !self.unwind_actions_compatible(unwind_t, unwind_s) {
-                return false;
-            }
-
-            let _ = ret_t;
         }
 
-        let src_drop = (source_drop_bb, self.bc.basic_blocks[source_drop_bb].statements.len());
+        let src_drop = (source_drop.drop_bb, self.bc.basic_blocks[source_drop.drop_bb].statements.len());
         for block in open_drop_match.blocks {
             if block.mark_statements {
                 let data = &self.de.basic_blocks[block.bb];
@@ -478,20 +476,12 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             self.target_to_source.insert(loc_t, Origin::SplitFrom(src_drop));
         }
 
-        for leaf_bb in open_drop_match.leaf_blocks {
-            let leaf_term = self.de.basic_blocks[leaf_bb].terminator();
-            let mir::TerminatorKind::Drop {
-                target: ret_t,
-                unwind: unwind_t,
-                ..
-            } = &leaf_term.kind
-            else {
-                return false;
-            };
-
-            self.align_blocks(*ret_t, *ret_s);
-            if let (Some(bb_t), Some(bb_s)) = (unwind_target(unwind_t), unwind_target(unwind_s)) {
-                self.align_blocks(bb_t, bb_s);
+        for exit_t in open_drop_match.normal_exits {
+            self.align_blocks(exit_t, source_drop.ret);
+        }
+        for exit_t in open_drop_match.unwind_exits {
+            if let Some(unwind_s) = source_drop.unwind {
+                self.align_blocks(exit_t, unwind_s);
             }
         }
 
@@ -546,127 +536,121 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         false
     }
 
-    fn match_open_drop_target(
-        &self,
-        entry_bb: BasicBlock,
-        source_place: &NormalizedPlace,
-    ) -> Option<OpenDropMatch> {
+    fn match_open_drop_target(&self, entry_bb: BasicBlock) -> Option<OpenDropMatch> {
+        // Open-drop matching is intentionally conservative:
+        // - interior blocks may only contain administrative statements,
+        // - dispatch/drop places must stay anchored under one discovered root place,
+        // - exits are only allowed once the subgraph leaves this protocol.
+        let mut seen = FxHashSet::default();
+        let mut queue = VecDeque::from([(entry_bb, true)]);
+        let mut root_place = None;
         let mut blocks = Vec::new();
-        let mut current = entry_bb;
-        let mut allow_existing_statements = true;
+        let mut normal_exits = Vec::new();
+        let mut unwind_exits = Vec::new();
 
-        for _ in 0..self.de.basic_blocks.len() {
-            if let Some(next_bb) = self.open_drop_goto_target(current, allow_existing_statements) {
-                if !allow_existing_statements && !self.has_unique_target_predecessor(next_bb, current) {
-                    return None;
-                }
-
-                blocks.push(OpenDropBlock {
-                    bb: current,
-                    mark_statements: false,
-                });
-                current = next_bb;
-                allow_existing_statements = false;
+        while let Some((bb, allow_existing_statements)) = queue.pop_front() {
+            if !seen.insert((bb, allow_existing_statements)) {
                 continue;
             }
 
-            if let Some((root_place, targets)) = self.open_drop_dispatch_info(current) {
-                if root_place != *source_place {
-                    return None;
-                }
-
-                let mut leaf_blocks = Vec::new();
-                blocks.push(OpenDropBlock {
-                    bb: current,
-                    mark_statements: true,
-                });
-
-                for target_bb in targets {
-                    let Some(leaf_place) = self.open_drop_leaf_place(target_bb, false) else {
+            match self.classify_open_drop_node(bb, allow_existing_statements) {
+                OpenDropNode::LinearGoto { target } => {
+                    if !self.is_open_drop_block(target, root_place.as_ref()) {
                         return None;
-                    };
-                    if !self.has_unique_target_predecessor(target_bb, current)
-                        || !same_or_subplace(source_place, &leaf_place)
-                    {
+                    }
+                    blocks.push(OpenDropBlock {
+                        bb,
+                        mark_statements: self.block_has_only_open_drop_administrative_statements(bb),
+                    });
+                    queue.push_back((target, false));
+                },
+                OpenDropNode::Dispatch {
+                    observed_place,
+                    targets,
+                } => {
+                    if let Some(place) = observed_place.as_ref() {
+                        if !self.update_open_drop_root_place(&mut root_place, place) {
+                            return None;
+                        }
+                    } else if root_place.is_none() {
                         return None;
                     }
 
                     blocks.push(OpenDropBlock {
-                        bb: target_bb,
-                        mark_statements: false,
+                        bb,
+                        mark_statements: self.block_has_only_open_drop_administrative_statements(bb),
                     });
-                    leaf_blocks.push(target_bb);
-                }
+                    for target in targets {
+                        if !self.is_open_drop_block(target, root_place.as_ref()) {
+                            return None;
+                        }
+                        queue.push_back((target, false));
+                    }
+                },
+                OpenDropNode::DropStep {
+                    place,
+                    target,
+                    unwind,
+                } => {
+                    if !self.update_open_drop_root_place(&mut root_place, &place) {
+                        return None;
+                    }
 
-                return Some(OpenDropMatch {
-                    blocks,
-                    leaf_blocks,
-                });
+                    blocks.push(OpenDropBlock {
+                        bb,
+                        mark_statements: self.block_has_only_open_drop_administrative_statements(bb),
+                    });
+
+                    if self.is_open_drop_block(target, root_place.as_ref()) {
+                        queue.push_back((target, false));
+                    } else {
+                        normal_exits.push(target);
+                    }
+
+                    if let Some(unwind) = unwind {
+                        if self.is_open_drop_block(unwind, root_place.as_ref()) {
+                            queue.push_back((unwind, false));
+                        } else {
+                            unwind_exits.push(unwind);
+                        }
+                    }
+                },
+                OpenDropNode::Unsupported => return None,
             }
-
-            if let Some(leaf_place) = self.open_drop_leaf_place(current, allow_existing_statements)
-                && same_or_subplace(source_place, &leaf_place)
-                && leaf_place != *source_place
-            {
-                blocks.push(OpenDropBlock {
-                    bb: current,
-                    mark_statements: false,
-                });
-                return Some(OpenDropMatch {
-                    blocks,
-                    leaf_blocks: vec![current],
-                });
-            }
-
-            return None;
         }
 
-        None
+        Some(OpenDropMatch {
+            root_place: root_place?,
+            blocks,
+            normal_exits,
+            unwind_exits,
+        })
     }
 
-    fn open_drop_root_place(&self, entry_bb: BasicBlock) -> Option<NormalizedPlace> {
-        let mut current = entry_bb;
-        let mut allow_existing_statements = true;
-
-        for _ in 0..self.de.basic_blocks.len() {
-            if let Some(next_bb) = self.open_drop_goto_target(current, allow_existing_statements) {
-                if !allow_existing_statements && !self.has_unique_target_predecessor(next_bb, current) {
-                    return None;
-                }
-
-                current = next_bb;
-                allow_existing_statements = false;
-                continue;
-            }
-
-            if let Some((root_place, _)) = self.open_drop_dispatch_info(current) {
-                return Some(root_place);
-            }
-
-            if let Some(leaf_place) = self.open_drop_leaf_place(current, allow_existing_statements) {
-                return Some(leaf_place);
-            }
-
-            return None;
-        }
-
-        None
-    }
-
-    fn find_linear_source_drop_matching(
+    fn find_source_drop_ctx(
         &self,
         start_bb: BasicBlock,
         target_root_place: &NormalizedPlace,
-    ) -> Option<BasicBlock> {
+    ) -> Option<SourceDropCtx> {
         let mut current = start_bb;
 
         for _ in 0..self.bc.basic_blocks.len() {
             let term = self.bc.basic_blocks[current].terminator();
             let next = match &term.kind {
-                mir::TerminatorKind::Drop { place, target, .. } => {
+                mir::TerminatorKind::Drop {
+                    place,
+                    target,
+                    unwind,
+                    ..
+                } => {
                     let source_place = self.normalize_source_place(*place);
                     if same_or_subplace(&source_place, target_root_place) {
-                        return Some(current);
+                        return Some(SourceDropCtx {
+                            drop_bb: current,
+                            place: source_place,
+                            ret: *target,
+                            unwind: unwind_target(unwind),
+                        });
                     }
                     *target
                 },
@@ -700,76 +684,99 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         None
     }
 
-    fn open_drop_goto_target(&self, bb: BasicBlock, allow_existing_statements: bool) -> Option<BasicBlock> {
+    fn classify_open_drop_node(&self, bb: BasicBlock, allow_existing_statements: bool) -> OpenDropNode {
         let data = &self.de.basic_blocks[bb];
-        if !allow_existing_statements && !data.statements.is_empty() {
-            return None;
+        if !allow_existing_statements && !self.block_has_only_open_drop_administrative_statements(bb) {
+            return OpenDropNode::Unsupported;
         }
 
         match &data.terminator().kind {
-            mir::TerminatorKind::Goto { target } => Some(*target),
-            _ => None,
-        }
-    }
+            mir::TerminatorKind::Goto { target } => OpenDropNode::LinearGoto { target: *target },
+            mir::TerminatorKind::SwitchInt { discr, targets } => {
+                let local = match discr {
+                    mir::Operand::Copy(place) | mir::Operand::Move(place)
+                        if place.projection.is_empty() && self.is_synthetic_local(place.local) =>
+                    {
+                        place.local
+                    },
+                    _ => return OpenDropNode::Unsupported,
+                };
 
-    fn open_drop_dispatch_info(&self, bb: BasicBlock) -> Option<(NormalizedPlace, Vec<BasicBlock>)> {
-        let data = &self.de.basic_blocks[bb];
-        if data.statements.len() != 1 {
-            return None;
-        }
-
-        let mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discr_place))) =
-            &data.statements[0].kind
-        else {
-            return None;
-        };
-        if !lhs.projection.is_empty() || !self.is_synthetic_local(lhs.local) {
-            return None;
-        }
-        let root_place = self.normalize_place(*discr_place);
-
-        let mir::TerminatorKind::SwitchInt { discr, targets } = &data.terminator().kind else {
-            return None;
-        };
-        let local = match discr {
-            mir::Operand::Copy(place) | mir::Operand::Move(place)
-                if place.projection.is_empty() && place.local == lhs.local =>
-            {
-                place.local
+                OpenDropNode::Dispatch {
+                    observed_place: self.discriminant_input_place(&data.statements, local),
+                    targets: targets.all_targets().to_vec(),
+                }
             },
-            _ => return None,
-        };
-
-        let _ = local;
-        Some((root_place, targets.all_targets().to_vec()))
+            mir::TerminatorKind::Drop {
+                place,
+                target,
+                unwind,
+                ..
+            } => OpenDropNode::DropStep {
+                place: self.normalize_place(*place),
+                target: *target,
+                unwind: unwind_target(unwind),
+            },
+            _ => OpenDropNode::Unsupported,
+        }
     }
 
-    fn open_drop_leaf_place(
+    fn discriminant_input_place(
         &self,
-        bb: BasicBlock,
-        allow_existing_statements: bool,
+        statements: &[mir::Statement<'tcx>],
+        local: Local,
     ) -> Option<NormalizedPlace> {
-        let data = &self.de.basic_blocks[bb];
-        if !allow_existing_statements && !data.statements.is_empty() {
-            return None;
-        }
-
-        let mir::TerminatorKind::Drop { place, .. } = &data.terminator().kind else {
-            return None;
-        };
-        Some(self.normalize_place(*place))
+        statements.iter().rev().find_map(|stmt| {
+            let mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(place))) = &stmt.kind else {
+                return None;
+            };
+            if lhs.projection.is_empty() && lhs.local == local {
+                Some(self.normalize_place(*place))
+            } else {
+                None
+            }
+        })
     }
 
-    fn has_unique_target_predecessor(&self, bb: BasicBlock, predecessor: BasicBlock) -> bool {
-        matches!(self.de_predecessors.get(&bb), Some(preds) if preds.len() == 1 && preds[0] == predecessor)
+    fn is_open_drop_block(&self, bb: BasicBlock, root_place: Option<&NormalizedPlace>) -> bool {
+        match self.classify_open_drop_node(bb, false) {
+            OpenDropNode::LinearGoto { .. } => true,
+            OpenDropNode::Dispatch { observed_place, .. } => {
+                match observed_place.as_ref() {
+                    Some(place) => root_place.is_none_or(|root_place| same_or_subplace(root_place, place)),
+                    None => root_place.is_some(),
+                }
+            },
+            OpenDropNode::DropStep { place, .. } => {
+                root_place.is_none_or(|root_place| same_or_subplace(root_place, &place))
+            },
+            OpenDropNode::Unsupported => false,
+        }
     }
 
-    fn unwind_actions_compatible(&self, target: &mir::UnwindAction, source: &mir::UnwindAction) -> bool {
-        match (unwind_target(target), unwind_target(source)) {
-            (Some(_), Some(_)) => true,
-            (None, None) => true,
-            _ => false,
+    fn update_open_drop_root_place(
+        &self,
+        root_place: &mut Option<NormalizedPlace>,
+        place: &NormalizedPlace,
+    ) -> bool {
+        match root_place {
+            Some(root_place) => same_or_subplace(root_place, place),
+            None => {
+                *root_place = Some(place.clone());
+                true
+            },
         }
+    }
+
+    fn is_open_drop_administrative_stmt(&self, stmt: &mir::Statement<'tcx>) -> bool {
+        matches!(stmt.kind, mir::StatementKind::Nop) || self.is_inserted_stmt(stmt)
+    }
+
+    fn block_has_only_open_drop_administrative_statements(&self, bb: BasicBlock) -> bool {
+        self.de.basic_blocks[bb]
+            .statements
+            .iter()
+            .all(|stmt| self.is_open_drop_administrative_stmt(stmt))
     }
 
     fn try_align_eliminated_source_drop(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
