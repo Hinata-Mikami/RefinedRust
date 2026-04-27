@@ -116,7 +116,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     ) -> Result<Self, TranslationError> {
         let body = proc.get_mir();
 
-
         // map to translate between locals and the string names we use in radium:
         let mut variable_map: HashMap<mir::Local, String> = HashMap::new();
 

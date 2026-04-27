@@ -18,6 +18,7 @@ use typed_arena::Arena;
 use crate::base::*;
 use crate::body::mir_mapper;
 use crate::body::translation;
+use crate::body::mir_mapper;
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
 use crate::spec_parsers::verbose_function_spec_parser::{
@@ -420,7 +421,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         for line in mir_mapper::format_mapping(body, &drop_elab, &mapping).lines() {
             info!("{line}");
         }
-
 
         let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = tcx.type_of(proc.get_id());
         info!("Function type: {ty:?}");

@@ -34,10 +34,7 @@ pub struct MappingResult {
 }
 
 #[must_use]
-pub fn map_drop_elaborated_to_borrow_checked<'tcx>(
-    bc: &Body<'tcx>,
-    de: &Body<'tcx>,
-) -> MappingResult {
+pub fn map_drop_elaborated_to_borrow_checked<'tcx>(bc: &Body<'tcx>, de: &Body<'tcx>) -> MappingResult {
     let mut cx = Mapper::new(bc, de);
     cx.align_blocks(mir::START_BLOCK, mir::START_BLOCK);
     cx.finish()
@@ -113,12 +110,23 @@ struct Mapper<'a, 'tcx> {
     visited: FxHashSet<(BasicBlock, BasicBlock)>,
     box_deref_aliases: FxHashMap<Local, BoxDerefAlias>,
     bc_predecessors: FxHashMap<BasicBlock, Vec<BasicBlock>>,
+    de_predecessors: FxHashMap<BasicBlock, Vec<BasicBlock>>,
 }
 
 #[derive(Clone)]
 struct BoxDerefAlias {
     place: NormalizedPlace,
     source_loc: Option<SourceLoc>,
+}
+
+struct OpenDropBlock {
+    bb: BasicBlock,
+    mark_statements: bool,
+}
+
+struct OpenDropMatch {
+    blocks: Vec<OpenDropBlock>,
+    leaf_blocks: Vec<BasicBlock>,
 }
 
 impl<'a, 'tcx> Mapper<'a, 'tcx> {
@@ -131,6 +139,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             visited: Default::default(),
             box_deref_aliases: Default::default(),
             bc_predecessors: compute_predecessors(bc),
+            de_predecessors: compute_predecessors(de),
         }
     }
 
@@ -177,7 +186,8 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 continue;
             }
 
-            while i_s < data_s.statements.len() && self.is_cleanup_erased_source_stmt(&data_s.statements[i_s]) {
+            while i_s < data_s.statements.len() && self.is_cleanup_erased_source_stmt(&data_s.statements[i_s])
+            {
                 if matches!(st.kind, mir::StatementKind::Nop) {
                     self.target_to_source.insert((bb_t, i_t), Origin::Source((bb_s, i_s)));
                     i_t += 1;
@@ -192,7 +202,9 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 break;
             }
 
-            if i_s < data_s.statements.len() && self.stmt_equiv(&data_t.statements[i_t], &data_s.statements[i_s]) {
+            if i_s < data_s.statements.len()
+                && self.stmt_equiv(&data_t.statements[i_t], &data_s.statements[i_s])
+            {
                 let source_loc = (bb_s, i_s);
                 let origin = if self.stmt_uses_box_deref_alias(&data_t.statements[i_t], source_loc) {
                     Origin::SplitFrom(source_loc)
@@ -243,7 +255,15 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             return;
         }
 
+        if self.try_align_folded_source_terminator(bb_t, bb_s) {
+            return;
+        }
+
         if self.try_align_rewritten_drop(bb_t, bb_s) {
+            return;
+        }
+
+        if self.try_align_open_drop_subgraph(bb_t, bb_s) {
             return;
         }
 
@@ -268,14 +288,24 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             ) => self.align_blocks(*target_t, *real_target),
 
             (
-                mir::TerminatorKind::FalseEdge { real_target: target_t, .. }
-                | mir::TerminatorKind::FalseUnwind { real_target: target_t, .. },
+                mir::TerminatorKind::FalseEdge {
+                    real_target: target_t,
+                    ..
+                }
+                | mir::TerminatorKind::FalseUnwind {
+                    real_target: target_t,
+                    ..
+                },
                 mir::TerminatorKind::Goto { target: target_s },
             ) => self.align_blocks(*target_t, *target_s),
 
             (
-                mir::TerminatorKind::SwitchInt { targets: targets_t, .. },
-                mir::TerminatorKind::SwitchInt { targets: targets_s, .. },
+                mir::TerminatorKind::SwitchInt {
+                    targets: targets_t, ..
+                },
+                mir::TerminatorKind::SwitchInt {
+                    targets: targets_s, ..
+                },
             ) => {
                 for (bb_t, bb_s) in targets_t.all_targets().iter().zip(targets_s.all_targets().iter()) {
                     self.align_blocks(*bb_t, *bb_s);
@@ -338,7 +368,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 }
             },
 
-            _ => {}
+            _ => {},
         }
     }
 
@@ -392,26 +422,388 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         false
     }
 
-    fn try_align_eliminated_source_drop(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
-        let ds = &self.bc.basic_blocks[bb_s];
-        let succ_s = match ds.terminator().kind {
-            mir::TerminatorKind::Drop { target, .. } => target,
-            _ => return false,
+    fn try_align_open_drop_subgraph(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
+        let Some(target_root_place) = self.open_drop_root_place(bb_t) else {
+            return false;
         };
 
-        let tt = self.de.basic_blocks[bb_t].terminator();
-        let ts2 = self.bc.basic_blocks[succ_s].terminator();
-
-        if !self.terminator_shape_equiv(tt, ts2) {
+        let Some(source_drop_bb) = self.find_linear_source_drop_matching(bb_s, &target_root_place) else {
             return false;
+        };
+
+        let ts = self.bc.basic_blocks[source_drop_bb].terminator();
+        let mir::TerminatorKind::Drop {
+            place: source_place,
+            target: ret_s,
+            unwind: unwind_s,
+            ..
+        } = &ts.kind
+        else {
+            return false;
+        };
+
+        let source_place = self.normalize_source_place(*source_place);
+        let Some(open_drop_match) = self.match_open_drop_target(bb_t, &source_place) else {
+            return false;
+        };
+
+        for &leaf_bb in &open_drop_match.leaf_blocks {
+            let leaf_term = self.de.basic_blocks[leaf_bb].terminator();
+            let mir::TerminatorKind::Drop {
+                target: ret_t,
+                unwind: unwind_t,
+                ..
+            } = &leaf_term.kind
+            else {
+                return false;
+            };
+
+            if !self.unwind_actions_compatible(unwind_t, unwind_s) {
+                return false;
+            }
+
+            let _ = ret_t;
         }
 
-        self.target_to_source.insert(
-            (bb_t, self.de.basic_blocks[bb_t].statements.len()),
-            Origin::FoldedFrom((succ_s, self.bc.basic_blocks[succ_s].statements.len())),
-        );
-        self.recurse_direct(tt, ts2);
+        let src_drop = (source_drop_bb, self.bc.basic_blocks[source_drop_bb].statements.len());
+        for block in open_drop_match.blocks {
+            if block.mark_statements {
+                let data = &self.de.basic_blocks[block.bb];
+                for i in 0..data.statements.len() {
+                    self.target_to_source.insert((block.bb, i), Origin::SplitFrom(src_drop));
+                }
+            }
+
+            let loc_t = (block.bb, self.de.basic_blocks[block.bb].statements.len());
+            self.target_to_source.insert(loc_t, Origin::SplitFrom(src_drop));
+        }
+
+        for leaf_bb in open_drop_match.leaf_blocks {
+            let leaf_term = self.de.basic_blocks[leaf_bb].terminator();
+            let mir::TerminatorKind::Drop {
+                target: ret_t,
+                unwind: unwind_t,
+                ..
+            } = &leaf_term.kind
+            else {
+                return false;
+            };
+
+            self.align_blocks(*ret_t, *ret_s);
+            if let (Some(bb_t), Some(bb_s)) = (unwind_target(unwind_t), unwind_target(unwind_s)) {
+                self.align_blocks(bb_t, bb_s);
+            }
+        }
+
         true
+    }
+
+    fn try_align_folded_source_terminator(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
+        let tt = self.de.basic_blocks[bb_t].terminator();
+        let loc_t = (bb_t, self.de.basic_blocks[bb_t].statements.len());
+        let mut cur_s = bb_s;
+
+        for _ in 0..self.bc.basic_blocks.len() {
+            let ds = &self.bc.basic_blocks[cur_s];
+            let ts = ds.terminator();
+            if self.terminator_shape_equiv(tt, ts) {
+                let origin = if cur_s == bb_s {
+                    Origin::Source((cur_s, ds.statements.len()))
+                } else {
+                    Origin::FoldedFrom((cur_s, ds.statements.len()))
+                };
+                self.target_to_source.insert(loc_t, origin);
+                self.recurse_direct(tt, ts);
+                return true;
+            }
+
+            let next_s = match &ts.kind {
+                mir::TerminatorKind::Goto { target }
+                | mir::TerminatorKind::FalseEdge {
+                    real_target: target,
+                    ..
+                }
+                | mir::TerminatorKind::FalseUnwind {
+                    real_target: target,
+                    ..
+                } => *target,
+                _ => return false,
+            };
+
+            let next_ts = self.bc.basic_blocks[next_s].terminator();
+            if self.terminator_shape_equiv(tt, next_ts) {
+                cur_s = next_s;
+                continue;
+            }
+
+            if self.bc_predecessors.get(&next_s).map_or(0, Vec::len) != 1 {
+                return false;
+            }
+
+            cur_s = next_s;
+        }
+
+        false
+    }
+
+    fn match_open_drop_target(
+        &self,
+        entry_bb: BasicBlock,
+        source_place: &NormalizedPlace,
+    ) -> Option<OpenDropMatch> {
+        let mut blocks = Vec::new();
+        let mut current = entry_bb;
+        let mut allow_existing_statements = true;
+
+        for _ in 0..self.de.basic_blocks.len() {
+            if let Some(next_bb) = self.open_drop_goto_target(current, allow_existing_statements) {
+                if !allow_existing_statements && !self.has_unique_target_predecessor(next_bb, current) {
+                    return None;
+                }
+
+                blocks.push(OpenDropBlock {
+                    bb: current,
+                    mark_statements: false,
+                });
+                current = next_bb;
+                allow_existing_statements = false;
+                continue;
+            }
+
+            if let Some((root_place, targets)) = self.open_drop_dispatch_info(current) {
+                if root_place != *source_place {
+                    return None;
+                }
+
+                let mut leaf_blocks = Vec::new();
+                blocks.push(OpenDropBlock {
+                    bb: current,
+                    mark_statements: true,
+                });
+
+                for target_bb in targets {
+                    let Some(leaf_place) = self.open_drop_leaf_place(target_bb, false) else {
+                        return None;
+                    };
+                    if !self.has_unique_target_predecessor(target_bb, current)
+                        || !same_or_subplace(source_place, &leaf_place)
+                    {
+                        return None;
+                    }
+
+                    blocks.push(OpenDropBlock {
+                        bb: target_bb,
+                        mark_statements: false,
+                    });
+                    leaf_blocks.push(target_bb);
+                }
+
+                return Some(OpenDropMatch {
+                    blocks,
+                    leaf_blocks,
+                });
+            }
+
+            if let Some(leaf_place) = self.open_drop_leaf_place(current, allow_existing_statements)
+                && same_or_subplace(source_place, &leaf_place)
+                && leaf_place != *source_place
+            {
+                blocks.push(OpenDropBlock {
+                    bb: current,
+                    mark_statements: false,
+                });
+                return Some(OpenDropMatch {
+                    blocks,
+                    leaf_blocks: vec![current],
+                });
+            }
+
+            return None;
+        }
+
+        None
+    }
+
+    fn open_drop_root_place(&self, entry_bb: BasicBlock) -> Option<NormalizedPlace> {
+        let mut current = entry_bb;
+        let mut allow_existing_statements = true;
+
+        for _ in 0..self.de.basic_blocks.len() {
+            if let Some(next_bb) = self.open_drop_goto_target(current, allow_existing_statements) {
+                if !allow_existing_statements && !self.has_unique_target_predecessor(next_bb, current) {
+                    return None;
+                }
+
+                current = next_bb;
+                allow_existing_statements = false;
+                continue;
+            }
+
+            if let Some((root_place, _)) = self.open_drop_dispatch_info(current) {
+                return Some(root_place);
+            }
+
+            if let Some(leaf_place) = self.open_drop_leaf_place(current, allow_existing_statements) {
+                return Some(leaf_place);
+            }
+
+            return None;
+        }
+
+        None
+    }
+
+    fn find_linear_source_drop_matching(
+        &self,
+        start_bb: BasicBlock,
+        target_root_place: &NormalizedPlace,
+    ) -> Option<BasicBlock> {
+        let mut current = start_bb;
+
+        for _ in 0..self.bc.basic_blocks.len() {
+            let term = self.bc.basic_blocks[current].terminator();
+            let next = match &term.kind {
+                mir::TerminatorKind::Drop { place, target, .. } => {
+                    let source_place = self.normalize_source_place(*place);
+                    if same_or_subplace(&source_place, target_root_place) {
+                        return Some(current);
+                    }
+                    *target
+                },
+                mir::TerminatorKind::Goto { target }
+                | mir::TerminatorKind::FalseEdge {
+                    real_target: target,
+                    ..
+                }
+                | mir::TerminatorKind::FalseUnwind {
+                    real_target: target,
+                    ..
+                } => *target,
+                _ => return None,
+            };
+
+            if self.bc_predecessors.get(&next).map_or(0, Vec::len) != 1 {
+                let next_term = self.bc.basic_blocks[next].terminator();
+                if let mir::TerminatorKind::Drop { place, .. } = &next_term.kind {
+                    let source_place = self.normalize_source_place(*place);
+                    if same_or_subplace(&source_place, target_root_place) {
+                        current = next;
+                        continue;
+                    }
+                }
+                return None;
+            }
+
+            current = next;
+        }
+
+        None
+    }
+
+    fn open_drop_goto_target(&self, bb: BasicBlock, allow_existing_statements: bool) -> Option<BasicBlock> {
+        let data = &self.de.basic_blocks[bb];
+        if !allow_existing_statements && !data.statements.is_empty() {
+            return None;
+        }
+
+        match &data.terminator().kind {
+            mir::TerminatorKind::Goto { target } => Some(*target),
+            _ => None,
+        }
+    }
+
+    fn open_drop_dispatch_info(&self, bb: BasicBlock) -> Option<(NormalizedPlace, Vec<BasicBlock>)> {
+        let data = &self.de.basic_blocks[bb];
+        if data.statements.len() != 1 {
+            return None;
+        }
+
+        let mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discr_place))) =
+            &data.statements[0].kind
+        else {
+            return None;
+        };
+        if !lhs.projection.is_empty() || !self.is_synthetic_local(lhs.local) {
+            return None;
+        }
+        let root_place = self.normalize_place(*discr_place);
+
+        let mir::TerminatorKind::SwitchInt { discr, targets } = &data.terminator().kind else {
+            return None;
+        };
+        let local = match discr {
+            mir::Operand::Copy(place) | mir::Operand::Move(place)
+                if place.projection.is_empty() && place.local == lhs.local =>
+            {
+                place.local
+            },
+            _ => return None,
+        };
+
+        let _ = local;
+        Some((root_place, targets.all_targets().to_vec()))
+    }
+
+    fn open_drop_leaf_place(
+        &self,
+        bb: BasicBlock,
+        allow_existing_statements: bool,
+    ) -> Option<NormalizedPlace> {
+        let data = &self.de.basic_blocks[bb];
+        if !allow_existing_statements && !data.statements.is_empty() {
+            return None;
+        }
+
+        let mir::TerminatorKind::Drop { place, .. } = &data.terminator().kind else {
+            return None;
+        };
+        Some(self.normalize_place(*place))
+    }
+
+    fn has_unique_target_predecessor(&self, bb: BasicBlock, predecessor: BasicBlock) -> bool {
+        matches!(self.de_predecessors.get(&bb), Some(preds) if preds.len() == 1 && preds[0] == predecessor)
+    }
+
+    fn unwind_actions_compatible(&self, target: &mir::UnwindAction, source: &mir::UnwindAction) -> bool {
+        match (unwind_target(target), unwind_target(source)) {
+            (Some(_), Some(_)) => true,
+            (None, None) => true,
+            _ => false,
+        }
+    }
+
+    fn try_align_eliminated_source_drop(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
+        let tt = self.de.basic_blocks[bb_t].terminator();
+        let loc_t = (bb_t, self.de.basic_blocks[bb_t].statements.len());
+        let mut cur_s = bb_s;
+
+        for _ in 0..self.bc.basic_blocks.len() {
+            let ds = &self.bc.basic_blocks[cur_s];
+            let ts = ds.terminator();
+
+            if self.terminator_shape_equiv(tt, ts) {
+                let origin = if cur_s == bb_s {
+                    Origin::Source((cur_s, ds.statements.len()))
+                } else {
+                    Origin::FoldedFrom((cur_s, ds.statements.len()))
+                };
+                self.target_to_source.insert(loc_t, origin);
+                self.recurse_direct(tt, ts);
+                return true;
+            }
+
+            let mir::TerminatorKind::Drop { target: next_s, .. } = ts.kind else {
+                return false;
+            };
+
+            if self.bc_predecessors.get(&next_s).map_or(0, Vec::len) != 1 {
+                return false;
+            }
+
+            cur_s = next_s;
+        }
+
+        false
     }
 
     fn parse_flag_test(&self, term: &mir::Terminator<'tcx>) -> Option<(BasicBlock, BasicBlock)> {
@@ -479,7 +871,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         let mut bb = bb_s;
         let mut idx = i_s;
 
-        for _ in 0..16 {
+        for _ in 0..self.bc.basic_blocks.len() {
             let data = &self.bc.basic_blocks[bb];
             while idx < data.statements.len() {
                 let loc = (bb, idx);
@@ -528,8 +920,14 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             (UnwindTerminate(a), UnwindTerminate(b)) => a == b,
 
             (
-                SwitchInt { discr: discr_t, targets: targets_t },
-                SwitchInt { discr: discr_s, targets: targets_s },
+                SwitchInt {
+                    discr: discr_t,
+                    targets: targets_t,
+                },
+                SwitchInt {
+                    discr: discr_s,
+                    targets: targets_s,
+                },
             ) => {
                 self.operand_key(discr_t, MirFlavor::Target) == self.operand_key(discr_s, MirFlavor::Source)
                     && switch_values(targets_t) == switch_values(targets_s)
@@ -550,14 +948,14 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 },
             ) => {
                 expected_t == expected_s
-                    && self.operand_key(cond_t, MirFlavor::Target) == self.operand_key(cond_s, MirFlavor::Source)
+                    && self.operand_key(cond_t, MirFlavor::Target)
+                        == self.operand_key(cond_s, MirFlavor::Source)
                     && format!("{msg_t:?}") == format!("{msg_s:?}")
             },
 
-            (
-                Drop { place: place_t, .. },
-                Drop { place: place_s, .. },
-            ) => self.normalize_place(*place_t) == self.normalize_source_place(*place_s),
+            (Drop { place: place_t, .. }, Drop { place: place_s, .. }) => {
+                self.normalize_place(*place_t) == self.normalize_source_place(*place_s)
+            },
 
             (
                 Call {
@@ -577,14 +975,12 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             ) => {
                 self.operand_key(func_t, MirFlavor::Target) == self.operand_key(func_s, MirFlavor::Source)
                     && args_t.len() == args_s.len()
-                    && args_t
-                        .iter()
-                        .zip(args_s.iter())
-                        .all(|(arg_t, arg_s)| {
-                            self.operand_key(&arg_t.node, MirFlavor::Target)
-                                == self.operand_key(&arg_s.node, MirFlavor::Source)
-                        })
-                    && self.place_key(*dest_t, MirFlavor::Target) == self.place_key(*dest_s, MirFlavor::Source)
+                    && args_t.iter().zip(args_s.iter()).all(|(arg_t, arg_s)| {
+                        self.operand_key(&arg_t.node, MirFlavor::Target)
+                            == self.operand_key(&arg_s.node, MirFlavor::Source)
+                    })
+                    && self.place_key(*dest_t, MirFlavor::Target)
+                        == self.place_key(*dest_s, MirFlavor::Source)
                     && target_t.is_some() == target_s.is_some()
             },
 
@@ -640,23 +1036,22 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             self.source_stmt_uses_box_deref(&self.bc.basic_blocks[*bb].statements[*idx], rhs_place.local)
         });
 
-        self.box_deref_aliases.insert(
-            lhs.local,
-            BoxDerefAlias {
-                place: NormalizedPlace {
-                    local: rhs_place.local,
-                    projection: Vec::new(),
-                },
-                source_loc: split_from,
+        self.box_deref_aliases.insert(lhs.local, BoxDerefAlias {
+            place: NormalizedPlace {
+                local: rhs_place.local,
+                projection: Vec::new(),
             },
-        );
+            source_loc: split_from,
+        });
 
         split_from.map(Origin::SplitFrom)
     }
 
     fn source_stmt_uses_box_deref(&self, stmt: &mir::Statement<'tcx>, local: Local) -> bool {
         match &stmt.kind {
-            mir::StatementKind::Assign(box (_, rhs)) => self.rvalue_uses_box_deref_of_local(rhs, local, MirFlavor::Source),
+            mir::StatementKind::Assign(box (_, rhs)) => {
+                self.rvalue_uses_box_deref_of_local(rhs, local, MirFlavor::Source)
+            },
             mir::StatementKind::SetDiscriminant { place, .. } => {
                 self.place_uses_box_deref_of_local(**place, local, MirFlavor::Source)
             },
@@ -702,7 +1097,9 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         match rvalue {
             mir::Rvalue::Use(operand)
             | mir::Rvalue::Repeat(operand, _)
-            | mir::Rvalue::WrapUnsafeBinder(operand, _) => self.operand_uses_box_deref_of_local(operand, local, flavor),
+            | mir::Rvalue::WrapUnsafeBinder(operand, _) => {
+                self.operand_uses_box_deref_of_local(operand, local, flavor)
+            },
             mir::Rvalue::Ref(_, _, place)
             | mir::Rvalue::RawPtr(_, place)
             | mir::Rvalue::Discriminant(place)
@@ -735,10 +1132,14 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
-    fn place_uses_box_deref_of_local(&self, place: mir::Place<'tcx>, local: Local, flavor: MirFlavor) -> bool {
+    fn place_uses_box_deref_of_local(
+        &self,
+        place: mir::Place<'tcx>,
+        local: Local,
+        flavor: MirFlavor,
+    ) -> bool {
         let normalized = self.normalize_place_for_flavor(place, flavor);
-        normalized.local == local
-            && matches!(normalized.projection.first(), Some(NormalizedPlaceElem::Deref))
+        normalized.local == local && matches!(normalized.projection.first(), Some(NormalizedPlaceElem::Deref))
     }
 
     fn rvalue_uses_alias_with_origin(
@@ -756,7 +1157,9 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             mir::Rvalue::Ref(_, _, place)
             | mir::Rvalue::RawPtr(_, place)
             | mir::Rvalue::Discriminant(place)
-            | mir::Rvalue::CopyForDeref(place) => self.place_uses_alias_with_origin(*place, source_loc, flavor),
+            | mir::Rvalue::CopyForDeref(place) => {
+                self.place_uses_alias_with_origin(*place, source_loc, flavor)
+            },
             mir::Rvalue::BinaryOp(_, operands) => {
                 self.operand_uses_alias_with_origin(&operands.as_ref().0, source_loc, flavor)
                     || self.operand_uses_alias_with_origin(&operands.as_ref().1, source_loc, flavor)
@@ -814,14 +1217,15 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             mir::StatementKind::StorageLive(local) => format!("StorageLive({:?})", local),
             mir::StatementKind::StorageDead(local) => format!("StorageDead({:?})", local),
             mir::StatementKind::FakeRead(fake_read) => format!("FakeRead({fake_read:?})"),
-            mir::StatementKind::SetDiscriminant { place, variant_index } => {
-                format!(
-                    "SetDiscriminant({}, {})",
-                    self.place_key(**place, flavor),
-                    variant_index.as_usize()
-                )
+            mir::StatementKind::SetDiscriminant {
+                place,
+                variant_index,
+            } => {
+                format!("SetDiscriminant({}, {})", self.place_key(**place, flavor), variant_index.as_usize())
             },
-            mir::StatementKind::PlaceMention(place) => format!("PlaceMention({})", self.place_key(**place, flavor)),
+            mir::StatementKind::PlaceMention(place) => {
+                format!("PlaceMention({})", self.place_key(**place, flavor))
+            },
             mir::StatementKind::Retag(kind, place) => {
                 format!("Retag({kind:?}, {})", self.place_key(**place, flavor))
             },
@@ -971,8 +1375,14 @@ fn normal_successor(terminator: &mir::Terminator<'_>) -> Option<BasicBlock> {
         mir::TerminatorKind::Goto { target }
         | mir::TerminatorKind::Assert { target, .. }
         | mir::TerminatorKind::Drop { target, .. }
-        | mir::TerminatorKind::FalseEdge { real_target: target, .. }
-        | mir::TerminatorKind::FalseUnwind { real_target: target, .. } => Some(*target),
+        | mir::TerminatorKind::FalseEdge {
+            real_target: target,
+            ..
+        }
+        | mir::TerminatorKind::FalseUnwind {
+            real_target: target,
+            ..
+        } => Some(*target),
         mir::TerminatorKind::Call { target, .. } => *target,
         _ => None,
     }
@@ -996,10 +1406,8 @@ fn normalize_projection_elem(elem: mir::PlaceElem<'_>) -> NormalizedPlaceElem {
             min_length,
             from_end,
         },
-        mir::ProjectionElem::Subslice { from, to, from_end } => NormalizedPlaceElem::Subslice {
-            from,
-            to,
-            from_end,
+        mir::ProjectionElem::Subslice { from, to, from_end } => {
+            NormalizedPlaceElem::Subslice { from, to, from_end }
         },
         mir::ProjectionElem::Downcast(_, variant_index) => {
             NormalizedPlaceElem::Downcast(variant_index.as_usize())
@@ -1011,9 +1419,9 @@ fn normalize_projection_elem(elem: mir::PlaceElem<'_>) -> NormalizedPlaceElem {
 fn unwind_target(action: &mir::UnwindAction) -> Option<BasicBlock> {
     match action {
         mir::UnwindAction::Cleanup(bb) => Some(*bb),
-        mir::UnwindAction::Continue
-        | mir::UnwindAction::Unreachable
-        | mir::UnwindAction::Terminate(_) => None,
+        mir::UnwindAction::Continue | mir::UnwindAction::Unreachable | mir::UnwindAction::Terminate(_) => {
+            None
+        },
     }
 }
 

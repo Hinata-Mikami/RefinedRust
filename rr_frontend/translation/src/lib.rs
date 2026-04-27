@@ -31,8 +31,6 @@ mod traits;
 mod types;
 mod unification;
 
-pub use crate::body::{MappingResult, Origin, SourceLoc, TargetLoc, format_mapping, map_drop_elaborated_to_borrow_checked};
-
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::fs::File;
@@ -50,6 +48,9 @@ use typed_arena::Arena;
 
 use crate::base::OrderedDefId;
 use crate::body::signature;
+pub use crate::body::{
+    MappingResult, Origin, SourceLoc, TargetLoc, format_mapping, map_drop_elaborated_to_borrow_checked,
+};
 use crate::closure_impl_generator::ClosureImplGenerator;
 use crate::shims::registry as shim_registry;
 use crate::spec_parsers::const_attr_parser::{CONST_ATTRS, ConstAttrParser as _, VerboseConstAttrParser};
