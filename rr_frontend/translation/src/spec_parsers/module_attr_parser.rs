@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 
 use attribute_parse::parse;
 use radium::coq;
@@ -45,10 +45,8 @@ pub(crate) trait ModuleAttrParser {
 #[derive(Clone, Debug)]
 pub(crate) struct ModuleAttrs {
     pub exports: Vec<coq::module::Export>,
-    pub includes: HashSet<String>,
-    pub export_includes: HashSet<String>,
-    pub include_spans: BTreeMap<String, Span>,
-    pub export_include_spans: BTreeMap<String, Span>,
+    pub includes: BTreeMap<String, Span>,
+    pub export_includes: BTreeMap<String, Span>,
 }
 
 pub(crate) struct VerboseModuleAttrParser;
@@ -66,10 +64,8 @@ impl ModuleAttrParser for VerboseModuleAttrParser {
         attrs: &'a [&'a hir::AttrItem],
     ) -> Result<ModuleAttrs, SpannedError<ParserError>> {
         let mut exports: Vec<coq::module::Export> = Vec::new();
-        let mut includes: HashSet<String> = HashSet::new();
-        let mut export_includes: HashSet<String> = HashSet::new();
-        let mut include_spans: BTreeMap<String, Span> = BTreeMap::new();
-        let mut export_include_spans: BTreeMap<String, Span> = BTreeMap::new();
+        let mut includes: BTreeMap<String, Span> = BTreeMap::new();
+        let mut export_includes: BTreeMap<String, Span> = BTreeMap::new();
 
         for &it in attrs {
             let path_segs = &it.path.segments;
@@ -90,14 +86,12 @@ impl ModuleAttrParser for VerboseModuleAttrParser {
                 "include" => {
                     let name: parse::LitStr = buffer.parse(&()).map_err(|err| parse_err(span, err))?;
                     let name = name.value();
-                    includes.insert(name.clone());
-                    include_spans.entry(name).or_insert(span);
+                    includes.entry(name).or_insert(span);
                 },
                 "export_include" => {
                     let name: parse::LitStr = buffer.parse(&()).map_err(|err| parse_err(span, err))?;
                     let name = name.value();
-                    export_includes.insert(name.clone());
-                    export_include_spans.entry(name).or_insert(span);
+                    export_includes.entry(name).or_insert(span);
                 },
                 _ => {
                     return Err(spanned_error(span, ParserError::UnknownAttribute(format!("{:?}", args))));
@@ -109,8 +103,6 @@ impl ModuleAttrParser for VerboseModuleAttrParser {
             exports,
             includes,
             export_includes,
-            include_spans,
-            export_include_spans,
         })
     }
 }

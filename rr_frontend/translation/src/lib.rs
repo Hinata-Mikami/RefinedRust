@@ -2175,18 +2175,16 @@ where
     // get module attributes
     let module_attrs = get_module_attributes(tcx)?;
 
-    let mut include_spans = crate_spec.include_spans.clone();
-    let mut export_include_spans = crate_spec.export_include_spans.clone();
+    let mut includes = crate_spec.includes;
+    let mut export_includes = crate_spec.export_includes;
     for module_attr in module_attrs.values() {
-        include_spans.extend(module_attr.include_spans.clone());
-        export_include_spans.extend(module_attr.export_include_spans.clone());
+        includes.extend(module_attr.includes.clone());
+        export_includes.extend(module_attr.export_includes.clone());
     }
 
     // process exports
     let mut exports: BTreeSet<coq::module::Export> = BTreeSet::new();
-
     exports.extend(crate_spec.exports);
-
     for module_attr in module_attrs.values() {
         exports.extend(module_attr.exports.clone());
     }
@@ -2194,21 +2192,9 @@ where
     info!("Exporting extra Coq files: {:?}", exports);
 
     // process includes
-    let mut includes: BTreeSet<String> = BTreeSet::new();
-    crate_spec.includes.into_iter().map(|name| includes.insert(name)).count();
-    module_attrs
-        .values()
-        .map(|attrs| attrs.includes.iter().map(|name| includes.insert(name.to_owned())).count())
-        .count();
-    info!("Including RefinedRust modules: {:?}", includes);
+    info!("Including RefinedRust modules: {:?}", includes.keys());
     // process export_includes
-    let mut export_includes: BTreeSet<String> = BTreeSet::new();
-    crate_spec.export_includes.into_iter().map(|name| export_includes.insert(name)).count();
-    module_attrs
-        .into_values()
-        .map(|attrs| attrs.export_includes.into_iter().map(|name| export_includes.insert(name)).count())
-        .count();
-    info!("Exporting RefinedRust modules: {:?}", export_includes);
+    info!("Exporting RefinedRust modules: {:?}", export_includes.keys());
 
     let functions = environment::get_procedures(tcx);
     let closures = environment::get_closures(tcx);
@@ -2243,21 +2229,13 @@ where
 
     let mut included_libs = BTreeSet::new();
     while !includes.is_empty() {
-        let incl = includes.iter().next().unwrap().to_owned();
+        let (incl, span) = includes.iter().next().map(|(a, b)| (a.to_owned(), b.to_owned())).unwrap();
         includes.remove(&incl);
         let Some(p) = found_libs.get(&incl) else {
-            if let Some(span) = include_spans.get(&incl).copied() {
-                tcx.dcx().span_warn(
-                    span,
-                    error::Message::AttributeError(format!(
-                        "did not find included library {incl} in loadpath"
-                    )),
-                );
-            } else {
-                tcx.dcx().warn(error::Message::AttributeError(format!(
-                    "did not find included library {incl} in loadpath"
-                )));
-            }
+            tcx.dcx().span_warn(
+                span,
+                error::Message::AttributeError(format!("did not find included library {incl} in loadpath")),
+            );
             continue;
         };
         included_libs.insert(incl.clone());
@@ -2272,7 +2250,8 @@ where
         if let Some(new_includes) = new_includes {
             for incl in new_includes {
                 if !included_libs.contains(&incl) {
-                    includes.insert(incl);
+                    // use the span for the original import that triggered this recursive import
+                    includes.insert(incl, span);
                 }
             }
         }
@@ -2280,21 +2259,15 @@ where
 
     let mut export_included_libs = BTreeSet::new();
     while !export_includes.is_empty() {
-        let incl = export_includes.iter().next().unwrap().to_owned();
+        let (incl, span) = export_includes.iter().next().map(|(a, b)| (a.to_owned(), b.to_owned())).unwrap();
         export_includes.remove(&incl);
         let Some(p) = found_libs.get(&incl) else {
-            if let Some(span) = export_include_spans.get(&incl).copied() {
-                tcx.dcx().span_warn(
-                    span,
-                    error::Message::AttributeError(format!(
-                        "did not find exported included library {incl} in loadpath"
-                    )),
-                );
-            } else {
-                tcx.dcx().warn(error::Message::AttributeError(format!(
+            tcx.dcx().span_warn(
+                span,
+                error::Message::AttributeError(format!(
                     "did not find exported included library {incl} in loadpath"
-                )));
-            }
+                )),
+            );
             continue;
         };
         let skip = included_libs.contains(&incl);
@@ -2314,7 +2287,8 @@ where
         if let Some(new_includes) = new_includes {
             for incl in new_includes {
                 if !included_libs.contains(&incl) && !export_included_libs.contains(&incl) {
-                    export_includes.insert(incl);
+                    // use the span for the original import that triggered this recursive import
+                    export_includes.insert(incl, span);
                 }
             }
         }
