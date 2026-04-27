@@ -348,13 +348,9 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         &self,
         tcx: ty::TyCtxt<'tcx>,
         ty: ty::Ty<'tcx>,
-    ) -> Result<ty::Ty<'tcx>, TranslationError> {
+    ) -> Result<ty::Ty<'tcx>, ty::normalize_erasing_regions::NormalizationError<'tcx>> {
         let typing_env = self.get_typing_env(tcx);
-        tcx.try_normalize_erasing_regions(typing_env, ty).map_err(|e| {
-            TranslationError::ErrorReported(
-                tcx.dcx().err(error::Message::TraitResolution(format!("normalization error: {:?}", e))),
-            )
-        })
+        tcx.try_normalize_erasing_regions(typing_env, ty)
     }
 
     /// Lookup a trait parameter in the current state.
@@ -371,96 +367,73 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
     }
 
     /// Lookup a type parameter in the current state
-    fn lookup_ty_param(
-        &self,
-        tcx: ty::TyCtxt<'tcx>,
-        param_ty: ty::ParamTy,
-    ) -> Result<specs::Type<'def>, TranslationError> {
-        let ty = self.param_scope().lookup_ty_param_idx(param_ty.index).ok_or_else(|| {
-            TranslationError::ErrorReported(
-                tcx.dcx().err(error::Message::UnknownGenericParam(format!("{param_ty:?}"))),
-            )
-        })?;
-        Ok(specs::Type::LiteralParam(ty.clone()))
+    fn lookup_ty_param(&self, tcx: ty::TyCtxt<'tcx>, param_ty: ty::ParamTy) -> specs::Type<'def> {
+        let ty = self
+            .param_scope()
+            .lookup_ty_param_idx(param_ty.index)
+            .unwrap_or_else(|| tcx.dcx().bug(format!("Unknown type parameter {param_ty:?}")));
+        specs::Type::LiteralParam(ty.clone())
     }
 
     /// Lookup an early-bound region.
-    fn lookup_early_region(
-        &self,
-        tcx: ty::TyCtxt<'tcx>,
-        region: ty::EarlyParamRegion,
-    ) -> Result<specs::Lft, TranslationError> {
+    fn lookup_early_region(&self, tcx: ty::TyCtxt<'tcx>, region: ty::EarlyParamRegion) -> specs::Lft {
         trace!("lookup_early_region in state={self:?}");
         match self {
             STInner::InFunction(scope) => {
                 info!("Looking up lifetime {region:?} in scope {:?}", scope.lifetime_scope);
-                let lft =
-                    scope.lifetime_scope.lookup_early_region(region.index as usize).ok_or_else(|| {
-                        TranslationError::ErrorReported(
-                            tcx.dcx().err(error::Message::UnknownEarlyRegion(region)),
-                        )
-                    })?;
-                Ok(lft.lft().to_owned())
+                let lft = scope
+                    .lifetime_scope
+                    .lookup_early_region(region.index as usize)
+                    .unwrap_or_else(|| tcx.dcx().bug(format!("Unknown early region {region:?}")));
+                lft.lft().to_owned()
             },
             STInner::TranslateAdt(scope) => {
-                let lft = scope.scope.lookup_region_idx(region.index as usize).ok_or_else(|| {
-                    TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnknownEarlyRegion(region)))
-                })?;
-                Ok(lft.lft().to_owned())
+                let lft = scope
+                    .scope
+                    .lookup_region_idx(region.index as usize)
+                    .unwrap_or_else(|| tcx.dcx().bug(format!("Unknown early region {region:?}")));
+                lft.lft().to_owned()
             },
             STInner::TraitReqs(scope) => {
-                let lft = scope.scope.lookup_region_idx(region.index as usize).ok_or_else(|| {
-                    TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnknownEarlyRegion(region)))
-                })?;
-                Ok(lft.lft().to_owned())
+                let lft = scope
+                    .scope
+                    .lookup_region_idx(region.index as usize)
+                    .unwrap_or_else(|| tcx.dcx().bug(format!("Unknown early region {region:?}")));
+                lft.lft().to_owned()
             },
-            STInner::CalleeTranslation(_) => Ok(coq::Ident::new("DUMMY")),
+            STInner::CalleeTranslation(_) => coq::Ident::new("DUMMY"),
         }
     }
 
     /// Lookup a late-bound region.
-    fn lookup_late_region(
-        &self,
-        tcx: ty::TyCtxt<'tcx>,
-        binder: usize,
-        var: usize,
-    ) -> Result<specs::Lft, TranslationError> {
+    fn lookup_late_region(&self, tcx: ty::TyCtxt<'tcx>, binder: usize, var: usize) -> specs::Lft {
         match self {
             STInner::InFunction(scope) => {
                 info!("Looking up late lifetime ({binder:?}, {var:?}) in scope {:?}", scope.lifetime_scope);
-                let lft = scope.lifetime_scope.lookup_late_region(binder, var).ok_or_else(|| {
-                    TranslationError::ErrorReported(
-                        tcx.dcx().err(error::Message::UnknownLateRegion(binder, var)),
-                    )
-                })?;
-                Ok(lft.lft().to_owned())
+                let lft = scope
+                    .lifetime_scope
+                    .lookup_late_region(binder, var)
+                    .unwrap_or_else(|| tcx.dcx().bug(format!("Unknown late region {var:?}")));
+                lft.lft().to_owned()
             },
             STInner::TranslateAdt(scope) => {
-                let lft = scope.scope.lookup_late_region_idx(binder, var).ok_or_else(|| {
-                    TranslationError::ErrorReported(
-                        tcx.dcx().err(error::Message::UnknownLateRegionOutsideFunction(binder, var)),
-                    )
-                })?;
-                Ok(lft.lft().to_owned())
+                let lft = scope.scope.lookup_late_region_idx(binder, var).unwrap_or_else(|| {
+                    tcx.dcx().bug("Unknown late region outside function: ({{binder:?}, {var:?})")
+                });
+                lft.lft().to_owned()
             },
             STInner::TraitReqs(scope) => {
-                let lft = scope.scope.lookup_late_region_idx(binder, var).ok_or_else(|| {
-                    TranslationError::ErrorReported(
-                        tcx.dcx().err(error::Message::UnknownLateRegionOutsideFunction(binder, var)),
-                    )
-                })?;
-                Ok(lft.lft().to_owned())
+                let lft = scope.scope.lookup_late_region_idx(binder, var).unwrap_or_else(|| {
+                    tcx.dcx().bug("Unknown late region outside function: ({{binder:?}, {var:?})")
+                });
+                lft.lft().to_owned()
             },
-            STInner::CalleeTranslation(_) => Ok(coq::Ident::new("DUMMY")),
+            STInner::CalleeTranslation(_) => coq::Ident::new("DUMMY"),
         }
     }
 
     /// Try to translate a Polonius region variable to a Caesium lifetime.
-    pub(crate) fn lookup_polonius_var(
-        &self,
-        tcx: ty::TyCtxt<'tcx>,
-        v: facts::Region,
-    ) -> Result<specs::Lft, TranslationError> {
+    pub(crate) fn lookup_polonius_var(&self, tcx: ty::TyCtxt<'tcx>, v: facts::Region) -> specs::Lft {
         match self {
             STInner::InFunction(scope) => {
                 if let Some(info) = scope.polonius_info {
@@ -468,16 +441,15 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                     let x = info.mk_atomic_region(v);
                     let r = format_atomic_region_direct(x, Some(&scope.lifetime_scope));
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
-                    Ok(r)
+                    r
                 } else {
                     // otherwise, just use the universal scope
-                    let r = scope.lifetime_scope.lookup_region(v).ok_or_else(|| {
-                        TranslationError::ErrorReported(
-                            tcx.dcx().err(error::Message::UnknownPoloniusRegion(v)),
-                        )
-                    })?;
+                    let r = scope
+                        .lifetime_scope
+                        .lookup_region(v)
+                        .unwrap_or_else(|| tcx.dcx().bug(format!("Unknown Polonius region: {v:?}")));
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
-                    Ok(r.lft().to_owned())
+                    r.lft().to_owned()
                 }
             },
             STInner::TraitReqs(scope) => {
@@ -486,25 +458,17 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                     let x = info.mk_atomic_region(v);
                     let r = format_atomic_region_direct(x, scope.lifetime_scope);
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
-                    Ok(r)
+                    r
                 } else {
                     // otherwise, just use the universal scope
                     let r = scope
                         .lifetime_scope
                         .as_ref()
-                        .ok_or_else(|| {
-                            TranslationError::ErrorReported(
-                                tcx.dcx().err(error::Message::UnknownPoloniusRegion(v)),
-                            )
-                        })?
+                        .unwrap_or_else(|| tcx.dcx().bug("Lifetime scope has not been initialized"))
                         .lookup_region(v)
-                        .ok_or_else(|| {
-                            TranslationError::ErrorReported(
-                                tcx.dcx().err(error::Message::UnknownPoloniusRegion(v)),
-                            )
-                        })?;
+                        .unwrap_or_else(|| tcx.dcx().bug(format!("Unknown Polonius region: {v:?}")));
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
-                    Ok(r.lft().to_owned())
+                    r.lft().to_owned()
                     //info!("Translating region: ReVar {:?} as None (trait)", v);
                     //return Err(TranslationError::UnknownPoloniusRegion(v));
                 }
@@ -513,7 +477,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                 info!("Translating region: ReVar {:?} as None (outside of function)", v);
                 tcx.dcx().bug(format!("encountered Polonius region outside function translation: {v:?}"))
             },
-            STInner::CalleeTranslation(_) => Ok(coq::Ident::new("DUMMY")),
+            STInner::CalleeTranslation(_) => coq::Ident::new("DUMMY"),
         }
     }
 }
@@ -749,7 +713,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         translation_state: ST<'_, '_, 'def, 'tcx>,
         region: ty::Region<'tcx>,
-    ) -> Result<specs::Lft, TranslationError> {
+    ) -> specs::Lft {
         match region.kind() {
             ty::RegionKind::ReEarlyParam(early) => {
                 info!("Translating region: EarlyParam {:?}", early);
@@ -764,21 +728,17 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     unimplemented!("cannot handle Canonicalized binders");
                 }
             },
-
-            ty::RegionKind::RePlaceholder(placeholder) => {
-                // TODO: not sure if any placeholders should remain at this stage.
-                info!("Translating region: Placeholder {:?}", placeholder);
-                Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::PlaceholderRegion)))
-            },
-
-            ty::RegionKind::ReStatic => Ok(coq::Ident::new("static")),
-            ty::RegionKind::ReErased => Ok(coq::Ident::new("erased")),
+            ty::RegionKind::ReStatic => coq::Ident::new("static"),
 
             ty::RegionKind::ReVar(v) => translation_state.lookup_polonius_var(tcx, v.into()),
 
             _ => {
                 info!("Translating region: {:?}", region);
-                Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnknownRegion(region))))
+                if let STInner::CalleeTranslation(_) = *translation_state {
+                    coq::Ident::new("DUMMY")
+                } else {
+                    tcx.dcx().bug(format!("Unhandled region {region:?} in translation"))
+                }
             },
         }
     }
@@ -1656,7 +1616,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
                 let translated_ty = self.translate_type_in_state(*ty, &mut *state)?;
 
-                let lft = TX::translate_region(self.tcx, &mut *state, *region)?;
+                let lft = TX::translate_region(self.tcx, &mut *state, *region);
 
                 match mutability {
                     ast::ast::Mutability::Mut => Ok(specs::Type::MutRef(Box::new(translated_ty), lft)),
@@ -1704,7 +1664,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 self.generate_tuple_use(params.iter(), &mut *state).map(specs::Type::Literal)
             },
 
-            ty::TyKind::Param(param_ty) => state.lookup_ty_param(self.tcx, *param_ty),
+            ty::TyKind::Param(param_ty) => Ok(state.lookup_ty_param(self.tcx, *param_ty)),
 
             ty::TyKind::Float(_) => Err(TranslationError::ErrorReported(
                 self.tcx

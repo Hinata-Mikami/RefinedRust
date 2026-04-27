@@ -215,7 +215,7 @@ pub(crate) fn compute_unconstrained_region_annots<'tcx>(
     loc: mir::Location,
     unconstrained_regions: BTreeSet<facts::Region>,
     early_region_map: &BTreeMap<coq::Ident, usize>,
-) -> Result<(Vec<code::Annotation>, BTreeSet<facts::Region>), TranslationError> {
+) -> (Vec<code::Annotation>, BTreeSet<facts::Region>) {
     let info = inclusion_tracker.info();
     let midpoint = info.interner.get_point_index(&facts::Point {
         location: loc,
@@ -226,7 +226,7 @@ pub(crate) fn compute_unconstrained_region_annots<'tcx>(
 
     let mut unconstrained_annotations = Vec::new();
     for r in unconstrained_regions {
-        let translated_region = ty_translator.translate_region_var(r)?;
+        let translated_region = ty_translator.translate_region_var(r);
         // check if we have recovered a mapping
         if let Some(early_region_idx) = early_region_map.get(&translated_region) {
             let scope = ty_translator.scope.borrow();
@@ -242,5 +242,5 @@ pub(crate) fn compute_unconstrained_region_annots<'tcx>(
             remaining_regions.insert(r);
         }
     }
-    Ok((unconstrained_annotations, remaining_regions))
+    (unconstrained_annotations, remaining_regions)
 }

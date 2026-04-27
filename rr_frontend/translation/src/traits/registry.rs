@@ -694,13 +694,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let inst = self.compute_closure_late_bound_inst(state, closure_args, trait_args);
         trace!("get_closure_impl_spec_term: found late bound unification {inst:?}");
         for region in inst {
-            let translated_region = types::TX::translate_region(self.tcx, state, region)?;
+            let translated_region = types::TX::translate_region(self.tcx, state, region);
             scope_inst.add_lft_param(translated_region);
         }
 
         let extern_inst = self.compute_closure_extern_inst(state, closure_did, closure_args);
         for r in extern_inst {
-            let lft = types::TX::translate_region(self.tcx, state, r)?;
+            let lft = types::TX::translate_region(self.tcx, state, r);
             scope_inst.add_lft_param(lft);
         }
 
@@ -817,7 +817,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     let mut mapped_inst = Vec::new();
                     for region in inst {
                         let translated_region =
-                            types::TX::translate_region(self.tcx, &mut quantified_state, region)?;
+                            types::TX::translate_region(self.tcx, &mut quantified_state, region);
                         mapped_inst.push(translated_region);
                     }
                     let mapped_inst = specs::traits::ReqScopeInst::new(mapped_inst);
@@ -992,7 +992,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 let ty = self.type_translator().translate_type_in_state(ty, state)?;
                 scope_inst.add_direct_ty_param(ty);
             } else if let Some(lft) = arg.as_region() {
-                let lft = types::TX::translate_region(self.tcx, state, lft)?;
+                let lft = types::TX::translate_region(self.tcx, state, lft);
                 scope_inst.add_lft_param(lft);
             }
         }

@@ -213,7 +213,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let key = types::generate_args_inst_key(self.tcx, ty_params)?;
 
         let (method_loc_name, (method_spec_term, spec_scope, spec_inst), mapped_early_regions, method_params) =
-            self.ty_translator.register_use_trait_procedure(self.tcx, callee_did, ty_params)?;
+            self.ty_translator.register_use_trait_procedure(self.tcx, callee_did, ty_params);
 
         let tcx = self.tcx;
         let fn_ty: ty::EarlyBinder<'_, ty::Ty<'_>> = tcx.type_of(callee_did);
@@ -294,7 +294,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         kind: ty::ClosureKind,
         params: ty::GenericArgsRef<'tcx>,
-    ) -> Result<types::AbstractedGenerics<'def>, TranslationError> {
+    ) -> types::AbstractedGenerics<'def> {
         trace!("enter create_closure_impl_abstraction with closure_args={closure_args:?}, params={params:?}");
 
         // we lift the scope, all the generics below to the trait impl, not to the trait method itself.
@@ -345,7 +345,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             self.trait_registry.compute_closure_late_bound_inst(&mut state, closure_args, params)
         };
         for region in late_inst {
-            let translated_region = self.ty_translator.translate_region(region)?;
+            let translated_region = self.ty_translator.translate_region(region);
             lft_param_inst_hint.push(translated_region);
         }
         // compute the instantiation of external regions
@@ -355,7 +355,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             self.trait_registry.compute_closure_extern_inst(&mut state, closure_did, closure_args)
         };
         for r in external_inst {
-            let lft = self.ty_translator.translate_region(r)?;
+            let lft = self.ty_translator.translate_region(r);
             lft_param_inst_hint.push(lft);
         }
 
@@ -370,7 +370,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             callee_ty_param_inst: ty_param_inst_hint,
         };
         trace!("leave create_closure_impl_abstraction with res={res:?}");
-        Ok(res)
+        res
     }
 
     /// Internally register that we have used a closure impl with a particular instantiation of generics, and
@@ -412,7 +412,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let info = self.procedure_registry.lookup_closure_info(closure_did).unwrap();
 
         let quantified_scope =
-            self.create_closure_impl_abstraction(info, closure_did, closure_args, closure_kind, ty_params)?;
+            self.create_closure_impl_abstraction(info, closure_did, closure_args, closure_kind, ty_params);
 
         let tup = TranslationKey(OrderedDefId::new(self.tcx, call_fn_did), key);
         let res;
@@ -741,7 +741,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 loc,
                 assignment_annots.unconstrained_regions,
                 &call_info.mapped_early_regions,
-            )?;
+            );
 
         let (remaining_unconstrained_annots, unconstrained_hints) =
             regions::assignment::make_unconstrained_region_annotations(
@@ -750,7 +750,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 unconstrained_regions,
                 loc,
                 None,
-            )?;
+            );
         for hint in unconstrained_hints {
             self.translated_fn.add_unconstrained_lft_hint(hint);
         }

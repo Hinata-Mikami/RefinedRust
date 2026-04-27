@@ -9,6 +9,7 @@ use rr_rustc_interface::errors::DiagMessage;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
+use crate::procedures;
 use crate::spec_parsers::const_attr_parser::ParserError as ConstParserError;
 use crate::spec_parsers::crate_attr_parser::ParserError as CrateParserError;
 use crate::spec_parsers::enum_spec_parser::ParserError as EnumParserError;
@@ -17,7 +18,6 @@ use crate::spec_parsers::module_attr_parser::ParserError as ModuleParserError;
 use crate::spec_parsers::struct_spec_parser::ParserError as StructParserError;
 use crate::spec_parsers::trait_attr_parser::ParserError as TraitParserError;
 use crate::spec_parsers::trait_impl_attr_parser::ParserError as TraitImplParserError;
-use crate::{base, procedures};
 
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub(crate) enum Message<'tcx> {
@@ -32,24 +32,6 @@ pub(crate) enum Message<'tcx> {
 
     #[display("Cannot translate unknown region: {}", _0)]
     UnknownRegion(ty::Region<'tcx>),
-
-    #[display("Cannot translate placeholder region")]
-    PlaceholderRegion,
-
-    #[display("Unknown early region: {:?}", _0)]
-    UnknownEarlyRegion(ty::EarlyParamRegion),
-
-    #[display("Unknown late region: (binder {}, var {})", _0, _1)]
-    UnknownLateRegion(usize, usize),
-
-    #[display("Unknown late region (outside function): (binder {}, var {})", _0, _1)]
-    UnknownLateRegionOutsideFunction(usize, usize),
-
-    #[display("Cannot translate Polonius region: {:?}", _0)]
-    UnknownPoloniusRegion(base::Region),
-
-    #[display("Unknown generic parameter: {}", _0)]
-    UnknownGenericParam(String),
 
     #[display("No refinement annotated for field {}", _0)]
     MissingFieldRefinement(String),

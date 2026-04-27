@@ -71,14 +71,14 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     }
 
     /// Translate a region in the scope of the current function.
-    pub(crate) fn translate_region(&self, region: ty::Region<'tcx>) -> Result<specs::Lft, TranslationError> {
+    pub(crate) fn translate_region(&self, region: ty::Region<'tcx>) -> specs::Lft {
         let mut scope = self.scope.borrow_mut();
         let mut scope = STInner::InFunction(&mut scope);
         TX::translate_region(self.translator.tcx(), &mut scope, region)
     }
 
     /// Translate a Polonius region variable in the scope of the current function.
-    pub(crate) fn translate_region_var(&self, region: facts::Region) -> Result<specs::Lft, TranslationError> {
+    pub(crate) fn translate_region_var(&self, region: facts::Region) -> specs::Lft {
         let mut scope = self.scope.borrow_mut();
         let scope = STInner::InFunction(&mut scope);
         scope.lookup_polonius_var(self.translator.tcx(), region)
@@ -192,15 +192,12 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         trait_method_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
-    ) -> Result<
-        (
-            String,
-            (code::UsedProcedureSpec<'def>, specs::traits::ReqScope, specs::traits::ReqScopeInst),
-            BTreeMap<specs::Lft, usize>,
-            ty::GenericArgsRef<'tcx>,
-        ),
-        TranslationError,
-    > {
+    ) -> (
+        String,
+        (code::UsedProcedureSpec<'def>, specs::traits::ReqScope, specs::traits::ReqScopeInst),
+        BTreeMap<specs::Lft, usize>,
+        ty::GenericArgsRef<'tcx>,
+    ) {
         let Some(trait_did) = tcx.trait_of_assoc(trait_method_did) else {
             tcx.dcx().span_bug(
                 tcx.def_span(trait_method_did),
@@ -234,7 +231,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             let mut mapped_early_regions = BTreeMap::new();
             for (early, polonius) in early_regions_inst {
                 let mut scope = STInner::InFunction(&mut scope);
-                let polonius_lft = TX::translate_region(self.translator.tcx(), &mut scope, polonius)?;
+                let polonius_lft = TX::translate_region(self.translator.tcx(), &mut scope, polonius);
                 mapped_early_regions.insert(polonius_lft, early);
             }
 
@@ -246,7 +243,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
         let mut mapped_inst = Vec::new();
         for region in bound_regions_inst {
-            let translated_region = self.translate_region(region)?;
+            let translated_region = self.translate_region(region);
             mapped_inst.push(translated_region);
         }
         let mapped_inst = specs::traits::ReqScopeInst::new(mapped_inst);
@@ -266,12 +263,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             types::mangle_name_with_args(&strip_coq_ident(&method_name), method_args.as_slice());
         let method_loc_name = trait_spec_use.make_loc_name(&mangled_method_name);
 
-        Ok((
-            method_loc_name,
-            (method_spec_term, lifted_scope, mapped_inst),
-            mapped_early_regions,
-            method_args,
-        ))
+        (method_loc_name, (method_spec_term, lifted_scope, mapped_inst), mapped_early_regions, method_args)
     }
 
     /// Abstract over the generics of a function and partially instantiate them.
@@ -310,7 +302,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             if let Some(region) = v.as_region() {
                 num_param_regions += 1;
 
-                let lft_name = self.translate_region(region)?;
+                let lft_name = self.translate_region(region);
                 callee_lft_param_inst.push(lft_name);
             }
         }
@@ -354,12 +346,10 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         // Bind the additional lifetime parameters which are mentioned as part of the instantiation
         // of type parameters and associated types.
         // All of these are turned into quantified lifetimes.
-        for (next_lft, region) in (num_param_regions..).zip(regions) {
+        for region in regions {
             // Use the name the region has inside the function as the binder name, so that the
             // names work out when translating the types below
-            let lft_name = self
-                .translate_region_var(region)
-                .unwrap_or_else(|_| coq::Ident::new(&format!("ulft_{}", next_lft)));
+            let lft_name = self.translate_region_var(region);
             scope.add_lft_param(specs::LftParam::new(
                 lft_name.clone(),
                 specs::LftParamOrigin::FunctionRebound,

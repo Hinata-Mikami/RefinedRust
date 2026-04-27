@@ -165,7 +165,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let mut lifetimes_to_extend = Vec::new();
                 for r in regions_in_return {
                     //let atomic = self.info.mk_atomic_region(r);
-                    lifetimes_to_extend.push(self.ty_translator.translate_region_var(r)?);
+                    lifetimes_to_extend.push(self.ty_translator.translate_region_var(r));
                 }
                 let stmt_annots: Vec<_> = lifetimes_to_extend.into_iter().map(code::Annotation::ExtendLft).collect();
                 endlfts.insert(0, code::PrimStmt::Annot {

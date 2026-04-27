@@ -340,7 +340,7 @@ pub(crate) fn make_unconstrained_region_annotations<'tcx>(
     unconstrained_regions: BTreeSet<Region>,
     loc: mir::Location,
     rhs: Option<&mir::Rvalue<'tcx>>,
-) -> Result<(Vec<code::Annotation>, Vec<specs::Lft>), TranslationError> {
+) -> (Vec<code::Annotation>, Vec<specs::Lft>) {
     let mut annotations = Vec::new();
 
     let info = inclusion_tracker.info();
@@ -384,7 +384,7 @@ pub(crate) fn make_unconstrained_region_annotations<'tcx>(
             // Detect uses of static variables
             if let mir::Rvalue::Use(mir::Operand::Constant(_)) = rhs {
                 // we are probably using a static variable here
-                let lft = ty_translator.translate_region_var(r)?;
+                let lft = ty_translator.translate_region_var(r);
                 annotations.push(code::Annotation::CopyLftName(coq::Ident::new("static"), lft));
                 continue;
             }
@@ -394,7 +394,7 @@ pub(crate) fn make_unconstrained_region_annotations<'tcx>(
             if let mir::Rvalue::Ref(region, _, _) = rhs
                 && region.as_var() == r.into()
             {
-                let lft = ty_translator.translate_region_var(r)?;
+                let lft = ty_translator.translate_region_var(r);
                 annotations.push(code::Annotation::UnconstrainedLft(lft.clone()));
                 unconstrained_hints.push(lft);
                 continue;
@@ -404,10 +404,10 @@ pub(crate) fn make_unconstrained_region_annotations<'tcx>(
             warn!("Encountered unconstrained region {r:?}, proof will likely fail");
 
             // in case we initialize enums where the lifetime is unconstrained (e.g. `None` in `Option<&T>`)
-            let lft = ty_translator.translate_region_var(r)?;
+            let lft = ty_translator.translate_region_var(r);
             annotations.push(code::Annotation::CopyLftName(coq::Ident::new("static"), lft));
         }
     }
 
-    Ok((annotations, unconstrained_hints))
+    (annotations, unconstrained_hints)
 }
