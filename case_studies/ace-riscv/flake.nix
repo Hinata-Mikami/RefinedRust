@@ -51,6 +51,8 @@
         opensbi = crossPkgs.opensbi.overrideAttrs (prev: rec {
           version = "92e8affb31b21ddc5d1193cf754ce644db7b460a";
 
+          nativeBuildInputs = (prev.nativeBuildInputs or []) ++ [pkgs.coreutils];
+
           src = pkgs.fetchFromGitHub {
             owner = "riscv-software-src";
             repo = "opensbi";
@@ -66,7 +68,12 @@
             "CROSS_COMPILE=riscv64-unknown-linux-gnu-"
           ];
 
-          installFlags = ["I=$(out)/opensbi-rust-bindings"];
+          installPhase = ''
+            runHook preInstall
+            mkdir -p "$out/opensbi-rust-bindings"
+            make READLINK=${pkgs.coreutils}/bin/readlink I=$out/opensbi-rust-bindings install
+            runHook postInstall
+          '';
 
           postInstall = ''
             ln -s $out/opensbi-rust-bindings/{lib64,lib}
