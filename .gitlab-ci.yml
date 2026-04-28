@@ -161,7 +161,17 @@ ace:
   needs: [ stdlib ]
   allow_failure: true
   variables:
-    NIX_DERIVATION: ./case_studies/ace-riscv#
+    NIX_DERIVATION: ./case_studies/ace-riscv#ace-ci
+    ACE_PRUNED_MODULES: >-
+      proof_core_page_allocator_allocator_PageAllocator_add_memory_region
+      proof_core_page_allocator_allocator_PageAllocator_release_pages_closure0
+      proof_core_page_allocator_allocator_PageStorageTreeNode_store_page_token
+      proof_core_page_allocator_allocator_PageStorageTreeNode_acquire_page_token
+      proof_core_page_allocator_allocator_PageStorageTreeNode_divide_page_token_if_necessary
+      proof_core_page_allocator_allocator_PageStorageTreeNode_try_to_merge_page_tokens
+      proof_core_page_allocator_allocator_PageAllocator_find_largest_page_size
+      proof_core_page_allocator_page_Page_core_page_allocator_page_UnAllocated_divide
+      proof_core_page_allocator_page_Page_core_page_allocator_page_UnAllocated_merge
 
 nix-shell:
   extends: [ .nix ]

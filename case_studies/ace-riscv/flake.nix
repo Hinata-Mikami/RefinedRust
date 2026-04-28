@@ -46,6 +46,11 @@
           ];
         };
       };
+
+      prunedAceProofModules =
+        if builtins.getEnv "ACE_PRUNED_MODULES" != ""
+        then builtins.filter (m: m != "") (pkgs.lib.splitString " " (builtins.getEnv "ACE_PRUNED_MODULES"))
+        else [];
     in rec {
       packages = {
         opensbi = crossPkgs.opensbi.overrideAttrs (prev: rec {
@@ -142,6 +147,15 @@
             '';
           };
         };
+
+        ace-ci = packages.ace.overrideAttrs (prev: {
+          preBuild = ''
+            dune() { command dune "$@" --display=short; }
+            ${pkgs.python3}/bin/python3 ${ACE-RISCV}/.github/workflows/prune_dune_modules.py \
+              ace/proofs/dune \
+              ${pkgs.lib.concatStringsSep " \\\n+              " prunedAceProofModules}
+          '';
+        });
 
         default = packages.ace;
       };
