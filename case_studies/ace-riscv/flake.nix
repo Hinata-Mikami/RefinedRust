@@ -6,6 +6,7 @@
       url = "github:IBM/ACE-RISCV?ref=refinedrust-main";
       flake = false;
     };
+
   };
 
   outputs = {
@@ -151,9 +152,9 @@
         ace-ci = packages.ace.overrideAttrs (prev: {
           preBuild = ''
             dune() { command dune "$@" --display=short; }
-            ${pkgs.python3}/bin/python3 ${ACE-RISCV}/.github/workflows/prune_dune_modules.py \
-              ace/proofs/dune \
-              ${pkgs.lib.concatStringsSep " \\\n+              " prunedAceProofModules}
+            echo "[ace-ci] Pruning dune modules from ace/proofs/dune"
+            echo "[ace-ci] Modules to remove (${toString (builtins.length prunedAceProofModules)}): ${pkgs.lib.concatStringsSep ", " prunedAceProofModules}"
+            ${pkgs.python3}/bin/python3 ${ACE-RISCV}/.github/workflows/prune_dune_modules.py ace/proofs/dune ${pkgs.lib.concatStringsSep " " prunedAceProofModules}
           '';
         });
 

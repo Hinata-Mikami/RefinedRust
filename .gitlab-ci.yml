@@ -47,6 +47,10 @@ stages: [ nix-cache, build, lint, tests ]
     paths: [ "${NIX_STORE_CACHE_PATH}" ]
     policy: pull
 
+.build_to_nix:
+  script:
+  - nix build --print-build-logs $(eval echo ${NIX_DERIVATION})
+
 .build_to_nix_cache:
   cache:
     <<: *nix_cache
@@ -113,42 +117,42 @@ stdlib:
     NIX_PATH_FILTER_REGEX: '-rocq-core9\.1-refinedrust-stdlib-.*-dev$'
 
 clippy:
-  extends: [ .nix, .build_to_nix_artifacts ]
+  extends: [ .nix, .build_to_nix ]
   stage: lint
   needs: [ frontend ]
   variables:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.clippy
 
 deny:
-  extends: [ .nix, .build_to_nix_artifacts ]
+  extends: [ .nix, .build_to_nix ]
   stage: lint
   needs: [ frontend ]
   variables:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.deny
 
 fmt:
-  extends: [ .nix, .build_to_nix_artifacts ]
+  extends: [ .nix, .build_to_nix ]
   stage: lint
   needs: [ frontend ]
   variables:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.fmt
 
 machete:
-  extends: [ .nix, .build_to_nix_artifacts ]
+  extends: [ .nix, .build_to_nix ]
   stage: lint
   needs: [ frontend ]
   variables:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.machete
 
 unused:
-  extends: [ .nix, .build_to_nix_artifacts ]
+  extends: [ .nix, .build_to_nix ]
   stage: lint
   needs: [ frontend ]
   variables:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.workspace-unused
 
 case-studies:
-  extends: [ .nix, .build_to_nix_artifacts ]
+  extends: [ .nix, .build_to_nix ]
   stage: tests
   needs: [ stdlib ]
   variables:
@@ -156,10 +160,12 @@ case-studies:
 
 ace:
   <<: *main_only
-  extends: [ .nix, .build_to_nix_artifacts ]
+  extends: [ .nix ]
   stage: tests
   needs: [ stdlib ]
   allow_failure: true
+  script:
+  - nix build --impure --print-build-logs $(eval echo ${NIX_DERIVATION})
   variables:
     NIX_DERIVATION: ./case_studies/ace-riscv#ace-ci
     ACE_PRUNED_MODULES: >-
