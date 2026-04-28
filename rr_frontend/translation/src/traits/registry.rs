@@ -9,6 +9,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, btree_map};
 
 use log::{info, trace};
 use radium::{coq, specs};
+use rr_rustc_interface::hir;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::{bug, span_bug, ty};
 use traits::resolution;
@@ -1195,29 +1196,17 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         ))
     }
 
-    /// Check for a specification for `derive`d traits on a trait impl for an ADT, and parse it.
-    pub(crate) fn check_for_derive_trait_attrs(
+    pub(crate) fn get_derive_trait_impl_attrs(
         &self,
         trait_impl_did: DefId,
-    ) -> Result<Option<(specs::traits::SpecAttrsInst, coq::binder::BinderList)>, TranslationError> {
+    ) -> Result<Option<Vec<&'tcx hir::AttrItem>>, TranslationError> {
         let subject = self.tcx.impl_trait_header(trait_impl_did);
         let trait_ref = subject.trait_ref.skip_binder();
-
-        let trait_spec_ref = self.lookup_trait(trait_ref.def_id).ok_or_else(|| {
-            TranslationError::ErrorReported(self.tcx.dcx().span_err(
-                self.tcx.def_span(trait_ref.def_id),
-                error::Message::TraitNotRegisteredWithRefinedRust,
-            ))
-        })?;
 
         let self_ty = trait_ref.self_ty();
         let ty::TyKind::Adt(def, _) = self_ty.kind() else {
             return Ok(None);
         };
-
-        let impl_generics: &'tcx ty::Generics = self.tcx.generics_of(trait_impl_did);
-        let mut param_scope = scope::Params::from(impl_generics.own_params.as_slice());
-        param_scope.add_param_env(trait_impl_did, self.tcx, self.type_translator(), self)?;
 
         let adt_attrs = attrs::filter_for_tool(environment::get_attributes(self.tcx, def.did()));
         let adt_specific_attrs = if def.is_enum() {
@@ -1225,6 +1214,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         } else {
             struct_spec_parser::INVARIANT_SPEC_ATTRS.to_vec()
         };
+
         attrs::check_tool_attrs(
             &adt_attrs,
             DERIVE_TRAIT_IMPL_SPEC_ATTRS.iter().copied().chain(adt_specific_attrs.iter().copied()),
@@ -1236,18 +1226,33 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             );
             TranslationError::Tainted(err)
         })?;
-        let mut attr_parser = VerboseTraitImplAttrParser::new(&param_scope);
 
-        let res = attr_parser.parse_derive_trait_impl_attrs(&adt_attrs).map_err(|e| {
-            let SpannedError { err, span } = e;
-            let err = self.tcx.dcx().span_err(span, error::Message::TraitImplSpecParse(err));
-            TranslationError::ErrorReported(err)
+        Ok(Some(adt_attrs))
+    }
+
+    pub(crate) fn get_trait_impl_attrs(
+        &self,
+        trait_impl_did: DefId,
+    ) -> Result<Vec<&'tcx hir::AttrItem>, TranslationError> {
+        let trait_impl_attrs = attrs::filter_for_tool(environment::get_attributes(self.tcx, trait_impl_did));
+        attrs::check_tool_attrs(&trait_impl_attrs, TRAIT_IMPL_ATTRS.iter().copied()).map_err(|err| {
+            let err = self.tcx.dcx().span_err(
+                err.span,
+                error::Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
+            );
+            TranslationError::Tainted(err)
         })?;
+        if !trait_impl_attrs.is_empty() {
+            return Ok(trait_impl_attrs);
+        }
 
-        if let Ok(attrs) = res.filter_for_attrs(&trait_spec_ref.declared_attrs) {
-            Ok(Some((attrs, res.context_items)))
+        let trait_did = self.tcx.impl_trait_id(trait_impl_did);
+        if super::is_derive_trait_with_no_annotations(self.tcx, trait_did) == Some(true)
+            || super::is_derive_trait_with_annotations(self.tcx, trait_did) == Some(true)
+        {
+            Ok(self.get_derive_trait_impl_attrs(trait_impl_did)?.unwrap_or(vec![]))
         } else {
-            Ok(None)
+            Ok(vec![])
         }
     }
 
@@ -1319,14 +1324,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         param_scope.add_param_env(trait_impl_did, self.tcx, self.type_translator(), self)?;
 
         // parse specification
-        let trait_impl_attrs = attrs::filter_for_tool(environment::get_attributes(self.tcx, trait_impl_did));
-        attrs::check_tool_attrs(&trait_impl_attrs, TRAIT_IMPL_ATTRS.iter().copied()).map_err(|err| {
-            let err = self.tcx.dcx().span_err(
-                err.span,
-                error::Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
-            );
-            TranslationError::Tainted(err)
-        })?;
+        let trait_impl_attrs = self.get_trait_impl_attrs(trait_impl_did)?;
         let (impl_spec, context_items) = if !trait_impl_attrs.is_empty() {
             let mut attr_parser = VerboseTraitImplAttrParser::new(&param_scope);
             let res = attr_parser.parse_trait_impl_attrs(&trait_impl_attrs).map_err(|e| {
@@ -1334,17 +1332,16 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 let err = self.tcx.dcx().span_err(span, error::Message::TraitImplSpecParse(err));
                 TranslationError::ErrorReported(err)
             })?;
-            (res.attrs, res.context_items)
-        } else if super::is_derive_trait_with_no_annotations(self.tcx, trait_did) == Some(true)
-            || super::is_derive_trait_with_annotations(self.tcx, trait_did) == Some(true)
-        {
-            let Some((attrs, context_items)) = self.check_for_derive_trait_attrs(trait_impl_did)? else {
-                let err = error::Message::TraitImplSpec;
-                return Err(TranslationError::ErrorReported(
-                    self.tcx.dcx().span_err(self.tcx.def_span(trait_impl_did), err),
-                ));
-            };
-            (attrs, context_items)
+
+            match res.filter_for_attrs(&trait_spec_ref.declared_attrs) {
+                Ok(attrs) => (attrs, res.context_items),
+                Err(missing) => {
+                    let err = error::Message::TraitImplSpecMissing(missing);
+                    return Err(TranslationError::ErrorReported(
+                        self.tcx.dcx().span_err(self.tcx.def_span(trait_impl_did), err),
+                    ));
+                },
+            }
         } else if trait_spec_ref.declared_attrs.is_empty() {
             (specs::traits::SpecAttrsInst::new(BTreeMap::new()), coq::binder::BinderList::empty())
         } else {

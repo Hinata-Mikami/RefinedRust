@@ -32,8 +32,6 @@ pub(crate) enum ParserError {
     UnknownMacro(String),
     #[display("attribute {} has been instantiated multiple times", _0)]
     DuplicateInstantiation(String),
-    #[display("unknown attribute for trait impl specification: {:?}", _0)]
-    UnknownAttribute(String),
 }
 
 const fn spanned_error(span: Span, err: ParserError) -> SpannedError<ParserError> {
@@ -52,11 +50,6 @@ fn parse_err(span: Span, err: parse::Error) -> SpannedError<ParserError> {
 /// - `rr::context` for specifying extra context items
 pub(crate) trait TraitImplAttrParser {
     fn parse_trait_impl_attrs<'a>(
-        &'a mut self,
-        attrs: &'a [&'a hir::AttrItem],
-    ) -> Result<TraitImplAttrs, SpannedError<ParserError>>;
-
-    fn parse_derive_trait_impl_attrs<'a>(
         &'a mut self,
         attrs: &'a [&'a hir::AttrItem],
     ) -> Result<TraitImplAttrs, SpannedError<ParserError>>;
@@ -156,50 +149,7 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
             let span = it.span;
 
             match seg.as_str() {
-                "instantiate" => {
-                    let (parsed_name, inst) = self.parse_instantiate(&buffer, span)?;
-                    if trait_attrs.insert(parsed_name.clone(), inst).is_some() {
-                        return Err(spanned_error(span, ParserError::DuplicateInstantiation(parsed_name)));
-                    }
-                },
-                "context" => {
-                    let context_item =
-                        RRCoqContextItem::parse(&buffer, self.scope).map_err(|err| parse_err(span, err))?;
-                    let param = context_item.into();
-                    context_items.push(param);
-                },
-                "export_as" | "only_spec" | "trust_me" | "skip" | "verify" => (),
-                _ => {
-                    return Err(spanned_error(span, ParserError::UnknownAttribute(format!("{:?}", it.path))));
-                },
-            }
-        }
-
-        Ok(TraitImplAttrs {
-            attrs: specs::traits::SpecAttrsInst::new(trait_attrs),
-            context_items: coq::binder::BinderList::new(context_items),
-        })
-    }
-
-    fn parse_derive_trait_impl_attrs<'a>(
-        &'a mut self,
-        attrs: &'a [&'a hir::AttrItem],
-    ) -> Result<TraitImplAttrs, SpannedError<ParserError>> {
-        let mut trait_attrs = BTreeMap::new();
-        let mut context_items = Vec::new();
-
-        for &it in attrs {
-            let path_segs = &it.path.segments;
-
-            let Some(seg) = path_segs.get(1) else {
-                continue;
-            };
-
-            let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
-            let span = it.span;
-
-            match seg.as_str() {
-                "derive_instantiate" => {
+                "derive_instantiate" | "instantiate" => {
                     let (parsed_name, inst) = self.parse_instantiate(&buffer, span)?;
                     if trait_attrs.insert(parsed_name.clone(), inst).is_some() {
                         return Err(spanned_error(span, ParserError::DuplicateInstantiation(parsed_name)));
@@ -213,7 +163,6 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
                 },
                 _ => (),
             }
-            // rest is handled by the ADT spec parser
         }
 
         Ok(TraitImplAttrs {

@@ -144,6 +144,9 @@ pub(crate) enum Message<'tcx> {
     #[display("No specification provided for trait impl")]
     TraitImplSpec,
 
+    #[display("No instantiation provided for trait spec attribute {}", _0)]
+    TraitImplSpecMissing(String),
+
     #[display("Trait has not been registered with RefinedRust yet")]
     TraitNotRegisteredWithRefinedRust,
 

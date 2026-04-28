@@ -14,7 +14,7 @@ use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{CoqLiteralError, ParamLookup, attr_args_tokens, str_err};
 
 pub(crate) const ENUM_SPEC_ATTRS: &[&str] =
-    &["refined_by", "partial", "export_as", "derive_instantiate", "verify"];
+    &["refined_by", "partial", "export_as", "derive_instantiate", "verify", "skip"];
 
 pub(crate) const ENUM_VARIANT_SPEC_ATTRS: &[&str] = &["pattern", "refinement"];
 
@@ -24,8 +24,6 @@ pub(crate) enum ParserError {
     Parse(String),
     #[display("{}", _0)]
     AntiQuotation(CoqLiteralError),
-    #[display("unknown attribute for enum specification: {:?}", _0)]
-    UnknownAttribute(String),
     #[display("No refined_by clause provided for enum {:?}", _0)]
     MissingRefinedBy(String),
 }
@@ -124,7 +122,6 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
 
         for &it in attrs {
             let path_segs = &it.path.segments;
-            let args = &it.args;
 
             let Some(seg) = path_segs.get(1) else {
                 continue;
@@ -144,10 +141,7 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
                 "partial" => {
                     is_partial = true;
                 },
-                "export_as" | "derive_instantiate" => {},
-                _ => {
-                    return Err(spanned_error(span, ParserError::UnknownAttribute(format!("{:?}", args))));
-                },
+                _ => {},
             }
         }
 

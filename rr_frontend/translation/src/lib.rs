@@ -1603,7 +1603,7 @@ fn check_consider_function(
 
     // otherwise, check if this is for an ADT with derive annotations.
     if traits::is_derive_trait_with_annotations(vcx.tcx, trait_did) == Some(true)
-        && vcx.trait_registry.check_for_derive_trait_attrs(impl_did)?.is_some()
+        && vcx.trait_registry.get_derive_trait_impl_attrs(impl_did)?.is_some()
     {
         return Ok(true);
     }
@@ -1731,7 +1731,7 @@ fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineErr
 
 /// Register trait impls of all registered traits.
 /// Precondition: traits have already been registered.
-fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) {
+fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
     let trait_impl_ids = environment::get_trait_impls(vcx.tcx);
     info!("Found trait impls: {:?}", trait_impl_ids);
 
@@ -1742,6 +1742,19 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) {
 
         // check if this trait has been registered
         if let Some(registered) = vcx.trait_registry.lookup_trait(trait_did) {
+            let trait_impl_attrs = match vcx.trait_registry.get_trait_impl_attrs(did) {
+                Ok(attrs) => attrs,
+                Err(base::TranslationError::ErrorReported(err)) => {
+                    recover_or_fail(err)?;
+                    continue;
+                },
+                Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
+            };
+            if attrs::has_tool_attr_filtered(&trait_impl_attrs, "skip") {
+                vcx.tcx.dcx().span_warn(vcx.tcx.def_span(did), error::Message::SkipWarn);
+                continue;
+            }
+
             // make sure all functions have a spec; otherwise, this is not a complete trait impl
             let assoc_items: &ty::AssocItems = vcx.tcx.associated_items(did);
             let mut all_specced = true;
@@ -1769,6 +1782,7 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) {
             vcx.trait_registry.register_impl_shim(did, impl_lit);
         }
     }
+    Ok(())
 }
 
 /// Check if the `RefinedRust` closure library is available
@@ -2327,7 +2341,7 @@ where
 
     register_traits(&mut vcx)?;
 
-    register_trait_impls(&vcx);
+    register_trait_impls(&vcx)?;
 
     register_closure_impls(&vcx);
 

@@ -33,6 +33,8 @@ pub(crate) const INVARIANT_SPEC_ATTRS: &[&str] = &[
     "context",
     "export_as",
     "verify",
+    "skip",
+    "derive_instantiate",
 ];
 
 pub(crate) const FIELD_SPEC_ATTRS: &[&str] = &["field"];
