@@ -49,8 +49,9 @@
       };
 
       prunedAceProofModules =
-        if builtins.getEnv "ACE_PRUNED_MODULES" != ""
-        then builtins.filter (m: m != "") (pkgs.lib.splitString " " (builtins.getEnv "ACE_PRUNED_MODULES"))
+        let modules = builtins.getEnv "ACE_PRUNED_MODULES"; in
+        if modules != ""
+        then builtins.filter (m: m != "") (pkgs.lib.splitString " " modules)
         else [];
     in rec {
       packages = {
