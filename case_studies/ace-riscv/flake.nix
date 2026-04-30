@@ -73,14 +73,10 @@
             "PLATFORM_RISCV_ISA=rv64gc"
             "PLATFORM_RISCV_XLEN=64"
             "CROSS_COMPILE=riscv64-unknown-linux-gnu-"
+            "READLINK=${pkgs.coreutils}/bin/readlink"
           ];
 
-          installPhase = ''
-            runHook preInstall
-            mkdir -p "$out/opensbi-rust-bindings"
-            make READLINK=${pkgs.coreutils}/bin/readlink I=$out/opensbi-rust-bindings install
-            runHook postInstall
-          '';
+          installFlags = ["I=$(out)/opensbi-rust-bindings"];
 
           postInstall = ''
             ln -s $out/opensbi-rust-bindings/{lib64,lib}
