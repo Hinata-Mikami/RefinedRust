@@ -103,7 +103,8 @@
         stdlibLeafPkgs =
           lib.attrsets.attrValues
           (lib.filterAttrs (name: _: lib.strings.hasPrefix "stdlib-" name && name != "stdlib-stdlib") packages);
-      in {
+      in
+        {
           theories = let
             stdpp = lib.rocq.mkDepDerivation rocq.stdpp {
               pname = "stdpp";
@@ -189,7 +190,8 @@
                   inherit mkRefinedRust;
                 };
               };
-            in mkRefinedRust rust.toolchain.build;
+          in
+            mkRefinedRust rust.toolchain.build;
           # Expose the checked-in `stdlib/stdlib` package as the public stdlib
           # entry point. This matches the RefinedRust-level structure, where
           # `stdlib` is the logical top-level library, while the frontend finds

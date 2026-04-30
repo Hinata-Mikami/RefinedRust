@@ -131,12 +131,16 @@ deny:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.deny
 
 fmt:
-  extends: [ .nix, .build_to_nix ]
+  extends: [ .nix ]
   stage: lint
   needs: [ frontend ]
   variables:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.fmt
+  script:
+  - nix build --print-build-logs $(eval echo ${NIX_DERIVATION})
+  - nix fmt -- . --check
 
+  
 machete:
   extends: [ .nix, .build_to_nix ]
   stage: lint

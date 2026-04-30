@@ -40,9 +40,10 @@ with inputs; rec {
     cargoRefinedRust = import ./cargoRefinedRust.nix {inherit craneLib rrPkgs pkgs;};
     cargoWorkspaceUnused = import ./cargoWorkspaceUnused.nix {inherit craneLib pkgs;};
 
-    mkToolchain = channel: components: pkgs.rust-bin.fromRustupToolchain {
-      inherit channel components;
-      profile = "minimal";
-    };
+    mkToolchain = channel: components:
+      pkgs.rust-bin.fromRustupToolchain {
+        inherit channel components;
+        profile = "minimal";
+      };
   };
 }

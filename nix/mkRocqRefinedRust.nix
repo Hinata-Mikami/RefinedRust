@@ -39,7 +39,10 @@
     // args.rocqTheories // rocqTheoriesArgs);
 in
   pkgs.rocqPackages.mkRocqDerivation ({
-      src = if generateFiles then cargoRefinedRust (args.cargo // cargoRefinedRustArgs) else src;
+      src =
+        if generateFiles
+        then cargoRefinedRust (args.cargo // cargoRefinedRustArgs)
+        else src;
       pname = "refinedrust-" + pname;
 
       propagatedBuildInputs =

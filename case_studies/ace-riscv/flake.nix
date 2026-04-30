@@ -6,7 +6,6 @@
       url = "github:IBM/ACE-RISCV?ref=refinedrust-main";
       flake = false;
     };
-
   };
 
   outputs = {
@@ -48,8 +47,9 @@
         };
       };
 
-      prunedAceProofModules =
-        let modules = builtins.getEnv "ACE_PRUNED_MODULES"; in
+      prunedAceProofModules = let
+        modules = builtins.getEnv "ACE_PRUNED_MODULES";
+      in
         if modules != ""
         then builtins.filter (m: m != "") (pkgs.lib.splitString " " modules)
         else [];
