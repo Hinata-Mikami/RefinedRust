@@ -21,6 +21,7 @@ Inductive int_type : Set :=
 .
 Global Instance int_type_dec : EqDecision int_type.
 Proof. solve_decision. Defined.
+Global Instance int_type_inhabited : Inhabited int_type := populate (I8).
 
 Definition it_byte_size_log (it : int_type) : nat :=
   match it with

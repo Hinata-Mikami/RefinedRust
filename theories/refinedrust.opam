@@ -38,7 +38,7 @@ pin-depends: [
   ["coq-lifetime-logic.dev" "git+https://gitlab.mpi-sws.org/iris/lambda-rust.git#2d20dc5def11269b2c4ef17f43a3dddd54f3bb46"]
   # smtcoq
 	["coq-sniper.dev" "git+https://github.com/smtcoq/sniper.git#fdf1f5e31117727b6c4fa04326ff4875a5166fb3"]
-	["coq-smtcoq.dev" "git+https://github.com/smtcoq/smtcoq#aa2542ab3e2609d784924aa4ab3dc77273f73776"]
+	["coq-smtcoq.dev" "git+https://github.com/smtcoq/smtcoq#b5840fb70c0ddce14e7a4e75d3f9b43c9f35d583"]
 	["coq-trakt.dev" "git+https://github.com/rocq-trakt/trakt#aa76ebdf4cc6323cf08c65e56f8ba8580d79f7a2"]
 ]
 
