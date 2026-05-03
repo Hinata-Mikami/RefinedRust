@@ -1,9 +1,9 @@
-{pkgs}: pin: {
+rocqPackages: pin: {
   pname,
-  propagatedBuildInputs ? [pkgs.rocqPackages.stdlib],
+  propagatedBuildInputs ? [rocqPackages.stdlib],
   owner ? "iris",
 }:
-pkgs.rocqPackages.mkRocqDerivation {
+rocqPackages.mkRocqDerivation {
   inherit pname propagatedBuildInputs owner;
 
   domain = "gitlab.mpi-sws.org";

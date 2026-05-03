@@ -1,7 +1,7 @@
 {
   cargoRefinedRust,
   pkgs,
-  rrPkgs,
+  stdlib,
 }: {
   libDeps ? [],
   opam-name ? pname,
@@ -29,7 +29,7 @@
   theories = pkgs.rocqPackages.mkRocqDerivation ({
       src = "${src}/theories";
       propagatedBuildInputs =
-        (pkgs.lib.optionals withStdlib [rrPkgs.stdlib])
+        (pkgs.lib.optionals withStdlib [stdlib])
         ++ libDeps
         ++ propagatedBuildInputs;
 
@@ -46,7 +46,7 @@ in
       pname = "refinedrust-" + pname;
 
       propagatedBuildInputs =
-        (pkgs.lib.optionals withStdlib [rrPkgs.stdlib])
+        (pkgs.lib.optionals withStdlib [stdlib])
         ++ libDeps
         ++ propagatedBuildInputs
         ++ (pkgs.lib.optionals withTheories [theories]);

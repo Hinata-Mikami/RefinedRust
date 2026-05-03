@@ -1,6 +1,7 @@
 {
   craneLib,
-  rrPkgs,
+  frontend,
+  stdlib,
   pkgs,
 }: {
   cargoExtraArgs ? "--locked",
@@ -22,14 +23,14 @@ in
 
       buildPhaseCargoCommand = "cargo refinedrust -- ${cargoExtraArgs}";
 
-      nativeBuildInputs =
-        if withStdlib
-        then [(rrPkgs.default.mkRefinedRust toolchain)]
-        else [rrPkgs.frontend];
+      nativeBuildInputs = [toolchain frontend] ++ pkgs.lib.optionals withStdlib [stdlib];
+
+      env.LD_LIBRARY_PATH = "${toolchain}/lib:${toolchain}/lib/rustlib/x86_64-unknown-linux-gnu/lib";
 
       RR_GENERATE_DUNE_PROJECT = true;
       RR_LIB_LOAD_PATHS =
-        pkgs.lib.concatStringsSep ":" (libDeps ++ pkgs.lib.optionals withStdlib rrPkgs.stdlib.propagatedBuildInputs);
+        pkgs.lib.concatStringsSep ":" (libDeps ++ pkgs.lib.optionals withStdlib stdlib.propagatedBuildInputs);
+      RR_NIX_STDLIB = pkgs.lib.optionalString withStdlib "${stdlib}/share";
 
       installPhase = ''
         RR_OUTPUT_DIR=$(cargo refinedrust --show-config | grep output_dir | cut -d' ' -f3 | tr '"' ' ')

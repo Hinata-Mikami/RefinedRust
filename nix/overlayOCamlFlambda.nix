@@ -1,4 +1,4 @@
-_: pkgs: prev: rec {
+final: prev: rec {
   # NOTE: Remove `ocamlPackages` when upgrading to Nix 26.05
   # NOTE: Then, rename this file `overlayRocqCompat.nix`
   ocamlPackages = prev.ocaml-ng.ocamlPackages_4_14.overrideScope (_: prev: {
@@ -7,14 +7,14 @@ _: pkgs: prev: rec {
     dune_3 = prev.dune_3.overrideAttrs rec {
       version = "3.21.0";
 
-      src = pkgs.fetchurl {
+      src = final.fetchurl {
         url = "https://github.com/ocaml/dune/releases/download/3.21.0/dune-3.21.0.tbz";
         hash = "sha256-521NiTaKCnACUZOur098W1QDHbo/Wb+dKvGXHcDs7d0=";
       };
     };
   });
 
-  rocqPackages = prev.rocqPackages.overrideScope (_: prev: rec {
+  rocqPackages = prev.rocqPackages.overrideScope (final: prev: rec {
     dune = ocamlPackages.dune_3;
 
     mkRocqDerivation = args:
@@ -25,19 +25,21 @@ _: pkgs: prev: rec {
         }
         // args);
 
-    rocq-core = pkgs.rocq-core_9_1.override {
+    rocq-core = prev.rocq-core.override {
       inherit dune;
+
       customOCamlPackages = ocamlPackages;
+      version = "9.1";
     };
 
     # NOTE: Remove `equations` when available in Nix's `RocqPackages`
-    equations = pkgs.rocqPackages.mkRocqDerivation {
+    equations = final.mkRocqDerivation {
       pname = "equations";
       owner = "mattam82";
       repo = "Coq-Equations";
       opam-name = "rocq-equations";
 
-      propagatedBuildInputs = [pkgs.rocqPackages.stdlib pkgs.ocamlPackages.ppx_optcomp];
+      propagatedBuildInputs = with final; [stdlib rocq-core.ocamlPackages.ppx_optcomp];
 
       mlPlugin = true;
       useDune = true;

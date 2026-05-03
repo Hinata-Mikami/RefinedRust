@@ -1,4 +1,4 @@
-_: pkgs: prev: rec {
+pkgs: prev: rec {
   verit = prev.verit.overrideAttrs (old: {
     src = pkgs.fetchFromGitLab {
       domain = "gitlab.mpi-sws.org";
@@ -11,7 +11,7 @@ _: pkgs: prev: rec {
     nativeBuildInputs = old.nativeBuildInputs ++ [pkgs.pkg-config];
   });
 
-  rocqPackages = prev.rocqPackages.overrideScope (_: prev: {
+  rocqPackages = prev.rocqPackages.overrideScope (final: prev: {
     # NOTE: Remove `metarocq-template` when available in Nix's `RocqPackages`
     metarocq-template = let
       version = "v1.4.1-9.1";
@@ -22,31 +22,31 @@ _: pkgs: prev: rec {
 
       mlPlugin = true;
 
-      utils = pkgs.rocqPackages.mkRocqDerivation rec {
+      utils = final.mkRocqDerivation rec {
         inherit mlPlugin owner release repo version;
 
         pname = "metarocq-utils";
         preBuild = "cd utils";
-        propagatedBuildInputs = [pkgs.rocqPackages.equations];
+        propagatedBuildInputs = [final.equations];
       };
 
-      common = pkgs.rocqPackages.mkRocqDerivation rec {
+      common = final.mkRocqDerivation rec {
         inherit mlPlugin owner release repo version;
 
         pname = "metarocq-common";
         preBuild = "cd common";
-        propagatedBuildInputs = [pkgs.rocqPackages.equations utils];
+        propagatedBuildInputs = [final.equations utils];
 
         patchPhase = "patchShebangs ./configure.sh";
         configurePhase = "./configure.sh";
       };
     in
-      pkgs.rocqPackages.mkRocqDerivation rec {
+      final.mkRocqDerivation rec {
         inherit mlPlugin owner release repo version;
 
         pname = "metarocq-template-rocq";
         preBuild = "cd template-rocq";
-        propagatedBuildInputs = [pkgs.rocqPackages.equations common utils];
+        propagatedBuildInputs = [final.equations common utils];
 
         patchPhase = ''
           patchShebangs ./configure.sh
@@ -74,14 +74,14 @@ _: pkgs: prev: rec {
       ];
     };
 
-    trakt = pkgs.rocqPackages.mkRocqDerivation rec {
+    trakt = final.mkRocqDerivation rec {
       version = "aa76ebdf4cc6323cf08c65e56f8ba8580d79f7a2";
 
       pname = "trakt";
       owner = "rocq-trakt";
       repo = "trakt";
 
-      propagatedBuildInputs = [pkgs.rocqPackages.rocq-elpi pkgs.rocqPackages.stdlib];
+      propagatedBuildInputs = [final.rocq-elpi final.stdlib];
 
       preBuild = ''
         sed -i -e 's/coq_makefile/rocq makefile/g' Makefile
