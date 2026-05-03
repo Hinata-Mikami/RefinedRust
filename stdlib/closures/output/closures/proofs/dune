@@ -5,4 +5,4 @@
 (name rrstd.closures.closures.proofs)
 (modules trait_incl_REFFasFnA_spec_subsumption_correct trait_incl_REFFasFnMutA_spec_subsumption_correct trait_incl_REFFasFnOnceA_spec_subsumption_correct trait_incl_REFmutFasFnMutA_spec_subsumption_correct trait_incl_REFmutFasFnOnceA_spec_subsumption_correct)
 (generate_project_file)
-(theories stdpp iris Ltac2 Equations lrust radium lithium refinedrust Stdlib rrstd.closures.theories rrstd.closures.closures.generated))
+(theories stdpp iris iris_contrib Ltac2 Equations lrust radium lithium refinedrust Stdlib rrstd.closures.theories rrstd.closures.closures.generated))

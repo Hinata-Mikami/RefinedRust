@@ -5,4 +5,4 @@
 (name rrstd.option.option.proofs)
 (modules proof_OptionTasstd_clone_Clone_clone proof_Option_T_filter proof_Option_OptionT_flatten proof_Option_T_map proof_Option_T_unwrap proof_Option_T_unwrap_or trait_incl_OptionTasstd_clone_Clone_spec_subsumption_correct trait_incl_OptionTasstd_fmt_Debug_spec_subsumption_correct trait_incl_OptionTasstd_marker_Copy_spec_subsumption_correct)
 (generate_project_file)
-(theories stdpp iris Ltac2 Equations lrust radium lithium refinedrust Stdlib rrstd.clone.clone.generated rrstd.closures.closures.generated rrstd.closures.theories rrstd.result.result.generated rrstd.result.theories rrstd.sized.sized.generated rrstd.option.option.generated))
+(theories stdpp iris iris_contrib Ltac2 Equations lrust radium lithium refinedrust Stdlib rrstd.clone.clone.generated rrstd.closures.closures.generated rrstd.closures.theories rrstd.result.result.generated rrstd.result.theories rrstd.sized.sized.generated rrstd.option.option.generated))

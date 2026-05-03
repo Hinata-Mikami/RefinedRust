@@ -77,6 +77,7 @@ struct Config {
     lib_load_paths: Vec<String>,
     #[serde(deserialize_with = "vec_or_split_colon")]
     extra_dependencies: Vec<String>,
+    enable_smtcoq: bool,
     work_dir: String,
     output_dir: Option<String>,
     post_generation_hook: Option<String>,
@@ -104,6 +105,7 @@ impl Default for Config {
             generate_dune_project: true,
             lib_load_paths: vec![],
             extra_dependencies: vec![],
+            enable_smtcoq: false,
             work_dir: ".".to_owned(),
             output_dir: None,
             post_generation_hook: None,
@@ -302,6 +304,12 @@ pub fn lib_load_paths() -> Vec<PathBuf> {
 #[must_use]
 pub fn extra_dependencies() -> Vec<String> {
     access_config(|c| c.extra_dependencies.clone()).into_iter().collect()
+}
+
+/// Enable `SMTCoq` support.
+#[must_use]
+pub fn enable_smtcoq() -> bool {
+    access_config(|c| c.enable_smtcoq)
 }
 
 #[must_use]

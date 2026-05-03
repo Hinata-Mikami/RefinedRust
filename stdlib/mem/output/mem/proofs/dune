@@ -5,4 +5,4 @@
 (name rrstd.mem.mem.proofs)
 (modules proof_mem_align_log_of proof_mem_align_of proof_mem_size_of)
 (generate_project_file)
-(theories stdpp iris Ltac2 Equations lrust radium lithium refinedrust Stdlib rrstd.mem.theories rrstd.mem.mem.generated))
+(theories stdpp iris iris_contrib Ltac2 Equations lrust radium lithium refinedrust Stdlib rrstd.mem.theories rrstd.mem.mem.generated))

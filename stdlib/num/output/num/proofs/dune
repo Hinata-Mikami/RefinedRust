@@ -5,4 +5,4 @@
 (name rrstd.num.num.proofs)
 (modules proof_i128_is_negative proof_i128_is_positive proof_i16_is_negative proof_i16_is_positive proof_i32_is_negative proof_i32_is_positive proof_i64_is_negative proof_i64_is_positive proof_i8_is_negative proof_i8_is_positive proof_isize_is_negative proof_isize_is_positive proof_u128_abs_diff proof_u16_abs_diff proof_u32_abs_diff proof_u64_abs_diff proof_u8_abs_diff proof_usize_abs_diff)
 (generate_project_file)
-(theories stdpp iris Ltac2 Equations lrust radium lithium refinedrust Stdlib  rrstd.num.num.generated))
+(theories stdpp iris iris_contrib Ltac2 Equations lrust radium lithium refinedrust Stdlib rrstd.num.num.generated))
