@@ -160,6 +160,8 @@
           (lib.filterAttrs (name: _: lib.strings.hasPrefix "stdlib-" name && name != "stdlib-stdlib") packages);
       in
         {
+          inherit sniper;
+
           refinedrust = pkgs.rocqPackages.mkRocqDerivation {
             inherit meta version;
 
