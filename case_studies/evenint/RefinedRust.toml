@@ -1,3 +1,2 @@
-enable_smtcoq = true
 lib_load_paths = ["../../stdlib"]
 output_dir = "output"
