@@ -445,6 +445,10 @@
             pname = "tests";
             src = ./case_studies/tests;
           }
+          {
+            pname = "smtcoq";
+            src = ./case_studies/smtcoq;
+          }
         ];
 
       devShells.default = pkgs.mkShell {
