@@ -77,10 +77,8 @@
 
         envBuilder = lib.rust.overrideToolchain toolchain.build;
       };
-    in rec {
-      inherit lib;
 
-      packages = let
+      dependencies = rec {
         stdpp = lib.rocq.mkDepDerivation rocq.stdpp {
           pname = "stdpp";
         };
@@ -125,7 +123,11 @@
 
           release.${version}.sha256 = "${rocq.sniper.sha256}";
         };
+      };
+    in rec {
+      inherit lib;
 
+      packages = let
         mkStdlib = {
           pname,
           opam-name ? pname,
@@ -160,8 +162,6 @@
           (lib.filterAttrs (name: _: lib.strings.hasPrefix "stdlib-" name && name != "stdlib-stdlib") packages);
       in
         {
-          inherit sniper;
-
           refinedrust = pkgs.rocqPackages.mkRocqDerivation {
             inherit meta version;
 
@@ -169,7 +169,7 @@
             opam-name = name;
             src = ./theories;
 
-            propagatedBuildInputs = [pkgs.rocqPackages.equations iris-contrib lambda-rust];
+            propagatedBuildInputs = [pkgs.rocqPackages.equations dependencies.iris-contrib dependencies.lambda-rust];
             useDune = true;
           };
 
@@ -180,7 +180,7 @@
             opam-name = name + "-smtcoq";
             src = ./theories;
 
-            propagatedBuildInputs = [packages.refinedrust sniper];
+            propagatedBuildInputs = [packages.refinedrust dependencies.sniper];
             useDune = true;
           };
 
@@ -448,10 +448,9 @@
         ];
 
       devShells.default = pkgs.mkShell {
-        inputsFrom = with packages; [frontend refinedrust-smtcoq];
-        packages = with pkgs;
-          [cargo-deny cargo-machete gnumake gnupatch gnused toolchain.dev]
-          ++ [pkgs.ocamlPackages.num pkgs.verit pkgs.rocqPackages.metarocq-template pkgs.rocqPackages.rocq-elpi];
+        inputsFrom = with packages; [frontend refinedrust];
+        packages = with pkgs; [cargo-deny cargo-machete gnumake rust.toolchain.dev dependencies.sniper];
+
         LD_LIBRARY_PATH = lib.makeLibraryPath [rust.toolchain.dev];
         DYLD_FALLBACK_LIBRARY_PATH = lib.makeLibraryPath [rust.toolchain.dev];
         LIBCLANG_PATH = lib.makeLibraryPath [pkgs.libclang.lib];

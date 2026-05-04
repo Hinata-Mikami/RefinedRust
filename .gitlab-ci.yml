@@ -34,7 +34,7 @@ stages: [ nix-cache, build, lint, tests ]
    - nix build --print-build-logs ${DEPENDENCIES}
 
   variables:
-    DEPENDENCIES: ".#refinedrust.inputDerivation .#sniper .#frontend.inputDerivation .#frontend.cargoArtifacts nixpkgs#gnumake nixpkgs#gnupatch nixpkgs#gnused"
+    DEPENDENCIES: ".#devShells.x86_64-linux.default .#frontend.cargoArtifacts"
     NIX_PATH_INFO_FLAGS: ""
     NIX_PATH_FILTER_REGEX: ""
     NIX_PLATFORM: "$(eval nix-instantiate --eval --expr 'builtins.currentSystem')"
