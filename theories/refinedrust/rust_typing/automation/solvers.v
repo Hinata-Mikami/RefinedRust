@@ -880,6 +880,7 @@ Ltac solve_lft_incl_init :=
   | |- lctx_lft_incl ?E ?L ?κ1 ?κ2 =>
       unfold lft_intersect_list; simpl
   end;
+  unfold_elctx;
   match goal with
   | |- lctx_lft_incl ?E ?L ?κ1 ?κ2 =>
       first [unify κ1 κ2; refine (lctx_lft_incl_refl E L κ1) |
@@ -1109,6 +1110,7 @@ End alive_external_tac.
 
 Ltac solve_lft_alive_init :=
   simpl;
+  unfold_elctx;
   match goal with
   | |- lctx_lft_alive ?E ?L ?κ =>
       notypeclasses refine (tac_lctx_lft_alive_init E L κ _)
@@ -1765,6 +1767,7 @@ Ltac solve_elctx_sat_step :=
 Ltac solve_elctx_sat_init :=
   (* first unfold stuff is commonly included in these conditions *)
   (*let esimpl := (unfold ty_outlives_E, tyl_outlives_E; simpl; notypeclasses refine eq_refl) in*)
+  unfold_elctx;
   lazymatch goal with
   | |- elctx_sat ?E ?L ?E' =>
       notypeclasses refine (tac_elctx_sat_simpl _ _ _ _ _ _ _ _);
@@ -2143,8 +2146,8 @@ End alive_tac.
 Ltac solve_lft_alive_count_iter :=
   idtac.
 
-Ltac solve_lft_alive_count ::=
-  repeat match goal with
+Ltac solve_lft_alive_count_step :=
+  match goal with
   | |- lctx_lft_alive_count ?E ?L static _ _ =>
       notypeclasses refine (lctx_lft_alive_count_static E L)
   | |- lctx_lft_alive_count ?E ?L (?κ ⊓ ?κ') _ _ =>
@@ -2176,7 +2179,11 @@ Ltac solve_lft_alive_count ::=
             [reflexivity | simpl; solve[solve_lft_alive_count]]
         | _ => fail
         end) E
-  end; fast_done.
+  end.
+Ltac solve_lft_alive_count ::=
+  unfold_elctx;
+  repeat solve_lft_alive_count_step;
+  fast_done.
 
 Ltac solve_lft_alive_count_iter ::=
   match goal with

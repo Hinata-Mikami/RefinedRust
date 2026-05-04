@@ -14,7 +14,8 @@ Proof.
 
   rep <-! liRStep.
   { destruct x'0 as [item | ]; last done.
-    injection H24 as <-.
+    rename select (inl _ = inl _) into Heq.
+    injection Heq as <-.
     rep liRStep; liShow.
     (* carry the first witness in the invariant *)
     liInst Hevar_x2 (λ π acc items iter clos, ClosInv π (Some acc) (item :: items) iter clos ∗ traits_iterator_Iterator_Next traits_iterator_Iterator_Self_spec_attrs π p self (Some item) x')%I.
@@ -44,8 +45,9 @@ Proof.
     rep liRStep; liShow. }
   rep liRStep; liShow.
   destruct x'0 as [item | ]; first done.
-  injection H24 as <-.
-    rep liRStep; liShow.
+  rename select (inr _ = inr _) into Heq.
+  injection Heq as <-.
+  rep liRStep; liShow.
   liInst Hevar_x0 x'.
   liInst Hevar_x2 self.
   rep liRStep; liShow.

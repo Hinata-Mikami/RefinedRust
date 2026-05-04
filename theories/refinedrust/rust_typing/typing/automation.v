@@ -345,16 +345,32 @@ Ltac liRIntroduceLetInGoal :=
       pose H := (LET_ID T); change_no_check (@envs_entails PROP Δ (@bi_wand PROP Q H))
     | @typed_val_expr ?Σ ?tG ?E ?L ?f ?e ?T =>
       pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_val_expr Σ tG E L f e H))
+
     | @typed_write ?Σ ?tG ?E ?L ?f ?e ?ot ?v ?rt ?ty ?r ?T =>
       pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_write Σ tG E L f e ot v rt ty r H))
+    (*| @typed_read ?Σ ?tG ?E ?L ?f ?e ?ot ?rm ?T =>*)
+      (*pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_read Σ tG E L f e ot rm H))*)
+    (*| @typed_borrow_mut ?Σ ?tG ?E ?L ?f ?e ?κ ?ort ?T =>*)
+      (*pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_borrow_mut Σ tG E L f e κ ort H))*)
+    (*| @typed_borrow_shr ?Σ ?tG ?E ?L ?f ?e ?κ ?ort ?T =>*)
+      (*pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_borrow_shr Σ tG E L f e κ ort H))*)
+
     (* NOTE: these two guys really hurt Qed performance. Not a good idea at all! *)
     (*| @typed_place ?Σ ?tG ?π ?E ?L ?l ?rto ?lt ?r ?b ?bmin ?P ?T =>*)
       (*pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_place Σ tG π E L l rto lt r b bmin P H))*)
     (*| @typed_context_fold ?Σ ?tG ?Acc ?P ?M ?π ?E ?L ?m ?tcx ?acc ?T =>*)
       (*pose (H := LET_ID T);*)
       (*change_no_check (@envs_entails PROP Δ (@typed_context_fold Σ tG Acc P M π E L m tcx acc H))*)
+    (*| @typed_context_fold_init ?Σ ?tG ?Acc ?Acc_interp ?M ?init_acc ?π ?E ?L ?m ?tctx ?Φ ?T =>*)
+      (*pose (H := LET_ID T);*)
+      (*change_no_check (@envs_entails PROP Δ (@typed_context_fold_init Σ tG Acc Acc_interp M init_acc π E L m tctx Φ H))*)
     | @typed_bin_op ?Σ ?tG ?E ?L ?f ?v1 ?P1 ?v2 ?P2 ?op ?ot1 ?ot2 ?T =>
       pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_bin_op Σ tG E L f v1 P1 v2 P2 op ot1 ot2 H))
+
+    (*| @prove_with_subtype ?Σ ?tG ?E ?L ?b ?pm ?P ?T =>*)
+      (*pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@prove_with_subtype Σ tG E L b pm P H))*)
+    (*| @introduce_with_hooks ?Σ ?tG ?E ?L ?P ?T =>*)
+      (*pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@introduce_with_hooks Σ tG E L P H))*)
     end
   end.
 
@@ -712,6 +728,25 @@ Ltac prepare_initial_coq_context :=
 Section tac.
   Context `{!typeGS Σ}.
 
+  Definition function_body {rts : list RT} (n : nat) π (fn : function) (fp : (eq rts rts) * (prod_vec lft n → plist type rts → fn_spec)) (fps : fn_params) (κs : prod_vec lft n) (tys : plist type rts) (lsa : vec loc (length fps.(fp_atys))) (sta : list syn_type) (x : _) (f : frame_id) (ϝ : lft) (E : elctx) (L : llctx) : iProp Σ :=
+    let Qinit :=
+        (* sidecondition first *)
+        (fps.(fp_Sc) π ∗
+        fps.(fp_Pa) π ∗
+        ([∗ list] l;'(existT rt (ty, r)) ∈ lsa;fp_atys fps, l ◁ₗ[ π, Owned] # r @ (◁ ty)) ∗
+        ([∗ list] xl;synty ∈ zip (f_args fn).*1 lsa;sta, xl.1 is_live{ (π, f), synty} xl.2))%I in
+    (credit_store 0 0 -∗ na_own π ⊤ -∗ allocated_locals (π, f) (f_args fn).*1 -∗ introduce_with_hooks E L (Qinit) (λ L2,
+        introduce_typed_stmt E L2 (π, f) ϝ fn (
+        λ v L2,
+            prove_with_subtype E L2 false ProveDirect (fn_ret_prop π ((fp.2 κs tys).(fn_p) x).(fp_fr) v) (λ L3 _ R3,
+            introduce_with_hooks E L3 R3 (λ L4,
+            (* we don't really kill it here, but just need to find it in the context *)
+            li_tactic (llctx_find_llft_goal L4 ϝ LlctxFindLftFull) (λ _,
+            find_in_context FindCreditStore (λ _,
+              find_in_context (FindNaOwn π) (λ mask : coPset, ⌜mask = ⊤⌝ ∗ True)%I)
+          )))
+        ))).
+
   Lemma intro_typed_function {rts : list RT} (n : nat) π (fn : function) (fp : (eq rts rts) * (prod_vec lft n → plist type rts → fn_spec)) :
     (∀ κs tys x (ϝ : lft) (f : frame_id),
       □ (
@@ -720,37 +755,22 @@ Section tac.
       let sta := fn_arg_syntys (fp_atys fps) in
       ⌜Forall2 syn_type_has_layout sta lya⌝ -∗
       ∀ (lsa : vec loc (length fps.(fp_atys))),
-      let Qinit :=
-        (* sidecondition first *)
-        fps.(fp_Sc) π ∗
-        fps.(fp_Pa) π ∗
-        ([∗ list] l;'(existT rt (ty, r)) ∈ lsa;fp_atys fps, l ◁ₗ[ π, Owned] # r @ (◁ ty)) ∗
-        ([∗ list] xl;synty ∈ zip (f_args fn).*1 lsa;sta, xl.1 is_live{ (π, f), synty} xl.2) in
       let E := (fps.(fp_elctx) ϝ) in
       let L := [ϝ ⊑ₗ{0} []] in
-      ∃ E', ⌜E' ⊆+ E⌝ ∗ ⌜E' = E'⌝ ∗
-      (credit_store 0 0 -∗ na_own π ⊤ -∗ allocated_locals (π, f) (f_args fn).*1 -∗ introduce_with_hooks E' L (Qinit) (λ L2,
-        introduce_typed_stmt E' L2 (π, f) ϝ fn (
-        λ v L2,
-            prove_with_subtype E' L2 false ProveDirect (fn_ret_prop π ((fp.2 κs tys).(fn_p) x).(fp_fr) v) (λ L3 _ R3,
-            introduce_with_hooks E' L3 R3 (λ L4,
-            (* we don't really kill it here, but just need to find it in the context *)
-            li_tactic (llctx_find_llft_goal L4 ϝ LlctxFindLftFull) (λ _,
-            find_in_context FindCreditStore (λ _,
-              find_in_context (FindNaOwn π) (λ mask : coPset, ⌜mask = ⊤⌝ ∗ True))
-          )))
-        ))))) -∗
+      ∃ E', ⌜E' ⊆+ E⌝ ∗
+      function_body n π fn fp fps κs tys lsa sta x f ϝ E' L
+      )) -∗
     typed_function π fn fp.
   Proof.
     iIntros "#Ha".
-    rewrite /typed_function.
+    rewrite /typed_function/function_body.
     iIntros (?????) "!# Hx1".
     iIntros (lsa) "(Hstore & Hna & Halloc & Hinit)".
     rewrite /introduce_typed_stmt /typed_stmt.
     iIntros (?) "#CTX #HE HL Hf Hcont".
     iApply fupd_wps.
     iPoseProof ("Ha" with "Hx1") as "HT".
-    iDestruct ("HT" $! lsa) as "(%E' & %Hsub & _ & HT)".
+    iDestruct ("HT" $! lsa) as "(%E' & %Hsub & HT)".
     iPoseProof (elctx_interp_submseteq _ _ Hsub with "HE") as "HE'".
     rewrite /introduce_with_hooks.
     iMod ("HT" with "Hstore Hna Halloc [] CTX HE' HL [Hinit]") as "(%L2 & HL & HT)"; first done.
@@ -814,13 +834,16 @@ Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropatter
     prepare_initial_coq_context;
     iExists _; iSplitR;
     [iPureIntro; solve [preprocess_elctx] | ];
+    (* let-bind E *)
     match goal with
-    | |- envs_entails _ (⌜?E1 = ?E2⌝ ∗ _) =>
-        (*remember E1 as _E eqn:Helctx;*)
-        (*eapply mk_elctx_eqn in Helctx;*)
-        iSplitR; first done
+    | |- envs_entails ?Δ (function_body ?n ?π ?fn ?fp ?fps ?κs ?tys ?lsa ?sta ?x ?f ?ϝ ?E ?L) =>
+        let H := fresh "E" in
+        pose (H := ELCTX E);
+        simpl in H;
+        change_no_check (envs_entails Δ (function_body n π fn fp fps κs tys lsa sta x f ϝ H L))
     end;
     inv_vec lsa;
+    unfold function_body;
     simpl;
     unfold typaram_wf;
     init_cache

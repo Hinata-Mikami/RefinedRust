@@ -18,19 +18,12 @@ Arguments BLOCK_PRECOND : simpl never.
 Definition CASE_DISTINCTION_INFO {B} (info : B) (* (i : list location_info) *) : Set := unit.
 Arguments CASE_DISTINCTION_INFO : simpl never.
 
-Definition ELCTX_EQN (A B : elctx) : Prop := A = B.
-Arguments ELCTX_EQN : simpl never.
-Lemma mk_elctx_eqn (A B : elctx) (Heq : A = B) :
-  ELCTX_EQN A B.
-Proof. done. Qed.
+Definition ELCTX (E : elctx) : elctx := E.
+Arguments ELCTX : simpl never.
 Ltac unfold_elctx :=
-  idtac.
-  (*try match goal with*)
-  (*| H : ELCTX_EQN ?Hvar ?E |- _ =>*)
-      (*unfold ELCTX_EQN in H;*)
-      (*subst Hvar*)
-  (*end.*)
-
+  try match goal with
+  | H := ELCTX _ |- _ => subst H; unfold ELCTX
+  end.
 
 Definition CODE_MARKER (rf : function) : function := rf.
 Notation "'HIDDEN'" := (CODE_MARKER _) (only printing).
