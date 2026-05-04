@@ -81,6 +81,51 @@
       inherit lib;
 
       packages = let
+        stdpp = lib.rocq.mkDepDerivation rocq.stdpp {
+          pname = "stdpp";
+        };
+
+        iris = lib.rocq.mkDepDerivation rocq.iris {
+          pname = "iris";
+          propagatedBuildInputs = [stdpp];
+        };
+
+        iris-contrib = lib.rocq.mkDepDerivation rocq.iris-contrib {
+          pname = "iris-contrib";
+          propagatedBuildInputs = [iris];
+        };
+
+        lambda-rust = lib.rocq.mkDepDerivation rocq.lambda-rust {
+          pname = "lambda-rust";
+          propagatedBuildInputs = [iris];
+        };
+
+        smtcoq = pkgs.rocqPackages.mkRocqDerivation rec {
+          inherit (rocq.smtcoq) version;
+
+          pname = "smtcoq";
+          owner = "smtcoq";
+          repo = "smtcoq";
+
+          mlPlugin = true;
+          propagatedBuildInputs = with pkgs; [ocamlPackages.num rocqPackages.stdlib rocqPackages.trakt verit];
+
+          release.${version}.sha256 = "${rocq.smtcoq.sha256}";
+        };
+
+        sniper = pkgs.rocqPackages.mkRocqDerivation rec {
+          inherit (rocq.sniper) version;
+
+          pname = "sniper";
+          owner = "smtcoq";
+          repo = "sniper";
+
+          mlPlugin = true;
+          propagatedBuildInputs = [pkgs.rocqPackages.metarocq-template smtcoq];
+
+          release.${version}.sha256 = "${rocq.sniper.sha256}";
+        };
+
         mkStdlib = {
           pname,
           opam-name ? pname,
@@ -96,7 +141,7 @@
               withStdlib = false;
               generateFiles = false;
               useDune = true;
-              propagatedBuildInputs = [packages.theories];
+              propagatedBuildInputs = [packages.refinedrust-smtcoq];
 
               preBuild = ''
                 find . -name dune -exec sed -i -e 's/(package refinedrust-stdlib)/(package ${opam-name})/g' {} \;
@@ -115,65 +160,27 @@
           (lib.filterAttrs (name: _: lib.strings.hasPrefix "stdlib-" name && name != "stdlib-stdlib") packages);
       in
         {
-          theories = let
-            stdpp = lib.rocq.mkDepDerivation rocq.stdpp {
-              pname = "stdpp";
-            };
+          theories = pkgs.rocqPackages.mkRocqDerivation {
+            inherit meta version;
 
-            iris = lib.rocq.mkDepDerivation rocq.iris {
-              pname = "iris";
-              propagatedBuildInputs = [stdpp];
-            };
+            pname = name;
+            opam-name = name;
+            src = ./theories;
 
-            iris-contrib = lib.rocq.mkDepDerivation rocq.iris-contrib {
-              pname = "iris-contrib";
-              propagatedBuildInputs = [iris];
-            };
+            propagatedBuildInputs = [pkgs.rocqPackages.equations iris-contrib lambda-rust];
+            useDune = true;
+          };
 
-            lambda-rust = lib.rocq.mkDepDerivation rocq.lambda-rust {
-              pname = "lambda-rust";
-              propagatedBuildInputs = [iris];
-            };
+          refinedrust-smtcoq = pkgs.rocqPackages.mkRocqDerivation {
+            inherit meta version;
 
-            solver = let
-              smtcoq = pkgs.rocqPackages.mkRocqDerivation rec {
-                inherit (rocq.smtcoq) version;
+            pname = "refinedrust-smtcoq";
+            opam-name = "refinedrust-smtcoq";
+            src = ./theories;
 
-                pname = "smtcoq";
-                owner = "smtcoq";
-                repo = "smtcoq";
-
-                mlPlugin = true;
-                propagatedBuildInputs = with pkgs; [ocamlPackages.num rocqPackages.stdlib rocqPackages.trakt verit];
-
-                release.${version}.sha256 = "${rocq.smtcoq.sha256}";
-              };
-
-              sniper = pkgs.rocqPackages.mkRocqDerivation rec {
-                inherit (rocq.sniper) version;
-
-                pname = "sniper";
-                owner = "smtcoq";
-                repo = "sniper";
-
-                mlPlugin = true;
-                propagatedBuildInputs = [pkgs.rocqPackages.metarocq-template smtcoq];
-
-                release.${version}.sha256 = "${rocq.sniper.sha256}";
-              };
-            in
-              sniper;
-          in
-            pkgs.rocqPackages.mkRocqDerivation {
-              inherit meta version;
-
-              pname = name;
-              opam-name = name;
-              src = ./theories;
-
-              propagatedBuildInputs = [pkgs.rocqPackages.equations iris-contrib lambda-rust solver];
-              useDune = true;
-            };
+            propagatedBuildInputs = [packages.theories sniper];
+            useDune = true;
+          };
 
           frontend = rust.envBuilder.buildPackage rec {
             inherit meta version;
@@ -360,7 +367,7 @@
 
             src = ./case_studies/extra_proofs;
 
-            buildInputs = [packages.theories];
+            buildInputs = [packages.refinedrust-smtcoq];
             useDune = true;
           };
         in
@@ -439,7 +446,7 @@
         ];
 
       devShells.default = pkgs.mkShell {
-        inputsFrom = with packages; [frontend theories];
+        inputsFrom = with packages; [frontend refinedrust-smtcoq];
         packages = with pkgs;
           [cargo-deny cargo-machete gnumake gnupatch gnused toolchain.dev]
           ++ [pkgs.ocamlPackages.num pkgs.verit pkgs.rocqPackages.metarocq-template pkgs.rocqPackages.rocq-elpi];

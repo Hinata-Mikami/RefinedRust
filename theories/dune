@@ -1,3 +1,0 @@
-(env
- (_ (rocq (flags -w -notation-overridden -w -notation-incompatible-prefix -w -redundant-canonical-projection -w -ambiguous-paths)))
- )

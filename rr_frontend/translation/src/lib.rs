@@ -851,7 +851,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             "Trakt",
             "SMTCoq",
             "Sniper",
-            "refinedrust.smtcoq",
+            "refinedrust_smtcoq",
         ];
 
         let mut deps: Vec<_> = base_deps.iter().map(ToString::to_string).collect();

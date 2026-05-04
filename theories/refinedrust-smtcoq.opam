@@ -1,0 +1,28 @@
+opam-version: "2.0"
+synopsis: "SMTCoq integration for RefinedRust"
+homepage: "https://gitlab.mpi-sws.org/lgaeher/refinedrust-dev"
+bug-reports: "https://gitlab.mpi-sws.org/lgaeher/refinedrust-dev"
+maintainer: "RefinedRust contributors"
+authors: "RefinedRust contributors"
+license: "BSD-3-Clause"
+
+depends: [
+  "refinedrust" {= version}
+  # smtcoq and dependencies
+  "rocq-metarocq-template" {(= "1.4.1+9.1")}
+	"rocq-metarocq-utils" {(= "1.4.1+9.1")}
+  "coq-sniper" {(= "dev")}
+	"coq-trakt" {(= "dev")}
+	"coq-smtcoq" {(= "dev")}
+]
+
+pin-depends: [
+	["coq-sniper.dev" "git+https://github.com/smtcoq/sniper.git#fdf1f5e31117727b6c4fa04326ff4875a5166fb3"]
+	["coq-smtcoq.dev" "git+https://github.com/smtcoq/smtcoq#b5840fb70c0ddce14e7a4e75d3f9b43c9f35d583"]
+	["coq-trakt.dev" "git+https://github.com/rocq-trakt/trakt#aa76ebdf4cc6323cf08c65e56f8ba8580d79f7a2"]
+]
+
+build: [
+  ["dune" "subst"] {pinned}
+  ["dune" "build" "-p" name "-j" jobs]
+]
