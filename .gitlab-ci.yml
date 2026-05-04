@@ -34,7 +34,7 @@ stages: [ nix-cache, build, lint, tests ]
    - nix build --print-build-logs ${DEPENDENCIES}
 
   variables:
-    DEPENDENCIES: ".#theories.inputDerivation .#refinedrust-smtcoq.inputDerivation .#frontend.inputDerivation .#frontend.cargoArtifacts nixpkgs#gnumake nixpkgs#gnupatch nixpkgs#gnused"
+    DEPENDENCIES: ".#refinedrust.inputDerivation .#refinedrust-smtcoq.inputDerivation .#frontend.inputDerivation .#frontend.cargoArtifacts nixpkgs#gnumake nixpkgs#gnupatch nixpkgs#gnused"
     NIX_PATH_INFO_FLAGS: ""
     NIX_PATH_FILTER_REGEX: ""
     NIX_PLATFORM: "$(eval nix-instantiate --eval --expr 'builtins.currentSystem')"
@@ -98,7 +98,7 @@ theories:
   stage: build
   needs: [ nix-cache ]
   variables:
-    NIX_DERIVATION: .#theories .#refinedrust-smtcoq
+    NIX_DERIVATION: .#refinedrust .#refinedrust-smtcoq
 
 frontend:
   extends: [ .nix, .build_to_nix_artifacts ]

@@ -160,7 +160,7 @@
           (lib.filterAttrs (name: _: lib.strings.hasPrefix "stdlib-" name && name != "stdlib-stdlib") packages);
       in
         {
-          theories = pkgs.rocqPackages.mkRocqDerivation {
+          refinedrust = pkgs.rocqPackages.mkRocqDerivation {
             inherit meta version;
 
             pname = name;
@@ -174,11 +174,11 @@
           refinedrust-smtcoq = pkgs.rocqPackages.mkRocqDerivation {
             inherit meta version;
 
-            pname = "refinedrust-smtcoq";
-            opam-name = "refinedrust-smtcoq";
+            pname = name + "-smtcoq";
+            opam-name = name + "-smtcoq";
             src = ./theories;
 
-            propagatedBuildInputs = [packages.theories sniper];
+            propagatedBuildInputs = [packages.refinedrust sniper];
             useDune = true;
           };
 
