@@ -13,7 +13,7 @@ Proof.
   all_zero_prelude.
 
   repeat liRStep; liShow.
-  { rewrite fmap_app; rep liRStep. } 
+  { rewrite fmap_app; rep liRStep. }
   rewrite snd_zip; last solve_goal.
   repeat liRStep; liShow.
 

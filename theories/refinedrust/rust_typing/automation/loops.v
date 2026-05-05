@@ -170,9 +170,9 @@ Ltac get_π :=
 
 (** Composes the loop invariant from the invariant [Inv : bb_inv_t] (a constr),
   the runtime function [FN : function], the current Iris environment [env : env],
-  and the current contexts [current_E : elctx], [current_L : llctx],
+  and the current context [current_L : llctx],
   and calls [cont Inv opt_var], where [Inv] is the invariant and [opt_var] is the optional iterator variable. *)
-Ltac compute_loop_invariant frame FN Inv envs current_E current_L cont :=
+Ltac compute_loop_invariant frame FN Inv envs current_L cont :=
   (* find Σ *)
   let Σ := get_Σ in
   (* get spatial env *)
@@ -236,11 +236,11 @@ Ltac compute_loop_invariant frame FN Inv envs current_E current_L cont :=
       end in
 
     pose (Hinv :=
-      λ (iter_init_state : _) (params : _) (E : elctx) (L : llctx),
+      λ (iter_init_state : _) (params : _) (L : llctx),
       ltac:(
         (* specialize the lifetime ctx invariant *)
         let HEL := fresh "Hel" in
-        pose (HEL := (E = current_E ∧ L = current_L));
+        pose (HEL := (L = current_L));
 
         (* pose the loop invariant as a local hypothesis so we can specialize it while building the term *)
         let Ha := fresh "Hinv" in
@@ -258,11 +258,11 @@ Ltac compute_loop_invariant frame FN Inv envs current_E current_L cont :=
 
   | None =>
     pose (Hinv :=
-      λ (params : _) (E : elctx) (L : llctx),
+      λ (params : _) (L : llctx),
       ltac:(
         (* specialize the lifetime ctx invariant *)
         let HEL := fresh "Hel" in
-        pose (HEL := (E = current_E ∧ L = current_L));
+        pose (HEL := (L = current_L));
 
         (* pose the loop invariant as a local hypothesis so we can specialize it while building the term *)
         let Ha := fresh "Hinv" in

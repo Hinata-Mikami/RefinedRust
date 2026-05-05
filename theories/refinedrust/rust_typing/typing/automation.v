@@ -429,7 +429,7 @@ Ltac liRGoto goto_bb :=
                 fail 1 "infer_loop_invariant: no loop invariant found"
             end in
             (* pose the composed loop invariant *)
-            compute_loop_invariant f fn Inv Δ E L ltac:(fun Inv IterVar =>
+            compute_loop_invariant f fn Inv Δ L ltac:(fun Inv IterVar =>
               (* finally initiate Löb *)
               match IterVar with
               | None =>

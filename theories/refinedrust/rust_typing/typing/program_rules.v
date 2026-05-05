@@ -4371,9 +4371,9 @@ Section subsume.
   (* We might also want to stratify here -- but this is difficult, because we'd need a second logical step.
      Instead, we currently insert an annotation for that in the frontend. *)
   Lemma type_goto_precond E L f P b fn R ϝ :
-    typed_block P f b fn R ϝ ∗
+    typed_block E P f b fn R ϝ ∗
     (* [true] so that we can deinitialize with [owned_subltype_step] *)
-    prove_with_subtype E L true ProveDirect (P E L) (λ L' _ R,
+    prove_with_subtype E L true ProveDirect (P L) (λ L' _ R,
       ⌜L = L'⌝ ∗ True (* TODO maybe relax and require inclusion of contexts or so. *))
     ⊢ typed_stmt E L f (Goto b) fn R ϝ.
   Proof.
@@ -4386,15 +4386,15 @@ Section subsume.
     by iApply "Hblock".
   Qed.
 
-  Lemma typed_block_rec f fn R P b ϝ s :
+  Lemma typed_block_rec E f fn R P b ϝ s :
     fn.(f_code) !! b = Some s →
-    (□ (∀ E L, (□ typed_block P f b fn R ϝ) -∗
-      introduce_with_hooks E L (P E L) (λ L2,
+    (□ (∀ L, (□ typed_block E P f b fn R ϝ) -∗
+      introduce_with_hooks E L (P L) (λ L2,
         typed_stmt E L2 f s fn R ϝ)))
-    ⊢ typed_block P f b fn R ϝ.
+    ⊢ typed_block E P f b fn R ϝ.
   Proof.
     iIntros (Hs) "#Hb". iLöb as "IH".
-    iIntros (? E L) "#CTX #HE HL Hf HP Hcont".
+    iIntros (? L) "#CTX #HE HL Hf HP Hcont".
     iApply wps_goto; first done.
     iApply (physical_step_step_upd with "HP").
     iApply physical_step_intro. iNext.
@@ -4407,16 +4407,16 @@ Section subsume.
      Instead of just jumping there, we can setup an invariant [P] on ownership and the lifetime contexts.
      Then instead prove: wp of the block, but in the context we can persistently assume the WP of the goto with the same invariant already. *)
   (* Note: these need to be manually applied. *)
-  Lemma typed_goto_acc E L f fn R {A} (P : A → elctx → llctx → iProp Σ) b ϝ s :
+  Lemma typed_goto_acc E L f fn R {A} (P : A → llctx → iProp Σ) b ϝ s :
     fn.(f_code) !! b = Some s →
     (* TODO maybe also stratify? *)
     (∃ params,
-    prove_with_subtype E L true ProveDirect (P params E L) (λ L' _ R2,
+    prove_with_subtype E L true ProveDirect (P params L) (λ L' _ R2,
       ⌜L' = L⌝ ∗ (* TODO maybe relax if we have a separate condition on lifetime contexts *)
       (* gather up the remaining ownership *)
       accu (λ Q,
-      (∀ E L, (□ typed_block (λ E L, P params E L ∗ Q) f b fn R ϝ) -∗
-          introduce_with_hooks E L (P params E L ∗ Q) (λ L2,
+      (∀ L, (□ typed_block E (λ L, P params L ∗ Q) f b fn R ϝ) -∗
+          introduce_with_hooks E L (P params L ∗ Q) (λ L2,
           typed_stmt E L2 f s fn R ϝ)))))
     ⊢ typed_stmt E L f (Goto b) fn R ϝ.
   Proof.
@@ -4432,7 +4432,7 @@ Section subsume.
   Qed.
 
   (* A variant where [P] is first instantiated with the refinement of some local variable *)
-  Lemma typed_goto_acc' E L f fn R b ϝ s {rt : RT} (l : loc) {A} (P : RT_xt rt → A → elctx → llctx → iProp Σ) :
+  Lemma typed_goto_acc' E L f fn R b ϝ s {rt : RT} (l : loc) {A} (P : RT_xt rt → A → llctx → iProp Σ) :
     fn.(f_code) !! b = Some s →
     find_in_context (FindLoc l) (λ '(existT rt' (lt, r, bk, π)),
     l ◁ₗ[π, bk] r @ lt -∗
@@ -4440,12 +4440,12 @@ Section subsume.
     ⌜r = # $# (rew [RT_xt] Heq in r')⌝ ∗
     ⌜π = f.1⌝ ∗
     (* TODO maybe also stratify? *)
-    prove_with_subtype E L true ProveDirect (P r' a E L) (λ L' _ R2,
+    prove_with_subtype E L true ProveDirect (P r' a L) (λ L' _ R2,
       ⌜L' = L⌝ ∗ (* TODO maybe relax if we have a separate condition on lifetime contexts *)
       (* gather up the remaining ownership *)
       accu (λ Q,
-      (∀ E L, (□ typed_block (λ E L, P r' a E L ∗ Q) f b fn R ϝ) -∗
-          introduce_with_hooks E L (P r' a E L ∗ Q) (λ L2,
+      (∀ L, (□ typed_block E (λ L, P r' a L ∗ Q) f b fn R ϝ) -∗
+          introduce_with_hooks E L (P r' a L ∗ Q) (λ L2,
           typed_stmt E L2 f s fn R ϝ)))))
     ⊢ typed_stmt E L f (Goto b) fn R ϝ.
   Proof.

@@ -38,10 +38,9 @@ Proof.
   { simplify_layout_goal. by eapply syn_type_has_layout_make_untyped. }
   iModIntro.
 
-  set (loop_inv := (λ (_ : ()) (E : elctx) (L : llctx),
+  set (loop_inv := (λ (_ : ()) (L : llctx),
     ∃ (i : nat),
     ⌜L = [ϝ ⊑ₗ{0} []]⌝ ∗
-    ⌜E = ty_outlives_E T_ty ϝ ++ ty_wf_E T_ty⌝ ∗
     (credit_store 0 0 ∗
     arg_size ◁ₗ[π, Owned] #size @ (◁ int USize) ∗
     local_count ◁ₗ[π, Owned] #(Z.of_nat i) @ (◁ int USize) ∗
@@ -56,7 +55,7 @@ Proof.
   liRStepUntil (introduce_with_hooks).
   liRStep; liShow.
   iApply introduce_with_hooks_base.
-  iIntros  "(%i & -> & -> & Hcredit & Hlen & Hcount & Hsrc & Hdst & Hs & Ht)".
+  iIntros  "(%i & -> & Hcredit & Hlen & Hcount & Hsrc & Hdst & Hs & Ht)".
   rep liRStep. liShow.
   (*return: go back to values *)
   assert (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t) = (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) (take (i * ly_size T_st_ly) vs ++ drop (i * ly_size T_st_ly) v_t) : list val)) as ->.

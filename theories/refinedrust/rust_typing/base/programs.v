@@ -822,11 +822,11 @@ Section judgments.
   Global Arguments typed_stmt _ _ _ _%_E _ _%_I _.
 
   (* [P] is an invariant on the context. *)
-  Definition typed_block (P : elctx → llctx → iProp Σ) (f : frame_path) (b : label) (fn : function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
-    (∀ Φ E L,
+  Definition typed_block (E : elctx) (P : llctx → iProp Σ) (f : frame_path) (b : label) (fn : function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
+    (∀ Φ L,
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
       current_frame f.1 f.2 -∗
-      logical_step ⊤ (P E L) -∗
+      logical_step ⊤ (P L) -∗
       typed_stmt_post_cond f fn R Φ -∗
       WPs{f.1} (Goto b) {{ fn.(f_code), Φ}}).
 
@@ -4534,6 +4534,6 @@ Notation "'typed_context_fold_step' step π E L m l lt r ls 'HIDDEN_ACC' 'HIDDEN
 Notation "'typed_context_fold' step E L m ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typed_context_fold step E L m ls _ _) (only printing) : rr_hidden.
 Notation "'weak_subltype' E L b r1 r2 lt1 lt2 'HIDDEN_CONT'" := (weak_subltype E L b r1 r2 lt1 lt2 _) (only printing) : rr_hidden.
 
-Notation "'typed_block' 'HIDDEN_INV' f l rf R ϝ" := (typed_block _ f l rf R ϝ) (only printing, at level 100) : rr_hidden.
+Notation "'typed_block' 'HIDDEN_INV' E f l rf R ϝ" := (typed_block E _ f l rf R ϝ) (only printing, at level 100) : rr_hidden.
 
 Global Open Scope rr_hidden.
