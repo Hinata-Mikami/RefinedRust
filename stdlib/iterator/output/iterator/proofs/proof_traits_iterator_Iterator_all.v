@@ -23,8 +23,6 @@ Proof.
   { iRename select (∀ _, _)%I into "Hwand".
     iDestruct ("Hwand" with "[$] [$]") as "(%pclos & Hpre & Hnext & Hcl)".
     rep liRStep; liShow.
-    liInst Hevar_a pclos.
-    rep liRStep; liShow.
     iPoseProof ("Hcl" with "[$]") as "(%Heq & Hinv)".
     destruct res; simpl; rep liRStep. }
   rep <-! liRStep; liShow.

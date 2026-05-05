@@ -30,8 +30,6 @@ Proof.
   { iRename select (∀ _, _)%I into "Hpres".
     iPoseProof ("Hpres" with "[$] [$]") as "(%pclos & Hpre & ? & Hcl)".
     rep liRStep; liShow.
-    liInst Hevar_a pclos.
-    rep liRStep; liShow.
     iPoseProof ("Hcl" with "[$]") as "(% & ?)".
     rep liRStep; liShow. }
   rep <-! liRStep; liShow.

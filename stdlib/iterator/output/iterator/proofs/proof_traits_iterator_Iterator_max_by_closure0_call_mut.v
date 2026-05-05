@@ -13,10 +13,6 @@ Proof.
   traits_iterator_Iterator_max_by_closure0_call_mut_prelude.
 
   rep liRStep; liShow.
-  liInst Hevar_x3 pclos.
-  rep liRStep; liShow.
-  liInst Hevar_capture_compare__new x'.
-  rep liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. 1-3: sidecond_solver.

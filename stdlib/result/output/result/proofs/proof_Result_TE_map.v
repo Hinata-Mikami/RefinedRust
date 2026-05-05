@@ -13,10 +13,6 @@ Proof.
   Result_TE_map_prelude.
 
   rep <-! liRStep; liShow.
-  { rep liRStep; liShow.
-    liInst Hevar_x1 p.
-    rep liRStep; liShow. }
-  rep liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

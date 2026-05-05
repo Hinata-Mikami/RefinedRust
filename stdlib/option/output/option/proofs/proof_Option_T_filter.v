@@ -13,10 +13,6 @@ Proof.
   Option_T_filter_prelude.
 
   rep <-! liRStep; liShow.
-  { rep liRStep; liShow.
-    liInst Hevar_x1 p.
-    repeat liRStep; liShow. }
-  repeat liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

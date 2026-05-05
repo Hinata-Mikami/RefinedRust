@@ -13,8 +13,6 @@ Proof.
   min_by_prelude.
 
   rep liRStep; liShow.
-  liInst Hevar_x1 p.
-  rep liRStep; liShow.
   { liInst Hevar_x Lt. rep liRStep; liShow. }
   { rep liRStep; liShow. liInst Hevar_x x'. rep liRStep; liShow. }
 

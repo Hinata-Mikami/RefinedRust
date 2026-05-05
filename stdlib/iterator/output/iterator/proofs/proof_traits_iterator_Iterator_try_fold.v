@@ -36,8 +36,6 @@ Proof.
   (* establishing the precondition *)
   iRename select (∀ _ _ _ _, _)%I into "Hwand".
   iPoseProof ("Hwand" with "[$] [$] [$]") as "(%pclos & Hpre & Hnext & ? & Hcl)".
-  rep liRStep; liShow.
-  liInst Hevar_x1 pclos.
   rep <-! liRStep; liShow.
   { rep liRStep; liShow.
     rename select (Try_BranchFn _ _ = inl _) into Heq. rewrite Heq.

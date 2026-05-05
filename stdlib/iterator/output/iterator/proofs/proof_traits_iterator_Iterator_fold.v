@@ -20,8 +20,6 @@ Proof.
   { iRename select (∀ _, _)%I into "Hwand".
     iPoseProof ("Hwand" with "[$] [$]") as "Hwand'".
     iPoseProof ("Hwand'" with "[$]") as "(%pclos & Hpre & ? & ? & Hcl)".
-    rep liRStep; liShow.
-    liInst Hevar_x1 pclos.
     rep <-! liRStep; liShow.
     iPoseProof ("Hcl" with "[$]") as "(? & _)".
     rep liRStep; liShow.

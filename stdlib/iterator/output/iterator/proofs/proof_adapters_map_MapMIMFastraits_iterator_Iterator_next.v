@@ -29,8 +29,6 @@ Proof.
     iPoseProof ("Hsome'" with "Hnext_x Hinv") as "(%p & %Hpred & Hpre & Hinv_clos)".
     iPoseProof (boringly_intro with "Hpre") as "#Hpre_x".
 
-    rep liRStep; liShow.
-    liInst Hevar_p p.
     rep <-! liRStep. liShow.
     iRename select (FnOnce_PostMut _ _ _ _ _ _ _) into "Hpost".
     iPoseProof (boringly_intro with "Hpost") as "#Hpost_x".

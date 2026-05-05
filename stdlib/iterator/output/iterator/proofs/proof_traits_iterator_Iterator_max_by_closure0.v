@@ -15,8 +15,6 @@ Proof.
   rep <-! liRStep; liShow.
   apply_update (updateable_copy_lft "vlft6" "plft8").
   rep liRStep; liShow.
-  liInst Hevar_x1 pclos.
-  rep liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

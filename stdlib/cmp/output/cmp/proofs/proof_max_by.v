@@ -13,10 +13,6 @@ Proof.
   max_by_prelude.
 
   rep liRStep; liShow.
-  liInst Hevar_x1 p.
-  rep liRStep; liShow.
-  { liInst Hevar_x1 Lt. rep liRStep; liShow. }
-  { rep liRStep; liShow. liInst Hevar_x1 x'. rep liRStep; liShow. }
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

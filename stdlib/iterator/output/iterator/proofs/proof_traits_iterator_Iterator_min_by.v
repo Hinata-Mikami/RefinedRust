@@ -31,8 +31,6 @@ Proof.
     iModIntro. iIntros "Hnext (Hinv & ->)".
     iPoseProof ("Hpres'" with "[$] [$]") as "(%pclos & Hpre & ? & Hcl)".
     rep liRStep; liShow.
-    liInst Hevar_a pclos.
-    rep liRStep; liShow.
     iPoseProof ("Hcl" with "[$]") as "(? & _)".
     rep liRStep; liShow. }
   rep liRStep; liShow.

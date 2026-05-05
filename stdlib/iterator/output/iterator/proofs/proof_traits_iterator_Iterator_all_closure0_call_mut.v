@@ -13,11 +13,6 @@ Proof.
   traits_iterator_Iterator_all_closure0_call_mut_prelude.
 
   rep <-! liRStep; liShow.
-  rep liRStep; liShow.
-  liInst Hevar_x3 pclos.
-  rep liRStep; liShow.
-  liInst Hevar_capture_f__new x'.
-  rep liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
