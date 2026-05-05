@@ -17,7 +17,7 @@ Proof.
   liInst Hevar_x2 (λ π acc seq it_state '( *[(clos_state, γ')]),
     ClosInv π acc seq it_state clos_state ∗ ⌜γ' = γ⌝)%I.
   iRename select (∀ _ _ _ _, _)%I into "Hpres".
-  rep 8 liRStep; liShow.
+  rep 10 liRStep; liShow.
   iApply prove_with_subtype_default.
   iRename select (∀ _ _, _ -∗ _)%I into "Hinit".
   iSplitL "Hinit".

@@ -40,7 +40,7 @@ Proof.
     liInst Hevar_e_inner inner_el.
     rep liRStep. 
     liInst Hevar_x p.
-    rep <- 2 liRStep.
+    rep <- 1 liRStep.
     iEval (rewrite /traits_iterator_Iterator_Inv/=).
     rewrite /MapInv.
     rep liRStep; liShow.

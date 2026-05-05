@@ -19,8 +19,8 @@ Proof.
     rep <-! liRStep; liShow.
     rep <- 20 liRStep; liShow.
     { liRStep; liShow. liRStep; liShow.
-      liRStep; liShow. liRStep; liShow.
-      liRStep; liShow. liInst Hevar_s2_inner x'.
+      liRStep; liShow.
+      liInst Hevar_s2_inner x'.
       iEval (rewrite /traits_iterator_Iterator_Inv/=).
       rep liRStep; liShow. }
     { rep liRStep; liShow.

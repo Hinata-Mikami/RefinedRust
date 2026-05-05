@@ -19,7 +19,7 @@ Proof.
     ClosInv π iter f.cur ∗ ⌜f.ghost = γ0⌝ ∗
     ⌜if_Ok acc (λ _, Forall P seq)⌝ ∗
     ⌜if_Err acc (λ _, ∃ seq' e, seq = seq' ++ [e] ∧ Forall P seq' ∧ ¬ P e)⌝)%I.
-  rep 30 liRStep; liShow.
+  rep 37 liRStep; liShow.
   { iRename select (∀ _, _)%I into "Hwand".
     iIntros "? (<- & % & _)".
     iDestruct ("Hwand" with "[$] [$]") as "(%pclos & Hpre & Hnext & Hcl)".

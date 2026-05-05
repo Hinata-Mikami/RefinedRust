@@ -342,18 +342,18 @@ Ltac liRIntroduceLetInGoal :=
     let H := fresh "GOAL" in
     lazymatch P with
     | @bi_wand ?PROP ?Q ?T =>
-      pose H := (LET_ID T); change_no_check (@envs_entails PROP Δ (@bi_wand PROP Q H))
+      li_let_bind T (fun H => constr:(@envs_entails PROP Δ (@bi_wand PROP Q H)))
     | @typed_val_expr ?Σ ?tG ?E ?L ?f ?e ?T =>
-      pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_val_expr Σ tG E L f e H))
+      li_let_bind T (fun H => constr:(@envs_entails PROP Δ (@typed_val_expr Σ tG E L f e H)))
 
     | @typed_write ?Σ ?tG ?E ?L ?f ?e ?ot ?v ?rt ?ty ?r ?T =>
-      pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_write Σ tG E L f e ot v rt ty r H))
+      li_let_bind T (fun H => constr:(@envs_entails PROP Δ (@typed_write Σ tG E L f e ot v rt ty r H)))
     | @typed_read ?Σ ?tG ?E ?L ?f ?e ?ot ?rm ?T =>
-      pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_read Σ tG E L f e ot rm H))
+      li_let_bind T (fun H => constr:(@envs_entails PROP Δ (@typed_read Σ tG E L f e ot rm H)))
     | @typed_borrow_mut ?Σ ?tG ?E ?L ?f ?e ?κ ?ort ?T =>
-      pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_borrow_mut Σ tG E L f e κ ort H))
+      li_let_bind T (fun H => constr:(@envs_entails PROP Δ (@typed_borrow_mut Σ tG E L f e κ ort H)))
     | @typed_borrow_shr ?Σ ?tG ?E ?L ?f ?e ?κ ?ort ?T =>
-      pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_borrow_shr Σ tG E L f e κ ort H))
+      li_let_bind T (fun H => constr:(@envs_entails PROP Δ (@typed_borrow_shr Σ tG E L f e κ ort H)))
 
     (* NOTE: these two guys really hurt Qed performance. Not a good idea at all! *)
     (*| @typed_place ?Σ ?tG ?π ?E ?L ?l ?rto ?lt ?r ?b ?bmin ?P ?T =>*)
@@ -361,16 +361,17 @@ Ltac liRIntroduceLetInGoal :=
     (*| @typed_context_fold ?Σ ?tG ?Acc ?P ?M ?π ?E ?L ?m ?tcx ?acc ?T =>*)
       (*pose (H := LET_ID T);*)
       (*change_no_check (@envs_entails PROP Δ (@typed_context_fold Σ tG Acc P M π E L m tcx acc H))*)
+
     | @typed_context_fold_init ?Σ ?tG ?Acc ?Acc_interp ?M ?init_acc ?π ?E ?L ?m ?tctx ?Φ ?T =>
-      pose (H := LET_ID T);
-      change_no_check (@envs_entails PROP Δ (@typed_context_fold_init Σ tG Acc Acc_interp M init_acc π E L m tctx Φ H))
+      li_let_bind T (fun H => constr:(@envs_entails PROP Δ (@typed_context_fold_init Σ tG Acc Acc_interp M init_acc π E L m tctx Φ H)))
     | @typed_bin_op ?Σ ?tG ?E ?L ?f ?v1 ?P1 ?v2 ?P2 ?op ?ot1 ?ot2 ?T =>
-      pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_bin_op Σ tG E L f v1 P1 v2 P2 op ot1 ot2 H))
+      li_let_bind T (fun H => constr:(@envs_entails PROP Δ (@typed_bin_op Σ tG E L f v1 P1 v2 P2 op ot1 ot2 H)))
 
     | @prove_with_subtype ?Σ ?tG ?E ?L ?b ?pm ?P ?T =>
-      pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@prove_with_subtype Σ tG E L b pm P H))
+      li_let_bind T (fun H => constr:(@envs_entails PROP Δ (@prove_with_subtype Σ tG E L b pm P H)))
+    (* This one isn't beneficial for performance, because we often get lots of True * True * ... intros.
     | @introduce_with_hooks ?Σ ?tG ?E ?L ?P ?T =>
-      pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@introduce_with_hooks Σ tG E L P H))
+      li_let_bind T (fun H => constr:(@envs_entails PROP Δ (@introduce_with_hooks Σ tG E L P H))) *)
     end
   end.
 
