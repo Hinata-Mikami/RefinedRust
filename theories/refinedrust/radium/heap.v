@@ -383,7 +383,7 @@ Definition cast_to_bool (ot: op_type) (v: val) (st: heap_state) : option bool :=
   end.
 
 (** ** MemCast: Transforming bytes read from memory.
-  [mem_cast] should only be called with length of [v] matching [ot] 
+  [mem_cast] should only be called with length of [v] matching [ot]
   The dependence on [st] is not necessary right now, but should one day make it easier to support exposed provenance casts. *)
 Fixpoint mem_cast (v : val) (ot : op_type) (st : (gset addr * heap_state)) : val :=
   default (replicate (length v) MPoison) (
@@ -393,14 +393,17 @@ Fixpoint mem_cast (v : val) (ot : op_type) (st : (gset addr * heap_state)) : val
       (* interpret as an integer *)
       v' ← val_to_bytes v;
       a ← val_to_Z v' USize;
-      Some (val_of_loc (Loc ProvNone a))
+      val_of_loc (Loc ProvNone a)
   | IntOp it => val_to_bytes v
   | CharOp => if val_to_char v is Some _ then val_to_bytes v else None
   | BoolOp => if val_to_bool v is Some _ then val_to_bytes v else None
   (* The resize technically should not be necessary since mem_cast
   should only be called if the size is equal to the length of the
   value. But adding it makes proving mem_cast_length a lot easier. *)
-  | StructOp sl ots => Some $ resize (length v) MPoison $ mjoin $ zip_with (λ f x, f x)
+  | StructOp sl ots => 
+      (* TODO: maybe this should work by decoding the struct val first? *)
+      (* We could also have a structured value representation (dependently indexed by op_type) *)
+      Some $ resize (length v) MPoison $ mjoin $ zip_with (λ f x, f x)
       (pad_struct sl.(sl_members)
                   (((λ ot, λ v, mem_cast v ot st) <$> ots))
                   (λ ly _, (replicate (ly_size ly) MPoison)))
@@ -427,8 +430,10 @@ Proof.
     destruct (val_to_bytes v) as [v'|] eqn:Hv => //=. 2: by rewrite length_replicate.
     move: Hv => /length_mapM ->.
     destruct (val_to_Z v') eqn:Hv' => //=. 2: by rewrite length_replicate.
+    specialize (val_to_Z_in_range _ _ _ Hv') as Hel.
     move: Hv' => /val_to_Z_length /=?.
-    by repeat case_match.
+    rewrite val_of_loc_Some; last done.
+    rewrite val_of_loc_unchecked_length//.
   - by rewrite length_resize.
   - done.
   - destruct (val_to_char v) => /=.
@@ -438,10 +443,23 @@ Proof.
     + by rewrite length_replicate.
 Qed.
 
-Lemma mem_cast_id_loc l :
-  mem_cast_id (val_of_loc l) PtrOp.
-Proof. move => st. rewrite /mem_cast /=. by rewrite val_to_of_loc. Qed.
 
+Lemma mem_cast_id_loc' l v :
+  val_of_loc l = Some v →
+  mem_cast_id v PtrOp.
+Proof.
+  move => ? st. rewrite /mem_cast /=.
+  unfold mem_cast_id; simpl.
+  rewrite (val_to_of_loc l); done.
+Qed.
+Lemma mem_cast_id_loc l v :
+  val_to_loc v = Some l →
+  mem_cast_id v PtrOp.
+Proof.
+  move => Hl st. rewrite /mem_cast /=.
+  rewrite /mem_cast_id; simpl.
+  intros. rewrite Hl//.
+Qed.
 Lemma mem_cast_id_int it v n :
   val_to_Z v it = Some n →
   mem_cast_id v (IntOp it).
@@ -517,7 +535,9 @@ Proof.
     { rewrite Heq. done. }
     destruct (val_to_bytes v) as [v' | ] eqn:Heq'; simpl.
     + destruct (val_to_Z v' USize) as [ z | ] eqn:Heq2; simpl.
-      * by rewrite val_to_of_loc //.
+      * rewrite val_of_loc_Some; last by eapply val_to_Z_in_range.
+        rewrite (val_to_of_loc (Loc ProvNone z)) //.
+        rewrite val_of_loc_Some//. by eapply val_to_Z_in_range.
       * destruct v; simpl; first done.
         rewrite length_replicate. done.
     + destruct v; simpl; first done.

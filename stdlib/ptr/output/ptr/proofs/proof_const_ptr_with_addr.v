@@ -22,14 +22,19 @@ Proof.
   iRename select (_ ◁ᵥ{π, _} addr @ int USize)%I into "Hv".
   iEval (rewrite /ty_own_val/=) in "Hv".
   iDestruct "Hv" as "(_ & %)".
-  iApply wp_copy_alloc_id; [done | apply val_to_of_loc | ].
+  iApply wp_copy_alloc_id; [done | | | ].
+  { apply val_to_loc_Some_l2v. done. }
+  { solve_goal. }
   iApply physical_step_intro; iNext.
   set (l2 := Loc x.(loc_p) addr).
   iAssert (l2 ◁ᵥ{π, MetaNone} l2 @ alias_ptr_t)%I as "?".
-  { rewrite /ty_own_val/=. do 2 iR.
-    simpl. iPureIntro. by eapply val_to_Z_in_range. }
+  { rewrite /ty_own_val/=. iR.
+    simpl. iPureIntro.
+    apply val_to_loc_Some_l2v.
+    by eapply val_to_Z_in_range. }
+  iIntros (v') "%Hv".
   iApply ("HCont" $! _ _ _ (alias_ptr_t) l2 with "HL Hf []").
-  { done. }
+  { rewrite (l2v_correct _ v'); done. }
   repeat liRStep; liShow.
 
   all: print_remaining_goal.

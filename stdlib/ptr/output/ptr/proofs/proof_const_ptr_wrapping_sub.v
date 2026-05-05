@@ -17,12 +17,12 @@ Proof.
   rewrite /typed_bin_op/typed_val_expr.
   iIntros "Hv1 Hv2" (Φ) "#CTX #HE HL Hf Hcont".
   rewrite {1}/ty_own_val /=. iDestruct "Hv1" as "(_ & %Hv1)".
-  rewrite {1}/ty_own_val /=. iDestruct "Hv2" as "(_ & -> & %)".
+  rewrite {1}/ty_own_val /=. iDestruct "Hv2" as "(_ & %)".
   iRename select (credit_store _ _) into "Hstore".
   iPoseProof (credit_store_borrow_receipt with "Hstore") as "(Hat & Hatcl)".
   iDestruct "CTX" as "(LFT & LLCTX)".
   iApply wp_ptr_wrapping_neg_offset.
-  { apply val_to_of_loc. }
+  { done. }
   { done. }
   iApply (physical_step_intro_tr with "Hat"). iIntros "!> [Hat Hat'] Hcred !>".
   iPoseProof ("Hatcl" with "[Hat']") as "Hstore".
@@ -32,8 +32,10 @@ Proof.
   assert ((l wrapping_offset{T_st_ly}ₗ -count).(loc_a) ∈ USize).
   { rewrite /wrapping_offset_loc /wrapping_shift_loc/=.
     by apply wrap_unsigned_in_range. }
+  iIntros (?) "%Hv".
   iApply ("Hcont" $! _ _ _ (alias_ptr_t) with "HL Hf").
-  { rewrite /ty_own_val /=. iPureIntro. sidecond_hammer. }
+  { rewrite /ty_own_val /=. iPureIntro. split; first done.
+    by apply val_to_of_loc. }
   repeat liRStep; liShow.
 
   all: print_remaining_goal.

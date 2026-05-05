@@ -1,3 +1,4 @@
+From radium Require Import val.
 From refinedrust Require Import base util.
 From refinedrust Require Import options.
 
@@ -102,12 +103,13 @@ Section optypes.
 
   Lemma mem_cast_compat_loc (P : val → iProp Σ) v ot :
     is_ptr_ot ot →
-    (P v ⊢ ⌜∃ l, v = val_of_loc l⌝) →
+    (P v ⊢ ⌜∃ l, val_to_loc v = Some l⌝) →
     (P v ⊢ ⌜mem_cast_id v ot⌝).
   Proof.
     destruct ot => //; simplify_eq/=.
-    - intros _. etrans; [done|]. iPureIntro => -[? ->]. by apply: mem_cast_id_loc.
-    - intros ->. etrans; [done|]. iPureIntro => -[? ->]. done.
+    - intros _. etrans; [done|].
+      iPureIntro => -[??]. simpl. by eapply mem_cast_id_loc.
+    - intros ->. etrans; [done|]. iPureIntro => -[? ?]. done.
   Qed.
 
   Lemma mem_cast_compat_unit (P : val → iProp Σ) v ot :
@@ -186,6 +188,14 @@ Proof.
       try rewrite !mem_cast_UntypedOp; by left.
 Qed.
 
+Lemma mem_cast_l2v_id l st :
+  l.(loc_a) ∈ USize →
+  mem_cast (l2v l) PtrOp st = l2v l.
+Proof.
+  intros. unfold mem_cast.
+  rewrite val_to_loc_Some_l2v; last done.
+  done.
+Qed.
 
 (* Q:
     does the syntactical type alone determine the memcast_compat_type?

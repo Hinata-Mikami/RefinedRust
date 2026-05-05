@@ -46,7 +46,9 @@ Section rules.
     (* We use [Hcred2] for folding the pinned borrow, and [Hcred1] as a deposit in the reference *)
     iApply ("HΦ" with "HL Hf [Hcred2 Hcred1 Hat Hbor Hobs] HT").
     iExists l, ly. iSplitR; first done. iFrame "# ∗".
-    iR. iR. iR.
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
+    iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
+    iR. iR.
     iSplitL "Hat". { iApply tr_weaken; last done. lia. }
     iApply (pinned_bor_unfold with "LFT [Hcred2] Hbor"); first done.
     iApply lc_weaken; last done. lia.

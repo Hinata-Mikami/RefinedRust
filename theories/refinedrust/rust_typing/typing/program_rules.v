@@ -68,10 +68,10 @@ Section find.
 
   Lemma find_in_context_type_valp_loc l T :
     (∃ π rt (lt : ltype rt) r, l ◁ₗ[π, Owned] r @ lt ∗ T (l ◁ₗ[π, Owned] r @ lt))
-    ⊢ find_in_context (FindValP (val_of_loc l)) T.
+    ⊢ find_in_context (FindValP (l2v l)) T.
   Proof. iDestruct 1 as (π rt lt r) "(Hl & HT)". iExists (l ◁ₗ[π, Owned] r @ lt)%I. iFrame. Qed.
   Global Instance find_in_context_type_valp_loc_inst l :
-    FindInContext (FindValP (val_of_loc l)) FICSyntactic | 5 :=
+    FindInContext (FindValP (l2v l)) FICSyntactic | 5 :=
     λ T, i2p (find_in_context_type_valp_loc l T).
 
   Lemma find_in_context_type_val_with_rt_id {rt} v π m T :
@@ -3200,8 +3200,11 @@ Section subsume.
     iNext. iIntros "Hat Hcred!>".
     iIntros "(%v & %q & %rt & %ty & %r & %Hlyv & %Hv & Hl & Hv & Hcl)".
     iModIntro. iApply (wpe_logical_step with "Hcl"); [solve_ndisj.. | ].
+    iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iApply (wp_deref with "Hl") => //; try by eauto using val_to_of_loc.
     { destruct o; naive_solver. }
+    { by apply val_to_loc_Some_l2v. }
     iApply (physical_step_intro_tr with "Hat").
     iIntros "!> Hat Hcred2 !> %st Hl Hcl".
     iMod ("Hcl" with "Hl Hv") as "(%L' & %rt' & %ty' & %r' & HL & Hf & Hv & HT)".
@@ -3266,10 +3269,15 @@ Section subsume.
     iApply wp_skip.
     iApply (physical_step_intro_tr with "Ha").
     iNext. iIntros "Ha Hcred !> (Hly & Hl & Hcl)".
-    iApply wps_assign; rewrite ?val_to_of_loc //. { destruct o; naive_solver. }
+    iDestruct "Hl" as "(%v' & % & % & Hl)".
+    iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
+    iApply wps_assign.
+    { destruct o; naive_solver. }
+    { by apply val_to_loc_Some_l2v. }
     iMod (fupd_mask_subseteq) as "Hcl_m"; last iApply fupd_intro.
     { destruct o; solve_ndisj. }
-    iFrame.
+    iFrame. iR.
     iMod "Hcl_m" as "_".
     iApply (physical_step_step_upd with "Hcl").
     iApply (physical_step_intro_tr with "Ha").
@@ -3866,7 +3874,7 @@ Section subsume.
         (** return the credit store *)
         credit_store n m -∗
         typed_place_finish f.1 E L3 updcx (place_update_kind_res_trans upd upd') (R ∗ llft_elt_toks κs) l b
-          lt3 r3 (λ L4, T L4 (val_of_loc l2) γ rt3 ty4 r4))))))))
+          lt3 r3 (λ L4, T L4 (l2v l2) γ rt3 ty4 r4))))))))
     ⊢ typed_borrow_mut E L f e κ orty T.
   Proof.
     iIntros (HT') "HT'". iIntros (Φ F ????) "#CTX #HE HL Hf HΦ".
@@ -4095,7 +4103,7 @@ Section subsume.
       typed_borrow_shr_end f.1 E L3 κ l2 orty lt2' ri2' b2 bmin (λ rt3 (lt3 : ltype rt3) (r3 : place_rfn rt3) (ty4 : type rt3) r4 upd',
       (* return toks *)
       typed_place_finish f.1 E L3 updcx (place_update_kind_res_trans upd upd') (R ∗ llft_elt_toks κs) l b lt3 r3
-        (λ L4, T L4 (val_of_loc l2) rt3 ty4 (#r4))))))))
+        (λ L4, T L4 (l2v l2) rt3 ty4 (#r4))))))))
     ⊢ typed_borrow_shr E L f e κ orty T.
   Proof.
     iIntros (HT') "HT'". iIntros (Φ F ????) "#CTX #HE HL Hf HΦ".

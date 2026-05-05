@@ -97,7 +97,7 @@ Qed.
 Fixpoint to_expr `{!LayoutAlg} (e : expr) : lang.expr :=
   match e with
   | Val v => v
-  | Loc l => val_of_loc l
+  | Loc l => l2v l
   | Var x => lang.Var x
   | UnOp op ot e  => lang.UnOp op ot (to_expr e)
   | BinOp op ot1 ot2 e1 e2 => lang.BinOp op ot1 ot2 (to_expr e1) (to_expr e2)
@@ -139,7 +139,7 @@ Ltac of_expr e :=
     let es := of_expr es in
     constr:(e :: es)
 
-  | lang.Val (val.val_of_loc ?l) => constr:(Loc l)
+  | lang.Val (val.l2v ?l) => constr:(Loc l)
   | notation.Raw ?m ?e =>
     let e := of_expr e in constr:(Raw m e)
   | notation.AnnotExpr ?n ?a ?e =>

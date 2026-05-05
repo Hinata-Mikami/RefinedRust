@@ -157,14 +157,15 @@ Section place.
     (* Note: if we later on want to allow the struct alg to change order of fields, then we need to change pad_struct (or use something else here), because it currently relies on the order of the types and the order of the sl members matching up *)
     assert (field_index_of (sl_members sl) f = Some i) as Hfield'.
     { eapply struct_layout_spec_has_layout_lookup; done. }
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
     iApply (wpe_logical_step with "Hcl"); [done | solve_ndisj.. | ].
     iApply (wp_get_member).
-    { apply val_to_of_loc. }
+    { by apply val_to_loc_Some_l2v. }
     { done. }
     { by eapply field_index_of_to_index_of. }
     { done. }
-    iModIntro.
-    iApply physical_step_intro; iNext. iIntros "Hcl". iExists _. iSplitR; first done.
+    iModIntro. iApply physical_step_intro; iNext. iIntros (v Hv) "Hcl". iExists (l at{sl}ₗ f). iSplitR.
+    { iPureIntro. by apply val_to_of_loc. }
     iPoseProof (focus_struct_component with "Hb") as "(%Heq & %ly' & %Hst & Hb & Hc_close)".
     { done. }
     { eapply (hnth_pnth_hpzipl_lookup _ (unit : RT) (UninitLtype UnitSynType) (PlaceIn ()) _ r); [ | done..].
@@ -272,14 +273,16 @@ Section place.
     (* Note: if we later on want to allow the struct alg to change order of fields, then we need to change pad_struct (or use something else here), because it currently relies on the order of the types and the order of the sl members matching up *)
     assert (field_index_of (sl_members sl) f = Some i) as Hfield'.
     { eapply struct_layout_spec_has_layout_lookup; done. }
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
     iApply (wpe_logical_step with "Hcl"); [done | solve_ndisj.. | ].
     iApply (wp_get_member).
-    { apply val_to_of_loc. }
+    { by apply val_to_loc_Some_l2v. }
     { done. }
     { by eapply field_index_of_to_index_of. }
     { done. }
     iModIntro. iModIntro. iApply physical_step_intro; iNext.
-    iIntros "Hcl". iExists _. iSplitR; first done.
+    iIntros (v Hv) "Hcl". iExists (l at{sl}ₗ f). iSplitR.
+    { iPureIntro. by apply val_to_of_loc. }
     iPoseProof (focus_struct_component with "Hb") as "(%Heq & %ly' & %Hst & Hb & Hc_close)".
     { done. }
     { eapply (hnth_pnth_hpzipl_lookup _ (unit : RT) (UninitLtype UnitSynType) (PlaceIn ()) _ r); [ | done..].
@@ -371,12 +374,15 @@ Section place.
     assert (field_index_of (sl_members sl) f = Some i) as Hfield'.
     { eapply struct_layout_spec_has_layout_lookup; done. }
     (*iApply (wp_logical_step with "Hcl"); [done | solve_ndisj.. | ].*)
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
     iApply (wp_get_member).
-    { apply val_to_of_loc. }
+    { by apply val_to_loc_Some_l2v. }
     { done. }
     { by eapply field_index_of_to_index_of. }
     { done. }
-    iModIntro. iApply physical_step_intro; iNext. iExists _. iR.
+    iModIntro. iApply physical_step_intro; iNext.
+    iIntros (v Hv). iExists (l at{sl}ₗ f). iSplitR.
+    { iPureIntro. by apply val_to_of_loc. }
     iPoseProof (focus_struct_component with "Hb") as "(%Heq & %ly' & %Hst & Hb & Hc_close)".
     { done. }
     { eapply (hnth_pnth_hpzipl_lookup _ (unit : RT) (UninitLtype UnitSynType) (PlaceIn ()) _ r); [ | done..].

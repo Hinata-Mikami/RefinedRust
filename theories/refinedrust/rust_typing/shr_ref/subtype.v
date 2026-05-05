@@ -14,7 +14,7 @@ Section subtype.
     v ◁ᵥ{π, m} #r2 @ shr_ref κ1 ty2.
   Proof.
     iIntros "#Hincl (%Hst_eq & #Hsc_eq & _ & #Hincl_shr)".
-    iIntros "(%l & %ly & %r' & -> & -> & ? & ? & Hlb & Hsc & -> & #Hl)". iExists l, ly, r2.
+    iIntros "(%l & %ly & %r' & -> & % & ? & ? & Hlb & Hsc & -> & #Hl)". iExists l, ly, r2.
     iSplitR; first done. rewrite -Hst_eq. iFrame.
     iR.
     iSplitL "Hsc". { by iApply "Hsc_eq". }
@@ -30,7 +30,7 @@ Section subtype.
   Proof.
     iIntros "#Hincl #Hsub".
     iDestruct ("Hsub" $! inhabitant) as "(%Hst_eq & #Hsc_eq & _)".
-    iIntros "(%l & %ly & %r' & -> & -> & ? & ? & Hlb & Hsc & Hr & #Hl)". iExists l, ly, r'.
+    iIntros "(%l & %ly & %r' & -> & % & ? & ? & Hlb & Hsc & Hr & #Hl)". iExists l, ly, r'.
     iSplitR; first done. rewrite -Hst_eq. iFrame.
     iR.
     iSplitL "Hsc". { by iApply "Hsc_eq". }

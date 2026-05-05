@@ -238,7 +238,8 @@ Section lifting.
     to_val e = None →
     (∀ (σ1 : state), state_ctx σ1 ={E,∅}=∗
        ⌜∃ os e2 σ2 tsl, step_rel σ1 os e2 σ2 tsl⌝ ∗
-         (∀ os e2 σ2 tsl, ⌜step_rel σ1 os e2 σ2 tsl⌝ -∗ ⌜heap_state_invariant σ2.(st_heap)⌝ -∗
+         (∀ os e2 σ2 tsl, ⌜step_rel σ1 os e2 σ2 tsl⌝ -∗
+          ⌜heap_state_invariant σ2.(st_heap)⌝ -∗
           |={∅}⧗=> |={∅,E}=> ⌜tsl = []⌝ ∗ state_ctx σ2 ∗ WP e2 @ E {{ Φ }}))
       -∗ WP e @ E {{ Φ }}.
   Proof.
@@ -251,7 +252,7 @@ Section lifting.
       naive_solver eauto using ExprStep, StmtStep.
     }
     clear Hstep. iIntros (??? Hstep).
-    move: (Hstep) => /runtime_step_preserves_invariant?.
+    move: (Hstep) => /runtime_step_preserves_heap_invariant?.
     Arguments to_rtstmt : simpl never.
     destruct He as [(π & e' & [??])|(? & ? & s & [??])]; inversion Hstep; subst.
     all: try by [destruct e'; discriminate].
@@ -506,22 +507,26 @@ Context `{!refinedcG Σ}.
 Lemma wp_var π i x st l Φ :
   current_frame π i -∗
   x is_live{(π, i), st} l -∗
-  (|={⊤}⧗=> current_frame π i -∗ x is_live{(π, i), st} l -∗ Φ (val_of_loc l)) -∗
+  (|={⊤}⧗=> ∀ v, ⌜val_of_loc l = Some v⌝ -∗ current_frame π i -∗ x is_live{(π, i), st} l -∗ Φ v) -∗
   WPe{π} Var x {{ Φ }}.
 Proof.
   iIntros "Hframe Hlive HWP".
   rewrite expr_wp_unfold.
   iApply wp_lift_expr_step; first done.
   iIntros (σ1) "(Hhctx & Hfctx & Htctx)".
-  iPoseProof (state_lookup_var with "Htctx Hframe Hlive") as "(%ts & %cf & %ly & %Hsynty & % & % & %)".
-  iModIntro. iSplit; first by eauto 8 using VarS.
+  iPoseProof (state_lookup_var with "Htctx Hframe Hlive") as "(%ts & %cf & %ly & %Hsynty & % & % & % & %)".
+  iModIntro.
+  assert (val_of_loc l = Some (l2v l)).
+  { by apply val_of_loc_Some_l2v. }
+  iSplit; first by eauto 8 using VarS.
   iIntros (? e2 σ2 efs Hst ?). inv_expr_step.
   unfold thread_get_frame, state_get_thread in *.
   simplify_eq.
   iApply (physical_step_wand with "HWP").
   iIntros "HWP". iSplitR; first done.
   iFrame. iApply wp_value.
-  iApply ("HWP" with "Hframe Hlive").
+  iApply ("HWP" with "[] Hframe Hlive").
+  done.
 Qed.
 
 Lemma wp_binop v1 v2 Φ op π E ot1 ot2:
@@ -881,7 +886,9 @@ Lemma wp_cast_null_int Φ v π E it:
 Proof.
   iIntros (Hv) "HΦ".
   iApply wp_cast_ptr_int.
-  { apply val_to_of_loc. }
+  { apply (val_to_of_loc NULL_loc).
+    apply val_of_loc_Some. simpl.
+    rewrite int_elem_of_it_iff. done. }
   { done. }
   done.
 Qed.
@@ -891,18 +898,22 @@ Lemma wp_cast_int_ptr_prov_none Φ v a l it π E :
   0 ≤ a →
   a ≤ max_alloc_end_zero →
   l = Loc ProvNone a →
-  (|={E}⧗=> l ↦ [] -∗ Φ (val_of_loc l)) -∗
+  (|={E}⧗=> ∀ v, ⌜val_of_loc l = Some v⌝ -∗ l ↦ [] -∗ Φ v) -∗
   WPe{π} UnOp (CastOp PtrOp) (IntOp it) (Val v) @ E {{ Φ }}.
 Proof.
   iIntros (Hv Hs He Hl) "HΦ".
   iApply wp_unop.
   iIntros (σ) "Hctx". iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
-  iSplit; [iPureIntro; eexists _; by econstructor |].
+  iSplit.
+  { iPureIntro; eexists _. econstructor; [done.. | ].
+    subst. apply val_of_loc_Some. simpl.
+    rewrite int_elem_of_it_iff. done. }
   iMod "HE" as "_". iApply (physical_step_wand with "HΦ"); iIntros "HΦ".
   iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
   iIntros (v' Hv'). iMod "HE" as "_". iModIntro. iFrame.
   inversion Hv'; simplify_eq.
-  iApply ("HΦ" with "[]"). iApply heap_pointsto_prov_none_nil; done.
+  iApply ("HΦ" with "[//] []").
+  iApply heap_pointsto_prov_none_nil; done.
 Qed.
 
 Lemma wp_cast_int_bool Φ v n E π it:
@@ -921,18 +932,21 @@ Qed.
 Lemma wp_copy_alloc_id Φ it a l v1 v2 π E :
   val_to_Z v1 it = Some a →
   val_to_loc v2 = Some l →
-  (|={E}⧗=> Φ (val_of_loc (Loc l.(loc_p) a))) -∗
+  a ∈ USize →
+  (|={E}⧗=> ∀ v, ⌜val_of_loc (Loc l.(loc_p) a) = Some v⌝ -∗ Φ v) -∗
   WPe{π} CopyAllocId (IntOp it) (Val v1) (Val v2) @ E {{ Φ }}.
 Proof.
-  iIntros (Ha Hl) "HΦ".
+  iIntros (Ha Hl ?) "HΦ".
   rewrite expr_wp_unfold.
   iApply wp_lift_expr_step => //.
   iIntros (σ1) "Hctx". iModIntro.
-  iSplit; first by eauto 8 using CopyAllocIdS.
+  iSplit.
+  { iPureIntro; eexists _, _, _, _. eapply CopyAllocIdS; [done.. | ].
+    by apply val_of_loc_Some. }
   iIntros (???? Hstep ?). inv_expr_step.
   iApply (physical_step_wand with "HΦ"). iIntros "HΦ".
   iSplit => //. iFrame.
-  iApply wp_value. iApply ("HΦ").
+  iApply wp_value. by iApply ("HΦ").
 Qed.
 
 Definition int_arithop_result (it : int_type) n1 n2 op : option Z :=
@@ -1059,24 +1073,27 @@ Lemma wp_ptr_offset Φ vl l π E it o ly vo:
   ly_size ly * o ∈ ISize →
   loc_in_bounds (l offset{ly}ₗ o) 0 0 -∗
   loc_in_bounds l 0 0 -∗
-  (|={E}⧗=> Φ (val_of_loc (l offset{ly}ₗ o))) -∗
+  (|={E}⧗=> ∀ v, ⌜val_of_loc (l offset{ly}ₗ o) = Some v⌝ -∗ Φ v) -∗
   WPe{π} Val vl at_offset{ ly , PtrOp, IntOp it} Val vo @ E {{ Φ }}.
 Proof.
   iIntros (Hvl Hvo ?) "Hl Hl' HΦ".
-  iApply wp_binop_det. iIntros (σ) "Hσ".
+  iApply (wp_binop_det (l2v (l offset{ly}ₗ o))). iIntros (σ) "Hσ".
   iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
   iDestruct "Hσ" as "(Hhctx & ?)".
   iDestruct (loc_in_bounds_to_heap_loc_in_bounds' with "Hl Hhctx") as %?.
   iDestruct (loc_in_bounds_to_heap_loc_in_bounds' with "Hl' Hhctx") as %?.
+  iDestruct (loc_in_bounds_in_range_usize with "Hl") as %?.
   iSplit. {
     iPureIntro. split.
-    - inversion 1. by simplify_eq.
-    - move => ->. by apply PtrOffsetOpIP.
-  }
+    - inversion 1. simplify_eq. erewrite l2v_correct; done.
+    - move => ->. eapply PtrOffsetOpIP; try done.
+      by apply val_of_loc_Some_l2v. }
   iMod "HE" as "_".
   iApply (physical_step_wand with "HΦ"). iIntros "HΦ".
   iApply fupd_mask_intro_subseteq; first set_solver.
   iFrame.
+  iApply "HΦ". iPureIntro.
+  by apply val_of_loc_Some_l2v.
 Qed.
 
 Lemma wp_ptr_neg_offset Φ vl l π E it o ly vo:
@@ -1085,63 +1102,77 @@ Lemma wp_ptr_neg_offset Φ vl l π E it o ly vo:
   ly_size ly * -o ∈ ISize →
   loc_in_bounds (l offset{ly}ₗ -o) 0 0 -∗
   loc_in_bounds l 0 0 -∗
-  (|={E}⧗=> Φ (val_of_loc (l offset{ly}ₗ -o))) -∗
+  (|={E}⧗=> ∀ v, ⌜val_of_loc (l offset{ly}ₗ -o) = Some v⌝ -∗ Φ v) -∗
   WPe{π} Val vl at_neg_offset{ ly , PtrOp, IntOp it} Val vo @ E {{ Φ }}.
 Proof.
   iIntros (Hvl Hvo ?) "Hl Hl' HΦ".
-  iApply wp_binop_det. iIntros (σ) "Hσ".
+  iApply (wp_binop_det ((l offset{ly}ₗ -o))). iIntros (σ) "Hσ".
   iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
   iDestruct "Hσ" as "(Hhctx & ?)".
   iDestruct (loc_in_bounds_to_heap_loc_in_bounds' with "Hl Hhctx") as %?.
   iDestruct (loc_in_bounds_to_heap_loc_in_bounds' with "Hl' Hhctx") as %?.
+  iDestruct (loc_in_bounds_in_range_usize with "Hl") as %?.
   iSplit. {
     iPureIntro. split.
-    - inversion 1. by simplify_eq.
-    - move => ->. by apply PtrNegOffsetOpIP.
+    - inversion 1. simplify_eq. erewrite l2v_correct; done.
+    - move => ->. eapply PtrNegOffsetOpIP; try done.
+      by apply val_of_loc_Some_l2v.
   }
   iMod "HE" as "_".
   iApply (physical_step_wand with "HΦ"). iIntros "HΦ".
   iApply fupd_mask_intro_subseteq; first set_solver.
   iFrame.
+  iApply "HΦ". iPureIntro.
+  by apply val_of_loc_Some_l2v.
 Qed.
 
 Lemma wp_ptr_wrapping_neg_offset Φ vl l π E it o ly vo:
   val_to_loc vl = Some l →
   val_to_Z vo it = Some o →
-  (|={E}⧗=> Φ (val_of_loc (l wrapping_offset{ly}ₗ -o))) -∗
+  (|={E}⧗=> ∀ v, ⌜val_of_loc (l wrapping_offset{ly}ₗ -o) = Some v⌝ -∗ Φ v) -∗
   WPe{π} Val vl at_wrapping_neg_offset{ ly , PtrOp, IntOp it} Val vo @ E {{ Φ }}.
 Proof.
   iIntros (Hvl Hvo) "HΦ".
   iApply wp_binop_det. iIntros (σ) "Hσ".
   iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
+  assert (val_of_loc (l wrapping_offset{ly}ₗ -o) = Some (l2v (l wrapping_offset{ly}ₗ -o))) as Hv.
+  { apply val_of_loc_Some_l2v. apply wrapping_shift_loc_in_range. }
   iSplit. {
     iPureIntro. split.
     - inversion 1. by simplify_eq.
-    - move => ->. by apply PtrWrappingNegOffsetOpIP.
+    - move => ->. eapply PtrWrappingNegOffsetOpIP; try done.
   }
   iMod "HE" as "_".
   iApply (physical_step_wand with "HΦ"). iIntros "HΦ".
   iApply fupd_mask_intro_subseteq; first set_solver.
   iFrame.
+  iApply "HΦ". iPureIntro.
+  apply val_of_loc_Some_l2v.
+  apply wrapping_shift_loc_in_range.
 Qed.
 Lemma wp_ptr_wrapping_offset Φ vl l π E it o ly vo:
   val_to_loc vl = Some l →
   val_to_Z vo it = Some o →
-  (|={E}⧗=> Φ (val_of_loc (l wrapping_offset{ly}ₗ o))) -∗
+  (|={E}⧗=> ∀ v, ⌜val_of_loc (l wrapping_offset{ly}ₗ o) = Some v⌝ -∗ Φ v) -∗
   WPe{π} Val vl at_wrapping_offset{ ly , PtrOp, IntOp it} Val vo @ E {{ Φ }}.
 Proof.
   iIntros (Hvl Hvo) "HΦ".
   iApply wp_binop_det. iIntros (σ) "Hσ".
   iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
+  assert (val_of_loc (l wrapping_offset{ly}ₗ o) = Some (l2v (l wrapping_offset{ly}ₗ o))) as Hv.
+  { apply val_of_loc_Some_l2v. apply wrapping_shift_loc_in_range. }
   iSplit. {
     iPureIntro. split.
     - inversion 1. by simplify_eq.
-    - move => ->. by apply PtrWrappingOffsetOpIP.
+    - move => ->. by eapply PtrWrappingOffsetOpIP.
   }
   iMod "HE" as "_".
   iApply (physical_step_wand with "HΦ"). iIntros "HΦ".
   iApply fupd_mask_intro_subseteq; first set_solver.
   iFrame.
+  iApply "HΦ". iPureIntro.
+  apply val_of_loc_Some_l2v.
+  apply wrapping_shift_loc_in_range.
 Qed.
 
 Lemma wp_ptr_diff π Φ vl1 l1 vl2 l2 ly vo:
@@ -1186,7 +1217,7 @@ Lemma wp_get_member `{!LayoutAlg} Φ vl l sls sl n π E:
   use_struct_layout_alg sls = Some sl →
   is_Some (index_of sl.(sl_members) n) →
   loc_in_bounds l 0 (ly_size sl) -∗
-  (|={E}⧗=> Φ (val_of_loc (l at{sl}ₗ n))) -∗
+  (|={E}⧗=> ∀ v, ⌜val_of_loc (l at{sl}ₗ n) = Some v⌝ -∗ Φ v) -∗
   WPe{π} Val vl at{sls} n @ E {{ Φ }}.
 Proof.
   iIntros (Hvl Halg [i Hi]) "#Hl HΦ".
@@ -1212,12 +1243,13 @@ Qed.
 Lemma wp_get_member_union `{!LayoutAlg} Φ vl l ul uls n π E:
   use_union_layout_alg uls = Some ul →
   val_to_loc vl = Some l →
-  Φ (val_of_loc (l at_union{ul}ₗ n)) -∗
+  (∀ v, ⌜val_of_loc (l at_union{ul}ₗ n) = Some v⌝ -∗ Φ v) -∗
   WPe{π} Val vl at_union{uls} n @ E {{ Φ }}.
 Proof.
   iIntros (Halg ?%val_of_to_loc) "HΦ"; subst.
   rewrite expr_wp_unfold.
-  rewrite /GetMemberUnion/GetMemberUnionLoc. by iApply @wp_value.
+  rewrite /GetMemberUnion/GetMemberUnionLoc. iApply @wp_value.
+  iApply "HΦ". done.
 Qed.
 
 (* TODO: lemmas for accessing discriminant/data of enum *)
@@ -1496,7 +1528,12 @@ Lemma wp_alloc π E Φ (v_size v_align : val) (n_size n_align : nat) :
   val_to_Z v_size USize = Some (Z.of_nat n_size) →
   val_to_Z v_align USize = Some (Z.of_nat n_align) →
   n_size > 0 →
-  (|={E}⧗=> ∀ l, l ↦ (replicate n_size MPoison) -∗ freeable l n_size 1 HeapAlloc -∗ ⌜l `has_layout_loc` Layout n_size n_align⌝ -∗ Φ (val_of_loc l)) -∗
+  (|={E}⧗=> ∀ l v,
+    l ↦ (replicate n_size MPoison) -∗
+    freeable l n_size 1 HeapAlloc -∗
+    ⌜l `has_layout_loc` Layout n_size n_align⌝ -∗
+    ⌜val_of_loc l = Some v⌝ -∗
+    Φ v) -∗
   WPe{π} (Alloc (Val v_size) (Val v_align)) @ E {{ Φ }}.
 Proof.
   iIntros (Hsz Hal Hnz) "Hwp".
@@ -1516,7 +1553,7 @@ Proof.
   iApply (physical_step_wand with "Hwp"). iIntros "Hwp".
   iDestruct ("Hwp" with "Hlv Hlf [//]") as "Hpost".
   iSplit => //.
-  iFrame "Hctx Hfctx". iApply wp_value. iApply "Hpost".
+  iFrame "Hctx Hfctx". iApply wp_value. by iApply "Hpost".
 Qed.
 
 Lemma wp_call_bind_ind vs π E Φ vf el:
@@ -1613,6 +1650,7 @@ Proof.
   { apply f_args_nodup. }
   { rewrite lookup_insert_eq//. }
   { unfold thread_get_frame, thread_push_frame. simpl. done. }
+  { by eapply alloc_new_blocks_start_in_usize. }
   { done. }
   { rewrite insert_insert decide_True; last done.
     unfold thread_update_frame, thread_push_frame. simpl. done. }
@@ -1730,7 +1768,7 @@ Proof.
   iMod (thread_pop_frame_empty with "Htctx Hframe Hlocals") as "(Hframe & Htctx)".
   { rewrite lookup_insert_eq. done. }
   { rewrite insert_insert decide_True; last done.
-    unfold pop_frame, thread_update_frame; simpl. done. }
+    unfold thread_pop_frame, thread_update_frame; simpl. done. }
   { by rewrite list_difference_diag. }
   iModIntro.
   iSplit; first by eauto 10 using ReturnS.
@@ -1764,16 +1802,17 @@ Proof.
   iSplit; first done. iFrame. by iApply "HWP".
 Qed.
 
-Lemma wps_free π Q Ψ s l v_size v_align (n_size n_align : nat) :
+Lemma wps_free π Q Ψ s l v_size v_align vl (n_size n_align : nat) :
   val_to_Z v_size USize = Some (Z.of_nat n_size) →
   val_to_Z v_align USize = Some (Z.of_nat n_align) →
+  val_to_loc vl = Some l →
   n_size > 0 →
   l ↦|Layout n_size n_align| -∗
   freeable l n_size 1 HeapAlloc -∗
   (|={⊤}⧗=> WPs{π} s {{ Q, Ψ }}) -∗
-  WPs{π} (Free (Val v_size) (Val v_align) (val_of_loc l) s) {{ Q, Ψ }}.
+  WPs{π} (Free (Val v_size) (Val v_align) vl s) {{ Q, Ψ }}.
 Proof.
-  iIntros (???) "Hl Hf HWP". rewrite !stmt_wp_unfold. iIntros (???) "?". subst.
+  iIntros (????) "Hl Hf HWP". rewrite !stmt_wp_unfold. iIntros (???) "?". subst.
   iPoseProof (heap_pointsto_layout_has_layout with "Hl") as "%".
   iApply wp_lift_stmt_step. iIntros (σ) "(Hhctx&Hfctx)".
   iMod (heap_free_block_upd with "Hl Hf Hhctx") as (σ') "(%Hf & Hhctx)".
@@ -1781,7 +1820,6 @@ Proof.
   iIntros (???? Hstep ?). inv_stmt_step.
   iApply (physical_step_wand with "HWP"). iIntros "HWP".
   iSplitR; first done.
-  revert select (val_to_loc _ = Some _) => /val_of_to_loc. intros [= <-].
   erewrite (free_block_inj σ.(st_heap) _ (Layout n_size n_align) HeapAlloc hs' σ'); [ | done..].
   iFrame. by iApply "HWP".
 Qed.
@@ -2000,8 +2038,9 @@ Proof.
   unfold state_ctx; simpl.
   iApply physical_step_fupd.
   iApply (physical_step_wand with "HWP"); iIntros "HWP". iSplitR; first done.
-  iMod (thread_frame_allocate_var with "Htctx Hframe Hlf Hlocals") as "(Hframe & Hlocals & Hlive & $)"; [ | done | done | done | done | done | ].
+  iMod (thread_frame_allocate_var with "Htctx Hframe Hlf Hlocals") as "(Hframe & Hlocals & Hlive & $)"; [ | done | done | done | | done | done | ].
   { unfold use_layout_alg'. rewrite Hst. apply Hst. }
+  { by eapply alloc_new_block_start_in_usize. }
   iFrame.
   rewrite /use_layout_alg' Hst/=.
   iApply ("HWP" with "Hlive Hframe Hlocals Hlv [] [//] [$]").
@@ -2052,7 +2091,7 @@ Proof.
   iIntros ([h1 f1 t1]) "(Hhctx&? & Htctx) /=".
   iPoseProof (live_local_is_allocated with "Htctx Hlocals Hx") as "%Hel".
   iPoseProof (state_lookup_current_frame with "Htctx Hframe Hlocals") as "(%ts & %cf & %Hthread & %Hframe & %Hlocals & %)".
-  iPoseProof (state_lookup_var with "Htctx Hframe Hx") as "(% & % & % & %Hly' & % & % & %)".
+  iPoseProof (state_lookup_var with "Htctx Hframe Hx") as "(% & % & % & %Hly' & % & % & % & %)".
   simplify_eq.
   specialize (syn_type_has_layout_inj _ _ _ Hly Hly') as <-.
   unfold call_frame_has_locals in Hlocals.

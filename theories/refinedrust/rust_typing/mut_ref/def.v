@@ -10,7 +10,8 @@ Section mut_ref.
     ty_sidecond := True;
     ty_metadata_kind := MetadataNone;
     ty_own_val π '(r, γ) m v :=
-      (∃ (l : loc) (ly : layout), ⌜m = MetaNone⌝ ∗ ⌜v = l⌝ ∗
+      (∃ (l : loc) (ly : layout), ⌜m = MetaNone⌝ ∗ 
+      ⌜val_to_loc v = Some l⌝ ∗
       ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
       ⌜l `has_layout_loc` ly⌝ ∗
       loc_in_bounds l 0 ly.(ly_size) ∗
@@ -53,9 +54,9 @@ Section mut_ref.
     simpl. apply _.
   Qed.
   Next Obligation.
-    iIntros (? κ inner  π [r γ] m v) "(%l & %ly & -> & -> & _)".
+    iIntros (? κ inner  π [r γ] m v) "(%l & %ly & -> & %Hv & _)".
     iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
-    done.
+    unfold has_layout_val. apply val_to_loc_length. eexists. done.
   Qed.
   Next Obligation.
     iIntros (??? ot Hot) => /=. destruct ot => /=//.
@@ -108,7 +109,7 @@ Section mut_ref.
     iMod (bor_sep with "LFT Hb") as "(Ha & Hb)"; first solve_ndisj.
     iMod (bor_persistent with "LFT Ha Htok_κ'") as "(>-> & Htok_κ')"; first solve_ndisj.
     iMod (bor_sep with "LFT Hb") as "(Ha & Hb)"; first solve_ndisj.
-    iMod (bor_persistent with "LFT Ha Htok_κ'") as "(>-> & Htok_κ')"; first solve_ndisj.
+    iMod (bor_persistent with "LFT Ha Htok_κ'") as "(>%Hv & Htok_κ')"; first solve_ndisj.
     iMod (bor_sep with "LFT Hb") as "(Ha & Hb)"; first solve_ndisj.
     iMod (bor_persistent with "LFT Ha Htok_κ'") as "(>%Halg & Htok_κ')"; first solve_ndisj.
     iMod (bor_sep with "LFT Hb") as "(Ha & Hb)"; first solve_ndisj.
@@ -154,7 +155,7 @@ Section mut_ref.
     iCombine "Htoka1 Htoka2" as "Htoka".
 
     (* fracture *)
-    iMod (bor_fracture (λ q, l ↦{q} l0)%I with "LFT Hl") as "Hl"; first solve_ndisj.
+    iMod (bor_fracture (λ q, l ↦{q} v)%I with "LFT Hl") as "Hl"; first solve_ndisj.
 
     (* recursively share *)
     iDestruct "Htok" as "(Htok1 & Htok2)".
@@ -176,11 +177,13 @@ Section mut_ref.
     iCombine "Htok Htok2" as "Htok".
     rewrite {2}lft_intersect_comm lft_intersect_assoc.
     iFrame "Htok".
-    iExists l0, ly0, r'. iR. iFrame "Hl".
+    iExists l0, ly0, r'. iR.
+    erewrite l2v_correct'; last done. iFrame "Hl".
     apply syn_type_has_layout_ptr_inv in Hst as ->.
     iR. iSplitR. { destruct r; simpl; eauto. }
     iSplitR; first done. iSplitR; first done.
-    iSplitR; first done.
+    iSplitR. { replace (ly_size void*) with (length v); first done.
+      rewrite (val_to_loc_length v); first done. eexists. done. }
     iSplitR; first done. iSplitR; first done.
     iNext. iModIntro. iModIntro. done.
   Qed.
@@ -194,7 +197,7 @@ Section mut_ref.
     iApply lft_intersect_mono; last done. iApply lft_incl_refl.
   Qed.
   Next Obligation.
-    iIntros (????[r γ]????) "(%l & %ly & -> & -> & _ & _ & _ & _ & Hrfn & Hcred &  _)".
+    iIntros (????[r γ]????) "(%l & %ly & -> & %Hv & _ & _ & _ & _ & Hrfn & Hcred &  _)".
     iApply fupd_logical_step. destruct r as [ r | γ'].
     - iMod (gvar_obs_persist with "Hrfn") as "?".
       iApply logical_step_intro. by iFrame.
@@ -204,10 +207,10 @@ Section mut_ref.
     iIntros (??? ot mt st ? [r γ] m ? Hot).
     destruct mt.
     - eauto.
-    - iIntros "(%l & %ly & -> & -> & ?)". iExists l, ly. iFrame.
+    - iIntros "(%l & %ly & -> & %Hv & ?)". iExists l, ly. iFrame.
       iR.
       iPureIntro. move: ot Hot => [] /=// _.
-      rewrite /mem_cast val_to_of_loc //.
+      rewrite /mem_cast Hv //.
     - iApply (mem_cast_compat_loc (λ v, _)); first done.
       iIntros "(%l & %ly & -> & -> & _)". eauto.
   Qed.

@@ -55,7 +55,7 @@ Section definitions.
   (** * Allocation stuff. *)
 
   (** [alloc_meta id al] persistently records the information that allocation
-with identifier [id] has a range corresponding to that of [a]. *)
+    with identifier [id] has a range corresponding to that of [a]. *)
   Definition alloc_meta_def (id : alloc_id) (al : allocation) : iProp Σ :=
     id ↪[ heap_alloc_meta_map_name ]□ to_alloc_metaR al.
   Definition alloc_meta_aux : seal (@alloc_meta_def). by eexists. Qed.
@@ -1370,6 +1370,7 @@ Section definitions.
       ⌜thread_local_var_loc_inv_1 st m⌝ ∗ ⌜thread_local_var_loc_inv_2 st m⌝.
 
   Definition thread_ctx (st : gmap thread_id thread_state) : iProp Σ :=
+    ⌜thread_states_invariant st⌝ ∗
     thread_current_frame_auth st ∗
     thread_local_vars_auth st ∗
     thread_local_var_loc_auth st.
@@ -1436,7 +1437,7 @@ Section rules.
     x is_live{f, synty} l -∗
     ⌜x ∈ locals⌝.
   Proof.
-    iIntros "(_ & (%m1 & Hauth1 & %Hinv1 & %Hinv2) & (%m2 & Hauth2 & Hfree & %Hinv3 & %Hinv4)) Halloc Hlive".
+    iIntros "(_ & _ & (%m1 & Hauth1 & %Hinv1 & %Hinv2) & (%m2 & Hauth2 & Hfree & %Hinv3 & %Hinv4)) Halloc Hlive".
     rewrite allocated_locals_unfold local_is_allocated_at_unfold.
     iPoseProof (ghost_map_lookup with "Hauth1 Halloc") as "%Hlook1".
     iPoseProof (ghost_map_lookup with "Hauth2 Hlive") as "%Hlook2".
@@ -1456,7 +1457,7 @@ Section rules.
     allocated_locals (π, i) locals -∗
     ⌜∃ ts cf, st !! π = Some ts ∧ (0 < i ≤ length ts.(ts_frames))%nat ∧ ts.(ts_frames) !! (length ts.(ts_frames) - i)%nat = Some cf ∧ call_frame_has_locals cf locals⌝.
   Proof.
-    iIntros "(_ & (%m1 & Hauth1 & %Hinv1 & %Hinv2) & _) Halloc".
+    iIntros "(_ & _ & (%m1 & Hauth1 & %Hinv1 & %Hinv2) & _) Halloc".
     rewrite allocated_locals_unfold.
     iPoseProof (ghost_map_lookup with "Hauth1 Halloc") as "%Hlook1".
     iPureIntro. apply Hinv2 in Hlook1. done.
@@ -1467,7 +1468,7 @@ Section rules.
     allocated_locals (π, i) locals -∗
     ⌜∃ ts cf, st !! π = Some ts ∧ thread_get_frame ts = Some cf ∧ call_frame_has_locals cf locals ∧ i = length ts.(ts_frames)⌝.
   Proof.
-    iIntros "(Ha & (%m1 & Hauth1 & %Hinv1 & %Hinv2) & _) Hframe Halloc".
+    iIntros "(_ & Ha & (%m1 & Hauth1 & %Hinv1 & %Hinv2) & _) Hframe Halloc".
     rewrite current_frame_unfold allocated_locals_unfold.
     iPoseProof (ghost_map_lookup with "Ha Hframe") as "%Hlook1".
     iPoseProof (ghost_map_lookup with "Hauth1 Halloc") as "%Hlook2".
@@ -1486,7 +1487,7 @@ Section rules.
     current_frame π i -∗
     ⌜∃ ts, st !! π = Some ts ∧ length ts.(ts_frames) = i⌝.
   Proof.
-    iIntros "(Ha & _) Hframe".
+    iIntros "(_ & Ha & _) Hframe".
     rewrite current_frame_unfold.
     iPoseProof (ghost_map_lookup with "Ha Hframe") as "%Hlook".
     iPureIntro. revert Hlook.
@@ -1498,21 +1499,24 @@ Section rules.
     thread_ctx st -∗
     current_frame π i -∗
     x is_live{(π, i), synty} l -∗
-    ⌜∃ ts cf ly, syn_type_has_layout synty ly ∧ st !! π = Some ts ∧ thread_get_frame ts = Some cf ∧ cf.(cf_locals) !! x = Some (l, ly)⌝.
+    ⌜∃ ts cf ly, syn_type_has_layout synty ly ∧ st !! π = Some ts ∧ thread_get_frame ts = Some cf ∧ cf.(cf_locals) !! x = Some (l, ly) ∧ l.(loc_a) ∈ USize⌝.
   Proof.
-    iIntros "(Ha & _ & (%m1 & Hauth1 & Hfree & %Hinv1 & %Hinv2)) Hframe Hvar".
+    iIntros "(%Hinv & Ha & _ & (%m1 & Hauth1 & Hfree & %Hinv1 & %Hinv2)) Hframe Hvar".
     rewrite current_frame_unfold local_is_allocated_at_unfold.
     iPoseProof (ghost_map_lookup with "Ha Hframe") as "%Hlook1".
     iPoseProof (ghost_map_lookup with "Hauth1 Hvar") as "%Hlook2".
     iPureIntro.
     unfold to_current_frame in Hlook1.
-    apply lookup_fmap_Some in Hlook1 as (ts & <- & ?).
+    apply lookup_fmap_Some in Hlook1 as (ts & <- & Hst).
     apply Hinv2 in Hlook2 as (? & ? & ly & ? & ? & Hframe & Hlocal & ?).
     simplify_eq.
     rewrite Nat.sub_diag in Hframe.
     eexists _, _, _.
     rewrite /thread_get_frame head_lookup.
-    done.
+    split_and!; [done.. | ].
+    apply Hinv in Hst.
+    apply Hst in Hframe.
+    by apply Hframe in Hlocal.
   Qed.
   Lemma state_lookup_vars (vars : list var_name) syntys (locs : list loc) (lys : list layout) st π i :
     Forall2 syn_type_has_layout syntys lys →
@@ -1533,7 +1537,7 @@ Section rules.
     iPoseProof (big_sepL2_Forall2_strong _ (current_frame π i ∗ thread_ctx st)%I
       (λ x lsynty, cf.(cf_locals) !! x = Some (lsynty.1, use_layout_alg' lsynty.2)) with "[] [$Hframe $Htctx] Hlive") as "%Ha".
     { iModIntro. iIntros (??? Hlook1 Hlook2) "Hlive [Hframe Htctx]".
-      iPoseProof (state_lookup_var with "Htctx Hframe Hlive") as "(% & % & % & %Hsynty & %Hlook3 & %Hlook4 & %Hlook5)".
+      iPoseProof (state_lookup_var with "Htctx Hframe Hlive") as "(% & % & % & %Hsynty & %Hlook3 & %Hlook4 & %Hlook5 & _)".
       simplify_eq. rewrite Hlook5. rewrite /use_layout_alg' Hsynty//. }
     iPureIntro.
     enough ((map_to_list (cf_locals cf)) ≡ₚ zip vars (zip locs lys)) as ->.
@@ -1588,7 +1592,7 @@ Section rules.
     iIntros (Hst -> ->) "Htctx Hframe".
     iPoseProof (state_current_frame with "Htctx Hframe") as "(%ts' & % & %)".
     simplify_eq.
-    iDestruct "Htctx" as "(Ha & (%m1 & Hauth1 & %Hinv1 & %Hinv2) & (%m3 & Hauth2 & Hfree & %Hinv3 & %Hinv4))".
+    iDestruct "Htctx" as "(% & Ha & (%m1 & Hauth1 & %Hinv1 & %Hinv2) & (%m3 & Hauth2 & Hfree & %Hinv3 & %Hinv4))".
     rewrite current_frame_unfold.
     iMod (ghost_map_update (S (length (ts_frames ts))) with "Ha Hframe") as "(Ha & Hframe)".
     iMod (ghost_map_insert (π, S (length ts.(ts_frames))) [] with "Hauth1") as "(Hauth1 & Hlocals)".
@@ -1596,6 +1600,10 @@ Section rules.
       destruct (m1 !! (π, S (length (ts_frames ts)))) eqn:Heq; last done.
       apply Hinv2 in Heq as (? & ? & ? & ? & ?). simplify_eq. lia. }
     rewrite current_frame_unfold allocated_locals_unfold. iFrame.
+    iSplitR. { iPureIntro.
+      apply thread_states_invariant_update_thread; first done.
+      apply thread_state_invariant_push_frame; last naive_solver.
+      intros ????. done. }
     iSplitL.
     { iModIntro. iApply (ghost_map_auth_prove_eq with "Ha").
       rewrite /to_current_frame fmap_insert //. }
@@ -1660,7 +1668,7 @@ Section rules.
 
   Lemma thread_pop_frame_empty π i st st' ts S :
     st !! π = Some ts →
-    st' = <[π := pop_frame ts]> st →
+    st' = <[π := thread_pop_frame ts]> st →
     S = [] →
     thread_ctx st -∗
     current_frame π i -∗
@@ -1674,11 +1682,14 @@ Section rules.
     destruct ts' as [ts'].
     destruct ts' as [ | cf' ts']; first done.
     simpl in Hframe. injection Hframe as ->. simplify_eq.
-    iDestruct "Htctx" as "(Ha & (%m1 & Hauth1 & %Hinv1 & %Hinv2) & (%m3 & Hauth2 & Hfree & %Hinv3 & %Hinv4))".
+    iDestruct "Htctx" as "(% & Ha & (%m1 & Hauth1 & %Hinv1 & %Hinv2) & (%m3 & Hauth2 & Hfree & %Hinv3 & %Hinv4))".
     rewrite current_frame_unfold allocated_locals_unfold.
     iMod (ghost_map_update ((length (ts'))) with "Ha Hframe") as "(Ha & Hframe)".
     iMod (ghost_map_delete with "Hauth1 Hlocals") as "Hauth1".
     rewrite current_frame_unfold. iFrame.
+    iSplitR.
+    { iPureIntro. apply thread_states_invariant_update_thread; first done.
+      apply thread_state_invariant_pop_frame. naive_solver. }
     iSplitL.
     { iModIntro. iApply (ghost_map_auth_prove_eq with "Ha").
       rewrite /to_current_frame fmap_insert //. }
@@ -1746,6 +1757,7 @@ Section rules.
     st !! π = Some ts →
     thread_get_frame ts = Some cf →
     x ∉ M →
+    l.(loc_a) ∈ USize →
     cf' = frame_alloc_var cf x l ly →
     st' = <[π := thread_update_frame ts cf']> st →
     thread_ctx st -∗
@@ -1757,12 +1769,12 @@ Section rules.
     x is_live{(π, i), synty} l ∗
     thread_ctx st'.
   Proof.
-    iIntros (Hly Hthread Hframe Hunalloc -> ->) "Htctx Hframe Hfree Hlocals".
+    iIntros (Hly Hthread Hframe Hunalloc ? -> ->) "Htctx Hframe Hfree Hlocals".
     iPoseProof (state_lookup_current_frame with "Htctx Hframe Hlocals") as "(%ts' & %cf' & %Hts & %Hcf & %Hlocals & ->)".
     unfold thread_get_frame, call_frame_has_locals in *.
     simplify_eq.
     rewrite head_lookup in Hframe.
-    iDestruct "Htctx" as "(Ha & (%m1 & Hauth1 & %Hinv1 & %Hinv2) & (%m2 & Hauth2 & Hfrees & %Hinv3 & %Hinv4))".
+    iDestruct "Htctx" as "(%Hinv & Ha & (%m1 & Hauth1 & %Hinv1 & %Hinv2) & (%m2 & Hauth2 & Hfrees & %Hinv3 & %Hinv4))".
     rewrite current_frame_unfold !allocated_locals_unfold local_is_allocated_at_unfold.
     iMod (ghost_map_update with "Hauth1 Hlocals") as "(Hauth1 & $)".
     iMod (ghost_map_insert with "Hauth2") as "(Hauth2 & $)".
@@ -1771,6 +1783,12 @@ Section rules.
       simplify_eq. rewrite Nat.sub_diag in Ha. simplify_eq.
       erewrite call_frame_has_locals_fresh in Hb; last done; done. }
     iFrame. simpl.
+    iSplitR.
+    { iPureIntro. apply thread_states_invariant_update_thread; first done.
+      apply thread_state_invariant_update_frame.
+      - apply call_frame_invariant_alloc_var; last done.
+        apply Hinv in Hthread. apply Hthread in Hframe. done.
+      - naive_solver. }
     iSplitL "Ha".
     { iModIntro.
       unfold thread_current_frame_auth.
@@ -1890,6 +1908,7 @@ Section rules.
     NoDup vars.*1 →
     st !! π = Some ts →
     thread_get_frame ts = Some cf →
+    Forall (λ l, l.(loc_a) ∈ USize) locs →
     cf' = frame_alloc_vars cf vars locs →
     st' = <[π := thread_update_frame ts cf']> st →
     length locs = length vars →
@@ -1905,14 +1924,14 @@ Section rules.
     induction vars as [ | [x ly] vars IH] in locs, syntys, cf', st', ts, cf, st, S |-*.
     { simpl. intros Hf%Forall2_length. destruct syntys; last done.
       simpl. rewrite left_id.
-      iIntros (? ? Hlook Hframe -> -> ?) "Hctx $ _ $".
+      iIntros (? ? Hlook Hframe ? -> -> ?) "Hctx $ _ $".
       rewrite insert_id; first done.
       unfold thread_update_frame, frame_alloc_vars; simpl.
       rewrite /thread_get_frame head_lookup in Hframe.
       opose proof (proj1 (hd_error_tl_repr ts.(ts_frames) cf (tail ts.(ts_frames))) _) as Heq.
       { rewrite head_lookup. done. }
       rewrite -Heq Hlook. destruct ts; done. }
-    intros Hst Hfresh Hnodup Hts Hcf -> -> Hlocs.
+    intros Hst Hfresh Hnodup Hts Hcf Hran -> -> Hlocs.
     iIntros "Htctx Hframe Hfree Hlocals".
     simpl in Hst.
     apply Forall2_cons_inv_r in Hst as (synty1 & syntys' & Hsynty1 & Hst & ->).
@@ -1921,6 +1940,7 @@ Section rules.
     simpl in Hnodup.
     apply NoDup_cons in Hnodup as [Hnodup1 Hnodup].
     simpl in Hlocs.
+    apply Forall_cons in Hran as [Hran1 Hran].
     iDestruct "Hfree" as "(Hfree1 & Hfree)".
     iMod (IH _ _ _ locs syntys' with "Htctx Hframe Hfree Hlocals") as "(Hframe & Hlocals & Hxs & Htctx)"; [done.. | lia | ].
     iMod (thread_frame_allocate_var _ _ _ _ _ x l1 ly synty1 with "Htctx Hframe Hfree1 Hlocals") as "(Hframe & Hlocals & Hx & Htctx)".
@@ -1928,6 +1948,7 @@ Section rules.
     { rewrite lookup_insert_eq//. }
     { unfold thread_get_frame, thread_update_frame. simpl. done. }
     { rewrite elem_of_app. intros [Hel1 | Hel1]; done. }
+    { done. }
     { rewrite frame_alloc_vars_cons//. }
     { unfold thread_update_frame. simpl.
       rewrite insert_insert decide_True; last done.
@@ -1954,7 +1975,7 @@ Section rules.
     unfold thread_get_frame, call_frame_has_locals in *.
     simplify_eq.
     rewrite head_lookup in Hframe.
-    iDestruct "Htctx" as "(Ha & (%m1 & Hauth1 & %Hinv1 & %Hinv2) & (%m2 & Hauth2 & Hfrees & %Hinv3 & %Hinv4))".
+    iDestruct "Htctx" as "(%Hinv & Ha & (%m1 & Hauth1 & %Hinv1 & %Hinv2) & (%m2 & Hauth2 & Hfrees & %Hinv3 & %Hinv4))".
     rewrite current_frame_unfold !allocated_locals_unfold local_is_allocated_at_unfold.
     iPoseProof (ghost_map_lookup with "Hauth2 Hx") as "%Hlook".
     iMod (ghost_map_update with "Hauth1 Hlocals") as "(Hauth1 & $)".
@@ -1965,6 +1986,12 @@ Section rules.
     simpl in *.
 
     unfold use_layout_alg'. rewrite Hst. iFrame "Hfree1".
+    iSplitR.
+    { iPureIntro. apply thread_states_invariant_update_thread; first done.
+      apply thread_state_invariant_update_frame; last naive_solver.
+      apply call_frame_invariant_dealloc_var.
+      apply Hinv in Hthread. apply Hthread in Hframe. done. }
+
     iSplitL.
     { iModIntro.
       unfold thread_current_frame_auth.

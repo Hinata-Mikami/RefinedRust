@@ -9,6 +9,7 @@ From refinedrust Require Import options.
 Section deinit.
   Context `{!typeGS Σ}.
 
+
   Lemma ltype_deinit_shr F π l st {rt} (lt : ltype rt) r κ :
     lftE ⊆ F →
     syn_type_compat PtrSynType st →
@@ -28,10 +29,13 @@ Section deinit.
     iSplitL "Hlb"; first by iFrame.
     iExists tt. iR.
     iModIntro. iExists l'. iFrame. rewrite uninit_own_spec. iR. iExists ly.
-    apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
-    iPureIntro. destruct Hstcomp as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
-    specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
-    eapply syn_type_has_layout_make_untyped; done.
+    iPureIntro.
+    apply syn_type_has_layout_ptr_inv in Halg as ->.
+    split.
+    - destruct Hstcomp as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
+      specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
+      eapply syn_type_has_layout_make_untyped; done.
+    - apply l2v_has_layout_val.
   Qed.
 
   Lemma ltype_deinit_shr' F π l st {rt} (lt : ltype rt) r κ :
@@ -53,8 +57,9 @@ Section deinit.
     iSplitL "Hlb"; first by iFrame.
     iExists tt. iR.
     iModIntro. iExists l'. iFrame. rewrite uninit_own_spec. iR. iExists ly.
-    apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
-    iPureIntro. destruct Hstcomp as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
+    apply syn_type_has_layout_ptr_inv in Halg as ->. iPureIntro.
+    split; last apply l2v_has_layout_val.
+    destruct Hstcomp as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
     specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
     eapply syn_type_has_layout_make_untyped; done.
   Qed.

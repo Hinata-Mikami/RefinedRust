@@ -879,15 +879,15 @@ Section judgments.
   applied to the location l. *)
   Definition place_item_to_wp (f : frame_path) (Ki : place_ectx_item) (Φ : loc → iProp Σ) (l : loc) : iProp Σ :=
     match Ki with
-    | DerefPCtx o ot mc => WPe{f.1} !{ot, o, mc} l {{ λ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
-    | GetMemberPCtx sls m => WPe{f.1} l at{sls} m {{ λ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
-    | GetMemberUnionPCtx uls m => WPe{f.1} l at_union{uls} m {{ λ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
-    | AnnotExprPCtx n x => WPe{f.1} AnnotExpr n x l {{ λ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
+    | DerefPCtx o ot mc => WPe{f.1} !{ot, o, mc} l {{ λ v, ∃ l' : loc, ⌜val_to_loc v = Some l'⌝ ∗ Φ l' }}
+    | GetMemberPCtx sls m => WPe{f.1} l at{sls} m {{ λ v, ∃ l' : loc, ⌜val_to_loc v = Some l'⌝ ∗ Φ l' }}
+    | GetMemberUnionPCtx uls m => WPe{f.1} l at_union{uls} m {{ λ v, ∃ l' : loc, ⌜val_to_loc v = Some l'⌝ ∗ Φ l' }}
+    | AnnotExprPCtx n x => WPe{f.1} AnnotExpr n x l {{ λ v, ∃ l' : loc, ⌜val_to_loc v = Some l'⌝ ∗ Φ l' }}
     (* we have proved typed_val_expr e1 before so we can use v ◁ᵥ ty here;
       note that the offset is on the left and evaluated first *)
-    | BinOpPCtx op ot v m rt ty r => v ◁ᵥ{f.1, m} r @ ty -∗ WPe{f.1} BinOp op ot PtrOp v l {{ λ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
-    | UnOpPCtx op => WPe{f.1} UnOp op PtrOp l {{ λ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
-    | EnumDataPCtx els variant => WPe{f.1} EnumData els variant l {{ λ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
+    | BinOpPCtx op ot v m rt ty r => v ◁ᵥ{f.1, m} r @ ty -∗ WPe{f.1} BinOp op ot PtrOp v l {{ λ v, ∃ l' : loc, ⌜val_to_loc v = Some l'⌝ ∗ Φ l' }}
+    | UnOpPCtx op => WPe{f.1} UnOp op PtrOp l {{ λ v, ∃ l' : loc, ⌜val_to_loc v = Some l'⌝ ∗ Φ l' }}
+    | EnumDataPCtx els variant => WPe{f.1} EnumData els variant l {{ λ v, ∃ l' : loc, ⌜val_to_loc v = Some l'⌝ ∗ Φ l' }}
     end%I.
   Definition place_to_wp (f : frame_path) (K : list place_ectx_item) (Φ : loc → iProp Σ) : (loc → iProp Σ) := foldr (place_item_to_wp f) (λ v, |={⊤}=> Φ v)%I K.
 
@@ -977,7 +977,7 @@ Section judgments.
     (* TODO: Is the existential quantifier here a good idea or should this be a fullblown judgment? *)
     | W.UnOp op (IntOp it) e =>
       Some (λ L T, typed_val_expr E L f (UnOp op (IntOp it) (W.to_expr e)) (λ L' v m rt ty r,
-        v ◁ᵥ{f.1, m} r @ ty -∗ ∃ l, ⌜v = val_of_loc l⌝ ∗ T L' [] l)%I)
+        v ◁ᵥ{f.1, m} r @ ty -∗ ∃ l, ⌜val_to_loc v = Some l⌝ ∗ T L' [] l)%I)
     | W.Var x =>
       Some (λ L T, find_in_context (FindLocal f x) (λ '(st, l), x is_live{f, st} l -∗ T L [] l))%I
     | _ => None
@@ -986,7 +986,11 @@ Section judgments.
   Class IntoPlaceCtx E f (e : expr) (T : llctx → (llctx → list place_ectx_item → loc → iProp Σ) → iProp Σ) :=
     into_place_ctx Φ Φ':
     (⊢ ∀ L, rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗ current_frame f.1 f.2 -∗ T L Φ' -∗
-      (∀ L' K l, llctx_interp L' -∗ current_frame f.1 f.2 -∗ Φ' L' K l -∗ place_to_wp f K (Φ ∘ val_of_loc) l) -∗
+      (∀ L' K l,
+        llctx_interp L' -∗
+        current_frame f.1 f.2 -∗
+        Φ' L' K l -∗
+        place_to_wp f K (Φ ∘ l2v) l) -∗
         WPe{f.1} e {{ Φ }}).
 
   Section find_place_ctx_correct.
@@ -1008,13 +1012,16 @@ Section judgments.
     1: { iDestruct "HT" as ([st l])  "(Hx & HT)". destruct f as [π i].
       simpl. iApply (wp_var with "Hframe Hx").
       iApply physical_step_intro. iNext.
-      iIntros "Hframe Hx". iSpecialize ("HT" with "Hx").
-      iApply ("HΦ'" with "HL Hframe HT"). }
+      iIntros (v Hv) "Hframe Hx". iSpecialize ("HT" with "Hx").
+      iSpecialize ("HΦ'" with "HL Hframe HT"). simpl.
+      erewrite l2v_correct; done. }
     1: iApply @wpe_value; by iApply ("HΦ'" with "HL Hframe HT").
     1: {
-      iApply ("HT" with "LFT HE HL Hframe"). iIntros (L' rt ty v m r) "HL Hframe Hv HT".
+      iApply ("HT" with "LFT HE HL Hframe"). iIntros (L' v rt ty r m) "HL Hframe Hv HT".
       iDestruct ("HT" with "Hv") as (l ?) "HT". subst.
-        by iApply ("HΦ'" $! _ [] with "HL Hframe HT").
+      iSpecialize ("HΦ'" $! _ [] with "HL Hframe HT").
+      simpl. erewrite l2v_correct; first done.
+      by apply val_of_to_loc.
     }
     2: wpe_bind. 2: rewrite -!/(W.to_expr _).
     2: iApply ("HT" with "LFT HE HL Hframe"); iIntros (L' v m rt ty r) "HL Hframe Hv HT".
@@ -1027,7 +1034,8 @@ Section judgments.
     all: iApply (place_to_wp_mono with "HΦ"); iIntros (l') "HWP" => /=.
     7: iApply (@wpe_wand with "[Hv HWP]"); first by iApply "HWP".
     1-6: iApply (@wpe_wand with "HWP").
-    all: iIntros (?); by iDestruct 1 as (? ->) "$".
+    all: iIntros (?); iDestruct 1 as (? ?) "?".
+    all: erewrite l2v_correct; [ done | by apply val_of_to_loc].
   Qed.
   End find_place_ctx_correct.
 
@@ -1917,14 +1925,17 @@ Section judgments.
     specialize (ty_op_type_stable Hot) as Halg'.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iApply (wp_deref with "Hl"); [by right | | done | done | ].
-    { by rewrite val_to_of_loc. }
+    { apply val_to_of_loc. by apply val_of_loc_Some_l2v. }
     iApply physical_step_intro. iNext.
     iIntros (st) "Hl Ha".
     iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & -> & Hv & Hl2 & HT)"; first done.
     iMod ("Ha" with "Hl [//] Hsc Hv") as "Hl".
     iModIntro.
-    iExists l2. rewrite mem_cast_id_loc. iSplitR; first done.
+    iPoseProof (ltype_own_addr_in_usize with "Hl2") as "%".
+    iExists l2. rewrite (mem_cast_id_loc l2); last by apply val_to_loc_Some_l2v.
+    iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
     iApply ("Hcont" with "Hl3 [Hcl Hl] HT HL Hf"). simpl.
@@ -1968,15 +1979,18 @@ Section judgments.
     specialize (ty_op_type_stable Hot) as Halg'.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iApply (wp_deref with "Hl"); [by right | | done | done | ].
-    { by rewrite val_to_of_loc. }
+    { by apply val_to_loc_Some_l2v. }
     iApply physical_step_intro. iNext.
     iIntros (st) "Hl [Ha _]".
     iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & -> & Hv & Hl2 & HT)"; first done.
     iMod (fupd_mask_mono with "(Ha Hl Hv)") as "(Hl & HL)"; first done.
     iPoseProof ("HL_cl" with "HL") as "HL".
     iModIntro.
-    iExists l2. rewrite mem_cast_id_loc. iSplitR; first done.
+    iPoseProof (ltype_own_addr_in_usize with "Hl2") as "%".
+    iExists l2. rewrite (mem_cast_id_loc l2); last by apply val_to_loc_Some_l2v.
+    iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
     iApply ("Hcont" with "Hl3 [Hcl Hl] HT HL Hf"). simpl.
@@ -2020,15 +2034,18 @@ Section judgments.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "#>%Hlyv"; first done.
     iApply wpe_fupd.
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iApply (wp_deref with "Hloc"); [by right | | done | done | ].
-    { by rewrite val_to_of_loc. }
+    { by rewrite val_to_loc_Some_l2v. }
     iApply physical_step_intro. iNext.
     iIntros (st) "Hloc".
     iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & -> & Hv & Hl2 & HT)"; first done.
     iMod ("Hl_cl" with "Hloc") as "Htok".
     iMod ("HL_cl2" with "Htok") as "HL". iPoseProof ("HL_cl" with "HL") as "HL".
     iModIntro.
-    iExists l2. rewrite mem_cast_id_loc. iSplitR; first done.
+    iPoseProof (ltype_own_addr_in_usize with "Hl2") as "%".
+    iExists l2. rewrite (mem_cast_id_loc l2); last by apply val_to_loc_Some_l2v.
+    iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
     iApply ("Hcont" with "Hl3 [Hcl Hv] HT HL Hf"). simpl.
@@ -2747,7 +2764,7 @@ Section judgments.
                 mem_cast v ot st ◁ᵥ{f.1, MetaNone} r' @ ty' ∗
                 T L' (mem_cast v ot st) rt' ty' r')) -∗
         (* under this knowledge, the client has to prove the postcondition *)
-        Φ (val_of_loc l)) -∗
+        Φ (l2v l)) -∗
       (* TODO: maybe different mask F *)
       WPe{f.1} e {{ Φ }})%I.
 
@@ -2819,7 +2836,7 @@ Section judgments.
           l ↦|ot_layout ot| ∗
           (* and after having written v to it, it gets access to T *)
           logical_step F (l ↦ v ={F}=∗ ∃ L', llctx_interp L' ∗ current_frame f.1 f.2 ∗ T L'))) -∗
-        Φ (val_of_loc l)) -∗
+        Φ (l2v l)) -∗
       (* TODO: maybe different mask F *)
       WPe{f.1} e {{ Φ }})%I.
 
@@ -2890,8 +2907,8 @@ Section judgments.
           (* + the condition T *)
           llctx_interp L' ∗
           current_frame f.1 f.2 ∗
-          T L' (val_of_loc l) γ rt ty r) -∗
-          Φ (val_of_loc l)) -∗
+          T L' (l2v l) γ rt ty r) -∗
+          Φ (l2v l)) -∗
       WPe{f.1} e {{ Φ }})%I.
 
   Definition typed_borrow_mut_end_cont_t bmin rt := gname → ∀ rt', ltype rt' → place_rfn rt' → type rt' → rt' → place_update_kind_res bmin rt rt' → iProp Σ.
@@ -2947,8 +2964,8 @@ Section judgments.
           (* as well as the condition T *)
           llctx_interp L' ∗
           current_frame f.1 f.2 ∗
-          T L' (val_of_loc l) rt ty r)) -∗
-        Φ (val_of_loc l)) -∗
+          T L' (l2v l) rt ty r)) -∗
+        Φ (l2v l)) -∗
       WPe{f.1} e {{ Φ }})%I.
 
   Definition typed_borrow_shr_end_cont_t bmin rt := ∀ rt', ltype rt' → place_rfn rt' → type rt' → rt' → place_update_kind_res bmin rt rt' → iProp Σ.
@@ -2993,8 +3010,8 @@ Section judgments.
         l ◁ᵥ{f.1, MetaNone} r @ ty ∗
         llctx_interp L' ∗
         current_frame f.1 f.2 ∗
-        T L' (val_of_loc l) rt ty r) -∗
-        Φ (val_of_loc l)) -∗
+        T L' (l2v l) rt ty r) -∗
+        Φ (l2v l)) -∗
     WPe{f.1} e {{ Φ }})%I.
 
   (** This does not work below shared references, as we cannot get a full fraction out of the sharing predicate.

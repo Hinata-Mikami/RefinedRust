@@ -117,7 +117,7 @@ Record thread_state := {
 }.
 
 
-Definition pop_frame (ts : thread_state) : thread_state :=
+Definition thread_pop_frame (ts : thread_state) : thread_state :=
   {| ts_frames := tail ts.(ts_frames) |}.
 
 Definition thread_get_frame (ts : thread_state) : option call_frame :=
@@ -316,7 +316,7 @@ Definition compute_arith_bin_op (n1 n2 : Z) (it : _) (op : _) : option Z :=
   end.
 
 Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val → val → Prop :=
-| PtrOffsetOpIP v1 v2 σ o l ly it:
+| PtrOffsetOpIP v1 v2 σ o l ly it v' :
     val_to_Z v1 it = Some o →
     val_to_loc v2 = Some l →
     (* TODO: should we have an alignment check here? *)
@@ -324,12 +324,14 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
 
     (* added for Rust (mut_ptr::offset): *)
     (* "Both the starting and resulting pointer must be either in bounds or one byte past the end of the same [allocated object]" *)
+    (* TODO: this should rather require [valid_ptr], and require the block to still be alive. *)
     heap_state_loc_in_bounds l 0 σ.(st_heap) →
     (* "The computed offset, **in bytes**, cannot overflow an `isize`" *)
     ly_size ly * o ∈ ISize →
+    val_of_loc (l offset{ly}ₗ o) = Some v' →
 
-    eval_bin_op (PtrOffsetOp ly) (IntOp it) PtrOp σ v1 v2 (val_of_loc (l offset{ly}ₗ o))
-| PtrNegOffsetOpIP v1 v2 σ o l ly it:
+    eval_bin_op (PtrOffsetOp ly) (IntOp it) PtrOp σ v1 v2 v'
+| PtrNegOffsetOpIP v1 v2 σ o l ly it v' :
     val_to_Z v1 it = Some o →
     val_to_loc v2 = Some l →
     heap_state_loc_in_bounds (l offset{ly}ₗ -o) 0 σ.(st_heap) →
@@ -341,16 +343,20 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
     (* "The computed offset, **in bytes**, cannot overflow an `isize`" *)
     ly_size ly * -o ∈ ISize →
 
-    eval_bin_op (PtrNegOffsetOp ly) (IntOp it) PtrOp σ v1 v2 (val_of_loc (l offset{ly}ₗ -o))
+    val_of_loc (l offset{ly}ₗ -o) = Some v' →
 
-| PtrWrappingOffsetOpIP v1 v2 σ o l ly it :
+    eval_bin_op (PtrNegOffsetOp ly) (IntOp it) PtrOp σ v1 v2 v'
+
+| PtrWrappingOffsetOpIP v1 v2 σ o l ly it v' :
     val_to_Z v1 it = Some o →
     val_to_loc v2 = Some l →
-    eval_bin_op (PtrWrappingOffsetOp ly) (IntOp it) (PtrOp) σ v1 v2 (val_of_loc (l wrapping_offset{ly}ₗ o))
-| PtrWrappingNegOffsetOpIP v1 v2 σ o l ly it :
+    val_of_loc (l wrapping_offset{ly}ₗ o) = Some v' →
+    eval_bin_op (PtrWrappingOffsetOp ly) (IntOp it) (PtrOp) σ v1 v2 v'
+| PtrWrappingNegOffsetOpIP v1 v2 σ o l ly it v' :
     val_to_Z v1 it = Some o →
     val_to_loc v2 = Some l →
-    eval_bin_op (PtrWrappingNegOffsetOp ly) (IntOp it) (PtrOp) σ v1 v2 (val_of_loc (l wrapping_offset{ly}ₗ -o))
+    val_of_loc (l wrapping_offset{ly}ₗ -o) = Some v' →
+    eval_bin_op (PtrWrappingNegOffsetOp ly) (IntOp it) (PtrOp) σ v1 v2 v'
 
 (* for `offset_from` *)
 | PtrDiffOpPP v1 v2 σ l1 l2 ly v:
@@ -465,7 +471,7 @@ Inductive eval_un_op : un_op → op_type → state → val → val → Prop :=
 | CastOpIP it σ vs vt l a:
     val_to_Z vs it = Some a →
     l = (* assign empty provenance *) Loc ProvNone a →
-    val_of_loc l = vt →
+    val_of_loc l = Some vt →
     eval_un_op (CastOp PtrOp) (IntOp it) σ vs vt
 | CastOpB ot σ vs vt b:
     cast_to_bool ot vs σ.(st_heap) = Some b →
@@ -522,11 +528,12 @@ Inductive expr_step : expr → thread_id → state → list Empty_set → runtim
 | CheckBinOpS op v1 v2 σ π b ot1 ot2 :
     check_bin_op op ot1 ot2 v1 v2 b →
     expr_step (CheckBinOp op ot1 ot2 (Val v1) (Val v2)) π σ [] (RTVal (val_of_bool b)) σ []
-| VarS π x σ ts cf l ly :
+| VarS π x σ ts cf l ly v' :
     state_get_thread σ π = Some ts →
     thread_get_frame ts = Some cf →
     cf.(cf_locals) !! x = Some (l, ly) →
-    expr_step (Var x) π σ [] (RTVal (val_of_loc l)) σ []
+    val_of_loc l = Some v' →
+    expr_step (Var x) π σ [] (RTVal v') σ []
 | DerefS o v l ot v' σ π (mc : bool):
     let start_st st := ∃ n, st = if o is Na2Ord then RSt (S n) else RSt n in
     let end_st st :=
@@ -602,22 +609,24 @@ comparing pointers? (see lambda rust) *)
 | ConcatS vs π σ :
     expr_step (Concat (Val <$> vs)) π σ [] (RTVal (mjoin vs)) σ []
 (* for ptr::with_addr *)
-| CopyAllocIdS π σ v1 v2 a it l:
+| CopyAllocIdS π σ v1 v2 a it l v' :
     val_to_Z v1 it = Some a →
     val_to_loc v2 = Some l →
-    expr_step (CopyAllocId (IntOp it) (Val v1) (Val v2)) π σ [] (RTVal (val_of_loc (Loc l.(loc_p) a))) σ []
+    val_of_loc (Loc l.(loc_p) a) = Some v' →
+    expr_step (CopyAllocId (IntOp it) (Val v1) (Val v2)) π σ [] (RTVal v') σ []
 | IfES v ot e1 e2 b π σ:
     cast_to_bool ot v σ.(st_heap) = Some b →
     expr_step (IfE ot (Val v) e1 e2) π σ [] (to_rtexpr π $ if b then e1 else e2) σ []
-| AllocS v_size v_align (n_size n_align : nat) l π σ hs' :
+| AllocS v_size v_align (n_size n_align : nat) l π σ hs' v' :
     val_to_Z v_size USize = Some (Z.of_nat n_size) →
     val_to_Z v_align USize = Some (Z.of_nat n_align) →
     (* Rust's allocation APIs allow allocators to exhibit UB if the size is zero, so we also trigger UB here *)
     n_size > 0 →
     l `has_layout_loc` (Layout n_size n_align)  →
+    val_of_loc l = Some v' →
     alloc_new_block σ.(st_heap) HeapAlloc l (replicate n_size MPoison) hs' →
     expr_step (Alloc (Val v_size) (Val v_align)) π σ []
-      (RTVal (val_of_loc l)) {| st_heap := hs'; st_fntbl := σ.(st_fntbl); st_thread := σ.(st_thread) |} []
+      (RTVal v') {| st_heap := hs'; st_fntbl := σ.(st_fntbl); st_thread := σ.(st_thread) |} []
 | AllocFailS v_size v_align (n_size n_align : nat) π σ :
     val_to_Z v_size USize = Some (Z.of_nat n_size) →
     val_to_Z v_align USize = Some (Z.of_nat n_align) →
@@ -652,7 +661,7 @@ Inductive stmt_step : stmt → thread_id → function → state → list Empty_s
     thread_get_frame ts = Some cf →
     (* Deallocate the stack. *)
     free_blocks σ.(st_heap) StackAlloc (map_to_list cf.(cf_locals)).*2 hs →
-    stmt_step (Return (Val v)) π rf σ [] (RTVal v) {| st_fntbl := σ.(st_fntbl); st_heap := hs; st_thread := <[π := pop_frame ts]> σ.(st_thread) |} []
+    stmt_step (Return (Val v)) π rf σ [] (RTVal v) {| st_fntbl := σ.(st_fntbl); st_heap := hs; st_thread := <[π := thread_pop_frame ts]> σ.(st_thread) |} []
 | FreeS v_size v_align (n_size n_align : nat) v l s π rf σ hs' :
     val_to_Z v_size USize = Some (Z.of_nat n_size) →
     val_to_Z v_align USize = Some (Z.of_nat n_align) →
@@ -713,7 +722,7 @@ Inductive runtime_step : runtime_expr → state → list Empty_set → runtime_e
     (* Alloc failure is nb, not ub so we go into an infinite loop*)
     runtime_step AllocFailed σ [] AllocFailed σ [].
 
-Lemma expr_step_preserves_invariant π e1 e2 σ1 σ2 κs efs:
+Lemma expr_step_preserves_heap_invariant π e1 e2 σ1 σ2 κs efs:
   expr_step e1 π σ1 κs e2 σ2 efs →
   heap_state_invariant σ1.(st_heap) →
   heap_state_invariant σ2.(st_heap).
@@ -726,7 +735,7 @@ Proof.
   - eapply alloc_new_block_invariant => //.
 Qed.
 
-Lemma stmt_step_preserves_invariant s π rf e σ1 σ2 κs efs:
+Lemma stmt_step_preserves_heap_invariant s π rf e σ1 σ2 κs efs:
   stmt_step s π rf σ1 κs e σ2 efs →
   heap_state_invariant σ1.(st_heap) →
   heap_state_invariant σ2.(st_heap).
@@ -743,14 +752,181 @@ Proof.
   - intros. by eapply free_block_invariant.
 Qed.
 
-Lemma runtime_step_preserves_invariant e1 e2 σ1 σ2 κs efs:
+Lemma runtime_step_preserves_heap_invariant e1 e2 σ1 σ2 κs efs:
   runtime_step e1 σ1 κs e2 σ2 efs →
   heap_state_invariant σ1.(st_heap) →
   heap_state_invariant σ2.(st_heap).
 Proof.
   move => [] // *.
-  - by eapply expr_step_preserves_invariant.
-  - by eapply stmt_step_preserves_invariant.
+  - by eapply expr_step_preserves_heap_invariant.
+  - by eapply stmt_step_preserves_heap_invariant.
+Qed.
+
+Definition call_frame_invariant (cf : call_frame) :=
+  ∀ x l ly, cf.(cf_locals) !! x = Some (l, ly) → l.(loc_a) ∈ USize.
+Definition thread_state_invariant (ts : thread_state) :=
+  ∀ i cf, ts.(ts_frames) !! i = Some cf → call_frame_invariant cf.
+Definition thread_states_invariant (tss : gmap thread_id thread_state) :=
+  ∀ i ts, tss !! i = Some ts → thread_state_invariant ts.
+
+Lemma thread_state_invariant_push_frame ts cf :
+  call_frame_invariant cf →
+  thread_state_invariant ts →
+  thread_state_invariant (thread_push_frame ts cf).
+Proof.
+  intros Hcf Hts i cf'.
+  simpl. destruct i as [ | i]; simpl; naive_solver.
+Qed.
+Lemma thread_state_invariant_pop_frame ts :
+  thread_state_invariant ts →
+  thread_state_invariant (thread_pop_frame ts).
+Proof.
+  intros Hts i cf'.
+  simpl.
+  rewrite lookup_tail. apply Hts.
+Qed.
+Lemma thread_state_invariant_update_frame ts cf :
+  call_frame_invariant cf →
+  thread_state_invariant ts →
+  thread_state_invariant (thread_update_frame ts cf).
+Proof.
+  intros Hcf Hts i cf'.
+  simpl. destruct i as [ | i]; simpl; first naive_solver.
+  rewrite lookup_tail. apply Hts.
+Qed.
+Lemma thread_states_invariant_update_thread tss π ts :
+  thread_states_invariant tss →
+  thread_state_invariant ts →
+  thread_states_invariant (<[π := ts]> tss).
+Proof.
+  intros Hinv Hinv'.
+  intros ? ts'. simpl.
+  rewrite lookup_insert_Some.
+  intros [[-> ->] | [??]]; last naive_solver.
+  done.
+Qed.
+
+Lemma call_frame_invariant_dealloc_var cf x :
+  call_frame_invariant cf →
+  call_frame_invariant (frame_dealloc_var cf x).
+Proof.
+  intros Hcf.
+  intros x' l' ly' Hlook.
+  simpl in Hlook.
+  apply lookup_delete_Some in Hlook as [? ?]. naive_solver.
+Qed.
+Lemma call_frame_invariant_alloc_var cf x l ly :
+  call_frame_invariant cf →
+  l.(loc_a) ∈ USize →
+  call_frame_invariant (frame_alloc_var cf x l ly).
+Proof.
+  intros Hcf Hel.
+  intros x' l' ly' Hlook.
+  simpl in Hlook.
+  apply lookup_insert_Some in Hlook as [[-> [=<- <-]] | []]; naive_solver.
+Qed.
+Lemma call_frame_invariant_alloc_vars cf xs ls :
+  call_frame_invariant cf →
+  Forall (λ l, l.(loc_a) ∈ USize) ls →
+  call_frame_invariant (frame_alloc_vars cf xs ls).
+Proof.
+  intros Hcf Hel.
+  unfold frame_alloc_vars.
+  induction ls as [ | l ls IH] in xs, Hel |-*.
+  { rewrite zip_nil_r. simpl. done. }
+  destruct xs as [ | [x ly] xs]; simpl; first done.
+  inversion Hel.
+  apply call_frame_invariant_alloc_var.
+  - by apply IH.
+  - done.
+Qed.
+Lemma call_frame_invariant_new_frame vars ls :
+  Forall (λ l, l.(loc_a) ∈ USize) ls →
+  call_frame_invariant (initialize_new_frame vars ls).
+Proof.
+  intros Hel.
+  unfold initialize_new_frame.
+  apply call_frame_invariant_alloc_vars; last done.
+  intros x ?? Hlook. done.
+Qed.
+(* TODO move *)
+Lemma allocation_in_range_start_in_usize alloc :
+  allocation_in_range alloc →
+  alloc.(al_start) ∈ USize.
+Proof.
+  intros [Hran1 Hran2].
+  split.
+  - move: Hran1. unfold min_alloc_start.
+    rewrite MinInt_unsigned_0; last done. lia.
+  - move: Hran2. rewrite MaxInt_eq.
+    unfold al_end.
+    unfold max_alloc_end. lia.
+Qed.
+Lemma alloc_new_block_start_in_usize hs al l v hs' :
+  alloc_new_block hs al l v hs' →
+  l.(loc_a) ∈ USize.
+Proof.
+  inversion 1.
+  rename select (allocation_in_range _) into Hran.
+  apply allocation_in_range_start_in_usize in Hran.
+  simpl in Hran. done.
+Qed.
+Lemma alloc_new_blocks_start_in_usize hs al ls vs hs' :
+  alloc_new_blocks hs al ls vs hs' →
+  Forall (λ l, l.(loc_a) ∈ USize) ls.
+Proof.
+  induction 1; first done.
+  econstructor; last done.
+  by eapply alloc_new_block_start_in_usize.
+Qed.
+
+Lemma expr_step_preserves_thread_invariant π e1 e2 σ1 σ2 κs efs:
+  expr_step e1 π σ1 κs e2 σ2 efs →
+  thread_states_invariant σ1.(st_thread) →
+  thread_states_invariant σ2.(st_thread).
+Proof.
+  move => [] // *.
+  - apply thread_states_invariant_update_thread; first done.
+    subst. apply thread_state_invariant_push_frame; last naive_solver.
+    apply call_frame_invariant_new_frame.
+    rename select (list loc) into lsa.
+    rename select (alloc_new_blocks _ _ _ _ _) into Hnew.
+    by eapply alloc_new_blocks_start_in_usize.
+Qed.
+Lemma stmt_step_preserves_thread_invariant s π rf e σ1 σ2 κs efs:
+  stmt_step s π rf σ1 κs e σ2 efs →
+  thread_states_invariant σ1.(st_thread) →
+  thread_states_invariant σ2.(st_thread).
+Proof.
+  move => [] //; clear.
+  - move => *.
+    apply thread_states_invariant_update_thread; first done.
+    apply thread_state_invariant_pop_frame.
+    naive_solver.
+  - move => ???????????? Halloc Hlook1 Hlook2 Hlook3 -> Hinv .
+    apply thread_states_invariant_update_thread; first done.
+    apply thread_state_invariant_update_frame; last naive_solver.
+    apply call_frame_invariant_alloc_var.
+    + apply Hinv in Hlook1.
+      rewrite /thread_get_frame head_lookup in Hlook2.
+      by apply Hlook1 in Hlook2.
+    + by eapply alloc_new_block_start_in_usize.
+  - move => ??????????? Hlook1 Hlook2 Hlook3 ?? -> Hinv .
+    apply thread_states_invariant_update_thread; first done.
+    apply thread_state_invariant_update_frame; last naive_solver.
+    apply call_frame_invariant_dealloc_var.
+    apply Hinv in Hlook1.
+    rewrite /thread_get_frame head_lookup in Hlook2.
+    by apply Hlook1 in Hlook2.
+Qed.
+Lemma runtime_step_preserves_thread_invariant e1 e2 σ1 σ2 κs efs:
+  runtime_step e1 σ1 κs e2 σ2 efs →
+  thread_states_invariant σ1.(st_thread) →
+  thread_states_invariant σ2.(st_thread).
+Proof.
+  move => [] // *.
+  - by eapply expr_step_preserves_thread_invariant.
+  - by eapply stmt_step_preserves_thread_invariant.
 Qed.
 
 (*** evaluation contexts *)

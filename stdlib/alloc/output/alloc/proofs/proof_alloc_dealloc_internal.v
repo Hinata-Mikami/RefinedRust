@@ -33,12 +33,14 @@ Proof.
   iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
   iDestruct "Hb" as "(%v' & Hptr & Hv')".
   iPoseProof (ty_own_val_has_layout with "Hv'") as "%Hlyv'"; first done.
+  iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
 
-  iApply (wps_free _ _ _ _ ptr _ _ (Z.to_nat size) (Z.to_nat align_log2) with "[Hptr] [Hfree]").
+  iApply (wps_free _ _ _ _ ptr _ _ _ (Z.to_nat size) (Z.to_nat align_log2) with "[Hptr] [Hfree]").
   { rewrite Hsize. f_equiv.
     apply val_to_Z_unsigned_nonneg in Hsize; last done. lia. }
   { rewrite Halign_log2. f_equiv.
     apply val_to_Z_unsigned_nonneg in Halign_log2; last done. lia. }
+  { by apply val_to_loc_Some_l2v. }
   { lia. }
   { iExists _. iFrame. fold ly. done. }
   { rewrite /freeable_nz.

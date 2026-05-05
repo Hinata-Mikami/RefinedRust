@@ -29,7 +29,10 @@ Section rule.
     iApply physical_step_intro_lc. iIntros "(Hcred & Hcred1) !> !> HT".
     iMod ("HT" with "Hcred1") as (L' rt ty r r' ly) "(#Hrfn & #Hshr & %Halg & %Hly & #Hlb & #Hsc & HL & Hf & HT)".
     iModIntro. iApply ("HΦ" with "HL Hf [Hshr] HT").
-    iExists l, ly, r'. iR. iR. iFrame "Hlb Hrfn Hsc %".
+    iExists l, ly, r'. iR.
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
+    iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
+    iR. iFrame "Hlb Hrfn Hsc %".
     iModIntro. iModIntro. done.
   Qed.
 End rule.

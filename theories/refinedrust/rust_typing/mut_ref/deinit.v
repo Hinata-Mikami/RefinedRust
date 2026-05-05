@@ -34,10 +34,11 @@ Section deinit.
     iSplitL "Hlb"; first by iFrame.
     iExists tt. iR. iModIntro. iExists _. iFrame.
     rewrite uninit_own_spec. iR. iExists ly.
-    apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
-    iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
+    apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR.
+    { iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
     specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
-    eapply syn_type_has_layout_make_untyped; done.
+      eapply syn_type_has_layout_make_untyped; done. }
+    iPureIntro. apply l2v_has_layout_val.
   Qed.
 
   (* TODO try to find a good way to unify with previous lemma *)
@@ -65,10 +66,11 @@ Section deinit.
     iSplitL "Hlb"; first by iFrame.
     iExists tt. iR. iModIntro. iExists _. iFrame.
     rewrite uninit_own_spec. iR. iExists ly.
-    apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
-    iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
-    specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
-    eapply syn_type_has_layout_make_untyped; done.
+    apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR.
+    { iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
+      specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
+      eapply syn_type_has_layout_make_untyped; done. }
+    iPureIntro. apply l2v_has_layout_val.
   Qed.
 
   Lemma ltype_uniq_extractable_deinit_mut F π l st {rt} (lt : ltype rt) r κ κm γ :
@@ -95,12 +97,13 @@ Section deinit.
     iSplitL "Hlb"; first done.
     iExists tt. iR. iModIntro. iExists _. iFrame.
     rewrite uninit_own_spec. iR. iExists ly.
-    apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
-    iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
-    specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
-    eapply syn_type_has_layout_make_untyped; done.
-  Qed.
+    apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR.
+    { iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
+      specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
+      eapply syn_type_has_layout_make_untyped; done. }
+    iPureIntro. apply l2v_has_layout_val.
 
+  Qed.
   (* TODO try to find a good way to unify with previous lemma *)
   Lemma ltype_uniq_extractable_deinit_mut' F π l st {rt} (lt : ltype rt) r κ κm γ :
     lftE ⊆ F →
@@ -126,10 +129,11 @@ Section deinit.
     iSplitL "Hlb"; first by iFrame.
     iExists tt. iR. iModIntro. iExists _. iFrame.
     rewrite uninit_own_spec. iR. iExists ly.
-    apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
-    iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
-    specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
-    eapply syn_type_has_layout_make_untyped; done.
+    apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR.
+    { iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
+      specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
+      eapply syn_type_has_layout_make_untyped; done. }
+    iPureIntro. apply l2v_has_layout_val.
   Qed.
 End deinit.
 
@@ -149,15 +153,18 @@ Section extract.
     iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
     iDestruct "Hb" as "(%v & Hl & Hb)".
     rewrite /ty_own_val/=.
-    iDestruct "Hb" as "(% & % & _ & -> & ? & ? & ? & ? & Hb & Hcred' & ?)".
-    iFrame.
+    iDestruct "Hb" as "(%l' & %ly' & _ & %Hv & ? & ? & ? & ? & Hb & Hcred' & ?)".
+    iFrame "Hb".
     iSplitR. { simp_ltypes. done. }
-    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iExists _. simpl. iFrame. iR. iR.
-    iExists _. iR. iModIntro. iModIntro.
-    rewrite uninit_own_spec. iR. iExists _. iR.
-    iPureIntro. eapply syn_type_has_layout_ptr_inv in Hst. subst.
-    done.
+    apply syn_type_has_layout_ptr_inv in Hst as ->.
+    iModIntro. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+    iExists void*. simpl. iSplitR; first by iPureIntro; apply syn_type_has_layout_ptr.
+    iSplitR; first done.
+    iSplitR; first done. iSplitL "Hlb"; first done.
+    iExists _. iR. iModIntro.
+    iExists v. iFrame. rewrite uninit_own_spec. iR. iExists void*.
+    iSplitR; first by iPureIntro; apply syn_type_has_layout_ptr.
+    iPureIntro. unfold has_layout_val. apply val_to_loc_length. eexists. done.
   Qed.
   Definition stratify_ltype_extract_ofty_mut_inst := [instance @stratify_ltype_extract_ofty_mut].
   Global Existing Instance stratify_ltype_extract_ofty_mut_inst | 20.

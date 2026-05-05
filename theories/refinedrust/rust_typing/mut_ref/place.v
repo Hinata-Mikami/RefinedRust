@@ -32,11 +32,17 @@ Section place.
     iMod "Hb" as "(%l' & Hl & Hb & Hcl)". iMod "HclF" as "_". iModIntro.
     iApply wpe_fupd.
     iApply (wpe_logical_step with "Hcl"); [solve_ndisj.. | ].
-    iApply (wp_deref with "Hl") => //; [solve_ndisj | by apply val_to_of_loc | ].
-    iApply physical_step_intro_lc. iIntros "Hcred !>!>".
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
+    iPoseProof (ltype_own_addr_in_usize with "Hb") as "%Haddr".
+    iApply (wp_deref with "Hl").
+    - solve_ndisj.
+    - by apply val_to_loc_Some_l2v.
+    - exact Hly.
+    - apply l2v_has_layout_val.
+    - iApply physical_step_intro_lc. iIntros "Hcred !>!>".
     iIntros (st) "Hl Hc". iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iMod "HclF" as "_". iExists l'.
-    iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
+    iSplitR. { iPureIntro. rewrite mem_cast_l2v_id; last done. by apply val_to_loc_Some_l2v. }
     iApply ("HR" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
     iModIntro. iIntros (L' κs l2 bmin b2 rti tyli ri updcx) "Hb Hs".
     iApply ("HΦ" $! _ _ _ bmin with "Hb").
@@ -94,11 +100,17 @@ Section place.
     iPoseProof (mut_ltype_acc_uniq F with "[$LFT $LLCTX] Hκ' Hclκ' HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
     iMod "Hb" as "(%l' & Hl & Hb & Hcl)". iMod "HclF" as "_".
     iModIntro. iApply (wpe_logical_step with "Hcl"); [solve_ndisj.. | ].
-    iApply (wp_deref with "Hl") => //; [solve_ndisj | by apply val_to_of_loc | ].
-    iApply physical_step_intro_lc. iIntros "Hcred !>!>".
-    iIntros (st) "Hl Hcl".
-    iExists l'.
-    iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
+    iPoseProof (ltype_own_addr_in_usize with "Hb") as "%Haddr".
+    iApply (wp_deref with "Hl").
+    - solve_ndisj.
+    - by apply val_to_loc_Some_l2v.
+    - exact Hly.
+    - apply l2v_has_layout_val.
+    - iApply physical_step_intro_lc. iIntros "Hcred !>!>".
+      iIntros (st) "Hl Hcl".
+      iExists l'.
+      iSplitR. { iPureIntro. rewrite mem_cast_l2v_id; last done. by apply val_to_loc_Some_l2v. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
     iIntros (L'' κs' l2 bmin b2 rti tyli ri updcx) "Hb Hs".
     iApply ("HΦ" $! _ _ _ bmin with "Hb").
@@ -109,7 +121,7 @@ Section place.
     unfold check_llctx_place_update_kind_incl_goal.
     iDestruct "HT" as (b Hb) "HT".
     destruct b; simpl.
-    - (* weak *)
+    + (* weak *)
       iDestruct "Hcl" as "[Hc _]". simpl.
       iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hincl2"; first apply Hb.
       iPoseProof (pupd_performed_incl_uniq_rt with "Hincl2") as "%Heq".
@@ -120,7 +132,7 @@ Section place.
       { done. }
       iFrame. simpl. iFrame.
       done.
-    - (* strong *)
+    + (* strong *)
       iDestruct "HT" as "(-> & HT)".
       iDestruct "Hcl" as "[_ Hc]".
       iMod ("Hc" with "Hl [] Hb") as "Hb".
@@ -158,11 +170,17 @@ Section place.
     iPoseProof (mut_ltype_acc_shared F with "[$LFT $LLCTX] Hκ' HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
     iMod "Hb" as "(%l' & %q' & Hl & >Hb & Hcl)". iMod "HclF" as "_".
     iModIntro. iApply wpe_fupd.
-    iApply (wp_deref with "Hl") => //; [solve_ndisj | by apply val_to_of_loc | ].
-    iApply physical_step_intro; iNext.
-    iIntros (st) "Hl". iMod (fupd_mask_mono with "Hb") as "#Hb"; first done.
-    iExists l'.
-    iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
+    iApply (wp_deref with "Hl").
+    - solve_ndisj.
+    - by apply val_to_loc_Some_l2v.
+    - exact Hly.
+    - apply l2v_has_layout_val.
+    - iApply physical_step_intro; iNext.
+      iIntros (st) "Hl". iMod (fupd_mask_mono with "Hb") as "#Hb"; first done.
+      iExists l'.
+      iPoseProof (ltype_own_addr_in_usize with "Hb") as "%Haddr";
+      iSplitR. { iPureIntro. rewrite mem_cast_l2v_id; last done. by apply val_to_loc_Some_l2v. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
     iModIntro. iIntros (L'' κs' l2 bmin b2 rti tyli ri updcx) "Hb' Hs".
     iApply ("HΦ" $! _ _ _ bmin with "Hb'").

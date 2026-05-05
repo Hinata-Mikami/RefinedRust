@@ -75,6 +75,13 @@ Proof.
   done.
 Qed.
 
+Lemma initial_state_thread_invariant n fns :
+  thread_states_invariant (initial_state n fns).(st_thread).
+Proof.
+  intros ?? ->%initial_state_thread_empty.
+  done.
+Qed.
+
 Definition main_type `{!typeGS Σ} (P : iProp Σ) :=
   fn(∀ ( *[]) : 0 | ( *[]) : [] | () : (), λ ϝ, []; λ π, P) → ∃ () : (), () @ unit_t; λ π, True.
 
@@ -85,16 +92,17 @@ Definition main_type `{!typeGS Σ} (P : iProp Σ) :=
 (** * The main adequacy lemma *)
 Lemma refinedrust_adequacy Σ `{!typePreG Σ} `{ALG : LayoutAlg} (thread_mains : list loc) (fns : gmap addr function) n t2 σ2 obs σ:
   σ = initial_state (length thread_mains) fns →
+  Forall (λ l, l.(loc_a) ∈ USize) thread_mains →
   (* show that the main functions for the individual threads are well-typed for a provable precondition [P] *)
   (∀ {HtypeG : typeGS Σ},
     ([∗ map] k↦qs∈fns, fntbl_entry (fn_loc k) qs) ={⊤}=∗
-      [∗ list] π ↦ main ∈ thread_mains, ∃ P, (val_of_loc main) ◁ᵥ{π, MetaNone} main @ function_ptr [] (@eq_refl _ [], main_type P) ∗ P) →
+      [∗ list] π ↦ main ∈ thread_mains, ∃ P, (l2v main) ◁ᵥ{π, MetaNone} main @ function_ptr [] (@eq_refl _ [], main_type P) ∗ P) →
   (* if the whole thread pool steps for [n] steps *)
   nsteps (Λ := c_lang) n (initial_prog <$> (zip (seq 0 (length thread_mains)) thread_mains), σ) obs (t2, σ2) →
   (* then it has not gotten stuck *)
   ∀ e2, e2 ∈ t2 → not_stuck e2 σ2.
 Proof.
-  move => -> Hwp. apply: (wp_strong_adequacy _ _ refinedc_trgen NotStuck) . move => ? ?.
+  move => -> Hran Hwp. apply: (wp_strong_adequacy _ _ refinedc_trgen NotStuck) . move => ? ?.
   (* heap/Caesium stuff *)
   set h := to_heapUR ∅.
   iMod (own_alloc (● h ⋅ ◯ h)) as (γh) "[Hh _]" => //.
@@ -178,7 +186,7 @@ Proof.
     apply lookup_seq in Hlook1 as (-> & ?).
     iDestruct ("Hfn") as (P) "[Hmain HP]".
     rewrite /initial_prog.
-    iPoseProof (type_call_fnptr [] [] (π, 0) π 0 [] [] [] main (val_of_loc main) [] [] eq_refl _ (main_type P) [] (λ _ _ _ _ _, True%I) with "[HP Hna] Hmain [] [] [] [] Hframe []") as "Hx"; first last.
+    iPoseProof (type_call_fnptr [] [] (π, 0) π 0 [] [] [] main (l2v main) [] [] eq_refl _ (main_type P) [] (λ _ _ _ _ _, True%I) with "[HP Hna] Hmain [] [] [] [] Hframe []") as "Hx"; first last.
     + rewrite expr_wp_unfold. done.
     + by iIntros (?????) "HL _".
     + by iApply big_sepL_nil.
@@ -211,6 +219,8 @@ Proof.
   - iFrame. iIntros (?? _ _ ?) "_ _ _". iApply fupd_mask_intro_discard => //. iPureIntro. by eauto.
   - rewrite /state_ctx /heap_state_ctx /thread_ctx /alloc_meta_ctx /to_alloc_meta_map /alloc_alive_ctx /to_alloc_alive_map.
     iFrame. iR.
+    iSplitR.
+    { iPureIntro. apply initial_state_thread_invariant. }
     iSplitL.
     { unfold thread_current_frame_auth.
       iApply (ghost_map_auth_prove_eq with "Hcur").

@@ -181,6 +181,13 @@ Proof.
   by rewrite wrap_unsigned_id.
 Qed.
 
+Lemma wrapping_shift_loc_in_range l n :
+  (l +wₗ n).(loc_a) ∈ USize.
+Proof.
+  unfold wrapping_shift_loc.
+  simpl.
+  by apply wrap_unsigned_in_range.
+Qed.
 
 (** ** Properties of [offset_loc]. *)
 

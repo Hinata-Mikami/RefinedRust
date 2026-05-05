@@ -16,7 +16,7 @@ Section subtype.
     v ◁ᵥ{π, m} r @ mut_ref κ1 ty2.
   Proof.
     destruct r as [r γ].
-    iIntros "#Hincl #Ht12 #Ht21 (%l & %ly & -> & -> & ? & Hly & Hlb & Hsc & Hobs & ? & Hb)".
+    iIntros "#Hincl #Ht12 #Ht21 (%l & %ly & -> & %Hv & ? & Hly & Hlb & Hsc & Hobs & ? & Hb)".
     iDestruct ("Ht12" $! inhabitant) as "(%Hst & #Hsceq & _)".
     (*iDestruct "Ht21" as "(_ & _ & #Hv21 & #Hs21)".*)
     iExists l, ly. iFrame. iR. iR.
@@ -26,10 +26,10 @@ Section subtype.
     iApply (pinned_bor_iff' with "[] Hb").
     iNext. iModIntro. iSplit.
     + iIntros "(%r' & Hauth & Hv)". iExists r'. iFrame.
-      iMod "Hv" as "(%v & Hl & Hv)". iModIntro. iExists v. iFrame.
+      iMod "Hv" as "(%v' & Hl & Hv)". iModIntro. iExists v'. iFrame.
       iDestruct ("Ht12" $! r') as "(_ & _ & Hv12 & _)". by iApply "Hv12".
     + iIntros "(%r' & Hauth & Hv)". iExists r'. iFrame.
-      iMod "Hv" as "(%v & Hl & Hv)". iModIntro. iExists v. iFrame.
+      iMod "Hv" as "(%v' & Hl & Hv)". iModIntro. iExists v'. iFrame.
       iDestruct ("Ht21" $! r') as "(_ & _ & Hv21 & _)". by iApply "Hv21".
   Qed.
 

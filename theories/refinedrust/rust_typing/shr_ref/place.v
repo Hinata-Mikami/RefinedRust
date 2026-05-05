@@ -29,13 +29,17 @@ Section place.
     iPoseProof (shr_ltype_acc_owned F with "[$LFT $LLCTX] HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
     iApply fupd_wpe. iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iMod "Hb" as "(%l' & Hl & Hb & Hcl)". iMod "HclF" as "_". iModIntro.
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iApply wpe_fupd.
-    iApply (wp_deref with "Hl") => //; [solve_ndisj | by apply val_to_of_loc | ].
+    iApply (wp_deref with "Hl") => //; [solve_ndisj | | | ].
+    { by apply val_to_loc_Some_l2v. }
+    { apply l2v_has_layout_val. }
     iApply physical_step_intro_lc. iIntros "Hcred !> !>".
     iIntros (st) "Hl". iMod (fupd_mask_subseteq F) as "HclF"; first done.
+    iPoseProof (ltype_own_addr_in_usize with "Hb") as "%".
     iMod "HclF" as "_". iExists l'.
-    iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
-    iMod ("HR" with "[] [$] HE HL [Hcred]") as "(%L1 & HL & HR)"; first done.
+    iSplitR. { iPureIntro. rewrite mem_cast_l2v_id; last done. by apply val_to_loc_Some_l2v. }
+iMod ("HR" with "[] [$] HE HL [Hcred]") as "(%L1 & HL & HR)"; first done.
     { iApply lc_weaken; last done. unfold num_laters_per_step. lia. }
     iApply ("HR" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
     iModIntro. iIntros (L' κs l2 bmin b2 rti tyli ri updcx) "Hb Hs".
@@ -95,13 +99,17 @@ Section place.
     iMod "HclF" as "_". iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iPoseProof (shr_ltype_acc_uniq F with "[$LFT $LLCTX] Hκ' Hclκ' HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
     iMod "Hb" as "(%l' & Hl & Hb & Hcl)". iMod "HclF" as "_". iModIntro.
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iApply wpe_fupd.
     iApply (wpe_logical_step with "Hcl"); [solve_ndisj.. | ].
-    iApply (wp_deref with "Hl") => //; [solve_ndisj | by apply val_to_of_loc | ].
+    iApply (wp_deref with "Hl") => //; [solve_ndisj | | | ].
+    { by apply val_to_loc_Some_l2v. }
+    { apply l2v_has_layout_val. }
     iApply physical_step_intro_lc. iIntros "Hcred !> !>".
     iIntros (st) "Hl Hc". iMod (fupd_mask_subseteq F) as "HclF"; first done.
+    iPoseProof (ltype_own_addr_in_usize with "Hb") as "%".
     iMod "HclF" as "_". iExists l'.
-    iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
+    iSplitR. { iPureIntro. rewrite mem_cast_l2v_id; last done. rewrite val_to_loc_Some_l2v; done. }
     iMod ("HT" with "[] [$] HE HL [Hcred]") as "(%L1 & HL & HT)"; first done.
     { iApply lc_weaken; last done. unfold num_laters_per_step. lia. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
@@ -163,12 +171,16 @@ Section place.
     iMod "HclF" as "_". iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iPoseProof (shr_ltype_acc_shared F with "[$LFT $LLCTX] Hκ' HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
     iMod "Hb" as "(%l' & %q' & Hl & >Hb & Hcl)". iMod "HclF" as "_".
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iModIntro. iApply wpe_fupd.
-    iApply (wp_deref with "Hl") => //; [solve_ndisj | by apply val_to_of_loc | ].
+    iApply (wp_deref with "Hl") => //; [solve_ndisj | | | ].
+    { by apply val_to_loc_Some_l2v. }
+    { apply l2v_has_layout_val. }
     iApply physical_step_intro_lc. iIntros "Hcred !>!>".
     iIntros (st) "Hl". iMod (fupd_mask_mono with "Hb") as "#Hb"; first done.
     iExists l'.
-    iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
+    iPoseProof (ltype_own_addr_in_usize with "Hb") as "%".
+    iSplitR. { iPureIntro. rewrite mem_cast_l2v_id; last done. by apply val_to_loc_Some_l2v. }
     iMod ("HT" with "[] [$] HE HL [Hcred]") as "(%L1 & HL &HT)"; first done.
     { iApply lc_weaken; last done. unfold num_laters_per_step. lia. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").

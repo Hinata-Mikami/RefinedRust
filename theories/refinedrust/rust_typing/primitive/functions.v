@@ -171,16 +171,16 @@ Section function.
       The caller will have to show, when calling the function, that the instantiations validate the layout assumptions.
   *)
   Program Definition function_ptr {lfts : nat} (arg_types : list (syn_type)) {rts : list (RT)} (fp : (rts = rts) * (spec_with lfts rts fn_spec)) : type loc := {|
-    st_own π f v := (∃ fn, ⌜v = val_of_loc f⌝ ∗ fntbl_entry f fn ∗
+    st_own π f v := (∃ fn, ⌜val_to_loc v = Some f⌝ ∗ fntbl_entry f fn ∗
       ⌜Forall2 syn_type_has_layout arg_types fn.(f_args).*2⌝ ∗
       ▷ typed_function π fn fp)%I;
     st_has_op_type ot mt := is_ptr_ot ot;
     st_syn_type := FnPtrSynType;
   |}.
   Next Obligation.
-    simpl. iIntros (lfts sta rts fp π r v) "(%fn & -> & _)".
+    simpl. iIntros (lfts sta rts fp π r v) "(%fn & %Hv & _)".
     iPureIntro. eexists. split; first by apply syn_type_has_layout_fnptr.
-    done.
+    by apply val_to_loc_length.
   Qed.
   Next Obligation.
     intros ??? ? ot mt Hot. apply is_ptr_ot_layout in Hot. rewrite Hot.
@@ -191,9 +191,10 @@ Section function.
     simpl. iIntros (lfts lya rts fp ot mt st π r v Hot).
     destruct mt.
     - eauto.
-    - iIntros "(%fn & -> & Hfntbl & %Halg & Hfn)".
+    - iIntros "(%fn & %Hv & Hfntbl & %Halg & Hfn)".
       iExists fn. iFrame. iPureIntro. split; last done.
-      destruct ot; try done. unfold mem_cast. rewrite val_to_of_loc. done.
+      destruct ot; try done.
+      unfold mem_cast. rewrite Hv. done.
     - iApply (mem_cast_compat_loc (λ v, _)); first done.
       iIntros "(%fn & -> & _)". eauto.
   Qed.
@@ -256,7 +257,7 @@ Section call.
       T L3 v _ (fps.(fp_fr) x').(fr_ty) (fps.(fp_fr) x').(fr_ref)))))))
     ⊢ typed_call E L f eκs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, fp)) vl tys T.
   Proof.
-    simpl. iIntros "HT (-> & %fn & -> & He & %Halg & Hfn) Htys" (Φ) "#CTX #HE HL Hf HΦ".
+    simpl. iIntros "HT (-> & %fn & %Hv & He & %Halg & Hfn) Htys" (Φ) "#CTX #HE HL Hf HΦ".
     rewrite /li_tactic/ensure_evars_instantiated_goal.
     iDestruct "HT" as (mask) "(Hna & -> & -> & HT) /=".
     iMod ("HT" with "[] CTX HE HL Htys") as "(%L' & HL & HT)"; first done.
@@ -309,7 +310,6 @@ Section call.
     (* eliminate the logical step *)
     iModIntro. iModIntro.
     iApply (wp_call with "He Hf") => //.
-    { by apply val_to_of_loc. }
     iApply (physical_step_step_upd with "Hstep").
     iMod (tr_zero) as "Hc".
     iApply (physical_step_intro_tr with "Hc").
@@ -368,7 +368,7 @@ Section call.
       iPoseProof (big_sepL2_to_zip with "Hvl") as "Hvl".
       rewrite zip_assoc_r big_sepL_fmap.
       iApply (big_sepL_impl with "Hvl").
-      iModIntro. iIntros (k ((l' & ty) & v) Hlook).
+      iModIntro. iIntros (k ((l' & ty) & v') Hlook).
       destruct ty as [rt [ty r]]. simpl.
       apply lookup_zip in Hlook as (Hlook1 & Hlook3).
       apply lookup_zip in Hlook1 as (Hlook1 & Hlook2). simpl in *.
@@ -387,7 +387,7 @@ Section call.
     iExists RET_PROP. iSplitL "Hf Hm Hϝ" => /=.
     - iApply wps_fupd.
       iApply ("Hm" with "[$LFT $LCTX] HE' [$Hϝ//] Hf []").
-      iIntros (L5 v locals) "HL Hf Hlocals Hloc HT". simpl.
+      iIntros (L5 v' locals) "HL Hf Hlocals Hloc HT". simpl.
       iMod ("HT" with "[] [] [] [] HE' HL") as "(%L3 & %κs1 & %R4 & Hp & HL & HT)"; [done.. |  | ].
       { rewrite /rrust_ctx. iFrame "#". }
       iMod "Hp" as "(Hret & HR)".
@@ -403,7 +403,7 @@ Section call.
       iExists _. iFrame.
       iApply (credit_store_mono with "Hstore"); lia.
     - (* handle the postcondition at return *)
-      iIntros (v). iDestruct 1 as (κs' locals) "(Hϝ & Hstore & Hf & Hlocals & Hna & Hls & HPr)".
+      iIntros (v'). iDestruct 1 as (κs' locals) "(Hϝ & Hstore & Hf & Hlocals & Hna & Hls & HPr)".
       iFrame.
       simpl.
       iPoseProof (credit_store_borrow with "Hstore") as "(Hcred1 & Hat & _)".
@@ -795,7 +795,7 @@ Section function_subsume.
     iIntros "Hv". iFrame.
     iDestruct "Ha" as "(-> & Ha)".
     iEval (rewrite /ty_own_val/=) in "Hv".
-    iDestruct "Hv" as "(_ & %fn & -> & Hen & %Halg1 & #Htf)".
+    iDestruct "Hv" as "(_ & %fn & %Hv & Hen & %Halg1 & #Htf)".
     iEval (rewrite /ty_own_val/=).
     iR.
     iExists fn. iR. iFrame.

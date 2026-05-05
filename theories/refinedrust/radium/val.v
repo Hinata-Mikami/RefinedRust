@@ -40,18 +40,39 @@ Global Typeclasses Opaque has_layout_val.
 Definition val_of_loc_n (n : nat) (l : loc) : val :=
   MPtrFrag l <$> rev (seq 0 n).
 
-Definition val_of_loc : loc → val :=
-  val_of_loc_n bytes_per_addr.
+Definition val_of_loc_unchecked (l : loc) : val :=
+  val_of_loc_n bytes_per_addr l.
+Arguments val_of_loc_unchecked : simpl never.
+
+Definition val_of_loc (l : loc) : option val :=
+  if bool_decide (l.(loc_a) ∈ USize) then
+    Some (val_of_loc_unchecked l)
+  else
+    None.
 
 Definition val_to_loc_n (n : nat) (v : val) : option loc :=
   if v is MPtrFrag l _ :: _ then
     if (bool_decide (v = val_of_loc_n n l)) then Some l else None
   else None.
 
-Definition val_to_loc : val → option loc :=
-  val_to_loc_n bytes_per_addr.
+Definition val_to_loc (v : val) : option loc :=
+  l ← val_to_loc_n bytes_per_addr v;
+  _ ← guard (l.(loc_a) ∈ USize);
+  mret l.
 
-Definition NULL : val := val_of_loc NULL_loc.
+Lemma val_to_loc_Some_inv v l :
+  val_to_loc v = Some l →
+  Some l = val_to_loc_n bytes_per_addr v ∧ l.(loc_a) ∈ USize.
+Proof.
+  rewrite /val_to_loc.
+  destruct (val_to_loc_n bytes_per_addr v); simpl; last done.
+  rewrite option_guard_bool_decide.
+  case_bool_decide; simpl.
+  - intros [= ->]. done.
+  - done.
+Qed.
+
+Definition NULL : val := val_of_loc_unchecked NULL_loc.
 Global Typeclasses Opaque NULL.
 
 Lemma val_of_loc_n_length n l:
@@ -69,10 +90,42 @@ Proof.
   by rewrite /val_of_loc_n seq_S rev_unit.
 Qed.
 
-Lemma val_to_of_loc l:
-  val_to_loc (val_of_loc l) = Some l.
+Lemma val_of_loc_Some_inv l v :
+  val_of_loc l = Some v →
+  val_of_loc_unchecked l = v ∧ l.(loc_a) ∈ USize.
 Proof.
-  by apply val_to_of_loc_n.
+  unfold val_of_loc. case_bool_decide; naive_solver.
+Qed.
+
+Lemma val_of_loc_Some l :
+  l.(loc_a) ∈ USize →
+  val_of_loc l = Some (val_of_loc_unchecked l).
+Proof.
+  intros Hel.
+  rewrite /val_of_loc bool_decide_true//.
+Qed.
+Lemma val_of_loc_unchecked_length l :
+  length (val_of_loc_unchecked l) = bytes_per_addr.
+Proof.
+  rewrite /val_of_loc_unchecked val_of_loc_n_length//.
+Qed.
+Lemma val_of_loc_length l v :
+  val_of_loc l = Some v →
+  length v = bytes_per_addr.
+Proof.
+  intros []%val_of_loc_Some_inv.
+  subst. apply val_of_loc_unchecked_length.
+Qed.
+
+Lemma val_to_of_loc l v :
+  val_of_loc l = Some v →
+  val_to_loc v = Some l.
+Proof.
+  intros []%val_of_loc_Some_inv.
+  subst.
+  rewrite /val_to_loc.
+  rewrite val_to_of_loc_n; last done.
+  simpl. rewrite option_guard_True; done.
 Qed.
 
 Lemma val_of_to_loc_n n v l:
@@ -84,8 +137,14 @@ Proof.
 Qed.
 
 Lemma val_of_to_loc v l:
-  val_to_loc v = Some l → v = val_of_loc l.
-Proof. apply val_of_to_loc_n. Qed.
+  val_to_loc v = Some l → val_of_loc l = Some v.
+Proof.
+  intros []%val_to_loc_Some_inv.
+  rewrite /val_of_loc.
+  rewrite bool_decide_true; last done.
+  f_equiv. symmetry.
+  by apply val_of_to_loc_n.
+Qed.
 
 Lemma val_to_loc_n_length n v:
   is_Some (val_to_loc_n n v) → length v = n.
@@ -97,10 +156,101 @@ Qed.
 
 Lemma val_to_loc_length v:
   is_Some (val_to_loc v) → length v = bytes_per_addr.
-Proof. apply val_to_loc_n_length. Qed.
+Proof.
+  intros [? Hsome].
+  apply val_to_loc_Some_inv in Hsome as [].
+  by apply val_to_loc_n_length.
+Qed.
 
-Global Instance val_of_loc_inj : Inj (=) (=) val_of_loc.
-Proof. move => x y Heq. have := val_to_of_loc x. have := val_to_of_loc y. rewrite Heq. by simplify_eq. Qed.
+(*Global Instance val_of_loc_inj : Inj (=) (=) val_of_loc.*)
+(*Proof. *)
+  (*move => x y Heq. have := val_to_of_loc x. have := val_to_of_loc y. *)
+  (*rewrite Heq. *)
+  (*by simplify_eq. Qed.*)
+
+Definition l2v (l : loc) : val :=
+  default (replicate bytes_per_addr MPoison) (val_of_loc l).
+
+Lemma l2v_length n : length (l2v n) = bytes_per_addr.
+Proof.
+  rewrite /l2v. destruct (val_of_loc n) eqn:Heq.
+  - by apply val_of_loc_length in Heq.
+  - by rewrite length_replicate.
+Qed.
+
+Lemma l2v_correct l v :
+  val_of_loc l = Some v →
+  l2v l = v.
+Proof.
+  unfold l2v. by intros ->.
+Qed.
+Lemma l2v_correct' l v :
+  val_to_loc v = Some l →
+  l2v l = v.
+Proof.
+  intros Ha. apply l2v_correct.
+  by eapply val_of_to_loc.
+Qed.
+Lemma val_of_loc_Some_l2v l :
+  l.(loc_a) ∈ USize →
+  val_of_loc l = Some (l2v l).
+Proof.
+  intros ?.
+  rewrite val_of_loc_Some; last done.
+  f_equiv. symmetry. apply l2v_correct.
+  by apply val_of_loc_Some.
+Qed.
+Lemma val_to_loc_Some_l2v l :
+  l.(loc_a) ∈ USize →
+  val_to_loc (l2v l) = Some l.
+Proof.
+  intros ?.
+  apply val_to_of_loc.
+  by apply val_of_loc_Some_l2v.
+Qed.
+Lemma l2v_has_layout_val l :
+  (l2v l) `has_layout_val` void*.
+Proof.
+  rewrite /has_layout_val l2v_length//.
+Qed.
+
+Global Instance val_of_loc_unchecked_inj :
+  Inj (=) (=) val_of_loc_unchecked.
+Proof.
+  intros l1 l2.
+  rewrite /val_of_loc_unchecked.
+  rewrite /val_of_loc_n.
+  simpl. congruence.
+Qed.
+Lemma l2v_inj_l l l' :
+  l.(loc_a) ∈ USize →
+  l2v l = l2v l' →
+  l = l'.
+Proof.
+  intros Hran. rewrite /l2v.
+  rewrite val_of_loc_Some; last done.
+  simpl.
+  destruct (val_of_loc l') eqn:Heq; simpl; last done.
+  intros <-.
+  apply val_of_loc_Some_inv in Heq as [Heq _].
+  injection Heq. done.
+Qed.
+Lemma l2v_inj_r l l' :
+  l'.(loc_a) ∈ USize →
+  l2v l = l2v l' →
+  l = l'.
+Proof.
+  intros. symmetry. by apply l2v_inj_l.
+Qed.
+Lemma val_to_loc_l2v_Some_inj l l' :
+  l'.(loc_a) ∈ USize →
+  val_to_loc (l2v l) = Some l' →
+  l = l'.
+Proof.
+  intros ? Hsome.
+  apply l2v_correct' in Hsome.
+  apply l2v_inj_l in Hsome; done.
+Qed.
 
 Global Typeclasses Opaque val_of_loc_n val_to_loc_n val_of_loc val_to_loc.
 Arguments val_of_loc : simpl never.
@@ -314,9 +464,13 @@ Proof.
     by case_bool_decide.
 Qed.
 
-Lemma val_to_Z_val_of_loc_None l it:
-  val_to_Z (val_of_loc l) it = None.
-Proof. apply val_to_Z_val_of_loc_n_None. Qed.
+Lemma val_to_Z_val_of_loc_None l v it :
+  val_of_loc l = Some v →
+  val_to_Z v it = None.
+Proof.
+  intros [<- ?]%val_of_loc_Some_inv.
+  apply val_to_Z_val_of_loc_n_None.
+Qed.
 
 Lemma val_of_Z_bool_is_Some it b:
   is_Some (val_of_Z (bool_to_Z b) it).

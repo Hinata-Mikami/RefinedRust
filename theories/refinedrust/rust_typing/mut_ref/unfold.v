@@ -14,9 +14,13 @@ Section ofty.
     rewrite ltype_own_ofty_unfold/lty_of_ty_own {3}/ty_own_val/=.
     iSplit.
     - iIntros "(%ly & %Hst & %Hly & #Hsc & #Hlb & Hc & Hobs & Hb)".
-      iExists _, _. iR. iR. iR. iR. iFrame "# ∗".
+      iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
+      iExists l, ly. iR.
+      iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
+      iR. iR. iFrame "# ∗".
     - iIntros "(%l' & %ly & % & %Hl & % & % & #Hlb & #Hsc & Hobs & Hc & Hb)".
-      apply val_of_loc_inj in Hl. subst.
+      iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
+      apply val_to_loc_l2v_Some_inj in Hl; last done. subst.
       iExists _. iR. iR. iFrame "# ∗".
   Qed.
 End ofty.
@@ -38,7 +42,9 @@ Section ltype_agree.
     iExists l'. iFrame.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hb" as "(%ly' & ? & ? & Hsc & Hlb' & ? & Hrfn'  & Hb)".
-    iExists l'. iFrame. done.
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb'") as "%".
+    iExists l'. iFrame. iModIntro. iR.
+    iPureIntro. by apply val_to_loc_Some_l2v.
   Qed.
 
   Lemma mut_ref_unfold_1_uniq κ κ' γ r :
@@ -54,11 +60,14 @@ Section ltype_agree.
     * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame. iMod "Hb" as "(%l' & Hl & Hb)".
       iExists l'. iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own. destruct r' as [r' γ'].
       iDestruct "Hb" as "(%ly' & Hst' & Hly' & Hsc & Hlb & ? & Hrfn & >Hb)".
-      iModIntro. iExists l', ly'. iFrame "∗". iSplitR; first done. by iFrame.
+      iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
+      iModIntro. iExists l', ly'. iFrame "∗". iR.
+      iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
+      by iFrame.
     * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame. iMod "Hb" as "(%v & Hl & Hb)". destruct r' as [r' γ'].
-      iDestruct "Hb" as "(%l' & %ly' & _ & -> & ? & ? & Hlb & Hsc & Hrfn & ? & >Hb)".
-      iExists _. iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-      iModIntro. iExists ly'. iFrame. done.
+      iDestruct "Hb" as "(%l' & %ly' & _ & %Hv & ? & ? & Hlb & Hsc & Hrfn & ? & >Hb)".
+      iModIntro. iExists l'. rewrite (l2v_correct' _ v); last done. iFrame.
+      rewrite ltype_own_ofty_unfold /lty_of_ty_own. iExists ly'. iFrame. done.
   Qed.
 
   Lemma mut_ref_unfold_1_shared κ κ' r :
@@ -99,8 +108,9 @@ Section ltype_agree.
     iIntros "(%ly & ? & ? & #Hlb & ? & %r' & Hrfn & Hb)". destruct r' as [r' γ'].
     (*iApply except_0_if_intro.*)
     iModIntro. iExists ly. iFrame "∗ #".
-    iMod "Hb" as "(%v & Hl & %l' & %ly' & _ & -> & ? & ? & #Hlb' & Hsc & ? &  Hrfn' & >Hb)".
-    iExists _. iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own. iExists ly'. iFrame "∗ #". done.
+    iMod "Hb" as "(%v & Hl & %l' & %ly' & _ & %Hv & ? & ? & #Hlb' & Hsc & ? &  Hrfn' & >Hb)".
+    iExists l'. rewrite (l2v_correct' _ v); last done. iFrame.
+    rewrite ltype_own_ofty_unfold /lty_of_ty_own. iExists ly'. iFrame "∗ #". done.
   Qed.
 
   Lemma mut_ref_unfold_2_uniq κ κ' γ r :
@@ -114,13 +124,16 @@ Section ltype_agree.
     iApply (pinned_bor_iff' with "[] Hb").
     iNext. iModIntro. iSplit.
     * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame. iMod "Hb" as "(%v & Hl & Hb)". destruct r' as [r' γ'].
-      iDestruct "Hb" as "(%l' & %ly' & _ & -> & ? & ? & Hlb & Hsc & Hrfn & ? & >Hb)".
-      iExists _. iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-      iModIntro. iExists ly'. iFrame. done.
+      iDestruct "Hb" as "(%l' & %ly' & _ & %Hv & ? & ? & Hlb & Hsc & Hrfn & ? & >Hb)".
+      iModIntro. iExists l'. rewrite (l2v_correct' _ v); last done. iFrame.
+      rewrite ltype_own_ofty_unfold /lty_of_ty_own. iExists ly'. iFrame. done.
     * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame. iMod "Hb" as "(%l' & Hl & Hb)".
       iExists l'. iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own. destruct r' as [r' γ'].
       iDestruct "Hb" as "(%ly' & Hst' & Hly' & Hsc & Hlb & ? &  Hrfn & >Hb)".
-      iModIntro. iExists l', ly'. iFrame "∗". iSplitR; first done. by iFrame.
+      iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
+      iModIntro. iExists l', ly'. iFrame "∗". iR.
+      iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
+      by iFrame.
   Qed.
 
   Lemma mut_ref_unfold_2_shared κ κ' r :

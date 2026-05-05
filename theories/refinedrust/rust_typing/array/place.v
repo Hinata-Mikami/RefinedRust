@@ -93,8 +93,9 @@ Section place.
     iEval (rewrite /ty_own_val/=) in "Hi".
     iDestruct "Hi" as "(-> & %Hi)".
     iDestruct "CTX" as "(LFT & LLCTX)".
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
     iApply wp_ptr_offset.
-    { eapply val_to_of_loc. }
+    { by apply val_to_loc_Some_l2v. }
     { done. }
     { split; last nia.
       specialize (MinInt_le_0 ISize). lia. }
@@ -104,7 +105,8 @@ Section place.
     { iApply loc_in_bounds_shorten_suf; last done. lia. }
     iModIntro.
     iApply physical_step_intro; iNext.
-    iExists _. iR.
+    iIntros (v' Hv). iExists (l offset{ly}ₗ i'). iSplitR.
+    { iPureIntro. by apply val_to_of_loc. }
     iPoseProof (big_sepL2_length with "Hb") as "%Hlen_eq".
     rewrite length_interpret_iml in Hlen_eq.
     clear i. set (i := Z.to_nat i').
@@ -202,8 +204,9 @@ Section place.
     iDestruct "Hi" as "(-> & %Hi)".
     iDestruct "CTX" as "(LFT & LLCTX)".
     iApply (wpe_logical_step with "Hcl"); [done.. | ].
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
     iApply wp_ptr_offset.
-    { eapply val_to_of_loc. }
+    { by apply val_to_loc_Some_l2v. }
     { done. }
     { split; last nia.
       specialize (MinInt_le_0 ISize). lia. }
@@ -211,8 +214,9 @@ Section place.
       rewrite Z2Nat.id; last done.
       iApply loc_in_bounds_shorten_suf; last done. lia. }
     { iApply loc_in_bounds_shorten_suf; last done. lia. }
-    iModIntro. iApply physical_step_intro; iNext. iIntros "Hcl".
-    iExists _. iR.
+    iModIntro. iApply physical_step_intro; iNext.
+    iIntros (v' Hv) "Hcl". iExists (l offset{ly}ₗ i'). iSplitR.
+    { iPureIntro. by apply val_to_of_loc. }
     iPoseProof (big_sepL2_length with "Hb") as "%Hlen_eq".
     rewrite length_interpret_iml in Hlen_eq.
     clear i. set (i := Z.to_nat i').
@@ -298,8 +302,9 @@ Section place.
     iDestruct "Hi" as "(-> & %Hi)".
     iDestruct "CTX" as "(LFT & LLCTX)".
     iApply wpe_fupd.
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
     iApply wp_ptr_offset.
-    { eapply val_to_of_loc. }
+    { by apply val_to_loc_Some_l2v. }
     { done. }
     { split; last nia.
       specialize (MinInt_le_0 ISize). lia. }
@@ -308,7 +313,9 @@ Section place.
       iApply loc_in_bounds_shorten_suf; last done. lia. }
     { iApply loc_in_bounds_shorten_suf; last done. lia. }
     iModIntro. iApply physical_step_intro; iNext.
-    iModIntro. iExists _. iR.
+    iIntros (v' Hv). iExists (l offset{ly}ₗ i'). iSplitR.
+    { iPureIntro. by apply val_to_of_loc. }
+    iModIntro.
     iPoseProof (big_sepL2_length with "Hb") as "%Hlen_eq".
     rewrite length_interpret_iml in Hlen_eq.
     clear i. set (i := Z.to_nat i').

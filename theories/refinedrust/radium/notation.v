@@ -1,7 +1,7 @@
 From radium Require Export lang syntypes.
 Set Default Proof Using "Type".
 
-Coercion val_of_loc : loc >-> val.
+Coercion l2v : loc >-> val.
 Coercion Val : val >-> expr.
 Coercion Var : var_name >-> expr.
 Definition string_to_varname (s : string) : var_name := s.
@@ -350,7 +350,7 @@ Notation zst_val := ([] : val).
 Example test1 (l : loc) ly ot :
   (l <-{ly} copy{ot}(&raw{Mut} l +{PtrOp, IntOp USize} (l ={PtrOp, PtrOp, I32} l)); ExprS (Call l [ (l : expr); (l : expr)]) (l <-{ly, ScOrd} l; Goto "a"))%E =
   (AssignSE Na1Ord ly l (Copy Na1Ord ot true (BinOp AddOp PtrOp (IntOp USize) (Raw Mut l) (BinOp (EqOp I32) PtrOp PtrOp l l))))
-      (ExprS (Call l [ Val (val_of_loc l); Val (val_of_loc l)]) ((AssignSE ScOrd ly l l) (Goto "a"))).
+      (ExprS (Call l [ Val (l2v l); Val (l2v l)]) ((AssignSE ScOrd ly l l) (Goto "a"))).
 Proof. simpl. reflexivity. Abort.
 
 Example test_get_member `{!LayoutAlg} (l : loc) (sls : struct_layout_spec) ot :

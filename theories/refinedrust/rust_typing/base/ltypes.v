@@ -3192,6 +3192,15 @@ Section ltype_def.
     by iApply "Ha".
   Qed.
 
+  Lemma ltype_own_addr_in_usize {rt} (lt : ltype rt) k π r l : 
+    ltype_own lt k π r l -∗ ⌜l.(loc_a) ∈ USize⌝.
+  Proof.
+    iIntros "Hown". 
+    iPoseProof (ltype_own_has_layout with "Hown") as "(%ly & % & %)".
+    iPoseProof (ltype_own_loc_in_bounds with "Hown") as "Hlb"; first done.
+    iApply (loc_in_bounds_in_range_usize with "Hlb").
+  Qed.
+
   Lemma ltype_core_syn_type_eq {rt} (lt : ltype rt) :
     ltype_st (ltype_core lt) = ltype_st lt.
   Proof.
