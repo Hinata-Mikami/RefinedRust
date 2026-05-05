@@ -18,8 +18,12 @@ use std::collections::VecDeque;
 use rr_rustc_interface::data_structures::fx::{FxHashMap, FxHashSet};
 use rr_rustc_interface::middle::mir::{self, BasicBlock, Body, Local};
 
+use crate::environment::borrowck::facts;
+
 pub type TargetLoc = (BasicBlock, usize);
 pub type SourceLoc = (BasicBlock, usize);
+pub(crate) type TargetPoint = (BasicBlock, usize, facts::PointType);
+pub(crate) type SourcePoint = (BasicBlock, usize, facts::PointType);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Origin {
@@ -32,7 +36,47 @@ pub enum Origin {
 #[derive(Debug, Default)]
 pub struct MappingResult {
     pub target_to_source: FxHashMap<TargetLoc, Origin>,
+    pub(crate) target_points_to_source: FxHashMap<TargetPoint, SourcePoint>,
     pub unmapped_targets: Vec<TargetLoc>,
+}
+
+impl MappingResult {
+    #[must_use]
+    pub fn origin_for_target(&self, target: TargetLoc) -> Option<Origin> {
+        self.target_to_source.get(&target).copied()
+    }
+
+    #[must_use]
+    pub(crate) fn source_point_for_target(&self, target: TargetPoint) -> Option<SourcePoint> {
+        self.target_points_to_source.get(&target).copied()
+    }
+
+    #[must_use]
+    pub(crate) fn source_point_for_target_loc(
+        &self,
+        target: TargetLoc,
+        point_type: facts::PointType,
+    ) -> Option<SourcePoint> {
+        let (bb, idx) = target;
+        self.source_point_for_target((bb, idx, point_type))
+    }
+
+    #[must_use]
+    pub(crate) fn source_point_for_target_location(
+        &self,
+        target: mir::Location,
+        point_type: facts::PointType,
+    ) -> Option<facts::Point> {
+        let (block, statement_index, typ) =
+            self.source_point_for_target_loc((target.block, target.statement_index), point_type)?;
+        Some(facts::Point {
+            location: mir::Location {
+                block,
+                statement_index,
+            },
+            typ,
+        })
+    }
 }
 
 #[must_use]
@@ -109,6 +153,7 @@ struct Mapper<'a, 'tcx> {
     de: &'a Body<'tcx>,
     source_local_count: usize,
     target_to_source: FxHashMap<TargetLoc, Origin>,
+    target_point_phases: FxHashMap<TargetLoc, PointPhase>,
     visited: FxHashSet<(BasicBlock, BasicBlock)>,
     box_deref_aliases: FxHashMap<Local, BoxDerefAlias>,
     bc_predecessors: FxHashMap<BasicBlock, Vec<BasicBlock>>,
@@ -123,6 +168,7 @@ struct BoxDerefAlias {
 struct OpenDropBlock {
     bb: BasicBlock,
     mark_statements: bool,
+    terminator_phase: PointPhaseKind,
 }
 
 struct SourceDropCtx {
@@ -155,6 +201,20 @@ enum OpenDropNode {
     Unsupported,
 }
 
+#[derive(Clone, Copy)]
+enum PointPhase {
+    Direct(SourceLoc),
+    PreEffect(SourceLoc),
+    PostEffect(SourceLoc),
+}
+
+#[derive(Clone, Copy)]
+enum PointPhaseKind {
+    Direct,
+    PreEffect,
+    PostEffect,
+}
+
 impl<'a, 'tcx> Mapper<'a, 'tcx> {
     fn new(bc: &'a Body<'tcx>, de: &'a Body<'tcx>) -> Self {
         Self {
@@ -162,6 +222,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             de,
             source_local_count: bc.local_decls.len(),
             target_to_source: Default::default(),
+            target_point_phases: Default::default(),
             visited: Default::default(),
             box_deref_aliases: Default::default(),
             bc_predecessors: compute_predecessors(bc),
@@ -178,8 +239,20 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             }
         }
 
+        let mut target_points_to_source = FxHashMap::default();
+        for (target, origin) in &self.target_to_source {
+            let Some(phase) = point_phase_from_origin(*origin) else {
+                continue;
+            };
+            insert_point_mapping(&mut target_points_to_source, *target, phase);
+        }
+        for (target, phase) in &self.target_point_phases {
+            insert_point_mapping(&mut target_points_to_source, *target, *phase);
+        }
+
         MappingResult {
             target_to_source: self.target_to_source,
+            target_points_to_source,
             unmapped_targets,
         }
     }
@@ -414,15 +487,18 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         let skip_bb = if drop_bb == a { b } else { a };
 
         let src_drop = (bb_s, self.bc.basic_blocks[bb_s].statements.len());
-        self.target_to_source
-            .insert((bb_t, self.de.basic_blocks[bb_t].statements.len()), Origin::SplitFrom(src_drop));
+        let flag_test_loc = (bb_t, self.de.basic_blocks[bb_t].statements.len());
+        self.target_to_source.insert(flag_test_loc, Origin::SplitFrom(src_drop));
+        self.target_point_phases.insert(flag_test_loc, PointPhase::PreEffect(src_drop));
 
         let drop_data = &self.de.basic_blocks[drop_bb];
         for i in 0..drop_data.statements.len() {
             self.target_to_source.entry((drop_bb, i)).or_insert(Origin::Inserted);
+            self.target_point_phases.insert((drop_bb, i), PointPhase::PreEffect(src_drop));
         }
-        self.target_to_source
-            .insert((drop_bb, drop_data.statements.len()), Origin::SplitFrom(src_drop));
+        let drop_loc = (drop_bb, drop_data.statements.len());
+        self.target_to_source.insert(drop_loc, Origin::SplitFrom(src_drop));
+        self.target_point_phases.insert(drop_loc, PointPhase::Direct(src_drop));
 
         if let mir::TerminatorKind::Drop {
             target: ret_s,
@@ -469,11 +545,13 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 let data = &self.de.basic_blocks[block.bb];
                 for i in 0..data.statements.len() {
                     self.target_to_source.insert((block.bb, i), Origin::SplitFrom(src_drop));
+                    self.target_point_phases.insert((block.bb, i), PointPhase::PreEffect(src_drop));
                 }
             }
 
             let loc_t = (block.bb, self.de.basic_blocks[block.bb].statements.len());
             self.target_to_source.insert(loc_t, Origin::SplitFrom(src_drop));
+            self.target_point_phases.insert(loc_t, block.terminator_phase.with_source(src_drop));
         }
 
         for exit_t in open_drop_match.normal_exits {
@@ -561,6 +639,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                     blocks.push(OpenDropBlock {
                         bb,
                         mark_statements: self.block_has_only_open_drop_administrative_statements(bb),
+                        terminator_phase: PointPhaseKind::PreEffect,
                     });
                     queue.push_back((target, false));
                 },
@@ -579,6 +658,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                     blocks.push(OpenDropBlock {
                         bb,
                         mark_statements: self.block_has_only_open_drop_administrative_statements(bb),
+                        terminator_phase: PointPhaseKind::PreEffect,
                     });
                     for target in targets {
                         if !self.is_open_drop_block(target, root_place.as_ref()) {
@@ -599,6 +679,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                     blocks.push(OpenDropBlock {
                         bb,
                         mark_statements: self.block_has_only_open_drop_administrative_statements(bb),
+                        terminator_phase: PointPhaseKind::Direct,
                     });
 
                     if self.is_open_drop_block(target, root_place.as_ref()) {
@@ -741,11 +822,9 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
     fn is_open_drop_block(&self, bb: BasicBlock, root_place: Option<&NormalizedPlace>) -> bool {
         match self.classify_open_drop_node(bb, false) {
             OpenDropNode::LinearGoto { .. } => true,
-            OpenDropNode::Dispatch { observed_place, .. } => {
-                match observed_place.as_ref() {
-                    Some(place) => root_place.is_none_or(|root_place| same_or_subplace(root_place, place)),
-                    None => root_place.is_some(),
-                }
+            OpenDropNode::Dispatch { observed_place, .. } => match observed_place.as_ref() {
+                Some(place) => root_place.is_none_or(|root_place| same_or_subplace(root_place, place)),
+                None => root_place.is_some(),
             },
             OpenDropNode::DropStep { place, .. } => {
                 root_place.is_none_or(|root_place| same_or_subplace(root_place, &place))
@@ -1346,6 +1425,44 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
 enum MirFlavor {
     Source,
     Target,
+}
+
+impl PointPhaseKind {
+    fn with_source(self, source: SourceLoc) -> PointPhase {
+        match self {
+            Self::Direct => PointPhase::Direct(source),
+            Self::PreEffect => PointPhase::PreEffect(source),
+            Self::PostEffect => PointPhase::PostEffect(source),
+        }
+    }
+}
+
+fn point_phase_from_origin(origin: Origin) -> Option<PointPhase> {
+    match origin {
+        Origin::Source(source) | Origin::FoldedFrom(source) | Origin::SplitFrom(source) => {
+            Some(PointPhase::Direct(source))
+        },
+        Origin::Inserted => None,
+    }
+}
+
+fn insert_point_mapping(
+    target_points_to_source: &mut FxHashMap<TargetPoint, SourcePoint>,
+    target: TargetLoc,
+    phase: PointPhase,
+) {
+    let (target_bb, target_idx) = target;
+    let (source, start_source_kind, mid_source_kind) = match phase {
+        PointPhase::Direct(source) => (source, facts::PointType::Start, facts::PointType::Mid),
+        PointPhase::PreEffect(source) => (source, facts::PointType::Start, facts::PointType::Start),
+        PointPhase::PostEffect(source) => (source, facts::PointType::Mid, facts::PointType::Mid),
+    };
+    let (source_bb, source_idx) = source;
+
+    target_points_to_source
+        .insert((target_bb, target_idx, facts::PointType::Start), (source_bb, source_idx, start_source_kind));
+    target_points_to_source
+        .insert((target_bb, target_idx, facts::PointType::Mid), (source_bb, source_idx, mid_source_kind));
 }
 
 fn compute_predecessors(body: &Body<'_>) -> FxHashMap<BasicBlock, Vec<BasicBlock>> {
