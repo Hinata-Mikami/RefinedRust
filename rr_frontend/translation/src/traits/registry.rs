@@ -1439,27 +1439,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         }
     }
 
-    /// For a builtin trait, get the default attribute that should be assumed.
-    ///
-    /// Currently, we use this to assume the trivial specification for closure arguments.
-    #[expect(dead_code)]
-    fn get_builtin_trait_attr_override(&self, did: DefId) -> Option<String> {
-        let fn_did = search::try_resolve_did(self.tcx, &["core", "ops", "Fn"])?;
-        if did == fn_did {
-            return Some("Fn_default_attrs".to_owned());
-        }
-        let fnmut_did = search::try_resolve_did(self.tcx, &["core", "ops", "FnMut"])?;
-        if did == fnmut_did {
-            return Some("FnMut_default_attrs".to_owned());
-        }
-        let fnonce_did = search::try_resolve_did(self.tcx, &["core", "ops", "FnOnce"])?;
-        if did == fnonce_did {
-            return Some("FnOnce_default_attrs".to_owned());
-        }
-
-        None
-    }
-
     /// Fills an existing trait use.
     /// Does not compute the dependencies on other traits yet,
     /// these have to be filled later.
@@ -1476,9 +1455,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // compute an override for the attributes assumed here
         // This does not include user annotations (e.g., on functions), as the attributes for those
         // are not available here.
-        //let attr_override = self.get_builtin_trait_attr_override(trait_ref.def_id);
-        let attr_override = None;
-
         // create a name for this instance by including the args
         let mangled_base = types::mangle_name_with_args(&spec_ref.name, trait_ref.args.as_slice());
         let spec_use = specs::traits::LiteralSpecUse::new(
@@ -1487,7 +1463,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             specs::traits::ReqScope::empty(),
             // dummy for now
             specs::GenericScopeInst::empty(),
-            attr_override,
             mangled_base,
             is_used_in_self_trait,
             assoc_ty_constraints,

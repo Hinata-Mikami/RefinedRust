@@ -6,7 +6,7 @@
 
 //! Defines scopes for maintaining generics and trait requirements.
 
-use std::collections::{BTreeMap, HashMap, hash_map};
+use std::collections::{HashMap, hash_map};
 
 use derive_more::{Constructor, Debug};
 use log::{info, trace, warn};
@@ -18,7 +18,6 @@ use rr_rustc_interface::middle::{span_bug, ty};
 use crate::base::*;
 use crate::error::Message;
 use crate::spec_parsers::parse_utils::{ParamLookup, RustPath, RustPathElem};
-use crate::spec_parsers::verbose_function_spec_parser::TraitReqHandler;
 use crate::traits::registry::GenericTraitUse;
 use crate::traits::{registry, requirements};
 use crate::types::translator::TX;
@@ -189,71 +188,6 @@ impl<'def> ParamLookup<'def> for Params<'_, 'def> {
 
     fn lookup_literal(&self, path: &RustPath) -> Option<String> {
         self.trait_scope.attribute_names.get(path).cloned()
-    }
-}
-
-impl<'def> TraitReqHandler<'def> for Params<'_, 'def> {
-    fn determine_trait_attr_requirement_origin(
-        &self,
-        typaram: &str,
-        attr: &str,
-    ) -> Option<specs::traits::LiteralSpecUseRef<'def>> {
-        let typaram_idx = self.ty_names.get(typaram)?;
-
-        // NB: order of iteration doesn't matter for result.
-        #[expect(clippy::iter_over_hash_type)]
-        for ((_, ty), trait_use_ref) in &self.trait_scope.used_traits {
-            // check if the Self parameter matches up
-            if ty[0].is_param(*typaram_idx) {
-                let trait_use = trait_use_ref.trait_use.borrow();
-                let trait_use = trait_use.as_ref();
-                let Some(spec_use) = trait_use else {
-                    continue;
-                };
-
-                let trait_ref = &spec_use.trait_ref;
-
-                if !trait_ref.declared_attrs.contains(&attr.to_owned()) {
-                    continue;
-                }
-
-                trace!("determine_trait_attr_requirement_origin: found trait_ref={trait_ref:?}");
-
-                return Some(trait_use_ref.trait_use);
-            }
-        }
-        None
-    }
-
-    fn attach_trait_attr_requirement(
-        &self,
-        name_prefix: &str,
-        trait_use: specs::traits::LiteralSpecUseRef<'def>,
-        reqs: &BTreeMap<String, specs::traits::SpecAttrInst>,
-    ) -> Option<specs::functions::SpecTraitReqSpecialization<'def>> {
-        let mut trait_ref = trait_use.borrow_mut();
-        let trait_ref = trait_ref.as_mut().unwrap();
-
-        let trait_use = trait_ref.trait_ref;
-        let trait_inst = &trait_ref.trait_inst;
-
-        let assoc_types_inst = trait_ref.get_assoc_ty_inst();
-
-        let attrs = specs::traits::SpecAttrsInst::new(reqs.to_owned());
-        // name for the definition
-        let name = format!("{name_prefix}_{}trait_req", trait_ref.mangled_base);
-
-        let specialization = specs::functions::SpecTraitReqSpecialization::new(
-            trait_use,
-            trait_inst.to_owned(),
-            assoc_types_inst,
-            attrs,
-            name.clone(),
-        );
-
-        trait_ref.overridden_attrs = Some(name);
-
-        Some(specialization)
     }
 }
 

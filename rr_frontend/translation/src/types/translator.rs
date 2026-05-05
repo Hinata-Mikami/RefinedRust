@@ -29,7 +29,6 @@ use crate::spec_parsers::parse_utils::{ParamLookup, RustPath};
 use crate::spec_parsers::struct_spec_parser::{
     self, FIELD_SPEC_ATTRS, INVARIANT_SPEC_ATTRS, InvariantSpecParser as _, StructFieldSpecParser as _,
 };
-use crate::spec_parsers::verbose_function_spec_parser::TraitReqHandler;
 use crate::traits::registry;
 use crate::types::scope;
 use crate::{attrs, environment, error, search, spec_parsers};
@@ -71,26 +70,6 @@ impl<'def> ParamLookup<'def> for FunctionState<'_, 'def> {
 
     fn lookup_literal(&self, path: &RustPath) -> Option<String> {
         self.generic_scope.lookup_literal(path)
-    }
-}
-
-impl<'def> TraitReqHandler<'def> for FunctionState<'_, 'def> {
-    fn determine_trait_attr_requirement_origin(
-        &self,
-        typaram: &str,
-        attr: &str,
-    ) -> Option<specs::traits::LiteralSpecUseRef<'def>> {
-        trace!("attaching trait attr requirement: {typaram:?}::{attr:?}");
-        self.generic_scope.determine_trait_attr_requirement_origin(typaram, attr)
-    }
-
-    fn attach_trait_attr_requirement(
-        &self,
-        name_prefix: &str,
-        trait_use: specs::traits::LiteralSpecUseRef<'def>,
-        reqs: &BTreeMap<String, specs::traits::SpecAttrInst>,
-    ) -> Option<specs::functions::SpecTraitReqSpecialization<'def>> {
-        self.generic_scope.attach_trait_attr_requirement(name_prefix, trait_use, reqs)
     }
 }
 

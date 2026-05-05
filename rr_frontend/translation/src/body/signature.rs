@@ -754,7 +754,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             })?;
             let scope = ty_translator.scope.borrow();
             let mut parser = VerboseFunctionSpecParser::new(
-                &self.translated_fn.spec.function_name,
                 &translated_arg_types,
                 &translated_ret_type,
                 ret_is_option,
@@ -831,7 +830,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     let scope = ty_translator.scope.borrow();
                     let mut parser: VerboseFunctionSpecParser<'_, 'def, _, _> =
                         VerboseFunctionSpecParser::new(
-                            &translator.spec.function_name,
                             &translated_arg_types,
                             &translated_ret_type,
                             ret_is_option,

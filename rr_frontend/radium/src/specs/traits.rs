@@ -210,9 +210,6 @@ pub struct LiteralSpecUse<'def> {
     /// the instantiation of the trait's scope
     pub trait_inst: GenericScopeInst<'def>,
 
-    /// optionally, an override for the trait attr specification we assume
-    pub overridden_attrs: Option<String>,
-
     /// the name including the generic args
     pub mangled_base: String,
 
@@ -279,7 +276,7 @@ impl<'def> LiteralSpecUse<'def> {
     /// Get the term for the spec attrs of this use.
     #[must_use]
     pub(crate) fn make_spec_attrs_use(&self) -> String {
-        self.overridden_attrs.clone().unwrap_or_else(|| self.make_spec_attrs_param_name())
+        self.make_spec_attrs_param_name()
     }
 
     /// Get the term for accessing a particular attribute in a context where the attribute record

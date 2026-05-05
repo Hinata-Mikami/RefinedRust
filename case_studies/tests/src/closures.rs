@@ -2,20 +2,8 @@
 
 /// Using closure arguments
 #[rr::verify]
-// NOTE: the params needs to be put into the trait_incl assumption!
-//#[rr::params("c" : "Z")]
-// For the general form, we don't have syntactic sugar.
-#[rr::requires(#trait T::Pre := "λ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Post := "λ _ _ _ _ ret, (∃ c : Z, ⌜ret = c⌝)%I")]
-#[rr::requires(#trait T::PostMut := "λ _ _ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Params := "unit")]
-//#[rr::require(#closure "T" : "True" -> "∃ c : Z, ret = c")]
-//#[rr::closure_computes("T", "λ _, c")]
-//#[rr::params("f" : "() → Z")]
-//#[rr::require(#assume "{T::Post}": "ret = #(f args_0)")]
-//#[rr::require("∃ c, ∀ x, f x = c")]
-// TODO: this should make the spec non-trivial
-//#[rr::requires(#iris "{T::Pre} ($# x) ()")]
+#[rr::params("p")]
+#[rr::requires(#iris "{T::Pre} π p x ()")]
 fn closure_test_arg_fnonce_1<T>(x: T)
     where T: FnOnce() -> i32
 {
@@ -23,32 +11,17 @@ fn closure_test_arg_fnonce_1<T>(x: T)
 }
 
 #[rr::verify]
-#[rr::requires(#trait T::Pre := "λ _ _ _ x, ⌜x = -[42]⌝%I")]
-// TODO: allow to omit post
-#[rr::requires(#trait T::Post := "λ _ _ _ _ ret, True%I")]
-#[rr::requires(#trait T::PostMut := "λ _ _ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Params := "unit")]
+#[rr::params("p")]
+#[rr::requires(#iris "{T::Pre} π p x *[42]")]
 fn closure_test_arg_fnonce_2<T>(x: T)
     where T: FnOnce(i32) -> i32
 {
     let r = x(42);
 }
 
-// Problem: this will assume by default that the spec is trivial, right?
-// Point: I want the pre to remain trivial, but accept an arbitrary post.
-// I cannot really specify that well, currently.
 #[rr::verify]
-#[rr::requires(#trait T::Pre := "λ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Post := "λ _ _ _ _ ret, True%I")]
-#[rr::requires(#trait T::PostMut := "λ _ _ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Params := "unit")]
-// TODO: allow this
-//#[rr::params("P")]
-//#[rr::requires(#trait T::Pre := "λ _ _, True%I")]
-//#[rr::requires(#trait T::Post := "P")]
-// TODO: allow this
-//#[rr::exists("r")]
-//#[rr::ensures(#iris "{T::Post} x () r")]
+#[rr::params("p")]
+#[rr::requires(#iris "{T::Pre} π p x ()")]
 fn closure_test_arg_fnonce_3<T, W>(x: T)
     where T: FnOnce() -> W
 {
@@ -56,24 +29,17 @@ fn closure_test_arg_fnonce_3<T, W>(x: T)
 }
 
 #[rr::verify]
-#[rr::requires(#trait T::Pre := "λ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Post := "λ _ _ _ _ ret, True%I")]
-#[rr::requires(#trait T::PostMut := "λ _ _ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Params := "unit")]
+#[rr::params("p")]
+#[rr::requires(#iris "{T::Pre} π p x ()")]
 fn closure_test_arg_fn_1<T>(x: T)
     where T: Fn()
 {
     x()
 }
-// Note: Do I ever want to require how the state changes?
-// I guess not, because I don't even know what the state is.
-// I mean, I could require that there exists some projection, etc.. but that does not seem worth it.
 
 #[rr::verify]
-#[rr::requires(#trait T::Pre := "λ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Post := "λ _ _ _ _ ret, True%I")]
-#[rr::requires(#trait T::PostMut := "λ _ _ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Params := "unit")]
+#[rr::params("p")]
+#[rr::requires(#iris "{T::Pre} π p x ()")]
 fn closure_test_arg_fn_2<T>(x: T)
     where T: Fn() -> i32
 {
@@ -81,10 +47,8 @@ fn closure_test_arg_fn_2<T>(x: T)
 }
 
 #[rr::verify]
-#[rr::requires(#trait T::Pre := "λ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Post := "λ _ _ _ _ ret, True%I")]
-#[rr::requires(#trait T::PostMut := "λ _ _ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Params := "unit")]
+#[rr::params("p")]
+#[rr::requires(#iris "{T::Pre} π p x ()")]
 fn closure_test_arg_fnmut_1<T>(mut x: T)
     where T: FnMut()
 {
@@ -93,10 +57,8 @@ fn closure_test_arg_fnmut_1<T>(mut x: T)
 
 // Calling functions with closures
 #[rr::verify]
-#[rr::requires(#trait T::Pre := "λ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Post := "λ _ _ _ _ ret, True%I")]
-#[rr::requires(#trait T::PostMut := "λ _ _ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Params := "unit")]
+#[rr::params("p")]
+#[rr::requires(#iris "{T::Pre} π p x ()")]
 fn closure_test_call_fnonce_0<T>(x: T)
     where T: FnOnce() -> i32
 {
@@ -236,9 +198,8 @@ fn closure_test1() {
 
 // TODO: propagate assumptions to contained closures
 #[rr::skip]
-#[rr::requires(#trait T::Pre := "λ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Post := "λ _ _ _ _ ret, True%I")]
-#[rr::requires(#trait T::PostMut := "λ _ _ _ _ _ _, True%I")]
+#[rr::params("p")]
+#[rr::requires(#iris "{T::Pre} π p x *[y]")]
 fn closure_test8<T, U>(x: T, y: U)
     where U: FnOnce(T)
 {
@@ -356,10 +317,8 @@ fn closure_test3(y: &mut i32) {
 // TODO: propagate assumptions to contained closures
 //#[rr::verify]
 #[rr::skip]
-#[rr::requires(#trait T::Pre := "λ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Post := "λ _ _ _ _ ret, True%I")]
-#[rr::requires(#trait T::PostMut := "λ _ _ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Params := "unit")]
+#[rr::params("p")]
+#[rr::requires(#iris "{T::Pre} π p x ()")]
 fn closure_test7<T, U>(x: T, y: U)
     where U: FnOnce(T)
 {
@@ -394,10 +353,8 @@ fn closure_test10() {
 
 // HRTB
 #[rr::verify]
-#[rr::requires(#trait T::Pre := "λ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Post := "λ _ _ _ _ ret, True%I")]
-#[rr::requires(#trait T::PostMut := "λ _ _ _ _ _ _, True%I")]
-#[rr::requires(#trait T::Params := "unit")]
+#[rr::params("p")]
+#[rr::requires(#iris "□ ∀ a, {T::Pre} π p x *[a]")]
 fn closure_test_call_hrtb_1<T>(x: T)
     where T: for<'a> Fn(&'a i32) -> i32
 {

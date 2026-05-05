@@ -68,12 +68,6 @@ pub(crate) enum ParserError {
     WrongFunctionArgumentCount(usize),
     #[display("linktime assumptions are not allowed on closures")]
     LinktimeAssumptionsNotAllowedOnClosures,
-    #[display("assumptions on trait attributes are not allowed on closures")]
-    TraitAttributeAssumptionsNotAllowedOnClosures,
-    #[display("multiple specializations for {} were specified", _0)]
-    MultipleSpecializations(String),
-    #[display("could not find trait requirement to attach trait specialization to")]
-    CouldNotFindTraitRequirementToAttachSpecialization,
     #[display("non-pure requires clause after rr::ok")]
     NonPureRequiresClauseAfterOk,
     #[display("non-pure ensures clause after rr::ok")]
@@ -89,8 +83,6 @@ pub(crate) enum ParserError {
     UnknownClosureAttribute(String),
     #[display("unknown function attribute: {}", _0)]
     UnknownFunctionAttribute(String),
-    #[display("unable to attach trait attr requirement")]
-    UnableToAttachTraitAttrRequirement,
     #[display("{}", _0)]
     Builder(String),
 }
@@ -101,23 +93,6 @@ const fn spanned_error(span: Span, err: ParserError) -> SpannedError<ParserError
 
 fn parse_err(span: Span, err: parse::Error) -> SpannedError<ParserError> {
     spanned_error(span, ParserError::Parse(str_err(err)))
-}
-
-/// Specifies that a trait attribute requirement on a function can be attached to a scope.
-pub(crate) trait TraitReqHandler<'def>: ParamLookup<'def> {
-    /// Determine the trait requirement for `typaram` and `attr`.
-    fn determine_trait_attr_requirement_origin(
-        &self,
-        typaram: &str,
-        attr: &str,
-    ) -> Option<specs::traits::LiteralSpecUseRef<'def>>;
-
-    fn attach_trait_attr_requirement(
-        &self,
-        name_prefix: &str,
-        trait_use: specs::traits::LiteralSpecUseRef<'def>,
-        reqs: &BTreeMap<String, specs::traits::SpecAttrInst>,
-    ) -> Option<specs::functions::SpecTraitReqSpecialization<'def>>;
 }
 
 pub(crate) struct ClosureSpecInfo {
@@ -407,8 +382,6 @@ enum MetaIProp {
     Observe(String, Option<String>, String),
     /// `#[rr::requires(#linktime "st_size {st_of T} < MaxInt isize")]`
     Linktime(String),
-    /// `#[rr::requires(#trait T::Pre := "...")]`
-    Trait(String, String, String),
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
@@ -470,22 +443,6 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
                         .map_err(|err| parse::Error::OtherErr(term_span, err.to_string()))?;
                     Ok(Self::Linktime(term))
                 },
-                "trait" => {
-                    let type_param: parse::Ident = stream.parse(meta)?;
-                    stream.parse::<_, MToken![::]>(meta)?;
-                    let attr: parse::Ident = stream.parse(meta)?;
-
-                    stream.parse::<_, MToken![:]>(meta)?;
-                    stream.parse::<_, MToken![=]>(meta)?;
-
-                    let term_span = stream.pos().unwrap_or(DUMMY_SP);
-                    let term: parse::LitStr = stream.parse(meta)?;
-                    let (term, _meta) = meta
-                        .process_coq_literal(term_span, &term.value())
-                        .map_err(|err| parse::Error::OtherErr(term_span, err.to_string()))?;
-
-                    Ok(Self::Trait(type_param.value(), attr.value(), term))
-                },
                 _ => Err(parse::Error::OtherErr(
                     stream.pos().unwrap_or(DUMMY_SP),
                     format!("invalid macro command: {:?}", macro_cmd.value()),
@@ -541,7 +498,7 @@ impl From<MetaIProp> for coq::iris::IProp {
                     Self::Atom(format!("gvar_pobs {name} ({term})"))
                 }
             },
-            MetaIProp::Linktime(_) | MetaIProp::Trait(..) => Self::True,
+            MetaIProp::Linktime(_) => Self::True,
         }
     }
 }
@@ -563,9 +520,6 @@ impl TryFrom<MetaIProp> for coq::term::Term {
 
 /// The main parser.
 pub(crate) struct VerboseFunctionSpecParser<'a, 'def, F, T> {
-    /// name prefix for this function
-    name_prefix: &'a str,
-
     /// argument types with substituted type parameters
     arg_types: &'a [specs::Type<'def>],
     /// return types with substituted type parameters
@@ -586,16 +540,6 @@ pub(crate) struct VerboseFunctionSpecParser<'a, 'def, F, T> {
     make_literal: F,
 
     fn_requirements: FunctionRequirements,
-
-    /// specializations of trait assumptions we assume
-    //trait_specializations: Vec<specs::functions::SpecTraitReqSpecialization<'def>>,
-
-    // specialized trait specs we assume.
-    // Indexed by the address of the corresponding `LiteralTraitSpecUseRef`.
-    trait_specs: BTreeMap<
-        *const u8,
-        (specs::traits::LiteralSpecUseRef<'def>, BTreeMap<String, specs::traits::SpecAttrInst>),
-    >,
 }
 
 /// State for assembling fallible specs
@@ -643,13 +587,12 @@ impl<'a, 'def, F, T> From<VerboseFunctionSpecParser<'a, 'def, F, T>> for Functio
     }
 }
 
-impl<'a, 'def, F, T: TraitReqHandler<'def>> VerboseFunctionSpecParser<'a, 'def, F, T>
+impl<'a, 'def, F, T: ParamLookup<'def>> VerboseFunctionSpecParser<'a, 'def, F, T>
 where
     F: Fn(specs::types::Literal) -> specs::types::LiteralRef<'def>,
 {
     /// Type parameters must already have been substituted in the given types.
     pub(crate) fn new(
-        name_prefix: &'a str,
         arg_types: &'a [specs::Type<'def>],
         ret_type: &'a specs::Type<'def>,
         ret_is_option: bool,
@@ -659,7 +602,6 @@ where
         make_literal: F,
     ) -> Self {
         VerboseFunctionSpecParser {
-            name_prefix,
             arg_types,
             ret_type,
             ret_is_option,
@@ -668,7 +610,6 @@ where
             make_literal,
             scope,
             fn_requirements: FunctionRequirements::default(),
-            trait_specs: BTreeMap::new(),
         }
     }
 
@@ -919,12 +860,12 @@ impl<'def> ParsedClosureSpecInfo<'def> {
     }
 }
 
-impl<'def, F, T: TraitReqHandler<'def>> VerboseFunctionSpecParser<'_, 'def, F, T>
+impl<'def, F, T: ParamLookup<'def>> VerboseFunctionSpecParser<'_, 'def, F, T>
 where
     F: Fn(specs::types::Literal) -> specs::types::LiteralRef<'def>,
 {
     /// Handles attributes common among functions/methods and closures.
-    fn handle_common_attributes<X: TraitReqHandler<'def>>(
+    fn handle_common_attributes<X: ParamLookup<'def>>(
         &mut self,
         span: Span,
         name: &str,
@@ -979,38 +920,6 @@ where
                         ));
                     }
                     self.fn_requirements.proof_info.linktime_assumptions.push(assum);
-                } else if let MetaIProp::Trait(for_ty, attr, term) = iprop {
-                    if in_closure {
-                        return Err(spanned_error(
-                            span,
-                            ParserError::TraitAttributeAssumptionsNotAllowedOnClosures,
-                        ));
-                    }
-
-                    if let Some(req) = scope.determine_trait_attr_requirement_origin(&for_ty, &attr) {
-                        let (_, entries) = self
-                            .trait_specs
-                            .entry((&raw const *req).cast())
-                            .or_insert_with(|| (req, BTreeMap::new()));
-
-                        if entries
-                            .insert(
-                                attr.clone(),
-                                specs::traits::SpecAttrInst::Term(coq::term::Term::Literal(term)),
-                            )
-                            .is_some()
-                        {
-                            return Err(spanned_error(
-                                span,
-                                ParserError::MultipleSpecializations(attr.clone()),
-                            ));
-                        }
-                    } else {
-                        return Err(spanned_error(
-                            span,
-                            ParserError::CouldNotFindTraitRequirementToAttachSpecialization,
-                        ));
-                    }
                 } else if builder.ok_spec.ok_mode {
                     // only accept pure assertions
                     if !matches!(iprop, MetaIProp::Pure(_, _)) {
@@ -1432,29 +1341,8 @@ where
         }
     }
 }
-impl<'def, T> TraitReqHandler<'def> for ClosureCaptureScope<'_, T>
-where
-    T: TraitReqHandler<'def>,
-{
-    fn determine_trait_attr_requirement_origin(
-        &self,
-        typaram: &str,
-        attr: &str,
-    ) -> Option<specs::traits::LiteralSpecUseRef<'def>> {
-        self.scope.determine_trait_attr_requirement_origin(typaram, attr)
-    }
 
-    fn attach_trait_attr_requirement(
-        &self,
-        name_prefix: &str,
-        trait_use: specs::traits::LiteralSpecUseRef<'def>,
-        reqs: &BTreeMap<String, specs::traits::SpecAttrInst>,
-    ) -> Option<specs::functions::SpecTraitReqSpecialization<'def>> {
-        self.scope.attach_trait_attr_requirement(name_prefix, trait_use, reqs)
-    }
-}
-
-impl<'def, F, T: TraitReqHandler<'def>> FunctionSpecParser<'def> for VerboseFunctionSpecParser<'_, 'def, F, T>
+impl<'def, F, T: ParamLookup<'def>> FunctionSpecParser<'def> for VerboseFunctionSpecParser<'_, 'def, F, T>
 where
     F: Fn(specs::types::Literal) -> specs::types::LiteralRef<'def>,
 {
@@ -1631,18 +1519,6 @@ where
 
         spec.push_to_builder(builder)
             .map_err(|err| spanned_error(span, ParserError::Builder(err)))?;
-
-        // process trait specializations
-        let mut defs = Vec::new();
-        for (spec_use, terms) in self.trait_specs.values() {
-            if let Some(def) = self.scope.attach_trait_attr_requirement(self.name_prefix, spec_use, terms) {
-                defs.push(def);
-            } else {
-                return Err(spanned_error(span, ParserError::UnableToAttachTraitAttrRequirement));
-            }
-        }
-
-        builder.provide_specialized_trait_attrs(defs);
 
         Ok(())
     }

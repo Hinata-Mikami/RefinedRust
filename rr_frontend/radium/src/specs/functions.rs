@@ -8,10 +8,9 @@ use std::collections::HashSet;
 use std::fmt;
 use std::fmt::Write as _;
 
-use derive_more::Constructor;
 use indent_write::fmt::IndentWriter;
 
-use crate::specs::{GenericScope, GenericScopeInst, IncludeSelfReq, Type, TypeWithRef, traits};
+use crate::specs::{GenericScope, IncludeSelfReq, TypeWithRef, traits};
 use crate::{BASE_INDENT, coq, push_str_list};
 
 /// A finished inner function specification.
@@ -24,17 +23,6 @@ pub enum InnerSpec<'def> {
 }
 
 impl<'def> InnerSpec<'def> {
-    /// Generate extra definitions needed for the specification.
-    fn generate_extra_definitions(
-        &self,
-        scope: &GenericScope<'def, traits::LiteralSpecUseRef<'def>>,
-    ) -> coq::Document {
-        match self {
-            Self::Lit(lit) => lit.generate_extra_definitions(scope),
-            Self::TraitDefault(_) => coq::Document::default(),
-        }
-    }
-
     fn write_spec_term<F>(
         &self,
         f: &mut F,
@@ -203,7 +191,7 @@ impl<'def> Spec<'def, InnerSpec<'def>> {
     #[must_use]
     pub fn generate_trait_req_incl_def(&self) -> coq::Document {
         // first add the needed extra definitions
-        let mut doc = self.spec.generate_extra_definitions(&self.generics);
+        let mut doc = coq::Document::default();
 
         let params = self.get_all_trait_req_coq_params();
 
@@ -265,114 +253,6 @@ impl<'def> fmt::Display for Spec<'def, InnerSpec<'def>> {
     }
 }
 
-/// Holds a specialized trait specification that a function assumes.
-/// This declares an attribute instantiation in the scope of the function.
-// Note: similar to `TraitRefInst`
-#[derive(Clone, Constructor, Debug)]
-pub struct SpecTraitReqSpecialization<'def> {
-    /// literals of the trait this implements
-    of_trait: traits::LiteralSpecRef<'def>,
-
-    /// instantiation of the trait's scope
-    /// Invariant: no surrounding instantiation
-    trait_inst: GenericScopeInst<'def>,
-
-    /// the implementation of the associated types
-    assoc_types_inst: Vec<Type<'def>>,
-
-    /// the spec attribute instantiation
-    attrs: traits::SpecAttrsInst,
-
-    /// the Rocq definition name for this specialization
-    name: String,
-}
-
-impl<'def> SpecTraitReqSpecialization<'def> {
-    /// Get the instantiation of the trait's parameters in the same order as the trait's declaration
-    /// (`get_ordered_params`).
-    #[must_use]
-    fn get_ordered_params_inst(&self) -> Vec<Type<'def>> {
-        let mut params: Vec<_> = self
-            .trait_inst
-            .get_direct_ty_params()
-            .iter()
-            .chain(self.assoc_types_inst.iter())
-            .cloned()
-            .collect();
-
-        params.append(&mut self.trait_inst.get_direct_assoc_ty_params());
-
-        params
-    }
-
-    /// Generate the definition of the attribute record.
-    #[must_use]
-    fn generate_attr_decl(
-        &self,
-        generics: &GenericScope<'def, traits::LiteralSpecUseRef<'def>>,
-    ) -> coq::command::Definition {
-        let attrs = &self.attrs;
-        let of_trait = &self.of_trait;
-
-        // get all type parameters + assoc types
-        let mut def_rts_params = generics.get_all_ty_params_with_assocs().get_coq_ty_rt_params();
-        def_rts_params.make_implicit(coq::binder::Kind::MaxImplicit);
-        def_rts_params.0.insert(0, coq::binder::Binder::new_rrgs());
-
-        // add other attrs
-        //def_rts_params.append(generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
-
-        // instantiate the type of the attrs record
-        let mut attrs_type_params: Vec<coq::term::Term> = self
-            .get_ordered_params_inst()
-            .iter()
-            .map(|x| coq::term::Term::Type(Box::new(x.get_rfn_type())))
-            .collect();
-
-        if of_trait.attrs_dependent {
-            // also attrs
-            for x in self.trait_inst.get_direct_trait_requirements() {
-                attrs_type_params.push(coq::term::Term::Literal(x.get_attr_term()));
-            }
-        }
-
-        let attrs_type = coq::term::App::new(of_trait.spec_attrs_record(), attrs_type_params);
-        let attrs_type = coq::term::Type::Literal(format!("{attrs_type}"));
-
-        // write the attr record decl
-        let attr_record_term = if attrs.attrs.is_empty() {
-            coq::term::Term::Literal(of_trait.spec_record_attrs_constructor_name())
-        } else {
-            let mut components = Vec::new();
-            for (attr_name, inst) in &attrs.attrs {
-                // create an item for every attr
-                let record_item_name = of_trait.make_spec_attr_name(attr_name);
-
-                let traits::SpecAttrInst::Term(term) = inst else {
-                    unimplemented!("trait req specialization should not assume proofs");
-                };
-
-                let item = coq::term::RecordBodyItem {
-                    name: record_item_name,
-                    params: coq::binder::BinderList::empty(),
-                    term: term.to_owned(),
-                };
-                components.push(item);
-            }
-            let record_body = coq::term::RecordBody { items: components };
-            coq::term::Term::RecordBody(record_body)
-        };
-
-        coq::command::Definition {
-            name: self.name.clone(),
-            params: def_rts_params,
-            ty: Some(attrs_type),
-            body: coq::command::DefinitionBody::Term(attr_record_term),
-            program_mode: false,
-        }
-    }
-}
-
 /// A function specification below generics.
 #[derive(Clone, Debug)]
 pub struct LiteralSpec<'def> {
@@ -392,28 +272,11 @@ pub struct LiteralSpec<'def> {
     /// postcondition as a separating conjunction
     post: coq::iris::IProp,
 
-    /// specialized attributes of traits
-    specialized_trait_attrs: Vec<SpecTraitReqSpecialization<'def>>,
-
     // TODO remove
     has_spec: bool,
 }
 
 impl<'def> LiteralSpec<'def> {
-    /// Generate extra definitions needed for the specification.
-    fn generate_extra_definitions(
-        &self,
-        scope: &GenericScope<'def, traits::LiteralSpecUseRef<'def>>,
-    ) -> coq::Document {
-        let mut doc = coq::Document::default();
-        for spec in &self.specialized_trait_attrs {
-            let def = spec.generate_attr_decl(scope);
-            doc.push(coq::Sentence::CommandAttrs(coq::command::CommandAttrs::new(def)));
-        }
-
-        doc
-    }
-
     /// Format the external lifetime contexts, consisting of constraints between lifetimes.
     fn format_elctx(&self, scope: &GenericScope<'def, traits::LiteralSpecUseRef<'def>>) -> String {
         let mut out = scope.format_elctx();
@@ -517,8 +380,6 @@ pub struct LiteralSpecBuilder<'def> {
 
     coq_names: HashSet<String>,
 
-    specialized_trait_attrs: Vec<SpecTraitReqSpecialization<'def>>,
-
     /// true iff there are any annotations
     has_spec: bool,
 }
@@ -535,7 +396,6 @@ impl<'def> LiteralSpecBuilder<'def> {
             ret: None,
             post: coq::iris::IProp::Sep(Vec::new()),
             coq_names: HashSet::new(),
-            specialized_trait_attrs: Vec::new(),
             has_spec: false,
         }
     }
@@ -564,11 +424,6 @@ impl<'def> LiteralSpecBuilder<'def> {
         }
 
         Ok(())
-    }
-
-    /// Provide specialized specification attributes for trait requirements.
-    pub fn provide_specialized_trait_attrs(&mut self, specs: Vec<SpecTraitReqSpecialization<'def>>) {
-        self.specialized_trait_attrs = specs;
     }
 
     /// Add a literal elctx.
@@ -642,7 +497,6 @@ impl<'def> LiteralSpecBuilder<'def> {
             existentials: coq::binder::BinderList::new(self.existential),
             ret: self.ret.unwrap_or_else(TypeWithRef::make_unit),
             post: self.post,
-            specialized_trait_attrs: self.specialized_trait_attrs,
             has_spec: self.has_spec,
         }
     }
