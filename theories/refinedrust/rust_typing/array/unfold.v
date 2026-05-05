@@ -32,7 +32,7 @@ Section lemmas.
 End lemmas.
 
 Section split.
-  Context `{!typeGS Σ}.
+Context `{!typeGS Σ}.
 
   Lemma array_t_ofty_reshape F l π {rt} (ty : type rt) rs n m k :
     lftE ⊆ F →
@@ -402,6 +402,7 @@ Section unfold.
     iMod (ofty_owned_array_extract_pointsto with "[Hlb] [Hb]") as "(%v & Hl & % & Ha)"; [done.. | | | ].
     { iApply (loc_in_bounds_shorten_suf with "Hlb"). lia. }
     { iApply (big_sepL_impl with "Hb"). iModIntro. iIntros (k r Hlook). iIntros "(_ & $)". }
+    rewrite /ty_own_val/= array_t_own_val_unfold.
     iModIntro. iExists v. iFrame.
     iR. done.
   Qed.
@@ -418,7 +419,7 @@ Section unfold.
     iR. iR. iR. iExists _. iFrame.
     iModIntro. iMod "Hb" as "(%Hlen & Hb)".
     rewrite big_sepL2_replicate_l; last done.
-    rewrite /ty_shr/=.
+    rewrite /ty_shr/= array_t_shr_unfold.
     iExists ly. iR. iR. iR. iR. iR.
     iApply big_sepL_fupd.
     iApply (big_sepL_impl with "Hb").
@@ -476,13 +477,14 @@ Section unfold.
       iExists _. iFrame. iMod "Ha" as "(%Hlen & Ha)".
       iMod (ofty_owned_array_extract_pointsto with "[Hlb] Ha") as "(%v & Hl & % & Ha)"; [done.. | | ].
       { iApply (loc_in_bounds_shorten_suf with "Hlb"); lia. }
+      rewrite /ty_own_val/= array_t_own_val_unfold.
       iModIntro. iExists v. iFrame.
       iR. done.
     }
     { iIntros "(%rs' & Hauth & Ha)".
       iExists _. iFrame.
       iMod "Ha" as "(%v & Hl & Hv)".
-      rewrite /ty_own_val/=.
+      rewrite /ty_own_val/=. rewrite array_t_own_val_unfold.
       iDestruct "Hv" as "(%ly' & _ & %Hst' & _ & %Hlen & %Hvly & Ha)".
       assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
       iR. iApply (ofty_owned_array_join_pointsto with "Hl Ha"); done.
@@ -520,7 +522,7 @@ Section unfold.
     iSplitR. { iPureIntro. move: Hsz. rewrite ly_size_mk_array_layout MaxInt_eq. lia. }
     iR. rewrite ly_size_mk_array_layout. iFrame.
     iMod "Ha" as "(%v & Hl & Hv)".
-    rewrite /ty_own_val /=.
+    rewrite /ty_own_val /= array_t_own_val_unfold.
     iDestruct "Hv" as "(%ly & _ & %Hst' & % & %Hlen & %Hvly & Ha)".
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
     iR.
@@ -544,7 +546,7 @@ Section unfold.
     iR. rewrite ly_size_mk_array_layout. iR.
     iExists _. iFrame.
     iModIntro. iMod "Hb" as "Hb". iModIntro.
-    rewrite /ty_shr/=.
+    rewrite /ty_shr/= array_t_shr_unfold.
     iDestruct "Hb" as "(%ly & _ & %Hst' & % & % & % & Hb)".
     iR.
     rewrite big_sepL2_replicate_l; last done.
@@ -611,7 +613,7 @@ Section unfold.
     { iIntros "(%rs' & Hauth & Ha)".
       iExists _. iFrame.
       iMod "Ha" as "(%v & Hl & Hv)".
-      rewrite /ty_own_val/=.
+      rewrite /ty_own_val/= array_t_own_val_unfold.
       iDestruct "Hv" as "(%ly'' & _ & %Hst' & _ & %Hlen & %Hvly & Ha)".
       assert (ly'' = ly') as -> by by eapply syn_type_has_layout_inj.
       iR. iApply (ofty_owned_array_join_pointsto with "Hl Ha"); done.
@@ -621,7 +623,10 @@ Section unfold.
       iMod (ofty_owned_array_extract_pointsto with "[Hlb] Ha") as "(%v & Hl & % & Ha)"; [done.. | | ].
       { iApply (loc_in_bounds_shorten_suf with "Hlb"); lia. }
       iModIntro. iExists v. iFrame.
-      do 2 iR. iSplitR. { iPureIntro. lia. } iR. done.
+      rewrite /ty_own_val/= array_t_own_val_unfold. iExists ly'.
+      iSplitR; first done. iSplitR; first done.
+      iSplitR. { iPureIntro. lia. }
+      iSplitR; first done. iSplitR; first done. done.
     }
   Qed.
 

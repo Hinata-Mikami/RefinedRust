@@ -16,6 +16,7 @@ Section subtype.
     v ◁ᵥ{π, m} r @ mut_ref κ1 ty2.
   Proof.
     destruct r as [r γ].
+    rewrite /ty_own_val/= mut_ref_own_val_unfold.
     iIntros "#Hincl #Ht12 #Ht21 (%l & %ly & -> & %Hv & ? & Hly & Hlb & Hsc & Hobs & ? & Hb)".
     iDestruct ("Ht12" $! inhabitant) as "(%Hst & #Hsceq & _)".
     (*iDestruct "Ht21" as "(_ & _ & #Hv21 & #Hs21)".*)
@@ -39,6 +40,7 @@ Section subtype.
     l ◁ₗ{π, m, κ} (#r1, γ) @ mut_ref κ2 ty1 -∗
     l ◁ₗ{π, m, κ} (#r2, γ) @ mut_ref κ1 ty2.
   Proof.
+    rewrite /ty_shr/= mut_ref_shr_unfold.
     iIntros "#Hincl #Ht12 (%li & %ly & %r' & -> & ? & <- & Hs & ? & ? & ? & ? & Hsc & Hb)".
     iDestruct "Ht12" as "(%Hst & #Hsceq & #Hv12 & #Hs12)".
     iExists li, ly, r2. iFrame. iR. rewrite Hst. iFrame. iR.
@@ -57,6 +59,7 @@ Section subtype.
     l ◁ₗ{π, m, κ} r @ mut_ref κ1 ty2.
   Proof.
     destruct r as [r γ].
+    rewrite /ty_shr/= mut_ref_shr_unfold.
     iIntros "#Hincl #Ht12 (%li & %ly & %r' & -> & ? & ? & Hs & ? & ? & ? & ? & Hsc & Hb)".
     iDestruct ("Ht12" $! inhabitant) as "(%Hst & #Hsceq & _)".
     iExists li, ly, r'. iFrame. rewrite Hst. iFrame. iR.

@@ -123,9 +123,7 @@ Section array.
     by iApply array_own_val_extract_pointsto.
   Qed.
 
-  Program Definition array_t (len : nat) (ty : type rt) : type (list (place_rfn rt)) := {|
-    ty_metadata_kind := MetadataNone;
-    ty_own_val π r m v :=
+  Definition array_t_own_val_def (len : nat) (ty : type rt) π r m v : iProp Σ :=
       ∃ ly,
         ⌜m = MetaNone⌝ ∗
         ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗
@@ -133,15 +131,29 @@ Section array.
         ⌜length r = len⌝ ∗
         ⌜v `has_layout_val` (mk_array_layout ly len)⌝ ∗
         [∗ list] r'; v' ∈ r; reshape (replicate len (ly_size ly)) v,
-          array_own_el_val π ty r' v';
-    ty_shr κ π r m l :=
+          array_own_el_val π ty r' v'.
+  Definition array_t_own_val_aux : seal (@array_t_own_val_def).
+  Proof. by eexists. Qed.
+  Definition array_t_own_val := array_t_own_val_aux.(unseal).
+  Definition array_t_own_val_unfold : @array_t_own_val = @array_t_own_val_def := array_t_own_val_aux.(seal_eq).
+
+  Definition array_t_shr_def (len : nat) (ty : type rt) κ π r m l : iProp Σ :=
       ∃ ly,
         ⌜m = MetaNone⌝ ∗
         ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗
         ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
         ⌜length r = len⌝ ∗
         ⌜l `has_layout_loc` ly⌝ ∗
-        [∗ list] i ↦ r' ∈ r, array_own_el_shr π κ i ly ty r' l;
+        [∗ list] i ↦ r' ∈ r, array_own_el_shr π κ i ly ty r' l.
+  Definition array_t_shr_aux : seal (@array_t_shr_def).
+  Proof. by eexists. Qed.
+  Definition array_t_shr := array_t_shr_aux.(unseal).
+  Definition array_t_shr_unfold : @array_t_shr = @array_t_shr_def := array_t_shr_aux.(seal_eq).
+
+  Program Definition array_t (len : nat) (ty : type rt) : type (list (place_rfn rt)) := {|
+    ty_metadata_kind := MetadataNone;
+    ty_own_val := array_t_own_val len ty;
+    ty_shr := array_t_shr len ty;
     ty_syn_type _ := ArraySynType (ty.(ty_syn_type) MetaNone) len;
     _ty_has_op_type := is_array_ot ty len;
     ty_sidecond := True;
@@ -150,6 +162,7 @@ Section array.
     _ty_wf_E := ty_wf_E ty;
   |}%I.
   Next Obligation.
+    rewrite array_t_own_val_unfold.
     iIntros (len ty π r m v) "(%ly & -> & %Hst & %Hsz & %Hlen & %Hly & Hv)".
     iExists _.
     iSplitR. { iPureIntro. eapply syn_type_has_layout_array; done. }
@@ -171,8 +184,9 @@ Section array.
   Next Obligation.
     iIntros (len ty ? π r m v) "_". done.
   Qed.
-  Next Obligation. unfold TCNoResolve. apply _. Qed.
+  Next Obligation. unfold TCNoResolve. rewrite array_t_shr_unfold. apply _. Qed.
   Next Obligation.
+    rewrite array_t_shr_unfold.
     iIntros (len ty κ π l m r) "(%ly & -> & %Hst & %Hsz & %Hlen & %Hly & Hv)".
     iExists (mk_array_layout ly len). iSplitR; first done.
     iPureIntro. by eapply syn_type_has_layout_array.
@@ -180,6 +194,7 @@ Section array.
   Next Obligation.
     iIntros (len ty E κ l ly π r m q ?).
     iIntros "#(LFT & LCTX) #Hna Htok %Hst %Hly #Hlb Hb".
+    rewrite array_t_own_val_unfold array_t_shr_unfold.
     rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htok')".
     iApply fupd_logical_step.
     (* reshape the borrow - we must not freeze the existential over v to initiate recursive sharing *)
@@ -255,6 +270,7 @@ Section array.
   Qed.
   Next Obligation.
     iIntros (len ty κ κ' π r m l) "#Hincl Hb".
+    rewrite array_t_shr_unfold.
     iDestruct "Hb" as "(%ly & -> & Hst & Hsz & Hlen & Hly & Hb)".
     iExists ly. iFrame. iR.
     iApply (big_sepL_wand with "Hb"). iApply big_sepL_intro.
@@ -262,6 +278,7 @@ Section array.
     iExists _; iFrame. iApply ty_shr_mono; done.
   Qed.
   Next Obligation.
+    rewrite array_t_own_val_unfold.
     iIntros (len ty π r m v F ?) "(%ly & -> & ? & ? & ? & ? & Hb)".
     iAssert (logical_step F $ [∗ list] r'; v' ∈ r; reshape (replicate len (ly_size ly)) v,
       ∃ r'', place_rfn_interp_owned r' r'' ∗ ty_ghost_drop ty π r'')%I with "[Hb]" as "Hb".
@@ -333,11 +350,13 @@ Section ne.
        *)
     - done.
     - intros.
-      rewrite /ty_own_val/=.
+      rewrite /ty_own_val/= array_t_own_val_unfold.
+      rewrite /array_t_own_val_def.
       unfold array_own_el_val.
       solve_type_proper.
     - intros.
-      rewrite /ty_shr/=.
+      rewrite /ty_shr/= array_t_shr_unfold.
+      rewrite /array_t_shr_def.
       unfold array_own_el_shr.
       solve_type_proper.
     - intros. rewrite ty_ghost_drop_unfold. solve_type_proper.
@@ -350,7 +369,7 @@ Section lemmas.
   Lemma array_t_rfn_length_eq π {rt} (ty : type rt) len r v m :
     v ◁ᵥ{π, m} r @ array_t len ty -∗ ⌜length r = len⌝.
   Proof.
-    rewrite /ty_own_val/=. iIntros "(%ly & -> & %Hst & % & $ & _)".
+    rewrite /ty_own_val/= array_t_own_val_unfold. iIntros "(%ly & -> & %Hst & % & $ & _)".
   Qed.
 
   Lemma array_val_from_uninit π v st1 st2 ly1 ly2 len m :
@@ -361,7 +380,7 @@ Section lemmas.
     v ◁ᵥ{π, m} replicate len (# ()) @ array_t len (uninit st2).
   Proof.
     intros Hst1 Hst2 Hly.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= array_t_own_val_unfold.
     iDestruct 1 as "(-> & %ly0 & %Hly0 & %Hlyv0)".
     assert (ly0 = ly1) as ->. { by eapply syn_type_has_layout_inj. }
     (*assert (ly0 = ly1) as -> by by eapply syn_type_has_layout_inj.*)
@@ -391,7 +410,7 @@ Section lemmas.
     (v1 ++ v2) ◁ᵥ{π, m} (rs1 ++ rs2) @ array_t (n1 + n2) ty -∗
     v1 ◁ᵥ{π, m} rs1 @ array_t n1 ty ∗ v2 ◁ᵥ{π, m} rs2 @ array_t n2 ty.
   Proof.
-    intros Hrs1 Hrs2 Hv1 Hv2. rewrite /ty_own_val /=.
+    intros Hrs1 Hrs2 Hv1 Hv2. rewrite /ty_own_val /= array_t_own_val_unfold.
     iIntros "(%ly & -> & %Halg & %Hsz & %Hlen & %Hly & Hb)".
     rewrite /size_of_st /use_layout_alg' Halg /= in Hv1.
     rewrite /size_of_st /use_layout_alg' Halg /= in Hv2.
@@ -416,7 +435,7 @@ Section lemmas.
     v2 ◁ᵥ{π, m} rs2 @ array_t n2 ty -∗
     (v1 ++ v2) ◁ᵥ{π, m} (rs1 ++ rs2) @ array_t (n1 + n2) ty.
   Proof.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= array_t_own_val_unfold.
     iIntros (Hsz) "(%ly1 & -> & %Halg1 & %Hsz1 & %Hlen1 & %Hv1 & Hb1) (%ly2 & _ & %Halg2 & %Hsz2 & %Hlen2 & %Hv2 & Hb2)".
     assert (ly1 = ly2) as <- by by eapply syn_type_has_layout_inj. clear Halg2.
     rewrite /size_of_st /use_layout_alg' Halg1 /= in Hsz.
@@ -438,7 +457,7 @@ Section lemmas.
     l ◁ₗ{π, m, κ} (rs1 ++ rs2) @ array_t (n1 + n2) ty -∗
     l ◁ₗ{π, m, κ} rs1 @ array_t n1 ty ∗ (l offsetst{ty.(ty_syn_type) m}ₗ n1) ◁ₗ{π, m, κ} rs2 @ array_t n2 ty.
   Proof.
-    rewrite /ty_shr/=. iIntros (Hlen1 Hlen2).
+    rewrite /ty_shr/= array_t_shr_unfold. iIntros (Hlen1 Hlen2).
     iIntros "(%ly & -> & %Halg & %Hsz & %Hlen & %Hly & Hb)".
     rewrite big_sepL_app. iDestruct "Hb" as "(Hb1 & Hb2)".
     rewrite length_app in Hlen.
@@ -461,7 +480,7 @@ Section lemmas.
     (l offsetst{ty.(ty_syn_type) m}ₗ n1) ◁ₗ{π, m, κ} rs2 @ array_t n2 ty -∗
     l ◁ₗ{π, m, κ} (rs1 ++ rs2) @ array_t (n1 + n2) ty.
   Proof.
-    rewrite /ty_shr/=. iIntros (Hsz).
+    rewrite /ty_shr/= array_t_shr_unfold. iIntros (Hsz).
     iIntros "(%ly1 & -> & %Halg1 & %Hsz1 & %Hlen1 & %Hly1 & Hb1) (%ly2 & _ & %Halg2 & %Hsz2 & %Hlen2 & %Hly2 & Hb2)".
     assert (ly2 = ly1) as -> by by eapply syn_type_has_layout_inj. clear Halg2.
     rewrite /size_of_st /use_layout_alg' Halg1 /= in Hsz.
@@ -534,12 +553,12 @@ Section lemmas.
     clear Hv_eq.
 
     iInduction rs as [ | r rs] "IH" forall (v Hlyv Hsz_bound); simpl.
-    { rewrite /ty_own_val/=. iExists ly. iR.
-      iR. rewrite Z.mul_0_r. iPureIntro. split_and!.
-      - specialize (MaxInt_ge_127 ISize). lia.
-      - done.
-      - rewrite /has_layout_val ly_size_mk_array_layout//.
-      - done. }
+    { rewrite /ty_own_val/= array_t_own_val_unfold. iExists ly.
+      iSplitR; first done. iSplitR; first done.
+      rewrite Z.mul_0_r. iSplitR. { iPureIntro. specialize (MaxInt_ge_127 ISize). lia. }
+      iSplitR; first done.
+      iSplitR. { iPureIntro. rewrite /has_layout_val ly_size_mk_array_layout//. }
+      done. }
     iDestruct "Hv" as "(Hv1 & Hv)".
     iPoseProof ("IH" with "[] [] Hv") as "Hv2".
     { iPureIntro. simpl in Hlyv. rewrite length_drop. lia. }
@@ -562,7 +581,7 @@ Section lemmas.
     rewrite ly_size_mk_array_layout in Hsz.
     iPoseProof (array_t_rfn_length_eq with "Hv") as "%Hlen".
     iPoseProof (array_t_own_val_split_reshape ty _ _ _ _ k m with "Hv") as "(%Hv & Hv)"; [lia | done | ].
-    iEval (rewrite /ty_own_val/=).
+    iEval (rewrite /ty_own_val/= array_t_own_val_unfold).
     iExists (mk_array_layout ly' m). iR.
     iSplitR. { iPureIntro. eapply syn_type_has_layout_array; [done.. | nia ]. }
     iSplitR. { iPureIntro. rewrite ly_size_mk_array_layout. lia. }
@@ -589,7 +608,7 @@ Section lemmas.
     ∃ x, v ◁ᵥ{π, MetaNone} x @ int it'.
   Proof.
     iIntros (Hsz) "Hv".
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= array_t_own_val_unfold.
     iDestruct "Hv" as "(%ly & _ & %Hst & %Hsz' & <- & %Hlyv & Hv)".
     iPoseProof (big_sepL2_impl _ (λ _ r v, ⌜is_Some (val_to_Z v it)⌝)%I with "Hv []") as "Hv".
     { iModIntro. iIntros (??? ??). iIntros "(%r' & ? & _ & %Hv)". iPureIntro. done. }
@@ -626,7 +645,7 @@ Section lemmas.
     ∃ rs, v ◁ᵥ{π, MetaNone} (<#> rs) @ array_t n (int it).
   Proof.
     iIntros (Hsz) "Hv".
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= array_t_own_val_unfold.
     iDestruct "Hv" as "(_ & %Hv)".
     apply val_to_Z_Some in Hv as (Hv & Hlen).
     unfold array_own_el_val.
@@ -663,7 +682,7 @@ Section lemmas.
     ∃ rs', ([∗ list] r; r' ∈ rs; rs', R r r') ∗ v ◁ᵥ{π, MetaNone} (<#> rs') @ array_t n ty'.
   Proof.
     iIntros (Hsteq) "#Hv".
-    iEval (rewrite /ty_own_val/=).
+    iEval (rewrite /ty_own_val/= array_t_own_val_unfold).
     iIntros "(%ly & _ & %Hst & %Hsz & <- & %Hlyv & Ha)".
     rewrite big_sepL2_fmap_l. rewrite length_fmap.
     iPoseProof (big_sepL2_impl _ (λ _ r' v', |={F}=> ∃ r'', R r' r'' ∗ array_own_el_val π ty' #r'' v')%I with "Ha []") as "Ha".
@@ -683,13 +702,13 @@ Section lemmas.
     iExists rs'.
     destruct (Hsteq _ Hst) as (ly' & Hst' & Hszeq).
     iFrame "HR".
+    iModIntro. rewrite array_t_own_val_unfold.
     iExists ly'. iR. iR.
     iSplitR. { iPureIntro. rewrite -Hszeq. done. }
     rewrite length_fmap.
     iSplitR. { iPureIntro. rewrite -Hlen Hlen'. rewrite !length_reshape !length_zip length_reshape length_replicate//. }
     iSplitR. { iPureIntro. rewrite /has_layout_val Hlyv !ly_size_mk_array_layout.
       rewrite length_fmap. lia. }
-    iModIntro.
     rewrite Hszeq. rewrite big_sepL2_fmap_l big_sepL2_flip.
     done.
   Qed.

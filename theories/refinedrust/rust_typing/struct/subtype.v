@@ -67,6 +67,7 @@ Section subtype.
     iIntros "Hincl Hv".
     iPoseProof (big_sepL2_length with "Hincl") as "%Hlen".
     rewrite !length_hpzipl in Hlen.
+    rewrite /ty_own_val/= struct_t_own_val_unfold.
     iDestruct "Hv" as "(%sl & -> & %Halg & %Hlen1 & %Hly & Hb)".
     iExists sl. iR. rewrite -Hlen. iR. iR. iR.
 
@@ -124,6 +125,7 @@ Section subtype.
     iIntros "#Hincl Hl".
     iPoseProof (big_sepL2_length with "Hincl") as "%Hlen".
     rewrite !length_hpzipl in Hlen.
+    rewrite /ty_shr/= struct_t_shr_unfold.
     iDestruct "Hl" as "(%sl & -> & %Halg & %Hlen1 & %Hly & #Hlb & Hb)".
     iExists sl. iR. rewrite -Hlen. iR. iR. iR. iR.
     iApply (big_sepL_impl' with "Hb").

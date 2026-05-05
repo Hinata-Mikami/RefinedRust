@@ -115,8 +115,9 @@ Section subtype.
       by apply syn_type_size_eq_array.
     - simpl. done.
     - iIntros (v) "Ha".
-      rewrite {3 4}/ty_own_val /=.
+      rewrite {3 4}/ty_own_val /= array_t_own_val_unfold.
       iDestruct "Ha" as "(%ly & _ & %Hst1 & % & <- & %Hvly & Ha)".
+      rewrite array_t_own_val_unfold.
       iExists _. iR. iR.
       assert (ly_size ly = ly_size ly') as Hlysz. {
         apply Hszeq in Hst1 as (ly2 & ? & ->).

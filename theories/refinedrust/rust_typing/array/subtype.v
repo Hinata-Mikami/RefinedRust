@@ -41,8 +41,9 @@ Section subtype.
     v ◁ᵥ{π, m} rs2 @ array_t len ty2.
   Proof.
     iIntros (Heqst) "Hincl Ha".
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= array_t_own_val_unfold.
     iDestruct "Ha" as "(%ly & -> & %Hst & % & % & %Hly & Ha)".
+    rewrite array_t_own_val_unfold.
     iExists ly. rewrite -Heqst. iR. iR.
     iPoseProof (big_sepL2_length with "Hincl") as "%Hleneq".
     rewrite -Hleneq. iR. iR. iR.
@@ -94,8 +95,9 @@ Section subtype.
     v ◁ₗ{π, m, κ} rs2 @ array_t len ty2.
   Proof.
     iIntros (Heqst) "Hincl Ha".
-    rewrite /ty_shr/=.
+    rewrite /ty_shr/= array_t_shr_unfold.
     iDestruct "Ha" as "(%ly & -> & %Hst & % & % & %Hly & Ha)".
+    rewrite array_t_shr_unfold.
     iExists ly. rewrite -Heqst. iR. iR. iR.
     iPoseProof (big_sepL2_length with "Hincl") as "%Hleneq".
     rewrite -Hleneq. iR. iR.

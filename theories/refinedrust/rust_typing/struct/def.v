@@ -195,33 +195,45 @@ Section structs.
   (** We use a [hlist] for the list of types and a [plist] for the refinement, to work around universe problems.
      See also the [ltype] definition. Using just [hlist] will cause universe problems, while using [plist] in the [lty]
      inductive will cause strict positivity problems. *)
+
+  Definition struct_t_own_val_def {rts : list RT} (sls : struct_layout_spec) (tys : hlist type rts) π (r : plistRT rts) m v : iProp Σ :=
+    (∃ sl,
+      ⌜m = MetaNone⌝ ∗
+      ⌜use_struct_layout_alg sls = Some sl⌝ ∗
+      ⌜length rts = length sls.(sls_fields)⌝ ∗
+      ⌜v `has_layout_val` sl⌝ ∗
+      (* the padding fields get the uninit type *)
+      [∗ list] i ↦ v';ty ∈ reshape (ly_size <$> sl.(sl_members).*2) v; pad_struct sl.(sl_members) (hpzipl rts tys r) struct_make_uninit_type,
+        struct_own_el_val π i sl.(sl_members) v' (projT2 ty).2 (projT2 ty).1
+        )%I.
+  Definition struct_t_own_val_aux : seal (@struct_t_own_val_def).
+  Proof. by eexists. Qed.
+  Definition struct_t_own_val := struct_t_own_val_aux.(unseal).
+  Definition struct_t_own_val_unfold : @struct_t_own_val = @struct_t_own_val_def := struct_t_own_val_aux.(seal_eq).
+
+  Definition struct_t_shr_def {rts : list RT} (sls : struct_layout_spec) (tys : hlist type rts) κ π (r : plistRT rts) m l : iProp Σ :=
+    (∃ sl,
+      ⌜m = MetaNone⌝ ∗
+      ⌜use_struct_layout_alg sls = Some sl⌝ ∗
+      ⌜length rts = length sls.(sls_fields)⌝ ∗
+      ⌜l `has_layout_loc` sl⌝ ∗
+      loc_in_bounds l 0 (ly_size sl) ∗
+      [∗ list] i ↦ ty ∈ pad_struct sl.(sl_members) (hpzipl rts tys r) struct_make_uninit_type,
+        struct_own_el_shr π κ i sl.(sl_members) l (projT2 ty).2 (projT2 ty).1)%I.
+  Definition struct_t_shr_aux : seal (@struct_t_shr_def).
+  Proof. by eexists. Qed.
+  Definition struct_t_shr := struct_t_shr_aux.(unseal).
+  Definition struct_t_shr_unfold : @struct_t_shr = @struct_t_shr_def := struct_t_shr_aux.(seal_eq).
   (*#[universes(polymorphic)]*)
   Program Definition struct_t {rts : list RT} (sls : struct_layout_spec) (tys : hlist type rts) : type (plistRT rts) := {|
     (* TODO: support metadata for last struct field *)
     ty_metadata_kind := MetadataNone;
-    ty_own_val π r m v :=
-      (∃ sl,
-        ⌜m = MetaNone⌝ ∗
-        ⌜use_struct_layout_alg sls = Some sl⌝ ∗
-        ⌜length rts = length sls.(sls_fields)⌝ ∗
-        ⌜v `has_layout_val` sl⌝ ∗
-        (* the padding fields get the uninit type *)
-        [∗ list] i ↦ v';ty ∈ reshape (ly_size <$> sl.(sl_members).*2) v; pad_struct sl.(sl_members) (hpzipl rts tys r) struct_make_uninit_type,
-          struct_own_el_val π i sl.(sl_members) v' (projT2 ty).2 (projT2 ty).1
-          )%I;
+    ty_own_val := struct_t_own_val _ sls tys;
     ty_sidecond := ⌜length rts = length (sls_fields sls)⌝;
     _ty_has_op_type ot mt :=
       is_struct_ot sls tys ot mt;
     ty_syn_type _ := sls : syn_type;
-    ty_shr κ π r m l :=
-      (∃ sl,
-        ⌜m = MetaNone⌝ ∗
-        ⌜use_struct_layout_alg sls = Some sl⌝ ∗
-        ⌜length rts = length sls.(sls_fields)⌝ ∗
-        ⌜l `has_layout_loc` sl⌝ ∗
-        loc_in_bounds l 0 (ly_size sl) ∗
-        [∗ list] i ↦ ty ∈ pad_struct sl.(sl_members) (hpzipl rts tys r) struct_make_uninit_type,
-          struct_own_el_shr π κ i sl.(sl_members) l (projT2 ty).2 (projT2 ty).1)%I;
+    ty_shr := struct_t_shr _ sls tys;
     _ty_ghost_drop π r :=
       ([∗ list] x ∈ hpzipl rts tys r,
         ∃ r' : RT_rt (projT1 x), place_rfn_interp_owned ((projT2 x).2) r' ∗
@@ -237,6 +249,7 @@ Section structs.
       apply IH.
   Defined.
   Next Obligation.
+    rewrite struct_t_own_val_unfold.
     iIntros (rts sls tys π r m v) "(%sl & -> & %Halg & %Hlen & %Hly & ?)".
     iExists sl. iPureIntro. split; last done.
     by apply use_struct_layout_alg_Some_inv.
@@ -252,19 +265,27 @@ Section structs.
       simpl. by apply use_struct_layout_alg_Some_inv.
   Qed.
   Next Obligation.
+    rewrite struct_t_own_val_unfold.
     iIntros (rts sls tys π r m v) "(%sl & -> & ? & $ & _)".
   Qed.
   Next Obligation.
+    rewrite struct_t_shr_unfold.
     iIntros (rts sls tys ? π r m v) "(%sl & -> & ? & $ & _)".
   Qed.
-  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
+    unfold TCNoResolve.
+    rewrite struct_t_shr_unfold.
+    apply _.
+  Qed.
+  Next Obligation.
+    rewrite struct_t_shr_unfold.
     iIntros (rts sls tys κ π l m r) "(%sl & -> & %Halg & %Hly & % & Hmem)".
     iExists sl. iSplitR; first done. iPureIntro.
     by apply use_struct_layout_alg_Some_inv.
   Qed.
   Next Obligation.
     (* sharing *)
+    rewrite struct_t_shr_unfold struct_t_own_val_unfold.
     iIntros (rts sls tys E κ l ly π r m q ?) "#(LFT & LLCTX) #Hna Htok %Hst %Hly #Hlb Hl".
     rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htok')".
     iApply fupd_logical_step.
@@ -384,6 +405,7 @@ Section structs.
   Qed.
   Next Obligation.
     (* monotonicity of sharing *)
+    rewrite struct_t_shr_unfold.
     iIntros (rts sls tys κ κ' π r m l) "#Hincl (%sl & -> & %Hsl & %Hlen & %Hly & Hlb & Hb)".
     iExists sl. do 4 iR. iFrame.
     iApply (big_sepL_wand with "Hb"). iApply big_sepL_intro.
@@ -393,6 +415,7 @@ Section structs.
     iApply (ty_shr_mono with "Hincl Hb").
   Qed.
   Next Obligation.
+    rewrite struct_t_own_val_unfold.
     iIntros (rts sls tys π r m v F ?). simpl.
     iIntros "(%sl & -> & %Halg & %Hlen & %Hlyv & Hv)".
     iPoseProof (big_sepL_to_exists_l with "Hv") as "Hv".
@@ -409,6 +432,7 @@ Section structs.
     iIntros "$". done.
   Qed.
   Next Obligation.
+    rewrite struct_t_own_val_unfold.
     iIntros (rts sls tys ot mt st π r m v Hot).
     apply (mem_cast_compat_Untyped) => ?.
     iIntros "(%sl & -> & %Halg & %Hlen & %Hsl & Hmem)".
@@ -500,6 +524,7 @@ Section structs.
     specialize (Forall2_length  _ _ _ Hel) as Hlen.
     rewrite !length_hpzipl in Hlen.
     rewrite /ty_own_val/=.
+    rewrite struct_t_own_val_unfold/struct_t_own_val_def.
     f_equiv => sl.
     apply sep_ne_proper => Hmeta.
     apply sep_ne_proper => Halg.
@@ -537,6 +562,7 @@ Section structs.
     specialize (Forall2_length  _ _ _ Hel) as Hlen.
     rewrite !length_hpzipl in Hlen.
     rewrite /ty_shr/=.
+    rewrite struct_t_shr_unfold/struct_t_shr_def.
     f_equiv => sl.
     apply sep_ne_proper => Hmeta.
     apply sep_ne_proper => Halg.
@@ -616,6 +642,7 @@ Section structs.
     - intros n ty ty' Hd.
       destruct HT as [Ts' Hne ->].
       iIntros (π r m v). rewrite /ty_own_val/=.
+      rewrite struct_t_own_val_unfold/struct_t_own_val_def.
       f_equiv => sl.
       rewrite type_dist_st.
       rewrite /struct_own_el_val.
@@ -636,6 +663,7 @@ Section structs.
     - intros n ty ty' Hd.
       destruct HT as [Ts' Hne ->].
       iIntros (κ π r m l). rewrite /ty_shr /= /struct_own_el_shr/=.
+      rewrite struct_t_shr_unfold/struct_t_shr_def.
       rewrite type_dist2_st.
       f_equiv => sl.
       apply sep_ne_proper => Hmeta. subst m.
@@ -651,9 +679,12 @@ Section structs.
         inv_hlist Ts' => T1 Ts'.
         intros [Hne1 Hne]%HTForall_cons_inv.
         simpl. f_equiv. { solve_type_proper. }
+        rewrite /struct_own_el_shr.
         cbn. setoid_rewrite <-shift_loc_assoc_nat.
         eapply IH; first done. simpl in Hlen. lia.
-      + f_equiv. setoid_rewrite <-shift_loc_assoc_nat. apply IH; done.
+      + f_equiv.
+        rewrite /struct_own_el_shr.
+        setoid_rewrite <-shift_loc_assoc_nat. apply IH; done.
     - intros n ty ty' Hd.
       destruct HT as [Ts' Hne ->].
       iIntros (π r). rewrite ty_ghost_drop_unfold /_ty_ghost_drop/=.
@@ -714,6 +745,7 @@ Section structs.
     - intros n ty ty' Hd.
       destruct HT as [Ts' Hne ->].
       iIntros (π r m v). rewrite /ty_own_val/=.
+      rewrite struct_t_own_val_unfold/struct_t_own_val_def.
       f_equiv => sl.
       rewrite /struct_own_el_val.
       erewrite Hst.
@@ -734,6 +766,7 @@ Section structs.
     - intros n ty ty' Hd.
       destruct HT as [Ts' Hne ->].
       iIntros (κ π r m l). rewrite /ty_shr /= /struct_own_el_shr/=.
+      rewrite struct_t_shr_unfold/struct_t_shr_def.
       erewrite Hst.
       f_equiv => sl.
       apply sep_ne_proper => Hmeta. subst m.
@@ -749,9 +782,12 @@ Section structs.
         inv_hlist Ts' => T1 Ts'.
         intros [Hne1 Hne]%HTForall_cons_inv.
         simpl. f_equiv. { solve_type_proper. }
+        rewrite /struct_own_el_shr.
         cbn. setoid_rewrite <-shift_loc_assoc_nat.
         eapply IH; first done. simpl in Hlen. lia.
-      + f_equiv. setoid_rewrite <-shift_loc_assoc_nat. apply IH; done.
+      + f_equiv.
+        rewrite /struct_own_el_shr.
+        setoid_rewrite <-shift_loc_assoc_nat. apply IH; done.
     - intros n ty ty' Hd.
       destruct HT as [Ts' Hne ->].
       iIntros (π r). rewrite ty_ghost_drop_unfold /_ty_ghost_drop/=.
@@ -818,6 +854,7 @@ Section init.
   Proof.
     iIntros (Hsl Hlen) "Hv".
     rewrite {2}/ty_own_val /=/struct_own_el_val/=.
+    rewrite struct_t_own_val_unfold.
     iExists sl. iR. iR. iR.
 
     apply use_struct_layout_alg_inv in Hsl as (field_lys & Halg & Hfields).
@@ -899,6 +936,7 @@ Section init.
   Proof.
     intros Hsl Hfields Hmem.
     rewrite /ty_own_val/=.
+    rewrite struct_t_own_val_unfold.
     iExists sl. iR. iR. rewrite Hfields. iR.
     iSplitR. { iPureIntro. rewrite /has_layout_val /ly_size /layout_of Hmem //. }
     by rewrite Hmem.
@@ -927,25 +965,26 @@ Section copy.
   Proof.
     iIntros (Hcopy).
     iIntros (???).
-      apply bi.exist_persistent => sl.
-      apply bi_sep_persistent_pure_l => Hmeta. subst m.
-      apply bi_sep_persistent_pure_l => Halg.
-      apply bi_sep_persistent_pure_l => Hlen. apply bi.sep_persistent; first apply _.
-      apply big_sepL2_persistent_strong => _ k v' [rt [ty r']] Hlook1 Hlook2.
-      apply pad_struct_lookup_Some in Hlook2 as (n & ly & ? & Hlook2); first last.
-      { rewrite length_hpzipl. erewrite struct_layout_spec_has_layout_fields_length; done. }
-      destruct Hlook2 as [[? Hlook2] | [-> Hlook2]].
-      + simpl in Hlook2.
-        apply (hpzipl_lookup_inv_hzipl_pzipl _ _ r) in Hlook2 as [Hlook21 Hlook22].
-        eapply TCHForall_nth_hzipl in Hcopy; last apply Hlook21.
-        eapply bi.exist_persistent => r0.
-        eapply bi.exist_persistent => ly'.
-        eapply bi.sep_persistent.
-        { apply _. }
-        apply _.
-      + injection Hlook2 => [= ? _] _ _; subst.
-        apply existT_inj in Hlook2 as [= -> ->].
-        simpl. apply _.
+    rewrite /ty_own_val/= struct_t_own_val_unfold.
+    apply bi.exist_persistent => sl.
+    apply bi_sep_persistent_pure_l => Hmeta. subst m.
+    apply bi_sep_persistent_pure_l => Halg.
+    apply bi_sep_persistent_pure_l => Hlen. apply bi.sep_persistent; first apply _.
+    apply big_sepL2_persistent_strong => _ k v' [rt [ty r']] Hlook1 Hlook2.
+    apply pad_struct_lookup_Some in Hlook2 as (n & ly & ? & Hlook2); first last.
+    { rewrite length_hpzipl. erewrite struct_layout_spec_has_layout_fields_length; done. }
+    destruct Hlook2 as [[? Hlook2] | [-> Hlook2]].
+    + simpl in Hlook2.
+      apply (hpzipl_lookup_inv_hzipl_pzipl _ _ r) in Hlook2 as [Hlook21 Hlook22].
+      eapply TCHForall_nth_hzipl in Hcopy; last apply Hlook21.
+      eapply bi.exist_persistent => r0.
+      eapply bi.exist_persistent => ly'.
+      eapply bi.sep_persistent.
+      { apply _. }
+      apply _.
+    + injection Hlook2 => [= ? _] _ _; subst.
+      apply existT_inj in Hlook2 as [= -> ->].
+      simpl. apply _.
   Qed.
 
   Local Definition fields_size (fields : list (option string * layout)) :=
@@ -1255,6 +1294,7 @@ Section copy.
     iIntros (Hcopy). split; first apply _.
     iIntros (κ π E l r m q ?) "#CTX Hshr Htok".
     rewrite /ty_shr /=.
+    rewrite struct_t_shr_unfold.
     iDestruct "Hshr" as (sl) "(-> & %Halg' & %Hlen & %Hly & #Hlb & #Hb)".
     (*simpl in Halg.*)
     specialize (use_struct_layout_alg_Some_inv _ _ Halg') as Halg2.
@@ -1287,8 +1327,10 @@ Section copy.
     rewrite fst_zip in Hlyv; last lia.
     iExists sl. iR. iR.
     iExists q', (mjoin vs). simpl. iFrame.
+    rewrite /ty_own_val/= struct_t_own_val_unfold.
     iSplitL "Hl Hs".
-    { iModIntro. iNext. rewrite fst_zip; last lia. iFrame. iR. iR. iR.
+    { iModIntro. iNext. rewrite fst_zip; last lia. iFrame.
+      iR. iR. iR.
       iPureIntro. by apply mjoin_has_struct_layout. }
     iModIntro. iIntros "Hpts".
     iApply ("Hcl" with "[Hpts]").

@@ -6,11 +6,10 @@ Section mut_ref.
   Context `{typeGS Σ}.
   Implicit Types (κ : lft) (γ : gname).
 
-  Program Definition mut_ref  {rt : RT} (κ : lft) (inner : type rt) : type (place_rfn rt * gname)%type := {|
-    ty_sidecond := True;
-    ty_metadata_kind := MetadataNone;
-    ty_own_val π '(r, γ) m v :=
-      (∃ (l : loc) (ly : layout), ⌜m = MetaNone⌝ ∗ 
+  Definition mut_ref_own_val_def {rt : RT} κ (inner : type rt) π (rγ : place_rfn rt * gname) m (v : val) : iProp Σ :=
+    let '(r, γ) := rγ in
+    (∃ (l : loc) (ly : layout), 
+      ⌜m = MetaNone⌝ ∗ 
       ⌜val_to_loc v = Some l⌝ ∗
       ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
       ⌜l `has_layout_loc` ly⌝ ∗
@@ -18,25 +17,41 @@ Section mut_ref.
       inner.(ty_sidecond) ∗
       place_rfn_interp_mut r γ ∗
       have_creds ∗
-      |={lftE}=> &pin{κ} (∃ r' : rt, gvar_auth γ r' ∗ |={lftE}=> l ↦: inner.(ty_own_val) π r' MetaNone))%I;
+      |={lftE}=> &pin{κ} (∃ r' : rt, gvar_auth γ r' ∗ |={lftE}=> l ↦: inner.(ty_own_val) π r' MetaNone))%I.
+  Definition mut_ref_own_val_aux : seal (@mut_ref_own_val_def).
+  Proof. by eexists. Qed.
+  Definition mut_ref_own_val := mut_ref_own_val_aux.(unseal).
+  Definition mut_ref_own_val_unfold : @mut_ref_own_val = @mut_ref_own_val_def := mut_ref_own_val_aux.(seal_eq).
+
+  Definition mut_ref_shr_def {rt : RT} κ (inner : type rt) κ' π (rγ : place_rfn rt * gname) m (l : loc) : iProp Σ :=
+    let '(r, γ) := rγ in
+    (∃ (li : loc) (ly : layout) (r' : rt),
+      ⌜m = MetaNone⌝ ∗
+      ⌜l `has_layout_loc` void*⌝ ∗
+      place_rfn_interp_shared r r' ∗
+        &frac{κ'}(λ q', l ↦{q'} li) ∗
+        (* needed explicity because there is a later + fupd over the sharing predicate *)
+        ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
+        ⌜li `has_layout_loc` ly⌝ ∗
+        loc_in_bounds l 0 void*.(ly_size) ∗
+        loc_in_bounds li 0 ly.(ly_size) ∗
+        inner.(ty_sidecond) ∗
+        (* we still need a later for contractiveness *)
+        ▷ □ (|={lftE}=> inner.(ty_shr) (κ⊓κ') π r' MetaNone li))%I.
+  Definition mut_ref_shr_aux : seal (@mut_ref_shr_def).
+  Proof. by eexists. Qed.
+  Definition mut_ref_shr := mut_ref_shr_aux.(unseal).
+  Definition mut_ref_shr_unfold : @mut_ref_shr = @mut_ref_shr_def := mut_ref_shr_aux.(seal_eq).
+
+  Program Definition mut_ref  {rt : RT} (κ : lft) (inner : type rt) : type (place_rfn rt * gname)%type := {|
+    ty_sidecond := True;
+    ty_metadata_kind := MetadataNone;
+    ty_own_val := mut_ref_own_val _ κ inner;
 
     _ty_has_op_type ot mt := is_ptr_ot ot;
     ty_syn_type _ := PtrSynType;
 
-    ty_shr κ' π '(r, γ) m l :=
-      (∃ (li : loc) (ly : layout) (r' : rt),
-        ⌜m = MetaNone⌝ ∗
-        ⌜l `has_layout_loc` void*⌝ ∗
-        place_rfn_interp_shared r r' ∗
-          &frac{κ'}(λ q', l ↦{q'} li) ∗
-          (* needed explicity because there is a later + fupd over the sharing predicate *)
-          ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
-          ⌜li `has_layout_loc` ly⌝ ∗
-          loc_in_bounds l 0 void*.(ly_size) ∗
-          loc_in_bounds li 0 ly.(ly_size) ∗
-          inner.(ty_sidecond) ∗
-          (* we still need a later for contractiveness *)
-          ▷ □ (|={lftE}=> inner.(ty_shr) (κ⊓κ') π r' MetaNone li))%I;
+    ty_shr := mut_ref_shr _ κ inner;
     (* NOTE: we cannot descend below the borrow here to get more information recursively.
        But this is fine, since the observation about γ here already contains all the information we need. *)
     _ty_ghost_drop π '(r, γ) :=
@@ -54,6 +69,7 @@ Section mut_ref.
     simpl. apply _.
   Qed.
   Next Obligation.
+    rewrite mut_ref_own_val_unfold.
     iIntros (? κ inner  π [r γ] m v) "(%l & %ly & -> & %Hv & _)".
     iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
     unfold has_layout_val. apply val_to_loc_length. eexists. done.
@@ -71,9 +87,11 @@ Section mut_ref.
   Qed.
   Next Obligation.
     unfold TCNoResolve.
+    rewrite mut_ref_shr_unfold.
     iIntros (? κ ? κ' π l [r γ]). apply _.
   Qed.
   Next Obligation.
+    rewrite mut_ref_shr_unfold.
     iIntros (??????[r γ] m) "(%li & %ly & %r' & -> & % & ? &  _)".
     iPureIntro. eexists _. split; last by apply syn_type_has_layout_ptr.
     done.
@@ -99,6 +117,7 @@ Section mut_ref.
     *)
 
     iIntros (? κ ? E κ' l ly π [r γ] m q ?) "#[LFT TIME] #Hna Htok %Hst %Hly _ Hb".
+    rewrite mut_ref_own_val_unfold mut_ref_shr_unfold.
     iApply fupd_logical_step.
     iMod (bor_exists with "LFT Hb") as (v) "Hb"; first solve_ndisj.
     iMod (bor_sep with "LFT Hb") as "(Hl & Hb)"; first solve_ndisj.
@@ -189,6 +208,7 @@ Section mut_ref.
   Qed.
   Next Obligation.
     iIntros (? κ inner κ0 κ' π [r γ] m l) "#Hincl".
+    rewrite mut_ref_shr_unfold.
     iIntros "(%li & %ly & %r' & -> & Hly & Hrfn & Hf & ? & ? & ? & ? & ? & #Hb)".
     iExists li, ly, r'. iR. iFrame.
     iSplitL "Hf". { iApply frac_bor_shorten; done. }
@@ -197,6 +217,7 @@ Section mut_ref.
     iApply lft_intersect_mono; last done. iApply lft_incl_refl.
   Qed.
   Next Obligation.
+    rewrite mut_ref_own_val_unfold.
     iIntros (????[r γ]????) "(%l & %ly & -> & %Hv & _ & _ & _ & _ & Hrfn & Hcred &  _)".
     iApply fupd_logical_step. destruct r as [ r | γ'].
     - iMod (gvar_obs_persist with "Hrfn") as "?".
@@ -205,6 +226,7 @@ Section mut_ref.
   Qed.
   Next Obligation.
     iIntros (??? ot mt st ? [r γ] m ? Hot).
+    rewrite mut_ref_own_val_unfold.
     destruct mt.
     - eauto.
     - iIntros "(%l & %ly & -> & %Hv & ?)". iExists l, ly. iFrame.
@@ -235,10 +257,10 @@ Section mut_ref.
     - rewrite ty_has_op_type_unfold/=. done.
     - done.
     - intros n ty ty' ?.
-      intros π [] v. rewrite /ty_own_val/=.
+      intros π [] v. rewrite /ty_own_val/= mut_ref_own_val_unfold.
       solve_type_proper.
     - intros n ty ty' ?.
-      intros κ' π [] l. rewrite /ty_shr/=.
+      intros κ' π [] l. rewrite /ty_shr/= mut_ref_shr_unfold.
       solve_type_proper.
     - intros n ty ty' ?.
       intros. rewrite ty_ghost_drop_unfold. done.
@@ -248,4 +270,3 @@ Section mut_ref.
   Proof. apply type_contractive_type_ne, _. Qed.
 End mut_ref.
 Notation "&mut< κ , τ >" := (mut_ref κ τ) (only printing, format "'&mut<' κ , τ '>'") : stdpp_scope.
-

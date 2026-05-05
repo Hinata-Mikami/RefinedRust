@@ -6,6 +6,37 @@ Section shr_ref.
   Context `{typeGS Σ}.
   Implicit Types (κ : lft).
 
+  Definition shr_ref_own_val_def {rt : RT} κ (inner : type rt) π r m v : iProp Σ :=
+    (∃ (l : loc) (ly : layout) (r' : rt),
+      ⌜m = MetaNone⌝ ∗
+      ⌜val_to_loc v = Some l⌝ ∗
+      ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
+      loc_in_bounds l 0 ly.(ly_size) ∗
+      inner.(ty_sidecond) ∗
+      place_rfn_interp_shared r r' ∗
+      □ |={lftE}=> inner.(ty_shr) κ π r' MetaNone l)%I
+  .
+  Definition shr_ref_own_val_aux : seal (@shr_ref_own_val_def).
+  Proof. by eexists. Qed.
+  Definition shr_ref_own_val := shr_ref_own_val_aux.(unseal).
+  Definition shr_ref_own_val_unfold : @shr_ref_own_val = @shr_ref_own_val_def := shr_ref_own_val_aux.(seal_eq).
+
+  Definition shr_ref_shr_def {rt : RT} κ (inner : type rt) κ' π r m l : iProp Σ :=
+    (∃ (li : loc) (ly : layout) (ri : rt),
+      ⌜m = MetaNone⌝ ∗
+      ⌜l `has_layout_loc` void*⌝ ∗
+      (*loc_in_bounds l void*.(ly_size) ∗*)
+      ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
+      ⌜li `has_layout_loc` ly⌝ ∗
+      loc_in_bounds li 0 ly.(ly_size) ∗
+      inner.(ty_sidecond) ∗
+      place_rfn_interp_shared r ri ∗
+      &frac{κ'} (λ q, l ↦{q} li) ∗ ▷ □ |={lftE}=> inner.(ty_shr) (κ) π ri MetaNone li)%I.
+  Definition shr_ref_shr_aux : seal (@shr_ref_shr_def).
+  Proof. by eexists. Qed.
+  Definition shr_ref_shr := shr_ref_shr_aux.(unseal).
+  Definition shr_ref_shr_unfold : @shr_ref_shr = @shr_ref_shr_def := shr_ref_shr_aux.(seal_eq).
+
   (* this is almost a simple type, but we have to be careful with
     the sharing predicate: we want to obtain the knowledge that l points to
     a location not under a later (to prove the agreement with the ltype unfolding),
@@ -13,30 +44,12 @@ Section shr_ref.
   Program Definition shr_ref {rt : RT} κ (inner : type rt) : type (place_rfn rt) := {|
     ty_sidecond := True;
     ty_metadata_kind := MetadataNone;
-    ty_own_val π r m v :=
-      (∃ (l : loc) (ly : layout) (r' : rt),
-        ⌜m = MetaNone⌝ ∗
-        ⌜val_to_loc v = Some l⌝ ∗
-        ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
-        loc_in_bounds l 0 ly.(ly_size) ∗
-        inner.(ty_sidecond) ∗
-        place_rfn_interp_shared r r' ∗
-        □ |={lftE}=> inner.(ty_shr) κ π r' MetaNone l)%I;
+    ty_own_val := shr_ref_own_val _ κ inner;
 
     _ty_has_op_type ot mt := is_ptr_ot ot;
     ty_syn_type m := PtrSynType;
 
-    ty_shr κ' π r m l :=
-      (∃ (li : loc) (ly : layout) (ri : rt),
-        ⌜m = MetaNone⌝ ∗
-        ⌜l `has_layout_loc` void*⌝ ∗
-        (*loc_in_bounds l void*.(ly_size) ∗*)
-        ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
-        ⌜li `has_layout_loc` ly⌝ ∗
-        loc_in_bounds li 0 ly.(ly_size) ∗
-        inner.(ty_sidecond) ∗
-        place_rfn_interp_shared r ri ∗
-        &frac{κ'} (λ q, l ↦{q} li) ∗ ▷ □ |={lftE}=> inner.(ty_shr) (κ) π ri MetaNone li)%I;
+    ty_shr := shr_ref_shr _ κ inner;
     _ty_ghost_drop _ _ := True%I;
     _ty_lfts := [κ] ++ ty_lfts inner;
     _ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
@@ -45,26 +58,34 @@ Section shr_ref.
     intros. simpl. apply _.
   Qed.
   Next Obligation.
+    rewrite shr_ref_own_val_unfold.
     iIntros (???????) "(%l & %ly & %r' & -> & % & ? & ? & ?)".
     iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
     by apply val_to_loc_length.
   Qed.
   Next Obligation.
-    iIntros (? ?? ot Hot) => /=.
+    iIntros (??? ot Hot) => /=.
     destruct ot => /=//.
     - intros; by apply syn_type_has_layout_ptr.
     - intros ->; by apply syn_type_has_layout_ptr.
   Qed.
-  Next Obligation. iIntros (???????) "_". done. Qed.
-  Next Obligation. iIntros (????????) "_". done. Qed.
-  Next Obligation. unfold TCNoResolve. apply _. Qed.
+  Next Obligation. iIntros (??? ????) "_". done. Qed.
+  Next Obligation. iIntros (??? ?????) "_". done. Qed.
   Next Obligation.
-    iIntros (????????). simpl. iIntros "(%l' & %ly & %r' & % & % & ? & ? & _)".
+    unfold TCNoResolve.
+    rewrite shr_ref_shr_unfold.
+    apply _.
+  Qed.
+  Next Obligation.
+    iIntros (??? ?????). simpl.
+    rewrite shr_ref_shr_unfold.
+    iIntros "(%l' & %ly & %r' & % & % & ? & ? & _)".
     iPureIntro. eexists _. split; last by apply syn_type_has_layout_ptr.
     done.
   Qed.
   Next Obligation.
-    iIntros (? κ ? E κ' l ly π r m q ?) "#[LFT TIME] #Hna Htok %Halg %Hly _ Hb".
+    iIntros (??? E κ' l ly π r m q ?) "#[LFT TIME] #Hna Htok %Halg %Hly _ Hb".
+    rewrite shr_ref_own_val_unfold shr_ref_shr_unfold.
     simpl. rewrite -{1}lft_tok_sep -{1}lft_tok_sep.
     iDestruct "Htok" as "(Htok_κ' & Htok_κ & Htok)".
     iApply fupd_logical_step.
@@ -91,7 +112,8 @@ Section shr_ref.
     iFrame. iFrame "Hsc".
   Qed.
   Next Obligation.
-    iIntros (? ? ? κ' κ'' π r m l) "#Hord H".
+    iIntros (??? κ' κ'' π r m l) "#Hord H".
+    rewrite shr_ref_shr_unfold.
     iDestruct "H" as (li ly ri ->) "(? & ? & ? & Hlb & Hsc & Hr & #Hf & #Hown)".
     iExists li, ly, ri. iR. iFrame. iSplit.
     - by iApply (frac_bor_shorten with "Hord").
@@ -102,7 +124,8 @@ Section shr_ref.
     intros. iIntros "_". by iApply logical_step_intro.
   Qed.
   Next Obligation.
-    iIntros (? ?? ot mt st ? r m ? Hot).
+    iIntros (??? ot mt st ? r m ? Hot).
+    rewrite shr_ref_own_val_unfold.
     destruct mt.
     - eauto.
     - iIntros "(%l & %ly & %ri & -> & %Hv & ? & ? & ?)".
@@ -117,6 +140,10 @@ Section shr_ref.
     intros ??? ly mt _ Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
     done.
   Qed.
+End shr_ref.
+
+Section props.
+  Context `{!typeGS Σ}.
 
   Global Instance shr_ref_sized {rt} (ty : type rt) κ : TySized (shr_ref κ ty).
   Proof.
@@ -125,7 +152,9 @@ Section shr_ref.
 
   Global Instance shr_ref_copyable {rt} (ty : type rt) κ : Copyable (shr_ref κ ty).
   Proof.
-    constructor; first apply _.
+    constructor.
+    { intros. rewrite /ty_own_val/= shr_ref_own_val_unfold. apply _. }
+    rewrite /ty_shr/= shr_ref_shr_unfold.
     iIntros (κ' π E l r ? ? ?) "[LFT TIME] (%li & %ly' & %r' & -> & %Hly' & % & % & #Hlb & #Hsc & #Hr & Hf & #Hown) Hlft".
     iMod (frac_bor_acc with "LFT Hf Hlft") as (q') "[Hmt Hclose]"; first solve_ndisj.
     iModIntro.
@@ -136,7 +165,9 @@ Section shr_ref.
     iR.
     iExists _, li. iDestruct "Hmt" as "[Hmt1 Hmt2]".
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
-    iSplitL "Hmt1". { iNext. iFrame "Hmt1". iExists li, ly', r'.
+    iSplitL "Hmt1". { iNext. iFrame "Hmt1".
+      rewrite /ty_own_val/= shr_ref_own_val_unfold.
+      iExists li, ly', r'.
       iFrame "#". iPureIntro. split_and!; try done.
       apply val_to_of_loc. by apply val_of_loc_Some_l2v. }
     iIntros "Hmt1".
@@ -155,14 +186,14 @@ Section shr_ref.
       + rewrite {1}ty_wf_E_unfold; done.
     - rewrite ty_has_op_type_unfold/=. done.
     - done.
-    - solve_type_proper.
-    - solve_type_proper.
+    - rewrite /ty_own_val/= shr_ref_own_val_unfold. solve_type_proper.
+    - rewrite /ty_shr/= shr_ref_shr_unfold. solve_type_proper.
     - rewrite ty_ghost_drop_unfold. solve_type_proper.
   Qed.
 
   Global Instance shr_ref_type_ne {rt : RT} κ : TypeNonExpansive (shr_ref (rt:=rt) κ).
   Proof. apply type_contractive_type_ne, _. Qed.
-End shr_ref.
+End props.
 
 
 Notation "&shr< κ , τ >" := (shr_ref τ κ) (only printing, format "'&shr<' κ , τ '>'") : stdpp_scope.

@@ -18,6 +18,7 @@ Section unfold.
       (*eapply use_struct_layout_alg_Some_inv. done. }*)
     iExists sl. do 4 iR. iFrame.
     iModIntro. iMod "Hv" as "(%v & Hl & Hv)".
+    rewrite /ty_own_val/= struct_t_own_val_unfold.
     iDestruct "Hv" as "(%sl' & _ & %Halg' & _ & %Hly' & Hb)".
     assert (sl' = sl) as ->. { by eapply struct_layout_spec_has_layout_inj. }
     rewrite hpzipl_hmap.
@@ -53,6 +54,7 @@ Section unfold.
     apply use_layout_alg_struct_Some_inv in Halg as (sl & Halg & ->).
     iExists sl. do 4 iR.
     iExists r'. iFrame "Hrfn". iModIntro. iMod "Hb".
+    rewrite /ty_shr/= struct_t_shr_unfold.
     iDestruct "Hb" as "(%sl' & _ & %Halg' & _ & %Hly' & Hlb' & Hb)".
     assert (sl' = sl) as ->. { by eapply struct_layout_spec_has_layout_inj. }
 
@@ -92,6 +94,7 @@ Section unfold.
     iSplit.
     * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame. iDestruct "Hb" as ">(%v & Hl & Hb)".
       iApply big_sepL_fupd.
+      rewrite /ty_own_val/= struct_t_own_val_unfold.
       iDestruct "Hb" as "(%sl' & _ & %Halg & %Hlen & %Hly' & Hb)".
       assert (sl' = sl) as ->. { by eapply struct_layout_spec_has_layout_inj. }
       rewrite hpzipl_hmap.
@@ -120,7 +123,7 @@ Section unfold.
       iMod "Hb".
       specialize (struct_layout_field_aligned _ _ Hly) as Hfield_ly.
       (* generalize sl_members before initiating induction *)
-      rewrite /ty_own_val /=.
+      rewrite /ty_own_val/= struct_t_own_val_unfold.
       setoid_rewrite bi.sep_exist_l. rewrite bi_exist_comm.
       iExists sl. iFrame "%".
       rewrite /has_layout_val {1 2}/ly_size {1 2}/layout_of /=.
@@ -280,7 +283,7 @@ Section unfold.
     specialize (struct_layout_field_aligned _ _ Hly) as Hfield_ly.
     (* generalize *)
     (* TODO mostly duplicated with the Uniq lemma above *)
-    rewrite /ty_own_val /=.
+    rewrite /ty_own_val /= struct_t_own_val_unfold.
     setoid_rewrite bi.sep_exist_l. rewrite bi_exist_comm.
     iExists sl. symmetry in Hsc. iFrame "%".
     rewrite /has_layout_val {1 2}/ly_size {1 2}/layout_of /=.
@@ -395,7 +398,7 @@ Section unfold.
     iSplitR; first done. iSplitR; first done. iFrame "Hlb".
     iExists r'. iFrame "Hrfn". iModIntro. iMod "Hb".
 
-    rewrite /ty_shr /=. do 4 iR.
+    rewrite /ty_shr /= struct_t_shr_unfold. iExists sl. do 5 iR.
     rewrite -big_sepL_fupd.
     rewrite hpzipl_hmap.
     set (f := (λ '(existT x (a, b)), existT x (◁ a, b))%I).

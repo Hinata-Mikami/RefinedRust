@@ -14,6 +14,7 @@ Section subtype.
     v ◁ᵥ{π, m} #r2 @ shr_ref κ1 ty2.
   Proof.
     iIntros "#Hincl (%Hst_eq & #Hsc_eq & _ & #Hincl_shr)".
+    rewrite /ty_own_val/= shr_ref_own_val_unfold.
     iIntros "(%l & %ly & %r' & -> & % & ? & ? & Hlb & Hsc & -> & #Hl)". iExists l, ly, r2.
     iSplitR; first done. rewrite -Hst_eq. iFrame.
     iR.
@@ -30,6 +31,7 @@ Section subtype.
   Proof.
     iIntros "#Hincl #Hsub".
     iDestruct ("Hsub" $! inhabitant) as "(%Hst_eq & #Hsc_eq & _)".
+    rewrite /ty_own_val/= shr_ref_own_val_unfold.
     iIntros "(%l & %ly & %r' & -> & % & ? & ? & Hlb & Hsc & Hr & #Hl)". iExists l, ly, r'.
     iSplitR; first done. rewrite -Hst_eq. iFrame.
     iR.
@@ -47,6 +49,7 @@ Section subtype.
     l ◁ₗ{π, m, κ} #r2 @ shr_ref κ1 ty2.
   Proof.
     iIntros "#Hincl (%Hst_eq & #Hsc_eq & _ & #Hincl_shr)".
+    rewrite /ty_shr/= shr_ref_shr_unfold.
     iIntros "(%li & %ly & %r' & -> & ? & ? & ? & Hlb & Hsc & -> & Hli & #Hb)".
     iExists li, ly, r2. rewrite Hst_eq. iFrame. iR.
     iSplitL "Hsc". { by iApply "Hsc_eq". }
@@ -61,6 +64,7 @@ Section subtype.
     l ◁ₗ{π, m, κ} r @ shr_ref κ1 ty2.
   Proof.
     iIntros "#Hincl #Hsub".
+    rewrite /ty_shr/= shr_ref_shr_unfold.
     iPoseProof ("Hsub" $! inhabitant) as "(%Hst_eq & #Hsc_eq & _)".
     iIntros "(%li & %ly & %r' & -> & ? & ? & ? & Hlb & Hsc & Hr & Hli & #Hb)".
     iExists li, ly, r'. rewrite Hst_eq. iFrame. iR.

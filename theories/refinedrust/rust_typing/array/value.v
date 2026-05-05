@@ -12,7 +12,7 @@ Section value.
     v ◁ᵥ{π, m} vs @ value_t (UntypedSynType ly') -∗
     v ◁ᵥ{π, m} (fmap (M:=list) PlaceIn $ (reshape (replicate n (ly_size ly)) vs : list val)) @ (array_t n (value_t (UntypedSynType ly))).
   Proof.
-    iIntros (Hsz ?) "Hv". rewrite /ty_own_val/=.
+    iIntros (Hsz ?) "Hv". rewrite /ty_own_val/= array_t_own_val_unfold.
     iDestruct "Hv" as "(-> & %ot & %Hot & %Hmv & %Hv & %Hst)".
     apply use_op_alg_untyped_inv in Hot as ->.
     simpl in *.
@@ -68,7 +68,7 @@ Section value.
     v ◁ᵥ{π, m} vs'' @ value_t (UntypedSynType ly').
   Proof.
     iIntros (-> -> ->) "Hv".
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= array_t_own_val_unfold.
     iDestruct "Hv" as "(%ly'' & -> & %Hst & %Hsz & <- & %Hv & Hl)".
     iR.
     apply syn_type_has_layout_untyped_inv in Hst as (-> & Hwf & Hsz' & Hal).
