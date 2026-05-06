@@ -433,7 +433,7 @@ Proof.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   all: rewrite Nat.mul_comm.
-  all: open_jcache; apply array_layout_wf; sidecond_hook.
+  all: apply array_layout_wf; sidecond_hook.
 Qed.
 
 (** check_array_layoutable *)

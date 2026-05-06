@@ -1060,15 +1060,17 @@ Ltac shelve_sidecond_hook ::=
   unfold name_hint, discriminate_hint.
 
 Ltac sidecond_hook_init :=
-  open_cache;
   intros;
   prepare_initial_coq_context;
   unfold name_hint_ty, name_hint in *;
   repeat match goal with
   | |- _ ∧ _ => split
-  | |- Forall ?P ?l =>
-    notypeclasses refine (proj2 (Forall_Forall_cb _ _) _); simpl; (first
-   [ exact I | split_and ! ])
+  | |- Forall ?P (_ :: ?l) =>
+      apply Forall_cons; split
+  | |- Forall _ [] =>
+      apply Forall_nil; exact I
+  | |- True =>
+      exact I
   end
 .
 Ltac sidecond_hook_core :=
@@ -1092,8 +1094,6 @@ Ltac sidecond_hook_core :=
   | |- local_fresh _ _ =>
       (* for local variables *)
       solve_local_fresh
-  (*| |- fn_arg_layout_assumptions ?L1 ?L2 =>*)
-      (*repeat first [constructor | done]*)
   | |- lctx_place_update_kind_outlives ?E ?L ?b ?κs =>
       solve_place_update_kind_outlives
   | |- ty_has_op_type _ _ _ =>
@@ -1118,11 +1118,26 @@ Ltac sidecond_hook_core :=
       solve_ndisj
   | |- _ ∪ _ = _ =>
       solve_ndisj
-  | |- _ => idtac
-  end;
-  try solve_layout_alg
-.
-Ltac sidecond_hook ::=
+  | |- use_layout_alg ?st = Some ?ly =>
+    solve_layout_alg
+  | |- use_layout_alg' ?st = ?ly =>
+    solve_layout_alg
+  | |- syn_type_has_layout ?st ?ly =>
+    solve_layout_alg
+  | |- use_struct_layout_alg ?sls = ?Some ?sl =>
+    solve_layout_alg
+  | |- struct_layout_spec_has_layout ?sls ?sl =>
+    solve_layout_alg
+  | |- use_enum_layout_alg ?els = ?Some ?el =>
+    solve_layout_alg
+  | |- enum_layout_spec_has_layout ?els ?el =>
+    solve_layout_alg
+  | |- use_union_layout_alg ?uls = ?Some ?ul =>
+    solve_layout_alg
+  | |- union_layout_spec_has_layout ?uls ?ul =>
+    solve_layout_alg
+  end.
+Ltac sidecond_hook :=
   sidecond_hook_init;
   sidecond_hook_core
 .
@@ -1215,15 +1230,19 @@ Proof.
   by apply HT.
 Qed.
 
-Ltac prepare_sideconditions :=
+Ltac prepare_sideconditions_fast :=
   li_unfold_lets_in_context;
   unfold_instantiated_evars;
   repeat match goal with | H : BLOCK_PRECOND _ _ |- _ => clear H end;
   (* get rid of Q *)
   repeat match goal with | H := CODE_MARKER _ |- _ => clear H end;
-  repeat match goal with | H := RETURN_MARKER _ |- _ => clear H end;
-  unfold_no_enrich;
-  clear_unused_vars.
+  repeat match goal with | H := RETURN_MARKER _ |- _ => clear H end
+.
+Ltac prepare_sideconditions :=
+  prepare_sideconditions_fast;
+  clear_unused_vars
+.
+
 
 (** specialized handlers for some sideconditions for which we want to bypass the standard normalization *)
 Ltac liSidecond_hook P ::=
@@ -1239,16 +1258,26 @@ lazymatch P with
   | _ =>
       is_fast_builtin_sidecond P;
       split;
-      [ first [fast_done | prepare_sideconditions; liSimpl; solve [sidecond_hook] | shelve_sidecond] | ]
+      [ first [
+          fast_done
+          | prepare_sideconditions_fast;
+            liSimpl;
+            solve [sidecond_hook_core]
+          | shelve_sidecond]
+      | ]
 end.
 (** If this is not a built-in sidecond, cache it so we don't have to solve it again in the future *)
 Ltac hooks.liAfterSidecond_hook P ::=
   first [is_builtin_sidecond P
   | refine (cache_sidecond _ _ _ _ _); [simpl; reflexivity | ] ].
 
-
 Ltac sidecond_solver :=
-  unshelve_sidecond; prepare_sideconditions; liSimpl; sidecond_hook.
+  (* These simplifications stay around even if this doesn't solve the goal. *)
+  unshelve_sidecond;
+  prepare_sideconditions;
+  liSimpl;
+  (* This should not stay around for unsolved goals. *)
+  try solve[sidecond_hook].
 
 (** Lithium hooks for [solve_goal]: called for remaining sideconditions *)
 Lemma unfold_int_elem_of_it (z : Z) (it : int_type) :
@@ -1281,7 +1310,6 @@ Ltac solve_goal_prepare_hook ::=
   These simplifications don't stay around if [solve_goal] fails. *)
 Ltac solve_goal_normalized_prepare_hook ::=
   simplify_layout_goal;
-  unfold_no_enrich;
   open_cache;
   idtac
 .
@@ -1296,13 +1324,13 @@ Ltac solve_goal_final_hook ::=
   Important: does not change the goal if it doesn't fully solve it. *)
 Ltac sidecond_hammer_it :=
   solve_goal_prepare_hook;
-
   normalize_and_simpl_goal;
   solve_goal_normalized_prepare_hook; reduce_closed_Z; enrich_context;
   repeat case_bool_decide => //; repeat case_decide => //; repeat case_match => //;
 
   solve_goal_final_hook.
 Ltac sidecond_hammer :=
+  open_cache;
   sidecond_hammer_normalize;
   simpl;
   try fast_done;

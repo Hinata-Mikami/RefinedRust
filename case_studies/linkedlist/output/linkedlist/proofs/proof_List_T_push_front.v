@@ -28,7 +28,6 @@ Proof.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   - match goal with H : last locs = Some _ |- _ => rewrite last_cons H // end.
-  - by apply Forall_Forall_cb.
   - erewrite list_lookup_total_correct; last by rewrite -head_lookup.
     done.
   Unshelve. all: print_remaining_sidecond.

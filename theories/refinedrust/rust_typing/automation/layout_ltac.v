@@ -383,7 +383,6 @@ Ltac layout_is_var ly :=
   | _ => is_var ly
   end.
 Ltac solve_layout_wf :=
-  unfold_no_enrich;
   match goal with
   | |- layout_wf ?ly =>
       simplify_layout ly
@@ -435,7 +434,6 @@ End layout.
 
 
 Ltac solve_ly_align_ib :=
-  unfold_no_enrich;
   match goal with
   | |- ly_align_in_bounds ?ly =>
       simplify_layout ly
@@ -459,8 +457,6 @@ Ltac solve_ly_align_ib :=
 
 (** Solve equalities and inequalities involving [ly_size]. *)
 Ltac solve_layout_size :=
-  unfold_no_enrich;
-
   first [
     match goal with
     | |- (Z.of_nat (ly_size ?ly) ≤ MaxInt ISize)%Z =>
@@ -504,7 +500,6 @@ Ltac solve_layout_alg_forall :=
 
 (** Solve goals of the form [ly1 = ly2]. *)
 Ltac solve_layout_eq :=
-  unfold_no_enrich;
   (* simplify both sides *)
   match goal with
   | |- ?ly1 = ?ly2 =>
@@ -515,7 +510,7 @@ Ltac solve_layout_eq :=
   try reflexivity.
 
 Section tac.
-  
+
 End tac.
 
 Ltac solve_layout_alg_prepare :=
@@ -523,17 +518,16 @@ Ltac solve_layout_alg_prepare :=
   | |- syn_type_has_layout ?st ?ly =>
       simplify_layout ly
   end;
-  unfold_no_enrich;
   (* normalize goal *)
   repeat lazymatch goal with
   | |- use_layout_alg ?st = Some ?ly => refine (use_layout_alg_layout_tac st ly _)
   | |- use_layout_alg' ?st = ?ly => refine (use_layout_alg'_layout_tac st ly _)
 
-  | |- syn_type_has_layout ?st ?ly => 
+  | |- syn_type_has_layout ?st ?ly =>
       first [
-        refine (use_struct_layout_alg_Some_inv _ _ _) |  
+        refine (use_struct_layout_alg_Some_inv _ _ _) |
         refine (use_enum_layout_alg_Some_inv _ _ _) |
-        refine (use_union_layout_alg_Some_inv _ _ _) | 
+        refine (use_union_layout_alg_Some_inv _ _ _) |
       idtac ]
   (* structs *)
   | |- use_struct_layout_alg ?sls = ?Some ?sl => refine (use_struct_layout_alg_layout_tac _ _ _)
@@ -645,27 +639,23 @@ Ltac solve_layout_alg ::=
   solve[solve_layout_alg_core].
 
 Ltac solve_layout_alg_forall ::=
-  unfold_no_enrich;
   simpl;
   solve_layout_alg_core
   .
 
 Ltac solve_compute_layout ::=
-  unfold_no_enrich;
   open_scache;
   first [eassumption |
   simplify_layout_goal;
   first [eassumption | progress solve_layout_alg; shelve]].
 
 Ltac solve_compute_struct_layout ::=
-  unfold_no_enrich;
   open_scache;
   first [eassumption |
   simplify_layout_goal;
   first [eassumption | progress solve_layout_alg; shelve]].
 
 Ltac solve_compute_enum_layout ::=
-  unfold_no_enrich;
   open_scache;
   first [eassumption |
   simplify_layout_goal;
@@ -687,7 +677,6 @@ End syntype_compat.
 Global Arguments syn_type_compat : simpl never.
 
 Ltac solve_syn_type_compat :=
-  unfold_no_enrich;
   lazymatch goal with
   | |- syn_type_compat ?st ?st =>
       refine (syn_type_compat_refl _)
@@ -750,7 +739,6 @@ Ltac simplify_optype ly :=
 
 (** Solve goals of the form [ot1 = ot2]. *)
 Ltac solve_ot_eq ::=
-  unfold_no_enrich;
   (* simplify both sides *)
   try match goal with
   | |- ?ot1 = ?ot2 =>
@@ -1020,25 +1008,6 @@ Tactic Notation "rename_layouts" "in" hyp(H) "with" tactic(cont) :=
 Tactic Notation "rename_layouts" "in" hyp(H) :=
   rename_layouts in H with (fun x => idtac).
 
-Ltac is_duplicate H :=
-  match type of H with
-  | use_layout_alg ?st = Some _ =>
-      match goal with
-      | H2 : NO_ENRICH (use_layout_alg st = Some _) |- _ =>
-          idtac
-      end
-  | struct_layout_alg ?name ?fields ?repr = Some _ =>
-      match goal with
-      | H2 : NO_ENRICH (struct_layout_alg name fields repr = Some _) |- _ =>
-          idtac
-      end
-  | union_layout_alg ?name ?variants ?repr = Some _ =>
-      match goal with
-      | H2 : NO_ENRICH (union_layout_alg name variants repr = Some _) |- _ =>
-          idtac
-      end
-  end.
-
 Section handle_duplicate.
   Context `{!LayoutAlg}.
 
@@ -1096,7 +1065,7 @@ Ltac simplify_layout_alg_prepare H :=
   end
 .
 
-Ltac simplify_layout_alg_normalize_with_eq a H Heq cont := 
+Ltac simplify_layout_alg_normalize_with_eq a H Heq cont :=
   (* This detects whether the layout assumption is trivial (i.e. we already know about it).
      This is necessary as we cannot invert equalities like [layout_of sl1 = layout_of sl2]: it is not an injective mapping. *)
   match type of Heq with
@@ -1119,7 +1088,7 @@ Ltac simplify_layout_alg_normalize_with_eq a H Heq cont :=
             clear a H Heq Heq2
           end
         | use_union_layout_alg ?sls = Some _ =>
-          match x with 
+          match x with
           | ul_layout ?ul =>
             assert (use_union_layout_alg sls = Some ul) as Heq2 by eassumption;
             clear a H Heq Heq2
@@ -1127,7 +1096,7 @@ Ltac simplify_layout_alg_normalize_with_eq a H Heq cont :=
         end
       ]
   end.
-Ltac simplify_layout_alg_normalize H cont := 
+Ltac simplify_layout_alg_normalize H cont :=
   let Heq := fresh "Heq" in
   let ly := fresh "ly" in
   (* Check if this is an ADT spec *)
@@ -1135,7 +1104,7 @@ Ltac simplify_layout_alg_normalize H cont :=
   then simplify_layout_alg_normalize_with_eq ly H Heq cont
   else tryif (apply use_layout_alg_enum_Some_inv in H as (ly & H & Heq))
     then simplify_layout_alg_normalize_with_eq ly H Heq cont
-    else tryif (apply use_layout_alg_union_Some_inv in H as (ly & H & Heq)) 
+    else tryif (apply use_layout_alg_union_Some_inv in H as (ly & H & Heq))
       then simplify_layout_alg_normalize_with_eq ly H Heq cont
       else cont.
 

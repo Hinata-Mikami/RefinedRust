@@ -26,10 +26,6 @@ Ltac normalize_aggressively :=
 
 (** * Automation for solving sideconditions spawned by the type system *)
 
-(** The main hook for solving sideconditions, will be re-defined later. *)
-Ltac sidecond_hook := idtac.
-Ltac unsolved_sidecond_hook := idtac.
-
 Tactic Notation "unfold_opaque" constr(c) := with_strategy 0 [c] (unfold c).
 Tactic Notation "unfold_opaque" constr(c) "in" constr(d) := with_strategy 0 [c] (rewrite [d] /c).
 
@@ -1728,15 +1724,16 @@ Ltac solve_elctx_submseteq :=
 
 (** Solve goals of the shape [elctx_sat _ _ _] *)
 Ltac solve_elctx_sat_step :=
-  multimatch goal with
+  lazymatch goal with
   | |- elctx_sat ?E ?L [] =>
       notypeclasses refine (elctx_sat_nil _ _)
   | |- elctx_sat ?E ?L ?E =>
       notypeclasses refine (elctx_sat_refl _ _)
   | |- elctx_sat ?E ?L (?E1 ++ ?E2) =>
       notypeclasses refine (elctx_sat_app E L E1 E2 _ _)
-  (* dispatch as many elements as possible via direct inclusion *)
   | |- elctx_sat ?E ?L ((?κ ⊑ₑ ?κ') :: ?E') =>
+    first [
+      (* dispatch as many elements as possible via direct inclusion *)
       list_find_tac ltac:(fun i el =>
         match el with
         | (κ ⊑ₑ κ') =>
@@ -1744,10 +1741,10 @@ Ltac solve_elctx_sat_step :=
             [reflexivity | ]
         | _ => fail
         end) E
-  (* dispatch remaining elements via lifetime inclusion solving *)
-  | |- elctx_sat ?E ?L ((?κ ⊑ₑ ?κ') :: ?E') =>
-        notypeclasses refine (elctx_sat_lft_incl E L E' κ κ' _ _);
+    (* dispatch remaining elements via lifetime inclusion solving *)
+    | notypeclasses refine (elctx_sat_lft_incl E L E' κ κ' _ _);
         [solve_lft_incl | ]
+    ]
   (* dispatch assumptions for generic type parameters *)
   | |- elctx_sat ?E ?L (ty_wf_E ?ty) =>
       notypeclasses refine (tac_elctx_app_ty_wf_E E L ty _);
@@ -1775,7 +1772,7 @@ Ltac solve_elctx_sat_init :=
   end.
 Ltac solve_elctx_sat :=
   solve_elctx_sat_init;
-  repeat solve_elctx_sat_step
+  repeat once solve_elctx_sat_step
   .
 
 (** lctx_bor_kind_alive solver *)
@@ -2545,16 +2542,25 @@ Ltac simplify_ot :=
   | |- _ => reflexivity
   end.
 
-Ltac solve_ty_has_op_type_core_step :=
+Ltac solve_ty_has_op_type :=
+  idtac.
+
+Ltac solve_ty_has_op_type_core_step1 :=
   first
   [ match goal with
     | |- ∃ _, _ => eexists
     end
   | split_and !; simpl
-  | done ];
+  | done ].
+Ltac solve_ty_has_op_type_core_step :=
+  (* simplify the goal *)
+  progress repeat solve_ty_has_op_type_core_step1;
   first [
-  solve[fail]
-  | sidecond_hook
+    solve[fail]
+  | (* recursive call; crucially only after we've made progress with splitting the goal *)
+    first [
+      solve [solve_ty_has_op_type]
+    | solve [solve_layout_alg]]
   | shelve ].
 Ltac solve_ty_has_op_type_core :=
   repeat solve_ty_has_op_type_core_step.
@@ -2581,9 +2587,10 @@ Ltac solve_ty_has_op_type_prepare :=
       (*otherwise unfold *)
       hnf
   end.
-Ltac solve_ty_has_op_type :=
+Ltac solve_ty_has_op_type ::=
   solve_ty_has_op_type_prepare;
   solve_ty_has_op_type_core.
+
 
 (** Solver for goals of the form [ty_allows_reads ?ty] and [ty_allows_writes ?ty] *)
 Ltac solve_ty_allows :=

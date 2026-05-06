@@ -75,17 +75,6 @@ Ltac set_function_types :=
 (* Trait incl assumptions *)
 Notation "'HIDDEN_TRAIT_INCL'" := (trait_incl_marker _) (only printing, at level 100) : rr_hidden.
 
-(** marker for tactics that have already exploited a particular fact *)
-Definition NO_ENRICH {A} (a : A) := a.
-Global Typeclasses Opaque NO_ENRICH.
-Arguments NO_ENRICH : simpl never.
-Lemma dont_enrich {A} : A → NO_ENRICH A.
-Proof. apply NO_ENRICH. Defined.
-Ltac unfold_no_enrich :=
-  repeat match goal with
-  | H : context[NO_ENRICH ?a] |- _ => unfold NO_ENRICH in H
-  end.
-
 (** Sidecondition caching *)
 
 (** Single cache *)
