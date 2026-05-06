@@ -14,28 +14,6 @@ use topological_sort::TopologicalSort;
 
 use crate::{environment, rustcmp, search, traits};
 
-/// Determine the origin of a trait obligation.
-/// `surrounding_reqs` are the requirements of a surrounding impl or decl.
-#[expect(clippy::ref_option)]
-fn determine_origin_of_trait_requirement<'tcx>(
-    did: DefId,
-    tcx: ty::TyCtxt<'tcx>,
-    surrounding_reqs: &Option<Vec<ty::TraitRef<'tcx>>>,
-    req: ty::TraitRef<'tcx>,
-) -> specs::TyParamOrigin {
-    if let Some(surrounding_reqs) = surrounding_reqs {
-        let in_trait_decl = tcx.trait_of_assoc(did);
-
-        if surrounding_reqs.contains(&req) {
-            if in_trait_decl.is_some() {
-                return specs::TyParamOrigin::SurroundingTrait;
-            }
-            return specs::TyParamOrigin::SurroundingImpl;
-        }
-    }
-    specs::TyParamOrigin::Direct
-}
-
 /// Meta information of a trait requirement.
 #[derive(Debug)]
 pub(crate) struct TraitReqMeta<'tcx> {
@@ -63,29 +41,6 @@ pub(crate) fn get_trait_requirements_with_origin<'tcx>(
 
     // Determine whether we are declaring the scope of a trait method or trait impl method
     let in_trait_decl = tcx.trait_of_assoc(did);
-    let in_trait_impl = environment::trait_impl_of_method(tcx, did);
-
-    // if this has a surrounding scope, get the requirements declared on that, so that we can
-    // determine the origin of this requirement below
-    let surrounding_reqs = if let Some(trait_did) = in_trait_decl {
-        let trait_param_env = tcx.param_env(trait_did);
-        Some(
-            get_nontrivial(tcx, trait_did, trait_param_env, None)
-                .into_iter()
-                .map(|(x, _, _)| x)
-                .collect(),
-        )
-    } else if let Some(impl_did) = in_trait_impl {
-        let impl_param_env = tcx.param_env(impl_did);
-        Some(
-            get_nontrivial(tcx, impl_did, impl_param_env, None)
-                .into_iter()
-                .map(|(x, _, _)| x)
-                .collect(),
-        )
-    } else {
-        None
-    };
 
     let clauses = typing_env.param_env.caller_bounds();
     info!("Caller bounds: {:?}", clauses);
@@ -94,7 +49,7 @@ pub(crate) fn get_trait_requirements_with_origin<'tcx>(
     let requirements = get_nontrivial(tcx, did, typing_env.param_env, in_trait_decl);
     let mut annotated_requirements = Vec::new();
 
-    for (trait_ref, bound_regions, binders) in requirements {
+    for (trait_ref, bound_regions, binders, origin) in requirements {
         // check if we are in the process of translating a trait decl
         let is_self = trait_ref.args[0].as_type().unwrap().is_param(0);
         let mut is_used_in_self_trait = false;
@@ -113,7 +68,6 @@ pub(crate) fn get_trait_requirements_with_origin<'tcx>(
         // we are processing the Self requirement in the scope of a trait declaration, so skip this.
         let is_self_in_trait_decl = is_trait && is_used_in_self_trait && is_self;
 
-        let origin = determine_origin_of_trait_requirement(did, tcx, &surrounding_reqs, trait_ref);
         info!("Determined origin of requirement {trait_ref:?} as {origin:?}");
 
         let assoc_constraints = traits::get_trait_assoc_constraints(tcx, typing_env, trait_ref);
@@ -136,6 +90,61 @@ pub(crate) fn get_trait_requirements_with_origin<'tcx>(
     annotated_requirements
 }
 
+/// Determine the origin of a clause.
+fn determine_origin_of_clause<'tcx>(
+    did: DefId,
+    tcx: ty::TyCtxt<'tcx>,
+    surrounding_reqs: Option<&Vec<ty::Clause<'tcx>>>,
+    req: ty::Clause<'tcx>,
+) -> specs::TyParamOrigin {
+    if let Some(surrounding_reqs) = surrounding_reqs {
+        let in_trait_decl = tcx.trait_of_assoc(did);
+
+        if surrounding_reqs.contains(&req) {
+            if in_trait_decl.is_some() {
+                return specs::TyParamOrigin::SurroundingTrait;
+            }
+            return specs::TyParamOrigin::SurroundingImpl;
+        }
+    }
+    specs::TyParamOrigin::Direct
+}
+
+/// Get clauses for a `DefId` together with their origin.
+pub(crate) fn get_clauses_with_origin<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    for_did: DefId,
+    param_env: ty::ParamEnv<'tcx>,
+) -> Vec<(ty::Clause<'tcx>, specs::TyParamOrigin)> {
+    let clauses = param_env.caller_bounds();
+
+    // Determine whether we are declaring the scope of a trait method or trait impl method
+    let in_trait_decl = tcx.trait_of_assoc(for_did);
+    let in_trait_impl = environment::trait_impl_of_method(tcx, for_did);
+
+    // if this has a surrounding scope, get the requirements declared on that, so that we can
+    // determine the origin of this requirement below
+    let surrounding_reqs = if let Some(trait_did) = in_trait_decl {
+        let trait_param_env = tcx.param_env(trait_did);
+        Some(trait_param_env.caller_bounds().iter().collect())
+    } else if let Some(impl_did) = in_trait_impl {
+        let impl_param_env = tcx.param_env(impl_did);
+        Some(impl_param_env.caller_bounds().iter().collect())
+    } else {
+        None
+    };
+
+    let mut clauses_with_origin = Vec::new();
+    for cl in clauses {
+        let origin = determine_origin_of_clause(for_did, tcx, surrounding_reqs.as_ref(), cl);
+        clauses_with_origin.push((cl, origin));
+    }
+
+    trace!("determined clauses with origin for {for_did:?} as {clauses_with_origin:?}");
+
+    clauses_with_origin
+}
+
 /// Get non-trivial trait requirements of a `ParamEnv`,
 /// ordered deterministically.
 pub(crate) fn get_nontrivial<'tcx>(
@@ -143,14 +152,13 @@ pub(crate) fn get_nontrivial<'tcx>(
     for_did: DefId,
     param_env: ty::ParamEnv<'tcx>,
     in_trait_decl: Option<DefId>,
-) -> Vec<(ty::TraitRef<'tcx>, Vec<ty::BoundRegionKind<'tcx>>, ty::Binder<'tcx, ()>)> {
+) -> Vec<(ty::TraitRef<'tcx>, Vec<ty::BoundRegionKind<'tcx>>, ty::Binder<'tcx, ()>, specs::TyParamOrigin)> {
     let mut trait_refs = Vec::new();
     trace!(
         "Enter get_nontrivial_trait_requirements with for_did={for_did:?}, param_env = {param_env:?}, in_trait_decl = {in_trait_decl:?}"
     );
 
-    let clauses = param_env.caller_bounds();
-    for cl in clauses {
+    for (cl, origin) in get_clauses_with_origin(tcx, for_did, param_env) {
         let cl_kind = cl.kind();
 
         let mut bound_regions = Vec::new();
@@ -184,7 +192,7 @@ pub(crate) fn get_nontrivial<'tcx>(
                 }
 
                 // this is a nontrivial requirement
-                trait_refs.push((trait_ref, bound_regions, binders));
+                trait_refs.push((trait_ref, bound_regions, binders, origin));
             }
         }
     }
@@ -216,7 +224,7 @@ pub(crate) fn get_nontrivial<'tcx>(
             next_refs.push(trait_refs[x].clone());
         }
 
-        next_refs.sort_by(|(a, _, _), (b, _, _)| rustcmp::cmp_trait_ref(tcx, in_trait_decl, a, b));
+        next_refs.sort_by(|(a, _, _, _), (b, _, _, _)| rustcmp::cmp_trait_ref(tcx, in_trait_decl, a, b));
 
         defn_order.append(&mut next_refs);
     }

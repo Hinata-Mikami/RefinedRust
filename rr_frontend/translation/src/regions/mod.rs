@@ -45,7 +45,7 @@ pub(crate) struct EarlyLateRegionMap<'def> {
     pub external_regions: Vec<facts::Region>,
 
     // lifetime constraints
-    pub constraints: Vec<LftConstr<'def>>,
+    pub constraints: Vec<(LftConstr<'def>, specs::TyParamOrigin)>,
 
     // Maps Polonius region ids to names.
     // This map is the ground truth of what eventually gets added to the generated Rocq

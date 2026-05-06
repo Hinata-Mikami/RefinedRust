@@ -29,7 +29,7 @@ use crate::spec_parsers::parse_utils::{ParamLookup, RustPath};
 use crate::spec_parsers::struct_spec_parser::{
     self, FIELD_SPEC_ATTRS, INVARIANT_SPEC_ATTRS, InvariantSpecParser as _, StructFieldSpecParser as _,
 };
-use crate::traits::registry;
+use crate::traits::{registry, requirements};
 use crate::types::scope;
 use crate::{attrs, environment, error, search, spec_parsers};
 
@@ -101,9 +101,9 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
 
         // add lifetime constraints to the lifetime scope
         let param_env = tcx.param_env(did);
-        let clauses = param_env.caller_bounds();
+        let clauses_with_origin = requirements::get_clauses_with_origin(tcx, did, param_env);
         info!("looking for outlives clauses");
-        for cl in clauses {
+        for (cl, origin) in clauses_with_origin {
             let cl_kind = cl.kind();
             let cl_kind = cl_kind.skip_binder();
 
@@ -121,7 +121,8 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
                         )
                     })?;
 
-                t.lifetime_scope.constraints.push(LftConstr::RegionOutlives(region1, region2));
+                let constr = LftConstr::RegionOutlives(region1, region2);
+                t.lifetime_scope.constraints.push((constr, origin));
 
                 info!("region outlives: {:?} {:?}", region1, region2);
             }
@@ -135,7 +136,8 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
                         )
                     })?;
 
-                t.lifetime_scope.constraints.push(LftConstr::TypeOutlives(translated_ty, translated_lft));
+                let constr = LftConstr::TypeOutlives(translated_ty, translated_lft);
+                t.lifetime_scope.constraints.push((constr, origin));
                 info!("type outlives: {:?} {:?}", outlives_pred.0, outlives_pred.1);
             }
         }

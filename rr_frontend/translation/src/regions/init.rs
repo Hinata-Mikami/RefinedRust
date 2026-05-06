@@ -237,7 +237,7 @@ pub(crate) fn initialize_inclusion_tracker<'a, 'tcx>(
         location: root_location,
         typ: facts::PointType::Start,
     });
-    for cstr in &lifetime_scope.constraints {
+    for (cstr, _) in &lifetime_scope.constraints {
         match cstr {
             LftConstr::RegionOutlives(r1, r2) => {
                 inclusion_tracker.add_static_inclusion(*r1, *r2, root_point);

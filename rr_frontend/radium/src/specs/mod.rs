@@ -320,6 +320,18 @@ pub enum TyParamOrigin {
     AssocInDecl,
 }
 
+impl TyParamOrigin {
+    #[must_use]
+    pub const fn is_surrounding(self) -> bool {
+        matches!(self, Self::SurroundingTrait | Self::SurroundingImpl)
+    }
+
+    #[must_use]
+    pub const fn is_direct(self) -> bool {
+        matches!(self, Self::Direct)
+    }
+}
+
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
 #[expect(clippy::partial_pub_fields)]
 pub struct LiteralTyParam {
@@ -665,10 +677,58 @@ pub enum LftConstr<'def> {
     TypeOutlives(Type<'def>, UniversalLft),
 }
 
+#[derive(Constructor, Clone, Debug, Eq, PartialEq)]
+pub struct LftConstrWithOrigin<'def> {
+    constr: LftConstr<'def>,
+    origin: TyParamOrigin,
+}
+
 /// A context of lifetime constraints
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct Elctx<'def> {
-    constrs: Vec<LftConstr<'def>>,
+    constrs: Vec<LftConstrWithOrigin<'def>>,
+}
+
+impl<'def> Elctx<'def> {
+    fn format(&self, f: &mut impl fmt::Write, extra_lfts: &[LftParam], extra_types: &[Type<'def>]) -> fmt::Result {
+        write!(f, "λ ϝ, [")?;
+
+        // implied bounds on inputs/outputs
+        let lft_outlives: Vec<_> = self
+            .constrs
+            .iter()
+            .filter_map(|constr| match &constr.constr {
+                LftConstr::LftOutlives(lft1, lft2) => Some(format!("({lft1}, {lft2})")),
+                LftConstr::TypeOutlives(_, _) => None,
+            })
+            .collect();
+        write_list!(f, &lft_outlives, "; ")?;
+
+        // all lifetime parameters outlive this function
+        if !lft_outlives.is_empty() && !extra_lfts.is_empty() {
+            write!(f, "; ")?;
+        }
+        write_list!(f, &extra_lfts, "; ", |lft| format!("(ϝ, {lft})"))?;
+
+        write!(f, "]")?;
+
+        // type outlives constraints
+        let ty_outlives: Vec<_> = self
+            .constrs
+            .iter()
+            .filter_map(|constr| match &constr.constr {
+                LftConstr::TypeOutlives(ty, lft) => Some(format!("ty_outlives_E ({ty}) {lft}")),
+                _ => None,
+            })
+            .chain(extra_types.iter().map(|x| format!("ty_outlives_E ({x}) ϝ")))
+            .chain(extra_types.iter().map(|x| format!("ty_wf_E ({x})")))
+            .collect();
+        if !ty_outlives.is_empty() {
+            write!(f, " ++ ")?;
+            write_list!(f, ty_outlives, " ++ ")?;
+        }
+        Ok(())
+    }
 }
 
 /// A scope of generics.
@@ -707,45 +767,17 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
         }
     }
 
+    #[must_use]
+    fn get_surrounding_elctx(&self) -> Elctx<'def> {
+        let constrs = self.lft_constraints.constrs.iter().filter(|x| x.origin.is_surrounding()).cloned().collect();
+        Elctx {
+            constrs,
+        }
+    }
+
     fn format_elctx(&self) -> String {
         let mut out = String::with_capacity(100);
-
-        out.push_str("λ ϝ, [");
-
-        // implied bounds on inputs/outputs
-        let lft_outlives: Vec<_> = self
-            .lft_constraints
-            .constrs
-            .iter()
-            .filter_map(|constr| match constr {
-                LftConstr::LftOutlives(lft1, lft2) => Some(format!("({lft1}, {lft2})")),
-                LftConstr::TypeOutlives(_, _) => None,
-            })
-            .collect();
-        push_str_list!(out, &lft_outlives, "; ");
-
-        // all lifetime parameters outlive this function
-        if !lft_outlives.is_empty() && !self.lfts.is_empty() {
-            out.push_str("; ");
-        }
-        push_str_list!(out, &self.lfts, "; ", |lft| format!("(ϝ, {lft})"));
-
-        out.push(']');
-
-        // type outlives constraints
-        let ty_outlives: Vec<_> = self
-            .lft_constraints
-            .constrs
-            .iter()
-            .filter_map(|constr| match constr {
-                LftConstr::TypeOutlives(ty, lft) => Some(format!("ty_outlives_E ({ty}) {lft}")),
-                _ => None,
-            })
-            .collect();
-        if !ty_outlives.is_empty() {
-            out.push_str(" ++ ");
-            push_str_list!(out, ty_outlives, " ++ ");
-        }
+        self.lft_constraints.format(&mut out, &self.lfts, &[]).unwrap();
 
         out
     }
@@ -889,7 +921,7 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
         self.lfts.push(lft);
     }
 
-    pub fn add_lft_constr(&mut self, constr: LftConstr<'def>) {
+    pub fn add_lft_constr(&mut self, constr: LftConstrWithOrigin<'def>) {
         self.lft_constraints.constrs.push(constr);
     }
 

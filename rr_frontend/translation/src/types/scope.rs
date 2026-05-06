@@ -115,7 +115,7 @@ pub(crate) struct Params<'tcx, 'def> {
     external_scope: Vec<specs::LftParam>,
 
     // lifetime constraints
-    lifetime_inclusions: Vec<specs::LftConstr<'def>>,
+    lifetime_inclusions: Vec<specs::LftConstrWithOrigin<'def>>,
 
     /// conversely, map the declaration name of a lifetime to an early index
     lft_names: HashMap<String, usize>,
@@ -388,24 +388,26 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         // replace all existing constraints
         self.lifetime_inclusions = Vec::new();
         // add lifetime constraints
-        for constr in &map.constraints {
+        for (constr, origin) in &map.constraints {
             match constr {
                 regions::LftConstr::RegionOutlives(r1, r2) => {
                     let lft1 = map.lookup_region(*r1).unwrap();
                     let lft2 = map.lookup_region(*r2).unwrap();
 
-                    self.lifetime_inclusions.push(specs::LftConstr::LftOutlives(
+                    let constr = specs::LftConstr::LftOutlives(
                         specs::UniversalLft::Local(lft2.lft().to_owned()),
                         specs::UniversalLft::Local(lft1.lft().to_owned()),
-                    ));
+                    );
+                    self.lifetime_inclusions.push(specs::LftConstrWithOrigin::new(constr, *origin));
                 },
                 regions::LftConstr::TypeOutlives(ty, r) => {
                     let lft = map.lookup_region(*r).unwrap();
 
-                    self.lifetime_inclusions.push(specs::LftConstr::TypeOutlives(
+                    let constr = specs::LftConstr::TypeOutlives(
                         ty.to_owned(),
                         specs::UniversalLft::Local(lft.lft().to_owned()),
-                    ));
+                    );
+                    self.lifetime_inclusions.push(specs::LftConstrWithOrigin::new(constr, *origin));
                 },
             }
         }
@@ -431,11 +433,13 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     /// Add the lifetime constraints of a `ParamEnv`.
     fn add_lifetime_constraints(
         &mut self,
+        did: DefId,
+        tcx: ty::TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         type_translator: &TX<'def, 'tcx>,
     ) -> Result<(), TranslationError> {
-        let clauses = typing_env.param_env.caller_bounds();
-        for cl in clauses {
+        let clauses_with_origin = requirements::get_clauses_with_origin(tcx, did, typing_env.param_env);
+        for (cl, origin) in clauses_with_origin {
             let cl_kind = cl.kind();
             let cl_kind = cl_kind.skip_binder();
 
@@ -456,7 +460,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                     specs::UniversalLft::Local(lft2),
                     specs::UniversalLft::Local(lft1),
                 );
-                self.lifetime_inclusions.push(constr);
+                self.lifetime_inclusions.push(specs::LftConstrWithOrigin::new(constr, origin));
             }
             if let ty::ClauseKind::TypeOutlives(outlives_pred) = cl_kind {
                 info!("type outlives: {:?} {:?}", outlives_pred.0, outlives_pred.1);
@@ -469,7 +473,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 })?;
 
                 let constr = specs::LftConstr::TypeOutlives(translated_ty, specs::UniversalLft::Local(lft));
-                self.lifetime_inclusions.push(constr);
+                self.lifetime_inclusions.push(specs::LftConstrWithOrigin::new(constr, origin));
             }
         }
 
@@ -688,7 +692,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         trace!("Enter add_param_env for did = {did:?}");
         let typing_env = ty::TypingEnv::post_analysis(tcx, did);
 
-        self.add_lifetime_constraints(typing_env, type_translator)?;
+        self.add_lifetime_constraints(did, tcx, typing_env, type_translator)?;
         self.add_trait_requirements(did, tcx, type_translator, trait_registry)?;
 
         trace!("Leave add_param_env for did = {did:?} with trait scope {:?}", self.trait_scope);

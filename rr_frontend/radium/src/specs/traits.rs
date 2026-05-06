@@ -1811,9 +1811,15 @@ impl<'def> InstantiatedFunctionSpec<'def> {
         let trait_params_inst =
             scope.get_direct_attr_trait_parameters(IncludeSelfReq::Dont).make_using_terms();
 
+        // bind the surrounding elctx
+        let elctx = scope.get_surrounding_elctx();
+        let surrounding_tys: Vec<_> = scope.get_surrounding_ty_params_with_assocs().params.iter().map(|x| Type::LiteralParam(x.to_owned())).collect();
+        let mut scope_elctx = String::with_capacity(100);
+        elctx.format(&mut scope_elctx, &[], &surrounding_tys).unwrap();
         write!(
             f,
-            "({applied_base_spec}).({}) {} {} <MERGE!>",
+            "(λ a b, fn_spec_add_elctx ({scope_elctx}) (({applied_base_spec}).({}) {} {} a b)) <MERGE!>",
+            //"({applied_base_spec}).({}) {} {} <MERGE!>",
             self.trait_ref.of_trait.make_spec_method_name(&self.trait_method_name),
             fmt_list!(spec_params, " "),
             fmt_list!(trait_params_inst, " ")
