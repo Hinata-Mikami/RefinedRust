@@ -44,7 +44,8 @@ Section Node_inv_t.
 
   Program Definition Node_inv_t_inv_spec  : spec_with 0 [] (ex_inv_def (Node_rt)%type (((Z * loc)))%type) := spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt (((Z * loc))%type : RT)),
-            let '(v, l) := _ty_rfn in ⌜inner_rfn = -[#(v); #(l)]⌝ ∗ True)%I
+            let '(v, l) := _ty_rfn in ⌜inner_rfn = -[#(v); #(l)]⌝ ∗ ⌜l = Loc ProvNone 0⌝ ∨ ∃v', ∃n',
+    (l ◁ₗ[π, Owned] # -[# v'; # n'] @ StructLtype +[◁ int i32; ◁ alias_ptr_t] Node_sls) ∗ True)%I
     ([])
     ([])
     _ _ _
@@ -93,7 +94,7 @@ Definition type_of_Node_set_next  :=
       (* precondition. *) (λ π : thread_id, (p ◁ₗ[π, Owned] #((v, l)) @ (◁ (Node_inv_t <INST!>)))) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, () @ unit_t;
-      (* postcondition *) (λ π : thread_id, (⌜(p ◁ₗ[π, Owned] # -[# v; # n] @ StructLtype +[◁ int i32; ◁ alias_ptr_t] Node_sls)%Z⌝)).
+      (* postcondition *) (λ π : thread_id, (p ◁ₗ[π, Owned] # -[# v; # n] @ StructLtype +[◁ int i32; ◁ alias_ptr_t] Node_sls)).
 
 Definition trait_incl_of_id_Cell  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).

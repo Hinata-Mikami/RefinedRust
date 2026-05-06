@@ -25,24 +25,24 @@ Set Default Proof Using "Type".
 
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
-Definition LinkedList_new_lemma (π : thread_id) : Prop :=
+Definition Heap_new_lemma (π : thread_id) : Prop :=
   ∀ (Vec_T_new_mutNode_loc : loc) , 
   syn_type_is_layoutable ((Global_sls : syn_type)) →
   syn_type_is_layoutable (((Vec_sls (PtrSynType) ((Global_sls : syn_type))) : syn_type)) →
-  syn_type_is_layoutable ((LinkedList_sls : syn_type)) →
+  syn_type_is_layoutable ((Heap_sls : syn_type)) →
   Vec_T_new_mutNode_loc ◁ᵥ{π, MetaNone} Vec_T_new_mutNode_loc @ function_ptr [] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Vec_T_new (RRGS:=RRGS) (loc) (PtrSynType)  <TY> alias_ptr_t <INST!>) (λ π, (True)
   ∗ (⌜(trait_incl_of_Vec_T_new (loc) (PtrSynType)  <TY> alias_ptr_t <INST!>)%Z⌝))%I) -∗
-  typed_function π (LinkedList_new_def Vec_T_new_mutNode_loc  ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_LinkedList_new  <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_LinkedList_new <INST!>)%Z⌝))).
+  typed_function π (Heap_new_def Vec_T_new_mutNode_loc  ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Heap_new  <INST!>) (λ π, (True)
+  ∗ (⌜(trait_incl_of_Heap_new <INST!>)%Z⌝))).
 End proof.
 
-Ltac LinkedList_new_prelude :=
-  unfold LinkedList_new_lemma;
-  set (FN_NAME := FUNCTION_NAME "LinkedList_new");
+Ltac Heap_new_prelude :=
+  unfold Heap_new_lemma;
+  set (FN_NAME := FUNCTION_NAME "Heap_new");
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
-  start_function "LinkedList_new" ϝ ( [] ) ( [] ) ( ? ) (  );
+  start_function "Heap_new" ϝ ( [] ) ( [] ) ( ? ) (  );
   intros;
   let π := get_π in
   let Σ := get_Σ in

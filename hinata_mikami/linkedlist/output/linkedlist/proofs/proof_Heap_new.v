@@ -1,16 +1,16 @@
 From caesium Require Import lang notation.
 From refinedrust Require Import typing shims.
-From refinedrust.examples.linkedlist.generated Require Import generated_code_linkedlist generated_specs_linkedlist generated_template_LinkedList_alloc.
+From refinedrust.examples.linkedlist.generated Require Import generated_code_linkedlist generated_specs_linkedlist generated_template_Heap_new.
 
 Set Default Proof Using "Type".
 
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 
-Lemma LinkedList_alloc_proof (π : thread_id) :
-  LinkedList_alloc_lemma π.
+Lemma Heap_new_proof (π : thread_id) :
+  Heap_new_lemma π.
 Proof.
-  LinkedList_alloc_prelude.
+  Heap_new_prelude.
 
   rep <-! liRStep; liShow.
 

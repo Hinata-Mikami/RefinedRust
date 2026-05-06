@@ -38,6 +38,8 @@ unsafe fn id_Cell(p: *mut Cell) -> *mut Cell {
 }
 
 #[rr::refined_by("(v, l)" : "(Z * loc)")]
+#[rr::invariant(#iris "⌜l = Loc ProvNone 0⌝ ∨ ∃v', ∃n',
+    (l ◁ₗ[π, Owned] # -[# v'; # n'] @ StructLtype +[◁ int i32; ◁ alias_ptr_t] Node_sls)")]
 struct Node{
     #[rr::field("v")]
     value: i32,

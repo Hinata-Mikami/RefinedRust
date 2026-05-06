@@ -13,8 +13,18 @@
 use std::ptr;
 
 /* 連結リストの各ノード */
+// n に関する　invariant (null or next node)   
+// rocq 側で n が 正しいノードであることを表す述語を書く(サイクルなら co-inductive)
 #[rr::refined_by("(v, n, m)" : "(Z * loc * bool)")]
-// #[derive(Debug)]        // 構造体の中身の表示用
+#[rr::invariant(#iris "
+  (
+    ⌜n = (Loc ProvNone 0)⌝
+    ∨
+    ∃ (v' : Z) (n' : loc) (m' : bool),
+        n ◁ₗ[ π, Owned] # -[# v'; # n'; # m'] @
+        StructLtype +[◁ int i32; ◁ alias_ptr_t; ◁ bool_t] Node_sls
+  )
+")]
 struct Node {
     #[rr::field("v")]
     value: i32,         // 値 (i32に固定)
@@ -25,31 +35,31 @@ struct Node {
 }
 
 impl Node{
-    
-    /* ok? */
+    /* ok */
     /* Nextの設定・書き換え */
     /* raw_pointer を書き換えて raw_pointer を返す */
     #[rr::params("node":"loc", "next":"loc", "v":"Z", "old_next":"loc", "m":"bool")]
     #[rr::args("node", "next")]
-    #[rr::requires(#type "node" : "(v, old_next, m)" @ "(Node_inv_t <INST!>)")]
-    #[rr::ensures(#iris "node ◁ₗ[ π, Owned] # -[# v; # next; # m] @
-    StructLtype +[◁ int i32; ◁ alias_ptr_t; ◁ bool_t] Node_sls")]
-    // #[rr::ensures(#type "node" : "(v, next, m)" @ "(Node_inv_t <INST!>)")]
+    // #[rr::requires(#type "node" : "(v, old_next, m)" @ "(Node_inv_t <INST!>)")]
+    // #[rr::ensures(#iris "
+    //   node ◁ₗ[π, Owned] # -[# v; # next; # m] @
+    //     (◁ struct_t Node_sls +[◁ int i32; alias_ptr_t; ◁ bool_t])
+    // ")]
     #[rr::returns("()")]
     unsafe fn set_next(node: *mut Node, next: *mut Node) {
             (*node).next = next;
     }
-
 }
 
-/* 生成したすべてのNodeを管理するリスト */
+/* 生成したすべてのNodeを管理するリスト */ // heap, memory, valid nodes
+// vecの各要素が有効なポインタであることを表す述語
 #[rr::refined_by("all_nodes")]
-struct LinkedList {
+struct Heap {
     #[rr::field("all_nodes")]
     all_nodes: Vec<*mut Node>,
 }
 
-impl LinkedList {
+impl Heap {
     /* ok */
     /* 空のメモリ領域を生成 */
     #[rr::returns("[]")]
@@ -79,8 +89,6 @@ impl LinkedList {
     }
 
     /* マークフェーズ */
-    #[rr::params("self", "start_node")]
-    #[rr::returns("()")]
     unsafe fn mark(&self, start_node: *mut Node) {
         // (ノードがnullか)，またはすでにマークされていれば終了
         if start_node.is_null() || (*start_node).marked {
@@ -91,6 +99,10 @@ impl LinkedList {
         self.mark((*start_node).next);  // 再帰的に次のノードもマーク
     }
 
+    // あるノードから reachable であるという rocq 側の述語 (inductive)
+    // marked all_nodes
+    // mark の事後条件 : start_node から reachable == all_nodes の中で marked
+    // Rocq がどう呼ばれているかを理解しなければいけなくなるだろう
 
     /* スイープフェーズ */
     unsafe fn sweep(&mut self) {
@@ -135,61 +147,22 @@ impl LinkedList {
 // 実行
 fn main() {
 
-    let mut linkedlist = LinkedList::new(); // メモリ領域の初期化
+    let mut heap = Heap::new();     // メモリ領域の初期化
 
     unsafe {
-        let n1 = linkedlist.alloc(10);
-        let n2 = linkedlist.alloc(20);
-        let n3 = linkedlist.alloc(30);
-        let n4 = linkedlist.alloc(40);
+        let n1 = heap.alloc(10);    // alloc : ノードの生成と割り当て
+        let n2 = heap.alloc(20);
+        let n3 = heap.alloc(30);
+        let n4 = heap.alloc(40);
 
         Node::set_next(n1, n2);
         Node::set_next(n2, n3);
-        Node::set_next(n3, n1);
+        Node::set_next(n3, n1);     // サイクルを形成
 
-        linkedlist.print_heap();            // デバッグ用
+        heap.collect(vec![n1]);     // GC : n4解放
 
-        linkedlist.collect(vec![n1]);       // GC : n4解放
-
-        Node::set_next(n1, n3);
-
-        linkedlist.collect(vec![n1]);       // GC : n2解放
-
-        linkedlist.print_heap();            // デバッグ用
+        Node::set_next(n1, n3);     // n1 -> n3 -> n1 というサイクルを形成
+                                    // n2 孤立
+        heap.collect(vec![n1]);     // GC : n2解放
     }
 }
-
-
-// #[rr::only_spec]
-// #[rr::params("x")]
-// #[rr::args("x" @ "(Node_inv_t <INST!>)")] // RRにより自動生成された型
-// #[rr::returns("x" @ "(box (Node_inv_t <INST!>))")]
-// fn box_new(t: Node) -> Box<Node> {
-//     Box::new(t)
-// }
-
-// #[rr::only_spec]
-// #[rr::params("x")]
-// #[rr::args("x" @ "(box (Node_inv_t <INST!>))")]
-// #[rr::exists("l")]
-// #[rr::returns("l")]
-// #[rr::ensures(#type "l" : "x" @ "(Node_inv_t <INST!>)")] 
-// fn box_into_raw(b: Box<Node>) -> *mut Node {
-//     Box::into_raw(b)
-// }
-
-// #[rr::only_spec]
-// #[rr::params("l", "x")]
-// #[rr::args("l")]
-// #[rr::requires(#type "l" : "x" @ "(Node_inv_t <INST!>)")] 
-// #[rr::returns("x" @ "(box (Node_inv_t <INST!>))")]
-// unsafe fn box_from_raw(ptr: *mut Node) -> Box<Node> {
-//     Box::from_raw(ptr)
-// }
-
-// #[rr::only_spec]
-// #[rr::exists("v")]
-// #[rr::returns("v")]
-// fn vec_new() -> Vec<*mut Node> {
-//     Vec::new()
-// }

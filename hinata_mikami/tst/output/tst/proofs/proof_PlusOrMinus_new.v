@@ -1,16 +1,16 @@
 From caesium Require Import lang notation.
 From refinedrust Require Import typing shims.
-From refinedrust.examples.linkedlist.generated Require Import generated_code_linkedlist generated_specs_linkedlist generated_template_LinkedList_new.
+From refinedrust.examples.tst.generated Require Import generated_code_tst generated_specs_tst generated_template_PlusOrMinus_new.
 
 Set Default Proof Using "Type".
 
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 
-Lemma LinkedList_new_proof (π : thread_id) :
-  LinkedList_new_lemma π.
+Lemma PlusOrMinus_new_proof (π : thread_id) :
+  PlusOrMinus_new_lemma π.
 Proof.
-  LinkedList_new_prelude.
+  PlusOrMinus_new_prelude.
 
   rep <-! liRStep; liShow.
 

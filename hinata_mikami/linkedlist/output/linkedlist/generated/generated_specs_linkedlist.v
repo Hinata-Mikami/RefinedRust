@@ -44,7 +44,15 @@ Section Node_inv_t.
 
   Program Definition Node_inv_t_inv_spec  : spec_with 0 [] (ex_inv_def (Node_rt)%type (((Z * loc * bool)))%type) := spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt (((Z * loc * bool))%type : RT)),
-            let '(v, n, m) := _ty_rfn in ⌜inner_rfn = -[#(v); #(n); #(m)]⌝ ∗ True)%I
+            let '(v, n, m) := _ty_rfn in ⌜inner_rfn = -[#(v); #(n); #(m)]⌝ ∗ 
+  (
+    ⌜n = (Loc ProvNone 0)⌝
+    ∨
+    ∃ (v' : Z) (n' : loc) (m' : bool),
+        n ◁ₗ[ π, Owned] # -[# v'; # n'; # m'] @
+         (◁ (Node_ty <INST!>))
+  )
+ ∗ True)%I
     ([])
     ([])
     _ _ _
@@ -62,28 +70,28 @@ Section Node_inv_t.
 End Node_inv_t.
 Global Arguments Node_inv_t_rt : clear implicits.
 
-Section LinkedList_ty.
+Section Heap_ty.
   Context `{RRGS : !refinedrustGS Σ}.
 
 
-Definition LinkedList_ty  : (spec_with 0 [] ((type (plist place_rfnRT [((((Vec_inv_t_rt)) (loc) ((((Global_rt)))))) : RT])))).
+Definition Heap_ty  : (spec_with 0 [] ((type (plist place_rfnRT [((((Vec_inv_t_rt)) (loc) ((((Global_rt)))))) : RT])))).
 Proof.
-  exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ((struct_t LinkedList_sls +[((Vec_inv_t (loc) ((((Global_rt)))) GlobalasAllocator_spec_attrs  <TY> alias_ptr_t <TY> (Global_ty   <INST!>) <INST!>))]))).
+  exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ((struct_t Heap_sls +[((Vec_inv_t (loc) ((((Global_rt)))) GlobalasAllocator_spec_attrs  <TY> alias_ptr_t <TY> (Global_ty   <INST!>) <INST!>))]))).
 Defined.
 
-Definition LinkedList_rt  : RT.
+Definition Heap_rt  : RT.
 Proof using  .
-  let __a := (normalized_rt_of_spec_ty (LinkedList_ty)) in exact __a.
+  let __a := (normalized_rt_of_spec_ty (Heap_ty)) in exact __a.
 Defined.
 
-#[global] Typeclasses Transparent LinkedList_ty.
-#[global] Typeclasses Transparent LinkedList_rt.
-End LinkedList_ty.
-Global Arguments LinkedList_rt : clear implicits.
-Section LinkedList_inv_t.
+#[global] Typeclasses Transparent Heap_ty.
+#[global] Typeclasses Transparent Heap_rt.
+End Heap_ty.
+Global Arguments Heap_rt : clear implicits.
+Section Heap_inv_t.
   Context `{RRGS : !refinedrustGS Σ}.
 
-  Program Definition LinkedList_inv_t_inv_spec  : spec_with 0 [] (ex_inv_def (LinkedList_rt)%type (_)%type) := spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
+  Program Definition Heap_inv_t_inv_spec  : spec_with 0 [] (ex_inv_def (Heap_rt)%type (_)%type) := spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt (_%type : RT)),
             let 'all_nodes := _ty_rfn in ⌜inner_rfn = -[#(all_nodes)]⌝ ∗ True)%I
     ([])
@@ -94,14 +102,14 @@ Section LinkedList_inv_t.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 
-  Definition LinkedList_inv_t  : spec_with 0 [] (type (_)%type) :=
-    spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ex_plain_t _ _ (LinkedList_inv_t_inv_spec   <INST!>) (LinkedList_ty  <INST!>).
-  Global Typeclasses Transparent LinkedList_inv_t.
-  Definition LinkedList_inv_t_rt : RT.
-  Proof using  . let __a := normalized_rt_of_spec_ty LinkedList_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent LinkedList_inv_t_rt.
-End LinkedList_inv_t.
-Global Arguments LinkedList_inv_t_rt : clear implicits.
+  Definition Heap_inv_t  : spec_with 0 [] (type (_)%type) :=
+    spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ex_plain_t _ _ (Heap_inv_t_inv_spec   <INST!>) (Heap_ty  <INST!>).
+  Global Typeclasses Transparent Heap_inv_t.
+  Definition Heap_inv_t_rt : RT.
+  Proof using  . let __a := normalized_rt_of_spec_ty Heap_inv_t in exact __a. Defined.
+  Global Typeclasses Transparent Heap_inv_t_rt.
+End Heap_inv_t.
+Global Arguments Heap_inv_t_rt : clear implicits.
 
 Section closure_attrs.
 Context `{RRGS : !refinedrustGS Σ}.
@@ -110,14 +118,14 @@ End closure_attrs.
 Section specs.
 Context `{RRGS : !refinedrustGS Σ}.
 
-Definition trait_incl_of_LinkedList_alloc  : (spec_with _ _ Prop) :=
+Definition trait_incl_of_Heap_alloc  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
-Definition type_of_LinkedList_alloc  :=
+Definition type_of_Heap_alloc  :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[]) : ([] : list (RT * syn_type)%type) | 
       (* params....... *) (l, v) : ((_ * (Z))),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) l :@: (mut_ref ulft_1 (LinkedList_inv_t    <INST!>)), v :@: (int I32);
+      (* args......... *) l :@: (mut_ref ulft_1 (Heap_inv_t    <INST!>)), v :@: (int I32);
       (* precondition. *) (λ π : thread_id, (⌜(length l.cur < MaxInt usize)%Z⌝)
         ∗ (⌜(size_of_array_in_bytes (PtrSynType) (2 * length l.cur) ≤ MaxInt isize)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
@@ -136,19 +144,21 @@ Definition type_of_Node_set_next  :=
       (* precondition. *) (λ π : thread_id, (node ◁ₗ[π, Owned] #((v, old_next, m)) @ (◁ (Node_inv_t <INST!>)))) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, () @ unit_t;
-      (* postcondition *) (λ π : thread_id, (node ◁ₗ[ π, Owned] # -[# v; # next; # m] @
-          StructLtype +[◁ int i32; ◁ alias_ptr_t; ◁ bool_t] Node_sls)).
+      (* postcondition *) (λ π : thread_id, (
+            node ◁ₗ[π, Owned] # -[# v; # next; # m] @
+              (◁ struct_t Node_sls +[◁ int i32; alias_ptr_t; ◁ bool_t])
+          )).
 
-Definition trait_incl_of_LinkedList_new  : (spec_with _ _ Prop) :=
+Definition trait_incl_of_Heap_new  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
-Definition type_of_LinkedList_new  :=
+Definition type_of_Heap_new  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
       (* params....... *) _ : unit,
       (* elctx........ *) (λ ϝ, []);
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, [] @ (LinkedList_inv_t    <INST!>);
+      (* existential.. *) ∃ _ : unit, [] @ (Heap_inv_t    <INST!>);
       (* postcondition *) (λ π : thread_id, True).
 
 

@@ -10,146 +10,88 @@
 #![rr::include("mem")]
 #![rr::include("rr_internal")]
 
-use std::ptr;
-
-/* 連結リストの各ノード */
-#[rr::refined_by("(v, n, m)" : "(Z * loc * bool)")]
-// #[derive(Debug)]        // 構造体の中身の表示用
-struct Node {
-    #[rr::field("v")]
-    value: i32,         // 値 (i32に固定)
-    #[rr::field("n")]
-    next: *mut Node,    // 次のノードへの生ポインタ
-    #[rr::field("m")]
-    marked: bool,       // GC用フラグ
+#[rr::refined_by("value")]
+#[rr::invariant("(value = 1) ∨ (value = -1)")]
+struct PlusOrMinus {
+    #[rr::field("value")]
+    value: i32,
 }
 
-impl Node{
-    
-    /* Nextの設定・書き換え */
-    /* raw_pointer を書き換えて raw_pointer を返す */
-    // #[rr::params("node":"loc", "next":"loc", "v":"Z", "old_next":"loc", "m":"bool")]
-    // #[rr::args("node", "next")]
-    // #[rr::requires(#type "node" : "(v, old_next, m)" @ "(Node_inv_t <INST!>)")]
-    // #[rr::ensures(#type "node" : "(v, next, m)" @ "(Node_inv_t <INST!>)")]
-    // #[rr::returns("()")]
-    unsafe fn set_next(node: *mut Node, next: *mut Node) {
-            (*node).next = next;
+impl PlusOrMinus {
+    #[rr::params("value":"Z")]
+    #[rr::args("value")]
+    fn new(value: i32) -> Self {
+        if value >= 0 {
+            Self { value : 1 }
+        } else {
+            Self { value: -1 }
+        }
     }
 }
 
-// /* 生成したすべてのNodeを管理するリスト */
-// #[rr::refined_by("all_nodes")]
-// struct LinkedList {
-//     #[rr::field("all_nodes")]
-//     all_nodes: Vec<*mut Node>,
-// }
-
-// impl LinkedList {
-//     /* ok */
-//     /* 空のメモリ領域を生成 */
-//     #[rr::returns("[]")]
-//     fn new() -> Self {
-//         Self { all_nodes: Vec::new() }
-//     }
-
-//     /* ok */
-//     /* 新たなノードを生成し割り当て */
-//     #[rr::params("l", "v" : "Z")]
-//     #[rr::args("l", "v")]
-//     #[rr::requires("length l.cur < MaxInt usize")] // precondition で長さに関する条件を要求
-//     #[rr::requires("size_of_array_in_bytes (PtrSynType) (2 * length l.cur) ≤ MaxInt isize")]
-//     #[rr::exists("ptr" : "loc")]
-//     #[rr::returns("ptr")]
-//     #[rr::observe("l.ghost" : "<$#>(l.cur ++ [ptr])")]
-//     #[rr::ensures(#type "ptr" : "(v, (Loc ProvNone 0), false)" @ "(Node_inv_t <INST!>)")]
-//     fn alloc(&mut self, value: i32) -> *mut Node {
-//         let node = Box::new(Node {      // Boxでヒープにメモリを確保
-//             value,
-//             next: ptr::null_mut(),
-//             marked: false,
-//         });
-//         let ptr = Box::into_raw(node);  // Boxから生ポインタに変換し所有権を放棄
-//         self.all_nodes.push(ptr);       // 管理リストに追加
-//         ptr
-//     }
-
-//     /* マークフェーズ */
-//     unsafe fn mark(&self, start_node: *mut Node) {
-//         // (ノードがnullか)，またはすでにマークされていれば終了
-//         if start_node.is_null() || (*start_node).marked {
-//             return;
-//         }
-
-//         (*start_node).marked = true;
-//         self.mark((*start_node).next);  // 再帰的に次のノードもマーク
-//     }
-
-
-//     /* スイープフェーズ */
-//     unsafe fn sweep(&mut self) {
-//         // all_nodesを走査
-//         // Vec::retain(|&p| {b}) : ベクタの各要素pに対し，b==trueのものを取り出す
-//         self.all_nodes.retain(|&node_ptr| {
-//             if (*node_ptr).marked {                 // marked==true -> 参照されているノード
-//                 (*node_ptr).marked = false;         // リセット
-//                 true                                // all_nodesに残す
-//             } else {
-//                 println!("GC msg : Node [{}] collected.", (*node_ptr).value);
-//                 let _ = Box::from_raw(node_ptr);    // Boxに管理させる 所有者がいないため解放される
-//                 false                               // all_nodesにも残らない 
-//             }
-//         });
-//     }
-
-//     /* マークアンドスイープGC */
-//     unsafe fn collect(&mut self, roots: Vec<*mut Node>) {
-//         println!("------------------------\nGC msg : Collection started.");
-
-//         for root in roots {           // 指定されたノードから走査する
-//             self.mark(root);
-//         }
-
-//         self.sweep();
-//         println!(
-//             "GC msg : Collection finished (alive: {}).\n------------------------",
-//              self.all_nodes.len()
-//         );
-//     }
-
-
-//     unsafe fn print_heap(&self) {
-//         for &ptr in &self.all_nodes {
-//             print!("[{}] ", (*ptr).value);
-//         }
-//         println!();
-//     }
-// }
-
-// 実行
-fn main() {
-
-    // let mut linkedlist = LinkedList::new(); // メモリ領域の初期化
-
-    // unsafe {
-    //     let n1 = linkedlist.alloc(10);
-    //     let n2 = linkedlist.alloc(20);
-    //     let n3 = linkedlist.alloc(30);
-    //     let n4 = linkedlist.alloc(40);
-
-    //     Node::set_next(n1, n2);
-    //     Node::set_next(n2, n3);
-    //     Node::set_next(n3, n1);
-
-    //     linkedlist.print_heap();            // デバッグ用
-
-    //     linkedlist.collect(vec![n1]);       // GC : n4解放
-
-    //     Node::set_next(n1, n3);
-
-    //     linkedlist.collect(vec![n1]);       // GC : n2解放
-
-    //     linkedlist.print_heap();            // デバッグ用
-    // }
+// ok
+#[rr::refined_by("p" : "loc")]
+#[rr::invariant("p = (Loc ProvNone 0)")]
+struct NullPtr{
+    #[rr::field("p")]
+    ptr : *mut NullPtr,
 }
 
+// ok
+impl NullPtr {
+    #[rr::exists("p")]
+    #[rr::returns("p")]
+    #[rr::ensures("p = (Loc ProvNone 0)")]
+    fn new() -> Self {
+        Self { ptr: std::ptr::null_mut() }
+    }
+}
+
+// ok
+// #[rr::refined_by("p" : "loc")]
+#[rr::refined_by("(p, v)" : "(loc * Z)")]
+#[rr::exists("v")]
+#[rr::invariant(#type "p" : "v" @ "int i32")]
+struct IntPtr{
+    #[rr::field("p")]
+    ptr : *mut i32,
+}
+
+impl IntPtr {
+    // ok
+    #[rr::params("value" : "Z")]
+    #[rr::args("value")]
+    #[rr::exists("p" : "loc")]
+    #[rr::returns("(p, value)")]
+    // ensuresを削除
+    fn new(val: i32) -> Self {
+            let boxed = Box::new(val);
+            Self {
+                ptr: Box::into_raw(boxed),
+            }
+    }
+}
+
+
+#[rr::refined_by("(p, v)" : "(loc * Z)")]
+// #[rr::exists("v")]
+#[rr::invariant(#iris "(
+    ⌜p = (Loc ProvNone 0)⌝
+    ∨
+    (p ◁ₗ[π, Owned] #(v) @ (◁ int i32))
+  )")]
+struct NullOrIntPtr{
+    #[rr::field("p")]
+    ptr : *mut i32,
+}
+
+impl NullOrIntPtr {
+    #[rr::returns("((Loc ProvNone 0), Null)")]
+    fn new() -> Self {
+        Self { ptr: std::ptr::null_mut() }
+    }
+}
+
+#[rr::returns("()")]
+fn main() {
+}

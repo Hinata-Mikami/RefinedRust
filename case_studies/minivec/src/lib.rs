@@ -179,13 +179,19 @@ pub struct RawVec<T> {
 #[rr::exists("cap" : "nat", "l" : "loc", "len" : "nat", "els")]
 #[rr::invariant(#type "l" : "els" @ "array_t cap (maybe_uninit {T})")]
 #[rr::invariant("Hxs" : "xs = project_vec_els len els")]
-#[rr::invariant("Hlook_1": "∀ i, (0 ≤ i < len)%nat → els !! i = Some (#(Some (xs !!! i)))")]
-#[rr::invariant("Hlook_2": "∀ i, (len ≤ i < cap)%nat → els !! i = Some (#None)")]
+#[rr::invariant("Hlook_1": "∀ i, (0 ≤ i < len)%nat 
+                → els !! i = Some (#(Some (xs !!! i)))")]
+#[rr::invariant("Hlook_2": "∀ i, (len ≤ i < cap)%nat 
+                → els !! i = Some (#None)")]
 #[rr::invariant("Hlen_eq": "len = length xs")]
 #[rr::invariant("Hcap": "len ≤ cap")]
-// invariant due to GEP / ptr::offset limits: the total size of the allocation should not exceed isize::max bytes
-// we need the ZST case to know that we never call grow except when we have reached the capacity limit
-#[rr::invariant("if decide (size_of_st {st_of T} = 0%nat) then cap = Z.to_nat (MaxInt USize) else (size_of_array_in_bytes {st_of T} cap ≤ MaxInt ISize)%Z")]
+// invariant due to GEP / ptr::offset limits: the total size 
+// of the allocation should not exceed isize::max bytes
+// we need the ZST case to know that we never call grow 
+// except when we have reached the capacity limit
+#[rr::invariant("if decide (size_of_st {st_of T} = 0%nat) 
+                    then cap = Z.to_nat (MaxInt USize) 
+                else (size_of_array_in_bytes {st_of T} cap ≤ MaxInt ISize)%Z")]
 pub struct Vec<T> {
     #[rr::field("(l, cap)")]
     buf: RawVec<T>,

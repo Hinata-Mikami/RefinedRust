@@ -31,21 +31,21 @@ Section Node_sls.
   Definition Node_st  : syn_type := Node_sls .
 End Node_sls.
 
-Section LinkedList_sls.
+Section Heap_sls.
   Context `{RRGS : !refinedrustGS Σ}.
 
-  Definition LinkedList_sls  : struct_layout_spec :=
-    let LinkedList_st  := UnitSynType in
-    mk_sls "LinkedList" [
+  Definition Heap_sls  : struct_layout_spec :=
+    let Heap_st  := UnitSynType in
+    mk_sls "Heap" [
     ("all_nodes", ((Vec_sls (PtrSynType) ((Global_sls : syn_type))) : syn_type))] StructReprRust.
-  Definition LinkedList_st  : syn_type := LinkedList_sls .
-End LinkedList_sls.
+  Definition Heap_st  : syn_type := Heap_sls .
+End Heap_sls.
 
 Section code.
 Context `{RRGS : !refinedrustGS Σ}.
 Open Scope printing_sugar.
 
-Program Definition LinkedList_alloc_def (Box_T_into_raw_Node_loc: loc) (Box_T_new_Node_loc: loc) (Vec_TA_push_mutNode_std_alloc_Global_loc: loc) (ptr_null_mut_Node_loc: loc) : function :=
+Program Definition Heap_alloc_def (Box_T_into_raw_Node_loc: loc) (Box_T_new_Node_loc: loc) (Vec_TA_push_mutNode_std_alloc_Global_loc: loc) (ptr_null_mut_Node_loc: loc) : function :=
   {|
      f_args := [
       ("self", void* : layout);
@@ -87,7 +87,7 @@ Program Definition LinkedList_alloc_def (Box_T_into_raw_Node_loc: loc) (Box_T_ne
       local_live{ UnitSynType } "__9";
       local_live{ PtrSynType } "__10";
       annot{ 1 }: StartLftAnnot "llft3" ["plft4"]; (* borrow *)
-      "__10" <-{ PtrOp } &ref{ Mut, Some (RSTLitType ["Vec_inv_t"] (RSTScopeInst [] [RSTAliasPtr; RSTLitType ["Global_ty"] (RSTScopeInst [] [] [])] [AppDef ["GlobalasAllocator_spec_attrs"] []])), "llft3" } ((!{ PtrOp } ( "self" )) at{ LinkedList_sls } "all_nodes");
+      "__10" <-{ PtrOp } &ref{ Mut, Some (RSTLitType ["Vec_inv_t"] (RSTScopeInst [] [RSTAliasPtr; RSTLitType ["Global_ty"] (RSTScopeInst [] [] [])] [AppDef ["GlobalasAllocator_spec_attrs"] []])), "llft3" } ((!{ PtrOp } ( "self" )) at{ Heap_sls } "all_nodes");
       annot{ 1 }: CopyLftNameAnnot "plft5" "llft3"; (* post-assignment *)
       local_live{ PtrSynType } "__11";
       "__11" <-{ PtrOp } copy{ PtrOp } ("ptr");
@@ -121,7 +121,7 @@ Qed.
 
 
 
-Program Definition LinkedList_new_def (Vec_T_new_mutNode_loc: loc) : function :=
+Program Definition Heap_new_def (Vec_T_new_mutNode_loc: loc) : function :=
   {|
      f_args := [
       
@@ -129,20 +129,20 @@ Program Definition LinkedList_new_def (Vec_T_new_mutNode_loc: loc) : function :=
      f_code :=
       <[
      "_bb0" :=
-      local_live{ LinkedList_st } "__0";
+      local_live{ Heap_st } "__0";
       local_live{ ((Vec_sls (PtrSynType) ((Global_sls : syn_type))) : syn_type) } "__1";
       "__1" <-{ (use_op_alg' ((Vec_sls (PtrSynType) ((Global_sls : syn_type))) : syn_type)) } CallE Vec_T_new_mutNode_loc [] [] [@{expr} ];
       Goto "_bb1"
      ]>%E $
      <[
      "_bb1" :=
-      "__0" <-{ (use_op_alg' LinkedList_st) } StructInit LinkedList_sls [("all_nodes", move{ (use_op_alg' ((Vec_sls (PtrSynType) ((Global_sls : syn_type))) : syn_type)) } ("__1") : expr)];
+      "__0" <-{ (use_op_alg' Heap_st) } StructInit Heap_sls [("all_nodes", move{ (use_op_alg' ((Vec_sls (PtrSynType) ((Global_sls : syn_type))) : syn_type)) } ("__1") : expr)];
       Goto "_bb2"
      ]>%E $
      <[
      "_bb2" :=
       local_dead "__1";
-      return (move{ (use_op_alg' LinkedList_st) } ("__0"))
+      return (move{ (use_op_alg' Heap_st) } ("__0"))
      ]>%E $
       ∅;
      f_init := "_bb0";
