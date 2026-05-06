@@ -426,7 +426,7 @@ Section extra_rules.
   (* TODO: ideally, we could do this anytime, not just at prove_with_subtype, by using logical_step receipts. *)
   Lemma prove_with_subtype_stratify l E L pm Q T :
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
-      stratify_ltype π E L StratMutNone StratNoUnfold StratRefoldFull StratifyUnblockOp l lt r bk (λ L2 R rt' lt' r',
+      stratify_ltype_unblock π E L StratRefoldFull l lt r bk (λ L2 R rt' lt' r',
       cast_ltype_to_type E L2 lt' (λ ty,
         prove_with_subtype E L2 true pm (l ◁ₗ[π, bk] r' @ (◁ ty) -∗ R -∗ Q) T)))
     ⊢ prove_with_subtype E L true pm Q T.
@@ -437,7 +437,7 @@ Section extra_rules.
     iDestruct "Ha" as "(Hl & HT)".
     rewrite /prove_with_subtype.
     iIntros (????) "#CTX #HE HL".
-    rewrite /stratify_ltype.
+    rewrite /stratify_ltype_unblock/stratify_ltype.
     iMod ("HT" with "[//] [//] [//] CTX HE HL Hl") as "(%L2 & %R & %rt' & %lt' & %r' & HL & %Hst' & Hstep & HT)".
     rewrite /cast_ltype_to_type.
     iDestruct "HT" as "(%ty & %Heqt & HT)".

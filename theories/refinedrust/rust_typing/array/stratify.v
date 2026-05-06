@@ -30,9 +30,9 @@ Section stratify.
         + for Vec/VecDeque, we don't need that.
    *)
 
-  Lemma stratify_ltype_array_iter_nil π E L mu md ma {M} (m : M) (l : loc) {rt} (def : type rt) (len : nat) (rs : list (place_rfn rt)) k ig (T : stratify_ltype_array_iter_cont_t rt) :
+  Lemma stratify_ltype_array_iter_nil π E L md ma {M} (m : M) (l : loc) {rt} (def : type rt) (len : nat) (rs : list (place_rfn rt)) k ig (T : stratify_ltype_array_iter_cont_t rt) :
     T L True [] rs
-    ⊢ stratify_ltype_array_iter π E L mu md ma m l ig def len [] rs k T.
+    ⊢ stratify_ltype_array_iter π E L md ma m l ig def len [] rs k T.
   Proof.
     iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
     iModIntro. iExists L, True%I, [], rs.
@@ -42,10 +42,10 @@ Section stratify.
   Global Existing Instance stratify_ltype_array_iter_nil_inst.
 
   Import EqNotations.
-  Lemma stratify_ltype_array_iter_cons_no_ignore π E L mu mdu ma {M} (m : M) (l : loc) (ig : list nat) {rt} (def : type rt) (rs : list (place_rfn rt)) (len : nat) (iml : list (nat * ltype rt)) (lt : ltype rt) j k `{Hnel : !CanSolve (j ∉ ig)%nat} T :
+  Lemma stratify_ltype_array_iter_cons_no_ignore π E L mdu ma {M} (m : M) (l : loc) (ig : list nat) {rt} (def : type rt) (rs : list (place_rfn rt)) (len : nat) (iml : list (nat * ltype rt)) (lt : ltype rt) j k `{Hnel : !CanSolve (j ∉ ig)%nat} T :
     ⌜j < len⌝ ∗ (∀ r, ⌜rs !! j = Some r⌝ -∗
-    stratify_ltype_array_iter π E L mu mdu ma m l (j :: ig) def len iml rs k (λ L2 R2 iml2 rs2,
-      stratify_ltype π E L2 mu mdu ma m (l offsetst{ty_syn_type def MetaNone}ₗ j) lt r k (λ L3 R3 rt3 lty3 r3,
+    stratify_ltype_array_iter π E L mdu ma m l (j :: ig) def len iml rs k (λ L2 R2 iml2 rs2,
+      stratify_ltype π E L2 mdu ma m (l offsetst{ty_syn_type def MetaNone}ₗ j) lt r k (λ L3 R3 rt3 lty3 r3,
         if (decide (ma = StratRefoldFull)) then
           match ltype_blocked_lfts lty3 with
           | [] =>
@@ -65,7 +65,7 @@ Section stratify.
             ∃ (Heq : rt = rt3),
             T L3 (R3 ∗ R2) ((j, rew <- [ltype] Heq in lty3) :: iml2) (<[j := rew <-[place_rfnRT] Heq in r3]> rs2)
       )))
-    ⊢ stratify_ltype_array_iter π E L mu mdu ma m l ig def len ((j, lt) :: iml) rs k T.
+    ⊢ stratify_ltype_array_iter π E L mdu ma m l ig def len ((j, lt) :: iml) rs k T.
   Proof.
     iIntros "(%Hlen & HT)". iIntros (????) "#CTX #HE HL Hl".
     simpl.
@@ -180,9 +180,9 @@ Section stratify.
   Definition stratify_ltype_array_iter_cons_no_ignore_inst := [instance @stratify_ltype_array_iter_cons_no_ignore].
   Global Existing Instance stratify_ltype_array_iter_cons_no_ignore_inst.
 
-  Lemma stratify_ltype_array_iter_cons_ignore π E L mu mdu ma {M} (m : M) (l : loc) (ig : list nat) {rt} (def : type rt) (rs : list (place_rfn rt)) (len : nat) (iml : list (nat * ltype rt)) (lt : ltype rt) j k T `{Hnel : !CanSolve (j ∈ ig)%nat} :
-    ⌜j < len⌝ ∗ stratify_ltype_array_iter π E L mu mdu ma m l (ig) def len iml rs k T
-    ⊢ stratify_ltype_array_iter π E L mu mdu ma m l ig def len ((j, lt) :: iml) rs k T.
+  Lemma stratify_ltype_array_iter_cons_ignore π E L mdu ma {M} (m : M) (l : loc) (ig : list nat) {rt} (def : type rt) (rs : list (place_rfn rt)) (len : nat) (iml : list (nat * ltype rt)) (lt : ltype rt) j k T `{Hnel : !CanSolve (j ∈ ig)%nat} :
+    ⌜j < len⌝ ∗ stratify_ltype_array_iter π E L mdu ma m l (ig) def len iml rs k T
+    ⊢ stratify_ltype_array_iter π E L mdu ma m l ig def len ((j, lt) :: iml) rs k T.
   Proof.
     iIntros "(%Hlen & HT)". iIntros (????) "#CTX #HE HL Hl".
     unfold CanSolve in *.
@@ -206,10 +206,10 @@ Section stratify.
   Definition stratify_ltype_array_iter_cons_ignore_inst := [instance @stratify_ltype_array_iter_cons_ignore].
   Global Existing Instance stratify_ltype_array_iter_cons_ignore_inst.
 
-  Lemma stratify_ltype_array_owned {rt} π E L mu mdu ma {M} (m : M) l (def : type rt) len iml rs (T : stratify_ltype_cont_t) :
-    stratify_ltype_array_iter π E L mu mdu ma m l [] def len iml rs (Owned) (λ L2 R2 iml2 rs2,
+  Lemma stratify_ltype_array_owned {rt} π E L mdu ma {M} (m : M) l (def : type rt) len iml rs (T : stratify_ltype_cont_t) :
+    stratify_ltype_array_iter π E L mdu ma m l [] def len iml rs (Owned) (λ L2 R2 iml2 rs2,
       T L2 R2 _ (ArrayLtype def len iml2) (#rs2))
-    ⊢ stratify_ltype π E L mu mdu ma m l (ArrayLtype def len iml) (#rs) (Owned) T.
+    ⊢ stratify_ltype π E L mdu ma m l (ArrayLtype def len iml) (#rs) (Owned) T.
   Proof.
     iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
     rewrite ltype_own_array_unfold /array_ltype_own.

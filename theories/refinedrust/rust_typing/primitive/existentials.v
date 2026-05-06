@@ -631,11 +631,11 @@ Section stratify.
   (** Stratification rules *)
 
   (* Unfolding by stratification *)
-  Lemma stratify_unfold_ex_plain_t_owned {M} π E L smu sa (sm : M) l (ty : type rt) x T :
-    (∀ r, P.(inv_P) π r x -∗ stratify_ltype π E L smu StratDoUnfold sa sm l (◁ ty) (#r) (Owned) (λ L2 P _ lt' r',
+  Lemma stratify_unfold_ex_plain_t_owned {M} π E L sa (sm : M) l (ty : type rt) x T :
+    (∀ r, P.(inv_P) π r x -∗ stratify_ltype π E L StratDoUnfold sa sm l (◁ ty) (#r) (Owned) (λ L2 P _ lt' r',
       (* This should always be satisfiable *)
       T L2 P _ lt' r'))
-    ⊢ stratify_ltype π E L smu StratDoUnfold sa sm l (◁ (∃; P, ty)) (#x) (Owned) T.
+    ⊢ stratify_ltype π E L StratDoUnfold sa sm l (◁ (∃; P, ty)) (#x) (Owned) T.
   Proof.
     iIntros "HT". iIntros (F ???) "#CTX #HE HL Hb".
     iMod (ex_plain_t_destruct_owned with "Hb") as "(%r & HP & Hb )"; first done.
@@ -649,12 +649,12 @@ Section stratify.
   (*StratifyLtype π E L smu StratDoUnfold sa sm l (◁ (∃; P, ty))%I (PlaceIn x) (Owned wl) :=*)
     (*λ T, i2p (stratify_unfold_ex_plain_t_owned π E L smu sa sm l ty x wl T).*)
 
-  Lemma stratify_unfold_ex_plain_t_uniq {M} π E L smu sa (sm : M) l (ty : type rt) x κ γ T :
+  Lemma stratify_unfold_ex_plain_t_uniq {M} π E L sa (sm : M) l (ty : type rt) x κ γ T :
     li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L'),
-    (∀ r, P.(inv_P) π r x -∗ stratify_ltype π E L' smu StratDoUnfold sa sm l (◁ ty) (PlaceIn r) (Owned)
+    (∀ r, P.(inv_P) π r x -∗ stratify_ltype π E L' StratDoUnfold sa sm l (◁ ty) (PlaceIn r) (Owned)
       (λ L2 R' rt' lt' r',
         T L2 R' _ (OpenedLtype lt' (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) π r x) (λ r x, llft_elt_toks κs)) r')))
-    ⊢ stratify_ltype π E L smu StratDoUnfold sa sm l (◁ (∃; P, ty)) (PlaceIn x) (Uniq κ γ) T.
+    ⊢ stratify_ltype π E L StratDoUnfold sa sm l (◁ (∃; P, ty)) (PlaceIn x) (Uniq κ γ) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal. iIntros "(%κs & %L' & %Hal & HT)".
     iIntros (F ???) "#CTX #HE HL Hb".
@@ -677,11 +677,11 @@ Section stratify.
     (*λ T, i2p (stratify_unfold_ex_plain_t_uniq π E L smu sa sm l ty x κ γ T).*)
 
 
-  Lemma stratify_unfold_ex_plain_t_shared {M} π E L smu sa (sm : M) l (ty : type rt) x κ T :
-    (∀ r, P.(inv_P_shr) π κ r x -∗ stratify_ltype π E L smu StratDoUnfold sa sm l (◁ ty) (PlaceIn r) (Shared κ)
+  Lemma stratify_unfold_ex_plain_t_shared {M} π E L sa (sm : M) l (ty : type rt) x κ T :
+    (∀ r, P.(inv_P_shr) π κ r x -∗ stratify_ltype π E L StratDoUnfold sa sm l (◁ ty) (PlaceIn r) (Shared κ)
       (λ L2 R' rt' lt' r',
         ∃ r'', ⌜r' = PlaceIn r''⌝ ∗ T L2 R' _ (ShadowedLtype lt' #r'' (◁ (∃; P, ty))) (PlaceIn x)))
-    ⊢ stratify_ltype π E L smu StratDoUnfold sa sm l (◁ (∃; P, ty)) (PlaceIn x) (Shared κ) T.
+    ⊢ stratify_ltype π E L StratDoUnfold sa sm l (◁ (∃; P, ty)) (PlaceIn x) (Shared κ) T.
   Proof.
     iIntros "HT" (F ???) "#CTX #HE HL Hb".
     iMod (ex_plain_t_open_shared with "Hb") as "(%r & HP & Hb)"; first done.

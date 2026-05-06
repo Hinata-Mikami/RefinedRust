@@ -9,15 +9,16 @@ Section stratify.
   Context `{!typeGS Σ}.
 
   (** Structural instances *)
-  Lemma stratify_ltype_shr_owned mu mdu ma {rt} π E L {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt))
+  Lemma stratify_ltype_shr_owned mdu ma {rt} π E L {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt))
+      `{!StratifyLtypeShouldDescendShrRef ml}
       (T : stratify_ltype_cont_t) :
-    (∀ l', stratify_ltype π E L mu mdu ma ml l' lt r (Shared κ) (λ L' R rt' lt' r',
+    (∀ l', stratify_ltype π E L mdu ma ml l' lt r (Shared κ) (λ L' R rt' lt' r',
       match ma with
       | StratRefoldFull =>
           ∃ (_ : Inhabited rt'), cast_ltype_to_type E L' lt' (λ ty', T L' R _ (◁ (shr_ref κ ty'))%I (#r'))
       | _ => T L' R _ (ShrLtype lt' κ) (#r')
       end))
-    ⊢ stratify_ltype π E L mu mdu ma ml l (ShrLtype lt κ) (#r) (Owned) T.
+    ⊢ stratify_ltype π E L mdu ma ml l (ShrLtype lt κ) (#r) (Owned) T.
   Proof.
     iIntros "Hs". iIntros (????) "#(LFT & LLCTX) #HE HL Hb".
     iPoseProof (shr_ltype_acc_owned F with "[$LFT $LLCTX] Hb") as "Hb"; [done.. | ].
@@ -49,7 +50,7 @@ Section stratify.
       iApply logical_step_intro. iIntros "(Hb & $)".
       by iMod ("Hcl" with "Hl Hb") as "$".
   Qed.
-  Definition stratify_ltype_shr_owned_inst := [instance (@stratify_ltype_shr_owned StratMutNone) ].
+  Definition stratify_ltype_shr_owned_inst := [instance @stratify_ltype_shr_owned].
   Global Existing Instance stratify_ltype_shr_owned_inst.
 
   (* TODO Uniq *)
@@ -95,9 +96,9 @@ Section stratify.
 
     - maybe we also want to have the depth certificates here? *)
   (* This is loosing information by dropping potential [ShadowedLtype], so we should only do it when really necessary. *)
-  Lemma stratify_ltype_shared {rt} π E L mu mdu ma {M} (ml : M) l (lt lt' : ltype rt) κ (r : place_rfn rt) `{Hsimp : !SimpLtype (ltype_core lt) lt'} (T : stratify_ltype_cont_t):
+  Lemma stratify_ltype_shared {rt} π E L mdu ma {M} (ml : M) l (lt lt' : ltype rt) κ (r : place_rfn rt) `{Hsimp : !SimpLtype (ltype_core lt) lt'} (T : stratify_ltype_cont_t):
     (cast_ltype_to_type E L lt' (λ ty', T L True _ (◁ ty')%I (r)))
-    ⊢ stratify_ltype π E L mu mdu ma ml l lt r (Shared κ) T.
+    ⊢ stratify_ltype π E L mdu ma ml l lt r (Shared κ) T.
   Proof.
     destruct Hsimp as [<-].
     iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
@@ -110,17 +111,17 @@ Section stratify.
     iModIntro. iSplitR. { simp_ltypes. done. }
     iApply logical_step_intro. iSplitL; done.
   Qed.
-  Global Instance stratify_ltype_shared_inst1 {rt} π E L mu mdu {M} (ml : M) l (lt lt' : ltype rt) κ (r : place_rfn rt) `{!SimpLtype (ltype_core lt) lt'} :
-    StratifyLtype π E L mu mdu StratRefoldFull ml l lt r (Shared κ) | 100 :=
-    λ T, i2p (stratify_ltype_shared π E L mu mdu StratRefoldFull ml l lt lt' κ r T).
+  Global Instance stratify_ltype_shared_inst1 {rt} π E L mdu {M} (ml : M) l (lt lt' : ltype rt) κ (r : place_rfn rt) `{!SimpLtype (ltype_core lt) lt'} :
+    StratifyLtype π E L mdu StratRefoldFull ml l lt r (Shared κ) | 100 :=
+    λ T, i2p (stratify_ltype_shared π E L mdu StratRefoldFull ml l lt lt' κ r T).
   (* TODO needed? *)
   (*Global Instance stratify_ltype_shared_inst2 {rt} π E L mu mdu {M} (ml : M) l (lt : ltype rt) κ (r : place_rfn rt) :*)
     (*StratifyLtype π E L mu mdu StratRefoldOpened ml l lt r (Shared κ) | 100 :=*)
     (*λ T, i2p (stratify_ltype_shared π E L mu mdu StratRefoldOpened ml l lt κ r T).*)
 
-  Lemma stratify_ltype_ofty_shr {rt} π E L mu ma {M} (ml : M) l (ty : type rt) κ (r : place_rfn (place_rfn rt)) b T :
-    stratify_ltype π E L mu StratDoUnfold ma ml l (ShrLtype (◁ ty) κ) r b T
-    ⊢ stratify_ltype π E L mu StratDoUnfold ma ml l (◁ (shr_ref κ ty)) r b T.
+  Lemma stratify_ltype_ofty_shr {rt} π E L ma {M} (ml : M) l (ty : type rt) κ (r : place_rfn (place_rfn rt)) b T :
+    stratify_ltype π E L StratDoUnfold ma ml l (ShrLtype (◁ ty) κ) r b T
+    ⊢ stratify_ltype π E L StratDoUnfold ma ml l (◁ (shr_ref κ ty)) r b T.
   Proof.
     iIntros "Hp". iApply stratify_ltype_eqltype; iFrame.
     iPureIntro. iIntros (?) "HL CTX HE".

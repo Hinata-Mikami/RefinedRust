@@ -156,16 +156,16 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:((_ : MutSubLtype E L lt1 lt2) T)
   | mut_eqltype ?E ?L ?lt1 ?lt2 ?T =>
       cont uconstr:((_ : MutEqLtype E L lt1 lt2) T)
-  | stratify_ltype ?π ?E ?L ?mu ?mdu ?ma ?ml ?l ?lt ?r ?b ?T =>
-      cont uconstr:(((_ : StratifyLtype π E L mu mdu ma ml l lt r b) T))
+  | stratify_ltype ?π ?E ?L ?mdu ?ma ?ml ?l ?lt ?r ?b ?T =>
+      cont uconstr:(((_ : StratifyLtype π E L mdu ma ml l lt r b) T))
   | stratify_ltype_unblock ?π ?E ?L ?ma ?l ?lt ?r ?b ?T =>
-      cont uconstr:(((_ : StratifyLtype π E L _ _ _ StratifyUnblockOp l lt r b) T))
+      cont uconstr:(((_ : StratifyLtype π E L _ _ StratifyUnblockOp l lt r b) T))
   | stratify_ltype_extract ?π ?E ?L ?Ma ?l ?lt ?r ?b ?κ ?T =>
-      cont uconstr:(((_ : StratifyLtype π E L _ _ _ (StratifyExtractOp κ) l lt r b) T))
+      cont uconstr:(((_ : StratifyLtype π E L _ _ (StratifyExtractOp κ) l lt r b) T))
   | stratify_ltype_resolve ?π ?E ?L ?Ma ?l ?lt ?r ?b ?T =>
-      cont uconstr:(((_ : StratifyLtype π E L _ _ _ (StratifyResolveOp) l lt r b) T))
+      cont uconstr:(((_ : StratifyLtype π E L _ _ (StratifyResolveOp) l lt r b) T))
   | stratify_ltype_close_inv ?κs ?π ?E ?L ?l ?lt ?r ?b ?T =>
-      cont uconstr:(((_ : StratifyLtype π E L _ _ _ (StratifyCloseOp κs) l lt r b) T))
+      cont uconstr:(((_ : StratifyLtype π E L _ _ (StratifyCloseOp κs) l lt r b) T))
   | stratify_ltype_post_hook ?π ?E ?L ?ml ?l ?lt ?r ?b ?T =>
       cont uconstr:(((_ : StratifyLtypePostHook π E L ml l lt r b) T))
   | resolve_ghost ?π ?E ?L ?m ?lb ?l ?lt ?b ?r ?T =>
@@ -182,8 +182,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : IterateWithHooks E L m) T))
   | prove_place_cond ?E ?L ?b ?lt1 ?lt2 ?T =>
       cont uconstr:(((_ : ProvePlaceCond E L b lt1 lt2) T))
-  | stratify_ltype_array_iter ?π ?E ?L ?mu ?mdu ?ma ?ml ?l ?ig ?def ?len ?iml ?rs ?bk ?T =>
-      cont uconstr:(((_ : StratifyLtypeArrayIter π E L mu mdu ma ml l ig def len iml rs bk) T))
+  | stratify_ltype_array_iter ?π ?E ?L ?mdu ?ma ?ml ?l ?ig ?def ?len ?iml ?rs ?bk ?T =>
+      cont uconstr:(((_ : StratifyLtypeArrayIter π E L mdu ma ml l ig def len iml rs bk) T))
   | typed_array_access ?π ?E ?L ?base ?offset ?st ?lt ?r ?k ?T =>
       cont uconstr:(((_ : TypedArrayAccess π E L base offset st lt r k) T))
   | resolve_ghost_iter ?π ?E ?L ?rm ?lb ?l ?st ?lts ?b ?rs ?ig ?i0 ?T =>
@@ -554,12 +554,12 @@ Ltac liRJudgement :=
     | |- envs_entails _ (find_tc_inst ?H ?T) =>
         unshelve notypeclasses refine (tac_fast_apply (tac_find_tc_inst _ _ _) _); [solve [refine _] | ]
     (* stratification for structs *)
-    | |- envs_entails _ (@stratify_ltype_struct_iter _ _ ?π ?E ?L ?mu ?mdu ?ma _ ?m ?l ?i ?sls ?rts ?lts ?rs ?k ?T) =>
+    | |- envs_entails _ (@stratify_ltype_struct_iter _ _ ?π ?E ?L ?mdu ?ma _ ?m ?l ?i ?sls ?rts ?lts ?rs ?k ?T) =>
         match rts with
         | [] =>
-          notypeclasses refine (tac_fast_apply (stratify_ltype_struct_iter_nil π E L mu mdu ma m l sls k i T) _)
+          notypeclasses refine (tac_fast_apply (stratify_ltype_struct_iter_nil π E L mdu ma m l sls k i T) _)
         | _ :: _ =>
-          notypeclasses refine (tac_fast_apply (stratify_ltype_struct_iter_cons π E L mu mdu ma m l sls i _ _ _ k _) _)
+          notypeclasses refine (tac_fast_apply (stratify_ltype_struct_iter_cons π E L mdu ma m l sls i _ _ _ k _) _)
         end
   end.
 

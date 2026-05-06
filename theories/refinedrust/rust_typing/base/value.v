@@ -1075,14 +1075,14 @@ Section rules.
      TODO: currently not an instance, because we sometimes do not want to do this!
      Instead, should give stratify some syntactic guidance from OpenedLtype above it.
    *)
-  Lemma stratify_ltype_ofty_value_owned π E L mu mdu ma {M} (m : M) l st v (T : stratify_ltype_cont_t) :
+  Lemma stratify_ltype_ofty_value_owned π E L mdu ma {M} (m : M) l st v (T : stratify_ltype_cont_t) :
     find_in_context (FindVal v) (λ '(existT rt (ty', r', π', m)),
       ⌜π' = π⌝ ∗ ⌜m = MetaNone⌝ ∗
       find_tc_inst (TySized ty') (λ _,
       ⌜ty_has_op_type ty' (use_op_alg' (ty'.(ty_syn_type) m)) MCCopy⌝ ∗
       ⌜ty'.(ty_syn_type) m = st⌝ ∗
-      stratify_ltype π E L mu mdu ma m l (◁ ty') (#r') (Owned) T))
-    ⊢ stratify_ltype π E L mu mdu ma m l (◁ value_t st)%I (#v) (Owned) T.
+      stratify_ltype π E L mdu ma m l (◁ ty') (#r') (Owned) T))
+    ⊢ stratify_ltype π E L mdu ma m l (◁ value_t st)%I (#v) (Owned) T.
   Proof.
     iDestruct 1 as ([rt [[[ty' r'] π'] m']]) "(Hv & -> & -> & % & %Hot & %Heq & HT)" => /=.
     iIntros (????) "#CTX #HE HL Hl".

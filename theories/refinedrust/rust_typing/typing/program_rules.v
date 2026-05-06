@@ -1000,7 +1000,7 @@ Section prove_subtype.
   Lemma prove_with_subtype_ofty_step π E L (l : loc) bk {rt} (ty : type rt) (r : place_rfn rt) T :
     find_in_context (FindLoc l) (λ '(existT rt' (lt', r', bk', π')),
       ⌜π = π'⌝ ∗
-      stratify_ltype π E L StratMutNone StratNoUnfold StratRefoldFull StratifyUnblockOp l lt' r' bk' (λ L2 R2 rt2 lt2 r2,
+      stratify_ltype_unblock π E L StratRefoldFull l lt' r' bk' (λ L2 R2 rt2 lt2 r2,
         (* can't take a step, because we already took one. *)
         (*owned_subltype_step E L false (l ◁ₗ[π, bk'] r' @ lt') (l ◁ₗ[π, bk] r @ ◁ ty) T*)
         match ltype_blocked_lfts lt2 with
@@ -2133,15 +2133,15 @@ Section subsume.
   (* TODO change the ResolveTry and also make it a parameter of stratify *)
 
   (* when we recursively want to descend, we cannot let the resolution use the logical step *)
-  Lemma stratify_ltype_resolve_ghost_rec {rt} π E L mu mdu ma {M} (ml : M) l (lt : ltype rt) b r T :
+  Lemma stratify_ltype_resolve_ghost_rec {rt} π E L mdu ma {M} (ml : M) l (lt : ltype rt) b r T :
     resolve_ghost π E L ResolveTry false l lt b r (λ L1 r R progress,
       if progress then
-      stratify_ltype π E L1 mu mdu ma ml l lt r b
+      stratify_ltype π E L1 mdu ma ml l lt r b
         (λ L2 R' rt' lt' r', T L2 (R ∗ R') rt' lt' r')
       else
         (* otherwise treat this as a leaf *)
         R -∗ stratify_ltype_post_hook π E L1 ml l lt r b T)
-    ⊢ stratify_ltype π E L mu mdu ma ml l lt r b T.
+    ⊢ stratify_ltype π E L mdu ma ml l lt r b T.
   Proof.
     iIntros "Hres". iIntros (????) "#CTX #HE HL Hl".
     iMod ("Hres" with "[] [] CTX HE HL Hl") as "(%L1 & %r1 & %R & %prog & >(Hl & HR) & HL & HP)"; [done.. | ].
@@ -2150,12 +2150,12 @@ Section subsume.
       iDestruct "Hb" as "(%L2 & %R' & %rt' & %lt' & %r' & HL & Hcond & Hb & HT)".
       iModIntro. iExists L2, _, rt', lt', r'. iFrame "Hcond HT HL".
       iApply (logical_step_wand with "Hb"). iIntros "($ & $)". done.
-    - by iApply (stratify_ltype_id _ _ _ mu mdu ma with "(HP HR) [//] [//] [//] CTX HE HL").
+    - by iApply (stratify_ltype_id _ _ _ mdu ma with "(HP HR) [//] [//] [//] CTX HE HL").
   Qed.
   (* at a leaf, we can use the logical step to do the resolution -- this allows to descend deeper into the type, which is useful for custom user-defined types *)
-  Lemma stratify_ltype_resolve_ghost_leaf {rt} π E L mu mdu ma {M} (ml : M) rm l (lt : ltype rt) b r T :
+  Lemma stratify_ltype_resolve_ghost_leaf {rt} π E L mdu ma {M} (ml : M) rm l (lt : ltype rt) b r T :
     resolve_ghost π E L rm true l lt b r (λ L1 r R progress, T L1 R _ lt r)
-    ⊢ stratify_ltype π E L mu mdu ma ml l lt r b T.
+    ⊢ stratify_ltype π E L mdu ma ml l lt r b T.
   Proof.
     iIntros "Hres". iIntros (????) "#CTX #HE HL Hl".
     iMod ("Hres" with "[] [] CTX HE HL Hl") as "(%L1 & %r1 & %R & %prog & Hl & HL & HR)"; [done.. | ].
@@ -2164,19 +2164,19 @@ Section subsume.
   Qed.
 
   (* This should have a lower priority than the leaf instances we call for individual [ml] -- those should instead use [stratify_ltype_resolve_ghost_leaf]. *)
-  Global Instance stratify_ltype_resolve_ghost_inst {rt} π E L mu mdu ma {M} (ml : M) l (lt : ltype rt) b γ :
-    StratifyLtype π E L mu mdu ma ml l lt (PlaceGhost γ) b | 100 := λ T, i2p (stratify_ltype_resolve_ghost_rec π E L mu mdu ma ml l lt b (PlaceGhost γ) T).
+  Global Instance stratify_ltype_resolve_ghost_inst {rt} π E L mdu ma {M} (ml : M) l (lt : ltype rt) b γ :
+    StratifyLtype π E L mdu ma ml l lt (PlaceGhost γ) b | 100 := λ T, i2p (stratify_ltype_resolve_ghost_rec π E L mdu ma ml l lt b (PlaceGhost γ) T).
 
-  Lemma stratify_ltype_blocked {rt} π E L mu mdu ma {M} (ml : M) l (ty : type rt) κ r b `{!StratifyLtypeShouldUnblock ml} T :
+  Lemma stratify_ltype_blocked {rt} π E L mdu ma {M} (ml : M) l (ty : type rt) κ r b `{!StratifyLtypeShouldUnblock ml} T :
     resolve_ghost π E L ResolveTry false l (BlockedLtype ty κ) b r (λ L1 r R progress,
       if progress then
-        stratify_ltype π E L1 mu mdu ma ml l (BlockedLtype ty κ) r b
+        stratify_ltype π E L1 mdu ma ml l (BlockedLtype ty κ) r b
           (λ L2 R' rt' lt' r', T L2 (R ∗ R') rt' lt' r')
       else R -∗
       find_in_context (FindOptLftDead κ) (λ found,
-        if found then stratify_ltype π E L1 mu mdu ma ml l (◁ ty)%I r b T
+        if found then stratify_ltype π E L1 mdu ma ml l (◁ ty)%I r b T
         else stratify_ltype_post_hook π E L1 ml l (BlockedLtype ty κ) r b T))
-    ⊢ stratify_ltype π E L mu mdu ma ml l (BlockedLtype ty κ) r b T.
+    ⊢ stratify_ltype π E L mdu ma ml l (BlockedLtype ty κ) r b T.
   Proof.
     iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
     iMod ("HT" with "[] [] CTX HE HL Hl") as "(%L1 & %r1 & %R & %prog & >(Hl & HR) & HL & HP)"; [done.. | ].
@@ -2192,19 +2192,19 @@ Section subsume.
         iPoseProof ("Hp" with "[//] [//] [//] [//] HE HL Hl") as ">Hb".
         iDestruct "Hb" as "(%L' & %R2 & %rt' & %lt' & %r' & Hl & Hstep & HT)".
         iModIntro. iExists L', _, rt', lt', r'. iFrame.
-      + iApply (stratify_ltype_id _ _ _ mu mdu ma with "Hp [] [] [] [] HE HL"); done.
+      + iApply (stratify_ltype_id _ _ _ mdu ma with "Hp [] [] [] [] HE HL"); done.
   Qed.
   Definition stratify_ltype_blocked_inst := [instance @stratify_ltype_blocked].
   Global Existing Instance stratify_ltype_blocked_inst | 5.
 
-  Lemma stratify_ltype_coreable {rt} π E L mu mdu ma {M} (ml : M) l (lt_full lt_full' : ltype rt) κs r b `{Hsimp: !SimpLtype (ltype_core lt_full) lt_full'} `{!StratifyLtypeShouldUnblock ml} T :
+  Lemma stratify_ltype_coreable {rt} π E L mdu ma {M} (ml : M) l (lt_full lt_full' : ltype rt) κs r b `{Hsimp: !SimpLtype (ltype_core lt_full) lt_full'} `{!StratifyLtypeShouldUnblock ml} T :
     resolve_ghost π E L ResolveTry false l (CoreableLtype κs lt_full) b r (λ L1 r R progress,
       if progress then
-        stratify_ltype π E L1 mu mdu ma ml l (CoreableLtype κs lt_full) r b
+        stratify_ltype π E L1 mdu ma ml l (CoreableLtype κs lt_full) r b
           (λ L2 R' rt' lt' r', T L2 (R ∗ R') rt' lt' r')
       (* TODO also make optional *)
-      else R -∗ lft_dead_list κs ∗ stratify_ltype π E L1 mu mdu ma ml l (lt_full')%I r b T)
-    ⊢ stratify_ltype π E L mu mdu ma ml l (CoreableLtype κs lt_full) r b T.
+      else R -∗ lft_dead_list κs ∗ stratify_ltype π E L1 mdu ma ml l (lt_full')%I r b T)
+    ⊢ stratify_ltype π E L mdu ma ml l (CoreableLtype κs lt_full) r b T.
   Proof.
     iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
     iMod ("HT" with "[] [] CTX HE HL Hl") as "(%L1 & %r1 & %R & %prog & >(Hl & HR) & HL & HP)"; [done.. | ].
@@ -2225,16 +2225,16 @@ Section subsume.
   Definition stratify_ltype_coreable_inst := [instance @stratify_ltype_coreable].
   Global Existing Instance stratify_ltype_coreable_inst | 5.
 
-  Lemma stratify_ltype_shrblocked {rt} π E L mu mdu ma {M} (ml : M) l (ty : type rt) κ r b `{!StratifyLtypeShouldUnblock ml} T :
+  Lemma stratify_ltype_shrblocked {rt} π E L mdu ma {M} (ml : M) l (ty : type rt) κ r b `{!StratifyLtypeShouldUnblock ml} T :
     resolve_ghost π E L ResolveTry false l (ShrBlockedLtype ty κ) b r (λ L1 r R progress,
       if progress then
-        stratify_ltype π E L1 mu mdu ma ml l (ShrBlockedLtype ty κ) r b
+        stratify_ltype π E L1 mdu ma ml l (ShrBlockedLtype ty κ) r b
           (λ L2 R' rt' lt' r', T L2 (R ∗ R') rt' lt' r')
       else R -∗
       find_in_context (FindOptLftDead κ) (λ found,
-        if found then stratify_ltype π E L1 mu mdu ma ml l (◁ ty)%I r b T
+        if found then stratify_ltype π E L1 mdu ma ml l (◁ ty)%I r b T
         else stratify_ltype_post_hook π E L1 ml l (ShrBlockedLtype ty κ) r b T))
-    ⊢ stratify_ltype π E L mu mdu ma ml l (ShrBlockedLtype ty κ) r b T.
+    ⊢ stratify_ltype π E L mdu ma ml l (ShrBlockedLtype ty κ) r b T.
   Proof.
     iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
     iMod ("HT" with "[] [] CTX HE HL Hl") as "(%L1 & %r1 & %R & %prog & >(Hl & HR) & HL & HP)"; [done.. | ].
@@ -2250,7 +2250,7 @@ Section subsume.
         iPoseProof ("Hp" with "[//] [//] [//] [//] HE HL Hl") as ">Hb".
         iDestruct "Hb" as "(%L' & %R2 & %rt' & %lt' & %r' & Hl & Hstep & HT)".
         iModIntro. iExists L', _, rt', lt', r'. iFrame.
-      + iApply (stratify_ltype_id _ _ _ mu mdu ma with "Hp [] [] [] [] HE HL"); done.
+      + iApply (stratify_ltype_id _ _ _ mdu ma with "Hp [] [] [] [] HE HL"); done.
   Qed.
   Definition stratify_ltype_shrblocked_inst := [instance @stratify_ltype_shrblocked].
   Global Existing Instance stratify_ltype_shrblocked_inst | 5.
@@ -2274,10 +2274,10 @@ Section subsume.
   *)
 
 
-  Lemma stratify_ltype_opened_Owned {M} (ml : M) {rt_cur rt_inner rt_full} π E L mu mdu ma l
+  Lemma stratify_ltype_opened_Owned {M} (ml : M) {rt_cur rt_inner rt_full} π E L mdu ma l
       (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full)
       (Cpre Cpost : rt_inner → rt_full → iProp Σ) r `{!StratifyLtypeShouldCloseInv ml Owned} (T : stratify_ltype_cont_t) :
-    stratify_ltype π E L mu mdu ma ml l lt_cur r (Owned) (λ L' R rt_cur' lt_cur' (r' : place_rfn rt_cur'),
+    stratify_ltype π E L mdu ma ml l lt_cur r (Owned) (λ L' R rt_cur' lt_cur' (r' : place_rfn rt_cur'),
       if decide (ma = StratNoRefold)
         then (* keep it open *)
           T L' R _ (OpenedLtype lt_cur' lt_inner lt_full Cpre Cpost) r'
@@ -2297,7 +2297,7 @@ Section subsume.
               | κs', _ =>
                     (T L'' (Cpost ri rf ∗ R2 ∗ R) rt_full (CoreableLtype (κs' ++ κs) lt_full) (#rf))
               end))))
-    ⊢ stratify_ltype π E L mu mdu ma ml l (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost) r (Owned) T.
+    ⊢ stratify_ltype π E L mdu ma ml l (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost) r (Owned) T.
   Proof.
     iIntros "Hstrat". iIntros (F ???) "#CTX #HE HL Hl".
     rewrite ltype_own_opened_unfold /opened_ltype_own.
@@ -2382,10 +2382,10 @@ Section subsume.
      - we should not shorten after unfolding (that also likely doesn't work with OpenedLtype -- we cannot arbitrarily modify the lt_inner/lt_full)
      - if we are borrowing at a lifetime which doesn't satisfy this at the borrow time, that is a bug, as we are violating the contract of the outer reference.
      So: this sidecondition does not restrict us in any way. *)
-  Lemma stratify_ltype_opened_Uniq {M} (ml : M) {rt_cur rt_inner rt_full} π E L mu mdu ma l
+  Lemma stratify_ltype_opened_Uniq {M} (ml : M) {rt_cur rt_inner rt_full} π E L mdu ma l
       (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full)
       (Cpre Cpost : rt_inner → rt_full → iProp Σ) r κ γ `{!StratifyLtypeShouldCloseInv ml (Uniq κ γ) } T :
-    stratify_ltype π E L mu mdu ma ml l lt_cur r (Owned) (λ L' R rt_cur' lt_cur' (r' : place_rfn rt_cur'),
+    stratify_ltype π E L mdu ma ml l lt_cur r (Owned) (λ L' R rt_cur' lt_cur' (r' : place_rfn rt_cur'),
       if decide (ma = StratNoRefold)
         then (* keep it open *)
           T L' R _ (OpenedLtype lt_cur' lt_inner lt_full Cpre Cpost) r'
@@ -2407,7 +2407,7 @@ Section subsume.
                     ([∗ list] κ' ∈ κs ++ κs', ⌜lctx_lft_incl E L'' κ' κ⌝) ∗
                     (T L'' (Cpost ri rf ∗ R2 ∗ R) rt_full (CoreableLtype (κs ++ κs') lt_full) (#rf))
               end)))
-    ⊢ stratify_ltype π E L mu mdu ma ml l (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost) r (Uniq κ γ) T.
+    ⊢ stratify_ltype π E L mdu ma ml l (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost) r (Uniq κ γ) T.
   Proof.
     iIntros "Hstrat". iIntros (F ???) "#CTX #HE HL Hl".
     rewrite ltype_own_opened_unfold /opened_ltype_own.
@@ -2487,16 +2487,16 @@ Section subsume.
   Definition stratify_ltype_opened_Uniq_inst := [instance @stratify_ltype_opened_Uniq].
   Global Existing Instance stratify_ltype_opened_Uniq_inst.
 
-  Lemma stratify_ltype_shadowed_shared {M} (ml : M) {rt_cur rt_full} π E L mu mdu ma l
+  Lemma stratify_ltype_shadowed_shared {M} (ml : M) {rt_cur rt_full} π E L mdu ma l
       (lt_cur : ltype rt_cur) (lt_full : ltype rt_full) (r_cur : place_rfn rt_cur) r_full κ `{!StratifyLtypeShouldCloseInv ml (Shared κ)} T :
-    stratify_ltype π E L mu mdu ma ml l lt_cur r_cur (Shared κ) (λ L' R rt_cur' lt_cur' (r_cur' : place_rfn rt_cur'),
+    stratify_ltype π E L mdu ma ml l lt_cur r_cur (Shared κ) (λ L' R rt_cur' lt_cur' (r_cur' : place_rfn rt_cur'),
       if decide (ma = StratNoRefold)
         then (* keep it open *)
           T L' R rt_full (ShadowedLtype lt_cur' r_cur' lt_full) r_full
         else
           (T L' R rt_full (lt_full) (r_full))
       )
-    ⊢ stratify_ltype π E L mu mdu ma ml l (ShadowedLtype lt_cur r_cur lt_full) r_full (Shared κ) T.
+    ⊢ stratify_ltype π E L mdu ma ml l (ShadowedLtype lt_cur r_cur lt_full) r_full (Shared κ) T.
   Proof.
     iIntros "Hstrat".
     iIntros (????) "#CTX #HE HL Hl".
@@ -2514,10 +2514,10 @@ Section subsume.
   Definition stratify_ltype_shadowed_shared_inst := [instance @stratify_ltype_shadowed_shared].
   Global Existing Instance stratify_ltype_shadowed_shared_inst.
 
-  Lemma stratify_ltype_opened_na_Owned {rt_cur rt_inner} π E L mu mdu ma {M} (ml : M) l
+  Lemma stratify_ltype_opened_na_Owned {rt_cur rt_inner} π E L mdu ma {M} (ml : M) l
       (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner)
       (Cpre Cpost : rt_inner → iProp Σ) r `{!StratifyLtypeShouldCloseInv ml Owned} (T : stratify_ltype_cont_t) :
-    stratify_ltype π E L mu mdu ma ml l lt_cur r (Owned)
+    stratify_ltype π E L mdu ma ml l lt_cur r (Owned)
       (λ L' R rt_cur' lt_cur' (r' : place_rfn rt_cur'),
         if decide (ma = StratNoRefold)
         then (* keep it open *)
@@ -2529,7 +2529,7 @@ Section subsume.
               (* re-establish the invariant *)
               prove_with_subtype E L' true ProveDirect (Cpre ri)
                 (λ L'' _ R2, T L'' (Cpost ri ∗ R2 ∗ R) unit (AliasLtype unit (ltype_st lt_inner) l) #tt)))
-    ⊢ stratify_ltype π E L mu mdu ma ml l (OpenedNaLtype lt_cur lt_inner Cpre Cpost) r (Owned) T.
+    ⊢ stratify_ltype π E L mdu ma ml l (OpenedNaLtype lt_cur lt_inner Cpre Cpost) r (Owned) T.
   Proof.
     rewrite /stratify_ltype /weak_subltype /prove_with_subtype.
 
@@ -2592,14 +2592,14 @@ Section subsume.
   (* On an ofty leaf, do a ghost resolution.
     This will also trigger resolve_ghost instances for custom-user defined types.
     This needs to have a lower priority than custom user-defined instances (e.g. for [◁ value_t]), so we give it a high cost. *)
-  Global Instance stratify_ltype_unblock_ofty_in_inst {rt} π E L mu mdu ma l (ty : type rt) (r : rt) b :
-    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (◁ ty)%I (#r) b | 100 :=
-    λ T, i2p (stratify_ltype_resolve_ghost_leaf π E L mu mdu ma StratifyUnblockOp ResolveTry l (◁ ty)%I b (#r) T).
+  Global Instance stratify_ltype_unblock_ofty_in_inst {rt} π E L mdu ma l (ty : type rt) (r : rt) b :
+    StratifyLtype π E L mdu ma StratifyUnblockOp l (◁ ty)%I (#r) b | 100 :=
+    λ T, i2p (stratify_ltype_resolve_ghost_leaf π E L mdu ma StratifyUnblockOp ResolveTry l (◁ ty)%I b (#r) T).
 
   (* Also trigger resolve instances for ADTs. *)
-  Global Instance stratify_ltype_resolve_ofty_in_inst {rt} π E L mu mdu ma l (ty : type rt) (r : rt) b :
-    StratifyLtype π E L mu mdu ma StratifyResolveOp l (◁ ty)%I (#r) b | 100 :=
-    λ T, i2p (stratify_ltype_resolve_ghost_leaf π E L mu mdu ma StratifyResolveOp ResolveTry l (◁ ty)%I b (#r) T).
+  Global Instance stratify_ltype_resolve_ofty_in_inst {rt} π E L mdu ma l (ty : type rt) (r : rt) b :
+    StratifyLtype π E L mdu ma StratifyResolveOp l (◁ ty)%I (#r) b | 100 :=
+    λ T, i2p (stratify_ltype_resolve_ghost_leaf π E L mdu ma StratifyResolveOp ResolveTry l (◁ ty)%I b (#r) T).
 
   (** ** place typing *)
 
@@ -5385,7 +5385,7 @@ Global Typeclasses Transparent typed_place_finish.
 Global Typeclasses Opaque typed_read.
 
 Global Typeclasses Opaque stratify_ltype_array_iter.
-Global Hint Mode StratifyLtypeArrayIter + + + + + + + + + + + + + + + + + + : typeclass_instances.
+Global Hint Mode StratifyLtypeArrayIter + + + + + + + + + + + + + + + + + : typeclass_instances.
 
 Global Hint Mode ResolveGhostIter + + + + + + + + + + + + + + + : typeclass_instances.
 Global Typeclasses Opaque resolve_ghost_iter.

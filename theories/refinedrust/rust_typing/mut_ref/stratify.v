@@ -8,15 +8,17 @@ Section stratify.
   Context `{!typeGS Σ}.
 
   (** Structural rules *)
-  Lemma stratify_ltype_mut_owned mu mdu ma {rt} π E L {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) γ (T : stratify_ltype_cont_t) :
-    (∀ l', stratify_ltype π E L mu mdu ma ml l' lt r (Uniq κ γ) (λ L' R rt' lt' r',
+  Lemma stratify_ltype_mut_owned mdu ma {rt} π E L {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) γ
+    `{!StratifyLtypeShouldDescendMutRef ml}
+    (T : stratify_ltype_cont_t) :
+    (∀ l', stratify_ltype π E L mdu ma ml l' lt r (Uniq κ γ) (λ L' R rt' lt' r',
       match ma with
       | StratRefoldFull =>
           cast_ltype_to_type E L' lt' (λ ty', T L' R _ (◁ (mut_ref κ ty'))%I (PlaceIn (r', γ)))
       | _ =>
           T L' R _ (MutLtype lt' κ) (PlaceIn (r', γ))
       end))
-    ⊢ stratify_ltype π E L mu mdu ma ml l (MutLtype lt κ) (PlaceIn (r, γ)) (Owned) T.
+    ⊢ stratify_ltype π E L mdu ma ml l (MutLtype lt κ) (PlaceIn (r, γ)) (Owned) T.
   Proof.
     iIntros "Hs". iIntros (????) "#(LFT &  LLCTX) #HE HL Hb".
     iPoseProof (mut_ltype_acc_owned F with "[$LFT $LLCTX] Hb") as "Hb"; [done.. | ].
@@ -50,16 +52,15 @@ Section stratify.
       iApply logical_step_intro. iIntros "(Hb & $) Hcl".
       by iMod ("Hcl" with "Hl Hb") as "$".
   Qed.
-  Definition stratify_ltype_mut_owned_weak_inst := [instance (@stratify_ltype_mut_owned StratMutWeak)].
-  Global Existing Instance stratify_ltype_mut_owned_weak_inst.
-  Definition stratify_ltype_mut_owned_none_inst := [instance (@stratify_ltype_mut_owned StratMutNone)].
-  Global Existing Instance stratify_ltype_mut_owned_none_inst.
+  Definition stratify_ltype_mut_owned_inst := [instance @stratify_ltype_mut_owned].
+  Global Existing Instance stratify_ltype_mut_owned_inst.
 
-  Lemma stratify_ltype_mut_uniq mu mdu ma {rt} π E L {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) κ' γ' γ
+  Lemma stratify_ltype_mut_uniq mdu ma {rt} π E L {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) κ' γ' γ
+      `{!StratifyLtypeShouldDescendMutRef ml}
       (T : llctx → iProp Σ → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ) :
     (* get a lifetime token *)
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L1),
-      (∀ l', stratify_ltype π E L1 mu mdu ma ml l' lt r (Uniq κ γ) (λ L2 R rt' lt' r',
+      (∀ l', stratify_ltype π E L1 mdu ma ml l' lt r (Uniq κ γ) (λ L2 R rt' lt' r',
         (* validate the update *)
         prove_place_cond E L2 UpdStrong lt lt' (λ upd,
           li_tactic (check_llctx_place_update_kind_incl_goal E L2 upd.(puk_res_k) (UpdUniq [κ'])) (λ b,
@@ -74,7 +75,7 @@ Section stratify.
             ⌜ma = StratNoRefold⌝ ∗
             T L2 R _ (OpenedLtype (MutLtype lt' κ) (MutLtype lt κ) (MutLtype lt κ) (λ r1 r2, ⌜r1 = r2⌝) (λ _ _, llft_elt_toks κs)) (#(r', γ))
           )))))
-    ⊢ stratify_ltype π E L mu mdu ma ml l (MutLtype lt κ) (#(r, γ)) (Uniq κ' γ') T.
+    ⊢ stratify_ltype π E L mdu ma ml l (MutLtype lt κ) (#(r, γ)) (Uniq κ' γ') T.
   Proof.
     iIntros "Hs". iIntros (????) "#(LFT & LLCTX) #HE HL Hb".
     rewrite /lctx_lft_alive_count_goal.
@@ -126,15 +127,13 @@ Section stratify.
       { done. }
       done.
   Qed.
-  Definition stratify_ltype_mut_uniq_weak_inst := [instance (@stratify_ltype_mut_uniq StratMutWeak)].
-  Global Existing Instance stratify_ltype_mut_uniq_weak_inst.
-  Definition stratify_ltype_mut_uniq_none_inst := [instance (@stratify_ltype_mut_uniq StratMutNone)].
-  Global Existing Instance stratify_ltype_mut_uniq_none_inst.
+  Definition stratify_ltype_mut_uniq_inst := [instance @stratify_ltype_mut_uniq].
+  Global Existing Instance stratify_ltype_mut_uniq_inst.
 
   (** Unfolding instances *)
-  Lemma stratify_ltype_ofty_mut {rt} π E L mu ma {M} (ml : M) l (ty : type rt) κ (r : place_rfn (place_rfn rt * gname)%type) b T :
-    stratify_ltype π E L mu StratDoUnfold ma ml l (MutLtype (◁ ty) κ) r b T
-    ⊢ stratify_ltype π E L mu StratDoUnfold ma ml l (◁ (mut_ref κ ty)) r b T.
+  Lemma stratify_ltype_ofty_mut {rt} π E L ma {M} (ml : M) l (ty : type rt) κ (r : place_rfn (place_rfn rt * gname)%type) b T :
+    stratify_ltype π E L StratDoUnfold ma ml l (MutLtype (◁ ty) κ) r b T
+    ⊢ stratify_ltype π E L StratDoUnfold ma ml l (◁ (mut_ref κ ty)) r b T.
   Proof.
     iIntros "Hp". iApply stratify_ltype_eqltype; iFrame.
     iPureIntro. iIntros (?) "HL CTX HE".

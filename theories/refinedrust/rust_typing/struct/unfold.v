@@ -509,17 +509,16 @@ End place.
 Section stratify.
   Context `{!typeGS Σ}.
 
-  Lemma stratify_ltype_ofty_struct {rts} π E L mu ma {M} (ml : M) l (tys : hlist type rts) (r : place_rfn (plist place_rfnRT rts)) sls b T :
-    stratify_ltype π E L mu StratDoUnfold ma ml l (StructLtype (hmap (λ _, OfTy) tys) sls) r b T
-    ⊢ stratify_ltype π E L mu StratDoUnfold ma ml l (◁ (struct_t sls tys)) r b T.
+  Lemma stratify_ltype_ofty_struct {rts} π E L ma {M} (ml : M) l (tys : hlist type rts) (r : place_rfn (plist place_rfnRT rts)) sls b T :
+    stratify_ltype π E L StratDoUnfold ma ml l (StructLtype (hmap (λ _, OfTy) tys) sls) r b T
+    ⊢ stratify_ltype π E L StratDoUnfold ma ml l (◁ (struct_t sls tys)) r b T.
   Proof.
     iIntros "Hp". iApply stratify_ltype_eqltype; iFrame.
     iPureIntro. iIntros (?) "HL CTX HE".
     iApply struct_t_unfold.
   Qed.
-  Global Instance stratify_ltype_ofty_struct_inst {rts} π E L mu ma {M} (ml : M) l (tys : hlist type rts) (r : place_rfn (plist place_rfnRT rts)) sls b :
-    StratifyLtype π E L mu StratDoUnfold ma ml l (◁ (struct_t sls tys))%I r b | 30 :=
-        λ T, i2p (stratify_ltype_ofty_struct π E L mu ma ml l tys r sls b T).
+  Definition stratify_ltype_ofty_struct_inst := [instance @stratify_ltype_ofty_struct].
+  Global Existing Instance stratify_ltype_ofty_struct_inst | 30.
 End stratify.
 
 Section cast.

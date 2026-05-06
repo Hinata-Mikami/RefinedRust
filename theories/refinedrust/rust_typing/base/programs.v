@@ -2299,18 +2299,6 @@ Section judgments.
     find_delayed_observation_proof T : iProp_to_Prop (find_delayed_observation E L rt γ m κ T).
 
   (** *** Stratification: unfold, unblock, and fold an ltype. *)
-  (** Determines whether we descend below references.
-    [StratMutStrong] will only descend below places with strong ownership mode (no references).
-    [StratMutWeak] will also descend below mutable references.
-    [StratMutNone] will in addition descend below shared references. *)
-  Inductive StratifyMutabilityMode :=
-    | StratMutStrong
-    | StratMutWeak
-    | StratMutNone
-  .
-  Global Instance StratifyMutabilityMode_eqdec : EqDecision StratifyMutabilityMode.
-  Proof. solve_decision. Defined.
-
   (** Unfold ltypes upon descending or treat ◁ as a leaf? *)
   Inductive StratifyDescendUnfoldMode :=
     | StratDoUnfold
@@ -2339,7 +2327,7 @@ Section judgments.
      Instead, we prove the corresponding [typed_place_cond] condition after the fact, where needed.
    *)
   Definition stratify_ltype_cont_t := llctx → iProp Σ → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ.
-  Definition stratify_ltype {rt} (π : thread_id) (E : elctx) (L : llctx) (mu : StratifyMutabilityMode) (mdu : StratifyDescendUnfoldMode)
+  Definition stratify_ltype {rt} (π : thread_id) (E : elctx) (L : llctx) (mdu : StratifyDescendUnfoldMode)
       (ma : StratifyAscendMode) {M} (ml : M) (l : loc) (lt : ltype rt) (r : place_rfn rt) (b : bor_kind)
       (T : stratify_ltype_cont_t) : iProp Σ :=
     ∀ F,
@@ -2352,12 +2340,12 @@ Section judgments.
       logical_step F (l ◁ₗ[π, b] r' @ lt' ∗ R) ∗
       T L' R rt' lt' r'.
 
-  Class StratifyLtype {rt} π E L mu mdu ma {M} (ml : M) l (lt : ltype rt) (r : place_rfn rt) b : Type :=
-    stratify_ltype_proof T : iProp_to_Prop (stratify_ltype π E L mu mdu ma ml l lt r b T).
+  Class StratifyLtype {rt} π E L mdu ma {M} (ml : M) l (lt : ltype rt) (r : place_rfn rt) b : Type :=
+    stratify_ltype_proof T : iProp_to_Prop (stratify_ltype π E L mdu ma ml l lt r b T).
 
   (** Iterative variant for arrays *)
   Definition stratify_ltype_array_iter_cont_t (rt : RT) := llctx → iProp Σ → list (nat * ltype rt) → list (place_rfn rt) → iProp Σ.
-  Definition stratify_ltype_array_iter (π : thread_id) (E : elctx) (L : llctx) (mu : StratifyMutabilityMode) (md : StratifyDescendUnfoldMode) (ma : StratifyAscendMode) {M} (m : M) (l : loc) (ig : list nat) {rt} (def : type rt) (len : nat) (iml : list (nat * ltype rt)) (rs : list (place_rfn rt)) (k : bor_kind) (T : stratify_ltype_array_iter_cont_t rt) : iProp Σ :=
+  Definition stratify_ltype_array_iter (π : thread_id) (E : elctx) (L : llctx) (md : StratifyDescendUnfoldMode) (ma : StratifyAscendMode) {M} (m : M) (l : loc) (ig : list nat) {rt} (def : type rt) (len : nat) (iml : list (nat * ltype rt)) (rs : list (place_rfn rt)) (k : bor_kind) (T : stratify_ltype_array_iter_cont_t rt) : iProp Σ :=
     ∀ F, ⌜lftE ⊆ F⌝ -∗
     ⌜lft_userE ⊆ F⌝ -∗
     ⌜shrE ⊆ F⌝ -∗
@@ -2371,8 +2359,8 @@ Section judgments.
       logical_step F (([∗ list] i ↦ lt; r ∈ interpret_iml (◁ def)%I len iml'; rs', if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offsetst{ty_syn_type def MetaNone}ₗ i) ◁ₗ[π, k] r @ lt) else True) ∗ R') ∗
       llctx_interp L' ∗
       T L' R' iml' rs'.
-  Class StratifyLtypeArrayIter (π : thread_id) (E : elctx) (L : llctx) (mu : StratifyMutabilityMode) (md : StratifyDescendUnfoldMode) (ma : StratifyAscendMode) {M} (m : M) (l : loc) (ig : list nat) {rt} (def : type rt) (len : nat) (iml : list (nat * ltype rt)) (rs : list (place_rfn rt)) (k : bor_kind) : Type :=
-    stratify_ltype_array_iter_proof T : iProp_to_Prop (stratify_ltype_array_iter π E L mu md ma m l ig def len iml rs k T).
+  Class StratifyLtypeArrayIter (π : thread_id) (E : elctx) (L : llctx) (md : StratifyDescendUnfoldMode) (ma : StratifyAscendMode) {M} (m : M) (l : loc) (ig : list nat) {rt} (def : type rt) (len : nat) (iml : list (nat * ltype rt)) (rs : list (place_rfn rt)) (k : bor_kind) : Type :=
+    stratify_ltype_array_iter_proof T : iProp_to_Prop (stratify_ltype_array_iter π E L md ma m l ig def len iml rs k T).
 
   (** Post-hook that is run after stratification visits a node.
      This is intended to be overridden by different stratification clients, depending on [ml]. *)
@@ -2400,21 +2388,21 @@ Section judgments.
   Global Instance stratify_ltype_post_hook_id_inst {rt} π E L {M} (ml : M) l (lt : ltype rt) r b :
     StratifyLtypePostHook π E L ml l lt r b | 1000 := λ T, i2p (stratify_ltype_post_hook_id π E L ml l lt r b T).
 
-  Lemma stratify_ltype_id {rt} π E L mu mdu ma {M} (ml : M) l (lt : ltype rt) (r : place_rfn rt) b T :
+  Lemma stratify_ltype_id {rt} π E L mdu ma {M} (ml : M) l (lt : ltype rt) (r : place_rfn rt) b T :
     stratify_ltype_post_hook π E L ml l lt r b T
-    ⊢ stratify_ltype π E L mu mdu ma ml l lt r b T.
+    ⊢ stratify_ltype π E L mdu ma ml l lt r b T.
   Proof.
     iIntros "HT" (????) "CTX HE HL Hb".
     iMod ("HT" with "[//] [//] [//] CTX HE HL Hb") as "(%L2 & %R2 & %rt2 & %lt2 & %r2 & HL & Hst & Hb & HR & HT)".
     iExists _, _, _, _, _. iFrame. iApply logical_step_intro. by iFrame.
   Qed.
   (* TODO: remove this instance *)
-  Global Instance stratify_ltype_id_inst {rt} π E L mu mdu ma {M} (ml : M) l (lt : ltype rt) (r : place_rfn rt) b :
-    StratifyLtype π E L mu mdu ma ml l lt r b | 1000 := λ T, i2p (stratify_ltype_id π E L mu mdu ma ml l lt r b T).
+  Global Instance stratify_ltype_id_inst {rt} π E L mdu ma {M} (ml : M) l (lt : ltype rt) (r : place_rfn rt) b :
+    StratifyLtype π E L mdu ma ml l lt r b | 1000 := λ T, i2p (stratify_ltype_id π E L mdu ma ml l lt r b T).
 
-  Lemma stratify_ltype_eqltype {rt} π E L mu mdu ma {M} (ml : M) l (lt1 lt2 : ltype rt) (r1 r2 : place_rfn rt) b T :
-    ⌜eqltype E L b r1 r2 lt1 lt2⌝ ∗ stratify_ltype π E L mu mdu ma ml l lt2 r2 b T -∗
-    stratify_ltype π E L mu mdu ma ml l lt1 r1 b T.
+  Lemma stratify_ltype_eqltype {rt} π E L mdu ma {M} (ml : M) l (lt1 lt2 : ltype rt) (r1 r2 : place_rfn rt) b T :
+    ⌜eqltype E L b r1 r2 lt1 lt2⌝ ∗ stratify_ltype π E L mdu ma ml l lt2 r2 b T -∗
+    stratify_ltype π E L mdu ma ml l lt1 r1 b T.
   Proof.
     iIntros "(%Heq & Hs)".
     iIntros (????) "#CTX #HE HL Hb".
@@ -2435,21 +2423,30 @@ Section judgments.
   Class StratifyLtypeShouldUnblock {M} (m : M) := {}.
   Global Hint Mode StratifyLtypeShouldUnblock + + : typeclass_instances.
 
+  Class StratifyLtypeShouldDescendMutRef {M} (m : M) := {}.
+  Global Hint Mode StratifyLtypeShouldDescendMutRef + + : typeclass_instances.
+
+  Class StratifyLtypeShouldDescendShrRef {M} (m : M) := {}.
+  Global Hint Mode StratifyLtypeShouldDescendShrRef + + : typeclass_instances.
+
   (** Operation for unblocking (remove Blocked and ShrBlocked at leaves). *)
   Inductive StratifyUnblock :=
     | StratifyUnblockOp.
   (* We specialize all flags except for the ascend mode, as that needs to be different for different operations. *)
   Definition stratify_ltype_unblock {rt} (π : thread_id) (E : elctx) (L : llctx) (ma : StratifyAscendMode) (l : loc) (lt : ltype rt) (r : place_rfn rt) (b : bor_kind) (T : llctx → iProp Σ → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ) :=
-    stratify_ltype π E L StratMutNone StratNoUnfold ma StratifyUnblockOp l lt r b T.
+    stratify_ltype π E L StratNoUnfold ma StratifyUnblockOp l lt r b T.
 
   Global Instance stratify_unblock_close_inv bk : StratifyLtypeShouldCloseInv StratifyUnblockOp bk := {}.
   Global Instance stratify_unblock_unblock : StratifyLtypeShouldUnblock StratifyUnblockOp := {}.
+
+  Global Instance stratify_unblock_descend_shr : StratifyLtypeShouldDescendShrRef (StratifyUnblockOp) := {}.
+  Global Instance stratify_unblock_descend_mut : StratifyLtypeShouldDescendMutRef (StratifyUnblockOp) := {}.
 
   (** Operation for extracting observations from dead references. *)
   Inductive StratifyExtract :=
     | StratifyExtractOp (κ : lft).
   Definition stratify_ltype_extract {rt} (π : thread_id) (E : elctx) (L : llctx) (ma : StratifyAscendMode) (l : loc) (lt : ltype rt) (r : place_rfn rt) (b : bor_kind) (κ : lft) (T : llctx → iProp Σ → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ) :=
-    stratify_ltype π E L StratMutStrong StratDoUnfold ma (StratifyExtractOp κ) l lt r b T.
+    stratify_ltype π E L StratDoUnfold ma (StratifyExtractOp κ) l lt r b T.
 
   Global Instance stratify_extract_close_inv κ bk : StratifyLtypeShouldCloseInv (StratifyExtractOp κ) bk := {}.
   Global Instance stratify_extract_unblock κ : StratifyLtypeShouldUnblock (StratifyExtractOp κ) := {}.
@@ -2458,7 +2455,7 @@ Section judgments.
   Inductive StratifyResolve :=
     | StratifyResolveOp.
   Definition stratify_ltype_resolve {rt} (π : thread_id) (E : elctx) (L : llctx) (ma : StratifyAscendMode) (l : loc) (lt : ltype rt) (r : place_rfn rt) (b : bor_kind) (T : llctx → iProp Σ → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ) :=
-    stratify_ltype π E L StratMutStrong StratDoUnfold ma (StratifyResolveOp) l lt r b T.
+    stratify_ltype π E L StratDoUnfold ma (StratifyResolveOp) l lt r b T.
 
   Global Instance stratify_resolve_close_inv bk : StratifyLtypeShouldCloseInv (StratifyResolveOp) bk := {}.
   Global Instance stratify_resolve_unblock : StratifyLtypeShouldUnblock (StratifyResolveOp) := {}.
@@ -2468,12 +2465,14 @@ Section judgments.
     | StratifyCloseOp (κs : list lft).
 
   Definition stratify_ltype_close_inv κs {rt} (π : thread_id) (E : elctx) (L : llctx) (l : loc) (lt : ltype rt) (r : place_rfn rt) (b : bor_kind) (T : llctx → iProp Σ → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ) :=
-    stratify_ltype π E L StratMutWeak StratDoUnfold StratRefoldOpened (StratifyCloseOp κs) l lt r b T.
+    stratify_ltype π E L StratDoUnfold StratRefoldOpened (StratifyCloseOp κs) l lt r b T.
 
   Global Instance stratify_close_close_inv_uniq κs κ γ :
     TCFastListElemOf (κ ∈ κs) →
     StratifyLtypeShouldCloseInv (StratifyCloseOp κs) (Uniq κ γ) := {}.
   Global Instance stratify_close_inv_unblock κs : StratifyLtypeShouldUnblock (StratifyCloseOp κs) := {}.
+
+  Global Instance stratify_close_descend_mut κs : StratifyLtypeShouldDescendMutRef (StratifyCloseOp κs) := {}.
 
 
   (* TODO: even shared borrows and reads should not always refold, in order to handle ShrBlocked.
@@ -4496,12 +4495,12 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | typed_array_access ?π ?E ?L ?base ?off ?st ?lt ?r ?bk => constr:(TypedArrayAccess π E L base off st lt r bk)
   | find_observation ?rt ?γ ?m => constr:(FindObservation rt γ m)
   | find_delayed_observation ?E ?L ?rt ?γ ?m ?κ => constr:(FindDelayedObservation E L rt γ m κ)
-  | stratify_ltype ?π ?E ?L ?mu ?mdu ?ma ?m ?l ?lt ?r ?b =>
-      constr:(StratifyLtype π E L mu mdu ma m l lt r b)
+  | stratify_ltype ?π ?E ?L ?mdu ?ma ?m ?l ?lt ?r ?b =>
+      constr:(StratifyLtype π E L mdu ma m l lt r b)
   | stratify_ltype_post_hook ?π ?E ?L ?m ?l ?lt ?r ?b =>
       constr:(StratifyLtypePostHook π E L m l lt r b)
-  | stratify_ltype_array_iter ?π ?E ?L ?mu ?mdu ?ma ?m ?l ?ig ?def ?len ?iml ?rs ?b =>
-      constr:(StratifyLtypeArrayIter π E L mu mdu ma m l ig def len iml rs b)
+  | stratify_ltype_array_iter ?π ?E ?L ?mdu ?ma ?m ?l ?ig ?def ?len ?iml ?rs ?b =>
+      constr:(StratifyLtypeArrayIter π E L mdu ma m l ig def len iml rs b)
   | interpret_typing_hint ?E ?L ?orty ?bmin ?ty ?r =>
       constr:(InterpretTypingHint E L orty bmin ty r)
   | typed_context_fold ?P ?E ?L ?m ?tctx ?acc =>
@@ -4527,7 +4526,7 @@ Notation "'subsume_full' E L wl P1 P2 'HIDDEN_CONT'" := (subsume_full E L wl P1 
 Notation "'resolve_ghost' π E L rm f l lt k r 'HIDDEN_CONT'" := (resolve_ghost π E L rm f l lt k r _) (only printing): rr_hidden.
 Notation "'prove_with_subtype' E L wl pm P 'HIDDEN_CONT'" := (prove_with_subtype E L wl pm P _) (only printing): rr_hidden.
 Notation "'introduce_with_hooks' E L P 'HIDDEN_CONT'" := (introduce_with_hooks E L P _) (only printing): rr_hidden.
-Notation "'stratify_ltype' π E L mu mdu ma m l lt r b 'HIDDEN_CONT'" := (stratify_ltype π E L mu mdu ma m l lt r b _) (only printing): rr_hidden.
+Notation "'stratify_ltype' π E L mdu ma m l lt r b 'HIDDEN_CONT'" := (stratify_ltype π E L mdu ma m l lt r b _) (only printing): rr_hidden.
 
 
 Notation "'typed_context_fold_step' step π E L m l lt r ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typed_context_fold_step step π E L m l lt r ls _ _) (only printing) : rr_hidden.

@@ -393,23 +393,23 @@ Section alias_ltype.
   Global Existing Instance typed_place_alias_shared_inst.
 
   (** Core lemma for putting back ownership after raw borrows *)
-  Lemma stratify_ltype_alias_owned π E L mu mdu ma {M} (m : M) l l2 rt st r `{!StratifyLtypeShouldCloseInv m Owned} (T : stratify_ltype_cont_t) :
+  Lemma stratify_ltype_alias_owned π E L mdu ma {M} (m : M) l l2 rt st r `{!StratifyLtypeShouldCloseInv m Owned} (T : stratify_ltype_cont_t) :
     match ma with
     | StratNoRefold => T L True _ (AliasLtype rt st l2) r
     | _ =>
       find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
         ⌜π = π2⌝ ∗ ⌜ltype_st lt2 = st⌝ ∗ ⌜b2 = Owned⌝ ∗
         (* recursively stratify *)
-        stratify_ltype π E L mu mdu ma m l2 lt2 r2 b2 (λ L2 R rt2' lt2' r2',
+        stratify_ltype π E L mdu ma m l2 lt2 r2 b2 (λ L2 R rt2' lt2' r2',
           T L2 R rt2' lt2' r2'))
     end
-    ⊢ stratify_ltype π E L mu mdu ma m l (AliasLtype rt st l2) r (Owned) T.
+    ⊢ stratify_ltype π E L mdu ma m l (AliasLtype rt st l2) r (Owned) T.
   Proof.
     iIntros "HT".
     destruct (decide (ma = StratNoRefold)) as [-> | ].
     { iIntros (????) "#CTX #HE HL Hl". iModIntro. iExists _, _, _, _, _. iFrame.
       iSplitR; first done. iApply logical_step_intro. by iFrame. }
-    iAssert (find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)), ⌜π = π2⌝ ∗ ⌜ltype_st lt2 = st⌝ ∗ ⌜b2 = Owned⌝ ∗ stratify_ltype π E L mu mdu ma m l2 lt2 r2 b2 T))%I with "[HT]" as "HT".
+    iAssert (find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)), ⌜π = π2⌝ ∗ ⌜ltype_st lt2 = st⌝ ∗ ⌜b2 = Owned⌝ ∗ stratify_ltype π E L mdu ma m l2 lt2 r2 b2 T))%I with "[HT]" as "HT".
     { destruct ma; done. }
     iDestruct "HT" as ([rt2 [[[lt2 r2] b2] π2]]) "(Hl2 & <- & <- & -> & HT)".
     simpl. iIntros (????) "#CTX #HE HL Hl".
@@ -422,7 +422,7 @@ Section alias_ltype.
   Definition stratify_ltype_alias_owned_inst := [instance @stratify_ltype_alias_owned].
   Global Existing Instance stratify_ltype_alias_owned_inst.
 
-  Lemma stratify_ltype_alias_shared π E L mu mdu ma {M} (m : M) l l2 rt''' st r κ  `{!StratifyLtypeShouldCloseInv m (Shared κ)} (T : stratify_ltype_cont_t) :
+  Lemma stratify_ltype_alias_shared π E L mdu ma {M} (m : M) l l2 rt''' st r κ  `{!StratifyLtypeShouldCloseInv m (Shared κ)} (T : stratify_ltype_cont_t) :
     ( if decide (ma = StratNoRefold)
       then
         T L True _ (AliasLtype rt''' st l2) r
@@ -430,10 +430,10 @@ Section alias_ltype.
         find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
           ⌜π = π2⌝ ∗ ⌜ltype_st lt2 = st⌝ ∗ ⌜b2 = Owned⌝ ∗
           (* recursively stratify *)
-          stratify_ltype π E L mu mdu ma m l2 lt2 r2 b2
+          stratify_ltype π E L mdu ma m l2 lt2 r2 b2
             (λ L2 R rt2' lt2' r2',
                (T L2 ((l2 ◁ₗ[π, Owned] r2' @ lt2') ∗ R) rt''' (AliasLtype rt''' st l2) r))))
-    ⊢ stratify_ltype π E L mu mdu ma m l (AliasLtype rt''' st l2) r (Shared κ) T.
+    ⊢ stratify_ltype π E L mdu ma m l (AliasLtype rt''' st l2) r (Shared κ) T.
   Proof.
     rewrite /stratify_ltype /find_in_context.
     iIntros "HT".

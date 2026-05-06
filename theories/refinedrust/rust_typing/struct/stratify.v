@@ -9,7 +9,7 @@ Section stratify.
   Context `{!typeGS Σ}.
 
   Definition stratify_ltype_struct_iter_cont_t := llctx → iProp Σ → ∀ rts' : list RT, hlist ltype rts' → plist place_rfnRT rts' → iProp Σ.
-  Definition stratify_ltype_struct_iter (π : thread_id) (E : elctx) (L : llctx) (mu : StratifyMutabilityMode) (md : StratifyDescendUnfoldMode) (ma : StratifyAscendMode) {M} (m : M) (l : loc) (i0 : nat) (sls : struct_layout_spec) {rts} (ltys : hlist ltype rts) (rfns : plist place_rfnRT rts) (k : bor_kind) (T : stratify_ltype_struct_iter_cont_t) : iProp Σ :=
+  Definition stratify_ltype_struct_iter (π : thread_id) (E : elctx) (L : llctx) (md : StratifyDescendUnfoldMode) (ma : StratifyAscendMode) {M} (m : M) (l : loc) (i0 : nat) (sls : struct_layout_spec) {rts} (ltys : hlist ltype rts) (rfns : plist place_rfnRT rts) (k : bor_kind) (T : stratify_ltype_struct_iter_cont_t) : iProp Σ :=
     ∀ F sl, ⌜lftE ⊆ F⌝ -∗
     ⌜lft_userE ⊆ F⌝ -∗
     ⌜shrE ⊆ F⌝ -∗
@@ -35,22 +35,22 @@ Section stratify.
       llctx_interp L' ∗
       T L' R' rts' ltys' rfns'.
 
-  Lemma stratify_ltype_struct_iter_nil π E L mu md ma {M} (m : M) (l : loc) sls k i0 (T : stratify_ltype_struct_iter_cont_t) :
+  Lemma stratify_ltype_struct_iter_nil π E L md ma {M} (m : M) (l : loc) sls k i0 (T : stratify_ltype_struct_iter_cont_t) :
     T L True [] +[] -[]
-  ⊢ stratify_ltype_struct_iter π E L mu md ma m l i0 sls +[] -[] k T.
+  ⊢ stratify_ltype_struct_iter π E L md ma m l i0 sls +[] -[] k T.
   Proof.
     iIntros "HT". iIntros (?????) "#CTX #HE HL ??? Hl".
     iModIntro. iExists L, True%I, [], +[], -[].
     iR. iFrame. simpl. iApply logical_step_intro; eauto.
   Qed.
 
-  Lemma stratify_ltype_struct_iter_cons π E L mu mdu ma {M} (m : M) (l : loc) sls i0 {rts rt} (ltys : hlist ltype rts) (rfns : plist place_rfnRT (rt :: rts)) (lty : ltype rt) k T :
+  Lemma stratify_ltype_struct_iter_cons π E L mdu ma {M} (m : M) (l : loc) sls i0 {rts rt} (ltys : hlist ltype rts) (rfns : plist place_rfnRT (rt :: rts)) (lty : ltype rt) k T :
     (∃ r rfns0, ⌜rfns = r -:: rfns0⌝ ∗
-    stratify_ltype_struct_iter π E L mu mdu ma m l (S i0) sls ltys rfns0 k (λ L2 R2 rts2 ltys2 rs2,
+    stratify_ltype_struct_iter π E L mdu ma m l (S i0) sls ltys rfns0 k (λ L2 R2 rts2 ltys2 rs2,
       (∀ name st, ⌜sls.(sls_fields) !! i0 = Some (name, st)⌝ -∗
-      stratify_ltype π E L2 mu mdu ma m (l atst{sls}ₗ name) lty r k (λ L3 R3 rt3 lty3 r3,
+      stratify_ltype π E L2 mdu ma m (l atst{sls}ₗ name) lty r k (λ L3 R3 rt3 lty3 r3,
         T L3 (R3 ∗ R2) (rt3 :: rts2) (lty3 +:: ltys2) (r3 -:: rs2)))))
-    ⊢ stratify_ltype_struct_iter π E L mu mdu ma m l i0 sls (lty +:: ltys) (rfns) k T.
+    ⊢ stratify_ltype_struct_iter π E L mdu ma m l i0 sls (lty +:: ltys) (rfns) k T.
   Proof.
     iIntros "(%r &  %rfns0 & -> & HT)". iIntros (?????) "#CTX #HE HL %Halg %Hlen %Hleneq Hl".
     simpl. iDestruct "Hl" as "(Hl & Hl2)". simpl in *.
@@ -70,10 +70,10 @@ Section stratify.
     iApply (big_sepL_mono with "Hl2"). intros ? [? []] ?. by rewrite Nat.add_succ_r.
   Qed.
 
-  Lemma stratify_ltype_struct_owned {rts} π E L mu mdu ma {M} (m : M) l (lts : hlist ltype rts) (rs : plist place_rfnRT rts) sls (T : stratify_ltype_cont_t) :
-    stratify_ltype_struct_iter π E L mu mdu ma m l 0 sls lts rs Owned (λ L2 R2 rts' lts' rs',
+  Lemma stratify_ltype_struct_owned {rts} π E L mdu ma {M} (m : M) l (lts : hlist ltype rts) (rs : plist place_rfnRT rts) sls (T : stratify_ltype_cont_t) :
+    stratify_ltype_struct_iter π E L mdu ma m l 0 sls lts rs Owned (λ L2 R2 rts' lts' rs',
       T L2 R2 (plist place_rfnRT rts') (StructLtype lts' sls) (#rs'))
-    ⊢ stratify_ltype π E L mu mdu ma m l (StructLtype lts sls) (#rs) (Owned) T.
+    ⊢ stratify_ltype π E L mdu ma m l (StructLtype lts sls) (#rs) (Owned) T.
   Proof.
     iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
     iPoseProof (struct_ltype_acc_owned with "Hl") as "(%sl & %Halg & %Hly & %Hlen & Hlb & >(Hl & Hcl))"; first done.
@@ -98,9 +98,9 @@ Section stratify.
   Definition stratify_ltype_struct_owned_inst := [instance @stratify_ltype_struct_owned].
   Global Existing Instance stratify_ltype_struct_owned_inst.
 
-  Lemma stratify_ltype_struct_uniq {rts} π E L mu mdu ma {M} (m : M) l (lts : hlist ltype rts) (rs : plist place_rfnRT rts) sls κ γ (T : stratify_ltype_cont_t) :
+  Lemma stratify_ltype_struct_uniq {rts} π E L mdu ma {M} (m : M) l (lts : hlist ltype rts) (rs : plist place_rfnRT rts) sls κ γ (T : stratify_ltype_cont_t) :
     li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L1),
-      stratify_ltype_struct_iter π E L1 mu mdu ma m l 0 sls lts rs Owned (λ L2 R rts' lts' rs',
+      stratify_ltype_struct_iter π E L1 mdu ma m l 0 sls lts rs Owned (λ L2 R rts' lts' rs',
         (* validate the update *)
         li.iterate (λ '((existT rt1 lt1), (existT rt2 lt2)) T (upd : place_update_kind),
           prove_place_cond E L2 UpdStrong lt1 lt2 (λ upd', T (place_update_kind_max upd' upd)))
@@ -121,7 +121,7 @@ Section stratify.
               ⌜fast_eq_hint (ma = StratNoRefold)⌝ ∗
               T L2 R _ (OpenedLtype (StructLtype lts' sls) (StructLtype lts sls) (StructLtype lts sls) (λ r1 r2, ⌜r1 = r2⌝) (λ _ _, llft_elt_toks κs)) (#rs')
           )) (zip (hzipl _ lts) (hzipl _ lts')) (UpdUniq []) ))
-    ⊢ stratify_ltype π E L mu mdu ma m l (StructLtype lts sls) (#rs) (Uniq κ γ) T.
+    ⊢ stratify_ltype π E L mdu ma m l (StructLtype lts sls) (#rs) (Uniq κ γ) T.
   Proof.
     iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
     rewrite /lctx_lft_alive_count_goal.
