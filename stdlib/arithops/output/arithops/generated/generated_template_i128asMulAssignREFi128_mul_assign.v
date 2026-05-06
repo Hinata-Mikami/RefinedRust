@@ -8,8 +8,7 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition i128asMulAssignREFi128_mul_assign_lemma (π : thread_id) : Prop :=
   ∀ (i128asMulAssign_mul_assign_loc : loc) , 
-  i128asMulAssign_mul_assign_loc ◁ᵥ{π, MetaNone} i128asMulAssign_mul_assign_loc @ function_ptr [PtrSynType; (IntSynType I128)] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i128asMulAssign_mul_assign (RRGS:=RRGS)   <LFT> late_lft_0 <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_i128asMulAssign_mul_assign   <LFT> late_lft_0 <INST!>)%Z⌝))%I) -∗
+  i128asMulAssign_mul_assign_loc ◁ᵥ{π, MetaNone} i128asMulAssign_mul_assign_loc @ function_ptr [PtrSynType; (IntSynType I128)] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i128asMulAssign_mul_assign (RRGS:=RRGS)   <LFT> late_lft_0 <INST!>) (λ π, (True))%I) -∗
   typed_function π (i128asMulAssignREFi128_mul_assign_def i128asMulAssign_mul_assign_loc  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i128asMulAssignREFi128_mul_assign  <LFT> ulft_1 <LFT> ulft_2 <INST!>) (λ π, (True)
   ∗ (⌜(trait_incl_of_i128asMulAssignREFi128_mul_assign <LFT> ulft_1 <LFT> ulft_2 <INST!>)%Z⌝))).
 End proof.

@@ -15,7 +15,7 @@ Proof.
   rep <-! liRStep; liShow.
 
   all: print_remaining_goal.
-  Unshelve. 1-3: sidecond_solver.
+  Unshelve.
   { admit. }  (* TODO call contract *)
   Unshelve. all: sidecond_hammer.
   Unshelve. all: print_remaining_sidecond.

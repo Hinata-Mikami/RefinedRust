@@ -16,8 +16,7 @@ Definition nonnull_NonNull_T_cast_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (U_st) →
   syn_type_is_layoutable (((nonnull_NonNull_sls (T_st)) : syn_type)) →
   syn_type_is_layoutable (((nonnull_NonNull_sls (U_st)) : syn_type)) →
-  nonnull_NonNull_T_as_ptr_T_loc ◁ᵥ{π, MetaNone} nonnull_NonNull_T_as_ptr_T_loc @ function_ptr [(nonnull_NonNull_st (T_st))] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_nonnull_NonNull_T_as_ptr (RRGS:=RRGS) ((T_rt)) (T_st)  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜(trait_incl_of_nonnull_NonNull_T_as_ptr ((T_rt)) (T_st)  <TY> T_ty <INST!>)%Z⌝))%I) -∗
+  nonnull_NonNull_T_as_ptr_T_loc ◁ᵥ{π, MetaNone} nonnull_NonNull_T_as_ptr_T_loc @ function_ptr [(nonnull_NonNull_st (T_st))] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_nonnull_NonNull_T_as_ptr (RRGS:=RRGS) ((T_rt)) (T_st)  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
   typed_function π (nonnull_NonNull_T_cast_def nonnull_NonNull_T_as_ptr_T_loc  T_st  U_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; U_ty]) : ([T_rt; U_rt] : list RT), fn_spec_add_late_pre (type_of_nonnull_NonNull_T_cast T_rt U_rt T_st U_st  <TY> T_ty <TY> U_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty)
   ∗ (typaram_wf U_rt U_st U_ty))
   ∗ (⌜((trait_incl_of_nonnull_NonNull_T_cast (T_rt) (U_rt) (T_st) (U_st)) <TY> T_ty <TY> U_ty <INST!>)%Z⌝))).

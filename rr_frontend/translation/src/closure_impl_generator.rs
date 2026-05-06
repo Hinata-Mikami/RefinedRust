@@ -309,10 +309,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         closure_spec: &specs::functions::Spec<'def>,
     ) -> Result<code::UsedProcedure<'def>, base::TranslationError> {
         // explicit instantiation is needed sometimes
-        let spec_term = code::UsedProcedureSpec::Literal(
-            closure_meta.get_spec_name().to_owned(),
-            closure_meta.get_trait_req_incl_name().to_owned(),
-        );
+        let spec_term = code::UsedProcedureSpec::Literal(closure_meta.get_spec_name().to_owned());
 
         let code_name = closure_meta.get_name();
         let loc_name = format!("{code_name}_loc");

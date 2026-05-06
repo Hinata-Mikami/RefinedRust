@@ -14,8 +14,7 @@ Context `{RRGS : !refinedrustGS Σ}.
 Definition const_ptr_is_null_lemma (π : thread_id) : Prop :=
   ∀ `(T_rt : !RT) `(T_st : !syn_type) (const_ptr_addr_T_loc : loc) , 
   syn_type_is_layoutable (T_st) →
-  const_ptr_addr_T_loc ◁ᵥ{π, MetaNone} const_ptr_addr_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_const_ptr_addr (RRGS:=RRGS) ((T_rt)) (T_st)  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜(trait_incl_of_const_ptr_addr ((T_rt)) (T_st)  <TY> T_ty <INST!>)%Z⌝))%I) -∗
+  const_ptr_addr_T_loc ◁ᵥ{π, MetaNone} const_ptr_addr_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_const_ptr_addr (RRGS:=RRGS) ((T_rt)) (T_st)  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
   typed_function π (const_ptr_is_null_def const_ptr_addr_T_loc  T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_const_ptr_is_null T_rt T_st  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
   ∗ (⌜((trait_incl_of_const_ptr_is_null (T_rt) (T_st)) <TY> T_ty <INST!>)%Z⌝))).
 End proof.

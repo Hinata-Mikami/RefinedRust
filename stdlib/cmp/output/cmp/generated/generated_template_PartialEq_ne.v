@@ -13,8 +13,7 @@ Definition PartialEq_ne_lemma (π : thread_id) : Prop :=
   ∀ `(Self_rt : !RT) `(Rhs_rt : !RT) `(Self_st : !syn_type) `(Rhs_st : !syn_type) `(PartialEq_Self_Rhs_spec_attrs : !(PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) )) `(PartialEq_Self_Rhs_spec : !(spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (Self_rt) (Rhs_rt)))) (PartialEq_Self_Rhs_eq_loc : loc) , 
   syn_type_is_layoutable (Self_st) →
   syn_type_is_layoutable (Rhs_st) →
-  PartialEq_Self_Rhs_eq_loc ◁ᵥ{π, MetaNone} PartialEq_Self_Rhs_eq_loc @ function_ptr [PtrSynType; PtrSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((PartialEq_eq_spec (RRGS:=RRGS) (PartialEq_Self_Rhs_spec <INST!>))   <LFT> late_lft_0 <LFT> late_lft_1 <INST!>) (λ π, (True)
-  ∗ (⌜(True)%Z⌝))%I) -∗
+  PartialEq_Self_Rhs_eq_loc ◁ᵥ{π, MetaNone} PartialEq_Self_Rhs_eq_loc @ function_ptr [PtrSynType; PtrSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((PartialEq_eq_spec (RRGS:=RRGS) (PartialEq_Self_Rhs_spec <INST!>))   <LFT> late_lft_0 <LFT> late_lft_1 <INST!>) (λ π, (True))%I) -∗
   typed_function π (PartialEq_ne_def PartialEq_Self_Rhs_eq_loc  Self_st  Rhs_st  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), fn_spec_add_late_pre (PartialEq_ne_base_spec Self_rt Rhs_rt Self_st Rhs_st PartialEq_Self_Rhs_spec_attrs  <TY> Self_ty <TY> Rhs_ty <LFT> ulft_1 <LFT> ulft_2 <INST!>) (λ π, ((typaram_wf Self_rt Self_st Self_ty)
   ∗ (typaram_wf Rhs_rt Rhs_st Rhs_ty))
   ∗ (⌜((trait_incl_of_PartialEq_ne (Self_rt) (Rhs_rt) (Self_st) (Rhs_st) (PartialEq_Self_Rhs_spec_attrs) (PartialEq_Self_Rhs_spec)) <TY> Self_ty <TY> Rhs_ty <LFT> ulft_1 <LFT> ulft_2 <INST!>)%Z⌝))).

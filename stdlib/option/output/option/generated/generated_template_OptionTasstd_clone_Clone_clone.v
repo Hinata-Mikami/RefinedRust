@@ -13,8 +13,7 @@ Definition OptionTasstd_clone_Clone_clone_lemma (π : thread_id) : Prop :=
   ∀ `(T_rt : !RT) `(T_st : !syn_type) `(Clone_T_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) `(Clone_T_spec : !(spec_with 0 [] (Clone_spec (RRGS:=RRGS) (T_rt)))) (Clone_T_clone_loc : loc) , 
   syn_type_is_layoutable (T_st) →
   syn_type_is_layoutable (((Option_els (T_st)) : syn_type)) →
-  Clone_T_clone_loc ◁ᵥ{π, MetaNone} Clone_T_clone_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((Clone_clone_spec (RRGS:=RRGS) (Clone_T_spec <INST!>))   <LFT> late_lft_0 <INST!>) (λ π, (True)
-  ∗ (⌜(True)%Z⌝))%I) -∗
+  Clone_T_clone_loc ◁ᵥ{π, MetaNone} Clone_T_clone_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((Clone_clone_spec (RRGS:=RRGS) (Clone_T_spec <INST!>))   <LFT> late_lft_0 <INST!>) (λ π, (True))%I) -∗
   typed_function π (OptionTasstd_clone_Clone_clone_def Clone_T_clone_loc  T_st  ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_OptionTasstd_clone_Clone_clone T_rt T_st Clone_T_spec_attrs  <TY> T_ty <LFT> ulft_1 <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
   ∗ (⌜((trait_incl_of_OptionTasstd_clone_Clone_clone (T_rt) (T_st) (Clone_T_spec_attrs) (Clone_T_spec)) <TY> T_ty <LFT> ulft_1 <INST!>)%Z⌝))).
 End proof.

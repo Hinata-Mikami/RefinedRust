@@ -13,8 +13,7 @@ Definition REFAasPartialEqREFB_eq_lemma (π : thread_id) : Prop :=
   ∀ `(A_rt : !RT) `(B_rt : !RT) `(A_st : !syn_type) `(B_st : !syn_type) `(PartialEq_A_B_spec_attrs : !(PartialEq_spec_attrs (RRGS:=RRGS) (A_rt) (B_rt) )) `(PartialEq_A_B_spec : !(spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (A_rt) (B_rt)))) (PartialEq_A_B_eq_loc : loc) , 
   syn_type_is_layoutable (A_st) →
   syn_type_is_layoutable (B_st) →
-  PartialEq_A_B_eq_loc ◁ᵥ{π, MetaNone} PartialEq_A_B_eq_loc @ function_ptr [PtrSynType; PtrSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((PartialEq_eq_spec (RRGS:=RRGS) (PartialEq_A_B_spec <INST!>))   <LFT> late_lft_0 <LFT> late_lft_1 <INST!>) (λ π, (True)
-  ∗ (⌜(True)%Z⌝))%I) -∗
+  PartialEq_A_B_eq_loc ◁ᵥ{π, MetaNone} PartialEq_A_B_eq_loc @ function_ptr [PtrSynType; PtrSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((PartialEq_eq_spec (RRGS:=RRGS) (PartialEq_A_B_spec <INST!>))   <LFT> late_lft_0 <LFT> late_lft_1 <INST!>) (λ π, (True))%I) -∗
   typed_function π (REFAasPartialEqREFB_eq_def PartialEq_A_B_eq_loc  A_st  B_st  ) (<tag_type> spec! ( *[ulft_1; ulft_2; ulft_3; ulft_4]) : 4 | ( *[A_ty; B_ty]) : ([A_rt; B_rt] : list RT), fn_spec_add_late_pre (type_of_REFAasPartialEqREFB_eq A_rt B_rt A_st B_st PartialEq_A_B_spec_attrs  <TY> A_ty <TY> B_ty <LFT> ulft_1 <LFT> ulft_2 <LFT> ulft_3 <LFT> ulft_4 <INST!>) (λ π, ((typaram_wf A_rt A_st A_ty)
   ∗ (typaram_wf B_rt B_st B_ty))
   ∗ (⌜((trait_incl_of_REFAasPartialEqREFB_eq (A_rt) (B_rt) (A_st) (B_st) (PartialEq_A_B_spec_attrs) (PartialEq_A_B_spec)) <TY> A_ty <TY> B_ty <LFT> ulft_1 <LFT> ulft_2 <LFT> ulft_3 <LFT> ulft_4 <INST!>)%Z⌝))).

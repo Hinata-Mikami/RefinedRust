@@ -600,6 +600,7 @@ impl<T> ReqInst<'_, T> {
         &self.assoc_ty_inst
     }
 
+    #[expect(dead_code)]
     #[must_use]
     pub(crate) fn get_spec_term(&self) -> String {
         let mut out = String::new();

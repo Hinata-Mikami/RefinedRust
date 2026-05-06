@@ -16,8 +16,7 @@ Definition unique_Unique_T_new_unchecked_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((core_marker_PhantomData_sls (T_st)) : syn_type)) →
   syn_type_is_layoutable (((nonnull_NonNull_sls (T_st)) : syn_type)) →
   syn_type_is_layoutable (((unique_Unique_sls (T_st)) : syn_type)) →
-  nonnull_NonNull_T_new_unchecked_T_loc ◁ᵥ{π, MetaNone} nonnull_NonNull_T_new_unchecked_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_nonnull_NonNull_T_new_unchecked (RRGS:=RRGS) ((T_rt)) (T_st)  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜(trait_incl_of_nonnull_NonNull_T_new_unchecked ((T_rt)) (T_st)  <TY> T_ty <INST!>)%Z⌝))%I) -∗
+  nonnull_NonNull_T_new_unchecked_T_loc ◁ᵥ{π, MetaNone} nonnull_NonNull_T_new_unchecked_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_nonnull_NonNull_T_new_unchecked (RRGS:=RRGS) ((T_rt)) (T_st)  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
   typed_function π (unique_Unique_T_new_unchecked_def nonnull_NonNull_T_new_unchecked_T_loc  T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_unique_Unique_T_new_unchecked T_rt T_st  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
   ∗ (⌜((trait_incl_of_unique_Unique_T_new_unchecked (T_rt) (T_st)) <TY> T_ty <INST!>)%Z⌝))).
 End proof.

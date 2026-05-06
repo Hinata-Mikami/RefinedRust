@@ -1308,16 +1308,16 @@ pub struct StaticMeta<'def> {
 /// The specification of the procedure we call.
 #[derive(Clone, Debug)]
 pub enum UsedProcedureSpec<'def> {
-    /// A direct specification term.
-    Literal(String, String),
-    /// A method of a trait impl we quantify over.
+    /// A direct specification term, the string is the spec definition.
+    Literal(String),
+    /// A method of a trait impl we quantify over, the string is the method name.
     TraitMethod(traits::QuantifiedImpl<'def>, String),
 }
 
 impl UsedProcedureSpec<'_> {
     const fn needs_surrounding_trait_reqs(&self) -> bool {
         match *self {
-            Self::Literal(_, _) => true,
+            Self::Literal(_) => true,
             // symbolic trait method uses don't need the surrounding trait requirements
             Self::TraitMethod(_, _) => false,
         }
@@ -1327,7 +1327,7 @@ impl UsedProcedureSpec<'_> {
 impl fmt::Display for UsedProcedureSpec<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Literal(lit, _) => {
+            Self::Literal(lit) => {
                 write!(f, "{lit} (RRGS:=RRGS)")
             },
             Self::TraitMethod(spec_use, method_name) => {
@@ -1369,100 +1369,6 @@ pub struct UsedProcedure<'def> {
     syntype_of_all_args: Vec<lang::SynType>,
 }
 
-impl UsedProcedure<'_> {
-    fn get_trait_req_incl_term(&self) -> Result<String, fmt::Error> {
-        let mut term = String::new();
-        match &self.spec_term {
-            UsedProcedureSpec::Literal(_, trait_req_incl_name) => {
-                let all_tys = self.scope_inst.get_all_ty_params_with_assocs();
-                write!(term, "{trait_req_incl_name} ")?;
-
-                // instantiate with rts and sts etc.
-                let mut gen_rfn_type_inst = Vec::new();
-                for p in &all_tys {
-                    gen_rfn_type_inst.push(format!("({})", p.get_rfn_type()));
-                }
-                // instantiate syntypes
-                for p in &all_tys {
-                    let st = lang::SynType::from(p);
-                    gen_rfn_type_inst.push(format!("({})", st));
-                }
-                write!(term, "{} ", gen_rfn_type_inst.join(" "))?;
-
-                for x in self
-                    .scope_inst
-                    .get_surrounding_trait_requirements()
-                    .iter()
-                    .chain(self.scope_inst.get_direct_trait_requirements())
-                {
-                    write!(term, "{} ", x.get_attr_term())?;
-                    write!(term, "{} ", x.get_spec_term())?;
-                }
-
-                // instantiate semantics args
-                write!(term, "{}", self.scope_inst.instantiation(true, true))?;
-            },
-
-            UsedProcedureSpec::TraitMethod(_trait_spec, _method_name) => {
-                /*
-                let trait_ref = trait_spec.trait_ref.borrow();
-                let trait_ref = trait_ref.as_ref().unwrap();
-
-                let incl_name = &trait_ref.trait_ref.method_trait_incl_decls[method_name];
-
-                let direct_tys = self.scope_inst.get_direct_ty_params_with_assocs();
-                let trait_tys = trait_ref.get_ordered_params_inst();
-                let trait_inst = &trait_ref.trait_inst;
-
-                // how do I instantiate the requirements of the trait?
-                // - I guess I need an inst of that function's scope: scope_inst
-
-                write!(term, "{incl_name} ")?;
-
-                // TODO first instantiate with the trait's args.
-                // then with the functions' args.
-                // use trait_tys.
-
-                let mut gen_rfn_type_inst = Vec::new();
-                for p in trait_tys.iter().chain(direct_tys.iter()) {
-                    gen_rfn_type_inst.push(format!("({})", p.get_rfn_type()));
-                }
-                // instantiate syntypes
-                for p in trait_tys.iter().chain(direct_tys.iter()) {
-                    let st = lang::SynType::from(p);
-                    gen_rfn_type_inst.push(format!("({})", st));
-                }
-                write!(term, "{} ", gen_rfn_type_inst.join(" "))?;
-
-                for x in trait_inst
-                    .get_direct_trait_requirements()
-                    .iter()
-                    .chain(self.scope_inst.get_direct_trait_requirements())
-                {
-                    write!(term, "{} ", x.get_attr_term())?;
-                    write!(term, "{} ", x.get_spec_term())?;
-                }
-
-                // instantiate lifetimes
-                for lft in trait_inst.get_lfts().iter().chain(self.scope_inst.get_lfts().iter()) {
-                    write!(term, " <LFT> {lft}")?;
-                }
-
-                // instantiate type variables
-                for ty in trait_tys.iter().chain(direct_tys.iter()) {
-                    write!(term, " <TY> {ty}")?;
-                }
-
-                write!(term, " <INST!>")?;
-                */
-
-                write!(term, "True")?;
-            },
-        }
-        Ok(term)
-    }
-}
-
 impl fmt::Display for UsedProcedure<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // quantify
@@ -1495,84 +1401,6 @@ impl fmt::Display for UsedProcedure<'_> {
 
         write!(f, "fn_spec_add_late_pre ({} {} ", self.spec_term, gen_rfn_type_inst.join(" "))?;
 
-        // TODO: add the trait incls this can assume.
-        // well, but I don't even know which trait spec this assumes....
-        // (problem: closure stuff where I need a specific pre and post!!)
-        // How does this work then?
-        // think more about that... Maybe I need to keep track of that in the frontend?
-        // I guess in the end it's a linking thing, so yeah, it makes sense that this isn't in the
-        // spec term. Also what we assume in general about other functions is a thing the frontend
-        // needs to take care of.
-        // I think this really means we should have automatic adequacy instantiation.
-        //
-        // Why do I not just put the specialized spec here directly? Then the adequacy proof
-        // becomes more difficult, because I need to subsume - that will make automation hard.
-        //
-        // I guess for every function, I should have the list of specs it assumes.
-        //
-        // Having that error put up at link time only also seems annoying.
-        //  If I assume something about a closure, then call that function, and I can't satisfy
-        //  that requirement about the closure, I want to be told at that point, not when I'm
-        //  eventually linking the whole program.
-        // => I should verify a function always against the specs its verification assumes, in order
-        //    to get reasonable errors. The verification I do should always ensure that linking
-        //    succeeds.
-        //
-        // We currently do this for functions. But for trait requirements that functions have, we
-        // need to do the same.
-        //
-        // Why is this the case?
-        // Well, I link against some specification of a trait function (I'll later instantiate this with the
-        // canonical specification, I guess) I might assume/need a different specification.
-        // So in the verification of a function, I assume that the canonical specification (that is
-        // actually verified for that function) implies the specification I need.
-        // Now, where do I dispatch that requirement?
-        //   - when I link against a function with trait requirements, I need to make sure that I instantiate
-        //     it with the right trait spec that I've actually proved. And then I need to add the obligation
-        //     that this satisfies the trait spec that the proof for that function assumes.
-        //   - what happens when I call a function of a trait that I'm generic about? I don't actually know
-        //     what the proof of the impl I link against eventually assumes. Maybe impls need to always be
-        //     generic about their trait assumptions. Otherwise, I cannot ensure that everything always links
-        //     well? Yeah, that makes sense => Otherwise, it might not imply the default spec for the trait.
-        //     Maybe the default spec for a trait should encode that. i.e. some part of our encoding should
-        //     semantically make sure of that, I think. TODO; which part enforces that?
-        //
-        //       I guess before we did that. But then we have the cylicity issues.
-        //       There seems to be a tradeoff here. We need to move these safeguards more to the
-        //       linking theorem in order to allow all this cyclicity.
-        //
-        //    For every function I use, I need to determine its trait requirements (I'm already doing that).
-        //    For each of these requirements, i need to know what specification it assumes for that.
-        //    I can export the spec term of that
-        //    However, then I need to agree on a common set of generics this depends on. It cannot
-        //    be "generics of the trait", that is too general and will rule out some specializations.
-        //    I could do "generics of the function".
-        //    Then I need to introduce a definition with the inclusions.
-        //
-        //    How does this help to break the cycle then? What is the difference to inlining it in
-        //    the specification?
-        //    - I guess in default specs this isn't included.
-        //
-        //
-        //    Problematic case: impls of two traits having a requirement for the other trait.
-        //    Then the impl's spec would be parametric in the spec of the other traits.
-        //    If I actually want to call a function and use these impls to dispatch the
-        //    requirements, I will run around a cycle.
-        //    Now: I guess the impl spec isn't parametric in the spec of the other trait anymore.
-        //      I shift the cycle into the step-indexed mutual recursion.
-        //
-        //    Specs in general are not parametric in the spec record anymore, which seems like a win.
-        //
-        //    I guess by separating it out like this, I break the cycle: the spec records are not
-        //    parametric in other spec records anymore.
-        //
-        // For trait impls that I assume, I do not have such a record. Instead, I will
-        // say that it needs the default specs.
-        // This will match the verification site as I won't allow overrides on those.
-        // TODO Q: Can I do something more specific? I could parameterize over
-        // that condition... maybe I'm kicking the can down the road then and will run
-        // into the same problem again.
-
         let surrounding_trait_reqs = if spec_needs_surrounding_trait_reqs {
             self.scope_inst.get_surrounding_trait_requirements()
         } else {
@@ -1588,13 +1416,9 @@ impl fmt::Display for UsedProcedure<'_> {
         // instantiate semantic terms
         write!(f, "{})", self.scope_inst.instantiation(spec_needs_surrounding_trait_reqs, true))?;
 
-        let trait_req_term = self.get_trait_req_incl_term()?;
         let generics_term = self.quantified_scope.generate_validity_term_for_generics();
 
-        let prop = coq::iris::IProp::Sep(vec![
-            generics_term,
-            coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(trait_req_term))),
-        ]);
+        let prop = coq::iris::IProp::Sep(vec![generics_term]);
         // TODO: don't require that _all_ of them are sized
         //let prop = coq::iris::IProp::Exists(self.quantified_scope.generate_sized_requirements(),
         // Box::new(prop));

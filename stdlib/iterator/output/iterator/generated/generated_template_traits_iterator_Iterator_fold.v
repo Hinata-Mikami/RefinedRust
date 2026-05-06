@@ -25,10 +25,8 @@ Definition traits_iterator_Iterator_fold_lemma (π : thread_id) : Prop :=
   ∗ (typaram_wf F_rt F_st F_ty)
   ∗ (typaram_wf B_rt B_st B_ty)
   ∗ (typaram_wf Item_rt Item_st Item_ty)
-  ∗ (typaram_wf B_rt B_st B_ty))
-  ∗ (⌜(True)%Z⌝))%I) -∗
-  traits_iterator_Iterator_Self_next_loc ◁ᵥ{π, MetaNone} traits_iterator_Iterator_Self_next_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((traits_iterator_Iterator_next_spec (RRGS:=RRGS) (traits_iterator_Iterator_Self_spec <INST!>))   <LFT> late_lft_0 <INST!>) (λ π, (True)
-  ∗ (⌜(True)%Z⌝))%I) -∗
+  ∗ (typaram_wf B_rt B_st B_ty)))%I) -∗
+  traits_iterator_Iterator_Self_next_loc ◁ᵥ{π, MetaNone} traits_iterator_Iterator_Self_next_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((traits_iterator_Iterator_next_spec (RRGS:=RRGS) (traits_iterator_Iterator_Self_spec <INST!>))   <LFT> late_lft_0 <INST!>) (λ π, (True))%I) -∗
   typed_function π (traits_iterator_Iterator_fold_def FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc  traits_iterator_Iterator_Self_next_loc  Self_st  Item_st  B_st  F_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[Self_ty; Item_ty; B_ty; F_ty]) : ([Self_rt; Item_rt; B_rt; F_rt] : list RT), fn_spec_add_late_pre (traits_iterator_Iterator_fold_base_spec Self_rt Item_rt B_rt F_rt Self_st Item_st B_st F_st traits_iterator_Iterator_Self_spec_attrs FnOnce_F_BSelfastraits_iterator_Iterator_Item_spec_attrs FnMut_F_BSelfastraits_iterator_Iterator_Item_spec_attrs  <TY> Self_ty <TY> Item_ty <TY> B_ty <TY> F_ty <INST!>) (λ π, ((typaram_wf Self_rt Self_st Self_ty)
   ∗ (typaram_wf Item_rt Item_st Item_ty)
   ∗ (typaram_wf B_rt B_st B_ty)

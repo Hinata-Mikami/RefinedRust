@@ -15,10 +15,8 @@ Definition min_by_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (F_st) →
   syn_type_is_layoutable ((Ordering_els : syn_type)) →
   syn_type_is_layoutable (((tuple2_sls (PtrSynType) (PtrSynType)) : syn_type)) →
-  FnOnce_F_REFTREFT_call_once_loc ◁ᵥ{π, MetaNone} FnOnce_F_REFTREFT_call_once_loc @ function_ptr [F_st; ((tuple2_sls (PtrSynType) (PtrSynType)) : syn_type)] (<tag_type> spec! ( *[_lft_for_1; _lft_for_0]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((FnOnce_call_once_spec (RRGS:=RRGS) (FnOnce_F_REFTREFT_spec <LFT> _lft_for_1 <LFT> _lft_for_0 <INST!>))   <INST!>) (λ π, (True)
-  ∗ (⌜(True)%Z⌝))%I) -∗
-  Ordering_is_lt_loc ◁ᵥ{π, MetaNone} Ordering_is_lt_loc @ function_ptr [Ordering_st] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Ordering_is_lt (RRGS:=RRGS)   <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_Ordering_is_lt   <INST!>)%Z⌝))%I) -∗
+  FnOnce_F_REFTREFT_call_once_loc ◁ᵥ{π, MetaNone} FnOnce_F_REFTREFT_call_once_loc @ function_ptr [F_st; ((tuple2_sls (PtrSynType) (PtrSynType)) : syn_type)] (<tag_type> spec! ( *[_lft_for_1; _lft_for_0]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((FnOnce_call_once_spec (RRGS:=RRGS) (FnOnce_F_REFTREFT_spec <LFT> _lft_for_1 <LFT> _lft_for_0 <INST!>))   <INST!>) (λ π, (True))%I) -∗
+  Ordering_is_lt_loc ◁ᵥ{π, MetaNone} Ordering_is_lt_loc @ function_ptr [Ordering_st] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Ordering_is_lt (RRGS:=RRGS)   <INST!>) (λ π, (True))%I) -∗
   typed_function π (min_by_def FnOnce_F_REFTREFT_call_once_loc  Ordering_is_lt_loc  T_st  F_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; F_ty]) : ([T_rt; F_rt] : list RT), fn_spec_add_late_pre (type_of_min_by T_rt F_rt T_st F_st FnOnce_F_REFTREFT_spec_attrs  <TY> T_ty <TY> F_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty)
   ∗ (typaram_wf F_rt F_st F_ty))
   ∗ (⌜((trait_incl_of_min_by (T_rt) (F_rt) (T_st) (F_st) (FnOnce_F_REFTREFT_spec_attrs) (FnOnce_F_REFTREFT_spec)) <TY> T_ty <TY> F_ty <INST!>)%Z⌝))).

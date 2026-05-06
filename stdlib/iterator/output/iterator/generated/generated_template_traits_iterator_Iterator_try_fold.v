@@ -27,18 +27,13 @@ Definition traits_iterator_Iterator_try_fold_lemma (π : thread_id) : Prop :=
   ∗ (typaram_wf F_rt F_st F_ty)
   ∗ (typaram_wf R_rt R_st R_ty)
   ∗ (typaram_wf Item_rt Item_st Item_ty)
-  ∗ (typaram_wf R_rt R_st R_ty))
-  ∗ (⌜(True)%Z⌝))%I) -∗
-  FromResidual_R_Rasstd_ops_Try_Residual_from_residual_loc ◁ᵥ{π, MetaNone} FromResidual_R_Rasstd_ops_Try_Residual_from_residual_loc @ function_ptr [Try_R_Residual_st] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((FromResidual_from_residual_spec (RRGS:=RRGS) (FromResidual_R_Rasstd_ops_Try_Residual_spec <INST!>))   <INST!>) (λ π, (True)
-  ∗ (⌜(True)%Z⌝))%I) -∗
+  ∗ (typaram_wf R_rt R_st R_ty)))%I) -∗
+  FromResidual_R_Rasstd_ops_Try_Residual_from_residual_loc ◁ᵥ{π, MetaNone} FromResidual_R_Rasstd_ops_Try_Residual_from_residual_loc @ function_ptr [Try_R_Residual_st] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((FromResidual_from_residual_spec (RRGS:=RRGS) (FromResidual_R_Rasstd_ops_Try_Residual_spec <INST!>))   <INST!>) (λ π, (True))%I) -∗
   Try_R_branch_loc ◁ᵥ{π, MetaNone} Try_R_branch_loc @ function_ptr [R_st] (<tag_type> spec! ( *[]) : 0 | ( *[R_ty; Try_R_Residual_ty]) : ([R_rt; Try_R_Residual_rt] : list RT), fn_spec_add_late_pre ((Try_branch_spec (RRGS:=RRGS) (Try_R_spec <INST!>))   <INST!>) (λ π, ((typaram_wf R_rt R_st R_ty)
-  ∗ (typaram_wf Try_R_Residual_rt Try_R_Residual_st Try_R_Residual_ty))
-  ∗ (⌜(True)%Z⌝))%I) -∗
+  ∗ (typaram_wf Try_R_Residual_rt Try_R_Residual_st Try_R_Residual_ty)))%I) -∗
   Try_R_from_output_loc ◁ᵥ{π, MetaNone} Try_R_from_output_loc @ function_ptr [B_st] (<tag_type> spec! ( *[]) : 0 | ( *[R_ty; Try_R_Residual_ty]) : ([R_rt; Try_R_Residual_rt] : list RT), fn_spec_add_late_pre ((Try_from_output_spec (RRGS:=RRGS) (Try_R_spec <INST!>))   <INST!>) (λ π, ((typaram_wf R_rt R_st R_ty)
-  ∗ (typaram_wf Try_R_Residual_rt Try_R_Residual_st Try_R_Residual_ty))
-  ∗ (⌜(True)%Z⌝))%I) -∗
-  traits_iterator_Iterator_Self_next_loc ◁ᵥ{π, MetaNone} traits_iterator_Iterator_Self_next_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((traits_iterator_Iterator_next_spec (RRGS:=RRGS) (traits_iterator_Iterator_Self_spec <INST!>))   <LFT> late_lft_0 <INST!>) (λ π, (True)
-  ∗ (⌜(True)%Z⌝))%I) -∗
+  ∗ (typaram_wf Try_R_Residual_rt Try_R_Residual_st Try_R_Residual_ty)))%I) -∗
+  traits_iterator_Iterator_Self_next_loc ◁ᵥ{π, MetaNone} traits_iterator_Iterator_Self_next_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((traits_iterator_Iterator_next_spec (RRGS:=RRGS) (traits_iterator_Iterator_Self_spec <INST!>))   <LFT> late_lft_0 <INST!>) (λ π, (True))%I) -∗
   typed_function π (traits_iterator_Iterator_try_fold_def FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc  FromResidual_R_Rasstd_ops_Try_Residual_from_residual_loc  Try_R_branch_loc  Try_R_from_output_loc  traits_iterator_Iterator_Self_next_loc  Self_st  Item_st  B_st  F_st  R_st  Try_R_Residual_st  ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Item_ty; B_ty; F_ty; R_ty; Try_R_Residual_ty]) : ([Self_rt; Item_rt; B_rt; F_rt; R_rt; Try_R_Residual_rt] : list RT), fn_spec_add_late_pre (traits_iterator_Iterator_try_fold_base_spec Self_rt Item_rt B_rt F_rt R_rt Try_R_Residual_rt Self_st Item_st B_st F_st R_st Try_R_Residual_st traits_iterator_Iterator_Self_spec_attrs FnOnce_F_BSelfastraits_iterator_Iterator_Item_spec_attrs FromResidual_R_Rasstd_ops_Try_Residual_spec_attrs FnMut_F_BSelfastraits_iterator_Iterator_Item_spec_attrs Try_R_spec_attrs  <TY> Self_ty <TY> Item_ty <TY> B_ty <TY> F_ty <TY> R_ty <TY> Try_R_Residual_ty <LFT> ulft_1 <INST!>) (λ π, ((typaram_wf Self_rt Self_st Self_ty)
   ∗ (typaram_wf Item_rt Item_st Item_ty)
   ∗ (typaram_wf B_rt B_st B_ty)

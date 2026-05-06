@@ -17,8 +17,7 @@ Definition Box_T_new_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (T_st) →
   syn_type_is_layoutable ((Global_sls : syn_type)) →
   syn_type_is_layoutable (((Box_sls (T_st) ((Global_sls : syn_type))) : syn_type)) →
-  box_new_T_loc ◁ᵥ{π, MetaNone} box_new_T_loc @ function_ptr [T_st] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_box_new (RRGS:=RRGS) ((T_rt)) (T_st)  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜(trait_incl_of_box_new ((T_rt)) (T_st)  <TY> T_ty <INST!>)%Z⌝))%I) -∗
+  box_new_T_loc ◁ᵥ{π, MetaNone} box_new_T_loc @ function_ptr [T_st] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_box_new (RRGS:=RRGS) ((T_rt)) (T_st)  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
   typed_function π (Box_T_new_def box_new_T_loc  T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_Box_T_new T_rt T_st  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
   ∗ (⌜((trait_incl_of_Box_T_new (T_rt) (T_st)) <TY> T_ty <INST!>)%Z⌝))).
 End proof.

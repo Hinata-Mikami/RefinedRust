@@ -18,8 +18,7 @@ Definition Box_TA_from_raw_in_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (A_st) →
   syn_type_is_layoutable (((Box_sls (T_st) (A_st)) : syn_type)) →
   syn_type_is_layoutable (((unique_Unique_sls (T_st)) : syn_type)) →
-  unique_Unique_T_new_unchecked_T_loc ◁ᵥ{π, MetaNone} unique_Unique_T_new_unchecked_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_unique_Unique_T_new_unchecked (RRGS:=RRGS) ((T_rt)) (T_st)  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜(trait_incl_of_unique_Unique_T_new_unchecked ((T_rt)) (T_st)  <TY> T_ty <INST!>)%Z⌝))%I) -∗
+  unique_Unique_T_new_unchecked_T_loc ◁ᵥ{π, MetaNone} unique_Unique_T_new_unchecked_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_unique_Unique_T_new_unchecked (RRGS:=RRGS) ((T_rt)) (T_st)  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
   typed_function π (Box_TA_from_raw_in_def unique_Unique_T_new_unchecked_T_loc  T_st  A_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), fn_spec_add_late_pre (type_of_Box_TA_from_raw_in T_rt A_rt T_st A_st Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty)
   ∗ (typaram_wf A_rt A_st A_ty))
   ∗ (⌜((trait_incl_of_Box_TA_from_raw_in (T_rt) (A_rt) (T_st) (A_st) (Allocator_A_spec_attrs) (Allocator_A_spec)) <TY> T_ty <TY> A_ty <INST!>)%Z⌝))).

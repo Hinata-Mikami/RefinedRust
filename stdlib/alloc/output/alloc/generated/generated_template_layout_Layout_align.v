@@ -14,8 +14,7 @@ Definition layout_Layout_align_lemma (π : thread_id) : Prop :=
   ∀ (alignment_Alignment_as_usize_loc : loc) , 
   syn_type_is_layoutable ((layout_Layout_sls : syn_type)) →
   syn_type_is_layoutable ((alignment_Alignment_sls : syn_type)) →
-  alignment_Alignment_as_usize_loc ◁ᵥ{π, MetaNone} alignment_Alignment_as_usize_loc @ function_ptr [(alignment_Alignment_sls : syn_type)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_alignment_Alignment_as_usize (RRGS:=RRGS)   <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_alignment_Alignment_as_usize   <INST!>)%Z⌝))%I) -∗
+  alignment_Alignment_as_usize_loc ◁ᵥ{π, MetaNone} alignment_Alignment_as_usize_loc @ function_ptr [(alignment_Alignment_sls : syn_type)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_alignment_Alignment_as_usize (RRGS:=RRGS)   <INST!>) (λ π, (True))%I) -∗
   typed_function π (layout_Layout_align_def alignment_Alignment_as_usize_loc  ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_layout_Layout_align  <LFT> ulft_1 <INST!>) (λ π, (True)
   ∗ (⌜(trait_incl_of_layout_Layout_align <LFT> ulft_1 <INST!>)%Z⌝))).
 End proof.
