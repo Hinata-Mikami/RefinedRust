@@ -977,7 +977,7 @@ Section judgments.
     (* TODO: Is the existential quantifier here a good idea or should this be a fullblown judgment? *)
     | W.UnOp op (IntOp it) e =>
       Some (λ L T, typed_val_expr E L f (UnOp op (IntOp it) (W.to_expr e)) (λ L' v m rt ty r,
-        v ◁ᵥ{f.1, m} r @ ty -∗ ∃ l, ⌜val_to_loc v = Some l⌝ ∗ T L' [] l)%I)
+        v ◁ᵥ{f.1, m} r @ ty -∗ ∃ l, ⌜v = l2v l⌝ ∗ T L' [] l)%I)
     | W.Var x =>
       Some (λ L T, find_in_context (FindLocal f x) (λ '(st, l), x is_live{f, st} l -∗ T L [] l))%I
     | _ => None
@@ -1020,8 +1020,7 @@ Section judgments.
       iApply ("HT" with "LFT HE HL Hframe"). iIntros (L' v rt ty r m) "HL Hframe Hv HT".
       iDestruct ("HT" with "Hv") as (l ?) "HT". subst.
       iSpecialize ("HΦ'" $! _ [] with "HL Hframe HT").
-      simpl. erewrite l2v_correct; first done.
-      by apply val_of_to_loc.
+      simpl. done.
     }
     2: wpe_bind. 2: rewrite -!/(W.to_expr _).
     2: iApply ("HT" with "LFT HE HL Hframe"); iIntros (L' v m rt ty r) "HL Hframe Hv HT".
