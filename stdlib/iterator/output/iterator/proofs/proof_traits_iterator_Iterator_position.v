@@ -26,7 +26,7 @@ Proof.
         ∃ e seq', seq = seq' ++ [e] ∧ Forall (λ x, ¬ P x) seq' ∧ P e ∧ counter.cur = Z.of_nat (length seq') ∧ counter.cur = idx
       end⌝
          ∗ True)%I.
-  rep <- 40  liRStep; liShow.
+  rep <- 44  liRStep; liShow.
   { iRename select (∀ _, _)%I into "Hpres".
     iPoseProof ("Hpres" with "[$] [$]") as "(%pclos & Hpre & ? & Hcl)".
     rep liRStep; liShow.

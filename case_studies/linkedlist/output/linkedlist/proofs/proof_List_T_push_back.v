@@ -90,8 +90,8 @@ Proof.
   rep liRStep.
   rewrite Hlen_eq. rewrite Nat.sub_diag/=.
   rep liRStep.
-  rewrite Hlen_eq. rewrite Nat.sub_diag/=.
-  rep liRStep.
+  (*rewrite Hlen_eq. rewrite Nat.sub_diag/=.*)
+  (*rep liRStep.*)
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
