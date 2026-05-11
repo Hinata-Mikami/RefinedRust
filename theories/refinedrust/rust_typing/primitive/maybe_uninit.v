@@ -8,16 +8,22 @@ From refinedrust Require Import options.
 Section type.
   Context `{!typeGS Σ}.
 
+  Definition maybe_uninit_own_val_def {rt} (T : type rt) π r m v : iProp Σ :=
+    match r with
+    | Some r' => ∃ r'', place_rfn_interp_owned r' r'' ∗ T.(ty_own_val) π r'' m v
+    | None => (uninit (T.(ty_syn_type) m)).(ty_own_val) π () m v
+    end%I.
+  Definition maybe_uninit_own_val_aux : seal (@maybe_uninit_own_val_def).
+  Proof. by eexists. Qed.
+  Definition maybe_uninit_own_val := maybe_uninit_own_val_aux.(unseal).
+  Definition maybe_uninit_own_val_unfold : @maybe_uninit_own_val = @maybe_uninit_own_val_def := maybe_uninit_own_val_aux.(seal_eq).
+
   (** We refine by [option (place_rfn rt)] in order to borrow the optional contents.
      Note that this really makes it isomorphic to [MaybeUninit<T>] in our model,
      which is a union and thus would also get the place wrapper. *)
   Program Definition maybe_uninit {rt} (T : type rt) : type (option (place_rfn rt)) := {|
     ty_metadata_kind := T.(ty_metadata_kind);
-    ty_own_val π r m v :=
-      match r with
-      | Some r' => ∃ r'', place_rfn_interp_owned r' r'' ∗ T.(ty_own_val) π r'' m v
-      | None => (uninit (T.(ty_syn_type) m)).(ty_own_val) π () m v
-      end%I;
+    ty_own_val := @maybe_uninit_own_val rt T;
     ty_syn_type := T.(ty_syn_type);
     _ty_has_op_type ot mt :=
       ∃ ly,
@@ -44,9 +50,11 @@ Section type.
   |}.
   Next Obligation.
     iIntros (rt T π r m v) "Hv". destruct r as [r | ].
-    - iDestruct "Hv" as "(%r'' & Hrfn & Hv)".
+    - rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+      iDestruct "Hv" as "(%r'' & Hrfn & Hv)".
       iApply (ty_has_layout with "Hv").
-    - iApply (ty_has_layout with "Hv").
+    - rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+      iApply (ty_has_layout with "Hv").
   Qed.
   Next Obligation.
     simpl; iIntros (rt T ot mt Hot).
@@ -70,8 +78,12 @@ Section type.
     -
       iAssert (&{κ} (∃ r', place_rfn_interp_owned r r' ∗ ∃ v : val, l ↦ v ∗ v ◁ᵥ{π, m} r' @ T))%I with "[Hb]" as "Hb".
       { iApply (bor_iff with "[] Hb"). iNext. iModIntro. iSplit.
-        - iIntros "(%v & ? & %r' & ? & ?)". eauto with iFrame.
-        - iIntros "(%r' & ? & %v & ? & ?)". eauto with iFrame. }
+        - iIntros "(%v & Hl & Hown)".
+          rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+          iDestruct "Hown" as "(%r' & ? & ?)". eauto with iFrame.
+        - iIntros "(%r' & ? & %v & ? & ?)".
+          rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+          eauto with iFrame. }
       iDestruct "CTX" as "(LFT & LLCTX)".
       iApply fupd_logical_step.
       rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok1 & Htok2)".
@@ -90,6 +102,7 @@ Section type.
         (*- iIntros "($ & ?)". done. }*)
       (*iDestruct "CTX" as "(LFT & TIME & LLCTX)".*)
       (*iApply fupd_logical_step. iMod (bor_sep with "LFT Hb") as "(_ & Hb)"; first done.*)
+      iEval (rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def) in "Hb".
       iPoseProof ((uninit _).(ty_share) with "CTX Hna [Htok1] [] [//] [//] Hb") as "Ha"; simpl; first done.
       { rewrite right_id. done. }
       { done. }
@@ -104,7 +117,7 @@ Section type.
   Qed.
   Next Obligation.
     iIntros (rt ty π r m v F ?) "Hv".
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
     destruct r as [r' | ]; first last.
     { by iApply logical_step_intro. }
     iDestruct "Hv" as "(%r'' & Hinterp & Hv)".
@@ -118,7 +131,9 @@ Section type.
     destruct mt; [done | | ].
     - (* copy *)
       destruct r as [r | ]; simpl; first last.
-      { by iApply uninit_memcast. }
+      { rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+        by iApply uninit_memcast. }
+      rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
       iDestruct "Ha" as "(%r'' & Hrfn & Hv)".
       iExists r''. iFrame.
       iApply ty_memcast_compat_copy; done.
@@ -164,7 +179,9 @@ Section ne.
       f_equiv.
       rewrite ty_has_op_type_unfold Hot//.
     - done.
-    - solve_type_proper.
+    - intros n ty ty' ?.
+      intros π r m v. rewrite /ty_own_val/= !maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+      destruct r as [r | ]; solve_type_proper.
     - solve_type_proper.
     - rewrite ty_ghost_drop_unfold. solve_type_proper.
   Qed.
@@ -176,14 +193,43 @@ Section subtype.
   Lemma ty_own_val_Some_maybe_uninit {rt} (ty : type rt) x π v m :
     v ◁ᵥ{π, m} (Some (#x)) @ maybe_uninit ty -∗ v ◁ᵥ{π, m} x @ ty.
   Proof.
-    rewrite {1}/ty_own_val/=.
+    rewrite {1}/ty_own_val/= maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
     iIntros "(% & -> & ?)". done.
   Qed.
   Lemma ty_own_val_maybe_uninit_Some {rt} (ty : type rt) x π v m :
     v ◁ᵥ{π, m} x @ ty -∗ v ◁ᵥ{π, m} (Some #x) @ maybe_uninit ty.
   Proof.
-    rewrite {2}/ty_own_val/=.
+    rewrite {2}/ty_own_val/= maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
     iIntros "$". done.
+  Qed.
+  Lemma maybe_uninit_Some_unfold {rt} (ty : type rt) x π v m  :
+    v ◁ᵥ{π, m} (Some (#x)) @ maybe_uninit ty ⊣⊢ v ◁ᵥ{π, m} x @ ty.
+  Proof.
+    iSplit.
+    - iApply ty_own_val_Some_maybe_uninit.
+    - iApply ty_own_val_maybe_uninit_Some.
+  Qed.
+
+  Lemma ty_own_val_None_maybe_uninit {rt} (ty : type rt) π v m :
+    v ◁ᵥ{π, m} None @ maybe_uninit ty -∗ v ◁ᵥ{π, m} .@ uninit (ty.(ty_syn_type) MetaNone).
+  Proof.
+    rewrite {1}/ty_own_val/= maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+    rewrite /ty_own_val/=.
+    iIntros "(-> & ?)". iFrame. done.
+  Qed.
+  Lemma ty_own_val_maybe_uninit_None {rt} (ty : type rt) π v m :
+    v ◁ᵥ{π, m} .@ uninit (ty.(ty_syn_type) MetaNone) -∗ v ◁ᵥ{π, m} None @ maybe_uninit ty.
+  Proof.
+    rewrite {2}/ty_own_val/= maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+    rewrite /ty_own_val/=.
+    iIntros "(-> & ?)". iFrame. done.
+  Qed.
+  Lemma maybe_uninit_None_unfold {rt} (ty : type rt) π v m :
+    v ◁ᵥ{π, m} None @ maybe_uninit ty ⊣⊢ v ◁ᵥ{π, m} .@ uninit (ty.(ty_syn_type) MetaNone).
+  Proof.
+    iSplit.
+    - iApply ty_own_val_None_maybe_uninit.
+    - iApply ty_own_val_maybe_uninit_None.
   Qed.
 
   (** Subtyping *)
@@ -192,7 +238,8 @@ Section subtype.
   Proof.
     iSplitR; first done. iSplitR; first iModIntro. { simpl. eauto. }
     iSplit; iModIntro.
-    - iIntros (π m v) "Hv". iExists x. eauto with iFrame.
+    - iIntros (π m v) "Hv".
+      rewrite maybe_uninit_Some_unfold. done.
     - iIntros (κ π m l) "Hl". iExists x. eauto with iFrame.
   Qed.
 
@@ -214,8 +261,8 @@ Section subtype.
     iSplitR; first iModIntro. { simpl. eauto. }
     iSplit; iModIntro.
     - iIntros (π m v) "Hv". simpl.
-      iEval (rewrite /ty_own_val/=).
-      rewrite (ty_sized_syn_type_eq _ m). done.
+      rewrite maybe_uninit_None_unfold.
+      done.
     - iIntros (κ π m l) "Hl".
       iEval (rewrite /ty_shr/=).
       rewrite (ty_sized_syn_type_eq _ m). done.
@@ -229,8 +276,7 @@ Section subtype.
     iSplitR; first iModIntro. { simpl. eauto. }
     iSplit; iModIntro.
     - iIntros (π m v) "Hv". simpl.
-      iEval (rewrite /ty_own_val/=).
-      rewrite (ty_sized_syn_type_eq _ m). done.
+      rewrite maybe_uninit_None_unfold. done.
     - iIntros (κ π m l) "Hl".
       iEval (rewrite /ty_shr/=).
       rewrite (ty_sized_syn_type_eq _ m). done.
@@ -308,7 +354,7 @@ Section rules.
     iMod "Hl" as "(%v & Hl & Hv)".
     iModIntro. iExists ly. iR. iR. iSplitR. { rewrite /maybe_uninit. done. }
     iFrame. iExists (Some (👻 γ)). iR. iModIntro.
-    rewrite {2}/ty_own_val/=.
+    rewrite {2}/ty_own_val/= maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
     eauto with iFrame.
   Qed.
   Definition weak_subltype_maybe_uninit_ghost_inst := [instance @weak_subltype_maybe_uninit_ghost].
@@ -330,7 +376,7 @@ Section rules.
     iIntros (v) "Hv". rewrite !uninit_own_spec.
     iDestruct "Hv" as "(_ & %ly &  %Hst & %Hly)".
     assert (ly1 = ly) as <- by by eapply syn_type_has_layout_inj.
-    rewrite /ty_own_val/=. iApply uninit_own_spec.
+    rewrite /ty_own_val/= maybe_uninit_own_val_unfold /maybe_uninit_own_val_def. iApply uninit_own_spec.
     iR.
     iExists _. iR.
     iPureIntro. rewrite /has_layout_val -Hsz//.

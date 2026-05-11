@@ -20,7 +20,7 @@ Proof.
   rewrite /typed_val_expr.
   iIntros (?) "#CTX HE HL Hf HCont".
   iRename select (_ ◁ᵥ{π, _} addr @ int USize)%I into "Hv".
-  iEval (rewrite /ty_own_val/=) in "Hv".
+  iEval (rewrite /ty_own_val/= int_own_val_unfold) in "Hv".
   iDestruct "Hv" as "(_ & %)".
   iApply wp_copy_alloc_id; [done | | | ].
   { apply val_to_loc_Some_l2v. done. }
@@ -28,7 +28,7 @@ Proof.
   iApply physical_step_intro; iNext.
   set (l2 := Loc x.(loc_p) addr).
   iAssert (l2 ◁ᵥ{π, MetaNone} l2 @ alias_ptr_t)%I as "?".
-  { rewrite /ty_own_val/=. iR.
+  { rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR.
     simpl. iPureIntro.
     apply val_to_loc_Some_l2v.
     by eapply val_to_Z_in_range. }

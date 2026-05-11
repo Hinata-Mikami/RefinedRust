@@ -219,7 +219,8 @@ Section switch.
   Proof.
     unfold li_trace.
     iIntros "HT Hit". rewrite /ty_own_val/=.
-    iDestruct "Hit" as "(_ & %tag & %Htag & _ & %Hv)".
+    iDestruct "Hit" as "(_ & %tag & %Htag & _ & Hown)".
+    iPoseProof (int_own_val_to_eq with "Hown") as "%Hv".
     iDestruct "HT" as "(-> & Hc)".
     rewrite /compute_map_lookup_goal.
     iDestruct "Hc" as "(%b & %tag' & %Htag' & %idx & <- & %res & <- & Ha)".

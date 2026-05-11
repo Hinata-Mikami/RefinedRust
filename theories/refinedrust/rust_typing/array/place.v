@@ -90,7 +90,7 @@ Section place.
     iPoseProof (array_ltype_acc_owned with "Hl") as "(%ly' & %Hst' & %Hly & %Hsz & #Hlb & >(Hb & Hcl))"; first done.
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
     iMod "HclF" as "_".
-    iEval (rewrite /ty_own_val/=) in "Hi".
+    iEval (rewrite /ty_own_val/= int_own_val_unfold) in "Hi".
     iDestruct "Hi" as "(-> & %Hi)".
     iDestruct "CTX" as "(LFT & LLCTX)".
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
@@ -200,7 +200,7 @@ Section place.
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
     iMod "HclF" as "_".
     iMod (fupd_mask_mono with "Hb") as "(Hb & Hcl)"; first done.
-    iEval (rewrite /ty_own_val/=) in "Hi".
+    iEval (rewrite /ty_own_val/= int_own_val_unfold) in "Hi".
     iDestruct "Hi" as "(-> & %Hi)".
     iDestruct "CTX" as "(LFT & LLCTX)".
     iApply (wpe_logical_step with "Hcl"); [done.. | ].
@@ -298,7 +298,7 @@ Section place.
     iPoseProof (array_ltype_acc_shared with "Hl") as "(%ly' & %Hst' & %Hly & %Hsz & #Hlb & >(Hb & Hcl))"; first done.
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
     iMod "HclF" as "_".
-    iEval (rewrite /ty_own_val/=) in "Hi".
+    iEval (rewrite /ty_own_val/= int_own_val_unfold) in "Hi".
     iDestruct "Hi" as "(-> & %Hi)".
     iDestruct "CTX" as "(LFT & LLCTX)".
     iApply wpe_fupd.

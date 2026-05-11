@@ -611,14 +611,15 @@ Section lemmas.
     rewrite /ty_own_val/= array_t_own_val_unfold.
     iDestruct "Hv" as "(%ly & _ & %Hst & %Hsz' & <- & %Hlyv & Hv)".
     iPoseProof (big_sepL2_impl _ (λ _ r v, ⌜is_Some (val_to_Z v it)⌝)%I with "Hv []") as "Hv".
-    { iModIntro. iIntros (??? ??). iIntros "(%r' & ? & _ & %Hv)". iPureIntro. done. }
+    { iModIntro. iIntros (??? ??). iIntros "(%r' & ? & _ & Hown)".
+      by iApply (int_own_val_to_is_Some with "Hown"). }
     iPoseProof (big_sepL2_elim_l with "Hv") as "Hv".
     iPoseProof (big_sepL_Forall with "Hv") as "%Ha".
 
     apply syn_type_has_layout_int_inv in Hst as ->.
     move: Hlyv. rewrite /has_layout_val ly_size_mk_array_layout => Hlyv.
 
-    destruct (val_to_Z v it') eqn:Heq; first by eauto.
+    destruct (val_to_Z v it') eqn:Heq; first by (iExists _; rewrite /ty_own_val/= int_own_val_unfold; eauto).
     exfalso.
     move: Heq.
     unfold val_to_Z.
@@ -645,7 +646,7 @@ Section lemmas.
     ∃ rs, v ◁ᵥ{π, MetaNone} (<#> rs) @ array_t n (int it).
   Proof.
     iIntros (Hsz) "Hv".
-    rewrite /ty_own_val/= array_t_own_val_unfold.
+    rewrite /ty_own_val/= array_t_own_val_unfold int_own_val_unfold.
     iDestruct "Hv" as "(_ & %Hv)".
     apply val_to_Z_Some in Hv as (Hv & Hlen).
     unfold array_own_el_val.
@@ -659,7 +660,7 @@ Section lemmas.
       opose proof (val_to_Z_Some_1 _ _ Hx _) as (r' & ?).
       { eapply reshape_replicate_elem_length in Hel; first apply Hel.
         move: Hsz. rewrite /ly_size/=. lia. }
-      iL. iExists r'. iR. simpl. done. }
+      iL. iExists r'. iR. simpl. rewrite int_own_val_unfold. done. }
     iPoseProof (big_sepL_exists with "Ha") as "(%rs' & Ha')".
     iPoseProof (big_sepL2_length with "Ha'") as "%Hlen'".
     iExists rs'.

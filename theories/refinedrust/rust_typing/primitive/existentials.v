@@ -11,14 +11,20 @@ Section ex.
     (P : ex_inv_def X Y)
   .
 
+  Definition ex_plain_own_val_def (ty : type X) π r m v : iProp Σ :=
+    (∃ x : X, P.(inv_P) π x r ∗ ty.(ty_own_val) π x m v)%I.
+  Definition ex_plain_own_val_aux : seal (@ex_plain_own_val_def).
+  Proof. by eexists. Qed.
+  Definition ex_plain_own_val := ex_plain_own_val_aux.(unseal).
+  Definition ex_plain_own_val_unfold : @ex_plain_own_val = @ex_plain_own_val_def := ex_plain_own_val_aux.(seal_eq).
+
   (** Provide an abstraction over [ty], by accepting a refinement [Y] and existentially quantifying over [X].
      [P] is a predicate specifying an invariant, potentially containing additional ownership.
      [R] determines a relation between the inner and outer refinement. *)
   Program Definition ex_plain_t (ty : type X) : type Y := {|
     ty_xt_inhabited := _;
     ty_metadata_kind := ty.(ty_metadata_kind);
-    ty_own_val π r m v :=
-      (∃ x : X, P.(inv_P) π x r ∗ ty.(ty_own_val) π x m v)%I;
+    ty_own_val := ex_plain_own_val ty;
     ty_shr κ π r m l :=
       (∃ x : X, P.(inv_P_shr) π κ x r ∗ ty.(ty_shr) κ π x m l)%I;
     ty_syn_type := ty.(ty_syn_type);
@@ -35,6 +41,7 @@ Section ex.
     intros. apply P.
   Defined.
   Next Obligation.
+    rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
     iIntros (ty π r m v) "(%x & HP & Hv)".
     by iApply ty_has_layout.
   Qed.
@@ -42,6 +49,7 @@ Section ex.
     iIntros (ty ot mt Hot). by eapply ty_op_type_stable.
   Qed.
   Next Obligation.
+    rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
     iIntros (ty π r m v) "(%x & HP & Hv)". by iApply ty_own_val_sidecond.
   Qed.
   Next Obligation.
@@ -54,6 +62,7 @@ Section ex.
   Next Obligation.
     iIntros (ty E κ l ly π r m q ?) "#(LFT & LLCTX) #Hna Htok %Halg %Hly Hlb Hb".
     iApply fupd_logical_step.
+    rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
     setoid_rewrite bi.sep_exist_l. setoid_rewrite bi_exist_comm.
     iDestruct "Htok" as "(Htok & Htok2)".
     rewrite lft_intersect_list_app.
@@ -82,6 +91,7 @@ Section ex.
     iApply (ty_shr_mono with "Hincl Hshr").
   Qed.
   Next Obligation.
+    rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
     iIntros (ty π r m v F ?) "(%x & HP & Ha)".
     iPoseProof (ty_own_ghost_drop with "Ha") as "Ha"; first done.
     iApply (logical_step_compose with "Ha").
@@ -89,6 +99,7 @@ Section ex.
     iIntros "Hdrop". eauto with iFrame.
   Qed.
   Next Obligation.
+    rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
     iIntros (ty ot mt st π r m v Hot) "(%x & HP & Hv)".
     iPoseProof (ty_memcast_compat with "Hv") as "Hm"; first done.
     destruct mt; eauto with iFrame.
@@ -126,13 +137,18 @@ Section copy.
     Copyable (ex_plain_t X Y P ty).
   Proof.
     intros Hcopy Hpers Heq. econstructor.
-    { unfold ExInvPersistent in *. apply _. }
+    { intros π r m v. change (Persistent (ty_own_val (ex_plain_t X Y P ty) π r m v)).
+      rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def.
+      unfold ExInvPersistent in *. apply _. }
     iIntros (???? r m q ?).
     iIntros "CTX Hs Htok".
     iDestruct "Hs" as "(%x & Hshr & Hl)".
     unfold ExInvShrEq in Heq. rewrite -Heq.
     iMod (copy_shr_acc with "CTX Hl Htok") as "(%ly & >%Hst & >%Hly & %q' & %v & Ha & Hcl)"; first done.
-    iExists ly. iR. iR. iFrame. done.
+    iExists ly. iR. iR. iFrame.
+    iModIntro. iNext. iDestruct "Ha" as "($ & Hv)".
+    rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def.
+    eauto with iFrame.
   Qed.
 End copy.
 
@@ -161,7 +177,7 @@ Section contr.
     - rewrite ty_has_op_type_unfold. eapply HF.
     - simpl. eapply HF.
     - intros n ty ty' ?.
-      intros π r m v. rewrite /ty_own_val/=.
+      intros π r m v. rewrite /ty_own_val/= !ex_plain_own_val_unfold /ex_plain_own_val_def.
       do 3 f_equiv.
       { apply HP; done. }
       apply HF; done.
@@ -203,7 +219,7 @@ Section contr.
       rewrite ty_has_op_type_unfold. done.
     - simpl. eapply HF.
     - intros n ty ty' ?.
-      intros π r m v. rewrite /ty_own_val/=.
+      intros π r m v. rewrite /ty_own_val/= !ex_plain_own_val_unfold /ex_plain_own_val_def.
       do 3 f_equiv.
       { apply HP; done. }
       apply HF; done.
@@ -231,12 +247,19 @@ Section open.
     LearnFromHypVal (∃; P, ty) r | 1000 :=
     {| learn_from_hyp_val_Q := ∃ π, boringly (∃ x : rt, P.(inv_P) π x r) |}.
   Next Obligation.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def.
     iIntros (? r ?? v m ?) "(%x & Hinv & Hv)".
     iPoseProof (boringly_intro with "Hinv") as "#Hinv'".
     iModIntro. iSplitL; first by eauto with iFrame.
     iExists π.
     iApply boringly_exists. eauto.
+  Qed.
+
+  Lemma ex_plain_t_unfold_val π (ty : type rt) v (x : X) :
+    v ◁ᵥ{π, MetaNone} x @ (∃; P, ty) ⊣⊢ ∃ r : rt, P.(inv_P) π r x ∗ v ◁ᵥ{π, MetaNone} r @ ty.
+  Proof.
+    rewrite {1}/ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def/=.
+    done.
   Qed.
 
   Lemma ex_plain_t_destruct_owned F π (ty : type rt) l (x : X) :
@@ -249,6 +272,7 @@ Section open.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & %x' & Hrfn & Hb)".
     iMod (fupd_mask_mono with "Hb") as "(%v & Hl & Hv)"; first done.
+    rewrite ex_plain_t_unfold_val.
     iDestruct "Hv" as "(%r & HP & Hv)".
     iDestruct "Hrfn" as "<-".
     iModIntro. iExists r. iFrame.
@@ -313,6 +337,7 @@ Section open.
     iDestruct "Hb" as "(%r' & Hauth & Hb)".
     iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
     iPoseProof (gvar_agree with "Hauth Hrfn") as "#->".
+    rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def.
     iDestruct "Hb" as "(%v & Hl & %r & HP & Hv)".
     iModIntro. iExists r. iFrame.
     iSplitL "Hl Hv".
@@ -365,6 +390,7 @@ Section open.
     { iApply tr_weaken; last done.
       simpl. unfold num_laters_per_step. lia. }
     iModIntro.
+    rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def.
     iApply (pinned_bor_shorten with "Hincl").
     iApply (pinned_bor_impl with "[] Hb").
     iNext. iModIntro. iSplit; first last. { eauto. }
@@ -416,12 +442,13 @@ Section subtype.
     iSplitR. { done. }
     iSplitR. { done. }
     iSplit; iModIntro.
-    - iEval (rewrite /ty_own_val/=).
+    - iEval (rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def).
       iIntros (???) "(%x & Hinv & Hv1)".
+      iEval (rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def).
       iExists x. iSplitL "Hinv".
       + by iApply "HinclP".
       + iDestruct ("Hincl" $! x) as "(_ & _  & Hv & _)". by iApply "Hv".
-    - iEval (rewrite /ty_own_val/=).
+    - iEval (rewrite /ty_shr/=).
       iIntros (????) "(%x & Hinv & Hv1)".
       iExists x. iSplitL "Hinv".
       + by iApply "HinclPshr".
@@ -565,7 +592,7 @@ Section stratify.
       apply syn_type_size_eq_refl.
     - simpl. eauto.
     - iIntros (v) "Hv0".
-      iEval (rewrite /ty_own_val/=).
+      iEval (rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def).
       eauto with iFrame.
   Qed.
   Global Instance owned_subtype_ex_plain_t_inst π E L (ty : type rt) (r : rt) (r' : X) :
@@ -595,7 +622,7 @@ Section stratify.
     - simpl. iPureIntro. done.
     - simpl. eauto.
     - iIntros (v) "Hv0".
-      iEval (rewrite /ty_own_val/=).
+      iEval (rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def).
       iPoseProof ("Hv" with "Hv0") as "Hv".
       eauto with iFrame.
   Qed.

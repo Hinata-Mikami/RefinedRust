@@ -19,7 +19,7 @@ Proof.
   typed_val_expr_bind. repeat liRStep; liShow.
   iSelect (_ ◁ᵥ{_, _} size @ _)%I (fun H => iRename H into "Hsize").
   iSelect (_ ◁ᵥ{_, _} align_log2 @ _)%I (fun H => iRename H into "Halign_log2").
-  rewrite {1 2}/ty_own_val /=. iDestruct "Hsize" as "(_ & %Hsize)".
+  rewrite {1 2}/ty_own_val /= !int_own_val_unfold. iDestruct "Hsize" as "(_ & %Hsize)".
   iDestruct "Halign_log2" as "(_ & %Halign_log2)".
   rewrite /typed_val_expr.
   iIntros (Φ) "#CTX HE HL Hf Hcont".
@@ -33,7 +33,7 @@ Proof.
   iIntros (ld vd) "Hl Hfd %Hly %Hv".
   iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
   iApply ("Hcont" $! _ _  _ (alias_ptr_t) ld with "HL Hf []").
-  { rewrite /ty_own_val /=.
+  { rewrite /ty_own_val /= alias_ptr_own_val_unfold.
     iR. iPureIntro. by apply val_to_of_loc. }
   set (ly := (Layout (Z.to_nat size) (Z.to_nat align_log2))).
   iAssert (ld ◁ₗ[π, Owned ] .@ ◁ (uninit (UntypedSynType ly)))%I with "[Hl]" as "Hl'".

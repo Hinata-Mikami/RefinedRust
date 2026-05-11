@@ -57,7 +57,6 @@ Next Obligation.
 Qed.
 
 (** Accessors that can be used by unsafe code doing funky stuff *)
-
 Lemma vec_access_elems {T_rt A_rt} (T_ty : type T_rt) (A_ty : type A_rt) (A_attrs : Allocator_spec_attrs A_rt) π rs l F :
   lftE ⊆ F →
   £ 1 -∗
@@ -75,7 +74,7 @@ Proof.
   iIntros "(%ly & %Hst & % & _ & #Hlb & %r' & <- & Hl)".
   iMod (fupd_mask_mono with "Hl") as "Hl"; first done.
   iDestruct "Hl" as "(%v & Hl & Hv)".
-  rewrite {1}/ty_own_val/=.
+  rewrite {1}ex_plain_t_unfold_val/=.
   unfold name_hint.
   iDestruct "Hv" as "(%fields & (%cap & %l' & %len & %els & -> & Hls & %Heq1 & %Hlook1 & %Hlook2 & %Hlen_eq & %Hcap & % & %Hbound & _) & Hv)".
   rewrite /guarded.
@@ -83,7 +82,8 @@ Proof.
   iApply (lc_fupd_add_later with "Hc1"). iNext.
   iMod (ltype_own_ofty_array_length with "Hls") as "(%Hcap_eq & Hls)"; first done.
   iMod (array_t_ofty_split _ _ _ len (cap - len) with "Hls") as "(Hls & Huninit)".
-  { done. } { lia. }
+  { done. }
+  { lia. }
   assert (take len els = <#> (Some <$> project_vec_els len els)) as Hels_eq.
   { apply list_eq. intros i.
     do 2 rewrite list_lookup_fmap.
@@ -170,7 +170,8 @@ Proof.
   { done. }
   { iModIntro. iIntros (??? Heq). apply lookup_replicate in Heq as (-> & ?).
     iIntros "Hv". iExists None. iR.
-    rewrite /ty_own_val/=. rewrite Hst''. by iFrame. }
+    rewrite !maybe_uninit_None_unfold.
+    rewrite Hst''. by iFrame. }
   iPoseProof (big_sepL2_Forall2 with "HR") as "%HR".
   apply Forall2_functional in HR as ->.
   simpl.
@@ -188,7 +189,7 @@ Proof.
   simpl. iExists _. iR. iR. iR. iR.
   iExists _. iR. iModIntro.
   iExists _. iFrame.
-  iEval (rewrite /ty_own_val/=).
+  rewrite ex_plain_t_unfold_val/=.
   iExists *[_;_].
   iSplitR "Hv".
   { unfold name_hint_ty, name_hint.
@@ -222,7 +223,7 @@ Proof.
   iSplitR. { iPureIntro. apply syn_type_size_eq_refl. }
   iR.
   iIntros (?) "Hv".
-  rewrite /ty_own_val/=.
+  rewrite !ex_plain_t_unfold_val/=.
   iDestruct "Hv" as "(%x & (%a & %Heq & Hfree & _) & Hv)".
   iExists x.
   rewrite Hst''. iFrame.
@@ -238,7 +239,7 @@ Proof.
   iSplitR. { iPureIntro. apply syn_type_size_eq_refl. }
   iR.
   iIntros (?) "Hv".
-  rewrite /ty_own_val/=.
+  rewrite !ex_plain_t_unfold_val/=.
   iDestruct "Hv" as "(%x & _ & Hv)".
   iExists x. iR.
   iApply (struct_t_own_val_mono _ false); last iApply "Hv".
@@ -262,7 +263,7 @@ Proof.
   { apply syn_type_size_eq_refl. }
   { done. }
   { done. }
-  { iModIntro. iIntros (????). rewrite {1}/ty_own_val/=. eauto. }
+  { iModIntro. iIntros (????). rewrite ex_plain_t_unfold_val. eauto. }
   iPoseProof (big_sepL2_length with "Hinv") as "%Hlen'".
   iMod ("Hcl" with "[//] [//] Hl") as "Hl".
   iFrame. rewrite big_sepL2_flip. done.

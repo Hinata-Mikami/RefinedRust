@@ -14,7 +14,7 @@ Section typing.
     {| learn_from_hyp_val_Q := ⌜0 ≤ z ≤ MaxInt it⌝ |}.
   Next Obligation.
     iIntros (? z Hu ?????) "Hv".
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= int_own_val_unfold.
     iDestruct "Hv" as "(-> & %Hit)".
     specialize (val_to_Z_in_range _ _ _ Hit) as [Hran ?].
     iModIntro. iPureIntro. split_and!; [done.. | | ].
@@ -26,7 +26,7 @@ Section typing.
     {| learn_from_hyp_val_Q := ⌜MinInt it ≤ z ≤ MaxInt it⌝ |}.
   Next Obligation.
     iIntros (? z Hs ?????) "Hv".
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= int_own_val_unfold.
     iDestruct "Hv" as "(-> & %Hit)".
     specialize (val_to_Z_in_range _ _ _ Hit) as [Hran ?].
     iPureIntro. split_and!; done.
@@ -38,7 +38,7 @@ Section typing.
     intros Hn.
     move: Hn => /(val_of_Z_is_Some) [v Hv].
     move: (Hv) => /val_to_of_Z Hn.
-    rewrite /ty_own_val/=. iPureIntro.
+    rewrite /ty_own_val/= int_own_val_unfold. iPureIntro.
     rewrite /i2v Hv/=//.
   Qed.
 
@@ -69,7 +69,7 @@ Section relop.
     ((⌜n1 ∈ it⌝ -∗ ⌜n2 ∈ it⌝ -∗ T L (val_of_bool b) MetaNone bool bool_t b)) ⊢
       typed_bin_op E L f v1 (v1 ◁ᵥ{f.1, MetaNone} n1 @ int it) v2 (v2 ◁ᵥ{f.1, MetaNone} n2 @ int it) op (IntOp it) (IntOp it) T.
   Proof.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= int_own_val_unfold.
     iIntros "%Hop HT (_ & %Hv1) (_ & %Hv2)" (Φ) "#CTX #HE HL Hf HΦ".
     iDestruct ("HT" with "[] []" ) as "HT".
     1-2: iPureIntro; by apply: val_to_Z_in_range.
@@ -81,7 +81,7 @@ Section relop.
         by apply val_of_bool_iff_val_of_Z. }
     iApply physical_step_intro. iNext.
     iApply ("HΦ" with "HL Hf") => //.
-    rewrite /ty_own_val/=. by destruct b.
+    rewrite /ty_own_val/= bool_own_val_unfold. by destruct b.
   Qed.
 
   Global Program Instance type_eq_int_int_inst E L it v1 n1 v2 n2 f :
@@ -113,7 +113,7 @@ Section arithop.
     ((⌜n1 ∈ it⌝ -∗ ⌜n2 ∈ it⌝ -∗ ⌜int_arithop_sidecond it n1 n2 n op⌝ ∗ T L (i2v (wrap_to_it n it) it) MetaNone Z (int it) (wrap_to_it n it))) ⊢
       typed_bin_op E L f v1 (v1 ◁ᵥ{f.1, m1} n1 @ int it) v2 (v2 ◁ᵥ{f.1, m2} n2 @ int it) op (IntOp it) (IntOp it) T.
   Proof.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= int_own_val_unfold.
     iIntros "%Hop HT (-> & %Hv1) (-> & %Hv2) %Φ #CTX #HE HL Hf HΦ".
     iDestruct ("HT" with "[] []" ) as (Hsc) "HT".
     1-2: iPureIntro; by apply: val_to_Z_in_range.
@@ -122,7 +122,7 @@ Section arithop.
     iIntros (v Hv).
     iApply physical_step_intro. iNext.
     rewrite /i2v Hv/=. iApply ("HΦ" with "HL Hf [] HT").
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= int_own_val_unfold.
     iR.
     iPureIntro. by apply: val_to_of_Z.
   Qed.
@@ -221,7 +221,7 @@ Section arithop.
     ((⌜n1 ∈ it⌝ -∗ ⌜n2 ∈ it⌝ -∗ ⌜int_arithop_sidecond it n1 n2 n op⌝ ∗ ⌜int_arithop_in_range it n op⌝ ∗ T L (i2v n it) MetaNone Z (int it) n)) ⊢
       typed_bin_op E L f v1 (v1 ◁ᵥ{f.1, m1} n1 @ int it) v2 (v2 ◁ᵥ{f.1, m2} n2 @ int it) op (IntOp it) (IntOp it) T.
   Proof.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= int_own_val_unfold.
     iIntros "%Hop HT (-> & %Hv1) (-> & %Hv2) %Φ #CTX #HE HL Hf HΦ".
     iDestruct ("HT" with "[] []" ) as (Hsc Hran) "HT".
     1-2: iPureIntro; by apply: val_to_Z_in_range.
@@ -240,7 +240,7 @@ Section arithop.
 
     rewrite Heq in Hv. rewrite /i2v Hv/=.
     iApply ("HΦ" with "HL Hf [] HT").
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= int_own_val_unfold.
     iR.
     iPureIntro. by apply: val_to_of_Z.
   Qed.
@@ -321,7 +321,7 @@ Section check_arithop.
     ⌜π = f.1⌝ ∗ ⌜int_arithop_sidecond it n1 n2 n op⌝ ∗ T L (val_of_bool (negb $ bool_decide (int_arithop_in_range it n op))) MetaNone bool (bool_t) (negb $ bool_decide (int_arithop_in_range it n op)) ⊢
     typed_check_bin_op E L f v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) op (IntOp it) (IntOp it) T.
   Proof.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= int_own_val_unfold.
     iIntros "%Hop (-> & %Hsc & HT) (-> & %Hv1) (-> & %Hv2) %Φ #CTX #HE HL Hf HΦ".
     set (b := (negb $ bool_decide (int_arithop_in_range it n op))).
 
@@ -345,8 +345,8 @@ Section check_arithop.
     iIntros (v Hv).
     inversion Hv; subst. simplify_eq/=.
     iApply ("HΦ" with "HL Hf [] HT").
-    rewrite /ty_own_val.
-    simpl. subst b. case_bool_decide; done.
+    rewrite /ty_own_val/=.
+    subst b. case_bool_decide; rewrite bool_own_val_unfold; done.
   Qed.
   Global Program Instance type_check_add_int_int_inst E L π f it v1 n1 v2 n2 m1 m2 :
     TypedCheckBinOp E L f v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) AddOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π f it v1 n1 v2 n2 T (n1 + n2) AddOp m1 m2 _).
@@ -396,7 +396,7 @@ Section switch.
     ⊢ typed_switch E L f v _ (int it) n it m ss def fn R ϝ.
   Proof.
     unfold li_trace, discriminate_hint.
-    iIntros "HT Hit". rewrite /ty_own_val/=. iDestruct "Hit" as "(_ & %Hv)".
+    iIntros "HT Hit". rewrite /ty_own_val/= int_own_val_unfold. iDestruct "Hit" as "(_ & %Hv)".
     iExists n. iSplit; first done.
     iInduction m as [] "IH" using map_ind; simplify_map_eq => //.
     { iDestruct "HT" as "[_ HT]". iApply "HT". iPureIntro.
@@ -419,7 +419,7 @@ Section unop.
     (⌜π = f.1⌝ ∗ (⌜n ∈ it⌝ -∗ ⌜it_signed it = true⌝ ∗ ⌜n ≠ MinInt it⌝ ∗ T L (i2v (-n) it) MetaNone _ (int it) (-n)))
     ⊢ typed_un_op E L f v (v ◁ᵥ{π, m} n @ int it)%I (NegOp) (IntOp it) T.
   Proof.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= int_own_val_unfold.
     iIntros "(-> & HT) (-> & %Hv) %Φ #CTX #HE HL Hf HΦ". move: (Hv) => /val_to_Z_in_range Hel.
     iDestruct ("HT" with "[//]") as (Hs Hn) "HT".
     have [|v' Hv']:= val_of_Z_is_Some it (- n). {
@@ -435,7 +435,7 @@ Section unop.
     { rewrite wrap_to_it_id//. }
     iApply physical_step_intro. iNext.
     iApply ("HΦ" with "HL Hf [] HT").
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= int_own_val_unfold.
     iR.
     iPureIntro. by apply: val_to_of_Z.
   Qed.
@@ -446,7 +446,7 @@ Section unop.
     (⌜π = f.1⌝ ∗ (⌜n ∈ it⌝ -∗ T L (i2v ((if it_signed it then Z.lnot n else Z_lunot (bits_per_int it) n)) it) MetaNone _ (int it) ((if it_signed it then Z.lnot n else Z_lunot (bits_per_int it) n))))
     ⊢ typed_un_op E L f v (v ◁ᵥ{π, m} n @ int it)%I (NotIntOp) (IntOp it) T.
   Proof.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= int_own_val_unfold.
     iIntros "(-> & HT) (-> & %Hv) %Φ #CTX #HE HL Hf HΦ". move: (Hv) => /val_to_Z_in_range Hel.
     iDestruct ("HT" with "[//]") as "HT".
     set (nz := (if it_signed it then Z.lnot n else Z_lunot (bits_per_int it) n)).
@@ -468,7 +468,7 @@ Section unop.
     rewrite Hv' /=.
     iApply physical_step_intro. iNext.
     iApply ("HΦ" with "HL Hf"); last done.
-    rewrite /ty_own_val/=. iR. iPureIntro.
+    rewrite /ty_own_val/= int_own_val_unfold. iR. iPureIntro.
     by apply: val_to_of_Z.
   Qed.
   Definition type_not_int_inst := [instance @type_not_int].
@@ -478,7 +478,7 @@ Section unop.
     (⌜π = f.1⌝ ∗ (⌜n ∈ it1⌝ -∗ ∀ v, T L v MetaNone _ (int it2) (wrap_to_it n it2)))
     ⊢ typed_un_op E L f v (v ◁ᵥ{π, m} n @ int it1)%I (CastOp (IntOp it2)) (IntOp it1) T.
   Proof.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= int_own_val_unfold.
     iIntros "(-> & HT) (-> & %Hv) %Φ #CTX #HE HL Hf HΦ".
     iSpecialize ("HT" with "[]").
     { iPureIntro. by apply: val_to_Z_in_range. }
@@ -487,7 +487,7 @@ Section unop.
     iApply wp_cast_int => //.
     iApply physical_step_intro. iNext.
     iApply ("HΦ" with "HL Hf [] HT") => //.
-    rewrite /ty_own_val/=. iR.
+    rewrite /ty_own_val/= int_own_val_unfold. iR.
     iPureIntro. by apply: val_to_of_Z.
   Qed.
   Definition type_cast_int_inst := [instance @type_cast_int].
@@ -500,7 +500,7 @@ Section bool.
   (** Bool *)
   Lemma type_val_bool' b π :
     ⊢ (val_of_bool b) ◁ᵥ{π, MetaNone} b @ bool_t.
-  Proof. rewrite /ty_own_val/=. iIntros. by destruct b. Qed.
+  Proof. rewrite /ty_own_val/= bool_own_val_unfold. iIntros. by destruct b. Qed.
   Lemma type_val_bool b π (T : typed_value_cont_t) :
     (T MetaNone bool bool_t b) ⊢ typed_value π (val_of_bool b) T.
   Proof. iIntros "HT #LFT". iExists bool, bool_t, b. iFrame. iApply type_val_bool'. Qed.
@@ -535,7 +535,7 @@ Section bool.
     (T L (val_of_bool b) MetaNone bool bool_t b)
     ⊢ typed_bin_op E L f v1 (v1 ◁ᵥ{f.1, m1} b1 @ bool_t) v2 (v2 ◁ᵥ{f.1, m2} b2 @ bool_t) op (BoolOp) (BoolOp) T.
   Proof.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= bool_own_val_unfold.
     iIntros "%Hop HT (-> & %Hv1) (-> & %Hv2)" (Φ) "#CTX #HE HL Hf HΦ".
     iApply (wp_binop_det_pure (val_of_bool b)).
     { destruct op, b1, b2; simplify_eq.
@@ -545,7 +545,7 @@ Section bool.
       all: by apply val_of_bool_iff_val_of_Z. }
     iApply physical_step_intro. iNext.
     iApply ("HΦ" with "HL Hf"); last done.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= bool_own_val_unfold.
     iPureIntro. by destruct b.
   Qed.
 
@@ -560,14 +560,14 @@ Section bool.
     ⌜π = f.1⌝ ∗ T L (val_of_bool (negb b)) MetaNone bool bool_t (negb b)
     ⊢ typed_un_op E L f v (v ◁ᵥ{π, m} b @ bool_t) NotBoolOp BoolOp T.
   Proof.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= bool_own_val_unfold.
     iIntros "(-> & HT) (-> & %Hv)" (Φ) "#CTX #HE HL Hf HΦ".
     iApply (wp_unop_det_pure (val_of_bool (negb b))).
     { intros. split; [inversion 1; simplify_eq/= | move => ->]; simplify_eq/=; first done.
       econstructor; done. }
     iApply physical_step_intro. iNext.
     iApply ("HΦ" with "HL Hf"); last done.
-    rewrite /ty_own_val/=. iPureIntro. by destruct b.
+    rewrite /ty_own_val/= bool_own_val_unfold. iPureIntro. by destruct b.
   Qed.
   Definition type_notop_bool_inst := [instance @type_notop_bool].
   Global Existing Instance type_notop_bool_inst.
@@ -586,7 +586,7 @@ Section bool.
     T L (val_of_bool b) MetaNone bool (bool_t) b ⊢
     typed_bin_op E L f v1 (v1 ◁ᵥ{f.1, m1} b1 @ bool_t) v2 (v2 ◁ᵥ{f.1, m2} b2 @ bool_t) op (BoolOp) (BoolOp) T.
   Proof.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= bool_own_val_unfold.
     iIntros "%Hop HT (-> & %Hv1) (-> & %Hv2) %Φ #CTX #HE HL Hf HΦ".
     iApply (wp_binop_det_pure (val_of_bool b)).
     { destruct op, b1, b2; simplify_eq.
@@ -594,7 +594,7 @@ Section bool.
       all: eapply ArithOpBB; done. }
     iApply physical_step_intro. iNext.
     iApply ("HΦ" with "HL Hf [] HT").
-    rewrite /ty_own_val/=. destruct b; done.
+    rewrite /ty_own_val/= bool_own_val_unfold. destruct b; done.
   Qed.
 
   Global Program Instance type_and_bool_bool_inst E L f v1 b1 v2 b2:
@@ -617,7 +617,7 @@ Section bool.
     ⊢ typed_if E L v (v ◁ᵥ{π, m} b @ bool_t) T1 T2.
   Proof.
     unfold li_trace, case_destruct.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= bool_own_val_unfold.
     iIntros "(% & Hs)".
     iIntros (??) "CTX HE HL (-> & %Hv)".
     iMod ("Hs" with "[] CTX HE HL [//]") as "(%L2 & HL & HT)"; first done.
@@ -631,7 +631,8 @@ Section bool.
     (⌜b = true⌝ ∗ typed_stmt E L f s fn R ϝ)
     ⊢ typed_assert E L f v (bool_t) b s fn R ϝ.
   Proof.
-    iIntros "[-> Hs] #CTX #HE HL Hf (_ & Hb)". by iFrame.
+    iIntros "[-> Hs] #CTX #HE HL Hf (_ & Hb)".
+    iPoseProof (bool_own_val_to_eq with "Hb") as "%". by iFrame.
   Qed.
   Global Instance type_assert_bool_inst E L f b v : TypedAssert E L f v (bool_t) b :=
     λ s fn R ϝ, i2p (type_assert_bool E L f b s fn R v ϝ).
@@ -648,7 +649,7 @@ Section char.
     specialize (is_valid_char_in_char_it _ Hvalid) as Hn.
     move: Hn => /(val_of_Z_is_Some) [v Hv].
     move: (Hv) => /val_to_of_Z Hn.
-    rewrite /ty_own_val/=. iPureIntro.
+    rewrite /ty_own_val/= char_own_val_unfold. iPureIntro.
     rewrite /val_to_char.
     split; first done.
     apply bind_Some. exists z.

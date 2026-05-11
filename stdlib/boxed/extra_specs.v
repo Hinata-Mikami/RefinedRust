@@ -40,7 +40,7 @@ Section contractive.
   Proof.
     rewrite /resolve_ghost_adt /resolve_ghost.
     iIntros "HT" (????) "#CTX #HE HL Hv".
-    iEval (rewrite /ty_own_val/=) in "Hv".
+    rewrite ex_plain_t_unfold_val.
     iDestruct "Hv" as ((l' & a & [])) "(Hinv & Hv)". simpl in *.
     iDestruct "Hinv" as "(%l'' & %a'' & %Heq & Hl' & Halloc & _)".
     inversion Heq. subst.
@@ -52,7 +52,7 @@ Section contractive.
     iApply (logical_step_compose with "Hstep").
     iApply (logical_step_intro_tr with "Ht").
     iModIntro. iIntros "Ht Hcreds' !> (Hl' & $)".
-    iEval (rewrite /ty_own_val/=).
+    rewrite ex_plain_t_unfold_val.
     iFrame. iR.
     rewrite /guarded. iFrame.
     iDestruct "Ht" as "(_ & $)".

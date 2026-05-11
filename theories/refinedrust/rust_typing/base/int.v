@@ -8,13 +8,29 @@ Open Scope Z_scope.
 Section int.
   Context `{!typeGS Σ}.
 
+  Definition int_own_val_def (it : int_type) (tid : thread_id) (z : Z) (v : val) : iProp Σ :=
+    ⌜val_to_Z v it = Some z⌝%I.
+  Definition int_own_val_aux : seal (@int_own_val_def).
+  Proof. by eexists. Qed.
+  Definition int_own_val := int_own_val_aux.(unseal).
+  Definition int_own_val_unfold : @int_own_val = @int_own_val_def := int_own_val_aux.(seal_eq).
+
+  Lemma int_own_val_to_is_Some it tid z v :
+    int_own_val it tid z v -∗ ⌜is_Some (val_to_Z v it)⌝.
+  Proof. rewrite int_own_val_unfold. iIntros "%Hv". eauto. Qed.
+
+  Lemma int_own_val_to_eq it tid z v :
+    int_own_val it tid z v -∗ ⌜val_to_Z v it = Some z⌝.
+  Proof. rewrite int_own_val_unfold. iIntros "%Hv". done. Qed.
+
   (* Separate definition such that we can make it typeclasses opaque later. *)
   Program Definition int (it : int_type) : type ZRT := {|
-    st_own tid z v := ⌜val_to_Z v it = Some z⌝;
+    st_own tid z v := int_own_val it tid z v;
     st_has_op_type ot mt := is_int_ot ot it;
     st_syn_type := IntSynType it;
   |}%I.
   Next Obligation.
+    rewrite int_own_val_unfold.
     iIntros (it π z v Hv). iPureIntro.
     exists (it_layout it). split; last by eapply val_to_Z_length.
     apply syn_type_has_layout_int; first done.
@@ -24,8 +40,9 @@ Section int.
     destruct ot; try done.
     all: by eapply syn_type_has_layout_int.
   Qed.
-  Next Obligation. unfold TCNoResolve. apply _. Qed.
+  Next Obligation. rewrite int_own_val_unfold. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
+    rewrite int_own_val_unfold.
     simpl. iIntros (it ot mt st π r v Hot).
     destruct mt.
     - eauto.
@@ -40,10 +57,11 @@ Section int.
   Qed.
 
   Lemma ty_own_int_in_range l π n it m : l ◁ᵥ{π, m} n @ int it -∗ ⌜m = MetaNone⌝ ∗ ⌜n ∈ it⌝.
-  Proof. iIntros "(-> & %Hl)". iR. iPureIntro. by eapply val_to_Z_in_range. Qed.
+  Proof. rewrite /ty_own_val /= int_own_val_unfold. iIntros "(-> & %Hl)". iR. iPureIntro. by eapply val_to_Z_in_range. Qed.
 
   Lemma ty_shr_int_in_range l π κ n m it : l ◁ₗ{π, m, κ} n @ int it -∗ ▷ ⌜n ∈ it⌝.
   Proof.
+    rewrite /ty_shr /= int_own_val_unfold.
     iIntros "(%v & (%ly & -> & Hv & Ha & Halg & Hl))" => /=. iNext. iDestruct "Ha" as "%Hn".
     iPureIntro. by eapply val_to_Z_in_range.
   Qed.
@@ -53,7 +71,7 @@ Section int.
 
   Global Instance int_timeless l z it m π :
     Timeless (l ◁ᵥ{π, m} z @ int it)%I.
-  Proof. apply _. Qed.
+  Proof. rewrite /ty_own_val /= int_own_val_unfold. apply _. Qed.
 
 End int.
 
@@ -64,13 +82,25 @@ Notation "int< it >" := (int it) (only printing, format "'int<' it '>'") : print
 Section boolean.
   Context `{!typeGS Σ}.
 
+  Definition bool_own_val_def (tid : thread_id) (b : bool) (v : val) : iProp Σ :=
+    ⌜val_to_bool v = Some b⌝%I.
+  Definition bool_own_val_aux : seal (@bool_own_val_def).
+  Proof. by eexists. Qed.
+  Definition bool_own_val := bool_own_val_aux.(unseal).
+  Definition bool_own_val_unfold : @bool_own_val = @bool_own_val_def := bool_own_val_aux.(seal_eq).
+
+  Lemma bool_own_val_to_eq tid b v :
+    bool_own_val tid b v -∗ ⌜val_to_bool v = Some b⌝.
+  Proof. rewrite bool_own_val_unfold. iIntros "%Hb". done. Qed.
+
   (* Separate definition such that we can make it typeclasses opaque later. *)
   Program Definition bool_t : type boolRT := {|
-    st_own tid b v := ⌜val_to_bool v = Some b⌝;
+    st_own tid b v := bool_own_val tid b v;
     st_syn_type := BoolSynType;
     st_has_op_type ot mt := is_bool_ot ot;
   |}%I.
   Next Obligation.
+    rewrite bool_own_val_unfold.
     iIntros (π z v Hv). iExists U8. iPureIntro.
     split; first by apply syn_type_has_layout_bool.
     unfold has_layout_val. erewrite val_to_bool_length; done.
@@ -78,8 +108,9 @@ Section boolean.
   Next Obligation.
     intros ot mt Hot. simpl in *. rewrite (is_bool_ot_layout _ Hot). by apply syn_type_has_layout_bool.
   Qed.
-  Next Obligation. unfold TCNoResolve. apply _. Qed.
+  Next Obligation. rewrite bool_own_val_unfold. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
+    rewrite bool_own_val_unfold.
     simpl. iIntros (ot mt st π r v Hot).
     destruct mt.
     - eauto.
@@ -96,11 +127,11 @@ Section boolean.
 
   Lemma bool_own_val_eq v π b m :
     (v ◁ᵥ{π, m} b @ bool_t)%I ≡ (⌜m = MetaNone⌝ ∗ ⌜val_to_bool v = Some b⌝)%I.
-  Proof. done. Qed.
+  Proof. rewrite /ty_own_val /= bool_own_val_unfold. done. Qed.
 
   Global Instance bool_timeless π l b m:
     Timeless (l ◁ᵥ{π, m} b @ bool_t)%I.
-  Proof. apply _. Qed.
+  Proof. rewrite /ty_own_val /= bool_own_val_unfold. apply _. Qed.
 
   Global Instance bool_copy : Copyable bool_t.
   Proof. apply _. Qed.
@@ -113,13 +144,21 @@ Notation "'bool'" := (bool_t) (only printing, format "'bool'") : printing_sugar.
 Section char.
   Context `{!typeGS Σ}.
 
+  Definition char_own_val_def (tid : thread_id) (z : Z) (v : val) : iProp Σ :=
+    ⌜val_to_char v = Some z⌝%I.
+  Definition char_own_val_aux : seal (@char_own_val_def).
+  Proof. by eexists. Qed.
+  Definition char_own_val := char_own_val_aux.(unseal).
+  Definition char_own_val_unfold : @char_own_val = @char_own_val_def := char_own_val_aux.(seal_eq).
+
   (* Separate definition such that we can make it typeclasses opaque later. *)
   Program Definition char_t : type ZRT := {|
-    st_own tid z v := ⌜val_to_char v = Some z⌝;
+    st_own tid z v := char_own_val tid z v;
     st_syn_type := CharSynType;
     st_has_op_type ot mt := is_char_ot ot;
   |}%I.
   Next Obligation.
+    rewrite char_own_val_unfold.
     iIntros (π z v Hv). iExists U32. iPureIntro.
     split; first by apply syn_type_has_layout_char.
     unfold has_layout_val. erewrite val_to_char_length; done.
@@ -127,8 +166,9 @@ Section char.
   Next Obligation.
     intros ot mt Hot. simpl in *. rewrite (is_char_ot_layout _ Hot). by apply syn_type_has_layout_char.
   Qed.
-  Next Obligation. unfold TCNoResolve. apply _. Qed.
+  Next Obligation. rewrite char_own_val_unfold. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
+    rewrite char_own_val_unfold.
     simpl. iIntros (ot mt st π r v Hot).
     destruct mt.
     - eauto.
@@ -145,11 +185,11 @@ Section char.
 
   Lemma char_own_val_eq v π m z :
     (v ◁ᵥ{π, m} z @ char_t)%I ≡ (⌜m = MetaNone⌝ ∗ ⌜val_to_char v = Some z⌝)%I.
-  Proof. done. Qed.
+  Proof. rewrite /ty_own_val /= char_own_val_unfold. done. Qed.
 
   Global Instance char_timeless π l b m:
     Timeless (l ◁ᵥ{π, m} b @ char_t)%I.
-  Proof. apply _. Qed.
+  Proof. rewrite /ty_own_val /= char_own_val_unfold. apply _. Qed.
 
   Global Instance char_copy : Copyable char_t.
   Proof. apply _. Qed.

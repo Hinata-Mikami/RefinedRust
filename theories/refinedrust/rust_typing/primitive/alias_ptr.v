@@ -9,13 +9,26 @@ From refinedrust Require Import options.
   Disadvantage: this does not have any useful interaction laws with the AliasLtype, and we need to duplicate the place typing lemma for both of these. *)
 Section alias.
   Context `{!typeGS Σ}.
+
+  Definition alias_ptr_own_val_def (π : thread_id) (l : loc) (v : val) : iProp Σ :=
+    ⌜val_to_loc v = Some l⌝%I.
+  Definition alias_ptr_own_val_aux : seal (@alias_ptr_own_val_def).
+  Proof. by eexists. Qed.
+  Definition alias_ptr_own_val := alias_ptr_own_val_aux.(unseal).
+  Definition alias_ptr_own_val_unfold : @alias_ptr_own_val = @alias_ptr_own_val_def := alias_ptr_own_val_aux.(seal_eq).
+
+  Lemma alias_ptr_own_val_to_eq π l v :
+    alias_ptr_own_val π l v -∗ ⌜val_to_loc v = Some l⌝.
+  Proof. rewrite alias_ptr_own_val_unfold. iIntros "%Hv". done. Qed.
+
   Program Definition alias_ptr_t : type locRT := {|
     st_own π (l : loc) v :=
-      (⌜val_to_loc v = Some l⌝%I)%I;
+      alias_ptr_own_val π l v;
     st_syn_type := PtrSynType;
     st_has_op_type ot mt := is_ptr_ot ot;
   |}.
   Next Obligation.
+    rewrite alias_ptr_own_val_unfold.
     iIntros (π l v Hv). iExists void*.
     iPureIntro. split; first by apply syn_type_has_layout_ptr.
     by apply val_to_loc_length.
@@ -27,8 +40,9 @@ Section alias.
     - by apply syn_type_has_layout_ptr.
     - subst. by apply syn_type_has_layout_ptr.
   Qed.
-  Next Obligation. unfold TCNoResolve. apply _. Qed.
+  Next Obligation. rewrite alias_ptr_own_val_unfold. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
+    rewrite alias_ptr_own_val_unfold.
     iIntros (ot mt st π l v Hot) "Hv".
     simpl in Hot.
     iPoseProof (mem_cast_compat_loc (λ v, ⌜val_to_loc v = Some l⌝)%I with "Hv") as "%Hid"; first done.
@@ -60,7 +74,7 @@ Section rules.
     rewrite /simplify_goal.
     iIntros "(<- & -> & $)".
     unfold CanSolve in *.
-    rewrite /ty_own_val/=. iR. iPureIntro.
+    rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro.
     apply val_to_loc_Some_l2v. done.
   Qed.
   Definition alias_ptr_simplify_goal_fast_inst := [instance @alias_ptr_simplify_goal_fast with 0%N].
@@ -74,7 +88,7 @@ Section rules.
     rewrite /simplify_goal.
     iIntros "(-> & -> & %a & %b & Hlb & $)".
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
-    rewrite /ty_own_val/=. iR. iPureIntro.
+    rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro.
     by apply val_to_loc_Some_l2v.
   Qed.
   Definition alias_ptr_simplify_goal_inst := [instance @alias_ptr_simplify_goal with 1%N].
@@ -85,7 +99,7 @@ Section rules.
     {| learn_from_hyp_val_Q := ⌜l.(loc_a) ∈ USize⌝ |}.
   Next Obligation.
     iIntros (??????) "Hv".
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= alias_ptr_own_val_unfold.
     iDestruct "Hv" as "(-> & %Hv)".
     specialize (val_to_loc_Some_inv _ _ Hv) as [_ Hv'].
     iModIntro. iPureIntro. split_and!; done.
@@ -97,7 +111,7 @@ Section rules.
     {| learn_from_hyp_Q := ⌜m = MetaNone⌝ ∗ ⌜v = l2v l⌝ ∗ ⌜l.(loc_a) ∈ USize⌝ |}.
   Next Obligation.
     iIntros (??????) "Hv".
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= alias_ptr_own_val_unfold.
     iDestruct "Hv" as "(-> & %Hv)".
     iModIntro. iPureIntro.
     specialize (val_to_loc_Some_inv _ _ Hv) as [_ Hv'].
@@ -120,36 +134,30 @@ Section comparison.
     | _ => None
     end = Some (b, U8) →
     T L (val_of_bool b) MetaNone bool bool_t b
-    ⊢ typed_bin_op E L f v1 (v1 ◁ᵥ{f.1, MetaNone} l1 @ alias_ptr_t) v2 (v2 ◁ᵥ{f.2, MetaNone} l2 @ alias_ptr_t) op (PtrOp) (PtrOp) T.
+    ⊢ typed_bin_op E L f v1 (v1 ◁ᵥ{f.1, MetaNone} l1 @ alias_ptr_t) v2 (v2 ◁ᵥ{f.1, MetaNone} l2 @ alias_ptr_t) op (PtrOp) (PtrOp) T.
   Proof.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= alias_ptr_own_val_unfold.
     iIntros "%Hop HT (_ & %Hv1) (_ & %Hv2)" (Φ) "#CTX #HE HL Hf HΦ".
     subst.
     iApply wp_ptr_relop; [done | done | | done | ].
     { by apply val_of_bool_iff_val_of_Z. }
     iApply physical_step_intro. iNext.
     iApply ("HΦ" with "HL Hf") => //.
-    rewrite /ty_own_val/=. by destruct b.
+    rewrite /ty_own_val/= bool_own_val_unfold. by destruct b.
   Qed.
 
-  Global Program Instance type_eq_ptr_ptr_inst E L f v1 l1 v2 l2 :
-    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (EqOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) = l2.(loc_a))) _ _).
-  Solve Obligations with done.
-  Global Program Instance type_ne_ptr_ptr_inst E L f v1 l1 v2 l2 :
-    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (NeOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) ≠ l2.(loc_a))) _ _).
-  Solve Obligations with done.
-  Global Program Instance type_lt_ptr_ptr_inst E L f v1 l1 v2 l2 :
-    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (LtOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) < l2.(loc_a))%Z) _ _).
-  Solve Obligations with done.
-  Global Program Instance type_gt_ptr_ptr_inst E L f v1 l1 v2 l2 :
-    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (GtOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) > l2.(loc_a))%Z) _ _).
-  Solve Obligations with done.
-  Global Program Instance type_le_ptr_ptr_inst E L f v1 l1 v2 l2 :
-    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (LeOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) <= l2.(loc_a))%Z) _ _).
-  Solve Obligations with done.
-  Global Program Instance type_ge_ptr_ptr_inst E L f v1 l1 v2 l2 :
-    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (GeOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) >= l2.(loc_a))%Z) _ _).
-  Solve Obligations with done.
+  Global Instance type_eq_ptr_ptr_inst E L f v1 l1 v2 l2 :
+    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (EqOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) = l2.(loc_a))) (EqOp U8) eq_refl).
+  Global Instance type_ne_ptr_ptr_inst E L f v1 l1 v2 l2 :
+    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (NeOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) ≠ l2.(loc_a))) (NeOp U8) eq_refl).
+  Global Instance type_lt_ptr_ptr_inst E L f v1 l1 v2 l2 :
+    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (LtOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) < l2.(loc_a))%Z) (LtOp U8) eq_refl).
+  Global Instance type_gt_ptr_ptr_inst E L f v1 l1 v2 l2 :
+    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (GtOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) > l2.(loc_a))%Z) (GtOp U8) eq_refl).
+  Global Instance type_le_ptr_ptr_inst E L f v1 l1 v2 l2 :
+    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (LeOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) <= l2.(loc_a))%Z) (LeOp U8) eq_refl).
+  Global Instance type_ge_ptr_ptr_inst E L f v1 l1 v2 l2 :
+    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (GeOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) >= l2.(loc_a))%Z) (GeOp U8) eq_refl).
 End comparison.
 
 Section cast.
@@ -159,11 +167,11 @@ Section cast.
     (⌜π = f.1⌝ ∗ ∀ v, T L v MetaNone _ (alias_ptr_t) (l))
     ⊢ typed_un_op E L f v (v ◁ᵥ{π, MetaNone} l @ alias_ptr_t)%I (CastOp (PtrOp)) PtrOp T.
   Proof.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= alias_ptr_own_val_unfold.
     iIntros "(-> & HT) (_ & %) %Φ #CTX #HE HL Hf HΦ".
     iApply wp_cast_loc; first done.
     iApply physical_step_intro. iNext. iApply ("HΦ" with "HL Hf [] HT").
-    rewrite /ty_own_val/=. iR. done.
+    rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. done.
   Qed.
   Definition type_cast_ptr_ptr_inst := [instance @type_cast_ptr_ptr].
   Global Existing Instance type_cast_ptr_ptr_inst.
@@ -172,13 +180,13 @@ Section cast.
     (⌜π = f.1⌝ ∗ ∀ v, T L v MetaNone _ (int USize) (l.(loc_a)))
     ⊢ typed_un_op E L f v (v ◁ᵥ{π, MetaNone} l @ alias_ptr_t)%I (CastOp (IntOp USize)) PtrOp T.
   Proof.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= alias_ptr_own_val_unfold.
     iIntros "(-> & HT) (_ & %Hv) %Φ #CTX #HE HL Hf HΦ".
     specialize (val_to_loc_Some_inv _ _ Hv) as [_ Husize].
     odestruct (val_of_Z_is_Some _ _ _) as (? & ?); first apply Husize.
     iApply wp_cast_ptr_int; [done.. | ].
     iApply physical_step_intro. iNext. iApply ("HΦ" with "HL Hf [] HT") => //.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= int_own_val_unfold.
     iR.
     iPureIntro. by apply: val_to_of_Z.
   Qed.
@@ -190,7 +198,7 @@ Section cast.
       T L (l2v (Loc ProvNone l)) MetaNone _ alias_ptr_t (Loc ProvNone l)))
     ⊢ typed_un_op E L f v (v ◁ᵥ{π, MetaNone} l @ int USize)%I (CastOp PtrOp) (IntOp USize) T.
   Proof.
-    rewrite /ty_own_val/=.
+    rewrite /ty_own_val/= int_own_val_unfold.
     iIntros "(-> & HT) (_ & %Husize) %Φ #CTX #HE HL Hf HΦ".
     pose proof (val_to_Z_in_range _ _ _ Husize) as [Hmin Hmax].
     rewrite MinInt_unsigned_0 in Hmin; last done.
@@ -218,7 +226,7 @@ Section cast.
     rewrite (l2v_correct _ v1); last done.
     iApply ("HΦ" with "HL Hf [] (HT Hl2)") => //.
 
-    rewrite /ty_own_val/=. iR.
+    rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR.
     iPureIntro. by apply val_to_of_loc.
   Qed.
   Definition type_cast_int_ptr_inst := [instance @type_cast_int_ptr].
@@ -242,9 +250,12 @@ Section place.
   Proof.
     iDestruct 1 as ((rt2 & [[[lt2 r2] b2] π2])) "(Hl2 & -> & HP)". simpl.
     iApply typed_place_ofty_access_val_owned. { rewrite ty_has_op_type_unfold; done. }
-    iIntros (? v ?) "(_ & %Hv) !>". iExists l2, _, _, _, _.
+    iIntros (? v ?) "Hv !>". rewrite /ty_own_val /=.
+    iDestruct "Hv" as "(_ & Hv)".
+    iPoseProof (alias_ptr_own_val_to_eq with "Hv") as "%Hv".
+    iExists l2, _, _, _, _.
     rewrite (l2v_correct' _ v); last done. iR.
-    iFrame "Hl2 HP". done.
+    iFrame "Hv Hl2 HP". done.
   Qed.
   Definition typed_place_ofty_alias_ptr_owned_inst := [instance @typed_place_ofty_alias_ptr_owned].
   Global Existing Instance typed_place_ofty_alias_ptr_owned_inst | 30.
@@ -264,9 +275,12 @@ Section place.
   Proof.
     iDestruct 1 as (Hal (rt2 & [[[lt2 r2] b2] π2])) "(Hl2 & -> & HP)". simpl.
     iApply typed_place_ofty_access_val_uniq. { rewrite ty_has_op_type_unfold; done. } iSplitR; first done.
-    iIntros (? v ?) "(_ & %Hv) !>". iExists l2, _, _, _, _.
+    iIntros (? v ?) "Hv !>". rewrite /ty_own_val /=.
+    iDestruct "Hv" as "(_ & Hv)".
+    iPoseProof (alias_ptr_own_val_to_eq with "Hv") as "%Hv".
+    iExists l2, _, _, _, _.
     rewrite (l2v_correct' _ v); last done. iR.
-    iFrame "Hl2 HP". done.
+    iFrame "Hv Hl2 HP". done.
   Qed.
   Definition typed_place_ofty_alias_ptr_uniq_inst := [instance @typed_place_ofty_alias_ptr_uniq].
   Global Existing Instance typed_place_ofty_alias_ptr_uniq_inst | 30.
@@ -286,9 +300,12 @@ Section place.
   Proof.
     iDestruct 1 as (Hal (rt2 & [[[lt2 r2] b2] π2])) "(Hl2 & -> & HP)". simpl.
     iApply typed_place_ofty_access_val_shared. { rewrite ty_has_op_type_unfold; done. } iSplitR; first done.
-    iIntros (? v ?) "(_ & %Hv) !>". iExists l2, _, _, _, _.
+    iIntros (? v ?) "Hv !>". rewrite /ty_own_val /=.
+    iDestruct "Hv" as "(_ & Hv)".
+    iPoseProof (alias_ptr_own_val_to_eq with "Hv") as "%Hv".
+    iExists l2, _, _, _, _.
     rewrite (l2v_correct' _ v); last done. iR.
-    iFrame "Hl2 HP". done.
+    iFrame "Hv Hl2 HP". done.
   Qed.
   Definition typed_place_ofty_alias_ptr_shared_inst := [instance @typed_place_ofty_alias_ptr_shared].
   Global Existing Instance typed_place_ofty_alias_ptr_shared_inst | 30.
@@ -476,7 +493,7 @@ Section alias_ltype.
       iApply logical_step_intro. iExists _, _, _, _, _, _, _. iFrame.
       iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Husize".
       rewrite !ltype_own_alias_unfold /alias_lty_own.
-      iSplitL. { rewrite /ty_own_val/=. iR. iPureIntro. by apply val_to_loc_Some_l2v. }
+      iSplitL. { rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro. by apply val_to_loc_Some_l2v. }
       iSplitL. { eauto 8 with iFrame. }
       iSplitR. { eauto 8 with iFrame. }
       done.
@@ -484,7 +501,7 @@ Section alias_ltype.
       iSpecialize ("HT" with "[//]").
       iApply logical_step_intro. iExists _, _, _, _, _, _, _. iFrame.
       iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Husize".
-      iSplitL. { rewrite /ty_own_val/=. iR. iPureIntro. by apply val_to_loc_Some_l2v. }
+      iSplitL. { rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro. by apply val_to_loc_Some_l2v. }
       rewrite !ltype_own_alias_unfold /alias_lty_own.
       iSplitL. { eauto 8 with iFrame. }
       iSplitR. { eauto 8 with iFrame. }
@@ -514,7 +531,7 @@ Section alias_ltype.
     iPoseProof (ltype_own_make_alias with "Hl") as "(Hl & Halias)".
     iExists _, _, _, _, _, _, _. iFrame. simp_ltypes.
     iL.
-    rewrite /ty_own_val/=. iR. iPureIntro. by apply val_to_loc_Some_l2v.
+    rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro. by apply val_to_loc_Some_l2v.
   Qed.
   Definition typed_addr_of_mut_end_owned_inst := [instance @typed_addr_of_mut_end_owned].
   Global Existing Instance typed_addr_of_mut_end_owned_inst.
@@ -545,7 +562,7 @@ Section alias_ltype.
     iExists _, _, _, _, _, _, _. iFrame. simp_ltypes.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Husize".
     iL.
-    rewrite /ty_own_val/=. iR. iPureIntro. by apply val_to_loc_Some_l2v.
+    rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro. by apply val_to_loc_Some_l2v.
   Qed.
 
   Lemma typed_addr_of_mut_end_uniq_ofty π E L l {rt} (ty : type rt) r κ γ bmin (T : typed_addr_of_mut_end_cont_t) :
