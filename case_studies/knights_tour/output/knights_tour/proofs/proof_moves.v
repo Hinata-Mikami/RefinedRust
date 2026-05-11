@@ -16,9 +16,12 @@ Proof.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
-  Unshelve. all: sidecond_hammer.
-  all: revert select (_ ∈ _); rewrite !elem_of_cons elem_of_nil; intros Helem.
-  all: repeat (destruct Helem as  [Heq | Helem]; [injection Heq; lia | ]); done.
+  Unshelve. 
+  (* !start proof(knights_tour.moves) *)
+  all: try (intros ??; rewrite !elem_of_cons elem_of_nil; intros Helem;
+    repeat (destruct Helem as  [Heq | Helem]; [injection Heq; lia | ]); done).
+  (* !end proof *)
+  all: sidecond_hammer.
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.
