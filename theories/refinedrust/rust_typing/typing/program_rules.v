@@ -938,29 +938,31 @@ Section prove_subtype.
 
   (** ** prove_with_subtype *)
   (* We could make this an instance, but do not want to: it would sometimes make goals unprovable where stepping in manually would help *)
-  Lemma prove_with_subtype_default E L step pm P T :
-    P ∗ T L [] True ⊢
-    prove_with_subtype E L step pm P T.
+  Lemma prove_with_subtype_default E L step pm P A T :
+    P ∗ T L [] A ⊢
+    prove_with_subtype E L step pm P A T.
   Proof.
     iIntros "(? & ?)".
-    iIntros (????) "???". iModIntro.
+    iIntros (?????) "??? HA". iModIntro.
     iExists _, _, _. iFrame.
-    iApply maybe_logical_step_intro. iL.
+    iApply (maybe_logical_step_compose with "HA").
+    iApply maybe_logical_step_intro. iIntros "($ & $)".
     destruct pm; eauto with iFrame.
   Qed.
 
-  Lemma prove_with_subtype_sep E L step pm P1 P2 T :
-    prove_with_subtype E L step pm P1 (λ L' κs R1, prove_with_subtype E L' step pm P2 (λ L'' κs2 R2, T L'' (κs ++ κs2) (R1 ∗ R2)))
-    ⊢ prove_with_subtype E L step pm (P1 ∗ P2) T.
+  Lemma prove_with_subtype_sep E L step pm P1 P2 A T :
+    prove_with_subtype E L step pm P1 A (λ L' κs R1,
+    prove_with_subtype E L' step pm P2 R1 (λ L'' κs2 R2,
+    T L'' (κs ++ κs2) R2))
+    ⊢ prove_with_subtype E L step pm (P1 ∗ P2) A T.
   Proof.
-    iIntros "Hs" (F ???) "#CTX #HE HL".
-    iMod ("Hs" with "[//] [//] [//] CTX HE HL") as "(%L' & %κs1 & %R1 & Ha & HL & Hs)".
-    iMod ("Hs" with "[//] [//] [//] CTX HE HL") as "(%L'' & %κs2 & %R2 & Hb & ? & ?)".
-    iExists L'', (κs1 ++ κs2), (R1 ∗ R2)%I. iFrame.
-    iApply (maybe_logical_step_compose with "Ha").
+    iIntros "Hs" (F ????) "#CTX #HE HL HA".
+    iMod ("Hs" with "[//] [//] [//] CTX HE HL HA") as "(%L' & %κs1 & %R1 & Ha & HL & Hs)".
+    iMod ("Hs" with "[//] [//] [//] CTX HE HL Ha") as "(%L'' & %κs2 & %R2 & Hb & ? & ?)".
+    iExists L'', (κs1 ++ κs2), R2. iFrame.
     iApply (maybe_logical_step_compose with "Hb").
     iApply maybe_logical_step_intro.
-    iIntros "!> (Ha2 & $) (Ha1 & $)".
+    iIntros "!> ($ & Ha2 & Ha1 & $)".
     destruct pm; first by iFrame.
     rewrite lft_dead_list_app. iIntros "(Ht1 & Ht2)".
     iMod ("Ha1" with "Ht1") as "$". iMod ("Ha2" with "Ht2") as "$". done.
@@ -968,23 +970,24 @@ Section prove_subtype.
   Definition prove_with_subtype_sep_inst := [instance @prove_with_subtype_sep].
   Global Existing Instance prove_with_subtype_sep_inst.
 
-  Lemma prove_with_subtype_exists {X} E L step pm (Φ : X → iProp Σ) T :
-    (∃ x, prove_with_subtype E L step pm (Φ x) T)
-    ⊢ prove_with_subtype E L step pm (∃ x, Φ x) T.
+  Lemma prove_with_subtype_exists {X} E L step pm (Φ : X → iProp Σ) A T :
+    (∃ x, prove_with_subtype E L step pm (Φ x) A T)
+    ⊢ prove_with_subtype E L step pm (∃ x, Φ x) A T.
   Proof.
-    iIntros "(%x & Hs)" (F ???) "#CTX #HE HL".
-    iMod ("Hs" with "[//] [//] [//] CTX HE HL") as "(%L' & %κs & %R & Hs & ? & ?)".
+    iIntros "(%x & Hs)" (F ????) "#CTX #HE HL HA".
+    iMod ("Hs" with "[//] [//] [//] CTX HE HL HA") as "(%L' & %κs & %R & Hs & ? & ?)".
     iExists L', κs, R. iFrame.
     iApply (maybe_logical_step_wand with "[] Hs").
-    destruct pm. { iIntros "(? & ?)". eauto with iFrame. }
-    iIntros "(Ha & $) Htok". iMod ("Ha" with "Htok") as "?". eauto with iFrame.
+    iIntros "($ & Ha & $)".
+    destruct pm. { eauto with iFrame. }
+    iIntros "Htok". iMod ("Ha" with "Htok") as "?". eauto with iFrame.
   Qed.
   Definition prove_with_subtype_exists_inst := [instance @prove_with_subtype_exists].
   Global Existing Instance prove_with_subtype_exists_inst.
 
-  Lemma prove_with_subtype_pers E L step pm (P : iProp Σ) T :
-    (□ P) ∧ T L [] True ⊢
-    prove_with_subtype E L step pm (□ P) T.
+  Lemma prove_with_subtype_pers E L step pm (P : iProp Σ) A T :
+    (□ P) ∧ T L [] A ⊢
+    prove_with_subtype E L step pm (□ P) A T.
   Proof.
     iIntros "[#HP HT]".
     iApply prove_with_subtype_default.
@@ -997,7 +1000,7 @@ Section prove_subtype.
 
   (** For ofty location ownership, we have special handling to stratify first, if possible.
       This only happens in the [ProveWithStratify] proof mode though, because we sometimes directly want to get into [Subsume]. *)
-  Lemma prove_with_subtype_ofty_step π E L (l : loc) bk {rt} (ty : type rt) (r : place_rfn rt) T :
+  Lemma prove_with_subtype_ofty_step π E L (l : loc) bk {rt} (ty : type rt) (r : place_rfn rt) A T :
     find_in_context (FindLoc l) (λ '(existT rt' (lt', r', bk', π')),
       ⌜π = π'⌝ ∗
       stratify_ltype_unblock π E L StratRefoldFull l lt' r' bk' (λ L2 R2 rt2 lt2 r2,
@@ -1006,34 +1009,41 @@ Section prove_subtype.
         match ltype_blocked_lfts lt2 with
         | [] =>
             (* we could unblock everything, directly subsume *)
-            ⌜bk = bk'⌝ ∗ weak_subltype E L2 bk r2 r lt2 (◁ ty) (T L2 [] R2)
+            ⌜bk = bk'⌝ ∗ weak_subltype E L2 bk r2 r lt2 (◁ ty) (T L2 [] (A ∗ R2))
         | κs =>
             ⌜bk = bk'⌝ ∗
             trigger_tc (SimpLtype (ltype_core lt2)) (λ lt2',
-            weak_subltype E L2 bk r2 r lt2' (◁ ty) (T L2 κs R2))
+            weak_subltype E L2 bk r2 r lt2' (◁ ty) (T L2 κs (A ∗ R2)))
         end))
-    ⊢ prove_with_subtype E L true ProveWithStratify (l ◁ₗ[π, bk] r @ (◁ ty))%I T.
+    ⊢ prove_with_subtype E L true ProveWithStratify (l ◁ₗ[π, bk] r @ (◁ ty))%I A T.
   Proof.
     rewrite /FindLoc.
     iIntros "Ha". iDestruct "Ha" as ([rt' [[[lt' r'] bk'] π']]) "(Hl & <- & Ha)". simpl.
-    iIntros (????) "#CTX #HE HL". iMod ("Ha" with "[//] [//] [//] CTX HE HL Hl") as "(%L2 & %R2 & %rt2 & %lt2 & %r2 & HL & %Hsteq & Hstep & HT)".
+    iIntros (?????) "#CTX #HE HL HA".
+    iMod ("Ha" with "[//] [//] [//] CTX HE HL Hl") as "(%L2 & %R2 & %rt2 & %lt2 & %r2 & HL & %Hsteq & Hstep & HT)".
     destruct (decide (ltype_blocked_lfts lt2 = [])) as [-> | Hneq].
     - iDestruct "HT" as "(<- & HT)".
       iMod ("HT" with "[//] CTX HE HL") as "(#Hincl & HL & HT)".
       iExists _, [], _. iFrame.
-      simpl. iModIntro. iApply logical_step_fupd. iApply (logical_step_wand with "Hstep").
-      iIntros "(Hl & $)".
+      simpl. iModIntro.
+      iApply logical_step_fupd.
+      iApply (logical_step_compose with "Hstep").
+      iApply (logical_step_compose with "HA").
+      iApply logical_step_intro.
+      iIntros "($ & $) (Hl & $)".
       iDestruct "Hincl" as "(_ & Hincl & _)".
       iMod (ltype_incl'_use with "Hincl Hl"); first done.
       iModIntro. by iIntros "_ !>".
-    - iAssert (⌜bk = bk'⌝ ∗ trigger_tc (SimpLtype (ltype_core lt2)) (λ lt2', weak_subltype E L2 bk r2 r lt2' (◁ ty) (T L2 (ltype_blocked_lfts lt2) R2)))%I with "[HT]" as "(<- & HT)".
+    - iAssert (⌜bk = bk'⌝ ∗ trigger_tc (SimpLtype (ltype_core lt2)) (λ lt2', weak_subltype E L2 bk r2 r lt2' (◁ ty) (T L2 (ltype_blocked_lfts lt2) (A ∗ R2))))%I with "[HT]" as "(<- & HT)".
       { destruct (ltype_blocked_lfts lt2); done. }
       iDestruct "HT" as "(%lt2' & %Heq & HT)".
       destruct Heq as [<-].
       iMod ("HT" with "[//] CTX HE HL") as "(#Hincl & HL & HT)".
       iModIntro. iExists _, _, _. iFrame.
-      iApply (logical_step_wand with "Hstep").
-      iIntros "(Hl & $)".
+      iApply (logical_step_compose with "Hstep").
+      iApply (logical_step_compose with "HA").
+      iApply logical_step_intro.
+      iIntros "($ & $) (Hl & $)".
       iIntros "Hdead".
       iPoseProof (imp_unblockable_blocked_dead lt2) as "Hunblock".
       iDestruct "Hincl" as "(_ & Hincl & _)".
@@ -1043,30 +1053,31 @@ Section prove_subtype.
   Definition prove_with_subtype_ofty_step_inst := [instance @prove_with_subtype_ofty_step].
   Global Existing Instance prove_with_subtype_ofty_step_inst | 500.
 
-  Lemma prove_with_subtype_pure E L step pm (P : Prop) T :
-    ⌜P⌝ ∗ T L [] True ⊢ prove_with_subtype E L step pm (⌜P⌝) T.
+  Lemma prove_with_subtype_pure E L step pm (P : Prop) A T :
+    ⌜P⌝ ∗ T L [] A ⊢ prove_with_subtype E L step pm (⌜P⌝) A T.
   Proof.
-    iIntros "(% & HT)". iIntros (????) "#CTX #HE HL".
-    iExists L, [], True%I. iFrame.
-    destruct pm.
-    - by iApply maybe_logical_step_intro.
-    - iIntros "!>". iApply maybe_logical_step_intro. iSplitL; last done.
-      iIntros "_ !>". done.
+    iIntros "(% & HT)". iIntros (?????) "#CTX #HE HL HA".
+    iExists L, [], A. iFrame.
+    iApply (maybe_logical_step_compose with "HA").
+    iApply maybe_logical_step_intro.
+    iIntros "!> ($ & $)".
+    destruct pm; first done.
+    iIntros "_ !>". done.
   Qed.
   Definition prove_with_subtype_pure_inst := [instance @prove_with_subtype_pure].
   Global Existing Instance prove_with_subtype_pure_inst | 50.
 
-  Lemma prove_with_subtype_simplify_goal E L step pm P T (n : N) {SG : SimplifyGoal P (Some n)} :
-    prove_with_subtype E L step pm (SG True).(i2p_P) T
-    ⊢ prove_with_subtype E L step pm P T.
+  Lemma prove_with_subtype_simplify_goal (n : N) E L step pm P A {SG : SimplifyGoal P (Some n)} T :
+    prove_with_subtype E L step pm (SG True).(i2p_P) A T
+    ⊢ prove_with_subtype E L step pm P A T.
   Proof.
-    iIntros "Ha" (????) "#CTX #HE HL".
-    iMod ("Ha" with "[//] [//] [//] CTX HE HL") as "(%L' & %κs & %R & Ha & HL & HT)".
+    iIntros "Ha" (?????) "#CTX #HE HL HA".
+    iMod ("Ha" with "[//] [//] [//] CTX HE HL HA") as "(%L' & %κs & %R & Ha & HL & HT)".
     unfold SimplifyGoal in SG.
     destruct SG as [P' Ha].
     iExists L', κs, R. iFrame.
     iApply (maybe_logical_step_wand with "[] Ha").
-    iIntros "(Ha & $)".
+    iIntros "($ & Ha & $)".
     destruct pm.
     - iPoseProof (Ha with "Ha") as "Ha".
       rewrite /simplify_goal. iDestruct "Ha" as "($ & _)".
@@ -1075,101 +1086,105 @@ Section prove_subtype.
       rewrite /simplify_goal. iDestruct "Ha" as "($ & _)".
       done.
   Qed.
-  Global Instance prove_with_subtype_simplify_goal_inst E L step pm P {SG : SimplifyGoal P (Some 0%N)} :
-    ProveWithSubtype E L step pm P := λ T, i2p (prove_with_subtype_simplify_goal E L step pm P T 0).
-
+  Definition prove_with_subtype_simplify_goal_inst := [instance @prove_with_subtype_simplify_goal 0%N].
+  Global Existing Instance prove_with_subtype_simplify_goal_inst.
   (** Note: run fully-fledged simplification only after context search *)
-  Global Instance prove_with_subtype_simplify_goal_full_inst E L step pm P n {SG : SimplifyGoal P (Some n)} :
-    ProveWithSubtype E L step pm P | 1001 := λ T, i2p (prove_with_subtype_simplify_goal E L step pm P T n).
+  Definition prove_with_subtype_simplify_goal_inst' := [instance @prove_with_subtype_simplify_goal].
+  Global Existing Instance prove_with_subtype_simplify_goal_inst' | 1001.
 
   (* Make low priority to enable overrides before we initiate context search. *)
-  Lemma prove_with_subtype_find_direct E L step pm P T `{!CheckOwnInContext P} :
-    P ∗ T L [] True%I
-    ⊢ prove_with_subtype E L step pm P T.
+  Lemma prove_with_subtype_find_direct E L step pm P A `{!CheckOwnInContext P} T :
+    P ∗ T L [] A
+    ⊢ prove_with_subtype E L step pm P A T.
   Proof.
-    iIntros "(HP & HT)". iIntros (????) "#CTX #HE HL".
-    iExists L, [], True%I. iFrame.
-    iApply maybe_logical_step_intro. iSplitL; last done.
-    destruct pm; first done. iIntros "!> _ !>". done.
+    iIntros "(HP & HT)". iIntros (?????) "#CTX #HE HL HA".
+    iExists L, [], A. iFrame.
+    iApply (maybe_logical_step_compose with "HA").
+    iApply maybe_logical_step_intro.
+    iIntros "!> ($ & $)".
+    destruct pm; first done. iIntros "_ !>". done.
   Qed.
   Definition prove_with_subtype_find_direct_inst := [instance @prove_with_subtype_find_direct].
   Global Existing Instance prove_with_subtype_find_direct_inst | 1000.
 
-  Lemma prove_with_subtype_primitive E L step pm P `{Hrel : !RelatedTo P} T :
+  Lemma prove_with_subtype_primitive E L step pm P `{Hrel : !RelatedTo P} A T :
     find_in_context Hrel.(rt_fic) (λ a,
-      subsume_full E L step (fic_Prop Hrel.(rt_fic) a) P (λ L, T L []))
-    ⊢ prove_with_subtype E L step pm P T.
+      subsume_full E L step (fic_Prop Hrel.(rt_fic) a) P (λ L R, T L [] (R ∗ A)))
+    ⊢ prove_with_subtype E L step pm P A T.
   Proof.
-    iIntros "(%a & Ha & Hsub)" (????) "#CTX #HE HL".
+    iIntros "(%a & Ha & Hsub)" (?????) "#CTX #HE HL HA".
     iMod ("Hsub" with "[//] [//] [//] CTX HE HL Ha") as "(%L2 & %R & Ha & ? & ?)".
     iModIntro. iExists _, _, _. iFrame.
-    iApply (maybe_logical_step_wand with "[] Ha").
-    iIntros "(? & $)".
+    iApply (maybe_logical_step_compose with "Ha").
+    iApply (maybe_logical_step_compose with "HA").
+    iApply maybe_logical_step_intro.
+    iIntros "($ & $) (? & $)".
     destruct pm; first done. iIntros "_ !>". done.
   Qed.
   (* only after running full simplification *)
   Definition prove_with_subtype_primitive_inst := [instance @prove_with_subtype_primitive].
   Global Existing Instance prove_with_subtype_primitive_inst | 1002.
 
-  Lemma prove_with_subtype_case_destruct E L step pm {A} (b : A) P T :
+  Lemma prove_with_subtype_case_destruct E L step pm {A} (b : A) P Acc T :
     case_destruct b (λ b r,
       normalize_spatial_context E L True (λ L2,
-      prove_with_subtype E L2 step pm (P b r) T))
-    ⊢ prove_with_subtype E L step pm (case_destruct b P) T.
+      prove_with_subtype E L2 step pm (P b r) Acc T))
+    ⊢ prove_with_subtype E L step pm (case_destruct b P) Acc T.
   Proof.
     rewrite /case_destruct.
     iIntros "(%b' & HT)".
     iApply prove_with_subtype_exists. iExists b'.
-    iIntros (????) "#CTX #HE HL".
+    iIntros (?????) "#CTX #HE HL HA".
     iMod ("HT" with "[] CTX HE HL [//]") as "(%L2 & HL & HT)"; first done.
-    by iApply ("HT" with "[] [] [] CTX HE HL").
+    by iApply ("HT" with "[] [] [] CTX HE HL HA").
   Qed.
   Definition prove_with_subtype_case_destruct_inst := [instance @prove_with_subtype_case_destruct].
   Global Existing Instance prove_with_subtype_case_destruct_inst.
 
-  Lemma prove_with_subtype_if_decide_true E L step pm P `{!Decision P} `{!CanSolve P} P1 P2 T :
-    prove_with_subtype E L step pm P1 T ⊢
-    prove_with_subtype E L step pm (if (decide P) then P1 else P2) T.
+  Lemma prove_with_subtype_if_decide_true E L step pm P `{!Decision P} `{!CanSolve P} P1 P2 A T :
+    prove_with_subtype E L step pm P1 A T ⊢
+    prove_with_subtype E L step pm (if (decide P) then P1 else P2) A T.
   Proof. rewrite decide_True; done. Qed.
   Definition prove_with_subtype_if_decide_true_inst := [instance @prove_with_subtype_if_decide_true].
   Global Existing Instance prove_with_subtype_if_decide_true_inst.
-  Lemma prove_with_subtype_if_decide_false E L step pm P `{!Decision P} `{!CanSolve (¬ P)} P1 P2 T :
-    prove_with_subtype E L step pm P2 T ⊢
-    prove_with_subtype E L step pm (if (decide P) then P1 else P2) T.
+  Lemma prove_with_subtype_if_decide_false E L step pm P `{!Decision P} `{!CanSolve (¬ P)} P1 P2 A T :
+    prove_with_subtype E L step pm P2 A T ⊢
+    prove_with_subtype E L step pm (if (decide P) then P1 else P2) A T.
   Proof. rewrite decide_False; done. Qed.
   Definition prove_with_subtype_if_decide_false_inst := [instance @prove_with_subtype_if_decide_false].
   Global Existing Instance prove_with_subtype_if_decide_false_inst.
 
-  Lemma prove_with_subtype_li_trace E L step pm {M} (m : M) P T :
-    li_trace m (prove_with_subtype E L step pm P T)
-    ⊢ prove_with_subtype E L step pm (li_trace m P) T.
+  Lemma prove_with_subtype_li_trace E L step pm {M} (m : M) P A T :
+    li_trace m (prove_with_subtype E L step pm P A T)
+    ⊢ prove_with_subtype E L step pm (li_trace m P) A T.
   Proof.
     rewrite /li_trace. done.
   Qed.
   Definition prove_with_subtype_li_trace_inst := [instance @prove_with_subtype_li_trace].
   Global Existing Instance prove_with_subtype_li_trace_inst.
 
-  Lemma prove_with_subtype_scrounge_credits E L step pm (n : nat) T :
+  Lemma prove_with_subtype_scrounge_credits E L step pm (n : nat) A T :
     find_in_context (FindCreditStore) (λ '(c, a),
-      ⌜fast_lia_hint (n ≤ c)⌝ ∗ (credit_store (c - n)%nat a -∗ T L [] True%I))
-    ⊢ prove_with_subtype E L step pm (£ n) T.
+      ⌜fast_lia_hint (n ≤ c)⌝ ∗ (credit_store (c - n)%nat a -∗ T L [] A))
+    ⊢ prove_with_subtype E L step pm (£ n) A T.
   Proof.
     iIntros "Ha". rewrite /FindCreditStore /fast_lia_hint.
     iDestruct "Ha" as ([c a]) "(Hstore  & %Hn & HT)". simpl.
     iPoseProof (credit_store_scrounge n with "Hstore") as "(Hcred & Hstore)"; first lia.
     iPoseProof ("HT" with "Hstore") as "HT".
-    iIntros (????) "CTX HE HL". iModIntro. iExists _, _, _. iFrame.
+    iIntros (?????) "CTX HE HL HA". iModIntro. iExists _, _, _. iFrame.
+    iApply (maybe_logical_step_compose with "HA").
     iApply maybe_logical_step_intro.
-    iSplitL; last done.
+    iIntros "($ & $)".
     destruct pm; first done. iIntros "_ !>". done.
   Qed.
   Definition prove_with_subtype_scrounge_credits_inst := [instance @prove_with_subtype_scrounge_credits].
   Global Existing Instance prove_with_subtype_scrounge_credits_inst | 10.
 
-  Lemma prove_with_subtype_scrounge_tr E L step pm (n : nat) T :
+  Lemma prove_with_subtype_scrounge_tr E L step pm (n : nat) A T :
     find_in_context (FindCreditStore) (λ '(c, a),
-      ⌜fast_lia_hint (n ≤ a)⌝ ∗ (credit_store c (a - n)%nat -∗ T L [] True%I))
-    ⊢ prove_with_subtype E L step pm (tr n) T.
+      ⌜fast_lia_hint (n ≤ a)⌝ ∗ (credit_store c (a - n)%nat -∗ T L [] A))
+    ⊢ prove_with_subtype E L step pm (tr n) A T.
   Proof.
     iIntros "Ha". rewrite /FindCreditStore /fast_lia_hint.
     iDestruct "Ha" as ([c a]) "(Hstore  & %Hn & HT)". simpl.
@@ -1178,44 +1193,48 @@ Section prove_subtype.
     iDestruct "Hat" as "(Hat & Hat')".
     iPoseProof ("Hcl" with "Hcred Hat") as "Hstore".
     iPoseProof ("HT" with "Hstore") as "HT".
-    iIntros (????) "CTX HE HL". iModIntro. iExists _, _, _. iFrame.
+    iIntros (?????) "CTX HE HL HA". iModIntro. iExists _, _, _. iFrame.
+    iApply (maybe_logical_step_compose with "HA").
     iApply maybe_logical_step_intro.
-    iSplitL; last done.
+    iIntros "($ & $)".
     destruct pm; first done. iIntros "_ !>". done.
   Qed.
   Definition prove_with_subtype_scrounge_tr_inst := [instance @prove_with_subtype_scrounge_tr].
   Global Existing Instance prove_with_subtype_scrounge_tr_inst | 10.
 
   (** Rules to handle disjunctions in some cases where one of the sides has a guard that can be proved or refuted *)
-  Lemma prove_with_subtype_disj_guard_l_right E L b pm guard P1 P2 `{!TCDone (¬ guard)} T  :
-    prove_with_subtype E L b pm ((⌜guard⌝ ∗ P1) ∨ P2) T :-
-      return prove_with_subtype E L b pm P2 T.
+  Lemma prove_with_subtype_disj_guard_l_right E L b pm guard P1 P2 `{!TCDone (¬ guard)} A T  :
+    prove_with_subtype E L b pm ((⌜guard⌝ ∗ P1) ∨ P2) A T :-
+      return prove_with_subtype E L b pm P2 A T.
   Proof.
     unfold prove_with_subtype.
     iIntros "HT".
-    iIntros (????) "CTX HE HL".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & % & %R & Hstep & $ & $)".
+    iIntros (?????) "CTX HE HL HA".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL HA") as "(%L2 & % & %R & Hstep & $ & $)".
     iApply (maybe_logical_step_wand with "[] Hstep").
+    iIntros "($ & Ha & $)".
     destruct pm.
-    - iIntros "(? & $)". iRight. by iFrame.
-    - iIntros "(Ha & $) Hdead".
+    - iRight. by iFrame.
+    - iIntros "Hdead".
       iMod ("Ha" with "Hdead") as "?".
       iRight. by iFrame.
   Qed.
   Definition prove_with_subtype_disj_guard_l_right_inst := [instance @prove_with_subtype_disj_guard_l_right].
   Global Existing Instance prove_with_subtype_disj_guard_l_right_inst.
-  Lemma prove_with_subtype_disj_guard_r_left E L b pm guard P1 P2 `{!TCDone (¬ guard)} T  :
-    prove_with_subtype E L b pm (P1 ∨ (⌜guard⌝ ∗ P2)) T :-
-      return prove_with_subtype E L b pm P1 T.
+
+  Lemma prove_with_subtype_disj_guard_r_left E L b pm guard P1 P2 `{!TCDone (¬ guard)} A T  :
+    prove_with_subtype E L b pm (P1 ∨ (⌜guard⌝ ∗ P2)) A T :-
+      return prove_with_subtype E L b pm P1 A T.
   Proof.
     unfold prove_with_subtype.
     iIntros "HT".
-    iIntros (????) "CTX HE HL".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & % & %R & Hstep & $ & $)".
+    iIntros (?????) "CTX HE HL HA".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL HA") as "(%L2 & % & %R & Hstep & $ & $)".
     iApply (maybe_logical_step_wand with "[] Hstep").
+    iIntros "($ & Ha & $)".
     destruct pm.
-    - iIntros "(? & $)". iLeft. by iFrame.
-    - iIntros "(Ha & $) Hdead".
+    - iLeft. by iFrame.
+    - iIntros "Hdead".
       iMod ("Ha" with "Hdead") as "?".
       iLeft. by iFrame.
   Qed.
@@ -1223,35 +1242,37 @@ Section prove_subtype.
   Global Existing Instance prove_with_subtype_disj_guard_r_left_inst.
 
   (** Below rules are lower priority because they might make a goal unprovable *)
-  Lemma prove_with_subtype_disj_guard_l_left E L b pm guard P1 P2 `{!TCDone guard} T  :
-    prove_with_subtype E L b pm ((⌜guard⌝ ∗ P1) ∨ P2) T :-
-      return prove_with_subtype E L b pm P1 T.
+  Lemma prove_with_subtype_disj_guard_l_left E L b pm guard P1 P2 `{!TCDone guard} A T  :
+    prove_with_subtype E L b pm ((⌜guard⌝ ∗ P1) ∨ P2) A T :-
+      return prove_with_subtype E L b pm P1 A T.
   Proof.
     unfold prove_with_subtype.
     iIntros "HT".
-    iIntros (????) "CTX HE HL".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & % & %R & Hstep & $ & $)".
+    iIntros (?????) "CTX HE HL HA".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL HA") as "(%L2 & % & %R & Hstep & $ & $)".
     iApply (maybe_logical_step_wand with "[] Hstep").
+    iIntros "($ & Ha & $)".
     destruct pm.
-    - iIntros "(? & $)". iLeft. by iFrame.
-    - iIntros "(Ha & $) Hdead".
+    - iLeft. by iFrame.
+    - iIntros "Hdead".
       iMod ("Ha" with "Hdead") as "?".
       iLeft. by iFrame.
   Qed.
   Definition prove_with_subtype_disj_guard_l_left_inst := [instance @prove_with_subtype_disj_guard_l_left].
   Global Existing Instance prove_with_subtype_disj_guard_l_left_inst | 100.
-  Lemma prove_with_subtype_disj_guard_r_right E L b pm guard P1 P2 `{!TCDone guard} T  :
-    prove_with_subtype E L b pm (P1 ∨ (⌜guard⌝ ∗ P2)) T :-
-      return prove_with_subtype E L b pm P2 T.
+  Lemma prove_with_subtype_disj_guard_r_right E L b pm guard P1 P2 `{!TCDone guard} A T  :
+    prove_with_subtype E L b pm (P1 ∨ (⌜guard⌝ ∗ P2)) A T :-
+      return prove_with_subtype E L b pm P2 A T.
   Proof.
     unfold prove_with_subtype.
     iIntros "HT".
-    iIntros (????) "CTX HE HL".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & % & %R & Hstep & $ & $)".
+    iIntros (?????) "CTX HE HL HA".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL HA") as "(%L2 & % & %R & Hstep & $ & $)".
     iApply (maybe_logical_step_wand with "[] Hstep").
+    iIntros "($ & Ha & $)".
     destruct pm.
-    - iIntros "(? & $)". iRight. by iFrame.
-    - iIntros "(Ha & $) Hdead".
+    - iRight. by iFrame.
+    - iIntros "Hdead".
       iMod ("Ha" with "Hdead") as "?".
       iRight. by iFrame.
   Qed.
@@ -1263,30 +1284,30 @@ Section prove_subtype.
   | DestructHintProve {A} (a : A)
   | DestructHintProveKnown {A} (a : A)
   .
-  Lemma prove_with_subtype_destruct {A} (a : A) P E L step pm T :
-    prove_with_subtype E L step pm P T :-
+  Lemma prove_with_subtype_destruct {A} (a : A) P E L step pm Acc T :
+    prove_with_subtype E L step pm P Acc T :-
       c, b ← destruct a;
       trace (if b then DestructHintProve c else DestructHintProveKnown c);
       return (normalize_spatial_context E L True (λ L2,
-        (prove_with_subtype E L2 step pm P T))).
+        (prove_with_subtype E L2 step pm P Acc T))).
   Proof.
     iIntros "(%b & HT)".
-    iIntros (????) "#CTX #HE HL".
+    iIntros (?????) "#CTX #HE HL HA".
     iMod ("HT" with "[] CTX HE HL [//]") as "(%L2 & HL & HT)"; first done.
-    iApply ("HT" with "[] [] [] CTX HE HL"); done.
+    iApply ("HT" with "[] [] [] CTX HE HL HA"); done.
   Qed.
 
-  Lemma prove_with_subtype_destruct_hint {A} (a : A) P E L step pm T :
-    prove_with_subtype E L step pm (⌜destruct_hint a P⌝) T :-
+  Lemma prove_with_subtype_destruct_hint {A} (a : A) P E L step pm Acc T :
+    prove_with_subtype E L step pm (⌜destruct_hint a P⌝) Acc T :-
       c, b ← destruct a;
       trace (if b then DestructHintProve c else DestructHintProveKnown c);
       return (normalize_spatial_context E L True (λ L2,
-        (prove_with_subtype E L2 step pm (⌜P c⌝) T))).
+        (prove_with_subtype E L2 step pm (⌜P c⌝) Acc T))).
   Proof.
     iIntros "(%b & HT)".
-    iIntros (????) "#CTX #HE HL".
+    iIntros (?????) "#CTX #HE HL HA".
     iMod ("HT" with "[] CTX HE HL [//]") as "(%L2 & HL & HT)"; first done.
-    iApply ("HT" with "[] [] [] CTX HE HL"); done.
+    iApply ("HT" with "[] [] [] CTX HE HL HA"); done.
   Qed.
   Definition prove_with_subtype_destruct_hint_inst := [instance @prove_with_subtype_destruct_hint].
   Global Existing Instance prove_with_subtype_destruct_hint_inst.
@@ -1390,15 +1411,15 @@ Section prove_subtype.
   Global Existing Instance prove_with_subtype_destruct_if_ifalse_inst | 100.
 
   (** Guarded *)
-  Lemma prove_with_subtype_guarded E L b pm wl P T :
-    prove_with_subtype E L b pm (maybe_creds wl ∗ P) T ⊢
-    prove_with_subtype E L b pm (guarded wl P) T.
+  Lemma prove_with_subtype_guarded E L b pm wl P A T :
+    prove_with_subtype E L b pm (maybe_creds wl ∗ P) A T ⊢
+    prove_with_subtype E L b pm (guarded wl P) A T.
   Proof.
-    iIntros "HT" (????) "#CTX HE HL".
-    iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & % & % & Hs & HL & HT)"; [done.. | ].
+    iIntros "HT" (?????) "#CTX HE HL HA".
+    iMod ("HT" with "[] [] [] CTX HE HL HA") as "(%L2 & % & % & Hs & HL & HT)"; [done.. | ].
     iModIntro. iExists _, _, _. iFrame.
     iApply (maybe_logical_step_wand with "[] Hs").
-    iIntros "(Ha & $)".
+    iIntros "($ & Ha & $)".
     unfold guarded. destruct pm.
     - iDestruct "Ha" as "(Hcred & HP)". iFrame.
     - iIntros "Hd". iMod ("Ha" with "Hd") as "Ha".
@@ -2288,7 +2309,7 @@ Section subsume.
             (* show that the core of lt_cur' is a subtype of lt_inner and then fold to lt_full *)
             weak_subltype E L' (Owned) (r') (#ri) (lt_cur'') lt_inner (
               (* re-establish the invariant *)
-              ∃ rf, prove_with_subtype E L' true ProveWithStratify (Cpre ri rf) (λ L'' κs R2,
+              ∃ rf, prove_with_subtype E L' true ProveWithStratify (Cpre ri rf) True%I (λ L'' κs R2,
               (* either fold to coreable, or to the core of lt_full *)
               match ltype_blocked_lfts lt_cur', κs with
               | [], [] =>
@@ -2322,7 +2343,9 @@ Section subsume.
       iDestruct "HT" as "(%lt_cur'' & %Heq & HT)". destruct Heq as [<-].
       iDestruct "HT" as "(%ri & HT)".
       iMod ("HT" with "[//] CTX HE HL") as "(Hincl & HL & %rf & HT)".
-      iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L3 & %κs & %R2 & Hstep' & HL & HT)".
+      iSpecialize ("HT" $! F True%I).
+      iMod ("HT" with "[//] [//] [//] CTX HE HL []") as "(%L3 & %κs & %R2 & Hstep' & HL & HT)".
+      { iApply maybe_logical_step_intro. iSplit; done. }
       iPoseProof (imp_unblockable_blocked_dead lt_cur') as "(_ & #Hb)".
       set (κs' := ltype_blocked_lfts lt_cur').
       destruct (decide (κs = [] ∧ κs' = [])) as [[-> ->] | ].
@@ -2335,7 +2358,7 @@ Section subsume.
         iApply (logical_step_compose with "Hcl").
         iApply (logical_step_compose with "Hstep'").
         iApply logical_step_intro.
-        iIntros "!> (Hpre & $) Hcl (Hl & $)".
+        iIntros "!> (HR2 & Hpre & _) Hcl (Hl & $)".
         iPoseProof ("Hb" with "[] Hl") as "Hl". { by iApply big_sepL_nil. }
         iMod (fupd_mask_mono with "Hl") as "Hl"; first done.
         rewrite ltype_own_core_equiv.
@@ -2356,7 +2379,8 @@ Section subsume.
         iApply (logical_step_compose with "Hcl").
         iApply (logical_step_compose with "Hstep'").
         iApply logical_step_intro.
-        iIntros "!> (Hpre & $) Hcl (Hl & $)".
+        iIntros "!> (HR2 & Hpre & _) Hcl (Hl & $)".
+        iFrame "HR2".
         rewrite ltype_own_coreable_unfold /coreable_ltype_own.
         iPoseProof ("Hcl" with "Hpre") as "($ & Hvs')".
         iModIntro.
@@ -2396,7 +2420,7 @@ Section subsume.
             weak_subltype E L' (Owned) (r') (#ri) (lt_cur') lt_inner (
               (* re-establish the invariant *)
               ∃ rf,
-              prove_with_subtype E L' true ProveWithStratify (Cpre ri rf) (λ L'' κs R2,
+              prove_with_subtype E L' true ProveWithStratify (Cpre ri rf) True%I (λ L'' κs R2,
               (* either fold to coreable, or to the core of lt_full *)
               match κs, ltype_blocked_lfts lt_cur' with
               | [], [] =>
@@ -2430,7 +2454,9 @@ Section subsume.
     - (* fold it again *)
       iDestruct "HT" as "(%ri & HT)".
       iMod ("HT" with "[//] CTX HE HL") as "(#Hincl & HL & %rf & HT)".
-      iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L3 & %κs & %R2 & Hstep' & HL & HT)".
+      iSpecialize ("HT" $! F True%I).
+      iMod ("HT" with "[//] [//] [//] CTX HE HL []") as "(%L3 & %κs & %R2 & Hstep' & HL & HT)".
+      { iApply maybe_logical_step_intro. iSplit; done. }
       iPoseProof (imp_unblockable_blocked_dead lt_cur') as "#(_ & Hub)".
       set (κs' := ltype_blocked_lfts lt_cur').
       destruct (decide (κs = [] ∧ κs' = [])) as [[-> ->] | ].
@@ -2443,7 +2469,7 @@ Section subsume.
         iApply (logical_step_compose with "Hcl").
         iApply (logical_step_compose with "Hstep'").
         iApply logical_step_intro.
-        iIntros "!> (Hpre & $) Hcl (Hl & $)".
+        iIntros "!> (HR2 & Hpre & _) Hcl (Hl & $)".
         (* instantiate own_lt_cur' with ownership of lt_cur' *)
         iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
         iMod ("Hcl" $! (λ π _ l, l ◁ₗ[π, Owned] r' @ lt_cur')%I [] with "Hpre [] Hl []") as "Ha".
@@ -2454,8 +2480,8 @@ Section subsume.
           iApply (ltype_incl_use_core with "Hincl Hb"); first done. }
         iDestruct "Ha" as "($ & Hobs & Hcl)".
         iMod ("Hcl" with "[] Hobs") as "Hl".
-        { iApply big_sepL_nil. done. }
-        iMod "Hcl_F" as "_". rewrite ltype_own_core_equiv. done.
+        { by iApply lft_dead_list_nil. }
+        iMod "Hcl_F" as "_". iFrame "HR2". rewrite ltype_own_core_equiv. done.
       + iAssert (([∗ list] κ' ∈ κs ++ κs', ⌜lctx_lft_incl E L3 κ' κ⌝) ∗ T L3 (Cpost ri rf ∗ R2 ∗ R) rt_full (CoreableLtype (κs ++ κs') lt_full) (PlaceIn rf))%I with "[HT]" as "HT".
         { destruct κs, κs'; naive_solver. }
         iDestruct "HT" as "(#Hincl1 & HT)".
@@ -2468,7 +2494,7 @@ Section subsume.
         iApply (logical_step_compose with "Hcl").
         iApply (logical_step_compose with "Hstep'").
         iApply logical_step_intro.
-        iIntros "!> (Hpre & $) Hcl (Hl & $)".
+        iIntros "!> (HR2 & Hpre & _) Hcl (Hl & $)".
         iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
         iMod ("Hcl" $! (λ π _ l, l ◁ₗ[π, Owned] r' @ lt_cur')%I (κs ++ κs') with "[Hpre] [] Hl []") as "Ha".
         { rewrite lft_dead_list_app. iIntros "(Hdead & _)". by iApply "Hpre". }
@@ -2480,7 +2506,7 @@ Section subsume.
           iApply (ltype_incl_use_core with "Hincl Hb"); first done. }
         iDestruct "Ha" as "($ & Hobs & Hcl)".
         iMod "Hcl_F" as "_".
-        iModIntro. rewrite ltype_own_coreable_unfold /coreable_ltype_own.
+        iModIntro. iFrame "HR2". rewrite ltype_own_coreable_unfold /coreable_ltype_own.
         iExists ly. rewrite -Hst2 -Hst1. iSplitR; first done.
         iSplitR; first done. iSplitR; first done. iFrame.
   Qed.
@@ -2527,7 +2553,7 @@ Section subsume.
             (* show that the core of lt_cur' is a subtype of lt_inner *)
             weak_subltype E L' (Owned) (r') (#ri) lt_cur' lt_inner (
               (* re-establish the invariant *)
-              prove_with_subtype E L' true ProveDirect (Cpre ri)
+              prove_with_subtype E L' true ProveDirect (Cpre ri) True%I
                 (λ L'' _ R2, T L'' (Cpost ri ∗ R2 ∗ R) unit (AliasLtype unit (ltype_st lt_inner) l) #tt)))
     ⊢ stratify_ltype π E L mdu ma ml l (OpenedNaLtype lt_cur lt_inner Cpre Cpost) r (Owned) T.
   Proof.
@@ -2556,7 +2582,9 @@ Section subsume.
     - (* fold it again *)
       iDestruct "HT" as "(%ri & HT)".
       iMod ("HT" with "[//] CTX HE HL") as "(Hincl & HL & HT)".
-      iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L3 & %κs & %R2 & Hstep' & HL & HT)".
+      iSpecialize ("HT" $! F True%I).
+      iMod ("HT" with "[//] [//] [//] CTX HE HL []") as "(%L3 & %κs & %R2 & Hstep' & HL & HT)".
+      { iApply maybe_logical_step_intro. iSplit; done. }
 
       iExists L3, _, _, _, _; iFrame.
       iSplitR.
@@ -2569,7 +2597,7 @@ Section subsume.
       iApply (logical_step_compose with "Hstep'").
       iApply logical_step_intro.
 
-      iIntros "!> (Hpre & $) Hcl (Hl & $)".
+      iIntros "!> (HR2 & Hpre & _) Hcl (Hl & $)".
       iMod (ltype_incl_use with "Hincl Hl") as "Hl"; first done.
 
       iPoseProof ("Hcl" with "Hpre Hl") as "Hvs".
@@ -2580,7 +2608,7 @@ Section subsume.
         by iExists ly; repeat iR. }
 
       iMod (fupd_mask_mono with "Hvs") as "Hvs"; first set_solver.
-      done.
+      iModIntro. iFrame.
   Qed.
   Definition stratify_ltype_opened_na_Owned_inst := [instance @stratify_ltype_opened_na_Owned].
   Global Existing Instance stratify_ltype_opened_na_Owned_inst.
@@ -4373,16 +4401,19 @@ Section subsume.
   Lemma type_goto_precond E L f P b fn R ϝ :
     typed_block E P f b fn R ϝ ∗
     (* [true] so that we can deinitialize with [owned_subltype_step] *)
-    prove_with_subtype E L true ProveDirect (P L) (λ L' _ R,
+    prove_with_subtype E L true ProveDirect (P L) True%I (λ L' _ R,
       ⌜L = L'⌝ ∗ True (* TODO maybe relax and require inclusion of contexts or so. *))
     ⊢ typed_stmt E L f (Goto b) fn R ϝ.
   Proof.
-    iIntros "(Hblock & Hsubt)". iIntros (?) "#CTX #HE HL Hf Hcont".
-    iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L' & % & %R2 & HP & HL & HT)"; [done.. | ].
+    iIntros "(Hblock & Hsubt)". iIntros (Φ) "#CTX #HE HL Hf Hcont".
+    iSpecialize ("Hsubt" $! ⊤ True%I).
+    iMod ("Hsubt" with "[] [] [] CTX HE HL []") as "(%L' & % & %R2 & HP & HL & HT)";
+      [set_solver.. | iApply maybe_logical_step_intro; iSplit; done | ].
     simpl.
-    iDestruct ("HT") as "(<- & _)".
+    iDestruct ("HT") as "(<- & Hdrop)".
     iSpecialize ("Hblock" with "CTX HE HL Hf [HP]").
-    { iApply (logical_step_wand with "HP"). iIntros "($ & _)". }
+    { iApply (logical_step_wand with "HP"). iIntros "(HR & HP & _)".
+      iFrame "HP". }
     by iApply "Hblock".
   Qed.
 
@@ -4411,7 +4442,7 @@ Section subsume.
     fn.(f_code) !! b = Some s →
     (* TODO maybe also stratify? *)
     (∃ params,
-    prove_with_subtype E L true ProveDirect (P params L) (λ L' _ R2,
+    prove_with_subtype E L true ProveDirect (P params L) True%I (λ L' _ R2,
       ⌜L' = L⌝ ∗ (* TODO maybe relax if we have a separate condition on lifetime contexts *)
       (* gather up the remaining ownership *)
       accu (λ Q,
@@ -4420,14 +4451,17 @@ Section subsume.
           typed_stmt E L2 f s fn R ϝ)))))
     ⊢ typed_stmt E L f (Goto b) fn R ϝ.
   Proof.
-    iIntros (Hlook) "(%params & Hsubt)". iIntros (?) "#CTX #HE HL Hf Hcont".
-    iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L' & % & %R2 & Hinv & HL & HT)"; [done.. | ].
+    iIntros (Hlook) "(%params & Hsubt)". iIntros (Φ) "#CTX #HE HL Hf Hcont".
+    iSpecialize ("Hsubt" $! ⊤ True%I).
+    iMod ("Hsubt" with "[] [] [] CTX HE HL []") as "(%L' & % & %R2 & Hinv & HL & HT)";
+      [set_solver.. | iApply maybe_logical_step_intro; iSplit; done | ].
     iDestruct ("HT") as "(-> & Hrec)".
     rewrite /accu.
     iDestruct "Hrec" as "(%Q & HQ & #Hrec)".
     iApply (typed_block_rec with "Hrec CTX HE HL Hf [Hinv HQ]").
     - done.
-    - iApply (logical_step_wand with "Hinv"). iIntros "(? & ?)". iFrame.
+    - iApply (logical_step_wand with "Hinv"). iIntros "(HR & HP & _)".
+      iFrame "HP HQ".
     - done.
   Qed.
 
@@ -4440,7 +4474,7 @@ Section subsume.
     ⌜r = # $# (rew [RT_xt] Heq in r')⌝ ∗
     ⌜π = f.1⌝ ∗
     (* TODO maybe also stratify? *)
-    prove_with_subtype E L true ProveDirect (P r' a L) (λ L' _ R2,
+    prove_with_subtype E L true ProveDirect (P r' a L) True%I (λ L' _ R2,
       ⌜L' = L⌝ ∗ (* TODO maybe relax if we have a separate condition on lifetime contexts *)
       (* gather up the remaining ownership *)
       accu (λ Q,
@@ -4449,18 +4483,21 @@ Section subsume.
           typed_stmt E L2 f s fn R ϝ)))))
     ⊢ typed_stmt E L f (Goto b) fn R ϝ.
   Proof.
-    iIntros (Hlook) "Hsubt". iIntros (?) "#CTX #HE HL Hf Hcont".
+    iIntros (Hlook) "Hsubt". iIntros (Φ) "#CTX #HE HL Hf Hcont".
     unfold FindLoc.
     iDestruct "Hsubt" as "(%x & Hlt & HT)". simpl in *.
     destruct x as [rt' (((lt & r) & ?) & ?)].
     iDestruct ("HT" with "Hlt") as "(%Heq & %r' & %a & -> & -> & Hsubt)".
-    iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L' & % & %R2 & Hinv & HL & HT)"; [done.. | ].
+    iSpecialize ("Hsubt" $! ⊤ True%I).
+    iMod ("Hsubt" with "[] [] [] CTX HE HL []") as "(%L' & % & %R2 & Hinv & HL & HT)";
+      [set_solver.. | iApply maybe_logical_step_intro; iSplit; done | ].
     iDestruct ("HT") as "(-> & Hrec)".
     rewrite /accu.
     iDestruct "Hrec" as "(%Q & HQ & #Hrec)".
     iApply (typed_block_rec with "Hrec CTX HE HL Hf [Hinv HQ]").
     - done.
-    - iApply (logical_step_wand with "Hinv"). iIntros "(? & ?)". iFrame.
+    - iApply (logical_step_wand with "Hinv"). iIntros "(HR & HP & _)".
+      iFrame "HP HQ".
     - done.
   Qed.
 
@@ -4563,7 +4600,7 @@ Section subsume.
     if decide (x ∈ locals) then
       find_in_context (FindLocal f x) (λ '(st, l),
       li_tactic (simplify_local_list_goal (remove_local locals x)) (λ locals',
-        prove_with_subtype E L true ProveDirect (l ◁ₗ[f.1, Owned] .@ ◁ uninit st) (λ L2 κs R2,
+        prove_with_subtype E L true ProveDirect (l ◁ₗ[f.1, Owned] .@ ◁ uninit st) True%I (λ L2 κs R2,
           introduce_with_hooks E L2 R2 (λ L3,
           li_clear l ((allocated_locals f locals' -∗ typed_stmt E L3 f s fn R ϝ))))))
     else (allocated_locals f locals -∗ typed_stmt E L f s fn R ϝ))
@@ -4575,15 +4612,17 @@ Section subsume.
     - iDestruct "HT" as "(%stl & Hx & HT)".
       destruct stl as [st l]. simpl in *.
       unfold LocalDeadSt.
-      iIntros (?) "#CTX #HE HL Hf Hpost".
+      iIntros (Φ) "#CTX #HE HL Hf Hpost".
       unfold simplify_local_list_goal.
       iDestruct "HT" as "(%locals' & <- & HT)".
-      iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & %κs & %R2 & Hstep & HL & HT)"; [done.. | ].
+      iSpecialize ("HT" $! ⊤ True%I).
+      iMod ("HT" with "[] [] [] CTX HE HL []") as "(%L2 & %κs & %R2 & Hstep & HL & HT)";
+        [set_solver.. | iApply maybe_logical_step_intro; iSplit; done | ].
       simpl.
       iApply wps_skip.
       iApply (physical_step_logical_step with "Hstep").
       iApply physical_step_intro. iNext.
-      iIntros "(Hl & HR)".
+      iIntros "(HR & Hl & _)".
       rewrite ltype_own_ofty_unfold /lty_of_ty_own.
       iDestruct "Hl" as "(%ly & %Hst & %Hlyl & _ & _ & % & <- & Ha)".
       iMod (fupd_mask_mono with "Ha") as "Ha"; first done.
@@ -4880,7 +4919,7 @@ Section subsume.
       match o with
       | Some κ =>
         (* find some credits *)
-        prove_with_subtype E L false ProveDirect (£1) (λ L1 _ R2,
+        prove_with_subtype E L false ProveDirect (£1) True%I (λ L1 _ R2,
         (* We need to make sure there are no open borrows using tokens of this lifetime, inclusing aliases, so find the lifetimes which will be dying here *)
         li_tactic (find_implied_dying_lifetimes_goal L1 κ) (λ implied_dying,
         typed_pre_context_fold f.1 E L1 (CtxFoldCloseInvAllInit (κ :: implied_dying)) (λ L1',
@@ -4912,8 +4951,10 @@ Section subsume.
       iApply physical_step_intro; iNext.
       by iApply ("HT" with "Hnamed CTX HE HL Hf"). }
     unfold llctx_find_llft_goal, llctx_remove_dead_aliases_goal, li_tactic.
-    iIntros (?) "#CTX #HE HL Hf Hcont".
-    iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & % & %R2 & >(Hc & HR2) & HL & HT)"; [done.. | ].
+    iIntros (Φ) "#CTX #HE HL Hf Hcont".
+    iSpecialize ("HT" $! ⊤ True%I).
+    iMod ("HT" with "[] [] [] CTX HE HL []") as "(%L2 & % & %R2 & >(HR2 & Hc & _) & HL & HT)";
+      [set_solver.. | iApply maybe_logical_step_intro; iSplit; done | ].
     unfold find_implied_dying_lifetimes_goal. iDestruct "HT" as "(%implied_dying & HT)".
     iApply wps_annot.
     iPoseProof ("HT" $! ⊤ with "[] [] [] CTX HE HL") as "Hstep"; [done.. | ].
@@ -5208,7 +5249,7 @@ Section subsume.
               e is_live{f, st} l ∗
               l ◁ₗ[f.1, Owned] (#()) @ (◁ (uninit st)) ∗ T)
             True%I
-            locals) (λ L3 _ R2, introduce_with_hooks E L3 R2 (λ L4,
+            locals) True%I (λ L3 _ R2, introduce_with_hooks E L3 R2 (λ L4,
             (* important: when proving the postcondition [R v], we already have the ownership obtained by deinitializing the local variables [R2] available.
               The remaining goal is fully encoded by [R v], so the continuation is empty.
             *)
@@ -5216,7 +5257,7 @@ Section subsume.
             ))))))))
     ⊢ typed_stmt E L f (return e) fn R ϝ.
   Proof.
-    iIntros "He". iIntros (?) "#CTX #HE HL Hf Hcont". wps_bind.
+    iIntros "He". iIntros (Φ) "#CTX #HE HL Hf Hcont". wps_bind.
     wpe_bind.
     iApply ("He" with "CTX HE HL Hf").
     iIntros (L' v m rt ty r) "HL Hf Hv HR".
@@ -5235,11 +5276,13 @@ Section subsume.
     rewrite /typed_context_fold_stratify_interp.
     destruct acc as (ctx & R2).
     iMod ("HT" with "[] [$] HE HL Hacc") as "(%L4 & HL & HT)"; first done.
-    iMod ("HT" with "[] [] [] [$] HE HL") as "(%L5 & % & %R3 & HP & HL & HT)"; [done.. | ].
+    iSpecialize ("HT" $! ⊤ True%I).
+    iMod ("HT" with "[] [] [] [$] HE HL []") as "(%L5 & % & %R3 & HP & HL & HT)";
+      [set_solver.. | iApply maybe_logical_step_intro; iSplit; done | ].
     iApply (wpe_maybe_logical_step with "HP"); [done.. | ].
     iModIntro. iApply wp_skip.
     iApply physical_step_intro; iNext.
-    iIntros "(Ha & HR2)".
+    iIntros "(HR2 & Ha & _)".
     iApply wps_fupd.
     iApply wps_return.
     unfold li_tactic, llctx_find_llft_goal.

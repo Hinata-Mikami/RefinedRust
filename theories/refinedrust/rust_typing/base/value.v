@@ -526,13 +526,14 @@ Section rules.
   (** When we require assembled ownership, try to assemble it. *)
 
   Lemma subsume_full_value_merge_ofty_untyped {rt} π E L (ty : type rt) `{!TySized ty} r v l ly1 T :
-    (prove_with_subtype E L false ProveDirect (v ◁ᵥ{π, MetaNone} r @ ty) (λ L' _ R,
+    (prove_with_subtype E L false ProveDirect (v ◁ᵥ{π, MetaNone} r @ ty) True (λ L' _ R,
       ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly1⌝ ∗ T L' R))
     ⊢ subsume_full E L false (l ◁ₗ[π, Owned] #v @ ◁ value_t (UntypedSynType ly1)) (l ◁ₗ[π, Owned] #r @ (◁ ty)) T.
   Proof.
     iIntros "HT".
     iIntros (????) "#CTX #HE HL Hl".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L' & % & %R & >(Hv & HR) & HL & % & HT)".
+    iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL []") as "(%L' & % & %R & >(HR & Hv & _) & HL & % & HT)".
+    { iApply maybe_logical_step_intro. done. }
     iPoseProof (ofty_own_merge_value with "Hv Hl") as "?"; first done.
     iModIntro. iExists L', R. iFrame. done.
   Qed.
@@ -541,13 +542,14 @@ Section rules.
   Global Existing Instance subsume_full_value_merge_ofty_untyped_inst | 100.
 
   Lemma subsume_full_value_merge_ofty {rt} π E L (ty : type rt) `{!TySized ty} r v l st T :
-    (prove_with_subtype E L false ProveDirect (v ◁ᵥ{π, MetaNone} r @ ty) (λ L' _ R,
+    (prove_with_subtype E L false ProveDirect (v ◁ᵥ{π, MetaNone} r @ ty) True (λ L' _ R,
       ⌜ty_has_op_type ty (use_op_alg' (ty.(ty_syn_type) MetaNone)) MCCopy⌝ ∗ ⌜ty_syn_type ty MetaNone = st⌝ ∗ T L' R))
     ⊢ subsume_full E L false (l ◁ₗ[π, Owned] #v @ ◁ value_t st) (l ◁ₗ[π, Owned] #r @ (◁ ty)) T.
   Proof.
     iIntros "HT".
     iIntros (????) "#CTX #HE HL Hl". iPoseProof (ltype_own_has_layout with "Hl") as "(%ly' & %Hst & %)".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L' & % & %R & >(Hv & HR) & HL & %Hc & %Ha & HT)".
+    iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL []") as "(%L' & % & %R & >(HR & Hv & _) & HL & %Hc & %Ha & HT)".
+    { iApply maybe_logical_step_intro. done. }
     iModIntro. iExists L', R. iFrame.
     iApply (ofty_own_merge_value with "Hv Hl").
     destruct st; try done. simp_ltypes in Hst. simpl in Hst. rewrite Ha.
@@ -563,14 +565,15 @@ Section rules.
   Global Existing Instance owned_subtype_value_id_inst | 10.
 
   Lemma owned_subtype_value_merge {rt} π E L (ty : type rt) r v' st T :
-    prove_with_subtype E L false ProveDirect (v' ◁ᵥ{π, MetaNone} r @ ty) (λ L' _ R,
+    prove_with_subtype E L false ProveDirect (v' ◁ᵥ{π, MetaNone} r @ ty) True (λ L' _ R,
       introduce_with_hooks E L' R (λ L2, ⌜ty_has_op_type ty (use_op_alg' (ty.(ty_syn_type) MetaNone)) MCCopy⌝ ∗
       ⌜ty_syn_type ty MetaNone = st⌝ ∗ T L2))
     ⊢ owned_subtype π E L false v' r (value_t st) (ty) T.
   Proof.
     iIntros "HT".
     iIntros (????) "#CTX #HE HL".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & %κs & %R & >(Hv' & HR) & HL & HT)".
+    iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL []") as "(%L2 & %κs & %R & >(HR & Hv' & _) & HL & HT)".
+    { iApply maybe_logical_step_intro. done. }
     iMod ("HT" with "[//] CTX HE HL HR") as "(%L3 & HL & %Hot & <- & HT)".
     iExists _. iFrame. iModIntro.
     iPoseProof (ty_own_val_sidecond with "Hv'") as "#$".
@@ -713,7 +716,7 @@ Section unify_loc.
     (⌜l `has_layout_loc` ly1⌝ -∗
     ⌜l `has_layout_loc` ly2⌝ ∗
     ∃ vs2' : val, ⌜vs2 = vs1 ++ vs2'⌝ ∗
-    ∃ ly1', prove_with_subtype E L step ProveDirect ((l +ₗ ly_size ly1) ◁ₗ[π, Owned] #vs2' @ ◁ value_t (UntypedSynType ly1'))
+    ∃ ly1', prove_with_subtype E L step ProveDirect ((l +ₗ ly_size ly1) ◁ₗ[π, Owned] #vs2' @ ◁ value_t (UntypedSynType ly1')) True
         (λ L2 _ R2, ⌜ly_size ly1' = ly_size ly2 - ly_size ly1⌝ ∗ T L2 R2)))
     ⊢ subsume_full E L step (l ◁ₗ[π, Owned] #vs1 @ ◁ value_t (UntypedSynType ly1))
         (l ◁ₗ[π, Owned] #vs2 @ ◁ value_t (UntypedSynType ly2)) T.
@@ -724,12 +727,13 @@ Section unify_loc.
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Halg & %Hal)".
     apply syn_type_has_layout_untyped_inv in Halg as (-> & ? & ?).
     iDestruct ("HT" with "[//]") as "(%Hal2 & %vs2' & -> & %ly1' & HT)".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L' & % & %R2 & Hl' & HL & %Hsz & HT)".
+    iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL[] ") as "(%L' & % & %R2 & Hl' & HL & %Hsz & HT)".
+    { iApply maybe_logical_step_intro. done. }
     iExists _, R2. iFrame.
     iApply maybe_logical_step_fupd.
     iApply (maybe_logical_step_compose with "Hl'").
     iApply maybe_logical_step_intro.
-    iIntros "!> (Hl' & $)".
+    iIntros "!> ($ & Hl' & _)".
     iPoseProof (ofty_value_untyped_app_merge with "Hl Hl'") as "$"; last done.
     - done.
     - done.

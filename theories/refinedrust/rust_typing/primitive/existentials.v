@@ -580,12 +580,13 @@ Section stratify.
   (** Subsumption rule for introducing an existential *)
   (* TODO could have a more specific instance for persistent invariants with pers = true *)
   Lemma owned_subtype_ex_plain_t π E L (ty : type rt) (r : rt) (r' : X) T :
-    (prove_with_subtype E L false ProveDirect (P.(inv_P) π r r') (λ L1 _ R, R -∗ T L1))
+    (prove_with_subtype E L false ProveDirect (P.(inv_P) π r r') True%I (λ L1 _ R, R -∗ T L1))
     ⊢ owned_subtype π E L false r r' ty (∃; P, ty) T.
   Proof.
     iIntros "HT".
     iIntros (????) "#CTX #HE HL".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & % & %R2 & >(Hinv & HR2) & HL & HT)".
+    iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL []") as "(%L2 & % & %R2 & >(HR2 & Hinv & _) & HL & HT)".
+    { iApply maybe_logical_step_intro. done. }
     iExists L2. iFrame. iPoseProof ("HT" with "HR2") as "$". iModIntro.
     iSplitR; last iSplitR.
     - simpl. iPureIntro.
@@ -595,9 +596,8 @@ Section stratify.
       iEval (rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def).
       eauto with iFrame.
   Qed.
-  Global Instance owned_subtype_ex_plain_t_inst π E L (ty : type rt) (r : rt) (r' : X) :
-    OwnedSubtype π E L false r r' ty (∃; P, ty) :=
-    λ T, i2p (owned_subtype_ex_plain_t π E L ty r r' T).
+  Definition owned_subtype_ex_plain_t_inst := [instance @owned_subtype_ex_plain_t].
+  Global Existing Instance owned_subtype_ex_plain_t_inst.
 
   Definition owned_subtype_ex_plain_t_refl π E L (ty : type rt) r1 r2 := owned_subtype_id π E L false r1 r2 (∃; P, ty).
   Definition owned_subtype_ex_plain_t_refl_inst := [instance @owned_subtype_ex_plain_t_refl].
@@ -606,8 +606,8 @@ Section stratify.
   (* Lower priority instance for subtyping from any type *)
   Lemma owned_subtype_ex_plain_t_strong {rt0 : RT} π E L (ty : type rt0) (ty2 : type rt) (r : rt0) (r' : X) T :
     (∃ r1, owned_subtype π E L false r r1 ty ty2 (λ L2,
-    (prove_with_subtype E L2 false ProveDirect (P.(inv_P) π r1 r') (λ L1 _ R,
-    R -∗ T L1))))
+    (prove_with_subtype E L2 false ProveDirect (P.(inv_P) π r1 r') True%I (λ L1 _ R,
+      R -∗ T L1))))
     ⊢ owned_subtype π E L false r r' ty (∃; P, ty2) T.
   Proof.
     iIntros "HT".
@@ -615,7 +615,8 @@ Section stratify.
     iIntros (????) "#CTX #HE HL".
     iDestruct "HT" as "(%r1 & HT)".
     iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L0 & Hincl & HL & HT)".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & % & %R2 & >(Hinv & HR2) & HL & HT)".
+    iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL []") as "(%L2 & % & %R2 & >(HR2 & Hinv & _) & HL & HT)".
+    { iApply maybe_logical_step_intro. done. }
     iExists L2. iFrame. iPoseProof ("HT" with "HR2") as "$". iModIntro.
     iDestruct "Hincl" as "(%Hst_eq & Hsc & Hv)".
     iSplitR; last iSplitL "Hsc".

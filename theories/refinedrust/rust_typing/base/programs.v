@@ -2691,11 +2691,13 @@ Section judgments.
   (* ideally, would like to both stratify and then subsume.
      But the problem is that both will take steps in the return case.
      So for return, I could either have two steps, or keep the context fold. *)
-  Definition prove_with_subtype (E : elctx) (L : llctx) (step : bool) (pm : ProofMode) (P : iProp Σ) (T : llctx → list lft → iProp Σ → iProp Σ) : iProp Σ :=
-    ∀ F, ⌜lftE ⊆ F⌝ -∗ ⌜lft_userE ⊆ F⌝ -∗ ⌜shrE ⊆ F⌝ -∗ rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗ |={F}=>
-      ∃ L' κs R, maybe_logical_step step F ((if pm is ProveWithStratify then (lft_dead_list κs ={lftE}=∗ P) else P) ∗ R) ∗ llctx_interp L' ∗ T L' κs R.
-  Class ProveWithSubtype (E : elctx) (L : llctx) (step : bool) (pm : ProofMode) (P : iProp Σ) : Type :=
-    prove_with_subtype_proof T : iProp_to_Prop (prove_with_subtype E L step pm P T).
+  Definition prove_with_subtype (E : elctx) (L : llctx) (step : bool) (pm : ProofMode) (P : iProp Σ) (Acc : iProp Σ) (T : llctx → list lft → iProp Σ → iProp Σ) : iProp Σ :=
+    ∀ F Acc', ⌜lftE ⊆ F⌝ -∗ ⌜lft_userE ⊆ F⌝ -∗ ⌜shrE ⊆ F⌝ -∗ rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
+      maybe_logical_step step F (Acc ∗ Acc') -∗ |={F}=>
+      ∃ L' κs R, 
+        maybe_logical_step step F (R ∗ ((if pm is ProveWithStratify then (lft_dead_list κs ={lftE}=∗ P) else P) ∗ Acc')) ∗ llctx_interp L' ∗ T L' κs R.
+  Class ProveWithSubtype (E : elctx) (L : llctx) (step : bool) (pm : ProofMode) (P : iProp Σ) (Acc : iProp Σ) : Type :=
+    prove_with_subtype_proof T : iProp_to_Prop (prove_with_subtype E L step pm P Acc T).
 
   (** Interpreting typing hints *)
   Definition interpret_typing_hint_cont_t (bmin : place_update_kind) (rt : RT) :=
@@ -4480,7 +4482,7 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | resolve_ghost_adt ?π ?E ?L ?rm ?r ?ty => constr:(ResolveGhostADT π E L rm r ty)
   | resolve_ghost_iter ?π ?E ?L ?rm ?b ?l ?st ?ltys ?bk ?rs ?ig ?i => constr:(ResolveGhostIter π E L rm b l st ltys bk rs ig i)
   | prove_place_cond ?E ?L ?bk ?lt1 ?lt2 => constr:(ProvePlaceCond E L bk lt1 lt2)
-  | prove_with_subtype ?E ?L ?wl ?pm ?P => constr:(ProveWithSubtype E L wl pm P)
+  | prove_with_subtype ?E ?L ?wl ?pm ?P ?Acc => constr:(ProveWithSubtype E L wl pm P Acc)
   | weak_subtype ?E ?L ?r1 ?r2 ?ty1 ?ty2 => constr:(Subtype E L r1 r2 ty1 ty2)
   | mut_subtype ?E ?L ?ty1 ?ty2 => constr:(MutSubtype E L ty1 ty2)
   | mut_eqtype ?E ?L ?ty1 ?ty2 => constr:(MutEqtype E L ty1 ty2)
@@ -4523,7 +4525,7 @@ Notation "'typed_place' E L f l lto ro b1 b2 K 'HIDDEN_CONT'" := (typed_place E 
 
 Notation "'subsume_full' E L wl P1 P2 'HIDDEN_CONT'" := (subsume_full E L wl P1 P2 _) (only printing): rr_hidden.
 Notation "'resolve_ghost' π E L rm f l lt k r 'HIDDEN_CONT'" := (resolve_ghost π E L rm f l lt k r _) (only printing): rr_hidden.
-Notation "'prove_with_subtype' E L wl pm P 'HIDDEN_CONT'" := (prove_with_subtype E L wl pm P _) (only printing): rr_hidden.
+Notation "'prove_with_subtype' E L wl pm P 'HIDDEN_ACC' 'HIDDEN_CONT'" := (prove_with_subtype E L wl pm P _ _) (only printing): rr_hidden.
 Notation "'introduce_with_hooks' E L P 'HIDDEN_CONT'" := (introduce_with_hooks E L P _) (only printing): rr_hidden.
 Notation "'stratify_ltype' π E L mdu ma m l lt r b 'HIDDEN_CONT'" := (stratify_ltype π E L mdu ma m l lt r b _) (only printing): rr_hidden.
 

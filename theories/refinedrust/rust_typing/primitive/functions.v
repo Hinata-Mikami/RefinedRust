@@ -154,7 +154,7 @@ Section function.
           let L := [ϝ ⊑ₗ{0} []] in
           fn_init_context fn fps π f lsa sta -∗ introduce_typed_stmt E L (π, f) ϝ fn (
             λ v L2,
-            prove_with_subtype E L2 false ProveDirect (fn_ret_prop π fps.(fp_fr) v) (λ L3 _ R3,
+            prove_with_subtype E L2 false ProveDirect (fn_ret_prop π fps.(fp_fr) v) True%I (λ L3 _ R3,
             introduce_with_hooks E L3 R3 (λ L4,
             (* we don't really kill it here, but just need to find it in the context *)
             li_tactic (llctx_find_llft_goal L4 ϝ LlctxFindLftFull) (λ _,
@@ -234,7 +234,10 @@ Section call.
       let fps := (fp κs tys).(fn_p) x in
       (* ensure that type variable evars have been instantiated now *)
       (* show typing for the function's actual arguments. *)
-      prove_with_subtype E L' false ProveDirect ([∗ list] v;t ∈ vl; fps.(fp_atys), let '(existT rt (ty, r)) := t in v ◁ᵥ{π, MetaNone} r @ ty) (λ L1 _ R2,
+      prove_with_subtype E L' false ProveDirect
+        ([∗ list] v;t ∈ vl; fps.(fp_atys), let '(existT rt (ty, r)) := t in v ◁ᵥ{π, MetaNone} r @ ty)
+        True
+      (λ L1 _ R2,
       R2 -∗
       (* the syntypes of the actual arguments match with the syntypes the function assumes *)
       ⌜sta = fmap (λ '(existT rt (ty, _)), ty.(ty_syn_type) MetaNone) fps.(fp_atys)⌝ ∗
@@ -244,7 +247,7 @@ Section call.
           Maybe we should port them to a form of owned_subltype?
           but even the logical step thing is problematic.
         *)
-      prove_with_subtype E L1 true ProveDirect (fps.(fp_Pa) π) (λ L2 _ R3,
+      prove_with_subtype E L1 true ProveDirect (fps.(fp_Pa) π) True (λ L2 _ R3,
       (* finally, prove the sidecondition *)
       fps.(fp_Sc) π ∗
       ⌜Forall (lctx_lft_alive E L2) L2.*1.*2⌝ ∗
@@ -265,9 +268,11 @@ Section call.
     (*set (aκs := list_to_tup eκs).*)
     cbn.
     set (fps := (fp aκs stys).(fn_p) x).
-    iApply fupd_wpe. iMod ("HP" with "[] [] [] CTX HE HL") as "(%L1 & % & %R2 & >(Hvl & R2) & HL & HT)"; [done.. | ].
+    iApply fupd_wpe.
+    iMod ("HP" $! _ True%I with "[] [] [] CTX HE HL []") as "(%L1 & % & %R2 & >(R2 & Hvl & _) & HL & HT)"; [done.. | ].
     iDestruct ("HT" with "R2") as "(-> & HT)".
-    iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & % & %R3 & Hstep & HL & HT)"; [done.. | ].
+    iMod ("HT" $! _ True%I with "[] [] [] CTX HE HL []") as "(%L2 & % & %R3 & Hstep & HL & HT)"; [done.. | | ].
+    { iApply maybe_logical_step_intro. done. }
     iDestruct ("HT") as "(Hsc & %Hal & %Hsat & Hr)".
     (* initialize the function's lifetime *)
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
@@ -314,7 +319,7 @@ Section call.
     iMod (tr_zero) as "Hc".
     iApply (physical_step_intro_tr with "Hc").
     iNext. iIntros "Hc Hcred". iModIntro.
-    iIntros "(HP & HR)".
+    iIntros "(HR & HP & _)".
     iIntros (lsa Hlya) "Ha Hx Hf Halloc".
     iDestruct (big_sepL2_length with "Ha") as %Hlen1.
     iDestruct (big_sepL2_length with "Hx") as %Hlen2.
@@ -388,9 +393,10 @@ Section call.
     - iApply wps_fupd.
       iApply ("Hm" with "[$LFT $LCTX] HE' [$Hϝ//] Hf []").
       iIntros (L5 v' locals) "HL Hf Hlocals Hloc HT". simpl.
-      iMod ("HT" with "[] [] [] [] HE' HL") as "(%L3 & %κs1 & %R4 & Hp & HL & HT)"; [done.. |  | ].
+      iMod ("HT" $! _ True%I with "[] [] [] [] HE' HL []") as "(%L3 & %κs1 & %R4 & Hp & HL & HT)"; [done.. |  | | ].
       { rewrite /rrust_ctx. iFrame "#". }
-      iMod "Hp" as "(Hret & HR)".
+      { iApply maybe_logical_step_intro. done. }
+      iMod "Hp" as "(HR & Hret & _)".
       iMod ("HT" with "[] [$] HE' HL HR") as "(%L6 & HL & HT)"; first done.
       rewrite /llctx_find_llft_goal.
       iDestruct "HT" as "(%HL6 & %κs' & %Hfind & HT)".
@@ -739,10 +745,10 @@ Section function_subsume.
     simpl. iApply "Hf".
     iIntros (L' v locals) "HL Hfr Hlocals Hlocs Hpost". simpl.
     iApply ("Hrt" with "HL Hfr Hlocals Hlocs").
-    iIntros (????) "_ HE HL".
+    iIntros (?????) "_ HE HL HA".
     iPoseProof ("HEincl" with "HE") as "HE".
-    iMod ("Hpost" with "[//] [//] [//] CTX HE HL") as "(%L2 & %κs2 & %R & Hs & HL & Hintro)".
-    iMod "Hs" as "((%x & Hrt & Hpost & _) & HR)".
+    iMod ("Hpost" with "[//] [//] [//] CTX HE HL HA") as "(%L2 & %κs2 & %R & Hs & HL & Hintro)".
+    iMod "Hs" as "(HR & (%x & Hrt & Hpost & _) & ?)".
     iDestruct ("HT" with "Hpost Hrt") as "(%y & Hpost & Hrt & _)".
     (* TODO could also allow prove_with_subtype etc here? *)
     iModIntro.

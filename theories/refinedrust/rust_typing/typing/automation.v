@@ -136,8 +136,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedContextFoldStep AI π E L m l lt r tctx acc) T))
   | typed_annot_expr ?E ?L ?n ?a ?v ?P ?T =>
       cont uconstr:(((_ : TypedAnnotExpr E L n a v P) T))
-  | prove_with_subtype ?E ?L ?step ?pm ?P ?T =>
-      cont uconstr:(((_ : ProveWithSubtype E L step pm P) T))
+  | prove_with_subtype ?E ?L ?step ?pm ?P ?A ?T =>
+      cont uconstr:(((_ : ProveWithSubtype E L step pm P A) T))
   | @owned_subtype _ _ ?π ?E ?L ?pers ?rt1 ?rt2 ?r1 ?r2 ?ty1 ?ty2 ?T =>
       cont uconstr:((_ : @OwnedSubtype _ _ π E L pers rt1 rt2 r1 r2 ty1 ty2) T)
   | owned_subltype_step ?π ?E ?L ?l ?r1 ?r2 ?lt1 ?lt2 ?T =>
@@ -585,9 +585,9 @@ Section tac.
     apply tac_fast_apply.
     apply introduce_with_hooks_boringly_exist.
   Qed.
-  Lemma tac_prove_with_subtype_exists name Δ {X} E L step pm (Φ : X → iProp Σ) T :
-    envs_entails Δ (∃ x : name_hint_ty name X, prove_with_subtype E L step pm (Φ x) T) →
-    envs_entails Δ (prove_with_subtype E L step pm (∃ x, Φ x) T).
+  Lemma tac_prove_with_subtype_exists name Δ {X} E L step pm (Φ : X → iProp Σ) A T :
+    envs_entails Δ (∃ x : name_hint_ty name X, prove_with_subtype E L step pm (Φ x) A T) →
+    envs_entails Δ (prove_with_subtype E L step pm (∃ x, Φ x) A T).
   Proof.
     apply tac_fast_apply.
     apply prove_with_subtype_exists.
@@ -621,18 +621,18 @@ Ltac liRBinder :=
         end
       end
     end
-  | |- envs_entails _ (prove_with_subtype _ _ _ _ ?P _) =>
+  | |- envs_entails _ (prove_with_subtype _ _ _ _ ?P _ _) =>
       let P := eval simpl in P in
       match P with
       | @bi_exist _ ?T ?Φ =>
         match T with
         | name_hint_ty _ _ =>
-          notypeclasses refine (tac_fast_apply (prove_with_subtype_exists _ _ _ _ _ _) _)
+          notypeclasses refine (tac_fast_apply (prove_with_subtype_exists _ _ _ _ _ _ _) _)
         | _ =>
           match Φ with
           | (fun x => _) =>
             let ident := constr:(ident_to_string! x) in
-            notypeclasses refine (tac_prove_with_subtype_exists ident _ _ _ _ _ _ _ _)
+            notypeclasses refine (tac_prove_with_subtype_exists ident _ _ _ _ _ _ _ _ _)
           end
         end
       end
@@ -742,7 +742,7 @@ Section tac.
     (credit_store 0 0 -∗ na_own π ⊤ -∗ allocated_locals (π, f) (f_args fn).*1 -∗ introduce_with_hooks E L (Qinit) (λ L2,
         introduce_typed_stmt E L2 (π, f) ϝ fn (
         λ v L2,
-            prove_with_subtype E L2 false ProveDirect (fn_ret_prop π ((fp.2 κs tys).(fn_p) x).(fp_fr) v) (λ L3 _ R3,
+            prove_with_subtype E L2 false ProveDirect (fn_ret_prop π ((fp.2 κs tys).(fn_p) x).(fp_fr) v) True (λ L3 _ R3,
             introduce_with_hooks E L3 R3 (λ L4,
             (* we don't really kill it here, but just need to find it in the context *)
             li_tactic (llctx_find_llft_goal L4 ϝ LlctxFindLftFull) (λ _,
@@ -786,8 +786,8 @@ Section tac.
     unfold prove_with_subtype.
     iIntros "Hcont2".
     iApply "Hcont".
-    iIntros (????) "_ _ HL".
-    iMod ("Hcont2" with "[] [] [] [//] [//] HL") as "Hx"; [done.. | ].
+    iIntros (?????) "_ _ HL HA".
+    iMod ("Hcont2" with "[] [] [] [//] [//] HL HA") as "Hx"; [done.. | ].
     iDestruct "Hx" as "(% &  % & % & ? & ? & HT)". iFrame.
     iExists []. iModIntro. iIntros (??) "_ _ HL".
     iApply ("HT" with "[] CTX [] HL"); done.

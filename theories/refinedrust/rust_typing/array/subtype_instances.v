@@ -21,16 +21,18 @@ Section subtype.
   (* Higher priority instance than direct search for the value: as a heuristic, we split app values *)
   (* TODO: how would that scale to more complex transformations? E.g. what about take etc. -- I guess for that we could have instances as well.
     Basically, I would imagine that we only want to look in the context for primitive values. *)
-  Lemma prove_with_subtype_array_val_split π E L pm v1 v2 {rt} (ty : type rt) r1 r2 (len : nat) m T :
+  Lemma prove_with_subtype_array_val_split π E L pm v1 v2 {rt} (ty : type rt) r1 r2 (len : nat) m A T :
     ⌜(size_of_st (ty_syn_type ty m) * len ≤ MaxInt ISize)%Z⌝ ∗
     ⌜length r1 ≤ len⌝ ∗
-    prove_with_subtype E L false pm (v1 ◁ᵥ{π, m} r1 @ array_t (length r1) ty) (λ L2 κs1 R2,
-      prove_with_subtype E L2 false pm (v2 ◁ᵥ{π, m} r2 @ array_t (len - length r1) ty) (λ L3 κs2 R3, T L3 (κs1 ++ κs2) (R2 ∗ R3)%I))
-    ⊢ prove_with_subtype E L false pm ((v1 ++ v2) ◁ᵥ{π, m} r1 ++ r2 @ array_t len ty) T.
+    prove_with_subtype E L false pm (v1 ◁ᵥ{π, m} r1 @ array_t (length r1) ty) A (λ L2 κs1 R2,
+      prove_with_subtype E L2 false pm (v2 ◁ᵥ{π, m} r2 @ array_t (len - length r1) ty) R2
+      (λ L3 κs2 R3, T L3 (κs1 ++ κs2) R3))
+    ⊢ prove_with_subtype E L false pm ((v1 ++ v2) ◁ᵥ{π, m} r1 ++ r2 @ array_t len ty) A T.
   Proof.
-    iIntros "(% & % & HT)" (????) "#CTX #HE HL".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & %κs1 & %R2 & >(Hv1 & HR2) & HL & HT)".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L3 & %κs2 & %R3 & >(Hv2 & HR3) & HL & HT)".
+    iIntros "(% & % & HT)" (?????) "#CTX #HE HL HA".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL HA") as "(%L2 & %κs1 & %R2 & >(HR2 & Hv1 & HA) & HL & HT)".
+    iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL [HR2]") as "(%L3 & %κs2 & %R3 & >(HR3 & Hv2 & _) & HL & HT)".
+    { simpl. iFrame. done. }
     iModIntro. iExists L3, _, _. iFrame.
     destruct pm.
     - iEval (replace len with ((length r1) + (len - length r1)) by lia).

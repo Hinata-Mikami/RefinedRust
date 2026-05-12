@@ -362,7 +362,7 @@ Section na_subtype.
   Context {rt X : RT} (P : na_ex_inv_def rt X).
 
   Lemma owned_subtype_na_ex_plain_t π E L (ty : type rt) (r : rt) (r' : X) T :
-    (prove_with_subtype E L false ProveDirect (P.(na_inv_P) π r r') (λ L1 _ R, R -∗ T L1))
+    (prove_with_subtype E L false ProveDirect (P.(na_inv_P) π r r') True (λ L1 _ R, R -∗ T L1))
     ⊢ owned_subtype π E L false r r' ty (∃na; P, ty) T.
   Proof.
     unfold owned_subtype, prove_with_subtype.
@@ -370,7 +370,8 @@ Section na_subtype.
     (* Nothing has changed *)
     iIntros "HT".
     iIntros (????) "#CTX #HE HL".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & % & %R2 & >(Hinv & HR2) & HL & HT)".
+    iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL []") as "(%L2 & % & %R2 & >(HR2 & Hinv & _) & HL & HT)".
+    { iApply maybe_logical_step_intro. done. }
     iExists L2. iFrame. iPoseProof ("HT" with "HR2") as "$". iModIntro.
     iSplitR; last iSplitR.
     - simpl. iPureIntro. eapply syn_type_size_eq_refl.
@@ -570,7 +571,7 @@ Section na_subtype.
   Lemma typed_place_na_ex_plain_t_shared E L (f : frame_path) l (ty : type rt) x κ bmin K `{!TCDone (K ≠ [])} (T : place_cont_t X bmin) :
     find_in_context (FindNaOwn f.1) (λ mask : coPset,
       ⌜↑shrN.@l ⊆ mask⌝ ∗
-      prove_with_subtype E L false ProveDirect (£ 1) (λ L1 _ R, R -∗
+      prove_with_subtype E L false ProveDirect (£ 1) True%I (λ L1 _ R, R -∗
         li_tactic (lctx_lft_alive_count_goal E L1 κ) (λ '(κs, L2),
           ∀ r, introduce_with_hooks E L2
             (P.(na_inv_P) f.1 r x ∗
@@ -603,8 +604,8 @@ Section na_subtype.
     rewrite /prove_with_subtype.
     iApply fupd_place_to_wp.
 
-    iMod ("HT" with "[] [] [] [$LFT $LLCTX] HE HL")
-        as "(% & % & % & >(Hcred & HR) & HL & HT)"; [ done.. |].
+    iMod ("HT" $! _ True%I with "[] [] [] [$LFT $LLCTX] HE HL []")
+        as "(% & % & % & >(HR & Hcred & _) & HL & HT)"; [ done.. |].
     iSpecialize ("HT" with "HR").
 
     rewrite /li_tactic /lctx_lft_alive_count_goal.

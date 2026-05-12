@@ -198,15 +198,17 @@ Proof.
       iIntros (??) "_ _ HL _". iModIntro. iFrame. iExists *[], -[].
       rewrite /li_tactic/ensure_evars_instantiated_goal.
       iR. iExists tt.
-      iIntros (????) "#CTX #HE HL".
+      iIntros (?????) "#CTX #HE HL (_ & >$)".
       iModIntro. iExists [], [], True%I.
       iFrame. iSplitR.
       { simpl. eauto. }
       iSplitR. { simpl. eauto. }
       iIntros "_". simpl. iR.
-      iIntros (????) "_ _ HL". iModIntro.
+      iIntros (?????) "_ _ HL HA". iModIntro.
       iExists [], [], True%I. iFrame.
-      iSplitL "HP". { iApply maybe_logical_step_intro. eauto. }
+      iSplitL "HP HA". {
+        iApply (maybe_logical_step_compose with "HA").
+        iApply maybe_logical_step_intro. iIntros "(_ & $)". eauto. }
       simpl.
       iSplitR; first done.
       iSplitR. { iPureIntro. by apply Forall_nil. }
