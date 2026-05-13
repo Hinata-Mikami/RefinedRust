@@ -52,7 +52,7 @@ Section Iter_ty.
 
 Definition Iter_ty  : (spec_with 1 [(T_rt)] ((type (plist place_rfnRT [loc : RT; (((core_marker_PhantomData_rt) ((place_rfnRT (T_rt))))) : RT])))).
 Proof.
-  exact (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (Iter_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[(alias_ptr_t); ((core_marker_PhantomData_ty ((place_rfnRT (T_rt)))  <TY> (shr_ref ulft_a T_ty) <INST!>))]))).
+  exact (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (Iter_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[(alias_ptr_t); ((core_marker_PhantomData_ty ((place_rfnRT (T_rt))) -[] -[(shr_ref ulft_a T_ty)]))]))).
 Defined.
 
 Definition Iter_rt  : RT.
@@ -80,7 +80,9 @@ Section Iter_inv_t.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 
   Definition Iter_inv_t  : spec_with 1 [T_rt] (type ((list ((T_rt))))%type) :=
-    spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (Iter_inv_t_inv_spec   <TY> T_ty <LFT> ulft_a <INST!>) ((Iter_ty (T_rt))  <TY> T_ty <LFT> ulft_a <INST!>).
+    spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (Iter_inv_t_inv_spec  -[ulft_a] -[T_ty]) ((Iter_ty (T_rt)) -[ulft_a] -[T_ty]).
+Global Arguments Iter_inv_t_inv_spec : simpl never.
+Global Arguments Iter_inv_t : simpl never.
   Global Typeclasses Transparent Iter_inv_t.
   Definition Iter_inv_t_rt : RT.
   Proof using T_rt . let __a := normalized_rt_of_spec_ty Iter_inv_t in exact __a. Defined.
@@ -95,7 +97,7 @@ Section IterMut_ty.
 
 Definition IterMut_ty  : (spec_with 1 [(T_rt)] ((type (plist place_rfnRT [((((nonnull_NonNull_inv_t_rt)) ((T_rt)))) : RT; loc : RT; (((core_marker_PhantomData_rt) (((place_rfnRT (T_rt)) * gname)%type))) : RT])))).
 Proof.
-  exact (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (IterMut_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[((nonnull_NonNull_inv_t ((T_rt))  <TY> T_ty <INST!>)); (alias_ptr_t); ((core_marker_PhantomData_ty (((place_rfnRT (T_rt)) * gname)%type)  <TY> (mut_ref ulft_a T_ty) <INST!>))]))).
+  exact (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (IterMut_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[((nonnull_NonNull_inv_t ((T_rt)) -[] -[T_ty])); (alias_ptr_t); ((core_marker_PhantomData_ty (((place_rfnRT (T_rt)) * gname)%type) -[] -[(mut_ref ulft_a T_ty)]))]))).
 Defined.
 
 Definition IterMut_rt  : RT.
@@ -123,7 +125,9 @@ Section IterMut_inv_t.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 
   Definition IterMut_inv_t  : spec_with 1 [T_rt] (type (((list ((T_rt) * gname))%type))%type) :=
-    spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (IterMut_inv_t_inv_spec   <TY> T_ty <LFT> ulft_a <INST!>) ((IterMut_ty (T_rt))  <TY> T_ty <LFT> ulft_a <INST!>).
+    spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (IterMut_inv_t_inv_spec  -[ulft_a] -[T_ty]) ((IterMut_ty (T_rt)) -[ulft_a] -[T_ty]).
+Global Arguments IterMut_inv_t_inv_spec : simpl never.
+Global Arguments IterMut_inv_t : simpl never.
   Global Typeclasses Transparent IterMut_inv_t.
   Definition IterMut_inv_t_rt : RT.
   Proof using T_rt . let __a := normalized_rt_of_spec_ty IterMut_inv_t in exact __a. Defined.
@@ -138,7 +142,7 @@ Section IntoIter_ty.
 
 Definition IntoIter_ty (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type (plist place_rfnRT [(((core_marker_PhantomData_rt) ((T_rt)))) : RT; (A_rt) : RT])))).
 Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((struct_t (IntoIter_sls ((T_ty.(ty_syn_type) (MetaNone))) ((A_ty.(ty_syn_type) (MetaNone)))) +[((core_marker_PhantomData_ty ((T_rt))  <TY> T_ty <INST!>)); (A_ty)]))).
+  exact (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((struct_t (IntoIter_sls ((T_ty.(ty_syn_type) (MetaNone))) ((A_ty.(ty_syn_type) (MetaNone)))) +[((core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty])); (A_ty)]))).
 Defined.
 
 Definition IntoIter_rt  : RT.
@@ -166,7 +170,9 @@ Section IntoIter_inv_t.
   Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
 
   Definition IntoIter_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [T_rt; A_rt] (type ((list ((T_rt))))%type) :=
-    spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ex_plain_t _ _ (IntoIter_inv_t_inv_spec Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) (((IntoIter_ty (T_rt) (A_rt)) (Allocator_A_spec_attrs))  <TY> T_ty <TY> A_ty <INST!>).
+    spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ex_plain_t _ _ (IntoIter_inv_t_inv_spec Allocator_A_spec_attrs -[] -[T_ty; A_ty]) (((IntoIter_ty (T_rt) (A_rt)) (Allocator_A_spec_attrs)) -[] -[T_ty; A_ty]).
+Global Arguments IntoIter_inv_t_inv_spec : simpl never.
+Global Arguments IntoIter_inv_t : simpl never.
   Global Typeclasses Transparent IntoIter_inv_t.
   Definition IntoIter_inv_t_rt : RT.
   Proof using T_rt A_rt . let __a := normalized_rt_of_spec_ty IntoIter_inv_t in exact __a. Defined.
@@ -181,7 +187,7 @@ Section RawVecInner_ty.
 
 Definition RawVecInner_ty (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(A_rt)] ((type (plist place_rfnRT [((((unique_Unique_inv_t_rt)) (Z))) : RT; Z : RT; (A_rt) : RT])))).
 Proof.
-  exact (spec! ( *[]) : 0 | ( *[A_ty]) : ([A_rt] : list RT), ((struct_t (RawVecInner_sls ((A_ty.(ty_syn_type) (MetaNone)))) +[((unique_Unique_inv_t (Z)  <TY> (int U8) <INST!>)); ((int USize)); (A_ty)]))).
+  exact (spec! ( *[]) : 0 | ( *[A_ty]) : ([A_rt] : list RT), ((struct_t (RawVecInner_sls ((A_ty.(ty_syn_type) (MetaNone)))) +[((unique_Unique_inv_t (Z) -[] -[(int U8)])); ((int USize)); (A_ty)]))).
 Defined.
 
 Definition RawVecInner_rt  : RT.
@@ -209,7 +215,9 @@ Section RawVecInner_inv_t.
   Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
 
   Definition RawVecInner_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [A_rt] (type (((loc * nat * (A_rt) : RT)%type))%type) :=
-    spec! ( *[]) : 0 | ( *[A_ty]) : ([A_rt] : list RT), ex_plain_t _ _ (RawVecInner_inv_t_inv_spec Allocator_A_spec_attrs  <TY> A_ty <INST!>) (((RawVecInner_ty (A_rt)) (Allocator_A_spec_attrs))  <TY> A_ty <INST!>).
+    spec! ( *[]) : 0 | ( *[A_ty]) : ([A_rt] : list RT), ex_plain_t _ _ (RawVecInner_inv_t_inv_spec Allocator_A_spec_attrs -[] -[A_ty]) (((RawVecInner_ty (A_rt)) (Allocator_A_spec_attrs)) -[] -[A_ty]).
+Global Arguments RawVecInner_inv_t_inv_spec : simpl never.
+Global Arguments RawVecInner_inv_t : simpl never.
   Global Typeclasses Transparent RawVecInner_inv_t.
   Definition RawVecInner_inv_t_rt : RT.
   Proof using A_rt . let __a := normalized_rt_of_spec_ty RawVecInner_inv_t in exact __a. Defined.
@@ -224,7 +232,7 @@ Section RawVec_ty.
 
 Definition RawVec_ty (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type (plist place_rfnRT [((RawVecInner_inv_t_rt ((A_rt)))) : RT; (((core_marker_PhantomData_rt) ((T_rt)))) : RT])))).
 Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((struct_t (RawVec_sls ((T_ty.(ty_syn_type) (MetaNone))) ((A_ty.(ty_syn_type) (MetaNone)))) +[((RawVecInner_inv_t ((A_rt)) Allocator_A_spec_attrs  <TY> A_ty <INST!>)); ((core_marker_PhantomData_ty ((T_rt))  <TY> T_ty <INST!>))]))).
+  exact (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((struct_t (RawVec_sls ((T_ty.(ty_syn_type) (MetaNone))) ((A_ty.(ty_syn_type) (MetaNone)))) +[((RawVecInner_inv_t ((A_rt)) Allocator_A_spec_attrs -[] -[A_ty])); ((core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty]))]))).
 Defined.
 
 Definition RawVec_rt  : RT.
@@ -252,7 +260,9 @@ Section RawVec_inv_t.
   Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
 
   Definition RawVec_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [T_rt; A_rt] (type (((loc * nat)))%type) :=
-    spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ex_plain_t _ _ (RawVec_inv_t_inv_spec Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) (((RawVec_ty (T_rt) (A_rt)) (Allocator_A_spec_attrs))  <TY> T_ty <TY> A_ty <INST!>).
+    spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ex_plain_t _ _ (RawVec_inv_t_inv_spec Allocator_A_spec_attrs -[] -[T_ty; A_ty]) (((RawVec_ty (T_rt) (A_rt)) (Allocator_A_spec_attrs)) -[] -[T_ty; A_ty]).
+Global Arguments RawVec_inv_t_inv_spec : simpl never.
+Global Arguments RawVec_inv_t : simpl never.
   Global Typeclasses Transparent RawVec_inv_t.
   Definition RawVec_inv_t_rt : RT.
   Proof using T_rt A_rt . let __a := normalized_rt_of_spec_ty RawVec_inv_t in exact __a. Defined.
@@ -321,7 +331,7 @@ Section Vec_ty.
 
 Definition Vec_ty (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type (plist place_rfnRT [((RawVec_inv_t_rt ((T_rt)) ((A_rt)))) : RT; Z : RT])))).
 Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((struct_t (Vec_sls ((T_ty.(ty_syn_type) (MetaNone))) ((A_ty.(ty_syn_type) (MetaNone)))) +[((RawVec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>)); ((int USize))]))).
+  exact (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((struct_t (Vec_sls ((T_ty.(ty_syn_type) (MetaNone))) ((A_ty.(ty_syn_type) (MetaNone)))) +[((RawVec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty])); ((int USize))]))).
 Defined.
 
 Definition Vec_rt  : RT.
@@ -349,7 +359,9 @@ Section Vec_inv_t.
   Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
 
   Definition Vec_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [T_rt; A_rt] (type ((list (place_rfn (T_rt))))%type) :=
-    spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ex_plain_t _ _ (Vec_inv_t_inv_spec Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) (((Vec_ty (T_rt) (A_rt)) (Allocator_A_spec_attrs))  <TY> T_ty <TY> A_ty <INST!>).
+    spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ex_plain_t _ _ (Vec_inv_t_inv_spec Allocator_A_spec_attrs -[] -[T_ty; A_ty]) (((Vec_ty (T_rt) (A_rt)) (Allocator_A_spec_attrs)) -[] -[T_ty; A_ty]).
+Global Arguments Vec_inv_t_inv_spec : simpl never.
+Global Arguments Vec_inv_t : simpl never.
   Global Typeclasses Transparent Vec_inv_t.
   Definition Vec_inv_t_rt : RT.
   Proof using T_rt A_rt . let __a := normalized_rt_of_spec_ty Vec_inv_t in exact __a. Defined.
@@ -463,8 +475,9 @@ Proof.
   iMod (fupd_mask_mono with "Hl") as "Hl"; first done.
   iDestruct "Hl" as "(%v & Hl & Hv)".
   rewrite {1}ex_plain_t_unfold_val/=.
-  unfold name_hint.
   iDestruct "Hv" as "(%fields & (%cap & %l' & %len & %els & -> & Hls & %Heq1 & %Hlook1 & %Hlook2 & %Hlen_eq & %Hcap & % & %Hbound & _) & Hv)".
+  unfold name_hint, name_hint_ty in *.
+  simpl in *.
   rewrite /guarded.
   iDestruct "Hls" as "(Hcred & Hls)".
   iApply (lc_fupd_add_later with "Hc1"). iNext.
@@ -546,7 +559,7 @@ Proof.
     eassert ((Some <$> <#> rs') = _) as Heq.
     2: { rewrite Heq. by iFrame. }
     rewrite -list_fmap_compose. solve_goal. }
-  simpl. rewrite -Hst''.
+  simpl.
 
   iPoseProof (ltype_own_has_layout with "Huninit") as "(%ly4 & %Hst4 & %Hlyl2)".
   apply syn_type_has_layout_array_inv in Hst4 as (ly_T2 & Hst4 & -> & ?).
@@ -566,6 +579,7 @@ Proof.
   rewrite fmap_replicate.
 
   rewrite Hlen_eq.
+  iEval (rewrite -Hst'') in "Huninit".
   iMod (array_t_ofty_merge with "Hls Huninit") as "Hls".
   { done. }
   { simpl. rewrite Hst''.
@@ -580,7 +594,7 @@ Proof.
   rewrite ex_plain_t_unfold_val/=.
   iExists *[_;_].
   iSplitR "Hv".
-  { unfold name_hint_ty, name_hint.
+  { rewrite /inv_P/=/name_hint_ty/name_hint/=.
     replace (length rs + (cap - length rs))%nat with cap by lia.
     iExists _, _, len, _. iR.
     rewrite /guarded. iFrame. iPureIntro.
@@ -604,14 +618,14 @@ Proof.
   rewrite Hlen_eq.
   iApply (struct_t_own_val_mono _ false); last iApply "Hv".
   unfold struct_t_incl_precond. simpl.
-  rewrite Hst''. iSplitR; first last.
+  iSplitR; first last.
   { iL. iR. iApply owned_type_incl_refl. }
   iR. rewrite /owned_type_incl/=.
-  rewrite Hst''.
   iSplitR. { iPureIntro. apply syn_type_size_eq_refl. }
   iR.
   iIntros (?) "Hv".
   rewrite !ex_plain_t_unfold_val/=.
+  rewrite /inv_P/=.
   iDestruct "Hv" as "(%x & (%a & %Heq & Hfree & _) & Hv)".
   iExists x.
   rewrite Hst''. iFrame.
@@ -619,11 +633,9 @@ Proof.
   subst.
   iApply (struct_t_own_val_mono _ false); last iApply "Hv".
   unfold struct_t_incl_precond. simpl.
-  rewrite Hst''.
   iSplitR. { iR. iApply owned_type_incl_refl. }
   iL. iR.
   rewrite /owned_type_incl/=.
-  rewrite Hst''.
   iSplitR. { iPureIntro. apply syn_type_size_eq_refl. }
   iR.
   iIntros (?) "Hv".
@@ -716,6 +728,8 @@ Qed.
 Definition simplify_goal_vec_intoiter_inv_inst := [instance @simplify_goal_vec_intoiter_inv with 0%N].
 Global Existing Instance simplify_goal_vec_intoiter_inv_inst.
 
+(* We don't want this to unfold *)
+Global Arguments Vec_inv_t : simpl never.
 End extra_specs.
 Record private_slice_index_Sealed_spec `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} : Type := mk_private_slice_index_Sealed_spec {
 }.
@@ -745,6 +759,16 @@ Proof.
   all: apply _.
 Qed.
 
+Definition scope_bindable_private_slice_index_Sealed_spec `{Self_rt : !RT} : (ScopeBindable ((private_slice_index_Sealed_spec (Self_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((private_slice_index_Sealed_spec (Self_rt)))) :=
+      s;
+    scope_add_elctx (E: (lft → elctx)) (s: ((private_slice_index_Sealed_spec (Self_rt)))) :=
+      s;
+  |}
+.
+#[global] Existing Instance scope_bindable_private_slice_index_Sealed_spec.
+
 Definition private_slice_index_Sealed_base_spec (Self_rt: RT) (Self_st: syn_type) (_ATTRS: ((private_slice_index_Sealed_spec_attrs ((Self_rt))))) : (spec_with _ _ (private_slice_index_Sealed_spec ((Self_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), (@mk_private_slice_index_Sealed_spec _ _ ((Self_rt))).
 
@@ -760,6 +784,36 @@ Proof.
   all: apply _.
 Qed.
 
+Definition scope_bindable_SliceIndex_spec `{Self_rt : !RT} `{T_rt : !RT} `{Output_rt : !RT} : (ScopeBindable ((SliceIndex_spec (Self_rt) (T_rt) (Output_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((SliceIndex_spec (Self_rt) (T_rt) (Output_rt)))) :=
+      {|
+        SliceIndex_get_spec  :=
+          (scope_add_typarams (rts) (tys) (s.(SliceIndex_get_spec)));
+        SliceIndex_get_mut_spec  :=
+          (scope_add_typarams (rts) (tys) (s.(SliceIndex_get_mut_spec)));
+        SliceIndex_index_spec  :=
+          (scope_add_typarams (rts) (tys) (s.(SliceIndex_index_spec)));
+        SliceIndex_index_mut_spec  :=
+          (scope_add_typarams (rts) (tys) (s.(SliceIndex_index_mut_spec)));
+      |}
+      ;
+    scope_add_elctx (E: (lft → elctx)) (s: ((SliceIndex_spec (Self_rt) (T_rt) (Output_rt)))) :=
+      {|
+        SliceIndex_get_spec  :=
+          (scope_add_elctx (E) (s.(SliceIndex_get_spec)));
+        SliceIndex_get_mut_spec  :=
+          (scope_add_elctx (E) (s.(SliceIndex_get_mut_spec)));
+        SliceIndex_index_spec  :=
+          (scope_add_elctx (E) (s.(SliceIndex_index_spec)));
+        SliceIndex_index_mut_spec  :=
+          (scope_add_elctx (E) (s.(SliceIndex_index_mut_spec)));
+      |}
+      ;
+  |}
+.
+#[global] Existing Instance scope_bindable_SliceIndex_spec.
+
 Definition SliceIndex_get_base_spec (Self_rt: RT) (T_rt: RT) (Output_rt: RT) (Self_st: syn_type) (T_st: syn_type) (Output_st: syn_type) (private_slice_index_Sealed_Self_spec_attrs: (private_slice_index_Sealed_spec_attrs (RRGS:=RRGS) (Self_rt) )) (SliceIndex_Self_T_spec_attrs: (SliceIndex_spec_attrs (RRGS:=RRGS) (Self_rt) (T_rt) (Output_rt) private_slice_index_Sealed_Self_spec_attrs)) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[Self_ty; T_ty; Output_ty]) : ([(Self_rt, Self_st); (T_rt, T_st); (Output_rt, Output_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, slice) : ((_ * _)),
@@ -767,7 +821,7 @@ Definition SliceIndex_get_base_spec (Self_rt: RT) (T_rt: RT) (Output_rt: RT) (Se
       (* args......... *) self :@: Self_ty, slice :@: (shr_ref ulft_1 T_ty);
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, SliceIndex_Self_T_spec_attrs.(SliceIndex_SliceIndexProj) slice self @ (Option_ty ((place_rfnRT (Output_rt)))  <TY> (shr_ref ulft_1 Output_ty) <INST!>);
+      (* existential.. *) ∃ _ : unit, SliceIndex_Self_T_spec_attrs.(SliceIndex_SliceIndexProj) slice self @ (Option_ty ((place_rfnRT (Output_rt))) -[] -[(shr_ref ulft_1 Output_ty)]);
       (* postcondition *) (λ π : thread_id, True).
 
 Definition SliceIndex_get_mut_base_spec (Self_rt: RT) (T_rt: RT) (Output_rt: RT) (Self_st: syn_type) (T_st: syn_type) (Output_st: syn_type) (private_slice_index_Sealed_Self_spec_attrs: (private_slice_index_Sealed_spec_attrs (RRGS:=RRGS) (Self_rt) )) (SliceIndex_Self_T_spec_attrs: (SliceIndex_spec_attrs (RRGS:=RRGS) (Self_rt) (T_rt) (Output_rt) private_slice_index_Sealed_Self_spec_attrs)) :=
@@ -777,7 +831,7 @@ Definition SliceIndex_get_mut_base_spec (Self_rt: RT) (T_rt: RT) (Output_rt: RT)
       (* args......... *) self :@: Self_ty, slice :@: (mut_ref ulft_1 T_ty);
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ (γi) : ((_)), fmap (λ x, (x, γi)) (SliceIndex_Self_T_spec_attrs.(SliceIndex_SliceIndexProj) slice.cur self) @ (Option_ty (((place_rfnRT (Output_rt)) * gname)%type)  <TY> (mut_ref ulft_1 Output_ty) <INST!>);
+      (* existential.. *) ∃ (γi) : ((_)), fmap (λ x, (x, γi)) (SliceIndex_Self_T_spec_attrs.(SliceIndex_SliceIndexProj) slice.cur self) @ (Option_ty (((place_rfnRT (Output_rt)) * gname)%type) -[] -[(mut_ref ulft_1 Output_ty)]);
       (* postcondition *) (λ π : thread_id, (gvar_pobs slice.ghost (if SliceIndex_Self_T_spec_attrs.(SliceIndex_SliceIndexProj) slice.cur self then SliceIndex_Self_T_spec_attrs.(SliceIndex_SliceIndexInj) slice.cur self γi else $#@{ (T_rt) } slice.cur))).
 
 Definition SliceIndex_index_base_spec (Self_rt: RT) (T_rt: RT) (Output_rt: RT) (Self_st: syn_type) (T_st: syn_type) (Output_st: syn_type) (private_slice_index_Sealed_Self_spec_attrs: (private_slice_index_Sealed_spec_attrs (RRGS:=RRGS) (Self_rt) )) (SliceIndex_Self_T_spec_attrs: (SliceIndex_spec_attrs (RRGS:=RRGS) (Self_rt) (T_rt) (Output_rt) private_slice_index_Sealed_Self_spec_attrs)) :=
@@ -827,26 +881,26 @@ End private_slice_index_Sealed_trait_req_incls.
 Section SliceIndex_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition trait_incl_of_SliceIndex_get (Self_rt: RT) (T_rt: RT) (Output_rt: RT) (Self_st: syn_type) (T_st: syn_type) (Output_st: syn_type) (private_slice_index_Sealed_Self_spec_attrs: (private_slice_index_Sealed_spec_attrs (RRGS:=RRGS) (Self_rt) )) (private_slice_index_Sealed_Self_spec: (spec_with 0 [] (private_slice_index_Sealed_spec (RRGS:=RRGS) (Self_rt)))) (SliceIndex_Self_T_spec_attrs: (SliceIndex_spec_attrs (RRGS:=RRGS) (Self_rt) (T_rt) (Output_rt) private_slice_index_Sealed_Self_spec_attrs)) (SliceIndex_Self_T_spec: (spec_with 0 [] (SliceIndex_spec (RRGS:=RRGS) (Self_rt) (T_rt) (Output_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; T_ty; Output_ty]) : ([Self_rt; T_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl private_slice_index_Sealed_spec_incl private_slice_index_Sealed_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), private_slice_index_Sealed_base_spec (Self_rt) Self_st private_slice_index_Sealed_Self_spec_attrs<TY> Self_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl SliceIndex_spec_incl SliceIndex_Self_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), SliceIndex_base_spec (Self_rt) (T_rt) (Output_rt) Self_st T_st Output_st private_slice_index_Sealed_Self_spec_attrs SliceIndex_Self_T_spec_attrs<TY> Self_ty <TY> T_ty <TY> Output_ty <INST!>)))).
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; T_ty; Output_ty]) : ([Self_rt; T_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl private_slice_index_Sealed_spec_incl private_slice_index_Sealed_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), private_slice_index_Sealed_base_spec (Self_rt) Self_st private_slice_index_Sealed_Self_spec_attrs-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl SliceIndex_spec_incl SliceIndex_Self_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), SliceIndex_base_spec (Self_rt) (T_rt) (Output_rt) Self_st T_st Output_st private_slice_index_Sealed_Self_spec_attrs SliceIndex_Self_T_spec_attrs-[] -[Self_ty; T_ty; Output_ty])))).
   Definition trait_incl_of_SliceIndex_get_mut (Self_rt: RT) (T_rt: RT) (Output_rt: RT) (Self_st: syn_type) (T_st: syn_type) (Output_st: syn_type) (private_slice_index_Sealed_Self_spec_attrs: (private_slice_index_Sealed_spec_attrs (RRGS:=RRGS) (Self_rt) )) (private_slice_index_Sealed_Self_spec: (spec_with 0 [] (private_slice_index_Sealed_spec (RRGS:=RRGS) (Self_rt)))) (SliceIndex_Self_T_spec_attrs: (SliceIndex_spec_attrs (RRGS:=RRGS) (Self_rt) (T_rt) (Output_rt) private_slice_index_Sealed_Self_spec_attrs)) (SliceIndex_Self_T_spec: (spec_with 0 [] (SliceIndex_spec (RRGS:=RRGS) (Self_rt) (T_rt) (Output_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; T_ty; Output_ty]) : ([Self_rt; T_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl private_slice_index_Sealed_spec_incl private_slice_index_Sealed_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), private_slice_index_Sealed_base_spec (Self_rt) Self_st private_slice_index_Sealed_Self_spec_attrs<TY> Self_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl SliceIndex_spec_incl SliceIndex_Self_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), SliceIndex_base_spec (Self_rt) (T_rt) (Output_rt) Self_st T_st Output_st private_slice_index_Sealed_Self_spec_attrs SliceIndex_Self_T_spec_attrs<TY> Self_ty <TY> T_ty <TY> Output_ty <INST!>)))).
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; T_ty; Output_ty]) : ([Self_rt; T_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl private_slice_index_Sealed_spec_incl private_slice_index_Sealed_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), private_slice_index_Sealed_base_spec (Self_rt) Self_st private_slice_index_Sealed_Self_spec_attrs-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl SliceIndex_spec_incl SliceIndex_Self_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), SliceIndex_base_spec (Self_rt) (T_rt) (Output_rt) Self_st T_st Output_st private_slice_index_Sealed_Self_spec_attrs SliceIndex_Self_T_spec_attrs-[] -[Self_ty; T_ty; Output_ty])))).
   Definition trait_incl_of_SliceIndex_index (Self_rt: RT) (T_rt: RT) (Output_rt: RT) (Self_st: syn_type) (T_st: syn_type) (Output_st: syn_type) (private_slice_index_Sealed_Self_spec_attrs: (private_slice_index_Sealed_spec_attrs (RRGS:=RRGS) (Self_rt) )) (private_slice_index_Sealed_Self_spec: (spec_with 0 [] (private_slice_index_Sealed_spec (RRGS:=RRGS) (Self_rt)))) (SliceIndex_Self_T_spec_attrs: (SliceIndex_spec_attrs (RRGS:=RRGS) (Self_rt) (T_rt) (Output_rt) private_slice_index_Sealed_Self_spec_attrs)) (SliceIndex_Self_T_spec: (spec_with 0 [] (SliceIndex_spec (RRGS:=RRGS) (Self_rt) (T_rt) (Output_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; T_ty; Output_ty]) : ([Self_rt; T_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl private_slice_index_Sealed_spec_incl private_slice_index_Sealed_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), private_slice_index_Sealed_base_spec (Self_rt) Self_st private_slice_index_Sealed_Self_spec_attrs<TY> Self_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl SliceIndex_spec_incl SliceIndex_Self_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), SliceIndex_base_spec (Self_rt) (T_rt) (Output_rt) Self_st T_st Output_st private_slice_index_Sealed_Self_spec_attrs SliceIndex_Self_T_spec_attrs<TY> Self_ty <TY> T_ty <TY> Output_ty <INST!>)))).
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; T_ty; Output_ty]) : ([Self_rt; T_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl private_slice_index_Sealed_spec_incl private_slice_index_Sealed_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), private_slice_index_Sealed_base_spec (Self_rt) Self_st private_slice_index_Sealed_Self_spec_attrs-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl SliceIndex_spec_incl SliceIndex_Self_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), SliceIndex_base_spec (Self_rt) (T_rt) (Output_rt) Self_st T_st Output_st private_slice_index_Sealed_Self_spec_attrs SliceIndex_Self_T_spec_attrs-[] -[Self_ty; T_ty; Output_ty])))).
   Definition trait_incl_of_SliceIndex_index_mut (Self_rt: RT) (T_rt: RT) (Output_rt: RT) (Self_st: syn_type) (T_st: syn_type) (Output_st: syn_type) (private_slice_index_Sealed_Self_spec_attrs: (private_slice_index_Sealed_spec_attrs (RRGS:=RRGS) (Self_rt) )) (private_slice_index_Sealed_Self_spec: (spec_with 0 [] (private_slice_index_Sealed_spec (RRGS:=RRGS) (Self_rt)))) (SliceIndex_Self_T_spec_attrs: (SliceIndex_spec_attrs (RRGS:=RRGS) (Self_rt) (T_rt) (Output_rt) private_slice_index_Sealed_Self_spec_attrs)) (SliceIndex_Self_T_spec: (spec_with 0 [] (SliceIndex_spec (RRGS:=RRGS) (Self_rt) (T_rt) (Output_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; T_ty; Output_ty]) : ([Self_rt; T_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl private_slice_index_Sealed_spec_incl private_slice_index_Sealed_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), private_slice_index_Sealed_base_spec (Self_rt) Self_st private_slice_index_Sealed_Self_spec_attrs<TY> Self_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl SliceIndex_spec_incl SliceIndex_Self_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), SliceIndex_base_spec (Self_rt) (T_rt) (Output_rt) Self_st T_st Output_st private_slice_index_Sealed_Self_spec_attrs SliceIndex_Self_T_spec_attrs<TY> Self_ty <TY> T_ty <TY> Output_ty <INST!>)))).
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; T_ty; Output_ty]) : ([Self_rt; T_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl private_slice_index_Sealed_spec_incl private_slice_index_Sealed_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), private_slice_index_Sealed_base_spec (Self_rt) Self_st private_slice_index_Sealed_Self_spec_attrs-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl SliceIndex_spec_incl SliceIndex_Self_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), SliceIndex_base_spec (Self_rt) (T_rt) (Output_rt) Self_st T_st Output_st private_slice_index_Sealed_Self_spec_attrs SliceIndex_Self_T_spec_attrs-[] -[Self_ty; T_ty; Output_ty])))).
 End SliceIndex_trait_req_incls.
 
 Section specs.
 Context `{RRGS : !refinedrustGS Σ}.
 
 Definition trait_incl_of_Vec_TA_is_empty (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_spec: (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs<TY> A_ty <INST!>)))).
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs-[] -[A_ty])))).
 
 Definition type_of_Vec_TA_is_empty (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([(T_rt, T_st); (A_rt, A_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) self :@: (shr_ref ulft_1 (Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>));
+      (* args......... *) self :@: (shr_ref ulft_1 (Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]));
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (self = []) @ bool_t;
@@ -854,13 +908,13 @@ Definition type_of_Vec_TA_is_empty (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st:
 
 
 Definition trait_incl_of_Vec_TA_insert (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_spec: (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs<TY> A_ty <INST!>)))).
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs-[] -[A_ty])))).
 
 Definition type_of_Vec_TA_insert (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([(T_rt, T_st); (A_rt, A_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (xs, γ, i, x) : ((_ * _ * (nat) * _)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) (xs, γ) :@: (mut_ref ulft_1 (Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>)), Z.of_nat i :@: (int USize), x :@: T_ty;
+      (* args......... *) (xs, γ) :@: (mut_ref ulft_1 (Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty])), Z.of_nat i :@: (int USize), x :@: T_ty;
       (* precondition. *) (λ π : thread_id, (⌜(i ≤ length xs)%Z⌝)
         ∗ (⌜((length xs < MaxInt USize)%Z)%Z⌝)
         ∗ (⌜((size_of_array_in_bytes (ty_syn_type T_ty MetaNone) (2 * length xs) ≤ MaxInt ISize)%Z)%Z⌝)) |
@@ -869,13 +923,13 @@ Definition type_of_Vec_TA_insert (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: s
       (* postcondition *) (λ π : thread_id, (gvar_pobs γ (<$#> ((take i xs) ++ [x] ++ (drop i xs))))).
 
 Definition trait_incl_of_Vec_TA_len (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_spec: (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs<TY> A_ty <INST!>)))).
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs-[] -[A_ty])))).
 
 Definition type_of_Vec_TA_len (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([(T_rt, T_st); (A_rt, A_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (xs) : ((_)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) xs :@: (shr_ref ulft_1 (Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>));
+      (* args......... *) xs :@: (shr_ref ulft_1 (Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]));
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, length xs @ (int USize);
@@ -890,30 +944,30 @@ Definition type_of_Vec_T_new (T_rt: RT) (T_st: syn_type) :=
       (* elctx........ *) (λ ϝ, []);
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, [] @ (Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs  <TY> T_ty <TY> (Global_ty   <INST!>) <INST!>);
+      (* existential.. *) ∃ _ : unit, [] @ (Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]);
       (* postcondition *) (λ π : thread_id, True).
 
 Definition trait_incl_of_Vec_TA_pop (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_spec: (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs<TY> A_ty <INST!>)))).
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs-[] -[A_ty])))).
 
 Definition type_of_Vec_TA_pop (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([(T_rt, T_st); (A_rt, A_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (xs, γ) : ((_ * _)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) (xs, γ) :@: (mut_ref ulft_1 (Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>));
+      (* args......... *) (xs, γ) :@: (mut_ref ulft_1 (Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]));
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, (last xs) @ (Option_ty ((T_rt))  <TY> T_ty <INST!>);
+      (* existential.. *) ∃ _ : unit, (last xs) @ (Option_ty ((T_rt)) -[] -[T_ty]);
       (* postcondition *) (λ π : thread_id, (gvar_pobs γ (take (length xs - 1) (<$#> xs)))).
 
 Definition trait_incl_of_Vec_TA_push (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_spec: (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs<TY> A_ty <INST!>)))).
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs-[] -[A_ty])))).
 
 Definition type_of_Vec_TA_push (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([(T_rt, T_st); (A_rt, A_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (xs, γ, x) : ((_ * _ * _)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) (xs, γ) :@: (mut_ref ulft_1 (Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>)), x :@: T_ty;
+      (* args......... *) (xs, γ) :@: (mut_ref ulft_1 (Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty])), x :@: T_ty;
       (* precondition. *) (λ π : thread_id, (⌜((length xs < MaxInt USize)%Z)%Z⌝)
         ∗ (⌜((size_of_array_in_bytes (ty_syn_type T_ty MetaNone) (2 * length xs) ≤ MaxInt ISize)%Z)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
@@ -921,26 +975,26 @@ Definition type_of_Vec_TA_push (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn
       (* postcondition *) (λ π : thread_id, (gvar_pobs γ (<$#> (xs ++ [ x])))).
 
 Definition trait_incl_of_Vec_TA_remove (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_spec: (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs<TY> A_ty <INST!>)))).
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs-[] -[A_ty])))).
 
 Definition type_of_Vec_TA_remove (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([(T_rt, T_st); (A_rt, A_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (xs, γ, i) : ((_ * _ * (nat))),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) (xs, γ) :@: (mut_ref ulft_1 (Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>)), Z.of_nat i :@: (int USize);
+      (* args......... *) (xs, γ) :@: (mut_ref ulft_1 (Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty])), Z.of_nat i :@: (int USize);
       (* precondition. *) (λ π : thread_id, (⌜(i < length xs)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, xs !!! i @ T_ty;
       (* postcondition *) (λ π : thread_id, (gvar_pobs γ (delete i (<$#> xs)))).
 
 Definition trait_incl_of_Vec_TA_swap_remove (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_spec: (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs<TY> A_ty <INST!>)))).
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs-[] -[A_ty])))).
 
 Definition type_of_Vec_TA_swap_remove (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([(T_rt, T_st); (A_rt, A_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, index) : ((_ * _)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) self :@: (mut_ref ulft_1 (Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>)), index :@: (int USize);
+      (* args......... *) self :@: (mut_ref ulft_1 (Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty])), index :@: (int USize);
       (* precondition. *) (λ π : thread_id, (⌜(index < length self.cur)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (xs) : ((_)), self.cur !!! Z.to_nat index @ T_ty;
@@ -958,11 +1012,11 @@ Definition type_of_Vec_T_with_capacity (T_rt: RT) (T_st: syn_type) :=
       (* args......... *) cap :@: (int USize);
       (* precondition. *) (λ π : thread_id, (⌜((size_of_array_in_bytes (ty_syn_type T_ty MetaNone) (Z.to_nat cap) ≤ MaxInt ISize)%Z)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, [] @ (Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs  <TY> T_ty <TY> (Global_ty   <INST!>) <INST!>);
+      (* existential.. *) ∃ _ : unit, [] @ (Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]);
       (* postcondition *) (λ π : thread_id, True).
 
 Definition trait_incl_of_vec_from_elem (T_rt: RT) (T_st: syn_type) (Clone_T_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) (Clone_T_spec: (spec_with 0 [] (Clone_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl Clone_spec_incl Clone_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Clone_base_spec (T_rt) T_st Clone_T_spec_attrs<TY> T_ty <INST!>)))).
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl Clone_spec_incl Clone_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Clone_base_spec (T_rt) T_st Clone_T_spec_attrs-[] -[T_ty])))).
 
 Definition type_of_vec_from_elem (T_rt: RT) (T_st: syn_type) (Clone_T_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
@@ -971,57 +1025,57 @@ Definition type_of_vec_from_elem (T_rt: RT) (T_st: syn_type) (Clone_T_spec_attrs
       (* args......... *) elem :@: T_ty, n :@: (int USize);
       (* precondition. *) (λ π : thread_id, (⌜((size_of_array_in_bytes (ty_syn_type T_ty MetaNone) (2 * (Z.to_nat n)) ≤ MaxInt ISize)%Z)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, replicate (Z.to_nat n) elem @ (Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs  <TY> T_ty <TY> (Global_ty   <INST!>) <INST!>);
+      (* existential.. *) ∃ _ : unit, replicate (Z.to_nat n) elem @ (Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]);
       (* postcondition *) (λ π : thread_id, True).
 
 Definition trait_incl_of_IntoIterTAasstd_iter_Iterator_next (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_spec: (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs<TY> A_ty <INST!>)))).
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs-[] -[A_ty])))).
 
 Definition type_of_IntoIterTAasstd_iter_Iterator_next (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) :=
-  spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT),((traits_iterator_Iterator_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((IntoIter_st (T_st) (A_st))) (T_st) ((IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs))))
-     <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty <INST!>).(traits_iterator_Iterator_next_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; A_ty] (scope_add_elctx (λ ϝ, []) (((traits_iterator_Iterator_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((IntoIter_st (T_st) (A_st))) (T_st) ((IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs))))
+    -[] -[(IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]); T_ty]).(traits_iterator_Iterator_next_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_IteraTasstd_iter_Iterator_all (T_rt: RT) (F_rt: RT) (T_st: syn_type) (F_st: syn_type) (FnOnce_F_REFaT_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) (FnOnce_F_REFaT_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool))) (FnMut_F_REFaT_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) (FnMut_F_REFaT_spec: (spec_with 0 [] (FnMut_spec (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_a; ulft_2]) : 2 | ( *[T_ty; F_ty]) : ([T_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_REFaT_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool F_st ((tuple1_sls (PtrSynType)) : syn_type) BoolSynType FnOnce_F_REFaT_spec_attrs<TY> F_ty <TY> (tuple1_ty ((place_rfnRT (T_rt)))  <TY> (shr_ref ulft_a T_ty) <INST!>) <TY> bool_t <INST!>))) ∧ (trait_incl_marker (lift_trait_incl FnMut_spec_incl FnMut_F_REFaT_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnMut_base_spec (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool F_st ((tuple1_sls (PtrSynType)) : syn_type) BoolSynType FnOnce_F_REFaT_spec_attrs FnMut_F_REFaT_spec_attrs<TY> F_ty <TY> (tuple1_ty ((place_rfnRT (T_rt)))  <TY> (shr_ref ulft_a T_ty) <INST!>) <TY> bool_t <INST!>)))).
+  spec! ( *[ulft_a; ulft_2]) : 2 | ( *[T_ty; F_ty]) : ([T_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_REFaT_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool F_st ((tuple1_sls (PtrSynType)) : syn_type) BoolSynType FnOnce_F_REFaT_spec_attrs-[] -[F_ty; (tuple1_ty ((place_rfnRT (T_rt))) -[] -[(shr_ref ulft_a T_ty)]); bool_t]))) ∧ (trait_incl_marker (lift_trait_incl FnMut_spec_incl FnMut_F_REFaT_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnMut_base_spec (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool F_st ((tuple1_sls (PtrSynType)) : syn_type) BoolSynType FnOnce_F_REFaT_spec_attrs FnMut_F_REFaT_spec_attrs-[] -[F_ty; (tuple1_ty ((place_rfnRT (T_rt))) -[] -[(shr_ref ulft_a T_ty)]); bool_t])))).
 
 Definition type_of_IteraTasstd_iter_Iterator_all (T_rt: RT) (F_rt: RT) (T_st: syn_type) (F_st: syn_type) (FnOnce_F_REFaT_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) (FnMut_F_REFaT_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) :=
-  spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),((traits_iterator_Iterator_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (PtrSynType) ((IteraTasstd_iter_Iterator_spec_attrs (T_rt))))
-     <TY> (Iter_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (shr_ref ulft_a T_ty) <INST!>).(traits_iterator_Iterator_all_spec) F_rt F_st FnOnce_F_REFaT_spec_attrs FnMut_F_REFaT_spec_attrs <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [] ++ ty_outlives_E (T_ty) ulft_a) (((traits_iterator_Iterator_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (PtrSynType) ((IteraTasstd_iter_Iterator_spec_attrs (T_rt))))
+    -[] -[(Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]); (shr_ref ulft_a T_ty)]).(traits_iterator_Iterator_all_spec) F_rt F_st FnOnce_F_REFaT_spec_attrs FnMut_F_REFaT_spec_attrs a b))) <MERGE!>.
 
 Definition trait_incl_of_IteraTasstd_iter_Iterator_next (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[T_ty]) : ([T_rt] : list RT), (True).
 
 Definition type_of_IteraTasstd_iter_Iterator_next (T_rt: RT) (T_st: syn_type) :=
-  spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),((traits_iterator_Iterator_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (PtrSynType) ((IteraTasstd_iter_Iterator_spec_attrs (T_rt))))
-     <TY> (Iter_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (shr_ref ulft_a T_ty) <INST!>).(traits_iterator_Iterator_next_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [] ++ ty_outlives_E (T_ty) ulft_a) (((traits_iterator_Iterator_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (PtrSynType) ((IteraTasstd_iter_Iterator_spec_attrs (T_rt))))
+    -[] -[(Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]); (shr_ref ulft_a T_ty)]).(traits_iterator_Iterator_next_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_IteraTasstd_iter_Iterator_position (T_rt: RT) (F_rt: RT) (T_st: syn_type) (F_st: syn_type) (FnOnce_F_REFaT_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) (FnOnce_F_REFaT_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool))) (FnMut_F_REFaT_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) (FnMut_F_REFaT_spec: (spec_with 0 [] (FnMut_spec (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_a; ulft_2]) : 2 | ( *[T_ty; F_ty]) : ([T_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_REFaT_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool F_st ((tuple1_sls (PtrSynType)) : syn_type) BoolSynType FnOnce_F_REFaT_spec_attrs<TY> F_ty <TY> (tuple1_ty ((place_rfnRT (T_rt)))  <TY> (shr_ref ulft_a T_ty) <INST!>) <TY> bool_t <INST!>))) ∧ (trait_incl_marker (lift_trait_incl FnMut_spec_incl FnMut_F_REFaT_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnMut_base_spec (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool F_st ((tuple1_sls (PtrSynType)) : syn_type) BoolSynType FnOnce_F_REFaT_spec_attrs FnMut_F_REFaT_spec_attrs<TY> F_ty <TY> (tuple1_ty ((place_rfnRT (T_rt)))  <TY> (shr_ref ulft_a T_ty) <INST!>) <TY> bool_t <INST!>)))).
+  spec! ( *[ulft_a; ulft_2]) : 2 | ( *[T_ty; F_ty]) : ([T_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_REFaT_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool F_st ((tuple1_sls (PtrSynType)) : syn_type) BoolSynType FnOnce_F_REFaT_spec_attrs-[] -[F_ty; (tuple1_ty ((place_rfnRT (T_rt))) -[] -[(shr_ref ulft_a T_ty)]); bool_t]))) ∧ (trait_incl_marker (lift_trait_incl FnMut_spec_incl FnMut_F_REFaT_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnMut_base_spec (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool F_st ((tuple1_sls (PtrSynType)) : syn_type) BoolSynType FnOnce_F_REFaT_spec_attrs FnMut_F_REFaT_spec_attrs-[] -[F_ty; (tuple1_ty ((place_rfnRT (T_rt))) -[] -[(shr_ref ulft_a T_ty)]); bool_t])))).
 
 Definition type_of_IteraTasstd_iter_Iterator_position (T_rt: RT) (F_rt: RT) (T_st: syn_type) (F_st: syn_type) (FnOnce_F_REFaT_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) (FnMut_F_REFaT_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) :=
-  spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),((traits_iterator_Iterator_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (PtrSynType) ((IteraTasstd_iter_Iterator_spec_attrs (T_rt))))
-     <TY> (Iter_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (shr_ref ulft_a T_ty) <INST!>).(traits_iterator_Iterator_position_spec) F_rt F_st FnOnce_F_REFaT_spec_attrs FnMut_F_REFaT_spec_attrs <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [] ++ ty_outlives_E (T_ty) ulft_a) (((traits_iterator_Iterator_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (PtrSynType) ((IteraTasstd_iter_Iterator_spec_attrs (T_rt))))
+    -[] -[(Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]); (shr_ref ulft_a T_ty)]).(traits_iterator_Iterator_position_spec) F_rt F_st FnOnce_F_REFaT_spec_attrs FnMut_F_REFaT_spec_attrs a b))) <MERGE!>.
 
 Definition trait_incl_of_IterMutaTasstd_iter_Iterator_next (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[T_ty]) : ([T_rt] : list RT), (True).
 
 Definition type_of_IterMutaTasstd_iter_Iterator_next (T_rt: RT) (T_st: syn_type) :=
-  spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),((traits_iterator_Iterator_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((IterMut_st (T_st))) (PtrSynType) ((IterMutaTasstd_iter_Iterator_spec_attrs (T_rt))))
-     <TY> (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (mut_ref ulft_a T_ty) <INST!>).(traits_iterator_Iterator_next_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [] ++ ty_outlives_E (T_ty) ulft_a) (((traits_iterator_Iterator_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((IterMut_st (T_st))) (PtrSynType) ((IterMutaTasstd_iter_Iterator_spec_attrs (T_rt))))
+    -[] -[(IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]); (mut_ref ulft_a T_ty)]).(traits_iterator_Iterator_next_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_VecTAasstd_iter_IntoIterator_into_iter (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_spec: (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs<TY> A_ty <INST!>)))).
+  spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs-[] -[A_ty])))).
 
 Definition type_of_VecTAasstd_iter_IntoIterator_into_iter (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) :=
-  spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT),((traits_iterator_IntoIterator_base_spec (((Vec_inv_t_rt ((T_rt)) ((A_rt))))) (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((Vec_st (T_st) (A_st))) ((IntoIter_st (T_st) (A_st))) (T_st) ((VecTAasstd_iter_IntoIterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs))))
-     <TY> (Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty <INST!>).(traits_iterator_IntoIterator_into_iter_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; A_ty] (scope_add_elctx (λ ϝ, []) (((traits_iterator_IntoIterator_base_spec (((Vec_inv_t_rt ((T_rt)) ((A_rt))))) (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((Vec_st (T_st) (A_st))) ((IntoIter_st (T_st) (A_st))) (T_st) ((VecTAasstd_iter_IntoIterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs))))
+    -[] -[(Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]); (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]); T_ty]).(traits_iterator_IntoIterator_into_iter_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_VecTasstd_iter_FromIteratorT_from_iter (T_rt: RT) (I_rt: RT) (traits_iterator_IntoIterator_I_IntoIter_rt: RT) (T_st: syn_type) (I_st: syn_type) (traits_iterator_IntoIterator_I_IntoIter_st: syn_type) (traits_iterator_IntoIterator_I_spec_attrs: (traits_iterator_IntoIterator_spec_attrs (RRGS:=RRGS) (I_rt) (traits_iterator_IntoIterator_I_IntoIter_rt) (T_rt) )) (traits_iterator_IntoIterator_I_spec: (spec_with 0 [] (traits_iterator_IntoIterator_spec (RRGS:=RRGS) (I_rt) (traits_iterator_IntoIterator_I_IntoIter_rt) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; I_ty; traits_iterator_IntoIterator_I_IntoIter_ty]) : ([T_rt; I_rt; traits_iterator_IntoIterator_I_IntoIter_rt] : list RT), ((trait_incl_marker (lift_trait_incl traits_iterator_IntoIterator_spec_incl traits_iterator_IntoIterator_I_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), traits_iterator_IntoIterator_base_spec (I_rt) (traits_iterator_IntoIterator_I_IntoIter_rt) (T_rt) I_st traits_iterator_IntoIterator_I_IntoIter_st T_st traits_iterator_IntoIterator_I_spec_attrs<TY> I_ty <TY> traits_iterator_IntoIterator_I_IntoIter_ty <TY> T_ty <INST!>)))).
+  spec! ( *[]) : 0 | ( *[T_ty; I_ty; traits_iterator_IntoIterator_I_IntoIter_ty]) : ([T_rt; I_rt; traits_iterator_IntoIterator_I_IntoIter_rt] : list RT), ((trait_incl_marker (lift_trait_incl traits_iterator_IntoIterator_spec_incl traits_iterator_IntoIterator_I_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), traits_iterator_IntoIterator_base_spec (I_rt) (traits_iterator_IntoIterator_I_IntoIter_rt) (T_rt) I_st traits_iterator_IntoIterator_I_IntoIter_st T_st traits_iterator_IntoIterator_I_spec_attrs-[] -[I_ty; traits_iterator_IntoIterator_I_IntoIter_ty; T_ty])))).
 
 Definition type_of_VecTasstd_iter_FromIteratorT_from_iter (T_rt: RT) (I_rt: RT) (traits_iterator_IntoIterator_I_IntoIter_rt: RT) (T_st: syn_type) (I_st: syn_type) (traits_iterator_IntoIterator_I_IntoIter_st: syn_type) (traits_iterator_IntoIterator_I_spec_attrs: (traits_iterator_IntoIterator_spec_attrs (RRGS:=RRGS) (I_rt) (traits_iterator_IntoIterator_I_IntoIter_rt) (T_rt) )) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),((traits_iterator_FromIterator_base_spec (((Vec_inv_t_rt ((T_rt)) ((((Global_rt))))))) ((T_rt)) ((Vec_st (T_st) ((Global_sls : syn_type)))) (T_st) ((VecTasstd_iter_FromIteratorT_spec_attrs (T_rt))))
-     <TY> (Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs  <TY> T_ty <TY> (Global_ty   <INST!>) <INST!>) <TY> T_ty <INST!>).(traits_iterator_FromIterator_from_iter_spec) I_rt traits_iterator_IntoIterator_I_IntoIter_rt I_st traits_iterator_IntoIterator_I_IntoIter_st traits_iterator_IntoIterator_I_spec_attrs <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((traits_iterator_FromIterator_base_spec (((Vec_inv_t_rt ((T_rt)) ((((Global_rt))))))) ((T_rt)) ((Vec_st (T_st) ((Global_sls : syn_type)))) (T_st) ((VecTasstd_iter_FromIteratorT_spec_attrs (T_rt))))
+    -[] -[(Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]); T_ty]).(traits_iterator_FromIterator_from_iter_spec) I_rt traits_iterator_IntoIterator_I_IntoIter_rt I_st traits_iterator_IntoIterator_I_IntoIter_st traits_iterator_IntoIterator_I_spec_attrs a b))) <MERGE!>.
 
 Definition trait_incl_of_vec_iter_mut (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (True).
@@ -1030,10 +1084,10 @@ Definition type_of_vec_iter_mut (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (x) : ((_)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) x :@: (mut_ref ulft_1 (Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs  <TY> T_ty <TY> (Global_ty   <INST!>) <INST!>));
+      (* args......... *) x :@: (mut_ref ulft_1 (Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]));
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ (γs) : ((_)), zip x.cur γs @ (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_1 <INST!>);
+      (* existential.. *) ∃ (γs) : ((_)), zip x.cur γs @ (IterMut_inv_t ((T_rt))  -[ulft_1] -[T_ty]);
       (* postcondition *) (λ π : thread_id, (⌜(length γs = length x.cur)%Z⌝)
       ∗ (gvar_pobs x.ghost ((PlaceGhost <$> γs) : list (place_rfn (T_rt))))).
 
@@ -1046,53 +1100,53 @@ Section IntoIterTAasstd_iter_Iterator_spec.
     spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), let Item_rt := (T_rt) in {|
         traits_iterator_Iterator_all_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_Selfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((Item_rt)))) bool )) (FnMut_F_Selfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((Item_rt)))) bool )) :=
           (traits_iterator_Iterator_all_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((F_rt)) ((IntoIter_st (T_st) (A_st))) (T_st) (F_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) FnOnce_F_Selfasstd_iter_Iterator_Item_spec_attrs FnMut_F_Selfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty : (spec_with 1 [F_rt] fn_spec);
+             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 1 [F_rt] fn_spec);
         traits_iterator_Iterator_collect_spec (B_rt: RT) (B_st: syn_type) (traits_iterator_FromIterator_B_Selfasstd_iter_Iterator_Item_spec_attrs: (traits_iterator_FromIterator_spec_attrs (RRGS:=RRGS) (B_rt) (Item_rt) )) :=
           (traits_iterator_Iterator_collect_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((B_rt)) ((IntoIter_st (T_st) (A_st))) (T_st) (B_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) traits_iterator_FromIterator_B_Selfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty : (spec_with 0 [B_rt] fn_spec);
+             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 0 [B_rt] fn_spec);
         traits_iterator_Iterator_fold_spec (B_rt: RT) (F_rt: RT) (B_st: syn_type) (F_st: syn_type) (FnOnce_F_BSelfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((B_rt)) ((Item_rt)))) (B_rt) )) (FnMut_F_BSelfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((B_rt)) ((Item_rt)))) (B_rt) )) :=
           (traits_iterator_Iterator_fold_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((B_rt)) ((F_rt)) ((IntoIter_st (T_st) (A_st))) (T_st) (B_st) (F_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) FnOnce_F_BSelfasstd_iter_Iterator_Item_spec_attrs FnMut_F_BSelfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty : (spec_with 0 [B_rt; F_rt] fn_spec);
+             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 0 [B_rt; F_rt] fn_spec);
         traits_iterator_Iterator_map_spec (B_rt: RT) (F_rt: RT) (B_st: syn_type) (F_st: syn_type) (FnOnce_F_Selfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((Item_rt)))) (B_rt) )) (FnMut_F_Selfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((Item_rt)))) (B_rt) )) :=
           (traits_iterator_Iterator_map_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((B_rt)) ((F_rt)) ((IntoIter_st (T_st) (A_st))) (T_st) (B_st) (F_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) FnOnce_F_Selfasstd_iter_Iterator_Item_spec_attrs FnMut_F_Selfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty : (spec_with 0 [B_rt; F_rt] fn_spec);
+             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 0 [B_rt; F_rt] fn_spec);
         traits_iterator_Iterator_max_spec (PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Item_rt) (Item_rt) )) (Eq_Selfasstd_iter_Iterator_Item_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) (PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Item_rt) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) (Ord_Selfasstd_iter_Iterator_Item_spec_attrs: (Ord_spec_attrs (RRGS:=RRGS) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Eq_Selfasstd_iter_Iterator_Item_spec_attrs PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) :=
           (traits_iterator_Iterator_max_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((IntoIter_st (T_st) (A_st))) (T_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Eq_Selfasstd_iter_Iterator_Item_spec_attrs PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Ord_Selfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty : (spec_with 0 [] fn_spec);
+             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 0 [] fn_spec);
         traits_iterator_Iterator_max_by_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (Item_rt))) ((place_rfnRT (Item_rt))))) (((Ordering_rt))) )) (FnMut_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (Item_rt))) ((place_rfnRT (Item_rt))))) (((Ordering_rt))) )) :=
           (traits_iterator_Iterator_max_by_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((F_rt)) ((IntoIter_st (T_st) (A_st))) (T_st) (F_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) FnOnce_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs FnMut_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty : (spec_with 0 [F_rt] fn_spec);
+             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 0 [F_rt] fn_spec);
         traits_iterator_Iterator_min_spec (PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Item_rt) (Item_rt) )) (Eq_Selfasstd_iter_Iterator_Item_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) (PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Item_rt) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) (Ord_Selfasstd_iter_Iterator_Item_spec_attrs: (Ord_spec_attrs (RRGS:=RRGS) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Eq_Selfasstd_iter_Iterator_Item_spec_attrs PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) :=
           (traits_iterator_Iterator_min_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((IntoIter_st (T_st) (A_st))) (T_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Eq_Selfasstd_iter_Iterator_Item_spec_attrs PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Ord_Selfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty : (spec_with 0 [] fn_spec);
+             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 0 [] fn_spec);
         traits_iterator_Iterator_min_by_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (Item_rt))) ((place_rfnRT (Item_rt))))) (((Ordering_rt))) )) (FnMut_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (Item_rt))) ((place_rfnRT (Item_rt))))) (((Ordering_rt))) )) :=
           (traits_iterator_Iterator_min_by_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((F_rt)) ((IntoIter_st (T_st) (A_st))) (T_st) (F_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) FnOnce_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs FnMut_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty : (spec_with 0 [F_rt] fn_spec);
+             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 0 [F_rt] fn_spec);
         traits_iterator_Iterator_next_spec  :=
           (type_of_IntoIterTAasstd_iter_Iterator_next ((T_rt)) ((A_rt)) (T_st) (A_st)) Allocator_A_spec_attrs 
              <TY> T_ty <TY> A_ty : (spec_with 1 [] fn_spec);
         traits_iterator_Iterator_nth_spec  :=
           (traits_iterator_Iterator_nth_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((IntoIter_st (T_st) (A_st))) (T_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) 
-             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty : (spec_with 1 [] fn_spec);
+             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 1 [] fn_spec);
         traits_iterator_Iterator_position_spec (P_rt: RT) (P_st: syn_type) (FnOnce_P_Selfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (P_rt) (((tuple1_rt) ((Item_rt)))) bool )) (FnMut_P_Selfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (P_rt) (((tuple1_rt) ((Item_rt)))) bool )) :=
           (traits_iterator_Iterator_position_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((P_rt)) ((IntoIter_st (T_st) (A_st))) (T_st) (P_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) FnOnce_P_Selfasstd_iter_Iterator_Item_spec_attrs FnMut_P_Selfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty : (spec_with 1 [P_rt] fn_spec);
+             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 1 [P_rt] fn_spec);
         traits_iterator_Iterator_reduce_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_Selfasstd_iter_Iterator_ItemSelfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((Item_rt)) ((Item_rt)))) (Item_rt) )) (FnMut_F_Selfasstd_iter_Iterator_ItemSelfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((Item_rt)) ((Item_rt)))) (Item_rt) )) :=
           (traits_iterator_Iterator_reduce_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((F_rt)) ((IntoIter_st (T_st) (A_st))) (T_st) (F_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) FnOnce_F_Selfasstd_iter_Iterator_ItemSelfasstd_iter_Iterator_Item_spec_attrs FnMut_F_Selfasstd_iter_Iterator_ItemSelfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty : (spec_with 0 [F_rt] fn_spec);
+             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 0 [F_rt] fn_spec);
         traits_iterator_Iterator_skip_spec  :=
           (traits_iterator_Iterator_skip_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((IntoIter_st (T_st) (A_st))) (T_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) 
-             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty : (spec_with 0 [] fn_spec);
+             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 0 [] fn_spec);
         traits_iterator_Iterator_take_spec  :=
           (traits_iterator_Iterator_take_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((IntoIter_st (T_st) (A_st))) (T_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) 
-             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty : (spec_with 0 [] fn_spec);
+             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 0 [] fn_spec);
         traits_iterator_Iterator_try_fold_spec (B_rt: RT) (F_rt: RT) (R_rt: RT) (Try_R_Residual_rt: RT) (B_st: syn_type) (F_st: syn_type) (R_st: syn_type) (Try_R_Residual_st: syn_type) (FnOnce_F_BSelfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((B_rt)) ((Item_rt)))) (R_rt) )) (FromResidual_R_Rasstd_ops_Try_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (R_rt) (Try_R_Residual_rt) )) (FnMut_F_BSelfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((B_rt)) ((Item_rt)))) (R_rt) )) (Try_R_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (R_rt) (B_rt) (Try_R_Residual_rt) FromResidual_R_Rasstd_ops_Try_Residual_spec_attrs)) :=
           (traits_iterator_Iterator_try_fold_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((B_rt)) ((F_rt)) ((R_rt)) ((Try_R_Residual_rt)) ((IntoIter_st (T_st) (A_st))) (T_st) (B_st) (F_st) (R_st) (Try_R_Residual_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) FnOnce_F_BSelfasstd_iter_Iterator_Item_spec_attrs FromResidual_R_Rasstd_ops_Try_Residual_spec_attrs FnMut_F_BSelfasstd_iter_Iterator_Item_spec_attrs Try_R_spec_attrs
-             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty : (spec_with 1 [B_rt; F_rt; R_rt; Try_R_Residual_rt] fn_spec);
+             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 1 [B_rt; F_rt; R_rt; Try_R_Residual_rt] fn_spec);
       |}
   .
   Definition IntoIterTAasstd_iter_Iterator_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(A_rt : !RT) `(T_st : !syn_type) `(A_st : !syn_type) `(Allocator_A_spec_attrs : !(Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )), trait_incl_marker (lift_trait_incl traits_iterator_Iterator_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), (IntoIterTAasstd_iter_Iterator_spec (T_rt) (A_rt) (T_st) (A_st) (Allocator_A_spec_attrs)) <TY> T_ty <TY> A_ty <INST!>) (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), (traits_iterator_Iterator_base_spec ((IntoIter_inv_t_rt ((T_rt)) ((A_rt)))) (T_rt) (IntoIter_st (T_st) (A_st)) T_st (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs))<TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty <INST!>))).
+    ∀ `(T_rt : !RT) `(A_rt : !RT) `(T_st : !syn_type) `(A_st : !syn_type) `(Allocator_A_spec_attrs : !(Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )), trait_incl_marker (lift_trait_incl traits_iterator_Iterator_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), (IntoIterTAasstd_iter_Iterator_spec (T_rt) (A_rt) (T_st) (A_st) (Allocator_A_spec_attrs))-[] -[T_ty; A_ty]) (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), scope_add_typarams _ -[T_ty; A_ty] ((traits_iterator_Iterator_base_spec ((IntoIter_inv_t_rt ((T_rt)) ((A_rt)))) (T_rt) (IntoIter_st (T_st) (A_st)) T_st (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs))-[] -[(IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]); T_ty])))).
 End IntoIterTAasstd_iter_Iterator_spec.
 
 Section IteraTasstd_iter_Iterator_spec.
@@ -1104,50 +1158,50 @@ Section IteraTasstd_iter_Iterator_spec.
              <TY> T_ty <LFT> ulft_a : (spec_with 1 [F_rt] fn_spec);
         traits_iterator_Iterator_collect_spec (B_rt: RT) (B_st: syn_type) (traits_iterator_FromIterator_B_Selfasstd_iter_Iterator_Item_spec_attrs: (traits_iterator_FromIterator_spec_attrs (RRGS:=RRGS) (B_rt) (Item_rt) )) :=
           (traits_iterator_Iterator_collect_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((B_rt)) ((Iter_st (T_st))) (PtrSynType) (B_st)) (IteraTasstd_iter_Iterator_spec_attrs (T_rt)) traits_iterator_FromIterator_B_Selfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (Iter_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [B_rt] fn_spec);
+             <TY> (Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [B_rt] fn_spec);
         traits_iterator_Iterator_fold_spec (B_rt: RT) (F_rt: RT) (B_st: syn_type) (F_st: syn_type) (FnOnce_F_BSelfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((B_rt)) ((Item_rt)))) (B_rt) )) (FnMut_F_BSelfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((B_rt)) ((Item_rt)))) (B_rt) )) :=
           (traits_iterator_Iterator_fold_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((B_rt)) ((F_rt)) ((Iter_st (T_st))) (PtrSynType) (B_st) (F_st)) (IteraTasstd_iter_Iterator_spec_attrs (T_rt)) FnOnce_F_BSelfasstd_iter_Iterator_Item_spec_attrs FnMut_F_BSelfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (Iter_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [B_rt; F_rt] fn_spec);
+             <TY> (Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [B_rt; F_rt] fn_spec);
         traits_iterator_Iterator_map_spec (B_rt: RT) (F_rt: RT) (B_st: syn_type) (F_st: syn_type) (FnOnce_F_Selfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((Item_rt)))) (B_rt) )) (FnMut_F_Selfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((Item_rt)))) (B_rt) )) :=
           (traits_iterator_Iterator_map_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((B_rt)) ((F_rt)) ((Iter_st (T_st))) (PtrSynType) (B_st) (F_st)) (IteraTasstd_iter_Iterator_spec_attrs (T_rt)) FnOnce_F_Selfasstd_iter_Iterator_Item_spec_attrs FnMut_F_Selfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (Iter_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [B_rt; F_rt] fn_spec);
+             <TY> (Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [B_rt; F_rt] fn_spec);
         traits_iterator_Iterator_max_spec (PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Item_rt) (Item_rt) )) (Eq_Selfasstd_iter_Iterator_Item_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) (PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Item_rt) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) (Ord_Selfasstd_iter_Iterator_Item_spec_attrs: (Ord_spec_attrs (RRGS:=RRGS) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Eq_Selfasstd_iter_Iterator_Item_spec_attrs PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) :=
           (traits_iterator_Iterator_max_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (PtrSynType)) (IteraTasstd_iter_Iterator_spec_attrs (T_rt)) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Eq_Selfasstd_iter_Iterator_Item_spec_attrs PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Ord_Selfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (Iter_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
+             <TY> (Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
         traits_iterator_Iterator_max_by_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (Item_rt))) ((place_rfnRT (Item_rt))))) (((Ordering_rt))) )) (FnMut_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (Item_rt))) ((place_rfnRT (Item_rt))))) (((Ordering_rt))) )) :=
           (traits_iterator_Iterator_max_by_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((F_rt)) ((Iter_st (T_st))) (PtrSynType) (F_st)) (IteraTasstd_iter_Iterator_spec_attrs (T_rt)) FnOnce_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs FnMut_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (Iter_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [F_rt] fn_spec);
+             <TY> (Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [F_rt] fn_spec);
         traits_iterator_Iterator_min_spec (PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Item_rt) (Item_rt) )) (Eq_Selfasstd_iter_Iterator_Item_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) (PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Item_rt) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) (Ord_Selfasstd_iter_Iterator_Item_spec_attrs: (Ord_spec_attrs (RRGS:=RRGS) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Eq_Selfasstd_iter_Iterator_Item_spec_attrs PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) :=
           (traits_iterator_Iterator_min_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (PtrSynType)) (IteraTasstd_iter_Iterator_spec_attrs (T_rt)) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Eq_Selfasstd_iter_Iterator_Item_spec_attrs PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Ord_Selfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (Iter_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
+             <TY> (Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
         traits_iterator_Iterator_min_by_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (Item_rt))) ((place_rfnRT (Item_rt))))) (((Ordering_rt))) )) (FnMut_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (Item_rt))) ((place_rfnRT (Item_rt))))) (((Ordering_rt))) )) :=
           (traits_iterator_Iterator_min_by_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((F_rt)) ((Iter_st (T_st))) (PtrSynType) (F_st)) (IteraTasstd_iter_Iterator_spec_attrs (T_rt)) FnOnce_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs FnMut_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (Iter_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [F_rt] fn_spec);
+             <TY> (Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [F_rt] fn_spec);
         traits_iterator_Iterator_next_spec  :=
           (type_of_IteraTasstd_iter_Iterator_next ((T_rt)) (T_st)) 
              <TY> T_ty <LFT> ulft_a : (spec_with 1 [] fn_spec);
         traits_iterator_Iterator_nth_spec  :=
           (traits_iterator_Iterator_nth_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (PtrSynType)) (IteraTasstd_iter_Iterator_spec_attrs (T_rt)) 
-             <TY> (Iter_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (shr_ref ulft_a T_ty) : (spec_with 1 [] fn_spec);
+             <TY> (Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (shr_ref ulft_a T_ty) : (spec_with 1 [] fn_spec);
         traits_iterator_Iterator_position_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_REFaT_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) (FnMut_F_REFaT_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) :=
           (type_of_IteraTasstd_iter_Iterator_position ((T_rt)) ((F_rt)) (T_st) (F_st)) FnOnce_F_REFaT_spec_attrs FnMut_F_REFaT_spec_attrs
              <TY> T_ty <LFT> ulft_a : (spec_with 1 [F_rt] fn_spec);
         traits_iterator_Iterator_reduce_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_Selfasstd_iter_Iterator_ItemSelfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((Item_rt)) ((Item_rt)))) (Item_rt) )) (FnMut_F_Selfasstd_iter_Iterator_ItemSelfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((Item_rt)) ((Item_rt)))) (Item_rt) )) :=
           (traits_iterator_Iterator_reduce_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((F_rt)) ((Iter_st (T_st))) (PtrSynType) (F_st)) (IteraTasstd_iter_Iterator_spec_attrs (T_rt)) FnOnce_F_Selfasstd_iter_Iterator_ItemSelfasstd_iter_Iterator_Item_spec_attrs FnMut_F_Selfasstd_iter_Iterator_ItemSelfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (Iter_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [F_rt] fn_spec);
+             <TY> (Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [F_rt] fn_spec);
         traits_iterator_Iterator_skip_spec  :=
           (traits_iterator_Iterator_skip_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (PtrSynType)) (IteraTasstd_iter_Iterator_spec_attrs (T_rt)) 
-             <TY> (Iter_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
+             <TY> (Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
         traits_iterator_Iterator_take_spec  :=
           (traits_iterator_Iterator_take_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (PtrSynType)) (IteraTasstd_iter_Iterator_spec_attrs (T_rt)) 
-             <TY> (Iter_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
+             <TY> (Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
         traits_iterator_Iterator_try_fold_spec (B_rt: RT) (F_rt: RT) (R_rt: RT) (Try_R_Residual_rt: RT) (B_st: syn_type) (F_st: syn_type) (R_st: syn_type) (Try_R_Residual_st: syn_type) (FnOnce_F_BSelfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((B_rt)) ((Item_rt)))) (R_rt) )) (FromResidual_R_Rasstd_ops_Try_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (R_rt) (Try_R_Residual_rt) )) (FnMut_F_BSelfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((B_rt)) ((Item_rt)))) (R_rt) )) (Try_R_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (R_rt) (B_rt) (Try_R_Residual_rt) FromResidual_R_Rasstd_ops_Try_Residual_spec_attrs)) :=
           (traits_iterator_Iterator_try_fold_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((B_rt)) ((F_rt)) ((R_rt)) ((Try_R_Residual_rt)) ((Iter_st (T_st))) (PtrSynType) (B_st) (F_st) (R_st) (Try_R_Residual_st)) (IteraTasstd_iter_Iterator_spec_attrs (T_rt)) FnOnce_F_BSelfasstd_iter_Iterator_Item_spec_attrs FromResidual_R_Rasstd_ops_Try_Residual_spec_attrs FnMut_F_BSelfasstd_iter_Iterator_Item_spec_attrs Try_R_spec_attrs
-             <TY> (Iter_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (shr_ref ulft_a T_ty) : (spec_with 1 [B_rt; F_rt; R_rt; Try_R_Residual_rt] fn_spec);
+             <TY> (Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (shr_ref ulft_a T_ty) : (spec_with 1 [B_rt; F_rt; R_rt; Try_R_Residual_rt] fn_spec);
       |}
   .
   Definition IteraTasstd_iter_Iterator_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl traits_iterator_Iterator_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (IteraTasstd_iter_Iterator_spec (T_rt) (T_st)) <TY> T_ty <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (traits_iterator_Iterator_base_spec ((Iter_inv_t_rt ((T_rt)))) (place_rfnRT (T_rt)) (Iter_st (T_st)) PtrSynType (IteraTasstd_iter_Iterator_spec_attrs (T_rt))<TY> (Iter_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (shr_ref ulft_a T_ty) <INST!>))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl traits_iterator_Iterator_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (IteraTasstd_iter_Iterator_spec (T_rt) (T_st))-[ulft_a] -[T_ty]) (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((traits_iterator_Iterator_base_spec ((Iter_inv_t_rt ((T_rt)))) (place_rfnRT (T_rt)) (Iter_st (T_st)) PtrSynType (IteraTasstd_iter_Iterator_spec_attrs (T_rt))-[] -[(Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]); (shr_ref ulft_a T_ty)])))).
 End IteraTasstd_iter_Iterator_spec.
 
 Section IterMutaTasstd_iter_Iterator_spec.
@@ -1156,53 +1210,53 @@ Section IterMutaTasstd_iter_Iterator_spec.
     spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), let Item_rt := ((place_rfnRT (T_rt)) * gname)%type in {|
         traits_iterator_Iterator_all_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_Selfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((Item_rt)))) bool )) (FnMut_F_Selfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((Item_rt)))) bool )) :=
           (traits_iterator_Iterator_all_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((F_rt)) ((IterMut_st (T_st))) (PtrSynType) (F_st)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) FnOnce_F_Selfasstd_iter_Iterator_Item_spec_attrs FnMut_F_Selfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (mut_ref ulft_a T_ty) : (spec_with 1 [F_rt] fn_spec);
+             <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 1 [F_rt] fn_spec);
         traits_iterator_Iterator_collect_spec (B_rt: RT) (B_st: syn_type) (traits_iterator_FromIterator_B_Selfasstd_iter_Iterator_Item_spec_attrs: (traits_iterator_FromIterator_spec_attrs (RRGS:=RRGS) (B_rt) (Item_rt) )) :=
           (traits_iterator_Iterator_collect_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((B_rt)) ((IterMut_st (T_st))) (PtrSynType) (B_st)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) traits_iterator_FromIterator_B_Selfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [B_rt] fn_spec);
+             <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [B_rt] fn_spec);
         traits_iterator_Iterator_fold_spec (B_rt: RT) (F_rt: RT) (B_st: syn_type) (F_st: syn_type) (FnOnce_F_BSelfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((B_rt)) ((Item_rt)))) (B_rt) )) (FnMut_F_BSelfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((B_rt)) ((Item_rt)))) (B_rt) )) :=
           (traits_iterator_Iterator_fold_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((B_rt)) ((F_rt)) ((IterMut_st (T_st))) (PtrSynType) (B_st) (F_st)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) FnOnce_F_BSelfasstd_iter_Iterator_Item_spec_attrs FnMut_F_BSelfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [B_rt; F_rt] fn_spec);
+             <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [B_rt; F_rt] fn_spec);
         traits_iterator_Iterator_map_spec (B_rt: RT) (F_rt: RT) (B_st: syn_type) (F_st: syn_type) (FnOnce_F_Selfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((Item_rt)))) (B_rt) )) (FnMut_F_Selfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((Item_rt)))) (B_rt) )) :=
           (traits_iterator_Iterator_map_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((B_rt)) ((F_rt)) ((IterMut_st (T_st))) (PtrSynType) (B_st) (F_st)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) FnOnce_F_Selfasstd_iter_Iterator_Item_spec_attrs FnMut_F_Selfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [B_rt; F_rt] fn_spec);
+             <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [B_rt; F_rt] fn_spec);
         traits_iterator_Iterator_max_spec (PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Item_rt) (Item_rt) )) (Eq_Selfasstd_iter_Iterator_Item_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) (PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Item_rt) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) (Ord_Selfasstd_iter_Iterator_Item_spec_attrs: (Ord_spec_attrs (RRGS:=RRGS) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Eq_Selfasstd_iter_Iterator_Item_spec_attrs PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) :=
           (traits_iterator_Iterator_max_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((IterMut_st (T_st))) (PtrSynType)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Eq_Selfasstd_iter_Iterator_Item_spec_attrs PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Ord_Selfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
+             <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
         traits_iterator_Iterator_max_by_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (Item_rt))) ((place_rfnRT (Item_rt))))) (((Ordering_rt))) )) (FnMut_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (Item_rt))) ((place_rfnRT (Item_rt))))) (((Ordering_rt))) )) :=
           (traits_iterator_Iterator_max_by_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((F_rt)) ((IterMut_st (T_st))) (PtrSynType) (F_st)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) FnOnce_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs FnMut_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [F_rt] fn_spec);
+             <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [F_rt] fn_spec);
         traits_iterator_Iterator_min_spec (PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Item_rt) (Item_rt) )) (Eq_Selfasstd_iter_Iterator_Item_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) (PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Item_rt) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) (Ord_Selfasstd_iter_Iterator_Item_spec_attrs: (Ord_spec_attrs (RRGS:=RRGS) (Item_rt) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Eq_Selfasstd_iter_Iterator_Item_spec_attrs PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs)) :=
           (traits_iterator_Iterator_min_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((IterMut_st (T_st))) (PtrSynType)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) PartialEq_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Eq_Selfasstd_iter_Iterator_Item_spec_attrs PartialOrd_Selfasstd_iter_Iterator_Item_Selfasstd_iter_Iterator_Item_spec_attrs Ord_Selfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
+             <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
         traits_iterator_Iterator_min_by_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (Item_rt))) ((place_rfnRT (Item_rt))))) (((Ordering_rt))) )) (FnMut_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (Item_rt))) ((place_rfnRT (Item_rt))))) (((Ordering_rt))) )) :=
           (traits_iterator_Iterator_min_by_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((F_rt)) ((IterMut_st (T_st))) (PtrSynType) (F_st)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) FnOnce_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs FnMut_F_REFSelfasstd_iter_Iterator_ItemREFSelfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [F_rt] fn_spec);
+             <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [F_rt] fn_spec);
         traits_iterator_Iterator_next_spec  :=
           (type_of_IterMutaTasstd_iter_Iterator_next ((T_rt)) (T_st)) 
              <TY> T_ty <LFT> ulft_a : (spec_with 1 [] fn_spec);
         traits_iterator_Iterator_nth_spec  :=
           (traits_iterator_Iterator_nth_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((IterMut_st (T_st))) (PtrSynType)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) 
-             <TY> (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (mut_ref ulft_a T_ty) : (spec_with 1 [] fn_spec);
+             <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 1 [] fn_spec);
         traits_iterator_Iterator_position_spec (P_rt: RT) (P_st: syn_type) (FnOnce_P_Selfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (P_rt) (((tuple1_rt) ((Item_rt)))) bool )) (FnMut_P_Selfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (P_rt) (((tuple1_rt) ((Item_rt)))) bool )) :=
           (traits_iterator_Iterator_position_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((P_rt)) ((IterMut_st (T_st))) (PtrSynType) (P_st)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) FnOnce_P_Selfasstd_iter_Iterator_Item_spec_attrs FnMut_P_Selfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (mut_ref ulft_a T_ty) : (spec_with 1 [P_rt] fn_spec);
+             <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 1 [P_rt] fn_spec);
         traits_iterator_Iterator_reduce_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_Selfasstd_iter_Iterator_ItemSelfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((Item_rt)) ((Item_rt)))) (Item_rt) )) (FnMut_F_Selfasstd_iter_Iterator_ItemSelfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((Item_rt)) ((Item_rt)))) (Item_rt) )) :=
           (traits_iterator_Iterator_reduce_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((F_rt)) ((IterMut_st (T_st))) (PtrSynType) (F_st)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) FnOnce_F_Selfasstd_iter_Iterator_ItemSelfasstd_iter_Iterator_Item_spec_attrs FnMut_F_Selfasstd_iter_Iterator_ItemSelfasstd_iter_Iterator_Item_spec_attrs
-             <TY> (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [F_rt] fn_spec);
+             <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [F_rt] fn_spec);
         traits_iterator_Iterator_skip_spec  :=
           (traits_iterator_Iterator_skip_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((IterMut_st (T_st))) (PtrSynType)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) 
-             <TY> (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
+             <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
         traits_iterator_Iterator_take_spec  :=
           (traits_iterator_Iterator_take_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((IterMut_st (T_st))) (PtrSynType)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) 
-             <TY> (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
+             <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
         traits_iterator_Iterator_try_fold_spec (B_rt: RT) (F_rt: RT) (R_rt: RT) (Try_R_Residual_rt: RT) (B_st: syn_type) (F_st: syn_type) (R_st: syn_type) (Try_R_Residual_st: syn_type) (FnOnce_F_BSelfasstd_iter_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((B_rt)) ((Item_rt)))) (R_rt) )) (FromResidual_R_Rasstd_ops_Try_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (R_rt) (Try_R_Residual_rt) )) (FnMut_F_BSelfasstd_iter_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((B_rt)) ((Item_rt)))) (R_rt) )) (Try_R_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (R_rt) (B_rt) (Try_R_Residual_rt) FromResidual_R_Rasstd_ops_Try_Residual_spec_attrs)) :=
           (traits_iterator_Iterator_try_fold_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((B_rt)) ((F_rt)) ((R_rt)) ((Try_R_Residual_rt)) ((IterMut_st (T_st))) (PtrSynType) (B_st) (F_st) (R_st) (Try_R_Residual_st)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) FnOnce_F_BSelfasstd_iter_Iterator_Item_spec_attrs FromResidual_R_Rasstd_ops_Try_Residual_spec_attrs FnMut_F_BSelfasstd_iter_Iterator_Item_spec_attrs Try_R_spec_attrs
-             <TY> (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (mut_ref ulft_a T_ty) : (spec_with 1 [B_rt; F_rt; R_rt; Try_R_Residual_rt] fn_spec);
+             <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 1 [B_rt; F_rt; R_rt; Try_R_Residual_rt] fn_spec);
       |}
   .
   Definition IterMutaTasstd_iter_Iterator_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl traits_iterator_Iterator_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (IterMutaTasstd_iter_Iterator_spec (T_rt) (T_st)) <TY> T_ty <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (traits_iterator_Iterator_base_spec ((IterMut_inv_t_rt ((T_rt)))) ((place_rfnRT (T_rt)) * gname)%type (IterMut_st (T_st)) PtrSynType (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt))<TY> (IterMut_inv_t ((T_rt))   <TY> T_ty <LFT> ulft_a <INST!>) <TY> (mut_ref ulft_a T_ty) <INST!>))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl traits_iterator_Iterator_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (IterMutaTasstd_iter_Iterator_spec (T_rt) (T_st))-[ulft_a] -[T_ty]) (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((traits_iterator_Iterator_base_spec ((IterMut_inv_t_rt ((T_rt)))) ((place_rfnRT (T_rt)) * gname)%type (IterMut_st (T_st)) PtrSynType (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt))-[] -[(IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]); (mut_ref ulft_a T_ty)])))).
 End IterMutaTasstd_iter_Iterator_spec.
 
 Section VecTAasstd_iter_IntoIterator_spec.
@@ -1215,7 +1269,7 @@ Section VecTAasstd_iter_IntoIterator_spec.
       |}
   .
   Definition VecTAasstd_iter_IntoIterator_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(A_rt : !RT) `(T_st : !syn_type) `(A_st : !syn_type) `(Allocator_A_spec_attrs : !(Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )), trait_incl_marker (lift_trait_incl traits_iterator_IntoIterator_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), (VecTAasstd_iter_IntoIterator_spec (T_rt) (A_rt) (T_st) (A_st) (Allocator_A_spec_attrs)) <TY> T_ty <TY> A_ty <INST!>) (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), (traits_iterator_IntoIterator_base_spec ((Vec_inv_t_rt ((T_rt)) ((A_rt)))) ((IntoIter_inv_t_rt ((T_rt)) ((A_rt)))) (T_rt) (Vec_st (T_st) (A_st)) (IntoIter_st (T_st) (A_st)) T_st (VecTAasstd_iter_IntoIterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs))<TY> (Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) <TY> T_ty <INST!>))).
+    ∀ `(T_rt : !RT) `(A_rt : !RT) `(T_st : !syn_type) `(A_st : !syn_type) `(Allocator_A_spec_attrs : !(Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )), trait_incl_marker (lift_trait_incl traits_iterator_IntoIterator_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), (VecTAasstd_iter_IntoIterator_spec (T_rt) (A_rt) (T_st) (A_st) (Allocator_A_spec_attrs))-[] -[T_ty; A_ty]) (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), scope_add_typarams _ -[T_ty; A_ty] ((traits_iterator_IntoIterator_base_spec ((Vec_inv_t_rt ((T_rt)) ((A_rt)))) ((IntoIter_inv_t_rt ((T_rt)) ((A_rt)))) (T_rt) (Vec_st (T_st) (A_st)) (IntoIter_st (T_st) (A_st)) T_st (VecTAasstd_iter_IntoIterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs))-[] -[(Vec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]); (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]); T_ty])))).
 End VecTAasstd_iter_IntoIterator_spec.
 
 Section VecTasstd_iter_FromIteratorT_spec.
@@ -1228,7 +1282,7 @@ Section VecTasstd_iter_FromIteratorT_spec.
       |}
   .
   Definition VecTasstd_iter_FromIteratorT_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl traits_iterator_FromIterator_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (VecTasstd_iter_FromIteratorT_spec (T_rt) (T_st)) <TY> T_ty <INST!>) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (traits_iterator_FromIterator_base_spec ((Vec_inv_t_rt ((T_rt)) ((((Global_rt)))))) (T_rt) (Vec_st (T_st) ((Global_sls : syn_type))) T_st (VecTasstd_iter_FromIteratorT_spec_attrs (T_rt))<TY> (Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs  <TY> T_ty <TY> (Global_ty   <INST!>) <INST!>) <TY> T_ty <INST!>))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl traits_iterator_FromIterator_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (VecTasstd_iter_FromIteratorT_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((traits_iterator_FromIterator_base_spec ((Vec_inv_t_rt ((T_rt)) ((((Global_rt)))))) (T_rt) (Vec_st (T_st) ((Global_sls : syn_type))) T_st (VecTasstd_iter_FromIteratorT_spec_attrs (T_rt))-[] -[(Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]); T_ty])))).
 End VecTasstd_iter_FromIteratorT_spec.
 
 Section usizeasprivate_slice_index_Sealed_spec.
@@ -1236,6 +1290,6 @@ Section usizeasprivate_slice_index_Sealed_spec.
   Definition usizeasprivate_slice_index_Sealed_spec  : (spec_with _ _ (private_slice_index_Sealed_spec (Z))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_private_slice_index_Sealed_spec _ _ (Z)).
   Definition usizeasprivate_slice_index_Sealed_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl private_slice_index_Sealed_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), usizeasprivate_slice_index_Sealed_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (private_slice_index_Sealed_base_spec Z (IntSynType USize) usizeasprivate_slice_index_Sealed_spec_attrs<TY> (int USize) <INST!>))).
+    trait_incl_marker (lift_trait_incl private_slice_index_Sealed_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), usizeasprivate_slice_index_Sealed_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((private_slice_index_Sealed_base_spec Z (IntSynType USize) usizeasprivate_slice_index_Sealed_spec_attrs-[] -[(int USize)])))).
 End usizeasprivate_slice_index_Sealed_spec.
 

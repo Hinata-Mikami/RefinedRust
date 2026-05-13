@@ -8,9 +8,9 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition usizeasSubAssignREFusize_sub_assign_lemma (π : thread_id) : Prop :=
   ∀ (usizeasSubAssign_sub_assign_loc : loc) , 
-  usizeasSubAssign_sub_assign_loc ◁ᵥ{π, MetaNone} usizeasSubAssign_sub_assign_loc @ function_ptr [PtrSynType; (IntSynType USize)] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_usizeasSubAssign_sub_assign (RRGS:=RRGS)   <LFT> late_lft_0 <INST!>) (λ π, (True))%I) -∗
-  typed_function π (usizeasSubAssignREFusize_sub_assign_def usizeasSubAssign_sub_assign_loc  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_usizeasSubAssignREFusize_sub_assign  <LFT> ulft_1 <LFT> ulft_2 <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_usizeasSubAssignREFusize_sub_assign <LFT> ulft_1 <LFT> ulft_2 <INST!>)%Z⌝))).
+  usizeasSubAssign_sub_assign_loc ◁ᵥ{π, MetaNone} usizeasSubAssign_sub_assign_loc @ function_ptr [PtrSynType; (IntSynType USize)] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_usizeasSubAssign_sub_assign (RRGS:=RRGS)  -[late_lft_0] -[]) (λ π, (True))%I) -∗
+  typed_function π (usizeasSubAssignREFusize_sub_assign_def usizeasSubAssign_sub_assign_loc  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_usizeasSubAssignREFusize_sub_assign -[ulft_1; ulft_2] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_usizeasSubAssignREFusize_sub_assign-[ulft_1; ulft_2] -[])%Z⌝))).
 End proof.
 
 Ltac usizeasSubAssignREFusize_sub_assign_prelude :=

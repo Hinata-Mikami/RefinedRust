@@ -8,8 +8,8 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition u32_abs_diff_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((tuple2_sls ((IntSynType U32)) (BoolSynType)) : syn_type)) →
-  ⊢ typed_function π (u32_abs_diff_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_u32_abs_diff  <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_u32_abs_diff <INST!>)%Z⌝))).
+  ⊢ typed_function π (u32_abs_diff_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_u32_abs_diff -[] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_u32_abs_diff-[] -[])%Z⌝))).
 End proof.
 
 Ltac u32_abs_diff_prelude :=

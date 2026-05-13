@@ -17,9 +17,9 @@ Definition Box_T_from_raw_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (T_st) →
   syn_type_is_layoutable ((Global_sls : syn_type)) →
   syn_type_is_layoutable (((Box_sls (T_st) ((Global_sls : syn_type))) : syn_type)) →
-  Box_TA_from_raw_in_T_std_alloc_Global_loc ◁ᵥ{π, MetaNone} Box_TA_from_raw_in_T_std_alloc_Global_loc @ function_ptr [PtrSynType; (Global_sls : syn_type)] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_Box_TA_from_raw_in (RRGS:=RRGS) ((T_rt)) ((((Global_rt)))) (T_st) ((Global_sls : syn_type)) GlobalasAllocator_spec_attrs  <TY> T_ty <TY> (Global_ty   <INST!>) <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
-  typed_function π (Box_T_from_raw_def Box_TA_from_raw_in_T_std_alloc_Global_loc  T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_Box_T_from_raw T_rt T_st  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜((trait_incl_of_Box_T_from_raw (T_rt) (T_st)) <TY> T_ty <INST!>)%Z⌝))).
+  Box_TA_from_raw_in_T_std_alloc_Global_loc ◁ᵥ{π, MetaNone} Box_TA_from_raw_in_T_std_alloc_Global_loc @ function_ptr [PtrSynType; (Global_sls : syn_type)] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_Box_TA_from_raw_in (RRGS:=RRGS) ((T_rt)) ((((Global_rt)))) (T_st) ((Global_sls : syn_type)) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
+  typed_function π (Box_T_from_raw_def Box_TA_from_raw_in_T_std_alloc_Global_loc  T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_Box_T_from_raw T_rt T_st -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
+  ∗ (⌜((trait_incl_of_Box_T_from_raw (T_rt) (T_st))-[] -[T_ty])%Z⌝))).
 End proof.
 
 Ltac Box_T_from_raw_prelude :=

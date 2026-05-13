@@ -8,8 +8,8 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition REFisizeasMulREFaisize_mul_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((tuple2_sls ((IntSynType ISize)) (BoolSynType)) : syn_type)) →
-  ⊢ typed_function π (REFisizeasMulREFaisize_mul_def ) (<tag_type> spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_REFisizeasMulREFaisize_mul  <LFT> ulft_a <LFT> ulft_2 <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_REFisizeasMulREFaisize_mul <LFT> ulft_a <LFT> ulft_2 <INST!>)%Z⌝))).
+  ⊢ typed_function π (REFisizeasMulREFaisize_mul_def ) (<tag_type> spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_REFisizeasMulREFaisize_mul -[ulft_a; ulft_2] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_REFisizeasMulREFaisize_mul-[ulft_a; ulft_2] -[])%Z⌝))).
 End proof.
 
 Ltac REFisizeasMulREFaisize_mul_prelude :=

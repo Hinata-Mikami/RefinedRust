@@ -236,7 +236,6 @@ Proof.
   iSplitR. { iR. iApply owned_type_incl_refl. }
   iL. iR.
   rewrite /owned_type_incl/=.
-  rewrite Hst''.
   iSplitR. { iPureIntro. apply syn_type_size_eq_refl. }
   iR.
   iIntros (?) "Hv".
@@ -329,4 +328,6 @@ Qed.
 Definition simplify_goal_vec_intoiter_inv_inst := [instance @simplify_goal_vec_intoiter_inv with 0%N].
 Global Existing Instance simplify_goal_vec_intoiter_inv_inst.
 
+(* We don't want this to unfold *)
+Global Arguments Vec_inv_t : simpl never.
 End extra_specs.

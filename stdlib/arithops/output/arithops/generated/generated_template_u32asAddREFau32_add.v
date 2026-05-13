@@ -8,8 +8,8 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition u32asAddREFau32_add_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((tuple2_sls ((IntSynType U32)) (BoolSynType)) : syn_type)) →
-  ⊢ typed_function π (u32asAddREFau32_add_def ) (<tag_type> spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_u32asAddREFau32_add  <LFT> ulft_a <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_u32asAddREFau32_add <LFT> ulft_a <INST!>)%Z⌝))).
+  ⊢ typed_function π (u32asAddREFau32_add_def ) (<tag_type> spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_u32asAddREFau32_add -[ulft_a] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_u32asAddREFau32_add-[ulft_a] -[])%Z⌝))).
 End proof.
 
 Ltac u32asAddREFau32_add_prelude :=

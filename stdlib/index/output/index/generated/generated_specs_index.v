@@ -57,6 +57,24 @@ Proof.
   all: apply _.
 Qed.
 
+Definition scope_bindable_Index_spec `{Self_rt : !RT} `{Idx_rt : !RT} `{Output_rt : !RT} : (ScopeBindable ((Index_spec (Self_rt) (Idx_rt) (Output_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((Index_spec (Self_rt) (Idx_rt) (Output_rt)))) :=
+      {|
+        Index_index_spec  :=
+          (scope_add_typarams (rts) (tys) (s.(Index_index_spec)));
+      |}
+      ;
+    scope_add_elctx (E: (lft → elctx)) (s: ((Index_spec (Self_rt) (Idx_rt) (Output_rt)))) :=
+      {|
+        Index_index_spec  :=
+          (scope_add_elctx (E) (s.(Index_index_spec)));
+      |}
+      ;
+  |}
+.
+#[global] Existing Instance scope_bindable_Index_spec.
+
 Definition Index_index_base_spec (Self_rt: RT) (Idx_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Output_st: syn_type) (Index_Self_Idx_spec_attrs: (Index_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Output_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[Self_ty; Idx_ty; Output_ty]) : ([(Self_rt, Self_st); (Idx_rt, Idx_st); (Output_rt, Output_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, index) : ((_ * _)),
@@ -87,6 +105,24 @@ Proof.
   all: apply _.
 Qed.
 
+Definition scope_bindable_IndexMut_spec `{Self_rt : !RT} `{Idx_rt : !RT} `{Index_Self_Idx_Output_rt : !RT} : (ScopeBindable ((IndexMut_spec (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((IndexMut_spec (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt)))) :=
+      {|
+        IndexMut_index_mut_spec  :=
+          (scope_add_typarams (rts) (tys) (s.(IndexMut_index_mut_spec)));
+      |}
+      ;
+    scope_add_elctx (E: (lft → elctx)) (s: ((IndexMut_spec (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt)))) :=
+      {|
+        IndexMut_index_mut_spec  :=
+          (scope_add_elctx (E) (s.(IndexMut_index_mut_spec)));
+      |}
+      ;
+  |}
+.
+#[global] Existing Instance scope_bindable_IndexMut_spec.
+
 Definition IndexMut_index_mut_base_spec (Self_rt: RT) (Idx_rt: RT) (Index_Self_Idx_Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Index_Self_Idx_Output_st: syn_type) (Index_Self_Idx_spec_attrs: (Index_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) )) (IndexMut_Self_Idx_spec_attrs: (IndexMut_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) Index_Self_Idx_spec_attrs)) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[Self_ty; Idx_ty; Index_Self_Idx_Output_ty]) : ([(Self_rt, Self_st); (Idx_rt, Idx_st); (Index_Self_Idx_Output_rt, Index_Self_Idx_Output_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, index) : ((_ * _)),
@@ -111,13 +147,13 @@ End IndexMut.
 Section Index_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition trait_incl_of_Index_index (Self_rt: RT) (Idx_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Output_st: syn_type) (Index_Self_Idx_spec_attrs: (Index_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Output_rt) )) (Index_Self_Idx_spec: (spec_with 0 [] (Index_spec (RRGS:=RRGS) (Self_rt) (Idx_rt) (Output_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Idx_ty; Output_ty]) : ([Self_rt; Idx_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl Index_spec_incl Index_Self_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Index_base_spec (Self_rt) (Idx_rt) (Output_rt) Self_st Idx_st Output_st Index_Self_Idx_spec_attrs<TY> Self_ty <TY> Idx_ty <TY> Output_ty <INST!>)))).
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Idx_ty; Output_ty]) : ([Self_rt; Idx_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl Index_spec_incl Index_Self_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Index_base_spec (Self_rt) (Idx_rt) (Output_rt) Self_st Idx_st Output_st Index_Self_Idx_spec_attrs-[] -[Self_ty; Idx_ty; Output_ty])))).
 End Index_trait_req_incls.
 
 Section IndexMut_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition trait_incl_of_IndexMut_index_mut (Self_rt: RT) (Idx_rt: RT) (Index_Self_Idx_Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Index_Self_Idx_Output_st: syn_type) (Index_Self_Idx_spec_attrs: (Index_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) )) (Index_Self_Idx_spec: (spec_with 0 [] (Index_spec (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt)))) (IndexMut_Self_Idx_spec_attrs: (IndexMut_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) Index_Self_Idx_spec_attrs)) (IndexMut_Self_Idx_spec: (spec_with 0 [] (IndexMut_spec (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Idx_ty; Index_Self_Idx_Output_ty]) : ([Self_rt; Idx_rt; Index_Self_Idx_Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl Index_spec_incl Index_Self_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Index_base_spec (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) Self_st Idx_st Index_Self_Idx_Output_st Index_Self_Idx_spec_attrs<TY> Self_ty <TY> Idx_ty <TY> Index_Self_Idx_Output_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl IndexMut_spec_incl IndexMut_Self_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), IndexMut_base_spec (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) Self_st Idx_st Index_Self_Idx_Output_st Index_Self_Idx_spec_attrs IndexMut_Self_Idx_spec_attrs<TY> Self_ty <TY> Idx_ty <TY> Index_Self_Idx_Output_ty <INST!>)))).
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Idx_ty; Index_Self_Idx_Output_ty]) : ([Self_rt; Idx_rt; Index_Self_Idx_Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl Index_spec_incl Index_Self_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Index_base_spec (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) Self_st Idx_st Index_Self_Idx_Output_st Index_Self_Idx_spec_attrs-[] -[Self_ty; Idx_ty; Index_Self_Idx_Output_ty]))) ∧ (trait_incl_marker (lift_trait_incl IndexMut_spec_incl IndexMut_Self_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), IndexMut_base_spec (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) Self_st Idx_st Index_Self_Idx_Output_st Index_Self_Idx_spec_attrs IndexMut_Self_Idx_spec_attrs-[] -[Self_ty; Idx_ty; Index_Self_Idx_Output_ty])))).
 End IndexMut_trait_req_incls.
 
 Section specs.

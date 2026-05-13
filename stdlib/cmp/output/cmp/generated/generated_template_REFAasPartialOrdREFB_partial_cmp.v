@@ -15,11 +15,11 @@ Definition REFAasPartialOrdREFB_partial_cmp_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (B_st) →
   syn_type_is_layoutable ((Ordering_els : syn_type)) →
   syn_type_is_layoutable (((Option_els (Ordering_st)) : syn_type)) →
-  PartialOrd_A_B_partial_cmp_loc ◁ᵥ{π, MetaNone} PartialOrd_A_B_partial_cmp_loc @ function_ptr [PtrSynType; PtrSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[A_ty; B_ty]) : ([A_rt; B_rt] : list RT), fn_spec_add_late_pre ((PartialOrd_partial_cmp_spec (RRGS:=RRGS) (PartialOrd_A_B_spec <INST!>))   <LFT> late_lft_0 <LFT> late_lft_1 <INST!>) (λ π, ((typaram_wf A_rt A_st A_ty)
+  PartialOrd_A_B_partial_cmp_loc ◁ᵥ{π, MetaNone} PartialOrd_A_B_partial_cmp_loc @ function_ptr [PtrSynType; PtrSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[A_ty; B_ty]) : ([A_rt; B_rt] : list RT), fn_spec_add_late_pre ((PartialOrd_partial_cmp_spec (RRGS:=RRGS) (PartialOrd_A_B_spec-[] -[]))  -[late_lft_0; late_lft_1] -[]) (λ π, ((typaram_wf A_rt A_st A_ty)
   ∗ (typaram_wf B_rt B_st B_ty)))%I) -∗
-  typed_function π (REFAasPartialOrdREFB_partial_cmp_def PartialOrd_A_B_partial_cmp_loc  A_st  B_st  ) (<tag_type> spec! ( *[ulft_1; ulft_2; ulft_3; ulft_4]) : 4 | ( *[A_ty; B_ty]) : ([A_rt; B_rt] : list RT), fn_spec_add_late_pre (type_of_REFAasPartialOrdREFB_partial_cmp A_rt B_rt A_st B_st PartialEq_A_B_spec_attrs PartialOrd_A_B_spec_attrs  <TY> A_ty <TY> B_ty <LFT> ulft_1 <LFT> ulft_2 <LFT> ulft_3 <LFT> ulft_4 <INST!>) (λ π, ((typaram_wf A_rt A_st A_ty)
+  typed_function π (REFAasPartialOrdREFB_partial_cmp_def PartialOrd_A_B_partial_cmp_loc  A_st  B_st  ) (<tag_type> spec! ( *[ulft_1; ulft_2; ulft_3; ulft_4]) : 4 | ( *[A_ty; B_ty]) : ([A_rt; B_rt] : list RT), fn_spec_add_late_pre (type_of_REFAasPartialOrdREFB_partial_cmp A_rt B_rt A_st B_st PartialEq_A_B_spec_attrs PartialOrd_A_B_spec_attrs -[ulft_1; ulft_2; ulft_3; ulft_4] -[A_ty; B_ty]) (λ π, ((typaram_wf A_rt A_st A_ty)
   ∗ (typaram_wf B_rt B_st B_ty))
-  ∗ (⌜((trait_incl_of_REFAasPartialOrdREFB_partial_cmp (A_rt) (B_rt) (A_st) (B_st) (PartialEq_A_B_spec_attrs) (PartialEq_A_B_spec) (PartialOrd_A_B_spec_attrs) (PartialOrd_A_B_spec)) <TY> A_ty <TY> B_ty <LFT> ulft_1 <LFT> ulft_2 <LFT> ulft_3 <LFT> ulft_4 <INST!>)%Z⌝))).
+  ∗ (⌜((trait_incl_of_REFAasPartialOrdREFB_partial_cmp (A_rt) (B_rt) (A_st) (B_st) (PartialEq_A_B_spec_attrs) (PartialEq_A_B_spec) (PartialOrd_A_B_spec_attrs) (PartialOrd_A_B_spec))-[ulft_1; ulft_2; ulft_3; ulft_4] -[A_ty; B_ty])%Z⌝))).
 End proof.
 
 Ltac REFAasPartialOrdREFB_partial_cmp_prelude :=

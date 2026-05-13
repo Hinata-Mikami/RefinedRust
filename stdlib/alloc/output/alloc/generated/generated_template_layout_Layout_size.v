@@ -12,8 +12,8 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition layout_Layout_size_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable ((layout_Layout_sls : syn_type)) →
-  ⊢ typed_function π (layout_Layout_size_def ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_layout_Layout_size  <LFT> ulft_1 <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_layout_Layout_size <LFT> ulft_1 <INST!>)%Z⌝))).
+  ⊢ typed_function π (layout_Layout_size_def ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_layout_Layout_size -[ulft_1] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_layout_Layout_size-[ulft_1] -[])%Z⌝))).
 End proof.
 
 Ltac layout_Layout_size_prelude :=

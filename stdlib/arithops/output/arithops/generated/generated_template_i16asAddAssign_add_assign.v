@@ -8,8 +8,8 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition i16asAddAssign_add_assign_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((tuple2_sls ((IntSynType I16)) (BoolSynType)) : syn_type)) →
-  ⊢ typed_function π (i16asAddAssign_add_assign_def ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i16asAddAssign_add_assign  <LFT> ulft_1 <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_i16asAddAssign_add_assign <LFT> ulft_1 <INST!>)%Z⌝))).
+  ⊢ typed_function π (i16asAddAssign_add_assign_def ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i16asAddAssign_add_assign -[ulft_1] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_i16asAddAssign_add_assign-[ulft_1] -[])%Z⌝))).
 End proof.
 
 Ltac i16asAddAssign_add_assign_prelude :=

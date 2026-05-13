@@ -39,15 +39,15 @@ Defined.
   Definition Option_enum_rt  :=
   λ rfn : (option (place_rfn (T_rt))), match rfn with | None => Option_None_rt| (Some (x)) => Option_Some_rt end.
   Definition Option_enum_ty  : (spec_with 0 [(T_rt)] (∀ (x: _), (type (Option_enum_rt (x))))) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), λ rfn, match rfn as x return type (Option_enum_rt x) with | None => Option_None_ty  <TY> T_ty <INST!>| (Some (x)) => Option_Some_ty  <TY> T_ty <INST!> end.
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), λ rfn, match rfn as x return type (Option_enum_rt x) with | None => Option_None_ty -[] -[T_ty]| (Some (x)) => Option_Some_ty -[] -[T_ty] end.
   Program Definition Option_enum : spec_with 0 [T_rt] (enum ((option (place_rfn (T_rt))))) := spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), mk_enum
     _
     ((Option_els ((ty_syn_type T_ty MetaNone))))
     (λ rfn, Some (match rfn with | None => "None" | (Some (x)) => "Some" end))
     (Option_enum_rt)
-    (Option_enum_ty  <TY> T_ty <INST!>)
+    (Option_enum_ty -[] -[T_ty])
     (λ rfn, match rfn with | None => *[]| (Some (x)) => *[x] end)
-    (λ variant, if (decide (variant = "None")) then Some $ mk_enum_tag_sem _ (Option_None_ty  <TY> T_ty <INST!>) (λ '( *[]), None) else if (decide (variant = "Some")) then Some $ mk_enum_tag_sem _ (Option_Some_ty  <TY> T_ty <INST!>) (λ '( *[x]), (Some (x))) else None)
+    (λ variant, if (decide (variant = "None")) then Some $ mk_enum_tag_sem _ (Option_None_ty -[] -[T_ty]) (λ '( *[]), None) else if (decide (variant = "Some")) then Some $ mk_enum_tag_sem _ (Option_Some_ty -[] -[T_ty]) (λ '( *[x]), (Some (x))) else None)
     ((ty_lfts T_ty) ++ [])
     ((ty_wf_E T_ty) ++ [])
     _ _ _.
@@ -59,7 +59,7 @@ Defined.
   Global Arguments Option_enum : simpl never.
 
   End components.
-  Definition Option_ty : spec_with 0 [T_rt] (type _) := spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), enum_t (Option_enum  <TY> T_ty <INST!>).
+  Definition Option_ty : spec_with 0 [T_rt] (type _) := spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), enum_t (Option_enum -[] -[T_ty]).
   Definition Option_rt : RT.
   Proof using T_rt. let __a := normalized_rt_of_spec_ty Option_ty in exact __a. Defined.
   Global Typeclasses Transparent Option_ty.
@@ -143,23 +143,23 @@ Section specs.
 Context `{RRGS : !refinedrustGS Σ}.
 
 Definition trait_incl_of_OptionTasstd_clone_Clone_clone (T_rt: RT) (T_st: syn_type) (Clone_T_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) (Clone_T_spec: (spec_with 0 [] (Clone_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl Clone_spec_incl Clone_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Clone_base_spec (T_rt) T_st Clone_T_spec_attrs<TY> T_ty <INST!>)))).
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl Clone_spec_incl Clone_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Clone_base_spec (T_rt) T_st Clone_T_spec_attrs-[] -[T_ty])))).
 
 Definition type_of_OptionTasstd_clone_Clone_clone (T_rt: RT) (T_st: syn_type) (Clone_T_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),((Clone_base_spec (((Option_rt ((T_rt))))) ((Option_st (T_st))) ((OptionTasstd_clone_Clone_spec_attrs (T_rt) (Clone_T_spec_attrs))))
-     <TY> (Option_ty ((T_rt))  <TY> T_ty <INST!>) <INST!>).(Clone_clone_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (((Option_rt ((T_rt))))) ((Option_st (T_st))) ((OptionTasstd_clone_Clone_spec_attrs (T_rt) (Clone_T_spec_attrs))))
+    -[] -[(Option_ty ((T_rt)) -[] -[T_ty])]).(Clone_clone_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_Option_T_filter (T_rt: RT) (P_rt: RT) (T_st: syn_type) (P_st: syn_type) (FnOnce_P_REFT_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (P_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) (FnOnce_P_REFT_spec: (spec_with 1 [] (FnOnce_spec (RRGS:=RRGS) (P_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; P_ty]) : ([T_rt; P_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_P_REFT_spec (spec! ( *[_lft_for_0]) : 1 | ( *[]) : ([] : list RT), FnOnce_base_spec (P_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool P_st ((tuple1_sls (PtrSynType)) : syn_type) BoolSynType FnOnce_P_REFT_spec_attrs<TY> P_ty <TY> (tuple1_ty ((place_rfnRT (T_rt)))  <TY> (shr_ref _lft_for_0 T_ty) <INST!>) <TY> bool_t <INST!>)))).
+  spec! ( *[]) : 0 | ( *[T_ty; P_ty]) : ([T_rt; P_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_P_REFT_spec (spec! ( *[_lft_for_0]) : 1 | ( *[]) : ([] : list RT), FnOnce_base_spec (P_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool P_st ((tuple1_sls (PtrSynType)) : syn_type) BoolSynType FnOnce_P_REFT_spec_attrs-[] -[P_ty; (tuple1_ty ((place_rfnRT (T_rt))) -[] -[(shr_ref _lft_for_0 T_ty)]); bool_t])))).
 
 Definition type_of_Option_T_filter (T_rt: RT) (P_rt: RT) (T_st: syn_type) (P_st: syn_type) (FnOnce_P_REFT_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (P_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty; P_ty]) : ([(T_rt, T_st); (P_rt, P_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (op, self, predicate) : ((_ * _ * _)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) self :@: (Option_ty ((T_rt))  <TY> T_ty <INST!>), predicate :@: P_ty;
+      (* args......... *) self :@: (Option_ty ((T_rt)) -[] -[T_ty]), predicate :@: P_ty;
       (* precondition. *) (λ π : thread_id, (if_iSome self (λ self, ∃ p, ⌜op = Some p⌝ ∗ FnOnce_P_REFT_spec_attrs.(FnOnce_Pre) π p predicate *[self]))) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ (ret) : ((_)), ret @ (Option_ty ((T_rt))  <TY> T_ty <INST!>);
+      (* existential.. *) ∃ (ret) : ((_)), ret @ (Option_ty ((T_rt)) -[] -[T_ty]);
       (* postcondition *) (λ π : thread_id, (if_iSome ret (λ ret, ⌜self = Some ret⌝ ∗ ∃ p, ⌜op = Some p⌝ ∗ FnOnce_P_REFT_spec_attrs.(FnOnce_Post) π p predicate *[ret] true))
       ∗ (if_iNone ret (if_iNone self (ty_ghost_drop P_ty π ($# predicate)) ∗ 
                                   if_iSome self (λ x, ∃ p, ⌜op = Some p⌝ ∗ FnOnce_P_REFT_spec_attrs.(FnOnce_Post) π p predicate *[x] false)))).
@@ -171,24 +171,24 @@ Definition type_of_Option_OptionT_flatten (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) self :@: (Option_ty (((Option_rt ((T_rt)))))  <TY> (Option_ty ((T_rt))  <TY> T_ty <INST!>) <INST!>);
+      (* args......... *) self :@: (Option_ty (((Option_rt ((T_rt))))) -[] -[(Option_ty ((T_rt)) -[] -[T_ty])]);
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, self ≫= id @ (Option_ty ((T_rt))  <TY> T_ty <INST!>);
+      (* existential.. *) ∃ _ : unit, self ≫= id @ (Option_ty ((T_rt)) -[] -[T_ty]);
       (* postcondition *) (λ π : thread_id, True).
 
 Definition trait_incl_of_Option_T_map (T_rt: RT) (U_rt: RT) (F_rt: RT) (T_st: syn_type) (U_st: syn_type) (F_st: syn_type) (FnOnce_F_T_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt) )) (FnOnce_F_T_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; U_ty; F_ty]) : ([T_rt; U_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt) F_st ((tuple1_sls (T_st)) : syn_type) U_st FnOnce_F_T_spec_attrs<TY> F_ty <TY> (tuple1_ty ((T_rt))  <TY> T_ty <INST!>) <TY> U_ty <INST!>)))).
+  spec! ( *[]) : 0 | ( *[T_ty; U_ty; F_ty]) : ([T_rt; U_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt) F_st ((tuple1_sls (T_st)) : syn_type) U_st FnOnce_F_T_spec_attrs-[] -[F_ty; (tuple1_ty ((T_rt)) -[] -[T_ty]); U_ty])))).
 
 Definition type_of_Option_T_map (T_rt: RT) (U_rt: RT) (F_rt: RT) (T_st: syn_type) (U_st: syn_type) (F_st: syn_type) (FnOnce_F_T_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty; U_ty; F_ty]) : ([(T_rt, T_st); (U_rt, U_st); (F_rt, F_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (op, self, f) : ((_ * _ * _)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) self :@: (Option_ty ((T_rt))  <TY> T_ty <INST!>), f :@: F_ty;
+      (* args......... *) self :@: (Option_ty ((T_rt)) -[] -[T_ty]), f :@: F_ty;
       (* precondition. *) (λ π : thread_id, (if_iNone self (⌜op = None⌝))
         ∗ (if_iSome self (λ self, ∃ p, ⌜op = Some p⌝ ∗ FnOnce_F_T_spec_attrs.(FnOnce_Pre) π p f *[self]))) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ (ret) : ((_)), ret @ (Option_ty ((U_rt))  <TY> U_ty <INST!>);
+      (* existential.. *) ∃ (ret) : ((_)), ret @ (Option_ty ((U_rt)) -[] -[U_ty]);
       (* postcondition *) (λ π : thread_id, (if_iNone self (⌜ret = None⌝ ∗ ty_ghost_drop F_ty π ($# f)))
       ∗ (if_iSome self (λ self, ∃ p x, ⌜op = Some p⌝ ∗ ⌜ret = Some x⌝ ∗ FnOnce_F_T_spec_attrs.(FnOnce_Post) π p f *[self] x))).
 
@@ -199,7 +199,7 @@ Definition type_of_Option_T_unwrap (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) self :@: (Option_ty ((T_rt))  <TY> T_ty <INST!>);
+      (* args......... *) self :@: (Option_ty ((T_rt)) -[] -[T_ty]);
       (* precondition. *) (λ π : thread_id, (⌜(destruct_hint self is_Some)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ T_ty;
@@ -212,7 +212,7 @@ Definition type_of_Option_T_unwrap_or (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, def) : ((_ * _)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) self :@: (Option_ty ((T_rt))  <TY> T_ty <INST!>), def :@: T_ty;
+      (* args......... *) self :@: (Option_ty ((T_rt)) -[] -[T_ty]), def :@: T_ty;
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, default def self @ T_ty;
@@ -220,11 +220,11 @@ Definition type_of_Option_T_unwrap_or (T_rt: RT) (T_st: syn_type) :=
 
 
 Definition trait_incl_of_OptionTasstd_fmt_Debug_fmt (T_rt: RT) (T_st: syn_type) (Debug_T_spec_attrs: (Debug_spec_attrs (RRGS:=RRGS) (T_rt) )) (Debug_T_spec: (spec_with 0 [] (Debug_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1; ulft_2; ulft_3]) : 3 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl Debug_spec_incl Debug_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Debug_base_spec (T_rt) T_st Debug_T_spec_attrs<TY> T_ty <INST!>)))).
+  spec! ( *[ulft_1; ulft_2; ulft_3]) : 3 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl Debug_spec_incl Debug_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Debug_base_spec (T_rt) T_st Debug_T_spec_attrs-[] -[T_ty])))).
 
 Definition type_of_OptionTasstd_fmt_Debug_fmt (T_rt: RT) (T_st: syn_type) (Debug_T_spec_attrs: (Debug_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),((Debug_base_spec (((Option_rt ((T_rt))))) ((Option_st (T_st))) ((OptionTasstd_fmt_Debug_spec_attrs (T_rt) (Debug_T_spec_attrs))))
-     <TY> (Option_ty ((T_rt))  <TY> T_ty <INST!>) <INST!>).(Debug_fmt_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Debug_base_spec (((Option_rt ((T_rt))))) ((Option_st (T_st))) ((OptionTasstd_fmt_Debug_spec_attrs (T_rt) (Debug_T_spec_attrs))))
+    -[] -[(Option_ty ((T_rt)) -[] -[T_ty])]).(Debug_fmt_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_Option_T_is_none (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (True).
@@ -233,7 +233,7 @@ Definition type_of_Option_T_is_none (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (x) : ((_)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) x :@: (shr_ref ulft_1 (Option_ty ((T_rt))  <TY> T_ty <INST!>));
+      (* args......... *) x :@: (shr_ref ulft_1 (Option_ty ((T_rt)) -[] -[T_ty]));
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (¬ is_Some x) @ bool_t;
@@ -246,7 +246,7 @@ Definition type_of_Option_T_is_some (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (x) : ((_)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) x :@: (shr_ref ulft_1 (Option_ty ((T_rt))  <TY> T_ty <INST!>));
+      (* args......... *) x :@: (shr_ref ulft_1 (Option_ty ((T_rt)) -[] -[T_ty]));
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (is_Some x) @ bool_t;
@@ -259,10 +259,10 @@ Definition type_of_Option_T_take (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) self :@: (mut_ref ulft_1 (Option_ty ((T_rt))  <TY> T_ty <INST!>));
+      (* args......... *) self :@: (mut_ref ulft_1 (Option_ty ((T_rt)) -[] -[T_ty]));
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, self.cur @ (Option_ty ((T_rt))  <TY> T_ty <INST!>);
+      (* existential.. *) ∃ _ : unit, self.cur @ (Option_ty ((T_rt)) -[] -[T_ty]);
       (* postcondition *) (λ π : thread_id, (gvar_pobs self.ghost ((None : option (place_rfn (T_rt)))))).
 
 
@@ -277,11 +277,11 @@ Section OptionTasstd_clone_Clone_spec.
              <TY> T_ty : (spec_with 1 [] fn_spec);
         Clone_clone_from_spec  :=
           (Clone_clone_from_base_spec (((Option_rt ((T_rt))))) ((Option_st (T_st)))) (OptionTasstd_clone_Clone_spec_attrs (T_rt) (Clone_T_spec_attrs)) 
-             <TY> (Option_ty ((T_rt))  <TY> T_ty <INST!>) : (spec_with 2 [] fn_spec);
+             <TY> (Option_ty ((T_rt)) -[] -[T_ty]) : (spec_with 2 [] fn_spec);
       |}
   .
   Definition OptionTasstd_clone_Clone_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type) `(Clone_T_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (T_rt) )), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (OptionTasstd_clone_Clone_spec (T_rt) (T_st) (Clone_T_spec_attrs)) <TY> T_ty <INST!>) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (Clone_base_spec ((Option_rt ((T_rt)))) (Option_st (T_st)) (OptionTasstd_clone_Clone_spec_attrs (T_rt) (Clone_T_spec_attrs))<TY> (Option_ty ((T_rt))  <TY> T_ty <INST!>) <INST!>))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type) `(Clone_T_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (T_rt) )), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (OptionTasstd_clone_Clone_spec (T_rt) (T_st) (Clone_T_spec_attrs))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Clone_base_spec ((Option_rt ((T_rt)))) (Option_st (T_st)) (OptionTasstd_clone_Clone_spec_attrs (T_rt) (Clone_T_spec_attrs))-[] -[(Option_ty ((T_rt)) -[] -[T_ty])])))).
 End OptionTasstd_clone_Clone_spec.
 
 Section OptionTasstd_fmt_Debug_spec.
@@ -294,7 +294,7 @@ Section OptionTasstd_fmt_Debug_spec.
       |}
   .
   Definition OptionTasstd_fmt_Debug_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type) `(Debug_T_spec_attrs : !(Debug_spec_attrs (RRGS:=RRGS) (T_rt) )), trait_incl_marker (lift_trait_incl Debug_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (OptionTasstd_fmt_Debug_spec (T_rt) (T_st) (Debug_T_spec_attrs)) <TY> T_ty <INST!>) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (Debug_base_spec ((Option_rt ((T_rt)))) (Option_st (T_st)) (OptionTasstd_fmt_Debug_spec_attrs (T_rt) (Debug_T_spec_attrs))<TY> (Option_ty ((T_rt))  <TY> T_ty <INST!>) <INST!>))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type) `(Debug_T_spec_attrs : !(Debug_spec_attrs (RRGS:=RRGS) (T_rt) )), trait_incl_marker (lift_trait_incl Debug_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (OptionTasstd_fmt_Debug_spec (T_rt) (T_st) (Debug_T_spec_attrs))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Debug_base_spec ((Option_rt ((T_rt)))) (Option_st (T_st)) (OptionTasstd_fmt_Debug_spec_attrs (T_rt) (Debug_T_spec_attrs))-[] -[(Option_ty ((T_rt)) -[] -[T_ty])])))).
 End OptionTasstd_fmt_Debug_spec.
 
 Section OptionTasstd_marker_Copy_spec.
@@ -302,8 +302,8 @@ Section OptionTasstd_marker_Copy_spec.
   Definition OptionTasstd_marker_Copy_spec (T_rt: RT) (T_st: syn_type) (Clone_T_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) (Copy_T_spec_attrs: (Copy_spec_attrs (RRGS:=RRGS) (T_rt) Clone_T_spec_attrs)) : (spec_with _ _ (Copy_spec (((Option_rt ((T_rt))))))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (@mk_Copy_spec _ _ (((Option_rt ((T_rt)))))).
   Definition OptionTasstd_marker_Copy_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type) `(Clone_T_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) `(Copy_T_spec_attrs : !(Copy_spec_attrs (RRGS:=RRGS) (T_rt) Clone_T_spec_attrs)), trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (OptionTasstd_marker_Copy_spec (T_rt) (T_st) (Clone_T_spec_attrs) (Copy_T_spec_attrs)) <TY> T_ty <INST!>) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (Copy_base_spec ((Option_rt ((T_rt)))) (Option_st (T_st)) (OptionTasstd_clone_Clone_spec_attrs ((T_rt)) (Clone_T_spec_attrs)) (OptionTasstd_marker_Copy_spec_attrs (T_rt) (Clone_T_spec_attrs) (Copy_T_spec_attrs))<TY> (Option_ty ((T_rt))  <TY> T_ty <INST!>) <INST!>))).
-  Lemma OptionTasstd_marker_Copy_semantic_interp (T_rt: RT) (T_ty: (type (T_rt))) (_: (Copy_semantic_interp (T_rt) T_ty)) : (Copy_semantic_interp ((Option_rt ((T_rt)))) (Option_ty ((T_rt))  <TY> T_ty <INST!>)).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type) `(Clone_T_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) `(Copy_T_spec_attrs : !(Copy_spec_attrs (RRGS:=RRGS) (T_rt) Clone_T_spec_attrs)), trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (OptionTasstd_marker_Copy_spec (T_rt) (T_st) (Clone_T_spec_attrs) (Copy_T_spec_attrs))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Copy_base_spec ((Option_rt ((T_rt)))) (Option_st (T_st)) (OptionTasstd_clone_Clone_spec_attrs ((T_rt)) (Clone_T_spec_attrs)) (OptionTasstd_marker_Copy_spec_attrs (T_rt) (Clone_T_spec_attrs) (Copy_T_spec_attrs))-[] -[(Option_ty ((T_rt)) -[] -[T_ty])])))).
+  Lemma OptionTasstd_marker_Copy_semantic_interp (T_rt: RT) (T_ty: (type (T_rt))) (_: (Copy_semantic_interp (T_rt) T_ty)) : (Copy_semantic_interp ((Option_rt ((T_rt)))) (Option_ty ((T_rt)) -[] -[T_ty])).
   Proof.
     unfold Copy_semantic_interp in *; apply _.
   Qed.

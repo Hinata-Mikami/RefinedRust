@@ -13,9 +13,9 @@ Definition i64asPartialOrd_partial_cmp_lemma (π : thread_id) : Prop :=
   ∀ (i64asOrd_cmp_loc : loc) , 
   syn_type_is_layoutable ((Ordering_els : syn_type)) →
   syn_type_is_layoutable (((Option_els (Ordering_st)) : syn_type)) →
-  i64asOrd_cmp_loc ◁ᵥ{π, MetaNone} i64asOrd_cmp_loc @ function_ptr [PtrSynType; PtrSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i64asOrd_cmp (RRGS:=RRGS)   <LFT> late_lft_0 <LFT> late_lft_1 <INST!>) (λ π, (True))%I) -∗
-  typed_function π (i64asPartialOrd_partial_cmp_def i64asOrd_cmp_loc  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i64asPartialOrd_partial_cmp  <LFT> ulft_1 <LFT> ulft_2 <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_i64asPartialOrd_partial_cmp <LFT> ulft_1 <LFT> ulft_2 <INST!>)%Z⌝))).
+  i64asOrd_cmp_loc ◁ᵥ{π, MetaNone} i64asOrd_cmp_loc @ function_ptr [PtrSynType; PtrSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i64asOrd_cmp (RRGS:=RRGS)  -[late_lft_0; late_lft_1] -[]) (λ π, (True))%I) -∗
+  typed_function π (i64asPartialOrd_partial_cmp_def i64asOrd_cmp_loc  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i64asPartialOrd_partial_cmp -[ulft_1; ulft_2] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_i64asPartialOrd_partial_cmp-[ulft_1; ulft_2] -[])%Z⌝))).
 End proof.
 
 Ltac i64asPartialOrd_partial_cmp_prelude :=

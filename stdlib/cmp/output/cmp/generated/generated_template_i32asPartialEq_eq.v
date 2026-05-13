@@ -10,8 +10,8 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition i32asPartialEq_eq_lemma (π : thread_id) : Prop :=
-  ⊢ typed_function π (i32asPartialEq_eq_def ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i32asPartialEq_eq  <LFT> ulft_1 <LFT> ulft_2 <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_i32asPartialEq_eq <LFT> ulft_1 <LFT> ulft_2 <INST!>)%Z⌝))).
+  ⊢ typed_function π (i32asPartialEq_eq_def ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i32asPartialEq_eq -[ulft_1; ulft_2] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_i32asPartialEq_eq-[ulft_1; ulft_2] -[])%Z⌝))).
 End proof.
 
 Ltac i32asPartialEq_eq_prelude :=

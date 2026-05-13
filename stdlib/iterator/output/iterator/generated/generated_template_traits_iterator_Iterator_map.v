@@ -20,13 +20,13 @@ Definition traits_iterator_Iterator_map_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (B_st) →
   syn_type_is_layoutable (F_st) →
   syn_type_is_layoutable (((adapters_map_Map_sls (Self_st) (F_st)) : syn_type)) →
-  adapters_map_Map_IF_new_Self_F_loc ◁ᵥ{π, MetaNone} adapters_map_Map_IF_new_Self_F_loc @ function_ptr [Self_st; F_st] (<tag_type> spec! ( *[]) : 0 | ( *[Self_ty; F_ty]) : ([Self_rt; F_rt] : list RT), fn_spec_add_late_pre (type_of_adapters_map_Map_IF_new (RRGS:=RRGS) ((Self_rt)) ((F_rt)) (Self_st) (F_st)  <TY> Self_ty <TY> F_ty <INST!>) (λ π, ((typaram_wf Self_rt Self_st Self_ty)
+  adapters_map_Map_IF_new_Self_F_loc ◁ᵥ{π, MetaNone} adapters_map_Map_IF_new_Self_F_loc @ function_ptr [Self_st; F_st] (<tag_type> spec! ( *[]) : 0 | ( *[Self_ty; F_ty]) : ([Self_rt; F_rt] : list RT), fn_spec_add_late_pre (type_of_adapters_map_Map_IF_new (RRGS:=RRGS) ((Self_rt)) ((F_rt)) (Self_st) (F_st) -[] -[Self_ty; F_ty]) (λ π, ((typaram_wf Self_rt Self_st Self_ty)
   ∗ (typaram_wf F_rt F_st F_ty)))%I) -∗
-  typed_function π (traits_iterator_Iterator_map_def adapters_map_Map_IF_new_Self_F_loc  Self_st  Item_st  B_st  F_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[Self_ty; Item_ty; B_ty; F_ty]) : ([Self_rt; Item_rt; B_rt; F_rt] : list RT), fn_spec_add_late_pre (traits_iterator_Iterator_map_base_spec Self_rt Item_rt B_rt F_rt Self_st Item_st B_st F_st traits_iterator_Iterator_Self_spec_attrs FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs  <TY> Self_ty <TY> Item_ty <TY> B_ty <TY> F_ty <INST!>) (λ π, ((typaram_wf Self_rt Self_st Self_ty)
+  typed_function π (traits_iterator_Iterator_map_def adapters_map_Map_IF_new_Self_F_loc  Self_st  Item_st  B_st  F_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[Self_ty; Item_ty; B_ty; F_ty]) : ([Self_rt; Item_rt; B_rt; F_rt] : list RT), fn_spec_add_late_pre (traits_iterator_Iterator_map_base_spec Self_rt Item_rt B_rt F_rt Self_st Item_st B_st F_st traits_iterator_Iterator_Self_spec_attrs FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs -[] -[Self_ty; Item_ty; B_ty; F_ty]) (λ π, ((typaram_wf Self_rt Self_st Self_ty)
   ∗ (typaram_wf Item_rt Item_st Item_ty)
   ∗ (typaram_wf B_rt B_st B_ty)
   ∗ (typaram_wf F_rt F_st F_ty))
-  ∗ (⌜((trait_incl_of_traits_iterator_Iterator_map (Self_rt) (Item_rt) (B_rt) (F_rt) (Self_st) (Item_st) (B_st) (F_st) (traits_iterator_Iterator_Self_spec_attrs) (traits_iterator_Iterator_Self_spec) (FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs) (FnOnce_F_Selfastraits_iterator_Iterator_Item_spec) (FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs) (FnMut_F_Selfastraits_iterator_Iterator_Item_spec)) <TY> Self_ty <TY> Item_ty <TY> B_ty <TY> F_ty <INST!>)%Z⌝))).
+  ∗ (⌜((trait_incl_of_traits_iterator_Iterator_map (Self_rt) (Item_rt) (B_rt) (F_rt) (Self_st) (Item_st) (B_st) (F_st) (traits_iterator_Iterator_Self_spec_attrs) (traits_iterator_Iterator_Self_spec) (FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs) (FnOnce_F_Selfastraits_iterator_Iterator_Item_spec) (FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs) (FnMut_F_Selfastraits_iterator_Iterator_Item_spec))-[] -[Self_ty; Item_ty; B_ty; F_ty])%Z⌝))).
 End proof.
 
 Ltac traits_iterator_Iterator_map_prelude :=

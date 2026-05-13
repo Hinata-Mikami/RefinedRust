@@ -74,7 +74,7 @@ Section layout_Layout_ty.
 
 Definition layout_Layout_ty  : (spec_with 0 [] ((type (plist place_rfnRT [Z : RT; (((alignment_Alignment_inv_t_rt))) : RT])))).
 Proof.
-  exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ((struct_t layout_Layout_sls +[((int USize)); ((alignment_Alignment_inv_t   <INST!>))]))).
+  exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ((struct_t layout_Layout_sls +[((int USize)); ((alignment_Alignment_inv_t  -[] -[]))]))).
 Defined.
 
 Definition layout_Layout_rt  : RT.
@@ -101,7 +101,9 @@ Section layout_Layout_inv_t.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 
   Definition layout_Layout_inv_t  : spec_with 0 [] (type ((rust_layout))%type) :=
-    spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ex_plain_t _ _ (layout_Layout_inv_t_inv_spec   <INST!>) (layout_Layout_ty  <INST!>).
+    spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ex_plain_t _ _ (layout_Layout_inv_t_inv_spec  -[] -[]) (layout_Layout_ty -[] -[]).
+Global Arguments layout_Layout_inv_t_inv_spec : simpl never.
+Global Arguments layout_Layout_inv_t : simpl never.
   Global Typeclasses Transparent layout_Layout_inv_t.
   Definition layout_Layout_inv_t_rt : RT.
   Proof using  . let __a := normalized_rt_of_spec_ty layout_Layout_inv_t in exact __a. Defined.
@@ -133,6 +135,16 @@ Proof.
   all: apply _.
 Qed.
 
+Definition scope_bindable_Allocator_spec `{Self_rt : !RT} : (ScopeBindable ((Allocator_spec (Self_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((Allocator_spec (Self_rt)))) :=
+      s;
+    scope_add_elctx (E: (lft → elctx)) (s: ((Allocator_spec (Self_rt)))) :=
+      s;
+  |}
+.
+#[global] Existing Instance scope_bindable_Allocator_spec.
+
 Definition Allocator_base_spec (Self_rt: RT) (Self_st: syn_type) (_ATTRS: ((Allocator_spec_attrs ((Self_rt))))) : (spec_with _ _ (Allocator_spec ((Self_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), (@mk_Allocator_spec _ _ ((Self_rt))).
 
@@ -152,7 +164,7 @@ Definition type_of_layout_Layout_align  :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[]) : ([] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) self :@: (shr_ref ulft_1 (layout_Layout_inv_t    <INST!>));
+      (* args......... *) self :@: (shr_ref ulft_1 (layout_Layout_inv_t   -[] -[]));
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Z.of_nat (layout_alignment_nat self) @ (int USize);
@@ -170,7 +182,7 @@ Definition type_of_layout_Layout_from_size_align  :=
         ∗ (⌜(size ∈ isize)%Z⌝)
         ∗ (⌜(Z.divide align size)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, Ok (mk_rust_layout (Z.to_nat size) (alignment_of_align align)) @ (Result_ty ((layout_Layout_inv_t_rt)) ((layout_LayoutError_rt))  <TY> (layout_Layout_inv_t    <INST!>) <TY> (layout_LayoutError_ty   <INST!>) <INST!>);
+      (* existential.. *) ∃ _ : unit, Ok (mk_rust_layout (Z.to_nat size) (alignment_of_align align)) @ (Result_ty ((layout_Layout_inv_t_rt)) ((layout_LayoutError_rt)) -[] -[(layout_Layout_inv_t   -[] -[]); (layout_LayoutError_ty  -[] -[])]);
       (* postcondition *) (λ π : thread_id, True).
 
 Definition trait_incl_of_layout_Layout_from_size_align_unchecked  : (spec_with _ _ Prop) :=
@@ -185,7 +197,7 @@ Definition type_of_layout_Layout_from_size_align_unchecked  :=
         ∗ (⌜(size ∈ isize)%Z⌝)
         ∗ (⌜(Z.divide align size)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, mk_rust_layout (Z.to_nat size) (alignment_of_align align) @ (layout_Layout_inv_t    <INST!>);
+      (* existential.. *) ∃ _ : unit, mk_rust_layout (Z.to_nat size) (alignment_of_align align) @ (layout_Layout_inv_t   -[] -[]);
       (* postcondition *) (λ π : thread_id, True).
 
 Definition trait_incl_of_layout_Layout_new (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
@@ -197,7 +209,7 @@ Definition type_of_layout_Layout_new (T_rt: RT) (T_st: syn_type) :=
       (* elctx........ *) (λ ϝ, []);
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, mk_rust_layout (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))) (alignment_of_align (ly_align (use_layout_alg' (ty_syn_type T_ty MetaNone)))) @ (layout_Layout_inv_t    <INST!>);
+      (* existential.. *) ∃ _ : unit, mk_rust_layout (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))) (alignment_of_align (ly_align (use_layout_alg' (ty_syn_type T_ty MetaNone)))) @ (layout_Layout_inv_t   -[] -[]);
       (* postcondition *) (λ π : thread_id, True).
 
 Definition trait_incl_of_layout_Layout_size  : (spec_with _ _ Prop) :=
@@ -207,7 +219,7 @@ Definition type_of_layout_Layout_size  :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[]) : ([] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) self :@: (shr_ref ulft_1 (layout_Layout_inv_t    <INST!>));
+      (* args......... *) self :@: (shr_ref ulft_1 (layout_Layout_inv_t   -[] -[]));
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Z.of_nat self.(layout_sz) @ (int USize);
@@ -254,7 +266,7 @@ Definition type_of_alloc_alloc  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
       (* params....... *) (ly) : ((_)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) ly :@: (layout_Layout_inv_t    <INST!>);
+      (* args......... *) ly :@: (layout_Layout_inv_t   -[] -[]);
       (* precondition. *) (λ π : thread_id, (⌜(ly.(layout_sz) > 0)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (l) : ((_)), l @ alias_ptr_t;
@@ -269,7 +281,7 @@ Definition type_of_alloc_dealloc  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
       (* params....... *) (ptr, ly) : ((_ * _)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) ptr :@: alias_ptr_t, ly :@: (layout_Layout_inv_t    <INST!>);
+      (* args......... *) ptr :@: alias_ptr_t, ly :@: (layout_Layout_inv_t   -[] -[]);
       (* precondition. *) (λ π : thread_id, (freeable_nz ptr ly.(layout_sz) 1 HeapAlloc)
         ∗ (⌜(0 < ly.(layout_sz))%Z⌝)
         ∗ (ptr ◁ₗ[π, Owned] #(()) @ (◁ uninit (UntypedSynType ly)))) |
@@ -284,7 +296,7 @@ Definition type_of_realloc  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
       (* params....... *) (v, ptr, ly, new_size) : ((_ * _ * _ * _)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) ptr :@: alias_ptr_t, ly :@: (layout_Layout_inv_t    <INST!>), new_size :@: (int USize);
+      (* args......... *) ptr :@: alias_ptr_t, ly :@: (layout_Layout_inv_t   -[] -[]), new_size :@: (int USize);
       (* precondition. *) (λ π : thread_id, (⌜((ly.(layout_sz) ≤ new_size)%Z)%Z⌝)
         ∗ (⌜((0 < ly.(layout_sz))%Z)%Z⌝)
         ∗ (⌜(new_size ≤ MaxInt ISize)%Z⌝)
@@ -327,6 +339,6 @@ Section GlobalasAllocator_spec.
   Definition GlobalasAllocator_spec  : (spec_with _ _ (Allocator_spec ((Global_rt)))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Allocator_spec _ _ ((Global_rt))).
   Definition GlobalasAllocator_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Allocator_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), GlobalasAllocator_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Allocator_base_spec (Global_rt) Global_st GlobalasAllocator_spec_attrs<TY> (Global_ty   <INST!>) <INST!>))).
+    trait_incl_marker (lift_trait_incl Allocator_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), GlobalasAllocator_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Allocator_base_spec (Global_rt) Global_st GlobalasAllocator_spec_attrs-[] -[(Global_ty  -[] -[])])))).
 End GlobalasAllocator_spec.
 

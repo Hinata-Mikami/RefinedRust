@@ -8,8 +8,8 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition usizeasSub_sub_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type)) →
-  ⊢ typed_function π (usizeasSub_sub_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_usizeasSub_sub  <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_usizeasSub_sub <INST!>)%Z⌝))).
+  ⊢ typed_function π (usizeasSub_sub_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_usizeasSub_sub -[] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_usizeasSub_sub-[] -[])%Z⌝))).
 End proof.
 
 Ltac usizeasSub_sub_prelude :=

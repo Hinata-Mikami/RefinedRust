@@ -14,8 +14,8 @@ Context `{RRGS : !refinedrustGS Σ}.
 Definition const_ptr_sub_lemma (π : thread_id) : Prop :=
   ∀ `(T_rt : !RT) `(T_st : !syn_type) , 
   syn_type_is_layoutable (T_st) →
-  ⊢ typed_function π (ptr_sub T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_const_ptr_sub T_rt T_st  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜((trait_incl_of_const_ptr_sub (T_rt) (T_st)) <TY> T_ty <INST!>)%Z⌝))).
+  ⊢ typed_function π (ptr_sub T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_const_ptr_sub T_rt T_st -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
+  ∗ (⌜((trait_incl_of_const_ptr_sub (T_rt) (T_st))-[] -[T_ty])%Z⌝))).
 End proof.
 
 Ltac const_ptr_sub_prelude :=

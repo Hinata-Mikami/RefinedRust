@@ -11,8 +11,8 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition Ordering_as_raw_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable ((Ordering_els : syn_type)) →
-  ⊢ typed_function π (Ordering_as_raw_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Ordering_as_raw  <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_Ordering_as_raw <INST!>)%Z⌝))).
+  ⊢ typed_function π (Ordering_as_raw_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Ordering_as_raw -[] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_Ordering_as_raw-[] -[])%Z⌝))).
 End proof.
 
 Ltac Ordering_as_raw_prelude :=

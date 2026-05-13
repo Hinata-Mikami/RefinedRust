@@ -15,7 +15,7 @@ Section Box_ty.
 
 Definition Box_ty (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type (plist place_rfnRT [((((unique_Unique_inv_t_rt)) ((T_rt)))) : RT; (A_rt) : RT])))).
 Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((struct_t (Box_sls ((T_ty.(ty_syn_type) (MetaNone))) ((A_ty.(ty_syn_type) (MetaNone)))) +[((unique_Unique_inv_t ((T_rt))  <TY> T_ty <INST!>)); (A_ty)]))).
+  exact (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((struct_t (Box_sls ((T_ty.(ty_syn_type) (MetaNone))) ((A_ty.(ty_syn_type) (MetaNone)))) +[((unique_Unique_inv_t ((T_rt)) -[] -[T_ty])); (A_ty)]))).
 Defined.
 
 Definition Box_rt  : RT.
@@ -43,7 +43,9 @@ Section Box_inv_t.
   Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
 
   Definition Box_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [T_rt; A_rt] (type ((place_rfn (T_rt)))%type) :=
-    spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ex_plain_t _ _ (Box_inv_t_inv_spec Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>) (((Box_ty (T_rt) (A_rt)) (Allocator_A_spec_attrs))  <TY> T_ty <TY> A_ty <INST!>).
+    spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ex_plain_t _ _ (Box_inv_t_inv_spec Allocator_A_spec_attrs -[] -[T_ty; A_ty]) (((Box_ty (T_rt) (A_rt)) (Allocator_A_spec_attrs)) -[] -[T_ty; A_ty]).
+Global Arguments Box_inv_t_inv_spec : simpl never.
+Global Arguments Box_inv_t : simpl never.
   Global Typeclasses Transparent Box_inv_t.
   Definition Box_inv_t_rt : RT.
   Proof using T_rt A_rt . let __a := normalized_rt_of_spec_ty Box_inv_t in exact __a. Defined.
@@ -156,7 +158,7 @@ Definition type_of_box_new (T_rt: RT) (T_st: syn_type) :=
       (* args......... *) x :@: T_ty;
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, x @ (Box_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs  <TY> T_ty <TY> (Global_ty   <INST!>) <INST!>);
+      (* existential.. *) ∃ _ : unit, x @ (Box_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]);
       (* postcondition *) (λ π : thread_id, True).
 
 Definition trait_incl_of_Box_T_from_raw (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
@@ -171,11 +173,11 @@ Definition type_of_Box_T_from_raw (T_rt: RT) (T_st: syn_type) :=
         ∗ (freeable_nz raw (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))) 1 HeapAlloc)
         ∗ (⌜(raw.(loc_a) ≠ 0)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, b @ (Box_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs  <TY> T_ty <TY> (Global_ty   <INST!>) <INST!>);
+      (* existential.. *) ∃ _ : unit, b @ (Box_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]);
       (* postcondition *) (λ π : thread_id, True).
 
 Definition trait_incl_of_Box_TA_from_raw_in (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_spec: (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs<TY> A_ty <INST!>)))).
+  spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs-[] -[A_ty])))).
 
 Definition type_of_Box_TA_from_raw_in (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty; A_ty]) : ([(T_rt, T_st); (A_rt, A_st)] : list (RT * syn_type)%type) | 
@@ -186,7 +188,7 @@ Definition type_of_Box_TA_from_raw_in (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_
         ∗ (Allocator_A_spec_attrs.(Allocator_FreeablePerm) alloc raw (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))))
         ∗ (⌜(raw.(loc_a) ≠ 0)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, b @ (Box_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>);
+      (* existential.. *) ∃ _ : unit, b @ (Box_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]);
       (* postcondition *) (λ π : thread_id, True).
 
 Definition trait_incl_of_Box_T_new (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
@@ -199,7 +201,7 @@ Definition type_of_Box_T_new (T_rt: RT) (T_st: syn_type) :=
       (* args......... *) x :@: T_ty;
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, x @ (Box_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs  <TY> T_ty <TY> (Global_ty   <INST!>) <INST!>);
+      (* existential.. *) ∃ _ : unit, x @ (Box_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]);
       (* postcondition *) (λ π : thread_id, True).
 
 
@@ -210,7 +212,7 @@ Definition type_of_Box_T_into_raw (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (b) : ((_)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) b :@: (Box_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs  <TY> T_ty <TY> (Global_ty   <INST!>) <INST!>);
+      (* args......... *) b :@: (Box_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]);
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (l) : (((loc))), l @ alias_ptr_t;
@@ -219,16 +221,16 @@ Definition type_of_Box_T_into_raw (T_rt: RT) (T_st: syn_type) :=
       ∗ (⌜(l.(loc_a) ≠ 0)%Z⌝)).
 
 Definition trait_incl_of_Box_TA_into_raw_with_allocator (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_spec: (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs<TY> A_ty <INST!>)))).
+  spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs-[] -[A_ty])))).
 
 Definition type_of_Box_TA_into_raw_with_allocator (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty; A_ty]) : ([(T_rt, T_st); (A_rt, A_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (b) : ((_)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) b :@: (Box_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs  <TY> T_ty <TY> A_ty <INST!>);
+      (* args......... *) b :@: (Box_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]);
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ (l, a) : (((loc) * _)), *[l; a] @ (tuple2_ty (loc) ((A_rt))  <TY> alias_ptr_t <TY> A_ty <INST!>);
+      (* existential.. *) ∃ (l, a) : (((loc) * _)), *[l; a] @ (tuple2_ty (loc) ((A_rt)) -[] -[alias_ptr_t; A_ty]);
       (* postcondition *) (λ π : thread_id, (l ◁ₗ[π, Owned] #(($#@{ (T_rt) } b)) @ (◁ T_ty))
       ∗ (Allocator_A_spec_attrs.(Allocator_FreeablePerm) a l (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))))
       ∗ (⌜(l.(loc_a) ≠ 0)%Z⌝)).

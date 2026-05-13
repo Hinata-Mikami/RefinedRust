@@ -7,8 +7,8 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition isize_is_positive_lemma (π : thread_id) : Prop :=
-  ⊢ typed_function π (isize_is_positive_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_isize_is_positive  <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_isize_is_positive <INST!>)%Z⌝))).
+  ⊢ typed_function π (isize_is_positive_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_isize_is_positive -[] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_isize_is_positive-[] -[])%Z⌝))).
 End proof.
 
 Ltac isize_is_positive_prelude :=

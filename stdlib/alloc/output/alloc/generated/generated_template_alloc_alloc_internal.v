@@ -11,8 +11,8 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition alloc_alloc_internal_lemma (π : thread_id) : Prop :=
-  ⊢ typed_function π (alloc_alloc_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_alloc_alloc_internal  <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_alloc_alloc_internal <INST!>)%Z⌝))).
+  ⊢ typed_function π (alloc_alloc_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_alloc_alloc_internal -[] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_alloc_alloc_internal-[] -[])%Z⌝))).
 End proof.
 
 Ltac alloc_alloc_internal_prelude :=

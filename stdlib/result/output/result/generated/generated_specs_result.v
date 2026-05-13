@@ -67,15 +67,15 @@ Defined.
   Definition Result_enum_rt  :=
   λ rfn : (result (place_rfn (T_rt)) (place_rfn (E_rt))), match rfn with | (Ok (x)) => Result_Ok_rt| (Err (x)) => Result_Err_rt end.
   Definition Result_enum_ty  : (spec_with 0 [(T_rt); (E_rt)] (∀ (x: _), (type (Result_enum_rt (x))))) :=
-  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), λ rfn, match rfn as x return type (Result_enum_rt x) with | (Ok (x)) => Result_Ok_ty  <TY> T_ty <TY> E_ty <INST!>| (Err (x)) => Result_Err_ty  <TY> T_ty <TY> E_ty <INST!> end.
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), λ rfn, match rfn as x return type (Result_enum_rt x) with | (Ok (x)) => Result_Ok_ty -[] -[T_ty; E_ty]| (Err (x)) => Result_Err_ty -[] -[T_ty; E_ty] end.
   Program Definition Result_enum : spec_with 0 [T_rt; E_rt] (enum ((result (place_rfn (T_rt)) (place_rfn (E_rt))))) := spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), mk_enum
     _
     ((Result_els ((ty_syn_type T_ty MetaNone)) ((ty_syn_type E_ty MetaNone))))
     (λ rfn, Some (match rfn with | (Ok (x)) => "Ok" | (Err (x)) => "Err" end))
     (Result_enum_rt)
-    (Result_enum_ty  <TY> T_ty <TY> E_ty <INST!>)
+    (Result_enum_ty -[] -[T_ty; E_ty])
     (λ rfn, match rfn with | (Ok (x)) => *[x]| (Err (x)) => *[x] end)
-    (λ variant, if (decide (variant = "Ok")) then Some $ mk_enum_tag_sem _ (Result_Ok_ty  <TY> T_ty <TY> E_ty <INST!>) (λ '( *[x]), (Ok (x))) else if (decide (variant = "Err")) then Some $ mk_enum_tag_sem _ (Result_Err_ty  <TY> T_ty <TY> E_ty <INST!>) (λ '( *[x]), (Err (x))) else None)
+    (λ variant, if (decide (variant = "Ok")) then Some $ mk_enum_tag_sem _ (Result_Ok_ty -[] -[T_ty; E_ty]) (λ '( *[x]), (Ok (x))) else if (decide (variant = "Err")) then Some $ mk_enum_tag_sem _ (Result_Err_ty -[] -[T_ty; E_ty]) (λ '( *[x]), (Err (x))) else None)
     ((ty_lfts T_ty) ++ (ty_lfts E_ty) ++ [])
     ((ty_wf_E T_ty) ++ (ty_wf_E E_ty) ++ [])
     _ _ _.
@@ -87,7 +87,7 @@ Defined.
   Global Arguments Result_enum : simpl never.
 
   End components.
-  Definition Result_ty : spec_with 0 [T_rt; E_rt] (type _) := spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), enum_t (Result_enum  <TY> T_ty <TY> E_ty <INST!>).
+  Definition Result_ty : spec_with 0 [T_rt; E_rt] (type _) := spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), enum_t (Result_enum -[] -[T_ty; E_ty]).
   Definition Result_rt : RT.
   Proof using T_rt E_rt. let __a := normalized_rt_of_spec_ty Result_ty in exact __a. Defined.
   Global Typeclasses Transparent Result_ty.
@@ -114,7 +114,7 @@ Section Formatter_ty.
 
 Definition Formatter_ty  : (spec_with 1 [] ((type (plist place_rfnRT [(((core_marker_PhantomData_rt) (((place_rfnRT Z) * gname)%type))) : RT])))).
 Proof.
-  exact (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), ((struct_t Formatter_sls +[((core_marker_PhantomData_ty (((place_rfnRT Z) * gname)%type)  <TY> (mut_ref ulft_a (int I32)) <INST!>))]))).
+  exact (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), ((struct_t Formatter_sls +[((core_marker_PhantomData_ty (((place_rfnRT Z) * gname)%type) -[] -[(mut_ref ulft_a (int I32))]))]))).
 Defined.
 
 Definition Formatter_rt  : RT.
@@ -141,7 +141,9 @@ Section Formatter_inv_t.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 
   Definition Formatter_inv_t  : spec_with 1 [] (type ((unit))%type) :=
-    spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), ex_plain_t _ _ (Formatter_inv_t_inv_spec   <LFT> ulft_a <INST!>) (Formatter_ty  <LFT> ulft_a <INST!>).
+    spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), ex_plain_t _ _ (Formatter_inv_t_inv_spec  -[ulft_a] -[]) (Formatter_ty -[ulft_a] -[]).
+Global Arguments Formatter_inv_t_inv_spec : simpl never.
+Global Arguments Formatter_inv_t : simpl never.
   Global Typeclasses Transparent Formatter_inv_t.
   Definition Formatter_inv_t_rt : RT.
   Proof using  . let __a := normalized_rt_of_spec_ty Formatter_inv_t in exact __a. Defined.
@@ -202,14 +204,32 @@ Proof.
   all: apply _.
 Qed.
 
+Definition scope_bindable_Debug_spec `{Self_rt : !RT} : (ScopeBindable ((Debug_spec (Self_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((Debug_spec (Self_rt)))) :=
+      {|
+        Debug_fmt_spec  :=
+          (scope_add_typarams (rts) (tys) (s.(Debug_fmt_spec)));
+      |}
+      ;
+    scope_add_elctx (E: (lft → elctx)) (s: ((Debug_spec (Self_rt)))) :=
+      {|
+        Debug_fmt_spec  :=
+          (scope_add_elctx (E) (s.(Debug_fmt_spec)));
+      |}
+      ;
+  |}
+.
+#[global] Existing Instance scope_bindable_Debug_spec.
+
 Definition Debug_fmt_base_spec (Self_rt: RT) (Self_st: syn_type) (Debug_Self_spec_attrs: (Debug_spec_attrs (RRGS:=RRGS) (Self_rt) )) :=
   fn(∀ ( *[ulft_1; ulft_2; ulft_3]) : 3 | ( *[Self_ty]) : ([(Self_rt, Self_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, f) : ((_ * _)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1); (ϝ, ulft_2); (ϝ, ulft_3)]);
-      (* args......... *) self :@: (shr_ref ulft_1 Self_ty), f :@: (mut_ref ulft_2 (Formatter_inv_t    <LFT> ulft_3 <INST!>));
+      (* args......... *) self :@: (shr_ref ulft_1 Self_ty), f :@: (mut_ref ulft_2 (Formatter_inv_t   -[ulft_3] -[]));
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ (ret) : ((_)), ret @ (Result_ty (unit) ((Error_rt))  <TY> unit_t <TY> (Error_ty   <INST!>) <INST!>);
+      (* existential.. *) ∃ (ret) : ((_)), ret @ (Result_ty (unit) ((Error_rt)) -[] -[unit_t; (Error_ty  -[] -[])]);
       (* postcondition *) (λ π : thread_id, (gvar_pobs f.ghost (tt))).
 
 Definition Debug_base_spec (Self_rt: RT) (Self_st: syn_type) (_ATTRS: ((Debug_spec_attrs ((Self_rt))))) : (spec_with _ _ (Debug_spec ((Self_rt)))) :=
@@ -225,44 +245,44 @@ End Debug.
 Section Debug_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition trait_incl_of_Debug_fmt (Self_rt: RT) (Self_st: syn_type) (Debug_Self_spec_attrs: (Debug_spec_attrs (RRGS:=RRGS) (Self_rt) )) (Debug_Self_spec: (spec_with 0 [] (Debug_spec (RRGS:=RRGS) (Self_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1; ulft_2; ulft_3]) : 3 | ( *[Self_ty]) : ([Self_rt] : list RT), ((trait_incl_marker (lift_trait_incl Debug_spec_incl Debug_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Debug_base_spec (Self_rt) Self_st Debug_Self_spec_attrs<TY> Self_ty <INST!>)))).
+    spec! ( *[ulft_1; ulft_2; ulft_3]) : 3 | ( *[Self_ty]) : ([Self_rt] : list RT), ((trait_incl_marker (lift_trait_incl Debug_spec_incl Debug_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Debug_base_spec (Self_rt) Self_st Debug_Self_spec_attrs-[] -[Self_ty])))).
 End Debug_trait_req_incls.
 
 Section specs.
 Context `{RRGS : !refinedrustGS Σ}.
 
 Definition trait_incl_of_ResultTEasstd_clone_Clone_clone (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (Clone_T_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) (Clone_T_spec: (spec_with 0 [] (Clone_spec (RRGS:=RRGS) (T_rt)))) (Clone_E_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (E_rt) )) (Clone_E_spec: (spec_with 0 [] (Clone_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl Clone_spec_incl Clone_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Clone_base_spec (T_rt) T_st Clone_T_spec_attrs<TY> T_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl Clone_spec_incl Clone_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Clone_base_spec (E_rt) E_st Clone_E_spec_attrs<TY> E_ty <INST!>)))).
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl Clone_spec_incl Clone_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Clone_base_spec (T_rt) T_st Clone_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl Clone_spec_incl Clone_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Clone_base_spec (E_rt) E_st Clone_E_spec_attrs-[] -[E_ty])))).
 
 Definition type_of_ResultTEasstd_clone_Clone_clone (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (Clone_T_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) (Clone_E_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (E_rt) )) :=
-  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT),((Clone_base_spec (((Result_rt ((T_rt)) ((E_rt))))) ((Result_st (T_st) (E_st))) ((ResultTEasstd_clone_Clone_spec_attrs (T_rt) (E_rt) (Clone_T_spec_attrs) (Clone_E_spec_attrs))))
-     <TY> (Result_ty ((T_rt)) ((E_rt))  <TY> T_ty <TY> E_ty <INST!>) <INST!>).(Clone_clone_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; E_ty] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (((Result_rt ((T_rt)) ((E_rt))))) ((Result_st (T_st) (E_st))) ((ResultTEasstd_clone_Clone_spec_attrs (T_rt) (E_rt) (Clone_T_spec_attrs) (Clone_E_spec_attrs))))
+    -[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty])]).(Clone_clone_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_Result_TE_map (T_rt: RT) (E_rt: RT) (U_rt: RT) (F_rt: RT) (T_st: syn_type) (E_st: syn_type) (U_st: syn_type) (F_st: syn_type) (FnOnce_F_T_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt) )) (FnOnce_F_T_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; E_ty; U_ty; F_ty]) : ([T_rt; E_rt; U_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt) F_st ((tuple1_sls (T_st)) : syn_type) U_st FnOnce_F_T_spec_attrs<TY> F_ty <TY> (tuple1_ty ((T_rt))  <TY> T_ty <INST!>) <TY> U_ty <INST!>)))).
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty; U_ty; F_ty]) : ([T_rt; E_rt; U_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt) F_st ((tuple1_sls (T_st)) : syn_type) U_st FnOnce_F_T_spec_attrs-[] -[F_ty; (tuple1_ty ((T_rt)) -[] -[T_ty]); U_ty])))).
 
 Definition type_of_Result_TE_map (T_rt: RT) (E_rt: RT) (U_rt: RT) (F_rt: RT) (T_st: syn_type) (E_st: syn_type) (U_st: syn_type) (F_st: syn_type) (FnOnce_F_T_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty; E_ty; U_ty; F_ty]) : ([(T_rt, T_st); (E_rt, E_st); (U_rt, U_st); (F_rt, F_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (oparam, self, op) : ((_ * _ * _)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) self :@: (Result_ty ((T_rt)) ((E_rt))  <TY> T_ty <TY> E_ty <INST!>), op :@: F_ty;
+      (* args......... *) self :@: (Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]), op :@: F_ty;
       (* precondition. *) (λ π : thread_id, (if_iOk self (λ self, ∃ p, ⌜oparam = Some p⌝ ∗ FnOnce_F_T_spec_attrs.(FnOnce_Pre) π p op *[self]))) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ (ret) : ((_)), ret @ (Result_ty ((U_rt)) ((E_rt))  <TY> U_ty <TY> E_ty <INST!>);
+      (* existential.. *) ∃ (ret) : ((_)), ret @ (Result_ty ((U_rt)) ((E_rt)) -[] -[U_ty; E_ty]);
       (* postcondition *) (λ π : thread_id, (if_iErr self (λ self, ⌜ret = Err self⌝ ∗ ty_ghost_drop F_ty π ($# op)))
       ∗ (if_iOk self (λ self, ∃ p x, ⌜oparam = Some p⌝ ∗ ⌜ret = Ok x⌝ ∗ FnOnce_F_T_spec_attrs.(FnOnce_Post) π p op *[self] x))).
 
 Definition trait_incl_of_Result_TE_map_err (T_rt: RT) (E_rt: RT) (F_rt: RT) (O_rt: RT) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) (O_st: syn_type) (FnOnce_O_E_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt) )) (FnOnce_O_E_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty; O_ty]) : ([T_rt; E_rt; F_rt; O_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_O_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt) O_st ((tuple1_sls (E_st)) : syn_type) F_st FnOnce_O_E_spec_attrs<TY> O_ty <TY> (tuple1_ty ((E_rt))  <TY> E_ty <INST!>) <TY> F_ty <INST!>)))).
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty; O_ty]) : ([T_rt; E_rt; F_rt; O_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_O_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt) O_st ((tuple1_sls (E_st)) : syn_type) F_st FnOnce_O_E_spec_attrs-[] -[O_ty; (tuple1_ty ((E_rt)) -[] -[E_ty]); F_ty])))).
 
 Definition type_of_Result_TE_map_err (T_rt: RT) (E_rt: RT) (F_rt: RT) (O_rt: RT) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) (O_st: syn_type) (FnOnce_O_E_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty; E_ty; F_ty; O_ty]) : ([(T_rt, T_st); (E_rt, E_st); (F_rt, F_st); (O_rt, O_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (oparam, self, op) : ((_ * _ * _)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) self :@: (Result_ty ((T_rt)) ((E_rt))  <TY> T_ty <TY> E_ty <INST!>), op :@: O_ty;
+      (* args......... *) self :@: (Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]), op :@: O_ty;
       (* precondition. *) (λ π : thread_id, (if_iErr self (λ self, ∃ p, ⌜oparam = Some p⌝ ∗ FnOnce_O_E_spec_attrs.(FnOnce_Pre) π p op *[self]))) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ (ret) : ((_)), ret @ (Result_ty ((T_rt)) ((F_rt))  <TY> T_ty <TY> F_ty <INST!>);
+      (* existential.. *) ∃ (ret) : ((_)), ret @ (Result_ty ((T_rt)) ((F_rt)) -[] -[T_ty; F_ty]);
       (* postcondition *) (λ π : thread_id, (if_iOk self (λ self, ⌜ret = Ok self⌝ ∗ ty_ghost_drop O_ty π ($# op)))
       ∗ (if_iErr self (λ self, ∃ p x, ⌜oparam = Some p⌝ ∗ ⌜ret = Err x⌝ ∗ FnOnce_O_E_spec_attrs.(FnOnce_Post) π p op *[self] x))).
 
@@ -274,7 +294,7 @@ Definition type_of_Result_TE_is_err (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; E_ty]) : ([(T_rt, T_st); (E_rt, E_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (x) : ((_)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) x :@: (shr_ref ulft_1 (Result_ty ((T_rt)) ((E_rt))  <TY> T_ty <TY> E_ty <INST!>));
+      (* args......... *) x :@: (shr_ref ulft_1 (Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]));
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (is_Err x) @ bool_t;
@@ -287,20 +307,20 @@ Definition type_of_Result_TE_is_ok (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st:
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; E_ty]) : ([(T_rt, T_st); (E_rt, E_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (x) : ((_)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) x :@: (shr_ref ulft_1 (Result_ty ((T_rt)) ((E_rt))  <TY> T_ty <TY> E_ty <INST!>));
+      (* args......... *) x :@: (shr_ref ulft_1 (Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]));
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (is_Ok x) @ bool_t;
       (* postcondition *) (λ π : thread_id, True).
 
 Definition trait_incl_of_Result_TE_unwrap (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (Debug_E_spec_attrs: (Debug_spec_attrs (RRGS:=RRGS) (E_rt) )) (Debug_E_spec: (spec_with 0 [] (Debug_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl Debug_spec_incl Debug_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Debug_base_spec (E_rt) E_st Debug_E_spec_attrs<TY> E_ty <INST!>)))).
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl Debug_spec_incl Debug_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Debug_base_spec (E_rt) E_st Debug_E_spec_attrs-[] -[E_ty])))).
 
 Definition type_of_Result_TE_unwrap (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (Debug_E_spec_attrs: (Debug_spec_attrs (RRGS:=RRGS) (E_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty; E_ty]) : ([(T_rt, T_st); (E_rt, E_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) self :@: (Result_ty ((T_rt)) ((E_rt))  <TY> T_ty <TY> E_ty <INST!>);
+      (* args......... *) self :@: (Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]);
       (* precondition. *) (λ π : thread_id, (⌜(destruct_hint self is_Ok)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ T_ty;
@@ -313,7 +333,7 @@ Definition type_of_Result_TE_unwrap_unchecked (T_rt: RT) (E_rt: RT) (T_st: syn_t
   fn(∀ ( *[]) : 0 | ( *[T_ty; E_ty]) : ([(T_rt, T_st); (E_rt, E_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) self :@: (Result_ty ((T_rt)) ((E_rt))  <TY> T_ty <TY> E_ty <INST!>);
+      (* args......... *) self :@: (Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]);
       (* precondition. *) (λ π : thread_id, (⌜(destruct_hint self is_Ok)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ T_ty;
@@ -331,11 +351,11 @@ Section ResultTEasstd_clone_Clone_spec.
              <TY> T_ty <TY> E_ty : (spec_with 1 [] fn_spec);
         Clone_clone_from_spec  :=
           (Clone_clone_from_base_spec (((Result_rt ((T_rt)) ((E_rt))))) ((Result_st (T_st) (E_st)))) (ResultTEasstd_clone_Clone_spec_attrs (T_rt) (E_rt) (Clone_T_spec_attrs) (Clone_E_spec_attrs)) 
-             <TY> (Result_ty ((T_rt)) ((E_rt))  <TY> T_ty <TY> E_ty <INST!>) : (spec_with 2 [] fn_spec);
+             <TY> (Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]) : (spec_with 2 [] fn_spec);
       |}
   .
   Definition ResultTEasstd_clone_Clone_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(E_rt : !RT) `(T_st : !syn_type) `(E_st : !syn_type) `(Clone_T_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) `(Clone_E_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (E_rt) )), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (ResultTEasstd_clone_Clone_spec (T_rt) (E_rt) (T_st) (E_st) (Clone_T_spec_attrs) (Clone_E_spec_attrs)) <TY> T_ty <TY> E_ty <INST!>) (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (Clone_base_spec ((Result_rt ((T_rt)) ((E_rt)))) (Result_st (T_st) (E_st)) (ResultTEasstd_clone_Clone_spec_attrs (T_rt) (E_rt) (Clone_T_spec_attrs) (Clone_E_spec_attrs))<TY> (Result_ty ((T_rt)) ((E_rt))  <TY> T_ty <TY> E_ty <INST!>) <INST!>))).
+    ∀ `(T_rt : !RT) `(E_rt : !RT) `(T_st : !syn_type) `(E_st : !syn_type) `(Clone_T_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) `(Clone_E_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (E_rt) )), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (ResultTEasstd_clone_Clone_spec (T_rt) (E_rt) (T_st) (E_st) (Clone_T_spec_attrs) (Clone_E_spec_attrs))-[] -[T_ty; E_ty]) (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), scope_add_typarams _ -[T_ty; E_ty] ((Clone_base_spec ((Result_rt ((T_rt)) ((E_rt)))) (Result_st (T_st) (E_st)) (ResultTEasstd_clone_Clone_spec_attrs (T_rt) (E_rt) (Clone_T_spec_attrs) (Clone_E_spec_attrs))-[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty])])))).
 End ResultTEasstd_clone_Clone_spec.
 
 Section ResultTEasstd_marker_Copy_spec.
@@ -343,8 +363,8 @@ Section ResultTEasstd_marker_Copy_spec.
   Definition ResultTEasstd_marker_Copy_spec (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (Clone_T_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) (Clone_E_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (E_rt) )) (Copy_T_spec_attrs: (Copy_spec_attrs (RRGS:=RRGS) (T_rt) Clone_T_spec_attrs)) (Copy_E_spec_attrs: (Copy_spec_attrs (RRGS:=RRGS) (E_rt) Clone_E_spec_attrs)) : (spec_with _ _ (Copy_spec (((Result_rt ((T_rt)) ((E_rt))))))) :=
     spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (@mk_Copy_spec _ _ (((Result_rt ((T_rt)) ((E_rt)))))).
   Definition ResultTEasstd_marker_Copy_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(E_rt : !RT) `(T_st : !syn_type) `(E_st : !syn_type) `(Clone_T_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) `(Clone_E_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (E_rt) )) `(Copy_T_spec_attrs : !(Copy_spec_attrs (RRGS:=RRGS) (T_rt) Clone_T_spec_attrs)) `(Copy_E_spec_attrs : !(Copy_spec_attrs (RRGS:=RRGS) (E_rt) Clone_E_spec_attrs)), trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (ResultTEasstd_marker_Copy_spec (T_rt) (E_rt) (T_st) (E_st) (Clone_T_spec_attrs) (Clone_E_spec_attrs) (Copy_T_spec_attrs) (Copy_E_spec_attrs)) <TY> T_ty <TY> E_ty <INST!>) (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (Copy_base_spec ((Result_rt ((T_rt)) ((E_rt)))) (Result_st (T_st) (E_st)) (ResultTEasstd_clone_Clone_spec_attrs ((T_rt)) ((E_rt)) (Clone_T_spec_attrs) (Clone_E_spec_attrs)) (ResultTEasstd_marker_Copy_spec_attrs (T_rt) (E_rt) (Clone_T_spec_attrs) (Clone_E_spec_attrs) (Copy_T_spec_attrs) (Copy_E_spec_attrs))<TY> (Result_ty ((T_rt)) ((E_rt))  <TY> T_ty <TY> E_ty <INST!>) <INST!>))).
-  Lemma ResultTEasstd_marker_Copy_semantic_interp (T_rt: RT) (E_rt: RT) (T_ty: (type (T_rt))) (E_ty: (type (E_rt))) (_: (Copy_semantic_interp (T_rt) T_ty)) (_: (Copy_semantic_interp (E_rt) E_ty)) : (Copy_semantic_interp ((Result_rt ((T_rt)) ((E_rt)))) (Result_ty ((T_rt)) ((E_rt))  <TY> T_ty <TY> E_ty <INST!>)).
+    ∀ `(T_rt : !RT) `(E_rt : !RT) `(T_st : !syn_type) `(E_st : !syn_type) `(Clone_T_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) `(Clone_E_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (E_rt) )) `(Copy_T_spec_attrs : !(Copy_spec_attrs (RRGS:=RRGS) (T_rt) Clone_T_spec_attrs)) `(Copy_E_spec_attrs : !(Copy_spec_attrs (RRGS:=RRGS) (E_rt) Clone_E_spec_attrs)), trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (ResultTEasstd_marker_Copy_spec (T_rt) (E_rt) (T_st) (E_st) (Clone_T_spec_attrs) (Clone_E_spec_attrs) (Copy_T_spec_attrs) (Copy_E_spec_attrs))-[] -[T_ty; E_ty]) (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), scope_add_typarams _ -[T_ty; E_ty] ((Copy_base_spec ((Result_rt ((T_rt)) ((E_rt)))) (Result_st (T_st) (E_st)) (ResultTEasstd_clone_Clone_spec_attrs ((T_rt)) ((E_rt)) (Clone_T_spec_attrs) (Clone_E_spec_attrs)) (ResultTEasstd_marker_Copy_spec_attrs (T_rt) (E_rt) (Clone_T_spec_attrs) (Clone_E_spec_attrs) (Copy_T_spec_attrs) (Copy_E_spec_attrs))-[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty])])))).
+  Lemma ResultTEasstd_marker_Copy_semantic_interp (T_rt: RT) (E_rt: RT) (T_ty: (type (T_rt))) (E_ty: (type (E_rt))) (_: (Copy_semantic_interp (T_rt) T_ty)) (_: (Copy_semantic_interp (E_rt) E_ty)) : (Copy_semantic_interp ((Result_rt ((T_rt)) ((E_rt)))) (Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty])).
   Proof.
     unfold Copy_semantic_interp in *; apply _.
   Qed.

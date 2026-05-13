@@ -7,8 +7,8 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition i16_is_negative_lemma (π : thread_id) : Prop :=
-  ⊢ typed_function π (i16_is_negative_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i16_is_negative  <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_i16_is_negative <INST!>)%Z⌝))).
+  ⊢ typed_function π (i16_is_negative_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i16_is_negative -[] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_i16_is_negative-[] -[])%Z⌝))).
 End proof.
 
 Ltac i16_is_negative_prelude :=

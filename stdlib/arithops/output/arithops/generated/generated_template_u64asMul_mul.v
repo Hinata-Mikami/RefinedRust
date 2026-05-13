@@ -8,8 +8,8 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition u64asMul_mul_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((tuple2_sls ((IntSynType U64)) (BoolSynType)) : syn_type)) →
-  ⊢ typed_function π (u64asMul_mul_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_u64asMul_mul  <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_u64asMul_mul <INST!>)%Z⌝))).
+  ⊢ typed_function π (u64asMul_mul_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_u64asMul_mul -[] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_u64asMul_mul-[] -[])%Z⌝))).
 End proof.
 
 Ltac u64asMul_mul_prelude :=

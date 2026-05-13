@@ -8,8 +8,8 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition i128asSubREFai128_sub_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((tuple2_sls ((IntSynType I128)) (BoolSynType)) : syn_type)) →
-  ⊢ typed_function π (i128asSubREFai128_sub_def ) (<tag_type> spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i128asSubREFai128_sub  <LFT> ulft_a <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_i128asSubREFai128_sub <LFT> ulft_a <INST!>)%Z⌝))).
+  ⊢ typed_function π (i128asSubREFai128_sub_def ) (<tag_type> spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_i128asSubREFai128_sub -[ulft_a] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_i128asSubREFai128_sub-[ulft_a] -[])%Z⌝))).
 End proof.
 
 Ltac i128asSubREFai128_sub_prelude :=

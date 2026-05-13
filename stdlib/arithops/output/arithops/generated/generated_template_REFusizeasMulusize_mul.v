@@ -8,8 +8,8 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition REFusizeasMulusize_mul_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type)) →
-  ⊢ typed_function π (REFusizeasMulusize_mul_def ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_REFusizeasMulusize_mul  <LFT> ulft_1 <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_REFusizeasMulusize_mul <LFT> ulft_1 <INST!>)%Z⌝))).
+  ⊢ typed_function π (REFusizeasMulusize_mul_def ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_REFusizeasMulusize_mul -[ulft_1] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_REFusizeasMulusize_mul-[ulft_1] -[])%Z⌝))).
 End proof.
 
 Ltac REFusizeasMulusize_mul_prelude :=

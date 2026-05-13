@@ -15,10 +15,10 @@ Definition Option_T_filter_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (P_st) →
   syn_type_is_layoutable (((Option_els (T_st)) : syn_type)) →
   syn_type_is_layoutable (((tuple1_sls (PtrSynType)) : syn_type)) →
-  FnOnce_P_REFT_call_once_loc ◁ᵥ{π, MetaNone} FnOnce_P_REFT_call_once_loc @ function_ptr [P_st; ((tuple1_sls (PtrSynType)) : syn_type)] (<tag_type> spec! ( *[_lft_for_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((FnOnce_call_once_spec (RRGS:=RRGS) (FnOnce_P_REFT_spec <LFT> _lft_for_0 <INST!>))   <INST!>) (λ π, (True))%I) -∗
-  typed_function π (Option_T_filter_def FnOnce_P_REFT_call_once_loc  T_st  P_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; P_ty]) : ([T_rt; P_rt] : list RT), fn_spec_add_late_pre (type_of_Option_T_filter T_rt P_rt T_st P_st FnOnce_P_REFT_spec_attrs  <TY> T_ty <TY> P_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty)
+  FnOnce_P_REFT_call_once_loc ◁ᵥ{π, MetaNone} FnOnce_P_REFT_call_once_loc @ function_ptr [P_st; ((tuple1_sls (PtrSynType)) : syn_type)] (<tag_type> spec! ( *[_lft_for_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((FnOnce_call_once_spec (RRGS:=RRGS) (FnOnce_P_REFT_spec-[_lft_for_0] -[]))  -[] -[]) (λ π, (True))%I) -∗
+  typed_function π (Option_T_filter_def FnOnce_P_REFT_call_once_loc  T_st  P_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; P_ty]) : ([T_rt; P_rt] : list RT), fn_spec_add_late_pre (type_of_Option_T_filter T_rt P_rt T_st P_st FnOnce_P_REFT_spec_attrs -[] -[T_ty; P_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
   ∗ (typaram_wf P_rt P_st P_ty))
-  ∗ (⌜((trait_incl_of_Option_T_filter (T_rt) (P_rt) (T_st) (P_st) (FnOnce_P_REFT_spec_attrs) (FnOnce_P_REFT_spec)) <TY> T_ty <TY> P_ty <INST!>)%Z⌝))).
+  ∗ (⌜((trait_incl_of_Option_T_filter (T_rt) (P_rt) (T_st) (P_st) (FnOnce_P_REFT_spec_attrs) (FnOnce_P_REFT_spec))-[] -[T_ty; P_ty])%Z⌝))).
 End proof.
 
 Ltac Option_T_filter_prelude :=

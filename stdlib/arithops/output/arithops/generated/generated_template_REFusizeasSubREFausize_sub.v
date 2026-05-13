@@ -8,8 +8,8 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition REFusizeasSubREFausize_sub_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type)) →
-  ⊢ typed_function π (REFusizeasSubREFausize_sub_def ) (<tag_type> spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_REFusizeasSubREFausize_sub  <LFT> ulft_a <LFT> ulft_2 <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_REFusizeasSubREFausize_sub <LFT> ulft_a <LFT> ulft_2 <INST!>)%Z⌝))).
+  ⊢ typed_function π (REFusizeasSubREFausize_sub_def ) (<tag_type> spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_REFusizeasSubREFausize_sub -[ulft_a; ulft_2] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_REFusizeasSubREFausize_sub-[ulft_a; ulft_2] -[])%Z⌝))).
 End proof.
 
 Ltac REFusizeasSubREFausize_sub_prelude :=

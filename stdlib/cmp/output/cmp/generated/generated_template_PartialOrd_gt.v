@@ -15,11 +15,11 @@ Definition PartialOrd_gt_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (Rhs_st) →
   syn_type_is_layoutable ((Ordering_els : syn_type)) →
   syn_type_is_layoutable (((Option_els (Ordering_st)) : syn_type)) →
-  PartialOrd_Self_Rhs_partial_cmp_loc ◁ᵥ{π, MetaNone} PartialOrd_Self_Rhs_partial_cmp_loc @ function_ptr [PtrSynType; PtrSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), fn_spec_add_late_pre ((PartialOrd_partial_cmp_spec (RRGS:=RRGS) (PartialOrd_Self_Rhs_spec <INST!>))   <LFT> late_lft_0 <LFT> late_lft_1 <INST!>) (λ π, ((typaram_wf Self_rt Self_st Self_ty)
+  PartialOrd_Self_Rhs_partial_cmp_loc ◁ᵥ{π, MetaNone} PartialOrd_Self_Rhs_partial_cmp_loc @ function_ptr [PtrSynType; PtrSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), fn_spec_add_late_pre ((PartialOrd_partial_cmp_spec (RRGS:=RRGS) (PartialOrd_Self_Rhs_spec-[] -[]))  -[late_lft_0; late_lft_1] -[]) (λ π, ((typaram_wf Self_rt Self_st Self_ty)
   ∗ (typaram_wf Rhs_rt Rhs_st Rhs_ty)))%I) -∗
-  typed_function π (PartialOrd_gt_def PartialOrd_Self_Rhs_partial_cmp_loc  Self_st  Rhs_st  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), fn_spec_add_late_pre (PartialOrd_gt_base_spec Self_rt Rhs_rt Self_st Rhs_st PartialEq_Self_Rhs_spec_attrs PartialOrd_Self_Rhs_spec_attrs  <TY> Self_ty <TY> Rhs_ty <LFT> ulft_1 <LFT> ulft_2 <INST!>) (λ π, ((typaram_wf Self_rt Self_st Self_ty)
+  typed_function π (PartialOrd_gt_def PartialOrd_Self_Rhs_partial_cmp_loc  Self_st  Rhs_st  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), fn_spec_add_late_pre (PartialOrd_gt_base_spec Self_rt Rhs_rt Self_st Rhs_st PartialEq_Self_Rhs_spec_attrs PartialOrd_Self_Rhs_spec_attrs -[ulft_1; ulft_2] -[Self_ty; Rhs_ty]) (λ π, ((typaram_wf Self_rt Self_st Self_ty)
   ∗ (typaram_wf Rhs_rt Rhs_st Rhs_ty))
-  ∗ (⌜((trait_incl_of_PartialOrd_gt (Self_rt) (Rhs_rt) (Self_st) (Rhs_st) (PartialEq_Self_Rhs_spec_attrs) (PartialEq_Self_Rhs_spec) (PartialOrd_Self_Rhs_spec_attrs) (PartialOrd_Self_Rhs_spec)) <TY> Self_ty <TY> Rhs_ty <LFT> ulft_1 <LFT> ulft_2 <INST!>)%Z⌝))).
+  ∗ (⌜((trait_incl_of_PartialOrd_gt (Self_rt) (Rhs_rt) (Self_st) (Rhs_st) (PartialEq_Self_Rhs_spec_attrs) (PartialEq_Self_Rhs_spec) (PartialOrd_Self_Rhs_spec_attrs) (PartialOrd_Self_Rhs_spec))-[ulft_1; ulft_2] -[Self_ty; Rhs_ty])%Z⌝))).
 End proof.
 
 Ltac PartialOrd_gt_prelude :=

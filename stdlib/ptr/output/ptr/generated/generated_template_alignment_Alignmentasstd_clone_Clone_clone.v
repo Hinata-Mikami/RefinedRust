@@ -13,8 +13,8 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition alignment_Alignmentasstd_clone_Clone_clone_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable ((alignment_Alignment_sls : syn_type)) →
-  ⊢ typed_function π (alignment_Alignmentasstd_clone_Clone_clone_def ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_alignment_Alignmentasstd_clone_Clone_clone  <LFT> ulft_1 <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_alignment_Alignmentasstd_clone_Clone_clone <LFT> ulft_1 <INST!>)%Z⌝))).
+  ⊢ typed_function π (alignment_Alignmentasstd_clone_Clone_clone_def ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_alignment_Alignmentasstd_clone_Clone_clone -[ulft_1] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_alignment_Alignmentasstd_clone_Clone_clone-[ulft_1] -[])%Z⌝))).
 End proof.
 
 Ltac alignment_Alignmentasstd_clone_Clone_clone_prelude :=

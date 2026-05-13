@@ -8,8 +8,8 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition u32asSub_sub_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((tuple2_sls ((IntSynType U32)) (BoolSynType)) : syn_type)) →
-  ⊢ typed_function π (u32asSub_sub_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_u32asSub_sub  <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_u32asSub_sub <INST!>)%Z⌝))).
+  ⊢ typed_function π (u32asSub_sub_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_u32asSub_sub -[] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_u32asSub_sub-[] -[])%Z⌝))).
 End proof.
 
 Ltac u32asSub_sub_prelude :=

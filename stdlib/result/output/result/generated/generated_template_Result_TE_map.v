@@ -18,12 +18,12 @@ Definition Result_TE_map_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((Result_els (T_st) (E_st)) : syn_type)) →
   syn_type_is_layoutable (((Result_els (U_st) (E_st)) : syn_type)) →
   syn_type_is_layoutable (((tuple1_sls (T_st)) : syn_type)) →
-  FnOnce_F_T_call_once_loc ◁ᵥ{π, MetaNone} FnOnce_F_T_call_once_loc @ function_ptr [F_st; ((tuple1_sls (T_st)) : syn_type)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((FnOnce_call_once_spec (RRGS:=RRGS) (FnOnce_F_T_spec <INST!>))   <INST!>) (λ π, (True))%I) -∗
-  typed_function π (Result_TE_map_def FnOnce_F_T_call_once_loc  T_st  E_st  U_st  F_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; E_ty; U_ty; F_ty]) : ([T_rt; E_rt; U_rt; F_rt] : list RT), fn_spec_add_late_pre (type_of_Result_TE_map T_rt E_rt U_rt F_rt T_st E_st U_st F_st FnOnce_F_T_spec_attrs  <TY> T_ty <TY> E_ty <TY> U_ty <TY> F_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty)
+  FnOnce_F_T_call_once_loc ◁ᵥ{π, MetaNone} FnOnce_F_T_call_once_loc @ function_ptr [F_st; ((tuple1_sls (T_st)) : syn_type)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((FnOnce_call_once_spec (RRGS:=RRGS) (FnOnce_F_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+  typed_function π (Result_TE_map_def FnOnce_F_T_call_once_loc  T_st  E_st  U_st  F_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; E_ty; U_ty; F_ty]) : ([T_rt; E_rt; U_rt; F_rt] : list RT), fn_spec_add_late_pre (type_of_Result_TE_map T_rt E_rt U_rt F_rt T_st E_st U_st F_st FnOnce_F_T_spec_attrs -[] -[T_ty; E_ty; U_ty; F_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
   ∗ (typaram_wf E_rt E_st E_ty)
   ∗ (typaram_wf U_rt U_st U_ty)
   ∗ (typaram_wf F_rt F_st F_ty))
-  ∗ (⌜((trait_incl_of_Result_TE_map (T_rt) (E_rt) (U_rt) (F_rt) (T_st) (E_st) (U_st) (F_st) (FnOnce_F_T_spec_attrs) (FnOnce_F_T_spec)) <TY> T_ty <TY> E_ty <TY> U_ty <TY> F_ty <INST!>)%Z⌝))).
+  ∗ (⌜((trait_incl_of_Result_TE_map (T_rt) (E_rt) (U_rt) (F_rt) (T_st) (E_st) (U_st) (F_st) (FnOnce_F_T_spec_attrs) (FnOnce_F_T_spec))-[] -[T_ty; E_ty; U_ty; F_ty])%Z⌝))).
 End proof.
 
 Ltac Result_TE_map_prelude :=

@@ -59,13 +59,8 @@ Proof.
     rep liRStep. }
 
   all: print_remaining_goal.
-  Unshelve. 
-  (* TODO: this is a bug in the contract...: For an instantiation, we also need to be able to assume that its elctx is okay. I.e., similar to how we add typaram_wf *)
-  1: { admit. } 
-  1: admit.
-  1: admit.
-
+  Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   Unshelve. all: print_remaining_sidecond.
-Admitted.
+Qed.
 End proof.

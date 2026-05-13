@@ -14,8 +14,8 @@ Context `{RRGS : !refinedrustGS Σ}.
 Definition alignment_Alignment_as_usize_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable ((alignment_Alignment_sls : syn_type)) →
   syn_type_is_layoutable ((alignment_AlignmentEnum_els : syn_type)) →
-  ⊢ typed_function π (alignment_Alignment_as_usize_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_alignment_Alignment_as_usize  <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_alignment_Alignment_as_usize <INST!>)%Z⌝))).
+  ⊢ typed_function π (alignment_Alignment_as_usize_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_alignment_Alignment_as_usize -[] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_alignment_Alignment_as_usize-[] -[])%Z⌝))).
 End proof.
 
 Ltac alignment_Alignment_as_usize_prelude :=

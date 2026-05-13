@@ -19,9 +19,9 @@ Definition adapters_map_Map_IF_new_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (I_st) →
   syn_type_is_layoutable (F_st) →
   syn_type_is_layoutable (((adapters_map_Map_sls (I_st) (F_st)) : syn_type)) →
-  ⊢ typed_function π (adapters_map_Map_IF_new_def I_st  F_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[I_ty; F_ty]) : ([I_rt; F_rt] : list RT), fn_spec_add_late_pre (type_of_adapters_map_Map_IF_new I_rt F_rt I_st F_st  <TY> I_ty <TY> F_ty <INST!>) (λ π, ((typaram_wf I_rt I_st I_ty)
+  ⊢ typed_function π (adapters_map_Map_IF_new_def I_st  F_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[I_ty; F_ty]) : ([I_rt; F_rt] : list RT), fn_spec_add_late_pre (type_of_adapters_map_Map_IF_new I_rt F_rt I_st F_st -[] -[I_ty; F_ty]) (λ π, ((typaram_wf I_rt I_st I_ty)
   ∗ (typaram_wf F_rt F_st F_ty))
-  ∗ (⌜((trait_incl_of_adapters_map_Map_IF_new (I_rt) (F_rt) (I_st) (F_st)) <TY> I_ty <TY> F_ty <INST!>)%Z⌝))).
+  ∗ (⌜((trait_incl_of_adapters_map_Map_IF_new (I_rt) (F_rt) (I_st) (F_st))-[] -[I_ty; F_ty])%Z⌝))).
 End proof.
 
 Ltac adapters_map_Map_IF_new_prelude :=

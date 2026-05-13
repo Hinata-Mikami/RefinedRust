@@ -10,8 +10,8 @@ Context `{RRGS : !refinedrustGS Σ}.
 Definition constTasClone_clone_lemma (π : thread_id) : Prop :=
   ∀ `(T_rt : !RT) `(T_st : !syn_type) , 
   syn_type_is_layoutable (T_st) →
-  ⊢ typed_function π (constTasClone_clone_def T_st  ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_constTasClone_clone T_rt T_st  <TY> T_ty <LFT> ulft_1 <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜((trait_incl_of_constTasClone_clone (T_rt) (T_st)) <TY> T_ty <LFT> ulft_1 <INST!>)%Z⌝))).
+  ⊢ typed_function π (constTasClone_clone_def T_st  ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_constTasClone_clone T_rt T_st -[ulft_1] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
+  ∗ (⌜((trait_incl_of_constTasClone_clone (T_rt) (T_st))-[ulft_1] -[T_ty])%Z⌝))).
 End proof.
 
 Ltac constTasClone_clone_prelude :=

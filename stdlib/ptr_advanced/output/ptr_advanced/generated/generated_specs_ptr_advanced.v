@@ -41,7 +41,9 @@ Section nonnull_NonNull_inv_t.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 
   Definition nonnull_NonNull_inv_t  : spec_with 0 [T_rt] (type ((loc))%type) :=
-    spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (nonnull_NonNull_inv_t_inv_spec   <TY> T_ty <INST!>) ((nonnull_NonNull_ty (T_rt))  <TY> T_ty <INST!>).
+    spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (nonnull_NonNull_inv_t_inv_spec  -[] -[T_ty]) ((nonnull_NonNull_ty (T_rt)) -[] -[T_ty]).
+Global Arguments nonnull_NonNull_inv_t_inv_spec : simpl never.
+Global Arguments nonnull_NonNull_inv_t : simpl never.
   Global Typeclasses Transparent nonnull_NonNull_inv_t.
   Definition nonnull_NonNull_inv_t_rt : RT.
   Proof using T_rt . let __a := normalized_rt_of_spec_ty nonnull_NonNull_inv_t in exact __a. Defined.
@@ -64,7 +66,7 @@ Section unique_Unique_ty.
 
 Definition unique_Unique_ty  : (spec_with 0 [(T_rt)] ((type (plist place_rfnRT [((nonnull_NonNull_inv_t_rt ((T_rt)))) : RT; (((core_marker_PhantomData_rt) ((T_rt)))) : RT])))).
 Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (unique_Unique_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[((nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>)); ((core_marker_PhantomData_ty ((T_rt))  <TY> T_ty <INST!>))]))).
+  exact (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (unique_Unique_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[((nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty])); ((core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty]))]))).
 Defined.
 
 Definition unique_Unique_rt  : RT.
@@ -92,7 +94,9 @@ Section unique_Unique_inv_t.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 
   Definition unique_Unique_inv_t  : spec_with 0 [T_rt] (type ((loc))%type) :=
-    spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (unique_Unique_inv_t_inv_spec   <TY> T_ty <INST!>) ((unique_Unique_ty (T_rt))  <TY> T_ty <INST!>).
+    spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (unique_Unique_inv_t_inv_spec  -[] -[T_ty]) ((unique_Unique_ty (T_rt)) -[] -[T_ty]).
+Global Arguments unique_Unique_inv_t_inv_spec : simpl never.
+Global Arguments unique_Unique_inv_t : simpl never.
   Global Typeclasses Transparent unique_Unique_inv_t.
   Definition unique_Unique_inv_t_rt : RT.
   Proof using T_rt . let __a := normalized_rt_of_spec_ty unique_Unique_inv_t in exact __a. Defined.
@@ -172,15 +176,15 @@ Definition trait_incl_of_nonnull_NonNullTasstd_clone_Clone_clone (T_rt: RT) (T_s
   spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (True).
 
 Definition type_of_nonnull_NonNullTasstd_clone_Clone_clone (T_rt: RT) (T_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),((Clone_base_spec (((nonnull_NonNull_inv_t_rt ((T_rt))))) ((nonnull_NonNull_st (T_st))) ((nonnull_NonNullTasstd_clone_Clone_spec_attrs (T_rt))))
-     <TY> (nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>) <INST!>).(Clone_clone_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (((nonnull_NonNull_inv_t_rt ((T_rt))))) ((nonnull_NonNull_st (T_st))) ((nonnull_NonNullTasstd_clone_Clone_spec_attrs (T_rt))))
+    -[] -[(nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty])]).(Clone_clone_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_unique_UniqueTasstd_clone_Clone_clone (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (True).
 
 Definition type_of_unique_UniqueTasstd_clone_Clone_clone (T_rt: RT) (T_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),((Clone_base_spec (((unique_Unique_inv_t_rt ((T_rt))))) ((unique_Unique_st (T_st))) ((unique_UniqueTasstd_clone_Clone_spec_attrs (T_rt))))
-     <TY> (unique_Unique_inv_t ((T_rt))   <TY> T_ty <INST!>) <INST!>).(Clone_clone_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (((unique_Unique_inv_t_rt ((T_rt))))) ((unique_Unique_st (T_st))) ((unique_UniqueTasstd_clone_Clone_spec_attrs (T_rt))))
+    -[] -[(unique_Unique_inv_t ((T_rt))  -[] -[T_ty])]).(Clone_clone_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_nonnull_NonNull_T_as_ptr (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (True).
@@ -189,7 +193,7 @@ Definition type_of_nonnull_NonNull_T_as_ptr (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) self :@: (nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>);
+      (* args......... *) self :@: (nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty]);
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, self @ alias_ptr_t;
@@ -202,10 +206,10 @@ Definition type_of_nonnull_NonNull_T_cast (T_rt: RT) (U_rt: RT) (T_st: syn_type)
   fn(∀ ( *[]) : 0 | ( *[T_ty; U_ty]) : ([(T_rt, T_st); (U_rt, U_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) self :@: (nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>);
+      (* args......... *) self :@: (nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty]);
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, self @ (nonnull_NonNull_inv_t ((U_rt))   <TY> U_ty <INST!>);
+      (* existential.. *) ∃ _ : unit, self @ (nonnull_NonNull_inv_t ((U_rt))  -[] -[U_ty]);
       (* postcondition *) (λ π : thread_id, True).
 
 Definition trait_incl_of_nonnull_NonNull_T_is_aligned (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
@@ -215,7 +219,7 @@ Definition type_of_nonnull_NonNull_T_is_aligned (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) self :@: (nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>);
+      (* args......... *) self :@: (nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty]);
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (self `aligned_to` (ly_align (use_layout_alg' (ty_syn_type T_ty MetaNone)))) @ bool_t;
@@ -228,7 +232,7 @@ Definition type_of_nonnull_NonNull_T_is_aligned_to (T_rt: RT) (T_st: syn_type) :
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, align) : ((_ * _)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) self :@: (nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>), align :@: (int USize);
+      (* args......... *) self :@: (nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty]), align :@: (int USize);
       (* precondition. *) (λ π : thread_id, (⌜(is_power_of_two (Z.to_nat align))%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (self `aligned_to` Z.to_nat align) @ bool_t;
@@ -244,7 +248,7 @@ Definition type_of_nonnull_NonNull_T_new (T_rt: RT) (T_st: syn_type) :=
       (* args......... *) ptr :@: alias_ptr_t;
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, if decide (ptr.(loc_a) = 0) then None else Some ptr @ (Option_ty (((nonnull_NonNull_inv_t_rt ((T_rt)))))  <TY> (nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>) <INST!>);
+      (* existential.. *) ∃ _ : unit, if decide (ptr.(loc_a) = 0) then None else Some ptr @ (Option_ty (((nonnull_NonNull_inv_t_rt ((T_rt))))) -[] -[(nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty])]);
       (* postcondition *) (λ π : thread_id, True).
 
 Definition trait_incl_of_nonnull_NonNull_T_new_unchecked (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
@@ -257,7 +261,7 @@ Definition type_of_nonnull_NonNull_T_new_unchecked (T_rt: RT) (T_st: syn_type) :
       (* args......... *) ptr :@: alias_ptr_t;
       (* precondition. *) (λ π : thread_id, (⌜(ptr.(loc_a) ≠ 0)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, ptr @ (nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>);
+      (* existential.. *) ∃ _ : unit, ptr @ (nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty]);
       (* postcondition *) (λ π : thread_id, True).
 
 Definition trait_incl_of_nonnull_NonNull_T_read (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
@@ -267,7 +271,7 @@ Definition type_of_nonnull_NonNull_T_read (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (k, ty, self) : ((_ * (xtype) * _)),
       (* elctx........ *) (λ ϝ, [] ++ bor_kind_outlives_elctx k ϝ);
-      (* args......... *) self :@: (nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>);
+      (* args......... *) self :@: (nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty]);
       (* precondition. *) (λ π : thread_id, (self ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty))
         ∗ (⌜(ty_allows_reads ty.(xtype_ty))%Z⌝)
         ∗ (⌜(ty_allows_writes ty.(xtype_ty))%Z⌝)
@@ -284,7 +288,7 @@ Definition type_of_nonnull_NonNull_T_read_volatile (T_rt: RT) (T_st: syn_type) :
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (k, ty, self) : ((_ * (xtype) * _)),
       (* elctx........ *) (λ ϝ, [] ++ bor_kind_outlives_elctx k ϝ);
-      (* args......... *) self :@: (nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>);
+      (* args......... *) self :@: (nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty]);
       (* precondition. *) (λ π : thread_id, (self ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty))
         ∗ (⌜(ty_allows_reads ty.(xtype_ty))%Z⌝)
         ∗ (⌜(ty_allows_writes ty.(xtype_ty))%Z⌝)
@@ -301,7 +305,7 @@ Definition type_of_nonnull_NonNull_T_write (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, val) : ((_ * _)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) self :@: (nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>), val :@: T_ty;
+      (* args......... *) self :@: (nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty]), val :@: T_ty;
       (* precondition. *) (λ π : thread_id, (self ◁ₗ[π, Owned] #(()) @ (◁ uninit (ty_syn_type T_ty MetaNone)))) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
@@ -314,7 +318,7 @@ Definition type_of_nonnull_NonNull_T_write_volatile (T_rt: RT) (T_st: syn_type) 
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, val) : ((_ * _)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) self :@: (nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>), val :@: T_ty;
+      (* args......... *) self :@: (nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty]), val :@: T_ty;
       (* precondition. *) (λ π : thread_id, (self ◁ₗ[π, Owned] #(()) @ (◁ uninit (ty_syn_type T_ty MetaNone)))) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
@@ -327,10 +331,10 @@ Definition type_of_unique_Unique_T_as_ptr (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) self :@: (unique_Unique_inv_t ((T_rt))   <TY> T_ty <INST!>);
+      (* args......... *) self :@: (unique_Unique_inv_t ((T_rt))  -[] -[T_ty]);
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, self @ (nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>);
+      (* existential.. *) ∃ _ : unit, self @ (nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty]);
       (* postcondition *) (λ π : thread_id, True).
 
 Definition trait_incl_of_unique_Unique_T_dangling (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
@@ -342,7 +346,7 @@ Definition type_of_unique_Unique_T_dangling (T_rt: RT) (T_st: syn_type) :=
       (* elctx........ *) (λ ϝ, []);
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ (l) : ((_)), l @ (unique_Unique_inv_t ((T_rt))   <TY> T_ty <INST!>);
+      (* existential.. *) ∃ (l) : ((_)), l @ (unique_Unique_inv_t ((T_rt))  -[] -[T_ty]);
       (* postcondition *) (λ π : thread_id, (⌜(l `has_layout_loc` (use_layout_alg' (ty_syn_type T_ty MetaNone)))%Z⌝)
       ∗ (l ◁ₗ[π, Owned] #(()) @ (◁ uninit UnitSynType))
       ∗ (freeable_nz l 0 1 HeapAlloc)).
@@ -357,7 +361,7 @@ Definition type_of_unique_Unique_T_new_unchecked (T_rt: RT) (T_st: syn_type) :=
       (* args......... *) ptr :@: alias_ptr_t;
       (* precondition. *) (λ π : thread_id, (⌜(ptr.(loc_a) ≠ 0)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, ptr @ (unique_Unique_inv_t ((T_rt))   <TY> T_ty <INST!>);
+      (* existential.. *) ∃ _ : unit, ptr @ (unique_Unique_inv_t ((T_rt))  -[] -[T_ty]);
       (* postcondition *) (λ π : thread_id, True).
 
 
@@ -373,11 +377,11 @@ Section nonnull_NonNullTasstd_clone_Clone_spec.
              <TY> T_ty : (spec_with 1 [] fn_spec);
         Clone_clone_from_spec  :=
           (Clone_clone_from_base_spec (((nonnull_NonNull_inv_t_rt ((T_rt))))) ((nonnull_NonNull_st (T_st)))) (nonnull_NonNullTasstd_clone_Clone_spec_attrs (T_rt)) 
-             <TY> (nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>) : (spec_with 2 [] fn_spec);
+             <TY> (nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty]) : (spec_with 2 [] fn_spec);
       |}
   .
   Definition nonnull_NonNullTasstd_clone_Clone_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (nonnull_NonNullTasstd_clone_Clone_spec (T_rt) (T_st)) <TY> T_ty <INST!>) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (Clone_base_spec ((nonnull_NonNull_inv_t_rt ((T_rt)))) (nonnull_NonNull_st (T_st)) (nonnull_NonNullTasstd_clone_Clone_spec_attrs (T_rt))<TY> (nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>) <INST!>))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (nonnull_NonNullTasstd_clone_Clone_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Clone_base_spec ((nonnull_NonNull_inv_t_rt ((T_rt)))) (nonnull_NonNull_st (T_st)) (nonnull_NonNullTasstd_clone_Clone_spec_attrs (T_rt))-[] -[(nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty])])))).
 End nonnull_NonNullTasstd_clone_Clone_spec.
 
 Section nonnull_NonNullTasstd_marker_Copy_spec.
@@ -385,8 +389,8 @@ Section nonnull_NonNullTasstd_marker_Copy_spec.
   Definition nonnull_NonNullTasstd_marker_Copy_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (Copy_spec (((nonnull_NonNull_inv_t_rt ((T_rt))))))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (@mk_Copy_spec _ _ (((nonnull_NonNull_inv_t_rt ((T_rt)))))).
   Definition nonnull_NonNullTasstd_marker_Copy_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (nonnull_NonNullTasstd_marker_Copy_spec (T_rt) (T_st)) <TY> T_ty <INST!>) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (Copy_base_spec ((nonnull_NonNull_inv_t_rt ((T_rt)))) (nonnull_NonNull_st (T_st)) (nonnull_NonNullTasstd_clone_Clone_spec_attrs ((T_rt))) (nonnull_NonNullTasstd_marker_Copy_spec_attrs (T_rt))<TY> (nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>) <INST!>))).
-  Lemma nonnull_NonNullTasstd_marker_Copy_semantic_interp (T_rt: RT) (T_ty: (type (T_rt))) : (Copy_semantic_interp ((nonnull_NonNull_inv_t_rt ((T_rt)))) (nonnull_NonNull_inv_t ((T_rt))   <TY> T_ty <INST!>)).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (nonnull_NonNullTasstd_marker_Copy_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Copy_base_spec ((nonnull_NonNull_inv_t_rt ((T_rt)))) (nonnull_NonNull_st (T_st)) (nonnull_NonNullTasstd_clone_Clone_spec_attrs ((T_rt))) (nonnull_NonNullTasstd_marker_Copy_spec_attrs (T_rt))-[] -[(nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty])])))).
+  Lemma nonnull_NonNullTasstd_marker_Copy_semantic_interp (T_rt: RT) (T_ty: (type (T_rt))) : (Copy_semantic_interp ((nonnull_NonNull_inv_t_rt ((T_rt)))) (nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty])).
   Proof.
     unfold Copy_semantic_interp in *; apply _.
   Qed.
@@ -402,11 +406,11 @@ Section unique_UniqueTasstd_clone_Clone_spec.
              <TY> T_ty : (spec_with 1 [] fn_spec);
         Clone_clone_from_spec  :=
           (Clone_clone_from_base_spec (((unique_Unique_inv_t_rt ((T_rt))))) ((unique_Unique_st (T_st)))) (unique_UniqueTasstd_clone_Clone_spec_attrs (T_rt)) 
-             <TY> (unique_Unique_inv_t ((T_rt))   <TY> T_ty <INST!>) : (spec_with 2 [] fn_spec);
+             <TY> (unique_Unique_inv_t ((T_rt))  -[] -[T_ty]) : (spec_with 2 [] fn_spec);
       |}
   .
   Definition unique_UniqueTasstd_clone_Clone_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (unique_UniqueTasstd_clone_Clone_spec (T_rt) (T_st)) <TY> T_ty <INST!>) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (Clone_base_spec ((unique_Unique_inv_t_rt ((T_rt)))) (unique_Unique_st (T_st)) (unique_UniqueTasstd_clone_Clone_spec_attrs (T_rt))<TY> (unique_Unique_inv_t ((T_rt))   <TY> T_ty <INST!>) <INST!>))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (unique_UniqueTasstd_clone_Clone_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Clone_base_spec ((unique_Unique_inv_t_rt ((T_rt)))) (unique_Unique_st (T_st)) (unique_UniqueTasstd_clone_Clone_spec_attrs (T_rt))-[] -[(unique_Unique_inv_t ((T_rt))  -[] -[T_ty])])))).
 End unique_UniqueTasstd_clone_Clone_spec.
 
 Section unique_UniqueTasstd_marker_Copy_spec.
@@ -414,8 +418,8 @@ Section unique_UniqueTasstd_marker_Copy_spec.
   Definition unique_UniqueTasstd_marker_Copy_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (Copy_spec (((unique_Unique_inv_t_rt ((T_rt))))))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (@mk_Copy_spec _ _ (((unique_Unique_inv_t_rt ((T_rt)))))).
   Definition unique_UniqueTasstd_marker_Copy_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (unique_UniqueTasstd_marker_Copy_spec (T_rt) (T_st)) <TY> T_ty <INST!>) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (Copy_base_spec ((unique_Unique_inv_t_rt ((T_rt)))) (unique_Unique_st (T_st)) (unique_UniqueTasstd_clone_Clone_spec_attrs ((T_rt))) (unique_UniqueTasstd_marker_Copy_spec_attrs (T_rt))<TY> (unique_Unique_inv_t ((T_rt))   <TY> T_ty <INST!>) <INST!>))).
-  Lemma unique_UniqueTasstd_marker_Copy_semantic_interp (T_rt: RT) (T_ty: (type (T_rt))) : (Copy_semantic_interp ((unique_Unique_inv_t_rt ((T_rt)))) (unique_Unique_inv_t ((T_rt))   <TY> T_ty <INST!>)).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (unique_UniqueTasstd_marker_Copy_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Copy_base_spec ((unique_Unique_inv_t_rt ((T_rt)))) (unique_Unique_st (T_st)) (unique_UniqueTasstd_clone_Clone_spec_attrs ((T_rt))) (unique_UniqueTasstd_marker_Copy_spec_attrs (T_rt))-[] -[(unique_Unique_inv_t ((T_rt))  -[] -[T_ty])])))).
+  Lemma unique_UniqueTasstd_marker_Copy_semantic_interp (T_rt: RT) (T_ty: (type (T_rt))) : (Copy_semantic_interp ((unique_Unique_inv_t_rt ((T_rt)))) (unique_Unique_inv_t ((T_rt))  -[] -[T_ty])).
   Proof.
     unfold Copy_semantic_interp in *; apply _.
   Qed.

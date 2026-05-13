@@ -8,8 +8,8 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition boolasClone_clone_lemma (π : thread_id) : Prop :=
-  ⊢ typed_function π (boolasClone_clone_def ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_boolasClone_clone  <LFT> ulft_1 <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_boolasClone_clone <LFT> ulft_1 <INST!>)%Z⌝))).
+  ⊢ typed_function π (boolasClone_clone_def ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_boolasClone_clone -[ulft_1] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_boolasClone_clone-[ulft_1] -[])%Z⌝))).
 End proof.
 
 Ltac boolasClone_clone_prelude :=

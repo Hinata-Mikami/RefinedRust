@@ -12,8 +12,8 @@ Context `{RRGS : !refinedrustGS Σ}.
 Definition Eq_assert_fields_are_eq_lemma (π : thread_id) : Prop :=
   ∀ `(Self_rt : !RT) `(Self_st : !syn_type) `(PartialEq_Self_Self_spec_attrs : !(PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Self_rt) )) `(PartialEq_Self_Self_spec : !(spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (Self_rt) (Self_rt)))) `(Eq_Self_spec_attrs : !(Eq_spec_attrs (RRGS:=RRGS) (Self_rt) PartialEq_Self_Self_spec_attrs)) `(Eq_Self_spec : !(spec_with 0 [] (Eq_spec (RRGS:=RRGS) (Self_rt)))) , 
   syn_type_is_layoutable (Self_st) →
-  ⊢ typed_function π (Eq_assert_fields_are_eq_def Self_st  ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[Self_ty]) : ([Self_rt] : list RT), fn_spec_add_late_pre (Eq_assert_fields_are_eq_base_spec Self_rt Self_st PartialEq_Self_Self_spec_attrs Eq_Self_spec_attrs  <TY> Self_ty <LFT> ulft_1 <INST!>) (λ π, ((typaram_wf Self_rt Self_st Self_ty))
-  ∗ (⌜((trait_incl_of_Eq_assert_fields_are_eq (Self_rt) (Self_st) (PartialEq_Self_Self_spec_attrs) (PartialEq_Self_Self_spec) (Eq_Self_spec_attrs) (Eq_Self_spec)) <TY> Self_ty <LFT> ulft_1 <INST!>)%Z⌝))).
+  ⊢ typed_function π (Eq_assert_fields_are_eq_def Self_st  ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[Self_ty]) : ([Self_rt] : list RT), fn_spec_add_late_pre (Eq_assert_fields_are_eq_base_spec Self_rt Self_st PartialEq_Self_Self_spec_attrs Eq_Self_spec_attrs -[ulft_1] -[Self_ty]) (λ π, ((typaram_wf Self_rt Self_st Self_ty))
+  ∗ (⌜((trait_incl_of_Eq_assert_fields_are_eq (Self_rt) (Self_st) (PartialEq_Self_Self_spec_attrs) (PartialEq_Self_Self_spec) (Eq_Self_spec_attrs) (Eq_Self_spec))-[ulft_1] -[Self_ty])%Z⌝))).
 End proof.
 
 Ltac Eq_assert_fields_are_eq_prelude :=

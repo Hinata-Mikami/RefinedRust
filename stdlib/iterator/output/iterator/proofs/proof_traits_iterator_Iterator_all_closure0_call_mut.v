@@ -17,7 +17,6 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  all: admit. (* TODO: call contract *)
   Unshelve. all: print_remaining_sidecond.
-Admitted.
+Qed.
 End proof.

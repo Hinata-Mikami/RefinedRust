@@ -43,6 +43,16 @@ Proof.
   all: apply _.
 Qed.
 
+Definition scope_bindable_Sized_spec `{Self_rt : !RT} : (ScopeBindable ((Sized_spec (Self_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((Sized_spec (Self_rt)))) :=
+      s;
+    scope_add_elctx (E: (lft → elctx)) (s: ((Sized_spec (Self_rt)))) :=
+      s;
+  |}
+.
+#[global] Existing Instance scope_bindable_Sized_spec.
+
 Definition Sized_base_spec (Self_rt: RT) (Self_st: syn_type) (_ATTRS: ((Sized_spec_attrs ((Self_rt))))) : (spec_with _ _ (Sized_spec ((Self_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), (@mk_Sized_spec _ _ ((Self_rt))).
 

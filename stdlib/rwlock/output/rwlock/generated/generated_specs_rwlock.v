@@ -37,7 +37,9 @@ Section RwLock_inv_t.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 
   Definition RwLock_inv_t  : spec_with 0 [T_rt] (type ((unit))%type) :=
-    spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (RwLock_inv_t_inv_spec   <TY> T_ty <INST!>) ((RwLock_ty (T_rt))  <TY> T_ty <INST!>).
+    spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (RwLock_inv_t_inv_spec  -[] -[T_ty]) ((RwLock_ty (T_rt)) -[] -[T_ty]).
+Global Arguments RwLock_inv_t_inv_spec : simpl never.
+Global Arguments RwLock_inv_t : simpl never.
   Global Typeclasses Transparent RwLock_inv_t.
   Definition RwLock_inv_t_rt : RT.
   Proof using T_rt . let __a := normalized_rt_of_spec_ty RwLock_inv_t in exact __a. Defined.
@@ -63,7 +65,7 @@ Definition type_of_RwLock_T_new (T_rt: RT) (T_st: syn_type) :=
       (* args......... *) x :@: T_ty;
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, () @ (RwLock_inv_t ((T_rt))   <TY> T_ty <INST!>);
+      (* existential.. *) ∃ _ : unit, () @ (RwLock_inv_t ((T_rt))  -[] -[T_ty]);
       (* postcondition *) (λ π : thread_id, True).
 
 

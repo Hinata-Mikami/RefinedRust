@@ -15,10 +15,10 @@ Definition nonnull_NonNull_T_new_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (T_st) →
   syn_type_is_layoutable (((Option_els ((nonnull_NonNull_st (T_st)))) : syn_type)) →
   syn_type_is_layoutable (((nonnull_NonNull_sls (T_st)) : syn_type)) →
-  mut_ptr_is_null_T_loc ◁ᵥ{π, MetaNone} mut_ptr_is_null_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_mut_ptr_is_null (RRGS:=RRGS) ((T_rt)) (T_st)  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
-  nonnull_NonNull_T_new_unchecked_T_loc ◁ᵥ{π, MetaNone} nonnull_NonNull_T_new_unchecked_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_nonnull_NonNull_T_new_unchecked (RRGS:=RRGS) ((T_rt)) (T_st)  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
-  typed_function π (nonnull_NonNull_T_new_def mut_ptr_is_null_T_loc  nonnull_NonNull_T_new_unchecked_T_loc  T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_nonnull_NonNull_T_new T_rt T_st  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜((trait_incl_of_nonnull_NonNull_T_new (T_rt) (T_st)) <TY> T_ty <INST!>)%Z⌝))).
+  mut_ptr_is_null_T_loc ◁ᵥ{π, MetaNone} mut_ptr_is_null_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_mut_ptr_is_null (RRGS:=RRGS) ((T_rt)) (T_st) -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
+  nonnull_NonNull_T_new_unchecked_T_loc ◁ᵥ{π, MetaNone} nonnull_NonNull_T_new_unchecked_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_nonnull_NonNull_T_new_unchecked (RRGS:=RRGS) ((T_rt)) (T_st) -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
+  typed_function π (nonnull_NonNull_T_new_def mut_ptr_is_null_T_loc  nonnull_NonNull_T_new_unchecked_T_loc  T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_nonnull_NonNull_T_new T_rt T_st -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
+  ∗ (⌜((trait_incl_of_nonnull_NonNull_T_new (T_rt) (T_st))-[] -[T_ty])%Z⌝))).
 End proof.
 
 Ltac nonnull_NonNull_T_new_prelude :=

@@ -8,8 +8,8 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition REFu128asSubu128_sub_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((tuple2_sls ((IntSynType U128)) (BoolSynType)) : syn_type)) →
-  ⊢ typed_function π (REFu128asSubu128_sub_def ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_REFu128asSubu128_sub  <LFT> ulft_1 <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_REFu128asSubu128_sub <LFT> ulft_1 <INST!>)%Z⌝))).
+  ⊢ typed_function π (REFu128asSubu128_sub_def ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_REFu128asSubu128_sub -[ulft_1] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_REFu128asSubu128_sub-[ulft_1] -[])%Z⌝))).
 End proof.
 
 Ltac REFu128asSubu128_sub_prelude :=

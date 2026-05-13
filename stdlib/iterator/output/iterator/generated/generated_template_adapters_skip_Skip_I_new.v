@@ -18,8 +18,8 @@ Definition adapters_skip_Skip_I_new_lemma (π : thread_id) : Prop :=
   ∀ `(I_rt : !RT) `(I_st : !syn_type) , 
   syn_type_is_layoutable (I_st) →
   syn_type_is_layoutable (((adapters_skip_Skip_sls (I_st)) : syn_type)) →
-  ⊢ typed_function π (adapters_skip_Skip_I_new_def I_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), fn_spec_add_late_pre (type_of_adapters_skip_Skip_I_new I_rt I_st  <TY> I_ty <INST!>) (λ π, ((typaram_wf I_rt I_st I_ty))
-  ∗ (⌜((trait_incl_of_adapters_skip_Skip_I_new (I_rt) (I_st)) <TY> I_ty <INST!>)%Z⌝))).
+  ⊢ typed_function π (adapters_skip_Skip_I_new_def I_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), fn_spec_add_late_pre (type_of_adapters_skip_Skip_I_new I_rt I_st -[] -[I_ty]) (λ π, ((typaram_wf I_rt I_st I_ty))
+  ∗ (⌜((trait_incl_of_adapters_skip_Skip_I_new (I_rt) (I_st))-[] -[I_ty])%Z⌝))).
 End proof.
 
 Ltac adapters_skip_Skip_I_new_prelude :=

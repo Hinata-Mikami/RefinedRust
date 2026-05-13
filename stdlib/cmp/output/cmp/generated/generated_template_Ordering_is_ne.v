@@ -12,9 +12,9 @@ Context `{RRGS : !refinedrustGS Σ}.
 Definition Ordering_is_ne_lemma (π : thread_id) : Prop :=
   ∀ (Ordering_as_raw_loc : loc) , 
   syn_type_is_layoutable ((Ordering_els : syn_type)) →
-  Ordering_as_raw_loc ◁ᵥ{π, MetaNone} Ordering_as_raw_loc @ function_ptr [Ordering_st] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Ordering_as_raw (RRGS:=RRGS)   <INST!>) (λ π, (True))%I) -∗
-  typed_function π (Ordering_is_ne_def Ordering_as_raw_loc  ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Ordering_is_ne  <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_Ordering_is_ne <INST!>)%Z⌝))).
+  Ordering_as_raw_loc ◁ᵥ{π, MetaNone} Ordering_as_raw_loc @ function_ptr [Ordering_st] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Ordering_as_raw (RRGS:=RRGS)  -[] -[]) (λ π, (True))%I) -∗
+  typed_function π (Ordering_is_ne_def Ordering_as_raw_loc  ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Ordering_is_ne -[] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_Ordering_is_ne-[] -[])%Z⌝))).
 End proof.
 
 Ltac Ordering_is_ne_prelude :=

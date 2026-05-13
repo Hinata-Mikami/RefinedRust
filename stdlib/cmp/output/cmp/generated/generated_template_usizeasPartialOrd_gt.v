@@ -10,8 +10,8 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition usizeasPartialOrd_gt_lemma (π : thread_id) : Prop :=
-  ⊢ typed_function π (usizeasPartialOrd_gt_def ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_usizeasPartialOrd_gt  <LFT> ulft_1 <LFT> ulft_2 <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_usizeasPartialOrd_gt <LFT> ulft_1 <LFT> ulft_2 <INST!>)%Z⌝))).
+  ⊢ typed_function π (usizeasPartialOrd_gt_def ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_usizeasPartialOrd_gt -[ulft_1; ulft_2] -[]) (λ π, (True)
+  ∗ (⌜(trait_incl_of_usizeasPartialOrd_gt-[ulft_1; ulft_2] -[])%Z⌝))).
 End proof.
 
 Ltac usizeasPartialOrd_gt_prelude :=

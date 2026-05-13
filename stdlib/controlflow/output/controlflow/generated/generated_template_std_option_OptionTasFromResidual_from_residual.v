@@ -14,8 +14,8 @@ Definition std_option_OptionTasFromResidual_from_residual_lemma (π : thread_id)
   syn_type_is_layoutable ((convert_Infallible_els : syn_type)) →
   syn_type_is_layoutable (((Option_els (T_st)) : syn_type)) →
   syn_type_is_layoutable (((Option_els (convert_Infallible_st)) : syn_type)) →
-  ⊢ typed_function π (std_option_OptionTasFromResidual_from_residual_def T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_std_option_OptionTasFromResidual_from_residual T_rt T_st  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜((trait_incl_of_std_option_OptionTasFromResidual_from_residual (T_rt) (T_st)) <TY> T_ty <INST!>)%Z⌝))).
+  ⊢ typed_function π (std_option_OptionTasFromResidual_from_residual_def T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_std_option_OptionTasFromResidual_from_residual T_rt T_st -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
+  ∗ (⌜((trait_incl_of_std_option_OptionTasFromResidual_from_residual (T_rt) (T_st))-[] -[T_ty])%Z⌝))).
 End proof.
 
 Ltac std_option_OptionTasFromResidual_from_residual_prelude :=

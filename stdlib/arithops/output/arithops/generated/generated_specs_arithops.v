@@ -3254,6 +3254,24 @@ Proof.
   all: apply _.
 Qed.
 
+Definition scope_bindable_Add_spec `{Self_rt : !RT} `{Rhs_rt : !RT} `{Output_rt : !RT} : (ScopeBindable ((Add_spec (Self_rt) (Rhs_rt) (Output_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((Add_spec (Self_rt) (Rhs_rt) (Output_rt)))) :=
+      {|
+        Add_add_spec  :=
+          (scope_add_typarams (rts) (tys) (s.(Add_add_spec)));
+      |}
+      ;
+    scope_add_elctx (E: (lft → elctx)) (s: ((Add_spec (Self_rt) (Rhs_rt) (Output_rt)))) :=
+      {|
+        Add_add_spec  :=
+          (scope_add_elctx (E) (s.(Add_add_spec)));
+      |}
+      ;
+  |}
+.
+#[global] Existing Instance scope_bindable_Add_spec.
+
 Definition Add_add_base_spec (Self_rt: RT) (Rhs_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (Output_st: syn_type) (Add_Self_Rhs_spec_attrs: (Add_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) (Output_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[Self_ty; Rhs_ty; Output_ty]) : ([(Self_rt, Self_st); (Rhs_rt, Rhs_st); (Output_rt, Output_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, rhs) : ((_ * _)),
@@ -3283,6 +3301,24 @@ Proof.
   split.
   all: apply _.
 Qed.
+
+Definition scope_bindable_AddAssign_spec `{Self_rt : !RT} `{Rhs_rt : !RT} : (ScopeBindable ((AddAssign_spec (Self_rt) (Rhs_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((AddAssign_spec (Self_rt) (Rhs_rt)))) :=
+      {|
+        AddAssign_add_assign_spec  :=
+          (scope_add_typarams (rts) (tys) (s.(AddAssign_add_assign_spec)));
+      |}
+      ;
+    scope_add_elctx (E: (lft → elctx)) (s: ((AddAssign_spec (Self_rt) (Rhs_rt)))) :=
+      {|
+        AddAssign_add_assign_spec  :=
+          (scope_add_elctx (E) (s.(AddAssign_add_assign_spec)));
+      |}
+      ;
+  |}
+.
+#[global] Existing Instance scope_bindable_AddAssign_spec.
 
 Definition AddAssign_add_assign_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (AddAssign_Self_Rhs_spec_attrs: (AddAssign_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[Self_ty; Rhs_ty]) : ([(Self_rt, Self_st); (Rhs_rt, Rhs_st)] : list (RT * syn_type)%type) | 
@@ -3314,6 +3350,24 @@ Proof.
   all: apply _.
 Qed.
 
+Definition scope_bindable_Deref_spec `{Self_rt : !RT} `{Target_rt : !RT} : (ScopeBindable ((Deref_spec (Self_rt) (Target_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((Deref_spec (Self_rt) (Target_rt)))) :=
+      {|
+        Deref_deref_spec  :=
+          (scope_add_typarams (rts) (tys) (s.(Deref_deref_spec)));
+      |}
+      ;
+    scope_add_elctx (E: (lft → elctx)) (s: ((Deref_spec (Self_rt) (Target_rt)))) :=
+      {|
+        Deref_deref_spec  :=
+          (scope_add_elctx (E) (s.(Deref_deref_spec)));
+      |}
+      ;
+  |}
+.
+#[global] Existing Instance scope_bindable_Deref_spec.
+
 Definition Deref_deref_base_spec (Self_rt: RT) (Target_rt: RT) (Self_st: syn_type) (Target_st: syn_type) (Deref_Self_spec_attrs: (Deref_spec_attrs (RRGS:=RRGS) (Self_rt) (Target_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[Self_ty; Target_ty]) : ([(Self_rt, Self_st); (Target_rt, Target_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
@@ -3343,6 +3397,24 @@ Proof.
   split.
   all: apply _.
 Qed.
+
+Definition scope_bindable_Mul_spec `{Self_rt : !RT} `{Rhs_rt : !RT} `{Output_rt : !RT} : (ScopeBindable ((Mul_spec (Self_rt) (Rhs_rt) (Output_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((Mul_spec (Self_rt) (Rhs_rt) (Output_rt)))) :=
+      {|
+        Mul_mul_spec  :=
+          (scope_add_typarams (rts) (tys) (s.(Mul_mul_spec)));
+      |}
+      ;
+    scope_add_elctx (E: (lft → elctx)) (s: ((Mul_spec (Self_rt) (Rhs_rt) (Output_rt)))) :=
+      {|
+        Mul_mul_spec  :=
+          (scope_add_elctx (E) (s.(Mul_mul_spec)));
+      |}
+      ;
+  |}
+.
+#[global] Existing Instance scope_bindable_Mul_spec.
 
 Definition Mul_mul_base_spec (Self_rt: RT) (Rhs_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (Output_st: syn_type) (Mul_Self_Rhs_spec_attrs: (Mul_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) (Output_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[Self_ty; Rhs_ty; Output_ty]) : ([(Self_rt, Self_st); (Rhs_rt, Rhs_st); (Output_rt, Output_st)] : list (RT * syn_type)%type) | 
@@ -3374,6 +3446,24 @@ Proof.
   all: apply _.
 Qed.
 
+Definition scope_bindable_MulAssign_spec `{Self_rt : !RT} `{Rhs_rt : !RT} : (ScopeBindable ((MulAssign_spec (Self_rt) (Rhs_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((MulAssign_spec (Self_rt) (Rhs_rt)))) :=
+      {|
+        MulAssign_mul_assign_spec  :=
+          (scope_add_typarams (rts) (tys) (s.(MulAssign_mul_assign_spec)));
+      |}
+      ;
+    scope_add_elctx (E: (lft → elctx)) (s: ((MulAssign_spec (Self_rt) (Rhs_rt)))) :=
+      {|
+        MulAssign_mul_assign_spec  :=
+          (scope_add_elctx (E) (s.(MulAssign_mul_assign_spec)));
+      |}
+      ;
+  |}
+.
+#[global] Existing Instance scope_bindable_MulAssign_spec.
+
 Definition MulAssign_mul_assign_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (MulAssign_Self_Rhs_spec_attrs: (MulAssign_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[Self_ty; Rhs_ty]) : ([(Self_rt, Self_st); (Rhs_rt, Rhs_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, rhs) : ((_ * _)),
@@ -3403,6 +3493,24 @@ Proof.
   split.
   all: apply _.
 Qed.
+
+Definition scope_bindable_Sub_spec `{Self_rt : !RT} `{Rhs_rt : !RT} `{Output_rt : !RT} : (ScopeBindable ((Sub_spec (Self_rt) (Rhs_rt) (Output_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((Sub_spec (Self_rt) (Rhs_rt) (Output_rt)))) :=
+      {|
+        Sub_sub_spec  :=
+          (scope_add_typarams (rts) (tys) (s.(Sub_sub_spec)));
+      |}
+      ;
+    scope_add_elctx (E: (lft → elctx)) (s: ((Sub_spec (Self_rt) (Rhs_rt) (Output_rt)))) :=
+      {|
+        Sub_sub_spec  :=
+          (scope_add_elctx (E) (s.(Sub_sub_spec)));
+      |}
+      ;
+  |}
+.
+#[global] Existing Instance scope_bindable_Sub_spec.
 
 Definition Sub_sub_base_spec (Self_rt: RT) (Rhs_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (Output_st: syn_type) (Sub_Self_Rhs_spec_attrs: (Sub_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) (Output_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[Self_ty; Rhs_ty; Output_ty]) : ([(Self_rt, Self_st); (Rhs_rt, Rhs_st); (Output_rt, Output_st)] : list (RT * syn_type)%type) | 
@@ -3434,6 +3542,24 @@ Proof.
   all: apply _.
 Qed.
 
+Definition scope_bindable_SubAssign_spec `{Self_rt : !RT} `{Rhs_rt : !RT} : (ScopeBindable ((SubAssign_spec (Self_rt) (Rhs_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((SubAssign_spec (Self_rt) (Rhs_rt)))) :=
+      {|
+        SubAssign_sub_assign_spec  :=
+          (scope_add_typarams (rts) (tys) (s.(SubAssign_sub_assign_spec)));
+      |}
+      ;
+    scope_add_elctx (E: (lft → elctx)) (s: ((SubAssign_spec (Self_rt) (Rhs_rt)))) :=
+      {|
+        SubAssign_sub_assign_spec  :=
+          (scope_add_elctx (E) (s.(SubAssign_sub_assign_spec)));
+      |}
+      ;
+  |}
+.
+#[global] Existing Instance scope_bindable_SubAssign_spec.
+
 Definition SubAssign_sub_assign_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (SubAssign_Self_Rhs_spec_attrs: (SubAssign_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[Self_ty; Rhs_ty]) : ([(Self_rt, Self_st); (Rhs_rt, Rhs_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, rhs) : ((_ * _)),
@@ -3464,6 +3590,24 @@ Proof.
   all: apply _.
 Qed.
 
+Definition scope_bindable_DerefMut_spec `{Self_rt : !RT} `{Deref_Self_Target_rt : !RT} : (ScopeBindable ((DerefMut_spec (Self_rt) (Deref_Self_Target_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((DerefMut_spec (Self_rt) (Deref_Self_Target_rt)))) :=
+      {|
+        DerefMut_deref_mut_spec  :=
+          (scope_add_typarams (rts) (tys) (s.(DerefMut_deref_mut_spec)));
+      |}
+      ;
+    scope_add_elctx (E: (lft → elctx)) (s: ((DerefMut_spec (Self_rt) (Deref_Self_Target_rt)))) :=
+      {|
+        DerefMut_deref_mut_spec  :=
+          (scope_add_elctx (E) (s.(DerefMut_deref_mut_spec)));
+      |}
+      ;
+  |}
+.
+#[global] Existing Instance scope_bindable_DerefMut_spec.
+
 Definition DerefMut_deref_mut_base_spec (Self_rt: RT) (Deref_Self_Target_rt: RT) (Self_st: syn_type) (Deref_Self_Target_st: syn_type) (Deref_Self_spec_attrs: (Deref_spec_attrs (RRGS:=RRGS) (Self_rt) (Deref_Self_Target_rt) )) (DerefMut_Self_spec_attrs: (DerefMut_spec_attrs (RRGS:=RRGS) (Self_rt) (Deref_Self_Target_rt) Deref_Self_spec_attrs)) :=
   fn(∀ ( *[ulft_a]) : 1 | ( *[Self_ty; Deref_Self_Target_ty]) : ([(Self_rt, Self_st); (Deref_Self_Target_rt, Deref_Self_Target_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
@@ -3487,49 +3631,49 @@ End DerefMut.
 Section Add_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition trait_incl_of_Add_add (Self_rt: RT) (Rhs_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (Output_st: syn_type) (Add_Self_Rhs_spec_attrs: (Add_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) (Output_rt) )) (Add_Self_Rhs_spec: (spec_with 0 [] (Add_spec (RRGS:=RRGS) (Self_rt) (Rhs_rt) (Output_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[]) : 0 | ( *[Self_ty; Rhs_ty; Output_ty]) : ([Self_rt; Rhs_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl Add_spec_incl Add_Self_Rhs_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Add_base_spec (Self_rt) (Rhs_rt) (Output_rt) Self_st Rhs_st Output_st Add_Self_Rhs_spec_attrs<TY> Self_ty <TY> Rhs_ty <TY> Output_ty <INST!>)))).
+    spec! ( *[]) : 0 | ( *[Self_ty; Rhs_ty; Output_ty]) : ([Self_rt; Rhs_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl Add_spec_incl Add_Self_Rhs_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Add_base_spec (Self_rt) (Rhs_rt) (Output_rt) Self_st Rhs_st Output_st Add_Self_Rhs_spec_attrs-[] -[Self_ty; Rhs_ty; Output_ty])))).
 End Add_trait_req_incls.
 
 Section AddAssign_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition trait_incl_of_AddAssign_add_assign (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (AddAssign_Self_Rhs_spec_attrs: (AddAssign_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) )) (AddAssign_Self_Rhs_spec: (spec_with 0 [] (AddAssign_spec (RRGS:=RRGS) (Self_rt) (Rhs_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), ((trait_incl_marker (lift_trait_incl AddAssign_spec_incl AddAssign_Self_Rhs_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), AddAssign_base_spec (Self_rt) (Rhs_rt) Self_st Rhs_st AddAssign_Self_Rhs_spec_attrs<TY> Self_ty <TY> Rhs_ty <INST!>)))).
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), ((trait_incl_marker (lift_trait_incl AddAssign_spec_incl AddAssign_Self_Rhs_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), AddAssign_base_spec (Self_rt) (Rhs_rt) Self_st Rhs_st AddAssign_Self_Rhs_spec_attrs-[] -[Self_ty; Rhs_ty])))).
 End AddAssign_trait_req_incls.
 
 Section Deref_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition trait_incl_of_Deref_deref (Self_rt: RT) (Target_rt: RT) (Self_st: syn_type) (Target_st: syn_type) (Deref_Self_spec_attrs: (Deref_spec_attrs (RRGS:=RRGS) (Self_rt) (Target_rt) )) (Deref_Self_spec: (spec_with 0 [] (Deref_spec (RRGS:=RRGS) (Self_rt) (Target_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Target_ty]) : ([Self_rt; Target_rt] : list RT), ((trait_incl_marker (lift_trait_incl Deref_spec_incl Deref_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Deref_base_spec (Self_rt) (Target_rt) Self_st Target_st Deref_Self_spec_attrs<TY> Self_ty <TY> Target_ty <INST!>)))).
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Target_ty]) : ([Self_rt; Target_rt] : list RT), ((trait_incl_marker (lift_trait_incl Deref_spec_incl Deref_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Deref_base_spec (Self_rt) (Target_rt) Self_st Target_st Deref_Self_spec_attrs-[] -[Self_ty; Target_ty])))).
 End Deref_trait_req_incls.
 
 Section Mul_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition trait_incl_of_Mul_mul (Self_rt: RT) (Rhs_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (Output_st: syn_type) (Mul_Self_Rhs_spec_attrs: (Mul_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) (Output_rt) )) (Mul_Self_Rhs_spec: (spec_with 0 [] (Mul_spec (RRGS:=RRGS) (Self_rt) (Rhs_rt) (Output_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[]) : 0 | ( *[Self_ty; Rhs_ty; Output_ty]) : ([Self_rt; Rhs_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl Mul_spec_incl Mul_Self_Rhs_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Mul_base_spec (Self_rt) (Rhs_rt) (Output_rt) Self_st Rhs_st Output_st Mul_Self_Rhs_spec_attrs<TY> Self_ty <TY> Rhs_ty <TY> Output_ty <INST!>)))).
+    spec! ( *[]) : 0 | ( *[Self_ty; Rhs_ty; Output_ty]) : ([Self_rt; Rhs_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl Mul_spec_incl Mul_Self_Rhs_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Mul_base_spec (Self_rt) (Rhs_rt) (Output_rt) Self_st Rhs_st Output_st Mul_Self_Rhs_spec_attrs-[] -[Self_ty; Rhs_ty; Output_ty])))).
 End Mul_trait_req_incls.
 
 Section MulAssign_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition trait_incl_of_MulAssign_mul_assign (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (MulAssign_Self_Rhs_spec_attrs: (MulAssign_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) )) (MulAssign_Self_Rhs_spec: (spec_with 0 [] (MulAssign_spec (RRGS:=RRGS) (Self_rt) (Rhs_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), ((trait_incl_marker (lift_trait_incl MulAssign_spec_incl MulAssign_Self_Rhs_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), MulAssign_base_spec (Self_rt) (Rhs_rt) Self_st Rhs_st MulAssign_Self_Rhs_spec_attrs<TY> Self_ty <TY> Rhs_ty <INST!>)))).
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), ((trait_incl_marker (lift_trait_incl MulAssign_spec_incl MulAssign_Self_Rhs_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), MulAssign_base_spec (Self_rt) (Rhs_rt) Self_st Rhs_st MulAssign_Self_Rhs_spec_attrs-[] -[Self_ty; Rhs_ty])))).
 End MulAssign_trait_req_incls.
 
 Section Sub_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition trait_incl_of_Sub_sub (Self_rt: RT) (Rhs_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (Output_st: syn_type) (Sub_Self_Rhs_spec_attrs: (Sub_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) (Output_rt) )) (Sub_Self_Rhs_spec: (spec_with 0 [] (Sub_spec (RRGS:=RRGS) (Self_rt) (Rhs_rt) (Output_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[]) : 0 | ( *[Self_ty; Rhs_ty; Output_ty]) : ([Self_rt; Rhs_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl Sub_spec_incl Sub_Self_Rhs_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Sub_base_spec (Self_rt) (Rhs_rt) (Output_rt) Self_st Rhs_st Output_st Sub_Self_Rhs_spec_attrs<TY> Self_ty <TY> Rhs_ty <TY> Output_ty <INST!>)))).
+    spec! ( *[]) : 0 | ( *[Self_ty; Rhs_ty; Output_ty]) : ([Self_rt; Rhs_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl Sub_spec_incl Sub_Self_Rhs_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Sub_base_spec (Self_rt) (Rhs_rt) (Output_rt) Self_st Rhs_st Output_st Sub_Self_Rhs_spec_attrs-[] -[Self_ty; Rhs_ty; Output_ty])))).
 End Sub_trait_req_incls.
 
 Section SubAssign_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition trait_incl_of_SubAssign_sub_assign (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (SubAssign_Self_Rhs_spec_attrs: (SubAssign_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) )) (SubAssign_Self_Rhs_spec: (spec_with 0 [] (SubAssign_spec (RRGS:=RRGS) (Self_rt) (Rhs_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), ((trait_incl_marker (lift_trait_incl SubAssign_spec_incl SubAssign_Self_Rhs_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), SubAssign_base_spec (Self_rt) (Rhs_rt) Self_st Rhs_st SubAssign_Self_Rhs_spec_attrs<TY> Self_ty <TY> Rhs_ty <INST!>)))).
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), ((trait_incl_marker (lift_trait_incl SubAssign_spec_incl SubAssign_Self_Rhs_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), SubAssign_base_spec (Self_rt) (Rhs_rt) Self_st Rhs_st SubAssign_Self_Rhs_spec_attrs-[] -[Self_ty; Rhs_ty])))).
 End SubAssign_trait_req_incls.
 
 Section DerefMut_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition trait_incl_of_DerefMut_deref_mut (Self_rt: RT) (Deref_Self_Target_rt: RT) (Self_st: syn_type) (Deref_Self_Target_st: syn_type) (Deref_Self_spec_attrs: (Deref_spec_attrs (RRGS:=RRGS) (Self_rt) (Deref_Self_Target_rt) )) (Deref_Self_spec: (spec_with 0 [] (Deref_spec (RRGS:=RRGS) (Self_rt) (Deref_Self_Target_rt)))) (DerefMut_Self_spec_attrs: (DerefMut_spec_attrs (RRGS:=RRGS) (Self_rt) (Deref_Self_Target_rt) Deref_Self_spec_attrs)) (DerefMut_Self_spec: (spec_with 0 [] (DerefMut_spec (RRGS:=RRGS) (Self_rt) (Deref_Self_Target_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_a]) : 1 | ( *[Self_ty; Deref_Self_Target_ty]) : ([Self_rt; Deref_Self_Target_rt] : list RT), ((trait_incl_marker (lift_trait_incl Deref_spec_incl Deref_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Deref_base_spec (Self_rt) (Deref_Self_Target_rt) Self_st Deref_Self_Target_st Deref_Self_spec_attrs<TY> Self_ty <TY> Deref_Self_Target_ty <INST!>))) ∧ (trait_incl_marker (lift_trait_incl DerefMut_spec_incl DerefMut_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DerefMut_base_spec (Self_rt) (Deref_Self_Target_rt) Self_st Deref_Self_Target_st Deref_Self_spec_attrs DerefMut_Self_spec_attrs<TY> Self_ty <TY> Deref_Self_Target_ty <INST!>)))).
+    spec! ( *[ulft_a]) : 1 | ( *[Self_ty; Deref_Self_Target_ty]) : ([Self_rt; Deref_Self_Target_rt] : list RT), ((trait_incl_marker (lift_trait_incl Deref_spec_incl Deref_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Deref_base_spec (Self_rt) (Deref_Self_Target_rt) Self_st Deref_Self_Target_st Deref_Self_spec_attrs-[] -[Self_ty; Deref_Self_Target_ty]))) ∧ (trait_incl_marker (lift_trait_incl DerefMut_spec_incl DerefMut_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DerefMut_base_spec (Self_rt) (Deref_Self_Target_rt) Self_st Deref_Self_Target_st Deref_Self_spec_attrs DerefMut_Self_spec_attrs-[] -[Self_ty; Deref_Self_Target_ty])))).
 End DerefMut_trait_req_incls.
 
 Section specs.
@@ -3539,1535 +3683,1535 @@ Definition trait_incl_of_REFi128asAddREFai128_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi128asAddREFai128_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I128)) (REFi128asAddREFai128_spec_attrs))
-     <TY> (shr_ref ulft_1 (int I128)) <TY> (shr_ref ulft_a (int I128)) <TY> (int I128) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I128)) (REFi128asAddREFai128_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int I128)); (shr_ref ulft_a (int I128)); (int I128)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi128asAddi128_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi128asAddi128_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I128)) ((IntSynType I128)) (REFi128asAddi128_spec_attrs))
-     <TY> (shr_ref ulft_0 (int I128)) <TY> (int I128) <TY> (int I128) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I128)) ((IntSynType I128)) (REFi128asAddi128_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int I128)); (int I128); (int I128)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi16asAddREFai16_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi16asAddREFai16_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I16)) (REFi16asAddREFai16_spec_attrs))
-     <TY> (shr_ref ulft_1 (int I16)) <TY> (shr_ref ulft_a (int I16)) <TY> (int I16) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I16)) (REFi16asAddREFai16_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int I16)); (shr_ref ulft_a (int I16)); (int I16)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi16asAddi16_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi16asAddi16_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I16)) ((IntSynType I16)) (REFi16asAddi16_spec_attrs))
-     <TY> (shr_ref ulft_0 (int I16)) <TY> (int I16) <TY> (int I16) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I16)) ((IntSynType I16)) (REFi16asAddi16_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int I16)); (int I16); (int I16)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi32asAddREFai32_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi32asAddREFai32_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I32)) (REFi32asAddREFai32_spec_attrs))
-     <TY> (shr_ref ulft_1 (int I32)) <TY> (shr_ref ulft_a (int I32)) <TY> (int I32) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I32)) (REFi32asAddREFai32_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int I32)); (shr_ref ulft_a (int I32)); (int I32)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi32asAddi32_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi32asAddi32_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I32)) ((IntSynType I32)) (REFi32asAddi32_spec_attrs))
-     <TY> (shr_ref ulft_0 (int I32)) <TY> (int I32) <TY> (int I32) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I32)) ((IntSynType I32)) (REFi32asAddi32_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int I32)); (int I32); (int I32)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi64asAddREFai64_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi64asAddREFai64_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I64)) (REFi64asAddREFai64_spec_attrs))
-     <TY> (shr_ref ulft_1 (int I64)) <TY> (shr_ref ulft_a (int I64)) <TY> (int I64) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I64)) (REFi64asAddREFai64_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int I64)); (shr_ref ulft_a (int I64)); (int I64)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi64asAddi64_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi64asAddi64_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I64)) ((IntSynType I64)) (REFi64asAddi64_spec_attrs))
-     <TY> (shr_ref ulft_0 (int I64)) <TY> (int I64) <TY> (int I64) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I64)) ((IntSynType I64)) (REFi64asAddi64_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int I64)); (int I64); (int I64)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi8asAddREFai8_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi8asAddREFai8_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I8)) (REFi8asAddREFai8_spec_attrs))
-     <TY> (shr_ref ulft_1 (int I8)) <TY> (shr_ref ulft_a (int I8)) <TY> (int I8) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I8)) (REFi8asAddREFai8_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int I8)); (shr_ref ulft_a (int I8)); (int I8)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi8asAddi8_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi8asAddi8_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I8)) ((IntSynType I8)) (REFi8asAddi8_spec_attrs))
-     <TY> (shr_ref ulft_0 (int I8)) <TY> (int I8) <TY> (int I8) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I8)) ((IntSynType I8)) (REFi8asAddi8_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int I8)); (int I8); (int I8)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFisizeasAddREFaisize_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFisizeasAddREFaisize_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType ISize)) (REFisizeasAddREFaisize_spec_attrs))
-     <TY> (shr_ref ulft_1 (int ISize)) <TY> (shr_ref ulft_a (int ISize)) <TY> (int ISize) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType ISize)) (REFisizeasAddREFaisize_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int ISize)); (shr_ref ulft_a (int ISize)); (int ISize)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFisizeasAddisize_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFisizeasAddisize_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType ISize)) ((IntSynType ISize)) (REFisizeasAddisize_spec_attrs))
-     <TY> (shr_ref ulft_0 (int ISize)) <TY> (int ISize) <TY> (int ISize) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType ISize)) ((IntSynType ISize)) (REFisizeasAddisize_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int ISize)); (int ISize); (int ISize)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu128asAddREFau128_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu128asAddREFau128_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U128)) (REFu128asAddREFau128_spec_attrs))
-     <TY> (shr_ref ulft_1 (int U128)) <TY> (shr_ref ulft_a (int U128)) <TY> (int U128) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U128)) (REFu128asAddREFau128_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int U128)); (shr_ref ulft_a (int U128)); (int U128)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu128asAddu128_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu128asAddu128_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U128)) ((IntSynType U128)) (REFu128asAddu128_spec_attrs))
-     <TY> (shr_ref ulft_0 (int U128)) <TY> (int U128) <TY> (int U128) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U128)) ((IntSynType U128)) (REFu128asAddu128_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int U128)); (int U128); (int U128)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu16asAddREFau16_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu16asAddREFau16_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U16)) (REFu16asAddREFau16_spec_attrs))
-     <TY> (shr_ref ulft_1 (int U16)) <TY> (shr_ref ulft_a (int U16)) <TY> (int U16) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U16)) (REFu16asAddREFau16_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int U16)); (shr_ref ulft_a (int U16)); (int U16)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu16asAddu16_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu16asAddu16_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U16)) ((IntSynType U16)) (REFu16asAddu16_spec_attrs))
-     <TY> (shr_ref ulft_0 (int U16)) <TY> (int U16) <TY> (int U16) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U16)) ((IntSynType U16)) (REFu16asAddu16_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int U16)); (int U16); (int U16)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu32asAddREFau32_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu32asAddREFau32_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U32)) (REFu32asAddREFau32_spec_attrs))
-     <TY> (shr_ref ulft_1 (int U32)) <TY> (shr_ref ulft_a (int U32)) <TY> (int U32) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U32)) (REFu32asAddREFau32_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int U32)); (shr_ref ulft_a (int U32)); (int U32)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu32asAddu32_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu32asAddu32_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U32)) ((IntSynType U32)) (REFu32asAddu32_spec_attrs))
-     <TY> (shr_ref ulft_0 (int U32)) <TY> (int U32) <TY> (int U32) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U32)) ((IntSynType U32)) (REFu32asAddu32_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int U32)); (int U32); (int U32)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu64asAddREFau64_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu64asAddREFau64_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U64)) (REFu64asAddREFau64_spec_attrs))
-     <TY> (shr_ref ulft_1 (int U64)) <TY> (shr_ref ulft_a (int U64)) <TY> (int U64) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U64)) (REFu64asAddREFau64_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int U64)); (shr_ref ulft_a (int U64)); (int U64)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu64asAddu64_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu64asAddu64_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U64)) ((IntSynType U64)) (REFu64asAddu64_spec_attrs))
-     <TY> (shr_ref ulft_0 (int U64)) <TY> (int U64) <TY> (int U64) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U64)) ((IntSynType U64)) (REFu64asAddu64_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int U64)); (int U64); (int U64)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu8asAddREFau8_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu8asAddREFau8_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U8)) (REFu8asAddREFau8_spec_attrs))
-     <TY> (shr_ref ulft_1 (int U8)) <TY> (shr_ref ulft_a (int U8)) <TY> (int U8) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U8)) (REFu8asAddREFau8_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int U8)); (shr_ref ulft_a (int U8)); (int U8)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu8asAddu8_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu8asAddu8_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U8)) ((IntSynType U8)) (REFu8asAddu8_spec_attrs))
-     <TY> (shr_ref ulft_0 (int U8)) <TY> (int U8) <TY> (int U8) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U8)) ((IntSynType U8)) (REFu8asAddu8_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int U8)); (int U8); (int U8)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFusizeasAddREFausize_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFusizeasAddREFausize_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType USize)) (REFusizeasAddREFausize_spec_attrs))
-     <TY> (shr_ref ulft_1 (int USize)) <TY> (shr_ref ulft_a (int USize)) <TY> (int USize) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType USize)) (REFusizeasAddREFausize_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int USize)); (shr_ref ulft_a (int USize)); (int USize)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFusizeasAddusize_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFusizeasAddusize_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType USize)) ((IntSynType USize)) (REFusizeasAddusize_spec_attrs))
-     <TY> (shr_ref ulft_0 (int USize)) <TY> (int USize) <TY> (int USize) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType USize)) ((IntSynType USize)) (REFusizeasAddusize_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int USize)); (int USize); (int USize)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asAddREFai128_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asAddREFai128_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I128)) (PtrSynType) ((IntSynType I128)) (i128asAddREFai128_spec_attrs))
-     <TY> (int I128) <TY> (shr_ref ulft_a (int I128)) <TY> (int I128) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I128)) (PtrSynType) ((IntSynType I128)) (i128asAddREFai128_spec_attrs))
+    -[] -[(int I128); (shr_ref ulft_a (int I128)); (int I128)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asAdd_add  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asAdd_add  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Add_base_spec (Z) (Z) (Z) ((IntSynType I128)) ((IntSynType I128)) ((IntSynType I128)) (i128asAdd_spec_attrs))
-     <TY> (int I128) <TY> (int I128) <TY> (int I128) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) (Z) (Z) ((IntSynType I128)) ((IntSynType I128)) ((IntSynType I128)) (i128asAdd_spec_attrs))
+    -[] -[(int I128); (int I128); (int I128)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asAddREFai16_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asAddREFai16_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I16)) (PtrSynType) ((IntSynType I16)) (i16asAddREFai16_spec_attrs))
-     <TY> (int I16) <TY> (shr_ref ulft_a (int I16)) <TY> (int I16) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I16)) (PtrSynType) ((IntSynType I16)) (i16asAddREFai16_spec_attrs))
+    -[] -[(int I16); (shr_ref ulft_a (int I16)); (int I16)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asAdd_add  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asAdd_add  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Add_base_spec (Z) (Z) (Z) ((IntSynType I16)) ((IntSynType I16)) ((IntSynType I16)) (i16asAdd_spec_attrs))
-     <TY> (int I16) <TY> (int I16) <TY> (int I16) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) (Z) (Z) ((IntSynType I16)) ((IntSynType I16)) ((IntSynType I16)) (i16asAdd_spec_attrs))
+    -[] -[(int I16); (int I16); (int I16)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asAddREFai32_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asAddREFai32_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I32)) (PtrSynType) ((IntSynType I32)) (i32asAddREFai32_spec_attrs))
-     <TY> (int I32) <TY> (shr_ref ulft_a (int I32)) <TY> (int I32) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I32)) (PtrSynType) ((IntSynType I32)) (i32asAddREFai32_spec_attrs))
+    -[] -[(int I32); (shr_ref ulft_a (int I32)); (int I32)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asAdd_add  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asAdd_add  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Add_base_spec (Z) (Z) (Z) ((IntSynType I32)) ((IntSynType I32)) ((IntSynType I32)) (i32asAdd_spec_attrs))
-     <TY> (int I32) <TY> (int I32) <TY> (int I32) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) (Z) (Z) ((IntSynType I32)) ((IntSynType I32)) ((IntSynType I32)) (i32asAdd_spec_attrs))
+    -[] -[(int I32); (int I32); (int I32)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asAddREFai64_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asAddREFai64_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I64)) (PtrSynType) ((IntSynType I64)) (i64asAddREFai64_spec_attrs))
-     <TY> (int I64) <TY> (shr_ref ulft_a (int I64)) <TY> (int I64) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I64)) (PtrSynType) ((IntSynType I64)) (i64asAddREFai64_spec_attrs))
+    -[] -[(int I64); (shr_ref ulft_a (int I64)); (int I64)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asAdd_add  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asAdd_add  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Add_base_spec (Z) (Z) (Z) ((IntSynType I64)) ((IntSynType I64)) ((IntSynType I64)) (i64asAdd_spec_attrs))
-     <TY> (int I64) <TY> (int I64) <TY> (int I64) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) (Z) (Z) ((IntSynType I64)) ((IntSynType I64)) ((IntSynType I64)) (i64asAdd_spec_attrs))
+    -[] -[(int I64); (int I64); (int I64)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asAddREFai8_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asAddREFai8_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I8)) (PtrSynType) ((IntSynType I8)) (i8asAddREFai8_spec_attrs))
-     <TY> (int I8) <TY> (shr_ref ulft_a (int I8)) <TY> (int I8) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I8)) (PtrSynType) ((IntSynType I8)) (i8asAddREFai8_spec_attrs))
+    -[] -[(int I8); (shr_ref ulft_a (int I8)); (int I8)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asAdd_add  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asAdd_add  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Add_base_spec (Z) (Z) (Z) ((IntSynType I8)) ((IntSynType I8)) ((IntSynType I8)) (i8asAdd_spec_attrs))
-     <TY> (int I8) <TY> (int I8) <TY> (int I8) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) (Z) (Z) ((IntSynType I8)) ((IntSynType I8)) ((IntSynType I8)) (i8asAdd_spec_attrs))
+    -[] -[(int I8); (int I8); (int I8)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasAddREFaisize_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasAddREFaisize_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType ISize)) (PtrSynType) ((IntSynType ISize)) (isizeasAddREFaisize_spec_attrs))
-     <TY> (int ISize) <TY> (shr_ref ulft_a (int ISize)) <TY> (int ISize) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType ISize)) (PtrSynType) ((IntSynType ISize)) (isizeasAddREFaisize_spec_attrs))
+    -[] -[(int ISize); (shr_ref ulft_a (int ISize)); (int ISize)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasAdd_add  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasAdd_add  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Add_base_spec (Z) (Z) (Z) ((IntSynType ISize)) ((IntSynType ISize)) ((IntSynType ISize)) (isizeasAdd_spec_attrs))
-     <TY> (int ISize) <TY> (int ISize) <TY> (int ISize) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) (Z) (Z) ((IntSynType ISize)) ((IntSynType ISize)) ((IntSynType ISize)) (isizeasAdd_spec_attrs))
+    -[] -[(int ISize); (int ISize); (int ISize)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asAddREFau128_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asAddREFau128_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U128)) (PtrSynType) ((IntSynType U128)) (u128asAddREFau128_spec_attrs))
-     <TY> (int U128) <TY> (shr_ref ulft_a (int U128)) <TY> (int U128) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U128)) (PtrSynType) ((IntSynType U128)) (u128asAddREFau128_spec_attrs))
+    -[] -[(int U128); (shr_ref ulft_a (int U128)); (int U128)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asAdd_add  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asAdd_add  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Add_base_spec (Z) (Z) (Z) ((IntSynType U128)) ((IntSynType U128)) ((IntSynType U128)) (u128asAdd_spec_attrs))
-     <TY> (int U128) <TY> (int U128) <TY> (int U128) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) (Z) (Z) ((IntSynType U128)) ((IntSynType U128)) ((IntSynType U128)) (u128asAdd_spec_attrs))
+    -[] -[(int U128); (int U128); (int U128)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asAddREFau16_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asAddREFau16_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U16)) (PtrSynType) ((IntSynType U16)) (u16asAddREFau16_spec_attrs))
-     <TY> (int U16) <TY> (shr_ref ulft_a (int U16)) <TY> (int U16) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U16)) (PtrSynType) ((IntSynType U16)) (u16asAddREFau16_spec_attrs))
+    -[] -[(int U16); (shr_ref ulft_a (int U16)); (int U16)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asAdd_add  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asAdd_add  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Add_base_spec (Z) (Z) (Z) ((IntSynType U16)) ((IntSynType U16)) ((IntSynType U16)) (u16asAdd_spec_attrs))
-     <TY> (int U16) <TY> (int U16) <TY> (int U16) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) (Z) (Z) ((IntSynType U16)) ((IntSynType U16)) ((IntSynType U16)) (u16asAdd_spec_attrs))
+    -[] -[(int U16); (int U16); (int U16)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asAddREFau32_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asAddREFau32_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U32)) (PtrSynType) ((IntSynType U32)) (u32asAddREFau32_spec_attrs))
-     <TY> (int U32) <TY> (shr_ref ulft_a (int U32)) <TY> (int U32) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U32)) (PtrSynType) ((IntSynType U32)) (u32asAddREFau32_spec_attrs))
+    -[] -[(int U32); (shr_ref ulft_a (int U32)); (int U32)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asAdd_add  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asAdd_add  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Add_base_spec (Z) (Z) (Z) ((IntSynType U32)) ((IntSynType U32)) ((IntSynType U32)) (u32asAdd_spec_attrs))
-     <TY> (int U32) <TY> (int U32) <TY> (int U32) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) (Z) (Z) ((IntSynType U32)) ((IntSynType U32)) ((IntSynType U32)) (u32asAdd_spec_attrs))
+    -[] -[(int U32); (int U32); (int U32)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asAddREFau64_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asAddREFau64_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U64)) (PtrSynType) ((IntSynType U64)) (u64asAddREFau64_spec_attrs))
-     <TY> (int U64) <TY> (shr_ref ulft_a (int U64)) <TY> (int U64) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U64)) (PtrSynType) ((IntSynType U64)) (u64asAddREFau64_spec_attrs))
+    -[] -[(int U64); (shr_ref ulft_a (int U64)); (int U64)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asAdd_add  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asAdd_add  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Add_base_spec (Z) (Z) (Z) ((IntSynType U64)) ((IntSynType U64)) ((IntSynType U64)) (u64asAdd_spec_attrs))
-     <TY> (int U64) <TY> (int U64) <TY> (int U64) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) (Z) (Z) ((IntSynType U64)) ((IntSynType U64)) ((IntSynType U64)) (u64asAdd_spec_attrs))
+    -[] -[(int U64); (int U64); (int U64)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asAddREFau8_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asAddREFau8_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U8)) (PtrSynType) ((IntSynType U8)) (u8asAddREFau8_spec_attrs))
-     <TY> (int U8) <TY> (shr_ref ulft_a (int U8)) <TY> (int U8) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U8)) (PtrSynType) ((IntSynType U8)) (u8asAddREFau8_spec_attrs))
+    -[] -[(int U8); (shr_ref ulft_a (int U8)); (int U8)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asAdd_add  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asAdd_add  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Add_base_spec (Z) (Z) (Z) ((IntSynType U8)) ((IntSynType U8)) ((IntSynType U8)) (u8asAdd_spec_attrs))
-     <TY> (int U8) <TY> (int U8) <TY> (int U8) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) (Z) (Z) ((IntSynType U8)) ((IntSynType U8)) ((IntSynType U8)) (u8asAdd_spec_attrs))
+    -[] -[(int U8); (int U8); (int U8)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasAddREFausize_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasAddREFausize_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType USize)) (PtrSynType) ((IntSynType USize)) (usizeasAddREFausize_spec_attrs))
-     <TY> (int USize) <TY> (shr_ref ulft_a (int USize)) <TY> (int USize) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType USize)) (PtrSynType) ((IntSynType USize)) (usizeasAddREFausize_spec_attrs))
+    -[] -[(int USize); (shr_ref ulft_a (int USize)); (int USize)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasAdd_add  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasAdd_add  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Add_base_spec (Z) (Z) (Z) ((IntSynType USize)) ((IntSynType USize)) ((IntSynType USize)) (usizeasAdd_spec_attrs))
-     <TY> (int USize) <TY> (int USize) <TY> (int USize) <INST!>).(Add_add_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) (Z) (Z) ((IntSynType USize)) ((IntSynType USize)) ((IntSynType USize)) (usizeasAdd_spec_attrs))
+    -[] -[(int USize); (int USize); (int USize)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asAddAssignREFi128_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asAddAssignREFi128_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I128)) (PtrSynType) (i128asAddAssignREFi128_spec_attrs))
-     <TY> (int I128) <TY> (shr_ref ulft_0 (int I128)) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I128)) (PtrSynType) (i128asAddAssignREFi128_spec_attrs))
+    -[] -[(int I128); (shr_ref ulft_0 (int I128))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asAddAssign_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asAddAssign_add_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) (Z) ((IntSynType I128)) ((IntSynType I128)) (i128asAddAssign_spec_attrs))
-     <TY> (int I128) <TY> (int I128) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) (Z) ((IntSynType I128)) ((IntSynType I128)) (i128asAddAssign_spec_attrs))
+    -[] -[(int I128); (int I128)]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asAddAssignREFi16_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asAddAssignREFi16_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I16)) (PtrSynType) (i16asAddAssignREFi16_spec_attrs))
-     <TY> (int I16) <TY> (shr_ref ulft_0 (int I16)) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I16)) (PtrSynType) (i16asAddAssignREFi16_spec_attrs))
+    -[] -[(int I16); (shr_ref ulft_0 (int I16))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asAddAssign_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asAddAssign_add_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) (Z) ((IntSynType I16)) ((IntSynType I16)) (i16asAddAssign_spec_attrs))
-     <TY> (int I16) <TY> (int I16) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) (Z) ((IntSynType I16)) ((IntSynType I16)) (i16asAddAssign_spec_attrs))
+    -[] -[(int I16); (int I16)]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asAddAssignREFi32_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asAddAssignREFi32_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I32)) (PtrSynType) (i32asAddAssignREFi32_spec_attrs))
-     <TY> (int I32) <TY> (shr_ref ulft_0 (int I32)) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I32)) (PtrSynType) (i32asAddAssignREFi32_spec_attrs))
+    -[] -[(int I32); (shr_ref ulft_0 (int I32))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asAddAssign_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asAddAssign_add_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) (Z) ((IntSynType I32)) ((IntSynType I32)) (i32asAddAssign_spec_attrs))
-     <TY> (int I32) <TY> (int I32) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) (Z) ((IntSynType I32)) ((IntSynType I32)) (i32asAddAssign_spec_attrs))
+    -[] -[(int I32); (int I32)]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asAddAssignREFi64_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asAddAssignREFi64_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I64)) (PtrSynType) (i64asAddAssignREFi64_spec_attrs))
-     <TY> (int I64) <TY> (shr_ref ulft_0 (int I64)) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I64)) (PtrSynType) (i64asAddAssignREFi64_spec_attrs))
+    -[] -[(int I64); (shr_ref ulft_0 (int I64))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asAddAssign_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asAddAssign_add_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) (Z) ((IntSynType I64)) ((IntSynType I64)) (i64asAddAssign_spec_attrs))
-     <TY> (int I64) <TY> (int I64) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) (Z) ((IntSynType I64)) ((IntSynType I64)) (i64asAddAssign_spec_attrs))
+    -[] -[(int I64); (int I64)]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asAddAssignREFi8_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asAddAssignREFi8_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I8)) (PtrSynType) (i8asAddAssignREFi8_spec_attrs))
-     <TY> (int I8) <TY> (shr_ref ulft_0 (int I8)) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I8)) (PtrSynType) (i8asAddAssignREFi8_spec_attrs))
+    -[] -[(int I8); (shr_ref ulft_0 (int I8))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asAddAssign_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asAddAssign_add_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) (Z) ((IntSynType I8)) ((IntSynType I8)) (i8asAddAssign_spec_attrs))
-     <TY> (int I8) <TY> (int I8) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) (Z) ((IntSynType I8)) ((IntSynType I8)) (i8asAddAssign_spec_attrs))
+    -[] -[(int I8); (int I8)]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasAddAssignREFisize_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasAddAssignREFisize_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType ISize)) (PtrSynType) (isizeasAddAssignREFisize_spec_attrs))
-     <TY> (int ISize) <TY> (shr_ref ulft_0 (int ISize)) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType ISize)) (PtrSynType) (isizeasAddAssignREFisize_spec_attrs))
+    -[] -[(int ISize); (shr_ref ulft_0 (int ISize))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasAddAssign_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasAddAssign_add_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) (Z) ((IntSynType ISize)) ((IntSynType ISize)) (isizeasAddAssign_spec_attrs))
-     <TY> (int ISize) <TY> (int ISize) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) (Z) ((IntSynType ISize)) ((IntSynType ISize)) (isizeasAddAssign_spec_attrs))
+    -[] -[(int ISize); (int ISize)]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asAddAssignREFu128_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asAddAssignREFu128_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U128)) (PtrSynType) (u128asAddAssignREFu128_spec_attrs))
-     <TY> (int U128) <TY> (shr_ref ulft_0 (int U128)) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U128)) (PtrSynType) (u128asAddAssignREFu128_spec_attrs))
+    -[] -[(int U128); (shr_ref ulft_0 (int U128))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asAddAssign_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asAddAssign_add_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) (Z) ((IntSynType U128)) ((IntSynType U128)) (u128asAddAssign_spec_attrs))
-     <TY> (int U128) <TY> (int U128) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) (Z) ((IntSynType U128)) ((IntSynType U128)) (u128asAddAssign_spec_attrs))
+    -[] -[(int U128); (int U128)]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asAddAssignREFu16_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asAddAssignREFu16_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U16)) (PtrSynType) (u16asAddAssignREFu16_spec_attrs))
-     <TY> (int U16) <TY> (shr_ref ulft_0 (int U16)) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U16)) (PtrSynType) (u16asAddAssignREFu16_spec_attrs))
+    -[] -[(int U16); (shr_ref ulft_0 (int U16))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asAddAssign_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asAddAssign_add_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) (Z) ((IntSynType U16)) ((IntSynType U16)) (u16asAddAssign_spec_attrs))
-     <TY> (int U16) <TY> (int U16) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) (Z) ((IntSynType U16)) ((IntSynType U16)) (u16asAddAssign_spec_attrs))
+    -[] -[(int U16); (int U16)]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asAddAssignREFu32_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asAddAssignREFu32_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U32)) (PtrSynType) (u32asAddAssignREFu32_spec_attrs))
-     <TY> (int U32) <TY> (shr_ref ulft_0 (int U32)) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U32)) (PtrSynType) (u32asAddAssignREFu32_spec_attrs))
+    -[] -[(int U32); (shr_ref ulft_0 (int U32))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asAddAssign_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asAddAssign_add_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) (Z) ((IntSynType U32)) ((IntSynType U32)) (u32asAddAssign_spec_attrs))
-     <TY> (int U32) <TY> (int U32) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) (Z) ((IntSynType U32)) ((IntSynType U32)) (u32asAddAssign_spec_attrs))
+    -[] -[(int U32); (int U32)]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asAddAssignREFu64_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asAddAssignREFu64_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U64)) (PtrSynType) (u64asAddAssignREFu64_spec_attrs))
-     <TY> (int U64) <TY> (shr_ref ulft_0 (int U64)) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U64)) (PtrSynType) (u64asAddAssignREFu64_spec_attrs))
+    -[] -[(int U64); (shr_ref ulft_0 (int U64))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asAddAssign_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asAddAssign_add_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) (Z) ((IntSynType U64)) ((IntSynType U64)) (u64asAddAssign_spec_attrs))
-     <TY> (int U64) <TY> (int U64) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) (Z) ((IntSynType U64)) ((IntSynType U64)) (u64asAddAssign_spec_attrs))
+    -[] -[(int U64); (int U64)]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asAddAssignREFu8_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asAddAssignREFu8_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U8)) (PtrSynType) (u8asAddAssignREFu8_spec_attrs))
-     <TY> (int U8) <TY> (shr_ref ulft_0 (int U8)) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U8)) (PtrSynType) (u8asAddAssignREFu8_spec_attrs))
+    -[] -[(int U8); (shr_ref ulft_0 (int U8))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asAddAssign_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asAddAssign_add_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) (Z) ((IntSynType U8)) ((IntSynType U8)) (u8asAddAssign_spec_attrs))
-     <TY> (int U8) <TY> (int U8) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) (Z) ((IntSynType U8)) ((IntSynType U8)) (u8asAddAssign_spec_attrs))
+    -[] -[(int U8); (int U8)]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasAddAssignREFusize_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasAddAssignREFusize_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType USize)) (PtrSynType) (usizeasAddAssignREFusize_spec_attrs))
-     <TY> (int USize) <TY> (shr_ref ulft_0 (int USize)) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType USize)) (PtrSynType) (usizeasAddAssignREFusize_spec_attrs))
+    -[] -[(int USize); (shr_ref ulft_0 (int USize))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasAddAssign_add_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasAddAssign_add_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((AddAssign_base_spec (Z) (Z) ((IntSynType USize)) ((IntSynType USize)) (usizeasAddAssign_spec_attrs))
-     <TY> (int USize) <TY> (int USize) <INST!>).(AddAssign_add_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) (Z) ((IntSynType USize)) ((IntSynType USize)) (usizeasAddAssign_spec_attrs))
+    -[] -[(int USize); (int USize)]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFTasDeref_deref (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[T_ty]) : ([T_rt] : list RT), (True).
 
 Definition type_of_REFTasDeref_deref (T_rt: RT) (T_st: syn_type) :=
-  spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),((Deref_base_spec ((place_rfnRT (T_rt))) ((T_rt)) (PtrSynType) (T_st) ((REFTasDeref_spec_attrs (T_rt))))
-     <TY> (shr_ref ulft_0 T_ty) <TY> T_ty <INST!>).(Deref_deref_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Deref_base_spec ((place_rfnRT (T_rt))) ((T_rt)) (PtrSynType) (T_st) ((REFTasDeref_spec_attrs (T_rt))))
+    -[] -[(shr_ref ulft_0 T_ty); T_ty]).(Deref_deref_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFmutTasDeref_deref (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[T_ty]) : ([T_rt] : list RT), (True).
 
 Definition type_of_REFmutTasDeref_deref (T_rt: RT) (T_st: syn_type) :=
-  spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),((Deref_base_spec (((place_rfnRT (T_rt)) * gname)%type) ((T_rt)) (PtrSynType) (T_st) ((REFmutTasDeref_spec_attrs (T_rt))))
-     <TY> (mut_ref ulft_0 T_ty) <TY> T_ty <INST!>).(Deref_deref_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Deref_base_spec (((place_rfnRT (T_rt)) * gname)%type) ((T_rt)) (PtrSynType) (T_st) ((REFmutTasDeref_spec_attrs (T_rt))))
+    -[] -[(mut_ref ulft_0 T_ty); T_ty]).(Deref_deref_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi128asMulREFai128_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi128asMulREFai128_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I128)) (REFi128asMulREFai128_spec_attrs))
-     <TY> (shr_ref ulft_1 (int I128)) <TY> (shr_ref ulft_a (int I128)) <TY> (int I128) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I128)) (REFi128asMulREFai128_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int I128)); (shr_ref ulft_a (int I128)); (int I128)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi128asMuli128_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi128asMuli128_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I128)) ((IntSynType I128)) (REFi128asMuli128_spec_attrs))
-     <TY> (shr_ref ulft_0 (int I128)) <TY> (int I128) <TY> (int I128) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I128)) ((IntSynType I128)) (REFi128asMuli128_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int I128)); (int I128); (int I128)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi16asMulREFai16_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi16asMulREFai16_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I16)) (REFi16asMulREFai16_spec_attrs))
-     <TY> (shr_ref ulft_1 (int I16)) <TY> (shr_ref ulft_a (int I16)) <TY> (int I16) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I16)) (REFi16asMulREFai16_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int I16)); (shr_ref ulft_a (int I16)); (int I16)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi16asMuli16_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi16asMuli16_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I16)) ((IntSynType I16)) (REFi16asMuli16_spec_attrs))
-     <TY> (shr_ref ulft_0 (int I16)) <TY> (int I16) <TY> (int I16) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I16)) ((IntSynType I16)) (REFi16asMuli16_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int I16)); (int I16); (int I16)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi32asMulREFai32_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi32asMulREFai32_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I32)) (REFi32asMulREFai32_spec_attrs))
-     <TY> (shr_ref ulft_1 (int I32)) <TY> (shr_ref ulft_a (int I32)) <TY> (int I32) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I32)) (REFi32asMulREFai32_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int I32)); (shr_ref ulft_a (int I32)); (int I32)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi32asMuli32_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi32asMuli32_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I32)) ((IntSynType I32)) (REFi32asMuli32_spec_attrs))
-     <TY> (shr_ref ulft_0 (int I32)) <TY> (int I32) <TY> (int I32) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I32)) ((IntSynType I32)) (REFi32asMuli32_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int I32)); (int I32); (int I32)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi64asMulREFai64_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi64asMulREFai64_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I64)) (REFi64asMulREFai64_spec_attrs))
-     <TY> (shr_ref ulft_1 (int I64)) <TY> (shr_ref ulft_a (int I64)) <TY> (int I64) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I64)) (REFi64asMulREFai64_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int I64)); (shr_ref ulft_a (int I64)); (int I64)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi64asMuli64_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi64asMuli64_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I64)) ((IntSynType I64)) (REFi64asMuli64_spec_attrs))
-     <TY> (shr_ref ulft_0 (int I64)) <TY> (int I64) <TY> (int I64) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I64)) ((IntSynType I64)) (REFi64asMuli64_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int I64)); (int I64); (int I64)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi8asMulREFai8_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi8asMulREFai8_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I8)) (REFi8asMulREFai8_spec_attrs))
-     <TY> (shr_ref ulft_1 (int I8)) <TY> (shr_ref ulft_a (int I8)) <TY> (int I8) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I8)) (REFi8asMulREFai8_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int I8)); (shr_ref ulft_a (int I8)); (int I8)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi8asMuli8_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi8asMuli8_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I8)) ((IntSynType I8)) (REFi8asMuli8_spec_attrs))
-     <TY> (shr_ref ulft_0 (int I8)) <TY> (int I8) <TY> (int I8) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I8)) ((IntSynType I8)) (REFi8asMuli8_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int I8)); (int I8); (int I8)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFisizeasMulREFaisize_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFisizeasMulREFaisize_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType ISize)) (REFisizeasMulREFaisize_spec_attrs))
-     <TY> (shr_ref ulft_1 (int ISize)) <TY> (shr_ref ulft_a (int ISize)) <TY> (int ISize) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType ISize)) (REFisizeasMulREFaisize_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int ISize)); (shr_ref ulft_a (int ISize)); (int ISize)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFisizeasMulisize_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFisizeasMulisize_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType ISize)) ((IntSynType ISize)) (REFisizeasMulisize_spec_attrs))
-     <TY> (shr_ref ulft_0 (int ISize)) <TY> (int ISize) <TY> (int ISize) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType ISize)) ((IntSynType ISize)) (REFisizeasMulisize_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int ISize)); (int ISize); (int ISize)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu128asMulREFau128_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu128asMulREFau128_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U128)) (REFu128asMulREFau128_spec_attrs))
-     <TY> (shr_ref ulft_1 (int U128)) <TY> (shr_ref ulft_a (int U128)) <TY> (int U128) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U128)) (REFu128asMulREFau128_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int U128)); (shr_ref ulft_a (int U128)); (int U128)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu128asMulu128_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu128asMulu128_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U128)) ((IntSynType U128)) (REFu128asMulu128_spec_attrs))
-     <TY> (shr_ref ulft_0 (int U128)) <TY> (int U128) <TY> (int U128) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U128)) ((IntSynType U128)) (REFu128asMulu128_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int U128)); (int U128); (int U128)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu16asMulREFau16_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu16asMulREFau16_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U16)) (REFu16asMulREFau16_spec_attrs))
-     <TY> (shr_ref ulft_1 (int U16)) <TY> (shr_ref ulft_a (int U16)) <TY> (int U16) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U16)) (REFu16asMulREFau16_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int U16)); (shr_ref ulft_a (int U16)); (int U16)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu16asMulu16_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu16asMulu16_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U16)) ((IntSynType U16)) (REFu16asMulu16_spec_attrs))
-     <TY> (shr_ref ulft_0 (int U16)) <TY> (int U16) <TY> (int U16) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U16)) ((IntSynType U16)) (REFu16asMulu16_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int U16)); (int U16); (int U16)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu32asMulREFau32_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu32asMulREFau32_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U32)) (REFu32asMulREFau32_spec_attrs))
-     <TY> (shr_ref ulft_1 (int U32)) <TY> (shr_ref ulft_a (int U32)) <TY> (int U32) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U32)) (REFu32asMulREFau32_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int U32)); (shr_ref ulft_a (int U32)); (int U32)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu32asMulu32_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu32asMulu32_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U32)) ((IntSynType U32)) (REFu32asMulu32_spec_attrs))
-     <TY> (shr_ref ulft_0 (int U32)) <TY> (int U32) <TY> (int U32) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U32)) ((IntSynType U32)) (REFu32asMulu32_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int U32)); (int U32); (int U32)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu64asMulREFau64_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu64asMulREFau64_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U64)) (REFu64asMulREFau64_spec_attrs))
-     <TY> (shr_ref ulft_1 (int U64)) <TY> (shr_ref ulft_a (int U64)) <TY> (int U64) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U64)) (REFu64asMulREFau64_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int U64)); (shr_ref ulft_a (int U64)); (int U64)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu64asMulu64_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu64asMulu64_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U64)) ((IntSynType U64)) (REFu64asMulu64_spec_attrs))
-     <TY> (shr_ref ulft_0 (int U64)) <TY> (int U64) <TY> (int U64) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U64)) ((IntSynType U64)) (REFu64asMulu64_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int U64)); (int U64); (int U64)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu8asMulREFau8_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu8asMulREFau8_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U8)) (REFu8asMulREFau8_spec_attrs))
-     <TY> (shr_ref ulft_1 (int U8)) <TY> (shr_ref ulft_a (int U8)) <TY> (int U8) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U8)) (REFu8asMulREFau8_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int U8)); (shr_ref ulft_a (int U8)); (int U8)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu8asMulu8_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu8asMulu8_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U8)) ((IntSynType U8)) (REFu8asMulu8_spec_attrs))
-     <TY> (shr_ref ulft_0 (int U8)) <TY> (int U8) <TY> (int U8) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U8)) ((IntSynType U8)) (REFu8asMulu8_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int U8)); (int U8); (int U8)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFusizeasMulREFausize_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFusizeasMulREFausize_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType USize)) (REFusizeasMulREFausize_spec_attrs))
-     <TY> (shr_ref ulft_1 (int USize)) <TY> (shr_ref ulft_a (int USize)) <TY> (int USize) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType USize)) (REFusizeasMulREFausize_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int USize)); (shr_ref ulft_a (int USize)); (int USize)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFusizeasMulusize_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFusizeasMulusize_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType USize)) ((IntSynType USize)) (REFusizeasMulusize_spec_attrs))
-     <TY> (shr_ref ulft_0 (int USize)) <TY> (int USize) <TY> (int USize) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType USize)) ((IntSynType USize)) (REFusizeasMulusize_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int USize)); (int USize); (int USize)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asMulREFai128_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asMulREFai128_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I128)) (PtrSynType) ((IntSynType I128)) (i128asMulREFai128_spec_attrs))
-     <TY> (int I128) <TY> (shr_ref ulft_a (int I128)) <TY> (int I128) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I128)) (PtrSynType) ((IntSynType I128)) (i128asMulREFai128_spec_attrs))
+    -[] -[(int I128); (shr_ref ulft_a (int I128)); (int I128)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asMul_mul  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asMul_mul  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) (Z) (Z) ((IntSynType I128)) ((IntSynType I128)) ((IntSynType I128)) (i128asMul_spec_attrs))
-     <TY> (int I128) <TY> (int I128) <TY> (int I128) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) (Z) (Z) ((IntSynType I128)) ((IntSynType I128)) ((IntSynType I128)) (i128asMul_spec_attrs))
+    -[] -[(int I128); (int I128); (int I128)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asMulREFai16_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asMulREFai16_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I16)) (PtrSynType) ((IntSynType I16)) (i16asMulREFai16_spec_attrs))
-     <TY> (int I16) <TY> (shr_ref ulft_a (int I16)) <TY> (int I16) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I16)) (PtrSynType) ((IntSynType I16)) (i16asMulREFai16_spec_attrs))
+    -[] -[(int I16); (shr_ref ulft_a (int I16)); (int I16)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asMul_mul  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asMul_mul  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) (Z) (Z) ((IntSynType I16)) ((IntSynType I16)) ((IntSynType I16)) (i16asMul_spec_attrs))
-     <TY> (int I16) <TY> (int I16) <TY> (int I16) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) (Z) (Z) ((IntSynType I16)) ((IntSynType I16)) ((IntSynType I16)) (i16asMul_spec_attrs))
+    -[] -[(int I16); (int I16); (int I16)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asMulREFai32_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asMulREFai32_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I32)) (PtrSynType) ((IntSynType I32)) (i32asMulREFai32_spec_attrs))
-     <TY> (int I32) <TY> (shr_ref ulft_a (int I32)) <TY> (int I32) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I32)) (PtrSynType) ((IntSynType I32)) (i32asMulREFai32_spec_attrs))
+    -[] -[(int I32); (shr_ref ulft_a (int I32)); (int I32)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asMul_mul  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asMul_mul  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) (Z) (Z) ((IntSynType I32)) ((IntSynType I32)) ((IntSynType I32)) (i32asMul_spec_attrs))
-     <TY> (int I32) <TY> (int I32) <TY> (int I32) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) (Z) (Z) ((IntSynType I32)) ((IntSynType I32)) ((IntSynType I32)) (i32asMul_spec_attrs))
+    -[] -[(int I32); (int I32); (int I32)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asMulREFai64_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asMulREFai64_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I64)) (PtrSynType) ((IntSynType I64)) (i64asMulREFai64_spec_attrs))
-     <TY> (int I64) <TY> (shr_ref ulft_a (int I64)) <TY> (int I64) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I64)) (PtrSynType) ((IntSynType I64)) (i64asMulREFai64_spec_attrs))
+    -[] -[(int I64); (shr_ref ulft_a (int I64)); (int I64)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asMul_mul  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asMul_mul  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) (Z) (Z) ((IntSynType I64)) ((IntSynType I64)) ((IntSynType I64)) (i64asMul_spec_attrs))
-     <TY> (int I64) <TY> (int I64) <TY> (int I64) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) (Z) (Z) ((IntSynType I64)) ((IntSynType I64)) ((IntSynType I64)) (i64asMul_spec_attrs))
+    -[] -[(int I64); (int I64); (int I64)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asMulREFai8_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asMulREFai8_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I8)) (PtrSynType) ((IntSynType I8)) (i8asMulREFai8_spec_attrs))
-     <TY> (int I8) <TY> (shr_ref ulft_a (int I8)) <TY> (int I8) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I8)) (PtrSynType) ((IntSynType I8)) (i8asMulREFai8_spec_attrs))
+    -[] -[(int I8); (shr_ref ulft_a (int I8)); (int I8)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asMul_mul  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asMul_mul  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) (Z) (Z) ((IntSynType I8)) ((IntSynType I8)) ((IntSynType I8)) (i8asMul_spec_attrs))
-     <TY> (int I8) <TY> (int I8) <TY> (int I8) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) (Z) (Z) ((IntSynType I8)) ((IntSynType I8)) ((IntSynType I8)) (i8asMul_spec_attrs))
+    -[] -[(int I8); (int I8); (int I8)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasMulREFaisize_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasMulREFaisize_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType ISize)) (PtrSynType) ((IntSynType ISize)) (isizeasMulREFaisize_spec_attrs))
-     <TY> (int ISize) <TY> (shr_ref ulft_a (int ISize)) <TY> (int ISize) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType ISize)) (PtrSynType) ((IntSynType ISize)) (isizeasMulREFaisize_spec_attrs))
+    -[] -[(int ISize); (shr_ref ulft_a (int ISize)); (int ISize)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasMul_mul  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasMul_mul  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) (Z) (Z) ((IntSynType ISize)) ((IntSynType ISize)) ((IntSynType ISize)) (isizeasMul_spec_attrs))
-     <TY> (int ISize) <TY> (int ISize) <TY> (int ISize) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) (Z) (Z) ((IntSynType ISize)) ((IntSynType ISize)) ((IntSynType ISize)) (isizeasMul_spec_attrs))
+    -[] -[(int ISize); (int ISize); (int ISize)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asMulREFau128_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asMulREFau128_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U128)) (PtrSynType) ((IntSynType U128)) (u128asMulREFau128_spec_attrs))
-     <TY> (int U128) <TY> (shr_ref ulft_a (int U128)) <TY> (int U128) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U128)) (PtrSynType) ((IntSynType U128)) (u128asMulREFau128_spec_attrs))
+    -[] -[(int U128); (shr_ref ulft_a (int U128)); (int U128)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asMul_mul  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asMul_mul  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) (Z) (Z) ((IntSynType U128)) ((IntSynType U128)) ((IntSynType U128)) (u128asMul_spec_attrs))
-     <TY> (int U128) <TY> (int U128) <TY> (int U128) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) (Z) (Z) ((IntSynType U128)) ((IntSynType U128)) ((IntSynType U128)) (u128asMul_spec_attrs))
+    -[] -[(int U128); (int U128); (int U128)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asMulREFau16_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asMulREFau16_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U16)) (PtrSynType) ((IntSynType U16)) (u16asMulREFau16_spec_attrs))
-     <TY> (int U16) <TY> (shr_ref ulft_a (int U16)) <TY> (int U16) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U16)) (PtrSynType) ((IntSynType U16)) (u16asMulREFau16_spec_attrs))
+    -[] -[(int U16); (shr_ref ulft_a (int U16)); (int U16)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asMul_mul  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asMul_mul  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) (Z) (Z) ((IntSynType U16)) ((IntSynType U16)) ((IntSynType U16)) (u16asMul_spec_attrs))
-     <TY> (int U16) <TY> (int U16) <TY> (int U16) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) (Z) (Z) ((IntSynType U16)) ((IntSynType U16)) ((IntSynType U16)) (u16asMul_spec_attrs))
+    -[] -[(int U16); (int U16); (int U16)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asMulREFau32_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asMulREFau32_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U32)) (PtrSynType) ((IntSynType U32)) (u32asMulREFau32_spec_attrs))
-     <TY> (int U32) <TY> (shr_ref ulft_a (int U32)) <TY> (int U32) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U32)) (PtrSynType) ((IntSynType U32)) (u32asMulREFau32_spec_attrs))
+    -[] -[(int U32); (shr_ref ulft_a (int U32)); (int U32)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asMul_mul  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asMul_mul  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) (Z) (Z) ((IntSynType U32)) ((IntSynType U32)) ((IntSynType U32)) (u32asMul_spec_attrs))
-     <TY> (int U32) <TY> (int U32) <TY> (int U32) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) (Z) (Z) ((IntSynType U32)) ((IntSynType U32)) ((IntSynType U32)) (u32asMul_spec_attrs))
+    -[] -[(int U32); (int U32); (int U32)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asMulREFau64_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asMulREFau64_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U64)) (PtrSynType) ((IntSynType U64)) (u64asMulREFau64_spec_attrs))
-     <TY> (int U64) <TY> (shr_ref ulft_a (int U64)) <TY> (int U64) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U64)) (PtrSynType) ((IntSynType U64)) (u64asMulREFau64_spec_attrs))
+    -[] -[(int U64); (shr_ref ulft_a (int U64)); (int U64)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asMul_mul  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asMul_mul  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) (Z) (Z) ((IntSynType U64)) ((IntSynType U64)) ((IntSynType U64)) (u64asMul_spec_attrs))
-     <TY> (int U64) <TY> (int U64) <TY> (int U64) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) (Z) (Z) ((IntSynType U64)) ((IntSynType U64)) ((IntSynType U64)) (u64asMul_spec_attrs))
+    -[] -[(int U64); (int U64); (int U64)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asMulREFau8_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asMulREFau8_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U8)) (PtrSynType) ((IntSynType U8)) (u8asMulREFau8_spec_attrs))
-     <TY> (int U8) <TY> (shr_ref ulft_a (int U8)) <TY> (int U8) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U8)) (PtrSynType) ((IntSynType U8)) (u8asMulREFau8_spec_attrs))
+    -[] -[(int U8); (shr_ref ulft_a (int U8)); (int U8)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asMul_mul  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asMul_mul  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) (Z) (Z) ((IntSynType U8)) ((IntSynType U8)) ((IntSynType U8)) (u8asMul_spec_attrs))
-     <TY> (int U8) <TY> (int U8) <TY> (int U8) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) (Z) (Z) ((IntSynType U8)) ((IntSynType U8)) ((IntSynType U8)) (u8asMul_spec_attrs))
+    -[] -[(int U8); (int U8); (int U8)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasMulREFausize_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasMulREFausize_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType USize)) (PtrSynType) ((IntSynType USize)) (usizeasMulREFausize_spec_attrs))
-     <TY> (int USize) <TY> (shr_ref ulft_a (int USize)) <TY> (int USize) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType USize)) (PtrSynType) ((IntSynType USize)) (usizeasMulREFausize_spec_attrs))
+    -[] -[(int USize); (shr_ref ulft_a (int USize)); (int USize)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasMul_mul  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasMul_mul  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Mul_base_spec (Z) (Z) (Z) ((IntSynType USize)) ((IntSynType USize)) ((IntSynType USize)) (usizeasMul_spec_attrs))
-     <TY> (int USize) <TY> (int USize) <TY> (int USize) <INST!>).(Mul_mul_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) (Z) (Z) ((IntSynType USize)) ((IntSynType USize)) ((IntSynType USize)) (usizeasMul_spec_attrs))
+    -[] -[(int USize); (int USize); (int USize)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asMulAssignREFi128_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asMulAssignREFi128_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I128)) (PtrSynType) (i128asMulAssignREFi128_spec_attrs))
-     <TY> (int I128) <TY> (shr_ref ulft_0 (int I128)) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I128)) (PtrSynType) (i128asMulAssignREFi128_spec_attrs))
+    -[] -[(int I128); (shr_ref ulft_0 (int I128))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asMulAssign_mul_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) (Z) ((IntSynType I128)) ((IntSynType I128)) (i128asMulAssign_spec_attrs))
-     <TY> (int I128) <TY> (int I128) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) (Z) ((IntSynType I128)) ((IntSynType I128)) (i128asMulAssign_spec_attrs))
+    -[] -[(int I128); (int I128)]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asMulAssignREFi16_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asMulAssignREFi16_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I16)) (PtrSynType) (i16asMulAssignREFi16_spec_attrs))
-     <TY> (int I16) <TY> (shr_ref ulft_0 (int I16)) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I16)) (PtrSynType) (i16asMulAssignREFi16_spec_attrs))
+    -[] -[(int I16); (shr_ref ulft_0 (int I16))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asMulAssign_mul_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) (Z) ((IntSynType I16)) ((IntSynType I16)) (i16asMulAssign_spec_attrs))
-     <TY> (int I16) <TY> (int I16) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) (Z) ((IntSynType I16)) ((IntSynType I16)) (i16asMulAssign_spec_attrs))
+    -[] -[(int I16); (int I16)]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asMulAssignREFi32_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asMulAssignREFi32_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I32)) (PtrSynType) (i32asMulAssignREFi32_spec_attrs))
-     <TY> (int I32) <TY> (shr_ref ulft_0 (int I32)) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I32)) (PtrSynType) (i32asMulAssignREFi32_spec_attrs))
+    -[] -[(int I32); (shr_ref ulft_0 (int I32))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asMulAssign_mul_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) (Z) ((IntSynType I32)) ((IntSynType I32)) (i32asMulAssign_spec_attrs))
-     <TY> (int I32) <TY> (int I32) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) (Z) ((IntSynType I32)) ((IntSynType I32)) (i32asMulAssign_spec_attrs))
+    -[] -[(int I32); (int I32)]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asMulAssignREFi64_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asMulAssignREFi64_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I64)) (PtrSynType) (i64asMulAssignREFi64_spec_attrs))
-     <TY> (int I64) <TY> (shr_ref ulft_0 (int I64)) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I64)) (PtrSynType) (i64asMulAssignREFi64_spec_attrs))
+    -[] -[(int I64); (shr_ref ulft_0 (int I64))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asMulAssign_mul_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) (Z) ((IntSynType I64)) ((IntSynType I64)) (i64asMulAssign_spec_attrs))
-     <TY> (int I64) <TY> (int I64) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) (Z) ((IntSynType I64)) ((IntSynType I64)) (i64asMulAssign_spec_attrs))
+    -[] -[(int I64); (int I64)]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asMulAssignREFi8_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asMulAssignREFi8_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I8)) (PtrSynType) (i8asMulAssignREFi8_spec_attrs))
-     <TY> (int I8) <TY> (shr_ref ulft_0 (int I8)) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I8)) (PtrSynType) (i8asMulAssignREFi8_spec_attrs))
+    -[] -[(int I8); (shr_ref ulft_0 (int I8))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asMulAssign_mul_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) (Z) ((IntSynType I8)) ((IntSynType I8)) (i8asMulAssign_spec_attrs))
-     <TY> (int I8) <TY> (int I8) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) (Z) ((IntSynType I8)) ((IntSynType I8)) (i8asMulAssign_spec_attrs))
+    -[] -[(int I8); (int I8)]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasMulAssignREFisize_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasMulAssignREFisize_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType ISize)) (PtrSynType) (isizeasMulAssignREFisize_spec_attrs))
-     <TY> (int ISize) <TY> (shr_ref ulft_0 (int ISize)) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType ISize)) (PtrSynType) (isizeasMulAssignREFisize_spec_attrs))
+    -[] -[(int ISize); (shr_ref ulft_0 (int ISize))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasMulAssign_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasMulAssign_mul_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) (Z) ((IntSynType ISize)) ((IntSynType ISize)) (isizeasMulAssign_spec_attrs))
-     <TY> (int ISize) <TY> (int ISize) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) (Z) ((IntSynType ISize)) ((IntSynType ISize)) (isizeasMulAssign_spec_attrs))
+    -[] -[(int ISize); (int ISize)]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asMulAssignREFu128_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asMulAssignREFu128_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U128)) (PtrSynType) (u128asMulAssignREFu128_spec_attrs))
-     <TY> (int U128) <TY> (shr_ref ulft_0 (int U128)) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U128)) (PtrSynType) (u128asMulAssignREFu128_spec_attrs))
+    -[] -[(int U128); (shr_ref ulft_0 (int U128))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asMulAssign_mul_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) (Z) ((IntSynType U128)) ((IntSynType U128)) (u128asMulAssign_spec_attrs))
-     <TY> (int U128) <TY> (int U128) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) (Z) ((IntSynType U128)) ((IntSynType U128)) (u128asMulAssign_spec_attrs))
+    -[] -[(int U128); (int U128)]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asMulAssignREFu16_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asMulAssignREFu16_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U16)) (PtrSynType) (u16asMulAssignREFu16_spec_attrs))
-     <TY> (int U16) <TY> (shr_ref ulft_0 (int U16)) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U16)) (PtrSynType) (u16asMulAssignREFu16_spec_attrs))
+    -[] -[(int U16); (shr_ref ulft_0 (int U16))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asMulAssign_mul_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) (Z) ((IntSynType U16)) ((IntSynType U16)) (u16asMulAssign_spec_attrs))
-     <TY> (int U16) <TY> (int U16) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) (Z) ((IntSynType U16)) ((IntSynType U16)) (u16asMulAssign_spec_attrs))
+    -[] -[(int U16); (int U16)]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asMulAssignREFu32_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asMulAssignREFu32_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U32)) (PtrSynType) (u32asMulAssignREFu32_spec_attrs))
-     <TY> (int U32) <TY> (shr_ref ulft_0 (int U32)) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U32)) (PtrSynType) (u32asMulAssignREFu32_spec_attrs))
+    -[] -[(int U32); (shr_ref ulft_0 (int U32))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asMulAssign_mul_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) (Z) ((IntSynType U32)) ((IntSynType U32)) (u32asMulAssign_spec_attrs))
-     <TY> (int U32) <TY> (int U32) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) (Z) ((IntSynType U32)) ((IntSynType U32)) (u32asMulAssign_spec_attrs))
+    -[] -[(int U32); (int U32)]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asMulAssignREFu64_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asMulAssignREFu64_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U64)) (PtrSynType) (u64asMulAssignREFu64_spec_attrs))
-     <TY> (int U64) <TY> (shr_ref ulft_0 (int U64)) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U64)) (PtrSynType) (u64asMulAssignREFu64_spec_attrs))
+    -[] -[(int U64); (shr_ref ulft_0 (int U64))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asMulAssign_mul_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) (Z) ((IntSynType U64)) ((IntSynType U64)) (u64asMulAssign_spec_attrs))
-     <TY> (int U64) <TY> (int U64) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) (Z) ((IntSynType U64)) ((IntSynType U64)) (u64asMulAssign_spec_attrs))
+    -[] -[(int U64); (int U64)]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asMulAssignREFu8_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asMulAssignREFu8_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U8)) (PtrSynType) (u8asMulAssignREFu8_spec_attrs))
-     <TY> (int U8) <TY> (shr_ref ulft_0 (int U8)) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U8)) (PtrSynType) (u8asMulAssignREFu8_spec_attrs))
+    -[] -[(int U8); (shr_ref ulft_0 (int U8))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asMulAssign_mul_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) (Z) ((IntSynType U8)) ((IntSynType U8)) (u8asMulAssign_spec_attrs))
-     <TY> (int U8) <TY> (int U8) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) (Z) ((IntSynType U8)) ((IntSynType U8)) (u8asMulAssign_spec_attrs))
+    -[] -[(int U8); (int U8)]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasMulAssignREFusize_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasMulAssignREFusize_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType USize)) (PtrSynType) (usizeasMulAssignREFusize_spec_attrs))
-     <TY> (int USize) <TY> (shr_ref ulft_0 (int USize)) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType USize)) (PtrSynType) (usizeasMulAssignREFusize_spec_attrs))
+    -[] -[(int USize); (shr_ref ulft_0 (int USize))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasMulAssign_mul_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasMulAssign_mul_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((MulAssign_base_spec (Z) (Z) ((IntSynType USize)) ((IntSynType USize)) (usizeasMulAssign_spec_attrs))
-     <TY> (int USize) <TY> (int USize) <INST!>).(MulAssign_mul_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) (Z) ((IntSynType USize)) ((IntSynType USize)) (usizeasMulAssign_spec_attrs))
+    -[] -[(int USize); (int USize)]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi128asSubREFai128_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi128asSubREFai128_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I128)) (REFi128asSubREFai128_spec_attrs))
-     <TY> (shr_ref ulft_1 (int I128)) <TY> (shr_ref ulft_a (int I128)) <TY> (int I128) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I128)) (REFi128asSubREFai128_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int I128)); (shr_ref ulft_a (int I128)); (int I128)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi128asSubi128_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi128asSubi128_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I128)) ((IntSynType I128)) (REFi128asSubi128_spec_attrs))
-     <TY> (shr_ref ulft_0 (int I128)) <TY> (int I128) <TY> (int I128) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I128)) ((IntSynType I128)) (REFi128asSubi128_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int I128)); (int I128); (int I128)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi16asSubREFai16_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi16asSubREFai16_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I16)) (REFi16asSubREFai16_spec_attrs))
-     <TY> (shr_ref ulft_1 (int I16)) <TY> (shr_ref ulft_a (int I16)) <TY> (int I16) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I16)) (REFi16asSubREFai16_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int I16)); (shr_ref ulft_a (int I16)); (int I16)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi16asSubi16_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi16asSubi16_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I16)) ((IntSynType I16)) (REFi16asSubi16_spec_attrs))
-     <TY> (shr_ref ulft_0 (int I16)) <TY> (int I16) <TY> (int I16) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I16)) ((IntSynType I16)) (REFi16asSubi16_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int I16)); (int I16); (int I16)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi32asSubREFai32_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi32asSubREFai32_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I32)) (REFi32asSubREFai32_spec_attrs))
-     <TY> (shr_ref ulft_1 (int I32)) <TY> (shr_ref ulft_a (int I32)) <TY> (int I32) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I32)) (REFi32asSubREFai32_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int I32)); (shr_ref ulft_a (int I32)); (int I32)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi32asSubi32_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi32asSubi32_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I32)) ((IntSynType I32)) (REFi32asSubi32_spec_attrs))
-     <TY> (shr_ref ulft_0 (int I32)) <TY> (int I32) <TY> (int I32) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I32)) ((IntSynType I32)) (REFi32asSubi32_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int I32)); (int I32); (int I32)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi64asSubREFai64_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi64asSubREFai64_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I64)) (REFi64asSubREFai64_spec_attrs))
-     <TY> (shr_ref ulft_1 (int I64)) <TY> (shr_ref ulft_a (int I64)) <TY> (int I64) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I64)) (REFi64asSubREFai64_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int I64)); (shr_ref ulft_a (int I64)); (int I64)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi64asSubi64_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi64asSubi64_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I64)) ((IntSynType I64)) (REFi64asSubi64_spec_attrs))
-     <TY> (shr_ref ulft_0 (int I64)) <TY> (int I64) <TY> (int I64) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I64)) ((IntSynType I64)) (REFi64asSubi64_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int I64)); (int I64); (int I64)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi8asSubREFai8_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi8asSubREFai8_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I8)) (REFi8asSubREFai8_spec_attrs))
-     <TY> (shr_ref ulft_1 (int I8)) <TY> (shr_ref ulft_a (int I8)) <TY> (int I8) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType I8)) (REFi8asSubREFai8_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int I8)); (shr_ref ulft_a (int I8)); (int I8)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi8asSubi8_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi8asSubi8_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I8)) ((IntSynType I8)) (REFi8asSubi8_spec_attrs))
-     <TY> (shr_ref ulft_0 (int I8)) <TY> (int I8) <TY> (int I8) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType I8)) ((IntSynType I8)) (REFi8asSubi8_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int I8)); (int I8); (int I8)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFisizeasSubREFaisize_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFisizeasSubREFaisize_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType ISize)) (REFisizeasSubREFaisize_spec_attrs))
-     <TY> (shr_ref ulft_1 (int ISize)) <TY> (shr_ref ulft_a (int ISize)) <TY> (int ISize) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType ISize)) (REFisizeasSubREFaisize_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int ISize)); (shr_ref ulft_a (int ISize)); (int ISize)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFisizeasSubisize_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFisizeasSubisize_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType ISize)) ((IntSynType ISize)) (REFisizeasSubisize_spec_attrs))
-     <TY> (shr_ref ulft_0 (int ISize)) <TY> (int ISize) <TY> (int ISize) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType ISize)) ((IntSynType ISize)) (REFisizeasSubisize_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int ISize)); (int ISize); (int ISize)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu128asSubREFau128_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu128asSubREFau128_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U128)) (REFu128asSubREFau128_spec_attrs))
-     <TY> (shr_ref ulft_1 (int U128)) <TY> (shr_ref ulft_a (int U128)) <TY> (int U128) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U128)) (REFu128asSubREFau128_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int U128)); (shr_ref ulft_a (int U128)); (int U128)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu128asSubu128_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu128asSubu128_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U128)) ((IntSynType U128)) (REFu128asSubu128_spec_attrs))
-     <TY> (shr_ref ulft_0 (int U128)) <TY> (int U128) <TY> (int U128) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U128)) ((IntSynType U128)) (REFu128asSubu128_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int U128)); (int U128); (int U128)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu16asSubREFau16_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu16asSubREFau16_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U16)) (REFu16asSubREFau16_spec_attrs))
-     <TY> (shr_ref ulft_1 (int U16)) <TY> (shr_ref ulft_a (int U16)) <TY> (int U16) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U16)) (REFu16asSubREFau16_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int U16)); (shr_ref ulft_a (int U16)); (int U16)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu16asSubu16_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu16asSubu16_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U16)) ((IntSynType U16)) (REFu16asSubu16_spec_attrs))
-     <TY> (shr_ref ulft_0 (int U16)) <TY> (int U16) <TY> (int U16) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U16)) ((IntSynType U16)) (REFu16asSubu16_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int U16)); (int U16); (int U16)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu32asSubREFau32_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu32asSubREFau32_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U32)) (REFu32asSubREFau32_spec_attrs))
-     <TY> (shr_ref ulft_1 (int U32)) <TY> (shr_ref ulft_a (int U32)) <TY> (int U32) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U32)) (REFu32asSubREFau32_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int U32)); (shr_ref ulft_a (int U32)); (int U32)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu32asSubu32_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu32asSubu32_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U32)) ((IntSynType U32)) (REFu32asSubu32_spec_attrs))
-     <TY> (shr_ref ulft_0 (int U32)) <TY> (int U32) <TY> (int U32) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U32)) ((IntSynType U32)) (REFu32asSubu32_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int U32)); (int U32); (int U32)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu64asSubREFau64_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu64asSubREFau64_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U64)) (REFu64asSubREFau64_spec_attrs))
-     <TY> (shr_ref ulft_1 (int U64)) <TY> (shr_ref ulft_a (int U64)) <TY> (int U64) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U64)) (REFu64asSubREFau64_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int U64)); (shr_ref ulft_a (int U64)); (int U64)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu64asSubu64_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu64asSubu64_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U64)) ((IntSynType U64)) (REFu64asSubu64_spec_attrs))
-     <TY> (shr_ref ulft_0 (int U64)) <TY> (int U64) <TY> (int U64) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U64)) ((IntSynType U64)) (REFu64asSubu64_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int U64)); (int U64); (int U64)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu8asSubREFau8_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu8asSubREFau8_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U8)) (REFu8asSubREFau8_spec_attrs))
-     <TY> (shr_ref ulft_1 (int U8)) <TY> (shr_ref ulft_a (int U8)) <TY> (int U8) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType U8)) (REFu8asSubREFau8_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int U8)); (shr_ref ulft_a (int U8)); (int U8)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu8asSubu8_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu8asSubu8_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U8)) ((IntSynType U8)) (REFu8asSubu8_spec_attrs))
-     <TY> (shr_ref ulft_0 (int U8)) <TY> (int U8) <TY> (int U8) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType U8)) ((IntSynType U8)) (REFu8asSubu8_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int U8)); (int U8); (int U8)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFusizeasSubREFausize_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFusizeasSubREFausize_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType USize)) (REFusizeasSubREFausize_spec_attrs))
-     <TY> (shr_ref ulft_1 (int USize)) <TY> (shr_ref ulft_a (int USize)) <TY> (int USize) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (PtrSynType) (PtrSynType) ((IntSynType USize)) (REFusizeasSubREFausize_spec_attrs))
+    -[] -[(shr_ref ulft_1 (int USize)); (shr_ref ulft_a (int USize)); (int USize)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFusizeasSubusize_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFusizeasSubusize_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType USize)) ((IntSynType USize)) (REFusizeasSubusize_spec_attrs))
-     <TY> (shr_ref ulft_0 (int USize)) <TY> (int USize) <TY> (int USize) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (PtrSynType) ((IntSynType USize)) ((IntSynType USize)) (REFusizeasSubusize_spec_attrs))
+    -[] -[(shr_ref ulft_0 (int USize)); (int USize); (int USize)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asSubREFai128_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asSubREFai128_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I128)) (PtrSynType) ((IntSynType I128)) (i128asSubREFai128_spec_attrs))
-     <TY> (int I128) <TY> (shr_ref ulft_a (int I128)) <TY> (int I128) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I128)) (PtrSynType) ((IntSynType I128)) (i128asSubREFai128_spec_attrs))
+    -[] -[(int I128); (shr_ref ulft_a (int I128)); (int I128)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asSub_sub  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asSub_sub  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) (Z) (Z) ((IntSynType I128)) ((IntSynType I128)) ((IntSynType I128)) (i128asSub_spec_attrs))
-     <TY> (int I128) <TY> (int I128) <TY> (int I128) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) (Z) (Z) ((IntSynType I128)) ((IntSynType I128)) ((IntSynType I128)) (i128asSub_spec_attrs))
+    -[] -[(int I128); (int I128); (int I128)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asSubREFai16_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asSubREFai16_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I16)) (PtrSynType) ((IntSynType I16)) (i16asSubREFai16_spec_attrs))
-     <TY> (int I16) <TY> (shr_ref ulft_a (int I16)) <TY> (int I16) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I16)) (PtrSynType) ((IntSynType I16)) (i16asSubREFai16_spec_attrs))
+    -[] -[(int I16); (shr_ref ulft_a (int I16)); (int I16)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asSub_sub  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asSub_sub  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) (Z) (Z) ((IntSynType I16)) ((IntSynType I16)) ((IntSynType I16)) (i16asSub_spec_attrs))
-     <TY> (int I16) <TY> (int I16) <TY> (int I16) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) (Z) (Z) ((IntSynType I16)) ((IntSynType I16)) ((IntSynType I16)) (i16asSub_spec_attrs))
+    -[] -[(int I16); (int I16); (int I16)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asSubREFai32_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asSubREFai32_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I32)) (PtrSynType) ((IntSynType I32)) (i32asSubREFai32_spec_attrs))
-     <TY> (int I32) <TY> (shr_ref ulft_a (int I32)) <TY> (int I32) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I32)) (PtrSynType) ((IntSynType I32)) (i32asSubREFai32_spec_attrs))
+    -[] -[(int I32); (shr_ref ulft_a (int I32)); (int I32)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asSub_sub  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asSub_sub  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) (Z) (Z) ((IntSynType I32)) ((IntSynType I32)) ((IntSynType I32)) (i32asSub_spec_attrs))
-     <TY> (int I32) <TY> (int I32) <TY> (int I32) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) (Z) (Z) ((IntSynType I32)) ((IntSynType I32)) ((IntSynType I32)) (i32asSub_spec_attrs))
+    -[] -[(int I32); (int I32); (int I32)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asSubREFai64_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asSubREFai64_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I64)) (PtrSynType) ((IntSynType I64)) (i64asSubREFai64_spec_attrs))
-     <TY> (int I64) <TY> (shr_ref ulft_a (int I64)) <TY> (int I64) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I64)) (PtrSynType) ((IntSynType I64)) (i64asSubREFai64_spec_attrs))
+    -[] -[(int I64); (shr_ref ulft_a (int I64)); (int I64)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asSub_sub  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asSub_sub  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) (Z) (Z) ((IntSynType I64)) ((IntSynType I64)) ((IntSynType I64)) (i64asSub_spec_attrs))
-     <TY> (int I64) <TY> (int I64) <TY> (int I64) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) (Z) (Z) ((IntSynType I64)) ((IntSynType I64)) ((IntSynType I64)) (i64asSub_spec_attrs))
+    -[] -[(int I64); (int I64); (int I64)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asSubREFai8_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asSubREFai8_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I8)) (PtrSynType) ((IntSynType I8)) (i8asSubREFai8_spec_attrs))
-     <TY> (int I8) <TY> (shr_ref ulft_a (int I8)) <TY> (int I8) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I8)) (PtrSynType) ((IntSynType I8)) (i8asSubREFai8_spec_attrs))
+    -[] -[(int I8); (shr_ref ulft_a (int I8)); (int I8)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asSub_sub  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asSub_sub  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) (Z) (Z) ((IntSynType I8)) ((IntSynType I8)) ((IntSynType I8)) (i8asSub_spec_attrs))
-     <TY> (int I8) <TY> (int I8) <TY> (int I8) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) (Z) (Z) ((IntSynType I8)) ((IntSynType I8)) ((IntSynType I8)) (i8asSub_spec_attrs))
+    -[] -[(int I8); (int I8); (int I8)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasSubREFaisize_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasSubREFaisize_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType ISize)) (PtrSynType) ((IntSynType ISize)) (isizeasSubREFaisize_spec_attrs))
-     <TY> (int ISize) <TY> (shr_ref ulft_a (int ISize)) <TY> (int ISize) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType ISize)) (PtrSynType) ((IntSynType ISize)) (isizeasSubREFaisize_spec_attrs))
+    -[] -[(int ISize); (shr_ref ulft_a (int ISize)); (int ISize)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasSub_sub  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasSub_sub  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) (Z) (Z) ((IntSynType ISize)) ((IntSynType ISize)) ((IntSynType ISize)) (isizeasSub_spec_attrs))
-     <TY> (int ISize) <TY> (int ISize) <TY> (int ISize) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) (Z) (Z) ((IntSynType ISize)) ((IntSynType ISize)) ((IntSynType ISize)) (isizeasSub_spec_attrs))
+    -[] -[(int ISize); (int ISize); (int ISize)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asSubREFau128_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asSubREFau128_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U128)) (PtrSynType) ((IntSynType U128)) (u128asSubREFau128_spec_attrs))
-     <TY> (int U128) <TY> (shr_ref ulft_a (int U128)) <TY> (int U128) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U128)) (PtrSynType) ((IntSynType U128)) (u128asSubREFau128_spec_attrs))
+    -[] -[(int U128); (shr_ref ulft_a (int U128)); (int U128)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asSub_sub  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asSub_sub  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) (Z) (Z) ((IntSynType U128)) ((IntSynType U128)) ((IntSynType U128)) (u128asSub_spec_attrs))
-     <TY> (int U128) <TY> (int U128) <TY> (int U128) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) (Z) (Z) ((IntSynType U128)) ((IntSynType U128)) ((IntSynType U128)) (u128asSub_spec_attrs))
+    -[] -[(int U128); (int U128); (int U128)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asSubREFau16_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asSubREFau16_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U16)) (PtrSynType) ((IntSynType U16)) (u16asSubREFau16_spec_attrs))
-     <TY> (int U16) <TY> (shr_ref ulft_a (int U16)) <TY> (int U16) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U16)) (PtrSynType) ((IntSynType U16)) (u16asSubREFau16_spec_attrs))
+    -[] -[(int U16); (shr_ref ulft_a (int U16)); (int U16)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asSub_sub  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asSub_sub  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) (Z) (Z) ((IntSynType U16)) ((IntSynType U16)) ((IntSynType U16)) (u16asSub_spec_attrs))
-     <TY> (int U16) <TY> (int U16) <TY> (int U16) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) (Z) (Z) ((IntSynType U16)) ((IntSynType U16)) ((IntSynType U16)) (u16asSub_spec_attrs))
+    -[] -[(int U16); (int U16); (int U16)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asSubREFau32_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asSubREFau32_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U32)) (PtrSynType) ((IntSynType U32)) (u32asSubREFau32_spec_attrs))
-     <TY> (int U32) <TY> (shr_ref ulft_a (int U32)) <TY> (int U32) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U32)) (PtrSynType) ((IntSynType U32)) (u32asSubREFau32_spec_attrs))
+    -[] -[(int U32); (shr_ref ulft_a (int U32)); (int U32)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asSub_sub  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asSub_sub  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) (Z) (Z) ((IntSynType U32)) ((IntSynType U32)) ((IntSynType U32)) (u32asSub_spec_attrs))
-     <TY> (int U32) <TY> (int U32) <TY> (int U32) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) (Z) (Z) ((IntSynType U32)) ((IntSynType U32)) ((IntSynType U32)) (u32asSub_spec_attrs))
+    -[] -[(int U32); (int U32); (int U32)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asSubREFau64_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asSubREFau64_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U64)) (PtrSynType) ((IntSynType U64)) (u64asSubREFau64_spec_attrs))
-     <TY> (int U64) <TY> (shr_ref ulft_a (int U64)) <TY> (int U64) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U64)) (PtrSynType) ((IntSynType U64)) (u64asSubREFau64_spec_attrs))
+    -[] -[(int U64); (shr_ref ulft_a (int U64)); (int U64)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asSub_sub  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asSub_sub  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) (Z) (Z) ((IntSynType U64)) ((IntSynType U64)) ((IntSynType U64)) (u64asSub_spec_attrs))
-     <TY> (int U64) <TY> (int U64) <TY> (int U64) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) (Z) (Z) ((IntSynType U64)) ((IntSynType U64)) ((IntSynType U64)) (u64asSub_spec_attrs))
+    -[] -[(int U64); (int U64); (int U64)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asSubREFau8_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asSubREFau8_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U8)) (PtrSynType) ((IntSynType U8)) (u8asSubREFau8_spec_attrs))
-     <TY> (int U8) <TY> (shr_ref ulft_a (int U8)) <TY> (int U8) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U8)) (PtrSynType) ((IntSynType U8)) (u8asSubREFau8_spec_attrs))
+    -[] -[(int U8); (shr_ref ulft_a (int U8)); (int U8)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asSub_sub  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asSub_sub  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) (Z) (Z) ((IntSynType U8)) ((IntSynType U8)) ((IntSynType U8)) (u8asSub_spec_attrs))
-     <TY> (int U8) <TY> (int U8) <TY> (int U8) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) (Z) (Z) ((IntSynType U8)) ((IntSynType U8)) ((IntSynType U8)) (u8asSub_spec_attrs))
+    -[] -[(int U8); (int U8); (int U8)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasSubREFausize_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasSubREFausize_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType USize)) (PtrSynType) ((IntSynType USize)) (usizeasSubREFausize_spec_attrs))
-     <TY> (int USize) <TY> (shr_ref ulft_a (int USize)) <TY> (int USize) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType USize)) (PtrSynType) ((IntSynType USize)) (usizeasSubREFausize_spec_attrs))
+    -[] -[(int USize); (shr_ref ulft_a (int USize)); (int USize)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasSub_sub  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasSub_sub  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((Sub_base_spec (Z) (Z) (Z) ((IntSynType USize)) ((IntSynType USize)) ((IntSynType USize)) (usizeasSub_spec_attrs))
-     <TY> (int USize) <TY> (int USize) <TY> (int USize) <INST!>).(Sub_sub_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) (Z) (Z) ((IntSynType USize)) ((IntSynType USize)) ((IntSynType USize)) (usizeasSub_spec_attrs))
+    -[] -[(int USize); (int USize); (int USize)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asSubAssignREFi128_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asSubAssignREFi128_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I128)) (PtrSynType) (i128asSubAssignREFi128_spec_attrs))
-     <TY> (int I128) <TY> (shr_ref ulft_0 (int I128)) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I128)) (PtrSynType) (i128asSubAssignREFi128_spec_attrs))
+    -[] -[(int I128); (shr_ref ulft_0 (int I128))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asSubAssign_sub_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) (Z) ((IntSynType I128)) ((IntSynType I128)) (i128asSubAssign_spec_attrs))
-     <TY> (int I128) <TY> (int I128) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) (Z) ((IntSynType I128)) ((IntSynType I128)) (i128asSubAssign_spec_attrs))
+    -[] -[(int I128); (int I128)]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asSubAssignREFi16_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asSubAssignREFi16_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I16)) (PtrSynType) (i16asSubAssignREFi16_spec_attrs))
-     <TY> (int I16) <TY> (shr_ref ulft_0 (int I16)) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I16)) (PtrSynType) (i16asSubAssignREFi16_spec_attrs))
+    -[] -[(int I16); (shr_ref ulft_0 (int I16))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asSubAssign_sub_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) (Z) ((IntSynType I16)) ((IntSynType I16)) (i16asSubAssign_spec_attrs))
-     <TY> (int I16) <TY> (int I16) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) (Z) ((IntSynType I16)) ((IntSynType I16)) (i16asSubAssign_spec_attrs))
+    -[] -[(int I16); (int I16)]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asSubAssignREFi32_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asSubAssignREFi32_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I32)) (PtrSynType) (i32asSubAssignREFi32_spec_attrs))
-     <TY> (int I32) <TY> (shr_ref ulft_0 (int I32)) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I32)) (PtrSynType) (i32asSubAssignREFi32_spec_attrs))
+    -[] -[(int I32); (shr_ref ulft_0 (int I32))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asSubAssign_sub_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) (Z) ((IntSynType I32)) ((IntSynType I32)) (i32asSubAssign_spec_attrs))
-     <TY> (int I32) <TY> (int I32) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) (Z) ((IntSynType I32)) ((IntSynType I32)) (i32asSubAssign_spec_attrs))
+    -[] -[(int I32); (int I32)]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asSubAssignREFi64_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asSubAssignREFi64_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I64)) (PtrSynType) (i64asSubAssignREFi64_spec_attrs))
-     <TY> (int I64) <TY> (shr_ref ulft_0 (int I64)) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I64)) (PtrSynType) (i64asSubAssignREFi64_spec_attrs))
+    -[] -[(int I64); (shr_ref ulft_0 (int I64))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asSubAssign_sub_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) (Z) ((IntSynType I64)) ((IntSynType I64)) (i64asSubAssign_spec_attrs))
-     <TY> (int I64) <TY> (int I64) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) (Z) ((IntSynType I64)) ((IntSynType I64)) (i64asSubAssign_spec_attrs))
+    -[] -[(int I64); (int I64)]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asSubAssignREFi8_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asSubAssignREFi8_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I8)) (PtrSynType) (i8asSubAssignREFi8_spec_attrs))
-     <TY> (int I8) <TY> (shr_ref ulft_0 (int I8)) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I8)) (PtrSynType) (i8asSubAssignREFi8_spec_attrs))
+    -[] -[(int I8); (shr_ref ulft_0 (int I8))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asSubAssign_sub_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) (Z) ((IntSynType I8)) ((IntSynType I8)) (i8asSubAssign_spec_attrs))
-     <TY> (int I8) <TY> (int I8) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) (Z) ((IntSynType I8)) ((IntSynType I8)) (i8asSubAssign_spec_attrs))
+    -[] -[(int I8); (int I8)]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasSubAssignREFisize_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasSubAssignREFisize_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType ISize)) (PtrSynType) (isizeasSubAssignREFisize_spec_attrs))
-     <TY> (int ISize) <TY> (shr_ref ulft_0 (int ISize)) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType ISize)) (PtrSynType) (isizeasSubAssignREFisize_spec_attrs))
+    -[] -[(int ISize); (shr_ref ulft_0 (int ISize))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasSubAssign_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasSubAssign_sub_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) (Z) ((IntSynType ISize)) ((IntSynType ISize)) (isizeasSubAssign_spec_attrs))
-     <TY> (int ISize) <TY> (int ISize) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) (Z) ((IntSynType ISize)) ((IntSynType ISize)) (isizeasSubAssign_spec_attrs))
+    -[] -[(int ISize); (int ISize)]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asSubAssignREFu128_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asSubAssignREFu128_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U128)) (PtrSynType) (u128asSubAssignREFu128_spec_attrs))
-     <TY> (int U128) <TY> (shr_ref ulft_0 (int U128)) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U128)) (PtrSynType) (u128asSubAssignREFu128_spec_attrs))
+    -[] -[(int U128); (shr_ref ulft_0 (int U128))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asSubAssign_sub_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) (Z) ((IntSynType U128)) ((IntSynType U128)) (u128asSubAssign_spec_attrs))
-     <TY> (int U128) <TY> (int U128) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) (Z) ((IntSynType U128)) ((IntSynType U128)) (u128asSubAssign_spec_attrs))
+    -[] -[(int U128); (int U128)]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asSubAssignREFu16_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asSubAssignREFu16_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U16)) (PtrSynType) (u16asSubAssignREFu16_spec_attrs))
-     <TY> (int U16) <TY> (shr_ref ulft_0 (int U16)) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U16)) (PtrSynType) (u16asSubAssignREFu16_spec_attrs))
+    -[] -[(int U16); (shr_ref ulft_0 (int U16))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asSubAssign_sub_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) (Z) ((IntSynType U16)) ((IntSynType U16)) (u16asSubAssign_spec_attrs))
-     <TY> (int U16) <TY> (int U16) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) (Z) ((IntSynType U16)) ((IntSynType U16)) (u16asSubAssign_spec_attrs))
+    -[] -[(int U16); (int U16)]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asSubAssignREFu32_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asSubAssignREFu32_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U32)) (PtrSynType) (u32asSubAssignREFu32_spec_attrs))
-     <TY> (int U32) <TY> (shr_ref ulft_0 (int U32)) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U32)) (PtrSynType) (u32asSubAssignREFu32_spec_attrs))
+    -[] -[(int U32); (shr_ref ulft_0 (int U32))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asSubAssign_sub_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) (Z) ((IntSynType U32)) ((IntSynType U32)) (u32asSubAssign_spec_attrs))
-     <TY> (int U32) <TY> (int U32) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) (Z) ((IntSynType U32)) ((IntSynType U32)) (u32asSubAssign_spec_attrs))
+    -[] -[(int U32); (int U32)]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asSubAssignREFu64_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asSubAssignREFu64_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U64)) (PtrSynType) (u64asSubAssignREFu64_spec_attrs))
-     <TY> (int U64) <TY> (shr_ref ulft_0 (int U64)) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U64)) (PtrSynType) (u64asSubAssignREFu64_spec_attrs))
+    -[] -[(int U64); (shr_ref ulft_0 (int U64))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asSubAssign_sub_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) (Z) ((IntSynType U64)) ((IntSynType U64)) (u64asSubAssign_spec_attrs))
-     <TY> (int U64) <TY> (int U64) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) (Z) ((IntSynType U64)) ((IntSynType U64)) (u64asSubAssign_spec_attrs))
+    -[] -[(int U64); (int U64)]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asSubAssignREFu8_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asSubAssignREFu8_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U8)) (PtrSynType) (u8asSubAssignREFu8_spec_attrs))
-     <TY> (int U8) <TY> (shr_ref ulft_0 (int U8)) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U8)) (PtrSynType) (u8asSubAssignREFu8_spec_attrs))
+    -[] -[(int U8); (shr_ref ulft_0 (int U8))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asSubAssign_sub_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) (Z) ((IntSynType U8)) ((IntSynType U8)) (u8asSubAssign_spec_attrs))
-     <TY> (int U8) <TY> (int U8) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) (Z) ((IntSynType U8)) ((IntSynType U8)) (u8asSubAssign_spec_attrs))
+    -[] -[(int U8); (int U8)]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasSubAssignREFusize_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasSubAssignREFusize_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType USize)) (PtrSynType) (usizeasSubAssignREFusize_spec_attrs))
-     <TY> (int USize) <TY> (shr_ref ulft_0 (int USize)) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType USize)) (PtrSynType) (usizeasSubAssignREFusize_spec_attrs))
+    -[] -[(int USize); (shr_ref ulft_0 (int USize))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasSubAssign_sub_assign  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasSubAssign_sub_assign  :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),((SubAssign_base_spec (Z) (Z) ((IntSynType USize)) ((IntSynType USize)) (usizeasSubAssign_spec_attrs))
-     <TY> (int USize) <TY> (int USize) <INST!>).(SubAssign_sub_assign_spec)   <MERGE!>.
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) (Z) ((IntSynType USize)) ((IntSynType USize)) (usizeasSubAssign_spec_attrs))
+    -[] -[(int USize); (int USize)]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 
 Definition trait_incl_of_REFmutTasDerefMut_deref_mut (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_a]) : 2 | ( *[T_ty]) : ([T_rt] : list RT), (True).
 
 Definition type_of_REFmutTasDerefMut_deref_mut (T_rt: RT) (T_st: syn_type) :=
-  spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),((DerefMut_base_spec (((place_rfnRT (T_rt)) * gname)%type) ((T_rt)) (PtrSynType) (T_st) ((REFmutTasDeref_spec_attrs ((T_rt)))) ((REFmutTasDerefMut_spec_attrs (T_rt))))
-     <TY> (mut_ref ulft_0 T_ty) <TY> T_ty <INST!>).(DerefMut_deref_mut_spec)   <MERGE!>.
+  spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((DerefMut_base_spec (((place_rfnRT (T_rt)) * gname)%type) ((T_rt)) (PtrSynType) (T_st) ((REFmutTasDeref_spec_attrs ((T_rt)))) ((REFmutTasDerefMut_spec_attrs (T_rt))))
+    -[] -[(mut_ref ulft_0 T_ty); T_ty]).(DerefMut_deref_mut_spec)   a b))) <MERGE!>.
 
 
 
@@ -5082,7 +5226,7 @@ Section REFTasDeref_spec.
       |}
   .
   Definition REFTasDeref_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Deref_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (REFTasDeref_spec (T_rt) (T_st)) <TY> T_ty <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (Deref_base_spec (place_rfnRT (T_rt)) (T_rt) PtrSynType T_st (REFTasDeref_spec_attrs (T_rt))<TY> (shr_ref ulft_0 T_ty) <TY> T_ty <INST!>))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Deref_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (REFTasDeref_spec (T_rt) (T_st))-[ulft_0] -[T_ty]) (spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Deref_base_spec (place_rfnRT (T_rt)) (T_rt) PtrSynType T_st (REFTasDeref_spec_attrs (T_rt))-[] -[(shr_ref ulft_0 T_ty); T_ty])))).
 End REFTasDeref_spec.
 
 Section REFi128asAddREFai128_spec.
@@ -5095,7 +5239,7 @@ Section REFi128asAddREFai128_spec.
       |}
   .
   Definition REFi128asAddREFai128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi128asAddREFai128_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I128) REFi128asAddREFai128_spec_attrs<TY> (shr_ref ulft_1 (int I128)) <TY> (shr_ref ulft_a (int I128)) <TY> (int I128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi128asAddREFai128_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I128) REFi128asAddREFai128_spec_attrs-[] -[(shr_ref ulft_1 (int I128)); (shr_ref ulft_a (int I128)); (int I128)])))).
 End REFi128asAddREFai128_spec.
 
 Section REFi128asAddi128_spec.
@@ -5108,7 +5252,7 @@ Section REFi128asAddi128_spec.
       |}
   .
   Definition REFi128asAddi128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi128asAddi128_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I128) (IntSynType I128) REFi128asAddi128_spec_attrs<TY> (shr_ref ulft_0 (int I128)) <TY> (int I128) <TY> (int I128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi128asAddi128_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I128) (IntSynType I128) REFi128asAddi128_spec_attrs-[] -[(shr_ref ulft_0 (int I128)); (int I128); (int I128)])))).
 End REFi128asAddi128_spec.
 
 Section REFi128asMulREFai128_spec.
@@ -5121,7 +5265,7 @@ Section REFi128asMulREFai128_spec.
       |}
   .
   Definition REFi128asMulREFai128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi128asMulREFai128_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I128) REFi128asMulREFai128_spec_attrs<TY> (shr_ref ulft_1 (int I128)) <TY> (shr_ref ulft_a (int I128)) <TY> (int I128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi128asMulREFai128_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I128) REFi128asMulREFai128_spec_attrs-[] -[(shr_ref ulft_1 (int I128)); (shr_ref ulft_a (int I128)); (int I128)])))).
 End REFi128asMulREFai128_spec.
 
 Section REFi128asMuli128_spec.
@@ -5134,7 +5278,7 @@ Section REFi128asMuli128_spec.
       |}
   .
   Definition REFi128asMuli128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi128asMuli128_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I128) (IntSynType I128) REFi128asMuli128_spec_attrs<TY> (shr_ref ulft_0 (int I128)) <TY> (int I128) <TY> (int I128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi128asMuli128_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I128) (IntSynType I128) REFi128asMuli128_spec_attrs-[] -[(shr_ref ulft_0 (int I128)); (int I128); (int I128)])))).
 End REFi128asMuli128_spec.
 
 Section REFi128asSubREFai128_spec.
@@ -5147,7 +5291,7 @@ Section REFi128asSubREFai128_spec.
       |}
   .
   Definition REFi128asSubREFai128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi128asSubREFai128_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I128) REFi128asSubREFai128_spec_attrs<TY> (shr_ref ulft_1 (int I128)) <TY> (shr_ref ulft_a (int I128)) <TY> (int I128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi128asSubREFai128_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I128) REFi128asSubREFai128_spec_attrs-[] -[(shr_ref ulft_1 (int I128)); (shr_ref ulft_a (int I128)); (int I128)])))).
 End REFi128asSubREFai128_spec.
 
 Section REFi128asSubi128_spec.
@@ -5160,7 +5304,7 @@ Section REFi128asSubi128_spec.
       |}
   .
   Definition REFi128asSubi128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi128asSubi128_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I128) (IntSynType I128) REFi128asSubi128_spec_attrs<TY> (shr_ref ulft_0 (int I128)) <TY> (int I128) <TY> (int I128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi128asSubi128_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I128) (IntSynType I128) REFi128asSubi128_spec_attrs-[] -[(shr_ref ulft_0 (int I128)); (int I128); (int I128)])))).
 End REFi128asSubi128_spec.
 
 Section REFi16asAddREFai16_spec.
@@ -5173,7 +5317,7 @@ Section REFi16asAddREFai16_spec.
       |}
   .
   Definition REFi16asAddREFai16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi16asAddREFai16_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I16) REFi16asAddREFai16_spec_attrs<TY> (shr_ref ulft_1 (int I16)) <TY> (shr_ref ulft_a (int I16)) <TY> (int I16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi16asAddREFai16_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I16) REFi16asAddREFai16_spec_attrs-[] -[(shr_ref ulft_1 (int I16)); (shr_ref ulft_a (int I16)); (int I16)])))).
 End REFi16asAddREFai16_spec.
 
 Section REFi16asAddi16_spec.
@@ -5186,7 +5330,7 @@ Section REFi16asAddi16_spec.
       |}
   .
   Definition REFi16asAddi16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi16asAddi16_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I16) (IntSynType I16) REFi16asAddi16_spec_attrs<TY> (shr_ref ulft_0 (int I16)) <TY> (int I16) <TY> (int I16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi16asAddi16_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I16) (IntSynType I16) REFi16asAddi16_spec_attrs-[] -[(shr_ref ulft_0 (int I16)); (int I16); (int I16)])))).
 End REFi16asAddi16_spec.
 
 Section REFi16asMulREFai16_spec.
@@ -5199,7 +5343,7 @@ Section REFi16asMulREFai16_spec.
       |}
   .
   Definition REFi16asMulREFai16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi16asMulREFai16_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I16) REFi16asMulREFai16_spec_attrs<TY> (shr_ref ulft_1 (int I16)) <TY> (shr_ref ulft_a (int I16)) <TY> (int I16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi16asMulREFai16_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I16) REFi16asMulREFai16_spec_attrs-[] -[(shr_ref ulft_1 (int I16)); (shr_ref ulft_a (int I16)); (int I16)])))).
 End REFi16asMulREFai16_spec.
 
 Section REFi16asMuli16_spec.
@@ -5212,7 +5356,7 @@ Section REFi16asMuli16_spec.
       |}
   .
   Definition REFi16asMuli16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi16asMuli16_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I16) (IntSynType I16) REFi16asMuli16_spec_attrs<TY> (shr_ref ulft_0 (int I16)) <TY> (int I16) <TY> (int I16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi16asMuli16_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I16) (IntSynType I16) REFi16asMuli16_spec_attrs-[] -[(shr_ref ulft_0 (int I16)); (int I16); (int I16)])))).
 End REFi16asMuli16_spec.
 
 Section REFi16asSubREFai16_spec.
@@ -5225,7 +5369,7 @@ Section REFi16asSubREFai16_spec.
       |}
   .
   Definition REFi16asSubREFai16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi16asSubREFai16_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I16) REFi16asSubREFai16_spec_attrs<TY> (shr_ref ulft_1 (int I16)) <TY> (shr_ref ulft_a (int I16)) <TY> (int I16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi16asSubREFai16_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I16) REFi16asSubREFai16_spec_attrs-[] -[(shr_ref ulft_1 (int I16)); (shr_ref ulft_a (int I16)); (int I16)])))).
 End REFi16asSubREFai16_spec.
 
 Section REFi16asSubi16_spec.
@@ -5238,7 +5382,7 @@ Section REFi16asSubi16_spec.
       |}
   .
   Definition REFi16asSubi16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi16asSubi16_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I16) (IntSynType I16) REFi16asSubi16_spec_attrs<TY> (shr_ref ulft_0 (int I16)) <TY> (int I16) <TY> (int I16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi16asSubi16_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I16) (IntSynType I16) REFi16asSubi16_spec_attrs-[] -[(shr_ref ulft_0 (int I16)); (int I16); (int I16)])))).
 End REFi16asSubi16_spec.
 
 Section REFi32asAddREFai32_spec.
@@ -5251,7 +5395,7 @@ Section REFi32asAddREFai32_spec.
       |}
   .
   Definition REFi32asAddREFai32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi32asAddREFai32_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I32) REFi32asAddREFai32_spec_attrs<TY> (shr_ref ulft_1 (int I32)) <TY> (shr_ref ulft_a (int I32)) <TY> (int I32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi32asAddREFai32_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I32) REFi32asAddREFai32_spec_attrs-[] -[(shr_ref ulft_1 (int I32)); (shr_ref ulft_a (int I32)); (int I32)])))).
 End REFi32asAddREFai32_spec.
 
 Section REFi32asAddi32_spec.
@@ -5264,7 +5408,7 @@ Section REFi32asAddi32_spec.
       |}
   .
   Definition REFi32asAddi32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi32asAddi32_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I32) (IntSynType I32) REFi32asAddi32_spec_attrs<TY> (shr_ref ulft_0 (int I32)) <TY> (int I32) <TY> (int I32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi32asAddi32_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I32) (IntSynType I32) REFi32asAddi32_spec_attrs-[] -[(shr_ref ulft_0 (int I32)); (int I32); (int I32)])))).
 End REFi32asAddi32_spec.
 
 Section REFi32asMulREFai32_spec.
@@ -5277,7 +5421,7 @@ Section REFi32asMulREFai32_spec.
       |}
   .
   Definition REFi32asMulREFai32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi32asMulREFai32_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I32) REFi32asMulREFai32_spec_attrs<TY> (shr_ref ulft_1 (int I32)) <TY> (shr_ref ulft_a (int I32)) <TY> (int I32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi32asMulREFai32_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I32) REFi32asMulREFai32_spec_attrs-[] -[(shr_ref ulft_1 (int I32)); (shr_ref ulft_a (int I32)); (int I32)])))).
 End REFi32asMulREFai32_spec.
 
 Section REFi32asMuli32_spec.
@@ -5290,7 +5434,7 @@ Section REFi32asMuli32_spec.
       |}
   .
   Definition REFi32asMuli32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi32asMuli32_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I32) (IntSynType I32) REFi32asMuli32_spec_attrs<TY> (shr_ref ulft_0 (int I32)) <TY> (int I32) <TY> (int I32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi32asMuli32_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I32) (IntSynType I32) REFi32asMuli32_spec_attrs-[] -[(shr_ref ulft_0 (int I32)); (int I32); (int I32)])))).
 End REFi32asMuli32_spec.
 
 Section REFi32asSubREFai32_spec.
@@ -5303,7 +5447,7 @@ Section REFi32asSubREFai32_spec.
       |}
   .
   Definition REFi32asSubREFai32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi32asSubREFai32_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I32) REFi32asSubREFai32_spec_attrs<TY> (shr_ref ulft_1 (int I32)) <TY> (shr_ref ulft_a (int I32)) <TY> (int I32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi32asSubREFai32_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I32) REFi32asSubREFai32_spec_attrs-[] -[(shr_ref ulft_1 (int I32)); (shr_ref ulft_a (int I32)); (int I32)])))).
 End REFi32asSubREFai32_spec.
 
 Section REFi32asSubi32_spec.
@@ -5316,7 +5460,7 @@ Section REFi32asSubi32_spec.
       |}
   .
   Definition REFi32asSubi32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi32asSubi32_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I32) (IntSynType I32) REFi32asSubi32_spec_attrs<TY> (shr_ref ulft_0 (int I32)) <TY> (int I32) <TY> (int I32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi32asSubi32_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I32) (IntSynType I32) REFi32asSubi32_spec_attrs-[] -[(shr_ref ulft_0 (int I32)); (int I32); (int I32)])))).
 End REFi32asSubi32_spec.
 
 Section REFi64asAddREFai64_spec.
@@ -5329,7 +5473,7 @@ Section REFi64asAddREFai64_spec.
       |}
   .
   Definition REFi64asAddREFai64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi64asAddREFai64_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I64) REFi64asAddREFai64_spec_attrs<TY> (shr_ref ulft_1 (int I64)) <TY> (shr_ref ulft_a (int I64)) <TY> (int I64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi64asAddREFai64_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I64) REFi64asAddREFai64_spec_attrs-[] -[(shr_ref ulft_1 (int I64)); (shr_ref ulft_a (int I64)); (int I64)])))).
 End REFi64asAddREFai64_spec.
 
 Section REFi64asAddi64_spec.
@@ -5342,7 +5486,7 @@ Section REFi64asAddi64_spec.
       |}
   .
   Definition REFi64asAddi64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi64asAddi64_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I64) (IntSynType I64) REFi64asAddi64_spec_attrs<TY> (shr_ref ulft_0 (int I64)) <TY> (int I64) <TY> (int I64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi64asAddi64_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I64) (IntSynType I64) REFi64asAddi64_spec_attrs-[] -[(shr_ref ulft_0 (int I64)); (int I64); (int I64)])))).
 End REFi64asAddi64_spec.
 
 Section REFi64asMulREFai64_spec.
@@ -5355,7 +5499,7 @@ Section REFi64asMulREFai64_spec.
       |}
   .
   Definition REFi64asMulREFai64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi64asMulREFai64_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I64) REFi64asMulREFai64_spec_attrs<TY> (shr_ref ulft_1 (int I64)) <TY> (shr_ref ulft_a (int I64)) <TY> (int I64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi64asMulREFai64_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I64) REFi64asMulREFai64_spec_attrs-[] -[(shr_ref ulft_1 (int I64)); (shr_ref ulft_a (int I64)); (int I64)])))).
 End REFi64asMulREFai64_spec.
 
 Section REFi64asMuli64_spec.
@@ -5368,7 +5512,7 @@ Section REFi64asMuli64_spec.
       |}
   .
   Definition REFi64asMuli64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi64asMuli64_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I64) (IntSynType I64) REFi64asMuli64_spec_attrs<TY> (shr_ref ulft_0 (int I64)) <TY> (int I64) <TY> (int I64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi64asMuli64_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I64) (IntSynType I64) REFi64asMuli64_spec_attrs-[] -[(shr_ref ulft_0 (int I64)); (int I64); (int I64)])))).
 End REFi64asMuli64_spec.
 
 Section REFi64asSubREFai64_spec.
@@ -5381,7 +5525,7 @@ Section REFi64asSubREFai64_spec.
       |}
   .
   Definition REFi64asSubREFai64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi64asSubREFai64_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I64) REFi64asSubREFai64_spec_attrs<TY> (shr_ref ulft_1 (int I64)) <TY> (shr_ref ulft_a (int I64)) <TY> (int I64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi64asSubREFai64_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I64) REFi64asSubREFai64_spec_attrs-[] -[(shr_ref ulft_1 (int I64)); (shr_ref ulft_a (int I64)); (int I64)])))).
 End REFi64asSubREFai64_spec.
 
 Section REFi64asSubi64_spec.
@@ -5394,7 +5538,7 @@ Section REFi64asSubi64_spec.
       |}
   .
   Definition REFi64asSubi64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi64asSubi64_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I64) (IntSynType I64) REFi64asSubi64_spec_attrs<TY> (shr_ref ulft_0 (int I64)) <TY> (int I64) <TY> (int I64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi64asSubi64_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I64) (IntSynType I64) REFi64asSubi64_spec_attrs-[] -[(shr_ref ulft_0 (int I64)); (int I64); (int I64)])))).
 End REFi64asSubi64_spec.
 
 Section REFi8asAddREFai8_spec.
@@ -5407,7 +5551,7 @@ Section REFi8asAddREFai8_spec.
       |}
   .
   Definition REFi8asAddREFai8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi8asAddREFai8_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I8) REFi8asAddREFai8_spec_attrs<TY> (shr_ref ulft_1 (int I8)) <TY> (shr_ref ulft_a (int I8)) <TY> (int I8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi8asAddREFai8_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I8) REFi8asAddREFai8_spec_attrs-[] -[(shr_ref ulft_1 (int I8)); (shr_ref ulft_a (int I8)); (int I8)])))).
 End REFi8asAddREFai8_spec.
 
 Section REFi8asAddi8_spec.
@@ -5420,7 +5564,7 @@ Section REFi8asAddi8_spec.
       |}
   .
   Definition REFi8asAddi8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi8asAddi8_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I8) (IntSynType I8) REFi8asAddi8_spec_attrs<TY> (shr_ref ulft_0 (int I8)) <TY> (int I8) <TY> (int I8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi8asAddi8_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I8) (IntSynType I8) REFi8asAddi8_spec_attrs-[] -[(shr_ref ulft_0 (int I8)); (int I8); (int I8)])))).
 End REFi8asAddi8_spec.
 
 Section REFi8asMulREFai8_spec.
@@ -5433,7 +5577,7 @@ Section REFi8asMulREFai8_spec.
       |}
   .
   Definition REFi8asMulREFai8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi8asMulREFai8_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I8) REFi8asMulREFai8_spec_attrs<TY> (shr_ref ulft_1 (int I8)) <TY> (shr_ref ulft_a (int I8)) <TY> (int I8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi8asMulREFai8_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I8) REFi8asMulREFai8_spec_attrs-[] -[(shr_ref ulft_1 (int I8)); (shr_ref ulft_a (int I8)); (int I8)])))).
 End REFi8asMulREFai8_spec.
 
 Section REFi8asMuli8_spec.
@@ -5446,7 +5590,7 @@ Section REFi8asMuli8_spec.
       |}
   .
   Definition REFi8asMuli8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi8asMuli8_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I8) (IntSynType I8) REFi8asMuli8_spec_attrs<TY> (shr_ref ulft_0 (int I8)) <TY> (int I8) <TY> (int I8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi8asMuli8_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I8) (IntSynType I8) REFi8asMuli8_spec_attrs-[] -[(shr_ref ulft_0 (int I8)); (int I8); (int I8)])))).
 End REFi8asMuli8_spec.
 
 Section REFi8asSubREFai8_spec.
@@ -5459,7 +5603,7 @@ Section REFi8asSubREFai8_spec.
       |}
   .
   Definition REFi8asSubREFai8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi8asSubREFai8_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I8) REFi8asSubREFai8_spec_attrs<TY> (shr_ref ulft_1 (int I8)) <TY> (shr_ref ulft_a (int I8)) <TY> (int I8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFi8asSubREFai8_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType I8) REFi8asSubREFai8_spec_attrs-[] -[(shr_ref ulft_1 (int I8)); (shr_ref ulft_a (int I8)); (int I8)])))).
 End REFi8asSubREFai8_spec.
 
 Section REFi8asSubi8_spec.
@@ -5472,7 +5616,7 @@ Section REFi8asSubi8_spec.
       |}
   .
   Definition REFi8asSubi8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi8asSubi8_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I8) (IntSynType I8) REFi8asSubi8_spec_attrs<TY> (shr_ref ulft_0 (int I8)) <TY> (int I8) <TY> (int I8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFi8asSubi8_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType I8) (IntSynType I8) REFi8asSubi8_spec_attrs-[] -[(shr_ref ulft_0 (int I8)); (int I8); (int I8)])))).
 End REFi8asSubi8_spec.
 
 Section REFisizeasAddREFaisize_spec.
@@ -5485,7 +5629,7 @@ Section REFisizeasAddREFaisize_spec.
       |}
   .
   Definition REFisizeasAddREFaisize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFisizeasAddREFaisize_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType ISize) REFisizeasAddREFaisize_spec_attrs<TY> (shr_ref ulft_1 (int ISize)) <TY> (shr_ref ulft_a (int ISize)) <TY> (int ISize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFisizeasAddREFaisize_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType ISize) REFisizeasAddREFaisize_spec_attrs-[] -[(shr_ref ulft_1 (int ISize)); (shr_ref ulft_a (int ISize)); (int ISize)])))).
 End REFisizeasAddREFaisize_spec.
 
 Section REFisizeasAddisize_spec.
@@ -5498,7 +5642,7 @@ Section REFisizeasAddisize_spec.
       |}
   .
   Definition REFisizeasAddisize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFisizeasAddisize_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType ISize) (IntSynType ISize) REFisizeasAddisize_spec_attrs<TY> (shr_ref ulft_0 (int ISize)) <TY> (int ISize) <TY> (int ISize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFisizeasAddisize_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType ISize) (IntSynType ISize) REFisizeasAddisize_spec_attrs-[] -[(shr_ref ulft_0 (int ISize)); (int ISize); (int ISize)])))).
 End REFisizeasAddisize_spec.
 
 Section REFisizeasMulREFaisize_spec.
@@ -5511,7 +5655,7 @@ Section REFisizeasMulREFaisize_spec.
       |}
   .
   Definition REFisizeasMulREFaisize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFisizeasMulREFaisize_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType ISize) REFisizeasMulREFaisize_spec_attrs<TY> (shr_ref ulft_1 (int ISize)) <TY> (shr_ref ulft_a (int ISize)) <TY> (int ISize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFisizeasMulREFaisize_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType ISize) REFisizeasMulREFaisize_spec_attrs-[] -[(shr_ref ulft_1 (int ISize)); (shr_ref ulft_a (int ISize)); (int ISize)])))).
 End REFisizeasMulREFaisize_spec.
 
 Section REFisizeasMulisize_spec.
@@ -5524,7 +5668,7 @@ Section REFisizeasMulisize_spec.
       |}
   .
   Definition REFisizeasMulisize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFisizeasMulisize_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType ISize) (IntSynType ISize) REFisizeasMulisize_spec_attrs<TY> (shr_ref ulft_0 (int ISize)) <TY> (int ISize) <TY> (int ISize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFisizeasMulisize_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType ISize) (IntSynType ISize) REFisizeasMulisize_spec_attrs-[] -[(shr_ref ulft_0 (int ISize)); (int ISize); (int ISize)])))).
 End REFisizeasMulisize_spec.
 
 Section REFisizeasSubREFaisize_spec.
@@ -5537,7 +5681,7 @@ Section REFisizeasSubREFaisize_spec.
       |}
   .
   Definition REFisizeasSubREFaisize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFisizeasSubREFaisize_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType ISize) REFisizeasSubREFaisize_spec_attrs<TY> (shr_ref ulft_1 (int ISize)) <TY> (shr_ref ulft_a (int ISize)) <TY> (int ISize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFisizeasSubREFaisize_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType ISize) REFisizeasSubREFaisize_spec_attrs-[] -[(shr_ref ulft_1 (int ISize)); (shr_ref ulft_a (int ISize)); (int ISize)])))).
 End REFisizeasSubREFaisize_spec.
 
 Section REFisizeasSubisize_spec.
@@ -5550,7 +5694,7 @@ Section REFisizeasSubisize_spec.
       |}
   .
   Definition REFisizeasSubisize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFisizeasSubisize_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType ISize) (IntSynType ISize) REFisizeasSubisize_spec_attrs<TY> (shr_ref ulft_0 (int ISize)) <TY> (int ISize) <TY> (int ISize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFisizeasSubisize_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType ISize) (IntSynType ISize) REFisizeasSubisize_spec_attrs-[] -[(shr_ref ulft_0 (int ISize)); (int ISize); (int ISize)])))).
 End REFisizeasSubisize_spec.
 
 Section REFmutTasDeref_spec.
@@ -5563,7 +5707,7 @@ Section REFmutTasDeref_spec.
       |}
   .
   Definition REFmutTasDeref_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Deref_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (REFmutTasDeref_spec (T_rt) (T_st)) <TY> T_ty <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (Deref_base_spec ((place_rfnRT (T_rt)) * gname)%type (T_rt) PtrSynType T_st (REFmutTasDeref_spec_attrs (T_rt))<TY> (mut_ref ulft_0 T_ty) <TY> T_ty <INST!>))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Deref_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (REFmutTasDeref_spec (T_rt) (T_st))-[ulft_0] -[T_ty]) (spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Deref_base_spec ((place_rfnRT (T_rt)) * gname)%type (T_rt) PtrSynType T_st (REFmutTasDeref_spec_attrs (T_rt))-[] -[(mut_ref ulft_0 T_ty); T_ty])))).
 End REFmutTasDeref_spec.
 
 Section REFmutTasDerefMut_spec.
@@ -5576,7 +5720,7 @@ Section REFmutTasDerefMut_spec.
       |}
   .
   Definition REFmutTasDerefMut_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl DerefMut_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (REFmutTasDerefMut_spec (T_rt) (T_st)) <TY> T_ty <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (DerefMut_base_spec ((place_rfnRT (T_rt)) * gname)%type (T_rt) PtrSynType T_st (REFmutTasDeref_spec_attrs ((T_rt))) (REFmutTasDerefMut_spec_attrs (T_rt))<TY> (mut_ref ulft_0 T_ty) <TY> T_ty <INST!>))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl DerefMut_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (REFmutTasDerefMut_spec (T_rt) (T_st))-[ulft_0] -[T_ty]) (spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((DerefMut_base_spec ((place_rfnRT (T_rt)) * gname)%type (T_rt) PtrSynType T_st (REFmutTasDeref_spec_attrs ((T_rt))) (REFmutTasDerefMut_spec_attrs (T_rt))-[] -[(mut_ref ulft_0 T_ty); T_ty])))).
 End REFmutTasDerefMut_spec.
 
 Section REFu128asAddREFau128_spec.
@@ -5589,7 +5733,7 @@ Section REFu128asAddREFau128_spec.
       |}
   .
   Definition REFu128asAddREFau128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu128asAddREFau128_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U128) REFu128asAddREFau128_spec_attrs<TY> (shr_ref ulft_1 (int U128)) <TY> (shr_ref ulft_a (int U128)) <TY> (int U128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu128asAddREFau128_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U128) REFu128asAddREFau128_spec_attrs-[] -[(shr_ref ulft_1 (int U128)); (shr_ref ulft_a (int U128)); (int U128)])))).
 End REFu128asAddREFau128_spec.
 
 Section REFu128asAddu128_spec.
@@ -5602,7 +5746,7 @@ Section REFu128asAddu128_spec.
       |}
   .
   Definition REFu128asAddu128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu128asAddu128_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U128) (IntSynType U128) REFu128asAddu128_spec_attrs<TY> (shr_ref ulft_0 (int U128)) <TY> (int U128) <TY> (int U128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu128asAddu128_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U128) (IntSynType U128) REFu128asAddu128_spec_attrs-[] -[(shr_ref ulft_0 (int U128)); (int U128); (int U128)])))).
 End REFu128asAddu128_spec.
 
 Section REFu128asMulREFau128_spec.
@@ -5615,7 +5759,7 @@ Section REFu128asMulREFau128_spec.
       |}
   .
   Definition REFu128asMulREFau128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu128asMulREFau128_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U128) REFu128asMulREFau128_spec_attrs<TY> (shr_ref ulft_1 (int U128)) <TY> (shr_ref ulft_a (int U128)) <TY> (int U128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu128asMulREFau128_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U128) REFu128asMulREFau128_spec_attrs-[] -[(shr_ref ulft_1 (int U128)); (shr_ref ulft_a (int U128)); (int U128)])))).
 End REFu128asMulREFau128_spec.
 
 Section REFu128asMulu128_spec.
@@ -5628,7 +5772,7 @@ Section REFu128asMulu128_spec.
       |}
   .
   Definition REFu128asMulu128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu128asMulu128_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U128) (IntSynType U128) REFu128asMulu128_spec_attrs<TY> (shr_ref ulft_0 (int U128)) <TY> (int U128) <TY> (int U128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu128asMulu128_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U128) (IntSynType U128) REFu128asMulu128_spec_attrs-[] -[(shr_ref ulft_0 (int U128)); (int U128); (int U128)])))).
 End REFu128asMulu128_spec.
 
 Section REFu128asSubREFau128_spec.
@@ -5641,7 +5785,7 @@ Section REFu128asSubREFau128_spec.
       |}
   .
   Definition REFu128asSubREFau128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu128asSubREFau128_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U128) REFu128asSubREFau128_spec_attrs<TY> (shr_ref ulft_1 (int U128)) <TY> (shr_ref ulft_a (int U128)) <TY> (int U128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu128asSubREFau128_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U128) REFu128asSubREFau128_spec_attrs-[] -[(shr_ref ulft_1 (int U128)); (shr_ref ulft_a (int U128)); (int U128)])))).
 End REFu128asSubREFau128_spec.
 
 Section REFu128asSubu128_spec.
@@ -5654,7 +5798,7 @@ Section REFu128asSubu128_spec.
       |}
   .
   Definition REFu128asSubu128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu128asSubu128_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U128) (IntSynType U128) REFu128asSubu128_spec_attrs<TY> (shr_ref ulft_0 (int U128)) <TY> (int U128) <TY> (int U128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu128asSubu128_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U128) (IntSynType U128) REFu128asSubu128_spec_attrs-[] -[(shr_ref ulft_0 (int U128)); (int U128); (int U128)])))).
 End REFu128asSubu128_spec.
 
 Section REFu16asAddREFau16_spec.
@@ -5667,7 +5811,7 @@ Section REFu16asAddREFau16_spec.
       |}
   .
   Definition REFu16asAddREFau16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu16asAddREFau16_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U16) REFu16asAddREFau16_spec_attrs<TY> (shr_ref ulft_1 (int U16)) <TY> (shr_ref ulft_a (int U16)) <TY> (int U16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu16asAddREFau16_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U16) REFu16asAddREFau16_spec_attrs-[] -[(shr_ref ulft_1 (int U16)); (shr_ref ulft_a (int U16)); (int U16)])))).
 End REFu16asAddREFau16_spec.
 
 Section REFu16asAddu16_spec.
@@ -5680,7 +5824,7 @@ Section REFu16asAddu16_spec.
       |}
   .
   Definition REFu16asAddu16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu16asAddu16_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U16) (IntSynType U16) REFu16asAddu16_spec_attrs<TY> (shr_ref ulft_0 (int U16)) <TY> (int U16) <TY> (int U16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu16asAddu16_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U16) (IntSynType U16) REFu16asAddu16_spec_attrs-[] -[(shr_ref ulft_0 (int U16)); (int U16); (int U16)])))).
 End REFu16asAddu16_spec.
 
 Section REFu16asMulREFau16_spec.
@@ -5693,7 +5837,7 @@ Section REFu16asMulREFau16_spec.
       |}
   .
   Definition REFu16asMulREFau16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu16asMulREFau16_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U16) REFu16asMulREFau16_spec_attrs<TY> (shr_ref ulft_1 (int U16)) <TY> (shr_ref ulft_a (int U16)) <TY> (int U16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu16asMulREFau16_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U16) REFu16asMulREFau16_spec_attrs-[] -[(shr_ref ulft_1 (int U16)); (shr_ref ulft_a (int U16)); (int U16)])))).
 End REFu16asMulREFau16_spec.
 
 Section REFu16asMulu16_spec.
@@ -5706,7 +5850,7 @@ Section REFu16asMulu16_spec.
       |}
   .
   Definition REFu16asMulu16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu16asMulu16_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U16) (IntSynType U16) REFu16asMulu16_spec_attrs<TY> (shr_ref ulft_0 (int U16)) <TY> (int U16) <TY> (int U16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu16asMulu16_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U16) (IntSynType U16) REFu16asMulu16_spec_attrs-[] -[(shr_ref ulft_0 (int U16)); (int U16); (int U16)])))).
 End REFu16asMulu16_spec.
 
 Section REFu16asSubREFau16_spec.
@@ -5719,7 +5863,7 @@ Section REFu16asSubREFau16_spec.
       |}
   .
   Definition REFu16asSubREFau16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu16asSubREFau16_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U16) REFu16asSubREFau16_spec_attrs<TY> (shr_ref ulft_1 (int U16)) <TY> (shr_ref ulft_a (int U16)) <TY> (int U16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu16asSubREFau16_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U16) REFu16asSubREFau16_spec_attrs-[] -[(shr_ref ulft_1 (int U16)); (shr_ref ulft_a (int U16)); (int U16)])))).
 End REFu16asSubREFau16_spec.
 
 Section REFu16asSubu16_spec.
@@ -5732,7 +5876,7 @@ Section REFu16asSubu16_spec.
       |}
   .
   Definition REFu16asSubu16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu16asSubu16_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U16) (IntSynType U16) REFu16asSubu16_spec_attrs<TY> (shr_ref ulft_0 (int U16)) <TY> (int U16) <TY> (int U16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu16asSubu16_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U16) (IntSynType U16) REFu16asSubu16_spec_attrs-[] -[(shr_ref ulft_0 (int U16)); (int U16); (int U16)])))).
 End REFu16asSubu16_spec.
 
 Section REFu32asAddREFau32_spec.
@@ -5745,7 +5889,7 @@ Section REFu32asAddREFau32_spec.
       |}
   .
   Definition REFu32asAddREFau32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu32asAddREFau32_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U32) REFu32asAddREFau32_spec_attrs<TY> (shr_ref ulft_1 (int U32)) <TY> (shr_ref ulft_a (int U32)) <TY> (int U32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu32asAddREFau32_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U32) REFu32asAddREFau32_spec_attrs-[] -[(shr_ref ulft_1 (int U32)); (shr_ref ulft_a (int U32)); (int U32)])))).
 End REFu32asAddREFau32_spec.
 
 Section REFu32asAddu32_spec.
@@ -5758,7 +5902,7 @@ Section REFu32asAddu32_spec.
       |}
   .
   Definition REFu32asAddu32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu32asAddu32_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U32) (IntSynType U32) REFu32asAddu32_spec_attrs<TY> (shr_ref ulft_0 (int U32)) <TY> (int U32) <TY> (int U32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu32asAddu32_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U32) (IntSynType U32) REFu32asAddu32_spec_attrs-[] -[(shr_ref ulft_0 (int U32)); (int U32); (int U32)])))).
 End REFu32asAddu32_spec.
 
 Section REFu32asMulREFau32_spec.
@@ -5771,7 +5915,7 @@ Section REFu32asMulREFau32_spec.
       |}
   .
   Definition REFu32asMulREFau32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu32asMulREFau32_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U32) REFu32asMulREFau32_spec_attrs<TY> (shr_ref ulft_1 (int U32)) <TY> (shr_ref ulft_a (int U32)) <TY> (int U32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu32asMulREFau32_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U32) REFu32asMulREFau32_spec_attrs-[] -[(shr_ref ulft_1 (int U32)); (shr_ref ulft_a (int U32)); (int U32)])))).
 End REFu32asMulREFau32_spec.
 
 Section REFu32asMulu32_spec.
@@ -5784,7 +5928,7 @@ Section REFu32asMulu32_spec.
       |}
   .
   Definition REFu32asMulu32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu32asMulu32_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U32) (IntSynType U32) REFu32asMulu32_spec_attrs<TY> (shr_ref ulft_0 (int U32)) <TY> (int U32) <TY> (int U32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu32asMulu32_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U32) (IntSynType U32) REFu32asMulu32_spec_attrs-[] -[(shr_ref ulft_0 (int U32)); (int U32); (int U32)])))).
 End REFu32asMulu32_spec.
 
 Section REFu32asSubREFau32_spec.
@@ -5797,7 +5941,7 @@ Section REFu32asSubREFau32_spec.
       |}
   .
   Definition REFu32asSubREFau32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu32asSubREFau32_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U32) REFu32asSubREFau32_spec_attrs<TY> (shr_ref ulft_1 (int U32)) <TY> (shr_ref ulft_a (int U32)) <TY> (int U32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu32asSubREFau32_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U32) REFu32asSubREFau32_spec_attrs-[] -[(shr_ref ulft_1 (int U32)); (shr_ref ulft_a (int U32)); (int U32)])))).
 End REFu32asSubREFau32_spec.
 
 Section REFu32asSubu32_spec.
@@ -5810,7 +5954,7 @@ Section REFu32asSubu32_spec.
       |}
   .
   Definition REFu32asSubu32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu32asSubu32_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U32) (IntSynType U32) REFu32asSubu32_spec_attrs<TY> (shr_ref ulft_0 (int U32)) <TY> (int U32) <TY> (int U32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu32asSubu32_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U32) (IntSynType U32) REFu32asSubu32_spec_attrs-[] -[(shr_ref ulft_0 (int U32)); (int U32); (int U32)])))).
 End REFu32asSubu32_spec.
 
 Section REFu64asAddREFau64_spec.
@@ -5823,7 +5967,7 @@ Section REFu64asAddREFau64_spec.
       |}
   .
   Definition REFu64asAddREFau64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu64asAddREFau64_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U64) REFu64asAddREFau64_spec_attrs<TY> (shr_ref ulft_1 (int U64)) <TY> (shr_ref ulft_a (int U64)) <TY> (int U64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu64asAddREFau64_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U64) REFu64asAddREFau64_spec_attrs-[] -[(shr_ref ulft_1 (int U64)); (shr_ref ulft_a (int U64)); (int U64)])))).
 End REFu64asAddREFau64_spec.
 
 Section REFu64asAddu64_spec.
@@ -5836,7 +5980,7 @@ Section REFu64asAddu64_spec.
       |}
   .
   Definition REFu64asAddu64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu64asAddu64_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U64) (IntSynType U64) REFu64asAddu64_spec_attrs<TY> (shr_ref ulft_0 (int U64)) <TY> (int U64) <TY> (int U64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu64asAddu64_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U64) (IntSynType U64) REFu64asAddu64_spec_attrs-[] -[(shr_ref ulft_0 (int U64)); (int U64); (int U64)])))).
 End REFu64asAddu64_spec.
 
 Section REFu64asMulREFau64_spec.
@@ -5849,7 +5993,7 @@ Section REFu64asMulREFau64_spec.
       |}
   .
   Definition REFu64asMulREFau64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu64asMulREFau64_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U64) REFu64asMulREFau64_spec_attrs<TY> (shr_ref ulft_1 (int U64)) <TY> (shr_ref ulft_a (int U64)) <TY> (int U64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu64asMulREFau64_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U64) REFu64asMulREFau64_spec_attrs-[] -[(shr_ref ulft_1 (int U64)); (shr_ref ulft_a (int U64)); (int U64)])))).
 End REFu64asMulREFau64_spec.
 
 Section REFu64asMulu64_spec.
@@ -5862,7 +6006,7 @@ Section REFu64asMulu64_spec.
       |}
   .
   Definition REFu64asMulu64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu64asMulu64_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U64) (IntSynType U64) REFu64asMulu64_spec_attrs<TY> (shr_ref ulft_0 (int U64)) <TY> (int U64) <TY> (int U64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu64asMulu64_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U64) (IntSynType U64) REFu64asMulu64_spec_attrs-[] -[(shr_ref ulft_0 (int U64)); (int U64); (int U64)])))).
 End REFu64asMulu64_spec.
 
 Section REFu64asSubREFau64_spec.
@@ -5875,7 +6019,7 @@ Section REFu64asSubREFau64_spec.
       |}
   .
   Definition REFu64asSubREFau64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu64asSubREFau64_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U64) REFu64asSubREFau64_spec_attrs<TY> (shr_ref ulft_1 (int U64)) <TY> (shr_ref ulft_a (int U64)) <TY> (int U64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu64asSubREFau64_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U64) REFu64asSubREFau64_spec_attrs-[] -[(shr_ref ulft_1 (int U64)); (shr_ref ulft_a (int U64)); (int U64)])))).
 End REFu64asSubREFau64_spec.
 
 Section REFu64asSubu64_spec.
@@ -5888,7 +6032,7 @@ Section REFu64asSubu64_spec.
       |}
   .
   Definition REFu64asSubu64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu64asSubu64_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U64) (IntSynType U64) REFu64asSubu64_spec_attrs<TY> (shr_ref ulft_0 (int U64)) <TY> (int U64) <TY> (int U64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu64asSubu64_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U64) (IntSynType U64) REFu64asSubu64_spec_attrs-[] -[(shr_ref ulft_0 (int U64)); (int U64); (int U64)])))).
 End REFu64asSubu64_spec.
 
 Section REFu8asAddREFau8_spec.
@@ -5901,7 +6045,7 @@ Section REFu8asAddREFau8_spec.
       |}
   .
   Definition REFu8asAddREFau8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu8asAddREFau8_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U8) REFu8asAddREFau8_spec_attrs<TY> (shr_ref ulft_1 (int U8)) <TY> (shr_ref ulft_a (int U8)) <TY> (int U8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu8asAddREFau8_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U8) REFu8asAddREFau8_spec_attrs-[] -[(shr_ref ulft_1 (int U8)); (shr_ref ulft_a (int U8)); (int U8)])))).
 End REFu8asAddREFau8_spec.
 
 Section REFu8asAddu8_spec.
@@ -5914,7 +6058,7 @@ Section REFu8asAddu8_spec.
       |}
   .
   Definition REFu8asAddu8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu8asAddu8_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U8) (IntSynType U8) REFu8asAddu8_spec_attrs<TY> (shr_ref ulft_0 (int U8)) <TY> (int U8) <TY> (int U8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu8asAddu8_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U8) (IntSynType U8) REFu8asAddu8_spec_attrs-[] -[(shr_ref ulft_0 (int U8)); (int U8); (int U8)])))).
 End REFu8asAddu8_spec.
 
 Section REFu8asMulREFau8_spec.
@@ -5927,7 +6071,7 @@ Section REFu8asMulREFau8_spec.
       |}
   .
   Definition REFu8asMulREFau8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu8asMulREFau8_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U8) REFu8asMulREFau8_spec_attrs<TY> (shr_ref ulft_1 (int U8)) <TY> (shr_ref ulft_a (int U8)) <TY> (int U8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu8asMulREFau8_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U8) REFu8asMulREFau8_spec_attrs-[] -[(shr_ref ulft_1 (int U8)); (shr_ref ulft_a (int U8)); (int U8)])))).
 End REFu8asMulREFau8_spec.
 
 Section REFu8asMulu8_spec.
@@ -5940,7 +6084,7 @@ Section REFu8asMulu8_spec.
       |}
   .
   Definition REFu8asMulu8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu8asMulu8_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U8) (IntSynType U8) REFu8asMulu8_spec_attrs<TY> (shr_ref ulft_0 (int U8)) <TY> (int U8) <TY> (int U8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu8asMulu8_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U8) (IntSynType U8) REFu8asMulu8_spec_attrs-[] -[(shr_ref ulft_0 (int U8)); (int U8); (int U8)])))).
 End REFu8asMulu8_spec.
 
 Section REFu8asSubREFau8_spec.
@@ -5953,7 +6097,7 @@ Section REFu8asSubREFau8_spec.
       |}
   .
   Definition REFu8asSubREFau8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu8asSubREFau8_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U8) REFu8asSubREFau8_spec_attrs<TY> (shr_ref ulft_1 (int U8)) <TY> (shr_ref ulft_a (int U8)) <TY> (int U8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFu8asSubREFau8_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType U8) REFu8asSubREFau8_spec_attrs-[] -[(shr_ref ulft_1 (int U8)); (shr_ref ulft_a (int U8)); (int U8)])))).
 End REFu8asSubREFau8_spec.
 
 Section REFu8asSubu8_spec.
@@ -5966,7 +6110,7 @@ Section REFu8asSubu8_spec.
       |}
   .
   Definition REFu8asSubu8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu8asSubu8_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U8) (IntSynType U8) REFu8asSubu8_spec_attrs<TY> (shr_ref ulft_0 (int U8)) <TY> (int U8) <TY> (int U8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFu8asSubu8_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType U8) (IntSynType U8) REFu8asSubu8_spec_attrs-[] -[(shr_ref ulft_0 (int U8)); (int U8); (int U8)])))).
 End REFu8asSubu8_spec.
 
 Section REFusizeasAddREFausize_spec.
@@ -5979,7 +6123,7 @@ Section REFusizeasAddREFausize_spec.
       |}
   .
   Definition REFusizeasAddREFausize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFusizeasAddREFausize_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType USize) REFusizeasAddREFausize_spec_attrs<TY> (shr_ref ulft_1 (int USize)) <TY> (shr_ref ulft_a (int USize)) <TY> (int USize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFusizeasAddREFausize_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType USize) REFusizeasAddREFausize_spec_attrs-[] -[(shr_ref ulft_1 (int USize)); (shr_ref ulft_a (int USize)); (int USize)])))).
 End REFusizeasAddREFausize_spec.
 
 Section REFusizeasAddusize_spec.
@@ -5992,7 +6136,7 @@ Section REFusizeasAddusize_spec.
       |}
   .
   Definition REFusizeasAddusize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFusizeasAddusize_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType USize) (IntSynType USize) REFusizeasAddusize_spec_attrs<TY> (shr_ref ulft_0 (int USize)) <TY> (int USize) <TY> (int USize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFusizeasAddusize_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType USize) (IntSynType USize) REFusizeasAddusize_spec_attrs-[] -[(shr_ref ulft_0 (int USize)); (int USize); (int USize)])))).
 End REFusizeasAddusize_spec.
 
 Section REFusizeasMulREFausize_spec.
@@ -6005,7 +6149,7 @@ Section REFusizeasMulREFausize_spec.
       |}
   .
   Definition REFusizeasMulREFausize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFusizeasMulREFausize_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType USize) REFusizeasMulREFausize_spec_attrs<TY> (shr_ref ulft_1 (int USize)) <TY> (shr_ref ulft_a (int USize)) <TY> (int USize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFusizeasMulREFausize_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType USize) REFusizeasMulREFausize_spec_attrs-[] -[(shr_ref ulft_1 (int USize)); (shr_ref ulft_a (int USize)); (int USize)])))).
 End REFusizeasMulREFausize_spec.
 
 Section REFusizeasMulusize_spec.
@@ -6018,7 +6162,7 @@ Section REFusizeasMulusize_spec.
       |}
   .
   Definition REFusizeasMulusize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFusizeasMulusize_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType USize) (IntSynType USize) REFusizeasMulusize_spec_attrs<TY> (shr_ref ulft_0 (int USize)) <TY> (int USize) <TY> (int USize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFusizeasMulusize_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType USize) (IntSynType USize) REFusizeasMulusize_spec_attrs-[] -[(shr_ref ulft_0 (int USize)); (int USize); (int USize)])))).
 End REFusizeasMulusize_spec.
 
 Section REFusizeasSubREFausize_spec.
@@ -6031,7 +6175,7 @@ Section REFusizeasSubREFausize_spec.
       |}
   .
   Definition REFusizeasSubREFausize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFusizeasSubREFausize_spec <LFT> ulft_a <LFT> ulft_1 <INST!>) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType USize) REFusizeasSubREFausize_spec_attrs<TY> (shr_ref ulft_1 (int USize)) <TY> (shr_ref ulft_a (int USize)) <TY> (int USize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), REFusizeasSubREFausize_spec-[ulft_a; ulft_1] -[]) (spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) (place_rfnRT Z) Z PtrSynType PtrSynType (IntSynType USize) REFusizeasSubREFausize_spec_attrs-[] -[(shr_ref ulft_1 (int USize)); (shr_ref ulft_a (int USize)); (int USize)])))).
 End REFusizeasSubREFausize_spec.
 
 Section REFusizeasSubusize_spec.
@@ -6044,7 +6188,7 @@ Section REFusizeasSubusize_spec.
       |}
   .
   Definition REFusizeasSubusize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFusizeasSubusize_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType USize) (IntSynType USize) REFusizeasSubusize_spec_attrs<TY> (shr_ref ulft_0 (int USize)) <TY> (int USize) <TY> (int USize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), REFusizeasSubusize_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec (place_rfnRT Z) Z Z PtrSynType (IntSynType USize) (IntSynType USize) REFusizeasSubusize_spec_attrs-[] -[(shr_ref ulft_0 (int USize)); (int USize); (int USize)])))).
 End REFusizeasSubusize_spec.
 
 Section i128asAddREFai128_spec.
@@ -6057,7 +6201,7 @@ Section i128asAddREFai128_spec.
       |}
   .
   Definition i128asAddREFai128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i128asAddREFai128_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec Z (place_rfnRT Z) Z (IntSynType I128) PtrSynType (IntSynType I128) i128asAddREFai128_spec_attrs<TY> (int I128) <TY> (shr_ref ulft_a (int I128)) <TY> (int I128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i128asAddREFai128_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z (place_rfnRT Z) Z (IntSynType I128) PtrSynType (IntSynType I128) i128asAddREFai128_spec_attrs-[] -[(int I128); (shr_ref ulft_a (int I128)); (int I128)])))).
 End i128asAddREFai128_spec.
 
 Section i128asAdd_spec.
@@ -6070,7 +6214,7 @@ Section i128asAdd_spec.
       |}
   .
   Definition i128asAdd_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i128asAdd_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Add_base_spec Z Z Z (IntSynType I128) (IntSynType I128) (IntSynType I128) i128asAdd_spec_attrs<TY> (int I128) <TY> (int I128) <TY> (int I128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i128asAdd_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z Z Z (IntSynType I128) (IntSynType I128) (IntSynType I128) i128asAdd_spec_attrs-[] -[(int I128); (int I128); (int I128)])))).
 End i128asAdd_spec.
 
 Section i128asAddAssignREFi128_spec.
@@ -6083,7 +6227,7 @@ Section i128asAddAssignREFi128_spec.
       |}
   .
   Definition i128asAddAssignREFi128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i128asAddAssignREFi128_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z (place_rfnRT Z) (IntSynType I128) PtrSynType i128asAddAssignREFi128_spec_attrs<TY> (int I128) <TY> (shr_ref ulft_0 (int I128)) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i128asAddAssignREFi128_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z (place_rfnRT Z) (IntSynType I128) PtrSynType i128asAddAssignREFi128_spec_attrs-[] -[(int I128); (shr_ref ulft_0 (int I128))])))).
 End i128asAddAssignREFi128_spec.
 
 Section i128asAddAssign_spec.
@@ -6096,7 +6240,7 @@ Section i128asAddAssign_spec.
       |}
   .
   Definition i128asAddAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i128asAddAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z Z (IntSynType I128) (IntSynType I128) i128asAddAssign_spec_attrs<TY> (int I128) <TY> (int I128) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i128asAddAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z Z (IntSynType I128) (IntSynType I128) i128asAddAssign_spec_attrs-[] -[(int I128); (int I128)])))).
 End i128asAddAssign_spec.
 
 Section i128asMulREFai128_spec.
@@ -6109,7 +6253,7 @@ Section i128asMulREFai128_spec.
       |}
   .
   Definition i128asMulREFai128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i128asMulREFai128_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec Z (place_rfnRT Z) Z (IntSynType I128) PtrSynType (IntSynType I128) i128asMulREFai128_spec_attrs<TY> (int I128) <TY> (shr_ref ulft_a (int I128)) <TY> (int I128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i128asMulREFai128_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z (place_rfnRT Z) Z (IntSynType I128) PtrSynType (IntSynType I128) i128asMulREFai128_spec_attrs-[] -[(int I128); (shr_ref ulft_a (int I128)); (int I128)])))).
 End i128asMulREFai128_spec.
 
 Section i128asMul_spec.
@@ -6122,7 +6266,7 @@ Section i128asMul_spec.
       |}
   .
   Definition i128asMul_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i128asMul_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Mul_base_spec Z Z Z (IntSynType I128) (IntSynType I128) (IntSynType I128) i128asMul_spec_attrs<TY> (int I128) <TY> (int I128) <TY> (int I128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i128asMul_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z Z Z (IntSynType I128) (IntSynType I128) (IntSynType I128) i128asMul_spec_attrs-[] -[(int I128); (int I128); (int I128)])))).
 End i128asMul_spec.
 
 Section i128asMulAssignREFi128_spec.
@@ -6135,7 +6279,7 @@ Section i128asMulAssignREFi128_spec.
       |}
   .
   Definition i128asMulAssignREFi128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i128asMulAssignREFi128_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z (place_rfnRT Z) (IntSynType I128) PtrSynType i128asMulAssignREFi128_spec_attrs<TY> (int I128) <TY> (shr_ref ulft_0 (int I128)) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i128asMulAssignREFi128_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z (place_rfnRT Z) (IntSynType I128) PtrSynType i128asMulAssignREFi128_spec_attrs-[] -[(int I128); (shr_ref ulft_0 (int I128))])))).
 End i128asMulAssignREFi128_spec.
 
 Section i128asMulAssign_spec.
@@ -6148,7 +6292,7 @@ Section i128asMulAssign_spec.
       |}
   .
   Definition i128asMulAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i128asMulAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z Z (IntSynType I128) (IntSynType I128) i128asMulAssign_spec_attrs<TY> (int I128) <TY> (int I128) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i128asMulAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z Z (IntSynType I128) (IntSynType I128) i128asMulAssign_spec_attrs-[] -[(int I128); (int I128)])))).
 End i128asMulAssign_spec.
 
 Section i128asSubREFai128_spec.
@@ -6161,7 +6305,7 @@ Section i128asSubREFai128_spec.
       |}
   .
   Definition i128asSubREFai128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i128asSubREFai128_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec Z (place_rfnRT Z) Z (IntSynType I128) PtrSynType (IntSynType I128) i128asSubREFai128_spec_attrs<TY> (int I128) <TY> (shr_ref ulft_a (int I128)) <TY> (int I128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i128asSubREFai128_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z (place_rfnRT Z) Z (IntSynType I128) PtrSynType (IntSynType I128) i128asSubREFai128_spec_attrs-[] -[(int I128); (shr_ref ulft_a (int I128)); (int I128)])))).
 End i128asSubREFai128_spec.
 
 Section i128asSub_spec.
@@ -6174,7 +6318,7 @@ Section i128asSub_spec.
       |}
   .
   Definition i128asSub_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i128asSub_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Sub_base_spec Z Z Z (IntSynType I128) (IntSynType I128) (IntSynType I128) i128asSub_spec_attrs<TY> (int I128) <TY> (int I128) <TY> (int I128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i128asSub_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z Z Z (IntSynType I128) (IntSynType I128) (IntSynType I128) i128asSub_spec_attrs-[] -[(int I128); (int I128); (int I128)])))).
 End i128asSub_spec.
 
 Section i128asSubAssignREFi128_spec.
@@ -6187,7 +6331,7 @@ Section i128asSubAssignREFi128_spec.
       |}
   .
   Definition i128asSubAssignREFi128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i128asSubAssignREFi128_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z (place_rfnRT Z) (IntSynType I128) PtrSynType i128asSubAssignREFi128_spec_attrs<TY> (int I128) <TY> (shr_ref ulft_0 (int I128)) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i128asSubAssignREFi128_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z (place_rfnRT Z) (IntSynType I128) PtrSynType i128asSubAssignREFi128_spec_attrs-[] -[(int I128); (shr_ref ulft_0 (int I128))])))).
 End i128asSubAssignREFi128_spec.
 
 Section i128asSubAssign_spec.
@@ -6200,7 +6344,7 @@ Section i128asSubAssign_spec.
       |}
   .
   Definition i128asSubAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i128asSubAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z Z (IntSynType I128) (IntSynType I128) i128asSubAssign_spec_attrs<TY> (int I128) <TY> (int I128) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i128asSubAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z Z (IntSynType I128) (IntSynType I128) i128asSubAssign_spec_attrs-[] -[(int I128); (int I128)])))).
 End i128asSubAssign_spec.
 
 Section i16asAddREFai16_spec.
@@ -6213,7 +6357,7 @@ Section i16asAddREFai16_spec.
       |}
   .
   Definition i16asAddREFai16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i16asAddREFai16_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec Z (place_rfnRT Z) Z (IntSynType I16) PtrSynType (IntSynType I16) i16asAddREFai16_spec_attrs<TY> (int I16) <TY> (shr_ref ulft_a (int I16)) <TY> (int I16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i16asAddREFai16_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z (place_rfnRT Z) Z (IntSynType I16) PtrSynType (IntSynType I16) i16asAddREFai16_spec_attrs-[] -[(int I16); (shr_ref ulft_a (int I16)); (int I16)])))).
 End i16asAddREFai16_spec.
 
 Section i16asAdd_spec.
@@ -6226,7 +6370,7 @@ Section i16asAdd_spec.
       |}
   .
   Definition i16asAdd_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i16asAdd_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Add_base_spec Z Z Z (IntSynType I16) (IntSynType I16) (IntSynType I16) i16asAdd_spec_attrs<TY> (int I16) <TY> (int I16) <TY> (int I16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i16asAdd_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z Z Z (IntSynType I16) (IntSynType I16) (IntSynType I16) i16asAdd_spec_attrs-[] -[(int I16); (int I16); (int I16)])))).
 End i16asAdd_spec.
 
 Section i16asAddAssignREFi16_spec.
@@ -6239,7 +6383,7 @@ Section i16asAddAssignREFi16_spec.
       |}
   .
   Definition i16asAddAssignREFi16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i16asAddAssignREFi16_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z (place_rfnRT Z) (IntSynType I16) PtrSynType i16asAddAssignREFi16_spec_attrs<TY> (int I16) <TY> (shr_ref ulft_0 (int I16)) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i16asAddAssignREFi16_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z (place_rfnRT Z) (IntSynType I16) PtrSynType i16asAddAssignREFi16_spec_attrs-[] -[(int I16); (shr_ref ulft_0 (int I16))])))).
 End i16asAddAssignREFi16_spec.
 
 Section i16asAddAssign_spec.
@@ -6252,7 +6396,7 @@ Section i16asAddAssign_spec.
       |}
   .
   Definition i16asAddAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i16asAddAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z Z (IntSynType I16) (IntSynType I16) i16asAddAssign_spec_attrs<TY> (int I16) <TY> (int I16) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i16asAddAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z Z (IntSynType I16) (IntSynType I16) i16asAddAssign_spec_attrs-[] -[(int I16); (int I16)])))).
 End i16asAddAssign_spec.
 
 Section i16asMulREFai16_spec.
@@ -6265,7 +6409,7 @@ Section i16asMulREFai16_spec.
       |}
   .
   Definition i16asMulREFai16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i16asMulREFai16_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec Z (place_rfnRT Z) Z (IntSynType I16) PtrSynType (IntSynType I16) i16asMulREFai16_spec_attrs<TY> (int I16) <TY> (shr_ref ulft_a (int I16)) <TY> (int I16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i16asMulREFai16_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z (place_rfnRT Z) Z (IntSynType I16) PtrSynType (IntSynType I16) i16asMulREFai16_spec_attrs-[] -[(int I16); (shr_ref ulft_a (int I16)); (int I16)])))).
 End i16asMulREFai16_spec.
 
 Section i16asMul_spec.
@@ -6278,7 +6422,7 @@ Section i16asMul_spec.
       |}
   .
   Definition i16asMul_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i16asMul_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Mul_base_spec Z Z Z (IntSynType I16) (IntSynType I16) (IntSynType I16) i16asMul_spec_attrs<TY> (int I16) <TY> (int I16) <TY> (int I16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i16asMul_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z Z Z (IntSynType I16) (IntSynType I16) (IntSynType I16) i16asMul_spec_attrs-[] -[(int I16); (int I16); (int I16)])))).
 End i16asMul_spec.
 
 Section i16asMulAssignREFi16_spec.
@@ -6291,7 +6435,7 @@ Section i16asMulAssignREFi16_spec.
       |}
   .
   Definition i16asMulAssignREFi16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i16asMulAssignREFi16_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z (place_rfnRT Z) (IntSynType I16) PtrSynType i16asMulAssignREFi16_spec_attrs<TY> (int I16) <TY> (shr_ref ulft_0 (int I16)) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i16asMulAssignREFi16_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z (place_rfnRT Z) (IntSynType I16) PtrSynType i16asMulAssignREFi16_spec_attrs-[] -[(int I16); (shr_ref ulft_0 (int I16))])))).
 End i16asMulAssignREFi16_spec.
 
 Section i16asMulAssign_spec.
@@ -6304,7 +6448,7 @@ Section i16asMulAssign_spec.
       |}
   .
   Definition i16asMulAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i16asMulAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z Z (IntSynType I16) (IntSynType I16) i16asMulAssign_spec_attrs<TY> (int I16) <TY> (int I16) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i16asMulAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z Z (IntSynType I16) (IntSynType I16) i16asMulAssign_spec_attrs-[] -[(int I16); (int I16)])))).
 End i16asMulAssign_spec.
 
 Section i16asSubREFai16_spec.
@@ -6317,7 +6461,7 @@ Section i16asSubREFai16_spec.
       |}
   .
   Definition i16asSubREFai16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i16asSubREFai16_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec Z (place_rfnRT Z) Z (IntSynType I16) PtrSynType (IntSynType I16) i16asSubREFai16_spec_attrs<TY> (int I16) <TY> (shr_ref ulft_a (int I16)) <TY> (int I16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i16asSubREFai16_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z (place_rfnRT Z) Z (IntSynType I16) PtrSynType (IntSynType I16) i16asSubREFai16_spec_attrs-[] -[(int I16); (shr_ref ulft_a (int I16)); (int I16)])))).
 End i16asSubREFai16_spec.
 
 Section i16asSub_spec.
@@ -6330,7 +6474,7 @@ Section i16asSub_spec.
       |}
   .
   Definition i16asSub_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i16asSub_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Sub_base_spec Z Z Z (IntSynType I16) (IntSynType I16) (IntSynType I16) i16asSub_spec_attrs<TY> (int I16) <TY> (int I16) <TY> (int I16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i16asSub_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z Z Z (IntSynType I16) (IntSynType I16) (IntSynType I16) i16asSub_spec_attrs-[] -[(int I16); (int I16); (int I16)])))).
 End i16asSub_spec.
 
 Section i16asSubAssignREFi16_spec.
@@ -6343,7 +6487,7 @@ Section i16asSubAssignREFi16_spec.
       |}
   .
   Definition i16asSubAssignREFi16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i16asSubAssignREFi16_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z (place_rfnRT Z) (IntSynType I16) PtrSynType i16asSubAssignREFi16_spec_attrs<TY> (int I16) <TY> (shr_ref ulft_0 (int I16)) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i16asSubAssignREFi16_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z (place_rfnRT Z) (IntSynType I16) PtrSynType i16asSubAssignREFi16_spec_attrs-[] -[(int I16); (shr_ref ulft_0 (int I16))])))).
 End i16asSubAssignREFi16_spec.
 
 Section i16asSubAssign_spec.
@@ -6356,7 +6500,7 @@ Section i16asSubAssign_spec.
       |}
   .
   Definition i16asSubAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i16asSubAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z Z (IntSynType I16) (IntSynType I16) i16asSubAssign_spec_attrs<TY> (int I16) <TY> (int I16) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i16asSubAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z Z (IntSynType I16) (IntSynType I16) i16asSubAssign_spec_attrs-[] -[(int I16); (int I16)])))).
 End i16asSubAssign_spec.
 
 Section i32asAddREFai32_spec.
@@ -6369,7 +6513,7 @@ Section i32asAddREFai32_spec.
       |}
   .
   Definition i32asAddREFai32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i32asAddREFai32_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec Z (place_rfnRT Z) Z (IntSynType I32) PtrSynType (IntSynType I32) i32asAddREFai32_spec_attrs<TY> (int I32) <TY> (shr_ref ulft_a (int I32)) <TY> (int I32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i32asAddREFai32_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z (place_rfnRT Z) Z (IntSynType I32) PtrSynType (IntSynType I32) i32asAddREFai32_spec_attrs-[] -[(int I32); (shr_ref ulft_a (int I32)); (int I32)])))).
 End i32asAddREFai32_spec.
 
 Section i32asAdd_spec.
@@ -6382,7 +6526,7 @@ Section i32asAdd_spec.
       |}
   .
   Definition i32asAdd_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i32asAdd_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Add_base_spec Z Z Z (IntSynType I32) (IntSynType I32) (IntSynType I32) i32asAdd_spec_attrs<TY> (int I32) <TY> (int I32) <TY> (int I32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i32asAdd_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z Z Z (IntSynType I32) (IntSynType I32) (IntSynType I32) i32asAdd_spec_attrs-[] -[(int I32); (int I32); (int I32)])))).
 End i32asAdd_spec.
 
 Section i32asAddAssignREFi32_spec.
@@ -6395,7 +6539,7 @@ Section i32asAddAssignREFi32_spec.
       |}
   .
   Definition i32asAddAssignREFi32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i32asAddAssignREFi32_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z (place_rfnRT Z) (IntSynType I32) PtrSynType i32asAddAssignREFi32_spec_attrs<TY> (int I32) <TY> (shr_ref ulft_0 (int I32)) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i32asAddAssignREFi32_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z (place_rfnRT Z) (IntSynType I32) PtrSynType i32asAddAssignREFi32_spec_attrs-[] -[(int I32); (shr_ref ulft_0 (int I32))])))).
 End i32asAddAssignREFi32_spec.
 
 Section i32asAddAssign_spec.
@@ -6408,7 +6552,7 @@ Section i32asAddAssign_spec.
       |}
   .
   Definition i32asAddAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i32asAddAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z Z (IntSynType I32) (IntSynType I32) i32asAddAssign_spec_attrs<TY> (int I32) <TY> (int I32) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i32asAddAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z Z (IntSynType I32) (IntSynType I32) i32asAddAssign_spec_attrs-[] -[(int I32); (int I32)])))).
 End i32asAddAssign_spec.
 
 Section i32asMulREFai32_spec.
@@ -6421,7 +6565,7 @@ Section i32asMulREFai32_spec.
       |}
   .
   Definition i32asMulREFai32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i32asMulREFai32_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec Z (place_rfnRT Z) Z (IntSynType I32) PtrSynType (IntSynType I32) i32asMulREFai32_spec_attrs<TY> (int I32) <TY> (shr_ref ulft_a (int I32)) <TY> (int I32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i32asMulREFai32_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z (place_rfnRT Z) Z (IntSynType I32) PtrSynType (IntSynType I32) i32asMulREFai32_spec_attrs-[] -[(int I32); (shr_ref ulft_a (int I32)); (int I32)])))).
 End i32asMulREFai32_spec.
 
 Section i32asMul_spec.
@@ -6434,7 +6578,7 @@ Section i32asMul_spec.
       |}
   .
   Definition i32asMul_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i32asMul_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Mul_base_spec Z Z Z (IntSynType I32) (IntSynType I32) (IntSynType I32) i32asMul_spec_attrs<TY> (int I32) <TY> (int I32) <TY> (int I32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i32asMul_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z Z Z (IntSynType I32) (IntSynType I32) (IntSynType I32) i32asMul_spec_attrs-[] -[(int I32); (int I32); (int I32)])))).
 End i32asMul_spec.
 
 Section i32asMulAssignREFi32_spec.
@@ -6447,7 +6591,7 @@ Section i32asMulAssignREFi32_spec.
       |}
   .
   Definition i32asMulAssignREFi32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i32asMulAssignREFi32_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z (place_rfnRT Z) (IntSynType I32) PtrSynType i32asMulAssignREFi32_spec_attrs<TY> (int I32) <TY> (shr_ref ulft_0 (int I32)) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i32asMulAssignREFi32_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z (place_rfnRT Z) (IntSynType I32) PtrSynType i32asMulAssignREFi32_spec_attrs-[] -[(int I32); (shr_ref ulft_0 (int I32))])))).
 End i32asMulAssignREFi32_spec.
 
 Section i32asMulAssign_spec.
@@ -6460,7 +6604,7 @@ Section i32asMulAssign_spec.
       |}
   .
   Definition i32asMulAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i32asMulAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z Z (IntSynType I32) (IntSynType I32) i32asMulAssign_spec_attrs<TY> (int I32) <TY> (int I32) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i32asMulAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z Z (IntSynType I32) (IntSynType I32) i32asMulAssign_spec_attrs-[] -[(int I32); (int I32)])))).
 End i32asMulAssign_spec.
 
 Section i32asSubREFai32_spec.
@@ -6473,7 +6617,7 @@ Section i32asSubREFai32_spec.
       |}
   .
   Definition i32asSubREFai32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i32asSubREFai32_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec Z (place_rfnRT Z) Z (IntSynType I32) PtrSynType (IntSynType I32) i32asSubREFai32_spec_attrs<TY> (int I32) <TY> (shr_ref ulft_a (int I32)) <TY> (int I32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i32asSubREFai32_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z (place_rfnRT Z) Z (IntSynType I32) PtrSynType (IntSynType I32) i32asSubREFai32_spec_attrs-[] -[(int I32); (shr_ref ulft_a (int I32)); (int I32)])))).
 End i32asSubREFai32_spec.
 
 Section i32asSub_spec.
@@ -6486,7 +6630,7 @@ Section i32asSub_spec.
       |}
   .
   Definition i32asSub_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i32asSub_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Sub_base_spec Z Z Z (IntSynType I32) (IntSynType I32) (IntSynType I32) i32asSub_spec_attrs<TY> (int I32) <TY> (int I32) <TY> (int I32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i32asSub_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z Z Z (IntSynType I32) (IntSynType I32) (IntSynType I32) i32asSub_spec_attrs-[] -[(int I32); (int I32); (int I32)])))).
 End i32asSub_spec.
 
 Section i32asSubAssignREFi32_spec.
@@ -6499,7 +6643,7 @@ Section i32asSubAssignREFi32_spec.
       |}
   .
   Definition i32asSubAssignREFi32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i32asSubAssignREFi32_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z (place_rfnRT Z) (IntSynType I32) PtrSynType i32asSubAssignREFi32_spec_attrs<TY> (int I32) <TY> (shr_ref ulft_0 (int I32)) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i32asSubAssignREFi32_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z (place_rfnRT Z) (IntSynType I32) PtrSynType i32asSubAssignREFi32_spec_attrs-[] -[(int I32); (shr_ref ulft_0 (int I32))])))).
 End i32asSubAssignREFi32_spec.
 
 Section i32asSubAssign_spec.
@@ -6512,7 +6656,7 @@ Section i32asSubAssign_spec.
       |}
   .
   Definition i32asSubAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i32asSubAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z Z (IntSynType I32) (IntSynType I32) i32asSubAssign_spec_attrs<TY> (int I32) <TY> (int I32) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i32asSubAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z Z (IntSynType I32) (IntSynType I32) i32asSubAssign_spec_attrs-[] -[(int I32); (int I32)])))).
 End i32asSubAssign_spec.
 
 Section i64asAddREFai64_spec.
@@ -6525,7 +6669,7 @@ Section i64asAddREFai64_spec.
       |}
   .
   Definition i64asAddREFai64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i64asAddREFai64_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec Z (place_rfnRT Z) Z (IntSynType I64) PtrSynType (IntSynType I64) i64asAddREFai64_spec_attrs<TY> (int I64) <TY> (shr_ref ulft_a (int I64)) <TY> (int I64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i64asAddREFai64_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z (place_rfnRT Z) Z (IntSynType I64) PtrSynType (IntSynType I64) i64asAddREFai64_spec_attrs-[] -[(int I64); (shr_ref ulft_a (int I64)); (int I64)])))).
 End i64asAddREFai64_spec.
 
 Section i64asAdd_spec.
@@ -6538,7 +6682,7 @@ Section i64asAdd_spec.
       |}
   .
   Definition i64asAdd_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i64asAdd_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Add_base_spec Z Z Z (IntSynType I64) (IntSynType I64) (IntSynType I64) i64asAdd_spec_attrs<TY> (int I64) <TY> (int I64) <TY> (int I64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i64asAdd_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z Z Z (IntSynType I64) (IntSynType I64) (IntSynType I64) i64asAdd_spec_attrs-[] -[(int I64); (int I64); (int I64)])))).
 End i64asAdd_spec.
 
 Section i64asAddAssignREFi64_spec.
@@ -6551,7 +6695,7 @@ Section i64asAddAssignREFi64_spec.
       |}
   .
   Definition i64asAddAssignREFi64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i64asAddAssignREFi64_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z (place_rfnRT Z) (IntSynType I64) PtrSynType i64asAddAssignREFi64_spec_attrs<TY> (int I64) <TY> (shr_ref ulft_0 (int I64)) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i64asAddAssignREFi64_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z (place_rfnRT Z) (IntSynType I64) PtrSynType i64asAddAssignREFi64_spec_attrs-[] -[(int I64); (shr_ref ulft_0 (int I64))])))).
 End i64asAddAssignREFi64_spec.
 
 Section i64asAddAssign_spec.
@@ -6564,7 +6708,7 @@ Section i64asAddAssign_spec.
       |}
   .
   Definition i64asAddAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i64asAddAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z Z (IntSynType I64) (IntSynType I64) i64asAddAssign_spec_attrs<TY> (int I64) <TY> (int I64) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i64asAddAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z Z (IntSynType I64) (IntSynType I64) i64asAddAssign_spec_attrs-[] -[(int I64); (int I64)])))).
 End i64asAddAssign_spec.
 
 Section i64asMulREFai64_spec.
@@ -6577,7 +6721,7 @@ Section i64asMulREFai64_spec.
       |}
   .
   Definition i64asMulREFai64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i64asMulREFai64_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec Z (place_rfnRT Z) Z (IntSynType I64) PtrSynType (IntSynType I64) i64asMulREFai64_spec_attrs<TY> (int I64) <TY> (shr_ref ulft_a (int I64)) <TY> (int I64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i64asMulREFai64_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z (place_rfnRT Z) Z (IntSynType I64) PtrSynType (IntSynType I64) i64asMulREFai64_spec_attrs-[] -[(int I64); (shr_ref ulft_a (int I64)); (int I64)])))).
 End i64asMulREFai64_spec.
 
 Section i64asMul_spec.
@@ -6590,7 +6734,7 @@ Section i64asMul_spec.
       |}
   .
   Definition i64asMul_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i64asMul_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Mul_base_spec Z Z Z (IntSynType I64) (IntSynType I64) (IntSynType I64) i64asMul_spec_attrs<TY> (int I64) <TY> (int I64) <TY> (int I64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i64asMul_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z Z Z (IntSynType I64) (IntSynType I64) (IntSynType I64) i64asMul_spec_attrs-[] -[(int I64); (int I64); (int I64)])))).
 End i64asMul_spec.
 
 Section i64asMulAssignREFi64_spec.
@@ -6603,7 +6747,7 @@ Section i64asMulAssignREFi64_spec.
       |}
   .
   Definition i64asMulAssignREFi64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i64asMulAssignREFi64_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z (place_rfnRT Z) (IntSynType I64) PtrSynType i64asMulAssignREFi64_spec_attrs<TY> (int I64) <TY> (shr_ref ulft_0 (int I64)) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i64asMulAssignREFi64_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z (place_rfnRT Z) (IntSynType I64) PtrSynType i64asMulAssignREFi64_spec_attrs-[] -[(int I64); (shr_ref ulft_0 (int I64))])))).
 End i64asMulAssignREFi64_spec.
 
 Section i64asMulAssign_spec.
@@ -6616,7 +6760,7 @@ Section i64asMulAssign_spec.
       |}
   .
   Definition i64asMulAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i64asMulAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z Z (IntSynType I64) (IntSynType I64) i64asMulAssign_spec_attrs<TY> (int I64) <TY> (int I64) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i64asMulAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z Z (IntSynType I64) (IntSynType I64) i64asMulAssign_spec_attrs-[] -[(int I64); (int I64)])))).
 End i64asMulAssign_spec.
 
 Section i64asSubREFai64_spec.
@@ -6629,7 +6773,7 @@ Section i64asSubREFai64_spec.
       |}
   .
   Definition i64asSubREFai64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i64asSubREFai64_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec Z (place_rfnRT Z) Z (IntSynType I64) PtrSynType (IntSynType I64) i64asSubREFai64_spec_attrs<TY> (int I64) <TY> (shr_ref ulft_a (int I64)) <TY> (int I64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i64asSubREFai64_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z (place_rfnRT Z) Z (IntSynType I64) PtrSynType (IntSynType I64) i64asSubREFai64_spec_attrs-[] -[(int I64); (shr_ref ulft_a (int I64)); (int I64)])))).
 End i64asSubREFai64_spec.
 
 Section i64asSub_spec.
@@ -6642,7 +6786,7 @@ Section i64asSub_spec.
       |}
   .
   Definition i64asSub_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i64asSub_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Sub_base_spec Z Z Z (IntSynType I64) (IntSynType I64) (IntSynType I64) i64asSub_spec_attrs<TY> (int I64) <TY> (int I64) <TY> (int I64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i64asSub_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z Z Z (IntSynType I64) (IntSynType I64) (IntSynType I64) i64asSub_spec_attrs-[] -[(int I64); (int I64); (int I64)])))).
 End i64asSub_spec.
 
 Section i64asSubAssignREFi64_spec.
@@ -6655,7 +6799,7 @@ Section i64asSubAssignREFi64_spec.
       |}
   .
   Definition i64asSubAssignREFi64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i64asSubAssignREFi64_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z (place_rfnRT Z) (IntSynType I64) PtrSynType i64asSubAssignREFi64_spec_attrs<TY> (int I64) <TY> (shr_ref ulft_0 (int I64)) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i64asSubAssignREFi64_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z (place_rfnRT Z) (IntSynType I64) PtrSynType i64asSubAssignREFi64_spec_attrs-[] -[(int I64); (shr_ref ulft_0 (int I64))])))).
 End i64asSubAssignREFi64_spec.
 
 Section i64asSubAssign_spec.
@@ -6668,7 +6812,7 @@ Section i64asSubAssign_spec.
       |}
   .
   Definition i64asSubAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i64asSubAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z Z (IntSynType I64) (IntSynType I64) i64asSubAssign_spec_attrs<TY> (int I64) <TY> (int I64) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i64asSubAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z Z (IntSynType I64) (IntSynType I64) i64asSubAssign_spec_attrs-[] -[(int I64); (int I64)])))).
 End i64asSubAssign_spec.
 
 Section i8asAddREFai8_spec.
@@ -6681,7 +6825,7 @@ Section i8asAddREFai8_spec.
       |}
   .
   Definition i8asAddREFai8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i8asAddREFai8_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec Z (place_rfnRT Z) Z (IntSynType I8) PtrSynType (IntSynType I8) i8asAddREFai8_spec_attrs<TY> (int I8) <TY> (shr_ref ulft_a (int I8)) <TY> (int I8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i8asAddREFai8_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z (place_rfnRT Z) Z (IntSynType I8) PtrSynType (IntSynType I8) i8asAddREFai8_spec_attrs-[] -[(int I8); (shr_ref ulft_a (int I8)); (int I8)])))).
 End i8asAddREFai8_spec.
 
 Section i8asAdd_spec.
@@ -6694,7 +6838,7 @@ Section i8asAdd_spec.
       |}
   .
   Definition i8asAdd_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i8asAdd_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Add_base_spec Z Z Z (IntSynType I8) (IntSynType I8) (IntSynType I8) i8asAdd_spec_attrs<TY> (int I8) <TY> (int I8) <TY> (int I8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i8asAdd_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z Z Z (IntSynType I8) (IntSynType I8) (IntSynType I8) i8asAdd_spec_attrs-[] -[(int I8); (int I8); (int I8)])))).
 End i8asAdd_spec.
 
 Section i8asAddAssignREFi8_spec.
@@ -6707,7 +6851,7 @@ Section i8asAddAssignREFi8_spec.
       |}
   .
   Definition i8asAddAssignREFi8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i8asAddAssignREFi8_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z (place_rfnRT Z) (IntSynType I8) PtrSynType i8asAddAssignREFi8_spec_attrs<TY> (int I8) <TY> (shr_ref ulft_0 (int I8)) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i8asAddAssignREFi8_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z (place_rfnRT Z) (IntSynType I8) PtrSynType i8asAddAssignREFi8_spec_attrs-[] -[(int I8); (shr_ref ulft_0 (int I8))])))).
 End i8asAddAssignREFi8_spec.
 
 Section i8asAddAssign_spec.
@@ -6720,7 +6864,7 @@ Section i8asAddAssign_spec.
       |}
   .
   Definition i8asAddAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i8asAddAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z Z (IntSynType I8) (IntSynType I8) i8asAddAssign_spec_attrs<TY> (int I8) <TY> (int I8) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i8asAddAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z Z (IntSynType I8) (IntSynType I8) i8asAddAssign_spec_attrs-[] -[(int I8); (int I8)])))).
 End i8asAddAssign_spec.
 
 Section i8asMulREFai8_spec.
@@ -6733,7 +6877,7 @@ Section i8asMulREFai8_spec.
       |}
   .
   Definition i8asMulREFai8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i8asMulREFai8_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec Z (place_rfnRT Z) Z (IntSynType I8) PtrSynType (IntSynType I8) i8asMulREFai8_spec_attrs<TY> (int I8) <TY> (shr_ref ulft_a (int I8)) <TY> (int I8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i8asMulREFai8_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z (place_rfnRT Z) Z (IntSynType I8) PtrSynType (IntSynType I8) i8asMulREFai8_spec_attrs-[] -[(int I8); (shr_ref ulft_a (int I8)); (int I8)])))).
 End i8asMulREFai8_spec.
 
 Section i8asMul_spec.
@@ -6746,7 +6890,7 @@ Section i8asMul_spec.
       |}
   .
   Definition i8asMul_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i8asMul_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Mul_base_spec Z Z Z (IntSynType I8) (IntSynType I8) (IntSynType I8) i8asMul_spec_attrs<TY> (int I8) <TY> (int I8) <TY> (int I8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i8asMul_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z Z Z (IntSynType I8) (IntSynType I8) (IntSynType I8) i8asMul_spec_attrs-[] -[(int I8); (int I8); (int I8)])))).
 End i8asMul_spec.
 
 Section i8asMulAssignREFi8_spec.
@@ -6759,7 +6903,7 @@ Section i8asMulAssignREFi8_spec.
       |}
   .
   Definition i8asMulAssignREFi8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i8asMulAssignREFi8_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z (place_rfnRT Z) (IntSynType I8) PtrSynType i8asMulAssignREFi8_spec_attrs<TY> (int I8) <TY> (shr_ref ulft_0 (int I8)) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i8asMulAssignREFi8_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z (place_rfnRT Z) (IntSynType I8) PtrSynType i8asMulAssignREFi8_spec_attrs-[] -[(int I8); (shr_ref ulft_0 (int I8))])))).
 End i8asMulAssignREFi8_spec.
 
 Section i8asMulAssign_spec.
@@ -6772,7 +6916,7 @@ Section i8asMulAssign_spec.
       |}
   .
   Definition i8asMulAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i8asMulAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z Z (IntSynType I8) (IntSynType I8) i8asMulAssign_spec_attrs<TY> (int I8) <TY> (int I8) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i8asMulAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z Z (IntSynType I8) (IntSynType I8) i8asMulAssign_spec_attrs-[] -[(int I8); (int I8)])))).
 End i8asMulAssign_spec.
 
 Section i8asSubREFai8_spec.
@@ -6785,7 +6929,7 @@ Section i8asSubREFai8_spec.
       |}
   .
   Definition i8asSubREFai8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i8asSubREFai8_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec Z (place_rfnRT Z) Z (IntSynType I8) PtrSynType (IntSynType I8) i8asSubREFai8_spec_attrs<TY> (int I8) <TY> (shr_ref ulft_a (int I8)) <TY> (int I8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), i8asSubREFai8_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z (place_rfnRT Z) Z (IntSynType I8) PtrSynType (IntSynType I8) i8asSubREFai8_spec_attrs-[] -[(int I8); (shr_ref ulft_a (int I8)); (int I8)])))).
 End i8asSubREFai8_spec.
 
 Section i8asSub_spec.
@@ -6798,7 +6942,7 @@ Section i8asSub_spec.
       |}
   .
   Definition i8asSub_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i8asSub_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Sub_base_spec Z Z Z (IntSynType I8) (IntSynType I8) (IntSynType I8) i8asSub_spec_attrs<TY> (int I8) <TY> (int I8) <TY> (int I8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i8asSub_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z Z Z (IntSynType I8) (IntSynType I8) (IntSynType I8) i8asSub_spec_attrs-[] -[(int I8); (int I8); (int I8)])))).
 End i8asSub_spec.
 
 Section i8asSubAssignREFi8_spec.
@@ -6811,7 +6955,7 @@ Section i8asSubAssignREFi8_spec.
       |}
   .
   Definition i8asSubAssignREFi8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i8asSubAssignREFi8_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z (place_rfnRT Z) (IntSynType I8) PtrSynType i8asSubAssignREFi8_spec_attrs<TY> (int I8) <TY> (shr_ref ulft_0 (int I8)) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), i8asSubAssignREFi8_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z (place_rfnRT Z) (IntSynType I8) PtrSynType i8asSubAssignREFi8_spec_attrs-[] -[(int I8); (shr_ref ulft_0 (int I8))])))).
 End i8asSubAssignREFi8_spec.
 
 Section i8asSubAssign_spec.
@@ -6824,7 +6968,7 @@ Section i8asSubAssign_spec.
       |}
   .
   Definition i8asSubAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i8asSubAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z Z (IntSynType I8) (IntSynType I8) i8asSubAssign_spec_attrs<TY> (int I8) <TY> (int I8) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), i8asSubAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z Z (IntSynType I8) (IntSynType I8) i8asSubAssign_spec_attrs-[] -[(int I8); (int I8)])))).
 End i8asSubAssign_spec.
 
 Section isizeasAddREFaisize_spec.
@@ -6837,7 +6981,7 @@ Section isizeasAddREFaisize_spec.
       |}
   .
   Definition isizeasAddREFaisize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), isizeasAddREFaisize_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec Z (place_rfnRT Z) Z (IntSynType ISize) PtrSynType (IntSynType ISize) isizeasAddREFaisize_spec_attrs<TY> (int ISize) <TY> (shr_ref ulft_a (int ISize)) <TY> (int ISize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), isizeasAddREFaisize_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z (place_rfnRT Z) Z (IntSynType ISize) PtrSynType (IntSynType ISize) isizeasAddREFaisize_spec_attrs-[] -[(int ISize); (shr_ref ulft_a (int ISize)); (int ISize)])))).
 End isizeasAddREFaisize_spec.
 
 Section isizeasAdd_spec.
@@ -6850,7 +6994,7 @@ Section isizeasAdd_spec.
       |}
   .
   Definition isizeasAdd_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), isizeasAdd_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Add_base_spec Z Z Z (IntSynType ISize) (IntSynType ISize) (IntSynType ISize) isizeasAdd_spec_attrs<TY> (int ISize) <TY> (int ISize) <TY> (int ISize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), isizeasAdd_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z Z Z (IntSynType ISize) (IntSynType ISize) (IntSynType ISize) isizeasAdd_spec_attrs-[] -[(int ISize); (int ISize); (int ISize)])))).
 End isizeasAdd_spec.
 
 Section isizeasAddAssignREFisize_spec.
@@ -6863,7 +7007,7 @@ Section isizeasAddAssignREFisize_spec.
       |}
   .
   Definition isizeasAddAssignREFisize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), isizeasAddAssignREFisize_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z (place_rfnRT Z) (IntSynType ISize) PtrSynType isizeasAddAssignREFisize_spec_attrs<TY> (int ISize) <TY> (shr_ref ulft_0 (int ISize)) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), isizeasAddAssignREFisize_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z (place_rfnRT Z) (IntSynType ISize) PtrSynType isizeasAddAssignREFisize_spec_attrs-[] -[(int ISize); (shr_ref ulft_0 (int ISize))])))).
 End isizeasAddAssignREFisize_spec.
 
 Section isizeasAddAssign_spec.
@@ -6876,7 +7020,7 @@ Section isizeasAddAssign_spec.
       |}
   .
   Definition isizeasAddAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), isizeasAddAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z Z (IntSynType ISize) (IntSynType ISize) isizeasAddAssign_spec_attrs<TY> (int ISize) <TY> (int ISize) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), isizeasAddAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z Z (IntSynType ISize) (IntSynType ISize) isizeasAddAssign_spec_attrs-[] -[(int ISize); (int ISize)])))).
 End isizeasAddAssign_spec.
 
 Section isizeasMulREFaisize_spec.
@@ -6889,7 +7033,7 @@ Section isizeasMulREFaisize_spec.
       |}
   .
   Definition isizeasMulREFaisize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), isizeasMulREFaisize_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec Z (place_rfnRT Z) Z (IntSynType ISize) PtrSynType (IntSynType ISize) isizeasMulREFaisize_spec_attrs<TY> (int ISize) <TY> (shr_ref ulft_a (int ISize)) <TY> (int ISize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), isizeasMulREFaisize_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z (place_rfnRT Z) Z (IntSynType ISize) PtrSynType (IntSynType ISize) isizeasMulREFaisize_spec_attrs-[] -[(int ISize); (shr_ref ulft_a (int ISize)); (int ISize)])))).
 End isizeasMulREFaisize_spec.
 
 Section isizeasMul_spec.
@@ -6902,7 +7046,7 @@ Section isizeasMul_spec.
       |}
   .
   Definition isizeasMul_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), isizeasMul_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Mul_base_spec Z Z Z (IntSynType ISize) (IntSynType ISize) (IntSynType ISize) isizeasMul_spec_attrs<TY> (int ISize) <TY> (int ISize) <TY> (int ISize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), isizeasMul_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z Z Z (IntSynType ISize) (IntSynType ISize) (IntSynType ISize) isizeasMul_spec_attrs-[] -[(int ISize); (int ISize); (int ISize)])))).
 End isizeasMul_spec.
 
 Section isizeasMulAssignREFisize_spec.
@@ -6915,7 +7059,7 @@ Section isizeasMulAssignREFisize_spec.
       |}
   .
   Definition isizeasMulAssignREFisize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), isizeasMulAssignREFisize_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z (place_rfnRT Z) (IntSynType ISize) PtrSynType isizeasMulAssignREFisize_spec_attrs<TY> (int ISize) <TY> (shr_ref ulft_0 (int ISize)) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), isizeasMulAssignREFisize_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z (place_rfnRT Z) (IntSynType ISize) PtrSynType isizeasMulAssignREFisize_spec_attrs-[] -[(int ISize); (shr_ref ulft_0 (int ISize))])))).
 End isizeasMulAssignREFisize_spec.
 
 Section isizeasMulAssign_spec.
@@ -6928,7 +7072,7 @@ Section isizeasMulAssign_spec.
       |}
   .
   Definition isizeasMulAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), isizeasMulAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z Z (IntSynType ISize) (IntSynType ISize) isizeasMulAssign_spec_attrs<TY> (int ISize) <TY> (int ISize) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), isizeasMulAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z Z (IntSynType ISize) (IntSynType ISize) isizeasMulAssign_spec_attrs-[] -[(int ISize); (int ISize)])))).
 End isizeasMulAssign_spec.
 
 Section isizeasSubREFaisize_spec.
@@ -6941,7 +7085,7 @@ Section isizeasSubREFaisize_spec.
       |}
   .
   Definition isizeasSubREFaisize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), isizeasSubREFaisize_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec Z (place_rfnRT Z) Z (IntSynType ISize) PtrSynType (IntSynType ISize) isizeasSubREFaisize_spec_attrs<TY> (int ISize) <TY> (shr_ref ulft_a (int ISize)) <TY> (int ISize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), isizeasSubREFaisize_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z (place_rfnRT Z) Z (IntSynType ISize) PtrSynType (IntSynType ISize) isizeasSubREFaisize_spec_attrs-[] -[(int ISize); (shr_ref ulft_a (int ISize)); (int ISize)])))).
 End isizeasSubREFaisize_spec.
 
 Section isizeasSub_spec.
@@ -6954,7 +7098,7 @@ Section isizeasSub_spec.
       |}
   .
   Definition isizeasSub_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), isizeasSub_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Sub_base_spec Z Z Z (IntSynType ISize) (IntSynType ISize) (IntSynType ISize) isizeasSub_spec_attrs<TY> (int ISize) <TY> (int ISize) <TY> (int ISize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), isizeasSub_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z Z Z (IntSynType ISize) (IntSynType ISize) (IntSynType ISize) isizeasSub_spec_attrs-[] -[(int ISize); (int ISize); (int ISize)])))).
 End isizeasSub_spec.
 
 Section isizeasSubAssignREFisize_spec.
@@ -6967,7 +7111,7 @@ Section isizeasSubAssignREFisize_spec.
       |}
   .
   Definition isizeasSubAssignREFisize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), isizeasSubAssignREFisize_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z (place_rfnRT Z) (IntSynType ISize) PtrSynType isizeasSubAssignREFisize_spec_attrs<TY> (int ISize) <TY> (shr_ref ulft_0 (int ISize)) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), isizeasSubAssignREFisize_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z (place_rfnRT Z) (IntSynType ISize) PtrSynType isizeasSubAssignREFisize_spec_attrs-[] -[(int ISize); (shr_ref ulft_0 (int ISize))])))).
 End isizeasSubAssignREFisize_spec.
 
 Section isizeasSubAssign_spec.
@@ -6980,7 +7124,7 @@ Section isizeasSubAssign_spec.
       |}
   .
   Definition isizeasSubAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), isizeasSubAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z Z (IntSynType ISize) (IntSynType ISize) isizeasSubAssign_spec_attrs<TY> (int ISize) <TY> (int ISize) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), isizeasSubAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z Z (IntSynType ISize) (IntSynType ISize) isizeasSubAssign_spec_attrs-[] -[(int ISize); (int ISize)])))).
 End isizeasSubAssign_spec.
 
 Section u128asAddREFau128_spec.
@@ -6993,7 +7137,7 @@ Section u128asAddREFau128_spec.
       |}
   .
   Definition u128asAddREFau128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u128asAddREFau128_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec Z (place_rfnRT Z) Z (IntSynType U128) PtrSynType (IntSynType U128) u128asAddREFau128_spec_attrs<TY> (int U128) <TY> (shr_ref ulft_a (int U128)) <TY> (int U128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u128asAddREFau128_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z (place_rfnRT Z) Z (IntSynType U128) PtrSynType (IntSynType U128) u128asAddREFau128_spec_attrs-[] -[(int U128); (shr_ref ulft_a (int U128)); (int U128)])))).
 End u128asAddREFau128_spec.
 
 Section u128asAdd_spec.
@@ -7006,7 +7150,7 @@ Section u128asAdd_spec.
       |}
   .
   Definition u128asAdd_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u128asAdd_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Add_base_spec Z Z Z (IntSynType U128) (IntSynType U128) (IntSynType U128) u128asAdd_spec_attrs<TY> (int U128) <TY> (int U128) <TY> (int U128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u128asAdd_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z Z Z (IntSynType U128) (IntSynType U128) (IntSynType U128) u128asAdd_spec_attrs-[] -[(int U128); (int U128); (int U128)])))).
 End u128asAdd_spec.
 
 Section u128asAddAssignREFu128_spec.
@@ -7019,7 +7163,7 @@ Section u128asAddAssignREFu128_spec.
       |}
   .
   Definition u128asAddAssignREFu128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u128asAddAssignREFu128_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z (place_rfnRT Z) (IntSynType U128) PtrSynType u128asAddAssignREFu128_spec_attrs<TY> (int U128) <TY> (shr_ref ulft_0 (int U128)) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u128asAddAssignREFu128_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z (place_rfnRT Z) (IntSynType U128) PtrSynType u128asAddAssignREFu128_spec_attrs-[] -[(int U128); (shr_ref ulft_0 (int U128))])))).
 End u128asAddAssignREFu128_spec.
 
 Section u128asAddAssign_spec.
@@ -7032,7 +7176,7 @@ Section u128asAddAssign_spec.
       |}
   .
   Definition u128asAddAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u128asAddAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z Z (IntSynType U128) (IntSynType U128) u128asAddAssign_spec_attrs<TY> (int U128) <TY> (int U128) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u128asAddAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z Z (IntSynType U128) (IntSynType U128) u128asAddAssign_spec_attrs-[] -[(int U128); (int U128)])))).
 End u128asAddAssign_spec.
 
 Section u128asMulREFau128_spec.
@@ -7045,7 +7189,7 @@ Section u128asMulREFau128_spec.
       |}
   .
   Definition u128asMulREFau128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u128asMulREFau128_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec Z (place_rfnRT Z) Z (IntSynType U128) PtrSynType (IntSynType U128) u128asMulREFau128_spec_attrs<TY> (int U128) <TY> (shr_ref ulft_a (int U128)) <TY> (int U128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u128asMulREFau128_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z (place_rfnRT Z) Z (IntSynType U128) PtrSynType (IntSynType U128) u128asMulREFau128_spec_attrs-[] -[(int U128); (shr_ref ulft_a (int U128)); (int U128)])))).
 End u128asMulREFau128_spec.
 
 Section u128asMul_spec.
@@ -7058,7 +7202,7 @@ Section u128asMul_spec.
       |}
   .
   Definition u128asMul_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u128asMul_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Mul_base_spec Z Z Z (IntSynType U128) (IntSynType U128) (IntSynType U128) u128asMul_spec_attrs<TY> (int U128) <TY> (int U128) <TY> (int U128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u128asMul_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z Z Z (IntSynType U128) (IntSynType U128) (IntSynType U128) u128asMul_spec_attrs-[] -[(int U128); (int U128); (int U128)])))).
 End u128asMul_spec.
 
 Section u128asMulAssignREFu128_spec.
@@ -7071,7 +7215,7 @@ Section u128asMulAssignREFu128_spec.
       |}
   .
   Definition u128asMulAssignREFu128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u128asMulAssignREFu128_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z (place_rfnRT Z) (IntSynType U128) PtrSynType u128asMulAssignREFu128_spec_attrs<TY> (int U128) <TY> (shr_ref ulft_0 (int U128)) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u128asMulAssignREFu128_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z (place_rfnRT Z) (IntSynType U128) PtrSynType u128asMulAssignREFu128_spec_attrs-[] -[(int U128); (shr_ref ulft_0 (int U128))])))).
 End u128asMulAssignREFu128_spec.
 
 Section u128asMulAssign_spec.
@@ -7084,7 +7228,7 @@ Section u128asMulAssign_spec.
       |}
   .
   Definition u128asMulAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u128asMulAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z Z (IntSynType U128) (IntSynType U128) u128asMulAssign_spec_attrs<TY> (int U128) <TY> (int U128) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u128asMulAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z Z (IntSynType U128) (IntSynType U128) u128asMulAssign_spec_attrs-[] -[(int U128); (int U128)])))).
 End u128asMulAssign_spec.
 
 Section u128asSubREFau128_spec.
@@ -7097,7 +7241,7 @@ Section u128asSubREFau128_spec.
       |}
   .
   Definition u128asSubREFau128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u128asSubREFau128_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec Z (place_rfnRT Z) Z (IntSynType U128) PtrSynType (IntSynType U128) u128asSubREFau128_spec_attrs<TY> (int U128) <TY> (shr_ref ulft_a (int U128)) <TY> (int U128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u128asSubREFau128_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z (place_rfnRT Z) Z (IntSynType U128) PtrSynType (IntSynType U128) u128asSubREFau128_spec_attrs-[] -[(int U128); (shr_ref ulft_a (int U128)); (int U128)])))).
 End u128asSubREFau128_spec.
 
 Section u128asSub_spec.
@@ -7110,7 +7254,7 @@ Section u128asSub_spec.
       |}
   .
   Definition u128asSub_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u128asSub_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Sub_base_spec Z Z Z (IntSynType U128) (IntSynType U128) (IntSynType U128) u128asSub_spec_attrs<TY> (int U128) <TY> (int U128) <TY> (int U128) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u128asSub_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z Z Z (IntSynType U128) (IntSynType U128) (IntSynType U128) u128asSub_spec_attrs-[] -[(int U128); (int U128); (int U128)])))).
 End u128asSub_spec.
 
 Section u128asSubAssignREFu128_spec.
@@ -7123,7 +7267,7 @@ Section u128asSubAssignREFu128_spec.
       |}
   .
   Definition u128asSubAssignREFu128_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u128asSubAssignREFu128_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z (place_rfnRT Z) (IntSynType U128) PtrSynType u128asSubAssignREFu128_spec_attrs<TY> (int U128) <TY> (shr_ref ulft_0 (int U128)) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u128asSubAssignREFu128_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z (place_rfnRT Z) (IntSynType U128) PtrSynType u128asSubAssignREFu128_spec_attrs-[] -[(int U128); (shr_ref ulft_0 (int U128))])))).
 End u128asSubAssignREFu128_spec.
 
 Section u128asSubAssign_spec.
@@ -7136,7 +7280,7 @@ Section u128asSubAssign_spec.
       |}
   .
   Definition u128asSubAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u128asSubAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z Z (IntSynType U128) (IntSynType U128) u128asSubAssign_spec_attrs<TY> (int U128) <TY> (int U128) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u128asSubAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z Z (IntSynType U128) (IntSynType U128) u128asSubAssign_spec_attrs-[] -[(int U128); (int U128)])))).
 End u128asSubAssign_spec.
 
 Section u16asAddREFau16_spec.
@@ -7149,7 +7293,7 @@ Section u16asAddREFau16_spec.
       |}
   .
   Definition u16asAddREFau16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u16asAddREFau16_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec Z (place_rfnRT Z) Z (IntSynType U16) PtrSynType (IntSynType U16) u16asAddREFau16_spec_attrs<TY> (int U16) <TY> (shr_ref ulft_a (int U16)) <TY> (int U16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u16asAddREFau16_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z (place_rfnRT Z) Z (IntSynType U16) PtrSynType (IntSynType U16) u16asAddREFau16_spec_attrs-[] -[(int U16); (shr_ref ulft_a (int U16)); (int U16)])))).
 End u16asAddREFau16_spec.
 
 Section u16asAdd_spec.
@@ -7162,7 +7306,7 @@ Section u16asAdd_spec.
       |}
   .
   Definition u16asAdd_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u16asAdd_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Add_base_spec Z Z Z (IntSynType U16) (IntSynType U16) (IntSynType U16) u16asAdd_spec_attrs<TY> (int U16) <TY> (int U16) <TY> (int U16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u16asAdd_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z Z Z (IntSynType U16) (IntSynType U16) (IntSynType U16) u16asAdd_spec_attrs-[] -[(int U16); (int U16); (int U16)])))).
 End u16asAdd_spec.
 
 Section u16asAddAssignREFu16_spec.
@@ -7175,7 +7319,7 @@ Section u16asAddAssignREFu16_spec.
       |}
   .
   Definition u16asAddAssignREFu16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u16asAddAssignREFu16_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z (place_rfnRT Z) (IntSynType U16) PtrSynType u16asAddAssignREFu16_spec_attrs<TY> (int U16) <TY> (shr_ref ulft_0 (int U16)) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u16asAddAssignREFu16_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z (place_rfnRT Z) (IntSynType U16) PtrSynType u16asAddAssignREFu16_spec_attrs-[] -[(int U16); (shr_ref ulft_0 (int U16))])))).
 End u16asAddAssignREFu16_spec.
 
 Section u16asAddAssign_spec.
@@ -7188,7 +7332,7 @@ Section u16asAddAssign_spec.
       |}
   .
   Definition u16asAddAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u16asAddAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z Z (IntSynType U16) (IntSynType U16) u16asAddAssign_spec_attrs<TY> (int U16) <TY> (int U16) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u16asAddAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z Z (IntSynType U16) (IntSynType U16) u16asAddAssign_spec_attrs-[] -[(int U16); (int U16)])))).
 End u16asAddAssign_spec.
 
 Section u16asMulREFau16_spec.
@@ -7201,7 +7345,7 @@ Section u16asMulREFau16_spec.
       |}
   .
   Definition u16asMulREFau16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u16asMulREFau16_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec Z (place_rfnRT Z) Z (IntSynType U16) PtrSynType (IntSynType U16) u16asMulREFau16_spec_attrs<TY> (int U16) <TY> (shr_ref ulft_a (int U16)) <TY> (int U16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u16asMulREFau16_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z (place_rfnRT Z) Z (IntSynType U16) PtrSynType (IntSynType U16) u16asMulREFau16_spec_attrs-[] -[(int U16); (shr_ref ulft_a (int U16)); (int U16)])))).
 End u16asMulREFau16_spec.
 
 Section u16asMul_spec.
@@ -7214,7 +7358,7 @@ Section u16asMul_spec.
       |}
   .
   Definition u16asMul_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u16asMul_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Mul_base_spec Z Z Z (IntSynType U16) (IntSynType U16) (IntSynType U16) u16asMul_spec_attrs<TY> (int U16) <TY> (int U16) <TY> (int U16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u16asMul_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z Z Z (IntSynType U16) (IntSynType U16) (IntSynType U16) u16asMul_spec_attrs-[] -[(int U16); (int U16); (int U16)])))).
 End u16asMul_spec.
 
 Section u16asMulAssignREFu16_spec.
@@ -7227,7 +7371,7 @@ Section u16asMulAssignREFu16_spec.
       |}
   .
   Definition u16asMulAssignREFu16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u16asMulAssignREFu16_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z (place_rfnRT Z) (IntSynType U16) PtrSynType u16asMulAssignREFu16_spec_attrs<TY> (int U16) <TY> (shr_ref ulft_0 (int U16)) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u16asMulAssignREFu16_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z (place_rfnRT Z) (IntSynType U16) PtrSynType u16asMulAssignREFu16_spec_attrs-[] -[(int U16); (shr_ref ulft_0 (int U16))])))).
 End u16asMulAssignREFu16_spec.
 
 Section u16asMulAssign_spec.
@@ -7240,7 +7384,7 @@ Section u16asMulAssign_spec.
       |}
   .
   Definition u16asMulAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u16asMulAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z Z (IntSynType U16) (IntSynType U16) u16asMulAssign_spec_attrs<TY> (int U16) <TY> (int U16) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u16asMulAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z Z (IntSynType U16) (IntSynType U16) u16asMulAssign_spec_attrs-[] -[(int U16); (int U16)])))).
 End u16asMulAssign_spec.
 
 Section u16asSubREFau16_spec.
@@ -7253,7 +7397,7 @@ Section u16asSubREFau16_spec.
       |}
   .
   Definition u16asSubREFau16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u16asSubREFau16_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec Z (place_rfnRT Z) Z (IntSynType U16) PtrSynType (IntSynType U16) u16asSubREFau16_spec_attrs<TY> (int U16) <TY> (shr_ref ulft_a (int U16)) <TY> (int U16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u16asSubREFau16_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z (place_rfnRT Z) Z (IntSynType U16) PtrSynType (IntSynType U16) u16asSubREFau16_spec_attrs-[] -[(int U16); (shr_ref ulft_a (int U16)); (int U16)])))).
 End u16asSubREFau16_spec.
 
 Section u16asSub_spec.
@@ -7266,7 +7410,7 @@ Section u16asSub_spec.
       |}
   .
   Definition u16asSub_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u16asSub_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Sub_base_spec Z Z Z (IntSynType U16) (IntSynType U16) (IntSynType U16) u16asSub_spec_attrs<TY> (int U16) <TY> (int U16) <TY> (int U16) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u16asSub_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z Z Z (IntSynType U16) (IntSynType U16) (IntSynType U16) u16asSub_spec_attrs-[] -[(int U16); (int U16); (int U16)])))).
 End u16asSub_spec.
 
 Section u16asSubAssignREFu16_spec.
@@ -7279,7 +7423,7 @@ Section u16asSubAssignREFu16_spec.
       |}
   .
   Definition u16asSubAssignREFu16_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u16asSubAssignREFu16_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z (place_rfnRT Z) (IntSynType U16) PtrSynType u16asSubAssignREFu16_spec_attrs<TY> (int U16) <TY> (shr_ref ulft_0 (int U16)) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u16asSubAssignREFu16_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z (place_rfnRT Z) (IntSynType U16) PtrSynType u16asSubAssignREFu16_spec_attrs-[] -[(int U16); (shr_ref ulft_0 (int U16))])))).
 End u16asSubAssignREFu16_spec.
 
 Section u16asSubAssign_spec.
@@ -7292,7 +7436,7 @@ Section u16asSubAssign_spec.
       |}
   .
   Definition u16asSubAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u16asSubAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z Z (IntSynType U16) (IntSynType U16) u16asSubAssign_spec_attrs<TY> (int U16) <TY> (int U16) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u16asSubAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z Z (IntSynType U16) (IntSynType U16) u16asSubAssign_spec_attrs-[] -[(int U16); (int U16)])))).
 End u16asSubAssign_spec.
 
 Section u32asAddREFau32_spec.
@@ -7305,7 +7449,7 @@ Section u32asAddREFau32_spec.
       |}
   .
   Definition u32asAddREFau32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u32asAddREFau32_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec Z (place_rfnRT Z) Z (IntSynType U32) PtrSynType (IntSynType U32) u32asAddREFau32_spec_attrs<TY> (int U32) <TY> (shr_ref ulft_a (int U32)) <TY> (int U32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u32asAddREFau32_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z (place_rfnRT Z) Z (IntSynType U32) PtrSynType (IntSynType U32) u32asAddREFau32_spec_attrs-[] -[(int U32); (shr_ref ulft_a (int U32)); (int U32)])))).
 End u32asAddREFau32_spec.
 
 Section u32asAdd_spec.
@@ -7318,7 +7462,7 @@ Section u32asAdd_spec.
       |}
   .
   Definition u32asAdd_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u32asAdd_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Add_base_spec Z Z Z (IntSynType U32) (IntSynType U32) (IntSynType U32) u32asAdd_spec_attrs<TY> (int U32) <TY> (int U32) <TY> (int U32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u32asAdd_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z Z Z (IntSynType U32) (IntSynType U32) (IntSynType U32) u32asAdd_spec_attrs-[] -[(int U32); (int U32); (int U32)])))).
 End u32asAdd_spec.
 
 Section u32asAddAssignREFu32_spec.
@@ -7331,7 +7475,7 @@ Section u32asAddAssignREFu32_spec.
       |}
   .
   Definition u32asAddAssignREFu32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u32asAddAssignREFu32_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z (place_rfnRT Z) (IntSynType U32) PtrSynType u32asAddAssignREFu32_spec_attrs<TY> (int U32) <TY> (shr_ref ulft_0 (int U32)) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u32asAddAssignREFu32_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z (place_rfnRT Z) (IntSynType U32) PtrSynType u32asAddAssignREFu32_spec_attrs-[] -[(int U32); (shr_ref ulft_0 (int U32))])))).
 End u32asAddAssignREFu32_spec.
 
 Section u32asAddAssign_spec.
@@ -7344,7 +7488,7 @@ Section u32asAddAssign_spec.
       |}
   .
   Definition u32asAddAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u32asAddAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z Z (IntSynType U32) (IntSynType U32) u32asAddAssign_spec_attrs<TY> (int U32) <TY> (int U32) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u32asAddAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z Z (IntSynType U32) (IntSynType U32) u32asAddAssign_spec_attrs-[] -[(int U32); (int U32)])))).
 End u32asAddAssign_spec.
 
 Section u32asMulREFau32_spec.
@@ -7357,7 +7501,7 @@ Section u32asMulREFau32_spec.
       |}
   .
   Definition u32asMulREFau32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u32asMulREFau32_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec Z (place_rfnRT Z) Z (IntSynType U32) PtrSynType (IntSynType U32) u32asMulREFau32_spec_attrs<TY> (int U32) <TY> (shr_ref ulft_a (int U32)) <TY> (int U32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u32asMulREFau32_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z (place_rfnRT Z) Z (IntSynType U32) PtrSynType (IntSynType U32) u32asMulREFau32_spec_attrs-[] -[(int U32); (shr_ref ulft_a (int U32)); (int U32)])))).
 End u32asMulREFau32_spec.
 
 Section u32asMul_spec.
@@ -7370,7 +7514,7 @@ Section u32asMul_spec.
       |}
   .
   Definition u32asMul_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u32asMul_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Mul_base_spec Z Z Z (IntSynType U32) (IntSynType U32) (IntSynType U32) u32asMul_spec_attrs<TY> (int U32) <TY> (int U32) <TY> (int U32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u32asMul_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z Z Z (IntSynType U32) (IntSynType U32) (IntSynType U32) u32asMul_spec_attrs-[] -[(int U32); (int U32); (int U32)])))).
 End u32asMul_spec.
 
 Section u32asMulAssignREFu32_spec.
@@ -7383,7 +7527,7 @@ Section u32asMulAssignREFu32_spec.
       |}
   .
   Definition u32asMulAssignREFu32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u32asMulAssignREFu32_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z (place_rfnRT Z) (IntSynType U32) PtrSynType u32asMulAssignREFu32_spec_attrs<TY> (int U32) <TY> (shr_ref ulft_0 (int U32)) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u32asMulAssignREFu32_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z (place_rfnRT Z) (IntSynType U32) PtrSynType u32asMulAssignREFu32_spec_attrs-[] -[(int U32); (shr_ref ulft_0 (int U32))])))).
 End u32asMulAssignREFu32_spec.
 
 Section u32asMulAssign_spec.
@@ -7396,7 +7540,7 @@ Section u32asMulAssign_spec.
       |}
   .
   Definition u32asMulAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u32asMulAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z Z (IntSynType U32) (IntSynType U32) u32asMulAssign_spec_attrs<TY> (int U32) <TY> (int U32) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u32asMulAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z Z (IntSynType U32) (IntSynType U32) u32asMulAssign_spec_attrs-[] -[(int U32); (int U32)])))).
 End u32asMulAssign_spec.
 
 Section u32asSubREFau32_spec.
@@ -7409,7 +7553,7 @@ Section u32asSubREFau32_spec.
       |}
   .
   Definition u32asSubREFau32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u32asSubREFau32_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec Z (place_rfnRT Z) Z (IntSynType U32) PtrSynType (IntSynType U32) u32asSubREFau32_spec_attrs<TY> (int U32) <TY> (shr_ref ulft_a (int U32)) <TY> (int U32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u32asSubREFau32_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z (place_rfnRT Z) Z (IntSynType U32) PtrSynType (IntSynType U32) u32asSubREFau32_spec_attrs-[] -[(int U32); (shr_ref ulft_a (int U32)); (int U32)])))).
 End u32asSubREFau32_spec.
 
 Section u32asSub_spec.
@@ -7422,7 +7566,7 @@ Section u32asSub_spec.
       |}
   .
   Definition u32asSub_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u32asSub_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Sub_base_spec Z Z Z (IntSynType U32) (IntSynType U32) (IntSynType U32) u32asSub_spec_attrs<TY> (int U32) <TY> (int U32) <TY> (int U32) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u32asSub_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z Z Z (IntSynType U32) (IntSynType U32) (IntSynType U32) u32asSub_spec_attrs-[] -[(int U32); (int U32); (int U32)])))).
 End u32asSub_spec.
 
 Section u32asSubAssignREFu32_spec.
@@ -7435,7 +7579,7 @@ Section u32asSubAssignREFu32_spec.
       |}
   .
   Definition u32asSubAssignREFu32_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u32asSubAssignREFu32_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z (place_rfnRT Z) (IntSynType U32) PtrSynType u32asSubAssignREFu32_spec_attrs<TY> (int U32) <TY> (shr_ref ulft_0 (int U32)) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u32asSubAssignREFu32_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z (place_rfnRT Z) (IntSynType U32) PtrSynType u32asSubAssignREFu32_spec_attrs-[] -[(int U32); (shr_ref ulft_0 (int U32))])))).
 End u32asSubAssignREFu32_spec.
 
 Section u32asSubAssign_spec.
@@ -7448,7 +7592,7 @@ Section u32asSubAssign_spec.
       |}
   .
   Definition u32asSubAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u32asSubAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z Z (IntSynType U32) (IntSynType U32) u32asSubAssign_spec_attrs<TY> (int U32) <TY> (int U32) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u32asSubAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z Z (IntSynType U32) (IntSynType U32) u32asSubAssign_spec_attrs-[] -[(int U32); (int U32)])))).
 End u32asSubAssign_spec.
 
 Section u64asAddREFau64_spec.
@@ -7461,7 +7605,7 @@ Section u64asAddREFau64_spec.
       |}
   .
   Definition u64asAddREFau64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u64asAddREFau64_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec Z (place_rfnRT Z) Z (IntSynType U64) PtrSynType (IntSynType U64) u64asAddREFau64_spec_attrs<TY> (int U64) <TY> (shr_ref ulft_a (int U64)) <TY> (int U64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u64asAddREFau64_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z (place_rfnRT Z) Z (IntSynType U64) PtrSynType (IntSynType U64) u64asAddREFau64_spec_attrs-[] -[(int U64); (shr_ref ulft_a (int U64)); (int U64)])))).
 End u64asAddREFau64_spec.
 
 Section u64asAdd_spec.
@@ -7474,7 +7618,7 @@ Section u64asAdd_spec.
       |}
   .
   Definition u64asAdd_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u64asAdd_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Add_base_spec Z Z Z (IntSynType U64) (IntSynType U64) (IntSynType U64) u64asAdd_spec_attrs<TY> (int U64) <TY> (int U64) <TY> (int U64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u64asAdd_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z Z Z (IntSynType U64) (IntSynType U64) (IntSynType U64) u64asAdd_spec_attrs-[] -[(int U64); (int U64); (int U64)])))).
 End u64asAdd_spec.
 
 Section u64asAddAssignREFu64_spec.
@@ -7487,7 +7631,7 @@ Section u64asAddAssignREFu64_spec.
       |}
   .
   Definition u64asAddAssignREFu64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u64asAddAssignREFu64_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z (place_rfnRT Z) (IntSynType U64) PtrSynType u64asAddAssignREFu64_spec_attrs<TY> (int U64) <TY> (shr_ref ulft_0 (int U64)) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u64asAddAssignREFu64_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z (place_rfnRT Z) (IntSynType U64) PtrSynType u64asAddAssignREFu64_spec_attrs-[] -[(int U64); (shr_ref ulft_0 (int U64))])))).
 End u64asAddAssignREFu64_spec.
 
 Section u64asAddAssign_spec.
@@ -7500,7 +7644,7 @@ Section u64asAddAssign_spec.
       |}
   .
   Definition u64asAddAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u64asAddAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z Z (IntSynType U64) (IntSynType U64) u64asAddAssign_spec_attrs<TY> (int U64) <TY> (int U64) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u64asAddAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z Z (IntSynType U64) (IntSynType U64) u64asAddAssign_spec_attrs-[] -[(int U64); (int U64)])))).
 End u64asAddAssign_spec.
 
 Section u64asMulREFau64_spec.
@@ -7513,7 +7657,7 @@ Section u64asMulREFau64_spec.
       |}
   .
   Definition u64asMulREFau64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u64asMulREFau64_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec Z (place_rfnRT Z) Z (IntSynType U64) PtrSynType (IntSynType U64) u64asMulREFau64_spec_attrs<TY> (int U64) <TY> (shr_ref ulft_a (int U64)) <TY> (int U64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u64asMulREFau64_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z (place_rfnRT Z) Z (IntSynType U64) PtrSynType (IntSynType U64) u64asMulREFau64_spec_attrs-[] -[(int U64); (shr_ref ulft_a (int U64)); (int U64)])))).
 End u64asMulREFau64_spec.
 
 Section u64asMul_spec.
@@ -7526,7 +7670,7 @@ Section u64asMul_spec.
       |}
   .
   Definition u64asMul_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u64asMul_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Mul_base_spec Z Z Z (IntSynType U64) (IntSynType U64) (IntSynType U64) u64asMul_spec_attrs<TY> (int U64) <TY> (int U64) <TY> (int U64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u64asMul_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z Z Z (IntSynType U64) (IntSynType U64) (IntSynType U64) u64asMul_spec_attrs-[] -[(int U64); (int U64); (int U64)])))).
 End u64asMul_spec.
 
 Section u64asMulAssignREFu64_spec.
@@ -7539,7 +7683,7 @@ Section u64asMulAssignREFu64_spec.
       |}
   .
   Definition u64asMulAssignREFu64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u64asMulAssignREFu64_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z (place_rfnRT Z) (IntSynType U64) PtrSynType u64asMulAssignREFu64_spec_attrs<TY> (int U64) <TY> (shr_ref ulft_0 (int U64)) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u64asMulAssignREFu64_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z (place_rfnRT Z) (IntSynType U64) PtrSynType u64asMulAssignREFu64_spec_attrs-[] -[(int U64); (shr_ref ulft_0 (int U64))])))).
 End u64asMulAssignREFu64_spec.
 
 Section u64asMulAssign_spec.
@@ -7552,7 +7696,7 @@ Section u64asMulAssign_spec.
       |}
   .
   Definition u64asMulAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u64asMulAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z Z (IntSynType U64) (IntSynType U64) u64asMulAssign_spec_attrs<TY> (int U64) <TY> (int U64) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u64asMulAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z Z (IntSynType U64) (IntSynType U64) u64asMulAssign_spec_attrs-[] -[(int U64); (int U64)])))).
 End u64asMulAssign_spec.
 
 Section u64asSubREFau64_spec.
@@ -7565,7 +7709,7 @@ Section u64asSubREFau64_spec.
       |}
   .
   Definition u64asSubREFau64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u64asSubREFau64_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec Z (place_rfnRT Z) Z (IntSynType U64) PtrSynType (IntSynType U64) u64asSubREFau64_spec_attrs<TY> (int U64) <TY> (shr_ref ulft_a (int U64)) <TY> (int U64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u64asSubREFau64_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z (place_rfnRT Z) Z (IntSynType U64) PtrSynType (IntSynType U64) u64asSubREFau64_spec_attrs-[] -[(int U64); (shr_ref ulft_a (int U64)); (int U64)])))).
 End u64asSubREFau64_spec.
 
 Section u64asSub_spec.
@@ -7578,7 +7722,7 @@ Section u64asSub_spec.
       |}
   .
   Definition u64asSub_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u64asSub_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Sub_base_spec Z Z Z (IntSynType U64) (IntSynType U64) (IntSynType U64) u64asSub_spec_attrs<TY> (int U64) <TY> (int U64) <TY> (int U64) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u64asSub_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z Z Z (IntSynType U64) (IntSynType U64) (IntSynType U64) u64asSub_spec_attrs-[] -[(int U64); (int U64); (int U64)])))).
 End u64asSub_spec.
 
 Section u64asSubAssignREFu64_spec.
@@ -7591,7 +7735,7 @@ Section u64asSubAssignREFu64_spec.
       |}
   .
   Definition u64asSubAssignREFu64_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u64asSubAssignREFu64_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z (place_rfnRT Z) (IntSynType U64) PtrSynType u64asSubAssignREFu64_spec_attrs<TY> (int U64) <TY> (shr_ref ulft_0 (int U64)) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u64asSubAssignREFu64_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z (place_rfnRT Z) (IntSynType U64) PtrSynType u64asSubAssignREFu64_spec_attrs-[] -[(int U64); (shr_ref ulft_0 (int U64))])))).
 End u64asSubAssignREFu64_spec.
 
 Section u64asSubAssign_spec.
@@ -7604,7 +7748,7 @@ Section u64asSubAssign_spec.
       |}
   .
   Definition u64asSubAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u64asSubAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z Z (IntSynType U64) (IntSynType U64) u64asSubAssign_spec_attrs<TY> (int U64) <TY> (int U64) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u64asSubAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z Z (IntSynType U64) (IntSynType U64) u64asSubAssign_spec_attrs-[] -[(int U64); (int U64)])))).
 End u64asSubAssign_spec.
 
 Section u8asAddREFau8_spec.
@@ -7617,7 +7761,7 @@ Section u8asAddREFau8_spec.
       |}
   .
   Definition u8asAddREFau8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u8asAddREFau8_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec Z (place_rfnRT Z) Z (IntSynType U8) PtrSynType (IntSynType U8) u8asAddREFau8_spec_attrs<TY> (int U8) <TY> (shr_ref ulft_a (int U8)) <TY> (int U8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u8asAddREFau8_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z (place_rfnRT Z) Z (IntSynType U8) PtrSynType (IntSynType U8) u8asAddREFau8_spec_attrs-[] -[(int U8); (shr_ref ulft_a (int U8)); (int U8)])))).
 End u8asAddREFau8_spec.
 
 Section u8asAdd_spec.
@@ -7630,7 +7774,7 @@ Section u8asAdd_spec.
       |}
   .
   Definition u8asAdd_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u8asAdd_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Add_base_spec Z Z Z (IntSynType U8) (IntSynType U8) (IntSynType U8) u8asAdd_spec_attrs<TY> (int U8) <TY> (int U8) <TY> (int U8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u8asAdd_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z Z Z (IntSynType U8) (IntSynType U8) (IntSynType U8) u8asAdd_spec_attrs-[] -[(int U8); (int U8); (int U8)])))).
 End u8asAdd_spec.
 
 Section u8asAddAssignREFu8_spec.
@@ -7643,7 +7787,7 @@ Section u8asAddAssignREFu8_spec.
       |}
   .
   Definition u8asAddAssignREFu8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u8asAddAssignREFu8_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z (place_rfnRT Z) (IntSynType U8) PtrSynType u8asAddAssignREFu8_spec_attrs<TY> (int U8) <TY> (shr_ref ulft_0 (int U8)) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u8asAddAssignREFu8_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z (place_rfnRT Z) (IntSynType U8) PtrSynType u8asAddAssignREFu8_spec_attrs-[] -[(int U8); (shr_ref ulft_0 (int U8))])))).
 End u8asAddAssignREFu8_spec.
 
 Section u8asAddAssign_spec.
@@ -7656,7 +7800,7 @@ Section u8asAddAssign_spec.
       |}
   .
   Definition u8asAddAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u8asAddAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z Z (IntSynType U8) (IntSynType U8) u8asAddAssign_spec_attrs<TY> (int U8) <TY> (int U8) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u8asAddAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z Z (IntSynType U8) (IntSynType U8) u8asAddAssign_spec_attrs-[] -[(int U8); (int U8)])))).
 End u8asAddAssign_spec.
 
 Section u8asMulREFau8_spec.
@@ -7669,7 +7813,7 @@ Section u8asMulREFau8_spec.
       |}
   .
   Definition u8asMulREFau8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u8asMulREFau8_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec Z (place_rfnRT Z) Z (IntSynType U8) PtrSynType (IntSynType U8) u8asMulREFau8_spec_attrs<TY> (int U8) <TY> (shr_ref ulft_a (int U8)) <TY> (int U8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u8asMulREFau8_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z (place_rfnRT Z) Z (IntSynType U8) PtrSynType (IntSynType U8) u8asMulREFau8_spec_attrs-[] -[(int U8); (shr_ref ulft_a (int U8)); (int U8)])))).
 End u8asMulREFau8_spec.
 
 Section u8asMul_spec.
@@ -7682,7 +7826,7 @@ Section u8asMul_spec.
       |}
   .
   Definition u8asMul_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u8asMul_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Mul_base_spec Z Z Z (IntSynType U8) (IntSynType U8) (IntSynType U8) u8asMul_spec_attrs<TY> (int U8) <TY> (int U8) <TY> (int U8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u8asMul_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z Z Z (IntSynType U8) (IntSynType U8) (IntSynType U8) u8asMul_spec_attrs-[] -[(int U8); (int U8); (int U8)])))).
 End u8asMul_spec.
 
 Section u8asMulAssignREFu8_spec.
@@ -7695,7 +7839,7 @@ Section u8asMulAssignREFu8_spec.
       |}
   .
   Definition u8asMulAssignREFu8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u8asMulAssignREFu8_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z (place_rfnRT Z) (IntSynType U8) PtrSynType u8asMulAssignREFu8_spec_attrs<TY> (int U8) <TY> (shr_ref ulft_0 (int U8)) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u8asMulAssignREFu8_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z (place_rfnRT Z) (IntSynType U8) PtrSynType u8asMulAssignREFu8_spec_attrs-[] -[(int U8); (shr_ref ulft_0 (int U8))])))).
 End u8asMulAssignREFu8_spec.
 
 Section u8asMulAssign_spec.
@@ -7708,7 +7852,7 @@ Section u8asMulAssign_spec.
       |}
   .
   Definition u8asMulAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u8asMulAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z Z (IntSynType U8) (IntSynType U8) u8asMulAssign_spec_attrs<TY> (int U8) <TY> (int U8) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u8asMulAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z Z (IntSynType U8) (IntSynType U8) u8asMulAssign_spec_attrs-[] -[(int U8); (int U8)])))).
 End u8asMulAssign_spec.
 
 Section u8asSubREFau8_spec.
@@ -7721,7 +7865,7 @@ Section u8asSubREFau8_spec.
       |}
   .
   Definition u8asSubREFau8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u8asSubREFau8_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec Z (place_rfnRT Z) Z (IntSynType U8) PtrSynType (IntSynType U8) u8asSubREFau8_spec_attrs<TY> (int U8) <TY> (shr_ref ulft_a (int U8)) <TY> (int U8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), u8asSubREFau8_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z (place_rfnRT Z) Z (IntSynType U8) PtrSynType (IntSynType U8) u8asSubREFau8_spec_attrs-[] -[(int U8); (shr_ref ulft_a (int U8)); (int U8)])))).
 End u8asSubREFau8_spec.
 
 Section u8asSub_spec.
@@ -7734,7 +7878,7 @@ Section u8asSub_spec.
       |}
   .
   Definition u8asSub_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u8asSub_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Sub_base_spec Z Z Z (IntSynType U8) (IntSynType U8) (IntSynType U8) u8asSub_spec_attrs<TY> (int U8) <TY> (int U8) <TY> (int U8) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u8asSub_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z Z Z (IntSynType U8) (IntSynType U8) (IntSynType U8) u8asSub_spec_attrs-[] -[(int U8); (int U8); (int U8)])))).
 End u8asSub_spec.
 
 Section u8asSubAssignREFu8_spec.
@@ -7747,7 +7891,7 @@ Section u8asSubAssignREFu8_spec.
       |}
   .
   Definition u8asSubAssignREFu8_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u8asSubAssignREFu8_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z (place_rfnRT Z) (IntSynType U8) PtrSynType u8asSubAssignREFu8_spec_attrs<TY> (int U8) <TY> (shr_ref ulft_0 (int U8)) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), u8asSubAssignREFu8_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z (place_rfnRT Z) (IntSynType U8) PtrSynType u8asSubAssignREFu8_spec_attrs-[] -[(int U8); (shr_ref ulft_0 (int U8))])))).
 End u8asSubAssignREFu8_spec.
 
 Section u8asSubAssign_spec.
@@ -7760,7 +7904,7 @@ Section u8asSubAssign_spec.
       |}
   .
   Definition u8asSubAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u8asSubAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z Z (IntSynType U8) (IntSynType U8) u8asSubAssign_spec_attrs<TY> (int U8) <TY> (int U8) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), u8asSubAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z Z (IntSynType U8) (IntSynType U8) u8asSubAssign_spec_attrs-[] -[(int U8); (int U8)])))).
 End u8asSubAssign_spec.
 
 Section usizeasAddREFausize_spec.
@@ -7773,7 +7917,7 @@ Section usizeasAddREFausize_spec.
       |}
   .
   Definition usizeasAddREFausize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), usizeasAddREFausize_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Add_base_spec Z (place_rfnRT Z) Z (IntSynType USize) PtrSynType (IntSynType USize) usizeasAddREFausize_spec_attrs<TY> (int USize) <TY> (shr_ref ulft_a (int USize)) <TY> (int USize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), usizeasAddREFausize_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z (place_rfnRT Z) Z (IntSynType USize) PtrSynType (IntSynType USize) usizeasAddREFausize_spec_attrs-[] -[(int USize); (shr_ref ulft_a (int USize)); (int USize)])))).
 End usizeasAddREFausize_spec.
 
 Section usizeasAdd_spec.
@@ -7786,7 +7930,7 @@ Section usizeasAdd_spec.
       |}
   .
   Definition usizeasAdd_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), usizeasAdd_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Add_base_spec Z Z Z (IntSynType USize) (IntSynType USize) (IntSynType USize) usizeasAdd_spec_attrs<TY> (int USize) <TY> (int USize) <TY> (int USize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Add_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), usizeasAdd_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Add_base_spec Z Z Z (IntSynType USize) (IntSynType USize) (IntSynType USize) usizeasAdd_spec_attrs-[] -[(int USize); (int USize); (int USize)])))).
 End usizeasAdd_spec.
 
 Section usizeasAddAssignREFusize_spec.
@@ -7799,7 +7943,7 @@ Section usizeasAddAssignREFusize_spec.
       |}
   .
   Definition usizeasAddAssignREFusize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), usizeasAddAssignREFusize_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z (place_rfnRT Z) (IntSynType USize) PtrSynType usizeasAddAssignREFusize_spec_attrs<TY> (int USize) <TY> (shr_ref ulft_0 (int USize)) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), usizeasAddAssignREFusize_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z (place_rfnRT Z) (IntSynType USize) PtrSynType usizeasAddAssignREFusize_spec_attrs-[] -[(int USize); (shr_ref ulft_0 (int USize))])))).
 End usizeasAddAssignREFusize_spec.
 
 Section usizeasAddAssign_spec.
@@ -7812,7 +7956,7 @@ Section usizeasAddAssign_spec.
       |}
   .
   Definition usizeasAddAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), usizeasAddAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (AddAssign_base_spec Z Z (IntSynType USize) (IntSynType USize) usizeasAddAssign_spec_attrs<TY> (int USize) <TY> (int USize) <INST!>))).
+    trait_incl_marker (lift_trait_incl AddAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), usizeasAddAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((AddAssign_base_spec Z Z (IntSynType USize) (IntSynType USize) usizeasAddAssign_spec_attrs-[] -[(int USize); (int USize)])))).
 End usizeasAddAssign_spec.
 
 Section usizeasMulREFausize_spec.
@@ -7825,7 +7969,7 @@ Section usizeasMulREFausize_spec.
       |}
   .
   Definition usizeasMulREFausize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), usizeasMulREFausize_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Mul_base_spec Z (place_rfnRT Z) Z (IntSynType USize) PtrSynType (IntSynType USize) usizeasMulREFausize_spec_attrs<TY> (int USize) <TY> (shr_ref ulft_a (int USize)) <TY> (int USize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), usizeasMulREFausize_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z (place_rfnRT Z) Z (IntSynType USize) PtrSynType (IntSynType USize) usizeasMulREFausize_spec_attrs-[] -[(int USize); (shr_ref ulft_a (int USize)); (int USize)])))).
 End usizeasMulREFausize_spec.
 
 Section usizeasMul_spec.
@@ -7838,7 +7982,7 @@ Section usizeasMul_spec.
       |}
   .
   Definition usizeasMul_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), usizeasMul_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Mul_base_spec Z Z Z (IntSynType USize) (IntSynType USize) (IntSynType USize) usizeasMul_spec_attrs<TY> (int USize) <TY> (int USize) <TY> (int USize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Mul_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), usizeasMul_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Mul_base_spec Z Z Z (IntSynType USize) (IntSynType USize) (IntSynType USize) usizeasMul_spec_attrs-[] -[(int USize); (int USize); (int USize)])))).
 End usizeasMul_spec.
 
 Section usizeasMulAssignREFusize_spec.
@@ -7851,7 +7995,7 @@ Section usizeasMulAssignREFusize_spec.
       |}
   .
   Definition usizeasMulAssignREFusize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), usizeasMulAssignREFusize_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z (place_rfnRT Z) (IntSynType USize) PtrSynType usizeasMulAssignREFusize_spec_attrs<TY> (int USize) <TY> (shr_ref ulft_0 (int USize)) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), usizeasMulAssignREFusize_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z (place_rfnRT Z) (IntSynType USize) PtrSynType usizeasMulAssignREFusize_spec_attrs-[] -[(int USize); (shr_ref ulft_0 (int USize))])))).
 End usizeasMulAssignREFusize_spec.
 
 Section usizeasMulAssign_spec.
@@ -7864,7 +8008,7 @@ Section usizeasMulAssign_spec.
       |}
   .
   Definition usizeasMulAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), usizeasMulAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (MulAssign_base_spec Z Z (IntSynType USize) (IntSynType USize) usizeasMulAssign_spec_attrs<TY> (int USize) <TY> (int USize) <INST!>))).
+    trait_incl_marker (lift_trait_incl MulAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), usizeasMulAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((MulAssign_base_spec Z Z (IntSynType USize) (IntSynType USize) usizeasMulAssign_spec_attrs-[] -[(int USize); (int USize)])))).
 End usizeasMulAssign_spec.
 
 Section usizeasSubREFausize_spec.
@@ -7877,7 +8021,7 @@ Section usizeasSubREFausize_spec.
       |}
   .
   Definition usizeasSubREFausize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), usizeasSubREFausize_spec <LFT> ulft_a <INST!>) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (Sub_base_spec Z (place_rfnRT Z) Z (IntSynType USize) PtrSynType (IntSynType USize) usizeasSubREFausize_spec_attrs<TY> (int USize) <TY> (shr_ref ulft_a (int USize)) <TY> (int USize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), usizeasSubREFausize_spec-[ulft_a] -[]) (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z (place_rfnRT Z) Z (IntSynType USize) PtrSynType (IntSynType USize) usizeasSubREFausize_spec_attrs-[] -[(int USize); (shr_ref ulft_a (int USize)); (int USize)])))).
 End usizeasSubREFausize_spec.
 
 Section usizeasSub_spec.
@@ -7890,7 +8034,7 @@ Section usizeasSub_spec.
       |}
   .
   Definition usizeasSub_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), usizeasSub_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (Sub_base_spec Z Z Z (IntSynType USize) (IntSynType USize) (IntSynType USize) usizeasSub_spec_attrs<TY> (int USize) <TY> (int USize) <TY> (int USize) <INST!>))).
+    trait_incl_marker (lift_trait_incl Sub_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), usizeasSub_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Sub_base_spec Z Z Z (IntSynType USize) (IntSynType USize) (IntSynType USize) usizeasSub_spec_attrs-[] -[(int USize); (int USize); (int USize)])))).
 End usizeasSub_spec.
 
 Section usizeasSubAssignREFusize_spec.
@@ -7903,7 +8047,7 @@ Section usizeasSubAssignREFusize_spec.
       |}
   .
   Definition usizeasSubAssignREFusize_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), usizeasSubAssignREFusize_spec <LFT> ulft_0 <INST!>) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z (place_rfnRT Z) (IntSynType USize) PtrSynType usizeasSubAssignREFusize_spec_attrs<TY> (int USize) <TY> (shr_ref ulft_0 (int USize)) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), usizeasSubAssignREFusize_spec-[ulft_0] -[]) (spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z (place_rfnRT Z) (IntSynType USize) PtrSynType usizeasSubAssignREFusize_spec_attrs-[] -[(int USize); (shr_ref ulft_0 (int USize))])))).
 End usizeasSubAssignREFusize_spec.
 
 Section usizeasSubAssign_spec.
@@ -7916,6 +8060,6 @@ Section usizeasSubAssign_spec.
       |}
   .
   Definition usizeasSubAssign_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), usizeasSubAssign_spec <INST!>) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (SubAssign_base_spec Z Z (IntSynType USize) (IntSynType USize) usizeasSubAssign_spec_attrs<TY> (int USize) <TY> (int USize) <INST!>))).
+    trait_incl_marker (lift_trait_incl SubAssign_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), usizeasSubAssign_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((SubAssign_base_spec Z Z (IntSynType USize) (IntSynType USize) usizeasSubAssign_spec_attrs-[] -[(int USize); (int USize)])))).
 End usizeasSubAssign_spec.
 

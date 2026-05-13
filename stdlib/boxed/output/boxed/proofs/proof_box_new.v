@@ -27,8 +27,7 @@ Proof.
     rewrite ly_align_of_rust_layout_align; first solve_goal.
     + unfold ly_align. eexists. solve_goal.
     + split; first solve_goal.
-      rewrite MaxInt_eq. eapply use_layout_alg_align.
-      done. }
+      simplify_layout_goal. rewrite MaxInt_eq. done. }
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

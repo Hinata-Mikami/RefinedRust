@@ -14,9 +14,9 @@ Context `{RRGS : !refinedrustGS Σ}.
 Definition write_volatile_lemma (π : thread_id) : Prop :=
   ∀ `(T_rt : !RT) `(T_st : !syn_type) (write_T_loc : loc) , 
   syn_type_is_layoutable (T_st) →
-  write_T_loc ◁ᵥ{π, MetaNone} write_T_loc @ function_ptr [PtrSynType; T_st] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_write (RRGS:=RRGS) ((T_rt)) (T_st)  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
-  typed_function π (write_volatile_def write_T_loc  T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_write_volatile T_rt T_st  <TY> T_ty <INST!>) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜((trait_incl_of_write_volatile (T_rt) (T_st)) <TY> T_ty <INST!>)%Z⌝))).
+  write_T_loc ◁ᵥ{π, MetaNone} write_T_loc @ function_ptr [PtrSynType; T_st] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_write (RRGS:=RRGS) ((T_rt)) (T_st) -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
+  typed_function π (write_volatile_def write_T_loc  T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_write_volatile T_rt T_st -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
+  ∗ (⌜((trait_incl_of_write_volatile (T_rt) (T_st))-[] -[T_ty])%Z⌝))).
 End proof.
 
 Ltac write_volatile_prelude :=
