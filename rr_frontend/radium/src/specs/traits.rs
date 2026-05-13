@@ -1265,12 +1265,64 @@ impl SpecDecl<'_> {
             coq::term::Term::RecordBody(coq::term::RecordBody { items })
         };
 
+        let scope_add_elctx_params = coq::binder::BinderList::new(vec![
+            coq::binder::Binder::new(
+                Some("E".to_owned()),
+                coq::term::Type::Literal("lft → elctx".to_owned()),
+            ),
+            coq::binder::Binder::new(
+                Some("s".to_owned()),
+                coq::term::Type::Literal(spec_record_term.to_string()),
+            ),
+        ]);
+
+        let scope_add_elctx_body = if self.default_spec.methods.is_empty() {
+            coq::term::Term::Ident(coq::Ident::new("s"))
+        } else {
+            let mut items = Vec::new();
+            for (item_name, item_spec) in &self.default_spec.methods {
+                let record_item_name = self.lit.make_spec_method_name(item_name);
+                let direct_scope = item_spec.get_direct_scope();
+
+                let mut field_params = direct_scope.get_direct_ty_params_with_assocs().get_coq_ty_params();
+                field_params.append(direct_scope.get_direct_attr_trait_parameters(IncludeSelfReq::Dont).0);
+                let field_param_uses = field_params.make_using_terms();
+                let projected_spec = coq::term::App::new(
+                    coq::term::Term::RecordProj(
+                        Box::new(coq::term::Term::Ident(coq::Ident::new("s"))),
+                        record_item_name.clone(),
+                    ),
+                    field_param_uses,
+                );
+                let term =
+                    coq::term::App::new(coq::term::Term::Ident(coq::Ident::new("scope_add_elctx")), vec![
+                        coq::term::Term::Ident(coq::Ident::new("E")),
+                        coq::term::Term::App(Box::new(projected_spec)),
+                    ]);
+
+                items.push(coq::term::RecordBodyItem {
+                    name: record_item_name,
+                    params: field_params,
+                    term: coq::term::Term::App(Box::new(term)),
+                });
+            }
+
+            coq::term::Term::RecordBody(coq::term::RecordBody { items })
+        };
+
         let body = coq::term::Term::RecordBody(coq::term::RecordBody {
-            items: vec![coq::term::RecordBodyItem {
-                name: "scope_add_typarams".to_owned(),
-                params: scope_add_typarams_params,
-                term: scope_add_typarams_body,
-            }],
+            items: vec![
+                coq::term::RecordBodyItem {
+                    name: "scope_add_typarams".to_owned(),
+                    params: scope_add_typarams_params,
+                    term: scope_add_typarams_body,
+                },
+                coq::term::RecordBodyItem {
+                    name: "scope_add_elctx".to_owned(),
+                    params: scope_add_elctx_params,
+                    term: scope_add_elctx_body,
+                },
+            ],
         });
 
         let instance_name = format!("scope_bindable_{}", self.lit.spec_record());
@@ -1904,7 +1956,7 @@ impl<'def> InstantiatedFunctionSpec<'def> {
         elctx.format(&mut scope_elctx, &[], &[]).unwrap();
         write!(
             f,
-            "(λ a b, scope_add_typarams _ -[{surrounding_tys}] (fn_spec_add_elctx ({scope_elctx}) (({applied_base_spec}).({}) {} {} a b))) <MERGE!>",
+            "(λ a b, scope_add_typarams _ -[{surrounding_tys}] (scope_add_elctx ({scope_elctx}) (({applied_base_spec}).({}) {} {} a b))) <MERGE!>",
             //"({applied_base_spec}).({}) {} {} <MERGE!>",
             self.trait_ref.of_trait.make_spec_method_name(&self.trait_method_name),
             fmt_list!(spec_params, " "),

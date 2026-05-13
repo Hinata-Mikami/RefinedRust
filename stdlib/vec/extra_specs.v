@@ -158,7 +158,7 @@ Proof.
     eassert ((Some <$> <#> rs') = _) as Heq.
     2: { rewrite Heq. by iFrame. }
     rewrite -list_fmap_compose. solve_goal. }
-  simpl. rewrite -Hst''.
+  simpl.
 
   iPoseProof (ltype_own_has_layout with "Huninit") as "(%ly4 & %Hst4 & %Hlyl2)".
   apply syn_type_has_layout_array_inv in Hst4 as (ly_T2 & Hst4 & -> & ?).
@@ -178,6 +178,7 @@ Proof.
   rewrite fmap_replicate.
 
   rewrite Hlen_eq.
+  iEval (rewrite -Hst'') in "Huninit".
   iMod (array_t_ofty_merge with "Hls Huninit") as "Hls".
   { done. }
   { simpl. rewrite Hst''.
@@ -216,10 +217,9 @@ Proof.
   rewrite Hlen_eq.
   iApply (struct_t_own_val_mono _ false); last iApply "Hv".
   unfold struct_t_incl_precond. simpl.
-  rewrite Hst''. iSplitR; first last.
+  iSplitR; first last.
   { iL. iR. iApply owned_type_incl_refl. }
   iR. rewrite /owned_type_incl/=.
-  rewrite Hst''.
   iSplitR. { iPureIntro. apply syn_type_size_eq_refl. }
   iR.
   iIntros (?) "Hv".
@@ -231,7 +231,6 @@ Proof.
   subst.
   iApply (struct_t_own_val_mono _ false); last iApply "Hv".
   unfold struct_t_incl_precond. simpl.
-  rewrite Hst''.
   iSplitR. { iR. iApply owned_type_incl_refl. }
   iL. iR.
   rewrite /owned_type_incl/=.

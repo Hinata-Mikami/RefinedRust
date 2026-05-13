@@ -58,9 +58,9 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
   Definition FP_wf
       (E : lft → elctx)
       (atys : list (@sigT RT (λ rt, type rt * rt)%type))
-  (pa : thread_id → iProp Σ)
+      (pa : thread_id → iProp Σ)
       (sc : thread_id → iProp Σ)
-     (exty : Type)
+      (exty : Type)
       (retrt : RT)
       (retty : type retrt)
       (fr_ref : exty → retrt)
@@ -554,6 +554,8 @@ Global Instance fn_spec_scope_bindable `{!typeGS Σ} :
   ScopeBindable fn_spec := {|
     scope_add_typarams rts tys s :=
       fn_spec_add_elctx (λ ϝ, typarams_elctx ϝ rts tys) s;
+    scope_add_elctx cstr s :=
+      fn_spec_add_elctx cstr s;
 |}.
 
 (** Add a new late precondition to a fn specification *)

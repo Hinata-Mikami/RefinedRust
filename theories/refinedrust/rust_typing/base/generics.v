@@ -53,6 +53,8 @@ Qed.
 Class ScopeBindable `{!typeGS Σ} (S : Type) := mkScopeBindable {
   scope_add_typarams :
     ∀ rts : list RT, plist type rts → S → S;
+  scope_add_elctx :
+    (lft → elctx) → S → S;
 }.
 
 Definition spec_with `{!typeGS Σ} (lfts : nat) (rts : list RT) (SPEC : Type) :=
@@ -68,6 +70,10 @@ Global Instance scope_bindable_nest `{!typeGS Σ} {S} `{!ScopeBindable S} lfts r
   ScopeBindable (spec_with lfts rts S) := {|
     scope_add_typarams rts' tys' s :=
       λ κs tys, (scope_add_typarams _ tys' (s κs tys));
+    (*scope_add_lfts κs' s :=*)
+      (*λ κs tys, (scope_add_lfts κs' (s κs tys));*)
+    scope_add_elctx cstr s :=
+      λ κs tys, (scope_add_elctx cstr (s κs tys));
   |}.
 
 (** Instantiate a given type parameter *)
