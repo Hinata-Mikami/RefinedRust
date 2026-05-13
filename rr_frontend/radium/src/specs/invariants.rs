@@ -401,6 +401,7 @@ impl Spec {
             )
             .unwrap();
         }
+        write!(out, "Global Arguments {} : simpl never.\n", self.type_name()).unwrap();
         write!(out, "{indent}Global Typeclasses Transparent {}.\n", self.type_name()).unwrap();
         write!(out, "{indent}Definition {}_rt : RT.\n", self.type_name()).unwrap();
         write!(
