@@ -123,6 +123,9 @@ pub enum Command {
     #[display("{}", _0)]
     Instance(Instance),
 
+    #[display("{}", _0)]
+    ExistingInstance(ExistingInstance),
+
     /// The [`Open Scope`] command.
     ///
     /// [`Open Scope`]: https://rocq-prover.org/doc/v8.20/refman/user-extensions/syntax-extensions.html#coq:cmd.Open-Scope
@@ -201,6 +204,12 @@ impl From<QueryCommand> for QueryCommandAttrs {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Context {
     items: binder::BinderList,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Display)]
+#[display("Existing Instance {}.", name)]
+pub struct ExistingInstance {
+    pub name: String,
 }
 
 impl Context {

@@ -325,11 +325,6 @@ impl TyParamOrigin {
     pub const fn is_surrounding(self) -> bool {
         matches!(self, Self::SurroundingTrait | Self::SurroundingImpl)
     }
-
-    #[must_use]
-    pub const fn is_direct(self) -> bool {
-        matches!(self, Self::Direct)
-    }
 }
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
@@ -612,24 +607,18 @@ impl<'def> GenericScopeInst<'def> {
     /// Generate an instantiation of a term with the identity
     #[must_use]
     pub(crate) fn instantiation(&self, include_surrounding_reqs: bool, fully: bool) -> String {
-        let mut out = String::new();
+        let tys = if include_surrounding_reqs {
+            self.get_all_ty_params_with_assocs()
+        } else {
+            self.get_direct_ty_params_with_assocs()
+        };
+        let lfts = self.get_lfts();
 
-        if include_surrounding_reqs {
-            for ty in self.get_surrounding_ty_params_with_assocs() {
-                out.push_str(&format!(" <TY> {}", ty));
-            }
-        }
-        for ty in self.get_direct_ty_params_with_assocs() {
-            out.push_str(&format!(" <TY> {}", ty));
-        }
-        for lft in self.get_lfts() {
-            out.push_str(&format!(" <LFT> {}", lft));
-        }
         if fully {
-            out.push_str(" <INST!>");
+            Self::format_full_instantiation(&tys, lfts)
+        } else {
+            Self::format_instantiation(&tys, lfts)
         }
-
-        out
     }
 
     #[must_use]
@@ -645,6 +634,27 @@ impl<'def> GenericScopeInst<'def> {
     #[must_use]
     pub(crate) fn get_surrounding_trait_requirements(&self) -> &[traits::ReqInst<'def, Type<'def>>] {
         &self.surrounding_trait_requirements
+    }
+
+    pub(crate) fn format_full_instantiation(typarams: &[Type<'def>], lfts: &[Lft]) -> String {
+        let mut out = String::new();
+
+        out.push_str("-[");
+        push_str_list!(out, lfts, "; ");
+        out.push_str("] -[");
+        push_str_list!(out, typarams, "; ");
+        out.push(']');
+
+        out
+    }
+
+    pub(crate) fn format_instantiation(typarams: &[Type<'def>], lfts: &[Lft]) -> String {
+        let mut out = String::new();
+
+        push_str_list!(out, typarams, "", |x| format!(" <TY> {x}"));
+        push_str_list!(out, lfts, "", |x| format!(" <LFT> {x}"));
+
+        out
     }
 }
 
@@ -690,7 +700,12 @@ pub struct Elctx<'def> {
 }
 
 impl<'def> Elctx<'def> {
-    fn format(&self, f: &mut impl fmt::Write, extra_lfts: &[LftParam], extra_types: &[Type<'def>]) -> fmt::Result {
+    fn format(
+        &self,
+        f: &mut impl fmt::Write,
+        extra_lfts: &[LftParam],
+        extra_types: &[Type<'def>],
+    ) -> fmt::Result {
         write!(f, "λ ϝ, [")?;
 
         // implied bounds on inputs/outputs
@@ -769,10 +784,14 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
 
     #[must_use]
     fn get_surrounding_elctx(&self) -> Elctx<'def> {
-        let constrs = self.lft_constraints.constrs.iter().filter(|x| x.origin.is_surrounding()).cloned().collect();
-        Elctx {
-            constrs,
-        }
+        let constrs = self
+            .lft_constraints
+            .constrs
+            .iter()
+            .filter(|x| x.origin.is_surrounding())
+            .cloned()
+            .collect();
+        Elctx { constrs }
     }
 
     fn format_elctx(&self) -> String {
@@ -854,17 +873,14 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
     /// Generate an instantiation of a term with the identity
     #[must_use]
     pub(crate) fn identity_instantiation_term(&self) -> String {
-        let mut out = String::new();
-
-        for ty in self.get_all_ty_params_with_assocs().params {
-            out.push_str(&format!(" <TY> {}", ty.type_term()));
-        }
-        for lft in self.get_lfts() {
-            out.push_str(&format!(" <LFT> {}", lft));
-        }
-        out.push_str(" <INST!>");
-
-        out
+        let tys: Vec<_> = self
+            .get_all_ty_params_with_assocs()
+            .params
+            .iter()
+            .map(|x| Type::LiteralParam(x.to_owned()))
+            .collect();
+        let lfts: Vec<_> = self.get_lfts().iter().map(|x| x.lft().to_owned()).collect();
+        GenericScopeInst::format_full_instantiation(&tys, &lfts)
     }
 
     #[must_use]

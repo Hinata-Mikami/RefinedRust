@@ -400,11 +400,10 @@ impl<'def> LiteralSpecUse<'def> {
         }
         specialized_spec.push_str(&format!(" {}", self.make_spec_attrs_use()));
 
-        // specialize to semtys
-        push_str_list!(specialized_spec, &all_args, " ", |x| { format!("<TY> {}", x) });
-        // specialize to lfts
-        push_str_list!(specialized_spec, self.trait_inst.get_lfts(), " ", |x| { format!("<LFT> {}", x) });
-        specialized_spec.push_str(" <INST!>)");
+        // specialize to semtys + lfts
+        specialized_spec
+            .push_str(&GenericScopeInst::format_full_instantiation(&all_args, self.trait_inst.get_lfts()));
+        specialized_spec.push(')');
 
         let spec = format!(
             "trait_incl_marker (lift_trait_incl {} {} {specialized_spec})",
@@ -488,12 +487,6 @@ pub struct ReqScopeInst {
     pub lft_insts: Vec<Lft>,
 }
 
-impl fmt::Display for ReqScopeInst {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write_list!(f, &self.lft_insts, "", |x| format!(" <LFT> {x}"))
-    }
-}
-
 /// Instantiation of a trait requirement by specializing an impl.
 #[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 pub struct SpecializedImpl<'def> {
@@ -523,13 +516,11 @@ impl SpecializedImpl<'_> {
             out.push_str(&format!(" {}", req.get_attr_term()));
         }
 
-        // specialize to semtys
-        push_str_list!(out, self.impl_inst.get_direct_ty_params_with_assocs(), " ", |x| {
-            format!("<TY> {}", x)
-        });
-        // specialize to lfts
-        push_str_list!(out, self.impl_inst.get_lfts(), " ", |x| { format!("<LFT> {}", x) });
-        out.push_str(" <INST!>");
+        // specialize to semtys + lfts
+        out.push_str(&GenericScopeInst::format_full_instantiation(
+            &self.impl_inst.get_direct_ty_params_with_assocs(),
+            self.impl_inst.get_lfts(),
+        ));
 
         out
     }
@@ -553,8 +544,7 @@ impl QuantifiedImpl<'_> {
         let spec = spec.as_ref().unwrap();
         out.push_str(&spec.make_spec_param_name());
         // instantiate
-        out.push_str(&self.scope_inst.to_string());
-        out.push_str(" <INST!>");
+        out.push_str(&GenericScopeInst::format_full_instantiation(&[], &self.scope_inst.lft_insts));
 
         out
     }
@@ -1211,6 +1201,100 @@ impl SpecDecl<'_> {
     }
 
     #[must_use]
+    fn make_scope_bindable_instance(&self) -> coq::Document {
+        let mut doc = coq::Document::default();
+
+        let ordered_params = self.get_ordered_params();
+        let mut params = ordered_params.get_coq_ty_rt_params();
+        params.make_implicit(coq::binder::Kind::MaxImplicit);
+
+        let param_uses: Vec<_> = ordered_params
+            .params
+            .iter()
+            .map(|param| coq::term::Term::Ident(coq::Ident::new(&param.refinement_type())))
+            .collect();
+        let spec_record_type = coq::term::App::new(self.lit.spec_record(), param_uses.clone());
+        let ty = coq::term::Type::Literal(format!("ScopeBindable ({spec_record_type})"));
+
+        let spec_record_term =
+            coq::term::App::new(coq::term::Term::Ident(coq::Ident::new(&self.lit.spec_record())), param_uses);
+        let scope_add_typarams_params = coq::binder::BinderList::new(vec![
+            coq::binder::Binder::new(Some("rts".to_owned()), coq::term::Type::Literal("list RT".to_owned())),
+            coq::binder::Binder::new(
+                Some("tys".to_owned()),
+                coq::term::Type::Literal("plist type rts".to_owned()),
+            ),
+            coq::binder::Binder::new(
+                Some("s".to_owned()),
+                coq::term::Type::Literal(spec_record_term.to_string()),
+            ),
+        ]);
+
+        let scope_add_typarams_body = if self.default_spec.methods.is_empty() {
+            coq::term::Term::Ident(coq::Ident::new("s"))
+        } else {
+            let mut items = Vec::new();
+            for (item_name, item_spec) in &self.default_spec.methods {
+                let record_item_name = self.lit.make_spec_method_name(item_name);
+                let direct_scope = item_spec.get_direct_scope();
+
+                let mut field_params = direct_scope.get_direct_ty_params_with_assocs().get_coq_ty_params();
+                field_params.append(direct_scope.get_direct_attr_trait_parameters(IncludeSelfReq::Dont).0);
+                let field_param_uses = field_params.make_using_terms();
+                let projected_spec = coq::term::App::new(
+                    coq::term::Term::RecordProj(
+                        Box::new(coq::term::Term::Ident(coq::Ident::new("s"))),
+                        record_item_name.clone(),
+                    ),
+                    field_param_uses,
+                );
+                let term =
+                    coq::term::App::new(coq::term::Term::Ident(coq::Ident::new("scope_add_typarams")), vec![
+                        coq::term::Term::Ident(coq::Ident::new("rts")),
+                        coq::term::Term::Ident(coq::Ident::new("tys")),
+                        coq::term::Term::App(Box::new(projected_spec)),
+                    ]);
+
+                items.push(coq::term::RecordBodyItem {
+                    name: record_item_name,
+                    params: field_params,
+                    term: coq::term::Term::App(Box::new(term)),
+                });
+            }
+
+            coq::term::Term::RecordBody(coq::term::RecordBody { items })
+        };
+
+        let body = coq::term::Term::RecordBody(coq::term::RecordBody {
+            items: vec![coq::term::RecordBodyItem {
+                name: "scope_add_typarams".to_owned(),
+                params: scope_add_typarams_params,
+                term: scope_add_typarams_body,
+            }],
+        });
+
+        let instance_name = format!("scope_bindable_{}", self.lit.spec_record());
+
+        doc.push(coq::command::Definition {
+            program_mode: false,
+            name: instance_name.clone(),
+            params,
+            ty: Some(ty),
+            body: coq::command::DefinitionBody::Term(body),
+        });
+        doc.push(
+            coq::command::CommandAttrs::new(coq::command::Command::ExistingInstance(
+                coq::command::ExistingInstance {
+                    name: instance_name,
+                },
+            ))
+            .attributes("global"),
+        );
+
+        doc
+    }
+
+    #[must_use]
     pub fn make_trait_req_incls(&self) -> coq::Document {
         let mut decls: Vec<coq::Sentence> = Vec::new();
 
@@ -1246,6 +1330,9 @@ impl fmt::Display for SpecDecl<'_> {
         // prove that it is a preorder
         let spec_incl_preorder = self.make_spec_incl_preorder();
         write!(f, "{spec_incl_preorder}\n")?;
+
+        // write ScopeBindable instance
+        write!(f, "{}\n", self.make_scope_bindable_instance())?;
 
         // write the individual function specs
         for item_spec in self.default_spec.methods.values() {
@@ -1425,11 +1512,10 @@ impl<'def> RefInst<'def> {
         // then the attrs of this impl
         specialized_spec.push_str(&format!(" {}", self.get_attr_record_term()));
 
-        // specialize to semtys
-        push_str_list!(specialized_spec, &all_args, " ", |x| { format!("<TY> {}", x) });
-        // specialize to lfts
-        push_str_list!(specialized_spec, self.trait_inst.get_lfts(), " ", |x| { format!("<LFT> {}", x) });
-        specialized_spec.push_str(" <INST!>)");
+        // specialize to semtys + lfts
+        specialized_spec
+            .push_str(&GenericScopeInst::format_full_instantiation(&all_args, self.trait_inst.get_lfts()));
+        specialized_spec.push(')');
 
         coq::term::Term::Literal(specialized_spec)
     }
@@ -1638,7 +1724,10 @@ impl ImplSpec<'_> {
         scope.format(&mut ty_term, false, &[]).unwrap();
         ty_term.push_str(&format!(" {own_spec}) ("));
         scope.format(&mut ty_term, false, &[]).unwrap();
-        ty_term.push_str(&format!(" {base_spec}))"));
+        let surrounding_tys = fmt_list!(&scope.get_all_ty_params_with_assocs().params, "; ", |x| {
+            Type::LiteralParam(x.to_owned()).to_string()
+        });
+        ty_term.push_str(&format!(" scope_add_typarams _ -[{surrounding_tys}] ({base_spec})))"));
 
         let body = coq::term::Term::Literal(ty_term);
 
@@ -1790,15 +1879,10 @@ impl<'def> InstantiatedFunctionSpec<'def> {
         write!(applied_base_spec, "{}\n", coq::term::App::new(&self.trait_ref.of_trait.base_spec(), params))?;
 
         // now add the semantic components
-        // instantiate semantic types
-        for ty in &all_ty_params {
-            write!(applied_base_spec, " <TY> {ty}")?;
-        }
-        // instantiate lifetimes
-        for lft in self.trait_ref.trait_inst.get_lfts() {
-            write!(applied_base_spec, " <LFT> {lft}")?;
-        }
-        write!(applied_base_spec, " <INST!>")?;
+        applied_base_spec.push_str(&GenericScopeInst::format_full_instantiation(
+            &all_ty_params,
+            self.trait_ref.trait_inst.get_lfts(),
+        ));
 
         // now we need to project out the concrete function specification
         // we pass as parameters the direct rts and sts of the function
@@ -1813,12 +1897,14 @@ impl<'def> InstantiatedFunctionSpec<'def> {
 
         // bind the surrounding elctx
         let elctx = scope.get_surrounding_elctx();
-        let surrounding_tys: Vec<_> = scope.get_surrounding_ty_params_with_assocs().params.iter().map(|x| Type::LiteralParam(x.to_owned())).collect();
+        let surrounding_tys = scope.get_surrounding_ty_params_with_assocs();
+        let surrounding_tys =
+            fmt_list!(&surrounding_tys.params, "; ", |x| { Type::LiteralParam(x.to_owned()).to_string() });
         let mut scope_elctx = String::with_capacity(100);
-        elctx.format(&mut scope_elctx, &[], &surrounding_tys).unwrap();
+        elctx.format(&mut scope_elctx, &[], &[]).unwrap();
         write!(
             f,
-            "(λ a b, fn_spec_add_elctx ({scope_elctx}) (({applied_base_spec}).({}) {} {} a b)) <MERGE!>",
+            "(λ a b, scope_add_typarams _ -[{surrounding_tys}] (fn_spec_add_elctx ({scope_elctx}) (({applied_base_spec}).({}) {} {} a b))) <MERGE!>",
             //"({applied_base_spec}).({}) {} {} <MERGE!>",
             self.trait_ref.of_trait.make_spec_method_name(&self.trait_method_name),
             fmt_list!(spec_params, " "),
