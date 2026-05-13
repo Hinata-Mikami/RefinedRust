@@ -6,7 +6,7 @@ From lithium Require Import hooks.
 From refinedrust.automation Require Import lookup_definition.
 From refinedrust.base Require Import int programs xmap value.
 From refinedrust.primitive Require Import functions unit alias_ptr.
-From refinedrust Require Import mut_ref.mut_ref shr_ref struct.struct array.array enum.
+From refinedrust Require Import mut_ref.mut_ref shr_ref struct.struct array.array enum primitive.existentials.
 From refinedrust.typing Require Import program_rules.
 (* Important: import proof_state last as it overrides some Lithium tactics *)
 From refinedrust.automation Require Export loops existentials simpl solvers proof_state.
@@ -637,6 +637,278 @@ Ltac liRBinder :=
         end
       end
   end.
+
+(** ** Filters for context folding *)
+(** *** Extract *)
+Ltac gather_location_list_extract_filter_rec κ ltype :=
+  idtac.
+Ltac gather_location_list_extract_filter_hlist κ ltys :=
+  match ltys with
+  | +[] => fail
+  | ?lty +:: ?ltys =>
+    first [
+      gather_location_list_extract_filter_rec κ lty
+    | gather_location_list_extract_filter_hlist κ ltys ]
+  end.
+Ltac gather_location_list_extract_filter_array_list κ ltys :=
+  match ltys with
+  | [] => fail
+  | (_, ?lty) :: ?ltys =>
+    first [
+      gather_location_list_extract_filter_rec κ lty
+    | gather_location_list_extract_filter_array_list κ ltys ]
+  end.
+
+Ltac gather_location_list_extract_filter_ty_rec κ ty :=
+  idtac.
+Ltac gather_location_list_extract_filter_ty_list κ tys :=
+  match tys with
+  | [] => fail
+  | ?ty :: ?tys =>
+    first [
+      gather_location_list_extract_filter_ty_rec κ ty
+    | gather_location_list_extract_filter_ty_list κ tys ]
+  end.
+Ltac gather_location_list_extract_filter_ty_rec κ ty ::=
+  match ty with
+  | mut_ref ?κ1 ?ty  =>
+    first [ unify κ1 κ | gather_location_list_extract_filter_ty_rec κ ty]
+  | shr_ref ?κ1 ?ty =>
+    first [ unify κ1 κ | gather_location_list_extract_filter_ty_rec κ ty]
+  | struct_t _ ?tys =>
+    gather_location_list_extract_filter_ty_list κ tys
+  (* TODO: structurally descend *)
+  | _ => fail
+  end.
+
+Ltac gather_location_list_extract_filter_rec κ ltype ::=
+  (* check if *)
+  match ltype with
+  | MutLtype ?lt ?κ1 =>
+    first [ unify κ1 κ | gather_location_list_extract_filter_rec κ lt]
+  | ShrLtype ?lt ?κ1 =>
+    first [unify κ κ1 | gather_location_list_extract_filter_rec κ lt]
+  | StructLtype ?ltys _ =>
+    gather_location_list_extract_filter_hlist κ ltys
+  | EnumLtype _ _ ?lte _ =>
+    gather_location_list_extract_filter_rec κ lte
+  | ArrayLtype _ _ ?tys _ =>
+    gather_location_list_extract_filter_array_list κ tys
+  | OpenedLtype ?cur _ _ _ _ =>
+    gather_location_list_extract_filter_rec κ cur
+  | CoreableLtype _ _ =>
+    fail
+  | ShadowedLtype _ _ _ =>
+    fail
+  | OpenedNaLtype ?cur _ _ _ =>
+    gather_location_list_extract_filter_rec κ cur
+  | BlockedLtype _ ?κ1 =>
+    unify κ κ1
+  | ShrBlockedLtype _ ?κ1 =>
+    unify κ κ1
+  | OfTy ?ty =>
+    gather_location_list_extract_filter_ty_rec κ ty
+  end.
+
+Ltac gather_location_list_extract_filter κ rt ltype r :=
+  gather_location_list_extract_filter_rec κ ltype.
+
+
+(** *** Close Inv *)
+Ltac gather_location_list_closeinv_filter_rec κ ltype :=
+  idtac.
+Ltac gather_location_list_closeinv_filter_hlist κ ltys :=
+  match ltys with
+  | +[] => fail
+  | ?lty +:: ?ltys =>
+    first [
+      gather_location_list_closeinv_filter_rec κ lty
+    | gather_location_list_closeinv_filter_hlist κ ltys ]
+  end.
+Ltac gather_location_list_closeinv_filter_array_list κ ltys :=
+  match ltys with
+  | [] => fail
+  | (_, ?lty) :: ?ltys =>
+    first [
+      gather_location_list_closeinv_filter_rec κ lty
+    | gather_location_list_closeinv_filter_array_list κ ltys ]
+  end.
+
+Ltac gather_location_list_closeinv_filter_rec κs ltype ::=
+  (* check if *)
+  match ltype with
+  | MutLtype (OpenedLtype ?lt _ _ _ _) ?κ1 =>
+    first [ check_list_elem_of_lctx κ1 κs ltac:(fun _ => idtac) | gather_location_list_closeinv_filter_rec κs lt]
+  | ShrLtype ?lt ?κ1 =>
+    gather_location_list_closeinv_filter_rec κs lt
+  | StructLtype ?ltys _ =>
+    gather_location_list_closeinv_filter_hlist κs ltys
+  | EnumLtype _ _ ?lte _ =>
+    gather_location_list_closeinv_filter_rec κs lte
+  | ArrayLtype _ _ ?tys _ =>
+    gather_location_list_closeinv_filter_array_list κs tys
+  | OpenedLtype ?cur _ _ _ _ =>
+    gather_location_list_closeinv_filter_rec κs cur
+  | CoreableLtype _ _ =>
+    fail
+  | ShadowedLtype _ _ _ =>
+    fail
+  | OpenedNaLtype ?cur _ _ _ =>
+    gather_location_list_closeinv_filter_rec κs cur
+  (*| BlockedLtype _ ?κ1 =>*)
+    (*unify κ κ1*)
+  (*| ShrBlockedLtype _ ?κ1 =>*)
+    (*unify κ κ1*)
+  | OfTy ?ty =>
+    fail
+  end.
+
+Ltac gather_location_list_closeinv_filter κs rt ltype r :=
+  gather_location_list_closeinv_filter_rec κs ltype.
+
+(** *** Resolve *)
+Ltac gather_location_list_resolve_filter_rec ltype r :=
+  idtac.
+Ltac gather_location_list_resolve_filter_hlist ltys rs :=
+  match ltys with
+  | +[] => fail
+  | ?lty +:: ?ltys =>
+    match rs with
+    | ?r :: ?rs =>
+      first [
+        gather_location_list_resolve_filter_rec lty r
+      | gather_location_list_resolve_filter_hlist ltys rs ]
+    end
+  end.
+
+Ltac gather_location_list_resolve_filter_ty_rec ty r :=
+  idtac.
+Ltac gather_location_list_resolve_filter_ty_list tys rs :=
+  match tys with
+  | [] => fail
+  | ?ty :: ?tys =>
+    lazymatch rs with
+    | ?r :: ?rs =>
+      lazymatch r with
+      | #?r =>
+        first [
+          gather_location_list_resolve_filter_ty_rec ty r
+        | gather_location_list_resolve_filter_ty_list tys rs ]
+      | 👻 _ => idtac
+      end
+    end
+  end.
+Ltac gather_location_list_resolve_filter_ty_rec ty r ::=
+  match ty with
+  | mut_ref ?κ1 ?ty  =>
+    match r with
+    | (👻 _, _) =>
+      idtac
+    | (#?r, _) =>
+      gather_location_list_resolve_filter_ty_rec ty r
+    end
+  | shr_ref ?κ1 ?ty =>
+    match r with
+    | (👻 _, _) =>
+      idtac
+    | (#?r, _) =>
+      gather_location_list_resolve_filter_ty_rec ty r
+    end
+  | struct_t _ ?tys =>
+    gather_location_list_resolve_filter_ty_list tys r
+  | ex_plain_t _ _ _ _ =>
+    (* we want to trigger the ADT resolution instances *)
+    idtac
+  (* TODO: structurally descend *)
+  | _ =>
+    match r with
+    | 👻 _ => idtac
+    end
+  end.
+
+Ltac gather_location_list_resolve_filter_rec ltype r ::=
+  match ltype with
+  | MutLtype ?lt ?κ1 =>
+    match r with
+    | #(?r, _) =>
+      gather_location_list_resolve_filter_rec lt r
+    | 👻 _ =>
+      idtac
+    end
+  | ShrLtype ?lt ?κ1 =>
+    match r with
+    | #?r =>
+      gather_location_list_resolve_filter_rec lt r
+    | 👻 _ =>
+      idtac
+    end
+  | StructLtype ?ltys _ =>
+    match r with
+    | #?r =>
+      gather_location_list_resolve_filter_hlist ltys r
+    | 👻 _ =>
+      idtac
+    end
+  | EnumLtype _ _ ?lte ?re =>
+    gather_location_list_resolve_filter_rec lte constr:(#re)
+  | ArrayLtype _ _ ?tys _ =>
+    (* hard to check precisely, therefore underapproximate *)
+    idtac
+  | OpenedLtype ?cur _ _ _ _ =>
+    gather_location_list_resolve_filter_rec cur r
+  | CoreableLtype _ _ =>
+    fail
+  | ShadowedLtype _ _ _ =>
+    fail
+  | OpenedNaLtype ?cur _ _ _ =>
+    gather_location_list_resolve_filter_rec cur r
+  | BlockedLtype _ _ =>
+    lazymatch r with
+    | 👻 _ => idtac
+    end
+  | ShrBlockedLtype _ ?κ1 =>
+    lazymatch r with
+    | 👻 _ => idtac
+    end
+  | OfTy ?ty =>
+    lazymatch r with
+    | 👻 _ => idtac
+    | # ?r =>
+      gather_location_list_resolve_filter_ty_rec ty r
+    end
+  end.
+
+Ltac gather_location_list_resolve_filter rt ltype r :=
+  gather_location_list_resolve_filter_rec ltype r.
+
+(** Stratify *)
+Ltac gather_location_list_stratify_filter_rec ltype :=
+  match ltype with
+  | OfTy ?ty =>
+    (* a top-level OfTy doesn't have to be stratified *)
+    fail
+  | _ => idtac
+  end.
+
+Ltac gather_location_list_stratify_filter rt ltype r :=
+  gather_location_list_stratify_filter_rec ltype.
+
+Ltac gather_location_list_get_filter m ::=
+  lazymatch m with
+  | CtxFoldExtractAllInit ?κ =>
+    ltac:(gather_location_list_extract_filter κ)
+  | CtxFoldCloseInvAllInit ?κs =>
+    ltac:(gather_location_list_closeinv_filter κs)
+  | CtxFoldStratifyAllInit ?ma =>
+    ltac:(gather_location_list_stratify_filter)
+  | CtxFoldResolveAllInit =>
+    ltac:(gather_location_list_resolve_filter)
+  | _ =>
+    ltac:(gather_location_list_default_filter)
+  end
+.
+
+(** ** Main stepping tactics *)
 
 (* TODO Maybe this should rather be a part of Lithium? *)
 Ltac unfold_introduce_direct :=

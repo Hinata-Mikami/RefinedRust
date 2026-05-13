@@ -5107,8 +5107,9 @@ Section subsume.
   Definition typed_context_fold_step_stratify_inst := [instance typed_context_fold_step_stratify].
   Global Existing Instance typed_context_fold_step_stratify_inst.
 
+  (* No filter *)
   Lemma typed_context_fold_stratify_init π E L ma T :
-    li_tactic (find_spatial_locs_goal) (λ tctx,
+    li_tactic (find_spatial_locs_goal (CtxFoldStratifyAllInit ma)) (λ tctx,
     typed_context_fold (typed_context_fold_stratify_interp π) E L (CtxFoldStratifyAll ma) tctx ([], True%I) (λ L' m' acc, True ∗
       typed_context_fold_end (typed_context_fold_stratify_interp π) E L' acc T))
     ⊢ typed_pre_context_fold π E L (CtxFoldStratifyAllInit ma) T.
@@ -5156,8 +5157,9 @@ Section subsume.
   Definition typed_context_fold_step_extract_inst := [instance typed_context_fold_step_extract].
   Global Existing Instance typed_context_fold_step_extract_inst.
 
+  (* Potential filter: has a reference with that lifetime *)
   Lemma typed_context_fold_extract_init π E L κ T :
-    li_tactic find_spatial_locs_goal (λ tctx,
+    li_tactic (find_spatial_locs_goal (CtxFoldExtractAllInit κ)) (λ tctx,
     typed_context_fold (typed_context_fold_extract_interp π) E L (CtxFoldExtractAll κ) tctx ([], True%I) (λ L' m' acc, True ∗
       typed_context_fold_end (typed_context_fold_extract_interp π) E L' acc T))
     ⊢ typed_pre_context_fold π E L (CtxFoldExtractAllInit κ) T.
@@ -5189,8 +5191,9 @@ Section subsume.
   Definition typed_context_fold_step_resolve_inst := [instance typed_context_fold_step_resolve].
   Global Existing Instance typed_context_fold_step_resolve_inst.
 
+  (* Potential filter: things with PlaceGhost in refinement *)
   Lemma typed_context_fold_resolve_init π E L T :
-    li_tactic find_spatial_locs_goal (λ tctx,
+    li_tactic (find_spatial_locs_goal (CtxFoldResolveAllInit)) (λ tctx,
     typed_context_fold (typed_context_fold_resolve_interp π) E L (CtxFoldResolveAll) tctx ([], True%I) (λ L' m' acc, True ∗
       typed_context_fold_end (typed_context_fold_resolve_interp π) E L' acc T))
     ⊢ typed_pre_context_fold π E L (CtxFoldResolveAllInit) T.
@@ -5222,8 +5225,9 @@ Section subsume.
   Definition typed_context_fold_step_close_inv_inst := [instance @typed_context_fold_step_close_inv].
   Global Existing Instance typed_context_fold_step_close_inv_inst.
 
+  (* Potential filter: things with Opened (tighter: only below MutLtype with one of the lifetimes) *)
   Lemma typed_context_fold_close_inv_init π E L κs T :
-    li_tactic find_spatial_locs_goal (λ tctx,
+    li_tactic (find_spatial_locs_goal (CtxFoldCloseInvAllInit κs)) (λ tctx,
     typed_context_fold (typed_context_fold_close_inv_interp π) E L (CtxFoldCloseInvAll κs) tctx ([], True%I) (λ L' m' acc, True ∗
       typed_context_fold_end (typed_context_fold_close_inv_interp π) E L' acc T))
     ⊢ typed_pre_context_fold π E L (CtxFoldCloseInvAllInit κs) T.

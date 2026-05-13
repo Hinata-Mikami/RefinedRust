@@ -128,6 +128,121 @@ Proof.
   Unshelve. all: try solve_goal.
 Qed.
 
+Lemma test_context_fold_none `{!typeGS Σ} π l :
+  ⊢ l ◁ₗ[π, Owned] #42%Z @ (◁ int i32) -∗
+    True ∗ True.
+Proof.
+  iStartProof.
+  liRStep.
+  liRStep.
+  assert (∃ ks : list loc, find_spatial_locs_pure_goal 4 ks ∧ ks = [l]).
+  { eexists. split.
+    { solve_find_spatial_locs. }
+    reflexivity.
+  }
+Abort.
+Lemma test_context_fold_extract_1 `{!typeGS Σ} π l (κ : lft) :
+  ⊢ l ◁ₗ[π, Owned] #42%Z @ (◁ int i32) -∗
+    True ∗ True.
+Proof.
+  iStartProof.
+  liRStep.
+  liRStep.
+  assert (∃ ks : list loc, find_spatial_locs_pure_goal (CtxFoldExtractAllInit κ) ks ∧ ks = []).
+  { eexists. split.
+    { solve_find_spatial_locs. }
+    reflexivity.
+  }
+Abort.
+Lemma test_context_fold_extract_2 `{!typeGS Σ} π l l2 γ (κ : lft) :
+  ⊢ l ◁ₗ[π, Owned] #42%Z @ (◁ int i32) -∗
+    l2 ◁ₗ[π, Owned] #(#42%Z, γ) @ (◁ mut_ref κ (int i32)) -∗
+    True ∗ True.
+Proof.
+  iStartProof.
+  liRStep.
+  liRStep.
+  liRStep.
+  assert (∃ ks : list loc, find_spatial_locs_pure_goal (CtxFoldExtractAllInit κ) ks ∧ ks = [l2]).
+  { eexists. split.
+    { solve_find_spatial_locs. }
+    reflexivity.
+  }
+Abort.
+Lemma test_context_fold_extract_3 `{!typeGS Σ} π l l2 γ (κ : lft) :
+  ⊢ l ◁ₗ[π, Owned] #42%Z @ (◁ int i32) -∗
+    l2 ◁ₗ[π, Owned] #(#42%Z, γ) @ (MutLtype (◁ int i32) κ) -∗
+    True ∗ True.
+Proof.
+  iStartProof.
+  liRStep.
+  liRStep.
+  liRStep.
+  assert (∃ ks : list loc, find_spatial_locs_pure_goal (CtxFoldExtractAllInit κ) ks ∧ ks = [l2]).
+  { eexists. split.
+    { solve_find_spatial_locs. }
+    reflexivity.
+  }
+Abort.
+
+Lemma test_context_fold_closeinv_1 `{!typeGS Σ} π l (κ : lft) :
+  ⊢ l ◁ₗ[π, Owned] #42%Z @ (◁ int i32) -∗
+    True ∗ True.
+Proof.
+  iStartProof.
+  liRStep.
+  liRStep.
+  assert (∃ ks : list loc, find_spatial_locs_pure_goal (CtxFoldCloseInvAllInit [κ]) ks ∧ ks = []).
+  { eexists. split.
+    { solve_find_spatial_locs. }
+    reflexivity.
+  }
+Abort.
+Lemma test_context_fold_closeinv_2 `{!typeGS Σ} π l l2 γ (κ : lft) :
+  ⊢ l ◁ₗ[π, Owned] #42%Z @ (◁ int i32) -∗
+    l2 ◁ₗ[π, Owned] #(#42%Z, γ) @ (MutLtype (OpenedLtype (◁ int i32) (◁ int i32) (◁ int i32) (λ _ _, True%I) (λ _ _, True%I)) κ) -∗
+    True ∗ True.
+Proof.
+  iStartProof.
+  liRStep.
+  liRStep.
+  liRStep.
+  assert (∃ ks : list loc, find_spatial_locs_pure_goal (CtxFoldCloseInvAllInit [κ]) ks ∧ ks = [l2]).
+  { eexists. split.
+    { solve_find_spatial_locs. }
+    reflexivity.
+  }
+Abort.
+
+Lemma test_context_fold_resolve_1 `{!typeGS Σ} π l :
+  ⊢ l ◁ₗ[π, Owned] #42%Z @ (◁ int i32) -∗
+    True ∗ True.
+Proof.
+  iStartProof.
+  liRStep.
+  liRStep.
+  assert (∃ ks : list loc, find_spatial_locs_pure_goal (CtxFoldResolveAllInit) ks ∧ ks = []).
+  { eexists. split.
+    { solve_find_spatial_locs. }
+    reflexivity.
+  }
+Abort.
+Lemma test_context_fold_resolve_2 `{!typeGS Σ} π l l2 γ γ2 (κ : lft) :
+  ⊢ l ◁ₗ[π, Owned] #42%Z @ (◁ int i32) -∗
+    l2 ◁ₗ[π, Owned] #(👻 γ2, γ) @ (◁ mut_ref κ (int i32)) -∗
+    True ∗ True.
+Proof.
+  iStartProof.
+  liRStep.
+  liRStep.
+  liRStep.
+  assert (∃ ks : list loc, find_spatial_locs_pure_goal (CtxFoldResolveAllInit) ks ∧ ks = [l2]).
+  { eexists. split.
+    { solve_find_spatial_locs. }
+    reflexivity.
+  }
+Abort.
+
 Local Lemma test_destruct_hint `{!typeGS Σ} (x : option nat) E L A :
   if_iNone x (False) ∗ if_iSome x (λ x, ⌜x = 5%nat⌝)
   ⊢@{iProp Σ} prove_with_subtype E L false ProveDirect (⌜destruct_hint x (λ x, x = Some 5%nat)⌝) A (λ _ _ _, True).

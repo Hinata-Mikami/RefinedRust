@@ -2694,7 +2694,7 @@ Section judgments.
   Definition prove_with_subtype (E : elctx) (L : llctx) (step : bool) (pm : ProofMode) (P : iProp Σ) (Acc : iProp Σ) (T : llctx → list lft → iProp Σ → iProp Σ) : iProp Σ :=
     ∀ F Acc', ⌜lftE ⊆ F⌝ -∗ ⌜lft_userE ⊆ F⌝ -∗ ⌜shrE ⊆ F⌝ -∗ rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
       maybe_logical_step step F (Acc ∗ Acc') -∗ |={F}=>
-      ∃ L' κs R, 
+      ∃ L' κs R,
         maybe_logical_step step F (R ∗ ((if pm is ProveWithStratify then (lft_dead_list κs ={lftE}=∗ P) else P) ∗ Acc')) ∗ llctx_interp L' ∗ T L' κs R.
   Class ProveWithSubtype (E : elctx) (L : llctx) (step : bool) (pm : ProofMode) (P : iProp Σ) (Acc : iProp Σ) : Type :=
     prove_with_subtype_proof T : iProp_to_Prop (prove_with_subtype E L step pm P Acc T).
@@ -3466,25 +3466,25 @@ Ltac solve_find_inheritances := fail "implement solve_find_inheritances".
 #[global] Hint Extern 10 (LiTactic (find_inheritances_goal)) =>
   refine (find_inheritances_hint _ _); solve_find_inheritances : typeclass_instances.
 
-(** Computing the list of all spatial locations *)
-Definition find_spatial_locs_goal `{!typeGS Σ} (T : list loc → iProp Σ) : iProp Σ :=
+(** Computing the list of all spatial locations. [m] is a filter that the Ltac can match on. *)
+Definition find_spatial_locs_goal `{!typeGS Σ} {M} (m : M) (T : list loc → iProp Σ) : iProp Σ :=
   ∃ ks, T ks.
-Definition find_spatial_locs_pure_goal `{!typeGS Σ}  (ks : list loc) :=
+Definition find_spatial_locs_pure_goal `{!typeGS Σ} {M} (m : M) (ks : list loc) :=
   True.
-Program Definition find_spatial_locs_hint `{!typeGS Σ} (ks : list loc) :
-  find_spatial_locs_pure_goal ks →
-  LiTactic (find_spatial_locs_goal) := λ a, {|
+Program Definition find_spatial_locs_hint `{!typeGS Σ} {M} (m : M) (ks : list loc) :
+  find_spatial_locs_pure_goal m ks →
+  LiTactic (find_spatial_locs_goal m) := λ a, {|
     li_tactic_P T := T ks;
   |}.
 Next Obligation.
-  iIntros (?? ? ? ?) "HT". iExists _. iFrame.
+  iIntros (?? ?? ? ? ?) "HT". iExists _. iFrame.
 Qed.
 
 Global Typeclasses Opaque find_spatial_locs_goal.
 Global Typeclasses Opaque find_spatial_locs_pure_goal.
 Ltac solve_find_spatial_locs := fail "implement solve_find_spatial_locs".
-#[global] Hint Extern 10 (LiTactic (find_spatial_locs_goal)) =>
-  refine (find_spatial_locs_hint _ _); solve_find_spatial_locs : typeclass_instances.
+#[global] Hint Extern 10 (LiTactic (find_spatial_locs_goal ?m)) =>
+  refine (find_spatial_locs_hint m _ _); solve_find_spatial_locs : typeclass_instances.
 
 (** Computing the list of all local lifetimes whose death is implied by the death of another local lifetime (due to inclusion) *)
 Definition find_implied_dying_lifetimes_goal `{!typeGS Σ} (L : llctx) (κ : lft) (T : list lft → iProp Σ) : iProp Σ :=

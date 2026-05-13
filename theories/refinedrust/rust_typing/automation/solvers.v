@@ -314,25 +314,37 @@ Ltac solve_find_inheritances ::=
   end.
 
 (** Find spatial locs *)
-Ltac gather_location_list env :=
+Ltac gather_location_list_default_filter rt ltype r :=
+  idtac.
+Ltac gather_location_list_get_filter m :=
+  ltac:(gather_location_list_default_filter)
+.
+Ltac gather_location_list env filter cont :=
   match env with
-  | Enil => uconstr:([])
+  | Enil => cont constr:(([] : list loc))
   | Esnoc ?env' _ ?p =>
-      let rs := gather_location_list env' in
-      lazymatch p with
-      | (?l ◁ₗ[?π, Owned] ?r @ ?lty)%I =>
-          uconstr:(l :: rs)
-      | _ => uconstr:(rs)
-      end
+      gather_location_list env' filter ltac:(fun rs =>
+        match p with
+        | (?l ◁ₗ[ ?π, Owned] ?r @ ?lty)%I =>
+            lazymatch type of lty with
+            | ltype ?rt =>
+                filter ltac:(constr:(rt)) ltac:(constr:(lty)) ltac:(constr:(r));
+                cont constr:((l :: rs))
+            end
+        | _ => cont constr:(rs)
+        end
+      )
   end.
+
 Ltac solve_find_spatial_locs ::=
   match goal with
-  | H := Envs ?Δi ?Δs _ |- find_spatial_locs_pure_goal ?ks =>
-      let locs := gather_location_list Δs in
-      let locs := constr:(locs) in
-      unify ks locs;
-      unfold find_spatial_locs_pure_goal;
-      done
+  | H := Envs ?Δi ?Δs _ |- find_spatial_locs_pure_goal ?m ?ks =>
+      let filter := gather_location_list_get_filter m in
+      gather_location_list Δs filter ltac:(fun locs =>
+        let locs := constr:(locs) in
+        unify ks locs;
+        unfold find_spatial_locs_pure_goal;
+        done)
   end.
 
 (** Discover which local lifetimes are dying implied by another local lifetime dying (due to inclusion / aliases) *)
