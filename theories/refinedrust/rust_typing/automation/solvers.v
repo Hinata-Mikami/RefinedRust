@@ -1204,7 +1204,7 @@ Ltac solve_lft_alive_step :=
   (* If it is not a var, unfold *)
   | |- lctx_lft_alive_list ?E ?L (ty_lfts ?ty ++ _) ∨ _ =>
       notypeclasses refine (tac_lctx_lft_alive_list_simpl_head_app _ _ _ _ _ _ _ _);
-      [let x := fresh in intros x; rewrite [(@ty_lfts _ _)]ty_lfts_unfold; simpl; subst x; reflexivity | ]
+      [let x := fresh in intros x; rewrite {1}[(@ty_lfts _ _)]ty_lfts_unfold; simpl; subst x; reflexivity | ]
       (*unfold_opaque (@ty_lfts) in (ty_lfts ty); simpl*)
 
   (* liveness of local lifetimes *)
@@ -3022,4 +3022,3 @@ Ltac solve_trait_incl :=
   solve_trait_incl_prepare;
   solve_trait_incl_core;
   try solve_trait_incl_fn.
-

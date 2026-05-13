@@ -937,6 +937,17 @@ Section lft_contexts.
   Lemma elctx_sat_refl E L : elctx_sat E L E.
   Proof. iIntros (?) "_ !> ?". done. Qed.
 
+  Lemma elctx_sat_use E L E2 :
+    elctx_sat E L E2 →
+    llctx_interp L -∗
+    elctx_interp E -∗
+    elctx_interp E2.
+  Proof.
+    iIntros (Hsat) "HL HE".
+    iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & _)".
+    iDestruct (Hsat with "HL") as "#Hsat".
+    by iApply "Hsat".
+  Qed.
 
   (* [κs] and [L'] are "outputs", as getting a token for κ has side-effects  *)
   Definition lctx_lft_alive_count E L (κ : lft) κs L' : Prop :=

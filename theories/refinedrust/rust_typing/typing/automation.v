@@ -989,7 +989,6 @@ Tactic Notation "liRStepUntil" open_constr(id) :=
 Ltac prepare_initial_coq_context :=
   (* The automation assumes that all products in the context are destructed, see liForall *)
   repeat match goal with
-  | H : fn_A _ |- _ => simpl in H
   (*| H : struct_xt _ |- _ => unfold struct_xt in H; simpl in H*)
   | H : plist _ _ |- _ => destruct_product_hypothesis H H
   | H : (_ * _)%type |- _ => destruct_product_hypothesis H H
@@ -998,6 +997,7 @@ Ltac prepare_initial_coq_context :=
                       (*destruct H as [tmp];*)
                       (*rename_by_string tmp n*)
   | H : unit |- _ => destruct H
+  | H : fn_A _ |- _ => progress (simpl in H)
   | H : RT_xt _ |- _ => progress (simpl in H)
   end.
 
@@ -1329,6 +1329,19 @@ Ltac solve_enum_layout_spec_discriminant_nodup :=
   simpl; repeat first [econstructor | els_not_elem_solver].
 Ltac solve_enum_layout_spec_discriminant_in_range :=
   init_cache; repeat first [econstructor | solve_goal ]; unsafe_unfold_common_radium_defs; simpl; lia.
+
+(* Fast function type equality *)
+Ltac solve_fast_function_spec_eq :=
+    match goal with
+    | |- FastFunctionSpecEq  _ _ =>
+      unfold FastFunctionSpecEq;
+      intros ??; prepare_initial_coq_context;
+      simpl; exists eq_refl;
+      intros ?; prepare_initial_coq_context;
+      simpl; split_and!; try done;
+      [exists eq_refl; done]
+    end.
+Hint Extern 2 (FastFunctionSpecEq _ _) => solve_fast_function_spec_eq : typeclass_instances.
 
 (** ** Sideconditions *)
 Ltac shelve_sidecond_hook ::=

@@ -10,7 +10,7 @@ Definition introduce_typed_stmt {Σ} `{!typeGS Σ} (E : elctx) (L : llctx) (f : 
 Global Typeclasses Opaque introduce_typed_stmt.
 Global Arguments introduce_typed_stmt : simpl never.
 
-(* TODO: equip function types with namespace parameters for atomic and non-atomic invariants that need to be active when calling it. *)
+(*TODO: equip function types with namespace parameters for atomic and non-atomic invariants that need to be active when calling it. *)
 
 Section function.
   Context `{!typeGS Σ}.
@@ -26,7 +26,7 @@ Section function.
 
   Record fn_params := FP {
     (** Argument types with refinement.
-      We also directly require an inG proof for ghost variables to that type.
+     We also directly require an inG proof for ghost variables to that type.
       Maybe there is a nicer way to bundle that up?
     *)
     fp_atys : list (@sigT RT (λ rt, type rt * rt)%type);
@@ -50,15 +50,15 @@ Section function.
      Compute a [fn_params] definition that includes the required lifetime constraints for the
      used argument and return types (according to their typeclass instances).
      This is currently a bit more restrictive than it needs to be:
-     We don't allow [retty] to depend on [exty], since [exty] should not quantify over any lifetimes for this computation to work.
+We don't allow [retty] to depend on [exty], since [exty] should not quantify over any lifetimes for this computation to work.
      FIXME Maybe we can generalize this with some more typeclass magic.
-   *)
+*)
   Definition map_rtype : (@sigT RT (λ rt, type rt * rt)%type) → rtype :=
     (λ '(existT rt (ty, _)), {| rt_rty := rt; rt_ty := ty|}).
   Definition FP_wf
       (E : lft → elctx)
       (atys : list (@sigT RT (λ rt, type rt * rt)%type))
-   (pa : thread_id → iProp Σ)
+  (pa : thread_id → iProp Σ)
       (sc : thread_id → iProp Σ)
      (exty : Type)
       (retrt : RT)
@@ -737,36 +737,96 @@ Section function_subsume.
     }
     rewrite /introduce_typed_stmt.
     iIntros (?) "#CTX HE HL Hfr Hrt".
-    iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HLcl)".
-    iDestruct (Helctx with "HL") as "#HEincl".
-    iPoseProof ("HLcl" with "HL") as "HL". simpl.
-    iSpecialize ("Hf" with "CTX [HE] HL Hfr").
-    { by iApply "HEincl". }
+    iPoseProof (elctx_sat_use with "HL HE") as "#HE2".
+    { apply Helctx. }
+    iSpecialize ("Hf" with "CTX HE2 HL Hfr").
     simpl. iApply "Hf".
     iIntros (L' v locals) "HL Hfr Hlocals Hlocs Hpost". simpl.
     iApply ("Hrt" with "HL Hfr Hlocals Hlocs").
-    iIntros (?????) "_ HE HL HA".
-    iPoseProof ("HEincl" with "HE") as "HE".
-    iMod ("Hpost" with "[//] [//] [//] CTX HE HL HA") as "(%L2 & %κs2 & %R & Hs & HL & Hintro)".
+    iIntros (?????) "_ _ HL HA".
+    iMod ("Hpost" with "[//] [//] [//] CTX HE2 HL HA") as "(%L2 & %κs2 & %R & Hs & HL & Hintro)".
     iMod "Hs" as "(HR & (%x & Hrt & Hpost & _) & ?)".
     iDestruct ("HT" with "Hpost Hrt") as "(%y & Hpost & Hrt & _)".
     (* TODO could also allow prove_with_subtype etc here? *)
     iModIntro.
     simpl. iExists L2, [], R. iFrame.
     iSplitR "Hintro"; first done.
-    iIntros (??) "_ HE HL HP".
-    iPoseProof ("HEincl" with "HE") as "HE".
+    iIntros (??) "_ _ HL HP".
     rewrite /llctx_find_llft_goal.
     rewrite /FindCreditStore.
-    iMod ("Hintro" with "[//] CTX HE HL HP") as "(%L3 & HL & %L4 & %κs3 & % & % & Hc & HT)".
+    iMod ("Hintro" with "[//] CTX HE2 HL HP") as "(%L3 & HL & %L4 & %κs3 & % & % & Hc & HT)".
     simpl.
     iModIntro. iExists L3. iFrame.
     by iExists _, _.
   Qed.
   (* NOTE: Don't use the instance generation, as it will instantiate the equalities with [eq_refl]. *)
   Global Instance subsume_typed_function_inst π fn {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) :
-    Subsume (typed_function π fn (eqp1, F1)) (typed_function π fn (eqp2, F2)) | 10 :=
+    Subsume (typed_function π fn (eqp1, F1)) (typed_function π fn (eqp2, F2)) | 20 :=
     λ T, i2p (subsume_typed_function π fn eqp1 eqp2 F1 F2 T).
+
+  Import EqNotations.
+  Definition function_spec_fast_eq {lfts : nat} {rts : list RT} (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) :=
+    ∀ tys (lfts : plist _ _),
+      let F1 := F1 lfts tys in
+      let F2 := F2 lfts tys in
+      ∃ (Heq : F2.(fn_A) = F1.(fn_A)),
+      ∀ p : F2.(fn_A),
+      let F1 := F1.(fn_p) (rew [id] Heq in p) in
+      let F2 := F2.(fn_p) p in
+      F1.(fp_atys) = F2.(fp_atys) ∧
+      F1.(fp_Pa) = F2.(fp_Pa) ∧
+      F1.(fp_Sc) = F2.(fp_Sc) ∧
+      ∃ (Heq2 : F1.(fp_extype) = F2.(fp_extype)),
+      ∀ (r : F1.(fp_extype)),
+      F1.(fp_fr) r = F2.(fp_fr) (rew [id] Heq2 in r)
+  .
+  Class FastFunctionSpecEq {lfts : nat} {rts : list RT} (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) : Prop :=
+    make_fast_function_spec_eq : function_spec_fast_eq F1 F2.
+
+  (* A fast version if everything is equal *)
+  Lemma subsume_typed_function_fast π fn {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) `{Heq : !FastFunctionSpecEq F1 F2} T :
+    subsume (typed_function π fn (eqp1, F1)) (typed_function π fn (eqp2, F2)) T :-
+      exhale ⌜∀ (κs : plist _ _) (tys : plist type rts) a b ϝ, elctx_sat (((F2 κs tys).(fn_p) b).(fp_elctx) ϝ) [ϝ ⊑ₗ{ 0} []] (((F1 κs tys).(fn_p) a).(fp_elctx) ϝ)⌝;
+      return T.
+  Proof.
+    iIntros "(% & $) #Hf".
+
+    rewrite /typed_function.
+    iIntros (κs tys p ϝ f). iModIntro.
+    simpl in *.
+    iIntros (? lsa) "Hinit".
+
+    destruct (Heq tys κs) as (Heq1 & Heq').
+    destruct (Heq' p) as (Heq2 & Heq3  & Heq4 & Heq5 & Heq6).
+    iDestruct ("Hf" $! κs tys (rew [id] Heq1 in p) ϝ f) as "#Hf'".
+    iClear "Hf".
+    iSpecialize ("Hf'" with "[]").
+    { rewrite Heq2. done. }
+    rewrite Heq2.
+    iSpecialize ("Hf'" $! lsa with "[Hinit]").
+    { unfold fn_init_context.
+      rewrite Heq4 Heq3.
+      iDestruct "Hinit" as "($ & $ & $ & ? & ? & $ & $)".
+      rewrite Heq2. iFrame. }
+    rewrite /introduce_typed_stmt.
+    iIntros (?) "#CTX #HE HL Hf Hpost".
+    iPoseProof (elctx_sat_use with "HL HE") as "#HE2". { done. }
+    iApply ("Hf'" with "CTX HE2 HL Hf [Hpost]").
+    iIntros (???) "HL Hf Halloc Hx HR".
+    iApply ("Hpost" with "HL Hf Halloc Hx").
+    iIntros (?????) "_ _ HL HA".
+    iMod ("HR" with "[//] [//] [//] CTX HE2 HL HA") as "(%L2 & %κs2 & %R2 & Hstep & $ & HT)".
+    simpl. iMod ("Hstep") as "(? & (%x & ? & ? & _) & ?)".
+    rewrite Heq6. iFrame.
+    iExists κs2, R2. iFrame. iR.
+    iModIntro.
+    iIntros (??) "_ _ HL HP".
+    by iApply ("HT" with "[] CTX HE2 HL HP").
+  Qed.
+  (* NOTE: Don't use the instance generation, as it will instantiate the equalities with [eq_refl]. *)
+  Global Instance subsume_typed_function_fast_inst π fn {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) `{Heq : !FastFunctionSpecEq F1 F2} :
+    Subsume (typed_function π fn (eqp1, F1)) (typed_function π fn (eqp2, F2)) | 10 :=
+    λ T, i2p (subsume_typed_function_fast π fn eqp1 eqp2 F1 F2 T).
 
   (* This weaker notion operates on the [function_ptr] indirection *)
   Lemma subsume_function_ptr π v l1 l2 sts1 sts2 {lfts : nat} {rts : list RT} eqp1 eqp2 (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) T :
@@ -893,13 +953,39 @@ Section function_subsume.
     iEval (unfold typed_function).
     iIntros ([] [] x ϝ f); simpl.
     iModIntro. iIntros (??) "(Hs & Hna & Hlocals & Ha & Hl & [Hsc #HP] & Hpre)".
+    rewrite /introduce_typed_stmt.
+    iIntros (?) "#CTX HE HL Hf HPost".
+    rewrite elctx_interp_app.
+    iDestruct "HE" as "(#HE1 & HE2)".
+
     iDestruct ("Hsub" with "[]") as "(Hsub' & _)".
     { clear. iEval (rewrite /typed_function).
-      iIntros ([] []). simpl. iIntros (x ϝ f).
+      iIntros ([] []). simpl. iIntros (x ϝ' f).
       iModIntro. iIntros (??).
+      (*iIntros "Hinit".*)
       iIntros "(? & ? & ? & ? & ? & ? & ?)".
+      rewrite /introduce_typed_stmt.
+      iIntros (?) "_ HE2 HL Hf HPost".
       iEval (rewrite /typed_function) in "HT".
-      simpl.
+      iDestruct ("HT" $! *[] *[] x ϝ' _) as "#HT'".
+      iClear "HT".
+      iSpecialize ("HT'" with "[] [$]").
+      { done. }
+      iEval (rewrite /introduce_typed_stmt) in "HT'".
+      iApply ("HT'" with "CTX [HE2] HL Hf [HPost]").
+      { simpl.
+
+      (* Problem now: The function lifetime ϝ might be different now, because it is quantified individually at the function level. I cannot ensure a consistent instantiation.
+      *)
+      (* Maybe I want to change the notion of function subtyping a bit to quantify the function lifetime on the outside.
+        This should be a weaker notion of subtyping.
+        Is it still compatible with function_ptr subtyping?
+        Yeah, that should still work, I guess.
+
+        Let's shelve this and see if I actually need it.
+
+      *)
+
 
       (*
          What is happening here?
@@ -1054,3 +1140,6 @@ End function_subsume.
 Global Hint Mode FunctionSubtype + + + - + - : typeclass_instances.
 Global Typeclasses Opaque function_subtype.
 Global Arguments function_subtype : simpl never.
+
+
+Global Hint Mode FastFunctionSpecEq + + + + + + : typeclass_instances.
