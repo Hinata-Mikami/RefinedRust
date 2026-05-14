@@ -79,16 +79,15 @@ Record na_ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := na_mk_ex_inv_def'
 (* Stop Typeclass resolution for the [inv_P_pers] argument, to make it more deterministic. *)
 Definition na_mk_ex_inv_def `{!typeGS Σ} {X Y : RT} `{!Inhabited (RT_xt Y)}
   (inv_P : thread_id → X → Y → iProp Σ)
-
   inv_P_lfts
   (inv_P_wf_E : elctx)
-
   := na_mk_ex_inv_def' _ _ _ _ _
        inv_P inv_P_lfts inv_P_wf_E.
 
 Global Arguments na_inv_P {_ _ _ _}.
 Global Arguments na_inv_P_lfts {_ _ _ _}.
 Global Arguments na_inv_P_wf_E {_ _ _ _}.
+Global Arguments na_inv_P : simpl never.
 
 (** Smart constructor for persistent and timeless [P] *)
 Program Definition na_mk_pers_ex_inv_def

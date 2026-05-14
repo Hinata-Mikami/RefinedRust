@@ -2818,14 +2818,17 @@ Definition mk_ex_inv_def `{!typeGS Σ} {X Y : RT} `{!Inhabited (RT_xt Y)}
   (inv_P_shr_pers : TCNoResolve (∀ (π : thread_id) (κ : lft) (x : X) (y : Y), Persistent (inv_P_shr π κ x y)))
   inv_P_shr_mono
   inv_P_share := mk_ex_inv_def' _ _ _ _ _ inv_P inv_P_shr inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share.
-Global Arguments inv_P {_ _ _ _ _}.
-Global Arguments inv_P_shr {_ _ _ _ _}.
-Global Arguments inv_P_lfts {_ _ _ _ _}.
-Global Arguments inv_P_wf_E {_ _ _ _ _}.
+Global Arguments inv_P {_ _ _ _}.
+Global Arguments inv_P_shr {_ _ _ _}.
+Global Arguments inv_P : simpl never.
+Global Arguments inv_P_shr : simpl never.
+Global Arguments inv_P_lfts {_ _ _ _}.
+Global Arguments inv_P_wf_E {_ _ _ _}.
 Global Arguments inv_P_share {_ _ _ _ _}.
 Global Arguments inv_P_shr_mono {_ _ _ _ _}.
 Global Arguments inv_P_shr_pers {_ _ _ _ _}.
 Global Existing Instance inv_P_shr_pers.
+
 
 (** Smart constructor for persistent and timeless [P] *)
 Program Definition mk_pers_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabited (RT_xt Y)} (P : X → Y → iProp Σ)

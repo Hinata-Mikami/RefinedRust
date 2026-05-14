@@ -75,8 +75,9 @@ Proof.
   iMod (fupd_mask_mono with "Hl") as "Hl"; first done.
   iDestruct "Hl" as "(%v & Hl & Hv)".
   rewrite {1}ex_plain_t_unfold_val/=.
-  unfold name_hint.
   iDestruct "Hv" as "(%fields & (%cap & %l' & %len & %els & -> & Hls & %Heq1 & %Hlook1 & %Hlook2 & %Hlen_eq & %Hcap & % & %Hbound & _) & Hv)".
+  unfold name_hint, name_hint_ty in *.
+  simpl in *.
   rewrite /guarded.
   iDestruct "Hls" as "(Hcred & Hls)".
   iApply (lc_fupd_add_later with "Hc1"). iNext.
@@ -193,7 +194,7 @@ Proof.
   rewrite ex_plain_t_unfold_val/=.
   iExists *[_;_].
   iSplitR "Hv".
-  { unfold name_hint_ty, name_hint.
+  { rewrite /inv_P/=/name_hint_ty/name_hint/=.
     replace (length rs + (cap - length rs))%nat with cap by lia.
     iExists _, _, len, _. iR.
     rewrite /guarded. iFrame. iPureIntro.
@@ -224,6 +225,7 @@ Proof.
   iR.
   iIntros (?) "Hv".
   rewrite !ex_plain_t_unfold_val/=.
+  rewrite /inv_P/=.
   iDestruct "Hv" as "(%x & (%a & %Heq & Hfree & _) & Hv)".
   iExists x.
   rewrite Hst''. iFrame.
