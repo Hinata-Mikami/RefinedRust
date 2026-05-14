@@ -1446,8 +1446,6 @@ Ltac is_builtin_sidecond P :=
       idtac
   | lctx_bor_kind_direct_incl ?E ?L ?b1 ?b2 =>
       idtac
-  | ∀ _, elctx_sat _ _ _ =>
-      idtac
   | elctx_sat ?E ?L ?E' =>
       idtac
   | local_fresh _ _ =>
@@ -1472,6 +1470,16 @@ Ltac is_builtin_sidecond P :=
   | trait_incl_marker _ =>
       idtac
   | use_op_alg _ = _ =>
+      idtac
+  | ∀ x, elctx_sat ?E ?L ?E' =>
+      idtac
+  | ∀ x y, elctx_sat ?E ?L ?E' =>
+      idtac
+  | ∀ x y z, elctx_sat ?E ?L ?E' =>
+      idtac
+  | ∀ x y z w, elctx_sat ?E ?L ?E' =>
+      idtac
+  | ∀ x y z w u, elctx_sat ?E ?L ?E' =>
       idtac
   | ?P ∧ ?Q =>
       first [is_builtin_sidecond P | is_builtin_sidecond Q]
@@ -1544,20 +1552,22 @@ lazymatch P with
       split; [
         first [unfold spec_instantiate_typaram_fst, spec_instantiate_lft_fst, spec_instantiated; simpl; reflexivity | fail 10] | ]
   | _ =>
-      is_fast_builtin_sidecond P;
-      split;
-      [ first [
-          fast_done
-          | prepare_sideconditions_fast;
-            liSimpl;
-            solve [sidecond_hook_core]
-          | shelve_sidecond]
-      | ]
+      is_builtin_sidecond P;
+      first [
+        is_fast_builtin_sidecond P;
+        split;
+        [ first [
+            fast_done
+            | prepare_sideconditions_fast;
+              liSimpl;
+              solve [sidecond_hook_core]
+            | shelve_sidecond]
+        | ]
+      | split; first shelve_sidecond ]
 end.
 (** If this is not a built-in sidecond, cache it so we don't have to solve it again in the future *)
 Ltac hooks.liAfterSidecond_hook P ::=
-  first [is_builtin_sidecond P
-  | refine (cache_sidecond _ _ _ _ _); [simpl; reflexivity | ] ].
+  refine (cache_sidecond _ _ _ _ _); [simpl; reflexivity | ].
 
 Ltac sidecond_solver :=
   (* These simplifications stay around even if this doesn't solve the goal. *)

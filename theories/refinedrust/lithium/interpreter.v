@@ -365,10 +365,10 @@ Ltac liSideCond :=
         | _ ∧ _ =>
             notypeclasses refine (tac_sidecond_assoc _ _ _ _)
         end
-      | liSidecond_hook P
       | lazymatch P with
         | context [protected _] => fail
-        | _ => split; [splitting_fast_done|]
+        | _ =>
+          first [liSidecond_hook P | split; [splitting_fast_done|]]
         end
       | progress normalize_goal_and
       | lazymatch P with
