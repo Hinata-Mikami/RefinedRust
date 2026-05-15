@@ -66,10 +66,12 @@ Proof. constructor. iIntros "$". Qed.
    None: no simplification
    Some 0: simplification which is always safe
    Some n: lower n: should be done before higher n (when compared with simplifyGoal)   *)
-Definition simplify_hyp {Σ} (P : iProp Σ) (T : iProp Σ) : iProp Σ :=
-  P -∗ T.
-Class SimplifyHyp {Σ} (P : iProp Σ) (n : option N) : Type :=
-  simplify_hyp_proof T : iProp_to_Prop (simplify_hyp P T).
+Definition simplify_hyp {Σ} (P : iProp Σ) (Q : iProp Σ) : iProp Σ :=
+  P -∗ Q.
+Class SimplifyHyp {Σ} (P : iProp Σ) (n : option N) : Type := {
+  simplify_hyp_Q : iProp Σ;
+  simplify_hyp_proof : ⊢ simplify_hyp P simplify_hyp_Q;
+}.
 
 Definition simplify_goal {Σ} (P : iProp Σ) (T : iProp Σ) : iProp Σ :=
   (P ∗ T).

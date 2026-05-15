@@ -321,17 +321,16 @@ Section alias_ltype.
      we have alias_ltype in the first place only because of the interaction with OpenedLtype, when we do a raw-pointer-addrof below references.
    *)
 
-  Lemma alias_ltype_owned_simplify_hyp π (rt : RT) st (l l2 : loc) (r : place_rfn rt) T :
-    (⌜l = l2⌝ -∗ T)
-    ⊢ simplify_hyp (l ◁ₗ[π, Owned] r @ AliasLtype rt st l2) T.
-  Proof.
-    iIntros "HT Hl".
+  Global Program Instance alias_ltype_owned_simplify_hyp π (rt : RT) st (l l2 : loc) (r : place_rfn rt) :
+    SimplifyHyp (l ◁ₗ[π, Owned] r @ AliasLtype rt st l2) (Some 0%N) := {|
+    simplify_hyp_Q := ⌜l = l2⌝;
+  |}.
+  Next Obligation.
+    iIntros (??????) "Hl".
     rewrite ltype_own_alias_unfold /alias_lty_own.
     iDestruct "Hl" as "(%ly & Hst & -> & Hloc & Hlb)".
-    by iApply "HT".
+    done.
   Qed.
-  Definition alias_ltype_owned_simplify_hyp_inst := [instance @alias_ltype_owned_simplify_hyp with 0%N].
-  Global Existing Instance alias_ltype_owned_simplify_hyp_inst.
 
   (** Place typing for [AliasLtype].
     At the core this is really similar to the place lemma for alias_ptr_t - just without the deref *)

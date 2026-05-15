@@ -581,12 +581,13 @@ Section coq_tactics.
   Qed.
 
   Lemma tac_do_simplify_hyp (P : iProp Σ) (SH: SimplifyHyp P (Some 0%N)) Δ T :
-    envs_entails Δ (SH T).(i2p_P) →
+    envs_entails Δ (SH.(simplify_hyp_Q) -∗ T) →
     envs_entails Δ (P -∗ T).
   Proof.
     rewrite envs_entails_unseal => HP. iIntros "Henv Hl".
     iDestruct (HP with "Henv") as "HP".
-    iDestruct (i2p_proof with "HP Hl") as "$".
+    iApply "HP".
+    by iApply SH.(simplify_hyp_proof).
   Qed.
 
   Lemma tac_do_intro i n' (P : iProp Σ) n Γs Γp T :

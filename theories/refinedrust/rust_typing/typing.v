@@ -8,6 +8,9 @@ From refinedrust Require Export options.
 (* In my experience, this has led to more problems with [normalize_autorewrite] rewriting below definitions too eagerly. *)
 #[export] Unset Keyed Unification.
 
+(* Hide continuations etc. *)
+Global Open Scope rr_hidden.
+
 (* For some reason, we need to declare this instance here for stuff to work, despite exporting [simpl] as the last thing above! So weird! *)
 Global Instance simpl_exist_plist_cons' {X : Type} (F : X → Type) (x : X) xs (Q : plist F (x :: xs) → Prop) :
 SimplExist (plist F (x :: xs)) Q (∃ p : F x, ∃ ps : plist F xs, Q (p -:: ps)).

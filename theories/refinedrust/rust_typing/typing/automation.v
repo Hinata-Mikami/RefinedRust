@@ -1177,15 +1177,14 @@ Global Hint Mode TyIsNotVar + + + + : typeclass_instances.
 Global Hint Extern 10 (TyIsNotVar ?ty) =>
   ty_is_not_var ty; constructor : typeclass_instances.
 
-Lemma simplify_hyp_ty_ghost_drop `{!typeGS Σ} {rt} (ty : type rt) `{!TyIsNotVar ty} π r T :
-  (_ty_ghost_drop ty π r -∗ T) ⊢ simplify_hyp (ty_ghost_drop ty π r) T.
-Proof.
+Global Program Instance simplify_hyp_ty_ghost_drop `{!typeGS Σ} {rt} (ty : type rt) `{!TyIsNotVar ty} π r :
+  SimplifyHyp (ty_ghost_drop ty π r) (Some 0%N) := {|
+  simplify_hyp_Q := _ty_ghost_drop ty π r;
+|}.
+Next Obligation.
+  iIntros (???????) "?".
   rewrite ty_ghost_drop_unfold. done.
 Qed.
-Definition simplify_hyp_ty_ghost_drop_inst := [instance @simplify_hyp_ty_ghost_drop with 0%N].
-Global Existing Instance simplify_hyp_ty_ghost_drop_inst.
-
-
 
 
 (* In my experience, this has led to more problems with [normalize_autorewrite] rewriting below definitions too eagerly. *)

@@ -356,17 +356,14 @@ Proof. iIntros "(-> & $)". eauto. Qed.
     FindInContext (FindFreeable l) FICSyntactic | 1 :=
     λ T, i2p (find_in_context_freeable l T).
 
-  Lemma simplify_hyp_freeable l n q k T :
-    ((freeable_nz l n q k) -∗ T)
-    ⊢ simplify_hyp (freeable l n q k) T.
-  Proof.
-    iIntros "Ha Hf". iApply "Ha".
+  Global Program Instance simplify_hyp_freeable_inst l n q k :
+    SimplifyHyp (freeable l n q k) (Some 0%N) := {|
+    simplify_hyp_Q := (freeable_nz l n q k);
+  |}.
+  Next Obligation.
+    iIntros (????). iIntros "Hf".
     destruct n; done.
   Qed.
-  Global Instance simplify_hyp_freeable_inst l n q k :
-    SimplifyHyp (freeable l n q k) (Some 0%N) :=
-    λ T, i2p (simplify_hyp_freeable l n q k T).
-
 
   (** FindOptGvarRel *)
   Lemma find_in_context_opt_gvar_rel γ T :
@@ -651,15 +648,14 @@ Section obslist.
   Definition simplify_goal_obslist_singleton_inst := [instance @simplify_goal_obslist_singleton with 0%N].
   Global Existing Instance simplify_goal_obslist_singleton_inst.
 
-  Lemma simplify_hyp_obslist_singleton {rt} (x : rt) γ T :
-    (gvar_pobs γ x -∗ T)
-    ⊢ simplify_hyp (ObsList [γ] [x]) T.
-  Proof.
+  Global Program Instance simplify_hyp_obslist_singleton {rt} (x : rt) γ :
+    SimplifyHyp (ObsList [γ] [x]) (Some 0%N) := {|
+    simplify_hyp_Q := gvar_pobs γ x;
+  |}.
+  Next Obligation.
     rewrite /simplify_hyp/ObsList/=.
-    iIntros "Hcont (Hobs & _)". by iApply "Hcont".
+    iIntros (???) "(Hobs & _)". done.
   Qed.
-  Definition simplify_hyp_obslist_singleton_inst := [instance @simplify_hyp_obslist_singleton with 0%N].
-  Global Existing Instance simplify_hyp_obslist_singleton_inst.
 
   Lemma simplify_goal_obslist_normalize {rt} (xs : list rt) `{!NormalizeTermProgress γs γs'} T :
     ObsList γs' xs ∗ T
@@ -671,15 +667,16 @@ Section obslist.
   Definition simplify_goal_obslist_normalize_inst := [instance @simplify_goal_obslist_normalize with 0%N].
   Global Existing Instance simplify_goal_obslist_normalize_inst.
 
-  Lemma simplify_hyp_obslist_normalize {rt} (xs : list rt) `{!NormalizeTermProgress γs γs'} T :
-    (ObsList γs' xs -∗ T)
-    ⊢ simplify_hyp (ObsList γs xs) T.
-  Proof.
+  Global Program Instance simplify_hyp_obslist_normalize {rt} (xs : list rt) `{!NormalizeTermProgress γs γs'} :
+    SimplifyHyp (ObsList γs xs) (Some 100%N) := {|
+    simplify_hyp_Q :=
+    ObsList γs' xs;
+  |}.
+  Next Obligation.
+    iIntros (?????).
     unfold NormalizeTermProgress, NormalizeTerm in *.
-    subst. done.
+    subst. iIntros "$".
   Qed.
-  Definition simplify_hyp_obslist_normalize_inst := [instance @simplify_hyp_obslist_normalize with 100%N].
-  Global Existing Instance simplify_hyp_obslist_normalize_inst.
 End obslist.
 
 Section iterate.
@@ -733,6 +730,18 @@ Section introduce.
   Qed.
   Definition introduce_with_hooks_exists_inst := [instance @introduce_with_hooks_exists].
   Global Existing Instance introduce_with_hooks_exists_inst.
+
+  (* Simplify *)
+  Lemma introduce_with_hooks_simplify_hyp E L P `{SH : !SimplifyHyp P (Some 0%N)} T :
+    introduce_with_hooks E L (SH.(simplify_hyp_Q)) T ⊢
+    introduce_with_hooks E L P T.
+  Proof.
+    iIntros "HT" (??) "CTX HE HL HP".
+    iPoseProof (simplify_hyp_proof with "HP") as "HQ".
+    by iApply ("HT" with "[] CTX HE HL HQ").
+  Qed.
+  Definition introduce_with_hooks_simplify_hyp_inst := [instance @introduce_with_hooks_simplify_hyp].
+  Global Existing Instance introduce_with_hooks_simplify_hyp_inst | 99.
 
   (* low priority base instances so that other more specialized instances trigger first *)
   Lemma introduce_with_hooks_base_learnable E L P `{HP : !LearnFromHyp P} T :
@@ -2972,12 +2981,13 @@ Section subsume.
   Qed.
 
   Lemma typed_unop_simplify E L f v P n ot {SH : SimplifyHyp P (Some n)} op T:
-    (SH (find_in_context (FindValP v) (λ P, typed_un_op E L f v P op ot T))).(i2p_P)
+    (SH.(simplify_hyp_Q) -∗ (find_in_context (FindValP v) (λ P, typed_un_op E L f v P op ot T)))
     ⊢ typed_un_op E L f v P op ot T.
   Proof.
     rewrite /typed_un_op.
     iIntros "Hs Hv".
-    iPoseProof (i2p_proof with "Hs Hv") as "Ha".
+    iPoseProof (simplify_hyp_proof with "Hv") as "Hv".
+    iPoseProof ("Hs" with "Hv") as "Ha".
     rewrite /FindValP/find_in_context/=.
     iDestruct "Ha" as (P') "[HP HT]". by iApply ("HT" with "[$]").
   Qed.
@@ -2985,8 +2995,8 @@ Section subsume.
   Global Existing Instance typed_unop_simplify_inst | 1000.
 
   Lemma typed_binop_simplify E L f v1 P1 v2 P2 o1 o2 ot1 ot2 {SH1 : SimplifyHyp P1 o1} {SH2 : SimplifyHyp P2 o2} `{!TCOneIsSome o1 o2} op T:
-    let G1 := (SH1 (find_in_context (FindValP v1) (λ P, typed_bin_op E L f v1 P v2 P2 op ot1 ot2 T))).(i2p_P) in
-    let G2 := (SH2 (find_in_context (FindValP v2) (λ P, typed_bin_op E L f v1 P1 v2 P op ot1 ot2 T))).(i2p_P) in
+    let G1 := (SH1.(simplify_hyp_Q) -∗ (find_in_context (FindValP v1) (λ P, typed_bin_op E L f v1 P v2 P2 op ot1 ot2 T)))%I in
+    let G2 := (SH2.(simplify_hyp_Q) -∗ (find_in_context (FindValP v2) (λ P, typed_bin_op E L f v1 P1 v2 P op ot1 ot2 T)))%I in
     let G :=
        match o1, o2 with
      | Some n1, Some n2 => if (n2 ?= n1)%N is Lt then G2 else G1
@@ -2998,8 +3008,10 @@ Section subsume.
   Proof.
     iIntros "/= Hs Hv1 Hv2".
     destruct o1 as [n1|], o2 as [n2|] => //. 1: case_match.
-    1,3,4: iPoseProof (i2p_proof with "Hs Hv1") as (P) "[Hv Hsub]".
-    4,5,6: iPoseProof (i2p_proof with "Hs Hv2") as (P) "[Hv Hsub]".
+    1,3,4: iPoseProof (simplify_hyp_proof with "Hv1") as "Hv1".
+    1,2,3: iPoseProof ("Hs" with "Hv1") as (P) "[Hv Hsub]".
+    4,5,6: iPoseProof (simplify_hyp_proof with "Hv2") as "Hv2".
+    4,5,6: iPoseProof ("Hs" with "Hv2") as (P) "[Hv Hsub]".
     all: by simpl in *; iApply ("Hsub" with "[$]").
   Qed.
   Definition typed_binop_simplify_inst := [instance typed_binop_simplify].
@@ -5103,6 +5115,8 @@ Section subsume.
     iApply logical_step_intro.
     iIntros "(Hctx & HR) (Hl & HR')".
     iFrame.
+    rewrite /type_ctx_interp.
+    iFrame.
   Qed.
   Definition typed_context_fold_step_stratify_inst := [instance typed_context_fold_step_stratify].
   Global Existing Instance typed_context_fold_step_stratify_inst.
@@ -5152,7 +5166,7 @@ Section subsume.
     iApply (logical_step_compose with "Hdel").
     iApply logical_step_intro.
     iIntros "(Hctx & HR) (Hl & HR')".
-    iFrame.
+    iFrame. rewrite /type_ctx_interp. iFrame.
   Qed.
   Definition typed_context_fold_step_extract_inst := [instance typed_context_fold_step_extract].
   Global Existing Instance typed_context_fold_step_extract_inst.
@@ -5186,7 +5200,7 @@ Section subsume.
     iApply (logical_step_compose with "Hdel").
     iApply logical_step_intro.
     iIntros "(Hctx & HR) (Hl & HR')".
-    iFrame.
+    iFrame. rewrite /type_ctx_interp. iFrame.
   Qed.
   Definition typed_context_fold_step_resolve_inst := [instance typed_context_fold_step_resolve].
   Global Existing Instance typed_context_fold_step_resolve_inst.
@@ -5220,7 +5234,7 @@ Section subsume.
     iApply (logical_step_compose with "Hdel").
     iApply logical_step_intro.
     iIntros "(Hctx & HR) (Hl & HR')".
-    iFrame.
+    iFrame. rewrite /type_ctx_interp. iFrame.
   Qed.
   Definition typed_context_fold_step_close_inv_inst := [instance @typed_context_fold_step_close_inv].
   Global Existing Instance typed_context_fold_step_close_inv_inst.

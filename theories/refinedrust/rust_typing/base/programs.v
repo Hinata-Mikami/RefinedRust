@@ -3761,9 +3761,12 @@ Section folding.
     (([∗ list] i ∈ tctx, let '(l, bt) := i in l ◁ₗ[ π, Owned] bltype_rfn bt @ bltype_ltype bt) -∗ T) ⊢
     simplify_hyp (type_ctx_interp π tctx) T.
   Proof. done. Qed.
-  Global Instance simplify_type_context_inst π tctx :
-    SimplifyHyp (type_ctx_interp π tctx) (Some 0%N) :=
-    λ T, i2p (simplify_type_context π tctx T).
+  Global Program Instance simplify_type_context_inst π tctx :
+    SimplifyHyp (type_ctx_interp π tctx) (Some 0%N) := {|
+    simplify_hyp_Q := ([∗ list] i ∈ tctx, let '(l, bt) := i in l ◁ₗ[ π, Owned] bltype_rfn bt @ bltype_ltype bt);
+  |}.
+  Next Obligation. iIntros (??) "$". Qed.
+  Global Typeclasses Opaque type_ctx_interp.
 End folding.
 
 Section relate_list.
@@ -4535,5 +4538,3 @@ Notation "'typed_context_fold' step E L m ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typ
 Notation "'weak_subltype' E L b r1 r2 lt1 lt2 'HIDDEN_CONT'" := (weak_subltype E L b r1 r2 lt1 lt2 _) (only printing) : rr_hidden.
 
 Notation "'typed_block' 'HIDDEN_INV' E f l rf R ϝ" := (typed_block E _ f l rf R ϝ) (only printing, at level 100) : rr_hidden.
-
-Global Open Scope rr_hidden.

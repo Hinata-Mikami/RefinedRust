@@ -69,14 +69,15 @@ Section statics.
   Proof. constructor. iIntros "#$". Qed.
 
   (* On introduction of `initialized`, destruct it *)
-  Lemma simplify_initialized_hyp π name ty l
-    `{!TCFastDone (static_is_registered name l ty)} T:
-    (∀ r, (□ l ◁ᵥ{π, MetaNone} (#r) @ shr_ref static (projT2 ty)) -∗ ⌜static_has_refinement name r⌝ -∗ T)
-    ⊢ simplify_hyp (initialized π name) T.
-  Proof.
+  Global Program Instance simplify_initialized_hyp π name ty l `{!TCFastDone (static_is_registered name l ty)} :
+    SimplifyHyp (initialized π name) (Some 0%N) := {|
+    simplify_hyp_Q :=
+      (∃ r, (□ l ◁ᵥ{π, MetaNone} (#r) @ shr_ref static (projT2 ty)) ∗ ⌜static_has_refinement name r⌝);
+  |}.
+  Next Obligation.
+    iIntros (?????) "Hinit".
     unfold TCFastDone in *. destruct ty as [rt' ty].
-    iDestruct 1 as "HT". subst; simpl in *.
-    iIntros "Hinit".
+    subst; simpl in *.
     iDestruct "Hinit" as "(%l' & %ty' & %Hlook1 & %Hlook2 & #Hl)".
     destruct ty'; simpl in *.
     repeat match goal with | H : static_is_registered _ _ _ |- _ => destruct H as [H1 H2] end.
@@ -84,11 +85,9 @@ Section statics.
     simplify_eq. unfold btype_to_rtype in Hb; simpl in *.
     injection Hb. intros ? ->.
     repeat match goal with | H : existT _ _ = existT _ _ |- _ => apply existT_inj in H end.
-    subst. iApply ("HT" with "Hl").
+    subst. iExists _. iR.
     iPureIntro. eexists _. split; first done. exists eq_refl. done.
   Qed.
-  Definition simplify_initialized_hyp_inst := [instance @simplify_initialized_hyp with 0%N].
-  Global Existing Instance simplify_initialized_hyp_inst.
 
   Lemma initialized_intro {rt : RT} π ty name l (x : rt) :
     static_is_registered name l ty →
