@@ -6,14 +6,14 @@
 
 use std::collections::BTreeSet;
 
-use log::{info, trace};
+use log::info;
 use radium::{code, lang};
 use rr_rustc_interface::middle::{mir, ty};
 
 use super::TX;
 use crate::base::*;
 use crate::error::Message;
-use crate::{procedures, regions};
+use crate::procedures;
 
 #[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
@@ -47,8 +47,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     dying_loans.insert(*l);
                 }
             }
-            // we prepend them before the current statement
-            prim_stmts.extend(self.generate_endlfts(dying_loans.into_iter().rev()));
+            self.prepare_statement_annotation_plan(loc, dying_loans.into_iter().rev());
+            let mut statement_annotation_plan = self.take_annotation_plan(loc);
+            statement_annotation_plan.push_pre_stmts(&mut prim_stmts);
 
             match &stmt.kind {
                 mir::StatementKind::Assign(b) => {
@@ -59,57 +60,25 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     } else {
                         let rhs_ty = val.ty(&self.proc.get_mir().local_decls, self.tcx);
 
-                        let borrow_annots = regions::assignment::get_assignment_loan_annots(
-                            &mut self.inclusion_tracker, &self.ty_translator,
-                            loc, val);
-
-
-                        // TODO; maybe move this to rvalue
-                        let composite_annots = regions::composite::get_composite_rvalue_creation_annots(
-                            self.tcx, &mut self.inclusion_tracker, &self.ty_translator, loc, rhs_ty);
-
                         let plc_ty = self.get_type_of_place(plc);
                         let plc_strongly_writeable = !self.check_place_below_reference(plc);
-                        let assignment_annots =
-                            regions::assignment::get_assignment_annots(
-                                self.tcx, &mut self.inclusion_tracker, &self.ty_translator,
-                                loc, plc_strongly_writeable, plc_ty, rhs_ty);
+                        self.prepare_assignment_annotation_plan(
+                            loc,
+                            val,
+                            plc_ty,
+                            rhs_ty,
+                            plc_strongly_writeable,
+                        );
 
-                        trace!("assignment at point {loc:?}: got assignment_annots={assignment_annots:?}");
-
-                        let (unconstrained_annots, unconstrained_hints) = regions::assignment::make_unconstrained_region_annotations(
-                            &mut self.inclusion_tracker, &self.ty_translator, assignment_annots.unconstrained_regions, loc,
-                            Some(val));
-                        for hint in unconstrained_hints {
-                            self.translated_fn.add_unconstrained_lft_hint(hint);
-                        }
-
-
-                        prim_stmts.push(code::PrimStmt::Annot{
-                            a: unconstrained_annots,
-                            why: Some("assignment (unconstrained)".to_owned()),
-                        });
-
-                        prim_stmts.push(code::PrimStmt::Annot{
-                            a: composite_annots,
-                            why: Some("composite".to_owned()),
-                        });
-
-                        prim_stmts.push(code::PrimStmt::Annot{
-                            a: borrow_annots,
-                            why: Some("borrow".to_owned()),
-                        });
-
-                        prim_stmts.push(code::PrimStmt::Annot{
-                            a: assignment_annots.new_dyn_inclusions,
-                            why: Some("assignment".to_owned()),
-                        });
+                        let mut annotation_plan = self.take_annotation_plan(loc);
+                        annotation_plan.push_pre_stmts(&mut prim_stmts);
 
 
                         let (e, _) = self.translate_rvalue(loc, val)?;
+                        let expr_annot = annotation_plan.expr.take();
                         let translated_val = code::Expr::with_optional_annotation(
                             e,
-                            assignment_annots.expr_annot,
+                            expr_annot,
                             Some("assignment".to_owned()),
                         );
                         let translated_place = self.translate_place(plc)?;
@@ -120,10 +89,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             e2: Box::new(translated_val),
                         });
 
-                        prim_stmts.push(code::PrimStmt::Annot{
-                            a: assignment_annots.stmt_annot,
-                            why: Some("post-assignment".to_owned()),
-                        });
+                        annotation_plan.push_post_stmts(&mut prim_stmts);
                     }
                 },
 

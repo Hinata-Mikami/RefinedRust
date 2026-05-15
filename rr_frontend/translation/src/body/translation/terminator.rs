@@ -10,13 +10,12 @@ use log::{info, trace, warn};
 use radium::{code, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::type_ir::TypeFolder as _;
 
 use super::TX;
 use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::error::Message;
-use crate::{regions, search, types};
+use crate::{search, types};
 
 #[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
@@ -126,8 +125,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         loc: mir::Location,
         dying_loans: Vec<facts::Loan>,
     ) -> Result<code::Stmt, TranslationError> {
-        let mut endlfts = self.generate_endlfts(dying_loans.into_iter());
-
         match &term.kind {
             mir::TerminatorKind::Goto { target } => self.translate_goto_like(&loc, *target),
 
@@ -151,27 +148,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     return Ok(code::Stmt::Prim(stmt, Box::new(goto)));
                 }
 
-                self.translate_function_call(func, args, destination, *target, loc, endlfts)
+                self.translate_function_call(func, args, destination, *target, loc, dying_loans.into_iter())
             },
 
             mir::TerminatorKind::Return => {
                 let return_synty = self.ty_translator.translate_type_to_syn_type(self.return_ty)?;
-
-                // compute which lifetimes depend on local borrows
-                let mut region_folder = regions::TyRegionCollectFolder::new(self.tcx);
-                region_folder.fold_ty(self.return_ty);
-                let regions_in_return = region_folder.get_regions();
-
-                let mut lifetimes_to_extend = Vec::new();
-                for r in regions_in_return {
-                    //let atomic = self.info.mk_atomic_region(r);
-                    lifetimes_to_extend.push(self.ty_translator.translate_region_var(r));
-                }
-                let stmt_annots: Vec<_> = lifetimes_to_extend.into_iter().map(code::Annotation::ExtendLft).collect();
-                endlfts.insert(0, code::PrimStmt::Annot {
-                    a: stmt_annots,
-                    why: Some("return".to_owned()),
-                });
+                self.prepare_return_annotation_plan(loc, dying_loans.into_iter());
+                let mut annotation_plan = self.take_annotation_plan(loc);
+                let annots = annotation_plan.take_pre_stmts();
 
                 // read from the return place
                 // Is this semantics accurate wrt what the intended MIR semantics is?
@@ -183,7 +167,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 });
 
                 // TODO is this right?
-                Ok(code::Stmt::Prim(endlfts, Box::new(stmt)))
+                Ok(code::Stmt::Prim(annots, Box::new(stmt)))
             },
 
             mir::TerminatorKind::SwitchInt { discr, targets } => {
@@ -209,8 +193,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         s2: Box::new(false_branch),
                     };
 
-                    // TODO: is this right?
-                    return Ok(code::Stmt::Prim(endlfts, Box::new(stmt)));
+                    self.prepare_terminator_annotation_plan(loc, dying_loans.into_iter());
+                    let mut annotation_plan = self.take_annotation_plan(loc);
+                    return Ok(code::Stmt::Prim(annotation_plan.take_pre_stmts(), Box::new(stmt)));
                 }
 
                 //info!("switchint: {:?}", term.kind);
@@ -264,10 +249,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 };
 
                 let stmt = self.translate_goto_like(&loc, *target)?;
+                self.prepare_terminator_annotation_plan(loc, dying_loans.into_iter());
+                let mut annotation_plan = self.take_annotation_plan(loc);
+                let mut annots = annotation_plan.take_pre_stmts();
 
                 // TODO: should we really have this?
-                endlfts.insert(0, code::PrimStmt::AssertS(Box::new(comp)));
-                Ok(code::Stmt::Prim(endlfts, Box::new(stmt)))
+                annots.insert(0, code::PrimStmt::AssertS(Box::new(comp)));
+                Ok(code::Stmt::Prim(annots, Box::new(stmt)))
             },
 
             mir::TerminatorKind::Drop { place, target, .. } => {
@@ -278,8 +266,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let _drope = code::Expr::DropE(Box::new(place_translated));
 
                 let stmt = self.translate_goto_like(&loc, *target)?;
+                self.prepare_terminator_annotation_plan(loc, dying_loans.into_iter());
+                let mut annotation_plan = self.take_annotation_plan(loc);
 
-                Ok(code::Stmt::Prim(endlfts, Box::new(stmt)))
+                Ok(code::Stmt::Prim(annotation_plan.take_pre_stmts(), Box::new(stmt)))
             },
 
             // just a goto for our purposes

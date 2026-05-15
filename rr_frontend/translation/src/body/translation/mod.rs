@@ -4,6 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+mod annotations;
 mod basicblock;
 mod calls;
 mod constants;
@@ -85,6 +86,8 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
 
     /// tracking lifetime inclusions for the generation of lifetime inclusions
     inclusion_tracker: InclusionTracker<'a, 'tcx>,
+    /// cached annotation plans for MIR locations
+    annotation_plans: BTreeMap<mir::Location, annotations::LocationAnnotationPlan>,
     /// initial Polonius constraints that hold at the start of the function
     initial_constraints: Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)>,
 
@@ -205,6 +208,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             return_name,
             return_ty,
             inclusion_tracker,
+            annotation_plans: BTreeMap::new(),
             collected_procedures: HashMap::new(),
             procedure_registry,
             bb_queue: Vec::new(),
@@ -472,22 +476,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         if self.processed_bbs.insert(bb) {
             self.bb_queue.push(bb);
         }
-    }
-
-    /// Generate endlft annotations
-    fn generate_endlfts<I>(&self, dying: I) -> Vec<code::PrimStmt>
-    where
-        I: ExactSizeIterator<Item = facts::Loan>,
-    {
-        let mut stmts = Vec::new();
-        for d in dying {
-            let lft = self.info.atomic_region_of_loan(d);
-            stmts.push(code::PrimStmt::Annot {
-                a: vec![code::Annotation::EndLft(self.ty_translator.format_atomic_region(lft))],
-                why: Some("endlft".to_owned()),
-            });
-        }
-        stmts
     }
 
     /// Get the type of a local in a body.

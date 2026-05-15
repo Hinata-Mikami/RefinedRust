@@ -21,7 +21,7 @@ use crate::error::Message;
 use crate::traits::registry::ResolvedTraitReq;
 use crate::traits::resolution;
 use crate::types::STInner;
-use crate::{procedures, regions, search, types};
+use crate::{procedures, search, types};
 
 /// Get the syntypes of function arguments for a procedure call.
 pub(crate) fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
@@ -613,13 +613,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         destination: &mir::Place<'tcx>,
         target: Option<mir::BasicBlock>,
         loc: mir::Location,
-        endlfts: Vec<code::PrimStmt>,
+        dying_loans: impl ExactSizeIterator<Item = facts::Loan>,
     ) -> Result<code::Stmt, TranslationError> {
-        let startpoint = self.info.interner.get_point_index(&facts::Point {
-            location: loc,
-            typ: facts::PointType::Start,
-        });
-
         let mir::Operand::Constant(box func_constant) = func else {
             return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
                 format!("RefinedRust does currently not support this kind of call operand (got: {:?})", func),
@@ -654,142 +649,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             translated_args.push(translated_arg);
         }
 
-        // for lifetime annotations:
-        // 1. get the regions involved here. for that, get the instantiation of the function.
-        //    + if it's a FnDef type, that should be easy.
-        //    + for a function pointer: ?
-        //    + for a closure: ?
-        //   (Polonius does not seem to distinguish early/late bound in any way, except
-        //   that they are numbered in different passes)
-        // 2. find the constraints here involving the regions.
-        // 3. solve for the regions.
-        //    + transitively propagate the constraints
-        //    + check for equalities
-        //    + otherwise compute intersection. singleton intersection just becomes an equality def.
-        // 4. add annotations accordingly
-        //    + either a startlft
-        //    + or a copy name
-        // 5. add shortenlft annotations to line up arguments.
-        //    + for that, we need the type of the LHS, and what the argument types (with
-        //    substituted regions) should be.
-        // 6. annotate the return value on assignment and establish constraints.
-
-        let classification = regions::calls::compute_call_regions(
-            self.tcx,
-            &self.inclusion_tracker,
-            call_info.method_params,
-            loc,
-            call_info.num_of_latebounds,
-        );
-
-        // update the inclusion tracker with the new regions we have introduced
-        // We just add the inclusions and ignore that we resolve it in a "tight" way.
-        // the cases where we need the reverse inclusion should be really rare.
-        for (r, c) in &classification.classification {
-            match c {
-                regions::calls::CallRegionKind::EqR(r2) => {
-                    // put it at the start point, because the inclusions come into effect
-                    // at the point right before.
-                    self.inclusion_tracker.add_static_inclusion(*r, *r2, startpoint);
-                    self.inclusion_tracker.add_static_inclusion(*r2, *r, startpoint);
-                },
-                regions::calls::CallRegionKind::Intersection(lfts) => {
-                    // all the regions represented by lfts need to be included in r
-                    for r2 in lfts {
-                        self.inclusion_tracker.add_static_inclusion(*r2, *r, startpoint);
-                    }
-                },
-            }
-        }
-
-        // We have to add the late regions instantiation.
-        for late in &classification.late_regions {
-            let lft = self.format_region(*late);
-            call_info.lft_hint.push(lft);
-        }
-        info!("Call lifetime instantiation (early): {:?}", classification.early_regions);
-        info!("Call lifetime instantiation (late): {:?}", classification.late_regions);
-
         let output_ty = inst_sig.output().skip_binder();
         info!("call has instantiated type {:?}", inst_sig);
+        let mut annotation_plan =
+            self.prepare_call_annotation_plan(loc, &mut call_info, destination, output_ty, dying_loans)?;
 
-        // compute the resulting annotations
-        let lhs_ty = self.get_type_of_place(destination);
-        let lhs_strongly_writeable = !self.check_place_below_reference(destination);
-        let assignment_annots = regions::assignment::get_assignment_annots(
-            self.tcx,
-            &mut self.inclusion_tracker,
-            &self.ty_translator,
-            loc,
-            lhs_strongly_writeable,
-            lhs_ty,
-            output_ty,
-        );
-        info!("assignment annots after call: {assignment_annots:?}");
-
-        // build annotations for unconstrained regions
-        let (unconstrained_annotations, unconstrained_regions) =
-            regions::calls::compute_unconstrained_region_annots(
-                &mut self.inclusion_tracker,
-                &self.ty_translator,
-                loc,
-                assignment_annots.unconstrained_regions,
-                &call_info.mapped_early_regions,
-            );
-
-        let (remaining_unconstrained_annots, unconstrained_hints) =
-            regions::assignment::make_unconstrained_region_annotations(
-                &mut self.inclusion_tracker,
-                &self.ty_translator,
-                unconstrained_regions,
-                loc,
-                None,
-            );
-        for hint in unconstrained_hints {
-            self.translated_fn.add_unconstrained_lft_hint(hint);
-        }
-
-        // add annotations to initialize the regions for the call (before the call)
-        let mut stmt_annots = Vec::new();
-        for (r, class) in &classification.classification {
-            let lft = self.format_region(*r);
-            match class {
-                regions::calls::CallRegionKind::EqR(r2) => {
-                    let lft2 = self.format_region(*r2);
-                    stmt_annots.push(code::Annotation::CopyLftName(lft2, lft));
-                },
-
-                regions::calls::CallRegionKind::Intersection(rs) => {
-                    match rs.len() {
-                        0 => {
-                            return Err(TranslationError::ErrorReported(
-                                self.tcx.dcx().err(Message::UnsupportedFeature(
-                                    "RefinedRust does currently not support unconstrained lifetime"
-                                        .to_owned(),
-                                )),
-                            ));
-                        },
-                        1 => {
-                            // this is really just an equality constraint
-                            if let Some(r2) = rs.iter().next() {
-                                let lft2 = self.format_region(*r2);
-                                stmt_annots.push(code::Annotation::CopyLftName(lft2, lft));
-                            }
-                        },
-                        _ => {
-                            // a proper intersection
-                            let lfts: Vec<_> = rs.iter().map(|r| self.format_region(*r)).collect();
-                            stmt_annots.push(code::Annotation::AliasLftIntersection(lft, lfts));
-                        },
-                    }
-                },
-            }
-        }
-
-        let mut prim_stmts = vec![code::PrimStmt::Annot {
-            a: stmt_annots,
-            why: Some("function_call".to_owned()),
-        }];
+        let mut prim_stmts = Vec::new();
+        annotation_plan.push_pre_call_stmts(&mut prim_stmts);
 
         // add annotations for the assignment
         let ty_hint = call_info.type_hint.into_iter().map(|x| code::RustType::of_type(&x)).collect();
@@ -800,15 +666,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             args: translated_args,
         };
         let stmt = if let Some(target) = target {
-            prim_stmts.push(code::PrimStmt::Annot {
-                a: remaining_unconstrained_annots,
-                why: Some("function_call (unconstrained)".to_owned()),
-            });
-
-            prim_stmts.push(code::PrimStmt::Annot {
-                a: assignment_annots.new_dyn_inclusions,
-                why: Some("function_call (assign)".to_owned()),
-            });
+            annotation_plan.push_pre_assign_stmts(&mut prim_stmts);
 
             // assign stmt with call; then jump to bb
             let place_ty = self.get_type_of_place(destination);
@@ -818,7 +676,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             let annotated_rhs = code::Expr::with_optional_annotation(
                 call_expr,
-                assignment_annots.expr_annot,
+                annotation_plan.assign_expr.take(),
                 Some("function_call (assign)".to_owned()),
             );
             let assign_stmt = code::PrimStmt::Assign {
@@ -828,19 +686,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             };
             prim_stmts.push(assign_stmt);
 
-            prim_stmts.push(code::PrimStmt::Annot {
-                a: unconstrained_annotations,
-                why: Some("post_function_call (assign, early)".to_owned()),
-            });
-
-            prim_stmts.push(code::PrimStmt::Annot {
-                a: assignment_annots.stmt_annot,
-                why: Some("post_function_call (assign)".to_owned()),
-            });
+            annotation_plan.push_post_assign_stmts(&mut prim_stmts);
 
             // end loans before the goto, but after the call.
             // TODO: may cause duplications?
-            prim_stmts.extend(endlfts);
+            annotation_plan.push_post_call_before_goto_stmts(&mut prim_stmts);
 
             let cont_stmt = self.translate_goto_like(&loc, target)?;
 

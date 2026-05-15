@@ -13,7 +13,6 @@ use super::TX;
 use crate::base::*;
 use crate::body::translation::ExprWithInfo;
 use crate::error::Message;
-use crate::regions;
 
 #[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
@@ -327,34 +326,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let translated_pl = self.translate_place(pl)?;
                 let translated_bk = TX::translate_borrow_kind(self.tcx, *bk)?;
                 let ty_annot = self.get_type_annotation_for_borrow(*bk, pl)?;
+                let lft_plan = self.prepare_borrow_lifetime_plan(loc, *region);
 
-                if let Some(loan) = self.info.get_optional_loan_at_location(loc) {
-                    let atomic_region = self.info.atomic_region_of_loan(loan);
-                    let lft = self.ty_translator.format_atomic_region(atomic_region);
-                    Ok((
-                        code::Expr::Borrow {
-                            lft,
-                            bk: translated_bk,
-                            ty: ty_annot,
-                            e: Box::new(translated_pl),
-                        },
-                        None,
-                    ))
-                } else {
-                    info!("Didn't find loan at {:?}: {:?}; region {:?}", loc, rval, region);
-                    let region = regions::region_to_region_vid(*region);
-                    let lft = self.format_region(region);
-
-                    Ok((
-                        code::Expr::Borrow {
-                            lft,
-                            bk: translated_bk,
-                            ty: ty_annot,
-                            e: Box::new(translated_pl),
-                        },
-                        None,
-                    ))
-                }
+                Ok((
+                    code::Expr::Borrow {
+                        lft: lft_plan.lft,
+                        bk: translated_bk,
+                        ty: ty_annot,
+                        e: Box::new(translated_pl),
+                    },
+                    None,
+                ))
             },
 
             mir::Rvalue::RawPtr(mt, pl) => {
