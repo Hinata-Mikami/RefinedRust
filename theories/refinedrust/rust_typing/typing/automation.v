@@ -1090,7 +1090,7 @@ Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropatter
   inv_layout_alg;
   iStartProof;
   set_function_types;
-  repeat (liEnsureInvariant || liWand || liSimpl || liForall || liPersistent || liImpl);
+  repeat (liEnsureInvariant || liWand || liSimpl || liForall || liPersistent || liImpl || liUnfoldLetGoal);
   li_unfold_lets_in_context;
   lazymatch goal with
   | |- envs_entails _ (typed_function _ _ _) =>
