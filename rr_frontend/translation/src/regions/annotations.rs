@@ -8,17 +8,17 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
 
 use log::info;
-use radium::{code, coq};
+use radium::{code, coq, specs};
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::type_ir::TypeFolder as _;
 
-use super::calls::ProcedureInst;
+use super::inclusion_tracker::InclusionTracker;
+use super::{assignment, calls, composite, init};
 use crate::base::TranslationError;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::{self, PoloniusInfo};
 use crate::error::Message;
-use crate::regions::inclusion_tracker::InclusionTracker;
-use crate::{regions, types};
+use crate::types;
 
 pub(crate) struct AnnotationGenerator<'a, 'tcx> {
     tcx: ty::TyCtxt<'tcx>,
@@ -31,13 +31,13 @@ pub(crate) struct AnnotationGenerator<'a, 'tcx> {
 impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
     pub(crate) fn new(
         tcx: ty::TyCtxt<'tcx>,
-        lifetime_scope: &regions::EarlyLateRegionMap<'_>,
+        lifetime_scope: &super::EarlyLateRegionMap<'_>,
         info: &'a PoloniusInfo<'a, 'tcx>,
     ) -> Self {
         Self {
             tcx,
             info,
-            inclusion_tracker: regions::init::initialize_inclusion_tracker(lifetime_scope, info),
+            inclusion_tracker: init::initialize_inclusion_tracker(lifetime_scope, info),
             plans: BTreeMap::new(),
         }
     }
@@ -48,7 +48,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         sig_args: &[ty::Ty<'tcx>],
         local_args: &[ty::Ty<'tcx>],
     ) -> Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)> {
-        regions::init::get_initial_universal_arg_constraints(
+        init::get_initial_universal_arg_constraints(
             self.tcx,
             typing_env,
             self.info,
@@ -61,7 +61,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
     pub(crate) fn prepare_initial_closure_constraints(
         &mut self,
     ) -> Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)> {
-        regions::init::get_initial_closure_constraints(self.info, &mut self.inclusion_tracker)
+        init::get_initial_closure_constraints(self.info, &mut self.inclusion_tracker)
     }
 }
 
@@ -82,6 +82,8 @@ impl AnnotationGroup {
 
 #[derive(Debug, Default)]
 pub(crate) struct CallAnnotationPlan {
+    pub late_lft_hints: Vec<specs::Lft>,
+    pub unconstrained_lft_hints: Vec<specs::Lft>,
     pub pre_call: Vec<AnnotationGroup>,
     pub pre_assign: Vec<AnnotationGroup>,
     pub assign_expr: Option<code::Annotation>,
@@ -177,14 +179,10 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         rhs_ty: ty::Ty<'tcx>,
         lhs_strongly_writeable: bool,
     ) {
-        let borrow_annots = regions::assignment::get_assignment_loan_annots(
-            &mut self.inclusion_tracker,
-            ty_translator,
-            loc,
-            rhs,
-        );
+        let borrow_annots =
+            assignment::get_assignment_loan_annots(&mut self.inclusion_tracker, ty_translator, loc, rhs);
 
-        let composite_annots = regions::composite::get_composite_rvalue_creation_annots(
+        let composite_annots = composite::get_composite_rvalue_creation_annots(
             self.tcx,
             &mut self.inclusion_tracker,
             ty_translator,
@@ -192,7 +190,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             rhs_ty,
         );
 
-        let assignment_annots = regions::assignment::get_assignment_annots(
+        let assignment_annots = assignment::get_assignment_annots(
             self.tcx,
             &mut self.inclusion_tracker,
             ty_translator,
@@ -202,14 +200,13 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             rhs_ty,
         );
 
-        let (unconstrained_annots, unconstrained_hints) =
-            regions::assignment::make_unconstrained_region_annotations(
-                &mut self.inclusion_tracker,
-                ty_translator,
-                assignment_annots.unconstrained_regions,
-                loc,
-                Some(rhs),
-            );
+        let (unconstrained_annots, unconstrained_hints) = assignment::make_unconstrained_region_annotations(
+            &mut self.inclusion_tracker,
+            ty_translator,
+            assignment_annots.unconstrained_regions,
+            loc,
+            Some(rhs),
+        );
         for hint in unconstrained_hints {
             translated_fn.add_unconstrained_lft_hint(hint);
         }
@@ -244,7 +241,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
     ) {
         let mut plan = self.plans.remove(&loc).unwrap_or_default();
 
-        let mut region_folder = regions::TyRegionCollectFolder::new(self.tcx);
+        let mut region_folder = super::TyRegionCollectFolder::new(self.tcx);
         region_folder.fold_ty(return_ty);
         let stmt_annots = region_folder
             .get_regions()
@@ -260,9 +257,10 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
     pub(crate) fn prepare_call_annotation_plan(
         &mut self,
         ty_translator: &types::LocalTX<'_, 'tcx>,
-        translated_fn: &mut code::FunctionBuilder<'_>,
         loc: mir::Location,
-        call_info: &mut ProcedureInst<'tcx, '_>,
+        method_params: ty::GenericArgsRef<'tcx>,
+        num_of_latebounds: usize,
+        mapped_early_regions: &BTreeMap<coq::Ident, usize>,
         lhs_ty: mir::PlaceTy<'tcx>,
         lhs_strongly_writeable: bool,
         output_ty: ty::Ty<'tcx>,
@@ -270,21 +268,21 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
     ) -> Result<CallAnnotationPlan, TranslationError> {
         let startpoint = self.info.start_point(loc);
 
-        let classification = regions::calls::compute_call_regions(
+        let classification = calls::compute_call_regions(
             self.tcx,
             &self.inclusion_tracker,
-            call_info.method_params,
+            method_params,
             loc,
-            call_info.num_of_latebounds,
+            num_of_latebounds,
         );
 
         for (r, c) in &classification.classification {
             match c {
-                regions::calls::CallRegionKind::EqR(r2) => {
+                calls::CallRegionKind::EqR(r2) => {
                     self.inclusion_tracker.add_static_inclusion(*r, *r2, startpoint);
                     self.inclusion_tracker.add_static_inclusion(*r2, *r, startpoint);
                 },
-                regions::calls::CallRegionKind::Intersection(lfts) => {
+                calls::CallRegionKind::Intersection(lfts) => {
                     for r2 in lfts {
                         self.inclusion_tracker.add_static_inclusion(*r2, *r, startpoint);
                     }
@@ -292,14 +290,15 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             }
         }
 
-        for late in &classification.late_regions {
-            let lft = self.format_region(ty_translator, *late);
-            call_info.lft_hint.push(lft);
-        }
+        let late_lft_hints = classification
+            .late_regions
+            .iter()
+            .map(|late| self.format_region(ty_translator, *late))
+            .collect();
         info!("Call lifetime instantiation (early): {:?}", classification.early_regions);
         info!("Call lifetime instantiation (late): {:?}", classification.late_regions);
 
-        let assignment_annots = regions::assignment::get_assignment_annots(
+        let assignment_annots = assignment::get_assignment_annots(
             self.tcx,
             &mut self.inclusion_tracker,
             ty_translator,
@@ -310,36 +309,31 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         );
         info!("assignment annots after call: {assignment_annots:?}");
 
-        let (unconstrained_early_annots, unconstrained_regions) =
-            regions::calls::compute_unconstrained_region_annots(
-                &mut self.inclusion_tracker,
-                ty_translator,
-                loc,
-                assignment_annots.unconstrained_regions,
-                &call_info.mapped_early_regions,
-            );
+        let (unconstrained_early_annots, unconstrained_regions) = calls::compute_unconstrained_region_annots(
+            &mut self.inclusion_tracker,
+            ty_translator,
+            loc,
+            assignment_annots.unconstrained_regions,
+            mapped_early_regions,
+        );
 
         let (remaining_unconstrained_annots, unconstrained_hints) =
-            regions::assignment::make_unconstrained_region_annotations(
+            assignment::make_unconstrained_region_annotations(
                 &mut self.inclusion_tracker,
                 ty_translator,
                 unconstrained_regions,
                 loc,
                 None,
             );
-        for hint in unconstrained_hints {
-            translated_fn.add_unconstrained_lft_hint(hint);
-        }
-
         let mut call_region_annots = Vec::new();
         for (r, class) in &classification.classification {
             let lft = self.format_region(ty_translator, *r);
             match class {
-                regions::calls::CallRegionKind::EqR(r2) => {
+                calls::CallRegionKind::EqR(r2) => {
                     let lft2 = self.format_region(ty_translator, *r2);
                     call_region_annots.push(code::Annotation::CopyLftName(lft2, lft));
                 },
-                regions::calls::CallRegionKind::Intersection(rs) => match rs.len() {
+                calls::CallRegionKind::Intersection(rs) => match rs.len() {
                     0 => {
                         return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
                             Message::UnsupportedFeature(
@@ -362,6 +356,8 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         }
 
         Ok(CallAnnotationPlan {
+            late_lft_hints,
+            unconstrained_lft_hints: unconstrained_hints,
             pre_call: vec![
                 AnnotationGroup::new(call_region_annots, "function_call"),
                 AnnotationGroup::new(remaining_unconstrained_annots, "function_call (unconstrained)"),
@@ -393,7 +389,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         }
 
         info!("Didn't find loan at {:?}; region {:?}", loc, region);
-        let region = regions::region_to_region_vid(region);
+        let region = super::region_to_region_vid(region);
         BorrowLifetimePlan {
             lft: self.format_region(ty_translator, region),
         }

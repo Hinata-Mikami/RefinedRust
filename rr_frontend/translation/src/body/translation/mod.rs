@@ -4,7 +4,6 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-mod annotations;
 mod basicblock;
 mod calls;
 mod constants;
@@ -16,7 +15,6 @@ mod terminator;
 use std::cmp;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-pub(crate) use annotations::AnnotationGenerator;
 pub(crate) use calls::get_arg_syntypes_for_procedure_call;
 use log::{info, trace};
 use radium::{code, lang, specs};
@@ -30,6 +28,7 @@ use crate::body::translation::calls::ProcedureInst;
 use crate::environment::polonius_info;
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
+use crate::regions::AnnotationGenerator;
 use crate::traits::registry;
 use crate::{consts, procedures, rustcmp, types};
 

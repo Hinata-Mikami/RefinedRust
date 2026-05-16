@@ -6,18 +6,26 @@
 
 //! Utilities for translating region information.
 
-pub(crate) mod arg_folder;
-pub(crate) mod assignment;
-pub(crate) mod calls;
-pub(crate) mod composite;
-pub(crate) mod inclusion_tracker;
-pub(crate) mod init;
-pub(crate) mod region_bi_folder;
+mod annotations;
+mod arg_folder;
+mod assignment;
+mod calls;
+mod composite;
+mod inclusion_tracker;
+mod init;
+mod region_bi_folder;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, btree_map};
 
+pub(crate) use annotations::AnnotationGenerator;
+pub(crate) use arg_folder::{
+    instantiate_open, relabel_erased_regions, relabel_late_bounds, rename_closure_capture_regions,
+    rename_region_vids,
+};
 use derive_more::{Constructor, Debug};
+pub(crate) use init::replace_fnsig_args_with_polonius_vars;
 use radium::{coq, specs};
+pub(crate) use region_bi_folder::RegionBiFolder;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeSuperFoldable as _;
 

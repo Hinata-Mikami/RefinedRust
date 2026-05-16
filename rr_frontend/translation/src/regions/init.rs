@@ -17,10 +17,8 @@ use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info;
 use crate::environment::polonius_info::PoloniusInfo;
-use crate::regions::arg_folder::instantiate_open;
 use crate::regions::inclusion_tracker::InclusionTracker;
-use crate::regions::region_bi_folder::RegionBiFolder;
-use crate::regions::{EarlyLateRegionMap, LftConstr};
+use crate::regions::{EarlyLateRegionMap, LftConstr, RegionBiFolder, instantiate_open};
 use crate::traits::resolution;
 use crate::types::scope;
 

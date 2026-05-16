@@ -12,8 +12,7 @@ use rr_rustc_interface::{middle, trait_selection};
 use trait_selection::{infer, solve};
 
 //use trait_selection::traits::{self, normalize::NormalizeExt};
-use crate::regions::arg_folder;
-use crate::regions::region_bi_folder::RegionBiFolder;
+use crate::regions::{self, RegionBiFolder};
 
 /// Normalize a type in the given environment.
 pub(crate) fn normalize_type<'tcx, T>(
@@ -58,7 +57,7 @@ pub(crate) fn resolve_impl_source<'tcx>(
     let erased_substs = tcx.normalize_erasing_regions(typing_env, substs);
     //let erased_substs = normalize_type(tcx, typing_env, substs).unwrap();
     trace!("erased args: {erased_substs:?}");
-    let erased_substs = arg_folder::relabel_late_bounds(erased_substs, tcx);
+    let erased_substs = regions::relabel_late_bounds(erased_substs, tcx);
     trace!("erased args: {erased_substs:?}");
 
     // Check if the `did` is an associated item
@@ -105,7 +104,7 @@ fn recover_lifetimes_for_impl_source<'tcx>(
             trace!("resolved to impl {impl_did:?} with args {impl_args:?}");
 
             // enumerate regions in args since they were erased before
-            let (enumerated_impl_args, num_regions) = arg_folder::relabel_erased_regions(impl_args, tcx);
+            let (enumerated_impl_args, num_regions) = regions::relabel_erased_regions(impl_args, tcx);
 
             trace!("re-enumerated impl args: {enumerated_impl_args:?}, num_regions={num_regions:?}");
 
@@ -116,7 +115,7 @@ fn recover_lifetimes_for_impl_source<'tcx>(
             // instantiate the trait with the impl args; the subject is the trait below the impl's binders
             let trait_ref = tcx.impl_trait_ref(impl_did);
             let subject = trait_ref.skip_binder();
-            let subject_ref = arg_folder::instantiate_open(subject, tcx, enumerated_impl_args.as_slice());
+            let subject_ref = regions::instantiate_open(subject, tcx, enumerated_impl_args.as_slice());
 
             // impl_args are the args of the trait, instantiated with the re-enumerated args of the resolved
             // impl required_args are the args of the trait that we were expecting, still
@@ -155,7 +154,7 @@ fn recover_lifetimes_for_impl_source<'tcx>(
 
             // then instantiate the enumerated_impl_args with the mapping, recovering the
             // propertly-instantiated args for the resolved `impl`
-            let renamed_impl_args = arg_folder::rename_region_vids(enumerated_impl_args, tcx, region_map);
+            let renamed_impl_args = regions::rename_region_vids(enumerated_impl_args, tcx, region_map);
 
             let new_data = trait_selection::traits::ImplSourceUserDefinedData {
                 impl_def_id: impl_did,

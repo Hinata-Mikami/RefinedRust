@@ -8,7 +8,6 @@ use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::type_ir::{TypeFoldable, TypeSuperFoldable as _, TypeVisitableExt as _};
 
 use crate::environment::polonius_info::{PoloniusInfo, RegionKind};
-use crate::regions;
 use crate::regions::EarlyLateRegionMap;
 
 pub(crate) fn relabel_erased_regions<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>) -> (T, usize)
@@ -86,7 +85,7 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<'_, 
                 // We need to do some hacks here to find the right Polonius region:
                 // `r` is the non-placeholder region that the variable gets, but we are
                 // looking for the corresponding placeholder region
-                let r2 = regions::init::find_placeholder_region_for(v.into(), self.info).unwrap();
+                let r2 = super::init::find_placeholder_region_for(v.into(), self.info).unwrap();
 
                 let lft = self.info.mk_atomic_region(r2);
                 self.substitution.ensure_closure_region(lft);

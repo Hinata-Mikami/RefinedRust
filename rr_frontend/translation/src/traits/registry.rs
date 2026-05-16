@@ -17,7 +17,7 @@ use typed_arena::Arena;
 
 use crate::base::*;
 use crate::body::signature;
-use crate::regions::region_bi_folder::RegionBiFolder;
+use crate::regions::RegionBiFolder;
 use crate::spec_parsers::trait_attr_parser::{
     TRAIT_ATTRS, TraitAttrParser as _, VerboseTraitAttrParser, get_declared_trait_attrs,
 };

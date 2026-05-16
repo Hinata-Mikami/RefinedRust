@@ -655,14 +655,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let lhs_strongly_writeable = !self.check_place_below_reference(destination);
         let mut annotation_plan = self.annotations.prepare_call_annotation_plan(
             &self.ty_translator,
-            &mut self.translated_fn,
             loc,
-            &mut call_info,
+            call_info.method_params,
+            call_info.num_of_latebounds,
+            &call_info.mapped_early_regions,
             lhs_ty,
             lhs_strongly_writeable,
             output_ty,
             dying_loans,
         )?;
+        call_info.lft_hint.append(&mut annotation_plan.late_lft_hints);
+        for hint in annotation_plan.unconstrained_lft_hints.drain(..) {
+            self.translated_fn.add_unconstrained_lft_hint(hint);
+        }
 
         let mut prim_stmts = Vec::new();
         annotation_plan.push_pre_call_stmts(&mut prim_stmts);

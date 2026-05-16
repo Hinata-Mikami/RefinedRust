@@ -21,7 +21,7 @@ use crate::environment::dump_borrowck_info;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
-use crate::regions::region_bi_folder::RegionBiFolder as _;
+use crate::regions::RegionBiFolder as _;
 use crate::spec_parsers::verbose_function_spec_parser::{
     CLOSURE_SPEC_ATTRS, COMMON_FUNCTION_SPEC_ATTRS, ClosureMetaInfo, ClosureSpecInfo, FUNCTION_SPEC_ATTRS,
     FunctionRequirements, FunctionSpecParser as _, VerboseFunctionSpecParser,
@@ -36,7 +36,7 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     /// the Caesium function buildder
     translated_fn: code::FunctionBuilder<'def>,
     /// generator state for borrowck-driven annotations.
-    annotations: translation::AnnotationGenerator<'a, 'tcx>,
+    annotations: regions::AnnotationGenerator<'a, 'tcx>,
 
     /// registry of other procedures
     procedure_registry: &'a procedures::Scope<'tcx, 'def>,
@@ -89,7 +89,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count();
         // + 1 for static, + 1 for function lifetime
         let num_universal_regions = num_late_bounds + num_early_bounds + 2;
-        let (inputs, output, region_substitution) = regions::init::replace_fnsig_args_with_polonius_vars(
+        let (inputs, output, region_substitution) = regions::replace_fnsig_args_with_polonius_vars(
             tcx,
             params,
             proc_did,
@@ -155,29 +155,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let upvars_tys = clos_args.upvar_tys();
         let mut fixed_upvars_tys = Vec::new();
         for ty in upvars_tys {
-            let fixed_ty =
-                regions::arg_folder::rename_closure_capture_regions(ty, tcx, region_substitution, info);
+            let fixed_ty = regions::rename_closure_capture_regions(ty, tcx, region_substitution, info);
             fixed_upvars_tys.push(fixed_ty);
         }
 
         // Do the same for the arguments of the closure -- this may contain external Polonius
         // regions in lieu of early bounds.
-        let fixed_closure_args = regions::arg_folder::rename_closure_capture_regions(
-            input_tuple_ty,
-            tcx,
-            region_substitution,
-            info,
-        );
+        let fixed_closure_args =
+            regions::rename_closure_capture_regions(input_tuple_ty, tcx, region_substitution, info);
 
         // Do the same to the whole closure arg, which will add the optional lifetime for the
         // capture reference
         // NOTE: we rely on adding this lifetime last when generating the `call_*` fn shims.
-        let fixed_closure_arg_ty = regions::arg_folder::rename_closure_capture_regions(
-            closure_arg.ty,
-            tcx,
-            region_substitution,
-            info,
-        );
+        let fixed_closure_arg_ty =
+            regions::rename_closure_capture_regions(closure_arg.ty, tcx, region_substitution, info);
 
         // find the optional lifetime for the outer reference
         let mut maybe_outer_lifetime = None;
@@ -262,16 +253,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             // add 1 for the closure arg
             num_late_bounds += 1;
         }
-        let (tupled_inputs, output, mut region_substitution) =
-            regions::init::replace_fnsig_args_with_polonius_vars(
-                tcx,
-                params,
-                proc.get_id(),
-                num_universals,
-                num_early_bounds,
-                num_late_bounds,
-                sig,
-            );
+        let (tupled_inputs, output, mut region_substitution) = regions::replace_fnsig_args_with_polonius_vars(
+            tcx,
+            params,
+            proc.get_id(),
+            num_universals,
+            num_early_bounds,
+            num_late_bounds,
+            sig,
+        );
 
         // detuple the inputs
         assert!(tupled_inputs.len() == 1);
@@ -314,7 +304,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             Some(info.region_var_resolver()),
         )?;
 
-        let annotations = translation::AnnotationGenerator::new(tcx, &type_scope.lifetime_scope, info);
+        let annotations = regions::AnnotationGenerator::new(tcx, &type_scope.lifetime_scope, info);
 
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
@@ -471,7 +461,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let num_early_bounds =
                 params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count();
 
-            let (direct_inputs, direct_output, _) = regions::init::replace_fnsig_args_with_polonius_vars(
+            let (direct_inputs, direct_output, _) = regions::replace_fnsig_args_with_polonius_vars(
                 tcx,
                 params,
                 proc.get_id(),
@@ -483,7 +473,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             info!("direct signature: {direct_inputs:?} -> {direct_output:?}");
 
-            let (inputs, output, mut mapping) = regions::init::replace_fnsig_args_with_polonius_vars(
+            let (inputs, output, mut mapping) = regions::replace_fnsig_args_with_polonius_vars(
                 tcx,
                 params,
                 proc.get_id(),
@@ -519,7 +509,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let num_early_bounds =
                 params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count();
 
-            regions::init::replace_fnsig_args_with_polonius_vars(
+            regions::replace_fnsig_args_with_polonius_vars(
                 tcx,
                 params,
                 proc.get_id(),
@@ -542,7 +532,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             Some(info.region_var_resolver()),
         )?;
 
-        let annotations = translation::AnnotationGenerator::new(tcx, &type_scope.lifetime_scope, info);
+        let annotations = regions::AnnotationGenerator::new(tcx, &type_scope.lifetime_scope, info);
 
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
