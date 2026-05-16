@@ -565,23 +565,10 @@ Definition fn_spec_add_late_pre `{!typeGS Σ} (S : fn_spec) (pre : thread_id →
   mk_fn_spec S.(fn_A) (λ a, fn_params_add_late_pre (S.(fn_p) a) pre).
 
 
-(** Notation to bundle an [eq_refl] proof for [rts] that helps Coq's type inference *)
-Ltac get_rts_of_fntype x :=
-  lazymatch x with
-  | prod_vec _ _ → plist _ ?rts → fn_spec =>
-      constr:(rts)
-  end.
+(** Notation to bundle an [eq_refl] proof for [rts] that helps Coq's type inference around [plist] *)
 Notation "'<tag_type>' x" := (
-  ltac:(
-    let y := constr:(x%function) in
-    match type of y with
-    | ?ty =>
-        let ty2 := eval unfold spec_with in ty in
-        let ty3 := eval simpl in ty2 in
-        let A := get_rts_of_fntype ty3 in
-        refine (@eq_refl _ A, y)
-    end
-  )) (left associativity, at level 82, only parsing) : stdpp_scope.
+  (eq_refl, x))
+   (left associativity, at level 82, only parsing) : stdpp_scope.
 
 (** ** Function subtyping *)
 Section function_subsume.
