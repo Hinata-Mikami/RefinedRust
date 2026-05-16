@@ -24,7 +24,6 @@ pub(crate) struct AnnotationGenerator<'a, 'tcx> {
     tcx: ty::TyCtxt<'tcx>,
     info: &'a PoloniusInfo<'a, 'tcx>,
     inclusion_tracker: InclusionTracker<'a, 'tcx>,
-    plans: BTreeMap<mir::Location, LocationAnnotationPlan>,
 }
 
 #[expect(clippy::multiple_inherent_impl)]
@@ -38,7 +37,6 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             tcx,
             info,
             inclusion_tracker: init::initialize_inclusion_tracker(lifetime_scope, info),
-            plans: BTreeMap::new(),
         }
     }
 
@@ -58,10 +56,57 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         )
     }
 
+    pub(crate) fn prepare_initial_universal_arg_annotation_stmts(
+        &mut self,
+        ty_translator: &types::LocalTX<'_, 'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        sig_args: &[ty::Ty<'tcx>],
+        local_args: &[ty::Ty<'tcx>],
+    ) -> Vec<code::PrimStmt> {
+        let constraints = self.prepare_initial_universal_arg_constraints(typing_env, sig_args, local_args);
+        info!("initial constraints: {:?}", constraints);
+
+        vec![Self::copy_lifetime_constraints_stmt(ty_translator, constraints, "initialization")]
+    }
+
     pub(crate) fn prepare_initial_closure_constraints(
         &mut self,
     ) -> Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)> {
         init::get_initial_closure_constraints(self.info, &mut self.inclusion_tracker)
+    }
+
+    pub(crate) fn prepare_initial_closure_annotation_stmts(
+        &mut self,
+        ty_translator: &types::LocalTX<'_, 'tcx>,
+    ) -> Vec<code::PrimStmt> {
+        let constraints = self.prepare_initial_closure_constraints();
+        info!("initial closure constraints: {:?}", constraints);
+        if constraints.is_empty() {
+            return Vec::new();
+        }
+
+        vec![Self::copy_lifetime_constraints_stmt(ty_translator, constraints, "initialization (closure)")]
+    }
+
+    fn copy_lifetime_constraints_stmt(
+        ty_translator: &types::LocalTX<'_, 'tcx>,
+        constraints: Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)>,
+        why: impl Into<String>,
+    ) -> code::PrimStmt {
+        let annotations = constraints
+            .into_iter()
+            .map(|(r1, r2)| {
+                code::Annotation::CopyLftName(
+                    ty_translator.format_atomic_region(r1),
+                    ty_translator.format_atomic_region(r2),
+                )
+            })
+            .collect();
+
+        code::PrimStmt::Annot {
+            a: annotations,
+            why: Some(why.into()),
+        }
     }
 }
 
@@ -155,11 +200,11 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         ty_translator: &types::LocalTX<'_, 'tcx>,
         loc: mir::Location,
         predecessors: impl IntoIterator<Item = mir::Location>,
-    ) {
+    ) -> LocationAnnotationPlan {
         let dying_loans = self.collect_statement_dying_loans(loc, predecessors);
-        let mut plan = self.plans.remove(&loc).unwrap_or_default();
+        let mut plan = LocationAnnotationPlan::default();
         plan.pre.extend(self.generate_endlft_groups(ty_translator, dying_loans.into_iter().rev()));
-        self.plans.insert(loc, plan);
+        plan
     }
 
     pub(crate) fn collect_terminator_dying_loans(&self, loc: mir::Location) -> Vec<facts::Loan> {
@@ -178,7 +223,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         lhs_ty: mir::PlaceTy<'tcx>,
         rhs_ty: ty::Ty<'tcx>,
         lhs_strongly_writeable: bool,
-    ) {
+    ) -> LocationAnnotationPlan {
         let borrow_annots =
             assignment::get_assignment_loan_annots(&mut self.inclusion_tracker, ty_translator, loc, rhs);
 
@@ -211,35 +256,33 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             translated_fn.add_unconstrained_lft_hint(hint);
         }
 
-        let mut plan = self.plans.remove(&loc).unwrap_or_default();
+        let mut plan = LocationAnnotationPlan::default();
         plan.pre.push(AnnotationGroup::new(unconstrained_annots, "assignment (unconstrained)"));
         plan.pre.push(AnnotationGroup::new(composite_annots, "composite"));
         plan.pre.push(AnnotationGroup::new(borrow_annots, "borrow"));
         plan.pre.push(AnnotationGroup::new(assignment_annots.new_dyn_inclusions, "assignment"));
         plan.expr = assignment_annots.expr_annot;
         plan.post.push(AnnotationGroup::new(assignment_annots.stmt_annot, "post-assignment"));
-        self.plans.insert(loc, plan);
+        plan
     }
 
     pub(crate) fn prepare_terminator_annotation_plan(
         &mut self,
         ty_translator: &types::LocalTX<'_, 'tcx>,
-        loc: mir::Location,
         dying_loans: impl ExactSizeIterator<Item = facts::Loan>,
-    ) {
-        let mut plan = self.plans.remove(&loc).unwrap_or_default();
+    ) -> LocationAnnotationPlan {
+        let mut plan = LocationAnnotationPlan::default();
         plan.pre.extend(self.generate_endlft_groups(ty_translator, dying_loans));
-        self.plans.insert(loc, plan);
+        plan
     }
 
     pub(crate) fn prepare_return_annotation_plan(
         &mut self,
         ty_translator: &types::LocalTX<'_, 'tcx>,
         return_ty: ty::Ty<'tcx>,
-        loc: mir::Location,
         dying_loans: impl ExactSizeIterator<Item = facts::Loan>,
-    ) {
-        let mut plan = self.plans.remove(&loc).unwrap_or_default();
+    ) -> LocationAnnotationPlan {
+        let mut plan = LocationAnnotationPlan::default();
 
         let mut region_folder = super::TyRegionCollectFolder::new(self.tcx);
         region_folder.fold_ty(return_ty);
@@ -251,7 +294,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
 
         plan.pre.push(AnnotationGroup::new(stmt_annots, "return"));
         plan.pre.extend(self.generate_endlft_groups(ty_translator, dying_loans));
-        self.plans.insert(loc, plan);
+        plan
     }
 
     pub(crate) fn prepare_call_annotation_plan(
@@ -393,10 +436,6 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         BorrowLifetimePlan {
             lft: self.format_region(ty_translator, region),
         }
-    }
-
-    pub(crate) fn take_annotation_plan(&mut self, loc: mir::Location) -> LocationAnnotationPlan {
-        self.plans.remove(&loc).unwrap_or_default()
     }
 
     fn generate_endlft_groups<I>(

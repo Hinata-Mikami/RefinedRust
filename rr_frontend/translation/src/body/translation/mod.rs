@@ -25,7 +25,6 @@ use typed_arena::Arena;
 
 use crate::base::*;
 use crate::body::translation::calls::ProcedureInst;
-use crate::environment::polonius_info;
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
 use crate::regions::AnnotationGenerator;
@@ -80,8 +79,8 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
 
     /// generator state for borrowck-driven annotations.
     annotations: AnnotationGenerator<'a, 'tcx>,
-    /// initial Polonius constraints that hold at the start of the function
-    initial_constraints: Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)>,
+    /// initial Polonius annotations that hold at the start of the function
+    initial_annotation_stmts: Vec<code::PrimStmt>,
 
     /// data structures for tracking which basic blocks still need to be translated
     /// (we only translate the basic blocks which are actually reachable, in particular when
@@ -180,9 +179,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // add lifetime parameters to the map
         let typing_env = ty::TypingEnv::post_analysis(tcx, proc.get_id());
-        let initial_constraints =
-            annotations.prepare_initial_universal_arg_constraints(typing_env, inputs, arg_tys.as_slice());
-        info!("initial constraints: {:?}", initial_constraints);
+        let initial_annotation_stmts = annotations.prepare_initial_universal_arg_annotation_stmts(
+            &ty_translator,
+            typing_env,
+            inputs,
+            arg_tys.as_slice(),
+        );
 
         Ok(Self {
             tcx,
@@ -199,7 +201,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             ty_translator,
             loop_specs: BTreeMap::new(),
             fn_locals,
-            initial_constraints,
+            initial_annotation_stmts,
             const_registry,
             trait_registry,
             collected_statics: BTreeSet::new(),
@@ -216,8 +218,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let loop_info = self.proc.loop_info();
         loop_info.dump_body_head();
 
-        let closure_constraints = self.annotations.prepare_initial_closure_constraints();
-        info!("initial closure constraints: {:?}", closure_constraints);
+        let closure_annotation_stmts =
+            self.annotations.prepare_initial_closure_annotation_stmts(&self.ty_translator);
 
         // translate the function's basic blocks
         let basic_blocks = &self.proc.get_mir().basic_blocks;
@@ -228,38 +230,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let mut translated_bb = self.translate_basic_block(initial_bb_idx, bb)?;
 
             // push annotations for initial closure constraints
-            if !closure_constraints.is_empty() {
-                let mut annots = Vec::new();
-                for (r1, r2) in &closure_constraints {
-                    annots.push(code::Annotation::CopyLftName(
-                        self.ty_translator.format_atomic_region(*r1),
-                        self.ty_translator.format_atomic_region(*r2),
-                    ));
-                }
-                translated_bb = code::Stmt::Prim(
-                    vec![code::PrimStmt::Annot {
-                        a: annots,
-                        why: Some("initialization (closure)".to_owned()),
-                    }],
-                    Box::new(translated_bb),
-                );
+            if !closure_annotation_stmts.is_empty() {
+                translated_bb = code::Stmt::Prim(closure_annotation_stmts, Box::new(translated_bb));
             }
 
             // push annotation for initial constraints that relate argument's place regions to universals
-            let mut annots = Vec::new();
-            for (r1, r2) in &self.initial_constraints {
-                annots.push(code::Annotation::CopyLftName(
-                    self.ty_translator.format_atomic_region(*r1),
-                    self.ty_translator.format_atomic_region(*r2),
-                ));
-            }
-            translated_bb = code::Stmt::Prim(
-                vec![code::PrimStmt::Annot {
-                    a: annots,
-                    why: Some("initialization".to_owned()),
-                }],
-                Box::new(translated_bb),
-            );
+            translated_bb =
+                code::Stmt::Prim(std::mem::take(&mut self.initial_annotation_stmts), Box::new(translated_bb));
 
             // allocate always live locals
             let mut prim_stmts = Vec::new();

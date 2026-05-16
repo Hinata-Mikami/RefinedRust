@@ -29,12 +29,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 statement_index: idx,
             };
 
-            self.annotations.prepare_statement_annotation_plan(
+            let mut statement_annotation_plan = self.annotations.prepare_statement_annotation_plan(
                 &self.ty_translator,
                 loc,
                 self.get_loc_predecessors(loc),
             );
-            let mut statement_annotation_plan = self.annotations.take_annotation_plan(loc);
             statement_annotation_plan.push_pre_stmts(&mut prim_stmts);
 
             match &stmt.kind {
@@ -48,7 +47,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                         let plc_ty = self.get_type_of_place(plc);
                         let plc_strongly_writeable = !self.check_place_below_reference(plc);
-                        self.annotations.prepare_assignment_annotation_plan(
+                        let mut annotation_plan = self.annotations.prepare_assignment_annotation_plan(
                             &self.ty_translator,
                             &mut self.translated_fn,
                             loc,
@@ -57,8 +56,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             rhs_ty,
                             plc_strongly_writeable,
                         );
-
-                        let mut annotation_plan = self.annotations.take_annotation_plan(loc);
                         annotation_plan.push_pre_stmts(&mut prim_stmts);
 
 
