@@ -21,7 +21,6 @@ use crate::environment::dump_borrowck_info;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
-use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::regions::region_bi_folder::RegionBiFolder as _;
 use crate::spec_parsers::verbose_function_spec_parser::{
     CLOSURE_SPEC_ATTRS, COMMON_FUNCTION_SPEC_ATTRS, ClosureMetaInfo, ClosureSpecInfo, FUNCTION_SPEC_ATTRS,
@@ -36,8 +35,8 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     proc: &'def Procedure<'tcx>,
     /// the Caesium function buildder
     translated_fn: code::FunctionBuilder<'def>,
-    /// tracking lifetime inclusions for the generation of lifetime inclusions
-    inclusion_tracker: InclusionTracker<'a, 'tcx>,
+    /// generator state for borrowck-driven annotations.
+    annotations: translation::AnnotationGenerator<'a, 'tcx>,
 
     /// registry of other procedures
     procedure_registry: &'a procedures::Scope<'tcx, 'def>,
@@ -45,8 +44,6 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     const_registry: &'a consts::Scope<'def>,
     /// attributes on this function
     attrs: &'a [&'a hir::AttrItem],
-    /// polonius info for this function
-    info: &'a PoloniusInfo<'a, 'tcx>,
     /// translator for types
     ty_translator: types::LocalTX<'def, 'tcx>,
     /// trait registry in the current scope
@@ -317,7 +314,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             Some(info),
         )?;
 
-        let inclusion_tracker = regions::init::initialize_inclusion_tracker(&type_scope.lifetime_scope, info);
+        let annotations = translation::AnnotationGenerator::new(tcx, &type_scope.lifetime_scope, info);
 
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
@@ -328,9 +325,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut t = Self {
             tcx,
             proc,
-            info,
             translated_fn,
-            inclusion_tracker,
+            annotations,
             procedure_registry: proc_registry,
             attrs,
             ty_translator: type_translator,
@@ -546,7 +542,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             Some(info),
         )?;
 
-        let inclusion_tracker = regions::init::initialize_inclusion_tracker(&type_scope.lifetime_scope, info);
+        let annotations = translation::AnnotationGenerator::new(tcx, &type_scope.lifetime_scope, info);
 
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
@@ -562,9 +558,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut t = Self {
             tcx,
             proc,
-            info,
             translated_fn,
-            inclusion_tracker,
+            annotations,
             procedure_registry: proc_registry,
             attrs,
             ty_translator: type_translator,
@@ -625,9 +620,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             self.trait_registry,
             self.ty_translator,
             self.proc,
-            self.info,
             &self.inputs,
-            self.inclusion_tracker,
+            self.annotations,
             self.translated_fn,
         )?;
         translator.translate(spec_arena)

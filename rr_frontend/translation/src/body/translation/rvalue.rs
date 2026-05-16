@@ -326,7 +326,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let translated_pl = self.translate_place(pl)?;
                 let translated_bk = TX::translate_borrow_kind(self.tcx, *bk)?;
                 let ty_annot = self.get_type_annotation_for_borrow(*bk, pl)?;
-                let lft_plan = self.prepare_borrow_lifetime_plan(loc, *region);
+                let lft_plan =
+                    self.annotations.prepare_borrow_lifetime_plan(&self.ty_translator, loc, *region);
 
                 Ok((
                     code::Expr::Borrow {

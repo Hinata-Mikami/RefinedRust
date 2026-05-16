@@ -4,8 +4,6 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::BTreeSet;
-
 use log::info;
 use radium::{code, lang};
 use rr_rustc_interface::middle::{mir, ty};
@@ -31,24 +29,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 statement_index: idx,
             };
 
-            // get all dying loans, and emit endlfts for these.
-            // We loop over all predecessor locations, since some loans may end at the start of a
-            // basic block (in particular related to NLL stuff)
-            let pred = self.get_loc_predecessors(loc);
-            let mut dying_loans = BTreeSet::new();
-            for p in pred {
-                let dying_between = self.info.get_loans_dying_between(p, loc, false);
-                for l in &dying_between {
-                    dying_loans.insert(*l);
-                }
-                // also include zombies
-                let dying_between = self.info.get_loans_dying_between(p, loc, true);
-                for l in &dying_between {
-                    dying_loans.insert(*l);
-                }
-            }
-            self.prepare_statement_annotation_plan(loc, dying_loans.into_iter().rev());
-            let mut statement_annotation_plan = self.take_annotation_plan(loc);
+            self.annotations.prepare_statement_annotation_plan(
+                &self.ty_translator,
+                loc,
+                self.get_loc_predecessors(loc),
+            );
+            let mut statement_annotation_plan = self.annotations.take_annotation_plan(loc);
             statement_annotation_plan.push_pre_stmts(&mut prim_stmts);
 
             match &stmt.kind {
@@ -62,7 +48,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                         let plc_ty = self.get_type_of_place(plc);
                         let plc_strongly_writeable = !self.check_place_below_reference(plc);
-                        self.prepare_assignment_annotation_plan(
+                        self.annotations.prepare_assignment_annotation_plan(
+                            &self.ty_translator,
+                            &mut self.translated_fn,
                             loc,
                             val,
                             plc_ty,
@@ -70,7 +58,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             plc_strongly_writeable,
                         );
 
-                        let mut annotation_plan = self.take_annotation_plan(loc);
+                        let mut annotation_plan = self.annotations.take_annotation_plan(loc);
                         annotation_plan.push_pre_stmts(&mut prim_stmts);
 
 
@@ -185,12 +173,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             block: bb_idx,
             statement_index: idx,
         };
-        let dying = self.info.get_dying_loans(loc);
-        // TODO zombie?
-        let _dying_zombie = self.info.get_dying_zombie_loans(loc);
-        let all_dying_loans: BTreeSet<_> = dying.into_iter().collect();
-        let cont_stmt: code::Stmt =
-            self.translate_terminator(bb.terminator(), loc, all_dying_loans.into_iter().rev().collect())?;
+        let dying_loans = self.annotations.collect_terminator_dying_loans(loc);
+        let cont_stmt: code::Stmt = self.translate_terminator(bb.terminator(), loc, dying_loans)?;
 
         let cont_stmt = code::Stmt::Prim(prim_stmts, Box::new(cont_stmt));
 

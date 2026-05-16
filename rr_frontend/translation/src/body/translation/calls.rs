@@ -651,8 +651,18 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let output_ty = inst_sig.output().skip_binder();
         info!("call has instantiated type {:?}", inst_sig);
-        let mut annotation_plan =
-            self.prepare_call_annotation_plan(loc, &mut call_info, destination, output_ty, dying_loans)?;
+        let lhs_ty = self.get_type_of_place(destination);
+        let lhs_strongly_writeable = !self.check_place_below_reference(destination);
+        let mut annotation_plan = self.annotations.prepare_call_annotation_plan(
+            &self.ty_translator,
+            &mut self.translated_fn,
+            loc,
+            &mut call_info,
+            lhs_ty,
+            lhs_strongly_writeable,
+            output_ty,
+            dying_loans,
+        )?;
 
         let mut prim_stmts = Vec::new();
         annotation_plan.push_pre_call_stmts(&mut prim_stmts);
@@ -669,8 +679,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             annotation_plan.push_pre_assign_stmts(&mut prim_stmts);
 
             // assign stmt with call; then jump to bb
-            let place_ty = self.get_type_of_place(destination);
-            let place_st = self.ty_translator.translate_type_to_syn_type(place_ty.ty)?;
+            let place_st = self.ty_translator.translate_type_to_syn_type(lhs_ty.ty)?;
             let place_expr = self.translate_place(destination)?;
             let ot = place_st.into();
 

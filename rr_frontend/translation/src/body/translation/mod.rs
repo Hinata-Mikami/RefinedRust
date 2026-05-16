@@ -16,9 +16,10 @@ mod terminator;
 use std::cmp;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
+pub(crate) use annotations::AnnotationGenerator;
 pub(crate) use calls::get_arg_syntypes_for_procedure_call;
 use log::{info, trace};
-use radium::{code, coq, lang, specs};
+use radium::{code, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::mir_dataflow::impls::always_storage_live_locals;
@@ -26,14 +27,11 @@ use typed_arena::Arena;
 
 use crate::base::*;
 use crate::body::translation::calls::ProcedureInst;
-use crate::environment::borrowck::facts;
 use crate::environment::polonius_info;
-use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
-use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::traits::registry;
-use crate::{consts, procedures, regions, rustcmp, types};
+use crate::{consts, procedures, rustcmp, types};
 
 pub(crate) enum ExprInfo<'tcx, 'def> {
     Call(ProcedureInst<'tcx, 'def>),
@@ -68,9 +66,6 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
 
     /// this needs to be annotated with the right borrowck things
     proc: &'def Procedure<'tcx>,
-    /// polonius info for this function
-    info: &'a PoloniusInfo<'a, 'tcx>,
-
     /// maps locals to variable names
     variable_map: HashMap<mir::Local, String>,
 
@@ -84,10 +79,8 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     /// used statics
     collected_statics: BTreeSet<OrderedDefId>,
 
-    /// tracking lifetime inclusions for the generation of lifetime inclusions
-    inclusion_tracker: InclusionTracker<'a, 'tcx>,
-    /// cached annotation plans for MIR locations
-    annotation_plans: BTreeMap<mir::Location, annotations::LocationAnnotationPlan>,
+    /// generator state for borrowck-driven annotations.
+    annotations: AnnotationGenerator<'a, 'tcx>,
     /// initial Polonius constraints that hold at the start of the function
     initial_constraints: Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)>,
 
@@ -118,10 +111,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         ty_translator: types::LocalTX<'def, 'tcx>,
 
         proc: &'def Procedure<'tcx>,
-        info: &'a PoloniusInfo<'a, 'tcx>,
         inputs: &[ty::Ty<'tcx>],
 
-        mut inclusion_tracker: InclusionTracker<'a, 'tcx>,
+        mut annotations: AnnotationGenerator<'a, 'tcx>,
         mut translated_fn: code::FunctionBuilder<'def>,
     ) -> Result<Self, TranslationError> {
         let body = proc.get_mir();
@@ -189,26 +181,18 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // add lifetime parameters to the map
         let typing_env = ty::TypingEnv::post_analysis(tcx, proc.get_id());
-        let initial_constraints = regions::init::get_initial_universal_arg_constraints(
-            tcx,
-            typing_env,
-            info,
-            &mut inclusion_tracker,
-            inputs,
-            arg_tys.as_slice(),
-        );
+        let initial_constraints =
+            annotations.prepare_initial_universal_arg_constraints(typing_env, inputs, arg_tys.as_slice());
         info!("initial constraints: {:?}", initial_constraints);
 
         Ok(Self {
             tcx,
             proc,
-            info,
             variable_map,
             translated_fn,
             return_name,
             return_ty,
-            inclusion_tracker,
-            annotation_plans: BTreeMap::new(),
+            annotations,
             collected_procedures: HashMap::new(),
             procedure_registry,
             bb_queue: Vec::new(),
@@ -233,8 +217,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let loop_info = self.proc.loop_info();
         loop_info.dump_body_head();
 
-        let closure_constraints =
-            regions::init::get_initial_closure_constraints(self.info, &mut self.inclusion_tracker);
+        let closure_constraints = self.annotations.prepare_initial_closure_constraints();
         info!("initial closure constraints: {:?}", closure_constraints);
 
         // translate the function's basic blocks
@@ -410,11 +393,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
 
         None
-    }
-
-    fn format_region(&self, r: facts::Region) -> coq::Ident {
-        let lft = self.info.mk_atomic_region(r);
-        self.ty_translator.format_atomic_region(lft)
     }
 
     /// Checks whether a place access descends below a reference.

@@ -153,8 +153,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             mir::TerminatorKind::Return => {
                 let return_synty = self.ty_translator.translate_type_to_syn_type(self.return_ty)?;
-                self.prepare_return_annotation_plan(loc, dying_loans.into_iter());
-                let mut annotation_plan = self.take_annotation_plan(loc);
+                self.annotations.prepare_return_annotation_plan(
+                    &self.ty_translator,
+                    self.return_ty,
+                    loc,
+                    dying_loans.into_iter(),
+                );
+                let mut annotation_plan = self.annotations.take_annotation_plan(loc);
                 let annots = annotation_plan.take_pre_stmts();
 
                 // read from the return place
@@ -193,8 +198,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         s2: Box::new(false_branch),
                     };
 
-                    self.prepare_terminator_annotation_plan(loc, dying_loans.into_iter());
-                    let mut annotation_plan = self.take_annotation_plan(loc);
+                    self.annotations.prepare_terminator_annotation_plan(
+                        &self.ty_translator,
+                        loc,
+                        dying_loans.into_iter(),
+                    );
+                    let mut annotation_plan = self.annotations.take_annotation_plan(loc);
                     return Ok(code::Stmt::Prim(annotation_plan.take_pre_stmts(), Box::new(stmt)));
                 }
 
@@ -249,8 +258,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 };
 
                 let stmt = self.translate_goto_like(&loc, *target)?;
-                self.prepare_terminator_annotation_plan(loc, dying_loans.into_iter());
-                let mut annotation_plan = self.take_annotation_plan(loc);
+                self.annotations.prepare_terminator_annotation_plan(
+                    &self.ty_translator,
+                    loc,
+                    dying_loans.into_iter(),
+                );
+                let mut annotation_plan = self.annotations.take_annotation_plan(loc);
                 let mut annots = annotation_plan.take_pre_stmts();
 
                 // TODO: should we really have this?
@@ -266,8 +279,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let _drope = code::Expr::DropE(Box::new(place_translated));
 
                 let stmt = self.translate_goto_like(&loc, *target)?;
-                self.prepare_terminator_annotation_plan(loc, dying_loans.into_iter());
-                let mut annotation_plan = self.take_annotation_plan(loc);
+                self.annotations.prepare_terminator_annotation_plan(
+                    &self.ty_translator,
+                    loc,
+                    dying_loans.into_iter(),
+                );
+                let mut annotation_plan = self.annotations.take_annotation_plan(loc);
 
                 Ok(code::Stmt::Prim(annotation_plan.take_pre_stmts(), Box::new(stmt)))
             },
