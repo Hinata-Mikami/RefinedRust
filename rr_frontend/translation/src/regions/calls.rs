@@ -50,10 +50,7 @@ pub(crate) fn compute_call_regions<'tcx>(
 ) -> CallRegions {
     let info = incl_tracker.info();
 
-    let midpoint = info.interner.get_point_index(&facts::Point {
-        location: loc,
-        typ: facts::PointType::Mid,
-    });
+    let midpoint = info.mid_point(loc);
 
     let mut early_regions = Vec::new();
     for a in substs {
@@ -217,10 +214,7 @@ pub(crate) fn compute_unconstrained_region_annots<'tcx>(
     early_region_map: &BTreeMap<coq::Ident, usize>,
 ) -> (Vec<code::Annotation>, BTreeSet<facts::Region>) {
     let info = inclusion_tracker.info();
-    let midpoint = info.interner.get_point_index(&facts::Point {
-        location: loc,
-        typ: facts::PointType::Mid,
-    });
+    let midpoint = info.mid_point(loc);
 
     let mut remaining_regions = BTreeSet::new();
 

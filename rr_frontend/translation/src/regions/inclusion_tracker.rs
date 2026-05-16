@@ -116,7 +116,7 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
         let barriers = datafrog::Relation::from_iter(self.barriers.iter().map(|(r, p)| (*r, *p)));
 
         let cfg_edge = iteration.variable::<(PointIndex, PointIndex)>("cfg_edge");
-        cfg_edge.extend(self.info.borrowck_in_facts.cfg_edge.iter());
+        cfg_edge.extend(self.info.cfg_edges());
 
         while iteration.changed() {
             incl4.from_map(base, |(r1, r2, p)| ((*r2, *p), *r1));

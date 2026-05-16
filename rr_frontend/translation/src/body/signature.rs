@@ -251,7 +251,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
 
         // Note: this only treats the formal arguments of the closure, but not the closure captures
-        let num_universals = info.borrowck_in_facts.universal_region.len();
+        let num_universals = info.universal_region_count();
         let mut num_late_bounds = sig.bound_vars().len();
         let num_early_bounds =
             params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count();
@@ -466,7 +466,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             info!("expected sig: {expected_sig:?}");
 
             // Important: use the fn's sig here.
-            let num_universals = info.borrowck_in_facts.universal_region.len();
+            let num_universals = info.universal_region_count();
             let num_late_bounds = sig.bound_vars().len();
             let num_early_bounds =
                 params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count();
@@ -514,7 +514,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             (inputs, output, mapping)
         } else {
-            let num_universals = info.borrowck_in_facts.universal_region.len();
+            let num_universals = info.universal_region_count();
             let num_late_bounds = sig.bound_vars().len();
             let num_early_bounds =
                 params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count();

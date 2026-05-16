@@ -268,10 +268,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         output_ty: ty::Ty<'tcx>,
         dying_loans: impl ExactSizeIterator<Item = facts::Loan>,
     ) -> Result<CallAnnotationPlan, TranslationError> {
-        let startpoint = self.info.interner.get_point_index(&facts::Point {
-            location: loc,
-            typ: facts::PointType::Start,
-        });
+        let startpoint = self.info.start_point(loc);
 
         let classification = regions::calls::compute_call_regions(
             self.tcx,

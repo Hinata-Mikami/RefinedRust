@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, HashMap};
 use log::{info, trace};
 use radium::{coq, specs};
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::middle::ty;
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
@@ -203,20 +203,13 @@ pub(crate) fn find_placeholder_region_for(
     r: facts::Region,
     info: &PoloniusInfo<'_, '_>,
 ) -> Option<facts::Region> {
-    let root_location = mir::Location {
-        block: mir::BasicBlock::from_usize(0),
-        statement_index: 0,
-    };
-    let root_point = info.interner.get_point_index(&facts::Point {
-        location: root_location,
-        typ: facts::PointType::Start,
-    });
+    let root_point = info.root_point(facts::PointType::Start);
 
-    for (r1, r2, p) in &info.borrowck_in_facts.subset_base {
-        let k1 = info.get_region_kind(*r1);
-        if *p == root_point && *r2 == r && matches!(k1, polonius_info::RegionKind::Universal(_)) {
+    for (r1, r2) in info.subset_base_at(root_point) {
+        let k1 = info.get_region_kind(r1);
+        if r2 == r && matches!(k1, polonius_info::RegionKind::Universal(_)) {
             info!("find placeholder region for: {:?} ⊑ {:?} = r", r1, r2);
-            return Some(*r1);
+            return Some(r1);
         }
     }
     None
@@ -229,14 +222,7 @@ pub(crate) fn initialize_inclusion_tracker<'a, 'tcx>(
 ) -> InclusionTracker<'a, 'tcx> {
     let mut inclusion_tracker = InclusionTracker::new(info);
 
-    let root_location = mir::Location {
-        block: mir::BasicBlock::from_usize(0),
-        statement_index: 0,
-    };
-    let root_point = info.interner.get_point_index(&facts::Point {
-        location: root_location,
-        typ: facts::PointType::Start,
-    });
+    let root_point = info.root_point(facts::PointType::Start);
     for (cstr, _) in &lifetime_scope.constraints {
         match cstr {
             LftConstr::RegionOutlives(r1, r2) => {
@@ -246,8 +232,8 @@ pub(crate) fn initialize_inclusion_tracker<'a, 'tcx>(
         }
     }
 
-    for (r1, r2) in &info.borrowck_in_facts.known_placeholder_subset {
-        inclusion_tracker.add_static_inclusion(*r1, *r2, root_point);
+    for (r1, r2) in info.known_placeholder_subsets() {
+        inclusion_tracker.add_static_inclusion(r1, r2, root_point);
     }
 
     inclusion_tracker
@@ -259,27 +245,18 @@ pub(crate) fn get_initial_closure_constraints<'a>(
     info: &'a PoloniusInfo<'a, '_>,
     inclusion_tracker: &mut InclusionTracker<'a, '_>,
 ) -> Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)> {
-    let input_facts = &info.borrowck_in_facts;
-
-    let root_location = mir::Location {
-        block: mir::BasicBlock::from_usize(0),
-        statement_index: 0,
-    };
-    let root_point = info.interner.get_point_index(&facts::Point {
-        location: root_location,
-        typ: facts::PointType::Mid,
-    });
+    let root_point = info.root_point(facts::PointType::Mid);
 
     let mut closure_constraints = Vec::new();
 
-    for (r1, r2, p) in &input_facts.subset_base {
-        if *p == root_point && input_facts.subset_base.contains(&(*r2, *r1, *p)) {
-            let lft1 = info.mk_atomic_region(*r1);
-            let lft2 = info.mk_atomic_region(*r2);
+    for (r1, r2) in info.subset_base_at(root_point) {
+        if info.has_subset_base_at(r2, r1, root_point) {
+            let lft1 = info.mk_atomic_region(r1);
+            let lft2 = info.mk_atomic_region(r2);
 
             if lft1.is_place() && lft2.is_value() {
-                inclusion_tracker.add_static_inclusion(*r1, *r2, root_point);
-                inclusion_tracker.add_static_inclusion(*r2, *r1, root_point);
+                inclusion_tracker.add_static_inclusion(r1, r2, root_point);
+                inclusion_tracker.add_static_inclusion(r2, r1, root_point);
 
                 closure_constraints.push((lft1, lft2));
             }
@@ -317,14 +294,7 @@ pub(crate) fn get_initial_universal_arg_constraints<'a, 'tcx>(
 
     // add the inclusions to the inclusion tracker
 
-    let root_location = mir::Location {
-        block: mir::BasicBlock::from_usize(0),
-        statement_index: 0,
-    };
-    let root_point = info.interner.get_point_index(&facts::Point {
-        location: root_location,
-        typ: facts::PointType::Start,
-    });
+    let root_point = info.root_point(facts::PointType::Start);
 
     let mut initial_arg_mapping = Vec::new();
     for (l, s) in unifier.get_result() {

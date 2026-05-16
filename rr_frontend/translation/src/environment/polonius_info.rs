@@ -4,7 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use log::{debug, trace};
 use rr_rustc_interface::hir::def_id::LocalDefId;
@@ -75,7 +75,7 @@ pub(crate) enum UniversalRegionKind {
     Local,
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum RegionKind {
     /// this region belongs to a loan that is created
     Loan,
@@ -112,15 +112,15 @@ pub(crate) fn compute_transitive_closure(
 
 // Terminology: zombie loans are loans that are loan_killed_at.
 pub(crate) struct PoloniusInfo<'a, 'tcx> {
-    pub(crate) tcx: ty::TyCtxt<'tcx>,
-    pub(crate) mir: &'a mir::Body<'tcx>,
-    pub(crate) borrowck_in_facts: &'tcx facts::AllInput,
-    pub(crate) borrowck_out_facts: facts::AllOutput,
-    pub(crate) interner: facts::Interner<'tcx>,
+    mir: &'a mir::Body<'tcx>,
+    borrowck_in_facts: &'tcx facts::AllInput,
+    borrowck_out_facts: facts::AllOutput,
+    interner: facts::Interner<'tcx>,
     /// Position at which a specific loan was created.
-    pub(crate) loan_position: HashMap<facts::Loan, mir::Location>,
-    pub(crate) loan_at_position: HashMap<mir::Location, facts::Loan>,
-    pub(crate) additional_facts: AdditionalFacts,
+    loan_position: HashMap<facts::Loan, mir::Location>,
+    loan_at_position: HashMap<mir::Location, facts::Loan>,
+    region_kind: HashMap<facts::Region, RegionKind>,
+    additional_facts: AdditionalFacts,
 }
 
 impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
@@ -165,78 +165,159 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             })
             .collect();
 
+        let region_kind = Self::compute_region_kinds(tcx, mir, all_facts);
         let additional_facts = AdditionalFacts::new(all_facts, &output);
 
         Self {
-            tcx,
             mir,
             borrowck_in_facts: all_facts,
             borrowck_out_facts: output,
             interner,
             loan_position,
             loan_at_position,
+            region_kind,
             additional_facts,
         }
+    }
+
+    fn compute_region_kinds(
+        tcx: ty::TyCtxt<'tcx>,
+        mir: &mir::Body<'tcx>,
+        facts: &facts::AllInput,
+    ) -> HashMap<facts::Region, RegionKind> {
+        let mut region_kind = HashMap::new();
+
+        let mut loan_regions = HashSet::new();
+        for (region, _, _) in &facts.loan_issued_at {
+            if !loan_regions.insert(*region) {
+                unreachable!("A region should not be induced by multiple loans");
+            }
+            region_kind.insert(*region, RegionKind::Loan);
+        }
+
+        for (region, _) in &facts.placeholder {
+            let kind = if region.index() == 0 {
+                UniversalRegionKind::Static
+            } else if region.index() + 1 == facts.placeholder.len() {
+                // TODO check if this does the right thing
+                UniversalRegionKind::Function
+            } else {
+                // TODO: this ignores external regions
+                UniversalRegionKind::Local
+            };
+            region_kind.insert(*region, RegionKind::Universal(kind));
+        }
+
+        let constrained_regions: HashSet<_> = facts.subset_base.iter().map(|(_, r2, _)| *r2).collect();
+        let mut place_regions: HashSet<facts::Region> = HashSet::new();
+        let mut clos = |r: ty::Region<'tcx>, _| match r.kind() {
+            ty::RegionKind::ReVar(rv) => {
+                place_regions.insert(rv.into());
+                r
+            },
+            _ => r,
+        };
+        let mut folder = RegionFolder::new(tcx, &mut clos);
+        for local in &mir.local_decls {
+            folder.fold_ty(local.ty);
+        }
+
+        let all_regions = facts
+            .subset_base
+            .iter()
+            .flat_map(|(r1, r2, _)| [*r1, *r2])
+            .chain(facts.loan_issued_at.iter().map(|(r, _, _)| *r))
+            .chain(facts.placeholder.iter().map(|(r, _)| *r))
+            .chain(place_regions.iter().copied());
+        for region in all_regions {
+            region_kind.entry(region).or_insert_with(|| {
+                let unconstrained = !constrained_regions.contains(&region);
+                if place_regions.contains(&region) {
+                    RegionKind::PlaceRegion(unconstrained)
+                } else {
+                    RegionKind::Unknown(unconstrained)
+                }
+            });
+        }
+
+        region_kind
+    }
+
+    #[must_use]
+    pub(crate) const fn universal_region_count(&self) -> usize {
+        self.borrowck_in_facts.universal_region.len()
+    }
+
+    #[must_use]
+    pub(crate) fn root_point(&self, point_type: facts::PointType) -> facts::PointIndex {
+        self.get_point(
+            mir::Location {
+                block: mir::BasicBlock::from_usize(0),
+                statement_index: 0,
+            },
+            point_type,
+        )
+    }
+
+    #[must_use]
+    pub(crate) fn start_point(&self, location: mir::Location) -> facts::PointIndex {
+        self.get_point(location, facts::PointType::Start)
+    }
+
+    #[must_use]
+    pub(crate) fn mid_point(&self, location: mir::Location) -> facts::PointIndex {
+        self.get_point(location, facts::PointType::Mid)
+    }
+
+    pub(crate) fn subset_base_at(
+        &self,
+        point: facts::PointIndex,
+    ) -> impl Iterator<Item = (facts::Region, facts::Region)> + '_ {
+        self.borrowck_in_facts
+            .subset_base
+            .iter()
+            .filter_map(move |(r1, r2, p)| (*p == point).then_some((*r1, *r2)))
+    }
+
+    #[must_use]
+    pub(crate) fn has_subset_base_at(
+        &self,
+        r1: facts::Region,
+        r2: facts::Region,
+        point: facts::PointIndex,
+    ) -> bool {
+        self.borrowck_in_facts.subset_base.contains(&(r1, r2, point))
+    }
+
+    pub(crate) fn known_placeholder_subsets(
+        &self,
+    ) -> impl Iterator<Item = (facts::Region, facts::Region)> + '_ {
+        self.borrowck_in_facts.known_placeholder_subset.iter().copied()
+    }
+
+    pub(crate) fn cfg_edges(&self) -> impl Iterator<Item = (facts::PointIndex, facts::PointIndex)> + '_ {
+        self.borrowck_in_facts.cfg_edge.iter().copied()
+    }
+
+    #[must_use]
+    pub(super) const fn input_facts(&self) -> &'tcx facts::AllInput {
+        self.borrowck_in_facts
+    }
+
+    #[must_use]
+    pub(super) const fn output_facts(&self) -> &facts::AllOutput {
+        &self.borrowck_out_facts
+    }
+
+    #[must_use]
+    pub(super) const fn interner(&self) -> &facts::Interner<'tcx> {
+        &self.interner
     }
 
     /// Gets the kind of a region: originating from a loan, a universal region, or none of these.
     #[must_use]
     pub(crate) fn get_region_kind(&self, region: facts::Region) -> RegionKind {
-        // check if this region is induced by a loan
-        let v: Vec<facts::Loan> = self
-            .borrowck_in_facts
-            .loan_issued_at
-            .iter()
-            .filter_map(|(r, loan, _)| (r == &region).then_some(*loan))
-            .collect();
-
-        if !v.is_empty() {
-            if v.len() == 1 {
-                return RegionKind::Loan;
-            }
-
-            unreachable!("A region should not be induced by multiple loans");
-        }
-
-        // check if this is a universal region
-        if self.borrowck_in_facts.placeholder.iter().any(|(r, _)| r == &region) {
-            // this is a universal region
-            if region.index() == 0 {
-                return RegionKind::Universal(UniversalRegionKind::Static);
-            }
-
-            if region.index() + 1 == self.borrowck_in_facts.placeholder.len() {
-                // TODO check if this does the right thing
-                return RegionKind::Universal(UniversalRegionKind::Function);
-            }
-
-            // TODO: this ignores external regions
-            return RegionKind::Universal(UniversalRegionKind::Local);
-        }
-
-        // check if this is an unconstrained region
-        let unconstrained = !self.borrowck_in_facts.subset_base.iter().any(|(_, r2, _)| *r2 == region);
-
-        // check if this is a place region
-        let mut found_region = false;
-        let mut clos = |r: ty::Region<'tcx>, _| match r.kind() {
-            ty::RegionKind::ReVar(rv) if rv == region.into() => {
-                found_region = true;
-                r
-            },
-            _ => r,
-        };
-
-        let mut folder = RegionFolder::new(self.tcx, &mut clos);
-        for local in &self.mir.local_decls {
-            folder.fold_ty(local.ty);
-        }
-
-        if found_region {
-            return RegionKind::PlaceRegion(unconstrained);
-        }
-
-        RegionKind::Unknown(unconstrained)
+        self.region_kind.get(&region).copied().unwrap_or(RegionKind::Unknown(true))
     }
 
     #[must_use]
@@ -256,14 +337,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         &self,
         point: facts::PointIndex,
     ) -> Vec<(facts::Region, facts::Region)> {
-        let root_location = mir::Location {
-            block: mir::BasicBlock::from_u32(0),
-            statement_index: 0,
-        };
-        let root_point = self.interner.get_point_index(&facts::Point {
-            location: root_location,
-            typ: facts::PointType::Mid,
-        });
+        let root_point = self.root_point(facts::PointType::Mid);
 
         let mut constraints = Vec::new();
         for (r1, r2, p) in &self.borrowck_in_facts.subset_base {

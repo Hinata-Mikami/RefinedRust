@@ -27,38 +27,30 @@ pub(crate) fn get_composite_rvalue_creation_annots<'tcx>(
     rhs_ty: ty::Ty<'tcx>,
 ) -> Vec<code::Annotation> {
     let info = inclusion_tracker.info();
-    let input_facts = &info.borrowck_in_facts;
-    let subset_base = &input_facts.subset_base;
-
     let regions_of_ty = get_regions_of_ty(tcx, rhs_ty);
 
     let mut annots = Vec::new();
 
     // Polonius subset constraint are spawned for the midpoint
-    let midpoint = info.interner.get_point_index(&facts::Point {
-        location: loc,
-        typ: facts::PointType::Mid,
-    });
+    let midpoint = info.mid_point(loc);
 
-    for (s1, s2, point) in subset_base {
-        if *point == midpoint {
-            let lft1 = info.mk_atomic_region(*s1);
-            let lft2 = info.mk_atomic_region(*s2);
+    for (s1, s2) in info.subset_base_at(midpoint) {
+        let lft1 = info.mk_atomic_region(s1);
+        let lft2 = info.mk_atomic_region(s2);
 
-            // a place lifetime is included in a value lifetime
-            if lft2.is_value() && lft1.is_place() {
-                // make sure it's not due to an assignment constraint
-                if regions_of_ty.contains(s2) && !subset_base.contains(&(*s2, *s1, midpoint)) {
-                    // we enforce this inclusion by setting the lifetimes to be equal
-                    inclusion_tracker.add_static_inclusion(*s1, *s2, midpoint);
-                    inclusion_tracker.add_static_inclusion(*s2, *s1, midpoint);
+        // a place lifetime is included in a value lifetime
+        if lft2.is_value() && lft1.is_place() {
+            // make sure it's not due to an assignment constraint
+            if regions_of_ty.contains(&s2) && !info.has_subset_base_at(s2, s1, midpoint) {
+                // we enforce this inclusion by setting the lifetimes to be equal
+                inclusion_tracker.add_static_inclusion(s1, s2, midpoint);
+                inclusion_tracker.add_static_inclusion(s2, s1, midpoint);
 
-                    let annot = code::Annotation::CopyLftName(
-                        ty_translator.format_atomic_region(lft1),
-                        ty_translator.format_atomic_region(lft2),
-                    );
-                    annots.push(annot);
-                }
+                let annot = code::Annotation::CopyLftName(
+                    ty_translator.format_atomic_region(lft1),
+                    ty_translator.format_atomic_region(lft2),
+                );
+                annots.push(annot);
             }
         }
     }

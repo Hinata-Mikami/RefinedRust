@@ -39,8 +39,8 @@ struct InfoPrinter<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
     fn dump_borrowck_facts(info: &'a PoloniusInfo<'a, 'tcx>, writer: &mut BufWriter<File>) -> io::Result<()> {
-        let input_facts = &info.borrowck_in_facts;
-        let interner = &info.interner;
+        let input_facts = info.input_facts();
+        let interner = info.interner();
         write!(writer, "======== Borrowck facts ========\n\n")?;
 
         write!(writer, "Loans issued at: \n")?;
@@ -86,10 +86,10 @@ impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
         }
         write!(writer, "\n\n")?;
 
-        let output_facts = &info.borrowck_out_facts;
+        let output_facts = info.output_facts();
 
         write!(writer, "Subset:\n")?;
-        let v: BTreeMap<_, _> = info.borrowck_out_facts.subset.iter().collect();
+        let v: BTreeMap<_, _> = output_facts.subset.iter().collect();
         for (l, m) in v {
             write!(writer, "({:?}, {:?})\n", interner.get_point(*l).location, m)?;
         }
