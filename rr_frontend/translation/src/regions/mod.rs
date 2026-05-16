@@ -26,6 +26,37 @@ use crate::environment::borrowck::facts;
 use crate::environment::polonius_info;
 
 #[derive(Clone, Debug)]
+pub(crate) struct RegionVarResolver {
+    region_kind: HashMap<facts::Region, polonius_info::RegionKind>,
+}
+
+impl RegionVarResolver {
+    pub(crate) const fn new(region_kind: HashMap<facts::Region, polonius_info::RegionKind>) -> Self {
+        Self { region_kind }
+    }
+
+    #[must_use]
+    pub(crate) fn mk_atomic_region(&self, r: facts::Region) -> polonius_info::AtomicRegion {
+        let kind = self.region_kind.get(&r).copied().unwrap_or(polonius_info::RegionKind::Unknown(true));
+        match kind {
+            polonius_info::RegionKind::Loan => polonius_info::AtomicRegion::Loan(r),
+            polonius_info::RegionKind::PlaceRegion(b) => polonius_info::AtomicRegion::PlaceRegion(r, b),
+            polonius_info::RegionKind::Universal(uk) => polonius_info::AtomicRegion::Universal(uk, r),
+            polonius_info::RegionKind::Unknown(b) => polonius_info::AtomicRegion::Unknown(r, b),
+        }
+    }
+
+    #[must_use]
+    pub(crate) fn translate_region_var(
+        &self,
+        r: facts::Region,
+        scope: Option<&EarlyLateRegionMap<'_>>,
+    ) -> specs::Lft {
+        format_atomic_region_direct(self.mk_atomic_region(r), scope)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) enum LftConstr<'def> {
     RegionOutlives(facts::Region, facts::Region),
     TypeOutlives(specs::Type<'def>, facts::Region),

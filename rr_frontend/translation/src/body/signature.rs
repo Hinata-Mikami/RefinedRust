@@ -311,7 +311,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             params,
             &mut translated_fn,
             region_substitution.clone(),
-            Some(info),
+            Some(info.region_var_resolver()),
         )?;
 
         let annotations = translation::AnnotationGenerator::new(tcx, &type_scope.lifetime_scope, info);
@@ -539,7 +539,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             params.as_slice(),
             &mut translated_fn,
             region_substitution,
-            Some(info),
+            Some(info.region_var_resolver()),
         )?;
 
         let annotations = translation::AnnotationGenerator::new(tcx, &type_scope.lifetime_scope, info);
@@ -657,7 +657,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         params: &[ty::GenericArg<'tcx>],
         translated_fn: &mut code::FunctionBuilder<'def>,
         region_substitution: regions::EarlyLateRegionMap<'def>,
-        info: Option<&'def PoloniusInfo<'def, 'tcx>>,
+        region_resolver: Option<regions::RegionVarResolver>,
     ) -> Result<types::FunctionState<'tcx, 'def>, TranslationError> {
         // enter the procedure
         let type_scope = types::FunctionState::new_with_traits(
@@ -667,7 +667,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             region_substitution,
             ty_translator,
             trait_registry,
-            info,
+            region_resolver,
         )?;
 
         // add generic args to the fn

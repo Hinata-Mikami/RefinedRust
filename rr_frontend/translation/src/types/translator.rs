@@ -19,8 +19,7 @@ use typed_arena::Arena;
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
-use crate::environment::polonius_info::PoloniusInfo;
-use crate::regions::{EarlyLateRegionMap, LftConstr, format_atomic_region_direct};
+use crate::regions::{EarlyLateRegionMap, LftConstr, RegionVarResolver};
 use crate::spec_parsers::enum_spec_parser::{
     ENUM_SPEC_ATTRS, ENUM_VARIANT_SPEC_ATTRS, EnumSpecParser as _, VerboseEnumSpecParser,
     parse_enum_refine_as,
@@ -53,9 +52,9 @@ pub(crate) struct FunctionState<'tcx, 'def> {
     /// Shim uses for the current function
     pub shim_uses: BTreeMap<scope::AdtUseKey, specs::types::LiteralUse<'def>>,
 
-    /// optional Polonius Info for the current function
+    /// optional resolver for Polonius region variables in the current function
     #[debug(ignore)]
-    polonius_info: Option<&'def PoloniusInfo<'def, 'tcx>>,
+    region_resolver: Option<RegionVarResolver>,
 }
 
 impl<'def> ParamLookup<'def> for FunctionState<'_, 'def> {
@@ -83,7 +82,7 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
         lifetimes: EarlyLateRegionMap<'def>,
         type_translator: &TX<'def, 'tcx>,
         trait_registry: &registry::TR<'tcx, 'def>,
-        info: Option<&'def PoloniusInfo<'def, 'tcx>>,
+        region_resolver: Option<RegionVarResolver>,
     ) -> Result<Self, TranslationError> {
         info!("Entering procedure with ty_params {:?} and lifetimes {:?}", ty_params, lifetimes);
         let mut generics = scope::Params::new_from_generics(tcx, ty_params, Some(did));
@@ -95,7 +94,7 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
             tuple_uses: BTreeMap::new(),
             generic_scope: generics,
             shim_uses: BTreeMap::new(),
-            polonius_info: info,
+            region_resolver,
             lifetime_scope: lifetimes,
         };
 
@@ -185,9 +184,9 @@ pub(crate) struct TraitState<'a, 'tcx, 'def> {
     scope: scope::Params<'tcx, 'def>,
     /// the current typing env
     typing_env: ty::TypingEnv<'tcx>,
-    /// optional Polonius Info for the current function
+    /// optional resolver for Polonius region variables in the current function
     #[debug(ignore)]
-    polonius_info: Option<&'def PoloniusInfo<'def, 'tcx>>,
+    region_resolver: Option<RegionVarResolver>,
     lifetime_scope: Option<&'a EarlyLateRegionMap<'def>>,
 }
 
@@ -242,10 +241,10 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         }
     }
 
-    pub(crate) const fn polonius_info(&self) -> Option<&'def PoloniusInfo<'def, 'tcx>> {
+    pub(crate) const fn region_resolver(&self) -> Option<&RegionVarResolver> {
         match &self {
-            Self::InFunction(state) => state.polonius_info,
-            Self::TraitReqs(state) => state.polonius_info,
+            Self::InFunction(state) => state.region_resolver.as_ref(),
+            Self::TraitReqs(state) => state.region_resolver.as_ref(),
             Self::TranslateAdt(_) | Self::CalleeTranslation(_) => None,
         }
     }
@@ -309,7 +308,12 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
             STInner::CalleeTranslation(*s)
         } else {
             let typing_env = self.get_typing_env(tcx);
-            let state = TraitState::new(params, typing_env, self.polonius_info(), self.polonius_region_map());
+            let state = TraitState::new(
+                params,
+                typing_env,
+                self.region_resolver().cloned(),
+                self.polonius_region_map(),
+            );
             STInner::TraitReqs(Box::new(state))
         }
     }
@@ -419,10 +423,8 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
     pub(crate) fn lookup_polonius_var(&self, v: facts::Region) -> specs::Lft {
         match self {
             STInner::InFunction(scope) => {
-                if let Some(info) = scope.polonius_info {
-                    // If there is Polonius Info available, use that for translation
-                    let x = info.mk_atomic_region(v);
-                    let r = format_atomic_region_direct(x, Some(&scope.lifetime_scope));
+                if let Some(resolver) = &scope.region_resolver {
+                    let r = resolver.translate_region_var(v, Some(&scope.lifetime_scope));
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
                     r
                 } else {
@@ -436,10 +438,8 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                 }
             },
             STInner::TraitReqs(scope) => {
-                if let Some(info) = scope.polonius_info {
-                    // If there is Polonius Info available, use that for translation
-                    let x = info.mk_atomic_region(v);
-                    let r = format_atomic_region_direct(x, scope.lifetime_scope);
+                if let Some(resolver) = &scope.region_resolver {
+                    let r = resolver.translate_region_var(v, scope.lifetime_scope);
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
                     r
                 } else {

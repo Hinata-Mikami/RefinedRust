@@ -16,6 +16,7 @@ use crate::environment::borrowck::facts;
 use crate::environment::mir_storage;
 use crate::environment::procedure::Procedure;
 use crate::environment::region_folder::*;
+use crate::regions::RegionVarResolver;
 
 /// This represents "rich" regions that are directly annotated with their `RegionKind`.
 ///
@@ -329,6 +330,11 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             RegionKind::Universal(uk) => AtomicRegion::Universal(uk, r),
             RegionKind::Unknown(b) => AtomicRegion::Unknown(r, b),
         }
+    }
+
+    #[must_use]
+    pub(crate) fn region_var_resolver(&self) -> RegionVarResolver {
+        RegionVarResolver::new(self.region_kind.clone())
     }
 
     /// Get new subset constraints generated at a point.
