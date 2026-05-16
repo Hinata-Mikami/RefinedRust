@@ -52,8 +52,8 @@ Proof.
   - etrans; first eapply size_of_array_in_bytes_mono; last done. lia.
   - apply extend_kpath_app; first done.
     apply extend_kpath_singleton; try solve_goal.
-  - apply (kpath_extension_in_bounds (Z.to_nat size, x6) (r',r'0) _ candidates x'3); done.
-  - apply (kpath_extend (a,b) (r',r'0) (r'3,r'1) (Z.to_nat size, x6) (Z.to_nat size, x'2)); try done.
+  - eapply (kpath_extension_in_bounds (Z.to_nat size, x6) _ _ candidates x'3); done.
+  - eapply (kpath_extend (a,b) _ (r'3,r'1) (Z.to_nat size, x6) (Z.to_nat size, x'2)); try done.
     + unfold board_at. intros i j. cbn.
       rename select (∀ i j : nat, _) into Hlookup.
       specialize Hlookup with (Z.to_nat i) (Z.to_nat j).
@@ -68,5 +68,5 @@ Proof.
       eapply kpath_extension_kmove; [exact Hincand | done].
   Unshelve. all: apply inhabitant.
   (* !end proof *)
-Admitted. (* TODO: admitted due to long Qed time *)
+Qed.
 End proof.

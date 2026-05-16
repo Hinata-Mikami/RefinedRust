@@ -229,8 +229,6 @@ fn min(v: &Vec<(usize, Point)>) -> Option<(usize, Point)> {
 // !end code
 
 // !start spec(knights_tour.knights_tour)
-// TODO: currently not checked in CI due to large runtime
-#[rr::only_spec]
 #[rr::requires("Hx_upper": "a < size")]
 #[rr::requires("Hy_upper": "b < size")]
 #[rr::requires("16 * size ∈ isize")]
