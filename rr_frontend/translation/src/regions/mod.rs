@@ -17,13 +17,16 @@ mod region_bi_folder;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, btree_map};
 
-pub(crate) use annotations::AnnotationGenerator;
+pub(crate) use annotations::{AnnotationGenerator, CallAssignmentInputs, CallRegionInputs};
 pub(crate) use arg_folder::{
     instantiate_open, relabel_erased_regions, relabel_late_bounds, rename_closure_capture_regions,
     rename_region_vids,
 };
 use derive_more::{Constructor, Debug};
-pub(crate) use init::replace_fnsig_args_with_polonius_vars;
+pub(crate) use init::{
+    replace_body_fnsig_args_with_polonius_vars,
+    replace_body_fnsig_args_with_polonius_vars_and_late_bound_count, replace_fnsig_args_with_polonius_vars,
+};
 use radium::{coq, specs};
 pub(crate) use region_bi_folder::RegionBiFolder;
 use rr_rustc_interface::middle::ty;

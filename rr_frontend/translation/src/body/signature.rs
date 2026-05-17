@@ -242,26 +242,23 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
 
         // Note: this only treats the formal arguments of the closure, but not the closure captures
-        let num_universals = info.universal_region_count();
-        let mut num_late_bounds = sig.bound_vars().len();
-        let num_early_bounds =
-            params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count();
+        let mut additional_late_bounds = 0;
         // closures don't have early bounds: only late bounds and external lifetimes from the
         // surrounding scope.
-        assert!(num_early_bounds == 0);
+        assert!(!params.iter().any(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))));
         if let ty::TyKind::Ref(_, _, _) = closure_arg.ty.kind() {
             // add 1 for the closure arg
-            num_late_bounds += 1;
+            additional_late_bounds += 1;
         }
-        let (tupled_inputs, output, mut region_substitution) = regions::replace_fnsig_args_with_polonius_vars(
-            tcx,
-            params,
-            proc.get_id(),
-            num_universals,
-            num_early_bounds,
-            num_late_bounds,
-            sig,
-        );
+        let (tupled_inputs, output, mut region_substitution) =
+            regions::replace_body_fnsig_args_with_polonius_vars(
+                tcx,
+                params,
+                proc.get_id(),
+                sig,
+                info,
+                additional_late_bounds,
+            );
 
         // detuple the inputs
         assert!(tupled_inputs.len() == 1);
@@ -456,32 +453,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             info!("expected sig: {expected_sig:?}");
 
             // Important: use the fn's sig here.
-            let num_universals = info.universal_region_count();
-            let num_late_bounds = sig.bound_vars().len();
-            let num_early_bounds =
-                params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count();
-
-            let (direct_inputs, direct_output, _) = regions::replace_fnsig_args_with_polonius_vars(
-                tcx,
-                params,
-                proc.get_id(),
-                num_universals,
-                num_early_bounds,
-                num_late_bounds,
-                sig,
-            );
+            let (direct_inputs, direct_output, _) =
+                regions::replace_body_fnsig_args_with_polonius_vars(tcx, params, proc.get_id(), sig, info, 0);
 
             info!("direct signature: {direct_inputs:?} -> {direct_output:?}");
 
-            let (inputs, output, mut mapping) = regions::replace_fnsig_args_with_polonius_vars(
-                tcx,
-                params,
-                proc.get_id(),
-                num_universals,
-                num_early_bounds,
-                num_late_bounds,
-                expected_sig,
-            );
+            let (inputs, output, mut mapping) =
+                regions::replace_body_fnsig_args_with_polonius_vars_and_late_bound_count(
+                    tcx,
+                    params,
+                    proc.get_id(),
+                    expected_sig,
+                    info,
+                    sig.bound_vars().len(),
+                );
 
             // Now unify the two signatures.
             let typing_env = ty::TypingEnv::post_analysis(tcx, proc.get_id());
@@ -504,20 +489,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             (inputs, output, mapping)
         } else {
-            let num_universals = info.universal_region_count();
-            let num_late_bounds = sig.bound_vars().len();
-            let num_early_bounds =
-                params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count();
-
-            regions::replace_fnsig_args_with_polonius_vars(
-                tcx,
-                params,
-                proc.get_id(),
-                num_universals,
-                num_early_bounds,
-                num_late_bounds,
-                sig,
-            )
+            regions::replace_body_fnsig_args_with_polonius_vars(tcx, params, proc.get_id(), sig, info, 0)
         };
         info!("normalized signature: {inputs:?} -> {output:?}");
 

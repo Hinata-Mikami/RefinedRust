@@ -136,6 +136,18 @@ pub(crate) struct CallAnnotationPlan {
     pub post_call_before_goto: Vec<AnnotationGroup>,
 }
 
+pub(crate) struct CallRegionInputs<'a, 'tcx> {
+    pub(crate) method_params: ty::GenericArgsRef<'tcx>,
+    pub(crate) num_late_bounds: usize,
+    pub(crate) mapped_early_regions: &'a BTreeMap<coq::Ident, usize>,
+}
+
+pub(crate) struct CallAssignmentInputs<'tcx> {
+    pub(crate) lhs_ty: mir::PlaceTy<'tcx>,
+    pub(crate) lhs_strongly_writeable: bool,
+    pub(crate) output_ty: ty::Ty<'tcx>,
+}
+
 #[derive(Debug)]
 pub(crate) struct BorrowLifetimePlan {
     pub lft: coq::Ident,
@@ -301,12 +313,8 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         &mut self,
         ty_translator: &types::LocalTX<'_, 'tcx>,
         loc: mir::Location,
-        method_params: ty::GenericArgsRef<'tcx>,
-        num_of_latebounds: usize,
-        mapped_early_regions: &BTreeMap<coq::Ident, usize>,
-        lhs_ty: mir::PlaceTy<'tcx>,
-        lhs_strongly_writeable: bool,
-        output_ty: ty::Ty<'tcx>,
+        call_regions: CallRegionInputs<'_, 'tcx>,
+        assignment: CallAssignmentInputs<'tcx>,
         dying_loans: impl ExactSizeIterator<Item = facts::Loan>,
     ) -> Result<CallAnnotationPlan, TranslationError> {
         let startpoint = self.info.start_point(loc);
@@ -314,9 +322,9 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         let classification = calls::compute_call_regions(
             self.tcx,
             &self.inclusion_tracker,
-            method_params,
+            call_regions.method_params,
             loc,
-            num_of_latebounds,
+            call_regions.num_late_bounds,
         );
 
         for (r, c) in &classification.classification {
@@ -346,9 +354,9 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             &mut self.inclusion_tracker,
             ty_translator,
             loc,
-            lhs_strongly_writeable,
-            lhs_ty,
-            output_ty,
+            assignment.lhs_strongly_writeable,
+            assignment.lhs_ty,
+            assignment.output_ty,
         );
         info!("assignment annots after call: {assignment_annots:?}");
 
@@ -357,7 +365,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             ty_translator,
             loc,
             assignment_annots.unconstrained_regions,
-            mapped_early_regions,
+            call_regions.mapped_early_regions,
         );
 
         let (remaining_unconstrained_annots, unconstrained_hints) =

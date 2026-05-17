@@ -18,6 +18,7 @@ use crate::base::*;
 use crate::body::translation::{ExprInfo, ExprWithInfo};
 use crate::environment::borrowck::facts;
 use crate::error::Message;
+use crate::regions::{CallAssignmentInputs, CallRegionInputs};
 use crate::traits::registry::ResolvedTraitReq;
 use crate::traits::resolution;
 use crate::types::STInner;
@@ -656,12 +657,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut annotation_plan = self.annotations.prepare_call_annotation_plan(
             &self.ty_translator,
             loc,
-            call_info.method_params,
-            call_info.num_of_latebounds,
-            &call_info.mapped_early_regions,
-            lhs_ty,
-            lhs_strongly_writeable,
-            output_ty,
+            CallRegionInputs {
+                method_params: call_info.method_params,
+                num_late_bounds: call_info.num_of_latebounds,
+                mapped_early_regions: &call_info.mapped_early_regions,
+            },
+            CallAssignmentInputs {
+                lhs_ty,
+                lhs_strongly_writeable,
+                output_ty,
+            },
             dying_loans,
         )?;
         call_info.lft_hint.append(&mut annotation_plan.late_lft_hints);
