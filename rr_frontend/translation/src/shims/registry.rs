@@ -110,6 +110,8 @@ struct ShimTraitEntry {
     has_semantic_interp: bool,
     /// whether the attrs record is dependent
     attrs_dependent: bool,
+    /// associated type names declared by this trait
+    assoc_tys: Vec<String>,
     /// allowed attributes on impls of this trait
     allowed_attrs: Vec<String>,
     /// definition names for the canonical trait linking assumption for each method
@@ -210,6 +212,7 @@ pub(crate) struct TraitShim<'a> {
     pub name: String,
     pub has_semantic_interp: bool,
     pub attrs_dependent: bool,
+    pub assoc_tys: Vec<String>,
     pub allowed_attrs: Vec<String>,
     pub method_trait_incl_decls: BTreeMap<String, String>,
 }
@@ -222,6 +225,7 @@ impl<'a> From<TraitShim<'a>> for ShimTraitEntry {
             name: shim.name,
             has_semantic_interp: shim.has_semantic_interp,
             attrs_dependent: shim.attrs_dependent,
+            assoc_tys: shim.assoc_tys,
             allowed_attrs: shim.allowed_attrs,
             method_trait_incl_decls: shim.method_trait_incl_decls,
         }
@@ -479,6 +483,7 @@ impl<'a> SR<'a> {
                         name: b.name,
                         has_semantic_interp: b.has_semantic_interp,
                         attrs_dependent: b.attrs_dependent,
+                        assoc_tys: b.assoc_tys,
                         allowed_attrs: b.allowed_attrs,
                         method_trait_incl_decls: b.method_trait_incl_decls,
                     };

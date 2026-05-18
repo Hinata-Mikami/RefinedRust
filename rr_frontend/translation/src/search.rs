@@ -12,6 +12,31 @@ use rr_rustc_interface::{hir, span};
 
 use crate::{types, unification};
 
+fn try_resolve_assoc_item<T>(tcx: ty::TyCtxt<'_>, parent: DefId, segment: &T) -> Option<DefId>
+where
+    T: AsRef<str>,
+{
+    // Trait paths enter the trait's associated-item namespace for the final segment, e.g.
+    // `core::cmp::PartialEq::eq` resolves `eq` as an associated item of `PartialEq`.
+    let name = span::Symbol::intern(segment.as_ref());
+    tcx.associated_items(parent)
+        .filter_by_name_unhygienic(name)
+        .next()
+        .map(|item| item.def_id)
+}
+
+fn can_descend_with_module_children(def_kind: hir::def::DefKind) -> bool {
+    // `module_children` is only valid for containers that rustc treats as modules in name
+    // resolution. Other namespaces, such as trait associated items, need dedicated queries.
+    matches!(def_kind, hir::def::DefKind::Mod | hir::def::DefKind::Enum | hir::def::DefKind::ForeignMod)
+}
+
+fn is_usable_path_item(def_kind: hir::def::DefKind) -> bool {
+    // Shim paths refer to Rust items. Same-named helper macros can appear in module children but
+    // are not valid targets for shims.
+    !matches!(def_kind, hir::def::DefKind::Macro(_))
+}
+
 /// Gets an instance for a path.
 /// Taken from Miri <https://github.com/rust-lang/miri/blob/31fb32e49f42df19b45baccb6aa80c3d726ed6d5/src/helpers.rs#L48>.
 pub(crate) fn try_resolve_did_direct_in_crate<T>(
@@ -34,12 +59,32 @@ where
         for item in mem::take(&mut items) {
             let item: &metadata::ModChild = item;
             if item.ident.name.as_str() == segment.as_ref() {
+                let did = item.res.def_id();
+                let def_kind = tcx.def_kind(did);
                 if path_it.peek().is_none() {
-                    return Some(item.res.def_id());
+                    if is_usable_path_item(def_kind) {
+                        return Some(did);
+                    }
+                    continue;
                 }
 
-                items = tcx.module_children(item.res.def_id());
-                break;
+                if matches!(def_kind, hir::def::DefKind::Trait | hir::def::DefKind::TraitAlias) {
+                    if path_it.len() != 1 {
+                        return None;
+                    }
+                    let assoc_segment = path_it.peek()?;
+                    if let Some(assoc_did) = try_resolve_assoc_item(tcx, did, assoc_segment) {
+                        return Some(assoc_did);
+                    }
+                    // Reexports can leave multiple children with the same name. A same-named trait
+                    // is only the right candidate if it provides the requested associated item.
+                    continue;
+                }
+                if can_descend_with_module_children(def_kind) {
+                    items = tcx.module_children(did);
+                    break;
+                }
+                continue;
             }
         }
     }
@@ -75,14 +120,34 @@ where
         for item in mem::take(&mut items) {
             let item: &metadata::ModChild = item;
             if item.ident.name.as_str() == segment.as_ref() {
+                let did = item.res.def_id();
+                let def_kind = tcx.def_kind(did);
                 if path_it.peek().is_none() {
-                    return Some(item.res.def_id());
+                    if is_usable_path_item(def_kind) {
+                        return Some(did);
+                    }
+                    continue;
                 }
 
-                if let Some(did) = item.res.def_id().as_local() {
+                if matches!(def_kind, hir::def::DefKind::Trait | hir::def::DefKind::TraitAlias) {
+                    if path_it.len() != 1 {
+                        return None;
+                    }
+                    let assoc_segment = path_it.peek()?;
+                    if let Some(assoc_did) = try_resolve_assoc_item(tcx, did, assoc_segment) {
+                        return Some(assoc_did);
+                    }
+                    // Reexports can leave multiple children with the same name. A same-named trait
+                    // is only the right candidate if it provides the requested associated item.
+                    continue;
+                }
+                if can_descend_with_module_children(def_kind)
+                    && let Some(did) = did.as_local()
+                {
                     items = tcx.module_children_local(did);
                     break;
                 }
+                continue;
             }
         }
     }
@@ -268,13 +333,21 @@ where
 
                     trace!("taking path: {:?}", segment.as_ref());
                     if path_it.peek().is_none() {
-                        return Some(item.res.def_id());
+                        let did = item.res.def_id();
+                        if is_usable_path_item(tcx.def_kind(did)) {
+                            return Some(did);
+                        }
+                        continue;
                     }
 
                     // just the method remaining
                     if path_it.len() != 1 {
-                        items = tcx.module_children(item.res.def_id());
-                        break;
+                        let did = item.res.def_id();
+                        if can_descend_with_module_children(tcx.def_kind(did)) {
+                            items = tcx.module_children(did);
+                            break;
+                        }
+                        return None;
                     }
 
                     let did: DefId = item.res.def_id();

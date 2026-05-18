@@ -210,6 +210,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                 name: decl.name.clone(),
                 has_semantic_interp: decl.has_semantic_interp,
                 attrs_dependent: decl.attrs_dependent,
+                assoc_tys: decl.assoc_tys.clone(),
                 allowed_attrs: decl.declared_attrs.clone(),
                 method_trait_incl_decls: decl.method_trait_incl_decls.clone(),
             };
@@ -1143,9 +1144,8 @@ fn register_shims(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineErro
 
     for shim in vcx.shim_registry.get_trait_shims() {
         if let Some(did) = search::try_resolve_did(vcx.tcx, &shim.path) {
-            let assoc_tys = vcx.trait_registry.get_associated_type_names(did);
             let spec = specs::traits::LiteralSpec {
-                assoc_tys,
+                assoc_tys: shim.assoc_tys.clone(),
                 name: shim.name.clone(),
                 has_semantic_interp: shim.has_semantic_interp,
                 attrs_dependent: shim.attrs_dependent,
