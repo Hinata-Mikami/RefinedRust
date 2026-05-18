@@ -200,26 +200,6 @@ pub(crate) fn replace_body_fnsig_args_with_polonius_vars<'def, 'tcx>(
     of_did: DefId,
     sig: ty::Binder<'tcx, ty::FnSig<'tcx>>,
     info: &PoloniusInfo<'_, 'tcx>,
-    additional_late_bounds: usize,
-) -> (Vec<ty::Ty<'tcx>>, ty::Ty<'tcx>, EarlyLateRegionMap<'def>) {
-    let num_late_bounds = sig.bound_vars().len() + additional_late_bounds;
-
-    replace_body_fnsig_args_with_polonius_vars_and_late_bound_count(
-        tcx,
-        params,
-        of_did,
-        sig,
-        info,
-        num_late_bounds,
-    )
-}
-
-pub(crate) fn replace_body_fnsig_args_with_polonius_vars_and_late_bound_count<'def, 'tcx>(
-    tcx: ty::TyCtxt<'tcx>,
-    params: &[ty::GenericArg<'tcx>],
-    of_did: DefId,
-    sig: ty::Binder<'tcx, ty::FnSig<'tcx>>,
-    info: &PoloniusInfo<'_, 'tcx>,
     num_late_bounds: usize,
 ) -> (Vec<ty::Ty<'tcx>>, ty::Ty<'tcx>, EarlyLateRegionMap<'def>) {
     let num_universal_regions = info.universal_region_count();

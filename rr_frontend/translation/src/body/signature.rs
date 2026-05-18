@@ -17,16 +17,13 @@ use typed_arena::Arena;
 
 use crate::base::*;
 use crate::body::translation;
-use crate::environment::dump_borrowck_info;
-use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
-use crate::regions::RegionBiFolder as _;
 use crate::spec_parsers::verbose_function_spec_parser::{
     CLOSURE_SPEC_ATTRS, COMMON_FUNCTION_SPEC_ATTRS, ClosureMetaInfo, ClosureSpecInfo, FUNCTION_SPEC_ATTRS,
     FunctionRequirements, FunctionSpecParser as _, VerboseFunctionSpecParser,
 };
-use crate::traits::registry::{self, RegionUnifier};
+use crate::traits::registry;
 use crate::{attrs, consts, environment, procedures, regions, types};
 
 pub(crate) struct TX<'a, 'def, 'tcx> {
@@ -145,7 +142,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         closure_arg: &mir::LocalDecl<'tcx>,
         input_tuple_ty: ty::Ty<'tcx>,
         region_substitution: &mut regions::EarlyLateRegionMap<'def>,
-        info: &PoloniusInfo<'def, 'tcx>,
+        body_regions: &regions::BodyRegionContext<'def, 'tcx>,
         tcx: ty::TyCtxt<'tcx>,
     ) -> (ty::Ty<'tcx>, Vec<ty::Ty<'tcx>>, ty::Ty<'tcx>, Option<specs::LftParam>) {
         // Process the lifetime parameters that come from the captures
@@ -155,20 +152,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let upvars_tys = clos_args.upvar_tys();
         let mut fixed_upvars_tys = Vec::new();
         for ty in upvars_tys {
-            let fixed_ty = regions::rename_closure_capture_regions(ty, tcx, region_substitution, info);
+            let fixed_ty = body_regions.rename_closure_capture_regions(ty, tcx, region_substitution);
             fixed_upvars_tys.push(fixed_ty);
         }
 
         // Do the same for the arguments of the closure -- this may contain external Polonius
         // regions in lieu of early bounds.
         let fixed_closure_args =
-            regions::rename_closure_capture_regions(input_tuple_ty, tcx, region_substitution, info);
+            body_regions.rename_closure_capture_regions(input_tuple_ty, tcx, region_substitution);
 
         // Do the same to the whole closure arg, which will add the optional lifetime for the
         // capture reference
         // NOTE: we rely on adding this lifetime last when generating the `call_*` fn shims.
         let fixed_closure_arg_ty =
-            regions::rename_closure_capture_regions(closure_arg.ty, tcx, region_substitution, info);
+            body_regions.rename_closure_capture_regions(closure_arg.ty, tcx, region_substitution);
 
         // find the optional lifetime for the outer reference
         let mut maybe_outer_lifetime = None;
@@ -226,10 +223,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // the closure arg, containing the captures
         let closure_arg = local_decls.get(mir::Local::from_usize(1)).unwrap();
 
-        let info = PoloniusInfo::new(proc);
-
-        // TODO: avoid leak
-        let info: &'def PoloniusInfo<'_, '_> = &*Box::leak(Box::new(info));
+        let body_regions = regions::BodyRegionContext::new(proc);
 
         // For closures, we only handle the parent's args here!
         // We add the lifetime parameters arising from the captures of the closure (which may be
@@ -237,9 +231,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let params = parent_args;
         info!("Function generic args: {:?}", params);
 
-        if rrconfig::dump_borrowck_info() {
-            dump_borrowck_info(tcx, proc.get_id(), info);
-        }
+        body_regions.dump_borrowck_info_if_enabled(tcx, proc.get_id());
 
         // Note: this only treats the formal arguments of the closure, but not the closure captures
         let mut additional_late_bounds = 0;
@@ -250,13 +242,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             // add 1 for the closure arg
             additional_late_bounds += 1;
         }
-        let (tupled_inputs, output, mut region_substitution) =
-            regions::replace_body_fnsig_args_with_polonius_vars(
+        let (tupled_inputs, output, mut region_substitution) = body_regions
+            .normalize_fn_sig_with_additional_late_bounds(
                 tcx,
                 params,
                 proc.get_id(),
                 sig,
-                info,
                 additional_late_bounds,
             );
 
@@ -274,7 +265,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 closure_arg,
                 input_tuple_ty,
                 &mut region_substitution,
-                info,
+                &body_regions,
                 tcx,
             );
         let maybe_outer_lifetime = maybe_outer_lifetime.map(|x| x.lft().to_owned());
@@ -298,10 +289,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             params,
             &mut translated_fn,
             region_substitution.clone(),
-            Some(info.region_var_resolver()),
+            Some(body_regions.region_var_resolver()),
         )?;
 
-        let annotations = regions::AnnotationGenerator::new(tcx, &type_scope.lifetime_scope, info);
+        let annotations = body_regions.annotation_generator(tcx, &type_scope.lifetime_scope);
 
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
@@ -434,13 +425,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let sig = ty.fn_sig(tcx);
         info!("sig: {sig:?}");
 
-        let info = PoloniusInfo::new(proc);
-        // TODO: avoid leak
-        let info: &'def PoloniusInfo<'_, '_> = &*Box::leak(Box::new(info));
+        let body_regions = regions::BodyRegionContext::new(proc);
 
-        if rrconfig::dump_borrowck_info() {
-            dump_borrowck_info(tcx, proc.get_id(), info);
-        }
+        body_regions.dump_borrowck_info_if_enabled(tcx, proc.get_id());
 
         let (inputs, output, region_substitution) = if let Some(impl_did) = tcx.impl_of_assoc(proc.get_id())
             && tcx.impl_is_of_trait(impl_did)
@@ -452,44 +439,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let expected_sig = trait_registry.get_expected_sig_for_impl_fn(proc.get_id());
             info!("expected sig: {expected_sig:?}");
 
-            // Important: use the fn's sig here.
-            let (direct_inputs, direct_output, _) =
-                regions::replace_body_fnsig_args_with_polonius_vars(tcx, params, proc.get_id(), sig, info, 0);
-
-            info!("direct signature: {direct_inputs:?} -> {direct_output:?}");
-
-            let (inputs, output, mut mapping) =
-                regions::replace_body_fnsig_args_with_polonius_vars_and_late_bound_count(
-                    tcx,
-                    params,
-                    proc.get_id(),
-                    expected_sig,
-                    info,
-                    sig.bound_vars().len(),
-                );
-
-            // Now unify the two signatures.
-            let typing_env = ty::TypingEnv::post_analysis(tcx, proc.get_id());
-            let mut unifier = RegionUnifier::new(tcx, typing_env);
-            // Since we cannot reliably normalize here without erasing regions, ignore aliases for now.
-            unifier.ignore_aliases();
-
-            unifier.map_ty_slices(&direct_inputs, &inputs);
-            unifier.map_tys(direct_output, output);
-            let (_, vid_mapping) = unifier.get_result();
-
-            info!("region mapping: {vid_mapping:?}");
-            for (from, to) in vid_mapping {
-                let to = to.as_var();
-                if from != to {
-                    mapping.insert_vid_fixup(from.into(), to.into());
-                }
-            }
-            // TODO: also add the equality constraints to the inclusion tracker?
-
-            (inputs, output, mapping)
+            body_regions.normalize_trait_impl_expected_sig(tcx, params, proc.get_id(), sig, expected_sig)
         } else {
-            regions::replace_body_fnsig_args_with_polonius_vars(tcx, params, proc.get_id(), sig, info, 0)
+            body_regions.normalize_fn_sig(tcx, params, proc.get_id(), sig)
         };
         info!("normalized signature: {inputs:?} -> {output:?}");
 
@@ -501,10 +453,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             params.as_slice(),
             &mut translated_fn,
             region_substitution,
-            Some(info.region_var_resolver()),
+            Some(body_regions.region_var_resolver()),
         )?;
 
-        let annotations = regions::AnnotationGenerator::new(tcx, &type_scope.lifetime_scope, info);
+        let annotations = body_regions.annotation_generator(tcx, &type_scope.lifetime_scope);
 
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 

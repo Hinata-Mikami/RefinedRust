@@ -657,12 +657,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut annotation_plan = self.annotations.prepare_call_annotation_plan(
             &self.ty_translator,
             loc,
-            CallRegionInputs {
+            &CallRegionInputs {
                 method_params: call_info.method_params,
                 num_late_bounds: call_info.num_of_latebounds,
                 mapped_early_regions: &call_info.mapped_early_regions,
             },
-            CallAssignmentInputs {
+            &CallAssignmentInputs {
                 lhs_ty,
                 lhs_strongly_writeable,
                 output_ty,

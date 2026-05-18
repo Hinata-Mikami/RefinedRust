@@ -12,8 +12,8 @@ mod place;
 mod rvalue;
 mod terminator;
 
-use std::cmp;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::{cmp, mem};
 
 pub(crate) use calls::get_arg_syntypes_for_procedure_call;
 use log::{info, trace};
@@ -236,7 +236,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             // push annotation for initial constraints that relate argument's place regions to universals
             translated_bb =
-                code::Stmt::Prim(std::mem::take(&mut self.initial_annotation_stmts), Box::new(translated_bb));
+                code::Stmt::Prim(mem::take(&mut self.initial_annotation_stmts), Box::new(translated_bb));
 
             // allocate always live locals
             let mut prim_stmts = Vec::new();

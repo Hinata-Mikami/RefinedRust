@@ -208,7 +208,7 @@ fn groups_to_stmts(groups: Vec<AnnotationGroup>) -> Vec<code::PrimStmt> {
 
 impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
     pub(crate) fn prepare_statement_annotation_plan(
-        &mut self,
+        &self,
         ty_translator: &types::LocalTX<'_, 'tcx>,
         loc: mir::Location,
         predecessors: impl IntoIterator<Item = mir::Location>,
@@ -279,7 +279,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
     }
 
     pub(crate) fn prepare_terminator_annotation_plan(
-        &mut self,
+        &self,
         ty_translator: &types::LocalTX<'_, 'tcx>,
         dying_loans: impl ExactSizeIterator<Item = facts::Loan>,
     ) -> LocationAnnotationPlan {
@@ -289,7 +289,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
     }
 
     pub(crate) fn prepare_return_annotation_plan(
-        &mut self,
+        &self,
         ty_translator: &types::LocalTX<'_, 'tcx>,
         return_ty: ty::Ty<'tcx>,
         dying_loans: impl ExactSizeIterator<Item = facts::Loan>,
@@ -313,8 +313,8 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         &mut self,
         ty_translator: &types::LocalTX<'_, 'tcx>,
         loc: mir::Location,
-        call_regions: CallRegionInputs<'_, 'tcx>,
-        assignment: CallAssignmentInputs<'tcx>,
+        call_regions: &CallRegionInputs<'_, 'tcx>,
+        assignment: &CallAssignmentInputs<'tcx>,
         dying_loans: impl ExactSizeIterator<Item = facts::Loan>,
     ) -> Result<CallAnnotationPlan, TranslationError> {
         let startpoint = self.info.start_point(loc);
