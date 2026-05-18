@@ -1196,18 +1196,18 @@ impl Function<'_> {
 
         write!(
             f,
-            "start_function \"{}\" ϝ ( {} ) ( {} ) ( {} ) ( ",
+            "start_function \"{}\" ϝ ( {lft_pattern} ) ( {typaram_pattern} ) ( {ip_params} )",
             self.name(),
-            lft_pattern.as_str(),
-            typaram_pattern.as_str(),
-            ip_params.as_str()
         )?;
+
         if let Some(params) = params {
+            write!(f, " (")?;
             for param in params {
                 write!(f, " {}", param.get_name())?;
             }
+            write!(f, " )")?;
         }
-        write!(f, " );\n")?;
+        write!(f, ";\n")?;
 
         // intro stack locations
         write!(f, "intros")?;

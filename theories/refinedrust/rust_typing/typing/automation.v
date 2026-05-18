@@ -1084,14 +1084,35 @@ in the number of blocks!
 TODO: does this still hold? we've since started doing this...
 *)
 (* TODO: don't use i... tactics here *)
-Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropattern(κs) ")" "(" simple_intropattern(tys) ")" "(" simple_intropattern(x) ")" "(" ident_list(params) ")" :=
+Ltac start_function_prepare :=
   intros;
   init_jcache;
   inv_layout_alg;
   iStartProof;
   set_function_types;
   repeat (liEnsureInvariant || liWand || liSimpl || liForall || liPersistent || liImpl || liUnfoldLetGoal);
-  li_unfold_lets_in_context;
+  li_unfold_lets_in_context
+.
+Ltac start_function_finish lsa :=
+  repeat liForall;
+  iExists _; iSplitR;
+  [iPureIntro; solve [preprocess_elctx] | ];
+  (* let-bind E *)
+  match goal with
+  | |- envs_entails ?Δ (function_body ?n ?π ?fn ?fp ?fps ?κs ?tys ?lsa ?sta ?x ?f ?ϝ ?E ?L) =>
+      let H := fresh "E" in
+      pose (H := ELCTX E);
+      simpl in H;
+      change_no_check (envs_entails Δ (function_body n π fn fp fps κs tys lsa sta x f ϝ H L))
+  end;
+  inv_vec lsa;
+  unfold function_body;
+  simpl;
+  unfold typaram_wf;
+  init_cache
+.
+Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropattern(κs) ")" "(" simple_intropattern(tys) ")" "(" simple_intropattern(x) ")" "(" ident_list(params) ")" :=
+  start_function_prepare;
   lazymatch goal with
   | |- envs_entails _ (typed_function _ _ _) =>
     iApply (intro_typed_function);
@@ -1100,29 +1121,40 @@ Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropatter
        otherwise we can't substitute equalities on the T_st later. *)
     simpl;
     iIntros ( κs tys x ϝ _fid) "!#";
-    let Harg_ly := fresh "Harg_ly" in
+
     iIntros (_);
     let lsa := fresh "lsa" in
     iIntros (lsa);
+    (* before [revert params], as the unsimplified type of [params] mentions [lsa] *)
     simpl in lsa;
+
     revert params;
-    repeat liForall;
     prepare_initial_coq_context;
-    iExists _; iSplitR;
-    [iPureIntro; solve [preprocess_elctx] | ];
-    (* let-bind E *)
-    match goal with
-    | |- envs_entails ?Δ (function_body ?n ?π ?fn ?fp ?fps ?κs ?tys ?lsa ?sta ?x ?f ?ϝ ?E ?L) =>
-        let H := fresh "E" in
-        pose (H := ELCTX E);
-        simpl in H;
-        change_no_check (envs_entails Δ (function_body n π fn fp fps κs tys lsa sta x f ϝ H L))
-    end;
-    inv_vec lsa;
-    unfold function_body;
+
+    start_function_finish lsa
+  end
+.
+Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropattern(κs) ")" "(" simple_intropattern(tys) ")" "(" simple_intropattern(x) ")" :=
+  start_function_prepare;
+  lazymatch goal with
+  | |- envs_entails _ (typed_function _ _ _) =>
+    iApply (intro_typed_function);
+    (* simpl in order to simplify the projection in the type of type variables, e.g.
+       T_ty : type (T_rt, T_st).1
+       otherwise we can't substitute equalities on the T_st later. *)
     simpl;
-    unfold typaram_wf;
-    init_cache
+    iIntros ( κs tys x ϝ _fid) "!#";
+
+    (* important: to destruct [x] *)
+    prepare_initial_coq_context;
+
+    iIntros (_);
+    let lsa := fresh "lsa" in
+    iIntros (lsa);
+    (* before [revert params], as the unsimplified type of [params] mentions [lsa] *)
+    simpl in lsa;
+
+    start_function_finish lsa
   end
 .
 
