@@ -3,6 +3,7 @@
   "items": [
     {
       "allowed_attrs": [],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": true,
       "kind": "trait",

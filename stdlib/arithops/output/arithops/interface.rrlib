@@ -6,6 +6,9 @@
         "AddOpDefined",
         "AddOp"
       ],
+      "assoc_tys": [
+        "Output"
+      ],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -24,6 +27,7 @@
         "AddAssignOpDefined",
         "AddAssignOp"
       ],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -40,6 +44,9 @@
     {
       "allowed_attrs": [
         "DerefInto"
+      ],
+      "assoc_tys": [
+        "Target"
       ],
       "attrs_dependent": true,
       "has_semantic_interp": false,
@@ -58,6 +65,7 @@
       "allowed_attrs": [
         "DerefMutInject"
       ],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -75,6 +83,9 @@
       "allowed_attrs": [
         "MulOpDefined",
         "MulOp"
+      ],
+      "assoc_tys": [
+        "Output"
       ],
       "attrs_dependent": true,
       "has_semantic_interp": false,
@@ -94,6 +105,7 @@
         "MulAssignOpDefined",
         "MulAssignOp"
       ],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -111,6 +123,9 @@
       "allowed_attrs": [
         "SubOpDefined",
         "SubOp"
+      ],
+      "assoc_tys": [
+        "Output"
       ],
       "attrs_dependent": true,
       "has_semantic_interp": false,
@@ -130,6 +145,7 @@
         "SubAssignOpDefined",
         "SubAssignOp"
       ],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",

@@ -295,6 +295,7 @@
         "PEq_trans",
         "PEq_leibniz"
       ],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -317,6 +318,7 @@
         "Ord_gt_trans",
         "Ord_antisym"
       ],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -337,6 +339,7 @@
       "allowed_attrs": [
         "PEq"
       ],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -356,6 +359,7 @@
         "POrd",
         "POrd_eq_cons"
       ],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",

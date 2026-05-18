@@ -10,7 +10,6 @@
       "path": [
         "std",
         "sync",
-        "rwlock",
         "RwLock"
       ],
       "rtype": "(RwLock_inv_t_rt)",
@@ -23,7 +22,6 @@
       "path": [
         "std",
         "sync",
-        "rwlock",
         "RwLock",
         "new"
       ],

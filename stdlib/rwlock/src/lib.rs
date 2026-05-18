@@ -19,7 +19,7 @@ pub struct PoisonError<T> {
     guard: T,
 }
 
-#[rr::export_as(std::sync::rwlock::RwLock)]
+#[rr::export_as(std::sync::RwLock)]
 #[rr::refined_by("()" : "unit")]
 #[rr::exists("x")]
 pub struct RwLock<T> {
@@ -27,14 +27,14 @@ pub struct RwLock<T> {
     _t : T, 
 }
 
-#[rr::export_as(std::sync::rwlock::RwLockReadGuard)]
+#[rr::export_as(std::sync::RwLockReadGuard)]
 #[rr::refined_by("x" : "{rt_of T}")]
 pub struct RwLockReadGuard<'a, T: 'a> {
     #[rr::field("#x")]
     _t: &'a T,
 }
 
-#[rr::export_as(std::sync::rwlock::RwLockWriteGuard)]
+#[rr::export_as(std::sync::RwLockWriteGuard)]
 #[rr::refined_by("x" : "place_rfn {rt_of T}")]
 pub struct RwLockWriteGuard<'a, T: 'a> {
     #[rr::field("#()")]
@@ -42,7 +42,7 @@ pub struct RwLockWriteGuard<'a, T: 'a> {
 }
 
 
-#[rr::export_as(std::sync::rwlock::RwLock)]
+#[rr::export_as(std::sync::RwLock)]
 #[rr::only_spec]
 impl<T> RwLock<T> {
 

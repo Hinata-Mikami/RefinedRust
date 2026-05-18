@@ -3,6 +3,7 @@
   "items": [
     {
       "allowed_attrs": [],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -16,6 +17,7 @@
     },
     {
       "allowed_attrs": [],
+      "assoc_tys": [],
       "attrs_dependent": false,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -31,6 +33,7 @@
     },
     {
       "allowed_attrs": [],
+      "assoc_tys": [],
       "attrs_dependent": false,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -50,6 +53,9 @@
         "Pre",
         "Post",
         "PostMut"
+      ],
+      "assoc_tys": [
+        "Output"
       ],
       "attrs_dependent": true,
       "has_semantic_interp": false,

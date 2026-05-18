@@ -80,6 +80,7 @@
         "AsMutFn",
         "AsMutBackFn"
       ],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -97,6 +98,7 @@
       "allowed_attrs": [
         "AsRefFn"
       ],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -114,6 +116,7 @@
       "allowed_attrs": [
         "FromFn"
       ],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -131,6 +134,7 @@
       "allowed_attrs": [
         "IntoFn"
       ],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -148,6 +152,7 @@
       "allowed_attrs": [
         "FromResidualFn"
       ],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -169,6 +174,10 @@
         "BranchValid",
         "BranchLawResidual",
         "BranchLawOutput"
+      ],
+      "assoc_tys": [
+        "Output",
+        "Residual"
       ],
       "attrs_dependent": true,
       "has_semantic_interp": false,

@@ -295,6 +295,7 @@
       "allowed_attrs": [
         "FromSequence"
       ],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -311,6 +312,10 @@
     {
       "allowed_attrs": [
         "IntoIter"
+      ],
+      "assoc_tys": [
+        "IntoIter",
+        "Item"
       ],
       "attrs_dependent": true,
       "has_semantic_interp": false,
@@ -330,6 +335,9 @@
         "Params",
         "Inv",
         "Next"
+      ],
+      "assoc_tys": [
+        "Item"
       ],
       "attrs_dependent": true,
       "has_semantic_interp": false,
@@ -364,6 +372,7 @@
         "Backward",
         "StepsBetween"
       ],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",
@@ -385,6 +394,7 @@
     },
     {
       "allowed_attrs": [],
+      "assoc_tys": [],
       "attrs_dependent": true,
       "has_semantic_interp": false,
       "kind": "trait",
