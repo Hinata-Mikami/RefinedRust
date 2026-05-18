@@ -572,7 +572,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             if let ty::AssocKind::Type { .. } = it.kind {
                 let item_did = it.def_id;
                 let item_ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = self.tcx.type_of(item_did);
-                let subst_ty = item_ty.instantiate(self.tcx, impl_args);
+                let subst_ty = item_ty.instantiate(self.tcx, impl_args).skip_norm_wip();
 
                 assoc_args.push(subst_ty);
             }
@@ -807,8 +807,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         // filter out the associated types which are constrained -- these are
                         // not required in our encoding
                         if constr.is_none() {
-                            let alias = ty::AliasTy::new(self.tcx, did, trait_args);
-                            let tykind = ty::TyKind::Alias(ty::AliasTyKind::Projection, alias);
+                            let alias = ty::AliasTy::new(
+                                self.tcx,
+                                ty::AliasTyKind::Projection { def_id: did },
+                                trait_args,
+                            );
+                            let tykind = ty::TyKind::Alias(alias);
                             let ty = self.tcx.mk_ty_from_kind(tykind);
                             assoc_types.push(ty);
                         }
@@ -940,7 +944,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             let mut subst_args = Vec::new();
             for arg in args {
                 let bound = ty::EarlyBinder::bind(arg);
-                let bound = bound.instantiate(self.tcx, params.as_slice());
+                let bound = bound.instantiate(self.tcx, params.as_slice()).skip_norm_wip();
                 subst_args.push(bound);
             }
 
@@ -1268,10 +1272,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let assoc_item = self.tcx.associated_item(did);
         let trait_item_did = assoc_item.trait_item_def_id().unwrap();
 
-        let impl_ty = self.tcx.type_of(did).instantiate_identity();
+        let impl_ty = self.tcx.type_of(did).instantiate_identity().skip_norm_wip();
         let ty::TyKind::FnDef(_, impl_item_params) = impl_ty.kind() else { unreachable!() };
 
-        let item_ty = self.tcx.type_of(trait_item_did).instantiate_identity();
+        let item_ty = self.tcx.type_of(trait_item_did).instantiate_identity().skip_norm_wip();
         let ty::TyKind::FnDef(_, item_params) = item_ty.kind() else { unreachable!() };
 
         trace!("impl_item_params = {impl_item_params:?}");
@@ -1627,7 +1631,7 @@ impl<'tcx> RegionBiFolder<'tcx> for RegionUnifier<'tcx> {
             return true;
         }
 
-        !matches!(ty1.kind(), ty::TyKind::Alias(_, _)) && !matches!(ty2.kind(), ty::TyKind::Alias(_, _))
+        !matches!(ty1.kind(), ty::TyKind::Alias(_)) && !matches!(ty2.kind(), ty::TyKind::Alias(_))
     }
 
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {

@@ -66,7 +66,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut translated_fn = code::FunctionBuilder::new(name, "dummy", spec_name, trait_req_incl_name);
 
         let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = tcx.type_of(proc_did);
-        let ty = ty.instantiate_identity();
+        let ty = ty.instantiate_identity().skip_norm_wip();
         // substs are the generic args of this function (including lifetimes)
         // sig is the function signature
         let sig = match ty.kind() {
@@ -418,7 +418,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let params = Self::get_proc_ty_params(tcx, proc.get_id());
         info!("Function generic args: {:?}", params);
 
-        let ty = ty.instantiate_identity();
+        let ty = ty.instantiate_identity().skip_norm_wip();
         // substs are the generic args of this function (including lifetimes)
         // sig is the function signature
         assert!(ty.is_fn());
@@ -554,7 +554,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Get type parameters of the given procedure.
     fn get_proc_ty_params(tcx: ty::TyCtxt<'tcx>, did: DefId) -> ty::GenericArgsRef<'tcx> {
-        let ty = tcx.type_of(did).instantiate_identity();
+        let ty = tcx.type_of(did).instantiate_identity().skip_norm_wip();
         match ty.kind() {
             ty::TyKind::FnDef(_, params) => params,
             _ => panic!("Procedure::new called on a procedure whose type is not TyKind::FnDef!"),

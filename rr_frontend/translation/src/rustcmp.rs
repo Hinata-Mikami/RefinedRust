@@ -82,7 +82,7 @@ fn ty_discriminant(ty: ty::Ty<'_>) -> usize {
         TyKind::Never => 19,
         TyKind::Tuple(_) => 20,
         TyKind::Pat(_, _) => 21,
-        TyKind::Alias(_, _) => 22,
+        TyKind::Alias(_) => 22,
         TyKind::Param(_) => 23,
         TyKind::Bound(_, _) => 24,
         TyKind::Placeholder(_) => 25,
@@ -99,6 +99,15 @@ pub(crate) fn cmp_defid(tcx: ty::TyCtxt<'_>, a: DefId, b: DefId) -> Ordering {
             normalize_def_path_str(&tcx.def_path_str(a)).cmp(&normalize_def_path_str(&tcx.def_path_str(b)))
         })
         .then_with(|| a.krate.cmp(&b.krate).then_with(|| a.index.cmp(&b.index)))
+}
+
+const fn alias_kind_variant(kind: ty::AliasTyKind<'_>) -> u8 {
+    match kind {
+        ty::AliasTyKind::Projection { .. } => 0,
+        ty::AliasTyKind::Inherent { .. } => 1,
+        ty::AliasTyKind::Opaque { .. } => 2,
+        ty::AliasTyKind::Free { .. } => 3,
+    }
 }
 
 fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Ordering {
@@ -149,9 +158,10 @@ fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Orde
             (TyKind::Tuple(a_t), TyKind::Tuple(b_t)) => {
                 a_t.iter().cmp_by(b_t.iter(), |a, b| cmp_ty(tcx, a, b))
             },
-            (TyKind::Alias(a_i, a_p), TyKind::Alias(b_i, b_p)) => a_i.cmp(b_i).then_with(|| {
-                cmp_defid(tcx, a_p.def_id, b_p.def_id).then_with(|| cmp_arg_refs(tcx, a_p.args, b_p.args))
-            }),
+            (TyKind::Alias(a), TyKind::Alias(b)) => alias_kind_variant(a.kind)
+                .cmp(&alias_kind_variant(b.kind))
+                .then_with(|| cmp_defid(tcx, a.kind.def_id(), b.kind.def_id()))
+                .then_with(|| cmp_arg_refs(tcx, a.args, b.args)),
             (TyKind::Param(a_p), TyKind::Param(b_p)) => a_p.cmp(b_p),
             (TyKind::Bound(..), TyKind::Bound(..)) => {
                 unimplemented!("compare Bound");
@@ -277,7 +287,10 @@ pub(crate) fn cmp_alias_ty<'tcx>(
     a: &ty::AliasTy<'tcx>,
     b: &ty::AliasTy<'tcx>,
 ) -> Ordering {
-    let did_cmp = cmp_defid(tcx, a.def_id, b.def_id);
+    let did_cmp = cmp_defid(tcx, a.kind.def_id(), b.kind.def_id());
 
-    did_cmp.then_with(|| cmp_arg_refs(tcx, a.args.as_slice(), b.args.as_slice()))
+    alias_kind_variant(a.kind)
+        .cmp(&alias_kind_variant(b.kind))
+        .then(did_cmp)
+        .then_with(|| cmp_arg_refs(tcx, a.args.as_slice(), b.args.as_slice()))
 }

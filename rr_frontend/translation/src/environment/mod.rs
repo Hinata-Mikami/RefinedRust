@@ -52,7 +52,7 @@ pub(crate) fn get_closure_self_ty_from_var_ty<'tcx>(
 
 /// Get the meta info for a closure, with the Polonius regions.
 pub(crate) fn get_closure_args<'tcx>(tcx: ty::TyCtxt<'tcx>, did: DefId) -> ty::ClosureArgs<ty::TyCtxt<'tcx>> {
-    let closure_kind = match tcx.type_of(did).instantiate_identity().kind() {
+    let closure_kind = match tcx.type_of(did).instantiate_identity().skip_norm_wip().kind() {
         ty::TyKind::Closure(_def, closure_args) => closure_args.as_closure().kind(),
         _ => panic!("can not handle non-closures"),
     };

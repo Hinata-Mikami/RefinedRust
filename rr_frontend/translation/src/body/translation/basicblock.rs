@@ -159,9 +159,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // ignore
                 | mir::StatementKind::Nop
                 // just ignore
-                | mir::StatementKind::BackwardIncompatibleDropHint { .. }
-                // just ignore retags
-                | mir::StatementKind::Retag(_, _) => (),
+                | mir::StatementKind::BackwardIncompatibleDropHint { .. } => (),
             }
         }
 

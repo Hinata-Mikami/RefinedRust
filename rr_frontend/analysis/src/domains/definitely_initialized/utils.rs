@@ -36,7 +36,8 @@ fn expand_struct_place<'tcx>(
             let variant = typ.variant_index.map_or_else(|| def.non_enum_variant(), |i| def.variant(i));
             for (index, field_def) in variant.fields.iter().enumerate() {
                 if Some(index) != without_field {
-                    let field_place = tcx.mk_place_field(place, index.into(), field_def.ty(tcx, substs));
+                    let field_place =
+                        tcx.mk_place_field(place, index.into(), field_def.ty(tcx, substs).skip_norm_wip());
                     places.push(field_place);
                 }
             }
@@ -308,7 +309,7 @@ fn ty_discriminant(ty: ty::Ty<'_>) -> usize {
         TyKind::Never => 19,
         TyKind::Tuple(_) => 20,
         TyKind::Pat(_, _) => 21,
-        TyKind::Alias(_, _) => 22,
+        TyKind::Alias(_) => 22,
         TyKind::Param(_) => 23,
         TyKind::Bound(_, _) => 24,
         TyKind::Placeholder(_) => 25,
@@ -322,6 +323,15 @@ fn cmp_defid(tcx: ty::TyCtxt<'_>, a: DefId, b: DefId) -> Ordering {
     let a_hash = tcx.def_path_hash(a);
     let b_hash = tcx.def_path_hash(b);
     a_hash.cmp(&b_hash)
+}
+
+const fn alias_kind_variant(kind: ty::AliasTyKind<'_>) -> u8 {
+    match kind {
+        ty::AliasTyKind::Projection { .. } => 0,
+        ty::AliasTyKind::Inherent { .. } => 1,
+        ty::AliasTyKind::Opaque { .. } => 2,
+        ty::AliasTyKind::Free { .. } => 3,
+    }
 }
 
 fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Ordering {
@@ -372,9 +382,10 @@ fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Orde
             (TyKind::Tuple(a_t), TyKind::Tuple(b_t)) => {
                 a_t.iter().cmp_by(b_t.iter(), |a, b| cmp_ty(tcx, a, b))
             },
-            (TyKind::Alias(a_i, a_p), TyKind::Alias(b_i, b_p)) => a_i.cmp(b_i).then_with(|| {
-                cmp_defid(tcx, a_p.def_id, b_p.def_id).then_with(|| cmp_arg_refs(tcx, a_p.args, b_p.args))
-            }),
+            (TyKind::Alias(a), TyKind::Alias(b)) => alias_kind_variant(a.kind)
+                .cmp(&alias_kind_variant(b.kind))
+                .then_with(|| cmp_defid(tcx, a.kind.def_id(), b.kind.def_id()))
+                .then_with(|| cmp_arg_refs(tcx, a.args, b.args)),
             (TyKind::Param(a_p), TyKind::Param(b_p)) => a_p.cmp(b_p),
             (TyKind::Bound(..), TyKind::Bound(..)) => {
                 unimplemented!("compare Bound");

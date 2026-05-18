@@ -28,12 +28,12 @@ where
         .infer_ctxt()
         .with_next_trait_solver(true)
         .ignoring_regions()
-        .build(typing_env.typing_mode);
+        .build(typing_env.typing_mode());
 
     let obligation_cause = middle::traits::ObligationCause::dummy();
     let at = infer_ctx.at(&obligation_cause, typing_env.param_env);
 
-    solve::deeply_normalize(at, ty)
+    solve::deeply_normalize(at, ty::Unnormalized::dummy(ty))
 
     //trait_selection::traits::fully_normalize(
     //&infer_ctx,
@@ -54,7 +54,7 @@ pub(crate) fn resolve_impl_source<'tcx>(
 ) -> Option<trait_selection::traits::ImplSource<'tcx, ()>> {
     // we erase regions, because candidate selection cannot deal with open region variables
     trace!("args before erasing: {substs:?}");
-    let erased_substs = tcx.normalize_erasing_regions(typing_env, substs);
+    let erased_substs = tcx.normalize_erasing_regions(typing_env, ty::Unnormalized::dummy(substs));
     //let erased_substs = normalize_type(tcx, typing_env, substs).unwrap();
     trace!("erased args: {erased_substs:?}");
     let erased_substs = regions::relabel_late_bounds(erased_substs, tcx);
@@ -69,7 +69,7 @@ pub(crate) fn resolve_impl_source<'tcx>(
             },
             ty::AssocContainer::TraitImpl(_) => {
                 // this is part of an implementation of a trait
-                tcx.impl_trait_ref(item.container_id(tcx)).instantiate(tcx, erased_substs)
+                tcx.impl_trait_ref(item.container_id(tcx)).instantiate(tcx, erased_substs).skip_norm_wip()
             },
             ty::AssocContainer::InherentImpl => {
                 return None;
@@ -306,7 +306,7 @@ pub(crate) fn resolve_assoc_item<'tcx>(
             // Translate the original substitution into one on the selected impl method
 
             let typing_env = typing_env.with_post_analysis_normalized(tcx);
-            let infcx = tcx.infer_ctxt().build(typing_env.typing_mode);
+            let infcx = tcx.infer_ctxt().build(typing_env.typing_mode());
 
             let substs = substs.rebase_onto(tcx, trait_did, impl_data.args);
             let substs = trait_selection::traits::translate_args(

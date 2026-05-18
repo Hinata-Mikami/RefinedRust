@@ -195,7 +195,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
                     mir::Rvalue::Repeat(operand, _)
                     | mir::Rvalue::Cast(_, operand, _)
                     | mir::Rvalue::UnaryOp(_, operand)
-                    | mir::Rvalue::Use(operand) => {
+                    | mir::Rvalue::Use(operand, _) => {
                         self.apply_operand_effect(operand);
                     },
                     mir::Rvalue::BinaryOp(_, box (operand1, operand2)) => {

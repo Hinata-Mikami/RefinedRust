@@ -35,7 +35,7 @@ pub(crate) fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
 ) -> Result<Vec<lang::SynType>, TranslationError> {
     // Get the type of the callee, fully instantiated
     let full_ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = tcx.type_of(callee_did);
-    let full_ty = full_ty.instantiate(tcx, ty_params);
+    let full_ty = full_ty.instantiate(tcx, ty_params).skip_norm_wip();
 
     // We create a dummy scope in order to make the lifetime lookups succeed, since we only want
     // syntactic types here.
@@ -130,7 +130,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             expected_sig.bound_vars().as_slice()
         } else {
             let fn_ty: ty::EarlyBinder<'_, ty::Ty<'_>> = tcx.type_of(callee_did);
-            let fn_ty = fn_ty.instantiate(tcx, ty_params);
+            let fn_ty = fn_ty.instantiate(tcx, ty_params).skip_norm_wip();
             let fnsig = fn_ty.fn_sig(tcx);
 
             fnsig.bound_vars().as_slice()
@@ -215,7 +215,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let tcx = self.tcx;
         let fn_ty: ty::EarlyBinder<'_, ty::Ty<'_>> = tcx.type_of(callee_did);
-        let fn_ty = fn_ty.instantiate(tcx, ty_params);
+        let fn_ty = fn_ty.instantiate(tcx, ty_params).skip_norm_wip();
         let fnsig = fn_ty.fn_sig(tcx);
 
         // re-quantify
@@ -584,11 +584,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     ty::TyKind::FnDef(def, args) => {
                         let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = self.tcx.type_of(*def);
 
-                        let ty_ident = ty.instantiate_identity();
+                        let ty_ident = ty.instantiate_identity().skip_norm_wip();
                         assert!(ty_ident.is_fn());
                         let ident_sig = ty_ident.fn_sig(self.tcx);
 
-                        let ty_instantiated = ty.instantiate(self.tcx, args.as_slice());
+                        let ty_instantiated = ty.instantiate(self.tcx, args.as_slice()).skip_norm_wip();
                         let instantiated_sig = ty_instantiated.fn_sig(self.tcx);
 
                         Ok((*def, ident_sig, args, instantiated_sig))

@@ -335,7 +335,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         ty: ty::Ty<'tcx>,
     ) -> Result<ty::Ty<'tcx>, ty::normalize_erasing_regions::NormalizationError<'tcx>> {
         let typing_env = self.get_typing_env(tcx);
-        tcx.try_normalize_erasing_regions(typing_env, ty)
+        tcx.try_normalize_erasing_regions(typing_env, ty::Unnormalized::dummy(ty))
     }
 
     /// Lookup a trait parameter in the current state.
@@ -1109,7 +1109,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let attrs = environment::get_attributes(self.tcx, f.did);
             let attrs = attrs::filter_for_tool(attrs);
 
-            let f_ty = self.tcx.type_of(f.did).instantiate_identity();
+            let f_ty = self.tcx.type_of(f.did).instantiate_identity().skip_norm_wip();
             let ty = self.translate_type_in_state(f_ty, state)?;
 
             let mut parser = struct_spec_parser::VerboseStructFieldSpecParser::new(
@@ -1668,25 +1668,22 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 ))))
             },
 
-            ty::TyKind::Alias(kind, alias_ty) => {
+            ty::TyKind::Alias(alias_ty) => {
                 // TODO do we get a problem because we are erasing regions?
                 if let Ok(normalized_ty) = state.normalize_type_erasing_regions(self.tcx, ty)
-                    && !matches!(normalized_ty.kind(), ty::TyKind::Alias(_, _))
+                    && !matches!(normalized_ty.kind(), ty::TyKind::Alias(_))
                 {
                     // if we managed to normalize it, translate the normalized type
                     return self.translate_type_in_state(normalized_ty, state);
                 }
                 // otherwise, we can't normalize the projection
-                match kind {
-                    ty::AliasTyKind::Projection => {
-                        info!(
-                            "Trying to resolve projection of {:?} for {:?}",
-                            alias_ty.def_id, alias_ty.args
-                        );
+                match alias_ty.kind {
+                    ty::AliasTyKind::Projection { def_id } => {
+                        info!("Trying to resolve projection of {:?} for {:?}", def_id, alias_ty.args);
 
-                        let trait_did = self.tcx.parent(alias_ty.def_id);
+                        let trait_did = self.tcx.parent(def_id);
                         let entry = &state.lookup_trait_use(self.tcx, trait_did, alias_ty.args);
-                        let assoc_type = entry.get_associated_type_use(self.tcx, alias_ty.def_id);
+                        let assoc_type = entry.get_associated_type_use(self.tcx, def_id);
 
                         info!("Resolved projection to {assoc_type:?}");
 
@@ -1694,7 +1691,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     },
                     _ => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
                         error::Message::UnsupportedType(format!(
-                            "RefinedRust does not support Alias types of kind {kind:?}"
+                            "RefinedRust does not support Alias types of kind {:?}",
+                            alias_ty.kind
                         )),
                     ))),
                 }

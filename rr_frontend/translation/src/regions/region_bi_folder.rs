@@ -55,7 +55,10 @@ pub(crate) trait RegionBiFolder<'tcx> {
 
         if mem::discriminant(ty1.kind()) != mem::discriminant(ty2.kind()) {
             // Hack right now. Figure out how to do this properly...
-            ty2 = self.tcx().try_normalize_erasing_regions(*self.typing_env(), ty2).unwrap();
+            ty2 = self
+                .tcx()
+                .try_normalize_erasing_regions(*self.typing_env(), ty::Unnormalized::dummy(ty2))
+                .unwrap();
         }
         assert_eq!(mem::discriminant(ty1.kind()), mem::discriminant(ty2.kind()));
 
@@ -81,12 +84,11 @@ pub(crate) trait RegionBiFolder<'tcx> {
                 };
                 assert_eq!(p1, p2);
             },
-            ty::TyKind::Alias(k1, a1) => {
-                let ty::TyKind::Alias(k2, a2) = ty2.kind() else {
+            ty::TyKind::Alias(a1) => {
+                let ty::TyKind::Alias(a2) = ty2.kind() else {
                     unreachable!();
                 };
-                assert_eq!(k1, k2);
-                assert_eq!(a1.def_id, a2.def_id);
+                assert_eq!(a1.kind, a2.kind);
                 self.map_generic_args(a1.args, a2.args);
             },
             ty::TyKind::Int(it1) => {

@@ -413,10 +413,11 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         // Also bind surrounding associated types we use
         for alias_ty in projections {
             let tcx = self.translator.tcx();
-            let trait_did = tcx.parent(alias_ty.def_id);
+            let assoc_did = alias_ty.kind.def_id();
+            let trait_did = tcx.parent(assoc_did);
             let param_scope = self.scope.borrow().make_params_scope();
             let entry = param_scope.trait_scope().lookup_trait_use(tcx, trait_did, alias_ty.args);
-            let assoc_type = entry.get_associated_type_use(tcx, alias_ty.def_id);
+            let assoc_type = entry.get_associated_type_use(tcx, assoc_did);
             if let specs::Type::LiteralParam(mut lit) = assoc_type {
                 lit.set_origin(specs::TyParamOrigin::Direct);
                 scope.add_ty_param(lit.clone());

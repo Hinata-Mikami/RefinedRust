@@ -201,7 +201,7 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
 
         let mut solution = None;
         for did in defs {
-            let impl_self_ty: ty::Ty<'tcx> = tcx.type_of(*did).instantiate_identity();
+            let impl_self_ty: ty::Ty<'tcx> = tcx.type_of(*did).instantiate_identity().skip_norm_wip();
             let impl_self_ty = types::normalize_in_function(*did, tcx, impl_self_ty).unwrap();
 
             trace!("trying to unify types: {for_type:?} and {impl_self_ty:?}");

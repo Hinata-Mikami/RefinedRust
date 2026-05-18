@@ -317,7 +317,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         rval: &mir::Rvalue<'tcx>,
     ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
         match rval {
-            mir::Rvalue::Use(op) => {
+            mir::Rvalue::Use(op, _) => {
                 // converts an lvalue to an rvalue
                 self.translate_operand(op, true)
             },
@@ -410,6 +410,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
 
             mir::Rvalue::CopyForDeref(_)
+            | mir::Rvalue::Reborrow(..)
             | mir::Rvalue::Repeat(..)
             | mir::Rvalue::WrapUnsafeBinder(..)
             | mir::Rvalue::ThreadLocalRef(..) => {

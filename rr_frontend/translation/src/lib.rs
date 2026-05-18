@@ -1485,7 +1485,7 @@ fn translate_function<'tcx>(
     info!("\nTranslating function {}", fname);
 
     let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = vcx.tcx.type_of(proc.get_id());
-    let ty = ty.instantiate_identity();
+    let ty = ty.instantiate_identity().skip_norm_wip();
 
     let translator = match ty.kind() {
         ty::TyKind::FnDef(_def, _args) => signature::TX::new(
@@ -2095,7 +2095,8 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<()
                                 vcx.procedure_registry.lookup_function(assoc_item.def_id)
                             {
                                 // now build the generic scope for this item.
-                                let ty = vcx.tcx.type_of(assoc_item.def_id).instantiate_identity();
+                                let ty =
+                                    vcx.tcx.type_of(assoc_item.def_id).instantiate_identity().skip_norm_wip();
                                 let ty::TyKind::FnDef(_, params) = ty.kind() else {
                                     unimplemented!();
                                 };

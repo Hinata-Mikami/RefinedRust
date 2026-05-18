@@ -94,7 +94,7 @@ impl<'tcx> Visitor<'tcx> for CollectPrustiSpecVisitor<'tcx> {
                 );
                 self.modules.push(def_id);
             },
-            hir::ItemKind::Trait(..) => {
+            hir::ItemKind::Trait { .. } => {
                 let def_id = i.hir_id().owner.def_id;
                 trace!(
                     "Add trait {} to result",
