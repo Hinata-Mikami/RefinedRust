@@ -865,7 +865,7 @@ where
     F: Fn(specs::types::Literal) -> specs::types::LiteralRef<'def>,
 {
     /// Handles attributes common among functions/methods and closures.
-    fn handle_common_attributes<X: ParamLookup<'def>>(
+    fn handle_common_attributes<X>(
         &mut self,
         span: Span,
         name: &str,
@@ -873,7 +873,10 @@ where
         builder: &mut ParsedSpecInfo<'def>,
         scope: &X,
         in_closure: bool,
-    ) -> Result<bool, SpannedError<ParserError>> {
+    ) -> Result<bool, SpannedError<ParserError>>
+    where
+        X: ParamLookup<'def>,
+    {
         match name {
             "ok" => {
                 builder.ok_spec.ok_mode = true;
@@ -1441,22 +1444,18 @@ where
                 let buffer = parse::Buffer::new(&attr_args_tokens(args));
                 let name = seg.as_str();
 
-                match self.handle_common_attributes(it.span, name, &buffer, &mut spec, &scope, true) {
-                    Ok(b) => {
-                        if !b
-                            && name != "capture"
-                            && name != "only_spec"
-                            && name != "verify"
-                            && name != "trust_me"
-                        {
-                            return Err(spanned_error(
-                                it.span,
-                                ParserError::UnknownClosureAttribute(name.to_owned()),
-                            ));
-                        }
-                    },
-
-                    Err(e) => return Err(e),
+                let handled =
+                    self.handle_common_attributes(it.span, name, &buffer, &mut spec, &scope, true)?;
+                if !handled
+                    && name != "capture"
+                    && name != "only_spec"
+                    && name != "verify"
+                    && name != "trust_me"
+                {
+                    return Err(spanned_error(
+                        it.span,
+                        ParserError::UnknownClosureAttribute(name.to_owned()),
+                    ));
                 }
             }
         }

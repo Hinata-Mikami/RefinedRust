@@ -22,6 +22,7 @@ use crate::shims::flat;
 
 type Path<'a> = Vec<&'a str>;
 
+#[expect(clippy::inline_modules)]
 mod remote {
     use super::*;
 

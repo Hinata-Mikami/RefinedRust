@@ -303,7 +303,7 @@ pub(crate) fn get_initial_universal_arg_constraints<'a, 'tcx>(
 
     // Polonius generates a base subset constraint uregion ⊑ pregion.
     // We turn that into pregion = uregion, as we do strong updates at the top-level.
-    assert!(sig_args.len() == local_args.len());
+    assert_eq!(sig_args.len(), local_args.len());
 
     // compute the mapping
     let mut unifier = InitialPoloniusUnifier::new(tcx, typing_env);

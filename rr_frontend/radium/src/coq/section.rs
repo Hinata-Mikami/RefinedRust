@@ -21,7 +21,10 @@ pub struct Section {
 }
 
 impl Section {
-    pub fn new<F: FnOnce(&mut coq::Document)>(name: String, callback: F) -> Self {
+    pub fn new<F>(name: String, callback: F) -> Self
+    where
+        F: FnOnce(&mut coq::Document),
+    {
         let mut content = coq::Document::default();
 
         callback(&mut content);

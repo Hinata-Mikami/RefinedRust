@@ -33,7 +33,10 @@ pub(crate) enum IdentOrTerm {
 }
 
 impl IdentOrTerm {
-    fn process<'def, T: ParamLookup<'def>>(self, meta: &T, span: Span) -> parse::Result<Self> {
+    fn process<'def, T>(self, meta: &T, span: Span) -> parse::Result<Self>
+    where
+        T: ParamLookup<'def>,
+    {
         match self {
             Self::Ident(id) => Ok(Self::Ident(id)),
             Self::Term(t) => {
@@ -510,9 +513,9 @@ pub(crate) trait ParamLookup<'def> {
 
             annot_meta.add_type(&param);
             if rt_is_xt {
-                format!("{}(RT_xt {})", &c[1], &param.get_rfn_type())
+                format!("{}(RT_xt {})", &c[1], param.get_rfn_type())
             } else {
-                format!("{}{}", &c[1], &param.get_rfn_type())
+                format!("{}{}", &c[1], param.get_rfn_type())
             }
         });
 
@@ -529,7 +532,7 @@ pub(crate) trait ParamLookup<'def> {
             };
 
             annot_meta.add_type(&param);
-            format!("{}(RT_xt {})", &c[1], &param.get_rfn_type())
+            format!("{}(RT_xt {})", &c[1], param.get_rfn_type())
         });
 
         let cs = RE_ST_OF.replace_all(&cs, |c: &Captures<'_>| {
@@ -641,6 +644,7 @@ pub(crate) trait ParamLookup<'def> {
     }
 }
 
+#[expect(clippy::inline_modules)]
 mod place_parser {
     use nom::branch::alt;
     use nom::bytes::complete::take_while1;

@@ -193,7 +193,10 @@ pub fn register_stdlib_paths() {
     });
 }
 
-fn access_config<'a, T, C: FnOnce(RwLockWriteGuard<'a, Config>) -> T>(callback: C) -> T {
+fn access_config<'a, T, C>(callback: C) -> T
+where
+    C: FnOnce(RwLockWriteGuard<'a, Config>) -> T,
+{
     callback(SETTINGS.write().unwrap())
 }
 

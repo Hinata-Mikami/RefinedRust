@@ -28,7 +28,10 @@ fn fmt_comment(o: Option<&String>) -> String {
     }
 }
 
-fn fmt_option<T: fmt::Display>(o: Option<&T>) -> String {
+fn fmt_option<T>(o: Option<&T>) -> String
+where
+    T: fmt::Display,
+{
     match o {
         None => "None".to_owned(),
         Some(x) => format!("Some ({})", x),

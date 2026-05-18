@@ -37,7 +37,10 @@ impl fmt::Display for CommandAttrs {
 
 impl CommandAttrs {
     #[must_use]
-    pub fn new<I: Into<Command>>(command: I) -> Self {
+    pub fn new<I>(command: I) -> Self
+    where
+        I: Into<Command>,
+    {
         Self {
             attributes: None,
             command: command.into(),
@@ -45,7 +48,10 @@ impl CommandAttrs {
     }
 
     #[must_use]
-    pub fn attributes<I: Into<Attribute>>(self, attributes: I) -> Self {
+    pub fn attributes<I>(self, attributes: I) -> Self
+    where
+        I: Into<Attribute>,
+    {
         let attributes = Some(attributes.into());
 
         Self { attributes, ..self }
@@ -78,7 +84,10 @@ impl fmt::Display for QueryCommandAttrs {
 
 impl QueryCommandAttrs {
     #[must_use]
-    pub fn new<I: Into<QueryCommand>>(command: I) -> Self {
+    pub fn new<I>(command: I) -> Self
+    where
+        I: Into<QueryCommand>,
+    {
         Self {
             attributes: None,
             natural: None,
@@ -87,7 +96,10 @@ impl QueryCommandAttrs {
     }
 
     #[must_use]
-    pub fn attributes<I: Into<Attribute>>(self, attributes: I) -> Self {
+    pub fn attributes<I>(self, attributes: I) -> Self
+    where
+        I: Into<Attribute>,
+    {
         let attributes = Some(attributes.into());
 
         Self { attributes, ..self }

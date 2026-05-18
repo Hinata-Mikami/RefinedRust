@@ -72,7 +72,7 @@ pub(crate) fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
 
             trace!("assembling arg syntypes for closure call: sig inputs={:?}", pre_sig.inputs());
             let tupled_inputs = pre_sig.inputs();
-            assert!(tupled_inputs.len() == 1);
+            assert_eq!(tupled_inputs.len(), 1);
             let input_tuple_ty = tupled_inputs[0];
             if let ty::TyKind::Tuple(args) = input_tuple_ty.kind() {
                 for ty in *args {

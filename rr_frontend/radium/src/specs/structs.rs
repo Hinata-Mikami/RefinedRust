@@ -620,10 +620,10 @@ impl<'def> VariantBuilder<'def> {
 
     #[must_use]
     pub fn finish(self) -> AbstractVariant<'def> {
-        let sls_def_name: String = format!("{}_sls", &self.name);
-        let st_def_name: String = format!("{}_st", &self.name);
-        let plain_ty_name: String = format!("{}_ty", &self.name);
-        let plain_rt_def_name: String = format!("{}_rt", &self.name);
+        let sls_def_name: String = format!("{}_sls", self.name);
+        let st_def_name: String = format!("{}_st", self.name);
+        let plain_ty_name: String = format!("{}_ty", self.name);
+        let plain_rt_def_name: String = format!("{}_rt", self.name);
 
         AbstractVariant {
             fields: self.fields,

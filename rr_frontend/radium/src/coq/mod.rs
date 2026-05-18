@@ -395,11 +395,17 @@ pub struct Document(pub Vec<Sentence>);
 
 impl Document {
     #[must_use]
-    pub fn new<I: Into<Sentence>>(sentences: Vec<I>) -> Self {
+    pub fn new<I>(sentences: Vec<I>) -> Self
+    where
+        I: Into<Sentence>,
+    {
         Self(sentences.into_iter().map(Into::into).collect())
     }
 
-    pub fn push<I: Into<Sentence>>(&mut self, sentence: I) {
+    pub fn push<I>(&mut self, sentence: I)
+    where
+        I: Into<Sentence>,
+    {
         self.0.push(sentence.into());
     }
 
@@ -443,11 +449,17 @@ pub struct ProofDocument(pub Vec<Vernac>);
 
 impl ProofDocument {
     #[must_use]
-    pub fn new<I: Into<Vernac>>(vernacs: Vec<I>) -> Self {
+    pub fn new<I>(vernacs: Vec<I>) -> Self
+    where
+        I: Into<Vernac>,
+    {
         Self(vernacs.into_iter().map(Into::into).collect())
     }
 
-    pub fn push<I: Into<Vernac>>(&mut self, vernac: I) {
+    pub fn push<I>(&mut self, vernac: I)
+    where
+        I: Into<Vernac>,
+    {
         self.0.push(vernac.into());
     }
 }

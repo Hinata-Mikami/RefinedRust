@@ -192,10 +192,10 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ArgFolder<'_, 'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<ty::TyCtxt<'tcx>>>(
-        &mut self,
-        t: ty::Binder<'tcx, T>,
-    ) -> ty::Binder<'tcx, T> {
+    fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
+    where
+        T: TypeFoldable<ty::TyCtxt<'tcx>>,
+    {
         self.binders_passed += 1;
         let t = t.super_fold_with(self);
         self.binders_passed -= 1;
@@ -331,7 +331,10 @@ impl<'tcx> ArgFolder<'_, 'tcx> {
     /// As indicated in the diagram, here the same type `&'a i32` is substituted once, but in the
     /// first case we do not increase the De Bruijn index and in the second case we do. The reason
     /// is that only in the second case have we passed through a fn binder.
-    fn shift_vars_through_binders<T: TypeFoldable<ty::TyCtxt<'tcx>>>(&self, val: T) -> T {
+    fn shift_vars_through_binders<T>(&self, val: T) -> T
+    where
+        T: TypeFoldable<ty::TyCtxt<'tcx>>,
+    {
         if self.binders_passed == 0 || !val.has_escaping_bound_vars() {
             return val;
         }

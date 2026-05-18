@@ -738,11 +738,11 @@ impl<'def> Builder<'def> {
         optional_inductive_def: Option<coq::inductive::Inductive>,
         spec: Spec,
     ) -> Abstract<'def> {
-        let els_def_name: String = format!("{}_els", &self.name);
-        let st_def_name: String = format!("{}_st", &self.name);
-        let plain_ty_name: String = format!("{}_ty", &self.name);
-        let plain_rt_name: String = format!("{}_rt", &self.name);
-        let enum_def_name: String = format!("{}_enum", &self.name);
+        let els_def_name: String = format!("{}_els", self.name);
+        let st_def_name: String = format!("{}_st", self.name);
+        let plain_ty_name: String = format!("{}_ty", self.name);
+        let plain_rt_name: String = format!("{}_rt", self.name);
+        let enum_def_name: String = format!("{}_enum", self.name);
 
         Abstract {
             variants: self.variants,

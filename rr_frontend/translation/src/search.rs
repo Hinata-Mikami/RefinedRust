@@ -25,13 +25,13 @@ where
         .map(|item| item.def_id)
 }
 
-fn can_descend_with_module_children(def_kind: hir::def::DefKind) -> bool {
+const fn can_descend_with_module_children(def_kind: hir::def::DefKind) -> bool {
     // `module_children` is only valid for containers that rustc treats as modules in name
     // resolution. Other namespaces, such as trait associated items, need dedicated queries.
     matches!(def_kind, hir::def::DefKind::Mod | hir::def::DefKind::Enum | hir::def::DefKind::ForeignMod)
 }
 
-fn is_usable_path_item(def_kind: hir::def::DefKind) -> bool {
+const fn is_usable_path_item(def_kind: hir::def::DefKind) -> bool {
     // Shim paths refer to Rust items. Same-named helper macros can appear in module children but
     // are not valid targets for shims.
     !matches!(def_kind, hir::def::DefKind::Macro(_))
@@ -84,7 +84,6 @@ where
                     items = tcx.module_children(did);
                     break;
                 }
-                continue;
             }
         }
     }
@@ -147,7 +146,6 @@ where
                     items = tcx.module_children_local(did);
                     break;
                 }
-                continue;
             }
         }
     }

@@ -68,7 +68,10 @@ impl PartialEq for DefinitelyInitializedState<'_, '_> {
 impl Eq for DefinitelyInitializedState<'_, '_> {}
 
 impl Serialize for DefinitelyInitializedState<'_, '_> {
-    fn serialize<Se: Serializer>(&self, serializer: Se) -> Result<Se::Ok, Se::Error> {
+    fn serialize<Se>(&self, serializer: Se) -> Result<Se::Ok, Se::Error>
+    where
+        Se: Serializer,
+    {
         let mut seq = serializer.serialize_seq(Some(self.def_init_places.len()))?;
 
         let mut ordered_places: Vec<_> = self.def_init_places.iter().collect();

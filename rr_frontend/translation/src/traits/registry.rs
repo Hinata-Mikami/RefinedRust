@@ -613,7 +613,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let inputs = sig.inputs();
         let inputs = inputs.skip_binder();
         // only argument is a tuple
-        assert!(inputs.len() == 1);
+        assert_eq!(inputs.len(), 1);
         let input = inputs[0];
 
         let args_tuple = args[1];
@@ -1572,7 +1572,7 @@ impl<'tcx> RegionBiFolder<'tcx> for LateBoundUnifier<'tcx, '_> {
             let index1 = b1.var.index();
             if index1 < self.binders_to_unify.len() {
                 if let Some(r1_l) = self.instantiation.get(&index1) {
-                    assert!(*r1_l == r2);
+                    assert_eq!(*r1_l, r2);
                 } else {
                     self.instantiation.insert(index1, r2);
                 }
@@ -1581,7 +1581,7 @@ impl<'tcx> RegionBiFolder<'tcx> for LateBoundUnifier<'tcx, '_> {
             trace!("trying to unify region {r1:?} with {r2:?}");
             let idx = e1.index as usize;
             if let Some(r1_l) = self.early_instantiation.get(&idx) {
-                assert!(*r1_l == r2);
+                assert_eq!(*r1_l, r2);
             } else {
                 self.early_instantiation.insert(idx, r2);
             }

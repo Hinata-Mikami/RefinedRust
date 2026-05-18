@@ -252,7 +252,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             );
 
         // detuple the inputs
-        assert!(tupled_inputs.len() == 1);
+        assert_eq!(tupled_inputs.len(), 1);
         let input_tuple_ty = tupled_inputs[0];
 
         info!("region substitution: {region_substitution:?}");
