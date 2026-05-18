@@ -45,7 +45,7 @@ Ltac traits_iterator_Iterator_map_prelude :=
   let ParamPred := fresh "ParamPred" in
   let self := fresh "self" in
   let f := fresh "f" in
-  start_function "traits_iterator_Iterator_map" ϝ ( [] ) ( [Self_ty [Item_ty [B_ty [F_ty [] ] ] ] ] ) ( [ [ [ [  p_inner Inv ] ParamPred ] self ] f ] ) (  p_inner Inv ParamPred self f );
+  start_function "traits_iterator_Iterator_map" ϝ ( [] ) ( [Self_ty [Item_ty [B_ty [F_ty [] ] ] ] ] ) ( [ [ [ [  p_inner Inv ] ParamPred ] self ] f ] ) ( p_inner Inv ParamPred self f );
   intros arg_self arg_f;
   let π := get_π in
   let Σ := get_Σ in

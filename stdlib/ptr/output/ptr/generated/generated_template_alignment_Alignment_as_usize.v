@@ -25,7 +25,7 @@ Ltac alignment_Alignment_as_usize_prelude :=
   iStartProof;
   let ϝ := fresh "ϝ" in
   let self := fresh "self" in
-  start_function "alignment_Alignment_as_usize" ϝ ( [] ) ( [] ) (  self ) (  self );
+  start_function "alignment_Alignment_as_usize" ϝ ( [] ) ( [] ) (  self ) ( self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

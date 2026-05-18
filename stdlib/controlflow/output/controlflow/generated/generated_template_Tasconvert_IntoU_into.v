@@ -27,7 +27,7 @@ Ltac Tasconvert_IntoU_into_prelude :=
   let ϝ := fresh "ϝ" in
   let T_ty := fresh "T_ty" in
   let U_ty := fresh "U_ty" in
-  start_function "Tasconvert_IntoU_into" ϝ ( [] ) ( [T_ty [U_ty [] ] ] ) ( ? ) (  );
+  start_function "Tasconvert_IntoU_into" ϝ ( [] ) ( [T_ty [U_ty [] ] ] ) ( ? );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

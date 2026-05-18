@@ -30,7 +30,7 @@ Ltac unique_Unique_T_new_unchecked_prelude :=
   let ϝ := fresh "ϝ" in
   let T_ty := fresh "T_ty" in
   let ptr := fresh "ptr" in
-  start_function "unique_Unique_T_new_unchecked" ϝ ( [] ) ( [T_ty [] ] ) (  ptr ) (  ptr );
+  start_function "unique_Unique_T_new_unchecked" ϝ ( [] ) ( [T_ty [] ] ) (  ptr ) ( ptr );
   intros arg_ptr;
   let π := get_π in
   let Σ := get_Σ in

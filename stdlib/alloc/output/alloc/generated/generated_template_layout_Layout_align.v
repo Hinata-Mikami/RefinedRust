@@ -27,7 +27,7 @@ Ltac layout_Layout_align_prelude :=
   let ϝ := fresh "ϝ" in
   let ulft_1 := fresh "ulft_1" in
   let self := fresh "self" in
-  start_function "layout_Layout_align" ϝ ( [ulft_1 [] ] ) ( [] ) (  self ) (  self );
+  start_function "layout_Layout_align" ϝ ( [ulft_1 [] ] ) ( [] ) (  self ) ( self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

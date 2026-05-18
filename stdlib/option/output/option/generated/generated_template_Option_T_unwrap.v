@@ -26,7 +26,7 @@ Ltac Option_T_unwrap_prelude :=
   let ϝ := fresh "ϝ" in
   let T_ty := fresh "T_ty" in
   let self := fresh "self" in
-  start_function "Option_T_unwrap" ϝ ( [] ) ( [T_ty [] ] ) (  self ) (  self );
+  start_function "Option_T_unwrap" ϝ ( [] ) ( [T_ty [] ] ) (  self ) ( self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

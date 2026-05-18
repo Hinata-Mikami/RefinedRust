@@ -30,7 +30,7 @@ Ltac nonnull_NonNull_T_write_prelude :=
   let T_ty := fresh "T_ty" in
   let self := fresh "self" in
   let val := fresh "val" in
-  start_function "nonnull_NonNull_T_write" ϝ ( [] ) ( [T_ty [] ] ) ( [  self val ] ) (  self val );
+  start_function "nonnull_NonNull_T_write" ϝ ( [] ) ( [T_ty [] ] ) ( [  self val ] ) ( self val );
   intros arg_self arg_val;
   let π := get_π in
   let Σ := get_Σ in

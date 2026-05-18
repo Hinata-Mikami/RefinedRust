@@ -28,7 +28,7 @@ Ltac mut_ptr_with_addr_prelude :=
   let T_ty := fresh "T_ty" in
   let x := fresh "x" in
   let addr := fresh "addr" in
-  start_function "mut_ptr_with_addr" ϝ ( [] ) ( [T_ty [] ] ) ( [  x addr ] ) (  x addr );
+  start_function "mut_ptr_with_addr" ϝ ( [] ) ( [T_ty [] ] ) ( [  x addr ] ) ( x addr );
   intros arg_x arg_addr;
   let π := get_π in
   let Σ := get_Σ in

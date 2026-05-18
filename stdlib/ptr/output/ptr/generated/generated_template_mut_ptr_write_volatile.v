@@ -29,7 +29,7 @@ Ltac mut_ptr_write_volatile_prelude :=
   let T_ty := fresh "T_ty" in
   let dst := fresh "dst" in
   let src := fresh "src" in
-  start_function "mut_ptr_write_volatile" ϝ ( [] ) ( [T_ty [] ] ) ( [  dst src ] ) (  dst src );
+  start_function "mut_ptr_write_volatile" ϝ ( [] ) ( [T_ty [] ] ) ( [  dst src ] ) ( dst src );
   intros arg_dst arg_src;
   let π := get_π in
   let Σ := get_Σ in

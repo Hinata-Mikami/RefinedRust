@@ -62,7 +62,7 @@ Ltac traits_iterator_Iterator_try_fold_prelude :=
   let self := fresh "self" in
   let init := fresh "init" in
   let f := fresh "f" in
-  start_function "traits_iterator_Iterator_try_fold" ϝ ( [ulft_1 [] ] ) ( [Self_ty [Item_ty [B_ty [F_ty [R_ty [Try_R_Residual_ty [] ] ] ] ] ] ] ) ( [ [ [ [  p ClosInv ] self ] init ] f ] ) (  p ClosInv self init f );
+  start_function "traits_iterator_Iterator_try_fold" ϝ ( [ulft_1 [] ] ) ( [Self_ty [Item_ty [B_ty [F_ty [R_ty [Try_R_Residual_ty [] ] ] ] ] ] ] ) ( [ [ [ [  p ClosInv ] self ] init ] f ] ) ( p ClosInv self init f );
   intros arg_self arg_init arg_f;
   let π := get_π in
   let Σ := get_Σ in

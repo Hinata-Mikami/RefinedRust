@@ -36,7 +36,7 @@ Ltac adapters_skip_SkipMIastraits_iterator_Iterator_next_prelude :=
   let ulft_1 := fresh "ulft_1" in
   let MI_ty := fresh "MI_ty" in
   let traits_iterator_Iterator_MI_Item_ty := fresh "traits_iterator_Iterator_MI_Item_ty" in
-  start_function "adapters_skip_SkipMIastraits_iterator_Iterator_next" ϝ ( [ulft_1 [] ] ) ( [MI_ty [traits_iterator_Iterator_MI_Item_ty [] ] ] ) ( ? ) (  );
+  start_function "adapters_skip_SkipMIastraits_iterator_Iterator_next" ϝ ( [ulft_1 [] ] ) ( [MI_ty [traits_iterator_Iterator_MI_Item_ty [] ] ] ) ( ? );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

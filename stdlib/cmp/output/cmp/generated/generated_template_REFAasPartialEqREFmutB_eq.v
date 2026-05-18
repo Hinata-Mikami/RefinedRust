@@ -32,7 +32,7 @@ Ltac REFAasPartialEqREFmutB_eq_prelude :=
   let ulft_4 := fresh "ulft_4" in
   let A_ty := fresh "A_ty" in
   let B_ty := fresh "B_ty" in
-  start_function "REFAasPartialEqREFmutB_eq" ϝ ( [ulft_1 [ulft_2 [ulft_3 [ulft_4 [] ] ] ] ] ) ( [A_ty [B_ty [] ] ] ) ( ? ) (  );
+  start_function "REFAasPartialEqREFmutB_eq" ϝ ( [ulft_1 [ulft_2 [ulft_3 [ulft_4 [] ] ] ] ] ) ( [A_ty [B_ty [] ] ] ) ( ? );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in

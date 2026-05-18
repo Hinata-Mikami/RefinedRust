@@ -27,7 +27,7 @@ Ltac ControlFlowBCasTry_from_output_prelude :=
   let ϝ := fresh "ϝ" in
   let B_ty := fresh "B_ty" in
   let C_ty := fresh "C_ty" in
-  start_function "ControlFlowBCasTry_from_output" ϝ ( [] ) ( [B_ty [C_ty [] ] ] ) ( ? ) (  );
+  start_function "ControlFlowBCasTry_from_output" ϝ ( [] ) ( [B_ty [C_ty [] ] ] ) ( ? );
   intros arg_output;
   let π := get_π in
   let Σ := get_Σ in

@@ -20,7 +20,7 @@ Ltac u16_abs_diff_prelude :=
   let ϝ := fresh "ϝ" in
   let x := fresh "x" in
   let other := fresh "other" in
-  start_function "u16_abs_diff" ϝ ( [] ) ( [] ) ( [  x other ] ) (  x other );
+  start_function "u16_abs_diff" ϝ ( [] ) ( [] ) ( [  x other ] ) ( x other );
   intros arg_x arg_other;
   let π := get_π in
   let Σ := get_Σ in

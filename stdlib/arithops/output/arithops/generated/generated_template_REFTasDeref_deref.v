@@ -23,7 +23,7 @@ Ltac REFTasDeref_deref_prelude :=
   let ulft_1 := fresh "ulft_1" in
   let ulft_2 := fresh "ulft_2" in
   let T_ty := fresh "T_ty" in
-  start_function "REFTasDeref_deref" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [T_ty [] ] ) ( ? ) (  );
+  start_function "REFTasDeref_deref" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [T_ty [] ] ) ( ? );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

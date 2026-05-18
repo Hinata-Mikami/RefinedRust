@@ -19,7 +19,7 @@ Ltac REFu32asAddu32_add_prelude :=
   iStartProof;
   let ϝ := fresh "ϝ" in
   let ulft_1 := fresh "ulft_1" in
-  start_function "REFu32asAddu32_add" ϝ ( [ulft_1 [] ] ) ( [] ) ( ? ) (  );
+  start_function "REFu32asAddu32_add" ϝ ( [ulft_1 [] ] ) ( [] ) ( ? );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in

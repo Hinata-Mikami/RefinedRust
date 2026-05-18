@@ -30,7 +30,7 @@ Ltac nonnull_NonNull_T_new_prelude :=
   let ϝ := fresh "ϝ" in
   let T_ty := fresh "T_ty" in
   let ptr := fresh "ptr" in
-  start_function "nonnull_NonNull_T_new" ϝ ( [] ) ( [T_ty [] ] ) (  ptr ) (  ptr );
+  start_function "nonnull_NonNull_T_new" ϝ ( [] ) ( [T_ty [] ] ) (  ptr ) ( ptr );
   intros arg_ptr;
   let π := get_π in
   let Σ := get_Σ in

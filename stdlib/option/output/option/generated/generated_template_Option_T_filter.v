@@ -33,7 +33,7 @@ Ltac Option_T_filter_prelude :=
   let op := fresh "op" in
   let self := fresh "self" in
   let predicate := fresh "predicate" in
-  start_function "Option_T_filter" ϝ ( [] ) ( [T_ty [P_ty [] ] ] ) ( [ [  op self ] predicate ] ) (  op self predicate );
+  start_function "Option_T_filter" ϝ ( [] ) ( [T_ty [P_ty [] ] ] ) ( [ [  op self ] predicate ] ) ( op self predicate );
   intros arg_self arg_predicate;
   let π := get_π in
   let Σ := get_Σ in

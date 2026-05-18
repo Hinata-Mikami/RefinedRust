@@ -40,7 +40,7 @@ Ltac Vec_TA_is_empty_prelude :=
   let T_ty := fresh "T_ty" in
   let A_ty := fresh "A_ty" in
   let self := fresh "self" in
-  start_function "Vec_TA_is_empty" ϝ ( [ulft_1 [] ] ) ( [T_ty [A_ty [] ] ] ) (  self ) (  self );
+  start_function "Vec_TA_is_empty" ϝ ( [ulft_1 [] ] ) ( [T_ty [A_ty [] ] ] ) (  self ) ( self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

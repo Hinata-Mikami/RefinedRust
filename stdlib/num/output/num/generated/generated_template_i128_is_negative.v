@@ -18,7 +18,7 @@ Ltac i128_is_negative_prelude :=
   iStartProof;
   let ϝ := fresh "ϝ" in
   let x := fresh "x" in
-  start_function "i128_is_negative" ϝ ( [] ) ( [] ) (  x ) (  x );
+  start_function "i128_is_negative" ϝ ( [] ) ( [] ) (  x ) ( x );
   intros arg_x;
   let π := get_π in
   let Σ := get_Σ in

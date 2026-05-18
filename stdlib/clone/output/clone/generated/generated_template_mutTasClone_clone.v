@@ -23,7 +23,7 @@ Ltac mutTasClone_clone_prelude :=
   let ϝ := fresh "ϝ" in
   let ulft_1 := fresh "ulft_1" in
   let T_ty := fresh "T_ty" in
-  start_function "mutTasClone_clone" ϝ ( [ulft_1 [] ] ) ( [T_ty [] ] ) ( ? ) (  );
+  start_function "mutTasClone_clone" ϝ ( [ulft_1 [] ] ) ( [T_ty [] ] ) ( ? );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

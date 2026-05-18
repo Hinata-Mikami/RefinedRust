@@ -32,7 +32,7 @@ Ltac nonnull_NonNull_T_cast_prelude :=
   let T_ty := fresh "T_ty" in
   let U_ty := fresh "U_ty" in
   let self := fresh "self" in
-  start_function "nonnull_NonNull_T_cast" ϝ ( [] ) ( [T_ty [U_ty [] ] ] ) (  self ) (  self );
+  start_function "nonnull_NonNull_T_cast" ϝ ( [] ) ( [T_ty [U_ty [] ] ] ) (  self ) ( self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

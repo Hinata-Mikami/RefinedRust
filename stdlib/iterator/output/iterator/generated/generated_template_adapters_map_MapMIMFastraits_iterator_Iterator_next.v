@@ -45,7 +45,7 @@ Ltac adapters_map_MapMIMFastraits_iterator_Iterator_next_prelude :=
   let MI_ty := fresh "MI_ty" in
   let MF_ty := fresh "MF_ty" in
   let traits_iterator_Iterator_MI_Item_ty := fresh "traits_iterator_Iterator_MI_Item_ty" in
-  start_function "adapters_map_MapMIMFastraits_iterator_Iterator_next" ϝ ( [ulft_1 [] ] ) ( [MB_ty [MI_ty [MF_ty [traits_iterator_Iterator_MI_Item_ty [] ] ] ] ] ) ( ? ) (  );
+  start_function "adapters_map_MapMIMFastraits_iterator_Iterator_next" ϝ ( [ulft_1 [] ] ) ( [MB_ty [MI_ty [MF_ty [traits_iterator_Iterator_MI_Item_ty [] ] ] ] ] ) ( ? );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

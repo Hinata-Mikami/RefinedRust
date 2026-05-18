@@ -32,7 +32,7 @@ Ltac adapters_take_Take_I_new_prelude :=
   let I_ty := fresh "I_ty" in
   let iter := fresh "iter" in
   let n := fresh "n" in
-  start_function "adapters_take_Take_I_new" ϝ ( [] ) ( [I_ty [] ] ) ( [  iter n ] ) (  iter n );
+  start_function "adapters_take_Take_I_new" ϝ ( [] ) ( [I_ty [] ] ) ( [  iter n ] ) ( iter n );
   intros arg_iter arg_n;
   let π := get_π in
   let Σ := get_Σ in

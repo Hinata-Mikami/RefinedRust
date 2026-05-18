@@ -24,7 +24,7 @@ Ltac alignment_AlignmentEnumasstd_clone_Clone_clone_prelude :=
   iStartProof;
   let ϝ := fresh "ϝ" in
   let ulft_1 := fresh "ulft_1" in
-  start_function "alignment_AlignmentEnumasstd_clone_Clone_clone" ϝ ( [ulft_1 [] ] ) ( [] ) ( ? ) (  );
+  start_function "alignment_AlignmentEnumasstd_clone_Clone_clone" ϝ ( [ulft_1 [] ] ) ( [] ) ( ? );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

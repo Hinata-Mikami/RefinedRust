@@ -47,7 +47,7 @@ Ltac traits_iterator_Iterator_reduce_prelude :=
   let ClosInv := fresh "ClosInv" in
   let self := fresh "self" in
   let f := fresh "f" in
-  start_function "traits_iterator_Iterator_reduce" ϝ ( [] ) ( [Self_ty [Item_ty [F_ty [] ] ] ] ) ( [ [ [  p ClosInv ] self ] f ] ) (  p ClosInv self f );
+  start_function "traits_iterator_Iterator_reduce" ϝ ( [] ) ( [Self_ty [Item_ty [F_ty [] ] ] ] ) ( [ [ [  p ClosInv ] self ] f ] ) ( p ClosInv self f );
   intros arg_self arg_f;
   let π := get_π in
   let Σ := get_Σ in

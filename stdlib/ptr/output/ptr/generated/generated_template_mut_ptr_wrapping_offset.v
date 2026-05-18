@@ -28,7 +28,7 @@ Ltac mut_ptr_wrapping_offset_prelude :=
   let T_ty := fresh "T_ty" in
   let l := fresh "l" in
   let count := fresh "count" in
-  start_function "mut_ptr_wrapping_offset" ϝ ( [] ) ( [T_ty [] ] ) ( [  l count ] ) (  l count );
+  start_function "mut_ptr_wrapping_offset" ϝ ( [] ) ( [T_ty [] ] ) ( [  l count ] ) ( l count );
   intros arg_l arg_count;
   let π := get_π in
   let Σ := get_Σ in

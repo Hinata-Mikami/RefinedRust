@@ -26,7 +26,7 @@ Ltac Eq_assert_fields_are_eq_prelude :=
   let ulft_1 := fresh "ulft_1" in
   let Self_ty := fresh "Self_ty" in
   let self := fresh "self" in
-  start_function "Eq_assert_fields_are_eq" ϝ ( [ulft_1 [] ] ) ( [Self_ty [] ] ) (  self ) (  self );
+  start_function "Eq_assert_fields_are_eq" ϝ ( [ulft_1 [] ] ) ( [Self_ty [] ] ) (  self ) ( self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

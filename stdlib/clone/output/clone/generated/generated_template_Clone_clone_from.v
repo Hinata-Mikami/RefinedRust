@@ -27,7 +27,7 @@ Ltac Clone_clone_from_prelude :=
   let Self_ty := fresh "Self_ty" in
   let self := fresh "self" in
   let source := fresh "source" in
-  start_function "Clone_clone_from" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [Self_ty [] ] ) ( [  self source ] ) (  self source );
+  start_function "Clone_clone_from" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [Self_ty [] ] ) ( [  self source ] ) ( self source );
   intros arg_self arg_source;
   let π := get_π in
   let Σ := get_Σ in

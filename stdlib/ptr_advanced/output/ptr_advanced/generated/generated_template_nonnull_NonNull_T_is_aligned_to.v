@@ -30,7 +30,7 @@ Ltac nonnull_NonNull_T_is_aligned_to_prelude :=
   let T_ty := fresh "T_ty" in
   let self := fresh "self" in
   let align := fresh "align" in
-  start_function "nonnull_NonNull_T_is_aligned_to" ϝ ( [] ) ( [T_ty [] ] ) ( [  self align ] ) (  self align );
+  start_function "nonnull_NonNull_T_is_aligned_to" ϝ ( [] ) ( [T_ty [] ] ) ( [  self align ] ) ( self align );
   intros arg_self arg_align;
   let π := get_π in
   let Σ := get_Σ in

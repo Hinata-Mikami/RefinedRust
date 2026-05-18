@@ -18,7 +18,7 @@ Ltac usizeasSub_sub_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
-  start_function "usizeasSub_sub" ϝ ( [] ) ( [] ) ( ? ) (  );
+  start_function "usizeasSub_sub" ϝ ( [] ) ( [] ) ( ? );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in

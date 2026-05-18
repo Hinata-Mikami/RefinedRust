@@ -36,7 +36,7 @@ Ltac traits_iterator_Iterator_max_prelude :=
   let Item_ty := fresh "Item_ty" in
   let p := fresh "p" in
   let self := fresh "self" in
-  start_function "traits_iterator_Iterator_max" ϝ ( [] ) ( [Self_ty [Item_ty [] ] ] ) ( [  p self ] ) (  p self );
+  start_function "traits_iterator_Iterator_max" ϝ ( [] ) ( [Self_ty [Item_ty [] ] ] ) ( [  p self ] ) ( p self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

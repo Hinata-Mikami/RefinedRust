@@ -31,7 +31,7 @@ Ltac ResultTEasstd_clone_Clone_clone_prelude :=
   let ulft_1 := fresh "ulft_1" in
   let T_ty := fresh "T_ty" in
   let E_ty := fresh "E_ty" in
-  start_function "ResultTEasstd_clone_Clone_clone" ϝ ( [ulft_1 [] ] ) ( [T_ty [E_ty [] ] ] ) ( ? ) (  );
+  start_function "ResultTEasstd_clone_Clone_clone" ϝ ( [ulft_1 [] ] ) ( [T_ty [E_ty [] ] ] ) ( ? );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

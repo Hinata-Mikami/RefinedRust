@@ -19,7 +19,7 @@ Ltac u32asAddAssign_add_assign_prelude :=
   iStartProof;
   let ϝ := fresh "ϝ" in
   let ulft_1 := fresh "ulft_1" in
-  start_function "u32asAddAssign_add_assign" ϝ ( [ulft_1 [] ] ) ( [] ) ( ? ) (  );
+  start_function "u32asAddAssign_add_assign" ϝ ( [ulft_1 [] ] ) ( [] ) ( ? );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in

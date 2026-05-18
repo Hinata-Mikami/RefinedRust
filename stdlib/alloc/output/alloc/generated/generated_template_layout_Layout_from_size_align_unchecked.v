@@ -27,7 +27,7 @@ Ltac layout_Layout_from_size_align_unchecked_prelude :=
   let ϝ := fresh "ϝ" in
   let size := fresh "size" in
   let align := fresh "align" in
-  start_function "layout_Layout_from_size_align_unchecked" ϝ ( [] ) ( [] ) ( [  size align ] ) (  size align );
+  start_function "layout_Layout_from_size_align_unchecked" ϝ ( [] ) ( [] ) ( [  size align ] ) ( size align );
   intros arg_size arg_align;
   let π := get_π in
   let Σ := get_Σ in

@@ -49,7 +49,7 @@ Ltac traits_iterator_Iterator_position_prelude :=
   let ClosInv := fresh "ClosInv" in
   let self := fresh "self" in
   let f := fresh "f" in
-  start_function "traits_iterator_Iterator_position" ϝ ( [ulft_1 [] ] ) ( [Self_ty [Item_ty [F_ty [] ] ] ] ) ( [ [ [ [  p P ] ClosInv ] self ] f ] ) (  p P ClosInv self f );
+  start_function "traits_iterator_Iterator_position" ϝ ( [ulft_1 [] ] ) ( [Self_ty [Item_ty [F_ty [] ] ] ] ) ( [ [ [ [  p P ] ClosInv ] self ] f ] ) ( p P ClosInv self f );
   intros arg_self arg_f;
   let π := get_π in
   let Σ := get_Σ in

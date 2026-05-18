@@ -27,7 +27,7 @@ Ltac nonnull_NonNull_T_as_ptr_prelude :=
   let ϝ := fresh "ϝ" in
   let T_ty := fresh "T_ty" in
   let self := fresh "self" in
-  start_function "nonnull_NonNull_T_as_ptr" ϝ ( [] ) ( [T_ty [] ] ) (  self ) (  self );
+  start_function "nonnull_NonNull_T_as_ptr" ϝ ( [] ) ( [T_ty [] ] ) (  self ) ( self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

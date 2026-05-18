@@ -18,7 +18,7 @@ Ltac i8_is_positive_prelude :=
   iStartProof;
   let ϝ := fresh "ϝ" in
   let x := fresh "x" in
-  start_function "i8_is_positive" ϝ ( [] ) ( [] ) (  x ) (  x );
+  start_function "i8_is_positive" ϝ ( [] ) ( [] ) (  x ) ( x );
   intros arg_x;
   let π := get_π in
   let Σ := get_Σ in

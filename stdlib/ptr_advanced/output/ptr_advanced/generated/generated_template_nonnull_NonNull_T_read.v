@@ -31,7 +31,7 @@ Ltac nonnull_NonNull_T_read_prelude :=
   let k := fresh "k" in
   let ty := fresh "ty" in
   let self := fresh "self" in
-  start_function "nonnull_NonNull_T_read" ϝ ( [] ) ( [T_ty [] ] ) ( [ [  k ty ] self ] ) (  k ty self );
+  start_function "nonnull_NonNull_T_read" ϝ ( [] ) ( [T_ty [] ] ) ( [ [  k ty ] self ] ) ( k ty self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

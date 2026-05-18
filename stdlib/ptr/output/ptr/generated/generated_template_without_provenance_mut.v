@@ -27,7 +27,7 @@ Ltac without_provenance_mut_prelude :=
   let ϝ := fresh "ϝ" in
   let T_ty := fresh "T_ty" in
   let addr := fresh "addr" in
-  start_function "without_provenance_mut" ϝ ( [] ) ( [T_ty [] ] ) (  addr ) (  addr );
+  start_function "without_provenance_mut" ϝ ( [] ) ( [T_ty [] ] ) (  addr ) ( addr );
   intros arg_addr;
   let π := get_π in
   let Σ := get_Σ in

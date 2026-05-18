@@ -19,7 +19,7 @@ Ltac REFi16asMuli16_mul_prelude :=
   iStartProof;
   let ϝ := fresh "ϝ" in
   let ulft_1 := fresh "ulft_1" in
-  start_function "REFi16asMuli16_mul" ϝ ( [ulft_1 [] ] ) ( [] ) ( ? ) (  );
+  start_function "REFi16asMuli16_mul" ϝ ( [ulft_1 [] ] ) ( [] ) ( ? );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in

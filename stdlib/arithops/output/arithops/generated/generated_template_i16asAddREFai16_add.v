@@ -19,7 +19,7 @@ Ltac i16asAddREFai16_add_prelude :=
   iStartProof;
   let ϝ := fresh "ϝ" in
   let ulft_a := fresh "ulft_a" in
-  start_function "i16asAddREFai16_add" ϝ ( [ulft_a [] ] ) ( [] ) ( ? ) (  );
+  start_function "i16asAddREFai16_add" ϝ ( [ulft_a [] ] ) ( [] ) ( ? );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in

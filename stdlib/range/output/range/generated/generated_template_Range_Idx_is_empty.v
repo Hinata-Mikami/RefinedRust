@@ -27,7 +27,7 @@ Ltac Range_Idx_is_empty_prelude :=
   let ulft_1 := fresh "ulft_1" in
   let Idx_ty := fresh "Idx_ty" in
   let self := fresh "self" in
-  start_function "Range_Idx_is_empty" ϝ ( [ulft_1 [] ] ) ( [Idx_ty [] ] ) (  self ) (  self );
+  start_function "Range_Idx_is_empty" ϝ ( [ulft_1 [] ] ) ( [Idx_ty [] ] ) (  self ) ( self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

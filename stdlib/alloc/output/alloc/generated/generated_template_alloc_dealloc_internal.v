@@ -24,7 +24,7 @@ Ltac alloc_dealloc_internal_prelude :=
   let size := fresh "size" in
   let align_log2 := fresh "align_log2" in
   let ptr := fresh "ptr" in
-  start_function "alloc_dealloc_internal" ϝ ( [] ) ( [] ) ( [ [  size align_log2 ] ptr ] ) (  size align_log2 ptr );
+  start_function "alloc_dealloc_internal" ϝ ( [] ) ( [] ) ( [ [  size align_log2 ] ptr ] ) ( size align_log2 ptr );
   intros arg_size arg_align_log2 arg_ptr;
   let π := get_π in
   let Σ := get_Σ in

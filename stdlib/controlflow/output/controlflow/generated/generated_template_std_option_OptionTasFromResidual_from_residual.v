@@ -26,7 +26,7 @@ Ltac std_option_OptionTasFromResidual_from_residual_prelude :=
   iStartProof;
   let ϝ := fresh "ϝ" in
   let T_ty := fresh "T_ty" in
-  start_function "std_option_OptionTasFromResidual_from_residual" ϝ ( [] ) ( [T_ty [] ] ) ( ? ) (  );
+  start_function "std_option_OptionTasFromResidual_from_residual" ϝ ( [] ) ( [T_ty [] ] ) ( ? );
   intros arg_residual;
   let π := get_π in
   let Σ := get_Σ in

@@ -27,7 +27,7 @@ Ltac const_ptr_cast_mut_prelude :=
   let ϝ := fresh "ϝ" in
   let T_ty := fresh "T_ty" in
   let x := fresh "x" in
-  start_function "const_ptr_cast_mut" ϝ ( [] ) ( [T_ty [] ] ) (  x ) (  x );
+  start_function "const_ptr_cast_mut" ϝ ( [] ) ( [T_ty [] ] ) (  x ) ( x );
   intros arg_x;
   let π := get_π in
   let Σ := get_Σ in

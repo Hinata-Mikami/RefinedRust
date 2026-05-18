@@ -23,7 +23,7 @@ Ltac unitasOrd_cmp_prelude :=
   let ϝ := fresh "ϝ" in
   let ulft_1 := fresh "ulft_1" in
   let ulft_2 := fresh "ulft_2" in
-  start_function "unitasOrd_cmp" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [] ) ( ? ) (  );
+  start_function "unitasOrd_cmp" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [] ) ( ? );
   intros arg_self arg__other;
   let π := get_π in
   let Σ := get_Σ in

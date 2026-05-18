@@ -32,7 +32,7 @@ Ltac PartialEq_ne_prelude :=
   let Rhs_ty := fresh "Rhs_ty" in
   let self := fresh "self" in
   let other := fresh "other" in
-  start_function "PartialEq_ne" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [Self_ty [Rhs_ty [] ] ] ) ( [  self other ] ) (  self other );
+  start_function "PartialEq_ne" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [Self_ty [Rhs_ty [] ] ] ) ( [  self other ] ) ( self other );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in

@@ -29,7 +29,7 @@ Ltac ControlFlow_BC_break_value_prelude :=
   let B_ty := fresh "B_ty" in
   let C_ty := fresh "C_ty" in
   let self := fresh "self" in
-  start_function "ControlFlow_BC_break_value" ϝ ( [] ) ( [B_ty [C_ty [] ] ] ) (  self ) (  self );
+  start_function "ControlFlow_BC_break_value" ϝ ( [] ) ( [B_ty [C_ty [] ] ] ) (  self ) ( self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

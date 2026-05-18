@@ -29,7 +29,7 @@ Ltac REFAasOrd_cmp_prelude :=
   let ulft_2 := fresh "ulft_2" in
   let ulft_3 := fresh "ulft_3" in
   let A_ty := fresh "A_ty" in
-  start_function "REFAasOrd_cmp" ϝ ( [ulft_1 [ulft_2 [ulft_3 [] ] ] ] ) ( [A_ty [] ] ) ( ? ) (  );
+  start_function "REFAasOrd_cmp" ϝ ( [ulft_1 [ulft_2 [ulft_3 [] ] ] ] ) ( [A_ty [] ] ) ( ? );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in

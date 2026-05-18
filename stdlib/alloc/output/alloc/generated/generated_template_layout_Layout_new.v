@@ -29,7 +29,7 @@ Ltac layout_Layout_new_prelude :=
   iStartProof;
   let ϝ := fresh "ϝ" in
   let T_ty := fresh "T_ty" in
-  start_function "layout_Layout_new" ϝ ( [] ) ( [T_ty [] ] ) ( ? ) (  );
+  start_function "layout_Layout_new" ϝ ( [] ) ( [T_ty [] ] ) ( ? ) ( );
   intros;
   let π := get_π in
   let Σ := get_Σ in

@@ -40,7 +40,7 @@ Ltac Result_TE_map_err_prelude :=
   let oparam := fresh "oparam" in
   let self := fresh "self" in
   let op := fresh "op" in
-  start_function "Result_TE_map_err" ϝ ( [] ) ( [T_ty [E_ty [F_ty [O_ty [] ] ] ] ] ) ( [ [  oparam self ] op ] ) (  oparam self op );
+  start_function "Result_TE_map_err" ϝ ( [] ) ( [T_ty [E_ty [F_ty [O_ty [] ] ] ] ] ) ( [ [  oparam self ] op ] ) ( oparam self op );
   intros arg_self arg_op;
   let π := get_π in
   let Σ := get_Σ in

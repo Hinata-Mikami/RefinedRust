@@ -36,7 +36,7 @@ Ltac Box_TA_from_raw_in_prelude :=
   let b := fresh "b" in
   let raw := fresh "raw" in
   let alloc := fresh "alloc" in
-  start_function "Box_TA_from_raw_in" ϝ ( [] ) ( [T_ty [A_ty [] ] ] ) ( [ [  b raw ] alloc ] ) (  b raw alloc );
+  start_function "Box_TA_from_raw_in" ϝ ( [] ) ( [T_ty [A_ty [] ] ] ) ( [ [  b raw ] alloc ] ) ( b raw alloc );
   intros arg_raw arg_alloc;
   let π := get_π in
   let Σ := get_Σ in

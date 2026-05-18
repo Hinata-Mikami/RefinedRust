@@ -27,7 +27,7 @@ Ltac std_result_ResultTEasTry_from_output_prelude :=
   let ϝ := fresh "ϝ" in
   let T_ty := fresh "T_ty" in
   let E_ty := fresh "E_ty" in
-  start_function "std_result_ResultTEasTry_from_output" ϝ ( [] ) ( [T_ty [E_ty [] ] ] ) ( ? ) (  );
+  start_function "std_result_ResultTEasTry_from_output" ϝ ( [] ) ( [T_ty [E_ty [] ] ] ) ( ? );
   intros arg_output;
   let π := get_π in
   let Σ := get_Σ in

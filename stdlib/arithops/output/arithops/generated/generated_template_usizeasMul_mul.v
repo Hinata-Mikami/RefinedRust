@@ -18,7 +18,7 @@ Ltac usizeasMul_mul_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
-  start_function "usizeasMul_mul" ϝ ( [] ) ( [] ) ( ? ) (  );
+  start_function "usizeasMul_mul" ϝ ( [] ) ( [] ) ( ? );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in

@@ -22,7 +22,7 @@ Ltac Ordering_as_raw_prelude :=
   iStartProof;
   let ϝ := fresh "ϝ" in
   let self := fresh "self" in
-  start_function "Ordering_as_raw" ϝ ( [] ) ( [] ) (  self ) (  self );
+  start_function "Ordering_as_raw" ϝ ( [] ) ( [] ) (  self ) ( self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

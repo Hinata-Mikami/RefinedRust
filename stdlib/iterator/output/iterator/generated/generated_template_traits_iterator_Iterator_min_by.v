@@ -43,7 +43,7 @@ Ltac traits_iterator_Iterator_min_by_prelude :=
   let ClosInv := fresh "ClosInv" in
   let self := fresh "self" in
   let compare := fresh "compare" in
-  start_function "traits_iterator_Iterator_min_by" ϝ ( [] ) ( [Self_ty [Item_ty [F_ty [] ] ] ] ) ( [ [ [  p ClosInv ] self ] compare ] ) (  p ClosInv self compare );
+  start_function "traits_iterator_Iterator_min_by" ϝ ( [] ) ( [Self_ty [Item_ty [F_ty [] ] ] ] ) ( [ [ [  p ClosInv ] self ] compare ] ) ( p ClosInv self compare );
   intros arg_self arg_compare;
   let π := get_π in
   let Σ := get_Σ in

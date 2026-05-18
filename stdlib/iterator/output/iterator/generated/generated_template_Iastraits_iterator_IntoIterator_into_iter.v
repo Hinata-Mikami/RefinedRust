@@ -31,7 +31,7 @@ Ltac Iastraits_iterator_IntoIterator_into_iter_prelude :=
   let ϝ := fresh "ϝ" in
   let I_ty := fresh "I_ty" in
   let traits_iterator_Iterator_I_Item_ty := fresh "traits_iterator_Iterator_I_Item_ty" in
-  start_function "Iastraits_iterator_IntoIterator_into_iter" ϝ ( [] ) ( [I_ty [traits_iterator_Iterator_I_Item_ty [] ] ] ) ( ? ) (  );
+  start_function "Iastraits_iterator_IntoIterator_into_iter" ϝ ( [] ) ( [I_ty [traits_iterator_Iterator_I_Item_ty [] ] ] ) ( ? );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

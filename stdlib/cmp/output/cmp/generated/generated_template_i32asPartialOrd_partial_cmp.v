@@ -26,7 +26,7 @@ Ltac i32asPartialOrd_partial_cmp_prelude :=
   let ϝ := fresh "ϝ" in
   let ulft_1 := fresh "ulft_1" in
   let ulft_2 := fresh "ulft_2" in
-  start_function "i32asPartialOrd_partial_cmp" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [] ) ( ? ) (  );
+  start_function "i32asPartialOrd_partial_cmp" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [] ) ( ? );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in

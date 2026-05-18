@@ -23,7 +23,7 @@ Ltac alloc_alloc_internal_prelude :=
   let ϝ := fresh "ϝ" in
   let size := fresh "size" in
   let align_log2 := fresh "align_log2" in
-  start_function "alloc_alloc_internal" ϝ ( [] ) ( [] ) ( [  size align_log2 ] ) (  size align_log2 );
+  start_function "alloc_alloc_internal" ϝ ( [] ) ( [] ) ( [  size align_log2 ] ) ( size align_log2 );
   intros arg_size arg_align_log2;
   let π := get_π in
   let Σ := get_Σ in

@@ -32,7 +32,7 @@ Ltac Box_T_from_raw_prelude :=
   let T_ty := fresh "T_ty" in
   let b := fresh "b" in
   let raw := fresh "raw" in
-  start_function "Box_T_from_raw" ϝ ( [] ) ( [T_ty [] ] ) ( [  b raw ] ) (  b raw );
+  start_function "Box_T_from_raw" ϝ ( [] ) ( [T_ty [] ] ) ( [  b raw ] ) ( b raw );
   intros arg_raw;
   let π := get_π in
   let Σ := get_Σ in

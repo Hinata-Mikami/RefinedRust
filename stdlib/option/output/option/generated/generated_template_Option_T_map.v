@@ -37,7 +37,7 @@ Ltac Option_T_map_prelude :=
   let op := fresh "op" in
   let self := fresh "self" in
   let f := fresh "f" in
-  start_function "Option_T_map" ϝ ( [] ) ( [T_ty [U_ty [F_ty [] ] ] ] ) ( [ [  op self ] f ] ) (  op self f );
+  start_function "Option_T_map" ϝ ( [] ) ( [T_ty [U_ty [F_ty [] ] ] ] ) ( [ [  op self ] f ] ) ( op self f );
   intros arg_self arg_f;
   let π := get_π in
   let Σ := get_Σ in

@@ -21,7 +21,7 @@ Ltac u128asMulAssignREFu128_mul_assign_prelude :=
   let ϝ := fresh "ϝ" in
   let ulft_1 := fresh "ulft_1" in
   let ulft_2 := fresh "ulft_2" in
-  start_function "u128asMulAssignREFu128_mul_assign" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [] ) ( ? ) (  );
+  start_function "u128asMulAssignREFu128_mul_assign" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [] ) ( ? );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in

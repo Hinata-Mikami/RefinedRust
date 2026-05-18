@@ -35,7 +35,7 @@ Ltac adapters_map_Map_IF_new_prelude :=
   let F_ty := fresh "F_ty" in
   let iter := fresh "iter" in
   let f := fresh "f" in
-  start_function "adapters_map_Map_IF_new" ϝ ( [] ) ( [I_ty [F_ty [] ] ] ) ( [  iter f ] ) (  iter f );
+  start_function "adapters_map_Map_IF_new" ϝ ( [] ) ( [I_ty [F_ty [] ] ] ) ( [  iter f ] ) ( iter f );
   intros arg_iter arg_f;
   let π := get_π in
   let Σ := get_Σ in

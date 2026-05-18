@@ -18,7 +18,7 @@ Ltac i32asSub_sub_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
-  start_function "i32asSub_sub" ϝ ( [] ) ( [] ) ( ? ) (  );
+  start_function "i32asSub_sub" ϝ ( [] ) ( [] ) ( ? );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in

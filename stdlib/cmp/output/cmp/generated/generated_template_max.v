@@ -27,7 +27,7 @@ Ltac max_prelude :=
   let T_ty := fresh "T_ty" in
   let v1 := fresh "v1" in
   let v2 := fresh "v2" in
-  start_function "max" ϝ ( [] ) ( [T_ty [] ] ) ( [  v1 v2 ] ) (  v1 v2 );
+  start_function "max" ϝ ( [] ) ( [T_ty [] ] ) ( [  v1 v2 ] ) ( v1 v2 );
   intros arg_v1 arg_v2;
   let π := get_π in
   let Σ := get_Σ in

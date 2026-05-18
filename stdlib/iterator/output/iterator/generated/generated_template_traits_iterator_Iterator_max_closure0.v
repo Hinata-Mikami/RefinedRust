@@ -40,7 +40,7 @@ Ltac traits_iterator_Iterator_max_closure0_prelude :=
   let __γclos := fresh "__γclos" in
   let a := fresh "a" in
   let b := fresh "b" in
-  start_function "traits_iterator_Iterator_max_closure0" ϝ ( [ulft_1 [ulft_2 [ulft3 [] ] ] ] ) ( [Self_ty [traits_iterator_Iterator_Self_Item_ty [] ] ] ) ( [ [  __γclos a ] b ] ) (  __γclos a b );
+  start_function "traits_iterator_Iterator_max_closure0" ϝ ( [ulft_1 [ulft_2 [ulft3 [] ] ] ] ) ( [Self_ty [traits_iterator_Iterator_Self_Item_ty [] ] ] ) ( [ [  __γclos a ] b ] ) ( __γclos a b );
   intros arg___1 arg_a arg_b;
   let π := get_π in
   let Σ := get_Σ in

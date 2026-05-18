@@ -31,7 +31,7 @@ Ltac const_ptr_wrapping_byte_sub_prelude :=
   let T_ty := fresh "T_ty" in
   let l := fresh "l" in
   let count := fresh "count" in
-  start_function "const_ptr_wrapping_byte_sub" ϝ ( [] ) ( [T_ty [] ] ) ( [  l count ] ) (  l count );
+  start_function "const_ptr_wrapping_byte_sub" ϝ ( [] ) ( [T_ty [] ] ) ( [  l count ] ) ( l count );
   intros arg_l arg_count;
   let π := get_π in
   let Σ := get_Σ in

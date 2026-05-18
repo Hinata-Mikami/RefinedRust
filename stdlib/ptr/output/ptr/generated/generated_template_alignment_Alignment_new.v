@@ -28,7 +28,7 @@ Ltac alignment_Alignment_new_prelude :=
   iStartProof;
   let ϝ := fresh "ϝ" in
   let align := fresh "align" in
-  start_function "alignment_Alignment_new" ϝ ( [] ) ( [] ) (  align ) (  align );
+  start_function "alignment_Alignment_new" ϝ ( [] ) ( [] ) (  align ) ( align );
   intros arg_align;
   let π := get_π in
   let Σ := get_Σ in

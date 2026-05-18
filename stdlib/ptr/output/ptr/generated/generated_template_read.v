@@ -29,7 +29,7 @@ Ltac read_prelude :=
   let k := fresh "k" in
   let ty := fresh "ty" in
   let src := fresh "src" in
-  start_function "read" ϝ ( [] ) ( [T_ty [] ] ) ( [ [  k ty ] src ] ) (  k ty src );
+  start_function "read" ϝ ( [] ) ( [T_ty [] ] ) ( [ [  k ty ] src ] ) ( k ty src );
   intros arg_src;
   let π := get_π in
   let Σ := get_Σ in

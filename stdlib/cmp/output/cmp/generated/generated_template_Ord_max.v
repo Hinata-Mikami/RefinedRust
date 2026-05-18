@@ -27,7 +27,7 @@ Ltac Ord_max_prelude :=
   let Self_ty := fresh "Self_ty" in
   let self := fresh "self" in
   let other := fresh "other" in
-  start_function "Ord_max" ϝ ( [] ) ( [Self_ty [] ] ) ( [  self other ] ) (  self other );
+  start_function "Ord_max" ϝ ( [] ) ( [Self_ty [] ] ) ( [  self other ] ) ( self other );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in

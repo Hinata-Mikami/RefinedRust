@@ -24,7 +24,7 @@ Ltac Ordering_is_gt_prelude :=
   iStartProof;
   let ϝ := fresh "ϝ" in
   let self := fresh "self" in
-  start_function "Ordering_is_gt" ϝ ( [] ) ( [] ) (  self ) (  self );
+  start_function "Ordering_is_gt" ϝ ( [] ) ( [] ) (  self ) ( self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in

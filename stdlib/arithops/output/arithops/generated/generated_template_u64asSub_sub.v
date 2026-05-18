@@ -18,7 +18,7 @@ Ltac u64asSub_sub_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
-  start_function "u64asSub_sub" ϝ ( [] ) ( [] ) ( ? ) (  );
+  start_function "u64asSub_sub" ϝ ( [] ) ( [] ) ( ? );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in

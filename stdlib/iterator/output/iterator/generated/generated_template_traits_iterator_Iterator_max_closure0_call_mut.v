@@ -38,7 +38,7 @@ Ltac traits_iterator_Iterator_max_closure0_call_mut_prelude :=
   let _ref_lft := fresh "_ref_lft" in
   let Self_ty := fresh "Self_ty" in
   let traits_iterator_Iterator_Self_Item_ty := fresh "traits_iterator_Iterator_Self_Item_ty" in
-  start_function "traits_iterator_Iterator_max_closure0_call_mut" ϝ ( [ulft_1 [ulft_2 [_ref_lft [] ] ] ] ) ( [Self_ty [traits_iterator_Iterator_Self_Item_ty [] ] ] ) ( ? ) (  );
+  start_function "traits_iterator_Iterator_max_closure0_call_mut" ϝ ( [ulft_1 [ulft_2 [_ref_lft [] ] ] ] ) ( [Self_ty [traits_iterator_Iterator_Self_Item_ty [] ] ] ) ( ? );
   intros arg_self arg_args;
   let π := get_π in
   let Σ := get_Σ in

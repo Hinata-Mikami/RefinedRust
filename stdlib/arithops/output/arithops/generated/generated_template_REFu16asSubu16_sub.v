@@ -19,7 +19,7 @@ Ltac REFu16asSubu16_sub_prelude :=
   iStartProof;
   let ϝ := fresh "ϝ" in
   let ulft_1 := fresh "ulft_1" in
-  start_function "REFu16asSubu16_sub" ϝ ( [ulft_1 [] ] ) ( [] ) ( ? ) (  );
+  start_function "REFu16asSubu16_sub" ϝ ( [ulft_1 [] ] ) ( [] ) ( ? );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in

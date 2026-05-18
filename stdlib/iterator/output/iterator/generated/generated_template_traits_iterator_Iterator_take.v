@@ -36,7 +36,7 @@ Ltac traits_iterator_Iterator_take_prelude :=
   let p := fresh "p" in
   let self := fresh "self" in
   let n := fresh "n" in
-  start_function "traits_iterator_Iterator_take" ϝ ( [] ) ( [Self_ty [Item_ty [] ] ] ) ( [ [  p self ] n ] ) (  p self n );
+  start_function "traits_iterator_Iterator_take" ϝ ( [] ) ( [Self_ty [Item_ty [] ] ] ) ( [ [  p self ] n ] ) ( p self n );
   intros arg_self arg_n;
   let π := get_π in
   let Σ := get_Σ in

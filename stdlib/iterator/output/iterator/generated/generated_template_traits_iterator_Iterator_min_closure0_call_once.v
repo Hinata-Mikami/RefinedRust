@@ -37,7 +37,7 @@ Ltac traits_iterator_Iterator_min_closure0_call_once_prelude :=
   let ulft_2 := fresh "ulft_2" in
   let Self_ty := fresh "Self_ty" in
   let traits_iterator_Iterator_Self_Item_ty := fresh "traits_iterator_Iterator_Self_Item_ty" in
-  start_function "traits_iterator_Iterator_min_closure0_call_once" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [Self_ty [traits_iterator_Iterator_Self_Item_ty [] ] ] ) ( ? ) (  );
+  start_function "traits_iterator_Iterator_min_closure0_call_once" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [Self_ty [traits_iterator_Iterator_Self_Item_ty [] ] ] ) ( ? );
   intros arg_self arg_args;
   let π := get_π in
   let Σ := get_Σ in

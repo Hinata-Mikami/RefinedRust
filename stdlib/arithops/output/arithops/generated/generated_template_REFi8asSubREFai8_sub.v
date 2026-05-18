@@ -20,7 +20,7 @@ Ltac REFi8asSubREFai8_sub_prelude :=
   let ϝ := fresh "ϝ" in
   let ulft_a := fresh "ulft_a" in
   let ulft_2 := fresh "ulft_2" in
-  start_function "REFi8asSubREFai8_sub" ϝ ( [ulft_a [ulft_2 [] ] ] ) ( [] ) ( ? ) (  );
+  start_function "REFi8asSubREFai8_sub" ϝ ( [ulft_a [ulft_2 [] ] ] ) ( [] ) ( ? );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in
