@@ -34,6 +34,7 @@ fn build_subproject(project_path: &str) {
 }
 
 #[cfg(test)]
+#[expect(clippy::inline_modules)]
 mod tests {
     use super::*;
 

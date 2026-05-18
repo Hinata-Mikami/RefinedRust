@@ -349,7 +349,7 @@ pub fn trust_debug() -> bool {
 }
 
 #[cfg(test)]
-#[expect(clippy::bool_assert_comparison)]
+#[expect(clippy::bool_assert_comparison, clippy::inline_modules)]
 mod tests {
     use std::sync::Once;
 
@@ -361,7 +361,10 @@ mod tests {
     // There is a race between `std::env::set_var()` and `SETTINGS`.
     static SETUP_ENV: Once = Once::new();
 
-    fn setup<F: FnOnce(RwLockWriteGuard<'_, Config>)>(test: F) {
+    fn setup<F>(test: F)
+    where
+        F: FnOnce(RwLockWriteGuard<'_, Config>),
+    {
         SETUP_ENV.call_once(|| {
             // Safety: This block is single-threaded
             #[expect(clippy::multiple_unsafe_ops_per_block)]

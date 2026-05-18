@@ -488,6 +488,7 @@ pub enum Vernac {
 pub struct Attribute(String);
 
 #[cfg(test)]
+#[expect(clippy::inline_modules)]
 mod tests {
     use super::*;
 

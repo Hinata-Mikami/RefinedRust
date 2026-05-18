@@ -199,6 +199,7 @@ impl fmt::Display for ExportList<'_> {
 }
 
 #[cfg(test)]
+#[expect(clippy::inline_modules)]
 mod tests {
     use indoc::indoc;
 

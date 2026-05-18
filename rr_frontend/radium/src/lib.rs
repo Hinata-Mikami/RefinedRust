@@ -70,6 +70,7 @@ macro_rules! write_list {
 }
 
 #[cfg(test)]
+#[expect(clippy::inline_modules)]
 mod tests {
     use std::fmt::Write as _;
 
