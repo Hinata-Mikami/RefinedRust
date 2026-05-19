@@ -15,6 +15,7 @@ use super::TX;
 use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::error::Message;
+use crate::regions::AnnotationGenerator;
 use crate::{search, types};
 
 #[expect(clippy::multiple_inherent_impl)]
@@ -136,6 +137,35 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 ..
             } => {
                 trace!("translating Call {:?}", term);
+                if let Some(drop_borrow) = self.proc.synthetic_drop_borrow_for_drop_call(loc) {
+                    // TODO: This call is a drop-elaborated borrow of the dropped place.
+                    // Eventually translate the explicit `Drop::drop` call and model the
+                    // unwind-edge lifetime cleanup.
+                    let Some(target) = target else {
+                        return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                            Message::UnsupportedFeature(format!(
+                                "drop-elaborated Drop::drop call without normal target at {loc:?}"
+                            )),
+                        )));
+                    };
+                    if let Some(place) = self.proc.synthetic_drop_borrow_place(drop_borrow) {
+                        let ty = self.shape_type_of_place(&place);
+                        self.register_drop_shim_for(ty.ty);
+                    }
+
+                    let mut annotation_plan = self.annotations.prepare_terminator_annotation_plan(
+                        &self.ty_translator,
+                        dying_loans.into_iter(),
+                    );
+                    let mut prim_stmts = annotation_plan.take_pre_stmts();
+                    let mut end_lft_plan =
+                        AnnotationGenerator::prepare_synthetic_drop_borrow_end_annotation_plan(drop_borrow);
+                    end_lft_plan.push_pre_stmts(&mut prim_stmts);
+
+                    let stmt = self.translate_goto_like(&loc, *target)?;
+                    return Ok(code::Stmt::Prim(prim_stmts, Box::new(stmt)));
+                }
+
                 if self.is_call_destination_panic(func) {
                     info!("Replacing call to std::panicking::begin_panic with Stuck");
                     return Ok(code::Stmt::Stuck);

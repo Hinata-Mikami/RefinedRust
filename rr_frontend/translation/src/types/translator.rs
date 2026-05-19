@@ -241,10 +241,9 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
 
     const fn param_scope(&self) -> &scope::Params<'tcx, 'def> {
         match &self {
-            Self::InFunction(state) => &state.generic_scope,
+            Self::InFunction(state) | Self::SyntypeInFunction { state, .. } => &state.generic_scope,
             Self::TranslateAdt(state) => state.scope,
             Self::CalleeTranslation(state) => state.param_scope,
-            Self::SyntypeInFunction { state, .. } => &state.generic_scope,
             Self::TraitReqs(state) => &state.scope,
         }
     }

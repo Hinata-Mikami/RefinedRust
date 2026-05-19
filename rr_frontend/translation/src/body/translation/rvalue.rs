@@ -13,6 +13,7 @@ use super::TX;
 use crate::base::*;
 use crate::body::translation::ExprWithInfo;
 use crate::error::Message;
+use crate::regions::AnnotationGenerator;
 
 #[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
@@ -326,13 +327,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let translated_pl = self.translate_place(pl)?;
                 let translated_bk = TX::translate_borrow_kind(self.tcx, *bk)?;
                 let ty_annot = self.get_type_annotation_for_borrow(*bk, pl)?;
-                let region = self.proc.source_borrow_region_for_target(loc).unwrap_or(*region);
-                let lft_plan =
-                    self.annotations.prepare_borrow_lifetime_plan(&self.ty_translator, loc, region);
+                let lft = if let Some(drop_borrow) = self.proc.synthetic_drop_borrow_for_assignment(loc) {
+                    AnnotationGenerator::synthetic_drop_borrow_lft(drop_borrow)
+                } else {
+                    let region = self.proc.source_borrow_region_for_target(loc).unwrap_or(*region);
+                    self.annotations.prepare_borrow_lifetime_plan(&self.ty_translator, loc, region).lft
+                };
 
                 Ok((
                     code::Expr::Borrow {
-                        lft: lft_plan.lft,
+                        lft,
                         bk: translated_bk,
                         ty: ty_annot,
                         e: Box::new(translated_pl),

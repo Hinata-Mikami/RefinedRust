@@ -135,6 +135,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let always_live = always_storage_live_locals(body);
         // go over local_decls and create the right radium stack layout
         for (local, local_decl) in local_decls.iter_enumerated() {
+            if proc.is_unmentioned_synthetic_local(local) {
+                info!("skipping unmentioned synthetic local {local:?}");
+                continue;
+            }
+
             if proc.is_administrative_alias(local) {
                 info!("skipping synthetic administrative alias local {local:?}");
                 continue;
@@ -142,10 +147,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             let kind = body.local_kind(local);
             let shape_ty: ty::Ty<'tcx> = local_decl.ty;
+            let synthetic_drop_borrow_ty = proc
+                .synthetic_drop_borrow_for_local(local)
+                .map(|borrow| -> Result<specs::Type<'def>, TranslationError> {
+                    let referent_ty = proc.synthetic_drop_borrow_referent_ty(borrow)?;
+                    let translated_referent_ty = ty_translator.translate_type(referent_ty)?;
+                    let lft = AnnotationGenerator::synthetic_drop_borrow_lft(borrow);
+                    Ok(specs::Type::MutRef(Box::new(translated_referent_ty), lft))
+                })
+                .transpose()?;
+
             let ty: ty::Ty<'tcx> = if proc.borrowck_mir().local_decls.get(local).is_some() {
                 proc.region_type_of_local(local)?
             } else {
-                if proc.contains_erased_regions(shape_ty) {
+                if proc.contains_erased_regions(shape_ty) && synthetic_drop_borrow_ty.is_none() {
                     return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(
                         format!("synthetic dropck local {local:?} has erased shape type: {shape_ty:?}"),
                     ))));
@@ -167,7 +182,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             // type:
             info!("Trying to translate type of local {local:?}: {:?}", ty);
-            let tr_ty = ty_translator.translate_type(ty)?;
+            let tr_ty = if let Some(tr_ty) = synthetic_drop_borrow_ty {
+                tr_ty
+            } else {
+                ty_translator.translate_type(ty)?
+            };
             let st = (&tr_ty).into();
 
             let name = Self::make_local_name(body, local, &mut used_names);

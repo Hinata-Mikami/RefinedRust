@@ -12,6 +12,7 @@ use super::TX;
 use crate::base::*;
 use crate::error::Message;
 use crate::procedures;
+use crate::regions::AnnotationGenerator;
 
 #[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
@@ -32,6 +33,25 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             if self.is_box_deref_alias_admin_stmt(stmt) {
                 info!("skipping synthetic Box deref alias statement: {stmt:?}");
                 continue;
+            }
+
+            if let mir::StatementKind::Assign(b) = &stmt.kind {
+                let (plc, val) = b.as_ref();
+                if let Some(drop_borrow) = self.proc.synthetic_drop_borrow_for_assignment(loc) {
+                    let mut annotation_plan = AnnotationGenerator::prepare_synthetic_drop_borrow_annotation_plan(drop_borrow);
+                    annotation_plan.push_pre_stmts(&mut prim_stmts);
+
+                    let plc_ty = self.shape_type_of_place(plc);
+                    let (e, _) = self.translate_rvalue(loc, val)?;
+                    let translated_place = self.translate_place(plc)?;
+                    let synty = self.ty_translator.translate_type_to_syn_type(plc_ty.ty)?;
+                    prim_stmts.push(code::PrimStmt::Assign {
+                        ot: synty.into(),
+                        e1: Box::new(translated_place),
+                        e2: Box::new(e),
+                    });
+                    continue;
+                }
             }
 
             let mut statement_annotation_plan = self.annotations.prepare_statement_annotation_plan(

@@ -11,7 +11,9 @@ use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::type_ir::TypeFoldable as _;
 
 use crate::base::TranslationError;
-use crate::environment::mir_mapper::{MappingResult, Origin, map_drop_elaborated_to_borrow_checked};
+use crate::environment::mir_mapper::{
+    MappingResult, Origin, SyntheticDropBorrow, map_drop_elaborated_to_borrow_checked,
+};
 use crate::environment::mir_utils::real_edges::RealEdges;
 use crate::environment::{loops, mir_storage};
 use crate::error::Message;
@@ -58,7 +60,7 @@ impl<'tcx> Procedure<'tcx> {
         let borrowck_mir = &mir_storage::retrieve_mir_body(tcx, local_def_id).as_ref().unwrap().body;
         let dropck_mir_ref = tcx.mir_drops_elaborated_and_const_checked(local_def_id);
         let dropck_mir_ref = dropck_mir_ref.borrow();
-        let mapping = map_drop_elaborated_to_borrow_checked(borrowck_mir, &dropck_mir_ref);
+        let mapping = map_drop_elaborated_to_borrow_checked(tcx, borrowck_mir, &dropck_mir_ref);
         let dropck_mir = dropck_mir_ref.clone();
         drop(dropck_mir_ref);
 
@@ -185,6 +187,173 @@ impl<'tcx> Procedure<'tcx> {
         self.mapping.is_box_deref_alias(local) || self.copy_aliases.contains_key(&local)
     }
 
+    #[must_use]
+    pub(crate) fn synthetic_drop_borrow_for_assignment(
+        &self,
+        loc: mir::Location,
+    ) -> Option<SyntheticDropBorrow> {
+        self.mapping.synthetic_drop_borrow_for_borrow_loc((loc.block, loc.statement_index))
+    }
+
+    #[must_use]
+    pub(crate) fn synthetic_drop_borrow_for_drop_call(
+        &self,
+        loc: mir::Location,
+    ) -> Option<SyntheticDropBorrow> {
+        self.mapping.synthetic_drop_borrow_for_drop_call_loc((loc.block, loc.statement_index))
+    }
+
+    #[must_use]
+    pub(crate) fn synthetic_drop_borrow_for_local(&self, local: mir::Local) -> Option<SyntheticDropBorrow> {
+        self.mapping.synthetic_drop_borrow_for_local(local)
+    }
+
+    pub(crate) fn synthetic_drop_borrow_place(
+        &self,
+        borrow: SyntheticDropBorrow,
+    ) -> Option<mir::Place<'tcx>> {
+        let (bb, idx) = borrow.borrow_loc();
+        let stmt = self.dropck_mir.basic_blocks[bb].statements.get(idx)?;
+        let mir::StatementKind::Assign(assign) = &stmt.kind else {
+            return None;
+        };
+        let mir::Rvalue::Ref(_, mir::BorrowKind::Mut { .. }, place) = assign.as_ref().1 else {
+            return None;
+        };
+        Some(place)
+    }
+
+    pub(crate) fn synthetic_drop_borrow_referent_ty(
+        &self,
+        borrow: SyntheticDropBorrow,
+    ) -> Result<ty::Ty<'tcx>, TranslationError> {
+        let Some(place) = self.synthetic_drop_borrow_place(borrow) else {
+            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                format!("synthetic drop borrow {:?} has no borrow place", borrow.synthetic_ref_local()),
+            ))));
+        };
+        Ok(self.region_type_of_place(&place)?.ty)
+    }
+
+    #[must_use]
+    pub(crate) fn is_unmentioned_synthetic_local(&self, local: mir::Local) -> bool {
+        self.borrowck_mir.local_decls.get(local).is_none() && !self.dropck_mir_mentions_local(local)
+    }
+
+    fn dropck_mir_mentions_local(&self, local: mir::Local) -> bool {
+        self.dropck_mir.basic_blocks.iter().any(|bb| {
+            bb.statements.iter().any(|stmt| Self::statement_mentions_local(stmt, local))
+                || Self::terminator_mentions_local(bb.terminator(), local)
+        })
+    }
+
+    fn statement_mentions_local(stmt: &mir::Statement<'tcx>, local: mir::Local) -> bool {
+        match &stmt.kind {
+            mir::StatementKind::Assign(assign) => {
+                let (place, rvalue) = assign.as_ref();
+                Self::place_mentions_local(place, local) || Self::rvalue_mentions_local(rvalue, local)
+            },
+            mir::StatementKind::StorageLive(l) | mir::StatementKind::StorageDead(l) => *l == local,
+            mir::StatementKind::FakeRead(box (_, place))
+            | mir::StatementKind::PlaceMention(box place)
+            | mir::StatementKind::BackwardIncompatibleDropHint {
+                place: box place, ..
+            } => Self::place_mentions_local(place, local),
+            mir::StatementKind::SetDiscriminant { place, .. } => Self::place_mentions_local(place, local),
+            mir::StatementKind::AscribeUserType(box (place, _), _) => {
+                Self::place_mentions_local(place, local)
+            },
+            mir::StatementKind::Intrinsic(_)
+            | mir::StatementKind::Coverage(_)
+            | mir::StatementKind::ConstEvalCounter
+            | mir::StatementKind::Nop => false,
+        }
+    }
+
+    fn terminator_mentions_local(term: &mir::Terminator<'tcx>, local: mir::Local) -> bool {
+        match &term.kind {
+            mir::TerminatorKind::SwitchInt { discr, .. } => Self::operand_mentions_local(discr, local),
+            mir::TerminatorKind::Drop { place, .. } => Self::place_mentions_local(place, local),
+            mir::TerminatorKind::Call {
+                func,
+                args,
+                destination,
+                ..
+            } => {
+                Self::operand_mentions_local(func, local)
+                    || args.iter().any(|arg| Self::operand_mentions_local(&arg.node, local))
+                    || Self::place_mentions_local(destination, local)
+            },
+            mir::TerminatorKind::Assert { cond, .. } => Self::operand_mentions_local(cond, local),
+            mir::TerminatorKind::InlineAsm { operands, .. } => operands.iter().any(|operand| match operand {
+                mir::InlineAsmOperand::In { value, .. } => Self::operand_mentions_local(value, local),
+                mir::InlineAsmOperand::Out { place, .. } => {
+                    place.as_ref().is_some_and(|place| Self::place_mentions_local(place, local))
+                },
+                mir::InlineAsmOperand::InOut {
+                    in_value,
+                    out_place,
+                    ..
+                } => {
+                    Self::operand_mentions_local(in_value, local)
+                        || out_place.as_ref().is_some_and(|place| Self::place_mentions_local(place, local))
+                },
+                mir::InlineAsmOperand::Const { .. }
+                | mir::InlineAsmOperand::SymFn { .. }
+                | mir::InlineAsmOperand::SymStatic { .. }
+                | mir::InlineAsmOperand::Label { .. } => false,
+            }),
+            mir::TerminatorKind::Goto { .. }
+            | mir::TerminatorKind::Return
+            | mir::TerminatorKind::Unreachable
+            | mir::TerminatorKind::FalseEdge { .. }
+            | mir::TerminatorKind::FalseUnwind { .. }
+            | mir::TerminatorKind::Yield { .. }
+            | mir::TerminatorKind::CoroutineDrop
+            | mir::TerminatorKind::UnwindResume
+            | mir::TerminatorKind::UnwindTerminate(_)
+            | mir::TerminatorKind::TailCall { .. } => false,
+        }
+    }
+
+    fn rvalue_mentions_local(rvalue: &mir::Rvalue<'tcx>, local: mir::Local) -> bool {
+        match rvalue {
+            mir::Rvalue::Use(operand, _)
+            | mir::Rvalue::Repeat(operand, _)
+            | mir::Rvalue::WrapUnsafeBinder(operand, _)
+            | mir::Rvalue::UnaryOp(_, operand)
+            | mir::Rvalue::Cast(_, operand, _) => Self::operand_mentions_local(operand, local),
+            mir::Rvalue::Ref(_, _, place)
+            | mir::Rvalue::RawPtr(_, place)
+            | mir::Rvalue::Reborrow(_, _, place)
+            | mir::Rvalue::Discriminant(place)
+            | mir::Rvalue::CopyForDeref(place) => Self::place_mentions_local(place, local),
+            mir::Rvalue::BinaryOp(_, operands) => {
+                Self::operand_mentions_local(&operands.as_ref().0, local)
+                    || Self::operand_mentions_local(&operands.as_ref().1, local)
+            },
+            mir::Rvalue::Aggregate(_, operands) => {
+                operands.iter().any(|operand| Self::operand_mentions_local(operand, local))
+            },
+            mir::Rvalue::ThreadLocalRef(_) => false,
+        }
+    }
+
+    fn operand_mentions_local(operand: &mir::Operand<'tcx>, local: mir::Local) -> bool {
+        match operand {
+            mir::Operand::Copy(place) | mir::Operand::Move(place) => Self::place_mentions_local(place, local),
+            mir::Operand::Constant(_) | mir::Operand::RuntimeChecks(_) => false,
+        }
+    }
+
+    fn place_mentions_local(place: &mir::Place<'tcx>, local: mir::Local) -> bool {
+        place.local == local
+            || place
+                .projection
+                .iter()
+                .any(|elem| matches!(elem, mir::ProjectionElem::Index(l) if l == local))
+    }
+
     /// Get the typing context.
     #[must_use]
     pub(crate) const fn get_tcx(&self) -> ty::TyCtxt<'tcx> {
@@ -231,6 +400,23 @@ impl<'tcx> Procedure<'tcx> {
     pub(crate) fn region_type_of_local(&self, local: mir::Local) -> Result<ty::Ty<'tcx>, TranslationError> {
         if let Some(decl) = self.borrowck_mir.local_decls.get(local) {
             return self.ensure_region_type(decl.ty, || format!("local {local:?}"));
+        }
+
+        if let Some(borrow) = self.mapping.synthetic_drop_borrow_for_local(local) {
+            let place_ty = self.synthetic_drop_borrow_referent_ty(borrow)?;
+            let ty = self.dropck_mir.local_decls.get(local).map(|decl| decl.ty).ok_or_else(|| {
+                TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                    "region-sensitive type requested for unknown synthetic drop borrow local {local:?}"
+                ))))
+            })?;
+            let ty::TyKind::Ref(region, _, mutability) = ty.kind() else {
+                return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                    Message::UnsupportedFeature(format!(
+                        "synthetic drop borrow local {local:?} has non-reference type: {ty:?}"
+                    )),
+                )));
+            };
+            return Ok(ty::Ty::new_ref(self.tcx, *region, place_ty, *mutability));
         }
 
         if let Some(source) = self.copy_aliases.get(&local) {

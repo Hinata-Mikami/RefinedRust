@@ -48,8 +48,10 @@ use rr_rustc_interface::data_structures::fx::{FxHashMap, FxHashSet};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::mir::{self, BasicBlock, Body, Local};
 use rr_rustc_interface::middle::ty;
+use rr_rustc_interface::span;
 
 use crate::environment::borrowck::facts;
+use crate::search;
 
 pub type TargetLoc = (BasicBlock, usize);
 pub type SourceLoc = (BasicBlock, usize);
@@ -82,6 +84,42 @@ pub struct BoxDerefAlias {
     source_loc: Option<SourceLoc>,
 }
 
+/// A drop-elaborated borrow introduced to call `Drop::drop` explicitly.
+///
+/// Rustc can lower a borrowck `Drop(_box)` terminator to target MIR that first
+/// creates a synthetic `&mut _box` local and then calls `<Box<_> as Drop>::drop`.
+/// The synthetic borrow has erased regions in dropck MIR, so body translation
+/// needs a dedicated hook instead of treating it like an ordinary borrowck loan.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub struct SyntheticDropBorrow {
+    synthetic_ref_local: Local,
+    borrow_loc: TargetLoc,
+    drop_call_loc: TargetLoc,
+    source_drop_loc: SourceLoc,
+}
+
+impl SyntheticDropBorrow {
+    #[must_use]
+    pub const fn synthetic_ref_local(self) -> Local {
+        self.synthetic_ref_local
+    }
+
+    #[must_use]
+    pub const fn borrow_loc(self) -> TargetLoc {
+        self.borrow_loc
+    }
+
+    #[must_use]
+    pub const fn drop_call_loc(self) -> TargetLoc {
+        self.drop_call_loc
+    }
+
+    #[must_use]
+    pub const fn source_drop_loc(self) -> SourceLoc {
+        self.source_drop_loc
+    }
+}
+
 impl BoxDerefAlias {
     #[must_use]
     pub const fn alias_local(self) -> Local {
@@ -106,6 +144,9 @@ pub struct MappingResult {
     pub(crate) target_points_to_source: FxHashMap<TargetPoint, SourcePoint>,
     pub unmapped_targets: Vec<TargetLoc>,
     box_deref_aliases: FxHashMap<Local, BoxDerefAlias>,
+    synthetic_drop_borrows_by_local: FxHashMap<Local, SyntheticDropBorrow>,
+    synthetic_drop_borrows_by_borrow_loc: FxHashMap<TargetLoc, SyntheticDropBorrow>,
+    synthetic_drop_borrows_by_drop_call_loc: FxHashMap<TargetLoc, SyntheticDropBorrow>,
 }
 
 impl MappingResult {
@@ -134,6 +175,21 @@ impl MappingResult {
     /// dereferences.
     pub fn box_deref_aliases(&self) -> impl Iterator<Item = BoxDerefAlias> + '_ {
         self.box_deref_aliases.values().copied()
+    }
+
+    #[must_use]
+    pub fn synthetic_drop_borrow_for_local(&self, local: Local) -> Option<SyntheticDropBorrow> {
+        self.synthetic_drop_borrows_by_local.get(&local).copied()
+    }
+
+    #[must_use]
+    pub fn synthetic_drop_borrow_for_borrow_loc(&self, loc: TargetLoc) -> Option<SyntheticDropBorrow> {
+        self.synthetic_drop_borrows_by_borrow_loc.get(&loc).copied()
+    }
+
+    #[must_use]
+    pub fn synthetic_drop_borrow_for_drop_call_loc(&self, loc: TargetLoc) -> Option<SyntheticDropBorrow> {
+        self.synthetic_drop_borrows_by_drop_call_loc.get(&loc).copied()
     }
 
     #[must_use]
@@ -170,8 +226,12 @@ impl MappingResult {
 }
 
 #[must_use]
-pub fn map_drop_elaborated_to_borrow_checked<'tcx>(bc: &Body<'tcx>, de: &Body<'tcx>) -> MappingResult {
-    let mut cx = Mapper::new(bc, de);
+pub(crate) fn map_drop_elaborated_to_borrow_checked<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    bc: &Body<'tcx>,
+    de: &Body<'tcx>,
+) -> MappingResult {
+    let mut cx = Mapper::new(tcx, bc, de);
     cx.align_blocks(mir::START_BLOCK, mir::START_BLOCK);
     cx.finish()
 }
@@ -290,13 +350,16 @@ enum NormalizedPlaceElem {
 }
 
 struct Mapper<'a, 'tcx> {
+    tcx: ty::TyCtxt<'tcx>,
     bc: &'a Body<'tcx>,
     de: &'a Body<'tcx>,
+    drop_drop_did: Option<DefId>,
     source_local_count: usize,
     target_to_source: FxHashMap<TargetLoc, Origin>,
     target_point_phases: FxHashMap<TargetLoc, PointPhase>,
     visited: FxHashSet<(BasicBlock, BasicBlock)>,
     box_deref_aliases: FxHashMap<Local, InternalBoxDerefAlias>,
+    synthetic_drop_borrows: FxHashMap<Local, SyntheticDropBorrow>,
     copy_aliases: FxHashMap<Local, NormalizedPlace>,
     bc_predecessors: FxHashMap<BasicBlock, Vec<BasicBlock>>,
 }
@@ -358,21 +421,26 @@ enum PointPhaseKind {
 }
 
 impl<'a, 'tcx> Mapper<'a, 'tcx> {
-    fn new(bc: &'a Body<'tcx>, de: &'a Body<'tcx>) -> Self {
+    fn new(tcx: ty::TyCtxt<'tcx>, bc: &'a Body<'tcx>, de: &'a Body<'tcx>) -> Self {
         Self {
+            tcx,
             bc,
             de,
+            drop_drop_did: resolve_drop_drop_did(tcx),
             source_local_count: bc.local_decls.len(),
             target_to_source: FxHashMap::default(),
             target_point_phases: FxHashMap::default(),
             visited: FxHashSet::default(),
             box_deref_aliases: FxHashMap::default(),
+            synthetic_drop_borrows: FxHashMap::default(),
             copy_aliases: FxHashMap::default(),
             bc_predecessors: compute_predecessors(bc),
         }
     }
 
-    fn finish(self) -> MappingResult {
+    fn finish(mut self) -> MappingResult {
+        self.collect_synthetic_drop_borrows_from_mapping();
+
         let mut unmapped_targets = Vec::new();
         for (bb, data) in self.de.basic_blocks.iter_enumerated() {
             for idx in 0..=data.statements.len() {
@@ -391,6 +459,10 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         let mut target_to_source_entries: Vec<_> = self.target_to_source.iter().collect();
         target_to_source_entries.sort_by_key(|((bb, idx), _)| (bb.as_u32(), *idx));
         for ((bb, idx), origin) in target_to_source_entries {
+            if target_point_phases.contains_key(&(*bb, *idx)) {
+                continue;
+            }
+
             if *origin == Origin::Inserted
                 && let Some(source) = self.next_mapped_source_after(*bb, *idx)
             {
@@ -439,6 +511,79 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             target_points_to_source,
             unmapped_targets,
             box_deref_aliases,
+            synthetic_drop_borrows_by_local: self.synthetic_drop_borrows.clone(),
+            synthetic_drop_borrows_by_borrow_loc: self
+                .synthetic_drop_borrows
+                .values()
+                .map(|borrow| (borrow.borrow_loc(), *borrow))
+                .collect(),
+            synthetic_drop_borrows_by_drop_call_loc: self
+                .synthetic_drop_borrows
+                .values()
+                .map(|borrow| (borrow.drop_call_loc(), *borrow))
+                .collect(),
+        }
+    }
+
+    fn collect_synthetic_drop_borrows_from_mapping(&mut self) {
+        let entries: Vec<_> =
+            self.target_to_source.iter().map(|(target, origin)| (*target, *origin)).collect();
+        for ((bb_t, idx_t), origin) in entries {
+            let Some((bb_s, idx_s)) = origin_source_loc(origin) else {
+                continue;
+            };
+            if idx_t != self.de.basic_blocks[bb_t].statements.len()
+                || idx_s != self.bc.basic_blocks[bb_s].statements.len()
+            {
+                continue;
+            }
+
+            let mir::TerminatorKind::Drop {
+                place: source_place,
+                ..
+            } = self.bc.basic_blocks[bb_s].terminator().kind
+            else {
+                continue;
+            };
+            let source_place = Self::normalize_source_place(source_place);
+
+            let mir::TerminatorKind::Call { func, args, .. } = &self.de.basic_blocks[bb_t].terminator().kind
+            else {
+                continue;
+            };
+            if !self.is_drop_drop_call(func) {
+                continue;
+            }
+            if args.len() != 1 {
+                continue;
+            }
+            let mir::Operand::Move(arg_place) = args[0].node else {
+                continue;
+            };
+            if !arg_place.projection.is_empty() || self.synthetic_drop_borrows.contains_key(&arg_place.local)
+            {
+                continue;
+            }
+
+            let Some((borrow_idx, borrowed_place)) =
+                self.find_synthetic_drop_borrow_stmt(bb_t, arg_place.local)
+            else {
+                continue;
+            };
+            if borrowed_place != source_place {
+                continue;
+            }
+
+            let src_drop = (bb_s, idx_s);
+            let borrow_loc = (bb_t, borrow_idx);
+            self.synthetic_drop_borrows.insert(arg_place.local, SyntheticDropBorrow {
+                synthetic_ref_local: arg_place.local,
+                borrow_loc,
+                drop_call_loc: (bb_t, idx_t),
+                source_drop_loc: src_drop,
+            });
+            self.target_point_phases.insert(borrow_loc, PointPhase::PreEffect(src_drop));
+            self.target_point_phases.insert((bb_t, idx_t), PointPhase::Direct(src_drop));
         }
     }
 
@@ -665,6 +810,10 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             return;
         }
 
+        if self.try_align_explicit_drop_call(bb_t, bb_s) {
+            return;
+        }
+
         if self.try_align_open_drop_subgraph(bb_t, bb_s) {
             return;
         }
@@ -826,6 +975,105 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
 
         false
+    }
+
+    fn try_align_explicit_drop_call(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
+        let ds = &self.bc.basic_blocks[bb_s];
+        let mir::TerminatorKind::Drop {
+            place: source_place,
+            target: target_s,
+            unwind: unwind_s,
+            ..
+        } = ds.terminator().kind
+        else {
+            return false;
+        };
+        let source_place = Self::normalize_source_place(source_place);
+
+        let dt = &self.de.basic_blocks[bb_t];
+        let mir::TerminatorKind::Call {
+            func: func_t,
+            args: args_t,
+            target: target_t,
+            unwind: unwind_t,
+            ..
+        } = &dt.terminator().kind
+        else {
+            return false;
+        };
+
+        if !self.is_drop_drop_call(func_t) {
+            return false;
+        }
+
+        if args_t.len() != 1 {
+            return false;
+        }
+        let arg = &args_t[0];
+        let mir::Operand::Move(arg_place) = arg.node else {
+            return false;
+        };
+        if !arg_place.projection.is_empty() {
+            return false;
+        }
+
+        let Some((borrow_idx, borrowed_place)) = self.find_synthetic_drop_borrow_stmt(bb_t, arg_place.local)
+        else {
+            return false;
+        };
+        if borrowed_place != source_place {
+            return false;
+        }
+
+        let Some(target_t) = *target_t else {
+            return false;
+        };
+        let src_drop = (bb_s, ds.statements.len());
+        let drop_call_loc = (bb_t, dt.statements.len());
+        let borrow_loc = (bb_t, borrow_idx);
+        let synthetic_borrow = SyntheticDropBorrow {
+            synthetic_ref_local: arg_place.local,
+            borrow_loc,
+            drop_call_loc,
+            source_drop_loc: src_drop,
+        };
+
+        self.synthetic_drop_borrows.insert(arg_place.local, synthetic_borrow);
+        self.target_to_source.insert(borrow_loc, Origin::Inserted);
+        self.target_point_phases.insert(borrow_loc, PointPhase::PreEffect(src_drop));
+        self.target_to_source.insert(drop_call_loc, Origin::SplitFrom(src_drop));
+        self.target_point_phases.insert(drop_call_loc, PointPhase::Direct(src_drop));
+
+        self.align_blocks(target_t, target_s);
+        if let (Some(bb_t), Some(bb_s)) = (unwind_target(*unwind_t), unwind_target(unwind_s)) {
+            self.align_blocks(bb_t, bb_s);
+        }
+        true
+    }
+
+    fn find_synthetic_drop_borrow_stmt(
+        &self,
+        bb_t: BasicBlock,
+        synthetic_ref_local: Local,
+    ) -> Option<(usize, NormalizedPlace)> {
+        self.de.basic_blocks[bb_t].statements.iter().enumerate().rev().find_map(|(idx, stmt)| {
+            let mir::StatementKind::Assign(box (
+                lhs,
+                mir::Rvalue::Ref(_, mir::BorrowKind::Mut { .. }, place),
+            )) = &stmt.kind
+            else {
+                return None;
+            };
+            (lhs.projection.is_empty() && lhs.local == synthetic_ref_local)
+                .then(|| (idx, self.normalize_place(*place)))
+        })
+    }
+
+    fn is_drop_drop_call(&self, func: &mir::Operand<'tcx>) -> bool {
+        let Some(drop_drop_did) = self.drop_drop_did else {
+            return false;
+        };
+        operand_fn_def_id(func) == Some(drop_drop_did)
     }
 
     fn try_align_open_drop_subgraph(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
@@ -2124,6 +2372,15 @@ fn operand_fn_def_id(operand: &mir::Operand<'_>) -> Option<DefId> {
     };
 
     const_fn_def_id(constant)
+}
+
+fn resolve_drop_drop_did(tcx: ty::TyCtxt<'_>) -> Option<DefId> {
+    let drop_did = search::try_resolve_did(tcx, &["core", "ops", "drop", "Drop"])?;
+    let drop_symbol = span::Symbol::intern("drop");
+    let drop_ident = span::Ident::with_dummy_span(drop_symbol);
+    tcx.associated_items(drop_did)
+        .find_by_ident_and_kind(tcx, drop_ident, ty::AssocTag::Fn, drop_did)
+        .map(|item| item.def_id)
 }
 
 fn const_fn_def_id(constant: &mir::ConstOperand<'_>) -> Option<DefId> {
