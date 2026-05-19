@@ -24,7 +24,7 @@ use crate::error::Message;
 use crate::regions::{RegionBiFolder as _, TyRegionCollectFolder};
 use crate::traits::registry::ResolvedTraitReq;
 use crate::traits::resolution;
-use crate::types::translator::{FunctionState, STInner, TX};
+use crate::types::translator::{CalleeState, FunctionState, STInner, TX};
 use crate::types::tyvars::TyVarFolder;
 use crate::types::{self, scope};
 use crate::{environment, traits};
@@ -64,8 +64,10 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
     ) -> Result<lang::SynType, TranslationError> {
-        let mut scope = self.scope.borrow_mut();
-        let mut state = STInner::InFunction(&mut scope);
+        let scope = self.scope.borrow();
+        let typing_env = ty::TypingEnv::post_analysis(self.translator.tcx(), scope.did);
+        let callee_state = CalleeState::new(&typing_env, &scope.generic_scope);
+        let mut state = STInner::CalleeTranslation(callee_state);
         self.translator.translate_type_to_syn_type(ty, &mut state)
     }
 

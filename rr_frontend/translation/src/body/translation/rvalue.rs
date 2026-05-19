@@ -28,7 +28,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         for o in op {
             let (translated_o, _) = self.translate_operand(o, true)?;
-            let type_of_o = self.get_type_of_operand(o);
+            let type_of_o = self.shape_type_of_operand(o);
             translated_ops.push(translated_o);
             operand_types.push(type_of_o);
         }
@@ -150,7 +150,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         op: &mir::Operand<'tcx>,
         to_ty: ty::Ty<'tcx>,
     ) -> Result<code::Expr, TranslationError> {
-        let op_ty = self.get_type_of_operand(op);
+        let op_ty = self.shape_type_of_operand(op);
         let op_st = self.ty_translator.translate_type_to_syn_type(op_ty)?;
         let op_ot = op_st.into();
 
@@ -272,7 +272,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let is_copy = matches!(op, mir::Operand::Copy(_));
 
                 let translated_place = self.translate_place(&place_kind)?;
-                let ty = self.get_type_of_place(place);
+                let ty = self.shape_type_of_place(place);
 
                 let st = self.ty_translator.translate_type_to_syn_type(ty.ty)?;
 
@@ -360,7 +360,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             mir::Rvalue::UnaryOp(op, operand) => {
                 let (translated_e1, _) = self.translate_operand(operand, true)?;
-                let e1_ty = self.get_type_of_operand(operand);
+                let e1_ty = self.shape_type_of_operand(operand);
                 let e1_st = self.ty_translator.translate_type_to_syn_type(e1_ty)?;
                 let translated_op = TX::translate_unop(self.tcx, *op, e1_ty)?;
 
@@ -375,7 +375,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
 
             mir::Rvalue::Discriminant(pl) => {
-                let ty = self.get_type_of_place(pl);
+                let ty = self.shape_type_of_place(pl);
                 let translated_pl = self.translate_place(pl)?;
                 info!("getting discriminant of {:?} at type {:?}", pl, ty);
 
@@ -431,7 +431,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         //return Ok(None);
         //};
 
-        let ty = self.get_type_of_place(pl);
+        let ty = self.proc.region_type_of_place(pl)?;
 
         // For borrows, we can safely ignore the downcast type -- we cannot borrow a particularly variant
         let translated_ty = self.ty_translator.translate_type(ty.ty)?;
@@ -449,8 +449,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         e1: &mir::Operand<'tcx>,
         e2: &mir::Operand<'tcx>,
     ) -> Result<code::Expr, TranslationError> {
-        let e1_ty = self.get_type_of_operand(e1);
-        let e2_ty = self.get_type_of_operand(e2);
+        let e1_ty = self.shape_type_of_operand(e1);
+        let e2_ty = self.shape_type_of_operand(e2);
         let e1_st = self.ty_translator.translate_type_to_syn_type(e1_ty)?;
         let e2_st = self.ty_translator.translate_type_to_syn_type(e2_ty)?;
 
@@ -532,7 +532,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::BinOp::Offset => {
                 // we need to get the layout of the thing we're offsetting
                 // try to get the type of e1.
-                let e1_ty = self.get_type_of_operand(e1);
+                let e1_ty = self.shape_type_of_operand(e1);
                 let off_ty = TX::get_offset_ty(self.tcx, e1_ty)?;
                 let st = self.ty_translator.translate_type_to_syn_type(off_ty)?;
                 let ly = st.into();

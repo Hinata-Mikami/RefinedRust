@@ -114,7 +114,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         mut annotations: AnnotationGenerator<'a, 'tcx>,
         mut translated_fn: code::FunctionBuilder<'def>,
     ) -> Result<Self, TranslationError> {
-        let body = proc.get_mir();
+        let body = proc.dropck_mir();
 
         // map to translate between locals and the string names we use in radium:
         let mut variable_map: HashMap<mir::Local, String> = HashMap::new();
@@ -132,11 +132,24 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut used_names = HashSet::new();
         let mut arg_tys = Vec::new();
 
-        let always_live = always_storage_live_locals(proc.get_mir());
+        let always_live = always_storage_live_locals(body);
         // go over local_decls and create the right radium stack layout
         for (local, local_decl) in local_decls.iter_enumerated() {
             let kind = body.local_kind(local);
-            let ty: ty::Ty<'tcx> = local_decl.ty;
+            let shape_ty: ty::Ty<'tcx> = local_decl.ty;
+            let ty: ty::Ty<'tcx> = if proc.borrowck_mir().local_decls.get(local).is_some() {
+                proc.region_type_of_local(local)?
+            } else {
+                if proc.contains_erased_regions(shape_ty) {
+                    return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(
+                        format!("synthetic dropck local {local:?} has erased shape type: {shape_ty:?}"),
+                    ))));
+                }
+                info!(
+                    "using dropck shape type for synthetic local {local:?} without erased regions: {shape_ty:?}"
+                );
+                shape_ty
+            };
 
             // check if the type is of a spec fn -- in this case, we can skip this temporary
             if let ty::TyKind::Closure(id, _) = ty.kind()
@@ -162,11 +175,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             match kind {
                 mir::LocalKind::Arg => {
                     translated_fn.code.add_argument(&name, st);
-                    arg_tys.push(ty);
+                    arg_tys.push(proc.region_type_of_local(local)?);
                 },
                 mir::LocalKind::Temp => (),
                 mir::LocalKind::ReturnPointer => {
-                    return_ty = ty;
+                    return_ty = proc.region_type_of_local(local)?;
                     opt_return_name = Some(name);
                 },
             }
@@ -222,7 +235,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             self.annotations.prepare_initial_closure_annotation_stmts(&self.ty_translator);
 
         // translate the function's basic blocks
-        let basic_blocks = &self.proc.get_mir().basic_blocks;
+        let basic_blocks = &self.proc.dropck_mir().basic_blocks;
 
         // first translate the initial basic block; we add some additional annotations to the front
         let initial_bb_idx = mir::BasicBlock::from_u32(0);
@@ -375,7 +388,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn check_place_below_reference(&self, place: &mir::Place<'tcx>) -> bool {
         for (pl, _) in place.iter_projections() {
             // check if the current ty is a reference that we then descend under with proj
-            let cur_ty_kind = pl.ty(&self.proc.get_mir().local_decls, self.tcx).ty.kind();
+            let cur_ty_kind = pl.ty(&self.proc.dropck_mir().local_decls, self.tcx).ty.kind();
             if let ty::TyKind::Ref(_, _, _) = cur_ty_kind {
                 return true;
             }
@@ -432,27 +445,27 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
     }
 
-    /// Get the type of a local in a body.
-    fn get_type_of_local(&self, local: mir::Local) -> Result<ty::Ty<'tcx>, TranslationError> {
-        self.proc.get_mir().local_decls.get(local).map(|decl| decl.ty).ok_or_else(|| {
+    /// Get the shape/layout type of a local in the dropck MIR.
+    fn shape_type_of_local(&self, local: mir::Local) -> Result<ty::Ty<'tcx>, TranslationError> {
+        self.proc.dropck_mir().local_decls.get(local).map(|decl| decl.ty).ok_or_else(|| {
             TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnknownVar(format!("{local:?}"))))
         })
     }
 
-    /// Get the type of a place expression.
-    fn get_type_of_place(&self, pl: &mir::Place<'tcx>) -> mir::PlaceTy<'tcx> {
-        pl.ty(&self.proc.get_mir().local_decls, self.tcx)
+    /// Get the shape/layout type of a place expression in the dropck MIR.
+    fn shape_type_of_place(&self, pl: &mir::Place<'tcx>) -> mir::PlaceTy<'tcx> {
+        pl.ty(&self.proc.dropck_mir().local_decls, self.tcx)
     }
 
-    /// Get the type of an operand.
-    fn get_type_of_operand(&self, op: &mir::Operand<'tcx>) -> ty::Ty<'tcx> {
-        op.ty(&self.proc.get_mir().local_decls, self.tcx)
+    /// Get the shape/layout type of an operand in the dropck MIR.
+    fn shape_type_of_operand(&self, op: &mir::Operand<'tcx>) -> ty::Ty<'tcx> {
+        op.ty(&self.proc.dropck_mir().local_decls, self.tcx)
     }
 
     /// Check if a local is used for a spec closure.
     fn is_spec_closure_local(&self, l: mir::Local) -> Result<Option<DefId>, TranslationError> {
         // check if we should ignore this
-        let local_type = self.get_type_of_local(l)?;
+        let local_type = self.shape_type_of_local(l)?;
 
         trace!("is_spec_closure_local: checking {l:?} of type {local_type:?}");
 

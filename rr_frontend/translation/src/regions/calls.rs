@@ -11,8 +11,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use derive_more::Debug;
 use log::info;
 use radium::{code, coq};
+use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeFolder as _;
-use rr_rustc_interface::middle::{mir, ty};
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
@@ -45,12 +45,10 @@ pub(crate) fn compute_call_regions<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     incl_tracker: &InclusionTracker<'_, '_>,
     substs: &[ty::GenericArg<'tcx>],
-    loc: mir::Location,
+    midpoint: facts::PointIndex,
     num_expected_late_bounds: usize,
 ) -> CallRegions {
     let info = incl_tracker.info();
-
-    let midpoint = info.mid_point(loc);
 
     let mut early_regions = Vec::new();
     for a in substs {
@@ -209,13 +207,10 @@ pub(crate) fn compute_call_regions<'tcx>(
 pub(crate) fn compute_unconstrained_region_annots<'tcx>(
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
-    loc: mir::Location,
+    midpoint: facts::PointIndex,
     unconstrained_regions: BTreeSet<facts::Region>,
     early_region_map: &BTreeMap<coq::Ident, usize>,
 ) -> (Vec<code::Annotation>, BTreeSet<facts::Region>) {
-    let info = inclusion_tracker.info();
-    let midpoint = info.mid_point(loc);
-
     let mut remaining_regions = BTreeSet::new();
 
     let mut unconstrained_annotations = Vec::new();

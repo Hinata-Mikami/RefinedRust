@@ -48,10 +48,10 @@ use typed_arena::Arena;
 
 use crate::base::OrderedDefId;
 use crate::body::signature;
-pub use crate::body::{
+use crate::closure_impl_generator::ClosureImplGenerator;
+pub use crate::environment::mir_mapper::{
     MappingResult, Origin, SourceLoc, TargetLoc, format_mapping, map_drop_elaborated_to_borrow_checked,
 };
-use crate::closure_impl_generator::ClosureImplGenerator;
 use crate::shims::registry as shim_registry;
 use crate::spec_parsers::const_attr_parser::{CONST_ATTRS, ConstAttrParser as _, VerboseConstAttrParser};
 use crate::spec_parsers::crate_attr_parser::{CrateAttrParser as _, VerboseCrateAttrParser};

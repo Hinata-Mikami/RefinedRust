@@ -19,8 +19,7 @@ use crate::{attrs, environment, search, types};
 
 #[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
-    fn check_operand_call_dest(&self, op: &mir::Operand<'tcx>) -> Option<DefId> {
-        let ty = self.get_type_of_operand(op);
+    fn check_type_call_dest(ty: ty::Ty<'tcx>) -> Option<DefId> {
         match ty.kind() {
             ty::TyKind::FnDef(did, _) => Some(*did),
             _ => None,
@@ -29,7 +28,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     fn find_origin_of_mut_bor(&self, var: mir::Local, bb: mir::BasicBlock) -> mir::Local {
         let proc = self.proc;
-        let mir = proc.get_mir();
+        let mir = proc.dropck_mir();
         let bb_data = &mir.basic_blocks[bb];
         let stmts = &bb_data.statements;
 
@@ -70,7 +69,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         bb: mir::BasicBlock,
     ) -> Result<Option<LoopIteratorInfo<'def>>, TranslationError> {
         let proc = self.proc;
-        let mir = proc.get_mir();
+        let mir = proc.dropck_mir();
         let bb_data = &mir.basic_blocks[bb];
         let term = bb_data.terminator();
 
@@ -78,8 +77,24 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             return Ok(None);
         };
 
-        let fn_ty = self.get_type_of_operand(func);
-        let call_dest = self.check_operand_call_dest(func).unwrap();
+        let loc = mir::Location {
+            block: bb,
+            statement_index: bb_data.statements.len(),
+        };
+        let source_func = self.proc.source_call_for_target(loc).and_then(|source_term| {
+            let mir::TerminatorKind::Call { func, .. } = &source_term.kind else {
+                return None;
+            };
+            Some(func)
+        });
+        let fn_ty = if let Some(source_func) = source_func {
+            self.proc.region_type_of_operand(source_func)?
+        } else {
+            self.proc.region_type_of_operand(func)?
+        };
+        let Some(call_dest) = Self::check_type_call_dest(fn_ty) else {
+            return Ok(None);
+        };
 
         let iterator_did = search::try_resolve_did(self.tcx, &["core", "iter", "Iterator"]).unwrap();
         let iterator_items: &ty::AssocItems = self.tcx.associated_items(iterator_did);
@@ -185,8 +200,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         //
         let iterator_info = self.check_is_for_loop(loop_head)?;
 
-        let init_result =
-            initialization::compute_definitely_initialized(self.proc.get_id(), self.proc.get_mir(), self.tcx);
+        let init_result = initialization::compute_definitely_initialized(
+            self.proc.get_id(),
+            self.proc.dropck_mir(),
+            self.tcx,
+        );
         let init_places = init_result.get_before_block(loop_head);
 
         // get locals
@@ -238,7 +256,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         head_bb: mir::BasicBlock,
     ) -> Result<Option<DefId>, TranslationError> {
         let bodies = self.proc.loop_info().get_loop_body(head_bb);
-        let basic_blocks = &self.proc.get_mir().basic_blocks;
+        let basic_blocks = &self.proc.dropck_mir().basic_blocks;
 
         // we go in order through the bodies in order to not stumble upon an annotation for a
         // nested loop!

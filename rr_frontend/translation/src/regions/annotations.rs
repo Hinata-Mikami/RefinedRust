@@ -16,6 +16,7 @@ use super::inclusion_tracker::InclusionTracker;
 use super::{assignment, calls, composite, init};
 use crate::base::TranslationError;
 use crate::environment::borrowck::facts;
+use crate::environment::mir_mapper::MappingResult;
 use crate::environment::polonius_info::{self, PoloniusInfo};
 use crate::error::Message;
 use crate::types;
@@ -23,6 +24,7 @@ use crate::types;
 pub(crate) struct AnnotationGenerator<'a, 'tcx> {
     tcx: ty::TyCtxt<'tcx>,
     info: &'a PoloniusInfo<'a, 'tcx>,
+    mapping: &'a MappingResult,
     inclusion_tracker: InclusionTracker<'a, 'tcx>,
 }
 
@@ -32,12 +34,33 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         lifetime_scope: &super::EarlyLateRegionMap<'_>,
         info: &'a PoloniusInfo<'a, 'tcx>,
+        mapping: &'a MappingResult,
     ) -> Self {
         Self {
             tcx,
             info,
+            mapping,
             inclusion_tracker: init::initialize_inclusion_tracker(lifetime_scope, info),
         }
+    }
+
+    fn source_point_for_target(&self, loc: mir::Location, point_type: facts::PointType) -> facts::Point {
+        self.mapping.source_point_for_target_location(loc, point_type).unwrap_or_else(|| {
+            panic!("no borrowck Polonius point mapped for target location {loc:?} ({point_type:?})")
+        })
+    }
+
+    fn point_index_for_target(&self, loc: mir::Location, point_type: facts::PointType) -> facts::PointIndex {
+        let source_point = self.source_point_for_target(loc, point_type);
+        self.info.get_point(source_point.location, source_point.typ)
+    }
+
+    fn start_point_for_target(&self, loc: mir::Location) -> facts::PointIndex {
+        self.point_index_for_target(loc, facts::PointType::Start)
+    }
+
+    fn mid_point_for_target(&self, loc: mir::Location) -> facts::PointIndex {
+        self.point_index_for_target(loc, facts::PointType::Mid)
     }
 
     pub(crate) fn prepare_initial_universal_arg_constraints(
@@ -219,10 +242,29 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         plan
     }
 
-    pub(crate) fn collect_terminator_dying_loans(&self, loc: mir::Location) -> Vec<facts::Loan> {
-        let dying = self.info.get_dying_loans(loc);
+    pub(crate) fn collect_terminator_dying_loans_with_successors(
+        &self,
+        loc: mir::Location,
+        successors: impl IntoIterator<Item = mir::Location>,
+        is_return: bool,
+    ) -> Vec<facts::Loan> {
+        let startpoint = self.start_point_for_target(loc);
+        let midpoint = self.mid_point_for_target(loc);
+        let successor_startpoints = successors
+            .into_iter()
+            .map(|successor| self.start_point_for_target(successor))
+            .collect::<Vec<_>>();
+        let dying = self.info.get_loans_dying_at_points(
+            startpoint,
+            midpoint,
+            successor_startpoints.clone(),
+            is_return,
+            false,
+        );
         // Preserve the existing behavior: query zombie loans here, but do not emit EndLft for them.
-        let _dying_zombie = self.info.get_dying_zombie_loans(loc);
+        let _dying_zombie =
+            self.info
+                .get_loans_dying_at_points(startpoint, midpoint, successor_startpoints, is_return, true);
         BTreeSet::from_iter(dying).into_iter().rev().collect()
     }
 
@@ -236,14 +278,21 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         rhs_ty: ty::Ty<'tcx>,
         lhs_strongly_writeable: bool,
     ) -> LocationAnnotationPlan {
-        let borrow_annots =
-            assignment::get_assignment_loan_annots(&mut self.inclusion_tracker, ty_translator, loc, rhs);
+        let startpoint = self.start_point_for_target(loc);
+        let midpoint = self.mid_point_for_target(loc);
+        let borrow_annots = assignment::get_assignment_loan_annots(
+            &mut self.inclusion_tracker,
+            ty_translator,
+            loc,
+            midpoint,
+            rhs,
+        );
 
         let composite_annots = composite::get_composite_rvalue_creation_annots(
             self.tcx,
             &mut self.inclusion_tracker,
             ty_translator,
-            loc,
+            midpoint,
             rhs_ty,
         );
 
@@ -251,7 +300,8 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             self.tcx,
             &mut self.inclusion_tracker,
             ty_translator,
-            loc,
+            startpoint,
+            midpoint,
             lhs_strongly_writeable,
             lhs_ty,
             rhs_ty,
@@ -261,7 +311,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             &mut self.inclusion_tracker,
             ty_translator,
             assignment_annots.unconstrained_regions,
-            loc,
+            midpoint,
             Some(rhs),
         );
         for hint in unconstrained_hints {
@@ -317,13 +367,14 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         assignment: &CallAssignmentInputs<'tcx>,
         dying_loans: impl ExactSizeIterator<Item = facts::Loan>,
     ) -> Result<CallAnnotationPlan, TranslationError> {
-        let startpoint = self.info.start_point(loc);
+        let startpoint = self.start_point_for_target(loc);
+        let midpoint = self.mid_point_for_target(loc);
 
         let classification = calls::compute_call_regions(
             self.tcx,
             &self.inclusion_tracker,
             call_regions.method_params,
-            loc,
+            midpoint,
             call_regions.num_late_bounds,
         );
 
@@ -353,7 +404,8 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             self.tcx,
             &mut self.inclusion_tracker,
             ty_translator,
-            loc,
+            startpoint,
+            midpoint,
             assignment.lhs_strongly_writeable,
             assignment.lhs_ty,
             assignment.output_ty,
@@ -363,7 +415,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         let (unconstrained_early_annots, unconstrained_regions) = calls::compute_unconstrained_region_annots(
             &mut self.inclusion_tracker,
             ty_translator,
-            loc,
+            midpoint,
             assignment_annots.unconstrained_regions,
             call_regions.mapped_early_regions,
         );
@@ -373,7 +425,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
                 &mut self.inclusion_tracker,
                 ty_translator,
                 unconstrained_regions,
-                loc,
+                midpoint,
                 None,
             );
         let mut call_region_annots = Vec::new();
@@ -432,7 +484,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         loc: mir::Location,
         region: ty::Region<'tcx>,
     ) -> BorrowLifetimePlan {
-        if let Some(loan) = self.info.get_optional_loan_at_location(loc) {
+        if let Some(loan) = self.info.get_optional_loan_at_point(self.mid_point_for_target(loc)) {
             let atomic_region = self.info.atomic_region_of_loan(loan);
             return BorrowLifetimePlan {
                 lft: ty_translator.format_atomic_region(atomic_region),
@@ -471,13 +523,26 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         predecessors: impl IntoIterator<Item = mir::Location>,
     ) -> BTreeSet<facts::Loan> {
         let mut dying_loans = BTreeSet::new();
+        let loc_startpoint = self.start_point_for_target(loc);
         for predecessor in predecessors {
-            let dying_between = self.info.get_loans_dying_between(predecessor, loc, false);
+            let pred_startpoint = self.start_point_for_target(predecessor);
+            let pred_midpoint = self.mid_point_for_target(predecessor);
+            let dying_between = self.info.get_loans_dying_between_points(
+                pred_startpoint,
+                pred_midpoint,
+                loc_startpoint,
+                false,
+            );
             for loan in &dying_between {
                 dying_loans.insert(*loan);
             }
 
-            let dying_between = self.info.get_loans_dying_between(predecessor, loc, true);
+            let dying_between = self.info.get_loans_dying_between_points(
+                pred_startpoint,
+                pred_midpoint,
+                loc_startpoint,
+                true,
+            );
             for loan in &dying_between {
                 dying_loans.insert(*loan);
             }

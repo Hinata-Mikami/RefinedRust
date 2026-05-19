@@ -9,8 +9,8 @@
 use std::collections::HashSet;
 
 use radium::code;
+use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeFolder as _;
-use rr_rustc_interface::middle::{mir, ty};
 
 use crate::environment::borrowck::facts;
 use crate::environment::region_folder::*;
@@ -23,16 +23,13 @@ pub(crate) fn get_composite_rvalue_creation_annots<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
-    loc: mir::Location,
+    midpoint: facts::PointIndex,
     rhs_ty: ty::Ty<'tcx>,
 ) -> Vec<code::Annotation> {
     let info = inclusion_tracker.info();
     let regions_of_ty = get_regions_of_ty(tcx, rhs_ty);
 
     let mut annots = Vec::new();
-
-    // Polonius subset constraint are spawned for the midpoint
-    let midpoint = info.mid_point(loc);
 
     for (s1, s2) in info.subset_base_at(midpoint) {
         let lft1 = info.mk_atomic_region(s1);

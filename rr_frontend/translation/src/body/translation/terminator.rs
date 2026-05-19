@@ -77,7 +77,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         dest: &mir::Place<'tcx>,
     ) -> Result<Vec<code::PrimStmt>, TranslationError> {
         let (translated_op, _) = self.translate_operand(op, false)?;
-        let ty = self.get_type_of_operand(op);
+        let ty = self.shape_type_of_operand(op);
 
         let st = self.ty_translator.translate_type_to_syn_type(ty)?;
         let translated_rhs = code::Expr::Deref {
@@ -177,7 +177,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let (operand, _) = self.translate_operand(discr, true)?;
                 let all_targets: &[mir::BasicBlock] = targets.all_targets();
 
-                if self.get_type_of_operand(discr).is_bool() {
+                if self.shape_type_of_operand(discr).is_bool() {
                     // we currently special-case this as Caesium has a built-in if and this is more
                     // convenient to handle for the type-checker
 
@@ -205,7 +205,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                 //info!("switchint: {:?}", term.kind);
                 let (operand, _) = self.translate_operand(discr, true)?;
-                let ty = self.get_type_of_operand(discr);
+                let ty = self.shape_type_of_operand(discr);
 
                 let mut target_map: BTreeMap<u128, usize> = BTreeMap::new();
                 let mut translated_targets: Vec<code::Stmt> = Vec::new();
@@ -266,7 +266,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
 
             mir::TerminatorKind::Drop { place, target, .. } => {
-                let ty = self.get_type_of_place(place);
+                let ty = self.shape_type_of_place(place);
                 self.register_drop_shim_for(ty.ty);
 
                 let place_translated = self.translate_place(place)?;

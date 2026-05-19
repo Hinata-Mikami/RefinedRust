@@ -11,6 +11,7 @@ mod collect_prusti_spec_visitor;
 mod dump_borrowck_info;
 mod loops;
 pub(crate) mod mir_analyses;
+pub(crate) mod mir_mapper;
 pub(crate) mod mir_sets;
 pub(crate) mod mir_storage;
 pub(crate) mod mir_utils;
@@ -59,7 +60,7 @@ pub(crate) fn get_closure_args<'tcx>(tcx: ty::TyCtxt<'tcx>, did: DefId) -> ty::C
 
     // Now, we get the type of the closure local in the MIR, in order to get the Polonius regions.
     let proc = get_procedure(tcx, did);
-    let body = proc.get_mir();
+    let body = proc.borrowck_mir();
     let local_decls = &body.local_decls;
     let closure_arg = local_decls.get(mir::Local::from_usize(1)).unwrap();
     let closure_ty = get_closure_self_ty_from_var_ty(closure_arg.ty, closure_kind);

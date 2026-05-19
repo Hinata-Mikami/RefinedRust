@@ -21,6 +21,7 @@ use crate::traits::registry::RegionUnifier;
 
 pub(crate) struct BodyRegionContext<'a, 'tcx> {
     info: &'a PoloniusInfo<'a, 'tcx>,
+    procedure: &'a Procedure<'tcx>,
 }
 
 impl<'a, 'tcx: 'a> BodyRegionContext<'a, 'tcx> {
@@ -30,7 +31,7 @@ impl<'a, 'tcx: 'a> BodyRegionContext<'a, 'tcx> {
         // TODO: avoid leak by making AnnotationGenerator own the Polonius-backed state.
         let info: &'a PoloniusInfo<'_, '_> = &*Box::leak(Box::new(info));
 
-        Self { info }
+        Self { info, procedure }
     }
 
     pub(crate) fn dump_borrowck_info_if_enabled(&self, tcx: ty::TyCtxt<'tcx>, did: DefId) {
@@ -125,6 +126,6 @@ impl<'a, 'tcx: 'a> BodyRegionContext<'a, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         lifetime_scope: &EarlyLateRegionMap<'_>,
     ) -> AnnotationGenerator<'a, 'tcx> {
-        AnnotationGenerator::new(tcx, lifetime_scope, self.info)
+        AnnotationGenerator::new(tcx, lifetime_scope, self.info, self.procedure.mapping())
     }
 }

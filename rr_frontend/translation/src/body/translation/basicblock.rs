@@ -5,7 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use log::info;
-use radium::{code, lang};
+use radium::code;
 use rr_rustc_interface::middle::{mir, ty};
 
 use super::TX;
@@ -43,17 +43,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     if (self.is_spec_closure_local(plc.local)?).is_some() {
                         info!("skipping assignment to spec closure local: {:?}", plc);
                     } else {
-                        let rhs_ty = val.ty(&self.proc.get_mir().local_decls, self.tcx);
-
-                        let plc_ty = self.get_type_of_place(plc);
+                        let plc_ty = self.shape_type_of_place(plc);
+                        let plc_region_ty = self.proc.region_type_of_place(plc)?;
+                        let rhs_region_ty = self.proc.region_type_of_rvalue(loc, val)?;
                         let plc_strongly_writeable = !self.check_place_below_reference(plc);
                         let mut annotation_plan = self.annotations.prepare_assignment_annotation_plan(
                             &self.ty_translator,
                             &mut self.translated_fn,
                             loc,
                             val,
-                            plc_ty,
-                            rhs_ty,
+                            plc_region_ty,
+                            rhs_region_ty,
                             plc_strongly_writeable,
                         );
                         annotation_plan.push_pre_stmts(&mut prim_stmts);
@@ -118,11 +118,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 },
 
                 | mir::StatementKind::StorageLive(l) => {
-                    let local_decls = &self.proc.get_mir().local_decls;
-                    let local_decl = local_decls.get(*l).unwrap();
-                    let ty = local_decl.ty;
-                    let translated_ty = self.ty_translator.translate_type(ty)?;
-                    let translated_st: lang::SynType = translated_ty.into();
+                    let ty = self.shape_type_of_local(*l)?;
+                    let translated_st = self.ty_translator.translate_type_to_syn_type(ty)?;
 
                     if let Some(local_name) = self.variable_map.get(l) {
                         let var = code::Variable::new(local_name.to_owned(), translated_st);
@@ -136,7 +133,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 },
 
                 | mir::StatementKind::StorageDead(l) => {
-                    let local_decls = &self.proc.get_mir().local_decls;
+                    let local_decls = &self.proc.dropck_mir().local_decls;
                     let local_decl = local_decls.get(*l).unwrap();
                     let ty = local_decl.ty;
 
@@ -168,8 +165,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             block: bb_idx,
             statement_index: idx,
         };
-        let dying_loans = self.annotations.collect_terminator_dying_loans(loc);
-        let cont_stmt: code::Stmt = self.translate_terminator(bb.terminator(), loc, dying_loans)?;
+        let terminator = bb.terminator();
+        let successor_locations = terminator
+            .successors()
+            .map(|block| mir::Location {
+                block,
+                statement_index: 0,
+            })
+            .collect::<Vec<_>>();
+        let dying_loans = self.annotations.collect_terminator_dying_loans_with_successors(
+            loc,
+            successor_locations,
+            matches!(terminator.kind, mir::TerminatorKind::Return),
+        );
+        let cont_stmt: code::Stmt = self.translate_terminator(terminator, loc, dying_loans)?;
 
         let cont_stmt = code::Stmt::Prim(prim_stmts, Box::new(cont_stmt));
 
@@ -187,7 +196,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         } else {
             // check for gotos that go to this basic block
             let pred_bbs = self.proc.predecessors(loc.block);
-            let basic_blocks = &self.proc.get_mir().basic_blocks;
+            let basic_blocks = &self.proc.dropck_mir().basic_blocks;
             pred_bbs
                 .iter()
                 .map(|bb| {

@@ -16,7 +16,8 @@ use rr_rustc_interface::{hir, span};
 use typed_arena::Arena;
 
 use crate::base::*;
-use crate::body::{mir_mapper, translation};
+use crate::body::translation;
+use crate::environment::mir_mapper;
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
 use crate::spec_parsers::verbose_function_spec_parser::{
@@ -201,8 +202,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // TODO can we avoid the leak
         let proc: &'def Procedure<'_> = &*Box::leak(Box::new(proc));
-        let body = proc.get_mir();
+        let body = proc.borrowck_mir();
         Self::dump_body(body);
+        Self::dump_body(proc.dropck_mir());
+        for line in mir_mapper::format_mapping(body, proc.dropck_mir(), proc.mapping()).lines() {
+            info!("{line}");
+        }
 
         let clos_args = environment::get_closure_args(tcx, proc.get_id());
         let closure_kind = clos_args.kind();
@@ -409,17 +414,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // TODO can we avoid the leak
         let proc: &'def Procedure<'_> = &*Box::leak(Box::new(proc));
 
-        let body = proc.get_mir();
+        let body = proc.borrowck_mir();
         Self::dump_body(body);
-
-        let drop_elab = tcx.mir_drops_elaborated_and_const_checked(proc.get_id().expect_local());
-        let drop_elab = drop_elab.borrow();
-        Self::dump_body(&drop_elab);
-        let mapping = mir_mapper::map_drop_elaborated_to_borrow_checked(body, &drop_elab);
-        for line in mir_mapper::format_mapping(body, &drop_elab, &mapping).lines() {
+        Self::dump_body(proc.dropck_mir());
+        for line in mir_mapper::format_mapping(body, proc.dropck_mir(), proc.mapping()).lines() {
             info!("{line}");
         }
-        drop(drop_elab);
 
         let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = tcx.type_of(proc.get_id());
         info!("Function type: {ty:?}");

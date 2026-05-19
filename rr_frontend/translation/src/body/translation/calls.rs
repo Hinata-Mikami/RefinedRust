@@ -607,6 +607,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
     }
 
+    fn call_func_const_from_terminator<'b>(
+        terminator: &'b mir::Terminator<'tcx>,
+    ) -> Option<&'b mir::Const<'tcx>> {
+        let mir::TerminatorKind::Call {
+            func: mir::Operand::Constant(func_constant),
+            ..
+        } = &terminator.kind
+        else {
+            return None;
+        };
+        Some(&func_constant.const_)
+    }
+
     pub(crate) fn translate_function_call(
         &mut self,
         func: &mir::Operand<'tcx>,
@@ -622,18 +635,33 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             ))));
         };
 
-        // Get the type of the return value from the function
-        let (target_did, sig, generic_args, inst_sig) =
-            self.call_expr_op_split_inst(&func_constant.const_)?;
+        let source_func_constant = self
+            .proc
+            .source_call_for_target(loc)
+            .and_then(Self::call_func_const_from_terminator)
+            .cloned();
+        let call_func_constant = source_func_constant.as_ref().unwrap_or(&func_constant.const_);
+        if source_func_constant.is_none() {
+            self.proc.ensure_region_type(call_func_constant.ty(), || {
+                format!("target call function type at {loc:?} without mapped borrowck source call")
+            })?;
+        }
+
+        // Get the region-sensitive type of the return value from the source/borrowck function.
+        let (target_did, sig, generic_args, inst_sig) = self.call_expr_op_split_inst(call_func_constant)?;
         info!("calling function {:?}", target_did);
         for arg in args {
             let arg = &arg.node;
-            info!("arg ty: {:?}", self.get_type_of_operand(arg));
+            info!("arg ty: {:?}", self.shape_type_of_operand(arg));
         }
         info!("call substs: {:?} = {:?}, {:?}", func, sig, generic_args);
 
-        // translate the function expression.
-        let (func_expr, info) = self.translate_operand(func, false)?;
+        // Translate the call target using borrowck/source type information when available.
+        let (func_expr, info) = if let Some(source_func_constant) = &source_func_constant {
+            self.translate_constant(source_func_constant)?
+        } else {
+            self.translate_operand(func, false)?
+        };
         // We expect this to be an Expr::CallTarget, being annotated with the type parameters we
         // instantiate it with.
         let Some(ExprInfo::Call(mut call_info)) = info else {
@@ -645,14 +673,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         for arg in args {
             // to_ty is the type the function expects
 
-            //let ty = arg.ty(&self.proc.get_mir().local_decls, self.tcx);
+            //let ty = arg.ty(&self.proc.dropck_mir().local_decls, self.tcx);
             let (translated_arg, _) = self.translate_operand(&arg.node, true)?;
             translated_args.push(translated_arg);
         }
 
-        let output_ty = inst_sig.output().skip_binder();
+        let output_ty = self
+            .proc
+            .ensure_region_type(inst_sig.output().skip_binder(), || format!("call output type at {loc:?}"))?;
         info!("call has instantiated type {:?}", inst_sig);
-        let lhs_ty = self.get_type_of_place(destination);
+        let lhs_shape_ty = self.shape_type_of_place(destination);
+        let lhs_region_ty = self.proc.region_type_of_place(destination)?;
         let lhs_strongly_writeable = !self.check_place_below_reference(destination);
         let mut annotation_plan = self.annotations.prepare_call_annotation_plan(
             &self.ty_translator,
@@ -663,7 +694,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 mapped_early_regions: &call_info.mapped_early_regions,
             },
             &CallAssignmentInputs {
-                lhs_ty,
+                lhs_ty: lhs_region_ty,
                 lhs_strongly_writeable,
                 output_ty,
             },
@@ -689,7 +720,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             annotation_plan.push_pre_assign_stmts(&mut prim_stmts);
 
             // assign stmt with call; then jump to bb
-            let place_st = self.ty_translator.translate_type_to_syn_type(lhs_ty.ty)?;
+            let place_st = self.ty_translator.translate_type_to_syn_type(lhs_shape_ty.ty)?;
             let place_expr = self.translate_place(destination)?;
             let ot = place_st.into();
 
