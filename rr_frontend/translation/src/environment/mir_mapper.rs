@@ -229,6 +229,40 @@ pub fn format_mapping<'tcx>(bc: &Body<'tcx>, de: &Body<'tcx>, mapping: &MappingR
     lines.join("\n")
 }
 
+#[must_use]
+pub fn format_inserted_terminator_point_mappings<'tcx>(
+    bc: &Body<'tcx>,
+    de: &Body<'tcx>,
+    mapping: &MappingResult,
+) -> String {
+    let mut lines = Vec::new();
+    let mut locs: Vec<_> = mapping
+        .target_to_source
+        .iter()
+        .filter_map(|(&(bb, idx), &origin)| {
+            (origin == Origin::Inserted && idx == de.basic_blocks[bb].statements.len()).then_some((bb, idx))
+        })
+        .collect();
+    locs.sort_by_key(|(bb, idx)| (bb.as_u32(), *idx));
+
+    for loc in locs {
+        for point_type in [facts::PointType::Start, facts::PointType::Mid] {
+            if let Some((source_bb, source_idx, source_type)) =
+                mapping.source_point_for_target_loc(loc, point_type)
+            {
+                let (bb, idx) = loc;
+                lines.push(format!(
+                    "{bb:?}[{idx}] {} {point_type:?} -> {source_bb:?}[{source_idx}] {} {source_type:?}",
+                    describe_location(de, bb, idx),
+                    describe_location(bc, source_bb, source_idx)
+                ));
+            }
+        }
+    }
+
+    lines.join("\n")
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 struct NormalizedPlace {
     local: Local,
@@ -362,6 +396,10 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             {
                 target_point_phases.insert((*bb, *idx), PointPhase::PreEffect(source));
             } else if *origin == Origin::Inserted
+                && let Some(source) = self.source_terminator_after_previous_mapped_statement(*bb, *idx)
+            {
+                target_point_phases.insert((*bb, *idx), PointPhase::Direct(source));
+            } else if *origin == Origin::Inserted
                 && *idx == 0
                 && let Some(source) = self.source_successor_for_inserted_block_start(*bb)
             {
@@ -420,6 +458,35 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             }
         }
         None
+    }
+
+    /// Infer a point for an inserted target terminator after statement folding.
+    ///
+    /// When a source drop is eliminated, `align_statements` may still fold
+    /// statements from the drop's normal successor into the current target
+    /// block. If the target terminator then matches the terminator immediately
+    /// after that last folded source statement, map its points directly to that
+    /// source terminator. This keeps the inference local to an already mapped
+    /// predecessor statement and avoids guessing across joins.
+    fn source_terminator_after_previous_mapped_statement(
+        &self,
+        bb_t: BasicBlock,
+        idx_t: usize,
+    ) -> Option<SourceLoc> {
+        if idx_t != self.de.basic_blocks[bb_t].statements.len() || idx_t == 0 {
+            return None;
+        }
+
+        let (bb_s, idx_s) = origin_source_loc(self.target_to_source.get(&(bb_t, idx_t - 1)).copied()?)?;
+        let source_data = &self.bc.basic_blocks[bb_s];
+        if idx_s + 1 != source_data.statements.len() {
+            return None;
+        }
+
+        let target_term = self.de.basic_blocks[bb_t].terminator();
+        let source_term = source_data.terminator();
+        self.terminator_shape_equiv(target_term, source_term)
+            .then_some((bb_s, source_data.statements.len()))
     }
 
     /// Infer a source point for the start of an inserted target block.
@@ -1110,6 +1177,26 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 return true;
             }
 
+            // Drop elaboration can prove a specific value is uninitialized on a
+            // normal return path and replace the corresponding source `Drop`
+            // terminator by a plain `goto` to the drop's return block. The
+            // target goto has no effect of its own, so Polonius point queries
+            // should observe the point before the source drop effect.
+            if let (
+                mir::TerminatorKind::Goto { target: target_t },
+                mir::TerminatorKind::Drop {
+                    target: target_s, ..
+                },
+            ) = (&tt.kind, &ts.kind)
+                && self.drop_target_successor_equiv(*target_t, *target_s)
+            {
+                let src_drop = (cur_s, ds.statements.len());
+                self.target_to_source.insert(loc_t, Origin::SplitFrom(src_drop));
+                self.target_point_phases.insert(loc_t, PointPhase::PreEffect(src_drop));
+                self.align_blocks(*target_t, *target_s);
+                return true;
+            }
+
             let mir::TerminatorKind::Drop { target: next_s, .. } = ts.kind else {
                 return false;
             };
@@ -1122,6 +1209,15 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
 
         false
+    }
+
+    fn drop_target_successor_equiv(&self, target_t: BasicBlock, target_s: BasicBlock) -> bool {
+        let data_t = &self.de.basic_blocks[target_t];
+        let data_s = &self.bc.basic_blocks[target_s];
+
+        data_t.statements.is_empty()
+            && data_s.statements.is_empty()
+            && self.terminator_shape_equiv(data_t.terminator(), data_s.terminator())
     }
 
     fn parse_flag_test(&self, term: &mir::Terminator<'tcx>) -> Option<(BasicBlock, BasicBlock)> {

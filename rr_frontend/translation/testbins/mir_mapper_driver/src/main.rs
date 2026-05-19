@@ -128,6 +128,14 @@ impl Callbacks for OurCompilerCalls {
             let de = de.borrow();
             let mapping = translation::map_drop_elaborated_to_borrow_checked(bc, &de);
             println!("{}", translation::format_mapping(bc, &de, &mapping));
+            if get_attribute(tcx, local_def_id.to_def_id(), "mapper", "points").is_some() {
+                let points = translation::format_inserted_terminator_point_mappings(bc, &de, &mapping);
+                if !points.is_empty() {
+                    println!();
+                    println!("Inserted terminator point mappings:");
+                    println!("{points}");
+                }
+            }
         }
 
         Compilation::Stop
