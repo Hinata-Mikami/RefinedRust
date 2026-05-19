@@ -5,6 +5,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use log::trace;
+use rr_rustc_interface::data_structures::fx::FxHashMap;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::type_ir::TypeFoldable as _;
@@ -25,6 +26,7 @@ pub(crate) struct Procedure<'tcx> {
     borrowck_mir: &'tcx mir::Body<'tcx>,
     dropck_mir: mir::Body<'tcx>,
     mapping: MappingResult,
+    copy_aliases: FxHashMap<mir::Local, mir::Place<'tcx>>,
     real_edges: RealEdges,
     loop_info: loops::ProcedureLoops,
 }
@@ -60,6 +62,7 @@ impl<'tcx> Procedure<'tcx> {
         let dropck_mir = dropck_mir_ref.clone();
         drop(dropck_mir_ref);
 
+        let copy_aliases = Self::collect_copy_aliases(tcx, borrowck_mir, &dropck_mir);
         let real_edges = RealEdges::new(&dropck_mir);
         let loop_info = loops::ProcedureLoops::new(&dropck_mir, &real_edges);
 
@@ -69,9 +72,45 @@ impl<'tcx> Procedure<'tcx> {
             borrowck_mir,
             dropck_mir,
             mapping,
+            copy_aliases,
             real_edges,
             loop_info,
         }
+    }
+
+    fn collect_copy_aliases(
+        tcx: ty::TyCtxt<'tcx>,
+        borrowck_mir: &mir::Body<'tcx>,
+        dropck_mir: &mir::Body<'tcx>,
+    ) -> FxHashMap<mir::Local, mir::Place<'tcx>> {
+        let mut copy_aliases = FxHashMap::default();
+
+        for block in dropck_mir.basic_blocks.iter() {
+            for stmt in &block.statements {
+                let mir::StatementKind::Assign(assign) = &stmt.kind else {
+                    continue;
+                };
+                let (target, rval) = assign.as_ref();
+                if !target.projection.is_empty() || borrowck_mir.local_decls.get(target.local).is_some() {
+                    continue;
+                }
+
+                let mir::Rvalue::Use(mir::Operand::Copy(source) | mir::Operand::Move(source), _) = rval
+                else {
+                    continue;
+                };
+                let Some(target_decl) = dropck_mir.local_decls.get(target.local) else {
+                    continue;
+                };
+                if !Self::contains_erased_regions_in(tcx, target_decl.ty) {
+                    continue;
+                }
+
+                copy_aliases.insert(target.local, *source);
+            }
+        }
+
+        copy_aliases
     }
 
     #[must_use]
@@ -108,16 +147,42 @@ impl<'tcx> Procedure<'tcx> {
     /// rewritten; the plain alias local is administrative MIR.
     pub(crate) fn normalize_box_deref_alias_place(&self, pl: &mir::Place<'tcx>) -> mir::Place<'tcx> {
         let Some(alias) = self.mapping.box_deref_alias_for(pl.local) else {
-            return *pl;
+            return self.normalize_copy_alias_place(pl);
         };
         if !matches!(pl.projection.first(), Some(mir::ProjectionElem::Deref)) {
-            return *pl;
+            return self.normalize_copy_alias_place(pl);
         }
 
         mir::Place {
             local: alias.box_local(),
             projection: pl.projection,
         }
+    }
+
+    /// Rewrite dereference uses of synthetic `no_retag copy` locals back to the
+    /// place they alias. Dropck introduces these around captured mutable refs in
+    /// closures, while borrowck MIR keeps using the original projected place.
+    fn normalize_copy_alias_place(&self, pl: &mir::Place<'tcx>) -> mir::Place<'tcx> {
+        let Some(source) = self.copy_aliases.get(&pl.local) else {
+            return *pl;
+        };
+        if !matches!(pl.projection.first(), Some(mir::ProjectionElem::Deref)) {
+            return *pl;
+        }
+
+        let mut projection = Vec::with_capacity(source.projection.len() + pl.projection.len());
+        projection.extend_from_slice(source.projection);
+        projection.extend_from_slice(pl.projection);
+        let projection = self.tcx.mk_place_elems(&projection);
+        mir::Place {
+            local: source.local,
+            projection,
+        }
+    }
+
+    #[must_use]
+    pub(crate) fn is_administrative_alias(&self, local: mir::Local) -> bool {
+        self.mapping.is_box_deref_alias(local) || self.copy_aliases.contains_key(&local)
     }
 
     /// Get the typing context.
@@ -140,10 +205,11 @@ impl<'tcx> Procedure<'tcx> {
 
     /// Check whether a type still contains erased regions.
     pub(crate) fn contains_erased_regions(&self, ty: ty::Ty<'tcx>) -> bool {
-        let mut detector = ErasedRegionDetector {
-            tcx: self.tcx,
-            found: false,
-        };
+        Self::contains_erased_regions_in(self.tcx, ty)
+    }
+
+    fn contains_erased_regions_in(tcx: ty::TyCtxt<'tcx>, ty: ty::Ty<'tcx>) -> bool {
+        let mut detector = ErasedRegionDetector { tcx, found: false };
         ty.fold_with(&mut detector);
         detector.found
     }
@@ -165,6 +231,10 @@ impl<'tcx> Procedure<'tcx> {
     pub(crate) fn region_type_of_local(&self, local: mir::Local) -> Result<ty::Ty<'tcx>, TranslationError> {
         if let Some(decl) = self.borrowck_mir.local_decls.get(local) {
             return self.ensure_region_type(decl.ty, || format!("local {local:?}"));
+        }
+
+        if let Some(source) = self.copy_aliases.get(&local) {
+            return Ok(self.region_type_of_place(source)?.ty);
         }
 
         // Drop elaboration may introduce administrative locals such as boolean

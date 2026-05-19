@@ -263,6 +263,7 @@ struct Mapper<'a, 'tcx> {
     target_point_phases: FxHashMap<TargetLoc, PointPhase>,
     visited: FxHashSet<(BasicBlock, BasicBlock)>,
     box_deref_aliases: FxHashMap<Local, InternalBoxDerefAlias>,
+    copy_aliases: FxHashMap<Local, NormalizedPlace>,
     bc_predecessors: FxHashMap<BasicBlock, Vec<BasicBlock>>,
 }
 
@@ -332,6 +333,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             target_point_phases: FxHashMap::default(),
             visited: FxHashSet::default(),
             box_deref_aliases: FxHashMap::default(),
+            copy_aliases: FxHashMap::default(),
             bc_predecessors: compute_predecessors(bc),
         }
     }
@@ -1421,6 +1423,12 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             return None;
         }
 
+        if let mir::Rvalue::Use(mir::Operand::Copy(rhs_place) | mir::Operand::Move(rhs_place), _) = rhs {
+            self.copy_aliases
+                .insert(lhs.local, self.normalize_place_for_flavor(*rhs_place, MirFlavor::Target));
+            return None;
+        }
+
         let mir::Rvalue::Cast(mir::CastKind::Transmute, mir::Operand::Copy(rhs_place), _) = rhs else {
             return None;
         };
@@ -1764,6 +1772,17 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             projection.extend(place.projection[1..].iter().map(|elem| normalize_projection_elem(*elem)));
             return NormalizedPlace {
                 local: alias.place.local,
+                projection,
+            };
+        }
+
+        if let Some(alias) = self.copy_aliases.get(&place.local)
+            && matches!(place.projection.first(), Some(mir::ProjectionElem::Deref))
+        {
+            let mut projection = alias.projection.clone();
+            projection.extend(place.projection.iter().map(normalize_projection_elem));
+            return NormalizedPlace {
+                local: alias.local,
                 projection,
             };
         }

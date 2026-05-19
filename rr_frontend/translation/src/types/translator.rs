@@ -195,7 +195,7 @@ pub(crate) struct TraitState<'a, 'tcx, 'def> {
 #[derive(Constructor, Clone, Copy, Debug)]
 pub(crate) struct CalleeState<'a, 'tcx, 'def> {
     /// the env of the caller
-    typing_env: &'a ty::TypingEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     /// the generic scope of the caller
     param_scope: &'a scope::Params<'tcx, 'def>,
 }
@@ -214,6 +214,12 @@ pub(crate) enum STInner<'b, 'def, 'tcx> {
     /// We are translating in an empty dummy scope.
     /// All regions are erased.
     CalleeTranslation(CalleeState<'b, 'tcx, 'def>),
+    /// We are generating a syntactic type use in the current function. Regions
+    /// are erased, but tuple/ADT uses are still recorded for layout assumptions.
+    SyntypeInFunction {
+        state: &'b mut FunctionState<'tcx, 'def>,
+        typing_env: ty::TypingEnv<'tcx>,
+    },
     /// we are translating trait requirements
     TraitReqs(Box<TraitState<'b, 'tcx, 'def>>),
 }
@@ -228,6 +234,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
             Self::InFunction(state) => state.make_params_scope(),
             Self::TranslateAdt(state) => state.scope.to_owned(),
             Self::CalleeTranslation(state) => state.param_scope.to_owned(),
+            Self::SyntypeInFunction { state, .. } => state.generic_scope.clone(),
             Self::TraitReqs(state) => state.scope.clone(),
         }
     }
@@ -237,6 +244,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
             Self::InFunction(state) => &state.generic_scope,
             Self::TranslateAdt(state) => state.scope,
             Self::CalleeTranslation(state) => state.param_scope,
+            Self::SyntypeInFunction { state, .. } => &state.generic_scope,
             Self::TraitReqs(state) => &state.scope,
         }
     }
@@ -245,7 +253,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         match &self {
             Self::InFunction(state) => state.region_resolver.as_ref(),
             Self::TraitReqs(state) => state.region_resolver.as_ref(),
-            Self::TranslateAdt(_) | Self::CalleeTranslation(_) => None,
+            Self::TranslateAdt(_) | Self::CalleeTranslation(_) | Self::SyntypeInFunction { .. } => None,
         }
     }
 
@@ -253,7 +261,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         match &self {
             Self::InFunction(state) => Some(&state.lifetime_scope),
             Self::TraitReqs(state) => state.lifetime_scope,
-            Self::TranslateAdt(_) | Self::CalleeTranslation(_) => None,
+            Self::TranslateAdt(_) | Self::CalleeTranslation(_) | Self::SyntypeInFunction { .. } => None,
         }
     }
 
@@ -272,7 +280,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
     ) {
         self.register_dep_on(OrderedDefId::new(tcx, did));
 
-        if let Self::InFunction(state) = self {
+        if let Self::InFunction(state) | Self::SyntypeInFunction { state, .. } = self {
             let lit_ref = lit_ref.unwrap();
             let ordered_did = OrderedDefId::new(tcx, did);
             let key = scope::AdtUseKey::new_from_inst(ordered_did, params);
@@ -288,7 +296,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         lit_ref: specs::types::LiteralRef<'def>,
         params: &specs::GenericScopeInst<'def>,
     ) {
-        if let Self::InFunction(state) = self {
+        if let Self::InFunction(state) | Self::SyntypeInFunction { state, .. } = self {
             let key: Vec<_> = params.get_direct_ty_params().iter().map(lang::SynType::from).collect();
             let tuple_uses = &mut state.tuple_uses;
 
@@ -306,6 +314,8 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         if let STInner::CalleeTranslation(s) = self {
             // make sure to keep the callee state, which translates regions to dummys
             STInner::CalleeTranslation(*s)
+        } else if let STInner::SyntypeInFunction { state, typing_env } = self {
+            STInner::CalleeTranslation(CalleeState::new(*typing_env, &state.generic_scope))
         } else {
             let typing_env = self.get_typing_env(tcx);
             let state = TraitState::new(
@@ -323,7 +333,8 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         match &self {
             Self::InFunction(state) => ty::TypingEnv::post_analysis(tcx, state.did),
             Self::TranslateAdt(state) => *state.typing_env,
-            Self::CalleeTranslation(state) => *state.typing_env,
+            Self::CalleeTranslation(state) => state.typing_env,
+            Self::SyntypeInFunction { typing_env, .. } => *typing_env,
             Self::TraitReqs(state) => state.typing_env,
         }
     }
@@ -386,7 +397,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                     .unwrap_or_else(|| bug!("Unknown early region {region:?}"));
                 lft.lft().to_owned()
             },
-            STInner::CalleeTranslation(_) => coq::Ident::new("DUMMY"),
+            STInner::CalleeTranslation(_) | STInner::SyntypeInFunction { .. } => coq::Ident::new("DUMMY"),
         }
     }
 
@@ -415,7 +426,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                     .unwrap_or_else(|| bug!("Unknown late region outside function: ({binder:?}, {var:?})"));
                 lft.lft().to_owned()
             },
-            STInner::CalleeTranslation(_) => coq::Ident::new("DUMMY"),
+            STInner::CalleeTranslation(_) | STInner::SyntypeInFunction { .. } => coq::Ident::new("DUMMY"),
         }
     }
 
@@ -460,7 +471,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                 info!("Translating region: ReVar {:?} as None (outside of function)", v);
                 bug!("encountered Polonius region outside function translation: {v:?}")
             },
-            STInner::CalleeTranslation(_) => coq::Ident::new("DUMMY"),
+            STInner::CalleeTranslation(_) | STInner::SyntypeInFunction { .. } => coq::Ident::new("DUMMY"),
         }
     }
 }
@@ -716,7 +727,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
             _ => {
                 info!("Translating region: {:?}", region);
-                if let STInner::CalleeTranslation(_) = *translation_state {
+                if matches!(
+                    translation_state,
+                    STInner::CalleeTranslation(_) | STInner::SyntypeInFunction { .. }
+                ) {
                     coq::Ident::new("DUMMY")
                 } else {
                     bug!("Unhandled region {region:?} in translation")
@@ -1894,7 +1908,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         variant: Option<abi::VariantIdx>,
-        scope: InFunctionState<'_, 'def, 'tcx>,
+        state: ST<'_, '_, 'def, 'tcx>,
     ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         match ty.kind() {
             ty::TyKind::Adt(adt, args) => {
@@ -1902,12 +1916,12 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
                     info!("generating struct use for {:?}", adt.did());
                     // register the ADT, if necessary
                     self.register_adt(*adt)?;
-                    self.generate_struct_use(adt.did(), args, &mut *scope)
+                    self.generate_struct_use(adt.did(), args, state)
                 } else if adt.is_enum() {
                     if let Some(variant) = variant {
                         self.register_adt(*adt)?;
                         let v = &adt.variants()[variant];
-                        self.generate_enum_variant_use(v.def_id, args, scope)
+                        self.generate_enum_variant_use(v.def_id, args, state)
                     } else {
                         Err(TranslationError::ErrorReported(
                             self.tcx
@@ -1921,12 +1935,12 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
                     ))))
                 }
             },
-            ty::TyKind::Tuple(args) => self.generate_tuple_use(*args, &mut STInner::InFunction(scope)),
+            ty::TyKind::Tuple(args) => self.generate_tuple_use(*args, state),
             ty::TyKind::Closure(_, args) => {
                 // use the upvar tuple
                 let closure_args = args.as_closure();
                 let upvars = closure_args.upvar_tys();
-                self.generate_tuple_use(upvars, &mut STInner::InFunction(scope))
+                self.generate_tuple_use(upvars, state)
             },
             _ => Err(TranslationError::ErrorReported(
                 self.tcx.dcx().err(error::Message::ExpectedStructlike(format!("{ty}"))),
@@ -1940,7 +1954,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         &self,
         adt_def: ty::AdtDef<'tcx>,
         args: ty::GenericArgsRef<'tcx>,
-        state: InFunctionState<'_, 'def, 'tcx>,
+        state: ST<'_, '_, 'def, 'tcx>,
     ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         info!("generating enum use for {:?}", adt_def.did());
         self.register_adt(adt_def)?;
@@ -1951,18 +1965,11 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
                     self.tcx.dcx().span_err(self.tcx().def_span(adt_def.did()), error::Message::UnknownAdt),
                 )
             })?;
-        let params = self.trait_registry().compute_scope_inst_in_state(
-            &mut STInner::InFunction(state),
-            adt_def.did(),
-            args,
-        )?;
-        let ordered_did = OrderedDefId::new(self.tcx, adt_def.did());
-        let key = scope::AdtUseKey::new_from_inst(ordered_did, &params);
-        let enum_use = specs::types::LiteralUse::new(enum_ref, params);
+        let params = self.trait_registry().compute_scope_inst_in_state(state, adt_def.did(), args)?;
+        let enum_use = specs::types::LiteralUse::new(enum_ref, params.clone());
 
         // track this enum use for the current function
-        let enum_uses = &mut state.shim_uses;
-        enum_uses.entry(key).or_insert_with(|| enum_use.clone());
+        state.register_adt_use(self.tcx, adt_def.did(), Some(enum_ref), &params);
 
         Ok(enum_use)
     }
@@ -1975,17 +1982,11 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         &self,
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
-        scope: InFunctionState<'_, 'def, 'tcx>,
+        state: ST<'_, '_, 'def, 'tcx>,
     ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         info!("generating struct use for {:?}", variant_id);
 
-        let params = self.trait_registry().compute_scope_inst_in_state(
-            &mut STInner::InFunction(scope),
-            variant_id,
-            args,
-        )?;
-        let ordered_did = OrderedDefId::new(self.tcx, variant_id);
-        let key = scope::AdtUseKey::new_from_inst(ordered_did, &params);
+        let params = self.trait_registry().compute_scope_inst_in_state(state, variant_id, args)?;
 
         let struct_ref: specs::types::LiteralRef<'def> =
             self.lookup_adt_shim(variant_id).ok_or_else(|| {
@@ -1993,9 +1994,9 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
                     self.tcx.dcx().span_err(self.tcx().def_span(variant_id), error::Message::UnknownAdt),
                 )
             })?;
-        let struct_use = specs::types::LiteralUse::new(struct_ref, params);
+        let struct_use = specs::types::LiteralUse::new(struct_ref, params.clone());
 
-        scope.shim_uses.entry(key).or_insert_with(|| struct_use.clone());
+        state.register_adt_use(self.tcx, variant_id, Some(struct_ref), &params);
 
         Ok(struct_use)
     }
@@ -2005,15 +2006,11 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         &self,
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
-        scope: InFunctionState<'_, 'def, 'tcx>,
+        state: ST<'_, '_, 'def, 'tcx>,
     ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         info!("generating enum variant use for {:?}", variant_id);
 
-        let params = self.trait_registry().compute_scope_inst_in_state(
-            &mut STInner::InFunction(scope),
-            variant_id,
-            args,
-        )?;
+        let params = self.trait_registry().compute_scope_inst_in_state(state, variant_id, args)?;
         //let _key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 
         let struct_ref: specs::types::LiteralRef<'def> =
@@ -2022,7 +2019,9 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
                     self.tcx.dcx().span_err(self.tcx().def_span(variant_id), error::Message::UnknownAdt),
                 )
             })?;
-        let struct_use = specs::types::LiteralUse::new(struct_ref, params);
+        let struct_use = specs::types::LiteralUse::new(struct_ref, params.clone());
+
+        state.register_adt_use(self.tcx, variant_id, Some(struct_ref), &params);
 
         // TODO: track?
         // generate the struct use key

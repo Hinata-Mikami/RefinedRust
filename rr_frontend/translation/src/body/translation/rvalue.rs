@@ -90,7 +90,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         components: initializers,
                     };
 
-                    let enum_use = self.ty_translator.generate_enum_use(adt_def, args)?;
+                    let enum_use = self.ty_translator.generate_enum_use_with_regions(adt_def, args)?;
                     let els = enum_use.generate_raw_syn_type_term();
 
                     info!("generating enum annotation for type {:?}", enum_use);

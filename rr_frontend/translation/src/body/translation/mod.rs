@@ -135,8 +135,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let always_live = always_storage_live_locals(body);
         // go over local_decls and create the right radium stack layout
         for (local, local_decl) in local_decls.iter_enumerated() {
-            if proc.mapping().is_box_deref_alias(local) {
-                info!("skipping synthetic Box deref alias local {local:?}");
+            if proc.is_administrative_alias(local) {
+                info!("skipping synthetic administrative alias local {local:?}");
                 continue;
             }
 
@@ -475,10 +475,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn is_box_deref_alias_admin_stmt(&self, stmt: &mir::Statement<'tcx>) -> bool {
         match &stmt.kind {
             mir::StatementKind::StorageLive(local) | mir::StatementKind::StorageDead(local) => {
-                self.proc.mapping().is_box_deref_alias(*local)
+                self.proc.is_administrative_alias(*local)
             },
             mir::StatementKind::Assign(box (place, _)) => {
-                place.projection.is_empty() && self.proc.mapping().is_box_deref_alias(place.local)
+                place.projection.is_empty() && self.proc.is_administrative_alias(place.local)
             },
             _ => false,
         }
@@ -486,7 +486,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     /// Check if a local is used for a spec closure.
     fn is_spec_closure_local(&self, l: mir::Local) -> Result<Option<DefId>, TranslationError> {
-        if self.proc.mapping().is_box_deref_alias(l) {
+        if self.proc.is_administrative_alias(l) {
             return Ok(None);
         }
 

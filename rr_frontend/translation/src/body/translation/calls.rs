@@ -41,7 +41,7 @@ pub(crate) fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     // syntactic types here.
     // Since we do the substitution of the generics above, we should translate generics and
     // traits in the caller's scope.
-    let callee_state = types::CalleeState::new(typing_env, caller_env);
+    let callee_state = types::CalleeState::new(*typing_env, caller_env);
     let mut dummy_state = STInner::CalleeTranslation(callee_state);
 
     let mut syntypes = Vec::new();

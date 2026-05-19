@@ -24,7 +24,7 @@ use crate::error::Message;
 use crate::regions::{RegionBiFolder as _, TyRegionCollectFolder};
 use crate::traits::registry::ResolvedTraitReq;
 use crate::traits::resolution;
-use crate::types::translator::{CalleeState, FunctionState, STInner, TX};
+use crate::types::translator::{FunctionState, STInner, TX};
 use crate::types::tyvars::TyVarFolder;
 use crate::types::{self, scope};
 use crate::{environment, traits};
@@ -64,11 +64,17 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
     ) -> Result<lang::SynType, TranslationError> {
-        let scope = self.scope.borrow();
-        let typing_env = ty::TypingEnv::post_analysis(self.translator.tcx(), scope.did);
-        let callee_state = CalleeState::new(&typing_env, &scope.generic_scope);
-        let mut state = STInner::CalleeTranslation(callee_state);
+        let mut scope = self.scope.borrow_mut();
+        let mut state = self.syntype_state(&mut scope);
         self.translator.translate_type_to_syn_type(ty, &mut state)
+    }
+
+    fn syntype_state<'a>(&self, scope: &'a mut FunctionState<'tcx, 'def>) -> STInner<'a, 'def, 'tcx> {
+        let typing_env = ty::TypingEnv::post_analysis(self.translator.tcx(), scope.did);
+        STInner::SyntypeInFunction {
+            state: scope,
+            typing_env,
+        }
     }
 
     /// Translate a region in the scope of the current function.
@@ -99,18 +105,30 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         variant: Option<abi::VariantIdx>,
     ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         let mut scope = self.scope.borrow_mut();
-        self.translator.generate_structlike_use(ty, variant, &mut scope)
+        let mut state = self.syntype_state(&mut scope);
+        self.translator.generate_structlike_use(ty, variant, &mut state)
     }
 
     /// Assumes that the current state of the ADT registry is consistent, i.e. we are not currently
     /// registering a new ADT.
+    pub(crate) fn generate_enum_use_with_regions(
+        &self,
+        adt_def: ty::AdtDef<'tcx>,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
+        let mut scope = self.scope.borrow_mut();
+        let mut scope = STInner::InFunction(&mut scope);
+        self.translator.generate_enum_use(adt_def, args, &mut scope)
+    }
+
     pub(crate) fn generate_enum_use(
         &self,
         adt_def: ty::AdtDef<'tcx>,
         args: ty::GenericArgsRef<'tcx>,
     ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         let mut scope = self.scope.borrow_mut();
-        self.translator.generate_enum_use(adt_def, args, &mut scope)
+        let mut state = self.syntype_state(&mut scope);
+        self.translator.generate_enum_use(adt_def, args, &mut state)
     }
 
     /// Generate a struct use.
@@ -123,7 +141,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         args: ty::GenericArgsRef<'tcx>,
     ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         let mut scope = self.scope.borrow_mut();
-        self.translator.generate_struct_use(variant_id, args, &mut scope)
+        let mut state = self.syntype_state(&mut scope);
+        self.translator.generate_struct_use(variant_id, args, &mut state)
     }
 
     /// Generate a struct use.
@@ -134,7 +153,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         args: ty::GenericArgsRef<'tcx>,
     ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         let mut scope = self.scope.borrow_mut();
-        self.translator.generate_enum_variant_use(variant_id, args, &mut scope)
+        let mut state = self.syntype_state(&mut scope);
+        self.translator.generate_enum_variant_use(variant_id, args, &mut state)
     }
 
     /// Make a tuple use.
@@ -156,7 +176,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         F: IntoIterator<Item = ty::Ty<'tcx>>,
     {
         let mut scope = self.scope.borrow_mut();
-        self.translator.generate_tuple_use(tys, &mut STInner::InFunction(&mut scope))
+        let mut state = self.syntype_state(&mut scope);
+        self.translator.generate_tuple_use(tys, &mut state)
     }
 
     /// Format the Coq representation of an atomic region.
