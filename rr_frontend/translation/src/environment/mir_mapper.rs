@@ -17,6 +17,7 @@ use std::collections::VecDeque;
 
 use rr_rustc_interface::data_structures::fx::{FxHashMap, FxHashSet};
 use rr_rustc_interface::middle::mir::{self, BasicBlock, Body, Local};
+use rr_rustc_interface::middle::ty;
 
 use crate::environment::borrowck::facts;
 
@@ -372,6 +373,10 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
 
         if self.try_align_eliminated_source_drop(bb_t, bb_s) {
+            return;
+        }
+
+        if self.try_align_eliminated_cleanup_call(bb_t, bb_s) {
             return;
         }
 
@@ -970,6 +975,80 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         (self.bc_predecessors.get(&succ)?.len() == 1).then_some(succ)
     }
 
+    /// Match calls whose borrowck cleanup edge was erased by drop elaboration.
+    ///
+    /// Borrowck MIR can contain calls such as:
+    ///
+    /// ```text
+    /// bb_t: _x = f(...) -> [return: bb_ret, unwind: bb_cleanup]
+    /// bb_cleanup: resume
+    /// ```
+    ///
+    /// In dropck MIR, if the cleanup block only resumes and no destructors need
+    /// to run on that path, rustc rewrites the same call to:
+    ///
+    /// ```text
+    /// bb_t: _x = f(...) -> [return: bb_ret, unwind continue]
+    /// ```
+    ///
+    /// The call still corresponds to the borrowck call terminator, so map its
+    /// points to the source call instead of treating it as inserted target MIR.
+    fn try_align_eliminated_cleanup_call(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
+        let dt = &self.de.basic_blocks[bb_t];
+        let ds = &self.bc.basic_blocks[bb_s];
+        let tt = dt.terminator();
+        let ts = ds.terminator();
+
+        let (
+            mir::TerminatorKind::Call {
+                args: args_t,
+                destination: dest_t,
+                target: target_t,
+                unwind: unwind_t,
+                ..
+            },
+            mir::TerminatorKind::Call {
+                args: args_s,
+                destination: dest_s,
+                target: target_s,
+                unwind: unwind_s,
+                ..
+            },
+        ) = (&tt.kind, &ts.kind)
+        else {
+            return false;
+        };
+
+        let Some(unwind_s) = unwind_target(*unwind_s) else {
+            return false;
+        };
+
+        if unwind_target(*unwind_t).is_some() || !self.is_unwind_resume_block(unwind_s) {
+            return false;
+        }
+
+        if target_t.is_some() != target_s.is_some()
+            || self.place_key(*dest_t, MirFlavor::Target) != self.place_key(*dest_s, MirFlavor::Source)
+            || args_t.len() != args_s.len()
+        {
+            return false;
+        }
+
+        self.target_to_source
+            .insert((bb_t, dt.statements.len()), Origin::Source((bb_s, ds.statements.len())));
+
+        if let (Some(target_t), Some(target_s)) = (*target_t, *target_s) {
+            self.align_blocks(target_t, target_s);
+        }
+
+        true
+    }
+
+    fn is_unwind_resume_block(&self, bb: BasicBlock) -> bool {
+        self.bc.basic_blocks[bb].statements.is_empty()
+            && matches!(self.bc.basic_blocks[bb].terminator().kind, mir::TerminatorKind::UnwindResume)
+    }
+
     fn stmt_equiv(&self, target: &mir::Statement<'tcx>, source: &mir::Statement<'tcx>) -> bool {
         self.statement_key(target, MirFlavor::Target) == self.statement_key(source, MirFlavor::Source)
     }
@@ -1046,7 +1125,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                     ..
                 },
             ) => {
-                self.operand_key(func_t, MirFlavor::Target) == self.operand_key(func_s, MirFlavor::Source)
+                self.call_func_equiv(func_t, func_s)
                     && args_t.len() == args_s.len()
                     && args_t.iter().zip(args_s.iter()).all(|(arg_t, arg_s)| {
                         self.operand_key(&arg_t.node, MirFlavor::Target)
@@ -1313,6 +1392,25 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             mir::Operand::Move(place) => format!("Move({})", self.place_key(*place, flavor)),
             mir::Operand::Constant(constant) => format!("Const({:?})", constant.const_),
             mir::Operand::RuntimeChecks(checks) => format!("RuntimeChecks({checks:?})"),
+        }
+    }
+
+    fn call_func_equiv(&self, target: &mir::Operand<'tcx>, source: &mir::Operand<'tcx>) -> bool {
+        fn fn_def_id(operand: &mir::Operand<'_>) -> Option<rr_rustc_interface::hir::def_id::DefId> {
+            let mir::Operand::Constant(constant) = operand else {
+                return None;
+            };
+
+            let ty::TyKind::FnDef(did, _) = constant.const_.ty().kind() else {
+                return None;
+            };
+
+            Some(*did)
+        }
+
+        match (fn_def_id(target), fn_def_id(source)) {
+            (Some(target_did), Some(source_did)) => target_did == source_did,
+            _ => self.operand_key(target, MirFlavor::Target) == self.operand_key(source, MirFlavor::Source),
         }
     }
 
