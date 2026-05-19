@@ -33,23 +33,23 @@
 
       rocq = {
         stdpp = {
-          version = "ad890e18391e7f0a3675c7f257519d9e3dbc36c1";
-          sha256 = "sha256-utYUzGguteRcHWKjxumi4wRVlkqS0HEn9GE/tRY71VY=";
+          version = "2301f95c0bf0c336b64d9f0d6cb26668ce35fd8c";
+          sha256 = "sha256-xz0lYc+G0UGk9uSJNFvn04EylmloQE1uaQrmsVCq4Xo=";
         };
 
         iris = {
-          version = "b0482dbb04dc8a87fa719bf3317f2b0ad4f4b995";
-          sha256 = "sha256-a/inYe08dVqAQUhlduNgPPAE1Bd0ENzz0Is5AcxRZHg=";
+          version = "aa39151cf17dbfd53649a4466a6420c3dbb02a96";
+          sha256 = "sha256-3y4j0Pkg2jUxTJZcLoZTsnL1E2WCRq+f6aaJFD7TvSU=";
         };
 
         iris-contrib = {
-          version = "809f20037565ace0f54903d9c560ead91a6ed538";
-          sha256 = "sha256-q5tEhUFOqZcAicB+kytLpE70mif5sFvb8z8w8CW3qTM=";
+          version = "35ebb0772e832eb535b20c6195375ec593c9081b";
+          sha256 = "sha256-v/AS2WPpEVCTsY18QwFRPg+qhiGxkIHgy5qZK4vyZrk=";
         };
 
         lambda-rust = {
-          version = "2d20dc5def11269b2c4ef17f43a3dddd54f3bb46";
-          sha256 = "sha256-9uKI8hqOlMAeN10IlvgRIG+4gyZGQ9g7m6HQofHWwbA=";
+          version = "804c0168f773731b669110872bd72e6cce05e755";
+          sha256 = "sha256-lhyYAO4FybaqxbvyLUNkNTBqexLMkhPZ9fjX5wSck/g=";
         };
 
         smtcoq = {

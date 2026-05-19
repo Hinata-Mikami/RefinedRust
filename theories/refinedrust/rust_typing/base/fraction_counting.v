@@ -33,7 +33,7 @@ Section defs.
 
   Definition fraction_map_auth_def (γ : gname) (Φ : Qp → iProp Σ) (q : frac) (n : nat) : iProp Σ :=
     ∃ (M : gmap nat frac) (next_fresh : nat),
-      ghost_map_auth γ q M ∗ ⌜size (dom M) = n⌝ ∗
+      ghost_map_auth γ (DfracOwn q) M ∗ ⌜size (dom M) = n⌝ ∗
       (* track the next fresh id ready for use *)
       ⌜∀ i q, M !! i = Some q → i < next_fresh⌝ ∗
       (* have the remaining fraction here *)

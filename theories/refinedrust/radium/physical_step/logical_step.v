@@ -23,7 +23,7 @@ From radium.physical_step Require Import physical_step.
 
 Section step_update.
 
-  Context `{!lcGS Σ, !trGS Σ, !tr_generation} `{!BiFUpd (iProp Σ), HBUpdFUpd: !BiBUpdFUpd (iProp Σ)}.
+  Context {hlc : has_lc} `{!lcGS hlc Σ, !trGS Σ, !tr_generation} `{!BiFUpd (iProp Σ), HBUpdFUpd: !BiBUpdFUpd (iProp Σ)}.
 
   (* Generalization of the Aneris step update modality *)
   Definition step_upd_def E1 E2 P : iProp Σ :=
@@ -37,9 +37,9 @@ Section step_update.
     ?step_upd_unseal /step_upd_def.
 
 
-  Notation "|~{ E1 , E2 }~> P" := (step_upd E1 E2 P) (at level 99, P at level 200, format "'[  ' |~{  E1  ,  E2  }~>  '/' P ']'").
-  Notation "|~{ E }~> P" := (step_upd E ∅ P) (at level 99, P at level 200, format "'[  ' |~{  E  }~>  '/' P ']'").
-  Notation "|~~> P" := (|~{∅}~> P) (at level 99, P at level 200, format "'[  ' |~~>  '/' P ']'").
+  Notation "|~{ E1 , E2 }~> P" := (step_upd E1 E2 P) (at level 20, P at level 200, format "'[  ' |~{  E1  ,  E2  }~>  '/' P ']'").
+  Notation "|~{ E }~> P" := (step_upd E ∅ P) (at level 20, P at level 200, format "'[  ' |~{  E  }~>  '/' P ']'").
+  Notation "|~~> P" := (|~{∅}~> P) (at level 20, P at level 200, format "'[  ' |~~>  '/' P ']'").
 
   Lemma physical_step_step_upd E1 E2 P Q :
     (|~{E1, E2}~> P) -∗
@@ -341,16 +341,16 @@ Use [iApply step_update_intro] to introduce mask-changing step update modalities
   Qed.
 End step_update.
 
-Notation "|~{ E1 , E2 }~> P" := (step_upd E1 E2 P) (at level 99, P at level 200, format "'[  ' |~{  E1  ,  E2  }~>  '/' P ']'").
-Notation "|~{ E }~> P" := (step_upd E ∅ P) (at level 99, P at level 200, format "'[  ' |~{  E  }~>  '/' P ']'").
-Notation "|~~> P" := (|~{∅}~> P) (at level 99, P at level 200, format "'[  ' |~~>  '/' P ']'").
+Notation "|~{ E1 , E2 }~> P" := (step_upd E1 E2 P) (at level 20, P at level 200, format "'[  ' |~{  E1  ,  E2  }~>  '/' P ']'").
+Notation "|~{ E }~> P" := (step_upd E ∅ P) (at level 20, P at level 200, format "'[  ' |~{  E  }~>  '/' P ']'").
+Notation "|~~> P" := (|~{∅}~> P) (at level 20, P at level 200, format "'[  ' |~~>  '/' P ']'").
 
 
 (* The logical step modality used in RefinedRust. Note that the lemmas are derived from those above. *)
 Module logical_step.
   Section logical_step.
 
-    Context `{!lcGS Σ, !trGS Σ, !tr_generation} `{!BiFUpd (iProp Σ), HBUpdFUpd: !BiBUpdFUpd (iProp Σ)}.
+    Context {hlc : has_lc} `{!lcGS hlc Σ, !trGS Σ, !tr_generation} `{!BiFUpd (iProp Σ), HBUpdFUpd: !BiBUpdFUpd (iProp Σ)}.
 
     Definition logical_step E P : iProp Σ := |~{E, E}~> P.
 

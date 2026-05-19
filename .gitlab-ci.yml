@@ -231,19 +231,19 @@ check-generated-files:
    - git status --porcelain=v1 --untracked-files=all -- stdlib
    - test -z "$(git status --porcelain=v1 --untracked-files=all -- stdlib)"
 
-build-opam-rocq.9.1.0:
+build-opam-rocq.9.1.1:
   <<: *forks_only
   extends: .opam
   tags: [ fp ]
   variables:
-    OPAM_PINS: "rocq-core version 9.1.0 dune version 3.21.0"
+    OPAM_PINS: "rocq-core version 9.1.1 dune version 3.21.0"
 
-build-opam-rocq.9.1.0-timing:
+build-opam-rocq.9.1.1-timing:
   <<: *upstream_only
   extends: .opam
   tags: [ fp-timing ]
   variables:
-    OPAM_PINS: "rocq-core version 9.1.0 dune version 3.21.0"
+    OPAM_PINS: "rocq-core version 9.1.1 dune version 3.21.0"
 
 build-opam-iris.dev:
   <<: *nightly_only
@@ -253,7 +253,7 @@ build-opam-iris.dev:
     STDPP_REPO: "iris/stdpp"
     IRIS_REPO: "iris/iris"
     OPAMIGNOREPINDEPENDS: "true" # so that the pins below don't get overridden
-    OPAM_PINS: "rocq-core version 9.1.0 rocq-stdlib version 9.0.0 git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV   git+https://gitlab.mpi-sws.org/$IRIS_REPO#$IRIS_REV git+https://gitlab.mpi-sws.org/iris/iris-contrib git+https://gitlab.mpi-sws.org/iris/lambda-rust"
+    OPAM_PINS: "rocq-core version 9.1.1 rocq-stdlib version 9.0.0 git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV   git+https://gitlab.mpi-sws.org/$IRIS_REPO#$IRIS_REV git+https://gitlab.mpi-sws.org/iris/iris-contrib git+https://gitlab.mpi-sws.org/iris/lambda-rust"
   script:
    - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
    - make setup-dune-workspace

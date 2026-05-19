@@ -11,7 +11,7 @@ RefinedRust is a prototype framework for verifying safe and unsafe Rust code.
 license: "BSD-3-Clause"
 
 depends: [
-  "rocq-core" { (= "9.1.0" ) }
+  "rocq-core" { (= "9.1.1" ) }
   "rocq-stdlib" { (= "9.0.0") }
   "rocq-stdpp"
   "rocq-stdpp-unstable"
@@ -24,12 +24,12 @@ depends: [
 ]
 
 pin-depends: [
-  ["rocq-stdpp.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#ad890e18391e7f0a3675c7f257519d9e3dbc36c1"]
-  ["rocq-stdpp-unstable.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#ad890e18391e7f0a3675c7f257519d9e3dbc36c1"]
-  ["rocq-stdpp-bitvector.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#ad890e18391e7f0a3675c7f257519d9e3dbc36c1"]
-  ["rocq-iris.dev" "git+https://gitlab.mpi-sws.org/iris/iris.git#b0482dbb04dc8a87fa719bf3317f2b0ad4f4b995"]
-  ["rocq-iris-contrib.dev" "git+https://gitlab.mpi-sws.org/iris/iris-contrib.git#809f20037565ace0f54903d9c560ead91a6ed538"]
-  ["coq-lifetime-logic.dev" "git+https://gitlab.mpi-sws.org/iris/lambda-rust.git#2d20dc5def11269b2c4ef17f43a3dddd54f3bb46"]
+  ["rocq-stdpp.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#2301f95c0bf0c336b64d9f0d6cb26668ce35fd8c"]
+  ["rocq-stdpp-unstable.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#2301f95c0bf0c336b64d9f0d6cb26668ce35fd8c"]
+  ["rocq-stdpp-bitvector.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#2301f95c0bf0c336b64d9f0d6cb26668ce35fd8c"]
+  ["rocq-iris.dev" "git+https://gitlab.mpi-sws.org/iris/iris.git#aa39151cf17dbfd53649a4466a6420c3dbb02a96"]
+  ["rocq-iris-contrib.dev" "git+https://gitlab.mpi-sws.org/iris/iris-contrib.git#35ebb0772e832eb535b20c6195375ec593c9081b"]
+  ["coq-lifetime-logic.dev" "git+https://gitlab.mpi-sws.org/iris/lambda-rust.git#804c0168f773731b669110872bd72e6cce05e755"]
 ]
 
 build: [

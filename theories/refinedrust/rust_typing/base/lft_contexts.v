@@ -407,7 +407,7 @@ Section lft_contexts.
   Definition llctxN := rrustN .@ "llctx".
   Definition llctx_inv :=
     ((∃ (M : gmap lft gname) (M' : gmap lft (positive * lft * frac)),
-      ghost_map_auth lctx_name 1 M ∗ ghost_map_auth lctx_decomp_name 1 M' ∗
+      ghost_map_auth lctx_name (DfracOwn 1) M ∗ ghost_map_auth lctx_decomp_name (DfracOwn 1) M' ∗
       ⌜dom M = dom M'⌝))%I.
   Definition llctx_ctx_def : iProp Σ :=
     inv llctxN llctx_inv.

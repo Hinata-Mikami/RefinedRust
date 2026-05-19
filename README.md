@@ -70,7 +70,6 @@ opam repo add iris-dev https://gitlab.mpi-sws.org/iris/opam.git
 ```
 2. Install the necessary dependencies:
 ```
-opam pin add rocq-prover 9.1.0
 make builddep
 ```
 3. Build the Rocq implementation of the type system:

@@ -84,7 +84,7 @@ Final Obligation. intros; simpl; lia. Qed.
 
 Section physical_step.
 
-  Context `{!lcGS Σ, !trGS Σ, !tr_generation} `{!BiFUpd (iProp Σ), HBUpdFUpd: !BiBUpdFUpd (iProp Σ)}.
+  Context {hlc : has_lc} `{!lcGS hlc Σ, !trGS Σ, !tr_generation} `{!BiFUpd (iProp Σ), HBUpdFUpd: !BiBUpdFUpd (iProp Σ)}.
 
   Lemma tr_f_mono x y :
     x ≤ y → tr_f x ≤ tr_f y.
@@ -141,7 +141,7 @@ Section physical_step.
       notation used by step_fupd.
   *)
   Notation "|={ E }⧗=> P" := (physical_step E P)
-    (at level 99, P at level 200, E at level 50, format "|={ E }⧗=>  P") : bi_scope.
+    (at level 20, P at level 200, E at level 50, format "|={ E }⧗=>  P") : bi_scope.
 
   Lemma physical_step_step {E} n P:
     (|={E, ∅}=> ⧖ n) ∧ (£ (tr_f (S n)) -∗ ⧗ (tr_f (S n)) ={E, ∅}=∗ |={∅}▷=>^(S $ tr_f $ n) |={∅, E}=> P) -∗
@@ -396,7 +396,7 @@ Section physical_step.
 
   (* Define multiple physical steps for use in soundness and adequacy of WP. *)
   Notation "|={ E }⧗=>^ n P" := (Nat.iter n (physical_step E) P)
-    (at level 99, P at level 200, E at level 50, n at level 9, format "|={ E }⧗=>^ n  P") : bi_scope.
+    (at level 20, P at level 200, E at level 50, n at level 9, format "|={ E }⧗=>^ n  P") : bi_scope.
 
   Lemma physical_stepN_intro {E} n P :
     P ⊢ |={E}⧗=>^n P.
@@ -494,9 +494,9 @@ End physical_step.
 
 (* Redefine the notations outside of the section. *)
 Notation "|={ E }⧗=> P" := (physical_step E P)
-  (at level 99, P at level 200, E at level 50, format "|={ E }⧗=>  P") : bi_scope.
+  (at level 20, P at level 200, E at level 50, format "|={ E }⧗=>  P") : bi_scope.
 Notation "|={ E }⧗=>^ n P" := (Nat.iter n (physical_step E) P)
-  (at level 99, P at level 200, E at level 50, n at level 9, format "|={ E }⧗=>^ n  P") : bi_scope.
+  (at level 20, P at level 200, E at level 50, n at level 9, format "|={ E }⧗=>^ n  P") : bi_scope.
 
 Section soundness.
 
@@ -516,7 +516,7 @@ Section soundness.
   Local Definition laters_up_to_steps m k :=
     sum_list_with (λ ns, S $ tr_f (2 * half_tr_per_step m ns)) (seq 0 k).
 
-  Local Lemma physical_step_soundness `{!lcGS Σ} `{!trGS Σ} {E} m P :
+  Local Lemma physical_step_soundness `{!lcGS hlc Σ} `{!trGS Σ} {E} m P :
     tr_supply m 0 -∗ £ (tr_f (1 + 2*m)) -∗ (|={E}⧗=> P) -∗ |={E, ∅}=> |={∅}▷=>^(1 + tr_f (2*m)) |={∅, E}=> tr_supply (m + tr_f (1 + 2*m)) 0 ∗ P.
   Proof using HBUpdFUpd.
     iIntros "? H£ HP". rewrite physical_step_unseal.
@@ -528,7 +528,7 @@ Section soundness.
     by rewrite tr_f_zero.
   Qed.
 
-  Lemma physical_stepN_soundness_local `{!lcGS Σ} `{!trGS Σ} {E} m k P :
+  Lemma physical_stepN_soundness_local `{!lcGS hlc Σ} `{!trGS Σ} {E} m k P :
     tr_supply m 0 -∗
     £ (lc_up_to_steps m k) -∗
     (|={E}⧗=>^k P) -∗
@@ -554,7 +554,7 @@ Lemma physical_stepN_soundness `{!invGpreS Σ, !trGpreS Σ, !tr_generation} (P :
     (∀ {Hinv : invGS_gen hlc Σ} {Htr: trGS Σ}, ⧗ n ∗ £ n ⊢ |={⊤}=> |={⊤}⧗=>^k |={⊤, ∅}=> P) → ⊢ P.
 Proof.
   intros HP.
-  eapply (step_fupdN_soundness_gen _ hlc _ _).
+  eapply (step_fupdN_soundness hlc _ _ _).
   iIntros (Hinv) "[H£ H£']".
   iMod (tr_supply_alloc n) as "(%Htr & Hsup)".
   replace n with (0 + n) by done.
@@ -564,5 +564,3 @@ Proof.
   iApply step_fupdN_fupd_swap. iApply (step_fupdN_wand with "[$]").
   iIntros "[_ >>$] //".
 Qed.
-
-

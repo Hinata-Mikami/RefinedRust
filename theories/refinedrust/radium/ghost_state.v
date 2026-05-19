@@ -229,13 +229,13 @@ Section definitions.
     own heap_heap_name (● to_heapUR h).
 
   Definition alloc_meta_ctx (ub : allocs) : iProp Σ :=
-    ghost_map_auth heap_alloc_meta_map_name 1 (to_alloc_meta_map ub).
+    ghost_map_auth heap_alloc_meta_map_name (DfracOwn 1) (to_alloc_meta_map ub).
 
   Definition alloc_alive_ctx (ub : allocs) : iProp Σ :=
-    ghost_map_auth heap_alloc_alive_map_name 1 (to_alloc_alive_map ub).
+    ghost_map_auth heap_alloc_alive_map_name (DfracOwn 1) (to_alloc_alive_map ub).
 
   Definition fntbl_ctx (fns : gmap addr function) : iProp Σ :=
-    ghost_map_auth heap_fntbl_name 1 fns.
+    ghost_map_auth heap_fntbl_name (DfracOwn 1) fns.
 
   Definition heap_state_ctx (st : heap_state) : iProp Σ :=
     ⌜heap_state_invariant st⌝ ∗
@@ -1329,7 +1329,7 @@ Section definitions.
   Definition to_current_frame (t : gmap thread_id thread_state) : gmap thread_id frame_id :=
     (λ ts, length ts.(ts_frames)) <$> t.
   Definition thread_current_frame_auth (st : gmap thread_id thread_state) : iProp Σ :=
-    ghost_map_auth thread_current_frame_name 1 (to_current_frame st).
+    ghost_map_auth thread_current_frame_name (DfracOwn 1) (to_current_frame st).
 
   Definition call_frame_has_locals (cf : call_frame) (names : list var_name) :=
     (map_to_list (cf.(cf_locals))).*1 ≡ₚ names.
@@ -1344,7 +1344,7 @@ Section definitions.
       m !! (π, i) = Some names →
       ∃ ts cf, st !! π = Some ts ∧ (0 < i ≤ length ts.(ts_frames))%nat ∧ ts.(ts_frames) !! (length ts.(ts_frames) - i)%nat = Some cf ∧ call_frame_has_locals cf names.
   Definition thread_local_vars_auth (st : gmap thread_id thread_state) : iProp Σ :=
-    ∃ m, ghost_map_auth thread_local_vars_name 1 m ∗ ⌜thread_local_vars_inv_1 st m⌝ ∗ ⌜thread_local_vars_inv_2 st m⌝.
+    ∃ m, ghost_map_auth thread_local_vars_name (DfracOwn 1) m ∗ ⌜thread_local_vars_inv_1 st m⌝ ∗ ⌜thread_local_vars_inv_2 st m⌝.
 
   Definition thread_local_var_loc_inv_1 (st : gmap thread_id thread_state) (m : gmap (thread_id * frame_id * var_name) (loc * syn_type)) : Prop :=
     ∀ π i x ts cf l ly,
@@ -1366,7 +1366,7 @@ Section definitions.
     [∗ map] x ↦ y ∈ m,
       ∃ ly, ⌜syn_type_has_layout y.2 ly⌝ ∗ freeable y.1 (ly_size ly) 1 StackAlloc.
   Definition thread_local_var_loc_auth (st : gmap thread_id thread_state) : iProp Σ :=
-    ∃ m, ghost_map_auth thread_local_var_loc_name 1 m ∗ thread_local_var_loc_freeable m ∗
+    ∃ m, ghost_map_auth thread_local_var_loc_name (DfracOwn 1) m ∗ thread_local_var_loc_freeable m ∗
       ⌜thread_local_var_loc_inv_1 st m⌝ ∗ ⌜thread_local_var_loc_inv_2 st m⌝.
 
   Definition thread_ctx (st : gmap thread_id thread_state) : iProp Σ :=
