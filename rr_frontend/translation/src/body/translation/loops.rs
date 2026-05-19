@@ -159,6 +159,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &self,
         loop_head: mir::BasicBlock,
     ) -> Result<Option<LoopIteratorInfo<'def>>, TranslationError> {
+        if let Some(info) = self.check_for_iter_next(loop_head)? {
+            return Ok(Some(info));
+        }
+
         let proc = self.proc;
         let succs = proc.successors(loop_head);
 

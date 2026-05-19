@@ -348,16 +348,22 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             }
         }
 
-        // Inserted statements may still be translated or used as successor
-        // starts. When they precede a mapped source statement in the same
-        // block, treat them as happening before that source statement for
-        // Polonius point queries.
+        // Inserted target locations may still be translated directly or used
+        // as successor starts by annotation generation. They have no source
+        // statement, but Polonius facts are indexed by borrowck source points,
+        // so give them a conservative source phase when it is structurally
+        // clear where they sit relative to source MIR.
         let mut target_point_phases = self.target_point_phases.clone();
         let mut target_to_source_entries: Vec<_> = self.target_to_source.iter().collect();
         target_to_source_entries.sort_by_key(|((bb, idx), _)| (bb.as_u32(), *idx));
         for ((bb, idx), origin) in target_to_source_entries {
             if *origin == Origin::Inserted
                 && let Some(source) = self.next_mapped_source_after(*bb, *idx)
+            {
+                target_point_phases.insert((*bb, *idx), PointPhase::PreEffect(source));
+            } else if *origin == Origin::Inserted
+                && *idx == 0
+                && let Some(source) = self.source_successor_for_inserted_block_start(*bb)
             {
                 target_point_phases.insert((*bb, *idx), PointPhase::PreEffect(source));
             }
@@ -412,6 +418,77 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 },
                 Origin::Inserted => {},
             }
+        }
+        None
+    }
+
+    /// Infer a source point for the start of an inserted target block.
+    ///
+    /// This covers blocks that exist only in dropck MIR but are still visible to
+    /// the target CFG, most notably collapsed cleanup joins. Example:
+    /// borrowck has two cleanup drop blocks that both continue to a shared
+    /// `resume` block, while dropck may merge those paths into one target
+    /// `resume` block. Annotation generation asks for the start point of that
+    /// inserted successor block when computing terminator dying loans.
+    ///
+    /// We infer the point from every mapped predecessor edge:
+    /// - identify whether the target predecessor reaches `bb_t` through its normal or unwind edge,
+    /// - follow the corresponding edge in the mapped source predecessor,
+    /// - if the inserted target block's terminator matches a later source terminator along a linear normal
+    ///   path, use that source terminator point,
+    /// - otherwise use the start of the corresponding source successor block.
+    ///
+    /// All predecessor edges must agree on the same source location. If they do
+    /// not, we return `None` and leave the mapping boundary to fail loudly.
+    fn source_successor_for_inserted_block_start(&self, bb_t: BasicBlock) -> Option<SourceLoc> {
+        let mut source = None;
+        let target_term = self.de.basic_blocks[bb_t].terminator();
+
+        for (pred_t, data_t) in self.de.basic_blocks.iter_enumerated() {
+            if !terminator_targets(data_t.terminator()).contains(&bb_t) {
+                continue;
+            }
+
+            let pred_loc_t = (pred_t, data_t.statements.len());
+            let pred_loc_s = origin_source_loc(self.target_to_source.get(&pred_loc_t).copied()?)?;
+            let succ_source = matching_source_successor(
+                data_t.terminator(),
+                bb_t,
+                self.bc.basic_blocks[pred_loc_s.0].terminator(),
+            )?;
+            let succ_source =
+                if let Some(matched) = self.find_matching_source_terminator_from(succ_source, target_term) {
+                    let source_data = &self.bc.basic_blocks[matched];
+                    (matched, source_data.statements.len())
+                } else {
+                    (succ_source, 0)
+                };
+
+            if source.is_some_and(|existing| existing != succ_source) {
+                return None;
+            }
+            source = Some(succ_source);
+        }
+
+        source
+    }
+
+    fn find_matching_source_terminator_from(
+        &self,
+        start: BasicBlock,
+        target: &mir::Terminator<'tcx>,
+    ) -> Option<BasicBlock> {
+        // Source cleanup chains can have extra drop blocks between the source
+        // successor edge and the terminator that corresponds to the inserted
+        // target block. Only follow single normal-successor chains; joins and
+        // branches are deliberately not guessed here.
+        let mut current = start;
+        for _ in 0..self.bc.basic_blocks.len() {
+            let source = self.bc.basic_blocks[current].terminator();
+            if self.terminator_shape_equiv(target, source) {
+                return Some(current);
+            }
+            current = normal_successor(source)?;
         }
         None
     }
@@ -1824,6 +1901,13 @@ const fn point_phase_from_origin(origin: Origin) -> Option<PointPhase> {
     }
 }
 
+const fn origin_source_loc(origin: Origin) -> Option<SourceLoc> {
+    match origin {
+        Origin::Source(source) | Origin::FoldedFrom(source) | Origin::SplitFrom(source) => Some(source),
+        Origin::Inserted => None,
+    }
+}
+
 fn insert_point_mapping(
     target_points_to_source: &mut FxHashMap<TargetPoint, SourcePoint>,
     target: TargetLoc,
@@ -1873,6 +1957,11 @@ fn real_targets(terminator: &mir::Terminator<'_>) -> Vec<BasicBlock> {
     }
 }
 
+fn terminator_targets(terminator: &mir::Terminator<'_>) -> Vec<BasicBlock> {
+    terminator.successors().collect()
+}
+
+/// Return the normal, non-unwind continuation of a terminator when it is unique.
 const fn normal_successor(terminator: &mir::Terminator<'_>) -> Option<BasicBlock> {
     match &terminator.kind {
         mir::TerminatorKind::Goto { target }
@@ -1887,6 +1976,44 @@ const fn normal_successor(terminator: &mir::Terminator<'_>) -> Option<BasicBlock
             ..
         } => Some(*target),
         mir::TerminatorKind::Call { target, .. } => *target,
+        _ => None,
+    }
+}
+
+fn matching_source_successor(
+    target: &mir::Terminator<'_>,
+    target_successor: BasicBlock,
+    source: &mir::Terminator<'_>,
+) -> Option<BasicBlock> {
+    // The mapper aligns predecessor terminators structurally, but their target
+    // block numbers differ. Given a target successor edge, pick the analogous
+    // source successor edge. We handle only the edge kinds used here: normal
+    // continuation and cleanup unwind continuation.
+    if normal_successor(target) == Some(target_successor) {
+        return normal_successor(source);
+    }
+
+    match (&target.kind, &source.kind) {
+        (
+            mir::TerminatorKind::Assert {
+                unwind: unwind_t, ..
+            }
+            | mir::TerminatorKind::Call {
+                unwind: unwind_t, ..
+            }
+            | mir::TerminatorKind::Drop {
+                unwind: unwind_t, ..
+            },
+            mir::TerminatorKind::Assert {
+                unwind: unwind_s, ..
+            }
+            | mir::TerminatorKind::Call {
+                unwind: unwind_s, ..
+            }
+            | mir::TerminatorKind::Drop {
+                unwind: unwind_s, ..
+            },
+        ) if unwind_target(*unwind_t) == Some(target_successor) => unwind_target(*unwind_s),
         _ => None,
     }
 }
