@@ -29,6 +29,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 statement_index: idx,
             };
 
+            if self.is_box_deref_alias_admin_stmt(stmt) {
+                info!("skipping synthetic Box deref alias statement: {stmt:?}");
+                continue;
+            }
+
             let mut statement_annotation_plan = self.annotations.prepare_statement_annotation_plan(
                 &self.ty_translator,
                 loc,

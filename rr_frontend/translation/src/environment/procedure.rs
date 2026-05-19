@@ -103,6 +103,23 @@ impl<'tcx> Procedure<'tcx> {
         &self.mapping
     }
 
+    /// Rewrite dropck's synthetic raw-pointer `Box` deref aliases back to the
+    /// borrowck-level `Box` deref place. Only dereference uses of the alias are
+    /// rewritten; the plain alias local is administrative MIR.
+    pub(crate) fn normalize_box_deref_alias_place(&self, pl: &mir::Place<'tcx>) -> mir::Place<'tcx> {
+        let Some(alias) = self.mapping.box_deref_alias_for(pl.local) else {
+            return *pl;
+        };
+        if !matches!(pl.projection.first(), Some(mir::ProjectionElem::Deref)) {
+            return *pl;
+        }
+
+        mir::Place {
+            local: alias.box_local(),
+            projection: pl.projection,
+        }
+    }
+
     /// Get the typing context.
     #[must_use]
     pub(crate) const fn get_tcx(&self) -> ty::TyCtxt<'tcx> {
@@ -160,6 +177,8 @@ impl<'tcx> Procedure<'tcx> {
         &self,
         pl: &mir::Place<'tcx>,
     ) -> Result<mir::PlaceTy<'tcx>, TranslationError> {
+        let normalized = self.normalize_box_deref_alias_place(pl);
+        let pl = &normalized;
         let mut cur_ty = mir::PlaceTy::from_ty(self.region_type_of_local(pl.local)?);
 
         for elem in pl.projection {

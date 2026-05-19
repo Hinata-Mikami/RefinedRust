@@ -5,11 +5,40 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 //! Align locations from `mir_drops_elaborated_and_const_checked` back to the
-//! borrow-checked MIR. The current mapper is intentionally conservative: it
-//! handles cleanup post-borrowck rewrites, synthetic locals introduced by drop
-//! elaboration and box-deref elaboration, dead drops, and the common
-//! conditional-drop rewrite. Open-drop subgraphs still need a dedicated
-//! matcher.
+//! borrow-checked MIR. Body translation traverses dropck MIR, but Polonius facts
+//! and region-sensitive types are keyed by borrowck MIR locations. This mapper
+//! provides the bridge from target/dropck locations and points back to their
+//! source/borrowck counterparts.
+//!
+//! The mapper is intentionally conservative. It handles cleanup post-borrowck
+//! rewrites, synthetic locals introduced by drop elaboration and box-deref
+//! elaboration, dead drops, and the common conditional-drop rewrite. Unknown
+//! target locations stay unmapped instead of being guessed.
+//!
+//! # Box deref aliases
+//!
+//! Dropck MIR can lower a borrowck-level `Box` dereference into a synthetic raw
+//! pointer local:
+//!
+//! ```text
+//! // borrowck MIR
+//! _dst = copy (*_box)
+//!
+//! // dropck MIR
+//! _alias = copy ((_box.0).0) as *const T (Transmute)
+//! _dst = copy (*_alias)
+//! ```
+//!
+//! `observe_inserted_stmt` recognizes these alias initializers structurally and
+//! records a [`BoxDerefAlias`]. The mapper then normalizes later `*_alias` uses
+//! when comparing target statements/terminators with borrowck MIR, and exposes
+//! the alias through [`MappingResult`] so body translation can skip the
+//! administrative alias local and translate `*_alias` as the original `*_box`.
+//!
+//! Alias initializer statements may also be basic-block entry points. Since
+//! annotation generation queries start points for successor blocks, `finish`
+//! assigns such inserted alias initializers a point mapping to the next real
+//! mapped source location in the same block.
 
 #![allow(dead_code)]
 
@@ -34,18 +63,76 @@ pub enum Origin {
     FoldedFrom(SourceLoc),
 }
 
+/// A synthetic dropck local that represents a lowered borrowck-level `Box` deref.
+///
+/// Drop elaboration can lower `*_box` to a raw-pointer alias, e.g.:
+///
+/// ```text
+/// _alias = copy ((_box.0).0) as *mut T (Transmute)
+/// *_alias
+/// ```
+///
+/// The alias local should be treated as administrative MIR; uses through a
+/// dereference correspond to the original borrowck-level `*_box` place.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub struct BoxDerefAlias {
+    alias_local: Local,
+    box_local: Local,
+    source_loc: Option<SourceLoc>,
+}
+
+impl BoxDerefAlias {
+    #[must_use]
+    pub const fn alias_local(self) -> Local {
+        self.alias_local
+    }
+
+    #[must_use]
+    pub const fn box_local(self) -> Local {
+        self.box_local
+    }
+
+    #[must_use]
+    pub const fn source_loc(self) -> Option<SourceLoc> {
+        self.source_loc
+    }
+}
+
 #[derive(Debug, Default)]
 #[expect(clippy::partial_pub_fields, reason = "point mappings use crate-private Polonius fact types")]
 pub struct MappingResult {
     pub target_to_source: FxHashMap<TargetLoc, Origin>,
     pub(crate) target_points_to_source: FxHashMap<TargetPoint, SourcePoint>,
     pub unmapped_targets: Vec<TargetLoc>,
+    box_deref_aliases: FxHashMap<Local, BoxDerefAlias>,
 }
 
 impl MappingResult {
     #[must_use]
     pub fn origin_for_target(&self, target: TargetLoc) -> Option<Origin> {
         self.target_to_source.get(&target).copied()
+    }
+
+    /// Return the recorded `Box`-deref alias for a synthetic dropck local.
+    ///
+    /// The alias is only semantically meaningful when the local is used through
+    /// a dereference. A plain use of the alias local is the administrative raw
+    /// pointer value introduced by dropck.
+    #[must_use]
+    pub fn box_deref_alias_for(&self, local: Local) -> Option<BoxDerefAlias> {
+        self.box_deref_aliases.get(&local).copied()
+    }
+
+    /// Check whether `local` is a synthetic dropck local that aliases `*Box<T>`.
+    #[must_use]
+    pub fn is_box_deref_alias(&self, local: Local) -> bool {
+        self.box_deref_aliases.contains_key(&local)
+    }
+
+    /// Iterate over all synthetic dropck locals that alias borrowck-level `Box`
+    /// dereferences.
+    pub fn box_deref_aliases(&self) -> impl Iterator<Item = BoxDerefAlias> + '_ {
+        self.box_deref_aliases.values().copied()
     }
 
     #[must_use]
@@ -122,6 +209,22 @@ pub fn format_mapping<'tcx>(bc: &Body<'tcx>, de: &Body<'tcx>, mapping: &MappingR
         }
     }
 
+    let mut aliases = mapping.box_deref_aliases().collect::<Vec<_>>();
+    aliases.sort_by_key(|alias| alias.alias_local().as_usize());
+    if !aliases.is_empty() {
+        lines.push(String::new());
+        lines.push("Box deref aliases:".to_owned());
+        for alias in aliases {
+            let source =
+                alias.source_loc().map_or_else(|| "none".to_owned(), |(bb, idx)| format!("{bb:?}[{idx}]"));
+            lines.push(format!(
+                "{:?} aliases *{:?} (source: {source})",
+                alias.alias_local(),
+                alias.box_local()
+            ));
+        }
+    }
+
     lines.join("\n")
 }
 
@@ -157,12 +260,12 @@ struct Mapper<'a, 'tcx> {
     target_to_source: FxHashMap<TargetLoc, Origin>,
     target_point_phases: FxHashMap<TargetLoc, PointPhase>,
     visited: FxHashSet<(BasicBlock, BasicBlock)>,
-    box_deref_aliases: FxHashMap<Local, BoxDerefAlias>,
+    box_deref_aliases: FxHashMap<Local, InternalBoxDerefAlias>,
     bc_predecessors: FxHashMap<BasicBlock, Vec<BasicBlock>>,
 }
 
 #[derive(Clone)]
-struct BoxDerefAlias {
+struct InternalBoxDerefAlias {
     place: NormalizedPlace,
     source_loc: Option<SourceLoc>,
 }
@@ -241,6 +344,19 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             }
         }
 
+        // Inserted Box-deref alias initializers are administrative statements
+        // that translation skips. They can still be successor start locations,
+        // so map their points to the next real source statement in the block.
+        let mut target_point_phases = self.target_point_phases.clone();
+        for ((bb, idx), origin) in &self.target_to_source {
+            if *origin == Origin::Inserted
+                && self.is_box_deref_alias_initializer(*bb, *idx)
+                && let Some(source) = self.next_mapped_source_after(*bb, *idx)
+            {
+                target_point_phases.insert((*bb, *idx), PointPhase::PreEffect(source));
+            }
+        }
+
         let mut target_points_to_source = FxHashMap::default();
         let mut target_to_source: Vec<_> = self.target_to_source.iter().collect();
         target_to_source.sort_by_key(|((bb, idx), _)| (bb.as_u32(), *idx));
@@ -250,16 +366,51 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             };
             insert_point_mapping(&mut target_points_to_source, *target, phase);
         }
-        let mut target_point_phases: Vec<_> = self.target_point_phases.iter().collect();
+        let mut target_point_phases: Vec<_> = target_point_phases.iter().collect();
         target_point_phases.sort_by_key(|((bb, idx), _)| (bb.as_u32(), *idx));
         for (target, phase) in target_point_phases {
             insert_point_mapping(&mut target_points_to_source, *target, *phase);
         }
 
+        let box_deref_aliases = self
+            .box_deref_aliases
+            .iter()
+            .map(|(alias_local, alias)| {
+                (*alias_local, BoxDerefAlias {
+                    alias_local: *alias_local,
+                    box_local: alias.place.local,
+                    source_loc: alias.source_loc,
+                })
+            })
+            .collect();
+
         MappingResult {
             target_to_source: self.target_to_source,
             target_points_to_source,
             unmapped_targets,
+            box_deref_aliases,
+        }
+    }
+
+    fn is_box_deref_alias_initializer(&self, bb: BasicBlock, idx: usize) -> bool {
+        let Some(stmt) = self.de.basic_blocks[bb].statements.get(idx) else {
+            return false;
+        };
+        let mir::StatementKind::Assign(box (lhs, _)) = &stmt.kind else {
+            return false;
+        };
+        lhs.projection.is_empty() && self.box_deref_aliases.contains_key(&lhs.local)
+    }
+
+    /// Find the source location of the next target location in the same block.
+    ///
+    /// This is only used for inserted administrative statements that translation
+    /// skips. Mapping them to the next real source point makes successor-start
+    /// Polonius queries land at the first semantic statement in the block.
+    fn next_mapped_source_after(&self, bb: BasicBlock, idx: usize) -> Option<SourceLoc> {
+        match self.target_to_source.get(&(bb, idx + 1)).copied()? {
+            Origin::Source(source) | Origin::FoldedFrom(source) | Origin::SplitFrom(source) => Some(source),
+            Origin::Inserted => None,
         }
     }
 
@@ -1102,7 +1253,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 expected_t == expected_s
                     && self.operand_key(cond_t, MirFlavor::Target)
                         == self.operand_key(cond_s, MirFlavor::Source)
-                    && format!("{msg_t:?}") == format!("{msg_s:?}")
+                    && self.assert_msg_equiv(msg_t, msg_s)
             },
 
             (Drop { place: place_t, .. }, Drop { place: place_s, .. }) => {
@@ -1152,6 +1303,17 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
+    /// Observe inserted synthetic statements while aligning blocks.
+    ///
+    /// In particular, this recognizes dropck's lowered `Box` deref alias:
+    ///
+    /// ```text
+    /// _alias = copy ((_box.0).0) as *const/*mut T (Transmute)
+    /// ```
+    ///
+    /// The statement itself remains inserted or split from the source statement
+    /// that first uses `*_box`, but subsequent `*_alias` places are normalized
+    /// back to `*_box` for structural matching.
     fn observe_inserted_stmt(
         &mut self,
         stmt: &mir::Statement<'tcx>,
@@ -1188,7 +1350,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             self.source_stmt_uses_box_deref(&self.bc.basic_blocks[*bb].statements[*idx], rhs_place.local)
         });
 
-        self.box_deref_aliases.insert(lhs.local, BoxDerefAlias {
+        self.box_deref_aliases.insert(lhs.local, InternalBoxDerefAlias {
             place: NormalizedPlace {
                 local: rhs_place.local,
                 projection: Vec::new(),
@@ -1411,6 +1573,62 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         match (fn_def_id(target), fn_def_id(source)) {
             (Some(target_did), Some(source_did)) => target_did == source_did,
             _ => self.operand_key(target, MirFlavor::Target) == self.operand_key(source, MirFlavor::Source),
+        }
+    }
+
+    fn assert_msg_equiv(&self, target: &mir::AssertMessage<'tcx>, source: &mir::AssertMessage<'tcx>) -> bool {
+        use mir::AssertKind;
+
+        match (target, source) {
+            (
+                AssertKind::BoundsCheck {
+                    len: len_t,
+                    index: index_t,
+                },
+                AssertKind::BoundsCheck {
+                    len: len_s,
+                    index: index_s,
+                },
+            ) => {
+                self.operand_key(len_t, MirFlavor::Target) == self.operand_key(len_s, MirFlavor::Source)
+                    && self.operand_key(index_t, MirFlavor::Target)
+                        == self.operand_key(index_s, MirFlavor::Source)
+            },
+            (AssertKind::Overflow(op_t, lhs_t, rhs_t), AssertKind::Overflow(op_s, lhs_s, rhs_s)) => {
+                op_t == op_s
+                    && self.operand_key(lhs_t, MirFlavor::Target)
+                        == self.operand_key(lhs_s, MirFlavor::Source)
+                    && self.operand_key(rhs_t, MirFlavor::Target)
+                        == self.operand_key(rhs_s, MirFlavor::Source)
+            },
+            (AssertKind::OverflowNeg(op_t), AssertKind::OverflowNeg(op_s))
+            | (AssertKind::DivisionByZero(op_t), AssertKind::DivisionByZero(op_s))
+            | (AssertKind::RemainderByZero(op_t), AssertKind::RemainderByZero(op_s))
+            | (AssertKind::InvalidEnumConstruction(op_t), AssertKind::InvalidEnumConstruction(op_s)) => {
+                self.operand_key(op_t, MirFlavor::Target) == self.operand_key(op_s, MirFlavor::Source)
+            },
+            (
+                AssertKind::MisalignedPointerDereference {
+                    required: required_t,
+                    found: found_t,
+                },
+                AssertKind::MisalignedPointerDereference {
+                    required: required_s,
+                    found: found_s,
+                },
+            ) => {
+                self.operand_key(required_t, MirFlavor::Target)
+                    == self.operand_key(required_s, MirFlavor::Source)
+                    && self.operand_key(found_t, MirFlavor::Target)
+                        == self.operand_key(found_s, MirFlavor::Source)
+            },
+            (AssertKind::NullPointerDereference, AssertKind::NullPointerDereference) => true,
+            (AssertKind::ResumedAfterReturn(kind_t), AssertKind::ResumedAfterReturn(kind_s))
+            | (AssertKind::ResumedAfterPanic(kind_t), AssertKind::ResumedAfterPanic(kind_s))
+            | (AssertKind::ResumedAfterDrop(kind_t), AssertKind::ResumedAfterDrop(kind_s)) => {
+                kind_t == kind_s
+            },
+            _ => false,
         }
     }
 

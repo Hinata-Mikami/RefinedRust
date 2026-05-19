@@ -135,6 +135,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let always_live = always_storage_live_locals(body);
         // go over local_decls and create the right radium stack layout
         for (local, local_decl) in local_decls.iter_enumerated() {
+            if proc.mapping().is_box_deref_alias(local) {
+                info!("skipping synthetic Box deref alias local {local:?}");
+                continue;
+            }
+
             let kind = body.local_kind(local);
             let shape_ty: ty::Ty<'tcx> = local_decl.ty;
             let ty: ty::Ty<'tcx> = if proc.borrowck_mir().local_decls.get(local).is_some() {
@@ -454,7 +459,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     /// Get the shape/layout type of a place expression in the dropck MIR.
     fn shape_type_of_place(&self, pl: &mir::Place<'tcx>) -> mir::PlaceTy<'tcx> {
-        pl.ty(&self.proc.dropck_mir().local_decls, self.tcx)
+        self.proc
+            .normalize_box_deref_alias_place(pl)
+            .ty(&self.proc.dropck_mir().local_decls, self.tcx)
     }
 
     /// Get the shape/layout type of an operand in the dropck MIR.
@@ -462,8 +469,27 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         op.ty(&self.proc.dropck_mir().local_decls, self.tcx)
     }
 
+    /// Check whether this statement only manages a synthetic raw-pointer alias
+    /// introduced for a dropck-level `Box` deref. The actual deref uses are
+    /// normalized back to the original `Box` local before translation.
+    fn is_box_deref_alias_admin_stmt(&self, stmt: &mir::Statement<'tcx>) -> bool {
+        match &stmt.kind {
+            mir::StatementKind::StorageLive(local) | mir::StatementKind::StorageDead(local) => {
+                self.proc.mapping().is_box_deref_alias(*local)
+            },
+            mir::StatementKind::Assign(box (place, _)) => {
+                place.projection.is_empty() && self.proc.mapping().is_box_deref_alias(place.local)
+            },
+            _ => false,
+        }
+    }
+
     /// Check if a local is used for a spec closure.
     fn is_spec_closure_local(&self, l: mir::Local) -> Result<Option<DefId>, TranslationError> {
+        if self.proc.mapping().is_box_deref_alias(l) {
+            return Ok(None);
+        }
+
         // check if we should ignore this
         let local_type = self.shape_type_of_local(l)?;
 

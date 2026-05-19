@@ -18,6 +18,9 @@ use crate::types;
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a place to a Caesium lvalue.
     pub(crate) fn translate_place(&self, pl: &mir::Place<'tcx>) -> Result<code::Expr, TranslationError> {
+        let normalized = self.proc.normalize_box_deref_alias_place(pl);
+        let pl = &normalized;
+
         // Get the type of the underlying local. We will use this to
         // get the necessary layout information for dereferencing
         let mut cur_ty = self.shape_type_of_local(pl.local).map(mir::PlaceTy::from_ty)?;

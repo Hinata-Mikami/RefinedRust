@@ -6,3 +6,6 @@ bb0[1] _0 = copy (*_2) -> SplitFrom(bb0[0] _0 = copy (*_1))
 bb0[2] drop(_1) -> [return: bb1, unwind: bb2] -> Source(bb0[1] drop(_1) -> [return: bb1, unwind: bb2])
 bb1[0] return -> Source(bb1[0] return)
 bb2[0] resume -> Source(bb2[0] resume)
+
+Box deref aliases:
+_2 aliases *_1 (source: bb0[0])
