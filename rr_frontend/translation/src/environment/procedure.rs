@@ -282,6 +282,18 @@ impl<'tcx> Procedure<'tcx> {
         self.borrowck_mir.basic_blocks[source_block].statements.get(source_statement_index)
     }
 
+    /// Get the borrowck source region for a target/dropck borrow rvalue.
+    pub(crate) fn source_borrow_region_for_target(&self, loc: mir::Location) -> Option<ty::Region<'tcx>> {
+        let source_stmt = self.source_statement_for_target(loc)?;
+        let mir::StatementKind::Assign(source_assign) = &source_stmt.kind else {
+            return None;
+        };
+        let mir::Rvalue::Ref(region, _, _) = source_assign.as_ref().1 else {
+            return None;
+        };
+        Some(region)
+    }
+
     /// Get the borrowck source call terminator corresponding to a target/dropck call terminator.
     pub(crate) fn source_call_for_target(&self, loc: mir::Location) -> Option<&mir::Terminator<'tcx>> {
         let origin = self.mapping.origin_for_target((loc.block, loc.statement_index))?;
