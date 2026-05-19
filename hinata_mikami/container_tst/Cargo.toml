@@ -1,0 +1,6 @@
+[package]
+name = "container_tst"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
