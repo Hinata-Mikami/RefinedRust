@@ -39,11 +39,11 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ErasedRegionDetector<'tcx> {
         self.tcx
     }
 
-    fn fold_region(&mut self, region: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if matches!(region.kind(), ty::RegionKind::ReErased) {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        if matches!(r.kind(), ty::RegionKind::ReErased) {
             self.found = true;
         }
-        region
+        r
     }
 }
 
@@ -180,7 +180,6 @@ impl<'tcx> Procedure<'tcx> {
     }
 
     /// Get the region-sensitive borrowck type of a target/dropck place.
-    #[allow(dead_code, reason = "region-sensitive call sites are switched in later implementation steps")]
     pub(crate) fn region_type_of_place(
         &self,
         pl: &mir::Place<'tcx>,
@@ -259,7 +258,6 @@ impl<'tcx> Procedure<'tcx> {
     }
 
     /// Get the region-sensitive borrowck type of a target/dropck operand.
-    #[allow(dead_code, reason = "region-sensitive call sites are switched in later implementation steps")]
     pub(crate) fn region_type_of_operand(
         &self,
         op: &mir::Operand<'tcx>,
@@ -279,7 +277,6 @@ impl<'tcx> Procedure<'tcx> {
     }
 
     /// Get the borrowck source statement corresponding to a target/dropck statement location.
-    #[allow(dead_code, reason = "region-sensitive rvalue typing is introduced before its call sites")]
     pub(crate) fn source_statement_for_target(&self, loc: mir::Location) -> Option<&mir::Statement<'tcx>> {
         let origin = self.mapping.origin_for_target((loc.block, loc.statement_index))?;
         let (source_block, source_statement_index) = match origin {
@@ -336,11 +333,10 @@ impl<'tcx> Procedure<'tcx> {
         }
 
         let terminator = source_block_data.terminator();
-        if matches!(terminator.kind, mir::TerminatorKind::Call { .. }) { Some(terminator) } else { None }
+        matches!(terminator.kind, mir::TerminatorKind::Call { .. }).then_some(terminator)
     }
 
     /// Get the region-sensitive borrowck type of a target/dropck rvalue.
-    #[allow(dead_code, reason = "region-sensitive call sites are switched in later implementation steps")]
     pub(crate) fn region_type_of_rvalue(
         &self,
         loc: mir::Location,

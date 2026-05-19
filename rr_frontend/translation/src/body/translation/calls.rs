@@ -639,7 +639,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             .proc
             .source_call_for_target(loc)
             .and_then(Self::call_func_const_from_terminator)
-            .cloned();
+            .copied();
         let call_func_constant = source_func_constant.as_ref().unwrap_or(&func_constant.const_);
         if source_func_constant.is_none() {
             self.proc.ensure_region_type(call_func_constant.ty(), || {

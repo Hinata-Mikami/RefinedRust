@@ -45,6 +45,7 @@
 use std::collections::VecDeque;
 
 use rr_rustc_interface::data_structures::fx::{FxHashMap, FxHashSet};
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::mir::{self, BasicBlock, Body, Local};
 use rr_rustc_interface::middle::ty;
 
@@ -250,7 +251,8 @@ enum NormalizedPlaceElem {
         from_end: bool,
     },
     Downcast(usize),
-    Other(String),
+    OpaqueCast,
+    UnwrapUnsafeBinder,
 }
 
 struct Mapper<'a, 'tcx> {
@@ -349,7 +351,9 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         // block, treat them as happening before that source statement for
         // Polonius point queries.
         let mut target_point_phases = self.target_point_phases.clone();
-        for ((bb, idx), origin) in &self.target_to_source {
+        let mut target_to_source_entries: Vec<_> = self.target_to_source.iter().collect();
+        target_to_source_entries.sort_by_key(|((bb, idx), _)| (bb.as_u32(), *idx));
+        for ((bb, idx), origin) in target_to_source_entries {
             if *origin == Origin::Inserted
                 && let Some(source) = self.next_mapped_source_after(*bb, *idx)
             {
@@ -1179,7 +1183,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
 
         if target_t.is_some() != target_s.is_some()
-            || self.place_key(*dest_t, MirFlavor::Target) != self.place_key(*dest_s, MirFlavor::Source)
+            || !self.place_equiv(*dest_t, *dest_s)
             || args_t.len() != args_s.len()
         {
             return false;
@@ -1225,7 +1229,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
 
         if !self.call_func_equiv(func_t, func_s)
             || args_t.len() != args_s.len()
-            || self.place_key(*dest_t, MirFlavor::Target) != self.place_key(*dest_s, MirFlavor::Source)
+            || !self.place_equiv(*dest_t, *dest_s)
         {
             return false;
         }
@@ -1246,7 +1250,57 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
     }
 
     fn stmt_equiv(&self, target: &mir::Statement<'tcx>, source: &mir::Statement<'tcx>) -> bool {
-        self.statement_key(target, MirFlavor::Target) == self.statement_key(source, MirFlavor::Source)
+        match (&target.kind, &source.kind) {
+            (
+                mir::StatementKind::Assign(box (lhs_t, rhs_t)),
+                mir::StatementKind::Assign(box (lhs_s, rhs_s)),
+            ) => self.place_equiv(*lhs_t, *lhs_s) && self.rvalue_equiv(rhs_t, rhs_s),
+            (mir::StatementKind::StorageLive(local_t), mir::StatementKind::StorageLive(local_s))
+            | (mir::StatementKind::StorageDead(local_t), mir::StatementKind::StorageDead(local_s)) => {
+                local_t == local_s
+            },
+            (mir::StatementKind::FakeRead(fake_read_t), mir::StatementKind::FakeRead(fake_read_s)) => {
+                fake_read_t == fake_read_s
+            },
+            (
+                mir::StatementKind::SetDiscriminant {
+                    place: place_t,
+                    variant_index: variant_t,
+                },
+                mir::StatementKind::SetDiscriminant {
+                    place: place_s,
+                    variant_index: variant_s,
+                },
+            ) => variant_t == variant_s && self.place_equiv(**place_t, **place_s),
+            (mir::StatementKind::PlaceMention(place_t), mir::StatementKind::PlaceMention(place_s)) => {
+                self.place_equiv(**place_t, **place_s)
+            },
+            (
+                mir::StatementKind::AscribeUserType(place_t, variance_t),
+                mir::StatementKind::AscribeUserType(place_s, variance_s),
+            ) => {
+                variance_t == variance_s
+                    && place_t.as_ref().1 == place_s.as_ref().1
+                    && self.place_equiv(place_t.as_ref().0, place_s.as_ref().0)
+            },
+            (mir::StatementKind::Intrinsic(intrinsic_t), mir::StatementKind::Intrinsic(intrinsic_s)) => {
+                intrinsic_t == intrinsic_s
+            },
+            (mir::StatementKind::Coverage(kind_t), mir::StatementKind::Coverage(kind_s)) => kind_t == kind_s,
+            (mir::StatementKind::ConstEvalCounter, mir::StatementKind::ConstEvalCounter)
+            | (mir::StatementKind::Nop, mir::StatementKind::Nop) => true,
+            (
+                mir::StatementKind::BackwardIncompatibleDropHint {
+                    place: place_t,
+                    reason: reason_t,
+                },
+                mir::StatementKind::BackwardIncompatibleDropHint {
+                    place: place_s,
+                    reason: reason_s,
+                },
+            ) => reason_t == reason_s && self.place_equiv(**place_t, **place_s),
+            _ => false,
+        }
     }
 
     fn terminator_shape_equiv(&self, target: &mir::Terminator<'tcx>, source: &mir::Terminator<'tcx>) -> bool {
@@ -1276,10 +1330,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                     discr: discr_s,
                     targets: targets_s,
                 },
-            ) => {
-                self.operand_key(discr_t, MirFlavor::Target) == self.operand_key(discr_s, MirFlavor::Source)
-                    && switch_values(targets_t) == switch_values(targets_s)
-            },
+            ) => self.operand_equiv(discr_t, discr_s) && switch_values(targets_t) == switch_values(targets_s),
 
             (
                 Assert {
@@ -1296,13 +1347,12 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 },
             ) => {
                 expected_t == expected_s
-                    && self.operand_key(cond_t, MirFlavor::Target)
-                        == self.operand_key(cond_s, MirFlavor::Source)
+                    && self.operand_equiv(cond_t, cond_s)
                     && self.assert_msg_equiv(msg_t, msg_s)
             },
 
             (Drop { place: place_t, .. }, Drop { place: place_s, .. }) => {
-                self.normalize_place(*place_t) == Self::normalize_source_place(*place_s)
+                self.place_equiv(*place_t, *place_s)
             },
 
             (
@@ -1327,8 +1377,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                         .iter()
                         .zip(args_s.iter())
                         .all(|(arg_t, arg_s)| self.operand_equiv(&arg_t.node, &arg_s.node))
-                    && self.place_key(*dest_t, MirFlavor::Target)
-                        == self.place_key(*dest_s, MirFlavor::Source)
+                    && self.place_equiv(*dest_t, *dest_s)
                     && target_t.is_some() == target_s.is_some()
             },
 
@@ -1562,55 +1611,14 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         )
     }
 
-    fn statement_key(&self, stmt: &mir::Statement<'tcx>, flavor: MirFlavor) -> String {
-        match &stmt.kind {
-            mir::StatementKind::Assign(box (lhs, rhs)) => {
-                format!("Assign({}, {})", self.place_key(*lhs, flavor), self.rvalue_key(rhs, flavor))
-            },
-            mir::StatementKind::StorageLive(local) => format!("StorageLive({:?})", local),
-            mir::StatementKind::StorageDead(local) => format!("StorageDead({:?})", local),
-            mir::StatementKind::FakeRead(fake_read) => format!("FakeRead({fake_read:?})"),
-            mir::StatementKind::SetDiscriminant {
-                place,
-                variant_index,
-            } => {
-                format!("SetDiscriminant({}, {})", self.place_key(**place, flavor), variant_index.as_usize())
-            },
-            mir::StatementKind::PlaceMention(place) => {
-                format!("PlaceMention({})", self.place_key(**place, flavor))
-            },
-            mir::StatementKind::AscribeUserType(place, variance) => {
-                let (place, projection) = place.as_ref();
-                format!("AscribeUserType({}, {projection:?}, {variance:?})", self.place_key(*place, flavor))
-            },
-            mir::StatementKind::Intrinsic(intrinsic) => format!("Intrinsic({intrinsic:?})"),
-            mir::StatementKind::Coverage(kind) => format!("Coverage({kind:?})"),
-            mir::StatementKind::ConstEvalCounter => "ConstEvalCounter".to_owned(),
-            mir::StatementKind::BackwardIncompatibleDropHint { place, reason } => {
-                format!("BackwardIncompatibleDropHint({}, {reason:?})", self.place_key(**place, flavor))
-            },
-            mir::StatementKind::Nop => "Nop".to_owned(),
-        }
-    }
-
-    fn operand_key(&self, operand: &mir::Operand<'tcx>, flavor: MirFlavor) -> String {
-        match operand {
-            mir::Operand::Copy(place) => format!("Copy({})", self.place_key(*place, flavor)),
-            mir::Operand::Move(place) => format!("Move({})", self.place_key(*place, flavor)),
-            mir::Operand::Constant(constant) => format!("Const({:?})", constant.const_),
-            mir::Operand::RuntimeChecks(checks) => format!("RuntimeChecks({checks:?})"),
-        }
-    }
-
     fn operand_equiv(&self, target: &mir::Operand<'tcx>, source: &mir::Operand<'tcx>) -> bool {
         match (target, source) {
             (mir::Operand::Copy(place_t), mir::Operand::Copy(place_s))
             | (mir::Operand::Move(place_t), mir::Operand::Move(place_s)) => {
-                self.place_key(*place_t, MirFlavor::Target) == self.place_key(*place_s, MirFlavor::Source)
+                self.place_equiv(*place_t, *place_s)
             },
             (mir::Operand::Constant(const_t), mir::Operand::Constant(const_s)) => {
-                const_t.const_.ty() == const_s.const_.ty()
-                    && format!("{}", const_t.const_) == format!("{}", const_s.const_)
+                Self::const_operand_equiv(const_t, const_s)
             },
             (mir::Operand::RuntimeChecks(checks_t), mir::Operand::RuntimeChecks(checks_s)) => {
                 checks_t == checks_s
@@ -1619,22 +1627,18 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
-    fn call_func_equiv(&self, target: &mir::Operand<'tcx>, source: &mir::Operand<'tcx>) -> bool {
-        fn fn_def_id(operand: &mir::Operand<'_>) -> Option<rr_rustc_interface::hir::def_id::DefId> {
-            let mir::Operand::Constant(constant) = operand else {
-                return None;
-            };
-
-            let ty::TyKind::FnDef(did, _) = constant.const_.ty().kind() else {
-                return None;
-            };
-
-            Some(*did)
+    fn const_operand_equiv(target: &mir::ConstOperand<'tcx>, source: &mir::ConstOperand<'tcx>) -> bool {
+        if let (Some(target_did), Some(source_did)) = (const_fn_def_id(target), const_fn_def_id(source)) {
+            return target_did == source_did;
         }
 
-        match (fn_def_id(target), fn_def_id(source)) {
+        target.const_.ty() == source.const_.ty() && target.const_ == source.const_
+    }
+
+    fn call_func_equiv(&self, target: &mir::Operand<'tcx>, source: &mir::Operand<'tcx>) -> bool {
+        match (operand_fn_def_id(target), operand_fn_def_id(source)) {
             (Some(target_did), Some(source_did)) => target_did == source_did,
-            _ => self.operand_key(target, MirFlavor::Target) == self.operand_key(source, MirFlavor::Source),
+            _ => self.operand_equiv(target, source),
         }
     }
 
@@ -1651,23 +1655,15 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                     len: len_s,
                     index: index_s,
                 },
-            ) => {
-                self.operand_key(len_t, MirFlavor::Target) == self.operand_key(len_s, MirFlavor::Source)
-                    && self.operand_key(index_t, MirFlavor::Target)
-                        == self.operand_key(index_s, MirFlavor::Source)
-            },
+            ) => self.operand_equiv(len_t, len_s) && self.operand_equiv(index_t, index_s),
             (AssertKind::Overflow(op_t, lhs_t, rhs_t), AssertKind::Overflow(op_s, lhs_s, rhs_s)) => {
-                op_t == op_s
-                    && self.operand_key(lhs_t, MirFlavor::Target)
-                        == self.operand_key(lhs_s, MirFlavor::Source)
-                    && self.operand_key(rhs_t, MirFlavor::Target)
-                        == self.operand_key(rhs_s, MirFlavor::Source)
+                op_t == op_s && self.operand_equiv(lhs_t, lhs_s) && self.operand_equiv(rhs_t, rhs_s)
             },
             (AssertKind::OverflowNeg(op_t), AssertKind::OverflowNeg(op_s))
             | (AssertKind::DivisionByZero(op_t), AssertKind::DivisionByZero(op_s))
             | (AssertKind::RemainderByZero(op_t), AssertKind::RemainderByZero(op_s))
             | (AssertKind::InvalidEnumConstruction(op_t), AssertKind::InvalidEnumConstruction(op_s)) => {
-                self.operand_key(op_t, MirFlavor::Target) == self.operand_key(op_s, MirFlavor::Source)
+                self.operand_equiv(op_t, op_s)
             },
             (
                 AssertKind::MisalignedPointerDereference {
@@ -1678,12 +1674,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                     required: required_s,
                     found: found_s,
                 },
-            ) => {
-                self.operand_key(required_t, MirFlavor::Target)
-                    == self.operand_key(required_s, MirFlavor::Source)
-                    && self.operand_key(found_t, MirFlavor::Target)
-                        == self.operand_key(found_s, MirFlavor::Source)
-            },
+            ) => self.operand_equiv(required_t, required_s) && self.operand_equiv(found_t, found_s),
             (AssertKind::NullPointerDereference, AssertKind::NullPointerDereference) => true,
             (AssertKind::ResumedAfterReturn(kind_t), AssertKind::ResumedAfterReturn(kind_s))
             | (AssertKind::ResumedAfterPanic(kind_t), AssertKind::ResumedAfterPanic(kind_s))
@@ -1694,53 +1685,60 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
-    fn rvalue_key(&self, rvalue: &mir::Rvalue<'tcx>, flavor: MirFlavor) -> String {
-        match rvalue {
-            mir::Rvalue::Use(operand, retag) => {
-                format!("Use({}, {retag:?})", self.operand_key(operand, flavor))
+    fn rvalue_equiv(&self, target: &mir::Rvalue<'tcx>, source: &mir::Rvalue<'tcx>) -> bool {
+        match (target, source) {
+            (mir::Rvalue::Use(operand_t, retag_t), mir::Rvalue::Use(operand_s, retag_s)) => {
+                retag_t == retag_s && self.operand_equiv(operand_t, operand_s)
             },
-            mir::Rvalue::Ref(_, borrow_kind, place) => {
-                format!("Ref({borrow_kind:?}, {})", self.place_key(*place, flavor))
+            (mir::Rvalue::Ref(_, borrow_kind_t, place_t), mir::Rvalue::Ref(_, borrow_kind_s, place_s)) => {
+                borrow_kind_t == borrow_kind_s && self.place_equiv(*place_t, *place_s)
             },
-            mir::Rvalue::RawPtr(mutability, place) => {
-                format!("RawPtr({mutability:?}, {})", self.place_key(*place, flavor))
+            (mir::Rvalue::RawPtr(mutability_t, place_t), mir::Rvalue::RawPtr(mutability_s, place_s)) => {
+                mutability_t == mutability_s && self.place_equiv(*place_t, *place_s)
             },
-            mir::Rvalue::Reborrow(ty, mutability, place) => {
-                format!("Reborrow({ty:?}, {mutability:?}, {})", self.place_key(*place, flavor))
+            (
+                mir::Rvalue::Reborrow(_, mutability_t, place_t),
+                mir::Rvalue::Reborrow(_, mutability_s, place_s),
+            ) => mutability_t == mutability_s && self.place_equiv(*place_t, *place_s),
+            (mir::Rvalue::BinaryOp(op_t, operands_t), mir::Rvalue::BinaryOp(op_s, operands_s)) => {
+                op_t == op_s
+                    && self.operand_equiv(&operands_t.as_ref().0, &operands_s.as_ref().0)
+                    && self.operand_equiv(&operands_t.as_ref().1, &operands_s.as_ref().1)
             },
-            mir::Rvalue::BinaryOp(op, operands) => format!(
-                "BinaryOp({op:?}, {}, {})",
-                self.operand_key(&operands.as_ref().0, flavor),
-                self.operand_key(&operands.as_ref().1, flavor)
-            ),
-            mir::Rvalue::UnaryOp(op, operand) => {
-                format!("UnaryOp({op:?}, {})", self.operand_key(operand, flavor))
+            (mir::Rvalue::UnaryOp(op_t, operand_t), mir::Rvalue::UnaryOp(op_s, operand_s)) => {
+                op_t == op_s && self.operand_equiv(operand_t, operand_s)
             },
-            mir::Rvalue::Discriminant(place) => format!("Discriminant({})", self.place_key(*place, flavor)),
-            mir::Rvalue::Aggregate(kind, operands) => {
-                let ops = operands
-                    .iter()
-                    .map(|operand| self.operand_key(operand, flavor))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("Aggregate({}, [{}])", aggregate_kind_key(kind.as_ref()), ops)
+            (mir::Rvalue::Discriminant(place_t), mir::Rvalue::Discriminant(place_s))
+            | (mir::Rvalue::CopyForDeref(place_t), mir::Rvalue::CopyForDeref(place_s)) => {
+                self.place_equiv(*place_t, *place_s)
             },
-            mir::Rvalue::Cast(kind, operand, ty) => {
-                format!("Cast({}, {}, {ty:?})", cast_kind_key(*kind), self.operand_key(operand, flavor))
+            (mir::Rvalue::Aggregate(kind_t, operands_t), mir::Rvalue::Aggregate(kind_s, operands_s)) => {
+                aggregate_kind_equiv(kind_t.as_ref(), kind_s.as_ref())
+                    && operands_t.len() == operands_s.len()
+                    && operands_t
+                        .iter()
+                        .zip(operands_s.iter())
+                        .all(|(operand_t, operand_s)| self.operand_equiv(operand_t, operand_s))
             },
-            mir::Rvalue::CopyForDeref(place) => format!("CopyForDeref({})", self.place_key(*place, flavor)),
-            mir::Rvalue::Repeat(operand, len) => {
-                format!("Repeat({}, {len:?})", self.operand_key(operand, flavor))
+            (mir::Rvalue::Cast(kind_t, operand_t, _), mir::Rvalue::Cast(kind_s, operand_s, _)) => {
+                cast_kind_equiv(*kind_t, *kind_s) && self.operand_equiv(operand_t, operand_s)
             },
-            mir::Rvalue::WrapUnsafeBinder(operand, ty) => {
-                format!("WrapUnsafeBinder({}, {ty:?})", self.operand_key(operand, flavor))
+            (mir::Rvalue::Repeat(operand_t, len_t), mir::Rvalue::Repeat(operand_s, len_s)) => {
+                len_t == len_s && self.operand_equiv(operand_t, operand_s)
             },
-            mir::Rvalue::ThreadLocalRef(def_id) => format!("ThreadLocalRef({def_id:?})"),
+            (mir::Rvalue::WrapUnsafeBinder(operand_t, _), mir::Rvalue::WrapUnsafeBinder(operand_s, _)) => {
+                self.operand_equiv(operand_t, operand_s)
+            },
+            (mir::Rvalue::ThreadLocalRef(def_id_t), mir::Rvalue::ThreadLocalRef(def_id_s)) => {
+                def_id_t == def_id_s
+            },
+            _ => false,
         }
     }
 
-    fn place_key(&self, place: mir::Place<'tcx>, flavor: MirFlavor) -> String {
-        format_normalized_place(&self.normalize_place_for_flavor(place, flavor))
+    fn place_equiv(&self, target: mir::Place<'tcx>, source: mir::Place<'tcx>) -> bool {
+        self.normalize_place_for_flavor(target, MirFlavor::Target)
+            == self.normalize_place_for_flavor(source, MirFlavor::Source)
     }
 
     fn normalize_place_for_flavor(&self, place: mir::Place<'tcx>, flavor: MirFlavor) -> NormalizedPlace {
@@ -1878,44 +1876,66 @@ fn switch_values(targets: &mir::SwitchTargets) -> Vec<u128> {
     targets.iter().map(|(value, _)| value).collect()
 }
 
-fn cast_kind_key(kind: mir::CastKind) -> &'static str {
-    match kind {
-        // Drop elaboration lowers this pointer coercion to the more primitive
-        // `PtrToPtr` cast. Treat them as the same shape for source mapping.
-        mir::CastKind::PointerCoercion(ty::adjustment::PointerCoercion::MutToConstPointer, _)
-        | mir::CastKind::PtrToPtr => "PtrToPtr",
-        mir::CastKind::PointerCoercion(_, _) => "PointerCoercion",
-        mir::CastKind::IntToInt => "IntToInt",
-        mir::CastKind::FloatToInt => "FloatToInt",
-        mir::CastKind::FloatToFloat => "FloatToFloat",
-        mir::CastKind::IntToFloat => "IntToFloat",
-        mir::CastKind::FnPtrToPtr => "FnPtrToPtr",
-        mir::CastKind::Transmute => "Transmute",
-        mir::CastKind::Subtype => "Subtype",
-        mir::CastKind::PointerExposeProvenance => "PointerExposeProvenance",
-        mir::CastKind::PointerWithExposedProvenance => "PointerWithExposedProvenance",
-    }
+fn operand_fn_def_id(operand: &mir::Operand<'_>) -> Option<DefId> {
+    let mir::Operand::Constant(constant) = operand else {
+        return None;
+    };
+
+    const_fn_def_id(constant)
 }
 
-fn aggregate_kind_key(kind: &mir::AggregateKind<'_>) -> String {
-    match kind {
+fn const_fn_def_id(constant: &mir::ConstOperand<'_>) -> Option<DefId> {
+    let ty::TyKind::FnDef(did, _) = constant.const_.ty().kind() else {
+        return None;
+    };
+
+    Some(*did)
+}
+
+fn cast_kind_equiv(target: mir::CastKind, source: mir::CastKind) -> bool {
+    // Drop elaboration lowers this pointer coercion to the more primitive
+    // `PtrToPtr` cast. Treat them as the same shape for source mapping.
+    if matches!(
+        (target, source),
+        (
+            mir::CastKind::PointerCoercion(ty::adjustment::PointerCoercion::MutToConstPointer, _),
+            mir::CastKind::PtrToPtr,
+        ) | (
+            mir::CastKind::PtrToPtr,
+            mir::CastKind::PointerCoercion(ty::adjustment::PointerCoercion::MutToConstPointer, _),
+        )
+    ) {
+        return true;
+    }
+
+    target == source
+}
+
+fn aggregate_kind_equiv<'tcx>(target: &mir::AggregateKind<'tcx>, source: &mir::AggregateKind<'tcx>) -> bool {
+    match (target, source) {
         // Aggregate generic arguments carry NLL regions in borrowck MIR and erased
         // regions in dropck MIR. For mapping, the ADT identity and variant are the
         // semantic shape we need.
-        mir::AggregateKind::Adt(def_id, variant, _, _, active_field) => {
-            format!("Adt({def_id:?}, {}, {active_field:?})", variant.as_usize())
+        (
+            mir::AggregateKind::Adt(def_id_t, variant_t, _, _, active_field_t),
+            mir::AggregateKind::Adt(def_id_s, variant_s, _, _, active_field_s),
+        ) => def_id_t == def_id_s && variant_t == variant_s && active_field_t == active_field_s,
+        (mir::AggregateKind::Closure(def_id_t, _), mir::AggregateKind::Closure(def_id_s, _))
+        | (mir::AggregateKind::Coroutine(def_id_t, _), mir::AggregateKind::Coroutine(def_id_s, _))
+        | (
+            mir::AggregateKind::CoroutineClosure(def_id_t, _),
+            mir::AggregateKind::CoroutineClosure(def_id_s, _),
+        ) => def_id_t == def_id_s,
+        (mir::AggregateKind::Array(ty_t), mir::AggregateKind::Array(ty_s)) => ty_t == ty_s,
+        (mir::AggregateKind::Tuple, mir::AggregateKind::Tuple) => true,
+        (mir::AggregateKind::RawPtr(ty_t, mutability_t), mir::AggregateKind::RawPtr(ty_s, mutability_s)) => {
+            ty_t == ty_s && mutability_t == mutability_s
         },
-        mir::AggregateKind::Closure(def_id, _) => format!("Closure({def_id:?})"),
-        mir::AggregateKind::Coroutine(def_id, _) => format!("Coroutine({def_id:?})"),
-        mir::AggregateKind::CoroutineClosure(def_id, _) => format!("CoroutineClosure({def_id:?})"),
-        // Keep the remaining type-carrying aggregate forms conservative for now.
-        mir::AggregateKind::Array(ty) => format!("Array({ty:?})"),
-        mir::AggregateKind::Tuple => "Tuple".to_owned(),
-        mir::AggregateKind::RawPtr(ty, mutability) => format!("RawPtr({ty:?}, {mutability:?})"),
+        _ => false,
     }
 }
 
-fn normalize_projection_elem(elem: mir::PlaceElem<'_>) -> NormalizedPlaceElem {
+const fn normalize_projection_elem(elem: mir::PlaceElem<'_>) -> NormalizedPlaceElem {
     match elem {
         mir::ProjectionElem::Deref => NormalizedPlaceElem::Deref,
         mir::ProjectionElem::Field(field, _) => NormalizedPlaceElem::Field(field.as_usize()),
@@ -1935,7 +1955,8 @@ fn normalize_projection_elem(elem: mir::PlaceElem<'_>) -> NormalizedPlaceElem {
         mir::ProjectionElem::Downcast(_, variant_index) => {
             NormalizedPlaceElem::Downcast(variant_index.as_usize())
         },
-        _ => NormalizedPlaceElem::Other(format!("{elem:?}")),
+        mir::ProjectionElem::OpaqueCast(_) => NormalizedPlaceElem::OpaqueCast,
+        mir::ProjectionElem::UnwrapUnsafeBinder(_) => NormalizedPlaceElem::UnwrapUnsafeBinder,
     }
 }
 
@@ -1946,28 +1967,6 @@ const fn unwind_target(action: mir::UnwindAction) -> Option<BasicBlock> {
             None
         },
     }
-}
-
-fn format_normalized_place(place: &NormalizedPlace) -> String {
-    let mut out = format!("{:?}", place.local);
-    for projection in &place.projection {
-        match projection {
-            NormalizedPlaceElem::Deref => out.push_str(".*"),
-            NormalizedPlaceElem::Field(field) => out.push_str(&format!(".{field}")),
-            NormalizedPlaceElem::Index(local) => out.push_str(&format!("[{:?}]", local)),
-            NormalizedPlaceElem::ConstantIndex {
-                offset,
-                min_length,
-                from_end,
-            } => out.push_str(&format!("[const {offset}/{min_length}/{from_end}]")),
-            NormalizedPlaceElem::Subslice { from, to, from_end } => {
-                out.push_str(&format!("[{from}..{to};{from_end}]"));
-            },
-            NormalizedPlaceElem::Downcast(variant) => out.push_str(&format!(" as {variant}")),
-            NormalizedPlaceElem::Other(other) => out.push_str(&format!("<{other}>")),
-        }
-    }
-    out
 }
 
 fn same_or_subplace(base: &NormalizedPlace, candidate: &NormalizedPlace) -> bool {
