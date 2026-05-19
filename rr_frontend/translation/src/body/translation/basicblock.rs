@@ -51,12 +51,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         let plc_ty = self.shape_type_of_place(plc);
                         let plc_region_ty = self.proc.region_type_of_place(plc)?;
                         let rhs_region_ty = self.proc.region_type_of_rvalue(loc, val)?;
+                        let annotation_val = self.proc.source_rvalue_for_target(loc).unwrap_or(val);
                         let plc_strongly_writeable = !self.check_place_below_reference(plc);
                         let mut annotation_plan = self.annotations.prepare_assignment_annotation_plan(
                             &self.ty_translator,
                             &mut self.translated_fn,
                             loc,
-                            val,
+                            annotation_val,
                             plc_region_ty,
                             rhs_region_ty,
                             plc_strongly_writeable,

@@ -344,13 +344,13 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             }
         }
 
-        // Inserted Box-deref alias initializers are administrative statements
-        // that translation skips. They can still be successor start locations,
-        // so map their points to the next real source statement in the block.
+        // Inserted statements may still be translated or used as successor
+        // starts. When they precede a mapped source statement in the same
+        // block, treat them as happening before that source statement for
+        // Polonius point queries.
         let mut target_point_phases = self.target_point_phases.clone();
         for ((bb, idx), origin) in &self.target_to_source {
             if *origin == Origin::Inserted
-                && self.is_box_deref_alias_initializer(*bb, *idx)
                 && let Some(source) = self.next_mapped_source_after(*bb, *idx)
             {
                 target_point_phases.insert((*bb, *idx), PointPhase::PreEffect(source));
@@ -392,26 +392,22 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
-    fn is_box_deref_alias_initializer(&self, bb: BasicBlock, idx: usize) -> bool {
-        let Some(stmt) = self.de.basic_blocks[bb].statements.get(idx) else {
-            return false;
-        };
-        let mir::StatementKind::Assign(box (lhs, _)) = &stmt.kind else {
-            return false;
-        };
-        lhs.projection.is_empty() && self.box_deref_aliases.contains_key(&lhs.local)
-    }
-
-    /// Find the source location of the next target location in the same block.
+    /// Find the source location of the next mapped target location in the same block.
     ///
-    /// This is only used for inserted administrative statements that translation
-    /// skips. Mapping them to the next real source point makes successor-start
-    /// Polonius queries land at the first semantic statement in the block.
+    /// This is only used for inserted statements. Mapping them to the next real
+    /// source point makes statement and successor-start Polonius queries land
+    /// before the next semantic source statement in the block.
     fn next_mapped_source_after(&self, bb: BasicBlock, idx: usize) -> Option<SourceLoc> {
-        match self.target_to_source.get(&(bb, idx + 1)).copied()? {
-            Origin::Source(source) | Origin::FoldedFrom(source) | Origin::SplitFrom(source) => Some(source),
-            Origin::Inserted => None,
+        let statements_len = self.de.basic_blocks[bb].statements.len();
+        for next_idx in (idx + 1)..=statements_len {
+            match self.target_to_source.get(&(bb, next_idx)).copied()? {
+                Origin::Source(source) | Origin::FoldedFrom(source) | Origin::SplitFrom(source) => {
+                    return Some(source);
+                },
+                Origin::Inserted => {},
+            }
         }
+        None
     }
 
     fn align_blocks(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) {
@@ -528,6 +524,10 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
 
         if self.try_align_eliminated_cleanup_call(bb_t, bb_s) {
+            return;
+        }
+
+        if self.try_align_diverging_call(bb_t, bb_s) {
             return;
         }
 
@@ -1195,6 +1195,51 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         true
     }
 
+    fn try_align_diverging_call(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
+        let dt = &self.de.basic_blocks[bb_t];
+        let ds = &self.bc.basic_blocks[bb_s];
+        let tt = dt.terminator();
+        let ts = ds.terminator();
+
+        let (
+            mir::TerminatorKind::Call {
+                func: func_t,
+                args: args_t,
+                destination: dest_t,
+                target: None,
+                unwind: unwind_t,
+                ..
+            },
+            mir::TerminatorKind::Call {
+                func: func_s,
+                args: args_s,
+                destination: dest_s,
+                target: None,
+                unwind: unwind_s,
+                ..
+            },
+        ) = (&tt.kind, &ts.kind)
+        else {
+            return false;
+        };
+
+        if !self.call_func_equiv(func_t, func_s)
+            || args_t.len() != args_s.len()
+            || self.place_key(*dest_t, MirFlavor::Target) != self.place_key(*dest_s, MirFlavor::Source)
+        {
+            return false;
+        }
+
+        self.target_to_source
+            .insert((bb_t, dt.statements.len()), Origin::Source((bb_s, ds.statements.len())));
+
+        if let (Some(bb_t), Some(bb_s)) = (unwind_target(*unwind_t), unwind_target(*unwind_s)) {
+            self.align_blocks(bb_t, bb_s);
+        }
+
+        true
+    }
+
     fn is_unwind_resume_block(&self, bb: BasicBlock) -> bool {
         self.bc.basic_blocks[bb].statements.is_empty()
             && matches!(self.bc.basic_blocks[bb].terminator().kind, mir::TerminatorKind::UnwindResume)
@@ -1278,10 +1323,10 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             ) => {
                 self.call_func_equiv(func_t, func_s)
                     && args_t.len() == args_s.len()
-                    && args_t.iter().zip(args_s.iter()).all(|(arg_t, arg_s)| {
-                        self.operand_key(&arg_t.node, MirFlavor::Target)
-                            == self.operand_key(&arg_s.node, MirFlavor::Source)
-                    })
+                    && args_t
+                        .iter()
+                        .zip(args_s.iter())
+                        .all(|(arg_t, arg_s)| self.operand_equiv(&arg_t.node, &arg_s.node))
                     && self.place_key(*dest_t, MirFlavor::Target)
                         == self.place_key(*dest_s, MirFlavor::Source)
                     && target_t.is_some() == target_s.is_some()
@@ -1557,6 +1602,23 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
+    fn operand_equiv(&self, target: &mir::Operand<'tcx>, source: &mir::Operand<'tcx>) -> bool {
+        match (target, source) {
+            (mir::Operand::Copy(place_t), mir::Operand::Copy(place_s))
+            | (mir::Operand::Move(place_t), mir::Operand::Move(place_s)) => {
+                self.place_key(*place_t, MirFlavor::Target) == self.place_key(*place_s, MirFlavor::Source)
+            },
+            (mir::Operand::Constant(const_t), mir::Operand::Constant(const_s)) => {
+                const_t.const_.ty() == const_s.const_.ty()
+                    && format!("{}", const_t.const_) == format!("{}", const_s.const_)
+            },
+            (mir::Operand::RuntimeChecks(checks_t), mir::Operand::RuntimeChecks(checks_s)) => {
+                checks_t == checks_s
+            },
+            _ => false,
+        }
+    }
+
     fn call_func_equiv(&self, target: &mir::Operand<'tcx>, source: &mir::Operand<'tcx>) -> bool {
         fn fn_def_id(operand: &mir::Operand<'_>) -> Option<rr_rustc_interface::hir::def_id::DefId> {
             let mir::Operand::Constant(constant) = operand else {
@@ -1661,10 +1723,10 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                     .map(|operand| self.operand_key(operand, flavor))
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("Aggregate({:?}, [{}])", kind.as_ref(), ops)
+                format!("Aggregate({}, [{}])", aggregate_kind_key(kind.as_ref()), ops)
             },
             mir::Rvalue::Cast(kind, operand, ty) => {
-                format!("Cast({kind:?}, {}, {ty:?})", self.operand_key(operand, flavor))
+                format!("Cast({}, {}, {ty:?})", cast_kind_key(*kind), self.operand_key(operand, flavor))
             },
             mir::Rvalue::CopyForDeref(place) => format!("CopyForDeref({})", self.place_key(*place, flavor)),
             mir::Rvalue::Repeat(operand, len) => {
@@ -1814,6 +1876,43 @@ const fn normal_successor(terminator: &mir::Terminator<'_>) -> Option<BasicBlock
 
 fn switch_values(targets: &mir::SwitchTargets) -> Vec<u128> {
     targets.iter().map(|(value, _)| value).collect()
+}
+
+fn cast_kind_key(kind: mir::CastKind) -> &'static str {
+    match kind {
+        // Drop elaboration lowers this pointer coercion to the more primitive
+        // `PtrToPtr` cast. Treat them as the same shape for source mapping.
+        mir::CastKind::PointerCoercion(ty::adjustment::PointerCoercion::MutToConstPointer, _)
+        | mir::CastKind::PtrToPtr => "PtrToPtr",
+        mir::CastKind::PointerCoercion(_, _) => "PointerCoercion",
+        mir::CastKind::IntToInt => "IntToInt",
+        mir::CastKind::FloatToInt => "FloatToInt",
+        mir::CastKind::FloatToFloat => "FloatToFloat",
+        mir::CastKind::IntToFloat => "IntToFloat",
+        mir::CastKind::FnPtrToPtr => "FnPtrToPtr",
+        mir::CastKind::Transmute => "Transmute",
+        mir::CastKind::Subtype => "Subtype",
+        mir::CastKind::PointerExposeProvenance => "PointerExposeProvenance",
+        mir::CastKind::PointerWithExposedProvenance => "PointerWithExposedProvenance",
+    }
+}
+
+fn aggregate_kind_key(kind: &mir::AggregateKind<'_>) -> String {
+    match kind {
+        // Aggregate generic arguments carry NLL regions in borrowck MIR and erased
+        // regions in dropck MIR. For mapping, the ADT identity and variant are the
+        // semantic shape we need.
+        mir::AggregateKind::Adt(def_id, variant, _, _, active_field) => {
+            format!("Adt({def_id:?}, {}, {active_field:?})", variant.as_usize())
+        },
+        mir::AggregateKind::Closure(def_id, _) => format!("Closure({def_id:?})"),
+        mir::AggregateKind::Coroutine(def_id, _) => format!("Coroutine({def_id:?})"),
+        mir::AggregateKind::CoroutineClosure(def_id, _) => format!("CoroutineClosure({def_id:?})"),
+        // Keep the remaining type-carrying aggregate forms conservative for now.
+        mir::AggregateKind::Array(ty) => format!("Array({ty:?})"),
+        mir::AggregateKind::Tuple => "Tuple".to_owned(),
+        mir::AggregateKind::RawPtr(ty, mutability) => format!("RawPtr({ty:?}, {mutability:?})"),
+    }
 }
 
 fn normalize_projection_elem(elem: mir::PlaceElem<'_>) -> NormalizedPlaceElem {

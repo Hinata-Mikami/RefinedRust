@@ -401,7 +401,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
 
             mir::Rvalue::Aggregate(kind, op) => {
-                let e = self.translate_aggregate(kind.as_ref(), op)?;
+                let type_kind =
+                    self.proc.source_aggregate_kind_for_target(loc).unwrap_or_else(|| kind.as_ref());
+                let e = self.translate_aggregate(type_kind, op)?;
                 Ok((e, None))
             },
 

@@ -163,12 +163,20 @@ impl<'tcx> Procedure<'tcx> {
 
     /// Get the region-sensitive borrowck type of a local.
     pub(crate) fn region_type_of_local(&self, local: mir::Local) -> Result<ty::Ty<'tcx>, TranslationError> {
-        let ty = self.borrowck_mir.local_decls.get(local).map(|decl| decl.ty).ok_or_else(|| {
+        if let Some(decl) = self.borrowck_mir.local_decls.get(local) {
+            return self.ensure_region_type(decl.ty, || format!("local {local:?}"));
+        }
+
+        // Drop elaboration may introduce administrative locals such as boolean
+        // drop flags. They carry no lifetime information, so their dropck shape
+        // type is also a valid region-sensitive type as long as it has no erased
+        // regions.
+        let ty = self.dropck_mir.local_decls.get(local).map(|decl| decl.ty).ok_or_else(|| {
             TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
-                "region-sensitive type requested for synthetic dropck local {local:?}"
+                "region-sensitive type requested for unknown dropck local {local:?}"
             ))))
         })?;
-        self.ensure_region_type(ty, || format!("local {local:?}"))
+        self.ensure_region_type(ty, || format!("synthetic dropck local {local:?}"))
     }
 
     /// Get the region-sensitive borrowck type of a target/dropck place.
@@ -292,6 +300,26 @@ impl<'tcx> Procedure<'tcx> {
             return None;
         };
         Some(region)
+    }
+
+    /// Get the borrowck source rvalue corresponding to a target/dropck assignment.
+    pub(crate) fn source_rvalue_for_target(&self, loc: mir::Location) -> Option<&mir::Rvalue<'tcx>> {
+        let source_stmt = self.source_statement_for_target(loc)?;
+        let mir::StatementKind::Assign(source_assign) = &source_stmt.kind else {
+            return None;
+        };
+        Some(&source_assign.as_ref().1)
+    }
+
+    /// Get the borrowck source aggregate kind corresponding to a target/dropck aggregate rvalue.
+    pub(crate) fn source_aggregate_kind_for_target(
+        &self,
+        loc: mir::Location,
+    ) -> Option<&mir::AggregateKind<'tcx>> {
+        let mir::Rvalue::Aggregate(kind, _) = self.source_rvalue_for_target(loc)? else {
+            return None;
+        };
+        Some(kind.as_ref())
     }
 
     /// Get the borrowck source call terminator corresponding to a target/dropck call terminator.
