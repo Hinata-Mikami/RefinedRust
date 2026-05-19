@@ -34,6 +34,7 @@ pub enum Origin {
 }
 
 #[derive(Debug, Default)]
+#[expect(clippy::partial_pub_fields, reason = "point mappings use crate-private Polonius fact types")]
 pub struct MappingResult {
     pub target_to_source: FxHashMap<TargetLoc, Origin>,
     pub(crate) target_points_to_source: FxHashMap<TargetPoint, SourcePoint>,
@@ -221,10 +222,10 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             bc,
             de,
             source_local_count: bc.local_decls.len(),
-            target_to_source: Default::default(),
-            target_point_phases: Default::default(),
-            visited: Default::default(),
-            box_deref_aliases: Default::default(),
+            target_to_source: FxHashMap::default(),
+            target_point_phases: FxHashMap::default(),
+            visited: FxHashSet::default(),
+            box_deref_aliases: FxHashMap::default(),
             bc_predecessors: compute_predecessors(bc),
         }
     }
@@ -240,13 +241,17 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
 
         let mut target_points_to_source = FxHashMap::default();
-        for (target, origin) in &self.target_to_source {
+        let mut target_to_source: Vec<_> = self.target_to_source.iter().collect();
+        target_to_source.sort_by_key(|((bb, idx), _)| (bb.as_u32(), *idx));
+        for (target, origin) in target_to_source {
             let Some(phase) = point_phase_from_origin(*origin) else {
                 continue;
             };
             insert_point_mapping(&mut target_points_to_source, *target, phase);
         }
-        for (target, phase) in &self.target_point_phases {
+        let mut target_point_phases: Vec<_> = self.target_point_phases.iter().collect();
+        target_point_phases.sort_by_key(|((bb, idx), _)| (bb.as_u32(), *idx));
+        for (target, phase) in target_point_phases {
             insert_point_mapping(&mut target_points_to_source, *target, *phase);
         }
 
@@ -284,7 +289,8 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 continue;
             }
 
-            while i_s < data_s.statements.len() && self.is_cleanup_erased_source_stmt(&data_s.statements[i_s])
+            while i_s < data_s.statements.len()
+                && Self::is_cleanup_erased_source_stmt(&data_s.statements[i_s])
             {
                 if matches!(st.kind, mir::StatementKind::Nop) {
                     self.target_to_source.insert((bb_t, i_t), Origin::Source((bb_s, i_s)));
@@ -376,16 +382,17 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         match (&tt.kind, &ts.kind) {
             (
                 mir::TerminatorKind::Goto { target: target_t },
-                mir::TerminatorKind::Goto { target: target_s },
-            ) => self.align_blocks(*target_t, *target_s),
-
-            (
-                mir::TerminatorKind::Goto { target: target_t },
-                mir::TerminatorKind::FalseEdge { real_target, .. }
-                | mir::TerminatorKind::FalseUnwind { real_target, .. },
-            ) => self.align_blocks(*target_t, *real_target),
-
-            (
+                mir::TerminatorKind::Goto { target: target_s }
+                | mir::TerminatorKind::FalseEdge {
+                    real_target: target_s,
+                    ..
+                }
+                | mir::TerminatorKind::FalseUnwind {
+                    real_target: target_s,
+                    ..
+                },
+            )
+            | (
                 mir::TerminatorKind::FalseEdge {
                     real_target: target_t,
                     ..
@@ -415,15 +422,25 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                     target: target_t,
                     unwind: unwind_t,
                     ..
+                }
+                | mir::TerminatorKind::Drop {
+                    target: target_t,
+                    unwind: unwind_t,
+                    ..
                 },
                 mir::TerminatorKind::Assert {
+                    target: target_s,
+                    unwind: unwind_s,
+                    ..
+                }
+                | mir::TerminatorKind::Drop {
                     target: target_s,
                     unwind: unwind_s,
                     ..
                 },
             ) => {
                 self.align_blocks(*target_t, *target_s);
-                if let (Some(bb_t), Some(bb_s)) = (unwind_target(unwind_t), unwind_target(unwind_s)) {
+                if let (Some(bb_t), Some(bb_s)) = (unwind_target(*unwind_t), unwind_target(*unwind_s)) {
                     self.align_blocks(bb_t, bb_s);
                 }
             },
@@ -443,25 +460,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 if let (Some(bb_t), Some(bb_s)) = (*target_t, *target_s) {
                     self.align_blocks(bb_t, bb_s);
                 }
-                if let (Some(bb_t), Some(bb_s)) = (unwind_target(unwind_t), unwind_target(unwind_s)) {
-                    self.align_blocks(bb_t, bb_s);
-                }
-            },
-
-            (
-                mir::TerminatorKind::Drop {
-                    target: target_t,
-                    unwind: unwind_t,
-                    ..
-                },
-                mir::TerminatorKind::Drop {
-                    target: target_s,
-                    unwind: unwind_s,
-                    ..
-                },
-            ) => {
-                self.align_blocks(*target_t, *target_s);
-                if let (Some(bb_t), Some(bb_s)) = (unwind_target(unwind_t), unwind_target(unwind_s)) {
+                if let (Some(bb_t), Some(bb_s)) = (unwind_target(*unwind_t), unwind_target(*unwind_s)) {
                     self.align_blocks(bb_t, bb_s);
                 }
             },
@@ -514,7 +513,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             self.align_blocks(skip_bb, ret_s);
             self.align_blocks(ret_t, ret_s);
 
-            if let (Some(bb_t), Some(bb_s)) = (unwind_target(&unwind_t), unwind_target(&unwind_s)) {
+            if let (Some(bb_t), Some(bb_s)) = (unwind_target(unwind_t), unwind_target(unwind_s)) {
                 self.align_blocks(bb_t, bb_s);
             }
             return true;
@@ -648,7 +647,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                     targets,
                 } => {
                     if let Some(place) = observed_place.as_ref() {
-                        if !self.update_open_drop_root_place(&mut root_place, place) {
+                        if !Self::update_open_drop_root_place(&mut root_place, place) {
                             return None;
                         }
                     } else if root_place.is_none() {
@@ -672,7 +671,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                     target,
                     unwind,
                 } => {
-                    if !self.update_open_drop_root_place(&mut root_place, &place) {
+                    if !Self::update_open_drop_root_place(&mut root_place, &place) {
                         return None;
                     }
 
@@ -724,13 +723,13 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                     unwind,
                     ..
                 } => {
-                    let source_place = self.normalize_source_place(*place);
+                    let source_place = Self::normalize_source_place(*place);
                     if same_or_subplace(&source_place, target_root_place) {
                         return Some(SourceDropCtx {
                             drop_bb: current,
                             place: source_place,
                             ret: *target,
-                            unwind: unwind_target(unwind),
+                            unwind: unwind_target(*unwind),
                         });
                     }
                     *target
@@ -750,7 +749,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             if self.bc_predecessors.get(&next).map_or(0, Vec::len) != 1 {
                 let next_term = self.bc.basic_blocks[next].terminator();
                 if let mir::TerminatorKind::Drop { place, .. } = &next_term.kind {
-                    let source_place = self.normalize_source_place(*place);
+                    let source_place = Self::normalize_source_place(*place);
                     if same_or_subplace(&source_place, target_root_place) {
                         current = next;
                         continue;
@@ -796,7 +795,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             } => OpenDropNode::DropStep {
                 place: self.normalize_place(*place),
                 target: *target,
-                unwind: unwind_target(unwind),
+                unwind: unwind_target(*unwind),
             },
             _ => OpenDropNode::Unsupported,
         }
@@ -811,11 +810,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             let mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(place))) = &stmt.kind else {
                 return None;
             };
-            if lhs.projection.is_empty() && lhs.local == local {
-                Some(self.normalize_place(*place))
-            } else {
-                None
-            }
+            (lhs.projection.is_empty() && lhs.local == local).then(|| self.normalize_place(*place))
         })
     }
 
@@ -834,16 +829,14 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
     }
 
     fn update_open_drop_root_place(
-        &self,
         root_place: &mut Option<NormalizedPlace>,
         place: &NormalizedPlace,
     ) -> bool {
-        match root_place {
-            Some(root_place) => same_or_subplace(root_place, place),
-            None => {
-                *root_place = Some(place.clone());
-                true
-            },
+        if let Some(root_place) = root_place {
+            same_or_subplace(root_place, place)
+        } else {
+            *root_place = Some(place.clone());
+            true
         }
     }
 
@@ -897,16 +890,12 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             return None;
         };
 
-        let local = match discr {
+        match discr {
             mir::Operand::Copy(place) | mir::Operand::Move(place)
-                if place.projection.is_empty() && self.is_synthetic_bool_local(place.local) =>
-            {
-                place.local
-            },
+                if place.projection.is_empty() && self.is_synthetic_bool_local(place.local) => {},
             _ => return None,
-        };
+        }
 
-        let _ = local;
         let all_targets = targets.all_targets();
         if all_targets.len() != 2 {
             return None;
@@ -962,15 +951,13 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             while idx < data.statements.len() {
                 let loc = (bb, idx);
                 let stmt = &data.statements[idx];
-                if !self.is_cleanup_erased_source_stmt(stmt) && self.stmt_equiv(target_stmt, stmt) {
+                if !Self::is_cleanup_erased_source_stmt(stmt) && self.stmt_equiv(target_stmt, stmt) {
                     return Some(loc);
                 }
                 idx += 1;
             }
 
-            let Some(next_bb) = self.single_linear_successor(bb) else {
-                return None;
-            };
+            let next_bb = self.single_linear_successor(bb)?;
             bb = next_bb;
             idx = 0;
         }
@@ -1040,7 +1027,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             },
 
             (Drop { place: place_t, .. }, Drop { place: place_s, .. }) => {
-                self.normalize_place(*place_t) == self.normalize_source_place(*place_s)
+                self.normalize_place(*place_t) == Self::normalize_source_place(*place_s)
             },
 
             (
@@ -1138,11 +1125,8 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             mir::StatementKind::Assign(box (_, rhs)) => {
                 self.rvalue_uses_box_deref_of_local(rhs, local, MirFlavor::Source)
             },
-            mir::StatementKind::SetDiscriminant { place, .. } => {
-                self.place_uses_box_deref_of_local(**place, local, MirFlavor::Source)
-            },
-            mir::StatementKind::PlaceMention(place)
-            | mir::StatementKind::Retag(_, place)
+            mir::StatementKind::SetDiscriminant { place, .. }
+            | mir::StatementKind::PlaceMention(place)
             | mir::StatementKind::BackwardIncompatibleDropHint { place, .. } => {
                 self.place_uses_box_deref_of_local(**place, local, MirFlavor::Source)
             },
@@ -1159,11 +1143,8 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 self.place_uses_alias_with_origin(*lhs, source_loc, MirFlavor::Target)
                     || self.rvalue_uses_alias_with_origin(rhs, source_loc, MirFlavor::Target)
             },
-            mir::StatementKind::SetDiscriminant { place, .. } => {
-                self.place_uses_alias_with_origin(**place, source_loc, MirFlavor::Target)
-            },
-            mir::StatementKind::PlaceMention(place)
-            | mir::StatementKind::Retag(_, place)
+            mir::StatementKind::SetDiscriminant { place, .. }
+            | mir::StatementKind::PlaceMention(place)
             | mir::StatementKind::BackwardIncompatibleDropHint { place, .. } => {
                 self.place_uses_alias_with_origin(**place, source_loc, MirFlavor::Target)
             },
@@ -1181,21 +1162,21 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         flavor: MirFlavor,
     ) -> bool {
         match rvalue {
-            mir::Rvalue::Use(operand)
+            mir::Rvalue::Use(operand, _)
             | mir::Rvalue::Repeat(operand, _)
-            | mir::Rvalue::WrapUnsafeBinder(operand, _) => {
+            | mir::Rvalue::WrapUnsafeBinder(operand, _)
+            | mir::Rvalue::UnaryOp(_, operand)
+            | mir::Rvalue::Cast(_, operand, _) => {
                 self.operand_uses_box_deref_of_local(operand, local, flavor)
             },
             mir::Rvalue::Ref(_, _, place)
             | mir::Rvalue::RawPtr(_, place)
+            | mir::Rvalue::Reborrow(_, _, place)
             | mir::Rvalue::Discriminant(place)
             | mir::Rvalue::CopyForDeref(place) => self.place_uses_box_deref_of_local(*place, local, flavor),
             mir::Rvalue::BinaryOp(_, operands) => {
                 self.operand_uses_box_deref_of_local(&operands.as_ref().0, local, flavor)
                     || self.operand_uses_box_deref_of_local(&operands.as_ref().1, local, flavor)
-            },
-            mir::Rvalue::UnaryOp(_, operand) | mir::Rvalue::Cast(_, operand, _) => {
-                self.operand_uses_box_deref_of_local(operand, local, flavor)
             },
             mir::Rvalue::Aggregate(_, operands) => operands
                 .iter()
@@ -1235,13 +1216,16 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         flavor: MirFlavor,
     ) -> bool {
         match rvalue {
-            mir::Rvalue::Use(operand)
+            mir::Rvalue::Use(operand, _)
             | mir::Rvalue::Repeat(operand, _)
-            | mir::Rvalue::WrapUnsafeBinder(operand, _) => {
+            | mir::Rvalue::WrapUnsafeBinder(operand, _)
+            | mir::Rvalue::UnaryOp(_, operand)
+            | mir::Rvalue::Cast(_, operand, _) => {
                 self.operand_uses_alias_with_origin(operand, source_loc, flavor)
             },
             mir::Rvalue::Ref(_, _, place)
             | mir::Rvalue::RawPtr(_, place)
+            | mir::Rvalue::Reborrow(_, _, place)
             | mir::Rvalue::Discriminant(place)
             | mir::Rvalue::CopyForDeref(place) => {
                 self.place_uses_alias_with_origin(*place, source_loc, flavor)
@@ -1249,9 +1233,6 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             mir::Rvalue::BinaryOp(_, operands) => {
                 self.operand_uses_alias_with_origin(&operands.as_ref().0, source_loc, flavor)
                     || self.operand_uses_alias_with_origin(&operands.as_ref().1, source_loc, flavor)
-            },
-            mir::Rvalue::UnaryOp(_, operand) | mir::Rvalue::Cast(_, operand, _) => {
-                self.operand_uses_alias_with_origin(operand, source_loc, flavor)
             },
             mir::Rvalue::Aggregate(_, operands) => operands
                 .iter()
@@ -1285,14 +1266,14 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             .is_some_and(|alias| alias.source_loc == Some(source_loc))
     }
 
-    fn is_cleanup_erased_source_stmt(&self, stmt: &mir::Statement<'tcx>) -> bool {
-        match &stmt.kind {
+    fn is_cleanup_erased_source_stmt(stmt: &mir::Statement<'tcx>) -> bool {
+        matches!(
+            &stmt.kind,
             mir::StatementKind::AscribeUserType(_, _)
             | mir::StatementKind::FakeRead(_)
-            | mir::StatementKind::Coverage(_) => true,
-            mir::StatementKind::Assign(box (_, mir::Rvalue::Ref(_, mir::BorrowKind::Fake(_), _))) => true,
-            _ => false,
-        }
+            | mir::StatementKind::Coverage(_)
+            | mir::StatementKind::Assign(box (_, mir::Rvalue::Ref(_, mir::BorrowKind::Fake(_), _)))
+        )
     }
 
     fn statement_key(&self, stmt: &mir::Statement<'tcx>, flavor: MirFlavor) -> String {
@@ -1311,9 +1292,6 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             },
             mir::StatementKind::PlaceMention(place) => {
                 format!("PlaceMention({})", self.place_key(**place, flavor))
-            },
-            mir::StatementKind::Retag(kind, place) => {
-                format!("Retag({kind:?}, {})", self.place_key(**place, flavor))
             },
             mir::StatementKind::AscribeUserType(place, variance) => {
                 let (place, projection) = place.as_ref();
@@ -1340,12 +1318,17 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
 
     fn rvalue_key(&self, rvalue: &mir::Rvalue<'tcx>, flavor: MirFlavor) -> String {
         match rvalue {
-            mir::Rvalue::Use(operand) => format!("Use({})", self.operand_key(operand, flavor)),
+            mir::Rvalue::Use(operand, retag) => {
+                format!("Use({}, {retag:?})", self.operand_key(operand, flavor))
+            },
             mir::Rvalue::Ref(_, borrow_kind, place) => {
                 format!("Ref({borrow_kind:?}, {})", self.place_key(*place, flavor))
             },
             mir::Rvalue::RawPtr(mutability, place) => {
                 format!("RawPtr({mutability:?}, {})", self.place_key(*place, flavor))
+            },
+            mir::Rvalue::Reborrow(ty, mutability, place) => {
+                format!("Reborrow({ty:?}, {mutability:?}, {})", self.place_key(*place, flavor))
             },
             mir::Rvalue::BinaryOp(op, operands) => format!(
                 "BinaryOp({op:?}, {}, {})",
@@ -1384,12 +1367,12 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
 
     fn normalize_place_for_flavor(&self, place: mir::Place<'tcx>, flavor: MirFlavor) -> NormalizedPlace {
         match flavor {
-            MirFlavor::Source => self.normalize_source_place(place),
+            MirFlavor::Source => Self::normalize_source_place(place),
             MirFlavor::Target => self.normalize_place(place),
         }
     }
 
-    fn normalize_source_place(&self, place: mir::Place<'tcx>) -> NormalizedPlace {
+    fn normalize_source_place(place: mir::Place<'tcx>) -> NormalizedPlace {
         NormalizedPlace {
             local: place.local,
             projection: place.projection.iter().map(normalize_projection_elem).collect(),
@@ -1409,10 +1392,10 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             };
         }
 
-        self.normalize_source_place(place)
+        Self::normalize_source_place(place)
     }
 
-    fn is_synthetic_local(&self, local: Local) -> bool {
+    const fn is_synthetic_local(&self, local: Local) -> bool {
         local.as_usize() >= self.source_local_count
     }
 
@@ -1428,7 +1411,7 @@ enum MirFlavor {
 }
 
 impl PointPhaseKind {
-    fn with_source(self, source: SourceLoc) -> PointPhase {
+    const fn with_source(self, source: SourceLoc) -> PointPhase {
         match self {
             Self::Direct => PointPhase::Direct(source),
             Self::PreEffect => PointPhase::PreEffect(source),
@@ -1437,7 +1420,7 @@ impl PointPhaseKind {
     }
 }
 
-fn point_phase_from_origin(origin: Origin) -> Option<PointPhase> {
+const fn point_phase_from_origin(origin: Origin) -> Option<PointPhase> {
     match origin {
         Origin::Source(source) | Origin::FoldedFrom(source) | Origin::SplitFrom(source) => {
             Some(PointPhase::Direct(source))
@@ -1477,9 +1460,10 @@ fn compute_predecessors(body: &Body<'_>) -> FxHashMap<BasicBlock, Vec<BasicBlock
 
 fn real_targets(terminator: &mir::Terminator<'_>) -> Vec<BasicBlock> {
     match &terminator.kind {
-        mir::TerminatorKind::Goto { target } | mir::TerminatorKind::Assert { target, .. } => vec![*target],
+        mir::TerminatorKind::Goto { target }
+        | mir::TerminatorKind::Assert { target, .. }
+        | mir::TerminatorKind::Drop { target, .. } => vec![*target],
         mir::TerminatorKind::SwitchInt { targets, .. } => targets.all_targets().to_vec(),
-        mir::TerminatorKind::Drop { target, .. } => vec![*target],
         mir::TerminatorKind::Call { target, .. } => target.iter().copied().collect(),
         mir::TerminatorKind::FalseEdge { real_target, .. }
         | mir::TerminatorKind::FalseUnwind { real_target, .. } => vec![*real_target],
@@ -1494,7 +1478,7 @@ fn real_targets(terminator: &mir::Terminator<'_>) -> Vec<BasicBlock> {
     }
 }
 
-fn normal_successor(terminator: &mir::Terminator<'_>) -> Option<BasicBlock> {
+const fn normal_successor(terminator: &mir::Terminator<'_>) -> Option<BasicBlock> {
     match &terminator.kind {
         mir::TerminatorKind::Goto { target }
         | mir::TerminatorKind::Assert { target, .. }
@@ -1540,9 +1524,9 @@ fn normalize_projection_elem(elem: mir::PlaceElem<'_>) -> NormalizedPlaceElem {
     }
 }
 
-fn unwind_target(action: &mir::UnwindAction) -> Option<BasicBlock> {
+const fn unwind_target(action: mir::UnwindAction) -> Option<BasicBlock> {
     match action {
-        mir::UnwindAction::Cleanup(bb) => Some(*bb),
+        mir::UnwindAction::Cleanup(bb) => Some(bb),
         mir::UnwindAction::Continue | mir::UnwindAction::Unreachable | mir::UnwindAction::Terminate(_) => {
             None
         },
