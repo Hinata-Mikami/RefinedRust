@@ -966,20 +966,57 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
     }
 
     fn try_align_rewritten_drop(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
-        let ts = self.bc.basic_blocks[bb_s].terminator();
-        let Some(source_place) = self.source_drop_place(ts) else {
-            return false;
-        };
-
         let tt = self.de.basic_blocks[bb_t].terminator();
-        let Some((a, b, administrative_statements)) = self.parse_drop_flag_test(bb_t, tt, &source_place)
-        else {
-            return false;
-        };
+        let mut cur_s = bb_s;
 
-        let Some(drop_bb) = self.find_actual_drop_block(a, b, &source_place) else {
-            return false;
-        };
+        for _ in 0..self.bc.basic_blocks.len() {
+            let ts = self.bc.basic_blocks[cur_s].terminator();
+            let Some(source_place) = self.source_drop_place(ts) else {
+                return false;
+            };
+
+            let Some((a, b, administrative_statements)) = self.parse_drop_flag_test(bb_t, tt, &source_place)
+            else {
+                return false;
+            };
+
+            let Some(drop_bb) = self.find_actual_drop_block(a, b, &source_place) else {
+                let mir::TerminatorKind::Drop { target: next_s, .. } = ts.kind else {
+                    return false;
+                };
+
+                if self.bc_predecessors.get(&next_s).map_or(0, Vec::len) != 1 {
+                    return false;
+                }
+
+                cur_s = next_s;
+                continue;
+            };
+
+            return self.align_rewritten_drop_match(
+                bb_t,
+                cur_s,
+                ts,
+                a,
+                b,
+                administrative_statements,
+                drop_bb,
+            );
+        }
+
+        false
+    }
+
+    fn align_rewritten_drop_match(
+        &mut self,
+        bb_t: BasicBlock,
+        bb_s: BasicBlock,
+        ts: &mir::Terminator<'tcx>,
+        a: BasicBlock,
+        b: BasicBlock,
+        administrative_statements: Vec<usize>,
+        drop_bb: BasicBlock,
+    ) -> bool {
         let skip_bb = if drop_bb == a { b } else { a };
 
         let src_drop = (bb_s, self.bc.basic_blocks[bb_s].statements.len());
@@ -1485,6 +1522,30 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 && self.drop_target_successor_equiv(*target_t, *target_s)
             {
                 let src_drop = (cur_s, ds.statements.len());
+                self.target_to_source.insert(loc_t, Origin::SplitFrom(src_drop));
+                self.target_point_phases.insert(loc_t, PointPhase::PreEffect(src_drop));
+                self.align_blocks(*target_t, *target_s);
+                return true;
+            }
+
+            // Cleanup paths may keep administrative discriminant reads for a
+            // moved value even though the source `Drop` itself was eliminated.
+            // These inserted blocks are still CFG successors, so map their
+            // locations to the point before the eliminated drop effect.
+            if let (
+                mir::TerminatorKind::Goto { target: target_t },
+                mir::TerminatorKind::Drop {
+                    target: target_s, ..
+                },
+            ) = (&tt.kind, &ts.kind)
+                && !self.de.basic_blocks[bb_t].statements.is_empty()
+                && self.block_has_only_open_drop_administrative_statements(bb_t)
+            {
+                let src_drop = (cur_s, ds.statements.len());
+                for idx_t in 0..self.de.basic_blocks[bb_t].statements.len() {
+                    self.target_to_source.insert((bb_t, idx_t), Origin::SplitFrom(src_drop));
+                    self.target_point_phases.insert((bb_t, idx_t), PointPhase::PreEffect(src_drop));
+                }
                 self.target_to_source.insert(loc_t, Origin::SplitFrom(src_drop));
                 self.target_point_phases.insert(loc_t, PointPhase::PreEffect(src_drop));
                 self.align_blocks(*target_t, *target_s);
