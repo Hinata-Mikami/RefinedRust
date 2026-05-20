@@ -972,7 +972,8 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         };
 
         let tt = self.de.basic_blocks[bb_t].terminator();
-        let Some((a, b)) = self.parse_flag_test(tt) else {
+        let Some((a, b, administrative_statements)) = self.parse_drop_flag_test(bb_t, tt, &source_place)
+        else {
             return false;
         };
 
@@ -982,6 +983,10 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         let skip_bb = if drop_bb == a { b } else { a };
 
         let src_drop = (bb_s, self.bc.basic_blocks[bb_s].statements.len());
+        for idx in administrative_statements {
+            self.target_to_source.insert((bb_t, idx), Origin::SplitFrom(src_drop));
+            self.target_point_phases.insert((bb_t, idx), PointPhase::PreEffect(src_drop));
+        }
         let flag_test_loc = (bb_t, self.de.basic_blocks[bb_t].statements.len());
         self.target_to_source.insert(flag_test_loc, Origin::SplitFrom(src_drop));
         self.target_point_phases.insert(flag_test_loc, PointPhase::PreEffect(src_drop));
@@ -1509,14 +1514,28 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             && self.terminator_shape_equiv(data_t.terminator(), data_s.terminator())
     }
 
-    fn parse_flag_test(&self, term: &mir::Terminator<'tcx>) -> Option<(BasicBlock, BasicBlock)> {
+    fn parse_drop_flag_test(
+        &self,
+        bb_t: BasicBlock,
+        term: &mir::Terminator<'tcx>,
+        source_place: &NormalizedPlace,
+    ) -> Option<(BasicBlock, BasicBlock, Vec<usize>)> {
         let mir::TerminatorKind::SwitchInt { discr, targets } = &term.kind else {
             return None;
         };
 
+        let mut administrative_statements = Vec::new();
         match discr {
             mir::Operand::Copy(place) | mir::Operand::Move(place)
                 if place.projection.is_empty() && self.is_synthetic_bool_local(place.local) => {},
+            mir::Operand::Copy(place) | mir::Operand::Move(place)
+                if place.projection.is_empty()
+                    && self.is_synthetic_local(place.local)
+                    && let Some(idx) =
+                        self.find_discriminant_stmt_for_place(bb_t, place.local, source_place) =>
+            {
+                administrative_statements.push(idx);
+            },
             _ => return None,
         }
 
@@ -1525,7 +1544,24 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             return None;
         }
 
-        Some((all_targets[0], all_targets[1]))
+        Some((all_targets[0], all_targets[1], administrative_statements))
+    }
+
+    fn find_discriminant_stmt_for_place(
+        &self,
+        bb_t: BasicBlock,
+        local: Local,
+        source_place: &NormalizedPlace,
+    ) -> Option<usize> {
+        self.de.basic_blocks[bb_t].statements.iter().enumerate().rev().find_map(|(idx, stmt)| {
+            let mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(place))) = &stmt.kind else {
+                return None;
+            };
+            (lhs.projection.is_empty()
+                && lhs.local == local
+                && same_or_subplace(source_place, &self.normalize_place(*place)))
+            .then_some(idx)
+        })
     }
 
     fn find_actual_drop_block(
