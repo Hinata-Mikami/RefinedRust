@@ -354,6 +354,7 @@ struct Mapper<'a, 'tcx> {
     bc: &'a Body<'tcx>,
     de: &'a Body<'tcx>,
     drop_drop_did: Option<DefId>,
+    discriminant_value_did: Option<DefId>,
     source_local_count: usize,
     target_to_source: FxHashMap<TargetLoc, Origin>,
     target_point_phases: FxHashMap<TargetLoc, PointPhase>,
@@ -427,6 +428,11 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             bc,
             de,
             drop_drop_did: resolve_drop_drop_did(tcx),
+            discriminant_value_did: search::try_resolve_did(tcx, &[
+                "core",
+                "intrinsics",
+                "discriminant_value",
+            ]),
             source_local_count: bc.local_decls.len(),
             target_to_source: FxHashMap::default(),
             target_point_phases: FxHashMap::default(),
@@ -467,10 +473,6 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 && let Some(source) = self.next_mapped_source_after(*bb, *idx)
             {
                 target_point_phases.insert((*bb, *idx), PointPhase::PreEffect(source));
-            } else if *origin == Origin::Inserted
-                && let Some(source) = self.source_terminator_after_previous_mapped_statement(*bb, *idx)
-            {
-                target_point_phases.insert((*bb, *idx), PointPhase::Direct(source));
             } else if *origin == Origin::Inserted
                 && *idx == 0
                 && let Some(source) = self.source_successor_for_inserted_block_start(*bb)
@@ -728,6 +730,12 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         while i_t < data_t.statements.len() {
             let st = &data_t.statements[i_t];
 
+            if let Some(source_loc) = self.try_match_lowered_discriminant_value_stmt(st, bb_s, i_s) {
+                self.target_to_source.insert((bb_t, i_t), Origin::Source(source_loc));
+                i_t += 1;
+                continue;
+            }
+
             if self.is_inserted_stmt(st) {
                 let source_loc = (i_s < data_s.statements.len()).then_some((bb_s, i_s));
                 let origin = self.observe_inserted_stmt(st, source_loc).unwrap_or(Origin::Inserted);
@@ -781,7 +789,9 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
 
         while i_t < data_t.statements.len() {
             let st = &data_t.statements[i_t];
-            if self.is_inserted_stmt(st) {
+            if let Some(source_loc) = self.try_match_lowered_discriminant_value_stmt(st, bb_s, i_s) {
+                self.target_to_source.insert((bb_t, i_t), Origin::Source(source_loc));
+            } else if self.is_inserted_stmt(st) {
                 let source_loc = (i_s < data_s.statements.len()).then_some((bb_s, i_s));
                 let origin = self.observe_inserted_stmt(st, source_loc).unwrap_or(Origin::Inserted);
                 self.target_to_source.insert((bb_t, i_t), origin);
@@ -811,6 +821,10 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             return;
         }
 
+        if self.try_align_lowered_discriminant_value_goto(bb_t, bb_s) {
+            return;
+        }
+
         if self.try_align_folded_source_terminator(bb_t, bb_s) {
             return;
         }
@@ -836,6 +850,12 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
 
         if self.try_align_diverging_call(bb_t, bb_s) {
+            return;
+        }
+
+        if let Some(source_loc) = self.source_terminator_after_previous_mapped_statement(bb_t, loc_t.1) {
+            self.target_to_source.insert(loc_t, Origin::FoldedFrom(source_loc));
+            self.recurse_direct(tt, self.bc.basic_blocks[source_loc.0].terminator());
             return;
         }
 
@@ -1157,6 +1177,102 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             return false;
         };
         operand_fn_def_id(func) == Some(drop_drop_did)
+    }
+
+    fn is_discriminant_value_call(&self, func: &mir::Operand<'tcx>) -> bool {
+        let Some(discriminant_value_did) = self.discriminant_value_did else {
+            return false;
+        };
+        operand_fn_def_id(func) == Some(discriminant_value_did)
+    }
+
+    fn try_match_lowered_discriminant_value_stmt(
+        &self,
+        stmt_t: &mir::Statement<'tcx>,
+        bb_s: BasicBlock,
+        idx_s: usize,
+    ) -> Option<SourceLoc> {
+        if idx_s != self.bc.basic_blocks[bb_s].statements.len() {
+            return None;
+        }
+
+        let mir::StatementKind::Assign(box (lhs_t, mir::Rvalue::Discriminant(place_t))) = &stmt_t.kind else {
+            return None;
+        };
+
+        let mir::TerminatorKind::Call {
+            func,
+            args,
+            destination,
+            target: Some(_),
+            ..
+        } = &self.bc.basic_blocks[bb_s].terminator().kind
+        else {
+            return None;
+        };
+
+        if !self.is_discriminant_value_call(func) || args.len() != 1 {
+            return None;
+        }
+        if !self.place_equiv(*lhs_t, *destination) {
+            return None;
+        }
+        if !self.discriminant_place_matches_call_arg(*place_t, &args[0].node) {
+            return None;
+        }
+
+        Some((bb_s, idx_s))
+    }
+
+    fn discriminant_place_matches_call_arg(
+        &self,
+        place_t: mir::Place<'tcx>,
+        arg_s: &mir::Operand<'tcx>,
+    ) -> bool {
+        let (mir::Operand::Copy(arg_place_s) | mir::Operand::Move(arg_place_s)) = arg_s else {
+            return false;
+        };
+
+        let discr_place = self.normalize_place_for_flavor(place_t, MirFlavor::Target);
+        let arg_place = self.normalize_place_for_flavor(*arg_place_s, MirFlavor::Source);
+        discr_place.local == arg_place.local
+            && discr_place.projection.len() == arg_place.projection.len() + 1
+            && discr_place.projection.first() == Some(&NormalizedPlaceElem::Deref)
+            && discr_place.projection[1..] == arg_place.projection
+    }
+
+    fn try_align_lowered_discriminant_value_goto(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
+        let dt = &self.de.basic_blocks[bb_t];
+        let ds = &self.bc.basic_blocks[bb_s];
+        let loc_t = (bb_t, dt.statements.len());
+        let source_loc = (bb_s, ds.statements.len());
+
+        let mir::TerminatorKind::Goto { target: target_t } = dt.terminator().kind else {
+            return false;
+        };
+        let mir::TerminatorKind::Call {
+            func,
+            target: Some(target_s),
+            ..
+        } = &ds.terminator().kind
+        else {
+            return false;
+        };
+
+        if !self.is_discriminant_value_call(func) {
+            return false;
+        }
+        if dt.statements.is_empty()
+            || self.target_to_source.get(&(bb_t, dt.statements.len() - 1)).copied()
+                != Some(Origin::Source(source_loc))
+        {
+            return false;
+        }
+
+        self.target_to_source.insert(loc_t, Origin::SplitFrom(source_loc));
+        self.target_point_phases.insert(loc_t, PointPhase::PostEffect(source_loc));
+        self.align_successor(target_t, *target_s);
+        true
     }
 
     fn try_align_open_drop_subgraph(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
