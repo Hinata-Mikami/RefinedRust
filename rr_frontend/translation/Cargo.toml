@@ -27,5 +27,10 @@ nom.workspace = true
 [dev-dependencies]
 compiletest_rs.workspace = true
 
+[[test]]
+name = "test_mir_mapper"
+path = "tests/test_mir_mapper.rs"
+harness = false
+
 [package.metadata.rust-analyzer]
 rustc_private = true

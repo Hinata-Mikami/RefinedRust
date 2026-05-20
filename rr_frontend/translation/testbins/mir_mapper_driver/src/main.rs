@@ -126,7 +126,7 @@ impl Callbacks for OurCompilerCalls {
             let bc = &body_with_facts.body;
             let de = tcx.mir_drops_elaborated_and_const_checked(local_def_id);
             let de = de.borrow();
-            let mapping = translation::map_drop_elaborated_to_borrow_checked(bc, &de);
+            let mapping = translation::map_drop_elaborated_to_borrow_checked(tcx, bc, &de);
             println!("{}", translation::format_mapping(bc, &de, &mapping));
             if get_attribute(tcx, local_def_id.to_def_id(), "mapper", "points").is_some() {
                 let points = translation::format_inserted_terminator_point_mappings(bc, &de, &mapping);

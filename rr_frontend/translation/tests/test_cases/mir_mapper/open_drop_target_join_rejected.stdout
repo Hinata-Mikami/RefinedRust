@@ -36,13 +36,13 @@ bb4[5] _14 = const true -> Inserted
 bb4[6] _3 = std::option::Option::<std::boxed::Box<u32>>::Some(move _7) -> FoldedFrom(bb5[4] _3 = std::option::Option::<std::boxed::Box<u32>>::Some(move _7))
 bb4[7] StorageDead(_7) -> FoldedFrom(bb6[0] StorageDead(_7))
 bb4[8] StorageDead(_6) -> FoldedFrom(bb7[0] StorageDead(_6))
-bb4[9] goto -> bb6 -> Source(bb3[0] falseEdge -> [real: bb5, imaginary: bb4])
+bb4[9] goto -> bb6 -> FoldedFrom(bb7[1] goto -> bb11)
 bb5[0] _14 = const true -> Inserted
 bb5[1] _3 = std::option::Option::<std::boxed::Box<u32>>::None -> Source(bb10[0] _3 = std::option::Option::<std::boxed::Box<u32>>::None)
 bb5[2] goto -> bb6 -> Source(bb10[1] goto -> bb11)
-bb6[0] StorageDead(_4) -> Inserted
-bb6[1] _10 = discriminant(_3) -> Inserted
-bb6[2] switchInt(move _10) -> [1: bb7, otherwise: bb9] -> Inserted
+bb6[0] StorageDead(_4) -> Source(bb11[0] StorageDead(_4))
+bb6[1] _10 = discriminant(_3) -> FoldedFrom(bb11[3] _10 = discriminant(_3))
+bb6[2] switchInt(move _10) -> [1: bb7, otherwise: bb9] -> Source(bb11[4] switchInt(move _10) -> [1: bb12, otherwise: bb15])
 bb7[0] StorageLive(_11) -> FoldedFrom(bb13[0] StorageLive(_11))
 bb7[1] _11 = move ((_3 as Some).0: std::boxed::Box<u32>) -> FoldedFrom(bb13[1] _11 = move ((_3 as Some).0: std::boxed::Box<u32>))
 bb7[2] StorageLive(_12) -> FoldedFrom(bb13[2] StorageLive(_12))

@@ -14,10 +14,10 @@ bb4[0] StorageLive(_6) -> FoldedFrom(bb5[0] StorageLive(_6))
 bb4[1] _6 = copy ((_2 as Some).0: i32) -> FoldedFrom(bb5[1] _6 = copy ((_2 as Some).0: i32))
 bb4[2] _3 = copy _6 -> FoldedFrom(bb5[2] _3 = copy _6)
 bb4[3] StorageDead(_6) -> FoldedFrom(bb5[3] StorageDead(_6))
-bb4[4] goto -> bb6 -> Source(bb3[0] falseEdge -> [real: bb5, imaginary: bb4])
+bb4[4] goto -> bb6 -> FoldedFrom(bb5[4] goto -> bb7)
 bb5[0] _3 = const 1_i32 -> Source(bb6[0] _3 = const 1_i32)
 bb5[1] goto -> bb6 -> Source(bb6[1] goto -> bb7)
-bb6[0] StorageDead(_4) -> Inserted
-bb6[1] _0 = copy _3 -> Inserted
-bb6[2] StorageDead(_3) -> Inserted
-bb6[3] return -> FoldedFrom(bb7[4] return)
+bb6[0] StorageDead(_4) -> Source(bb7[0] StorageDead(_4))
+bb6[1] _0 = copy _3 -> Source(bb7[2] _0 = copy _3)
+bb6[2] StorageDead(_3) -> Source(bb7[3] StorageDead(_3))
+bb6[3] return -> Source(bb7[4] return)

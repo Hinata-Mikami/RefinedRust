@@ -38,7 +38,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             if let mir::StatementKind::Assign(b) = &stmt.kind {
                 let (plc, val) = b.as_ref();
                 if let Some(drop_borrow) = self.proc.synthetic_drop_borrow_for_assignment(loc) {
-                    let mut annotation_plan = AnnotationGenerator::prepare_synthetic_drop_borrow_annotation_plan(drop_borrow);
+                    let mut annotation_plan =
+                        AnnotationGenerator::prepare_synthetic_drop_borrow_annotation_plan(drop_borrow);
                     annotation_plan.push_pre_stmts(&mut prim_stmts);
 
                     let plc_ty = self.shape_type_of_place(plc);

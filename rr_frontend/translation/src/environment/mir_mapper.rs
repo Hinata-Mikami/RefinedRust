@@ -226,7 +226,7 @@ impl MappingResult {
 }
 
 #[must_use]
-pub(crate) fn map_drop_elaborated_to_borrow_checked<'tcx>(
+pub fn map_drop_elaborated_to_borrow_checked<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     bc: &Body<'tcx>,
     de: &Body<'tcx>,
@@ -706,15 +706,19 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
     }
 
     fn align_blocks(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) {
+        self.align_blocks_with_origin(bb_t, bb_s, false);
+    }
+
+    fn align_blocks_with_origin(&mut self, bb_t: BasicBlock, bb_s: BasicBlock, folded_from_source: bool) {
         if !self.visited.insert((bb_t, bb_s)) {
             return;
         }
 
-        self.align_statements(bb_t, bb_s);
-        self.align_terminator(bb_t, bb_s);
+        self.align_statements(bb_t, bb_s, folded_from_source);
+        self.align_terminator(bb_t, bb_s, folded_from_source);
     }
 
-    fn align_statements(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) {
+    fn align_statements(&mut self, bb_t: BasicBlock, bb_s: BasicBlock, folded_from_source: bool) {
         let data_t = &self.de.basic_blocks[bb_t];
         let data_s = &self.bc.basic_blocks[bb_s];
 
@@ -755,6 +759,8 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 let source_loc = (bb_s, i_s);
                 let origin = if self.stmt_uses_box_deref_alias(&data_t.statements[i_t], source_loc) {
                     Origin::SplitFrom(source_loc)
+                } else if folded_from_source {
+                    Origin::FoldedFrom(source_loc)
                 } else {
                     Origin::Source(source_loc)
                 };
@@ -788,7 +794,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
-    fn align_terminator(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) {
+    fn align_terminator(&mut self, bb_t: BasicBlock, bb_s: BasicBlock, folded_from_source: bool) {
         let dt = &self.de.basic_blocks[bb_t];
         let ds = &self.bc.basic_blocks[bb_s];
 
@@ -797,7 +803,10 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         let loc_t = (bb_t, dt.statements.len());
 
         if self.terminator_shape_equiv(tt, ts) {
-            self.target_to_source.insert(loc_t, Origin::Source((bb_s, ds.statements.len())));
+            let source_loc = (bb_s, ds.statements.len());
+            let origin =
+                if folded_from_source { Origin::FoldedFrom(source_loc) } else { Origin::Source(source_loc) };
+            self.target_to_source.insert(loc_t, origin);
             self.recurse_direct(tt, ts);
             return;
         }
@@ -857,7 +866,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                     ..
                 },
                 mir::TerminatorKind::Goto { target: target_s },
-            ) => self.align_blocks(*target_t, *target_s),
+            ) => self.align_successor(*target_t, *target_s),
 
             (
                 mir::TerminatorKind::SwitchInt {
@@ -868,7 +877,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 },
             ) => {
                 for (bb_t, bb_s) in targets_t.all_targets().iter().zip(targets_s.all_targets().iter()) {
-                    self.align_blocks(*bb_t, *bb_s);
+                    self.align_successor(*bb_t, *bb_s);
                 }
             },
 
@@ -894,9 +903,9 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                     ..
                 },
             ) => {
-                self.align_blocks(*target_t, *target_s);
+                self.align_successor(*target_t, *target_s);
                 if let (Some(bb_t), Some(bb_s)) = (unwind_target(*unwind_t), unwind_target(*unwind_s)) {
-                    self.align_blocks(bb_t, bb_s);
+                    self.align_successor(bb_t, bb_s);
                 }
             },
 
@@ -913,15 +922,47 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 },
             ) => {
                 if let (Some(bb_t), Some(bb_s)) = (*target_t, *target_s) {
-                    self.align_blocks(bb_t, bb_s);
+                    self.align_successor(bb_t, bb_s);
                 }
                 if let (Some(bb_t), Some(bb_s)) = (unwind_target(*unwind_t), unwind_target(*unwind_s)) {
-                    self.align_blocks(bb_t, bb_s);
+                    self.align_successor(bb_t, bb_s);
                 }
             },
 
             _ => {},
         }
+    }
+
+    fn align_successor(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) {
+        let (bb_s, folded_from_source) = self.skip_source_forwarding_blocks(bb_s);
+        self.align_blocks_with_origin(bb_t, bb_s, folded_from_source);
+    }
+
+    fn skip_source_forwarding_blocks(&self, mut bb_s: BasicBlock) -> (BasicBlock, bool) {
+        let mut folded_from_source = false;
+        for _ in 0..self.bc.basic_blocks.len() {
+            let data = &self.bc.basic_blocks[bb_s];
+            if !data.statements.is_empty() {
+                break;
+            }
+
+            let (mir::TerminatorKind::FalseEdge {
+                real_target: target,
+                ..
+            }
+            | mir::TerminatorKind::FalseUnwind {
+                real_target: target,
+                ..
+            }) = data.terminator().kind
+            else {
+                break;
+            };
+
+            folded_from_source = true;
+            bb_s = target;
+        }
+
+        (bb_s, folded_from_source)
     }
 
     fn try_align_rewritten_drop(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {

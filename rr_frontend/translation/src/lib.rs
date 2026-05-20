@@ -51,7 +51,7 @@ use crate::body::signature;
 use crate::closure_impl_generator::ClosureImplGenerator;
 pub use crate::environment::mir_mapper::{
     BoxDerefAlias, MappingResult, Origin, SourceLoc, SyntheticDropBorrow, TargetLoc,
-    format_inserted_terminator_point_mappings, format_mapping,
+    format_inserted_terminator_point_mappings, format_mapping, map_drop_elaborated_to_borrow_checked,
 };
 use crate::shims::registry as shim_registry;
 use crate::spec_parsers::const_attr_parser::{CONST_ATTRS, ConstAttrParser as _, VerboseConstAttrParser};

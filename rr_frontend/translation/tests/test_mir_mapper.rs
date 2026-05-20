@@ -44,8 +44,9 @@ fn build_driver() {
     assert!(cargo.status().expect("Failed to build MIR mapper driver").success());
 }
 
-fn run_tests(path: &str) {
+fn run_tests(path: &str, bless: bool) {
     compiletest::run_tests(&compiletest::Config {
+        bless,
         mode: "ui".parse().expect("Invalid mode"),
         src_base: PathBuf::from(path),
         target_rustcflags: Some("--edition 2024 --crate-type=lib".to_owned()),
@@ -54,9 +55,20 @@ fn run_tests(path: &str) {
     });
 }
 
-#[test]
-fn mir_mapper() {
+fn main() {
+    let mut bless = false;
+    for arg in env::args().skip(1) {
+        match arg.as_str() {
+            "--bless" => bless = true,
+            "--help" | "-h" => {
+                println!("Usage: test_mir_mapper [--bless]");
+                return;
+            },
+            other => panic!("unknown argument: {other}"),
+        }
+    }
+
     configure_rustc_dylib_path();
     build_driver();
-    run_tests("tests/test_cases/mir_mapper");
+    run_tests("tests/test_cases/mir_mapper", bless);
 }

@@ -45,7 +45,7 @@ bb8[5] StorageDead(_4) -> FoldedFrom(bb10[5] StorageDead(_4))
 bb8[6] StorageDead(_3) -> FoldedFrom(bb10[6] StorageDead(_3))
 bb8[7] _0 = move _2 -> FoldedFrom(bb10[7] _0 = move _2)
 bb8[8] StorageDead(_2) -> FoldedFrom(bb12[0] StorageDead(_2))
-bb8[9] return -> Inserted
+bb8[9] return -> FoldedFrom(bb12[1] return)
 bb9[0] StorageDead(_19) -> Source(bb11[0] StorageDead(_19))
 bb9[1] StorageDead(_17) -> Source(bb11[1] StorageDead(_17))
 bb9[2] StorageDead(_18) -> Source(bb11[2] StorageDead(_18))
@@ -59,7 +59,3 @@ bb9[9] _8 = const () -> Source(bb11[9] _8 = const ())
 bb9[10] goto -> bb4 -> Source(bb11[10] goto -> bb4)
 bb10[0] drop(_2) -> [return: bb11, unwind terminate(cleanup)] -> Source(bb13[0] drop(_2) -> [return: bb14, unwind terminate(cleanup)])
 bb11[0] resume -> Source(bb14[0] resume)
-
-Inserted terminator point mappings:
-bb8[9] return Start -> bb12[1] return Start
-bb8[9] return Mid -> bb12[1] return Mid
