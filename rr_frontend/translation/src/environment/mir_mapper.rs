@@ -40,8 +40,6 @@
 //! assigns such inserted alias initializers a point mapping to the next real
 //! mapped source location in the same block.
 
-#![allow(dead_code)]
-
 use std::collections::VecDeque;
 
 use rr_rustc_interface::data_structures::fx::{FxHashMap, FxHashSet};
@@ -379,7 +377,6 @@ struct OpenDropBlock {
 
 struct SourceDropCtx {
     drop_bb: BasicBlock,
-    place: NormalizedPlace,
     ret: BasicBlock,
     unwind: Option<BasicBlock>,
 }
@@ -418,7 +415,6 @@ enum PointPhase {
 enum PointPhaseKind {
     Direct,
     PreEffect,
-    PostEffect,
 }
 
 impl<'a, 'tcx> Mapper<'a, 'tcx> {
@@ -584,9 +580,22 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 drop_call_loc: (bb_t, idx_t),
                 source_drop_loc: src_drop,
             });
-            self.target_point_phases.insert(borrow_loc, PointPhase::PreEffect(src_drop));
-            self.target_point_phases.insert((bb_t, idx_t), PointPhase::Direct(src_drop));
+            self.mark_phase(borrow_loc, PointPhase::PreEffect(src_drop));
+            self.mark_phase((bb_t, idx_t), PointPhase::Direct(src_drop));
         }
+    }
+
+    fn mark_origin(&mut self, loc: TargetLoc, origin: Origin) {
+        self.target_to_source.insert(loc, origin);
+    }
+
+    fn mark_phase(&mut self, loc: TargetLoc, phase: PointPhase) {
+        self.target_point_phases.insert(loc, phase);
+    }
+
+    fn mark_origin_with_phase(&mut self, loc: TargetLoc, origin: Origin, phase: PointPhase) {
+        self.mark_origin(loc, origin);
+        self.mark_phase(loc, phase);
     }
 
     /// Find the source location of the next mapped target location in the same block.
@@ -731,7 +740,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             let st = &data_t.statements[i_t];
 
             if let Some(source_loc) = self.try_match_lowered_discriminant_value_stmt(st, bb_s, i_s) {
-                self.target_to_source.insert((bb_t, i_t), Origin::Source(source_loc));
+                self.mark_origin((bb_t, i_t), Origin::Source(source_loc));
                 i_t += 1;
                 continue;
             }
@@ -739,7 +748,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             if self.is_inserted_stmt(st) {
                 let source_loc = (i_s < data_s.statements.len()).then_some((bb_s, i_s));
                 let origin = self.observe_inserted_stmt(st, source_loc).unwrap_or(Origin::Inserted);
-                self.target_to_source.insert((bb_t, i_t), origin);
+                self.mark_origin((bb_t, i_t), origin);
                 i_t += 1;
                 continue;
             }
@@ -748,7 +757,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 && Self::is_cleanup_erased_source_stmt(&data_s.statements[i_s])
             {
                 if matches!(st.kind, mir::StatementKind::Nop) {
-                    self.target_to_source.insert((bb_t, i_t), Origin::Source((bb_s, i_s)));
+                    self.mark_origin((bb_t, i_t), Origin::Source((bb_s, i_s)));
                     i_t += 1;
                 }
                 i_s += 1;
@@ -772,14 +781,14 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 } else {
                     Origin::Source(source_loc)
                 };
-                self.target_to_source.insert((bb_t, i_t), origin);
+                self.mark_origin((bb_t, i_t), origin);
                 i_t += 1;
                 i_s += 1;
                 continue;
             }
 
             if let Some(source_loc) = self.try_match_folded_source_stmt(&data_t.statements[i_t], bb_s, i_s) {
-                self.target_to_source.insert((bb_t, i_t), Origin::FoldedFrom(source_loc));
+                self.mark_origin((bb_t, i_t), Origin::FoldedFrom(source_loc));
                 i_t += 1;
                 continue;
             }
@@ -790,15 +799,15 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         while i_t < data_t.statements.len() {
             let st = &data_t.statements[i_t];
             if let Some(source_loc) = self.try_match_lowered_discriminant_value_stmt(st, bb_s, i_s) {
-                self.target_to_source.insert((bb_t, i_t), Origin::Source(source_loc));
+                self.mark_origin((bb_t, i_t), Origin::Source(source_loc));
             } else if self.is_inserted_stmt(st) {
                 let source_loc = (i_s < data_s.statements.len()).then_some((bb_s, i_s));
                 let origin = self.observe_inserted_stmt(st, source_loc).unwrap_or(Origin::Inserted);
-                self.target_to_source.insert((bb_t, i_t), origin);
+                self.mark_origin((bb_t, i_t), origin);
             } else if let Some(source_loc) = self.try_match_folded_source_stmt(st, bb_s, i_s) {
-                self.target_to_source.insert((bb_t, i_t), Origin::FoldedFrom(source_loc));
+                self.mark_origin((bb_t, i_t), Origin::FoldedFrom(source_loc));
             } else {
-                self.target_to_source.insert((bb_t, i_t), Origin::Inserted);
+                self.mark_origin((bb_t, i_t), Origin::Inserted);
             }
             i_t += 1;
         }
@@ -816,7 +825,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             let source_loc = (bb_s, ds.statements.len());
             let origin =
                 if folded_from_source { Origin::FoldedFrom(source_loc) } else { Origin::Source(source_loc) };
-            self.target_to_source.insert(loc_t, origin);
+            self.mark_origin(loc_t, origin);
             self.recurse_direct(tt, ts);
             return;
         }
@@ -854,12 +863,12 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
 
         if let Some(source_loc) = self.source_terminator_after_previous_mapped_statement(bb_t, loc_t.1) {
-            self.target_to_source.insert(loc_t, Origin::FoldedFrom(source_loc));
+            self.mark_origin(loc_t, Origin::FoldedFrom(source_loc));
             self.recurse_direct(tt, self.bc.basic_blocks[source_loc.0].terminator());
             return;
         }
 
-        self.target_to_source.insert(loc_t, Origin::Inserted);
+        self.mark_origin(loc_t, Origin::Inserted);
     }
 
     fn recurse_direct(&mut self, tt: &mir::Terminator<'tcx>, ts: &mir::Terminator<'tcx>) {
@@ -1041,21 +1050,26 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
 
         let src_drop = (bb_s, self.bc.basic_blocks[bb_s].statements.len());
         for idx in administrative_statements {
-            self.target_to_source.insert((bb_t, idx), Origin::SplitFrom(src_drop));
-            self.target_point_phases.insert((bb_t, idx), PointPhase::PreEffect(src_drop));
+            self.mark_origin_with_phase(
+                (bb_t, idx),
+                Origin::SplitFrom(src_drop),
+                PointPhase::PreEffect(src_drop),
+            );
         }
         let flag_test_loc = (bb_t, self.de.basic_blocks[bb_t].statements.len());
-        self.target_to_source.insert(flag_test_loc, Origin::SplitFrom(src_drop));
-        self.target_point_phases.insert(flag_test_loc, PointPhase::PreEffect(src_drop));
+        self.mark_origin_with_phase(
+            flag_test_loc,
+            Origin::SplitFrom(src_drop),
+            PointPhase::PreEffect(src_drop),
+        );
 
         let drop_data = &self.de.basic_blocks[drop_bb];
         for i in 0..drop_data.statements.len() {
             self.target_to_source.entry((drop_bb, i)).or_insert(Origin::Inserted);
-            self.target_point_phases.insert((drop_bb, i), PointPhase::PreEffect(src_drop));
+            self.mark_phase((drop_bb, i), PointPhase::PreEffect(src_drop));
         }
         let drop_loc = (drop_bb, drop_data.statements.len());
-        self.target_to_source.insert(drop_loc, Origin::SplitFrom(src_drop));
-        self.target_point_phases.insert(drop_loc, PointPhase::Direct(src_drop));
+        self.mark_origin_with_phase(drop_loc, Origin::SplitFrom(src_drop), PointPhase::Direct(src_drop));
 
         if let mir::TerminatorKind::Drop {
             target: ret_s,
@@ -1142,10 +1156,8 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         };
 
         self.synthetic_drop_borrows.insert(arg_place.local, synthetic_borrow);
-        self.target_to_source.insert(borrow_loc, Origin::Inserted);
-        self.target_point_phases.insert(borrow_loc, PointPhase::PreEffect(src_drop));
-        self.target_to_source.insert(drop_call_loc, Origin::SplitFrom(src_drop));
-        self.target_point_phases.insert(drop_call_loc, PointPhase::Direct(src_drop));
+        self.mark_origin_with_phase(borrow_loc, Origin::Inserted, PointPhase::PreEffect(src_drop));
+        self.mark_origin_with_phase(drop_call_loc, Origin::SplitFrom(src_drop), PointPhase::Direct(src_drop));
 
         self.align_blocks(target_t, target_s);
         if let (Some(bb_t), Some(bb_s)) = (unwind_target(*unwind_t), unwind_target(unwind_s)) {
@@ -1269,8 +1281,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             return false;
         }
 
-        self.target_to_source.insert(loc_t, Origin::SplitFrom(source_loc));
-        self.target_point_phases.insert(loc_t, PointPhase::PostEffect(source_loc));
+        self.mark_origin_with_phase(loc_t, Origin::SplitFrom(source_loc), PointPhase::PostEffect(source_loc));
         self.align_successor(target_t, *target_s);
         true
     }
@@ -1296,14 +1307,20 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             if block.mark_statements {
                 let data = &self.de.basic_blocks[block.bb];
                 for i in 0..data.statements.len() {
-                    self.target_to_source.insert((block.bb, i), Origin::SplitFrom(src_drop));
-                    self.target_point_phases.insert((block.bb, i), PointPhase::PreEffect(src_drop));
+                    self.mark_origin_with_phase(
+                        (block.bb, i),
+                        Origin::SplitFrom(src_drop),
+                        PointPhase::PreEffect(src_drop),
+                    );
                 }
             }
 
             let loc_t = (block.bb, self.de.basic_blocks[block.bb].statements.len());
-            self.target_to_source.insert(loc_t, Origin::SplitFrom(src_drop));
-            self.target_point_phases.insert(loc_t, block.terminator_phase.with_source(src_drop));
+            self.mark_origin_with_phase(
+                loc_t,
+                Origin::SplitFrom(src_drop),
+                block.terminator_phase.with_source(src_drop),
+            );
         }
 
         for exit_t in open_drop_match.normal_exits {
@@ -1332,7 +1349,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 } else {
                     Origin::FoldedFrom((cur_s, ds.statements.len()))
                 };
-                self.target_to_source.insert(loc_t, origin);
+                self.mark_origin(loc_t, origin);
                 self.recurse_direct(tt, ts);
                 return true;
             }
@@ -1480,7 +1497,6 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                     if same_or_subplace(&source_place, target_root_place) {
                         return Some(SourceDropCtx {
                             drop_bb: current,
-                            place: source_place,
                             ret: *target,
                             unwind: unwind_target(*unwind),
                         });
@@ -1619,7 +1635,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 } else {
                     Origin::FoldedFrom((cur_s, ds.statements.len()))
                 };
-                self.target_to_source.insert(loc_t, origin);
+                self.mark_origin(loc_t, origin);
                 self.recurse_direct(tt, ts);
                 return true;
             }
@@ -1638,8 +1654,11 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 && self.drop_target_successor_equiv(*target_t, *target_s)
             {
                 let src_drop = (cur_s, ds.statements.len());
-                self.target_to_source.insert(loc_t, Origin::SplitFrom(src_drop));
-                self.target_point_phases.insert(loc_t, PointPhase::PreEffect(src_drop));
+                self.mark_origin_with_phase(
+                    loc_t,
+                    Origin::SplitFrom(src_drop),
+                    PointPhase::PreEffect(src_drop),
+                );
                 self.align_blocks(*target_t, *target_s);
                 return true;
             }
@@ -1659,11 +1678,17 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             {
                 let src_drop = (cur_s, ds.statements.len());
                 for idx_t in 0..self.de.basic_blocks[bb_t].statements.len() {
-                    self.target_to_source.insert((bb_t, idx_t), Origin::SplitFrom(src_drop));
-                    self.target_point_phases.insert((bb_t, idx_t), PointPhase::PreEffect(src_drop));
+                    self.mark_origin_with_phase(
+                        (bb_t, idx_t),
+                        Origin::SplitFrom(src_drop),
+                        PointPhase::PreEffect(src_drop),
+                    );
                 }
-                self.target_to_source.insert(loc_t, Origin::SplitFrom(src_drop));
-                self.target_point_phases.insert(loc_t, PointPhase::PreEffect(src_drop));
+                self.mark_origin_with_phase(
+                    loc_t,
+                    Origin::SplitFrom(src_drop),
+                    PointPhase::PreEffect(src_drop),
+                );
                 self.align_blocks(*target_t, *target_s);
                 return true;
             }
@@ -2158,16 +2183,16 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
     fn stmt_uses_box_deref_alias(&self, stmt: &mir::Statement<'tcx>, source_loc: SourceLoc) -> bool {
         match &stmt.kind {
             mir::StatementKind::Assign(box (lhs, rhs)) => {
-                self.place_uses_alias_with_origin(*lhs, source_loc, MirFlavor::Target)
-                    || self.rvalue_uses_alias_with_origin(rhs, source_loc, MirFlavor::Target)
+                self.place_uses_alias_with_origin(*lhs, source_loc)
+                    || self.rvalue_uses_alias_with_origin(rhs, source_loc)
             },
             mir::StatementKind::SetDiscriminant { place, .. }
             | mir::StatementKind::PlaceMention(place)
             | mir::StatementKind::BackwardIncompatibleDropHint { place, .. } => {
-                self.place_uses_alias_with_origin(**place, source_loc, MirFlavor::Target)
+                self.place_uses_alias_with_origin(**place, source_loc)
             },
             mir::StatementKind::AscribeUserType(place, _) => {
-                self.place_uses_alias_with_origin(place.as_ref().0, source_loc, MirFlavor::Target)
+                self.place_uses_alias_with_origin(place.as_ref().0, source_loc)
             },
             _ => false,
         }
@@ -2227,58 +2252,39 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         normalized.local == local && matches!(normalized.projection.first(), Some(NormalizedPlaceElem::Deref))
     }
 
-    fn rvalue_uses_alias_with_origin(
-        &self,
-        rvalue: &mir::Rvalue<'tcx>,
-        source_loc: SourceLoc,
-        flavor: MirFlavor,
-    ) -> bool {
+    fn rvalue_uses_alias_with_origin(&self, rvalue: &mir::Rvalue<'tcx>, source_loc: SourceLoc) -> bool {
         match rvalue {
             mir::Rvalue::Use(operand, _)
             | mir::Rvalue::Repeat(operand, _)
             | mir::Rvalue::WrapUnsafeBinder(operand, _)
             | mir::Rvalue::UnaryOp(_, operand)
-            | mir::Rvalue::Cast(_, operand, _) => {
-                self.operand_uses_alias_with_origin(operand, source_loc, flavor)
-            },
+            | mir::Rvalue::Cast(_, operand, _) => self.operand_uses_alias_with_origin(operand, source_loc),
             mir::Rvalue::Ref(_, _, place)
             | mir::Rvalue::RawPtr(_, place)
             | mir::Rvalue::Reborrow(_, _, place)
             | mir::Rvalue::Discriminant(place)
-            | mir::Rvalue::CopyForDeref(place) => {
-                self.place_uses_alias_with_origin(*place, source_loc, flavor)
-            },
+            | mir::Rvalue::CopyForDeref(place) => self.place_uses_alias_with_origin(*place, source_loc),
             mir::Rvalue::BinaryOp(_, operands) => {
-                self.operand_uses_alias_with_origin(&operands.as_ref().0, source_loc, flavor)
-                    || self.operand_uses_alias_with_origin(&operands.as_ref().1, source_loc, flavor)
+                self.operand_uses_alias_with_origin(&operands.as_ref().0, source_loc)
+                    || self.operand_uses_alias_with_origin(&operands.as_ref().1, source_loc)
             },
-            mir::Rvalue::Aggregate(_, operands) => operands
-                .iter()
-                .any(|operand| self.operand_uses_alias_with_origin(operand, source_loc, flavor)),
+            mir::Rvalue::Aggregate(_, operands) => {
+                operands.iter().any(|operand| self.operand_uses_alias_with_origin(operand, source_loc))
+            },
             mir::Rvalue::ThreadLocalRef(_) => false,
         }
     }
 
-    fn operand_uses_alias_with_origin(
-        &self,
-        operand: &mir::Operand<'tcx>,
-        source_loc: SourceLoc,
-        flavor: MirFlavor,
-    ) -> bool {
+    fn operand_uses_alias_with_origin(&self, operand: &mir::Operand<'tcx>, source_loc: SourceLoc) -> bool {
         match operand {
             mir::Operand::Copy(place) | mir::Operand::Move(place) => {
-                self.place_uses_alias_with_origin(*place, source_loc, flavor)
+                self.place_uses_alias_with_origin(*place, source_loc)
             },
             mir::Operand::Constant(_) | mir::Operand::RuntimeChecks(_) => false,
         }
     }
 
-    fn place_uses_alias_with_origin(
-        &self,
-        place: mir::Place<'tcx>,
-        source_loc: SourceLoc,
-        _flavor: MirFlavor,
-    ) -> bool {
+    fn place_uses_alias_with_origin(&self, place: mir::Place<'tcx>, source_loc: SourceLoc) -> bool {
         self.box_deref_aliases
             .get(&place.local)
             .is_some_and(|alias| alias.source_loc == Some(source_loc))
@@ -2509,7 +2515,6 @@ impl PointPhaseKind {
         match self {
             Self::Direct => PointPhase::Direct(source),
             Self::PreEffect => PointPhase::PreEffect(source),
-            Self::PostEffect => PointPhase::PostEffect(source),
         }
     }
 }
