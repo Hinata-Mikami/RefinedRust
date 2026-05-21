@@ -54,10 +54,6 @@ Program Definition Iastraits_iterator_IntoIterator_into_iter_def (I_st: syn_type
      "_bb0" :=
       local_live{ I_st } "__0";
       "__0" <-{ (use_op_alg' I_st) } move{ (use_op_alg' I_st) } ("self");
-      Goto "_bb1"
-     ]>%E $
-     <[
-     "_bb1" :=
       return (move{ (use_op_alg' I_st) } ("__0"))
      ]>%E $
       ∅;
@@ -135,24 +131,8 @@ Program Definition adapters_map_Map_IF_new_def (I_st: syn_type) (F_st: syn_type)
       local_live{ F_st } "__4";
       "__4" <-{ (use_op_alg' F_st) } move{ (use_op_alg' F_st) } ("f");
       "__0" <-{ (use_op_alg' (adapters_map_Map_st (I_st) (F_st))) } StructInit (adapters_map_Map_sls (I_st) (F_st)) [("iter", move{ (use_op_alg' I_st) } ("__3") : expr); ("f", move{ (use_op_alg' F_st) } ("__4") : expr)];
-      Goto "_bb1"
-     ]>%E $
-     <[
-     "_bb1" :=
       local_dead "__4";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       local_dead "__3";
-      Goto "_bb3"
-     ]>%E $
-     <[
-     "_bb3" :=
-      Goto "_bb4"
-     ]>%E $
-     <[
-     "_bb4" :=
       return (move{ (use_op_alg' (adapters_map_Map_st (I_st) (F_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -258,15 +238,7 @@ Program Definition adapters_skip_Skip_I_new_def (I_st: syn_type) : function :=
       "__4" <-{ IntOp USize } copy{ IntOp USize } ("n");
       "__0" <-{ (use_op_alg' (adapters_skip_Skip_st (I_st))) } StructInit (adapters_skip_Skip_sls (I_st)) [("iter", move{ (use_op_alg' I_st) } ("__3") : expr); ("n", move{ IntOp USize } ("__4") : expr)];
       local_dead "__4";
-      Goto "_bb1"
-     ]>%E $
-     <[
-     "_bb1" :=
       local_dead "__3";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       return (move{ (use_op_alg' (adapters_skip_Skip_st (I_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -361,15 +333,7 @@ Program Definition adapters_take_Take_I_new_def (I_st: syn_type) : function :=
       "__4" <-{ IntOp USize } copy{ IntOp USize } ("n");
       "__0" <-{ (use_op_alg' (adapters_take_Take_st (I_st))) } StructInit (adapters_take_Take_sls (I_st)) [("iter", move{ (use_op_alg' I_st) } ("__3") : expr); ("n", move{ IntOp USize } ("__4") : expr)];
       local_dead "__4";
-      Goto "_bb1"
-     ]>%E $
-     <[
-     "_bb1" :=
       local_dead "__3";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       return (move{ (use_op_alg' (adapters_take_Take_st (I_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -454,24 +418,20 @@ Program Definition traits_iterator_Iterator_all_def (traits_iterator_Iterator_Se
      <[
      "_bb2" :=
       "__0" <-{ BoolOp } val_of_bool false;
-      Goto "_bb5"
+      Goto "_bb4"
      ]>%E $
      <[
      "_bb3" :=
+      "__0" <-{ BoolOp } val_of_bool true;
       Goto "_bb4"
      ]>%E $
      <[
      "_bb4" :=
-      "__0" <-{ BoolOp } val_of_bool true;
+      local_dead "__3";
       Goto "_bb5"
      ]>%E $
      <[
      "_bb5" :=
-      local_dead "__3";
-      Goto "_bb6"
-     ]>%E $
-     <[
-     "_bb6" :=
       return (move{ BoolOp } ("__0"))
      ]>%E $
       ∅;
@@ -517,14 +477,10 @@ Program Definition traits_iterator_Iterator_all_closure0_def (FnMut_F_Selfastrai
       if{ BoolOp }: move{ BoolOp } ("__4") then
        Goto "_bb2"
       else
-       Goto "_bb4"
+       Goto "_bb3"
      ]>%E $
      <[
      "_bb2" :=
-      Goto "_bb3"
-     ]>%E $
-     <[
-     "_bb3" :=
       local_dead "__7";
       local_dead "__6";
       local_dead "__5";
@@ -532,18 +488,10 @@ Program Definition traits_iterator_Iterator_all_closure0_def (FnMut_F_Selfastrai
       "__8" <-{ StructOp unit_sl [] } zst_val;
       "__0" <-{ (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)) } EnumInit (ControlFlow_els (UnitSynType) (UnitSynType)) "Continue" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTUnit; RSTUnit] [])) (StructInit (ControlFlow_Continue_sls (UnitSynType) (UnitSynType)) [("0", move{ StructOp unit_sl [] } ("__8") : expr)]);
       local_dead "__8";
-      Goto "_bb7"
+      Goto "_bb4"
      ]>%E $
      <[
-     "_bb4" :=
-      Goto "_bb5"
-     ]>%E $
-     <[
-     "_bb5" :=
-      Goto "_bb6"
-     ]>%E $
-     <[
-     "_bb6" :=
+     "_bb3" :=
       local_dead "__7";
       local_dead "__6";
       local_dead "__5";
@@ -551,15 +499,11 @@ Program Definition traits_iterator_Iterator_all_closure0_def (FnMut_F_Selfastrai
       "__9" <-{ StructOp unit_sl [] } zst_val;
       "__0" <-{ (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)) } EnumInit (ControlFlow_els (UnitSynType) (UnitSynType)) "Break" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTUnit; RSTUnit] [])) (StructInit (ControlFlow_Break_sls (UnitSynType) (UnitSynType)) [("0", move{ StructOp unit_sl [] } ("__9") : expr)]);
       local_dead "__9";
-      Goto "_bb7"
+      Goto "_bb4"
      ]>%E $
      <[
-     "_bb7" :=
+     "_bb4" :=
       local_dead "__4";
-      Goto "_bb8"
-     ]>%E $
-     <[
-     "_bb8" :=
       return (move{ (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)) } ("__0"))
      ]>%E $
       ∅;
@@ -589,10 +533,6 @@ Program Definition traits_iterator_Iterator_collect_def (traits_iterator_FromIte
      <[
      "_bb1" :=
       local_dead "__2";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       return (move{ (use_op_alg' B_st) } ("__0"))
      ]>%E $
       ∅;
@@ -620,7 +560,13 @@ Program Definition traits_iterator_Iterator_fold_def (FnMut_F_BSelfastraits_iter
       local_live{ (IntSynType ISize) } "__9";
       local_live{ UnitSynType } "__17";
       local_live{ UnitSynType } "__19";
+      local_live{ BoolSynType } "__20";
+      local_live{ (IntSynType ISize) } "__21";
+      local_live{ (IntSynType ISize) } "__23";
+      local_live{ (IntSynType ISize) } "__25";
+      "__20" <-{ BoolOp } val_of_bool false;
       local_live{ B_st } "accum";
+      "__20" <-{ BoolOp } val_of_bool true;
       "accum" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("init");
       local_live{ UnitSynType } "__5";
       annot{ 1 }: StratifyContextAnnot; (* goto to loop head *)
@@ -628,10 +574,6 @@ Program Definition traits_iterator_Iterator_fold_def (FnMut_F_BSelfastraits_iter
      ]>%E $
      <[
      "_bb1" :=
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       local_live{ ((Option_els (Item_st)) : syn_type) } "__7";
       local_live{ PtrSynType } "__8";
       annot{ 1 }: StartLftAnnot "llft2" ["_flft"]; (* borrow *)
@@ -640,21 +582,17 @@ Program Definition traits_iterator_Iterator_fold_def (FnMut_F_BSelfastraits_iter
       annot{ 1 }: CopyLftNameAnnot "vlft6" "plft4"; (* function_call *)
       "__7" <-{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } CallE traits_iterator_Iterator_Self_next_loc ["vlft6"] [] [@{expr} move{ PtrOp } ("__8")];
       annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
-      Goto "_bb3"
+      Goto "_bb2"
      ]>%E $
      <[
-     "_bb3" :=
+     "_bb2" :=
       annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
       local_dead "__8";
       "__9" <-{ IntOp ISize } EnumDiscriminant ((Option_els (Item_st))) ("__7");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__9")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb4"]) (Goto "_bb12")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__9")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb3"]) (Goto "_bb10")
      ]>%E $
      <[
-     "_bb4" :=
-      Goto "_bb5"
-     ]>%E $
-     <[
-     "_bb5" :=
+     "_bb3" :=
       local_live{ Item_st } "x";
       "x" <-{ (use_op_alg' Item_st) } move{ (use_op_alg' Item_st) } ((EnumData ((Option_els (Item_st))) "Some" ("__7")) at{ (Option_Some_sls (Item_st)) } "0");
       local_live{ B_st } "__12";
@@ -664,6 +602,7 @@ Program Definition traits_iterator_Iterator_fold_def (FnMut_F_BSelfastraits_iter
       annot{ 1 }: CopyLftNameAnnot "plft5" "llft3"; (* post-assignment *)
       local_live{ ((tuple2_sls (B_st) (Item_st)) : syn_type) } "__14";
       local_live{ B_st } "__15";
+      "__20" <-{ BoolOp } val_of_bool false;
       "__15" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("accum");
       local_live{ Item_st } "__16";
       "__16" <-{ (use_op_alg' Item_st) } move{ (use_op_alg' Item_st) } ("x");
@@ -671,76 +610,46 @@ Program Definition traits_iterator_Iterator_fold_def (FnMut_F_BSelfastraits_iter
       annot{ 1 }: CopyLftNameAnnot "vlft7" "plft5"; (* function_call *)
       "__12" <-{ (use_op_alg' B_st) } CallE FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc ["vlft7"] [RSTTyVar "B"; RSTTyVar "F"; RSTTyVar "B"; RSTTyVar "Item"; RSTTyVar "B"] [@{expr} move{ PtrOp } ("__13"); move{ (use_op_alg' ((tuple2_sls (B_st) (Item_st)) : syn_type)) } ("__14")];
       annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
-      Goto "_bb6"
+      Goto "_bb4"
      ]>%E $
      <[
-     "_bb6" :=
-      Goto "_bb7"
-     ]>%E $
-     <[
-     "_bb7" :=
+     "_bb4" :=
+      annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
       local_dead "__16";
-      Goto "_bb8"
-     ]>%E $
-     <[
-     "_bb8" :=
       local_dead "__15";
       local_dead "__14";
       local_dead "__13";
-      Goto "_bb9"
-     ]>%E $
-     <[
-     "_bb9" :=
+      "__20" <-{ BoolOp } val_of_bool true;
       "accum" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("__12");
-      Goto "_bb11"
-     ]>%E $
-     <[
-     "_bb11" :=
       local_dead "__12";
       "__6" <-{ StructOp unit_sl [] } zst_val;
-      Goto "_bb14"
-     ]>%E $
-     <[
-     "_bb12" :=
-      Goto "_bb13"
-     ]>%E $
-     <[
-     "_bb13" :=
-      local_dead "__7";
-      local_live{ UnitSynType } "__18";
-      "__5" <-{ StructOp unit_sl [] } zst_val;
-      local_dead "__18";
-      local_dead "__5";
-      "__0" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("accum");
-      Goto "_bb16"
-     ]>%E $
-     <[
-     "_bb14" :=
       local_dead "x";
-      Goto "_bb15"
-     ]>%E $
-     <[
-     "_bb15" :=
+      "__23" <-{ IntOp ISize } EnumDiscriminant ((Option_els (Item_st))) ("__7");
       local_dead "__7";
       annot{ 1 }: StratifyContextAnnot; (* goto to loop head *)
       Goto "_bb1"
      ]>%E $
      <[
-     "_bb16" :=
-      local_dead "accum";
-      Goto "_bb17"
+     "_bb5" :=
+      Goto "_bb6"
      ]>%E $
      <[
-     "_bb17" :=
-      Goto "_bb18"
-     ]>%E $
-     <[
-     "_bb18" :=
-      Goto "_bb19"
-     ]>%E $
-     <[
-     "_bb19" :=
+     "_bb6" :=
       return (move{ (use_op_alg' B_st) } ("__0"))
+     ]>%E $
+     <[
+     "_bb10" :=
+      "__21" <-{ IntOp ISize } EnumDiscriminant ((Option_els (Item_st))) ("__7");
+      local_dead "__7";
+      local_live{ UnitSynType } "__18";
+      "__5" <-{ StructOp unit_sl [] } zst_val;
+      local_dead "__18";
+      local_dead "__5";
+      "__20" <-{ BoolOp } val_of_bool false;
+      "__0" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("accum");
+      "__20" <-{ BoolOp } val_of_bool false;
+      local_dead "accum";
+      Goto "_bb5"
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -773,14 +682,6 @@ Program Definition traits_iterator_Iterator_map_def (adapters_map_Map_IF_new_Sel
      "_bb1" :=
       local_dead "__4";
       local_dead "__3";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
-      Goto "_bb3"
-     ]>%E $
-     <[
-     "_bb3" :=
       return (move{ (use_op_alg' (adapters_map_Map_st (Self_st) (F_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -813,10 +714,6 @@ Program Definition traits_iterator_Iterator_max_def (traits_iterator_Iterator_Se
      "_bb1" :=
       local_dead "__3";
       local_dead "__2";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       return (move{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } ("__0"))
      ]>%E $
       ∅;
@@ -864,10 +761,6 @@ Program Definition traits_iterator_Iterator_max_by_def (traits_iterator_Iterator
      ]>%E $
      <[
      "_bb2" :=
-      Goto "_bb3"
-     ]>%E $
-     <[
-     "_bb3" :=
       return (move{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } ("__0"))
      ]>%E $
       ∅;
@@ -913,14 +806,6 @@ Program Definition traits_iterator_Iterator_max_by_closure0_def (max_by_Selfastr
       local_dead "__6";
       local_dead "__5";
       local_dead "__4";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
-      Goto "_bb3"
-     ]>%E $
-     <[
-     "_bb3" :=
       return (move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } ("__0"))
      ]>%E $
       ∅;
@@ -996,10 +881,6 @@ Program Definition traits_iterator_Iterator_min_def (traits_iterator_Iterator_Se
      "_bb1" :=
       local_dead "__3";
       local_dead "__2";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       return (move{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } ("__0"))
      ]>%E $
       ∅;
@@ -1047,10 +928,6 @@ Program Definition traits_iterator_Iterator_min_by_def (traits_iterator_Iterator
      ]>%E $
      <[
      "_bb2" :=
-      Goto "_bb3"
-     ]>%E $
-     <[
-     "_bb3" :=
       return (move{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } ("__0"))
      ]>%E $
       ∅;
@@ -1096,14 +973,6 @@ Program Definition traits_iterator_Iterator_min_by_closure0_def (min_by_Selfastr
       local_dead "__6";
       local_dead "__5";
       local_dead "__4";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
-      Goto "_bb3"
-     ]>%E $
-     <[
-     "_bb3" :=
       return (move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } ("__0"))
      ]>%E $
       ∅;
@@ -1183,10 +1052,6 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
      ]>%E $
      <[
      "_bb1" :=
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       local_live{ BoolSynType } "__6";
       local_live{ (IntSynType USize) } "__7";
       "__7" <-{ IntOp USize } copy{ IntOp USize } ("i");
@@ -1194,12 +1059,12 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
       "__8" <-{ IntOp USize } copy{ IntOp USize } ("n");
       "__6" <-{ BoolOp } (move{ IntOp USize } ("__7")) <{ IntOp USize , IntOp USize , U8 } (move{ IntOp USize } ("__8"));
       if{ BoolOp }: move{ BoolOp } ("__6") then
-       Goto "_bb3"
+       Goto "_bb2"
       else
-       Goto "_bb11"
+       Goto "_bb10"
      ]>%E $
      <[
-     "_bb3" :=
+     "_bb2" :=
       local_dead "__8";
       local_dead "__7";
       local_live{ UnitSynType } "__10";
@@ -1213,10 +1078,10 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       "__13" <-{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } CallE traits_iterator_Iterator_Self_next_loc ["vlft10"] [] [@{expr} move{ PtrOp } ("__14")];
       annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
-      Goto "_bb4"
+      Goto "_bb3"
      ]>%E $
      <[
-     "_bb4" :=
+     "_bb3" :=
       annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
       annot{ 1 }: StartLftAnnot "llft4" ["_flft"]; (* borrow *)
       "__12" <-{ PtrOp } &ref{ Shr, Some (RSTLitType ["Option_ty"] (RSTScopeInst [] [RSTTyVar "Item"] [])), "llft4" } ("__13");
@@ -1225,21 +1090,21 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft7"; (* function_call *)
       "__11" <-{ BoolOp } CallE Option_T_is_none_Selfastraits_iterator_Iterator_Item_loc ["vlft11"] [RSTTyVar "Item"] [@{expr} move{ PtrOp } ("__12")];
       annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
-      Goto "_bb5"
+      Goto "_bb4"
+     ]>%E $
+     <[
+     "_bb4" :=
+      if{ BoolOp }: move{ BoolOp } ("__11") then
+       Goto "_bb5"
+      else
+       Goto "_bb7"
      ]>%E $
      <[
      "_bb5" :=
-      if{ BoolOp }: move{ BoolOp } ("__11") then
-       Goto "_bb6"
-      else
-       Goto "_bb8"
+      Goto "_bb6"
      ]>%E $
      <[
      "_bb6" :=
-      Goto "_bb7"
-     ]>%E $
-     <[
-     "_bb7" :=
       local_dead "__13";
       local_dead "__12";
       "__0" <-{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } EnumInit (Option_els (Item_st)) "None" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTTyVar "Item"] [])) (StructInit (Option_None_sls (Item_st)) []);
@@ -1248,14 +1113,14 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
       local_dead "__6";
       local_dead "__4";
       local_dead "i";
-      Goto "_bb13"
+      Goto "_bb12"
+     ]>%E $
+     <[
+     "_bb7" :=
+      Goto "_bb8"
      ]>%E $
      <[
      "_bb8" :=
-      Goto "_bb9"
-     ]>%E $
-     <[
-     "_bb9" :=
       local_dead "__13";
       local_dead "__12";
       "__10" <-{ StructOp unit_sl [] } zst_val;
@@ -1263,10 +1128,10 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
       local_dead "__10";
       "__16" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) BoolSynType) [("0", (copy{ IntOp USize } ("i")) +{ IntOp USize , IntOp USize } (i2v (1) USize) : expr); ("1", (copy{ IntOp USize } ("i")) +c{ IntOp USize , IntOp USize } (i2v (1) USize) : expr)];
       assert{ BoolOp }: (move{ BoolOp } (("__16") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
-      Goto "_bb10"
+      Goto "_bb9"
      ]>%E $
      <[
-     "_bb10" :=
+     "_bb9" :=
       "i" <-{ IntOp USize } move{ IntOp USize } (("__16") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "0");
       "__5" <-{ StructOp unit_sl [] } zst_val;
       local_dead "__6";
@@ -1274,7 +1139,7 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
       Goto "_bb1"
      ]>%E $
      <[
-     "_bb11" :=
+     "_bb10" :=
       local_dead "__8";
       local_dead "__7";
       local_live{ UnitSynType } "__18";
@@ -1289,17 +1154,17 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
       annot{ 1 }: CopyLftNameAnnot "vlft12" "plft9"; (* function_call *)
       "__0" <-{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } CallE traits_iterator_Iterator_Self_next_loc ["vlft12"] [] [@{expr} move{ PtrOp } ("__20")];
       annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+      Goto "_bb11"
+     ]>%E $
+     <[
+     "_bb11" :=
+      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+      local_dead "__20";
+      local_dead "i";
       Goto "_bb12"
      ]>%E $
      <[
      "_bb12" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      local_dead "__20";
-      local_dead "i";
-      Goto "_bb13"
-     ]>%E $
-     <[
-     "_bb13" :=
       return (move{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } ("__0"))
      ]>%E $
       ∅;
@@ -1407,6 +1272,17 @@ Program Definition traits_iterator_Iterator_reduce_def (std_option_OptionTasFrom
       local_live{ ((Option_els (Item_st)) : syn_type) } "__0";
       local_live{ (IntSynType ISize) } "__7";
       local_live{ UnitSynType } "__9";
+      local_live{ BoolSynType } "__16";
+      local_live{ BoolSynType } "__17";
+      local_live{ BoolSynType } "__18";
+      local_live{ (IntSynType ISize) } "__19";
+      local_live{ (IntSynType ISize) } "__21";
+      local_live{ (IntSynType ISize) } "__23";
+      "__18" <-{ BoolOp } val_of_bool false;
+      "__17" <-{ BoolOp } val_of_bool false;
+      "__16" <-{ BoolOp } val_of_bool false;
+      "__18" <-{ BoolOp } val_of_bool true;
+      "__17" <-{ BoolOp } val_of_bool true;
       local_live{ Item_st } "first";
       local_live{ ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st)) : syn_type) } "__4";
       local_live{ ((Option_els (Item_st)) : syn_type) } "__5";
@@ -1430,7 +1306,7 @@ Program Definition traits_iterator_Iterator_reduce_def (std_option_OptionTasFrom
      "_bb2" :=
       local_dead "__5";
       "__7" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st))) ("__4");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__7")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb5"; Goto "_bb4"]) (Goto "_bb3")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__7")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb4"; Goto "_bb5"]) (Goto "_bb3")
      ]>%E $
      <[
      "_bb3" :=
@@ -1438,82 +1314,62 @@ Program Definition traits_iterator_Iterator_reduce_def (std_option_OptionTasFrom
      ]>%E $
      <[
      "_bb4" :=
-      Goto "_bb6"
+      local_live{ Item_st } "val";
+      "val" <-{ (use_op_alg' Item_st) } move{ (use_op_alg' Item_st) } ((EnumData ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st))) "Continue" ("__4")) at{ (ControlFlow_Continue_sls (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st)) } "0");
+      "__16" <-{ BoolOp } val_of_bool true;
+      "first" <-{ (use_op_alg' Item_st) } move{ (use_op_alg' Item_st) } ("val");
+      local_dead "val";
+      "__21" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st))) ("__4");
+      local_dead "__4";
+      local_live{ Item_st } "__12";
+      local_live{ Self_st } "__13";
+      "__18" <-{ BoolOp } val_of_bool false;
+      "__13" <-{ (use_op_alg' Self_st) } move{ (use_op_alg' Self_st) } ("self");
+      local_live{ Item_st } "__14";
+      "__16" <-{ BoolOp } val_of_bool false;
+      "__14" <-{ (use_op_alg' Item_st) } move{ (use_op_alg' Item_st) } ("first");
+      local_live{ F_st } "__15";
+      "__17" <-{ BoolOp } val_of_bool false;
+      "__15" <-{ (use_op_alg' F_st) } move{ (use_op_alg' F_st) } ("f");
+      "__12" <-{ (use_op_alg' Item_st) } CallE traits_iterator_Iterator_Self_fold_Selfastraits_iterator_Iterator_Item_F_loc [] [RSTTyVar "F"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__13"); move{ (use_op_alg' Item_st) } ("__14"); move{ (use_op_alg' F_st) } ("__15")];
+      Goto "_bb7"
      ]>%E $
      <[
      "_bb5" :=
-      local_live{ Item_st } "val";
-      "val" <-{ (use_op_alg' Item_st) } move{ (use_op_alg' Item_st) } ((EnumData ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st))) "Continue" ("__4")) at{ (ControlFlow_Continue_sls (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st)) } "0");
-      "first" <-{ (use_op_alg' Item_st) } move{ (use_op_alg' Item_st) } ("val");
-      Goto "_bb8"
-     ]>%E $
-     <[
-     "_bb6" :=
       local_live{ ((Option_els ((convert_Infallible_els : syn_type))) : syn_type) } "residual";
       "residual" <-{ (use_op_alg' ((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) } copy{ (use_op_alg' ((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) } ((EnumData ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st))) "Break" ("__4")) at{ (ControlFlow_Break_sls (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st)) } "0");
       local_live{ ((Option_els ((convert_Infallible_els : syn_type))) : syn_type) } "__10";
       "__10" <-{ (use_op_alg' ((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) } copy{ (use_op_alg' ((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) } ("residual");
       "__0" <-{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } CallE std_option_OptionTasFromResidual_from_residual_Selfastraits_iterator_Iterator_Item_loc [] [RSTTyVar "Item"] [@{expr} move{ (use_op_alg' ((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) } ("__10")];
-      Goto "_bb7"
+      Goto "_bb6"
+     ]>%E $
+     <[
+     "_bb6" :=
+      local_dead "__10";
+      local_dead "residual";
+      "__19" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st))) ("__4");
+      local_dead "__4";
+      "__16" <-{ BoolOp } val_of_bool false;
+      local_dead "first";
+      Goto "_bb8"
      ]>%E $
      <[
      "_bb7" :=
-      local_dead "__10";
-      local_dead "residual";
-      Goto "_bb14"
-     ]>%E $
-     <[
-     "_bb8" :=
-      local_dead "val";
-      Goto "_bb9"
-     ]>%E $
-     <[
-     "_bb9" :=
-      local_dead "__4";
-      local_live{ Item_st } "__12";
-      local_live{ Self_st } "__13";
-      "__13" <-{ (use_op_alg' Self_st) } move{ (use_op_alg' Self_st) } ("self");
-      local_live{ Item_st } "__14";
-      "__14" <-{ (use_op_alg' Item_st) } move{ (use_op_alg' Item_st) } ("first");
-      local_live{ F_st } "__15";
-      "__15" <-{ (use_op_alg' F_st) } move{ (use_op_alg' F_st) } ("f");
-      "__12" <-{ (use_op_alg' Item_st) } CallE traits_iterator_Iterator_Self_fold_Selfastraits_iterator_Iterator_Item_F_loc [] [RSTTyVar "F"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__13"); move{ (use_op_alg' Item_st) } ("__14"); move{ (use_op_alg' F_st) } ("__15")];
-      Goto "_bb10"
-     ]>%E $
-     <[
-     "_bb10" :=
       local_dead "__15";
       local_dead "__14";
       local_dead "__13";
       "__0" <-{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } EnumInit (Option_els (Item_st)) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTTyVar "Item"] [])) (StructInit (Option_Some_sls (Item_st)) [("0", move{ (use_op_alg' Item_st) } ("__12") : expr)]);
-      Goto "_bb11"
-     ]>%E $
-     <[
-     "_bb11" :=
       local_dead "__12";
-      Goto "_bb12"
-     ]>%E $
-     <[
-     "_bb12" :=
+      "__16" <-{ BoolOp } val_of_bool false;
       local_dead "first";
-      Goto "_bb13"
+      Goto "_bb9"
      ]>%E $
      <[
-     "_bb13" :=
-      Goto "_bb16"
+     "_bb8" :=
+      Goto "_bb9"
      ]>%E $
      <[
-     "_bb14" :=
-      local_dead "__4";
-      local_dead "first";
-      Goto "_bb15"
-     ]>%E $
-     <[
-     "_bb15" :=
-      Goto "_bb16"
-     ]>%E $
-     <[
-     "_bb16" :=
+     "_bb9" :=
       return (move{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } ("__0"))
      ]>%E $
       ∅;
@@ -1547,10 +1403,6 @@ Program Definition traits_iterator_Iterator_skip_def (adapters_skip_Skip_I_new_S
      "_bb1" :=
       local_dead "__4";
       local_dead "__3";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       return (move{ (use_op_alg' (adapters_skip_Skip_st (Self_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -1584,10 +1436,6 @@ Program Definition traits_iterator_Iterator_take_def (adapters_take_Take_I_new_S
      "_bb1" :=
       local_dead "__4";
       local_dead "__3";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       return (move{ (use_op_alg' (adapters_take_Take_st (Self_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -1617,8 +1465,18 @@ Program Definition traits_iterator_Iterator_try_fold_def (FnMut_F_BSelfastraits_
       local_live{ UnitSynType } "__21";
       local_live{ UnitSynType } "__24";
       local_live{ UnitSynType } "__26";
+      local_live{ BoolSynType } "__28";
+      local_live{ (IntSynType ISize) } "__29";
+      local_live{ (IntSynType ISize) } "__31";
+      local_live{ (IntSynType ISize) } "__33";
+      local_live{ (IntSynType ISize) } "__35";
+      local_live{ (IntSynType ISize) } "__37";
+      local_live{ (IntSynType ISize) } "__39";
+      local_live{ (IntSynType ISize) } "__40";
       annot{ 1 }: CopyLftNameAnnot "plft5" "ulft_1"; (* initialization *)
+      "__28" <-{ BoolOp } val_of_bool false;
       local_live{ B_st } "accum";
+      "__28" <-{ BoolOp } val_of_bool true;
       "accum" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("init");
       local_live{ UnitSynType } "__5";
       annot{ 1 }: StratifyContextAnnot; (* goto to loop head *)
@@ -1626,10 +1484,6 @@ Program Definition traits_iterator_Iterator_try_fold_def (FnMut_F_BSelfastraits_
      ]>%E $
      <[
      "_bb1" :=
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       local_live{ ((Option_els (Item_st)) : syn_type) } "__7";
       local_live{ PtrSynType } "__8";
       annot{ 1 }: StartLftAnnot "llft3" ["plft5"]; (* borrow *)
@@ -1638,21 +1492,17 @@ Program Definition traits_iterator_Iterator_try_fold_def (FnMut_F_BSelfastraits_
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft6"; (* function_call *)
       "__7" <-{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } CallE traits_iterator_Iterator_Self_next_loc ["vlft8"] [] [@{expr} move{ PtrOp } ("__8")];
       annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
-      Goto "_bb3"
+      Goto "_bb2"
      ]>%E $
      <[
-     "_bb3" :=
+     "_bb2" :=
       annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
       local_dead "__8";
       "__9" <-{ IntOp ISize } EnumDiscriminant ((Option_els (Item_st))) ("__7");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__9")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb4"]) (Goto "_bb20")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__9")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb3"]) (Goto "_bb14")
      ]>%E $
      <[
-     "_bb4" :=
-      Goto "_bb5"
-     ]>%E $
-     <[
-     "_bb5" :=
+     "_bb3" :=
       local_live{ Item_st } "x";
       "x" <-{ (use_op_alg' Item_st) } move{ (use_op_alg' Item_st) } ((EnumData ((Option_els (Item_st))) "Some" ("__7")) at{ (Option_Some_sls (Item_st)) } "0");
       local_live{ B_st } "__12";
@@ -1664,6 +1514,7 @@ Program Definition traits_iterator_Iterator_try_fold_def (FnMut_F_BSelfastraits_
       annot{ 1 }: CopyLftNameAnnot "plft7" "llft4"; (* post-assignment *)
       local_live{ ((tuple2_sls (B_st) (Item_st)) : syn_type) } "__16";
       local_live{ B_st } "__17";
+      "__28" <-{ BoolOp } val_of_bool false;
       "__17" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("accum");
       local_live{ Item_st } "__18";
       "__18" <-{ (use_op_alg' Item_st) } move{ (use_op_alg' Item_st) } ("x");
@@ -1671,156 +1522,94 @@ Program Definition traits_iterator_Iterator_try_fold_def (FnMut_F_BSelfastraits_
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft7"; (* function_call *)
       "__14" <-{ (use_op_alg' R_st) } CallE FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc ["vlft9"] [RSTTyVar "B"; RSTTyVar "F"; RSTTyVar "R"; RSTTyVar "Item"; RSTTyVar "R"] [@{expr} move{ PtrOp } ("__15"); move{ (use_op_alg' ((tuple2_sls (B_st) (Item_st)) : syn_type)) } ("__16")];
       annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
-      Goto "_bb6"
+      Goto "_bb4"
      ]>%E $
      <[
-     "_bb6" :=
-      Goto "_bb7"
-     ]>%E $
-     <[
-     "_bb7" :=
+     "_bb4" :=
+      annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
       local_dead "__18";
-      Goto "_bb8"
-     ]>%E $
-     <[
-     "_bb8" :=
       local_dead "__17";
       local_dead "__16";
       local_dead "__15";
       "__13" <-{ (use_op_alg' ((ControlFlow_els (Try_R_Residual_st) (B_st)) : syn_type)) } CallE Try_R_branch_loc [] [RSTTyVar "R"; RSTTyVar "Try_R_Residual"] [@{expr} move{ (use_op_alg' R_st) } ("__14")];
-      Goto "_bb9"
+      Goto "_bb5"
      ]>%E $
      <[
-     "_bb9" :=
+     "_bb5" :=
       local_dead "__14";
       "__19" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (Try_R_Residual_st) (B_st))) ("__13");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__19")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb12"; Goto "_bb11"]) (Goto "_bb10")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__19")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb7"; Goto "_bb8"]) (Goto "_bb6")
      ]>%E $
      <[
-     "_bb10" :=
+     "_bb6" :=
       StuckS
      ]>%E $
      <[
-     "_bb11" :=
-      Goto "_bb13"
-     ]>%E $
-     <[
-     "_bb12" :=
+     "_bb7" :=
       local_live{ B_st } "val";
       "val" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ((EnumData ((ControlFlow_els (Try_R_Residual_st) (B_st))) "Continue" ("__13")) at{ (ControlFlow_Continue_sls (Try_R_Residual_st) (B_st)) } "0");
       "__12" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("val");
-      Goto "_bb15"
+      local_dead "val";
+      "__28" <-{ BoolOp } val_of_bool true;
+      "accum" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("__12");
+      local_dead "__12";
+      "__29" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (Try_R_Residual_st) (B_st))) ("__13");
+      local_dead "__13";
+      "__6" <-{ StructOp unit_sl [] } zst_val;
+      local_dead "x";
+      "__33" <-{ IntOp ISize } EnumDiscriminant ((Option_els (Item_st))) ("__7");
+      local_dead "__7";
+      annot{ 1 }: StratifyContextAnnot; (* goto to loop head *)
+      Goto "_bb1"
      ]>%E $
      <[
-     "_bb13" :=
+     "_bb8" :=
       local_live{ Try_R_Residual_st } "residual";
       "residual" <-{ (use_op_alg' Try_R_Residual_st) } move{ (use_op_alg' Try_R_Residual_st) } ((EnumData ((ControlFlow_els (Try_R_Residual_st) (B_st))) "Break" ("__13")) at{ (ControlFlow_Break_sls (Try_R_Residual_st) (B_st)) } "0");
       local_live{ Try_R_Residual_st } "__22";
       "__22" <-{ (use_op_alg' Try_R_Residual_st) } move{ (use_op_alg' Try_R_Residual_st) } ("residual");
       "__0" <-{ (use_op_alg' R_st) } CallE FromResidual_R_Rasstd_ops_Try_Residual_from_residual_loc [] [] [@{expr} move{ (use_op_alg' Try_R_Residual_st) } ("__22")];
-      Goto "_bb14"
+      Goto "_bb9"
+     ]>%E $
+     <[
+     "_bb9" :=
+      local_dead "__22";
+      local_dead "residual";
+      local_dead "__12";
+      "__35" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (Try_R_Residual_st) (B_st))) ("__13");
+      local_dead "__13";
+      local_dead "x";
+      "__37" <-{ IntOp ISize } EnumDiscriminant ((Option_els (Item_st))) ("__7");
+      local_dead "__7";
+      local_dead "__5";
+      "__28" <-{ BoolOp } val_of_bool false;
+      local_dead "accum";
+      Goto "_bb11"
+     ]>%E $
+     <[
+     "_bb10" :=
+      local_dead "__27";
+      "__28" <-{ BoolOp } val_of_bool false;
+      local_dead "accum";
+      Goto "_bb11"
+     ]>%E $
+     <[
+     "_bb11" :=
+      return (move{ (use_op_alg' R_st) } ("__0"))
      ]>%E $
      <[
      "_bb14" :=
-      local_dead "__22";
-      Goto "_bb27"
-     ]>%E $
-     <[
-     "_bb15" :=
-      local_dead "val";
-      Goto "_bb16"
-     ]>%E $
-     <[
-     "_bb16" :=
-      "accum" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("__12");
-      Goto "_bb18"
-     ]>%E $
-     <[
-     "_bb18" :=
-      local_dead "__12";
-      Goto "_bb19"
-     ]>%E $
-     <[
-     "_bb19" :=
-      local_dead "__13";
-      "__6" <-{ StructOp unit_sl [] } zst_val;
-      Goto "_bb22"
-     ]>%E $
-     <[
-     "_bb20" :=
-      Goto "_bb21"
-     ]>%E $
-     <[
-     "_bb21" :=
+      "__31" <-{ IntOp ISize } EnumDiscriminant ((Option_els (Item_st))) ("__7");
       local_dead "__7";
       local_live{ UnitSynType } "__25";
       "__5" <-{ StructOp unit_sl [] } zst_val;
       local_dead "__25";
       local_dead "__5";
       local_live{ B_st } "__27";
+      "__28" <-{ BoolOp } val_of_bool false;
       "__27" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("accum");
       "__0" <-{ (use_op_alg' R_st) } CallE Try_R_from_output_loc [] [RSTTyVar "R"; RSTTyVar "Try_R_Residual"] [@{expr} move{ (use_op_alg' B_st) } ("__27")];
-      Goto "_bb24"
-     ]>%E $
-     <[
-     "_bb22" :=
-      local_dead "x";
-      Goto "_bb23"
-     ]>%E $
-     <[
-     "_bb23" :=
-      local_dead "__7";
-      annot{ 1 }: StratifyContextAnnot; (* goto to loop head *)
-      Goto "_bb1"
-     ]>%E $
-     <[
-     "_bb24" :=
-      local_dead "__27";
-      Goto "_bb25"
-     ]>%E $
-     <[
-     "_bb25" :=
-      local_dead "accum";
-      Goto "_bb26"
-     ]>%E $
-     <[
-     "_bb26" :=
-      Goto "_bb33"
-     ]>%E $
-     <[
-     "_bb27" :=
-      local_dead "residual";
-      local_dead "__12";
-      Goto "_bb28"
-     ]>%E $
-     <[
-     "_bb28" :=
-      local_dead "__13";
-      Goto "_bb29"
-     ]>%E $
-     <[
-     "_bb29" :=
-      local_dead "x";
-      Goto "_bb30"
-     ]>%E $
-     <[
-     "_bb30" :=
-      local_dead "__7";
-      local_dead "__5";
-      Goto "_bb31"
-     ]>%E $
-     <[
-     "_bb31" :=
-      local_dead "accum";
-      Goto "_bb32"
-     ]>%E $
-     <[
-     "_bb32" :=
-      Goto "_bb33"
-     ]>%E $
-     <[
-     "_bb33" :=
-      return (move{ (use_op_alg' R_st) } ("__0"))
+      Goto "_bb10"
      ]>%E $
       ∅;
      f_init := "_bb0";

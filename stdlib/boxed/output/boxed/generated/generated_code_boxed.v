@@ -43,16 +43,8 @@ Program Definition Box_TA_from_raw_in_def (unique_Unique_T_new_unchecked_T_loc: 
       local_live{ A_st } "__5";
       "__5" <-{ (use_op_alg' A_st) } move{ (use_op_alg' A_st) } ("alloc");
       "__0" <-{ (use_op_alg' (Box_st (T_st) (A_st))) } StructInit (Box_sls (T_st) (A_st)) [("0", move{ (use_op_alg' ((unique_Unique_sls (T_st)) : syn_type)) } ("__3") : expr); ("1", move{ (use_op_alg' A_st) } ("__5") : expr)];
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       local_dead "__5";
       local_dead "__3";
-      Goto "_bb3"
-     ]>%E $
-     <[
-     "_bb3" :=
       return (move{ (use_op_alg' (Box_st (T_st) (A_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -114,10 +106,6 @@ Program Definition Box_T_new_def (box_new_T_loc: loc) (T_st: syn_type) : functio
      <[
      "_bb1" :=
       local_dead "__2";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       return (move{ (use_op_alg' (Box_st (T_st) ((Global_sls : syn_type)))) } ("__0"))
      ]>%E $
       ∅;
@@ -139,6 +127,9 @@ Program Definition box_new_def (alloc_alloc_loc: loc) (dangling_T_loc: loc) (lay
       <[
      "_bb0" :=
       local_live{ (Box_st (T_st) ((Global_sls : syn_type))) } "__0";
+      local_live{ BoolSynType } "__23";
+      "__23" <-{ BoolOp } val_of_bool false;
+      "__23" <-{ BoolOp } val_of_bool true;
       local_live{ BoolSynType } "__2";
       local_live{ (IntSynType USize) } "__3";
       "__3" <-{ IntOp USize } CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
@@ -150,7 +141,7 @@ Program Definition box_new_def (alloc_alloc_loc: loc) (dangling_T_loc: loc) (lay
       if{ BoolOp }: move{ BoolOp } ("__2") then
        Goto "_bb2"
       else
-       Goto "_bb8"
+       Goto "_bb7"
      ]>%E $
      <[
      "_bb2" :=
@@ -169,16 +160,13 @@ Program Definition box_new_def (alloc_alloc_loc: loc) (dangling_T_loc: loc) (lay
       local_dead "__5";
       local_live{ UnitSynType } "__7";
       local_live{ T_st } "__8";
+      "__23" <-{ BoolOp } val_of_bool false;
       "__8" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("x");
       Goto "_bb4"
      ]>%E $
      <[
      "_bb4" :=
       !{ PtrOp } ( "ptr" ) <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("__8");
-      Goto "_bb6"
-     ]>%E $
-     <[
-     "_bb6" :=
       local_dead "__8";
       "__7" <-{ StructOp unit_sl [] } zst_val;
       local_dead "__7";
@@ -186,10 +174,10 @@ Program Definition box_new_def (alloc_alloc_loc: loc) (dangling_T_loc: loc) (lay
       local_live{ PtrSynType } "__10";
       "__10" <-{ PtrOp } copy{ PtrOp } ("ptr");
       "__9" <-{ (use_op_alg' ((unique_Unique_sls (T_st)) : syn_type)) } CallE unique_Unique_T_new_unchecked_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__10")];
-      Goto "_bb7"
+      Goto "_bb6"
      ]>%E $
      <[
-     "_bb7" :=
+     "_bb6" :=
       local_dead "__10";
       local_live{ (Global_sls : syn_type) } "__11";
       "__11" <-{ (use_op_alg' (Global_sls : syn_type)) } StructInit Global_sls [];
@@ -197,25 +185,25 @@ Program Definition box_new_def (alloc_alloc_loc: loc) (dangling_T_loc: loc) (lay
       local_dead "__11";
       local_dead "__9";
       local_dead "ptr";
-      Goto "_bb15"
+      Goto "_bb13"
      ]>%E $
      <[
-     "_bb8" :=
+     "_bb7" :=
       local_dead "__3";
       local_live{ (layout_Layout_sls : syn_type) } "layout";
       "layout" <-{ (use_op_alg' (layout_Layout_sls : syn_type)) } CallE layout_Layout_new_T_loc [] [RSTTyVar "T"] [@{expr} ];
-      Goto "_bb9"
+      Goto "_bb8"
      ]>%E $
      <[
-     "_bb9" :=
+     "_bb8" :=
       local_live{ PtrSynType } "__13";
       local_live{ (layout_Layout_sls : syn_type) } "__14";
       "__14" <-{ (use_op_alg' (layout_Layout_sls : syn_type)) } copy{ (use_op_alg' (layout_Layout_sls : syn_type)) } ("layout");
       "__13" <-{ PtrOp } CallE alloc_alloc_loc [] [] [@{expr} move{ (use_op_alg' (layout_Layout_sls : syn_type)) } ("__14")];
-      Goto "_bb10"
+      Goto "_bb9"
      ]>%E $
      <[
-     "_bb10" :=
+     "_bb9" :=
       local_dead "__14";
       local_live{ PtrSynType } "__15";
       local_live{ PtrSynType } "__16";
@@ -227,16 +215,13 @@ Program Definition box_new_def (alloc_alloc_loc: loc) (dangling_T_loc: loc) (lay
       local_dead "__16";
       local_live{ UnitSynType } "__18";
       local_live{ T_st } "__19";
+      "__23" <-{ BoolOp } val_of_bool false;
       "__19" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("x");
-      Goto "_bb11"
+      Goto "_bb10"
      ]>%E $
      <[
-     "_bb11" :=
+     "_bb10" :=
       !{ PtrOp } ( "__15" ) <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("__19");
-      Goto "_bb13"
-     ]>%E $
-     <[
-     "_bb13" :=
       local_dead "__19";
       "__18" <-{ StructOp unit_sl [] } zst_val;
       local_dead "__18";
@@ -244,10 +229,10 @@ Program Definition box_new_def (alloc_alloc_loc: loc) (dangling_T_loc: loc) (lay
       local_live{ PtrSynType } "__21";
       "__21" <-{ PtrOp } copy{ PtrOp } ("__15");
       "__20" <-{ (use_op_alg' ((unique_Unique_sls (T_st)) : syn_type)) } CallE unique_Unique_T_new_unchecked_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__21")];
-      Goto "_bb14"
+      Goto "_bb12"
      ]>%E $
      <[
-     "_bb14" :=
+     "_bb12" :=
       local_dead "__21";
       local_live{ (Global_sls : syn_type) } "__22";
       "__22" <-{ (use_op_alg' (Global_sls : syn_type)) } StructInit Global_sls [];
@@ -257,15 +242,11 @@ Program Definition box_new_def (alloc_alloc_loc: loc) (dangling_T_loc: loc) (lay
       local_dead "__15";
       local_dead "__13";
       local_dead "layout";
-      Goto "_bb15"
+      Goto "_bb13"
      ]>%E $
      <[
-     "_bb15" :=
+     "_bb13" :=
       local_dead "__2";
-      Goto "_bb16"
-     ]>%E $
-     <[
-     "_bb16" :=
       return (move{ (use_op_alg' (Box_st (T_st) ((Global_sls : syn_type)))) } ("__0"))
      ]>%E $
       ∅;

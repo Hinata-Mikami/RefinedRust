@@ -111,14 +111,6 @@ Program Definition Ord_max_def (max_by_Self_closuresrclibrs1488014886_loc: loc) 
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
-      Goto "_bb3"
-     ]>%E $
-     <[
-     "_bb3" :=
       return (move{ (use_op_alg' Self_st) } ("__0"))
      ]>%E $
       ∅;
@@ -155,14 +147,6 @@ Program Definition Ord_min_def (min_by_Self_closuresrclibrs1558015586_loc: loc) 
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
-      Goto "_bb3"
-     ]>%E $
-     <[
-     "_bb3" :=
       return (move{ (use_op_alg' Self_st) } ("__0"))
      ]>%E $
       ∅;
@@ -193,10 +177,6 @@ Program Definition Ordering_as_raw_def  : function :=
       "__2" <-{ PtrOp } &ref{ Shr, Some (RSTLitType ["Ordering_ty"] (RSTScopeInst [] [] [])), "vlft3" } (!{ PtrOp } ( "__3" ));
       annot{ 1 }: CopyLftNameAnnot "plft4" "vlft3"; (* post-assignment *)
       "__0" <-{ IntOp I8 } EnumDiscriminant (Ordering_els) (!{ PtrOp } ( "__2" ));
-      Goto "_bb1"
-     ]>%E $
-     <[
-     "_bb1" :=
       annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
       local_dead "__3";
       local_dead "__2";
@@ -486,7 +466,7 @@ Program Definition PartialOrd_ge_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
      <[
      "_bb2" :=
       "__0" <-{ BoolOp } val_of_bool false;
-      Goto "_bb6"
+      Goto "_bb5"
      ]>%E $
      <[
      "_bb3" :=
@@ -495,15 +475,11 @@ Program Definition PartialOrd_ge_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
      ]>%E $
      <[
      "_bb4" :=
+      "__0" <-{ BoolOp } val_of_bool true;
       Goto "_bb5"
      ]>%E $
      <[
      "_bb5" :=
-      "__0" <-{ BoolOp } val_of_bool true;
-      Goto "_bb6"
-     ]>%E $
-     <[
-     "_bb6" :=
       local_dead "__3";
       return (move{ BoolOp } ("__0"))
      ]>%E $
@@ -555,7 +531,7 @@ Program Definition PartialOrd_gt_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
      <[
      "_bb2" :=
       "__0" <-{ BoolOp } val_of_bool false;
-      Goto "_bb6"
+      Goto "_bb5"
      ]>%E $
      <[
      "_bb3" :=
@@ -564,15 +540,11 @@ Program Definition PartialOrd_gt_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
      ]>%E $
      <[
      "_bb4" :=
+      "__0" <-{ BoolOp } val_of_bool true;
       Goto "_bb5"
      ]>%E $
      <[
      "_bb5" :=
-      "__0" <-{ BoolOp } val_of_bool true;
-      Goto "_bb6"
-     ]>%E $
-     <[
-     "_bb6" :=
       local_dead "__3";
       return (move{ BoolOp } ("__0"))
      ]>%E $
@@ -624,7 +596,7 @@ Program Definition PartialOrd_le_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
      <[
      "_bb2" :=
       "__0" <-{ BoolOp } val_of_bool false;
-      Goto "_bb6"
+      Goto "_bb5"
      ]>%E $
      <[
      "_bb3" :=
@@ -633,15 +605,11 @@ Program Definition PartialOrd_le_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
      ]>%E $
      <[
      "_bb4" :=
+      "__0" <-{ BoolOp } val_of_bool true;
       Goto "_bb5"
      ]>%E $
      <[
      "_bb5" :=
-      "__0" <-{ BoolOp } val_of_bool true;
-      Goto "_bb6"
-     ]>%E $
-     <[
-     "_bb6" :=
       local_dead "__3";
       return (move{ BoolOp } ("__0"))
      ]>%E $
@@ -693,7 +661,7 @@ Program Definition PartialOrd_lt_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
      <[
      "_bb2" :=
       "__0" <-{ BoolOp } val_of_bool false;
-      Goto "_bb6"
+      Goto "_bb5"
      ]>%E $
      <[
      "_bb3" :=
@@ -702,15 +670,11 @@ Program Definition PartialOrd_lt_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
      ]>%E $
      <[
      "_bb4" :=
+      "__0" <-{ BoolOp } val_of_bool true;
       Goto "_bb5"
      ]>%E $
      <[
      "_bb5" :=
-      "__0" <-{ BoolOp } val_of_bool true;
-      Goto "_bb6"
-     ]>%E $
-     <[
-     "_bb6" :=
       local_dead "__3";
       return (move{ BoolOp } ("__0"))
      ]>%E $
@@ -3284,14 +3248,6 @@ Program Definition max_def (Ord_T_max_loc: loc) (T_st: syn_type) : function :=
      "_bb1" :=
       local_dead "__4";
       local_dead "__3";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
-      Goto "_bb3"
-     ]>%E $
-     <[
-     "_bb3" :=
       return (move{ (use_op_alg' T_st) } ("__0"))
      ]>%E $
       ∅;
@@ -3315,6 +3271,12 @@ Program Definition max_by_def (FnOnce_F_REFTREFT_call_once_loc: loc) (Ordering_i
       <[
      "_bb0" :=
       local_live{ T_st } "__0";
+      local_live{ BoolSynType } "__12";
+      local_live{ BoolSynType } "__13";
+      "__13" <-{ BoolOp } val_of_bool false;
+      "__12" <-{ BoolOp } val_of_bool false;
+      "__13" <-{ BoolOp } val_of_bool true;
+      "__12" <-{ BoolOp } val_of_bool true;
       local_live{ BoolSynType } "__4";
       local_live{ Ordering_st } "__5";
       local_live{ F_st } "__6";
@@ -3369,6 +3331,7 @@ Program Definition max_by_def (FnOnce_F_REFTREFT_call_once_loc: loc) (Ordering_i
       local_dead "__11";
       local_dead "__9";
       local_dead "__5";
+      "__13" <-{ BoolOp } val_of_bool false;
       "__0" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("v1");
       Goto "_bb5"
      ]>%E $
@@ -3377,25 +3340,36 @@ Program Definition max_by_def (FnOnce_F_REFTREFT_call_once_loc: loc) (Ordering_i
       local_dead "__11";
       local_dead "__9";
       local_dead "__5";
+      "__12" <-{ BoolOp } val_of_bool false;
       "__0" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("v2");
       Goto "_bb5"
      ]>%E $
      <[
      "_bb5" :=
       local_dead "__4";
-      Goto "_bb6"
+      if{ BoolOp }: copy{ BoolOp } ("__12") then
+       Goto "_bb10"
+      else
+       Goto "_bb6"
      ]>%E $
      <[
      "_bb6" :=
-      Goto "_bb7"
+      if{ BoolOp }: copy{ BoolOp } ("__13") then
+       Goto "_bb11"
+      else
+       Goto "_bb7"
      ]>%E $
      <[
      "_bb7" :=
-      Goto "_bb8"
+      return (move{ (use_op_alg' T_st) } ("__0"))
      ]>%E $
      <[
-     "_bb8" :=
-      return (move{ (use_op_alg' T_st) } ("__0"))
+     "_bb10" :=
+      Goto "_bb6"
+     ]>%E $
+     <[
+     "_bb11" :=
+      Goto "_bb7"
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -3428,14 +3402,6 @@ Program Definition min_def (Ord_T_min_loc: loc) (T_st: syn_type) : function :=
      "_bb1" :=
       local_dead "__4";
       local_dead "__3";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
-      Goto "_bb3"
-     ]>%E $
-     <[
-     "_bb3" :=
       return (move{ (use_op_alg' T_st) } ("__0"))
      ]>%E $
       ∅;
@@ -3459,6 +3425,12 @@ Program Definition min_by_def (FnOnce_F_REFTREFT_call_once_loc: loc) (Ordering_i
       <[
      "_bb0" :=
       local_live{ T_st } "__0";
+      local_live{ BoolSynType } "__12";
+      local_live{ BoolSynType } "__13";
+      "__13" <-{ BoolOp } val_of_bool false;
+      "__12" <-{ BoolOp } val_of_bool false;
+      "__13" <-{ BoolOp } val_of_bool true;
+      "__12" <-{ BoolOp } val_of_bool true;
       local_live{ BoolSynType } "__4";
       local_live{ Ordering_st } "__5";
       local_live{ F_st } "__6";
@@ -3513,6 +3485,7 @@ Program Definition min_by_def (FnOnce_F_REFTREFT_call_once_loc: loc) (Ordering_i
       local_dead "__11";
       local_dead "__9";
       local_dead "__5";
+      "__12" <-{ BoolOp } val_of_bool false;
       "__0" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("v2");
       Goto "_bb5"
      ]>%E $
@@ -3521,25 +3494,36 @@ Program Definition min_by_def (FnOnce_F_REFTREFT_call_once_loc: loc) (Ordering_i
       local_dead "__11";
       local_dead "__9";
       local_dead "__5";
+      "__13" <-{ BoolOp } val_of_bool false;
       "__0" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("v1");
       Goto "_bb5"
      ]>%E $
      <[
      "_bb5" :=
       local_dead "__4";
-      Goto "_bb6"
+      if{ BoolOp }: copy{ BoolOp } ("__12") then
+       Goto "_bb10"
+      else
+       Goto "_bb6"
      ]>%E $
      <[
      "_bb6" :=
-      Goto "_bb7"
+      if{ BoolOp }: copy{ BoolOp } ("__13") then
+       Goto "_bb11"
+      else
+       Goto "_bb7"
      ]>%E $
      <[
      "_bb7" :=
-      Goto "_bb8"
+      return (move{ (use_op_alg' T_st) } ("__0"))
      ]>%E $
      <[
-     "_bb8" :=
-      return (move{ (use_op_alg' T_st) } ("__0"))
+     "_bb10" :=
+      Goto "_bb6"
+     ]>%E $
+     <[
+     "_bb11" :=
+      Goto "_bb7"
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -3579,7 +3563,7 @@ Program Definition std_option_OptionTasOrd_cmp_def (Ord_T_cmp_loc: loc) (T_st: s
       local_dead "__5";
       local_dead "__4";
       "__8" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ PtrOp } ( ("__3") at{ (tuple2_sls (PtrSynType) (PtrSynType)) } "0" ));
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__8")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb5"; Goto "_bb2"]) (Goto "_bb1")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__8")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -3588,42 +3572,30 @@ Program Definition std_option_OptionTasOrd_cmp_def (Ord_T_cmp_loc: loc) (T_st: s
      <[
      "_bb2" :=
       "__6" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ PtrOp } ( ("__3") at{ (tuple2_sls (PtrSynType) (PtrSynType)) } "1" ));
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__6")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb4"; Goto "_bb3"]) (Goto "_bb1")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__6")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb6"; Goto "_bb7"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb3" :=
-      Goto "_bb10"
+      "__7" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ PtrOp } ( ("__3") at{ (tuple2_sls (PtrSynType) (PtrSynType)) } "1" ));
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__7")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb4"; Goto "_bb5"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb4" :=
+      "__0" <-{ (use_op_alg' Ordering_st) } EnumInit Ordering_els "Equal" (RSTEnumDef ["Ordering_enum"] (RSTScopeInst [] [] [])) (StructInit Ordering_Equal_sls []);
       Goto "_bb9"
      ]>%E $
      <[
      "_bb5" :=
-      "__7" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ PtrOp } ( ("__3") at{ (tuple2_sls (PtrSynType) (PtrSynType)) } "1" ));
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__7")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb7"; Goto "_bb6"]) (Goto "_bb1")
+      "__0" <-{ (use_op_alg' Ordering_st) } EnumInit Ordering_els "Less" (RSTEnumDef ["Ordering_enum"] (RSTScopeInst [] [] [])) (StructInit Ordering_Less_sls []);
+      Goto "_bb9"
      ]>%E $
      <[
      "_bb6" :=
-      Goto "_bb8"
+      "__0" <-{ (use_op_alg' Ordering_st) } EnumInit Ordering_els "Greater" (RSTEnumDef ["Ordering_enum"] (RSTScopeInst [] [] [])) (StructInit Ordering_Greater_sls []);
+      Goto "_bb9"
      ]>%E $
      <[
      "_bb7" :=
-      "__0" <-{ (use_op_alg' Ordering_st) } EnumInit Ordering_els "Equal" (RSTEnumDef ["Ordering_enum"] (RSTScopeInst [] [] [])) (StructInit Ordering_Equal_sls []);
-      Goto "_bb12"
-     ]>%E $
-     <[
-     "_bb8" :=
-      "__0" <-{ (use_op_alg' Ordering_st) } EnumInit Ordering_els "Less" (RSTEnumDef ["Ordering_enum"] (RSTScopeInst [] [] [])) (StructInit Ordering_Less_sls []);
-      Goto "_bb12"
-     ]>%E $
-     <[
-     "_bb9" :=
-      "__0" <-{ (use_op_alg' Ordering_st) } EnumInit Ordering_els "Greater" (RSTEnumDef ["Ordering_enum"] (RSTScopeInst [] [] [])) (StructInit Ordering_Greater_sls []);
-      Goto "_bb12"
-     ]>%E $
-     <[
-     "_bb10" :=
       local_live{ PtrSynType } "l";
       "l" <-{ PtrOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft7" } ((EnumData ((Option_els (T_st))) "Some" (!{ PtrOp } ( ("__3") at{ (tuple2_sls (PtrSynType) (PtrSynType)) } "0" ))) at{ (Option_Some_sls (T_st)) } "0");
       local_live{ PtrSynType } "r";
@@ -3639,18 +3611,18 @@ Program Definition std_option_OptionTasOrd_cmp_def (Ord_T_cmp_loc: loc) (T_st: s
       annot{ 1 }: CopyLftNameAnnot "vlft23" "plft21"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft24" "plft22"; (* function_call *)
       "__0" <-{ (use_op_alg' Ordering_st) } CallE Ord_T_cmp_loc ["vlft23"; "vlft24"] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__11"); move{ PtrOp } ("__12")];
-      Goto "_bb11"
+      Goto "_bb8"
      ]>%E $
      <[
-     "_bb11" :=
+     "_bb8" :=
       local_dead "__12";
       local_dead "__11";
       local_dead "r";
       local_dead "l";
-      Goto "_bb12"
+      Goto "_bb9"
      ]>%E $
      <[
-     "_bb12" :=
+     "_bb9" :=
       local_dead "__3";
       return (move{ (use_op_alg' Ordering_st) } ("__0"))
      ]>%E $
@@ -3692,7 +3664,7 @@ Program Definition std_option_OptionTasPartialEq_eq_def (PartialEq_T_T_eq_loc: l
       local_dead "__5";
       local_dead "__4";
       "__8" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ PtrOp } ( ("__3") at{ (tuple2_sls (PtrSynType) (PtrSynType)) } "0" ));
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__8")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb5"; Goto "_bb2"]) (Goto "_bb1")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__8")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -3701,42 +3673,30 @@ Program Definition std_option_OptionTasPartialEq_eq_def (PartialEq_T_T_eq_loc: l
      <[
      "_bb2" :=
       "__6" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ PtrOp } ( ("__3") at{ (tuple2_sls (PtrSynType) (PtrSynType)) } "1" ));
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__6")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb4"; Goto "_bb3"]) (Goto "_bb1")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__6")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb6"; Goto "_bb7"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb3" :=
-      Goto "_bb10"
+      "__7" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ PtrOp } ( ("__3") at{ (tuple2_sls (PtrSynType) (PtrSynType)) } "1" ));
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__7")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb4"; Goto "_bb5"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb4" :=
+      "__0" <-{ BoolOp } val_of_bool true;
       Goto "_bb9"
      ]>%E $
      <[
      "_bb5" :=
-      "__7" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ PtrOp } ( ("__3") at{ (tuple2_sls (PtrSynType) (PtrSynType)) } "1" ));
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__7")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb7"; Goto "_bb6"]) (Goto "_bb1")
+      "__0" <-{ BoolOp } val_of_bool false;
+      Goto "_bb9"
      ]>%E $
      <[
      "_bb6" :=
-      Goto "_bb8"
+      "__0" <-{ BoolOp } val_of_bool false;
+      Goto "_bb9"
      ]>%E $
      <[
      "_bb7" :=
-      "__0" <-{ BoolOp } val_of_bool true;
-      Goto "_bb12"
-     ]>%E $
-     <[
-     "_bb8" :=
-      "__0" <-{ BoolOp } val_of_bool false;
-      Goto "_bb12"
-     ]>%E $
-     <[
-     "_bb9" :=
-      "__0" <-{ BoolOp } val_of_bool false;
-      Goto "_bb12"
-     ]>%E $
-     <[
-     "_bb10" :=
       local_live{ PtrSynType } "l";
       "l" <-{ PtrOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft7" } ((EnumData ((Option_els (T_st))) "Some" (!{ PtrOp } ( ("__3") at{ (tuple2_sls (PtrSynType) (PtrSynType)) } "0" ))) at{ (Option_Some_sls (T_st)) } "0");
       local_live{ PtrSynType } "r";
@@ -3752,18 +3712,18 @@ Program Definition std_option_OptionTasPartialEq_eq_def (PartialEq_T_T_eq_loc: l
       annot{ 1 }: CopyLftNameAnnot "vlft23" "plft21"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft24" "plft22"; (* function_call *)
       "__0" <-{ BoolOp } CallE PartialEq_T_T_eq_loc ["vlft23"; "vlft24"] [] [@{expr} move{ PtrOp } ("__11"); move{ PtrOp } ("__12")];
-      Goto "_bb11"
+      Goto "_bb8"
      ]>%E $
      <[
-     "_bb11" :=
+     "_bb8" :=
       local_dead "__12";
       local_dead "__11";
       local_dead "r";
       local_dead "l";
-      Goto "_bb12"
+      Goto "_bb9"
      ]>%E $
      <[
-     "_bb12" :=
+     "_bb9" :=
       local_dead "__3";
       return (move{ BoolOp } ("__0"))
      ]>%E $
@@ -3805,7 +3765,7 @@ Program Definition std_option_OptionTasPartialOrd_partial_cmp_def (PartialOrd_T_
       local_dead "__5";
       local_dead "__4";
       "__8" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ PtrOp } ( ("__3") at{ (tuple2_sls (PtrSynType) (PtrSynType)) } "0" ));
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__8")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb5"; Goto "_bb2"]) (Goto "_bb1")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__8")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -3814,51 +3774,39 @@ Program Definition std_option_OptionTasPartialOrd_partial_cmp_def (PartialOrd_T_
      <[
      "_bb2" :=
       "__6" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ PtrOp } ( ("__3") at{ (tuple2_sls (PtrSynType) (PtrSynType)) } "1" ));
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__6")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb4"; Goto "_bb3"]) (Goto "_bb1")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__6")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb6"; Goto "_bb7"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb3" :=
-      Goto "_bb10"
+      "__7" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ PtrOp } ( ("__3") at{ (tuple2_sls (PtrSynType) (PtrSynType)) } "1" ));
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__7")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb4"; Goto "_bb5"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb4" :=
-      Goto "_bb9"
-     ]>%E $
-     <[
-     "_bb5" :=
-      "__7" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ PtrOp } ( ("__3") at{ (tuple2_sls (PtrSynType) (PtrSynType)) } "1" ));
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__7")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb7"; Goto "_bb6"]) (Goto "_bb1")
-     ]>%E $
-     <[
-     "_bb6" :=
-      Goto "_bb8"
-     ]>%E $
-     <[
-     "_bb7" :=
       local_live{ Ordering_st } "__15";
       "__15" <-{ (use_op_alg' Ordering_st) } EnumInit Ordering_els "Equal" (RSTEnumDef ["Ordering_enum"] (RSTScopeInst [] [] [])) (StructInit Ordering_Equal_sls []);
       "__0" <-{ (use_op_alg' ((Option_els (Ordering_st)) : syn_type)) } EnumInit (Option_els (Ordering_st)) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTLitType ["Ordering_ty"] (RSTScopeInst [] [] [])] [])) (StructInit (Option_Some_sls (Ordering_st)) [("0", move{ (use_op_alg' Ordering_st) } ("__15") : expr)]);
       local_dead "__15";
-      Goto "_bb12"
+      Goto "_bb9"
      ]>%E $
      <[
-     "_bb8" :=
+     "_bb5" :=
       local_live{ Ordering_st } "__14";
       "__14" <-{ (use_op_alg' Ordering_st) } EnumInit Ordering_els "Less" (RSTEnumDef ["Ordering_enum"] (RSTScopeInst [] [] [])) (StructInit Ordering_Less_sls []);
       "__0" <-{ (use_op_alg' ((Option_els (Ordering_st)) : syn_type)) } EnumInit (Option_els (Ordering_st)) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTLitType ["Ordering_ty"] (RSTScopeInst [] [] [])] [])) (StructInit (Option_Some_sls (Ordering_st)) [("0", move{ (use_op_alg' Ordering_st) } ("__14") : expr)]);
       local_dead "__14";
-      Goto "_bb12"
+      Goto "_bb9"
      ]>%E $
      <[
-     "_bb9" :=
+     "_bb6" :=
       local_live{ Ordering_st } "__13";
       "__13" <-{ (use_op_alg' Ordering_st) } EnumInit Ordering_els "Greater" (RSTEnumDef ["Ordering_enum"] (RSTScopeInst [] [] [])) (StructInit Ordering_Greater_sls []);
       "__0" <-{ (use_op_alg' ((Option_els (Ordering_st)) : syn_type)) } EnumInit (Option_els (Ordering_st)) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTLitType ["Ordering_ty"] (RSTScopeInst [] [] [])] [])) (StructInit (Option_Some_sls (Ordering_st)) [("0", move{ (use_op_alg' Ordering_st) } ("__13") : expr)]);
       local_dead "__13";
-      Goto "_bb12"
+      Goto "_bb9"
      ]>%E $
      <[
-     "_bb10" :=
+     "_bb7" :=
       local_live{ PtrSynType } "l";
       "l" <-{ PtrOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft7" } ((EnumData ((Option_els (T_st))) "Some" (!{ PtrOp } ( ("__3") at{ (tuple2_sls (PtrSynType) (PtrSynType)) } "0" ))) at{ (Option_Some_sls (T_st)) } "0");
       local_live{ PtrSynType } "r";
@@ -3874,18 +3822,18 @@ Program Definition std_option_OptionTasPartialOrd_partial_cmp_def (PartialOrd_T_
       annot{ 1 }: CopyLftNameAnnot "vlft23" "plft21"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft24" "plft22"; (* function_call *)
       "__0" <-{ (use_op_alg' ((Option_els (Ordering_st)) : syn_type)) } CallE PartialOrd_T_T_partial_cmp_loc ["vlft23"; "vlft24"] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__11"); move{ PtrOp } ("__12")];
-      Goto "_bb11"
+      Goto "_bb8"
      ]>%E $
      <[
-     "_bb11" :=
+     "_bb8" :=
       local_dead "__12";
       local_dead "__11";
       local_dead "r";
       local_dead "l";
-      Goto "_bb12"
+      Goto "_bb9"
      ]>%E $
      <[
-     "_bb12" :=
+     "_bb9" :=
       local_dead "__3";
       return (move{ (use_op_alg' ((Option_els (Ordering_st)) : syn_type)) } ("__0"))
      ]>%E $

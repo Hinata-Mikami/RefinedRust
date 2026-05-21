@@ -14,6 +14,7 @@ Definition layout_Layout_from_size_align_lemma (π : thread_id) : Prop :=
   ∀ (layout_Layout_from_size_align_unchecked_loc : loc) , 
   syn_type_is_layoutable ((layout_Layout_sls : syn_type)) →
   syn_type_is_layoutable ((layout_LayoutError_sls : syn_type)) →
+  syn_type_is_layoutable (((Result_Ok_sls (layout_Layout_st) (layout_LayoutError_st)) : syn_type)) →
   syn_type_is_layoutable (((Result_els (layout_Layout_st) (layout_LayoutError_st)) : syn_type)) →
   layout_Layout_from_size_align_unchecked_loc ◁ᵥ{π, MetaNone} layout_Layout_from_size_align_unchecked_loc @ function_ptr [(IntSynType USize); (IntSynType USize)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_layout_Layout_from_size_align_unchecked (RRGS:=RRGS)  -[] -[]) (λ π, (True))%I) -∗
   typed_function π (layout_Layout_from_size_align_def layout_Layout_from_size_align_unchecked_loc  ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_layout_Layout_from_size_align -[] -[]) (λ π, (True)

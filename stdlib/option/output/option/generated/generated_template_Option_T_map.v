@@ -16,6 +16,9 @@ Definition Option_T_map_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (F_st) →
   syn_type_is_layoutable (((Option_els (T_st)) : syn_type)) →
   syn_type_is_layoutable (((Option_els (U_st)) : syn_type)) →
+  syn_type_is_layoutable (((Option_None_sls (U_st)) : syn_type)) →
+  syn_type_is_layoutable (((Option_Some_sls (T_st)) : syn_type)) →
+  syn_type_is_layoutable (((Option_Some_sls (U_st)) : syn_type)) →
   syn_type_is_layoutable (((tuple1_sls (T_st)) : syn_type)) →
   FnOnce_F_T_call_once_loc ◁ᵥ{π, MetaNone} FnOnce_F_T_call_once_loc @ function_ptr [F_st; ((tuple1_sls (T_st)) : syn_type)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((FnOnce_call_once_spec (RRGS:=RRGS) (FnOnce_F_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
   typed_function π (Option_T_map_def FnOnce_F_T_call_once_loc  T_st  U_st  F_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; U_ty; F_ty]) : ([T_rt; U_rt; F_rt] : list RT), fn_spec_add_late_pre (type_of_Option_T_map T_rt U_rt F_rt T_st U_st F_st FnOnce_F_T_spec_attrs -[] -[T_ty; U_ty; F_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)

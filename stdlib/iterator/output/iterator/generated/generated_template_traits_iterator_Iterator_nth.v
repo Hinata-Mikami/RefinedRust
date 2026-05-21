@@ -18,6 +18,7 @@ Definition traits_iterator_Iterator_nth_lemma (π : thread_id) : Prop :=
   ∀ `(Self_rt : !RT) `(Item_rt : !RT) `(Self_st : !syn_type) `(Item_st : !syn_type) `(traits_iterator_Iterator_Self_spec_attrs : !(traits_iterator_Iterator_spec_attrs (RRGS:=RRGS) (Self_rt) (Item_rt) )) `(traits_iterator_Iterator_Self_spec : !(spec_with 0 [] (traits_iterator_Iterator_spec (RRGS:=RRGS) (Self_rt) (Item_rt)))) (Option_T_is_none_Selfastraits_iterator_Iterator_Item_loc : loc) (traits_iterator_Iterator_Self_next_loc : loc) , 
   syn_type_is_layoutable (Self_st) →
   syn_type_is_layoutable (((Option_els (Item_st)) : syn_type)) →
+  syn_type_is_layoutable (((Option_None_sls (Item_st)) : syn_type)) →
   syn_type_is_layoutable (((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type)) →
   Option_T_is_none_Selfastraits_iterator_Iterator_Item_loc ◁ᵥ{π, MetaNone} Option_T_is_none_Selfastraits_iterator_Iterator_Item_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[Item_ty]) : ([Item_rt] : list RT), fn_spec_add_late_pre (type_of_Option_T_is_none (RRGS:=RRGS) ((Item_rt)) (Item_st) -[late_lft_0] -[Item_ty]) (λ π, ((typaram_wf Item_rt Item_st Item_ty)))%I) -∗
   traits_iterator_Iterator_Self_next_loc ◁ᵥ{π, MetaNone} traits_iterator_Iterator_Self_next_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((traits_iterator_Iterator_next_spec (RRGS:=RRGS) (traits_iterator_Iterator_Self_spec-[] -[]))  -[late_lft_0] -[]) (λ π, (True))%I) -∗

@@ -56,8 +56,10 @@ Program Definition ControlFlowBCasFromResidualControlFlowBconvert_Infallible_fro
      "_bb0" :=
       local_live{ (ControlFlow_st (B_st) (C_st)) } "__0";
       local_live{ (IntSynType ISize) } "__2";
+      local_live{ (IntSynType ISize) } "__7";
+      local_live{ (IntSynType ISize) } "__9";
       "__2" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (convert_Infallible_st))) ("residual");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -65,36 +67,21 @@ Program Definition ControlFlowBCasFromResidualControlFlowBconvert_Infallible_fro
      ]>%E $
      <[
      "_bb2" :=
-      Goto "_bb4"
-     ]>%E $
-     <[
-     "_bb3" :=
       local_live{ convert_Infallible_st } "i";
       "i" <-{ (use_op_alg' convert_Infallible_st) } move{ (use_op_alg' convert_Infallible_st) } ((EnumData ((ControlFlow_els (B_st) (convert_Infallible_st))) "Continue" ("residual")) at{ (ControlFlow_Continue_sls (B_st) (convert_Infallible_st)) } "0");
       local_live{ UnitSynType } "__6";
       StuckS
      ]>%E $
      <[
-     "_bb4" :=
+     "_bb3" :=
       local_live{ B_st } "b";
       "b" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ((EnumData ((ControlFlow_els (B_st) (convert_Infallible_st))) "Break" ("residual")) at{ (ControlFlow_Break_sls (B_st) (convert_Infallible_st)) } "0");
       local_live{ B_st } "__4";
       "__4" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("b");
       "__0" <-{ (use_op_alg' (ControlFlow_st (B_st) (C_st))) } EnumInit (ControlFlow_els (B_st) (C_st)) "Break" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTTyVar "B"; RSTTyVar "C"] [])) (StructInit (ControlFlow_Break_sls (B_st) (C_st)) [("0", move{ (use_op_alg' B_st) } ("__4") : expr)]);
-      Goto "_bb5"
-     ]>%E $
-     <[
-     "_bb5" :=
       local_dead "__4";
-      Goto "_bb6"
-     ]>%E $
-     <[
-     "_bb6" :=
       local_dead "b";
-      Goto "_bb7"
-     ]>%E $
-     <[
-     "_bb7" :=
+      "__7" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (convert_Infallible_st))) ("residual");
       return (move{ (use_op_alg' (ControlFlow_st (B_st) (C_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -117,8 +104,15 @@ Program Definition ControlFlowBCasTry_branch_def (B_st: syn_type) (C_st: syn_typ
      "_bb0" :=
       local_live{ (ControlFlow_st ((ControlFlow_st (B_st) (convert_Infallible_st))) (C_st)) } "__0";
       local_live{ (IntSynType ISize) } "__2";
+      local_live{ BoolSynType } "__8";
+      local_live{ BoolSynType } "__9";
+      local_live{ (IntSynType ISize) } "__10";
+      "__9" <-{ BoolOp } val_of_bool false;
+      "__8" <-{ BoolOp } val_of_bool false;
+      "__8" <-{ BoolOp } val_of_bool true;
+      "__9" <-{ BoolOp } val_of_bool true;
       "__2" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) ("self");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -126,59 +120,32 @@ Program Definition ControlFlowBCasTry_branch_def (B_st: syn_type) (C_st: syn_typ
      ]>%E $
      <[
      "_bb2" :=
-      Goto "_bb4"
-     ]>%E $
-     <[
-     "_bb3" :=
       local_live{ B_st } "b";
       "b" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ((EnumData ((ControlFlow_els (B_st) (C_st))) "Break" ("self")) at{ (ControlFlow_Break_sls (B_st) (C_st)) } "0");
       local_live{ (ControlFlow_st (B_st) (convert_Infallible_st)) } "__6";
       local_live{ B_st } "__7";
       "__7" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("b");
       "__6" <-{ (use_op_alg' (ControlFlow_st (B_st) (convert_Infallible_st))) } EnumInit (ControlFlow_els (B_st) (convert_Infallible_st)) "Break" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTTyVar "B"; RSTLitType ["convert_Infallible_ty"] (RSTScopeInst [] [] [])] [])) (StructInit (ControlFlow_Break_sls (B_st) (convert_Infallible_st)) [("0", move{ (use_op_alg' B_st) } ("__7") : expr)]);
-      Goto "_bb7"
+      local_dead "__7";
+      "__0" <-{ (use_op_alg' (ControlFlow_st ((ControlFlow_st (B_st) (convert_Infallible_st))) (C_st))) } EnumInit (ControlFlow_els ((ControlFlow_st (B_st) (convert_Infallible_st))) (C_st)) "Break" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTLitType ["ControlFlow_ty"] (RSTScopeInst [] [RSTTyVar "B"; RSTLitType ["convert_Infallible_ty"] (RSTScopeInst [] [] [])] []); RSTTyVar "C"] [])) (StructInit (ControlFlow_Break_sls ((ControlFlow_st (B_st) (convert_Infallible_st))) (C_st)) [("0", move{ (use_op_alg' (ControlFlow_st (B_st) (convert_Infallible_st))) } ("__6") : expr)]);
+      local_dead "__6";
+      local_dead "b";
+      Goto "_bb4"
      ]>%E $
      <[
-     "_bb4" :=
+     "_bb3" :=
       local_live{ C_st } "c";
       "c" <-{ (use_op_alg' C_st) } move{ (use_op_alg' C_st) } ((EnumData ((ControlFlow_els (B_st) (C_st))) "Continue" ("self")) at{ (ControlFlow_Continue_sls (B_st) (C_st)) } "0");
       local_live{ C_st } "__4";
       "__4" <-{ (use_op_alg' C_st) } move{ (use_op_alg' C_st) } ("c");
       "__0" <-{ (use_op_alg' (ControlFlow_st ((ControlFlow_st (B_st) (convert_Infallible_st))) (C_st))) } EnumInit (ControlFlow_els ((ControlFlow_st (B_st) (convert_Infallible_st))) (C_st)) "Continue" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTLitType ["ControlFlow_ty"] (RSTScopeInst [] [RSTTyVar "B"; RSTLitType ["convert_Infallible_ty"] (RSTScopeInst [] [] [])] []); RSTTyVar "C"] [])) (StructInit (ControlFlow_Continue_sls ((ControlFlow_st (B_st) (convert_Infallible_st))) (C_st)) [("0", move{ (use_op_alg' C_st) } ("__4") : expr)]);
-      Goto "_bb5"
-     ]>%E $
-     <[
-     "_bb5" :=
       local_dead "__4";
-      Goto "_bb6"
-     ]>%E $
-     <[
-     "_bb6" :=
       local_dead "c";
-      Goto "_bb10"
+      Goto "_bb4"
      ]>%E $
      <[
-     "_bb7" :=
-      local_dead "__7";
-      "__0" <-{ (use_op_alg' (ControlFlow_st ((ControlFlow_st (B_st) (convert_Infallible_st))) (C_st))) } EnumInit (ControlFlow_els ((ControlFlow_st (B_st) (convert_Infallible_st))) (C_st)) "Break" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTLitType ["ControlFlow_ty"] (RSTScopeInst [] [RSTTyVar "B"; RSTLitType ["convert_Infallible_ty"] (RSTScopeInst [] [] [])] []); RSTTyVar "C"] [])) (StructInit (ControlFlow_Break_sls ((ControlFlow_st (B_st) (convert_Infallible_st))) (C_st)) [("0", move{ (use_op_alg' (ControlFlow_st (B_st) (convert_Infallible_st))) } ("__6") : expr)]);
-      Goto "_bb8"
-     ]>%E $
-     <[
-     "_bb8" :=
-      local_dead "__6";
-      Goto "_bb9"
-     ]>%E $
-     <[
-     "_bb9" :=
-      local_dead "b";
-      Goto "_bb10"
-     ]>%E $
-     <[
-     "_bb10" :=
-      Goto "_bb11"
-     ]>%E $
-     <[
-     "_bb11" :=
+     "_bb4" :=
+      "__10" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) ("self");
       return (move{ (use_op_alg' (ControlFlow_st ((ControlFlow_st (B_st) (convert_Infallible_st))) (C_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -203,15 +170,7 @@ Program Definition ControlFlowBCasTry_from_output_def (B_st: syn_type) (C_st: sy
       local_live{ C_st } "__2";
       "__2" <-{ (use_op_alg' C_st) } move{ (use_op_alg' C_st) } ("output");
       "__0" <-{ (use_op_alg' (ControlFlow_st (B_st) (C_st))) } EnumInit (ControlFlow_els (B_st) (C_st)) "Continue" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTTyVar "B"; RSTTyVar "C"] [])) (StructInit (ControlFlow_Continue_sls (B_st) (C_st)) [("0", move{ (use_op_alg' C_st) } ("__2") : expr)]);
-      Goto "_bb1"
-     ]>%E $
-     <[
-     "_bb1" :=
       local_dead "__2";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       return (move{ (use_op_alg' (ControlFlow_st (B_st) (C_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -234,8 +193,12 @@ Program Definition ControlFlow_BC_break_value_def (B_st: syn_type) (C_st: syn_ty
      "_bb0" :=
       local_live{ ((Option_els (B_st)) : syn_type) } "__0";
       local_live{ (IntSynType ISize) } "__2";
+      local_live{ BoolSynType } "__5";
+      local_live{ (IntSynType ISize) } "__6";
+      "__5" <-{ BoolOp } val_of_bool false;
+      "__5" <-{ BoolOp } val_of_bool true;
       "__2" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) ("self");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -243,39 +206,32 @@ Program Definition ControlFlow_BC_break_value_def (B_st: syn_type) (C_st: syn_ty
      ]>%E $
      <[
      "_bb2" :=
-      Goto "_bb4"
-     ]>%E $
-     <[
-     "_bb3" :=
       local_live{ B_st } "x";
       "x" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ((EnumData ((ControlFlow_els (B_st) (C_st))) "Break" ("self")) at{ (ControlFlow_Break_sls (B_st) (C_st)) } "0");
       local_live{ B_st } "__4";
       "__4" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("x");
       "__0" <-{ (use_op_alg' ((Option_els (B_st)) : syn_type)) } EnumInit (Option_els (B_st)) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTTyVar "B"] [])) (StructInit (Option_Some_sls (B_st)) [("0", move{ (use_op_alg' B_st) } ("__4") : expr)]);
-      Goto "_bb5"
+      local_dead "__4";
+      local_dead "x";
+      Goto "_bb7"
      ]>%E $
      <[
-     "_bb4" :=
+     "_bb3" :=
       "__0" <-{ (use_op_alg' ((Option_els (B_st)) : syn_type)) } EnumInit (Option_els (B_st)) "None" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTTyVar "B"] [])) (StructInit (Option_None_sls (B_st)) []);
       Goto "_bb7"
      ]>%E $
      <[
      "_bb5" :=
-      local_dead "__4";
-      Goto "_bb6"
+      return (move{ (use_op_alg' ((Option_els (B_st)) : syn_type)) } ("__0"))
      ]>%E $
      <[
      "_bb6" :=
-      local_dead "x";
-      Goto "_bb7"
+      Goto "_bb5"
      ]>%E $
      <[
      "_bb7" :=
-      Goto "_bb8"
-     ]>%E $
-     <[
-     "_bb8" :=
-      return (move{ (use_op_alg' ((Option_els (B_st)) : syn_type)) } ("__0"))
+      "__6" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) ("self");
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__6")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb5"]) (Goto "_bb6")
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -297,10 +253,6 @@ Program Definition Tasconvert_FromT_from_def (T_st: syn_type) : function :=
      "_bb0" :=
       local_live{ T_st } "__0";
       "__0" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("t");
-      Goto "_bb1"
-     ]>%E $
-     <[
-     "_bb1" :=
       return (move{ (use_op_alg' T_st) } ("__0"))
      ]>%E $
       ∅;
@@ -330,10 +282,6 @@ Program Definition Tasconvert_IntoU_into_def (convert_From_U_T_from_loc: loc) (T
      <[
      "_bb1" :=
       local_dead "__2";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       return (move{ (use_op_alg' U_st) } ("__0"))
      ]>%E $
       ∅;
@@ -378,8 +326,12 @@ Program Definition std_option_OptionTasTry_branch_def (T_st: syn_type) : functio
      "_bb0" :=
       local_live{ (ControlFlow_st (((Option_els (convert_Infallible_st)) : syn_type)) (T_st)) } "__0";
       local_live{ (IntSynType ISize) } "__2";
+      local_live{ BoolSynType } "__6";
+      local_live{ (IntSynType ISize) } "__7";
+      "__6" <-{ BoolOp } val_of_bool false;
+      "__6" <-{ BoolOp } val_of_bool true;
       "__2" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) ("self");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -387,41 +339,26 @@ Program Definition std_option_OptionTasTry_branch_def (T_st: syn_type) : functio
      ]>%E $
      <[
      "_bb2" :=
-      Goto "_bb4"
-     ]>%E $
-     <[
-     "_bb3" :=
       local_live{ ((Option_els (convert_Infallible_st)) : syn_type) } "__5";
       "__5" <-{ (use_op_alg' ((Option_els (convert_Infallible_st)) : syn_type)) } EnumInit (Option_els (convert_Infallible_st)) "None" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTLitType ["convert_Infallible_ty"] (RSTScopeInst [] [] [])] [])) (StructInit (Option_None_sls (convert_Infallible_st)) []);
       "__0" <-{ (use_op_alg' (ControlFlow_st (((Option_els (convert_Infallible_st)) : syn_type)) (T_st))) } EnumInit (ControlFlow_els (((Option_els (convert_Infallible_st)) : syn_type)) (T_st)) "Break" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTLitType ["Option_ty"] (RSTScopeInst [] [RSTLitType ["convert_Infallible_ty"] (RSTScopeInst [] [] [])] []); RSTTyVar "T"] [])) (StructInit (ControlFlow_Break_sls (((Option_els (convert_Infallible_st)) : syn_type)) (T_st)) [("0", move{ (use_op_alg' ((Option_els (convert_Infallible_st)) : syn_type)) } ("__5") : expr)]);
       local_dead "__5";
-      Goto "_bb7"
+      Goto "_bb4"
      ]>%E $
      <[
-     "_bb4" :=
+     "_bb3" :=
       local_live{ T_st } "v";
       "v" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ((EnumData ((Option_els (T_st))) "Some" ("self")) at{ (Option_Some_sls (T_st)) } "0");
       local_live{ T_st } "__4";
       "__4" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("v");
       "__0" <-{ (use_op_alg' (ControlFlow_st (((Option_els (convert_Infallible_st)) : syn_type)) (T_st))) } EnumInit (ControlFlow_els (((Option_els (convert_Infallible_st)) : syn_type)) (T_st)) "Continue" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTLitType ["Option_ty"] (RSTScopeInst [] [RSTLitType ["convert_Infallible_ty"] (RSTScopeInst [] [] [])] []); RSTTyVar "T"] [])) (StructInit (ControlFlow_Continue_sls (((Option_els (convert_Infallible_st)) : syn_type)) (T_st)) [("0", move{ (use_op_alg' T_st) } ("__4") : expr)]);
-      Goto "_bb5"
-     ]>%E $
-     <[
-     "_bb5" :=
       local_dead "__4";
-      Goto "_bb6"
-     ]>%E $
-     <[
-     "_bb6" :=
       local_dead "v";
-      Goto "_bb7"
+      Goto "_bb4"
      ]>%E $
      <[
-     "_bb7" :=
-      Goto "_bb8"
-     ]>%E $
-     <[
-     "_bb8" :=
+     "_bb4" :=
+      "__7" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) ("self");
       return (move{ (use_op_alg' (ControlFlow_st (((Option_els (convert_Infallible_st)) : syn_type)) (T_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -446,15 +383,7 @@ Program Definition std_option_OptionTasTry_from_output_def (T_st: syn_type) : fu
       local_live{ T_st } "__2";
       "__2" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("output");
       "__0" <-{ (use_op_alg' ((Option_els (T_st)) : syn_type)) } EnumInit (Option_els (T_st)) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTTyVar "T"] [])) (StructInit (Option_Some_sls (T_st)) [("0", move{ (use_op_alg' T_st) } ("__2") : expr)]);
-      Goto "_bb1"
-     ]>%E $
-     <[
-     "_bb1" :=
       local_dead "__2";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       return (move{ (use_op_alg' ((Option_els (T_st)) : syn_type)) } ("__0"))
      ]>%E $
       ∅;
@@ -477,8 +406,15 @@ Program Definition std_result_ResultTEasTry_branch_def (T_st: syn_type) (E_st: s
      "_bb0" :=
       local_live{ (ControlFlow_st (((Result_els (convert_Infallible_st) (E_st)) : syn_type)) (T_st)) } "__0";
       local_live{ (IntSynType ISize) } "__2";
+      local_live{ BoolSynType } "__8";
+      local_live{ BoolSynType } "__9";
+      local_live{ (IntSynType ISize) } "__10";
+      "__9" <-{ BoolOp } val_of_bool false;
+      "__8" <-{ BoolOp } val_of_bool false;
+      "__8" <-{ BoolOp } val_of_bool true;
+      "__9" <-{ BoolOp } val_of_bool true;
       "__2" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) ("self");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -486,59 +422,32 @@ Program Definition std_result_ResultTEasTry_branch_def (T_st: syn_type) (E_st: s
      ]>%E $
      <[
      "_bb2" :=
-      Goto "_bb4"
-     ]>%E $
-     <[
-     "_bb3" :=
       local_live{ E_st } "e";
       "e" <-{ (use_op_alg' E_st) } move{ (use_op_alg' E_st) } ((EnumData ((Result_els (T_st) (E_st))) "Err" ("self")) at{ (Result_Err_sls (T_st) (E_st)) } "0");
       local_live{ ((Result_els (convert_Infallible_st) (E_st)) : syn_type) } "__6";
       local_live{ E_st } "__7";
       "__7" <-{ (use_op_alg' E_st) } move{ (use_op_alg' E_st) } ("e");
       "__6" <-{ (use_op_alg' ((Result_els (convert_Infallible_st) (E_st)) : syn_type)) } EnumInit (Result_els (convert_Infallible_st) (E_st)) "Err" (RSTEnumDef ["Result_enum"] (RSTScopeInst [] [RSTLitType ["convert_Infallible_ty"] (RSTScopeInst [] [] []); RSTTyVar "E"] [])) (StructInit (Result_Err_sls (convert_Infallible_st) (E_st)) [("0", move{ (use_op_alg' E_st) } ("__7") : expr)]);
-      Goto "_bb7"
+      local_dead "__7";
+      "__0" <-{ (use_op_alg' (ControlFlow_st (((Result_els (convert_Infallible_st) (E_st)) : syn_type)) (T_st))) } EnumInit (ControlFlow_els (((Result_els (convert_Infallible_st) (E_st)) : syn_type)) (T_st)) "Break" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTLitType ["Result_ty"] (RSTScopeInst [] [RSTLitType ["convert_Infallible_ty"] (RSTScopeInst [] [] []); RSTTyVar "E"] []); RSTTyVar "T"] [])) (StructInit (ControlFlow_Break_sls (((Result_els (convert_Infallible_st) (E_st)) : syn_type)) (T_st)) [("0", move{ (use_op_alg' ((Result_els (convert_Infallible_st) (E_st)) : syn_type)) } ("__6") : expr)]);
+      local_dead "__6";
+      local_dead "e";
+      Goto "_bb4"
      ]>%E $
      <[
-     "_bb4" :=
+     "_bb3" :=
       local_live{ T_st } "v";
       "v" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ((EnumData ((Result_els (T_st) (E_st))) "Ok" ("self")) at{ (Result_Ok_sls (T_st) (E_st)) } "0");
       local_live{ T_st } "__4";
       "__4" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("v");
       "__0" <-{ (use_op_alg' (ControlFlow_st (((Result_els (convert_Infallible_st) (E_st)) : syn_type)) (T_st))) } EnumInit (ControlFlow_els (((Result_els (convert_Infallible_st) (E_st)) : syn_type)) (T_st)) "Continue" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTLitType ["Result_ty"] (RSTScopeInst [] [RSTLitType ["convert_Infallible_ty"] (RSTScopeInst [] [] []); RSTTyVar "E"] []); RSTTyVar "T"] [])) (StructInit (ControlFlow_Continue_sls (((Result_els (convert_Infallible_st) (E_st)) : syn_type)) (T_st)) [("0", move{ (use_op_alg' T_st) } ("__4") : expr)]);
-      Goto "_bb5"
-     ]>%E $
-     <[
-     "_bb5" :=
       local_dead "__4";
-      Goto "_bb6"
-     ]>%E $
-     <[
-     "_bb6" :=
       local_dead "v";
-      Goto "_bb10"
+      Goto "_bb4"
      ]>%E $
      <[
-     "_bb7" :=
-      local_dead "__7";
-      "__0" <-{ (use_op_alg' (ControlFlow_st (((Result_els (convert_Infallible_st) (E_st)) : syn_type)) (T_st))) } EnumInit (ControlFlow_els (((Result_els (convert_Infallible_st) (E_st)) : syn_type)) (T_st)) "Break" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTLitType ["Result_ty"] (RSTScopeInst [] [RSTLitType ["convert_Infallible_ty"] (RSTScopeInst [] [] []); RSTTyVar "E"] []); RSTTyVar "T"] [])) (StructInit (ControlFlow_Break_sls (((Result_els (convert_Infallible_st) (E_st)) : syn_type)) (T_st)) [("0", move{ (use_op_alg' ((Result_els (convert_Infallible_st) (E_st)) : syn_type)) } ("__6") : expr)]);
-      Goto "_bb8"
-     ]>%E $
-     <[
-     "_bb8" :=
-      local_dead "__6";
-      Goto "_bb9"
-     ]>%E $
-     <[
-     "_bb9" :=
-      local_dead "e";
-      Goto "_bb10"
-     ]>%E $
-     <[
-     "_bb10" :=
-      Goto "_bb11"
-     ]>%E $
-     <[
-     "_bb11" :=
+     "_bb4" :=
+      "__10" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) ("self");
       return (move{ (use_op_alg' (ControlFlow_st (((Result_els (convert_Infallible_st) (E_st)) : syn_type)) (T_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -563,15 +472,7 @@ Program Definition std_result_ResultTEasTry_from_output_def (T_st: syn_type) (E_
       local_live{ T_st } "__2";
       "__2" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("output");
       "__0" <-{ (use_op_alg' ((Result_els (T_st) (E_st)) : syn_type)) } EnumInit (Result_els (T_st) (E_st)) "Ok" (RSTEnumDef ["Result_enum"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "E"] [])) (StructInit (Result_Ok_sls (T_st) (E_st)) [("0", move{ (use_op_alg' T_st) } ("__2") : expr)]);
-      Goto "_bb1"
-     ]>%E $
-     <[
-     "_bb1" :=
       local_dead "__2";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       return (move{ (use_op_alg' ((Result_els (T_st) (E_st)) : syn_type)) } ("__0"))
      ]>%E $
       ∅;
@@ -594,8 +495,13 @@ Program Definition std_result_ResultTFasFromResidualstd_result_Resultconvert_Inf
      "_bb0" :=
       local_live{ ((Result_els (T_st) (F_st)) : syn_type) } "__0";
       local_live{ (IntSynType ISize) } "__2";
+      local_live{ BoolSynType } "__7";
+      local_live{ (IntSynType ISize) } "__8";
+      local_live{ (IntSynType ISize) } "__10";
+      "__7" <-{ BoolOp } val_of_bool false;
+      "__7" <-{ BoolOp } val_of_bool true;
       "__2" <-{ IntOp ISize } EnumDiscriminant ((Result_els (convert_Infallible_st) (E_st))) ("residual");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -603,41 +509,26 @@ Program Definition std_result_ResultTFasFromResidualstd_result_Resultconvert_Inf
      ]>%E $
      <[
      "_bb2" :=
-      Goto "_bb4"
-     ]>%E $
-     <[
-     "_bb3" :=
       local_live{ UnitSynType } "__6";
       StuckS
      ]>%E $
      <[
-     "_bb4" :=
+     "_bb3" :=
       local_live{ E_st } "e";
       "e" <-{ (use_op_alg' E_st) } move{ (use_op_alg' E_st) } ((EnumData ((Result_els (convert_Infallible_st) (E_st))) "Err" ("residual")) at{ (Result_Err_sls (convert_Infallible_st) (E_st)) } "0");
       local_live{ F_st } "__4";
       local_live{ E_st } "__5";
       "__5" <-{ (use_op_alg' E_st) } move{ (use_op_alg' E_st) } ("e");
       "__4" <-{ (use_op_alg' F_st) } CallE convert_From_F_E_from_loc [] [] [@{expr} move{ (use_op_alg' E_st) } ("__5")];
-      Goto "_bb5"
+      Goto "_bb4"
      ]>%E $
      <[
-     "_bb5" :=
+     "_bb4" :=
       local_dead "__5";
       "__0" <-{ (use_op_alg' ((Result_els (T_st) (F_st)) : syn_type)) } EnumInit (Result_els (T_st) (F_st)) "Err" (RSTEnumDef ["Result_enum"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "F"] [])) (StructInit (Result_Err_sls (T_st) (F_st)) [("0", move{ (use_op_alg' F_st) } ("__4") : expr)]);
-      Goto "_bb6"
-     ]>%E $
-     <[
-     "_bb6" :=
       local_dead "__4";
-      Goto "_bb7"
-     ]>%E $
-     <[
-     "_bb7" :=
       local_dead "e";
-      Goto "_bb8"
-     ]>%E $
-     <[
-     "_bb8" :=
+      "__8" <-{ IntOp ISize } EnumDiscriminant ((Result_els (convert_Infallible_st) (E_st))) ("residual");
       return (move{ (use_op_alg' ((Result_els (T_st) (F_st)) : syn_type)) } ("__0"))
      ]>%E $
       ∅;

@@ -20,6 +20,7 @@ Definition traits_iterator_Iterator_fold_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (B_st) →
   syn_type_is_layoutable (F_st) →
   syn_type_is_layoutable (((Option_els (Item_st)) : syn_type)) →
+  syn_type_is_layoutable (((Option_Some_sls (Item_st)) : syn_type)) →
   syn_type_is_layoutable (((tuple2_sls (B_st) (Item_st)) : syn_type)) →
   FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc ◁ᵥ{π, MetaNone} FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc @ function_ptr [PtrSynType; ((tuple2_sls (B_st) (Item_st)) : syn_type)] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[B_ty; F_ty; B_ty; Item_ty; B_ty]) : ([B_rt; F_rt; B_rt; Item_rt; B_rt] : list RT), fn_spec_add_late_pre ((FnMut_call_mut_spec (RRGS:=RRGS) (FnMut_F_BSelfastraits_iterator_Iterator_Item_spec-[] -[]))  -[late_lft_0] -[]) (λ π, ((typaram_wf B_rt B_st B_ty)
   ∗ (typaram_wf F_rt F_st F_ty)
@@ -54,7 +55,7 @@ Ltac traits_iterator_Iterator_fold_prelude :=
   intros arg_self arg_init arg_f;
   let π := get_π in
   let Σ := get_Σ in
-  specialize (pose_bb_inv (PolyCons ("_bb1", (["self"; "f"; "accum"], ["init"; "x"], ["__0"; "__5"; "__6"; "__7"; "__8"; "__9"; "__12"; "__13"; "__14"; "__15"; "__16"; "__17"; "__18"; "__19"], wrap_inv (λ (_params: ((_))) (_var_self: (place_rfnRT (Self_rt))) (_var_f: (place_rfnRT (F_rt))) (_var_accum: (place_rfnRT (B_rt))), let '(init_state) := _params in ((∃ (seq: _) (self: _) (accum: _) (f: _), (⌜(_var_self = ($# self))%Z⌝)
+  specialize (pose_bb_inv (PolyCons ("_bb1", (["self"; "f"; "accum"], ["init"; "x"; "__20"], ["__0"; "__5"; "__6"; "__7"; "__8"; "__9"; "__12"; "__13"; "__14"; "__15"; "__16"; "__17"; "__18"; "__19"; "__21"; "__23"; "__25"], wrap_inv (λ (_params: ((_))) (_var_self: (place_rfnRT (Self_rt))) (_var_f: (place_rfnRT (F_rt))) (_var_accum: (place_rfnRT (B_rt))), let '(init_state) := _params in ((∃ (seq: _) (self: _) (accum: _) (f: _), (⌜(_var_self = ($# self))%Z⌝)
   ∗ (⌜(_var_accum = ($# accum))%Z⌝)
   ∗ (⌜(_var_f = ($# f))%Z⌝)
   ∗ (IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p init_state seq self)

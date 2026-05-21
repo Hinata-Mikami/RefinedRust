@@ -11,7 +11,9 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition unitasPartialOrd_partial_cmp_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable ((Ordering_els : syn_type)) →
+  syn_type_is_layoutable ((Ordering_Equal_sls : syn_type)) →
   syn_type_is_layoutable (((Option_els (Ordering_st)) : syn_type)) →
+  syn_type_is_layoutable (((Option_Some_sls (Ordering_st)) : syn_type)) →
   ⊢ typed_function π (unitasPartialOrd_partial_cmp_def ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_unitasPartialOrd_partial_cmp -[ulft_1; ulft_2] -[]) (λ π, (True)
   ∗ (⌜(trait_incl_of_unitasPartialOrd_partial_cmp-[ulft_1; ulft_2] -[])%Z⌝))).
 End proof.

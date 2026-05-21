@@ -19,6 +19,8 @@ Definition traits_iterator_Iterator_all_closure0_lemma (π : thread_id) : Prop :
   syn_type_is_layoutable (Self_st) →
   syn_type_is_layoutable (F_st) →
   syn_type_is_layoutable (((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)) →
+  syn_type_is_layoutable (((ControlFlow_Break_sls (UnitSynType) (UnitSynType)) : syn_type)) →
+  syn_type_is_layoutable (((ControlFlow_Continue_sls (UnitSynType) (UnitSynType)) : syn_type)) →
   syn_type_is_layoutable (((tuple1_sls (PtrSynType)) : syn_type)) →
   syn_type_is_layoutable (((tuple2_sls (UnitSynType) (traits_iterator_Iterator_Self_Item_st)) : syn_type)) →
   syn_type_is_layoutable (((tuple1_sls (traits_iterator_Iterator_Self_Item_st)) : syn_type)) →

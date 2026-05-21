@@ -21,7 +21,10 @@ Definition traits_iterator_Iterator_try_fold_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (F_st) →
   syn_type_is_layoutable (R_st) →
   syn_type_is_layoutable (((ControlFlow_els (Try_R_Residual_st) (B_st)) : syn_type)) →
+  syn_type_is_layoutable (((ControlFlow_Break_sls (Try_R_Residual_st) (B_st)) : syn_type)) →
+  syn_type_is_layoutable (((ControlFlow_Continue_sls (Try_R_Residual_st) (B_st)) : syn_type)) →
   syn_type_is_layoutable (((Option_els (Item_st)) : syn_type)) →
+  syn_type_is_layoutable (((Option_Some_sls (Item_st)) : syn_type)) →
   syn_type_is_layoutable (((tuple2_sls (B_st) (Item_st)) : syn_type)) →
   FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc ◁ᵥ{π, MetaNone} FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc @ function_ptr [PtrSynType; ((tuple2_sls (B_st) (Item_st)) : syn_type)] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[B_ty; F_ty; R_ty; Item_ty; R_ty]) : ([B_rt; F_rt; R_rt; Item_rt; R_rt] : list RT), fn_spec_add_late_pre ((FnMut_call_mut_spec (RRGS:=RRGS) (FnMut_F_BSelfastraits_iterator_Iterator_Item_spec-[] -[]))  -[late_lft_0] -[]) (λ π, ((typaram_wf B_rt B_st B_ty)
   ∗ (typaram_wf F_rt F_st F_ty)
@@ -66,7 +69,7 @@ Ltac traits_iterator_Iterator_try_fold_prelude :=
   intros arg_self arg_init arg_f;
   let π := get_π in
   let Σ := get_Σ in
-  specialize (pose_bb_inv (PolyCons ("_bb1", (["self"; "f"; "accum"], ["init"; "x"; "residual"; "val"], ["__0"; "__5"; "__6"; "__7"; "__8"; "__9"; "__12"; "__13"; "__14"; "__15"; "__16"; "__17"; "__18"; "__19"; "__21"; "__22"; "__24"; "__25"; "__26"; "__27"], wrap_inv (λ (_params: ((_ * _))) (_var_self: (place_rfnRT ((place_rfnRT (Self_rt)) * gname)%type)) (_var_f: (place_rfnRT (F_rt))) (_var_accum: (place_rfnRT (B_rt))), let '(γ, init_state) := _params in ((∃ (seq: _) (self: _) (accum: _) (f: _), (⌜(_var_self = ($# self))%Z⌝)
+  specialize (pose_bb_inv (PolyCons ("_bb1", (["self"; "f"; "accum"], ["init"; "x"; "residual"; "val"; "__28"], ["__0"; "__5"; "__6"; "__7"; "__8"; "__9"; "__12"; "__13"; "__14"; "__15"; "__16"; "__17"; "__18"; "__19"; "__21"; "__22"; "__24"; "__25"; "__26"; "__27"; "__29"; "__31"; "__33"; "__35"; "__37"; "__39"; "__40"], wrap_inv (λ (_params: ((_ * _))) (_var_self: (place_rfnRT ((place_rfnRT (Self_rt)) * gname)%type)) (_var_f: (place_rfnRT (F_rt))) (_var_accum: (place_rfnRT (B_rt))), let '(γ, init_state) := _params in ((∃ (seq: _) (self: _) (accum: _) (f: _), (⌜(_var_self = ($# self))%Z⌝)
   ∗ (⌜(_var_accum = ($# accum))%Z⌝)
   ∗ (⌜(_var_f = ($# f))%Z⌝)
   ∗ (⌜(self.ghost = γ)%Z⌝)

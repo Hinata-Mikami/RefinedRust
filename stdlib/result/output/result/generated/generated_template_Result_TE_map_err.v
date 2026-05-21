@@ -17,6 +17,10 @@ Definition Result_TE_map_err_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (O_st) →
   syn_type_is_layoutable (((Result_els (T_st) (E_st)) : syn_type)) →
   syn_type_is_layoutable (((Result_els (T_st) (F_st)) : syn_type)) →
+  syn_type_is_layoutable (((Result_Err_sls (T_st) (E_st)) : syn_type)) →
+  syn_type_is_layoutable (((Result_Err_sls (T_st) (F_st)) : syn_type)) →
+  syn_type_is_layoutable (((Result_Ok_sls (T_st) (E_st)) : syn_type)) →
+  syn_type_is_layoutable (((Result_Ok_sls (T_st) (F_st)) : syn_type)) →
   syn_type_is_layoutable (((tuple1_sls (E_st)) : syn_type)) →
   FnOnce_O_E_call_once_loc ◁ᵥ{π, MetaNone} FnOnce_O_E_call_once_loc @ function_ptr [O_st; ((tuple1_sls (E_st)) : syn_type)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((FnOnce_call_once_spec (RRGS:=RRGS) (FnOnce_O_E_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
   typed_function π (Result_TE_map_err_def FnOnce_O_E_call_once_loc  T_st  E_st  F_st  O_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty; O_ty]) : ([T_rt; E_rt; F_rt; O_rt] : list RT), fn_spec_add_late_pre (type_of_Result_TE_map_err T_rt E_rt F_rt O_rt T_st E_st F_st O_st FnOnce_O_E_spec_attrs -[] -[T_ty; E_ty; F_ty; O_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)

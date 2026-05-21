@@ -65,7 +65,7 @@ Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) 
       local_live{ (IntSynType ISize) } "__2";
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* initialization *)
       "__2" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) (!{ PtrOp } ( "self" ));
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -73,10 +73,6 @@ Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) 
      ]>%E $
      <[
      "_bb2" :=
-      Goto "_bb4"
-     ]>%E $
-     <[
-     "_bb3" :=
       local_live{ PtrSynType } "__6";
       annot{ 1 }: CopyLftNameAnnot "vlft3" "plft7"; (* composite *)
       "__6" <-{ PtrOp } &ref{ Shr, Some (RSTTyVar "E"), "vlft3" } ((EnumData ((Result_els (T_st) (E_st))) "Err" (!{ PtrOp } ( "self" ))) at{ (Result_Err_sls (T_st) (E_st)) } "0");
@@ -88,10 +84,10 @@ Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft11" "vlft4"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft12" "plft11"; (* function_call *)
       "__7" <-{ (use_op_alg' E_st) } CallE Clone_E_clone_loc ["vlft12"] [] [@{expr} move{ PtrOp } ("__8")];
-      Goto "_bb7"
+      Goto "_bb5"
      ]>%E $
      <[
-     "_bb4" :=
+     "_bb3" :=
       local_live{ PtrSynType } "__self_0";
       annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
       "__self_0" <-{ PtrOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft5" } ((EnumData ((Result_els (T_st) (E_st))) "Ok" (!{ PtrOp } ( "self" ))) at{ (Result_Ok_sls (T_st) (E_st)) } "0");
@@ -103,34 +99,26 @@ Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft6"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft13" "plft9"; (* function_call *)
       "__4" <-{ (use_op_alg' T_st) } CallE Clone_T_clone_loc ["vlft13"] [] [@{expr} move{ PtrOp } ("__5")];
-      Goto "_bb5"
+      Goto "_bb4"
+     ]>%E $
+     <[
+     "_bb4" :=
+      local_dead "__5";
+      "__0" <-{ (use_op_alg' (Result_st (T_st) (E_st))) } EnumInit (Result_els (T_st) (E_st)) "Ok" (RSTEnumDef ["Result_enum"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "E"] [])) (StructInit (Result_Ok_sls (T_st) (E_st)) [("0", move{ (use_op_alg' T_st) } ("__4") : expr)]);
+      local_dead "__4";
+      local_dead "__self_0";
+      Goto "_bb6"
      ]>%E $
      <[
      "_bb5" :=
-      local_dead "__5";
-      "__0" <-{ (use_op_alg' (Result_st (T_st) (E_st))) } EnumInit (Result_els (T_st) (E_st)) "Ok" (RSTEnumDef ["Result_enum"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "E"] [])) (StructInit (Result_Ok_sls (T_st) (E_st)) [("0", move{ (use_op_alg' T_st) } ("__4") : expr)]);
+      local_dead "__8";
+      "__0" <-{ (use_op_alg' (Result_st (T_st) (E_st))) } EnumInit (Result_els (T_st) (E_st)) "Err" (RSTEnumDef ["Result_enum"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "E"] [])) (StructInit (Result_Err_sls (T_st) (E_st)) [("0", move{ (use_op_alg' E_st) } ("__7") : expr)]);
+      local_dead "__7";
+      local_dead "__6";
       Goto "_bb6"
      ]>%E $
      <[
      "_bb6" :=
-      local_dead "__4";
-      local_dead "__self_0";
-      Goto "_bb9"
-     ]>%E $
-     <[
-     "_bb7" :=
-      local_dead "__8";
-      "__0" <-{ (use_op_alg' (Result_st (T_st) (E_st))) } EnumInit (Result_els (T_st) (E_st)) "Err" (RSTEnumDef ["Result_enum"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "E"] [])) (StructInit (Result_Err_sls (T_st) (E_st)) [("0", move{ (use_op_alg' E_st) } ("__7") : expr)]);
-      Goto "_bb8"
-     ]>%E $
-     <[
-     "_bb8" :=
-      local_dead "__7";
-      local_dead "__6";
-      Goto "_bb9"
-     ]>%E $
-     <[
-     "_bb9" :=
       return (move{ (use_op_alg' (Result_st (T_st) (E_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -154,8 +142,19 @@ Program Definition Result_TE_map_def (FnOnce_F_T_call_once_loc: loc) (T_st: syn_
      "_bb0" :=
       local_live{ (Result_st (U_st) (E_st)) } "__0";
       local_live{ (IntSynType ISize) } "__3";
+      local_live{ BoolSynType } "__11";
+      local_live{ BoolSynType } "__12";
+      local_live{ BoolSynType } "__13";
+      local_live{ (IntSynType ISize) } "__14";
+      local_live{ (IntSynType ISize) } "__16";
+      "__11" <-{ BoolOp } val_of_bool false;
+      "__13" <-{ BoolOp } val_of_bool false;
+      "__12" <-{ BoolOp } val_of_bool false;
+      "__12" <-{ BoolOp } val_of_bool true;
+      "__13" <-{ BoolOp } val_of_bool true;
+      "__11" <-{ BoolOp } val_of_bool true;
       "__3" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) ("self");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__3")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__3")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -163,74 +162,55 @@ Program Definition Result_TE_map_def (FnOnce_F_T_call_once_loc: loc) (T_st: syn_
      ]>%E $
      <[
      "_bb2" :=
-      Goto "_bb4"
-     ]>%E $
-     <[
-     "_bb3" :=
       local_live{ E_st } "e";
       "e" <-{ (use_op_alg' E_st) } move{ (use_op_alg' E_st) } ((EnumData ((Result_els (T_st) (E_st))) "Err" ("self")) at{ (Result_Err_sls (T_st) (E_st)) } "0");
       local_live{ E_st } "__10";
       "__10" <-{ (use_op_alg' E_st) } move{ (use_op_alg' E_st) } ("e");
       "__0" <-{ (use_op_alg' (Result_st (U_st) (E_st))) } EnumInit (Result_els (U_st) (E_st)) "Err" (RSTEnumDef ["Result_enum"] (RSTScopeInst [] [RSTTyVar "U"; RSTTyVar "E"] [])) (StructInit (Result_Err_sls (U_st) (E_st)) [("0", move{ (use_op_alg' E_st) } ("__10") : expr)]);
-      Goto "_bb9"
+      local_dead "__10";
+      local_dead "e";
+      Goto "_bb5"
      ]>%E $
      <[
-     "_bb4" :=
+     "_bb3" :=
       local_live{ T_st } "t";
       "t" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ((EnumData ((Result_els (T_st) (E_st))) "Ok" ("self")) at{ (Result_Ok_sls (T_st) (E_st)) } "0");
       local_live{ U_st } "__5";
       local_live{ F_st } "__6";
+      "__11" <-{ BoolOp } val_of_bool false;
       "__6" <-{ (use_op_alg' F_st) } move{ (use_op_alg' F_st) } ("op");
       local_live{ ((tuple1_sls (T_st)) : syn_type) } "__7";
       local_live{ T_st } "__8";
       "__8" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("t");
       "__7" <-{ (use_op_alg' ((tuple1_sls (T_st)) : syn_type)) } StructInit (tuple1_sls (T_st)) [("0", move{ (use_op_alg' T_st) } ("__8") : expr)];
       "__5" <-{ (use_op_alg' U_st) } CallE FnOnce_F_T_call_once_loc [] [] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple1_sls (T_st)) : syn_type)) } ("__7")];
-      Goto "_bb5"
+      Goto "_bb4"
      ]>%E $
      <[
-     "_bb5" :=
-      Goto "_bb6"
-     ]>%E $
-     <[
-     "_bb6" :=
+     "_bb4" :=
       local_dead "__8";
       local_dead "__7";
       local_dead "__6";
       "__0" <-{ (use_op_alg' (Result_st (U_st) (E_st))) } EnumInit (Result_els (U_st) (E_st)) "Ok" (RSTEnumDef ["Result_enum"] (RSTScopeInst [] [RSTTyVar "U"; RSTTyVar "E"] [])) (StructInit (Result_Ok_sls (U_st) (E_st)) [("0", move{ (use_op_alg' U_st) } ("__5") : expr)]);
-      Goto "_bb7"
+      local_dead "__5";
+      local_dead "t";
+      Goto "_bb5"
+     ]>%E $
+     <[
+     "_bb5" :=
+      if{ BoolOp }: copy{ BoolOp } ("__11") then
+       Goto "_bb7"
+      else
+       Goto "_bb6"
+     ]>%E $
+     <[
+     "_bb6" :=
+      "__14" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) ("self");
+      return (move{ (use_op_alg' (Result_st (U_st) (E_st))) } ("__0"))
      ]>%E $
      <[
      "_bb7" :=
-      local_dead "__5";
-      Goto "_bb8"
-     ]>%E $
-     <[
-     "_bb8" :=
-      local_dead "t";
-      Goto "_bb11"
-     ]>%E $
-     <[
-     "_bb9" :=
-      local_dead "__10";
-      Goto "_bb10"
-     ]>%E $
-     <[
-     "_bb10" :=
-      local_dead "e";
-      Goto "_bb11"
-     ]>%E $
-     <[
-     "_bb11" :=
-      Goto "_bb12"
-     ]>%E $
-     <[
-     "_bb12" :=
-      Goto "_bb13"
-     ]>%E $
-     <[
-     "_bb13" :=
-      return (move{ (use_op_alg' (Result_st (U_st) (E_st))) } ("__0"))
+      Goto "_bb6"
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -253,8 +233,19 @@ Program Definition Result_TE_map_err_def (FnOnce_O_E_call_once_loc: loc) (T_st: 
      "_bb0" :=
       local_live{ (Result_st (T_st) (F_st)) } "__0";
       local_live{ (IntSynType ISize) } "__3";
+      local_live{ BoolSynType } "__11";
+      local_live{ BoolSynType } "__12";
+      local_live{ BoolSynType } "__13";
+      local_live{ (IntSynType ISize) } "__14";
+      local_live{ (IntSynType ISize) } "__16";
+      "__11" <-{ BoolOp } val_of_bool false;
+      "__13" <-{ BoolOp } val_of_bool false;
+      "__12" <-{ BoolOp } val_of_bool false;
+      "__12" <-{ BoolOp } val_of_bool true;
+      "__13" <-{ BoolOp } val_of_bool true;
+      "__11" <-{ BoolOp } val_of_bool true;
       "__3" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) ("self");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__3")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__3")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -262,74 +253,55 @@ Program Definition Result_TE_map_err_def (FnOnce_O_E_call_once_loc: loc) (T_st: 
      ]>%E $
      <[
      "_bb2" :=
-      Goto "_bb4"
-     ]>%E $
-     <[
-     "_bb3" :=
       local_live{ E_st } "e";
       "e" <-{ (use_op_alg' E_st) } move{ (use_op_alg' E_st) } ((EnumData ((Result_els (T_st) (E_st))) "Err" ("self")) at{ (Result_Err_sls (T_st) (E_st)) } "0");
       local_live{ F_st } "__7";
       local_live{ O_st } "__8";
+      "__11" <-{ BoolOp } val_of_bool false;
       "__8" <-{ (use_op_alg' O_st) } move{ (use_op_alg' O_st) } ("op");
       local_live{ ((tuple1_sls (E_st)) : syn_type) } "__9";
       local_live{ E_st } "__10";
       "__10" <-{ (use_op_alg' E_st) } move{ (use_op_alg' E_st) } ("e");
       "__9" <-{ (use_op_alg' ((tuple1_sls (E_st)) : syn_type)) } StructInit (tuple1_sls (E_st)) [("0", move{ (use_op_alg' E_st) } ("__10") : expr)];
       "__7" <-{ (use_op_alg' F_st) } CallE FnOnce_O_E_call_once_loc [] [] [@{expr} move{ (use_op_alg' O_st) } ("__8"); move{ (use_op_alg' ((tuple1_sls (E_st)) : syn_type)) } ("__9")];
-      Goto "_bb7"
+      Goto "_bb4"
      ]>%E $
      <[
-     "_bb4" :=
+     "_bb3" :=
       local_live{ T_st } "t";
       "t" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ((EnumData ((Result_els (T_st) (E_st))) "Ok" ("self")) at{ (Result_Ok_sls (T_st) (E_st)) } "0");
       local_live{ T_st } "__5";
       "__5" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("t");
       "__0" <-{ (use_op_alg' (Result_st (T_st) (F_st))) } EnumInit (Result_els (T_st) (F_st)) "Ok" (RSTEnumDef ["Result_enum"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "F"] [])) (StructInit (Result_Ok_sls (T_st) (F_st)) [("0", move{ (use_op_alg' T_st) } ("__5") : expr)]);
+      local_dead "__5";
+      local_dead "t";
       Goto "_bb5"
      ]>%E $
      <[
-     "_bb5" :=
-      local_dead "__5";
-      Goto "_bb6"
-     ]>%E $
-     <[
-     "_bb6" :=
-      local_dead "t";
-      Goto "_bb11"
-     ]>%E $
-     <[
-     "_bb7" :=
-      Goto "_bb8"
-     ]>%E $
-     <[
-     "_bb8" :=
+     "_bb4" :=
       local_dead "__10";
       local_dead "__9";
       local_dead "__8";
       "__0" <-{ (use_op_alg' (Result_st (T_st) (F_st))) } EnumInit (Result_els (T_st) (F_st)) "Err" (RSTEnumDef ["Result_enum"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "F"] [])) (StructInit (Result_Err_sls (T_st) (F_st)) [("0", move{ (use_op_alg' F_st) } ("__7") : expr)]);
-      Goto "_bb9"
-     ]>%E $
-     <[
-     "_bb9" :=
       local_dead "__7";
-      Goto "_bb10"
-     ]>%E $
-     <[
-     "_bb10" :=
       local_dead "e";
-      Goto "_bb11"
+      Goto "_bb5"
      ]>%E $
      <[
-     "_bb11" :=
-      Goto "_bb12"
+     "_bb5" :=
+      if{ BoolOp }: copy{ BoolOp } ("__11") then
+       Goto "_bb7"
+      else
+       Goto "_bb6"
      ]>%E $
      <[
-     "_bb12" :=
-      Goto "_bb13"
-     ]>%E $
-     <[
-     "_bb13" :=
+     "_bb6" :=
+      "__14" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) ("self");
       return (move{ (use_op_alg' (Result_st (T_st) (F_st))) } ("__0"))
+     ]>%E $
+     <[
+     "_bb7" :=
+      Goto "_bb6"
      ]>%E $
       ∅;
      f_init := "_bb0";

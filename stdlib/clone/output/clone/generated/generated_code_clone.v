@@ -34,10 +34,6 @@ Program Definition Clone_clone_from_def (Clone_Self_clone_loc: loc) (Self_st: sy
      <[
      "_bb2" :=
       !{ PtrOp } ( "self" ) <-{ (use_op_alg' Self_st) } move{ (use_op_alg' Self_st) } ("__3");
-      Goto "_bb4"
-     ]>%E $
-     <[
-     "_bb4" :=
       local_dead "__3";
       "__0" <-{ StructOp unit_sl [] } zst_val;
       return (move{ StructOp unit_sl [] } ("__0"))

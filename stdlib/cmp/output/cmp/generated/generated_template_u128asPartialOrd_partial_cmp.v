@@ -13,6 +13,7 @@ Definition u128asPartialOrd_partial_cmp_lemma (π : thread_id) : Prop :=
   ∀ (u128asOrd_cmp_loc : loc) , 
   syn_type_is_layoutable ((Ordering_els : syn_type)) →
   syn_type_is_layoutable (((Option_els (Ordering_st)) : syn_type)) →
+  syn_type_is_layoutable (((Option_Some_sls (Ordering_st)) : syn_type)) →
   u128asOrd_cmp_loc ◁ᵥ{π, MetaNone} u128asOrd_cmp_loc @ function_ptr [PtrSynType; PtrSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_u128asOrd_cmp (RRGS:=RRGS)  -[late_lft_0; late_lft_1] -[]) (λ π, (True))%I) -∗
   typed_function π (u128asPartialOrd_partial_cmp_def u128asOrd_cmp_loc  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_u128asPartialOrd_partial_cmp -[ulft_1; ulft_2] -[]) (λ π, (True)
   ∗ (⌜(trait_incl_of_u128asPartialOrd_partial_cmp-[ulft_1; ulft_2] -[])%Z⌝))).

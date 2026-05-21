@@ -1445,10 +1445,6 @@ Program Definition mut_ptr_write_def (write_T_loc: loc) (T_st: syn_type) : funct
      "_bb1" :=
       local_dead "__4";
       local_dead "__3";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       return (move{ StructOp unit_sl [] } ("__0"))
      ]>%E $
       ∅;
@@ -1482,10 +1478,6 @@ Program Definition mut_ptr_write_volatile_def (write_volatile_T_loc: loc) (T_st:
      "_bb1" :=
       local_dead "__4";
       local_dead "__3";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       return (move{ StructOp unit_sl [] } ("__0"))
      ]>%E $
       ∅;
@@ -1548,10 +1540,6 @@ Program Definition write_volatile_def (write_T_loc: loc) (T_st: syn_type) : func
      "_bb1" :=
       local_dead "__4";
       local_dead "__3";
-      Goto "_bb2"
-     ]>%E $
-     <[
-     "_bb2" :=
       return (move{ StructOp unit_sl [] } ("__0"))
      ]>%E $
       ∅;

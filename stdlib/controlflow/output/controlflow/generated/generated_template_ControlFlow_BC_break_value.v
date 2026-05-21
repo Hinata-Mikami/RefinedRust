@@ -13,7 +13,10 @@ Definition ControlFlow_BC_break_value_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (B_st) →
   syn_type_is_layoutable (C_st) →
   syn_type_is_layoutable (((ControlFlow_els (B_st) (C_st)) : syn_type)) →
+  syn_type_is_layoutable (((ControlFlow_Break_sls (B_st) (C_st)) : syn_type)) →
   syn_type_is_layoutable (((Option_els (B_st)) : syn_type)) →
+  syn_type_is_layoutable (((Option_None_sls (B_st)) : syn_type)) →
+  syn_type_is_layoutable (((Option_Some_sls (B_st)) : syn_type)) →
   ⊢ typed_function π (ControlFlow_BC_break_value_def B_st  C_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), fn_spec_add_late_pre (type_of_ControlFlow_BC_break_value B_rt C_rt B_st C_st -[] -[B_ty; C_ty]) (λ π, ((typaram_wf B_rt B_st B_ty)
   ∗ (typaram_wf C_rt C_st C_ty))
   ∗ (⌜((trait_incl_of_ControlFlow_BC_break_value (B_rt) (C_rt) (B_st) (C_st))-[] -[B_ty; C_ty])%Z⌝))).

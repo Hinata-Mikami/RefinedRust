@@ -378,6 +378,9 @@ Program Definition nonnull_NonNull_T_write_def (nonnull_NonNull_T_as_ptr_T_loc: 
       <[
      "_bb0" :=
       local_live{ UnitSynType } "__0";
+      local_live{ BoolSynType } "__6";
+      "__6" <-{ BoolOp } val_of_bool false;
+      "__6" <-{ BoolOp } val_of_bool true;
       local_live{ PtrSynType } "__3";
       local_live{ (nonnull_NonNull_st (T_st)) } "__4";
       "__4" <-{ (use_op_alg' (nonnull_NonNull_st (T_st))) } copy{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("self");
@@ -388,6 +391,7 @@ Program Definition nonnull_NonNull_T_write_def (nonnull_NonNull_T_as_ptr_T_loc: 
      "_bb1" :=
       local_dead "__4";
       local_live{ T_st } "__5";
+      "__6" <-{ BoolOp } val_of_bool false;
       "__5" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("val");
       "__0" <-{ StructOp unit_sl [] } CallE write_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3"); move{ (use_op_alg' T_st) } ("__5")];
       Goto "_bb2"
@@ -396,10 +400,6 @@ Program Definition nonnull_NonNull_T_write_def (nonnull_NonNull_T_as_ptr_T_loc: 
      "_bb2" :=
       local_dead "__5";
       local_dead "__3";
-      Goto "_bb3"
-     ]>%E $
-     <[
-     "_bb3" :=
       return (move{ StructOp unit_sl [] } ("__0"))
      ]>%E $
       ∅;
@@ -422,6 +422,9 @@ Program Definition nonnull_NonNull_T_write_volatile_def (nonnull_NonNull_T_as_pt
       <[
      "_bb0" :=
       local_live{ UnitSynType } "__0";
+      local_live{ BoolSynType } "__6";
+      "__6" <-{ BoolOp } val_of_bool false;
+      "__6" <-{ BoolOp } val_of_bool true;
       local_live{ PtrSynType } "__3";
       local_live{ (nonnull_NonNull_st (T_st)) } "__4";
       "__4" <-{ (use_op_alg' (nonnull_NonNull_st (T_st))) } copy{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("self");
@@ -432,6 +435,7 @@ Program Definition nonnull_NonNull_T_write_volatile_def (nonnull_NonNull_T_as_pt
      "_bb1" :=
       local_dead "__4";
       local_live{ T_st } "__5";
+      "__6" <-{ BoolOp } val_of_bool false;
       "__5" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("val");
       "__0" <-{ StructOp unit_sl [] } CallE write_volatile_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3"); move{ (use_op_alg' T_st) } ("__5")];
       Goto "_bb2"
@@ -440,10 +444,6 @@ Program Definition nonnull_NonNull_T_write_volatile_def (nonnull_NonNull_T_as_pt
      "_bb2" :=
       local_dead "__5";
       local_dead "__3";
-      Goto "_bb3"
-     ]>%E $
-     <[
-     "_bb3" :=
       return (move{ StructOp unit_sl [] } ("__0"))
      ]>%E $
       ∅;
