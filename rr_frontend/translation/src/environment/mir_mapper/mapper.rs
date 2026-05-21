@@ -232,6 +232,28 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         self.mark_phase(loc, phase);
     }
 
+    fn mark_block_statements_with_phase(&mut self, bb: BasicBlock, origin: Origin, phase: PointPhase) {
+        for idx in 0..self.de.basic_blocks[bb].statements.len() {
+            self.mark_origin_with_phase((bb, idx), origin, phase);
+        }
+    }
+
+    fn mark_inserted_block_statements_with_phase(&mut self, bb: BasicBlock, phase: PointPhase) {
+        for idx in 0..self.de.basic_blocks[bb].statements.len() {
+            self.target_to_source.entry((bb, idx)).or_insert(Origin::Inserted);
+            self.mark_phase((bb, idx), phase);
+        }
+    }
+
+    fn source_chain_origin(&self, start_bb: BasicBlock, current_bb: BasicBlock) -> Origin {
+        let loc = (current_bb, self.bc.basic_blocks[current_bb].statements.len());
+        if current_bb == start_bb { Origin::Source(loc) } else { Origin::FoldedFrom(loc) }
+    }
+
+    fn has_single_source_predecessor(&self, bb: BasicBlock) -> bool {
+        self.bc_predecessors.get(&bb).is_some_and(|preds| preds.len() == 1)
+    }
+
     /// Find the source location of the next mapped target location in the same block.
     ///
     /// This is only used for inserted statements. Mapping them to the next real
@@ -648,7 +670,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                     return false;
                 };
 
-                if self.bc_predecessors.get(&next_s).map_or(0, Vec::len) != 1 {
+                if !self.has_single_source_predecessor(next_s) {
                     return false;
                 }
 
@@ -697,12 +719,8 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             PointPhase::PreEffect(src_drop),
         );
 
-        let drop_data = &self.de.basic_blocks[drop_bb];
-        for i in 0..drop_data.statements.len() {
-            self.target_to_source.entry((drop_bb, i)).or_insert(Origin::Inserted);
-            self.mark_phase((drop_bb, i), PointPhase::PreEffect(src_drop));
-        }
-        let drop_loc = (drop_bb, drop_data.statements.len());
+        self.mark_inserted_block_statements_with_phase(drop_bb, PointPhase::PreEffect(src_drop));
+        let drop_loc = (drop_bb, self.de.basic_blocks[drop_bb].statements.len());
         self.mark_origin_with_phase(drop_loc, Origin::SplitFrom(src_drop), PointPhase::Direct(src_drop));
 
         if let mir::TerminatorKind::Drop {
@@ -939,14 +957,11 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         let src_drop = (source_drop.drop_bb, self.bc.basic_blocks[source_drop.drop_bb].statements.len());
         for block in open_drop_match.blocks {
             if block.mark_statements {
-                let data = &self.de.basic_blocks[block.bb];
-                for i in 0..data.statements.len() {
-                    self.mark_origin_with_phase(
-                        (block.bb, i),
-                        Origin::SplitFrom(src_drop),
-                        PointPhase::PreEffect(src_drop),
-                    );
-                }
+                self.mark_block_statements_with_phase(
+                    block.bb,
+                    Origin::SplitFrom(src_drop),
+                    PointPhase::PreEffect(src_drop),
+                );
             }
 
             let loc_t = (block.bb, self.de.basic_blocks[block.bb].statements.len());
@@ -978,11 +993,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             let ds = &self.bc.basic_blocks[cur_s];
             let ts = ds.terminator();
             if self.terminator_shape_equiv(tt, ts) {
-                let origin = if cur_s == bb_s {
-                    Origin::Source((cur_s, ds.statements.len()))
-                } else {
-                    Origin::FoldedFrom((cur_s, ds.statements.len()))
-                };
+                let origin = self.source_chain_origin(bb_s, cur_s);
                 self.mark_origin(loc_t, origin);
                 self.recurse_direct(tt, ts);
                 return true;
@@ -1007,7 +1018,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 continue;
             }
 
-            if self.bc_predecessors.get(&next_s).map_or(0, Vec::len) != 1 {
+            if !self.has_single_source_predecessor(next_s) {
                 return false;
             }
 
@@ -1149,7 +1160,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 _ => return None,
             };
 
-            if self.bc_predecessors.get(&next).map_or(0, Vec::len) != 1 {
+            if !self.has_single_source_predecessor(next) {
                 let next_term = self.bc.basic_blocks[next].terminator();
                 if let mir::TerminatorKind::Drop { place, .. } = &next_term.kind {
                     let source_place = Self::normalize_source_place(*place);
@@ -1264,11 +1275,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             let ts = ds.terminator();
 
             if self.terminator_shape_equiv(tt, ts) {
-                let origin = if cur_s == bb_s {
-                    Origin::Source((cur_s, ds.statements.len()))
-                } else {
-                    Origin::FoldedFrom((cur_s, ds.statements.len()))
-                };
+                let origin = self.source_chain_origin(bb_s, cur_s);
                 self.mark_origin(loc_t, origin);
                 self.recurse_direct(tt, ts);
                 return true;
@@ -1311,13 +1318,11 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 && self.block_has_only_open_drop_administrative_statements(bb_t)
             {
                 let src_drop = (cur_s, ds.statements.len());
-                for idx_t in 0..self.de.basic_blocks[bb_t].statements.len() {
-                    self.mark_origin_with_phase(
-                        (bb_t, idx_t),
-                        Origin::SplitFrom(src_drop),
-                        PointPhase::PreEffect(src_drop),
-                    );
-                }
+                self.mark_block_statements_with_phase(
+                    bb_t,
+                    Origin::SplitFrom(src_drop),
+                    PointPhase::PreEffect(src_drop),
+                );
                 self.mark_origin_with_phase(
                     loc_t,
                     Origin::SplitFrom(src_drop),
@@ -1331,7 +1336,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 return false;
             };
 
-            if self.bc_predecessors.get(&next_s).map_or(0, Vec::len) != 1 {
+            if !self.has_single_source_predecessor(next_s) {
                 return false;
             }
 
@@ -1463,7 +1468,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
 
     fn single_linear_successor(&self, bb: BasicBlock) -> Option<BasicBlock> {
         let succ = normal_successor(self.bc.basic_blocks[bb].terminator())?;
-        (self.bc_predecessors.get(&succ)?.len() == 1).then_some(succ)
+        self.has_single_source_predecessor(succ).then_some(succ)
     }
 
     /// Match calls whose borrowck cleanup edge was erased by drop elaboration.
@@ -1525,8 +1530,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             return false;
         }
 
-        self.target_to_source
-            .insert((bb_t, dt.statements.len()), Origin::Source((bb_s, ds.statements.len())));
+        self.mark_origin((bb_t, dt.statements.len()), Origin::Source((bb_s, ds.statements.len())));
 
         if let (Some(target_t), Some(target_s)) = (*target_t, *target_s) {
             self.align_blocks(target_t, target_s);
@@ -1570,8 +1574,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             return false;
         }
 
-        self.target_to_source
-            .insert((bb_t, dt.statements.len()), Origin::Source((bb_s, ds.statements.len())));
+        self.mark_origin((bb_t, dt.statements.len()), Origin::Source((bb_s, ds.statements.len())));
 
         if let (Some(bb_t), Some(bb_s)) = (unwind_target(*unwind_t), unwind_target(*unwind_s)) {
             self.align_blocks(bb_t, bb_s);

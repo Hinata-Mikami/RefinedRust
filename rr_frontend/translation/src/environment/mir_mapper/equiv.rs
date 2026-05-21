@@ -255,40 +255,41 @@ impl<'tcx> Mapper<'_, 'tcx> {
         local: Local,
         flavor: MirFlavor,
     ) -> bool {
+        Self::rvalue_uses_place(rvalue, |place| self.place_uses_box_deref_of_local(place, local, flavor))
+    }
+
+    fn rvalue_uses_place(
+        rvalue: &mir::Rvalue<'tcx>,
+        mut place_matches: impl FnMut(mir::Place<'tcx>) -> bool,
+    ) -> bool {
         match rvalue {
             mir::Rvalue::Use(operand, _)
             | mir::Rvalue::Repeat(operand, _)
             | mir::Rvalue::WrapUnsafeBinder(operand, _)
             | mir::Rvalue::UnaryOp(_, operand)
-            | mir::Rvalue::Cast(_, operand, _) => {
-                self.operand_uses_box_deref_of_local(operand, local, flavor)
-            },
+            | mir::Rvalue::Cast(_, operand, _) => Self::operand_uses_place(operand, &mut place_matches),
             mir::Rvalue::Ref(_, _, place)
             | mir::Rvalue::RawPtr(_, place)
             | mir::Rvalue::Reborrow(_, _, place)
             | mir::Rvalue::Discriminant(place)
-            | mir::Rvalue::CopyForDeref(place) => self.place_uses_box_deref_of_local(*place, local, flavor),
+            | mir::Rvalue::CopyForDeref(place) => place_matches(*place),
             mir::Rvalue::BinaryOp(_, operands) => {
-                self.operand_uses_box_deref_of_local(&operands.as_ref().0, local, flavor)
-                    || self.operand_uses_box_deref_of_local(&operands.as_ref().1, local, flavor)
+                Self::operand_uses_place(&operands.as_ref().0, &mut place_matches)
+                    || Self::operand_uses_place(&operands.as_ref().1, &mut place_matches)
             },
-            mir::Rvalue::Aggregate(_, operands) => operands
-                .iter()
-                .any(|operand| self.operand_uses_box_deref_of_local(operand, local, flavor)),
+            mir::Rvalue::Aggregate(_, operands) => {
+                operands.iter().any(|operand| Self::operand_uses_place(operand, &mut place_matches))
+            },
             mir::Rvalue::ThreadLocalRef(_) => false,
         }
     }
 
-    fn operand_uses_box_deref_of_local(
-        &self,
+    fn operand_uses_place(
         operand: &mir::Operand<'tcx>,
-        local: Local,
-        flavor: MirFlavor,
+        place_matches: &mut impl FnMut(mir::Place<'tcx>) -> bool,
     ) -> bool {
         match operand {
-            mir::Operand::Copy(place) | mir::Operand::Move(place) => {
-                self.place_uses_box_deref_of_local(*place, local, flavor)
-            },
+            mir::Operand::Copy(place) | mir::Operand::Move(place) => place_matches(*place),
             mir::Operand::Constant(_) | mir::Operand::RuntimeChecks(_) => false,
         }
     }
@@ -304,35 +305,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
     }
 
     fn rvalue_uses_alias_with_origin(&self, rvalue: &mir::Rvalue<'tcx>, source_loc: SourceLoc) -> bool {
-        match rvalue {
-            mir::Rvalue::Use(operand, _)
-            | mir::Rvalue::Repeat(operand, _)
-            | mir::Rvalue::WrapUnsafeBinder(operand, _)
-            | mir::Rvalue::UnaryOp(_, operand)
-            | mir::Rvalue::Cast(_, operand, _) => self.operand_uses_alias_with_origin(operand, source_loc),
-            mir::Rvalue::Ref(_, _, place)
-            | mir::Rvalue::RawPtr(_, place)
-            | mir::Rvalue::Reborrow(_, _, place)
-            | mir::Rvalue::Discriminant(place)
-            | mir::Rvalue::CopyForDeref(place) => self.place_uses_alias_with_origin(*place, source_loc),
-            mir::Rvalue::BinaryOp(_, operands) => {
-                self.operand_uses_alias_with_origin(&operands.as_ref().0, source_loc)
-                    || self.operand_uses_alias_with_origin(&operands.as_ref().1, source_loc)
-            },
-            mir::Rvalue::Aggregate(_, operands) => {
-                operands.iter().any(|operand| self.operand_uses_alias_with_origin(operand, source_loc))
-            },
-            mir::Rvalue::ThreadLocalRef(_) => false,
-        }
-    }
-
-    fn operand_uses_alias_with_origin(&self, operand: &mir::Operand<'tcx>, source_loc: SourceLoc) -> bool {
-        match operand {
-            mir::Operand::Copy(place) | mir::Operand::Move(place) => {
-                self.place_uses_alias_with_origin(*place, source_loc)
-            },
-            mir::Operand::Constant(_) | mir::Operand::RuntimeChecks(_) => false,
-        }
+        Self::rvalue_uses_place(rvalue, |place| self.place_uses_alias_with_origin(place, source_loc))
     }
 
     fn place_uses_alias_with_origin(&self, place: mir::Place<'tcx>, source_loc: SourceLoc) -> bool {
