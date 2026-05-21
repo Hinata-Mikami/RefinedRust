@@ -5,6 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use rr_rustc_interface::middle::mir::{self, Local};
+use rr_rustc_interface::span;
 
 use super::types::*;
 use super::util::*;
@@ -132,13 +133,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
                     ..
                 },
             ) => {
-                self.call_func_equiv(func_t, func_s)
-                    && args_t.len() == args_s.len()
-                    && args_t
-                        .iter()
-                        .zip(args_s.iter())
-                        .all(|(arg_t, arg_s)| self.operand_equiv(&arg_t.node, &arg_s.node))
-                    && self.place_equiv(*dest_t, *dest_s)
+                self.call_core_equiv(func_t, args_t, *dest_t, func_s, args_s, *dest_s)
                     && target_t.is_some() == target_s.is_some()
             },
             _ => false,
@@ -377,6 +372,24 @@ impl<'tcx> Mapper<'_, 'tcx> {
             (Some(target_did), Some(source_did)) => target_did == source_did,
             _ => self.operand_equiv(target, source),
         }
+    }
+
+    pub(super) fn call_core_equiv(
+        &self,
+        func_t: &mir::Operand<'tcx>,
+        args_t: &[span::Spanned<mir::Operand<'tcx>>],
+        dest_t: mir::Place<'tcx>,
+        func_s: &mir::Operand<'tcx>,
+        args_s: &[span::Spanned<mir::Operand<'tcx>>],
+        dest_s: mir::Place<'tcx>,
+    ) -> bool {
+        self.call_func_equiv(func_t, func_s)
+            && args_t.len() == args_s.len()
+            && args_t
+                .iter()
+                .zip(args_s.iter())
+                .all(|(arg_t, arg_s)| self.operand_equiv(&arg_t.node, &arg_s.node))
+            && self.place_equiv(dest_t, dest_s)
     }
 
     fn assert_msg_equiv(&self, target: &mir::AssertMessage<'tcx>, source: &mir::AssertMessage<'tcx>) -> bool {

@@ -1497,6 +1497,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
 
         let (
             mir::TerminatorKind::Call {
+                func: func_t,
                 args: args_t,
                 destination: dest_t,
                 target: target_t,
@@ -1504,6 +1505,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 ..
             },
             mir::TerminatorKind::Call {
+                func: func_s,
                 args: args_s,
                 destination: dest_s,
                 target: target_s,
@@ -1524,8 +1526,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
 
         if target_t.is_some() != target_s.is_some()
-            || !self.place_equiv(*dest_t, *dest_s)
-            || args_t.len() != args_s.len()
+            || !self.call_core_equiv(func_t, args_t, *dest_t, func_s, args_s, *dest_s)
         {
             return false;
         }
@@ -1567,10 +1568,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             return false;
         };
 
-        if !self.call_func_equiv(func_t, func_s)
-            || args_t.len() != args_s.len()
-            || !self.place_equiv(*dest_t, *dest_s)
-        {
+        if !self.call_core_equiv(func_t, args_t, *dest_t, func_s, args_s, *dest_s) {
             return false;
         }
 
