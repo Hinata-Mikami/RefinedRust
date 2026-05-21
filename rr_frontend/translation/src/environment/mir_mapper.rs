@@ -2301,7 +2301,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 self.place_equiv(*place_t, *place_s)
             },
             (mir::Operand::Constant(const_t), mir::Operand::Constant(const_s)) => {
-                Self::const_operand_equiv(const_t, const_s)
+                self.const_operand_equiv(const_t, const_s)
             },
             (mir::Operand::RuntimeChecks(checks_t), mir::Operand::RuntimeChecks(checks_s)) => {
                 checks_t == checks_s
@@ -2310,12 +2310,36 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
-    fn const_operand_equiv(target: &mir::ConstOperand<'tcx>, source: &mir::ConstOperand<'tcx>) -> bool {
+    fn const_operand_equiv(
+        &self,
+        target: &mir::ConstOperand<'tcx>,
+        source: &mir::ConstOperand<'tcx>,
+    ) -> bool {
         if let (Some(target_did), Some(source_did)) = (const_fn_def_id(target), const_fn_def_id(source)) {
             return target_did == source_did;
         }
 
-        target.const_.ty() == source.const_.ty() && target.const_ == source.const_
+        if target.const_ == source.const_ {
+            return true;
+        }
+
+        let target_ty = target.const_.ty();
+        let source_ty = source.const_.ty();
+        if target.const_.try_to_scalar() == source.const_.try_to_scalar()
+            && self.tcx.erase_and_anonymize_regions(target_ty)
+                == self.tcx.erase_and_anonymize_regions(source_ty)
+        {
+            return true;
+        }
+
+        match (target.const_, source.const_) {
+            (mir::Const::Val(value_t, ty_t), mir::Const::Val(value_s, ty_s)) => {
+                value_t == value_s
+                    && self.tcx.erase_and_anonymize_regions(ty_t)
+                        == self.tcx.erase_and_anonymize_regions(ty_s)
+            },
+            _ => false,
+        }
     }
 
     fn call_func_equiv(&self, target: &mir::Operand<'tcx>, source: &mir::Operand<'tcx>) -> bool {
