@@ -138,9 +138,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             } => {
                 trace!("translating Call {:?}", term);
                 if let Some(drop_borrow) = self.proc.synthetic_drop_borrow_for_drop_call(loc) {
-                    // TODO: This call is a drop-elaborated borrow of the dropped place.
-                    // Eventually translate the explicit `Drop::drop` call and model the
-                    // unwind-edge lifetime cleanup.
+                    // Dropck lowers open drops to an explicit `Drop::drop(&mut place)` call fed by a synthetic
+                    // borrow. For now we model the borrow lifetime, and keep
+                    // translating by following the normal return edge of the synthetic call.
+                    // TODO: actually call the Drop impl
                     let Some(target) = target else {
                         bug!("drop-elaborated Drop::drop call without normal target at {loc:?}");
                     };

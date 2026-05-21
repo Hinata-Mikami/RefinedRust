@@ -640,6 +640,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             .source_call_for_target(loc)
             .and_then(Self::call_func_const_from_terminator)
             .copied();
+        // Dropck may have rewritten the call terminator enough to erase regions from the callee
+        // type. Prefer the mapped borrowck call when available and fall back only for synthetic calls.
         let call_func_constant = source_func_constant.as_ref().unwrap_or(&func_constant.const_);
         if source_func_constant.is_none() {
             self.proc.ensure_region_type(call_func_constant.ty(), || {

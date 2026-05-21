@@ -38,6 +38,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             if let mir::StatementKind::Assign(b) = &stmt.kind {
                 let (plc, val) = b.as_ref();
                 if let Some(drop_borrow) = self.proc.synthetic_drop_borrow_for_assignment(loc) {
+                    // Drop elaboration materializes a borrow of the place being dropped. It has no
+                    // borrowck counterpart, so synthesize the lifetime annotation directly here.
                     let mut annotation_plan =
                         AnnotationGenerator::prepare_synthetic_drop_borrow_annotation_plan(drop_borrow);
                     annotation_plan.push_pre_stmts(&mut prim_stmts);
@@ -72,6 +74,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         let plc_ty = self.shape_type_of_place(plc);
                         let plc_region_ty = self.proc.region_type_of_place(plc);
                         let rhs_region_ty = self.proc.region_type_of_rvalue(loc, val);
+                        // Assignment annotations depend on regionful borrowck types, but the
+                        // executable statement is the dropck statement we are translating.
                         let annotation_val = self.proc.source_rvalue_for_target(loc).unwrap_or(val);
                         let plc_strongly_writeable = !self.check_place_below_reference(plc);
                         let mut annotation_plan = self.annotations.prepare_assignment_annotation_plan(
@@ -84,7 +88,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             plc_strongly_writeable,
                         );
                         annotation_plan.push_pre_stmts(&mut prim_stmts);
-
 
                         let (e, _) = self.translate_rvalue(loc, val)?;
                         let expr_annot = annotation_plan.expr.take();

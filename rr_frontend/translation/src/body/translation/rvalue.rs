@@ -327,6 +327,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let translated_pl = self.translate_place(pl)?;
                 let translated_bk = TX::translate_borrow_kind(self.tcx, *bk)?;
                 let ty_annot = self.get_type_annotation_for_borrow(*bk, pl)?;
+                // Drop-elaborated borrows are target-only statements, so their lifetime has to come
+                // from the synthetic drop-borrow mapping rather than a borrowck region variable.
                 let lft = if let Some(drop_borrow) = self.proc.synthetic_drop_borrow_for_assignment(loc) {
                     AnnotationGenerator::synthetic_drop_borrow_lft(drop_borrow)
                 } else {
@@ -405,6 +407,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
 
             mir::Rvalue::Aggregate(kind, op) => {
+                // Aggregate kinds can carry erased dropck substitutions. Use the mapped borrowck
+                // aggregate kind for type parameters while translating the dropck operands.
                 let type_kind =
                     self.proc.source_aggregate_kind_for_target(loc).unwrap_or_else(|| kind.as_ref());
                 let e = self.translate_aggregate(type_kind, op)?;

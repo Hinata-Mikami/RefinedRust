@@ -18,6 +18,8 @@ use crate::types;
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a place to a Caesium lvalue.
     pub(crate) fn translate_place(&self, pl: &mir::Place<'tcx>) -> Result<code::Expr, TranslationError> {
+        // Dropck introduces raw-pointer alias locals for some `Box` derefs. Translate all uses as
+        // if they referred to the original `Box` place so the generated place stays stable.
         let normalized = self.proc.normalize_box_deref_alias_place(pl);
         let pl = &normalized;
 
