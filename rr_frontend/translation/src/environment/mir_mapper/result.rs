@@ -55,21 +55,25 @@ pub struct SyntheticDropBorrow {
 }
 
 impl SyntheticDropBorrow {
+    /// Return the synthetic reference local introduced for the drop call.
     #[must_use]
     pub const fn synthetic_ref_local(self) -> Local {
         self.synthetic_ref_local
     }
 
+    /// Return the target location where the synthetic borrow is created.
     #[must_use]
     pub const fn borrow_loc(self) -> TargetLoc {
         self.borrow_loc
     }
 
+    /// Return the target location of the explicit drop call.
     #[must_use]
     pub const fn drop_call_loc(self) -> TargetLoc {
         self.drop_call_loc
     }
 
+    /// Return the source drop terminator represented by this synthetic borrow.
     #[must_use]
     pub const fn source_drop_loc(self) -> SourceLoc {
         self.source_drop_loc
@@ -77,16 +81,19 @@ impl SyntheticDropBorrow {
 }
 
 impl BoxDerefAlias {
+    /// Return the synthetic alias local introduced in dropck MIR.
     #[must_use]
     pub const fn alias_local(self) -> Local {
         self.alias_local
     }
 
+    /// Return the original source `Box` local behind the alias.
     #[must_use]
     pub const fn box_local(self) -> Local {
         self.box_local
     }
 
+    /// Return the source location that introduced the alias, if known.
     #[must_use]
     pub const fn source_loc(self) -> Option<SourceLoc> {
         self.source_loc
@@ -106,6 +113,7 @@ pub struct MappingResult {
 }
 
 impl MappingResult {
+    /// Return the source origin recorded for a target location.
     #[must_use]
     pub fn origin_for_target(&self, target: TargetLoc) -> Option<Origin> {
         self.target_to_source.get(&target).copied()
@@ -133,26 +141,31 @@ impl MappingResult {
         self.box_deref_aliases.values().copied()
     }
 
+    /// Return the synthetic drop borrow for a synthetic reference local.
     #[must_use]
     pub fn synthetic_drop_borrow_for_local(&self, local: Local) -> Option<SyntheticDropBorrow> {
         self.synthetic_drop_borrows_by_local.get(&local).copied()
     }
 
+    /// Return the synthetic drop borrow created at a target borrow location.
     #[must_use]
     pub fn synthetic_drop_borrow_for_borrow_loc(&self, loc: TargetLoc) -> Option<SyntheticDropBorrow> {
         self.synthetic_drop_borrows_by_borrow_loc.get(&loc).copied()
     }
 
+    /// Return the synthetic drop borrow consumed by a target drop-call location.
     #[must_use]
     pub fn synthetic_drop_borrow_for_drop_call_loc(&self, loc: TargetLoc) -> Option<SyntheticDropBorrow> {
         self.synthetic_drop_borrows_by_drop_call_loc.get(&loc).copied()
     }
 
+    /// Return the source Polonius point for a target Polonius point.
     #[must_use]
     pub(crate) fn source_point_for_target(&self, target: TargetPoint) -> Option<SourcePoint> {
         self.target_points_to_source.get(&target).copied()
     }
 
+    /// Return the source Polonius point for a target location and point type.
     #[must_use]
     pub(crate) fn source_point_for_target_loc(
         &self,
@@ -163,6 +176,7 @@ impl MappingResult {
         self.source_point_for_target((bb, idx, point_type))
     }
 
+    /// Return the source Polonius point for a rustc target location and point type.
     #[must_use]
     pub(crate) fn source_point_for_target_location(
         &self,

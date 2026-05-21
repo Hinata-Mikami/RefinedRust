@@ -15,6 +15,7 @@ use super::{SourcePoint, TargetLoc, TargetPoint};
 use crate::environment::borrowck::facts;
 use crate::search;
 
+/// Insert start and mid point mappings for a target location from a phase.
 pub(super) fn insert_point_mapping(
     target_points_to_source: &mut FxHashMap<TargetPoint, SourcePoint>,
     target: TargetLoc,
@@ -34,6 +35,7 @@ pub(super) fn insert_point_mapping(
         .insert((target_bb, target_idx, facts::PointType::Mid), (source_bb, source_idx, mid_source_kind));
 }
 
+/// Compute real predecessor blocks for each basic block in a body.
 pub(super) fn compute_predecessors(body: &Body<'_>) -> FxHashMap<BasicBlock, Vec<BasicBlock>> {
     let mut predecessors: FxHashMap<_, Vec<_>> = FxHashMap::default();
     for (bb, data) in body.basic_blocks.iter_enumerated() {
@@ -44,6 +46,7 @@ pub(super) fn compute_predecessors(body: &Body<'_>) -> FxHashMap<BasicBlock, Vec
     predecessors
 }
 
+/// Return CFG targets excluding unwind-only pseudo-continuations.
 pub(super) fn real_targets(terminator: &mir::Terminator<'_>) -> Vec<BasicBlock> {
     match &terminator.kind {
         mir::TerminatorKind::Goto { target }
@@ -64,6 +67,7 @@ pub(super) fn real_targets(terminator: &mir::Terminator<'_>) -> Vec<BasicBlock> 
     }
 }
 
+/// Return all successor blocks exposed by a terminator.
 pub(super) fn terminator_targets(terminator: &mir::Terminator<'_>) -> Vec<BasicBlock> {
     terminator.successors().collect()
 }
@@ -87,6 +91,7 @@ pub(super) const fn normal_successor(terminator: &mir::Terminator<'_>) -> Option
     }
 }
 
+/// Find the source successor corresponding to a target successor edge.
 pub(super) fn matching_source_successor(
     target: &mir::Terminator<'_>,
     target_successor: BasicBlock,
@@ -125,10 +130,12 @@ pub(super) fn matching_source_successor(
     }
 }
 
+/// Collect the explicit values of a switch terminator in order.
 pub(super) fn switch_values(targets: &mir::SwitchTargets) -> Vec<u128> {
     targets.iter().map(|(value, _)| value).collect()
 }
 
+/// Extract the function `DefId` from a constant function operand.
 pub(super) fn operand_fn_def_id(operand: &mir::Operand<'_>) -> Option<DefId> {
     let mir::Operand::Constant(constant) = operand else {
         return None;
@@ -137,6 +144,7 @@ pub(super) fn operand_fn_def_id(operand: &mir::Operand<'_>) -> Option<DefId> {
     const_fn_def_id(constant)
 }
 
+/// Resolve the `DefId` for the lang-level `Drop::drop` method.
 pub(super) fn resolve_drop_drop_did(tcx: ty::TyCtxt<'_>) -> Option<DefId> {
     let drop_did = search::try_resolve_did(tcx, &["core", "ops", "drop", "Drop"])?;
     let drop_symbol = span::Symbol::intern("drop");
@@ -146,6 +154,7 @@ pub(super) fn resolve_drop_drop_did(tcx: ty::TyCtxt<'_>) -> Option<DefId> {
         .map(|item| item.def_id)
 }
 
+/// Extract the function `DefId` from a MIR constant operand.
 pub(super) fn const_fn_def_id(constant: &mir::ConstOperand<'_>) -> Option<DefId> {
     let ty::TyKind::FnDef(did, _) = constant.const_.ty().kind() else {
         return None;
@@ -154,6 +163,7 @@ pub(super) fn const_fn_def_id(constant: &mir::ConstOperand<'_>) -> Option<DefId>
     Some(*did)
 }
 
+/// Compare cast kinds while allowing drop-elaboration pointer-coercion rewrites.
 pub(super) fn cast_kind_equiv(target: mir::CastKind, source: mir::CastKind) -> bool {
     // Drop elaboration lowers this pointer coercion to the more primitive
     // `PtrToPtr` cast. Treat them as the same shape for source mapping.
@@ -173,6 +183,7 @@ pub(super) fn cast_kind_equiv(target: mir::CastKind, source: mir::CastKind) -> b
     target == source
 }
 
+/// Compare aggregate kinds by their mapping-relevant identity.
 pub(super) fn aggregate_kind_equiv<'tcx>(
     target: &mir::AggregateKind<'tcx>,
     source: &mir::AggregateKind<'tcx>,
@@ -200,6 +211,7 @@ pub(super) fn aggregate_kind_equiv<'tcx>(
     }
 }
 
+/// Convert a MIR place projection element to its normalized representation.
 pub(super) const fn normalize_projection_elem(elem: mir::PlaceElem<'_>) -> NormalizedPlaceElem {
     match elem {
         mir::ProjectionElem::Deref => NormalizedPlaceElem::Deref,
@@ -225,6 +237,7 @@ pub(super) const fn normalize_projection_elem(elem: mir::PlaceElem<'_>) -> Norma
     }
 }
 
+/// Extract the cleanup target from a MIR unwind action.
 pub(super) const fn unwind_target(action: mir::UnwindAction) -> Option<BasicBlock> {
     match action {
         mir::UnwindAction::Cleanup(bb) => Some(bb),
@@ -234,6 +247,7 @@ pub(super) const fn unwind_target(action: mir::UnwindAction) -> Option<BasicBloc
     }
 }
 
+/// Count all statement and terminator locations in a body.
 pub(super) fn count_locations(body: &Body<'_>) -> usize {
     body.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
 }

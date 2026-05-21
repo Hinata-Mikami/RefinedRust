@@ -12,6 +12,7 @@ use super::util::*;
 use super::{Mapper, Origin, SourceLoc};
 
 impl<'tcx> Mapper<'_, 'tcx> {
+    /// Check whether two statements have the same mapping-relevant shape.
     pub(super) fn stmt_equiv(&self, target: &mir::Statement<'tcx>, source: &mir::Statement<'tcx>) -> bool {
         match (&target.kind, &source.kind) {
             (
@@ -66,6 +67,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
     }
 
+    /// Check whether two terminators have the same mapping-relevant shape.
     pub(super) fn terminator_shape_equiv(
         &self,
         target: &mir::Terminator<'tcx>,
@@ -140,6 +142,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
     }
 
+    /// Check whether a target statement was inserted by post-borrowck MIR passes.
     pub(super) fn is_inserted_stmt(&self, stmt: &mir::Statement<'tcx>) -> bool {
         match &stmt.kind {
             mir::StatementKind::StorageLive(local) | mir::StatementKind::StorageDead(local) => {
@@ -152,6 +155,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
     }
 
+    /// Record metadata for an inserted statement when it introduces an alias.
     pub(super) fn observe_inserted_stmt(
         &mut self,
         stmt: &mir::Statement<'tcx>,
@@ -205,6 +209,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         split_from.map(Origin::SplitFrom)
     }
 
+    /// Check whether a source statement uses a `Box` deref of the given local.
     pub(super) fn source_stmt_uses_box_deref(&self, stmt: &mir::Statement<'tcx>, local: Local) -> bool {
         match &stmt.kind {
             mir::StatementKind::Assign(box (_, rhs)) => {
@@ -222,6 +227,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
     }
 
+    /// Check whether a target statement uses a box-deref alias from a source location.
     pub(super) fn stmt_uses_box_deref_alias(
         &self,
         stmt: &mir::Statement<'tcx>,
@@ -244,6 +250,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
     }
 
+    /// Check whether an rvalue uses a `Box` deref of the given local.
     fn rvalue_uses_box_deref_of_local(
         &self,
         rvalue: &mir::Rvalue<'tcx>,
@@ -253,6 +260,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         Self::rvalue_uses_place(rvalue, |place| self.place_uses_box_deref_of_local(place, local, flavor))
     }
 
+    /// Traverse places mentioned by an rvalue and test them with a predicate.
     fn rvalue_uses_place(
         rvalue: &mir::Rvalue<'tcx>,
         mut place_matches: impl FnMut(mir::Place<'tcx>) -> bool,
@@ -279,6 +287,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
     }
 
+    /// Traverse places mentioned by an operand and test them with a predicate.
     fn operand_uses_place(
         operand: &mir::Operand<'tcx>,
         place_matches: &mut impl FnMut(mir::Place<'tcx>) -> bool,
@@ -289,6 +298,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
     }
 
+    /// Check whether a place normalizes to a deref of the given local.
     fn place_uses_box_deref_of_local(
         &self,
         place: mir::Place<'tcx>,
@@ -299,16 +309,19 @@ impl<'tcx> Mapper<'_, 'tcx> {
         normalized.local == local && matches!(normalized.projection.first(), Some(NormalizedPlaceElem::Deref))
     }
 
+    /// Check whether an rvalue uses an alias introduced at the given source location.
     fn rvalue_uses_alias_with_origin(&self, rvalue: &mir::Rvalue<'tcx>, source_loc: SourceLoc) -> bool {
         Self::rvalue_uses_place(rvalue, |place| self.place_uses_alias_with_origin(place, source_loc))
     }
 
+    /// Check whether a place is an alias introduced at the given source location.
     fn place_uses_alias_with_origin(&self, place: mir::Place<'tcx>, source_loc: SourceLoc) -> bool {
         self.box_deref_aliases
             .get(&place.local)
             .is_some_and(|alias| alias.source_loc == Some(source_loc))
     }
 
+    /// Check whether a source statement is erased by cleanup/drop elaboration.
     pub(super) fn is_cleanup_erased_source_stmt(stmt: &mir::Statement<'tcx>) -> bool {
         matches!(
             &stmt.kind,
@@ -319,6 +332,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         )
     }
 
+    /// Check whether two operands have the same mapping-relevant shape.
     fn operand_equiv(&self, target: &mir::Operand<'tcx>, source: &mir::Operand<'tcx>) -> bool {
         match (target, source) {
             (mir::Operand::Copy(place_t), mir::Operand::Copy(place_s))
@@ -335,6 +349,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
     }
 
+    /// Check whether two constant operands denote equivalent constants.
     fn const_operand_equiv(
         &self,
         target: &mir::ConstOperand<'tcx>,
@@ -367,6 +382,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
     }
 
+    /// Check whether two call function operands denote the same callable.
     pub(super) fn call_func_equiv(&self, target: &mir::Operand<'tcx>, source: &mir::Operand<'tcx>) -> bool {
         match (operand_fn_def_id(target), operand_fn_def_id(source)) {
             (Some(target_did), Some(source_did)) => target_did == source_did,
@@ -374,6 +390,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
     }
 
+    /// Check whether the shared function, arguments, and destination of calls match.
     pub(super) fn call_core_equiv(
         &self,
         func_t: &mir::Operand<'tcx>,
@@ -392,6 +409,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
             && self.place_equiv(dest_t, dest_s)
     }
 
+    /// Check whether two assertion messages have the same mapping-relevant shape.
     fn assert_msg_equiv(&self, target: &mir::AssertMessage<'tcx>, source: &mir::AssertMessage<'tcx>) -> bool {
         use mir::AssertKind;
 
@@ -435,6 +453,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
     }
 
+    /// Check whether two rvalues have the same mapping-relevant shape.
     fn rvalue_equiv(&self, target: &mir::Rvalue<'tcx>, source: &mir::Rvalue<'tcx>) -> bool {
         match (target, source) {
             (mir::Rvalue::Use(operand_t, retag_t), mir::Rvalue::Use(operand_s, retag_s)) => {
@@ -486,11 +505,13 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
     }
 
+    /// Check whether a target place corresponds to a source place after normalization.
     pub(super) fn place_equiv(&self, target: mir::Place<'tcx>, source: mir::Place<'tcx>) -> bool {
         self.normalize_place_for_flavor(target, MirFlavor::Target)
             == self.normalize_place_for_flavor(source, MirFlavor::Source)
     }
 
+    /// Normalize a place using source- or target-specific alias rules.
     pub(super) fn normalize_place_for_flavor(
         &self,
         place: mir::Place<'tcx>,
@@ -502,6 +523,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
     }
 
+    /// Normalize a borrowck/source place without target alias rewriting.
     pub(super) fn normalize_source_place(place: mir::Place<'tcx>) -> NormalizedPlace {
         NormalizedPlace {
             local: place.local,
@@ -509,6 +531,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
     }
 
+    /// Normalize a target place, expanding copy aliases and box-deref aliases.
     pub(super) fn normalize_place(&self, place: mir::Place<'tcx>) -> NormalizedPlace {
         if let Some(alias) = self.box_deref_aliases.get(&place.local)
             && matches!(place.projection.first(), Some(mir::ProjectionElem::Deref))
@@ -536,10 +559,12 @@ impl<'tcx> Mapper<'_, 'tcx> {
         Self::normalize_source_place(place)
     }
 
+    /// Check whether a local exists only in the target/dropck body.
     pub(super) const fn is_synthetic_local(&self, local: Local) -> bool {
         local.as_usize() >= self.source_local_count
     }
 
+    /// Check whether a local is a synthetic boolean local introduced by drop elaboration.
     pub(super) fn is_synthetic_bool_local(&self, local: Local) -> bool {
         self.is_synthetic_local(local) && self.de.local_decls[local].ty.is_bool()
     }

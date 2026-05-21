@@ -56,6 +56,7 @@ use rr_rustc_interface::middle::mir::{self, BasicBlock, Body, Local};
 use rr_rustc_interface::middle::ty;
 use types::*;
 
+/// Map drop-elaborated MIR locations and points back to borrowck MIR.
 #[must_use]
 pub fn map_drop_elaborated_to_borrow_checked<'tcx>(
     tcx: ty::TyCtxt<'tcx>,

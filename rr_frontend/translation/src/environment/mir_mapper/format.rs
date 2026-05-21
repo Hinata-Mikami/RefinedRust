@@ -10,6 +10,7 @@ use super::util::count_locations;
 use super::{MappingResult, Origin};
 use crate::environment::borrowck::facts;
 
+/// Format a complete target-to-source location mapping for diagnostics.
 #[must_use]
 pub fn format_mapping<'tcx>(bc: &Body<'tcx>, de: &Body<'tcx>, mapping: &MappingResult) -> String {
     let mut lines = Vec::new();
@@ -63,6 +64,7 @@ pub fn format_mapping<'tcx>(bc: &Body<'tcx>, de: &Body<'tcx>, mapping: &MappingR
     lines.join("\n")
 }
 
+/// Format point mappings for inserted target terminators.
 #[must_use]
 pub fn format_inserted_terminator_point_mappings<'tcx>(
     bc: &Body<'tcx>,
@@ -97,6 +99,7 @@ pub fn format_inserted_terminator_point_mappings<'tcx>(
     lines.join("\n")
 }
 
+/// Format a mapping origin with the corresponding source MIR location.
 pub(super) fn format_origin(bc: &Body<'_>, origin: Origin) -> String {
     match origin {
         Origin::Source((bb, idx)) => {
@@ -112,6 +115,7 @@ pub(super) fn format_origin(bc: &Body<'_>, origin: Origin) -> String {
     }
 }
 
+/// Describe the MIR statement or terminator at a body location.
 pub(super) fn describe_location(body: &Body<'_>, bb: BasicBlock, idx: usize) -> String {
     let data = &body.basic_blocks[bb];
     if idx < data.statements.len() {

@@ -95,6 +95,7 @@ pub(super) enum MirFlavor {
 }
 
 impl PointPhaseKind {
+    /// Attach a concrete source location to this phase kind.
     pub(super) const fn with_source(self, source: SourceLoc) -> PointPhase {
         match self {
             Self::Direct => PointPhase::Direct(source),
@@ -103,6 +104,7 @@ impl PointPhaseKind {
     }
 }
 
+/// Convert an origin into the default point phase used for direct mappings.
 pub(super) const fn point_phase_from_origin(origin: super::Origin) -> Option<PointPhase> {
     match origin {
         super::Origin::Source(source)
@@ -112,6 +114,7 @@ pub(super) const fn point_phase_from_origin(origin: super::Origin) -> Option<Poi
     }
 }
 
+/// Extract the source location carried by an origin, if any.
 pub(super) const fn origin_source_loc(origin: super::Origin) -> Option<SourceLoc> {
     match origin {
         super::Origin::Source(source)
@@ -121,6 +124,7 @@ pub(super) const fn origin_source_loc(origin: super::Origin) -> Option<SourceLoc
     }
 }
 
+/// Check whether `candidate` is the same place as `base` or below it.
 pub(super) fn same_or_subplace(base: &NormalizedPlace, candidate: &NormalizedPlace) -> bool {
     base.local == candidate.local
         && candidate.projection.len() >= base.projection.len()

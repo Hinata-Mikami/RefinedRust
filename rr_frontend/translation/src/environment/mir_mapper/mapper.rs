@@ -52,6 +52,7 @@ use super::{BoxDerefAlias, Mapper, MappingResult, Origin, SourceLoc, SyntheticDr
 use crate::search;
 
 impl<'a, 'tcx> Mapper<'a, 'tcx> {
+    /// Create a mapper for a borrowck body and its drop-elaborated counterpart.
     pub(super) fn new(tcx: ty::TyCtxt<'tcx>, bc: &'a Body<'tcx>, de: &'a Body<'tcx>) -> Self {
         Self {
             tcx,
@@ -74,6 +75,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
+    /// Finalize collected mappings into the public mapping result.
     pub(super) fn finish(mut self) -> MappingResult {
         self.collect_synthetic_drop_borrows_from_mapping();
 
@@ -157,6 +159,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
+    /// Discover synthetic drop borrows from already aligned drop terminators.
     fn collect_synthetic_drop_borrows_from_mapping(&mut self) {
         let entries: Vec<_> =
             self.target_to_source.iter().map(|(target, origin)| (*target, *origin)).collect();
@@ -219,25 +222,30 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
+    /// Record the source origin for a target location.
     fn mark_origin(&mut self, loc: TargetLoc, origin: Origin) {
         self.target_to_source.insert(loc, origin);
     }
 
+    /// Record the source point phase for a target location.
     fn mark_phase(&mut self, loc: TargetLoc, phase: PointPhase) {
         self.target_point_phases.insert(loc, phase);
     }
 
+    /// Record both the origin and point phase for a target location.
     fn mark_origin_with_phase(&mut self, loc: TargetLoc, origin: Origin, phase: PointPhase) {
         self.mark_origin(loc, origin);
         self.mark_phase(loc, phase);
     }
 
+    /// Mark every statement in a target block with the same origin and phase.
     fn mark_block_statements_with_phase(&mut self, bb: BasicBlock, origin: Origin, phase: PointPhase) {
         for idx in 0..self.de.basic_blocks[bb].statements.len() {
             self.mark_origin_with_phase((bb, idx), origin, phase);
         }
     }
 
+    /// Mark inserted statements in a target block with the given point phase.
     fn mark_inserted_block_statements_with_phase(&mut self, bb: BasicBlock, phase: PointPhase) {
         for idx in 0..self.de.basic_blocks[bb].statements.len() {
             self.target_to_source.entry((bb, idx)).or_insert(Origin::Inserted);
@@ -245,11 +253,13 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
+    /// Build an origin for a source terminator reached through a folded chain.
     fn source_chain_origin(&self, start_bb: BasicBlock, current_bb: BasicBlock) -> Origin {
         let loc = (current_bb, self.bc.basic_blocks[current_bb].statements.len());
         if current_bb == start_bb { Origin::Source(loc) } else { Origin::FoldedFrom(loc) }
     }
 
+    /// Check whether a source block has exactly one real predecessor.
     fn has_single_source_predecessor(&self, bb: BasicBlock) -> bool {
         self.bc_predecessors.get(&bb).is_some_and(|preds| preds.len() == 1)
     }
@@ -352,6 +362,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         source
     }
 
+    /// Find a later source terminator whose shape matches the target terminator.
     fn find_matching_source_terminator_from(
         &self,
         start: BasicBlock,
@@ -372,10 +383,12 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         None
     }
 
+    /// Start alignment from a pair of corresponding target and source blocks.
     pub(super) fn align_blocks(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) {
         self.align_blocks_with_origin(bb_t, bb_s, false);
     }
 
+    /// Align a block pair while remembering whether the source block was folded.
     fn align_blocks_with_origin(&mut self, bb_t: BasicBlock, bb_s: BasicBlock, folded_from_source: bool) {
         if !self.visited.insert((bb_t, bb_s)) {
             return;
@@ -385,6 +398,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         self.align_terminator(bb_t, bb_s, folded_from_source);
     }
 
+    /// Align matching statements and classify inserted or folded target statements.
     fn align_statements(&mut self, bb_t: BasicBlock, bb_s: BasicBlock, folded_from_source: bool) {
         let data_t = &self.de.basic_blocks[bb_t];
         let data_s = &self.bc.basic_blocks[bb_s];
@@ -469,6 +483,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
+    /// Align a target terminator with the corresponding source terminator shape.
     fn align_terminator(&mut self, bb_t: BasicBlock, bb_s: BasicBlock, folded_from_source: bool) {
         let dt = &self.de.basic_blocks[bb_t];
         let ds = &self.bc.basic_blocks[bb_s];
@@ -527,6 +542,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         self.mark_origin(loc_t, Origin::Inserted);
     }
 
+    /// Recursively align successor blocks for two structurally matching terminators.
     fn recurse_direct(&mut self, tt: &mir::Terminator<'tcx>, ts: &mir::Terminator<'tcx>) {
         match (&tt.kind, &ts.kind) {
             (
@@ -618,11 +634,13 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
+    /// Align successor blocks after skipping source-only forwarding blocks.
     fn align_successor(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) {
         let (bb_s, folded_from_source) = self.skip_source_forwarding_blocks(bb_s);
         self.align_blocks_with_origin(bb_t, bb_s, folded_from_source);
     }
 
+    /// Skip empty source `FalseEdge`/`FalseUnwind` forwarding blocks.
     fn skip_source_forwarding_blocks(&self, mut bb_s: BasicBlock) -> (BasicBlock, bool) {
         let mut folded_from_source = false;
         for _ in 0..self.bc.basic_blocks.len() {
@@ -650,6 +668,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         (bb_s, folded_from_source)
     }
 
+    /// Try to align a borrowck `Drop` rewritten into a drop-flag dispatch.
     fn try_align_rewritten_drop(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
         let tt = self.de.basic_blocks[bb_t].terminator();
         let mut cur_s = bb_s;
@@ -692,6 +711,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         false
     }
 
+    /// Mark and recurse through a matched drop-flag rewrite.
     fn align_rewritten_drop_match(
         &mut self,
         bb_t: BasicBlock,
@@ -746,6 +766,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         false
     }
 
+    /// Try to align a source `Drop` lowered to an explicit `Drop::drop` call.
     fn try_align_explicit_drop_call(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
         let ds = &self.bc.basic_blocks[bb_s];
         let mir::TerminatorKind::Drop {
@@ -818,6 +839,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         true
     }
 
+    /// Find the synthetic mutable borrow feeding an explicit drop call.
     fn find_synthetic_drop_borrow_stmt(
         &self,
         bb_t: BasicBlock,
@@ -836,6 +858,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         })
     }
 
+    /// Check whether an operand names the resolved `Drop::drop` function.
     fn is_drop_drop_call(&self, func: &mir::Operand<'tcx>) -> bool {
         let Some(drop_drop_did) = self.drop_drop_did else {
             return false;
@@ -843,6 +866,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         operand_fn_def_id(func) == Some(drop_drop_did)
     }
 
+    /// Check whether an operand names the resolved `discriminant_value` intrinsic.
     fn is_discriminant_value_call(&self, func: &mir::Operand<'tcx>) -> bool {
         let Some(discriminant_value_did) = self.discriminant_value_did else {
             return false;
@@ -850,6 +874,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         operand_fn_def_id(func) == Some(discriminant_value_did)
     }
 
+    /// Match a target discriminant read lowered from a source `discriminant_value` call.
     fn try_match_lowered_discriminant_value_stmt(
         &self,
         stmt_t: &mir::Statement<'tcx>,
@@ -888,6 +913,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         Some((bb_s, idx_s))
     }
 
+    /// Check whether a target discriminant place corresponds to a source call argument.
     fn discriminant_place_matches_call_arg(
         &self,
         place_t: mir::Place<'tcx>,
@@ -905,6 +931,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             && discr_place.projection[1..] == arg_place.projection
     }
 
+    /// Align the goto following a lowered `discriminant_value` statement.
     fn try_align_lowered_discriminant_value_goto(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
         let dt = &self.de.basic_blocks[bb_t];
         let ds = &self.bc.basic_blocks[bb_s];
@@ -938,6 +965,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         true
     }
 
+    /// Try to align an open-drop subgraph produced by drop elaboration.
     fn try_align_open_drop_subgraph(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
         let Some(open_drop_match) = self.match_open_drop_target(bb_t) else {
             return false;
@@ -984,6 +1012,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         true
     }
 
+    /// Try to align a target terminator with a later folded source terminator.
     fn try_align_folded_source_terminator(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
         let tt = self.de.basic_blocks[bb_t].terminator();
         let loc_t = (bb_t, self.de.basic_blocks[bb_t].statements.len());
@@ -1028,6 +1057,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         false
     }
 
+    /// Match the target subgraph implementing an open drop.
     fn match_open_drop_target(&self, entry_bb: BasicBlock) -> Option<OpenDropMatch> {
         // Open-drop matching is intentionally conservative:
         // - interior blocks may only contain administrative statements,
@@ -1122,6 +1152,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         })
     }
 
+    /// Find the source drop matching an open-drop target root place.
     fn find_source_drop_ctx(
         &self,
         start_bb: BasicBlock,
@@ -1178,6 +1209,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         None
     }
 
+    /// Classify one target block as part of an open-drop subgraph.
     fn classify_open_drop_node(&self, bb: BasicBlock, allow_existing_statements: bool) -> OpenDropNode {
         let data = &self.de.basic_blocks[bb];
         if !allow_existing_statements && !self.block_has_only_open_drop_administrative_statements(bb) {
@@ -1215,6 +1247,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
+    /// Find the place whose discriminant was assigned into a synthetic local.
     fn discriminant_input_place(
         &self,
         statements: &[mir::Statement<'tcx>],
@@ -1228,6 +1261,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         })
     }
 
+    /// Check whether a block can belong to the current open-drop subgraph.
     fn is_open_drop_block(&self, bb: BasicBlock, root_place: Option<&NormalizedPlace>) -> bool {
         match self.classify_open_drop_node(bb, false) {
             OpenDropNode::LinearGoto { .. } => true,
@@ -1242,6 +1276,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
+    /// Establish or validate the root place used by an open-drop subgraph.
     fn update_open_drop_root_place(
         root_place: &mut Option<NormalizedPlace>,
         place: &NormalizedPlace,
@@ -1254,10 +1289,12 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
+    /// Check whether a statement is administrative within an open-drop block.
     fn is_open_drop_administrative_stmt(&self, stmt: &mir::Statement<'tcx>) -> bool {
         matches!(stmt.kind, mir::StatementKind::Nop) || self.is_inserted_stmt(stmt)
     }
 
+    /// Check whether a block contains only open-drop administrative statements.
     fn block_has_only_open_drop_administrative_statements(&self, bb: BasicBlock) -> bool {
         self.de.basic_blocks[bb]
             .statements
@@ -1265,6 +1302,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             .all(|stmt| self.is_open_drop_administrative_stmt(stmt))
     }
 
+    /// Try to align a target goto for a source drop proven unnecessary.
     fn try_align_eliminated_source_drop(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
         let tt = self.de.basic_blocks[bb_t].terminator();
         let loc_t = (bb_t, self.de.basic_blocks[bb_t].statements.len());
@@ -1346,6 +1384,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         false
     }
 
+    /// Check whether two drop-return successor blocks have equivalent shape.
     fn drop_target_successor_equiv(&self, target_t: BasicBlock, target_s: BasicBlock) -> bool {
         let data_t = &self.de.basic_blocks[target_t];
         let data_s = &self.bc.basic_blocks[target_s];
@@ -1355,6 +1394,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             && self.terminator_shape_equiv(data_t.terminator(), data_s.terminator())
     }
 
+    /// Parse a target drop-flag switch and collect related administrative statements.
     fn parse_drop_flag_test(
         &self,
         bb_t: BasicBlock,
@@ -1388,6 +1428,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         Some((all_targets[0], all_targets[1], administrative_statements))
     }
 
+    /// Find a discriminant assignment associated with a source drop place.
     fn find_discriminant_stmt_for_place(
         &self,
         bb_t: BasicBlock,
@@ -1405,6 +1446,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         })
     }
 
+    /// Pick which branch of a drop-flag test contains the actual drop.
     fn find_actual_drop_block(
         &self,
         a: BasicBlock,
@@ -1421,6 +1463,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
+    /// Check whether a target block drops the requested source place.
     fn is_drop_block_for_place(&self, bb: BasicBlock, source_place: &NormalizedPlace) -> bool {
         let term = self.de.basic_blocks[bb].terminator();
         let mir::TerminatorKind::Drop { place, .. } = &term.kind else {
@@ -1431,6 +1474,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         same_or_subplace(source_place, &target_place)
     }
 
+    /// Extract and normalize the place dropped by a source terminator.
     fn source_drop_place(&self, term: &mir::Terminator<'tcx>) -> Option<NormalizedPlace> {
         match &term.kind {
             mir::TerminatorKind::Drop { place, .. } => Some(self.normalize_place(*place)),
@@ -1438,6 +1482,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         }
     }
 
+    /// Search forward through a source chain for a statement matching the target.
     fn try_match_folded_source_stmt(
         &self,
         target_stmt: &mir::Statement<'tcx>,
@@ -1466,6 +1511,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         None
     }
 
+    /// Return the normal successor when it has no other source predecessors.
     fn single_linear_successor(&self, bb: BasicBlock) -> Option<BasicBlock> {
         let succ = normal_successor(self.bc.basic_blocks[bb].terminator())?;
         self.has_single_source_predecessor(succ).then_some(succ)
@@ -1540,6 +1586,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         true
     }
 
+    /// Try to align a diverging call terminator pair.
     fn try_align_diverging_call(&mut self, bb_t: BasicBlock, bb_s: BasicBlock) -> bool {
         let dt = &self.de.basic_blocks[bb_t];
         let ds = &self.bc.basic_blocks[bb_s];
@@ -1581,6 +1628,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         true
     }
 
+    /// Check whether a source block is an empty unwind-resume block.
     fn is_unwind_resume_block(&self, bb: BasicBlock) -> bool {
         self.bc.basic_blocks[bb].statements.is_empty()
             && matches!(self.bc.basic_blocks[bb].terminator().kind, mir::TerminatorKind::UnwindResume)
