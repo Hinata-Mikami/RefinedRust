@@ -88,9 +88,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             Some(func)
         });
         let fn_ty = if let Some(source_func) = source_func {
-            self.proc.region_type_of_operand(source_func)?
+            self.proc.region_type_of_operand(source_func)
         } else {
-            self.proc.region_type_of_operand(func)?
+            self.proc.region_type_of_operand(func)
         };
         let Some(call_dest) = Self::check_type_call_dest(fn_ty) else {
             return Ok(None);

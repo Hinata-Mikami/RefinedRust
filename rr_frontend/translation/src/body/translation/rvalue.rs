@@ -438,7 +438,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         //return Ok(None);
         //};
 
-        let ty = self.proc.region_type_of_place(pl)?;
+        let ty = self.proc.region_type_of_place(pl);
 
         // For borrows, we can safely ignore the downcast type -- we cannot borrow a particularly variant
         let translated_ty = self.ty_translator.translate_type(ty.ty)?;

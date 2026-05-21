@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use log::{info, trace, warn};
 use radium::{code, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::middle::{bug, mir, ty};
 
 use super::TX;
 use crate::base::*;
@@ -142,11 +142,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     // Eventually translate the explicit `Drop::drop` call and model the
                     // unwind-edge lifetime cleanup.
                     let Some(target) = target else {
-                        return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
-                            Message::UnsupportedFeature(format!(
-                                "drop-elaborated Drop::drop call without normal target at {loc:?}"
-                            )),
-                        )));
+                        bug!("drop-elaborated Drop::drop call without normal target at {loc:?}");
                     };
                     if let Some(place) = self.proc.synthetic_drop_borrow_place(drop_borrow) {
                         let ty = self.shape_type_of_place(&place);

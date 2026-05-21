@@ -19,7 +19,7 @@ pub(crate) use calls::get_arg_syntypes_for_procedure_call;
 use log::{info, trace};
 use radium::{code, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::middle::{bug, mir, ty};
 use rr_rustc_interface::mir_dataflow::impls::always_storage_live_locals;
 use typed_arena::Arena;
 
@@ -150,7 +150,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let synthetic_drop_borrow_ty = proc
                 .synthetic_drop_borrow_for_local(local)
                 .map(|borrow| -> Result<specs::Type<'def>, TranslationError> {
-                    let referent_ty = proc.synthetic_drop_borrow_referent_ty(borrow)?;
+                    let referent_ty = proc.synthetic_drop_borrow_referent_ty(borrow);
                     let translated_referent_ty = ty_translator.translate_type(referent_ty)?;
                     let lft = AnnotationGenerator::synthetic_drop_borrow_lft(borrow);
                     Ok(specs::Type::MutRef(Box::new(translated_referent_ty), lft))
@@ -158,12 +158,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 .transpose()?;
 
             let ty: ty::Ty<'tcx> = if proc.borrowck_mir().local_decls.get(local).is_some() {
-                proc.region_type_of_local(local)?
+                proc.region_type_of_local(local)
             } else {
                 if proc.contains_erased_regions(shape_ty) && synthetic_drop_borrow_ty.is_none() {
-                    return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(
-                        format!("synthetic dropck local {local:?} has erased shape type: {shape_ty:?}"),
-                    ))));
+                    bug!("synthetic dropck local {local:?} has erased shape type: {shape_ty:?}");
                 }
                 info!(
                     "using dropck shape type for synthetic local {local:?} without erased regions: {shape_ty:?}"
@@ -199,11 +197,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             match kind {
                 mir::LocalKind::Arg => {
                     translated_fn.code.add_argument(&name, st);
-                    arg_tys.push(proc.region_type_of_local(local)?);
+                    arg_tys.push(proc.region_type_of_local(local));
                 },
                 mir::LocalKind::Temp => (),
                 mir::LocalKind::ReturnPointer => {
-                    return_ty = proc.region_type_of_local(local)?;
+                    return_ty = proc.region_type_of_local(local);
                     opt_return_name = Some(name);
                 },
             }

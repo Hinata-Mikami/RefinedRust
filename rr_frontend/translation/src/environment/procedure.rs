@@ -7,16 +7,14 @@
 use log::trace;
 use rr_rustc_interface::data_structures::fx::FxHashMap;
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::middle::{bug, mir, ty};
 use rr_rustc_interface::type_ir::TypeFoldable as _;
 
-use crate::base::TranslationError;
 use crate::environment::mir_mapper::{
     MappingResult, Origin, SyntheticDropBorrow, map_drop_elaborated_to_borrow_checked,
 };
 use crate::environment::mir_utils::real_edges::RealEdges;
 use crate::environment::{loops, mir_storage};
-use crate::error::Message;
 
 /// Index of a Basic Block
 pub(crate) type BasicBlockIndex = mir::BasicBlock;
@@ -223,16 +221,11 @@ impl<'tcx> Procedure<'tcx> {
         Some(place)
     }
 
-    pub(crate) fn synthetic_drop_borrow_referent_ty(
-        &self,
-        borrow: SyntheticDropBorrow,
-    ) -> Result<ty::Ty<'tcx>, TranslationError> {
-        let Some(place) = self.synthetic_drop_borrow_place(borrow) else {
-            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
-                format!("synthetic drop borrow {:?} has no borrow place", borrow.synthetic_ref_local()),
-            ))));
-        };
-        Ok(self.region_type_of_place(&place)?.ty)
+    pub(crate) fn synthetic_drop_borrow_referent_ty(&self, borrow: SyntheticDropBorrow) -> ty::Ty<'tcx> {
+        let place = self.synthetic_drop_borrow_place(borrow).unwrap_or_else(|| {
+            bug!("synthetic drop borrow {:?} has no borrow place", borrow.synthetic_ref_local())
+        });
+        self.region_type_of_place(&place).ty
     }
 
     #[must_use]
@@ -387,71 +380,58 @@ impl<'tcx> Procedure<'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         context: impl FnOnce() -> String,
-    ) -> Result<ty::Ty<'tcx>, TranslationError> {
+    ) -> ty::Ty<'tcx> {
         if self.contains_erased_regions(ty) {
-            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
-                format!("region-sensitive type contains erased regions in {}: {ty:?}", context()),
-            ))));
+            bug!("region-sensitive type contains erased regions in {}: {ty:?}", context());
         }
-        Ok(ty)
+        ty
     }
 
     /// Get the region-sensitive borrowck type of a local.
-    pub(crate) fn region_type_of_local(&self, local: mir::Local) -> Result<ty::Ty<'tcx>, TranslationError> {
+    pub(crate) fn region_type_of_local(&self, local: mir::Local) -> ty::Ty<'tcx> {
         if let Some(decl) = self.borrowck_mir.local_decls.get(local) {
             return self.ensure_region_type(decl.ty, || format!("local {local:?}"));
         }
 
         if let Some(borrow) = self.mapping.synthetic_drop_borrow_for_local(local) {
-            let place_ty = self.synthetic_drop_borrow_referent_ty(borrow)?;
-            let ty = self.dropck_mir.local_decls.get(local).map(|decl| decl.ty).ok_or_else(|| {
-                TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
-                    "region-sensitive type requested for unknown synthetic drop borrow local {local:?}"
-                ))))
-            })?;
+            let place_ty = self.synthetic_drop_borrow_referent_ty(borrow);
+            let ty = self.dropck_mir.local_decls.get(local).map_or_else(
+                || bug!("region-sensitive type requested for unknown synthetic drop borrow local {local:?}"),
+                |decl| decl.ty,
+            );
             let ty::TyKind::Ref(region, _, mutability) = ty.kind() else {
-                return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
-                    Message::UnsupportedFeature(format!(
-                        "synthetic drop borrow local {local:?} has non-reference type: {ty:?}"
-                    )),
-                )));
+                bug!("synthetic drop borrow local {local:?} has non-reference type: {ty:?}");
             };
-            return Ok(ty::Ty::new_ref(self.tcx, *region, place_ty, *mutability));
+            return ty::Ty::new_ref(self.tcx, *region, place_ty, *mutability);
         }
 
         if let Some(source) = self.copy_aliases.get(&local) {
-            return Ok(self.region_type_of_place(source)?.ty);
+            return self.region_type_of_place(source).ty;
         }
 
         // Drop elaboration may introduce administrative locals such as boolean
         // drop flags. They carry no lifetime information, so their dropck shape
         // type is also a valid region-sensitive type as long as it has no erased
         // regions.
-        let ty = self.dropck_mir.local_decls.get(local).map(|decl| decl.ty).ok_or_else(|| {
-            TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
-                "region-sensitive type requested for unknown dropck local {local:?}"
-            ))))
-        })?;
+        let ty = self.dropck_mir.local_decls.get(local).map_or_else(
+            || bug!("region-sensitive type requested for unknown dropck local {local:?}"),
+            |decl| decl.ty,
+        );
         self.ensure_region_type(ty, || format!("synthetic dropck local {local:?}"))
     }
 
     /// Get the region-sensitive borrowck type of a target/dropck place.
-    pub(crate) fn region_type_of_place(
-        &self,
-        pl: &mir::Place<'tcx>,
-    ) -> Result<mir::PlaceTy<'tcx>, TranslationError> {
+    pub(crate) fn region_type_of_place(&self, pl: &mir::Place<'tcx>) -> mir::PlaceTy<'tcx> {
         let normalized = self.normalize_box_deref_alias_place(pl);
         let pl = &normalized;
-        let mut cur_ty = mir::PlaceTy::from_ty(self.region_type_of_local(pl.local)?);
+        let mut cur_ty = mir::PlaceTy::from_ty(self.region_type_of_local(pl.local));
 
         for elem in pl.projection {
             cur_ty = match elem {
                 mir::ProjectionElem::Deref => {
-                    let ty = cur_ty.ty.builtin_deref(true).ok_or_else(|| {
-                        TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
-                            "deref projection on non-dereferenceable region-sensitive place type {cur_ty:?}"
-                        ))))
-                    })?;
+                    let ty = cur_ty.ty.builtin_deref(true).unwrap_or_else(|| {
+                        bug!("deref projection on non-dereferenceable region-sensitive place type {cur_ty:?}")
+                    });
                     mir::PlaceTy::from_ty(ty)
                 },
                 mir::ProjectionElem::Field(field, _) => mir::PlaceTy::from_ty(
@@ -462,13 +442,9 @@ impl<'tcx> Procedure<'tcx> {
                     variant_index: Some(variant_idx),
                 },
                 mir::ProjectionElem::Index(_) | mir::ProjectionElem::ConstantIndex { .. } => {
-                    mir::PlaceTy::from_ty(cur_ty.ty.builtin_index().ok_or_else(|| {
-                        TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
-                            format!(
-                                "index projection on non-indexable region-sensitive place type {cur_ty:?}"
-                            ),
-                        )))
-                    })?)
+                    mir::PlaceTy::from_ty(cur_ty.ty.builtin_index().unwrap_or_else(|| {
+                        bug!("index projection on non-indexable region-sensitive place type {cur_ty:?}")
+                    }))
                 },
                 mir::ProjectionElem::Subslice { from, to, from_end } => {
                     let ty = match cur_ty.ty.kind() {
@@ -477,57 +453,40 @@ impl<'tcx> Procedure<'tcx> {
                             ty::Ty::new_array(self.tcx, *inner, to - from)
                         },
                         ty::TyKind::Array(inner, size) if from_end => {
-                            let size = size.try_to_target_usize(self.tcx).ok_or_else(|| {
-                                TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
-                                    "cannot determine array size for region-sensitive subslice projection of {cur_ty:?}"
-                                ))))
-                            })?;
+                            let size = size.try_to_target_usize(self.tcx).unwrap_or_else(|| {
+                                bug!("cannot determine array size for region-sensitive subslice projection of {cur_ty:?}")
+                            });
                             ty::Ty::new_array(self.tcx, *inner, size - from - to)
                         },
                         _ => {
-                            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
-                                Message::UnsupportedFeature(format!(
-                                    "subslice projection on unsupported region-sensitive place type {cur_ty:?}"
-                                )),
-                            )));
+                            bug!("subslice projection on unsupported region-sensitive place type {cur_ty:?}");
                         },
                     };
                     mir::PlaceTy::from_ty(ty)
                 },
                 mir::ProjectionElem::OpaqueCast(_) => {
-                    return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
-                        Message::UnsupportedFeature("region-sensitive OpaqueCast place typing".to_owned()),
-                    )));
+                    bug!("region-sensitive OpaqueCast place typing");
                 },
                 mir::ProjectionElem::UnwrapUnsafeBinder(_) => {
-                    return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
-                        Message::UnsupportedFeature(
-                            "region-sensitive UnwrapUnsafeBinder place typing".to_owned(),
-                        ),
-                    )));
+                    bug!("region-sensitive UnwrapUnsafeBinder place typing");
                 },
             };
-            self.ensure_region_type(cur_ty.ty, || format!("place {pl:?}"))?;
+            self.ensure_region_type(cur_ty.ty, || format!("place {pl:?}"));
         }
 
-        Ok(cur_ty)
+        cur_ty
     }
 
     /// Get the region-sensitive borrowck type of a target/dropck operand.
-    pub(crate) fn region_type_of_operand(
-        &self,
-        op: &mir::Operand<'tcx>,
-    ) -> Result<ty::Ty<'tcx>, TranslationError> {
+    pub(crate) fn region_type_of_operand(&self, op: &mir::Operand<'tcx>) -> ty::Ty<'tcx> {
         match op {
-            mir::Operand::Copy(place) | mir::Operand::Move(place) => Ok(self.region_type_of_place(place)?.ty),
+            mir::Operand::Copy(place) | mir::Operand::Move(place) => self.region_type_of_place(place).ty,
             mir::Operand::Constant(constant) => {
                 let ty = constant.const_.ty();
                 self.ensure_region_type(ty, || format!("constant operand {op:?}"))
             },
             mir::Operand::RuntimeChecks(_) => {
-                Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
-                    format!("region-sensitive type requested for runtime-check operand {op:?}"),
-                ))))
+                bug!("region-sensitive type requested for runtime-check operand {op:?}");
             },
         }
     }
@@ -593,11 +552,7 @@ impl<'tcx> Procedure<'tcx> {
     }
 
     /// Get the region-sensitive borrowck type of a target/dropck rvalue.
-    pub(crate) fn region_type_of_rvalue(
-        &self,
-        loc: mir::Location,
-        rval: &mir::Rvalue<'tcx>,
-    ) -> Result<ty::Ty<'tcx>, TranslationError> {
+    pub(crate) fn region_type_of_rvalue(&self, loc: mir::Location, rval: &mir::Rvalue<'tcx>) -> ty::Ty<'tcx> {
         if let Some(source_stmt) = self.source_statement_for_target(loc)
             && let mir::StatementKind::Assign(source_assign) = &source_stmt.kind
         {
@@ -607,9 +562,9 @@ impl<'tcx> Procedure<'tcx> {
         }
 
         let ty = match rval {
-            mir::Rvalue::Use(op, _) => self.region_type_of_operand(op)?,
+            mir::Rvalue::Use(op, _) => self.region_type_of_operand(op),
             mir::Rvalue::Ref(region, borrow_kind, place) => {
-                let place_ty = self.region_type_of_place(place)?.ty;
+                let place_ty = self.region_type_of_place(place).ty;
                 let mutability = match borrow_kind {
                     mir::BorrowKind::Shared | mir::BorrowKind::Fake(_) => ty::Mutability::Not,
                     mir::BorrowKind::Mut { .. } => ty::Mutability::Mut,

@@ -644,7 +644,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         if source_func_constant.is_none() {
             self.proc.ensure_region_type(call_func_constant.ty(), || {
                 format!("target call function type at {loc:?} without mapped borrowck source call")
-            })?;
+            });
         }
 
         // Get the region-sensitive type of the return value from the source/borrowck function.
@@ -680,10 +680,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let output_ty = self
             .proc
-            .ensure_region_type(inst_sig.output().skip_binder(), || format!("call output type at {loc:?}"))?;
+            .ensure_region_type(inst_sig.output().skip_binder(), || format!("call output type at {loc:?}"));
         info!("call has instantiated type {:?}", inst_sig);
         let lhs_shape_ty = self.shape_type_of_place(destination);
-        let lhs_region_ty = self.proc.region_type_of_place(destination)?;
+        let lhs_region_ty = self.proc.region_type_of_place(destination);
         let lhs_strongly_writeable = !self.check_place_below_reference(destination);
         let mut annotation_plan = self.annotations.prepare_call_annotation_plan(
             &self.ty_translator,
