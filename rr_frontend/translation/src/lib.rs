@@ -241,6 +241,13 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                 refinement_type: lit.refinement_type.to_string(),
                 syn_type: lit.syn_type.to_string(),
                 sem_type: lit.type_term,
+                raw_type: {
+                    let raw_type = lit.raw_type.expect("exported ADT literal should have a raw type");
+                    shim_registry::RawAdtType {
+                        rtype: raw_type.refinement_type.to_string(),
+                        semtype: raw_type.type_term,
+                    }
+                },
                 info: lit.info,
             };
             return Some(a);
@@ -1133,6 +1140,10 @@ fn register_shims(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineErro
             type_term: shim.sem_type.clone(),
             syn_type: lang::SynType::Literal(shim.syn_type.clone()),
             refinement_type: coq::term::Type::Literal(shim.refinement_type.clone()),
+            raw_type: Some(specs::types::RawLiteralType {
+                type_term: shim.raw_type.semtype.clone(),
+                refinement_type: coq::term::Type::Literal(shim.raw_type.rtype.clone()),
+            }),
             info: shim.info.clone(),
         };
 
@@ -2206,6 +2217,10 @@ fn add_builtin_shims(registry: &mut shim_registry::SR<'_>) {
         refinement_type: "core_marker_PhantomData_rt".to_owned(),
         syn_type: "core_marker_PhantomData_sls".to_owned(),
         sem_type: "core_marker_PhantomData_ty".to_owned(),
+        raw_type: shim_registry::RawAdtType {
+            rtype: "core_marker_PhantomData_rt".to_owned(),
+            semtype: "core_marker_PhantomData_ty".to_owned(),
+        },
         info: specs::types::AdtShimInfo::empty(),
     };
 

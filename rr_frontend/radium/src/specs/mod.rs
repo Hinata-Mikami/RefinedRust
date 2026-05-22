@@ -115,6 +115,7 @@ impl Type<'_> {
     pub fn make_raw(&mut self) {
         match self {
             Self::Struct(su) => su.make_raw(),
+            Self::Literal(lit) => lit.make_raw(),
             Self::MutRef(box ty, _) | Self::ShrRef(box ty, _) => ty.make_raw(),
             _ => (),
         }

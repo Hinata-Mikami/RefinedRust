@@ -631,6 +631,7 @@ where
                 type_term: lit_ty.to_owned(),
                 refinement_type: coq::term::Type::Infer,
                 syn_type: ty.into(),
+                raw_type: None,
                 info: specs::types::AdtShimInfo::empty(),
             };
             let lit_ref = (self.make_literal)(lit_ty);

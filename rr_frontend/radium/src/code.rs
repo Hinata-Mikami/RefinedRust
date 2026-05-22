@@ -239,9 +239,9 @@ impl RustType {
             Type::Literal(lit) => {
                 if let Some(scope_inst) = lit.scope_inst.as_ref() {
                     let inst: RustScopeInst = scope_inst.into();
-                    Self::Lit(vec![lit.def.type_term.clone()], inst)
+                    Self::Lit(vec![lit.type_term().to_owned()], inst)
                 } else {
-                    Self::Lit(vec![lit.def.type_term.clone()], RustScopeInst::default())
+                    Self::Lit(vec![lit.type_term().to_owned()], RustScopeInst::default())
                 }
             },
 

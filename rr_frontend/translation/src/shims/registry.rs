@@ -138,6 +138,15 @@ struct ShimTraitImplEntry {
     specs: specs::traits::LiteralImpl,
 }
 
+/// The raw type of an ADT shim, without safety invariant.
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub(crate) struct RawAdtType {
+    /// The Coq name of the raw refinement type.
+    pub rtype: String,
+    /// The Coq name of the raw semantic type.
+    pub semtype: String,
+}
+
 /// A file entry for an adt shim.
 #[derive(Serialize, Deserialize)]
 struct ShimAdtEntry {
@@ -151,6 +160,9 @@ struct ShimAdtEntry {
     rtype: String,
     /// the Coq name of the semantic type
     semtype: String,
+
+    /// the raw type without safety invariant
+    raw_type: RawAdtType,
 
     /// more meta information
     #[serde(with = "remote::AdtShimInfo")]
@@ -239,6 +251,7 @@ pub(crate) struct AdtShim<'a> {
     pub refinement_type: String,
     pub syn_type: String,
     pub sem_type: String,
+    pub raw_type: RawAdtType,
     pub info: specs::types::AdtShimInfo,
 }
 
@@ -250,6 +263,7 @@ impl<'a> From<AdtShim<'a>> for ShimAdtEntry {
             syntype: shim.syn_type,
             semtype: shim.sem_type,
             rtype: shim.refinement_type,
+            raw_type: shim.raw_type,
             info: shim.info,
         }
     }
@@ -448,6 +462,7 @@ impl<'a> SR<'a> {
                         syn_type: b.syntype,
                         sem_type: b.semtype,
                         refinement_type: b.rtype,
+                        raw_type: b.raw_type,
                         info: b.info,
                     };
 

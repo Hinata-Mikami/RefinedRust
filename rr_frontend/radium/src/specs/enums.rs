@@ -689,6 +689,10 @@ impl<'def> Abstract<'def> {
             type_term: self.public_type_name().to_owned(),
             refinement_type: coq::term::Type::Literal(self.public_rt_def_name().to_owned()),
             syn_type: lang::SynType::Literal(self.els_def_name().to_owned()),
+            raw_type: Some(types::RawLiteralType {
+                type_term: self.public_type_name().to_owned(),
+                refinement_type: coq::term::Type::Literal(self.public_rt_def_name().to_owned()),
+            }),
             info,
         }
     }

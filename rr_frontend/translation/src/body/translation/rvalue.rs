@@ -326,15 +326,23 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::Rvalue::Ref(region, bk, pl) => {
                 let translated_pl = self.translate_place(pl)?;
                 let translated_bk = TX::translate_borrow_kind(self.tcx, *bk)?;
-                let ty_annot = self.get_type_annotation_for_borrow(*bk, pl)?;
+
                 // Drop-elaborated borrows are target-only statements, so their lifetime has to come
                 // from the synthetic drop-borrow mapping rather than a borrowck region variable.
-                let lft = if let Some(drop_borrow) = self.proc.synthetic_drop_borrow_for_assignment(loc) {
-                    AnnotationGenerator::synthetic_drop_borrow_lft(drop_borrow)
+                // Drop-elaborated borrows for Drop::drop should not include the safety invariant.
+                let (lft, raw) = if let Some(drop_borrow) =
+                    self.proc.synthetic_drop_borrow_for_assignment(loc)
+                {
+                    (AnnotationGenerator::synthetic_drop_borrow_lft(drop_borrow), true)
                 } else {
                     let region = self.proc.source_borrow_region_for_target(loc).unwrap_or(*region);
-                    self.annotations.prepare_borrow_lifetime_plan(&self.ty_translator, loc, region).lft
+                    (
+                        self.annotations.prepare_borrow_lifetime_plan(&self.ty_translator, loc, region).lft,
+                        false,
+                    )
                 };
+
+                let ty_annot = self.get_type_annotation_for_borrow(*bk, raw, pl)?;
 
                 Ok((
                     code::Expr::Borrow {
@@ -436,6 +444,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn get_type_annotation_for_borrow(
         &self,
         _bk: mir::BorrowKind,
+        raw: bool,
         pl: &mir::Place<'tcx>,
     ) -> Result<Option<code::RustType>, TranslationError> {
         //let mir::BorrowKind::Mut { .. } = bk else {
@@ -445,7 +454,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let ty = self.proc.region_type_of_place(pl);
 
         // For borrows, we can safely ignore the downcast type -- we cannot borrow a particularly variant
-        let translated_ty = self.ty_translator.translate_type(ty.ty)?;
+        let mut translated_ty = self.ty_translator.translate_type(ty.ty)?;
+        if raw {
+            translated_ty.make_raw();
+        }
         let annot_ty = code::RustType::of_type(&translated_ty);
 
         Ok(Some(annot_ty))
