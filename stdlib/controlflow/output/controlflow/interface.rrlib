@@ -13,6 +13,10 @@
         "ControlFlow",
         "Break"
       ],
+      "raw_type": {
+        "rtype": "(ControlFlow_Break_rt)",
+        "semtype": "ControlFlow_Break_ty"
+      },
       "rtype": "(ControlFlow_Break_rt)",
       "semtype": "ControlFlow_Break_ty",
       "syntype": "ControlFlow_Break_sls"
@@ -29,6 +33,10 @@
         "ControlFlow",
         "Continue"
       ],
+      "raw_type": {
+        "rtype": "(ControlFlow_Continue_rt)",
+        "semtype": "ControlFlow_Continue_ty"
+      },
       "rtype": "(ControlFlow_Continue_rt)",
       "semtype": "ControlFlow_Continue_ty",
       "syntype": "ControlFlow_Continue_sls"
@@ -44,6 +52,10 @@
         "convert",
         "Infallible"
       ],
+      "raw_type": {
+        "rtype": "(convert_Infallible_rt)",
+        "semtype": "convert_Infallible_ty"
+      },
       "rtype": "(convert_Infallible_rt)",
       "semtype": "convert_Infallible_ty",
       "syntype": "convert_Infallible_els"
@@ -59,6 +71,10 @@
         "ops",
         "ControlFlow"
       ],
+      "raw_type": {
+        "rtype": "(ControlFlow_rt)",
+        "semtype": "ControlFlow_ty"
+      },
       "rtype": "(ControlFlow_rt)",
       "semtype": "ControlFlow_ty",
       "syntype": "ControlFlow_els"

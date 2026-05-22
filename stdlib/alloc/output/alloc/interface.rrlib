@@ -12,6 +12,10 @@
         "alloc",
         "Global"
       ],
+      "raw_type": {
+        "rtype": "(Global_rt)",
+        "semtype": "Global_ty"
+      },
       "rtype": "(Global_rt)",
       "semtype": "Global_ty",
       "syntype": "Global_sls"
@@ -27,6 +31,10 @@
         "alloc",
         "Layout"
       ],
+      "raw_type": {
+        "rtype": "(layout_Layout_rt)",
+        "semtype": "layout_Layout_ty"
+      },
       "rtype": "(layout_Layout_inv_t_rt)",
       "semtype": "layout_Layout_inv_t",
       "syntype": "layout_Layout_sls"
@@ -42,6 +50,10 @@
         "alloc",
         "LayoutError"
       ],
+      "raw_type": {
+        "rtype": "(layout_LayoutError_rt)",
+        "semtype": "layout_LayoutError_ty"
+      },
       "rtype": "(layout_LayoutError_rt)",
       "semtype": "layout_LayoutError_ty",
       "syntype": "layout_LayoutError_sls"

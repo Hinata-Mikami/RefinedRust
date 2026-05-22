@@ -12,6 +12,10 @@
         "once",
         "Once"
       ],
+      "raw_type": {
+        "rtype": "(once_Once_rt)",
+        "semtype": "once_Once_ty"
+      },
       "rtype": "(once_Once_inv_t_rt)",
       "semtype": "once_Once_inv_t",
       "syntype": "once_Once_sls"
@@ -27,6 +31,10 @@
         "relax",
         "Spin"
       ],
+      "raw_type": {
+        "rtype": "(relax_Spin_rt)",
+        "semtype": "relax_Spin_ty"
+      },
       "rtype": "(relax_Spin_rt)",
       "semtype": "relax_Spin_ty",
       "syntype": "relax_Spin_sls"
@@ -42,6 +50,10 @@
         "rwlock",
         "RwLock"
       ],
+      "raw_type": {
+        "rtype": "(rwlock_RwLock_rt)",
+        "semtype": "rwlock_RwLock_ty"
+      },
       "rtype": "(rwlock_RwLock_inv_t_rt)",
       "semtype": "rwlock_RwLock_inv_t",
       "syntype": "rwlock_RwLock_sls"
@@ -57,6 +69,10 @@
         "rwlock",
         "RwLockReadGuard"
       ],
+      "raw_type": {
+        "rtype": "(rwlock_RwLockReadGuard_rt)",
+        "semtype": "rwlock_RwLockReadGuard_ty"
+      },
       "rtype": "(rwlock_RwLockReadGuard_inv_t_rt)",
       "semtype": "rwlock_RwLockReadGuard_inv_t",
       "syntype": "rwlock_RwLockReadGuard_sls"
@@ -72,6 +88,10 @@
         "rwlock",
         "RwLockWriteGuard"
       ],
+      "raw_type": {
+        "rtype": "(rwlock_RwLockWriteGuard_rt)",
+        "semtype": "rwlock_RwLockWriteGuard_ty"
+      },
       "rtype": "(rwlock_RwLockWriteGuard_inv_t_rt)",
       "semtype": "rwlock_RwLockWriteGuard_inv_t",
       "syntype": "rwlock_RwLockWriteGuard_sls"

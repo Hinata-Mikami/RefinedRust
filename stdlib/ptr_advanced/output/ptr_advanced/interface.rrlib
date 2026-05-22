@@ -12,6 +12,10 @@
         "ptr",
         "NonNull"
       ],
+      "raw_type": {
+        "rtype": "(nonnull_NonNull_rt)",
+        "semtype": "nonnull_NonNull_ty"
+      },
       "rtype": "(nonnull_NonNull_inv_t_rt)",
       "semtype": "nonnull_NonNull_inv_t",
       "syntype": "nonnull_NonNull_sls"
@@ -27,6 +31,10 @@
         "ptr",
         "Unique"
       ],
+      "raw_type": {
+        "rtype": "(unique_Unique_rt)",
+        "semtype": "unique_Unique_ty"
+      },
       "rtype": "(unique_Unique_inv_t_rt)",
       "semtype": "unique_Unique_inv_t",
       "syntype": "unique_Unique_sls"

@@ -13,6 +13,10 @@
         "Ordering",
         "Equal"
       ],
+      "raw_type": {
+        "rtype": "(Ordering_Equal_rt)",
+        "semtype": "Ordering_Equal_ty"
+      },
       "rtype": "(Ordering_Equal_rt)",
       "semtype": "Ordering_Equal_ty",
       "syntype": "Ordering_Equal_sls"
@@ -29,6 +33,10 @@
         "Ordering",
         "Greater"
       ],
+      "raw_type": {
+        "rtype": "(Ordering_Greater_rt)",
+        "semtype": "Ordering_Greater_ty"
+      },
       "rtype": "(Ordering_Greater_rt)",
       "semtype": "Ordering_Greater_ty",
       "syntype": "Ordering_Greater_sls"
@@ -45,6 +53,10 @@
         "Ordering",
         "Less"
       ],
+      "raw_type": {
+        "rtype": "(Ordering_Less_rt)",
+        "semtype": "Ordering_Less_ty"
+      },
       "rtype": "(Ordering_Less_rt)",
       "semtype": "Ordering_Less_ty",
       "syntype": "Ordering_Less_sls"
@@ -60,6 +72,10 @@
         "cmp",
         "Ordering"
       ],
+      "raw_type": {
+        "rtype": "(Ordering_rt)",
+        "semtype": "Ordering_ty"
+      },
       "rtype": "(Ordering_rt)",
       "semtype": "Ordering_ty",
       "syntype": "Ordering_els"

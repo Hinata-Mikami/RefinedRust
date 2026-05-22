@@ -12,6 +12,10 @@
         "mem",
         "Alignment"
       ],
+      "raw_type": {
+        "rtype": "(alignment_Alignment_rt)",
+        "semtype": "alignment_Alignment_ty"
+      },
       "rtype": "(alignment_Alignment_inv_t_rt)",
       "semtype": "alignment_Alignment_inv_t",
       "syntype": "alignment_Alignment_sls"

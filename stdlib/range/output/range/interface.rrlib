@@ -12,6 +12,10 @@
         "ops",
         "Range"
       ],
+      "raw_type": {
+        "rtype": "(Range_rt)",
+        "semtype": "Range_ty"
+      },
       "rtype": "(Range_inv_t_rt)",
       "semtype": "Range_inv_t",
       "syntype": "Range_sls"

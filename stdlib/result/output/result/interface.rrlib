@@ -12,6 +12,10 @@
         "fmt",
         "Error"
       ],
+      "raw_type": {
+        "rtype": "(Error_rt)",
+        "semtype": "Error_ty"
+      },
       "rtype": "(Error_rt)",
       "semtype": "Error_ty",
       "syntype": "Error_sls"
@@ -27,6 +31,10 @@
         "fmt",
         "Formatter"
       ],
+      "raw_type": {
+        "rtype": "(Formatter_rt)",
+        "semtype": "Formatter_ty"
+      },
       "rtype": "(Formatter_inv_t_rt)",
       "semtype": "Formatter_inv_t",
       "syntype": "Formatter_sls"
@@ -43,6 +51,10 @@
         "Result",
         "Err"
       ],
+      "raw_type": {
+        "rtype": "(Result_Err_rt)",
+        "semtype": "Result_Err_ty"
+      },
       "rtype": "(Result_Err_rt)",
       "semtype": "Result_Err_ty",
       "syntype": "Result_Err_sls"
@@ -59,6 +71,10 @@
         "Result",
         "Ok"
       ],
+      "raw_type": {
+        "rtype": "(Result_Ok_rt)",
+        "semtype": "Result_Ok_ty"
+      },
       "rtype": "(Result_Ok_rt)",
       "semtype": "Result_Ok_ty",
       "syntype": "Result_Ok_sls"
@@ -74,6 +90,10 @@
         "result",
         "Result"
       ],
+      "raw_type": {
+        "rtype": "(Result_rt)",
+        "semtype": "Result_ty"
+      },
       "rtype": "(Result_rt)",
       "semtype": "Result_ty",
       "syntype": "Result_els"

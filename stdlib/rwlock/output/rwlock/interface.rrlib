@@ -12,6 +12,10 @@
         "sync",
         "RwLock"
       ],
+      "raw_type": {
+        "rtype": "(RwLock_rt)",
+        "semtype": "RwLock_ty"
+      },
       "rtype": "(RwLock_inv_t_rt)",
       "semtype": "RwLock_inv_t",
       "syntype": "RwLock_sls"

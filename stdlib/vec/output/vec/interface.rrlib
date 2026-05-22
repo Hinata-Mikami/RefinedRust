@@ -13,6 +13,10 @@
         "iter",
         "Iter"
       ],
+      "raw_type": {
+        "rtype": "(Iter_rt)",
+        "semtype": "Iter_ty"
+      },
       "rtype": "(Iter_inv_t_rt)",
       "semtype": "Iter_inv_t",
       "syntype": "Iter_sls"
@@ -29,6 +33,10 @@
         "iter",
         "IterMut"
       ],
+      "raw_type": {
+        "rtype": "(IterMut_rt)",
+        "semtype": "IterMut_ty"
+      },
       "rtype": "(IterMut_inv_t_rt)",
       "semtype": "IterMut_inv_t",
       "syntype": "IterMut_sls"
@@ -44,6 +52,10 @@
         "vec",
         "Vec"
       ],
+      "raw_type": {
+        "rtype": "(Vec_rt)",
+        "semtype": "Vec_ty"
+      },
       "rtype": "(Vec_inv_t_rt)",
       "semtype": "Vec_inv_t",
       "syntype": "Vec_sls"
@@ -60,6 +72,10 @@
         "into_iter",
         "IntoIter"
       ],
+      "raw_type": {
+        "rtype": "(IntoIter_rt)",
+        "semtype": "IntoIter_ty"
+      },
       "rtype": "(IntoIter_inv_t_rt)",
       "semtype": "IntoIter_inv_t",
       "syntype": "IntoIter_sls"

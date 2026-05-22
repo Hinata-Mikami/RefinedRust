@@ -13,6 +13,10 @@
         "adapters",
         "Map"
       ],
+      "raw_type": {
+        "rtype": "(adapters_map_Map_rt)",
+        "semtype": "adapters_map_Map_ty"
+      },
       "rtype": "(adapters_map_Map_inv_t_rt)",
       "semtype": "adapters_map_Map_inv_t",
       "syntype": "adapters_map_Map_sls"
@@ -29,6 +33,10 @@
         "adapters",
         "Skip"
       ],
+      "raw_type": {
+        "rtype": "(adapters_skip_Skip_rt)",
+        "semtype": "adapters_skip_Skip_ty"
+      },
       "rtype": "(adapters_skip_Skip_inv_t_rt)",
       "semtype": "adapters_skip_Skip_inv_t",
       "syntype": "adapters_skip_Skip_sls"
@@ -45,6 +53,10 @@
         "adapters",
         "Take"
       ],
+      "raw_type": {
+        "rtype": "(adapters_take_Take_rt)",
+        "semtype": "adapters_take_Take_ty"
+      },
       "rtype": "(adapters_take_Take_inv_t_rt)",
       "semtype": "adapters_take_Take_inv_t",
       "syntype": "adapters_take_Take_sls"

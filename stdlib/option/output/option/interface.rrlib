@@ -13,6 +13,10 @@
         "Option",
         "None"
       ],
+      "raw_type": {
+        "rtype": "(Option_None_rt)",
+        "semtype": "Option_None_ty"
+      },
       "rtype": "(Option_None_rt)",
       "semtype": "Option_None_ty",
       "syntype": "Option_None_sls"
@@ -29,6 +33,10 @@
         "Option",
         "Some"
       ],
+      "raw_type": {
+        "rtype": "(Option_Some_rt)",
+        "semtype": "Option_Some_ty"
+      },
       "rtype": "(Option_Some_rt)",
       "semtype": "Option_Some_ty",
       "syntype": "Option_Some_sls"
@@ -44,6 +52,10 @@
         "option",
         "Option"
       ],
+      "raw_type": {
+        "rtype": "(Option_rt)",
+        "semtype": "Option_ty"
+      },
       "rtype": "(Option_rt)",
       "semtype": "Option_ty",
       "syntype": "Option_els"

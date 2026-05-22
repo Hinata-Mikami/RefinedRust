@@ -12,6 +12,10 @@
         "boxed",
         "Box"
       ],
+      "raw_type": {
+        "rtype": "(Box_rt)",
+        "semtype": "Box_ty"
+      },
       "rtype": "(Box_inv_t_rt)",
       "semtype": "Box_inv_t",
       "syntype": "Box_sls"
