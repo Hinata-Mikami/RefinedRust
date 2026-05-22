@@ -39,6 +39,7 @@ fn build_driver() {
     let manifest_path = "testbins/mir_mapper_driver/Cargo.toml";
     let mut cargo = Command::new("cargo");
     cargo.env("CARGO_INCREMENTAL", "0");
+    cargo.env("CARGO_TARGET_DIR", "testbins/mir_mapper_driver/target");
     cargo.args(["build", "-q", "--manifest-path", manifest_path, "--bin", BIN_NAME]);
 
     assert!(cargo.status().expect("Failed to build MIR mapper driver").success());

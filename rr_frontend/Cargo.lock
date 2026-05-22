@@ -587,6 +587,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mir_mapper_driver"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "rr_rustc_interface",
+ "translation",
+]
+
+[[package]]
 name = "nix"
 version = "0.31.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

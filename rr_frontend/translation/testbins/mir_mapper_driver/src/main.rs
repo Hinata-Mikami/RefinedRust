@@ -2,19 +2,12 @@
 #![feature(exitcode_exit_method)]
 #![feature(default_field_values)]
 
-use std::cell::RefCell;
 use std::env;
-use std::mem;
 
-use rr_rustc_interface::borrowck;
-use rr_rustc_interface::borrowck::consumers::{self, BodyWithBorrowckFacts};
-use rr_rustc_interface::data_structures::fx::FxHashMap;
 use rr_rustc_interface::driver::*;
 use rr_rustc_interface::hir;
-use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::interface::{Config, interface};
-use rr_rustc_interface::middle::query::Providers;
-use rr_rustc_interface::middle::queries::mir_borrowck::ProvidedValue;
 use rr_rustc_interface::middle::{ty, util};
 use rr_rustc_interface::session::{self, EarlyDiagCtxt, Session};
 
@@ -44,59 +37,8 @@ fn get_attribute<'tcx>(
     })
 }
 
-mod mir_storage {
-    use super::*;
-
-    thread_local! {
-        static MIR_BODIES:
-            RefCell<FxHashMap<LocalDefId, BodyWithBorrowckFacts<'static>>> =
-            RefCell::new(FxHashMap::default());
-    }
-
-    pub(crate) unsafe fn store_mir_body<'tcx>(
-        _tcx: ty::TyCtxt<'tcx>,
-        def_id: LocalDefId,
-        body_with_facts: BodyWithBorrowckFacts<'tcx>,
-    ) {
-        let body_with_facts: BodyWithBorrowckFacts<'static> = unsafe { mem::transmute(body_with_facts) };
-
-        MIR_BODIES.with(|state| {
-            let mut map = state.borrow_mut();
-            assert!(map.insert(def_id, body_with_facts).is_none());
-        });
-    }
-
-    pub(crate) unsafe fn retrieve_mir_body<'tcx>(
-        _tcx: ty::TyCtxt<'tcx>,
-        def_id: LocalDefId,
-    ) -> BodyWithBorrowckFacts<'tcx> {
-        let body_with_facts: BodyWithBorrowckFacts<'static> = MIR_BODIES.with(|state| {
-            let mut map = state.borrow_mut();
-            map.remove(&def_id).unwrap()
-        });
-
-        unsafe { mem::transmute(body_with_facts) }
-    }
-}
-
-fn mir_borrowck<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: LocalDefId) -> ProvidedValue<'tcx> {
-    let bodies_with_facts = consumers::get_bodies_with_borrowck_facts(tcx, def_id, consumers::ConsumerOptions::PoloniusInputFacts);
-
-    #[expect(clippy::iter_over_hash_type)]
-    for (did, body) in bodies_with_facts {
-        unsafe {
-            mir_storage::store_mir_body(tcx, did, body);
-        }
-    }
-
-    let mut providers = Providers::default();
-    borrowck::provide(&mut providers);
-    let original_mir_borrowck = providers.mir_borrowck;
-    original_mir_borrowck(tcx, def_id)
-}
-
 fn override_queries(_session: &Session, local: &mut util::Providers) {
-    local.queries.mir_borrowck = mir_borrowck;
+    local.queries.mir_borrowck = translation::mir_borrowck;
 }
 
 impl Callbacks for OurCompilerCalls {
@@ -113,7 +55,8 @@ impl Callbacks for OurCompilerCalls {
             .filter(|id| get_attribute(tcx, id.to_def_id(), "mapper", "run").is_some())
             .collect();
 
-        local_def_ids.sort_unstable_by_key(|id| get_attribute(tcx, id.to_def_id(), "mapper", "run").unwrap().span());
+        local_def_ids
+            .sort_unstable_by_key(|id| get_attribute(tcx, id.to_def_id(), "mapper", "run").unwrap().span());
 
         for (index, local_def_id) in local_def_ids.iter().copied().enumerate() {
             if index > 0 {
@@ -122,8 +65,8 @@ impl Callbacks for OurCompilerCalls {
 
             println!("Mapping for function {}:", tcx.item_name(local_def_id.to_def_id()));
 
-            let body_with_facts = unsafe { mir_storage::retrieve_mir_body(tcx, local_def_id) };
-            let bc = &body_with_facts.body;
+            let bc =
+                translation::borrowck_mir_body(tcx, local_def_id).expect("MIR body should have been stored");
             let de = tcx.mir_drops_elaborated_and_const_checked(local_def_id);
             let de = de.borrow();
             let mapping = translation::map_drop_elaborated_to_borrow_checked(tcx, bc, &de);
@@ -136,6 +79,7 @@ impl Callbacks for OurCompilerCalls {
                     println!("{points}");
                 }
             }
+            drop(de);
         }
 
         Compilation::Stop

@@ -41,7 +41,7 @@ use log::{error, info, trace, warn};
 use radium::{code, coq, lang, specs};
 use rr_rustc_interface::errors::ErrorGuaranteed;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
-use rr_rustc_interface::middle::{queries, ty};
+use rr_rustc_interface::middle::{mir, queries, ty};
 use rr_rustc_interface::span::Span;
 use rr_rustc_interface::{hir, span};
 use typed_arena::Arena;
@@ -2424,4 +2424,9 @@ where
 
 pub fn mir_borrowck(tcx: ty::TyCtxt<'_>, def_id: LocalDefId) -> queries::mir_borrowck::ProvidedValue<'_> {
     environment::mir_storage::mir_borrowck(tcx, def_id)
+}
+
+#[must_use]
+pub fn borrowck_mir_body<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: LocalDefId) -> Option<&'tcx mir::Body<'tcx>> {
+    Some(&environment::mir_storage::retrieve_mir_body(tcx, def_id)?.body)
 }
