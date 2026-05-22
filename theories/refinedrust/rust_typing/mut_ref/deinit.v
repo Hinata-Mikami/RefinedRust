@@ -207,7 +207,7 @@ Section rule.
     end.
   Proof.
     iIntros "HT".
-    iIntros (??) "CTX HE HL Hl". simp_ltypes; simpl.
+    iIntros (???) "CTX HE HL Hl". simp_ltypes; simpl.
     destruct (ltype_uniq_extractable lt) eqn:Hextract; last done.
     iDestruct "HT" as "(%Hstcomp & HT)".
     iExists _, _. iFrame.

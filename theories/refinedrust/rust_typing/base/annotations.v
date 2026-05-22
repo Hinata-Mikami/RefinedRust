@@ -3,10 +3,13 @@ From refinedrust Require Import base.
 
 (** * Config options for the type checker *)
 
-Inductive rr_config_dont_fold_places :=
+Inductive rr_config_dont_fold_places : Prop :=
 | RR_CONFIG_DONT_FOLD_PLACES.
 
-Class CheckConfig (C : Type) := mk_check_config { check_config_witness : C }.
+Inductive rr_config_dont_interpret_typing_hints : Prop :=
+| RR_CONFIG_DONT_INTERPRET_TYPING_HINTS.
+
+Class CheckConfig (C : Prop) : Prop := mk_check_config { check_config_witness : C }.
 Global Hint Extern 10 (CheckConfig ?C) =>
   match goal with
   | H: C |- _ =>

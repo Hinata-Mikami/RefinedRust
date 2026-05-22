@@ -2629,6 +2629,7 @@ Section judgments.
   Definition owned_subltype_step (π : thread_id) E L (l : loc) {rt1 rt2} (r1 : place_rfn rt1) (r2 : place_rfn rt2) (lt1 : ltype rt1) (lt2 : ltype rt2) (T : llctx → iProp Σ → iProp Σ) : iProp Σ :=
     ∀ F,
     ⌜lftE ⊆ F⌝ -∗
+    ⌜lft_userE ⊆ F⌝ -∗
     rrust_ctx -∗
     elctx_interp E -∗
     llctx_interp L -∗
@@ -2640,20 +2641,6 @@ Section judgments.
   Class OwnedSubltypeStep (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt1 rt2} (r1 : place_rfn rt1) (r2 : place_rfn rt2) (lt1 : ltype rt1) (lt2 : ltype rt2) : Type :=
     owned_subltype_step_proof T : iProp_to_Prop (owned_subltype_step π E L l r1 r2 lt1 lt2 T).
 
-  Lemma owned_subltype_step_weak_subltype π E L l {rt1 rt2} (r1 : place_rfn rt1) (r2 : place_rfn rt2) lt1 lt2 T :
-    weak_subltype E L (Owned) r1 r2 lt1 lt2 (T L True)
-    ⊢ owned_subltype_step π E L l r1 r2 lt1 lt2 T.
-  Proof.
-    iIntros "HT" (??) "CTX HE HL Hl".
-    iExists L, True%I. iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
-    iModIntro. iDestruct "Hincl" as "(%Hst & #Hincl & _)".
-    iSplitL; first last.
-    { iPureIntro. rewrite Hst. eapply syn_type_size_eq_refl. }
-    iApply fupd_logical_step. iMod (fupd_mask_mono with "(Hincl Hl)"); first done.
-    iApply logical_step_intro. eauto.
-  Qed.
-  Global Instance owned_subltype_step_weak_subltype_inst π E L l {rt1 rt2} (r1 : place_rfn rt1) (r2 : place_rfn rt2) lt1 lt2 :
-    OwnedSubltypeStep π E L l r1 r2 lt1 lt2 | 1000 := λ T, i2p (owned_subltype_step_weak_subltype π E L l r1 r2 lt1 lt2 T).
 
   (** Subtyping for compatibility with mutable references. Importantly, this is independent of the refinement. *)
   Definition mut_subtype E L {rt} (ty1 ty2 : type rt) (T : iProp Σ) : iProp Σ :=
@@ -2911,14 +2898,14 @@ Section judgments.
           Φ (l2v l)) -∗
       WPe{f.1} e {{ Φ }})%I.
 
-  Definition typed_borrow_mut_end_cont_t bmin rt := gname → ∀ rt', ltype rt' → place_rfn rt' → type rt' → rt' → place_update_kind_res bmin rt rt' → iProp Σ.
+  Definition typed_borrow_mut_end_cont_t bmin rt := llctx → gname → ∀ rt', ltype rt' → place_rfn rt' → type rt' → rt' → place_update_kind_res bmin rt rt' → iProp Σ.
   Definition typed_borrow_mut_end (π : thread_id) (E : elctx) (L : llctx) (κ : lft) (l : loc) (ty_hint : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (T : typed_borrow_mut_end_cont_t bmin rt) : iProp Σ :=
-    (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ →
+    (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
     (*bmin ⪯ₚ b2 -∗*)
     (* given ownership of the location we borrow from *)
     l ◁ₗ[π, b2] r @ lt -∗ £(num_cred) ={F}=∗
-    ∃ (γ : gname) (ly : layout) (rt2 : RT) (ty2 : type rt2) (r2 : rt2) (res : place_update_kind_res bmin rt rt2),
+    ∃ (L' : llctx) (γ : gname) (ly : layout) (rt2 : RT) (ty2 : type rt2) (r2 : rt2) (res : place_update_kind_res bmin rt rt2),
     (* we provide a borrow of ty *)
     place_rfn_interp_mut (#r2) γ ∗
     &{κ}(∃ (r': rt2), gvar_auth γ r' ∗ |={lftE}=> l ↦: ty2.(ty_own_val) π r' MetaNone)  ∗
@@ -2932,8 +2919,8 @@ Section judgments.
     typed_place_cond res lt (BlockedLtype ty2 κ) ∗
     ⌜ltype_st lt = ty_syn_type ty2 MetaNone⌝ ∗
     (* and the context and postco *)
-    llctx_interp L ∗
-    T γ rt2 (BlockedLtype ty2 κ) (PlaceGhost γ) ty2 r2 res).
+    llctx_interp L' ∗
+    T L' γ rt2 (BlockedLtype ty2 κ) (PlaceGhost γ) ty2 r2 res).
   Class TypedBorrowMutEnd π (E : elctx) (L : llctx) (κ : lft) (l : loc) (orty : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) : Type :=
     typed_borrow_mut_end_proof T : iProp_to_Prop (typed_borrow_mut_end π E L κ l orty lt r b2 bmin T).
 

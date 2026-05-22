@@ -11,14 +11,9 @@ Lemma structs_EvenInt_add_two_proof (π : thread_id) :
   structs_EvenInt_add_two_lemma π.
 Proof.
   generalize RR_CONFIG_DONT_FOLD_PLACES; intros ?.
+  generalize RR_CONFIG_DONT_INTERPRET_TYPING_HINTS; intros ?.
   structs_EvenInt_add_two_prelude.
 
-  rep <-! liRStep; liShow.
-  liRStepUntil interpret_typing_hint.
-  iApply interpret_typing_hint_ignore.
-  rep <-! liRStep; liShow.
-  liRStepUntil interpret_typing_hint.
-  iApply interpret_typing_hint_ignore.
   rep <-! liRStep; liShow.
 
   all: print_remaining_goal.
