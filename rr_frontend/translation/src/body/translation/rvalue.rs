@@ -11,7 +11,7 @@ use rr_rustc_interface::{abi, index};
 
 use super::TX;
 use super::constants::MirConstantTranslation;
-use super::core::MirTranslationCtx;
+use super::core::{MirTranslationCtx, MirTypeTranslation};
 use super::place::MirPlaceTranslation;
 use crate::base::*;
 use crate::body::translation::ExprWithInfo;
@@ -19,7 +19,10 @@ use crate::error::Message;
 use crate::regions::AnnotationGenerator;
 
 pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
-    MirTranslationCtx<'def, 'tcx> + MirPlaceTranslation<'def, 'tcx> + MirConstantTranslation<'def, 'tcx>
+    MirTranslationCtx<'def, 'tcx>
+    + MirTypeTranslation<'def, 'tcx>
+    + MirPlaceTranslation<'def, 'tcx>
+    + MirConstantTranslation<'def, 'tcx>
 {
     fn translate_ref_rvalue(
         &mut self,
@@ -75,7 +78,7 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
                     return Ok(code::Expr::Literal(code::Literal::ZST));
                 }
 
-                let struct_use = self.ty_translator().generate_tuple_use(operand_types.iter().copied())?;
+                let struct_use = self.generate_tuple_use(operand_types.iter().copied())?;
                 let sl = struct_use.generate_raw_syn_type_term();
                 let initializers: Vec<_> =
                     translated_ops.into_iter().enumerate().map(|(i, o)| (i.to_string(), o)).collect();
@@ -92,7 +95,7 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
 
                 if adt_def.is_struct() {
                     let variant = adt_def.variant(variant);
-                    let struct_use = self.ty_translator().generate_struct_use(variant.def_id, args)?;
+                    let struct_use = self.generate_struct_use(variant.def_id, args)?;
 
                     let sl = struct_use.generate_raw_syn_type_term();
                     let initializers: Vec<_> = translated_ops
@@ -110,8 +113,7 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
                 if adt_def.is_enum() {
                     let variant_def = adt_def.variant(variant);
 
-                    let struct_use =
-                        self.ty_translator().generate_enum_variant_use(variant_def.def_id, args)?;
+                    let struct_use = self.generate_enum_variant_use(variant_def.def_id, args)?;
                     let sl = struct_use.generate_raw_syn_type_term();
 
                     let initializers: Vec<_> = translated_ops
@@ -125,7 +127,7 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
                         components: initializers,
                     };
 
-                    let enum_use = self.ty_translator().generate_enum_use_with_regions(adt_def, args)?;
+                    let enum_use = self.generate_enum_use_with_regions(adt_def, args)?;
                     let els = enum_use.generate_raw_syn_type_term();
 
                     info!("generating enum annotation for type {:?}", enum_use);
@@ -156,7 +158,7 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
                     return Ok(code::Expr::Literal(code::Literal::ZST));
                 }
 
-                let struct_use = self.ty_translator().generate_tuple_use(operand_types.iter().copied())?;
+                let struct_use = self.generate_tuple_use(operand_types.iter().copied())?;
                 let sl = struct_use.generate_raw_syn_type_term();
 
                 let initializers: Vec<_> =
@@ -186,12 +188,12 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
         to_ty: ty::Ty<'tcx>,
     ) -> Result<code::Expr, TranslationError> {
         let op_ty = self.shape_type_of_operand(op);
-        let op_st = self.ty_translator().translate_type_to_syn_type(op_ty)?;
+        let op_st = self.translate_type_to_syn_type(op_ty)?;
         let op_ot = op_st.into();
 
         let (translated_op, _) = self.translate_operand(op, true)?;
 
-        let target_st = self.ty_translator().translate_type_to_syn_type(to_ty)?;
+        let target_st = self.translate_type_to_syn_type(to_ty)?;
         let target_ot = target_st.into();
 
         match kind {
@@ -309,7 +311,7 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
                 let translated_place = self.translate_place(&place_kind)?;
                 let ty = self.shape_type_of_place(place);
 
-                let st = self.ty_translator().translate_type_to_syn_type(ty.ty)?;
+                let st = self.translate_type_to_syn_type(ty.ty)?;
 
                 if to_rvalue && is_copy {
                     Ok((
@@ -380,7 +382,7 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
             mir::Rvalue::UnaryOp(op, operand) => {
                 let (translated_e1, _) = self.translate_operand(operand, true)?;
                 let e1_ty = self.shape_type_of_operand(operand);
-                let e1_st = self.ty_translator().translate_type_to_syn_type(e1_ty)?;
+                let e1_st = self.translate_type_to_syn_type(e1_ty)?;
                 let translated_op = Self::translate_unop(self.tcx(), *op, e1_ty)?;
 
                 Ok((
@@ -407,7 +409,7 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
                     )));
                 };
 
-                let enum_use = self.ty_translator().generate_enum_use(*adt_def, args)?;
+                let enum_use = self.generate_enum_use(*adt_def, args)?;
                 let els = enum_use.generate_raw_syn_type_term();
 
                 let discriminant_acc = code::Expr::EnumDiscriminant {
@@ -451,8 +453,8 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
     ) -> Result<code::Expr, TranslationError> {
         let e1_ty = self.shape_type_of_operand(e1);
         let e2_ty = self.shape_type_of_operand(e2);
-        let e1_st = self.ty_translator().translate_type_to_syn_type(e1_ty)?;
-        let e2_st = self.ty_translator().translate_type_to_syn_type(e2_ty)?;
+        let e1_st = self.translate_type_to_syn_type(e1_ty)?;
+        let e2_st = self.translate_type_to_syn_type(e2_ty)?;
 
         let (translated_e1, _) = self.translate_operand(e1, true)?;
         let (translated_e2, _) = self.translate_operand(e2, true)?;
@@ -534,7 +536,7 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
                 // try to get the type of e1.
                 let e1_ty = self.shape_type_of_operand(e1);
                 let off_ty = Self::get_offset_ty(self.tcx(), e1_ty)?;
-                let st = self.ty_translator().translate_type_to_syn_type(off_ty)?;
+                let st = self.translate_type_to_syn_type(off_ty)?;
                 let ly = st.into();
                 Ok(mk_binop(code::Binop::PtrOffset(ly)))
             },

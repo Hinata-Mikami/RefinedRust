@@ -9,12 +9,14 @@ use radium::code;
 use rr_rustc_interface::abi;
 use rr_rustc_interface::middle::{mir, ty};
 
-use super::core::MirTranslationCtx;
+use super::core::{MirTranslationCtx, MirTypeTranslation};
 use crate::base::*;
 use crate::error::Message;
 use crate::types;
 
-pub(crate) trait MirPlaceTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'def, 'tcx> {
+pub(crate) trait MirPlaceTranslation<'def, 'tcx: 'def>:
+    MirTranslationCtx<'def, 'tcx> + MirTypeTranslation<'def, 'tcx>
+{
     /// Translate a place to a Caesium lvalue.
     fn translate_place(&self, pl: &mir::Place<'tcx>) -> Result<code::Expr, TranslationError> {
         // Dropck introduces raw-pointer alias locals for some `Box` derefs. Translate all uses as
@@ -52,10 +54,8 @@ pub(crate) trait MirPlaceTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'def, 
                             )));
                         };
 
-                        let translated_ty =
-                            self.ty_translator().translate_type_to_syn_type(ty.expect_ty())?;
-                        let translated_alloc =
-                            self.ty_translator().translate_type_to_syn_type(alloc.expect_ty())?;
+                        let translated_ty = self.translate_type_to_syn_type(ty.expect_ty())?;
+                        let translated_alloc = self.translate_type_to_syn_type(alloc.expect_ty())?;
                         acc_expr = code::Expr::MagicBoxDeref {
                             tst: translated_ty,
                             ast: translated_alloc,
@@ -63,7 +63,7 @@ pub(crate) trait MirPlaceTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'def, 
                         };
                     } else {
                         // use the type of the dereferencee
-                        let st = self.ty_translator().translate_type_to_syn_type(cur_ty.ty)?;
+                        let st = self.translate_type_to_syn_type(cur_ty.ty)?;
                         acc_expr = code::Expr::Deref {
                             ot: st.into(),
                             e: Box::new(acc_expr),
@@ -72,11 +72,10 @@ pub(crate) trait MirPlaceTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'def, 
                 },
                 mir::ProjectionElem::Field(f, _) => {
                     // `t` is the type of the field we are accessing!
-                    let lit =
-                        self.ty_translator().generate_structlike_use(cur_ty.ty, cur_ty.variant_index)?;
+                    let lit = self.generate_structlike_use(cur_ty.ty, cur_ty.variant_index)?;
                     // TODO: does not do the right thing for accesses to fields of zero-sized objects.
                     let struct_sls = lit.generate_raw_syn_type_term();
-                    let name = self.ty_translator().translator.get_field_name_of(
+                    let name = self.get_field_name_of(
                         *f,
                         cur_ty.ty,
                         cur_ty.variant_index.map(abi::VariantIdx::as_usize),
@@ -113,7 +112,7 @@ pub(crate) trait MirPlaceTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'def, 
                     info!("Downcast of ty {:?} to {:?}", cur_ty, variant_idx);
                     if let ty::TyKind::Adt(def, args) = cur_ty.ty.kind() {
                         if def.is_enum() {
-                            let enum_use = self.ty_translator().generate_enum_use(*def, args)?;
+                            let enum_use = self.generate_enum_use(*def, args)?;
                             let els = enum_use.generate_raw_syn_type_term();
 
                             let variant_name =
@@ -156,4 +155,7 @@ pub(crate) trait MirPlaceTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'def, 
     }
 }
 
-impl<'def, 'tcx: 'def, T> MirPlaceTranslation<'def, 'tcx> for T where T: MirTranslationCtx<'def, 'tcx> {}
+impl<'def, 'tcx: 'def, T> MirPlaceTranslation<'def, 'tcx> for T where
+    T: MirTranslationCtx<'def, 'tcx> + MirTypeTranslation<'def, 'tcx>
+{
+}
