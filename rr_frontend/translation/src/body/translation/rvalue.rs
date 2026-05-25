@@ -10,16 +10,47 @@ use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{abi, index};
 
 use super::TX;
-use super::constants::MirConstantTranslation as _;
-use super::core::MirTranslationCtx as _;
-use super::place::MirPlaceTranslation as _;
+use super::constants::MirConstantTranslation;
+use super::core::MirTranslationCtx;
+use super::place::MirPlaceTranslation;
 use crate::base::*;
 use crate::body::translation::ExprWithInfo;
 use crate::error::Message;
 use crate::regions::AnnotationGenerator;
 
-#[expect(clippy::multiple_inherent_impl)]
-impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
+pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
+    MirTranslationCtx<'def, 'tcx> + MirPlaceTranslation<'def, 'tcx> + MirConstantTranslation<'def, 'tcx>
+{
+    fn translate_ref_rvalue(
+        &mut self,
+        _loc: mir::Location,
+        _region: ty::Region<'tcx>,
+        _bk: mir::BorrowKind,
+        place: &mir::Place<'tcx>,
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+        Err(TranslationError::ErrorReported(self.tcx().dcx().err(Message::UnsupportedFeature(format!(
+            "RefinedRust does currently not support reference rvalues in this context (got: {place:?})"
+        )))))
+    }
+
+    #[expect(dead_code)]
+    fn aggregate_kind_for_translation<'b>(
+        &'b self,
+        _loc: mir::Location,
+        target_kind: &'b mir::AggregateKind<'tcx>,
+    ) -> &'b mir::AggregateKind<'tcx> {
+        target_kind
+    }
+
+    fn translate_aggregate_rvalue(
+        &mut self,
+        _loc: mir::Location,
+        kind: &mir::AggregateKind<'tcx>,
+        op: &index::IndexVec<abi::FieldIdx, mir::Operand<'tcx>>,
+    ) -> Result<code::Expr, TranslationError> {
+        self.translate_aggregate(kind, op)
+    }
+
     /// Translate an aggregate expression.
     fn translate_aggregate(
         &mut self,
@@ -44,7 +75,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     return Ok(code::Expr::Literal(code::Literal::ZST));
                 }
 
-                let struct_use = self.ty_translator.generate_tuple_use(operand_types.iter().copied())?;
+                let struct_use = self.ty_translator().generate_tuple_use(operand_types.iter().copied())?;
                 let sl = struct_use.generate_raw_syn_type_term();
                 let initializers: Vec<_> =
                     translated_ops.into_iter().enumerate().map(|(i, o)| (i.to_string(), o)).collect();
@@ -57,11 +88,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             mir::AggregateKind::Adt(did, variant, args, ..) => {
                 // get the adt def
-                let adt_def: ty::AdtDef<'tcx> = self.tcx.adt_def(did);
+                let adt_def: ty::AdtDef<'tcx> = self.tcx().adt_def(did);
 
                 if adt_def.is_struct() {
                     let variant = adt_def.variant(variant);
-                    let struct_use = self.ty_translator.generate_struct_use(variant.def_id, args)?;
+                    let struct_use = self.ty_translator().generate_struct_use(variant.def_id, args)?;
 
                     let sl = struct_use.generate_raw_syn_type_term();
                     let initializers: Vec<_> = translated_ops
@@ -80,7 +111,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     let variant_def = adt_def.variant(variant);
 
                     let struct_use =
-                        self.ty_translator.generate_enum_variant_use(variant_def.def_id, args)?;
+                        self.ty_translator().generate_enum_variant_use(variant_def.def_id, args)?;
                     let sl = struct_use.generate_raw_syn_type_term();
 
                     let initializers: Vec<_> = translated_ops
@@ -94,7 +125,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         components: initializers,
                     };
 
-                    let enum_use = self.ty_translator.generate_enum_use_with_regions(adt_def, args)?;
+                    let enum_use = self.ty_translator().generate_enum_use_with_regions(adt_def, args)?;
                     let els = enum_use.generate_raw_syn_type_term();
 
                     info!("generating enum annotation for type {:?}", enum_use);
@@ -110,7 +141,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 }
 
                 // TODO
-                Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                Err(TranslationError::ErrorReported(self.tcx().dcx().err(Message::UnsupportedFeature(
                     format!(
                         "RefinedRust does currently not support aggregate rvalue for other ADTs (got: {kind:?}, {op:?})"
                     ),
@@ -125,7 +156,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     return Ok(code::Expr::Literal(code::Literal::ZST));
                 }
 
-                let struct_use = self.ty_translator.generate_tuple_use(operand_types.iter().copied())?;
+                let struct_use = self.ty_translator().generate_tuple_use(operand_types.iter().copied())?;
                 let sl = struct_use.generate_raw_syn_type_term();
 
                 let initializers: Vec<_> =
@@ -139,7 +170,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             _ => {
                 // TODO
-                Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                Err(TranslationError::ErrorReported(self.tcx().dcx().err(Message::UnsupportedFeature(
                     format!(
                         "RefinedRust does currently not support this kind of aggregate rvalue (got: {kind:?}, {op:?})"
                     ),
@@ -155,12 +186,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         to_ty: ty::Ty<'tcx>,
     ) -> Result<code::Expr, TranslationError> {
         let op_ty = self.shape_type_of_operand(op);
-        let op_st = self.ty_translator.translate_type_to_syn_type(op_ty)?;
+        let op_st = self.ty_translator().translate_type_to_syn_type(op_ty)?;
         let op_ot = op_st.into();
 
         let (translated_op, _) = self.translate_operand(op, true)?;
 
-        let target_st = self.ty_translator.translate_type_to_syn_type(to_ty)?;
+        let target_st = self.ty_translator().translate_type_to_syn_type(to_ty)?;
         let target_ot = target_st.into();
 
         match kind {
@@ -176,7 +207,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 | ty::adjustment::PointerCoercion::ReifyFnPointer(_)
                 | ty::adjustment::PointerCoercion::UnsafeFnPointer
                 | ty::adjustment::PointerCoercion::Unsize => Err(TranslationError::ErrorReported(
-                    self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                    self.tcx().dcx().err(Message::UnsupportedFeature(format!(
                         "RefinedRust does currently not support this kind of pointer coercion (got: {kind:?})"
                     ))),
                 )),
@@ -191,15 +222,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
             },
 
-            mir::CastKind::IntToFloat => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+            mir::CastKind::IntToFloat => Err(TranslationError::ErrorReported(self.tcx().dcx().err(
                 Message::UnsupportedFeature("RefinedRust does currently not support int-to-float cast".to_owned()),
             ))),
 
-            mir::CastKind::FloatToInt => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+            mir::CastKind::FloatToInt => Err(TranslationError::ErrorReported(self.tcx().dcx().err(
                 Message::UnsupportedFeature("RefinedRust does currently not support float-to-int cast".to_owned()),
             ))),
 
-            mir::CastKind::FloatToFloat => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+            mir::CastKind::FloatToFloat => Err(TranslationError::ErrorReported(self.tcx().dcx().err(
                 Message::UnsupportedFeature("RefinedRust does currently not support float-to-float cast".to_owned()),
             ))),
 
@@ -213,7 +244,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                     _ => {
                         // TODO: any other cases we should handle?
-                        Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                        Err(TranslationError::ErrorReported(self.tcx().dcx().err(Message::UnsupportedFeature(
                             format!(
                                 "RefinedRust does currently not support ptr-to-ptr cast (got: {kind:?}, {op:?}, {to_ty:?})"
                             ),
@@ -222,19 +253,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 }
             },
 
-            mir::CastKind::FnPtrToPtr => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+            mir::CastKind::FnPtrToPtr => Err(TranslationError::ErrorReported(self.tcx().dcx().err(
                 Message::UnsupportedFeature(format!(
                     "RefinedRust does currently not support fnptr-to-ptr cast (got: {kind:?}, {op:?}, {to_ty:?})"
                 )),
             ))),
 
-            mir::CastKind::Transmute => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+            mir::CastKind::Transmute => Err(TranslationError::ErrorReported(self.tcx().dcx().err(
                 Message::UnsupportedFeature(format!(
                     "RefinedRust does currently not support transmute cast (got: {kind:?}, {op:?}, {to_ty:?})"
                 )),
             ))),
 
-            mir::CastKind::Subtype => Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+            mir::CastKind::Subtype => Err(TranslationError::ErrorReported(self.tcx().dcx().err(
                 Message::UnsupportedFeature(format!(
                     "RefinedRust does currently not support subtype casts (got: {kind:?}, {op:?}, {to_ty:?})"
                 )),
@@ -250,7 +281,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
 
             mir::CastKind::PointerWithExposedProvenance => Err(TranslationError::ErrorReported(
-                self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                self.tcx().dcx().err(Message::UnsupportedFeature(format!(
                     "RefinedRust does currently not support this kind of cast (got: {kind:?}, {op:?}, {to_ty:?})"
                 ))),
             )),
@@ -261,7 +292,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// This will either generate an lvalue (in case of Move or Copy) or an rvalue (in most cases
     /// of Constant). How this is used depends on the context. (e.g., Use of an integer constant
     /// does not typecheck, and produces a stuck program).
-    pub(crate) fn translate_operand(
+    fn translate_operand(
         &mut self,
         op: &mir::Operand<'tcx>,
         to_rvalue: bool,
@@ -278,7 +309,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let translated_place = self.translate_place(&place_kind)?;
                 let ty = self.shape_type_of_place(place);
 
-                let st = self.ty_translator.translate_type_to_syn_type(ty.ty)?;
+                let st = self.ty_translator().translate_type_to_syn_type(ty.ty)?;
 
                 if to_rvalue && is_copy {
                     Ok((
@@ -307,7 +338,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 self.translate_constant(&constant.const_)
             },
             mir::Operand::RuntimeChecks(_) => {
-                Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                Err(TranslationError::ErrorReported(self.tcx().dcx().err(Message::UnsupportedFeature(
                     format!("RefinedRust does currently not support this kind of operand (got: {op:?})"),
                 ))))
             },
@@ -315,7 +346,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Translates an Rvalue.
-    pub(crate) fn translate_rvalue(
+    fn translate_rvalue(
         &mut self,
         loc: mir::Location,
         rval: &mir::Rvalue<'tcx>,
@@ -326,41 +357,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 self.translate_operand(op, true)
             },
 
-            mir::Rvalue::Ref(region, bk, pl) => {
-                let translated_pl = self.translate_place(pl)?;
-                let translated_bk = TX::translate_borrow_kind(self.tcx, *bk)?;
-
-                // Drop-elaborated borrows are target-only statements, so their lifetime has to come
-                // from the synthetic drop-borrow mapping rather than a borrowck region variable.
-                // Drop-elaborated borrows for Drop::drop should not include the safety invariant.
-                let (lft, raw) = if let Some(drop_borrow) =
-                    self.proc.synthetic_drop_borrow_for_assignment(loc)
-                {
-                    (AnnotationGenerator::synthetic_drop_borrow_lft(drop_borrow), true)
-                } else {
-                    let region = self.proc.source_borrow_region_for_target(loc).unwrap_or(*region);
-                    (
-                        self.annotations.prepare_borrow_lifetime_plan(&self.ty_translator, loc, region).lft,
-                        false,
-                    )
-                };
-
-                let ty_annot = self.get_type_annotation_for_borrow(*bk, raw, pl)?;
-
-                Ok((
-                    code::Expr::Borrow {
-                        lft,
-                        bk: translated_bk,
-                        ty: ty_annot,
-                        e: Box::new(translated_pl),
-                    },
-                    None,
-                ))
-            },
+            mir::Rvalue::Ref(region, bk, pl) => self.translate_ref_rvalue(loc, *region, *bk, pl),
 
             mir::Rvalue::RawPtr(mt, pl) => {
                 let translated_pl = self.translate_place(pl)?;
-                let translated_mt = TX::translate_raw_ptr_kind(*mt);
+                let translated_mt = Self::translate_raw_ptr_kind(*mt);
 
                 Ok((
                     code::Expr::AddressOf {
@@ -379,8 +380,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::Rvalue::UnaryOp(op, operand) => {
                 let (translated_e1, _) = self.translate_operand(operand, true)?;
                 let e1_ty = self.shape_type_of_operand(operand);
-                let e1_st = self.ty_translator.translate_type_to_syn_type(e1_ty)?;
-                let translated_op = TX::translate_unop(self.tcx, *op, e1_ty)?;
+                let e1_st = self.ty_translator().translate_type_to_syn_type(e1_ty)?;
+                let translated_op = Self::translate_unop(self.tcx(), *op, e1_ty)?;
 
                 Ok((
                     code::Expr::UnOp {
@@ -398,7 +399,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 info!("getting discriminant of {:?} at type {:?}", pl, ty);
 
                 let ty::TyKind::Adt(adt_def, args) = ty.ty.kind() else {
-                    return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                    return Err(TranslationError::ErrorReported(self.tcx().dcx().err(
                         Message::UnsupportedFeature(format!(
                             "RefinedRust does currently not support discriminant accesses on non-enum types ({:?}, got {:?})",
                             rval, ty.ty
@@ -406,7 +407,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     )));
                 };
 
-                let enum_use = self.ty_translator.generate_enum_use(*adt_def, args)?;
+                let enum_use = self.ty_translator().generate_enum_use(*adt_def, args)?;
                 let els = enum_use.generate_raw_syn_type_term();
 
                 let discriminant_acc = code::Expr::EnumDiscriminant {
@@ -418,11 +419,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
 
             mir::Rvalue::Aggregate(kind, op) => {
-                // Aggregate kinds can carry erased dropck substitutions. Use the mapped borrowck
-                // aggregate kind for type parameters while translating the dropck operands.
-                let type_kind =
-                    self.proc.source_aggregate_kind_for_target(loc).unwrap_or_else(|| kind.as_ref());
-                let e = self.translate_aggregate(type_kind, op)?;
+                let e = self.translate_aggregate_rvalue(loc, kind.as_ref(), op)?;
                 Ok((e, None))
             },
 
@@ -436,34 +433,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             | mir::Rvalue::Repeat(..)
             | mir::Rvalue::WrapUnsafeBinder(..)
             | mir::Rvalue::ThreadLocalRef(..) => {
-                Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                Err(TranslationError::ErrorReported(self.tcx().dcx().err(Message::UnsupportedFeature(
                     format!("RefinedRust does currently not support this kind of rvalue (got: {:?})", rval),
                 ))))
             },
         }
-    }
-
-    /// Get the type to annotate a borrow with.
-    fn get_type_annotation_for_borrow(
-        &self,
-        _bk: mir::BorrowKind,
-        raw: bool,
-        pl: &mir::Place<'tcx>,
-    ) -> Result<Option<code::RustType>, TranslationError> {
-        //let mir::BorrowKind::Mut { .. } = bk else {
-        //return Ok(None);
-        //};
-
-        let ty = self.proc.region_type_of_place(pl);
-
-        // For borrows, we can safely ignore the downcast type -- we cannot borrow a particularly variant
-        let mut translated_ty = self.ty_translator.translate_type(ty.ty)?;
-        if raw {
-            translated_ty.make_raw();
-        }
-        let annot_ty = code::RustType::of_type(&translated_ty);
-
-        Ok(Some(annot_ty))
     }
 
     /// Translate binary operators.
@@ -477,8 +451,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     ) -> Result<code::Expr, TranslationError> {
         let e1_ty = self.shape_type_of_operand(e1);
         let e2_ty = self.shape_type_of_operand(e2);
-        let e1_st = self.ty_translator.translate_type_to_syn_type(e1_ty)?;
-        let e2_st = self.ty_translator.translate_type_to_syn_type(e2_ty)?;
+        let e1_st = self.ty_translator().translate_type_to_syn_type(e1_ty)?;
+        let e2_st = self.ty_translator().translate_type_to_syn_type(e2_ty)?;
 
         let (translated_e1, _) = self.translate_operand(e1, true)?;
         let (translated_e2, _) = self.translate_operand(e2, true)?;
@@ -550,7 +524,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::BinOp::Gt => Ok(mk_binop(code::Binop::Gt)),
 
             mir::BinOp::Cmp => Err(TranslationError::ErrorReported(
-                self.tcx
+                self.tcx()
                     .dcx()
                     .err(Message::UnsupportedFeature("<=> binop is currently not supported".to_owned())),
             )),
@@ -559,8 +533,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // we need to get the layout of the thing we're offsetting
                 // try to get the type of e1.
                 let e1_ty = self.shape_type_of_operand(e1);
-                let off_ty = TX::get_offset_ty(self.tcx, e1_ty)?;
-                let st = self.ty_translator.translate_type_to_syn_type(off_ty)?;
+                let off_ty = Self::get_offset_ty(self.tcx(), e1_ty)?;
+                let st = self.ty_translator().translate_type_to_syn_type(off_ty)?;
                 let ly = st.into();
                 Ok(mk_binop(code::Binop::PtrOffset(ly)))
             },
@@ -618,10 +592,91 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
     }
 
-    const fn translate_raw_ptr_kind(mt: mir::RawPtrKind) -> code::Mutability {
+    fn translate_raw_ptr_kind(mt: mir::RawPtrKind) -> code::Mutability {
         match mt {
             mir::RawPtrKind::Mut | mir::RawPtrKind::FakeForPtrMetadata => code::Mutability::Mut,
             mir::RawPtrKind::Const => code::Mutability::Shared,
         }
+    }
+}
+
+impl<'a, 'def: 'a, 'tcx: 'def> MirRvalueTranslation<'def, 'tcx> for TX<'a, 'def, 'tcx> {
+    fn translate_ref_rvalue(
+        &mut self,
+        loc: mir::Location,
+        region: ty::Region<'tcx>,
+        bk: mir::BorrowKind,
+        place: &mir::Place<'tcx>,
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+        let translated_pl = self.translate_place(place)?;
+        let translated_bk = Self::translate_borrow_kind(self.tcx, bk)?;
+
+        // Drop-elaborated borrows are target-only statements, so their lifetime has to come
+        // from the synthetic drop-borrow mapping rather than a borrowck region variable.
+        // Drop-elaborated borrows for Drop::drop should not include the safety invariant.
+        let (lft, raw) = if let Some(drop_borrow) = self.proc.synthetic_drop_borrow_for_assignment(loc) {
+            (AnnotationGenerator::synthetic_drop_borrow_lft(drop_borrow), true)
+        } else {
+            let region = self.proc.source_borrow_region_for_target(loc).unwrap_or(region);
+            (self.annotations.prepare_borrow_lifetime_plan(&self.ty_translator, loc, region).lft, false)
+        };
+
+        let ty_annot = self.get_type_annotation_for_borrow(bk, raw, place)?;
+
+        Ok((
+            code::Expr::Borrow {
+                lft,
+                bk: translated_bk,
+                ty: ty_annot,
+                e: Box::new(translated_pl),
+            },
+            None,
+        ))
+    }
+
+    fn aggregate_kind_for_translation<'b>(
+        &'b self,
+        loc: mir::Location,
+        target_kind: &'b mir::AggregateKind<'tcx>,
+    ) -> &'b mir::AggregateKind<'tcx> {
+        self.proc.source_aggregate_kind_for_target(loc).unwrap_or(target_kind)
+    }
+
+    fn translate_aggregate_rvalue(
+        &mut self,
+        loc: mir::Location,
+        kind: &mir::AggregateKind<'tcx>,
+        op: &index::IndexVec<abi::FieldIdx, mir::Operand<'tcx>>,
+    ) -> Result<code::Expr, TranslationError> {
+        // Aggregate kinds can carry erased dropck substitutions. Use the mapped borrowck
+        // aggregate kind for type parameters while translating the dropck operands.
+        let type_kind = self.proc.source_aggregate_kind_for_target(loc).unwrap_or(kind);
+        self.translate_aggregate(type_kind, op)
+    }
+}
+
+#[expect(clippy::multiple_inherent_impl)]
+impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
+    /// Get the type to annotate a borrow with.
+    fn get_type_annotation_for_borrow(
+        &self,
+        _bk: mir::BorrowKind,
+        raw: bool,
+        pl: &mir::Place<'tcx>,
+    ) -> Result<Option<code::RustType>, TranslationError> {
+        //let mir::BorrowKind::Mut { .. } = bk else {
+        //return Ok(None);
+        //};
+
+        let ty = self.proc.region_type_of_place(pl);
+
+        // For borrows, we can safely ignore the downcast type -- we cannot borrow a particularly variant
+        let mut translated_ty = self.ty_translator.translate_type(ty.ty)?;
+        if raw {
+            translated_ty.make_raw();
+        }
+        let annot_ty = code::RustType::of_type(&translated_ty);
+
+        Ok(Some(annot_ty))
     }
 }

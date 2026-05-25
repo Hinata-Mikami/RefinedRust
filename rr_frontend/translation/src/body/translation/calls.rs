@@ -16,6 +16,7 @@ use rr_rustc_interface::span;
 use super::constants::MirConstantTranslation as _;
 use super::core::MirTranslationCtx as _;
 use super::place::MirPlaceTranslation as _;
+use super::rvalue::MirRvalueTranslation as _;
 use super::{TX, TranslationKey};
 use crate::base::*;
 use crate::body::translation::{ExprInfo, ExprWithInfo};

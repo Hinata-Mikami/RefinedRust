@@ -14,6 +14,7 @@ use rr_rustc_interface::middle::{bug, mir, ty};
 use super::TX;
 use super::core::MirTranslationCtx as _;
 use super::place::MirPlaceTranslation as _;
+use super::rvalue::MirRvalueTranslation as _;
 use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::error::Message;
