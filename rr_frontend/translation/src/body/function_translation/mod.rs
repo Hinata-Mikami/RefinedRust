@@ -413,19 +413,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Registers a drop shim for a particular type for the translation.
-    #[expect(clippy::unused_self)]
-    const fn register_drop_shim_for(&self, _ty: ty::Ty<'tcx>) {
-        // TODO!
-        //let drop_in_place_did: DefId = search::try_resolve_did(self.tcx, &["std", "ptr",
-        // "drop_in_place"]).unwrap();
-
-        //let x: ty::InstanceDef = ty::InstanceDef::DropGlue(drop_in_place_did, Some(ty));
-        //let body: &'tcx mir::Body = self.tcx.mir_shims(x);
-
-        //info!("Generated drop shim for {:?}", ty);
-        //Self::dump_body(body);
-    }
-
     /// Translate a goto-like jump to `target`.
     fn translate_goto_like(
         &mut self,

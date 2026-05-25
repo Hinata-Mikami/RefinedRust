@@ -29,6 +29,17 @@ pub(crate) fn mangle_name_with_tys(method_name: &str, args: &[ty::Ty<'_>]) -> St
     strip_coq_ident(&mangled_name)
 }
 
+/// Generate the stable base name used for drop-glue code and specification references.
+pub(crate) fn drop_glue_name_for_ty(ty: ty::Ty<'_>) -> String {
+    strip_coq_ident(&format!("drop_glue_{ty}"))
+}
+
+/// Generate the location parameter name used for a drop-glue function pointer.
+#[expect(dead_code)]
+pub(crate) fn drop_glue_loc_name_for_ty(ty: ty::Ty<'_>) -> String {
+    format!("{}_loc", drop_glue_name_for_ty(ty))
+}
+
 /// Mangle a name by appending generic args to it.
 pub(crate) fn mangle_name_with_args(name: &str, args: &[ty::GenericArg<'_>]) -> String {
     let mut mangled_base: String = name.to_owned();

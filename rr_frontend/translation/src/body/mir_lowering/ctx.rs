@@ -17,12 +17,23 @@ use crate::error::Message;
 use crate::{procedures, rustcmp, types};
 
 #[derive(PartialEq, Eq, Hash, Debug)]
-pub(crate) struct TranslationKey<'tcx>(pub(crate) OrderedDefId, pub(crate) types::GenericsKey<'tcx>);
+pub(crate) enum TranslationKey<'tcx> {
+    Function(OrderedDefId, types::GenericsKey<'tcx>),
+    #[expect(dead_code)]
+    DropGlue(procedures::DropGlueKey),
+}
 
 impl<'tcx> TranslationKey<'tcx> {
     pub(crate) fn cmp(&self, tcx: ty::TyCtxt<'tcx>, b: &Self) -> cmp::Ordering {
-        let did_ord = self.0.cmp(&b.0);
-        did_ord.then_with(|| rustcmp::cmp_tys(tcx, &self.1, &b.1))
+        match (self, b) {
+            (Self::Function(a_did, a_args), Self::Function(b_did, b_args)) => {
+                let did_ord = a_did.cmp(b_did);
+                did_ord.then_with(|| rustcmp::cmp_tys(tcx, a_args, b_args))
+            },
+            (Self::DropGlue(a), Self::DropGlue(b)) => a.cmp(b),
+            (Self::Function(_, _), Self::DropGlue(_)) => cmp::Ordering::Less,
+            (Self::DropGlue(_), Self::Function(_, _)) => cmp::Ordering::Greater,
+        }
     }
 }
 

@@ -148,11 +148,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     let Some(target) = target else {
                         bug!("drop-elaborated Drop::drop call without normal target at {loc:?}");
                     };
-                    if let Some(place) = self.proc.synthetic_drop_borrow_place(drop_borrow) {
-                        let ty = self.shape_type_of_place(&place);
-                        self.register_drop_shim_for(ty.ty);
-                    }
-
                     let mut annotation_plan = self.annotations.prepare_terminator_annotation_plan(
                         &self.ty_translator,
                         dying_loans.into_iter(),
@@ -296,9 +291,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
 
             mir::TerminatorKind::Drop { place, target, .. } => {
-                let ty = self.shape_type_of_place(place);
-                self.register_drop_shim_for(ty.ty);
-
                 let place_translated = self.translate_place(place)?;
                 let _drope = code::Expr::DropE(Box::new(place_translated));
 

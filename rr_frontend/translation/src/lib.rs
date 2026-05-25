@@ -146,6 +146,38 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         })
     }
 
+    fn make_drop_glue_shim_entry(
+        &self,
+        key: &procedures::DropGlueKey,
+    ) -> Option<shim_registry::DropGlueShim> {
+        let meta = self.procedure_registry.lookup_drop_glue(key)?;
+        let mode = meta.get_mode();
+
+        if mode != procedures::Mode::Prove
+            && mode != procedures::Mode::OnlySpec
+            && mode != procedures::Mode::TrustMe
+            && mode != procedures::Mode::CodeShim
+        {
+            return None;
+        }
+
+        let for_item = match key {
+            procedures::DropGlueKey::Adt(did) => {
+                let (interned_path, _) = self.get_path_for_shim(did.def_id);
+                shim_registry::DropGlueFor::Adt {
+                    path: interned_path.iter().map(|x| (*x).to_owned()).collect(),
+                }
+            },
+        };
+
+        Some(shim_registry::DropGlueShim {
+            for_item,
+            name: meta.get_name().to_owned(),
+            spec_name: meta.get_spec_name().to_owned(),
+            trait_req_incl_name: meta.get_trait_req_incl_name().to_owned(),
+        })
+    }
+
     /// Make a shim entry for a trait impl.
     fn make_trait_impl_shim_entry(
         &self,
@@ -261,6 +293,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         let mut adt_shims = Vec::new();
         let mut trait_shims = Vec::new();
         let mut trait_impl_shims = Vec::new();
+        let mut drop_glue_shims = Vec::new();
 
         // traits
         let decls = self.trait_registry.get_trait_decls();
@@ -300,30 +333,26 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             }
         }
 
-        // functions and methods
-        for (did, _) in self.procedure_registry.iter_code() {
-            if let Some(impl_did) = self.tcx.impl_of_assoc(did.def_id) {
-                info!("found impl method: {:?}", did);
-                if self.tcx.impl_is_of_trait(impl_did) {
-                    info!("found trait method: {:?}", did);
-                    continue;
-                }
-            }
-            if let Some(shim) = self.make_shim_function_entry(did.def_id) {
-                function_shims.push(shim);
-            }
-        }
-
-        for (did, _) in self.procedure_registry.iter_only_spec() {
-            if let Some(impl_did) = self.tcx.impl_of_assoc(did.def_id) {
-                info!("found impl method: {:?}", did);
-                if self.tcx.impl_is_of_trait(impl_did) {
-                    info!("found trait method: {:?}", did);
-                    continue;
-                }
-            }
-            if let Some(shim) = self.make_shim_function_entry(did.def_id) {
-                function_shims.push(shim);
+        // procedures
+        for (key, _) in self.procedure_registry.iter_procedure_meta() {
+            match key {
+                procedures::ProcedureKey::Function(did) => {
+                    if let Some(impl_did) = self.tcx.impl_of_assoc(did.def_id) {
+                        info!("found impl method: {:?}", did);
+                        if self.tcx.impl_is_of_trait(impl_did) {
+                            info!("found trait method: {:?}", did);
+                            continue;
+                        }
+                    }
+                    if let Some(shim) = self.make_shim_function_entry(did.def_id) {
+                        function_shims.push(shim);
+                    }
+                },
+                procedures::ProcedureKey::DropGlue(key) => {
+                    if let Some(shim) = self.make_drop_glue_shim_entry(key) {
+                        drop_glue_shims.push(shim);
+                    }
+                },
             }
         }
 
@@ -334,6 +363,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         info!("Generated module summary ADTs: {:?}", adt_shims);
         info!("Generated module summary functions: {:?}", function_shims);
+        info!("Generated module summary drop glue: {:?}", drop_glue_shims);
 
         let interface_file = File::create(path).unwrap();
         shims::registry::write_shims(
@@ -347,6 +377,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             function_shims,
             trait_shims,
             trait_impl_shims,
+            drop_glue_shims,
         );
     }
 
@@ -517,8 +548,8 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             writeln!(code_file).unwrap();
 
             let mut ordered_by_name = BTreeMap::new();
-            for (did, fun) in self.procedure_registry.iter_code() {
-                if self.procedure_registry.lookup_function_mode(did.def_id).unwrap().needs_def() {
+            for (key, fun) in self.procedure_registry.iter_procedure_code() {
+                if self.procedure_registry.lookup_procedure(key).unwrap().get_mode().needs_def() {
                     ordered_by_name.insert(fun.name().to_owned(), fun);
                 }
             }
@@ -546,8 +577,8 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
             writeln!(spec_file).unwrap();
 
-            for (did, fun) in self.procedure_registry.iter_code() {
-                let meta = self.procedure_registry.lookup_function(did.def_id).unwrap();
+            for (key, fun) in self.procedure_registry.iter_procedure_code() {
+                let meta = self.procedure_registry.lookup_procedure(key).unwrap();
                 if !meta.is_trait_default() {
                     if fun.spec.is_complete() {
                         //if fun.spec.spec.args.len() != fun.code.get_argument_count() {
@@ -556,13 +587,18 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                         writeln!(spec_file, "{}", fun.spec.generate_trait_req_incl_def()).unwrap();
                         writeln!(spec_file, "{}", fun.spec).unwrap();
                     } else {
-                        self.tcx.dcx().span_warn(
-                            self.tcx.def_span(did.def_id),
-                            error::Message::AttributeError(format!(
-                                "no specification provided for {}",
-                                fun.name()
-                            )),
-                        );
+                        match key {
+                            procedures::ProcedureKey::Function(did) => self.tcx.dcx().span_warn(
+                                self.tcx.def_span(did.def_id),
+                                error::Message::AttributeError(format!(
+                                    "no specification provided for {}",
+                                    fun.name()
+                                )),
+                            ),
+                            procedures::ProcedureKey::DropGlue(_) => {
+                                warn!("no specification provided for drop-glue function {}", fun.name());
+                            },
+                        }
 
                         writeln!(spec_file, "(* No specification provided for {} *)", fun.name()).unwrap();
                     }
@@ -573,8 +609,8 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         // also write only-spec functions specs
         {
-            for (did, spec) in self.procedure_registry.iter_only_spec() {
-                let meta = self.procedure_registry.lookup_function(did.def_id).unwrap();
+            for (key, spec) in self.procedure_registry.iter_procedure_only_spec() {
+                let meta = self.procedure_registry.lookup_procedure(key).unwrap();
                 if !meta.is_trait_default() {
                     if spec.is_complete() {
                         writeln!(spec_file, "{}", spec.generate_trait_req_incl_def()).unwrap();
@@ -665,11 +701,11 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         // write templates
         // each function gets a separate file in order to parallelize
-        for (did, fun) in self.procedure_registry.iter_code() {
+        for (key, fun) in self.procedure_registry.iter_procedure_code() {
             let path = file_path(fun.name());
             let mut template_file = io::BufWriter::new(File::create(path.as_path()).unwrap());
 
-            let meta = self.procedure_registry.lookup_function(did.def_id).unwrap();
+            let meta = self.procedure_registry.lookup_procedure(key).unwrap();
             let mode = meta.get_mode();
 
             if fun.spec.is_complete() && mode.needs_proof() {
@@ -695,8 +731,8 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         }
     }
 
-    fn check_function_needs_proof(&self, did: DefId, fun: &code::Function<'_>) -> bool {
-        let mode = self.procedure_registry.lookup_function_mode(did).unwrap();
+    fn check_procedure_needs_proof(&self, key: &procedures::ProcedureKey, fun: &code::Function<'_>) -> bool {
+        let mode = self.procedure_registry.lookup_procedure(key).unwrap().get_mode();
         fun.spec.is_complete() && mode.needs_proof()
     }
 
@@ -765,8 +801,8 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             writeln!(proof_file, "End proof.").unwrap();
         };
 
-        for (did, fun) in self.procedure_registry.iter_code() {
-            if !self.check_function_needs_proof(did.def_id, fun) {
+        for (key, fun) in self.procedure_registry.iter_procedure_code() {
+            if !self.check_procedure_needs_proof(key, fun) {
                 continue;
             }
             write_proof(fun);
@@ -1155,6 +1191,30 @@ fn register_shims(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineErro
         }
 
         info!("Resolved ADT shim {:?} as {:?} did", shim, did);
+    }
+
+    for shim in vcx.shim_registry.get_drop_glue_shims() {
+        let key = match &shim.for_item {
+            shim_registry::DropGlueFor::Adt { path } => {
+                let Some(did) = search::try_resolve_did(vcx.tcx, path) else {
+                    warn!("cannot resolve {:?} as an ADT, skipping drop-glue shim", path);
+                    continue;
+                };
+                procedures::DropGlueKey::Adt(OrderedDefId::new(vcx.tcx, did))
+            },
+        };
+
+        let meta = procedures::Meta::new(
+            shim.spec_name.clone(),
+            "dummy".to_owned(),
+            shim.trait_req_incl_name.clone(),
+            shim.name.clone(),
+            procedures::Mode::Shim,
+            false,
+            false,
+        );
+        vcx.procedure_registry.register_drop_glue(&key, meta);
+        info!("Resolved drop-glue shim {:?} for {:?}", shim, key);
     }
 
     for shim in vcx.shim_registry.get_trait_shims() {

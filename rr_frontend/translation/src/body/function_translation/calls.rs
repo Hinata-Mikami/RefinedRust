@@ -149,7 +149,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             true,
         )?;
 
-        let tup = TranslationKey(OrderedDefId::new(tcx, callee_did), key);
+        let loc_key = key.clone();
+        let tup = TranslationKey::Function(OrderedDefId::new(tcx, callee_did), key);
         let res;
         if let Some(proc_use) = self.collected_procedures().get(&tup) {
             res = proc_use.loc_name.clone();
@@ -163,7 +164,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let spec_term = code::UsedProcedureSpec::Literal(meta.get_spec_name().to_owned());
 
             let code_name = meta.get_name();
-            let loc_name = format!("{}_loc", types::mangle_name_with_tys(code_name, tup.1.as_slice()));
+            let loc_name = format!("{}_loc", types::mangle_name_with_tys(code_name, loc_key.as_slice()));
 
             let syntypes = {
                 let scope = self.ty_translator.scope.borrow();
@@ -241,7 +242,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut lft_param_hint = spec_inst.lft_insts;
         lft_param_hint.append(&mut quantified_args.callee_lft_param_inst);
 
-        let tup = TranslationKey(OrderedDefId::new(tcx, callee_did), key);
+        let tup = TranslationKey::Function(OrderedDefId::new(tcx, callee_did), key);
         let res;
         if let Some(proc_use) = self.collected_procedures().get(&tup) {
             res = proc_use.loc_name.clone();
@@ -419,7 +420,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let quantified_scope =
             self.create_closure_impl_abstraction(info, closure_did, closure_args, closure_kind, ty_params);
 
-        let tup = TranslationKey(OrderedDefId::new(self.tcx, call_fn_did), key);
+        let loc_key = key.clone();
+        let tup = TranslationKey::Function(OrderedDefId::new(self.tcx, call_fn_did), key);
         let res;
         if let Some(proc_use) = self.collected_procedures().get(&tup) {
             res = proc_use.loc_name.clone();
@@ -436,7 +438,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let spec_term = code::UsedProcedureSpec::Literal(meta.get_spec_name().to_owned());
 
             let code_name = meta.get_name();
-            let loc_name = format!("{}_loc", types::mangle_name_with_tys(code_name, tup.1.as_slice()));
+            let loc_name = format!("{}_loc", types::mangle_name_with_tys(code_name, loc_key.as_slice()));
 
             let syntypes = {
                 let scope = self.ty_translator.scope.borrow();

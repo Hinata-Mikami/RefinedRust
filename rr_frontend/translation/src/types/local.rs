@@ -303,9 +303,28 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         trait_reqs: Vec<ResolvedTraitReq<'tcx, 'def>>,
         with_surrounding_deps: bool,
     ) -> Result<AbstractedGenerics<'def>, TranslationError> {
-        trace!(
-            "enter get_generic_abstraction_for_procedure with callee_did={callee_did:?} and method_params={method_params:?}"
-        );
+        self.get_generic_abstraction_for_item(
+            callee_did,
+            method_params,
+            late_bounds,
+            trait_reqs,
+            with_surrounding_deps,
+        )
+    }
+
+    /// Abstract over the generics of an item and partially instantiate them.
+    /// Assumption: `trait_reqs` is appropriately sorted, i.e. surrounding requirements come first.
+    /// `with_surrounding_deps` determines whether we should distinguish surrounding and direct
+    /// params.
+    fn get_generic_abstraction_for_item(
+        &self,
+        owner_did: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+        late_bounds: &[ty::BoundVariableKind<'tcx>],
+        trait_reqs: Vec<ResolvedTraitReq<'tcx, 'def>>,
+        with_surrounding_deps: bool,
+    ) -> Result<AbstractedGenerics<'def>, TranslationError> {
+        trace!("enter get_generic_abstraction_for_item with owner_did={owner_did:?} and args={args:?}");
 
         // STEP 1: get all the regions and type variables appearing in the instantiation of generics
         let mut tyvar_folder = TyVarFolder::new(self.translator.tcx());
@@ -319,7 +338,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
         let mut callee_lft_param_inst: Vec<specs::Lft> = Vec::new();
         let mut callee_ty_param_inst = Vec::new();
-        for v in method_params {
+        for v in args {
             if let Some(ty) = v.as_type() {
                 tyvar_folder.fold_ty(ty);
                 lft_folder.fold_ty(ty);
@@ -460,13 +479,13 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         //
         // TODO: probably we should make the same distinction also for lifetimes?
         let num_surrounding_params =
-            scope::Params::determine_number_of_surrounding_params(callee_did, self.translator.tcx());
-        info!("num_surrounding_params={num_surrounding_params:?}, method_params={method_params:?}");
+            scope::Params::determine_number_of_surrounding_params(owner_did, self.translator.tcx());
+        info!("num_surrounding_params={num_surrounding_params:?}, args={args:?}");
 
         // figure out instantiation for the function's generics
         // first the surrounding parameters
         if with_surrounding_deps {
-            for v in &method_params.as_slice()[..num_surrounding_params] {
+            for v in &args.as_slice()[..num_surrounding_params] {
                 if let Some(ty) = v.as_type() {
                     let translated_ty = self.translate_type(ty)?;
                     fn_inst.add_surrounding_ty_param(translated_ty);
@@ -474,7 +493,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             }
 
             // now the direct parameters
-            for v in &method_params.as_slice()[num_surrounding_params..] {
+            for v in &args.as_slice()[num_surrounding_params..] {
                 if let Some(ty) = v.as_type() {
                     let translated_ty = self.translate_type(ty)?;
                     fn_inst.add_direct_ty_param(translated_ty);
@@ -482,7 +501,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             }
         } else {
             // just instantiate all the params
-            for v in method_params {
+            for v in args {
                 if let Some(ty) = v.as_type() {
                     let translated_ty = self.translate_type(ty)?;
                     fn_inst.add_direct_ty_param(translated_ty);
@@ -532,6 +551,26 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         };
 
         Ok(res)
+    }
+
+    /// Abstract over the generics of a concrete ADT drop-glue function and partially instantiate them.
+    #[expect(dead_code)]
+    pub(crate) fn get_generic_abstraction_for_drop_glue(
+        &self,
+        dropped_ty: ty::Ty<'tcx>,
+    ) -> Result<AbstractedGenerics<'def>, TranslationError> {
+        let function_did = self.scope.borrow().did;
+        let dropped_ty = normalize_in_function(function_did, self.translator.tcx(), dropped_ty)?;
+
+        let ty::TyKind::Adt(def, args) = dropped_ty.kind() else {
+            return Err(TranslationError::ErrorReported(self.translator.tcx().dcx().err(
+                Message::UnsupportedFeature(format!(
+                    "drop-glue generic abstraction is currently only supported for ADTs, got {dropped_ty:?}"
+                )),
+            )));
+        };
+
+        self.get_generic_abstraction_for_item(def.did(), args, &[], Vec::new(), true)
     }
 }
 

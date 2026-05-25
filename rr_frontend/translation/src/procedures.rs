@@ -4,6 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, btree_map};
 
 use derive_more::{Constructor, Display};
@@ -162,6 +163,48 @@ pub(crate) struct ClosureInfo<'tcx, 'rcx> {
     pub(crate) generated_impls: Vec<specs::traits::ImplSpec<'rcx>>,
 }
 
+#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+pub(crate) enum DropGlueKey {
+    Adt(OrderedDefId),
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub(crate) enum ProcedureKey {
+    Function(OrderedDefId),
+    DropGlue(DropGlueKey),
+}
+
+impl Ord for ProcedureKey {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Self::Function(a), Self::Function(b)) => a.cmp(b),
+            (Self::DropGlue(a), Self::DropGlue(b)) => a.cmp(b),
+            (Self::Function(_), Self::DropGlue(_)) => Ordering::Less,
+            (Self::DropGlue(_), Self::Function(_)) => Ordering::Greater,
+        }
+    }
+}
+
+impl PartialOrd<Self> for ProcedureKey {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for DropGlueKey {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Self::Adt(a), Self::Adt(b)) => a.cmp(b),
+        }
+    }
+}
+
+impl PartialOrd<Self> for DropGlueKey {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 /**
  * Tracks the functions we translated and the Coq names they are available under.
  * To account for dependencies between functions, we may register translated names before we have
@@ -169,13 +212,13 @@ pub(crate) struct ClosureInfo<'tcx, 'rcx> {
  */
 pub(crate) struct Scope<'tcx, 'def> {
     tcx: ty::TyCtxt<'tcx>,
-    /// maps the defid to meta data
-    name_map: BTreeMap<OrderedDefId, Meta>,
-    /// track the actually translated functions
-    translated_functions: BTreeMap<OrderedDefId, code::Function<'def>>,
-    /// track the functions with just a specification (`rr::only_spec`)
-    specced_functions:
-        BTreeMap<OrderedDefId, &'def specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
+    /// maps procedure keys to meta data
+    procedure_meta: BTreeMap<ProcedureKey, Meta>,
+    /// track the actually translated procedures
+    translated_procedures: BTreeMap<ProcedureKey, code::Function<'def>>,
+    /// track procedures with just a specification (`rr::only_spec`)
+    specced_procedures:
+        BTreeMap<ProcedureKey, &'def specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
 
     /// store info of closures we translated to emit closure trait impls
     pub(crate) closure_info: BTreeMap<OrderedDefId, ClosureInfo<'tcx, 'def>>,
@@ -185,9 +228,9 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     pub(crate) const fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
         Self {
             tcx,
-            name_map: BTreeMap::new(),
-            translated_functions: BTreeMap::new(),
-            specced_functions: BTreeMap::new(),
+            procedure_meta: BTreeMap::new(),
+            translated_procedures: BTreeMap::new(),
+            specced_procedures: BTreeMap::new(),
             closure_info: BTreeMap::new(),
         }
     }
@@ -202,7 +245,17 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
 
     /// Lookup the meta information of a function.
     pub(crate) fn lookup_function(&self, did: DefId) -> Option<Meta> {
-        self.name_map.get(&self.get_ordered_did(did)).cloned()
+        self.lookup_procedure(&ProcedureKey::Function(self.get_ordered_did(did)))
+    }
+
+    /// Lookup the meta information of a drop-glue function.
+    pub(crate) fn lookup_drop_glue(&self, key: &DropGlueKey) -> Option<Meta> {
+        self.lookup_procedure(&ProcedureKey::DropGlue(key.clone()))
+    }
+
+    /// Lookup the meta information of a procedure.
+    pub(crate) fn lookup_procedure(&self, key: &ProcedureKey) -> Option<Meta> {
+        self.procedure_meta.get(key).cloned()
     }
 
     /// Lookup a translated function spec
@@ -210,10 +263,17 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
         &'_ self,
         did: DefId,
     ) -> Option<&'def specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>> {
-        let ordered_did = self.get_ordered_did(did);
-        if let Some(translated_fn) = self.translated_functions.get(&ordered_did) {
+        self.lookup_procedure_spec(&ProcedureKey::Function(self.get_ordered_did(did)))
+    }
+
+    /// Lookup a translated procedure spec.
+    pub(crate) fn lookup_procedure_spec(
+        &'_ self,
+        key: &ProcedureKey,
+    ) -> Option<&'def specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>> {
+        if let Some(translated_fn) = self.translated_procedures.get(key) {
             Some(translated_fn.spec)
-        } else if let Some(translated_spec) = self.specced_functions.get(&ordered_did) {
+        } else if let Some(translated_spec) = self.specced_procedures.get(key) {
             Some(translated_spec)
         } else {
             None
@@ -222,7 +282,7 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
 
     /// Lookup the mode for a function.
     pub(crate) fn lookup_function_mode(&self, did: DefId) -> Option<Mode> {
-        self.name_map.get(&self.get_ordered_did(did)).map(Meta::get_mode)
+        self.lookup_function(did).map(|meta| meta.get_mode())
     }
 
     /// Register a function.
@@ -231,11 +291,26 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
             self.tcx.dcx().span_err(self.tcx.def_span(did), Message::NoAssumptionAllowed(meta.mode));
         }
 
-        if self.name_map.insert(self.get_ordered_did(did), meta).is_some() {
+        if self
+            .procedure_meta
+            .insert(ProcedureKey::Function(self.get_ordered_did(did)), meta)
+            .is_some()
+        {
             self.tcx.dcx().span_bug(
                 self.tcx.def_span(did),
                 format!("function for defid {did:?} has already been registered"),
             );
+        }
+    }
+
+    /// Register drop glue for a Rust type.
+    pub(crate) fn register_drop_glue(&mut self, key: &DropGlueKey, meta: Meta) {
+        if rrconfig::no_assumption() && meta.mode.is_assumed() {
+            self.tcx.dcx().err(Message::NoAssumptionAllowed(meta.mode));
+        }
+
+        if self.procedure_meta.insert(ProcedureKey::DropGlue(key.clone()), meta).is_some() {
+            self.tcx.dcx().bug(format!("drop glue for {key:?} has already been registered"));
         }
     }
 
@@ -247,7 +322,7 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
         spec_name: &str,
         trait_req_incl_name: &str,
     ) {
-        if let Some(names) = self.name_map.get_mut(&self.get_ordered_did(did)) {
+        if let Some(names) = self.procedure_meta.get_mut(&ProcedureKey::Function(self.get_ordered_did(did))) {
             assert!(names.is_default_trait_impl);
             spec_name.clone_into(&mut names.spec_name);
             trait_req_incl_name.clone_into(&mut names.trait_req_incl_name);
@@ -256,10 +331,20 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
 
     /// Provide the code for a translated function.
     pub(crate) fn provide_translated_function(&mut self, did: DefId, trf: code::Function<'def>) {
-        let ordered_did = self.get_ordered_did(did);
-        let meta = &self.name_map[&ordered_did];
+        self.provide_translated_procedure(ProcedureKey::Function(self.get_ordered_did(did)), trf);
+    }
+
+    /// Provide the code for translated drop glue.
+    #[expect(dead_code)]
+    pub(crate) fn provide_translated_drop_glue(&mut self, key: DropGlueKey, trf: code::Function<'def>) {
+        self.provide_translated_procedure(ProcedureKey::DropGlue(key), trf);
+    }
+
+    /// Provide the code for a translated procedure.
+    pub(crate) fn provide_translated_procedure(&mut self, key: ProcedureKey, trf: code::Function<'def>) {
+        let meta = &self.procedure_meta[&key];
         assert!(meta.get_mode().needs_def() || meta.get_mode().is_code_shim());
-        assert!(self.translated_functions.insert(ordered_did, trf).is_none());
+        assert!(self.translated_procedures.insert(key, trf).is_none());
     }
 
     /// Provide the specification for an `only_spec` function.
@@ -268,25 +353,48 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
         did: DefId,
         spec: &'def specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>,
     ) {
-        let ordered_did = self.get_ordered_did(did);
-        let meta = &self.name_map[&ordered_did];
+        self.provide_specced_procedure(ProcedureKey::Function(self.get_ordered_did(did)), spec);
+    }
+
+    /// Provide the specification for `only_spec` drop glue.
+    #[expect(dead_code)]
+    pub(crate) fn provide_specced_drop_glue(
+        &mut self,
+        key: DropGlueKey,
+        spec: &'def specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>,
+    ) {
+        self.provide_specced_procedure(ProcedureKey::DropGlue(key), spec);
+    }
+
+    /// Provide the specification for an `only_spec` procedure.
+    pub(crate) fn provide_specced_procedure(
+        &mut self,
+        key: ProcedureKey,
+        spec: &'def specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>,
+    ) {
+        let meta = &self.procedure_meta[&key];
         assert!(meta.get_mode().is_only_spec());
-        assert!(self.specced_functions.insert(ordered_did, spec).is_none());
+        assert!(self.specced_procedures.insert(key, spec).is_none());
     }
 
-    /// Iterate over the functions we have generated code for.
-    pub(crate) fn iter_code(&self) -> btree_map::Iter<'_, OrderedDefId, code::Function<'def>> {
-        self.translated_functions.iter()
+    /// Iterate over all registered procedures.
+    pub(crate) fn iter_procedure_meta(&self) -> btree_map::Iter<'_, ProcedureKey, Meta> {
+        self.procedure_meta.iter()
     }
 
-    /// Iterate over the functions we have generated only specs for.
-    pub(crate) fn iter_only_spec(
+    /// Iterate over the procedures we have generated code for.
+    pub(crate) fn iter_procedure_code(&self) -> btree_map::Iter<'_, ProcedureKey, code::Function<'def>> {
+        self.translated_procedures.iter()
+    }
+
+    /// Iterate over the procedures we have generated only specs for.
+    pub(crate) fn iter_procedure_only_spec(
         &self,
     ) -> btree_map::Iter<
         '_,
-        OrderedDefId,
+        ProcedureKey,
         &'def specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>,
     > {
-        self.specced_functions.iter()
+        self.specced_procedures.iter()
     }
 }
