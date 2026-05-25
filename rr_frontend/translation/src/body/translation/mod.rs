@@ -13,11 +13,11 @@ mod place;
 mod rvalue;
 mod terminator;
 
+use core::MirTranslationCtx as _;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::{cmp, mem};
 
 pub(crate) use calls::get_arg_syntypes_for_procedure_call;
-use core::MirTranslationCtx as _;
 use log::{info, trace};
 use radium::{code, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;

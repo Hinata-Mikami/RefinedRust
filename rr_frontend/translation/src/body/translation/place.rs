@@ -52,7 +52,8 @@ pub(crate) trait MirPlaceTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'def, 
                             )));
                         };
 
-                        let translated_ty = self.ty_translator().translate_type_to_syn_type(ty.expect_ty())?;
+                        let translated_ty =
+                            self.ty_translator().translate_type_to_syn_type(ty.expect_ty())?;
                         let translated_alloc =
                             self.ty_translator().translate_type_to_syn_type(alloc.expect_ty())?;
                         acc_expr = code::Expr::MagicBoxDeref {
@@ -71,7 +72,8 @@ pub(crate) trait MirPlaceTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'def, 
                 },
                 mir::ProjectionElem::Field(f, _) => {
                     // `t` is the type of the field we are accessing!
-                    let lit = self.ty_translator().generate_structlike_use(cur_ty.ty, cur_ty.variant_index)?;
+                    let lit =
+                        self.ty_translator().generate_structlike_use(cur_ty.ty, cur_ty.variant_index)?;
                     // TODO: does not do the right thing for accesses to fields of zero-sized objects.
                     let struct_sls = lit.generate_raw_syn_type_term();
                     let name = self.ty_translator().translator.get_field_name_of(

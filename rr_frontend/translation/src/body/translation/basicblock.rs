@@ -8,7 +8,9 @@ use log::info;
 use radium::code;
 use rr_rustc_interface::middle::{mir, ty};
 
-use super::{core::MirTranslationCtx as _, place::MirPlaceTranslation as _, TX};
+use super::TX;
+use super::core::MirTranslationCtx as _;
+use super::place::MirPlaceTranslation as _;
 use crate::base::*;
 use crate::error::Message;
 use crate::procedures;
