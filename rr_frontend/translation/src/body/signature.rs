@@ -16,7 +16,7 @@ use rr_rustc_interface::{hir, span};
 use typed_arena::Arena;
 
 use crate::base::*;
-use crate::body::translation;
+use crate::body::function_translation;
 use crate::environment::mir_mapper;
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
@@ -536,7 +536,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         self,
         spec_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
     ) -> Result<code::Function<'def>, TranslationError> {
-        let translator = translation::TX::new(
+        let translator = function_translation::TX::new(
             self.tcx,
             self.procedure_registry,
             self.const_registry,

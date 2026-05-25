@@ -6,16 +6,12 @@
 
 mod basicblock;
 mod calls;
-mod constants;
-mod core;
 mod loops;
-mod place;
-mod rvalue;
 mod terminator;
+mod tx_impl;
 
-use core::MirTranslationCtx as _;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::{cmp, mem};
+use std::mem;
 
 pub(crate) use calls::get_arg_syntypes_for_procedure_call;
 use log::{info, trace};
@@ -26,28 +22,19 @@ use rr_rustc_interface::mir_dataflow::impls::always_storage_live_locals;
 use typed_arena::Arena;
 
 use crate::base::*;
-use crate::body::translation::calls::ProcedureInst;
+use crate::body::function_translation::calls::ProcedureInst;
+use crate::body::mir_lowering::{MirTranslationCtx as _, TranslationKey};
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
 use crate::regions::AnnotationGenerator;
 use crate::traits::registry;
-use crate::{consts, procedures, rustcmp, types};
+use crate::{consts, procedures, types};
 
 pub(crate) enum ExprInfo<'tcx, 'def> {
     Call(ProcedureInst<'tcx, 'def>),
 }
 
 pub(crate) type ExprWithInfo<'tcx, 'def> = (code::Expr, Option<ExprInfo<'tcx, 'def>>);
-
-#[derive(PartialEq, Eq, Hash, Debug)]
-struct TranslationKey<'tcx>(OrderedDefId, types::GenericsKey<'tcx>);
-
-impl<'tcx> TranslationKey<'tcx> {
-    fn cmp(&self, tcx: ty::TyCtxt<'tcx>, b: &Self) -> cmp::Ordering {
-        let did_ord = self.0.cmp(&b.0);
-        did_ord.then_with(|| rustcmp::cmp_tys(tcx, &self.1, &b.1))
-    }
-}
 
 /// Struct that keeps track of all information necessary to translate a MIR Body to a `code::Function`.
 /// `'a` is the lifetime of the translator and ends after translation has finished.

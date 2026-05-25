@@ -13,13 +13,13 @@ use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::span;
 
-use super::constants::MirConstantTranslation as _;
-use super::core::{MirTranslationCtx as _, MirTypeTranslation as _};
-use super::place::MirPlaceTranslation as _;
-use super::rvalue::MirRvalueTranslation as _;
-use super::{TX, TranslationKey};
+use super::TX;
 use crate::base::*;
-use crate::body::translation::{ExprInfo, ExprWithInfo};
+use crate::body::function_translation::{ExprInfo, ExprWithInfo};
+use crate::body::mir_lowering::{
+    MirConstantTranslation as _, MirPlaceTranslation as _, MirRvalueTranslation as _, MirTranslationCtx as _,
+    MirTypeTranslation as _, TranslationKey,
+};
 use crate::environment::borrowck::facts;
 use crate::error::Message;
 use crate::regions::{CallAssignmentInputs, CallRegionInputs};

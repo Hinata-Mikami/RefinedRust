@@ -10,17 +10,15 @@ use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::span;
 
-use super::TX;
-use super::core::MirTranslationCtx;
+use super::MirTranslationCtx;
 use crate::base::*;
-use crate::body::translation::ExprWithInfo;
 use crate::error::Message;
 
 pub(crate) trait MirConstantTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'def, 'tcx> {
     fn translate_fn_def_constant(
         &mut self,
         ty: ty::Ty<'tcx>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+    ) -> Result<(code::Expr, Option<Self::ExprInfo>), TranslationError> {
         Err(TranslationError::ErrorReported(self.tcx().dcx().err(
             Message::UnsupportedFeature(format!(
                 "RefinedRust does currently not support function constant translation in this context (got: {ty:?})"
@@ -31,7 +29,7 @@ pub(crate) trait MirConstantTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'de
     fn translate_static_ref_constant(
         &mut self,
         did: DefId,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+    ) -> Result<(code::Expr, Option<Self::ExprInfo>), TranslationError> {
         Err(TranslationError::ErrorReported(self.tcx().dcx().err(Message::UnsupportedFeature(format!(
             "RefinedRust does currently not support static reference constants in this context (got: {did:?})"
         )))))
@@ -41,9 +39,9 @@ pub(crate) trait MirConstantTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'de
         &mut self,
         sc: ty::ScalarInt,
         ty: ty::Ty<'tcx>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+    ) -> Result<(code::Expr, Option<Self::ExprInfo>), TranslationError> {
         // TODO: Use `TryFrom` instead
-        fn translate_literal<'def, 'tcx, T>(sc: T, fptr: fn(T) -> code::Literal) -> ExprWithInfo<'tcx, 'def> {
+        fn translate_literal<T, I>(sc: T, fptr: fn(T) -> code::Literal) -> (code::Expr, Option<I>) {
             (code::Expr::Literal(fptr(sc)), None)
         }
         match ty.kind() {
@@ -96,13 +94,13 @@ pub(crate) trait MirConstantTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'de
         &mut self,
         sc: &mir::interpret::Scalar,
         ty: ty::Ty<'tcx>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+    ) -> Result<(code::Expr, Option<Self::ExprInfo>), TranslationError> {
         // TODO: Use `TryFrom` instead
-        fn translate_literal<'def, 'tcx, T>(
+        fn translate_literal<'tcx, T, I>(
             tcx: ty::TyCtxt<'tcx>,
             sc: mir::interpret::InterpResult<'tcx, T>,
             fptr: fn(T) -> code::Literal,
-        ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+        ) -> Result<(code::Expr, Option<I>), TranslationError> {
             sc.discard_err().map_or_else(
                 || Err(TranslationError::ErrorReported(tcx.dcx().err(Message::InvalidLayout))),
                 |lit| Ok((code::Expr::Literal(fptr(lit)), None)),
@@ -193,7 +191,7 @@ pub(crate) trait MirConstantTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'de
         &mut self,
         v: mir::ConstValue,
         ty: ty::Ty<'tcx>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+    ) -> Result<(code::Expr, Option<Self::ExprInfo>), TranslationError> {
         match v {
             mir::ConstValue::Scalar(sc) => self.translate_scalar(&sc, ty),
             mir::ConstValue::ZeroSized => {
@@ -223,7 +221,7 @@ pub(crate) trait MirConstantTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'de
     fn translate_constant(
         &mut self,
         constant: &mir::Const<'tcx>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+    ) -> Result<(code::Expr, Option<Self::ExprInfo>), TranslationError> {
         match constant {
             mir::Const::Ty(_const_ty, v) => {
                 match v.kind() {
@@ -263,24 +261,5 @@ pub(crate) trait MirConstantTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'de
                 }
             },
         }
-    }
-}
-
-impl<'a, 'def: 'a, 'tcx: 'def> MirConstantTranslation<'def, 'tcx> for TX<'a, 'def, 'tcx> {
-    fn translate_fn_def_constant(
-        &mut self,
-        ty: ty::Ty<'tcx>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
-        self.translate_fn_def_use(ty)
-    }
-
-    fn translate_static_ref_constant(
-        &mut self,
-        did: DefId,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
-        let ordered_did = OrderedDefId::new(self.tcx, did);
-        let s = self.const_registry.get_static(self.tcx, &ordered_did)?;
-        self.collected_statics.insert(ordered_did);
-        Ok((code::Expr::Literal(code::Literal::Loc(s.loc_name.clone())), None))
     }
 }

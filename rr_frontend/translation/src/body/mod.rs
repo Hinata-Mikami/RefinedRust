@@ -4,7 +4,8 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+pub(crate) mod function_translation;
+pub(crate) mod mir_lowering;
 pub(crate) mod signature;
-mod translation;
 
-pub(crate) use translation::get_arg_syntypes_for_procedure_call;
+pub(crate) use function_translation::get_arg_syntypes_for_procedure_call;

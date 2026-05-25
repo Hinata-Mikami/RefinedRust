@@ -11,95 +11,18 @@ use rr_rustc_interface::abi;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 
-use super::{TX, TranslationKey};
+use super::{ExprInfo, ExprWithInfo, TX};
 use crate::base::*;
-use crate::error::Message;
+use crate::body::mir_lowering::{
+    MirConstantTranslation, MirPlaceTranslation as _, MirRvalueTranslation, MirTranslationCtx,
+    MirTypeTranslation, TranslationKey,
+};
 use crate::procedures;
-
-pub(crate) trait MirTranslationCtx<'def, 'tcx: 'def> {
-    fn tcx(&self) -> ty::TyCtxt<'tcx>;
-
-    fn body(&self) -> &mir::Body<'tcx>;
-
-    fn proc_def_id(&self) -> DefId;
-
-    fn procedure_registry(&self) -> &procedures::Scope<'tcx, 'def>;
-
-    fn variable_map(&self) -> &HashMap<mir::Local, String>;
-
-    fn collected_procedures(&self) -> &HashMap<TranslationKey<'tcx>, code::UsedProcedure<'def>>;
-
-    fn collected_procedures_mut(&mut self) -> &mut HashMap<TranslationKey<'tcx>, code::UsedProcedure<'def>>;
-
-    fn normalize_place(&self, place: &mir::Place<'tcx>) -> mir::Place<'tcx> {
-        *place
-    }
-
-    /// Get the shape/layout type of a local in the translated MIR body.
-    fn shape_type_of_local(&self, local: mir::Local) -> Result<ty::Ty<'tcx>, TranslationError> {
-        self.body().local_decls.get(local).map(|decl| decl.ty).ok_or_else(|| {
-            TranslationError::ErrorReported(self.tcx().dcx().err(Message::UnknownVar(format!("{local:?}"))))
-        })
-    }
-
-    /// Get the shape/layout type of a place expression in the translated MIR body.
-    fn shape_type_of_place(&self, place: &mir::Place<'tcx>) -> mir::PlaceTy<'tcx> {
-        let normalized = self.normalize_place(place);
-        normalized.ty(&self.body().local_decls, self.tcx())
-    }
-
-    /// Get the shape/layout type of an operand in the translated MIR body.
-    fn shape_type_of_operand(&self, op: &mir::Operand<'tcx>) -> ty::Ty<'tcx> {
-        op.ty(&self.body().local_decls, self.tcx())
-    }
-}
-
-pub(crate) trait MirTypeTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'def, 'tcx> {
-    fn translate_type_to_syn_type(&self, ty: ty::Ty<'tcx>) -> Result<lang::SynType, TranslationError>;
-
-    fn generate_structlike_use(
-        &self,
-        ty: ty::Ty<'tcx>,
-        variant: Option<abi::VariantIdx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError>;
-
-    fn generate_enum_use(
-        &self,
-        adt_def: ty::AdtDef<'tcx>,
-        args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError>;
-
-    fn generate_enum_use_with_regions(
-        &self,
-        adt_def: ty::AdtDef<'tcx>,
-        args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError>;
-
-    fn generate_struct_use(
-        &self,
-        variant_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError>;
-
-    fn generate_enum_variant_use(
-        &self,
-        variant_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<specs::types::LiteralUse<'def>, TranslationError>;
-
-    fn generate_tuple_use<F>(&self, tys: F) -> Result<specs::types::LiteralUse<'def>, TranslationError>
-    where
-        F: IntoIterator<Item = ty::Ty<'tcx>>;
-
-    fn get_field_name_of(
-        &self,
-        field: abi::FieldIdx,
-        ty: ty::Ty<'tcx>,
-        variant: Option<usize>,
-    ) -> Result<String, TranslationError>;
-}
+use crate::regions::AnnotationGenerator;
 
 impl<'a, 'def: 'a, 'tcx: 'def> MirTranslationCtx<'def, 'tcx> for TX<'a, 'def, 'tcx> {
+    type ExprInfo = ExprInfo<'tcx, 'def>;
+
     fn tcx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
@@ -192,5 +115,89 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirTypeTranslation<'def, 'tcx> for TX<'a, 'def, '
         variant: Option<usize>,
     ) -> Result<String, TranslationError> {
         self.ty_translator.translator.get_field_name_of(field, ty, variant)
+    }
+}
+
+impl<'a, 'def: 'a, 'tcx: 'def> MirConstantTranslation<'def, 'tcx> for TX<'a, 'def, 'tcx> {
+    fn translate_fn_def_constant(
+        &mut self,
+        ty: ty::Ty<'tcx>,
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+        self.translate_fn_def_use(ty)
+    }
+
+    fn translate_static_ref_constant(
+        &mut self,
+        did: DefId,
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+        let ordered_did = OrderedDefId::new(self.tcx, did);
+        let s = self.const_registry.get_static(self.tcx, &ordered_did)?;
+        self.collected_statics.insert(ordered_did);
+        Ok((code::Expr::Literal(code::Literal::Loc(s.loc_name.clone())), None))
+    }
+}
+
+impl<'a, 'def: 'a, 'tcx: 'def> MirRvalueTranslation<'def, 'tcx> for TX<'a, 'def, 'tcx> {
+    fn translate_ref_rvalue(
+        &mut self,
+        loc: mir::Location,
+        region: ty::Region<'tcx>,
+        bk: mir::BorrowKind,
+        place: &mir::Place<'tcx>,
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+        let translated_pl = self.translate_place(place)?;
+        let translated_bk = Self::translate_borrow_kind(self.tcx, bk)?;
+
+        // Drop-elaborated borrows are target-only statements, so their lifetime has to come
+        // from the synthetic drop-borrow mapping rather than a borrowck region variable.
+        // Drop-elaborated borrows for Drop::drop should not include the safety invariant.
+        let (lft, raw) = if let Some(drop_borrow) = self.proc.synthetic_drop_borrow_for_assignment(loc) {
+            (AnnotationGenerator::synthetic_drop_borrow_lft(drop_borrow), true)
+        } else {
+            let region = self.proc.source_borrow_region_for_target(loc).unwrap_or(region);
+            (self.annotations.prepare_borrow_lifetime_plan(&self.ty_translator, loc, region).lft, false)
+        };
+
+        let ty_annot = self.get_type_annotation_for_borrow(bk, raw, place)?;
+
+        Ok((
+            code::Expr::Borrow {
+                lft,
+                bk: translated_bk,
+                ty: ty_annot,
+                e: Box::new(translated_pl),
+            },
+            None,
+        ))
+    }
+
+    fn aggregate_kind_for_translation<'b>(
+        &'b self,
+        loc: mir::Location,
+        target_kind: &'b mir::AggregateKind<'tcx>,
+    ) -> &'b mir::AggregateKind<'tcx> {
+        self.proc.source_aggregate_kind_for_target(loc).unwrap_or(target_kind)
+    }
+}
+
+#[expect(clippy::multiple_inherent_impl)]
+impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
+    /// Get the type to annotate a borrow with.
+    fn get_type_annotation_for_borrow(
+        &self,
+        _bk: mir::BorrowKind,
+        raw: bool,
+        pl: &mir::Place<'tcx>,
+    ) -> Result<Option<code::RustType>, TranslationError> {
+        let ty = self.proc.region_type_of_place(pl);
+
+        // For borrows, we can safely ignore the downcast type -- we cannot borrow a particularly variant
+        let mut translated_ty = self.ty_translator.translate_type(ty.ty)?;
+        if raw {
+            translated_ty.make_raw();
+        }
+        let annot_ty = code::RustType::of_type(&translated_ty);
+
+        Ok(Some(annot_ty))
     }
 }

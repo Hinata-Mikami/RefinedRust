@@ -9,14 +9,10 @@ use radium::{code, coq, lang};
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{abi, index};
 
-use super::TX;
-use super::constants::MirConstantTranslation;
-use super::core::{MirTranslationCtx, MirTypeTranslation};
-use super::place::MirPlaceTranslation;
+use super::{MirConstantTranslation, MirPlaceTranslation};
 use crate::base::*;
-use crate::body::translation::ExprWithInfo;
+use crate::body::mir_lowering::{MirTranslationCtx, MirTypeTranslation};
 use crate::error::Message;
-use crate::regions::AnnotationGenerator;
 
 pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
     MirTranslationCtx<'def, 'tcx>
@@ -30,7 +26,7 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
         _region: ty::Region<'tcx>,
         _bk: mir::BorrowKind,
         place: &mir::Place<'tcx>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+    ) -> Result<(code::Expr, Option<Self::ExprInfo>), TranslationError> {
         Err(TranslationError::ErrorReported(self.tcx().dcx().err(Message::UnsupportedFeature(format!(
             "RefinedRust does currently not support reference rvalues in this context (got: {place:?})"
         )))))
@@ -298,7 +294,7 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
         &mut self,
         op: &mir::Operand<'tcx>,
         to_rvalue: bool,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+    ) -> Result<(code::Expr, Option<Self::ExprInfo>), TranslationError> {
         match op {
             // In Caesium: typed_place needs deref (not use) for place accesses.
             // use is used top-level to convert an lvalue to an rvalue, which is why we use it here.
@@ -352,7 +348,7 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
         &mut self,
         loc: mir::Location,
         rval: &mir::Rvalue<'tcx>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+    ) -> Result<(code::Expr, Option<Self::ExprInfo>), TranslationError> {
         match rval {
             mir::Rvalue::Use(op, _) => {
                 // converts an lvalue to an rvalue
@@ -599,74 +595,5 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
             mir::RawPtrKind::Mut | mir::RawPtrKind::FakeForPtrMetadata => code::Mutability::Mut,
             mir::RawPtrKind::Const => code::Mutability::Shared,
         }
-    }
-}
-
-impl<'a, 'def: 'a, 'tcx: 'def> MirRvalueTranslation<'def, 'tcx> for TX<'a, 'def, 'tcx> {
-    fn translate_ref_rvalue(
-        &mut self,
-        loc: mir::Location,
-        region: ty::Region<'tcx>,
-        bk: mir::BorrowKind,
-        place: &mir::Place<'tcx>,
-    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
-        let translated_pl = self.translate_place(place)?;
-        let translated_bk = Self::translate_borrow_kind(self.tcx, bk)?;
-
-        // Drop-elaborated borrows are target-only statements, so their lifetime has to come
-        // from the synthetic drop-borrow mapping rather than a borrowck region variable.
-        // Drop-elaborated borrows for Drop::drop should not include the safety invariant.
-        let (lft, raw) = if let Some(drop_borrow) = self.proc.synthetic_drop_borrow_for_assignment(loc) {
-            (AnnotationGenerator::synthetic_drop_borrow_lft(drop_borrow), true)
-        } else {
-            let region = self.proc.source_borrow_region_for_target(loc).unwrap_or(region);
-            (self.annotations.prepare_borrow_lifetime_plan(&self.ty_translator, loc, region).lft, false)
-        };
-
-        let ty_annot = self.get_type_annotation_for_borrow(bk, raw, place)?;
-
-        Ok((
-            code::Expr::Borrow {
-                lft,
-                bk: translated_bk,
-                ty: ty_annot,
-                e: Box::new(translated_pl),
-            },
-            None,
-        ))
-    }
-
-    fn aggregate_kind_for_translation<'b>(
-        &'b self,
-        loc: mir::Location,
-        target_kind: &'b mir::AggregateKind<'tcx>,
-    ) -> &'b mir::AggregateKind<'tcx> {
-        self.proc.source_aggregate_kind_for_target(loc).unwrap_or(target_kind)
-    }
-}
-
-#[expect(clippy::multiple_inherent_impl)]
-impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
-    /// Get the type to annotate a borrow with.
-    fn get_type_annotation_for_borrow(
-        &self,
-        _bk: mir::BorrowKind,
-        raw: bool,
-        pl: &mir::Place<'tcx>,
-    ) -> Result<Option<code::RustType>, TranslationError> {
-        //let mir::BorrowKind::Mut { .. } = bk else {
-        //return Ok(None);
-        //};
-
-        let ty = self.proc.region_type_of_place(pl);
-
-        // For borrows, we can safely ignore the downcast type -- we cannot borrow a particularly variant
-        let mut translated_ty = self.ty_translator.translate_type(ty.ty)?;
-        if raw {
-            translated_ty.make_raw();
-        }
-        let annot_ty = code::RustType::of_type(&translated_ty);
-
-        Ok(Some(annot_ty))
     }
 }
