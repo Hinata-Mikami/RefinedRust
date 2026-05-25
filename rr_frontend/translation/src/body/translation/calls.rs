@@ -14,7 +14,7 @@ use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::span;
 
 use super::constants::MirConstantTranslation as _;
-use super::core::MirTranslationCtx as _;
+use super::core::{MirTranslationCtx as _, MirTypeTranslation as _};
 use super::place::MirPlaceTranslation as _;
 use super::rvalue::MirRvalueTranslation as _;
 use super::{TX, TranslationKey};
@@ -151,10 +151,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let tup = TranslationKey(OrderedDefId::new(tcx, callee_did), key);
         let res;
-        if let Some(proc_use) = self.collected_procedures.get(&tup) {
+        if let Some(proc_use) = self.collected_procedures().get(&tup) {
             res = proc_use.loc_name.clone();
         } else {
-            let meta = self.procedure_registry.lookup_function(callee_did).ok_or_else(|| {
+            let meta = self.procedure_registry().lookup_function(callee_did).ok_or_else(|| {
                 TranslationError::ErrorReported(
                     self.tcx.dcx().err(Message::UnknownProcedure(format!("{:?}", callee_did))),
                 )
@@ -165,17 +165,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let code_name = meta.get_name();
             let loc_name = format!("{}_loc", types::mangle_name_with_tys(code_name, tup.1.as_slice()));
 
-            let scope = self.ty_translator.scope.borrow();
-            let typing_env = ty::TypingEnv::post_analysis(tcx, scope.did);
-            let syntypes = get_arg_syntypes_for_procedure_call(
-                tcx,
-                self.ty_translator.translator,
-                // note: this is sufficient (without the lifetime map) as we erase lifetimes here anyways
-                &scope.generic_scope,
-                &typing_env,
-                callee_did,
-                ty_params.as_slice(),
-            )?;
+            let syntypes = {
+                let scope = self.ty_translator.scope.borrow();
+                let typing_env = ty::TypingEnv::post_analysis(tcx, scope.did);
+                get_arg_syntypes_for_procedure_call(
+                    tcx,
+                    self.ty_translator.translator,
+                    // note: this is sufficient (without the lifetime map) as we erase lifetimes here anyways
+                    &scope.generic_scope,
+                    &typing_env,
+                    callee_did,
+                    ty_params.as_slice(),
+                )?
+            };
 
             let fn_inst = quantified_args.fn_scope_inst;
 
@@ -188,7 +190,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 code::UsedProcedure::new(loc_name, spec_term, quantified_args.scope, fn_inst, syntypes);
 
             res = proc_use.loc_name.clone();
-            self.collected_procedures.insert(tup, proc_use);
+            self.collected_procedures_mut().insert(tup, proc_use);
         }
         trace!("leave register_use_procedure");
         let inst = ProcedureInst {
@@ -241,21 +243,22 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let tup = TranslationKey(OrderedDefId::new(tcx, callee_did), key);
         let res;
-        if let Some(proc_use) = self.collected_procedures.get(&tup) {
+        if let Some(proc_use) = self.collected_procedures().get(&tup) {
             res = proc_use.loc_name.clone();
         } else {
-            let scope = self.ty_translator.scope.borrow();
-
             // TODO: should we use ty_params or method_params?
-            let typing_env = ty::TypingEnv::post_analysis(tcx, scope.did);
-            let syntypes = get_arg_syntypes_for_procedure_call(
-                tcx,
-                self.ty_translator.translator,
-                &scope.generic_scope,
-                &typing_env,
-                callee_did,
-                ty_params.as_slice(),
-            )?;
+            let syntypes = {
+                let scope = self.ty_translator.scope.borrow();
+                let typing_env = ty::TypingEnv::post_analysis(tcx, scope.did);
+                get_arg_syntypes_for_procedure_call(
+                    tcx,
+                    self.ty_translator.translator,
+                    &scope.generic_scope,
+                    &typing_env,
+                    callee_did,
+                    ty_params.as_slice(),
+                )?
+            };
 
             let fn_inst = quantified_args.fn_scope_inst;
 
@@ -275,7 +278,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             trace!("register_use_trait_method: generated proc_use for {callee_did:?}: {proc_use:?}");
 
             res = proc_use.loc_name.clone();
-            self.collected_procedures.insert(tup, proc_use);
+            self.collected_procedures_mut().insert(tup, proc_use);
         }
         trace!("leave register_use_trait_method");
 
@@ -411,14 +414,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // instantiations.
         let key = types::generate_args_inst_key(self.tcx, ty_params)?;
 
-        let info = self.procedure_registry.lookup_closure_info(closure_did).unwrap();
+        let info = self.procedure_registry().lookup_closure_info(closure_did).unwrap();
 
         let quantified_scope =
             self.create_closure_impl_abstraction(info, closure_did, closure_args, closure_kind, ty_params);
 
         let tup = TranslationKey(OrderedDefId::new(self.tcx, call_fn_did), key);
         let res;
-        if let Some(proc_use) = self.collected_procedures.get(&tup) {
+        if let Some(proc_use) = self.collected_procedures().get(&tup) {
             res = proc_use.loc_name.clone();
         } else {
             let (_, meta) =
@@ -435,18 +438,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let code_name = meta.get_name();
             let loc_name = format!("{}_loc", types::mangle_name_with_tys(code_name, tup.1.as_slice()));
 
-            let scope = self.ty_translator.scope.borrow();
-            let typing_env = ty::TypingEnv::post_analysis(self.tcx, scope.did);
-
-            let syntypes = get_arg_syntypes_for_procedure_call(
-                self.tcx,
-                self.ty_translator.translator,
-                // note: this is sufficient (without the lifetime map) as we erase lifetimes here anyways
-                &scope.generic_scope,
-                &typing_env,
-                call_fn_did,
-                ty_params.as_slice(),
-            )?;
+            let syntypes = {
+                let scope = self.ty_translator.scope.borrow();
+                let typing_env = ty::TypingEnv::post_analysis(self.tcx, scope.did);
+                get_arg_syntypes_for_procedure_call(
+                    self.tcx,
+                    self.ty_translator.translator,
+                    // note: this is sufficient (without the lifetime map) as we erase lifetimes here anyways
+                    &scope.generic_scope,
+                    &typing_env,
+                    call_fn_did,
+                    ty_params.as_slice(),
+                )?
+            };
 
             info!(
                 "Registered procedure instance of closure impl {loc_name} of ({closure_did:?}, {closure_kind:?}) with {:?} and layouts {:?}",
@@ -462,7 +466,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             );
 
             res = proc_use.loc_name.clone();
-            self.collected_procedures.insert(tup, proc_use);
+            self.collected_procedures_mut().insert(tup, proc_use);
         }
         trace!("leave register_use_closure");
         let inst = ProcedureInst {
@@ -726,7 +730,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             annotation_plan.push_pre_assign_stmts(&mut prim_stmts);
 
             // assign stmt with call; then jump to bb
-            let place_st = self.ty_translator.translate_type_to_syn_type(lhs_shape_ty.ty)?;
+            let place_st = self.translate_type_to_syn_type(lhs_shape_ty.ty)?;
             let place_expr = self.translate_place(destination)?;
             let ot = place_st.into();
 

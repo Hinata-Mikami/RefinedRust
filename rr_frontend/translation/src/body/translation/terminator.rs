@@ -12,7 +12,7 @@ use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{bug, mir, ty};
 
 use super::TX;
-use super::core::MirTranslationCtx as _;
+use super::core::{MirTranslationCtx as _, MirTypeTranslation as _};
 use super::place::MirPlaceTranslation as _;
 use super::rvalue::MirRvalueTranslation as _;
 use crate::base::*;
@@ -83,7 +83,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let (translated_op, _) = self.translate_operand(op, false)?;
         let ty = self.shape_type_of_operand(op);
 
-        let st = self.ty_translator.translate_type_to_syn_type(ty)?;
+        let st = self.translate_type_to_syn_type(ty)?;
         let translated_rhs = code::Expr::Deref {
             ot: st.into(),
             e: Box::new(translated_op),
@@ -97,7 +97,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 format!("RefinedRust does currently not support discriminant accesses on non-enum types (got {:?})", ty),
             ))));
         };
-        let enum_use = self.ty_translator.generate_enum_use(*adt_def, args)?;
+        let enum_use = self.generate_enum_use(*adt_def, args)?;
         let els = enum_use.generate_raw_syn_type_term();
 
         let discriminant_acc = code::Expr::EnumDiscriminant {
@@ -182,7 +182,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
 
             mir::TerminatorKind::Return => {
-                let return_synty = self.ty_translator.translate_type_to_syn_type(self.return_ty)?;
+                let return_synty = self.translate_type_to_syn_type(self.return_ty)?;
                 let mut annotation_plan = self.annotations.prepare_return_annotation_plan(
                     &self.ty_translator,
                     self.return_ty,

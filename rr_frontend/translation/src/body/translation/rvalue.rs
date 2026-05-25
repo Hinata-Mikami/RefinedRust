@@ -36,7 +36,6 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
         )))))
     }
 
-    #[expect(dead_code)]
     fn aggregate_kind_for_translation<'b>(
         &'b self,
         _loc: mir::Location,
@@ -47,11 +46,12 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
 
     fn translate_aggregate_rvalue(
         &mut self,
-        _loc: mir::Location,
+        loc: mir::Location,
         kind: &mir::AggregateKind<'tcx>,
         op: &index::IndexVec<abi::FieldIdx, mir::Operand<'tcx>>,
     ) -> Result<code::Expr, TranslationError> {
-        self.translate_aggregate(kind, op)
+        let kind = self.aggregate_kind_for_translation(loc, kind).clone();
+        self.translate_aggregate(&kind, op)
     }
 
     /// Translate an aggregate expression.
@@ -642,18 +642,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirRvalueTranslation<'def, 'tcx> for TX<'a, 'def,
         target_kind: &'b mir::AggregateKind<'tcx>,
     ) -> &'b mir::AggregateKind<'tcx> {
         self.proc.source_aggregate_kind_for_target(loc).unwrap_or(target_kind)
-    }
-
-    fn translate_aggregate_rvalue(
-        &mut self,
-        loc: mir::Location,
-        kind: &mir::AggregateKind<'tcx>,
-        op: &index::IndexVec<abi::FieldIdx, mir::Operand<'tcx>>,
-    ) -> Result<code::Expr, TranslationError> {
-        // Aggregate kinds can carry erased dropck substitutions. Use the mapped borrowck
-        // aggregate kind for type parameters while translating the dropck operands.
-        let type_kind = self.proc.source_aggregate_kind_for_target(loc).unwrap_or(kind);
-        self.translate_aggregate(type_kind, op)
     }
 }
 

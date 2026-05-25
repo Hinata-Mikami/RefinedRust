@@ -27,18 +27,12 @@ pub(crate) trait MirTranslationCtx<'def, 'tcx: 'def> {
 
     fn variable_map(&self) -> &HashMap<mir::Local, String>;
 
-    fn variable_map_mut(&mut self) -> &mut HashMap<mir::Local, String>;
-
     fn collected_procedures(&self) -> &HashMap<TranslationKey<'tcx>, code::UsedProcedure<'def>>;
 
     fn collected_procedures_mut(&mut self) -> &mut HashMap<TranslationKey<'tcx>, code::UsedProcedure<'def>>;
 
     fn normalize_place(&self, place: &mir::Place<'tcx>) -> mir::Place<'tcx> {
         *place
-    }
-
-    fn normalization_scope_did(&self) -> DefId {
-        self.proc_def_id()
     }
 
     /// Get the shape/layout type of a local in the translated MIR body.
@@ -124,10 +118,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirTranslationCtx<'def, 'tcx> for TX<'a, 'def, 't
 
     fn variable_map(&self) -> &HashMap<mir::Local, String> {
         &self.variable_map
-    }
-
-    fn variable_map_mut(&mut self) -> &mut HashMap<mir::Local, String> {
-        &mut self.variable_map
     }
 
     fn collected_procedures(&self) -> &HashMap<TranslationKey<'tcx>, code::UsedProcedure<'def>> {

@@ -9,7 +9,7 @@ use radium::code;
 use rr_rustc_interface::middle::{mir, ty};
 
 use super::TX;
-use super::core::MirTranslationCtx as _;
+use super::core::{MirTranslationCtx as _, MirTypeTranslation as _};
 use super::place::MirPlaceTranslation as _;
 use super::rvalue::MirRvalueTranslation as _;
 use crate::base::*;
@@ -50,7 +50,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     let plc_ty = self.shape_type_of_place(plc);
                     let (e, _) = self.translate_rvalue(loc, val)?;
                     let translated_place = self.translate_place(plc)?;
-                    let synty = self.ty_translator.translate_type_to_syn_type(plc_ty.ty)?;
+                    let synty = self.translate_type_to_syn_type(plc_ty.ty)?;
                     prim_stmts.push(code::PrimStmt::Assign {
                         ot: synty.into(),
                         e1: Box::new(translated_place),
@@ -100,7 +100,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             Some("assignment".to_owned()),
                         );
                         let translated_place = self.translate_place(plc)?;
-                        let synty = self.ty_translator.translate_type_to_syn_type(plc_ty.ty)?;
+                        let synty = self.translate_type_to_syn_type(plc_ty.ty)?;
                         prim_stmts.push(code::PrimStmt::Assign {
                             ot: synty.into(),
                             e1: Box::new(translated_place),
@@ -152,16 +152,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                 | mir::StatementKind::StorageLive(l) => {
                     let ty = self.shape_type_of_local(*l)?;
-                    let translated_st = self.ty_translator.translate_type_to_syn_type(ty)?;
+                    let translated_st = self.translate_type_to_syn_type(ty)?;
 
-                    if let Some(local_name) = self.variable_map.get(l) {
+                    if let Some(local_name) = self.variable_map().get(l) {
                         let var = code::Variable::new(local_name.to_owned(), translated_st);
                         prim_stmts.push(code::PrimStmt::LocalLive(var));
                     } else {
                         let ty::TyKind::Closure(did, _) = ty.kind() else {
                             unreachable!()
                         };
-                        assert!(self.procedure_registry.lookup_function_mode(*did).is_some_and(procedures::Mode::is_ignore));
+                        assert!(self.procedure_registry().lookup_function_mode(*did).is_some_and(procedures::Mode::is_ignore));
                     }
                 },
 
@@ -170,13 +170,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     let local_decl = local_decls.get(*l).unwrap();
                     let ty = local_decl.ty;
 
-                    if let Some(local_name) = self.variable_map.get(l) {
+                    if let Some(local_name) = self.variable_map().get(l) {
                         prim_stmts.push(code::PrimStmt::LocalDead(local_name.to_owned()));
                     } else {
                         let ty::TyKind::Closure(did, _) = ty.kind() else {
                             unreachable!()
                         };
-                        assert!(self.procedure_registry.lookup_function_mode(*did).is_some_and(procedures::Mode::is_ignore));
+                        assert!(self.procedure_registry().lookup_function_mode(*did).is_some_and(procedures::Mode::is_ignore));
                     }
                 },
 

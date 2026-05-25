@@ -503,7 +503,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             return Ok(None);
         };
 
-        let mode = self.procedure_registry.lookup_function_mode(*did);
+        let mode = self.procedure_registry().lookup_function_mode(*did);
         let res = mode.and_then(|m| m.is_ignore().then_some(*did));
 
         trace!("is_spec_closure_local: found closure {res:?} with mode {mode:?}");
