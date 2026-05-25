@@ -18,12 +18,16 @@
 //! annotations, or remapping source MIR constructs to drop-elaborated MIR. This keeps common MIR lowering
 //! available to other body translators without requiring them to reuse the full normal-function `TX`.
 
+mod call;
 mod constants;
 mod ctx;
+mod drops;
 mod place;
 mod rvalue;
 
+pub(crate) use call::ProcedureInst;
 pub(crate) use constants::MirConstantTranslation;
 pub(crate) use ctx::{MirTranslationCtx, MirTypeTranslation, TranslationKey};
+pub(crate) use drops::MirDropTranslation;
 pub(crate) use place::MirPlaceTranslation;
 pub(crate) use rvalue::MirRvalueTranslation;

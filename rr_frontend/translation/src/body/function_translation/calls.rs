@@ -18,7 +18,7 @@ use crate::base::*;
 use crate::body::function_translation::{ExprInfo, ExprWithInfo};
 use crate::body::mir_lowering::{
     MirConstantTranslation as _, MirPlaceTranslation as _, MirRvalueTranslation as _, MirTranslationCtx as _,
-    MirTypeTranslation as _, TranslationKey,
+    MirTypeTranslation as _, ProcedureInst, TranslationKey,
 };
 use crate::environment::borrowck::facts;
 use crate::error::Message;
@@ -91,14 +91,6 @@ pub(crate) fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     }
 
     Ok(syntypes)
-}
-
-pub(crate) struct ProcedureInst<'tcx, 'def> {
-    pub method_params: ty::GenericArgsRef<'tcx>,
-    pub type_hint: Vec<specs::Type<'def>>,
-    pub lft_hint: Vec<specs::Lft>,
-    pub num_of_latebounds: usize,
-    pub mapped_early_regions: BTreeMap<specs::Lft, usize>,
 }
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {

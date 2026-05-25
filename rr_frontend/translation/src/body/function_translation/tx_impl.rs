@@ -14,11 +14,11 @@ use rr_rustc_interface::middle::{mir, ty};
 use super::{ExprInfo, ExprWithInfo, TX};
 use crate::base::*;
 use crate::body::mir_lowering::{
-    MirConstantTranslation, MirPlaceTranslation as _, MirRvalueTranslation, MirTranslationCtx,
-    MirTypeTranslation, TranslationKey,
+    MirConstantTranslation, MirDropTranslation, MirPlaceTranslation as _, MirRvalueTranslation,
+    MirTranslationCtx, MirTypeTranslation, TranslationKey,
 };
-use crate::procedures;
 use crate::regions::AnnotationGenerator;
+use crate::{procedures, types};
 
 impl<'a, 'def: 'a, 'tcx: 'def> MirTranslationCtx<'def, 'tcx> for TX<'a, 'def, 'tcx> {
     type ExprInfo = ExprInfo<'tcx, 'def>;
@@ -39,6 +39,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirTranslationCtx<'def, 'tcx> for TX<'a, 'def, 't
         self.procedure_registry
     }
 
+    fn ty_translator(&self) -> &types::LocalTX<'def, 'tcx> {
+        &self.ty_translator
+    }
+
     fn variable_map(&self) -> &HashMap<mir::Local, String> {
         &self.variable_map
     }
@@ -55,6 +59,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirTranslationCtx<'def, 'tcx> for TX<'a, 'def, 't
         self.proc.normalize_box_deref_alias_place(place)
     }
 }
+
+impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for TX<'a, 'def, 'tcx> {}
 
 impl<'a, 'def: 'a, 'tcx: 'def> MirTypeTranslation<'def, 'tcx> for TX<'a, 'def, 'tcx> {
     fn translate_type_to_syn_type(&self, ty: ty::Ty<'tcx>) -> Result<lang::SynType, TranslationError> {

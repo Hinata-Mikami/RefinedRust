@@ -6,7 +6,6 @@
 
 mod basicblock;
 mod calls;
-mod drops;
 mod loops;
 mod terminator;
 mod tx_impl;
@@ -23,8 +22,7 @@ use rr_rustc_interface::mir_dataflow::impls::always_storage_live_locals;
 use typed_arena::Arena;
 
 use crate::base::*;
-use crate::body::function_translation::calls::ProcedureInst;
-use crate::body::mir_lowering::{MirTranslationCtx as _, TranslationKey};
+use crate::body::mir_lowering::{MirTranslationCtx as _, ProcedureInst, TranslationKey};
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
 use crate::regions::AnnotationGenerator;

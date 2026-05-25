@@ -11,10 +11,11 @@ use radium::{code, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{bug, mir, ty};
 
-use super::{ExprInfo, TX};
+use super::TX;
 use crate::base::*;
 use crate::body::mir_lowering::{
-    MirPlaceTranslation as _, MirRvalueTranslation as _, MirTranslationCtx as _, MirTypeTranslation as _,
+    MirDropTranslation as _, MirPlaceTranslation as _, MirRvalueTranslation as _, MirTranslationCtx as _,
+    MirTypeTranslation as _,
 };
 use crate::environment::borrowck::facts;
 use crate::error::Message;
@@ -301,10 +302,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let ty = self.shape_type_of_place(place).ty;
                 let typing_env = ty::TypingEnv::post_analysis(self.tcx, self.proc.get_id());
                 if self.tcx.needs_drop_raw(typing_env.as_query_input(ty)) {
-                    let (func_expr, info) = self.register_use_drop_glue(ty)?;
-                    let Some(ExprInfo::Call(call_info)) = info else {
-                        unreachable!("drop-glue registration did not return call information");
-                    };
+                    let (func_expr, call_info) = self.register_use_drop_glue(ty)?;
 
                     let place_translated = self.translate_place(place)?;
                     let raw_place = code::Expr::AddressOf {

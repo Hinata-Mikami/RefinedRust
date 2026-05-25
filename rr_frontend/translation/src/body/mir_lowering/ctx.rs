@@ -53,6 +53,12 @@ pub(crate) trait MirTranslationCtx<'def, 'tcx: 'def> {
 
     fn procedure_registry(&self) -> &procedures::Scope<'tcx, 'def>;
 
+    fn ty_translator(&self) -> &types::LocalTX<'def, 'tcx>;
+
+    fn normalization_scope_did(&self) -> DefId {
+        self.ty_translator().scope.borrow().did
+    }
+
     fn variable_map(&self) -> &HashMap<mir::Local, String>;
 
     fn collected_procedures(&self) -> &HashMap<TranslationKey<'tcx>, code::UsedProcedure<'def>>;
