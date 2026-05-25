@@ -7,6 +7,7 @@
 mod basicblock;
 mod calls;
 mod constants;
+mod core;
 mod loops;
 mod place;
 mod rvalue;
@@ -16,6 +17,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::{cmp, mem};
 
 pub(crate) use calls::get_arg_syntypes_for_procedure_call;
+use core::MirTranslationCtx as _;
 use log::{info, trace};
 use radium::{code, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
@@ -469,25 +471,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         if self.processed_bbs.insert(bb) {
             self.bb_queue.push(bb);
         }
-    }
-
-    /// Get the shape/layout type of a local in the dropck MIR.
-    fn shape_type_of_local(&self, local: mir::Local) -> Result<ty::Ty<'tcx>, TranslationError> {
-        self.proc.dropck_mir().local_decls.get(local).map(|decl| decl.ty).ok_or_else(|| {
-            TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnknownVar(format!("{local:?}"))))
-        })
-    }
-
-    /// Get the shape/layout type of a place expression in the dropck MIR.
-    fn shape_type_of_place(&self, pl: &mir::Place<'tcx>) -> mir::PlaceTy<'tcx> {
-        self.proc
-            .normalize_box_deref_alias_place(pl)
-            .ty(&self.proc.dropck_mir().local_decls, self.tcx)
-    }
-
-    /// Get the shape/layout type of an operand in the dropck MIR.
-    fn shape_type_of_operand(&self, op: &mir::Operand<'tcx>) -> ty::Ty<'tcx> {
-        op.ty(&self.proc.dropck_mir().local_decls, self.tcx)
     }
 
     /// Check whether this statement only manages a synthetic raw-pointer alias

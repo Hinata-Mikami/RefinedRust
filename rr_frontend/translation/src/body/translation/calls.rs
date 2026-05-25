@@ -13,7 +13,7 @@ use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::span;
 
-use super::{TX, TranslationKey};
+use super::{core::MirTranslationCtx as _, TX, TranslationKey};
 use crate::base::*;
 use crate::body::translation::{ExprInfo, ExprWithInfo};
 use crate::environment::borrowck::facts;
