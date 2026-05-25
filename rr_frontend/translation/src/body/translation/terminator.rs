@@ -11,7 +11,7 @@ use radium::{code, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{bug, mir, ty};
 
-use super::{core::MirTranslationCtx as _, TX};
+use super::{core::MirTranslationCtx as _, place::MirPlaceTranslation as _, TX};
 use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::error::Message;

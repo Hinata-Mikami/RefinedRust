@@ -9,27 +9,26 @@ use radium::code;
 use rr_rustc_interface::abi;
 use rr_rustc_interface::middle::{mir, ty};
 
-use super::{core::MirTranslationCtx as _, TX};
+use super::core::MirTranslationCtx;
 use crate::base::*;
 use crate::error::Message;
 use crate::types;
 
-#[expect(clippy::multiple_inherent_impl)]
-impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
+pub(crate) trait MirPlaceTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'def, 'tcx> {
     /// Translate a place to a Caesium lvalue.
-    pub(crate) fn translate_place(&self, pl: &mir::Place<'tcx>) -> Result<code::Expr, TranslationError> {
+    fn translate_place(&self, pl: &mir::Place<'tcx>) -> Result<code::Expr, TranslationError> {
         // Dropck introduces raw-pointer alias locals for some `Box` derefs. Translate all uses as
         // if they referred to the original `Box` place so the generated place stays stable.
-        let normalized = self.proc.normalize_box_deref_alias_place(pl);
+        let normalized = self.normalize_place(pl);
         let pl = &normalized;
 
         // Get the type of the underlying local. We will use this to
         // get the necessary layout information for dereferencing
         let mut cur_ty = self.shape_type_of_local(pl.local).map(mir::PlaceTy::from_ty)?;
 
-        let local_name = self.variable_map.get(&pl.local).ok_or_else(|| {
+        let local_name = self.variable_map().get(&pl.local).ok_or_else(|| {
             TranslationError::ErrorReported(
-                self.tcx.dcx().err(Message::UnknownVar(format!("{:?}", pl.local))),
+                self.tcx().dcx().err(Message::UnknownVar(format!("{:?}", pl.local))),
             )
         })?;
 
@@ -45,7 +44,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     {
                         // extract the type parameters
                         let [ty, alloc] = args.as_slice() else {
-                            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                            return Err(TranslationError::ErrorReported(self.tcx().dcx().err(
                                 Message::UnsupportedFeature(format!(
                                     "wrong arguments for Box ADT {:?}",
                                     cur_ty.ty
@@ -53,9 +52,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             )));
                         };
 
-                        let translated_ty = self.ty_translator.translate_type_to_syn_type(ty.expect_ty())?;
+                        let translated_ty = self.ty_translator().translate_type_to_syn_type(ty.expect_ty())?;
                         let translated_alloc =
-                            self.ty_translator.translate_type_to_syn_type(alloc.expect_ty())?;
+                            self.ty_translator().translate_type_to_syn_type(alloc.expect_ty())?;
                         acc_expr = code::Expr::MagicBoxDeref {
                             tst: translated_ty,
                             ast: translated_alloc,
@@ -63,7 +62,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         };
                     } else {
                         // use the type of the dereferencee
-                        let st = self.ty_translator.translate_type_to_syn_type(cur_ty.ty)?;
+                        let st = self.ty_translator().translate_type_to_syn_type(cur_ty.ty)?;
                         acc_expr = code::Expr::Deref {
                             ot: st.into(),
                             e: Box::new(acc_expr),
@@ -72,10 +71,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 },
                 mir::ProjectionElem::Field(f, _) => {
                     // `t` is the type of the field we are accessing!
-                    let lit = self.ty_translator.generate_structlike_use(cur_ty.ty, cur_ty.variant_index)?;
+                    let lit = self.ty_translator().generate_structlike_use(cur_ty.ty, cur_ty.variant_index)?;
                     // TODO: does not do the right thing for accesses to fields of zero-sized objects.
                     let struct_sls = lit.generate_raw_syn_type_term();
-                    let name = self.ty_translator.translator.get_field_name_of(
+                    let name = self.ty_translator().translator.get_field_name_of(
                         *f,
                         cur_ty.ty,
                         cur_ty.variant_index.map(abi::VariantIdx::as_usize),
@@ -90,20 +89,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 mir::ProjectionElem::Index(_v) => {
                     //TODO
                     return Err(TranslationError::ErrorReported(
-                        self.tcx
+                        self.tcx()
                             .dcx()
                             .err(Message::UnsupportedFeature("places: implement index access".to_owned())),
                     ));
                 },
                 mir::ProjectionElem::ConstantIndex { .. } => {
                     //TODO
-                    return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                    return Err(TranslationError::ErrorReported(self.tcx().dcx().err(
                         Message::UnsupportedFeature("places: implement const index access".to_owned()),
                     )));
                 },
                 mir::ProjectionElem::Subslice { .. } => {
                     return Err(TranslationError::ErrorReported(
-                        self.tcx
+                        self.tcx()
                             .dcx()
                             .err(Message::UnsupportedFeature("places: implement subslicing".to_owned())),
                     ));
@@ -112,11 +111,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     info!("Downcast of ty {:?} to {:?}", cur_ty, variant_idx);
                     if let ty::TyKind::Adt(def, args) = cur_ty.ty.kind() {
                         if def.is_enum() {
-                            let enum_use = self.ty_translator.generate_enum_use(*def, args)?;
+                            let enum_use = self.ty_translator().generate_enum_use(*def, args)?;
                             let els = enum_use.generate_raw_syn_type_term();
 
                             let variant_name =
-                                types::TX::get_variant_name_of(self.tcx, cur_ty.ty, *variant_idx)?;
+                                types::TX::get_variant_name_of(self.tcx(), cur_ty.ty, *variant_idx)?;
 
                             acc_expr = code::Expr::EnumData {
                                 els: els.to_string(),
@@ -125,32 +124,34 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             }
                         } else {
                             return Err(TranslationError::ErrorReported(
-                                self.tcx.dcx().err(Message::AdtDowncastOnNonEnumType),
+                                self.tcx().dcx().err(Message::AdtDowncastOnNonEnumType),
                             ));
                         }
                     } else {
                         return Err(TranslationError::ErrorReported(
-                            self.tcx.dcx().err(Message::AdtDowncastOnNonEnumType),
+                            self.tcx().dcx().err(Message::AdtDowncastOnNonEnumType),
                         ));
                     }
                 },
                 mir::ProjectionElem::OpaqueCast(_) => {
                     return Err(TranslationError::ErrorReported(
-                        self.tcx
+                        self.tcx()
                             .dcx()
                             .err(Message::UnsupportedFeature("places: implement opaque casts".to_owned())),
                     ));
                 },
                 mir::ProjectionElem::UnwrapUnsafeBinder(_) => {
-                    return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                    return Err(TranslationError::ErrorReported(self.tcx().dcx().err(
                         Message::UnsupportedFeature("places: implement UnwrapUnsafeBinder".to_owned()),
                     )));
                 },
             }
             // update cur_ty
-            cur_ty = cur_ty.projection_ty(self.tcx, it);
+            cur_ty = cur_ty.projection_ty(self.tcx(), it);
         }
         info!("translating place {:?} to {:?}", pl, acc_expr);
         Ok(acc_expr)
     }
 }
+
+impl<'def, 'tcx: 'def, T> MirPlaceTranslation<'def, 'tcx> for T where T: MirTranslationCtx<'def, 'tcx> {}

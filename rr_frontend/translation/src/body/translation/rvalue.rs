@@ -9,7 +9,7 @@ use radium::{code, coq, lang};
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{abi, index};
 
-use super::{core::MirTranslationCtx as _, TX};
+use super::{core::MirTranslationCtx as _, place::MirPlaceTranslation as _, TX};
 use crate::base::*;
 use crate::body::translation::ExprWithInfo;
 use crate::error::Message;
