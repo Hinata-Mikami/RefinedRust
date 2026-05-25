@@ -316,7 +316,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     /// Assumption: `trait_reqs` is appropriately sorted, i.e. surrounding requirements come first.
     /// `with_surrounding_deps` determines whether we should distinguish surrounding and direct
     /// params.
-    fn get_generic_abstraction_for_item(
+    pub(crate) fn get_generic_abstraction_for_item(
         &self,
         owner_did: DefId,
         args: ty::GenericArgsRef<'tcx>,
@@ -551,26 +551,6 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         };
 
         Ok(res)
-    }
-
-    /// Abstract over the generics of a concrete ADT drop-glue function and partially instantiate them.
-    #[expect(dead_code)]
-    pub(crate) fn get_generic_abstraction_for_drop_glue(
-        &self,
-        dropped_ty: ty::Ty<'tcx>,
-    ) -> Result<AbstractedGenerics<'def>, TranslationError> {
-        let function_did = self.scope.borrow().did;
-        let dropped_ty = normalize_in_function(function_did, self.translator.tcx(), dropped_ty)?;
-
-        let ty::TyKind::Adt(def, args) = dropped_ty.kind() else {
-            return Err(TranslationError::ErrorReported(self.translator.tcx().dcx().err(
-                Message::UnsupportedFeature(format!(
-                    "drop-glue generic abstraction is currently only supported for ADTs, got {dropped_ty:?}"
-                )),
-            )));
-        };
-
-        self.get_generic_abstraction_for_item(def.did(), args, &[], Vec::new(), true)
     }
 }
 

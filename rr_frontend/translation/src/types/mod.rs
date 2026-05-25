@@ -35,7 +35,6 @@ pub(crate) fn drop_glue_name_for_ty(ty: ty::Ty<'_>) -> String {
 }
 
 /// Generate the location parameter name used for a drop-glue function pointer.
-#[expect(dead_code)]
 pub(crate) fn drop_glue_loc_name_for_ty(ty: ty::Ty<'_>) -> String {
     format!("{}_loc", drop_glue_name_for_ty(ty))
 }

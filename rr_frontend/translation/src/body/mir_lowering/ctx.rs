@@ -19,8 +19,8 @@ use crate::{procedures, rustcmp, types};
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub(crate) enum TranslationKey<'tcx> {
     Function(OrderedDefId, types::GenericsKey<'tcx>),
-    #[expect(dead_code)]
-    DropGlue(procedures::DropGlueKey),
+    DropGlue(procedures::DropGlueKey, types::GenericsKey<'tcx>),
+    AssumedDropGlue(ty::Ty<'tcx>),
 }
 
 impl<'tcx> TranslationKey<'tcx> {
@@ -30,9 +30,14 @@ impl<'tcx> TranslationKey<'tcx> {
                 let did_ord = a_did.cmp(b_did);
                 did_ord.then_with(|| rustcmp::cmp_tys(tcx, a_args, b_args))
             },
-            (Self::DropGlue(a), Self::DropGlue(b)) => a.cmp(b),
-            (Self::Function(_, _), Self::DropGlue(_)) => cmp::Ordering::Less,
-            (Self::DropGlue(_), Self::Function(_, _)) => cmp::Ordering::Greater,
+            (Self::DropGlue(a_key, a_args), Self::DropGlue(b_key, b_args)) => {
+                a_key.cmp(b_key).then_with(|| rustcmp::cmp_tys(tcx, a_args, b_args))
+            },
+            (Self::AssumedDropGlue(a), Self::AssumedDropGlue(b)) => rustcmp::cmp_tys(tcx, &[*a], &[*b]),
+            (Self::Function(_, _), Self::DropGlue(_, _) | Self::AssumedDropGlue(_))
+            | (Self::DropGlue(_, _), Self::AssumedDropGlue(_)) => cmp::Ordering::Less,
+            (Self::DropGlue(_, _) | Self::AssumedDropGlue(_), Self::Function(_, _))
+            | (Self::AssumedDropGlue(_), Self::DropGlue(_, _)) => cmp::Ordering::Greater,
         }
     }
 }

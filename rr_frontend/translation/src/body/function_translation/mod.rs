@@ -6,6 +6,7 @@
 
 mod basicblock;
 mod calls;
+mod drops;
 mod loops;
 mod terminator;
 mod tx_impl;

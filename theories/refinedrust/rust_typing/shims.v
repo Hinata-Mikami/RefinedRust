@@ -93,3 +93,35 @@ Section def.
     - unfold core_marker_PhantomData_sls. apply _.
   Qed.
 End def.
+
+
+(** Drop glue *)
+Definition trait_incl_of_core_ptr_drop_glue `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) : spec_with _ _ Prop :=
+  spec! ( *[]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (True).
+Definition type_of_core_ptr_drop_glue `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) :=
+  fn(∀ ( *[]) : 1 | ( *[T_ty]) : [(T_rt, T_st)] | (x, l) : (T_rt * loc), (λ ϝ, []); l :@: alias_ptr_t; λ π,
+    (l ◁ₗ[π, Owned] #x @ ◁ T_ty)%I) →
+  ∃ () : (), () @ unit_t; λ π,
+    ty_ghost_drop T_ty π x ∗
+    (l ◁ₗ[π, Owned] .@ ◁ uninit T_st)
+.
+
+(*
+Options here:
+- have a new custom mutable reference type that doesn't require returning ownership?
+  this is somewhat difficult, and the benefit is unclear.
+- take a raw pointer + extra unsafe ownership.
+  This seems much more straightforward.
+  Physically, the layout is the same, we are just interpreting the safety contract differently.
+  Since this is also exclusive, it should be fine.
+  Also potentially validity invariants.
+*)
+
+(*
+
+pub(crate) const unsafe fn drop_glue<T: PointeeSized>(_: &mut T)
+where
+    T: [const] Destruct,
+{ }
+
+*)

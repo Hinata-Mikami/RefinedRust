@@ -11,7 +11,7 @@ use radium::{code, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{bug, mir, ty};
 
-use super::TX;
+use super::{ExprInfo, TX};
 use crate::base::*;
 use crate::body::mir_lowering::{
     MirPlaceTranslation as _, MirRvalueTranslation as _, MirTranslationCtx as _, MirTypeTranslation as _,
@@ -291,16 +291,38 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
 
             mir::TerminatorKind::Drop { place, target, .. } => {
-                let place_translated = self.translate_place(place)?;
-                let _drope = code::Expr::DropE(Box::new(place_translated));
-
                 let stmt = self.translate_goto_like(&loc, *target)?;
                 let mut annotation_plan = self.annotations.prepare_terminator_annotation_plan(
                     &self.ty_translator,
                     dying_loans.into_iter(),
                 );
+                let mut prim_stmts = annotation_plan.take_pre_stmts();
 
-                Ok(code::Stmt::Prim(annotation_plan.take_pre_stmts(), Box::new(stmt)))
+                let ty = self.shape_type_of_place(place).ty;
+                let typing_env = ty::TypingEnv::post_analysis(self.tcx, self.proc.get_id());
+                if self.tcx.needs_drop_raw(typing_env.as_query_input(ty)) {
+                    let (func_expr, info) = self.register_use_drop_glue(ty)?;
+                    let Some(ExprInfo::Call(call_info)) = info else {
+                        unreachable!("drop-glue registration did not return call information");
+                    };
+
+                    let place_translated = self.translate_place(place)?;
+                    let raw_place = code::Expr::AddressOf {
+                        mt: code::Mutability::Mut,
+                        e: Box::new(place_translated),
+                    };
+
+                    let ty_hint = call_info.type_hint.into_iter().map(|x| code::RustType::of_type(&x)).collect();
+                    let call_expr = code::Expr::Call {
+                        f: Box::new(func_expr),
+                        lfts: call_info.lft_hint,
+                        tys: ty_hint,
+                        args: vec![raw_place],
+                    };
+                    prim_stmts.push(code::PrimStmt::ExprS(Box::new(call_expr)));
+                }
+
+                Ok(code::Stmt::Prim(prim_stmts, Box::new(stmt)))
             },
 
             // just a goto for our purposes
