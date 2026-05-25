@@ -69,6 +69,7 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
 
     functions: &'rcx [LocalDefId],
     closures: &'rcx [LocalDefId],
+    adts: &'rcx [LocalDefId],
 
     fn_arena: &'rcx Arena<specs::functions::Spec<'rcx, specs::functions::InnerSpec<'rcx>>>,
 
@@ -1523,6 +1524,45 @@ fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipeline
     Ok(())
 }
 
+/// Register drop glue for non-trivial ADTs in the current crate.
+fn register_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) {
+    for adt in vcx.adts {
+        let did = adt.to_def_id();
+        if environment::has_tool_attribute(vcx.tcx, did, "skip") {
+            info!("Skipping drop glue for {:?} due to rr::skip", did);
+            continue;
+        }
+
+        let adt_ty = vcx.tcx.type_of(did).instantiate_identity().skip_norm_wip();
+        let typing_env = ty::TypingEnv::post_analysis(vcx.tcx, did);
+        if !vcx.tcx.needs_drop_raw(typing_env.as_query_input(adt_ty)) {
+            continue;
+        }
+
+        let key = procedures::DropGlueKey::Adt(OrderedDefId::new(vcx.tcx, did));
+        if vcx.procedure_registry.lookup_drop_glue(&key).is_some() {
+            info!("Drop glue for {:?} is already registered", key);
+            continue;
+        }
+
+        let name = base::strip_coq_ident(&format!("drop_glue_{}", environment::get_item_name(vcx.tcx, did)));
+        let spec_name = format!("type_of_{name}");
+        let code_name = format!("{name}_def");
+        let trait_req_incl_name = format!("trait_incl_of_{name}");
+
+        let meta = procedures::Meta::new(
+            spec_name,
+            code_name,
+            trait_req_incl_name,
+            name,
+            procedures::Mode::Prove,
+            false,
+            false,
+        );
+        vcx.procedure_registry.register_drop_glue(&key, meta);
+    }
+}
+
 /// Translate functions of the crate, assuming they were previously registered.
 fn translate_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
     // First translate closures, then functions: the function translation assumes that closures
@@ -2340,7 +2380,8 @@ where
 
     let functions = environment::get_procedures(tcx);
     let closures = environment::get_closures(tcx);
-    info!("Found {} function(s) and {} closure(s)", functions.len(), closures.len());
+    let adts = environment::get_adts(tcx);
+    info!("Found {} function(s), {} closure(s), and {} ADT(s)", functions.len(), closures.len(), adts.len());
 
     let struct_arena = Arena::new();
     let enum_arena = Arena::new();
@@ -2441,6 +2482,7 @@ where
         tcx,
         functions: functions.as_slice(),
         closures: closures.as_slice(),
+        adts: adts.as_slice(),
         type_translator: &type_translator,
         trait_registry: &trait_registry,
         procedure_registry,
@@ -2458,6 +2500,8 @@ where
 
     // this needs to be first, in order to ensure consistent ADT use
     register_shims(&mut vcx)?;
+
+    register_drop_glues(&mut vcx);
 
     register_functions(&mut vcx)?;
 

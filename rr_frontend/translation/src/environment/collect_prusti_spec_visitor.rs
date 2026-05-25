@@ -18,6 +18,7 @@ pub(crate) struct CollectPrustiSpecVisitor<'tcx> {
     modules: Vec<LocalDefId>,
     statics: Vec<LocalDefId>,
     consts: Vec<LocalDefId>,
+    adts: Vec<LocalDefId>,
     traits: Vec<LocalDefId>,
     trait_impls: Vec<LocalDefId>,
 }
@@ -30,6 +31,7 @@ impl<'tcx> CollectPrustiSpecVisitor<'tcx> {
             modules: Vec::new(),
             statics: Vec::new(),
             consts: Vec::new(),
+            adts: Vec::new(),
             traits: Vec::new(),
             trait_impls: Vec::new(),
         }
@@ -43,6 +45,10 @@ impl<'tcx> CollectPrustiSpecVisitor<'tcx> {
 
     pub(crate) fn get_trait_impls(self) -> Vec<LocalDefId> {
         self.trait_impls
+    }
+
+    pub(crate) fn get_adts(self) -> Vec<LocalDefId> {
+        self.adts
     }
 
     pub(crate) fn run(&mut self) {
@@ -101,6 +107,11 @@ impl<'tcx> Visitor<'tcx> for CollectPrustiSpecVisitor<'tcx> {
                     environment::get_item_def_path(self.tcx, def_id.to_def_id())
                 );
                 self.traits.push(def_id);
+            },
+            hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Union(..) => {
+                let def_id = i.hir_id().owner.def_id;
+                trace!("Add ADT {} to result", environment::get_item_def_path(self.tcx, def_id.to_def_id()));
+                self.adts.push(def_id);
             },
             hir::ItemKind::Impl(item) => {
                 let def_id = i.hir_id().owner.def_id;

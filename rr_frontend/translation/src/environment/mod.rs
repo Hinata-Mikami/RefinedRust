@@ -108,6 +108,14 @@ pub(crate) fn get_traits(tcx: ty::TyCtxt<'_>) -> Vec<LocalDefId> {
     traits
 }
 
+/// Get ids of Rust ADTs.
+pub(crate) fn get_adts(tcx: ty::TyCtxt<'_>) -> Vec<LocalDefId> {
+    let mut visitor = CollectPrustiSpecVisitor::new(tcx);
+    visitor.run();
+    // TODO: cache results
+    visitor.get_adts()
+}
+
 /// Get ids of trait impls.
 pub(crate) fn get_trait_impls(tcx: ty::TyCtxt<'_>) -> Vec<LocalDefId> {
     let mut visitor = CollectPrustiSpecVisitor::new(tcx);
