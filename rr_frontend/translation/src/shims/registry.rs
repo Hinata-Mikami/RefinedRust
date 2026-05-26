@@ -122,16 +122,15 @@ struct ShimTraitEntry {
 /// A file entry for a trait method implementation.
 #[derive(Serialize, Deserialize)]
 struct ShimTraitImplEntry {
-    /// The rustc path for the trait
-    trait_path: flat::PathWithArgs,
-    /// for which type is this implementation?
-    for_type: flat::Type,
     // TODO: additional constraints like the required clauses for disambiguation
     /// a kind: always `trait_impl`
     kind: String,
 
-    /// map from method names to (base name, specification name, trait incl name)
-    method_specs: BTreeMap<String, (String, String, String)>,
+    #[serde(flatten)]
+    impl_kind: TraitImplShimKind,
+
+    /// map from method names to their shim metadata
+    method_specs: BTreeMap<String, MethodShimSpec>,
 
     #[serde(flatten)]
     #[serde(with = "remote::LiteralImpl")]
@@ -169,28 +168,6 @@ struct ShimAdtEntry {
     info: specs::types::AdtShimInfo,
 }
 
-/// A file entry for a drop-glue shim.
-#[derive(Serialize, Deserialize)]
-struct ShimDropGlueEntry {
-    /// For which Rust item is this drop glue?
-    #[serde(rename = "for")]
-    for_item: DropGlueFor,
-    /// always `drop_glue`
-    kind: String,
-    /// the basis name to use for generated Coq names
-    name: String,
-    /// the Coq name of the spec
-    spec: String,
-    /// the Coq name of the trait assumption inclusion for this function
-    trait_req_incl: String,
-}
-
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-pub(crate) enum DropGlueFor {
-    Adt { path: Vec<String> },
-}
-
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub(crate) enum ShimKind {
     Method,
@@ -198,7 +175,6 @@ pub(crate) enum ShimKind {
     TraitImpl,
     Adt,
     Trait,
-    DropGlue,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -222,19 +198,44 @@ impl<'a> From<FunctionShim<'a>> for ShimFunctionEntry {
     }
 }
 
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[serde(tag = "impl_kind", rename_all = "snake_case")]
+pub(crate) enum TraitImplShimKind {
+    Rust {
+        /// The rustc path for the trait.
+        trait_path: flat::PathWithArgs,
+        /// For which type is this implementation?
+        for_type: flat::Type,
+    },
+    VirtualDropGlueForAdt {
+        /// Path of the ADT whose virtual drop-glue impl this is.
+        path: Vec<String>,
+    },
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub(crate) struct MethodShimSpec {
+    /// The basis name to use for generated Coq names.
+    pub name: String,
+    /// The Coq name of the spec.
+    #[serde(rename = "spec")]
+    pub spec_name: String,
+    /// The Coq name of the trait assumption inclusion for this function.
+    #[serde(rename = "trait_req_incl")]
+    pub trait_req_incl_name: String,
+}
+
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub(crate) struct TraitImplShim {
-    pub trait_path: flat::PathWithArgs,
-    pub for_type: flat::Type,
-    pub method_specs: BTreeMap<String, (String, String, String)>,
+    pub impl_kind: TraitImplShimKind,
+    pub method_specs: BTreeMap<String, MethodShimSpec>,
     pub specs: specs::traits::LiteralImpl,
 }
 
 impl From<TraitImplShim> for ShimTraitImplEntry {
     fn from(shim: TraitImplShim) -> Self {
         Self {
-            trait_path: shim.trait_path,
-            for_type: shim.for_type,
+            impl_kind: shim.impl_kind,
             method_specs: shim.method_specs,
             kind: "trait_impl".to_owned(),
             specs: shim.specs,
@@ -292,26 +293,6 @@ impl<'a> From<AdtShim<'a>> for ShimAdtEntry {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub(crate) struct DropGlueShim {
-    pub for_item: DropGlueFor,
-    pub name: String,
-    pub spec_name: String,
-    pub trait_req_incl_name: String,
-}
-
-impl From<DropGlueShim> for ShimDropGlueEntry {
-    fn from(shim: DropGlueShim) -> Self {
-        Self {
-            for_item: shim.for_item,
-            kind: "drop_glue".to_owned(),
-            name: shim.name,
-            spec: shim.spec_name,
-            trait_req_incl: shim.trait_req_incl_name,
-        }
-    }
-}
-
 #[derive(Debug, From, Display)]
 pub(crate) enum Error {
     #[from]
@@ -352,9 +333,6 @@ pub(crate) struct SR<'a> {
     /// trait impl shims
     trait_impl_shims: Vec<TraitImplShim>,
 
-    /// drop-glue shims
-    drop_glue_shims: Vec<DropGlueShim>,
-
     /// extra module dependencies
     dependencies: BTreeSet<coq::module::DirPath>,
 }
@@ -374,7 +352,6 @@ impl<'a> SR<'a> {
             "adt" => Ok(ShimKind::Adt),
             "trait" => Ok(ShimKind::Trait),
             "trait_impl" => Ok(ShimKind::TraitImpl),
-            "drop_glue" => Ok(ShimKind::DropGlue),
             k => Err(Error::UnknownShimKind(k.to_owned())),
         }
     }
@@ -397,7 +374,6 @@ impl<'a> SR<'a> {
             dependencies: BTreeSet::new(),
             trait_shims: Vec::new(),
             trait_impl_shims: Vec::new(),
-            drop_glue_shims: Vec::new(),
         }
     }
 
@@ -532,8 +508,7 @@ impl<'a> SR<'a> {
                 ShimKind::TraitImpl => {
                     let b: ShimTraitImplEntry = serde_json::value::from_value(i)?;
                     let entry = TraitImplShim {
-                        trait_path: b.trait_path,
-                        for_type: b.for_type,
+                        impl_kind: b.impl_kind,
                         method_specs: b.method_specs,
                         specs: b.specs,
                     };
@@ -553,17 +528,6 @@ impl<'a> SR<'a> {
                     };
 
                     self.trait_shims.push(entry);
-                },
-                ShimKind::DropGlue => {
-                    let b: ShimDropGlueEntry = serde_json::value::from_value(i)?;
-                    let entry = DropGlueShim {
-                        for_item: b.for_item,
-                        name: b.name,
-                        spec_name: b.spec,
-                        trait_req_incl_name: b.trait_req_incl,
-                    };
-
-                    self.drop_glue_shims.push(entry);
                 },
             }
         }
@@ -591,10 +555,6 @@ impl<'a> SR<'a> {
         &self.trait_impl_shims
     }
 
-    pub(crate) fn get_drop_glue_shims(&self) -> &[DropGlueShim] {
-        &self.drop_glue_shims
-    }
-
     pub(crate) const fn get_extra_dependencies(&self) -> &BTreeSet<coq::module::DirPath> {
         &self.dependencies
     }
@@ -612,7 +572,6 @@ pub(crate) fn write_shims<'a>(
     function_shims: Vec<FunctionShim<'a>>,
     trait_shims: Vec<TraitShim<'_>>,
     trait_impl_shims: Vec<TraitImplShim>,
-    drop_glue_shims: Vec<DropGlueShim>,
 ) {
     let writer = BufWriter::new(f);
 
@@ -631,10 +590,6 @@ pub(crate) fn write_shims<'a>(
     }
     for x in trait_impl_shims {
         let x: ShimTraitImplEntry = x.into();
-        values.push(serde_json::to_value(x).unwrap());
-    }
-    for x in drop_glue_shims {
-        let x: ShimDropGlueEntry = x.into();
         values.push(serde_json::to_value(x).unwrap());
     }
 

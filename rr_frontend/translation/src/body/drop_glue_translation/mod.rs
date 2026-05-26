@@ -182,10 +182,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         let syn_ty = lang::SynType::from(translated_adt_ty);
 
         spec_builder
-            .add_param(coq::binder::Binder::new(
-                Some("x".to_owned()),
-                rfn_ty,
-            ))
+            .add_param(coq::binder::Binder::new(Some("x".to_owned()), rfn_ty))
             .map_err(|err| TranslationError::ErrorReported(tcx.dcx().err(Message::AttributeError(err))))?;
         spec_builder
             .add_param(coq::binder::Binder::new(

@@ -60,7 +60,6 @@ pub(crate) enum VirtualTrait {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-#[expect(dead_code)]
 pub(crate) enum ImplKey {
     Rust(OrderedDefId),
     Virtual(VirtualImpl),
@@ -73,7 +72,6 @@ impl ImplKey {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-#[expect(dead_code)]
 pub(crate) enum VirtualImpl {
     DropGlueForAdt(OrderedDefId),
 }
@@ -649,7 +647,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trait_literals.get(&TraitKey::Virtual(key)).copied()
     }
 
-    #[expect(dead_code)]
     pub(crate) fn register_virtual_impl(
         &self,
         key: VirtualImpl,
@@ -667,7 +664,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         spec
     }
 
-    #[expect(dead_code)]
     pub(crate) fn lookup_virtual_impl(
         &self,
         key: VirtualImpl,
