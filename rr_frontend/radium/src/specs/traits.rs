@@ -71,6 +71,10 @@ impl<'def> InstanceMethodSpec<'def> {
 
     fn self_trait_attr_inst(&self) -> Option<coq::term::Term> {
         if let Self::DefaultSpec(spec, _, _) = self {
+            if !spec.trait_ref.of_trait.has_spec_attrs {
+                return None;
+            }
+
             Some(coq::term::Term::App(Box::new(spec.trait_ref.get_attr_record_term())))
         } else {
             None
@@ -123,6 +127,9 @@ pub struct LiteralSpec {
 
     /// Whether the attrs record is dependent on the attrs of trait dependencies.
     pub attrs_dependent: bool,
+
+    /// Whether this trait has a specification attributes record.
+    pub has_spec_attrs: bool,
 
     /// declared attributes of the trait
     pub declared_attrs: Vec<String>,
@@ -315,7 +322,11 @@ impl<'def> LiteralSpecUse<'def> {
 
     /// Get the binder for the attribute parameter.
     #[must_use]
-    pub(crate) fn get_attr_param(&self) -> coq::binder::Binder {
+    pub(crate) fn get_attr_param(&self) -> Option<coq::binder::Binder> {
+        if !self.trait_ref.has_spec_attrs {
+            return None;
+        }
+
         let ordered_params = self.get_ordered_params_inst();
         let all_args: Vec<_> = ordered_params.iter().map(Type::get_rfn_type).collect();
 
@@ -323,7 +334,9 @@ impl<'def> LiteralSpecUse<'def> {
         let mut attr_args = Vec::new();
         if self.trait_ref.attrs_dependent {
             for x in self.trait_inst.get_direct_trait_requirements() {
-                attr_args.push(x.get_attr_term());
+                if let Some(attr_term) = x.get_attr_term() {
+                    attr_args.push(attr_term);
+                }
             }
         }
 
@@ -333,10 +346,10 @@ impl<'def> LiteralSpecUse<'def> {
         push_str_list!(attr_param_ty, &attr_args, " ");
 
         // add the attributes
-        coq::binder::Binder::new(
+        Some(coq::binder::Binder::new(
             Some(self.make_spec_attrs_param_name()),
             coq::term::Type::Literal(attr_param_ty),
-        )
+        ))
     }
 
     /// Get the binder for the spec record parameter.
@@ -395,10 +408,14 @@ impl<'def> LiteralSpecUse<'def> {
         // specialize to further args
         for req in self.trait_inst.get_direct_trait_requirements() {
             // get attrs + spec term
-            specialized_spec.push_str(&format!(" {}", req.get_attr_term()));
+            if let Some(attr_term) = req.get_attr_term() {
+                specialized_spec.push_str(&format!(" {attr_term}"));
+            }
             //specialized_spec.push_str(&format!(" {}", req.get_spec_term()));
         }
-        specialized_spec.push_str(&format!(" {}", self.make_spec_attrs_use()));
+        if self.trait_ref.has_spec_attrs {
+            specialized_spec.push_str(&format!(" {}", self.make_spec_attrs_use()));
+        }
 
         // specialize to semtys + lfts
         specialized_spec
@@ -513,7 +530,9 @@ impl SpecializedImpl<'_> {
         // add trait requirements
         for req in self.impl_inst.get_direct_trait_requirements() {
             // get attrs
-            out.push_str(&format!(" {}", req.get_attr_term()));
+            if let Some(attr_term) = req.get_attr_term() {
+                out.push_str(&format!(" {attr_term}"));
+            }
         }
 
         // specialize to semtys + lfts
@@ -610,7 +629,11 @@ impl<T> ReqInst<'_, T> {
     }
 
     #[must_use]
-    pub fn get_attr_term(&self) -> String {
+    pub fn get_attr_term(&self) -> Option<String> {
+        if !self.of_trait.has_spec_attrs {
+            return None;
+        }
+
         match &self.spec {
             ReqInstSpec::Specialized(s) => {
                 // instantiate the attrs suitably
@@ -620,16 +643,18 @@ impl<T> ReqInst<'_, T> {
                 }
                 // get the attr terms this depends on
                 for req in s.impl_inst.get_direct_trait_requirements() {
-                    args.push(req.get_attr_term());
+                    if let Some(attr_term) = req.get_attr_term() {
+                        args.push(attr_term);
+                    }
                 }
 
                 let attr_term = format!("{}", coq::term::App::new(s.impl_ref.spec_attrs_record(), args));
-                attr_term
+                Some(attr_term)
             },
             ReqInstSpec::Quantified(s) => {
                 let s = s.trait_ref.borrow();
                 let s = s.as_ref().unwrap();
-                s.make_spec_attrs_use()
+                Some(s.make_spec_attrs_use())
             },
         }
     }
@@ -715,7 +740,7 @@ fn make_trait_instance<'def>(
     // for the base spec, we quantify over the attrs
     // Otherwise, we do not have to quantify over the attrs, as we fix one particular attrs record for
     // concrete impls.
-    if is_base_spec {
+    if is_base_spec && of_trait.has_spec_attrs {
         // assemble the type
         // TODO: for trait deps, also instantiate with deps?
         let mut attrs_params: Vec<_> =
@@ -785,12 +810,14 @@ fn make_trait_instance<'def>(
 
             // instantiate with surrounding trait specs
             for x in surrounding_inst.get_direct_trait_requirements() {
-                write!(body, " {}", x.get_attr_term())?;
+                if let Some(attr_term) = x.get_attr_term() {
+                    write!(body, " {attr_term}")?;
+                }
             }
 
             // This comes after other surrounding trait requirement's attrs, as the Self requirement is always
             // shuffled last
-            if is_base_spec {
+            if is_base_spec && of_trait.has_spec_attrs {
                 write!(body, " _ATTRS")?;
             } else if let Some(inst) = spec.self_trait_attr_inst() {
                 write!(body, " {inst}")?;
@@ -889,6 +916,10 @@ impl SpecDecl<'_> {
 
     #[must_use]
     pub fn make_attr_record_decl(&self) -> coq::Document {
+        if !self.lit.has_spec_attrs {
+            return coq::Document::default();
+        }
+
         let Some(attrs) = self.attrs.attrs.as_ref() else {
             return coq::Document::default();
         };
@@ -1559,10 +1590,14 @@ impl<'def> RefInst<'def> {
         // first the dependent attrs
         for req in self.trait_inst.get_direct_trait_requirements() {
             // get attrs
-            specialized_spec.push_str(&format!(" {}", req.get_attr_term()));
+            if let Some(attr_term) = req.get_attr_term() {
+                specialized_spec.push_str(&format!(" {attr_term}"));
+            }
         }
         // then the attrs of this impl
-        specialized_spec.push_str(&format!(" {}", self.get_attr_record_term()));
+        if self.of_trait.has_spec_attrs {
+            specialized_spec.push_str(&format!(" {}", self.get_attr_record_term()));
+        }
 
         // specialize to semtys + lfts
         specialized_spec
@@ -1598,6 +1633,10 @@ impl ImplSpec<'_> {
     /// Generate the definition of the attribute record of this trait impl.
     #[must_use]
     pub fn generate_attr_decl(&self) -> coq::Document {
+        if !self.trait_ref.of_trait.has_spec_attrs {
+            return coq::Document::default();
+        }
+
         let attrs = &self.trait_ref.attrs;
         let attrs_name = &self.trait_ref.impl_ref.spec_attrs_record();
         let of_trait = &self.trait_ref.of_trait;
@@ -1621,7 +1660,9 @@ impl ImplSpec<'_> {
         // also add dependent attrs
         if self.trait_ref.of_trait.attrs_dependent {
             for x in self.trait_ref.trait_inst.get_direct_trait_requirements() {
-                attrs_type_terms.push(coq::term::Term::Literal(x.get_attr_term()));
+                if let Some(attr_term) = x.get_attr_term() {
+                    attrs_type_terms.push(coq::term::Term::Literal(attr_term));
+                }
             }
         }
         let mut obligation_terms = Vec::new();
@@ -1919,13 +1960,17 @@ impl<'def> InstantiatedFunctionSpec<'def> {
 
         // instantiate with the attrs of trait requirements
         for trait_req in self.trait_ref.trait_inst.get_direct_trait_requirements() {
-            params.push(trait_req.get_attr_term());
+            if let Some(attr_term) = trait_req.get_attr_term() {
+                params.push(attr_term);
+            }
             //params.push(trait_req.get_spec_term());
         }
 
         // also instantiate with the attrs that are quantified on the outside
-        let attr_term = self.trait_ref.get_attr_record_term();
-        params.push(attr_term.to_string());
+        if self.trait_ref.of_trait.has_spec_attrs {
+            let attr_term = self.trait_ref.get_attr_record_term();
+            params.push(attr_term.to_string());
+        }
 
         let mut applied_base_spec = String::with_capacity(100);
         write!(applied_base_spec, "{}\n", coq::term::App::new(&self.trait_ref.of_trait.base_spec(), params))?;

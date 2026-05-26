@@ -190,7 +190,7 @@ impl<'def> LiteralUse<'def> {
                         &[]
                     })
                     .iter()
-                    .map(traits::ReqInst::get_attr_term),
+                    .filter_map(traits::ReqInst::get_attr_term),
                 )
                 .collect::<Vec<_>>()
                 .join(" ");

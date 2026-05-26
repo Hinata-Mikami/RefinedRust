@@ -217,18 +217,18 @@ impl<'def, T: ParamLookup<'def>> ParamLookup<'def> for LoopMetaInfo<'def, '_, T>
                         return Some(info.history_name.clone());
                     },
                     "IterAttrs" => {
-                        let attr_term = info.iter_spec.get_attr_term();
+                        let attr_term = info.iter_spec.get_attr_term()?;
                         let term = format!("({attr_term})");
                         return Some(term);
                     },
                     "IterNext" => {
-                        let attr_term = info.iter_spec.get_attr_term();
+                        let attr_term = info.iter_spec.get_attr_term()?;
                         let next_name = info.iter_spec.of_trait.make_spec_attr_name("Next");
                         let term = format!("({attr_term}).({next_name})");
                         return Some(term);
                     },
                     "IterInv" => {
-                        let attr_term = info.iter_spec.get_attr_term();
+                        let attr_term = info.iter_spec.get_attr_term()?;
                         let next_name = info.iter_spec.of_trait.make_spec_attr_name("Inv");
                         let term = format!("({attr_term}).({next_name})");
                         return Some(term);
@@ -450,20 +450,19 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
             params
                 .push(coq::binder::Binder::new(Some(iterator_param_name.to_owned()), coq::term::Type::Infer));
 
-            var_invariants.push(coq::iris::IProp::Atom(format!(
-                "IteratorNextFusedTrans ({}) π {iterator_param_name} {init_value_binder} {} {}",
-                iterator_info.iter_spec.get_attr_term(),
-                iterator_info.history_name,
-                iterator_info.binder_name
-            )));
+            if let Some(attr_term) = iterator_info.iter_spec.get_attr_term() {
+                var_invariants.push(coq::iris::IProp::Atom(format!(
+                    "IteratorNextFusedTrans ({attr_term}) π {iterator_param_name} {init_value_binder} {} {}",
+                    iterator_info.history_name, iterator_info.binder_name
+                )));
 
-            // invariant
-            let attr_term = iterator_info.iter_spec.get_attr_term();
-            let inv_name = iterator_info.iter_spec.of_trait.make_spec_attr_name("Inv");
-            var_invariants.push(coq::iris::IProp::Atom(format!(
-                "({attr_term}).({inv_name}) π {iterator_param_name} {}",
-                iterator_info.binder_name
-            )));
+                // invariant
+                let inv_name = iterator_info.iter_spec.of_trait.make_spec_attr_name("Inv");
+                var_invariants.push(coq::iris::IProp::Atom(format!(
+                    "({attr_term}).({inv_name}) π {iterator_param_name} {}",
+                    iterator_info.binder_name
+                )));
+            }
         }
 
         // prepare params and insert at the front, but after the optional initial iterator state

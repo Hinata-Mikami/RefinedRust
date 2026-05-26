@@ -1087,7 +1087,9 @@ impl<'def> GenericScope<'def, traits::LiteralSpecUseRef<'def>> {
             let trait_use = trait_use.as_ref().unwrap();
 
             if !trait_use.is_used_in_self_trait || include_self.include_attrs() {
-                params.push(trait_use.get_attr_param());
+                if let Some(attr_param) = trait_use.get_attr_param() {
+                    params.push(attr_param);
+                }
             }
 
             // if we're not in the same trait declaration, add the spec

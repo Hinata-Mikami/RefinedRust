@@ -1164,6 +1164,7 @@ fn register_shims(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineErro
                 name: shim.name.clone(),
                 has_semantic_interp: shim.has_semantic_interp,
                 attrs_dependent: shim.attrs_dependent,
+                has_spec_attrs: true,
                 declared_attrs: shim.allowed_attrs.clone(),
                 method_trait_incl_decls: shim.method_trait_incl_decls.clone(),
             };

@@ -351,6 +351,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             assoc_tys: self.get_associated_type_names(did),
             has_semantic_interp,
             attrs_dependent,
+            has_spec_attrs: true,
             declared_attrs,
             method_trait_incl_decls,
         }

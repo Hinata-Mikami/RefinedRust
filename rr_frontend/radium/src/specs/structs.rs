@@ -766,7 +766,10 @@ impl<'def> AbstractUse<'def> {
             };
 
             let attrs = fmt_list!(
-                self.scope_inst.get_direct_trait_requirements().iter().map(traits::ReqInst::get_attr_term),
+                self.scope_inst
+                    .get_direct_trait_requirements()
+                    .iter()
+                    .filter_map(traits::ReqInst::get_attr_term),
                 " "
             );
 

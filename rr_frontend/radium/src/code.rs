@@ -68,7 +68,11 @@ pub enum LitTerm {
 }
 
 impl LitTerm {
-    fn from_trait_req_inst(x: &traits::ReqInst<'_>) -> Self {
+    fn from_trait_req_inst(x: &traits::ReqInst<'_>) -> Option<Self> {
+        if !x.of_trait.has_spec_attrs {
+            return None;
+        }
+
         match &x.spec {
             traits::ReqInstSpec::Specialized(s) => {
                 let mut args = Vec::new();
@@ -79,15 +83,17 @@ impl LitTerm {
                 }
                 // get the attr terms this depends on
                 for req in s.impl_inst.get_direct_trait_requirements() {
-                    args.push(Self::from_trait_req_inst(req));
+                    if let Some(attr) = Self::from_trait_req_inst(req) {
+                        args.push(attr);
+                    }
                 }
 
-                Self::AppDef(vec![format!("\"{}\"", s.impl_ref.spec_attrs_record())], args)
+                Some(Self::AppDef(vec![format!("\"{}\"", s.impl_ref.spec_attrs_record())], args))
             },
             traits::ReqInstSpec::Quantified(s) => {
                 let s = s.trait_ref.borrow();
                 let s = s.as_ref().unwrap();
-                Self::AppDef(vec![format!("\"{}\"", s.make_spec_attrs_use())], vec![])
+                Some(Self::AppDef(vec![format!("\"{}\"", s.make_spec_attrs_use())], vec![]))
             },
         }
     }
@@ -115,7 +121,9 @@ impl From<&GenericScopeInst<'_>> for RustScopeInst {
             .iter()
             .chain(scope_inst.get_direct_trait_requirements().iter())
         {
-            trait_attrs.push(LitTerm::from_trait_req_inst(x));
+            if let Some(attr) = LitTerm::from_trait_req_inst(x) {
+                trait_attrs.push(attr);
+            }
         }
 
         Self {
@@ -1412,7 +1420,9 @@ impl fmt::Display for UsedProcedure<'_> {
         let direct_trait_reqs = self.scope_inst.get_direct_trait_requirements();
         // apply to trait specs
         for x in surrounding_trait_reqs.iter().chain(direct_trait_reqs) {
-            write!(f, "{} ", x.get_attr_term())?;
+            if let Some(attr_term) = x.get_attr_term() {
+                write!(f, "{attr_term} ")?;
+            }
             //write!(f, "{} ", x.get_spec_term())?;
         }
 
