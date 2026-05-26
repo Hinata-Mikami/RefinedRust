@@ -93,7 +93,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             &used_literals,
             &used_tuples,
         )?;
-        Self::add_drop_glue_spec(tcx, &mut translated_fn, &translated_adt_ty)?;
+        Self::add_drop_glue_trait_spec(
+            tcx,
+            trait_registry,
+            adt_did,
+            &mut translated_fn,
+            &generic_scope,
+            &translated_adt_ty,
+        )?;
         let variable_map = Self::initialize_locals(tcx, body, &mut translated_fn)?;
 
         Ok(Self {
@@ -149,7 +156,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
     ) -> Result<types::scope::Params<'tcx, 'def>, TranslationError> {
         let mut generic_scope = types::scope::Params::new_from_generics(tcx, adt_args, Some(adt_did));
         generic_scope.add_param_env(adt_did, tcx, ty_translator, trait_registry)?;
-        translated_fn.provide_generic_scope(generic_scope.clone().into());
+        let mut function_scope: specs::GenericScope<'_, specs::traits::LiteralSpecUseRef<'_>> =
+            generic_scope.clone().into();
+        function_scope.make_direct_params_surrounding();
+        translated_fn.provide_generic_scope(function_scope);
         Ok(generic_scope)
     }
 
@@ -172,38 +182,30 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         ty_translator.translate_type_in_state(adt_ty, &mut state)
     }
 
-    fn add_drop_glue_spec(
+    fn add_drop_glue_trait_spec(
         tcx: ty::TyCtxt<'tcx>,
+        trait_registry: &'def registry::TR<'tcx, 'def>,
+        adt_did: DefId,
         translated_fn: &mut code::FunctionBuilder<'def>,
+        generic_scope: &types::scope::Params<'tcx, 'def>,
         translated_adt_ty: &specs::Type<'def>,
     ) -> Result<(), TranslationError> {
-        let mut spec_builder = specs::functions::LiteralSpecBuilder::new();
-        let rfn_ty = translated_adt_ty.get_rfn_type();
-        let syn_ty = lang::SynType::from(translated_adt_ty);
+        let impl_key = registry::VirtualImpl::DropGlueForAdt(OrderedDefId::new(tcx, adt_did));
 
-        spec_builder
-            .add_param(coq::binder::Binder::new(Some("x".to_owned()), rfn_ty))
-            .map_err(|err| TranslationError::ErrorReported(tcx.dcx().err(Message::AttributeError(err))))?;
-        spec_builder
-            .add_param(coq::binder::Binder::new(
-                Some("l".to_owned()),
-                coq::term::Type::Literal("loc".to_owned()),
-            ))
-            .map_err(|err| TranslationError::ErrorReported(tcx.dcx().err(Message::AttributeError(err))))?;
-        spec_builder.add_arg(specs::TypeWithRef::new(specs::Type::RawPtr, "l".to_owned()));
-        spec_builder
-            .add_precondition(coq::iris::IProp::Atom(format!("l ◁ₗ[π, Owned] #x @ ◁ {translated_adt_ty}")));
-        spec_builder
-            .set_ret_type(specs::TypeWithRef::new(specs::Type::Unit, "()".to_owned()))
-            .map_err(|err| TranslationError::ErrorReported(tcx.dcx().err(Message::AttributeError(err))))?;
-        spec_builder
-            .add_postcondition(coq::iris::IProp::Atom(format!("ty_ghost_drop {translated_adt_ty} π x")));
-        spec_builder.add_postcondition(coq::iris::IProp::Atom(format!(
-            "l ◁ₗ[π, Owned] .@ ◁ {}",
-            specs::Type::Uninit(syn_ty)
-        )));
-        spec_builder.have_spec();
-        translated_fn.add_function_spec_from_builder(spec_builder);
+        let mut trait_inst = specs::GenericScopeInst::empty();
+        trait_inst.add_direct_ty_param(translated_adt_ty.clone());
+
+        let ref_inst = trait_registry.get_virtual_impl_info(
+            impl_key,
+            trait_inst,
+            generic_scope.clone().into(),
+            specs::traits::SpecAttrsInst::new(BTreeMap::new()),
+        )?;
+
+        translated_fn.add_trait_function_spec(specs::traits::InstantiatedFunctionSpec::new(
+            ref_inst,
+            "drop_glue".to_owned(),
+        ));
         Ok(())
     }
 

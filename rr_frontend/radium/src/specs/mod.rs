@@ -957,6 +957,12 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
         }
     }
 
+    pub fn make_direct_params_surrounding(&mut self) {
+        self.surrounding_tys.merge(self.direct_tys.clone());
+        self.direct_tys = TyParamList::empty();
+        self.surrounding_trait_requirements.extend(self.direct_trait_requirements.drain(..));
+    }
+
     #[must_use]
     pub(crate) const fn get_num_lifetimes(&self) -> usize {
         self.lfts.len()

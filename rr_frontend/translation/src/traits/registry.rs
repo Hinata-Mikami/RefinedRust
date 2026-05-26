@@ -1552,7 +1552,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         ))
     }
 
-    #[expect(dead_code)]
     pub(crate) fn get_virtual_impl_info(
         &self,
         impl_key: VirtualImpl,
