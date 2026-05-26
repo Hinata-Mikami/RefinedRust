@@ -13,8 +13,8 @@ use log::{info, trace};
 use radium::{code, coq, lang, specs};
 use rr_rustc_interface::abi;
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeFolder as _;
+use rr_rustc_interface::middle::{bug, ty};
 use rr_rustc_interface::type_ir::TypeFoldable as _;
 
 use crate::base::*;
@@ -244,8 +244,11 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
             // compute the instantiation of this trait use's params by unifying the args
             // this instantiation will be used as the instantiation hint in the function
+            let trait_ref = entry
+                .rust_trait_ref()
+                .unwrap_or_else(|| bug!("virtual trait use selected while registering Rust trait procedure"));
             let mut unifier = traits::registry::LateBoundUnifier::new(tcx, typing_env, &entry.bound_regions);
-            unifier.map_generic_args(entry.trait_ref.args, trait_args);
+            unifier.map_generic_args(trait_ref.args, trait_args);
             let (bound_regions_inst, early_regions_inst) = unifier.get_result();
 
             // we use the constraints between early regions to restore some information that

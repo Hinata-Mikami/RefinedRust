@@ -361,6 +361,16 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         res
     }
 
+    #[expect(dead_code)]
+    pub(crate) fn lookup_virtual_trait_use(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+        trait_key: registry::VirtualTrait,
+        args: &[ty::GenericArg<'tcx>],
+    ) -> &registry::GenericTraitUse<'tcx, 'def> {
+        self.param_scope().trait_scope().lookup_virtual_trait_use(tcx, trait_key, args)
+    }
+
     /// Lookup a type parameter in the current state
     fn lookup_ty_param(&self, param_ty: ty::ParamTy) -> specs::Type<'def> {
         let ty = self

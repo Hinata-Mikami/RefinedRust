@@ -31,6 +31,100 @@ use crate::traits::requirements;
 use crate::types::scope;
 use crate::{attrs, environment, error, procedures, search, traits, types};
 
+// Some trait-like obligations are introduced by the translation rather than by
+// rustc items. Keep those identities explicit instead of manufacturing fake
+// `DefId`s, while still sharing the registry paths used by Rust traits/impls.
+
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[expect(dead_code)]
+pub(crate) enum TraitKey {
+    Rust(OrderedDefId),
+    Virtual(VirtualTrait),
+}
+
+impl TraitKey {
+    pub(crate) fn rust(tcx: ty::TyCtxt<'_>, did: DefId) -> Self {
+        Self::Rust(OrderedDefId::new(tcx, did))
+    }
+
+    pub(crate) const fn as_rust(&self) -> Option<&OrderedDefId> {
+        match self {
+            Self::Rust(did) => Some(did),
+            Self::Virtual(_) => None,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[expect(dead_code)]
+pub(crate) enum VirtualTrait {
+    DropGlue,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[expect(dead_code)]
+pub(crate) enum ImplKey {
+    Rust(OrderedDefId),
+    Virtual(VirtualImpl),
+}
+
+impl ImplKey {
+    pub(crate) fn rust(tcx: ty::TyCtxt<'_>, did: DefId) -> Self {
+        Self::Rust(OrderedDefId::new(tcx, did))
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[expect(dead_code)]
+pub(crate) enum VirtualImpl {
+    DropGlueForAdt(OrderedDefId),
+}
+
+#[derive(Debug, Clone)]
+#[expect(dead_code)]
+pub(crate) enum TraitUseRef<'tcx> {
+    Rust(ty::TraitRef<'tcx>),
+    VirtualDropGlue { self_ty: ty::Ty<'tcx> },
+}
+
+impl<'tcx> TraitUseRef<'tcx> {
+    #[expect(dead_code)]
+    pub(crate) fn trait_key(&self, tcx: ty::TyCtxt<'tcx>) -> TraitKey {
+        match self {
+            Self::Rust(trait_ref) => TraitKey::rust(tcx, trait_ref.def_id),
+            Self::VirtualDropGlue { .. } => TraitKey::Virtual(VirtualTrait::DropGlue),
+        }
+    }
+
+    #[expect(dead_code)]
+    pub(crate) fn args_for_key(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+    ) -> Result<scope::GenericsKey<'tcx>, TranslationError> {
+        match self {
+            Self::Rust(trait_ref) => scope::generate_args_inst_key(tcx, trait_ref.args),
+            Self::VirtualDropGlue { self_ty } => {
+                scope::generate_args_inst_key(tcx, &[ty::GenericArg::from(*self_ty)])
+            },
+        }
+    }
+
+    pub(crate) const fn rust_trait_ref(&self) -> Option<ty::TraitRef<'tcx>> {
+        match self {
+            Self::Rust(trait_ref) => Some(*trait_ref),
+            Self::VirtualDropGlue { .. } => None,
+        }
+    }
+
+    #[expect(dead_code)]
+    pub(crate) fn self_ty(&self) -> ty::Ty<'tcx> {
+        match self {
+            Self::Rust(trait_ref) => trait_ref.self_ty(),
+            Self::VirtualDropGlue { self_ty } => *self_ty,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct ResolvedTraitReq<'tcx, 'def> {
     pub(crate) req_inst: specs::traits::ReqInst<'def, ty::Ty<'tcx>>,
@@ -40,9 +134,8 @@ pub(crate) struct ResolvedTraitReq<'tcx, 'def> {
 /// A using occurrence of a trait in the signature of the function.
 #[derive(Debug, Clone)]
 pub(crate) struct GenericTraitUse<'tcx, 'def> {
-    /// the `DefId` of the trait
-    pub did: DefId,
-    pub trait_ref: ty::TraitRef<'tcx>,
+    pub key: TraitKey,
+    pub trait_ref: TraitUseRef<'tcx>,
     /// the Coq-level trait use
     pub trait_use: specs::traits::LiteralSpecUseRef<'def>,
     /// quantifiers for HRTBs
@@ -52,6 +145,10 @@ pub(crate) struct GenericTraitUse<'tcx, 'def> {
 }
 
 impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
+    pub(crate) const fn rust_trait_ref(&self) -> Option<ty::TraitRef<'tcx>> {
+        self.trait_ref.rust_trait_ref()
+    }
+
     /// Get the associated type instantiation of an associated type given by [did] for this instantiation.
     /// This is used in the translation of symbolic `TyKind::Alias`.
     pub(crate) fn get_associated_type_use(&self, tcx: ty::TyCtxt<'tcx>, did: DefId) -> specs::Type<'def> {
@@ -80,7 +177,8 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
         let mut assoc_tys = Vec::new();
 
         // get associated types
-        let assoc_types = environment::get_trait_assoc_types(tcx, self.did);
+        let Some(ordered_did) = self.key.as_rust() else { return assoc_tys };
+        let assoc_types = environment::get_trait_assoc_types(tcx, ordered_did.def_id);
         for (idx, ty_did) in assoc_types.iter().enumerate() {
             let ty_name = environment::get_assoc_item_name(tcx, *ty_did).unwrap();
             let trait_use_ref = self.trait_use.borrow();
@@ -100,11 +198,11 @@ pub(crate) struct TR<'tcx, 'def> {
     /// trait declarations
     trait_decls: RefCell<BTreeMap<OrderedDefId, specs::traits::SpecDecl<'def>>>,
     /// trait literals for using occurrences, including shims we import
-    trait_literals: RefCell<BTreeMap<OrderedDefId, specs::traits::LiteralSpecRef<'def>>>,
+    trait_literals: RefCell<BTreeMap<TraitKey, specs::traits::LiteralSpecRef<'def>>>,
 
     /// for the trait instances in scope, the names for their Coq definitions
     /// (to enable references to them when translating functions)
-    impl_literals: RefCell<BTreeMap<OrderedDefId, specs::traits::LiteralImplRef<'def>>>,
+    impl_literals: RefCell<BTreeMap<ImplKey, specs::traits::LiteralImplRef<'def>>>,
 
     /// for all closures we process and all the closure traits they will implement, the names for
     /// the Coq definitions, as well as the meta information for the impl method
@@ -434,7 +532,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         if let Err(err) = cont() {
             // if there is an error, rollback the registration of the shim
             let mut trait_literals = self.trait_literals.borrow_mut();
-            trait_literals.remove(&ordered_did);
+            trait_literals.remove(&TraitKey::Rust(ordered_did));
             trace!("leave TR::register_trait (failed)");
             return Err(err);
         }
@@ -457,7 +555,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             span_bug!(self.tcx.def_span(did), "expected trait, found non-trait item");
         }
 
-        let ordered_did = OrderedDefId::new(self.tcx, did);
+        let ordered_did = TraitKey::rust(self.tcx, did);
         let mut trait_literals = self.trait_literals.borrow_mut();
         if trait_literals.get(&ordered_did).is_some() {
             span_bug!(self.tcx.def_span(did), "trait shim already registered");
@@ -479,7 +577,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             span_bug!(self.tcx.def_span(did), "expected trait impl, found non-trait impl item");
         }
 
-        let ordered_did = OrderedDefId::new(self.tcx, did);
+        let ordered_did = ImplKey::rust(self.tcx, did);
         let mut impl_literals = self.impl_literals.borrow_mut();
         if impl_literals.get(&ordered_did).is_some() {
             span_bug!(self.tcx.def_span(did), "trait impl shim already registered");
@@ -519,15 +617,69 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     /// Lookup a trait.
     pub(crate) fn lookup_trait(&self, trait_did: DefId) -> Option<specs::traits::LiteralSpecRef<'def>> {
         let trait_literals = self.trait_literals.borrow();
-        let ordered_did = OrderedDefId::new(self.tcx, trait_did);
+        let ordered_did = TraitKey::rust(self.tcx, trait_did);
         trait_literals.get(&ordered_did).copied()
     }
 
     /// Lookup the spec for an impl.
     pub(crate) fn lookup_impl(&self, impl_did: DefId) -> Option<specs::traits::LiteralImplRef<'def>> {
         let impl_literals = self.impl_literals.borrow();
-        let ordered_did = OrderedDefId::new(self.tcx, impl_did);
+        let ordered_did = ImplKey::rust(self.tcx, impl_did);
         impl_literals.get(&ordered_did).copied()
+    }
+
+    #[expect(dead_code)]
+    pub(crate) fn register_virtual_trait(
+        &self,
+        key: VirtualTrait,
+        spec: specs::traits::LiteralSpec,
+    ) -> specs::traits::LiteralSpecRef<'def> {
+        let key = TraitKey::Virtual(key);
+        let mut trait_literals = self.trait_literals.borrow_mut();
+        if trait_literals.get(&key).is_some() {
+            bug!("virtual trait already registered: {:?}", key);
+        }
+
+        let spec = self.trait_arena.alloc(spec);
+        trait_literals.insert(key, &*spec);
+
+        spec
+    }
+
+    #[expect(dead_code)]
+    pub(crate) fn lookup_virtual_trait(
+        &self,
+        key: VirtualTrait,
+    ) -> Option<specs::traits::LiteralSpecRef<'def>> {
+        let trait_literals = self.trait_literals.borrow();
+        trait_literals.get(&TraitKey::Virtual(key)).copied()
+    }
+
+    #[expect(dead_code)]
+    pub(crate) fn register_virtual_impl(
+        &self,
+        key: VirtualImpl,
+        spec: specs::traits::LiteralImpl,
+    ) -> specs::traits::LiteralImplRef<'def> {
+        let key = ImplKey::Virtual(key);
+        let mut impl_literals = self.impl_literals.borrow_mut();
+        if impl_literals.get(&key).is_some() {
+            bug!("virtual impl already registered: {:?}", key);
+        }
+
+        let spec = self.impl_arena.alloc(spec);
+        impl_literals.insert(key, &*spec);
+
+        spec
+    }
+
+    #[expect(dead_code)]
+    pub(crate) fn lookup_virtual_impl(
+        &self,
+        key: VirtualImpl,
+    ) -> Option<specs::traits::LiteralImplRef<'def>> {
+        let impl_literals = self.impl_literals.borrow();
+        impl_literals.get(&ImplKey::Virtual(key)).copied()
     }
 
     /// Lookup the spec for a closure impl.
@@ -822,17 +974,20 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     let trait_use =
                         quantified_state.lookup_trait_use(self.tcx, trait_did, trait_args.as_slice());
                     let trait_use_ref = trait_use.trait_use;
+                    let Some(quantified_trait_ref) = trait_use.rust_trait_ref() else {
+                        bug!("virtual trait use selected while resolving Rust trait requirement");
+                    };
 
                     trace!(
                         "need to compute HRTB instantiation for {:?}, by unifying {:?} to {:?}",
-                        trait_use.bound_regions, trait_use.trait_ref.args, trait_args
+                        trait_use.bound_regions, quantified_trait_ref.args, trait_args
                     );
 
                     // compute the instantiation of the quantified trait assumption in terms
                     // of the variables introduced by the trait assumption we are proving.
                     let mut unifier =
                         LateBoundUnifier::new(self.tcx, current_typing_env, &trait_use.bound_regions);
-                    unifier.map_generic_args(trait_use.trait_ref.args, trait_args);
+                    unifier.map_generic_args(quantified_trait_ref.args, trait_args);
                     let (inst, _) = unifier.get_result();
                     trace!("computed instantiation: {inst:?}");
                     trace!("mapping instantiation now in state={quantified_state:?}");
@@ -1407,6 +1562,32 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         ))
     }
 
+    #[expect(dead_code)]
+    pub(crate) fn get_virtual_impl_info(
+        &self,
+        impl_key: VirtualImpl,
+        trait_inst: specs::GenericScopeInst<'def>,
+        generics: specs::GenericScope<'def>,
+        attrs: specs::traits::SpecAttrsInst,
+    ) -> Result<specs::traits::RefInst<'def>, TranslationError> {
+        let trait_key = match &impl_key {
+            VirtualImpl::DropGlueForAdt(_) => VirtualTrait::DropGlue,
+        };
+        let impl_key_msg = format!("{impl_key:?}");
+        let trait_spec_ref = self.lookup_virtual_trait(trait_key).ok_or_else(|| {
+            TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::TraitResolution(format!(
+                "virtual trait not registered with RefinedRust: {trait_key:?}"
+            ))))
+        })?;
+        let impl_ref = self.lookup_virtual_impl(impl_key).ok_or_else(|| {
+            TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::TraitResolution(format!(
+                "virtual impl not registered with RefinedRust: {impl_key_msg}"
+            ))))
+        })?;
+
+        Ok(specs::traits::RefInst::new(trait_spec_ref, impl_ref, generics, trait_inst, Vec::new(), attrs))
+    }
+
     /// Allocate an empty trait use reference.
     pub(crate) fn make_empty_trait_use(
         &self,
@@ -1416,11 +1597,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let dummy_trait_use = RefCell::new(None);
         let trait_use = self.trait_use_arena.alloc(dummy_trait_use);
 
-        let did = trait_ref.def_id;
-
         GenericTraitUse {
-            did,
-            trait_ref,
+            key: TraitKey::rust(self.tcx, trait_ref.def_id),
+            trait_ref: TraitUseRef::Rust(trait_ref),
             trait_use,
             bound_regions: bound_regions.to_vec(),
             is_self_use: false,
@@ -1432,14 +1611,34 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let dummy_trait_use = RefCell::new(None);
         let trait_use = self.trait_use_arena.alloc(dummy_trait_use);
 
-        let did = trait_ref.def_id;
-
         GenericTraitUse {
-            did,
-            trait_ref,
+            key: TraitKey::rust(self.tcx, trait_ref.def_id),
+            trait_ref: TraitUseRef::Rust(trait_ref),
             trait_use,
             bound_regions: vec![],
             is_self_use: true,
+        }
+    }
+
+    #[expect(dead_code)]
+    pub(crate) fn make_empty_virtual_trait_use(
+        &self,
+        key: VirtualTrait,
+        self_ty: ty::Ty<'tcx>,
+    ) -> GenericTraitUse<'tcx, 'def> {
+        let dummy_trait_use = RefCell::new(None);
+        let trait_use = self.trait_use_arena.alloc(dummy_trait_use);
+
+        let trait_ref = match key {
+            VirtualTrait::DropGlue => TraitUseRef::VirtualDropGlue { self_ty },
+        };
+
+        GenericTraitUse {
+            key: TraitKey::Virtual(key),
+            trait_ref,
+            trait_use,
+            bound_regions: vec![],
+            is_self_use: false,
         }
     }
 
@@ -1481,6 +1680,32 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         );
     }
 
+    #[expect(dead_code)]
+    pub(crate) fn fill_virtual_trait_use(
+        trait_use: &GenericTraitUse<'tcx, 'def>,
+        self_ty: ty::Ty<'tcx>,
+        spec_ref: specs::traits::LiteralSpecRef<'def>,
+        origin: specs::TyParamOrigin,
+    ) {
+        trace!("Enter fill_virtual_trait_use with key = {:?}, spec_ref = {spec_ref:?}", trait_use.key);
+
+        let mangled_base = types::mangle_name_with_args(&spec_ref.name, &[ty::GenericArg::from(self_ty)]);
+        let spec_use = specs::traits::LiteralSpecUse::new(
+            spec_ref,
+            specs::traits::ReqScope::empty(),
+            specs::GenericScopeInst::empty(),
+            mangled_base,
+            false,
+            Vec::new(),
+            origin,
+        );
+
+        let mut trait_ref = trait_use.trait_use.borrow_mut();
+        trait_ref.replace(spec_use);
+
+        trace!("Leave fill_virtual_trait_use with trait_use = {trait_use:?}");
+    }
+
     /// Finalize a trait use by computing the dependencies on other traits.
     pub(crate) fn finalize_trait_use(
         &self,
@@ -1490,7 +1715,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         //state: types::ST<'_, '_, 'def, 'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
     ) -> Result<(), TranslationError> {
-        trace!("enter finalize_trait_use for {:?}", trait_use.did);
+        trace!("enter finalize_trait_use for {:?}", trait_use.key);
         trace!("current scope={scope:?}");
 
         let mut scope = scope.clone();
@@ -1504,7 +1729,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         let trait_reqs =
             self.resolve_radium_trait_requirements_in_state(&mut state, trait_ref.def_id, trait_ref.args)?;
-        trace!("finalize_trait_use for {:?}: determined trait requirements: {trait_reqs:?}", trait_use.did);
+        trace!("finalize_trait_use for {:?}: determined trait requirements: {trait_reqs:?}", trait_use.key);
 
         for trait_req in trait_reqs {
             scope_inst.add_trait_requirement(trait_req);
@@ -1516,7 +1741,33 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         lit_trait_use.trait_inst = scope_inst;
         lit_trait_use.scope = quantified_regions;
 
-        trace!("enter finalize_trait_use for {:?}", trait_use.did);
+        trace!("leave finalize_trait_use for {:?}", trait_use.key);
+
+        Ok(())
+    }
+
+    #[expect(dead_code)]
+    pub(crate) fn finalize_virtual_trait_use(
+        &self,
+        trait_use: &GenericTraitUse<'tcx, 'def>,
+        scope: &scope::Params<'tcx, 'def>,
+        typing_env: ty::TypingEnv<'tcx>,
+        self_ty: ty::Ty<'tcx>,
+    ) -> Result<(), TranslationError> {
+        trace!("enter finalize_virtual_trait_use for {:?}", trait_use.key);
+
+        let state_scope = scope.clone();
+        let mut state =
+            types::STInner::TraitReqs(Box::new(types::TraitState::new(state_scope, typing_env, None, None)));
+        let args = self.tcx.mk_args(&[ty::GenericArg::from(self_ty)]);
+        let scope_inst = self.compute_scope_inst_in_state_without_traits(&mut state, args)?;
+
+        let mut trait_use_ref = trait_use.trait_use.borrow_mut();
+        let lit_trait_use = trait_use_ref.as_mut().unwrap();
+        lit_trait_use.trait_inst = scope_inst;
+        lit_trait_use.scope = specs::traits::ReqScope::empty();
+
+        trace!("leave finalize_virtual_trait_use for {:?}", trait_use.key);
 
         Ok(())
     }

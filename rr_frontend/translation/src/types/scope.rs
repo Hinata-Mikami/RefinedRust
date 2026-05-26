@@ -14,11 +14,12 @@ use radium::{coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty::TypeFoldable as _;
 use rr_rustc_interface::middle::{span_bug, ty};
+use rr_rustc_interface::span::DUMMY_SP;
 
 use crate::base::*;
 use crate::error::Message;
 use crate::spec_parsers::parse_utils::{ParamLookup, RustPath, RustPathElem};
-use crate::traits::registry::GenericTraitUse;
+use crate::traits::registry::{GenericTraitUse, TraitKey, VirtualTrait};
 use crate::traits::{registry, requirements};
 use crate::types::translator::TX;
 use crate::types::tyvars::TyRegionEraseFolder;
@@ -493,7 +494,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
         // pre-register all the requirements, in order to resolve dependencies
         for req in &requirements {
-            let key = (req.trait_ref.def_id, generate_args_inst_key(tcx, req.trait_ref.args).unwrap());
+            let key = (
+                TraitKey::rust(tcx, req.trait_ref.def_id),
+                generate_args_inst_key(tcx, req.trait_ref.args).unwrap(),
+            );
             if req.is_self_in_trait_decl {
                 assert!(req.bound_regions.is_empty());
                 let dummy_trait_use = trait_registry.make_trait_self_use(req.trait_ref);
@@ -520,7 +524,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 )));
             };
 
-            let key = (req.trait_ref.def_id, generate_args_inst_key(tcx, req.trait_ref.args).unwrap());
+            let key = (
+                TraitKey::rust(tcx, req.trait_ref.def_id),
+                generate_args_inst_key(tcx, req.trait_ref.args).unwrap(),
+            );
             let entry = &self.trait_scope.used_traits[&key];
 
             registry::TR::fill_trait_use(
@@ -551,7 +558,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 .collect();
 
             // lookup the trait use
-            let key = (req.trait_ref.def_id, generate_args_inst_key(tcx, req.trait_ref.args).unwrap());
+            let key = (
+                TraitKey::rust(tcx, req.trait_ref.def_id),
+                generate_args_inst_key(tcx, req.trait_ref.args).unwrap(),
+            );
             let entry = &self.trait_scope.used_traits[&key];
 
             {
@@ -569,7 +579,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 continue;
             }
 
-            let key = (req.trait_ref.def_id, generate_args_inst_key(tcx, req.trait_ref.args).unwrap());
+            let key = (
+                TraitKey::rust(tcx, req.trait_ref.def_id),
+                generate_args_inst_key(tcx, req.trait_ref.args).unwrap(),
+            );
             let entry = &self.trait_scope.used_traits[&key];
 
             // finalize the entry by adding dependencies on other trait parameters
@@ -582,7 +595,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 continue;
             }
 
-            let key = (req.trait_ref.def_id, generate_args_inst_key(tcx, req.trait_ref.args).unwrap());
+            let key = (
+                TraitKey::rust(tcx, req.trait_ref.def_id),
+                generate_args_inst_key(tcx, req.trait_ref.args).unwrap(),
+            );
             let entry = &self.trait_scope.used_traits[&key];
 
             let assoc_tys = entry.get_associated_types(tcx);
@@ -697,6 +713,39 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
         trace!("Leave add_param_env for did = {did:?} with trait scope {:?}", self.trait_scope);
         Ok(())
+    }
+
+    #[expect(dead_code)]
+    pub(crate) fn add_virtual_trait_assumption(
+        &mut self,
+        tcx: ty::TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        trait_registry: &registry::TR<'tcx, 'def>,
+        virtual_trait: VirtualTrait,
+        self_ty: ty::Ty<'tcx>,
+        origin: specs::TyParamOrigin,
+    ) -> Result<(), TranslationError> {
+        let spec_ref = trait_registry.lookup_virtual_trait(virtual_trait).ok_or_else(|| {
+            TranslationError::ErrorReported(tcx.dcx().err(Message::TraitResolution(format!(
+                "virtual trait not registered with RefinedRust: {virtual_trait:?}"
+            ))))
+        })?;
+
+        let trait_ref = match virtual_trait {
+            VirtualTrait::DropGlue => registry::TraitUseRef::VirtualDropGlue { self_ty },
+        };
+        let key = (trait_ref.trait_key(tcx), trait_ref.args_for_key(tcx)?);
+        if self.trait_scope.used_traits.contains_key(&key) {
+            return Ok(());
+        }
+
+        let trait_use = trait_registry.make_empty_virtual_trait_use(virtual_trait, self_ty);
+        self.trait_scope.used_traits.insert(key.clone(), trait_use);
+        self.trait_scope.ordered_assumptions.push(key.clone());
+
+        let entry = &self.trait_scope.used_traits[&key];
+        registry::TR::fill_virtual_trait_use(entry, self_ty, spec_ref, origin);
+        trait_registry.finalize_virtual_trait_use(entry, self, typing_env, self_ty)
     }
 }
 
@@ -841,8 +890,8 @@ impl From<&[ty::GenericParamDef]> for Params<'_, '_> {
 /// A scope for translated trait requirements from `where` clauses.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Traits<'tcx, 'def> {
-    used_traits: HashMap<(DefId, GenericsKey<'tcx>), GenericTraitUse<'tcx, 'def>>,
-    ordered_assumptions: Vec<(DefId, GenericsKey<'tcx>)>,
+    used_traits: HashMap<(TraitKey, GenericsKey<'tcx>), GenericTraitUse<'tcx, 'def>>,
+    ordered_assumptions: Vec<(TraitKey, GenericsKey<'tcx>)>,
 
     /// mapping of associated type paths in scope
     assoc_ty_names: HashMap<RustPath, specs::Type<'def>>,
@@ -864,7 +913,7 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
             span_bug!(tcx.def_span(trait_did), "expected trait, found non-trait item");
         }
 
-        let key = (trait_did, generate_args_inst_key(tcx, args).unwrap());
+        let key = (TraitKey::rust(tcx, trait_did), generate_args_inst_key(tcx, args).unwrap());
         trace!("looking up trait use {key:?} in {:?}", self.used_traits);
         if let Some(trait_ref) = self.used_traits.get(&key) {
             trait_ref
@@ -875,6 +924,24 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
                 tcx.mk_args(args)
             )
         }
+    }
+
+    #[expect(dead_code)]
+    pub(crate) fn lookup_virtual_trait_use(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+        trait_key: VirtualTrait,
+        args: &[ty::GenericArg<'tcx>],
+    ) -> &GenericTraitUse<'tcx, 'def> {
+        let key = (TraitKey::Virtual(trait_key), generate_args_inst_key(tcx, args).unwrap());
+        trace!("looking up virtual trait use {key:?} in {:?}", self.used_traits);
+        self.used_traits.get(&key).unwrap_or_else(|| {
+            span_bug!(
+                DUMMY_SP,
+                "could not find local instance for virtual trait with generic args {:?}",
+                tcx.mk_args(args)
+            )
+        })
     }
 
     /// Within a trait declaration, get the Self trait use.
