@@ -36,7 +36,6 @@ use crate::{attrs, environment, error, procedures, search, traits, types};
 // `DefId`s, while still sharing the registry paths used by Rust traits/impls.
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-#[expect(dead_code)]
 pub(crate) enum TraitKey {
     Rust(OrderedDefId),
     Virtual(VirtualTrait),
@@ -56,7 +55,6 @@ impl TraitKey {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-#[expect(dead_code)]
 pub(crate) enum VirtualTrait {
     DropGlue,
 }
@@ -81,14 +79,12 @@ pub(crate) enum VirtualImpl {
 }
 
 #[derive(Debug, Clone)]
-#[expect(dead_code)]
 pub(crate) enum TraitUseRef<'tcx> {
     Rust(ty::TraitRef<'tcx>),
     VirtualDropGlue { self_ty: ty::Ty<'tcx> },
 }
 
 impl<'tcx> TraitUseRef<'tcx> {
-    #[expect(dead_code)]
     pub(crate) fn trait_key(&self, tcx: ty::TyCtxt<'tcx>) -> TraitKey {
         match self {
             Self::Rust(trait_ref) => TraitKey::rust(tcx, trait_ref.def_id),
@@ -96,7 +92,6 @@ impl<'tcx> TraitUseRef<'tcx> {
         }
     }
 
-    #[expect(dead_code)]
     pub(crate) fn args_for_key(
         &self,
         tcx: ty::TyCtxt<'tcx>,
@@ -629,7 +624,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         impl_literals.get(&ordered_did).copied()
     }
 
-    #[expect(dead_code)]
     pub(crate) fn register_virtual_trait(
         &self,
         key: VirtualTrait,
@@ -647,7 +641,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         spec
     }
 
-    #[expect(dead_code)]
     pub(crate) fn lookup_virtual_trait(
         &self,
         key: VirtualTrait,
@@ -1621,7 +1614,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         }
     }
 
-    #[expect(dead_code)]
     pub(crate) fn make_empty_virtual_trait_use(
         &self,
         key: VirtualTrait,
@@ -1681,7 +1673,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         );
     }
 
-    #[expect(dead_code)]
     pub(crate) fn fill_virtual_trait_use(
         trait_use: &GenericTraitUse<'tcx, 'def>,
         self_ty: ty::Ty<'tcx>,
@@ -1747,7 +1738,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         Ok(())
     }
 
-    #[expect(dead_code)]
     pub(crate) fn finalize_virtual_trait_use(
         &self,
         trait_use: &GenericTraitUse<'tcx, 'def>,

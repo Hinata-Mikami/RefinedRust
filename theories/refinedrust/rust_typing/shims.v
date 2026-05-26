@@ -96,15 +96,70 @@ End def.
 
 
 (** Drop glue *)
-Definition trait_incl_of_core_ptr_drop_glue `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) : spec_with _ _ Prop :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (True).
-Definition type_of_core_ptr_drop_glue `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) :=
+Record DropGlue_spec_attrs `{RRGS : !(refinedrustGS Σ)} `{T_rt : !RT} : Type := mk_DropGlue_spec_attrs {
+}.
+#[global] Arguments DropGlue_spec_attrs : clear implicits.
+#[global] Arguments DropGlue_spec_attrs {_ _}.
+#[global] Arguments mk_DropGlue_spec_attrs  {_} {_} {_}.
+
+
+Record DropGlue_spec `{RRGS : !(refinedrustGS Σ)} `{T_rt : !RT} : Type := mk_DropGlue_spec {
+  DropGlue_drop_glue_spec  : (spec_with 0 [] fn_spec);
+}.
+#[global] Arguments DropGlue_spec : clear implicits.
+#[global] Arguments DropGlue_spec {_ _}.
+
+
+Section DropGlue.
+Context `{RRGS : !refinedrustGS Σ}.
+Definition DropGlue_spec_incl `{T_rt : !RT} (spec1: ((DropGlue_spec (T_rt)))) (spec2: ((DropGlue_spec (T_rt)))) : Prop :=
+  ((function_subtype (spec1.(DropGlue_drop_glue_spec)) (spec2.(DropGlue_drop_glue_spec)))).
+Instance DropGlue_spec_incl_preorder `{T_rt : !RT} : (PreOrder (DropGlue_spec_incl (T_rt := T_rt))).
+Proof.
+  split. all: apply _.
+Qed.
+
+Definition scope_bindable_DropGlue_spec `{T_rt : !RT} : (ScopeBindable ((DropGlue_spec (T_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((DropGlue_spec (T_rt)))) :=
+      {|
+        DropGlue_drop_glue_spec  :=
+          (scope_add_typarams (rts) (tys) (s.(DropGlue_drop_glue_spec)));
+      |}
+      ;
+    scope_add_elctx (E: (lft → elctx)) (s: ((DropGlue_spec (T_rt)))) :=
+      {|
+        DropGlue_drop_glue_spec  :=
+          (scope_add_elctx (E) (s.(DropGlue_drop_glue_spec)));
+      |}
+      ;
+  |}
+.
+#[global] Existing Instance scope_bindable_DropGlue_spec.
+
+Definition DropGlue_drop_glue_base_spec `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) (DropGlue_Self_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (x, l) : (T_rt * loc), (λ ϝ, []); l :@: alias_ptr_t; λ π,
     (l ◁ₗ[π, Owned] #x @ ◁ T_ty)%I) →
   ∃ () : (), () @ unit_t; λ π,
     ty_ghost_drop T_ty π x ∗
     (l ◁ₗ[π, Owned] .@ ◁ uninit T_st)
 .
+
+Definition DropGlue_base_spec (T_rt: RT) (T_st: syn_type) (_ATTRS: ((DropGlue_spec_attrs ((T_rt))))) : (spec_with _ _ (DropGlue_spec ((T_rt)))) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), {|
+      DropGlue_drop_glue_spec  :=
+        (DropGlue_drop_glue_base_spec ((T_rt)) (T_st)) _ATTRS
+           <TY> T_ty : (spec_with 0 [] fn_spec);
+    |}
+.
+
+End DropGlue.
+
+Section DropGlue_trait_req_incls.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition trait_incl_of_DropGlue_drop_glue (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+    spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
+End DropGlue_trait_req_incls.
 
 (*
 Options here:

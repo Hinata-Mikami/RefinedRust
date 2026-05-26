@@ -14,7 +14,7 @@ use radium::{coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty::TypeFoldable as _;
 use rr_rustc_interface::middle::{span_bug, ty};
-use rr_rustc_interface::span::DUMMY_SP;
+use rr_rustc_interface::span::{DUMMY_SP, Symbol};
 
 use crate::base::*;
 use crate::error::Message;
@@ -487,13 +487,13 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         tcx: ty::TyCtxt<'tcx>,
         type_translator: &TX<'def, 'tcx>,
         trait_registry: &registry::TR<'tcx, 'def>,
+        requirements: &[requirements::TraitReqMeta<'tcx>],
     ) -> Result<(), TranslationError> {
         let typing_env = ty::TypingEnv::post_analysis(tcx, did);
         let is_trait = tcx.is_trait(did);
-        let requirements = requirements::get_trait_requirements_with_origin(tcx, did);
 
         // pre-register all the requirements, in order to resolve dependencies
-        for req in &requirements {
+        for req in requirements {
             let key = (
                 TraitKey::rust(tcx, req.trait_ref.def_id),
                 generate_args_inst_key(tcx, req.trait_ref.args).unwrap(),
@@ -707,15 +707,114 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     ) -> Result<(), TranslationError> {
         trace!("Enter add_param_env for did = {did:?}");
         let typing_env = ty::TypingEnv::post_analysis(tcx, did);
+        let requirements = requirements::get_trait_requirements_with_origin(tcx, did);
 
         self.add_lifetime_constraints(did, tcx, typing_env, type_translator)?;
-        self.add_trait_requirements(did, tcx, type_translator, trait_registry)?;
+        self.add_trait_requirements(did, tcx, type_translator, trait_registry, &requirements)?;
+        self.add_implicit_drop_glue_assumptions(did, tcx, typing_env, trait_registry, &requirements)?;
 
         trace!("Leave add_param_env for did = {did:?} with trait scope {:?}", self.trait_scope);
         Ok(())
     }
 
-    #[expect(dead_code)]
+    fn add_implicit_drop_glue_assumptions(
+        &mut self,
+        did: DefId,
+        tcx: ty::TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        trait_registry: &registry::TR<'tcx, 'def>,
+        requirements: &[requirements::TraitReqMeta<'tcx>],
+    ) -> Result<(), TranslationError> {
+        let mut ty_params = Vec::new();
+        for (idx, param) in self.scope.iter().enumerate() {
+            let Some(lit) = param.as_type() else { continue };
+            let idx = u32::try_from(idx).map_err(|_err| {
+                TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
+                    "generic parameter index does not fit into u32: {idx}"
+                ))))
+            })?;
+            ty_params.push((idx, Symbol::intern(&lit.rust_name)));
+        }
+
+        for (idx, name) in ty_params {
+            let param_ty = ty::ParamTy::new(idx, name);
+            let self_ty = tcx.mk_ty_from_kind(ty::TyKind::Param(param_ty));
+            let origin = Self::determine_origin_of_param(did, tcx, param_ty);
+            self.add_virtual_trait_assumption(
+                tcx,
+                typing_env,
+                trait_registry,
+                VirtualTrait::DropGlue,
+                self_ty,
+                origin,
+            )?;
+        }
+
+        let mut assoc_tys = Vec::new();
+        for req in requirements {
+            if req.is_self_in_trait_decl {
+                continue;
+            }
+
+            let assoc_ty_dids = environment::get_trait_assoc_types(tcx, req.trait_ref.def_id);
+            for (assoc_did, constraint) in assoc_ty_dids.into_iter().zip(&req.assoc_constraints) {
+                if constraint.is_some() {
+                    continue;
+                }
+
+                let alias = ty::AliasTy::new(
+                    tcx,
+                    ty::AliasTyKind::Projection { def_id: assoc_did },
+                    req.trait_ref.args,
+                );
+                let self_ty = tcx.mk_ty_from_kind(ty::TyKind::Alias(alias));
+                assoc_tys.push((self_ty, req.origin));
+            }
+        }
+
+        for (self_ty, origin) in assoc_tys {
+            self.add_virtual_trait_assumption(
+                tcx,
+                typing_env,
+                trait_registry,
+                VirtualTrait::DropGlue,
+                self_ty,
+                origin,
+            )?;
+        }
+
+        let mut self_trait_assoc_tys = Vec::new();
+        for req in requirements {
+            if !req.is_self_in_trait_decl {
+                continue;
+            }
+
+            let assoc_ty_dids = environment::get_trait_assoc_types(tcx, req.trait_ref.def_id);
+            for assoc_did in assoc_ty_dids {
+                let alias = ty::AliasTy::new(
+                    tcx,
+                    ty::AliasTyKind::Projection { def_id: assoc_did },
+                    req.trait_ref.args,
+                );
+                let self_ty = tcx.mk_ty_from_kind(ty::TyKind::Alias(alias));
+                self_trait_assoc_tys.push(self_ty);
+            }
+        }
+
+        for self_ty in self_trait_assoc_tys {
+            self.add_virtual_trait_assumption(
+                tcx,
+                typing_env,
+                trait_registry,
+                VirtualTrait::DropGlue,
+                self_ty,
+                specs::TyParamOrigin::AssocInDecl,
+            )?;
+        }
+
+        Ok(())
+    }
+
     pub(crate) fn add_virtual_trait_assumption(
         &mut self,
         tcx: ty::TyCtxt<'tcx>,
@@ -796,7 +895,9 @@ impl<'tcx> Params<'tcx, '_> {
             let generics: &'tcx ty::Generics = tcx.generics_of(trait_did);
 
             for this_param in &generics.own_params {
-                if this_param.name == param.name {
+                if matches!(this_param.kind, ty::GenericParamDefKind::Type { .. })
+                    && this_param.index == param.index
+                {
                     return specs::TyParamOrigin::SurroundingTrait;
                 }
             }
@@ -806,7 +907,9 @@ impl<'tcx> Params<'tcx, '_> {
             let generics: &'tcx ty::Generics = tcx.generics_of(impl_did);
 
             for this_param in &generics.own_params {
-                if this_param.name == param.name {
+                if matches!(this_param.kind, ty::GenericParamDefKind::Type { .. })
+                    && this_param.index == param.index
+                {
                     return specs::TyParamOrigin::SurroundingImpl;
                 }
             }

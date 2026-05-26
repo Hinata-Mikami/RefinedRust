@@ -2380,6 +2380,24 @@ fn add_builtin_shims(registry: &mut shim_registry::SR<'_>) {
     registry.add_adt_shim(phantom_data_shim);
 }
 
+fn register_builtin_virtual_traits(vcx: &VerificationCtxt<'_, '_>) {
+    let mut method_trait_incl_decls = BTreeMap::new();
+    method_trait_incl_decls.insert("drop_glue".to_owned(), "trait_incl_of_DropGlue_drop_glue".to_owned());
+
+    let drop_glue_spec = specs::traits::LiteralSpec {
+        assoc_tys: Vec::new(),
+        name: "DropGlue".to_owned(),
+        has_semantic_interp: false,
+        has_spec_attrs: false,
+        attrs_dependent: false,
+        declared_attrs: Vec::new(),
+        method_trait_incl_decls,
+    };
+
+    vcx.trait_registry
+        .register_virtual_trait(registry::VirtualTrait::DropGlue, drop_glue_spec);
+}
+
 /// Translate a crate, creating a `VerificationCtxt` in the process.
 pub fn generate_coq_code<'tcx, F>(tcx: ty::TyCtxt<'tcx>, continuation: F) -> Result<(), PipelineError>
 where
@@ -2549,6 +2567,8 @@ where
         trait_impl_deps: BTreeMap::new(),
         fn_arena: &fn_spec_arena,
     };
+
+    register_builtin_virtual_traits(&vcx);
 
     // this needs to be first, in order to ensure consistent ADT use
     register_shims(&mut vcx)?;

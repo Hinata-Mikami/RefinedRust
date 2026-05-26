@@ -320,8 +320,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             match projection {
                 mir::ProjectionElem::Deref => {
                     current_ty = match current_ty.kind() {
-                        ty::TyKind::Ref(_, inner, _) => *inner,
-                        ty::TyKind::RawPtr(inner, _) => *inner,
+                        ty::TyKind::Ref(_, inner, _) | ty::TyKind::RawPtr(inner, _) => *inner,
                         _ => {
                             return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
                                 Message::UnsupportedFeature(format!(
@@ -422,5 +421,49 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             &self.used_literals,
             &self.used_tuples,
         )))
+    }
+
+    fn translate_drop_glue_region(&self, region: ty::Region<'tcx>) -> Result<specs::Lft, TranslationError> {
+        match region.kind() {
+            ty::RegionKind::ReEarlyParam(early) => self
+                .generic_scope
+                .lookup_region_idx(early.index as usize)
+                .map(|x| x.lft().to_owned())
+                .ok_or_else(|| {
+                    TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                        "drop-glue generic abstraction cannot resolve early region {region:?}"
+                    ))))
+                }),
+
+            ty::RegionKind::ReBound(idx, r) => {
+                if let ty::BoundVarIndexKind::Bound(idx) = idx {
+                    self.generic_scope
+                        .lookup_late_region_idx(usize::from(idx), r.var.index())
+                        .map(|x| x.lft().to_owned())
+                        .ok_or_else(|| {
+                            TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                                format!(
+                                    "drop-glue generic abstraction cannot resolve late region {region:?}"
+                                ),
+                            )))
+                        })
+                } else {
+                    Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                        format!("drop-glue generic abstraction does not support canonical region {region:?}"),
+                    ))))
+                }
+            },
+
+            ty::RegionKind::ReStatic => Ok(coq::Ident::new("static")),
+
+            _ => Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                format!("drop-glue generic abstraction requires preserved universal regions, got {region:?}"),
+            )))),
+        }
+    }
+
+    fn translate_drop_glue_spec_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError> {
+        let typing_env = ty::TypingEnv::post_analysis(self.tcx, self.adt_did);
+        self.ty_translator.translate_type_in_scope(&self.generic_scope, typing_env, ty)
     }
 }
