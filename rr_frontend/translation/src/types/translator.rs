@@ -200,6 +200,22 @@ pub(crate) struct CalleeState<'a, 'tcx, 'def> {
     param_scope: &'a scope::Params<'tcx, 'def>,
 }
 
+/// Translation state for synthetic shim bodies.
+///
+/// Like `CalleeState`, this erases regions, but it still records ADT and tuple uses
+/// so generated shim bodies can assume the corresponding syntypes are layoutable.
+#[derive(Constructor, Debug)]
+pub(crate) struct ShimState<'a, 'tcx, 'def> {
+    /// the env of the translated shim
+    typing_env: ty::TypingEnv<'tcx>,
+    /// the generic scope of the translated shim
+    param_scope: scope::Params<'tcx, 'def>,
+    /// ADT literal uses needed by the translated shim
+    shim_uses: &'a RefCell<BTreeMap<scope::AdtUseKey, specs::types::LiteralUse<'def>>>,
+    /// tuple literal uses needed by the translated shim
+    tuple_uses: &'a RefCell<BTreeMap<Vec<lang::SynType>, specs::types::LiteralUse<'def>>>,
+}
+
 /// The type translator `TX` has three modes:
 /// - translation of a type within the generic scope of a function
 /// - translation of a type as part of an ADT definition, where we always translate parameters as variables,
@@ -214,6 +230,9 @@ pub(crate) enum STInner<'b, 'def, 'tcx> {
     /// We are translating in an empty dummy scope.
     /// All regions are erased.
     CalleeTranslation(CalleeState<'b, 'tcx, 'def>),
+    /// We are translating a synthetic shim body. Regions are erased, but tuple/ADT
+    /// uses are still recorded for layout assumptions.
+    ShimTranslation(Box<ShimState<'b, 'tcx, 'def>>),
     /// We are generating a syntactic type use in the current function. Regions
     /// are erased, but tuple/ADT uses are still recorded for layout assumptions.
     SyntypeInFunction {
@@ -234,6 +253,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
             Self::InFunction(state) => state.make_params_scope(),
             Self::TranslateAdt(state) => state.scope.to_owned(),
             Self::CalleeTranslation(state) => state.param_scope.to_owned(),
+            Self::ShimTranslation(state) => state.param_scope.clone(),
             Self::SyntypeInFunction { state, .. } => state.generic_scope.clone(),
             Self::TraitReqs(state) => state.scope.clone(),
         }
@@ -244,6 +264,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
             Self::InFunction(state) | Self::SyntypeInFunction { state, .. } => &state.generic_scope,
             Self::TranslateAdt(state) => state.scope,
             Self::CalleeTranslation(state) => state.param_scope,
+            Self::ShimTranslation(state) => &state.param_scope,
             Self::TraitReqs(state) => &state.scope,
         }
     }
@@ -252,7 +273,10 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         match &self {
             Self::InFunction(state) => state.region_resolver.as_ref(),
             Self::TraitReqs(state) => state.region_resolver.as_ref(),
-            Self::TranslateAdt(_) | Self::CalleeTranslation(_) | Self::SyntypeInFunction { .. } => None,
+            Self::TranslateAdt(_)
+            | Self::CalleeTranslation(_)
+            | Self::ShimTranslation(_)
+            | Self::SyntypeInFunction { .. } => None,
         }
     }
 
@@ -260,7 +284,10 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         match &self {
             Self::InFunction(state) => Some(&state.lifetime_scope),
             Self::TraitReqs(state) => state.lifetime_scope,
-            Self::TranslateAdt(_) | Self::CalleeTranslation(_) | Self::SyntypeInFunction { .. } => None,
+            Self::TranslateAdt(_)
+            | Self::CalleeTranslation(_)
+            | Self::ShimTranslation(_)
+            | Self::SyntypeInFunction { .. } => None,
         }
     }
 
@@ -287,6 +314,15 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
             lit_uses
                 .entry(key)
                 .or_insert_with(|| specs::types::LiteralUse::new(lit_ref, params.clone()));
+        } else if let Self::ShimTranslation(state) = self {
+            let lit_ref = lit_ref.unwrap();
+            let ordered_did = OrderedDefId::new(tcx, did);
+            let key = scope::AdtUseKey::new_from_inst(ordered_did, params);
+            state
+                .shim_uses
+                .borrow_mut()
+                .entry(key)
+                .or_insert_with(|| specs::types::LiteralUse::new(lit_ref, params.clone()));
         }
     }
 
@@ -302,6 +338,14 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
             tuple_uses
                 .entry(key)
                 .or_insert_with(|| specs::types::LiteralUse::new(lit_ref, params.clone()));
+        } else if let Self::ShimTranslation(state) = self {
+            let key: Vec<_> = params.get_direct_ty_params().iter().map(lang::SynType::from).collect();
+
+            state
+                .tuple_uses
+                .borrow_mut()
+                .entry(key)
+                .or_insert_with(|| specs::types::LiteralUse::new(lit_ref, params.clone()));
         }
     }
 
@@ -313,6 +357,15 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         if let STInner::CalleeTranslation(s) = self {
             // make sure to keep the callee state, which translates regions to dummys
             STInner::CalleeTranslation(*s)
+        } else if let STInner::ShimTranslation(s) = self {
+            // keep shim tracking while switching to the augmented trait-requirement scope;
+            // `ShimTranslation` still translates all regions to dummies.
+            STInner::ShimTranslation(Box::new(ShimState::new(
+                s.typing_env,
+                params,
+                s.shim_uses,
+                s.tuple_uses,
+            )))
         } else if let STInner::SyntypeInFunction { state, typing_env } = self {
             STInner::CalleeTranslation(CalleeState::new(*typing_env, &state.generic_scope))
         } else {
@@ -333,6 +386,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
             Self::InFunction(state) => ty::TypingEnv::post_analysis(tcx, state.did),
             Self::TranslateAdt(state) => *state.typing_env,
             Self::CalleeTranslation(state) => state.typing_env,
+            Self::ShimTranslation(state) => state.typing_env,
             Self::SyntypeInFunction { typing_env, .. } => *typing_env,
             Self::TraitReqs(state) => state.typing_env,
         }
@@ -406,7 +460,9 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                     .unwrap_or_else(|| bug!("Unknown early region {region:?}"));
                 lft.lft().to_owned()
             },
-            STInner::CalleeTranslation(_) | STInner::SyntypeInFunction { .. } => coq::Ident::new("DUMMY"),
+            STInner::CalleeTranslation(_)
+            | STInner::ShimTranslation(_)
+            | STInner::SyntypeInFunction { .. } => coq::Ident::new("DUMMY"),
         }
     }
 
@@ -435,7 +491,9 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                     .unwrap_or_else(|| bug!("Unknown late region outside function: ({binder:?}, {var:?})"));
                 lft.lft().to_owned()
             },
-            STInner::CalleeTranslation(_) | STInner::SyntypeInFunction { .. } => coq::Ident::new("DUMMY"),
+            STInner::CalleeTranslation(_)
+            | STInner::ShimTranslation(_)
+            | STInner::SyntypeInFunction { .. } => coq::Ident::new("DUMMY"),
         }
     }
 
@@ -480,7 +538,9 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                 info!("Translating region: ReVar {:?} as None (outside of function)", v);
                 bug!("encountered Polonius region outside function translation: {v:?}")
             },
-            STInner::CalleeTranslation(_) | STInner::SyntypeInFunction { .. } => coq::Ident::new("DUMMY"),
+            STInner::CalleeTranslation(_)
+            | STInner::ShimTranslation(_)
+            | STInner::SyntypeInFunction { .. } => coq::Ident::new("DUMMY"),
         }
     }
 }
@@ -738,7 +798,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 info!("Translating region: {:?}", region);
                 if matches!(
                     translation_state,
-                    STInner::CalleeTranslation(_) | STInner::SyntypeInFunction { .. }
+                    STInner::CalleeTranslation(_)
+                        | STInner::ShimTranslation(_)
+                        | STInner::SyntypeInFunction { .. }
                 ) {
                     coq::Ident::new("DUMMY")
                 } else {

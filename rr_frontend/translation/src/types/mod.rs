@@ -15,7 +15,7 @@ mod tyvars;
 pub(crate) use local::{AbstractedGenerics, LocalTX, normalize_in_function};
 use rr_rustc_interface::middle::ty;
 pub(crate) use scope::{GenericsKey, generate_args_inst_key};
-pub(crate) use translator::{AdtState, CalleeState, FunctionState, ST, STInner, TX, TraitState};
+pub(crate) use translator::{AdtState, CalleeState, FunctionState, ST, STInner, ShimState, TX, TraitState};
 
 use crate::base::*;
 

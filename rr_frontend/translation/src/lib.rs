@@ -47,7 +47,7 @@ use rr_rustc_interface::{hir, span};
 use typed_arena::Arena;
 
 use crate::base::OrderedDefId;
-use crate::body::signature;
+use crate::body::{drop_glue_translation, signature};
 use crate::closure_impl_generator::ClosureImplGenerator;
 pub use crate::environment::mir_mapper::{
     BoxDerefAlias, MappingResult, Origin, SourceLoc, SyntheticDropBorrow, TargetLoc,
@@ -1576,6 +1576,58 @@ fn translate_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipelin
     Ok(())
 }
 
+/// Translate registered drop glue, assuming it was previously registered for local non-trivial ADTs.
+fn translate_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
+    let drop_glues: Vec<_> = vcx
+        .procedure_registry
+        .iter_procedure_meta()
+        .filter_map(|(key, meta)| match key {
+            procedures::ProcedureKey::DropGlue(key) => Some((key.clone(), meta.clone())),
+            procedures::ProcedureKey::Function(_) => None,
+        })
+        .collect();
+
+    for (key, meta) in drop_glues {
+        let mode = meta.get_mode();
+        if mode.is_shim() {
+            info!("Skipping imported drop-glue shim {:?}", key);
+            continue;
+        }
+        assert_eq!(mode, procedures::Mode::Prove, "drop glue should be registered in prove or shim mode");
+
+        let procedures::DropGlueKey::Adt(did) = key.clone();
+        info!("\nTranslating drop glue for {:?}", did.def_id);
+
+        let adt_ty = vcx.tcx.type_of(did.def_id).instantiate_identity().skip_norm_wip();
+        let translated = drop_glue_translation::DropGlueTX::new(
+            vcx.tcx,
+            &meta,
+            adt_ty,
+            &vcx.procedure_registry,
+            vcx.type_translator,
+            vcx.trait_registry,
+        )
+        .and_then(|tx| tx.translate(vcx.fn_arena));
+
+        match translated {
+            Ok(fun) => {
+                info!("Successfully translated drop glue for {:?}", did.def_id);
+                vcx.procedure_registry.provide_translated_drop_glue(key, fun);
+            },
+            Err(base::TranslationError::ErrorReported(err)) => {
+                vcx.tcx.dcx().span_warn(
+                    vcx.tcx.def_span(did.def_id),
+                    error::Message::SkippedFunctionDueToPreviousFailure,
+                );
+                recover_or_fail(err)?;
+            },
+            Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
+        }
+    }
+
+    Ok(())
+}
+
 fn translate_function<'tcx>(
     vcx: &mut VerificationCtxt<'tcx, '_>,
     f: LocalDefId,
@@ -2515,6 +2567,8 @@ where
     register_consts(&mut vcx)?;
 
     translate_functions(&mut vcx)?;
+
+    translate_drop_glues(&mut vcx)?;
 
     // important: happens after all functions have been translated, as this uses the translated
     // function specs

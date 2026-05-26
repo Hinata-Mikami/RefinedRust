@@ -1,0 +1,13 @@
+Drop glue for Foo
+  type: Foo<'a, T>
+  needs_drop: true
+  locals:
+    _0: ()
+      debug_ty: ()
+    _1: &mut Foo<'a, T>
+      debug_ty: &'{erased} mut Foo<'a/#0, T/#1>
+  body:
+    bb0:
+      -> Drop(_1.*.field0:Bar<'_, &T>, ty=Bar<'_, &T>, debug_ty=Bar<'{erased}, &'{erased} T/#1>, target=bb1, unwind=continue)
+    bb1:
+      -> Return

@@ -39,8 +39,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirTranslationCtx<'def, 'tcx> for TX<'a, 'def, 't
         self.procedure_registry
     }
 
-    fn ty_translator(&self) -> &types::LocalTX<'def, 'tcx> {
-        &self.ty_translator
+    fn normalization_scope_did(&self) -> DefId {
+        self.ty_translator.scope.borrow().did
     }
 
     fn variable_map(&self) -> &HashMap<mir::Local, String> {
@@ -60,7 +60,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirTranslationCtx<'def, 'tcx> for TX<'a, 'def, 't
     }
 }
 
-impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for TX<'a, 'def, 'tcx> {}
+impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for TX<'a, 'def, 'tcx> {
+    fn get_drop_glue_generic_abstraction(
+        &self,
+        owner_did: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Result<types::AbstractedGenerics<'def>, TranslationError> {
+        self.ty_translator
+            .get_generic_abstraction_for_item(owner_did, args, &[], Vec::new(), true)
+    }
+
+    fn translate_drop_glue_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError> {
+        self.ty_translator.translate_type(ty)
+    }
+}
 
 impl<'a, 'def: 'a, 'tcx: 'def> MirTypeTranslation<'def, 'tcx> for TX<'a, 'def, 'tcx> {
     fn translate_type_to_syn_type(&self, ty: ty::Ty<'tcx>) -> Result<lang::SynType, TranslationError> {

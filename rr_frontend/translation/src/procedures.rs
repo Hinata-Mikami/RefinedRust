@@ -335,7 +335,6 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     }
 
     /// Provide the code for translated drop glue.
-    #[expect(dead_code)]
     pub(crate) fn provide_translated_drop_glue(&mut self, key: DropGlueKey, trf: code::Function<'def>) {
         self.provide_translated_procedure(ProcedureKey::DropGlue(key), trf);
     }

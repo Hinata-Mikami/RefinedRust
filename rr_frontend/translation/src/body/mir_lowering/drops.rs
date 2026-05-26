@@ -7,7 +7,8 @@
 use std::collections::BTreeMap;
 
 use log::{info, trace};
-use radium::{code, lang};
+use radium::{code, lang, specs};
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
 use super::{MirTranslationCtx, MirTypeTranslation, ProcedureInst, TranslationKey};
@@ -20,6 +21,14 @@ const CORE_PTR_DROP_GLUE_SPEC: &str = "type_of_core_ptr_drop_glue";
 pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
     MirTranslationCtx<'def, 'tcx> + MirTypeTranslation<'def, 'tcx>
 {
+    fn get_drop_glue_generic_abstraction(
+        &self,
+        owner_did: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Result<types::AbstractedGenerics<'def>, TranslationError>;
+
+    fn translate_drop_glue_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError>;
+
     /// Internally register that we have used ADT drop glue for a concrete dropped type, and return
     /// the code parameter and call instantiation.
     fn register_use_drop_glue(
@@ -50,13 +59,7 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
     ) -> Result<(code::Expr, ProcedureInst<'tcx, 'def>), TranslationError> {
         let key = procedures::DropGlueKey::Adt(OrderedDefId::new(self.tcx(), adt_def.did()));
         let generics_key = types::generate_args_inst_key(self.tcx(), adt_args)?;
-        let quantified_args = self.ty_translator().get_generic_abstraction_for_item(
-            adt_def.did(),
-            adt_args,
-            &[],
-            Vec::new(),
-            true,
-        )?;
+        let quantified_args = self.get_drop_glue_generic_abstraction(adt_def.did(), adt_args)?;
 
         let used_key = TranslationKey::DropGlue(key.clone(), generics_key.clone());
         let res;
@@ -104,7 +107,7 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
         dropped_ty: ty::Ty<'tcx>,
     ) -> Result<(code::Expr, ProcedureInst<'tcx, 'def>), TranslationError> {
         let key = TranslationKey::AssumedDropGlue(dropped_ty);
-        let translated_ty = self.ty_translator().translate_type(dropped_ty)?;
+        let translated_ty = self.translate_drop_glue_type(dropped_ty)?;
 
         let res;
         if let Some(proc_use) = self.collected_procedures().get(&key) {
@@ -113,7 +116,7 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
             let spec_term = code::UsedProcedureSpec::Literal(CORE_PTR_DROP_GLUE_SPEC.to_owned());
             let loc_name = types::drop_glue_loc_name_for_ty(dropped_ty);
             let syntypes = vec![lang::SynType::Ptr];
-            let mut fn_inst = radium::specs::GenericScopeInst::empty();
+            let mut fn_inst = specs::GenericScopeInst::empty();
             fn_inst.add_direct_ty_param(translated_ty.clone());
 
             info!(
@@ -124,7 +127,7 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
             let proc_use = code::UsedProcedure::new(
                 loc_name,
                 spec_term,
-                radium::specs::GenericScope::empty(),
+                specs::GenericScope::empty(),
                 fn_inst,
                 syntypes,
             );

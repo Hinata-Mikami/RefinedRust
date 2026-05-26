@@ -97,9 +97,9 @@ End def.
 
 (** Drop glue *)
 Definition trait_incl_of_core_ptr_drop_glue `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) : spec_with _ _ Prop :=
-  spec! ( *[]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (True).
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (True).
 Definition type_of_core_ptr_drop_glue `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) :=
-  fn(∀ ( *[]) : 1 | ( *[T_ty]) : [(T_rt, T_st)] | (x, l) : (T_rt * loc), (λ ϝ, []); l :@: alias_ptr_t; λ π,
+  fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (x, l) : (T_rt * loc), (λ ϝ, []); l :@: alias_ptr_t; λ π,
     (l ◁ₗ[π, Owned] #x @ ◁ T_ty)%I) →
   ∃ () : (), () @ unit_t; λ π,
     ty_ghost_drop T_ty π x ∗
