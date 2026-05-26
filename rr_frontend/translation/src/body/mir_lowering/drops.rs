@@ -11,12 +11,11 @@ use radium::{code, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
-use super::{MirTranslationCtx, MirTypeTranslation, ProcedureInst, TranslationKey};
+use super::{MirTranslationCtx, MirTypeTranslation, ProcedureInst, TraitMethodUseData, TranslationKey};
 use crate::base::*;
 use crate::error::Message;
+use crate::traits::registry;
 use crate::{procedures, types};
-
-const CORE_PTR_DROP_GLUE_SPEC: &str = "type_of_core_ptr_drop_glue";
 
 pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
     MirTranslationCtx<'def, 'tcx> + MirTypeTranslation<'def, 'tcx>
@@ -28,6 +27,8 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
     ) -> Result<types::AbstractedGenerics<'def>, TranslationError>;
 
     fn translate_drop_glue_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError>;
+
+    fn make_virtual_drop_glue_method_for_param(&self, dropped_ty: ty::Ty<'tcx>) -> TraitMethodUseData<'def>;
 
     /// Internally register that we have used ADT drop glue for a concrete dropped type, and return
     /// the code parameter and call instantiation.
@@ -107,30 +108,26 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
         dropped_ty: ty::Ty<'tcx>,
     ) -> Result<(code::Expr, ProcedureInst<'tcx, 'def>), TranslationError> {
         let key = TranslationKey::AssumedDropGlue(dropped_ty);
-        let translated_ty = self.translate_drop_glue_type(dropped_ty)?;
 
         let res;
         if let Some(proc_use) = self.collected_procedures().get(&key) {
             res = proc_use.loc_name.clone();
         } else {
-            let spec_term = code::UsedProcedureSpec::Literal(CORE_PTR_DROP_GLUE_SPEC.to_owned());
-            let loc_name = types::drop_glue_loc_name_for_ty(dropped_ty);
+            let method_use = self.make_virtual_drop_glue_method_for_param(dropped_ty);
             let syntypes = vec![lang::SynType::Ptr];
+            let scope = method_use.spec_scope.into();
             let mut fn_inst = specs::GenericScopeInst::empty();
-            fn_inst.add_direct_ty_param(translated_ty.clone());
+            for lft in method_use.spec_inst.lft_insts {
+                fn_inst.add_lft_param(lft);
+            }
 
             info!(
                 "Registered assumed drop-glue instance {} for {:?} with {:?} and layouts {:?}",
-                loc_name, dropped_ty, fn_inst, syntypes
+                method_use.loc_name, dropped_ty, fn_inst, syntypes
             );
 
-            let proc_use = code::UsedProcedure::new(
-                loc_name,
-                spec_term,
-                specs::GenericScope::empty(),
-                fn_inst,
-                syntypes,
-            );
+            let proc_use =
+                code::UsedProcedure::new(method_use.loc_name, method_use.spec_term, scope, fn_inst, syntypes);
 
             res = proc_use.loc_name.clone();
             self.collected_procedures_mut().insert(key, proc_use);
@@ -140,7 +137,7 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
         let empty_args: &[ty::GenericArg<'tcx>] = &[];
         let inst = ProcedureInst {
             method_params: self.tcx().mk_args(empty_args),
-            type_hint: vec![translated_ty],
+            type_hint: Vec::new(),
             lft_hint: Vec::new(),
             num_of_latebounds: 0,
             mapped_early_regions: BTreeMap::new(),
@@ -148,4 +145,17 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
 
         Ok((code::Expr::MetaParam(res), inst))
     }
+}
+
+pub(crate) fn make_virtual_drop_glue_method_for_param_from_scope<'tcx, 'def>(
+    tcx: ty::TyCtxt<'tcx>,
+    scope: &types::scope::Params<'tcx, 'def>,
+    dropped_ty: ty::Ty<'tcx>,
+) -> TraitMethodUseData<'def> {
+    let arg = ty::GenericArg::from(dropped_ty);
+    let trait_use = scope
+        .trait_scope()
+        .lookup_virtual_trait_use(tcx, registry::VirtualTrait::DropGlue, &[arg]);
+
+    super::make_trait_method_use_data(trait_use.trait_use, "drop_glue", "drop_glue", std::iter::empty())
 }

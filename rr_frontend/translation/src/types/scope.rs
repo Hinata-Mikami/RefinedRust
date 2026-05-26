@@ -1029,7 +1029,6 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
         }
     }
 
-    #[expect(dead_code)]
     pub(crate) fn lookup_virtual_trait_use(
         &self,
         tcx: ty::TyCtxt<'tcx>,

@@ -18,7 +18,7 @@ use super::DropGlueTX;
 use crate::base::*;
 use crate::body::mir_lowering::{
     MirConstantTranslation, MirDropTranslation, MirRvalueTranslation, MirTranslationCtx, MirTypeTranslation,
-    TranslationKey,
+    TraitMethodUseData, TranslationKey, make_virtual_drop_glue_method_for_param_from_scope,
 };
 use crate::{procedures, rustcmp, types};
 
@@ -218,6 +218,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for DropGlueTX<'a,
 
     fn translate_drop_glue_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError> {
         self.ty_translator.translate_type_in_state(ty, &mut self.shim_state())
+    }
+
+    fn make_virtual_drop_glue_method_for_param(&self, dropped_ty: ty::Ty<'tcx>) -> TraitMethodUseData<'def> {
+        make_virtual_drop_glue_method_for_param_from_scope(self.tcx, &self.generic_scope, dropped_ty)
     }
 }
 

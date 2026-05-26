@@ -18,6 +18,7 @@ use rr_rustc_interface::middle::{bug, ty};
 use rr_rustc_interface::type_ir::TypeFoldable as _;
 
 use crate::base::*;
+use crate::body::mir_lowering;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info;
 use crate::error::Message;
@@ -266,29 +267,24 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             (trait_use_ref, bound_regions_inst, mapped_early_regions)
         };
 
-        let mut mapped_inst = Vec::new();
+        let mut bound_region_inst = Vec::new();
         for region in bound_regions_inst {
             let translated_region = self.translate_region(region);
-            mapped_inst.push(translated_region);
+            bound_region_inst.push(translated_region);
         }
-        let mapped_inst = specs::traits::ReqScopeInst::new(mapped_inst);
-        trace!("using trait procedure with mapped instantiation: {mapped_inst:?}");
-
-        let trait_spec_use = trait_use_ref.borrow();
-        let trait_spec_use = trait_spec_use.as_ref().unwrap();
-
-        let lifted_scope = trait_spec_use.scope.clone();
-        let quantified_impl =
-            specs::traits::QuantifiedImpl::new(trait_use_ref, lifted_scope.identity_instantiation());
-
-        // get spec. the spec takes the generics of the method as arguments
-        let method_spec_term = code::UsedProcedureSpec::TraitMethod(quantified_impl, method_name.clone());
 
         let mangled_method_name =
             types::mangle_name_with_args(&strip_coq_ident(&method_name), method_args.as_slice());
-        let method_loc_name = trait_spec_use.make_loc_name(&mangled_method_name);
 
-        (method_loc_name, (method_spec_term, lifted_scope, mapped_inst), mapped_early_regions, method_args)
+        let data = mir_lowering::make_trait_method_use_data(
+            trait_use_ref,
+            &method_name,
+            &mangled_method_name,
+            bound_region_inst,
+        );
+        trace!("using trait procedure with mapped instantiation: {:?}", data.spec_inst);
+
+        (data.loc_name, (data.spec_term, data.spec_scope, data.spec_inst), mapped_early_regions, method_args)
     }
 
     /// Abstract over the generics of a function and partially instantiate them.

@@ -15,7 +15,8 @@ use super::{ExprInfo, ExprWithInfo, TX};
 use crate::base::*;
 use crate::body::mir_lowering::{
     MirConstantTranslation, MirDropTranslation, MirPlaceTranslation as _, MirRvalueTranslation,
-    MirTranslationCtx, MirTypeTranslation, TranslationKey,
+    MirTranslationCtx, MirTypeTranslation, TraitMethodUseData, TranslationKey,
+    make_virtual_drop_glue_method_for_param_from_scope,
 };
 use crate::regions::AnnotationGenerator;
 use crate::{procedures, types};
@@ -72,6 +73,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for TX<'a, 'def, '
 
     fn translate_drop_glue_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError> {
         self.ty_translator.translate_type(ty)
+    }
+
+    fn make_virtual_drop_glue_method_for_param(&self, dropped_ty: ty::Ty<'tcx>) -> TraitMethodUseData<'def> {
+        let scope = self.ty_translator.scope.borrow();
+        make_virtual_drop_glue_method_for_param_from_scope(self.tcx, &scope.generic_scope, dropped_ty)
     }
 }
 

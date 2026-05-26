@@ -183,8 +183,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
 
         spec_builder
             .add_param(coq::binder::Binder::new(
-                Some("(x, l)".to_owned()),
-                coq::term::Type::Literal(format!("({rfn_ty} * loc)")),
+                Some("x".to_owned()),
+                rfn_ty,
+            ))
+            .map_err(|err| TranslationError::ErrorReported(tcx.dcx().err(Message::AttributeError(err))))?;
+        spec_builder
+            .add_param(coq::binder::Binder::new(
+                Some("l".to_owned()),
+                coq::term::Type::Literal("loc".to_owned()),
             ))
             .map_err(|err| TranslationError::ErrorReported(tcx.dcx().err(Message::AttributeError(err))))?;
         spec_builder.add_arg(specs::TypeWithRef::new(specs::Type::RawPtr, "l".to_owned()));
