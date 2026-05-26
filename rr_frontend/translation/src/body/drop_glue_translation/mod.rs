@@ -39,9 +39,15 @@ pub(crate) struct DropGlueTX<'a, 'def, 'tcx> {
     collected_procedures: HashMap<TranslationKey<'tcx>, code::UsedProcedure<'def>>,
     used_literals: RefCell<BTreeMap<types::scope::AdtUseKey, specs::types::LiteralUse<'def>>>,
     used_tuples: RefCell<BTreeMap<Vec<lang::SynType>, specs::types::LiteralUse<'def>>>,
+    drop_glue_trait_ref: specs::traits::RefInst<'def>,
     translated_fn: code::FunctionBuilder<'def>,
     bb_queue: Vec<mir::BasicBlock>,
     processed_bbs: HashSet<mir::BasicBlock>,
+}
+
+pub(crate) struct TranslatedDropGlue<'def> {
+    pub(crate) function: code::Function<'def>,
+    pub(crate) trait_ref: specs::traits::RefInst<'def>,
 }
 
 impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
@@ -93,7 +99,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             &used_literals,
             &used_tuples,
         )?;
-        Self::add_drop_glue_trait_spec(
+        let drop_glue_trait_ref = Self::add_drop_glue_trait_spec(
             tcx,
             trait_registry,
             adt_did,
@@ -115,6 +121,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             collected_procedures: HashMap::new(),
             used_literals,
             used_tuples,
+            drop_glue_trait_ref,
             translated_fn,
             bb_queue: vec![mir::BasicBlock::from_u32(0)],
             processed_bbs: HashSet::new(),
@@ -182,6 +189,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         ty_translator.translate_type_in_state(adt_ty, &mut state)
     }
 
+    fn make_drop_glue_trait_inst(translated_adt_ty: &specs::Type<'def>) -> specs::GenericScopeInst<'def> {
+        let mut trait_inst = specs::GenericScopeInst::empty();
+        // DropGlue has only Self; the ADT generics live in the impl scope.
+        trait_inst.add_direct_ty_param(translated_adt_ty.clone());
+        trait_inst
+    }
+
     fn add_drop_glue_trait_spec(
         tcx: ty::TyCtxt<'tcx>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
@@ -189,11 +203,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         translated_fn: &mut code::FunctionBuilder<'def>,
         generic_scope: &types::scope::Params<'tcx, 'def>,
         translated_adt_ty: &specs::Type<'def>,
-    ) -> Result<(), TranslationError> {
+    ) -> Result<specs::traits::RefInst<'def>, TranslationError> {
         let impl_key = registry::VirtualImpl::DropGlueForAdt(OrderedDefId::new(tcx, adt_did));
-
-        let mut trait_inst = specs::GenericScopeInst::empty();
-        trait_inst.add_direct_ty_param(translated_adt_ty.clone());
+        let trait_inst = Self::make_drop_glue_trait_inst(translated_adt_ty);
 
         let ref_inst = trait_registry.get_virtual_impl_info(
             impl_key,
@@ -203,10 +215,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         )?;
 
         translated_fn.add_trait_function_spec(specs::traits::InstantiatedFunctionSpec::new(
-            ref_inst,
+            ref_inst.clone(),
             "drop_glue".to_owned(),
         ));
-        Ok(())
+        Ok(ref_inst)
     }
 
     fn initialize_locals(
@@ -274,7 +286,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
     pub(crate) fn translate(
         mut self,
         fn_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
-    ) -> Result<code::Function<'def>, TranslationError> {
+    ) -> Result<TranslatedDropGlue<'def>, TranslationError> {
         self.translate_basic_blocks()?;
 
         for ty in self.generic_scope.tyvars() {
@@ -293,7 +305,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             self.translated_fn.require_function(used_proc.clone());
         }
 
-        Ok(self.translated_fn.into_function(fn_arena))
+        let trait_ref = self.drop_glue_trait_ref.clone();
+        let function = self.translated_fn.into_function(fn_arena);
+        Ok(TranslatedDropGlue {
+            function,
+            trait_ref,
+        })
     }
 
     /// Enqueue a successor block for translation if it has not been processed yet.

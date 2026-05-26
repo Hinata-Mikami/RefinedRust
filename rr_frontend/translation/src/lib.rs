@@ -372,18 +372,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                         function_shims.push(shim);
                     }
                 },
-                procedures::ProcedureKey::DropGlue(key) => {
-                    let virtual_impl_key = match key {
-                        procedures::DropGlueKey::Adt(did) => {
-                            registry::ImplKey::Virtual(registry::VirtualImpl::DropGlueForAdt(did.clone()))
-                        },
-                    };
-                    if !self.trait_impls.contains_key(&virtual_impl_key)
-                        && let Some(shim) = self.make_drop_glue_trait_impl_shim_entry(key)
-                    {
-                        trait_impl_shims.push(shim);
-                    }
-                },
+                procedures::ProcedureKey::DropGlue(_) => {},
             }
         }
 
@@ -1668,9 +1657,23 @@ fn translate_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipeli
         .and_then(|tx| tx.translate(vcx.fn_arena));
 
         match translated {
-            Ok(fun) => {
+            Ok(translated) => {
                 info!("Successfully translated drop glue for {:?}", did.def_id);
-                vcx.procedure_registry.provide_translated_drop_glue(key, fun);
+                let mut methods = BTreeMap::new();
+                methods.insert(
+                    "drop_glue".to_owned(),
+                    specs::traits::InstanceMethodSpec::Defined(translated.function.spec),
+                );
+                let instance_spec = specs::traits::InstanceSpec::new(methods);
+                let impl_spec = specs::traits::ImplSpec::new(
+                    translated.trait_ref,
+                    instance_spec,
+                    coq::binder::BinderList::empty(),
+                );
+                let impl_key = registry::ImplKey::Virtual(registry::VirtualImpl::DropGlueForAdt(did));
+                vcx.trait_impls.insert(impl_key.clone(), impl_spec);
+                vcx.trait_impl_deps.insert(impl_key, BTreeSet::new());
+                vcx.procedure_registry.provide_translated_drop_glue(key, translated.function);
             },
             Err(base::TranslationError::ErrorReported(err)) => {
                 vcx.tcx.dcx().span_warn(
