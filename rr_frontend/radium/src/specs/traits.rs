@@ -928,10 +928,14 @@ impl SpecDecl<'_> {
         let ordered_params = self.get_ordered_params();
         let mut params = ordered_params.get_coq_ty_rt_params();
 
-        if self.lit.attrs_dependent {
+        let dependent_attr_params = if self.lit.attrs_dependent {
             // also depend on other attrs
-            params.append(self.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
-        }
+            self.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0
+        } else {
+            Vec::new()
+        };
+        let dependent_attr_param_count = dependent_attr_params.len();
+        params.append(dependent_attr_params);
 
         params.0.insert(0, coq::binder::Binder::new_rrgs());
 
@@ -1006,13 +1010,7 @@ impl SpecDecl<'_> {
 
         let mut attrs_string = String::new();
         // first two are for refinedrustGS, then all the RT + st parameters, then attrs for trait deps
-        let attr_param_count = 2
-            + self.get_ordered_params().params.len()
-            + (if self.lit.attrs_dependent {
-                self.generics.get_direct_trait_requirements().len()
-            } else {
-                0
-            });
+        let attr_param_count = 2 + self.get_ordered_params().params.len() + dependent_attr_param_count;
         for _ in 0..attr_param_count {
             write!(attrs_string, " {{_}}").unwrap();
         }
