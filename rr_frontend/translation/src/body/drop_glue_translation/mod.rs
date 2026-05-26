@@ -14,11 +14,12 @@ use log::{info, trace};
 use radium::{code, coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::mir_dataflow::impls::always_storage_live_locals;
 use rr_rustc_interface::{abi, hir};
 use typed_arena::Arena;
 
 use crate::base::*;
-use crate::body::mir_lowering::TranslationKey;
+use crate::body::mir_lowering::{MirTranslationCtx as _, MirTypeTranslation as _, TranslationKey};
 use crate::error::Message;
 use crate::traits::registry;
 use crate::{procedures, types};
@@ -36,6 +37,7 @@ pub(crate) struct DropGlueTX<'a, 'def, 'tcx> {
     ty_translator: &'def types::TX<'def, 'tcx>,
     generic_scope: types::scope::Params<'tcx, 'def>,
     variable_map: HashMap<mir::Local, String>,
+    always_live_locals: Vec<mir::Local>,
     collected_procedures: HashMap<TranslationKey<'tcx>, code::UsedProcedure<'def>>,
     used_literals: RefCell<BTreeMap<types::scope::AdtUseKey, specs::types::LiteralUse<'def>>>,
     used_tuples: RefCell<BTreeMap<Vec<lang::SynType>, specs::types::LiteralUse<'def>>>,
@@ -107,7 +109,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             &generic_scope,
             &translated_adt_ty,
         )?;
-        let variable_map = Self::initialize_locals(tcx, body, &mut translated_fn)?;
+        let (variable_map, always_live_locals) = Self::initialize_locals(tcx, body, &mut translated_fn)?;
 
         Ok(Self {
             tcx,
@@ -118,6 +120,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             ty_translator,
             generic_scope,
             variable_map,
+            always_live_locals,
             collected_procedures: HashMap::new(),
             used_literals,
             used_tuples,
@@ -225,7 +228,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         body: &mir::Body<'tcx>,
         translated_fn: &mut code::FunctionBuilder<'def>,
-    ) -> Result<HashMap<mir::Local, String>, TranslationError> {
+    ) -> Result<(HashMap<mir::Local, String>, Vec<mir::Local>), TranslationError> {
         let ptr_local = mir::Local::from_u32(1);
         let ptr_decl = body.local_decls.get(ptr_local).ok_or_else(|| {
             TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(
@@ -244,6 +247,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         }
 
         let mut variable_map = HashMap::new();
+        let always_live = always_storage_live_locals(body);
+        let mut always_live_locals = Vec::new();
         for local in body.local_decls.indices() {
             let name = if local == mir::Local::from_u32(0) {
                 "ret".to_owned()
@@ -252,10 +257,27 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             } else {
                 format!("__{}", local.index())
             };
+            if body.local_kind(local) != mir::LocalKind::Arg && always_live.contains(local) {
+                always_live_locals.push(local);
+            }
             variable_map.insert(local, name);
         }
         translated_fn.code.add_argument("ptr", lang::SynType::Ptr);
-        Ok(variable_map)
+        Ok((variable_map, always_live_locals))
+    }
+
+    pub(super) fn initial_always_live_stmts(&self) -> Result<Vec<code::PrimStmt>, TranslationError> {
+        let mut prim_stmts = Vec::new();
+        for local in &self.always_live_locals {
+            let Some(local_name) = self.variable_map.get(local) else {
+                continue;
+            };
+            let ty = self.shape_type_of_local(*local)?;
+            let translated_st = self.translate_type_to_syn_type(ty)?;
+            let var = code::Variable::new(local_name.to_owned(), translated_st);
+            prim_stmts.push(code::PrimStmt::LocalLive(var));
+        }
+        Ok(prim_stmts)
     }
 
     /// Translate all reachable drop-glue basic blocks starting from `_bb0`.

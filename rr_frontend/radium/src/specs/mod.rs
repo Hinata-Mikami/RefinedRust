@@ -950,17 +950,17 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
 
     /// Add a trait requirement.
     pub fn add_trait_requirement(&mut self, req: T) {
-        if req.get_origin() == TyParamOrigin::Direct {
-            self.direct_trait_requirements.push(req);
-        } else {
+        if req.get_origin().is_surrounding() {
             self.surrounding_trait_requirements.push(req);
+        } else {
+            self.direct_trait_requirements.push(req);
         }
     }
 
     pub fn make_direct_params_surrounding(&mut self) {
         self.surrounding_tys.merge(self.direct_tys.clone());
         self.direct_tys = TyParamList::empty();
-        self.surrounding_trait_requirements.extend(self.direct_trait_requirements.drain(..));
+        self.surrounding_trait_requirements.append(&mut self.direct_trait_requirements);
     }
 
     #[must_use]

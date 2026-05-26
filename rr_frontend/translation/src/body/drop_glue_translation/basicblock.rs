@@ -27,6 +27,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         bb: &mir::BasicBlockData<'tcx>,
     ) -> Result<code::Stmt, TranslationError> {
         let mut prim_stmts = Vec::new();
+        if bb_idx == mir::BasicBlock::from_u32(0) {
+            prim_stmts.extend(self.initial_always_live_stmts()?);
+        }
 
         for (idx, stmt) in bb.statements.iter().enumerate() {
             let loc = mir::Location {
