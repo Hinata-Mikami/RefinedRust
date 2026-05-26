@@ -10,6 +10,7 @@ mod tx_impl;
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+use attribute_parse::parse;
 use log::{info, trace};
 use radium::{code, coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
@@ -21,8 +22,9 @@ use typed_arena::Arena;
 use crate::base::*;
 use crate::body::mir_lowering::{MirTranslationCtx as _, MirTypeTranslation as _, TranslationKey};
 use crate::error::Message;
+use crate::spec_parsers::parse_utils;
 use crate::traits::registry;
-use crate::{procedures, types};
+use crate::{attrs, environment, procedures, types};
 
 /// Translator for rustc-generated drop-glue MIR shims.
 ///
@@ -42,6 +44,7 @@ pub(crate) struct DropGlueTX<'a, 'def, 'tcx> {
     used_literals: RefCell<BTreeMap<types::scope::AdtUseKey, specs::types::LiteralUse<'def>>>,
     used_tuples: RefCell<BTreeMap<Vec<lang::SynType>, specs::types::LiteralUse<'def>>>,
     drop_glue_trait_ref: specs::traits::RefInst<'def>,
+    extra_context_items: coq::binder::BinderList,
     translated_fn: code::FunctionBuilder<'def>,
     bb_queue: Vec<mir::BasicBlock>,
     processed_bbs: HashSet<mir::BasicBlock>,
@@ -50,6 +53,7 @@ pub(crate) struct DropGlueTX<'a, 'def, 'tcx> {
 pub(crate) struct TranslatedDropGlue<'def> {
     pub(crate) function: code::Function<'def>,
     pub(crate) trait_ref: specs::traits::RefInst<'def>,
+    pub(crate) extra_context_items: coq::binder::BinderList,
 }
 
 impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
@@ -90,6 +94,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             trait_registry,
             &mut translated_fn,
         )?;
+        let extra_context_items = Self::parse_adt_context_items(tcx, adt_did, &generic_scope)?;
+        for binder in extra_context_items.0.clone() {
+            translated_fn.add_late_coq_param(binder);
+        }
         let used_literals = RefCell::new(BTreeMap::new());
         let used_tuples = RefCell::new(BTreeMap::new());
         let translated_adt_ty = Self::translate_adt_type(
@@ -125,6 +133,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             used_literals,
             used_tuples,
             drop_glue_trait_ref,
+            extra_context_items,
             translated_fn,
             bb_queue: vec![mir::BasicBlock::from_u32(0)],
             processed_bbs: HashSet::new(),
@@ -171,6 +180,35 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         function_scope.make_direct_params_surrounding();
         translated_fn.provide_generic_scope(function_scope);
         Ok(generic_scope)
+    }
+
+    fn parse_adt_context_items(
+        tcx: ty::TyCtxt<'tcx>,
+        adt_did: DefId,
+        generic_scope: &types::scope::Params<'tcx, 'def>,
+    ) -> Result<coq::binder::BinderList, TranslationError> {
+        let attrs = environment::get_attributes(tcx, adt_did);
+        let attrs = attrs::filter_for_tool(attrs);
+        let mut context_items = Vec::new();
+
+        for attr in attrs {
+            let Some(seg) = attr.path.segments.get(1) else {
+                continue;
+            };
+            if seg.as_str() != "context" {
+                continue;
+            }
+
+            let buffer = parse::Buffer::new(&parse_utils::attr_args_tokens(&attr.args));
+            let binder = parse_utils::parse_context_item(&buffer, generic_scope).map_err(|err| {
+                TranslationError::ErrorReported(
+                    tcx.dcx().span_err(attr.span, Message::AttributeError(parse_utils::str_err(err))),
+                )
+            })?;
+            context_items.push(binder);
+        }
+
+        Ok(coq::binder::BinderList::new(context_items))
     }
 
     fn translate_adt_type(
@@ -328,10 +366,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         }
 
         let trait_ref = self.drop_glue_trait_ref.clone();
+        let extra_context_items = self.extra_context_items.clone();
         let function = self.translated_fn.into_function(fn_arena);
         Ok(TranslatedDropGlue {
             function,
             trait_ref,
+            extra_context_items,
         })
     }
 

@@ -349,6 +349,13 @@ impl From<RRCoqContextItem> for coq::binder::Binder {
     }
 }
 
+pub(crate) fn parse_context_item<'def, T: ParamLookup<'def>>(
+    buffer: &parse::Buffer,
+    scope: &T,
+) -> parse::Result<coq::binder::Binder> {
+    <RRCoqContextItem as parse::Parse<T>>::parse(buffer, scope).map(Into::into)
+}
+
 #[expect(clippy::needless_pass_by_value)]
 pub(crate) fn str_err(e: parse::Error) -> String {
     format!("{:?}", e)

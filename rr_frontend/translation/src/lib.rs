@@ -1668,7 +1668,7 @@ fn translate_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipeli
                 let impl_spec = specs::traits::ImplSpec::new(
                     translated.trait_ref,
                     instance_spec,
-                    coq::binder::BinderList::empty(),
+                    translated.extra_context_items,
                 );
                 let impl_key = registry::ImplKey::Virtual(registry::VirtualImpl::DropGlueForAdt(did));
                 vcx.trait_impls.insert(impl_key.clone(), impl_spec);

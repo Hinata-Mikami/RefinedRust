@@ -15,8 +15,8 @@ use rr_rustc_interface::span::{DUMMY_SP, Span};
 
 use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{
-    CoqLiteralError, IProp, IdentOrTerm, LiteralType, ParamLookup, RRCoqContextItem, RRParamsNamed, RRTerms,
-    attr_args_tokens, str_err,
+    CoqLiteralError, IProp, IdentOrTerm, LiteralType, ParamLookup, RRParamsNamed, RRTerms, attr_args_tokens,
+    parse_context_item, str_err,
 };
 
 pub(crate) const INVARIANT_SPEC_ATTRS: &[&str] = &[
@@ -411,14 +411,8 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
                     abstracted_refinement = Some(term.to_string());
                 },
                 "context" => {
-                    let param =
-                        RRCoqContextItem::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
-
-                    params.push(coq::binder::Binder::new_generalized(
-                        coq::binder::Kind::MaxImplicit,
-                        None,
-                        coq::term::Type::Literal(param.item),
-                    ));
+                    params
+                        .push(parse_context_item(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?);
                 },
                 _ => {
                     //skip, this may be part of an enum spec

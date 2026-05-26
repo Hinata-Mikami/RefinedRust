@@ -7,14 +7,14 @@
 use std::collections::BTreeMap;
 
 use attribute_parse::MToken;
-use attribute_parse::parse::{self, Parse as _, Peek as _};
+use attribute_parse::parse::{self, Peek as _};
 use radium::{coq, specs};
 use rr_rustc_interface::hir;
 use rr_rustc_interface::span::Span;
 
 use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{
-    CoqLiteralError, IdentOrTerm, ParamLookup, RRCoqContextItem, attr_args_tokens, str_err,
+    CoqLiteralError, IdentOrTerm, ParamLookup, attr_args_tokens, parse_context_item, str_err,
 };
 
 pub(crate) const DERIVE_TRAIT_IMPL_SPEC_ATTRS: &[&str] = &["derive_instantiate", "context"];
@@ -156,10 +156,8 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
                     }
                 },
                 "context" => {
-                    let context_item =
-                        RRCoqContextItem::parse(&buffer, self.scope).map_err(|err| parse_err(span, err))?;
-                    let param = context_item.into();
-                    context_items.push(param);
+                    context_items
+                        .push(parse_context_item(&buffer, self.scope).map_err(|err| parse_err(span, err))?);
                 },
                 _ => (),
             }
