@@ -87,8 +87,8 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
     shim_registry: shims::registry::SR<'rcx>,
 
     /// trait implementations we generated
-    trait_impls: BTreeMap<OrderedDefId, specs::traits::ImplSpec<'rcx>>,
-    trait_impl_deps: BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>,
+    trait_impls: BTreeMap<registry::ImplKey, specs::traits::ImplSpec<'rcx>>,
+    trait_impl_deps: BTreeMap<registry::ImplKey, BTreeSet<OrderedDefId>>,
 }
 
 #[derive(Debug)]
@@ -316,11 +316,23 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         }
 
         // trait impls
-        for (did, decl) in &self.trait_impls {
-            if let Some(entry) = self.make_trait_impl_shim_entry(did.def_id, decl) {
-                trait_impl_shims.push(entry);
-            } else {
-                info!("Creating trait impl shim entry failed for {did:?}");
+        for (key, decl) in &self.trait_impls {
+            match key {
+                registry::ImplKey::Rust(did) => {
+                    if let Some(entry) = self.make_trait_impl_shim_entry(did.def_id, decl) {
+                        trait_impl_shims.push(entry);
+                    } else {
+                        info!("Creating trait impl shim entry failed for {did:?}");
+                    }
+                },
+                registry::ImplKey::Virtual(registry::VirtualImpl::DropGlueForAdt(did)) => {
+                    let key = procedures::DropGlueKey::Adt(did.clone());
+                    if let Some(entry) = self.make_drop_glue_trait_impl_shim_entry(&key) {
+                        trait_impl_shims.push(entry);
+                    } else {
+                        info!("Creating virtual drop-glue trait impl shim entry failed for {did:?}");
+                    }
+                },
             }
         }
 
@@ -361,7 +373,14 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                     }
                 },
                 procedures::ProcedureKey::DropGlue(key) => {
-                    if let Some(shim) = self.make_drop_glue_trait_impl_shim_entry(key) {
+                    let virtual_impl_key = match key {
+                        procedures::DropGlueKey::Adt(did) => {
+                            registry::ImplKey::Virtual(registry::VirtualImpl::DropGlueForAdt(did.clone()))
+                        },
+                    };
+                    if !self.trait_impls.contains_key(&virtual_impl_key)
+                        && let Some(shim) = self.make_drop_glue_trait_impl_shim_entry(key)
+                    {
                         trait_impl_shims.push(shim);
                     }
                 },
@@ -454,7 +473,13 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             let enum_defs = self.type_translator.get_enum_defs();
             let mut adt_deps = self.type_translator.get_adt_deps();
 
-            adt_deps.append(&mut self.trait_impl_deps.clone());
+            let mut rust_trait_impl_deps = BTreeMap::new();
+            for (key, deps) in &self.trait_impl_deps {
+                if let registry::ImplKey::Rust(did) = key {
+                    rust_trait_impl_deps.insert(did.clone(), deps.clone());
+                }
+            }
+            adt_deps.append(&mut rust_trait_impl_deps);
 
             let ordered = base::order_defs_with_deps(self.tcx, &adt_deps);
             info!("ordered ADT defns: {:?}", ordered);
@@ -481,7 +506,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
                     // type definition
                     writeln!(spec_file, "{}", eu.generate_coq_type_def()).unwrap();
-                } else if let Some(impl_ref) = self.trait_impls.get(&ordered_did) {
+                } else if let Some(impl_ref) = self.trait_impls.get(&registry::ImplKey::Rust(ordered_did)) {
                     writeln!(spec_file, "Section attrs.").unwrap();
                     writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
                     writeln!(spec_file, "{}\n", impl_ref.generate_attr_decl()).unwrap();
@@ -2357,9 +2382,9 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<()
         let spec = process_impl();
         match spec {
             Ok((spec, deps)) => {
-                let ordered_did = OrderedDefId::new(vcx.tcx, did);
-                vcx.trait_impls.insert(ordered_did.clone(), spec);
-                vcx.trait_impl_deps.insert(ordered_did, deps);
+                let key = registry::ImplKey::rust(vcx.tcx, did);
+                vcx.trait_impls.insert(key.clone(), spec);
+                vcx.trait_impl_deps.insert(key, deps);
             },
             Err(base::TranslationError::ErrorReported(err)) => {
                 vcx.tcx
