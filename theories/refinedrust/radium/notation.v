@@ -201,7 +201,7 @@ Definition AnnotExpr (n : nat) {A} (a : A) (e : expr) := Nat.iter n SkipE e.
 Arguments AnnotExpr : simpl never.
 Global Typeclasses Opaque AnnotExpr.
 
-Notation "'return' e" := (Return (SkipE (SkipE e%E))) (at level 80, format "'return'  e") : expr_scope.
+Notation "'return' e" := (Return (SkipE (SkipE (SkipE e%E)))) (at level 80, format "'return'  e") : expr_scope.
 
 (* We define this in terms of expressions in order to be able to `bind` the skips.
   This is what enables us to use [wp_step_fupdN] in a sensible way that allows

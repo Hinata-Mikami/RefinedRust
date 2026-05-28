@@ -807,7 +807,7 @@ Section judgments.
       allocated_locals f locals -∗
       ([∗ list] x ∈ locals, ∃ ly l st, ⌜syn_type_has_layout st ly⌝ ∗ x is_live{f, st} l ∗ l ↦|ly|) -∗
       R v L' -∗
-      Φ v).
+      logical_step ⊤ (Φ v)).
 
   (* [Q]: the current function body,
      [ϝ]: the function lifetime

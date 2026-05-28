@@ -92,7 +92,7 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
     We need to be able to transform ownership of the return type given by [typed_stmt]
       to the type + ensures condition that the function really needs to return *)
   Definition fn_ret_prop {B} π (fr : B → fn_ret) : val → iProp Σ :=
-    (λ v,
+(λ v,
     (* there exists an inhabitant of the spec-level existential *)
       ∃ x,
       (* st. the return type is satisfied *)
@@ -154,7 +154,7 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
           let L := [ϝ ⊑ₗ{0} []] in
           fn_init_context fn fps π f lsa sta -∗ introduce_typed_stmt E L (π, f) ϝ fn (
             λ v L2,
-            prove_with_subtype E L2 false ProveDirect (fn_ret_prop π fps.(fp_fr) v) True%I (λ L3 _ R3,
+            prove_with_subtype E L2 true ProveDirect (fn_ret_prop π fps.(fp_fr) v) True%I (λ L3 _ R3,
             introduce_with_hooks E L3 R3 (λ L4,
             (* we don't really kill it here, but just need to find it in the context *)
             li_tactic (llctx_find_llft_goal L4 ϝ LlctxFindLftFull) (λ _,
@@ -390,13 +390,16 @@ Section call.
       rewrite Hlyv. iR. iExists _. iR. eauto with iFrame. }
 
     iExists RET_PROP. iSplitL "Hf Hm Hϝ" => /=.
-    - iApply wps_fupd.
-      iApply ("Hm" with "[$LFT $LCTX] HE' [$Hϝ//] Hf []").
+    - iApply ("Hm" with "[$LFT $LCTX] HE' [$Hϝ//] Hf []").
       iIntros (L5 v' locals) "HL Hf Hlocals Hloc HT". simpl.
+      iApply fupd_logical_step.
       iMod ("HT" $! _ True%I with "[] [] [] [] HE' HL []") as "(%L3 & %κs1 & %R4 & Hp & HL & HT)"; [done.. |  | | ].
       { rewrite /rrust_ctx. iFrame "#". }
       { iApply maybe_logical_step_intro. done. }
-      iMod "Hp" as "(HR & Hret & _)".
+      iModIntro.
+      iApply logical_step_fupd.
+      iApply (logical_step_wand with "Hp").
+      iIntros "(HR & Hret & _)".
       iMod ("HT" with "[] [$] HE' HL HR") as "(%L6 & HL & HT)"; first done.
       rewrite /llctx_find_llft_goal.
       iDestruct "HT" as "(%HL6 & %κs' & %Hfind & HT)".
@@ -734,19 +737,22 @@ Section function_subsume.
     iApply ("Hrt" with "HL Hfr Hlocals Hlocs").
     iIntros (?????) "_ _ HL HA".
     iMod ("Hpost" with "[//] [//] [//] CTX HE2 HL HA") as "(%L2 & %κs2 & %R & Hs & HL & Hintro)".
-    iMod "Hs" as "(HR & (%x & Hrt & Hpost & _) & ?)".
+    iExists L2, [], R.
+    iFrame.
+    iSplitR "Hintro"; first last.
+    { iModIntro.
+      simpl.
+      iIntros (??) "_ _ HL HP".
+      rewrite /llctx_find_llft_goal.
+      rewrite /FindCreditStore.
+      iMod ("Hintro" with "[//] CTX HE2 HL HP") as "(%L3 & HL & %L4 & %κs3 & % & % & Hc & HT)".
+      simpl.
+      iModIntro. iExists L3. iFrame.
+      by iExists _, _. }
+    iApply (logical_step_wand with "Hs").
+    iIntros "!> (HR & (%x & Hrt & Hpost & _) & ?)".
     iDestruct ("HT" with "Hpost Hrt") as "(%y & Hpost & Hrt & _)".
-    (* TODO could also allow prove_with_subtype etc here? *)
-    iModIntro.
-    simpl. iExists L2, [], R. iFrame.
-    iSplitR "Hintro"; first done.
-    iIntros (??) "_ _ HL HP".
-    rewrite /llctx_find_llft_goal.
-    rewrite /FindCreditStore.
-    iMod ("Hintro" with "[//] CTX HE2 HL HP") as "(%L3 & HL & %L4 & %κs3 & % & % & Hc & HT)".
-    simpl.
-    iModIntro. iExists L3. iFrame.
-    by iExists _, _.
+    iFrame.
   Qed.
   (* NOTE: Don't use the instance generation, as it will instantiate the equalities with [eq_refl]. *)
   Global Instance subsume_typed_function_inst π fn {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) :
@@ -805,12 +811,17 @@ Section function_subsume.
     iApply ("Hpost" with "HL Hf Halloc Hx").
     iIntros (?????) "_ _ HL HA".
     iMod ("HR" with "[//] [//] [//] CTX HE2 HL HA") as "(%L2 & %κs2 & %R2 & Hstep & $ & HT)".
-    simpl. iMod ("Hstep") as "(? & (%x & ? & ? & _) & ?)".
-    rewrite Heq6. iFrame.
-    iExists κs2, R2. iFrame. iR.
-    iModIntro.
-    iIntros (??) "_ _ HL HP".
-    by iApply ("HT" with "[] CTX HE2 HL HP").
+    simpl.
+
+    iExists κs2, R2.
+    iSplitL "Hstep"; first last.
+    { iModIntro.
+      iIntros (??) "_ _ HL HP".
+      by iApply ("HT" with "[] CTX HE2 HL HP"). }
+    iModIntro. iApply (logical_step_wand with "Hstep").
+    iIntros "(? & (%x & ? & ? & _) & ?)".
+    rewrite Heq6.
+    iFrame.
   Qed.
   (* NOTE: Don't use the instance generation, as it will instantiate the equalities with [eq_refl]. *)
   Global Instance subsume_typed_function_fast_inst π fn {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) `{Heq : !FastFunctionSpecEq F1 F2} :

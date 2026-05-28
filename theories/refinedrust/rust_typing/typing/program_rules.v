@@ -5365,9 +5365,7 @@ Section subsume.
               l ◁ₗ[f.1, Owned] (#()) @ (◁ (uninit st)) ∗ T)
             True%I
             locals) True%I (λ L3 _ R2, introduce_with_hooks E L3 R2 (λ L4,
-            (* important: when proving the postcondition [R v], we already have the ownership obtained by deinitializing the local variables [R2] available.
-              The remaining goal is fully encoded by [R v], so the continuation is empty.
-            *)
+            (* important: when proving the postcondition [R v], we already have the ownership obtained by deinitializing the local variables [R2] available. *)
             R v L4
             ))))))))
     ⊢ typed_stmt E L f (return e) fn R ϝ.
@@ -5394,12 +5392,13 @@ Section subsume.
     iSpecialize ("HT" $! ⊤ True%I).
     iMod ("HT" with "[] [] [] [$] HE HL []") as "(%L5 & % & %R3 & HP & HL & HT)";
       [set_solver.. | iApply maybe_logical_step_intro; iSplit; done | ].
-    iApply (wpe_maybe_logical_step with "HP"); [done.. | ].
-    iModIntro. iApply wp_skip.
+
+    iModIntro. wpe_bind.
+    iApply (wpe_logical_step with "HP"); [done.. | ].
+    iApply wp_skip.
     iApply physical_step_intro; iNext.
     iIntros "(HR2 & Ha & _)".
-    iApply wps_fupd.
-    iApply wps_return.
+
     unfold li_tactic, llctx_find_llft_goal.
     iMod ("HT" with "[] [$] HE HL HR2") as "(%L6 & HL & HT)"; first done.
 
@@ -5418,7 +5417,14 @@ Section subsume.
       iFrame.
       iPoseProof (ty_own_val_has_layout with "Hv") as "%"; first done.
       iExists _. done. }
-    iApply ("Hcont" with "Ha HT").
+    iSpecialize ("Hcont" with "Ha HT").
+
+    iApply (wpe_logical_step with "Hcont"); [done.. | ].
+    iApply wp_skip.
+    iApply physical_step_intro; iNext.
+    iIntros "?".
+    iApply wps_return.
+    done.
   Qed.
 End subsume.
 
@@ -5429,124 +5435,90 @@ Global Hint Extern 1 (Subsume (?v ◁ᵥ{_, _} ?r1 @ ?ty1) (?v ◁ᵥ{_, _} ?r2 
   class_apply own_val_subsume_id_inst : typeclass_instances.
 
 
-Global Typeclasses Opaque subsume_full.
 Global Typeclasses Opaque credit_store.
+
 Global Typeclasses Opaque typed_value.
 Global Typeclasses Opaque typed_val_expr.
+Global Typeclasses Opaque typed_stmt.
+Global Typeclasses Opaque typed_stmt_post_cond.
+Global Typeclasses Opaque typed_annot_expr.
+Global Typeclasses Opaque typed_block.
 
 Global Typeclasses Opaque typed_bin_op.
-
 Global Typeclasses Opaque typed_un_op.
-
 Global Typeclasses Opaque typed_check_bin_op.
-
 Global Typeclasses Opaque typed_check_un_op.
 
 Global Typeclasses Opaque typed_if.
-
+Global Typeclasses Opaque typed_switch.
 Global Typeclasses Opaque typed_call.
-
-Global Typeclasses Opaque typed_annot_expr.
-
-Global Typeclasses Opaque introduce_with_hooks.
-Global Typeclasses Opaque iterate_with_hooks.
-Global Typeclasses Opaque typed_stmt_post_cond.
-
 Global Typeclasses Opaque typed_assert.
-
 Global Typeclasses Opaque typed_annot_stmt.
 
-Global Typeclasses Opaque typed_switch.
-
-Global Typeclasses Opaque typed_place.
-
-Global Typeclasses Opaque cast_ltype_to_type.
-
-Global Typeclasses Opaque resolve_ghost.
-Global Typeclasses Opaque resolve_ghost_adt.
-
-Global Typeclasses Opaque find_observation.
-
-Global Typeclasses Opaque stratify_ltype.
-Global Typeclasses Opaque typed_stmt.
-
-Global Typeclasses Opaque typed_block.
-
-
-Global Typeclasses Opaque stratify_ltype_post_hook.
-
-Global Typeclasses Opaque weak_subtype.
-
-Global Typeclasses Opaque weak_subltype.
-
-Global Typeclasses Opaque owned_subtype.
-
-Global Typeclasses Opaque owned_subltype_step.
-
-Global Typeclasses Opaque mut_subtype.
-Global Typeclasses Opaque subtype_adt.
-
-Global Typeclasses Opaque mut_subltype.
-
-Global Typeclasses Opaque mut_eqtype.
-
-Global Typeclasses Opaque mut_eqltype.
-
-Global Typeclasses Opaque prove_with_subtype.
-
-Global Typeclasses Opaque prove_place_cond.
+Global Typeclasses Opaque typed_read.
 Global Typeclasses Opaque typed_read_end.
 
+Global Typeclasses Opaque typed_write.
 Global Typeclasses Opaque typed_write_end.
 
 Global Typeclasses Opaque typed_borrow_mut.
-
 Global Typeclasses Opaque typed_borrow_mut_end.
 
 Global Typeclasses Opaque typed_borrow_shr.
-
 Global Typeclasses Opaque typed_borrow_shr_end.
 
 Global Typeclasses Opaque typed_addr_of_mut.
-
 Global Typeclasses Opaque typed_addr_of_mut_end.
 
-Global Typeclasses Opaque interpret_typing_hint.
-
-Global Typeclasses Opaque typed_context_fold.
-
-
-Global Typeclasses Opaque typed_context_fold_end.
-
-Global Typeclasses Opaque relate_list.
-
-Global Typeclasses Opaque relate_hlist.
-
-Global Typeclasses Opaque fold_list.
-
-Global Typeclasses Opaque typed_pre_context_fold.
-
-Global Typeclasses Opaque typed_context_fold_step.
-
-Global Typeclasses Opaque typed_write.
-
-
-
-Global Typeclasses Opaque llctx_release_toks_goal.
-
-Global Typeclasses Opaque lctx_lft_alive_count_goal.
-
-Global Typeclasses Opaque typed_place_finish.
-
+Global Typeclasses Opaque typed_place.
 Global Typeclasses Transparent typed_place_finish.
+Global Typeclasses Opaque prove_place_cond.
 
-Global Typeclasses Opaque typed_read.
+Global Typeclasses Opaque introduce_with_hooks.
+Global Typeclasses Opaque prove_with_subtype.
+Global Typeclasses Opaque subsume_full.
+Global Typeclasses Opaque iterate_with_hooks.
 
+Global Typeclasses Opaque cast_ltype_to_type.
+Global Typeclasses Opaque stratify_ltype.
+Global Typeclasses Opaque stratify_ltype_post_hook.
+Global Typeclasses Opaque interpret_typing_hint.
 Global Typeclasses Opaque stratify_ltype_array_iter.
 Global Hint Mode StratifyLtypeArrayIter + + + + + + + + + + + + + + + + + : typeclass_instances.
 
-Global Hint Mode ResolveGhostIter + + + + + + + + + + + + + + + : typeclass_instances.
-Global Typeclasses Opaque resolve_ghost_iter.
+Global Typeclasses Opaque find_observation.
+Global Typeclasses Opaque resolve_ghost.
+Global Typeclasses Opaque resolve_ghost_adt.
 
-Global Hint Mode TypedArrayAccess + + + + + + + + + + + + : typeclass_instances.
+Global Typeclasses Opaque resolve_ghost_iter.
+Global Hint Mode ResolveGhostIter + + + + + + + + + + + + + + + : typeclass_instances.
+
+Global Typeclasses Opaque owned_subtype.
+Global Typeclasses Opaque weak_subtype.
+Global Typeclasses Opaque mut_subtype.
+Global Typeclasses Opaque mut_eqtype.
+
+Global Typeclasses Opaque owned_subltype_step.
+Global Typeclasses Opaque weak_subltype.
+Global Typeclasses Opaque mut_subltype.
+Global Typeclasses Opaque mut_eqltype.
+
+Global Typeclasses Opaque subtype_adt.
+
+Global Typeclasses Opaque typed_context_fold.
+Global Typeclasses Opaque typed_context_fold_step.
+Global Typeclasses Opaque typed_pre_context_fold.
+Global Typeclasses Opaque typed_context_fold_end.
+
+Global Typeclasses Opaque relate_list.
+Global Typeclasses Opaque relate_hlist.
+Global Typeclasses Opaque fold_list.
+
+Global Typeclasses Opaque llctx_release_toks_goal.
+Global Typeclasses Opaque lctx_lft_alive_count_goal.
+
+
+
+
 Global Typeclasses Opaque typed_array_access.
+Global Hint Mode TypedArrayAccess + + + + + + + + + + + + : typeclass_instances.
