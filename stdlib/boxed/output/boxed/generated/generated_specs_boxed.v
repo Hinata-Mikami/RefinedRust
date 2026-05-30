@@ -36,9 +36,10 @@ Section Box_inv_t.
             let 'x := _ty_rfn in ∃ (l: name_hint_ty "l" ((loc))%Z) (a: name_hint_ty "a" (((RT_xt (A_rt))))%Z), ⌜inner_rfn = -[#(l); #($# a)]⌝ ∗ guarded true (l ◁ₗ[π, Owned] x @ ◁ T_ty) ∗ Allocator_A_spec_attrs.(Allocator_FreeablePerm) a l (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))) ∗ True)%I
     ([] ++ ty_lfts T_ty)
     ([] ++ ty_wf_E T_ty)
-    _ _ _
+    _ _ _ _
   .
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
 

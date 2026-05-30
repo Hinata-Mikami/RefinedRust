@@ -34,9 +34,10 @@ Section nonnull_NonNull_inv_t.
             let 'l := _ty_rfn in ⌜inner_rfn = -[#(l)]⌝ ∗ ⌜(l.(loc_a) ≠ 0)%Z⌝ ∗ True)%I
     ([])
     ([])
-    _ _ _
+    _ _ _ _
   .
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 
@@ -87,9 +88,10 @@ Section unique_Unique_inv_t.
             let 'l := _ty_rfn in ⌜inner_rfn = -[#(l); #(tt)]⌝ ∗ True)%I
     ([])
     ([])
-    _ _ _
+    _ _ _ _
   .
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 

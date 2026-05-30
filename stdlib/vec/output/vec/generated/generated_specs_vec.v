@@ -73,9 +73,10 @@ Section Iter_inv_t.
             let 'xs := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z) (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(x); #(y)]⌝ ∗ True)%I
     ([])
     ([])
-    _ _ _
+    _ _ _ _
   .
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 
@@ -118,9 +119,10 @@ Section IterMut_inv_t.
             let 'xs := _ty_rfn in ∃ (x: name_hint_ty "x" ((loc))%Z) (y: name_hint_ty "y" ((loc))%Z), ⌜inner_rfn = -[#(x); #(y); #(tt)]⌝ ∗ True)%I
     ([])
     ([])
-    _ _ _
+    _ _ _ _
   .
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 
@@ -163,9 +165,10 @@ Section IntoIter_inv_t.
             let 'xs := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z) (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(x); #(y)]⌝ ∗ True)%I
     ([])
     ([])
-    _ _ _
+    _ _ _ _
   .
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
 
@@ -208,9 +211,10 @@ Section RawVecInner_inv_t.
             let '(l, cap, alloc) := _ty_rfn in ⌜inner_rfn = -[#(l); #(Z.of_nat cap); #(alloc)]⌝ ∗ True)%I
     ([])
     ([])
-    _ _ _
+    _ _ _ _
   .
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
 
@@ -253,9 +257,10 @@ Section RawVec_inv_t.
             let '(l, cap) := _ty_rfn in ∃ (a: name_hint_ty "a" (_)%Z), ⌜inner_rfn = -[#((l, cap, a)); #(tt)]⌝ ∗ freeable_nz l (size_of_array_in_bytes (ty_syn_type T_ty MetaNone) cap) 1 HeapAlloc ∗ True)%I
     ([])
     ([])
-    _ _ _
+    _ _ _ _
   .
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
 
@@ -352,9 +357,10 @@ Section Vec_inv_t.
             let 'xs := _ty_rfn in ∃ (cap: name_hint_ty "cap" ((nat))%Z) (l: name_hint_ty "l" ((loc))%Z) (len: name_hint_ty "len" ((nat))%Z) (els: name_hint_ty "els" (_)%Z), ⌜inner_rfn = -[#((l, cap)); #(Z.of_nat len)]⌝ ∗ guarded true (l ◁ₗ[π, Owned] #(els) @ (◁ array_t cap (maybe_uninit T_ty))) ∗ ⌜(name_hint "Hxs" (xs = project_vec_els len els)%Z)%Z⌝ ∗ ⌜(name_hint "Hlook_1" (∀ i, (0 ≤ i < len)%nat → els !! i = Some (#(Some (xs !!! i))))%Z)%Z⌝ ∗ ⌜(name_hint "Hlook_2" (∀ i, (len ≤ i < cap)%nat → els !! i = Some (#None))%Z)%Z⌝ ∗ ⌜(name_hint "Hlen_eq" (len = length xs)%Z)%Z⌝ ∗ ⌜(name_hint "Hcap" (len ≤ cap)%Z)%Z⌝ ∗ ⌜(name_hint "Hbound" (len ≤ MaxInt usize)%Z)%Z⌝ ∗ ⌜(if decide (size_of_st (ty_syn_type T_ty MetaNone) = 0%nat) then cap = Z.to_nat (MaxInt USize) else (size_of_array_in_bytes (ty_syn_type T_ty MetaNone) cap ≤ MaxInt ISize)%Z)%Z⌝ ∗ True)%I
     ([] ++ (ty_lfts (T_ty)))
     ([] ++ (ty_wf_E (T_ty)))
-    _ _ _
+    _ _ _ _
   .
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
 

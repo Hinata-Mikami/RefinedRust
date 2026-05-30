@@ -94,9 +94,10 @@ Section layout_Layout_inv_t.
             let 'l := _ty_rfn in ⌜inner_rfn = -[#(Z.of_nat l.(layout_sz)); #(l.(layout_alignment))]⌝ ∗ ⌜(layout_wf l)%Z⌝ ∗ ⌜(Z.of_nat l.(layout_sz) ∈ isize)%Z⌝ ∗ True)%I
     ([])
     ([])
-    _ _ _
+    _ _ _ _
   .
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 
@@ -118,6 +119,8 @@ End closure_attrs.
 (* Included specifications from configured file extra_specs.v *)
 Global Instance shareable_discard_freeable `{!refinedrustGS Σ} {Self_rt : RT} (A : Allocator_spec_attrs Self_rt) π κ κs a l n :
   Shareable π κ κs (A.(Allocator_FreeablePerm) a l n) := shareable_discard _ _ _ _.
+Global Instance ghost_droppable_discard_freeable `{!refinedrustGS Σ} {Self_rt : RT} (A : Allocator_spec_attrs Self_rt) a l n :
+  GhostDroppable (A.(Allocator_FreeablePerm) a l n) := ghost_droppable_discard _.
 Record Allocator_spec `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} : Type := mk_Allocator_spec {
 }.
 #[global] Arguments Allocator_spec : clear implicits.

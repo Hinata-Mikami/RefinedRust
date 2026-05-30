@@ -30,9 +30,10 @@ Section RwLock_inv_t.
             let '() := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z), ⌜inner_rfn = -[#(x)]⌝ ∗ True)%I
     ([])
     ([])
-    _ _ _
+    _ _ _ _
   .
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 

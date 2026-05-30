@@ -103,9 +103,10 @@ Section adapters_map_Map_inv_t.
             let 'x := _ty_rfn in ⌜inner_rfn = -[#($# x.(map_it)); #($# x.(map_clos))]⌝ ∗ True)%I
     ([])
     ([])
-    _ _ _
+    _ _ _ _
   .
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 
@@ -148,9 +149,10 @@ Section adapters_skip_Skip_inv_t.
             let '(it, n) := _ty_rfn in ⌜inner_rfn = -[#(it); #(Z.of_nat n)]⌝ ∗ True)%I
     ([])
     ([])
-    _ _ _
+    _ _ _ _
   .
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 
@@ -193,9 +195,10 @@ Section adapters_take_Take_inv_t.
             let '(it, n) := _ty_rfn in ⌜inner_rfn = -[#(it); #(Z.of_nat n)]⌝ ∗ True)%I
     ([])
     ([])
-    _ _ _
+    _ _ _ _
   .
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 

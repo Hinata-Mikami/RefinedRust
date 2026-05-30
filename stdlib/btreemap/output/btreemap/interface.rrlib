@@ -12,6 +12,10 @@
         "collections",
         "BTreeMap"
       ],
+      "raw_type": {
+        "rtype": "(BTreeMap_rt)",
+        "semtype": "BTreeMap_ty"
+      },
       "rtype": "(BTreeMap_inv_t_rt)",
       "semtype": "BTreeMap_inv_t",
       "syntype": "BTreeMap_sls"
