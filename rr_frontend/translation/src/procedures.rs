@@ -356,7 +356,6 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     }
 
     /// Provide the specification for `only_spec` drop glue.
-    #[expect(dead_code)]
     pub(crate) fn provide_specced_drop_glue(
         &mut self,
         key: DropGlueKey,

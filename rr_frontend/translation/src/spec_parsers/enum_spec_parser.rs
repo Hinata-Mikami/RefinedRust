@@ -14,7 +14,7 @@ use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{CoqLiteralError, ParamLookup, attr_args_tokens, str_err};
 
 pub(crate) const ENUM_SPEC_ATTRS: &[&str] =
-    &["refined_by", "partial", "export_as", "derive_instantiate", "verify", "skip"];
+    &["refined_by", "partial", "export_as", "derive_instantiate", "verify", "skip", "trust_me", "only_spec"];
 
 pub(crate) const ENUM_VARIANT_SPEC_ATTRS: &[&str] = &["pattern", "refinement"];
 

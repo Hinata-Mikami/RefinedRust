@@ -54,6 +54,7 @@ pub use crate::environment::mir_mapper::{
     format_inserted_terminator_point_mappings, format_mapping, map_drop_elaborated_to_borrow_checked,
 };
 use crate::shims::registry as shim_registry;
+use crate::spec_parsers::adt_attr_parser::AdtDropGlueMode;
 use crate::spec_parsers::const_attr_parser::{CONST_ATTRS, ConstAttrParser as _, VerboseConstAttrParser};
 use crate::spec_parsers::crate_attr_parser::{CrateAttrParser as _, VerboseCrateAttrParser};
 use crate::spec_parsers::module_attr_parser::{ModuleAttrParser as _, ModuleAttrs, VerboseModuleAttrParser};
@@ -1567,13 +1568,34 @@ fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipeline
     Ok(())
 }
 
+fn get_adt_drop_glue_mode(
+    vcx: &VerificationCtxt<'_, '_>,
+    did: DefId,
+) -> Result<AdtDropGlueMode, ErrorGuaranteed> {
+    let attrs = attrs::filter_for_tool(environment::get_attributes(vcx.tcx, did));
+    spec_parsers::adt_attr_parser::get_adt_drop_glue_mode(&attrs)
+        .map_err(|err| vcx.tcx.dcx().span_err(err.span, error::Message::AttributeError(err.err.to_string())))
+}
+
 /// Register drop glue for non-trivial ADTs in the current crate.
-fn register_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) {
+fn register_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
     for adt in vcx.adts {
         let did = adt.to_def_id();
-        if environment::has_tool_attribute(vcx.tcx, did, "skip") {
+        if environment::has_bare_tool_attribute(vcx.tcx, did, "skip") {
             info!("Skipping drop glue for {:?} due to rr::skip", did);
             continue;
+        }
+
+        let drop_glue_mode = get_adt_drop_glue_mode(vcx, did).map_err(PipelineError::Reported)?;
+        if drop_glue_mode == AdtDropGlueMode::Skip {
+            info!("Skipping drop glue for {:?} due to rr::skip(drop_glue)", did);
+            continue;
+        }
+        if drop_glue_mode == AdtDropGlueMode::TrustMe {
+            info!("Trusting drop glue for {:?} due to rr::trust_me(drop_glue)", did);
+        }
+        if drop_glue_mode == AdtDropGlueMode::OnlySpec {
+            info!("Generating only drop-glue spec for {:?} due to rr::only_spec(drop_glue)", did);
         }
 
         let adt_ty = vcx.tcx.type_of(did).instantiate_identity().skip_norm_wip();
@@ -1600,7 +1622,12 @@ fn register_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) {
             code_name,
             trait_req_incl_name,
             name,
-            procedures::Mode::Prove,
+            match drop_glue_mode {
+                AdtDropGlueMode::Prove => procedures::Mode::Prove,
+                AdtDropGlueMode::TrustMe => procedures::Mode::TrustMe,
+                AdtDropGlueMode::OnlySpec => procedures::Mode::OnlySpec,
+                AdtDropGlueMode::Skip => unreachable!(),
+            },
             false,
             false,
         );
@@ -1608,6 +1635,8 @@ fn register_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) {
         vcx.trait_registry
             .register_virtual_impl(registry::VirtualImpl::DropGlueForAdt(ordered_did), impl_lit);
     }
+
+    Ok(())
 }
 
 /// Translate functions of the crate, assuming they were previously registered.
@@ -1640,21 +1669,56 @@ fn translate_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipeli
             info!("Skipping imported drop-glue shim {:?}", key);
             continue;
         }
-        assert_eq!(mode, procedures::Mode::Prove, "drop glue should be registered in prove or shim mode");
+        assert!(
+            mode.needs_def() || mode.is_only_spec(),
+            "drop glue should be registered in prove, trust_me, only_spec, or shim mode"
+        );
 
         let procedures::DropGlueKey::Adt(did) = key.clone();
         info!("\nTranslating drop glue for {:?}", did.def_id);
 
         let adt_ty = vcx.tcx.type_of(did.def_id).instantiate_identity().skip_norm_wip();
-        let translated = drop_glue_translation::DropGlueTX::new(
+        let tx = drop_glue_translation::DropGlueTX::new(
             vcx.tcx,
             &meta,
             adt_ty,
             &vcx.procedure_registry,
             vcx.type_translator,
             vcx.trait_registry,
-        )
-        .and_then(|tx| tx.translate(vcx.fn_arena));
+        );
+
+        if mode.is_only_spec() {
+            match tx.and_then(drop_glue_translation::DropGlueTX::generate_spec) {
+                Ok(specced) => {
+                    info!("Successfully generated drop-glue spec for {:?}", did.def_id);
+                    let spec_ref = vcx.fn_arena.alloc(specced.spec);
+                    let mut methods = BTreeMap::new();
+                    methods
+                        .insert("drop_glue".to_owned(), specs::traits::InstanceMethodSpec::Defined(spec_ref));
+                    let instance_spec = specs::traits::InstanceSpec::new(methods);
+                    let impl_spec = specs::traits::ImplSpec::new(
+                        specced.trait_ref,
+                        instance_spec,
+                        specced.extra_context_items,
+                    );
+                    let impl_key = registry::ImplKey::Virtual(registry::VirtualImpl::DropGlueForAdt(did));
+                    vcx.trait_impls.insert(impl_key.clone(), impl_spec);
+                    vcx.trait_impl_deps.insert(impl_key, BTreeSet::new());
+                    vcx.procedure_registry.provide_specced_drop_glue(key, spec_ref);
+                },
+                Err(base::TranslationError::ErrorReported(err)) => {
+                    vcx.tcx.dcx().span_warn(
+                        vcx.tcx.def_span(did.def_id),
+                        error::Message::SkippedFunctionDueToPreviousFailure,
+                    );
+                    recover_or_fail(err)?;
+                },
+                Err(base::TranslationError::Tainted(err)) => return Err(PipelineError::Reported(err)),
+            }
+            continue;
+        }
+
+        let translated = tx.and_then(|tx| tx.translate(vcx.fn_arena));
 
         match translated {
             Ok(translated) => {
@@ -1858,11 +1922,12 @@ fn check_consider_function(
     };
 
     // ADT has a skip annotation?
-    if environment::has_tool_attribute(vcx.tcx, def.did(), "skip") {
+    if environment::has_bare_tool_attribute(vcx.tcx, def.did(), "skip") {
         return Ok(false);
     }
     // if there are no annotations, also skip
-    if !environment::has_any_tool_attribute(vcx.tcx, def.did()) {
+    let adt_attrs = attrs::filter_for_tool(environment::get_attributes(vcx.tcx, def.did()));
+    if !spec_parsers::adt_attr_parser::has_non_drop_glue_adt_attr(&adt_attrs) {
         return Ok(false);
     }
 
@@ -2634,7 +2699,7 @@ where
     // this needs to be first, in order to ensure consistent ADT use
     register_shims(&mut vcx)?;
 
-    register_drop_glues(&mut vcx);
+    register_drop_glues(&mut vcx)?;
 
     register_functions(&mut vcx)?;
 

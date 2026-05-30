@@ -24,6 +24,20 @@ pub(crate) fn has_tool_attr(attrs: impl IntoIterator<Item = &hir::Attribute>, na
     get_tool_attr(attrs, name).is_some()
 }
 
+/// Check if `<tool>::<name>` is among the attributes without arguments.
+pub(crate) fn has_bare_tool_attr(attrs: impl IntoIterator<Item = &hir::Attribute>, name: &str) -> bool {
+    attrs.into_iter().any(|attr| match &attr {
+        hir::Attribute::Unparsed(na) => {
+            let segments = &na.path.segments;
+            segments.len() == 2
+                && segments[0].as_str() == rrconfig::spec_hotword().as_str()
+                && segments[1].as_str() == name
+                && matches!(na.args, hir::AttrArgs::Empty)
+        },
+        _ => false,
+    })
+}
+
 /// Get the arguments for a tool attribute, if it exists.
 pub(crate) fn get_tool_attr<'a>(
     attrs: impl IntoIterator<Item = &'a hir::Attribute>,

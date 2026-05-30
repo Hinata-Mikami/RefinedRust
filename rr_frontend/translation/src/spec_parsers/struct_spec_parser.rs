@@ -35,6 +35,8 @@ pub(crate) const INVARIANT_SPEC_ATTRS: &[&str] = &[
     "export_as",
     "verify",
     "skip",
+    "trust_me",
+    "only_spec",
     "derive_instantiate",
 ];
 

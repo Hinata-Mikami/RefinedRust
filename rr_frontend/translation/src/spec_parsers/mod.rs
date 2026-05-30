@@ -1,3 +1,4 @@
+pub(crate) mod adt_attr_parser;
 pub(crate) mod const_attr_parser;
 pub(crate) mod crate_attr_parser;
 pub(crate) mod enum_spec_parser;

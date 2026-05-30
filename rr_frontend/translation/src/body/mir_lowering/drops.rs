@@ -5,6 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use std::collections::BTreeMap;
+use std::iter;
 
 use log::{info, trace};
 use radium::{code, lang, specs};
@@ -157,5 +158,5 @@ pub(crate) fn make_virtual_drop_glue_method_for_param_from_scope<'tcx, 'def>(
         .trait_scope()
         .lookup_virtual_trait_use(tcx, registry::VirtualTrait::DropGlue, &[arg]);
 
-    super::make_trait_method_use_data(trait_use.trait_use, "drop_glue", "drop_glue", std::iter::empty())
+    super::make_trait_method_use_data(trait_use.trait_use, "drop_glue", "drop_glue", iter::empty())
 }

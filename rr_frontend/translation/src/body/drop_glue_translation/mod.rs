@@ -56,6 +56,12 @@ pub(crate) struct TranslatedDropGlue<'def> {
     pub(crate) extra_context_items: coq::binder::BinderList,
 }
 
+pub(crate) struct SpeccedDropGlue<'def> {
+    pub(crate) spec: specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>,
+    pub(crate) trait_ref: specs::traits::RefInst<'def>,
+    pub(crate) extra_context_items: coq::binder::BinderList,
+}
+
 impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
     pub(crate) fn new(
         tcx: ty::TyCtxt<'tcx>,
@@ -374,6 +380,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         let function = self.translated_fn.into_function(fn_arena);
         Ok(TranslatedDropGlue {
             function,
+            trait_ref,
+            extra_context_items,
+        })
+    }
+
+    /// Finalize only the drop-glue function spec, without translating MIR/code.
+    pub(crate) fn generate_spec(self) -> Result<SpeccedDropGlue<'def>, TranslationError> {
+        let trait_ref = self.drop_glue_trait_ref.clone();
+        let extra_context_items = self.extra_context_items.clone();
+        let spec = self.translated_fn.try_into().map_err(|err| {
+            TranslationError::ErrorReported(self.tcx.dcx().err(Message::AttributeError(err)))
+        })?;
+        Ok(SpeccedDropGlue {
+            spec,
             trait_ref,
             extra_context_items,
         })

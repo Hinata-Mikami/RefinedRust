@@ -349,10 +349,13 @@ impl From<RRCoqContextItem> for coq::binder::Binder {
     }
 }
 
-pub(crate) fn parse_context_item<'def, T: ParamLookup<'def>>(
+pub(crate) fn parse_context_item<'def, T>(
     buffer: &parse::Buffer,
     scope: &T,
-) -> parse::Result<coq::binder::Binder> {
+) -> parse::Result<coq::binder::Binder>
+where
+    T: ParamLookup<'def>,
+{
     <RRCoqContextItem as parse::Parse<T>>::parse(buffer, scope).map(Into::into)
 }
 

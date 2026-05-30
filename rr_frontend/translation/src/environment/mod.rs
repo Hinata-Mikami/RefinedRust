@@ -137,6 +137,12 @@ pub(crate) fn has_tool_attribute(tcx: ty::TyCtxt<'_>, def_id: DefId, name: &str)
     attrs::has_tool_attr(tcx.get_all_attrs(def_id), name)
 }
 
+/// Find whether the procedure has a particular bare `[tool]::<name>` attribute.
+pub(crate) fn has_bare_tool_attribute(tcx: ty::TyCtxt<'_>, def_id: DefId, name: &str) -> bool {
+    #[expect(deprecated)]
+    attrs::has_bare_tool_attr(tcx.get_all_attrs(def_id), name)
+}
+
 /// Find whether the procedure has a particular `[tool]::<name>` attribute; if so, return its
 /// name.
 pub(crate) fn get_tool_attribute<'a>(
