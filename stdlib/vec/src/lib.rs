@@ -19,7 +19,6 @@
 #![rr::include("closures")]
 #![rr::include("cmp")]
 #![rr::include("index")]
-#![rr::include("ptr")]
 #![rr::include("ptr_advanced")]
 #![rr::include("clone")]
 #![rr::include("controlflow")]
@@ -43,6 +42,7 @@ type Cap = usize;
 /// Having this separation reduces the amount of code we need to monomorphize,
 /// as most operations don't need the actual type, just its layout.
 #[rr::refined_by("(l, cap, alloc)" : "(loc * nat * {rt_of A} : RT)%type")]
+#[rr::trust_me(drop_glue)]
 struct RawVecInner<A: Allocator = Global> {
     #[rr::field("l")]
     ptr: Unique<u8>,
@@ -89,6 +89,7 @@ impl<A: Allocator> RawVecInner<A> {
 
 
 // TODO: maybe expose a value interface instead
+#[rr::trust_me(drop_glue)]
 #[rr::export_as(alloc::raw_vec::RawVec)]
 #[rr::refined_by("(l, cap, els)" : "(loc * nat * list (place_rfn (option (place_rfn {rt_of T}))))")]
 #[rr::exists("a")]
@@ -119,6 +120,7 @@ impl<T, A: Allocator> Drop for RawVec<T, A> {
 }
 
 // Uses the invariant from our "MiniVec" case study.
+#[rr::trust_me(drop_glue)]
 #[rr::export_as(alloc::vec::Vec)]
 #[rr::refined_by("xs" : "list (place_rfn {rt_of T})")]
 #[rr::exists("cap" : "nat", "l" : "loc", "len" : "nat", "els")]
@@ -273,6 +275,7 @@ impl<T> FromIterator<T> for Vec<T> {
     }
 }
 
+#[rr::trust_me(drop_glue)]
 #[rr::refined_by("xs" : "list ({rt_of T})")]
 #[rr::exists("x", "y")]
 #[rr::export_as(alloc::vec::into_iter::IntoIter)]

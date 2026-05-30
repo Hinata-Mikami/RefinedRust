@@ -13,11 +13,6 @@ Proof.
   box_new_prelude.
 
   rep <-! liRStep; liShow.
-  { apply_update (updateable_subsume_uninit_to x' (st_of T_ty MetaNone)).
-    rep liRStep; liShow. }
-  { rep <-! liRStep; liShow.
-    apply_update (updateable_subsume_uninit_to x' (st_of T_ty MetaNone)).
-    rep liRStep; liShow. }
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

@@ -4,6 +4,7 @@ use core::marker::PhantomData;
 
 
 
+#[rr::trust_me(drop_glue)]
 #[rr::export_as(spin::rwlock::RwLock)]
 #[rr::refined_by("()" : "unit")]
 #[rr::exists("x", "y")]
@@ -14,6 +15,7 @@ pub struct RwLock<T : ?Sized, R = Spin> {
     data: PhantomData<T>,
 }
 
+#[rr::trust_me(drop_glue)]
 #[rr::export_as(spin::rwlock::RwLockReadGuard)]
 #[rr::refined_by("x" : "{rt_of T}")]
 pub struct RwLockReadGuard<'a, T: 'a + ?Sized> {
@@ -21,6 +23,7 @@ pub struct RwLockReadGuard<'a, T: 'a + ?Sized> {
     _t: &'a T,
 }
 
+#[rr::trust_me(drop_glue)]
 #[rr::export_as(spin::rwlock::RwLockWriteGuard)]
 #[rr::refined_by("x" : "place_rfn {rt_of T}")]
 #[rr::exists("y")]

@@ -2,6 +2,7 @@
 #![rr::include("option")]
 
 use crate::relax::*;
+use std::marker::PhantomData;
 
 // Point: how can we make this somewhat ergonomic? 
 // We should ideally automatically include this in the context (of a function) when we instantiate
@@ -10,6 +11,7 @@ use crate::relax::*;
 // We could factor this into a definition that takes the refinement types as argument. 
 // Then we could also include this in the interface definition
 
+#[rr::trust_me(drop_glue)]
 #[rr::refined_by("η" : "gname")]
 #[rr::context("onceG Σ ({xt_of T})")]
 #[rr::export_as(spin::once::Once)]
@@ -18,9 +20,9 @@ use crate::relax::*;
 //#[rr::invariant(#own "once_status_tok η o")]
 pub struct Once<T = (), R = Spin> {
     #[rr::field("x")]
-    _r: R,
+    _r: PhantomData<R>,
     #[rr::field("y")]
-    _d: T,
+    _d: PhantomData<T>,
 }
 
 #[rr::only_spec]

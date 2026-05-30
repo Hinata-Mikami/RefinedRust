@@ -39,6 +39,7 @@ use std::mem;
 #[rr::ty_lfts("ty_lfts {T}")]
 #[rr::ty_wf_E("ty_wf_E {T}")]
 #[rr::ghost_drop(#iris "∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop {T} π r")]
+#[rr::trust_me(drop_glue)]
 pub struct Box<T, A: Allocator = Global, >(#[rr::field("l")] Unique<T>, #[rr::field("$# a")] A);
 
 // TODO: should be T: ?Sized
@@ -81,7 +82,7 @@ fn box_new<T>(x: T) -> Box<T> {
     if core::mem::size_of::<T>() == 0 {
         let ptr = std::ptr::dangling::<T>() as *mut T;
         unsafe {
-            *ptr = x;
+            ptr.write(x);
         }
         Box(unsafe { Unique::new_unchecked(ptr) }, Global)
     } else {
@@ -89,7 +90,7 @@ fn box_new<T>(x: T) -> Box<T> {
         let ptr = unsafe { alloc::alloc(layout) };
         let ptr = ptr as *mut T;
         unsafe {
-            *ptr = x;
+            ptr.write(x);
         };
         Box(unsafe { Unique::new_unchecked(ptr) }, Global)
     }
