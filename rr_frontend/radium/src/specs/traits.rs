@@ -1801,8 +1801,8 @@ impl ImplSpec<'_> {
         // get parameters
         // this is parametric in the rts, sts, semtys, attrs of all trait deps.
         let ty_params = self.trait_ref.generics.get_all_ty_params_with_assocs();
-        let mut params = self.extra_context_items.clone();
-        params.append(ty_params.get_coq_ty_params().0);
+        let mut params = ty_params.get_coq_ty_params();
+        params.append(self.extra_context_items.0.clone());
         params.append(self.trait_ref.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
 
         // instantiation of the trait

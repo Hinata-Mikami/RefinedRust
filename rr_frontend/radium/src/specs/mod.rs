@@ -960,6 +960,14 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
     pub fn make_direct_params_surrounding(&mut self) {
         self.surrounding_tys.merge(self.direct_tys.clone());
         self.direct_tys = TyParamList::empty();
+        for lft in &mut self.lfts {
+            if matches!(
+                lft.origin,
+                LftParamOrigin::LocalEarlyBound | LftParamOrigin::LocalLateBound | LftParamOrigin::ForBinder
+            ) {
+                lft.origin = LftParamOrigin::SurroundingImpl;
+            }
+        }
         self.surrounding_trait_requirements.append(&mut self.direct_trait_requirements);
     }
 

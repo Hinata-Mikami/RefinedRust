@@ -221,13 +221,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         used_tuples: &RefCell<BTreeMap<Vec<lang::SynType>, specs::types::LiteralUse<'def>>>,
     ) -> Result<specs::Type<'def>, TranslationError> {
         let typing_env = ty::TypingEnv::post_analysis(tcx, adt_did);
-        let mut state = types::STInner::ShimTranslation(Box::new(types::ShimState::new(
+        let mut shim_state = types::STInner::ShimTranslation(Box::new(types::ShimState::new(
             typing_env,
             generic_scope.clone(),
             used_literals,
             used_tuples,
         )));
-        ty_translator.translate_type_in_state(adt_ty, &mut state)
+        // Keep the shim translation pass for collecting ADT/tuple layout assumptions, but do not
+        // use its result for the spec: shim translation intentionally erases regions to DUMMY.
+        ty_translator.translate_type_in_state(adt_ty, &mut shim_state)?;
+
+        ty_translator.translate_type_in_scope(generic_scope, typing_env, adt_ty)
     }
 
     fn make_drop_glue_trait_inst(translated_adt_ty: &specs::Type<'def>) -> specs::GenericScopeInst<'def> {
