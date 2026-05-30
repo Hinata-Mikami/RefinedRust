@@ -1217,6 +1217,14 @@ Next Obligation.
   iIntros (???????) "?".
   rewrite ty_ghost_drop_unfold. done.
 Qed.
+Lemma simplify_goal_ty_ghost_drop_concrete `{!typeGS Σ} {rt} (ty : type rt) π r `{!IsNotVar ty} T :
+  (_ty_ghost_drop ty π r) ∗ T ⊢
+  simplify_goal (ty_ghost_drop ty π r) T.
+Proof.
+  iIntros "(Ha & $)". rewrite ty_ghost_drop_unfold//.
+Qed.
+Definition simplify_goal_ty_ghost_drop_concrete_inst := [instance @simplify_goal_ty_ghost_drop_concrete with 10%N].
+Global Existing Instance simplify_goal_ty_ghost_drop_concrete_inst.
 
 
 (* In my experience, this has led to more problems with [normalize_autorewrite] rewriting below definitions too eagerly. *)

@@ -480,6 +480,25 @@ Section alias_ltype.
   Definition stratify_ltype_alias_shared_inst := [instance @stratify_ltype_alias_shared].
   Global Existing Instance stratify_ltype_alias_shared_inst.
 
+
+  (** Deinitialization: fold back AliasLtype *)
+  Lemma owned_subltype_alias_uninit π E L step l l2 {rt1 : RT} (r1 : place_rfn rt1) r2 st st2 T :
+    find_in_context (FindLoc l2) (λ '(existT rt1' (lt1', r1', b1, π1')),
+      ⌜π = π1'⌝ ∗ ⌜ltype_st lt1' = st⌝ ∗ ⌜b1 = Owned⌝ ∗
+      owned_subltype_step π E L step l r1' r2 lt1' (◁ uninit st2) T)
+    ⊢ owned_subltype_step π E L step l r1 r2 (AliasLtype rt1 st l2) (◁ uninit st2) T.
+  Proof.
+    iIntros "HT".
+    iIntros (????) "#CTX #HE HL Hl".
+    iDestruct "HT" as ([rt1' [[[lt1' r1'] b1] π1']]) "(Hl2 & <- & <- & -> & HT)"; simpl.
+    simp_ltypes. iApply ("HT" with "[//] [//] [//] CTX HE HL").
+    rewrite ltype_own_alias_unfold /alias_lty_own.
+    iDestruct "Hl" as "(%ly & %Halg & -> & %Hly & Hlb)".
+    done.
+  Qed.
+  Definition owned_subltype_alias_uninit_inst := [instance @owned_subltype_alias_uninit].
+  Global Existing Instance owned_subltype_alias_uninit_inst.
+
   (** Addr-Of Instance for &raw mut, in the case that the place type is AliasLtype. This case is fairly trivial. *)
   Lemma typed_addr_of_mut_end_alias π E L l l2 st rt r b2 bmin (T : typed_addr_of_mut_end_cont_t) :
     (⌜l2 = l⌝ -∗ T L _ (alias_ptr_t) l2 _ (AliasLtype rt st l2) r)
@@ -572,6 +591,9 @@ Section alias_ltype.
     iApply typed_addr_of_mut_end_uniq.
     apply ltype_uniq_openable_ofty.
   Qed.
+  Definition typed_addr_of_mut_end_uniq_ofty_inst := [instance @typed_addr_of_mut_end_uniq_ofty].
+  Global Existing Instance typed_addr_of_mut_end_uniq_ofty_inst.
+
   (* TODO more instances for other ltypes *)
 End alias_ltype.
 
