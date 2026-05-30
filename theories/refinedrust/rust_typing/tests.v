@@ -1071,9 +1071,10 @@ Section test.
     Program Definition RawVec_inv_t_inv_spec : ex_inv_def ((RawVec_rt)) ((loc * nat)%type) := mk_ex_inv_def
       (λ π (inner_rfn : RawVec_rt) '(l, cap) , ⌜inner_rfn = ( *[#(l); #(Z.of_nat cap); #(tt)])⌝ ∗ True)%I
       (λ π κ inner_rfn '(l, cap), ⌜inner_rfn = *[#(l); #(Z.of_nat cap); #(tt)]⌝ ∗ True)%I
+      (λ _ _ _, True)%I
       ([])
       ([])
-      _ _ _
+      _ _ _ _
     .
     Next Obligation. ex_t_solve_persistent. Qed.
     Next Obligation.
@@ -1081,6 +1082,9 @@ Section test.
     Qed.
     Next Obligation.
       ex_plain_t_solve_shr.
+    Qed.
+    Next Obligation.
+      ex_plain_t_solve_ghost_drop.
     Qed.
 
     Definition RawVec_inv_t : type ((loc * nat)%type) :=
@@ -1107,9 +1111,10 @@ Section test.
     Program Definition Vec_inv_t_inv_spec : ex_inv_def ((Vec_rt)) (list (place_rfn T_rt)) := mk_ex_inv_def
       (λ π (inner_rfn : Vec_rt) 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = *[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
       (λ π κ inner_rfn 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = *[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
+      (λ _ _ _, True)%I
       ([] ++ (ty_lfts T_ty))
       ([] ++ (ty_wf_E T_ty))
-      _ _ _
+      _ _ _ _
     .
     Next Obligation.
       ex_t_solve_persistent.
@@ -1119,6 +1124,9 @@ Section test.
     Qed.
     Next Obligation.
       ex_plain_t_solve_shr.
+    Qed.
+    Next Obligation.
+      ex_plain_t_solve_ghost_drop.
     Qed.
 
     Definition Vec_inv_t : type (list (place_rfn T_rt)) :=

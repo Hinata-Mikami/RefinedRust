@@ -298,9 +298,6 @@ Section contr.
           unfold CanSolve. lia. }
       do 5 f_equiv.
       apply HF.
-    - intros n ty ty' Hd.
-      rewrite ty_ghost_drop_unfold.
-      intros. done.
   Qed.
 
   Global Instance na_ex_inv_def_ne {rt X Y : RT}
@@ -348,9 +345,6 @@ Section contr.
           unfold CanSolve. lia. }
       do 5 f_equiv.
       apply HF. apply Hd.
-    - intros n ty ty' Hd.
-      rewrite ty_ghost_drop_unfold.
-      intros. done.
   Qed.
 End contr.
 

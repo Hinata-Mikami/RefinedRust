@@ -188,7 +188,6 @@ Section props.
     - done.
     - rewrite /ty_own_val/= shr_ref_own_val_unfold. solve_type_proper.
     - rewrite /ty_shr/= shr_ref_shr_unfold. solve_type_proper.
-    - rewrite ty_ghost_drop_unfold. solve_type_proper.
   Qed.
 
   Global Instance shr_ref_type_ne {rt : RT} κ : TypeNonExpansive (shr_ref (rt:=rt) κ).

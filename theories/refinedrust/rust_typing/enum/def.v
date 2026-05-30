@@ -705,7 +705,6 @@ Section ne.
       generalize (enum_ne_rt_consistent ty ty' r); intros Heq.
       destruct Heq.
       done.
-    - rewrite ty_ghost_drop_unfold. solve_type_proper.
   Qed.
 
   Global Instance enum_t_contr {rt1 rt2} (F : type rt1 → enum rt2) :
@@ -792,7 +791,6 @@ Section ne.
       generalize (enum_contr_rt_consistent ty ty' r); intros Heq.
       destruct Heq.
       done.
-    - rewrite ty_ghost_drop_unfold. solve_type_proper.
   Qed.
 
 End ne.

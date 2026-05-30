@@ -301,26 +301,31 @@ impl Spec {
                         {indent}{indent}({own_inv})%I\n\
                         {indent}{indent}({lft_outlives})\n\
                         {indent}{indent}({lft_wf_elctx})\n\
-                        {indent}{indent}_ _ _\n\
+                        {indent}{indent}_ _ _ _\n\
                         {indent}.\n",
                     )
                     .unwrap();
                     write!(out, "{indent}Next Obligation. ex_plain_t_solve_shr_auto. Defined.\n").unwrap();
+                    write!(out, "{indent}Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.\n")
+                        .unwrap();
                     write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
                     write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr_mono. Qed.\n")
                         .unwrap();
                 } else {
                     write!(
                         out,
-                        "{scope} mk_ex_inv_def\n\
+                        "{scope} mk_ex_inv_def_auto_ghost_drop\n\
                         {indent}{indent}({own_inv})%I\n\
                         {indent}{indent}({shr_inv})%I\n\
+                        {indent}{indent}_\n\
                         {indent}{indent}({lft_outlives})\n\
                         {indent}{indent}({lft_wf_elctx})\n\
                         {indent}{indent}_ _ _\n\
                         {indent}.\n",
                     )
                     .unwrap();
+                    write!(out, "{indent}Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.\n")
+                        .unwrap();
                     write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
                     write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr_mono. Qed.\n")
                         .unwrap();

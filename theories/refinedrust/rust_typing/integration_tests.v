@@ -321,16 +321,17 @@ Section test.
   Local Definition P_b := λ (π : thread_id) (x : Z) (y : Z), (∃ (z : Z) (l : loc), ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝ ∗ guarded true (l ◁ₗ[π, Owned] #42%Z @ (◁ int I32)))%I : iProp Σ.
   Local Definition S_b := λ (π : thread_id) (κ : lft) (x : Z) (y : Z), (∃ (z : Z) (l : loc), ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝ ∗ guarded false (l ◁ₗ[π, Shared κ] #42%Z @ (◁ int I32)))%I : iProp Σ.
 
-  Local Program Definition Adef := mk_ex_inv_def P_b S_b [] [] _ _ _.
+  Local Program Definition Adef := mk_ex_inv_def_auto_ghost_drop P_b S_b _ [] [] _ _ _.
+  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. rewrite /S_b. ex_plain_t_solve_shr_mono. Qed.
   Next Obligation. rewrite /P_b /S_b. ex_plain_t_solve_shr. Qed.
 
-  Local Program Definition Bdef := mk_auto_ex_inv_def P_b [] [] _ _ _.
+  Local Program Definition Bdef := mk_auto_ex_inv_def P_b [] [] _ _ _ _.
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. ex_plain_t_solve_shr_mono. Qed.
-
 End test.
 
 

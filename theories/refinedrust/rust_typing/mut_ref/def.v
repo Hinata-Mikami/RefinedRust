@@ -8,8 +8,8 @@ Section mut_ref.
 
   Definition mut_ref_own_val_def {rt : RT} κ (inner : type rt) π (rγ : place_rfn rt * gname) m (v : val) : iProp Σ :=
     let '(r, γ) := rγ in
-    (∃ (l : loc) (ly : layout), 
-      ⌜m = MetaNone⌝ ∗ 
+    (∃ (l : loc) (ly : layout),
+      ⌜m = MetaNone⌝ ∗
       ⌜val_to_loc v = Some l⌝ ∗
       ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
       ⌜l `has_layout_loc` ly⌝ ∗
@@ -262,8 +262,6 @@ Section mut_ref.
     - intros n ty ty' ?.
       intros κ' π [] l. rewrite /ty_shr/= mut_ref_shr_unfold.
       solve_type_proper.
-    - intros n ty ty' ?.
-      intros. rewrite ty_ghost_drop_unfold. done.
   Qed.
 
   Global Instance mut_ref_type_ne {rt : RT} κ : TypeNonExpansive (mut_ref (rt:=rt) κ).

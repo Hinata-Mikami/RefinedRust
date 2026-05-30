@@ -180,6 +180,37 @@ Ltac ex_plain_t_solve_shr_auto :=
   intros; prepare_initial_coq_context;
   apply _.
 
+Ltac ex_plain_t_solve_ghost_drop :=
+  simpl;
+  intro_adt_params;
+  let π := fresh "π" in
+  iIntros (? π ???);
+  simpl in *;
+  prepare_initial_coq_context;
+  iIntros "Hb";
+  let ty := iTypeOf' "Hb" in
+  lazymatch ty with
+  | ?P =>
+    first
+    [ (* check if we have declared how to share it *)
+      let SHR := constr:(_ : GhostDroppable P) in
+      iPoseProof (SHR.(ghost_droppable_proof) with "Hb") as "__Hc";
+      [done | ]
+    | (* otherwise discard (putting a wrapper so we don't consider it again) *)
+      fail "solve_shr: do not know how to share " P
+    ]
+  end;
+  iApply (logical_step_wand with "__Hc");
+  simpl;
+  eauto
+.
+
+Ltac ex_plain_t_solve_ghost_drop_auto :=
+  simpl; intro_adt_params;
+  rewrite /TCNoResolve;
+  intros; prepare_initial_coq_context;
+  apply _.
+
 (** Instances *)
 Global Program Instance sep_as_shared `{!typeGS Σ} (P1 P2 : iProp Σ) κ :
   AsShared κ P1 →
@@ -218,6 +249,21 @@ Next Obligation.
   iIntros "HT (? & ? & ?) (?& ? & ?)".
   iApply "HT". iFrame.
 Qed.
+Global Program Instance sep_ghost_droppable `{!typeGS Σ} (P1 P2 : iProp Σ) :
+  GhostDroppable P1 →
+  GhostDroppable P2 →
+  GhostDroppable (P1 ∗ P2) := λ D1 D2, {|
+    ghost_droppable_prop := (D1.(ghost_droppable_prop) ∗ D2.(ghost_droppable_prop))%I
+  |}.
+Next Obligation.
+  iIntros (?? P1 P2 D1 D2 F ?) "[HP1 HP2]".
+  iPoseProof (ghost_droppable_proof with "HP1") as "HP1"; first done.
+  iPoseProof (ghost_droppable_proof with "HP2") as "HP2"; first done.
+  iApply (logical_step_compose with "HP1").
+  iApply (logical_step_compose with "HP2").
+  iApply logical_step_intro.
+  iIntros "$ $".
+Qed.
 
 Global Program Instance exist_as_shared `{!typeGS Σ} {A} (Φ : A → iProp Σ) κ :
   (∀ x : A, AsShared κ (Φ x)) →
@@ -250,6 +296,17 @@ Next Obligation.
   iModIntro. iIntros "HT (? & ? & ?)".
   iApply "HT". iFrame.
 Qed.
+Global Program Instance exist_ghost_droppable `{!typeGS Σ} {A} (Φ : A → iProp Σ) :
+  (∀ x, GhostDroppable (Φ x)) →
+  GhostDroppable (∃ x : A, Φ x) := λ D, {|
+    ghost_droppable_prop := (∃ x : A, (D x).(ghost_droppable_prop))%I
+  |}.
+Next Obligation.
+  iIntros (???? D F ?) "(%x & Hx)".
+  iPoseProof (ghost_droppable_proof with "Hx") as "Hx"; first done.
+  iApply (logical_step_wand with "Hx").
+  eauto.
+Qed.
 
 (* Fallback *)
 Global Program Instance as_shared_fallback `{!typeGS Σ} κ (P : iProp Σ) :
@@ -263,7 +320,7 @@ Next Obligation.
   intros. eauto.
 Qed.
 Global Program Instance persistent_shareable `{!typeGS Σ} π κ κs (P : iProp Σ) `{!Persistent P} :
-  Shareable π κ κs P := {| shareable_prop := P |}.
+  Shareable π κ κs P | 100 := {| shareable_prop := P |}.
 Next Obligation.
   iIntros (???????????) "[#LFT #LCTX] #Hna Htok Htok1 Hb HT".
   iApply fupd_logical_step.
@@ -271,6 +328,12 @@ Next Obligation.
   iApply (logical_step_compose with "HT").
   iApply logical_step_intro_later.
   iModIntro. iNext. iIntros "HT". iApply "HT". iFrame.
+Qed.
+Global Program Instance persistent_ghost_droppable `{!typeGS Σ} (P : iProp Σ) `{!Persistent P} :
+  GhostDroppable P | 100 := {| ghost_droppable_prop := P |}.
+Next Obligation.
+  iIntros (???? F ?) "HP".
+  iApply logical_step_intro. done.
 Qed.
 
 (** Can be declared as instances to discard unshareable props *)
@@ -282,11 +345,21 @@ Next Obligation.
   iIntros "HT". iApply "HT".
   iFrame.
 Qed.
-
 Global Instance shareable_discard_freeable `{!typeGS Σ} π κ κs l n q al :
   Shareable π κ κs (freeable l n q al) := shareable_discard _ _ _ _.
 Global Instance shareable_discard_freeable_nz `{!typeGS Σ} π κ κs l n q al :
   Shareable π κ κs (freeable_nz l n q al) := shareable_discard _ _ _ _.
+
+(** Can be declared as instances to discard props which won't survive drop *)
+Program Definition ghost_droppable_discard `{!typeGS Σ} (P : iProp Σ) :
+  GhostDroppable P := {| ghost_droppable_prop := True |}.
+Next Obligation.
+  iIntros (?????) "HP". iApply logical_step_intro. done.
+Qed.
+Global Instance ghost_droppable_discard_freeable `{!typeGS Σ} l n q al :
+  GhostDroppable (freeable l n q al) := ghost_droppable_discard _.
+Global Instance ghost_droppable_discard_freeable_nz `{!typeGS Σ} l n q al :
+  GhostDroppable (freeable_nz l n q al) := ghost_droppable_discard _.
 
 Global Program Instance guarded_as_shared `{!typeGS Σ} prepaid P κ :
   AsShared κ P →
@@ -303,6 +376,20 @@ Next Obligation.
   iIntros (???? [Hmono] ??) "Hincl Ha".
   iApply (guarded_mono with "[Hincl] Ha").
   by iApply Hmono.
+Qed.
+
+Global Program Instance guarded_ghost_droppable `{!typeGS Σ} P :
+  GhostDroppable P →
+  GhostDroppable (guarded true P) := λ D, {|
+    ghost_droppable_prop := D.(ghost_droppable_prop);
+  |}.
+Next Obligation.
+  rewrite /guarded.
+  iIntros (??????) "(Hcred & Hg)".
+  iDestruct "Hcred" as "((Hc1 & Hc) & ?)".
+  iApply fupd_logical_step. iApply (lc_fupd_add_later with "Hc1").
+  iNext.
+  by iApply ghost_droppable_proof.
 Qed.
 
 Global Program Instance big_sepL_as_shared `{!typeGS Σ} κ {A} (xs : list A) (Φ : nat → A → iProp Σ) :
@@ -359,6 +446,18 @@ Next Obligation.
   iPoseProof ("Hcl_toks" with "Htok") as "Htok".
   iPoseProof (big_sepL2_const_sepL_l with "Hb") as "(_ & Hb)".
   iApply "HT". rewrite lft_tok_sep. iFrame.
+Qed.
+Global Program Instance big_sepL_ghost_droppable `{!typeGS Σ} {A} (xs : list A) (Φ : nat → A → iProp Σ) :
+  (∀ i x, GhostDroppable (Φ i x)) →
+  GhostDroppable ([∗ list] i ↦ x ∈ xs, Φ i x) := λ D, {|
+    ghost_droppable_prop := ([∗ list] i ↦ x ∈ xs, (D i x).(ghost_droppable_prop))%I;
+  |}.
+Next Obligation.
+  iIntros (??? xs Φ D ??) "Ha".
+  iApply logical_step_big_sepL.
+  iApply (big_sepL_impl with "Ha").
+  iModIntro. iIntros (???) "Ha".
+  by iApply ghost_droppable_proof.
 Qed.
 
 Global Program Instance ltype_as_shared `{!typeGS Σ} π κ l {rt} (lt : ltype rt) r :
@@ -482,4 +581,30 @@ Next Obligation.
   iApply (logical_step_wand with "Hstep'").
   iIntros "(Ha & ? & ?) Hb". iApply "Hb".
   iFrame.
+Qed.
+
+
+Lemma ltype_own_ofty_ghost_drop `{!typeGS Σ} π F l {rt} (ty : type rt) r :
+  lftE ⊆ F →
+  l ◁ₗ[π, Owned] r @ (◁ ty) -∗
+  ∃ r', place_rfn_interp_owned r r' ∗
+  logical_step F (ty_ghost_drop ty π r').
+Proof.
+  intros ?.
+  rewrite ltype_own_ofty_unfold/lty_of_ty_own.
+  iIntros "(%ly & %Hst & % & ? & ? & % & $ & Ha)".
+  iApply fupd_logical_step.
+  iMod (fupd_mask_mono with "Ha") as "(%v & Hl & Ha)"; first done.
+  by iApply ty_own_ghost_drop.
+Qed.
+
+Global Program Instance ghost_droppable_ltype_own `{!typeGS Σ} π l {rt} (ty : type rt) r :
+  GhostDroppable (l ◁ₗ[π, Owned] r @ (◁ ty))%I := {|
+    ghost_droppable_prop :=
+      ∃ r', place_rfn_interp_owned r r' ∗ ty_ghost_drop ty π r';
+  |}.
+Next Obligation.
+  iIntros (??? l rt ty r ??) "Hl".
+  iPoseProof (ltype_own_ofty_ghost_drop with "Hl") as "(%r' & Hr & Hl)"; first done.
+  iApply (logical_step_wand with "Hl"). iIntros "$". done.
 Qed.

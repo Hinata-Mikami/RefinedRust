@@ -340,14 +340,6 @@ Section ne.
       intros ot mt.
       destruct ot; try done.
       rewrite Hst. done.
-      (*
-      rewrite ty_has_op_type_unfold/=.
-      intros ?? Hst Hot.
-      intros ot mt.
-      destruct ot; try done.
-      setoid_rewrite Hot.
-      done.
-       *)
     - done.
     - intros.
       rewrite /ty_own_val/= array_t_own_val_unfold.
@@ -359,7 +351,6 @@ Section ne.
       rewrite /array_t_shr_def.
       unfold array_own_el_shr.
       solve_type_proper.
-    - intros. rewrite ty_ghost_drop_unfold. solve_type_proper.
   Qed.
 End ne.
 

@@ -32,8 +32,7 @@ Section ex.
     ty_sidecond :=
       ty.(ty_sidecond);
     _ty_ghost_drop π r :=
-      (* TODO generalize ghost_drop in the type def *)
-      (∃ x, P.(inv_P) π x r ∗ ty_ghost_drop ty π x)%I;
+      (∃ x, P.(inv_P_ghost_drop) π x r ∗ ty_ghost_drop ty π x)%I;
     _ty_lfts := P.(inv_P_lfts) ++ ty_lfts ty;
     _ty_wf_E := P.(inv_P_wf_E) ++ ty_wf_E ty;
   |}.
@@ -94,7 +93,9 @@ Section ex.
     rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
     iIntros (ty π r m v F ?) "(%x & HP & Ha)".
     iPoseProof (ty_own_ghost_drop with "Ha") as "Ha"; first done.
+    iPoseProof (inv_P_drop with "HP") as "HP"; first done.
     iApply (logical_step_compose with "Ha").
+    iApply (logical_step_compose with "HP").
     iApply logical_step_intro.
     iIntros "Hdrop". eauto with iFrame.
   Qed.
@@ -186,11 +187,6 @@ Section contr.
       do 3 f_equiv.
       { apply HP. done. }
       apply HF; done.
-    - intros n ty ty' ?.
-      intros ??. rewrite ty_ghost_drop_unfold /_ty_ghost_drop/=.
-      do 3 f_equiv.
-      { apply HP; done. }
-      apply HF; done.
   Qed.
   (* This should also work if only one of them is actually using the recursive argument. The other argument is trivially contractive, as it is constant. *)
 
@@ -225,11 +221,6 @@ Section contr.
       apply HF; done.
     - intros n ty ty' ?.
       intros ?????. rewrite /ty_shr/=.
-      do 3 f_equiv.
-      { apply HP; done. }
-      apply HF; done.
-    - intros n ty ty' ?.
-      intros ??. rewrite ty_ghost_drop_unfold /_ty_ghost_drop/=.
       do 3 f_equiv.
       { apply HP; done. }
       apply HF; done.

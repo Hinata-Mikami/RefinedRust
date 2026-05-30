@@ -183,7 +183,6 @@ Section ne.
       intros π r m v. rewrite /ty_own_val/= !maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
       destruct r as [r | ]; solve_type_proper.
     - solve_type_proper.
-    - rewrite ty_ghost_drop_unfold. solve_type_proper.
   Qed.
 End ne.
 

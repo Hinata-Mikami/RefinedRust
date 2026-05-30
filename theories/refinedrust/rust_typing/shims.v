@@ -45,7 +45,8 @@ Definition tuple5_rt (T0_rt : RT) (T1_rt : RT) (T2_rt : RT) (T3_rt : RT) (T4_rt 
 Definition tuple5_ty `{!refinedrustGS Σ} (T0_rt T1_rt T2_rt T3_rt T4_rt : RT) : spec_with 0 [T0_rt; T1_rt; T2_rt; T3_rt; T4_rt] (type (tuple5_rt _ _ _ _ _)) :=
   spec! ( *[]) : 0 | ( *[T0_ty; T1_ty; T2_ty; T3_ty; T4_ty]) : [T0_rt; T1_rt; T2_rt; T3_rt; T4_rt], struct_t (tuple5_sls (st_of T0_ty MetaNone) (st_of T1_ty MetaNone) (st_of T2_ty MetaNone) (st_of T3_ty MetaNone) (st_of T4_ty MetaNone)) +[T0_ty; T1_ty; T2_ty; T3_ty; T4_ty].
 
-(** PhantomData *)
+(** ** PhantomData *)
+(** Encoded manually, as rustc only allows unused type parameters on the special PhantomData lang item in core *)
 Definition core_marker_PhantomData_sls (T_st : syn_type) : struct_layout_spec :=
   mk_sls "core_marker_PhantomData" [] StructReprRust.
 Definition core_marker_PhantomData_st (T_st : syn_type) : syn_type := core_marker_PhantomData_sls T_st.
@@ -54,10 +55,11 @@ Section def.
   Context `{!refinedrustGS Σ}.
 
   Program Definition core_marker_PhantomData_inv {T_rt : RT} (T_ty : type T_rt) : ex_inv_def (plist place_rfnRT []) unitRT :=
-    mk_ex_inv_def (λ  _ _ _, True)%I (λ _ _ _ _, True)%I (ty_lfts T_ty) (ty_wf_E T_ty) _ _ _ .
+    mk_ex_inv_def (λ  _ _ _, True)%I (λ _ _ _ _, True)%I (λ _ _ _, True)%I (ty_lfts T_ty) (ty_wf_E T_ty) _ _ _ _.
   Next Obligation. intros. unfold TCNoResolve. apply _. Qed.
   Next Obligation. eauto. Qed.
   Next Obligation. simpl. intros ??. ex_plain_t_solve_shr. Qed.
+  Next Obligation. simpl. intros ??. ex_plain_t_solve_ghost_drop. Qed.
 
   Definition core_marker_PhantomData_rt (T_rt : RT) := unitRT.
   Definition core_marker_PhantomData_ty (T_rt : RT) : spec_with 0 [T_rt] (type unitRT) :=

@@ -685,17 +685,6 @@ Section structs.
       + f_equiv.
         rewrite /struct_own_el_shr.
         setoid_rewrite <-shift_loc_assoc_nat. apply IH; done.
-    - intros n ty ty' Hd.
-      destruct HT as [Ts' Hne ->].
-      iIntros (π r). rewrite ty_ghost_drop_unfold /_ty_ghost_drop/=.
-      elim: rts Ts' Hne r => //.
-      { simpl. intros Ts'. inv_hlist Ts'. simpl. done. }
-      intros rt' rts IH Ts' Hne r.
-      inv_hlist Ts'. intros T1 Ts'.
-      intros [Hne1 Hne]%HTForall_cons_inv.
-      simpl. f_equiv.
-      { solve_type_proper. }
-      apply IH; done.
   Qed.
 
   (* For this to be contractive, the [sls] must not depend on the recursive type *)
@@ -788,17 +777,6 @@ Section structs.
       + f_equiv.
         rewrite /struct_own_el_shr.
         setoid_rewrite <-shift_loc_assoc_nat. apply IH; done.
-    - intros n ty ty' Hd.
-      destruct HT as [Ts' Hne ->].
-      iIntros (π r). rewrite ty_ghost_drop_unfold /_ty_ghost_drop/=.
-      elim: rts Ts' Hne r => //.
-      { simpl. intros Ts'. inv_hlist Ts'. simpl. done. }
-      intros rt' rts IH Ts' Hne r.
-      inv_hlist Ts'. intros T1 Ts'.
-      intros [Hne1 Hne]%HTForall_cons_inv.
-      simpl. f_equiv.
-      { solve_type_proper. }
-      apply IH; done.
   Qed.
 
   (* variant with constant sls *)
