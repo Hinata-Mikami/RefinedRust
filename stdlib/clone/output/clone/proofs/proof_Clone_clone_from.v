@@ -11,6 +11,7 @@ Lemma Clone_clone_from_proof (π : thread_id) :
   Clone_clone_from_lemma π.
 Proof.
   Clone_clone_from_prelude.
+  generalize RR_CONFIG_DONT_FOLD_PLACES; intros ?.
 
   rep <-! liRStep; liShow.
 
