@@ -1525,12 +1525,12 @@ Section subsume.
   Definition subsume_full_own_loc_bk_evar_inst := [instance @subsume_full_own_loc_bk_evar].
   Global Existing Instance subsume_full_own_loc_bk_evar_inst | 1000.
 
-  Lemma subsume_full_own_loc_owned {rt1 rt2} π E L l (lt1 : ltype rt1) (lt2 : ltype rt2) r1 r2 T :
-    owned_subltype_step π E L true l r1 r2 lt1 lt2 T
-    ⊢ subsume_full E L true (l ◁ₗ[π, Owned] r1 @ lt1) (l ◁ₗ[π, Owned] r2 @ lt2) T.
+  Lemma subsume_full_own_loc_owned {rt1 rt2} π E L step l (lt1 : ltype rt1) (lt2 : ltype rt2) r1 r2 T :
+    owned_subltype_step π E L step l r1 r2 lt1 lt2 T
+    ⊢ subsume_full E L step (l ◁ₗ[π, Owned] r1 @ lt1) (l ◁ₗ[π, Owned] r2 @ lt2) T.
   Proof.
     iIntros "HT" (????) "#CTX #HE HL Hl".
-    iMod ("HT" with "[//] [//] CTX HE HL Hl") as "(%L' & %R & Hstep & HL & HT)".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL Hl") as "(%L' & %R & Hstep & HL & HT)".
     iExists L', R. by iFrame.
   Qed.
   Definition subsume_full_own_loc_owned_inst := [instance @subsume_full_own_loc_owned].
@@ -1726,7 +1726,7 @@ Section subsume.
     weak_subltype E L (Owned) r1 r2 lt1 lt2 (T L True)
     ⊢ owned_subltype_step π E L step l r1 r2 lt1 lt2 T.
   Proof.
-    iIntros "HT" (???) "CTX HE HL Hl".
+    iIntros "HT" (????) "CTX HE HL Hl".
     iExists L, True%I. iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
     iModIntro. iDestruct "Hincl" as "(%Hst & #Hincl & _)".
     iApply maybe_logical_step_fupd. iApply maybe_logical_step_intro.
@@ -1742,10 +1742,10 @@ Section subsume.
       owned_subltype_step π E L2 step l r1' r2 lt1 lt2 T) ⊢
     owned_subltype_step π E L step l (👻 γ1) r2 lt1 lt2 T.
   Proof.
-    iIntros "HT" (???) "#CTX #HE HL Hl".
+    iIntros "HT" (????) "#CTX #HE HL Hl".
     iMod ("HT" with "[] [] CTX HE HL Hl") as "(%L2 & %r1' & %R & %prog & Hs & HL & HT)"; [done.. | ].
     simpl. iMod "Hs" as "(Hl & ?)".
-    by iApply ("HT" with "[$] [//] [//] CTX HE HL").
+    by iApply ("HT" with "[$] [//] [//] [//] CTX HE HL").
   Qed.
   Definition owned_subltype_step_resolve_ghost_inst := [instance @owned_subltype_step_resolve_ghost].
   Global Existing Instance owned_subltype_step_resolve_ghost_inst | 100.

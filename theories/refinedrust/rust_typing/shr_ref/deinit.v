@@ -75,7 +75,7 @@ Section rule.
     return T L True%I.
   Proof.
     iIntros "(%Hstcomp & HT)".
-    iIntros (???) "CTX HE HL Hl". simp_ltypes; simpl.
+    iIntros (????) "CTX HE HL Hl". simp_ltypes; simpl.
     iMod (ltype_deinit_shr with "Hl") as "Hl"; [done.. | ].
     iExists _, _. iFrame.
     iModIntro. iApply maybe_logical_step_intro. by iFrame.

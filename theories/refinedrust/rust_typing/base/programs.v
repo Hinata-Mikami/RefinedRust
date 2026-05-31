@@ -2630,6 +2630,7 @@ Section judgments.
     ∀ F,
     ⌜lftE ⊆ F⌝ -∗
     ⌜lft_userE ⊆ F⌝ -∗
+    ⌜shrE ⊆ F⌝ -∗
     rrust_ctx -∗
     elctx_interp E -∗
     llctx_interp L -∗

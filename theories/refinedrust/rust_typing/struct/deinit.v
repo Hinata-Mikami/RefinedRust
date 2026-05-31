@@ -90,7 +90,7 @@ Context `{!typeGS Σ}.
     return T L2 R2.
   Proof.
     iIntros "(%Hcomp & Hit)".
-    iIntros (???) "#CTX #HE HL Hl".
+    iIntros (????) "#CTX #HE HL Hl".
 
     rewrite ltype_own_struct_unfold/struct_ltype_own/=.
     iDestruct "Hl" as "(%sl & %Halg & %Hlen & %Hly & Hlb &  %rs' & -> & Hl)".
@@ -129,7 +129,7 @@ Context `{!typeGS Σ}.
       iDestruct "Ha" as "(% & % & %Hlook2' & Ha)".
       rewrite Hlook2 in Hlook2'. injection Hlook2' as <- <-.
       iDestruct "Hsub" as "(<- & Hsub)".
-      iMod ("Hsub" with "[] [] CTX HE HL Ha") as "(%L3 & %R3 & Hs & HL & HT)"; [done.. | ].
+      iMod ("Hsub" with "[] [] [] CTX HE HL Ha") as "(%L3 & %R3 & Hs & HL & HT)"; [done.. | ].
 
       iModIntro. iExists _, _. iFrame.
       iSplitL "Hinv".

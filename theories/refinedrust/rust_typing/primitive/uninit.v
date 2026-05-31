@@ -115,7 +115,7 @@ Section deinit.
   Proof.
     unfold TCDone in Hst. subst st.
     iDestruct 1 as "(%ty & %Heqt & HT)".
-    iIntros (???) "CTX HE HL Hl". simp_ltypes; simpl.
+    iIntros (????) "CTX HE HL Hl". simp_ltypes; simpl.
 
     iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl"; first apply Heqt.
     iSpecialize ("Hincl" $! (Owned) (#r)).
@@ -158,7 +158,7 @@ Section deinit.
     rewrite /compute_layout_goal.
     iDestruct "HT" as "(%ly1 & %Hst1 & HT)".
     iDestruct ("HT" with "[//]") as "(%ly2 & %Hst2 & HT)".
-    iIntros (???) "CTX HE HL Hl". simp_ltypes; simpl.
+    iIntros (????) "CTX HE HL Hl". simp_ltypes; simpl.
 
     iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl"; first apply Heqt.
     iSpecialize ("Hincl" $! (Owned) (#r)).

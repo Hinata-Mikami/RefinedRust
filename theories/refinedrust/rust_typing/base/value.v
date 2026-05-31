@@ -505,12 +505,11 @@ Section rules.
   (* TODO: this isn't ideal if v' is an evar -- then this currently will lead to evar instantiation failures, since we don't know the value yet.
      Maybe we want to have a type which encapsulates the existential quantifier in that case?
   *)
-  Lemma value_subsume_full_goal_ofty π E L step {rt} l v' st (ty : type rt) r T:
+  Lemma value_owned_subltype_step_goal_ofty π E L step {rt} l v' st (ty : type rt) r T:
     li_tactic (compute_layout_goal (ty.(ty_syn_type) MetaNone)) (λ ly,
       (∀ v, v ◁ᵥ{π, MetaNone} r @ ty -∗
-      subsume_full E L step (l ◁ₗ[π, Owned] #v @ ◁ value_t (UntypedSynType ly)) (l ◁ₗ[π, Owned] #v' @ ◁ (value_t st)) T))
-    ⊢ subsume_full E L step (l ◁ₗ[π, Owned] #r @ ◁ ty)
-        (l ◁ₗ[π, Owned] #v' @ ◁ (value_t st)) T.
+      owned_subltype_step π E L step l #v #v' (◁ value_t (UntypedSynType ly)) (◁ value_t st) T))
+    ⊢ owned_subltype_step π E L step l #r #v' (◁ ty) (◁ value_t st) T.
   Proof.
     rewrite /compute_layout_goal.
     iIntros "(%ly & %Hst & HT)" (????) "#CTX #HE HL Hty".
@@ -525,10 +524,10 @@ Section rules.
 
   (** When we require assembled ownership, try to assemble it. *)
 
-  Lemma subsume_full_value_merge_ofty_untyped {rt} π E L (ty : type rt) `{!TySized ty} r v l ly1 T :
+  Lemma owned_subltype_step_value_merge_ofty_untyped {rt} π E L (ty : type rt) `{!TySized ty} r v l ly1 T :
     (prove_with_subtype E L false ProveDirect (v ◁ᵥ{π, MetaNone} r @ ty) True (λ L' _ R,
       ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly1⌝ ∗ T L' R))
-    ⊢ subsume_full E L false (l ◁ₗ[π, Owned] #v @ ◁ value_t (UntypedSynType ly1)) (l ◁ₗ[π, Owned] #r @ (◁ ty)) T.
+    ⊢ owned_subltype_step π E L false l #v #r (◁ value_t (UntypedSynType ly1)) (◁ ty) T.
   Proof.
     iIntros "HT".
     iIntros (????) "#CTX #HE HL Hl".
@@ -538,13 +537,13 @@ Section rules.
     iModIntro. iExists L', R. iFrame. done.
   Qed.
   (* should have a lower priority than Lithium's id instance - in case the goal specifies that we want a value_t, we should not try to fiddle with that. *)
-  Definition subsume_full_value_merge_ofty_untyped_inst := [instance @subsume_full_value_merge_ofty_untyped].
-  Global Existing Instance subsume_full_value_merge_ofty_untyped_inst | 100.
+  Definition owned_subltype_step_value_merge_ofty_untyped_inst := [instance @owned_subltype_step_value_merge_ofty_untyped].
+  Global Existing Instance owned_subltype_step_value_merge_ofty_untyped_inst | 100.
 
-  Lemma subsume_full_value_merge_ofty {rt} π E L (ty : type rt) `{!TySized ty} r v l st T :
+  Lemma owned_subltype_step_value_merge_ofty {rt} π E L (ty : type rt) `{!TySized ty} r v l st T :
     (prove_with_subtype E L false ProveDirect (v ◁ᵥ{π, MetaNone} r @ ty) True (λ L' _ R,
       ⌜ty_has_op_type ty (use_op_alg' (ty.(ty_syn_type) MetaNone)) MCCopy⌝ ∗ ⌜ty_syn_type ty MetaNone = st⌝ ∗ T L' R))
-    ⊢ subsume_full E L false (l ◁ₗ[π, Owned] #v @ ◁ value_t st) (l ◁ₗ[π, Owned] #r @ (◁ ty)) T.
+    ⊢ owned_subltype_step π E L false l #v #r (◁ value_t st) (◁ ty) T.
   Proof.
     iIntros "HT".
     iIntros (????) "#CTX #HE HL Hl". iPoseProof (ltype_own_has_layout with "Hl") as "(%ly' & %Hst & %)".
@@ -557,8 +556,8 @@ Section rules.
     rewrite Ha in Hc. done.
   Qed.
   (* should have a lower priority than Lithium's id instance - in case the goal specifies that we want a value_t, we should not try to fiddle with that. *)
-  Definition subsume_full_value_merge_ofty_inst := [instance @subsume_full_value_merge_ofty].
-  Global Existing Instance subsume_full_value_merge_ofty_inst | 101.
+  Definition owned_subltype_step_value_merge_ofty_inst := [instance @owned_subltype_step_value_merge_ofty].
+  Global Existing Instance owned_subltype_step_value_merge_ofty_inst | 101.
 
   Definition owned_subtype_value_id π E L step st r1 r2 := owned_subtype_id π E L step r1 r2 (value_t st).
   Definition owned_subtype_value_id_inst := [instance @owned_subtype_value_id].
@@ -613,25 +612,22 @@ Section unify_loc.
 
   (** Step 1 *)
   (* instantiate in case [st2] is an evar *)
-  Lemma subsume_full_ofty_value_st_evar π E L step l st1 st2 vs1 vs2 `{!ContainsProtected st2} T :
+  Lemma owned_subltype_step_ofty_value_st_evar π E L step l st1 st2 vs1 vs2 `{!ContainsProtected st2} T :
     ⌜st1 = st2⌝ ∗
-    subsume_full E L step (l ◁ₗ[π, Owned] #vs1 @ ◁ value_t st1)%I
-      (l ◁ₗ[π, Owned] #vs2 @ ◁ value_t st1)%I T
-    ⊢ subsume_full E L step (l ◁ₗ[π, Owned] #vs1 @ ◁ value_t st1) (l ◁ₗ[π, Owned] #vs2 @ ◁ value_t st2) T.
+    owned_subltype_step π E L step l #vs1 #vs2 (◁ value_t st1) (◁ value_t st1) T
+    ⊢ owned_subltype_step π E L step l #vs1 #vs2 (◁ value_t st1) (◁ value_t st2) T.
   Proof.
     iIntros "(-> & HT)". iApply "HT".
   Qed.
-  Definition subsume_full_ofty_value_st_evar_inst := [instance @subsume_full_ofty_value_st_evar].
-  Global Existing Instance subsume_full_ofty_value_st_evar_inst | 10.
+  Definition owned_subltype_step_ofty_value_st_evar_inst := [instance @owned_subltype_step_ofty_value_st_evar].
+  Global Existing Instance owned_subltype_step_ofty_value_st_evar_inst | 10.
 
   (* in case st1 is Untyped, make the goal untyped, too *)
-  Lemma subsume_full_ofty_value_st_untyped π E L step vs1 vs2 l st2 ly1 T :
+  Lemma owned_subltype_step_ofty_value_st_untyped π E L step vs1 vs2 l st2 ly1 T :
     li_tactic (compute_layout_goal (UntypedSynType ly1)) (λ ly1',
     (li_tactic (compute_layout_goal st2) (λ ly2,
-      subsume_full E L step (l ◁ₗ[π, Owned] vs1 @ ◁ value_t (UntypedSynType ly1'))%I
-      (l ◁ₗ[π, Owned] vs2 @ (◁ value_t (UntypedSynType ly2)))%I T)))
-    ⊢ subsume_full E L step (l ◁ₗ[π, Owned] vs1 @ ◁ value_t (UntypedSynType ly1))
-      (l ◁ₗ[π, Owned] vs2 @ (◁ value_t st2)) T.
+      owned_subltype_step π E L step l vs1 vs2 (◁ value_t (UntypedSynType ly1')) (◁ value_t (UntypedSynType ly2)) T)))
+    ⊢ owned_subltype_step π E L step l vs1 vs2 (◁ value_t (UntypedSynType ly1)) (◁ value_t st2) T.
   Proof.
     rewrite /compute_layout_goal.
     iIntros "(%ly1' & %Hst1 & %ly2 & %Halg & HT)".
@@ -654,45 +650,44 @@ Section unify_loc.
       done.
     - simpl. done.
   Qed.
-  Definition subsume_full_ofty_value_st_untyped_inst := [instance @subsume_full_ofty_value_st_untyped].
-  Global Existing Instance subsume_full_ofty_value_st_untyped_inst | 15.
+  Definition owned_subltype_step_ofty_value_st_untyped_inst := [instance @owned_subltype_step_ofty_value_st_untyped].
+  Global Existing Instance owned_subltype_step_ofty_value_st_untyped_inst | 15.
 
   (* if both of the above fail, require equality of the syntypes.
      TODO: this is too strict *)
-  Lemma subsume_full_ofty_value_st_eq π E L step l vs1 vs2 st1 st2 T :
-    ⌜st1 = st2⌝ ∗ subsume_full E L step (l ◁ₗ[π, Owned] vs1 @ ◁ value_t st2)
-      (l ◁ₗ[π, Owned] vs2 @ ◁ value_t st2) T
-    ⊢ subsume_full E L step (l ◁ₗ[π, Owned] vs1 @ ◁ value_t st1)
-      (l ◁ₗ[π, Owned] vs2 @ ◁ value_t st2) T.
+  Lemma owned_subltype_step_ofty_value_st_eq π E L step l vs1 vs2 st1 st2 T :
+    ⌜st1 = st2⌝ ∗ owned_subltype_step π E L step l vs1 vs2 (◁ value_t st2) (◁ value_t st2) T
+    ⊢ owned_subltype_step π E L step l vs1 vs2 (◁ value_t st1) (◁ value_t st2) T.
   Proof.
     iIntros "(-> & $)".
   Qed.
-  Definition subsume_full_ofty_value_st_eq_inst := [instance @subsume_full_ofty_value_st_eq].
-  Global Existing Instance subsume_full_ofty_value_st_eq_inst | 20.
+  Definition owned_subltype_step_ofty_value_st_eq_inst := [instance @owned_subltype_step_ofty_value_st_eq].
+  Global Existing Instance owned_subltype_step_ofty_value_st_eq_inst | 20.
 
   (** Step 2 *)
 
   (* if both are using the same st, unify the values *)
-  Lemma subsume_full_ofty_value_unify_vs π E L step l vs1 vs2 st T :
+  Lemma owned_subltype_step_ofty_value_unify_vs π E L step l vs1 vs2 st T :
     ⌜vs1 = vs2⌝ ∗ T L True%I
-    ⊢ subsume_full E L step (l ◁ₗ[π, Owned] #vs1 @ ◁ value_t st) (l ◁ₗ[π, Owned] #vs2 @ ◁ value_t st) T.
+    ⊢ owned_subltype_step π E L step l #vs1 #vs2 (◁ value_t st) (◁ value_t st) T.
   Proof.
-    iIntros "(-> & HT)". iApply subsume_full_id. done.
+    iIntros "(-> & HT)" (????) "#CTX #HE HL Hl".
+    iExists L, True%I. iFrame.
+    iApply maybe_logical_step_intro. by iFrame.
   Qed.
-  Definition subsume_full_ofty_value_unify_vs_inst := [instance @subsume_full_ofty_value_unify_vs].
-  Global Existing Instance subsume_full_ofty_value_unify_vs_inst | 5.
+  Definition owned_subltype_step_ofty_value_unify_vs_inst := [instance @owned_subltype_step_ofty_value_unify_vs].
+  Global Existing Instance owned_subltype_step_ofty_value_unify_vs_inst | 5.
 
   (* if both are untyped, and have not been handled by the previous instance,
      check if the sizes of the layout are the same;
      - if so, fully subsume the values
      - else if the size of the first layout is smaller, prove that the left one is a prefix of the latter, and continue searching for the rest.
      - else, the goal refers to a subset of the current chunk and we split off. *)
-  Lemma subsume_full_ofty_value_untyped_full π E L step l vs1 vs2 ly1 ly2 T `{!LayoutSizeEq ly1 ly2} :
+  Lemma owned_subltype_step_ofty_value_untyped_full π E L step l vs1 vs2 ly1 ly2 T `{!LayoutSizeEq ly1 ly2} :
     (⌜l `has_layout_loc` ly1⌝ -∗
       ⌜ly_align_in_bounds ly1⌝ -∗
       ⌜l `has_layout_loc` ly2⌝ ∗ ⌜vs1 = vs2⌝ ∗ ⌜ly_align_in_bounds ly2⌝ ∗ ⌜layout_wf ly2⌝ ∗ T L True%I)
-    ⊢ subsume_full E L step (l ◁ₗ[π, Owned] vs1 @ ◁ value_t (UntypedSynType ly1))
-        (l ◁ₗ[π, Owned] vs2 @ ◁ value_t (UntypedSynType ly2)) T.
+    ⊢ owned_subltype_step π E L step l vs1 vs2 (◁ value_t (UntypedSynType ly1)) (◁ value_t (UntypedSynType ly2)) T.
   Proof.
     (*iIntros "(%Halign & -> & HT)".*)
     iIntros "HT".
@@ -707,19 +702,18 @@ Section unify_loc.
     { done. }
     iFrame. iApply (maybe_logical_step_intro). iL. done.
   Qed.
-  Definition subsume_full_ofty_value_untyped_full_inst := [instance @subsume_full_ofty_value_untyped_full].
-  Global Existing Instance subsume_full_ofty_value_untyped_full_inst | 6.
+  Definition owned_subltype_step_ofty_value_untyped_full_inst := [instance @owned_subltype_step_ofty_value_untyped_full].
+  Global Existing Instance owned_subltype_step_ofty_value_untyped_full_inst | 6.
 
   (* Prove a prefix of the goal, and continue finding the rest of the ownership *)
-  Lemma subsume_full_ofty_value_untyped_prefix π E L step l (vs1 vs2 : val) ly1 ly2 T `{!LayoutSizeLe ly1 ly2} :
+  Lemma owned_subltype_step_ofty_value_untyped_prefix π E L step l (vs1 vs2 : val) ly1 ly2 T `{!LayoutSizeLe ly1 ly2} :
     (⌜syn_type_has_layout (UntypedSynType ly2) ly2⌝ ∗
     (⌜l `has_layout_loc` ly1⌝ -∗
     ⌜l `has_layout_loc` ly2⌝ ∗
     ∃ vs2' : val, ⌜vs2 = vs1 ++ vs2'⌝ ∗
     ∃ ly1', prove_with_subtype E L step ProveDirect ((l +ₗ ly_size ly1) ◁ₗ[π, Owned] #vs2' @ ◁ value_t (UntypedSynType ly1')) True
         (λ L2 _ R2, ⌜ly_size ly1' = ly_size ly2 - ly_size ly1⌝ ∗ T L2 R2)))
-    ⊢ subsume_full E L step (l ◁ₗ[π, Owned] #vs1 @ ◁ value_t (UntypedSynType ly1))
-        (l ◁ₗ[π, Owned] #vs2 @ ◁ value_t (UntypedSynType ly2)) T.
+    ⊢ owned_subltype_step π E L step l #vs1 #vs2 (◁ value_t (UntypedSynType ly1)) (◁ value_t (UntypedSynType ly2)) T.
   Proof.
     iIntros "(%Hst & HT)".
     match goal with H : LayoutSizeLe _ _ |- _ => rewrite /LayoutSizeLe in H end.
@@ -740,8 +734,8 @@ Section unify_loc.
     - done.
     - done.
   Qed.
-  Definition subsume_full_ofty_value_untyped_prefix_inst := [instance @subsume_full_ofty_value_untyped_prefix].
-  Global Existing Instance subsume_full_ofty_value_untyped_prefix_inst | 7.
+  Definition owned_subltype_step_ofty_value_untyped_prefix_inst := [instance @owned_subltype_step_ofty_value_untyped_prefix].
+  Global Existing Instance owned_subltype_step_ofty_value_untyped_prefix_inst | 7.
 
   (* TODO we should also have a corresponding case if the RHS is smaller *)
   (* TODO: need simplification mechanism for the ly_offset here to get to a sane layout.
