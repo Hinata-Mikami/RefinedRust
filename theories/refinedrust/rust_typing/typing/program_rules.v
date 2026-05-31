@@ -1526,7 +1526,7 @@ Section subsume.
   Global Existing Instance subsume_full_own_loc_bk_evar_inst | 1000.
 
   Lemma subsume_full_own_loc_owned {rt1 rt2} π E L l (lt1 : ltype rt1) (lt2 : ltype rt2) r1 r2 T :
-    owned_subltype_step π E L l r1 r2 lt1 lt2 T
+    owned_subltype_step π E L true l r1 r2 lt1 lt2 T
     ⊢ subsume_full E L true (l ◁ₗ[π, Owned] r1 @ lt1) (l ◁ₗ[π, Owned] r2 @ lt2) T.
   Proof.
     iIntros "HT" (????) "#CTX #HE HL Hl".
@@ -1722,26 +1722,27 @@ Section subsume.
   Global Existing Instance mut_subltype_default_inst | 1001.
 
   (** ** Subtyping instances: [owned_subltype_step] *)
-  Lemma owned_subltype_step_weak_subltype π E L l {rt1 rt2 : RT} (r1 : place_rfn rt1) (r2 : place_rfn rt2) lt1 lt2 T :
+  Lemma owned_subltype_step_weak_subltype π E L step l {rt1 rt2 : RT} (r1 : place_rfn rt1) (r2 : place_rfn rt2) lt1 lt2 T :
     weak_subltype E L (Owned) r1 r2 lt1 lt2 (T L True)
-    ⊢ owned_subltype_step π E L l r1 r2 lt1 lt2 T.
+    ⊢ owned_subltype_step π E L step l r1 r2 lt1 lt2 T.
   Proof.
     iIntros "HT" (???) "CTX HE HL Hl".
     iExists L, True%I. iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
     iModIntro. iDestruct "Hincl" as "(%Hst & #Hincl & _)".
     iSplitL; first last.
     { iPureIntro. rewrite Hst. eapply syn_type_size_eq_refl. }
-    iApply fupd_logical_step. iMod (fupd_mask_mono with "(Hincl Hl)"); first done.
-    iApply logical_step_intro. eauto.
+    iApply maybe_logical_step_fupd. iApply maybe_logical_step_intro.
+    iMod (fupd_mask_mono with "(Hincl Hl)"); first done.
+    eauto.
   Qed.
   Definition owned_subltype_step_weak_subltype_inst := [instance @owned_subltype_step_weak_subltype].
   Global Existing Instance owned_subltype_step_weak_subltype_inst | 1000.
 
-  Lemma owned_subltype_step_resolve_ghost π E L l {rt1 rt2 : RT} γ1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) T :
+  Lemma owned_subltype_step_resolve_ghost π E L step l {rt1 rt2 : RT} γ1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) T :
     resolve_ghost π E L ResolveAll false l lt1 Owned (👻 γ1) (λ L2 r1' R progress,
       R -∗
-      owned_subltype_step π E L2 l r1' r2 lt1 lt2 T) ⊢
-    owned_subltype_step π E L l (👻 γ1) r2 lt1 lt2 T.
+      owned_subltype_step π E L2 step l r1' r2 lt1 lt2 T) ⊢
+    owned_subltype_step π E L step l (👻 γ1) r2 lt1 lt2 T.
   Proof.
     iIntros "HT" (???) "#CTX #HE HL Hl".
     iMod ("HT" with "[] [] CTX HE HL Hl") as "(%L2 & %r1' & %R & %prog & Hs & HL & HT)"; [done.. | ].

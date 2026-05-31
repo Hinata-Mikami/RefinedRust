@@ -79,12 +79,12 @@ Context `{!typeGS Σ}.
 
 
   (* We iterate over all the fields to deinitialize them first, and then deinitialize the struct itself *)
-  Lemma owned_subltype_step_struct_uninit π E L l {rts} (lts : hlist ltype rts) rs (sls : struct_layout_spec) (st : syn_type) T :
-    owned_subltype_step π E L l #rs #() (StructLtype lts sls) (◁ uninit st) T :-
+  Lemma owned_subltype_step_struct_uninit π E L step l {rts} (lts : hlist ltype rts) rs (sls : struct_layout_spec) (st : syn_type) T :
+    owned_subltype_step π E L step l #rs #() (StructLtype lts sls) (◁ uninit st) T :-
     exhale (⌜syn_type_compat sls st⌝);
     L2, R2 ← iterate: zip (hpzipl rts lts rs) sls.(sls_fields) with L, True%I {{ '((existT rt (lt, r)), (field, stf)) T L2 R2,
       exhale (⌜ltype_st lt = stf⌝);
-      return owned_subltype_step π E L2 (l atst{sls}ₗ field) r #() lt (◁ uninit stf) (λ L3 R3,
+      return owned_subltype_step π E L2 step (l atst{sls}ₗ field) r #() lt (◁ uninit stf) (λ L3 R3,
         T L3 (R2 ∗ R3))
       }};
     return T L2 R2.
@@ -104,7 +104,7 @@ Context `{!typeGS Σ}.
           if decide (idx ≤ i) then
           ∃ (name : string) (st : syn_type), ⌜sls_fields sls !! i = Some (name, st)⌝ ∗ l atst{sls}ₗ name ◁ₗ[ π, Owned] r @ lt
           else True) ∗
-      logical_step F (R2 ∗
+      maybe_logical_step step F (R2 ∗
         ([∗ list] i↦'(existT rt (lt, r)) ∈ hpzipl rts lts rs',
           if decide (i < idx) then
           ∃ (name : string) (st : syn_type),
@@ -116,7 +116,7 @@ Context `{!typeGS Σ}.
 
     iMod (iterate_elim2_fupd INV with "Hit [Hl HL] []") as "(%L2 & %R2 & Hinv & HT)".
     { (* initialization *)
-      unfold INV. iFrame. iApply logical_step_intro.
+      unfold INV. iFrame. iApply maybe_logical_step_intro.
       iR. simpl. iApply big_sepL_intro.
       iIntros "!>" (? [? []] ?). done. }
     { (* preservation *)
@@ -135,8 +135,8 @@ Context `{!typeGS Σ}.
       iSplitL "Hinv".
       { iApply (big_sepL_mono with "Hinv"). iIntros (? [? []] ?) "Ha".
         repeat case_decide; try done; lia. }
-      iApply (logical_step_compose with "Hstep").
-      iApply (logical_step_wand with "Hs").
+      iApply (maybe_logical_step_compose with "Hstep").
+      iApply (maybe_logical_step_wand with "[] Hs").
       iIntros "(Ha & HR) (HR2 & Hb)". iFrame.
       iEval (rewrite -(list_insert_id (hpzipl rts lts rs') i _ Hlook1)).
       iApply big_sepL_insert.
@@ -147,13 +147,13 @@ Context `{!typeGS Σ}.
       iApply (big_sepL_mono with "Hb"). iIntros (? [? []] ?) "Ha".
       repeat case_decide; try done; lia. }
     iDestruct "Hinv" as "(HL & _ & Hs)".
-    iModIntro. iExists _, _. iFrame.
+    iModIntro. iExists L2, R2. iFrame "HL HT".
     iSplitL; first last.
     { iPureIntro. simp_ltypes.
       by eapply syn_type_compat_size_eq. }
-    iApply logical_step_fupd.
-    iApply (logical_step_wand with "Hs").
-    iIntros "(HR & Hx)". iFrame.
+    iApply maybe_logical_step_fupd.
+    iApply (maybe_logical_step_wand with "[Hclose_l Hlb] Hs").
+    iIntros "(HR & Hx)". iFrame "HR".
     clear INV.
 
     (* extract pure info from invariant *)

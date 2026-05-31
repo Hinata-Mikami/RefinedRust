@@ -2626,7 +2626,7 @@ Section judgments.
 
 
   (** Owned location subtyping with a logical step (used for extracting ghost observations) *)
-  Definition owned_subltype_step (π : thread_id) E L (l : loc) {rt1 rt2} (r1 : place_rfn rt1) (r2 : place_rfn rt2) (lt1 : ltype rt1) (lt2 : ltype rt2) (T : llctx → iProp Σ → iProp Σ) : iProp Σ :=
+  Definition owned_subltype_step (π : thread_id) E L (step : bool) (l : loc) {rt1 rt2} (r1 : place_rfn rt1) (r2 : place_rfn rt2) (lt1 : ltype rt1) (lt2 : ltype rt2) (T : llctx → iProp Σ → iProp Σ) : iProp Σ :=
     ∀ F,
     ⌜lftE ⊆ F⌝ -∗
     ⌜lft_userE ⊆ F⌝ -∗
@@ -2635,11 +2635,11 @@ Section judgments.
     llctx_interp L -∗
     l ◁ₗ[π, Owned] r1 @ lt1 -∗ |={F}=>
     ∃ L' R,
-    (logical_step F (l ◁ₗ[π, Owned] r2 @ lt2 ∗ R)) ∗
+    (maybe_logical_step step F (l ◁ₗ[π, Owned] r2 @ lt2 ∗ R)) ∗
     (⌜syn_type_size_eq (ltype_st lt1) (ltype_st lt2)⌝) ∗
     llctx_interp L' ∗ T L' R.
-  Class OwnedSubltypeStep (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt1 rt2} (r1 : place_rfn rt1) (r2 : place_rfn rt2) (lt1 : ltype rt1) (lt2 : ltype rt2) : Type :=
-    owned_subltype_step_proof T : iProp_to_Prop (owned_subltype_step π E L l r1 r2 lt1 lt2 T).
+  Class OwnedSubltypeStep (π : thread_id) (E : elctx) (L : llctx) (step : bool) (l : loc) {rt1 rt2} (r1 : place_rfn rt1) (r2 : place_rfn rt2) (lt1 : ltype rt1) (lt2 : ltype rt2) : Type :=
+    owned_subltype_step_proof T : iProp_to_Prop (owned_subltype_step π E L step l r1 r2 lt1 lt2 T).
 
 
   (** Subtyping for compatibility with mutable references. Importantly, this is independent of the refinement. *)
@@ -4481,7 +4481,7 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | weak_subltype ?E ?L ?k ?r1 ?r2 ?lt1 ?lt2 => constr:(SubLtype E L k r1 r2 lt1 lt2)
   | mut_subltype ?E ?L ?lt1 ?lt2 => constr:(MutSubLtype E L lt1 lt2)
   | mut_eqltype ?E ?L ?lt1 ?lt2 => constr:(MutEqLtype E L lt1 lt2)
-  | owned_subltype_step ?π ?E ?L ?l ?r1 ?r2 ?lt1 ?lt2 => constr:(OwnedSubltypeStep π E L l r1 r2 lt1 lt2)
+  | owned_subltype_step ?π ?E ?L ?step ?l ?r1 ?r2 ?lt1 ?lt2 => constr:(OwnedSubltypeStep π E L step l r1 r2 lt1 lt2)
   | cast_ltype_to_type ?E ?L ?lt => constr:(CastLtypeToType E L lt)
   | typed_array_access ?π ?E ?L ?base ?off ?st ?lt ?r ?bk => constr:(TypedArrayAccess π E L base off st lt r bk)
   | find_observation ?rt ?γ ?m => constr:(FindObservation rt γ m)

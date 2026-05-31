@@ -197,8 +197,8 @@ End extract.
 Section rule.
   Context `{!typeGS Σ}.
 
-  Lemma owned_subltype_step_mutltype_uninit π E L {rt} (lt : ltype rt) r γ st κ l T :
-    owned_subltype_step π E L l #(r, γ) #() (MutLtype lt κ) (◁ uninit st) T :-
+  Lemma owned_subltype_step_mutltype_uninit π E L step {rt} (lt : ltype rt) r γ st κ l T :
+    owned_subltype_step π E L step l #(r, γ) #() (MutLtype lt κ) (◁ uninit st) T :-
     return match ltype_uniq_extractable lt with
     | None => False
     | Some κm =>
@@ -214,7 +214,7 @@ Section rule.
     iMod (ltype_uniq_extractable_deinit_mut with "Hl") as "(Hl & Hf)"; [done.. | ].
     iPoseProof (MaybeInherit_update (place_rfn_interp_mut_extracted r γ) with "[] Hf") as "Hf".
     { iIntros (?) "Hrfn". iMod (place_rfn_interp_mut_extract with "Hrfn") as "?". done. }
-    iModIntro. iSplitL. { iApply logical_step_intro. iFrame. }
+    iModIntro. iSplitL. { iApply maybe_logical_step_intro. iFrame. }
     iPureIntro. by apply syn_type_compat_size_eq.
   Qed.
   Definition owned_subltype_step_mutltype_uninit_inst := [instance owned_subltype_step_mutltype_uninit].

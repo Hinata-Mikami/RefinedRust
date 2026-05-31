@@ -96,11 +96,11 @@ Section deinit.
      - opened (in case we did not re-establish the invariant, but still have the underlying struct etc) *)
 
   (*
-  Lemma owned_subltype_step_array_uninit π E L l {rts} (lts : hlist ltype rts) rs sls st T :
-    owned_subltype_step π E L l #rs #() (ArrayLtype def len iml) (◁ uninit st) T :-
+  Lemma owned_subltype_step_array_uninit π E L step l {rts} (lts : hlist ltype rts) rs sls st T :
+    owned_subltype_step π E L step l #rs #() (ArrayLtype def len iml) (◁ uninit st) T :-
     exhale (⌜st = sls⌝);
     L2, R2 ← iterate: zip (hpzipl rts lts rs) sls.(sls_fields) with L, True%I {{ '((existT rt (lt, r)), (field, stf)) T L2 R2,
-      return owned_subltype_step π E L2 (l atst{sls}ₗ field) r #() lt (◁ uninit stf) (λ L3 R3,
+      return owned_subltype_step π E L2 step (l atst{sls}ₗ field) r #() lt (◁ uninit stf) (λ L3 R3,
         T L3 (R2 ∗ R3))
       }};
     return T L2 R2.
@@ -110,7 +110,7 @@ Section deinit.
   (* Two low-priority instances that trigger as a fallback for ltypes foldable to a ty (no borrows below) *)
   (* First, if the syntype is equal *)
   Lemma owned_subltype_step_ofty_uninit_eq π E L {rt} (lt : ltype rt) r st l `{Hst : !TCDone (ltype_st lt = st)} T :
-    owned_subltype_step π E L l #r #() lt (◁ uninit st) T :-
+    owned_subltype_step π E L true l #r #() lt (◁ uninit st) T :-
     return cast_ltype_to_type E L lt (λ ty, T L (ty_ghost_drop ty π r)).
   Proof.
     unfold TCDone in Hst. subst st.
@@ -144,7 +144,7 @@ Section deinit.
 
   (* Otherwise, more complicated: *)
   Lemma owned_subltype_step_ofty_uninit π E L {rt} (lt : ltype rt) r st l T :
-    owned_subltype_step π E L l #r #() lt (◁ uninit st) T :-
+    owned_subltype_step π E L true l #r #() lt (◁ uninit st) T :-
     return
     cast_ltype_to_type E L lt (λ ty,
     li_tactic (compute_layout_goal (ty_syn_type ty MetaNone)) (λ ly1,

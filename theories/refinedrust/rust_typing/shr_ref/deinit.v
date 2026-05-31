@@ -69,8 +69,8 @@ Section rule.
   Context `{!typeGS Σ}.
 
   (* Directly subsume ShrLtype, as there can not be any interesting borrow information to extract *)
-  Lemma owned_subltype_step_shrltype_uninit π E L {rt} (lt : ltype rt) r st κ l T  :
-    owned_subltype_step π E L l r #() (ShrLtype lt κ) (◁ uninit st) T :-
+  Lemma owned_subltype_step_shrltype_uninit π E L step {rt} (lt : ltype rt) r st κ l T  :
+    owned_subltype_step π E L step l r #() (ShrLtype lt κ) (◁ uninit st) T :-
     exhale (⌜syn_type_compat PtrSynType st⌝);
     return T L True%I.
   Proof.
@@ -78,7 +78,7 @@ Section rule.
     iIntros (???) "CTX HE HL Hl". simp_ltypes; simpl.
     iMod (ltype_deinit_shr with "Hl") as "Hl"; [done.. | ].
     iExists _, _. iFrame.
-    iSplitL. { iApply logical_step_intro. by iFrame. }
+    iSplitL. { iApply maybe_logical_step_intro. by iFrame. }
     iModIntro. iPureIntro.
     by apply syn_type_compat_size_eq.
   Qed.
