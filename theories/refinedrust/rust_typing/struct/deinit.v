@@ -129,7 +129,7 @@ Context `{!typeGS Σ}.
       iDestruct "Ha" as "(% & % & %Hlook2' & Ha)".
       rewrite Hlook2 in Hlook2'. injection Hlook2' as <- <-.
       iDestruct "Hsub" as "(<- & Hsub)".
-      iMod ("Hsub" with "[] [] CTX HE HL Ha") as "(%L3 & %R3 & Hs & %Hst_eq & HL & HT)"; [done.. | ].
+      iMod ("Hsub" with "[] [] CTX HE HL Ha") as "(%L3 & %R3 & Hs & HL & HT)"; [done.. | ].
 
       iModIntro. iExists _, _. iFrame.
       iSplitL "Hinv".
@@ -148,9 +148,6 @@ Context `{!typeGS Σ}.
       repeat case_decide; try done; lia. }
     iDestruct "Hinv" as "(HL & _ & Hs)".
     iModIntro. iExists L2, R2. iFrame "HL HT".
-    iSplitL; first last.
-    { iPureIntro. simp_ltypes.
-      by eapply syn_type_compat_size_eq. }
     iApply maybe_logical_step_fupd.
     iApply (maybe_logical_step_wand with "[Hclose_l Hlb] Hs").
     iIntros "(HR & Hx)". iFrame "HR".

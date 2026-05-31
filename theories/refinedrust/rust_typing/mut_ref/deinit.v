@@ -214,8 +214,7 @@ Section rule.
     iMod (ltype_uniq_extractable_deinit_mut with "Hl") as "(Hl & Hf)"; [done.. | ].
     iPoseProof (MaybeInherit_update (place_rfn_interp_mut_extracted r γ) with "[] Hf") as "Hf".
     { iIntros (?) "Hrfn". iMod (place_rfn_interp_mut_extract with "Hrfn") as "?". done. }
-    iModIntro. iSplitL. { iApply maybe_logical_step_intro. iFrame. }
-    iPureIntro. by apply syn_type_compat_size_eq.
+    iModIntro. iApply maybe_logical_step_intro. iFrame.
   Qed.
   Definition owned_subltype_step_mutltype_uninit_inst := [instance owned_subltype_step_mutltype_uninit].
   Global Existing Instance owned_subltype_step_mutltype_uninit_inst | 20.

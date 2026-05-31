@@ -78,9 +78,7 @@ Section rule.
     iIntros (???) "CTX HE HL Hl". simp_ltypes; simpl.
     iMod (ltype_deinit_shr with "Hl") as "Hl"; [done.. | ].
     iExists _, _. iFrame.
-    iSplitL. { iApply maybe_logical_step_intro. by iFrame. }
-    iModIntro. iPureIntro.
-    by apply syn_type_compat_size_eq.
+    iModIntro. iApply maybe_logical_step_intro. by iFrame.
   Qed.
   Definition owned_subltype_step_shrltype_uninit_inst := [instance owned_subltype_step_shrltype_uninit].
   Global Existing Instance owned_subltype_step_shrltype_uninit_inst | 20.

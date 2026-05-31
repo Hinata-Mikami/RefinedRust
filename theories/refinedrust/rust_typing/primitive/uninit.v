@@ -124,20 +124,19 @@ Section deinit.
     iExists _, _. iFrame.
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Hst' & %)".
     simp_ltypes in Hst'.
-    iSplitL.
-    { iMod (ofty_own_split_value_untyped with " Hl") as "(%v & Hv & Hl)"; [done.. | ].
-      iPoseProof (ty_own_ghost_drop with "Hv") as "Hb"; first done.
-      iApply (logical_step_wand with "Hb"). iModIntro. iIntros "$".
-      iApply (ofty_owned_subtype_aligned with "[] Hl").
-      { simpl. rewrite Hst. done. }
-      { done. }
-      rewrite Hst.
-      iApply owned_type_incl_uninit'.
-      - simpl.
-        intros ?(-> & _)%syn_type_has_layout_untyped_inv.
-        eauto.
-      - done. }
-    iPureIntro. rewrite Hst. apply syn_type_size_eq_refl.
+    iMod (ofty_own_split_value_untyped with " Hl") as "(%v & Hv & Hl)"; [done.. | ].
+    iPoseProof (ty_own_ghost_drop with "Hv") as "Hb"; first done.
+    iModIntro.
+    iApply (logical_step_wand with "Hb"). iIntros "$".
+    iApply (ofty_owned_subtype_aligned with "[] Hl").
+    { simpl. rewrite Hst. done. }
+    { done. }
+    rewrite Hst.
+    iApply owned_type_incl_uninit'.
+    - simpl.
+      intros ?(-> & _)%syn_type_has_layout_untyped_inv.
+      eauto.
+    - done.
   Qed.
   Definition owned_subltype_step_ofty_uninit_eq_inst := [instance owned_subltype_step_ofty_uninit_eq].
   Global Existing Instance owned_subltype_step_ofty_uninit_eq_inst | 100.
@@ -170,19 +169,16 @@ Section deinit.
     iDestruct ("HT" with "[//] [//]") as "(%Hly' & %Hsz & HT)".
 
     iExists _, _. iFrame.
-    assert (syn_type_size_eq (ltype_st lt) st) as ?.
-    { rewrite Hst ltype_st_ofty. by eapply syn_type_size_eq_prove. }
-    iSplitL.
-    { iMod (ofty_own_split_value_untyped with "Hl") as "(%v & Hv & Hl)"; [done.. | ].
-      iPoseProof (ty_own_ghost_drop with "Hv") as "Hb"; first done.
-      iApply (logical_step_wand with "Hb"). iModIntro. iIntros "$".
-      iApply (ofty_owned_subtype_aligned with "[] Hl"); [done | | ].
-      { done. }
-      iApply owned_type_incl_uninit'; last done.
-      simpl.
-      intros ?(-> & _)%syn_type_has_layout_untyped_inv.
-      eauto. }
-    iPureIntro. done.
+    iMod (ofty_own_split_value_untyped with "Hl") as "(%v & Hv & Hl)"; [done.. | ].
+    iPoseProof (ty_own_ghost_drop with "Hv") as "Hb"; first done.
+    iModIntro.
+    iApply (logical_step_wand with "Hb"). iIntros "$".
+    iApply (ofty_owned_subtype_aligned with "[] Hl"); [done | | ].
+    { done. }
+    iApply owned_type_incl_uninit'; last done.
+    simpl.
+    intros ?(-> & _)%syn_type_has_layout_untyped_inv.
+    eauto.
   Qed.
   Definition owned_subltype_step_ofty_uninit_inst := [instance owned_subltype_step_ofty_uninit].
   Global Existing Instance owned_subltype_step_ofty_uninit_inst | 101.

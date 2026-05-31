@@ -2636,7 +2636,6 @@ Section judgments.
     l ◁ₗ[π, Owned] r1 @ lt1 -∗ |={F}=>
     ∃ L' R,
     (maybe_logical_step step F (l ◁ₗ[π, Owned] r2 @ lt2 ∗ R)) ∗
-    (⌜syn_type_size_eq (ltype_st lt1) (ltype_st lt2)⌝) ∗
     llctx_interp L' ∗ T L' R.
   Class OwnedSubltypeStep (π : thread_id) (E : elctx) (L : llctx) (step : bool) (l : loc) {rt1 rt2} (r1 : place_rfn rt1) (r2 : place_rfn rt2) (lt1 : ltype rt1) (lt2 : ltype rt2) : Type :=
     owned_subltype_step_proof T : iProp_to_Prop (owned_subltype_step π E L step l r1 r2 lt1 lt2 T).
@@ -4523,5 +4522,6 @@ Notation "'stratify_ltype' π E L mdu ma m l lt r b 'HIDDEN_CONT'" := (stratify_
 Notation "'typed_context_fold_step' step π E L m l lt r ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typed_context_fold_step step π E L m l lt r ls _ _) (only printing) : rr_hidden.
 Notation "'typed_context_fold' step E L m ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typed_context_fold step E L m ls _ _) (only printing) : rr_hidden.
 Notation "'weak_subltype' E L b r1 r2 lt1 lt2 'HIDDEN_CONT'" := (weak_subltype E L b r1 r2 lt1 lt2 _) (only printing) : rr_hidden.
+
 
 Notation "'typed_block' 'HIDDEN_INV' E f l rf R ϝ" := (typed_block E _ f l rf R ϝ) (only printing, at level 100) : rr_hidden.

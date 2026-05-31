@@ -1530,7 +1530,7 @@ Section subsume.
     ⊢ subsume_full E L true (l ◁ₗ[π, Owned] r1 @ lt1) (l ◁ₗ[π, Owned] r2 @ lt2) T.
   Proof.
     iIntros "HT" (????) "#CTX #HE HL Hl".
-    iMod ("HT" with "[//] [//] CTX HE HL Hl") as "(%L' & %R & Hstep & %Hly & HL & HT)".
+    iMod ("HT" with "[//] [//] CTX HE HL Hl") as "(%L' & %R & Hstep & HL & HT)".
     iExists L', R. by iFrame.
   Qed.
   Definition subsume_full_own_loc_owned_inst := [instance @subsume_full_own_loc_owned].
@@ -1729,8 +1729,6 @@ Section subsume.
     iIntros "HT" (???) "CTX HE HL Hl".
     iExists L, True%I. iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
     iModIntro. iDestruct "Hincl" as "(%Hst & #Hincl & _)".
-    iSplitL; first last.
-    { iPureIntro. rewrite Hst. eapply syn_type_size_eq_refl. }
     iApply maybe_logical_step_fupd. iApply maybe_logical_step_intro.
     iMod (fupd_mask_mono with "(Hincl Hl)"); first done.
     eauto.
