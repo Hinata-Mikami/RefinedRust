@@ -190,10 +190,8 @@ Section deinit_fallback.
   (** Fallback instances without a logical step -- here, we cannot ghost_drop *)
 
   (* TODO: maybe restrict this instance more for earlier failure *)
-  Lemma uninit_mono π E L l {rt} (ty : type rt) r st T :
-    subsume_full E L false
-      (l ◁ₗ[π, Owned] #r @ (◁ ty))
-      (l ◁ₗ[π, Owned] .@ (◁ (uninit st))) T :-
+  Lemma uninit_mono π E L step l {rt} (ty : type rt) r st T :
+    owned_subltype_step π E L step l #r #() (◁ ty) (◁ (uninit st)) T :-
     ly ← tactic (compute_layout_goal st);
     exhale (⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝);
     ∀ v,
@@ -204,21 +202,24 @@ Section deinit_fallback.
     iIntros "(%ly & %Halg1 & %Halg2 & HT)".
     iIntros (????) "#CTX #HE HL Hl".
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own. simpl.
-    iDestruct "Hl" as "(%ly' & %Halg & %Hly & Hsc & ? & %r' & <- & Hv)".
+    iDestruct "Hl" as "(%ly' & %Halg & %Hly & Hsc & #Hlb & %r' & <- & Hv)".
     iMod (fupd_mask_mono with "Hv") as "(%v & Hl & Hv)"; first done.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%"; first done.
-    iExists L, True%I. iPoseProof ("HT" with "Hv") as "$". iFrame "HL".
-    rewrite right_id. assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
+    iExists L, True%I. iPoseProof ("HT" with "Hv") as "HT". iFrame "HL HT".
+    iModIntro.
+    iApply maybe_logical_step_intro.
+    assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
+    iSplitL; last done.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own. simpl.
     iExists ly. iSplitR; first done. iSplitR; first done.
-    iSplitR; first done. iFrame. iExists _. iSplitR; first done.
-    iModIntro. iModIntro.
+    iSplitR; first done. iSplitR; first done. iExists _. iSplitR; first done. iModIntro.
+    iExists _. iFrame.
     rewrite uninit_own_spec.
     iR.
     iExists ly. done.
   Qed.
   Definition uninit_mono_inst := [instance uninit_mono].
-  Global Existing Instance uninit_mono_inst | 40.
+  Global Existing Instance uninit_mono_inst | 102.
 
   (** We have this instance because it even works when [r1 = PlaceGhost ..] *)
   Lemma weak_subltype_deinit E L {rt1 : RT} (r1 : place_rfn rt1) r2 (ty : type rt1) st T :
@@ -279,26 +280,33 @@ Section evar.
 
   (** ** Evar instantiation *)
   Lemma uninit_mono_untyped_evar π E L step l ly1 ly2 `{!IsProtected ly2} T :
-    subsume_full E L step
-      (l ◁ₗ[π, Owned] .@ (◁ uninit (UntypedSynType ly1)))
-      (l ◁ₗ[π, Owned] .@ (◁ uninit (UntypedSynType ly2))) T :-
+    owned_subltype_step π E L step l #() #()
+      (◁ uninit (UntypedSynType ly1))
+      (◁ uninit (UntypedSynType ly2)) T :-
     exhale (⌜ly1 = ly2⌝);
     return (T L True%I).
-  Proof. iIntros "(-> & HT)". iApply subsume_full_subsume. iFrame. eauto. Qed.
+  Proof.
+    iIntros "(-> & HT)".
+    iIntros (????) "#CTX #HE HL Hl".
+    iExists L, True%I. iFrame "HL HT".
+    iApply maybe_logical_step_intro. iFrame. done.
+  Qed.
   Definition uninit_mono_untyped_evar_inst := [instance uninit_mono_untyped_evar].
   Global Existing Instance uninit_mono_untyped_evar_inst | 10.
 
   Lemma uninit_mono_untyped_id E L π step l (ly1 ly2 : layout) `{TCDone (ly1 = ly2)} T:
-    subsume_full E L step
-      (l ◁ₗ[π, Owned] .@ (◁ uninit (UntypedSynType ly1)))
-      (l ◁ₗ[π, Owned] .@ (◁ uninit (UntypedSynType ly2))) T :-
+    owned_subltype_step π E L step l #() #()
+      (◁ uninit (UntypedSynType ly1))
+      (◁ uninit (UntypedSynType ly2)) T :-
     return (T L True%I).
   Proof.
     match goal with
     | H : TCDone _ |- _ => rename H into Heq
     end.
-    rewrite /TCDone in Heq. subst. iIntros "HL".
-    iApply subsume_full_subsume. iFrame. eauto.
+    rewrite /TCDone in Heq. subst. iIntros "HT".
+    iIntros (????) "#CTX #HE HL Hl".
+    iExists L, True%I. iFrame "HL HT".
+    iApply maybe_logical_step_intro. iFrame. done.
   Qed.
   Definition uninit_mono_untyped_id_inst := [instance uninit_mono_untyped_id].
   Global Existing Instance uninit_mono_untyped_id_inst | 11.
