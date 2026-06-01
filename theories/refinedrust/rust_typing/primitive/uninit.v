@@ -316,10 +316,8 @@ Section init.
   Context `{!typeGS Σ}.
 
   (** ** Subsumption with uninit on the LHS (for initializing) *)
-  Lemma subsume_full_ofty_owned_subtype π step l {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 E L T :
-    subsume_full step
-      (l ◁ₗ[π, Owned] #r1 @ ◁ ty1)
-      (l ◁ₗ[π, Owned] #r2 @ ◁ ty2) E L T :-
+  Lemma owned_subltype_step_ofty_owned_subtype π E L step l {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 T :
+    owned_subltype_step π E L step l #r1 #r2 (◁ ty1) (◁ ty2) T :-
     ly1 ← tactic (compute_layout_goal (ty_syn_type ty1 MetaNone));
       (* augment context *)
     inhale (⌜enter_cache_hint(syn_type_has_layout (ty_syn_type ty1 MetaNone) ly1)⌝);
@@ -343,8 +341,8 @@ Section init.
   Qed.
   (** We only declare an instance for this where the LHS is uninit -- generally, we'd rather want to  go via the "full subtyping" judgments,
     because the alignment sidecondition here may be hard to prove explicitly. *)
-  Definition subsume_full_ofty_owned_subtype_uninit π step l {rt2} (ty2 : type rt2) r2 st E L T :=
-    subsume_full_ofty_owned_subtype π step l (uninit st) ty2 () r2 E L T.
-  Definition subsume_full_ofty_owned_subtype_uninit_inst := [instance subsume_full_ofty_owned_subtype_uninit].
-  Global Existing Instance subsume_full_ofty_owned_subtype_uninit_inst | 30.
+  Definition owned_subltype_step_ofty_owned_subtype_uninit π E L step l {rt2} (ty2 : type rt2) r2 st T :=
+    owned_subltype_step_ofty_owned_subtype π E L step l (uninit st) ty2 () r2 T.
+  Definition owned_subltype_step_ofty_owned_subtype_uninit_inst := [instance owned_subltype_step_ofty_owned_subtype_uninit].
+  Global Existing Instance owned_subltype_step_ofty_owned_subtype_uninit_inst | 30.
 End init.

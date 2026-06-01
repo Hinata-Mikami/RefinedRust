@@ -1501,14 +1501,14 @@ Section subsume.
   Definition subsume_full_subsume_inst := [instance @subsume_full_subsume].
   Global Existing Instance subsume_full_subsume_inst | 2000.
 
-  Lemma subsume_full_value_evar π step v {rt} (ty : type rt) (r1 r2 : rt) m1 m2 E L T :
+  Lemma subsume_full_ty_eq π step v {rt} (ty : type rt) (r1 r2 : rt) m1 m2 E L T :
     ⌜r1 = r2⌝ ∗ ⌜m1 = m2⌝ ∗ T L True%I
     ⊢ subsume_full step (v ◁ᵥ{π, m1} r1 @ ty) (v ◁ᵥ{π, m2} r2 @ ty) E L T.
   Proof.
     iIntros "(-> & -> & HT)". by iApply subsume_full_id.
   Qed.
-  Definition subsume_full_value_evar_inst := [instance @subsume_full_value_evar].
-  Global Existing Instance subsume_full_value_evar_inst | 5.
+  Definition subsume_full_ty_eq_inst := [instance @subsume_full_ty_eq].
+  Global Existing Instance subsume_full_ty_eq_inst | 5.
 
   Lemma subsume_full_owned_subtype π step v {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 m1 m2 E L T :
     ⌜m1 = MetaNone⌝ ∗ ⌜m2 = MetaNone⌝ ∗ owned_subtype π E L false r1 r2 ty1 ty2 (λ L', T L' True%I)
