@@ -15,7 +15,7 @@ use rr_rustc_interface::middle::ty;
 use super::{MirTranslationCtx, MirTypeTranslation, ProcedureInst, TraitMethodUseData, TranslationKey};
 use crate::base::*;
 use crate::error::Message;
-use crate::traits::registry;
+use crate::traits::registry::{self, ResolvedTraitReq};
 use crate::{procedures, types};
 
 pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
@@ -25,7 +25,14 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
         &self,
         owner_did: DefId,
         args: ty::GenericArgsRef<'tcx>,
+        trait_reqs: Vec<ResolvedTraitReq<'tcx, 'def>>,
     ) -> Result<types::AbstractedGenerics<'def>, TranslationError>;
+
+    fn resolve_drop_glue_trait_requirements(
+        &self,
+        owner_did: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Result<Vec<ResolvedTraitReq<'tcx, 'def>>, TranslationError>;
 
     fn translate_drop_glue_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError>;
 
@@ -62,7 +69,8 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
     ) -> Result<(code::Expr, ProcedureInst<'tcx, 'def>), TranslationError> {
         let key = procedures::DropGlueKey::Adt(OrderedDefId::new(self.tcx(), adt_def.did()));
         let generics_key = types::generate_args_inst_key(self.tcx(), adt_args)?;
-        let quantified_args = self.get_drop_glue_generic_abstraction(adt_def.did(), adt_args)?;
+        let trait_reqs = self.resolve_drop_glue_trait_requirements(adt_def.did(), adt_args)?;
+        let quantified_args = self.get_drop_glue_generic_abstraction(adt_def.did(), adt_args, trait_reqs)?;
 
         self.register_use_concrete_drop_glue(key, generics_key, adt_args, quantified_args)
     }

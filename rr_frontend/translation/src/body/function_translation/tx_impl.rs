@@ -19,6 +19,7 @@ use crate::body::mir_lowering::{
     make_virtual_drop_glue_method_for_param_from_scope,
 };
 use crate::regions::AnnotationGenerator;
+use crate::traits::registry::ResolvedTraitReq;
 use crate::{procedures, types};
 
 impl<'a, 'def: 'a, 'tcx: 'def> MirTranslationCtx<'def, 'tcx> for TX<'a, 'def, 'tcx> {
@@ -66,9 +67,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for TX<'a, 'def, '
         &self,
         owner_did: DefId,
         args: ty::GenericArgsRef<'tcx>,
+        trait_reqs: Vec<ResolvedTraitReq<'tcx, 'def>>,
     ) -> Result<types::AbstractedGenerics<'def>, TranslationError> {
         self.ty_translator
-            .get_generic_abstraction_for_item(owner_did, args, &[], Vec::new(), true)
+            .get_generic_abstraction_for_item(owner_did, args, &[], trait_reqs, true)
+    }
+
+    fn resolve_drop_glue_trait_requirements(
+        &self,
+        owner_did: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Result<Vec<ResolvedTraitReq<'tcx, 'def>>, TranslationError> {
+        let mut scope = self.ty_translator.scope.borrow_mut();
+        let mut state = types::STInner::InFunction(&mut scope);
+        self.trait_registry.resolve_trait_requirements_in_state(&mut state, owner_did, args, true)
     }
 
     fn translate_drop_glue_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError> {

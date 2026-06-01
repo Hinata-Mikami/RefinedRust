@@ -20,6 +20,7 @@ use crate::body::mir_lowering::{
     MirConstantTranslation, MirDropTranslation, MirRvalueTranslation, MirTranslationCtx, MirTypeTranslation,
     TraitMethodUseData, TranslationKey, make_virtual_drop_glue_method_for_param_from_scope,
 };
+use crate::traits::registry::ResolvedTraitReq;
 use crate::{procedures, rustcmp, types};
 
 impl<'a, 'def: 'a, 'tcx: 'def> MirTranslationCtx<'def, 'tcx> for DropGlueTX<'a, 'def, 'tcx> {
@@ -125,6 +126,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for DropGlueTX<'a,
         &self,
         owner_did: DefId,
         args: ty::GenericArgsRef<'tcx>,
+        trait_reqs: Vec<ResolvedTraitReq<'tcx, 'def>>,
     ) -> Result<types::AbstractedGenerics<'def>, TranslationError> {
         trace!("enter drop-glue get_drop_glue_generic_abstraction owner_did={owner_did:?} args={args:?}");
 
@@ -203,6 +205,22 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for DropGlueTX<'a,
             }
         }
 
+        for req in trait_reqs {
+            let mut assoc_inst = Vec::new();
+            for ty in req.req_inst.assoc_ty_inst {
+                let mut state = self.shim_state();
+                assoc_inst.push(self.ty_translator.translate_type_in_state(ty, &mut state)?);
+            }
+            let trait_req = specs::traits::ReqInst::new(
+                req.req_inst.spec,
+                req.req_inst.origin,
+                assoc_inst,
+                req.req_inst.of_trait,
+                req.req_inst.scope,
+            );
+            fn_inst.add_trait_requirement(trait_req);
+        }
+
         info!("Drop-glue abstraction scope: {:?}", scope);
         info!("Drop-glue fn instantiation: {fn_inst:?}");
         info!("Drop-glue callee instantiation: {:?}, {:?}", callee_lft_param_inst, callee_ty_param_inst);
@@ -218,6 +236,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for DropGlueTX<'a,
 
     fn translate_drop_glue_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError> {
         self.ty_translator.translate_type_in_state(ty, &mut self.shim_state())
+    }
+
+    fn resolve_drop_glue_trait_requirements(
+        &self,
+        owner_did: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Result<Vec<ResolvedTraitReq<'tcx, 'def>>, TranslationError> {
+        let mut state = self.shim_state();
+        self.ty_translator
+            .trait_registry()
+            .resolve_trait_requirements_in_state(&mut state, owner_did, args, true)
     }
 
     fn make_virtual_drop_glue_method_for_param(&self, dropped_ty: ty::Ty<'tcx>) -> TraitMethodUseData<'def> {
