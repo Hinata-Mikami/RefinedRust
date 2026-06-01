@@ -745,11 +745,11 @@ Section introduce.
 
   (* low priority base instances so that other more specialized instances trigger first *)
   Lemma introduce_with_hooks_base_learnable E L P `{HP : !LearnFromHyp P} T :
-    (P -∗ introduce_with_hooks E L (learn_from_hyp_Q) T) ⊢
+    (P -∗ introduce_with_hooks E L (HP.(learn_from_hyp_Q)) T) ⊢
     introduce_with_hooks E L P T.
   Proof.
     iIntros "HT" (F ?) "#CTX #HE HL HP".
-    iMod (learn_from_hyp_proof with "[//] HP") as "(HP & Hlearn)".
+    iMod (HP.(learn_from_hyp_proof) with "[//] HP") as "(HP & Hlearn)".
     iMod ("HT" with "HP [] CTX HE HL Hlearn") as "Ha"; first done.
     done.
   Qed.
@@ -882,7 +882,7 @@ Section introduce.
     iIntros "(Hb & HT)".
     iIntros (??) "CTX HE HL Ha".
     iPoseProof (Hag.(li_agree_to_pred) with "Ha") as "Ha".
-    iPoseProof (li_agree_agree with "Ha Hb") as "<-".
+    iPoseProof (Hag.(li_agree_agree) with "Ha Hb") as "<-".
     iSpecialize ("HT" with "Ha [//]"). by iFrame.
   Qed.
   Definition introduce_with_hooks_agree_inst := [instance @introduce_with_hooks_agree].
@@ -1480,6 +1480,26 @@ Section subsume.
     SubsumeFull E L step (v ◁ᵥ{π} r1 @ ty1) (v ◁ᵥ{π} r2 @ ty2) | 100 :=
     λ T, i2p (subsume_full_own_val π E L step v ty1 ty2 r1 r2 T).
   *)
+
+  Lemma subsume_full_id E L step P T :
+    T L True ⊢ subsume_full E L step P P T.
+  Proof.
+    iIntros "HT" (????) "CTX HE HL ?".
+    iExists L, True%I. iFrame.
+    iApply maybe_logical_step_intro. by iFrame.
+  Qed.
+  Global Instance subsume_full_id_inst E L step (P : iProp Σ) : SubsumeFull E L step P P := λ T, i2p (subsume_full_id E L step P T).
+
+  Lemma subsume_full_subsume E L step P Q T :
+    subsume P Q (T L True) ⊢
+    subsume_full E L step P Q T.
+  Proof.
+    iIntros "Hsub" (????) "#CTX #HE HL HP". iPoseProof ("Hsub" with "HP") as "(HQ & HT)".
+    iExists L, True%I; iFrame. iApply maybe_logical_step_intro. by iFrame.
+  Qed.
+  (* low priority, should not trigger when there are other more specific instances *)
+  Global Instance subsume_full_subsume_inst E L step P Q : SubsumeFull E L step P Q | 2000 :=
+    λ T, i2p (subsume_full_subsume E L step P Q T).
 
   Lemma subsume_full_value_evar π E L step v {rt} (ty : type rt) (r1 r2 : rt) m1 m2 T :
     ⌜r1 = r2⌝ ∗ ⌜m1 = m2⌝ ∗ T L True%I
@@ -5484,14 +5504,12 @@ Global Typeclasses Opaque stratify_ltype.
 Global Typeclasses Opaque stratify_ltype_post_hook.
 Global Typeclasses Opaque interpret_typing_hint.
 Global Typeclasses Opaque stratify_ltype_array_iter.
-Global Hint Mode StratifyLtypeArrayIter + + + + + + + + + + + + + + + + + : typeclass_instances.
 
 Global Typeclasses Opaque find_observation.
 Global Typeclasses Opaque resolve_ghost.
 Global Typeclasses Opaque resolve_ghost_adt.
 
 Global Typeclasses Opaque resolve_ghost_iter.
-Global Hint Mode ResolveGhostIter + + + + + + + + + + + + + + + : typeclass_instances.
 
 Global Typeclasses Opaque owned_subtype.
 Global Typeclasses Opaque weak_subtype.
@@ -5517,8 +5535,24 @@ Global Typeclasses Opaque fold_list.
 Global Typeclasses Opaque llctx_release_toks_goal.
 Global Typeclasses Opaque lctx_lft_alive_count_goal.
 
-
-
-
 Global Typeclasses Opaque typed_array_access.
-Global Hint Mode TypedArrayAccess + + + + + + + + + + + + : typeclass_instances.
+
+
+
+
+Notation "'typed_value' π x 'HIDDEN_CONT'" := (typed_value π x _) (only printing): rr_hidden.
+Notation "'typed_place' E L f l lto ro b1 b2 K 'HIDDEN_CONT'" := (typed_place E L f l lto ro b1 b2 K _) (only printing): rr_hidden.
+
+Notation "'subsume_full' E L wl P1 P2 'HIDDEN_CONT'" := (subsume_full E L wl P1 P2 _) (only printing): rr_hidden.
+Notation "'resolve_ghost' π E L rm f l lt k r 'HIDDEN_CONT'" := (resolve_ghost π E L rm f l lt k r _) (only printing): rr_hidden.
+Notation "'prove_with_subtype' E L wl pm P 'HIDDEN_ACC' 'HIDDEN_CONT'" := (prove_with_subtype E L wl pm P _ _) (only printing): rr_hidden.
+Notation "'introduce_with_hooks' E L P 'HIDDEN_CONT'" := (introduce_with_hooks E L P _) (only printing): rr_hidden.
+Notation "'stratify_ltype' π E L mdu ma m l lt r b 'HIDDEN_CONT'" := (stratify_ltype π E L mdu ma m l lt r b _) (only printing): rr_hidden.
+
+
+Notation "'typed_context_fold_step' step π E L m l lt r ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typed_context_fold_step step π E L m l lt r ls _ _) (only printing) : rr_hidden.
+Notation "'typed_context_fold' step E L m ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typed_context_fold step E L m ls _ _) (only printing) : rr_hidden.
+Notation "'weak_subltype' E L b r1 r2 lt1 lt2 'HIDDEN_CONT'" := (weak_subltype E L b r1 r2 lt1 lt2 _) (only printing) : rr_hidden.
+
+
+Notation "'typed_block' 'HIDDEN_INV' E f l rf R ϝ" := (typed_block E _ f l rf R ϝ) (only printing, at level 100) : rr_hidden.
