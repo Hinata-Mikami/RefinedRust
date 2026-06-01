@@ -565,20 +565,6 @@ Section judgments.
   Context `{typeGS Σ}.
   Implicit Types (rt : RT).
 
-  Class SimplifyHypPlace (l : loc) (π : thread_id) {rt} (ty : type rt) (r : place_rfn rt) (n : option N) : Type :=
-    simplify_hyp_place :: SimplifyHyp (l ◁ₗ[π, Owned] r @ (◁ ty)%I) n.
-  Global Hint Mode SimplifyHypPlace + + + + + - : typeclass_instances.
-  Class SimplifyHypVal (v : val) (π : thread_id) {rt} (ty : type rt) (r : rt) (m : metadata) (n : option N) : Type :=
-    simplify_hyp_val :: SimplifyHyp (v ◁ᵥ{π, m} r @ ty) n.
-  Global Hint Mode SimplifyHypVal + + + + + + - : typeclass_instances.
-
-  Class SimplifyGoalPlace (l : loc) π (b : bor_kind) {rt} (lty : ltype rt) (r : place_rfn rt) (n : option N) : Type :=
-    simplify_goal_place :: SimplifyGoal (l ◁ₗ[π, b] r @ lty) n.
-  Global Hint Mode SimplifyGoalPlace + + + - - - - : typeclass_instances.
-  Class SimplifyGoalVal (v : val) π {rt} (ty : type rt) (r : rt) (m : metadata) (n : option N) : Type :=
-    simplify_goal_val :: SimplifyGoal (v ◁ᵥ{π, m} r @ ty) n.
-  Global Hint Mode SimplifyGoalVal + + - - - - - : typeclass_instances.
-
   (** Notion of [subsume] with support for lifetime contexts + executing updates *)
   Definition subsume_full (E : elctx) (L : llctx) (step : bool) (P : iProp Σ) (Q : iProp Σ) (T : llctx → iProp Σ → iProp Σ) : iProp Σ :=
     ∀ F, ⌜lftE ⊆ F⌝ -∗ ⌜lft_userE ⊆ F⌝ -∗ ⌜shrE ⊆ F⌝ -∗
@@ -609,13 +595,6 @@ Section judgments.
   (* low priority, should not trigger when there are other more specific instances *)
   Global Instance subsume_full_subsume_inst E L step P Q : SubsumeFull E L step P Q | 2000 :=
     λ T, i2p (subsume_full_subsume E L step P Q T).
-
-  Class SubsumeFullPlace (E : elctx) (L : llctx) (step : bool) (l : loc) (π : thread_id) (b : bor_kind) {rt1} (ty1 : ltype rt1) (r1 : place_rfn rt1) {rt2} (ty2 : ltype rt2) (r2 : place_rfn rt2) : Type :=
-    subsume_full_place :: SubsumeFull E L step (l ◁ₗ[π, b] r1 @ ty1) (l ◁ₗ[π, b] r2 @ ty2).
-  Global Hint Mode SubsumeFullPlace + + + + + + ! ! ! - - - : typeclass_instances.
-  Class SubsumeFullVal (π : thread_id) (E : elctx) (L : llctx) (step : bool) (v : val) {rt1} (ty1 : type rt1) (r1 : rt1) (m1 : metadata) {rt2} (ty2 : type rt2) (r2 : rt2) (m2 : metadata) : Type :=
-    subsume_full_val :: SubsumeFull E L step (v ◁ᵥ{π, m1} r1 @ ty1) (v ◁ᵥ{π, m2} r2 @ ty2).
-  Global Hint Mode SubsumeFullVal + + + + + ! ! ! ! - - - - : typeclass_instances.
 
   (** *** Expressions *)
 
