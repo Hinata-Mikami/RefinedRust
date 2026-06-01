@@ -12,9 +12,9 @@ Section subtype.
   (* TODO: should this really match on the addition in the conclusion? probably not. *)
   (*
   Lemma subsume_full_array_split_goal :
-    subsume_full E L pers (l ◁ₗ[π, Owned false] r @ lt) (l ◁ₗ[π, Owned false] #(a1) @ ◁ array_t def (length a1)) (λ L R2,
+    subsume_full pers (l ◁ₗ[π, Owned false] r @ lt) (l ◁ₗ[π, Owned false] #(a1) @ ◁ array_t def (length a1)) E L (λ L R2,
       prove_with_subtype E L pers (l +ₗ ... ◁ₗ[π, Owned false] #a2 @ ◁ array_t def (len - length a1)) T)
-    subsume_full E L pers (l ◁ₗ[π, Owned false] r @ lt) (l ◁ₗ[π, Owned false] #(a1 ++ a2) @ ◁ array_t def (len)) T.
+    subsume_full pers (l ◁ₗ[π, Owned false] r @ lt) (l ◁ₗ[π, Owned false] #(a1 ++ a2) @ ◁ array_t def (len)) E L T.
   *)
   (* Alternative: do this splitting on prove_with_subtype for array values instead.
    *)

@@ -57,7 +57,7 @@ Section place.
   Lemma typed_place_array_owned E L f {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) bmin ly l it v (tyv : type rtv) (i : rtv) m P T :
     (∃ i',
       ⌜syn_type_has_layout (ty_syn_type def MetaNone) ly⌝ ∗
-      subsume_full E L false (v ◁ᵥ{f.1, m} i @ tyv) (v ◁ᵥ{f.1, m} i' @ int it) (λ L1 R2, R2 -∗
+      subsume_full false (v ◁ᵥ{f.1, m} i @ tyv) (v ◁ᵥ{f.1, m} i' @ int it) E L (λ L1 R2, R2 -∗
       ⌜(0 ≤ i')%Z⌝ ∗ ⌜(i' < len)%Z⌝ ∗
       ∀ lt r,
         (* relies on Lithium's built-in simplification of lookups. *)
@@ -159,7 +159,7 @@ Section place.
   Lemma typed_place_array_uniq E L f {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) κ γ bmin0 ly l it v (tyv : type rtv) (i : rtv) m P T :
     (∃ i',
       ⌜syn_type_has_layout (ty_syn_type def MetaNone) ly⌝ ∗
-      subsume_full E L false (v ◁ᵥ{f.1, m} i @ tyv) (v ◁ᵥ{f.1, m} i' @ int it) (λ L1 R2, R2 -∗
+      subsume_full false (v ◁ᵥ{f.1, m} i @ tyv) (v ◁ᵥ{f.1, m} i' @ int it) E L (λ L1 R2, R2 -∗
       ⌜(0 ≤ i')%Z⌝ ∗ ⌜(i' < len)%Z⌝ ∗
       (* get lifetime token *)
       li_tactic (lctx_lft_alive_count_goal E L1 κ) (λ '(κs, L2),
@@ -265,7 +265,7 @@ Section place.
   Lemma typed_place_array_shared E L f {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) κ bmin ly l it v (tyv : type rtv) (i : rtv) m P T :
     (∃ i',
       ⌜syn_type_has_layout (ty_syn_type def MetaNone) ly⌝ ∗
-      subsume_full E L false (v ◁ᵥ{f.1, m} i @ tyv) (v ◁ᵥ{f.1, m} i' @ int it) (λ L1 R2, R2 -∗
+      subsume_full false (v ◁ᵥ{f.1, m} i @ tyv) (v ◁ᵥ{f.1, m} i' @ int it) E L (λ L1 R2, R2 -∗
       ⌜(0 ≤ i')%Z⌝ ∗ ⌜(i' < len)%Z⌝ ∗
       ∀ lt r,
         (* relies on Lithium's built-in simplification of lookups. *)

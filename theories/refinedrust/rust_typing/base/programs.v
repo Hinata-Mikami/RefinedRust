@@ -570,15 +570,15 @@ Section judgments.
   Implicit Types (rt : RT).
 
   (** Notion of [subsume] with support for lifetime contexts + executing updates *)
-  Definition subsume_full (E : elctx) (L : llctx) (step : bool) (P : iProp Σ) (Q : iProp Σ) (T : llctx → iProp Σ → iProp Σ) : iProp Σ :=
+  Definition subsume_full (step : bool) (P : iProp Σ) (Q : iProp Σ) (E : elctx) (L : llctx)  (T : llctx → iProp Σ → iProp Σ) : iProp Σ :=
     ∀ F, ⌜lftE ⊆ F⌝ -∗ ⌜lft_userE ⊆ F⌝ -∗ ⌜shrE ⊆ F⌝ -∗
       rrust_ctx -∗
       elctx_interp E -∗
       llctx_interp L -∗
       P -∗ |={F}=>
       ∃ L' R, maybe_logical_step step F (Q ∗ R) ∗ llctx_interp L' ∗ T L' R.
-  Class SubsumeFull (E : elctx) (L : llctx) (step : bool) (P Q : iProp Σ) : Type :=
-    subsume_full_proof T : iProp_to_Prop (subsume_full E L step P Q T).
+  Class SubsumeFull (step : bool) (P Q : iProp Σ) : Type :=
+    subsume_full_proof E L T : iProp_to_Prop (subsume_full step P Q E L T).
 
   (** *** Expressions *)
 
@@ -2266,7 +2266,7 @@ End place.
 Global Hint Mode LearnFromHyp + + + : typeclass_instances.
 Global Hint Mode LearnFromHypVal + + + + + : typeclass_instances.
 
-Global Hint Mode SubsumeFull + + + + + + + : typeclass_instances.
+Global Hint Mode SubsumeFull + + + + + : typeclass_instances.
 Global Hint Mode IntroduceWithHooks + + + + ! : typeclass_instances.
 Global Hint Mode IterateWithHooks + + + + + + : typeclass_instances.
 Global Hint Mode ProveWithSubtype + + + + + + + + : typeclass_instances.
@@ -3715,7 +3715,7 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | typed_annot_stmt ?a => constr:(TypedAnnotStmt a)
   | introduce_with_hooks ?E ?L ?P => constr:(IntroduceWithHooks E L P)
   | iterate_with_hooks ?E ?L ?m => constr:(IterateWithHooks E L m)
-  | subsume_full ?E ?L ?wl ?P1 ?P2 => constr:(SubsumeFull E L wl P1 P2)
+  | subsume_full ?wl ?P1 ?P2 => constr:(SubsumeFull wl P1 P2)
   | resolve_ghost ?π ?E ?L ?rm ?f ?l ?lt ?k ?r => constr:(ResolveGhost π E L rm f l lt k r)
   | resolve_ghost_adt ?π ?E ?L ?rm ?r ?ty => constr:(ResolveGhostADT π E L rm r ty)
   | resolve_ghost_iter ?π ?E ?L ?rm ?b ?l ?st ?ltys ?bk ?rs ?ig ?i => constr:(ResolveGhostIter π E L rm b l st ltys bk rs ig i)

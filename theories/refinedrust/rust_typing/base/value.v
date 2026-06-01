@@ -519,7 +519,7 @@ Section rules.
   Qed.
   (* NOTE: not an instance due to the above issue *)
   (*Global Instance value_subsume_full_goal_ofty_inst π E L {rt} l v' st (ty : type rt) r :*)
-    (*SubsumeFull E L (l ◁ₗ[π, Owned false] PlaceIn r @ ◁ ty)%I (l ◁ₗ[π, Owned false] PlaceIn v' @ ◁ (value_t st))%I | 50 :=*)
+    (*SubsumeFull (l ◁ₗ[π, Owned false] PlaceIn r @ ◁ ty)%I (l ◁ₗ[π, Owned false] PlaceIn v' @ ◁ (value_t st))%I | 50 :=*)
     (*λ T, i2p (value_subsume_full_goal_ofty π E L l v' st ty r T).*)
 
   (** When we require assembled ownership, try to assemble it. *)
@@ -748,19 +748,18 @@ Section unify_loc.
     Or more specifically: a SimplifyHyp instance for value_t. *)
     (*ly_size ly2 = ly_size (ly_offset ly3 (ly_size ly1))*)
   (*
-  Lemma subsume_full_ofty_value_untyped_larger π E L step l vs1 vs2 ly1 ly2 T :
+  Lemma subsume_full_ofty_value_untyped_larger π step l vs1 vs2 ly1 ly2 E L T :
     (⌜ly_size ly2 ≤ ly_size ly1⌝ ∗
     ⌜ly_align_log ly2 ≤ ly_align_log ly1⌝ ∗
     ⌜layout_wf (ly_offset ly1 (ly_size ly2))⌝ ∗
     ⌜vs2 = take (ly_size ly2) vs1⌝ ∗
     ((l +ₗ ly_size ly2) ◁ₗ[π, Owned false] PlaceIn (drop (ly_size ly2) vs1) @ (◁ value_t (UntypedSynType (ly_offset ly1 (ly_size ly2)))) -∗ T L True%I))-∗
-    subsume_full E L step (l ◁ₗ[π, Owned false] #vs1 @ ◁ value_t (UntypedSynType ly1)) (l ◁ₗ[π, Owned false] #vs2 @ ◁ value_t (UntypedSynType ly2)) T.
+    subsume_full step (l ◁ₗ[π, Owned false] #vs1 @ ◁ value_t (UntypedSynType ly1)) (l ◁ₗ[π, Owned false] #vs2 @ ◁ value_t (UntypedSynType ly2)) E L T.
   Proof.
     (* TODO *)
   Admitted.
-  Global Instance subsume_full_ofty_value_untyped_larger_inst π E L step l vs1 vs2 ly1 ly2 :
-    SubsumeFull E L step (l ◁ₗ[π, Owned false] PlaceIn vs1 @ ◁ value_t (UntypedSynType ly1))%I (l ◁ₗ[π, Owned false] PlaceIn vs2 @ ◁ value_t (UntypedSynType ly2))%I | 9 :=
-    λ T, i2p (subsume_full_ofty_value_untyped_larger π E L step l vs1 vs2 ly1 ly2 T).
+  Definition subsume_full_ofty_value_untyped_larger_inst := [instance @subsume_full_ofty_value_untyped_larger].
+  Global Existing Instance subsume_full_ofty_value_untyped_larger_inst | 9.
    *)
 End unify_loc.
 
@@ -775,7 +774,7 @@ Section unify_val.
      - if so, show that the alignment of the goal is lower
      - else, prove that the left one is a prefix of the latter, and continue searching for the rest. *)
   (*
-  Lemma subsume_full_ofty_value_untyped_prefix π E L l vs1 vs2 ly1 ly2 T :
+  Lemma subsume_full_ofty_value_untyped_prefix π l vs1 vs2 ly1 ly2 E L T :
     ⌜ly_align_log ly2 ≤ ly_align_log ly1⌝ ∗
     ⌜ly_size ly1 ≤ ly_size ly2⌝ ∗
     ⌜vs1 = take (ly_size ly1) vs2⌝ ∗
@@ -784,9 +783,8 @@ Section unify_val.
   Proof.
       (* TODO *)
   Admitted.
-  Global Instance subsume_full_ofty_value_untyped_prefix_inst π E L l vs1 vs2 ly1 ly2 :
-    SubsumeFull E L (l ◁ₗ[π, Owned false] PlaceIn vs1 @ ◁ value_t (UntypedSynType ly1))%I (l ◁ₗ[π, Owned false] PlaceIn vs2 @ ◁ value_t (UntypedSynType ly2))%I | 6 :=
-    λ T, i2p (subsume_full_ofty_value_untyped_prefix π E L l vs1 vs2 ly1 ly2 T).
+  Definition subsume_full_ofty_value_untyped_prefix_inst := [instance @subsume_full_ofty_value_untyped_prefix].
+  Global Existing Instance subsume_full_ofty_value_untyped_prefix_inst | 6.
    *)
 
 

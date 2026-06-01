@@ -535,16 +535,16 @@ Proof. iIntros "(-> & $)". eauto. Qed.
   Global Instance subsume_gvar_pobs_inst {rt} γ (r1 r2 : rt) : Subsume (gvar_pobs γ r1) (gvar_pobs γ r2) :=
     λ T, i2p (subsume_gvar_pobs γ r1 r2 T).
 
-  Lemma subsume_full_gvar_obs_pobs E L {rt} step γ (r1 r2 : rt) T :
-    (⌜r1 = r2⌝ ∗ (gvar_pobs γ r2 -∗ T L (True)%I)) ⊢ subsume_full E L step (gvar_obs γ r1) (gvar_pobs γ r2) T.
+  Lemma subsume_full_gvar_obs_pobs {rt} step γ (r1 r2 : rt) E L T :
+    (⌜r1 = r2⌝ ∗ (gvar_pobs γ r2 -∗ T L (True)%I)) ⊢ subsume_full step (gvar_obs γ r1) (gvar_pobs γ r2) E L T.
   Proof.
     iIntros "(-> & HT)".
     iIntros (????) "#CTX #HE HL Hobs". iMod (gvar_obs_persist with "Hobs") as "#Hobs".
     iExists _, _. iPoseProof ("HT" with "Hobs") as "$". iFrame.
     iApply maybe_logical_step_intro. eauto with iFrame.
   Qed.
-  Global Instance subsume_full_gvar_obs_pobs_inst E L {rt} step γ (r1 r2 : rt) : SubsumeFull E L step (gvar_obs γ r1) (gvar_pobs γ r2) :=
-    λ T, i2p (subsume_full_gvar_obs_pobs E L step γ r1 r2 T).
+  Definition subsume_full_gvar_obs_pobs_inst := [instance @subsume_full_gvar_obs_pobs].
+  Global Existing Instance subsume_full_gvar_obs_pobs_inst.
 
   (** FindInherit *)
   Lemma find_in_context_inherit κ P T :
@@ -1118,7 +1118,7 @@ Section prove_subtype.
 
   Lemma prove_with_subtype_primitive E L step pm P `{Hrel : !RelatedTo P} A T :
     find_in_context Hrel.(rt_fic) (λ a,
-      subsume_full E L step (fic_Prop Hrel.(rt_fic) a) P (λ L R, T L [] (R ∗ A)))
+      subsume_full step (fic_Prop Hrel.(rt_fic) a) P E L (λ L R, T L [] (R ∗ A)))
     ⊢ prove_with_subtype E L step pm P A T.
   Proof.
     iIntros "(%a & Ha & Hsub)" (?????) "#CTX #HE HL HA".
@@ -1464,9 +1464,9 @@ Section subsume.
   (** We have low-priority instances to escape into subtyping judgments *)
   (* TODO should make compatible with mem_casts? *)
   (*
-  Lemma subsume_full_own_val {rt1 rt2} π E L step v (ty1 : type rt1) (ty2 : type rt2) r1 r2 T :
+  Lemma subsume_full_own_val {rt1 rt2} π step v (ty1 : type rt1) (ty2 : type rt2) r1 r2 E L T :
     weak_subtype E L r1 r2 ty1 ty2 (T L True) -∗
-    subsume_full E L step (v ◁ᵥ{π} r1 @ ty1) (v ◁ᵥ{π} r2 @ ty2) T.
+    subsume_full step (v ◁ᵥ{π} r1 @ ty1) (v ◁ᵥ{π} r2 @ ty2) E L T.
   Proof.
     iIntros "HT" (F ?) "#CTX #HE HL Hv".
     iMod ("HT" with "[//] CTX HE HL") as "(Hincl & HL & HT)".
@@ -1476,41 +1476,53 @@ Section subsume.
     by iPoseProof ("Hincl" with "Hv") as "$".
   Qed.
   (* low priority, more specific instances should trigger first *)
-  Global Instance subsume_full_own_val_inst {rt1 rt2} π E L step v (ty1 : type rt1) (ty2 : type rt2) r1 r2 :
-    SubsumeFull E L step (v ◁ᵥ{π} r1 @ ty1) (v ◁ᵥ{π} r2 @ ty2) | 100 :=
-    λ T, i2p (subsume_full_own_val π E L step v ty1 ty2 r1 r2 T).
+  Definition subsume_full_own_val_inst := [instance @subsume_full_own_val].
+  Global Existing Instance subsume_full_own_val_inst | 100.
   *)
 
-  Lemma subsume_full_id E L step P T :
-    T L True ⊢ subsume_full E L step P P T.
+  Lemma subsume_full_id step P E L T :
+    T L True ⊢ subsume_full step P P E L T.
   Proof.
     iIntros "HT" (????) "CTX HE HL ?".
     iExists L, True%I. iFrame.
     iApply maybe_logical_step_intro. by iFrame.
   Qed.
-  Global Instance subsume_full_id_inst E L step (P : iProp Σ) : SubsumeFull E L step P P := λ T, i2p (subsume_full_id E L step P T).
+  Definition subsume_full_id_inst := [instance @subsume_full_id].
+  Global Existing Instance subsume_full_id_inst.
 
-  Lemma subsume_full_subsume E L step P Q T :
+  Lemma subsume_full_subsume step P Q E L T :
     subsume P Q (T L True) ⊢
-    subsume_full E L step P Q T.
+    subsume_full step P Q E L T.
   Proof.
     iIntros "Hsub" (????) "#CTX #HE HL HP". iPoseProof ("Hsub" with "HP") as "(HQ & HT)".
     iExists L, True%I; iFrame. iApply maybe_logical_step_intro. by iFrame.
   Qed.
   (* low priority, should not trigger when there are other more specific instances *)
-  Global Instance subsume_full_subsume_inst E L step P Q : SubsumeFull E L step P Q | 2000 :=
-    λ T, i2p (subsume_full_subsume E L step P Q T).
+  Definition subsume_full_subsume_inst := [instance @subsume_full_subsume].
+  Global Existing Instance subsume_full_subsume_inst | 2000.
 
-  Lemma subsume_full_value_evar π E L step v {rt} (ty : type rt) (r1 r2 : rt) m1 m2 T :
+  Lemma subsume_full_value_evar π step v {rt} (ty : type rt) (r1 r2 : rt) m1 m2 E L T :
     ⌜r1 = r2⌝ ∗ ⌜m1 = m2⌝ ∗ T L True%I
-    ⊢ subsume_full E L step (v ◁ᵥ{π, m1} r1 @ ty) (v ◁ᵥ{π, m2} r2 @ ty) T.
+    ⊢ subsume_full step (v ◁ᵥ{π, m1} r1 @ ty) (v ◁ᵥ{π, m2} r2 @ ty) E L T.
   Proof.
     iIntros "(-> & -> & HT)". by iApply subsume_full_id.
   Qed.
-  Global Instance subsume_full_value_evar_inst π E L step v {rt} (ty : type rt) (r1 r2 : rt) m1 m2 :
-    SubsumeFull E L step (v ◁ᵥ{π, m1} r1 @ ty) (v ◁ᵥ{π, m2} r2 @ ty) | 5 :=
-    λ T, i2p (subsume_full_value_evar π E L step v ty r1 r2 m1 m2 T).
+  Definition subsume_full_value_evar_inst := [instance @subsume_full_value_evar].
+  Global Existing Instance subsume_full_value_evar_inst | 5.
 
+  Lemma subsume_full_owned_subtype π step v {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 m1 m2 E L T :
+    ⌜m1 = MetaNone⌝ ∗ ⌜m2 = MetaNone⌝ ∗ owned_subtype π E L false r1 r2 ty1 ty2 (λ L', T L' True%I)
+    ⊢ subsume_full step (v ◁ᵥ{π, m1} r1 @ ty1) (v ◁ᵥ{π, m2} r2 @ ty2) E L T.
+  Proof.
+    iIntros "(-> & -> & HT)" (????) "#CTX #HE HL Hv".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L' & Hincl & HL & HT)".
+    iDestruct "Hincl" as "(_ & _ & Hincl)".
+    iPoseProof ("Hincl" with "Hv") as "Hv".
+    iExists _, _. iFrame. iApply maybe_logical_step_intro.
+    by iFrame.
+  Qed.
+  Definition subsume_full_owned_subtype_inst := [instance @subsume_full_owned_subtype].
+  Global Existing Instance subsume_full_owned_subtype_inst | 100.
 
   Lemma owned_subtype_default {rt} π E L (ty1 ty2 : type rt) r1 r2 b T :
     ⌜fast_eq_hint (ty1 = ty2)⌝ ∗ ⌜r1 = r2⌝ ∗ T L
@@ -1523,31 +1535,17 @@ Section subsume.
   (*Definition owned_subtype_default_inst := [instance @owned_subtype_default].*)
   (*Global Existing Instance owned_subtype_default_inst | 1000.*)
 
-  Lemma subsume_full_owned_subtype π E L step v {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 m1 m2 T :
-    ⌜m1 = MetaNone⌝ ∗ ⌜m2 = MetaNone⌝ ∗ owned_subtype π E L false r1 r2 ty1 ty2 (λ L', T L' True%I)
-    ⊢ subsume_full E L step (v ◁ᵥ{π, m1} r1 @ ty1) (v ◁ᵥ{π, m2} r2 @ ty2) T.
-  Proof.
-    iIntros "(-> & -> & HT)" (????) "#CTX #HE HL Hv".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L' & Hincl & HL & HT)".
-    iDestruct "Hincl" as "(_ & _ & Hincl)".
-    iPoseProof ("Hincl" with "Hv") as "Hv".
-    iExists _, _. iFrame. iApply maybe_logical_step_intro.
-    by iFrame.
-  Qed.
-  Definition subsume_full_owned_subtype_inst := [instance @subsume_full_owned_subtype].
-  Global Existing Instance subsume_full_owned_subtype_inst | 100.
-
   (* TODO: how does the evar thing work here? *)
-  Lemma subsume_full_own_loc_bk_evar {rt1 rt2} π E L step l (lt1 : ltype rt1) (lt2 : ltype rt2) b1 b2 r1 r2 `{!ContainsProtected b2} T :
-    ⌜b1 = b2⌝ ∗ subsume_full E L step (l ◁ₗ[π, b1] r1 @ lt1) (l ◁ₗ[π, b2] r2 @ lt2) T
-    ⊢ subsume_full E L step (l ◁ₗ[π, b1] r1 @ lt1) (l ◁ₗ[π, b2] r2 @ lt2) T.
+  Lemma subsume_full_own_loc_bk_evar {rt1 rt2} π step l (lt1 : ltype rt1) (lt2 : ltype rt2) b1 b2 r1 r2 `{!ContainsProtected b2} E L T :
+    ⌜b1 = b2⌝ ∗ subsume_full step (l ◁ₗ[π, b1] r1 @ lt1) (l ◁ₗ[π, b2] r2 @ lt2) E L T
+    ⊢ subsume_full step (l ◁ₗ[π, b1] r1 @ lt1) (l ◁ₗ[π, b2] r2 @ lt2) E L T.
   Proof. iIntros "(-> & HT)". done. Qed.
   Definition subsume_full_own_loc_bk_evar_inst := [instance @subsume_full_own_loc_bk_evar].
   Global Existing Instance subsume_full_own_loc_bk_evar_inst | 1000.
 
-  Lemma subsume_full_own_loc_owned {rt1 rt2} π E L step l (lt1 : ltype rt1) (lt2 : ltype rt2) r1 r2 T :
+  Lemma subsume_full_own_loc_owned {rt1 rt2} π step l (lt1 : ltype rt1) (lt2 : ltype rt2) r1 r2 E L T :
     owned_subltype_step π E L step l r1 r2 lt1 lt2 T
-    ⊢ subsume_full E L step (l ◁ₗ[π, Owned] r1 @ lt1) (l ◁ₗ[π, Owned] r2 @ lt2) T.
+    ⊢ subsume_full step (l ◁ₗ[π, Owned] r1 @ lt1) (l ◁ₗ[π, Owned] r2 @ lt2) E L T.
   Proof.
     iIntros "HT" (????) "#CTX #HE HL Hl".
     iMod ("HT" with "[//] [//] [//] CTX HE HL Hl") as "(%L' & %R & Hstep & HL & HT)".
@@ -1557,9 +1555,9 @@ Section subsume.
   Global Existing Instance subsume_full_own_loc_owned_inst | 1001.
 
   (* TODO should make compatible with location simplification *)
-  Lemma subsume_full_own_loc {rt1 rt2} π E L step l (lt1 : ltype rt1) (lt2 : ltype rt2) b1 b2 r1 r2 T :
+  Lemma subsume_full_own_loc {rt1 rt2} π step l (lt1 : ltype rt1) (lt2 : ltype rt2) b1 b2 r1 r2 E L T :
     ⌜lctx_bor_kind_direct_incl E L b2 b1⌝ ∗ weak_subltype E L b2 r1 r2 lt1 lt2 (T L True%I)
-    ⊢ subsume_full E L step (l ◁ₗ[π, b1] r1 @ lt1) (l ◁ₗ[π, b2] r2 @ lt2) T.
+    ⊢ subsume_full step (l ◁ₗ[π, b1] r1 @ lt1) (l ◁ₗ[π, b2] r2 @ lt2) E L T.
   Proof.
     iIntros "(%Hincl & HT)" (F ???) "#CTX #HE HL Hl".
     iPoseProof (lctx_bor_kind_direct_incl_use with "HE HL") as "#Hincl"; first done.
@@ -4803,7 +4801,7 @@ Section subsume.
   Lemma typed_expr_assert_type π E L n sty v {rt} (ty : type rt) r m T :
     (∃ lfts, named_lfts lfts ∗
       (named_lfts lfts -∗ li_tactic (interpret_rust_type_goal lfts sty) (λ '(existT _ ty2),
-        ∃ r2, subsume_full E L false (v ◁ᵥ{π, m} r @ ty) (v ◁ᵥ{π, m} r2 @ ty2) (λ L2 R2, R2 -∗ T L2 v m _ ty2 r2))))%I
+        ∃ r2, subsume_full false (v ◁ᵥ{π, m} r @ ty) (v ◁ᵥ{π, m} r2 @ ty2) E L (λ L2 R2, R2 -∗ T L2 v m _ ty2 r2))))%I
     ⊢ typed_annot_expr E L π n (AssertTypeAnnot sty) v (v ◁ᵥ{π, m} r @ ty) T.
   Proof.
     iIntros "(%lfts & Hnamed & HT)". iPoseProof ("HT" with "Hnamed") as "HT".
@@ -5543,7 +5541,7 @@ Global Typeclasses Opaque typed_array_access.
 Notation "'typed_value' π x 'HIDDEN_CONT'" := (typed_value π x _) (only printing): rr_hidden.
 Notation "'typed_place' E L f l lto ro b1 b2 K 'HIDDEN_CONT'" := (typed_place E L f l lto ro b1 b2 K _) (only printing): rr_hidden.
 
-Notation "'subsume_full' E L wl P1 P2 'HIDDEN_CONT'" := (subsume_full E L wl P1 P2 _) (only printing): rr_hidden.
+Notation "'subsume_full' wl P1 P2 E L 'HIDDEN_CONT'" := (subsume_full wl P1 P2 E L _) (only printing): rr_hidden.
 Notation "'resolve_ghost' π E L rm f l lt k r 'HIDDEN_CONT'" := (resolve_ghost π E L rm f l lt k r _) (only printing): rr_hidden.
 Notation "'prove_with_subtype' E L wl pm P 'HIDDEN_ACC' 'HIDDEN_CONT'" := (prove_with_subtype E L wl pm P _ _) (only printing): rr_hidden.
 Notation "'introduce_with_hooks' E L P 'HIDDEN_CONT'" := (introduce_with_hooks E L P _) (only printing): rr_hidden.

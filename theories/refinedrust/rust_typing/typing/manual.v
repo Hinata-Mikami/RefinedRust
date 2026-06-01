@@ -230,7 +230,7 @@ Section updateable_rules.
   Lemma updateable_merge_value l :
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
       ∃ v st,
-        subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned] #v @ ◁ value_t st)
+        subsume_full false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned] #v @ ◁ value_t st) updateable_E updateable_L
         (λ L2 R2,
         find_in_context (FindVal v) (λ '(existT rt (ty', r', π', m')),
         ⌜π' = π⌝ ∗ ⌜m' = MetaNone⌝ ∗
@@ -265,7 +265,7 @@ Section updateable_rules.
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
     ∃ rt', ⌜rt = listRT (place_rfnRT rt')⌝ ∗
       ∃ rs n (ty : type rt'),
-        subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned] #rs @ ◁ array_t n ty) (λ L2 R2,
+        subsume_full false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned] #rs @ ◁ array_t n ty) updateable_E updateable_L (λ L2 R2,
         ⌜k ≤ n⌝ ∗
         ((l ◁ₗ[π, Owned] #(take k rs) @ (◁ array_t k ty) -∗
          (l offsetst{st_of ty MetaNone}ₗ k) ◁ₗ[π, Owned] #(drop k rs) @ (◁ array_t (n - k) ty) -∗
@@ -292,7 +292,7 @@ Section updateable_rules.
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
       ∃ rt', ⌜rt = listRT (place_rfnRT rt')⌝ ∗
       ∃ rs n (ty : type rt'),
-        subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned] #rs @ ◁ array_t n ty) (λ L2 R2,
+        subsume_full false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned] #rs @ ◁ array_t n ty) updateable_E updateable_L (λ L2 R2,
         ⌜n = (num * size)%nat⌝ ∗
         ⌜num ≠ 0%nat⌝ ∗
         (l ◁ₗ[π, Owned] #(<#> reshape (replicate num size) rs) @ (◁ array_t num (array_t size ty)) -∗
@@ -318,7 +318,7 @@ Section updateable_rules.
   (** Subtype a location to a given place type *)
   Lemma updateable_subsume_to l {rt2} (lt2 : ltype rt2) (r2 : place_rfn rt2) :
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
-      subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, bk] r2 @ lt2) (λ L2 R2,
+      subsume_full false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, bk] r2 @ lt2) updateable_E updateable_L (λ L2 R2,
         introduce_with_hooks updateable_E L2 (l ◁ₗ[π, bk] r2 @ lt2 ∗ R2) (λ L3,
           updateable_core updateable_E L3)))
     ⊢ P.
@@ -338,7 +338,7 @@ Section updateable_rules.
 
   Lemma updateable_subsume_uninit_to l (st : syn_type) :
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
-      subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, bk] .@ ◁ uninit st) (λ L2 R2,
+      subsume_full false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, bk] .@ ◁ uninit st) updateable_E updateable_L (λ L2 R2,
         introduce_with_hooks updateable_E L2 (l ◁ₗ[π, bk] .@ (◁ uninit st) ∗ R2) (λ L3,
           updateable_core updateable_E L3)))
     ⊢ P.

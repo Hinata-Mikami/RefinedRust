@@ -88,8 +88,8 @@ lazymatch rt with
 
 Ltac liExtensible_to_i2p_hook P bind cont ::=
   lazymatch P with
-  | subsume_full ?E ?L ?step ?P ?Q ?T =>
-      cont uconstr:(((_ : SubsumeFull E L step P Q) T))
+  | subsume_full ?step ?P ?Q ?E ?L ?T =>
+      cont uconstr:(((_ : SubsumeFull step P Q) E L T))
   | relate_list ?E ?L ?ig ?l1 ?l2 ?i0 ?R ?T =>
       cont uconstr:(((_ : RelateList E L ig l1 l2 i0 R) T))
   | relate_hlist ?E ?L ?ig ?Xs ?l1 ?l2 ?i0 ?R ?T =>
@@ -401,7 +401,7 @@ Ltac liRInstantiateEvars :=
   | |- (@eq (hlist _ []) (protected ?a) _) ∧ _ =>
       instantiate_protected a +[]
 
-  | |- envs_entails _ (subsume_full _ _ _ (@ltype_own _ _ ?rt (◁ ?ty)%I _ _ _ _) (@ltype_own _ _ (xtype_rt (protected ?H)) (◁ xtype_ty (protected ?H))%I _ _ _ _) _) =>
+  | |- envs_entails _ (subsume_full _ (@ltype_own _ _ ?rt (◁ ?ty)%I _ _ _ _) (@ltype_own _ _ (xtype_rt (protected ?H)) (◁ xtype_ty (protected ?H))%I _ _ _ _) _ _ _) =>
       instantiate_protected H (@mk_xtype _ _ rt ty (protected (EVAR_ID _)) _)
 
   | |- envs_entails _ (subsume (@ltype_own _ _ (place_rfn ?rt1) _ _ _ _ _) (@ltype_own _ _ (place_rfn (protected ?rt2)) _ _ _ _ _) _) => liInst rt2 rt1
