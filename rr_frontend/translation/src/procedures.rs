@@ -166,6 +166,7 @@ pub(crate) struct ClosureInfo<'tcx, 'rcx> {
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
 pub(crate) enum DropGlueKey {
     Adt(OrderedDefId),
+    Tuple(usize),
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -195,6 +196,9 @@ impl Ord for DropGlueKey {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
             (Self::Adt(a), Self::Adt(b)) => a.cmp(b),
+            (Self::Adt(_), Self::Tuple(_)) => Ordering::Less,
+            (Self::Tuple(_), Self::Adt(_)) => Ordering::Greater,
+            (Self::Tuple(a), Self::Tuple(b)) => a.cmp(b),
         }
     }
 }

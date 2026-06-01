@@ -74,6 +74,7 @@ impl ImplKey {
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub(crate) enum VirtualImpl {
     DropGlueForAdt(OrderedDefId),
+    DropGlueForTuple(usize),
 }
 
 #[derive(Debug, Clone)]
@@ -1560,7 +1561,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         attrs: specs::traits::SpecAttrsInst,
     ) -> Result<specs::traits::RefInst<'def>, TranslationError> {
         let trait_key = match &impl_key {
-            VirtualImpl::DropGlueForAdt(_) => VirtualTrait::DropGlue,
+            VirtualImpl::DropGlueForAdt(_) | VirtualImpl::DropGlueForTuple(_) => VirtualTrait::DropGlue,
         };
         let impl_key_msg = format!("{impl_key:?}");
         let trait_spec_ref = self.lookup_virtual_trait(trait_key).ok_or_else(|| {

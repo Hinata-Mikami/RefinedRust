@@ -44,6 +44,7 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
 
         match dropped_ty.kind() {
             ty::TyKind::Adt(adt_def, adt_args) => self.register_use_adt_drop_glue(*adt_def, adt_args),
+            ty::TyKind::Tuple(args) => self.register_use_tuple_drop_glue(args),
             ty::TyKind::Param(_) => self.register_use_assumed_drop_glue(dropped_ty),
             ty::TyKind::Alias(alias_ty) if matches!(alias_ty.kind, ty::AliasTyKind::Projection { .. }) => {
                 self.register_use_assumed_drop_glue(dropped_ty)
@@ -63,6 +64,62 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
         let generics_key = types::generate_args_inst_key(self.tcx(), adt_args)?;
         let quantified_args = self.get_drop_glue_generic_abstraction(adt_def.did(), adt_args)?;
 
+        self.register_use_concrete_drop_glue(key, generics_key, adt_args, quantified_args)
+    }
+
+    fn register_use_tuple_drop_glue(
+        &mut self,
+        args: &'tcx ty::List<ty::Ty<'tcx>>,
+    ) -> Result<(code::Expr, ProcedureInst<'tcx, 'def>), TranslationError> {
+        let arity = args.len();
+        if arity == 0 {
+            return Err(TranslationError::ErrorReported(self.tcx().dcx().err(Message::UnsupportedFeature(
+                "drop-glue calls for () should have been skipped as trivial".to_owned(),
+            ))));
+        }
+        if arity > 5 {
+            return Err(TranslationError::ErrorReported(self.tcx().dcx().err(Message::UnsupportedFeature(
+                format!("drop-glue calls for tuples are only supported up to arity 5, got arity {arity}"),
+            ))));
+        }
+
+        self.generate_tuple_use(args.iter())?;
+
+        let method_params_vec: Vec<_> = args.iter().map(ty::GenericArg::from).collect();
+        let method_params = self.tcx().mk_args(&method_params_vec);
+        let generics_key = types::generate_args_inst_key(self.tcx(), method_params)?;
+
+        let mut fn_scope_inst = specs::GenericScopeInst::empty();
+        let mut callee_ty_param_inst = Vec::new();
+        for arg in args {
+            let translated = self.translate_drop_glue_type(arg)?;
+            fn_scope_inst.add_direct_ty_param(translated.clone());
+            callee_ty_param_inst.push(translated);
+        }
+
+        let quantified_args = types::AbstractedGenerics {
+            scope: specs::GenericScope::empty(),
+            callee_lft_param_inst: Vec::new(),
+            callee_ty_param_inst,
+            num_of_latebounds: 0,
+            fn_scope_inst,
+        };
+
+        self.register_use_concrete_drop_glue(
+            procedures::DropGlueKey::Tuple(arity),
+            generics_key,
+            method_params,
+            quantified_args,
+        )
+    }
+
+    fn register_use_concrete_drop_glue(
+        &mut self,
+        key: procedures::DropGlueKey,
+        generics_key: types::GenericsKey<'tcx>,
+        method_params: ty::GenericArgsRef<'tcx>,
+        quantified_args: types::AbstractedGenerics<'def>,
+    ) -> Result<(code::Expr, ProcedureInst<'tcx, 'def>), TranslationError> {
         let used_key = TranslationKey::DropGlue(key.clone(), generics_key.clone());
         let res;
         if let Some(proc_use) = self.collected_procedures().get(&used_key) {
@@ -94,7 +151,7 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
 
         trace!("leave register_use_drop_glue");
         let inst = ProcedureInst {
-            method_params: adt_args,
+            method_params,
             type_hint: quantified_args.callee_ty_param_inst,
             lft_hint: quantified_args.callee_lft_param_inst,
             num_of_latebounds: quantified_args.num_of_latebounds,

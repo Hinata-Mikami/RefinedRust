@@ -220,7 +220,9 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             return None;
         }
 
-        let procedures::DropGlueKey::Adt(did) = key;
+        let procedures::DropGlueKey::Adt(did) = key else {
+            return None;
+        };
         let (interned_path, _) = self.get_path_for_shim(did.def_id);
         let Some(impl_lit) = self
             .trait_registry
@@ -334,6 +336,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                         info!("Creating virtual drop-glue trait impl shim entry failed for {did:?}");
                     }
                 },
+                registry::ImplKey::Virtual(registry::VirtualImpl::DropGlueForTuple(_)) => {},
             }
         }
 
@@ -1577,6 +1580,32 @@ fn get_adt_drop_glue_mode(
         .map_err(|err| vcx.tcx.dcx().span_err(err.span, error::Message::AttributeError(err.err.to_string())))
 }
 
+fn register_tuple_drop_glue_shims(vcx: &mut VerificationCtxt<'_, '_>) {
+    for arity in 1..=5 {
+        let key = procedures::DropGlueKey::Tuple(arity);
+        if vcx.procedure_registry.lookup_drop_glue(&key).is_some() {
+            info!("Tuple drop glue for {:?} is already registered", key);
+            continue;
+        }
+
+        let name = format!("drop_glue_tuple{arity}");
+        let impl_lit = specs::traits::LiteralImpl::new(name.clone(), false);
+        let meta = procedures::Meta::new(
+            format!("type_of_{name}"),
+            format!("{name}_def"),
+            format!("trait_incl_of_{name}"),
+            name,
+            procedures::Mode::CodeShim,
+            false,
+            false,
+        );
+
+        vcx.procedure_registry.register_drop_glue(&key, meta);
+        vcx.trait_registry
+            .register_virtual_impl(registry::VirtualImpl::DropGlueForTuple(arity), impl_lit);
+    }
+}
+
 /// Register drop glue for non-trivial ADTs in the current crate.
 fn register_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
     for adt in vcx.adts {
@@ -1669,12 +1698,20 @@ fn translate_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipeli
             info!("Skipping imported drop-glue shim {:?}", key);
             continue;
         }
+
+        if matches!(key, procedures::DropGlueKey::Tuple(_)) {
+            info!("Skipping builtin tuple drop-glue shim {:?}", key);
+            continue;
+        }
         assert!(
             mode.needs_def() || mode.is_only_spec(),
             "drop glue should be registered in prove, trust_me, only_spec, or shim mode"
         );
 
-        let procedures::DropGlueKey::Adt(did) = key.clone();
+        let did = match key.clone() {
+            procedures::DropGlueKey::Adt(did) => did,
+            procedures::DropGlueKey::Tuple(_) => unreachable!(),
+        };
         info!("\nTranslating drop glue for {:?}", did.def_id);
 
         let adt_ty = vcx.tcx.type_of(did.def_id).instantiate_identity().skip_norm_wip();
@@ -2695,6 +2732,7 @@ where
     };
 
     register_builtin_virtual_traits(&vcx);
+    register_tuple_drop_glue_shims(&mut vcx);
 
     // this needs to be first, in order to ensure consistent ADT use
     register_shims(&mut vcx)?;
