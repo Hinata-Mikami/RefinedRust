@@ -524,32 +524,38 @@ Section rules.
 
   (** When we require assembled ownership, try to assemble it. *)
 
-  Lemma owned_subltype_step_value_merge_ofty_untyped {rt} π E L (ty : type rt) `{!TySized ty} r v l ly1 T :
-    (prove_with_subtype E L false ProveDirect (v ◁ᵥ{π, MetaNone} r @ ty) True (λ L' _ R,
+  Lemma owned_subltype_step_value_merge_ofty_untyped {rt} π E L step (ty : type rt) `{!TySized ty} r v l ly1 T :
+    (prove_with_subtype E L step ProveDirect (v ◁ᵥ{π, MetaNone} r @ ty) True (λ L' _ R,
       ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly1⌝ ∗ T L' R))
-    ⊢ owned_subltype_step π E L false l #v #r (◁ value_t (UntypedSynType ly1)) (◁ ty) T.
+    ⊢ owned_subltype_step π E L step l #v #r (◁ value_t (UntypedSynType ly1)) (◁ ty) T.
   Proof.
     iIntros "HT".
     iIntros (????) "#CTX #HE HL Hl".
-    iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL []") as "(%L' & % & %R & >(HR & Hv & _) & HL & % & HT)".
+    iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL []") as "(%L' & % & %R & Hx & HL & % & HT)".
     { iApply maybe_logical_step_intro. done. }
+    iExists _, _. iFrame.
+    iModIntro. iApply (maybe_logical_step_compose with "Hx").
+    iApply maybe_logical_step_intro.
+    iIntros "(HR & Hv & _)".
     iPoseProof (ofty_own_merge_value with "Hv Hl") as "?"; first done.
-    iModIntro. iExists L', R. iFrame. done.
+    iFrame.
   Qed.
   (* should have a lower priority than Lithium's id instance - in case the goal specifies that we want a value_t, we should not try to fiddle with that. *)
+  (* also should be lower priority than the instance for going to uninit, [owned_subltype_step_ofty_uninit] *)
   Definition owned_subltype_step_value_merge_ofty_untyped_inst := [instance @owned_subltype_step_value_merge_ofty_untyped].
-  Global Existing Instance owned_subltype_step_value_merge_ofty_untyped_inst | 100.
+  Global Existing Instance owned_subltype_step_value_merge_ofty_untyped_inst | 200.
 
-  Lemma owned_subltype_step_value_merge_ofty {rt} π E L (ty : type rt) `{!TySized ty} r v l st T :
+  Lemma owned_subltype_step_value_merge_ofty {rt} π E L step (ty : type rt) `{!TySized ty} r v l st T :
     (prove_with_subtype E L false ProveDirect (v ◁ᵥ{π, MetaNone} r @ ty) True (λ L' _ R,
       ⌜ty_has_op_type ty (use_op_alg' (ty.(ty_syn_type) MetaNone)) MCCopy⌝ ∗ ⌜ty_syn_type ty MetaNone = st⌝ ∗ T L' R))
-    ⊢ owned_subltype_step π E L false l #v #r (◁ value_t st) (◁ ty) T.
+    ⊢ owned_subltype_step π E L step l #v #r (◁ value_t st) (◁ ty) T.
   Proof.
     iIntros "HT".
     iIntros (????) "#CTX #HE HL Hl". iPoseProof (ltype_own_has_layout with "Hl") as "(%ly' & %Hst & %)".
     iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL []") as "(%L' & % & %R & >(HR & Hv & _) & HL & %Hc & %Ha & HT)".
     { iApply maybe_logical_step_intro. done. }
     iModIntro. iExists L', R. iFrame.
+    iApply maybe_logical_step_intro. iFrame.
     iApply (ofty_own_merge_value with "Hv Hl").
     destruct st; try done. simp_ltypes in Hst. simpl in Hst. rewrite Ha.
     specialize (syn_type_has_layout_untyped_inv _ _ Hst) as (-> & _).
@@ -557,7 +563,7 @@ Section rules.
   Qed.
   (* should have a lower priority than Lithium's id instance - in case the goal specifies that we want a value_t, we should not try to fiddle with that. *)
   Definition owned_subltype_step_value_merge_ofty_inst := [instance @owned_subltype_step_value_merge_ofty].
-  Global Existing Instance owned_subltype_step_value_merge_ofty_inst | 101.
+  Global Existing Instance owned_subltype_step_value_merge_ofty_inst | 201.
 
   Definition owned_subtype_value_id π E L step st r1 r2 := owned_subtype_id π E L step r1 r2 (value_t st).
   Definition owned_subtype_value_id_inst := [instance @owned_subtype_value_id].

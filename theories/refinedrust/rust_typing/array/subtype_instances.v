@@ -21,28 +21,30 @@ Section subtype.
   (* Higher priority instance than direct search for the value: as a heuristic, we split app values *)
   (* TODO: how would that scale to more complex transformations? E.g. what about take etc. -- I guess for that we could have instances as well.
     Basically, I would imagine that we only want to look in the context for primitive values. *)
-  Lemma prove_with_subtype_array_val_split π E L pm v1 v2 {rt} (ty : type rt) r1 r2 (len : nat) m A T :
+  Lemma prove_with_subtype_array_val_split π E L step pm v1 v2 {rt} (ty : type rt) r1 r2 (len : nat) m A T :
     ⌜(size_of_st (ty_syn_type ty m) * len ≤ MaxInt ISize)%Z⌝ ∗
     ⌜length r1 ≤ len⌝ ∗
-    prove_with_subtype E L false pm (v1 ◁ᵥ{π, m} r1 @ array_t (length r1) ty) A (λ L2 κs1 R2,
-      prove_with_subtype E L2 false pm (v2 ◁ᵥ{π, m} r2 @ array_t (len - length r1) ty) R2
+    prove_with_subtype E L step pm (v1 ◁ᵥ{π, m} r1 @ array_t (length r1) ty) A (λ L2 κs1 R2,
+      prove_with_subtype E L2 step pm (v2 ◁ᵥ{π, m} r2 @ array_t (len - length r1) ty) R2
       (λ L3 κs2 R3, T L3 (κs1 ++ κs2) R3))
-    ⊢ prove_with_subtype E L false pm ((v1 ++ v2) ◁ᵥ{π, m} r1 ++ r2 @ array_t len ty) A T.
+    ⊢ prove_with_subtype E L step pm ((v1 ++ v2) ◁ᵥ{π, m} r1 ++ r2 @ array_t len ty) A T.
   Proof.
     iIntros "(% & % & HT)" (?????) "#CTX #HE HL HA".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL HA") as "(%L2 & %κs1 & %R2 & >(HR2 & Hv1 & HA) & HL & HT)".
-    iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL [HR2]") as "(%L3 & %κs2 & %R3 & >(HR3 & Hv2 & _) & HL & HT)".
-    { simpl. iFrame. done. }
+    iMod ("HT" with "[//] [//] [//] CTX HE HL HA") as "(%L2 & %κs1 & %R2 & HR1 & HL & HT)".
+    iMod ("HT" $! _  with "[//] [//] [//] CTX HE HL [HR1]") as "(%L3 & %κs2 & %R3 & HR2 & HL & HT)".
+    { simpl. done. }
     iModIntro. iExists L3, _, _. iFrame.
+    iApply (maybe_logical_step_wand with "[] HR2").
+    iIntros "(HR3 & Hv2 & Hv1 & HR1)". iFrame.
     destruct pm.
     - iEval (replace len with ((length r1) + (len - length r1)) by lia).
       iApply (array_t_own_val_merge with "Hv1 Hv2").
-      nia.
-    - iModIntro. rewrite lft_dead_list_app. iIntros "(Hdead1 & Hdead2)".
+      simpl in *. nia.
+    - rewrite lft_dead_list_app. iIntros "(Hdead1 & Hdead2)".
       iMod ("Hv1" with "Hdead1") as "Hv1". iMod ("Hv2" with "Hdead2") as "Hv2".
       iEval (replace len with ((length r1) + (len - length r1)) by lia).
       iApply (array_t_own_val_merge with "Hv1 Hv2").
-      nia.
+      simpl in *. nia.
   Qed.
   Definition prove_with_subtype_array_val_split_inst := [instance @prove_with_subtype_array_val_split].
   Global Existing Instance prove_with_subtype_array_val_split_inst | 20.
