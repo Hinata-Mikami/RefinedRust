@@ -45,6 +45,15 @@ pub(crate) struct AbstractedGenerics<'def> {
     pub fn_scope_inst: specs::GenericScopeInst<'def>,
 }
 
+/// Determines how a callee's type parameters are split when building a specialized use.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum GenericAbstractionMode {
+    /// Use the item's owner to distinguish surrounding and direct parameters.
+    FromOwner(DefId),
+    /// Treat every type parameter as a direct parameter of the callee.
+    AllDirect,
+}
+
 /// Type translator bundling the function scope
 pub(crate) struct LocalTX<'def, 'tcx> {
     pub translator: &'def TX<'def, 'tcx>,
@@ -320,7 +329,33 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         trait_reqs: Vec<ResolvedTraitReq<'tcx, 'def>>,
         with_surrounding_deps: bool,
     ) -> Result<AbstractedGenerics<'def>, TranslationError> {
-        trace!("enter get_generic_abstraction_for_item with owner_did={owner_did:?} and args={args:?}");
+        self.get_generic_abstraction(
+            args,
+            late_bounds,
+            trait_reqs,
+            GenericAbstractionMode::FromOwner(owner_did),
+            with_surrounding_deps,
+        )
+    }
+
+    pub(crate) fn get_generic_abstraction_for_args_all_direct(
+        &self,
+        args: ty::GenericArgsRef<'tcx>,
+        late_bounds: &[ty::BoundVariableKind<'tcx>],
+        trait_reqs: Vec<ResolvedTraitReq<'tcx, 'def>>,
+    ) -> Result<AbstractedGenerics<'def>, TranslationError> {
+        self.get_generic_abstraction(args, late_bounds, trait_reqs, GenericAbstractionMode::AllDirect, true)
+    }
+
+    fn get_generic_abstraction(
+        &self,
+        args: ty::GenericArgsRef<'tcx>,
+        late_bounds: &[ty::BoundVariableKind<'tcx>],
+        trait_reqs: Vec<ResolvedTraitReq<'tcx, 'def>>,
+        mode: GenericAbstractionMode,
+        with_surrounding_deps: bool,
+    ) -> Result<AbstractedGenerics<'def>, TranslationError> {
+        trace!("enter get_generic_abstraction with mode={mode:?} and args={args:?}");
 
         // STEP 1: get all the regions and type variables appearing in the instantiation of generics
         let mut tyvar_folder = TyVarFolder::new(self.translator.tcx());
@@ -474,8 +509,12 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         // We need to distinguish these between direct and surrounding, as our encoding does that.
         //
         // TODO: probably we should make the same distinction also for lifetimes?
-        let num_surrounding_params =
-            scope::Params::determine_number_of_surrounding_params(owner_did, self.translator.tcx());
+        let num_surrounding_params = match mode {
+            GenericAbstractionMode::FromOwner(owner_did) => {
+                scope::Params::determine_number_of_surrounding_params(owner_did, self.translator.tcx())
+            },
+            GenericAbstractionMode::AllDirect => 0,
+        };
         info!("num_surrounding_params={num_surrounding_params:?}, args={args:?}");
 
         // figure out instantiation for the function's generics

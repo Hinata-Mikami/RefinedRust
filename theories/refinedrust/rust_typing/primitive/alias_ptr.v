@@ -534,8 +534,8 @@ Section alias_ltype.
 
   (** Cases for other ltypes *)
   Lemma typed_addr_of_mut_end_owned π E L l {rt} (lt : ltype rt) r bmin (T : typed_addr_of_mut_end_cont_t) :
-    T L _ (alias_ptr_t) l _ (AliasLtype rt (ltype_st lt) l) (#r)
-    ⊢ typed_addr_of_mut_end π E L l lt #r (Owned) bmin T.
+    T L _ (alias_ptr_t) l _ (AliasLtype rt (ltype_st lt) l) r
+    ⊢ typed_addr_of_mut_end π E L l lt r (Owned) bmin T.
   Proof.
     iIntros "Hvs".
     iIntros (????) "#CTX #HE HL Hl".
@@ -557,8 +557,8 @@ Section alias_ltype.
   Lemma typed_addr_of_mut_end_uniq π E L l {rt} (lt : ltype rt) r κ γ bmin (T : typed_addr_of_mut_end_cont_t) :
     ltype_uniq_openable lt →
     li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
-    T L2 _ (alias_ptr_t) l _ (OpenedLtype (AliasLtype rt (ltype_st lt) l) lt lt (λ ri ri', ⌜ri = ri'⌝) (λ ri ri', llft_elt_toks κs)) (#r))
-    ⊢ typed_addr_of_mut_end π E L l lt #r (Uniq κ γ) bmin T.
+    T L2 _ (alias_ptr_t) l _ (OpenedLtype (AliasLtype rt (ltype_st lt) l) lt lt (λ ri ri', ⌜ri = ri'⌝) (λ ri ri', llft_elt_toks κs)) r)
+    ⊢ typed_addr_of_mut_end π E L l lt r (Uniq κ γ) bmin T.
   Proof.
     iIntros (Hopen). rewrite /lctx_lft_alive_count_goal.
     iDestruct 1 as (κs L2) "(%Hcount & HT)".
@@ -585,8 +585,8 @@ Section alias_ltype.
 
   Lemma typed_addr_of_mut_end_uniq_ofty π E L l {rt} (ty : type rt) r κ γ bmin (T : typed_addr_of_mut_end_cont_t) :
     li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
-    T L2 _ (alias_ptr_t) l _ (OpenedLtype (AliasLtype rt (st_of ty MetaNone) l) (◁ ty) (◁ ty) (λ ri ri', ⌜ri = ri'⌝) (λ ri ri', llft_elt_toks κs)) (#r))
-    ⊢ typed_addr_of_mut_end π E L l (◁ ty) #r (Uniq κ γ) bmin T.
+    T L2 _ (alias_ptr_t) l _ (OpenedLtype (AliasLtype rt (st_of ty MetaNone) l) (◁ ty) (◁ ty) (λ ri ri', ⌜ri = ri'⌝) (λ ri ri', llft_elt_toks κs)) r)
+    ⊢ typed_addr_of_mut_end π E L l (◁ ty) r (Uniq κ γ) bmin T.
   Proof.
     iApply typed_addr_of_mut_end_uniq.
     apply ltype_uniq_openable_ofty.

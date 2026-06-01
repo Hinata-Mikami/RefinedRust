@@ -121,14 +121,15 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for DropGlueGenericCollector<'tcx> {
     }
 }
 
-impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for DropGlueTX<'a, 'def, 'tcx> {
-    fn get_drop_glue_generic_abstraction(
+#[expect(clippy::multiple_inherent_impl)]
+impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
+    fn get_drop_glue_generic_abstraction_with_mode(
         &self,
-        owner_did: DefId,
         args: ty::GenericArgsRef<'tcx>,
         trait_reqs: Vec<ResolvedTraitReq<'tcx, 'def>>,
+        mode: types::GenericAbstractionMode,
     ) -> Result<types::AbstractedGenerics<'def>, TranslationError> {
-        trace!("enter drop-glue get_drop_glue_generic_abstraction owner_did={owner_did:?} args={args:?}");
+        trace!("enter drop-glue get_drop_glue_generic_abstraction mode={mode:?} args={args:?}");
 
         let mut collector = DropGlueGenericCollector::new(self.tcx);
         let mut callee_lft_param_inst = Vec::new();
@@ -190,8 +191,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for DropGlueTX<'a,
             }
         }
 
-        let num_surrounding_params =
-            types::scope::Params::determine_number_of_surrounding_params(owner_did, self.tcx);
+        let num_surrounding_params = match mode {
+            types::GenericAbstractionMode::FromOwner(owner_did) => {
+                types::scope::Params::determine_number_of_surrounding_params(owner_did, self.tcx)
+            },
+            types::GenericAbstractionMode::AllDirect => 0,
+        };
         for arg in &args.as_slice()[..num_surrounding_params] {
             if let Some(ty) = arg.as_type() {
                 let translated_ty = self.translate_drop_glue_spec_type(ty)?;
@@ -232,6 +237,32 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for DropGlueTX<'a,
             num_of_latebounds: 0,
             fn_scope_inst: fn_inst,
         })
+    }
+}
+
+impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for DropGlueTX<'a, 'def, 'tcx> {
+    fn get_drop_glue_generic_abstraction(
+        &self,
+        owner_did: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+        trait_reqs: Vec<ResolvedTraitReq<'tcx, 'def>>,
+    ) -> Result<types::AbstractedGenerics<'def>, TranslationError> {
+        self.get_drop_glue_generic_abstraction_with_mode(
+            args,
+            trait_reqs,
+            types::GenericAbstractionMode::FromOwner(owner_did),
+        )
+    }
+
+    fn get_tuple_drop_glue_generic_abstraction(
+        &self,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Result<types::AbstractedGenerics<'def>, TranslationError> {
+        self.get_drop_glue_generic_abstraction_with_mode(
+            args,
+            Vec::new(),
+            types::GenericAbstractionMode::AllDirect,
+        )
     }
 
     fn translate_drop_glue_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError> {

@@ -34,6 +34,11 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
         args: ty::GenericArgsRef<'tcx>,
     ) -> Result<Vec<ResolvedTraitReq<'tcx, 'def>>, TranslationError>;
 
+    fn get_tuple_drop_glue_generic_abstraction(
+        &self,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Result<types::AbstractedGenerics<'def>, TranslationError>;
+
     fn translate_drop_glue_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError>;
 
     fn make_virtual_drop_glue_method_for_param(&self, dropped_ty: ty::Ty<'tcx>) -> TraitMethodUseData<'def>;
@@ -97,21 +102,7 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
         let method_params = self.tcx().mk_args(&method_params_vec);
         let generics_key = types::generate_args_inst_key(self.tcx(), method_params)?;
 
-        let mut fn_scope_inst = specs::GenericScopeInst::empty();
-        let mut callee_ty_param_inst = Vec::new();
-        for arg in args {
-            let translated = self.translate_drop_glue_type(arg)?;
-            fn_scope_inst.add_direct_ty_param(translated.clone());
-            callee_ty_param_inst.push(translated);
-        }
-
-        let quantified_args = types::AbstractedGenerics {
-            scope: specs::GenericScope::empty(),
-            callee_lft_param_inst: Vec::new(),
-            callee_ty_param_inst,
-            num_of_latebounds: 0,
-            fn_scope_inst,
-        };
+        let quantified_args = self.get_tuple_drop_glue_generic_abstraction(method_params)?;
 
         self.register_use_concrete_drop_glue(
             procedures::DropGlueKey::Tuple(arity),

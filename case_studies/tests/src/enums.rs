@@ -71,6 +71,10 @@ impl Anon {
     }
 }
 
+// TODO: handle drop glue for auto-generated enums.
+// We need to fix the RT handling for that.
+// (Also needed for derived impls e.g. for Ord)
+#[rr::skip(drop_glue)]
 enum Anon2<T> {
     ABitAnon(T),
     ReallyAnon

@@ -1,9 +1,9 @@
 
 #[rr::refined_by("()" : "unit")]
-#[rr::exists("d" : "{rt_of T}")]
+#[rr::exists("d" : "{xt_of T}")]
 #[rr::exists("c" : "list unit")]
 struct Tree<T: Eq> {
-    #[rr::field("d")]
+    #[rr::field("$# d")]
     data: T,
     #[rr::field("<#> c")]
     children: Vec<Tree<T>>,
