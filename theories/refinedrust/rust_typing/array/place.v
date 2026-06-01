@@ -57,7 +57,8 @@ Section place.
   Lemma typed_place_array_owned E L f {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) bmin ly l it v (tyv : type rtv) (i : rtv) m P T :
     (∃ i',
       ⌜syn_type_has_layout (ty_syn_type def MetaNone) ly⌝ ∗
-      subsume_full false (v ◁ᵥ{f.1, m} i @ tyv) (v ◁ᵥ{f.1, m} i' @ int it) E L (λ L1 R2, R2 -∗
+      ⌜m = MetaNone⌝ ∗
+      owned_subtype f.1 E L false i i' tyv (int it) (λ L1,
       ⌜(0 ≤ i')%Z⌝ ∗ ⌜(i' < len)%Z⌝ ∗
       ∀ lt r,
         (* relies on Lithium's built-in simplification of lookups. *)
@@ -84,14 +85,17 @@ Section place.
     iIntros (????) "#CTX #HE HL Hf Hl Hcont".
     simpl. iIntros "Hv".
     iApply fupd_wpe.
-    iMod ("HT" with "[] [] [] CTX HE HL Hv") as "(%L' & %R2 & >(Hi & R2) & HL & HT)"; [done.. | ].
-    iDestruct ("HT" with "R2") as "(% & % & HT)".
+    iDestruct "HT" as "(-> & HT)".
+    iMod ("HT" with "[] [] [] CTX HE HL") as "(%L' & Hincl & HL & HT)"; [done.. | ].
+    iDestruct "Hincl" as "(_ & _ & Hincl)".
+    iPoseProof ("Hincl" with "Hv") as "Hi".
+    iDestruct "HT" as "(% & % & HT)".
     iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iPoseProof (array_ltype_acc_owned with "Hl") as "(%ly' & %Hst' & %Hly & %Hsz & #Hlb & >(Hb & Hcl))"; first done.
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
     iMod "HclF" as "_".
     iEval (rewrite /ty_own_val/= int_own_val_unfold) in "Hi".
-    iDestruct "Hi" as "(-> & %Hi)".
+    iDestruct "Hi" as "(_ & %Hi)".
     iDestruct "CTX" as "(LFT & LLCTX)".
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
     iApply wp_ptr_offset.
@@ -159,7 +163,8 @@ Section place.
   Lemma typed_place_array_uniq E L f {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) κ γ bmin0 ly l it v (tyv : type rtv) (i : rtv) m P T :
     (∃ i',
       ⌜syn_type_has_layout (ty_syn_type def MetaNone) ly⌝ ∗
-      subsume_full false (v ◁ᵥ{f.1, m} i @ tyv) (v ◁ᵥ{f.1, m} i' @ int it) E L (λ L1 R2, R2 -∗
+      ⌜m = MetaNone⌝ ∗
+      owned_subtype f.1 E L false i i' tyv (int it) (λ L1,
       ⌜(0 ≤ i')%Z⌝ ∗ ⌜(i' < len)%Z⌝ ∗
       (* get lifetime token *)
       li_tactic (lctx_lft_alive_count_goal E L1 κ) (λ '(κs, L2),
@@ -191,8 +196,11 @@ Section place.
     iIntros (????) "#CTX #HE HL Hf Hl Hcont".
     simpl. iIntros "Hv".
     iApply fupd_wpe.
-    iMod ("HT" with "[] [] [] CTX HE HL Hv") as "(%L' & %R2 & >(Hi & R2) & HL & HT)"; [done.. | ].
-    iDestruct ("HT" with "R2") as "(% & % & HT)".
+    iDestruct "HT" as "(-> & HT)".
+    iMod ("HT" with "[] [] [] CTX HE HL") as "(%L' & Hincl & HL & HT)"; [done.. | ].
+    iDestruct "Hincl" as "(_ & _ & Hincl)".
+    iPoseProof ("Hincl" with "Hv") as "Hi".
+    iDestruct "HT" as "(% & % & HT)".
     iDestruct "HT" as "(%κs & %L1 & %Hal & HT)".
     iMod (fupd_mask_subseteq lftE) as "HclF"; first done.
     iMod (lctx_lft_alive_count_tok with "HE HL") as "(%q & Htok & Hcltok & HL)"; [done.. | ].
@@ -201,7 +209,7 @@ Section place.
     iMod "HclF" as "_".
     iMod (fupd_mask_mono with "Hb") as "(Hb & Hcl)"; first done.
     iEval (rewrite /ty_own_val/= int_own_val_unfold) in "Hi".
-    iDestruct "Hi" as "(-> & %Hi)".
+    iDestruct "Hi" as "(_ & %Hi)".
     iDestruct "CTX" as "(LFT & LLCTX)".
     iApply (wpe_logical_step with "Hcl"); [done.. | ].
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
@@ -265,7 +273,8 @@ Section place.
   Lemma typed_place_array_shared E L f {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) κ bmin ly l it v (tyv : type rtv) (i : rtv) m P T :
     (∃ i',
       ⌜syn_type_has_layout (ty_syn_type def MetaNone) ly⌝ ∗
-      subsume_full false (v ◁ᵥ{f.1, m} i @ tyv) (v ◁ᵥ{f.1, m} i' @ int it) E L (λ L1 R2, R2 -∗
+      ⌜m = MetaNone⌝ ∗
+      owned_subtype f.1 E L false i i' tyv (int it) (λ L1,
       ⌜(0 ≤ i')%Z⌝ ∗ ⌜(i' < len)%Z⌝ ∗
       ∀ lt r,
         (* relies on Lithium's built-in simplification of lookups. *)
@@ -292,14 +301,17 @@ Section place.
     iIntros (????) "#CTX #HE HL Hf Hl Hcont".
     simpl. iIntros "Hv".
     iApply fupd_wpe.
-    iMod ("HT" with "[] [] [] CTX HE HL Hv") as "(%L' & %R2 & >(Hi & R2) & HL & HT)"; [done.. | ].
-    iDestruct ("HT" with "R2") as "(% & % & HT)".
+    iDestruct "HT" as "(-> & HT)".
+    iMod ("HT" with "[] [] [] CTX HE HL") as "(%L' & Hincl & HL & HT)"; [done.. | ].
+    iDestruct "Hincl" as "(_ & _ & Hincl)".
+    iPoseProof ("Hincl" with "Hv") as "Hi".
+    iDestruct "HT" as "(% & % & HT)".
     iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iPoseProof (array_ltype_acc_shared with "Hl") as "(%ly' & %Hst' & %Hly & %Hsz & #Hlb & >(Hb & Hcl))"; first done.
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
     iMod "HclF" as "_".
     iEval (rewrite /ty_own_val/= int_own_val_unfold) in "Hi".
-    iDestruct "Hi" as "(-> & %Hi)".
+    iDestruct "Hi" as "(_ & %Hi)".
     iDestruct "CTX" as "(LFT & LLCTX)".
     iApply wpe_fupd.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".

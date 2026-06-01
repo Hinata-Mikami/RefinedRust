@@ -518,11 +518,6 @@ Definition FindGvarPobs `{!typeGS Σ} (γ : gname) :=
     fic_Prop '(existT rt r) := (gvar_pobs γ r)%I
   |}.
 Global Typeclasses Opaque FindGvarPobs.
-Definition FindGvarPobsP `{!typeGS Σ} (γ : gname) :=
-  {| fic_A := iProp Σ;
-    fic_Prop P := P
-  |}.
-Global Typeclasses Opaque FindGvarPobsP.
 
 (** Find a relation with the given gvar on the right hand side. *)
 Definition FindOptGvarRelEq `{!typeGS Σ} (γ : gname) :=
@@ -1276,17 +1271,7 @@ Section judgments.
 
   (** Owned location subtyping with a logical step (used for extracting ghost observations) *)
   Definition owned_subltype_step (π : thread_id) E L (step : bool) (l : loc) {rt1 rt2} (r1 : place_rfn rt1) (r2 : place_rfn rt2) (lt1 : ltype rt1) (lt2 : ltype rt2) (T : llctx → iProp Σ → iProp Σ) : iProp Σ :=
-    ∀ F,
-    ⌜lftE ⊆ F⌝ -∗
-    ⌜lft_userE ⊆ F⌝ -∗
-    ⌜shrE ⊆ F⌝ -∗
-    rrust_ctx -∗
-    elctx_interp E -∗
-    llctx_interp L -∗
-    l ◁ₗ[π, Owned] r1 @ lt1 -∗ |={F}=>
-    ∃ L' R,
-    (maybe_logical_step step F (l ◁ₗ[π, Owned] r2 @ lt2 ∗ R)) ∗
-    llctx_interp L' ∗ T L' R.
+    subsume_full step (l ◁ₗ[π, Owned] r1 @ lt1) (l ◁ₗ[π, Owned] r2 @ lt2) E L T.
   Class OwnedSubltypeStep (π : thread_id) (E : elctx) (L : llctx) (step : bool) (l : loc) {rt1 rt2} (r1 : place_rfn rt1) (r2 : place_rfn rt2) (lt1 : ltype rt1) (lt2 : ltype rt2) : Type :=
     owned_subltype_step_proof T : iProp_to_Prop (owned_subltype_step π E L step l r1 r2 lt1 lt2 T).
 

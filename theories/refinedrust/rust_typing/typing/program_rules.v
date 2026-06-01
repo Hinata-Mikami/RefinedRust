@@ -26,7 +26,7 @@ Section find.
     {| rt_fic:= FindNamedLfts |}.
 
   Global Instance related_to_gvar_pobs {rt} γ (r : rt) : RelatedTo (gvar_pobs γ r) | 100 :=
-    {| rt_fic := FindGvarPobsP γ |}.
+    {| rt_fic := FindGvarPobs γ |}.
 
   Global Instance related_to_credit_store n m : RelatedTo (credit_store n m) | 100 :=
     {| rt_fic := FindCreditStore |}.
@@ -507,44 +507,11 @@ Proof. iIntros "(-> & $)". eauto. Qed.
     FindInContext (FindGvarPobs γ) FICSyntactic | 1 :=
     λ T, i2p (find_in_context_gvar_pobs γ T).
 
-  Lemma find_in_context_gvar_pobs_p_pobs γ T :
-    (∃ rt (r : rt), gvar_pobs γ r ∗ T (gvar_pobs γ r))
-    ⊢ find_in_context (FindGvarPobsP γ) T.
-  Proof.
-    iIntros "(%rt & %r & Hobs & HT)".
-    iExists (gvar_pobs γ r) => /=. iFrame.
-  Qed.
-  Global Instance find_in_context_gvar_pobs_p_pobs_inst γ :
-    FindInContext (FindGvarPobsP γ) FICSyntactic | 1 :=
-    λ T, i2p (find_in_context_gvar_pobs_p_pobs γ T).
-
-  Lemma find_in_context_gvar_pobs_p_obs γ T :
-    (∃ rt (r : rt), gvar_obs γ r ∗ T (gvar_obs γ r))
-    ⊢ find_in_context (FindGvarPobsP γ) T.
-  Proof.
-    iIntros "(%rt & %r & Hobs & HT)".
-    iExists (gvar_obs γ r) => /=. iFrame.
-  Qed.
-  Global Instance find_in_context_gvar_pobs_p_obs_inst γ :
-    FindInContext (FindGvarPobsP γ) FICSyntactic | 1 :=
-    λ T, i2p (find_in_context_gvar_pobs_p_obs γ T).
-
   Lemma subsume_gvar_pobs {rt} γ (r1 r2 : rt) T :
     ⌜r1 = r2⌝ ∗ T ⊢ subsume (Σ := Σ) (gvar_pobs γ r1) (gvar_pobs γ r2) T.
   Proof. iIntros "(-> & $) $". Qed.
   Global Instance subsume_gvar_pobs_inst {rt} γ (r1 r2 : rt) : Subsume (gvar_pobs γ r1) (gvar_pobs γ r2) :=
     λ T, i2p (subsume_gvar_pobs γ r1 r2 T).
-
-  Lemma subsume_full_gvar_obs_pobs {rt} step γ (r1 r2 : rt) E L T :
-    (⌜r1 = r2⌝ ∗ (gvar_pobs γ r2 -∗ T L (True)%I)) ⊢ subsume_full step (gvar_obs γ r1) (gvar_pobs γ r2) E L T.
-  Proof.
-    iIntros "(-> & HT)".
-    iIntros (????) "#CTX #HE HL Hobs". iMod (gvar_obs_persist with "Hobs") as "#Hobs".
-    iExists _, _. iPoseProof ("HT" with "Hobs") as "$". iFrame.
-    iApply maybe_logical_step_intro. eauto with iFrame.
-  Qed.
-  Definition subsume_full_gvar_obs_pobs_inst := [instance @subsume_full_gvar_obs_pobs].
-  Global Existing Instance subsume_full_gvar_obs_pobs_inst.
 
   (** FindInherit *)
   Lemma find_in_context_inherit κ P T :
@@ -1462,24 +1429,6 @@ Section subsume.
 
   (** ** SubsumeFull instances *)
   (** We have low-priority instances to escape into subtyping judgments *)
-  (* TODO should make compatible with mem_casts? *)
-  (*
-  Lemma subsume_full_own_val {rt1 rt2} π step v (ty1 : type rt1) (ty2 : type rt2) r1 r2 E L T :
-    weak_subtype E L r1 r2 ty1 ty2 (T L True) -∗
-    subsume_full step (v ◁ᵥ{π} r1 @ ty1) (v ◁ᵥ{π} r2 @ ty2) E L T.
-  Proof.
-    iIntros "HT" (F ?) "#CTX #HE HL Hv".
-    iMod ("HT" with "[//] CTX HE HL") as "(Hincl & HL & HT)".
-    iDestruct "Hincl" as "(_ & _ & #Hincl & _)".
-    iExists _, True%I. iFrame.
-    iApply maybe_logical_step_intro. rewrite right_id.
-    by iPoseProof ("Hincl" with "Hv") as "$".
-  Qed.
-  (* low priority, more specific instances should trigger first *)
-  Definition subsume_full_own_val_inst := [instance @subsume_full_own_val].
-  Global Existing Instance subsume_full_own_val_inst | 100.
-  *)
-
   Lemma subsume_full_id step P E L T :
     T L True ⊢ subsume_full step P P E L T.
   Proof.
@@ -1535,7 +1484,7 @@ Section subsume.
   (*Definition owned_subtype_default_inst := [instance @owned_subtype_default].*)
   (*Global Existing Instance owned_subtype_default_inst | 1000.*)
 
-  (* TODO: how does the evar thing work here? *)
+  (* Handle evar instantiation in case the [bor_kind] isn't known yet *)
   Lemma subsume_full_own_loc_bk_evar {rt1 rt2} π step l (lt1 : ltype rt1) (lt2 : ltype rt2) b1 b2 r1 r2 `{!ContainsProtected b2} E L T :
     ⌜b1 = b2⌝ ∗ subsume_full step (l ◁ₗ[π, b1] r1 @ lt1) (l ◁ₗ[π, b2] r2 @ lt2) E L T
     ⊢ subsume_full step (l ◁ₗ[π, b1] r1 @ lt1) (l ◁ₗ[π, b2] r2 @ lt2) E L T.
@@ -4798,18 +4747,20 @@ Section subsume.
     by iApply ("Hs" with "CTX HE HL Hf").
   Qed.
 
-  Lemma typed_expr_assert_type π E L n sty v {rt} (ty : type rt) r m T :
+  Lemma typed_expr_assert_type π E L n sty v {rt} (ty : type rt) r T :
     (∃ lfts, named_lfts lfts ∗
       (named_lfts lfts -∗ li_tactic (interpret_rust_type_goal lfts sty) (λ '(existT _ ty2),
-        ∃ r2, subsume_full false (v ◁ᵥ{π, m} r @ ty) (v ◁ᵥ{π, m} r2 @ ty2) E L (λ L2 R2, R2 -∗ T L2 v m _ ty2 r2))))%I
-    ⊢ typed_annot_expr E L π n (AssertTypeAnnot sty) v (v ◁ᵥ{π, m} r @ ty) T.
+        ∃ r2, owned_subtype π E L false r r2 ty ty2 (λ L2, T L2 v MetaNone _ ty2 r2))))%I
+    ⊢ typed_annot_expr E L π n (AssertTypeAnnot sty) v (v ◁ᵥ{π, MetaNone} r @ ty) T.
   Proof.
     iIntros "(%lfts & Hnamed & HT)". iPoseProof ("HT" with "Hnamed") as "HT".
     rewrite /interpret_rust_type_goal. iDestruct "HT" as "(%rt2 & %ty2 & %r2 & HT)".
     iIntros "#CTX #HE HL Hv".
     iApply step_fupdN_intro; first done. iNext.
-    iMod ("HT" with "[] [] [] CTX HE HL Hv") as "(%L2 & %R2 & >(Hv & HR2) & HL & HT)"; [done.. | ].
-    iModIntro. iExists _, _, _, _, _. iFrame. by iApply ("HT" with "HR2").
+    iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & Hincl & HL & HT)"; [done.. | ].
+    iDestruct "Hincl" as "(_ & _ & Hincl)".
+    iPoseProof ("Hincl" with "Hv") as "Hv".
+    iModIntro. iExists _, _, _, _, _. iFrame.
   Qed.
   Definition typed_expr_assert_type_inst := [instance @typed_expr_assert_type].
   Global Existing Instance typed_expr_assert_type_inst.

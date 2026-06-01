@@ -47,10 +47,10 @@ Section subtype.
   Global Existing Instance mut_subtype_mut_lft_evar_inst | 10.
 
   Lemma mut_subtype_mut E L {rt} (ty1 ty2 : type rt) κ1 κ2 T :
-    ⌜lctx_lft_incl E L κ1 κ2⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ mut_eqtype E L ty1 ty2 T
+    ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ mut_eqtype E L ty1 ty2 T
     ⊢ mut_subtype E L (mut_ref κ1 ty1) (mut_ref κ2 ty2) T.
   Proof.
-    iIntros "(%Hincl1 & %Hincl2 & %Hsub & HT)". iFrame "HT".
+    iIntros "(%Hincl1 & %Hsub & HT)". iFrame "HT".
     iPureIntro. apply mut_ref_full_subtype; done.
   Qed.
   Definition mut_subtype_mut_inst := [instance @mut_subtype_mut].

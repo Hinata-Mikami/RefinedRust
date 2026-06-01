@@ -9,15 +9,6 @@ Section subtype.
   Context `{!typeGS Σ}.
   (** ** subtype instances *)
 
-  (* TODO: should this really match on the addition in the conclusion? probably not. *)
-  (*
-  Lemma subsume_full_array_split_goal :
-    subsume_full pers (l ◁ₗ[π, Owned false] r @ lt) (l ◁ₗ[π, Owned false] #(a1) @ ◁ array_t def (length a1)) E L (λ L R2,
-      prove_with_subtype E L pers (l +ₗ ... ◁ₗ[π, Owned false] #a2 @ ◁ array_t def (len - length a1)) T)
-    subsume_full pers (l ◁ₗ[π, Owned false] r @ lt) (l ◁ₗ[π, Owned false] #(a1 ++ a2) @ ◁ array_t def (len)) E L T.
-  *)
-  (* Alternative: do this splitting on prove_with_subtype for array values instead.
-   *)
   (* Higher priority instance than direct search for the value: as a heuristic, we split app values *)
   (* TODO: how would that scale to more complex transformations? E.g. what about take etc. -- I guess for that we could have instances as well.
     Basically, I would imagine that we only want to look in the context for primitive values. *)

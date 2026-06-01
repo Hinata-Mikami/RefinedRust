@@ -518,9 +518,6 @@ Section rules.
     by iApply ("HT" with "[//] [//] [//] CTX HE HL").
   Qed.
   (* NOTE: not an instance due to the above issue *)
-  (*Global Instance value_subsume_full_goal_ofty_inst π E L {rt} l v' st (ty : type rt) r :*)
-    (*SubsumeFull (l ◁ₗ[π, Owned false] PlaceIn r @ ◁ ty)%I (l ◁ₗ[π, Owned false] PlaceIn v' @ ◁ (value_t st))%I | 50 :=*)
-    (*λ T, i2p (value_subsume_full_goal_ofty π E L l v' st ty r T).*)
 
   (** When we require assembled ownership, try to assemble it. *)
 
@@ -757,9 +754,7 @@ Section unify_loc.
     subsume_full step (l ◁ₗ[π, Owned false] #vs1 @ ◁ value_t (UntypedSynType ly1)) (l ◁ₗ[π, Owned false] #vs2 @ ◁ value_t (UntypedSynType ly2)) E L T.
   Proof.
     (* TODO *)
-  Admitted.
-  Definition subsume_full_ofty_value_untyped_larger_inst := [instance @subsume_full_ofty_value_untyped_larger].
-  Global Existing Instance subsume_full_ofty_value_untyped_larger_inst | 9.
+  Abort.
    *)
 End unify_loc.
 
@@ -767,26 +762,6 @@ Section unify_val.
   Context `{!typeGS Σ}.
 
   (** Same instances for the case that we have just values *)
-
-
-  (* if both are untyped, and have not been handled by the previous instance,
-     check if the sizes of the layout are the same;
-     - if so, show that the alignment of the goal is lower
-     - else, prove that the left one is a prefix of the latter, and continue searching for the rest. *)
-  (*
-  Lemma subsume_full_ofty_value_untyped_prefix π l vs1 vs2 ly1 ly2 E L T :
-    ⌜ly_align_log ly2 ≤ ly_align_log ly1⌝ ∗
-    ⌜ly_size ly1 ≤ ly_size ly2⌝ ∗
-    ⌜vs1 = take (ly_size ly1) vs2⌝ ∗
-    prove ((drop (ly_size ly1) vs2) ◁ᵥ{π} (drop (ly_size ly1) vs2) @ ◁ value_t (UntypedSynType (ly_offset ly2 (ly_size ly1)))) T -∗
-    subsume (v ◁ᵥ{π} vs1 @ value_t (UntypedSynType ly1)) (v ◁ᵥ{π} vs2 @ value_t (UntypedSynType ly2)) T.
-  Proof.
-      (* TODO *)
-  Admitted.
-  Definition subsume_full_ofty_value_untyped_prefix_inst := [instance @subsume_full_ofty_value_untyped_prefix].
-  Global Existing Instance subsume_full_ofty_value_untyped_prefix_inst | 6.
-   *)
-
 
   (** Step 1 *)
   (* instantiate in case [st2] is an evar *)
