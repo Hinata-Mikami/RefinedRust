@@ -250,9 +250,11 @@ Section call.
       prove_with_subtype E L1 true ProveDirect (fps.(fp_Pa) π) True (λ L2 _ R3,
       (* finally, prove the sidecondition *)
       fps.(fp_Sc) π ∗
-      ⌜Forall (lctx_lft_alive E L2) L2.*1.*2⌝ ∗
+
+      ⌜Forall (lctx_lft_alive E L2) (llctx_alive_lfts L2)⌝ ∗
       (* don't normalize this sidecondition, directly shelve it: term is huge and expensive *)
-      ⌜shelve_hint (∀ ϝ, elctx_sat (((λ '(_, κ, _), ϝ ⊑ₑ κ) <$> L2) ++ E) L2 (fps.(fp_elctx) ϝ))⌝ ∗
+      ⌜shelve_hint (∀ ϝ, elctx_sat (((λ κ, ϝ ⊑ₑ κ) <$> (llctx_alive_lfts L2)) ++ E) L2 (fps.(fp_elctx) ϝ))⌝ ∗
+
       (* postcondition *)
       ∀ v x', (* v = retval, x' = post existential *)
       (* also donate some credits we are generating here *)
@@ -284,11 +286,9 @@ Section call.
     { iFrame "HE". iApply big_sepL_intro.
       iIntros "!>" (k [κe1 κe2] Hlook).
       apply list_elem_of_lookup_2 in Hlook. simpl.
-      apply list_elem_of_fmap in Hlook as (((i & ?) & κs1) & [= <- <-] & ?).
+      apply list_elem_of_fmap in Hlook as (κ1 & [= -> ->] & ?).
       iApply lft_incl_trans. { iApply lft_incl_syn_sem. done. }
-      iApply lft_intersect_list_elem_of_incl.
-      rewrite list_elem_of_fmap. exists (i, κe2). split; first done.
-      rewrite list_elem_of_fmap. eexists; split; last done. done.
+      iApply lft_intersect_list_elem_of_incl. done.
     }
 
     simpl.
@@ -403,7 +403,8 @@ Section call.
       iMod ("HT" with "[] [$] HE' HL HR") as "(%L6 & HL & HT)"; first done.
       rewrite /llctx_find_llft_goal.
       iDestruct "HT" as "(%HL6 & %κs' & %Hfind & HT)".
-      destruct Hfind as (L9 & L10 & ? & -> & -> & Hoc).
+      destruct Hfind as (L9 & L10 & elt & -> & -> & Helt & Hoc).
+      destruct elt; try done. simpl in Helt. destruct Helt as [<- <-].
       unfold llctx_find_lft_key_interp in Hoc. subst.
       iDestruct "HL" as "(_ & Hϝ & _)".
       iDestruct "HT" as ([n' m']) "(Hstore & HT)"; simpl.

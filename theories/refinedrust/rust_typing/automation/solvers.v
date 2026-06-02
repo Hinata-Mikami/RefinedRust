@@ -2247,34 +2247,36 @@ Ltac solve_llctx_release_toks ::=
         solve_llctx_release_toks ]
   end.
 
-
 (** llctx_find_llft *)
 Section llctx_lft_split.
-  Lemma tac_llctx_find_llft_solve_step_skip L L' κ κ' κs κs' oc key :
+  Lemma tac_llctx_find_llft_solve_step_skip L L' κ' κs' elt key :
     llctx_find_llft L κ' key κs' L' →
-    llctx_find_llft ((oc, κ, κs) :: L) κ' key κs' ((oc, κ, κs) :: L').
+    llctx_find_llft (elt :: L) κ' key κs' (elt :: L').
   Proof.
-    intros (A & B & ? & -> & -> & ?).
-    eexists ((oc, κ, κs) :: A), B, _. done.
+    intros (A & B & ? & -> & -> & ? & ?).
+    eexists (elt :: A), B, _. done.
   Qed.
 
-  Lemma tac_llctx_find_llft_solve_step_find L κ κs κs' key oc :
-    llctx_find_lft_key_interp key κ oc →
-    κs' = κs →
-    llctx_find_llft ((oc, κ, κs) :: L) κ key κs' L.
+  Lemma tac_llctx_find_llft_solve_step_find L κ κs' elt key :
+    llctx_find_lft_key_interp key elt →
+    llctx_elt_is_alive elt κ κs' →
+    llctx_find_llft (elt :: L) κ key κs' L.
   Proof.
-    intros ? ->.
+    intros ? ?.
     eexists [], L, _. split; first done. done.
   Qed.
 End llctx_lft_split.
 
 Ltac solve_llctx_find_llft ::=
   repeat match goal with
-  | |- llctx_find_llft ((?oc, ?κ, ?κs) :: ?L) ?κ ?key ?κs' ?L' =>
-      (notypeclasses refine (tac_llctx_find_llft_solve_step_find L κ κs κs' key oc _ _);
+  | |- llctx_find_llft (LLCtxEltOwned ?oc ?κ ?κs :: ?L) ?κ ?key ?κs' ?L' =>
+      (notypeclasses refine (tac_llctx_find_llft_solve_step_find L κ κs' (LLCtxEltOwned oc κ κs) key _ _);
       [first [done | eexists _; done] | done]) || fail 1000 "llctx_find_llft_solver: cannot find lifetime " κ " because there are still " oc " open tokens"
-  | |- llctx_find_llft ((?oc, ?κ, ?κs) :: ?L) ?κ' ?key ?κs' ?L' =>
-      refine (tac_llctx_find_llft_solve_step_skip L _ κ κ' κs κs' oc key _)
+  | |- llctx_find_llft (LLCtxEltAlias ?κ ?κs :: ?L) ?κ ?key ?κs' ?L' =>
+      (notypeclasses refine (tac_llctx_find_llft_solve_step_find L κ κs' (LLCtxEltAlias κ κs) key _ _);
+      [first [done | eexists _; done] | done])
+  | |- llctx_find_llft (?elt :: ?L) ?κ' ?key ?κs' ?L' =>
+      refine (tac_llctx_find_llft_solve_step_skip L _ κ' κs' elt key _)
   end.
 
 (** llctx_remove_dead_aliases *)

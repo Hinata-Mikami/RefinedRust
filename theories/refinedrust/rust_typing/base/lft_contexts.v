@@ -166,13 +166,28 @@ Bind Scope rrust_elctx_scope with elctx_elt.
 
 Notation "κ1 ⊑ₑ κ2" := (@pair lft lft κ1 κ2) (at level 70).
 
-Definition llctx_elt : Type := (option nat * lft * list lft).
+Inductive llctx_elt : Type :=
+| LLCtxEltAlias (κ : lft) (κs : list lft)
+| LLCtxEltOwned (n : nat) (κ : lft) (κs : list lft)
+| LLCtxEltDead (κ : lft)
+.
 Notation llctx := (list llctx_elt).
 
 (* locally-owned lifetimes with a "borrow count" *)
-Notation "κ '⊑ₗ{' c '}' κl" := (@pair (@prod (option nat) lft) (list lft) (Some c%nat, κ) κl) (at level 70).
+Notation "κ '⊑ₗ{' c '}' κl" := (LLCtxEltOwned c%nat κ κl) (at level 70).
 (* local aliases with no distinct ownership *)
-Notation "κ '≡ₗ' κl" := (@pair (@prod (option nat) lft) (list lft) (None, κ) κl) (at level 70).
+Notation "κ '≡ₗ' κl" := (LLCtxEltAlias κ κl) (at level 70).
+(* dead local lifetime *)
+Notation "'†ₗ'  κ" := (LLCtxEltDead κ) (at level 70).
+
+Definition llctx_elt_alive_lft (elt : llctx_elt) : option lft :=
+  match elt with
+  | LLCtxEltAlias κ _ => Some κ
+  | LLCtxEltOwned _ κ _ => Some κ
+  | _ => None
+  end.
+Definition llctx_alive_lfts (L : llctx) : list lft :=
+  omap (M := list) llctx_elt_alive_lft L.
 
 Section lft_contexts.
   Context `{!invGS Σ, !lftGS Σ lft_userE, !lctxGS Σ}.
@@ -354,28 +369,33 @@ Section lft_contexts.
 
   Definition llctx_elt_interp (x : llctx_elt) : iProp Σ :=
     match x with
-    | (Some c, κ, κs) => llctx_owned_elt_interp c κ κs
-    | (None, κ, κs) => llctx_alias_elt_interp κ κs
+    | LLCtxEltOwned c κ κs => llctx_owned_elt_interp c κ κs
+    | LLCtxEltAlias κ κs => llctx_alias_elt_interp κ κs
+    | LLCtxEltDead κ => [† κ]
     end.
   Definition llctx_elt_interp_noend (x : llctx_elt) (q : Qp) : iProp Σ :=
     match x with
-    | (Some c, κ, κs) => llctx_owned_elt_interp_noend c κ κs q
-    | (None, κ, κs) => llctx_alias_elt_interp κ κs
+    | LLCtxEltOwned c κ κs => llctx_owned_elt_interp_noend c κ κs q
+    | LLCtxEltAlias κ κs => llctx_alias_elt_interp κ κs
+    | LLCtxEltDead κ => [† κ]
     end.
 
   Global Instance llctx_elt_interp_noend_fractional x :
     Fractional (llctx_elt_interp_noend x).
   Proof.
-    destruct x as [[[c | ] κ] κs]; apply _.
+    destruct x; try apply _.
+    unfold llctx_elt_interp_noend.
+    apply persistent_fractional; apply _.
   Qed.
 
   Lemma llctx_elt_interp_acc_noend x :
     llctx_elt_interp x ⊢
     llctx_elt_interp_noend x 1 ∗ (llctx_elt_interp_noend x 1 -∗ llctx_elt_interp x).
   Proof.
-    iIntros "H". destruct x as [[[c | ] κ] κs].
-    - by iApply llctx_owned_elt_interp_acc_noend.
+    iIntros "H". destruct x.
     - iFrame. iIntros "$".
+    - by iApply llctx_owned_elt_interp_acc_noend.
+    - simpl. iFrame. iIntros "$".
   Qed.
 
   (** noend contexts *)
@@ -1236,14 +1256,26 @@ Section lft_contexts.
     | LlctxFindLftFull
     | LlctxFindLftOwned
     | LlctxFindLftAlias.
-  Definition llctx_find_lft_key_interp key (κ : lft) oc :=
-    match key with
-    | LlctxFindLftFull => oc = Some 0%nat
-    | LlctxFindLftOwned => is_Some oc
-    | LlctxFindLftAlias => oc = None
+  Definition llctx_find_lft_key_interp (key : llctx_find_llft_key) (elt : llctx_elt) : Prop :=
+    match key, elt with
+    | LlctxFindLftFull, LLCtxEltOwned n _ _ => n = 0%nat
+    | LlctxFindLftOwned, LLCtxEltOwned _ _ _ => True
+    | LlctxFindLftAlias, LLCtxEltAlias _ _ => True
+    | _, _ => False
     end.
+  Definition llctx_elt_is_alive (elt : llctx_elt) (κ : lft) (κs : list lft) : Prop :=
+    match elt with
+    | LLCtxEltOwned _ κ' κs' => κ = κ' ∧ κs = κs'
+    | LLCtxEltAlias κ' κs' => κ = κ' ∧ κs = κs'
+    | _ => False
+    end.
+
   Definition llctx_find_llft (L : llctx) (κ : lft) (key : llctx_find_llft_key) (κs : list lft) (L' : llctx) :=
-    ∃ A B oc, L = A ++ ((oc, κ, κs)) :: B ∧ L' = A ++ B ∧ llctx_find_lft_key_interp key κ oc.
+    ∃ A B elt,
+      L = A ++ elt :: B ∧
+      L' = A ++ B ∧
+      llctx_elt_is_alive elt κ κs ∧
+      llctx_find_lft_key_interp key elt.
 
   Lemma llctx_end_llft F L L' κ κs :
     lftE ⊆ F →
@@ -1253,8 +1285,9 @@ Section lft_contexts.
     [† κ] ∗ llctx_interp L'.
   Proof.
     iIntros (? ? Hfind) "HL".
-    destruct Hfind as (A & B & oc & -> & -> & Hoc).
-    simpl in Hoc. rewrite Hoc.
+    destruct Hfind as (A & B & elt & -> & -> & Hal & Hoc).
+    destruct elt; try done.
+    simpl in Hoc. simpl in Hal. subst. destruct Hal as [<- <-].
     iDestruct "HL" as "(? & Helt & ?)".
     iAssert (∃ κi κex qex, lft_decomp κ κi κex qex ∗ llctx_elt_interp (κ ⊑ₗ{ 0} κs))%I with "[Helt]" as "Ha".
     { iDestruct "Helt" as "(%γ & Hname & Hauth & #Hshape & Hkill)".
@@ -1392,7 +1425,8 @@ Section lft_contexts.
     llctx_interp ((κ ≡ₗ κs) :: L').
   Proof.
     iIntros (? Hfind) "#CTX HL".
-    destruct Hfind as (L1 & L2 & oc  & -> & -> & (c & ->)).
+    destruct Hfind as (L1 & L2 & elt  & -> & -> & Hal & Hx).
+    destruct elt; try done. simpl in *. destruct Hal as (<- & <-).
     iDestruct "HL" as "($ & Hel & $)".
     iMod (llctx_owned_elem_equalize_lft_sem with "CTX Hel") as "(#Hincl1 & #Hincl2)"; first done.
     iModIntro. iSplit; done.
@@ -1797,4 +1831,3 @@ End join.
 Global Typeclasses Opaque lft_list_incl.
 Global Arguments lft_list_incl : simpl never.
 Global Arguments lft_dead_list : simpl never.
-
