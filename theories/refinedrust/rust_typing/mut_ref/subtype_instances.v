@@ -83,7 +83,10 @@ Section subltype.
   (** Subltyping instances *)
   (* generic in [r2] to handle the case that it is an evar *)
   Lemma weak_subltype_mut_owned_in E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ1 κ2 γ r1 r2 T :
-    (∃ r2', ⌜r2 = #(r2', γ)⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ weak_subltype E L (Uniq κ1 γ) r1 r2' lt1 lt2 T)
+    (∃ r2',
+      ⌜r2 = #(r2', γ)⌝ ∗
+      ⌜lctx_lft_incl E L κ2 κ1⌝ ∗
+      weak_subltype E L (Uniq κ1 γ) r1 r2' lt1 lt2 T)
     ⊢ weak_subltype E L (Owned) #(r1, γ) r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof.
     iIntros "(%r2' & -> & %Hincl & HT)" (??) "#CTX #HE HL".
@@ -98,7 +101,9 @@ Section subltype.
 
   (* instance to destruct the pair if necessary *)
   Lemma weak_subltype_mut_owned_in' E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ1 κ2 r1 r2 T :
-    (∀ r1' γ, ⌜r1 = (r1', γ)⌝ -∗ weak_subltype E L (Owned) #(r1', γ) r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T)
+    (∀ r1' γ,
+      ⌜r1 = (r1', γ)⌝ -∗
+      weak_subltype E L (Owned) #(r1', γ) r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T)
     ⊢ weak_subltype E L (Owned) #r1 r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof.
     iIntros "Ha". destruct r1. by iApply "Ha".
@@ -107,7 +112,10 @@ Section subltype.
   Global Existing Instance weak_subltype_mut_owned_in'_inst | 12.
 
   Lemma weak_subltype_mut_shared_in E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ κ1 κ2 γ r1 r2 T :
-    (∃ r2', ⌜r2 = #(r2', γ)⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ weak_subltype E L (Shared (κ1 ⊓ κ)) r1 r2' lt1 lt2 T)
+    (∃ r2',
+      ⌜r2 = #(r2', γ)⌝ ∗
+      ⌜lctx_lft_incl E L κ2 κ1⌝ ∗
+      weak_subltype E L (Shared (κ1 ⊓ κ)) r1 r2' lt1 lt2 T)
     ⊢ weak_subltype E L (Shared κ) #(r1, γ) r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof.
     iIntros "(%r2' & -> & %Hincl & HT)" (??) "#CTX #HE HL".
@@ -123,7 +131,10 @@ Section subltype.
   (* Base instance that will trigger, e.g., for Uniq or PlaceGhost refinements *)
   (* TODO can have more specific instances for PlaceGhost for Shared and Owned *)
   Lemma weak_subltype_mut_base E L {rt} (lt1 lt2 : ltype rt) k κ1 κ2 r1 r2 T :
-    ⌜r1 = r2⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ ⌜lctx_lft_incl E L κ1 κ2⌝ ∗ mut_eqltype E L lt1 lt2 T
+    ⌜r1 = r2⌝ ∗
+    ⌜lctx_lft_incl E L κ2 κ1⌝ ∗
+    ⌜lctx_lft_incl E L κ1 κ2⌝ ∗
+    mut_eqltype E L lt1 lt2 T
     ⊢ weak_subltype E L k r1 r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof.
     iIntros "(<- & %Hincl1 & %Hincl2 & %Hsubt & T)" (??) "#CTX #HE HL".
@@ -138,14 +149,17 @@ Section subltype.
   Global Existing Instance weak_subltype_mut_base_inst | 20.
 
   Lemma weak_subltype_mut_evar_lft E L {rt} (lt1 lt2 : ltype rt) k κ1 κ2 r1 r2 T `{!IsProtected κ2} :
-    ⌜κ1 = κ2⌝ ∗ weak_subltype E L k r1 r2 (MutLtype lt1 κ1) (MutLtype lt2 κ1) T
+    ⌜κ1 = κ2⌝ ∗
+    weak_subltype E L k r1 r2 (MutLtype lt1 κ1) (MutLtype lt2 κ1) T
     ⊢ weak_subltype E L k r1 r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof. iIntros "(<- & $)". Qed.
   Definition weak_subltype_mut_evar_lft_inst := [instance @weak_subltype_mut_evar_lft].
   Global Existing Instance weak_subltype_mut_evar_lft_inst | 9.
 
   Lemma mut_subltype_mut E L {rt} (lt1 lt2 : ltype rt) κ1 κ2 T :
-    ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ ⌜lctx_lft_incl E L κ1 κ2⌝ ∗ mut_eqltype E L lt1 lt2 T
+    ⌜lctx_lft_incl E L κ2 κ1⌝ ∗
+    ⌜lctx_lft_incl E L κ1 κ2⌝ ∗
+    mut_eqltype E L lt1 lt2 T
     ⊢ mut_subltype E L (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof.
     iIntros "(%Hincl1 & %Hincl2 & %Heq & $)".
@@ -155,14 +169,17 @@ Section subltype.
   Global Existing Instance mut_subltype_mut_inst | 10.
 
   Lemma mut_subltype_mut_evar_lft E L {rt} (lt1 lt2 : ltype rt) κ1 κ2 T `{!IsProtected κ2} :
-    ⌜κ1 = κ2⌝ ∗ mut_subltype E L (MutLtype lt1 κ1) (MutLtype lt2 κ1) T
+    ⌜κ1 = κ2⌝ ∗
+    mut_subltype E L (MutLtype lt1 κ1) (MutLtype lt2 κ1) T
     ⊢ mut_subltype E L (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof. iIntros "(<- & $)". Qed.
   Definition mut_subltype_mut_evar_lft_inst := [instance @mut_subltype_mut_evar_lft].
   Global Existing Instance mut_subltype_mut_evar_lft_inst | 9.
 
   Lemma mut_eqltype_mut E L {rt} (lt1 lt2 : ltype rt) κ1 κ2 T :
-    ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ ⌜lctx_lft_incl E L κ1 κ2⌝ ∗ mut_eqltype E L lt1 lt2 T
+    ⌜lctx_lft_incl E L κ2 κ1⌝ ∗
+    ⌜lctx_lft_incl E L κ1 κ2⌝ ∗
+    mut_eqltype E L lt1 lt2 T
     ⊢ mut_eqltype E L (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof.
     iIntros "(%Hincl1 & %Hincl2 & %Heq & $)".
@@ -172,7 +189,8 @@ Section subltype.
   Global Existing Instance mut_eqltype_mut_inst.
 
   Lemma mut_eqltype_mut_evar_lft E L {rt} (lt1 lt2 : ltype rt) κ1 κ2 T `{!IsProtected κ2} :
-    ⌜κ1 = κ2⌝ ∗ mut_eqltype E L (MutLtype lt1 κ1) (MutLtype lt2 κ1) T
+    ⌜κ1 = κ2⌝ ∗
+    mut_eqltype E L (MutLtype lt1 κ1) (MutLtype lt2 κ1) T
     ⊢ mut_eqltype E L (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof. iIntros "(<- & $)". Qed.
   Definition mut_eqltype_mut_evar_lft_inst := [instance @mut_eqltype_mut_evar_lft].
@@ -180,7 +198,9 @@ Section subltype.
 
   (* Ofty unfolding if necessary *)
   Lemma weak_subltype_mut_ofty_1_evar E L {rt1 rt2 : RT} (lt1 : ltype rt1) (ty2 : type (place_rfn rt2 * gname)%type) k κ1 r1 r2 `{!IsProtected ty2} T :
-    (∃ ty2', ⌜ty2 = mut_ref κ1 ty2'⌝ ∗ weak_subltype E L k r1 r2 (MutLtype lt1 κ1) (◁ (mut_ref κ1 ty2')) T)
+    (∃ ty2',
+    ⌜ty2 = mut_ref κ1 ty2'⌝ ∗
+    weak_subltype E L k r1 r2 (MutLtype lt1 κ1) (◁ (mut_ref κ1 ty2')) T)
     ⊢ weak_subltype E L k r1 r2 (MutLtype lt1 κ1) (◁ ty2) T.
   Proof.
     iIntros "(%ty2' & -> & HT)". done.
@@ -214,7 +234,9 @@ Section subltype.
 
   (* Same for mut_subltype *)
   Lemma mut_subltype_mut_ofty_1_evar E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt * gname)%type) κ1  `{!IsProtected ty2} T :
-    (∃ ty2', ⌜ty2 = mut_ref κ1 ty2'⌝ ∗ mut_subltype E L (MutLtype lt1 κ1) (◁ (mut_ref κ1 ty2')) T)
+    (∃ ty2',
+    ⌜ty2 = mut_ref κ1 ty2'⌝ ∗
+    mut_subltype E L (MutLtype lt1 κ1) (◁ (mut_ref κ1 ty2')) T)
     ⊢ mut_subltype E L (MutLtype lt1 κ1) (◁ ty2) T.
   Proof.
     iIntros "(%ty2' & -> & HT)". done.
@@ -246,7 +268,9 @@ Section subltype.
 
   (* Same for mut_eqltype *)
   Lemma mut_eqltype_mut_ofty_1_evar E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt * gname)%type) κ1 `{!IsProtected ty2} T :
-    (∃ ty2', ⌜ty2 = mut_ref κ1 ty2'⌝ ∗ mut_eqltype E L (MutLtype lt1 κ1) (◁ (mut_ref κ1 ty2')) T)
+    (∃ ty2',
+    ⌜ty2 = mut_ref κ1 ty2'⌝ ∗
+    mut_eqltype E L (MutLtype lt1 κ1) (◁ (mut_ref κ1 ty2')) T)
     ⊢ mut_eqltype E L (MutLtype lt1 κ1) (◁ ty2) T.
   Proof.
     iIntros "(%ty2' & -> & HT)". done.
