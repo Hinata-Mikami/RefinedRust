@@ -96,6 +96,8 @@ impl All_Cells {
 
 
     // Type system got stuck in function "All_Cells_read_next_value"
+    // https://chatgpt.com/s/t_6a1e5a38cc80819180ab9116c3b768d5
+    // 手動証明を書くか，任意長Vecをあきらめるか？
     #[rr::params("a" : "loc", "b" : "loc", "v1" : "Z", "v2" : "Z", "γ")]
     #[rr::args("(([v1; v2], (<$#> [a; b]), [b; a]), γ)", "a")]
     #[rr::observe("γ": "([v1; v2], (<$#> [a; b]), [b; a])")]
