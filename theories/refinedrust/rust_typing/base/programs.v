@@ -785,11 +785,13 @@ Section judgments.
 
 
   (** annotated statements are allowed to execute an update and take a step *)
-  (* TODO: make this more useful and actually use it *)
-  Definition typed_annot_stmt {A} (a : A) (T : iProp Σ) : iProp Σ :=
-    (rrust_ctx ={⊤}[∅]▷=∗ T).
-  Class TypedAnnotStmt {A} (a : A) : Type :=
-    typed_annot_stmt_proof T : iProp_to_Prop (typed_annot_stmt a T).
+  Definition typed_annot_stmt (π : thread_id) (n : nat) {A} (a : A) (E : elctx) (L : llctx) (T : llctx → iProp Σ) : iProp Σ :=
+    (rrust_ctx -∗
+     elctx_interp E -∗
+     llctx_interp L -∗
+     |={⊤}⧗=>^n (∃ L', llctx_interp L' ∗  T L')%I).
+  Class TypedAnnotStmt (π : thread_id) (n : nat) {A} (a : A) : Type :=
+    typed_annot_stmt_proof E L T : iProp_to_Prop (typed_annot_stmt π n a E L T).
 
   Definition typed_switch (E : elctx) (L : llctx) (f : frame_path) (v : val) rt (ty : type rt) (r : rt) (it : int_type) (m : gmap Z nat) (ss : list stmt) (def : stmt) (fn : function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
     (v ◁ᵥ{f.1, MetaNone} r @ ty -∗ ∃ z, ⌜val_to_Z v it = Some z⌝ ∗
@@ -2255,7 +2257,7 @@ Global Hint Mode TypedUnOpVal + + + + + + + + + + + : typeclass_instances.
 Global Hint Mode TypedCheckBinOp + + + + + + + + + + + + : typeclass_instances.
 Global Hint Mode TypedCheckUnOp + + + + + + + + + : typeclass_instances.
 Global Hint Mode TypedAssert  + + + + + + + + + : typeclass_instances.
-Global Hint Mode TypedAnnotStmt + + + + : typeclass_instances.
+Global Hint Mode TypedAnnotStmt + + + + + + : typeclass_instances.
 Global Hint Mode TypedSwitch + + + + +  + + + + + : typeclass_instances.
 Global Hint Mode CastLtypeToType + + + + + + : typeclass_instances.
 Global Hint Mode TypedPlace + + + + + + + + + + + + : typeclass_instances.
@@ -3711,7 +3713,7 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | typed_if ?E ?L ?v ?P => constr:(TypedIf E L v P)
   | typed_assert ?E ?L ?f ?v ?ty ?r  => constr:(TypedAssert E L f v ty r)
   | typed_switch ?E ?L ?f ?v ?ty ?r ?it => constr:(TypedSwitch E L f v ty r it)
-  | typed_annot_stmt ?a => constr:(TypedAnnotStmt a)
+  | typed_annot_stmt ?π ?n ?a => constr:(TypedAnnotStmt π n a)
   | introduce_with_hooks ?E ?L ?P => constr:(IntroduceWithHooks E L P)
   | iterate_with_hooks ?E ?L ?m => constr:(IterateWithHooks E L m)
   | subsume_full ?wl ?P1 ?P2 => constr:(SubsumeFull wl P1 P2)

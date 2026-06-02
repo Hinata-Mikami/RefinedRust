@@ -3143,6 +3143,26 @@ Section subsume.
     iApply ("IH" with "HΦ Hf HT").
   Qed.
 
+  Lemma typed_stmt_annot_skip {A} E L f (a : A) n s fn R ϝ :
+    typed_stmt E L f s fn R ϝ
+    ⊢ typed_stmt E L f (annot{n}: a; s) fn R ϝ.
+  Proof.
+    iIntros "Hs". iIntros (?) "#CTX #HE HL Hf Hcont".
+    iApply wps_annot. iApply physical_stepN_intro.
+    by iApply ("Hs" with "CTX HE HL Hf").
+  Qed.
+  Lemma type_annot_stmt E L f n {A} (a : A) s fn R ϝ :
+    typed_annot_stmt f.1  n a E L (λ L', typed_stmt E L' f s fn R ϝ)
+    ⊢ typed_stmt E L f (annot{n} : a; s) fn R ϝ.
+  Proof.
+    iIntros "Hs". iIntros (?) "#CTX #HE HL Hf Hcont".
+    iApply wps_annot.
+    iPoseProof ("Hs" with "CTX HE HL") as "Hstep".
+    iApply (physical_stepN_wand with "Hstep").
+    iIntros "(%L' & HL & Hs)".
+    by iApply ("Hs" with "CTX HE HL Hf").
+  Qed.
+
   Lemma type_logical_and E L f e1 e2 T:
     typed_val_expr E L f e1 (λ L1 v1 m1 rt1 ty1 r1,
       typed_if E L1 v1 (v1 ◁ᵥ{f.1, m1} r1 @ ty1)
@@ -4702,14 +4722,6 @@ Section subsume.
     done.
   Qed.
 
-  Lemma typed_stmt_annot_skip {A} E L f (a : A) n s fn R ϝ :
-    typed_stmt E L f s fn R ϝ ⊢ typed_stmt E L f (annot{n}: a; s) fn R ϝ.
-  Proof.
-    iIntros "Hs". iIntros (?) "#CTX #HE HL Hf Hcont".
-    iApply wps_annot. iApply physical_stepN_intro.
-    by iApply ("Hs" with "CTX HE HL Hf").
-  Qed.
-
   Lemma typed_expr_assert_type π E L n sty v {rt} (ty : type rt) r T :
     (∃ lfts, named_lfts lfts ∗
       (named_lfts lfts -∗ li_tactic (interpret_rust_type_goal lfts sty) (λ '(existT _ ty2),
@@ -4874,44 +4886,45 @@ Section subsume.
   Global Existing Instance introduce_with_hooks_rel2_inst.
 
   (** StartLft *)
-  Lemma type_startlft E L f (n : string) sup_lfts s fn R ϝ :
+  Lemma type_startlft π (n : string) sup_lfts E L T :
     (∃ M, named_lfts M ∗ li_tactic (compute_map_lookups_nofail_goal M sup_lfts) (λ κs,
       ∀ κ, named_lfts (named_lft_update n κ M) -∗
       (* add a credit -- will be used by endlft *)
-      introduce_with_hooks E ((κ ⊑ₗ{0%nat} κs) :: L) (£ num_cred) (λ L2,
-      typed_stmt E L2 f s fn R ϝ)))
-    ⊢ typed_stmt E L f (annot{1}: (StartLftAnnot n sup_lfts); s) fn R ϝ.
+      introduce_with_hooks E ((κ ⊑ₗ{0%nat} κs) :: L) (£ num_cred) T))
+    ⊢ typed_annot_stmt π 1 (StartLftAnnot n sup_lfts) E L T.
   Proof.
     rewrite /compute_map_lookups_nofail_goal.
     iIntros "(%M & Hnamed & %κs & %Hlook & Hcont)".
-    iIntros (?) "#(LFT & LLCTX) #HE HL Hf Hcont'".
-    iApply wps_annot => /=.
+    iIntros "#(LFT & LLCTX) #HE HL".
     iMod (llctx_startlft _ _ κs with "LFT LLCTX HL") as (κ) "HL"; [solve_ndisj.. | ].
+    iApply physical_step_fupd.
     iApply physical_step_intro_lc; iIntros "Hcred"; iModIntro; iNext.
-    iApply fupd_wps.
     iMod ("Hcont" with "[Hnamed] [] [$] HE HL Hcred") as "(%L2 & HL & HT)"; [ | done | ].
     { iApply named_lfts_update. done. }
-    by iApply ("HT" with "[$LFT $LLCTX] HE HL Hf").
+    by iFrame.
   Qed.
+  Definition type_startlft_inst := [instance @type_startlft].
+  Global Existing Instance type_startlft_inst.
 
   (** Alias lifetimes: like startlft but without the atomic part *)
-  Lemma type_alias_lft E L f (n : string) sup_lfts s fn R ϝ :
+  Lemma type_alias_lft π (n : string) sup_lfts E L T :
     (∃ M, named_lfts M ∗ li_tactic (compute_map_lookups_nofail_goal M sup_lfts) (λ κs,
-      ∀ κ, named_lfts (named_lft_update n κ M) -∗ typed_stmt E ((κ ≡ₗ κs) :: L) f s fn R ϝ))
-    ⊢ typed_stmt E L f (annot{1}: (AliasLftAnnot n sup_lfts); s) fn R ϝ.
+      ∀ κ, named_lfts (named_lft_update n κ M) -∗ T ((κ ≡ₗ κs) :: L)))
+    ⊢ typed_annot_stmt π 1 (AliasLftAnnot n sup_lfts) E L T.
   Proof.
     rewrite /compute_map_lookups_nofail_goal.
     iIntros "(%M & Hnamed & %κs & %Hlook & Hcont)".
-    iIntros (?) "#(LFT & LLCTX) #HE HL Hf Hcont'".
-    iApply wps_annot => /=.
+    iIntros "#(LFT & LLCTX) #HE HL".
     set (κ := lft_intersect_list κs).
     iAssert (llctx_interp ((κ ≡ₗ κs) :: L))%I with "[HL]" as "HL".
     { iFrame "HL". iSplit; iApply lft_incl_refl. }
     iApply physical_step_intro; iNext.
-    iApply ("Hcont" $! κ with "[Hnamed] [$LFT $LLCTX] HE HL Hf").
-    { iApply named_lfts_update. done. }
-    done.
+    iFrame.
+    iApply ("Hcont" $! κ with "[Hnamed]").
+    iApply named_lfts_update. done.
   Qed.
+  Definition type_alias_lft_inst := [instance @type_alias_lft].
+  Global Existing Instance type_alias_lft_inst.
 
   (** EndLft *)
   (* TODO: also make endlft apply to local aliases, endlft should just remove them, without triggering anything. *)
@@ -4956,7 +4969,7 @@ Section subsume.
   Definition iterate_with_hooks_endlft_inheritance_cons_inst := [instance @iterate_with_hooks_endlft_inheritance_cons].
   Global Existing Instance iterate_with_hooks_endlft_inheritance_cons_inst.
 
-  Lemma type_endlft E L f (n : string) s fn R ϝ :
+  Lemma type_endlft π (n : string) E L T :
     (∃ M, named_lfts M ∗
       (* if this lifetime does not exist anymore, this is a nop *)
       li_tactic (compute_map_lookup_goal M n true) (λ o,
@@ -4966,7 +4979,7 @@ Section subsume.
         prove_with_subtype E L false ProveDirect (£1) True%I (λ L1 _ R2,
         (* We need to make sure there are no open borrows using tokens of this lifetime, inclusing aliases, so find the lifetimes which will be dying here *)
         li_tactic (find_implied_dying_lifetimes_goal L1 κ) (λ implied_dying,
-        typed_pre_context_fold f.1 E L1 (CtxFoldCloseInvAllInit (κ :: implied_dying)) (λ L1',
+        typed_pre_context_fold π E L1 (CtxFoldCloseInvAllInit (κ :: implied_dying)) (λ L1',
         (* find the new llft context *)
         li_tactic (llctx_find_llft_goal L1' κ LlctxFindLftFull) (λ '(_, L1''),
         li_tactic (llctx_remove_dead_aliases_goal L1'' κ) (λ L2,
@@ -4974,32 +4987,30 @@ Section subsume.
         li_tactic (simplify_lft_map_goal (named_lft_delete n M)) (λ M',
         named_lfts M' -∗
         (* extract observations from now-dead mutable references *)
-        typed_pre_context_fold f.1 E ((†ₗ κ) :: L2) (CtxFoldExtractAllInit κ) (λ L3,
+        typed_pre_context_fold π E ((†ₗ κ) :: L2) (CtxFoldExtractAllInit κ) (λ L3,
         (* give back credits *)
         introduce_with_hooks E L3 (R2 ∗ £num_cred ∗ tr 1) (λ L4,
         (* resolve inheritances *)
         li_tactic (find_inheritances_goal) (λ ks,
-        iterate_with_hooks E L4 (IterateEndlftInheritances κ ks) (λ L5 _,
-        typed_stmt E L5 f s fn R ϝ))))))))))
-      | None => named_lfts M -∗ typed_stmt E L f s fn R ϝ
+        iterate_with_hooks E L4 (IterateEndlftInheritances κ ks) (λ L5 _, T L5))))))))))
+      | None => named_lfts M -∗ T L
       end))
-    ⊢ typed_stmt E L f (annot{2}: (EndLftAnnot n); s) fn R ϝ.
+    ⊢ typed_annot_stmt π 2 (EndLftAnnot n) E L T.
   Proof.
     iIntros "(%M & Hnamed & Hlook)".
     unfold compute_map_lookup_goal.
     iDestruct "Hlook" as (o) "(<- & HT)".
     destruct (M !! n) as [κ | ]; first last.
-    { iIntros (?) "#CTX #HE HL Hf Hcont". iApply wps_annot.
+    { iIntros "#CTX #HE HL".
       iApply physical_step_intro; iNext.
       iApply physical_step_intro; iNext.
-      by iApply ("HT" with "Hnamed CTX HE HL Hf"). }
+      iFrame. by iApply "HT". }
     unfold llctx_find_llft_goal, llctx_remove_dead_aliases_goal, li_tactic.
-    iIntros (Φ) "#CTX #HE HL Hf Hcont".
+    iIntros "#CTX #HE HL".
     iSpecialize ("HT" $! ⊤ True%I).
     iMod ("HT" with "[] [] [] CTX HE HL []") as "(%L2 & % & %R2 & >(HR2 & Hc & _) & HL & HT)";
       [set_solver.. | iApply maybe_logical_step_intro; iSplit; done | ].
     unfold find_implied_dying_lifetimes_goal. iDestruct "HT" as "(%implied_dying & HT)".
-    iApply wps_annot.
     iPoseProof ("HT" $! ⊤ with "[] [] [] CTX HE HL") as "Hstep"; [done.. | ].
     iApply (physical_step_step_upd with "Hstep").
     iApply physical_step_intro. iNext.
@@ -5019,6 +5030,7 @@ Section subsume.
     iPoseProof ("HT" $! ⊤ with "[] [] [] CTX HE [HL]") as "Hstep"; [done.. | | ].
     { rewrite /llctx_interp/=. iFrame. done. }
     iModIntro.
+    iApply physical_step_fupd.
     iApply (physical_step_step_upd with "Hstep").
     iMod (tr_zero) as "Ha".
     iApply (physical_step_intro_tr with "Ha"). iNext.
@@ -5029,32 +5041,37 @@ Section subsume.
     { iFrame. iApply tr_weaken; last done. simpl. unfold num_laters_per_step; lia. }
     unfold find_inheritances_goal. iDestruct "HT" as "(%ks & HT)".
     iMod ("HT" with "[] CTX HE HL") as "(%L7 & % & HL & HT)"; first done.
-    by iApply ("HT" with "CTX HE HL Hf").
+    by iFrame.
   Qed.
+  Definition type_endlft_inst := [instance @type_endlft].
+  Global Existing Instance type_endlft_inst.
 
   (** Dynamic inclusion *)
-  Lemma type_dyn_include_lft E L f n1 n2 s fn R ϝ :
+  Lemma type_dyn_include_lft π n1 n2 E L T :
     (∃ M, named_lfts M ∗
       li_tactic (compute_map_lookup_nofail_goal M n1) (λ κ1,
       li_tactic (compute_map_lookup_nofail_goal M n2) (λ κ2,
       li_tactic (lctx_lft_alive_count_goal E L κ2) (λ '(κs, L'),
       Inherit [κ1] (llft_elt_toks κs) -∗
       named_lfts M -∗
-      typed_stmt ((κ1 ⊑ₑ κ2) :: E) L' f s fn R ϝ))))
-    ⊢ typed_stmt E L f (annot{1}: DynIncludeLftAnnot n1 n2; s) fn R ϝ.
+      (* TODO: update E *)
+      (*(κ1 ⊑ₑ κ2) :: E)*)
+      T L'))))
+    ⊢ typed_annot_stmt π 1 (DynIncludeLftAnnot n1 n2) E L T.
   Proof.
     rewrite /compute_map_lookup_nofail_goal.
     iIntros "(%M & Hnamed & %κ1 & %Hlook1 & %κ2 & %Hlook2 & Hs)".
     unfold lctx_lft_alive_count_goal.
     iDestruct "Hs" as "(%κs & %L' & %Hal & Hs)".
-    iIntros (?) "#(LFT & LCTX) #HE HL Hf Hcont".
+    iIntros "#(LFT & LCTX) #HE HL".
     iMod (lctx_include_lft_sem with "LFT HE HL") as "(HL & #Hincl & Hinh)"; [done.. | ].
     iSpecialize ("Hs" with "Hinh").
-    iApply wps_annot. iApply physical_step_intro; iNext.
-    iApply ("Hs" with "Hnamed [$] [] HL Hf").
-    { iFrame "HE Hincl". }
-    done.
+    iApply physical_step_intro; iNext.
+    iFrame.
+    by iApply "Hs".
   Qed.
+  Definition type_dyn_include_lft_inst := [instance @type_dyn_include_lft].
+  Global Existing Instance type_dyn_include_lft_inst.
 
   (** ExtendLft *)
   Variant iterate_extend_lft :=
@@ -5091,47 +5108,54 @@ Section subsume.
   Definition iterate_with_hooks_extend_lft_cons_inst := [instance @iterate_with_hooks_extend_lft_cons].
   Global Existing Instance iterate_with_hooks_extend_lft_cons_inst.
 
-  Lemma type_extendlft E L f (n : string) s fn R ϝ :
+  Lemma type_extendlft π (n : string) E L T :
     (∃ M, named_lfts M ∗
       li_tactic (compute_map_lookup_nofail_goal M n) (λ κ,
       iterate_with_hooks E L (IterateExtendLft [κ]) (λ L' _,
-      (named_lfts M -∗ typed_stmt E L' f s fn R ϝ))))
-    ⊢ typed_stmt E L f (annot{1}: (ExtendLftAnnot n); s) fn R ϝ.
+      (named_lfts M -∗ T L'))))
+    ⊢ typed_annot_stmt π 1 (ExtendLftAnnot n) E L T.
   Proof.
     rewrite /compute_map_lookup_nofail_goal.
     iIntros "(%M & Hnamed & %κ & _ & Hs)".
-    iIntros (?) "#CTX #HE HL Hf Hcont".
+    iIntros "#CTX #HE HL".
     iMod ("Hs" with "[] CTX HE HL") as "(%L2 & % & HL & HT)"; first done.
-    iApply wps_annot. iApply physical_step_intro; iNext.
-    by iApply ("HT" with "Hnamed [$] HE HL Hf").
+    iApply physical_step_intro; iNext.
+    iFrame. by iApply "HT".
   Qed.
+  Definition type_extendlft_inst := [instance @type_extendlft].
+  Global Existing Instance type_extendlft_inst.
 
   (** UnconstrainedLftAnnot *)
-  Lemma type_unconstrained_lft E L f (n : string) s fn R ϝ sup `{!TCFastDone (UnconstrainedLftHint n sup)} :
-    typed_stmt E L f (annot{1}: (StartLftAnnot n sup); s) fn R ϝ
-    ⊢ typed_stmt E L f (annot{1}: (UnconstrainedLftAnnot n); s) fn R ϝ.
+  Lemma type_unconstrained_lft π (n : string) sup `{!TCFastDone (UnconstrainedLftHint n sup)} E L T :
+    typed_annot_stmt π 1 (StartLftAnnot n sup) E L T
+    ⊢ typed_annot_stmt π 1 (UnconstrainedLftAnnot n) E L T.
   Proof.
     done.
   Qed.
+  Definition type_unconstrained_lft_inst := [instance @type_unconstrained_lft].
+  Global Existing Instance type_unconstrained_lft_inst.
 
   (** CopyLftNameAnnot *)
-  Lemma type_copy_lft_name E L f n1 n2 s fn R ϝ :
+  Lemma type_copy_lft_name π n1 n2 E L T :
     (∃ M, named_lfts M ∗
       li_tactic (compute_map_lookup_nofail_goal M n2) (λ κ2,
       li_tactic (simplify_lft_map_goal (named_lft_update n1 κ2 (named_lft_delete n1 M))) (λ M',
-        named_lfts M' -∗ typed_stmt E L f s fn R ϝ)))
-    ⊢ typed_stmt E L f (annot{1}: CopyLftNameAnnot n1 n2; s) fn R ϝ.
+        named_lfts M' -∗ T L)))
+    ⊢ typed_annot_stmt π 1 (CopyLftNameAnnot n1 n2) E L T.
   Proof.
     rewrite /compute_map_lookup_nofail_goal.
     iIntros "(%M & Hnamed & %κ2 & _ & Hs)".
-    iIntros (?) "#CTX #HE HL Hf Hcont".
+    iIntros "#CTX #HE HL".
     unfold simplify_lft_map_goal. iDestruct "Hs" as "(%M' & _ & Hs)".
-    iApply wps_annot. iApply physical_step_intro; iNext.
-    by iApply ("Hs" with "Hnamed CTX HE HL Hf").
+    iApply physical_step_intro; iNext.
+    iFrame. by iApply "Hs".
   Qed.
+  Definition type_copy_lft_name_inst := [instance @type_copy_lft_name].
+  Global Existing Instance type_copy_lft_name_inst.
 
   (** We instantiate the context folding mechanism for unblocking. *)
   Definition typed_context_fold_stratify_interp (π : thread_id) := λ '(ctx, R), (type_ctx_interp π ctx ∗ R)%I.
+  Global Typeclasses Opaque typed_context_fold_stratify_interp.
   Lemma typed_context_fold_step_stratify π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) ma acc R T :
     (* TODO: this needs a different stratification strategy *)
     stratify_ltype_unblock π E L ma l lt r (Owned)
@@ -5145,6 +5169,7 @@ Section subsume.
     iApply (logical_step_compose with "Hstep").
     iApply (logical_step_compose with "Hdel").
     iApply logical_step_intro.
+    rewrite /typed_context_fold_stratify_interp.
     iIntros "(Hctx & HR) (Hl & HR')".
     iFrame.
     rewrite /type_ctx_interp.
@@ -5167,24 +5192,24 @@ Section subsume.
   Definition typed_context_fold_stratify_init_inst := [instance @typed_context_fold_stratify_init].
   Global Existing Instance typed_context_fold_stratify_init_inst.
 
-  Lemma type_stratify_context_annot E L f s fn R ϝ :
-    typed_pre_context_fold f.1 E L (CtxFoldStratifyAllInit StratNoRefold) (λ L', typed_stmt E L' f s fn R ϝ)
-    ⊢ typed_stmt E L f (annot{1}: (StratifyContextAnnot); s) fn R ϝ.
+  Lemma type_stratify_context_annot π E L T :
+    typed_pre_context_fold π E L (CtxFoldStratifyAllInit StratNoRefold) T
+    ⊢ typed_annot_stmt π 1 (StratifyContextAnnot) E L T.
   Proof.
     iIntros "HT".
-    iIntros (?) "#CTX #HE HL Hf Hcont".
-    iApply fupd_wps.
+    iIntros "#CTX #HE HL".
     iPoseProof ("HT" $! ⊤ with "[//] [//] [//] CTX HE HL") as "Hstep".
-    iApply wps_annot.
-    iModIntro.
     iApply (physical_step_step_upd with "Hstep").
     iApply physical_step_intro; iNext.
     iIntros "(%L' & HL & HT)".
-    by iApply ("HT" with "CTX HE HL Hf").
+    iFrame.
   Qed.
+  Definition type_stratify_context_annot_inst := [instance @type_stratify_context_annot].
+  Global Existing Instance type_stratify_context_annot_inst.
 
   (** We instantiate the context folding mechanism for extraction of observations. *)
   Definition typed_context_fold_extract_interp (π : thread_id) := λ '(ctx, R), (type_ctx_interp π ctx ∗ R)%I.
+  Global Typeclasses Opaque typed_context_fold_extract_interp.
   Lemma typed_context_fold_step_extract π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) acc R κ T :
     stratify_ltype_extract π E L StratNoRefold l lt r (Owned) κ
       (λ L' R' rt' lt' r', typed_context_fold (typed_context_fold_extract_interp π) E L' (CtxFoldExtractAll κ) tctx ((l, mk_bltype _ r' lt') :: acc, R' ∗ R) T)
@@ -5197,6 +5222,7 @@ Section subsume.
     iApply (logical_step_compose with "Hstep").
     iApply (logical_step_compose with "Hdel").
     iApply logical_step_intro.
+    rewrite /typed_context_fold_extract_interp.
     iIntros "(Hctx & HR) (Hl & HR')".
     iFrame. rewrite /type_ctx_interp. iFrame.
   Qed.
@@ -5219,6 +5245,7 @@ Section subsume.
 
   (** We instantiate the context folding mechanism for resolution of observations. *)
   Definition typed_context_fold_resolve_interp (π : thread_id) := λ '(ctx, R), (type_ctx_interp π ctx ∗ R)%I.
+  Global Typeclasses Opaque typed_context_fold_resolve_interp.
   Lemma typed_context_fold_step_resolve π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) acc R T :
     stratify_ltype_resolve π E L StratNoRefold l lt r (Owned)
       (λ L' R' rt' lt' r', typed_context_fold (typed_context_fold_resolve_interp π) E L' (CtxFoldResolveAll) tctx ((l, mk_bltype _ r' lt') :: acc, R' ∗ R) T)
@@ -5231,6 +5258,7 @@ Section subsume.
     iApply (logical_step_compose with "Hstep").
     iApply (logical_step_compose with "Hdel").
     iApply logical_step_intro.
+    rewrite /typed_context_fold_resolve_interp.
     iIntros "(Hctx & HR) (Hl & HR')".
     iFrame. rewrite /type_ctx_interp. iFrame.
   Qed.
@@ -5253,6 +5281,7 @@ Section subsume.
 
   (** We instantiate the context folding mechanism for closing invariants. *)
   Definition typed_context_fold_close_inv_interp (π : thread_id) := λ '(ctx, R), (type_ctx_interp π ctx ∗ R)%I.
+  Global Typeclasses Opaque typed_context_fold_close_inv_interp.
   Lemma typed_context_fold_step_close_inv π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) acc R κs T :
     stratify_ltype_close_inv κs π E L l lt r (Owned)
       (λ L' R' rt' lt' r', typed_context_fold (typed_context_fold_close_inv_interp π) E L' (CtxFoldCloseInvAll κs) tctx ((l, mk_bltype _ r' lt') :: acc, R' ∗ R) T)
@@ -5265,6 +5294,7 @@ Section subsume.
     iApply (logical_step_compose with "Hstep").
     iApply (logical_step_compose with "Hdel").
     iApply logical_step_intro.
+    rewrite /typed_context_fold_close_inv_interp.
     iIntros "(Hctx & HR) (Hl & HR')".
     iFrame. rewrite /type_ctx_interp. iFrame.
   Qed.

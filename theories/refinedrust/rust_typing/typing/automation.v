@@ -112,6 +112,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedPlace E L f l lt r bmin0 b P) T))
   | typed_if ?E ?L ?v ?P ?T1 ?T2 =>
       cont uconstr:(((_ : TypedIf E L v P) T1 T2))
+  | typed_annot_stmt ?π ?n ?a ?E ?L ?T =>
+      cont uconstr:(((_ : TypedAnnotStmt π n a) E L T))
   | typed_switch ?E ?L ?f ?v ?rt ?ty ?r ?it ?m ?ss ?def ?fn ?R ?ϝ =>
       cont uconstr:(((_ : TypedSwitch E L f v rt ty r it) m ss def fn R ϝ))
   | typed_assert ?E ?L ?f ?v ?ty ?r ?s ?fn ?R ?ϝ =>
@@ -466,16 +468,7 @@ Ltac liRStmt :=
     | W.LocalDead ?x _ => notypeclasses refine (tac_fast_apply (type_local_dead E L f x _ fn R ϝ) _)
     | W.SkipS _ => notypeclasses refine (tac_fast_apply (type_skips' E L f _ fn R ϝ) _)
     | W.StuckS => exfalso
-    | W.AnnotStmt _ (StartLftAnnot ?κ ?κs) _ => notypeclasses refine (tac_fast_apply (type_startlft E L f κ κs _ fn R ϝ) _)
-    | W.AnnotStmt _ (AliasLftAnnot ?κ ?κs) _ => notypeclasses refine (tac_fast_apply (type_alias_lft E L f κ κs _ fn R ϝ) _)
-    | W.AnnotStmt _ (EndLftAnnot ?κ) _ => notypeclasses refine (tac_fast_apply (type_endlft E L f κ _ fn R ϝ) _)
-    | W.AnnotStmt _ (StratifyContextAnnot) _ => notypeclasses refine (tac_fast_apply (type_stratify_context_annot E L f _ fn R ϝ) _)
-    | W.AnnotStmt _ (CopyLftNameAnnot ?n1 ?n2) _ => notypeclasses refine (tac_fast_apply (type_copy_lft_name E L f n1 n2 _ fn R ϝ) _)
-    | W.AnnotStmt _ (DynIncludeLftAnnot ?n1 ?n2) _ => notypeclasses refine (tac_fast_apply (type_dyn_include_lft E L f n1 n2 _ fn R ϝ) _)
-    | W.AnnotStmt _ (ExtendLftAnnot ?κ) _ => notypeclasses refine (tac_fast_apply (type_extendlft E L f κ _ fn R ϝ) _)
-    | W.AnnotStmt _ (UnconstrainedLftAnnot ?κ) _ =>
-      notypeclasses refine (tac_fast_apply (type_unconstrained_lft E L f κ _ fn R ϝ _) _);
-        [solve [refine _] | ]
+    | W.AnnotStmt _ _ _ => notypeclasses refine (tac_fast_apply (type_annot_stmt E L f _ _ _ fn R ϝ) _)
     | _ => fail "do_stmt: unknown stmt" s
     end
   end.
