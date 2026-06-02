@@ -1030,6 +1030,41 @@ Section test.
   Abort.
 End test.
 
+(** solve_lft_dead *)
+Section test.
+  Context `{typeGS Σ}.
+
+  Lemma test1 κ :
+    lctx_lft_dead [] [ †ₗ κ] κ.
+  Proof.
+    solve_lft_dead; solve[fail].
+  Abort.
+
+  Lemma test2 κ κ' c :
+    lctx_lft_dead [] [κ' ⊑ₗ{c} []; †ₗ κ] κ.
+  Proof.
+    solve_lft_dead; solve[fail].
+  Abort.
+
+  Lemma test3 κ κ' :
+    Forall (lctx_lft_dead [] [ †ₗ κ; †ₗ κ']) [κ; κ'].
+  Proof.
+    solve_lft_dead; solve[fail].
+  Abort.
+
+  Lemma test4 κ :
+    check_lctx_lft_dead_pure_goal [] [ †ₗ κ] κ true.
+  Proof.
+    solve_check_lctx_lft_dead_goal; solve[fail].
+  Abort.
+
+  Lemma test5 κ :
+    check_lctx_lft_dead_pure_goal [] [] κ false.
+  Proof.
+    solve_check_lctx_lft_dead_goal; solve[fail].
+  Abort.
+End test.
+
 (** simplify_elctx *)
 Section test.
 

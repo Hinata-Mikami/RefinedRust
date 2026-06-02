@@ -157,6 +157,56 @@ Section intersect.
   Qed.
 End intersect.
 
+Section dead_list.
+  Context `{!invGS Σ, !lftGS Σ lft_userE, !lctxGS Σ}.
+  Implicit Type (κ : lft).
+
+  Definition lft_dead_list (κs : list lft) : iProp Σ := [∗ list] κ ∈ κs, [† κ].
+  Global Instance lft_dead_list_pers κs : Persistent (lft_dead_list κs).
+  Proof. apply _. Qed.
+  Lemma lft_dead_list_elem κ κs :
+    κ ∈ κs → lft_dead_list κs -∗ [† κ].
+  Proof.
+    iIntros (Hel) "Hall". iApply (big_sepL_elem_of with "Hall"). done.
+  Qed.
+
+  Lemma lft_dead_list_nil :
+    lft_dead_list [] ⊣⊢ True.
+  Proof. done. Qed.
+  Lemma lft_dead_list_nil_1 :
+    ⊢ lft_dead_list [].
+  Proof. done. Qed.
+  Lemma lft_dead_list_cons κ κs :
+    lft_dead_list (κ :: κs) ⊣⊢ [†κ] ∗ lft_dead_list κs.
+  Proof. done. Qed.
+  Lemma lft_dead_list_app κs1 κs2 :
+    lft_dead_list (κs1 ++ κs2) ⊣⊢ lft_dead_list κs1 ∗ lft_dead_list κs2.
+  Proof.
+    induction κs1 as [ | κ κs1 IH]; simpl.
+    { rewrite lft_dead_list_nil left_id. eauto. }
+    rewrite lft_dead_list_cons IH. rewrite bi.sep_assoc //.
+  Qed.
+  Lemma lft_dead_list_singleton κ :
+    lft_dead_list [κ] ⊣⊢ [† κ].
+  Proof.
+    unfold lft_dead_list. simpl. iSplit.
+    - iIntros "($ & _)".
+    - eauto.
+  Qed.
+  Lemma lft_dead_list_subset κs1 κs2 :
+    κs1 ⊆ κs2 →
+    lft_dead_list κs2 -∗
+    lft_dead_list κs1.
+  Proof.
+    iIntros (Hincl) "#Hdead".
+    iApply big_sepL_intro.
+    iIntros "!>" (?? Hlook).
+    apply list_elem_of_lookup_2 in Hlook. apply Hincl in Hlook.
+    apply list_elem_of_lookup in Hlook as (j & Hlook).
+    iApply (big_sepL_lookup with "Hdead"); done.
+  Qed.
+End dead_list.
+
 Declare Scope rrust_elctx_scope.
 Delimit Scope rrust_elctx_scope with EL.
 (* We need to define [elctx] and [llctx] as notations to make eauto
@@ -925,6 +975,51 @@ Section lft_contexts.
     intros. by eapply lctx_lft_alive_incl, lctx_lft_incl_external.
   Qed.
 
+  (* Dead lifetimes *)
+  Definition lctx_lft_dead (E : elctx) (L : llctx) (κ : lft) : Prop :=
+    ∀ qL, elctx_interp E -∗ llctx_interp_noend L qL -∗ [† κ].
+
+  Lemma lctx_lft_dead_tok E L κ :
+    lctx_lft_dead E L κ →
+    elctx_interp E -∗ llctx_interp L -∗ [† κ].
+  Proof.
+    iIntros (Hdead) "#HE HL".
+    iDestruct (llctx_interp_acc_noend with "HL") as "[HL _]".
+    iApply (Hdead with "HE HL"); done.
+  Qed.
+
+  Lemma lctx_lft_dead_tok_noend_list E L κs q :
+    Forall (lctx_lft_dead E L) κs →
+      elctx_interp E -∗ llctx_interp_noend L q -∗ lft_dead_list κs.
+  Proof.
+    iIntros (Hκs) "#HE". iInduction κs as [|κ κs] "IH" forall (q Hκs).
+    { iIntros "_". iApply lft_dead_list_nil_1. }
+    apply Forall_cons in Hκs as [Hκ Hκs].
+    iIntros "HL". iDestruct "HL" as "[HL1 HL2]".
+    iPoseProof (Hκ with "HE HL1") as "#Hdead".
+    iPoseProof ("IH" with "[] HL2") as "#Hdeadl"; first done.
+    rewrite lft_dead_list_cons. iFrame "#".
+  Qed.
+
+  Lemma lctx_lft_dead_tok_list E L κs :
+    Forall (lctx_lft_dead E L) κs →
+    elctx_interp E -∗ llctx_interp L -∗ lft_dead_list κs.
+  Proof.
+    iIntros (Hdead) "#HE HL".
+    iDestruct (llctx_interp_acc_noend with "HL") as "[HL _]".
+    iApply (lctx_lft_dead_tok_noend_list with "HE HL"); done.
+  Qed.
+
+  Lemma lctx_lft_dead_local E L κ :
+    †ₗ κ ∈ L → lctx_lft_dead E L κ.
+  Proof.
+    iIntros ([i HL]%list_elem_of_lookup_1 qL) "HE HL".
+    rewrite /llctx_interp_noend /llctx_elt_interp_noend.
+    iPoseProof (big_sepL_lookup with "HL") as "Hdead"; first done.
+    simpl. iExact "Hdead".
+  Qed.
+
+
   (* External lifetime context satisfiability *)
   Definition elctx_sat E L E' : Prop :=
     ∀ qL, llctx_interp_noend L qL -∗ □ (elctx_interp E -∗ elctx_interp E').
@@ -1520,7 +1615,7 @@ Lemma elctx_sat_submseteq `{!invGS Σ, !lctxGS Σ, !lftGS Σ lft_userE} E E' L :
   E' ⊆+ E → elctx_sat E L E'.
 Proof. iIntros (HE' ?) "_ !> H". by iApply big_sepL_submseteq. Qed.
 
-Global Hint Opaque elctx_sat lctx_lft_alive lctx_lft_alive_count lctx_lft_incl llft_elt_tok llft_elt_toks : refinedc_typing.
+Global Hint Opaque elctx_sat lctx_lft_alive lctx_lft_dead lctx_lft_alive_count lctx_lft_incl llft_elt_tok llft_elt_toks : refinedc_typing.
 Global Arguments llft_elt_toks : simpl never.
 Global Typeclasses Opaque llft_elt_toks.
 
@@ -1546,51 +1641,6 @@ Section join.
     simpl. iSplit.
     - iIntros "(% & -> & ?)". eauto.
     - iIntros "?". iExists κ. iR. done.
-  Qed.
-
-  Definition lft_dead_list (κs : list lft) : iProp Σ := [∗ list] κ ∈ κs, [† κ].
-  Global Instance lft_dead_list_pers κs : Persistent (lft_dead_list κs).
-  Proof. apply _. Qed.
-  Lemma lft_dead_list_elem κ κs :
-    κ ∈ κs → lft_dead_list κs -∗ [† κ].
-  Proof.
-    iIntros (Hel) "Hall". iApply (big_sepL_elem_of with "Hall"). done.
-  Qed.
-
-  Lemma lft_dead_list_nil :
-    lft_dead_list [] ⊣⊢ True.
-  Proof. done. Qed.
-  Lemma lft_dead_list_nil_1 :
-    ⊢ lft_dead_list [].
-  Proof. done. Qed.
-  Lemma lft_dead_list_cons κ κs :
-    lft_dead_list (κ :: κs) ⊣⊢ [†κ] ∗ lft_dead_list κs.
-  Proof. done. Qed.
-  Lemma lft_dead_list_app κs1 κs2 :
-    lft_dead_list (κs1 ++ κs2) ⊣⊢ lft_dead_list κs1 ∗ lft_dead_list κs2.
-  Proof.
-    induction κs1 as [ | κ κs1 IH]; simpl.
-    { rewrite lft_dead_list_nil left_id. eauto. }
-    rewrite lft_dead_list_cons IH. rewrite bi.sep_assoc //.
-  Qed.
-  Lemma lft_dead_list_singleton κ :
-    lft_dead_list [κ] ⊣⊢ [† κ].
-  Proof.
-    unfold lft_dead_list. simpl. iSplit.
-    - iIntros "($ & _)".
-    - eauto.
-  Qed.
-  Lemma lft_dead_list_subset κs1 κs2 :
-    κs1 ⊆ κs2 →
-    lft_dead_list κs2 -∗
-    lft_dead_list κs1.
-  Proof.
-    iIntros (Hincl) "#Hdead".
-    iApply big_sepL_intro.
-    iIntros "!>" (?? Hlook).
-    apply list_elem_of_lookup_2 in Hlook. apply Hincl in Hlook.
-    apply list_elem_of_lookup in Hlook as (j & Hlook).
-    iApply (big_sepL_lookup with "Hdead"); done.
   Qed.
 
   (* Interpretation:

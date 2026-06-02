@@ -272,41 +272,6 @@ Section find.
     FindInContext (FindOptNaOwn π) FICSyntactic | 2 :=
     λ T, i2p (find_in_context_opt_na_own_none π T).
 
-  (** FindOptLftDead *)
-  Lemma subsume_lft_dead κ1 κ2 T :
-    ⌜κ1 = κ2⌝ ∗ T ⊢ subsume (Σ := Σ) ([† κ1]) ([† κ2]) T.
-Proof. iIntros "(-> & $)". eauto. Qed.
-  Global Instance subsume_lft_dead_inst κ1 κ2 :
-    Subsume ([† κ1]) ([† κ2]) := λ T, i2p (subsume_lft_dead κ1 κ2 T).
-
-  Lemma find_in_context_opt_lft_dead κ T :
-    [† κ] ∗ T true
-    ⊢ find_in_context (FindOptLftDead κ) T.
-  Proof.
-    iIntros "(Hdead & HT)". iExists true. iFrame.
-  Qed.
-  Definition find_in_context_opt_lft_dead_inst := [instance @find_in_context_opt_lft_dead with FICSyntactic].
-  Global Existing Instance find_in_context_opt_lft_dead_inst | 1.
-
-  (* dummy instance in case we don't find it *)
-  Lemma find_in_context_opt_lft_dead_none κ T :
-    True ∗ T false
-    ⊢ find_in_context (FindOptLftDead κ) T.
-  Proof.
-    iIntros "(_ & HT)". iExists false. iFrame. simpl. done.
-  Qed.
-  Definition find_in_context_opt_lft_dead_none_inst := [instance @find_in_context_opt_lft_dead_none with FICSyntactic].
-  Global Existing Instance find_in_context_opt_lft_dead_none_inst | 10.
-
-  Lemma find_in_context_lft_dead κ T :
-    [† κ] ∗ T ()
-    ⊢ find_in_context (FindLftDead κ) T.
-  Proof.
-    iIntros "(Hdead & HT)". iExists (). iFrame.
-  Qed.
-  Definition find_in_context_lft_dead_inst := [instance @find_in_context_lft_dead with FICSyntactic].
-  Global Existing Instance find_in_context_lft_dead_inst.
-
   (** FindGuarded *)
   Lemma subsume_guarded prepaid1 prepaid2 P1 P2 T :
     ⌜prepaid1 = prepaid2⌝ ∗ ⌜P1 = P2⌝ ∗ T ⊢ subsume (Σ := Σ) (guarded prepaid1 P1) (guarded prepaid2 P2) T.
@@ -1419,14 +1384,6 @@ Section subsume.
   Definition simplify_goal_guarded_inst := [instance @simplify_goal_guarded with 100%N].
   Global Existing Instance simplify_goal_guarded_inst.
 
-  Lemma simplify_goal_lft_dead_list κs T :
-    ([∗ list] κ ∈ κs, [† κ]) ∗ T ⊢ simplify_goal (lft_dead_list κs) T.
-  Proof.
-    rewrite /simplify_goal. iFrame. eauto.
-  Qed.
-  Global Instance simplify_goal_lft_dead_list_inst κs :
-    SimplifyGoal (lft_dead_list κs) (Some 0%N) := λ T, i2p (simplify_goal_lft_dead_list κs T).
-
   (** ** SubsumeFull instances *)
   (** We have low-priority instances to escape into subtyping judgments *)
   Lemma subsume_full_id step P E L T :
@@ -2197,8 +2154,8 @@ Section subsume.
         stratify_ltype π E L1 mdu ma ml l (BlockedLtype ty κ) r b
           (λ L2 R' rt' lt' r', T L2 (R ∗ R') rt' lt' r')
       else R -∗
-      find_in_context (FindOptLftDead κ) (λ found,
-        if found then stratify_ltype π E L1 mdu ma ml l (◁ ty)%I r b T
+      li_tactic (check_lctx_lft_dead_goal E L1 κ) (λ dead,
+        if dead then stratify_ltype π E L1 mdu ma ml l (◁ ty)%I r b T
         else stratify_ltype_post_hook π E L1 ml l (BlockedLtype ty κ) r b T))
     ⊢ stratify_ltype π E L mdu ma ml l (BlockedLtype ty κ) r b T.
   Proof.
@@ -2209,10 +2166,11 @@ Section subsume.
       iDestruct "Hb" as "(%L2 & %R' & %rt' & %lt' & %r' & HL & Hcond & Hb & HT)".
       iModIntro. iExists L2, _, rt', lt', r'. iFrame "Hcond HT HL".
       iApply (logical_step_wand with "Hb"). iIntros "($ & $)". done.
-    - rewrite /FindOptLftDead.
+    - rewrite /check_lctx_lft_dead_goal.
       iSpecialize ("HP" with "HR").
-      iDestruct "HP" as "(%found & Hdead & Hp)". destruct found.
-      + iMod (unblock_blocked with "Hdead Hl") as "Hl"; first done.
+      iDestruct "HP" as "(%found & %Hdead & Hp)". destruct found.
+      + iPoseProof (lctx_lft_dead_tok with "HE HL") as "#Hdead"; first apply Hdead.
+        iMod (unblock_blocked with "Hdead Hl") as "Hl"; first done.
         iPoseProof ("Hp" with "[//] [//] [//] [//] HE HL Hl") as ">Hb".
         iDestruct "Hb" as "(%L' & %R2 & %rt' & %lt' & %r' & Hl & Hstep & HT)".
         iModIntro. iExists L', _, rt', lt', r'. iFrame.
@@ -2227,7 +2185,7 @@ Section subsume.
         stratify_ltype π E L1 mdu ma ml l (CoreableLtype κs lt_full) r b
           (λ L2 R' rt' lt' r', T L2 (R ∗ R') rt' lt' r')
       (* TODO also make optional *)
-      else R -∗ lft_dead_list κs ∗ stratify_ltype π E L1 mdu ma ml l (lt_full')%I r b T)
+      else R -∗ ⌜Forall (lctx_lft_dead E L1) κs⌝ ∗ stratify_ltype π E L1 mdu ma ml l (lt_full')%I r b T)
     ⊢ stratify_ltype π E L mdu ma ml l (CoreableLtype κs lt_full) r b T.
   Proof.
     iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
@@ -2238,7 +2196,8 @@ Section subsume.
       iModIntro. iExists L2, _, rt', lt', r'. iFrame "Hcond HT HL".
       iApply (logical_step_wand with "Hb"). iIntros "($ & $)". done.
     - iSpecialize ("HP" with "HR").
-      iDestruct "HP" as "(Hdead & Hp)".
+      iDestruct "HP" as "(%Hdead & Hp)".
+      iPoseProof (lctx_lft_dead_tok_list with "HE HL") as "#Hdead"; first apply Hdead.
       iMod (unblock_coreable with "Hdead Hl") as "Hl"; first done.
       destruct Hsimp. subst.
       iPoseProof ("Hp" with "[//] [//] [//] [//] HE HL Hl") as ">Hb".
@@ -2255,7 +2214,7 @@ Section subsume.
         stratify_ltype π E L1 mdu ma ml l (ShrBlockedLtype ty κ) r b
           (λ L2 R' rt' lt' r', T L2 (R ∗ R') rt' lt' r')
       else R -∗
-      find_in_context (FindOptLftDead κ) (λ found,
+      li_tactic (check_lctx_lft_dead_goal E L1 κ) (λ found,
         if found then stratify_ltype π E L1 mdu ma ml l (◁ ty)%I r b T
         else stratify_ltype_post_hook π E L1 ml l (ShrBlockedLtype ty κ) r b T))
     ⊢ stratify_ltype π E L mdu ma ml l (ShrBlockedLtype ty κ) r b T.
@@ -2267,10 +2226,11 @@ Section subsume.
       iDestruct "Hb" as "(%L2 & %R' & %rt' & %lt' & %r' & HL & Hcond & Hb & HT)".
       iModIntro. iExists L2, _, rt', lt', r'. iFrame "Hcond HT HL".
       iApply (logical_step_wand with "Hb"). iIntros "($ & $)". done.
-    - rewrite /FindOptLftDead.
+    - rewrite /check_lctx_lft_dead_goal.
       iSpecialize ("HP" with "HR").
-      iDestruct "HP" as "(%found & Hdead & Hp)". destruct found.
-      + iMod (unblock_shrblocked with "Hdead Hl") as "Hl"; first done.
+      iDestruct "HP" as "(%found & %Hdead & Hp)". destruct found.
+      + iPoseProof (lctx_lft_dead_tok with "HE HL") as "#Hdead"; first apply Hdead.
+        iMod (unblock_shrblocked with "Hdead Hl") as "Hl"; first done.
         iPoseProof ("Hp" with "[//] [//] [//] [//] HE HL Hl") as ">Hb".
         iDestruct "Hb" as "(%L' & %R2 & %rt' & %lt' & %r' & Hl & Hstep & HT)".
         iModIntro. iExists L', _, rt', lt', r'. iFrame.
@@ -2648,10 +2608,11 @@ Section subsume.
   (* TODO: we probably want to generalize this to not immediately require a dead token for κ,
     but rather have a "dead" context and spawn a sidecondition for inclusion in one of the dead lifetimes? *)
   Lemma typed_place_blocked_unblock {rt} f E L l (ty : type rt) κ (r : place_rfn rt) bmin0 b P T :
-    [† κ] ∗ typed_place E L f l (◁ ty) r bmin0 b P T
+    ⌜lctx_lft_dead E L κ⌝ ∗ typed_place E L f l (◁ ty) r bmin0 b P T
     ⊢ typed_place E L f l (BlockedLtype ty κ) r bmin0 b P T.
   Proof.
-    iIntros "(Hdead & Hp)". iIntros (????) "#(LFT & LLCTX) #HE HL Hf Hl HΦ".
+    iIntros "(%Hdead & Hp)". iIntros (????) "#(LFT & LLCTX) #HE HL Hf Hl HΦ".
+    iPoseProof (lctx_lft_dead_tok with "HE HL") as "#Hdead"; first apply Hdead.
     iApply fupd_place_to_wp.
     iMod (unblock_blocked with "Hdead Hl") as "Hl"; first done.
     iModIntro.
@@ -2670,10 +2631,11 @@ Section subsume.
   Global Existing Instance typed_place_blocked_unblock_inst | 5.
 
   Lemma typed_place_shrblocked_unblock {rt} f E L l (ty : type rt) κ (r : place_rfn rt) bmin0 b P T :
-    [† κ] ∗ typed_place E L f l (◁ ty) r bmin0 b P T
+    ⌜lctx_lft_dead E L κ⌝ ∗ typed_place E L f l (◁ ty) r bmin0 b P T
     ⊢ typed_place E L f l (ShrBlockedLtype ty κ) r bmin0 b P T.
   Proof.
-    iIntros "(Hdead & Hp)". iIntros (????) "#(LFT & LLCTX) #HE HL Hf Hl HΦ".
+    iIntros "(%Hdead & Hp)". iIntros (????) "#(LFT & LLCTX) #HE HL Hf Hl HΦ".
+    iPoseProof (lctx_lft_dead_tok with "HE HL") as "#Hdead"; first apply Hdead.
     iApply fupd_place_to_wp.
     iMod (unblock_shrblocked with "Hdead Hl") as "Hl"; first done.
     iModIntro.
@@ -2692,12 +2654,13 @@ Section subsume.
   Global Existing Instance typed_place_shrblocked_unblock_inst | 5.
 
   Lemma typed_place_coreable_unblock {rt} f E L l (lt lt' : ltype rt) κs (r : place_rfn rt) bmin0 b P `{Hsimp : !SimpLtype (ltype_core lt) lt'} T :
-    lft_dead_list κs ∗ typed_place E L f l lt' r bmin0 b P T
+    ⌜Forall (lctx_lft_dead E L) κs⌝ ∗ typed_place E L f l lt' r bmin0 b P T
     ⊢ typed_place E L f l (CoreableLtype κs lt) r bmin0 b P T.
   Proof.
     destruct Hsimp as [<-].
-    iIntros "(Hdead & Hp)". iIntros (????) "#(LFT & LLCTX) #HE HL Hf Hl HΦ".
+    iIntros "(%Hdead & Hp)". iIntros (????) "#(LFT & LLCTX) #HE HL Hf Hl HΦ".
     iApply fupd_place_to_wp.
+    iPoseProof (lctx_lft_dead_tok_list with "HE HL") as "#Hdead"; first apply Hdead.
     iMod (unblock_coreable with "Hdead Hl") as "Hl"; first done.
     iModIntro.
     iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl").
@@ -4805,19 +4768,19 @@ Section subsume.
   Global Existing Instance iterate_with_hooks_find_dead_nil_inst.
 
   Lemma iterate_with_hooks_find_dead_cons E L κ κs T :
-    find_in_context (FindOptLftDead κ) (λ dead,
+    li_tactic (check_lctx_lft_dead_goal E L κ) (λ dead,
       if dead
-      then [† κ] -∗ T L (IterateFindDead (κ :: κs))
+      then T L (IterateFindDead (κ :: κs))
       else iterate_with_hooks E L (IterateFindDead (κs)) T)
     ⊢ iterate_with_hooks E L (IterateFindDead (κ :: κs)) T.
   Proof.
     iIntros "HT". iIntros (??) "CTX HE HL".
-    iDestruct "HT" as "(%b & HT)".
+    rewrite /check_lctx_lft_dead_goal.
+    iDestruct "HT" as "(%b & %Hdead & HT)".
     destruct b.
-    - iDestruct "HT" as "(Hdead & HT)". iFrame. iExists _.
-      iApply ("HT" with "Hdead").
-    - iDestruct "HT" as "(_ & HT)" .
-      by iApply ("HT" with "[] CTX HE HL").
+    - iPoseProof (lctx_lft_dead_tok with "HE HL") as "#Hdead"; first apply Hdead.
+      iFrame. done.
+    - by iApply ("HT" with "[] CTX HE HL").
   Qed.
   Definition iterate_with_hooks_find_dead_cons_inst := [instance @iterate_with_hooks_find_dead_cons].
   Global Existing Instance iterate_with_hooks_find_dead_cons_inst.
@@ -4828,20 +4791,22 @@ Section subsume.
     | IterateFindDead [] =>
       Inherit κs P -∗ T L2
     | IterateFindDead (κ :: _) =>
-        ⌜fast_set_hint (κ ∈ κs)⌝ ∗ find_in_context (FindLftDead κ) (λ _,
-        introduce_with_hooks E L2 P T)
+        ⌜fast_set_hint (κ ∈ κs)⌝ ∗
+        ⌜lctx_lft_dead E L2 κ⌝ ∗
+        introduce_with_hooks E L2 P T
     end)
     ⊢ introduce_with_hooks E L (Inherit κs P) T.
   Proof.
-    rewrite /FindOptLftDead/=. iIntros "HT".
+    iIntros "HT".
     iIntros (??) "#CTX #HE HL HP".
     iMod ("HT" with "[] CTX HE HL") as "(%L2 & %m' & HL & HT)"; first done.
     destruct m' as [[]].
     - iFrame. by iApply "HT".
-    - unfold fast_set_hint. iDestruct "HT" as "(%Helem & % & Hdead & HT)".
+    - unfold fast_set_hint. iDestruct "HT" as "(%Helem & %Hdead & HT)".
+      iPoseProof (lctx_lft_dead_tok with "HE HL") as "#Hdead"; first apply Hdead.
       rewrite /Inherit.
       iMod ("HP" with "[//] [Hdead]") as "HP".
-      { iApply lft_dead_lft_intersect_list. iFrame. done. }
+      { iApply lft_dead_lft_intersect_list. iFrame "#". done. }
       by iApply ("HT" with "[] CTX HE HL").
   Qed.
   Definition introduce_with_hooks_inherit_inst := [instance @introduce_with_hooks_inherit].
@@ -4968,21 +4933,22 @@ Section subsume.
     li_tactic (check_list_elem_of_goal κ κs) (λ b,
       if b then
         find_in_context (FindInherit κs P) (λ _,
-        find_in_context (FindLftDead κ) (λ _,
+        ⌜lctx_lft_dead E L κ⌝ ∗
         introduce_with_hooks E L P (λ L2,
-        iterate_with_hooks E L2 (IterateEndlftInheritances κ ks) T)))
+        iterate_with_hooks E L2 (IterateEndlftInheritances κ ks) T))
       else iterate_with_hooks E L (IterateEndlftInheritances κ ks) T)
     ⊢ iterate_with_hooks E L (IterateEndlftInheritances κ ((κs, P) :: ks)) T.
   Proof.
     rewrite /check_list_elem_of_goal.
     iIntros "(%b & %Hel & HT)".
     destruct b.
-    - iDestruct "HT" as "(% & Hinh & % & Hdead & HT)".
+    - iDestruct "HT" as "(% & Hinh & %Hdead & HT)".
       simpl in *. unfold Inherit.
       iIntros (??) "#CTX #HE HL".
       simpl.
+      iPoseProof (lctx_lft_dead_tok with "HE HL") as "#Hdead"; first apply Hdead.
       iMod ("Hinh" with "[//] [Hdead]") as "HP".
-      { iApply lft_dead_lft_intersect_list. iFrame. done. }
+      { iApply lft_dead_lft_intersect_list. iFrame "#". done. }
       iMod ("HT" with "[] CTX HE HL HP") as "(%L2 & HL & HT)"; first done.
       by iApply ("HT" with "[] CTX HE HL").
     - done.
@@ -5007,9 +4973,8 @@ Section subsume.
         (* simplify the name map *)
         li_tactic (simplify_lft_map_goal (named_lft_delete n M)) (λ M',
         named_lfts M' -∗
-        (□ [† κ]) -∗
         (* extract observations from now-dead mutable references *)
-        typed_pre_context_fold f.1 E L2 (CtxFoldExtractAllInit κ) (λ L3,
+        typed_pre_context_fold f.1 E ((†ₗ κ) :: L2) (CtxFoldExtractAllInit κ) (λ L3,
         (* give back credits *)
         introduce_with_hooks E L3 (R2 ∗ £num_cred ∗ tr 1) (λ L4,
         (* resolve inheritances *)
@@ -5049,9 +5014,10 @@ Section subsume.
     iPoseProof (llctx_interp_sublist with "HL") as "HL".
     { apply Hsub. }
 
-    iPoseProof ("Hs" with "[Hnamed] Hdead") as "HT".
+    iPoseProof ("Hs" with "[Hnamed]") as "HT".
     { by iApply named_lfts_update. }
-    iPoseProof ("HT" $! ⊤ with "[] [] [] CTX HE HL") as "Hstep"; [done.. | ].
+    iPoseProof ("HT" $! ⊤ with "[] [] [] CTX HE [HL]") as "Hstep"; [done.. | | ].
+    { rewrite /llctx_interp/=. iFrame. done. }
     iModIntro.
     iApply (physical_step_step_upd with "Hstep").
     iMod (tr_zero) as "Ha".
@@ -5492,7 +5458,7 @@ Global Typeclasses Opaque typed_array_access.
 Notation "'typed_value' π x 'HIDDEN_CONT'" := (typed_value π x _) (only printing): rr_hidden.
 Notation "'typed_place' E L f l lto ro b1 b2 K 'HIDDEN_CONT'" := (typed_place E L f l lto ro b1 b2 K _) (only printing): rr_hidden.
 
-Notation "'subsume_full' wl P1 P2 E L 'HIDDEN_CONT'" := (subsume_full wl P1 P2 E L _) (only printing): rr_hidden.
+Notation "'subsume_full' E L wl P1 P2 'HIDDEN_CONT'" := (subsume_full wl P1 P2 E L _) (only printing): rr_hidden.
 Notation "'resolve_ghost' π E L rm f l lt k r 'HIDDEN_CONT'" := (resolve_ghost π E L rm f l lt k r _) (only printing): rr_hidden.
 Notation "'prove_with_subtype' E L wl pm P 'HIDDEN_ACC' 'HIDDEN_CONT'" := (prove_with_subtype E L wl pm P _ _) (only printing): rr_hidden.
 Notation "'introduce_with_hooks' E L P 'HIDDEN_CONT'" := (introduce_with_hooks E L P _) (only printing): rr_hidden.

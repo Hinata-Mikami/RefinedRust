@@ -378,6 +378,8 @@ Ltac find_dying_lifetimes L κ cont :=
             cont constr:(dying)
         end
       ))
+  | (†ₗ _) :: ?L =>
+    find_dying_lifetimes L κ cont
   end.
 
 Ltac solve_find_implied_dying_lifetimes ::=
@@ -401,6 +403,8 @@ Ltac check_lft_is_local L κ cont :=
       unify κ κ'; cont constr:(true)
     | check_lft_is_local L' κ cont]
   | (?κ' ≡ₗ ?κs') :: ?L' =>
+      check_lft_is_local L' κ cont
+  | (†ₗ _) :: ?L' =>
       check_lft_is_local L' κ cont
   end.
 
@@ -907,6 +911,50 @@ Ltac solve_check_lctx_lft_incl_goal ::=
       first [
         unify b true; simpl;
         solve [solve_lft_incl]
+      | unify b false;
+        exact I]
+  end.
+
+(** lifetime dead solver *)
+Section dead_tac.
+  Context `{!typeGS Σ}.
+
+  Lemma tac_lctx_lft_dead_local E L κ i :
+    L !! i = Some (†ₗ κ) →
+    lctx_lft_dead E L κ.
+  Proof.
+    intros ?%list_elem_of_lookup_2.
+    by eapply lctx_lft_dead_local.
+  Qed.
+End dead_tac.
+
+Ltac solve_lft_dead_step :=
+  match goal with
+  | |- lctx_lft_dead ?E ?L ?κ =>
+      list_find_tac ltac:(fun i el =>
+        match el with
+        | †ₗ κ =>
+            notypeclasses refine (tac_lctx_lft_dead_local E L κ i _);
+            reflexivity
+        | _ => fail
+        end) L
+  | |- Forall (lctx_lft_dead ?E ?L) [] =>
+      by apply Forall_nil
+  | |- Forall (lctx_lft_dead ?E ?L) (?κ :: ?κs) =>
+      apply Forall_cons; split
+  end.
+Ltac solve_lft_dead :=
+  simpl;
+  repeat solve_lft_dead_step
+.
+
+Ltac solve_check_lctx_lft_dead_goal ::=
+  match goal with
+  | |- check_lctx_lft_dead_pure_goal ?E ?L ?κ ?b =>
+      unfold check_lctx_lft_dead_pure_goal;
+      first [
+        unify b true; simpl;
+        solve [solve_lft_dead]
       | unify b false;
         exact I]
   end.

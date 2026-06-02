@@ -451,15 +451,6 @@ Definition FindOptNaOwn `{!typeGS Σ} (π : thread_id) :=
   |}.
 Global Typeclasses Opaque FindOptNaOwn.
 
-(** find a lft dead token *)
-Definition FindOptLftDead `{!typeGS Σ} (κ : lft) :=
-  {| fic_A := bool; fic_Prop b := (if b then [† κ] else True)%I; |}.
-Global Typeclasses Opaque FindOptLftDead.
-
-Definition FindLftDead `{!typeGS Σ} (κ : lft) :=
-  {| fic_A := (); fic_Prop _ := [† κ]%I; |}.
-Global Typeclasses Opaque FindLftDead.
-
 (** attempt to find an observation, or give up if there is none *)
 Definition FindOptGvarPobs `{!typeGS Σ} (γ : gname) :=
   {| fic_A := (@sigT RT (λ rt, rt) + unit)%type;
@@ -2810,6 +2801,29 @@ Global Typeclasses Opaque check_lctx_lft_incl_pure_goal.
 Ltac solve_check_lctx_lft_incl_goal := fail "implement solve_check_lctx_lft_incl_goal".
 #[global] Hint Extern 10 (LiTactic (check_lctx_lft_incl_goal _ _ _ _)) =>
     refine (check_lctx_lft_incl_goal_hint _ _ _ _ _ _); solve_check_lctx_lft_incl_goal : typeclass_instances.
+
+(** Check whether a lifetime is dead *)
+Definition check_lctx_lft_dead_goal `{!typeGS Σ} (E : elctx) (L : llctx) (κ: lft) (T : bool → iProp Σ) : iProp Σ :=
+  ∃ b : bool, ⌜if b then lctx_lft_dead E L κ else True⌝ ∗ T b.
+Definition check_lctx_lft_dead_pure_goal `{!typeGS Σ} (E : elctx) (L : llctx) (κ : lft) (b : bool) : Prop :=
+  if b then lctx_lft_dead E L κ else True.
+
+Program Definition check_lctx_lft_dead_goal_hint `{!typeGS Σ} (E : elctx) (L : llctx) (κ : lft) (b : bool) :
+  check_lctx_lft_dead_pure_goal E L κ b →
+  LiTactic (check_lctx_lft_dead_goal E L κ) := λ a, {|
+    li_tactic_P T := T b;
+  |}.
+Next Obligation.
+  unfold check_lctx_lft_dead_pure_goal.
+  iIntros (????? b Ha T) "HT".
+  iExists b. iR. done.
+Qed.
+
+Global Typeclasses Opaque check_lctx_lft_dead_goal.
+Global Typeclasses Opaque check_lctx_lft_dead_pure_goal.
+Ltac solve_check_lctx_lft_dead_goal := fail "implement solve_check_lctx_lft_dead_goal".
+#[global] Hint Extern 10 (LiTactic (check_lctx_lft_dead_goal _ _ _)) =>
+    refine (check_lctx_lft_dead_goal_hint _ _ _ _ _); solve_check_lctx_lft_dead_goal : typeclass_instances.
 
 (** Check whether a lifetime is locally owned (not an alias and not the function lifetime) *)
 Definition check_lft_is_local_goal `{!typeGS Σ} (E : elctx) (L : llctx) (κ : lft) (T : bool → iProp Σ) : iProp Σ :=

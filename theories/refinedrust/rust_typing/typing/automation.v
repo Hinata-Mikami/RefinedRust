@@ -1406,6 +1406,10 @@ Ltac sidecond_hook_core :=
       solve_lft_alive
   | |- Forall (lctx_lft_alive ?E ?L) ?κs =>
       solve_lft_alive
+  | |- lctx_lft_dead ?E ?L ?κ =>
+      solve_lft_dead
+  | |- Forall (lctx_lft_dead ?E ?L) ?κs =>
+      solve_lft_dead
   | |- lctx_lft_incl ?E ?L ?κ1 ?κ2 =>
       solve_lft_incl
   | |- lctx_lft_list_incl ?E ?L ?κ1 ?κ2 =>
@@ -1475,6 +1479,10 @@ Ltac is_builtin_sidecond P :=
       idtac
   | Forall (lctx_lft_alive ?E ?L) ?κs =>
       idtac
+  | lctx_lft_dead ?E ?L ?κ =>
+      idtac
+  | Forall (lctx_lft_dead ?E ?L) ?κs =>
+      idtac
   | lctx_lft_incl ?E ?L ?κ1 ?κ2 =>
       idtac
   | lctx_lft_list_incl ?E ?L ?κ1 ?κ2 =>
@@ -1529,6 +1537,10 @@ Ltac is_fast_builtin_sidecond P :=
   | lctx_lft_alive ?E ?L ?κ =>
       idtac
   | Forall (lctx_lft_alive ?E ?L) ?κs =>
+      idtac
+  | lctx_lft_dead ?E ?L ?κ =>
+      idtac
+  | Forall (lctx_lft_dead ?E ?L) ?κs =>
       idtac
   | lctx_lft_incl ?E ?L ?κ1 ?κ2 =>
       idtac
