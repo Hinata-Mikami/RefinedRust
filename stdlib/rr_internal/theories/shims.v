@@ -87,7 +87,7 @@ Proof.
   simp_ltypes in Halg_old. apply syn_type_has_layout_untyped_inv in Halg_old as (-> & ? & ?).
   simp_ltypes in Halg_new. apply syn_type_has_layout_untyped_inv in Halg_new as (-> & _ & _).
 
-  iApply typed_stmt_annot_skip.
+  iApply typed_annot_stmt_skip.
   liRStepUntil (typed_call).
   (* make into value, because the part not affected by the memcpy will be returned *)
   (*iRename select (l_new ◁ₗ[_, _] .@ _)%I into "Hnew".*)

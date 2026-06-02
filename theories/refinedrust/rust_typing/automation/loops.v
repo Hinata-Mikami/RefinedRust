@@ -236,19 +236,15 @@ Ltac compute_loop_invariant frame FN Inv envs current_L cont :=
       end in
 
     pose (Hinv :=
-      λ (iter_init_state : _) (params : _) (L : llctx),
+      λ (iter_init_state : _) (params : _),
       ltac:(
-        (* specialize the lifetime ctx invariant *)
-        let HEL := fresh "Hel" in
-        pose (HEL := (L = current_L));
-
         (* pose the loop invariant as a local hypothesis so we can specialize it while building the term *)
         let Ha := fresh "Hinv" in
         pose (Ha := functional_inv);
 
         specialize (Ha iter_init_state params);
 
-        build_local_sepconj inv_locals_locs spatial_env names constr:(((True ∗ ⌜HEL⌝)%I: iProp Σ)) Ha
+        build_local_sepconj inv_locals_locs spatial_env names constr:(((True)%I: iProp Σ)) Ha
     ));
     (* get rid of all the lets we introduced *)
     simpl in Hinv;
@@ -258,19 +254,15 @@ Ltac compute_loop_invariant frame FN Inv envs current_L cont :=
 
   | None =>
     pose (Hinv :=
-      λ (params : _) (L : llctx),
+      λ (params : _),
       ltac:(
-        (* specialize the lifetime ctx invariant *)
-        let HEL := fresh "Hel" in
-        pose (HEL := (L = current_L));
-
         (* pose the loop invariant as a local hypothesis so we can specialize it while building the term *)
         let Ha := fresh "Hinv" in
         pose (Ha := functional_inv);
 
         specialize (Ha params);
 
-        build_local_sepconj inv_locals_locs spatial_env names constr:(((True ∗ ⌜HEL⌝)%I: iProp Σ)) Ha
+        build_local_sepconj inv_locals_locs spatial_env names constr:(((True)%I: iProp Σ)) Ha
     ));
     (* get rid of all the lets we introduced *)
     simpl in Hinv;

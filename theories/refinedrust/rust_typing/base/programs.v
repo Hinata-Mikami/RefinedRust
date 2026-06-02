@@ -67,6 +67,12 @@ Definition fast_set_hint (P : Prop) : Prop :=
 Global Typeclasses Opaque fast_set_hint.
 Global Arguments fast_set_hint : simpl never.
 
+(** Hint for solving [sublist] sideconditions *)
+Definition fast_sublist_hint (P : Prop) : Prop :=
+  P.
+Global Typeclasses Opaque fast_sublist_hint.
+Global Arguments fast_sublist_hint : simpl never.
+
 (** Hint for entering a fact directly into the cache *)
 Definition enter_cache_hint (P : Prop) := P.
 Global Arguments enter_cache_hint : simpl never.
@@ -766,11 +772,11 @@ Section judgments.
   Global Arguments typed_stmt _ _ _ _%_E _ _%_I _.
 
   (* [P] is an invariant on the context. *)
-  Definition typed_block (E : elctx) (P : llctx → iProp Σ) (f : frame_path) (b : label) (fn : function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
-    (∀ Φ L,
+  Definition typed_block (E : elctx) (L : llctx) (P : iProp Σ) (f : frame_path) (b : label) (fn : function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
+    (∀ Φ,
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
       current_frame f.1 f.2 -∗
-      logical_step ⊤ (P L) -∗
+      logical_step ⊤ P -∗
       typed_stmt_post_cond f fn R Φ -∗
       WPs{f.1} (Goto b) {{ fn.(f_code), Φ}}).
 

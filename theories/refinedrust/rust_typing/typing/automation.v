@@ -420,7 +420,7 @@ Ltac liRGoto goto_bb :=
   | |- envs_entails ?Δ (typed_stmt ?E ?L ?f (Goto _) ?fn ?R ?ϝ) =>
       first [
         (* try to find an inductive hypothesis we obtained previously *)
-        notypeclasses refine (tac_fast_apply (type_goto_precond E L f  _ _ fn R ϝ) _);
+        notypeclasses refine (tac_fast_apply (type_goto_precond E _ L f  _ _ fn R ϝ) _);
         progress liFindHyp FICSyntactic
       | (* if we jump to a loop head, initiate Löb induction *)
         lazymatch goal with
@@ -1583,10 +1583,14 @@ Ltac prepare_sideconditions :=
   clear_unused_vars
 .
 
+Ltac solve_sublist_step :=
+  first [apply sublist_nil | apply sublist_skip | apply sublist_cons].
+Ltac solve_sublist :=
+  solve [repeat solve_sublist_step].
 
 (** specialized handlers for some sideconditions for which we want to bypass the standard normalization *)
 Ltac liSidecond_hook P ::=
-lazymatch P with
+  lazymatch P with
   | trait_incl_marker _ =>
       (* terms here are huge, and normalizing is very expensive *)
       split; [shelve_sidecond |]
@@ -1595,6 +1599,7 @@ lazymatch P with
   | fast_eq_hint _ =>
       split; [
         first [unfold spec_instantiate_typaram_fst, spec_instantiate_lft_fst, spec_instantiated; simpl; reflexivity | fail 10] | ]
+  | fast_sublist_hint _ => split; [clear; unfold fast_sublist_hint; simpl; solve_sublist | ]
   | _ =>
       is_builtin_sidecond P;
       first [

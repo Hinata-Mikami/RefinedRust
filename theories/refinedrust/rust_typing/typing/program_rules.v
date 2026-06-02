@@ -3143,13 +3143,13 @@ Section subsume.
     iApply ("IH" with "HΦ Hf HT").
   Qed.
 
-  Lemma typed_stmt_annot_skip {A} E L f (a : A) n s fn R ϝ :
-    typed_stmt E L f s fn R ϝ
-    ⊢ typed_stmt E L f (annot{n}: a; s) fn R ϝ.
+  Lemma typed_annot_stmt_skip π {A} (a : A) n E L T :
+    T L
+    ⊢ typed_annot_stmt π n a E L T.
   Proof.
-    iIntros "Hs". iIntros (?) "#CTX #HE HL Hf Hcont".
-    iApply wps_annot. iApply physical_stepN_intro.
-    by iApply ("Hs" with "CTX HE HL Hf").
+    iIntros "Hs". iIntros "#CTX #HE HL".
+    iApply physical_stepN_intro.
+    iFrame.
   Qed.
   Lemma type_annot_stmt E L f n {A} (a : A) s fn R ϝ :
     typed_annot_stmt f.1  n a E L (λ L', typed_stmt E L' f s fn R ϝ)
@@ -4457,34 +4457,37 @@ Section subsume.
   (* This is not in Lithium goal shape, but that's fine since it is only manually applied by automation. *)
   (* We might also want to stratify here -- but this is difficult, because we'd need a second logical step.
      Instead, we currently insert an annotation for that in the frontend. *)
-  Lemma type_goto_precond E L f P b fn R ϝ :
-    typed_block E P f b fn R ϝ ∗
+  Lemma type_goto_precond E L' L f P b fn R ϝ :
+    typed_block E L' P f b fn R ϝ ∗
+    ⌜fast_sublist_hint (sublist L' L)⌝ ∗
     (* [true] so that we can deinitialize with [owned_subltype_step] *)
-    prove_with_subtype E L true ProveDirect (P L) True%I (λ L' _ R,
-      ⌜L = L'⌝ ∗ True (* TODO maybe relax and require inclusion of contexts or so. *))
+    prove_with_subtype E L true ProveDirect P True%I (λ L'' _ R,
+      ⌜fast_eq_hint (L'' = L)⌝ ∗ True (* TODO maybe relax and require inclusion of contexts or so. *))
     ⊢ typed_stmt E L f (Goto b) fn R ϝ.
   Proof.
-    iIntros "(Hblock & Hsubt)". iIntros (Φ) "#CTX #HE HL Hf Hcont".
+    rewrite /fast_set_hint.
+    iIntros "(Hblock & %Hincl & Hsubt)". iIntros (Φ) "#CTX #HE HL Hf Hcont".
     iSpecialize ("Hsubt" $! ⊤ True%I).
-    iMod ("Hsubt" with "[] [] [] CTX HE HL []") as "(%L' & % & %R2 & HP & HL & HT)";
+    iMod ("Hsubt" with "[] [] [] CTX HE HL []") as "(%L'' & % & %R2 & HP & HL & HT)";
       [set_solver.. | iApply maybe_logical_step_intro; iSplit; done | ].
     simpl.
     iDestruct ("HT") as "(<- & Hdrop)".
+    iPoseProof (llctx_interp_sublist with "HL") as "HL"; first apply Hincl.
     iSpecialize ("Hblock" with "CTX HE HL Hf [HP]").
     { iApply (logical_step_wand with "HP"). iIntros "(HR & HP & _)".
       iFrame "HP". }
     by iApply "Hblock".
   Qed.
 
-  Lemma typed_block_rec E f fn R P b ϝ s :
+  Lemma typed_block_rec E L f fn R P b ϝ s :
     fn.(f_code) !! b = Some s →
-    (□ (∀ L, (□ typed_block E P f b fn R ϝ) -∗
-      introduce_with_hooks E L (P L) (λ L2,
+    (□ ((□ typed_block E L P f b fn R ϝ) -∗
+      introduce_with_hooks E L P (λ L2,
         typed_stmt E L2 f s fn R ϝ)))
-    ⊢ typed_block E P f b fn R ϝ.
+    ⊢ typed_block E L P f b fn R ϝ.
   Proof.
     iIntros (Hs) "#Hb". iLöb as "IH".
-    iIntros (? L) "#CTX #HE HL Hf HP Hcont".
+    iIntros (?) "#CTX #HE HL Hf HP Hcont".
     iApply wps_goto; first done.
     iApply (physical_step_step_upd with "HP").
     iApply physical_step_intro. iNext.
@@ -4494,19 +4497,18 @@ Section subsume.
   Qed.
 
   (** current goal: Goto.
-     Instead of just jumping there, we can setup an invariant [P] on ownership and the lifetime contexts.
+     Instead of just jumping there, we can setup an invariant [P] on ownership.
      Then instead prove: wp of the block, but in the context we can persistently assume the WP of the goto with the same invariant already. *)
   (* Note: these need to be manually applied. *)
-  Lemma typed_goto_acc E L f fn R {A} (P : A → llctx → iProp Σ) b ϝ s :
+  Lemma typed_goto_acc E L f fn R {A} (P : A → iProp Σ) b ϝ s :
     fn.(f_code) !! b = Some s →
     (* TODO maybe also stratify? *)
     (∃ params,
-    prove_with_subtype E L true ProveDirect (P params L) True%I (λ L' _ R2,
-      ⌜L' = L⌝ ∗ (* TODO maybe relax if we have a separate condition on lifetime contexts *)
+    prove_with_subtype E L true ProveDirect (P params) True%I (λ L' _ R2,
       (* gather up the remaining ownership *)
       accu (λ Q,
-      (∀ L, (□ typed_block E (λ L, P params L ∗ Q) f b fn R ϝ) -∗
-          introduce_with_hooks E L (P params L ∗ Q) (λ L2,
+      ((□ typed_block E L' (P params ∗ Q) f b fn R ϝ) -∗
+          introduce_with_hooks E L' (P params ∗ Q) (λ L2,
           typed_stmt E L2 f s fn R ϝ)))))
     ⊢ typed_stmt E L f (Goto b) fn R ϝ.
   Proof.
@@ -4514,7 +4516,7 @@ Section subsume.
     iSpecialize ("Hsubt" $! ⊤ True%I).
     iMod ("Hsubt" with "[] [] [] CTX HE HL []") as "(%L' & % & %R2 & Hinv & HL & HT)";
       [set_solver.. | iApply maybe_logical_step_intro; iSplit; done | ].
-    iDestruct ("HT") as "(-> & Hrec)".
+    iDestruct ("HT") as "Hrec".
     rewrite /accu.
     iDestruct "Hrec" as "(%Q & HQ & #Hrec)".
     iApply (typed_block_rec with "Hrec CTX HE HL Hf [Hinv HQ]").
@@ -4525,7 +4527,7 @@ Section subsume.
   Qed.
 
   (* A variant where [P] is first instantiated with the refinement of some local variable *)
-  Lemma typed_goto_acc' E L f fn R b ϝ s {rt : RT} (l : loc) {A} (P : RT_xt rt → A → llctx → iProp Σ) :
+  Lemma typed_goto_acc' E L f fn R b ϝ s {rt : RT} (l : loc) {A} (P : RT_xt rt → A → iProp Σ) :
     fn.(f_code) !! b = Some s →
     find_in_context (FindLoc l) (λ '(existT rt' (lt, r, bk, π)),
     l ◁ₗ[π, bk] r @ lt -∗
@@ -4533,12 +4535,11 @@ Section subsume.
     ⌜r = # $# (rew [RT_xt] Heq in r')⌝ ∗
     ⌜π = f.1⌝ ∗
     (* TODO maybe also stratify? *)
-    prove_with_subtype E L true ProveDirect (P r' a L) True%I (λ L' _ R2,
-      ⌜L' = L⌝ ∗ (* TODO maybe relax if we have a separate condition on lifetime contexts *)
+    prove_with_subtype E L true ProveDirect (P r' a) True%I (λ L' _ R2,
       (* gather up the remaining ownership *)
       accu (λ Q,
-      (∀ L, (□ typed_block E (λ L, P r' a L ∗ Q) f b fn R ϝ) -∗
-          introduce_with_hooks E L (P r' a L ∗ Q) (λ L2,
+      ((□ typed_block E L' (P r' a ∗ Q) f b fn R ϝ) -∗
+          introduce_with_hooks E L' (P r' a ∗ Q) (λ L2,
           typed_stmt E L2 f s fn R ϝ)))))
     ⊢ typed_stmt E L f (Goto b) fn R ϝ.
   Proof.
@@ -4550,7 +4551,7 @@ Section subsume.
     iSpecialize ("Hsubt" $! ⊤ True%I).
     iMod ("Hsubt" with "[] [] [] CTX HE HL []") as "(%L' & % & %R2 & Hinv & HL & HT)";
       [set_solver.. | iApply maybe_logical_step_intro; iSplit; done | ].
-    iDestruct ("HT") as "(-> & Hrec)".
+    iDestruct ("HT") as "Hrec".
     rewrite /accu.
     iDestruct "Hrec" as "(%Q & HQ & #Hrec)".
     iApply (typed_block_rec with "Hrec CTX HE HL Hf [Hinv HQ]").
@@ -5156,6 +5157,16 @@ Section subsume.
   (** We instantiate the context folding mechanism for unblocking. *)
   Definition typed_context_fold_stratify_interp (π : thread_id) := λ '(ctx, R), (type_ctx_interp π ctx ∗ R)%I.
   Global Typeclasses Opaque typed_context_fold_stratify_interp.
+  Global Program Instance simplify_hyp_typed_context_fold_stratify_interp π tx :
+    SimplifyHyp
+    (typed_context_fold_stratify_interp π tx) (Some 0%N) := {|
+    simplify_hyp_Q := type_ctx_interp π tx.1 ∗ tx.2;
+    |}.
+  Next Obligation.
+    rewrite /typed_context_fold_stratify_interp.
+    iIntros (? []) "Ha". done.
+  Qed.
+
   Lemma typed_context_fold_step_stratify π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) ma acc R T :
     (* TODO: this needs a different stratification strategy *)
     stratify_ltype_unblock π E L ma l lt r (Owned)
@@ -5210,6 +5221,16 @@ Section subsume.
   (** We instantiate the context folding mechanism for extraction of observations. *)
   Definition typed_context_fold_extract_interp (π : thread_id) := λ '(ctx, R), (type_ctx_interp π ctx ∗ R)%I.
   Global Typeclasses Opaque typed_context_fold_extract_interp.
+  Global Program Instance simplify_hyp_typed_context_fold_extract_interp π tx :
+    SimplifyHyp
+    (typed_context_fold_extract_interp π tx) (Some 0%N) := {|
+    simplify_hyp_Q := type_ctx_interp π tx.1 ∗ tx.2;
+    |}.
+  Next Obligation.
+    rewrite /typed_context_fold_extract_interp.
+    iIntros (? []) "Ha". done.
+  Qed.
+
   Lemma typed_context_fold_step_extract π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) acc R κ T :
     stratify_ltype_extract π E L StratNoRefold l lt r (Owned) κ
       (λ L' R' rt' lt' r', typed_context_fold (typed_context_fold_extract_interp π) E L' (CtxFoldExtractAll κ) tctx ((l, mk_bltype _ r' lt') :: acc, R' ∗ R) T)
@@ -5246,6 +5267,16 @@ Section subsume.
   (** We instantiate the context folding mechanism for resolution of observations. *)
   Definition typed_context_fold_resolve_interp (π : thread_id) := λ '(ctx, R), (type_ctx_interp π ctx ∗ R)%I.
   Global Typeclasses Opaque typed_context_fold_resolve_interp.
+  Global Program Instance simplify_hyp_typed_context_fold_resolve_interp π tx :
+    SimplifyHyp
+    (typed_context_fold_resolve_interp π tx) (Some 0%N) := {|
+    simplify_hyp_Q := type_ctx_interp π tx.1 ∗ tx.2;
+    |}.
+  Next Obligation.
+    rewrite /typed_context_fold_resolve_interp.
+    iIntros (? []) "Ha". done.
+  Qed.
+
   Lemma typed_context_fold_step_resolve π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) acc R T :
     stratify_ltype_resolve π E L StratNoRefold l lt r (Owned)
       (λ L' R' rt' lt' r', typed_context_fold (typed_context_fold_resolve_interp π) E L' (CtxFoldResolveAll) tctx ((l, mk_bltype _ r' lt') :: acc, R' ∗ R) T)
@@ -5282,6 +5313,16 @@ Section subsume.
   (** We instantiate the context folding mechanism for closing invariants. *)
   Definition typed_context_fold_close_inv_interp (π : thread_id) := λ '(ctx, R), (type_ctx_interp π ctx ∗ R)%I.
   Global Typeclasses Opaque typed_context_fold_close_inv_interp.
+  Global Program Instance simplify_hyp_typed_context_fold_close_inv_interp π tx :
+    SimplifyHyp
+    (typed_context_fold_close_inv_interp π tx) (Some 0%N) := {|
+    simplify_hyp_Q := type_ctx_interp π tx.1 ∗ tx.2;
+    |}.
+  Next Obligation.
+    rewrite /typed_context_fold_close_inv_interp.
+    iIntros (? []) "Ha". done.
+  Qed.
+
   Lemma typed_context_fold_step_close_inv π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) acc R κs T :
     stratify_ltype_close_inv κs π E L l lt r (Owned)
       (λ L' R' rt' lt' r', typed_context_fold (typed_context_fold_close_inv_interp π) E L' (CtxFoldCloseInvAll κs) tctx ((l, mk_bltype _ r' lt') :: acc, R' ∗ R) T)
@@ -5500,4 +5541,4 @@ Notation "'typed_context_fold' step E L m ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typ
 Notation "'weak_subltype' E L b r1 r2 lt1 lt2 'HIDDEN_CONT'" := (weak_subltype E L b r1 r2 lt1 lt2 _) (only printing) : rr_hidden.
 
 
-Notation "'typed_block' 'HIDDEN_INV' E f l rf R ϝ" := (typed_block E _ f l rf R ϝ) (only printing, at level 100) : rr_hidden.
+Notation "'typed_block' 'HIDDEN_INV' E L f l rf R ϝ" := (typed_block E L _ f l rf R ϝ) (only printing, at level 100) : rr_hidden.
