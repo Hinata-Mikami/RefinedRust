@@ -3005,7 +3005,7 @@ Section folding.
   Proof. done. Qed.
   Global Program Instance simplify_type_context_inst π tctx :
     SimplifyHyp (type_ctx_interp π tctx) (Some 0%N) := {|
-    simplify_hyp_Q := ([∗ list] i ∈ tctx, let '(l, bt) := i in l ◁ₗ[ π, Owned] bltype_rfn bt @ bltype_ltype bt);
+    simplify_hyp_Q := (introduce_direct ([∗ list] i ∈ tctx, let '(l, bt) := i in l ◁ₗ[ π, Owned] bltype_rfn bt @ bltype_ltype bt));
   |}.
   Next Obligation. iIntros (??) "$". Qed.
   Global Typeclasses Opaque type_ctx_interp.
