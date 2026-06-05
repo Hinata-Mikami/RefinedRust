@@ -30,6 +30,7 @@ Section Range_inv_t.
   Program Definition Range_inv_t_inv_spec  : spec_with 0 [Idx_rt] (ex_inv_def ((Range_rt (Idx_rt)))%type (((Idx_rt) * (Idx_rt)))%type) := spec! ( *[]) : 0 | ( *[Idx_ty]) : ([Idx_rt] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt (((Idx_rt) * (Idx_rt))%type : RT)),
             let '(rstart, rend) := _ty_rfn in ⌜inner_rfn = -[#(rstart); #(rend)]⌝ ∗ True)%I
+    (true)
     ([])
     ([])
     _ _ _ _

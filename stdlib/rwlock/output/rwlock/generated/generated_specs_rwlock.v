@@ -28,6 +28,7 @@ Section RwLock_inv_t.
   Program Definition RwLock_inv_t_inv_spec  : spec_with 0 [T_rt] (ex_inv_def ((RwLock_rt (T_rt)))%type ((unit))%type) := spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt ((unit)%type : RT)),
             let '() := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z), ⌜inner_rfn = -[#(x)]⌝ ∗ True)%I
+    (true)
     ([])
     ([])
     _ _ _ _

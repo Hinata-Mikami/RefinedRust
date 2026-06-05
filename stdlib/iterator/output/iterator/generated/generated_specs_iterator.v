@@ -101,6 +101,7 @@ Section adapters_map_Map_inv_t.
   Program Definition adapters_map_Map_inv_t_inv_spec  : spec_with 0 [I_rt; F_rt] (ex_inv_def ((adapters_map_Map_rt (I_rt) (F_rt)))%type ((MapXRT (I_rt) (F_rt)))%type) := spec! ( *[]) : 0 | ( *[I_ty; F_ty]) : ([I_rt; F_rt] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt ((MapXRT (I_rt) (F_rt))%type : RT)),
             let 'x := _ty_rfn in ⌜inner_rfn = -[#($# x.(map_it)); #($# x.(map_clos))]⌝ ∗ True)%I
+    (true)
     ([])
     ([])
     _ _ _ _
@@ -147,6 +148,7 @@ Section adapters_skip_Skip_inv_t.
   Program Definition adapters_skip_Skip_inv_t_inv_spec  : spec_with 0 [I_rt] (ex_inv_def ((adapters_skip_Skip_rt (I_rt)))%type (((_ * nat)))%type) := spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt (((_ * nat))%type : RT)),
             let '(it, n) := _ty_rfn in ⌜inner_rfn = -[#(it); #(Z.of_nat n)]⌝ ∗ True)%I
+    (true)
     ([])
     ([])
     _ _ _ _
@@ -193,6 +195,7 @@ Section adapters_take_Take_inv_t.
   Program Definition adapters_take_Take_inv_t_inv_spec  : spec_with 0 [I_rt] (ex_inv_def ((adapters_take_Take_rt (I_rt)))%type (((_ * nat)))%type) := spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt (((_ * nat))%type : RT)),
             let '(it, n) := _ty_rfn in ⌜inner_rfn = -[#(it); #(Z.of_nat n)]⌝ ∗ True)%I
+    (true)
     ([])
     ([])
     _ _ _ _

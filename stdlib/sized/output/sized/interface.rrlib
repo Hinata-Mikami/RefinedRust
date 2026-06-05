@@ -14,6 +14,22 @@
         "marker",
         "Sized"
       ]
+    },
+    {
+      "allowed_attrs": [],
+      "assoc_tys": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {
+        "drop": "trait_incl_of_Drop_drop"
+      },
+      "name": "Drop",
+      "path": [
+        "core",
+        "ops",
+        "Drop"
+      ]
     }
   ],
   "module_dependencies": [],

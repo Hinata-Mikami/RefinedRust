@@ -911,6 +911,7 @@ Section alignment_Alignment_inv_t.
   Program Definition alignment_Alignment_inv_t_inv_spec  : spec_with 0 [] (ex_inv_def (alignment_Alignment_rt)%type ((alignment_enum))%type) := spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt ((alignment_enum)%type : RT)),
             let 'x := _ty_rfn in ⌜inner_rfn = -[#(x)]⌝ ∗ True)%I
+    (false)
     ([])
     ([])
     _ _ _ _

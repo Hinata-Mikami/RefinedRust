@@ -6,6 +6,7 @@ From rrstd.option.option.generated Require Export generated_specs_option.
 From rrstd.ptr.ptr.generated Require Export generated_specs_ptr.
 From rrstd.ptr_advanced.ptr_advanced.generated Require Export generated_specs_ptr_advanced.
 From rrstd.rr_internal.rr_internal.generated Require Export generated_specs_rr_internal.
+From rrstd.sized.sized.generated Require Export generated_specs_sized.
 Section Box_sls.
   Context `{RRGS : !refinedrustGS Σ}.
 

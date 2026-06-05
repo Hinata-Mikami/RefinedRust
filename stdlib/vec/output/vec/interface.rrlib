@@ -373,6 +373,43 @@
           ],
           "path": [
             "alloc",
+            "raw_vec",
+            "RawVec"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop": [
+          "RawVecTAasstd_ops_Drop_drop",
+          "type_of_RawVecTAasstd_ops_Drop_drop",
+          "trait_incl_of_RawVecTAasstd_ops_Drop_drop"
+        ]
+      },
+      "name": "RawVecTAasstd_ops_Drop",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "ops",
+          "Drop"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            },
+            {
+              "Param": 1
+            }
+          ],
+          "path": [
+            "alloc",
             "vec",
             "Vec"
           ]
@@ -394,6 +431,43 @@
           "std",
           "iter",
           "IntoIterator"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            },
+            {
+              "Param": 1
+            }
+          ],
+          "path": [
+            "alloc",
+            "vec",
+            "Vec"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop": [
+          "VecTAasstd_ops_Drop_drop",
+          "type_of_VecTAasstd_ops_Drop_drop",
+          "trait_incl_of_VecTAasstd_ops_Drop_drop"
+        ]
+      },
+      "name": "VecTAasstd_ops_Drop",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "ops",
+          "Drop"
         ]
       }
     },

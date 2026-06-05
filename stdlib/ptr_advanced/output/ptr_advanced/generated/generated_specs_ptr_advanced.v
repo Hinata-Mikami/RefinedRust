@@ -32,6 +32,7 @@ Section nonnull_NonNull_inv_t.
   Program Definition nonnull_NonNull_inv_t_inv_spec  : spec_with 0 [T_rt] (ex_inv_def ((nonnull_NonNull_rt (T_rt)))%type ((loc))%type) := spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt ((loc)%type : RT)),
             let 'l := _ty_rfn in ⌜inner_rfn = -[#(l)]⌝ ∗ ⌜(l.(loc_a) ≠ 0)%Z⌝ ∗ True)%I
+    (false)
     ([])
     ([])
     _ _ _ _
@@ -86,6 +87,7 @@ Section unique_Unique_inv_t.
   Program Definition unique_Unique_inv_t_inv_spec  : spec_with 0 [T_rt] (ex_inv_def ((unique_Unique_rt (T_rt)))%type ((loc))%type) := spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt ((loc)%type : RT)),
             let 'l := _ty_rfn in ⌜inner_rfn = -[#(l); #(tt)]⌝ ∗ True)%I
+    (false)
     ([])
     ([])
     _ _ _ _

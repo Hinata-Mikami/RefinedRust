@@ -8,8 +8,10 @@ From rrstd.controlflow.controlflow.generated Require Export generated_specs_cont
 From rrstd.index.index.generated Require Export generated_specs_index.
 From rrstd.iterator.iterator.generated Require Export generated_specs_iterator.
 From rrstd.option.option.generated Require Export generated_specs_option.
+From rrstd.ptr.ptr.generated Require Export generated_specs_ptr.
 From rrstd.ptr_advanced.ptr_advanced.generated Require Export generated_specs_ptr_advanced.
 From rrstd.rr_internal.rr_internal.generated Require Export generated_specs_rr_internal.
+From rrstd.sized.sized.generated Require Export generated_specs_sized.
 Section Iter_sls.
   Context `{RRGS : !refinedrustGS Σ}.
 

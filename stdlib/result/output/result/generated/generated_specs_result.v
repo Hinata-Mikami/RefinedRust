@@ -132,6 +132,7 @@ Section Formatter_inv_t.
   Program Definition Formatter_inv_t_inv_spec  : spec_with 1 [] (ex_inv_def (Formatter_rt)%type ((unit))%type) := spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt ((unit)%type : RT)),
             let '() := _ty_rfn in ⌜inner_rfn = -[#(tt)]⌝ ∗ True)%I
+    (false)
     ([])
     ([])
     _ _ _ _

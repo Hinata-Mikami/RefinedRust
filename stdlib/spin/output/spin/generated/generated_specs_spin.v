@@ -45,6 +45,7 @@ Section once_Once_inv_t.
   Program Definition once_Once_inv_t_inv_spec  : spec_with 0 [T_rt; R_rt] (ex_inv_def ((once_Once_rt (T_rt) (R_rt)))%type ((gname))%type) := spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt ((gname)%type : RT)),
             let 'η := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z) (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(x); #(y)]⌝ ∗ True)%I
+    (true)
     ([])
     ([])
     _ _ _ _
@@ -110,6 +111,7 @@ Section rwlock_RwLockReadGuard_inv_t.
   Program Definition rwlock_RwLockReadGuard_inv_t_inv_spec  : spec_with 1 [T_rt] (ex_inv_def ((rwlock_RwLockReadGuard_rt (T_rt)))%type (((T_rt)))%type) := spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt (((T_rt))%type : RT)),
             let 'x := _ty_rfn in ⌜inner_rfn = -[#(#x)]⌝ ∗ True)%I
+    (false)
     ([])
     ([])
     _ _ _ _
@@ -164,6 +166,7 @@ Section rwlock_RwLock_inv_t.
   Program Definition rwlock_RwLock_inv_t_inv_spec  : spec_with 0 [T_rt; R_rt] (ex_inv_def ((rwlock_RwLock_rt (T_rt) (R_rt)))%type ((unit))%type) := spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt ((unit)%type : RT)),
             let '() := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z) (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(y); #(x)]⌝ ∗ True)%I
+    (false)
     ([])
     ([])
     _ _ _ _
@@ -210,6 +213,7 @@ Section rwlock_RwLockWriteGuard_inv_t.
   Program Definition rwlock_RwLockWriteGuard_inv_t_inv_spec  : spec_with 1 [T_rt; R_rt] (ex_inv_def ((rwlock_RwLockWriteGuard_rt (T_rt) (R_rt)))%type ((place_rfn (T_rt)))%type) := spec! ( *[ulft_a]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt ((place_rfn (T_rt))%type : RT)),
             let 'x := _ty_rfn in ∃ (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(#tt); #(y)]⌝ ∗ True)%I
+    (true)
     ([])
     ([])
     _ _ _ _

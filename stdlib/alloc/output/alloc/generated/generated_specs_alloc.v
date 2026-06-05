@@ -92,6 +92,7 @@ Section layout_Layout_inv_t.
   Program Definition layout_Layout_inv_t_inv_spec  : spec_with 0 [] (ex_inv_def (layout_Layout_rt)%type ((rust_layout))%type) := spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt ((rust_layout)%type : RT)),
             let 'l := _ty_rfn in ⌜inner_rfn = -[#(Z.of_nat l.(layout_sz)); #(l.(layout_alignment))]⌝ ∗ ⌜(layout_wf l)%Z⌝ ∗ ⌜(Z.of_nat l.(layout_sz) ∈ isize)%Z⌝ ∗ True)%I
+    (false)
     ([])
     ([])
     _ _ _ _

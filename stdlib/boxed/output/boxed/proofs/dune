@@ -3,6 +3,6 @@
 (flags -w -notation-overridden -w -redundant-canonical-projection)
 (package refinedrust-stdlib)
 (name rrstd.boxed.boxed.proofs)
-(modules proof_box_new proof_Box_T_from_raw proof_Box_TA_from_raw_in proof_Box_T_new)
+(modules proof_box_new proof_Box_T_from_raw proof_Box_TA_from_raw_in proof_Box_T_new trait_incl_BoxTAasstd_ops_Drop_spec_subsumption_correct)
 (generate_project_file)
 (theories stdpp iris iris_contrib Ltac2 Equations lrust radium lithium refinedrust Stdlib rrstd.alloc.alloc.generated rrstd.alloc.theories rrstd.clone.clone.generated rrstd.closures.closures.generated rrstd.closures.theories rrstd.mem.mem.generated rrstd.mem.theories rrstd.num.num.generated rrstd.option.option.generated rrstd.ptr.ptr.generated rrstd.ptr.theories rrstd.ptr_advanced.ptr_advanced.generated rrstd.result.result.generated rrstd.result.theories rrstd.rr_internal.rr_internal.generated rrstd.rr_internal.theories rrstd.sized.sized.generated rrstd.boxed.boxed.generated))

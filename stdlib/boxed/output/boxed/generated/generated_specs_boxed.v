@@ -6,6 +6,7 @@ From rrstd.option.option.generated Require Export generated_specs_option.
 From rrstd.ptr.ptr.generated Require Export generated_specs_ptr.
 From rrstd.ptr_advanced.ptr_advanced.generated Require Export generated_specs_ptr_advanced.
 From rrstd.rr_internal.rr_internal.generated Require Export generated_specs_rr_internal.
+From rrstd.sized.sized.generated Require Export generated_specs_sized.
 From rrstd.boxed.boxed Require Export generated_code_boxed.
 
 Section Box_ty.
@@ -31,17 +32,20 @@ Section Box_inv_t.
   Context `{RRGS : !refinedrustGS Σ}.
   Context (T_rt : RT) (A_rt : RT).
 
-  Program Definition Box_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [T_rt; A_rt] (ex_inv_def ((Box_rt (T_rt) (A_rt)))%type ((place_rfn (T_rt)))%type) := spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), mk_auto_ex_inv_def
+  Program Definition Box_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [T_rt; A_rt] (ex_inv_def ((Box_rt (T_rt) (A_rt)))%type ((place_rfn (T_rt)))%type) := spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), mk_ex_inv_def_auto_shr
     (λ π inner_rfn (_ty_rfn : RT_rt ((place_rfn (T_rt))%type : RT)),
             let 'x := _ty_rfn in ∃ (l: name_hint_ty "l" ((loc))%Z) (a: name_hint_ty "a" (((RT_xt (A_rt))))%Z), ⌜inner_rfn = -[#(l); #($# a)]⌝ ∗ guarded true (l ◁ₗ[π, Owned] x @ ◁ T_ty) ∗ Allocator_A_spec_attrs.(Allocator_FreeablePerm) a l (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))) ∗ True)%I
+    (λ π _ (_rfn_binder : RT_rt ((place_rfn (T_rt))%type : RT)),
+            let 'x := _rfn_binder in (∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop T_ty π r) ∗ True)%I
+    (true)
     ([] ++ ty_lfts T_ty)
     ([] ++ ty_wf_E T_ty)
     _ _ _ _
   .
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation. intros ?; ex_plain_t_solve_ghost_drop. Qed.
 
   Definition Box_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [T_rt; A_rt] (type ((place_rfn (T_rt)))%type) :=
     spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ex_plain_t _ _ (Box_inv_t_inv_spec Allocator_A_spec_attrs -[] -[T_ty; A_ty]) (((Box_ty (T_rt) (A_rt)) (Allocator_A_spec_attrs)) -[] -[T_ty; A_ty]).
@@ -53,6 +57,14 @@ Global Arguments Box_inv_t : simpl never.
   Global Typeclasses Transparent Box_inv_t_rt.
 End Box_inv_t.
 Global Arguments Box_inv_t_rt : clear implicits.
+
+Section attrs.
+Context `{RRGS : !refinedrustGS Σ}.
+Program Definition BoxTAasstd_ops_Drop_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (A_rt: RT) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : ((Drop_spec_attrs (((Box_inv_t_rt ((T_rt)) ((A_rt))))))) :=
+  mk_Drop_spec_attrs.
+
+
+End attrs.
 
 Section closure_attrs.
 Context `{RRGS : !refinedrustGS Σ}.
@@ -206,6 +218,21 @@ Definition type_of_Box_T_new (T_rt: RT) (T_st: syn_type) :=
       (* postcondition *) (λ π : thread_id, True).
 
 
+Definition trait_incl_of_BoxTAasstd_ops_Drop_drop (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_spec: (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs-[] -[A_ty])))).
+
+Definition type_of_BoxTAasstd_ops_Drop_drop (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) :=
+  fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([(T_rt, T_st); (A_rt, A_st)] : list (RT * syn_type)%type) | 
+      (* params....... *) (l, lmem, a) : ((_ * _ * _)),
+      (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
+      (* args......... *) l :@: alias_ptr_t;
+      (* precondition. *) (λ π : thread_id, (l ◁ₗ[π, Owned] #(-[#lmem; #($# a)]) @ (◁ Box_ty T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]))
+        ∗ (lmem ◁ₗ[π, Owned] #(()) @ (◁ uninit (ty_syn_type T_ty MetaNone)))
+        ∗ (Allocator_A_spec_attrs.(Allocator_FreeablePerm) a l (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))))) |
+      (* trait reqs... *) (λ π : thread_id, True)) →
+      (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
+      (* postcondition *) (λ π : thread_id, (l ◁ₗ[π, Owned] #(-[#lmem; #($# a)]) @ (◁ Box_ty T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]))).
+
 Definition trait_incl_of_Box_T_into_raw (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (True).
 
@@ -239,3 +266,16 @@ Definition type_of_Box_TA_into_raw_with_allocator (T_rt: RT) (A_rt: RT) (T_st: s
 
 
 End specs.
+Section BoxTAasstd_ops_Drop_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition BoxTAasstd_ops_Drop_spec (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with _ _ (Drop_spec (((Box_inv_t_rt ((T_rt)) ((A_rt))))))) :=
+    spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), {|
+        Drop_drop_spec  :=
+          (type_of_BoxTAasstd_ops_Drop_drop ((T_rt)) ((A_rt)) (T_st) (A_st)) Allocator_A_spec_attrs 
+             <TY> T_ty <TY> A_ty : (spec_with 1 [] fn_spec);
+      |}
+  .
+  Definition BoxTAasstd_ops_Drop_spec_subsumption  :=
+    ∀ `(T_rt : !RT) `(A_rt : !RT) `(T_st : !syn_type) `(A_st : !syn_type) `(Allocator_A_spec_attrs : !(Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )), trait_incl_marker (lift_trait_incl Drop_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), (BoxTAasstd_ops_Drop_spec (T_rt) (A_rt) (T_st) (A_st) (Allocator_A_spec_attrs))-[] -[T_ty; A_ty]) (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), scope_add_typarams _ -[T_ty; A_ty] ((Drop_base_spec ((Box_inv_t_rt ((T_rt)) ((A_rt)))) (Box_st (T_st) (A_st)) (BoxTAasstd_ops_Drop_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs))-[] -[(Box_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty])])))).
+End BoxTAasstd_ops_Drop_spec.
+

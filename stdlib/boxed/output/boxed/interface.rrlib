@@ -79,6 +79,43 @@
       ],
       "spec": "type_of_Box_TA_into_raw_with_allocator",
       "trait_req_incl": "trait_incl_of_Box_TA_into_raw_with_allocator"
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            },
+            {
+              "Param": 1
+            }
+          ],
+          "path": [
+            "alloc",
+            "boxed",
+            "Box"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop": [
+          "BoxTAasstd_ops_Drop_drop",
+          "type_of_BoxTAasstd_ops_Drop_drop",
+          "trait_incl_of_BoxTAasstd_ops_Drop_drop"
+        ]
+      },
+      "name": "BoxTAasstd_ops_Drop",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "std",
+          "ops",
+          "Drop"
+        ]
+      }
     }
   ],
   "module_dependencies": [

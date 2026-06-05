@@ -37,6 +37,7 @@ Section BTreeMap_inv_t.
   Program Definition BTreeMap_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Clone_A_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [K_rt; V_rt; A_rt] (ex_inv_def ((BTreeMap_rt (K_rt) (V_rt) (A_rt)))%type ((directRT (gmap (RT_xt (K_rt)) ((RT_xt (V_rt))))))%type) := spec! ( *[]) : 0 | ( *[K_ty; V_ty; A_ty]) : ([K_rt; V_rt; A_rt] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt ((directRT (gmap (RT_xt (K_rt)) ((RT_xt (V_rt)))))%type : RT)),
             let 'M := _ty_rfn in ∃ (k: name_hint_ty "k" (_)%Z) (v: name_hint_ty "v" (_)%Z) (a: name_hint_ty "a" (_)%Z), ⌜inner_rfn = -[#(k); #(v); #(a)]⌝ ∗ True)%I
+    (true)
     ([])
     ([])
     _ _ _ _
