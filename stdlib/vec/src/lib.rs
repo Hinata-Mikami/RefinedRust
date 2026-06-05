@@ -6,6 +6,7 @@
 #![feature(allocator_api)]
 #![allow(internal_features)]
 #![feature(ptr_internals)]
+#![feature(sized_type_properties)]
 
 #![rr::import("rrstd.vec.theories", "vec")]
 
@@ -22,21 +23,15 @@
 #![rr::include("ptr_advanced")]
 #![rr::include("clone")]
 #![rr::include("controlflow")]
+#![rr::include("sized")]
 
 use std::alloc::{Allocator, Global};
 use std::marker::PhantomData;
 use core::ptr::{Unique, NonNull};
+use std::ptr;
+use std::alloc::Layout;
+use std::mem::SizedTypeProperties;
 
-#[rr::export_as(alloc::raw_vec::RawVec)]
-#[rr::refined_by("(l, cap)" : "(loc * nat)")]
-#[rr::exists("a")]
-#[rr::invariant(#iris "freeable_nz l (size_of_array_in_bytes {st_of T} cap) 1 HeapAlloc")]
-pub(crate) struct RawVec<T, A: Allocator = Global> {
-    #[rr::field("(l, cap, a)")]
-    inner: RawVecInner<A>,
-    #[rr::field("tt")]
-    _marker: PhantomData<T>,
-}
 
 // NB: The real rustc impl uses usize with a niche on the highest bit, but we can't handle that.
 type Cap = usize;
@@ -57,11 +52,76 @@ struct RawVecInner<A: Allocator = Global> {
     alloc: A,
 }
 
+#[rr::skip]
+impl<A: Allocator> RawVecInner<A> {
+    unsafe fn current_memory(&self, elem_layout: Layout) -> Option<(NonNull<u8>, Layout)> {
+        if elem_layout.size() == 0 || self.cap == 0 {
+            None
+        } else {
+            // We could use Layout::array here which ensures the absence of isize and usize overflows
+            // and could hypothetically handle differences between stride and size, but this memory
+            // has already been allocated so we know it can't overflow and currently Rust does not
+            // support such types. So we can do better by skipping some checks and avoid an unwrap.
+            unsafe {
+                let alloc_size = elem_layout.size().unchecked_mul(self.cap);
+                let layout = Layout::from_size_align_unchecked(alloc_size, elem_layout.align());
+                Some((self.ptr.into(), layout))
+            }
+        }
+    }
+
+    /// # Safety
+    ///
+    /// This function deallocates the owned allocation, but does not update `ptr` or `cap` to
+    /// prevent double-free or use-after-free. Essentially, do not do anything with the caller
+    /// after this function returns.
+    /// Ideally this function would take `self` by move, but it cannot because it exists to be
+    /// called from a `Drop` impl.
+    unsafe fn deallocate(&mut self, elem_layout: Layout) {
+        // SAFETY: Precondition passed to caller
+        if let Some((ptr, layout)) = unsafe { self.current_memory(elem_layout) } {
+            unsafe {
+                self.alloc.deallocate(ptr, layout);
+            }
+        }
+    }
+}
+
+
+// TODO: maybe expose a value interface instead
+#[rr::export_as(alloc::raw_vec::RawVec)]
+#[rr::refined_by("(l, cap, els)" : "(loc * nat * list (place_rfn (option (place_rfn {rt_of T}))))")]
+#[rr::exists("a")]
+#[rr::invariant(#iris "{A::FreeablePerm} a l (size_of_array_in_bytes {st_of T} cap)")]
+// Ownership needs to be here in order to allow drop glue to safely call Drop
+#[rr::invariant(#type "l" : "els" @ "array_t cap (maybe_uninit {T})")]
+pub(crate) struct RawVec<T, A: Allocator = Global> {
+    #[rr::field("(l, cap, $# a)")]
+    inner: RawVecInner<A>,
+    #[rr::field("tt")]
+    _marker: PhantomData<T>,
+}
+
+
+// TODO: may_dangle
+#[rr::only_spec]
+impl<T, A: Allocator> Drop for RawVec<T, A> {
+    /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
+    #[rr::params("l", "lmem", "cap", "els")] 
+    #[rr::args("l" @ "alias_ptr_t")]
+    #[rr::requires(#type "l" : "(lmem, cap, els)" @ "RawVec_inv_t T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
+    #[rr::exists("a")]
+    #[rr::ensures(#type "l" : "-[ #(l, cap, a); #tt]" @ "RawVec_ty T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
+    fn drop(&mut self) {
+        // SAFETY: We are in a Drop impl, self.inner will not be used again.
+        unsafe { self.inner.deallocate(T::LAYOUT) }
+    }
+}
+
 // Uses the invariant from our "MiniVec" case study.
 #[rr::export_as(alloc::vec::Vec)]
 #[rr::refined_by("xs" : "list (place_rfn {rt_of T})")]
 #[rr::exists("cap" : "nat", "l" : "loc", "len" : "nat", "els")]
-#[rr::invariant(#type "l" : "els" @ "array_t cap (maybe_uninit {T})")]
 #[rr::invariant("Hxs" : "xs = project_vec_els len els")]
 #[rr::invariant("Hlook_1": "∀ i, (0 ≤ i < len)%nat → els !! i = Some (#(Some (xs !!! i)))")]
 #[rr::invariant("Hlook_2": "∀ i, (len ≤ i < cap)%nat → els !! i = Some (#None)")]
@@ -72,7 +132,7 @@ struct RawVecInner<A: Allocator = Global> {
 // we need the ZST case to know that we never call grow except when we have reached the capacity limit
 #[rr::invariant("if decide (size_of_st {st_of T} = 0%nat) then cap = Z.to_nat (MaxInt USize) else (size_of_array_in_bytes {st_of T} cap ≤ MaxInt ISize)%Z")]
 pub struct Vec<T, A: Allocator = Global> {
-    #[rr::field("(l, cap)")]
+    #[rr::field("(l, cap, els)")]
     buf: RawVec<T, A>,
     #[rr::field("Z.of_nat len")]
     len: usize,
@@ -93,6 +153,34 @@ impl<T> Vec<T> {
     #[rr::returns("[]")]
     pub fn with_capacity(capacity: usize) -> Self {
         unimplemented!();
+    }
+}
+
+// TODO: may_dangle
+#[rr::only_spec]
+impl<T, A: Allocator> Drop for Vec<T, A> {
+    #[rr::params("l", "xs")]
+    #[rr::args("l" @ "alias_ptr_t")]
+    #[rr::requires(#type "l" : "$# xs" @ "Vec_inv_t T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
+    #[rr::exists("lmem", "cap")]
+    // Postcondition: ghost drop for all the elements
+    #[rr::ensures(#iris "[∗ list] r ∈ xs, ty_ghost_drop {T} π ($# r)")]
+    // Postcondition: vector without its safety invariant. All the elements of the RawVec are in the
+    // uninit state.
+    #[rr::ensures(#type "l" : "-[ #(lmem, cap, replicate cap (#None)); #(Z.of_nat $ length xs)]" @ "Vec_ty T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
+    fn drop(&mut self) {
+        /*
+        unsafe {
+            // use drop for [T]
+            // use a raw slice to refer to the elements of the vector as weakest necessary type;
+            // could avoid questions of validity in certain cases
+            ptr::drop_in_place(ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.len))
+        }
+        */
+        // RawVec handles deallocation
+
+        // NB in the proof we have to transition all elements of the RawVec into the uninitialized
+        // state
     }
 }
 

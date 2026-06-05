@@ -6,10 +6,12 @@
 
 #![feature(allocator_api)]
 #![feature(ptr_internals)]
+#![feature(layout_for_ptr)]
 
 #![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.boxed")]
 
+#![rr::include("sized")]
 #![rr::include("alloc")]
 #![rr::include("option")]
 #![rr::include("rr_internal")]
@@ -99,6 +101,30 @@ impl<T> Box<T> {
         box_new(x)
     }
 }
+
+// TODO: may_dangle
+#[rr::only_spec]
+impl<T, A: Allocator> Drop for Box<T, A> {
+    // the T in the Box is dropped by the compiler before the destructor is run
+
+    #[rr::params("l", "lmem", "a")]
+    #[rr::args("l" @ "alias_ptr_t")]
+    #[rr::requires(#type "l" : "-[#lmem; #($# a)]" @ "Box_ty T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
+    #[rr::requires(#type "lmem" : "()" @ "uninit {st_of T}")]
+    #[rr::requires(#iris "{A::FreeablePerm} a l (ly_size {ly_of T})")]
+    #[rr::ensures(#type "l" : "-[#lmem; #($# a)]" @ "Box_ty T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
+    fn drop(&mut self) {
+        let ptr = self.0;
+
+        unsafe {
+            let layout = Layout::for_value_raw(ptr.as_ptr());
+            if layout.size() != 0 {
+                self.1.deallocate(From::from(ptr.cast()), layout);
+            }
+        }
+    }
+}
+
 
 #[rr::export_as(alloc::boxed::Box)]
 // TODO: should be T: ?Sized

@@ -52,8 +52,8 @@ Next Obligation.
   iDestruct "Hp" as "(% & % & % & % & % & Hp)".
   rewrite !boringly_persistent_elim.
   unfold name_hint.
-  iDestruct "Hp" as "(-> & _ & ? & _ & _ & %Hlen & _ & % & _)".
-  subst. iModIntro. done.
+  iDestruct "Hp" as "(-> & -> & % & % & % & %Hlen & % & % &_ )".
+  subst. iModIntro. iPureIntro. simpl in *. lia.
 Qed.
 
 (** Accessors that can be used by unsafe code doing funky stuff *)
@@ -74,10 +74,19 @@ Proof.
   iIntros "(%ly & %Hst & % & _ & #Hlb & %r' & <- & Hl)".
   iMod (fupd_mask_mono with "Hl") as "Hl"; first done.
   iDestruct "Hl" as "(%v & Hl & Hv)".
+
   rewrite {1}ex_plain_t_unfold_val/=.
-  iDestruct "Hv" as "(%fields & (%cap & %l' & %len & %els & -> & Hls & %Heq1 & %Hlook1 & %Hlook2 & %Hlen_eq & %Hcap & % & %Hbound & _) & Hv)".
+  iDestruct "Hv" as "(%fields & (%cap & %l' & %len & %els & -> & %Heq1 & %Hlook1 & %Hlook2 & %Hlen_eq & %Hcap & % & %Hbound & _) & Hv)".
   unfold name_hint, name_hint_ty in *.
   simpl in *.
+
+  (* also unfold the raw vec invariant *)
+  iPoseProof (struct_own_val_acc _ _ 0 with "Hv") as "(%v' & %r' & Hrfn & Hv & Hcl_raw)".
+  { done. }
+  simpl. iDestruct "Hrfn" as "<-".
+  rewrite {1}ex_plain_t_unfold_val/=.
+  iDestruct "Hv" as "(%fields' & (%a & -> & Hls & Hfreeable & _) & Hv)".
+
   rewrite /guarded.
   iDestruct "Hls" as "(Hcred & Hls)".
   iApply (lc_fupd_add_later with "Hc1"). iNext.
@@ -191,59 +200,55 @@ Proof.
   simpl. iExists _. iR. iR. iR. iR.
   iExists _. iR. iModIntro.
   iExists _. iFrame.
+
+  iPoseProof ("Hcl_raw" $! _ (RawVec_inv_t T_rt' A_rt A_attrs -[] -[T_ty'; A_ty]) (l', cap, (<#> (Some <$> <#> rs') ++ <#> replicate (cap - length rs) None))  with "[//] [Hcred Hls Hv Hfreeable]") as "Hv".
+  { rewrite ex_plain_t_unfold_val/=. iFrame.
+    rewrite /inv_P/=/name_hint_ty/name_hint/=.
+    rewrite Hst''.
+    rewrite /guarded.
+    iFrame. iExists _. iSplitR "Hv".
+    { iR. iNext. replace (length rs + (cap - length rs))%nat with cap by lia. done. }
+    iApply (struct_t_own_val_mono _ false); last iApply "Hv".
+    unfold struct_t_incl_precond. simpl.
+    iSplitR; first last.
+    { iL. iR.
+      (* TODO: factor out into PhantomData lemma *)
+      rewrite /owned_type_incl/=.
+      iSplitR. { iPureIntro. apply syn_type_size_eq_refl. }
+      iR.
+      iIntros (?) "Hv".
+      rewrite !ex_plain_t_unfold_val/=.
+      iDestruct "Hv" as "(%x & _ & Hv)".
+      iExists x. iR.
+      iApply (struct_t_own_val_mono _ false); last iApply "Hv".
+      unfold struct_t_incl_precond. done. }
+    iR. iApply owned_type_incl_refl. }
+
   rewrite ex_plain_t_unfold_val/=.
   iExists *[_;_].
-  iSplitR "Hv".
-  { rewrite /inv_P/=/name_hint_ty/name_hint/=.
-    replace (length rs + (cap - length rs))%nat with cap by lia.
-    iExists _, _, len, _. iR.
-    rewrite /guarded. iFrame. iPureIntro.
-    split_and!.
-    - rewrite /project_vec_els. normalize_and_simpl_goal.
-      rewrite -!list_fmap_compose. solve_goal.
-    - intros. rewrite lookup_app_l; last solve_goal.
-      opose proof (lookup_lt_is_Some_2 rs' i _) as [? Hlook]; first lia.
-      normalize_and_simpl_goal.
-      eexists.
-      split. { rewrite Hlook. solve_goal. }
-      solve_goal.
-    - normalize_and_simpl_goal.
-      setoid_rewrite lookup_replicate.
-      exists None. solve_goal.
-    - solve_goal.
-    - solve_goal.
-    - done.
-    - rewrite Hst''. solve_goal.
-    - done. }
-  rewrite Hlen_eq.
-  iApply (struct_t_own_val_mono _ false); last iApply "Hv".
-  unfold struct_t_incl_precond. simpl.
-  iSplitR; first last.
-  { iL. iR. iApply owned_type_incl_refl. }
-  iR. rewrite /owned_type_incl/=.
-  iSplitR. { iPureIntro. apply syn_type_size_eq_refl. }
-  iR.
-  iIntros (?) "Hv".
-  rewrite !ex_plain_t_unfold_val/=.
-  rewrite /inv_P/=.
-  iDestruct "Hv" as "(%x & (%a & %Heq & Hfree & _) & Hv)".
-  iExists x.
-  rewrite Hst''. iFrame.
-  iSplitR. { eauto. }
-  subst.
-  iApply (struct_t_own_val_mono _ false); last iApply "Hv".
-  unfold struct_t_incl_precond. simpl.
-  iSplitR. { iR. iApply owned_type_incl_refl. }
-  iL. iR.
-  rewrite /owned_type_incl/=.
-  iSplitR. { iPureIntro. apply syn_type_size_eq_refl. }
-  iR.
-  iIntros (?) "Hv".
-  rewrite !ex_plain_t_unfold_val/=.
-  iDestruct "Hv" as "(%x & _ & Hv)".
-  iExists x. iR.
-  iApply (struct_t_own_val_mono _ false); last iApply "Hv".
-  unfold struct_t_incl_precond. done.
+  iSplitR "Hv"; last done.
+  rewrite /inv_P/=/name_hint_ty/name_hint/=.
+  replace (length rs + (cap - length rs))%nat with cap by lia.
+  iExists _, _, len, _.
+  rewrite Hlen_eq Hlen'. iR.
+  iPureIntro.
+  split_and!.
+  - rewrite /project_vec_els. normalize_and_simpl_goal.
+    rewrite -!list_fmap_compose. solve_goal.
+  - intros. rewrite lookup_app_l; last solve_goal.
+    opose proof (lookup_lt_is_Some_2 rs' i _) as [? Hlook]; first lia.
+    normalize_and_simpl_goal.
+    eexists.
+    split. { rewrite Hlook. solve_goal. }
+    solve_goal.
+  - normalize_and_simpl_goal.
+    setoid_rewrite lookup_replicate.
+    exists None. solve_goal.
+  - solve_goal.
+  - solve_goal.
+  - lia.
+  - rewrite Hst''. solve_goal.
+  - done.
 Qed.
 
 Lemma vec_extract_invariant {T_inner_rt T_rt A_rt} (P : ex_inv_def T_inner_rt T_rt) (T_ty : type T_inner_rt) (A_ty : type A_rt) (A_attrs : Allocator_spec_attrs A_rt) π xs l F :

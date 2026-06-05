@@ -1318,3 +1318,57 @@ Section copy.
     done.
   Qed.
 End copy.
+
+
+Section acc.
+  Context `{!typeGS Σ}.
+
+  Lemma struct_own_val_acc {rts} (tys : hlist type rts) rs i rt ty r v π sls  :
+    (hpzipl rts tys rs) !! i = Some (existT rt (ty, r)) →
+    v ◁ᵥ{π, MetaNone} rs @ struct_t sls tys -∗
+    ∃ v' r',
+      place_rfn_interp_owned r r' ∗
+      v' ◁ᵥ{π, MetaNone} r' @ ty ∗
+      (∀ (rt' : RT) (ty' : type rt') r',
+        ⌜ty_syn_type ty' MetaNone = ty_syn_type ty MetaNone⌝ -∗
+        v' ◁ᵥ{π, MetaNone} r' @ ty' -∗
+        v ◁ᵥ{π, MetaNone} (plist_insert _ rs i _ (#r')) @ struct_t sls (hlist_insert _ tys i _ ty')).
+  Proof.
+    iIntros (Hlook) "Hv".
+    rewrite /ty_own_val /= struct_t_own_val_unfold.
+    iDestruct "Hv" as "(%sl & _ & %Halg & %Hlen & %Hlyv & Hv)".
+
+    have [field Hfield] : is_Some (sls_fields sls !! i).
+    { apply lookup_lt_is_Some_2.
+      rewrite -Hlen -(length_hpzipl rts tys rs). by eapply lookup_lt_Some. }
+    destruct field as [name st].
+    pose proof (struct_layout_spec_has_layout_members_lookup_1 _ _ Halg _ _ _ Hfield) as (ly & j & Hfield_sl & Hstly).
+    pose proof (struct_layout_spec_has_layout_lookup _ _ _ _ _ Halg Hfield) as Hfield_idx.
+    pose proof (sl_index_of_lookup_2 _ _ _ _ Hfield_sl) as Hindex.
+    pose proof (pad_struct_lookup_field_Some_2' (sl_members sl) (hpzipl rts tys rs) struct_make_uninit_type i j name (existT rt (ty, r)) Hindex Hfield_idx Hlook) as Hlook_pad.
+    have Hlylook : (sl_members sl).*2 !! j = Some ly.
+    { rewrite list_lookup_fmap Hfield_sl //. }
+    have [v' Hlook_v] : is_Some (reshape (ly_size <$> (sl_members sl).*2) v !! j).
+    { apply lookup_lt_is_Some_2. rewrite length_reshape.
+      rewrite length_fmap. apply lookup_lt_Some in Hlylook. done. }
+
+    iDestruct (big_sepL2_insert_acc with "Hv") as "(Hel & Hcl)"; [done.. | ].
+    rewrite /struct_own_el_val.
+    iDestruct "Hel" as (r' ly') "(#Hrfn & %Hlook_ly & %Hst & Hv')".
+    iExists v', r'. iFrame "#∗".
+    iIntros (rt' ty' r'0) "%Hst_eq Hv'".
+    have Hst' : syn_type_has_layout (ty_syn_type ty' MetaNone) ly'.
+    { rewrite Hst_eq. exact Hst. }
+    iExists sl. iFrame "%". iR. rewrite length_insert. iR.
+    set (ra := existT (P := λ rt, (type rt * place_rfn rt)%type) rt' (ty', #r'0)).
+    iSpecialize ("Hcl" $! v' ra with "[Hv']").
+    { rewrite /struct_own_el_val. iExists r'0, ly'. eauto with iFrame. }
+    rewrite (list_insert_id (reshape (ly_size <$> (sl_members sl).*2) v) j v' Hlook_v).
+    erewrite pad_struct_insert_field; [ | done | done | ].
+    2: { eapply lookup_lt_Some. done. }
+    rewrite insert_hpzipl. done.
+
+  Qed.
+
+End acc.
+Check id.
