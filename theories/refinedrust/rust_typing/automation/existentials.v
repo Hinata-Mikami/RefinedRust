@@ -180,6 +180,26 @@ Ltac ex_plain_t_solve_shr_auto :=
   intros; prepare_initial_coq_context;
   apply _.
 
+Ltac ex_t_destruct_hyp iH :=
+    let ty := iTypeOf' iH in
+    let Hx := iFresh in
+    iRename iH into Hx;
+    lazymatch ty with
+    | (∃ _, _)%I =>
+      iDestruct Hx as "(% & __H0)";
+      ex_t_destruct_hyp constr:("__H0")
+    | (_ ∗ _)%I =>
+      iDestruct Hx as "(__H0 & __H1)";
+      let H1 := iFresh in
+      let H2 := iFresh in
+      iRename "__H0" into H1;
+      iRename "__H1" into H2;
+      ex_t_destruct_hyp H1;
+      ex_t_destruct_hyp H2
+    | (⌜_⌝)%I =>
+      iDestruct Hx as "%"
+    | _ => idtac
+    end.
 Ltac ex_plain_t_solve_ghost_drop :=
   simpl;
   intro_adt_params;
@@ -202,7 +222,7 @@ Ltac ex_plain_t_solve_ghost_drop :=
   end;
   iApply (logical_step_wand with "__Hc");
   simpl;
-  eauto
+  iIntros "Ha"; ex_t_destruct_hyp "Ha"; eauto with iFrame
 .
 
 Ltac ex_plain_t_solve_ghost_drop_auto :=

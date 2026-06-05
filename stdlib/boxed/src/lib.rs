@@ -38,6 +38,7 @@ use std::mem;
 #[rr::inv(#iris "{A::FreeablePerm} a l (ly_size {ly_of T})")]
 #[rr::ty_lfts("ty_lfts {T}")]
 #[rr::ty_wf_E("ty_wf_E {T}")]
+#[rr::ghost_drop(#iris "∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop {T} π r")]
 pub struct Box<T, A: Allocator = Global, >(#[rr::field("l")] Unique<T>, #[rr::field("$# a")] A);
 
 // TODO: should be T: ?Sized

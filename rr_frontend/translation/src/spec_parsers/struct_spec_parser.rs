@@ -27,6 +27,7 @@ pub(crate) const INVARIANT_SPEC_ATTRS: &[&str] = &[
     "ty_lfts",
     "ty_wf_elctx",
     "ty_wf_E",
+    "ghost_drop",
     "exists",
     "mode",
     "refines",
@@ -53,6 +54,8 @@ pub(crate) enum ParserError {
     UnknownFieldAttribute(String),
     #[display("field attribute specified twice for field {}", _0)]
     DuplicateFieldAttribute(String),
+    #[display("invalid mode {} for ghost drop proposition", _0)]
+    InvalidGhostDropAttribute(String),
 }
 
 const fn spanned_error(span: Span, err: ParserError) -> SpannedError<ParserError> {
@@ -268,6 +271,9 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
 
         let mut invariants: Vec<(coq::iris::IProp, specs::invariants::Mode)> = Vec::new();
         let mut type_invariants: Vec<specs::TyOwnSpec> = Vec::new();
+
+        let mut ghost_drop: Vec<coq::iris::IProp> = Vec::new();
+
         let mut abstracted_refinement = None;
 
         let mut rfn_pat = "placeholder_pat".to_owned();
@@ -344,6 +350,36 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
                         },
                     }
                 },
+                "ghost_drop" => {
+                    let span = buffer.pos().unwrap_or(DUMMY_SP);
+                    let prop = MetaIProp::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
+                    match prop {
+                        MetaIProp::Own(_) => {
+                            return Err(spanned_error(
+                                span,
+                                ParserError::InvalidGhostDropAttribute("own".to_owned()),
+                            ));
+                        },
+                        MetaIProp::Shared(_) => {
+                            return Err(spanned_error(
+                                span,
+                                ParserError::InvalidGhostDropAttribute("shr".to_owned()),
+                            ));
+                        },
+                        MetaIProp::Iris(iprop) => {
+                            ghost_drop.push(iprop);
+                        },
+                        MetaIProp::Type(_) => {
+                            return Err(spanned_error(
+                                span,
+                                ParserError::InvalidGhostDropAttribute("type".to_owned()),
+                            ));
+                        },
+                        MetaIProp::Pure(p, _) => {
+                            ghost_drop.push(coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(p))));
+                        },
+                    }
+                },
                 "ty_lfts" => {
                     let mut terms =
                         RRTerms::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
@@ -394,6 +430,8 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
 
         //let xt_injection = format!("(@xmap ({xt_type}) ({rfn_type}) _)");
 
+        let ghost_drop = if ghost_drop.is_empty() { None } else { Some(coq::iris::IProp::Sep(ghost_drop)) };
+
         let spec = specs::invariants::Spec::new(
             struct_name.to_owned(),
             inv_flags,
@@ -406,6 +444,7 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
             type_invariants,
             ty_lfts,
             ty_wf_elctx,
+            ghost_drop,
             has_trivial_drop,
             abstracted_refinement,
             params,

@@ -1368,8 +1368,5 @@ Section acc.
     erewrite pad_struct_insert_field; [ | done | done | ].
     2: { eapply lookup_lt_Some. done. }
     rewrite insert_hpzipl. done.
-
   Qed.
-
 End acc.
-Check id.

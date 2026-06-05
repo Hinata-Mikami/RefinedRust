@@ -56,6 +56,9 @@ pub struct Spec {
     // additional ty_wf_elctx
     ty_wf_elctx: Vec<String>,
 
+    // optional override for ty_ghost_drop
+    ty_ghost_drop: Option<coq::iris::IProp>,
+
     // whether this type has trivial drop
     ty_trivial_drop: bool,
 
@@ -228,6 +231,22 @@ impl Spec {
         out
     }
 
+    fn assemble_ghost_drop(&self) -> Option<String> {
+        let gd = self.ty_ghost_drop.as_ref()?;
+
+        let mut out = String::with_capacity(200);
+
+        write!(
+            out,
+            "λ π _ (_rfn_binder : RT_rt ({}%type : RT)),
+            let '{} := _rfn_binder in {gd} ∗ True",
+            self.rfn_type, self.rfn_pat,
+        )
+        .unwrap();
+
+        Some(out)
+    }
+
     pub(crate) fn generate_coq_invariant_def(&self, scope: &GenericScope<'_>, base_rfn_type: &str) -> String {
         if self.flags == SpecFlags::Persistent {
             assert!(self.invariants.iter().all(|it| it.1 == Mode::All) && self.ty_own_invariants.is_empty());
@@ -299,43 +318,97 @@ impl Spec {
                 // If there are no specific invariants given just for owned/shared ownership, use
                 // automatic inference of the sharing predicate
                 if self.invariants.iter().all(|(_, mode)| *mode == Mode::All) {
-                    write!(
-                        out,
-                        "{scope} mk_auto_ex_inv_def\n\
-                        {indent}{indent}({own_inv})%I\n\
-                        {indent}{indent}({trivial_drop})\n\
-                        {indent}{indent}({lft_outlives})\n\
-                        {indent}{indent}({lft_wf_elctx})\n\
-                        {indent}{indent}_ _ _ _\n\
-                        {indent}.\n",
-                    )
-                    .unwrap();
-                    write!(out, "{indent}Next Obligation. ex_plain_t_solve_shr_auto. Defined.\n").unwrap();
-                    write!(out, "{indent}Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.\n")
+                    if let Some(gd) = self.assemble_ghost_drop() {
+                        write!(
+                            out,
+                            "{scope} mk_ex_inv_def_auto_shr\n\
+                            {indent}{indent}({own_inv})%I\n\
+                            {indent}{indent}({gd})%I\n\
+                            {indent}{indent}({trivial_drop})\n\
+                            {indent}{indent}({lft_outlives})\n\
+                            {indent}{indent}({lft_wf_elctx})\n\
+                            {indent}{indent}_ _ _ _\n\
+                            {indent}.\n",
+                        )
                         .unwrap();
-                    write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
-                    write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr_mono. Qed.\n")
+                        write!(out, "{indent}Next Obligation. ex_plain_t_solve_shr_auto. Defined.\n")
+                            .unwrap();
+                        write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
+                        write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr_mono. Qed.\n")
+                            .unwrap();
+                        write!(
+                            out,
+                            "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_ghost_drop. Qed.\n"
+                        )
                         .unwrap();
+                    } else {
+                        write!(
+                            out,
+                            "{scope} mk_auto_ex_inv_def\n\
+                            {indent}{indent}({own_inv})%I\n\
+                            {indent}{indent}({trivial_drop})\n\
+                            {indent}{indent}({lft_outlives})\n\
+                            {indent}{indent}({lft_wf_elctx})\n\
+                            {indent}{indent}_ _ _ _\n\
+                            {indent}.\n",
+                        )
+                        .unwrap();
+                        write!(out, "{indent}Next Obligation. ex_plain_t_solve_shr_auto. Defined.\n")
+                            .unwrap();
+                        write!(out, "{indent}Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.\n")
+                            .unwrap();
+                        write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
+                        write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr_mono. Qed.\n")
+                            .unwrap();
+                    }
                 } else {
-                    write!(
-                        out,
-                        "{scope} mk_ex_inv_def_auto_ghost_drop\n\
-                        {indent}{indent}({own_inv})%I\n\
-                        {indent}{indent}({shr_inv})%I\n\
-                        {indent}{indent}({trivial_drop})\n\
-                        {indent}{indent}_\n\
-                        {indent}{indent}({lft_outlives})\n\
-                        {indent}{indent}({lft_wf_elctx})\n\
-                        {indent}{indent}_ _ _\n\
-                        {indent}.\n",
-                    )
-                    .unwrap();
-                    write!(out, "{indent}Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.\n")
+                    if let Some(gd) = self.assemble_ghost_drop() {
+                        write!(
+                            out,
+                            "{scope} mk_ex_inv_def\n\
+                            {indent}{indent}({own_inv})%I\n\
+                            {indent}{indent}({shr_inv})%I\n\
+                            {indent}{indent}({gd})%I\n\
+                            {indent}{indent}({trivial_drop})\n\
+                            {indent}{indent}_\n\
+                            {indent}{indent}({lft_outlives})\n\
+                            {indent}{indent}({lft_wf_elctx})\n\
+                            {indent}{indent}_ _ _\n\
+                            {indent}.\n",
+                        )
                         .unwrap();
-                    write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
-                    write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr_mono. Qed.\n")
+                        write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
+                        write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr_mono. Qed.\n")
+                            .unwrap();
+                        write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr. Qed.\n")
+                            .unwrap();
+                        write!(
+                            out,
+                            "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_ghost_drop. Qed.\n"
+                        )
                         .unwrap();
-                    write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr. Qed.\n").unwrap();
+                    } else {
+                        write!(
+                            out,
+                            "{scope} mk_ex_inv_def_auto_ghost_drop\n\
+                            {indent}{indent}({own_inv})%I\n\
+                            {indent}{indent}({shr_inv})%I\n\
+                            {indent}{indent}({trivial_drop})\n\
+                            {indent}{indent}_\n\
+                            {indent}{indent}({lft_outlives})\n\
+                            {indent}{indent}({lft_wf_elctx})\n\
+                            {indent}{indent}_ _ _\n\
+                            {indent}.\n",
+                        )
+                        .unwrap();
+                        write!(out, "{indent}Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.\n")
+                            .unwrap();
+                        write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
+                        write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr_mono. Qed.\n")
+                            .unwrap();
+                        write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr. Qed.\n")
+                            .unwrap();
+                    }
                 }
             },
             SpecFlags::NonAtomic => {

@@ -1105,7 +1105,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         if attrs::has_tool_attr_filtered(&outer_attrs, "refined_by") {
             let mut spec_parser = struct_spec_parser::VerboseInvariantSpecParser::new(state.param_scope());
             let res = spec_parser
-                .parse_invariant_spec(struct_name, has_trivial_drop, self.tcx.def_span(ty.def_id), &outer_attrs)
+                .parse_invariant_spec(
+                    struct_name,
+                    has_trivial_drop,
+                    self.tcx.def_span(ty.def_id),
+                    &outer_attrs,
+                )
                 .map_err(|err| {
                     let err =
                         self.tcx.dcx().span_err(err.span, error::Message::StructInvariantSpecParse(err.err));
