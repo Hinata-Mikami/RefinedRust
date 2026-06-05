@@ -272,6 +272,8 @@ Record type `{!typeGS Σ} (rt : RT) := {
 
   _ty_ghost_drop : thread_id → rt → iProp Σ;
 
+  ty_trivial_drop : bool;
+
   (** If we specify a particular op_type, its layout needs to be compatible with the underlying syntactic type.
     In particular, this needs to be independent of the metadata -- forcing [ty_has_op_type] for unsized types to be [False].
   *)
@@ -342,6 +344,7 @@ Record type `{!typeGS Σ} (rt : RT) := {
 }.
 Arguments ty_own_val : simpl never.
 Arguments ty_shr : simpl never.
+Arguments ty_trivial_drop {_ _ _}.
 #[export] Existing Instance ty_sidecond_timeless.
 #[export] Existing Instance ty_sidecond_persistent.
 #[export] Existing Instance ty_xt_inhabited.
@@ -576,6 +579,7 @@ Program Definition ty_of_st `{!typeGS Σ} rt (st : simple_type rt) : type rt :=
         ⌜syn_type_has_layout st.(st_syn_type) ly⌝ ∗
         ⌜l `has_layout_loc` ly⌝)%I;
     _ty_ghost_drop π r := True%I;
+    ty_trivial_drop := true;
      _ty_lfts := [];
      _ty_wf_E := [];
   |}.
@@ -2713,6 +2717,8 @@ End enum.
 Record ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := mk_ex_inv_def' {
   inv_xr_inh : Inhabited (RT_xt Y);
 
+  inv_trivial_drop : bool;
+
   inv_P : thread_id → X → Y → iProp Σ;
   inv_P_shr : thread_id → lft → X → Y → iProp Σ;
   inv_P_ghost_drop : thread_id → X → Y → iProp Σ;
@@ -2742,14 +2748,16 @@ Definition mk_ex_inv_def `{!typeGS Σ} {X Y : RT} `{!Inhabited (RT_xt Y)}
   (inv_P : thread_id → X → Y → iProp Σ)
   (inv_P_shr : thread_id → lft → X → Y → iProp Σ)
   (inv_P_ghost_drop : thread_id → X → Y → iProp Σ)
+  (inv_trivial_drop : bool)
   inv_P_lfts
   (inv_P_wf_E : elctx)
   (inv_P_shr_pers : TCNoResolve (∀ (π : thread_id) (κ : lft) (x : X) (y : Y), Persistent (inv_P_shr π κ x y)))
   inv_P_shr_mono
   inv_P_share
   inv_P_drop
-  := mk_ex_inv_def' _ _ _ _ _ inv_P inv_P_shr inv_P_ghost_drop inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share inv_P_drop.
+  := mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop inv_P inv_P_shr inv_P_ghost_drop inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share inv_P_drop.
 Global Arguments inv_P {_ _ _ _}.
+Global Arguments inv_trivial_drop {_ _ _ _}.
 Global Arguments inv_P_shr {_ _ _ _}.
 Global Arguments inv_P_ghost_drop {_ _ _ _}.
 Global Arguments inv_P : simpl never.
@@ -2764,8 +2772,9 @@ Global Existing Instance inv_P_shr_pers.
 
 (** Smart constructor for persistent and timeless [P] *)
 Program Definition mk_pers_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabited (RT_xt Y)} (P : X → Y → iProp Σ)
+  (inv_trivial_drop : bool)
   (_: TCNoResolve (∀ x y, Persistent (P x y))) (_: TCNoResolve (∀ x y, Timeless (P x y))) : ex_inv_def X Y :=
-  mk_ex_inv_def (λ _, P) (λ _ _, P) (λ _, P) [] [] _ _ _ _.
+  mk_ex_inv_def (λ _, P) (λ _ _, P) (λ _, P) inv_trivial_drop [] [] _ _ _ _.
 Next Obligation.
   rewrite /TCNoResolve.
   eauto with iFrame.
@@ -2775,14 +2784,16 @@ Next Obligation.
 Qed.
 Next Obligation.
   rewrite /TCNoResolve.
-  iIntros (????? P ?? F ? κ x y q ?) "#CTX Hna Htok Hb".
+  intros ????? P ??? F ? κ x y q ?.
+  iIntros "#CTX Hna Htok Hb".
   iDestruct "CTX" as "(LFT & LLCTX)".
   iApply fupd_logical_step.
   rewrite right_id. iMod (bor_persistent with "LFT Hb Htok") as "(>HP & Htok)"; first done.
   iApply logical_step_intro. by iFrame.
 Qed.
 Next Obligation.
-  iIntros (?????????? x y ?) "HP".
+  intros ????? P ??? F π x y ?.
+  iIntros "HP".
   iApply logical_step_intro. done.
 Qed.
 Global Arguments mk_pers_ex_inv_def : simpl never.
@@ -2821,21 +2832,23 @@ Program Definition mk_ex_inv_def_auto_ghost_drop `{!typeGS Σ} {X Y : RT} `{!Inh
   (inv_P : thread_id → X → Y → iProp Σ)
   (inv_P_shr : thread_id → lft → X → Y → iProp Σ)
   (Hdrop : ∀ π x y, TCNoResolve (GhostDroppable (inv_P π x y)))
+  (inv_trivial_drop : bool)
   inv_P_lfts
   (inv_P_wf_E : elctx)
   (inv_P_shr_pers : TCNoResolve (∀ (π : thread_id) (κ : lft) (x : X) (y : Y), Persistent (inv_P_shr π κ x y)))
   inv_P_shr_mono
   inv_P_share
-  := mk_ex_inv_def' _ _ _ _ _ inv_P inv_P_shr (λ π x y, (Hdrop π x y).(ghost_droppable_prop)) inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share _.
+  := mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop inv_P inv_P_shr (λ π x y, (Hdrop π x y).(ghost_droppable_prop)) inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share _.
 Next Obligation.
   simpl.
-  iIntros (??????? Hdrop ??????????).
+  intros ??????? Hdrop ?????????? Hsub.
   iIntros "HP".
   iApply ((Hdrop π x y).(ghost_droppable_proof) with "HP"); first done.
 Qed.
 
 (** Smart constructor to auto derive the sharing predicate and the ghost drop predicate *)
 Program Definition mk_auto_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabited (RT_xt Y)} (P : thread_id → X → Y → iProp Σ)
+  (inv_trivial_drop : bool)
   (inv_P_lfts : list lft)
   (inv_P_wf_E : elctx)
   (Hshr : ∀ π κ x y, TCNoResolve (Shareable π κ inv_P_lfts (P π x y)))
@@ -2843,22 +2856,46 @@ Program Definition mk_auto_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabit
   inv_P_shr_pers
   inv_P_shr_mono
   : ex_inv_def X Y :=
-  mk_ex_inv_def P (λ π κ x y, (Hshr π κ x y).(shareable_prop)) (λ π x y, (Hdrop π x y).(ghost_droppable_prop)) inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _ _.
+  mk_ex_inv_def P (λ π κ x y, (Hshr π κ x y).(shareable_prop)) (λ π x y, (Hdrop π x y).(ghost_droppable_prop)) inv_trivial_drop inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _ _.
 Next Obligation.
   simpl.
-  iIntros (???????? Hshr ? ? ? ? π κ x y ??).
-  iIntros "CTX Hna Htok Hb".
+  intros ???????? Hshr ? ? ? ? π κ x y q ?.
+  iIntros (?) "CTX Hna Htok Hb".
   rewrite -lft_tok_sep.
   iDestruct "Htok" as "(Htok & Htok1)".
-  iApply ((Hshr π κ x y).(shareable_proof) with "CTX Hna Htok Htok1 Hb"); first done.
+  iApply ((Hshr0 κ x y q).(shareable_proof) with "CTX Hna Htok Htok1 Hb"); first done.
   iApply logical_step_intro.
   eauto.
 Qed.
 Next Obligation.
   simpl.
-  iIntros (???????? ? Hdrop ? ? ? π x y ?).
-  iIntros "HP".
-  iApply ((Hdrop π x y).(ghost_droppable_proof) with "HP"); first done.
+  intros ???????? ? Hdrop ? ? ? π x y ?.
+  iIntros (?) "HP".
+  iApply ((Hdrop0 x y y0).(ghost_droppable_proof) with "HP"); first done.
+Qed.
+
+(** Smart constructor to auto derive the sharing predicate *)
+Program Definition mk_ex_inv_def_auto_shr `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabited (RT_xt Y)}
+  (P : thread_id → X → Y → iProp Σ)
+  (Hdrop : thread_id → X → Y → iProp Σ)
+  (inv_trivial_drop : bool)
+  (inv_P_lfts : list lft)
+  (inv_P_wf_E : elctx)
+  (Hshr : ∀ π κ x y, TCNoResolve (Shareable π κ inv_P_lfts (P π x y)))
+  inv_P_shr_pers
+  inv_P_shr_mono
+  inv_P_ghost_droppable
+  : ex_inv_def X Y :=
+  mk_ex_inv_def P (λ π κ x y, (Hshr π κ x y).(shareable_prop)) Hdrop inv_trivial_drop inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _ inv_P_ghost_droppable.
+Next Obligation.
+  simpl.
+  intros ????????? Hshr ? ? ? ? π κ x y q ?.
+  iIntros (?) "CTX Hna Htok Hb".
+  rewrite -lft_tok_sep.
+  iDestruct "Htok" as "(Htok & Htok1)".
+  iApply ((Hshr0 κ x y q).(shareable_proof) with "CTX Hna Htok Htok1 Hb"); first done.
+  iApply logical_step_intro.
+  eauto.
 Qed.
 
 Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y : RT} (F : type rt → ex_inv_def X Y) : Type := {

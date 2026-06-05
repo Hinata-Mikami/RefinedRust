@@ -79,6 +79,7 @@ pub(crate) trait InvariantSpecParser {
     fn parse_invariant_spec<'a>(
         &'a mut self,
         struct_name: &str,
+        has_trivial_drop: bool,
         span: Span,
         attrs: &'a [&'a hir::AttrItem],
     ) -> Result<(specs::invariants::Spec, bool), SpannedError<ParserError>>;
@@ -257,6 +258,7 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
     fn parse_invariant_spec<'a>(
         &'a mut self,
         struct_name: &str,
+        has_trivial_drop: bool,
         span: Span,
         attrs: &'a [&'a hir::AttrItem],
     ) -> Result<(specs::invariants::Spec, bool), SpannedError<ParserError>> {
@@ -404,6 +406,7 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
             type_invariants,
             ty_lfts,
             ty_wf_elctx,
+            has_trivial_drop,
             abstracted_refinement,
             params,
         );

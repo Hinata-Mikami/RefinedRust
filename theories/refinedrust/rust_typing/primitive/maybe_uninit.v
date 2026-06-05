@@ -23,6 +23,7 @@ Section type.
      which is a union and thus would also get the place wrapper. *)
   Program Definition maybe_uninit {rt} (T : type rt) : type (option (place_rfn rt)) := {|
     ty_metadata_kind := T.(ty_metadata_kind);
+    ty_trivial_drop := true;
     ty_own_val := @maybe_uninit_own_val rt T;
     ty_syn_type := T.(ty_syn_type);
     _ty_has_op_type ot mt :=

@@ -94,6 +94,7 @@ Section union.
   Program Definition active_union_t {rt} (ty : type rt) (variant : string) (uls : union_layout_spec) : type rt := {|
     ty_xt_inhabited := ty_xt_inhabited ty;
     ty_metadata_kind := MetadataNone;
+    ty_trivial_drop := ty.(ty_trivial_drop);
     ty_own_val π r m v :=
       (∃ ul ly,
         ⌜m = MetaNone⌝ ∗
@@ -321,6 +322,7 @@ Section enum.
   Program Definition enum_t {rt} (e : enum rt) : type rt := {|
     ty_xt_inhabited := enum_xt_inhabited e;
     ty_metadata_kind := MetadataNone;
+    ty_trivial_drop := true;
     ty_own_val π r m v :=
       (∃ el tag,
       ⌜m = MetaNone⌝ ∗

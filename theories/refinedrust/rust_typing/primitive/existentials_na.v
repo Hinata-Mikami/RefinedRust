@@ -69,6 +69,8 @@ Global Typeclasses Opaque na_bor.
 Record na_ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := na_mk_ex_inv_def' {
   na_inv_xr_inh : Inhabited (RT_xt Y);
 
+  na_inv_trivial_drop : bool;
+
   (* NOTE: Make persistent part (Timeless) + non-persistent part inside &na *)
   na_inv_P : thread_id → X → Y → iProp Σ;
 
@@ -79,12 +81,14 @@ Record na_ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := na_mk_ex_inv_def'
 (* Stop Typeclass resolution for the [inv_P_pers] argument, to make it more deterministic. *)
 Definition na_mk_ex_inv_def `{!typeGS Σ} {X Y : RT} `{!Inhabited (RT_xt Y)}
   (inv_P : thread_id → X → Y → iProp Σ)
+  (inv_trivial_drop : bool)
   inv_P_lfts
   (inv_P_wf_E : elctx)
   := na_mk_ex_inv_def' _ _ _ _ _
-       inv_P inv_P_lfts inv_P_wf_E.
+       inv_trivial_drop inv_P inv_P_lfts inv_P_wf_E.
 
 Global Arguments na_inv_P {_ _ _ _}.
+Global Arguments na_inv_trivial_drop {_ _ _ _}.
 Global Arguments na_inv_P_lfts {_ _ _ _}.
 Global Arguments na_inv_P_wf_E {_ _ _ _}.
 Global Arguments na_inv_P : simpl never.
@@ -93,8 +97,9 @@ Global Arguments na_inv_P : simpl never.
 Program Definition na_mk_pers_ex_inv_def
   `{!typeGS Σ} {X : RT} {Y : RT}
   `{!Inhabited (RT_xt Y)}
-  (P : X → Y → iProp Σ) :=
-    na_mk_ex_inv_def (λ _, P) [] [] (* _ *).
+  (P : X → Y → iProp Σ)
+  (inv_trivial_drop : bool) :=
+    na_mk_ex_inv_def (λ _, P) inv_trivial_drop [] [] (* _ *).
 
 Class NaExInvDefNonExpansive `{!typeGS Σ} {rt X Y : RT} (F : type rt → na_ex_inv_def X Y) : Type := {
   ex_inv_def_ne_lft_mor : DirectLftMorphism (λ ty, (F ty).(na_inv_P_lfts)) (λ ty, (F ty).(na_inv_P_wf_E));
@@ -145,6 +150,7 @@ Section na_ex.
 
   Program Definition na_ex_plain_t (ty : type X) : type Y := {|
     ty_metadata_kind := ty.(ty_metadata_kind);
+    ty_trivial_drop := P.(na_inv_trivial_drop) && ty.(ty_trivial_drop);
     ty_own_val π r m v := ∃ x : X, P.(na_inv_P) π x r ∗ ty.(ty_own_val) π x m v;
     ty_shr κ π r m l :=
       (* TODO: Add persistant part that cannot depends on the refined value *)

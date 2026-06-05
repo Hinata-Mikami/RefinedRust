@@ -55,7 +55,7 @@ Section def.
   Context `{!refinedrustGS Σ}.
 
   Program Definition core_marker_PhantomData_inv {T_rt : RT} (T_ty : type T_rt) : ex_inv_def (plist place_rfnRT []) unitRT :=
-    mk_ex_inv_def (λ  _ _ _, True)%I (λ _ _ _ _, True)%I (λ _ _ _, True)%I (ty_lfts T_ty) (ty_wf_E T_ty) _ _ _ _.
+    mk_ex_inv_def (λ  _ _ _, True)%I (λ _ _ _ _, True)%I (λ _ _ _, True)%I true (ty_lfts T_ty) (ty_wf_E T_ty) _ _ _ _.
   Next Obligation. intros. unfold TCNoResolve. apply _. Qed.
   Next Obligation. eauto. Qed.
   Next Obligation. simpl. intros ??. ex_plain_t_solve_shr. Qed.

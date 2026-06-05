@@ -11,6 +11,7 @@ Section def.
   (* TODO: this is very similar to array, except for where the length comes from. Can we deduplicate this? *)
   Program Definition slice (ty : type rt) : type (list (place_rfn rt)) := {|
     ty_metadata_kind := MetadataSize;
+    ty_trivial_drop := ty.(ty_trivial_drop);
     ty_own_val π r m v :=
       (∃ len ly,
         ⌜m = MetaSize len⌝ ∗

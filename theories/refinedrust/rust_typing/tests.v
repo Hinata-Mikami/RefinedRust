@@ -1107,6 +1107,7 @@ Section test.
       (λ π (inner_rfn : RawVec_rt) '(l, cap) , ⌜inner_rfn = ( *[#(l); #(Z.of_nat cap); #(tt)])⌝ ∗ True)%I
       (λ π κ inner_rfn '(l, cap), ⌜inner_rfn = *[#(l); #(Z.of_nat cap); #(tt)]⌝ ∗ True)%I
       (λ _ _ _, True)%I
+      true
       ([])
       ([])
       _ _ _ _
@@ -1147,6 +1148,7 @@ Section test.
       (λ π (inner_rfn : Vec_rt) 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = *[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
       (λ π κ inner_rfn 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = *[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
       (λ _ _ _, True)%I
+      true
       ([] ++ (ty_lfts T_ty))
       ([] ++ (ty_wf_E T_ty))
       _ _ _ _

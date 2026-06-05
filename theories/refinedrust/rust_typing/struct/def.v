@@ -228,6 +228,7 @@ Section structs.
   Program Definition struct_t {rts : list RT} (sls : struct_layout_spec) (tys : hlist type rts) : type (plistRT rts) := {|
     (* TODO: support metadata for last struct field *)
     ty_metadata_kind := MetadataNone;
+    ty_trivial_drop := forallb (λ ty, (projT2 ty).(ty_trivial_drop)) (hzipl rts tys);
     ty_own_val := struct_t_own_val _ sls tys;
     ty_sidecond := ⌜length rts = length (sls_fields sls)⌝;
     _ty_has_op_type ot mt :=

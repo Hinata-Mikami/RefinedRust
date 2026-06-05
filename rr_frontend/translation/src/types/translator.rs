@@ -1095,12 +1095,17 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             })?;
         }
 
+        let typing_env = ty::TypingEnv::post_analysis(self.tcx(), ty.def_id);
+        let adt_ty = self.tcx().type_of(ty.def_id).skip_binder();
+        let has_trivial_drop = adt_ty.needs_drop(self.tcx(), typing_env);
+        //let has_trivial_drop = !self.tcx().needs_drop_raw(typing_env.param_env.and(adt_ty));
+
         let expect_refinement;
         let mut invariant_spec;
         if attrs::has_tool_attr_filtered(&outer_attrs, "refined_by") {
             let mut spec_parser = struct_spec_parser::VerboseInvariantSpecParser::new(state.param_scope());
             let res = spec_parser
-                .parse_invariant_spec(struct_name, self.tcx.def_span(ty.def_id), &outer_attrs)
+                .parse_invariant_spec(struct_name, has_trivial_drop, self.tcx.def_span(ty.def_id), &outer_attrs)
                 .map_err(|err| {
                     let err =
                         self.tcx.dcx().span_err(err.span, error::Message::StructInvariantSpecParse(err.err));

@@ -24,6 +24,7 @@ Section ex.
   Program Definition ex_plain_t (ty : type X) : type Y := {|
     ty_xt_inhabited := _;
     ty_metadata_kind := ty.(ty_metadata_kind);
+    ty_trivial_drop := P.(inv_trivial_drop) && ty.(ty_trivial_drop);
     ty_own_val := ex_plain_own_val ty;
     ty_shr κ π r m l :=
       (∃ x : X, P.(inv_P_shr) π κ x r ∗ ty.(ty_shr) κ π x m l)%I;

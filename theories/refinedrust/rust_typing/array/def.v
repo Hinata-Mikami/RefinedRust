@@ -152,6 +152,7 @@ Section array.
 
   Program Definition array_t (len : nat) (ty : type rt) : type (list (place_rfn rt)) := {|
     ty_metadata_kind := MetadataNone;
+    ty_trivial_drop := ty.(ty_trivial_drop);
     ty_own_val := array_t_own_val len ty;
     ty_shr := array_t_shr len ty;
     ty_syn_type _ := ArraySynType (ty.(ty_syn_type) MetaNone) len;

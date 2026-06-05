@@ -46,6 +46,7 @@ Section mut_ref.
   Program Definition mut_ref  {rt : RT} (κ : lft) (inner : type rt) : type (place_rfn rt * gname)%type := {|
     ty_sidecond := True;
     ty_metadata_kind := MetadataNone;
+    ty_trivial_drop := true;
     ty_own_val := mut_ref_own_val _ κ inner;
 
     _ty_has_op_type ot mt := is_ptr_ot ot;

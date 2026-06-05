@@ -44,6 +44,7 @@ Section shr_ref.
   Program Definition shr_ref {rt : RT} κ (inner : type rt) : type (place_rfn rt) := {|
     ty_sidecond := True;
     ty_metadata_kind := MetadataNone;
+    ty_trivial_drop := true;
     ty_own_val := shr_ref_own_val _ κ inner;
 
     _ty_has_op_type ot mt := is_ptr_ot ot;

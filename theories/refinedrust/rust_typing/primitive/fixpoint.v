@@ -168,6 +168,7 @@ Section fixpoint_def.
   Program Definition type_fixpoint : type rt := {|
     ty_xt_inhabited := (Fn 0).(ty_xt_inhabited);
     ty_metadata_kind := (Fn 0).(ty_metadata_kind);
+    ty_trivial_drop := (Fn 0).(ty_trivial_drop);
     ty_syn_type := (Fn 0).(ty_syn_type);
     _ty_has_op_type := (Fn 0).(_ty_has_op_type _);
     ty_own_val := F_ty_own_val_ty_shr_fixpoint.1;

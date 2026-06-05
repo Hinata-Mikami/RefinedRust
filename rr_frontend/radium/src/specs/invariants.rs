@@ -56,6 +56,9 @@ pub struct Spec {
     // additional ty_wf_elctx
     ty_wf_elctx: Vec<String>,
 
+    // whether this type has trivial drop
+    ty_trivial_drop: bool,
+
     /// the specification of the abstracted refinement under a context where `rfn_pat` is bound
     pub(crate) abstracted_refinement: Option<coq::binder::Pattern>,
 
@@ -267,6 +270,7 @@ impl Spec {
             },
         }
 
+        let trivial_drop = self.ty_trivial_drop;
         match self.flags {
             SpecFlags::Persistent => {
                 let inv = self.assemble_pers_invariant();
@@ -299,6 +303,7 @@ impl Spec {
                         out,
                         "{scope} mk_auto_ex_inv_def\n\
                         {indent}{indent}({own_inv})%I\n\
+                        {indent}{indent}({trivial_drop})\n\
                         {indent}{indent}({lft_outlives})\n\
                         {indent}{indent}({lft_wf_elctx})\n\
                         {indent}{indent}_ _ _ _\n\
@@ -317,6 +322,7 @@ impl Spec {
                         "{scope} mk_ex_inv_def_auto_ghost_drop\n\
                         {indent}{indent}({own_inv})%I\n\
                         {indent}{indent}({shr_inv})%I\n\
+                        {indent}{indent}({trivial_drop})\n\
                         {indent}{indent}_\n\
                         {indent}{indent}({lft_outlives})\n\
                         {indent}{indent}({lft_wf_elctx})\n\
@@ -341,6 +347,7 @@ impl Spec {
                     out,
                     "{scope} na_mk_ex_inv_def\n\
                     {indent}{indent}({own_inv})%I\n\
+                    {indent}{indent}({trivial_drop})\n\
                     {indent}{indent}({lft_outlives})\n\
                     {indent}{indent}({lft_wf_elctx})\n\
                     {indent}.\n",
