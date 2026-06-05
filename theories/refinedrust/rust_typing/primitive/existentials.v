@@ -92,9 +92,10 @@ Section ex.
   Qed.
   Next Obligation.
     rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
-    iIntros (ty π r m v F ?) "(%x & HP & Ha)".
-    iPoseProof (ty_own_ghost_drop with "Ha") as "Ha"; first done.
-    iPoseProof (inv_P_drop with "HP") as "HP"; first done.
+    iIntros (ty π r m v F ? Hdrop) "(%x & HP & Ha)".
+    apply andb_true_iff in Hdrop as [HPdrop Htydrop].
+    iPoseProof (ty_own_ghost_drop_trivial with "Ha") as "Ha"; [done | done | ].
+    iPoseProof (inv_P_drop_trivial with "HP") as "HP"; [done | done | ].
     iApply (logical_step_compose with "Ha").
     iApply (logical_step_compose with "HP").
     iApply logical_step_intro.

@@ -3613,7 +3613,7 @@ Section subsume.
   *)
   Lemma type_write_ofty_strong E L {rt rt2} π l (ty : type rt) (ty2 : type rt2) r1 (r2 : rt2) v ot `{Hst_eq : !TCDone (ty_syn_type ty MetaNone = ty_syn_type ty2 MetaNone)} (T : typed_write_end_cont_t UpdStrong rt2) :
     (⌜ty_has_op_type ty ot MCNone⌝ ∗
-        (ty_ghost_drop ty2 π r2 -∗ T L rt ty r1 (mkPUKRes (allowed:=UpdStrong) UpdStrong I I)))
+        (ty_ghost_drop' ty2 π r2 -∗ T L rt ty r1 (mkPUKRes (allowed:=UpdStrong) UpdStrong I I)))
     ⊢ typed_write_end π E L ot v ty r1 (Owned) UpdStrong l (◁ ty2) (#r2) T.
   Proof.
     iIntros "(%Hot & HT)".
@@ -3655,7 +3655,7 @@ Section subsume.
       ⌜ty_syn_type ty = ty_syn_type ty2⌝ ∗ (* TODO: would be nice to remove this requirement *)
       ⌜ty_has_op_type ty ot MCNone⌝ ∗ ⌜lctx_bor_kind_alive E L2 b2⌝ ∗
       ⌜bor_kind_writeable b2⌝ ∗
-      (ty_ghost_drop ty2 π r2 -∗
+      (ty_ghost_drop' ty2 π r2 -∗
         T L2 rt ty2 r3 (mkPUKRes UpdBot opt_place_update_eq_refl opt_place_update_eq_refl))))
     ⊢ typed_write_end π E L ot v ty r1 b2 bmin l (◁ ty2) (#r2) T.
   Proof.

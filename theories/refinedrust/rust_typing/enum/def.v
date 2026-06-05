@@ -251,9 +251,10 @@ Section union.
     iApply ty_shr_mono; done.
   Qed.
   Next Obligation.
-    iIntros (??????????) "Hb".
+    iIntros (?????????? Hdrop) "Hb".
     iDestruct "Hb" as "(%ul & %ly & -> & %Halg & %Hly & ? & Hv & _)".
-    iPoseProof (ty_own_ghost_drop with "Hv") as "Ha"; last iApply (logical_step_wand with "Ha"); eauto.
+    iPoseProof (ty_own_ghost_drop_trivial with "Hv") as "Ha"; [done | done | ].
+    iApply (logical_step_wand with "Ha"); eauto.
   Qed.
   Next Obligation.
     intros rt ty variant uls ot mt st π r m v (ul & Hul & ->).

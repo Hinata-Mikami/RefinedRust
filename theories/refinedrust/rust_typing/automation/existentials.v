@@ -204,7 +204,7 @@ Ltac ex_plain_t_solve_ghost_drop :=
   simpl;
   intro_adt_params;
   let π := fresh "π" in
-  iIntros (? π ???);
+  iIntros (? π ????);
   simpl in *;
   prepare_initial_coq_context;
   iIntros "Hb";
@@ -608,7 +608,7 @@ Lemma ltype_own_ofty_ghost_drop `{!typeGS Σ} π F l {rt} (ty : type rt) r :
   lftE ⊆ F →
   l ◁ₗ[π, Owned] r @ (◁ ty) -∗
   ∃ r', place_rfn_interp_owned r r' ∗
-  logical_step F (ty_ghost_drop ty π r').
+  logical_step F (ty_ghost_drop' ty π r').
 Proof.
   intros ?.
   rewrite ltype_own_ofty_unfold/lty_of_ty_own.
@@ -621,7 +621,7 @@ Qed.
 Global Program Instance ghost_droppable_ltype_own `{!typeGS Σ} π l {rt} (ty : type rt) r :
   GhostDroppable (l ◁ₗ[π, Owned] r @ (◁ ty))%I := {|
     ghost_droppable_prop :=
-      ∃ r', place_rfn_interp_owned r r' ∗ ty_ghost_drop ty π r';
+      ∃ r', place_rfn_interp_owned r r' ∗ ty_ghost_drop' ty π r';
   |}.
 Next Obligation.
   iIntros (??? l rt ty r ??) "Hl".

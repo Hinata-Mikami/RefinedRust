@@ -417,7 +417,7 @@ Section structs.
   Qed.
   Next Obligation.
     rewrite struct_t_own_val_unfold.
-    iIntros (rts sls tys π r m v F ?). simpl.
+    iIntros (rts sls tys π r m v F ? Hdrop). simpl.
     iIntros "(%sl & -> & %Halg & %Hlen & %Hlyv & Hv)".
     iPoseProof (big_sepL_to_exists_l with "Hv") as "Hv".
     iPoseProof (pad_struct_focus_no_uninit with "Hv") as "(Hv & _)".
@@ -428,7 +428,13 @@ Section structs.
     iModIntro. iIntros (? [rt [lt r1]] ?).
     iIntros "(%j & % & % & % & % & % & Hv)".
     iDestruct "Hv" as "(% & % & Hrfn & % & % & Hv)".
-    simpl. iPoseProof (ty_own_ghost_drop _ _ _ _ _ F with "Hv") as "Hv"; first done.
+    assert (lt.(ty_trivial_drop) = true) as Htydrop.
+    { apply (hpzipl_lookup_inv_hzipl_pzipl _ _ r) in H0 as [Hlook _].
+      apply Is_true_eq_left in Hdrop.
+      apply forallb_True in Hdrop.
+      eapply Forall_lookup_1 in Hdrop; last done.
+      apply Is_true_eq_true. done. }
+    simpl. iPoseProof (ty_own_ghost_drop_trivial _ _ _ _ _ F with "Hv") as "Hv"; [done | done | ].
     iApply (logical_step_wand with "Hv").
     iIntros "$". done.
   Qed.

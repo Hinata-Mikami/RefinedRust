@@ -23,7 +23,7 @@ Section type.
      which is a union and thus would also get the place wrapper. *)
   Program Definition maybe_uninit {rt} (T : type rt) : type (option (place_rfn rt)) := {|
     ty_metadata_kind := T.(ty_metadata_kind);
-    ty_trivial_drop := true;
+    ty_trivial_drop := T.(ty_trivial_drop);
     ty_own_val := @maybe_uninit_own_val rt T;
     ty_syn_type := T.(ty_syn_type);
     _ty_has_op_type ot mt :=
@@ -117,13 +117,13 @@ Section type.
     iExists _. iFrame. by iApply ty_shr_mono.
   Qed.
   Next Obligation.
-    iIntros (rt ty π r m v F ?) "Hv".
+    iIntros (rt ty π r m v F ? Ht) "Hv".
     rewrite /ty_own_val/= maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
     destruct r as [r' | ]; first last.
     { by iApply logical_step_intro. }
     iDestruct "Hv" as "(%r'' & Hinterp & Hv)".
     iApply (logical_step_wand with "[Hv]").
-    { iApply (ty_own_ghost_drop with "Hv"); done. }
+    { iApply (ty_own_ghost_drop_trivial with "Hv"); done. }
     iIntros "Ha".
     iExists _. iFrame.
   Qed.

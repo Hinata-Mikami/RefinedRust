@@ -280,13 +280,13 @@ Section array.
   Qed.
   Next Obligation.
     rewrite array_t_own_val_unfold.
-    iIntros (len ty π r m v F ?) "(%ly & -> & ? & ? & ? & ? & Hb)".
+    iIntros (len ty π r m v F ? Hdrop) "(%ly & -> & ? & ? & ? & ? & Hb)".
     iAssert (logical_step F $ [∗ list] r'; v' ∈ r; reshape (replicate len (ly_size ly)) v,
       ∃ r'', place_rfn_interp_owned r' r'' ∗ ty_ghost_drop ty π r'')%I with "[Hb]" as "Hb".
     { iApply logical_step_big_sepL2. iApply (big_sepL2_mono with "Hb"). iIntros (? r' ???).
       iIntros "(%r'' & Hrfn & Hb)".
       iApply (logical_step_wand with "[Hb]").
-      { iApply (ty_own_ghost_drop with "Hb"); done. }
+      { iApply (ty_own_ghost_drop_trivial with "Hb"); done. }
       iIntros "Hg". iExists _. iFrame. }
     iApply (logical_step_wand with "Hb").
     iIntros "Hb". iPoseProof (big_sepL2_const_sepL_l with "Hb") as "(_ & $)".

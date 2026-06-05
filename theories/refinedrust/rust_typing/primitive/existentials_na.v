@@ -239,7 +239,7 @@ Qed.
 
   (* ty_own_ghost_drop *)
   Next Obligation.
-    iIntros (???????) "Hv".
+    iIntros (????????) "Hv".
     by iApply logical_step_intro.
   Qed.
 

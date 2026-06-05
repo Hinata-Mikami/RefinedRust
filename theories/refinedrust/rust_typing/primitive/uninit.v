@@ -111,7 +111,7 @@ Section deinit.
   (* First, if the syntype is equal *)
   Lemma owned_subltype_step_ofty_uninit_eq π E L {rt} (lt : ltype rt) r st l `{Hst : !TCDone (ltype_st lt = st)} T :
     owned_subltype_step π E L true l #r #() lt (◁ uninit st) T :-
-    return cast_ltype_to_type E L lt (λ ty, T L (ty_ghost_drop ty π r)).
+    return cast_ltype_to_type E L lt (λ ty, T L (ty_ghost_drop' ty π r)).
   Proof.
     unfold TCDone in Hst. subst st.
     iDestruct 1 as "(%ty & %Heqt & HT)".
@@ -152,7 +152,7 @@ Section deinit.
         ⌜syn_type_has_layout st ly2⌝ -∗
         ⌜l `has_layout_loc` ly1⌝ -∗ ⌜l `has_layout_loc` ly2⌝ ∗
         ⌜ly_size ly1 = ly_size ly2⌝ ∗
-        T L (ty_ghost_drop ty π r)))).
+        T L (ty_ghost_drop' ty π r)))).
   Proof.
     iDestruct 1 as "(%ty & %Heqt & HT)".
     rewrite /compute_layout_goal.

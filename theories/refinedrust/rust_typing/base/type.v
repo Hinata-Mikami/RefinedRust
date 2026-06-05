@@ -314,7 +314,9 @@ Record type `{!typeGS Σ} (rt : RT) := {
     κ' ⊑ κ -∗ ty_shr κ tid r m l -∗ ty_shr κ' tid r m l;
 
   _ty_own_ghost_drop π r m v F :
-    lftE ⊆ F → ty_own_val π r m v -∗ logical_step F (_ty_ghost_drop π r);
+    lftE ⊆ F →
+    ty_trivial_drop = true →
+    ty_own_val π r m v -∗ logical_step F (_ty_ghost_drop π r);
 
   (** We can transport value ownership over memcasts according to the specification by [ty_has_op_type] *)
   _ty_memcast_compat ot mt st π r m v :
@@ -410,11 +412,27 @@ Definition ty_ghost_drop `{!typeGS Σ} := ty_ghost_drop_aux.(unseal).
 Definition ty_ghost_drop_unfold `{!typeGS Σ} : @ty_ghost_drop _ _ = @_ty_ghost_drop _ _ := ty_ghost_drop_aux.(seal_eq).
 Arguments ty_ghost_drop {_ _ _}.
 
+Definition ty_ghost_drop' `{!typeGS Σ} {rt} (ty : type rt) π r : iProp Σ :=
+  if ty.(ty_trivial_drop) then ty_ghost_drop ty π r else True%I.
+
 Lemma ty_own_ghost_drop `{!typeGS Σ} {rt} (ty : type rt) π r m v F :
-  lftE ⊆ F → ty_own_val ty π r m v -∗ logical_step F (ty_ghost_drop ty π r).
+  lftE ⊆ F → ty_own_val ty π r m v -∗ logical_step F (ty_ghost_drop' ty π r).
 Proof.
-  rewrite ty_ghost_drop_unfold. apply _ty_own_ghost_drop.
+  rewrite /ty_ghost_drop'.
+  rewrite ty_ghost_drop_unfold.
+  destruct (ty_trivial_drop ty) eqn:Heq.
+  - intros. by apply _ty_own_ghost_drop.
+  - iIntros (?) "Hown". by iApply logical_step_intro.
 Qed.
+Lemma ty_own_ghost_drop_trivial `{!typeGS Σ} {rt} (ty : type rt) π r m v F :
+  lftE ⊆ F →
+  ty.(ty_trivial_drop) = true →
+  ty_own_val ty π r m v -∗ logical_step F (ty_ghost_drop ty π r).
+Proof.
+  rewrite ty_ghost_drop_unfold.
+  intros. by apply _ty_own_ghost_drop.
+Qed.
+
 
 (** We seal [ty_wf_E] in order to avoid performance issues with Qed time. *)
 Definition ty_wf_E_aux `{!typeGS Σ} : seal (@_ty_wf_E _ _). Proof. by eexists. Qed.
@@ -2740,6 +2758,7 @@ Record ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := mk_ex_inv_def' {
    logical_step F (inv_P_shr π κ x y ∗ q.[κ ⊓ κ']);
   inv_P_drop F π x y :
     lftE ⊆ F →
+    inv_trivial_drop = true →
     inv_P π x y -∗
     logical_step F (inv_P_ghost_drop π x y);
 }.
@@ -2770,6 +2789,25 @@ Global Arguments inv_P_shr_mono {_ _ _ _ _}.
 Global Arguments inv_P_shr_pers {_ _ _ _ _}.
 Global Existing Instance inv_P_shr_pers.
 
+Definition inv_P_ghost_drop' `{!typeGS Σ} {X Y : RT} (P : ex_inv_def X Y) π x y : iProp Σ :=
+  if P.(inv_trivial_drop) then P.(inv_P_ghost_drop) π x y else True%I.
+
+Lemma inv_P_drop' `{!typeGS Σ} {X Y : RT} (P : ex_inv_def X Y) F π x y :
+  lftE ⊆ F →
+  P.(inv_P) π x y -∗ logical_step F (inv_P_ghost_drop' P π x y).
+Proof.
+  rewrite /inv_P_ghost_drop'.
+  destruct (P.(inv_trivial_drop)) eqn:Heq.
+  - intros. by apply inv_P_drop.
+  - iIntros (?) "_". by iApply logical_step_intro.
+Qed.
+
+Lemma inv_P_drop_trivial `{!typeGS Σ} {X Y : RT} (P : ex_inv_def X Y) F π x y :
+  lftE ⊆ F →
+  P.(inv_trivial_drop) = true →
+  P.(inv_P) π x y -∗ logical_step F (P.(inv_P_ghost_drop) π x y).
+Proof. intros. by apply inv_P_drop. Qed.
+
 (** Smart constructor for persistent and timeless [P] *)
 Program Definition mk_pers_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabited (RT_xt Y)} (P : X → Y → iProp Σ)
   (inv_trivial_drop : bool)
@@ -2792,7 +2830,7 @@ Next Obligation.
   iApply logical_step_intro. by iFrame.
 Qed.
 Next Obligation.
-  intros ????? P ??? F π x y ?.
+  intros ????? P ??? F π x y ? ?.
   iIntros "HP".
   iApply logical_step_intro. done.
 Qed.
@@ -2841,7 +2879,7 @@ Program Definition mk_ex_inv_def_auto_ghost_drop `{!typeGS Σ} {X Y : RT} `{!Inh
   := mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop inv_P inv_P_shr (λ π x y, (Hdrop π x y).(ghost_droppable_prop)) inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share _.
 Next Obligation.
   simpl.
-  intros ??????? Hdrop ?????????? Hsub.
+  intros ??????? Hdrop ?????????? Hsub ?.
   iIntros "HP".
   iApply ((Hdrop π x y).(ghost_droppable_proof) with "HP"); first done.
 Qed.
@@ -2869,8 +2907,8 @@ Next Obligation.
 Qed.
 Next Obligation.
   simpl.
-  intros ???????? ? Hdrop ? ? ? π x y ?.
-  iIntros (?) "HP".
+  intros ???????? ? Hdrop ? ? ? π x y ? ? ?.
+  iIntros "HP".
   iApply ((Hdrop0 x y y0).(ghost_droppable_proof) with "HP"); first done.
 Qed.
 

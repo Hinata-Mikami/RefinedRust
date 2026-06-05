@@ -219,7 +219,7 @@ Section mut_ref.
   Qed.
   Next Obligation.
     rewrite mut_ref_own_val_unfold.
-    iIntros (????[r γ]????) "(%l & %ly & -> & %Hv & _ & _ & _ & _ & Hrfn & Hcred &  _)".
+    iIntros (????[r γ]???? ?) "(%l & %ly & -> & %Hv & _ & _ & _ & _ & Hrfn & Hcred &  _)".
     iApply fupd_logical_step. destruct r as [ r | γ'].
     - iMod (gvar_obs_persist with "Hrfn") as "?".
       iApply logical_step_intro. by iFrame.
