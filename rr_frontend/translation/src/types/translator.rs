@@ -1169,8 +1169,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         let typing_env = ty::TypingEnv::post_analysis(self.tcx(), ty.def_id);
         let adt_ty = self.tcx().type_of(ty.def_id).skip_binder();
-        let has_trivial_drop = adt_ty.needs_drop(self.tcx(), typing_env);
-        //let has_trivial_drop = !self.tcx().needs_drop_raw(typing_env.param_env.and(adt_ty));
+        let has_trivial_drop = !adt_ty.needs_drop(self.tcx(), typing_env);
 
         let expect_refinement;
         let mut invariant_spec;

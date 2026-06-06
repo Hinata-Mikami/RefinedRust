@@ -206,6 +206,7 @@ Ltac ex_plain_t_solve_ghost_drop :=
   let π := fresh "π" in
   iIntros (? π ????);
   simpl in *;
+  try done;
   prepare_initial_coq_context;
   iIntros "Hb";
   let ty := iTypeOf' "Hb" in
