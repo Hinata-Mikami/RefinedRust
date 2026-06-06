@@ -482,9 +482,7 @@ Section na_subtype.
 
   Lemma typed_place_na_ex_plain_t_owned E L f l (ty : type rt) x K `{!TCDone (K ≠ [])} T :
     (∀ r, introduce_with_hooks E L (P.(na_inv_P) f.1 r x)
-      (λ L2, typed_place E L2 f l
-              (OpenedLtype (◁ ty) (◁ ty) (◁ (∃na; P, ty)) (λ (r : rt) (x : X), P.(na_inv_P) f.1 r x) (λ r x, True))
-              (#r) UpdStrong (Owned) K
+      (λ L2, typed_place E L2 f l (◁ ty) (#r) UpdStrong (Owned) K
         (λ L2 κs li b2 bmin' rti ltyi ri updcx,
           T L2 κs li b2 bmin' rti ltyi ri
             (λ L3 upd cont, updcx L3 upd (λ upd',
@@ -499,8 +497,7 @@ Section na_subtype.
     (* Nothing has changed *)
     iIntros "HT". iIntros (F ???) "#CTX #HE HL Hf Hb Hcont".
     iApply fupd_place_to_wp.
-    iMod (na_ex_plain_t_acc_owned with "Hb") as "(%r & HP & Hb & Hcl)"; first done.
-    iPoseProof ("Hcl" with "Hb []") as "Hb"; first done.
+    iMod (na_ex_plain_t_acc_owned with "Hb") as "(%r & HP & Hb & _)"; first done.
     iMod ("HT" with "[] CTX HE HL HP") as "(%L2 & HL & HT)"; first done.
     iApply ("HT" with "[//] [//] CTX HE HL Hf Hb").
     iModIntro. iIntros (L' κs l2 b2 bmin0 rti ltyi ri updcx) "Hl Hc".
