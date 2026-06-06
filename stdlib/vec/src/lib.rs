@@ -89,7 +89,7 @@ impl<A: Allocator> RawVecInner<A> {
 
 
 // TODO: maybe expose a value interface instead
-#[rr::trust_me(drop_glue)]
+#[rr::only_spec(drop_glue)]
 #[rr::export_as(alloc::raw_vec::RawVec)]
 #[rr::refined_by("(l, cap, els)" : "(loc * nat * list (place_rfn (option (place_rfn {rt_of T}))))")]
 #[rr::exists("a")]
@@ -120,7 +120,7 @@ impl<T, A: Allocator> Drop for RawVec<T, A> {
 }
 
 // Uses the invariant from our "MiniVec" case study.
-#[rr::trust_me(drop_glue)]
+#[rr::only_spec(drop_glue)]
 #[rr::export_as(alloc::vec::Vec)]
 #[rr::refined_by("xs" : "list (place_rfn {rt_of T})")]
 #[rr::exists("cap" : "nat", "l" : "loc", "len" : "nat", "els")]

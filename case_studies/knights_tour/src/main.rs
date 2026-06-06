@@ -80,6 +80,7 @@ impl Point {
 
 // !start spec(knights_tour.board)
 #[rr::refined_by("(s, f)" : "nat * (list (list Z))")]
+#[rr::ghost_drop("True")]
 #[rr::exists("field" : "list _")]
 #[rr::invariant("field = fmap (λ (x : list Z), #(fmap (λ (y: Z), #y) x) : place_rfn (list (place_rfn Z))) f")]
 #[rr::invariant("s = length f")]
