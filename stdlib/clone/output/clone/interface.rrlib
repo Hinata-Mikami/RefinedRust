@@ -54,13 +54,14 @@
         ]
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "constTasClone_clone",
-          "type_of_constTasClone_clone",
-          "trait_incl_of_constTasClone_clone"
-        ]
+        "clone": {
+          "name": "constTasClone_clone",
+          "spec": "type_of_constTasClone_clone",
+          "trait_req_incl": "trait_incl_of_constTasClone_clone"
+        }
       },
       "name": "constTasClone",
       "trait_path": {
@@ -82,6 +83,7 @@
         ]
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "constTasCopy",
@@ -104,13 +106,14 @@
         ]
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "mutTasClone_clone",
-          "type_of_mutTasClone_clone",
-          "trait_incl_of_mutTasClone_clone"
-        ]
+        "clone": {
+          "name": "mutTasClone_clone",
+          "spec": "type_of_mutTasClone_clone",
+          "trait_req_incl": "trait_incl_of_mutTasClone_clone"
+        }
       },
       "name": "mutTasClone",
       "trait_path": {
@@ -132,6 +135,7 @@
         ]
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "mutTasCopy",
@@ -147,13 +151,14 @@
     {
       "for_type": "Bool",
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "boolasClone_clone",
-          "type_of_boolasClone_clone",
-          "trait_incl_of_boolasClone_clone"
-        ]
+        "clone": {
+          "name": "boolasClone_clone",
+          "spec": "type_of_boolasClone_clone",
+          "trait_req_incl": "trait_incl_of_boolasClone_clone"
+        }
       },
       "name": "boolasClone",
       "trait_path": {
@@ -168,6 +173,7 @@
     {
       "for_type": "Bool",
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "boolasCopy",
@@ -183,13 +189,14 @@
     {
       "for_type": "Char",
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "charasClone_clone",
-          "type_of_charasClone_clone",
-          "trait_incl_of_charasClone_clone"
-        ]
+        "clone": {
+          "name": "charasClone_clone",
+          "spec": "type_of_charasClone_clone",
+          "trait_req_incl": "trait_incl_of_charasClone_clone"
+        }
       },
       "name": "charasClone",
       "trait_path": {
@@ -204,6 +211,7 @@
     {
       "for_type": "Char",
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "charasCopy",
@@ -221,13 +229,14 @@
         "Int": "I128"
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "i128asClone_clone",
-          "type_of_i128asClone_clone",
-          "trait_incl_of_i128asClone_clone"
-        ]
+        "clone": {
+          "name": "i128asClone_clone",
+          "spec": "type_of_i128asClone_clone",
+          "trait_req_incl": "trait_incl_of_i128asClone_clone"
+        }
       },
       "name": "i128asClone",
       "trait_path": {
@@ -244,6 +253,7 @@
         "Int": "I128"
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "i128asCopy",
@@ -261,13 +271,14 @@
         "Int": "I16"
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "i16asClone_clone",
-          "type_of_i16asClone_clone",
-          "trait_incl_of_i16asClone_clone"
-        ]
+        "clone": {
+          "name": "i16asClone_clone",
+          "spec": "type_of_i16asClone_clone",
+          "trait_req_incl": "trait_incl_of_i16asClone_clone"
+        }
       },
       "name": "i16asClone",
       "trait_path": {
@@ -284,6 +295,7 @@
         "Int": "I16"
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "i16asCopy",
@@ -301,13 +313,14 @@
         "Int": "I32"
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "i32asClone_clone",
-          "type_of_i32asClone_clone",
-          "trait_incl_of_i32asClone_clone"
-        ]
+        "clone": {
+          "name": "i32asClone_clone",
+          "spec": "type_of_i32asClone_clone",
+          "trait_req_incl": "trait_incl_of_i32asClone_clone"
+        }
       },
       "name": "i32asClone",
       "trait_path": {
@@ -324,6 +337,7 @@
         "Int": "I32"
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "i32asCopy",
@@ -341,13 +355,14 @@
         "Int": "I64"
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "i64asClone_clone",
-          "type_of_i64asClone_clone",
-          "trait_incl_of_i64asClone_clone"
-        ]
+        "clone": {
+          "name": "i64asClone_clone",
+          "spec": "type_of_i64asClone_clone",
+          "trait_req_incl": "trait_incl_of_i64asClone_clone"
+        }
       },
       "name": "i64asClone",
       "trait_path": {
@@ -364,6 +379,7 @@
         "Int": "I64"
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "i64asCopy",
@@ -381,13 +397,14 @@
         "Int": "I8"
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "i8asClone_clone",
-          "type_of_i8asClone_clone",
-          "trait_incl_of_i8asClone_clone"
-        ]
+        "clone": {
+          "name": "i8asClone_clone",
+          "spec": "type_of_i8asClone_clone",
+          "trait_req_incl": "trait_incl_of_i8asClone_clone"
+        }
       },
       "name": "i8asClone",
       "trait_path": {
@@ -404,6 +421,7 @@
         "Int": "I8"
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "i8asCopy",
@@ -421,13 +439,14 @@
         "Int": "Isize"
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "isizeasClone_clone",
-          "type_of_isizeasClone_clone",
-          "trait_incl_of_isizeasClone_clone"
-        ]
+        "clone": {
+          "name": "isizeasClone_clone",
+          "spec": "type_of_isizeasClone_clone",
+          "trait_req_incl": "trait_incl_of_isizeasClone_clone"
+        }
       },
       "name": "isizeasClone",
       "trait_path": {
@@ -444,6 +463,7 @@
         "Int": "Isize"
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "isizeasCopy",
@@ -461,13 +481,14 @@
         "Uint": "U128"
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "u128asClone_clone",
-          "type_of_u128asClone_clone",
-          "trait_incl_of_u128asClone_clone"
-        ]
+        "clone": {
+          "name": "u128asClone_clone",
+          "spec": "type_of_u128asClone_clone",
+          "trait_req_incl": "trait_incl_of_u128asClone_clone"
+        }
       },
       "name": "u128asClone",
       "trait_path": {
@@ -484,6 +505,7 @@
         "Uint": "U128"
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "u128asCopy",
@@ -501,13 +523,14 @@
         "Uint": "U16"
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "u16asClone_clone",
-          "type_of_u16asClone_clone",
-          "trait_incl_of_u16asClone_clone"
-        ]
+        "clone": {
+          "name": "u16asClone_clone",
+          "spec": "type_of_u16asClone_clone",
+          "trait_req_incl": "trait_incl_of_u16asClone_clone"
+        }
       },
       "name": "u16asClone",
       "trait_path": {
@@ -524,6 +547,7 @@
         "Uint": "U16"
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "u16asCopy",
@@ -541,13 +565,14 @@
         "Uint": "U32"
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "u32asClone_clone",
-          "type_of_u32asClone_clone",
-          "trait_incl_of_u32asClone_clone"
-        ]
+        "clone": {
+          "name": "u32asClone_clone",
+          "spec": "type_of_u32asClone_clone",
+          "trait_req_incl": "trait_incl_of_u32asClone_clone"
+        }
       },
       "name": "u32asClone",
       "trait_path": {
@@ -564,6 +589,7 @@
         "Uint": "U32"
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "u32asCopy",
@@ -581,13 +607,14 @@
         "Uint": "U64"
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "u64asClone_clone",
-          "type_of_u64asClone_clone",
-          "trait_incl_of_u64asClone_clone"
-        ]
+        "clone": {
+          "name": "u64asClone_clone",
+          "spec": "type_of_u64asClone_clone",
+          "trait_req_incl": "trait_incl_of_u64asClone_clone"
+        }
       },
       "name": "u64asClone",
       "trait_path": {
@@ -604,6 +631,7 @@
         "Uint": "U64"
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "u64asCopy",
@@ -621,13 +649,14 @@
         "Uint": "U8"
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "u8asClone_clone",
-          "type_of_u8asClone_clone",
-          "trait_incl_of_u8asClone_clone"
-        ]
+        "clone": {
+          "name": "u8asClone_clone",
+          "spec": "type_of_u8asClone_clone",
+          "trait_req_incl": "trait_incl_of_u8asClone_clone"
+        }
       },
       "name": "u8asClone",
       "trait_path": {
@@ -644,6 +673,7 @@
         "Uint": "U8"
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "u8asCopy",
@@ -661,13 +691,14 @@
         "Uint": "Usize"
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "usizeasClone_clone",
-          "type_of_usizeasClone_clone",
-          "trait_incl_of_usizeasClone_clone"
-        ]
+        "clone": {
+          "name": "usizeasClone_clone",
+          "spec": "type_of_usizeasClone_clone",
+          "trait_req_incl": "trait_incl_of_usizeasClone_clone"
+        }
       },
       "name": "usizeasClone",
       "trait_path": {
@@ -684,6 +715,7 @@
         "Uint": "Usize"
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "usizeasCopy",
@@ -712,13 +744,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "std_marker_PhantomDataTasClone_clone",
-          "type_of_std_marker_PhantomDataTasClone_clone",
-          "trait_incl_of_std_marker_PhantomDataTasClone_clone"
-        ]
+        "clone": {
+          "name": "std_marker_PhantomDataTasClone_clone",
+          "spec": "type_of_std_marker_PhantomDataTasClone_clone",
+          "trait_req_incl": "trait_incl_of_std_marker_PhantomDataTasClone_clone"
+        }
       },
       "name": "std_marker_PhantomDataTasClone",
       "trait_path": {
@@ -746,6 +779,7 @@
         }
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "std_marker_PhantomDataTasCopy",

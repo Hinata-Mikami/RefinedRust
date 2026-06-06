@@ -12,17 +12,17 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition mut_ptr_is_null_lemma (π : thread_id) : Prop :=
-  ∀ `(T_rt : !RT) `(T_st : !syn_type) (mut_ptr_addr_T_loc : loc) , 
+  ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (mut_ptr_addr_T_loc : loc) , 
   syn_type_is_layoutable (T_st) →
   mut_ptr_addr_T_loc ◁ᵥ{π, MetaNone} mut_ptr_addr_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_mut_ptr_addr (RRGS:=RRGS) ((T_rt)) (T_st) -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
   typed_function π (mut_ptr_is_null_def mut_ptr_addr_T_loc  T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_mut_ptr_is_null T_rt T_st -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜((trait_incl_of_mut_ptr_is_null (T_rt) (T_st))-[] -[T_ty])%Z⌝))).
+  ∗ (⌜((trait_incl_of_mut_ptr_is_null (T_rt) (T_st) (DropGlue_T_spec))-[] -[T_ty])%Z⌝))).
 End proof.
 
 Ltac mut_ptr_is_null_prelude :=
   unfold mut_ptr_is_null_lemma;
   set (FN_NAME := FUNCTION_NAME "mut_ptr_is_null");
-  intros T_rt T_st;
+  intros T_rt T_st DropGlue_T_spec;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

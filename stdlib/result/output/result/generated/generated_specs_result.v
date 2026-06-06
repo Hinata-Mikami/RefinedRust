@@ -132,7 +132,7 @@ Section Formatter_inv_t.
   Program Definition Formatter_inv_t_inv_spec  : spec_with 1 [] (ex_inv_def (Formatter_rt)%type ((unit))%type) := spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt ((unit)%type : RT)),
             let '() := _ty_rfn in ⌜inner_rfn = -[#(tt)]⌝ ∗ True)%I
-    (false)
+    (true)
     ([])
     ([])
     _ _ _ _
@@ -246,22 +246,22 @@ End Debug.
 
 Section Debug_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition trait_incl_of_Debug_fmt (Self_rt: RT) (Self_st: syn_type) (Debug_Self_spec_attrs: (Debug_spec_attrs (RRGS:=RRGS) (Self_rt) )) (Debug_Self_spec: (spec_with 0 [] (Debug_spec (RRGS:=RRGS) (Self_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1; ulft_2; ulft_3]) : 3 | ( *[Self_ty]) : ([Self_rt] : list RT), ((trait_incl_marker (lift_trait_incl Debug_spec_incl Debug_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Debug_base_spec (Self_rt) Self_st Debug_Self_spec_attrs-[] -[Self_ty])))).
+  Definition trait_incl_of_Debug_fmt (Self_rt: RT) (Self_st: syn_type) (Debug_Self_spec_attrs: (Debug_spec_attrs (RRGS:=RRGS) (Self_rt) )) (Debug_Self_spec: (spec_with 0 [] (Debug_spec (RRGS:=RRGS) (Self_rt)))) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) : (spec_with _ _ Prop) :=
+    spec! ( *[ulft_1; ulft_2; ulft_3]) : 3 | ( *[Self_ty]) : ([Self_rt] : list RT), ((trait_incl_marker (lift_trait_incl Debug_spec_incl Debug_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Debug_base_spec (Self_rt) Self_st Debug_Self_spec_attrs-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st-[] -[Self_ty])))).
 End Debug_trait_req_incls.
 
 Section specs.
 Context `{RRGS : !refinedrustGS Σ}.
 
-Definition trait_incl_of_ResultTEasstd_clone_Clone_clone (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (Clone_T_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) (Clone_T_spec: (spec_with 0 [] (Clone_spec (RRGS:=RRGS) (T_rt)))) (Clone_E_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (E_rt) )) (Clone_E_spec: (spec_with 0 [] (Clone_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl Clone_spec_incl Clone_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Clone_base_spec (T_rt) T_st Clone_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl Clone_spec_incl Clone_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Clone_base_spec (E_rt) E_st Clone_E_spec_attrs-[] -[E_ty])))).
+Definition trait_incl_of_ResultTEasstd_clone_Clone_clone (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (Clone_T_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) (Clone_T_spec: (spec_with 0 [] (Clone_spec (RRGS:=RRGS) (T_rt)))) (Clone_E_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (E_rt) )) (Clone_E_spec: (spec_with 0 [] (Clone_spec (RRGS:=RRGS) (E_rt)))) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl Clone_spec_incl Clone_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Clone_base_spec (T_rt) T_st Clone_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl Clone_spec_incl Clone_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Clone_base_spec (E_rt) E_st Clone_E_spec_attrs-[] -[E_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty])))).
 
 Definition type_of_ResultTEasstd_clone_Clone_clone (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (Clone_T_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (T_rt) )) (Clone_E_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (E_rt) )) :=
   spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; E_ty] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (((Result_rt ((T_rt)) ((E_rt))))) ((Result_st (T_st) (E_st))) ((ResultTEasstd_clone_Clone_spec_attrs (T_rt) (E_rt) (Clone_T_spec_attrs) (Clone_E_spec_attrs))))
     -[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty])]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_Result_TE_map (T_rt: RT) (E_rt: RT) (U_rt: RT) (F_rt: RT) (T_st: syn_type) (E_st: syn_type) (U_st: syn_type) (F_st: syn_type) (FnOnce_F_T_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt) )) (FnOnce_F_T_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; E_ty; U_ty; F_ty]) : ([T_rt; E_rt; U_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt) F_st ((tuple1_sls (T_st)) : syn_type) U_st FnOnce_F_T_spec_attrs-[] -[F_ty; (tuple1_ty ((T_rt)) -[] -[T_ty]); U_ty])))).
+Definition trait_incl_of_Result_TE_map (T_rt: RT) (E_rt: RT) (U_rt: RT) (F_rt: RT) (T_st: syn_type) (E_st: syn_type) (U_st: syn_type) (F_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) (FnOnce_F_T_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt) )) (FnOnce_F_T_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt)))) (DropGlue_U_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (U_rt)))) (DropGlue_F_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (F_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty; U_ty; F_ty]) : ([T_rt; E_rt; U_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty]))) ∧ (trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt) F_st ((tuple1_sls (T_st)) : syn_type) U_st FnOnce_F_T_spec_attrs-[] -[F_ty; (tuple1_ty ((T_rt)) -[] -[T_ty]); U_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_U_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (U_rt) U_st-[] -[U_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_F_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (F_rt) F_st-[] -[F_ty])))).
 
 Definition type_of_Result_TE_map (T_rt: RT) (E_rt: RT) (U_rt: RT) (F_rt: RT) (T_st: syn_type) (E_st: syn_type) (U_st: syn_type) (F_st: syn_type) (FnOnce_F_T_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((T_rt)))) (U_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty; E_ty; U_ty; F_ty]) : ([(T_rt, T_st); (E_rt, E_st); (U_rt, U_st); (F_rt, F_st)] : list (RT * syn_type)%type) | 
@@ -274,8 +274,8 @@ Definition type_of_Result_TE_map (T_rt: RT) (E_rt: RT) (U_rt: RT) (F_rt: RT) (T_
       (* postcondition *) (λ π : thread_id, (if_iErr self (λ self, ⌜ret = Err self⌝ ∗ ty_ghost_drop F_ty π ($# op)))
       ∗ (if_iOk self (λ self, ∃ p x, ⌜oparam = Some p⌝ ∗ ⌜ret = Ok x⌝ ∗ FnOnce_F_T_spec_attrs.(FnOnce_Post) π p op *[self] x))).
 
-Definition trait_incl_of_Result_TE_map_err (T_rt: RT) (E_rt: RT) (F_rt: RT) (O_rt: RT) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) (O_st: syn_type) (FnOnce_O_E_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt) )) (FnOnce_O_E_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty; O_ty]) : ([T_rt; E_rt; F_rt; O_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_O_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt) O_st ((tuple1_sls (E_st)) : syn_type) F_st FnOnce_O_E_spec_attrs-[] -[O_ty; (tuple1_ty ((E_rt)) -[] -[E_ty]); F_ty])))).
+Definition trait_incl_of_Result_TE_map_err (T_rt: RT) (E_rt: RT) (F_rt: RT) (O_rt: RT) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) (O_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) (FnOnce_O_E_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt) )) (FnOnce_O_E_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt)))) (DropGlue_F_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (F_rt)))) (DropGlue_O_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (O_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty; O_ty]) : ([T_rt; E_rt; F_rt; O_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty]))) ∧ (trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_O_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt) O_st ((tuple1_sls (E_st)) : syn_type) F_st FnOnce_O_E_spec_attrs-[] -[O_ty; (tuple1_ty ((E_rt)) -[] -[E_ty]); F_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_F_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (F_rt) F_st-[] -[F_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_O_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (O_rt) O_st-[] -[O_ty])))).
 
 Definition type_of_Result_TE_map_err (T_rt: RT) (E_rt: RT) (F_rt: RT) (O_rt: RT) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) (O_st: syn_type) (FnOnce_O_E_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty; E_ty; F_ty; O_ty]) : ([(T_rt, T_st); (E_rt, E_st); (F_rt, F_st); (O_rt, O_st)] : list (RT * syn_type)%type) | 
@@ -288,9 +288,16 @@ Definition type_of_Result_TE_map_err (T_rt: RT) (E_rt: RT) (F_rt: RT) (O_rt: RT)
       (* postcondition *) (λ π : thread_id, (if_iOk self (λ self, ⌜ret = Ok self⌝ ∗ ty_ghost_drop O_ty π ($# op)))
       ∗ (if_iErr self (λ self, ∃ p x, ⌜oparam = Some p⌝ ∗ ⌜ret = Err x⌝ ∗ FnOnce_O_E_spec_attrs.(FnOnce_Post) π p op *[self] x))).
 
+Definition trait_incl_of_drop_glue_Result (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty])))).
 
-Definition trait_incl_of_Result_TE_is_err (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (True).
+Definition type_of_drop_glue_Result (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) :=
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; E_ty] (scope_add_elctx (λ ϝ, []) (((DropGlue_base_spec (((Result_rt ((T_rt)) ((E_rt))))) ((Result_st (T_st) (E_st))))
+    -[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty])]).(DropGlue_drop_glue_spec)   a b))) <MERGE!>.
+
+
+Definition trait_incl_of_Result_TE_is_err (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty])))).
 
 Definition type_of_Result_TE_is_err (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; E_ty]) : ([(T_rt, T_st); (E_rt, E_st)] : list (RT * syn_type)%type) | 
@@ -302,8 +309,8 @@ Definition type_of_Result_TE_is_err (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st
       (* existential.. *) ∃ _ : unit, bool_decide (is_Err x) @ bool_t;
       (* postcondition *) (λ π : thread_id, True).
 
-Definition trait_incl_of_Result_TE_is_ok (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (True).
+Definition trait_incl_of_Result_TE_is_ok (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty])))).
 
 Definition type_of_Result_TE_is_ok (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; E_ty]) : ([(T_rt, T_st); (E_rt, E_st)] : list (RT * syn_type)%type) | 
@@ -315,8 +322,8 @@ Definition type_of_Result_TE_is_ok (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st:
       (* existential.. *) ∃ _ : unit, bool_decide (is_Ok x) @ bool_t;
       (* postcondition *) (λ π : thread_id, True).
 
-Definition trait_incl_of_Result_TE_unwrap (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (Debug_E_spec_attrs: (Debug_spec_attrs (RRGS:=RRGS) (E_rt) )) (Debug_E_spec: (spec_with 0 [] (Debug_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl Debug_spec_incl Debug_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Debug_base_spec (E_rt) E_st Debug_E_spec_attrs-[] -[E_ty])))).
+Definition trait_incl_of_Result_TE_unwrap (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) (Debug_E_spec_attrs: (Debug_spec_attrs (RRGS:=RRGS) (E_rt) )) (Debug_E_spec: (spec_with 0 [] (Debug_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty]))) ∧ (trait_incl_marker (lift_trait_incl Debug_spec_incl Debug_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Debug_base_spec (E_rt) E_st Debug_E_spec_attrs-[] -[E_ty])))).
 
 Definition type_of_Result_TE_unwrap (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (Debug_E_spec_attrs: (Debug_spec_attrs (RRGS:=RRGS) (E_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty; E_ty]) : ([(T_rt, T_st); (E_rt, E_st)] : list (RT * syn_type)%type) | 
@@ -328,8 +335,8 @@ Definition type_of_Result_TE_unwrap (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st
       (* existential.. *) ∃ (ret) : ((_)), ret @ T_ty;
       (* postcondition *) (λ π : thread_id, (⌜(match self with | Ok x => ret = x | Err _ => False end)%Z⌝)).
 
-Definition trait_incl_of_Result_TE_unwrap_unchecked (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (True).
+Definition trait_incl_of_Result_TE_unwrap_unchecked (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty])))).
 
 Definition type_of_Result_TE_unwrap_unchecked (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty; E_ty]) : ([(T_rt, T_st); (E_rt, E_st)] : list (RT * syn_type)%type) | 
@@ -372,4 +379,17 @@ Section ResultTEasstd_marker_Copy_spec.
   Qed.
 
 End ResultTEasstd_marker_Copy_spec.
+
+Section drop_glue_Result_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition drop_glue_Result_spec (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) : (spec_with _ _ (DropGlue_spec (((Result_rt ((T_rt)) ((E_rt))))))) :=
+    spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), {|
+        DropGlue_drop_glue_spec  :=
+          (type_of_drop_glue_Result ((T_rt)) ((E_rt)) (T_st) (E_st)) 
+             <TY> T_ty <TY> E_ty : (spec_with 0 [] fn_spec);
+      |}
+  .
+  Definition drop_glue_Result_spec_subsumption  :=
+    ∀ `(T_rt : !RT) `(E_rt : !RT) `(T_st : !syn_type) `(E_st : !syn_type), trait_incl_marker (lift_trait_incl DropGlue_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (drop_glue_Result_spec (T_rt) (E_rt) (T_st) (E_st))-[] -[T_ty; E_ty]) (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), scope_add_typarams _ -[T_ty; E_ty] ((DropGlue_base_spec ((Result_rt ((T_rt)) ((E_rt)))) (Result_st (T_st) (E_st))-[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty])])))).
+End drop_glue_Result_spec.
 

@@ -131,7 +131,7 @@ Qed.
 
 
 
-Program Definition Result_TE_map_def (FnOnce_F_T_call_once_loc: loc) (T_st: syn_type) (E_st: syn_type) (U_st: syn_type) (F_st: syn_type) : function :=
+Program Definition Result_TE_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T_call_once_loc: loc) (T_st: syn_type) (E_st: syn_type) (U_st: syn_type) (F_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' (Result_st (T_st) (E_st))) : layout);
@@ -210,6 +210,7 @@ Program Definition Result_TE_map_def (FnOnce_F_T_call_once_loc: loc) (T_st: syn_
      ]>%E $
      <[
      "_bb7" :=
+      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("op")];
       Goto "_bb6"
      ]>%E $
       ∅;
@@ -222,7 +223,7 @@ Qed.
 
 
 
-Program Definition Result_TE_map_err_def (FnOnce_O_E_call_once_loc: loc) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) (O_st: syn_type) : function :=
+Program Definition Result_TE_map_err_def (DropGlue_O_drop_glue_loc: loc) (FnOnce_O_E_call_once_loc: loc) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) (O_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' (Result_st (T_st) (E_st))) : layout);
@@ -301,7 +302,46 @@ Program Definition Result_TE_map_err_def (FnOnce_O_E_call_once_loc: loc) (T_st: 
      ]>%E $
      <[
      "_bb7" :=
+      expr: CallE DropGlue_O_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("op")];
       Goto "_bb6"
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition drop_glue_Result_def (DropGlue_E_drop_glue_loc: loc) (DropGlue_T_drop_glue_loc: loc) (T_st: syn_type) (E_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("ptr", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ UnitSynType } "ret";
+      local_live{ (IntSynType ISize) } "__2";
+      local_live{ (IntSynType ISize) } "__3";
+      "__2" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) (!{ PtrOp } ( "ptr" ));
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ ∅) ([Goto "_bb2"]) (Goto "_bb3")
+     ]>%E $
+     <[
+     "_bb1" :=
+      return (zst_val)
+     ]>%E $
+     <[
+     "_bb2" :=
+      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((EnumData ((Result_els (T_st) (E_st))) "Ok" (!{ PtrOp } ( "ptr" ))) at{ (Result_Ok_sls (T_st) (E_st)) } "0")];
+      Goto "_bb1"
+     ]>%E $
+     <[
+     "_bb3" :=
+      expr: CallE DropGlue_E_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((EnumData ((Result_els (T_st) (E_st))) "Err" (!{ PtrOp } ( "ptr" ))) at{ (Result_Err_sls (T_st) (E_st)) } "0")];
+      Goto "_bb1"
      ]>%E $
       ∅;
      f_init := "_bb0";

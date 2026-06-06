@@ -10,18 +10,18 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition REFAasOrd_cmp_lemma (π : thread_id) : Prop :=
-  ∀ `(A_rt : !RT) `(A_st : !syn_type) `(PartialEq_A_A_spec_attrs : !(PartialEq_spec_attrs (RRGS:=RRGS) (A_rt) (A_rt) )) `(PartialEq_A_A_spec : !(spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (A_rt) (A_rt)))) `(Eq_A_spec_attrs : !(Eq_spec_attrs (RRGS:=RRGS) (A_rt) PartialEq_A_A_spec_attrs)) `(Eq_A_spec : !(spec_with 0 [] (Eq_spec (RRGS:=RRGS) (A_rt)))) `(PartialOrd_A_A_spec_attrs : !(PartialOrd_spec_attrs (RRGS:=RRGS) (A_rt) (A_rt) PartialEq_A_A_spec_attrs)) `(PartialOrd_A_A_spec : !(spec_with 0 [] (PartialOrd_spec (RRGS:=RRGS) (A_rt) (A_rt)))) `(Ord_A_spec_attrs : !(Ord_spec_attrs (RRGS:=RRGS) (A_rt) PartialEq_A_A_spec_attrs Eq_A_spec_attrs PartialOrd_A_A_spec_attrs)) `(Ord_A_spec : !(spec_with 0 [] (Ord_spec (RRGS:=RRGS) (A_rt)))) (Ord_A_cmp_loc : loc) , 
+  ∀ `(A_rt : !RT) `(A_st : !syn_type) `(PartialEq_A_A_spec_attrs : !(PartialEq_spec_attrs (RRGS:=RRGS) (A_rt) (A_rt) )) `(PartialEq_A_A_spec : !(spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (A_rt) (A_rt)))) `(Eq_A_spec_attrs : !(Eq_spec_attrs (RRGS:=RRGS) (A_rt) PartialEq_A_A_spec_attrs)) `(Eq_A_spec : !(spec_with 0 [] (Eq_spec (RRGS:=RRGS) (A_rt)))) `(PartialOrd_A_A_spec_attrs : !(PartialOrd_spec_attrs (RRGS:=RRGS) (A_rt) (A_rt) PartialEq_A_A_spec_attrs)) `(PartialOrd_A_A_spec : !(spec_with 0 [] (PartialOrd_spec (RRGS:=RRGS) (A_rt) (A_rt)))) `(Ord_A_spec_attrs : !(Ord_spec_attrs (RRGS:=RRGS) (A_rt) PartialEq_A_A_spec_attrs Eq_A_spec_attrs PartialOrd_A_A_spec_attrs)) `(Ord_A_spec : !(spec_with 0 [] (Ord_spec (RRGS:=RRGS) (A_rt)))) `(DropGlue_A_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (A_rt)))) (Ord_A_cmp_loc : loc) , 
   syn_type_is_layoutable (A_st) →
   syn_type_is_layoutable ((Ordering_els : syn_type)) →
   Ord_A_cmp_loc ◁ᵥ{π, MetaNone} Ord_A_cmp_loc @ function_ptr [PtrSynType; PtrSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[A_ty]) : ([A_rt] : list RT), fn_spec_add_late_pre ((Ord_cmp_spec (RRGS:=RRGS) (Ord_A_spec-[] -[]))  -[late_lft_0; late_lft_1] -[]) (λ π, ((typaram_wf A_rt A_st A_ty)))%I) -∗
   typed_function π (REFAasOrd_cmp_def Ord_A_cmp_loc  A_st  ) (<tag_type> spec! ( *[ulft_1; ulft_2; ulft_3]) : 3 | ( *[A_ty]) : ([A_rt] : list RT), fn_spec_add_late_pre (type_of_REFAasOrd_cmp A_rt A_st PartialEq_A_A_spec_attrs Eq_A_spec_attrs PartialOrd_A_A_spec_attrs Ord_A_spec_attrs -[ulft_1; ulft_2; ulft_3] -[A_ty]) (λ π, ((typaram_wf A_rt A_st A_ty))
-  ∗ (⌜((trait_incl_of_REFAasOrd_cmp (A_rt) (A_st) (PartialEq_A_A_spec_attrs) (PartialEq_A_A_spec) (Eq_A_spec_attrs) (Eq_A_spec) (PartialOrd_A_A_spec_attrs) (PartialOrd_A_A_spec) (Ord_A_spec_attrs) (Ord_A_spec))-[ulft_1; ulft_2; ulft_3] -[A_ty])%Z⌝))).
+  ∗ (⌜((trait_incl_of_REFAasOrd_cmp (A_rt) (A_st) (PartialEq_A_A_spec_attrs) (PartialEq_A_A_spec) (Eq_A_spec_attrs) (Eq_A_spec) (PartialOrd_A_A_spec_attrs) (PartialOrd_A_A_spec) (Ord_A_spec_attrs) (Ord_A_spec) (DropGlue_A_spec))-[ulft_1; ulft_2; ulft_3] -[A_ty])%Z⌝))).
 End proof.
 
 Ltac REFAasOrd_cmp_prelude :=
   unfold REFAasOrd_cmp_lemma;
   set (FN_NAME := FUNCTION_NAME "REFAasOrd_cmp");
-  intros A_rt A_st PartialEq_A_A_spec_attrs PartialEq_A_A_spec Eq_A_spec_attrs Eq_A_spec PartialOrd_A_A_spec_attrs PartialOrd_A_A_spec Ord_A_spec_attrs Ord_A_spec;
+  intros A_rt A_st PartialEq_A_A_spec_attrs PartialEq_A_A_spec Eq_A_spec_attrs Eq_A_spec PartialOrd_A_A_spec_attrs PartialOrd_A_A_spec Ord_A_spec_attrs Ord_A_spec DropGlue_A_spec;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

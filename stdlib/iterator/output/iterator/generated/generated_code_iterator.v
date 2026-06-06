@@ -7,6 +7,17 @@ From rrstd.controlflow.controlflow.generated Require Export generated_specs_cont
 From rrstd.option.option.generated Require Export generated_specs_option.
 From rrstd.range.range.generated Require Export generated_specs_range.
 From rrstd.result.result.generated Require Export generated_specs_result.
+Section adapters_zip_Zip_sls.
+  Context `{RRGS : !refinedrustGS Σ}.
+
+  Definition adapters_zip_Zip_sls (A_st: syn_type) (B_st: syn_type) : struct_layout_spec :=
+    let adapters_zip_Zip_st (A_st: syn_type) (B_st: syn_type) := UnitSynType in
+    mk_sls "adapters_zip_Zip" [
+    ("a", A_st);
+    ("b", B_st)] StructReprRust.
+  Definition adapters_zip_Zip_st (A_st: syn_type) (B_st: syn_type) : syn_type := adapters_zip_Zip_sls A_st B_st.
+End adapters_zip_Zip_sls.
+
 Section adapters_map_Map_sls.
   Context `{RRGS : !refinedrustGS Σ}.
 
@@ -346,6 +357,120 @@ Qed.
 
 
 
+Program Definition drop_glue_adapters_map_Map_def (DropGlue_F_drop_glue_loc: loc) (DropGlue_I_drop_glue_loc: loc) (I_st: syn_type) (F_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("ptr", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ UnitSynType } "ret";
+      expr: CallE DropGlue_I_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (adapters_map_Map_sls (I_st) (F_st)) } "iter")];
+      Goto "_bb4"
+     ]>%E $
+     <[
+     "_bb2" :=
+      return (zst_val)
+     ]>%E $
+     <[
+     "_bb4" :=
+      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (adapters_map_Map_sls (I_st) (F_st)) } "f")];
+      Goto "_bb2"
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition drop_glue_adapters_skip_Skip_def (DropGlue_I_drop_glue_loc: loc) (I_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("ptr", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ UnitSynType } "ret";
+      expr: CallE DropGlue_I_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (adapters_skip_Skip_sls (I_st)) } "iter")];
+      Goto "_bb1"
+     ]>%E $
+     <[
+     "_bb1" :=
+      return (zst_val)
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition drop_glue_adapters_take_Take_def (DropGlue_I_drop_glue_loc: loc) (I_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("ptr", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ UnitSynType } "ret";
+      expr: CallE DropGlue_I_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (adapters_take_Take_sls (I_st)) } "iter")];
+      Goto "_bb1"
+     ]>%E $
+     <[
+     "_bb1" :=
+      return (zst_val)
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition drop_glue_adapters_zip_Zip_def (DropGlue_A_drop_glue_loc: loc) (DropGlue_B_drop_glue_loc: loc) (A_st: syn_type) (B_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("ptr", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ UnitSynType } "ret";
+      expr: CallE DropGlue_A_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (adapters_zip_Zip_sls (A_st) (B_st)) } "a")];
+      Goto "_bb4"
+     ]>%E $
+     <[
+     "_bb2" :=
+      return (zst_val)
+     ]>%E $
+     <[
+     "_bb4" :=
+      expr: CallE DropGlue_B_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (adapters_zip_Zip_sls (A_st) (B_st)) } "b")];
+      Goto "_bb2"
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
 Program Definition step_impltraits_iterator_Iteratorforstd_ops_RangeA_next_def (A_st: syn_type) : function :=
   {|
      f_args := [
@@ -370,7 +495,7 @@ Qed.
 
 
 
-Program Definition traits_iterator_Iterator_all_def (traits_iterator_Iterator_Self_try_fold_unit_closuresrctraitsiteratorrs1401314019_std_ops_ControlFlowunit_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
+Program Definition traits_iterator_Iterator_all_def (DropGlue_F_drop_glue_loc: loc) (traits_iterator_Iterator_Self_try_fold_unit_closuresrctraitsiteratorrs1401314019_std_ops_ControlFlowunit_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
   {|
      f_args := [
       ("self", void* : layout);
@@ -428,6 +553,7 @@ Program Definition traits_iterator_Iterator_all_def (traits_iterator_Iterator_Se
      <[
      "_bb4" :=
       local_dead "__3";
+      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("f")];
       Goto "_bb5"
      ]>%E $
      <[
@@ -545,7 +671,7 @@ Qed.
 
 
 
-Program Definition traits_iterator_Iterator_fold_def (FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc: loc) (traits_iterator_Iterator_Self_next_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (B_st: syn_type) (F_st: syn_type) : function :=
+Program Definition traits_iterator_Iterator_fold_def (DropGlue_F_drop_glue_loc: loc) (DropGlue_Self_drop_glue_loc: loc) (FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc: loc) (traits_iterator_Iterator_Self_next_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (B_st: syn_type) (F_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' Self_st) : layout);
@@ -631,6 +757,7 @@ Program Definition traits_iterator_Iterator_fold_def (FnMut_F_BSelfastraits_iter
      ]>%E $
      <[
      "_bb5" :=
+      expr: CallE DropGlue_Self_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("self")];
       Goto "_bb6"
      ]>%E $
      <[
@@ -649,6 +776,7 @@ Program Definition traits_iterator_Iterator_fold_def (FnMut_F_BSelfastraits_iter
       "__0" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("accum");
       "__20" <-{ BoolOp } val_of_bool false;
       local_dead "accum";
+      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("f")];
       Goto "_bb5"
      ]>%E $
       ∅;
@@ -726,7 +854,7 @@ Qed.
 
 
 
-Program Definition traits_iterator_Iterator_max_by_def (traits_iterator_Iterator_Self_reduce_closuresrctraitsiteratorrs2471324719_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
+Program Definition traits_iterator_Iterator_max_by_def (DropGlue_F_drop_glue_loc: loc) (traits_iterator_Iterator_Self_reduce_closuresrctraitsiteratorrs2471324719_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' Self_st) : layout);
@@ -757,6 +885,7 @@ Program Definition traits_iterator_Iterator_max_by_def (traits_iterator_Iterator
       annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
       local_dead "__4";
       local_dead "__3";
+      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("compare")];
       Goto "_bb2"
      ]>%E $
      <[
@@ -893,7 +1022,7 @@ Qed.
 
 
 
-Program Definition traits_iterator_Iterator_min_by_def (traits_iterator_Iterator_Self_reduce_closuresrctraitsiteratorrs3031330319_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
+Program Definition traits_iterator_Iterator_min_by_def (DropGlue_F_drop_glue_loc: loc) (traits_iterator_Iterator_Self_reduce_closuresrctraitsiteratorrs3031330319_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' Self_st) : layout);
@@ -924,6 +1053,7 @@ Program Definition traits_iterator_Iterator_min_by_def (traits_iterator_Iterator
       annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
       local_dead "__4";
       local_dead "__3";
+      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("compare")];
       Goto "_bb2"
      ]>%E $
      <[
@@ -1028,7 +1158,7 @@ Qed.
 
 
 
-Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastraits_iterator_Iterator_Item_loc: loc) (traits_iterator_Iterator_Self_next_loc: loc) (Self_st: syn_type) (Item_st: syn_type) : function :=
+Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastraits_iterator_Iterator_Item_loc: loc) (drop_glue_Option_Selfastraits_iterator_Iterator_Item_loc: loc) (traits_iterator_Iterator_Self_next_loc: loc) (Self_st: syn_type) (Item_st: syn_type) : function :=
   {|
      f_args := [
       ("self", void* : layout);
@@ -1101,6 +1231,7 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
      ]>%E $
      <[
      "_bb5" :=
+      expr: CallE drop_glue_Option_Selfastraits_iterator_Iterator_Item_loc [] [RSTTyVar "Item"] [@{expr} &raw{ Mut } ("__13")];
       Goto "_bb6"
      ]>%E $
      <[
@@ -1117,6 +1248,7 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
      ]>%E $
      <[
      "_bb7" :=
+      expr: CallE drop_glue_Option_Selfastraits_iterator_Iterator_Item_loc [] [RSTTyVar "Item"] [@{expr} &raw{ Mut } ("__13")];
       Goto "_bb8"
      ]>%E $
      <[
@@ -1177,7 +1309,7 @@ Qed.
 
 
 
-Program Definition traits_iterator_Iterator_position_def (ControlFlow_BC_break_value_usize_unit_loc: loc) (traits_iterator_Iterator_Self_try_fold_unit_closuresrctraitsiteratorrs1811318119_std_ops_ControlFlowusize_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
+Program Definition traits_iterator_Iterator_position_def (ControlFlow_BC_break_value_usize_unit_loc: loc) (DropGlue_F_drop_glue_loc: loc) (traits_iterator_Iterator_Self_try_fold_unit_closuresrctraitsiteratorrs1811318119_std_ops_ControlFlowusize_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
   {|
      f_args := [
       ("self", void* : layout);
@@ -1244,6 +1376,7 @@ Program Definition traits_iterator_Iterator_position_def (ControlFlow_BC_break_v
       local_dead "__7";
       local_dead "clos";
       local_dead "acc";
+      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("f")];
       Goto "_bb3"
      ]>%E $
      <[
@@ -1260,7 +1393,7 @@ Qed.
 
 
 
-Program Definition traits_iterator_Iterator_reduce_def (std_option_OptionTasFromResidual_from_residual_Selfastraits_iterator_Iterator_Item_loc: loc) (std_option_OptionTasTry_branch_Selfastraits_iterator_Iterator_Item_loc: loc) (traits_iterator_Iterator_Self_fold_Selfastraits_iterator_Iterator_Item_F_loc: loc) (traits_iterator_Iterator_Self_next_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
+Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc: loc) (DropGlue_Self_drop_glue_loc: loc) (std_option_OptionTasFromResidual_from_residual_Selfastraits_iterator_Iterator_Item_loc: loc) (std_option_OptionTasTry_branch_Selfastraits_iterator_Iterator_Item_loc: loc) (traits_iterator_Iterator_Self_fold_Selfastraits_iterator_Iterator_Item_F_loc: loc) (traits_iterator_Iterator_Self_next_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' Self_st) : layout);
@@ -1351,6 +1484,7 @@ Program Definition traits_iterator_Iterator_reduce_def (std_option_OptionTasFrom
       local_dead "__4";
       "__16" <-{ BoolOp } val_of_bool false;
       local_dead "first";
+      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("f")];
       Goto "_bb8"
      ]>%E $
      <[
@@ -1366,6 +1500,7 @@ Program Definition traits_iterator_Iterator_reduce_def (std_option_OptionTasFrom
      ]>%E $
      <[
      "_bb8" :=
+      expr: CallE DropGlue_Self_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("self")];
       Goto "_bb9"
      ]>%E $
      <[
@@ -1448,7 +1583,7 @@ Qed.
 
 
 
-Program Definition traits_iterator_Iterator_try_fold_def (FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc: loc) (FromResidual_R_Rasstd_ops_Try_Residual_from_residual_loc: loc) (Try_R_branch_loc: loc) (Try_R_from_output_loc: loc) (traits_iterator_Iterator_Self_next_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (B_st: syn_type) (F_st: syn_type) (R_st: syn_type) (Try_R_Residual_st: syn_type) : function :=
+Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_F_drop_glue_loc: loc) (FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc: loc) (FromResidual_R_Rasstd_ops_Try_Residual_from_residual_loc: loc) (Try_R_branch_loc: loc) (Try_R_from_output_loc: loc) (traits_iterator_Iterator_Self_next_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (B_st: syn_type) (F_st: syn_type) (R_st: syn_type) (Try_R_Residual_st: syn_type) : function :=
   {|
      f_args := [
       ("self", void* : layout);
@@ -1584,6 +1719,7 @@ Program Definition traits_iterator_Iterator_try_fold_def (FnMut_F_BSelfastraits_
       local_dead "__5";
       "__28" <-{ BoolOp } val_of_bool false;
       local_dead "accum";
+      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("f")];
       Goto "_bb11"
      ]>%E $
      <[
@@ -1591,6 +1727,7 @@ Program Definition traits_iterator_Iterator_try_fold_def (FnMut_F_BSelfastraits_
       local_dead "__27";
       "__28" <-{ BoolOp } val_of_bool false;
       local_dead "accum";
+      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("f")];
       Goto "_bb11"
      ]>%E $
      <[

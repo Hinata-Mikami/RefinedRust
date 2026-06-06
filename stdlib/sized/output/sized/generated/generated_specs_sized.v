@@ -129,8 +129,8 @@ End Sized_trait_req_incls.
 
 Section Drop_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition trait_incl_of_Drop_drop (Self_rt: RT) (Self_st: syn_type) (Drop_Self_spec_attrs: (Drop_spec_attrs (RRGS:=RRGS) (Self_rt) )) (Drop_Self_spec: (spec_with 0 [] (Drop_spec (RRGS:=RRGS) (Self_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1]) : 1 | ( *[Self_ty]) : ([Self_rt] : list RT), ((trait_incl_marker (lift_trait_incl Drop_spec_incl Drop_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Drop_base_spec (Self_rt) Self_st Drop_Self_spec_attrs-[] -[Self_ty])))).
+  Definition trait_incl_of_Drop_drop (Self_rt: RT) (Self_st: syn_type) (Drop_Self_spec_attrs: (Drop_spec_attrs (RRGS:=RRGS) (Self_rt) )) (Drop_Self_spec: (spec_with 0 [] (Drop_spec (RRGS:=RRGS) (Self_rt)))) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) : (spec_with _ _ Prop) :=
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty]) : ([Self_rt] : list RT), ((trait_incl_marker (lift_trait_incl Drop_spec_incl Drop_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Drop_base_spec (Self_rt) Self_st Drop_Self_spec_attrs-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st-[] -[Self_ty])))).
 End Drop_trait_req_incls.
 
 Section specs.

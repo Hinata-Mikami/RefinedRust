@@ -5,7 +5,7 @@ Section code.
 Context `{RRGS : !refinedrustGS Σ}.
 Open Scope printing_sugar.
 
-Program Definition Clone_clone_from_def (Clone_Self_clone_loc: loc) (Self_st: syn_type) : function :=
+Program Definition Clone_clone_from_def (Clone_Self_clone_loc: loc) (DropGlue_Self_drop_glue_loc: loc) (Self_st: syn_type) : function :=
   {|
      f_args := [
       ("self", void* : layout);
@@ -29,6 +29,7 @@ Program Definition Clone_clone_from_def (Clone_Self_clone_loc: loc) (Self_st: sy
      <[
      "_bb1" :=
       local_dead "__4";
+      expr: CallE DropGlue_Self_drop_glue_loc [] [] [@{expr} &raw{ Mut } (!{ PtrOp } ( "self" ))];
       Goto "_bb2"
      ]>%E $
      <[

@@ -15,7 +15,7 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition adapters_take_TakeMIastraits_iterator_Iterator_next_lemma (π : thread_id) : Prop :=
-  ∀ `(MI_rt : !RT) `(traits_iterator_Iterator_MI_Item_rt : !RT) `(MI_st : !syn_type) `(traits_iterator_Iterator_MI_Item_st : !syn_type) `(traits_iterator_Iterator_MI_spec_attrs : !(traits_iterator_Iterator_spec_attrs (RRGS:=RRGS) (MI_rt) (traits_iterator_Iterator_MI_Item_rt) )) `(traits_iterator_Iterator_MI_spec : !(spec_with 0 [] (traits_iterator_Iterator_spec (RRGS:=RRGS) (MI_rt) (traits_iterator_Iterator_MI_Item_rt)))) (traits_iterator_Iterator_MI_next_loc : loc) , 
+  ∀ `(MI_rt : !RT) `(traits_iterator_Iterator_MI_Item_rt : !RT) `(MI_st : !syn_type) `(traits_iterator_Iterator_MI_Item_st : !syn_type) `(traits_iterator_Iterator_MI_spec_attrs : !(traits_iterator_Iterator_spec_attrs (RRGS:=RRGS) (MI_rt) (traits_iterator_Iterator_MI_Item_rt) )) `(traits_iterator_Iterator_MI_spec : !(spec_with 0 [] (traits_iterator_Iterator_spec (RRGS:=RRGS) (MI_rt) (traits_iterator_Iterator_MI_Item_rt)))) `(DropGlue_MI_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (MI_rt)))) `(DropGlue_MIastraits_iterator_Iterator_Item_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (traits_iterator_Iterator_MI_Item_rt)))) (traits_iterator_Iterator_MI_next_loc : loc) , 
   syn_type_is_layoutable (MI_st) →
   syn_type_is_layoutable (((adapters_take_Take_sls (MI_st)) : syn_type)) →
   syn_type_is_layoutable (((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)) →
@@ -24,13 +24,13 @@ Definition adapters_take_TakeMIastraits_iterator_Iterator_next_lemma (π : threa
   traits_iterator_Iterator_MI_next_loc ◁ᵥ{π, MetaNone} traits_iterator_Iterator_MI_next_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((traits_iterator_Iterator_next_spec (RRGS:=RRGS) (traits_iterator_Iterator_MI_spec-[] -[]))  -[late_lft_0] -[]) (λ π, (True))%I) -∗
   typed_function π (adapters_take_TakeMIastraits_iterator_Iterator_next_def traits_iterator_Iterator_MI_next_loc  MI_st  traits_iterator_Iterator_MI_Item_st  ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[MI_ty; traits_iterator_Iterator_MI_Item_ty]) : ([MI_rt; traits_iterator_Iterator_MI_Item_rt] : list RT), fn_spec_add_late_pre (type_of_adapters_take_TakeMIastraits_iterator_Iterator_next MI_rt traits_iterator_Iterator_MI_Item_rt MI_st traits_iterator_Iterator_MI_Item_st traits_iterator_Iterator_MI_spec_attrs -[ulft_1] -[MI_ty; traits_iterator_Iterator_MI_Item_ty]) (λ π, ((typaram_wf MI_rt MI_st MI_ty)
   ∗ (typaram_wf traits_iterator_Iterator_MI_Item_rt traits_iterator_Iterator_MI_Item_st traits_iterator_Iterator_MI_Item_ty))
-  ∗ (⌜((trait_incl_of_adapters_take_TakeMIastraits_iterator_Iterator_next (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (MI_st) (traits_iterator_Iterator_MI_Item_st) (traits_iterator_Iterator_MI_spec_attrs) (traits_iterator_Iterator_MI_spec))-[ulft_1] -[MI_ty; traits_iterator_Iterator_MI_Item_ty])%Z⌝))).
+  ∗ (⌜((trait_incl_of_adapters_take_TakeMIastraits_iterator_Iterator_next (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (MI_st) (traits_iterator_Iterator_MI_Item_st) (traits_iterator_Iterator_MI_spec_attrs) (traits_iterator_Iterator_MI_spec) (DropGlue_MI_spec) (DropGlue_MIastraits_iterator_Iterator_Item_spec))-[ulft_1] -[MI_ty; traits_iterator_Iterator_MI_Item_ty])%Z⌝))).
 End proof.
 
 Ltac adapters_take_TakeMIastraits_iterator_Iterator_next_prelude :=
   unfold adapters_take_TakeMIastraits_iterator_Iterator_next_lemma;
   set (FN_NAME := FUNCTION_NAME "adapters_take_TakeMIastraits_iterator_Iterator_next");
-  intros MI_rt traits_iterator_Iterator_MI_Item_rt MI_st traits_iterator_Iterator_MI_Item_st traits_iterator_Iterator_MI_spec_attrs traits_iterator_Iterator_MI_spec;
+  intros MI_rt traits_iterator_Iterator_MI_Item_rt MI_st traits_iterator_Iterator_MI_Item_st traits_iterator_Iterator_MI_spec_attrs traits_iterator_Iterator_MI_spec DropGlue_MI_spec DropGlue_MIastraits_iterator_Iterator_Item_spec;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

@@ -211,13 +211,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "nonnull_NonNullTasstd_clone_Clone_clone",
-          "type_of_nonnull_NonNullTasstd_clone_Clone_clone",
-          "trait_incl_of_nonnull_NonNullTasstd_clone_Clone_clone"
-        ]
+        "clone": {
+          "name": "nonnull_NonNullTasstd_clone_Clone_clone",
+          "spec": "type_of_nonnull_NonNullTasstd_clone_Clone_clone",
+          "trait_req_incl": "trait_incl_of_nonnull_NonNullTasstd_clone_Clone_clone"
+        }
       },
       "name": "nonnull_NonNullTasstd_clone_Clone",
       "trait_path": {
@@ -245,6 +246,7 @@
         }
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "nonnull_NonNullTasstd_marker_Copy",
@@ -273,13 +275,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "unique_UniqueTasstd_clone_Clone_clone",
-          "type_of_unique_UniqueTasstd_clone_Clone_clone",
-          "trait_incl_of_unique_UniqueTasstd_clone_Clone_clone"
-        ]
+        "clone": {
+          "name": "unique_UniqueTasstd_clone_Clone_clone",
+          "spec": "type_of_unique_UniqueTasstd_clone_Clone_clone",
+          "trait_req_incl": "trait_incl_of_unique_UniqueTasstd_clone_Clone_clone"
+        }
       },
       "name": "unique_UniqueTasstd_clone_Clone",
       "trait_path": {
@@ -307,6 +310,7 @@
         }
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "unique_UniqueTasstd_marker_Copy",

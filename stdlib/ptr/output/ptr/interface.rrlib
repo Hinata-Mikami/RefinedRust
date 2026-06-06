@@ -46,6 +46,18 @@
     },
     {
       "kind": "method",
+      "name": "alignment_Alignment_new_unchecked",
+      "path": [
+        "core",
+        "mem",
+        "Alignment",
+        "new_unchecked"
+      ],
+      "spec": "type_of_alignment_Alignment_new_unchecked",
+      "trait_req_incl": "trait_incl_of_alignment_Alignment_new_unchecked"
+    },
+    {
+      "kind": "method",
       "name": "alignment_Alignment_of",
       "path": [
         "core",
@@ -55,6 +67,28 @@
       ],
       "spec": "type_of_alignment_Alignment_of",
       "trait_req_incl": "trait_incl_of_alignment_Alignment_of"
+    },
+    {
+      "kind": "function",
+      "name": "mem_replace",
+      "path": [
+        "core",
+        "mem",
+        "replace"
+      ],
+      "spec": "type_of_mem_replace",
+      "trait_req_incl": "trait_incl_of_mem_replace"
+    },
+    {
+      "kind": "function",
+      "name": "mem_swap",
+      "path": [
+        "core",
+        "mem",
+        "swap"
+      ],
+      "spec": "type_of_mem_swap",
+      "trait_req_incl": "trait_incl_of_mem_swap"
     },
     {
       "kind": "method",
@@ -103,6 +137,30 @@
       ],
       "spec": "type_of_const_ptr_cast_mut",
       "trait_req_incl": "trait_incl_of_const_ptr_cast_mut"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_is_aligned",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "is_aligned"
+      ],
+      "spec": "type_of_const_ptr_is_aligned",
+      "trait_req_incl": "trait_incl_of_const_ptr_is_aligned"
+    },
+    {
+      "kind": "method",
+      "name": "const_ptr_is_aligned_to",
+      "path": [
+        "core",
+        "ptr",
+        "const_ptr",
+        "is_aligned_to"
+      ],
+      "spec": "type_of_const_ptr_is_aligned_to",
+      "trait_req_incl": "trait_incl_of_const_ptr_is_aligned_to"
     },
     {
       "kind": "method",
@@ -250,6 +308,17 @@
     },
     {
       "kind": "function",
+      "name": "copy",
+      "path": [
+        "core",
+        "ptr",
+        "copy"
+      ],
+      "spec": "type_of_copy",
+      "trait_req_incl": "trait_incl_of_copy"
+    },
+    {
+      "kind": "function",
       "name": "copy_nonoverlapping",
       "path": [
         "core",
@@ -328,6 +397,30 @@
       ],
       "spec": "type_of_mut_ptr_cast_const",
       "trait_req_incl": "trait_incl_of_mut_ptr_cast_const"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_is_aligned",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "is_aligned"
+      ],
+      "spec": "type_of_mut_ptr_is_aligned",
+      "trait_req_incl": "trait_incl_of_mut_ptr_is_aligned"
+    },
+    {
+      "kind": "method",
+      "name": "mut_ptr_is_aligned_to",
+      "path": [
+        "core",
+        "ptr",
+        "mut_ptr",
+        "is_aligned_to"
+      ],
+      "spec": "type_of_mut_ptr_is_aligned_to",
+      "trait_req_incl": "trait_incl_of_mut_ptr_is_aligned_to"
     },
     {
       "kind": "method",
@@ -499,6 +592,28 @@
     },
     {
       "kind": "function",
+      "name": "ptr_null",
+      "path": [
+        "core",
+        "ptr",
+        "null"
+      ],
+      "spec": "type_of_ptr_null",
+      "trait_req_incl": "trait_incl_of_ptr_null"
+    },
+    {
+      "kind": "function",
+      "name": "ptr_null_mut",
+      "path": [
+        "core",
+        "ptr",
+        "null_mut"
+      ],
+      "spec": "type_of_ptr_null_mut",
+      "trait_req_incl": "trait_incl_of_ptr_null_mut"
+    },
+    {
+      "kind": "function",
       "name": "read",
       "path": [
         "core",
@@ -564,121 +679,6 @@
       "trait_req_incl": "trait_incl_of_write_volatile"
     },
     {
-      "kind": "method",
-      "name": "alignment_Alignment_new_unchecked",
-      "path": [
-        "core",
-        "mem",
-        "Alignment",
-        "new_unchecked"
-      ],
-      "spec": "type_of_alignment_Alignment_new_unchecked",
-      "trait_req_incl": "trait_incl_of_alignment_Alignment_new_unchecked"
-    },
-    {
-      "kind": "function",
-      "name": "mem_replace",
-      "path": [
-        "core",
-        "mem",
-        "replace"
-      ],
-      "spec": "type_of_mem_replace",
-      "trait_req_incl": "trait_incl_of_mem_replace"
-    },
-    {
-      "kind": "function",
-      "name": "mem_swap",
-      "path": [
-        "core",
-        "mem",
-        "swap"
-      ],
-      "spec": "type_of_mem_swap",
-      "trait_req_incl": "trait_incl_of_mem_swap"
-    },
-    {
-      "kind": "method",
-      "name": "const_ptr_is_aligned",
-      "path": [
-        "core",
-        "ptr",
-        "const_ptr",
-        "is_aligned"
-      ],
-      "spec": "type_of_const_ptr_is_aligned",
-      "trait_req_incl": "trait_incl_of_const_ptr_is_aligned"
-    },
-    {
-      "kind": "method",
-      "name": "const_ptr_is_aligned_to",
-      "path": [
-        "core",
-        "ptr",
-        "const_ptr",
-        "is_aligned_to"
-      ],
-      "spec": "type_of_const_ptr_is_aligned_to",
-      "trait_req_incl": "trait_incl_of_const_ptr_is_aligned_to"
-    },
-    {
-      "kind": "function",
-      "name": "copy",
-      "path": [
-        "core",
-        "ptr",
-        "copy"
-      ],
-      "spec": "type_of_copy",
-      "trait_req_incl": "trait_incl_of_copy"
-    },
-    {
-      "kind": "method",
-      "name": "mut_ptr_is_aligned",
-      "path": [
-        "core",
-        "ptr",
-        "mut_ptr",
-        "is_aligned"
-      ],
-      "spec": "type_of_mut_ptr_is_aligned",
-      "trait_req_incl": "trait_incl_of_mut_ptr_is_aligned"
-    },
-    {
-      "kind": "method",
-      "name": "mut_ptr_is_aligned_to",
-      "path": [
-        "core",
-        "ptr",
-        "mut_ptr",
-        "is_aligned_to"
-      ],
-      "spec": "type_of_mut_ptr_is_aligned_to",
-      "trait_req_incl": "trait_incl_of_mut_ptr_is_aligned_to"
-    },
-    {
-      "kind": "function",
-      "name": "ptr_null",
-      "path": [
-        "core",
-        "ptr",
-        "null"
-      ],
-      "spec": "type_of_ptr_null",
-      "trait_req_incl": "trait_incl_of_ptr_null"
-    },
-    {
-      "kind": "function",
-      "name": "ptr_null_mut",
-      "path": [
-        "core",
-        "ptr",
-        "null_mut"
-      ],
-      "spec": "type_of_ptr_null_mut",
-      "trait_req_incl": "trait_incl_of_ptr_null_mut"
-    },
-    {
       "for_type": {
         "Adt": {
           "args": [],
@@ -690,13 +690,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "alignment_Alignmentasstd_clone_Clone_clone",
-          "type_of_alignment_Alignmentasstd_clone_Clone_clone",
-          "trait_incl_of_alignment_Alignmentasstd_clone_Clone_clone"
-        ]
+        "clone": {
+          "name": "alignment_Alignmentasstd_clone_Clone_clone",
+          "spec": "type_of_alignment_Alignmentasstd_clone_Clone_clone",
+          "trait_req_incl": "trait_incl_of_alignment_Alignmentasstd_clone_Clone_clone"
+        }
       },
       "name": "alignment_Alignmentasstd_clone_Clone",
       "trait_path": {
@@ -720,6 +721,7 @@
         }
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "alignment_Alignmentasstd_marker_Copy",
@@ -744,13 +746,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "alignment_AlignmentEnumasstd_clone_Clone_clone",
-          "type_of_alignment_AlignmentEnumasstd_clone_Clone_clone",
-          "trait_incl_of_alignment_AlignmentEnumasstd_clone_Clone_clone"
-        ]
+        "clone": {
+          "name": "alignment_AlignmentEnumasstd_clone_Clone_clone",
+          "spec": "type_of_alignment_AlignmentEnumasstd_clone_Clone_clone",
+          "trait_req_incl": "trait_incl_of_alignment_AlignmentEnumasstd_clone_Clone_clone"
+        }
       },
       "name": "alignment_AlignmentEnumasstd_clone_Clone",
       "trait_path": {
@@ -774,6 +777,7 @@
         }
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "alignment_AlignmentEnumasstd_marker_Copy",

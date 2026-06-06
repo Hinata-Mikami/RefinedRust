@@ -12,17 +12,17 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition mut_ptr_read_volatile_lemma (π : thread_id) : Prop :=
-  ∀ `(T_rt : !RT) `(T_st : !syn_type) (read_volatile_T_loc : loc) , 
+  ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (read_volatile_T_loc : loc) , 
   syn_type_is_layoutable (T_st) →
   read_volatile_T_loc ◁ᵥ{π, MetaNone} read_volatile_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_read_volatile (RRGS:=RRGS) ((T_rt)) (T_st) -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
   typed_function π (mut_ptr_read_volatile_def read_volatile_T_loc  T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_mut_ptr_read_volatile T_rt T_st -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜((trait_incl_of_mut_ptr_read_volatile (T_rt) (T_st))-[] -[T_ty])%Z⌝))).
+  ∗ (⌜((trait_incl_of_mut_ptr_read_volatile (T_rt) (T_st) (DropGlue_T_spec))-[] -[T_ty])%Z⌝))).
 End proof.
 
 Ltac mut_ptr_read_volatile_prelude :=
   unfold mut_ptr_read_volatile_lemma;
   set (FN_NAME := FUNCTION_NAME "mut_ptr_read_volatile");
-  intros T_rt T_st;
+  intros T_rt T_st DropGlue_T_spec;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

@@ -12,19 +12,19 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition const_ptr_wrapping_byte_sub_lemma (π : thread_id) : Prop :=
-  ∀ `(T_rt : !RT) `(T_st : !syn_type) (const_ptr_cast_T_u8_loc : loc) (const_ptr_cast_u8_T_loc : loc) (const_ptr_wrapping_sub_u8_loc : loc) , 
+  ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (const_ptr_cast_T_u8_loc : loc) (const_ptr_cast_u8_T_loc : loc) (const_ptr_wrapping_sub_u8_loc : loc) , 
   syn_type_is_layoutable (T_st) →
   const_ptr_cast_T_u8_loc ◁ᵥ{π, MetaNone} const_ptr_cast_T_u8_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_const_ptr_cast (RRGS:=RRGS) ((T_rt)) (Z) (T_st) ((IntSynType U8)) -[] -[T_ty; (int U8)]) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
   const_ptr_cast_u8_T_loc ◁ᵥ{π, MetaNone} const_ptr_cast_u8_T_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_const_ptr_cast (RRGS:=RRGS) (Z) ((T_rt)) ((IntSynType U8)) (T_st) -[] -[(int U8); T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)))%I) -∗
   const_ptr_wrapping_sub_u8_loc ◁ᵥ{π, MetaNone} const_ptr_wrapping_sub_u8_loc @ function_ptr [PtrSynType; (IntSynType USize)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_const_ptr_wrapping_sub (RRGS:=RRGS) (Z) ((IntSynType U8)) -[] -[(int U8)]) (λ π, (True))%I) -∗
   typed_function π (const_ptr_wrapping_byte_sub_def const_ptr_cast_T_u8_loc  const_ptr_cast_u8_T_loc  const_ptr_wrapping_sub_u8_loc  T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_const_ptr_wrapping_byte_sub T_rt T_st -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜((trait_incl_of_const_ptr_wrapping_byte_sub (T_rt) (T_st))-[] -[T_ty])%Z⌝))).
+  ∗ (⌜((trait_incl_of_const_ptr_wrapping_byte_sub (T_rt) (T_st) (DropGlue_T_spec))-[] -[T_ty])%Z⌝))).
 End proof.
 
 Ltac const_ptr_wrapping_byte_sub_prelude :=
   unfold const_ptr_wrapping_byte_sub_lemma;
   set (FN_NAME := FUNCTION_NAME "const_ptr_wrapping_byte_sub");
-  intros T_rt T_st;
+  intros T_rt T_st DropGlue_T_spec;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

@@ -3260,7 +3260,7 @@ Qed.
 
 
 
-Program Definition max_by_def (FnOnce_F_REFTREFT_call_once_loc: loc) (Ordering_is_lt_loc: loc) (T_st: syn_type) (F_st: syn_type) : function :=
+Program Definition max_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT_call_once_loc: loc) (Ordering_is_lt_loc: loc) (T_st: syn_type) (F_st: syn_type) : function :=
   {|
      f_args := [
       ("v1", (use_layout_alg' T_st) : layout);
@@ -3365,10 +3365,12 @@ Program Definition max_by_def (FnOnce_F_REFTREFT_call_once_loc: loc) (Ordering_i
      ]>%E $
      <[
      "_bb10" :=
+      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("v2")];
       Goto "_bb6"
      ]>%E $
      <[
      "_bb11" :=
+      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("v1")];
       Goto "_bb7"
      ]>%E $
       ∅;
@@ -3414,7 +3416,7 @@ Qed.
 
 
 
-Program Definition min_by_def (FnOnce_F_REFTREFT_call_once_loc: loc) (Ordering_is_lt_loc: loc) (T_st: syn_type) (F_st: syn_type) : function :=
+Program Definition min_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT_call_once_loc: loc) (Ordering_is_lt_loc: loc) (T_st: syn_type) (F_st: syn_type) : function :=
   {|
      f_args := [
       ("v1", (use_layout_alg' T_st) : layout);
@@ -3519,10 +3521,12 @@ Program Definition min_by_def (FnOnce_F_REFTREFT_call_once_loc: loc) (Ordering_i
      ]>%E $
      <[
      "_bb10" :=
+      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("v2")];
       Goto "_bb6"
      ]>%E $
      <[
      "_bb11" :=
+      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("v1")];
       Goto "_bb7"
      ]>%E $
       ∅;

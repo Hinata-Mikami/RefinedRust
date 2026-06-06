@@ -10,20 +10,20 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition REFAasPartialOrdREFB_ge_lemma (π : thread_id) : Prop :=
-  ∀ `(A_rt : !RT) `(B_rt : !RT) `(A_st : !syn_type) `(B_st : !syn_type) `(PartialEq_A_B_spec_attrs : !(PartialEq_spec_attrs (RRGS:=RRGS) (A_rt) (B_rt) )) `(PartialEq_A_B_spec : !(spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (A_rt) (B_rt)))) `(PartialOrd_A_B_spec_attrs : !(PartialOrd_spec_attrs (RRGS:=RRGS) (A_rt) (B_rt) PartialEq_A_B_spec_attrs)) `(PartialOrd_A_B_spec : !(spec_with 0 [] (PartialOrd_spec (RRGS:=RRGS) (A_rt) (B_rt)))) (PartialOrd_A_B_ge_loc : loc) , 
+  ∀ `(A_rt : !RT) `(B_rt : !RT) `(A_st : !syn_type) `(B_st : !syn_type) `(PartialEq_A_B_spec_attrs : !(PartialEq_spec_attrs (RRGS:=RRGS) (A_rt) (B_rt) )) `(PartialEq_A_B_spec : !(spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (A_rt) (B_rt)))) `(PartialOrd_A_B_spec_attrs : !(PartialOrd_spec_attrs (RRGS:=RRGS) (A_rt) (B_rt) PartialEq_A_B_spec_attrs)) `(PartialOrd_A_B_spec : !(spec_with 0 [] (PartialOrd_spec (RRGS:=RRGS) (A_rt) (B_rt)))) `(DropGlue_A_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (A_rt)))) `(DropGlue_B_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (B_rt)))) (PartialOrd_A_B_ge_loc : loc) , 
   syn_type_is_layoutable (A_st) →
   syn_type_is_layoutable (B_st) →
   PartialOrd_A_B_ge_loc ◁ᵥ{π, MetaNone} PartialOrd_A_B_ge_loc @ function_ptr [PtrSynType; PtrSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[A_ty; B_ty]) : ([A_rt; B_rt] : list RT), fn_spec_add_late_pre ((PartialOrd_ge_spec (RRGS:=RRGS) (PartialOrd_A_B_spec-[] -[]))  -[late_lft_0; late_lft_1] -[]) (λ π, ((typaram_wf A_rt A_st A_ty)
   ∗ (typaram_wf B_rt B_st B_ty)))%I) -∗
   typed_function π (REFAasPartialOrdREFB_ge_def PartialOrd_A_B_ge_loc  A_st  B_st  ) (<tag_type> spec! ( *[ulft_1; ulft_2; ulft_3; ulft_4]) : 4 | ( *[A_ty; B_ty]) : ([A_rt; B_rt] : list RT), fn_spec_add_late_pre (type_of_REFAasPartialOrdREFB_ge A_rt B_rt A_st B_st PartialEq_A_B_spec_attrs PartialOrd_A_B_spec_attrs -[ulft_1; ulft_2; ulft_3; ulft_4] -[A_ty; B_ty]) (λ π, ((typaram_wf A_rt A_st A_ty)
   ∗ (typaram_wf B_rt B_st B_ty))
-  ∗ (⌜((trait_incl_of_REFAasPartialOrdREFB_ge (A_rt) (B_rt) (A_st) (B_st) (PartialEq_A_B_spec_attrs) (PartialEq_A_B_spec) (PartialOrd_A_B_spec_attrs) (PartialOrd_A_B_spec))-[ulft_1; ulft_2; ulft_3; ulft_4] -[A_ty; B_ty])%Z⌝))).
+  ∗ (⌜((trait_incl_of_REFAasPartialOrdREFB_ge (A_rt) (B_rt) (A_st) (B_st) (PartialEq_A_B_spec_attrs) (PartialEq_A_B_spec) (PartialOrd_A_B_spec_attrs) (PartialOrd_A_B_spec) (DropGlue_A_spec) (DropGlue_B_spec))-[ulft_1; ulft_2; ulft_3; ulft_4] -[A_ty; B_ty])%Z⌝))).
 End proof.
 
 Ltac REFAasPartialOrdREFB_ge_prelude :=
   unfold REFAasPartialOrdREFB_ge_lemma;
   set (FN_NAME := FUNCTION_NAME "REFAasPartialOrdREFB_ge");
-  intros A_rt B_rt A_st B_st PartialEq_A_B_spec_attrs PartialEq_A_B_spec PartialOrd_A_B_spec_attrs PartialOrd_A_B_spec;
+  intros A_rt B_rt A_st B_st PartialEq_A_B_spec_attrs PartialEq_A_B_spec PartialOrd_A_B_spec_attrs PartialOrd_A_B_spec DropGlue_A_spec DropGlue_B_spec;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

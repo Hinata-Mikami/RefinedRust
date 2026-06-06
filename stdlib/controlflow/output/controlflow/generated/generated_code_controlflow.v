@@ -183,7 +183,7 @@ Qed.
 
 
 
-Program Definition ControlFlow_BC_break_value_def (B_st: syn_type) (C_st: syn_type) : function :=
+Program Definition ControlFlow_BC_break_value_def (drop_glue_ControlFlow_B_C_loc: loc) (B_st: syn_type) (C_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' (ControlFlow_st (B_st) (C_st))) : layout)
@@ -226,6 +226,7 @@ Program Definition ControlFlow_BC_break_value_def (B_st: syn_type) (C_st: syn_ty
      ]>%E $
      <[
      "_bb6" :=
+      expr: CallE drop_glue_ControlFlow_B_C_loc [] [RSTTyVar "B"; RSTTyVar "C"] [@{expr} &raw{ Mut } ("self")];
       Goto "_bb5"
      ]>%E $
      <[
@@ -283,6 +284,44 @@ Program Definition Tasconvert_IntoU_into_def (convert_From_U_T_from_loc: loc) (T
      "_bb1" :=
       local_dead "__2";
       return (move{ (use_op_alg' U_st) } ("__0"))
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition drop_glue_ControlFlow_def (DropGlue_B_drop_glue_loc: loc) (DropGlue_C_drop_glue_loc: loc) (B_st: syn_type) (C_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("ptr", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ UnitSynType } "ret";
+      local_live{ (IntSynType ISize) } "__2";
+      local_live{ (IntSynType ISize) } "__3";
+      "__2" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) (!{ PtrOp } ( "ptr" ));
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ ∅) ([Goto "_bb2"]) (Goto "_bb3")
+     ]>%E $
+     <[
+     "_bb1" :=
+      return (zst_val)
+     ]>%E $
+     <[
+     "_bb2" :=
+      expr: CallE DropGlue_C_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((EnumData ((ControlFlow_els (B_st) (C_st))) "Continue" (!{ PtrOp } ( "ptr" ))) at{ (ControlFlow_Continue_sls (B_st) (C_st)) } "0")];
+      Goto "_bb1"
+     ]>%E $
+     <[
+     "_bb3" :=
+      expr: CallE DropGlue_B_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((EnumData ((ControlFlow_els (B_st) (C_st))) "Break" (!{ PtrOp } ( "ptr" ))) at{ (ControlFlow_Break_sls (B_st) (C_st)) } "0")];
+      Goto "_bb1"
      ]>%E $
       ∅;
      f_init := "_bb0";

@@ -6,7 +6,7 @@ Section RwLock_sls.
   Definition RwLock_sls (T_st: syn_type) : struct_layout_spec :=
     let RwLock_st (T_st: syn_type) := UnitSynType in
     mk_sls "RwLock" [
-    ("_t", T_st)] StructReprRust.
+    ("_t", ((core_marker_PhantomData_sls (T_st)) : syn_type))] StructReprRust.
   Definition RwLock_st (T_st: syn_type) : syn_type := RwLock_sls T_st.
 End RwLock_sls.
 

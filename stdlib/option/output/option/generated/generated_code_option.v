@@ -143,7 +143,7 @@ Qed.
 
 
 
-Program Definition Option_T_filter_def (FnOnce_P_REFT_call_once_loc: loc) (T_st: syn_type) (P_st: syn_type) : function :=
+Program Definition Option_T_filter_def (DropGlue_P_drop_glue_loc: loc) (DropGlue_T_drop_glue_loc: loc) (FnOnce_P_REFT_call_once_loc: loc) (T_st: syn_type) (P_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' (Option_st (T_st))) : layout);
@@ -223,6 +223,7 @@ Program Definition Option_T_filter_def (FnOnce_P_REFT_call_once_loc: loc) (T_st:
       local_dead "__7";
       "__3" <-{ StructOp unit_sl [] } zst_val;
       local_dead "__6";
+      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("x")];
       Goto "_bb6"
      ]>%E $
      <[
@@ -255,6 +256,7 @@ Program Definition Option_T_filter_def (FnOnce_P_REFT_call_once_loc: loc) (T_st:
      ]>%E $
      <[
      "_bb11" :=
+      expr: CallE DropGlue_P_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("predicate")];
       Goto "_bb8"
      ]>%E $
       ∅;
@@ -267,7 +269,7 @@ Qed.
 
 
 
-Program Definition Option_T_map_def (FnOnce_F_T_call_once_loc: loc) (T_st: syn_type) (U_st: syn_type) (F_st: syn_type) : function :=
+Program Definition Option_T_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T_call_once_loc: loc) (T_st: syn_type) (U_st: syn_type) (F_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' (Option_st (T_st))) : layout);
@@ -330,6 +332,7 @@ Program Definition Option_T_map_def (FnOnce_F_T_call_once_loc: loc) (T_st: syn_t
      ]>%E $
      <[
      "_bb6" :=
+      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("f")];
       Goto "_bb5"
      ]>%E $
      <[
@@ -392,7 +395,7 @@ Qed.
 
 
 
-Program Definition Option_T_unwrap_or_def (T_st: syn_type) : function :=
+Program Definition Option_T_unwrap_or_def (DropGlue_T_drop_glue_loc: loc) (T_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' (Option_st (T_st))) : layout);
@@ -439,6 +442,7 @@ Program Definition Option_T_unwrap_or_def (T_st: syn_type) : function :=
      ]>%E $
      <[
      "_bb6" :=
+      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("def")];
       Goto "_bb4"
      ]>%E $
      <[
@@ -447,6 +451,39 @@ Program Definition Option_T_unwrap_or_def (T_st: syn_type) : function :=
        Goto "_bb6"
       else
        Goto "_bb4"
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition drop_glue_Option_def (DropGlue_T_drop_glue_loc: loc) (T_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("ptr", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ UnitSynType } "ret";
+      local_live{ (IntSynType ISize) } "__2";
+      local_live{ (IntSynType ISize) } "__3";
+      "__2" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ PtrOp } ( "ptr" ));
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ ∅) ([Goto "_bb1"]) (Goto "_bb2")
+     ]>%E $
+     <[
+     "_bb1" :=
+      return (zst_val)
+     ]>%E $
+     <[
+     "_bb2" :=
+      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((EnumData ((Option_els (T_st))) "Some" (!{ PtrOp } ( "ptr" ))) at{ (Option_Some_sls (T_st)) } "0")];
+      Goto "_bb1"
      ]>%E $
       ∅;
      f_init := "_bb0";

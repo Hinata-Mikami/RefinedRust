@@ -31,6 +31,24 @@
       ],
       "spec": "type_of_Range_Idx_is_empty",
       "trait_req_incl": "trait_incl_of_Range_Idx_is_empty"
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_Range",
+          "spec": "type_of_drop_glue_Range",
+          "trait_req_incl": "trait_incl_of_drop_glue_Range"
+        }
+      },
+      "name": "drop_glue_Range",
+      "path": [
+        "core",
+        "ops",
+        "Range"
+      ]
     }
   ],
   "module_dependencies": [

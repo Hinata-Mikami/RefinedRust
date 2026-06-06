@@ -7,9 +7,9 @@ Section RwLock_ty.
   Context (T_rt : RT).
 
 
-Definition RwLock_ty  : (spec_with 0 [(T_rt)] ((type (plist place_rfnRT [(T_rt) : RT])))).
+Definition RwLock_ty  : (spec_with 0 [(T_rt)] ((type (plist place_rfnRT [(((core_marker_PhantomData_rt) ((T_rt)))) : RT])))).
 Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (RwLock_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[(T_ty)]))).
+  exact (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (RwLock_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[((core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty]))]))).
 Defined.
 
 Definition RwLock_rt  : RT.
@@ -57,8 +57,8 @@ Section specs.
 Context `{RRGS : !refinedrustGS Σ}.
 
 
-Definition trait_incl_of_RwLock_T_new (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (True).
+Definition trait_incl_of_RwLock_T_new (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
 
 Definition type_of_RwLock_T_new (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 

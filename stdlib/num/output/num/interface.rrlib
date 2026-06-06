@@ -3,6 +3,18 @@
   "items": [
     {
       "kind": "method",
+      "name": "i128_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "i128",
+        "abs_diff"
+      ],
+      "spec": "type_of_i128_abs_diff",
+      "trait_req_incl": "trait_incl_of_i128_abs_diff"
+    },
+    {
+      "kind": "method",
       "name": "i128_is_negative",
       "path": [
         "core",
@@ -24,6 +36,18 @@
       ],
       "spec": "type_of_i128_is_positive",
       "trait_req_incl": "trait_incl_of_i128_is_positive"
+    },
+    {
+      "kind": "method",
+      "name": "i16_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "i16",
+        "abs_diff"
+      ],
+      "spec": "type_of_i16_abs_diff",
+      "trait_req_incl": "trait_incl_of_i16_abs_diff"
     },
     {
       "kind": "method",
@@ -51,6 +75,18 @@
     },
     {
       "kind": "method",
+      "name": "i32_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "i32",
+        "abs_diff"
+      ],
+      "spec": "type_of_i32_abs_diff",
+      "trait_req_incl": "trait_incl_of_i32_abs_diff"
+    },
+    {
+      "kind": "method",
       "name": "i32_is_negative",
       "path": [
         "core",
@@ -72,6 +108,18 @@
       ],
       "spec": "type_of_i32_is_positive",
       "trait_req_incl": "trait_incl_of_i32_is_positive"
+    },
+    {
+      "kind": "method",
+      "name": "i64_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "i64",
+        "abs_diff"
+      ],
+      "spec": "type_of_i64_abs_diff",
+      "trait_req_incl": "trait_incl_of_i64_abs_diff"
     },
     {
       "kind": "method",
@@ -99,6 +147,18 @@
     },
     {
       "kind": "method",
+      "name": "i8_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "i8",
+        "abs_diff"
+      ],
+      "spec": "type_of_i8_abs_diff",
+      "trait_req_incl": "trait_incl_of_i8_abs_diff"
+    },
+    {
+      "kind": "method",
       "name": "i8_is_negative",
       "path": [
         "core",
@@ -120,6 +180,18 @@
       ],
       "spec": "type_of_i8_is_positive",
       "trait_req_incl": "trait_incl_of_i8_is_positive"
+    },
+    {
+      "kind": "method",
+      "name": "isize_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "isize",
+        "abs_diff"
+      ],
+      "spec": "type_of_isize_abs_diff",
+      "trait_req_incl": "trait_incl_of_isize_abs_diff"
     },
     {
       "kind": "method",
@@ -159,138 +231,6 @@
     },
     {
       "kind": "method",
-      "name": "u16_abs_diff",
-      "path": [
-        "core",
-        "num",
-        "u16",
-        "abs_diff"
-      ],
-      "spec": "type_of_u16_abs_diff",
-      "trait_req_incl": "trait_incl_of_u16_abs_diff"
-    },
-    {
-      "kind": "method",
-      "name": "u32_abs_diff",
-      "path": [
-        "core",
-        "num",
-        "u32",
-        "abs_diff"
-      ],
-      "spec": "type_of_u32_abs_diff",
-      "trait_req_incl": "trait_incl_of_u32_abs_diff"
-    },
-    {
-      "kind": "method",
-      "name": "u64_abs_diff",
-      "path": [
-        "core",
-        "num",
-        "u64",
-        "abs_diff"
-      ],
-      "spec": "type_of_u64_abs_diff",
-      "trait_req_incl": "trait_incl_of_u64_abs_diff"
-    },
-    {
-      "kind": "method",
-      "name": "u8_abs_diff",
-      "path": [
-        "core",
-        "num",
-        "u8",
-        "abs_diff"
-      ],
-      "spec": "type_of_u8_abs_diff",
-      "trait_req_incl": "trait_incl_of_u8_abs_diff"
-    },
-    {
-      "kind": "method",
-      "name": "usize_abs_diff",
-      "path": [
-        "core",
-        "num",
-        "usize",
-        "abs_diff"
-      ],
-      "spec": "type_of_usize_abs_diff",
-      "trait_req_incl": "trait_incl_of_usize_abs_diff"
-    },
-    {
-      "kind": "method",
-      "name": "i128_abs_diff",
-      "path": [
-        "core",
-        "num",
-        "i128",
-        "abs_diff"
-      ],
-      "spec": "type_of_i128_abs_diff",
-      "trait_req_incl": "trait_incl_of_i128_abs_diff"
-    },
-    {
-      "kind": "method",
-      "name": "i16_abs_diff",
-      "path": [
-        "core",
-        "num",
-        "i16",
-        "abs_diff"
-      ],
-      "spec": "type_of_i16_abs_diff",
-      "trait_req_incl": "trait_incl_of_i16_abs_diff"
-    },
-    {
-      "kind": "method",
-      "name": "i32_abs_diff",
-      "path": [
-        "core",
-        "num",
-        "i32",
-        "abs_diff"
-      ],
-      "spec": "type_of_i32_abs_diff",
-      "trait_req_incl": "trait_incl_of_i32_abs_diff"
-    },
-    {
-      "kind": "method",
-      "name": "i64_abs_diff",
-      "path": [
-        "core",
-        "num",
-        "i64",
-        "abs_diff"
-      ],
-      "spec": "type_of_i64_abs_diff",
-      "trait_req_incl": "trait_incl_of_i64_abs_diff"
-    },
-    {
-      "kind": "method",
-      "name": "i8_abs_diff",
-      "path": [
-        "core",
-        "num",
-        "i8",
-        "abs_diff"
-      ],
-      "spec": "type_of_i8_abs_diff",
-      "trait_req_incl": "trait_incl_of_i8_abs_diff"
-    },
-    {
-      "kind": "method",
-      "name": "isize_abs_diff",
-      "path": [
-        "core",
-        "num",
-        "isize",
-        "abs_diff"
-      ],
-      "spec": "type_of_isize_abs_diff",
-      "trait_req_incl": "trait_incl_of_isize_abs_diff"
-    },
-    {
-      "kind": "method",
       "name": "u128_is_power_of_two",
       "path": [
         "core",
@@ -300,6 +240,18 @@
       ],
       "spec": "type_of_u128_is_power_of_two",
       "trait_req_incl": "trait_incl_of_u128_is_power_of_two"
+    },
+    {
+      "kind": "method",
+      "name": "u16_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "u16",
+        "abs_diff"
+      ],
+      "spec": "type_of_u16_abs_diff",
+      "trait_req_incl": "trait_incl_of_u16_abs_diff"
     },
     {
       "kind": "method",
@@ -315,6 +267,18 @@
     },
     {
       "kind": "method",
+      "name": "u32_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "u32",
+        "abs_diff"
+      ],
+      "spec": "type_of_u32_abs_diff",
+      "trait_req_incl": "trait_incl_of_u32_abs_diff"
+    },
+    {
+      "kind": "method",
       "name": "u32_is_power_of_two",
       "path": [
         "core",
@@ -324,6 +288,18 @@
       ],
       "spec": "type_of_u32_is_power_of_two",
       "trait_req_incl": "trait_incl_of_u32_is_power_of_two"
+    },
+    {
+      "kind": "method",
+      "name": "u64_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "u64",
+        "abs_diff"
+      ],
+      "spec": "type_of_u64_abs_diff",
+      "trait_req_incl": "trait_incl_of_u64_abs_diff"
     },
     {
       "kind": "method",
@@ -339,6 +315,18 @@
     },
     {
       "kind": "method",
+      "name": "u8_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "u8",
+        "abs_diff"
+      ],
+      "spec": "type_of_u8_abs_diff",
+      "trait_req_incl": "trait_incl_of_u8_abs_diff"
+    },
+    {
+      "kind": "method",
       "name": "u8_is_power_of_two",
       "path": [
         "core",
@@ -348,6 +336,18 @@
       ],
       "spec": "type_of_u8_is_power_of_two",
       "trait_req_incl": "trait_incl_of_u8_is_power_of_two"
+    },
+    {
+      "kind": "method",
+      "name": "usize_abs_diff",
+      "path": [
+        "core",
+        "num",
+        "usize",
+        "abs_diff"
+      ],
+      "spec": "type_of_usize_abs_diff",
+      "trait_req_incl": "trait_incl_of_usize_abs_diff"
     },
     {
       "kind": "method",

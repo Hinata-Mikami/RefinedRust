@@ -179,6 +179,7 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "GlobalasAllocator",

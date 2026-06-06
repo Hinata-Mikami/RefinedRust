@@ -9,18 +9,18 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition Range_Idx_is_empty_lemma (π : thread_id) : Prop :=
-  ∀ `(Idx_rt : !RT) `(Idx_st : !syn_type) `(PartialEq_Idx_Idx_spec_attrs : !(PartialEq_spec_attrs (RRGS:=RRGS) (Idx_rt) (Idx_rt) )) `(PartialEq_Idx_Idx_spec : !(spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (Idx_rt) (Idx_rt)))) `(PartialOrd_Idx_Idx_spec_attrs : !(PartialOrd_spec_attrs (RRGS:=RRGS) (Idx_rt) (Idx_rt) PartialEq_Idx_Idx_spec_attrs)) `(PartialOrd_Idx_Idx_spec : !(spec_with 0 [] (PartialOrd_spec (RRGS:=RRGS) (Idx_rt) (Idx_rt)))) (PartialOrd_Idx_Idx_lt_loc : loc) , 
+  ∀ `(Idx_rt : !RT) `(Idx_st : !syn_type) `(DropGlue_Idx_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Idx_rt)))) `(PartialEq_Idx_Idx_spec_attrs : !(PartialEq_spec_attrs (RRGS:=RRGS) (Idx_rt) (Idx_rt) )) `(PartialEq_Idx_Idx_spec : !(spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (Idx_rt) (Idx_rt)))) `(PartialOrd_Idx_Idx_spec_attrs : !(PartialOrd_spec_attrs (RRGS:=RRGS) (Idx_rt) (Idx_rt) PartialEq_Idx_Idx_spec_attrs)) `(PartialOrd_Idx_Idx_spec : !(spec_with 0 [] (PartialOrd_spec (RRGS:=RRGS) (Idx_rt) (Idx_rt)))) (PartialOrd_Idx_Idx_lt_loc : loc) , 
   syn_type_is_layoutable (Idx_st) →
   syn_type_is_layoutable (((Range_sls (Idx_st)) : syn_type)) →
   PartialOrd_Idx_Idx_lt_loc ◁ᵥ{π, MetaNone} PartialOrd_Idx_Idx_lt_loc @ function_ptr [PtrSynType; PtrSynType] (<tag_type> spec! ( *[late_lft_0; late_lft_1]) : 2 | ( *[Idx_ty]) : ([Idx_rt] : list RT), fn_spec_add_late_pre ((PartialOrd_lt_spec (RRGS:=RRGS) (PartialOrd_Idx_Idx_spec-[] -[]))  -[late_lft_0; late_lft_1] -[]) (λ π, ((typaram_wf Idx_rt Idx_st Idx_ty)))%I) -∗
   typed_function π (Range_Idx_is_empty_def PartialOrd_Idx_Idx_lt_loc  Idx_st  ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[Idx_ty]) : ([Idx_rt] : list RT), fn_spec_add_late_pre (type_of_Range_Idx_is_empty Idx_rt Idx_st PartialEq_Idx_Idx_spec_attrs PartialOrd_Idx_Idx_spec_attrs -[ulft_1] -[Idx_ty]) (λ π, ((typaram_wf Idx_rt Idx_st Idx_ty))
-  ∗ (⌜((trait_incl_of_Range_Idx_is_empty (Idx_rt) (Idx_st) (PartialEq_Idx_Idx_spec_attrs) (PartialEq_Idx_Idx_spec) (PartialOrd_Idx_Idx_spec_attrs) (PartialOrd_Idx_Idx_spec))-[ulft_1] -[Idx_ty])%Z⌝))).
+  ∗ (⌜((trait_incl_of_Range_Idx_is_empty (Idx_rt) (Idx_st) (DropGlue_Idx_spec) (PartialEq_Idx_Idx_spec_attrs) (PartialEq_Idx_Idx_spec) (PartialOrd_Idx_Idx_spec_attrs) (PartialOrd_Idx_Idx_spec))-[ulft_1] -[Idx_ty])%Z⌝))).
 End proof.
 
 Ltac Range_Idx_is_empty_prelude :=
   unfold Range_Idx_is_empty_lemma;
   set (FN_NAME := FUNCTION_NAME "Range_Idx_is_empty");
-  intros Idx_rt Idx_st PartialEq_Idx_Idx_spec_attrs PartialEq_Idx_Idx_spec PartialOrd_Idx_Idx_spec_attrs PartialOrd_Idx_Idx_spec;
+  intros Idx_rt Idx_st DropGlue_Idx_spec PartialEq_Idx_Idx_spec_attrs PartialEq_Idx_Idx_spec PartialOrd_Idx_Idx_spec_attrs PartialOrd_Idx_Idx_spec;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

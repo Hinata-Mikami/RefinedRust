@@ -46,18 +46,6 @@
     },
     {
       "kind": "method",
-      "name": "Box_T_new",
-      "path": [
-        "alloc",
-        "boxed",
-        "Box",
-        "new"
-      ],
-      "spec": "type_of_Box_T_new",
-      "trait_req_incl": "trait_incl_of_Box_T_new"
-    },
-    {
-      "kind": "method",
       "name": "Box_T_into_raw",
       "path": [
         "alloc",
@@ -81,6 +69,18 @@
       "trait_req_incl": "trait_incl_of_Box_TA_into_raw_with_allocator"
     },
     {
+      "kind": "method",
+      "name": "Box_T_new",
+      "path": [
+        "alloc",
+        "boxed",
+        "Box",
+        "new"
+      ],
+      "spec": "type_of_Box_T_new",
+      "trait_req_incl": "trait_incl_of_Box_T_new"
+    },
+    {
       "for_type": {
         "Adt": {
           "args": [
@@ -99,13 +99,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "drop": [
-          "BoxTAasstd_ops_Drop_drop",
-          "type_of_BoxTAasstd_ops_Drop_drop",
-          "trait_incl_of_BoxTAasstd_ops_Drop_drop"
-        ]
+        "drop": {
+          "name": "BoxTAasstd_ops_Drop_drop",
+          "spec": "type_of_BoxTAasstd_ops_Drop_drop",
+          "trait_req_incl": "trait_incl_of_BoxTAasstd_ops_Drop_drop"
+        }
       },
       "name": "BoxTAasstd_ops_Drop",
       "trait_path": {
@@ -116,6 +117,24 @@
           "Drop"
         ]
       }
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_Box",
+          "spec": "type_of_drop_glue_Box",
+          "trait_req_incl": "trait_incl_of_drop_glue_Box"
+        }
+      },
+      "name": "drop_glue_Box",
+      "path": [
+        "alloc",
+        "boxed",
+        "Box"
+      ]
     }
   ],
   "module_dependencies": [

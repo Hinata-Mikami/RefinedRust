@@ -92,7 +92,7 @@ Section layout_Layout_inv_t.
   Program Definition layout_Layout_inv_t_inv_spec  : spec_with 0 [] (ex_inv_def (layout_Layout_rt)%type ((rust_layout))%type) := spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
     (λ π inner_rfn (_ty_rfn : RT_rt ((rust_layout)%type : RT)),
             let 'l := _ty_rfn in ⌜inner_rfn = -[#(Z.of_nat l.(layout_sz)); #(l.(layout_alignment))]⌝ ∗ ⌜(layout_wf l)%Z⌝ ∗ ⌜(Z.of_nat l.(layout_sz) ∈ isize)%Z⌝ ∗ True)%I
-    (false)
+    (true)
     ([])
     ([])
     _ _ _ _
@@ -204,8 +204,8 @@ Definition type_of_layout_Layout_from_size_align_unchecked  :=
       (* existential.. *) ∃ _ : unit, mk_rust_layout (Z.to_nat size) (alignment_of_align align) @ (layout_Layout_inv_t   -[] -[]);
       (* postcondition *) (λ π : thread_id, True).
 
-Definition trait_incl_of_layout_Layout_new (T_rt: RT) (T_st: syn_type) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (True).
+Definition trait_incl_of_layout_Layout_new (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
 
 Definition type_of_layout_Layout_new (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 

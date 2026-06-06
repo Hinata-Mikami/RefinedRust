@@ -10,7 +10,7 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition PartialOrd_ge_lemma (π : thread_id) : Prop :=
-  ∀ `(Self_rt : !RT) `(Rhs_rt : !RT) `(Self_st : !syn_type) `(Rhs_st : !syn_type) `(PartialEq_Self_Rhs_spec_attrs : !(PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) )) `(PartialEq_Self_Rhs_spec : !(spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (Self_rt) (Rhs_rt)))) `(PartialOrd_Self_Rhs_spec_attrs : !(PartialOrd_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) PartialEq_Self_Rhs_spec_attrs)) `(PartialOrd_Self_Rhs_spec : !(spec_with 0 [] (PartialOrd_spec (RRGS:=RRGS) (Self_rt) (Rhs_rt)))) (PartialOrd_Self_Rhs_partial_cmp_loc : loc) , 
+  ∀ `(Self_rt : !RT) `(Rhs_rt : !RT) `(Self_st : !syn_type) `(Rhs_st : !syn_type) `(PartialEq_Self_Rhs_spec_attrs : !(PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) )) `(PartialEq_Self_Rhs_spec : !(spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (Self_rt) (Rhs_rt)))) `(PartialOrd_Self_Rhs_spec_attrs : !(PartialOrd_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) PartialEq_Self_Rhs_spec_attrs)) `(PartialOrd_Self_Rhs_spec : !(spec_with 0 [] (PartialOrd_spec (RRGS:=RRGS) (Self_rt) (Rhs_rt)))) `(DropGlue_Self_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) `(DropGlue_Rhs_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Rhs_rt)))) (PartialOrd_Self_Rhs_partial_cmp_loc : loc) , 
   syn_type_is_layoutable (Self_st) →
   syn_type_is_layoutable (Rhs_st) →
   syn_type_is_layoutable ((Ordering_els : syn_type)) →
@@ -20,13 +20,13 @@ Definition PartialOrd_ge_lemma (π : thread_id) : Prop :=
   ∗ (typaram_wf Rhs_rt Rhs_st Rhs_ty)))%I) -∗
   typed_function π (PartialOrd_ge_def PartialOrd_Self_Rhs_partial_cmp_loc  Self_st  Rhs_st  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), fn_spec_add_late_pre (PartialOrd_ge_base_spec Self_rt Rhs_rt Self_st Rhs_st PartialEq_Self_Rhs_spec_attrs PartialOrd_Self_Rhs_spec_attrs -[ulft_1; ulft_2] -[Self_ty; Rhs_ty]) (λ π, ((typaram_wf Self_rt Self_st Self_ty)
   ∗ (typaram_wf Rhs_rt Rhs_st Rhs_ty))
-  ∗ (⌜((trait_incl_of_PartialOrd_ge (Self_rt) (Rhs_rt) (Self_st) (Rhs_st) (PartialEq_Self_Rhs_spec_attrs) (PartialEq_Self_Rhs_spec) (PartialOrd_Self_Rhs_spec_attrs) (PartialOrd_Self_Rhs_spec))-[ulft_1; ulft_2] -[Self_ty; Rhs_ty])%Z⌝))).
+  ∗ (⌜((trait_incl_of_PartialOrd_ge (Self_rt) (Rhs_rt) (Self_st) (Rhs_st) (PartialEq_Self_Rhs_spec_attrs) (PartialEq_Self_Rhs_spec) (PartialOrd_Self_Rhs_spec_attrs) (PartialOrd_Self_Rhs_spec) (DropGlue_Self_spec) (DropGlue_Rhs_spec))-[ulft_1; ulft_2] -[Self_ty; Rhs_ty])%Z⌝))).
 End proof.
 
 Ltac PartialOrd_ge_prelude :=
   unfold PartialOrd_ge_lemma;
   set (FN_NAME := FUNCTION_NAME "PartialOrd_ge");
-  intros Self_rt Rhs_rt Self_st Rhs_st PartialEq_Self_Rhs_spec_attrs PartialEq_Self_Rhs_spec PartialOrd_Self_Rhs_spec_attrs PartialOrd_Self_Rhs_spec;
+  intros Self_rt Rhs_rt Self_st Rhs_st PartialEq_Self_Rhs_spec_attrs PartialEq_Self_Rhs_spec PartialOrd_Self_Rhs_spec_attrs PartialOrd_Self_Rhs_spec DropGlue_Self_spec DropGlue_Rhs_spec;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

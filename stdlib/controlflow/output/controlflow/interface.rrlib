@@ -228,18 +228,19 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "branch": [
-          "ControlFlowBCasTry_branch",
-          "type_of_ControlFlowBCasTry_branch",
-          "trait_incl_of_ControlFlowBCasTry_branch"
-        ],
-        "from_output": [
-          "ControlFlowBCasTry_from_output",
-          "type_of_ControlFlowBCasTry_from_output",
-          "trait_incl_of_ControlFlowBCasTry_from_output"
-        ]
+        "branch": {
+          "name": "ControlFlowBCasTry_branch",
+          "spec": "type_of_ControlFlowBCasTry_branch",
+          "trait_req_incl": "trait_incl_of_ControlFlowBCasTry_branch"
+        },
+        "from_output": {
+          "name": "ControlFlowBCasTry_from_output",
+          "spec": "type_of_ControlFlowBCasTry_from_output",
+          "trait_req_incl": "trait_incl_of_ControlFlowBCasTry_from_output"
+        }
       },
       "name": "ControlFlowBCasTry",
       "trait_path": {
@@ -270,13 +271,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "from_residual": [
-          "ControlFlowBCasFromResidualControlFlowBconvert_Infallible_from_residual",
-          "type_of_ControlFlowBCasFromResidualControlFlowBconvert_Infallible_from_residual",
-          "trait_incl_of_ControlFlowBCasFromResidualControlFlowBconvert_Infallible_from_residual"
-        ]
+        "from_residual": {
+          "name": "ControlFlowBCasFromResidualControlFlowBconvert_Infallible_from_residual",
+          "spec": "type_of_ControlFlowBCasFromResidualControlFlowBconvert_Infallible_from_residual",
+          "trait_req_incl": "trait_incl_of_ControlFlowBCasFromResidualControlFlowBconvert_Infallible_from_residual"
+        }
       },
       "name": "ControlFlowBCasFromResidualControlFlowBconvert_Infallible",
       "trait_path": {
@@ -318,13 +320,14 @@
         "Param": 0
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "from": [
-          "Tasconvert_FromT_from",
-          "type_of_Tasconvert_FromT_from",
-          "trait_incl_of_Tasconvert_FromT_from"
-        ]
+        "from": {
+          "name": "Tasconvert_FromT_from",
+          "spec": "type_of_Tasconvert_FromT_from",
+          "trait_req_incl": "trait_incl_of_Tasconvert_FromT_from"
+        }
       },
       "name": "Tasconvert_FromT",
       "trait_path": {
@@ -345,13 +348,14 @@
         "Param": 0
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "into": [
-          "Tasconvert_IntoU_into",
-          "type_of_Tasconvert_IntoU_into",
-          "trait_incl_of_Tasconvert_IntoU_into"
-        ]
+        "into": {
+          "name": "Tasconvert_IntoU_into",
+          "spec": "type_of_Tasconvert_IntoU_into",
+          "trait_req_incl": "trait_incl_of_Tasconvert_IntoU_into"
+        }
       },
       "name": "Tasconvert_IntoU",
       "trait_path": {
@@ -383,13 +387,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "from_residual": [
-          "std_option_OptionTasFromResidual_from_residual",
-          "type_of_std_option_OptionTasFromResidual_from_residual",
-          "trait_incl_of_std_option_OptionTasFromResidual_from_residual"
-        ]
+        "from_residual": {
+          "name": "std_option_OptionTasFromResidual_from_residual",
+          "spec": "type_of_std_option_OptionTasFromResidual_from_residual",
+          "trait_req_incl": "trait_incl_of_std_option_OptionTasFromResidual_from_residual"
+        }
       },
       "name": "std_option_OptionTasFromResidual",
       "trait_path": {
@@ -439,18 +444,19 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "branch": [
-          "std_option_OptionTasTry_branch",
-          "type_of_std_option_OptionTasTry_branch",
-          "trait_incl_of_std_option_OptionTasTry_branch"
-        ],
-        "from_output": [
-          "std_option_OptionTasTry_from_output",
-          "type_of_std_option_OptionTasTry_from_output",
-          "trait_incl_of_std_option_OptionTasTry_from_output"
-        ]
+        "branch": {
+          "name": "std_option_OptionTasTry_branch",
+          "spec": "type_of_std_option_OptionTasTry_branch",
+          "trait_req_incl": "trait_incl_of_std_option_OptionTasTry_branch"
+        },
+        "from_output": {
+          "name": "std_option_OptionTasTry_from_output",
+          "spec": "type_of_std_option_OptionTasTry_from_output",
+          "trait_req_incl": "trait_incl_of_std_option_OptionTasTry_from_output"
+        }
       },
       "name": "std_option_OptionTasTry",
       "trait_path": {
@@ -481,18 +487,19 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "branch": [
-          "std_result_ResultTEasTry_branch",
-          "type_of_std_result_ResultTEasTry_branch",
-          "trait_incl_of_std_result_ResultTEasTry_branch"
-        ],
-        "from_output": [
-          "std_result_ResultTEasTry_from_output",
-          "type_of_std_result_ResultTEasTry_from_output",
-          "trait_incl_of_std_result_ResultTEasTry_from_output"
-        ]
+        "branch": {
+          "name": "std_result_ResultTEasTry_branch",
+          "spec": "type_of_std_result_ResultTEasTry_branch",
+          "trait_req_incl": "trait_incl_of_std_result_ResultTEasTry_branch"
+        },
+        "from_output": {
+          "name": "std_result_ResultTEasTry_from_output",
+          "spec": "type_of_std_result_ResultTEasTry_from_output",
+          "trait_req_incl": "trait_incl_of_std_result_ResultTEasTry_from_output"
+        }
       },
       "name": "std_result_ResultTEasTry",
       "trait_path": {
@@ -523,13 +530,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "from_residual": [
-          "std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_from_residual",
-          "type_of_std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_from_residual",
-          "trait_incl_of_std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_from_residual"
-        ]
+        "from_residual": {
+          "name": "std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_from_residual",
+          "spec": "type_of_std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_from_residual",
+          "trait_req_incl": "trait_incl_of_std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_from_residual"
+        }
       },
       "name": "std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE",
       "trait_path": {
@@ -565,6 +573,24 @@
           "FromResidual"
         ]
       }
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_ControlFlow",
+          "spec": "type_of_drop_glue_ControlFlow",
+          "trait_req_incl": "trait_incl_of_drop_glue_ControlFlow"
+        }
+      },
+      "name": "drop_glue_ControlFlow",
+      "path": [
+        "core",
+        "ops",
+        "ControlFlow"
+      ]
     }
   ],
   "module_dependencies": [

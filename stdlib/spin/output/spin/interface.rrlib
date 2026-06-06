@@ -220,13 +220,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "relax": [
-          "relax_Spinasrelax_RelaxStrategy_relax",
-          "type_of_relax_Spinasrelax_RelaxStrategy_relax",
-          "trait_incl_of_relax_Spinasrelax_RelaxStrategy_relax"
-        ]
+        "relax": {
+          "name": "relax_Spinasrelax_RelaxStrategy_relax",
+          "spec": "type_of_relax_Spinasrelax_RelaxStrategy_relax",
+          "trait_req_incl": "trait_incl_of_relax_Spinasrelax_RelaxStrategy_relax"
+        }
       },
       "name": "relax_Spinasrelax_RelaxStrategy",
       "trait_path": {
@@ -258,13 +259,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "deref": [
-          "rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_deref",
-          "type_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_deref",
-          "trait_incl_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_deref"
-        ]
+        "deref": {
+          "name": "rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_deref",
+          "spec": "type_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_deref",
+          "trait_req_incl": "trait_incl_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_deref"
+        }
       },
       "name": "rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref",
       "trait_path": {
@@ -296,13 +298,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "deref_mut": [
-          "rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_deref_mut",
-          "type_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_deref_mut",
-          "trait_incl_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_deref_mut"
-        ]
+        "deref_mut": {
+          "name": "rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_deref_mut",
+          "spec": "type_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_deref_mut",
+          "trait_req_incl": "trait_incl_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_deref_mut"
+        }
       },
       "name": "rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut",
       "trait_path": {
@@ -313,6 +316,24 @@
           "DerefMut"
         ]
       }
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_rwlock_RwLockWriteGuard",
+          "spec": "type_of_drop_glue_rwlock_RwLockWriteGuard",
+          "trait_req_incl": "trait_incl_of_drop_glue_rwlock_RwLockWriteGuard"
+        }
+      },
+      "name": "drop_glue_rwlock_RwLockWriteGuard",
+      "path": [
+        "spin",
+        "rwlock",
+        "RwLockWriteGuard"
+      ]
     }
   ],
   "module_dependencies": [

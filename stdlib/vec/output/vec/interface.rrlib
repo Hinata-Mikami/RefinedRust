@@ -82,18 +82,6 @@
     },
     {
       "kind": "method",
-      "name": "Vec_TA_is_empty",
-      "path": [
-        "alloc",
-        "vec",
-        "Vec",
-        "is_empty"
-      ],
-      "spec": "type_of_Vec_TA_is_empty",
-      "trait_req_incl": "trait_incl_of_Vec_TA_is_empty"
-    },
-    {
-      "kind": "method",
       "name": "Vec_TA_insert",
       "path": [
         "alloc",
@@ -103,6 +91,18 @@
       ],
       "spec": "type_of_Vec_TA_insert",
       "trait_req_incl": "trait_incl_of_Vec_TA_insert"
+    },
+    {
+      "kind": "method",
+      "name": "Vec_TA_is_empty",
+      "path": [
+        "alloc",
+        "vec",
+        "Vec",
+        "is_empty"
+      ],
+      "spec": "type_of_Vec_TA_is_empty",
+      "trait_req_incl": "trait_incl_of_Vec_TA_is_empty"
     },
     {
       "kind": "method",
@@ -260,13 +260,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "next": [
-          "IntoIterTAasstd_iter_Iterator_next",
-          "type_of_IntoIterTAasstd_iter_Iterator_next",
-          "trait_incl_of_IntoIterTAasstd_iter_Iterator_next"
-        ]
+        "next": {
+          "name": "IntoIterTAasstd_iter_Iterator_next",
+          "spec": "type_of_IntoIterTAasstd_iter_Iterator_next",
+          "trait_req_incl": "trait_incl_of_IntoIterTAasstd_iter_Iterator_next"
+        }
       },
       "name": "IntoIterTAasstd_iter_Iterator",
       "trait_path": {
@@ -296,23 +297,24 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "all": [
-          "IteraTasstd_iter_Iterator_all",
-          "type_of_IteraTasstd_iter_Iterator_all",
-          "trait_incl_of_IteraTasstd_iter_Iterator_all"
-        ],
-        "next": [
-          "IteraTasstd_iter_Iterator_next",
-          "type_of_IteraTasstd_iter_Iterator_next",
-          "trait_incl_of_IteraTasstd_iter_Iterator_next"
-        ],
-        "position": [
-          "IteraTasstd_iter_Iterator_position",
-          "type_of_IteraTasstd_iter_Iterator_position",
-          "trait_incl_of_IteraTasstd_iter_Iterator_position"
-        ]
+        "all": {
+          "name": "IteraTasstd_iter_Iterator_all",
+          "spec": "type_of_IteraTasstd_iter_Iterator_all",
+          "trait_req_incl": "trait_incl_of_IteraTasstd_iter_Iterator_all"
+        },
+        "next": {
+          "name": "IteraTasstd_iter_Iterator_next",
+          "spec": "type_of_IteraTasstd_iter_Iterator_next",
+          "trait_req_incl": "trait_incl_of_IteraTasstd_iter_Iterator_next"
+        },
+        "position": {
+          "name": "IteraTasstd_iter_Iterator_position",
+          "spec": "type_of_IteraTasstd_iter_Iterator_position",
+          "trait_req_incl": "trait_incl_of_IteraTasstd_iter_Iterator_position"
+        }
       },
       "name": "IteraTasstd_iter_Iterator",
       "trait_path": {
@@ -342,13 +344,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "next": [
-          "IterMutaTasstd_iter_Iterator_next",
-          "type_of_IterMutaTasstd_iter_Iterator_next",
-          "trait_incl_of_IterMutaTasstd_iter_Iterator_next"
-        ]
+        "next": {
+          "name": "IterMutaTasstd_iter_Iterator_next",
+          "spec": "type_of_IterMutaTasstd_iter_Iterator_next",
+          "trait_req_incl": "trait_incl_of_IterMutaTasstd_iter_Iterator_next"
+        }
       },
       "name": "IterMutaTasstd_iter_Iterator",
       "trait_path": {
@@ -379,13 +382,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "drop": [
-          "RawVecTAasstd_ops_Drop_drop",
-          "type_of_RawVecTAasstd_ops_Drop_drop",
-          "trait_incl_of_RawVecTAasstd_ops_Drop_drop"
-        ]
+        "drop": {
+          "name": "RawVecTAasstd_ops_Drop_drop",
+          "spec": "type_of_RawVecTAasstd_ops_Drop_drop",
+          "trait_req_incl": "trait_incl_of_RawVecTAasstd_ops_Drop_drop"
+        }
       },
       "name": "RawVecTAasstd_ops_Drop",
       "trait_path": {
@@ -416,13 +420,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "into_iter": [
-          "VecTAasstd_iter_IntoIterator_into_iter",
-          "type_of_VecTAasstd_iter_IntoIterator_into_iter",
-          "trait_incl_of_VecTAasstd_iter_IntoIterator_into_iter"
-        ]
+        "into_iter": {
+          "name": "VecTAasstd_iter_IntoIterator_into_iter",
+          "spec": "type_of_VecTAasstd_iter_IntoIterator_into_iter",
+          "trait_req_incl": "trait_incl_of_VecTAasstd_iter_IntoIterator_into_iter"
+        }
       },
       "name": "VecTAasstd_iter_IntoIterator",
       "trait_path": {
@@ -453,13 +458,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "drop": [
-          "VecTAasstd_ops_Drop_drop",
-          "type_of_VecTAasstd_ops_Drop_drop",
-          "trait_incl_of_VecTAasstd_ops_Drop_drop"
-        ]
+        "drop": {
+          "name": "VecTAasstd_ops_Drop_drop",
+          "spec": "type_of_VecTAasstd_ops_Drop_drop",
+          "trait_req_incl": "trait_incl_of_VecTAasstd_ops_Drop_drop"
+        }
       },
       "name": "VecTAasstd_ops_Drop",
       "trait_path": {
@@ -497,13 +503,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "from_iter": [
-          "VecTasstd_iter_FromIteratorT_from_iter",
-          "type_of_VecTasstd_iter_FromIteratorT_from_iter",
-          "trait_incl_of_VecTasstd_iter_FromIteratorT_from_iter"
-        ]
+        "from_iter": {
+          "name": "VecTasstd_iter_FromIteratorT_from_iter",
+          "spec": "type_of_VecTasstd_iter_FromIteratorT_from_iter",
+          "trait_req_incl": "trait_incl_of_VecTasstd_iter_FromIteratorT_from_iter"
+        }
       },
       "name": "VecTasstd_iter_FromIteratorT",
       "trait_path": {
@@ -524,6 +531,7 @@
         "Uint": "Usize"
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "usizeasprivate_slice_index_Sealed",
@@ -537,6 +545,78 @@
           "SliceIndex"
         ]
       }
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_RawVec",
+          "spec": "type_of_drop_glue_RawVec",
+          "trait_req_incl": "trait_incl_of_drop_glue_RawVec"
+        }
+      },
+      "name": "drop_glue_RawVec",
+      "path": [
+        "alloc",
+        "raw_vec",
+        "RawVec"
+      ]
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_Vec",
+          "spec": "type_of_drop_glue_Vec",
+          "trait_req_incl": "trait_incl_of_drop_glue_Vec"
+        }
+      },
+      "name": "drop_glue_Vec",
+      "path": [
+        "alloc",
+        "vec",
+        "Vec"
+      ]
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_IntoIter",
+          "spec": "type_of_drop_glue_IntoIter",
+          "trait_req_incl": "trait_incl_of_drop_glue_IntoIter"
+        }
+      },
+      "name": "drop_glue_IntoIter",
+      "path": [
+        "alloc",
+        "vec",
+        "into_iter",
+        "IntoIter"
+      ]
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_RawVecInner",
+          "spec": "type_of_drop_glue_RawVecInner",
+          "trait_req_incl": "trait_incl_of_drop_glue_RawVecInner"
+        }
+      },
+      "name": "drop_glue_RawVecInner",
+      "path": [
+        "vec",
+        "RawVecInner"
+      ]
     }
   ],
   "module_dependencies": [

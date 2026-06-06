@@ -59,5 +59,36 @@ Qed.
 
 
 
+Program Definition drop_glue_Range_def (DropGlue_Idx_drop_glue_loc: loc) (Idx_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("ptr", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ UnitSynType } "ret";
+      expr: CallE DropGlue_Idx_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (Range_sls (Idx_st)) } "start")];
+      Goto "_bb4"
+     ]>%E $
+     <[
+     "_bb2" :=
+      return (zst_val)
+     ]>%E $
+     <[
+     "_bb4" :=
+      expr: CallE DropGlue_Idx_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (Range_sls (Idx_st)) } "end")];
+      Goto "_bb2"
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
 (* closure shims *)
 End code.

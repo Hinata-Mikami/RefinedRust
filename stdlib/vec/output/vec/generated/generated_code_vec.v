@@ -8,7 +8,6 @@ From rrstd.controlflow.controlflow.generated Require Export generated_specs_cont
 From rrstd.index.index.generated Require Export generated_specs_index.
 From rrstd.iterator.iterator.generated Require Export generated_specs_iterator.
 From rrstd.option.option.generated Require Export generated_specs_option.
-From rrstd.ptr.ptr.generated Require Export generated_specs_ptr.
 From rrstd.ptr_advanced.ptr_advanced.generated Require Export generated_specs_ptr_advanced.
 From rrstd.rr_internal.rr_internal.generated Require Export generated_specs_rr_internal.
 From rrstd.sized.sized.generated Require Export generated_specs_sized.
@@ -109,6 +108,58 @@ Program Definition Vec_TA_is_empty_def (Vec_TA_len_T_A_loc: loc) (T_st: syn_type
       "__0" <-{ BoolOp } (move{ IntOp USize } ("__2")) = { IntOp USize , IntOp USize , U8 } (i2v (0) USize);
       local_dead "__2";
       return (move{ BoolOp } ("__0"))
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition drop_glue_IntoIter_def (DropGlue_A_drop_glue_loc: loc) (T_st: syn_type) (A_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("ptr", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ UnitSynType } "ret";
+      expr: CallE DropGlue_A_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (IntoIter_sls (T_st) (A_st)) } "_y")];
+      Goto "_bb1"
+     ]>%E $
+     <[
+     "_bb1" :=
+      return (zst_val)
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition drop_glue_RawVecInner_def (DropGlue_A_drop_glue_loc: loc) (A_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("ptr", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ UnitSynType } "ret";
+      expr: CallE DropGlue_A_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (RawVecInner_sls (A_st)) } "alloc")];
+      Goto "_bb1"
+     ]>%E $
+     <[
+     "_bb1" :=
+      return (zst_val)
      ]>%E $
       ∅;
      f_init := "_bb0";

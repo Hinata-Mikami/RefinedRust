@@ -81,13 +81,14 @@
         ]
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "call": [
-          "REFFasFnA_call",
-          "type_of_REFFasFnA_call",
-          "trait_incl_of_REFFasFnA_call"
-        ]
+        "call": {
+          "name": "REFFasFnA_call",
+          "spec": "type_of_REFFasFnA_call",
+          "trait_req_incl": "trait_incl_of_REFFasFnA_call"
+        }
       },
       "name": "REFFasFnA",
       "trait_path": {
@@ -114,13 +115,14 @@
         ]
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "call_mut": [
-          "REFFasFnMutA_call_mut",
-          "type_of_REFFasFnMutA_call_mut",
-          "trait_incl_of_REFFasFnMutA_call_mut"
-        ]
+        "call_mut": {
+          "name": "REFFasFnMutA_call_mut",
+          "spec": "type_of_REFFasFnMutA_call_mut",
+          "trait_req_incl": "trait_incl_of_REFFasFnMutA_call_mut"
+        }
       },
       "name": "REFFasFnMutA",
       "trait_path": {
@@ -147,13 +149,14 @@
         ]
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "call_once": [
-          "REFFasFnOnceA_call_once",
-          "type_of_REFFasFnOnceA_call_once",
-          "trait_incl_of_REFFasFnOnceA_call_once"
-        ]
+        "call_once": {
+          "name": "REFFasFnOnceA_call_once",
+          "spec": "type_of_REFFasFnOnceA_call_once",
+          "trait_req_incl": "trait_incl_of_REFFasFnOnceA_call_once"
+        }
       },
       "name": "REFFasFnOnceA",
       "trait_path": {
@@ -180,13 +183,14 @@
         ]
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "call_mut": [
-          "REFmutFasFnMutA_call_mut",
-          "type_of_REFmutFasFnMutA_call_mut",
-          "trait_incl_of_REFmutFasFnMutA_call_mut"
-        ]
+        "call_mut": {
+          "name": "REFmutFasFnMutA_call_mut",
+          "spec": "type_of_REFmutFasFnMutA_call_mut",
+          "trait_req_incl": "trait_incl_of_REFmutFasFnMutA_call_mut"
+        }
       },
       "name": "REFmutFasFnMutA",
       "trait_path": {
@@ -213,13 +217,14 @@
         ]
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "call_once": [
-          "REFmutFasFnOnceA_call_once",
-          "type_of_REFmutFasFnOnceA_call_once",
-          "trait_incl_of_REFmutFasFnOnceA_call_once"
-        ]
+        "call_once": {
+          "name": "REFmutFasFnOnceA_call_once",
+          "spec": "type_of_REFmutFasFnOnceA_call_once",
+          "trait_req_incl": "trait_incl_of_REFmutFasFnOnceA_call_once"
+        }
       },
       "name": "REFmutFasFnOnceA",
       "trait_path": {

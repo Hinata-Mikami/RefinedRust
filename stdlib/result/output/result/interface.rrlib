@@ -100,30 +100,6 @@
     },
     {
       "kind": "method",
-      "name": "Result_TE_map",
-      "path": [
-        "core",
-        "result",
-        "Result",
-        "map"
-      ],
-      "spec": "type_of_Result_TE_map",
-      "trait_req_incl": "trait_incl_of_Result_TE_map"
-    },
-    {
-      "kind": "method",
-      "name": "Result_TE_map_err",
-      "path": [
-        "core",
-        "result",
-        "Result",
-        "map_err"
-      ],
-      "spec": "type_of_Result_TE_map_err",
-      "trait_req_incl": "trait_incl_of_Result_TE_map_err"
-    },
-    {
-      "kind": "method",
       "name": "Result_TE_is_err",
       "path": [
         "core",
@@ -145,6 +121,30 @@
       ],
       "spec": "type_of_Result_TE_is_ok",
       "trait_req_incl": "trait_incl_of_Result_TE_is_ok"
+    },
+    {
+      "kind": "method",
+      "name": "Result_TE_map",
+      "path": [
+        "core",
+        "result",
+        "Result",
+        "map"
+      ],
+      "spec": "type_of_Result_TE_map",
+      "trait_req_incl": "trait_incl_of_Result_TE_map"
+    },
+    {
+      "kind": "method",
+      "name": "Result_TE_map_err",
+      "path": [
+        "core",
+        "result",
+        "Result",
+        "map_err"
+      ],
+      "spec": "type_of_Result_TE_map_err",
+      "trait_req_incl": "trait_incl_of_Result_TE_map_err"
     },
     {
       "kind": "method",
@@ -205,13 +205,14 @@
         }
       },
       "has_semantic_interp": false,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "clone": [
-          "ResultTEasstd_clone_Clone_clone",
-          "type_of_ResultTEasstd_clone_Clone_clone",
-          "trait_incl_of_ResultTEasstd_clone_Clone_clone"
-        ]
+        "clone": {
+          "name": "ResultTEasstd_clone_Clone_clone",
+          "spec": "type_of_ResultTEasstd_clone_Clone_clone",
+          "trait_req_incl": "trait_incl_of_ResultTEasstd_clone_Clone_clone"
+        }
       },
       "name": "ResultTEasstd_clone_Clone",
       "trait_path": {
@@ -242,6 +243,7 @@
         }
       },
       "has_semantic_interp": true,
+      "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {},
       "name": "ResultTEasstd_marker_Copy",
@@ -253,6 +255,24 @@
           "Copy"
         ]
       }
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_Result",
+          "spec": "type_of_drop_glue_Result",
+          "trait_req_incl": "trait_incl_of_drop_glue_Result"
+        }
+      },
+      "name": "drop_glue_Result",
+      "path": [
+        "core",
+        "result",
+        "Result"
+      ]
     }
   ],
   "module_dependencies": [

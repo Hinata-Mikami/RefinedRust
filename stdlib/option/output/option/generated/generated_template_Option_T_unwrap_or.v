@@ -10,18 +10,19 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition Option_T_unwrap_or_lemma (π : thread_id) : Prop :=
-  ∀ `(T_rt : !RT) `(T_st : !syn_type) , 
+  ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_T_drop_glue_loc : loc) , 
   syn_type_is_layoutable (T_st) →
   syn_type_is_layoutable (((Option_els (T_st)) : syn_type)) →
   syn_type_is_layoutable (((Option_Some_sls (T_st)) : syn_type)) →
-  ⊢ typed_function π (Option_T_unwrap_or_def T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_Option_T_unwrap_or T_rt T_st -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜((trait_incl_of_Option_T_unwrap_or (T_rt) (T_st))-[] -[T_ty])%Z⌝))).
+  DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+  typed_function π (Option_T_unwrap_or_def DropGlue_T_drop_glue_loc  T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_Option_T_unwrap_or T_rt T_st -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
+  ∗ (⌜((trait_incl_of_Option_T_unwrap_or (T_rt) (T_st) (DropGlue_T_spec))-[] -[T_ty])%Z⌝))).
 End proof.
 
 Ltac Option_T_unwrap_or_prelude :=
   unfold Option_T_unwrap_or_lemma;
   set (FN_NAME := FUNCTION_NAME "Option_T_unwrap_or");
-  intros T_rt T_st;
+  intros T_rt T_st DropGlue_T_spec;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
