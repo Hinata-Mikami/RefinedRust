@@ -1210,6 +1210,23 @@ Next Obligation.
   iIntros (???????) "?".
   rewrite ty_ghost_drop_unfold. done.
 Qed.
+Global Program Instance simplify_hyp_ty_ghost_drop'_1 `{!typeGS Σ} {rt} (ty : type rt) π r `{!TCFastDone (ty.(ty_trivial_drop) = false)} :
+  SimplifyHyp (ty_ghost_drop' ty π r) (Some 0%N) := {|
+  simplify_hyp_Q := True%I;
+|}.
+Next Obligation.
+  iIntros (???????) "?".
+  done.
+Qed.
+Global Program Instance simplify_hyp_ty_ghost_drop'_2 `{!typeGS Σ} {rt} (ty : type rt) π r `{Heq : !TCFastDone (ty.(ty_trivial_drop) = true)} :
+  SimplifyHyp (ty_ghost_drop' ty π r) (Some 0%N) := {|
+  simplify_hyp_Q := ty_ghost_drop ty π r;
+|}.
+Next Obligation.
+  iIntros (???????) "?".
+  rewrite /ty_ghost_drop' Heq.
+  done.
+Qed.
 Lemma simplify_goal_ty_ghost_drop_concrete `{!typeGS Σ} {rt} (ty : type rt) π r `{!IsNotVar ty} T :
   (_ty_ghost_drop ty π r) ∗ T ⊢
   simplify_goal (ty_ghost_drop ty π r) T.

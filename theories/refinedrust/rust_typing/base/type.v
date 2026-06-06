@@ -2736,6 +2736,7 @@ Record ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := mk_ex_inv_def' {
   inv_xr_inh : Inhabited (RT_xt Y);
 
   inv_trivial_drop : bool;
+  inv_manual_ghost_drop : bool;
 
   inv_P : thread_id → X → Y → iProp Σ;
   inv_P_shr : thread_id → lft → X → Y → iProp Σ;
@@ -2774,9 +2775,10 @@ Definition mk_ex_inv_def `{!typeGS Σ} {X Y : RT} `{!Inhabited (RT_xt Y)}
   inv_P_shr_mono
   inv_P_share
   inv_P_drop
-  := mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop inv_P inv_P_shr inv_P_ghost_drop inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share inv_P_drop.
+  := mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop true inv_P inv_P_shr inv_P_ghost_drop inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share inv_P_drop.
 Global Arguments inv_P {_ _ _ _}.
 Global Arguments inv_trivial_drop {_ _ _ _}.
+Global Arguments inv_manual_ghost_drop {_ _ _ _}.
 Global Arguments inv_P_shr {_ _ _ _}.
 Global Arguments inv_P_ghost_drop {_ _ _ _}.
 Global Arguments inv_P : simpl never.
@@ -2812,7 +2814,7 @@ Proof. intros. by apply inv_P_drop. Qed.
 Program Definition mk_pers_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabited (RT_xt Y)} (P : X → Y → iProp Σ)
   (inv_trivial_drop : bool)
   (_: TCNoResolve (∀ x y, Persistent (P x y))) (_: TCNoResolve (∀ x y, Timeless (P x y))) : ex_inv_def X Y :=
-  mk_ex_inv_def (λ _, P) (λ _ _, P) (λ _, P) inv_trivial_drop [] [] _ _ _ _.
+  mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop false (λ _, P) (λ _ _, P) (λ _, P) [] [] _ _ _ _.
 Next Obligation.
   rewrite /TCNoResolve.
   eauto with iFrame.
@@ -2876,7 +2878,7 @@ Program Definition mk_ex_inv_def_auto_ghost_drop `{!typeGS Σ} {X Y : RT} `{!Inh
   (inv_P_shr_pers : TCNoResolve (∀ (π : thread_id) (κ : lft) (x : X) (y : Y), Persistent (inv_P_shr π κ x y)))
   inv_P_shr_mono
   inv_P_share
-  := mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop inv_P inv_P_shr (λ π x y, (Hdrop π x y).(ghost_droppable_prop)) inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share _.
+  := mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop false inv_P inv_P_shr (λ π x y, (Hdrop π x y).(ghost_droppable_prop)) inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share _.
 Next Obligation.
   simpl.
   intros ??????? Hdrop ?????????? Hsub ?.
@@ -2894,7 +2896,7 @@ Program Definition mk_auto_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabit
   inv_P_shr_pers
   inv_P_shr_mono
   : ex_inv_def X Y :=
-  mk_ex_inv_def P (λ π κ x y, (Hshr π κ x y).(shareable_prop)) (λ π x y, (Hdrop π x y).(ghost_droppable_prop)) inv_trivial_drop inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _ _.
+  mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop false P (λ π κ x y, (Hshr π κ x y).(shareable_prop)) (λ π x y, (Hdrop π x y).(ghost_droppable_prop)) inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _ _.
 Next Obligation.
   simpl.
   intros ???????? Hshr ? ? ? ? π κ x y q ?.
@@ -2924,7 +2926,7 @@ Program Definition mk_ex_inv_def_auto_shr `{!typeGS Σ} {X : RT} {Y : RT} `{!Inh
   inv_P_shr_mono
   inv_P_ghost_droppable
   : ex_inv_def X Y :=
-  mk_ex_inv_def P (λ π κ x y, (Hshr π κ x y).(shareable_prop)) Hdrop inv_trivial_drop inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _ inv_P_ghost_droppable.
+  mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop true P (λ π κ x y, (Hshr π κ x y).(shareable_prop)) Hdrop inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _ inv_P_ghost_droppable.
 Next Obligation.
   simpl.
   intros ????????? Hshr ? ? ? ? π κ x y q ?.

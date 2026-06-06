@@ -33,7 +33,7 @@ Section ex.
     ty_sidecond :=
       ty.(ty_sidecond);
     _ty_ghost_drop π r :=
-      (∃ x, P.(inv_P_ghost_drop) π x r ∗ ty_ghost_drop ty π x)%I;
+      (∃ x, P.(inv_P_ghost_drop) π x r ∗ if_iFalse P.(inv_manual_ghost_drop) (ty_ghost_drop ty π x))%I;
     _ty_lfts := P.(inv_P_lfts) ++ ty_lfts ty;
     _ty_wf_E := P.(inv_P_wf_E) ++ ty_wf_E ty;
   |}.
@@ -99,7 +99,8 @@ Section ex.
     iApply (logical_step_compose with "Ha").
     iApply (logical_step_compose with "HP").
     iApply logical_step_intro.
-    iIntros "Hdrop". eauto with iFrame.
+    iIntros "Hdrop ?".  iFrame.
+    destruct P.(inv_manual_ghost_drop); simpl; eauto with iFrame.
   Qed.
   Next Obligation.
     rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
