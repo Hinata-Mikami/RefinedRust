@@ -15,7 +15,6 @@ use crate::body::mir_lowering::{
 };
 use crate::error::Message;
 use crate::procedures;
-use crate::regions::AnnotationGenerator;
 
 #[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
@@ -40,21 +39,26 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             if let mir::StatementKind::Assign(b) = &stmt.kind {
                 let (plc, val) = b.as_ref();
-                if let Some(drop_borrow) = self.proc.synthetic_drop_borrow_for_assignment(loc) {
-                    // Drop elaboration materializes a borrow of the place being dropped. It has no
-                    // borrowck counterpart, so synthesize the lifetime annotation directly here.
-                    let mut annotation_plan =
-                        AnnotationGenerator::prepare_synthetic_drop_borrow_annotation_plan(drop_borrow);
-                    annotation_plan.push_pre_stmts(&mut prim_stmts);
-
+                if self.proc.synthetic_drop_borrow_for_assignment(loc).is_some() {
                     let plc_ty = self.shape_type_of_place(plc);
-                    let (e, _) = self.translate_rvalue(loc, val)?;
+                    let mir::Rvalue::Ref(_, mir::BorrowKind::Mut { .. }, borrowed_place) = val else {
+                        return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                            Message::UnsupportedFeature(format!(
+                                "synthetic drop borrow assignment is not a mutable borrow at {loc:?}: {stmt:?}"
+                            )),
+                        )));
+                    };
+                    let borrowed_place = self.translate_place(borrowed_place)?;
+                    let raw_ptr = code::Expr::AddressOf {
+                        mt: code::Mutability::Mut,
+                        e: Box::new(borrowed_place),
+                    };
                     let translated_place = self.translate_place(plc)?;
                     let synty = self.translate_type_to_syn_type(plc_ty.ty)?;
                     prim_stmts.push(code::PrimStmt::Assign {
                         ot: synty.into(),
                         e1: Box::new(translated_place),
-                        e2: Box::new(e),
+                        e2: Box::new(raw_ptr),
                     });
                     continue;
                 }

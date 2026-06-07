@@ -16,7 +16,7 @@ use super::inclusion_tracker::InclusionTracker;
 use super::{assignment, calls, composite, init};
 use crate::base::TranslationError;
 use crate::environment::borrowck::facts;
-use crate::environment::mir_mapper::{MappingResult, SyntheticDropBorrow};
+use crate::environment::mir_mapper::MappingResult;
 use crate::environment::polonius_info::{self, PoloniusInfo};
 use crate::error::Message;
 use crate::types;
@@ -230,35 +230,6 @@ fn groups_to_stmts(groups: Vec<AnnotationGroup>) -> Vec<code::PrimStmt> {
 }
 
 impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
-    pub(crate) fn synthetic_drop_borrow_lft(borrow: SyntheticDropBorrow) -> specs::Lft {
-        let (bb, idx) = borrow.borrow_loc();
-        specs::Lft::new(&format!("drop_elab_lft_{}_{}", bb.as_u32(), idx))
-    }
-
-    pub(crate) fn prepare_synthetic_drop_borrow_annotation_plan(
-        borrow: SyntheticDropBorrow,
-    ) -> LocationAnnotationPlan {
-        let mut plan = LocationAnnotationPlan::default();
-        plan.pre.push(AnnotationGroup::new(
-            vec![code::Annotation::StartLft(Self::synthetic_drop_borrow_lft(borrow), vec![coq::Ident::new(
-                "_flft",
-            )])],
-            "synthetic drop borrow",
-        ));
-        plan
-    }
-
-    pub(crate) fn prepare_synthetic_drop_borrow_end_annotation_plan(
-        borrow: SyntheticDropBorrow,
-    ) -> LocationAnnotationPlan {
-        let mut plan = LocationAnnotationPlan::default();
-        plan.pre.push(AnnotationGroup::new(
-            vec![code::Annotation::EndLft(Self::synthetic_drop_borrow_lft(borrow))],
-            "synthetic drop borrow end",
-        ));
-        plan
-    }
-
     pub(crate) fn prepare_statement_annotation_plan(
         &self,
         ty_translator: &types::LocalTX<'_, 'tcx>,

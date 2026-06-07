@@ -136,16 +136,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let kind = body.local_kind(local);
             let shape_ty: ty::Ty<'tcx> = local_decl.ty;
             // Dropck introduces temporaries whose erased MIR type is only the storage shape.
-            // For synthetic drop borrows we reconstruct the regionful reference type explicitly.
-            let synthetic_drop_borrow_ty = proc
-                .synthetic_drop_borrow_for_local(local)
-                .map(|borrow| -> Result<specs::Type<'def>, TranslationError> {
-                    let referent_ty = proc.synthetic_drop_borrow_referent_ty(borrow);
-                    let translated_referent_ty = ty_translator.translate_type(referent_ty)?;
-                    let lft = AnnotationGenerator::synthetic_drop_borrow_lft(borrow);
-                    Ok(specs::Type::MutRef(Box::new(translated_referent_ty), lft))
-                })
-                .transpose()?;
+            // For synthetic drop borrows used by destructor calls, translate the temporary as a raw pointer.
+            let synthetic_drop_borrow_ty =
+                proc.synthetic_drop_borrow_for_local(local).map(|_| specs::Type::RawPtr);
 
             let ty: ty::Ty<'tcx> = if proc.borrowck_mir().local_decls.get(local).is_some() {
                 // Locals present in borrowck MIR keep their region information there; use it for

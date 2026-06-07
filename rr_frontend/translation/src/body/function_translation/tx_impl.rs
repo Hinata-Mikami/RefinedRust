@@ -18,7 +18,6 @@ use crate::body::mir_lowering::{
     MirTranslationCtx, MirTypeTranslation, TraitMethodUseData, TranslationKey,
     make_virtual_drop_glue_method_for_param_from_scope,
 };
-use crate::regions::AnnotationGenerator;
 use crate::traits::registry::ResolvedTraitReq;
 use crate::{procedures, types};
 
@@ -191,18 +190,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirRvalueTranslation<'def, 'tcx> for TX<'a, 'def,
     ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
         let translated_pl = self.translate_place(place)?;
         let translated_bk = Self::translate_borrow_kind(self.tcx, bk)?;
-
-        // Drop-elaborated borrows are target-only statements, so their lifetime has to come
-        // from the synthetic drop-borrow mapping rather than a borrowck region variable.
-        // Drop-elaborated borrows for Drop::drop should not include the safety invariant.
-        let (lft, raw) = if let Some(drop_borrow) = self.proc.synthetic_drop_borrow_for_assignment(loc) {
-            (AnnotationGenerator::synthetic_drop_borrow_lft(drop_borrow), true)
-        } else {
-            let region = self.proc.source_borrow_region_for_target(loc).unwrap_or(region);
-            (self.annotations.prepare_borrow_lifetime_plan(&self.ty_translator, loc, region).lft, false)
-        };
-
-        let ty_annot = self.get_type_annotation_for_borrow(bk, raw, place)?;
+        let region = self.proc.source_borrow_region_for_target(loc).unwrap_or(region);
+        let lft = self.annotations.prepare_borrow_lifetime_plan(&self.ty_translator, loc, region).lft;
+        let ty_annot = self.get_type_annotation_for_borrow(bk, false, place)?;
 
         Ok((
             code::Expr::Borrow {

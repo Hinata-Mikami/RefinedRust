@@ -19,7 +19,6 @@ use crate::body::mir_lowering::{
 };
 use crate::environment::borrowck::facts;
 use crate::error::Message;
-use crate::regions::AnnotationGenerator;
 use crate::{search, types};
 
 #[expect(clippy::multiple_inherent_impl)]
@@ -141,10 +140,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 ..
             } => {
                 trace!("translating Call {:?}", term);
-                if let Some(drop_borrow) = self.proc.synthetic_drop_borrow_for_drop_call(loc) {
+                if self.proc.synthetic_drop_borrow_for_drop_call(loc).is_some() {
                     // Dropck lowers open drops to an explicit `Drop::drop(&mut place)` call fed by a synthetic
-                    // borrow. For now we model the borrow lifetime, and keep
-                    // translating by following the normal return edge of the synthetic call.
+                    // pointer. For now we keep translating by following the normal return edge of the synthetic call.
                     // TODO: actually call the Drop impl
                     let Some(target) = target else {
                         bug!("drop-elaborated Drop::drop call without normal target at {loc:?}");
@@ -153,10 +151,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         &self.ty_translator,
                         dying_loans.into_iter(),
                     );
-                    let mut prim_stmts = annotation_plan.take_pre_stmts();
-                    let mut end_lft_plan =
-                        AnnotationGenerator::prepare_synthetic_drop_borrow_end_annotation_plan(drop_borrow);
-                    end_lft_plan.push_pre_stmts(&mut prim_stmts);
+                    let prim_stmts = annotation_plan.take_pre_stmts();
 
                     let stmt = self.translate_goto_like(&loc, *target)?;
                     return Ok(code::Stmt::Prim(prim_stmts, Box::new(stmt)));
