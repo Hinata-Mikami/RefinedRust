@@ -92,6 +92,42 @@ Section subtype.
     - lia.
   Qed.
 
+  Lemma owned_subtype_array_evar π E L pers {rt} (ty1 : type rt) (ty2 : type rt) len r1 r2 `{Heq : !ContainsProtected r2} T :
+    ⌜r1 = r2⌝ ∗ (mut_subtype E L ty1 ty2 (T L))
+    ⊢ owned_subtype π E L pers r1 r2 (array_t len ty1) (array_t len ty2) T.
+  Proof.
+    iIntros "(<- & Hsubt)".
+    iApply owned_subtype_weak_subtype.
+    iApply weak_subtype_array. iR. iR. done.
+  Qed.
+  Definition owned_subtype_array_evar_inst := [instance @owned_subtype_array_evar].
+  Global Existing Instance owned_subtype_array_evar_inst | 9.
+
+  Lemma owned_subtype_array_refl π E L pers {rt} (ty1 : type rt) (ty2 : type rt) len r1 r2 `{Heq : !TCDone (r1 = r2)} T :
+    (mut_subtype E L ty1 ty2 (T L))
+    ⊢ owned_subtype π E L pers r1 r2 (array_t len ty1) (array_t len ty2) T.
+  Proof.
+    iIntros "Hsubt".
+    iApply owned_subtype_weak_subtype.
+    iApply weak_subtype_array. iR. iR. done.
+  Qed.
+  Definition owned_subtype_array_refl_inst := [instance @owned_subtype_array_refl].
+  Global Existing Instance owned_subtype_array_refl_inst | 10.
+
+  (*
+    TODO: maybe instantiate the relate_list mechanism for owned_subtype?
+  Program Definition owned_subtype_list_interp {rt1 rt2 : RT} π (len : nat) (ty1 : type rt1) (ty2 : type rt2) : FoldableRelation :=
+    {|
+      fr_rel (E : elctx) (L : llctx) (i : nat) (r1 : (place_rfn rt1)) (r2 : (place_rfn rt2)) (T : iProp Σ) :=
+        (owned_subtype π E L false r1 r2 ty1 ty2 (λ L2, ⌜fast_eq_hint (L2 = L)⌝ ∗ T))%I;
+      fr_cap := len;
+      fr_inv := True;
+      fr_elim_mode := true;
+      fr_core_rel E L (i : nat) (r1 : (place_rfn rt1)) (r2 : (place_rfn rt2)) :=
+        (owned_type_incl π r1 r2 ty1 ty2)%I;
+    |}.
+  *)
+
   Lemma owned_subtype_array π E L pers {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) len r1 r2 T :
     (∃ r1' r2', ⌜r1 = replicate len #r1'⌝ ∗ ⌜r2 = replicate len #r2'⌝ ∗
       li_tactic (compute_layout_goal (ty_syn_type ty2 MetaNone)) (λ _,
@@ -128,7 +164,7 @@ Section subtype.
       iExists _. iR. by iApply "Hv".
   Qed.
   Definition owned_subtype_array_inst := [instance @owned_subtype_array].
-  Global Existing Instance owned_subtype_array_inst.
+  Global Existing Instance owned_subtype_array_inst | 11.
 
   (** Owned subtype for initialization *)
   Lemma owned_subtype_uninit_array π E L pers {rt} (ty : type rt) (st : syn_type) len r2 T :
@@ -173,6 +209,16 @@ Section instances.
   Context `{!typeGS Σ}.
 
   (** ** subltype *)
+
+  (* For now, always go to [weak_subltype], as we don't have strong owned rules yet. This overrides the default fallback for array. *)
+  Lemma owned_subltype_step_weak_subltype_array π E L (step : bool) l {rt1 rt2} rs1 rs2 (def : type rt1) len overrides (lt2 : ltype rt2) T :
+    weak_subltype E L Owned rs1 rs2 (ArrayLtype def len overrides) lt2 (T L True%I)
+    ⊢ owned_subltype_step π E L step l rs1 rs2 (ArrayLtype def len overrides) lt2 T.
+  Proof.
+    iApply owned_subltype_step_weak_subltype.
+  Qed.
+  Definition owned_subltype_step_weak_subltype_array_inst := [instance @owned_subltype_step_weak_subltype_array].
+  Global Existing Instance owned_subltype_step_weak_subltype_array_inst | 998.
 
   (* we use the [relate_list] mechanism *)
   Program Definition weak_subltype_list_interp {rt1 rt2 : RT} (k : bor_kind) (rs1 : list (place_rfn rt1)) (rs2 : list (place_rfn rt2)) : FoldableRelation :=
@@ -600,6 +646,26 @@ Section instances.
   Qed.
   Definition mut_eqltype_array_ofty_l_inst := [instance @mut_eqltype_array_ofty_l].
   Global Existing Instance mut_eqltype_array_ofty_l_inst | 14.
+
+  (** cast_ltype_to_type *)
+  Lemma cast_ltype_to_type_array E L {rt1} (def1 : type rt1) len1 (lts1 : list (nat * ltype rt1)) T :
+    fold_list E L [] (interpret_iml (◁ def1) len1 lts1) 0 (fold_overrides_list_interp def1 len1 false) (T (array_t len1 def1))
+    ⊢ cast_ltype_to_type E L (ArrayLtype def1 len1 lts1) T.
+  Proof.
+    iIntros "Hf".
+    (*iMod ("Hf" with "[//] CTX HE HL") as "(Ha & HL & $)".*)
+    rewrite /fold_list/=. iDestruct "Hf" as "(Hf & $)".
+    simpl. iSpecialize ("Hf" with "[] []").
+    { simpl. rewrite length_interpret_iml. iPureIntro. lia. }
+    { simpl. done. }
+    iPoseProof (big_sepL_Forall with "Hf") as "%Ha".
+    iPureIntro.
+    apply array_ltype_make_defaults_full_eqltype in Ha.
+    etrans; first apply Ha.
+    symmetry. apply array_t_unfold_full_eqltype.
+  Qed.
+  Definition cast_ltype_to_type_array_inst := [instance @cast_ltype_to_type_array].
+  Global Existing Instance cast_ltype_to_type_array_inst.
 End instances.
 
 Global Typeclasses Opaque weak_subltype_list_interp.

@@ -1994,6 +1994,58 @@ Section place.
   Global Instance typed_place_id_inst {rt} E L f (lt : ltype rt) bmin0 b r l :
     TypedPlace E L f l lt r bmin0 b [] | 9 := λ T, i2p (typed_place_id E L f lt bmin0 b r l T).
 
+
+  Definition prove_place_cond (E : elctx) (L : llctx) {rt1 rt2} (bmin : place_update_kind) (lt1 : ltype rt1) (lt2 : ltype rt2) (T : place_update_kind_res bmin rt1 rt2 → iProp Σ) : iProp Σ :=
+    ∀ F, ⌜lftE ⊆ F⌝ -∗ rrust_ctx -∗ elctx_interp E -∗ llctx_interp L ={F}=∗
+      llctx_interp L ∗
+      ∃ upd : place_update_kind_res _ _ _,
+        upd ⪯ₚ bmin ∗
+        typed_place_cond upd lt1 lt2 ∗ ⌜ltype_st lt1 = ltype_st lt2⌝ ∗
+        T upd.
+  Class ProvePlaceCond (E : elctx) (L : llctx) {rt1 rt2} (bmin : place_update_kind) (lt1 : ltype rt1) (lt2 : ltype rt2) : Type :=
+    prove_place_cond_proof T : iProp_to_Prop (prove_place_cond E L bmin lt1 lt2 T).
+
+
+  (** ** Some utilities for finishing a place access by either using the strong or the weak VS *)
+  Definition typed_place_finish_upd
+    {rti rti2 : RT}
+    {allowed_inner : place_update_kind}
+    (performed_access : place_update_kind_res allowed_inner rti rti2)
+    (lt2 : ltype rti2) (r2 : place_rfn rti2)
+    : place_update rti allowed_inner :=
+      (mkPUpd _ _ rti2 lt2 r2 True performed_access performed_access.(puk_res_eq_1) performed_access.(puk_res_eq_2))
+  .
+
+  Definition typed_place_finish π (E : elctx) (L : llctx) {rto rti rti2 : RT}
+    {allowed_inner allowed_outer : place_update_kind}
+    (upd_cx : place_update_ctx rti rto allowed_inner allowed_outer)
+    (* this might be the result from [prove_place_cond], updating from [rti] to [rti2] *)
+    (performed_access : place_update_kind_res allowed_inner rti rti2)
+    (* leftover ownership *)
+    (R : iProp Σ)
+    (* the updated type assignment of the inner place *)
+    (l : loc) (b : bor_kind) (lt2 : ltype rti2) (r2 : place_rfn rti2)
+    (T : llctx → iProp Σ) : iProp Σ :=
+    upd_cx L (typed_place_finish_upd performed_access lt2 r2) (λ upd2,
+    l ◁ₗ[π, b] upd2.(pupd_rfn) @ upd2.(pupd_lt) -∗
+    introduce_with_hooks E L (upd2.(pupd_R) ∗ R) T)%I.
+End place.
+
+Section laws.
+  Context `{typeGS Σ}.
+
+  Lemma owned_subltype_step_weak_subltype π E L step l {rt1 rt2 : RT} (r1 : place_rfn rt1) (r2 : place_rfn rt2) lt1 lt2 T :
+    weak_subltype E L (Owned) r1 r2 lt1 lt2 (T L True)
+    ⊢ owned_subltype_step π E L step l r1 r2 lt1 lt2 T.
+  Proof.
+    iIntros "HT" (????) "CTX HE HL Hl".
+    iExists L, True%I. iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
+    iModIntro. iDestruct "Hincl" as "(%Hst & #Hincl & _)".
+    iApply maybe_logical_step_fupd. iApply maybe_logical_step_intro.
+    iMod (fupd_mask_mono with "(Hincl Hl)"); first done.
+    eauto.
+  Qed.
+
   Lemma typed_place_eqltype {rto} E L f (lt1 lt2 : ltype rto) bmin0 b r l P T :
     full_eqltype E L lt1 lt2 →
     typed_place E L f l lt2 r bmin0 b P T -∗
@@ -2184,16 +2236,6 @@ Section place.
     iApply typed_place_cond_refl_ofty.
   Qed.
 
-  Definition prove_place_cond (E : elctx) (L : llctx) {rt1 rt2} (bmin : place_update_kind) (lt1 : ltype rt1) (lt2 : ltype rt2) (T : place_update_kind_res bmin rt1 rt2 → iProp Σ) : iProp Σ :=
-    ∀ F, ⌜lftE ⊆ F⌝ -∗ rrust_ctx -∗ elctx_interp E -∗ llctx_interp L ={F}=∗
-      llctx_interp L ∗
-      ∃ upd : place_update_kind_res _ _ _,
-        upd ⪯ₚ bmin ∗
-        typed_place_cond upd lt1 lt2 ∗ ⌜ltype_st lt1 = ltype_st lt2⌝ ∗
-        T upd.
-  Class ProvePlaceCond (E : elctx) (L : llctx) {rt1 rt2} (bmin : place_update_kind) (lt1 : ltype rt1) (lt2 : ltype rt2) : Type :=
-    prove_place_cond_proof T : iProp_to_Prop (prove_place_cond E L bmin lt1 lt2 T).
-
   Lemma prove_place_cond_eqltype_l E L bmin {rt1 rt2} (lt1 lt1' : ltype rt1) (lt2 : ltype rt2) T :
     full_eqltype E L lt1 lt1' →
     prove_place_cond E L bmin lt1' lt2 T -∗
@@ -2221,31 +2263,7 @@ Section place.
     iApply (place_cond_ltype_eq_trans with "Hcond'").
     iModIntro. iIntros (??). iApply ltype_eq_sym. done.
   Qed.
-
-  (** ** Some utilities for finishing a place access by either using the strong or the weak VS *)
-  Definition typed_place_finish_upd
-    {rti rti2 : RT}
-    {allowed_inner : place_update_kind}
-    (performed_access : place_update_kind_res allowed_inner rti rti2)
-    (lt2 : ltype rti2) (r2 : place_rfn rti2)
-    : place_update rti allowed_inner :=
-      (mkPUpd _ _ rti2 lt2 r2 True performed_access performed_access.(puk_res_eq_1) performed_access.(puk_res_eq_2))
-  .
-
-  Definition typed_place_finish π (E : elctx) (L : llctx) {rto rti rti2 : RT}
-    {allowed_inner allowed_outer : place_update_kind}
-    (upd_cx : place_update_ctx rti rto allowed_inner allowed_outer)
-    (* this might be the result from [prove_place_cond], updating from [rti] to [rti2] *)
-    (performed_access : place_update_kind_res allowed_inner rti rti2)
-    (* leftover ownership *)
-    (R : iProp Σ)
-    (* the updated type assignment of the inner place *)
-    (l : loc) (b : bor_kind) (lt2 : ltype rti2) (r2 : place_rfn rti2)
-    (T : llctx → iProp Σ) : iProp Σ :=
-    upd_cx L (typed_place_finish_upd performed_access lt2 r2) (λ upd2,
-    l ◁ₗ[π, b] upd2.(pupd_rfn) @ upd2.(pupd_lt) -∗
-    introduce_with_hooks E L (upd2.(pupd_R) ∗ R) T)%I.
-End place.
+End laws.
 
 Global Hint Mode LearnFromHyp + + + : typeclass_instances.
 Global Hint Mode LearnFromHypVal + + + + + : typeclass_instances.
