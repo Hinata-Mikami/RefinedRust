@@ -113,7 +113,7 @@ impl<T, A: Allocator> Drop for Box<T, A> {
     #[rr::args("l" @ "alias_ptr_t")]
     #[rr::requires(#type "l" : "-[#lmem; #($# a)]" @ "Box_ty T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
     #[rr::requires(#type "lmem" : "()" @ "uninit {st_of T}")]
-    #[rr::requires(#iris "{A::FreeablePerm} a l (ly_size {ly_of T})")]
+    #[rr::requires(#iris "{A::FreeablePerm} a lmem (ly_size {ly_of T})")]
     #[rr::ensures(#type "l" : "-[#lmem; #($# a)]" @ "Box_ty T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
     fn drop(&mut self) {
         let ptr = self.0;
