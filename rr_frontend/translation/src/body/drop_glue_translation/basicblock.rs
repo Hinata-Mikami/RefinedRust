@@ -5,6 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use std::collections::BTreeMap;
+use std::iter::repeat_n;
 
 use log::info;
 use radium::{code, lang, specs};
@@ -214,8 +215,47 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
                 Ok(code::Stmt::Prim(prim_stmts, Box::new(stmt)))
             },
 
-            mir::TerminatorKind::Call { .. }
-            | mir::TerminatorKind::TailCall { .. }
+            mir::TerminatorKind::Call {
+                func, args, target, ..
+            } => {
+                let Some(target) = target else {
+                    return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                        Message::UnsupportedFeature(format!(
+                            "drop-glue destructor call at {loc:?} does not have a normal target: {term:?}"
+                        )),
+                    )));
+                };
+
+                let (func_expr, call_info) = self.translate_operand(func, false)?;
+                let Some(mut call_info) = call_info else {
+                    return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                        Message::UnsupportedFeature(format!(
+                            "drop-glue Call terminator at {loc:?} does not have a supported destructor target: {term:?}"
+                        )),
+                    )));
+                };
+
+                let mut translated_args = Vec::new();
+                for arg in args {
+                    translated_args.push(self.translate_operand(&arg.node, true)?.0);
+                }
+
+                // Drop-glue MIR has no source-call region facts. Use the always-in-scope function
+                // lifetime for destructor-call late bounds, matching synthetic `Drop::drop` calls.
+                call_info.lft_hint.extend(repeat_n(specs::Lft::new("_flft"), call_info.num_of_latebounds));
+                let ty_hint = call_info.type_hint.into_iter().map(|x| code::RustType::of_type(&x)).collect();
+                let call_expr = code::Expr::Call {
+                    f: Box::new(func_expr),
+                    lfts: call_info.lft_hint,
+                    tys: ty_hint,
+                    args: translated_args,
+                };
+
+                let stmt = self.translate_goto_like(loc, *target);
+                Ok(code::Stmt::Prim(vec![code::PrimStmt::ExprS(Box::new(call_expr))], Box::new(stmt)))
+            },
+
+            mir::TerminatorKind::TailCall { .. }
             | mir::TerminatorKind::UnwindResume
             | mir::TerminatorKind::UnwindTerminate(_)
             | mir::TerminatorKind::CoroutineDrop

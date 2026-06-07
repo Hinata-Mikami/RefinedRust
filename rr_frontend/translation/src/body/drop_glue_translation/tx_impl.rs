@@ -4,10 +4,10 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use log::{info, trace};
-use radium::{code, lang, specs};
+use radium::{code, coq, lang, specs};
 use rr_rustc_interface::abi;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty::TypeFolder as _;
@@ -16,15 +16,18 @@ use rr_rustc_interface::type_ir::TypeSuperFoldable as _;
 
 use super::DropGlueTX;
 use crate::base::*;
+use crate::body::function_translation::get_arg_syntypes_for_procedure_call;
 use crate::body::mir_lowering::{
     MirConstantTranslation, MirDropTranslation, MirRvalueTranslation, MirTranslationCtx, MirTypeTranslation,
-    TraitMethodUseData, TranslationKey, make_virtual_drop_glue_method_for_param_from_scope,
+    ProcedureInst, TraitMethodUseData, TranslationKey, make_virtual_drop_glue_method_for_param_from_scope,
 };
+use crate::error::Message;
 use crate::traits::registry::ResolvedTraitReq;
+use crate::traits::resolution;
 use crate::{procedures, rustcmp, types};
 
 impl<'a, 'def: 'a, 'tcx: 'def> MirTranslationCtx<'def, 'tcx> for DropGlueTX<'a, 'def, 'tcx> {
-    type ExprInfo = ();
+    type ExprInfo = ProcedureInst<'tcx, 'def>;
 
     fn tcx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
@@ -123,9 +126,159 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for DropGlueGenericCollector<'tcx> {
 
 #[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
+    fn resolve_trait_requirements_of_call(
+        &self,
+        did: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+        include_self: bool,
+    ) -> Result<Vec<ResolvedTraitReq<'tcx, 'def>>, TranslationError> {
+        let mut state = self.shim_state();
+        self.ty_translator.trait_registry().resolve_trait_requirements_in_state(
+            &mut state,
+            did,
+            args,
+            include_self,
+        )
+    }
+
+    fn register_use_drop_call_procedure(
+        &mut self,
+        callee_did: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+        late_bounds: &[ty::BoundVariableKind<'tcx>],
+        trait_reqs: Vec<ResolvedTraitReq<'tcx, 'def>>,
+    ) -> Result<(code::Expr, ProcedureInst<'tcx, 'def>), TranslationError> {
+        trace!("enter register_use_drop_call_procedure callee_did={callee_did:?} args={args:?}");
+
+        let key = types::generate_args_inst_key(self.tcx, args)?;
+        let quantified_args = self.get_drop_glue_generic_abstraction_with_mode(
+            args,
+            late_bounds,
+            trait_reqs,
+            types::GenericAbstractionMode::FromOwner(callee_did),
+        )?;
+
+        let used_key = TranslationKey::Function(OrderedDefId::new(self.tcx, callee_did), key.clone());
+        let res;
+        if let Some(proc_use) = self.collected_procedures().get(&used_key) {
+            res = proc_use.loc_name.clone();
+        } else {
+            let meta = self.procedure_registry().lookup_function(callee_did).ok_or_else(|| {
+                TranslationError::ErrorReported(
+                    self.tcx.dcx().err(Message::UnknownProcedure(format!("{:?}", callee_did))),
+                )
+            })?;
+            let spec_term = code::UsedProcedureSpec::Literal(meta.get_spec_name().to_owned());
+            let loc_name = format!("{}_loc", types::mangle_name_with_tys(meta.get_name(), key.as_slice()));
+            let typing_env = ty::TypingEnv::post_analysis(self.tcx, self.adt_did);
+            let syntypes = get_arg_syntypes_for_procedure_call(
+                self.tcx,
+                self.ty_translator,
+                &self.generic_scope,
+                &typing_env,
+                callee_did,
+                args.as_slice(),
+            )?;
+            let fn_inst = quantified_args.fn_scope_inst;
+
+            info!(
+                "Registered drop-glue destructor call instance {} of {:?} with {:?} and layouts {:?}",
+                loc_name, callee_did, fn_inst, syntypes
+            );
+
+            let proc_use =
+                code::UsedProcedure::new(loc_name, spec_term, quantified_args.scope, fn_inst, syntypes);
+            res = proc_use.loc_name.clone();
+            self.collected_procedures_mut().insert(used_key, proc_use);
+        }
+
+        let inst = ProcedureInst {
+            method_params: args,
+            type_hint: quantified_args.callee_ty_param_inst,
+            lft_hint: quantified_args.callee_lft_param_inst,
+            num_of_latebounds: quantified_args.num_of_latebounds,
+            mapped_early_regions: BTreeMap::new(),
+        };
+        trace!("leave register_use_drop_call_procedure");
+        Ok((code::Expr::MetaParam(res), inst))
+    }
+
+    fn translate_drop_call_fn_def_use(
+        &mut self,
+        ty: ty::Ty<'tcx>,
+    ) -> Result<(code::Expr, Option<ProcedureInst<'tcx, 'def>>), TranslationError> {
+        let ty::TyKind::FnDef(defid, args) = ty.kind() else {
+            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::ExpectedFnDefType)));
+        };
+
+        let Some(_) = self.tcx.trait_of_assoc(*defid) else {
+            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                format!("drop-glue Call terminator only supports destructor trait calls, got {defid:?}"),
+            ))));
+        };
+
+        let typing_env = ty::TypingEnv::post_analysis(self.tcx, self.adt_did);
+        let Some((resolved_did, resolved_args, kind)) =
+            resolution::resolve_assoc_item(self.tcx, typing_env, *defid, args, ty::Binder::dummy(()))
+        else {
+            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::TraitResolution(
+                format!("Could not resolve drop-glue destructor trait call {defid:?}"),
+            ))));
+        };
+
+        info!(
+            "Resolved drop-glue destructor call {:?} as {:?} with args {:?} and kind {:?}",
+            defid, resolved_did, resolved_args, kind
+        );
+
+        let (func_expr, call_info) = match kind {
+            resolution::TraitResolutionKind::UserDefined => {
+                let late_bounds = self.get_drop_call_late_bounds(resolved_did, resolved_args);
+                let trait_reqs =
+                    self.resolve_trait_requirements_of_call(resolved_did, resolved_args, true)?;
+                self.register_use_drop_call_procedure(resolved_did, resolved_args, late_bounds, trait_reqs)?
+            },
+            resolution::TraitResolutionKind::Param => {
+                return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                    Message::UnsupportedFeature(format!(
+                        "drop-glue destructor calls are expected to resolve to concrete Drop impls, got generic trait resolution for {defid:?} as {resolved_did:?} with args {resolved_args:?}"
+                    )),
+                )));
+            },
+            resolution::TraitResolutionKind::Closure => {
+                return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                    Message::UnsupportedFeature(format!(
+                        "drop-glue destructor calls do not support closure resolution: {defid:?}"
+                    )),
+                )));
+            },
+        };
+
+        Ok((func_expr, Some(call_info)))
+    }
+
+    fn get_drop_call_late_bounds(
+        &self,
+        callee_did: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> &'tcx [ty::BoundVariableKind<'tcx>] {
+        if let Some(impl_did) = self.tcx.impl_of_assoc(callee_did)
+            && self.tcx.impl_is_of_trait(impl_did)
+        {
+            let expected_sig = self.ty_translator.trait_registry().get_expected_sig_for_impl_fn(callee_did);
+            expected_sig.bound_vars().as_slice()
+        } else {
+            let fn_ty: ty::EarlyBinder<'_, ty::Ty<'_>> = self.tcx.type_of(callee_did);
+            let fn_ty = fn_ty.instantiate(self.tcx, args).skip_norm_wip();
+            let fnsig = fn_ty.fn_sig(self.tcx);
+            fnsig.bound_vars().as_slice()
+        }
+    }
+
     fn get_drop_glue_generic_abstraction_with_mode(
         &self,
         args: ty::GenericArgsRef<'tcx>,
+        late_bounds: &[ty::BoundVariableKind<'tcx>],
         trait_reqs: Vec<ResolvedTraitReq<'tcx, 'def>>,
         mode: types::GenericAbstractionMode,
     ) -> Result<types::AbstractedGenerics<'def>, TranslationError> {
@@ -171,6 +324,25 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
                 bound_lfts.push(lft_name.clone());
             }
             callee_lft_param_inst.push(lft_name);
+        }
+
+        for (late_bound_idx, late_bound) in late_bounds.iter().enumerate() {
+            let ty::BoundVariableKind::Region(region) = late_bound else {
+                return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                    Message::UnsupportedFeature(format!(
+                        "drop-glue generic abstraction only supports late-bound regions, got {late_bound:?}"
+                    )),
+                )));
+            };
+            let lft_name = region.get_name(self.tcx).map_or_else(
+                || coq::Ident::new(&format!("late_lft_{late_bound_idx}")),
+                |name| coq::Ident::new(&format!("lft_{name}")),
+            );
+            scope.add_lft_param(specs::LftParam::new(
+                lft_name.clone(),
+                specs::LftParamOrigin::FunctionRebound,
+            ));
+            fn_inst.add_lft_param(lft_name);
         }
 
         let mut callee_ty_param_inst = Vec::new();
@@ -234,7 +406,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             scope,
             callee_lft_param_inst,
             callee_ty_param_inst,
-            num_of_latebounds: 0,
+            num_of_latebounds: late_bounds.len(),
             fn_scope_inst: fn_inst,
         })
     }
@@ -249,6 +421,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for DropGlueTX<'a,
     ) -> Result<types::AbstractedGenerics<'def>, TranslationError> {
         self.get_drop_glue_generic_abstraction_with_mode(
             args,
+            &[],
             trait_reqs,
             types::GenericAbstractionMode::FromOwner(owner_did),
         )
@@ -260,6 +433,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for DropGlueTX<'a,
     ) -> Result<types::AbstractedGenerics<'def>, TranslationError> {
         self.get_drop_glue_generic_abstraction_with_mode(
             args,
+            &[],
             Vec::new(),
             types::GenericAbstractionMode::AllDirect,
         )
@@ -347,6 +521,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirTypeTranslation<'def, 'tcx> for DropGlueTX<'a,
     }
 }
 
-impl<'a, 'def: 'a, 'tcx: 'def> MirConstantTranslation<'def, 'tcx> for DropGlueTX<'a, 'def, 'tcx> {}
+impl<'a, 'def: 'a, 'tcx: 'def> MirConstantTranslation<'def, 'tcx> for DropGlueTX<'a, 'def, 'tcx> {
+    fn translate_fn_def_constant(
+        &mut self,
+        ty: ty::Ty<'tcx>,
+    ) -> Result<(code::Expr, Option<Self::ExprInfo>), TranslationError> {
+        self.translate_drop_call_fn_def_use(ty)
+    }
+}
 
 impl<'a, 'def: 'a, 'tcx: 'def> MirRvalueTranslation<'def, 'tcx> for DropGlueTX<'a, 'def, 'tcx> {}
