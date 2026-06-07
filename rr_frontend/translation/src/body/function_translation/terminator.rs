@@ -5,13 +5,14 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use std::collections::BTreeMap;
+use std::iter::repeat_n;
 
 use log::{info, trace, warn};
 use radium::{code, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{bug, mir, ty};
 
-use super::TX;
+use super::{ExprInfo, TX};
 use crate::base::*;
 use crate::body::mir_lowering::{
     MirDropTranslation as _, MirPlaceTranslation as _, MirRvalueTranslation as _, MirTranslationCtx as _,
@@ -140,18 +141,60 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 ..
             } => {
                 trace!("translating Call {:?}", term);
-                if self.proc.synthetic_drop_borrow_for_drop_call(loc).is_some() {
+                if let Some(drop_borrow) = self.proc.synthetic_drop_borrow_for_drop_call(loc) {
                     // Dropck lowers open drops to an explicit `Drop::drop(&mut place)` call fed by a synthetic
-                    // pointer. For now we keep translating by following the normal return edge of the synthetic call.
-                    // TODO: actually call the Drop impl
+                    // pointer. Translate this as a real destructor call, but do not use ordinary source-call
+                    // region annotations because the borrowck source terminator is `Drop`, not `Call`.
                     let Some(target) = target else {
                         bug!("drop-elaborated Drop::drop call without normal target at {loc:?}");
                     };
+                    let [arg] = args.as_ref() else {
+                        return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                            Message::UnsupportedFeature(format!(
+                                "drop-elaborated Drop::drop call at {loc:?} has unexpected arguments: {term:?}"
+                            )),
+                        )));
+                    };
+                    let (mir::Operand::Copy(arg_place) | mir::Operand::Move(arg_place)) = &arg.node else {
+                        return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                            Message::UnsupportedFeature(format!(
+                                "drop-elaborated Drop::drop call at {loc:?} has non-place argument: {term:?}"
+                            )),
+                        )));
+                    };
+                    if arg_place.local != drop_borrow.synthetic_ref_local() || !arg_place.projection.is_empty() {
+                        return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                            Message::UnsupportedFeature(format!(
+                                "drop-elaborated Drop::drop call at {loc:?} does not use the synthetic drop pointer: {term:?}"
+                            )),
+                        )));
+                    }
+
                     let mut annotation_plan = self.annotations.prepare_terminator_annotation_plan(
                         &self.ty_translator,
                         dying_loans.into_iter(),
                     );
-                    let prim_stmts = annotation_plan.take_pre_stmts();
+                    let mut prim_stmts = annotation_plan.take_pre_stmts();
+
+                    let (func_expr, info) = self.translate_operand(func, false)?;
+                    let Some(ExprInfo::Call(mut call_info)) = info else {
+                        unreachable!("Logic error in drop call target translation");
+                    };
+                    // Ordinary calls instantiate late-bound lifetimes from Polonius call-region facts.
+                    // This target call corresponds to a source `Drop` terminator instead, so use the
+                    // always-in-scope function lifetime for the implicit `&mut self` lifetime.
+                    call_info
+                        .lft_hint
+                        .extend(repeat_n(specs::Lft::new("_flft"), call_info.num_of_latebounds));
+                    let translated_arg = self.translate_operand(&arg.node, true)?.0;
+                    let ty_hint = call_info.type_hint.into_iter().map(|x| code::RustType::of_type(&x)).collect();
+                    let call_expr = code::Expr::Call {
+                        f: Box::new(func_expr),
+                        lfts: call_info.lft_hint,
+                        tys: ty_hint,
+                        args: vec![translated_arg],
+                    };
+                    prim_stmts.push(code::PrimStmt::ExprS(Box::new(call_expr)));
 
                     let stmt = self.translate_goto_like(&loc, *target)?;
                     return Ok(code::Stmt::Prim(prim_stmts, Box::new(stmt)));
