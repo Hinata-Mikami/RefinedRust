@@ -1514,46 +1514,6 @@ fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipeline
             mode = procedures::Mode::Prove;
         }
 
-        // also register it under the export path, if annotated.
-        if let Some(export_path) = shims::flat::get_external_export_path_for_did(vcx.tcx, f.to_def_id()) {
-            let interned_path = vcx.shim_registry.intern_path(export_path.path.path);
-            info!("Looking up annotated shim {interned_path:?} for is_method={:?}", export_path.as_method);
-            if let Some(export_did) = resolve_shim(vcx, &interned_path, export_path.as_method) {
-                if export_did == f.to_def_id()
-                    || vcx.procedure_registry.lookup_function_mode(export_did).is_some()
-                {
-                    let span = find_external_export_attr_span(vcx.tcx, f.to_def_id())
-                        .unwrap_or_else(|| vcx.tcx.def_span(f.to_def_id()));
-                    let err = vcx.tcx.dcx().span_err(
-                        span,
-                        error::Message::AttributeError(format!(
-                            "annotated export path {interned_path:?} resolves to an already registered function"
-                        )),
-                    );
-                    return Err(PipelineError::Reported(err));
-                }
-                let meta = procedures::Meta::new(
-                    spec_name.clone(),
-                    code_name.clone(),
-                    trait_req_incl_name.clone(),
-                    fname.clone(),
-                    procedures::Mode::Shim,
-                    is_default_trait_impl,
-                    is_closure,
-                );
-                vcx.procedure_registry.register_function(export_did, meta);
-            } else {
-                let span = find_external_export_attr_span(vcx.tcx, f.to_def_id())
-                    .unwrap_or_else(|| vcx.tcx.def_span(f.to_def_id()));
-                vcx.tcx.dcx().span_warn(
-                    span,
-                    error::Message::AttributeError(format!(
-                        "could not resolve annotated export path {interned_path:?}"
-                    )),
-                );
-            }
-        }
-
         //info!("Registering function {f:?} with is_default_trait_impl={is_default_trait_impl}");
         let meta = procedures::Meta::new(
             spec_name,
@@ -2312,8 +2272,63 @@ fn register_trait_impl_method_export_aliases(
 }
 
 /// Register same-crate aliases introduced by `rr::export_as` for local model traits and trait impls.
-#[expect(clippy::needless_pass_by_ref_mut, reason = "keeps the export-alias pass API consistent")]
 fn register_current_crate_export_aliases(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
+    let functions: Vec<_> = vcx
+        .functions
+        .iter()
+        .map(|did| (did.to_def_id(), false))
+        .chain(vcx.closures.iter().map(|did| (did.to_def_id(), true)))
+        .collect();
+
+    for (local_did, is_closure) in functions {
+        let Some(export_path) = shims::flat::get_external_export_path_for_did(vcx.tcx, local_did) else {
+            continue;
+        };
+
+        let Some(local_meta) = vcx.procedure_registry.lookup_function(local_did) else {
+            continue;
+        };
+        if local_meta.get_mode().is_shim() || local_meta.get_mode().is_code_shim() {
+            continue;
+        }
+
+        let interned_path = vcx.shim_registry.intern_path(export_path.path.path);
+        info!("Looking up annotated shim {interned_path:?} for is_method={:?}", export_path.as_method);
+        if let Some(export_did) = resolve_shim(vcx, &interned_path, export_path.as_method) {
+            if export_did == local_did || vcx.procedure_registry.lookup_function_mode(export_did).is_some() {
+                let span = find_external_export_attr_span(vcx.tcx, local_did)
+                    .unwrap_or_else(|| vcx.tcx.def_span(local_did));
+                let err = vcx.tcx.dcx().span_err(
+                    span,
+                    error::Message::AttributeError(format!(
+                        "annotated export path {interned_path:?} resolves to an already registered function"
+                    )),
+                );
+                return Err(PipelineError::Reported(err));
+            }
+
+            let meta = procedures::Meta::new(
+                local_meta.get_spec_name().to_owned(),
+                local_meta.get_code_name().to_owned(),
+                local_meta.get_trait_req_incl_name().to_owned(),
+                local_meta.get_name().to_owned(),
+                procedures::Mode::Shim,
+                local_meta.is_trait_default(),
+                is_closure,
+            );
+            vcx.procedure_registry.register_function(export_did, meta);
+        } else {
+            let span = find_external_export_attr_span(vcx.tcx, local_did)
+                .unwrap_or_else(|| vcx.tcx.def_span(local_did));
+            vcx.tcx.dcx().span_warn(
+                span,
+                error::Message::AttributeError(format!(
+                    "could not resolve annotated export path {interned_path:?}"
+                )),
+            );
+        }
+    }
+
     for trait_did in environment::get_traits(vcx.tcx) {
         let local_did = trait_did.to_def_id();
         let Some(export_path) = shims::flat::get_external_export_path_for_did(vcx.tcx, local_did) else {
@@ -2980,11 +2995,11 @@ where
         fn_arena: &fn_spec_arena,
     };
 
-    register_builtin_virtual_traits(&vcx);
-    register_tuple_drop_glue_shims(&mut vcx);
-
     // this needs to be first, in order to ensure consistent ADT use
     register_shims(&mut vcx)?;
+
+    register_builtin_virtual_traits(&vcx);
+    register_tuple_drop_glue_shims(&mut vcx);
 
     register_drop_glues(&mut vcx)?;
 
