@@ -21,6 +21,7 @@ use typed_arena::Arena;
 
 use crate::base::*;
 use crate::body::mir_lowering::{MirTranslationCtx as _, MirTypeTranslation as _, TranslationKey};
+use crate::environment::mir_utils::box_deref_alias;
 use crate::error::Message;
 use crate::spec_parsers::parse_utils;
 use crate::traits::registry;
@@ -33,12 +34,13 @@ use crate::{attrs, environment, procedures, types};
 pub(crate) struct DropGlueTX<'a, 'def, 'tcx> {
     tcx: ty::TyCtxt<'tcx>,
     adt_did: DefId,
-    adt_ty: ty::Ty<'tcx>,
+    mir_source_ty: ty::Ty<'tcx>,
     body: &'tcx mir::Body<'tcx>,
     procedure_registry: &'a procedures::Scope<'tcx, 'def>,
     ty_translator: &'def types::TX<'def, 'tcx>,
     generic_scope: types::scope::Params<'tcx, 'def>,
     variable_map: HashMap<mir::Local, String>,
+    box_deref_aliases: HashMap<mir::Local, mir::Place<'tcx>>,
     always_live_locals: Vec<mir::Local>,
     collected_procedures: HashMap<TranslationKey<'tcx>, code::UsedProcedure<'def>>,
     used_literals: RefCell<BTreeMap<types::scope::AdtUseKey, specs::types::LiteralUse<'def>>>,
@@ -67,6 +69,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         meta: &procedures::Meta,
         adt_ty: ty::Ty<'tcx>,
+        mir_source_ty: ty::Ty<'tcx>,
         procedure_registry: &'a procedures::Scope<'tcx, 'def>,
         ty_translator: &'def types::TX<'def, 'tcx>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
@@ -87,9 +90,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
 
         let span = tcx.def_span(adt_did);
         let drop_glue_did = tcx.require_lang_item(hir::LangItem::DropGlue, span);
-        let instance = ty::InstanceKind::DropGlue(drop_glue_did, Some(adt_ty));
+        let instance = ty::InstanceKind::DropGlue(drop_glue_did, Some(mir_source_ty));
         let body = tcx.mir_shims(instance);
-        Self::log_mir(tcx, adt_did, adt_ty, body);
+        Self::log_mir(tcx, adt_did, adt_ty, mir_source_ty, body);
 
         let mut translated_fn = Self::make_function_builder(meta);
         let generic_scope = Self::setup_generic_scope(
@@ -123,17 +126,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             &generic_scope,
             &translated_adt_ty,
         )?;
-        let (variable_map, always_live_locals) = Self::initialize_locals(tcx, body, &mut translated_fn)?;
+        let box_deref_aliases = box_deref_alias::collect_box_deref_aliases(tcx, body);
+        let (variable_map, always_live_locals) =
+            Self::initialize_locals(tcx, body, &box_deref_aliases, &mut translated_fn)?;
 
         Ok(Self {
             tcx,
             adt_did,
-            adt_ty,
+            mir_source_ty,
             body,
             procedure_registry,
             ty_translator,
             generic_scope,
             variable_map,
+            box_deref_aliases,
             always_live_locals,
             collected_procedures: HashMap::new(),
             used_literals,
@@ -146,9 +152,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         })
     }
 
-    fn log_mir(tcx: ty::TyCtxt<'tcx>, adt_did: DefId, adt_ty: ty::Ty<'tcx>, body: &mir::Body<'tcx>) {
+    fn log_mir(
+        tcx: ty::TyCtxt<'tcx>,
+        adt_did: DefId,
+        adt_ty: ty::Ty<'tcx>,
+        mir_source_ty: ty::Ty<'tcx>,
+        body: &mir::Body<'tcx>,
+    ) {
         info!(
-            "Drop-glue MIR for {} ({adt_did:?}, {adt_ty:?}): {} locals, {} basic blocks",
+            "Drop-glue MIR for {} ({adt_did:?}, logical {adt_ty:?}, MIR source {mir_source_ty:?}): {} locals, {} basic blocks",
             tcx.def_path_str(adt_did),
             body.local_decls.len(),
             body.basic_blocks.len()
@@ -275,6 +287,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
     fn initialize_locals(
         tcx: ty::TyCtxt<'tcx>,
         body: &mir::Body<'tcx>,
+        box_deref_aliases: &HashMap<mir::Local, mir::Place<'tcx>>,
         translated_fn: &mut code::FunctionBuilder<'def>,
     ) -> Result<(HashMap<mir::Local, String>, Vec<mir::Local>), TranslationError> {
         let ptr_local = mir::Local::from_u32(1);
@@ -298,6 +311,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         let always_live = always_storage_live_locals(body);
         let mut always_live_locals = Vec::new();
         for local in body.local_decls.indices() {
+            if box_deref_aliases.contains_key(&local) {
+                info!("skipping drop-glue synthetic Box deref alias local {local:?}");
+                continue;
+            }
+
             let name = if local == mir::Local::from_u32(0) {
                 "ret".to_owned()
             } else if local == ptr_local {
@@ -312,6 +330,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         }
         translated_fn.code.add_argument("ptr", lang::SynType::Ptr);
         Ok((variable_map, always_live_locals))
+    }
+
+    pub(super) fn normalize_box_deref_alias_place(&self, place: &mir::Place<'tcx>) -> mir::Place<'tcx> {
+        box_deref_alias::normalize_deref_alias_place(self.tcx, place, |local| {
+            self.box_deref_aliases.get(&local).copied()
+        })
+    }
+
+    pub(super) fn is_box_deref_alias_admin_stmt(&self, stmt: &mir::Statement<'tcx>) -> bool {
+        box_deref_alias::is_admin_alias_stmt(stmt, |local| self.box_deref_aliases.contains_key(&local))
     }
 
     pub(super) fn initial_always_live_stmts(&self) -> Result<Vec<code::PrimStmt>, TranslationError> {
@@ -414,6 +442,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         &self,
         place: &mir::Place<'tcx>,
     ) -> Result<ty::Ty<'tcx>, TranslationError> {
+        let normalized = self.normalize_box_deref_alias_place(place);
+        let place = &normalized;
+
         let ptr_local = mir::Local::from_u32(1);
         if place.local != ptr_local {
             return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
@@ -421,7 +452,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             ))));
         }
 
-        let mut current_ty = ty::Ty::new_mut_ref(self.tcx, self.tcx.lifetimes.re_erased, self.adt_ty);
+        let mut current_ty = ty::Ty::new_mut_ref(self.tcx, self.tcx.lifetimes.re_erased, self.mir_source_ty);
         let mut current_variant = None;
 
         for projection in place.projection {
@@ -429,6 +460,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
                 mir::ProjectionElem::Deref => {
                     current_ty = match current_ty.kind() {
                         ty::TyKind::Ref(_, inner, _) | ty::TyKind::RawPtr(inner, _) => *inner,
+                        ty::TyKind::Adt(adt_def, args) if adt_def.is_box() => {
+                            let [inner, _alloc] = args.as_slice() else {
+                                return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                                    Message::UnsupportedFeature(format!(
+                                        "drop-glue semantic place typing got Box with unexpected args {args:?} in {place:?}"
+                                    )),
+                                )));
+                            };
+                            inner.expect_ty()
+                        },
                         _ => {
                             return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
                                 Message::UnsupportedFeature(format!(

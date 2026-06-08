@@ -13,6 +13,7 @@ use rr_rustc_interface::type_ir::TypeFoldable as _;
 use crate::environment::mir_mapper::{
     MappingResult, Origin, SyntheticDropBorrow, map_drop_elaborated_to_borrow_checked,
 };
+use crate::environment::mir_utils::box_deref_alias;
 use crate::environment::mir_utils::real_edges::RealEdges;
 use crate::environment::{loops, mir_storage};
 
@@ -146,17 +147,18 @@ impl<'tcx> Procedure<'tcx> {
     /// borrowck-level `Box` deref place. Only dereference uses of the alias are
     /// rewritten; the plain alias local is administrative MIR.
     pub(crate) fn normalize_box_deref_alias_place(&self, pl: &mir::Place<'tcx>) -> mir::Place<'tcx> {
-        let Some(alias) = self.mapping.box_deref_alias_for(pl.local) else {
-            return self.normalize_copy_alias_place(pl);
-        };
-        if !matches!(pl.projection.first(), Some(mir::ProjectionElem::Deref)) {
+        let normalized = box_deref_alias::normalize_deref_alias_place(self.tcx, pl, |local| {
+            let alias = self.mapping.box_deref_alias_for(local)?;
+            let projection = self.tcx.mk_place_elems(&[]);
+            Some(mir::Place {
+                local: alias.box_local(),
+                projection,
+            })
+        });
+        if normalized == *pl {
             return self.normalize_copy_alias_place(pl);
         }
-
-        mir::Place {
-            local: alias.box_local(),
-            projection: pl.projection,
-        }
+        normalized
     }
 
     /// Rewrite dereference uses of synthetic `no_retag copy` locals back to the

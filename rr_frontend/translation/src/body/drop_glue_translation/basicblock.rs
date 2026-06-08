@@ -55,6 +55,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         stmt: &mir::Statement<'tcx>,
         prim_stmts: &mut Vec<code::PrimStmt>,
     ) -> Result<(), TranslationError> {
+        if self.is_box_deref_alias_admin_stmt(stmt) {
+            info!("skipping drop-glue synthetic Box deref alias statement: {stmt:?}");
+            return Ok(());
+        }
+
         match &stmt.kind {
             mir::StatementKind::Assign(assign) => {
                 let (plc, val) = assign.as_ref();

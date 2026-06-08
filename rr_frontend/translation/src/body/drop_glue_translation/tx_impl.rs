@@ -60,6 +60,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirTranslationCtx<'def, 'tcx> for DropGlueTX<'a, 
     fn collected_procedures_mut(&mut self) -> &mut HashMap<TranslationKey<'tcx>, code::UsedProcedure<'def>> {
         &mut self.collected_procedures
     }
+
+    fn normalize_place(&self, place: &mir::Place<'tcx>) -> mir::Place<'tcx> {
+        self.normalize_box_deref_alias_place(place)
+    }
 }
 
 struct DropGlueGenericCollector<'tcx> {

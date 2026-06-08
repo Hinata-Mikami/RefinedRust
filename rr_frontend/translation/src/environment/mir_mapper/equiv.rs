@@ -10,6 +10,7 @@ use rr_rustc_interface::span;
 use super::types::*;
 use super::util::*;
 use super::{Mapper, Origin, SourceLoc};
+use crate::environment::mir_utils::box_deref_alias;
 
 impl<'tcx> Mapper<'_, 'tcx> {
     /// Check whether two statements have the same mapping-relevant shape.
@@ -179,18 +180,8 @@ impl<'tcx> Mapper<'_, 'tcx> {
             return None;
         };
 
-        if !self.de.local_decls[rhs_place.local].ty.is_box() {
-            return None;
-        }
-
-        let projections = rhs_place.projection.as_ref();
-        if projections.len() < 2 {
-            return None;
-        }
-
-        let is_box_projection = matches!(projections[0], mir::ProjectionElem::Field(field, _) if field.as_usize() == 0)
-            && matches!(projections[1], mir::ProjectionElem::Field(field, _) if field.as_usize() == 0);
-        if !is_box_projection {
+        let box_place = box_deref_alias::box_deref_alias_source_place(self.tcx, self.de, *rhs_place)?;
+        if !box_place.projection.is_empty() {
             return None;
         }
 
@@ -200,7 +191,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
 
         self.box_deref_aliases.insert(lhs.local, InternalBoxDerefAlias {
             place: NormalizedPlace {
-                local: rhs_place.local,
+                local: box_place.local,
                 projection: Vec::new(),
             },
             source_loc: split_from,

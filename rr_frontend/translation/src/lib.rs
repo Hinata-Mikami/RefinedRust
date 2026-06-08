@@ -1656,6 +1656,46 @@ fn register_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipelin
     Ok(())
 }
 
+fn is_exported_as_rust_box(vcx: &VerificationCtxt<'_, '_>, did: DefId) -> bool {
+    let Some(export_as) = shims::flat::get_external_export_path_for_did(vcx.tcx, did) else {
+        return false;
+    };
+
+    export_as.path.path == ["alloc", "boxed", "Box"] && !export_as.as_method
+}
+
+fn get_drop_glue_mir_source_ty<'tcx>(
+    vcx: &VerificationCtxt<'tcx, '_>,
+    logical_did: DefId,
+    logical_adt_ty: ty::Ty<'tcx>,
+) -> Result<ty::Ty<'tcx>, PipelineError> {
+    if !is_exported_as_rust_box(vcx, logical_did) {
+        return Ok(logical_adt_ty);
+    }
+
+    let ty::TyKind::Adt(_, logical_args) = logical_adt_ty.kind() else {
+        return Err(PipelineError::Reported(vcx.tcx.dcx().span_err(
+            vcx.tcx.def_span(logical_did),
+            error::Message::UnsupportedFeature(format!(
+                "drop glue for exported Box expected ADT type, got {logical_adt_ty:?}"
+            )),
+        )));
+    };
+    if logical_args.len() != 2 {
+        return Err(PipelineError::Reported(vcx.tcx.dcx().span_err(
+            vcx.tcx.def_span(logical_did),
+            error::Message::UnsupportedFeature(format!(
+                "drop glue for exported Box expected two generic arguments, got {logical_args:?}"
+            )),
+        )));
+    }
+
+    let real_box_did = vcx.tcx.require_lang_item(hir::LangItem::OwnedBox, vcx.tcx.def_span(logical_did));
+    let real_box_ty = vcx.tcx.type_of(real_box_did).instantiate(vcx.tcx, logical_args).skip_norm_wip();
+    info!("Using rustc Box drop-glue MIR source {real_box_ty:?} for exported Box {:?}", logical_did);
+    Ok(real_box_ty)
+}
+
 /// Translate functions of the crate, assuming they were previously registered.
 fn translate_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
     // First translate closures, then functions: the function translation assumes that closures
@@ -1670,7 +1710,10 @@ fn translate_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipelin
 }
 
 /// Translate registered drop glue, assuming it was previously registered for local non-trivial ADTs.
-fn translate_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
+fn translate_drop_glues<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) -> Result<(), PipelineError>
+where
+    'tcx: 'rcx,
+{
     let drop_glues: Vec<_> = vcx
         .procedure_registry
         .iter_procedure_meta()
@@ -1702,11 +1745,13 @@ fn translate_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipeli
         };
         info!("\nTranslating drop glue for {:?}", did.def_id);
 
-        let adt_ty = vcx.tcx.type_of(did.def_id).instantiate_identity().skip_norm_wip();
+        let adt_ty: ty::Ty<'tcx> = vcx.tcx.type_of(did.def_id).instantiate_identity().skip_norm_wip();
+        let mir_source_ty = get_drop_glue_mir_source_ty(vcx, did.def_id, adt_ty)?;
         let tx = drop_glue_translation::DropGlueTX::new(
             vcx.tcx,
             &meta,
             adt_ty,
+            mir_source_ty,
             &vcx.procedure_registry,
             vcx.type_translator,
             vcx.trait_registry,
