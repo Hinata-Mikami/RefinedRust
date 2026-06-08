@@ -2157,7 +2157,161 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), PipelineEr
     Ok(())
 }
 
-/// Register same-crate aliases introduced by `rr::export_as` for local model traits.
+fn resolve_trait_impl_export_alias(
+    vcx: &VerificationCtxt<'_, '_>,
+    local_impl_did: DefId,
+) -> Result<Option<DefId>, PipelineError> {
+    let span = vcx.tcx.def_span(local_impl_did);
+
+    if !vcx.tcx.impl_is_of_trait(local_impl_did) {
+        return Ok(None);
+    }
+
+    let impl_ref = vcx.tcx.impl_trait_ref(local_impl_did);
+    let impl_ref = normalize_in_function(local_impl_did, vcx.tcx, impl_ref.skip_binder()).unwrap();
+    let args = impl_ref.args;
+    let trait_did = impl_ref.def_id;
+    let trait_args = &args.as_slice()[1..];
+    let self_ty = args[0].expect_ty();
+
+    let Some(trait_path) = shims::flat::PathWithArgs::from_item(vcx.tcx, trait_did, trait_args) else {
+        vcx.tcx.dcx().span_warn(
+            span,
+            error::Message::AttributeError(
+                "could not flatten trait path for trait impl export alias".to_owned(),
+            ),
+        );
+        return Ok(None);
+    };
+    let Some((export_trait_did, export_trait_args)) = trait_path.to_item(vcx.tcx) else {
+        vcx.tcx.dcx().span_warn(
+            span,
+            error::Message::AttributeError(
+                "could not resolve exported trait for trait impl export alias".to_owned(),
+            ),
+        );
+        return Ok(None);
+    };
+    if !vcx.tcx.is_trait(export_trait_did) {
+        let err = vcx.tcx.dcx().span_err(
+            span,
+            error::Message::AttributeError(format!(
+                "trait impl export alias resolves to non-trait item {:?}",
+                export_trait_did
+            )),
+        );
+        return Err(PipelineError::Reported(err));
+    }
+
+    let Some(export_self_ty) =
+        shims::flat::convert_ty_to_flat_type(vcx.tcx, self_ty).and_then(|self_ty| self_ty.to_type(vcx.tcx))
+    else {
+        vcx.tcx.dcx().span_warn(
+            span,
+            error::Message::AttributeError(
+                "could not resolve exported self type for trait impl export alias".to_owned(),
+            ),
+        );
+        return Ok(None);
+    };
+
+    let Some(export_impl_did) =
+        search::try_resolve_trait_impl_did(vcx.tcx, export_trait_did, &export_trait_args, export_self_ty)
+    else {
+        vcx.tcx.dcx().span_warn(
+            span,
+            error::Message::AttributeError("could not resolve trait impl export alias".to_owned()),
+        );
+        return Ok(None);
+    };
+
+    if export_impl_did == local_impl_did {
+        return Ok(None);
+    }
+
+    if !vcx.tcx.impl_is_of_trait(export_impl_did) {
+        let err = vcx.tcx.dcx().span_err(
+            span,
+            error::Message::AttributeError(format!(
+                "trait impl export alias resolves to non-trait impl item {:?}",
+                export_impl_did
+            )),
+        );
+        return Err(PipelineError::Reported(err));
+    }
+
+    Ok(Some(export_impl_did))
+}
+
+fn register_trait_impl_method_export_aliases(
+    vcx: &mut VerificationCtxt<'_, '_>,
+    local_impl_did: DefId,
+    export_impl_did: DefId,
+) -> Result<(), PipelineError> {
+    let export_trait_ref = vcx.tcx.impl_trait_ref(export_impl_did).skip_binder();
+    let export_trait_did = export_trait_ref.def_id;
+    let export_assoc_items = vcx.tcx.associated_items(export_impl_did);
+    let local_assoc_items = traits::sort_assoc_items(vcx.tcx, vcx.tcx.associated_items(local_impl_did));
+
+    for local_item in local_assoc_items {
+        if local_item.tag() != ty::AssocTag::Fn {
+            continue;
+        }
+
+        let Some(local_meta) = vcx.procedure_registry.lookup_function(local_item.def_id) else {
+            continue;
+        };
+
+        let Some(export_item) = export_assoc_items.find_by_ident_and_kind(
+            vcx.tcx,
+            local_item.ident(vcx.tcx),
+            ty::AssocTag::Fn,
+            export_trait_did,
+        ) else {
+            warn!(
+                "could not resolve method {:?} on exported trait impl {:?}",
+                local_item.ident(vcx.tcx),
+                export_impl_did
+            );
+            continue;
+        };
+
+        if export_item.def_id == local_item.def_id {
+            continue;
+        }
+
+        if vcx.procedure_registry.lookup_function_mode(export_item.def_id).is_some() {
+            let span = vcx.tcx.def_span(local_item.def_id);
+            let err = vcx.tcx.dcx().span_err(
+                span,
+                error::Message::AttributeError(format!(
+                    "exported trait impl method {:?} resolves to an already registered function",
+                    export_item.def_id
+                )),
+            );
+            return Err(PipelineError::Reported(err));
+        }
+
+        let meta = procedures::Meta::new(
+            local_meta.get_spec_name().to_owned(),
+            "dummy".to_owned(),
+            local_meta.get_trait_req_incl_name().to_owned(),
+            local_meta.get_name().to_owned(),
+            procedures::Mode::Shim,
+            false,
+            false,
+        );
+        vcx.procedure_registry.register_function(export_item.def_id, meta);
+        info!(
+            "registered trait impl method export alias {:?} -> {:?}",
+            export_item.def_id, local_item.def_id
+        );
+    }
+
+    Ok(())
+}
+
+/// Register same-crate aliases introduced by `rr::export_as` for local model traits and trait impls.
 #[expect(clippy::needless_pass_by_ref_mut, reason = "keeps the export-alias pass API consistent")]
 fn register_current_crate_export_aliases(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
     for trait_did in environment::get_traits(vcx.tcx) {
@@ -2219,6 +2373,34 @@ fn register_current_crate_export_aliases(vcx: &mut VerificationCtxt<'_, '_>) -> 
 
         vcx.trait_registry.register_shim(export_did, (*spec).clone());
         info!("registered trait export alias {:?} -> {:?}", export_did, local_did);
+    }
+
+    for trait_impl_did in environment::get_trait_impls(vcx.tcx) {
+        let local_impl_did = trait_impl_did.to_def_id();
+        let Some(export_impl_did) = resolve_trait_impl_export_alias(vcx, local_impl_did)? else {
+            continue;
+        };
+
+        let span = find_external_export_attr_span(vcx.tcx, local_impl_did)
+            .unwrap_or_else(|| vcx.tcx.def_span(local_impl_did));
+        let Some(spec) = vcx.trait_registry.lookup_impl(local_impl_did) else {
+            continue;
+        };
+
+        if vcx.trait_registry.lookup_impl(export_impl_did).is_some() {
+            let err = vcx.tcx.dcx().span_err(
+                span,
+                error::Message::AttributeError(
+                    "annotated trait impl export path resolves to an already registered trait impl"
+                        .to_owned(),
+                ),
+            );
+            return Err(PipelineError::Reported(err));
+        }
+
+        vcx.trait_registry.register_impl_shim(export_impl_did, (*spec).clone());
+        register_trait_impl_method_export_aliases(vcx, local_impl_did, export_impl_did)?;
+        info!("registered trait impl export alias {:?} -> {:?}", export_impl_did, local_impl_did);
     }
 
     Ok(())
