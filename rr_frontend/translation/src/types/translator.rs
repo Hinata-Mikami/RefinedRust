@@ -767,12 +767,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             ))));
         }
 
-        if repr.linear() {
-            return Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::UnsupportedFeature(
-                "RefinedRust does currently not support the linear flag".to_owned(),
-            ))));
-        }
-
+        // `linear` is rustc-internal and only inhibits field reordering. Treat it as ordinary
+        // Rust representation; verifying against Rust representation is valid under the stronger
+        // field-order guarantee. This is used by compiler-known ADTs such as `alloc::boxed::Box`.
+        // Fall through to Rust representation for `linear` structs.
         Ok(specs::structs::Repr::Rust)
     }
 
