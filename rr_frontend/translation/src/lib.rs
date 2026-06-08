@@ -2157,6 +2157,73 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), PipelineEr
     Ok(())
 }
 
+/// Register same-crate aliases introduced by `rr::export_as` for local model traits.
+#[expect(clippy::needless_pass_by_ref_mut, reason = "keeps the export-alias pass API consistent")]
+fn register_current_crate_export_aliases(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
+    for trait_did in environment::get_traits(vcx.tcx) {
+        let local_did = trait_did.to_def_id();
+        let Some(export_path) = shims::flat::get_external_export_path_for_did(vcx.tcx, local_did) else {
+            continue;
+        };
+        let span =
+            find_external_export_attr_span(vcx.tcx, local_did).unwrap_or_else(|| vcx.tcx.def_span(local_did));
+
+        if export_path.as_method {
+            let err = vcx.tcx.dcx().span_err(
+                span,
+                error::Message::AttributeError("trait export path must not be a method path".to_owned()),
+            );
+            return Err(PipelineError::Reported(err));
+        }
+
+        let Some(export_did) = search::try_resolve_did(vcx.tcx, export_path.path.path.as_slice()) else {
+            vcx.tcx.dcx().span_warn(
+                span,
+                error::Message::AttributeError(format!(
+                    "could not resolve annotated trait export path {:?}",
+                    export_path.path.path
+                )),
+            );
+            continue;
+        };
+
+        if export_did == local_did {
+            continue;
+        }
+
+        if !vcx.tcx.is_trait(export_did) {
+            let err = vcx.tcx.dcx().span_err(
+                span,
+                error::Message::AttributeError(format!(
+                    "annotated trait export path {:?} resolves to non-trait item {:?}",
+                    export_path.path.path, export_did
+                )),
+            );
+            return Err(PipelineError::Reported(err));
+        }
+
+        let Some(spec) = vcx.trait_registry.lookup_trait(local_did) else {
+            continue;
+        };
+
+        if vcx.trait_registry.lookup_trait(export_did).is_some() {
+            let err = vcx.tcx.dcx().span_err(
+                span,
+                error::Message::AttributeError(format!(
+                    "annotated trait export path {:?} resolves to an already registered trait",
+                    export_path.path.path
+                )),
+            );
+            return Err(PipelineError::Reported(err));
+        }
+
+        vcx.trait_registry.register_shim(export_did, (*spec).clone());
+        info!("registered trait export alias {:?} -> {:?}", export_did, local_did);
+    }
+
+    Ok(())
+}
+
 /// Check if the `RefinedRust` closure library is available
 fn are_closures_available(vcx: &VerificationCtxt<'_, '_>) -> bool {
     // let's check first if the closure library has been imported
@@ -2744,6 +2811,8 @@ where
     register_traits(&mut vcx)?;
 
     register_trait_impls(&vcx)?;
+
+    register_current_crate_export_aliases(&mut vcx)?;
 
     register_closure_impls(&vcx);
 
