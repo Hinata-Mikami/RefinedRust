@@ -127,7 +127,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             return None;
         }
 
-        if self.tcx.visibility(did) != ty::Visibility::Public {
+        if !is_public_local_item(self.tcx, did) {
             // don't export
             return None;
         }
@@ -255,7 +255,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         decl: specs::traits::LiteralSpecRef<'rcx>,
     ) -> Option<shim_registry::TraitShim<'_>> {
         info!("making shim entry for {did:?}");
-        if ty::Visibility::Public == self.tcx.visibility(did.to_def_id()) {
+        if is_public_local_item(self.tcx, did.to_def_id()) {
             let (interned_path, _) = self.get_path_for_shim(did.into());
             let a = shim_registry::TraitShim {
                 path: interned_path,
@@ -277,7 +277,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         lit: specs::types::Literal,
     ) -> Option<shim_registry::AdtShim<'_>> {
         info!("making shim entry for {did:?}");
-        if did.is_local() && ty::Visibility::Public == self.tcx.visibility(did) {
+        if is_public_local_item(self.tcx, did) {
             // only export public items
             let (interned_path, _) = self.get_path_for_shim(did);
             let name = base::strip_coq_ident(&environment::get_item_name(self.tcx, did));
@@ -1165,6 +1165,10 @@ fn find_external_export_attr_span(tcx: ty::TyCtxt<'_>, did: DefId) -> Option<Spa
             .or_else(|| tcx.opt_parent(did))?;
         find_tool_attr_span(tcx, surrounding_did, "export_as")
     })
+}
+
+fn is_public_local_item(tcx: ty::TyCtxt<'_>, did: DefId) -> bool {
+    did.is_local() && tcx.visibility(did) == ty::Visibility::Public
 }
 
 /// Register shims in the procedure registry.
@@ -2227,6 +2231,21 @@ fn resolve_trait_impl_export_alias(
     Ok(Some(export_impl_did))
 }
 
+fn trait_impl_has_exported_self_type(vcx: &VerificationCtxt<'_, '_>, impl_did: DefId) -> bool {
+    if !vcx.tcx.impl_is_of_trait(impl_did) {
+        return false;
+    }
+
+    let impl_ref = vcx.tcx.impl_trait_ref(impl_did);
+    let impl_ref = normalize_in_function(impl_did, vcx.tcx, impl_ref.skip_binder()).unwrap();
+    let self_ty = impl_ref.self_ty();
+
+    match self_ty.kind() {
+        ty::TyKind::Adt(def, _) if def.did().is_local() => is_public_local_item(vcx.tcx, def.did()),
+        _ => true,
+    }
+}
+
 fn register_trait_impl_method_export_aliases(
     vcx: &mut VerificationCtxt<'_, '_>,
     local_impl_did: DefId,
@@ -2363,6 +2382,9 @@ fn register_current_crate_adt_export_alias(
 fn register_current_crate_export_aliases(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
     for adt in vcx.adts {
         let local_did = adt.to_def_id();
+        if !is_public_local_item(vcx.tcx, local_did) {
+            continue;
+        }
         if environment::has_bare_tool_attribute(vcx.tcx, local_did, "skip") {
             continue;
         }
@@ -2372,6 +2394,9 @@ fn register_current_crate_export_aliases(vcx: &mut VerificationCtxt<'_, '_>) -> 
         let adt_def = vcx.tcx.adt_def(local_did);
         if adt_def.is_enum() {
             for variant in adt_def.variants() {
+                if !is_public_local_item(vcx.tcx, variant.def_id) {
+                    continue;
+                }
                 register_current_crate_adt_export_alias(vcx, variant.def_id)?;
             }
         }
@@ -2385,6 +2410,9 @@ fn register_current_crate_export_aliases(vcx: &mut VerificationCtxt<'_, '_>) -> 
         .collect();
 
     for (local_did, is_closure) in functions {
+        if !is_public_local_item(vcx.tcx, local_did) {
+            continue;
+        }
         let Some(export_path) = shims::flat::get_external_export_path_for_did(vcx.tcx, local_did) else {
             continue;
         };
@@ -2435,6 +2463,9 @@ fn register_current_crate_export_aliases(vcx: &mut VerificationCtxt<'_, '_>) -> 
 
     for trait_did in environment::get_traits(vcx.tcx) {
         let local_did = trait_did.to_def_id();
+        if !is_public_local_item(vcx.tcx, local_did) {
+            continue;
+        }
         let Some(export_path) = shims::flat::get_external_export_path_for_did(vcx.tcx, local_did) else {
             continue;
         };
@@ -2496,6 +2527,9 @@ fn register_current_crate_export_aliases(vcx: &mut VerificationCtxt<'_, '_>) -> 
 
     for trait_impl_did in environment::get_trait_impls(vcx.tcx) {
         let local_impl_did = trait_impl_did.to_def_id();
+        if !trait_impl_has_exported_self_type(vcx, local_impl_did) {
+            continue;
+        }
         let Some(export_impl_did) = resolve_trait_impl_export_alias(vcx, local_impl_did)? else {
             continue;
         };
