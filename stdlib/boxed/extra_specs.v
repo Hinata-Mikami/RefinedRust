@@ -1,15 +1,3 @@
-Section box.
-  Context `{!LayoutAlg}.
-
-  (* Notation used for Rust's magic box deref *)
-  Definition magic_box_deref (T_st A_st : syn_type) (e : expr) : expr :=
-    (*b.0.pointer.pointer*)
-    (!{PtrOp} (((e at{Box_sls T_st A_st} "0") at{unique_Unique_sls T_st} "ptr") at{nonnull_NonNull_sls T_st} "pointer"))%E
-  .
-End box.
-#[export] Hint Unfold magic_box_deref : solve_into_place_unfold.
-Notation "'!box{' T_st ',' A_st '}' e" := (magic_box_deref T_st A_st e) (at level 9, format "!box{ T_st , A_st } e") : expr_scope.
-
 Section contractive.
   Context `{!refinedrustGS Σ}.
 

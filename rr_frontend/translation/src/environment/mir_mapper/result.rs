@@ -31,8 +31,8 @@ pub enum Origin {
 /// *_alias
 /// ```
 ///
-/// The alias local should be treated as administrative MIR; uses through a
-/// dereference correspond to the original borrowck-level `*_box` place.
+/// The mapper uses this for alignment against borrowck MIR. Code generation
+/// still keeps the alias local explicit.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct BoxDerefAlias {
     pub(super) alias_local: Local,

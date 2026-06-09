@@ -144,8 +144,9 @@ impl<'tcx> Procedure<'tcx> {
     }
 
     /// Rewrite dropck's synthetic raw-pointer `Box` deref aliases back to the
-    /// borrowck-level `Box` deref place. Only dereference uses of the alias are
-    /// rewritten; the plain alias local is administrative MIR.
+    /// borrowck-level `Box` deref place. This is only used for source-level
+    /// typing and location alignment; code generation keeps the raw-pointer
+    /// alias explicit and translates its initializer directly.
     pub(crate) fn normalize_box_deref_alias_place(&self, pl: &mir::Place<'tcx>) -> mir::Place<'tcx> {
         let normalized = box_deref_alias::normalize_deref_alias_place(self.tcx, pl, |local| {
             let alias = self.mapping.box_deref_alias_for(local)?;
@@ -164,7 +165,7 @@ impl<'tcx> Procedure<'tcx> {
     /// Rewrite dereference uses of synthetic `no_retag copy` locals back to the
     /// place they alias. Dropck introduces these around captured mutable refs in
     /// closures, while borrowck MIR keeps using the original projected place.
-    fn normalize_copy_alias_place(&self, pl: &mir::Place<'tcx>) -> mir::Place<'tcx> {
+    pub(crate) fn normalize_copy_alias_place(&self, pl: &mir::Place<'tcx>) -> mir::Place<'tcx> {
         let Some(source) = self.copy_aliases.get(&pl.local) else {
             return *pl;
         };
@@ -184,7 +185,7 @@ impl<'tcx> Procedure<'tcx> {
 
     #[must_use]
     pub(crate) fn is_administrative_alias(&self, local: mir::Local) -> bool {
-        self.mapping.is_box_deref_alias(local) || self.copy_aliases.contains_key(&local)
+        self.copy_aliases.contains_key(&local)
     }
 
     #[must_use]

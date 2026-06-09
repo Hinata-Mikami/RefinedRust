@@ -57,7 +57,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirTranslationCtx<'def, 'tcx> for TX<'a, 'def, 't
     }
 
     fn normalize_place(&self, place: &mir::Place<'tcx>) -> mir::Place<'tcx> {
-        self.proc.normalize_box_deref_alias_place(place)
+        self.proc.normalize_copy_alias_place(place)
     }
 }
 

@@ -32,8 +32,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 statement_index: idx,
             };
 
-            if self.is_box_deref_alias_admin_stmt(stmt) {
-                info!("skipping synthetic Box deref alias statement: {stmt:?}");
+            if self.is_administrative_alias_stmt(stmt) {
+                info!("skipping synthetic administrative alias statement: {stmt:?}");
                 continue;
             }
 
@@ -161,6 +161,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     if let Some(local_name) = self.variable_map().get(l) {
                         let var = code::Variable::new(local_name.to_owned(), translated_st);
                         prim_stmts.push(code::PrimStmt::LocalLive(var));
+                    } else if self.proc.is_administrative_alias(*l) {
+                        info!("ignoring StorageLive for synthetic administrative alias local {l:?}");
                     } else {
                         let ty::TyKind::Closure(did, _) = ty.kind() else {
                             unreachable!()
@@ -176,6 +178,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                     if let Some(local_name) = self.variable_map().get(l) {
                         prim_stmts.push(code::PrimStmt::LocalDead(local_name.to_owned()));
+                    } else if self.proc.is_administrative_alias(*l) {
+                        info!("ignoring StorageDead for synthetic administrative alias local {l:?}");
                     } else {
                         let ty::TyKind::Closure(did, _) = ty.kind() else {
                             unreachable!()

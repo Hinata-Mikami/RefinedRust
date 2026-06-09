@@ -31,9 +31,9 @@
 //!
 //! `observe_inserted_stmt` recognizes these alias initializers structurally and
 //! records a [`BoxDerefAlias`]. The mapper then normalizes later `*_alias` uses
-//! when comparing target statements/terminators with borrowck MIR, and exposes
-//! the alias through [`MappingResult`] so body translation can skip the
-//! administrative alias local and translate `*_alias` as the original `*_box`.
+//! when comparing target statements/terminators with borrowck MIR. Code
+//! generation keeps the alias local explicit and translates the initializer's
+//! transmute as a field projection.
 //!
 //! Alias initializer statements may also be basic-block entry points. Since
 //! annotation generation queries start points for successor blocks, `finish`

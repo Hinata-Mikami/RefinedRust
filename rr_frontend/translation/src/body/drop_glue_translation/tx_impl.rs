@@ -62,7 +62,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirTranslationCtx<'def, 'tcx> for DropGlueTX<'a, 
     }
 
     fn normalize_place(&self, place: &mir::Place<'tcx>) -> mir::Place<'tcx> {
-        self.normalize_box_deref_alias_place(place)
+        *place
     }
 }
 

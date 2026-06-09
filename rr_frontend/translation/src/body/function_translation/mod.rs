@@ -23,7 +23,6 @@ use typed_arena::Arena;
 
 use crate::base::*;
 use crate::body::mir_lowering::{MirTranslationCtx as _, ProcedureInst, TranslationKey};
-use crate::environment::mir_utils::box_deref_alias;
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
 use crate::regions::AnnotationGenerator;
@@ -440,11 +439,18 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
     }
 
-    /// Check whether this statement only manages a synthetic raw-pointer alias
-    /// introduced for a dropck-level `Box` deref. The actual deref uses are
-    /// normalized back to the original `Box` local before translation.
-    fn is_box_deref_alias_admin_stmt(&self, stmt: &mir::Statement<'tcx>) -> bool {
-        box_deref_alias::is_admin_alias_stmt(stmt, |local| self.proc.is_administrative_alias(local))
+    /// Check whether this statement only manages a synthetic administrative alias local.
+    fn is_administrative_alias_stmt(&self, stmt: &mir::Statement<'tcx>) -> bool {
+        match &stmt.kind {
+            mir::StatementKind::StorageLive(local) | mir::StatementKind::StorageDead(local) => {
+                self.proc.is_administrative_alias(*local)
+            },
+            mir::StatementKind::Assign(assign) => {
+                let (place, _) = assign.as_ref();
+                place.projection.is_empty() && self.proc.is_administrative_alias(place.local)
+            },
+            _ => false,
+        }
     }
 
     /// Check if a local is used for a spec closure.

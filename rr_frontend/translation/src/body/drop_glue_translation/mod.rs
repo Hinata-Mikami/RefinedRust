@@ -127,8 +127,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             &translated_adt_ty,
         )?;
         let box_deref_aliases = box_deref_alias::collect_box_deref_aliases(tcx, body);
-        let (variable_map, always_live_locals) =
-            Self::initialize_locals(tcx, body, &box_deref_aliases, &mut translated_fn)?;
+        let (variable_map, always_live_locals) = Self::initialize_locals(tcx, body, &mut translated_fn)?;
 
         Ok(Self {
             tcx,
@@ -287,7 +286,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
     fn initialize_locals(
         tcx: ty::TyCtxt<'tcx>,
         body: &mir::Body<'tcx>,
-        box_deref_aliases: &HashMap<mir::Local, mir::Place<'tcx>>,
         translated_fn: &mut code::FunctionBuilder<'def>,
     ) -> Result<(HashMap<mir::Local, String>, Vec<mir::Local>), TranslationError> {
         let ptr_local = mir::Local::from_u32(1);
@@ -311,11 +309,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         let always_live = always_storage_live_locals(body);
         let mut always_live_locals = Vec::new();
         for local in body.local_decls.indices() {
-            if box_deref_aliases.contains_key(&local) {
-                info!("skipping drop-glue synthetic Box deref alias local {local:?}");
-                continue;
-            }
-
             let name = if local == mir::Local::from_u32(0) {
                 "ret".to_owned()
             } else if local == ptr_local {
@@ -336,10 +329,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         box_deref_alias::normalize_deref_alias_place(self.tcx, place, |local| {
             self.box_deref_aliases.get(&local).copied()
         })
-    }
-
-    pub(super) fn is_box_deref_alias_admin_stmt(&self, stmt: &mir::Statement<'tcx>) -> bool {
-        box_deref_alias::is_admin_alias_stmt(stmt, |local| self.box_deref_aliases.contains_key(&local))
     }
 
     pub(super) fn initial_always_live_stmts(&self) -> Result<Vec<code::PrimStmt>, TranslationError> {

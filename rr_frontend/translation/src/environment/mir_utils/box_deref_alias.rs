@@ -17,9 +17,8 @@ use rr_rustc_interface::middle::{mir, ty};
 /// *_alias
 /// ```
 ///
-/// The returned map records `_alias -> box_place`. Later deref uses of `_alias` can then be
-/// normalized back to `*box_place`, so place translation can emit `MagicBoxDeref` instead of
-/// translating rustc's layout-level field access and transmute.
+/// The returned map records `_alias -> box_place`. Drop-glue translation uses this for semantic
+/// typing of later `*_alias` uses while code generation keeps the alias local explicit.
 pub(crate) fn collect_box_deref_aliases<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     body: &mir::Body<'tcx>,
@@ -111,14 +110,5 @@ pub(crate) fn normalize_deref_alias_place<'tcx>(
     mir::Place {
         local: source_place.local,
         projection,
-    }
-}
-
-/// Check whether this statement only manages an administrative alias local.
-pub(crate) fn is_admin_alias_stmt(stmt: &mir::Statement<'_>, is_alias: impl Fn(mir::Local) -> bool) -> bool {
-    match &stmt.kind {
-        mir::StatementKind::StorageLive(local) | mir::StatementKind::StorageDead(local) => is_alias(*local),
-        mir::StatementKind::Assign(box (place, _)) => place.projection.is_empty() && is_alias(place.local),
-        _ => false,
     }
 }

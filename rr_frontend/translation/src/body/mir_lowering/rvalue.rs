@@ -12,6 +12,7 @@ use rr_rustc_interface::{abi, index};
 use super::{MirConstantTranslation, MirPlaceTranslation};
 use crate::base::*;
 use crate::body::mir_lowering::{MirTranslationCtx, MirTypeTranslation};
+use crate::environment::mir_utils::box_deref_alias;
 use crate::error::Message;
 
 pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
@@ -183,6 +184,12 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
         op: &mir::Operand<'tcx>,
         to_ty: ty::Ty<'tcx>,
     ) -> Result<code::Expr, TranslationError> {
+        if matches!(kind, mir::CastKind::Transmute)
+            && let Some(translated) = self.translate_box_deref_transmute(op, to_ty)?
+        {
+            return Ok(translated);
+        }
+
         let op_ty = self.shape_type_of_operand(op);
         let op_st = self.translate_type_to_syn_type(op_ty)?;
         let op_ot = op_st.into();
@@ -284,6 +291,39 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
                 ))),
             )),
         }
+    }
+
+    fn translate_box_deref_transmute(
+        &mut self,
+        op: &mir::Operand<'tcx>,
+        to_ty: ty::Ty<'tcx>,
+    ) -> Result<Option<code::Expr>, TranslationError> {
+        if !matches!(to_ty.kind(), ty::TyKind::RawPtr(..)) {
+            return Ok(None);
+        }
+
+        let (mir::Operand::Copy(rhs_place) | mir::Operand::Move(rhs_place)) = op else {
+            return Ok(None);
+        };
+        if box_deref_alias::box_deref_alias_source_place(self.tcx(), self.body(), *rhs_place).is_none() {
+            return Ok(None);
+        }
+
+        let nonnull_ty = rhs_place.ty(&self.body().local_decls, self.tcx()).ty;
+        let nonnull_sls = self.generate_structlike_use(nonnull_ty, None)?.generate_raw_syn_type_term();
+
+        let nonnull_expr = self.translate_place(rhs_place)?;
+        let pointer_expr = code::Expr::FieldOf {
+            e: Box::new(nonnull_expr),
+            name: "pointer".to_owned(),
+            sls: nonnull_sls.to_string(),
+        };
+        let target_st = self.translate_type_to_syn_type(to_ty)?;
+
+        Ok(Some(code::Expr::Copy {
+            ot: target_st.into(),
+            e: Box::new(pointer_expr),
+        }))
     }
 
     /// Translate an operand.
