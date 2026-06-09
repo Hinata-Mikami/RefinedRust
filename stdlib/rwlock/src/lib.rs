@@ -23,10 +23,9 @@ pub struct PoisonError<T> {
 
 #[rr::export_as(std::sync::RwLock)]
 #[rr::refined_by("()" : "unit")]
-#[rr::exists("x")]
 #[rr::trust_me(drop_glue)]
 pub struct RwLock<T> {
-    #[rr::field("x")]
+    #[rr::field("tt")]
     _t : PhantomData<T>, 
 }
 
@@ -34,7 +33,7 @@ pub struct RwLock<T> {
 #[rr::refined_by("x" : "{rt_of T}")]
 #[rr::trust_me(drop_glue)]
 pub struct RwLockReadGuard<'a, T: 'a> {
-    #[rr::field("#x")]
+    #[rr::field("tt")]
     _t: PhantomData<&'a T>,
 }
 
@@ -42,7 +41,7 @@ pub struct RwLockReadGuard<'a, T: 'a> {
 #[rr::refined_by("x" : "place_rfn {rt_of T}")]
 #[rr::trust_me(drop_glue)]
 pub struct RwLockWriteGuard<'a, T: 'a> {
-    #[rr::field("#()")]
+    #[rr::field("#tt")]
     _l: &'a RwLock<T>,
 }
 
