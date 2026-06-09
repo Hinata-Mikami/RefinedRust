@@ -115,6 +115,7 @@ pub(crate) enum Type {
     Char,
     Bool,
     Param(u32),
+    Tuple(Vec<Self>),
     Ref(u32, #[serde(with = "MutabilityDef")] ast::Mutability, Box<Self>),
     RawPtr(#[serde(with = "MutabilityDef")] ast::Mutability, Box<Self>),
     // TODO: more cases
@@ -161,6 +162,10 @@ impl Type {
             Self::Char => Some(tcx.mk_ty_from_kind(ty::TyKind::Char)),
             Self::Int(it) => Some(tcx.mk_ty_from_kind(ty::TyKind::Int(it.to_owned()))),
             Self::Uint(it) => Some(tcx.mk_ty_from_kind(ty::TyKind::Uint(it.to_owned()))),
+            Self::Tuple(args) => {
+                let tys = args.iter().map(|arg| arg.to_type(tcx)).collect::<Option<Vec<_>>>()?;
+                Some(tcx.mk_ty_from_kind(ty::TyKind::Tuple(tcx.mk_type_list(&tys))))
+            },
             Self::RawPtr(m, ty) => {
                 let translated_ty = ty.to_type(tcx)?;
                 let kind = ty::TyKind::RawPtr(translated_ty, *m);
@@ -201,6 +206,10 @@ pub(crate) fn convert_ty_to_flat_type<'tcx>(tcx: ty::TyCtxt<'tcx>, ty: ty::Ty<'t
         ty::TyKind::Int(it) => Some(Type::Int(it.to_owned())),
         ty::TyKind::Uint(it) => Some(Type::Uint(it.to_owned())),
         ty::TyKind::Param(p) => Some(Type::Param(p.index)),
+        ty::TyKind::Tuple(args) => {
+            let args = args.iter().map(|ty| convert_ty_to_flat_type(tcx, ty)).collect::<Option<Vec<_>>>()?;
+            Some(Type::Tuple(args))
+        },
         ty::TyKind::RawPtr(ty, m) => {
             let converted_ty = convert_ty_to_flat_type(tcx, *ty)?;
             Some(Type::RawPtr(*m, Box::new(converted_ty)))
