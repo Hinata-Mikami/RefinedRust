@@ -688,6 +688,109 @@
       }
     },
     {
+      "for_type": {
+        "Tuple": []
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "unitasEq",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Eq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Tuple": []
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "cmp": {
+          "name": "unitasOrd_cmp",
+          "spec": "type_of_unitasOrd_cmp",
+          "trait_req_incl": "trait_incl_of_unitasOrd_cmp"
+        }
+      },
+      "name": "unitasOrd",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "cmp",
+          "Ord"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Tuple": []
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "eq": {
+          "name": "unitasPartialEq_eq",
+          "spec": "type_of_unitasPartialEq_eq",
+          "trait_req_incl": "trait_incl_of_unitasPartialEq_eq"
+        },
+        "ne": {
+          "name": "unitasPartialEq_ne",
+          "spec": "type_of_unitasPartialEq_ne",
+          "trait_req_incl": "trait_incl_of_unitasPartialEq_ne"
+        }
+      },
+      "name": "unitasPartialEq",
+      "trait_path": {
+        "args": [
+          {
+            "Tuple": []
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialEq"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Tuple": []
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "partial_cmp": {
+          "name": "unitasPartialOrd_partial_cmp",
+          "spec": "type_of_unitasPartialOrd_partial_cmp",
+          "trait_req_incl": "trait_incl_of_unitasPartialOrd_partial_cmp"
+        }
+      },
+      "name": "unitasPartialOrd",
+      "trait_path": {
+        "args": [
+          {
+            "Tuple": []
+          }
+        ],
+        "path": [
+          "core",
+          "cmp",
+          "PartialOrd"
+        ]
+      }
+    },
+    {
       "for_type": "Bool",
       "has_semantic_interp": false,
       "impl_kind": "rust",
