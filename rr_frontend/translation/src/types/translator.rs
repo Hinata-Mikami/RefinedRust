@@ -645,9 +645,14 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Lookup a shim for an ADT.
-    fn lookup_adt_shim(&self, did: DefId) -> Option<specs::types::LiteralRef<'def>> {
+    pub(crate) fn lookup_adt_shim(&self, did: DefId) -> Option<specs::types::LiteralRef<'def>> {
         let ordered_did = OrderedDefId::new(self.tcx, did);
         self.adt_shims.borrow().get(&ordered_did).copied()
+    }
+
+    /// Register a local ADT eagerly.
+    pub(crate) fn register_local_adt(&self, did: DefId) -> Result<(), TranslationError> {
+        self.register_adt(self.tcx.adt_def(did))
     }
 
     /// Check whether this is an ADT that was registered as part of this crate.
@@ -663,7 +668,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Check whether this is a registered ADT (remote or local).
-    fn is_registered_adt(&self, did: DefId) -> bool {
+    pub(crate) fn is_registered_adt(&self, did: DefId) -> bool {
         self.lookup_adt_shim(did).is_some() || self.is_registered_local_adt(did)
     }
 

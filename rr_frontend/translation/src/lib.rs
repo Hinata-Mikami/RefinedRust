@@ -1566,6 +1566,30 @@ fn register_tuple_drop_glue_shims(vcx: &mut VerificationCtxt<'_, '_>) {
     }
 }
 
+/// Eagerly register all non-skipped ADTs in the current crate.
+fn register_adts(vcx: &VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
+    for adt in vcx.adts {
+        let did = adt.to_def_id();
+        if environment::has_bare_tool_attribute(vcx.tcx, did, "skip") {
+            info!("Skipping ADT registration for {:?} due to rr::skip", did);
+            continue;
+        }
+        if vcx.type_translator.is_registered_adt(did) {
+            info!("ADT {:?} is already registered", did);
+            continue;
+        }
+
+        match vcx.type_translator.register_local_adt(did) {
+            Ok(()) => (),
+            Err(base::TranslationError::ErrorReported(err) | base::TranslationError::Tainted(err)) => {
+                return Err(PipelineError::Reported(err));
+            },
+        }
+    }
+
+    Ok(())
+}
+
 /// Register drop glue for non-trivial ADTs in the current crate.
 fn register_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
     for adt in vcx.adts {
@@ -2271,8 +2295,88 @@ fn register_trait_impl_method_export_aliases(
     Ok(())
 }
 
-/// Register same-crate aliases introduced by `rr::export_as` for local model traits and trait impls.
+fn register_current_crate_adt_export_alias(
+    vcx: &VerificationCtxt<'_, '_>,
+    local_did: DefId,
+) -> Result<(), PipelineError> {
+    let Some(export_path) = shims::flat::get_external_export_path_for_did(vcx.tcx, local_did) else {
+        return Ok(());
+    };
+    let span =
+        find_external_export_attr_span(vcx.tcx, local_did).unwrap_or_else(|| vcx.tcx.def_span(local_did));
+
+    if export_path.as_method {
+        let err = vcx.tcx.dcx().span_err(
+            span,
+            error::Message::AttributeError("ADT export path must not be a method path".to_owned()),
+        );
+        return Err(PipelineError::Reported(err));
+    }
+
+    let Some(export_did) = search::try_resolve_did(vcx.tcx, export_path.path.path.as_slice()) else {
+        vcx.tcx.dcx().span_warn(
+            span,
+            error::Message::AttributeError(format!(
+                "could not resolve annotated ADT export path {:?}",
+                export_path.path.path
+            )),
+        );
+        return Ok(());
+    };
+
+    if export_did == local_did {
+        return Ok(());
+    }
+
+    if !matches!(
+        vcx.tcx.def_kind(export_did),
+        hir::def::DefKind::Struct
+            | hir::def::DefKind::Enum
+            | hir::def::DefKind::Union
+            | hir::def::DefKind::Variant
+    ) {
+        let err = vcx.tcx.dcx().span_err(
+            span,
+            error::Message::AttributeError(format!(
+                "annotated ADT export path {:?} resolves to non-ADT item {:?}",
+                export_path.path.path, export_did
+            )),
+        );
+        return Err(PipelineError::Reported(err));
+    }
+
+    let Some(lit) = vcx.type_translator.lookup_adt_shim(local_did) else {
+        return Ok(());
+    };
+    match vcx.type_translator.register_adt_shim(export_did, lit) {
+        Ok(()) => (),
+        Err(base::TranslationError::ErrorReported(err) | base::TranslationError::Tainted(err)) => {
+            return Err(PipelineError::Reported(err));
+        },
+    }
+
+    info!("registered ADT export alias {:?} -> {:?}", export_did, local_did);
+    Ok(())
+}
+
+/// Register same-crate aliases introduced by `rr::export_as` for local model items.
 fn register_current_crate_export_aliases(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
+    for adt in vcx.adts {
+        let local_did = adt.to_def_id();
+        if environment::has_bare_tool_attribute(vcx.tcx, local_did, "skip") {
+            continue;
+        }
+
+        register_current_crate_adt_export_alias(vcx, local_did)?;
+
+        let adt_def = vcx.tcx.adt_def(local_did);
+        if adt_def.is_enum() {
+            for variant in adt_def.variants() {
+                register_current_crate_adt_export_alias(vcx, variant.def_id)?;
+            }
+        }
+    }
+
     let functions: Vec<_> = vcx
         .functions
         .iter()
@@ -3006,6 +3110,9 @@ where
     register_functions(&mut vcx)?;
 
     register_traits(&mut vcx)?;
+
+    // register ADTs which haven't been implicitly registered yet
+    register_adts(&vcx)?;
 
     register_trait_impls(&vcx)?;
 
