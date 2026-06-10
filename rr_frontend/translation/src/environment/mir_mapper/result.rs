@@ -129,12 +129,6 @@ impl MappingResult {
         self.box_deref_aliases.get(&local).copied()
     }
 
-    /// Check whether `local` is a synthetic dropck local that aliases `*Box<T>`.
-    #[must_use]
-    pub fn is_box_deref_alias(&self, local: Local) -> bool {
-        self.box_deref_aliases.contains_key(&local)
-    }
-
     /// Iterate over all synthetic dropck locals that alias borrowck-level `Box`
     /// dereferences.
     pub fn box_deref_aliases(&self) -> impl Iterator<Item = BoxDerefAlias> + '_ {

@@ -20,7 +20,7 @@ Section unique_Unique_sls.
   Definition unique_Unique_sls (T_st: syn_type) : struct_layout_spec :=
     let unique_Unique_st (T_st: syn_type) := UnitSynType in
     mk_sls "unique_Unique" [
-    ("ptr", (nonnull_NonNull_st (T_st)));
+    ("pointer", (nonnull_NonNull_st (T_st)));
     ("_marker", ((core_marker_PhantomData_sls (T_st)) : syn_type))] StructReprRust.
   Definition unique_Unique_st (T_st: syn_type) : syn_type := unique_Unique_sls T_st.
 End unique_Unique_sls.
@@ -488,7 +488,7 @@ Program Definition unique_Unique_T_as_ptr_def (T_st: syn_type) : function :=
       <[
      "_bb0" :=
       local_live{ (nonnull_NonNull_st (T_st)) } "__0";
-      "__0" <-{ (use_op_alg' (nonnull_NonNull_st (T_st))) } copy{ (use_op_alg' (nonnull_NonNull_st (T_st))) } (("self") at{ (unique_Unique_sls (T_st)) } "ptr");
+      "__0" <-{ (use_op_alg' (nonnull_NonNull_st (T_st))) } copy{ (use_op_alg' (nonnull_NonNull_st (T_st))) } (("self") at{ (unique_Unique_sls (T_st)) } "pointer");
       return (move{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -554,7 +554,7 @@ Program Definition unique_Unique_T_new_unchecked_def (nonnull_NonNull_T_new_unch
       local_dead "__3";
       local_live{ ((core_marker_PhantomData_sls (T_st)) : syn_type) } "__4";
       "__4" <-{ (use_op_alg' ((core_marker_PhantomData_sls (T_st)) : syn_type)) } StructInit (core_marker_PhantomData_sls (T_st)) [];
-      "__0" <-{ (use_op_alg' (unique_Unique_st (T_st))) } StructInit (unique_Unique_sls (T_st)) [("ptr", move{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("__2") : expr); ("_marker", move{ (use_op_alg' ((core_marker_PhantomData_sls (T_st)) : syn_type)) } ("__4") : expr)];
+      "__0" <-{ (use_op_alg' (unique_Unique_st (T_st))) } StructInit (unique_Unique_sls (T_st)) [("pointer", move{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("__2") : expr); ("_marker", move{ (use_op_alg' ((core_marker_PhantomData_sls (T_st)) : syn_type)) } ("__4") : expr)];
       local_dead "__4";
       local_dead "__2";
       return (move{ (use_op_alg' (unique_Unique_st (T_st))) } ("__0"))
