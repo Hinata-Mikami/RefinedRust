@@ -2286,8 +2286,13 @@ fn trait_impl_has_exported_self_type(vcx: &VerificationCtxt<'_, '_>, impl_did: D
     let self_ty = impl_ref.self_ty();
 
     match self_ty.kind() {
-        ty::TyKind::Adt(def, _) if def.did().is_local() => is_public_local_item(vcx.tcx, def.did()),
-        _ => true,
+        ty::TyKind::Adt(def, _) if def.did().is_local() => {
+            shims::flat::get_external_export_path_for_did(vcx.tcx, def.did()).is_some()
+                && is_public_local_item(vcx.tcx, def.did())
+        },
+        // TODO: make this more permissive by descending into the type and applying Rust's criteria
+        // for impl availability
+        _ => false,
     }
 }
 
