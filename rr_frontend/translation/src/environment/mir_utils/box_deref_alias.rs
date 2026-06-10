@@ -58,6 +58,9 @@ pub(crate) fn box_deref_alias_source_place<'tcx>(
 ) -> Option<mir::Place<'tcx>> {
     let root_ty = body.local_decls.get(rhs_place.local)?.ty;
     let mut box_ty = root_ty;
+    // Accept both `_box.0.0` and `(*_ptr_to_box).0.0`.
+    // In the second case, the leading `Deref` is how we reach the semantic `Box` place;
+    // the two internal `Box` field projections only start after it.
     let field_start = if matches!(rhs_place.projection.first(), Some(mir::ProjectionElem::Deref)) {
         box_ty = match root_ty.kind() {
             ty::TyKind::Ref(_, inner, _) | ty::TyKind::RawPtr(inner, _) => *inner,
@@ -79,10 +82,14 @@ pub(crate) fn box_deref_alias_source_place<'tcx>(
             Some(mir::ProjectionElem::Field(field, _)) if field.as_usize() == 0
         )
     };
+    // rustc's raw-pointer alias initializer extracts the stored pointer as two field-0 projections from the
+    // semantic `Box`.
     if !field0(field_start) || !field0(field_start + 1) {
         return None;
     }
 
+    // Return only the semantic `Box` place, dropping the internal `.0.0` pointer extraction.
+    // For `_box.0.0` this is `_box`; for `(*_ptr_to_box).0.0` this is `*_ptr_to_box`.
     let projection = tcx.mk_place_elems(&projections[..field_start]);
     Some(mir::Place {
         local: rhs_place.local,
@@ -103,6 +110,8 @@ pub(crate) fn normalize_deref_alias_place<'tcx>(
         return *place;
     }
 
+    // Only dereference uses of the alias have `Box` semantics. Plain uses are still the
+    // administrative raw-pointer value and should not be rewritten.
     let mut projection = Vec::with_capacity(source_place.projection.len() + place.projection.len());
     projection.extend_from_slice(source_place.projection.as_ref());
     projection.extend_from_slice(place.projection.as_ref());
