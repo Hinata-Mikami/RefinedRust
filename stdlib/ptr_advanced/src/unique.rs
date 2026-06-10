@@ -10,7 +10,7 @@ use core::mem;
 #[rr::refined_by("l" : "loc")]
 pub struct Unique<T: ?Sized> {
     #[rr::field("l")]
-    ptr: NonNull<T>,
+    pointer: NonNull<T>,
     // NOTE: this marker has no consequences for variance, but is necessary
     // for dropck to understand that we logically own a `T`.
     //
@@ -46,12 +46,12 @@ impl<T: ?Sized> Unique<T> {
     #[rr::returns("ptr")]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         unsafe {
-            Unique { ptr: NonNull::new_unchecked(ptr), _marker: PhantomData }
+            Unique { pointer: NonNull::new_unchecked(ptr), _marker: PhantomData }
         }
     }
 
     #[rr::returns("self")]
-    pub const fn as_ptr(self) -> NonNull<T> { self.ptr }
+    pub const fn as_ptr(self) -> NonNull<T> { self.pointer }
 }
 
 //#[rr::verify]
