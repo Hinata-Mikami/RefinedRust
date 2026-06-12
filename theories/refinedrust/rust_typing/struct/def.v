@@ -441,7 +441,7 @@ Section structs.
     iIntros (rts sls tys ot st π r m v Hot).
     apply (mem_cast_compat_Untyped) => ?.
     iIntros "(%sl & -> & %Halg & %Hlen & %Hsl & Hmem)".
-    destruct ot as [ | | | sl' ots | | ]; try done.
+    destruct ot as [ | | | sl' ots | ? ? ? | | ]; try done.
     destruct Hot as (Hlen' & Halg' & Hlen_ots & Hot%Forall_fold_right).
     assert (sl' = sl) as ->. { by eapply struct_layout_spec_has_layout_inj. }
     iExists sl. do 3 iR.
@@ -640,7 +640,7 @@ Section structs.
       erewrite Hst1; last done.
       destruct HT as [Ts' Hne ->].
       repeat (erewrite (Hst1 ty ty'); last done).
-      destruct ot as [ | | | sl ots | ly | ] => //=.
+      destruct ot as [ | | | sl ots | ? ? ? | ly | ] => //=.
       apply and_proper => Hsl.
       apply and_proper => Halg. apply and_proper => Hots. rewrite -!Forall_fold_right.
       erewrite <-struct_layout_spec_has_layout_fields_length in Hsl; last done.
@@ -736,7 +736,7 @@ Section structs.
     - move => ty ty' ot /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
       erewrite Hst.
       destruct HT as [Ts' Hne ->].
-      destruct ot as [ | | | sl ots | ly | ] => //=.
+      destruct ot as [ | | | sl ots | ? ? ? | ly | ] => //=.
       apply and_proper => Hsl.
       apply and_proper => Halg. apply and_proper => Hots. rewrite -!Forall_fold_right.
       erewrite <-struct_layout_spec_has_layout_fields_length in Hsl; last done.

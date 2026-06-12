@@ -39,6 +39,7 @@ Fixpoint mem_cast (v : val) (ot : op_type) (st : (gset addr * heap_state)) : val
                   (((λ ot, λ v, mem_cast v ot st) <$> ots))
                   (λ ly _, (replicate (ly_size ly) MPoison)))
       (reshape (ly_size <$> sl.(sl_members).*2) v)
+  | EnumOp _ _ _ => None
   | UntypedOp _ => Some v
   end).
 
@@ -66,6 +67,7 @@ Proof.
     rewrite val_of_loc_Some; last done.
     rewrite val_of_loc_unchecked_length//.
   - by rewrite length_resize.
+  - by rewrite length_replicate.
   - done.
   - destruct (val_to_char v) => /=.
     + destruct (val_to_bytes v) eqn:Hv => //=.
@@ -150,7 +152,7 @@ Lemma mem_cast_idemp v ot st st' :
   mem_cast (mem_cast v ot st) ot st' = mem_cast v ot st.
 Proof.
   intros Hly Hwf.
-  induction ot as [ | | | sl ots IH | | ] using op_type_recursor in v, Hly, Hwf|-*; simpl.
+  induction ot as [ | | | sl ots IH | el variant_ots tag_int IH | | ] using op_type_recursor in v, Hly, Hwf|-*; simpl.
   - rewrite /mem_cast.
     destruct (val_to_bool v) as [b | ] eqn:Heq.
     + rewrite (val_to_bytes_id_bool _ b); last done. simpl.
@@ -218,6 +220,7 @@ Proof.
       f_equiv.
       rewrite drop_app_length'; first done.
       rewrite length_replicate//.
+  - rewrite /mem_cast. rewrite !length_replicate. done.
   - done.
   - rewrite /mem_cast.
     destruct (val_to_char v) as [z | ] eqn:Heq.

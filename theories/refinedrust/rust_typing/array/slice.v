@@ -157,7 +157,7 @@ Section def.
   Qed.
   Next Obligation.
     iIntros (ty ot st π r m v Hot) "Hb".
-    destruct ot as [ | | | | ly' | ]; try done.
+    destruct ot as [ | | | | ? ? ? | ly' | ]; try done.
   Qed.
   Next Obligation.
     intros ty ly ? Hst.

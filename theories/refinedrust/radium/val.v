@@ -1,4 +1,4 @@
-From radium Require Export base byte layout int_type loc struct.
+From radium Require Export base byte layout int_type loc enum.
 Set Default Proof Using "Type".
 
 (** * op_type *)
@@ -7,6 +7,8 @@ Inductive op_type : Set :=
 | IntOp (i : int_type)
 | PtrOp
 | StructOp (sl : struct_layout) (ots : list op_type)
+| EnumOp (el : enum_layout) (variant_ots : list (var_name * list op_type))
+    (tag_int : list (var_name * Z))
 | UntypedOp (ly : layout)
 | CharOp.
 
@@ -16,6 +18,7 @@ Definition ot_layout (ot : op_type) : layout :=
   | PtrOp => void*
   | IntOp it => it_layout it
   | StructOp sl ots => sl
+  | EnumOp el _ _ => el
   | UntypedOp ly => ly
   | CharOp => char_layout
   end.
@@ -25,11 +28,14 @@ Lemma op_type_recursor (P : op_type → Type) :
   (∀ it, P (IntOp it)) →
   P PtrOp →
   (∀ sl ots, list_is_list _ P ots → P (StructOp sl ots)) →
+  (∀ el variant_ots tag_int,
+    list_is_list _ (λ variant_ot, list_is_list _ P variant_ot.2) variant_ots →
+    P (EnumOp el variant_ots tag_int)) →
   (∀ ly, P (UntypedOp ly)) →
   P CharOp →
   ∀ ot, P ot.
 Proof.
-  intros Hbool Hint Hptr Hstruct Huntyped Hchar.
+  intros Hbool Hint Hptr Hstruct Henum Huntyped Hchar.
   refine (fix IH ot {struct ot} := _ ).
   destruct ot.
   - apply Hbool.
@@ -37,15 +43,30 @@ Proof.
   - apply Hptr.
   - apply Hstruct.
     by apply list_is_list_full.
+  - apply Henum.
+    apply list_is_list_full. intros [n ots].
+    by apply list_is_list_full.
   - apply Huntyped.
   - apply Hchar.
 Qed.
 
-(* Well-formedness of op_types requires that [StructOp] has coherent op_types for every struct component *)
-Fixpoint op_type_wf (ot : op_type) :=
+(* Well-formedness of op_types requires that structured op_types have coherent
+   component op_types. For enums, the discriminant is always validated as
+   [IntOp el.(el_tag_it)], and [variant_ots] describes the active payload. *)
+Fixpoint op_type_wf (ot : op_type) : Prop :=
   match ot with
   | StructOp sl ots =>
       Forall2_cb (λ ot '(n, ly), op_type_wf ot ∧ ot_layout ot = ly) ots (named_fields sl.(sl_members))
+  | EnumOp el variant_ots tag_int =>
+      variant_ots.*1 = enum_variant_names el.(el_variants) ∧
+      tag_int.*1 = enum_variant_names el.(el_variants) ∧
+      NoDup tag_int.*1 ∧
+      Forall (λ tag, tag.2 ∈ el.(el_tag_it)) tag_int ∧
+      Forall_cb (λ '(name, ots),
+            ∃ sl,
+              enum_variant_lookup el.(el_variants) name = Some sl ∧
+              Forall2_cb (λ ot '(n, ly), op_type_wf ot ∧ ot_layout ot = ly)
+                ots (named_fields sl.(sl_members))) variant_ots
   | _ => True
   end.
 

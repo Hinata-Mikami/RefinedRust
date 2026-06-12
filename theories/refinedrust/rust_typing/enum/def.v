@@ -517,7 +517,7 @@ Section enum.
   Next Obligation.
     rewrite /is_enum_ot. simpl.
     intros rt en ot Hot.
-    destruct ot as [ | | | | ly| ]; try done.
+    destruct ot as [ | | | | ? ? ? |ly| ]; try done.
     destruct Hot as (el & Halg & ->).
     simpl. by apply use_enum_layout_alg_Some_inv.
   Qed.
@@ -592,7 +592,7 @@ Section enum.
     iApply (ty_memcast_compat with "Ha").
     rewrite ty_has_op_type_unfold. simpl. rewrite /is_struct_ot/=.
     (*split; first done.*)
-    destruct ot as [ | | | | ly' | ]; try done.
+    destruct ot as [ | | | | ? ? ? | ly' | ]; try done.
     (*
     rewrite ty_has_op_type_unfold.
     rewrite /is_enum_ot in Hot.
@@ -811,7 +811,7 @@ Section ne.
     - rewrite !ty_has_op_type_unfold.
       intros ty ty' Hst ? Hot ot . simpl.
       unfold is_enum_ot.
-      destruct ot as [ | | | | ly | ]; try done.
+      destruct ot as [ | | | | ? ? ? | ly | ]; try done.
       do 4 f_equiv.
       erewrite enum_ne_els; first done. done.
     - simpl. eauto.
@@ -897,7 +897,7 @@ Section ne.
     - rewrite !ty_has_op_type_unfold.
       intros ty ty' ot . simpl.
       unfold is_enum_ot.
-      destruct ot as [ | | | | ly | ]; try done.
+      destruct ot as [ | | | | ? ? ? | ly | ]; try done.
       do 3 f_equiv.
       erewrite enum_contr_els; last done.
     - simpl. eauto.
