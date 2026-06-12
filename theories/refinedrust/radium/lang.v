@@ -1,7 +1,7 @@
 From iris.program_logic Require Export language ectx_language ectxi_language.
 From stdpp Require Export strings.
 From stdpp Require Import gmap list.
-From radium Require Export base byte layout int_type loc val heap struct.
+From radium Require Export base byte layout int_type loc val heap struct enum validity.
 Set Default Proof Using "Type".
 
 (** * Definition of the language *)
