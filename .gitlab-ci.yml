@@ -254,7 +254,7 @@ build-opam-iris.dev:
     IRIS_REPO: "iris/iris"
     OPAMIGNOREPINDEPENDS: "true" # so that the pins below don't get overridden
     # pin trakt, smtcoq, sniper to specific commits until things have stabilized
-    OPAM_PINS: "rocq-core version 9.1.1 rocq-stdlib version 9.0.0 git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV   git+https://gitlab.mpi-sws.org/$IRIS_REPO#$IRIS_REV  git+https://gitlab.mpi-sws.org/iris/iris-contrib  git+https://gitlab.mpi-sws.org/iris/lambda-rust  coq-smtcoq.dev git git+https://github.com/smtcoq/smtcoq#3df6204826a06f5025bc7408ab77855680c50367 coq-sniper.dev git git+https://github.com/smtcoq/sniper#sha256-b1Me3obsZjPdBqTg6Si5Wz90eEIIrtI8O5Yxio9xPmI=  rocq-trakt.dev git git+https://github.com/rocq-trakt/trakt#sha256-b1Me3obsZjPdBqTg6Si5Wz90eEIIrtI8O5Yxio9xPmI="
+    OPAM_PINS: "rocq-core version 9.1.1 rocq-stdlib version 9.0.0 git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV   git+https://gitlab.mpi-sws.org/$IRIS_REPO#$IRIS_REV  git+https://gitlab.mpi-sws.org/iris/iris-contrib  git+https://gitlab.mpi-sws.org/iris/lambda-rust  coq-smtcoq.dev git git+https://github.com/smtcoq/smtcoq#3df6204826a06f5025bc7408ab77855680c50367 coq-sniper.dev git git+https://github.com/smtcoq/sniper#c1ba4e90eea5af636de15c53a3e0a8ab29442a29  rocq-trakt.dev git git+https://github.com/rocq-trakt/trakt#c666cad53d794b0facecb7a87a6f74e6c89be088"
   script:
    - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
    - make setup-dune-workspace
