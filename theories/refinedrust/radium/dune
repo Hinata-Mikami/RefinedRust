@@ -3,4 +3,4 @@
  (package refinedrust)
  (synopsis "Radium language")
  (generate_project_file)
- (theories lithium stdpp iris iris_contrib Ltac2 Stdlib radium.physical_step radium.program_logic))
+ (theories lithium stdpp iris iris_contrib Ltac2 Stdlib Equations radium.physical_step radium.program_logic))
