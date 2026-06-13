@@ -1,3 +1,4 @@
+From Equations Require Export Equations.
 From radium Require Import val.
 From refinedrust Require Import base util.
 From refinedrust Require Import options.
@@ -48,6 +49,142 @@ Proof.
   destruct ot => //=. by intros [-> ->].
 Qed.
 
+Lemma mem_cast_UntypedOp v ly st :
+  v `has_layout_val` ly →
+  mem_cast v (UntypedOp ly) st = v.
+Proof.
+  intros Hly. rewrite /mem_cast. simp decode_op_val.
+  rewrite bool_decide_true; last exact Hly.
+  simpl. by rewrite resize_all_alt.
+Qed.
+
+Lemma encode_decode_id_int v ov ot it z st :
+  is_int_ot ot it →
+  val_to_Z v it = Some z →
+  decode_op_val v ot st = Some ov →
+  encode_op_val ov = v.
+Proof.
+  intros Hot Hz Hdec.
+  destruct ot as [|it'| | | |ly| ]; simpl in Hot; try done.
+  - subst it'. simp decode_op_val in Hdec.
+    move: Hdec => /fmap_Some[z' [Hz' ->]].
+    rewrite Hz in Hz'. injection Hz' as ->.
+    by apply i2v_of_val_to_Z.
+  - subst ly. simp decode_op_val in Hdec.
+    case_bool_decide; simplify_eq. done.
+Qed.
+
+Lemma encode_decode_compat_int v ov ot it z st :
+  is_int_ot ot it →
+  val_to_Z v it = Some z →
+  decode_op_val v ot st = Some ov →
+  val_to_Z (encode_op_val ov) it = Some z.
+Proof.
+  intros Hot Hz Hdec.
+  by rewrite (encode_decode_id_int _ _ _ _ _ _ Hot Hz Hdec).
+Qed.
+
+Lemma encode_decode_id_bool v ov ot b st :
+  is_bool_ot ot →
+  val_to_bool v = Some b →
+  decode_op_val v ot st = Some ov →
+  encode_op_val ov = v.
+Proof.
+  intros Hot Hb Hdec.
+  destruct ot as [| | | | |ly| ]; simpl in Hot; try done.
+  - simp decode_op_val in Hdec.
+    move: Hdec => /fmap_Some[b' [Hb' ->]].
+    rewrite Hb in Hb'. injection Hb' as ->.
+    by apply val_of_to_bool.
+  - subst ly. simp decode_op_val in Hdec.
+    case_bool_decide; simplify_eq. done.
+Qed.
+
+Lemma encode_decode_compat_bool v ov ot b st :
+  is_bool_ot ot →
+  val_to_bool v = Some b →
+  decode_op_val v ot st = Some ov →
+  val_to_bool (encode_op_val ov) = Some b.
+Proof.
+  intros Hot Hb Hdec.
+  by rewrite (encode_decode_id_bool _ _ _ _ _ Hot Hb Hdec).
+Qed.
+
+Lemma encode_decode_id_char v ov ot z st :
+  is_char_ot ot →
+  val_to_char v = Some z →
+  decode_op_val v ot st = Some ov →
+  encode_op_val ov = v.
+Proof.
+  intros Hot Hz Hdec.
+  destruct ot as [| | | | |ly| ]; simpl in Hot; try done.
+  - subst ly. simp decode_op_val in Hdec.
+    case_bool_decide; simplify_eq. done.
+  - simp decode_op_val in Hdec.
+    move: Hdec => /fmap_Some[z' [Hz' ->]].
+    rewrite Hz in Hz'. injection Hz' as ->.
+    by apply val_of_to_char.
+Qed.
+
+Lemma encode_decode_compat_char v ov ot z st :
+  is_char_ot ot →
+  val_to_char v = Some z →
+  decode_op_val v ot st = Some ov →
+  val_to_char (encode_op_val ov) = Some z.
+Proof.
+  intros Hot Hz Hdec.
+  by rewrite (encode_decode_id_char _ _ _ _ _ Hot Hz Hdec).
+Qed.
+
+Lemma encode_decode_id_loc v ov ot l st :
+  is_ptr_ot ot →
+  val_to_loc v = Some l →
+  decode_op_val v ot st = Some ov →
+  encode_op_val ov = v.
+Proof.
+  intros Hot Hl Hdec.
+  destruct ot as [| | | | |ly| ]; simpl in Hot; try done.
+  - simp decode_op_val in Hdec.
+    rewrite Hl in Hdec. injection Hdec as <-.
+    by apply l2v_correct'.
+  - subst ly. simp decode_op_val in Hdec.
+    case_bool_decide; simplify_eq. done.
+Qed.
+
+Lemma encode_decode_compat_loc v ov ot l st :
+  is_ptr_ot ot →
+  val_to_loc v = Some l →
+  decode_op_val v ot st = Some ov →
+  val_to_loc (encode_op_val ov) = Some l.
+Proof.
+  intros Hot Hl Hdec.
+  by rewrite (encode_decode_id_loc _ _ _ _ _ Hot Hl Hdec).
+Qed.
+
+Lemma encode_decode_id_unit v ov ot st :
+  is_unit_ot ot →
+  v = zst_val →
+  decode_op_val v ot st = Some ov →
+  encode_op_val ov = v.
+Proof.
+  intros Hot -> Hdec.
+  destruct ot as [| | |sl ots| |ly| ]; simpl in Hot; try done.
+  - destruct Hot as [-> ->]. simp decode_op_val in Hdec.
+    simpl in Hdec. simplify_eq. done.
+  - subst ly. simp decode_op_val in Hdec.
+    case_bool_decide; simplify_eq. done.
+Qed.
+
+Lemma encode_decode_compat_unit v ov ot st :
+  is_unit_ot ot →
+  v = zst_val →
+  decode_op_val v ot st = Some ov →
+  encode_op_val ov = zst_val.
+Proof.
+  intros Hot Hv Hdec.
+  by rewrite (encode_decode_id_unit _ _ _ _ Hot Hv Hdec).
+Qed.
+
 Section optypes.
   Context `{refinedcG Σ}.
   Lemma mem_cast_compat_id (P : val → iProp Σ) v ot st :
@@ -56,10 +193,15 @@ Section optypes.
   Proof. iIntros (HP) "HP". iDestruct (HP with "HP") as %Hm. rewrite Hm. done. Qed.
 
   Lemma mem_cast_compat_Untyped (P : val → iProp Σ) v ot st :
+    (∀ ly, ot = UntypedOp ly → P v ⊢ ⌜v `has_layout_val` ly⌝) →
     ((if ot is UntypedOp _ then False else True) →
       ⊢ P v -∗ P (mem_cast v ot st)) →
     ⊢ P v -∗ P (mem_cast v ot st).
-  Proof. move => Hot. destruct ot; try by apply: Hot. apply bi.entails_wand'. apply: mem_cast_compat_id. by iIntros "?". Qed.
+  Proof.
+    move => Hly Hot. destruct ot; try by apply: Hot.
+    iIntros "HP". iDestruct (Hly _ eq_refl with "HP") as %Hvly.
+    by rewrite mem_cast_UntypedOp.
+  Qed.
 
   Lemma mem_cast_compat_int (P : val → iProp Σ) v ot it:
     is_int_ot ot it →
@@ -68,7 +210,8 @@ Section optypes.
   Proof.
     destruct ot => //; simplify_eq/=.
     - intros <-.  etrans; [done|]. iPureIntro => -[??]. by apply: mem_cast_id_int.
-    - intros ->. etrans; [done|]. iPureIntro => -[??]. simpl. done.
+    - intros ->. etrans; [done|]. iPureIntro => -[? Hz] st'.
+      apply mem_cast_UntypedOp. by apply val_to_Z_length in Hz.
   Qed.
 
   Lemma mem_cast_compat_bool (P : val → iProp Σ) v ot :
@@ -78,7 +221,8 @@ Section optypes.
   Proof.
     destruct ot => //; simplify_eq/=.
     - intros _.  etrans; [done|]. iPureIntro => -[??]. by apply: mem_cast_id_bool.
-    - intros ->. etrans; [done|]. iPureIntro => -[??]. simpl. done.
+    - intros ->. etrans; [done|]. iPureIntro => -[? Hb] st'.
+      apply mem_cast_UntypedOp. by apply val_to_bool_length in Hb.
   Qed.
 
   Lemma mem_cast_compat_char (P : val → iProp Σ) v ot :
@@ -87,7 +231,8 @@ Section optypes.
     (P v ⊢ ⌜mem_cast_id v ot⌝).
   Proof.
     destruct ot => //; simplify_eq/=.
-    - intros ->. etrans; [done|]. iPureIntro => -[??]. simpl. done.
+    - intros ->. etrans; [done|]. iPureIntro => -[? Hz] st'.
+      apply mem_cast_UntypedOp. by apply val_to_char_length in Hz.
     - intros _.  etrans; [done|]. iPureIntro => -[??]. by apply: mem_cast_id_char.
   Qed.
 
@@ -99,7 +244,8 @@ Section optypes.
     destruct ot => //; simplify_eq/=.
     - intros _. etrans; [done|].
       iPureIntro => -[??]. simpl. by eapply mem_cast_id_loc.
-    - intros ->. etrans; [done|]. iPureIntro => -[? ?]. done.
+    - intros ->. etrans; [done|]. iPureIntro => -[? Hl] st'.
+      apply mem_cast_UntypedOp. by apply val_to_loc_length; eexists.
   Qed.
 
   Lemma mem_cast_compat_unit (P : val → iProp Σ) v ot :
@@ -108,13 +254,15 @@ Section optypes.
     (P v ⊢ ⌜mem_cast_id v ot⌝).
   Proof.
     destruct ot => //; simplify_eq/=.
-    - intros [-> ->]. etrans; first done. iIntros "->" => //.
-    - intros ->. etrans; first done. iIntros "->" => //.
+    - intros [-> ->]. etrans; first done. iPureIntro => -> st'.
+      by rewrite /mem_cast decode_op_val_equation_4 /=.
+    - intros ->. etrans; first done. iPureIntro => -> st'.
+      apply mem_cast_UntypedOp. done.
   Qed.
 End optypes.
 
 Definition is_memcast_val (v : val) (ot : op_type) (v' : val) : Prop :=
-  v' = v ∨ ∃ st, v' = mem_cast v ot st.
+  (v' = v) ∨ ∃ st, v' = mem_cast v ot st.
 
 Lemma is_memcast_val_memcast v ot v' st :
   v `has_layout_val` (ot_layout ot) →
@@ -128,9 +276,11 @@ Proof.
 Qed.
 
 Lemma is_memcast_val_untyped_inv v v' ly :
+  v `has_layout_val` ly →
   is_memcast_val v (UntypedOp ly) v' → v = v'.
 Proof.
-  intros [-> | (st & ->)]; done.
+  intros Hly [-> | (st & ->)]; first done.
+  by rewrite mem_cast_UntypedOp.
 Qed.
 
 Lemma has_layout_val_mem_cast v ly ot st :
@@ -164,76 +314,80 @@ Proof.
   rewrite mem_cast_length//.
 Qed.
 
-Lemma mem_cast_UntypedOp v ly st :
-  mem_cast v (UntypedOp ly) st = v.
-Proof. done. Qed.
 Lemma is_memcast_val_untyped_app ly1 ly2 ly3 v1 v2 v1' v2' :
   ly_size ly3 = ly_size ly1 + ly_size ly2 →
+  v1 `has_layout_val` ly1 →
+  v2 `has_layout_val` ly2 →
   is_memcast_val v1 (UntypedOp ly1) v1' →
   is_memcast_val v2 (UntypedOp ly2) v2' →
   is_memcast_val (v1 ++ v2) (UntypedOp ly3) (v1' ++ v2').
 Proof.
-  intros Hsz H1 H2.
-  destruct H1 as [->  | (st1 & ->)]; destruct H2 as [-> | (st2 & ->)]; simpl;
-      try rewrite !mem_cast_UntypedOp; by left.
+  intros Hsz ? ? H1 H2.
+  destruct H1 as [->  | (st1 & ->)]; destruct H2 as [-> | (st2 & ->)]; simpl in *;
+      try rewrite !mem_cast_UntypedOp; try done.
+  all: by left.
 Qed.
 
-Definition array_op_merge `{!LayoutAlg} (st : syn_type) (n1 n2 : nat)
+Definition array_op_merge `{!LayoutAlg} (st : syn_type) (ly : layout) (n1 n2 : nat)
     (ot1 ot2 ot : op_type) : Prop :=
-  ∃ ly,
-    syn_type_has_layout st ly ∧
-    ot1 = UntypedOp (mk_array_layout ly n1) ∧
-    ot2 = UntypedOp (mk_array_layout ly n2) ∧
-    ot = UntypedOp (mk_array_layout ly (n1 + n2)).
+  syn_type_has_layout st ly ∧
+  ot1 = UntypedOp (mk_array_layout ly n1) ∧
+  ot2 = UntypedOp (mk_array_layout ly n2) ∧
+  ot = UntypedOp (mk_array_layout ly (n1 + n2)).
 
 Lemma array_op_merge_untyped `{!LayoutAlg} st n1 n2 ly :
   syn_type_has_layout st ly →
-  array_op_merge st n1 n2
+  array_op_merge st ly n1 n2
     (UntypedOp (mk_array_layout ly n1))
     (UntypedOp (mk_array_layout ly n2))
     (UntypedOp (mk_array_layout ly (n1 + n2))).
 Proof.
-  intros Hst. exists ly. naive_solver.
+  intros Hst. unfold array_op_merge. naive_solver.
 Qed.
 
-Lemma is_memcast_val_array_op_merge `{!LayoutAlg} st n1 n2 ot1 ot2 ot v1 v2 v1' v2' :
-  array_op_merge st n1 n2 ot1 ot2 ot →
+Lemma is_memcast_val_array_op_merge `{!LayoutAlg} st ly n1 n2 ot1 ot2 ot v1 v2 v1' v2' :
+  array_op_merge st ly n1 n2 ot1 ot2 ot →
+  v1 `has_layout_val` mk_array_layout ly n1 →
+  v2 `has_layout_val` mk_array_layout ly n2 →
   is_memcast_val v1 ot1 v1' →
   is_memcast_val v2 ot2 v2' →
   is_memcast_val (v1 ++ v2) ot (v1' ++ v2').
 Proof.
-  intros (ly & _ & -> & -> & ->) H1 H2.
-  eapply is_memcast_val_untyped_app; [| done..].
+  intros (_ & -> & -> & ->) H1 H2.
+  eapply is_memcast_val_untyped_app; [| try done..].
   rewrite !ly_size_mk_array_layout. lia.
 Qed.
 
-Definition array_op_split `{!LayoutAlg} (st : syn_type) (n1 n2 : nat)
+Definition array_op_split `{!LayoutAlg} (st : syn_type) (ly : layout) (n1 n2 : nat)
     (ot ot1 ot2 : op_type) : Prop :=
-  ∃ ly,
-    syn_type_has_layout st ly ∧
-    ot = UntypedOp (mk_array_layout ly (n1 + n2)) ∧
-    ot1 = UntypedOp (mk_array_layout ly n1) ∧
-    ot2 = UntypedOp (mk_array_layout ly n2).
+  syn_type_has_layout st ly ∧
+  ot = UntypedOp (mk_array_layout ly (n1 + n2)) ∧
+  ot1 = UntypedOp (mk_array_layout ly n1) ∧
+  ot2 = UntypedOp (mk_array_layout ly n2).
 
 Lemma array_op_split_untyped `{!LayoutAlg} st n1 n2 ly :
   syn_type_has_layout st ly →
-  array_op_split st n1 n2
+  array_op_split st ly n1 n2
     (UntypedOp (mk_array_layout ly (n1 + n2)))
     (UntypedOp (mk_array_layout ly n1))
     (UntypedOp (mk_array_layout ly n2)).
 Proof.
-  intros Hst. exists ly. naive_solver.
+  intros Hst. unfold array_op_split. naive_solver.
 Qed.
 
-Lemma is_memcast_val_array_op_split `{!LayoutAlg} st n1 n2 ot ot1 ot2 v1 v2 v1' v2' :
-  array_op_split st n1 n2 ot ot1 ot2 →
+Lemma is_memcast_val_array_op_split `{!LayoutAlg} st ly n1 n2 ot ot1 ot2 v1 v2 v1' v2' :
+  array_op_split st ly n1 n2 ot ot1 ot2 →
   length v1 = ly_size (ot_layout ot1) →
+  length v2 = ly_size (ot_layout ot2) →
   length v1' = ly_size (ot_layout ot1) →
   is_memcast_val (v1 ++ v2) ot (v1' ++ v2') →
   is_memcast_val v1 ot1 v1' ∧ is_memcast_val v2 ot2 v2'.
 Proof.
-  intros (ly & _ & -> & -> & ->) Hv1 Hv1' Hmc.
+  intros (_ & -> & -> & ->) Hv1 Hv2 Hv1' Hmc.
   apply is_memcast_val_untyped_inv in Hmc.
+  2: { rewrite /has_layout_val length_app.
+    rewrite Hv1 Hv2/=.
+    rewrite !ly_size_mk_array_layout. lia. }
   rewrite ly_size_mk_array_layout in Hv1, Hv1'.
   apply app_inj_1 in Hmc as [-> ->]; last lia.
   split; left; done.
@@ -243,152 +397,5 @@ Lemma mem_cast_l2v_id l st :
   l.(loc_a) ∈ USize →
   mem_cast (l2v l) PtrOp st = l2v l.
 Proof.
-  intros. unfold mem_cast.
-  rewrite val_to_loc_Some_l2v; last done.
-  done.
+  intros Hl. exact (mem_cast_id_loc _ _ (val_to_loc_Some_l2v _ Hl) st).
 Qed.
-
-(* Q:
-    does the syntactical type alone determine the memcast_compat_type?
-
-   In principle, I might imagine that some type uses a syntactic struct type just to have some space, and all ops on it just treat it as a raw byte sequence (UntypedOp). In that case, I should be able to say that  the type is MCNone: if I interpret it as a struct where the padding bytes are poison, something will go wrong.
-    On the other hand, has_op_type should always be defined for UntypedOp, at least for MCId (because mem_casts are always identity for UntypedOp). But: because a syn_type does not only have UntypedOp, this does not tell us that that is so for all ots valid for it.
-    => In the semantic type interpretation, I should be able to influence how it is memcastable, because that is a semantic property.
-      But the syntactic type can determine which op_type it has.
-
-    TODO there might be some interdependency now, in the case of structs, of the syn_type_has_op_type on the mt that is actually allowed by the sematnic type?
-      or rather, checking the mt part in case of structs will require a similar recursion as getting the op for a synty. So maybe there is a smart setup for combining it?
-        - well, actually. the op_type thiong goes very deep.
-          but in the semantic interpretation, we just need to put on top: that the component types match , and that the components are similarly memcasteable [this puts an indirection on the recursion, so we are not really recursive the same way as for the syn_types}
-
-
- *)
-
-(*
-  - ot is fully determined by the synty
-  - mt is determined by the semty
-  - for the memcast_compat property of semtys, require
-      syn_type_has_op_type ty_syn_ty ot →
-      ty_has_memcast_type mt →
-      ty_own_val v -∗
-      match mt with
-      | MCNone => True
-      | MCCopy => ty_own_val (mem_cast v ot st)
-      | MCId => ⌜mem_cast_id v ot⌝
-      end
-
-    for structs: how to define ty_has_memcast_type?
-      => well, this depends on the optype with which we access!
-          - in general, the components need to have the same memcast_type
-          - For StructOp, it can't be id in general, because of padding.
-            For UntypedOp, we don't care further.
-
-    so instead:
-      define ty_has_op_type ot mt => this is quite similar to RefinedC
-        - usually, this will be defined in terms of synty
-      and require: ty_has_op_type ot mt → syn_type_has_op_type ty_syn_type ot
-        - Do we need this property for anything specific?
-          Probably no. But conceptually, the optype should just be fully determined by that.
-
-
-    => For now, just settle with defining that in terms of semantic types.
-        This doesn't quite seem right from a conceptual perspective, because the op_type should already be determined by the syntactic type, but it makes the setup easier.
- *)
-
-(*
-
-(* The op_type of a semantic type should solely depend on its syntactic type and the layout algorithm *)
-Fixpoint syn_type_has_op_type `{!LayoutAlg} (synty : syn_type) (ot : op_type) (mt : memcast_compat_type) {struct synty} : Prop :=
-  match synty with
-  | IntSynType it =>
-      is_int_ot ot it
-  | BoolSynType => is_bool_ot ot
-  | PtrSynType => is_ptr_ot ot
-  | FnPtrSynType => is_ptr_ot ot
-  | StructSynType sn fields =>
-      (* this should match the definition of is_struct_ot *)
-      match ot with
-      | StructOp sl ots =>
-          (* must agree with what the layout alg specifies *)
-          use_struct_layout_alg (mk_sls sn fields) = Some sl ∧
-          (* check that all the ots are compatible with the field's types *)
-          length ots = length fields ∧
-          (* TODO the termination checker is not happy about this. possibly because of zip *)
-          (*foldr (λ '((_, fty), fot) acc, and (syn_type_has_op_type fty fot) acc) True (zip fields ots)*)
-          True
-      (* TODO untypedop *)
-      | _ => False
-      end
-  end.
-
-Lemma syn_type_has_op_type_layout_stable `{!LayoutAlg} synty ot ly :
-  syn_type_has_op_type synty ot →
-  syn_type_has_layout synty ly →
-  ot_layout ot = ly.
-Proof.
-  (* this is a property that should definitely hold. *)
-Admitted.
-
-(* options for getting the def through
-  - use equations (boo)
-  - try a custom fused-foldr-zip (foldr2?). problem: I may need a third list to relate to sl.(sl_fields).
-  - don't define this via syn_types, but on types (so that we get it via indirection)
-*)
-
-(*Definition is_struct_ot *)
-
-(* TODO *)
- *)
-
-(*
-Definition is_struct_ot (sl : struct_layout) (tys : list syn_type) (ot : op_type) :=
-  length (field_names sl.(sl_members)) = length tys ∧
-  match ot with
-  | StructOp sl' ots => sl' = sl ∧ mt ≠ MCId ∧ length ots = length tys ∧
-    foldr (λ x, and (x.1.1.(ty_has_op_type) x.2 mt ∧ ot_layout x.2 = x.1.2.2))
-          True (zip (zip tys (field_members sl.(sl_members)) ) ots)
-  | UntypedOp ly => ly = sl ∧
-    foldr (λ x, and (x.1.(ty_has_op_type) (UntypedOp x.2.2) mt))
-          True (zip tys (field_members sl.(sl_members)) )
-  | _ => False
-  end.
-
-Lemma is_struct_ot_layout sl tys ot mt:
-  is_struct_ot sl tys ot mt → ot_layout ot = sl.
-Proof. move => [?]. destruct ot => //; naive_solver. Qed.
- *)
-
-
-
-
-(* field accesses refer to the layout we quantify over to get the offset -- this is anyways already the case in Caesium
-
-
-  - in the interpretation of types, we should be able to directly reason about the symbolic offset of a field, for the concrete (existentially quantified) layout that the alg gave us.
-      -> how does this nest?
-       interp [box inner] v :=
-        ∃ l ly,
-          use_layout_alg inner.lys = Some ly ∗
-          v = val_of_loc l ∗ l `loc_has_layout` ly ∗
-          ∃ w, l ↦ w ∗ inner.own w
-
-        interp (struct sls) v :=
-          ∃ sl,
-            use_struct_layout_alg sls = Some sl ∗
-            v `has_layout_val` sl ∗
-            [∗ list] field ∈ sl.fields, ...
-
-
-    types have:
-    - syn_type
-       require:
-       - ty.own v -∗ ∃ ly, use_layout_alg ty.(syn_type) = Some ly ∗ v `has_layout_val` ly
-       - has_op_type: can be directly defined in terms of the syn_type
-       -
-        for the resulting concrete thing, require compatibility with layouts and memcasts similarly to currently.
-        essentially, it is just deferred/ behind the ALG abstraction.
- *)
-
-(*
-   Maybe we should also, similarly, treat usize/isize and other implementation-defined things like endianness, pointer size?
- *)

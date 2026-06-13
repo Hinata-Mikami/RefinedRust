@@ -30,12 +30,26 @@ Section uninit.
     apply syn_type_has_layout_untyped.
     subst. done.
   Qed.
+  Next Obligation.
+    intros st ot (ly & Hst & Hot).
+    subst; constructor.
+  Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
-    simpl. iIntros (st ot ? π ? v (ly & Hsty & Heq)) "(%ly' & %Hst & %)".
-    assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
-    subst. iExists ly. iPureIntro; split; first done.
-    apply has_layout_val_mem_cast. done.
+    simpl. iIntros (st ot st' π [] v (ly & Hst & Hot)) "(%ly' & %Hst' & %Hly')".
+    subst.
+    iExists (OVUntyped ly v). iPureIntro.
+    simp decode_op_val.
+    rewrite bool_decide_true; last first.
+    { assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj. done. }
+    done.
+  Qed.
+  Next Obligation.
+    simpl. iIntros (st ot st' π [] v ov (ly & Hst & Hot) Hdec) "(%ly' & %Hst' & %Hly')".
+    subst ot.
+    simp decode_op_val in Hdec.
+    case_bool_decide; simplify_eq/=.
+    eauto.
   Qed.
   Next Obligation.
     intros st ly Hst.

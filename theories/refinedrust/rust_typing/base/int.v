@@ -40,12 +40,25 @@ Section int.
     destruct ot; try done.
     all: by eapply syn_type_has_layout_int.
   Qed.
+  Next Obligation.
+    intros it ot Hit.
+    destruct ot; done.
+  Qed.
   Next Obligation. rewrite int_own_val_unfold. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     rewrite int_own_val_unfold.
     simpl. iIntros (it ot st π r v Hot).
-    iPureIntro. intros Hv. destruct ot; simpl in *; try done. subst.
-    unfold mem_cast. erewrite val_to_bytes_id; last done. done.
+    iPureIntro. intros Hv.
+    destruct ot; simpl in *; try done; subst.
+    + eexists (OVInt _ _). simp decode_op_val. rewrite Hv. done.
+    + eexists (OVUntyped _ _). simp decode_op_val.
+      rewrite bool_decide_true; last by eapply val_to_Z_length.
+      done.
+  Qed.
+  Next Obligation.
+    rewrite int_own_val_unfold.
+    simpl. iIntros (it ot st π r v ov Hot Hdec) "%Hv".
+    iPureIntro. by eapply encode_decode_compat_int.
   Qed.
   Next Obligation.
     intros ?? Hst. apply syn_type_has_layout_int_inv in Hst as ->.
@@ -104,14 +117,26 @@ Section boolean.
   Next Obligation.
     intros ot Hot. simpl in *. rewrite (is_bool_ot_layout _ Hot). by apply syn_type_has_layout_bool.
   Qed.
+  Next Obligation. intros. destruct ot; try done. Qed.
   Next Obligation. rewrite bool_own_val_unfold. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     rewrite bool_own_val_unfold.
     simpl. iIntros (ot st π r v Hot).
     destruct ot; simpl in *; try done.
-    { iPureIntro. intros Hv. unfold mem_cast.
-    rewrite Hv. by erewrite val_to_bytes_id_bool. }
-    subst; eauto.
+    - iPureIntro. intros Hv. unfold mem_cast.
+      eexists (OVBool _). simpl.
+      simp decode_op_val.
+      rewrite Hv. done.
+    - iPureIntro. iIntros (Hv).
+      eexists (OVUntyped _ _). simp decode_op_val.
+      subst.
+      rewrite bool_decide_true; last by eapply val_to_bool_length.
+      done.
+  Qed.
+  Next Obligation.
+    rewrite bool_own_val_unfold.
+    simpl. iIntros (ot st π r v ov Hot Hdec) "%Hv".
+    iPureIntro. by eapply encode_decode_compat_bool.
   Qed.
   Next Obligation.
     intros ? Hst. apply syn_type_has_layout_bool_inv in Hst as ->.
@@ -159,14 +184,26 @@ Section char.
   Next Obligation.
     intros ot Hot. simpl in *. rewrite (is_char_ot_layout _ Hot). by apply syn_type_has_layout_char.
   Qed.
+  Next Obligation. intros. destruct ot; try done. Qed.
   Next Obligation. rewrite char_own_val_unfold. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     rewrite char_own_val_unfold.
     simpl. iIntros (ot st π r v Hot).
     destruct ot; simpl in *; try done.
-    { subst; eauto. }
-    { iPureIntro. intros Hv. unfold mem_cast. rewrite Hv.
-      by erewrite val_to_bytes_id_char. }
+    - iPureIntro. iIntros (Hv).
+      eexists (OVUntyped _ _). simp decode_op_val.
+      subst.
+      rewrite bool_decide_true; last by eapply val_to_char_length.
+      done.
+    - iPureIntro. intros Hv. unfold mem_cast.
+      eexists (OVChar _). simpl.
+      simp decode_op_val.
+      rewrite Hv. done.
+  Qed.
+  Next Obligation.
+    rewrite char_own_val_unfold.
+    simpl. iIntros (ot st π r v ov Hot Hdec) "%Hv".
+    iPureIntro. by eapply encode_decode_compat_char.
   Qed.
   Next Obligation.
     intros ? Hst. apply syn_type_has_layout_char_inv in Hst as ->.

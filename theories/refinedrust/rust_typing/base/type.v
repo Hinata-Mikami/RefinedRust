@@ -1,3 +1,4 @@
+From Equations Require Export Equations.
 From iris.bi Require Export fractional.
 From iris.base_logic.lib Require Export invariants.
 From iris.base_logic Require Import ghost_map na_invariants.
@@ -278,7 +279,13 @@ Record type `{!typeGS Σ} (rt : RT) := {
     In particular, this needs to be independent of the metadata -- forcing [ty_has_op_type] for unsized types to be [False].
   *)
   _ty_op_type_stable ot :
+    ty_metadata_kind = MetadataNone →
     _ty_has_op_type ot → syn_type_has_layout (ty_syn_type MetaNone) (ot_layout ot);
+
+  (** The operational type is well-formed. This lets decode/encode facts avoid
+    exposing the implementation-level resize in [mem_cast]. *)
+  _ty_op_type_wf ot :
+    _ty_has_op_type ot → op_type_wf ot;
 
   (** We can get access to the sidecondition *)
   ty_own_val_sidecond π r m v : ty_own_val π r m v -∗ ty_sidecond;
@@ -318,11 +325,22 @@ Record type `{!typeGS Σ} (rt : RT) := {
     ty_trivial_drop = true →
     ty_own_val π r m v -∗ logical_step F (_ty_ghost_drop π r);
 
-  (** We can transport value ownership over memcasts according to the specification by [ty_has_op_type] *)
-  _ty_memcast_compat ot st π r m v :
+  (** Values owned at nontrivial memcast modes must decode at the advertised
+    op type. [MCNone] only promises layout compatibility. *)
+  _ty_decodable ot st π r v :
+    ty_metadata_kind = MetadataNone →
     _ty_has_op_type ot →
-    ty_own_val π r m v -∗
-    ty_own_val π r m (mem_cast v ot st);
+    ty_own_val π r MetaNone v -∗
+    ∃ ov, ⌜decode_op_val v ot st = Some ov⌝;
+
+  (** After a successful decode, the canonical encoding is compatible with the
+    semantic type. *)
+  _ty_encode_compat ot st π r v ov :
+    ty_metadata_kind = MetadataNone →
+    _ty_has_op_type ot →
+    decode_op_val v ot st = Some ov →
+    ty_own_val π r MetaNone v -∗
+    ty_own_val π r MetaNone (encode_op_val ov);
 
   (* TODO this would be a good property to have, but currently uninit doesn't satisfy it. *)
   (* we require that ops at least as given by the "canonical" optype obtained by [use_op_alg] are allowed *)
@@ -378,10 +396,17 @@ Definition ty_has_op_type_unfold `{!typeGS Σ} : ty_has_op_type = _ty_has_op_typ
 Arguments ty_has_op_type {_ _ _}.
 
 Lemma ty_op_type_stable `{!typeGS Σ} {rt} (ty : type rt) ot :
+  ty.(ty_metadata_kind) = MetadataNone →
   ty_has_op_type ty ot →
   syn_type_has_layout (ty.(ty_syn_type) MetaNone) (ot_layout ot).
 Proof. rewrite ty_has_op_type_unfold. apply _ty_op_type_stable. Qed.
 Global Arguments ty_op_type_stable {_ _ _} [_ _].
+
+Lemma ty_op_type_wf `{!typeGS Σ} {rt} (ty : type rt) ot :
+  ty_has_op_type ty ot →
+  op_type_wf ot.
+Proof. rewrite ty_has_op_type_unfold. apply _ty_op_type_wf. Qed.
+Global Arguments ty_op_type_wf {_ _ _}.
 
 Lemma ty_sized_has_op_type_untyped `{!typeGS Σ} {rt} (ty : type rt) `{!TySized ty} ly :
   syn_type_has_layout (ty_sized_syn_type ty) ly →
@@ -392,11 +417,38 @@ Proof.
 Qed.
 Global Arguments ty_sized_has_op_type_untyped {_ _ _} [_ _ _].
 
-Lemma ty_memcast_compat `{!typeGS Σ} rt (ty : type rt) ot st π r m v :
+Lemma ty_decodable `{!typeGS Σ} rt (ty : type rt) ot st π r v :
+  ty.(ty_metadata_kind) = MetadataNone →
   ty_has_op_type ty ot →
-  ty.(ty_own_val) π r m v -∗
-  ty.(ty_own_val) π r m (mem_cast v ot st).
-Proof. rewrite ty_has_op_type_unfold. apply _ty_memcast_compat. Qed.
+  ty.(ty_own_val) π r MetaNone v -∗
+  ∃ ov, ⌜decode_op_val v ot st = Some ov⌝.
+Proof. rewrite ty_has_op_type_unfold. apply _ty_decodable. Qed.
+
+Lemma ty_encode_compat `{!typeGS Σ} rt (ty : type rt) ot st π r v ov :
+  ty.(ty_metadata_kind) = MetadataNone →
+  ty_has_op_type ty ot →
+  decode_op_val v ot st = Some ov →
+  ty.(ty_own_val) π r MetaNone v -∗
+  ty.(ty_own_val) π r MetaNone (encode_op_val ov).
+Proof. rewrite ty_has_op_type_unfold. apply _ty_encode_compat. Qed.
+
+Lemma ty_memcast_compat `{!typeGS Σ} rt (ty : type rt) ot st π r v :
+  ty.(ty_metadata_kind) = MetadataNone →
+  ty_has_op_type ty ot →
+  ty.(ty_own_val) π r MetaNone v -∗
+  ty.(ty_own_val) π r MetaNone (mem_cast v ot st).
+Proof.
+  intros Hm Hot.
+  iIntros "Hv".
+  iPoseProof (ty_decodable rt ty ot st π r v with "Hv") as (ov) "%Hdec"; [done | done | ].
+  iPoseProof (ty_encode_compat rt ty ot st π r v ov with "Hv") as "Hv"; [done | done | done | ].
+  rewrite /mem_cast Hdec /=.
+  replace (resize (length v) MPoison (encode_op_val ov)) with (encode_op_val ov); first done.
+  rewrite resize_all_alt; last first.
+  { rewrite (encode_op_val_length _ _ (@ty_op_type_wf Σ _ rt ty ot Hot) (decode_op_val_has_type _ _ _ _ Hdec)).
+    by eapply decode_op_val_has_layout. }
+  done.
+Qed.
 
 (** We seal [ty_ghost_drop] in order to avoid performance issues with Qed times. *)
 Definition ty_ghost_drop_aux `{!typeGS Σ} : seal (@_ty_ghost_drop _ _). Proof. by eexists. Qed.
@@ -534,13 +586,20 @@ Record simple_type `{!typeGS Σ} (rt : RT) :=
     st_has_layout π r v :
       st_own π r v -∗ ∃ ly, ⌜syn_type_has_layout st_syn_type ly⌝ ∗ ⌜v `has_layout_val` ly⌝;
     st_op_type_stable ot : st_has_op_type ot → syn_type_has_layout st_syn_type (ot_layout ot);
+    st_op_type_wf ot : st_has_op_type ot → op_type_wf ot;
     (* TCNoResolve so we can make the proof opaque *)
     _st_own_persistent π r v : TCNoResolve (Persistent (st_own π r v));
 
-    st_memcast_compat ot st π r v :
+    st_decodable ot st π r v :
       st_has_op_type ot →
       st_own π r v -∗
-      st_own π r (mem_cast v ot st);
+      ∃ ov, ⌜decode_op_val v ot st = Some ov⌝;
+
+    st_encode_compat ot st π r v ov :
+      st_has_op_type ot →
+      decode_op_val v ot st = Some ov →
+      st_own π r v -∗
+      st_own π r (encode_op_val ov);
 
     st_has_op_type_untyped ly :
       syn_type_has_layout st_syn_type ly →
@@ -597,6 +656,9 @@ Next Obligation.
   iIntros (??? st ot Hot). by eapply st_op_type_stable.
 Qed.
 Next Obligation.
+  iIntros (??? st ot Hot). by eapply st_op_type_wf.
+Qed.
+Next Obligation.
   iIntros (????????) "Hown". done.
 Qed.
 Next Obligation.
@@ -631,8 +693,12 @@ Next Obligation.
   intros. iIntros "_". by iApply logical_step_intro.
 Qed.
 Next Obligation.
-  intros. iIntros "(-> & Hown)".
-  iR. by iApply (st_memcast_compat).
+  iIntros (??? st ot st' π r v _ Hot) "(_ & Hown)".
+  by iApply (st_decodable with "Hown").
+Qed.
+Next Obligation.
+  iIntros (??? st ot st' π r v ov _ Hot Hdec) "(_ & Hown)".
+  iR. by iApply (st_encode_compat _ _ _ with "Hown").
 Qed.
 Next Obligation.
   intros. by apply st_has_op_type_untyped.
@@ -780,6 +846,8 @@ Section ofe.
     (∀ π r m v, x.1.1.1.1.1.1.1.1 π r m v -∗ ∃ ly : layout, ⌜syn_type_has_layout (x.1.1.1.1.2 m) ly⌝ ∗ ⌜v `has_layout_val` ly⌝) ∧
     (* ty_op_type_stable *)
     (∀ ot m, x.1.1.1.2 ot → syn_type_has_layout (x.1.1.1.1.2 m) (ot_layout ot)) ∧
+    (* ty_op_type_wf *)
+    (∀ ot, x.1.1.1.2 ot → op_type_wf ot) ∧
     (* ty_own_val_sidecond *)
     (∀ π r m v, x.1.1.1.1.1.1.1.1 π r m v -∗ x.1.1.2) ∧
     (* ty_shr_sidecond *)
@@ -800,9 +868,12 @@ Section ofe.
     (∀ κ κ' π r m (l : loc), κ' ⊑ κ -∗ x.1.1.1.1.1.1.1.2 κ π r m l -∗ x.1.1.1.1.1.1.1.2 κ' π r m l) ∧
     (* ty_own_ghost_drop *)
     (∀ π r m v F, lftE ⊆ F → x.1.1.1.1.1.1.1.1 π r m v -∗ logical_step F (x.1.1.1.1.1.1.2 π r)) ∧
-    (* ty_memcast_compat *)
-    (∀ ot st π r m v, x.1.1.1.2 ot → x.1.1.1.1.1.1.1.1 π r m v -∗
-      x.1.1.1.1.1.1.1.1 π r m (mem_cast v ot st)) ∧
+    (* ty_decodable *)
+    (∀ ot st π r v, x.1.1.1.1.1.2 = MetadataNone → x.1.1.1.2 ot → x.1.1.1.1.1.1.1.1 π r MetaNone v -∗
+      ∃ ov, ⌜decode_op_val v ot st = Some ov⌝) ∧
+    (* ty_encode_compat *)
+    (∀ ot st π r v ov, x.1.1.1.1.1.2 = MetadataNone → x.1.1.1.2 ot → decode_op_val v ot st = Some ov → x.1.1.1.1.1.1.1.1 π r MetaNone v -∗
+      x.1.1.1.1.1.1.1.1 π r MetaNone (encode_op_val ov)) ∧
     (* ty_has_op_type_untyped *)
     (∀ (ly : layout) m,
       x.1.1.1.1.1.2 = MetadataNone →
@@ -935,11 +1006,16 @@ Section st_ofe.
     (∀ π r v, x.1.1 π r v -∗ ∃ ly : layout, ⌜syn_type_has_layout x.1.2 ly⌝ ∗ ⌜v `has_layout_val` ly⌝) ∧
     (* ty_op_type_stable *)
     (∀ ot, x.2 ot → syn_type_has_layout x.1.2 (ot_layout ot)) ∧
+    (* ty_op_type_wf *)
+    (∀ ot, x.2 ot → op_type_wf ot) ∧
     (* ty_shr_persistent *)
     (∀ π r v, Persistent (x.1.1 π r v)) ∧
-    (* ty_memcast_compat *)
+    (* ty_decodable *)
     (∀ ot st π r v, x.2 ot → x.1.1 π r v -∗
-      x.1.1 π r (mem_cast v ot st)).
+      ∃ ov, ⌜decode_op_val v ot st = Some ov⌝) ∧
+    (* ty_encode_compat *)
+    (∀ ot st π r v ov, x.2 ot → decode_op_val v ot st = Some ov → x.1.1 π r v -∗
+      x.1.1 π r (encode_op_val ov)).
 
   (* to handle the let destruct in an acceptable way *)
   Local Set Program Cases.
