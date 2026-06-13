@@ -2143,7 +2143,7 @@ Section laws.
   (* intentionally not an instance -- since [eqltype] is transitive, that would not be a good idea. *)
 
   (* generic instance constructors for descending below ofty *)
-  Lemma typed_place_ofty_access_val_owned E L (f : frame_path) {rt} l (ty : type rt) (r : rt) bmin0 P T :
+  Lemma typed_place_ofty_access_val_owned E L (f : frame_path) {rt} l (ty : type rt) `{!TySized ty} (r : rt) bmin0 P T :
     ty_has_op_type ty PtrOp →
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
       v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
@@ -2168,7 +2168,7 @@ Section laws.
     iDestruct "CTX" as "(LFT & LLCTX)".
     iApply wpe_fupd.
     iApply (wpe_logical_step with "Hcl"); [done.. | ].
-    specialize (ty_op_type_stable Hot) as Halg'.
+    opose proof (ty_op_type_stable _ Hot) as Halg'; first apply ty_sized_metadata_none.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
@@ -2195,7 +2195,7 @@ Section laws.
   Qed.
 
   (* TODO generalize this similarly as the one above? *)
-  Lemma typed_place_ofty_access_val_uniq E L f {rt} l (ty : type rt) (r : rt) bmin0 κ γ P T :
+  Lemma typed_place_ofty_access_val_uniq E L f {rt} l (ty : type rt) `{!TySized ty} (r : rt) bmin0 κ γ P T :
     ty_has_op_type ty PtrOp →
     ⌜lctx_lft_alive E L κ⌝ ∗
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
@@ -2222,7 +2222,7 @@ Section laws.
     iDestruct "CTX" as "(LFT & LLCTX)".
     iApply wpe_fupd.
     iApply (wpe_logical_step with "Hcl"); [done.. | ].
-    specialize (ty_op_type_stable Hot) as Halg'.
+    opose proof (ty_op_type_stable _ Hot) as Halg'; first apply ty_sized_metadata_none.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
@@ -2276,7 +2276,7 @@ Section laws.
     iDestruct "CTX" as "(LFT & LLCTX)".
     iMod (frac_bor_acc with "LFT Hloc Htok") as "(%q0 & >Hloc & Hl_cl)"; first done.
     simpl. iModIntro.
-    specialize (ty_op_type_stable Hot) as Halg'.
+    opose proof (ty_op_type_stable _ Hot) as Halg'; first done.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "#>%Hlyv"; first done.
     iApply wpe_fupd.

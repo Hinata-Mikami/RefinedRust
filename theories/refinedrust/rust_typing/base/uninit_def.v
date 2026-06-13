@@ -37,7 +37,7 @@ Section uninit.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     simpl. iIntros (st ot st' π [] v (ly & Hst & Hot)) "(%ly' & %Hst' & %Hly')".
-    subst.
+    subst ot.
     iExists (OVUntyped ly v). iPureIntro.
     simp decode_op_val.
     rewrite bool_decide_true; last first.
@@ -48,8 +48,7 @@ Section uninit.
     simpl. iIntros (st ot st' π [] v ov (ly & Hst & Hot) Hdec) "(%ly' & %Hst' & %Hly')".
     subst ot.
     simp decode_op_val in Hdec.
-    case_bool_decide; simplify_eq/=.
-    eauto.
+    case_bool_decide; simplify_eq/=; eauto.
   Qed.
   Next Obligation.
     intros st ly Hst.
