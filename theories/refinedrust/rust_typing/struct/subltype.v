@@ -21,7 +21,7 @@ Section subltype.
     destruct Hlook1 as (n & ly & Hmem & Hlook1).
     destruct Hlook1 as [ [ ? Hlook1] | Hlook1].
     - apply pad_struct_lookup_Some_1 in Hlook2.
-      destruct Hlook2 as (n' & ly' & Hmem' & Hlook2). simplify_eq.
+      destruct Hlook2 as (n' & ly' & Hmem' & Hlook2). simplify_eq/=.
       destruct Hlook2 as [ (_ & Hlook2) | (Hc & _) ]; first last.
       { destruct Hc as [ | Hc]; first done.
         exfalso. apply lookup_lt_Some in Hlook1.
@@ -48,7 +48,7 @@ Section subltype.
     destruct Hlook1 as (n & ly & Hmem & Hlook1).
     destruct Hlook1 as [ [ ? Hlook1] | Hlook1].
     - apply pad_struct_lookup_Some_1 in Hlook2.
-      destruct Hlook2 as (n' & ly' & Hmem' & Hlook2). simplify_eq.
+      destruct Hlook2 as (n' & ly' & Hmem' & Hlook2). simplify_eq/=.
       destruct Hlook2 as [ (_ & Hlook2) | (Hc & _) ]; first last.
       { destruct Hc as [ | Hc]; first done.
         exfalso. apply lookup_lt_Some in Hlook1.

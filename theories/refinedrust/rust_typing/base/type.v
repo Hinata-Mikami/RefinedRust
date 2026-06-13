@@ -732,11 +732,21 @@ Section type_inh.
     simpl. intros ? ->.
     by apply syn_type_has_layout_unit.
   Qed.
+  Next Obligation. intros ?->. done. Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     simpl. intros ????? ->.
     iIntros "->".
-    simpl; iPureIntro; done.
+    iExists (OVUntyped unit_sl []).
+    iPureIntro.
+    simp decode_op_val. done.
+  Qed.
+  Next Obligation.
+    intros ot st π r v ov ->.
+    simp decode_op_val. simpl.
+    destruct v; last done.
+    simpl. intros [=<-].
+    eauto.
   Qed.
   Next Obligation.
     intros ly Hst.
@@ -1324,8 +1334,8 @@ Class TypeNonExpansive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Typ
 
   type_ne_has_op_type :
     ∀ ty ty',
-      (∀ m, ty_syn_type ty m = ty_syn_type ty' m) →
       ty.(ty_metadata_kind) = ty'.(ty_metadata_kind) →
+      (∀ m, ty_syn_type ty m = ty_syn_type ty' m) →
       (∀ ot, ty_has_op_type ty ot ↔ ty_has_op_type ty' ot) →
       (∀ ot, ty_has_op_type (F ty) ot ↔ ty_has_op_type (F ty') ot);
 
@@ -1458,8 +1468,8 @@ Section properties.
     - intros ?? Heq. apply Hm2. apply Hm1. done.
     - naive_solver.
     - intros ?? ?? Ha. eapply Hot2.
-      { by eapply Hst1. }
       { by eapply Hm1. }
+      { by eapply Hst1. }
       by eapply Hot1.
     - naive_solver.
     - intros n ?? Hd.
@@ -1482,7 +1492,10 @@ Section properties.
     constructor; simpl in *.
     - intros ??. apply Hm2. apply Hm1.
     - naive_solver.
-    - intros ?? Ha. by eapply Hot2, Hot1.
+    - intros ??. eapply Hot2.
+      { by apply Hm1. }
+      { by apply Hst1. }
+      by apply Hot1.
     - naive_solver.
     - intros n ?? Hd.
       eapply Hv2. constructor.

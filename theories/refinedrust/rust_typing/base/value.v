@@ -192,6 +192,13 @@ Section value.
     - done.
     - by apply syn_type_has_layout_untyped.
   Qed.
+  Next Obligation.
+    intros st ot mt Hot ?. 
+    destruct Hot as (ot' & Halg & Hot & Hst).
+    destruct ot; try done.
+    all: destruct Hot as [<- ?].
+    all: eapply use_op_alg_wf; done.
+  Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     (* mem-cast *)
