@@ -33,7 +33,7 @@ Inductive op_val_has_type : op_val → op_type → Prop :=
 | OVStruct_has_type sl fields ots :
     Forall2 op_val_has_type fields ots →
     op_val_has_type (OVStruct sl fields) (StructOp sl ots)
-| OVUntyped_has_type ly v : op_val_has_type (OVUntyped ly v) (UntypedOp ly)
+| OVUntyped_has_type ly v : v `has_layout_val` ly → op_val_has_type (OVUntyped ly v) (UntypedOp ly)
 | OVChar_has_type z : is_valid_char z → op_val_has_type (OVChar z) CharOp.
 
 Definition overwrite_val (off : nat) (w v : val) : val :=
@@ -141,11 +141,14 @@ Equations decode_op_val (v : val) (ot : op_type) (st : (gset addr * heap_state))
           Some (OVPtr (Loc ProvNone a))
       end;
   decode_op_val v (StructOp sl ots) st :=
-      fields ← decode_struct_fields sl ots (λ v' ot Hot, decode_op_val v' ot st)
-        sl.(sl_members) (reshape (ly_size <$> sl.(sl_members).*2) v) 0%nat;
-      Some (OVStruct sl fields);
+      if bool_decide (length v = ly_size sl) then
+        fields ← decode_struct_fields sl ots (λ v' ot Hot, decode_op_val v' ot st)
+          sl.(sl_members) (reshape (ly_size <$> sl.(sl_members).*2) v) 0%nat;
+        Some (OVStruct sl fields)
+      else None;
   decode_op_val v (EnumOp _ _ _) st := None;
-  decode_op_val v (UntypedOp ly) st := Some (OVUntyped ly v);
+  decode_op_val v (UntypedOp ly) st :=
+      if bool_decide (length v = ly_size ly) then Some (OVUntyped ly v) else None;
   decode_op_val v CharOp st := OVChar <$> val_to_char v.
 Next Obligation.
   done.
@@ -175,6 +178,31 @@ Proof.
       by eapply IH.
 Qed.
 
+Lemma decode_op_val_has_layout v ot st ov :
+  decode_op_val v ot st = Some ov →
+  v `has_layout_val` ot_layout ot.
+Proof.
+  revert v st ov.
+  induction ot as [ot IH] using (well_founded_induction op_type_size_rel_wf).
+  intros v st ov Hdec.
+  destruct ot; simp decode_op_val in Hdec.
+  - move: Hdec => /fmap_Some[b[Hb Hov]]. by apply val_to_bool_length in Hb.
+  - move: Hdec => /fmap_Some[z[Hz Hov]]. by apply val_to_Z_length in Hz.
+  - destruct (val_to_loc v) as [l|] eqn:Hl.
+    + apply val_to_loc_length. eexists. done.
+    + apply bind_Some in Hdec as (v' & Hv & Hdec).
+      apply bind_Some in Hdec as (a & Ha & Hov).
+      apply val_to_Z_length in Ha.
+      apply val_to_bytes_length in Hv.
+      rewrite /has_layout_val /= -Hv Ha. done.
+  - case_bool_decide as Hly; last done.
+    rewrite /has_layout_val /=. done.
+  - done.
+  - case_bool_decide as Hly; last done.
+    by rewrite /has_layout_val.
+  - move: Hdec => /fmap_Some[z[Hz Hov]]. by apply val_to_char_length in Hz.
+Qed.
+
 Lemma decode_op_val_has_type v ot st ov :
   decode_op_val v ot st = Some ov →
   op_val_has_type ov ot.
@@ -190,49 +218,322 @@ Proof.
     + apply bind_Some in Hdec as (v' & Hv & Hdec).
       apply bind_Some in Hdec as (a & Ha & Hov).
       injection Hov as <-. constructor. by eapply val_to_Z_in_range.
-  - apply bind_Some in Hdec as (fields & Hfields & Hov).
+  - case_bool_decide; last done.
+    apply bind_Some in Hdec as (fields & Hfields & Hov).
     injection Hov as <-. constructor.
     rewrite -(drop_0 ots).
     eapply decode_struct_fields_has_type; last done.
     intros v' ot' Hot ov' Hdec.
     exact (IH ot' Hot v' st ov' Hdec).
   - done.
-  - injection Hdec as <-. constructor.
+  - case_bool_decide as Hly; last done.
+    injection Hdec as <-. constructor. by rewrite /has_layout_val.
   - move: Hdec => /fmap_Some[z[Hz Hov]]. simplify_eq. constructor.
     rewrite /val_to_char in Hz.
     move: Hz => /bind_Some[z'[Hz Hvalid]].
     case_decide; simplify_eq; done.
 Qed.
 
+Lemma encode_op_val_length ov ot :
+  op_type_wf ot →
+  op_val_has_type ov ot →
+  length (encode_op_val ov) = ly_size (ot_layout ot).
+Proof.
+  revert ov.
+  induction ot as [ot IH] using (well_founded_induction op_type_size_rel_wf).
+  intros ov Hwf Hty.
+  destruct Hty; simpl; try done.
+  - rewrite i2v_length. done.
+  - rewrite l2v_length. done.
+  - simpl in Hwf. simpl.
+    move: Hwf. rewrite -Forall2_Forall2_cb => Hwf.
+    rewrite length_join {2}/ly_size /=.
+    apply: sum_list_eq.
+    apply Forall2_same_length_lookup_2.
+    { rewrite !length_fmap pad_struct_length. done. }
+    intros i n1 n2. rewrite list_lookup_fmap.
+    intros (venc & Hlook_enc & ->)%fmap_Some Hlook_ly.
+    pose proof Hlook_enc as Hlook_enc'.
+    apply pad_struct_lookup_Some_1 in Hlook_enc' as (name & ly & Hlook_member & Hor).
+    destruct Hor as [[Hsome Hfield]|[[Hnone|Hlen] ->]].
+    + destruct name as [name|]; last done.
+      apply pad_struct_lookup_Some_Some with (n:=name) (ly:=ly) in Hlook_enc as Hfield'; last done.
+      2: { rewrite length_fmap. trans (length ots); first by eapply Forall2_length.
+           trans (length (named_fields (sl_members sl))); first by eapply Forall2_length.
+           by rewrite named_fields_field_names_length. }
+      move: Hfield'. rewrite list_lookup_fmap => /fmap_Some[ov [Hov ->]].
+      eapply Forall2_lookup_l in H as (ot' & Hot' & Hty'); last done.
+      eapply Forall2_lookup_l in Hwf as ([name' ly'] & Hnamed & [Hwf' Hlayout]); last done.
+      assert (Hnamed' : named_fields (sl_members sl) !! field_idx_of_idx (sl_members sl) i = Some (name, ly)).
+      { rewrite /named_fields. by eapply field_members_idx_lookup. }
+      rewrite Hnamed in Hnamed'. injection Hnamed' as [= <- <-]. simpl in Hlayout.
+      assert (Hn2 : n2 = ly_size ly').
+      { move: Hlook_ly.
+        change ((ly_size <$> (snd <$> sl_members sl)) !! i = Some n2 → n2 = ly_size ly').
+        rewrite !list_lookup_fmap Hlook_member /=. intros [= <-]. done. }
+      rewrite Hn2 -Hlayout.
+      exact (IH ot' (struct_ot_lookup_smaller sl ots _ _ Hot') ov Hwf' Hty').
+    + subst. rewrite length_replicate.
+      move: Hlook_ly. change ((ly_size <$> (snd <$> sl_members sl)) !! i = Some n2 → ly_size ly = n2).
+      rewrite !list_lookup_fmap Hlook_member /=. intros [= <-]. done.
+    + rewrite length_replicate.
+      move: Hlook_ly. change ((ly_size <$> (snd <$> sl_members sl)) !! i = Some n2 → ly_size ly = n2).
+      rewrite !list_lookup_fmap Hlook_member /=. intros [= <-]. done.
+  - rewrite i2v_length. done.
+Qed.
+
+Lemma pad_struct_encode_lengths sl fields ots :
+  op_type_wf (StructOp sl ots) →
+  Forall2 op_val_has_type fields ots →
+  Forall2 (λ v sz, length v = sz)
+    (pad_struct sl.(sl_members) (encode_op_val <$> fields)
+      (λ ly, replicate (ly_size ly) MPoison))
+    (ly_size <$> sl.(sl_members).*2).
+Proof.
+  intros Hwf Hty.
+  apply Forall2_same_length_lookup_2.
+  { rewrite pad_struct_length !length_fmap. done. }
+  intros i v n Hlook Hsize.
+  pose proof Hlook as Hlook'.
+  apply pad_struct_lookup_Some_1 in Hlook as (name & ly & Hmember & Hor).
+  destruct Hor as [[Hsome Hfield]|[[Hnone|Hlen] ->]].
+  - destruct name as [name|]; last done.
+    apply pad_struct_lookup_Some_Some with (n:=name) (ly:=ly) in Hlook' as Hfield'; last done.
+    2: { rewrite length_fmap. trans (length ots); first by eapply Forall2_length.
+         move: Hwf. simpl. rewrite -Forall2_Forall2_cb => Hwf'.
+         trans (length (named_fields (sl_members sl))); first by eapply Forall2_length.
+         by rewrite named_fields_field_names_length. }
+    move: Hfield'. rewrite list_lookup_fmap => /fmap_Some[ov [Hov ->]].
+    move: Hwf. simpl. rewrite -Forall2_Forall2_cb => Hwf'.
+    eapply Forall2_lookup_l in Hty as (ot' & Hot' & Hty'); last done.
+    eapply Forall2_lookup_l in Hwf' as ([name' ly'] & Hnamed & [Hwf_ot Hlayout]); last done.
+    assert (Hnamed' : named_fields (sl_members sl) !! field_idx_of_idx (sl_members sl) i = Some (name, ly)).
+    { rewrite /named_fields. by eapply field_members_idx_lookup. }
+    rewrite Hnamed in Hnamed'. injection Hnamed' as [= <- <-]. simpl in Hlayout.
+    assert (Hn : n = ly_size ly').
+    { move: Hsize.
+      change ((ly_size <$> (snd <$> sl_members sl)) !! i = Some n → n = ly_size ly').
+      rewrite !list_lookup_fmap Hmember /=. intros [= <-]. done. }
+    rewrite Hn -Hlayout.
+    eapply encode_op_val_length; done.
+  - subst. rewrite length_replicate.
+    move: Hsize. change ((ly_size <$> (snd <$> sl_members sl)) !! i = Some n → ly_size ly = n).
+    rewrite !list_lookup_fmap Hmember /=. intros [= <-]. done.
+  - rewrite length_replicate.
+    move: Hsize. change ((ly_size <$> (snd <$> sl_members sl)) !! i = Some n → ly_size ly = n).
+    rewrite !list_lookup_fmap Hmember /=. intros [= <-]. done.
+Qed.
+
+Lemma reshape_encode_struct sl fields ots :
+  op_type_wf (StructOp sl ots) →
+  Forall2 op_val_has_type fields ots →
+  reshape (ly_size <$> sl.(sl_members).*2)
+    (mjoin (pad_struct sl.(sl_members) (encode_op_val <$> fields)
+      (λ ly, replicate (ly_size ly) MPoison))) =
+  pad_struct sl.(sl_members) (encode_op_val <$> fields)
+    (λ ly, replicate (ly_size ly) MPoison).
+Proof.
+  intros Hwf Hty. apply reshape_join.
+  by apply pad_struct_encode_lengths with (ots:=ots).
+Qed.
+
+Lemma reshape_replicate_sum {A} (szs : list nat) (x : A) :
+  reshape szs (replicate (sum_list szs) x) = (λ sz, replicate sz x) <$> szs.
+Proof.
+  induction szs as [|sz szs IH]; simpl; first done.
+  rewrite take_replicate_add drop_replicate_add IH. done.
+Qed.
+
+Lemma mjoin_replicate_chunks {A} (szs : list nat) (x : A) :
+  mjoin ((λ sz, replicate sz x) <$> szs) = replicate (sum_list szs) x.
+Proof.
+  induction szs as [|sz szs IH]; simpl; first done.
+  by rewrite IH replicate_add.
+Qed.
+
+Lemma mjoin_layout_replicate_chunks (lys : list layout) :
+  mjoin ((λ ly, replicate (ly_size ly) MPoison) <$> lys) =
+  replicate (sum_list (ly_size <$> lys)) MPoison.
+Proof.
+  induction lys as [|ly lys IH]; simpl; first done.
+  by rewrite IH replicate_add.
+Qed.
+
+Lemma decode_struct_fields_encode sl ots rec members fields i :
+  (∀ v ot Hot ov,
+      op_type_wf ot →
+      op_val_has_type ov ot →
+      v = encode_op_val ov →
+      rec v ot Hot = Some ov) →
+  Forall2 op_val_has_type fields (drop i ots) →
+  Forall2 (λ ot '(n, ly), op_type_wf ot ∧ ot_layout ot = ly)
+    (drop i ots) (named_fields members) →
+  (i ≤ length ots)%nat →
+  decode_struct_fields sl ots rec members
+    (pad_struct members (encode_op_val <$> fields)
+      (λ ly, replicate (ly_size ly) MPoison)) i = Some fields.
+Proof.
+  intros Hrec.
+  induction members as [|[name ly] members IH] in fields, i |-*.
+  - simpl. intros Hty Hwf Hi.
+    apply Forall2_length in Hty.
+    apply Forall2_length in Hwf. simpl in Hwf.
+    destruct fields as [|??]; last (simpl in Hty; lia).
+    rewrite bool_decide_true; first done.
+    rewrite length_drop in Hwf. lia.
+  - destruct name as [name|]; simpl.
+    + intros Hty Hwf Hi.
+      destruct (drop i ots) as [|ot ots'] eqn:Hdrop; first by inversion Hwf.
+      destruct fields as [|ov fields]; first by inversion Hty.
+      inversion Hty as [|???? Hov Htys]; subst.
+      rewrite /named_fields /= in Hwf.
+      inversion Hwf as [|? ? ? ? Hwf_head Hwfs]; subst.
+      destruct Hwf_head as [Hwf_ot Hlayout].
+      assert (Hot : ots !! i = Some ot).
+      { replace i with (i + 0)%nat by lia.
+        rewrite -lookup_drop Hdrop. done. }
+      simpl.
+      destruct (lookup_struct_ot ots i) as [[ot' Hot']|] eqn:Hlookup.
+      * assert (ot' = ot) as -> by congruence.
+        assert (Hots' : ots' = drop (S i) ots).
+        { pose proof (drop_S ots ot i Hot) as HdropS.
+          rewrite Hdrop in HdropS. injection HdropS as [= ?]. done. }
+        rewrite (Hrec (encode_op_val ov) ot (struct_ot_lookup_smaller sl ots i ot Hot') ov Hwf_ot Hov eq_refl) /=.
+        rewrite (IH fields (S i)); first done.
+        -- by rewrite -Hots'.
+        -- by rewrite -Hots'.
+        -- apply lookup_lt_Some in Hot. lia.
+      * unfold lookup_struct_ot in Hlookup. rewrite Hot in Hlookup. done.
+    + intros Hty Hwf Hi.
+      rewrite /named_fields /= in Hwf.
+      by apply IH.
+Qed.
+
+Lemma decode_struct_fields_poison_encode sl ots rec members fields i :
+  (∀ v ot Hot ov,
+      op_type_wf ot →
+      v = replicate (ly_size (ot_layout ot)) MPoison →
+      rec v ot Hot = Some ov →
+      encode_op_val ov = v) →
+  Forall2 (λ ot '(n, ly), op_type_wf ot ∧ ot_layout ot = ly)
+    (drop i ots) (named_fields members) →
+  (i ≤ length ots)%nat →
+  decode_struct_fields sl ots rec members
+    ((λ ly, replicate (ly_size ly) MPoison) <$> members.*2) i = Some fields →
+  pad_struct members (encode_op_val <$> fields)
+    (λ ly, replicate (ly_size ly) MPoison) =
+  (λ ly, replicate (ly_size ly) MPoison) <$> members.*2.
+Proof.
+  intros Hrec.
+  induction members as [|[name ly] members IH] in fields, i |-*; simpl.
+  - intros _ _. case_bool_decide; intros Hdec; simplify_eq. done.
+  - destruct name as [name|]; simpl.
+    + intros Hwf Hi.
+      destruct (drop i ots) as [|ot ots'] eqn:Hdrop; first by inversion Hwf.
+      rewrite /named_fields /= in Hwf.
+      inversion Hwf as [|? ? ? ? Hwf_head Hwf_tail]; subst.
+      destruct Hwf_head as [Hwf_ot Hlayout].
+      assert (Hot : ots !! i = Some ot).
+      { replace i with (i + 0)%nat by lia.
+        rewrite -lookup_drop Hdrop. done. }
+      destruct (lookup_struct_ot ots i) as [[ot' Hot']|] eqn:Hlookup; last first.
+      { unfold lookup_struct_ot in Hlookup. rewrite Hot in Hlookup. done. }
+      assert (ot' = ot) as -> by congruence.
+      intros Hdec. apply bind_Some in Hdec as (ov & Hov & Hdec).
+      apply bind_Some in Hdec as (fields' & Hfields & [= <-]).
+      assert (Hots' : ots' = drop (S i) ots).
+      { pose proof (drop_S ots ot i Hot) as HdropS.
+        rewrite Hdrop in HdropS. injection HdropS as [= ?]. done. }
+      assert (Hchunk : replicate (ly_size ly) MPoison = replicate (ly_size (ot_layout ot)) MPoison).
+      { by rewrite Hlayout. }
+      simpl. rewrite (Hrec _ _ _ _ Hwf_ot Hchunk Hov). f_equal.
+      eapply IH; last done.
+      * by rewrite -Hots'.
+      * apply lookup_lt_Some in Hot. lia.
+    + intros Hwf Hi Hdec. f_equal. by eapply IH.
+Qed.
+
+Lemma decode_encode_op_val ov ot st :
+  op_type_wf ot →
+  op_val_has_type ov ot →
+  decode_op_val (encode_op_val ov) ot st = Some ov.
+Proof.
+  revert ov.
+  induction ot as [ot IH] using (well_founded_induction op_type_size_rel_wf).
+  intros ov Hwf Hty.
+  destruct Hty; simp decode_op_val; simpl.
+  - by destruct b.
+  - by rewrite val_to_Z_i2v.
+  - by rewrite val_to_loc_Some_l2v.
+  - rewrite bool_decide_true.
+    2: { change (length (encode_op_val (OVStruct sl fields)) = ly_size (ot_layout (StructOp sl ots))).
+         apply encode_op_val_length; first done. by constructor. }
+    rewrite (reshape_encode_struct sl fields ots); [|done|done].
+    assert (Hfields :
+      decode_struct_fields sl ots
+        (λ (v' : val) (ot : op_type) (_ : op_type_size_rel ot (StructOp sl ots)),
+          decode_op_val v' ot st)
+        (sl_members sl)
+        (pad_struct (sl_members sl) (encode_op_val <$> fields)
+          (λ ly : layout, replicate (ly_size ly) MPoison)) 0 = Some fields).
+    { eapply decode_struct_fields_encode.
+      + intros v ot Hot ov Hwf_ot Hty_ot ->.
+        exact (IH ot Hot ov Hwf_ot Hty_ot).
+      + by rewrite drop_0.
+      + move: Hwf. simpl. rewrite -Forall2_Forall2_cb. by rewrite drop_0.
+      + lia. }
+    by rewrite Hfields.
+  - rewrite bool_decide_true; first done.
+    by rewrite /has_layout_val.
+  - by rewrite val_to_char_i2v.
+Qed.
+
+Lemma decode_poison_encode_op_val ov ot st :
+  op_type_wf ot →
+  decode_op_val (replicate (ly_size (ot_layout ot)) MPoison) ot st = Some ov →
+  encode_op_val ov = replicate (ly_size (ot_layout ot)) MPoison.
+Proof.
+  revert ov.
+  induction ot as [ot IH] using (well_founded_induction op_type_size_rel_wf).
+  intros ov Hwf Hdec.
+  destruct ot; simp decode_op_val in Hdec; simpl in Hdec |-*.
+  - by destruct (val_to_bool (replicate 1 MPoison)) as [b|] eqn:Hb; simpl in Hdec; simplify_eq.
+  - move: Hdec => /fmap_Some[z[Hz ->]]. by apply i2v_of_val_to_Z.
+  - by destruct (val_to_loc (replicate (ly_size void*) MPoison)) as [l|] eqn:Hl;
+      simpl in Hdec; simplify_eq;
+      destruct (val_to_bytes (replicate (ly_size void*) MPoison)) as [v'|] eqn:Hv;
+      simpl in Hdec; simplify_eq;
+      destruct (val_to_Z v' USize) as [a|] eqn:Ha;
+      simpl in Hdec; simplify_eq.
+  - rewrite bool_decide_true in Hdec.
+    2: { rewrite length_replicate. done. }
+    apply bind_Some in Hdec as (fields & Hfields & [= <-]).
+    rewrite /=.
+    rewrite (decode_struct_fields_poison_encode sl ots
+      (λ (v' : val) (ot : op_type) (_ : op_type_size_rel ot (StructOp sl ots)),
+        decode_op_val v' ot st) (sl_members sl) fields 0); last first.
+    { rewrite -Hfields. f_equal.
+      rewrite /ly_size /= reshape_replicate_sum.
+      rewrite -(list_fmap_compose (λ ly : layout, ly_size ly) (λ sz : nat, replicate sz MPoison)).
+      done. }
+    { lia. }
+    { move: Hwf. simpl. rewrite -Forall2_Forall2_cb. by rewrite drop_0. }
+    { intros v ot Hot ov' Hwf_ot Hv Hdec'.
+      subst v. eapply IH; first exact Hot; done. }
+    rewrite /ly_size /=. by rewrite mjoin_layout_replicate_chunks.
+  - done.
+  - rewrite bool_decide_true in Hdec; last by rewrite length_replicate.
+    simplify_eq. simpl. done.
+  - by destruct (val_to_char (replicate 4 MPoison)) as [z|] eqn:Hz; simpl in Hdec; simplify_eq.
+Qed.
+
 (** ** MemCast: Transforming bytes read from memory.
   [mem_cast] should only be called with length of [v] matching [ot]
   The dependence on [st] is not necessary right now, but should one day make it easier to support exposed provenance casts. *)
-Fixpoint mem_cast (v : val) (ot : op_type) (st : (gset addr * heap_state)) : val :=
-  default (replicate (length v) MPoison) (
-  match ot with
-  | PtrOp =>
-    if val_to_loc v is Some l then Some v else
-      (* interpret as an integer *)
-      v' ← val_to_bytes v;
-      a ← val_to_Z v' USize;
-      val_of_loc (Loc ProvNone a)
-  | IntOp it => val_to_bytes v
-  | CharOp => if val_to_char v is Some _ then val_to_bytes v else None
-  | BoolOp => if val_to_bool v is Some _ then val_to_bytes v else None
-  (* The resize technically should not be necessary since mem_cast
-  should only be called if the size is equal to the length of the
-  value. But adding it makes proving mem_cast_length a lot easier. *)
-  | StructOp sl ots =>
-      (* TODO: maybe this should work by decoding the struct val first? *)
-      (* We could also have a structured value representation (dependently indexed by op_type) *)
-      Some $ resize (length v) MPoison $ mjoin $ zip_with (λ f x, f x)
-      (pad_struct sl.(sl_members)
-                  (((λ ot, λ v, mem_cast v ot st) <$> ots))
-                  (λ ly _, (replicate (ly_size ly) MPoison)))
-      (reshape (ly_size <$> sl.(sl_members).*2) v)
-  | EnumOp _ _ _ => None
-  | UntypedOp _ => Some v
-  end).
+Definition mem_cast (v : val) (ot : op_type) (st : (gset addr * heap_state)) : val :=
+  resize (length v) MPoison $
+    default (replicate (length v) MPoison) $
+      encode_op_val <$> decode_op_val v ot st.
 
 Definition mem_cast_id (v : val) (ot : op_type) : Prop :=
   ∀ st, mem_cast v ot st = v.
@@ -240,31 +541,7 @@ Definition mem_cast_id (v : val) (ot : op_type) : Prop :=
 Lemma mem_cast_length v ot st:
   length (mem_cast v ot st) = length v.
 Proof.
-  destruct ot => /=.
-  - destruct (val_to_bool v) => /=.
-    + destruct (val_to_bytes v) eqn:Hv => //=.
-      * move: Hv => /length_mapM. lia.
-      * by rewrite length_replicate.
-    + by rewrite length_replicate.
-  - destruct (val_to_bytes v) eqn:Hv => //=.
-    + move: Hv => /length_mapM. lia.
-    + by rewrite length_replicate.
-  - case_match => //=.
-    destruct (val_to_bytes v) as [v'|] eqn:Hv => //=. 2: by rewrite length_replicate.
-    move: Hv => /length_mapM ->.
-    destruct (val_to_Z v') eqn:Hv' => //=. 2: by rewrite length_replicate.
-    specialize (val_to_Z_in_range _ _ _ Hv') as Hel.
-    move: Hv' => /val_to_Z_length /=?.
-    rewrite val_of_loc_Some; last done.
-    rewrite val_of_loc_unchecked_length//.
-  - by rewrite length_resize.
-  - by rewrite length_replicate.
-  - done.
-  - destruct (val_to_char v) => /=.
-    + destruct (val_to_bytes v) eqn:Hv => //=.
-      * move: Hv => /length_mapM. lia.
-      * by rewrite length_replicate.
-    + by rewrite length_replicate.
+  rewrite /mem_cast length_resize. lia.
 Qed.
 
 
@@ -272,69 +549,48 @@ Lemma mem_cast_id_loc' l v :
   val_of_loc l = Some v →
   mem_cast_id v PtrOp.
 Proof.
-  move => ? st. rewrite /mem_cast /=.
-  unfold mem_cast_id; simpl.
-  rewrite (val_to_of_loc l); done.
+  move => Hv st. rewrite /mem_cast. simp decode_op_val.
+  rewrite (val_to_of_loc _ _ Hv) /=.
+  rewrite (l2v_correct _ _ Hv). by rewrite resize_all.
 Qed.
 Lemma mem_cast_id_loc l v :
   val_to_loc v = Some l →
   mem_cast_id v PtrOp.
 Proof.
-  move => Hl st. rewrite /mem_cast /=.
-  rewrite /mem_cast_id; simpl.
-  intros. rewrite Hl//.
+  move => Hl st. rewrite /mem_cast. simp decode_op_val.
+  rewrite Hl /= (l2v_correct' _ _ Hl). by rewrite resize_all.
 Qed.
 Lemma mem_cast_id_int it v n :
   val_to_Z v it = Some n →
   mem_cast_id v (IntOp it).
-Proof. move => Hi st. rewrite /mem_cast /=. by erewrite val_to_bytes_id. Qed.
+Proof.
+  move => Hi st. rewrite /mem_cast. simp decode_op_val.
+  rewrite Hi /= (i2v_of_val_to_Z _ _ _ Hi). by rewrite resize_all.
+Qed.
 
 Lemma mem_cast_id_bool v b :
   val_to_bool v = Some b →
   mem_cast_id v BoolOp.
-Proof. move => Hb st. rewrite /mem_cast /= Hb. by erewrite val_to_bytes_id_bool. Qed.
+Proof.
+  move => Hb st. rewrite /mem_cast. simp decode_op_val.
+  rewrite Hb /= (val_of_to_bool _ _ Hb). by rewrite resize_all.
+Qed.
 
 Lemma mem_cast_id_char v z :
   val_to_char v = Some z →
   mem_cast_id v CharOp.
-Proof. move => Hb st. rewrite /mem_cast /= Hb. by erewrite val_to_bytes_id_char. Qed.
-
-Lemma mem_cast_struct_reshape sl v st ots:
-  length ots = length (field_names (sl_members sl)) →
-  v `has_layout_val` sl →
-  (∀ i v' n ly,
-      reshape (ly_size <$> (sl_members sl).*2) v !! i = Some v' →
-      sl_members sl !! i = Some (Some n, ly) →
-      v' `has_layout_val` ly) →
-  reshape (ly_size <$> (sl_members sl).*2) (mem_cast v (StructOp sl ots) st) =
-  (zip_with (λ f x, f x)
-            (pad_struct (sl_members sl) ((λ ot v, mem_cast v ot st) <$> ots) (λ ly _, replicate (ly_size ly) MPoison))
-            (reshape (ly_size <$> (sl_members sl).*2) v)).
 Proof.
-  move => ? Hv Hly. rewrite /mem_cast/=-/mem_cast resize_all_alt. 2: {
-    rewrite length_join Hv {1}/ly_size /=.
-    apply: sum_list_eq.
-    (* TODO: This is the same proof as below. Somehow unify these two proofs. *)
-    apply Forall2_same_length_lookup_2.
-    { rewrite !length_fmap length_zip_with length_reshape pad_struct_length !length_fmap. lia. }
-    move => i n1 n2. rewrite !list_lookup_fmap.
-    move => /fmap_Some[?[/fmap_Some[?[??]]?]]; simplify_eq.
-    move => /fmap_Some[?[/lookup_zip_with_Some[?[?[?[Hs?]]]]?]].
-    move: Hs => /pad_struct_lookup_Some[|n[?[? Hor]]]. { by rewrite length_fmap. }
-    unfold field_list in *. simplify_eq/=.
-    destruct Hor as [[? Hl] | [??]]; simplify_eq/=. 2: by rewrite length_replicate.
-    move: Hl. rewrite list_lookup_fmap. move => /fmap_Some[?[??]]. simplify_eq.
-    destruct n as [n|] => //. rewrite mem_cast_length. by erewrite Hly.
-  }
-  rewrite reshape_join //.
-  apply Forall2_same_length_lookup_2.
-  { rewrite length_zip_with length_reshape pad_struct_length !length_fmap. lia. }
-  move => i v' sz /lookup_zip_with_Some[?[?[?[/pad_struct_lookup_Some Hl ?]]]].
-  move: Hl => [|n[?[Hin2 Hor]]]. { rewrite length_fmap //. } simplify_eq.
-  rewrite !list_lookup_fmap => /fmap_Some[?[/fmap_Some[?[Hin ?]]?]]. rewrite Hin2 in Hin. simplify_eq/=.
-  destruct Hor as [[? Hl] |[??]]; simplify_eq. 2: by rewrite length_replicate.
-  move: Hl. rewrite list_lookup_fmap => /fmap_Some[?[??]]. simplify_eq. rewrite mem_cast_length.
-  destruct n => //. by apply: Hly.
+  move => Hz st. rewrite /mem_cast. simp decode_op_val.
+  rewrite Hz /= (val_of_to_char _ _ Hz). by rewrite resize_all.
+Qed.
+
+Lemma mem_cast_struct_reshape sl v st ots fields:
+  decode_op_val v (StructOp sl ots) st = Some (OVStruct sl fields) →
+  reshape (ly_size <$> (sl_members sl).*2) (mem_cast v (StructOp sl ots) st) =
+  reshape (ly_size <$> (sl_members sl).*2)
+    (resize (length v) MPoison (encode_op_val (OVStruct sl fields))).
+Proof.
+  intros Hdec. rewrite /mem_cast Hdec /=. done.
 Qed.
 
 Lemma mem_cast_idemp v ot st st' :
@@ -343,88 +599,19 @@ Lemma mem_cast_idemp v ot st st' :
   mem_cast (mem_cast v ot st) ot st' = mem_cast v ot st.
 Proof.
   intros Hly Hwf.
-  induction ot as [ | | | sl ots IH | el variant_ots tag_int IH | | ] using op_type_recursor in v, Hly, Hwf|-*; simpl.
-  - rewrite /mem_cast.
-    destruct (val_to_bool v) as [b | ] eqn:Heq.
-    + rewrite (val_to_bytes_id_bool _ b); last done. simpl.
-      rewrite Heq. simpl. rewrite (val_to_bytes_id_bool _ b); done.
-    + simpl. destruct v; simpl; first done. rewrite length_replicate. done.
-  - rewrite /mem_cast.
-    destruct (val_to_bytes v) as [v' | ] eqn:Heq; simpl.
-    + erewrite val_to_bytes_idemp; done.
-    + rewrite length_replicate.
-      generalize (length v). intros []; done.
-  - rewrite /mem_cast.
-    destruct (val_to_loc v) as [l | ] eqn:Heq; simpl.
-    { rewrite Heq. done. }
-    destruct (val_to_bytes v) as [v' | ] eqn:Heq'; simpl.
-    + destruct (val_to_Z v' USize) as [ z | ] eqn:Heq2; simpl.
-      * rewrite val_of_loc_Some; last by eapply val_to_Z_in_range.
-        rewrite (val_to_of_loc (Loc ProvNone z)) //.
-        rewrite val_of_loc_Some//. by eapply val_to_Z_in_range.
-      * destruct v; simpl; first done.
-        rewrite length_replicate. done.
-    + destruct v; simpl; first done.
-      rewrite length_replicate //.
-  - rewrite /mem_cast. fold mem_cast.
-    simpl. rewrite length_resize.
-    simpl in Hly.
-    f_equiv. f_equiv.
-
-    move: Hly Hwf.
-    rewrite /has_layout_val /layout_of {1}/ly_size/=.
-    generalize (sl_members sl) => f Hly Hwf.
-    clear sl.
-
-    induction f as [ | [name ly] f IH'] in v, ots, Hly, Hwf, IH |-*; simpl; first done.
-    simpl in Hly.
-    destruct name as [ name | ].
-    + destruct ots as [ | ot ots]; simpl; first done.
-      simpl in Hwf; destruct Hwf as ((Hwf1 & <-) & Hwf).
-      rewrite take_resize.
-      rewrite resize_app; first last.
-      { rewrite mem_cast_length length_take//. }
-      inversion IH as [ | ? IH1 ? IH2 ]; subst.
-
-      f_equiv.
-      * apply IH1; last done.
-        rewrite /has_layout_val length_take. lia.
-      * (* use IH *)
-        specialize (IH' (drop (ly_size (ot_layout ot)) v) _ IH2).
-        rewrite drop_resize_le; last lia.
-        rewrite -{2}IH'; last done; first last.
-        { rewrite length_drop. unfold fmap. lia. }
-        f_equiv; first done.
-        f_equiv; first done.
-        rewrite length_drop.
-        f_equiv.
-        rewrite drop_app_length'; first done.
-        rewrite mem_cast_length length_take. lia.
-    + (* padding field *)
-      f_equiv.
-      rewrite drop_resize_le; last lia.
-      specialize (IH' (drop (ly_size ly) v) _ IH).
-      rewrite -{2}IH'; last done; first last.
-      { rewrite length_drop. unfold fmap. lia. }
-      f_equiv. f_equiv; first done.
-      rewrite length_drop.
-      f_equiv.
-      rewrite drop_app_length'; first done.
-      rewrite length_replicate//.
-  - rewrite /mem_cast. rewrite !length_replicate. done.
-  - done.
-  - rewrite /mem_cast.
-    destruct (val_to_char v) as [z | ] eqn:Heq.
-    + rewrite (val_to_bytes_id_char _ z); last done. simpl.
-      rewrite Heq. simpl. rewrite (val_to_bytes_id_char _ z); done.
-    + rewrite length_replicate.
-      generalize (length v) as n. simpl.
-      clear.
-      intros n. case_match eqn:Heq1; last done.
-      destruct (val_to_bytes _) eqn:Heq; last done.
-      clear -Heq. simpl.
-      destruct n; simpl in Heq. { injection Heq as <-; done. }
-      done.
+  rewrite /mem_cast.
+  destruct (decode_op_val v ot st) as [ov|] eqn:Hdec; simpl.
+  - have Hty : op_val_has_type ov ot by eapply decode_op_val_has_type.
+    have Hlen : length (encode_op_val ov) = length v.
+    { rewrite (encode_op_val_length _ _ Hwf Hty). symmetry. exact Hly. }
+    replace (resize (length v) MPoison (encode_op_val ov)) with (encode_op_val ov).
+    2: { rewrite resize_all_alt; last by symmetry. done. }
+    rewrite Hlen (decode_encode_op_val _ _ _ Hwf Hty) /=.
+    by rewrite resize_all_alt.
+  - rewrite !resize_replicate !length_replicate Hly.
+    destruct (decode_op_val (replicate (ly_size (ot_layout ot)) MPoison) ot st') as [ov|] eqn:Hpoison; simpl.
+    + rewrite (decode_poison_encode_op_val _ _ _ Hwf Hpoison). by rewrite resize_replicate.
+    + by rewrite resize_replicate.
 Qed.
 
 Global Typeclasses Opaque mem_cast_id.

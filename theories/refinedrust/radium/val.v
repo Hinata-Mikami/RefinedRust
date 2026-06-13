@@ -429,6 +429,29 @@ Proof.
     rewrite Z.pow_add_r; lia.
 Qed.
 
+Lemma val_of_to_Z_go v z :
+  val_to_Z_go v = Some z →
+  val_of_Z_go z (length v) = v.
+Proof.
+  induction v as [|mb v IH] in z |-*; simpl.
+  - intros [= <-]. done.
+  - destruct mb as [b| |]; last done; last done.
+    destruct (val_to_Z_go v) as [z'|] eqn:Hz'; last done.
+    intros [= <-]. f_equiv.
+    + f_equal. apply byte_eq. simpl.
+      have Hzrange := val_to_Z_go_in_range _ _ Hz'.
+      replace (byte_modulus * z' + byte_val b) with (byte_val b + z' * byte_modulus) by lia.
+      rewrite Z_mod_plus_full.
+      apply Z.mod_small. have := byte_constr b. lia.
+    + have Hzrange := val_to_Z_go_in_range _ _ Hz'.
+      replace ((byte_modulus * z' + byte_val b) `div` byte_modulus) with z'.
+      { by apply IH. }
+      replace (byte_modulus * z' + byte_val b) with (byte_val b + z' * byte_modulus) by lia.
+      rewrite Z.div_add; last (rewrite /byte_modulus; lia).
+      rewrite Z.div_small; first lia.
+      have := byte_constr b. lia.
+Qed.
+
 Lemma val_to_Z_in_range v it n:
   val_to_Z v it = Some n → n ∈ it.
 Proof.
@@ -449,6 +472,35 @@ Proof.
     + move => [??] [] ?. lia.
   - move => [??] [] ?. lia.
 Qed.
+
+Lemma val_of_to_Z v it z :
+  val_to_Z v it = Some z →
+  val_of_Z z it = Some v.
+Proof.
+  intros Hz.
+  rewrite /val_of_Z bool_decide_true; last by eapply val_to_Z_in_range.
+  move: Hz. rewrite /val_to_Z.
+  case_bool_decide as Hlen; last done.
+  destruct (val_to_Z_go v) as [z'|] eqn:Hz'; last done.
+  have Hzrange := val_to_Z_go_in_range _ _ Hz'.
+  rewrite Hlen in Hzrange.
+  have Hzmod : z' < int_modulus it.
+  { rewrite /int_modulus /bits_per_int. lia. }
+  destruct (it_signed it) eqn:Hs; simpl.
+  - case_bool_decide as Hhalf.
+    + intros [= <-]. rewrite bool_decide_true; last lia.
+      f_equiv. replace (z' - int_modulus it + int_modulus it) with z' by lia.
+      rewrite -Hlen. by apply val_of_to_Z_go.
+    + intros [= <-]. rewrite bool_decide_false; last lia.
+      f_equiv. rewrite -Hlen. by apply val_of_to_Z_go.
+  - intros [= <-]. rewrite bool_decide_false; last lia.
+    f_equiv. rewrite -Hlen. by apply val_of_to_Z_go.
+Qed.
+
+Lemma i2v_of_val_to_Z v it z :
+  val_to_Z v it = Some z →
+  i2v z it = v.
+Proof. intros Hz. rewrite /i2v (val_of_to_Z _ _ _ Hz). done. Qed.
 
 Lemma val_to_Z_unsigned_nonneg v z it :
   it_signed it = false →
@@ -488,6 +540,17 @@ Proof.
       rewrite /bits_per_int /bytes_per_int /bits_per_byte /=.
       apply Z.pow_lt_mono_r; try lia.
     + rewrite /int_modulus /bits_per_int in HM. lia.
+Qed.
+
+Lemma val_to_Z_i2v z it :
+  z ∈ it →
+  val_to_Z (i2v z it) it = Some z.
+Proof.
+  intros Hz.
+  rewrite /i2v.
+  destruct (val_of_Z z it) as [v|] eqn:Hv.
+  - by apply val_to_of_Z.
+  - exfalso. move: Hz => /val_of_Z_is_Some [?]. congruence.
 Qed.
 
 Lemma val_to_Z_go_is_Some v :
@@ -603,6 +666,13 @@ Proof.
   apply val_of_Z_bool.
 Qed.
 
+Lemma val_of_to_bool v b :
+  val_to_bool v = Some b → val_of_bool b = v.
+Proof.
+  intros Hb. rewrite val_of_bool_i2v.
+  apply i2v_of_val_to_Z. by apply val_to_bool_iff_val_to_Z.
+Qed.
+
 Definition val_to_Z_ot (v : val) (ot : op_type) : option Z :=
   match ot with
   | IntOp it => val_to_Z v it
@@ -639,6 +709,21 @@ Proof.
   rewrite /val_to_char.
   intros (z' & Hv & Hvalid)%bind_Some.
   apply val_to_Z_length in Hv. done.
+Qed.
+
+Lemma val_of_to_char v z :
+  val_to_char v = Some z → i2v z CharIt = v.
+Proof.
+  rewrite /val_to_char. intros (z' & Hz' & Hvalid)%bind_Some.
+  case_decide; simplify_eq. by eapply i2v_of_val_to_Z.
+Qed.
+
+Lemma val_to_char_i2v z :
+  is_valid_char z →
+  val_to_char (i2v z CharIt) = Some z.
+Proof.
+  intros Hvalid. rewrite /val_to_char val_to_Z_i2v; last by apply is_valid_char_in_char_it.
+  simpl. case_decide; done.
 Qed.
 
 Lemma val_to_bytes_id v it n:
@@ -680,6 +765,18 @@ Proof.
   apply fmap_Some in Ha as ((bt & aid) & Ha & ->).
   apply bind_Some in Hb as (v'' & Hb & [= <-]).
   apply IH in Hb. simpl. rewrite Hb. simpl. done.
+Qed.
+
+Lemma val_to_bytes_length v v' :
+  val_to_bytes v = Some v' →
+  length v' = length v.
+Proof.
+  induction v as [|mb v IH] in v' |-*; simpl.
+  - intros [= <-]. done.
+  - intros Hv'.
+    apply bind_Some in Hv' as (mb' & Hmb & Hv').
+    apply bind_Some in Hv' as (v'' & Hv'' & [= <-]).
+    simpl. f_equal. by eapply IH.
 Qed.
 
 Arguments val_to_Z : simpl never.
