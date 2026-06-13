@@ -65,10 +65,12 @@ Section shr_ref.
     by apply val_to_loc_length.
   Qed.
   Next Obligation.
-    iIntros (??? ot Hot) => /=.
-    destruct ot => /=//.
+    intros ??? ot _ Hot => /=. destruct ot => /=//.
     - by apply syn_type_has_layout_ptr.
-    - by apply syn_type_has_layout_ptr.
+    - simpl in Hot. subst ly; by apply syn_type_has_layout_ptr.
+  Qed.
+  Next Obligation.
+    intros ??? ot Hot. destruct ot; done.
   Qed.
   Next Obligation. iIntros (??? ????) "_". done. Qed.
   Next Obligation. iIntros (??? ?????) "_". done. Qed.
@@ -125,13 +127,24 @@ Section shr_ref.
     intros. iIntros "_". by iApply logical_step_intro.
   Qed.
   Next Obligation.
-    iIntros (??? ot st ? r m ? Hot).
+    iIntros (??? ot st π r v _ Hot).
     rewrite shr_ref_own_val_unfold.
-    iIntros "(%l & %ly & %ri & -> & %Hv & ? & ? & ?)".
-    iExists l, ly, ri. iFrame.
-    iPureIntro. split; first done.
-    move: ot Hot => [] /= // _.
-    rewrite /mem_cast Hv//.
+    iIntros "Hown".
+    iDestruct "Hown" as (l ly ri) "(%Hmeta & %Hv & _)".
+    iPureIntro.
+    destruct ot; simpl in *; try done; subst.
+    - eexists (OVPtr _). simp decode_op_val. rewrite Hv. done.
+    - eexists (OVUntyped void* v). simp decode_op_val.
+      rewrite bool_decide_true; last by apply val_to_loc_length; eexists; done.
+      done.
+  Qed.
+  Next Obligation.
+    iIntros (??? ot st π r v ov _ Hot Hdec).
+    rewrite shr_ref_own_val_unfold.
+    iIntros "Hown".
+    iDestruct "Hown" as (l ly ri) "(%Hmeta & %Hv & Halg & Hly & Hlb & Hsc & Hrfn & Hshr)".
+    iExists l, ly, ri. iFrame. iR.
+    iPureIntro. by eapply encode_decode_compat_loc.
   Qed.
   Next Obligation.
     intros ??? ly _ Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
