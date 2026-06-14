@@ -1557,12 +1557,14 @@ Section subsume.
 
   (* Escape into the stronger subtyping judgment. Note: should not be used when lt2 is an evar. *)
   Lemma weak_subltype_default E L {rt} (lt1 lt2 : ltype rt) k r1 r2 T :
-    ⌜r1 = r2⌝ ∗ mut_subltype E L lt1 lt2 T
+    ⌜r1 = r2⌝ ∗ mut_eqltype E L lt1 lt2 T
     ⊢ weak_subltype E L k r1 r2 lt1 lt2 T.
   Proof.
     iIntros "(<- & %Hsub & HT)" (??) "#CTX #HE HL".
-    iPoseProof (full_subltype_acc with "CTX HE HL") as "#Hsub"; first done.
-    iFrame. done.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hsub"; first done.
+    iFrame.
+    iApply ltype_eq_ltype_incl_l.
+    done.
   Qed.
   Definition weak_subltype_default_inst := [instance @weak_subltype_default].
   Global Existing Instance weak_subltype_default_inst | 1001.
@@ -1619,31 +1621,6 @@ Section subsume.
   Qed.
   Definition mut_eqltype_ofty_inst := [instance @mut_eqltype_ofty].
   Global Existing Instance mut_eqltype_ofty_inst | 5.
-
-  (** ** Subtyping instances: [mut_subltype] *)
-  Lemma mut_subltype_id E L {rt} (lt : ltype rt) T :
-    T ⊢ mut_subltype E L lt lt T.
-  Proof. iIntros "$". iPureIntro. reflexivity. Qed.
-  (*Global Instance mut_subltype_refl_inst E L {rt} (lt : ltype rt) : MutSubLtype E L lt lt | 1 :=*)
-    (*λ T, i2p (mut_subltype_id E L lt T).*)
-
-  Lemma mut_subltype_base_evar E L {rt} (lt1 lt2 : ltype rt) `{!ContainsProtected lt2} T :
-    ⌜lt1 = lt2⌝ ∗ T
-    ⊢ mut_subltype E L lt1 lt2 T.
-  Proof.
-    iIntros "(<- & $)". iPureIntro. reflexivity.
-  Qed.
-  Definition mut_subltype_base_evar_inst := [instance @mut_subltype_base_evar].
-  Global Existing Instance mut_subltype_base_evar_inst | 1000.
-
-  Lemma mut_subltype_default E L {rt} (lt1 lt2 : ltype rt) T :
-    mut_eqltype E L lt1 lt2 T
-    ⊢ mut_subltype E L lt1 lt2 T.
-  Proof.
-    iIntros "(%Heq & $)". iPureIntro. by apply full_eqltype_subltype_l.
-  Qed.
-  Definition mut_subltype_default_inst := [instance @mut_subltype_default].
-  Global Existing Instance mut_subltype_default_inst | 1001.
 
   (** ** Subtyping instances: [owned_subltype_step] *)
   Lemma owned_subltype_step_to_ofty π E L step l {rt1 rt2} r1 r2 (lt1 : ltype rt1) (ty2 : type rt2) T :
@@ -5513,7 +5490,6 @@ Global Typeclasses Opaque mut_eqtype.
 
 Global Typeclasses Opaque owned_subltype_step.
 Global Typeclasses Opaque weak_subltype.
-Global Typeclasses Opaque mut_subltype.
 Global Typeclasses Opaque mut_eqltype.
 
 Global Typeclasses Opaque subtype_adt.

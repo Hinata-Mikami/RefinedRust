@@ -1281,11 +1281,6 @@ Section judgments.
   Class MutSubtype (E : elctx) (L : llctx) {rt} (ty1 ty2 : type rt) : Type :=
     mut_subtype_proof T : iProp_to_Prop (mut_subtype E L ty1 ty2 T).
 
-  Definition mut_subltype E L {rt} (lt1 lt2 : ltype rt) (T : iProp Σ) : iProp Σ :=
-    ⌜full_subltype E L lt1 lt2⌝ ∗ T.
-  Class MutSubLtype (E : elctx) (L : llctx) {rt} (lt1 lt2 : ltype rt) : Type :=
-    mut_subltype_proof T : iProp_to_Prop (mut_subltype E L lt1 lt2 T).
-
   Definition mut_eqtype E L {rt} (ty1 ty2 : type rt) (T : iProp Σ) : iProp Σ :=
     ⌜full_eqtype E L ty1 ty2⌝ ∗ T.
   Class MutEqtype (E : elctx) (L : llctx) {rt} (ty1 ty2 : type rt) : Type :=
@@ -2305,7 +2300,6 @@ Global Hint Mode SubLtype + + + + + + + + - + ! : typeclass_instances.
 Global Hint Mode OwnedSubtype + + + + + + + + + - + ! : typeclass_instances.
 Global Hint Mode OwnedSubltypeStep + + + + + + + + + + - + ! : typeclass_instances.
 Global Hint Mode MutSubtype + + + + + + ! : typeclass_instances.
-Global Hint Mode MutSubLtype + + + + + + ! : typeclass_instances.
 Global Hint Mode MutEqtype + + + + + + ! : typeclass_instances.
 Global Hint Mode MutEqLtype + + + + + + ! : typeclass_instances.
 Global Hint Mode SubtypeADT + + + + + + + ! : typeclass_instances.
@@ -3752,7 +3746,6 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | subtype_adt ?E ?L ?P1 ?P2 => constr:(SubtypeADT E L P1 P2)
   | owned_subtype ?π ?E ?L ?wl ?r1 ?r2 ?ty1 ?ty2 => constr:(OwnedSubtype π E L wl r1 r2 ty1 ty2)
   | weak_subltype ?E ?L ?k ?r1 ?r2 ?lt1 ?lt2 => constr:(SubLtype E L k r1 r2 lt1 lt2)
-  | mut_subltype ?E ?L ?lt1 ?lt2 => constr:(MutSubLtype E L lt1 lt2)
   | mut_eqltype ?E ?L ?lt1 ?lt2 => constr:(MutEqLtype E L lt1 lt2)
   | owned_subltype_step ?π ?E ?L ?step ?l ?r1 ?r2 ?lt1 ?lt2 => constr:(OwnedSubltypeStep π E L step l r1 r2 lt1 lt2)
   | cast_ltype_to_type ?E ?L ?lt => constr:(CastLtypeToType E L lt)

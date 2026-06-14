@@ -27,19 +27,6 @@ Section unfolding.
   Definition weak_subltype_enum_ofty_1_inst := [instance @weak_subltype_enum_ofty_1].
   Global Existing Instance weak_subltype_enum_ofty_1_inst.
 
-  Lemma mut_subltype_enum_ofty_1 E L {rt} (en : enum rt) variant {rte} (lte : ltype rte) re (ty2 : type rt) T :
-    cast_ltype_to_type E L (EnumLtype en variant lte re) (λ ty1 ,
-      mut_subltype E L (◁ ty1) (◁ ty2) T)
-    ⊢ mut_subltype E L (EnumLtype en variant lte re) (◁ ty2) T.
-  Proof.
-    iIntros "(%ty1 & %Heqt & %Hsubt & $)".
-    iPureIntro.
-    etrans; last apply Hsubt.
-    by apply full_eqltype_subltype_l.
-  Qed.
-  Definition mut_subltype_enum_ofty_1_inst := [instance @mut_subltype_enum_ofty_1].
-  Global Existing Instance mut_subltype_enum_ofty_1_inst.
-
   Lemma mut_eqltype_enum_ofty_1 E L {rt} (en : enum rt) variant {rte} (lte : ltype rte) re (ty2 : type rt) T :
     cast_ltype_to_type E L (EnumLtype en variant lte re) (λ ty1 ,
       mut_eqltype E L (◁ ty1) (◁ ty2) T)

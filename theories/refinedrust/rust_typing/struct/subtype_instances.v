@@ -167,7 +167,7 @@ Section subtype.
   (* TODO replace foldr with relate_hlist *)
   Lemma weak_subltype_struct_owned E L {rts} (lts1 : hlist ltype rts) (lts2 : hlist ltype rts) rs1 rs2 sls1 sls2 T  :
     ⌜sls1 = sls2⌝ ∗ ⌜rs1 = rs2⌝ ∗ foldr (λ '(existT rt1 (lt1, lt2)) T,
-      mut_subltype E L lt1 lt2 T) T (hzipl2 rts lts1 lts2)
+      mut_eqltype E L lt1 lt2 T) T (hzipl2 rts lts1 lts2)
     ⊢ weak_subltype E L (Owned) (rs1) (rs2) (StructLtype lts1 sls1) (StructLtype lts2 sls2) T.
   Proof.
     iIntros "(-> & -> & HT)" (??) "#CTX #HE HL".
@@ -178,9 +178,11 @@ Section subtype.
     { simpl. iFrame. }
     intros lt1 lts1 lt2 lts2.
     simpl. iDestruct "HT" as "(%Hsubt & HT)".
-    iPoseProof (full_subltype_acc with "CTX HE HL") as "#Hincl1"; first apply Hsubt.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl1"; first apply Hsubt.
     iPoseProof ("IH" with "HT HL")  as "(Hincl & $ & $)".
-    iFrame. iIntros (?). iApply "Hincl1".
+    iFrame. iIntros (?).
+    iApply ltype_eq_ltype_incl_l.
+    iApply "Hincl1".
   Qed.
   Definition weak_subltype_struct_owned_inst := [instance @weak_subltype_struct_owned].
   Global Existing Instance weak_subltype_struct_owned_inst | 11.
@@ -210,7 +212,7 @@ Section subtype.
   (* TODO replace foldr with relate_hlist *)
   Lemma weak_subltype_struct_shared E L {rts} (lts1 : hlist ltype rts) (lts2 : hlist ltype rts) rs1 rs2 sls1 sls2 κ T  :
     ⌜sls1 = sls2⌝ ∗ ⌜rs1 = rs2⌝ ∗ foldr (λ '(existT rt1 (lt1, lt2)) T,
-      mut_subltype E L lt1 lt2 T) T (hzipl2 rts lts1 lts2)
+      mut_eqltype E L lt1 lt2 T) T (hzipl2 rts lts1 lts2)
     ⊢ weak_subltype E L (Shared κ) (rs1) (rs2) (StructLtype lts1 sls1) (StructLtype lts2 sls2) T.
   Proof.
     iIntros "(-> & -> & HT)" (??) "#CTX #HE HL". iModIntro.
@@ -221,9 +223,11 @@ Section subtype.
     { simpl. iFrame. }
     intros lt1 lts1 lt2 lts2.
     simpl. iDestruct "HT" as "(%Hsubt & HT)".
-    iPoseProof (full_subltype_acc with "CTX HE HL") as "#Hincl1"; first apply Hsubt.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl1"; first apply Hsubt.
     iPoseProof ("IH" with "HT HL")  as "(Hincl & $ & $)".
-    iFrame. iIntros (?). iApply "Hincl1".
+    iFrame. iIntros (?).
+    iApply ltype_eq_ltype_incl_l.
+    iApply "Hincl1".
   Qed.
   Definition weak_subltype_struct_shared_inst := [instance @weak_subltype_struct_shared].
   Global Existing Instance weak_subltype_struct_shared_inst | 11.
@@ -261,27 +265,6 @@ Section subtype.
     iIntros (i0 E L i rt lt1 lt2 T) "(%Hsubt & HT)". by iFrame.
   Qed.
   Global Arguments MutEqltypeStructHFR : simpl never.
-
-  Lemma mut_subltype_struct E L {rts} (lts1 lts2 : hlist ltype rts) sls1 sls2 T :
-    ⌜sls1 = sls2⌝ ∗
-    relate_hlist E L [] rts lts1 lts2 0 (MutEqltypeStructHFR (length rts)) T
-    ⊢ mut_subltype E L (StructLtype lts1 sls1) (StructLtype lts2 sls2) T.
-  Proof.
-    rewrite /MutEqltypeStructHFR.
-    iIntros "(-> & Ha & $)".
-    iPoseProof ("Ha" with "[] [//]") as "Ha".
-    { simpl. iPureIntro. lia. }
-    simpl.
-    iAssert (⌜Forall (λ lts, full_eqltype E L (projT2 lts).1 (projT2 lts).2) (hzipl2 rts lts1 lts2)⌝)%I with "[Ha]" as "%Hsubt"; first last.
-    { iPureIntro. refine (struct_full_subltype _ _ lts1 lts2 _ _); done. }
-    iInduction rts as [ | rt rts] "IH" forall (lts1 lts2); inv_hlist lts2; inv_hlist lts1.
-    { iFrame. simpl; done. }
-    intros lt1 lts1 lt2 lts2. rewrite hzipl2_cons. simpl.
-    iDestruct "Ha" as "(%Hsubt & Ha)". iPoseProof ("IH" with "Ha") as "%Hsubt'".
-    iPureIntro. constructor; done.
-  Qed.
-  Definition mut_subltype_struct_inst := [instance @mut_subltype_struct].
-  Global Existing Instance mut_subltype_struct_inst | 20.
 
   Lemma mut_eqltype_struct E L {rts} (lts1 lts2 : hlist ltype rts) sls1 sls2 T :
     ⌜sls1 = sls2⌝ ∗
@@ -340,29 +323,6 @@ Section subtype.
   Qed.
   Definition weak_subltype_struct_ofty_2_inst := [instance weak_subltype_struct_ofty_2].
   Global Existing Instance weak_subltype_struct_ofty_2_inst | 20.
-
-  Lemma mut_subltype_struct_ofty_1 E L {rts} (lts1 : hlist ltype rts) (ty2 : type (plist place_rfnRT rts)) sls T :
-    (∃ tys2, ⌜ty2 = struct_t sls tys2⌝ ∗ mut_subltype E L (StructLtype lts1 sls) (StructLtype (@OfTy _ _ +<$> tys2) sls) T)
-    ⊢ mut_subltype E L (StructLtype lts1 sls) (◁ ty2) T.
-  Proof.
-    iIntros "(%tys21 & -> & %Hsubt & $)".
-    iPureIntro.
-    etrans; first apply Hsubt.
-    apply full_eqltype_subltype_l. apply (struct_t_unfold_full_eqltype _ _ tys21).
-  Qed.
-  Definition mut_subltype_struct_ofty_1_inst := [instance @mut_subltype_struct_ofty_1].
-  Global Existing Instance mut_subltype_struct_ofty_1_inst.
-
-  Lemma mut_subltype_struct_ofty_2 E L {rts} (lts2 : hlist ltype rts) (tys1 : hlist type rts) sls1 sls2 T :
-    (⌜sls1 = sls2⌝ ∗ mut_subltype E L (StructLtype (@OfTy _ _ +<$> tys1) sls1) (StructLtype lts2 sls1) T)
-    ⊢ mut_subltype E L (◁ struct_t sls1 tys1) (StructLtype lts2 sls2) T.
-  Proof.
-    iIntros "(-> & %Hsubt & $)".
-    iPureIntro. etrans; last apply Hsubt.
-    apply full_eqltype_subltype_r. apply (struct_t_unfold_full_eqltype _ _ tys1).
-  Qed.
-  Definition mut_subltype_struct_ofty_2_inst := [instance @mut_subltype_struct_ofty_2].
-  Global Existing Instance mut_subltype_struct_ofty_2_inst.
 
   Lemma mut_eqltype_struct_ofty_1 E L {rts} (lts1 : hlist ltype rts) (ty2 : type (plist place_rfnRT rts)) sls T :
     (∃ tys2, ⌜ty2 = struct_t sls tys2⌝ ∗ mut_eqltype E L (StructLtype lts1 sls) (StructLtype (@OfTy _ _ +<$> tys2) sls) T)
