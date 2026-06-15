@@ -8,9 +8,8 @@ Definition string_to_varname (s : string) : var_name := s.
 Coercion string_to_varname : string >-> var_name.
 Coercion it_layout : int_type >-> layout.
 Notation "☠" := MPoison : val_scope.
-Notation "!{ ot , o , mc } e" := (Deref o ot mc e%E) (at level 9, format "!{ ot ,  o ,  mc } e") : expr_scope.
-Notation "!{ ot , o } e" := (Deref o ot true e%E) (at level 9, format "!{ ot ,  o } e") : expr_scope.
-Notation "!{ ot } e" := (Deref Na1Ord ot true e%E) (at level 9, format "!{ ot } e") : expr_scope.
+Notation "!{ ot , o } e" := (Deref o ot e%E) (at level 9, format "!{ ot ,  o } e") : expr_scope.
+Notation "!{ ot } e" := (Deref Na1Ord ot e%E) (at level 9, format "!{ ot } e") : expr_scope.
 (* − is a unicode minus, not the normal minus to prevent parsing conflicts *)
 Notation "'−' '{' ot } e" := (UnOp NegOp ot e%E)
   (at level 40, format "'−' '{' ot }  e") : expr_scope.
@@ -87,9 +86,7 @@ Notation "e1 'at_wrapping_neg_offset{' ly , ot1 , ot2 } e2" := (BinOp (PtrWrappi
 
 Notation "e1 'sub_ptr{' ly , ot1 , ot2 } e2" := (BinOp (PtrDiffOp ly) ot2 ot1 e1%E e2%E)
   (at level 70, format "e1  sub_ptr{ ly ,  ot1 ,  ot2 }  e2") : expr_scope.
-Notation "'if{' ot ',' join '}' ':' e1 'then' s1 'else' s2" := (IfS ot join e1%E s1%E s2%E)
-  (at level 102, e1, s1, s2 at level 150, format "'[v' 'if{' ot ','  join '}' ':'  e1  'then' '/  ' s1 '/' 'else' '/  ' s2 ']'") : expr_scope.
-Notation "'if{' ot '}' ':' e1 'then' s1 'else' s2" := (IfS ot None e1%E s1%E s2%E)
+Notation "'if{' ot '}' ':' e1 'then' s1 'else' s2" := (IfS ot e1%E s1%E s2%E)
   (at level 102, e1, s1, s2 at level 150, format "'[v' 'if{' ot '}' ':'  e1  'then' '/  ' s1 '/' 'else' '/  ' s2 ']'") : expr_scope.
 Notation "'expr:' e ; s" := (ExprS e%E s%E)
   (at level 80, s at level 200, format "'[v' 'expr:'  e ';' '/' s ']'") : expr_scope.
@@ -108,7 +105,7 @@ Notation "e1 ||{ ot1 , ot2 , rit } e2" := (LogicalOr ot1 ot2 rit e1 e2)
 Arguments LogicalOr : simpl never.
 Global Typeclasses Opaque LogicalOr.
 
-Definition Assert (ot : op_type) (e : expr) (s : stmt) : stmt := (if{ ot, None }: e then s else StuckS)%E.
+Definition Assert (ot : op_type) (e : expr) (s : stmt) : stmt := (if{ ot }: e then s else StuckS)%E.
 Notation "'assert{' ot '}' ':' e ; s" := (Assert ot e%E s%E)
   (at level 80, s at level 200, format "'[v' 'assert{' ot '}' ':'  e ';' '/' s ']'") : expr_scope.
 Arguments Assert : simpl never.
@@ -131,19 +128,17 @@ Global Typeclasses Opaque LocalDeadSt.
 Notation "'local_dead' x ';' s" := (LocalDeadSt x s%E) (at level 80, s at level 200, format "'[v' 'local_dead'  x ';' '/' s ']'") : expr_scope.
 
 (** This has a skip in order to facilitate unblocking. *)
-Definition Use (o : order) (ot : op_type) (memcast : bool) (e : expr) := Deref o ot memcast (SkipE e).
+Definition Use (o : order) (ot : op_type) (e : expr) := Deref o ot (SkipE e).
 
 Definition Copy := Use.
-Notation "'copy{' ot , o , mc } e" := (Copy o ot mc e%E) (at level 9, format "'copy{' ot ,  o ,  mc }  e") : expr_scope.
-Notation "'copy{' ot , o } e" := (Copy o ot true e%E) (at level 9, format "'copy{' ot ,  o }  e") : expr_scope.
-Notation "'copy{' ot } e" := (Copy Na1Ord ot true e%E) (at level 9, format "'copy{' ot }  e") : expr_scope.
+Notation "'copy{' ot , o } e" := (Copy o ot e%E) (at level 9, format "'copy{' ot ,  o }  e") : expr_scope.
+Notation "'copy{' ot } e" := (Copy Na1Ord ot e%E) (at level 9, format "'copy{' ot }  e") : expr_scope.
 Arguments Copy : simpl never.
 Global Typeclasses Opaque Copy.
 
 Definition Move := Use.
-Notation "'move{' ot , o , mc } e" := (Move o ot mc e%E) (at level 9, format "'move{' ot ,  o ,  mc }  e") : expr_scope.
-Notation "'move{' ot , o } e" := (Move o ot true e%E) (at level 9, format "'move{' ot ,  o }  e") : expr_scope.
-Notation "'move{' ot } e" := (Move Na1Ord ot true e%E) (at level 9, format "'move{' ot }  e") : expr_scope.
+Notation "'move{' ot , o } e" := (Move o ot e%E) (at level 9, format "'move{' ot ,  o }  e") : expr_scope.
+Notation "'move{' ot } e" := (Move Na1Ord ot e%E) (at level 9, format "'move{' ot }  e") : expr_scope.
 Arguments Move : simpl never.
 Global Typeclasses Opaque Move.
 
@@ -298,7 +293,7 @@ Arguments OffsetOfUnion : simpl never.
 
 Definition EnumDiscriminant `{!LayoutAlg} (els : enum_layout_spec) (e : expr) : expr :=
   let el := use_enum_layout_alg' els in
-  (Deref Na1Ord (IntOp (els.(els_tag_it))) true (GetMember' e el "discriminant"))%E.
+  (Deref Na1Ord (IntOp (els.(els_tag_it))) (GetMember' e el "discriminant"))%E.
 Global Typeclasses Opaque EnumDiscriminant.
 Arguments EnumDiscriminant : simpl never.
 
@@ -349,10 +344,10 @@ Notation zst_val := ([] : val).
 (*** Tests *)
 Example test1 (l : loc) ly ot :
   (l <-{ly} copy{ot}(&raw{Mut} l +{PtrOp, IntOp USize} (l ={PtrOp, PtrOp, I32} l)); ExprS (Call l [ (l : expr); (l : expr)]) (l <-{ly, ScOrd} l; Goto "a"))%E =
-  (AssignSE Na1Ord ly l (Copy Na1Ord ot true (BinOp AddOp PtrOp (IntOp USize) (Raw Mut l) (BinOp (EqOp I32) PtrOp PtrOp l l))))
+  (AssignSE Na1Ord ly l (Copy Na1Ord ot (BinOp AddOp PtrOp (IntOp USize) (Raw Mut l) (BinOp (EqOp I32) PtrOp PtrOp l l))))
       (ExprS (Call l [ Val (l2v l); Val (l2v l)]) ((AssignSE ScOrd ly l l) (Goto "a"))).
 Proof. simpl. reflexivity. Abort.
 
 Example test_get_member `{!LayoutAlg} (l : loc) (sls : struct_layout_spec) ot :
-  (!{ot} (!{ot, ScOrd} l) at{sls} "a")%E = GetMember (Deref Na1Ord ot true (Deref ScOrd ot true l%E)) sls "a".
+  (!{ot} (!{ot, ScOrd} l) at{sls} "a")%E = GetMember (Deref Na1Ord ot (Deref ScOrd ot l%E)) sls "a".
 Proof. simpl. reflexivity. Abort.

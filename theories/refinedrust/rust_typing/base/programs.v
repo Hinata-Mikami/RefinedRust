@@ -1700,7 +1700,7 @@ Section place.
   W.ectx_item because of BinOpPCtx since there the root of the place
   expression is not in evaluation position. *)
   Inductive place_ectx_item :=
-  | DerefPCtx (o : lang.order) (ot : op_type) (mc : bool)
+  | DerefPCtx (o : lang.order) (ot : op_type)
   | GetMemberPCtx (sls : struct_layout_spec) (m : var_name)
   | GetMemberUnionPCtx (uls : union_layout_spec) (m : var_name)
   | AnnotExprPCtx (n : nat) {A} (x : A)
@@ -1715,7 +1715,7 @@ Section place.
   applied to the location l. *)
   Definition place_item_to_wp (f : frame_path) (Ki : place_ectx_item) (Φ : loc → iProp Σ) (l : loc) : iProp Σ :=
     match Ki with
-    | DerefPCtx o ot mc => WPe{f.1} !{ot, o, mc} l {{ λ v, ∃ l' : loc, ⌜val_to_loc v = Some l'⌝ ∗ Φ l' }}
+    | DerefPCtx o ot => WPe{f.1} !{ot, o} l {{ λ v, ∃ l' : loc, ⌜val_to_loc v = Some l'⌝ ∗ Φ l' }}
     | GetMemberPCtx sls m => WPe{f.1} l at{sls} m {{ λ v, ∃ l' : loc, ⌜val_to_loc v = Some l'⌝ ∗ Φ l' }}
     | GetMemberUnionPCtx uls m => WPe{f.1} l at_union{uls} m {{ λ v, ∃ l' : loc, ⌜val_to_loc v = Some l'⌝ ∗ Φ l' }}
     | AnnotExprPCtx n x => WPe{f.1} AnnotExpr n x l {{ λ v, ∃ l' : loc, ⌜val_to_loc v = Some l'⌝ ∗ Φ l' }}
@@ -1763,7 +1763,7 @@ Section place.
   Lemma place_item_to_wp_mono f K Φ1 Φ2 l:
     place_item_to_wp f K Φ1 l -∗ (∀ l, Φ1 l -∗ Φ2 l) -∗ place_item_to_wp f K Φ2 l.
   Proof.
-    iIntros "HP HΦ". move: K => [o ly mc|sls m|uls m |n A x|op ot v m rt ty r|op | els variant]//=.
+    iIntros "HP HΦ". move: K => [o ly |sls m|uls m |n A x|op ot v m rt ty r|op | els variant]//=.
     5: iIntros "Hv".
     1-4,6-7: iApply (@wpe_wand with "HP").
     7: iApply (@wpe_wand with "[Hv HP]"); first by iApply "HP".
@@ -1793,8 +1793,8 @@ Section place.
   Fixpoint find_place_ctx (E : elctx) (f : frame_path) (e : W.expr) : option (llctx → (llctx → list place_ectx_item → loc → iProp Σ) → iProp Σ) :=
     match e with
     | W.Loc l => Some (λ L T, T L [] l)
-    | W.Deref o ot mc e =>
-      T' ← find_place_ctx E f e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [DerefPCtx o ot mc]) l))
+    | W.Deref o ot e =>
+      T' ← find_place_ctx E f e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [DerefPCtx o ot]) l))
     | W.GetMember e sls m => T' ← find_place_ctx E f e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [GetMemberPCtx sls m]) l))
     | W.GetMemberUnion e uls m => T' ← find_place_ctx E f e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [GetMemberUnionPCtx uls m]) l))
     | W.EnumData els variant e => T' ← find_place_ctx E f e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [EnumDataPCtx els variant]) l))
@@ -2086,7 +2086,7 @@ Section laws.
               UpdBot opt_place_update_eq_refl opt_place_update_eq_refl)))
         ))
       ⊢
-    typed_place E L f l (◁ ty) (#r) bmin0 (Owned) (DerefPCtx Na1Ord PtrOp true :: P) T.
+    typed_place E L f l (◁ ty) (#r) bmin0 (Owned) (DerefPCtx Na1Ord PtrOp :: P) T.
   Proof.
     iIntros (Hot) "HT".
     iIntros (????) "#CTX #HE HL Hf Hl Hcont". iApply fupd_place_to_wp.
@@ -2136,7 +2136,7 @@ Section laws.
               (l2 ◁ₗ[f.1, b2] upd'.(pupd_rfn) @ upd'.(pupd_lt) ∗ upd'.(pupd_R))
               UpdBot opt_place_update_eq_refl opt_place_update_eq_refl)))
         ))
-    ⊢ typed_place E L f l (◁ ty) (#r) bmin0 (Uniq κ γ) (DerefPCtx Na1Ord PtrOp true :: P) T.
+    ⊢ typed_place E L f l (◁ ty) (#r) bmin0 (Uniq κ γ) (DerefPCtx Na1Ord PtrOp :: P) T.
   Proof.
     iIntros (Hot) "(%Hal & HT)".
     iIntros (????) "#CTX #HE HL Hf Hl Hcont". iApply fupd_place_to_wp.
@@ -2190,7 +2190,7 @@ Section laws.
             cont (mkPUpd _ _ _ (◁ ty) (# r)
               (l2 ◁ₗ[f.1, b2] (upd').(pupd_rfn) @ (upd').(pupd_lt) ∗ (upd').(pupd_R))
               UpdBot opt_place_update_eq_refl opt_place_update_eq_refl)))))
-    ⊢ typed_place E L f l (◁ ty) (# r) bmin0 (Shared κ) (DerefPCtx Na1Ord PtrOp true :: P) T.
+    ⊢ typed_place E L f l (◁ ty) (# r) bmin0 (Shared κ) (DerefPCtx Na1Ord PtrOp :: P) T.
   Proof.
     iIntros (Hot) "(%Hal & HT)".
     iIntros (????) "#CTX #HE HL Hf #Hl Hcont". iApply fupd_place_to_wp.

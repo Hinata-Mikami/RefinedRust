@@ -22,7 +22,7 @@ Section place.
             (upd').(pupd_performed)
             (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_1))
             (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_2)))))))
-    ⊢ typed_place E L f l (ShrLtype lt2 κ) (#r) bmin0 (Owned) (DerefPCtx Na1Ord PtrOp true :: P) T.
+    ⊢ typed_place E L f l (ShrLtype lt2 κ) (#r) bmin0 (Owned) (DerefPCtx Na1Ord PtrOp :: P) T.
   Proof.
     iIntros "HR" (Φ F ??).
     iIntros "#(LFT & LLCTX) #HE HL Hf HP HΦ/=".
@@ -88,7 +88,7 @@ iMod ("HR" with "[] [$] HE HL [Hcred]") as "(%L1 & HL & HR)"; first done.
                   (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_2)))
               )))
         ))))
-    ⊢ typed_place E L f l (ShrLtype lt2 κ) (#r) bmin0 (Uniq κ' γ) (DerefPCtx Na1Ord PtrOp true :: P) T.
+    ⊢ typed_place E L f l (ShrLtype lt2 κ) (#r) bmin0 (Uniq κ' γ) (DerefPCtx Na1Ord PtrOp :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%κs & %L2 & %Hal & HT)".
@@ -160,7 +160,7 @@ iMod ("HR" with "[] [$] HE HL [Hcred]") as "(%L1 & HL & HR)"; first done.
               (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_1))
               (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_2)))
             ))))))
-    ⊢ typed_place E L f l (ShrLtype lt2 κ) #r bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) T.
+    ⊢ typed_place E L f l (ShrLtype lt2 κ) #r bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%κs & %L2 & %Hal & HT)".

@@ -196,7 +196,7 @@ Global Instance cas_atomic π s ot (v1 v2 v3 : val) : Atomic s (to_rtexpr π (CA
 Proof. solve_atomic. Qed.
 Global Instance skipe_atomic π s (v : val) : Atomic s (to_rtexpr π (SkipE v)).
 Proof. solve_atomic. Qed.
-Global Instance deref_atomic π s (l : loc) ly mc : Atomic s (to_rtexpr π (Deref ScOrd ly mc l)).
+Global Instance deref_atomic π s (l : loc) ly : Atomic s (to_rtexpr π (Deref ScOrd ly l)).
 Proof. solve_atomic. Qed.
 (*Global Instance use_atomic s (l : loc) ly : Atomic s (coerce_rtexpr (Use ScOrd ly l)).*)
 (*Proof. solve_atomic. Qed.*)
@@ -710,7 +710,7 @@ Proof.
     iSplit => //. unfold end_st, end_expr.
     have ? : (v = v') by apply: heap_at_inj_val. subst v'.
     iFrame => /=. iSplit; first done.
-    iApply (wp_lift_expr_step _ _ (Deref Na2Ord ot true (Val vl))); auto.
+    iApply (wp_lift_expr_step _ _ (Deref Na2Ord ot (Val vl))); auto.
     iIntros ([[h2 ub2] fn2]) "((%&Hhctx&Hactx)&Hfctx)/=".
     iMod ("Hσclose" with "Hhctx") as (?) "(Hσ & Hv)".
     iModIntro; iSplit; first by eauto 11 using DerefS.
@@ -1930,10 +1930,10 @@ Proof.
     by iApply "Hs".
 Qed.
 
-Lemma wps_if π Q Ψ it join v s1 s2 n:
+Lemma wps_if π Q Ψ it v s1 s2 n:
   val_to_Z v it = Some n →
   (|={⊤}⧗=> if bool_decide (n ≠ 0) then WPs{π} s1 {{ Q, Ψ }} else WPs{π} s2 {{ Q, Ψ }}) -∗
-  WPs{π} (if{IntOp it, join}: (Val v) then s1 else s2) {{ Q , Ψ }}.
+  WPs{π} (if{IntOp it}: (Val v) then s1 else s2) {{ Q , Ψ }}.
 Proof.
   iIntros (Hn) "Hs". rewrite !stmt_wp_eq. iIntros (?? ->) "?".
   iApply wp_lift_stmt_step. iIntros (?) "Hσ". iModIntro.
@@ -1944,10 +1944,10 @@ Proof.
   iFrame "Hσ". case_bool_decide; by iApply "Hs".
 Qed.
 
-Lemma wps_if_bool π Q Ψ v s1 s2 b join:
+Lemma wps_if_bool π Q Ψ v s1 s2 b :
   val_to_bool v = Some b →
   (|={⊤}⧗=> if b then WPs{π} s1 {{ Q, Ψ }} else WPs{π} s2 {{ Q, Ψ }}) -∗
-  WPs{π} (if{BoolOp, join}: (Val v) then s1 else s2) {{ Q , Ψ }}.
+  WPs{π} (if{BoolOp}: (Val v) then s1 else s2) {{ Q , Ψ }}.
 Proof.
   iIntros (Hb) "Hs". rewrite !stmt_wp_eq. iIntros (?? ->) "?".
   iApply wp_lift_stmt_step. iIntros (?) "Hσ". iModIntro.

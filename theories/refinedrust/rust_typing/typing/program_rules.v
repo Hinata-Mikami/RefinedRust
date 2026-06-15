@@ -3197,7 +3197,7 @@ Section subsume.
       typed_read E L f e ot m (λ L2 v rt ty r,
         introduce_with_hooks E L2 (tr 2 ∗ £ num_cred) (λ L3,
           T L3 v MetaNone rt ty r))
-    ⊢ typed_val_expr E L f (Use o ot true e)%E T.
+    ⊢ typed_val_expr E L f (Use o ot e)%E T.
   Proof.
     iIntros "[% Hread]" (Φ) "#(LFT & LLCTX) #HE HL Hf HΦ".
     unfold Use.
@@ -4561,11 +4561,11 @@ Section subsume.
     by iApply ("Hs" with "CTX HE HL Hf").
   Qed.
 
-  Lemma type_if E L f e s1 s2 fn R join ϝ :
+  Lemma type_if E L f e s1 s2 fn R ϝ :
     typed_val_expr E L f e (λ L' v m rt ty r,
       typed_if E L' v (v ◁ᵥ{f.1, m} r @ ty)
           (λ L2, typed_stmt E L2 f s1 fn R ϝ) (λ L2, typed_stmt E L2 f s2 fn R ϝ))
-    ⊢ typed_stmt E L f (if{BoolOp, join}: e then s1 else s2) fn R ϝ.
+    ⊢ typed_stmt E L f (if{BoolOp}: e then s1 else s2) fn R ϝ.
   Proof.
     iIntros "He". iIntros (?) "#CTX #HE HL Hf Hcont". wps_bind.
     iApply ("He" with "CTX HE HL Hf"). iIntros (L' v m rt ty r) "HL Hf Hv Hs".

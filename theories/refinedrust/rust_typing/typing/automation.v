@@ -457,7 +457,7 @@ Ltac liRStmt :=
     lazymatch s' with
     | W.AssignSE _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_assign E L f _ _ _ _ fn R _ ϝ) _)
     | W.Return _ => notypeclasses refine (tac_fast_apply (type_return E L f _ fn R ϝ) _)
-    | W.IfS _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_if E L f _ _ _ fn R _ ϝ) _)
+    | W.IfS _ _ _ _ => notypeclasses refine (tac_fast_apply (type_if E L f _ _ _ fn R ϝ) _)
     | W.Switch _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_switch E L f _ _ _ _ _ fn R ϝ) _)
     | W.Assert _ _ _ => notypeclasses refine (tac_fast_apply (type_assert E L f _ _ fn R ϝ) _)
     | W.Goto ?bid => liRGoto bid
@@ -493,8 +493,8 @@ Ltac liRExpr :=
     lazymatch e' with
     | W.Val _ => notypeclasses refine (tac_fast_apply (type_val E L f _ T) _)
     | W.Loc _ => notypeclasses refine (tac_fast_apply (type_val E L f _ T) _)
-    | W.Copy _ _ true _ => notypeclasses refine (tac_fast_apply (type_copy E L f _ _ _ T) _)
-    | W.Move _ _ true _ => notypeclasses refine (tac_fast_apply (type_move E L f _ _ _ T) _)
+    | W.Copy _ _ _ => notypeclasses refine (tac_fast_apply (type_copy E L f _ _ _ T) _)
+    | W.Move _ _ _ => notypeclasses refine (tac_fast_apply (type_move E L f _ _ _ T) _)
     | W.EnumDiscriminant _ _ => notypeclasses refine (tac_fast_apply (type_discriminant E L f _ _ _ T _) _); [apply _ | ]
     | W.Borrow Mut _ _ _ => notypeclasses refine (tac_fast_apply (type_mut_bor E L f T _ _ _) _)
     | W.Borrow Shr _ _ _ => notypeclasses refine (tac_fast_apply (type_shr_bor E L f T _ _ _) _)

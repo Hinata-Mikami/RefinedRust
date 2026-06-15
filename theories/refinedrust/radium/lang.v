@@ -39,7 +39,7 @@ Inductive expr :=
 | CheckUnOp (op : un_op) (ot : op_type) (e : expr)
 | CheckBinOp (op : bin_op) (ot1 ot2 : op_type) (e1 e2 : expr)
 | CopyAllocId (ot1 : op_type) (e1 : expr) (e2 : expr)
-| Deref (o : order) (ot : op_type) (memcast : bool) (e : expr)
+| Deref (o : order) (ot : op_type) (e : expr)
 | CAS (ot : op_type) (e1 e2 e3 : expr)
 | Call (f : expr) (args : list expr)
 | Concat (es : list expr)
@@ -59,7 +59,7 @@ Lemma expr_ind (P : expr → Prop) :
   (∀ (op : un_op) (ot : op_type) (e : expr), P e → P (CheckUnOp op ot e)) →
   (∀ (op : bin_op) (ot1 ot2 : op_type) (e1 e2 : expr), P e1 → P e2 → P (CheckBinOp op ot1 ot2 e1 e2)) →
   (∀ (ot1 : op_type) (e1 e2 : expr), P e1 → P e2 → P (CopyAllocId ot1 e1 e2)) →
-  (∀ (o : order) (ot : op_type) (memcast : bool) (e : expr), P e → P (Deref o ot memcast e)) →
+  (∀ (o : order) (ot : op_type) (e : expr), P e → P (Deref o ot e)) →
   (∀ (ot : op_type) (e1 e2 e3 : expr), P e1 → P e2 → P e3 → P (CAS ot e1 e2 e3)) →
   (∀ (f : expr) (args : list expr), P f → Forall P args → P (Call f args)) →
   (∀ (es : list expr), Forall P es → P (Concat es)) →
@@ -85,8 +85,7 @@ hardware threads). *)
 Inductive stmt :=
 | Goto (b : label)
 | Return (e : expr)
-(* join : label of the join point, only for informational purposes *)
-| IfS (ot : op_type) (join : option label) (e : expr) (s1 s2 : stmt)
+| IfS (ot : op_type) (e : expr) (s1 s2 : stmt)
 (* m: map from values of e to indices into bs, def: default *)
 | Switch (it : int_type) (e : expr) (m : gmap Z nat) (bs : list stmt) (def : stmt)
 | Assign (o : order) (ot : op_type) (e1 e2 : expr) (s : stmt)
@@ -172,7 +171,7 @@ with rtexpr :=
 | RTCheckUnOp (op : un_op) (ot : op_type) (e : runtime_expr)
 | RTCheckBinOp (op : bin_op) (ot1 ot2 : op_type) (e1 e2 : runtime_expr)
 | RTCopyAllocId (ot1 : op_type) (e1 : runtime_expr) (e2 : runtime_expr)
-| RTDeref (o : order) (ot : op_type) (memcast : bool) (e : runtime_expr)
+| RTDeref (o : order) (ot : op_type) (e : runtime_expr)
 | RTCall (f : runtime_expr) (args : list runtime_expr)
 | RTCAS (ot : op_type) (e1 e2 e3 : runtime_expr)
 | RTConcat (es : list runtime_expr)
@@ -183,7 +182,7 @@ with rtexpr :=
 with rtstmt :=
 | RTGoto (b : label)
 | RTReturn (e : runtime_expr)
-| RTIfS (ot : op_type) (join : option label) (e : runtime_expr) (s1 s2 : stmt)
+| RTIfS (ot : op_type) (e : runtime_expr) (s1 s2 : stmt)
 | RTSwitch (it : int_type) (e : runtime_expr) (m : gmap Z nat) (bs : list stmt) (def : stmt)
 | RTAssign (o : order) (ot : op_type) (e1 e2 : runtime_expr) (s : stmt)
 | RTFree (e_size : runtime_expr) (e_align : runtime_expr) (e : runtime_expr) (s : stmt)
@@ -210,7 +209,7 @@ Fixpoint to_rtexpr (π : thread_id) (e : expr) : runtime_expr :=
   | CheckUnOp op ot e => Expr π $ RTCheckUnOp op ot (to_rtexpr π e)
   | CheckBinOp op ot1 ot2 e1 e2 => Expr π $ RTCheckBinOp op ot1 ot2 (to_rtexpr π e1) (to_rtexpr π e2)
   | CopyAllocId ot1 e1 e2 => Expr π $ RTCopyAllocId ot1 (to_rtexpr π e1) (to_rtexpr π e2)
-  | Deref o ot mc e => Expr π $ RTDeref o ot mc (to_rtexpr π e)
+  | Deref o ot e => Expr π $ RTDeref o ot (to_rtexpr π e)
   | Call f args => Expr π $ RTCall (to_rtexpr π f) (to_rtexpr π <$> args)
   | CAS ot e1 e2 e3 => Expr π $ RTCAS ot (to_rtexpr π e1) (to_rtexpr π e2) (to_rtexpr π e3)
   | Concat es => Expr π $ RTConcat (to_rtexpr π <$> es)
@@ -223,7 +222,7 @@ Definition to_rtstmt (π : thread_id) (f : function) (s : stmt) : runtime_expr :
   Stmt π f $ match s with
   | Goto b => RTGoto b
   | Return e => RTReturn (to_rtexpr π e)
-  | IfS ot join e s1 s2 => RTIfS ot join (to_rtexpr π e) s1 s2
+  | IfS ot e s1 s2 => RTIfS ot (to_rtexpr π e) s1 s2
   | Switch it e m bs def => RTSwitch it (to_rtexpr π e) m bs def
   | Assign o ot e1 e2 s => RTAssign o ot (to_rtexpr π e1) (to_rtexpr π e2) s
   | Free e_size e_align e s => RTFree (to_rtexpr π e_size) (to_rtexpr π e_align) (to_rtexpr π e) s
@@ -534,7 +533,7 @@ Inductive expr_step : expr → thread_id → state → list Empty_set → runtim
     cf.(cf_locals) !! x = Some (l, ly) →
     val_of_loc l = Some v' →
     expr_step (Var x) π σ [] (RTVal v') σ []
-| DerefS o v l ot v' σ π (mc : bool):
+| DerefS o v l ot v' σ π :
     let start_st st := ∃ n, st = if o is Na2Ord then RSt (S n) else RSt n in
     let end_st st :=
       match o, st with
@@ -546,12 +545,12 @@ Inductive expr_step : expr → thread_id → state → list Empty_set → runtim
     in
     let end_expr :=
       if o is Na1Ord then
-        Deref Na2Ord ot mc (Val v)
+        Deref Na2Ord ot (Val v)
       else
-        Val (if mc then mem_cast v' ot (dom σ.(st_fntbl), σ.(st_heap)) else v') in
+        Val (mem_cast v' ot (dom σ.(st_fntbl), σ.(st_heap))) in
     val_to_loc v = Some l →
     heap_at l (ot_layout ot) v' start_st σ.(st_heap).(hs_heap) →
-    expr_step (Deref o ot mc (Val v)) π σ [] (to_rtexpr π end_expr) (heap_fmap (heap_upd l v' end_st) σ) []
+    expr_step (Deref o ot (Val v)) π σ [] (to_rtexpr π end_expr) (heap_fmap (heap_upd l v' end_st) σ) []
 (* TODO: look at CAS and see whether it makes sense. Also allow
 comparing pointers? (see lambda rust) *)
 (* corresponds to atomic_compare_exchange_strong, see https://en.cppreference.com/w/c/atomic/atomic_compare_exchange *)
@@ -646,9 +645,9 @@ Inductive stmt_step : stmt → thread_id → function → state → list Empty_s
     v2 `has_layout_val` (ot_layout ot) →
     heap_at l (ot_layout ot) v' start_st σ.(st_heap).(hs_heap) →
     stmt_step (Assign o ot (Val v1) (Val v2) s) π rf σ [] (to_rtstmt π rf end_stmt) (heap_fmap (heap_upd l end_val end_st) σ) []
-| IfSS ot join v s1 s2 π rf σ b:
+| IfSS ot v s1 s2 π rf σ b:
     cast_to_bool ot v σ.(st_heap) = Some b →
-    stmt_step (IfS ot join (Val v) s1 s2) π rf σ [] (to_rtstmt π rf ((if b then s1 else s2))) σ []
+    stmt_step (IfS ot (Val v) s1 s2) π rf σ [] (to_rtstmt π rf ((if b then s1 else s2))) σ []
 | SwitchS π rf σ v n m bs s def it :
     val_to_Z v it = Some n →
     (∀ i : nat, m !! n = Some i → is_Some (bs !! i)) →
@@ -940,7 +939,7 @@ Inductive expr_ectx :=
 | CheckBinOpRCtx (op : bin_op) (ot1 ot2 : op_type) (v1 : val)
 | CopyAllocIdLCtx (ot1 : op_type) (e2 : runtime_expr)
 | CopyAllocIdRCtx (ot1 : op_type) (v1 : val)
-| DerefCtx (o : order) (ot : op_type) (memcast : bool)
+| DerefCtx (o : order) (ot : op_type)
 | CallLCtx (args : list runtime_expr)
 | CallRCtx (f : val) (vl : list val) (el : list runtime_expr)
 | CASLCtx (ot : op_type) (e2 e3 : runtime_expr)
@@ -963,7 +962,7 @@ Definition expr_fill_item (Ki : expr_ectx) (e : runtime_expr) : rtexpr :=
   | CheckBinOpRCtx op ot1 ot2 v1 => RTCheckBinOp op ot1 ot2 (RTVal v1) e
   | CopyAllocIdLCtx ot1 e2 => RTCopyAllocId ot1 e e2
   | CopyAllocIdRCtx ot1 v1 => RTCopyAllocId ot1 (RTVal v1) e
-  | DerefCtx o l mc => RTDeref o l mc e
+  | DerefCtx o l => RTDeref o l e
   | CallLCtx args => RTCall e args
   | CallRCtx f vl el => RTCall (RTVal f) (((RTVal <$> vl)) ++ e :: el)
   | CASLCtx ot e2 e3 => RTCAS ot e e2 e3
@@ -985,7 +984,7 @@ Inductive stmt_ectx :=
 | FreeLCtx (e_align : expr) (e : expr) (s : stmt)
 | FreeMCtx (v_size : val) (e : expr) (s : stmt)
 | FreeRCtx (v_size : val) (v_align : val) (s : stmt)
-| IfSCtx (ot : op_type) (join : option label) (s1 s2 : stmt)
+| IfSCtx (ot : op_type) (s1 s2 : stmt)
 | SwitchCtx (it : int_type) (m: gmap Z nat) (bs : list stmt) (def : stmt)
 | ExprSCtx (s : stmt)
 .
@@ -998,7 +997,7 @@ Definition stmt_fill_item (π : thread_id) (Ki : stmt_ectx) (e : runtime_expr) :
   | FreeLCtx e_align e' s => RTFree e (to_rtexpr π e_align) (to_rtexpr π e') s
   | FreeMCtx v_size e' s => RTFree (RTVal v_size) e (to_rtexpr π e') s
   | FreeRCtx v_size v_align s => RTFree (RTVal v_size) (RTVal v_align) e s
-  | IfSCtx ot join s1 s2 => RTIfS ot join e s1 s2
+  | IfSCtx ot s1 s2 => RTIfS ot e s1 s2
   | SwitchCtx it m bs def => RTSwitch it e m bs def
   | ExprSCtx s => RTExprS e s
   end.
