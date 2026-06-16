@@ -60,7 +60,7 @@ unsafe fn set_next(cell: *mut Cell, next: *mut Cell) {
 //         1 HeapAlloc)
 // ")]
 
-shareable_ltype_own の instance @ ◁ ty の形 にマッチしない
+// shareable_ltype_own の instance @ ◁ ty の形 にマッチしない
 #[rr::inv(#iris "
   ([∗ list] i ↦ x ∈ xs,
     ∃ l n : loc,
@@ -142,6 +142,9 @@ fn main() {
         let _ = x;
     }
 }
+
+// セルへのrawポインタを受け取って，セルにアクセスするメソッド（最低限の例）
+// 事前条件・事後条件をどう定義すればいいかをいろいろ試してみることから
 
 /*
 Type system got stuck in function "All_Cells_read_next_value" !
