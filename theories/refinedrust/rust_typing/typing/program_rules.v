@@ -872,6 +872,68 @@ Section introduce.
   Qed.
   Definition introduce_with_hooks_guarded_prepaid_inst := [instance @introduce_with_hooks_guarded_prepaid].
   Global Existing Instance introduce_with_hooks_guarded_prepaid_inst.
+
+  Lemma introduce_with_hooks_lft_toks E L κs T :
+    li_tactic (llctx_release_toks_goal L κs) T ⊢
+    introduce_with_hooks E L (llft_elt_toks κs) T.
+  Proof.
+    rewrite /li_tactic /llctx_release_toks_goal.
+    iIntros "(%L' & %HL & HT)".
+    iIntros (F ?) "#CTX #HE HL Htoks".
+    iMod (llctx_return_elt_toks _ _ L' with "HL Htoks") as "HL"; first done.
+    eauto with iFrame.
+  Qed.
+  Definition introduce_with_hooks_lft_toks_inst := [instance @introduce_with_hooks_lft_toks].
+  Global Existing Instance introduce_with_hooks_lft_toks_inst | 10.
+
+  Import EqNotations.
+  Lemma introduce_with_hooks_releq rt E L γ1 γ2 T :
+    find_in_context (FindOptGvarPobs γ1) (λ o,
+    match o with
+    | inr _ =>
+        RelEq (T:=rt) γ1 γ2 -∗ T L
+    | inl (existT rt' r) =>
+        ∃ (Heq : RT_rt rt' = RT_rt rt),
+        introduce_with_hooks E L (gvar_pobs γ2 (rew [id] Heq in r)) T
+    end)
+    ⊢ introduce_with_hooks E L (RelEq (T:=rt) γ1 γ2) T.
+  Proof.
+    iIntros "(%o & Hobs & HT)".
+    iIntros (??) "CTX HE HL Hrel".
+    destruct o as [[rt' r] | ]; simpl.
+    - iDestruct "HT" as "(%Heq & HT)". destruct Heq.
+      iPoseProof (RelEq_use_pobs with "Hobs Hrel") as "Hobs".
+      iMod (gvar_obs_persist with "Hobs") as "Hobs".
+      by iApply ("HT" with "[] CTX HE HL Hobs").
+    - iFrame. by iApply "HT".
+  Qed.
+  Definition introduce_with_hooks_releq_inst := [instance @introduce_with_hooks_releq].
+  Global Existing Instance introduce_with_hooks_releq_inst.
+
+  Lemma introduce_with_hooks_rel2 rt1 rt2 E L (R : rt1 → rt2 → Prop) γ1 γ2 T :
+    find_in_context (FindOptGvarPobs γ1) (λ o,
+    match o with
+    | inr _ =>
+        Rel2 (T1:=rt1)(T2:=rt2) γ1 γ2 R -∗ T L
+    | inl (existT rt' r) =>
+        ∃ (Heq : RT_rt rt' = rt1),
+        ∀ r2,
+        introduce_with_hooks E L (⌜R (rew [id] Heq in r) r2⌝ ∗ gvar_pobs γ2 ( r2)) T
+    end)
+    ⊢ introduce_with_hooks E L (Rel2 (T1:=rt1)(T2:=rt2) γ1 γ2 R) T.
+  Proof.
+    iIntros "(%o & Hobs & HT)".
+    iIntros (??) "CTX HE HL Hrel".
+    destruct o as [[rt' r] | ]; simpl.
+    - iDestruct "HT" as "(%Heq & HT)". destruct Heq.
+      iPoseProof (Rel2_use_pobs with "Hobs Hrel") as "(%r2 & Hobs & %HR)".
+      iMod (gvar_obs_persist with "Hobs") as "Hobs".
+      iApply ("HT" with "[] CTX HE HL [Hobs]"); first done.
+      simpl. by iFrame.
+    - iFrame. by iApply "HT".
+  Qed.
+  Definition introduce_with_hooks_rel2_inst := [instance @introduce_with_hooks_rel2].
+  Global Existing Instance introduce_with_hooks_rel2_inst.
 End introduce.
 
 Section prove_subtype.
@@ -2591,8 +2653,6 @@ Section subsume.
 
   (* TODO: some of this is really duplicated with stratify, in particular the unblocking and the ltype unfolding. Could we have an instance that just escapes into a shallow version of stratify that requires no logstep in order avoid duplication? *)
 
-  (* TODO: we probably want to generalize this to not immediately require a dead token for κ,
-    but rather have a "dead" context and spawn a sidecondition for inclusion in one of the dead lifetimes? *)
   Lemma typed_place_blocked_unblock {rt} f E L l (ty : type rt) κ (r : place_rfn rt) bmin0 b P T :
     ⌜lctx_lft_dead E L κ⌝ ∗ typed_place E L f l (◁ ty) r bmin0 b P T
     ⊢ typed_place E L f l (BlockedLtype ty κ) r bmin0 b P T.
@@ -2617,24 +2677,51 @@ Section subsume.
   Global Existing Instance typed_place_blocked_unblock_inst | 5.
 
   Lemma typed_place_shrblocked_unblock {rt} f E L l (ty : type rt) κ (r : place_rfn rt) bmin0 b P T :
-    ⌜lctx_lft_dead E L κ⌝ ∗ typed_place E L f l (◁ ty) r bmin0 b P T
+    li_tactic (check_lctx_lft_dead_goal E L κ) (λ dead,
+      if dead then
+        typed_place E L f l (◁ ty) r bmin0 b P T
+      else
+        (* needed because typed_place_cond isn't reflexive; we need to ensure the ShrBlocked can be unblocked in time *)
+        ⌜lctx_place_update_kind_incl E L (UpdUniq [κ]) bmin0⌝ ∗
+        typed_place E L f l (◁ ty) r bmin0 (Shared κ) P (λ L2 κs li bi pui rti ltyi ri upd,
+          T L2 κs li bi pui rti ltyi ri (λ L3 updi K,
+            upd L3 updi (λ updo,
+              K (mkPUpd _ _ _ (ShrBlockedLtype ty κ) r updo.(pupd_R) (UpdUniq [κ]) opt_place_update_eq_refl opt_place_update_eq_refl))))
+        )
     ⊢ typed_place E L f l (ShrBlockedLtype ty κ) r bmin0 b P T.
   Proof.
-    iIntros "(%Hdead & Hp)". iIntros (????) "#(LFT & LLCTX) #HE HL Hf Hl HΦ".
-    iPoseProof (lctx_lft_dead_tok with "HE HL") as "#Hdead"; first apply Hdead.
-    iApply fupd_place_to_wp.
-    iMod (unblock_shrblocked with "Hdead Hl") as "Hl"; first done.
-    iModIntro.
-    iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl").
-    iIntros (L' κs l2 b2 bmin rti tyli ri updcx) "Hl2 Hs HT HL Hf".
-    iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ with "Hl2 [Hs] HT HL Hf").
-    iIntros (upd) "#Hincl Hl2 %Hst HR Hcond".
-    iMod ("Hs" with "Hincl Hl2 [//] HR Hcond") as "Hs".
-    iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hst' & Hcond & Htoks & HR & ?)".
-    iFrame.
-    simp_ltypes. iR.
-    by iApply typed_place_cond_shrblocked_l.
+    rewrite /check_lctx_lft_dead_goal.
+    iIntros "(%dead & %Hdead & Hp)". iIntros (????) "#CTX #HE HL Hf Hl HΦ".
+    destruct dead.
+    - iPoseProof (lctx_lft_dead_tok with "HE HL") as "#Hdead"; first apply Hdead.
+      iApply fupd_place_to_wp.
+      iMod (unblock_shrblocked with "Hdead Hl") as "Hl"; first done.
+      iModIntro.
+      iApply ("Hp" with "[//] [//] CTX HE HL Hf Hl").
+      iIntros (L' κs l2 b2 bmin rti tyli ri updcx) "Hl2 Hs HT HL Hf".
+      iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ with "Hl2 [Hs] HT HL Hf").
+      iIntros (upd) "#Hincl Hl2 %Hst HR Hcond".
+      iMod ("Hs" with "Hincl Hl2 [//] HR Hcond") as "Hs".
+      iModIntro. iIntros (? cont) "HL Hf Hcont".
+      iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hst' & Hcond & Htoks & HR & ?)".
+      iFrame.
+      simp_ltypes. iR.
+      by iApply typed_place_cond_shrblocked_l.
+    - iDestruct "Hp" as "(%Hincl & Hp)".
+      iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hincl1"; first apply Hincl.
+      iPoseProof (ltype_own_shrblocked_as_shared with "Hl") as "#Hl'".
+      iApply ("Hp" with "[//] [//] CTX HE HL Hf Hl'").
+      iIntros (L2 κs li allowed1 bi rti ltyi ri updcx) "Hli Hcont HT".
+      iApply ("HΦ" with "Hli [Hcont Hl] HT").
+      iIntros (upd) "Hincl Hli %Hst HR Hcond".
+      iMod ("Hcont" with "Hincl Hli [//] HR Hcond") as "Ha".
+      iModIntro. iIntros (??) "HL Hf Hupd".
+      iMod ("Ha" with "HL Hf Hupd") as "(%upd' & _ & % & Hcond & Hincl & Htoks & HR & HL & Hf & Hcont)".
+      iFrame. simpl. iR.
+      iL. iModIntro.
+      iApply typed_place_cond_shrblocked_l.
+      iApply ofty_shr_blocked_place_cond.
+      iApply place_update_kind_incl_refl.
   Qed.
   Definition typed_place_shrblocked_unblock_inst := [instance @typed_place_shrblocked_unblock].
   Global Existing Instance typed_place_shrblocked_unblock_inst | 5.
@@ -4811,66 +4898,6 @@ Section subsume.
   Definition introduce_with_hooks_inherit_inst := [instance @introduce_with_hooks_inherit].
   Global Existing Instance introduce_with_hooks_inherit_inst.
 
-  Lemma introduce_with_hooks_lft_toks E L κs T :
-    li_tactic (llctx_release_toks_goal L κs) T ⊢
-    introduce_with_hooks E L (llft_elt_toks κs) T.
-  Proof.
-    rewrite /li_tactic /llctx_release_toks_goal.
-    iIntros "(%L' & %HL & HT)".
-    iIntros (F ?) "#CTX #HE HL Htoks".
-    iMod (llctx_return_elt_toks _ _ L' with "HL Htoks") as "HL"; first done.
-    eauto with iFrame.
-  Qed.
-  Definition introduce_with_hooks_lft_toks_inst := [instance @introduce_with_hooks_lft_toks].
-  Global Existing Instance introduce_with_hooks_lft_toks_inst | 10.
-
-  Lemma introduce_with_hooks_releq rt E L γ1 γ2 T :
-    find_in_context (FindOptGvarPobs γ1) (λ o,
-    match o with
-    | inr _ =>
-        RelEq (T:=rt) γ1 γ2 -∗ T L
-    | inl (existT rt' r) =>
-        ∃ (Heq : RT_rt rt' = RT_rt rt),
-        introduce_with_hooks E L (gvar_pobs γ2 (rew [id] Heq in r)) T
-    end)
-    ⊢ introduce_with_hooks E L (RelEq (T:=rt) γ1 γ2) T.
-  Proof.
-    iIntros "(%o & Hobs & HT)".
-    iIntros (??) "CTX HE HL Hrel".
-    destruct o as [[rt' r] | ]; simpl.
-    - iDestruct "HT" as "(%Heq & HT)". destruct Heq.
-      iPoseProof (RelEq_use_pobs with "Hobs Hrel") as "Hobs".
-      iMod (gvar_obs_persist with "Hobs") as "Hobs".
-      by iApply ("HT" with "[] CTX HE HL Hobs").
-    - iFrame. by iApply "HT".
-  Qed.
-  Definition introduce_with_hooks_releq_inst := [instance @introduce_with_hooks_releq].
-  Global Existing Instance introduce_with_hooks_releq_inst.
-
-  Lemma introduce_with_hooks_rel2 rt1 rt2 E L (R : rt1 → rt2 → Prop) γ1 γ2 T :
-    find_in_context (FindOptGvarPobs γ1) (λ o,
-    match o with
-    | inr _ =>
-        Rel2 (T1:=rt1)(T2:=rt2) γ1 γ2 R -∗ T L
-    | inl (existT rt' r) =>
-        ∃ (Heq : RT_rt rt' = rt1),
-        ∀ r2,
-        introduce_with_hooks E L (⌜R (rew [id] Heq in r) r2⌝ ∗ gvar_pobs γ2 ( r2)) T
-    end)
-    ⊢ introduce_with_hooks E L (Rel2 (T1:=rt1)(T2:=rt2) γ1 γ2 R) T.
-  Proof.
-    iIntros "(%o & Hobs & HT)".
-    iIntros (??) "CTX HE HL Hrel".
-    destruct o as [[rt' r] | ]; simpl.
-    - iDestruct "HT" as "(%Heq & HT)". destruct Heq.
-      iPoseProof (Rel2_use_pobs with "Hobs Hrel") as "(%r2 & Hobs & %HR)".
-      iMod (gvar_obs_persist with "Hobs") as "Hobs".
-      iApply ("HT" with "[] CTX HE HL [Hobs]"); first done.
-      simpl. by iFrame.
-    - iFrame. by iApply "HT".
-  Qed.
-  Definition introduce_with_hooks_rel2_inst := [instance @introduce_with_hooks_rel2].
-  Global Existing Instance introduce_with_hooks_rel2_inst.
 
   (** StartLft *)
   Lemma type_startlft π (n : string) sup_lfts E L T :

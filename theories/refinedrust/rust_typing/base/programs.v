@@ -1968,9 +1968,7 @@ Section place.
     typed_place_proof T : iProp_to_Prop (typed_place E L f l1 ltyo r1 bmin0 b1 P T).
 
   Import EqNotations.
-  (*place_update*)
   Lemma typed_place_id {rt} E L f (lt : ltype rt) bmin0 (b : bor_kind) r l (T : place_cont_t rt bmin0) :
-    (*⌜lctx_place_update_kind_incl E L bmin0 b⌝ ∗*)
     T L [] l b bmin0 rt lt r (λ L2 upd cont, cont upd)
     ⊢ typed_place E L f l lt r bmin0 b [] T.
   Proof.

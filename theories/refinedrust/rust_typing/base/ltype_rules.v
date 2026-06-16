@@ -597,6 +597,20 @@ End ofty.
 Section open.
   Context `{!typeGS Σ}.
 
+  Lemma ltype_own_shrblocked_as_shared {rt} (ty : type rt) l r π b κ :
+    l ◁ₗ[π, b] r @ ShrBlockedLtype ty κ -∗
+    l ◁ₗ[π, Shared κ] r @ ◁ ty.
+  Proof.
+    iIntros "Hb".
+    rewrite ltype_own_ofty_unfold ltype_own_shrblocked_unfold /shr_blocked_lty_own /lty_of_ty_own.
+    iDestruct "Hb" as "(%ly & %Hst & % & #Hsc & #Hlb & %r' & Hrfn & Hb)".
+    iExists ly.  iFrame. iR. iR. iR. iR.
+    destruct b.
+    - iDestruct "Hb" as "(#Hb & _)". iModIntro. by iFrame.
+    - done.
+    - iDestruct "Hb" as "(_ & #Hr & _)". iModIntro. by iFrame.
+  Qed.
+
   Lemma ltype_own_make_alias {rt rt2} (lt : ltype rt) r r2 π l :
     l ◁ₗ[π, Owned] r @ lt -∗
     l ◁ₗ[π, Owned] r @ lt ∗ l ◁ₗ[π, Owned] r2 @ AliasLtype rt2 (ltype_st lt) l.

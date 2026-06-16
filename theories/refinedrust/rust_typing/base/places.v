@@ -361,7 +361,7 @@ Section place.
 
   (*  TODO: can I change UpdUniq such that UpdBot becomes satisfying?
   Lemma typed_place_cond_upd_eq {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) :
-    typed_place_cond UpdEq lt1 lt2 ⊣⊢
+    typed_place_cond UpdBot lt1 lt2 ⊣⊢
     ((∃ Heq, (∀ b r, ltype_eq b r r lt1 ((rew <- [ltype] Heq in lt2))))).
   Proof.
     simpl. iSplit.
