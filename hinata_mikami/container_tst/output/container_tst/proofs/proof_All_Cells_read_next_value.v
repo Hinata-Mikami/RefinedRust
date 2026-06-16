@@ -14,6 +14,26 @@ Proof.
 
   rep <-! liRStep; liShow.
 
+  (* x1 = head cell, value v1, next x0 *)
+  (* add_updateable.
+  unshelve iApply
+    (updateable_subsume_to
+       x1
+       (OfTy (Cell_inv_t <INST!>))
+       (#(v1, x0))).
+  rep liRStep; liShow. *)
+
+  (* x0 = next cell, value v2, next x1 *)
+  (* add_updateable.
+  unshelve iApply
+    (updateable_subsume_to
+       x0
+       (OfTy (Cell_inv_t <INST!>))
+       (#(v2, x1))).
+  rep liRStep; liShow.
+
+  rep liRStep; liShow. *)
+
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
