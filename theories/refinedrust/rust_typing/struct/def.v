@@ -479,7 +479,7 @@ Section structs.
       rewrite mem_cast_struct_reshape // in Hv2; last congruence.
       move: Hv2 => /lookup_zip_with_Some [?[?[?[Hpad Hv']]]]. simplify_eq.
       rewrite Hv1 in Hv'. simplify_eq.
-      iDestruct "Hv" as "(%r' & % & Hrfn & %Hlook & % & Hv)". iExists r', _. iFrame.
+      iDestruct "Hv" as "(%r' & % & Hrfn & %Hlook & %Hst & Hv)". iExists r', _. iFrame.
       move: Hty1 => /pad_struct_lookup_Some[|n[?[Hlook2 Hor1]]].
       { rewrite length_hpzipl Hlen. done. }
       move: Hpad => /pad_struct_lookup_Some[|?[?[? Hor2]]]. { rewrite length_fmap. congruence. } simplify_eq.
@@ -505,7 +505,8 @@ Section structs.
         injection Heq => Heq1 Heq2 ?. subst.
         apply existT_inj in Heq1. apply existT_inj in Heq2. subst.
         do 3 iR.
-        iExists _; iPureIntro. split; first done.
+        iExists _; iPureIntro.
+        split. { simpl in Hst. by apply syn_type_has_layout_untyped_inv in Hst. }
         rewrite /has_layout_val length_replicate.
         rewrite Hlook2 in Hlook. injection Hlook as [= ->].
         done.
@@ -625,7 +626,7 @@ Section structs.
         { eapply ty_lft_morphism_to_direct.
           apply Hne1. }
         by apply IH.
-    - move => ty ty' Hst Hot ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
+    - move => ty ty' Hst ? Hot ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
       rewrite Hst.
       destruct HT as [Ts' Hne ->].
       destruct ot as [ | | | sl ots | ly | ] => //=.
@@ -906,7 +907,8 @@ Section init.
         - inversion Hpad; subst. apply layout_wf_align_log_0. done.
         - simpl in Hsize. rewrite MaxInt_eq. lia.
         - apply ly_align_in_bounds_1. inversion Hpad; subst. done. }
-      iR. rewrite take_app_length'; first last. { rewrite length_replicate//. }
+      iSplitR. { iPureIntro. by apply syn_type_has_layout_untyped. }
+      rewrite take_app_length'; first last. { rewrite length_replicate//. }
       rewrite uninit_own_spec.
       iR.
       iExists ly. iR.

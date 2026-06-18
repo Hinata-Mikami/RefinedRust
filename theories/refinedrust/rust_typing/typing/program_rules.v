@@ -4719,7 +4719,9 @@ Section subsume.
     iIntros (l) "Hx Hframe Hlocals Hl %Hly".
     iPoseProof ("HT" with "Hlocals Hx [Hl]") as "Hs".
     { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-      iExists _. iR. iR. iR.
+      iExists _.
+      iSplitR. { iPureIntro. by apply syn_type_has_layout_untyped. }
+      iR. iR.
       iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
       rewrite length_replicate. iR.
       iExists _. iR. iModIntro. iExists _. iFrame.
@@ -4761,6 +4763,7 @@ Section subsume.
       iMod (fupd_mask_mono with "Ha") as "Ha"; first done.
       iDestruct "Ha" as "(%v & Hl & Hv)".
       iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+      apply syn_type_has_layout_untyped_inv in Hst.
       iApply (wps_local_dead with "Hf Hlocals Hx [Hl]").
       { simpl in Hst. done. }
       { iExists _. iFrame. done. }
@@ -5435,6 +5438,7 @@ Section subsume.
       iMod (fupd_mask_mono with "Hv") as "(%v0 & Hl & Hv)"; first done.
       iFrame.
       iPoseProof (ty_own_val_has_layout with "Hv") as "%"; first done.
+      apply syn_type_has_layout_untyped_inv in Halg.
       iExists _. done. }
     iSpecialize ("Hcont" with "Ha HT").
 

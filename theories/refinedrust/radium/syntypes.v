@@ -566,6 +566,18 @@ Proof.
   rewrite Hb. done.
 Qed.
 
+Lemma use_struct_layout_alg_fields_layoutable `{!LayoutAlg} sls sl :
+  use_struct_layout_alg sls = Some sl →
+  Forall (λ fst, ∃ ly, syn_type_has_layout fst ly) (sls.(sls_fields).*2).
+Proof.
+  intros (fields & _ & Hf)%use_struct_layout_alg_inv.
+  rewrite Forall_fmap.
+  eapply Forall2_Forall_impl; first last.
+  { apply Forall2_flip. done. }
+  intros [] []; simpl.
+  intros [-> ?]. eauto.
+Qed.
+
 (** Union *)
 Definition use_union_layout_alg `{!LayoutAlg} (uls : union_layout_spec) : option union_layout :=
   variant_lys ← list_map_option (λ '(variant_name, variant_spec),
@@ -1733,12 +1745,46 @@ Proof.
   - intros (ly & Halg & [= <-])%bind_Some. done.
 Qed.
 
+(** A relation requirement size equality, without caring about the alignment. *)
 Definition syn_type_size_eq `{!LayoutAlg} st1 st2 :=
   ∀ ly1, syn_type_has_layout st1 ly1 → ∃ ly2, syn_type_has_layout st2 ly2 ∧ ly_size ly1 = ly_size ly2.
-Lemma syn_type_size_eq_refl `{!LayoutAlg} st :
-  syn_type_size_eq st st.
+Global Instance syn_type_size_eq_refl `{!LayoutAlg} :
+  Reflexive syn_type_size_eq.
 Proof.
-  intros ly1 Hst. exists ly1. done.
+  intros st ly1 Hst. exists ly1. done.
+Qed.
+Global Instance syn_type_size_eq_trans `{!LayoutAlg} :
+  Transitive syn_type_size_eq.
+Proof.
+  intros st1 st2 st3 Heq1 Heq2.
+  intros ly1 Hst1.
+  apply Heq1 in Hst1 as (ly2 & Hst2 & ?).
+  apply Heq2 in Hst2 as (ly3 & Hst3 & ?).
+  eexists. split; first done. lia.
+Qed.
+(*
+Global Instance syn_type_size_eq_sym `{!LayoutAlg} : Symmetric syn_type_size_eq.
+Proof.
+  intros st1 st2 Hsz ly1 Halg1.
+
+  exists
+  symmetry. by eapply Hsz.
+Qed.
+ *)
+
+Lemma syn_type_size_eq_untyped_r `{!LayoutAlg} st1 :
+  syn_type_size_eq st1 (UntypedSynType st1).
+Proof.
+  intros ly1 Hst1.
+  exists ly1. split; last done.
+  by apply syn_type_has_layout_untyped.
+Qed.
+Lemma syn_type_size_eq_untyped_l `{!LayoutAlg} st1 :
+  syn_type_size_eq (UntypedSynType st1) st1.
+Proof.
+  intros ly1 Hst1.
+  apply syn_type_has_layout_untyped_inv in Hst1.
+  eauto.
 Qed.
 
 Lemma syn_type_size_eq_use `{!LayoutAlg} st1 st2 ly1 ly2 :
@@ -1761,17 +1807,68 @@ Proof.
   eauto.
 Qed.
 
+(** A stronger relation requiring layout equality *)
+Definition syn_type_compat `{!LayoutAlg} (st1 st2 : syn_type) :=
+  ∃ ly1 ly2,
+  syn_type_has_layout st1 ly1 ∧
+  syn_type_has_layout st2 ly2 ∧
+  ly1 = ly2.
 
-
-(*
-Global Instance syn_type_size_eq_sym `{!LayoutAlg} : Symmetric syn_type_size_eq.
+Lemma syn_type_compat_refl `{!LayoutAlg} st ly :
+  syn_type_has_layout st ly →
+  syn_type_compat st st.
 Proof.
-  intros st1 st2 Hsz ly1 Halg1.
-
-  exists
-  symmetry. by eapply Hsz.
+  exists ly, ly. done.
 Qed.
- *)
+
+Global Instance syn_type_compat_trans `{!LayoutAlg} : Transitive syn_type_compat.
+Proof.
+  intros st st2 st3.
+  intros (ly1 & ly2 & Hly1 & Hly2 & <-) (ly3 & ly4 & Hly3 & Hly4 & <-).
+  assert (ly3 = ly1) as -> by by eapply (syn_type_has_layout_inj st2).
+  eexists _, _. eauto.
+Qed.
+
+Lemma syn_type_compat_use `{!LayoutAlg} st1 st2 ly1 ly2 :
+  syn_type_compat st1 st2 →
+  syn_type_has_layout st1 ly1 →
+  syn_type_has_layout st2 ly2 →
+  ly1 = ly2.
+Proof.
+  intros (ly1' & ly2' & Hst1' & Hst2' & ?) Hst1 Hst2.
+  assert (ly1 = ly1') as <- by by eapply syn_type_has_layout_inj.
+  assert (ly2 = ly2') as <- by by eapply syn_type_has_layout_inj.
+  done.
+Qed.
+
+Lemma syn_type_compat_untyped_l `{!LayoutAlg} st1 st2 :
+  syn_type_compat st1 st2 →
+  syn_type_compat (UntypedSynType st1) st2.
+Proof.
+  intros (ly1 & ly2 & Hly1 & Hly2 & Hcomp).
+  exists ly1, ly2.
+  split_and!; [ | done..].
+  by apply syn_type_has_layout_untyped.
+Qed.
+Lemma syn_type_compat_untyped_r `{!LayoutAlg} st1 st2 :
+  syn_type_compat st1 st2 →
+  syn_type_compat st1 (UntypedSynType st2).
+Proof.
+  intros (ly1 & ly2 & Hly1 & Hly2 & Hcomp).
+  exists ly1, ly2.
+  split_and!; [ done | | done ].
+  by apply syn_type_has_layout_untyped.
+Qed.
+
+Lemma syn_type_compat_size_eq `{!LayoutAlg} st1 st2 :
+  syn_type_compat st1 st2 →
+  syn_type_size_eq st1 st2.
+Proof.
+  intros (ly1 & ly2 & Hly1 & Hly2 & Hcomp).
+  intros ly1' Hly1'.
+  assert (ly1' = ly1) as -> by by eapply syn_type_has_layout_inj.
+  exists ly2. subst. done.
+Qed.
 
 (** Existential versions *)
 Definition syn_type_is_layoutable `{!LayoutAlg} (st : syn_type) : Prop :=

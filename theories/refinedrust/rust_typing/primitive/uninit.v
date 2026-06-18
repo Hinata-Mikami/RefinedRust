@@ -4,81 +4,6 @@ From refinedrust Require Import options.
 
 (** * Typing rules for the uninit type *)
 
-Section lemmas.
-  Context `{!typeGS Σ}.
-  Implicit Types (rt : RT).
-
-  (* TODO move *)
-  Lemma ofty_owned_subtype_aligned π {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 ly2 l  :
-    (* location needs to be suitably aligned for ty2 *)
-    syn_type_has_layout (ty_syn_type ty2 MetaNone) ly2 →
-    l `has_layout_loc` ly2 →
-    owned_type_incl π r1 r2 ty1 ty2
-    ⊢ (l ◁ₗ[π, Owned] #r1 @ ◁ ty1) -∗ (l ◁ₗ[π, Owned] #r2 @ ◁ ty2).
-  Proof.
-    iIntros (Hst2 Hly2) "Hincl Hl".
-    rewrite !ltype_own_ofty_unfold/lty_of_ty_own.
-    iDestruct "Hl" as "(%ly' & %Halg' & %Hlyl & Hsc1 & Hlb & % & -> & Hl)".
-    iExists ly2. iR. iR.
-    iDestruct "Hincl" as "(%Hszeq & Hsc & Hvi)".
-    assert (ly_size ly' = ly_size ly2) as Hszeq'. {
-      by eapply syn_type_size_eq_use. }
-    iSplitL "Hsc Hsc1". { by iApply "Hsc". }
-    rewrite -Hszeq'. iFrame.
-    iExists _. iR. iMod "Hl" as "(%v & Hl & Hv)".
-    iModIntro. iExists _. iFrame.
-    by iApply "Hvi".
-  Qed.
-  Lemma ofty_owned_subtype_aligned' π {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 ly2 l  :
-    (* location needs to be suitably aligned for ty2 *)
-    syn_type_has_layout (ty_syn_type ty2 MetaNone) ly2 →
-    l `has_layout_loc` ly2 →
-    (∀ r1, owned_type_incl π r1 r2 ty1 ty2)
-    ⊢ (l ◁ₗ[π, Owned] r1 @ ◁ ty1) -∗ (l ◁ₗ[π, Owned] #r2 @ ◁ ty2).
-  Proof.
-    iIntros (Hst2 Hly2) "Hincl Hl".
-    rewrite !ltype_own_ofty_unfold/lty_of_ty_own.
-    iDestruct "Hl" as "(%ly' & %Halg' & %Hlyl & Hsc1 & Hlb & % & Hrfn & Hl)".
-    iExists ly2. iR. iR.
-    iDestruct ("Hincl" $! r') as "(%Hszeq & Hsc & Hvi)".
-    assert (ly_size ly' = ly_size ly2) as Hszeq'. { by eapply syn_type_size_eq_use; done. }
-    iSplitL "Hsc Hsc1". { by iApply "Hsc". }
-    rewrite -Hszeq'. iFrame.
-    iExists r2. iR. iMod "Hl" as "(%v & Hl & Hv)".
-    iModIntro. iExists _. iFrame.
-    by iApply "Hvi".
-  Qed.
-
-  Lemma owned_type_incl_uninit' π {rt1 : RT} (r1 : rt1) r2 (ty1 : type rt1) st ly :
-    syn_type_size_eq (ty_syn_type ty1 MetaNone) st →
-    syn_type_has_layout st ly →
-    ⊢ owned_type_incl π r1 r2 ty1 (uninit st).
-  Proof.
-    iIntros (Hst ?). iSplitR; last iSplitR.
-    - iPureIntro. intros. simpl. done.
-    - simpl. eauto.
-    - iIntros (v) "Hv".
-      rewrite uninit_own_spec.
-      iEval (rewrite /ty_own_val/=).
-      iPoseProof (ty_has_layout with "Hv") as "(%ly' & %Hst' & %Hly)".
-      iR.
-      iExists ly. iR. iPureIntro. rewrite /has_layout_val Hly.
-      eapply syn_type_size_eq_use; done.
-  Qed.
-  Lemma owned_type_incl_uninit π {rt1 : RT} (r1 : rt1) r2 (ty1 : type rt1) st :
-    st = ty_syn_type ty1 MetaNone →
-    ⊢ owned_type_incl π r1 r2 ty1 (uninit st).
-  Proof.
-    iIntros (Hst). iSplitR; last iSplitR.
-    - iPureIntro.
-      simpl. rewrite Hst. apply syn_type_size_eq_refl.
-    - simpl. eauto.
-    - iIntros (v) "Hv". rewrite uninit_own_spec.
-      iPoseProof (ty_has_layout with "Hv") as "(%ly & %Hst' & %Hly)".
-      iR.
-      iExists ly. subst st. iR. done.
-  Qed.
-End lemmas.
 
 Section deinit.
   Context `{!typeGS Σ}.
@@ -129,12 +54,11 @@ Section deinit.
     iModIntro.
     iApply (logical_step_wand with "Hb"). iIntros "$".
     iApply (ofty_owned_subtype_aligned with "[] Hl").
-    { simpl. rewrite Hst. done. }
+    { simpl. rewrite Hst.  apply syn_type_has_layout_untyped. done. }
     { done. }
     rewrite Hst.
     iApply owned_type_incl_uninit'.
-    - simpl. apply syn_type_size_eq_refl.
-    - done.
+    simpl. apply syn_type_size_eq_refl.
   Qed.
   Definition owned_subltype_step_ofty_uninit_eq_inst := [instance owned_subltype_step_ofty_uninit_eq].
   Global Existing Instance owned_subltype_step_ofty_uninit_eq_inst | 100.
@@ -171,9 +95,10 @@ Section deinit.
     iPoseProof (ty_own_ghost_drop with "Hv") as "Hb"; first done.
     iModIntro.
     iApply (logical_step_wand with "Hb"). iIntros "$".
-    iApply (ofty_owned_subtype_aligned with "[] Hl"); [done | | ].
+    iApply (ofty_owned_subtype_aligned π (value_t false (st_of ty MetaNone)) (uninit st) v () ly2 with "[] Hl").
+    { simpl.  by apply syn_type_has_layout_untyped. }
     { done. }
-    iApply owned_type_incl_uninit'; last done.
+    iApply owned_type_incl_uninit'.
     simpl.
     intros ly' ?.
     assert (ly' = ly1) as -> by by eapply syn_type_has_layout_inj.
@@ -210,7 +135,9 @@ Section deinit_fallback.
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
     iSplitL; last done.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own. simpl.
-    iExists ly. iSplitR; first done. iSplitR; first done.
+    iExists ly. iSplitR.
+    { iPureIntro. apply syn_type_has_layout_untyped. done. }
+    iSplitR; first done.
     iSplitR; first done. iSplitR; first done. iExists _. iSplitR; first done. iModIntro.
     iExists _. iFrame.
     rewrite uninit_own_spec.
@@ -223,19 +150,28 @@ Section deinit_fallback.
   (** We have this instance because it even works when [r1 = PlaceGhost ..] *)
   Lemma weak_subltype_deinit E L {rt1 : RT} (r1 : place_rfn rt1) r2 (ty : type rt1) st T :
     weak_subltype E L (Owned) r1 #r2 (◁ ty) (◁ uninit st) T :-
-    exhale (⌜ty_syn_type ty MetaNone = st⌝);
+    ly ← tactic (compute_layout_goal st);
+    exhale (⌜fast_eq_hint (ty_syn_type ty MetaNone = UntypedSynType st)⌝);
     return T.
   Proof.
-    iIntros "(%Hst & HT)".
+    rewrite /compute_layout_goal.
+    iIntros "(%ly & %Hst_layout & %Hst & HT)".
     iIntros  (??) "#CTX #HE HL". iFrame.
-    iModIntro. iModIntro. simp_ltypes. iR.
+    iModIntro. iModIntro. simp_ltypes. iSplitR.
+    { iPureIntro. simpl. rewrite Hst. done. }
     rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (??) "Hl".
-    iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Hst' & %Hly)".
+    iPoseProof (ltype_own_has_layout with "Hl") as "(%ly' & %Hst' & %Hly)".
+    assert (ly' = ly) as ->.
+    { simp_ltypes in Hst'. simpl in Hst'. rewrite Hst in Hst'.
+      apply syn_type_has_layout_untyped_inv in Hst'.
+      by eapply syn_type_has_layout_inj. }
     iModIntro. iApply (ofty_owned_subtype_aligned' with "[] Hl").
-    { simp_ltypes in Hst'. simpl. subst st. apply Hst'. }
+    { simpl.  by apply syn_type_has_layout_untyped. }
     { done. }
-    iIntros. iApply owned_type_incl_uninit. done.
+    iIntros. iApply owned_type_incl_uninit'.
+    rewrite Hst. eapply syn_type_size_eq_prove; [| done | done].
+    by apply syn_type_has_layout_untyped.
   Qed.
   Definition weak_subltype_deinit_inst := [instance weak_subltype_deinit].
   Global Existing Instance weak_subltype_deinit_inst.
@@ -260,12 +196,13 @@ Section deinit_fallback.
     iModIntro.
     iSplit; last iSplitR.
     - iPureIntro. simpl.
-      by eapply syn_type_size_eq_prove.
+      eapply syn_type_size_eq_prove; first done.
+      + by apply syn_type_has_layout_untyped.
+      + done.
     - simpl. eauto.
     - iIntros (v) "Hv".
       rewrite uninit_own_spec.
       iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv"; first done.
-      (*iIntros "(%ly & %Hst & %Hly & Hv)".*)
       iR.
       iExists _. iR.
       iPureIntro. move: Hv. rewrite /has_layout_val Hsz//.
@@ -273,45 +210,6 @@ Section deinit_fallback.
   Definition owned_subtype_to_uninit_inst := [instance owned_subtype_to_uninit].
   Global Existing Instance owned_subtype_to_uninit_inst.
 End deinit_fallback.
-
-(* NOTE: removed
-Section evar.
-  Context `{!typeGS Σ}.
-
-  (** ** Evar instantiation *)
-  Lemma uninit_mono_untyped_evar π E L step l ly1 ly2 `{!IsProtected ly2} T :
-    owned_subltype_step π E L step l #() #()
-      (◁ uninit (UntypedSynType ly1))
-      (◁ uninit (UntypedSynType ly2)) T :-
-    exhale (⌜ly1 = ly2⌝);
-    return (T L True%I).
-  Proof.
-    iIntros "(-> & HT)".
-    iIntros (????) "#CTX #HE HL Hl".
-    iExists L, True%I. iFrame "HL HT".
-    iApply maybe_logical_step_intro. iFrame. done.
-  Qed.
-  Definition uninit_mono_untyped_evar_inst := [instance uninit_mono_untyped_evar].
-  Global Existing Instance uninit_mono_untyped_evar_inst | 10.
-
-  Lemma uninit_mono_untyped_id E L π step l (ly1 ly2 : layout) `{TCDone (ly1 = ly2)} T:
-    owned_subltype_step π E L step l #() #()
-      (◁ uninit (UntypedSynType ly1))
-      (◁ uninit (UntypedSynType ly2)) T :-
-    return (T L True%I).
-  Proof.
-    match goal with
-    | H : TCDone _ |- _ => rename H into Heq
-    end.
-    rewrite /TCDone in Heq. subst. iIntros "HT".
-    iIntros (????) "#CTX #HE HL Hl".
-    iExists L, True%I. iFrame "HL HT".
-    iApply maybe_logical_step_intro. iFrame. done.
-  Qed.
-  Definition uninit_mono_untyped_id_inst := [instance uninit_mono_untyped_id].
-  Global Existing Instance uninit_mono_untyped_id_inst | 11.
-End evar.
-*)
 
 Section init.
   Context `{!typeGS Σ}.

@@ -192,6 +192,7 @@ Section union.
         rewrite /has_layout_val length_take in Hlyv.
         iSplitL "Hl1 Ha". { iExists _. iFrame. }
         iPoseProof (ty_has_layout with "Hb") as "(%ly2 & %Hst2 & %Hlyv2)".
+        apply syn_type_has_layout_untyped_inv in Hst2.
         apply syn_type_has_layout_literal_inv in Hst2 as (-> & ? & ? & ?).
         move: Hlyv2. rewrite /has_layout_val length_drop /active_union_rest_ly {2}/ly_size/= => Hlyv2.
         rewrite length_take. rewrite Nat.min_l; last lia.
@@ -200,6 +201,7 @@ Section union.
         iExists (v1 ++ v2).
         iPoseProof (ty_own_val_has_layout with "Hv1") as "%Hlyv"; first done.
         iPoseProof (ty_has_layout with "Hv2") as "(%ly2 & %Hst2 & %Hlyv2)".
+        apply syn_type_has_layout_untyped_inv in Hst2.
         apply syn_type_has_layout_literal_inv in Hst2 as (-> & ? & ? & ?).
         move: Hlyv2. rewrite /has_layout_val /active_union_rest_ly {1}/ly_size/= => Hlyv2.
         rewrite /has_layout_val in Hlyv.
@@ -220,7 +222,9 @@ Section union.
 
     iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok12] [] [] [] Hb2") as "Hb2"; first done.
     { simpl. rewrite right_id. iFrame. }
-    { simpl. iPureIntro. apply syn_type_has_layout_literal; first done.
+    { simpl. iPureIntro.
+      apply syn_type_has_layout_untyped.
+      apply syn_type_has_layout_literal; first done.
       - rewrite /active_union_rest_ly/layout_wf/ly_align/=. apply Z.divide_1_l.
       - rewrite /active_union_rest_ly {1}/ly_size. apply use_union_layout_alg_size in Hul. lia.
       - rewrite /ly_align_in_bounds/ly_align/active_union_rest_ly/ly_align_log/=.
@@ -636,7 +640,7 @@ Section ne.
       rewrite /=ty_wf_E_unfold.
       apply enum_ne_lft_mor.
     - rewrite !ty_has_op_type_unfold.
-      intros ty ty' Hst Hot ot mt. simpl.
+      intros ty ty' Hst ? Hot ot mt. simpl.
       unfold is_enum_ot.
       destruct ot as [ | | | | ly | ]; try done.
       do 4 f_equiv.

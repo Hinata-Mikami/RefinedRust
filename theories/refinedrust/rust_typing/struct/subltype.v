@@ -16,7 +16,7 @@ Section subltype.
       hpzipl _ lts2 rs2 !! field_idx_of_idx (sl_members sl) k = Some (existT rt2 (lt2', r2))) ∨
     (∃ ly, lt1 = f ly ∧ lt2 = f ly).
   Proof.
-    intros Hlen Hlook1 Hlook2.
+intros Hlen Hlook1 Hlook2.
     apply pad_struct_lookup_Some_1 in Hlook1.
     destruct Hlook1 as (n & ly & Hmem & Hlook1).
     destruct Hlook1 as [ [ ? Hlook1] | Hlook1].
@@ -436,7 +436,7 @@ Section lemmas.
     (∀ (rts' : list RT) (lts' : hlist ltype rts') rs',
       (* syn types need to be the same *)
       ⌜length rts = length rts'⌝ -∗
-      (⌜Forall2 (λ p p2, let 'existT rt (lt, _) := p in let 'existT rt' (lt', _) := p2 in ltype_st lt = ltype_st lt') (hpzipl rts lts rs) (hpzipl rts' lts' rs')⌝)  -∗
+      (⌜Forall2 (λ p p2, let 'existT rt (lt, _) := p in let 'existT rt' (lt', _) := p2 in syn_type_compat (ltype_st lt) (ltype_st lt')) (hpzipl rts lts rs) (hpzipl rts' lts' rs')⌝)  -∗
       (* ownership *)
       ([∗ list] i↦p ∈ hpzipl rts' lts' rs', let 'existT rt (lt, r) := p in ∃ (name : var_name) (st : syn_type), ⌜sls_fields sls !! i = Some (name, st)⌝ ∗ l atst{sls}ₗ name ◁ₗ[ π, k] r @ lt) -∗
       (* we get back the full struct ownership *)
@@ -488,11 +488,15 @@ Section lemmas.
 
    eapply Forall2_lookup_r in Hst; last done.
    destruct Hst as ([rt' [lt' r']] & Hlook2 & Hst).
-   rewrite -Hst.
+   (*rewrite -Hst.*)
    eapply Hly_agree in Hlook2 as (ly2 & n2 & Hlook2 & Hst2).
+   iPoseProof (ltype_own_has_layout with "Hl") as "(%ly3 & %Hst3 & %)".
+   opose proof* (syn_type_compat_use _ _ _ _ Hst ) as Heq; [done.. | ].
    simpl in *. rewrite Hlook' in Hlook2. injection Hlook2 as [= <- <-].
    iExists ka',  ly', n. iR. iR.
-   iExists _. rewrite Hlook''. iR. iR.
+   iExists _. rewrite Hlook''. iR.
+   rewrite Heq.
+   iR.
    rewrite /GetMemberLocSt /use_struct_layout_alg' Halg /=.
    rewrite /offset_of. erewrite sl_index_of_lookup_2; done.
   Qed.

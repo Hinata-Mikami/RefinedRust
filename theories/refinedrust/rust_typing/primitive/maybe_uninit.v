@@ -21,17 +21,22 @@ Section type.
   (** We refine by [option (place_rfn rt)] in order to borrow the optional contents.
      Note that this really makes it isomorphic to [MaybeUninit<T>] in our model,
      which is a union and thus would also get the place wrapper. *)
+  (* NOTE: ideally this should require `{TySized T}, but this doesn't work well for the current [TypeNonExpansive] setup.
+    Probably we should have a [TypeSizedNonExpansive] or so.
+  *)
   Program Definition maybe_uninit {rt} (T : type rt) : type (option (place_rfn rt)) := {|
     ty_metadata_kind := T.(ty_metadata_kind);
     ty_trivial_drop := T.(ty_trivial_drop);
     ty_own_val := @maybe_uninit_own_val rt T;
-    ty_syn_type := T.(ty_syn_type);
+    ty_syn_type m := UntypedSynType ((T.(ty_syn_type) m));
     _ty_has_op_type ot mt :=
       ∃ ly,
-      syn_type_has_layout (T.(ty_syn_type) MetaNone) ly ∧ ot_layout ot = ly ∧
+      syn_type_has_layout (T.(ty_syn_type) MetaNone) ly ∧
+      T.(ty_metadata_kind) = MetadataNone ∧
+      ot_layout ot = ly ∧
       match mt with
       | MCId => ot = UntypedOp ly
-      | MCCopy => ty_has_op_type T ot MCCopy
+      | MCCopy => ot = UntypedOp ly
       | MCNone => True
       end;
     ty_shr κ π r m l :=
@@ -53,13 +58,16 @@ Section type.
     iIntros (rt T π r m v) "Hv". destruct r as [r | ].
     - rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
       iDestruct "Hv" as "(%r'' & Hrfn & Hv)".
-      iApply (ty_has_layout with "Hv").
+      iPoseProof (ty_has_layout with "Hv") as "(%ly & %Hst & %Hly)".
+      iExists ly. iPureIntro. split; last done.
+      by apply syn_type_has_layout_untyped.
     - rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
       iApply (ty_has_layout with "Hv").
   Qed.
   Next Obligation.
     simpl; iIntros (rt T ot mt Hot).
-    destruct Hot as (ly & Hot & <- & Hmt). done.
+    destruct Hot as (ly & Hot & ? & <- & Hmt).
+    by apply syn_type_has_layout_untyped.
   Qed.
   Next Obligation.
     iIntros (rt T π r m v) "_". done.
@@ -70,7 +78,10 @@ Section type.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     iIntros (rt T κ π l r m) "Hl". destruct r as [r | ].
-    - iDestruct "Hl" as "(%r'' & Hrfn & Hl)". iApply (ty_shr_aligned with "Hl").
+    - iDestruct "Hl" as "(%r'' & Hrfn & Hl)". iPoseProof (ty_shr_aligned with "Hl") as "Ha".
+      iDestruct "Ha" as "(%ly & %Hly & %Hst)". iExists _. iR.
+      iPureIntro.
+      by apply syn_type_has_layout_untyped.
     - iPoseProof (ty_shr_aligned with "Hl") as "Ha".
       done.
   Qed.
@@ -93,6 +104,7 @@ Section type.
       iMod (place_rfn_interp_owned_share with "LFT Hrfn Htok1") as "(Hrfn & Htok1)"; first done.
       iCombine ("Htok1 Htok2") as "Htok". rewrite lft_tok_sep.
       rewrite ty_lfts_unfold.
+      apply syn_type_has_layout_untyped_inv in Hst.
       iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna Htok [//] [//] Hlb Hb") as "Hstep"; first done.
       iApply (logical_step_wand with "Hstep").
       iIntros "!> (Hl & $)". eauto with iFrame.
@@ -128,16 +140,20 @@ Section type.
     iExists _. iFrame.
   Qed.
   Next Obligation.
-    iIntros (rt T ot mt st π r m v (ly & Hst & <- & Hmt)) "Ha".
+    iIntros (rt T ot mt st π r m v (ly & Hst & ? & <- & Hmt)) "Ha".
     destruct mt; [done | | ].
     - (* copy *)
+      subst.
       destruct r as [r | ]; simpl; first last.
       { rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
         by iApply uninit_memcast. }
       rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
       iDestruct "Ha" as "(%r'' & Hrfn & Hv)".
       iExists r''. iFrame.
-      iApply ty_memcast_compat_copy; done.
+      iApply ty_memcast_compat_copy; last done.
+      rewrite Hmt.
+      rewrite ty_has_op_type_unfold.
+      apply _ty_has_op_type_untyped; done.
     - rewrite Hmt. simpl.
       iPureIntro.
       rewrite /mem_cast_id/=. intros ?.
@@ -145,10 +161,10 @@ Section type.
   Qed.
   Next Obligation.
     intros ?? ly mt Heq Hst.
-    simpl. exists ly. split_and!; [done.. | ].
-    destruct mt; [done | | done].
-    rewrite ty_has_op_type_unfold.
-    by apply _ty_has_op_type_untyped.
+    simpl. exists ly.
+    apply syn_type_has_layout_untyped_inv in Hst.
+    split_and!; [done.. | ].
+    destruct mt; done.
   Qed.
 
   Global Instance maybe_uninit_sized {rt} (ty : type rt) :
@@ -157,7 +173,7 @@ Section type.
   Proof.
     intros Hsz. econstructor; simpl.
     - apply Hsz.
-    - apply Hsz.
+    - intros m1 m2. by rewrite (ty_sized_syn_type_eq m1 m2).
   Qed.
 End type.
 
@@ -169,16 +185,14 @@ Section ne.
   Proof.
     constructor; simpl.
     - done.
-    - done.
+    - intros ty ty' Heq m. rewrite Heq. done.
     - eapply ty_lft_morph_make_id.
       + rewrite {1}ty_lfts_unfold//.
       + rewrite {1}ty_wf_E_unfold//.
     - rewrite ty_has_op_type_unfold/=.
-      intros ?? -> Hot.
+      intros ?? -> -> Hot.
       intros ot mt.
       do 4 f_equiv.
-      f_equiv.
-      rewrite ty_has_op_type_unfold Hot//.
     - done.
     - intros n ty ty' ?.
       intros π r m v. rewrite /ty_own_val/= !maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
@@ -233,6 +247,7 @@ Section subtype.
   Qed.
 
   (** Subtyping *)
+  (* NOTE: does not hold anymore, because maybe_uninit is now untyped.
   Lemma type_incl_maybe_uninit_Some {rt} (ty : type rt) (x : rt) :
     ⊢ type_incl x (Some (#x)) ty (maybe_uninit ty).
   Proof.
@@ -281,6 +296,7 @@ Section subtype.
       iEval (rewrite /ty_shr/=).
       rewrite (ty_sized_syn_type_eq _ m). done.
   Qed.
+  *)
 
 End subtype.
 
@@ -289,6 +305,8 @@ Section rules.
 
   (** subtyping rules: *)
 
+  (* NOTE: does not hold anymore because it is Untyped.
+    We'll have to switch to owned_subtype.
   Lemma weak_subtype_None_maybe_uninit E L {rt} (ty : type rt) `{!TySized ty} (r2 : unit) T :
     ⌜r2 = tt⌝ ∗ T ⊢ weak_subtype E L None r2 (maybe_uninit ty) (uninit (ty.(ty_syn_type) MetaNone)) T.
   Proof.
@@ -360,6 +378,8 @@ Section rules.
   Definition weak_subltype_maybe_uninit_ghost_inst := [instance @weak_subltype_maybe_uninit_ghost].
   Global Existing Instance weak_subltype_maybe_uninit_ghost_inst | 40.
 
+  *)
+
   Lemma owned_subtype_uninit_maybe_uninit π E L pers {rt} (ty : type rt) (st : syn_type) T :
     li_tactic (compute_layout_goal st) (λ ly1,
       li_tactic (compute_layout_goal (ty_syn_type ty MetaNone)) (λ ly2,
@@ -371,7 +391,8 @@ Section rules.
     iIntros (????) "#CTX #HE HL". iExists L. iModIntro. iFrame.
     iApply bi.intuitionistically_intuitionistically_if. iModIntro.
     iSplit; last iSplitR.
-    { iPureIntro. simpl. by eapply syn_type_size_eq_prove. }
+    { iPureIntro. simpl.
+      eapply syn_type_size_eq_prove; [apply syn_type_has_layout_untyped.. | ]; done. }
     { simpl. done. }
     iIntros (v) "Hv". rewrite !uninit_own_spec.
     iDestruct "Hv" as "(_ & %ly &  %Hst & %Hly)".
@@ -383,21 +404,6 @@ Section rules.
   Qed.
   Definition owned_subtype_uninit_maybe_uninit_inst := [instance @owned_subtype_uninit_maybe_uninit].
   Global Existing Instance owned_subtype_uninit_maybe_uninit_inst.
-
-  (* reading/writing:
-     does this need special handling?
-
-     We certainly need some handling for read/write rules to inject into maybe_uninit when necessary, esp. below arrays.
-  *)
-  (* TODO: add these rules *)
-
-
-  (** borrowing rules: *)
-  (* for now, just don't allow borrowing maybe_uninit directly and handle it specially.
-     TODO: in future, have an annotation for borrowing that enforces invariants. *)
-  (* TODO: add the override *)
-
-
 
 End rules.
 

@@ -1,4 +1,4 @@
-From refinedrust Require Export base type ltypes.
+From refinedrust Require Export base type ltypes base.value.
 From refinedrust Require Import ltype_rules.
 From refinedrust Require Import programs.
 From refinedrust.mut_ref Require Import def.
@@ -9,38 +9,11 @@ From refinedrust Require Import options.
 Section deinit.
   Context `{!typeGS Σ}.
 
-  (* TODO seem to be redundant. Rather use the stronger extractable stuff *)
-  Lemma ltype_uniq_deinitializable_deinit_mut F π l {rt} (lt : ltype rt) r κ γ :
-    lftE ⊆ F →
-    ltype_uniq_deinitializable lt →
-    (l ◁ₗ[π, Owned] #(r, γ) @ (MutLtype lt κ)) ={F}=∗
-    l ◁ₗ[π, Owned] #() @ (◁ uninit PtrSynType) ∗ place_rfn_interp_mut r γ.
-  Proof.
-    iIntros (? Hcompat).
-    iIntros "Hl".
-    rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
-    iDestruct "Hl" as "(%ly & %Halg & %Hly & Hlb & %γ' & %r' & %Heq & Hb)".
-    injection Heq as <- <-.
-    iMod (fupd_mask_mono with "Hb") as "Hc"; first done.
-    iDestruct "Hc" as "(%l' & Hl & Hb)".
-    iMod (ltype_own_deinit_ghost_drop_uniq with "Hb") as "Hrfn"; [done.. | ].
-    iFrame.
-    rewrite ltype_own_ofty_unfold /lty_of_ty_own. iExists ly.
-    iR.
-    iR. iSplitR. { rewrite /ty_own_val/=//. }
-    iSplitL "Hlb"; first by iFrame.
-    iExists tt. iR. iModIntro. iExists _. iFrame.
-    rewrite uninit_own_spec. iR. iExists ly.
-    apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR.
-    { iPureIntro. by apply syn_type_has_layout_ptr. }
-    iPureIntro. apply l2v_has_layout_val.
-  Qed.
-
   Lemma ltype_uniq_extractable_deinit_mut F π l {rt} (lt : ltype rt) r κ κm γ :
     lftE ⊆ F →
     ltype_uniq_extractable lt = Some κm →
     (l ◁ₗ[π, Owned] #(r, γ) @ (MutLtype lt κ)) ={F}=∗
-    l ◁ₗ[π, Owned] #() @ (◁ uninit PtrSynType) ∗ MaybeInherit κm (place_rfn_interp_mut r γ).
+    ∃ v, l ◁ₗ[π, Owned] #v @ (◁ value_t true PtrSynType) ∗ MaybeInherit κm (place_rfn_interp_mut r γ).
   Proof.
     iIntros (? Hdeinit).
     iIntros "Hl".
@@ -49,17 +22,15 @@ Section deinit.
     injection Heq as <- <-.
     iMod (fupd_mask_mono with "Hb") as "Hc"; first done.
     iDestruct "Hc" as "(%l' & Hl & Hb)".
+    iPoseProof (ltype_own_addr_in_usize with "Hb") as "%".
     iMod (ltype_own_extract_ghost_drop_uniq with "Hb") as "Hrfn"; [done.. | ].
-    iFrame.
+    iFrame. iExists (l2v l').
     rewrite ltype_own_ofty_unfold /lty_of_ty_own. iExists ly.
-    iR.
-    iR. iSplitR. { rewrite /ty_own_val/=//. }
-    iSplitL "Hlb"; first done.
-    iExists tt. iR. iModIntro. iExists _. iFrame.
-    rewrite uninit_own_spec. iR. iExists ly.
-    apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR.
-    { iPureIntro. by apply syn_type_has_layout_ptr. }
-    iPureIntro. apply l2v_has_layout_val.
+    simpl. iFrame. iR. iR.
+    iExists _. iR.
+    iModIntro. iModIntro.
+    iApply type_loc_value.
+    by apply val_to_loc_Some_l2v.
   Qed.
 End deinit.
 
@@ -68,29 +39,28 @@ Section extract.
 
   (* Extract an observation  *)
   Lemma stratify_ltype_extract_ofty_mut π E L {rt} (ty : type rt) r κ γ l (T : stratify_ltype_post_hook_cont_t) :
-    T L (place_rfn_interp_mut r γ) _ (◁ uninit PtrSynType)%I (#())
+    (∀ v, T L (place_rfn_interp_mut r γ) _ (◁ value_t true PtrSynType)%I (#v))
     ⊢ stratify_ltype_post_hook π E L (StratifyExtractOp κ) l (◁ (mut_ref κ ty)) (#(r, γ)) (Owned) T.
   Proof.
     iIntros "HT".
     iIntros (????) "#CTX #HE HL Hl".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iExists _, _, _, _, _. iFrame.
     iDestruct "Hl" as "(%ly & %Hst & %Hly & Hsc & Hlb & %r' & <- & Hb)".
     iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
     iDestruct "Hb" as "(%v & Hl & Hb)".
     rewrite /ty_own_val/= mut_ref_own_val_unfold.
     iDestruct "Hb" as "(%l' & %ly' & _ & %Hv & ? & ? & ? & ? & Hb & Hcred' & ?)".
-    iFrame "Hb".
-    iSplitR. { simp_ltypes. done. }
+    iSpecialize ("HT" $! (l2v l')).
+    iExists _, _, _, _, _. iFrame. iFrame.
+    iR.
     apply syn_type_has_layout_ptr_inv in Hst as ->.
     iModIntro. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iExists void*. simpl. iSplitR; first by iPureIntro; apply syn_type_has_layout_ptr.
     iSplitR; first done.
     iSplitR; first done. iSplitL "Hlb"; first done.
     iExists _. iR. iModIntro.
-    iExists v. iFrame. rewrite uninit_own_spec. iR. iExists void*.
-    iSplitR; first by iPureIntro; apply syn_type_has_layout_ptr.
-    iPureIntro. unfold has_layout_val. apply val_to_loc_length. eexists. done.
+    iExists v. iFrame.
+    by iApply type_loc_value.
   Qed.
   Definition stratify_ltype_extract_ofty_mut_inst := [instance @stratify_ltype_extract_ofty_mut].
   Global Existing Instance stratify_ltype_extract_ofty_mut_inst | 20.
@@ -101,7 +71,7 @@ Section extract.
     | None =>
         T L True%I _ (MutLtype lt κ) (#(r, γ))
     | Some κm =>
-        T L (MaybeInherit κm (place_rfn_interp_mut_extracted r γ)) _ (◁ uninit PtrSynType)%I (#())
+        ∀ v, T L (MaybeInherit κm (place_rfn_interp_mut_extracted r γ)) _ (◁ value_t true PtrSynType)%I (#v)
     end
     ⊢ stratify_ltype_post_hook π E L (StratifyExtractOp κ) l (MutLtype lt κ) (#(r, γ)) (Owned) T.
   Proof.
@@ -109,7 +79,8 @@ Section extract.
     iIntros (????) "#CTX #HE HL Hl".
     destruct (ltype_uniq_extractable lt) as [ κm | ] eqn:Hextract; first last.
     { iExists L, True%I, _, _, _. iFrame. done. }
-    iMod (ltype_uniq_extractable_deinit_mut with "Hl") as "(Hl & Hrfn)"; [done.. | ].
+    iMod (ltype_uniq_extractable_deinit_mut with "Hl") as "(%v & Hl & Hrfn)"; [done.. | ].
+    iSpecialize ("HT" $! v).
     iPoseProof (MaybeInherit_update (place_rfn_interp_mut_extracted r γ) with "[] Hrfn") as "Ha".
     { iIntros (?) "Ha". iMod (place_rfn_interp_mut_extract with "Ha") as "?". done. }
     iExists _, _, _, _, _. iFrame.
@@ -136,10 +107,18 @@ Section rule.
     destruct (ltype_uniq_extractable lt) eqn:Hextract; last done.
     iDestruct "HT" as "(-> & HT)".
     iExists _, _. iFrame.
-    iMod (ltype_uniq_extractable_deinit_mut with "Hl") as "(Hl & Hf)"; [done.. | ].
+    iMod (ltype_uniq_extractable_deinit_mut with "Hl") as "(%v & Hl & Hf)"; [done.. | ].
     iPoseProof (MaybeInherit_update (place_rfn_interp_mut_extracted r γ) with "[] Hf") as "Hf".
     { iIntros (?) "Hrfn". iMod (place_rfn_interp_mut_extract with "Hrfn") as "?". done. }
     iModIntro. iApply maybe_logical_step_intro. iFrame.
+    iPoseProof (ltype_own_has_layout with "Hl") as "(% & %Hst & %)".
+    simp_ltypes in Hst. simpl in Hst.
+    apply syn_type_has_layout_ptr_inv in Hst as ->.
+    iApply (ofty_owned_subtype_aligned with "[] Hl").
+    - simpl. apply syn_type_has_layout_untyped.
+      by apply syn_type_has_layout_ptr.
+    - done.
+    - by iApply owned_type_incl_uninit.
   Qed.
   Definition owned_subltype_step_mutltype_uninit_inst := [instance owned_subltype_step_mutltype_uninit].
   Global Existing Instance owned_subltype_step_mutltype_uninit_inst | 20.

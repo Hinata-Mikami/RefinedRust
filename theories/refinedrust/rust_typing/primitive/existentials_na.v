@@ -327,7 +327,7 @@ Section contr.
       rewrite ty_lfts_unfold.
       apply direct_lft_morphism_app; done.
     - rewrite ty_has_op_type_unfold. intros.
-      eapply HF; first done.
+      eapply HF; first done; first done.
       rewrite ty_has_op_type_unfold. done.
     - simpl. eapply HF.
     - intros n ty ty' ?.

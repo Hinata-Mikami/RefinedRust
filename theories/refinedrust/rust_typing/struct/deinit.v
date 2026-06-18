@@ -55,23 +55,21 @@ Section deinit.
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Halg & %Hl)".
     simp_ltypes in Halg. simpl in Halg.
     iApply (ofty_owned_subtype_aligned with "[] Hl"); [ | done | ].
-    { done. }
-    iApply (owned_type_incl_uninit' _ _ _ _ _ ly); simpl.
-    - apply syn_type_size_eq_refl.
-    - done.
+    { apply syn_type_has_layout_untyped. done. }
+    iApply (owned_type_incl_uninit'); simpl.
+    apply syn_type_size_eq_refl.
   Qed.
 End deinit.
 
 Section rules.
 Context `{!typeGS Σ}.
 
-
   (* We iterate over all the fields to deinitialize them first, and then deinitialize the struct itself *)
   Lemma owned_subltype_step_struct_uninit π E L step l {rts} (lts : hlist ltype rts) rs (sls : struct_layout_spec) (st : syn_type) T :
     owned_subltype_step π E L step l #rs #() (StructLtype lts sls) (◁ uninit st) T :-
     exhale (⌜st = sls⌝);
     L2, R2 ← iterate: zip (hpzipl rts lts rs) sls.(sls_fields) with L, True%I {{ '((existT rt (lt, r)), (field, stf)) T L2 R2,
-      exhale (⌜ltype_st lt = stf⌝);
+      exhale (⌜syn_type_compat (ltype_st lt) stf⌝);
       return owned_subltype_step π E L2 step (l atst{sls}ₗ field) r #() lt (◁ uninit stf) (λ L3 R3,
         T L3 (R2 ∗ R3))
       }};
@@ -97,8 +95,8 @@ Context `{!typeGS Σ}.
           if decide (i < idx) then
           ∃ (name : string) (st : syn_type),
           ⌜sls_fields sls !! i = Some (name, st)⌝ ∗
-          ⌜ltype_st lt = st⌝ ∗
-          l atst{sls}ₗ name ◁ₗ[ π, Owned] #() @ ◁ uninit (ltype_st lt)
+          ⌜syn_type_compat (ltype_st lt) st⌝ ∗
+          l atst{sls}ₗ name ◁ₗ[ π, Owned] #() @ ◁ uninit st
           else True)
       ))%I).
 
@@ -116,7 +114,7 @@ Context `{!typeGS Σ}.
       simpl. rewrite decide_True; last lia.
       iDestruct "Ha" as "(% & % & %Hlook2' & Ha)".
       rewrite Hlook2 in Hlook2'. injection Hlook2' as <- <-.
-      iDestruct "Hsub" as "(<- & Hsub)".
+      iDestruct "Hsub" as "(% & Hsub)".
       iMod ("Hsub" with "[] [] [] CTX HE HL Ha") as "(%L3 & %R3 & Hs & HL & HT)"; [done.. | ].
 
       iModIntro. iExists _, _. iFrame.
@@ -142,7 +140,7 @@ Context `{!typeGS Σ}.
     clear INV.
 
     (* extract pure info from invariant *)
-    iAssert (⌜Forall2 (λ '(existT rt (lt, _)) st, ltype_st lt = st) (hpzipl rts lts rs') (sls_fields sls).*2⌝)%I with "[Hx]" as "%Hf".
+    iAssert (⌜Forall2 (λ '(existT rt (lt, _)) st, syn_type_compat (ltype_st lt) st) (hpzipl rts lts rs') (sls_fields sls).*2⌝)%I with "[Hx]" as "%Hf".
     { iApply big_sepL2_Forall2.
       iPoseProof (big_sepL_extend_r with "Hx") as "Hx"; last iApply (big_sepL2_wand with "Hx").
       { rewrite length_fmap length_hpzipl Hlen//. }
@@ -151,7 +149,7 @@ Context `{!typeGS Σ}.
       apply list_lookup_fmap_Some in Hlook2 as ([name st'] & -> & Hlook2).
       rewrite decide_True; first last. { rewrite length_zip length_hpzipl Hlen.
         apply (hpzipl_lookup_inv _ _ rs') in Hlook1. apply lookup_lt_Some in Hlook1. lia. }
-      iIntros "(% & % & %Hlook3 & <- & _)".
+      iIntros "(% & % & %Hlook3 & % &  _)".
       simplify_eq. done. }
 
     set (lts' := (hmap (@OfTy _ _) (uninit_tys (sls_fields sls).*2))).
@@ -159,12 +157,22 @@ Context `{!typeGS Σ}.
     iPoseProof ("Hclose_l" $! _ lts' rs'' with "[] [] [Hx]")as "Hx".
     { iPureIntro. rewrite -Hlen length_replicate length_fmap//. }
     { iPureIntro.
-      eapply (Forall2_trans _ (λ st '(existT rt (lt, _)), st = ltype_st lt)); [ | apply Hf | ].
-      - intros [? []] st' [? []]; simpl. naive_solver.
+      eapply (Forall2_trans _ (λ st '(existT rt (lt, _)), syn_type_compat st (ltype_st lt))); [ | apply Hf | ].
+      - intros [? []] st' [? []]; simpl.
+        intros Hcomp1 Hcomp2.
+        etrans; done.
       - unfold lts', rs''.
+        (*apply use_struct_layout_alg_inv in Halg as (fields & _ & Hf2).*)
+        apply use_struct_layout_alg_fields_layoutable in Halg.
+        move: Halg.
         generalize (sls_fields sls).*2 as sts.
         clear. induction sts as [ | st sts IH]; simpl; first done.
-        econstructor; last done. simp_ltypes. done. }
+        intros [(? & ?)?]%Forall_cons.
+        econstructor.
+        + simp_ltypes.
+          apply syn_type_compat_untyped_r.
+          by eapply syn_type_compat_refl.
+        + by eapply IH. }
     { iApply big_sepL2_elim_r.
       iPoseProof (big_sepL_extend_l with "Hx") as "Hx"; last iApply (big_sepL2_wand with "Hx").
       { rewrite !length_hpzipl length_replicate length_fmap -Hlen//. }
@@ -188,10 +196,10 @@ Context `{!typeGS Σ}.
       apply existT_inj in Heq as ->.
       rewrite Hlook1_1 in Hlook1_2. injection Hlook1_2 as [= <-].
 
-      iIntros "(%name & %st'' & %Hlook_fields & <- & Ha)".
+      iIntros "(%name & %st'' & %Hlook_fields & %Hcomp & Ha)".
       iExists name, _. iR.
-      apply list_lookup_fmap_Some in Hlook1_1 as ([name' st''] & -> & Hlook1_1).
-      simplify_eq. done. }
+      apply list_lookup_fmap_Some in Hlook1_1 as ([name' st'''] & -> & Hlook1_1).
+      simplify_eq. simpl. done. }
     iApply (ltype_deinit_struct _ _ sls (rs'')); first done.
 
     rewrite ltype_own_struct_unfold/struct_ltype_own.

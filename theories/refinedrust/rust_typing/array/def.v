@@ -337,7 +337,7 @@ Section ne.
       + rewrite {1}ty_wf_E_unfold//.
     - rewrite ty_has_op_type_unfold/=.
       unfold is_array_ot.
-      intros ?? Hst Hot.
+      intros ?? Hst ? Hot.
       intros ot mt.
       destruct ot; try done.
       rewrite Hst. done.
@@ -376,7 +376,8 @@ Section lemmas.
     iDestruct 1 as "(-> & %ly0 & %Hly0 & %Hlyv0)".
     assert (ly0 = ly1) as ->. { by eapply syn_type_has_layout_inj. }
     (*assert (ly0 = ly1) as -> by by eapply syn_type_has_layout_inj.*)
-    iExists _. iR. iR.
+    iExists _. iR.
+    iSplitR. { iPureIntro. by apply syn_type_has_layout_untyped. }
     iSplitR. { iPureIntro. apply (use_layout_alg_size) in Hst1. lia. }
     rewrite length_replicate. iR.
     iSplitR. { rewrite /has_layout_val/mk_array_layout/ly_mult /= -Hly /=. done. }

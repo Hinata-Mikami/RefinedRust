@@ -1420,6 +1420,7 @@ Class TypeNonExpansive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Typ
   type_ne_has_op_type :
     ∀ ty ty',
       (∀ m, ty_syn_type ty m = ty_syn_type ty' m) →
+      ty.(ty_metadata_kind) = ty'.(ty_metadata_kind) →
       (∀ ot mt, ty_has_op_type ty ot mt ↔ ty_has_op_type ty' ot mt) →
       (∀ ot mt, ty_has_op_type (F ty) ot mt ↔ ty_has_op_type (F ty') ot mt);
 
@@ -1556,8 +1557,9 @@ Section properties.
     - intros ?? Heq. apply Hm2. apply Hm1. done.
     - naive_solver.
     - apply _.
-    - intros ?? ? Ha. eapply Hot2.
+    - intros ?? ?? Ha. eapply Hot2.
       { by eapply Hst1. }
+      { by eapply Hm1. }
       by eapply Hot1.
     - naive_solver.
     - intros n ?? Hd.

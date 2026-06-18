@@ -592,6 +592,46 @@ Section ofty.
     iMod "Hb" as "(%v & Hl & Hv)".
     iModIntro. iExists v. iFrame. by iApply "Hvs".
   Qed.
+
+  Lemma ofty_owned_subtype_aligned π {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 ly2 l  :
+    (* location needs to be suitably aligned for ty2 *)
+    syn_type_has_layout (ty_syn_type ty2 MetaNone) ly2 →
+    l `has_layout_loc` ly2 →
+    owned_type_incl π r1 r2 ty1 ty2
+    ⊢ (l ◁ₗ[π, Owned] #r1 @ ◁ ty1) -∗ (l ◁ₗ[π, Owned] #r2 @ ◁ ty2).
+  Proof.
+    iIntros (Hst2 Hly2) "Hincl Hl".
+    rewrite !ltype_own_ofty_unfold/lty_of_ty_own.
+    iDestruct "Hl" as "(%ly' & %Halg' & %Hlyl & Hsc1 & Hlb & % & -> & Hl)".
+    iExists ly2. iR. iR.
+    iDestruct "Hincl" as "(%Hszeq & Hsc & Hvi)".
+    assert (ly_size ly' = ly_size ly2) as Hszeq'. {
+      by eapply syn_type_size_eq_use. }
+    iSplitL "Hsc Hsc1". { by iApply "Hsc". }
+    rewrite -Hszeq'. iFrame.
+    iExists _. iR. iMod "Hl" as "(%v & Hl & Hv)".
+    iModIntro. iExists _. iFrame.
+    by iApply "Hvi".
+  Qed.
+  Lemma ofty_owned_subtype_aligned' π {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 ly2 l  :
+    (* location needs to be suitably aligned for ty2 *)
+    syn_type_has_layout (ty_syn_type ty2 MetaNone) ly2 →
+    l `has_layout_loc` ly2 →
+    (∀ r1, owned_type_incl π r1 r2 ty1 ty2)
+    ⊢ (l ◁ₗ[π, Owned] r1 @ ◁ ty1) -∗ (l ◁ₗ[π, Owned] #r2 @ ◁ ty2).
+  Proof.
+    iIntros (Hst2 Hly2) "Hincl Hl".
+    rewrite !ltype_own_ofty_unfold/lty_of_ty_own.
+    iDestruct "Hl" as "(%ly' & %Halg' & %Hlyl & Hsc1 & Hlb & % & Hrfn & Hl)".
+    iExists ly2. iR. iR.
+    iDestruct ("Hincl" $! r') as "(%Hszeq & Hsc & Hvi)".
+    assert (ly_size ly' = ly_size ly2) as Hszeq'. { by eapply syn_type_size_eq_use; done. }
+    iSplitL "Hsc Hsc1". { by iApply "Hsc". }
+    rewrite -Hszeq'. iFrame.
+    iExists r2. iR. iMod "Hl" as "(%v & Hl & Hv)".
+    iModIntro. iExists _. iFrame.
+    by iApply "Hvi".
+  Qed.
 End ofty.
 
 Section open.
