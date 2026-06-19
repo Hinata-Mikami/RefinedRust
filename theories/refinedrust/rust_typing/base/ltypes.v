@@ -890,7 +890,7 @@ Section ltype_def.
 
   (** Shows that the recursive struct case is well-formed. Crucially uses the information we obtain from [big_sepL_P]. *)
   Lemma struct_lts_size_decreasing sl sls (lts : list lty) (r' : plist (λ lt, place_rfn (lty_rt lt)) lts) ty :
-    ty ∈  pad_struct (sl_members sl) (pzipl lts r') (λ ly : layout, existT (UninitLty (UntypedSynType ly)) (PlaceIn ())) →
+    ty ∈  pad_struct (sl_members sl) (pzipl lts r') (λ ly : layout, existT (UninitLty (LiteralSynType ly)) (PlaceIn ())) →
     lty_size_rel (projT1 ty) (StructLty lts sls).
   Proof.
     intros HP.
@@ -1025,7 +1025,7 @@ Section ltype_def.
           ∃ r' : plist (place_rfn ∘ lty_rt) lts,
           place_rfn_interp_owned r (rew [id] (struct_rfn_eq lts) in r') ∗
           |={lftE}=>
-          big_sepL_P (pad_struct sl.(sl_members) (pzipl lts r') (λ ly, existT (UninitLty (UntypedSynType ly)) (PlaceIn ())))
+          big_sepL_P (pad_struct sl.(sl_members) (pzipl lts r') (λ ly, existT (UninitLty (LiteralSynType ly)) (PlaceIn ())))
             (λ i ty HP,
               ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (lty_st (projT1 ty)) ly⌝ ∗
               lty_own_pre core (projT1 ty) Owned π (projT2 ty) (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i)))
@@ -1038,14 +1038,14 @@ Section ltype_def.
         |={lftE}=> &pin{κ}
           [∃ (r' : plist (λ lt, place_rfn (lty_rt lt)) lts),
             gvar_auth γ r' ∗ |={lftE}=>
-            big_sepL_P (pad_struct sl.(sl_members) (pzipl lts r') (λ ly, existT (UninitLty (UntypedSynType ly)) (PlaceIn ())))
+            big_sepL_P (pad_struct sl.(sl_members) (pzipl lts r') (λ ly, existT (UninitLty (LiteralSynType ly)) (PlaceIn ())))
               (λ i ty HP,
                   ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (lty_st (projT1 ty)) ly⌝ ∗
                   lty_own_pre true (projT1 ty) Owned π (projT2 ty) (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i)))
           ]
           (∃ (r' : plist (λ lt, place_rfn (lty_rt lt)) lts),
             gvar_auth γ r' ∗ |={lftE}=>
-            big_sepL_P (pad_struct sl.(sl_members) (pzipl lts r') (λ ly, existT (UninitLty (UntypedSynType ly)) (PlaceIn ())))
+            big_sepL_P (pad_struct sl.(sl_members) (pzipl lts r') (λ ly, existT (UninitLty (LiteralSynType ly)) (PlaceIn ())))
               (λ i ty HP,
                 ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (lty_st (projT1 ty)) ly⌝ ∗
                 lty_own_pre core (projT1 ty) Owned π (projT2 ty) (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i)))
@@ -1055,7 +1055,7 @@ Section ltype_def.
             place_rfn_interp_shared r (rew [id] (struct_rfn_eq lts) in r') ∗
             (* update needed to make the unfolding equation work *)
             □ |={lftE}=>
-              big_sepL_P (pad_struct sl.(sl_members) (pzipl lts r') (λ ly, existT (UninitLty (UntypedSynType ly)) (PlaceIn ())))
+              big_sepL_P (pad_struct sl.(sl_members) (pzipl lts r') (λ ly, existT (UninitLty (LiteralSynType ly)) (PlaceIn ())))
                 (λ i ty HP,
                   ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (lty_st (projT1 ty)) ly⌝ ∗
                   lty_own_pre core (projT1 ty) (Shared κ) π (projT2 ty) (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i))))
@@ -1136,7 +1136,7 @@ Section ltype_def.
         (∃ v, ((l atst{sls_of_els en.(enum_els)}ₗ "data") +ₗ (size_of_st (lty_st lte))) ↦ v ∗ ⌜v `has_layout_val` ly_offset (els_data_ly en.(enum_els)) (size_of_st (lty_st lte))⌝) ∗
         (* ownership of the padding fields of the sl *)
         ([∗ list] i ↦ mly ∈ pad_struct el.(sl_members) [None; None] (λ ly, Some ly),
-          from_option (λ ly, lty_of_ty_own (uninit (UntypedSynType ly)) Owned π (PlaceIn ()) (l +ₗ Z.of_nat (offset_of_idx el.(sl_members) i))) True mly)
+          from_option (λ ly, lty_of_ty_own (uninit (LiteralSynType ly)) Owned π (PlaceIn ()) (l +ₗ Z.of_nat (offset_of_idx el.(sl_members) i))) True mly)
         )
       | _ =>
           (* TODO *)
@@ -1454,19 +1454,19 @@ Section ltype_def.
     (Heq : plist (λ lt : lty, place_rfn (lty_rt lt)) (map lty_core lts) = plist (λ lt : lty, place_rfn (lty_rt lt)) lts) π l k :
     (∀ lt : lty, lt ∈ lts → ∀ k π r (Heq : RT_rt (lty_rt (lty_core lt)) = RT_rt (lty_rt lt)) l,
       lty_own_pre true (lty_core lt) k π r l ≡ lty_own_pre true lt k π (transport_rfn Heq r) l) →
-    ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (pzipl (map lty_core lts) r') (λ ly : layout, existT (UninitLty (UntypedSynType ly)) (PlaceIn ())),
+    ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (pzipl (map lty_core lts) r') (λ ly : layout, existT (UninitLty (LiteralSynType ly)) (PlaceIn ())),
       ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (lty_st (projT1 ty)) ly⌝ ∗
       lty_own_pre true (projT1 ty) k π (projT2 ty) (l +ₗ offset_of_idx (sl_members sl) i)) ⊣⊢
-    [∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (pzipl lts (rew [id] Heq in r')) (λ ly : layout, existT (UninitLty (UntypedSynType ly)) (PlaceIn ())),
+    [∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (pzipl lts (rew [id] Heq in r')) (λ ly : layout, existT (UninitLty (LiteralSynType ly)) (PlaceIn ())),
       ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (lty_st (projT1 ty)) ly⌝ ∗
       lty_own_pre true (projT1 ty) k π (projT2 ty) (l +ₗ offset_of_idx (sl_members sl) i).
   Proof.
     intros IH.
     rewrite pzipl_core_map_eq.
-    set (ps' := (λ ly : layout, pzipl_core_map_fun (existT (UninitLty (UntypedSynType ly)) (PlaceIn ())))).
+    set (ps' := (λ ly : layout, pzipl_core_map_fun (existT (UninitLty (LiteralSynType ly)) (PlaceIn ())))).
     rewrite (pad_struct_ext _ _ _ ps'); first last.
     { intros. unfold ps', pzipl_core_map_fun. simpl. f_equiv.
-      generalize (lty_core_rt_eq' (UninitLty (UntypedSynType ly))) => Heq2.
+      generalize (lty_core_rt_eq' (UninitLty (LiteralSynType ly))) => Heq2.
       normalize_dep_rt_goal. }
     rewrite pad_struct_fmap.
     rewrite big_sepL_fmap.
@@ -1634,16 +1634,16 @@ Section ltype_def.
   Local Lemma StructLty_own_core_equiv_lift (sl : struct_layout) (lts : list lty) r (r' : plist (λ lt, place_rfn (lty_rt lt)) (fmap lty_core lts)) (Heq : plist (λ lt : lty, place_rfn (lty_rt lt)) (fmap lty_core lts) = plist (λ lt : lty, place_rfn (lty_rt lt)) lts) π l k (core : bool) :
     (∀ (lt : lty), lt ∈ lts → ∀ k π r (Heq : RT_rt (lty_rt lt) = RT_rt (lty_rt (lty_core lt))) l, lty_own_pre true lt k π r l ≡ lty_own_pre core (lty_core lt) k π (transport_rfn Heq r) l) →
     r = rew [id] Heq in r' →
-    ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (pzipl lts r) (λ ly : layout, existT (UninitLty (UntypedSynType ly)) (PlaceIn ())),
+    ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (pzipl lts r) (λ ly : layout, existT (UninitLty (LiteralSynType ly)) (PlaceIn ())),
       ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (lty_st (projT1 ty)) ly⌝ ∗
       lty_own_pre true (projT1 ty) k π (projT2 ty) (l +ₗ offset_of_idx (sl_members sl) i)) ⊣⊢
-    [∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (pzipl (fmap lty_core lts) r') (λ ly : layout, existT (UninitLty (UntypedSynType ly)) (PlaceIn ())),
+    [∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (pzipl (fmap lty_core lts) r') (λ ly : layout, existT (UninitLty (LiteralSynType ly)) (PlaceIn ())),
       ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (lty_st (projT1 ty)) ly⌝ ∗
       lty_own_pre core (projT1 ty) k π (projT2 ty) (l +ₗ offset_of_idx (sl_members sl) i).
   Proof.
     intros IH.
     rewrite pzipl_core_map_eq.
-    set (ps' := (λ ly : layout, pzipl_core_map_fun (existT (UninitLty (UntypedSynType ly)) (PlaceIn ())))).
+    set (ps' := (λ ly : layout, pzipl_core_map_fun (existT (UninitLty (LiteralSynType ly)) (PlaceIn ())))).
     rewrite (pad_struct_ext _ (pzipl_core_map_fun <$> _) _ ps'); first last.
     { intros. unfold ps', pzipl_core_map_fun. simpl. f_equiv.
       normalize_dep_rt_goal. }
@@ -1844,7 +1844,7 @@ Section ltype_def.
       rewrite big_sepL_P_eq.
       rewrite pzipl_core_map_eq.
       rewrite rew_compose rew_UIP.
-      rewrite (pad_struct_ext _ (_ <$> _) _ (λ ly, pzipl_core_map_fun (existT (UninitLty (UntypedSynType ly)) (PlaceIn ())))); first last.
+      rewrite (pad_struct_ext _ (_ <$> _) _ (λ ly, pzipl_core_map_fun (existT (UninitLty (LiteralSynType ly)) (PlaceIn ())))); first last.
       { intros ly; rewrite /pzipl_core_map_fun. f_equiv. rewrite rew_UIP'//. }
       rewrite pad_struct_fmap big_sepL_fmap.
       iApply (big_sepL_wand with "Hl").
@@ -2352,7 +2352,7 @@ Section ltype_def.
       end)%I.
 
   Definition struct_make_uninit_ltype (ly : layout) : sigT (λ rt : RT, (ltype rt * place_rfn rt)%type) :=
-    existT (unit : RT) (UninitLtype (UntypedSynType ly), PlaceIn ()).
+    existT (unit : RT) (UninitLtype (LiteralSynType ly), PlaceIn ()).
 
   Definition struct_ltype_own
     (rec : ltype_own_type)
@@ -2462,7 +2462,7 @@ Section ltype_def.
         (∃ v, ((l atst{sls_of_els en.(enum_els)}ₗ "data") +ₗ (size_of_st (ltype_st lte))) ↦ v ∗ ⌜v `has_layout_val` ly_offset (els_data_ly en.(enum_els)) (size_of_st (ltype_st lte))⌝) ∗
         (* ownership of the padding fields of the sl *)
         ([∗ list] i ↦ mly ∈ pad_struct el.(sl_members) [None; None] (λ ly, Some ly),
-        if mly is Some ly then lty_of_ty_own (uninit (UntypedSynType ly)) Owned π (PlaceIn ()) (l +ₗ Z.of_nat (offset_of_idx el.(sl_members) i)) else True))
+        if mly is Some ly then lty_of_ty_own (uninit (LiteralSynType ly)) Owned π (PlaceIn ()) (l +ₗ Z.of_nat (offset_of_idx el.(sl_members) i)) else True))
       | _ =>
           (* TODO *)
           False
@@ -2725,18 +2725,18 @@ Section ltype_def.
       (l : loc) (π : thread_id) k core :
       r' = rew <-[id] Heq2 in r →
       ([∗ list] i ↦ ty ∈ pad_struct sl.(sl_members) (pzipl (hcmap (@ltype_lty) lts) r')
-          (λ ly : layout, existT (UninitLty (UntypedSynType ly)) (PlaceIn ())),
+          (λ ly : layout, existT (UninitLty (LiteralSynType ly)) (PlaceIn ())),
         (∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (lty_st (projT1 ty)) ly⌝ ∗
         lty_own_pre core (projT1 ty) k π (projT2 ty) (l +ₗ offset_of_idx sl.(sl_members) i))) ⊣⊢
 
       ([∗ list] i ↦ ty ∈ pad_struct sl.(sl_members) (hpzipl rts lts r)
-          (λ ly : layout, existT (unit : RT) (UninitLtype (UntypedSynType ly), PlaceIn tt)),
+          (λ ly : layout, existT (unit : RT) (UninitLtype (LiteralSynType ly), PlaceIn tt)),
         ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
        lty_own_pre core (ltype_lty (projT2 ty).1) k π (rew <-[place_rfnRT] ltype_rt_agree (projT2 ty).1 in (projT2 ty).2) (l +ₗ offset_of_idx sl.(sl_members) i)).
     Proof.
       intros ->.
       rewrite StructLtype_fmap_eq.
-      rewrite (pad_struct_ext _ _ _ (λ ly : layout, map_fun (existT (unit : RT) (UninitLtype (UntypedSynType ly), PlaceIn ())))).
+      rewrite (pad_struct_ext _ _ _ (λ ly : layout, map_fun (existT (unit : RT) (UninitLtype (LiteralSynType ly), PlaceIn ())))).
       2: { intros. unfold map_fun. simpl. f_equiv.
         match goal with
         |- PlaceIn _ = rew <- [_] ?Heq in _ => generalize Heq
@@ -3192,10 +3192,10 @@ Section ltype_def.
     by iApply "Ha".
   Qed.
 
-  Lemma ltype_own_addr_in_usize {rt} (lt : ltype rt) k π r l : 
+  Lemma ltype_own_addr_in_usize {rt} (lt : ltype rt) k π r l :
     ltype_own lt k π r l -∗ ⌜l.(loc_a) ∈ USize⌝.
   Proof.
-    iIntros "Hown". 
+    iIntros "Hown".
     iPoseProof (ltype_own_has_layout with "Hown") as "(%ly & % & %)".
     iPoseProof (ltype_own_loc_in_bounds with "Hown") as "Hlb"; first done.
     iApply (loc_in_bounds_in_range_usize with "Hlb").

@@ -350,7 +350,7 @@ Section test.
 
   (** Untyped *)
   Lemma inv_test2 ily :
-    use_layout_alg (UntypedSynType (it_layout I32)) = Some ily →
+    use_layout_alg (UntypedSynType (IntSynType I32)) = Some ily →
     ily = it_layout I32.
   Proof.
     init_jcache.
@@ -500,7 +500,7 @@ Section test.
 
   Lemma solve_layout_size_test3 T_ly :
     use_layout_alg T_st = Some T_ly →
-    size_of_st (UntypedSynType (use_layout_alg' T_st)) = ly_size T_ly.
+    size_of_st (UntypedSynType T_st) = ly_size T_ly.
   Proof.
     intros. solve_layout_size; solve [fail].
   Abort.
@@ -549,14 +549,14 @@ Section test.
 
   Lemma solve_layout_alg_test3 T_ly :
     use_layout_alg T_st = Some T_ly →
-    syn_type_has_layout (UntypedSynType (use_layout_alg' T_st)) T_ly.
+    syn_type_has_layout (UntypedSynType T_st) T_ly.
   Proof.
     intros. solve_layout_alg; solve [fail].
   Abort.
 
   Lemma solve_layout_alg_test4 T_ly :
     use_layout_alg T_st = Some T_ly →
-    ∃ ly, syn_type_has_layout (UntypedSynType (use_layout_alg' T_st)) ly.
+    ∃ ly, syn_type_has_layout (UntypedSynType T_st) ly.
   Proof.
     intros. eexists. solve_layout_alg; solve[fail].
   Abort.
@@ -599,11 +599,11 @@ Section test.
 
   Lemma solve_layout_alg_test9 s2_ly :
     use_layout_alg (s2_spec T_st) = Some s2_ly →
-    ∃ ly, syn_type_has_layout (UntypedSynType (use_layout_alg' (s2_spec T_st))) ly.
+    ∃ ly, syn_type_has_layout (UntypedSynType ((s2_spec T_st))) ly.
   Proof.
     init_jcache.
     intros. inv_layout_alg.
-    eexists. solve_layout_alg; solve [fail].
+    eexists. solve_layout_alg ; solve [fail].
   Abort.
 
   Lemma solve_layout_alg_test10 ly :
@@ -661,14 +661,14 @@ Section test.
 
   Lemma solve_op_alg_test3 T_st T_ly :
     use_layout_alg T_st = Some T_ly →
-    use_op_alg (UntypedSynType (use_layout_alg' T_st)) = Some $ UntypedOp T_ly.
+    use_op_alg (UntypedSynType (T_st)) = Some $ UntypedOp T_ly.
   Proof.
     intros. solve_op_alg; solve [fail].
   Abort.
 
   Lemma solve_op_alg_test4 T_st T_ly :
     use_layout_alg T_st = Some T_ly →
-    ∃ ot, use_op_alg (UntypedSynType (use_layout_alg' T_st)) = Some ot.
+    ∃ ot, use_op_alg (UntypedSynType (T_st)) = Some ot.
   Proof.
     intros. eexists. solve_op_alg; solve[fail].
   Abort.

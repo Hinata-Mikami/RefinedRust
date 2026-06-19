@@ -73,7 +73,7 @@ Section structs.
       (l +ₗ Z.of_nat (offset_of_idx fields i)) ◁ₗ{π, MetaNone, κ} r' @ ty.
 
   Definition struct_make_uninit_type (ly : layout) : sigT (λ rt : RT, (type rt * place_rfn rt)%type) :=
-    existT (unit : RT) (uninit (UntypedSynType ly), #()).
+    existT (unit : RT) (uninit (LiteralSynType ly), #()).
 
   Lemma struct_own_val_extract_pointsto' π q sls sl l (tys : list (sigT (λ rt, type rt * place_rfn rt)%type)) ys :
     use_struct_layout_alg sls = Some sl →
@@ -83,7 +83,7 @@ Section structs.
       struct_own_el_loc' π q x.1 i (sl_members sl) l (projT2 a).2 (projT2 a).1 x.2) -∗
     l ↦{q} (mjoin ys.*1) ∗ ⌜Forall2 (λ (v : val) (ly : layout), v `has_layout_val` ly) ys.*1 ((sl_members sl).*2)⌝ ∗
       ([∗ list] i↦v';ty ∈ reshape (ly_size <$> (sl_members sl).*2) (mjoin ys.*1);
-            pad_struct (sl_members sl) tys (λ ly0 : layout, existT (unit : RT) (uninit (UntypedSynType ly0), # ())),
+            pad_struct (sl_members sl) tys (λ ly0 : layout, existT (unit : RT) (uninit (LiteralSynType ly0), # ())),
       struct_own_el_val π i sl.(sl_members) v' (projT2 ty).2 (projT2 ty).1).
   Proof.
     iIntros (??) "#Hlb Hl".
@@ -154,7 +154,7 @@ Section structs.
   Proof.
     iIntros (??) "#Hlb Hl".
     iAssert (
-      [∗ list] i↦ty ∈ pad_struct (sl_members sl) tys (λ ly0, existT (unit : RT) (uninit (UntypedSynType ly0), # ())),
+      [∗ list] i↦ty ∈ pad_struct (sl_members sl) tys (λ ly0, existT (unit : RT) (uninit (LiteralSynType ly0), # ())),
       ∃ (y : val * layout),
       struct_own_el_loc' π q y.1 i sl.(sl_members) l (projT2 ty).2 (projT2 ty).1 y.2)%I with "[Hl]" as "Hl".
     { iApply (big_sepL_wand with "Hl"). iApply big_sepL_intro.
@@ -901,8 +901,8 @@ Section init.
         - inversion Hpad. done.
         - simpl in Hsize. rewrite /fmap. iPureIntro. lia. }
       iExists tt, _. iR. iR.
-      assert (syn_type_has_layout (UntypedSynType ly) ly).
-      { apply syn_type_has_layout_untyped; first done.
+      assert (syn_type_has_layout (LiteralSynType ly) ly).
+      { apply syn_type_has_layout_literal; first done.
         - inversion Hpad; subst. apply layout_wf_align_log_0. done.
         - simpl in Hsize. rewrite MaxInt_eq. lia.
         - apply ly_align_in_bounds_1. inversion Hpad; subst. done. }

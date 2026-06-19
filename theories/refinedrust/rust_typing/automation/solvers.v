@@ -2641,10 +2641,13 @@ Ltac solve_ty_has_op_type_prepare :=
   end;
   (* specific handling for a few cases *)
   lazymatch goal with
-  | |- is_value_ot ?st (use_op_alg' ?st) ?mc =>
-        refine (is_value_ot_use_op_alg _ _ _ _ _);
-        [ done | solve_layout_alg ]
-  | |- is_value_ot _ _ _ => rewrite /is_value_ot; eexists _
+  | |- is_value_ot true ?st (use_op_alg' ?st) ?mc =>
+        refine (is_value_ot_typed_use_op_alg st _ mc _ _);
+        [ done | solve_layout_alg]
+  | |- is_value_ot false ?st (UntypedOp _) ?mc =>
+        refine (is_value_ot_untyped_use_op_alg st _ mc _);
+        [solve_layout_alg]
+  | |- is_value_ot _ _ _ _ => rewrite /is_value_ot; eexists _
   | |- _ =>
       (*otherwise unfold *)
       hnf

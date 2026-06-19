@@ -132,10 +132,11 @@ Inductive syn_type : Set :=
   | ArraySynType (st : syn_type) (len : nat)
   (* UnsafeCell. Currently, it does not do anything exciting, but some day.. *)
   | UnsafeCell (st : syn_type)
+  (* Untyped wrapper *)
+  | UntypedSynType (st : syn_type)
   (* no type, using a literal layout *)
-  (* we use this mostly to refer to untyped chunks of memory at runtime,
-     especially around the uninit semtype *)
-  | UntypedSynType (ly : layout)
+  (* we use this mostly to refer to untyped chunks of memory at runtime *)
+  | LiteralSynType (ly : layout)
   (* enums *)
   | EnumSynType (en : string) (tag_it : int_type) (variant_list : list (string * syn_type)) (repr : enum_repr)
   (* unions *)
@@ -162,7 +163,8 @@ Proof.
         if (decide (len = len')) then
           cast_if (go st st')
         else right _
-    | UntypedSynType ly1, UntypedSynType ly2 => cast_if (decide (ly1 = ly2))
+    | UntypedSynType st1, UntypedSynType st2 => cast_if (decide (st1 = st2))
+    | LiteralSynType ly1, LiteralSynType ly2 => cast_if (decide (ly1 = ly2))
     | UnsafeCell st1, UnsafeCell st2 =>
         cast_if (go st1 st2)
     | EnumSynType en1 tag1 vars1 repr1, EnumSynType en2 tag2 vars2 repr2 =>
@@ -195,7 +197,8 @@ Lemma syn_type_strong_ind (P : syn_type → Prop) :
   P UnitSynType →
   (∀ st : syn_type, P st → ∀ len : nat, P (ArraySynType st len)) →
   (∀ st : syn_type, P st → P (UnsafeCell st)) →
-  (∀ ly : layout, P (UntypedSynType ly)) →
+  (∀ st : syn_type, P st → P (UntypedSynType st)) →
+  (∀ ly : layout, P (LiteralSynType ly)) →
   (∀ (en : string) (tag_it : int_type) (variant_list : list (string * syn_type)) repr,
     Forall (λ '(_, st), P st) variant_list →
     P (EnumSynType en tag_it variant_list repr)) →
@@ -205,7 +208,7 @@ Lemma syn_type_strong_ind (P : syn_type → Prop) :
   P CharSynType →
   ∀ s : syn_type, P s.
 Proof.
-  intros Hint Hbool Hptr Hfptr Hstruct Hunit Harray Huc Huntyped Henum Hunion Hchar.
+  intros Hint Hbool Hptr Hfptr Hstruct Hunit Harray Huc Huntyped Hlayout Henum Hunion Hchar.
   refine (fix F (s : syn_type) : P s := _).
   destruct s.
   - apply Hint.
@@ -218,7 +221,8 @@ Proof.
   - apply Hunit.
   - apply Harray. apply F.
   - apply Huc. apply F.
-  - apply Huntyped.
+  - by apply Huntyped.
+  - apply Hlayout.
   - apply Henum.
     induction variant_list as [ | [f st] H IH]; first done.
     econstructor; first apply F. apply IH.
@@ -448,7 +452,9 @@ Fixpoint use_layout_alg_def `{!LayoutAlg} (synty : syn_type) : option layout :=
       ul ← union_layout_alg en variant_lys (union_repr_of_enum_repr repr);
       sl ← struct_layout_alg en [("discriminant", it_layout tag); ("data", ul_layout ul)] (struct_repr_of_enum_repr repr);
       Some (layout_of sl)
-  | UntypedSynType ly =>
+  | UntypedSynType st =>
+      use_layout_alg_def st
+  | LiteralSynType ly =>
       if decide (layout_wf ly ∧ ly_size ly ≤ MaxInt ISize ∧ ly_align_in_bounds ly) then Some ly else None
   end.
 Definition use_layout_alg_aux `{!LayoutAlg} : seal (use_layout_alg_def). Proof. by eexists. Qed.
@@ -722,8 +728,23 @@ Proof.
   intros [= <-]. eauto.
 Qed.
 
-Lemma syn_type_has_layout_untyped_inv `{!LayoutAlg} ly ly' :
-  use_layout_alg (UntypedSynType ly) = Some ly' →
+Lemma syn_type_has_layout_untyped_inv `{!LayoutAlg} st ly :
+  use_layout_alg (UntypedSynType st) = Some ly →
+  syn_type_has_layout st ly.
+Proof.
+  rewrite /syn_type_has_layout.
+  unfold_layout_alg. done.
+Qed.
+Lemma syn_type_has_layout_untyped `{!LayoutAlg} st ly :
+  syn_type_has_layout st ly →
+  syn_type_has_layout (UntypedSynType st) ly.
+Proof.
+  rewrite /syn_type_has_layout.
+  unfold_layout_alg. done.
+Qed.
+
+Lemma syn_type_has_layout_literal_inv `{!LayoutAlg} ly ly' :
+  use_layout_alg (LiteralSynType ly) = Some ly' →
   ly' = ly ∧ layout_wf ly ∧ (ly_size ly ≤ MaxInt ISize)%Z ∧ ly_align_in_bounds ly.
 Proof.
   unfold_layout_alg.
@@ -731,12 +752,12 @@ Proof.
   case_decide; last done.
   intros [= <-]. naive_solver.
 Qed.
-Lemma syn_type_has_layout_untyped `{!LayoutAlg} ly ly' :
+Lemma syn_type_has_layout_literal `{!LayoutAlg} ly ly' :
   ly = ly' →
   layout_wf ly →
   (ly_size ly ≤ MaxInt ISize)%Z →
   ly_align_in_bounds ly →
-  use_layout_alg (UntypedSynType ly) = Some ly'.
+  use_layout_alg (LiteralSynType ly) = Some ly'.
 Proof.
   intros -> ???.
   unfold_layout_alg.
@@ -1092,6 +1113,7 @@ Proof.
   - eapply array_layout_wf. eauto.
   - eauto.
   - naive_solver.
+  - naive_solver.
   - by eapply struct_layout_alg_wf.
   - by eapply union_layout_alg_wf.
   - apply char_layout_wf.
@@ -1113,6 +1135,7 @@ Proof.
     rewrite MaxInt_eq. lia.
   - rewrite MaxInt_eq. done.
   - done.
+  - naive_solver.
   - naive_solver.
   - naive_solver.
   - rewrite /ly_size /=.
@@ -1225,7 +1248,7 @@ Lemma use_layout_alg_align `{!LayoutAlg} st ly :
   ly_align_in_bounds ly.
 Proof.
   unfold_layout_alg.
-  induction st as [ it | | | | sn fields repr IH | | st IH len | st IH | ly' | en tag_it variant_list repr IH | un variant_list repr IH | ] using syn_type_strong_ind in ly |-*; move => ?; simplify_option_eq; fold use_layout_alg_def in *;
+  induction st as [ it | | | | sn fields repr IH | | st IH len | st IH | st IH | ly' | en tag_it variant_list repr IH | un variant_list repr IH | ] using syn_type_strong_ind in ly |-*; move => ?; simplify_option_eq; fold use_layout_alg_def in *;
       rewrite /ly_align_in_bounds.
   - rewrite /ly_align/it_layout/=.
     revert select (ly_size _ ≤ _). rewrite /ly_size/=/bytes_per_int => Ha.
@@ -1251,6 +1274,7 @@ Proof.
   - done.
   - rewrite /mk_array_layout/=/ly_mult/ly_align/=.
     apply IH. done.
+  - naive_solver.
   - naive_solver.
   - naive_solver.
   - (* enum *)
@@ -1292,27 +1316,27 @@ Proof.
     done.
 Qed.
 
-Lemma syn_type_has_layout_make_untyped `{!LayoutAlg} st ly ly' :
+Lemma syn_type_has_layout_make_literal `{!LayoutAlg} st ly ly' :
   ly = ly' →
   syn_type_has_layout st ly →
-  syn_type_has_layout (UntypedSynType ly) ly'.
+  syn_type_has_layout (LiteralSynType ly) ly'.
 Proof.
   intros <- Hst.
-  apply syn_type_has_layout_untyped.
+  apply syn_type_has_layout_literal.
   - done.
   - eapply use_layout_alg_wf; done.
   - eapply use_layout_alg_size; done.
   - by eapply use_layout_alg_align.
 Qed.
 
-Lemma syn_type_has_layout_untyped_mono `{!LayoutAlg} ly1 ly2 :
+Lemma syn_type_has_layout_literal_mono `{!LayoutAlg} ly1 ly2 :
   ly_align_log ly2 ≤ ly_align_log ly1 →
   ly_size ly1 = ly_size ly2 →
-  syn_type_has_layout (UntypedSynType ly1) ly1 →
-  syn_type_has_layout (UntypedSynType ly2) ly2.
+  syn_type_has_layout (LiteralSynType ly1) ly1 →
+  syn_type_has_layout (LiteralSynType ly2) ly2.
 Proof.
-  intros ?? Hut. apply syn_type_has_layout_untyped_inv in Hut as (_ & Hwf & Hsz & Hal).
-  apply syn_type_has_layout_untyped; first done.
+  intros ?? Hut. apply syn_type_has_layout_literal_inv in Hut as (_ & Hwf & Hsz & Hal).
+  apply syn_type_has_layout_literal; first done.
   - eapply layout_wf_mono; last apply Hwf.
     all: lia.
   - lia.
@@ -1408,7 +1432,10 @@ Fixpoint use_op_alg `{!LayoutAlg} (st : syn_type) : option op_type :=
     Some $ UntypedOp (mk_array_layout ly n)
   | UnsafeCell st =>
       use_op_alg st
-  | UntypedSynType ly =>
+  | UntypedSynType st =>
+      op ← use_op_alg st;
+      Some $ UntypedOp (ot_layout op)
+  | LiteralSynType ly =>
       Some $ UntypedOp ly
   | EnumSynType _ _ _ _ =>
       (* TODO this does not match Rust semantics -- ops on enums in Rust enforce validity *)
@@ -1516,13 +1543,33 @@ Lemma use_op_alg_unsafecell `{!LayoutAlg} st op :
   use_op_alg st = Some op →
   use_op_alg (UnsafeCell st) = Some op.
 Proof. simpl. done. Qed.
-Lemma use_op_alg_untyped `{!LayoutAlg} ly ot :
-  ot = (UntypedOp ly) →
-  use_op_alg (UntypedSynType ly) = Some ot.
-Proof. intros ->. done. Qed.
 
-Lemma use_op_alg_untyped_inv `{!LayoutAlg} ly ot :
-  use_op_alg (UntypedSynType ly) = Some ot → ot = (UntypedOp ly).
+
+Lemma use_op_alg_untyped `{!LayoutAlg} st ot ot1 :
+  ot = (UntypedOp (ot_layout ot1)) →
+  use_op_alg st = Some ot1 →
+  use_op_alg (UntypedSynType st) = Some ot.
+Proof.
+  intros ->.
+  simpl. intros ->; simpl.
+  done.
+Qed.
+Lemma use_op_alg_untyped_inv `{!LayoutAlg} st ot :
+  use_op_alg (UntypedSynType st) = Some ot →
+  ∃ ot1, use_op_alg st = Some ot1 ∧ ot = (UntypedOp (ot_layout ot1)).
+Proof.
+  simpl.
+  rewrite bind_Some.
+  intros (ot1 & Hot1 & [=<-]).
+  eauto.
+Qed.
+
+Lemma use_op_alg_literal `{!LayoutAlg} ly ot :
+  ot = (UntypedOp ly) →
+  use_op_alg (LiteralSynType ly) = Some ot.
+Proof. intros ->. done. Qed.
+Lemma use_op_alg_literal_inv `{!LayoutAlg} ly ot :
+  use_op_alg (LiteralSynType ly) = Some ot → ot = (UntypedOp ly).
 Proof.
   rewrite /use_op_alg. intros [= <-]; done.
 Qed.
@@ -1594,7 +1641,7 @@ Lemma syn_type_has_layout_op_alg `{!LayoutAlg} st ly :
   syn_type_has_layout st ly →
   ∃ ot, use_op_alg st = Some ot ∧ ot_layout ot = ly.
 Proof.
-  induction st as [ it | | | | sn fields IH | | st IH len | st IH | ly' | en tag_it variant_list IH | un variant_list IH | ] using syn_type_strong_ind in ly |-*.
+  induction st as [ it | | | | sn fields IH | | st IH len | st IH | st IH | ly' | en tag_it variant_list IH | un variant_list IH | ] using syn_type_strong_ind in ly |-*.
   - intros ->%syn_type_has_layout_int_inv.
     exists (IntOp it). split; last done. done.
   - intros ->%syn_type_has_layout_bool_inv.
@@ -1612,7 +1659,12 @@ Proof.
     exists (UntypedOp (mk_array_layout ly' len)). split; last done.
     rewrite /use_op_alg. rewrite Ha. done.
   - intros Ha%syn_type_has_layout_unsafecell_inv. by apply IH.
-  - intros (<- & ? & ? & ?)%syn_type_has_layout_untyped_inv.
+  - intros Ha%syn_type_has_layout_untyped_inv.
+    apply IH in Ha as (ot & Hot & <-).
+    exists (UntypedOp (ot_layout ot)). simpl.
+    split; last done.
+    apply bind_Some. eexists. split; done.
+  - intros (<- & ? & ? & ?)%syn_type_has_layout_literal_inv.
     exists (UntypedOp ly). done.
   - intros Halg. exists (UntypedOp ly).
     split; last done.
@@ -1654,7 +1706,7 @@ Lemma use_op_alg_wf `{!LayoutAlg} st ot :
   use_op_alg st = Some ot →
   op_type_wf ot.
 Proof.
-  induction st as [ | | | | sn fields repr IH | | | | | en tag_it variants repr IH | un variants repr IH | ] in ot |-* using syn_type_strong_ind; rewrite /use_op_alg; simpl; fold use_op_alg; try naive_solver.
+  induction st as [ | | | | sn fields repr IH | | | | | | en tag_it variants repr IH | un variants repr IH | ] in ot |-* using syn_type_strong_ind; rewrite /use_op_alg; simpl; fold use_op_alg; try naive_solver.
   - intros (sl & Halg & Hfields)%bind_Some.
     apply bind_Some in Hfields as (ots & Hots & [= <-]). simpl.
     apply use_struct_layout_alg_inv in Halg as (field_lys & Halg & Hfields).
@@ -1678,6 +1730,7 @@ Proof.
   - intros (ly & Halg & [= <-])%bind_Some. done.
   - intros (ly & Halg & [= <-])%bind_Some. done.
   - intros (ly & Halg & [= <-])%bind_Some. done.
+  - intros (ly & Halg & [= <-])%bind_Some. done.
 Qed.
 
 
@@ -1685,6 +1738,7 @@ Qed.
 
 (* We can convert a value at [st1] into a value at [st2]:
    either if both values have the same syntype, or if the second syntype just needs to support untyped operations ([UntypedSynType]) and has the same layout as [st1]. *)
+   (*
 Definition syn_type_compat `{!LayoutAlg} (st1 st2 : syn_type) : Prop :=
   st1 = st2 ∨ ∃ ly1, syn_type_has_layout st1 ly1 ∧ st2 = UntypedSynType ly1.
 
@@ -1699,6 +1753,7 @@ Qed.
 
 Global Instance syn_type_comapt_refl `{!LayoutAlg}: Reflexive syn_type_compat.
 Proof. by left. Qed.
+*)
 
 Definition syn_type_size_eq `{!LayoutAlg} st1 st2 :=
   ∀ ly1, syn_type_has_layout st1 ly1 → ∃ ly2, syn_type_has_layout st2 ly2 ∧ ly_size ly1 = ly_size ly2.
@@ -1708,15 +1763,15 @@ Proof.
   intros ly1 Hst. exists ly1. done.
 Qed.
 
-Lemma syn_type_compat_size_eq `{!LayoutAlg} st1 st2 :
-  syn_type_compat st1 st2 → syn_type_size_eq st1 st2.
-Proof.
-  intros [-> | (ly1 & Hst & ->)]; first apply syn_type_size_eq_refl.
-  intros ? Halg1.
-  specialize (syn_type_has_layout_inj _ _ _ Hst Halg1) as <-.
-  exists ly1. split; last done.
-  by eapply syn_type_has_layout_make_untyped.
-Qed.
+(*Lemma syn_type_compat_size_eq `{!LayoutAlg} st1 st2 :*)
+  (*syn_type_compat st1 st2 → syn_type_size_eq st1 st2.*)
+(*Proof.*)
+  (*intros [-> | (ly1 & Hst & ->)]; first apply syn_type_size_eq_refl.*)
+  (*intros ? Halg1.*)
+  (*specialize (syn_type_has_layout_inj _ _ _ Hst Halg1) as <-.*)
+  (*exists ly1. split; last done.*)
+  (*by eapply syn_type_has_layout_make_untyped.*)
+(*Qed.*)
 
 Lemma syn_type_size_eq_use `{!LayoutAlg} st1 st2 ly1 ly2 :
   syn_type_size_eq st1 st2 →

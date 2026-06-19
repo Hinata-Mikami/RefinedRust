@@ -57,11 +57,11 @@ Definition type_of_alloc_realloc `{RRGS : !refinedrustGS Σ} :=
     ⌜layout_wf (Layout (Z.to_nat new_size) (Z.to_nat align_log2))⌝ ∗
     (*⌜ly_align_in_bounds (Layout (Z.to_nat new_size) (Z.to_nat align_log2))⌝ ∗*)
     (*⌜layout_wf (Layout (Z.to_nat old_size) (Z.to_nat align_log2))⌝ ∗*)
-    ptr_old ◁ₗ[π, Owned ] PlaceIn v @ (◁ value_t (UntypedSynType (Layout (Z.to_nat old_size) (Z.to_nat align_log2)))) ∗
+    ptr_old ◁ₗ[π, Owned ] PlaceIn v @ (◁ value_t false (LiteralSynType (Layout (Z.to_nat old_size) (Z.to_nat align_log2)))) ∗
     freeable_nz ptr_old (Z.to_nat old_size) 1 HeapAlloc) →
   ∃ (ptr_new, v') : (loc * val), ptr_new @ alias_ptr_t; λ π,
     freeable_nz ptr_new (Z.to_nat new_size) 1 HeapAlloc ∗
-    ptr_new ◁ₗ[π, Owned] #(v ++ v' : val) @ (◁ value_t (UntypedSynType (Layout (Z.to_nat new_size) (Z.to_nat align_log2)))) ∗
+    ptr_new ◁ₗ[π, Owned] #(v ++ v' : val) @ (◁ value_t false (LiteralSynType (Layout (Z.to_nat new_size) (Z.to_nat align_log2)))) ∗
     ⌜v' `has_layout_val` (Layout (Z.to_nat (new_size - old_size)) (Z.to_nat align_log2))⌝
 .
 #[global] Typeclasses Opaque Z.divide.
@@ -84,8 +84,8 @@ Proof.
   iRename select (l_new ◁ₗ[_, _] _ @ _)%I into "Hnew".
   iPoseProof (ltype_own_has_layout with "Hold") as "(%ly_old & %Halg_old & %)".
   iPoseProof (ltype_own_has_layout with "Hnew") as "(%ly_new & %Halg_new & %)".
-  simp_ltypes in Halg_old. apply syn_type_has_layout_untyped_inv in Halg_old as (-> & ? & ?).
-  simp_ltypes in Halg_new. apply syn_type_has_layout_untyped_inv in Halg_new as (-> & _ & _).
+  simp_ltypes in Halg_old. apply syn_type_has_layout_literal_inv in Halg_old as (-> & ? & ?).
+  simp_ltypes in Halg_new. apply syn_type_has_layout_literal_inv in Halg_new as (-> & _ & _).
 
   iApply typed_annot_stmt_skip.
   liRStepUntil (typed_call).
@@ -94,94 +94,39 @@ Proof.
 
   (* The copy_nonoverlapping does a bytewise copy, so we need to convert it into an "array" of bytes *)
   iApply fupd_typed_call.
-  iMod (ofty_uninit_to_value with "Hnew") as "(%vn & Hnew)"; first done.
+  iMod (ofty_uninit_to_untyped_value with "Hnew") as "(%vn & Hnew)"; first done.
   iMod (ofty_value_has_length with "Hnew") as "(%Hlen & Hnew)"; [done | | ].
-  { eapply syn_type_has_layout_untyped; [done.. | rewrite /ly_size/=; lia | ].
+  { eapply syn_type_has_layout_literal; [done.. | rewrite /ly_size/=; lia | ].
     open_cache. done. }
-  iPoseProof (ofty_value_untyped_to_bytes with "Hnew") as "Hnew".
-  iMod (ofty_value_untyped_split_app_array _ _ _ _ (ly_size new_ly - ly_size old_ly) (ly_size old_ly)  with "Hnew") as "(Hnew1 & Hnew2)"; first done.
+  iPoseProof (ofty_value_untyped_to_byte_array with "Hnew") as "Hnew".
+  iMod (ofty_value_array_split _ _ _ _ (take (ly_size old_ly) vn) (drop (ly_size old_ly) vn) _ (ly_size old_ly) (ly_size new_ly - ly_size old_ly)  with "Hnew") as "(Hnew1 & Hnew2)"; first done.
+  { rewrite take_drop//. }
   { simpl. lia. }
-  { rewrite /layout_wf/ly_align/it_layout. simpl. apply Z.divide_1_l. }
-  simpl. rewrite !Nat.add_0_r.
+  { by apply syn_type_has_layout_int. }
+  { rewrite length_take. simpl.
+    rewrite /bytes_per_int/it_byte_size_log/=.
+    simpl. rewrite Hlen. subst new_ly. simpl. lia. }
+  { rewrite length_drop. simpl.
+    rewrite /bytes_per_int/it_byte_size_log/=.
+    simpl. rewrite Hlen. subst new_ly. simpl. lia. }
+  iModIntro.
+  iPoseProof (ofty_value_untyped_to_byte_array with "Hold") as "Hold".
+  rep <-! liRStep; liShow.
+  (* merge the two array chunks again and reshape the layout *)
+  iRename select (l_new ◁ₗ[_, _] #v_old @ _)%I into "Hnew".
+  iApply fupd_typed_val_expr.
+  iMod (ofty_value_array_merge _ _ _ _ _ _ _ _ _ _ _  with "Hnew Hnew2") as "Hnew"; [done | done | | ].
+  { solve_layout_alg. }
+  iPoseProof (ofty_value_untyped_to_literal with "Hnew") as "Hnew".
+  { solve_layout_alg. }
+  iPoseProof (ofty_value_untyped_update_layout new_ly with "Hnew") as "Hnew"; [sidecond_hammer.. | ].
   iModIntro.
   rep <-! liRStep; liShow.
 
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  { rewrite /has_layout_loc/layout_wf/aligned_to /ly_align/=. apply Z.divide_1_l. }
   { rewrite /has_layout_val length_drop/=. rewrite Hlen/new_ly/ly_size/=.  lia.  }
 Qed.
-
-(* Drop functions receive a pointer to the thing to drop, just like drop_in_place *)
-
-(* Drop for box *)
-Program Definition drop_box_T `{!LayoutAlg}  (T_ly : layout) (drop_T_loc : loc) : function := {|
- f_args := [("x", void*)];
- f_code :=
-  <["_bb0" :=
-   local_live{UnitSynType} "__0";
-    (* TODO: have a path for ZST *)
-   (* drop T in-place, pass a pointer to the T *)
-   expr: Call drop_T_loc [&raw{Mut} (!{PtrOp} (!{PtrOp} "x"))];
-   (* now free the memory *)
-   (* TODO: use alloc_dealloc here? *)
-   (*Free (use{ PtrOp } (!{PtrOp} "x"));*)
-   (* return *)
-   "__0" <-{ UntypedOp (unit_sl) } zst_val;
-   return (move{ UntypedOp (unit_sl) } ("__0"))
-  ]>%E $
-  ∅;
- f_init := "_bb0";
-|}.
-Next Obligation. solve_fn_vars_nodup. Qed.
-
-
-(* Drop for integer types *)
-Program Definition drop_int `{!LayoutAlg} (it : int_type) : function := {|
-  f_args := [("x", void* : layout)];
- f_code :=
-  <["_bb0" :=
-   (* do nothing *)
-   local_live{UnitSynType} "__0";
-   "__0" <-{ UntypedOp (unit_sl) } zst_val;
-   return (move{ UntypedOp (unit_sl) } ("__0"))
-  ]>%E $
-  ∅;
- f_init := "_bb0";
-|}.
-Next Obligation. solve_fn_vars_nodup. Qed.
-
-(* Drop for mutable references *)
-Program Definition drop_mutref `{!LayoutAlg} : function := {|
- f_args := [("x", void*)];
- f_code :=
-  <["_bb0" :=
-   local_live{UnitSynType} "__0";
-   (* do nothing, but on the ghost level, do a ghost drop *)
-   "__0" <-{ UntypedOp (unit_sl) } zst_val;
-   return (move{ UntypedOp (unit_sl) } ("__0"))
-  ]>%E $
-  ∅;
- f_init := "_bb0";
-|}.
-Next Obligation. solve_fn_vars_nodup. Qed.
-
-(* Drop for shared references *)
-Program Definition drop_shrref `{!LayoutAlg} : function := {|
- f_args := [("x", void*)];
- f_code :=
-  <["_bb0" :=
-   local_live{UnitSynType} "__0";
-   (* do nothing *)
-   "__0" <-{ UntypedOp (unit_sl) } zst_val;
-   return (move{ UntypedOp (unit_sl) } ("__0"))
-  ]>%E $
-  ∅;
- f_init := "_bb0";
-|}.
-Next Obligation. solve_fn_vars_nodup. Qed.
-
-
 
 (** ** Array allocator shims *)
 
@@ -310,14 +255,14 @@ Definition type_of_realloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st :
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (old_size, new_size, l, v) : (Z * Z * loc * val), (λ ϝ, []);
     old_size :@: int USize, l :@: alias_ptr_t, new_size :@: int USize; λ π,
     freeable_nz l (size_of_array_in_bytes T_st (Z.to_nat old_size)) 1 HeapAlloc ∗
-    l ◁ₗ[π, Owned ] #v @ (◁ value_t (UntypedSynType (mk_array_layout (use_layout_alg' T_st) (Z.to_nat old_size)))) ∗
+    l ◁ₗ[π, Owned ] #v @ (◁ value_t false (ArraySynType T_st (Z.to_nat old_size))) ∗
     ⌜(old_size ≤ new_size)%Z⌝ ∗
     ⌜Z.of_nat (size_of_array_in_bytes T_st (Z.to_nat new_size)) ∈ ISize⌝ ∗
     ⌜(old_size > 0)%Z⌝ ∗
     ⌜(size_of_st T_st > 0)%Z⌝) →
   ∃ (l', v') : (loc * val), l' @ alias_ptr_t; λ π,
-    l' ◁ₗ[π, Owned ] #(v ++ v' : val) @ (◁ (value_t (UntypedSynType (mk_array_layout (use_layout_alg' T_st) (Z.to_nat new_size))))) ∗
-    v' ◁ᵥ{π, MetaNone} .@ uninit (UntypedSynType (mk_array_layout (use_layout_alg' T_st) (Z.to_nat (new_size - old_size)))) ∗
+    l' ◁ₗ[π, Owned ] #(v ++ v' : val) @ (◁ (value_t false (ArraySynType T_st (Z.to_nat new_size)))) ∗
+    v' ◁ᵥ{π, MetaNone} .@ uninit (ArraySynType T_st (Z.to_nat (new_size - old_size))) ∗
       freeable_nz l' ((size_of_array_in_bytes T_st (Z.to_nat new_size))) 1 HeapAlloc.
 
 Lemma realloc_array_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) (mem_align_log_of_T_loc mem_size_of_T_loc alloc_realloc_loc : loc) :
@@ -346,8 +291,13 @@ Proof.
   init_lfts ∅.
 
   rep <-! liRStep; liShow.
+  iRename select (l ◁ₗ[_, _] #v @ _)%I into "Hold".
+  iPoseProof (ofty_value_untyped_to_literal with "Hold") as "Hold".
+  { solve_layout_alg. }
 
-  iAssert (x'0 ◁ᵥ{π, MetaNone} .@ uninit (UntypedSynType (mk_array_layout T_st_ly (Z.to_nat (new_size - old_size)))))%I as "Ha".
+  rep <-! liRStep; liShow.
+
+  iAssert (x'0 ◁ᵥ{π, MetaNone} .@ uninit (ArraySynType (st_of T_ty MetaNone) (Z.to_nat (new_size - old_size))))%I as "Ha".
   { rewrite uninit_own_spec. iR. iExists _.
     { iSplitR.
       { iPureIntro. solve_layout_alg. }
@@ -357,12 +307,15 @@ Proof.
       solve_goal.
    }
   }
-  repeat liRStep; liShow.
+  iRename select (x' ◁ₗ[_, _] _ @ _)%I into "Hnew".
+  iPoseProof (ofty_value_untyped_from_literal (ArraySynType (st_of T_ty MetaNone) (Z.to_nat new_size)) with "Hnew") as "Hnew".
+  { solve_layout_alg. }
+  rep liRStep; liShow.
+
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   all: unfold size_of_array_in_bytes in *; simplify_layout_assum.
-  all: try open_jcache; sidecond_hammer.
-  all: rewrite Nat.mul_comm; apply array_layout_wf; sidecond_hook.
+  all: rewrite Nat.mul_comm; (try done); apply array_layout_wf; sidecond_hook.
 Qed.
 
 
@@ -397,7 +350,7 @@ Definition type_of_dealloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st :
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (size, l) : (Z * loc), (λ ϝ, []);
     size :@: int USize, l :@: alias_ptr_t; λ π,
     freeable_nz l (size_of_array_in_bytes T_st (Z.to_nat size)) 1 HeapAlloc ∗
-    l ◁ₗ[π, Owned ] .@ (◁ uninit (UntypedSynType (mk_array_layout (use_layout_alg' T_st) (Z.to_nat size)))) ∗
+    l ◁ₗ[π, Owned ] .@ (◁ uninit (ArraySynType T_st (Z.to_nat size))) ∗
     ⌜(size > 0)%Z⌝ ∗
     ⌜Z.of_nat (size_of_array_in_bytes T_st (Z.to_nat size)) ∈ ISize⌝ ∗
     ⌜(size_of_st T_st > 0)%Z⌝) →

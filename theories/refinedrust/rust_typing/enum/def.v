@@ -102,7 +102,7 @@ Section union.
         ⌜layout_of_union_member variant ul = Some ly⌝ ∗
         ⌜syn_type_has_layout (ty_syn_type ty MetaNone) ly⌝ ∗
         take ly.(ly_size) v ◁ᵥ{π, MetaNone} r @ ty ∗
-        drop ly.(ly_size) v ◁ᵥ{π, MetaNone} () @ uninit (UntypedSynType $ active_union_rest_ly ul ly))%I;
+        drop ly.(ly_size) v ◁ᵥ{π, MetaNone} () @ uninit (LiteralSynType $ active_union_rest_ly ul ly))%I;
     ty_syn_type _ := uls;
     _ty_has_op_type ot mt :=
       (* only untyped reads are allowed *)
@@ -115,7 +115,7 @@ Section union.
         ⌜layout_of_union_member variant ul = Some ly⌝ ∗
         ⌜l `has_layout_loc` ul⌝ ∗
         l ◁ₗ{π, MetaNone, κ} r @ ty ∗
-        (l +ₗ ly.(ly_size)) ◁ₗ{π, MetaNone, κ} () @ uninit (UntypedSynType $ active_union_rest_ly ul ly))%I;
+        (l +ₗ ly.(ly_size)) ◁ₗ{π, MetaNone, κ} () @ uninit (LiteralSynType $ active_union_rest_ly ul ly))%I;
     _ty_ghost_drop π r :=
       ty_ghost_drop ty π r;
     _ty_lfts := ty_lfts ty;
@@ -128,7 +128,7 @@ Section union.
     iSplitR. { iPureIntro. by apply use_union_layout_alg_Some_inv. }
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv0"; first done.
     rewrite uninit_own_spec. iDestruct "Hvr" as "(_ & % & %Halg1 & %Hv1)".
-    iPureIntro. apply syn_type_has_layout_untyped_inv in Halg1 as (-> & _ & _).
+    iPureIntro. apply syn_type_has_layout_literal_inv in Halg1 as (-> & _ & _).
     move: Hv0 Hv1. apply ly_size_layout_of_union_member in Hly.
     rewrite /has_layout_val/active_union_rest_ly.
     rewrite length_take length_drop.
@@ -158,7 +158,7 @@ Section union.
         ⌜use_union_layout_alg uls = Some ul⌝ ∗
         ⌜layout_of_union_member variant ul = Some ly'⌝ ∗
         ⌜syn_type_has_layout (ty_syn_type ty MetaNone) ly'⌝ ∗
-        ∃ v : val, l ↦ v ∗ take (ly_size ly') v ◁ᵥ{ π, MetaNone} r @ ty ∗ drop (ly_size ly') v ◁ᵥ{ π, MetaNone} .@ uninit (UntypedSynType (active_union_rest_ly ul ly')))%I).
+        ∃ v : val, l ↦ v ∗ take (ly_size ly') v ◁ᵥ{ π, MetaNone} r @ ty ∗ drop (ly_size ly') v ◁ᵥ{ π, MetaNone} .@ uninit (LiteralSynType (active_union_rest_ly ul ly')))%I).
     iPoseProof (bor_iff _ _ bor_contents with "[] Hb") as "Hb".
     { iNext. iModIntro. rewrite /bor_contents. iSplit.
       - iIntros "(%v & Hl & %ul & %ly' & ? & ? & ? & ? & ?)"; eauto with iFrame.
@@ -183,7 +183,7 @@ Section union.
     assert (ul' = ul) as -> by naive_solver.
 
     (* now split the values in the borrow *)
-    iPoseProof (bor_iff _ _ ((∃ v1 : val, l ↦ v1 ∗ v1 ◁ᵥ{π, MetaNone} r @ ty) ∗ (∃ v2 : val, (l +ₗ ly_size ly') ↦ v2 ∗ v2 ◁ᵥ{ π, MetaNone} .@ uninit (UntypedSynType (active_union_rest_ly ul ly')))) with "[] Hb") as "Hb".
+    iPoseProof (bor_iff _ _ ((∃ v1 : val, l ↦ v1 ∗ v1 ◁ᵥ{π, MetaNone} r @ ty) ∗ (∃ v2 : val, (l +ₗ ly_size ly') ↦ v2 ∗ v2 ◁ᵥ{ π, MetaNone} .@ uninit (LiteralSynType (active_union_rest_ly ul ly')))) with "[] Hb") as "Hb".
     { iNext. iModIntro. iSplit.
       - iIntros "(%v & Hl & Ha & Hb)".
         rewrite -{1}(take_drop (ly_size ly') v).
@@ -192,7 +192,7 @@ Section union.
         rewrite /has_layout_val length_take in Hlyv.
         iSplitL "Hl1 Ha". { iExists _. iFrame. }
         iPoseProof (ty_has_layout with "Hb") as "(%ly2 & %Hst2 & %Hlyv2)".
-        apply syn_type_has_layout_untyped_inv in Hst2 as (-> & ? & ? & ?).
+        apply syn_type_has_layout_literal_inv in Hst2 as (-> & ? & ? & ?).
         move: Hlyv2. rewrite /has_layout_val length_drop /active_union_rest_ly {2}/ly_size/= => Hlyv2.
         rewrite length_take. rewrite Nat.min_l; last lia.
         eauto with iFrame.
@@ -200,7 +200,7 @@ Section union.
         iExists (v1 ++ v2).
         iPoseProof (ty_own_val_has_layout with "Hv1") as "%Hlyv"; first done.
         iPoseProof (ty_has_layout with "Hv2") as "(%ly2 & %Hst2 & %Hlyv2)".
-        apply syn_type_has_layout_untyped_inv in Hst2 as (-> & ? & ? & ?).
+        apply syn_type_has_layout_literal_inv in Hst2 as (-> & ? & ? & ?).
         move: Hlyv2. rewrite /has_layout_val /active_union_rest_ly {1}/ly_size/= => Hlyv2.
         rewrite /has_layout_val in Hlyv.
         rewrite heap_pointsto_app. rewrite Hlyv. iFrame.
@@ -220,7 +220,7 @@ Section union.
 
     iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok12] [] [] [] Hb2") as "Hb2"; first done.
     { simpl. rewrite right_id. iFrame. }
-    { simpl. iPureIntro. apply syn_type_has_layout_untyped; first done.
+    { simpl. iPureIntro. apply syn_type_has_layout_literal; first done.
       - rewrite /active_union_rest_ly/layout_wf/ly_align/=. apply Z.divide_1_l.
       - rewrite /active_union_rest_ly {1}/ly_size. apply use_union_layout_alg_size in Hul. lia.
       - rewrite /ly_align_in_bounds/ly_align/active_union_rest_ly/ly_align_log/=.
@@ -594,7 +594,7 @@ Section ne.
         ⌜syn_type_has_layout (st_of ty MetaNone) ly⌝ ∗
         (∃ r' : rt, place_rfn_interp_owned r r' ∗
           take (ly_size ly) v ◁ᵥ{π, MetaNone} r' @ ty) ∗
-        drop (ly_size ly) v ◁ᵥ{π, MetaNone} .@ uninit (UntypedSynType (active_union_rest_ly ul ly))))%I.
+        drop (ly_size ly) v ◁ᵥ{π, MetaNone} .@ uninit (LiteralSynType (active_union_rest_ly ul ly))))%I.
   Proof.
     rewrite /struct_own_el_val{1}/ty_own_val/=.
     iSplit.
@@ -614,7 +614,7 @@ Section ne.
       (∃ r' : rt, place_rfn_interp_shared r r' ∗
         (l +ₗ offset_of_idx fields i) ◁ₗ{π, MetaNone, κ} r'@ty) ∗
       (l +ₗ offset_of_idx fields i +ₗ ly_size ly0) ◁ₗ{π, MetaNone, κ} .@
-      uninit (UntypedSynType (active_union_rest_ly ul ly0))))%I.
+      uninit (LiteralSynType (active_union_rest_ly ul ly0))))%I.
   Proof.
     rewrite /struct_own_el_shr{1}/ty_shr/=.
     iSplit.

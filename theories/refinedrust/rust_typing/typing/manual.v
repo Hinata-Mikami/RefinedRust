@@ -179,13 +179,12 @@ Section updateable_rules.
   Qed.
 
   (* Extract an untyped value *)
-  Lemma updateable_extract_value l :
+  Lemma updateable_extract_untyped_value l :
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
       ∃ ty r', ⌜bk = Owned⌝ ∗ ⌜lt = ◁ty⌝ ∗ ⌜r = #r'⌝ ∗
-      li_tactic (compute_layout_goal (ty.(ty_syn_type) MetaNone)) (λ ly,
       (∀ v3, v3 ◁ᵥ{π, MetaNone} r' @ ty -∗
-        l ◁ₗ[π, Owned] #v3 @ (◁ value_t (UntypedSynType ly)) -∗
-        updateable_core updateable_E updateable_L)))
+        l ◁ₗ[π, Owned] #v3 @ (◁ value_t false (ty.(ty_syn_type) MetaNone)) -∗
+        updateable_core updateable_E updateable_L))
     ⊢ P.
   Proof.
     iIntros "HT".
@@ -194,8 +193,6 @@ Section updateable_rules.
     rewrite /FindLoc /find_in_context.
     iDestruct "HT" as ([rt [[[lt r] bk] π]]) "(Ha & Hb)"; simpl.
     iDestruct "Hb" as "(%ty & %r' & -> & -> & -> & HT)".
-    rewrite /compute_layout_goal. simpl.
-    iDestruct ("HT") as "(%ly & %Hst & HT)".
     iMod (ofty_own_split_value_untyped with "Ha") as "Ha"; [done.. | ].
     iDestruct "Ha" as "(%v & Hv & Hl)".
     iPoseProof ("HT" with "Hv Hl") as "HT".
@@ -207,7 +204,7 @@ Section updateable_rules.
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
       ∃ ty r', ⌜bk = Owned⌝ ∗ ⌜lt = ◁ty⌝ ∗ ⌜r = #r'⌝ ∗
       (∀ v3, v3 ◁ᵥ{π, MetaNone} r' @ ty -∗
-        l ◁ₗ[π, Owned] #v3 @ (◁ value_t (st_of ty MetaNone)) -∗
+        l ◁ₗ[π, Owned] #v3 @ (◁ value_t true (st_of ty MetaNone)) -∗
         updateable_core updateable_E updateable_L))
     ⊢ P.
   Proof.
@@ -217,21 +214,18 @@ Section updateable_rules.
     rewrite /FindLoc /find_in_context.
     iDestruct "HT" as ([rt [[[lt r] bk] π]]) "(Ha & Hb)"; simpl.
     iDestruct "Hb" as "(%ty & %r' & -> & -> & -> & HT)".
-    (*rewrite /compute_layout_goal. simpl.*)
-    iPoseProof (ltype_own_has_layout with "Ha") as "(%ly & %Hst & %Hly)".
-    iMod (ofty_own_split_value_untyped with "Ha") as "Ha"; [done.. | ].
+    iMod (ofty_own_split_value_typed with "Ha") as "Ha"; [done.. | ].
     iDestruct "Ha" as "(%v & Hv & Hl)".
-    iPoseProof (ofty_value_untyped_make_typed with "Hl") as "Hl"; first done.
     iPoseProof ("HT" with "Hv Hl") as "HT".
     iModIntro. iExists _. iFrame.
   Qed.
 
   (** Merge a value *)
-  Lemma updateable_merge_value l :
+  Lemma updateable_merge_typed_value l :
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
       ∃ v st,
         ⌜bk = Owned⌝ ∗
-        owned_subltype_step π updateable_E updateable_L false l r #v lt (◁ value_t st)
+        owned_subltype_step π updateable_E updateable_L false l r #v lt (◁ value_t true st)
         (λ L2 R2,
         find_in_context (FindVal v) (λ '(existT rt (ty', r', π', m')),
         ⌜π' = π⌝ ∗ ⌜m' = MetaNone⌝ ∗
@@ -251,11 +245,9 @@ Section updateable_rules.
     iMod ("HT" with "[] [] [] CTX HE HL Ha") as "(%L2 & %R2 & >(Hl & HR) & HL & HT)"; [done.. | ].
     iDestruct "HT" as ([rt' [[[ty' r'] π'] m']]) "(Hv & -> & -> & % & %Hot & %Heq & HT)" => /=.
     iPoseProof (ltype_own_has_layout with "Hl") as "#(%ly & %Hst &_)".
-    iPoseProof (ofty_own_merge_value with "Hv Hl") as "Ha".
-    { subst st. destruct (ty_syn_type ty'); try done.
-      simp_ltypes in Hst. simpl in Hst.
-      specialize (syn_type_has_layout_untyped_inv _ _ Hst) as (-> & _).
-      done. }
+    subst st.
+    iPoseProof (ofty_own_merge_value_typed with "Hv Hl") as "Ha".
+    { done. }
     rewrite /introduce_with_hooks.
     iMod ("HT" with "[] CTX HE HL [$Ha $HR]") as "(%L3 & HL & HT)"; first done.
     by iFrame.

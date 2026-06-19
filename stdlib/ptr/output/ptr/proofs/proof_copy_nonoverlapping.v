@@ -24,7 +24,7 @@ Proof.
   iSelect (src ◁ₗ[_, _] _ @ _)%I (fun H => iRename H into "Hs").
   iSelect (dst ◁ₗ[_, _] _ @ _)%I (fun H => iRename H into "Ht").
   iApply fupd_typed_stmt.
-  iMod (ofty_uninit_to_value with "Ht") as "(%v_t & Ht)"; first done.
+  iMod (ofty_uninit_to_untyped_value with "Ht") as "(%v_t & Ht)"; first done.
   iMod (ofty_value_has_length with "Hs") as "(%Hlen_s & Hs)"; first done.
   { sidecond_hook. }
   iMod (ofty_value_has_length with "Ht") as "(%Hlen_t & Ht)"; first done.
@@ -33,9 +33,9 @@ Proof.
 
   (* turn it into arrays *)
   iPoseProof (ofty_value_untyped_to_array with "Hs") as "Hs".
-  { simplify_layout_goal. by eapply syn_type_has_layout_make_untyped. }
+  { sidecond_hook. }
   iPoseProof (ofty_value_untyped_to_array with "Ht") as "Ht".
-  { simplify_layout_goal. by eapply syn_type_has_layout_make_untyped. }
+  { sidecond_hook. }
   iModIntro.
 
   set (loop_inv := (λ (_ : ()),
@@ -45,8 +45,8 @@ Proof.
     local_count ◁ₗ[π, Owned] #(Z.of_nat i) @ (◁ int USize) ∗
     arg_src ◁ₗ[π, Owned] #src @ (◁ alias_ptr_t) ∗
     arg_dst ◁ₗ[π, Owned] #dst @ (◁ alias_ptr_t) ∗
-    src ◁ₗ[ π, Owned] # (fmap (M:=list) PlaceIn (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val)) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly))) ∗
-    dst ◁ₗ[π, Owned] #(fmap (M:=list) PlaceIn (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t))) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly)))))%I).
+    src ◁ₗ[ π, Owned] # (fmap (M:=list) PlaceIn (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val)) @ (◁ array_t (Z.to_nat size) (value_t false (st_of T_ty MetaNone))) ∗
+    dst ◁ₗ[π, Owned] #(fmap (M:=list) PlaceIn (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t))) @ (◁ array_t (Z.to_nat size) (value_t false (st_of T_ty MetaNone)))))%I).
   iApply (typed_goto_acc _ _ _ _ _ loop_inv).
   { unfold_code_marker_and_compute_map_lookup. }
   unfold loop_inv.

@@ -15,7 +15,7 @@ Proof.
 
   rep <-! liRStep.
   (* Manual step to extract the array value before the call to realloc *)
-  apply_update (updateable_extract_value l).
+  apply_update (updateable_extract_untyped_value l).
   repeat liRStep.
 
   all: print_remaining_goal.

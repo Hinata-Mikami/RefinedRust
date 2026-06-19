@@ -36,9 +36,9 @@ Proof.
   { rewrite /ty_own_val /= alias_ptr_own_val_unfold.
     iR. iPureIntro. by apply val_to_of_loc. }
   set (ly := (Layout (Z.to_nat size) (Z.to_nat align_log2))).
-  iAssert (ld ◁ₗ[π, Owned ] .@ ◁ (uninit (UntypedSynType ly)))%I with "[Hl]" as "Hl'".
+  iAssert (ld ◁ₗ[π, Owned ] .@ ◁ (uninit (LiteralSynType ly)))%I with "[Hl]" as "Hl'".
   { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    assert (syn_type_has_layout (UntypedSynType ly) ly) as Hly'.
+    assert (syn_type_has_layout (LiteralSynType ly) ly) as Hly'.
     { solve_layout_alg. }
     iExists ly. simpl. do 3 iR.
     iSplitR. { rewrite length_replicate /ly /ly_size /=. done. }

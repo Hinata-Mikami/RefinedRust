@@ -188,6 +188,67 @@ Proof.
       try rewrite !mem_cast_UntypedOp; by left.
 Qed.
 
+Definition array_op_merge `{!LayoutAlg} (st : syn_type) (n1 n2 : nat)
+    (ot1 ot2 ot : op_type) : Prop :=
+  ∃ ly,
+    syn_type_has_layout st ly ∧
+    ot1 = UntypedOp (mk_array_layout ly n1) ∧
+    ot2 = UntypedOp (mk_array_layout ly n2) ∧
+    ot = UntypedOp (mk_array_layout ly (n1 + n2)).
+
+Lemma array_op_merge_untyped `{!LayoutAlg} st n1 n2 ly :
+  syn_type_has_layout st ly →
+  array_op_merge st n1 n2
+    (UntypedOp (mk_array_layout ly n1))
+    (UntypedOp (mk_array_layout ly n2))
+    (UntypedOp (mk_array_layout ly (n1 + n2))).
+Proof.
+  intros Hst. exists ly. naive_solver.
+Qed.
+
+Lemma is_memcast_val_array_op_merge `{!LayoutAlg} st n1 n2 ot1 ot2 ot v1 v2 v1' v2' :
+  array_op_merge st n1 n2 ot1 ot2 ot →
+  is_memcast_val v1 ot1 v1' →
+  is_memcast_val v2 ot2 v2' →
+  is_memcast_val (v1 ++ v2) ot (v1' ++ v2').
+Proof.
+  intros (ly & _ & -> & -> & ->) H1 H2.
+  eapply is_memcast_val_untyped_app; [| done..].
+  rewrite !ly_size_mk_array_layout. lia.
+Qed.
+
+Definition array_op_split `{!LayoutAlg} (st : syn_type) (n1 n2 : nat)
+    (ot ot1 ot2 : op_type) : Prop :=
+  ∃ ly,
+    syn_type_has_layout st ly ∧
+    ot = UntypedOp (mk_array_layout ly (n1 + n2)) ∧
+    ot1 = UntypedOp (mk_array_layout ly n1) ∧
+    ot2 = UntypedOp (mk_array_layout ly n2).
+
+Lemma array_op_split_untyped `{!LayoutAlg} st n1 n2 ly :
+  syn_type_has_layout st ly →
+  array_op_split st n1 n2
+    (UntypedOp (mk_array_layout ly (n1 + n2)))
+    (UntypedOp (mk_array_layout ly n1))
+    (UntypedOp (mk_array_layout ly n2)).
+Proof.
+  intros Hst. exists ly. naive_solver.
+Qed.
+
+Lemma is_memcast_val_array_op_split `{!LayoutAlg} st n1 n2 ot ot1 ot2 v1 v2 v1' v2' :
+  array_op_split st n1 n2 ot ot1 ot2 →
+  length v1 = ly_size (ot_layout ot1) →
+  length v1' = ly_size (ot_layout ot1) →
+  is_memcast_val (v1 ++ v2) ot (v1' ++ v2') →
+  is_memcast_val v1 ot1 v1' ∧ is_memcast_val v2 ot2 v2'.
+Proof.
+  intros (ly & _ & -> & -> & ->) Hv1 Hv1' Hmc.
+  apply is_memcast_val_untyped_inv in Hmc.
+  rewrite ly_size_mk_array_layout in Hv1, Hv1'.
+  apply app_inj_1 in Hmc as [-> ->]; last lia.
+  split; left; done.
+Qed.
+
 Lemma mem_cast_l2v_id l st :
   l.(loc_a) ∈ USize →
   mem_cast (l2v l) PtrOp st = l2v l.

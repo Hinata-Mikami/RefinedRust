@@ -17,7 +17,7 @@ Section unfold.
     ∃ ul ly v1 v2, ⌜v = v1 ++ v2⌝ ∗
       ⌜union_layout_spec_has_layout uls ul⌝ ∗
       ⌜syn_type_has_layout (ty_syn_type ty m) ly⌝ ∗
-      v1 ◁ᵥ{π, m} r @ ty ∗ v2 ◁ᵥ{π, m} () @ uninit (UntypedSynType (active_union_rest_ly ul ly)).
+      v1 ◁ᵥ{π, m} r @ ty ∗ v2 ◁ᵥ{π, m} () @ uninit (LiteralSynType (active_union_rest_ly ul ly)).
   Proof.
     iIntros "Hv".
     rewrite {1}/ty_own_val/=.
@@ -31,7 +31,7 @@ Section unfold.
     syn_type_has_layout (ty_syn_type ty m) ly →
     v ◁ᵥ{π, m} r @ active_union_t ty variant uls -∗
     ∃ v1 v2, ⌜v = v1 ++ v2⌝ ∗
-      v1 ◁ᵥ{π, m} r @ ty ∗ v2 ◁ᵥ{π, m} () @ uninit (UntypedSynType (active_union_rest_ly ul ly)).
+      v1 ◁ᵥ{π, m} r @ ty ∗ v2 ◁ᵥ{π, m} () @ uninit (LiteralSynType (active_union_rest_ly ul ly)).
   Proof.
     iIntros (Hul Hst) "Hv".
     rewrite {1}/ty_own_val/=.

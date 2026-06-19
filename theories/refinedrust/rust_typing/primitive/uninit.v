@@ -133,9 +133,7 @@ Section deinit.
     { done. }
     rewrite Hst.
     iApply owned_type_incl_uninit'.
-    - simpl.
-      intros ?(-> & _)%syn_type_has_layout_untyped_inv.
-      eauto.
+    - simpl. apply syn_type_size_eq_refl.
     - done.
   Qed.
   Definition owned_subltype_step_ofty_uninit_eq_inst := [instance owned_subltype_step_ofty_uninit_eq].
@@ -177,7 +175,8 @@ Section deinit.
     { done. }
     iApply owned_type_incl_uninit'; last done.
     simpl.
-    intros ?(-> & _)%syn_type_has_layout_untyped_inv.
+    intros ly' ?.
+    assert (ly' = ly1) as -> by by eapply syn_type_has_layout_inj.
     eauto.
   Qed.
   Definition owned_subltype_step_ofty_uninit_inst := [instance owned_subltype_step_ofty_uninit].
@@ -275,6 +274,7 @@ Section deinit_fallback.
   Global Existing Instance owned_subtype_to_uninit_inst.
 End deinit_fallback.
 
+(* NOTE: removed
 Section evar.
   Context `{!typeGS Σ}.
 
@@ -311,6 +311,7 @@ Section evar.
   Definition uninit_mono_untyped_id_inst := [instance uninit_mono_untyped_id].
   Global Existing Instance uninit_mono_untyped_id_inst | 11.
 End evar.
+*)
 
 Section init.
   Context `{!typeGS Σ}.

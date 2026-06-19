@@ -125,7 +125,7 @@ Section init.
       done.
     - rewrite drop_app_length'; last done.
       iApply uninit_own_spec. iR.
-      iExists _. iSplitR. { iPureIntro. apply syn_type_has_layout_untyped; first done.
+      iExists _. iSplitR. { iPureIntro. apply syn_type_has_layout_literal; first done.
         - by apply layout_wf_align_log_0.
         - rewrite ly_size_active_union_rest_ly. apply use_union_layout_alg_size in Hul'. lia.
         - by apply ly_align_in_bounds_1. }

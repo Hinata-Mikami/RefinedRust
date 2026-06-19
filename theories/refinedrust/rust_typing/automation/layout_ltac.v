@@ -130,61 +130,61 @@ Section solve_layout_alg_tac.
     union_layout_spec_has_layout uls ul → use_union_layout_alg uls = Some ul.
   Proof. done. Qed.
 
-  Lemma syn_type_has_layout_untyped_alg_tac st ly ly' :
+  Lemma syn_type_has_layout_literal_alg_tac st ly ly' :
     ly = ly' →
     syn_type_has_layout st ly →
-    syn_type_has_layout (UntypedSynType (use_layout_alg' st)) ly'.
+    syn_type_has_layout (LiteralSynType (use_layout_alg' st)) ly'.
   Proof.
-    intros <- Hst. eapply (syn_type_has_layout_make_untyped st).
+    intros <- Hst. eapply (syn_type_has_layout_make_literal st).
     - rewrite /use_layout_alg' Hst //.
     - rewrite /use_layout_alg' Hst//.
   Qed.
-  Lemma syn_type_has_layout_untyped_struct_alg_tac (sls : struct_layout_spec) sl ly' :
+  Lemma syn_type_has_layout_literal_struct_alg_tac (sls : struct_layout_spec) sl ly' :
     ly' = sl →
     struct_layout_spec_has_layout sls sl →
-    syn_type_has_layout (UntypedSynType (use_struct_layout_alg' sls)) ly'.
+    syn_type_has_layout (LiteralSynType (use_struct_layout_alg' sls)) ly'.
   Proof.
     intros -> Hst.
     rewrite /use_struct_layout_alg'.
     apply use_struct_layout_alg_Some_inv in Hst.
     specialize (use_layout_alg_struct_Some_inv _ _  Hst) as (sl' & -> & <-).
-    eapply (syn_type_has_layout_make_untyped sls); done.
+    eapply (syn_type_has_layout_make_literal sls); done.
   Qed.
 
-  Lemma syn_type_has_layout_untyped_enum_alg_tac (els : enum_layout_spec) el ly' :
+  Lemma syn_type_has_layout_literal_enum_alg_tac (els : enum_layout_spec) el ly' :
     ly' = el →
     enum_layout_spec_has_layout els el →
-    syn_type_has_layout (UntypedSynType (use_enum_layout_alg' els)) ly'.
+    syn_type_has_layout (LiteralSynType (use_enum_layout_alg' els)) ly'.
   Proof.
     intros -> Hst.
     rewrite /use_enum_layout_alg'.
     apply use_enum_layout_alg_Some_inv in Hst.
     specialize (use_layout_alg_enum_Some_inv _ _  Hst) as (sl' & -> & <-).
-    eapply (syn_type_has_layout_make_untyped els); done.
+    eapply (syn_type_has_layout_make_literal els); done.
   Qed.
 
-  Lemma syn_type_has_layout_untyped_ptr_tac ly' :
+  Lemma syn_type_has_layout_literal_ptr_tac ly' :
     ly' = void* →
-    syn_type_has_layout (UntypedSynType void*) ly'.
+    syn_type_has_layout (LiteralSynType void* ) ly'.
   Proof.
     intros ->.
-    eapply (syn_type_has_layout_make_untyped PtrSynType); first done.
+    eapply (syn_type_has_layout_make_literal PtrSynType); first done.
     by apply syn_type_has_layout_ptr.
   Qed.
-  Lemma syn_type_has_layout_untyped_unit_tac ly' :
+  Lemma syn_type_has_layout_literal_unit_tac ly' :
     ly' = layout_of unit_sl →
-    syn_type_has_layout (UntypedSynType unit_sl) ly'.
+    syn_type_has_layout (LiteralSynType unit_sl) ly'.
   Proof.
     intros ->.
-    eapply (syn_type_has_layout_make_untyped UnitSynType); first done.
+    eapply (syn_type_has_layout_make_literal UnitSynType); first done.
     by apply syn_type_has_layout_unit.
   Qed.
-  Lemma syn_type_has_layout_untyped_int_tac ly' it :
+  Lemma syn_type_has_layout_literal_int_tac ly' it :
     ly' = it_layout it →
-    syn_type_has_layout (UntypedSynType (it_layout it)) ly'.
+    syn_type_has_layout (LiteralSynType (it_layout it)) ly'.
   Proof.
     intros ->.
-    eapply (syn_type_has_layout_make_untyped (IntSynType it)); first done.
+    eapply (syn_type_has_layout_make_literal (IntSynType it)); first done.
     by apply syn_type_has_layout_int.
   Qed.
 End solve_layout_alg_tac.
@@ -592,28 +592,30 @@ Ltac solve_layout_alg_core_step3 :=
   | |- syn_type_has_layout (UnsafeCell ?st) ?ly =>
       notypeclasses refine (syn_type_has_layout_unsafecell st ly _);
       []
-  | |- syn_type_has_layout (UntypedSynType ?ly) ?ly' =>
+  | |- syn_type_has_layout (UntypedSynType ?st) ?ly =>
+      notypeclasses refine (syn_type_has_layout_untyped st ly _)
+  | |- syn_type_has_layout (LiteralSynType ?ly) ?ly' =>
       lazymatch ly with
       | use_layout_alg' ?st' =>
-          notypeclasses refine (syn_type_has_layout_untyped_alg_tac st' _ ly' _ _);
+          notypeclasses refine (syn_type_has_layout_literal_alg_tac st' _ ly' _ _);
             [fast_solve_layout_eq | solve_layout_alg_prepare ]
       | use_struct_layout_alg' ?sls' =>
-          notypeclasses refine (syn_type_has_layout_untyped_struct_alg_tac sls' _ ly' _ _);
+          notypeclasses refine (syn_type_has_layout_literal_struct_alg_tac sls' _ ly' _ _);
             [fast_solve_layout_eq | ]
       | use_enum_layout_alg' ?sls' =>
-          notypeclasses refine (syn_type_has_layout_untyped_enum_alg_tac sls' _ ly' _ _);
+          notypeclasses refine (syn_type_has_layout_literal_enum_alg_tac sls' _ ly' _ _);
             [fast_solve_layout_eq | ]
       | void* =>
-          notypeclasses refine (syn_type_has_layout_untyped_ptr_tac _ _);
+          notypeclasses refine (syn_type_has_layout_literal_ptr_tac _ _);
           fast_solve_layout_eq
       | layout_of unit_sl =>
-          notypeclasses refine (syn_type_has_layout_untyped_unit_tac _ _);
+          notypeclasses refine (syn_type_has_layout_literal_unit_tac _ _);
           fast_solve_layout_eq
       | it_layout _ =>
-          notypeclasses refine (syn_type_has_layout_untyped_int_tac _ _ _);
+          notypeclasses refine (syn_type_has_layout_literal_int_tac _ _ _);
           fast_solve_layout_eq
       | _ =>
-          notypeclasses refine (syn_type_has_layout_untyped ly ly' _ _ _ _);
+          notypeclasses refine (syn_type_has_layout_literal ly ly' _ _ _ _);
             [fast_solve_layout_eq
             | solve_layout_wf; shelve
             | solve_layout_size; shelve
@@ -630,7 +632,9 @@ Ltac solve_layout_alg_core_step3 :=
 Ltac solve_layout_alg_core_step :=
   solve_layout_alg_core_step1;
   solve_layout_alg_core_step2;
-  solve_layout_alg_core_step3.
+  solve_layout_alg_core_step3;
+  (* fallback processing *)
+  solve_layout_alg_prepare.
 
 Ltac solve_layout_alg_core :=
   repeat solve_layout_alg_core_step.
@@ -661,6 +665,7 @@ Ltac solve_compute_enum_layout ::=
   simplify_layout_goal;
   first [eassumption | progress solve_layout_alg; shelve]].
 
+(*
 (** syn_type_compat solver *)
 Section syntype_compat.
   Context `{!LayoutAlg}.
@@ -684,6 +689,7 @@ Ltac solve_syn_type_compat :=
       refine (syn_type_compat_untyped_r _ _ _ _ _);
       [solve_layout_alg | solve_layout_eq ]
   end.
+  *)
 
 
 (** ** Op-alg solver *)
@@ -711,6 +717,16 @@ Section opalg.
     use_op_alg' T_st = T_ly.
   Proof.
     rewrite /use_op_alg' => -> //.
+  Qed.
+
+  Lemma use_op_alg_untyped' st ly ot  :
+    use_layout_alg st = Some ly →
+    ot = UntypedOp ly →
+    use_op_alg (UntypedSynType st) = Some ot.
+  Proof.
+    intros Halg ->.
+    apply syn_type_has_layout_op_alg in Halg as (ot & Hot & <-).
+    eapply use_op_alg_untyped; done.
   Qed.
 End opalg.
 
@@ -824,9 +840,12 @@ Ltac solve_op_alg_core_step :=
   | |- use_op_alg (UnsafeCell ?st) = Some ?ot =>
       notypeclasses refine (use_op_alg_unsafecell st _ _);
       [ ]
-  | |- use_op_alg (UntypedSynType ?ly) = Some ?ot =>
+  | |- use_op_alg (UntypedSynType ?st) = Some ?ot =>
+      notypeclasses refine (use_op_alg_untyped' st _ _ _ _);
+      [solve_layout_alg | solve_ot_eq ]
+  | |- use_op_alg (LiteralSynType ?ly) = Some ?ot =>
       simplify_layout ly;
-      notypeclasses refine (use_op_alg_untyped _ ot _);
+      notypeclasses refine (use_op_alg_literal _ ot _);
       [solve_ot_eq ]
   | |- use_op_alg (ty_syn_type _ _) = Some ?ot =>
       notypeclasses refine (use_op_alg_tyvar_tac (ty_syn_type _ _) _ ot _ _);
@@ -1218,12 +1237,16 @@ Ltac simplify_layout_alg_nonatomic H :=
         apply syn_type_has_layout_unsafecell in H;
         simplify_layout_alg H
 
-    | use_layout_alg (UntypedSynType ?ly) = Some _ =>
+    | use_layout_alg (UntypedSynType ?st) = Some _ =>
+        apply syn_type_has_layout_untyped_inv in H;
+        simplify_layout_alg H
+
+    | use_layout_alg (LiteralSynType ?ly) = Some _ =>
         let Heq := fresh "_Heq" in
         let Hwf := fresh "_Hwf" in
         let Hsz := fresh "_Hsz" in
         let Hib := fresh "_Hib" in
-        apply syn_type_has_layout_untyped_inv in H as (Heq & Hwf & Hsz & Hib);
+        apply syn_type_has_layout_literal_inv in H as (Heq & Hwf & Hsz & Hib);
         subst_with Heq;
         enter_cache Hwf;
         enter_cache Hsz;

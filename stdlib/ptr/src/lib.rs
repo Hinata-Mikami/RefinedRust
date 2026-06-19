@@ -162,13 +162,11 @@ pub const fn mut_ptr_write<T>(dst: *mut T, src:T) {
   - just take full ownership, similar to dst - but that is unnecessarily strong */
 #[rr::export_as(core::ptr::copy_nonoverlapping)]
 #[rr::code_shim("ptr_copy_nonoverlapping")]
-#[rr::params("vs", "ly")]
-// Sidecondition so that the [ly_of T] gets simplified
-#[rr::requires("ly = (mk_array_layout {ly_of T} (Z.to_nat size))")]
-#[rr::requires(#type "src" : "vs" @ "value_t (UntypedSynType ly)")]
-#[rr::requires(#type "dst" : "()" @ "uninit (UntypedSynType ly)")]
-#[rr::ensures(#type "src" : "vs" @ "value_t (UntypedSynType ly)")]
-#[rr::ensures(#type "dst" : "vs" @ "value_t (UntypedSynType ly)")]
+#[rr::params("vs")]
+#[rr::requires(#type "src" : "vs" @ "value_t false (ArraySynType {st_of T} (Z.to_nat size))")]
+#[rr::requires(#type "dst" : "()" @ "uninit (ArraySynType {st_of T} (Z.to_nat size))")]
+#[rr::ensures(#type "src" : "vs" @ "value_t false (ArraySynType {st_of T} (Z.to_nat size))")]
+#[rr::ensures(#type "dst" : "vs" @ "value_t false (ArraySynType {st_of T} (Z.to_nat size))")]
 pub const fn copy_nonoverlapping<T>(
     src: *const T,
     dst: *mut T,
@@ -184,13 +182,13 @@ pub const fn copy_nonoverlapping<T>(
 #[rr::only_spec]
 #[rr::params("l", "off_src", "off_dst", "count", "len", "vs")]
 #[rr::args("l offsetst{{ {st_of T} }}ₗ off_src", "l offsetst{{ {st_of T} }}ₗ off_dst", "count")]
-#[rr::requires(#type "l" : "vs" @ "value_t (UntypedSynType (mk_array_layout {ly_of T} (Z.to_nat len)))")]
+#[rr::requires(#type "l" : "vs" @ "value_t false (ArraySynType {st_of T} (Z.to_nat len))")]
 #[rr::requires("(0 ≤ count)%Z")]
 #[rr::requires("0 ≤ off_src")]
 #[rr::requires("0 ≤ off_dst")]
 #[rr::requires("(off_src + count < len)%Z")]
 #[rr::requires("(off_dst + count < len)%Z")]
-#[rr::ensures(#type "l" : "ptr_copy_result off_src off_dst (Z.to_nat count) vs : val" @ "value_t (UntypedSynType (mk_array_layout {ly_of T} (Z.to_nat len)))")]
+#[rr::ensures(#type "l" : "ptr_copy_result off_src off_dst (Z.to_nat count) vs : val" @ "value_t false (ArraySynType {st_of T} (Z.to_nat len))")]
 pub const fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     unimplemented!();
 }

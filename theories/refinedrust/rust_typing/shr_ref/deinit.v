@@ -10,21 +10,17 @@ Section deinit.
   Context `{!typeGS Σ}.
 
 
-  Lemma ltype_deinit_shr F π l st {rt} (lt : ltype rt) r κ :
+  Lemma ltype_deinit_shr F π l {rt} (lt : ltype rt) r κ :
     lftE ⊆ F →
-    syn_type_compat PtrSynType st →
     (l ◁ₗ[π, Owned] r @ (ShrLtype lt κ)) ={F}=∗
-    l ◁ₗ[π, Owned] #() @ (◁ uninit st).
+    l ◁ₗ[π, Owned] #() @ (◁ uninit PtrSynType).
   Proof.
-    iIntros (? Hstcomp) "Hl".
+    iIntros (?) "Hl".
     rewrite ltype_own_shr_ref_unfold /shr_ltype_own.
     iDestruct "Hl" as "(%ly & %Halg & % & Hlb & %r' & ? & Hb)".
     iMod (fupd_mask_mono with "Hb") as "(%l' & Hl & Hb)"; first done.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iModIntro. iExists ly. simpl. iSplitR.
-    { destruct Hstcomp as [<- | (ly1 & Hst' & ->)]; first done.
-      simpl. iPureIntro. eapply syn_type_has_layout_make_untyped; last done.
-      by eapply syn_type_has_layout_inj. }
+    iModIntro. iExists ly. simpl. iR.
     iR. iR.
     iSplitL "Hlb"; first by iFrame.
     iExists tt. iR.
@@ -32,36 +28,8 @@ Section deinit.
     iPureIntro.
     apply syn_type_has_layout_ptr_inv in Halg as ->.
     split.
-    - destruct Hstcomp as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
-      specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
-      eapply syn_type_has_layout_make_untyped; done.
+    - by apply syn_type_has_layout_ptr.
     - apply l2v_has_layout_val.
-  Qed.
-
-  Lemma ltype_deinit_shr' F π l st {rt} (lt : ltype rt) r κ :
-    lftE ⊆ F →
-    syn_type_compat PtrSynType st →
-    (l ◁ₗ[π, Owned] r @ (ShrLtype lt κ)) ={F}=∗
-    l ◁ₗ[π, Owned] #() @ (◁ uninit st).
-  Proof.
-    iIntros (? Hstcomp) "Hl".
-    rewrite ltype_own_shr_ref_unfold /shr_ltype_own.
-    iDestruct "Hl" as "(%ly & %Halg & % & Hlb & %r' & ? & Hb)".
-    iMod (fupd_mask_mono with "Hb") as "(%l' & Hl & Hb)"; first done.
-    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iModIntro. iExists ly. simpl. iSplitR.
-    { destruct Hstcomp as [<- | (ly1 & Hst' & ->)]; first done.
-      simpl. iPureIntro. eapply syn_type_has_layout_make_untyped; last done.
-      by eapply syn_type_has_layout_inj. }
-    iR. iR.
-    iSplitL "Hlb"; first by iFrame.
-    iExists tt. iR.
-    iModIntro. iExists l'. iFrame. rewrite uninit_own_spec. iR. iExists ly.
-    apply syn_type_has_layout_ptr_inv in Halg as ->. iPureIntro.
-    split; last apply l2v_has_layout_val.
-    destruct Hstcomp as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
-    specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
-    eapply syn_type_has_layout_make_untyped; done.
   Qed.
 End deinit.
 
@@ -71,10 +39,10 @@ Section rule.
   (* Directly subsume ShrLtype, as there can not be any interesting borrow information to extract *)
   Lemma owned_subltype_step_shrltype_uninit π E L step {rt} (lt : ltype rt) r st κ l T  :
     owned_subltype_step π E L step l r #() (ShrLtype lt κ) (◁ uninit st) T :-
-    exhale (⌜syn_type_compat PtrSynType st⌝);
+    exhale ⌜st = PtrSynType⌝;
     return T L True%I.
   Proof.
-    iIntros "(%Hstcomp & HT)".
+    iIntros "(-> & HT)".
     iIntros (????) "CTX HE HL Hl". simp_ltypes; simpl.
     iMod (ltype_deinit_shr with "Hl") as "Hl"; [done.. | ].
     iExists _, _. iFrame.
@@ -90,8 +58,7 @@ Section rule.
   Proof.
     iIntros "HT".
     iIntros (????) "#CTX #HE HL Hl".
-    iMod (ltype_deinit_shr' with "Hl") as "Hl"; [done.. | | ].
-    { left. done. }
+    iMod (ltype_deinit_shr with "Hl") as "Hl"; [done.. | ].
     iExists _, _, _, _, _. iFrame.
     iFrame. simp_ltypes. done.
   Qed.

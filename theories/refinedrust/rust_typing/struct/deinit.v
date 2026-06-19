@@ -41,13 +41,12 @@ Section deinit.
     - apply IH.
   Qed.
 
-  Lemma ltype_deinit_struct F π (sls : struct_layout_spec) rs st l :
+  Lemma ltype_deinit_struct F π (sls : struct_layout_spec) rs l :
     lftE ⊆ F →
-    syn_type_compat sls st →
     (l ◁ₗ[π, Owned] (#rs) @ (StructLtype (hmap (@OfTy _ _) (uninit_tys (sls_fields sls).*2)) sls)) ={F}=∗
-    l ◁ₗ[π, Owned] #() @ (◁ uninit st).
+    l ◁ₗ[π, Owned] #() @ (◁ uninit sls).
   Proof.
-    iIntros (? Hstcomp) "Hl".
+    iIntros (?) "Hl".
     iPoseProof (struct_t_unfold_2_owned) as "#Ha".
     iMod (fupd_mask_subseteq lftE) as "Hcl"; first done.
     iMod ("Ha" with "Hl") as "Hl".
@@ -56,21 +55,10 @@ Section deinit.
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Halg & %Hl)".
     simp_ltypes in Halg. simpl in Halg.
     iApply (ofty_owned_subtype_aligned with "[] Hl"); [ | done | ].
-    { destruct Hstcomp as [<- | Hst]; first done.
-      destruct Hst as (ly1 & Hst & ->). simpl.
-      specialize (syn_type_has_layout_inj _ _ _ Hst Halg) as ->.
-      by eapply syn_type_has_layout_make_untyped. }
+    { done. }
     iApply (owned_type_incl_uninit' _ _ _ _ _ ly); simpl.
-    - destruct Hstcomp as [<- | Hst]; first apply syn_type_size_eq_refl.
-      destruct Hst as (ly1 & Hst & ->). simpl.
-      specialize (syn_type_has_layout_inj _ _ _ Hst Halg) as ->.
-      eapply syn_type_size_eq_prove; first done.
-      { by eapply syn_type_has_layout_make_untyped. }
-      done.
-    - destruct Hstcomp as [<- | Hst]; first done.
-      destruct Hst as (ly1 & Hst & ->).
-      specialize (syn_type_has_layout_inj _ _ _ Hst Halg) as ->.
-      by eapply syn_type_has_layout_make_untyped.
+    - apply syn_type_size_eq_refl.
+    - done.
   Qed.
 End deinit.
 
@@ -81,7 +69,7 @@ Context `{!typeGS Σ}.
   (* We iterate over all the fields to deinitialize them first, and then deinitialize the struct itself *)
   Lemma owned_subltype_step_struct_uninit π E L step l {rts} (lts : hlist ltype rts) rs (sls : struct_layout_spec) (st : syn_type) T :
     owned_subltype_step π E L step l #rs #() (StructLtype lts sls) (◁ uninit st) T :-
-    exhale (⌜syn_type_compat sls st⌝);
+    exhale (⌜st = sls⌝);
     L2, R2 ← iterate: zip (hpzipl rts lts rs) sls.(sls_fields) with L, True%I {{ '((existT rt (lt, r)), (field, stf)) T L2 R2,
       exhale (⌜ltype_st lt = stf⌝);
       return owned_subltype_step π E L2 step (l atst{sls}ₗ field) r #() lt (◁ uninit stf) (λ L3 R3,
@@ -89,7 +77,7 @@ Context `{!typeGS Σ}.
       }};
     return T L2 R2.
   Proof.
-    iIntros "(%Hcomp & Hit)".
+    iIntros "(-> & Hit)".
     iIntros (????) "#CTX #HE HL Hl".
 
     rewrite ltype_own_struct_unfold/struct_ltype_own/=.
@@ -204,8 +192,7 @@ Context `{!typeGS Σ}.
       iExists name, _. iR.
       apply list_lookup_fmap_Some in Hlook1_1 as ([name' st''] & -> & Hlook1_1).
       simplify_eq. done. }
-    iApply (ltype_deinit_struct _ _ sls (rs'') _ _); first done.
-    { done. }
+    iApply (ltype_deinit_struct _ _ sls (rs'')); first done.
 
     rewrite ltype_own_struct_unfold/struct_ltype_own.
     iExists _. iR.

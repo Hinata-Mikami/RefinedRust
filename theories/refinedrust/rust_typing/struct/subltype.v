@@ -371,7 +371,7 @@ Section lemmas.
     field_index_of (sl_members sl) x = Some i →
     hpzipl rts lts r !! i = Some (existT rto (lto, ro)) →
     (* assume the big sep of components *)
-    ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl rts lts r) (λ ly, existT (unit : RT) (UninitLtype (UntypedSynType ly), PlaceIn ())),
+    ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl rts lts r) (λ ly, existT (unit : RT) (UninitLtype (LiteralSynType ly), PlaceIn ())),
       ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
       (l +ₗ offset_of_idx (sl_members sl) i) ◁ₗ[ π, k] (projT2 ty).2 @ (projT2 ty).1) -∗
     ⌜rto = lnth (unit : RT) rts i⌝ ∗
@@ -381,14 +381,14 @@ Section lemmas.
     (∀ rt' lt' r',
       (l at{sl}ₗ x) ◁ₗ[ π, k] r' @ lt' -∗
       ⌜syn_type_has_layout (ltype_st lt') ly⌝ -∗
-      ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl (<[i := rt']> rts) (hlist_insert rts lts i rt' lt') (plist_insert rts r i rt' r')) (λ ly, existT (unit : RT) (UninitLtype (UntypedSynType ly), PlaceIn ())),
+      ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl (<[i := rt']> rts) (hlist_insert rts lts i rt' lt') (plist_insert rts r i rt' r')) (λ ly, existT (unit : RT) (UninitLtype (LiteralSynType ly), PlaceIn ())),
         ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
         (l +ₗ offset_of_idx (sl_members sl) i) ◁ₗ[ π, k] (projT2 ty).2 @ (projT2 ty).1)) ∧
     (* alternatively, for any weak (non-rt-changing) update: *)
     (∀ (lt' : ltype (lnth (unit : RT) rts i)) (r' : place_rfn (lnth (unit : RT) rts i)),
       (l at{sl}ₗ x) ◁ₗ[ π, k] r' @ lt' -∗
        ⌜syn_type_has_layout (ltype_st lt') ly⌝ -∗
-      ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl (rts) (hlist_insert_id (unit : RT) rts lts i lt') (plist_insert_id (unit : RT) rts r i r')) (λ ly, existT (unit : RT) (UninitLtype (UntypedSynType ly), PlaceIn ())),
+      ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl (rts) (hlist_insert_id (unit : RT) rts lts i lt') (plist_insert_id (unit : RT) rts r i r')) (λ ly, existT (unit : RT) (UninitLtype (LiteralSynType ly), PlaceIn ())),
         ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
         (l +ₗ offset_of_idx (sl_members sl) i) ◁ₗ[ π, k] (projT2 ty).2 @ (projT2 ty).1)).
   Proof.
