@@ -27,11 +27,10 @@ Ltac copy_nonoverlapping_prelude :=
   let ϝ := fresh "ϝ" in
   let T_ty := fresh "T_ty" in
   let vs := fresh "vs" in
-  let ly := fresh "ly" in
   let src := fresh "src" in
   let dst := fresh "dst" in
   let size := fresh "size" in
-  start_function "copy_nonoverlapping" ϝ ( [] ) ( [T_ty [] ] ) ( [ [ [ [  vs ly ] src ] dst ] size ] ) ( vs ly src dst size );
+  start_function "copy_nonoverlapping" ϝ ( [] ) ( [T_ty [] ] ) ( [ [ [  vs src ] dst ] size ] ) ( vs src dst size );
   intros arg_src arg_dst arg_size;
   let π := get_π in
   let Σ := get_Σ in

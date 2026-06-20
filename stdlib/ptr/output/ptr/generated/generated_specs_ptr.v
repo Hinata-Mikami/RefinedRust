@@ -1245,16 +1245,15 @@ Definition trait_incl_of_copy_nonoverlapping (T_rt: RT) (T_st: syn_type) (DropGl
 
 Definition type_of_copy_nonoverlapping (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
-      (* params....... *) (vs, ly, src, dst, size) : ((_ * _ * _ * _ * _)),
+      (* params....... *) (vs, src, dst, size) : ((_ * _ * _ * _)),
       (* elctx........ *) (λ ϝ, []);
       (* args......... *) src :@: alias_ptr_t, dst :@: alias_ptr_t, size :@: (int USize);
-      (* precondition. *) (λ π : thread_id, (⌜(ly = (mk_array_layout (use_layout_alg' (ty_syn_type T_ty MetaNone)) (Z.to_nat size)))%Z⌝)
-        ∗ (src ◁ₗ[π, Owned] #(vs) @ (◁ value_t (UntypedSynType ly)))
-        ∗ (dst ◁ₗ[π, Owned] #(()) @ (◁ uninit (UntypedSynType ly)))) |
+      (* precondition. *) (λ π : thread_id, (src ◁ₗ[π, Owned] #(vs) @ (◁ value_t false (ArraySynType (ty_syn_type T_ty MetaNone) (Z.to_nat size))))
+        ∗ (dst ◁ₗ[π, Owned] #(()) @ (◁ uninit (ArraySynType (ty_syn_type T_ty MetaNone) (Z.to_nat size))))) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
-      (* postcondition *) (λ π : thread_id, (src ◁ₗ[π, Owned] #(vs) @ (◁ value_t (UntypedSynType ly)))
-      ∗ (dst ◁ₗ[π, Owned] #(vs) @ (◁ value_t (UntypedSynType ly)))).
+      (* postcondition *) (λ π : thread_id, (src ◁ₗ[π, Owned] #(vs) @ (◁ value_t false (ArraySynType (ty_syn_type T_ty MetaNone) (Z.to_nat size))))
+      ∗ (dst ◁ₗ[π, Owned] #(vs) @ (◁ value_t false (ArraySynType (ty_syn_type T_ty MetaNone) (Z.to_nat size))))).
 
 Definition trait_incl_of_dangling (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
@@ -1701,7 +1700,7 @@ Definition type_of_copy (T_rt: RT) (T_st: syn_type) :=
       (* params....... *) (l, off_src, off_dst, count, len, vs) : ((_ * _ * _ * _ * _ * _)),
       (* elctx........ *) (λ ϝ, []);
       (* args......... *) l offsetst{ (ty_syn_type T_ty MetaNone) }ₗ off_src :@: alias_ptr_t, l offsetst{ (ty_syn_type T_ty MetaNone) }ₗ off_dst :@: alias_ptr_t, count :@: (int USize);
-      (* precondition. *) (λ π : thread_id, (l ◁ₗ[π, Owned] #(vs) @ (◁ value_t (UntypedSynType (mk_array_layout (use_layout_alg' (ty_syn_type T_ty MetaNone)) (Z.to_nat len)))))
+      (* precondition. *) (λ π : thread_id, (l ◁ₗ[π, Owned] #(vs) @ (◁ value_t false (ArraySynType (ty_syn_type T_ty MetaNone) (Z.to_nat len))))
         ∗ (⌜((0 ≤ count)%Z)%Z⌝)
         ∗ (⌜(0 ≤ off_src)%Z⌝)
         ∗ (⌜(0 ≤ off_dst)%Z⌝)
@@ -1709,7 +1708,7 @@ Definition type_of_copy (T_rt: RT) (T_st: syn_type) :=
         ∗ (⌜((off_dst + count < len)%Z)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
-      (* postcondition *) (λ π : thread_id, (l ◁ₗ[π, Owned] #(ptr_copy_result off_src off_dst (Z.to_nat count) vs : val) @ (◁ value_t (UntypedSynType (mk_array_layout (use_layout_alg' (ty_syn_type T_ty MetaNone)) (Z.to_nat len)))))).
+      (* postcondition *) (λ π : thread_id, (l ◁ₗ[π, Owned] #(ptr_copy_result off_src off_dst (Z.to_nat count) vs : val) @ (◁ value_t false (ArraySynType (ty_syn_type T_ty MetaNone) (Z.to_nat len))))).
 
 Definition trait_incl_of_mut_ptr_is_aligned (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).

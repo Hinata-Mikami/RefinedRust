@@ -244,7 +244,7 @@ Definition type_of_alloc_alloc_internal  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (l) : ((_)), l @ alias_ptr_t;
       (* postcondition *) (λ π : thread_id, (freeable_nz l (Z.to_nat size) 1 HeapAlloc)
-      ∗ (l ◁ₗ[π, Owned] #(()) @ (◁ uninit (UntypedSynType (Layout (Z.to_nat size) (Z.to_nat align_log2)))))
+      ∗ (l ◁ₗ[π, Owned] #(()) @ (◁ uninit (LiteralSynType (Layout (Z.to_nat size) (Z.to_nat align_log2)))))
       ∗ (⌜(min_alloc_start ≤ l.(loc_a) ≤ max_alloc_end)%Z⌝)).
 
 Definition trait_incl_of_alloc_dealloc_internal  : (spec_with _ _ Prop) :=
@@ -257,7 +257,7 @@ Definition type_of_alloc_dealloc_internal  :=
       (* args......... *) size :@: (int USize), align_log2 :@: (int USize), ptr :@: alias_ptr_t;
       (* precondition. *) (λ π : thread_id, (freeable_nz ptr (Z.to_nat size) 1 HeapAlloc)
         ∗ (⌜((0 < size)%Z)%Z⌝)
-        ∗ (ptr ◁ₗ[π, Owned] #(()) @ (◁ uninit (UntypedSynType (Layout (Z.to_nat size) (Z.to_nat align_log2)))))) |
+        ∗ (ptr ◁ₗ[π, Owned] #(()) @ (◁ uninit (LiteralSynType (Layout (Z.to_nat size) (Z.to_nat align_log2)))))) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
       (* postcondition *) (λ π : thread_id, True).
@@ -275,7 +275,7 @@ Definition type_of_alloc_alloc  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (l) : ((_)), l @ alias_ptr_t;
       (* postcondition *) (λ π : thread_id, (freeable_nz l ly.(layout_sz) 1 HeapAlloc)
-      ∗ (l ◁ₗ[π, Owned] #(()) @ (◁ uninit (UntypedSynType ly)))
+      ∗ (l ◁ₗ[π, Owned] #(()) @ (◁ uninit (LiteralSynType ly)))
       ∗ (⌜(min_alloc_start ≤ l.(loc_a) ≤ max_alloc_end)%Z⌝)).
 
 Definition trait_incl_of_alloc_dealloc  : (spec_with _ _ Prop) :=
@@ -288,7 +288,7 @@ Definition type_of_alloc_dealloc  :=
       (* args......... *) ptr :@: alias_ptr_t, ly :@: (layout_Layout_inv_t   -[] -[]);
       (* precondition. *) (λ π : thread_id, (freeable_nz ptr ly.(layout_sz) 1 HeapAlloc)
         ∗ (⌜(0 < ly.(layout_sz))%Z⌝)
-        ∗ (ptr ◁ₗ[π, Owned] #(()) @ (◁ uninit (UntypedSynType ly)))) |
+        ∗ (ptr ◁ₗ[π, Owned] #(()) @ (◁ uninit (LiteralSynType ly)))) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
       (* postcondition *) (λ π : thread_id, True).
@@ -305,12 +305,12 @@ Definition type_of_realloc  :=
         ∗ (⌜((0 < ly.(layout_sz))%Z)%Z⌝)
         ∗ (⌜(new_size ≤ MaxInt ISize)%Z⌝)
         ∗ (⌜(layout_wf (Layout (Z.to_nat new_size) (layout_alignment_log2_nat ly)))%Z⌝)
-        ∗ (ptr ◁ₗ[π, Owned] #(v) @ (◁ value_t (UntypedSynType ly)))
+        ∗ (ptr ◁ₗ[π, Owned] #(v) @ (◁ value_t false (LiteralSynType ly)))
         ∗ (freeable_nz ptr ly.(layout_sz) 1 HeapAlloc)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ptr_new, v') : ((_ * _)), ptr_new @ alias_ptr_t;
       (* postcondition *) (λ π : thread_id, (freeable_nz ptr_new (Z.to_nat new_size) 1 HeapAlloc)
-      ∗ (ptr_new ◁ₗ[π, Owned] #(v ++ v' : val) @ (◁ value_t (UntypedSynType (Layout (Z.to_nat new_size) (layout_alignment_log2_nat ly)))))
+      ∗ (ptr_new ◁ₗ[π, Owned] #(v ++ v' : val) @ (◁ value_t false (LiteralSynType (Layout (Z.to_nat new_size) (layout_alignment_log2_nat ly)))))
       ∗ (⌜(v' `has_layout_val` (Layout (Z.to_nat new_size - ly.(layout_sz)) (layout_alignment_log2_nat ly)))%Z⌝)
       ∗ (⌜(min_alloc_start ≤ ptr_new.(loc_a) ≤ max_alloc_end)%Z⌝)).
 
@@ -326,12 +326,12 @@ Definition type_of_alloc_realloc_internal  :=
         ∗ (⌜((0 < old_size)%Z)%Z⌝)
         ∗ (⌜(new_size ≤ MaxInt ISize)%Z⌝)
         ∗ (⌜(layout_wf (Layout (Z.to_nat new_size) (Z.to_nat align_log2)))%Z⌝)
-        ∗ (ptr_old ◁ₗ[π, Owned] #(v) @ (◁ value_t (UntypedSynType (Layout (Z.to_nat old_size) (Z.to_nat align_log2)))))
+        ∗ (ptr_old ◁ₗ[π, Owned] #(v) @ (◁ value_t false (LiteralSynType (Layout (Z.to_nat old_size) (Z.to_nat align_log2)))))
         ∗ (freeable_nz ptr_old (Z.to_nat old_size) 1 HeapAlloc)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ptr_new, v') : ((_ * _)), ptr_new @ alias_ptr_t;
       (* postcondition *) (λ π : thread_id, (freeable_nz ptr_new (Z.to_nat new_size) 1 HeapAlloc)
-      ∗ (ptr_new ◁ₗ[π, Owned] #(v ++ v' : val) @ (◁ value_t (UntypedSynType (Layout (Z.to_nat new_size) (Z.to_nat align_log2)))))
+      ∗ (ptr_new ◁ₗ[π, Owned] #(v ++ v' : val) @ (◁ value_t false (LiteralSynType (Layout (Z.to_nat new_size) (Z.to_nat align_log2)))))
       ∗ (⌜(v' `has_layout_val` (Layout (Z.to_nat (new_size - old_size)) (Z.to_nat align_log2)))%Z⌝)
       ∗ (⌜(min_alloc_start ≤ ptr_new.(loc_a) ≤ max_alloc_end)%Z⌝)).
 
