@@ -1733,28 +1733,6 @@ Proof.
   - intros (ly & Halg & [= <-])%bind_Some. done.
 Qed.
 
-
-
-
-(* We can convert a value at [st1] into a value at [st2]:
-   either if both values have the same syntype, or if the second syntype just needs to support untyped operations ([UntypedSynType]) and has the same layout as [st1]. *)
-   (*
-Definition syn_type_compat `{!LayoutAlg} (st1 st2 : syn_type) : Prop :=
-  st1 = st2 ∨ ∃ ly1, syn_type_has_layout st1 ly1 ∧ st2 = UntypedSynType ly1.
-
-Lemma syn_type_compat_layout_trans `{!LayoutAlg} st1 st2 ly :
-  syn_type_compat st1 st2 →
-  syn_type_has_layout st2 ly →
-  syn_type_has_layout st1 ly.
-Proof.
-  intros [-> | (ly' & Hly & ->)]; first done.
-  intros (-> & _)%syn_type_has_layout_untyped_inv. done.
-Qed.
-
-Global Instance syn_type_comapt_refl `{!LayoutAlg}: Reflexive syn_type_compat.
-Proof. by left. Qed.
-*)
-
 Definition syn_type_size_eq `{!LayoutAlg} st1 st2 :=
   ∀ ly1, syn_type_has_layout st1 ly1 → ∃ ly2, syn_type_has_layout st2 ly2 ∧ ly_size ly1 = ly_size ly2.
 Lemma syn_type_size_eq_refl `{!LayoutAlg} st :
@@ -1762,16 +1740,6 @@ Lemma syn_type_size_eq_refl `{!LayoutAlg} st :
 Proof.
   intros ly1 Hst. exists ly1. done.
 Qed.
-
-(*Lemma syn_type_compat_size_eq `{!LayoutAlg} st1 st2 :*)
-  (*syn_type_compat st1 st2 → syn_type_size_eq st1 st2.*)
-(*Proof.*)
-  (*intros [-> | (ly1 & Hst & ->)]; first apply syn_type_size_eq_refl.*)
-  (*intros ? Halg1.*)
-  (*specialize (syn_type_has_layout_inj _ _ _ Hst Halg1) as <-.*)
-  (*exists ly1. split; last done.*)
-  (*by eapply syn_type_has_layout_make_untyped.*)
-(*Qed.*)
 
 Lemma syn_type_size_eq_use `{!LayoutAlg} st1 st2 ly1 ly2 :
   syn_type_size_eq st1 st2 →

@@ -300,23 +300,6 @@ Section lemmas.
     by rewrite mem_cast_UntypedOp.
   Qed.
 
-  (* NOTE: removed
-  Lemma value_untyped_make_typed π st ly v vs m :
-    syn_type_has_layout st ly →
-    v ◁ᵥ{π, m} vs @ value_t (UntypedSynType ly) -∗
-    v ◁ᵥ{π, m} vs @ value_t st.
-  Proof.
-    iIntros "%Halg Hv".
-    rewrite /ty_own_val /=. iDestruct "Hv" as "(-> & %ot & %Heq & %Hmc & %Hlyv & _)".
-    injection Heq as <-.
-    specialize (syn_type_has_layout_op_alg _ _ Halg) as (ot & Hop & <-).
-    iR.
-    iExists ot. iSplitR; first done.
-    iSplitR. { iLeft. apply is_memcast_val_untyped_inv in Hmc. done. }
-    iSplitR; first done. done.
-  Qed.
-  *)
-
   Lemma value_array_merge π typed v1 v2 r1 r2 st n1 n2 n m ly :
     n = n1 + n2 →
     syn_type_has_layout (ArraySynType st n) ly →
@@ -533,23 +516,6 @@ Section ofty_lemmas.
     iExists v'. iFrame.
     by iApply (own_val_merge_value_untyped with "Hv'").
   Qed.
-
-  (* NOTE removed
-  Lemma ofty_value_untyped_make_typed π l vs st ly :
-    syn_type_has_layout st ly →
-    (l ◁ₗ[π, Owned] #vs @ ◁ value_t (UntypedSynType ly)) -∗
-    l ◁ₗ[π, Owned] #vs @ ◁ value_t st.
-  Proof.
-    iIntros (?) "Ha".
-    iApply (ofty_mono_ly_strong_in with "[] [] Ha").
-    - simpl. by eapply syn_type_has_layout_make_untyped.
-    - done.
-    - done.
-    - done.
-    - iIntros (?). by iApply value_untyped_make_typed.
-    - simpl. eauto.
-  Qed.
-  *)
 
   Lemma ofty_uninit_to_untyped_value F π l st :
     lftE ⊆ F →
@@ -793,25 +759,8 @@ Section rules.
      Namely, this rule makes a pretty strong commitment (having an exactly fitting value assignment available),
      so we should really try it as a last resort. So we give it a pretty low priority. *)
 
-  (** By default, we go to UntypedSynType, and can later on specialize if needed by subsumption (we cannot go the other way around due to memcast compatibility) *)
-  (* NOTE: removed
-  Lemma value_subsume_goal π {rt} (ty : type rt) (r : rt) v vs st m T :
-    (∃ ly, ⌜syn_type_has_layout (ty.(ty_syn_type) m) ly⌝ ∗
-      (v ◁ᵥ{π, m} r @ ty -∗ subsume (v ◁ᵥ{π, MetaNone} v @ value_t (UntypedSynType ly)) (v ◁ᵥ{π, MetaNone} vs @ value_t st) T))
-    ⊢ subsume (v ◁ᵥ{π, m} r @ ty) (v ◁ᵥ{π, MetaNone} vs @ value_t st) T.
-  Proof.
-    iIntros "(%ly & %Halg & HT) Hv".
-    iPoseProof (own_val_split_value _ _ _ _ (UntypedSynType _) with "Hv") as "(Hv' & Hv)".
-    { split; first done. eapply syn_type_has_layout_make_untyped; done. }
-    iApply ("HT" with "Hv Hv'").
-  Qed.
-  Definition value_subsume_goal_inst := [instance @value_subsume_goal].
-  Global Existing Instance value_subsume_goal_inst | 50.
-  *)
-
-  (* TODO: this isn't ideal if v' is an evar -- then this currently will lead to evar instantiation failures, since we don't know the value yet.
-     Maybe we want to have a type which encapsulates the existential quantifier in that case?
-  *)
+  (* No instances, as we cannot use the universally quantified [v] for evar instantiation.
+    Should be manually applied if needed. *)
   Lemma owned_subltype_step_to_typed_value π E L step {rt} l v' st (ty : type rt) r T:
     (∀ v, v ◁ᵥ{π, MetaNone} r @ ty -∗
       owned_subltype_step π E L step l #v #v' (◁ value_t true (ty_syn_type ty MetaNone)) (◁ value_t true st) T)
@@ -834,53 +783,6 @@ Section rules.
     iDestruct ("HT" with "Hv") as "HT".
     by iApply ("HT" with "[//] [//] [//] CTX HE HL").
   Qed.
-
-  (* TODO: check if needed or if falling down to [owned_subtype] is enough.
-  (** When we require assembled ownership, try to assemble it. *)
-  Lemma owned_subltype_step_merge_untyped_value {rt} π E L step (ty : type rt) `{!TySized ty} r v l st T :
-    (prove_with_subtype E L step ProveDirect (v ◁ᵥ{π, MetaNone} r @ ty) True (λ L' _ R,
-      li_tactic (compute_layout_goal (ty_syn_type ty MetaNone)) (λ ly,
-        ⌜syn_type_has_layout st ly⌝ ∗ T L' R)))
-    ⊢ owned_subltype_step π E L step l #v #r (◁ value_t false st) (◁ ty) T.
-  Proof.
-    iIntros "HT".
-    iIntros (????) "#CTX #HE HL Hl".
-    rewrite /compute_layout_goal.
-    iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL []") as "(%L' & % & %R & Hx & HL & %ly & %Hst & %Hst2 & HT)".
-    { iApply maybe_logical_step_intro. done. }
-    iExists _, _. iFrame.
-    iModIntro. iApply (maybe_logical_step_compose with "Hx").
-    iApply maybe_logical_step_intro.
-    iIntros "(HR & Hv & _)".
-    iPoseProof (ofty_own_merge_value_untyped with "Hv Hl") as "?"; last by iFrame.
-    all: done.
-  Qed.
-  (* should have a lower priority than Lithium's id instance - in case the goal specifies that we want a value_t, we should not try to fiddle with that. *)
-  (* also should be lower priority than the instance for going to uninit, [owned_subltype_step_ofty_uninit] *)
-  Definition owned_subltype_step_merge_untyped_value_inst := [instance @owned_subltype_step_merge_untyped_value].
-  Global Existing Instance owned_subltype_step_merge_untyped_value_inst | 200.
-
-  Lemma owned_subltype_step_merge_typed_value {rt} π E L step (ty : type rt) `{!TySized ty} r v l st T :
-    (prove_with_subtype E L false ProveDirect (v ◁ᵥ{π, MetaNone} r @ ty) True (λ L' _ R,
-      ⌜ty_has_op_type ty (use_op_alg' (ty.(ty_syn_type) MetaNone)) MCCopy⌝ ∗
-      ⌜ty_syn_type ty MetaNone = st⌝ ∗
-      T L' R))
-    ⊢ owned_subltype_step π E L step l #v #r (◁ value_t true st) (◁ ty) T.
-  Proof.
-    iIntros "HT".
-    iIntros (????) "#CTX #HE HL Hl". iPoseProof (ltype_own_has_layout with "Hl") as "(%ly' & %Hst & %)".
-    iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL []") as "(%L' & % & %R & >(HR & Hv & _) & HL & %Hc & %Ha & HT)".
-    { iApply maybe_logical_step_intro. done. }
-    iModIntro. iExists L', R. iFrame.
-    iApply maybe_logical_step_intro. iFrame.
-    subst st.
-    iApply (ofty_own_merge_value_typed with "Hv Hl").
-    done.
-  Qed.
-  (* should have a lower priority than Lithium's id instance - in case the goal specifies that we want a value_t, we should not try to fiddle with that. *)
-  Definition owned_subltype_step_merge_typed_value_inst := [instance @owned_subltype_step_merge_typed_value].
-  Global Existing Instance owned_subltype_step_merge_typed_value_inst | 201.
-  *)
 
   Definition owned_subtype_value_id π E L step st r1 r2 typed := owned_subtype_id π E L step r1 r2 (value_t typed st).
   Definition owned_subtype_value_id_inst := [instance @owned_subtype_value_id].
@@ -939,23 +841,6 @@ End rules.
 
 Section unify_loc.
   Context `{!typeGS Σ}.
-  (** Strategy for unifying two values:
-     Step 1 (equalize st):
-     - if goal st is evar, instantiate with same and proceed to 2
-     - if goal st is given:
-       + if current is Untyped and goal is Untyped, go to step 2
-       + if current is Untyped and goal is something else, make goal Untyped
-       + otherwise, require equality (TODO: not complete: we could also make a prefix here)
-
-     Invariant after step 2: either st match, or both are Untyped.
-
-     Step 2
-     - if both are untyped:
-        a) if both are using the same layout, done
-        b) if both have the same size, require the goal's alignment to be lower, done
-        c) otherwise (size also not equal), require current to be a prefix and continue with prove_with_subtype of the rest (startign at step 1 again); require goal's alignment to be lower
-     - otherwise: require the values to be the same.
-   *)
 
   Lemma owned_subltype_step_ofty_value_unify_vs π E L step l vs1 vs2 typed st T :
     ⌜vs1 = vs2⌝ ∗ T L True%I
@@ -989,45 +874,6 @@ Section unify_loc.
   Qed.
   Definition owned_subltype_step_ofty_value_typed_evar_inst := [instance @owned_subltype_step_ofty_value_typed_evar].
   Global Existing Instance owned_subltype_step_ofty_value_typed_evar_inst | 11.
-
-
-  (* NOTE removed
-  (* in case st1 is Untyped, make the goal untyped, too *)
-  Lemma owned_subltype_step_ofty_value_st_untyped π E L step vs1 vs2 l st2 ly1 T :
-    li_tactic (compute_layout_goal (UntypedSynType ly1)) (λ ly1',
-    (li_tactic (compute_layout_goal st2) (λ ly2,
-      owned_subltype_step π E L step l vs1 vs2 (◁ value_t (UntypedSynType ly1')) (◁ value_t (UntypedSynType ly2)) T)))
-    ⊢ owned_subltype_step π E L step l vs1 vs2 (◁ value_t (UntypedSynType ly1)) (◁ value_t st2) T.
-  Proof.
-    rewrite /compute_layout_goal.
-    iIntros "(%ly1' & %Hst1 & %ly2 & %Halg & HT)".
-    iIntros (F ???) "#CTX #HE HL Hl".
-    apply syn_type_has_layout_untyped_inv in Hst1 as (-> & ?).
-    iMod ("HT" with "[//] [//] [//] CTX HE HL Hl") as "(%L' & %R2 & Hl & HL & HT)".
-    iModIntro. iExists L', R2. iFrame.
-    iApply (maybe_logical_step_wand with "[] Hl"). iIntros "(Hl & $)".
-    iApply (ofty_mono_ly_strong with "[] [] Hl").
-    - simpl. by eapply syn_type_has_layout_make_untyped.
-    - done.
-    - done.
-    - done.
-    - iIntros (v r) "Hv". rewrite /ty_own_val /=.
-      iDestruct "Hv" as "(_ & %ot & %Heq & %Hmc & %Hv & _)".
-      iR.
-      injection Heq as <-. apply is_memcast_val_untyped_inv in Hmc as <-.
-      specialize (syn_type_has_layout_op_alg _ _ Halg) as (ot & Hot & <-).
-      iExists ot. iSplitR; first done. iSplitR. { by iLeft. }
-      done.
-    - simpl. done.
-  Qed.
-  Definition owned_subltype_step_ofty_value_st_untyped_inst := [instance @owned_subltype_step_ofty_value_st_untyped].
-  Global Existing Instance owned_subltype_step_ofty_value_st_untyped_inst | 15.
-  *)
-
-
-  (** Step 2 *)
-
-  (* if both are using the same st, unify the values *)
 
   (* if both are untyped, and have not been handled by the previous instance,
      check if the sizes of the layout are the same;
@@ -1069,53 +915,6 @@ Section unify_loc.
   Qed.
   Definition owned_subltype_step_ofty_value_array_inst := [instance @owned_subltype_step_ofty_value_array].
   Global Existing Instance owned_subltype_step_ofty_value_array_inst | 15.
-
-
-  (* if all of the above fail, require equality of the syntypes. *)
-  (*
-  Lemma owned_subltype_step_ofty_value_st_eq π E L step l vs1 vs2 typed1 typed2 st1 st2 T :
-    ⌜fast_eq_hint (typed1 = typed2)⌝ ∗ ⌜st1 = st2⌝ ∗ owned_subltype_step π E L step l vs1 vs2 (◁ value_t typed2 st2) (◁ value_t typed2 st2) T
-    ⊢ owned_subltype_step π E L step l vs1 vs2 (◁ value_t typed1 st1) (◁ value_t typed2 st2) T.
-  Proof.
-    iIntros "(-> & -> & $)".
-  Qed.
-  Definition owned_subltype_step_ofty_value_st_eq_inst := [instance @owned_subltype_step_ofty_value_st_eq].
-  Global Existing Instance owned_subltype_step_ofty_value_st_eq_inst | 80.
-  *)
-
-  (* NOTE removed
-  (* Prove a prefix of the goal, and continue finding the rest of the ownership *)
-  Lemma owned_subltype_step_ofty_value_untyped_prefix π E L step l (vs1 vs2 : val) ly1 ly2 T `{!LayoutSizeLe ly1 ly2} :
-    (⌜syn_type_has_layout (UntypedSynType ly2) ly2⌝ ∗
-    (⌜l `has_layout_loc` ly1⌝ -∗
-    ⌜l `has_layout_loc` ly2⌝ ∗
-    ∃ vs2' : val, ⌜vs2 = vs1 ++ vs2'⌝ ∗
-    ∃ ly1', prove_with_subtype E L step ProveDirect ((l +ₗ ly_size ly1) ◁ₗ[π, Owned] #vs2' @ ◁ value_t (UntypedSynType ly1')) True
-        (λ L2 _ R2, ⌜ly_size ly1' = ly_size ly2 - ly_size ly1⌝ ∗ T L2 R2)))
-    ⊢ owned_subltype_step π E L step l #vs1 #vs2 (◁ value_t (UntypedSynType ly1)) (◁ value_t (UntypedSynType ly2)) T.
-  Proof.
-    iIntros "(%Hst & HT)".
-    match goal with H : LayoutSizeLe _ _ |- _ => rewrite /LayoutSizeLe in H end.
-    iIntros (F ???) "#CTX #HE HL Hl".
-    iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Halg & %Hal)".
-    apply syn_type_has_layout_untyped_inv in Halg as (-> & ? & ?).
-    iDestruct ("HT" with "[//]") as "(%Hal2 & %vs2' & -> & %ly1' & HT)".
-    iMod ("HT" $! _ True%I with "[//] [//] [//] CTX HE HL[] ") as "(%L' & % & %R2 & Hl' & HL & %Hsz & HT)".
-    { iApply maybe_logical_step_intro. done. }
-    iExists _, R2. iFrame.
-    iApply maybe_logical_step_fupd.
-    iApply (maybe_logical_step_compose with "Hl'").
-    iApply maybe_logical_step_intro.
-    iIntros "!> ($ & Hl' & _)".
-    iPoseProof (ofty_value_untyped_app_merge with "Hl Hl'") as "$"; last done.
-    - done.
-    - done.
-    - done.
-    - done.
-  Qed.
-  Definition owned_subltype_step_ofty_value_untyped_prefix_inst := [instance @owned_subltype_step_ofty_value_untyped_prefix].
-  Global Existing Instance owned_subltype_step_ofty_value_untyped_prefix_inst | 7.
-  *)
 End unify_loc.
 
 Section unify_val.
@@ -1153,43 +952,6 @@ Section unify_val.
   Definition owned_subtype_value_typed_evar_inst := [instance @owned_subtype_value_typed_evar].
   Global Existing Instance owned_subtype_value_typed_evar_inst | 11.
 
-  (* NOTE removed
-  (* in case st1 is Untyped, make the goal untyped, too *)
-  Lemma owned_subtype_value_st_untyped E L π vs1 vs2 st2 ly1 T :
-    (li_tactic (compute_layout_goal (UntypedSynType ly1)) (λ ly1',
-    (li_tactic (compute_layout_goal st2) (λ ly2,
-      owned_subtype π E L false vs1 vs2 (value_t (UntypedSynType ly1')) (value_t (UntypedSynType ly2)) T))))
-    ⊢ owned_subtype π E L false vs1 vs2 (value_t (UntypedSynType ly1)) (value_t st2) T.
-  Proof.
-    rewrite /compute_layout_goal.
-    iIntros "(%ly1' & %Halg1 & %ly2 & %Halg2 & HT)".
-    assert (Halg1' := Halg1).
-    apply syn_type_has_layout_untyped_inv in Halg1 as (-> & ?).
-    iIntros (????) "#CTX #HE HL".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & Hsub & HL & HT)".
-    iExists L2. iFrame. iModIntro.
-    iDestruct "Hsub" as "(%Hsz & Hsc & Hv)".
-    iSplitR "Hsc Hv".
-    { iPureIntro. simpl in Hsz |- *.
-      assert (Halg2' : syn_type_has_layout (UntypedSynType ly2) ly2).
-      { eapply syn_type_has_layout_make_untyped; done. }
-      eapply syn_type_size_eq_prove; [exact Halg1' | exact Halg2 | ].
-      eapply syn_type_size_eq_use; [exact Hsz | exact Halg1' | exact Halg2']. }
-    iSplitR "Hv".
-    { iIntros "Hsc1". iApply "Hsc". done. }
-    iIntros (v) "Hv1". iApply value_untyped_make_typed; first done.
-    iApply "Hv". done.
-  Qed.
-  Definition owned_subtype_value_st_untyped_inst := [instance @owned_subtype_value_st_untyped].
-  Global Existing Instance owned_subtype_value_st_untyped_inst | 15.
-  *)
-
-
-  (* TODO: one thing that definitely needs to work:
-      value_t (UntypedOp ly) <: value_t st when st_has_layout st ly
-   *)
-
-  (** Step 2 *)
   (* for untyped, require compatibility of the layouts *)
   Lemma owned_subtype_value_literal_full π E L pers vs1 vs2 ly1 ly2 T `{!LayoutSizeEq ly1 ly2} :
     li_tactic (compute_layout_goal (LiteralSynType ly1)) (λ ly1',
@@ -1234,18 +996,6 @@ Section unify_val.
   Qed.
   Definition owned_subtype_value_array_inst := [instance @owned_subtype_value_array].
   Global Existing Instance owned_subtype_value_array_inst | 15.
-
-  (*
-  (* if all of the above fail, require equality of the syntypes. TODO: this is too strict *)
-  Lemma owned_subtype_value_st_eq E L π vs1 vs2 typed1 typed2 st1 st2 T :
-    ⌜fast_eq_hint (typed1 = typed2)⌝ ∗ ⌜st1 = st2⌝ ∗ owned_subtype π E L false vs1 vs2 (value_t typed2 st2) (value_t typed2 st2) T
-    ⊢ owned_subtype π E L false vs1 vs2 (value_t typed1 st1) (value_t typed2 st2) T.
-  Proof.
-    iIntros "(-> & -> & $)".
-  Qed.
-  Definition owned_subtype_value_st_eq_inst := [instance @owned_subtype_value_st_eq].
-  Global Existing Instance owned_subtype_value_st_eq_inst | 80.
-  *)
 End unify_val.
 
 Section rules.
