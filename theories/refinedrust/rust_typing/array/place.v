@@ -128,20 +128,23 @@ Section place.
     { subst i. rewrite Z2Nat.id//. }
     iIntros (L2 κs l2 b2 bmin0 rti ltyi ri' updcx) "Hi Hc".
     iApply ("Hcont" with "Hi").
-    iIntros (upd) "#Hincl Hl2 %Hsteq HR Hcond".
-    iMod ("Hc" with "Hincl Hl2 [//] HR Hcond") as "Hs".
+    iIntros (upd) "#Hincl Hl2 HR Hcond".
+    iMod ("Hc" with "Hincl Hl2 HR Hcond") as "Hs".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq2 & Hcond & #Hincl2 & ? & ? & HL & Hcont)".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & Hcond & #Hincl2 & ? & ? & HL & Hcont)".
     iFrame. simpl.
     generalize (opt_place_update_eq_use _ _ (pupd_rt upd') place_update_kind_rt_same_array upd'.(pupd_eq_2)).
     intros Heq.
     destruct upd' as [rt' lt' r' ? ? ? ?].  simpl in *.
     subst rt'.
+    iPoseProof (typed_place_cond_syn_type_eq with "[] Hcond") as "%Hsteq2".
+    { iApply place_update_kind_incl_trans; first done.
+      destruct bmin; done. }
     iPoseProof ("Hcl_b" with "[Hl]") as "Hl".
     { rewrite /i Z2Nat.id; last done. iFrame. rewrite -Hsteq2//. }
     rewrite insert_interpret_iml.
     iMod ("Hcl" with "[//] Hl") as "Hb ".
-    iFrame. iR.
+    iFrame.
 
     iSplitL; first last.
     { iApply place_update_kind_incl_lub; last done.
@@ -243,10 +246,10 @@ Section place.
     { subst i. rewrite Z2Nat.id//. }
     iIntros (L2 κs' l2 b2 bmin1 rti ltyi ri' updcx) "Hi Hc".
     iApply ("Hcont" with "Hi").
-    iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
-    iMod ("Hc" with "Hincl Hl2 [//] [$] Hcond") as "Hc".
+    iIntros (upd) "#Hincl Hl2 ? Hcond".
+    iMod ("Hc" with "Hincl Hl2 [$] Hcond") as "Hc".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq2 & Hcond & #Hincl2 & ? & ? & HL & Hf & %Hincl2 & Hcont)".
+    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & Hcond & #Hincl2 & ? & ? & HL & Hf & %Hincl2 & Hcont)".
     iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hincl3"; first apply Hincl2.
     iFrame. simpl.
 
@@ -254,6 +257,9 @@ Section place.
     intros Heq.
     destruct upd' as [rt' lt' r' ? ? ? ?].  simpl in *.
     subst rt'.
+    iPoseProof (typed_place_cond_syn_type_eq with "[] Hcond") as "%Hsteq2".
+    { iApply place_update_kind_incl_trans; first done.
+      destruct bmin0; done. }
     iPoseProof ("Hcl_b" with "[Hl]") as "Hl".
     { rewrite /i Z2Nat.id; last done. iFrame. rewrite -Hsteq2//. }
     rewrite insert_interpret_iml.
@@ -264,7 +270,7 @@ Section place.
       - iApply array_incl_blocked_lfts_unblock. done.
       - iApply typed_place_cond_incl; last done. done. }
     iFrame.
-    iR. iR. rewrite llft_elt_toks_app. by iFrame.
+    iModIntro. rewrite llft_elt_toks_app. by iFrame.
   Qed.
   Definition typed_place_array_uniq_inst := [instance @typed_place_array_uniq].
   Global Existing Instance typed_place_array_uniq_inst | 30.
@@ -346,21 +352,24 @@ Section place.
     iIntros (L2 κs l2 b2 bmin0 rti ltyi ri' updcx) "Hi Hc".
     iApply ("Hcont" with "Hi").
 
-    iIntros (upd) "#Hincl Hl2 %Hsteq HR Hcond".
-    iMod ("Hc" with "Hincl Hl2 [//] HR Hcond") as "Hs".
+    iIntros (upd) "#Hincl Hl2 HR Hcond".
+    iMod ("Hc" with "Hincl Hl2 HR Hcond") as "Hs".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq2 & Hcond & #Hincl2 & ? & ? & HL & Hcont)".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & Hcond & #Hincl2 & ? & ? & HL & Hcont)".
     iFrame. simpl.
     generalize (opt_place_update_eq_use _ _ (pupd_rt upd') place_update_kind_rt_same_array upd'.(pupd_eq_2)).
     intros Heq.
     destruct upd' as [rt' lt' r' ? ? ? ?].  simpl in *.
     subst rt'.
+    iPoseProof (typed_place_cond_syn_type_eq with "[] Hcond") as "%Hsteq2".
+    { iApply place_update_kind_incl_trans; first done.
+      destruct bmin; done. }
     iPoseProof ("Hcl_b" with "[Hl]") as "Hl".
     { rewrite /i Z2Nat.id; last done. iFrame. rewrite -Hsteq2//. }
     rewrite insert_interpret_iml.
     iMod ("Hcl" with "[//] [] Hl") as "Hb ".
     { rewrite length_insert//. }
-    iFrame. iR.
+    iFrame.
 
     iSplitL; first last.
     { iApply place_update_kind_incl_lub; last done.

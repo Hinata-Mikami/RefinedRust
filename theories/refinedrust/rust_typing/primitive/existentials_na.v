@@ -419,11 +419,12 @@ Section na_subtype.
     iApply ("HT" with "[//] [//] CTX HE HL Hf Hl").
     iIntros (L' ??????? updcx) "Hl Hv".
     iApply ("HR" with "Hl").
-    iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
-    iMod ("Hv" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
+    iIntros (upd) "#Hincl Hl2 ? Hcond".
+    iMod ("Hv" with "Hincl Hl2 [$] Hcond") as "Hs".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq2 & Hcond & ? & ? & ? & HL & Hcont)".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & Hcond & ? & ? & ? & HL & Hcont)".
     iFrame. simpl.
+    iPoseProof (typed_place_cond_syn_type_eq with "[$] Hcond") as "%".
     iPoseProof ("Hcl" with "Hl [//]") as "$".
     done.
   Qed.
@@ -502,10 +503,11 @@ Section na_subtype.
     iApply ("HT" with "[//] [//] CTX HE HL Hf Hb").
     iModIntro. iIntros (L' κs l2 b2 bmin0 rti ltyi ri updcx) "Hl Hc".
     iApply ("Hcont" with "Hl").
-    iIntros (upd) "#Hincl Hl2 %Hsteq ? ?".
-    iMod ("Hc" with "Hincl Hl2 [//] [$] [$]") as "Hc".
+    iIntros (upd) "#Hincl Hl2 ? ?".
+    iMod ("Hc" with "Hincl Hl2 [$] [$]") as "Hc".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq' & Hcond & ? & ? & ? & ? & ?)".
+    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & Hcond & ? & ? & ? & ? & ?)".
+    iPoseProof (typed_place_cond_syn_type_eq with "[$] Hcond") as "%".
     iFrame. simp_ltypes. done.
   Qed.
   Definition typed_place_na_ex_plain_t_owned_inst := [instance @typed_place_na_ex_plain_t_owned].
@@ -661,11 +663,11 @@ Section na_subtype.
     iIntros "!>" (? ? ? ? ? ? ? ? updcx) "Hl Ha".
     iApply ("Hcont" with "Hl").
 
-    iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
-    iMod ("Ha" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
+    iIntros (upd) "#Hincl Hl2 ? Hcond".
+    iMod ("Ha" with "Hincl Hl2 [$] Hcond") as "Hs".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq' & Hcond & ? & ? & ? & HL & Hcont)".
-    iFrame. simpl. simp_ltypes. iR.
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & Hcond & ? & ? & ? & HL & Hcont)".
+    iFrame. simpl. simp_ltypes.
     iApply (typed_place_cond_trans with "[] Hcond").
     iApply typed_place_cond_shadowed_r.
     iApply typed_place_cond_refl_ofty.

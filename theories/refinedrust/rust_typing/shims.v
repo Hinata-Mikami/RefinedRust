@@ -135,7 +135,7 @@ Definition DropGlue_drop_glue_base_spec `{RRGS : !refinedrustGS Σ} (T_rt : RT) 
     (l ◁ₗ[π, Owned] #($# x) @ ◁ T_ty)%I) →
   ∃ () : (), () @ unit_t; λ π,
     ty_ghost_drop T_ty π ($# x) ∗
-    (l ◁ₗ[π, Owned] .@ ◁ uninit T_st)
+    (l ◁ₗ[π, Owned] .@ ◁ typed_value_t T_st)
 .
 
 Definition DropGlue_base_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (DropGlue_spec ((T_rt)))) :=

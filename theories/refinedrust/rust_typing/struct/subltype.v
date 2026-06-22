@@ -16,7 +16,7 @@ Section subltype.
       hpzipl _ lts2 rs2 !! field_idx_of_idx (sl_members sl) k = Some (existT rt2 (lt2', r2))) ∨
     (∃ ly, lt1 = f ly ∧ lt2 = f ly).
   Proof.
-intros Hlen Hlook1 Hlook2.
+    intros Hlen Hlook1 Hlook2.
     apply pad_struct_lookup_Some_1 in Hlook1.
     destruct Hlook1 as (n & ly & Hmem & Hlook1).
     destruct Hlook1 as [ [ ? Hlook1] | Hlook1].
@@ -528,15 +528,21 @@ Section accessors.
   Proof.
     destruct b; simpl.
     - iIntros "_". done.
+    - iIntros "_". done.
     - iIntros "Hrel".
+      unfold typed_place_cond; simpl.
+      iR.
+      rewrite big_sepL2_sep. iDestruct "Hrel" as "(_ & Hrel)".
       iPoseProof (big_sepL2_Forall2 with "Hrel") as "%Heq".
       iPureIntro. f_equiv.
       by eapply lift_eq.
     - iIntros "Hrel".
       iPoseProof (big_sepL2_impl _ (λ _ lt1 lt2, ⌜projT1 lt1 = projT1 lt2⌝)%I with "Hrel []") as "#Hx".
-      { iModIntro. iIntros (?????). iIntros "(%Heq & Ha)". done. }
+      { iModIntro. iIntros (?????). iIntros "(% & %Heq & Ha)". done. }
       iPoseProof (big_sepL2_Forall2 with "Hx") as "%Heq". iClear "Hx".
       apply lift_eq in Heq. subst rts'.
+      rewrite big_sepL2_sep. iDestruct "Hrel" as "(_ & Hrel)".
+      iR.
       iExists eq_refl.
       setoid_rewrite <-bi.sep_exist_r.
       rewrite big_sepL2_sep_sepL_r. iDestruct "Hrel" as "(#Heq & #Hub)".

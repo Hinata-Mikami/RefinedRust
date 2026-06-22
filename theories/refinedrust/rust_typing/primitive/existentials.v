@@ -713,7 +713,7 @@ Section stratify.
     iModIntro. iExists  _, _, _, _, _. iFrame.
     simp_ltypes. iSplitR; first done.
     iApply (logical_step_wand with "Hstep"). iIntros "(Ha & $)".
-    iApply ("Hcl_b" with "Hst Ha").
+    iApply ("Hcl_b" with "Ha").
   Qed.
   (*Global Instance stratify_unfold_ex_plain_t_shared_inst {M} π E L smu sa (sm : M) l (ty : type rt) x κ :*)
     (*StratifyLtype π E L smu StratDoUnfold sa sm l (◁ (∃; P, ty))%I (PlaceIn x) (Shared κ) :=*)
@@ -739,10 +739,11 @@ Section stratify.
     iApply ("HT" with "[//] [//] CTX HE HL Hf Hb").
     iModIntro. iIntros (L' κs l2 b2 bmin0 rti ltyi ri updcx) "Hl Hc".
     iApply ("Hcont" with "Hl").
-    iIntros (upd) "#Hincl Hl2 %Hsteq ? ?".
-    iMod ("Hc" with "Hincl Hl2 [//] [$] [$]") as "Hc".
+    iIntros (upd) "#Hincl Hl2 ? ?".
+    iMod ("Hc" with "Hincl Hl2 [$] [$]") as "Hc".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq' & Hcond & ? & ? & ? & ? & ?)".
+    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & Hcond & ? & ? & ? & ? & ?)".
+    iPoseProof (typed_place_cond_syn_type_eq with "[$] Hcond") as "%Hst".
     iFrame. simp_ltypes. done.
   Qed.
   Definition typed_place_ex_plain_t_owned_inst := [instance @typed_place_ex_plain_t_owned].
@@ -774,10 +775,11 @@ Section stratify.
     iApply ("HT" with "[//] [//] CTX HE HL Hf Hb").
     iModIntro. iIntros (L'' κs' l2 b2 bmin0 rti ltyi ri updcx) "Hl Hc".
     iApply ("Hcont" with "Hl").
-    iIntros (upd) "#Hincl Hl2 %Hsteq ? ?".
-    iMod ("Hc" with "Hincl Hl2 [//] [$] [$]") as "Hc".
+    iIntros (upd) "#Hincl Hl2 ? ?".
+    iMod ("Hc" with "Hincl Hl2 [$] [$]") as "Hc".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq' & Hcond & ? & ? & ? & ? & ?)".
+    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & Hcond & ? & ? & ? & ? & ?)".
+    iPoseProof (typed_place_cond_syn_type_eq with "[$] Hcond") as "%Hst".
     iFrame. simp_ltypes. done.
   Qed.
   Definition typed_place_ex_plain_t_uniq_inst := [instance @typed_place_ex_plain_t_uniq].
@@ -802,10 +804,11 @@ Section stratify.
     iApply ("HT" with "[//] [//] CTX HE HL Hf Hb").
     iModIntro. iIntros (L'' κs' l2 b2 bmin0 rti ltyi ri updcx) "Hl Hc".
     iApply ("Hcont" with "Hl").
-    iIntros (upd) "#Hincl Hl2 %Hsteq ? ?".
-    iMod ("Hc" with "Hincl Hl2 [//] [$] [$]") as "Hc".
+    iIntros (upd) "#Hincl Hl2 ? ?".
+    iMod ("Hc" with "Hincl Hl2 [$] [$]") as "Hc".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq' & Hcond & ? & ? & ? & ? & ?)".
+    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & Hcond & ? & ? & ? & ? & ?)".
+    iPoseProof (typed_place_cond_syn_type_eq with "[$] Hcond") as "%Hst".
     iFrame. simp_ltypes. done.
   Qed.
   Definition typed_place_ex_plain_t_shared_inst := [instance @typed_place_ex_plain_t_shared].

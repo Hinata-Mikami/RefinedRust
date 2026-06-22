@@ -1479,7 +1479,6 @@ Section judgments.
         llctx_interp L' ∗
         (* [l2] is typed at a new type [ty3] satisfying the postcondition *)
         l2 ◁ₗ[π, b2] #r3 @ (◁ ty3) ∗
-        ⌜ltype_st lt2 = ty_syn_type ty3 MetaNone⌝ ∗
         res ⪯ₚ bmin ∗
         typed_place_cond res lt2 (◁ ty3) ∗
         T L' rt3 ty3 r3 res)))).
@@ -1928,10 +1927,9 @@ Section place.
           upd.(pupd_performed) ⪯ₚ allowed1 -∗
           (* assume an update by the client *)
           l2 ◁ₗ[f.1, b2] upd.(pupd_rfn) @ upd.(pupd_lt) -∗
-          (* needs to have the same st *)
-          ⌜ltype_st ltyi = ltype_st upd.(pupd_lt)⌝ -∗
           (* remaining ownership *)
           upd.(pupd_R) -∗
+          (* update is legal *)
           typed_place_cond upd.(pupd_performed) ltyi upd.(pupd_lt) ={F}=∗
           ∀ (L2 : llctx) (cont : place_update rto allowed0 → iProp Σ),
           llctx_interp L2 -∗
@@ -1940,8 +1938,6 @@ Section place.
           ∃ upd' : place_update rto allowed0,
             (* provide the updated ownership of l1 *)
             l1 ◁ₗ[f.1, b1] upd'.(pupd_rfn) @ upd'.(pupd_lt) ∗
-            (* and a proof that the "outer" update is legal *)
-            ⌜ltype_st ltyo = ltype_st upd'.(pupd_lt)⌝ ∗
             (* and a proof that the "outer" update is legal *)
             typed_place_cond upd'.(pupd_performed) ltyo upd'.(pupd_lt) ∗
             (* the update obeys the restrictions *)
@@ -1977,11 +1973,11 @@ Section place.
     iSpecialize ("HΦ" $! _ _ _ _ _ _ _ _ _ with "HP").
     (*{ iApply "Hincl". }*)
     iApply ("HΦ" with "[] Hs HL Hf").
-    iIntros (upd) "Hincl' Hl %Hst ? Hcond" => /=.
+    iIntros (upd) "Hincl' Hl ? Hcond" => /=.
     iModIntro.
     iIntros (L2 cont) "HL Hf Hcont".
     iExists upd.
-    iFrame. iR.
+    iFrame.
     iApply llft_elt_toks_nil.
   Qed.
   Global Instance typed_place_id_inst {rt} E L f (lt : ltype rt) bmin0 b r l :
@@ -2054,14 +2050,13 @@ Section laws.
     iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl").
     iIntros (L' κs l2 b2 bmin rti tyli ri updcx) "Hl2 Hs HT HL".
     iApply ("HΦ" $! _ _ _ _ _ _ _ _  with "Hl2 [Hs] HT HL").
-    iIntros (upd) "Hincl' Hl2 %Hst HR Hcond".
-    iMod ("Hs" with "Hincl' Hl2 [//] HR Hcond") as "Hs".
+    iIntros (upd) "Hincl' Hl2 HR Hcond".
+    iMod ("Hs" with "Hincl' Hl2 HR Hcond") as "Hs".
     (*"(Hl & %Hst2 & Hcond & Htoks & HR)".*)
     iModIntro. iIntros (L2 cont) "HL Hf Hcont".
-    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hst2 & ? & ? & ? & ?)".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & ? & ? & ? & ?)".
     iExists upd'.
-    iPoseProof (ltype_incl_syn_type with "Hi1") as "%Hst'".
-    rewrite Hst' Hst2. iFrame. iR.
+    iFrame.
     iApply ltype_eq_place_cond_trans; last done.
     iApply "Heq".
   Qed.
@@ -2074,7 +2069,7 @@ Section laws.
       v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
       ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
         v ◁ᵥ{f.1, MetaNone} r @ ty ∗ l2 ◁ₗ[f.1, b2] r2 @ lt2 ∗
-        typed_place E L f l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
+        typed_place E L f l2 lt2 r2 UpdInit b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
           (* point: the outer place is not updated, it stays at ◁ ty.
              but I emit new updated ownership *)
           T L' κs li b3 bmin rti ltyi ri
@@ -2110,11 +2105,11 @@ Section laws.
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
     iApply ("Hcont" with "Hl3 [Hcl Hl] HT HL Hf"). simpl.
-    iIntros (upd) "#Hincl2 Hl2 %Hst HR Hcond".
-    iMod ("Hcl" with "Hincl2 Hl2 [//] HR Hcond") as "Hcl".
+    iIntros (upd) "#Hincl2 Hl2 HR Hcond".
+    iMod ("Hcl" with "Hincl2 Hl2 HR Hcond") as "Hcl".
     iModIntro. iIntros (L3 cont) "HL Hf Hcont".
-    iMod ("Hcl" with "HL Hf Hcont") as (upd') "(Hl' & % & ? & ? & ? & Hstrong & ?)".
-    simpl. iFrame. iR. simpl.
+    iMod ("Hcl" with "HL Hf Hcont") as (upd') "(Hl' & ? & ? & ? & Hstrong & ?)".
+    simpl. iFrame. simpl.
     iSplitL; last iApply upd_bot_min.
     iApply typed_place_cond_refl_ofty.
   Qed.
@@ -2127,7 +2122,7 @@ Section laws.
       v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
       ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
         v ◁ᵥ{f.1, MetaNone} r @ ty ∗ l2 ◁ₗ[f.1, b2] r2 @ lt2 ∗
-        typed_place E L f l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
+        typed_place E L f l2 lt2 r2 UpdInit b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
           T L' κs li b3 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
             cont (mkPUpd _ _ _ (◁ ty) (# r)
@@ -2165,11 +2160,11 @@ Section laws.
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
     iApply ("Hcont" with "Hl3 [Hcl Hl] HT HL Hf"). simpl.
-    iIntros (upd) "Hincl2 Hl2 %Hst HR Hcond".
-    iMod ("Hcl" with "Hincl2 Hl2 [//] HR Hcond") as "Hcl".
+    iIntros (upd) "Hincl2 Hl2 HR Hcond".
+    iMod ("Hcl" with "Hincl2 Hl2 HR Hcond") as "Hcl".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hcl" with "HL Hf Hcont") as (upd') "(Hl' & % & ? & ? & ? & ? & ?)".
-    simpl. iFrame. simpl. iR.
+    iMod ("Hcl" with "HL Hf Hcont") as (upd') "(Hl' & ? & ? & ? & ? & ?)".
+    simpl. iFrame. simpl.
     iSplitL; last iApply upd_bot_min.
     iApply typed_place_cond_refl_ofty.
   Qed.
@@ -2182,7 +2177,7 @@ Section laws.
       v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
       ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
         v ◁ᵥ{f.1, MetaNone} r @ ty ∗ l2 ◁ₗ[f.1, b2] r2 @ lt2 ∗
-        typed_place E L f l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
+        typed_place E L f l2 lt2 r2 UpdInit b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
           T L' κs li b3 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd  (λ upd',
             cont (mkPUpd _ _ _ (◁ ty) (# r)
@@ -2220,11 +2215,11 @@ Section laws.
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
     iApply ("Hcont" with "Hl3 [Hcl Hv] HT HL Hf"). simpl.
-    iIntros (upd) "Hincl2 Hl2 %Hst HR Hcond".
-    iMod ("Hcl" with "Hincl2 Hl2 [//] HR Hcond") as "Hcl".
+    iIntros (upd) "Hincl2 Hl2 HR Hcond".
+    iMod ("Hcl" with "Hincl2 Hl2 HR Hcond") as "Hcl".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hcl" with "HL Hf Hcont") as (upd') "(Hl' & % & ? & ? & ? & ? &?)".
-    simpl. iFrame. iFrame "#". simpl. iR.
+    iMod ("Hcl" with "HL Hf Hcont") as (upd') "(Hl' & ? & ? & ? & ? &?)".
+    simpl. iFrame. iFrame "#". simpl.
     iSplitL; last iApply upd_bot_min.
     iApply typed_place_cond_refl_ofty.
   Qed.
@@ -2240,7 +2235,7 @@ Section laws.
     iDestruct "Hcond" as "(%upd & Hcond & Hcond' & <- & HT)".
     iExists upd. iFrame.
     iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->".
-    iL. iApply ltype_eq_place_cond_ty_trans; done.
+    iL. iApply ltype_eq_place_cond_trans; done.
   Qed.
   Lemma prove_place_cond_eqltype_r E L bmin {rt1 rt2} (lt1 : ltype rt1) (lt2 lt2' : ltype rt2) T :
     full_eqltype E L lt2 lt2' →

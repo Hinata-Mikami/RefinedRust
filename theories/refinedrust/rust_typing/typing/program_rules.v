@@ -2667,12 +2667,12 @@ Section subsume.
     iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl").
     iIntros (L' κs l2 bmin b2 rti tyli ri updcx) "Hl2 Hs HT HL Hf".
     iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ with "Hl2 [Hs] HT HL Hf").
-    iIntros (upd) "#Hincl Hl2 %Hst HR Hcond".
-    iMod ("Hs" with "Hincl Hl2 [//] HR Hcond") as "Hs".
+    iIntros (upd) "#Hincl Hl2 HR Hcond".
+    iMod ("Hs" with "Hincl Hl2 HR Hcond") as "Hs".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hst' & Hcond & Htoks & HR' & ? & ? &?)".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & Hcond & Htoks & HR' & ? & ? &?)".
     iFrame.
-    simp_ltypes. iR.
+    simp_ltypes.
     by iApply typed_place_cond_blocked_l.
   Qed.
   Definition typed_place_blocked_unblock_inst := [instance @typed_place_blocked_unblock].
@@ -2702,12 +2702,12 @@ Section subsume.
       iApply ("Hp" with "[//] [//] CTX HE HL Hf Hl").
       iIntros (L' κs l2 b2 bmin rti tyli ri updcx) "Hl2 Hs HT HL Hf".
       iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ with "Hl2 [Hs] HT HL Hf").
-      iIntros (upd) "#Hincl Hl2 %Hst HR Hcond".
-      iMod ("Hs" with "Hincl Hl2 [//] HR Hcond") as "Hs".
+      iIntros (upd) "#Hincl Hl2 HR Hcond".
+      iMod ("Hs" with "Hincl Hl2 HR Hcond") as "Hs".
       iModIntro. iIntros (? cont) "HL Hf Hcont".
-      iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hst' & Hcond & Htoks & HR & ?)".
+      iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & Hcond & Htoks & HR & ?)".
       iFrame.
-      simp_ltypes. iR.
+      simp_ltypes.
       by iApply typed_place_cond_shrblocked_l.
     - iDestruct "Hp" as "(%Hincl & Hp)".
       iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hincl1"; first apply Hincl.
@@ -2715,11 +2715,11 @@ Section subsume.
       iApply ("Hp" with "[//] [//] CTX HE HL Hf Hl'").
       iIntros (L2 κs li allowed1 bi rti ltyi ri updcx) "Hli Hcont HT".
       iApply ("HΦ" with "Hli [Hcont Hl] HT").
-      iIntros (upd) "Hincl Hli %Hst HR Hcond".
-      iMod ("Hcont" with "Hincl Hli [//] HR Hcond") as "Ha".
+      iIntros (upd) "Hincl Hli HR Hcond".
+      iMod ("Hcont" with "Hincl Hli HR Hcond") as "Ha".
       iModIntro. iIntros (??) "HL Hf Hupd".
-      iMod ("Ha" with "HL Hf Hupd") as "(%upd' & _ & % & Hcond & Hincl & Htoks & HR & HL & Hf & Hcont)".
-      iFrame. simpl. iR.
+      iMod ("Ha" with "HL Hf Hupd") as "(%upd' & _  & Hcond & Hincl & Htoks & HR & HL & Hf & Hcont)".
+      iFrame. simpl.
       iL. iModIntro.
       iApply typed_place_cond_shrblocked_l.
       iApply ofty_shr_blocked_place_cond.
@@ -2741,12 +2741,11 @@ Section subsume.
     iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl").
     iIntros (L' κs' l2 b2 bmin rti tyli ri updcx) "Hl2 Hs HT HL Hf".
     iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ with "Hl2 [Hs] HT HL Hf").
-    iIntros (upd) "#Hincl Hl2 %Hst HR Hcond".
-    iMod ("Hs" with "Hincl Hl2 [//] HR Hcond") as "Hs".
+    iIntros (upd) "#Hincl Hl2 HR Hcond".
+    iMod ("Hs" with "Hincl Hl2 HR Hcond") as "Hs".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hst' & Hcond & Htoks & HR & ?)".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & Hcond & Htoks & HR & ?)".
     iFrame. simp_ltypes.
-    rewrite ltype_core_syn_type_eq in Hst'. rewrite Hst'. iR.
     iApply typed_place_cond_coreable_l.
     iApply typed_place_cond_trans; last done.
     iApply typed_place_cond_core.
@@ -2768,8 +2767,8 @@ Section subsume.
     iModIntro. iApply ("HP" with "[//] [//] CTX HE HL Hf Hl").
     iIntros (L1 κs l2 b2 bmin rti tyli ri updcx) "Hl2 Hs HT HL".
     iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ with "Hl2 [Hs] HT HL").
-    iIntros (upd) "#Hincl Hl2 %Hst HR Hcond".
-    iMod ("Hs" with "Hincl Hl2 [//] HR Hcond") as "Hs".
+    iIntros (upd) "#Hincl Hl2 HR Hcond".
+    iMod ("Hs" with "Hincl Hl2 HR Hcond") as "Hs".
     iModIntro. iIntros (? cont) "HL Hcont".
     iApply ("Hs" with "HL"). simp_ltypes. done.
   Qed.
@@ -2802,11 +2801,12 @@ Section subsume.
     iApply ("HT" with "[//] [//] CTX HE HL Hf Hl").
     iIntros (L' ??????? updcx) "Hl Hv".
     iApply ("HR" with "Hl").
-    iIntros (upd) "Hincl Hl %Hst HR Hcond". simpl.
-    iMod ("Hv" with "Hincl Hl [//] HR Hcond") as "Hv".
+    iIntros (upd) "Hincl Hl HR Hcond". simpl.
+    iMod ("Hv" with "Hincl Hl HR Hcond") as "Hv".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hv" with "HL Hf Hcont") as (upd') "(Hl & %Hst' & Hcond & Htoks & ? & ? & ?)".
+    iMod ("Hv" with "HL Hf Hcont") as (upd') "(Hl & Hcond & Hincl & ? & ? & ?)".
     iFrame.
+    iPoseProof (typed_place_cond_syn_type_eq with "Hincl Hcond") as "%".
     iPoseProof ("Hcl" with "Hl [//]") as "Hl".
     eauto with iFrame.
   Qed.
@@ -2842,12 +2842,13 @@ Section subsume.
     iApply ("HT" with "[//] [//] CTX HE HL Hf Hl").
     iIntros (L' ??????? updcx) "Hl Hv".
     iApply ("HR" with "Hl").
-    iIntros (upd) "Hincl Hl %Hst HR Hcond". simpl.
-    iMod ("Hv" with "Hincl Hl [//] HR Hcond") as "Hs".
+    iIntros (upd) "Hincl Hl HR Hcond". simpl.
+    iMod ("Hv" with "Hincl Hl HR Hcond") as "Hs".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hst' & Hcond & Htoks & ? & ? & ?)".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & Hcond & Hincl & ? & ? & ?)".
     simpl.
     iFrame.
+    iPoseProof (typed_place_cond_syn_type_eq with "Hincl Hcond") as "%".
     iPoseProof ("Hcl" with "Hl [//]") as "Hl".
     eauto with iFrame.
   Qed.
@@ -2889,15 +2890,14 @@ Section subsume.
     iIntros (L' κs l2 b2 bmin rti ltyi ri updcx) "Hl Hcc".
     iApply ("Hc" with "Hl").
 
-    iIntros (upd) "Hincl Hl %Hst HR Hcond". simpl in *.
-    iMod ("Hcc" with "Hincl Hl [//] HR Hcond") as "Hs".
+    iIntros (upd) "Hincl Hl HR Hcond". simpl in *.
+    iMod ("Hcc" with "Hincl Hl HR Hcond") as "Hs".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hst' & Hcond' & Htoks & HR & ? & ?)".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & Hcond' & Hincl & HR & ? & ?)".
     simpl.
-    iPoseProof ("Hcl" with "[] Hl") as "Hl".
-    { done. }
+    iPoseProof ("Hcl" with "Hl") as "Hl".
     simpl. iFrame. simpl. iFrame.
-    simp_ltypes. iR.
+    simp_ltypes.
     iSplitL; last iApply place_update_kind_incl_refl.
     iApply typed_place_cond_shadowed_update_cur. done.
   Qed.
@@ -2951,7 +2951,10 @@ Section subsume.
     iMod ("HT" with "[//] CTX HE HL") as "(#Hincl3 & HL & HT)".
     iModIntro. iPoseProof "Hincl3" as "(%Hsteq' & _)".
     set (updstrong := mkPUKRes (allowed:=UpdStrong)(rt1:=rt)(rt2:=rt2) UpdStrong I I).
-    iExists rt2, ty2, r2, updstrong. by iFrame "HL HT".
+    iExists rt2, ty2, r2, updstrong. iFrame "HL HT".
+    iR. simpl.
+    rewrite /typed_place_cond/=.  simp_ltypes.
+    done.
   Qed.
   Definition interpret_typing_hint_some_strong_inst := [instance @interpret_typing_hint_some_strong].
   Global Existing Instance interpret_typing_hint_some_strong_inst | 20.
@@ -2976,7 +2979,9 @@ Section subsume.
     iModIntro. iPoseProof "Hincl3" as "(%Hsteq' & _)".
     set (updstrong := mkPUKRes (allowed:=UpdWeak)(rt1:=rt2)(rt2:=rt2) UpdWeak eq_refl eq_refl).
     iExists rt2, ty2, r2, updstrong. iFrame "HL HT".
-    iR. done.
+    iR. simpl.
+    rewrite /typed_place_cond/=.  simp_ltypes.
+    done.
   Qed.
   Definition interpret_typing_hint_some_weak_inst := [instance @interpret_typing_hint_some_weak].
   Global Existing Instance interpret_typing_hint_some_weak_inst | 20.
@@ -3468,21 +3473,17 @@ Section subsume.
 
     set (upd_inner := typed_place_finish_upd (place_update_kind_res_trans upd res) lt' r').
 
-    iMod ("Hs" $! upd_inner with "[] Hl2 [] [] [Hcond Hcond2]") as "Hs".
+    iMod ("Hs" $! upd_inner with "[] Hl2 [] [Hcond Hcond2]") as "Hs".
     { simpl. iApply place_update_kind_incl_lub; done. }
-    { simpl. rewrite Hsteq Hst'.
-      unshelve iSpecialize ("Heq" $! inhabitant inhabitant); [apply _.. | ].
-      iPoseProof (ltype_eq_syn_type with "Heq") as "->".
-      done. }
     { simpl. done. }
     { simpl.
       iApply (typed_place_cond_trans with "[Hcond]").
       { iApply typed_place_cond_incl; last done.
         iApply place_update_kind_max_incl_l. }
-      iApply ltype_eq_place_cond_ty_trans; first iApply "Heq".
+      iApply ltype_eq_place_cond_trans; first iApply "Heq".
       iApply typed_place_cond_incl; last done.
       iApply place_update_kind_max_incl_r. }
-    iMod ("Hs" with "HL Hf Hfin") as (upd') "(Hl & %Hst3 & Hcond'' & ? & HR' & ? & HL & Hf & HT)".
+    iMod ("Hs" with "HL Hf Hfin") as (upd') "(Hl & Hcond'' & ? & HR' & ? & HL & Hf & HT)".
     iPoseProof ("HT" with "Hl") as "Hfin".
     iMod ("Hfin" with "[] [$] HE HL [$]") as "(%L4 & HL & HT)"; first done.
     iModIntro. iExists _, _, _, _. iFrame.
@@ -3630,7 +3631,7 @@ Section subsume.
     IntoPlaceCtx E f e T' →
     T' L (λ L' K l, find_in_context (FindLoc l) (λ '(existT rto (lt1, r1, b, π')),
       ⌜π' = f.1⌝ ∗
-      typed_place E L' f l lt1 r1 UpdStrong b K (λ (L1 : llctx) (κs : list lft) (l2 : loc) (b2 : bor_kind) (bmin : place_update_kind) rti (lt2 : ltype rti) (ri2 : place_rfn rti) (updcx : place_update_ctx rti rto bmin UpdStrong),
+      typed_place E L' f l lt1 r1 UpdInit b K (λ (L1 : llctx) (κs : list lft) (l2 : loc) (b2 : bor_kind) (bmin : place_update_kind) rti (lt2 : ltype rti) (ri2 : place_rfn rti) (updcx : place_update_ctx rti rto bmin UpdInit),
         (* unblock etc. TODO: this requirement is too strong. *)
         stratify_ltype_unblock f.1 E L1 StratRefoldOpened l2 lt2 ri2 b2 (λ L2 R rt3 lt3 ri3,
         (* certify that this stratification is allowed, or otherwise commit to a strong update *)
@@ -3658,13 +3659,12 @@ Section subsume.
     iApply (logical_step_wand with "Hcl").
     iIntros "Hcl Hl2".
     iMod ("Hcl" with "Hl2") as "Hcl".
-    iDestruct "Hcl" as "(%L3 & %rt3 & %ty3 & %r3 & %res & HL & Hl2 & %Hsteq & #Hincl2' & Hcond2 & Hfin)".
+    iDestruct "Hcl" as "(%L3 & %rt3 & %ty3 & %r3 & %res & HL & Hl2 & #Hincl2' & Hcond2 & Hfin)".
 
     set (upd_inner := typed_place_finish_upd (place_update_kind_res_trans upd res) (◁ ty3)%I (#r3)).
 
-    iMod ("Hs" $! upd_inner with "[] Hl2 [] [] [Hcond Hcond2]") as "Hs".
+    iMod ("Hs" $! upd_inner with "[] Hl2 [] [Hcond Hcond2]") as "Hs".
     { simpl. iApply place_update_kind_incl_lub; done. }
-    { simpl. rewrite Hst_eq Hsteq. simp_ltypes. done. }
     { simpl. done. }
     { simpl.
       iApply (typed_place_cond_trans with "[Hcond]").
@@ -3672,20 +3672,54 @@ Section subsume.
         iApply place_update_kind_max_incl_l. }
       iApply typed_place_cond_incl; last done.
       iApply place_update_kind_max_incl_r. }
-    iMod ("Hs" with "HL Hf Hfin") as (upd') "(Hl & %Hst3 & Hcond'' & ? & HR' & ? & HL & Hf & Hfin)".
+    iMod ("Hs" with "HL Hf Hfin") as (upd') "(Hl & Hcond'' & ? & HR' & ? & HL & Hf & Hfin)".
     iPoseProof ("Hfin" with "Hl") as "Hfin".
     iMod ("Hfin" with "[] [$] HE HL [$]") as "(%L4 & HL & HT)"; first done.
     iModIntro. iExists _. iFrame.
   Qed.
 
-  (* TODO: generalize to other places where we can overwrite, but which can't be folded to an ofty *)
+  (** Strong typing rule to initialize top-level places, where we are allowed to change the syntype *)
+  Lemma type_write_ofty_init E L {rt rt2} π l (ty : type rt) (ty2 : type rt2) r1 (r2 : rt2) v ot (T : typed_write_end_cont_t UpdInit rt2) :
+    (⌜syn_type_compat (st_of ty2 MetaNone) (st_of ty MetaNone)⌝ ∗
+     ⌜ty_has_op_type ty ot MCNone⌝ ∗
+     (ty_ghost_drop' ty2 π r2 -∗ T L rt ty r1 (mkPUKRes (allowed:=UpdInit) UpdInit I I)))
+    ⊢ typed_write_end π E L ot v ty r1 (Owned) UpdInit l (◁ ty2) (#r2) T.
+  Proof.
+    iIntros "(%Hcomp & %Hot & HT)".
+    iIntros (F qL ???) "#CTX #HE HL Hl Hv".
+    iPoseProof (ofty_ltype_acc_owned with "Hl") as "(%ly & %Halg & %Hly & #Hsc & Hlb & >(%v0 & Hl0 & Hv0 & Hcl))"; first done.
+    set (upd_strong := (mkPUKRes (allowed:=UpdInit) UpdInit I I)).
 
+    iDestruct (ty_own_val_has_layout with "Hv0") as "%Hlyv0"; first done.
+    iDestruct (ty_has_layout with "Hv") as "#(%ly' & % & %Hlyv)".
+    opose proof* syn_type_compat_use as Hly_eq; [ apply Hcomp | done | done | ].
+    subst ly'.
+    specialize (ty_op_type_stable Hot) as Halg'.
+    assert (ly = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
+    iModIntro. iSplitR; first done.
+    iSplitL "Hl0".
+    { iExists v0. iFrame. iSplitR; first done. done. }
+    iPoseProof (ty_own_ghost_drop _ _ _ _ _ F with "Hv0") as "Hgdrop"; first done.
+    iApply (logical_step_compose with "Hcl").
+    iApply (logical_step_compose with "Hgdrop").
+    iApply logical_step_intro.
+    iIntros "Hgdrop Hcl Hl".
+    iPoseProof (ty_own_val_sidecond with "Hv") as "#Hsc'".
+    iMod ("Hcl" with "Hl [//] [//] Hv") as "Hl".
+
+    iExists _, rt, ty, r1, upd_strong. iFrame.
+    iSplitR. { done. }
+    iPoseProof ("HT" with "Hgdrop") as "$".
+    rewrite /typed_place_cond/=.
+    simpl. done.
+  Qed.
+  Definition type_write_ofty_init_inst := [instance @type_write_ofty_init].
+  Global Existing Instance type_write_ofty_init_inst | 10.
+
+  (* TODO: generalize to other places where we can overwrite, but which can't be folded to an ofty *)
   (** Currently have [ty2], want to write [ty]. This allows updates of the refinement type (from rt to rt2).
      This only works if the path is fully owned ([bmin = Owned]).
      We could in principle allow this also for Uniq paths by suspending the mutable reference's contract with [OpenedLtype], but currently we have decided against that. *)
-  (* TODO the syntype equality requirement currently is too strong: it does not allow us to go from UntypedSynType to "proper sy types".
-     Can we lift the equality requirement in our typesystem?
-  *)
   Lemma type_write_ofty_strong E L {rt rt2} π l (ty : type rt) (ty2 : type rt2) r1 (r2 : rt2) v ot `{Hst_eq : !TCDone (ty_syn_type ty MetaNone = ty_syn_type ty2 MetaNone)} (T : typed_write_end_cont_t UpdStrong rt2) :
     (⌜ty_has_op_type ty ot MCNone⌝ ∗
         (ty_ghost_drop' ty2 π r2 -∗ T L rt ty r1 (mkPUKRes (allowed:=UpdStrong) UpdStrong I I)))
@@ -3710,11 +3744,13 @@ Section subsume.
     iApply logical_step_intro.
     iIntros "Hgdrop Hcl Hl".
     iPoseProof (ty_own_val_sidecond with "Hv") as "#Hsc'".
-    iMod ("Hcl" with "Hl [//] [//] Hv") as "Hl".
+
+    iMod ("Hcl" with "Hl [] [//] Hv") as "Hl".
+    { iPureIntro. by rewrite Hst_eq. }
 
     iExists _, rt, ty, r1, upd_strong. iFrame.
     iSplitR. { done. }
-    iR. iR.
+    iR.
     iApply ("HT" with "Hgdrop").
   Qed.
   Definition type_write_ofty_strong_inst := [instance @type_write_ofty_strong].
@@ -3760,7 +3796,6 @@ Section subsume.
       iModIntro.
       iExists _, _, ty2, r3, weak_upd.
       iFrame.
-      iR.
       iSplitR. { iApply upd_bot_min. }
       iSplitR. { iApply typed_place_cond_refl_ofty. }
       iApply ("HT" with "Hgdrop").
@@ -3789,7 +3824,6 @@ Section subsume.
       iPoseProof ("HL_cl" with "HL") as "HL".
       iModIntro.
       iExists _, _, ty2, r3, weak_upd. iFrame.
-      iR.
       iSplitR. { iApply upd_bot_min. }
       iSplitR. { iApply typed_place_cond_refl_ofty. }
       iApply ("HT" with "Hgdrop").
@@ -3812,10 +3846,9 @@ Section subsume.
     iMod ("HT" with "[] [] [] [] CTX HE HL Hl Hv") as "(% & $ & Hstep)"; [done.. | ].
     iR. iApply (logical_step_wand with "Hstep").
     iModIntro. iIntros "HT Hl".
-    iMod ("HT" with "Hl") as "(%L2 & % & % & % & % & HL & Hl & %Hst' & ? & Hcond & ?)".
+    iMod ("HT" with "Hl") as "(%L2 & % & % & % & % & HL & Hl & ? & Hcond & ?)".
     iFrame.
-    rewrite Hst. iR.
-    iApply ltype_eq_place_cond_ty_trans; last done.
+    iApply ltype_eq_place_cond_trans; last done.
     done.
   Qed.
   Definition type_write_end_fold_to_ofty_inst := [instance @type_write_end_fold_to_ofty].
@@ -3942,10 +3975,11 @@ Section subsume.
 
     set (upd_strong := (mkPUKRes UpdStrong I (opt_place_update_eq_strong bmin Heqmin))).
     set (upd_inner := typed_place_finish_upd upd_strong lt' r').
-    iMod ("Hs" $! upd_inner with "[] Hl2 [] [$] [$]") as "Hs".
+    iMod ("Hs" $! upd_inner with "[] Hl2 [] []") as "Hs".
     { simpl. by rewrite Heqmin. }
     { simpl. done. }
-    iMod ("Hs" with "HL Hf HT") as (upd') "(Hl & %Hsteq & Hcond & ? & ? & ? & HL & Hf & HT)".
+    { rewrite /typed_place_cond/=. done. }
+    iMod ("Hs" with "HL Hf HT") as (upd') "(Hl & Hcond & ? & ? & ? & HL & Hf & HT)".
     iDestruct ("HT" with "Hl") as "HT".
     iMod ("HT" with "[//] [$] HE HL [$]") as "(%L4 & HL & HT)".
     iModIntro.
@@ -4010,9 +4044,8 @@ Section subsume.
 
     set (upd_inner := typed_place_finish_upd (place_update_kind_res_trans upd upd') (BlockedLtype ty2 κ)%I (👻 γ)).
 
-    iMod ("Hs" $! upd_inner with "[] Hblock [] [] [Hcond Hcond']") as "Hs".
+    iMod ("Hs" $! upd_inner with "[] Hblock [] [Hcond Hcond']") as "Hs".
     { simpl. iApply place_update_kind_incl_lub; done. }
-    { simpl. iPureIntro. simp_ltypes. rewrite Hsteq Hst_eq//.  }
     { simpl. done. }
     { simpl.
       iApply (typed_place_cond_trans with "[Hcond]").
@@ -4020,7 +4053,7 @@ Section subsume.
         iApply place_update_kind_max_incl_l. }
       iApply typed_place_cond_incl; last done.
       iApply place_update_kind_max_incl_r. }
-    iMod ("Hs" with "HL Hf HT") as (upd'') "(Hl & %Hst3 & Hcond'' & ? & HR' & ? & HL & Hf & HT)".
+    iMod ("Hs" with "HL Hf HT") as (upd'') "(Hl & Hcond'' & ? & HR' & ? & HL & Hf & HT)".
     iPoseProof ("HT" with "Hl") as "Hfin".
     iMod ("Hfin" with "[] [$] HE HL [$]") as "(%L5 & HL & HT)"; first done.
     iModIntro. iExists _. iFrame.
@@ -4300,9 +4333,8 @@ Section subsume.
 
     set (upd_inner := typed_place_finish_upd (place_update_kind_res_trans upd upd') lt2 (#r2)).
 
-    iMod ("Hs" $! upd_inner with "[] Hblocked [] [] [Hcond Hcond']") as "Hs".
+    iMod ("Hs" $! upd_inner with "[] Hblocked [] [Hcond Hcond']") as "Hs".
     { simpl. iApply place_update_kind_incl_lub; done. }
-    { simpl. rewrite Hsteq Hsteq1//. }
     { simpl. done. }
     { simpl.
       iApply (typed_place_cond_trans with "[Hcond]").
@@ -4311,7 +4343,7 @@ Section subsume.
       iApply typed_place_cond_incl; last done.
       iApply place_update_kind_max_incl_r. }
 
-    iMod ("Hs" with "HL Hf HT") as (?) "(Hl & %Hst3 & Hcond'' & ? & HR' & ? & HL & Hf & HT)".
+    iMod ("Hs" with "HL Hf HT") as (?) "(Hl & Hcond'' & ? & HR' & ? & HL & Hf & HT)".
     iPoseProof ("HT" with "Hl") as "Hfin".
     iMod ("Hfin" with "[] [$] HE HL [$]") as "(%L4 & HL & HT)"; first done.
     iModIntro. iExists _. iFrame.
@@ -4364,7 +4396,7 @@ Section subsume.
       iNext. eauto with iFrame. }
     iModIntro.
     iSplitR.
-    { simpl. iExists eq_refl.
+    { simpl. iR. iExists eq_refl.
       simp_ltypes. iSplitR. { iIntros (??). iApply ltype_eq_refl. }
       iApply shr_blocked_imp_unblockable.
     }

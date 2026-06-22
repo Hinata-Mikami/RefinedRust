@@ -1809,24 +1809,22 @@ Qed.
 
 (** A stronger relation requiring layout equality *)
 Definition syn_type_compat `{!LayoutAlg} (st1 st2 : syn_type) :=
-  ∃ ly1 ly2,
-  syn_type_has_layout st1 ly1 ∧
-  syn_type_has_layout st2 ly2 ∧
-  ly1 = ly2.
+  ∀ ly,
+  syn_type_has_layout st1 ly →
+  syn_type_has_layout st2 ly.
 
-Lemma syn_type_compat_refl `{!LayoutAlg} st ly :
-  syn_type_has_layout st ly →
-  syn_type_compat st st.
+Global Instance syn_type_compat_refl `{!LayoutAlg} :
+  Reflexive syn_type_compat.
 Proof.
-  exists ly, ly. done.
+  intros ? ??. done.
 Qed.
 
 Global Instance syn_type_compat_trans `{!LayoutAlg} : Transitive syn_type_compat.
 Proof.
-  intros st st2 st3.
-  intros (ly1 & ly2 & Hly1 & Hly2 & <-) (ly3 & ly4 & Hly3 & Hly4 & <-).
-  assert (ly3 = ly1) as -> by by eapply (syn_type_has_layout_inj st2).
-  eexists _, _. eauto.
+  intros st1 st2 st3.
+  intros Hcompat1 Hcompat2 ly Hst1.
+  apply Hcompat1 in Hst1. apply Hcompat2 in Hst1.
+  done.
 Qed.
 
 Lemma syn_type_compat_use `{!LayoutAlg} st1 st2 ly1 ly2 :
@@ -1835,9 +1833,9 @@ Lemma syn_type_compat_use `{!LayoutAlg} st1 st2 ly1 ly2 :
   syn_type_has_layout st2 ly2 →
   ly1 = ly2.
 Proof.
-  intros (ly1' & ly2' & Hst1' & Hst2' & ?) Hst1 Hst2.
-  assert (ly1 = ly1') as <- by by eapply syn_type_has_layout_inj.
-  assert (ly2 = ly2') as <- by by eapply syn_type_has_layout_inj.
+  intros Hcompat Hst1 Hst2.
+  apply Hcompat in Hst1.
+  assert (ly1 = ly2) as <- by by eapply syn_type_has_layout_inj.
   done.
 Qed.
 
@@ -1845,18 +1843,16 @@ Lemma syn_type_compat_untyped_l `{!LayoutAlg} st1 st2 :
   syn_type_compat st1 st2 →
   syn_type_compat (UntypedSynType st1) st2.
 Proof.
-  intros (ly1 & ly2 & Hly1 & Hly2 & Hcomp).
-  exists ly1, ly2.
-  split_and!; [ | done..].
-  by apply syn_type_has_layout_untyped.
+  intros Hcomp ly Hst.
+  apply syn_type_has_layout_untyped_inv in Hst.
+  by apply Hcomp in Hst.
 Qed.
 Lemma syn_type_compat_untyped_r `{!LayoutAlg} st1 st2 :
   syn_type_compat st1 st2 →
   syn_type_compat st1 (UntypedSynType st2).
 Proof.
-  intros (ly1 & ly2 & Hly1 & Hly2 & Hcomp).
-  exists ly1, ly2.
-  split_and!; [ done | | done ].
+  intros Hcomp ly Hst.
+  apply Hcomp in Hst.
   by apply syn_type_has_layout_untyped.
 Qed.
 
@@ -1864,10 +1860,10 @@ Lemma syn_type_compat_size_eq `{!LayoutAlg} st1 st2 :
   syn_type_compat st1 st2 →
   syn_type_size_eq st1 st2.
 Proof.
-  intros (ly1 & ly2 & Hly1 & Hly2 & Hcomp).
+  intros Hcomp.
   intros ly1' Hly1'.
-  assert (ly1' = ly1) as -> by by eapply syn_type_has_layout_inj.
-  exists ly2. subst. done.
+  apply Hcomp in Hly1'.
+  eauto.
 Qed.
 
 (** Existential versions *)

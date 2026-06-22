@@ -323,13 +323,12 @@ Section accessors.
     l ◁ₗ[π, b] r @ ShadowedLtype lt_cur r_cur lt_full -∗
     l ◁ₗ[π, b] r_cur @ lt_cur ∗
     (∀ (rt_cur' : RT) (lt_cur' : ltype rt_cur') (r_cur' : place_rfn rt_cur'),
-    ⌜ltype_st lt_cur = ltype_st lt_cur'⌝ -∗
       l ◁ₗ[π, b] r_cur' @ lt_cur' -∗
       l ◁ₗ[π, b] r @ ShadowedLtype lt_cur' (r_cur') lt_full).
   Proof.
     rewrite ltype_own_shadowed_unfold /shadowed_ltype_own.
     iIntros "( Hcur & Hfull)". iFrame.
-    iIntros (rt_cur' lt_cur' r_cur' Hst') "Hb".
+    iIntros (rt_cur' lt_cur' r_cur') "Hb".
     rewrite ltype_own_shadowed_unfold /shadowed_ltype_own.
     iFrame.
   Qed.
@@ -412,7 +411,7 @@ Section accessors.
       logical_step F
       (∀ v2 rt2 (ty2 : type rt2) (r2 : rt2),
         l ↦ v2 -∗
-        ⌜ty.(ty_syn_type) MetaNone = ty2.(ty_syn_type) MetaNone⌝ -∗
+        ⌜syn_type_compat (ty.(ty_syn_type) MetaNone) (ty2.(ty_syn_type) MetaNone)⌝ -∗
         ty_sidecond ty2 -∗
         (v2 ◁ᵥ{π, MetaNone} r2 @ ty2) ={F}=∗
         l ◁ₗ[π, Owned] PlaceIn r2 @ (◁ ty2)).
@@ -427,7 +426,9 @@ Section accessors.
     iApply logical_step_intro.
     iIntros (v2 rt2 ty2 r2) "Hl %Hst_eq Hsc' Hv".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iModIntro. rewrite -Hst_eq. iExists ly. iFrame "#∗%".
+    iModIntro.
+    apply Hst_eq in Halg.
+    iExists ly. iFrame "#∗%".
     iR. done.
   Qed.
 

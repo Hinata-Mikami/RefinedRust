@@ -236,11 +236,13 @@ Section access.
     typed_place_cond (b) lt1 lt2
     ⊢ typed_place_cond b (MutLtype lt1 κ) (MutLtype lt2 κ).
   Proof.
+    unfold typed_place_cond.
     destruct b; simpl.
     - iIntros "_". done.
-    - iIntros "->". simp_ltypes. done.
-    - iIntros "(%Hrefl & Heq & Hub)".
-      subst rt2. cbn.
+    - iIntros "_". done.
+    - iIntros "(% & ->)". simp_ltypes. done.
+    - iIntros "(% & %Hrefl & Heq & Hub)".
+      subst rt2. cbn. iR.
       iExists eq_refl. cbn. iSplitR "Hub".
       + simp_ltypes. iIntros (??). iApply (mut_ltype_eq with "Heq"); iApply lft_incl_refl.
       + by iApply mut_ltype_imp_unblockable.
@@ -288,7 +290,6 @@ Section access.
         l ↦ l' -∗
         l' ◁ₗ[π, Uniq κ' γ'] r2 @ lt2  -∗
         bmin ⪯ₚ UpdUniq [κ] -∗
-        ⌜ltype_st lt2 = ltype_st lt⌝ -∗
         typed_place_cond bmin lt lt2 ={F}=∗
         l ◁ₗ[π, Uniq κ γ] #(r2, γ') @ MutLtype lt2 κ' ∗
         R ∗
@@ -323,10 +324,10 @@ Section access.
     iModIntro.
     iSplit.
     - (* close *)
-      iIntros (bmin lt2 r2) "Hl Hb #Hincl_k %Hst_eq #Hcond".
+      iIntros (bmin lt2 r2) "Hl Hb #Hincl_k #Hcond".
       (* extract the necessary info from the place_cond *)
       iPoseProof (typed_place_cond_incl _ (UpdUniq [κ]) with "Hincl_k Hcond") as "Hcond'".
-      iDestruct "Hcond'" as "(%Heq & Heq & (#Hub & _))".
+      iDestruct "Hcond'" as "(% & %Heq & Heq & (#Hub & _))".
       rewrite (UIP_refl _ _ Heq). cbn.
       (* close the borrow *)
       iMod (gvar_update (r2, γ') with "Hauth Hrfn") as "(Hauth & Hrfn)".
@@ -358,15 +359,14 @@ Section access.
         (* need to adapt the pinned part, too *)
         iApply (pinned_bor_iff with "[] [] Hb").
         { iNext. iModIntro. eauto. }
-        clear -Hst_eq.
         iNext. iModIntro. iSplit.
         - iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame.
-          iMod "Hb" as "(%l' & Hl & Hb)".
+          iMod "Hb" as "(%l'' & Hl & Hb)".
           iDestruct ("Heq" $! (Uniq _ _) _) as "((_ & #Heq1 & _) & (_ & #Heq2 & _))".
           rewrite ltype_own_core_equiv. iPoseProof ("Heq1" with "Hb") as "Hb". rewrite -ltype_own_core_equiv.
           eauto with iFrame.
         - iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame.
-          iMod "Hb" as "(%l' & Hl & Hb)".
+          iMod "Hb" as "(%l'' & Hl & Hb)".
           iDestruct ("Heq" $! (Uniq _ _) _) as "((_ & #Heq1 & _) & (_ & #Heq2 & _))".
           rewrite ltype_own_core_equiv. iPoseProof ("Heq2" with "Hb") as "Hb". rewrite -ltype_own_core_equiv.
           eauto with iFrame.

@@ -450,14 +450,21 @@ Section to_default.
     typed_place_cond b (ArrayLtype def len lts) (ArrayLtype def' len lts').
   Proof.
     iIntros (Hrel Hst). destruct b; simpl.
-    - iIntros "_". done.
+    - iIntros "_". iPureIntro. simp_ltypes. rewrite Hst. apply syn_type_compat_refl.
+    - iIntros "_". iPureIntro. simp_ltypes. rewrite Hst. done.
     - iIntros "Hrel".
       unfold typed_place_cond; simpl.
       unfold place_access_rt_rel in Hrel.
+      iSplit.
+      { iPureIntro. simp_ltypes. rewrite Hst. done. }
       iPureIntro. subst rt'. done.
     - iIntros "Hrel".
       simpl in Hrel. subst rt'.
+      unfold typed_place_cond; simpl.
+      iSplit.
+      { iPureIntro. simp_ltypes. rewrite Hst. done. }
       iExists eq_refl.
+      rewrite big_sepL2_sep. iDestruct "Hrel" as "(_ & Hrel)".
       setoid_rewrite <-bi.sep_exist_r.
       rewrite big_sepL2_sep_sepL_r. iDestruct "Hrel" as "(#Heq & #Hub)".
       iSplitL.
@@ -715,4 +722,3 @@ Section accessors.
   Qed.
 
 End accessors.
-

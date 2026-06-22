@@ -20,6 +20,8 @@ Section place.
     under a context where the intersected [bor_kind] is [b]?
     *)
   Inductive place_update_kind : Type :=
+  (* initialization updates *)
+  | UpdInit
   (* strong updates *)
   | UpdStrong
   (* weak updates that don't change the refinement type *)
@@ -32,7 +34,10 @@ Section place.
 
   Definition place_update_kind_incl (a b : place_update_kind) : iProp Σ :=
     match a, b with
-    | _, UpdStrong => True
+    | _, UpdInit => True
+    | UpdStrong, UpdStrong => True
+    | UpdWeak, UpdStrong => True
+    | UpdUniq _, UpdStrong => True
     | UpdWeak, UpdWeak => True
     | UpdUniq _, UpdWeak => True
     | UpdUniq κs1, UpdUniq κs2 =>
@@ -41,6 +46,8 @@ Section place.
     end.
   Definition place_update_kind_max (a b : place_update_kind) : place_update_kind :=
     match a, b with
+    | UpdInit, _ => UpdInit
+    | _, UpdInit => UpdInit
     | UpdStrong, _ => UpdStrong
     | _, UpdStrong => UpdStrong
     | UpdWeak, _ => UpdWeak
@@ -51,7 +58,7 @@ Section place.
 
   (* We cannot easily define a notion of intersection for the [UpdUniq] case, but we can define intersection with a [place_restriction] *)
   Inductive place_restriction : Type :=
-  | RestrictNone
+  | RestrictStrong
   | RestrictWeak
   | RestrictUniq (κ : lft)
   .
@@ -62,12 +69,12 @@ Section place.
     | _, RestrictUniq κ1 => UpdUniq [κ1]
     | UpdWeak, _ => UpdWeak
     | _, RestrictWeak => UpdWeak
-    | _, _ => UpdStrong
+    | _, RestrictStrong => UpdStrong
     end.
   Definition bor_kind_to_place_restriction (b : bor_kind) : place_restriction :=
     match b with
     | Uniq κ _ => RestrictUniq κ
-    | _ => RestrictNone
+    | _ => RestrictStrong
     end.
   Global Coercion bor_kind_to_place_restriction : bor_kind >-> place_restriction.
 
@@ -231,6 +238,7 @@ Section place.
 
   Definition place_update_kind_rt_same (pupd : place_update_kind) : bool :=
     match pupd with
+    | UpdInit => false
     | UpdStrong => false
     | _ => true
     end.
@@ -239,7 +247,7 @@ Section place.
   Definition opt_place_update_eq_refl `{upd : !place_update_kind} `{rt : !RT} : opt_place_update_eq upd rt rt.
   Proof.
     unfold opt_place_update_eq.
-    destruct upd; simpl; [apply I | apply eq_refl..].
+    destruct upd; simpl; try apply I; apply eq_refl.
   Defined.
   Import EqNotations.
   Lemma opt_place_update_eq_lift (f : RT → RT) {b rt1 rt2} :
@@ -248,6 +256,7 @@ Section place.
   Proof.
     unfold opt_place_update_eq.
     destruct b; simpl.
+    - intros. exact I.
     - intros. exact I.
     - intros Heq. exact (rew [λ rt, f rt1 = f rt] Heq in @eq_refl _ (f rt1)).
     - intros Heq. exact (rew [λ rt, f rt1 = f rt] Heq in @eq_refl _ (f rt1)).
@@ -315,11 +324,15 @@ Section place.
   *)
   Definition typed_place_cond {rt rt2} (b : place_update_kind) (lt : ltype rt) (lt2 : ltype rt2) : iProp Σ :=
     match b with
+    | UpdInit =>
+      ⌜syn_type_compat (ltype_st lt) (ltype_st lt2)⌝
     | UpdStrong =>
-        True
+      ⌜ltype_st lt = ltype_st lt2⌝
     | UpdWeak =>
+        ⌜ltype_st lt = ltype_st lt2⌝ ∗
         ⌜rt = rt2⌝
     | UpdUniq κs =>
+        ⌜ltype_st lt = ltype_st lt2⌝ ∗
         ∃ (Heq : rt = rt2),
         (* We could allow a disjunction here:
            - if we actually change the place type, then we change the contents of the borrow, and we must prove that we can actually unblock the new type [lt2] in time.
@@ -386,8 +399,14 @@ Section place.
   Proof.
     iIntros "#Hincl Hcond".
     destruct k2, k1; simpl in *; try done.
+    - iDestruct "Hcond" as "->". done.
+    - iDestruct "Hcond" as "(-> & ->)". done.
+    - iDestruct "Hcond" as "(-> & _)". done.
+    - iDestruct "Hcond" as "(-> & ->)". done.
     - iDestruct "Hcond" as "(%Heq & ?)". done.
-    - iDestruct "Hcond" as "(%Heq & ? & Hub)".
+    - iDestruct "Hcond" as "(% & %Heq & ?)". done.
+    - iDestruct "Hcond" as "(% & %Heq & ? & Hub)".
+      iR.
       iExists Heq. iFrame.
       iApply imp_unblockable_lft_incl; done.
   Qed.
@@ -397,10 +416,11 @@ Section place.
     typed_place_cond b lt1 lt3 .
   Proof.
     destruct b; simpl.
+    - iPureIntro. apply syn_type_compat_trans.
     - iIntros "% % !%". congruence.
-    - iIntros "-> ->". done.
-    - iIntros "(%Heq & Heq & Hub) (%Heq' & Heq' & Hub')".
-      subst.
+    - iIntros "(-> & ->) (-> & ->)". done.
+    - iIntros "(-> & %Heq & Heq & Hub) (-> & %Heq' & Heq' & Hub')".
+      subst. iR.
       iExists eq_refl. iFrame. cbn.
       iIntros (b r). iApply (ltype_eq_trans with "Heq Heq'").
   Qed.
@@ -412,6 +432,28 @@ Section place.
     iIntros "#Houtl".
     iApply (imp_unblockable_shorten with "[Houtl]"); last iApply imp_unblockable_blocked_dead.
     done.
+  Qed.
+
+  Lemma typed_place_cond_syn_type_eq {rt1 rt2} k (lt1 : ltype rt1) (lt2 : ltype rt2) :
+    k ⪯ₚ UpdStrong -∗
+    typed_place_cond k lt1 lt2 -∗
+    ⌜ltype_st lt1 = ltype_st lt2⌝.
+  Proof.
+    destruct k; simpl.
+    - iIntros "[]".
+    - eauto.
+    - iIntros "_ (% & _)". done.
+    - iIntros "_ (% & _)". done.
+  Qed.
+  Lemma typed_place_cond_syn_type_compat {rt1 rt2} k (lt1 : ltype rt1) (lt2 : ltype rt2) :
+    typed_place_cond k lt1 lt2 -∗
+    ⌜syn_type_compat (ltype_st lt1) (ltype_st lt2)⌝.
+  Proof.
+    destruct k; simpl.
+    - eauto.
+    - iIntros "->". done.
+    - iIntros "(-> & _)". done.
+    - iIntros "(-> & _)". done.
   Qed.
 
   Definition place_kind_outlives_unblock_lt {rt} (k : place_update_kind) (lt : ltype rt) : iProp Σ :=
@@ -435,9 +477,10 @@ Section place.
   Proof.
     iIntros "#Houtl".
     destruct b => /=.
+    - done.
     - by iPureIntro.
     - done.
-    - iExists eq_refl. cbn. iSplitR.
+    - iR. iExists eq_refl. cbn. iSplitR.
       { iIntros (??). iApply ltype_eq_refl. }
       iApply imp_unblockable_incl_blocked_lfts.
       iModIntro. iApply lft_list_incl_acc_dead; done.
@@ -446,8 +489,9 @@ Section place.
   Lemma typed_place_cond_refl_ofty {rt} b (ty : type rt) :
     ⊢ typed_place_cond b (◁ ty)%I (◁ ty)%I.
   Proof.
-    destruct b.
-    - done.
+    destruct b; simpl.
+    - simpl. iPureIntro. apply syn_type_compat_refl.
+    - iPureIntro. done.
     - iPureIntro. done.
     - iApply (typed_place_cond_refl (UpdUniq _)).
       unfold place_kind_outlives_unblock_lt.
@@ -458,13 +502,13 @@ Section place.
     typed_place_cond (UpdUniq κ) lt1 lt2 -∗
     ∀ b r, ltype_eq b r r (ltype_core lt1) (ltype_core lt2).
   Proof.
-    iIntros "(%Heq & Ha & _)". rewrite (UIP_refl _ _ Heq). done.
+    iIntros "(% & %Heq & Ha & _)". rewrite (UIP_refl _ _ Heq). done.
   Qed.
   Lemma typed_place_cond_uniq_unblockable {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κs :
     typed_place_cond (UpdUniq κs) lt1 lt2 -∗
     imp_unblockable κs lt2.
   Proof.
-    iIntros "(%Heq & _ & Ha)". done.
+    iIntros "(% & %Heq & _ & Ha)". done.
   Qed.
   Lemma typed_place_cond_shadowed_update_cur {rt_cur rt_cur' rt_full} (lt_cur : ltype rt_cur) (lt_cur' : ltype rt_cur') r_cur r_cur' (lt_full : ltype rt_full) k :
     place_kind_outlives_unblock_lt k lt_full -∗
@@ -474,7 +518,8 @@ Section place.
     destruct k; simpl; simp_ltypes.
     - done.
     - done.
-    - iExists eq_refl. cbn. simp_ltypes.
+    - done.
+    - iR. iExists eq_refl. cbn. simp_ltypes.
       iSplitR. { iIntros (??). iApply ltype_eq_refl. }
       iApply shadowed_ltype_imp_unblockable.
       iApply imp_unblockable_incl_blocked_lfts.
@@ -487,9 +532,9 @@ Section place.
     typed_place_cond (UpdUniq κs) lt (BlockedLtype ty κ').
   Proof.
     iIntros "#Hincl Hcond".
-    iDestruct "Hcond" as "(%Heq & Heq & Hub)".
+    iDestruct "Hcond" as "(%Hst & %Heq & Heq & Hub)".
     rewrite (UIP_refl _ _ Heq).
-    iExists eq_refl. cbn. simp_ltypes.
+    iR. iExists eq_refl. cbn. simp_ltypes.
     iSplitL "Heq"; first done.
     iApply imp_unblockable_lft_incl; last iApply blocked_imp_unblockable.
     done.
@@ -499,8 +544,8 @@ Section place.
     typed_place_cond b (BlockedLtype ty κ') lt.
   Proof.
     iIntros "Hcond". destruct b; try done.
-    iDestruct "Hcond" as "(%Heq & #Heq & #Hub)".
-    subst rt2.
+    iDestruct "Hcond" as "(% & %Heq & #Heq & #Hub)".
+    subst rt2. iR.
     iExists eq_refl. cbn. simp_ltypes.
     iSplitL; done.
   Qed.
@@ -510,8 +555,8 @@ Section place.
     typed_place_cond (UpdUniq κs) lt (ShrBlockedLtype ty κ').
   Proof.
     iIntros "#Hincl Hcond".
-    iDestruct "Hcond" as "(%Heq & Heq & Hub)".
-    rewrite (UIP_refl _ _ Heq).
+    iDestruct "Hcond" as "(% & %Heq & Heq & Hub)".
+    rewrite (UIP_refl _ _ Heq). iR.
     iExists eq_refl. cbn. simp_ltypes.
     iSplitL "Heq"; first done.
     iApply imp_unblockable_lft_incl; last iApply shr_blocked_imp_unblockable.
@@ -522,8 +567,8 @@ Section place.
     typed_place_cond b (ShrBlockedLtype ty κ') lt.
   Proof.
     iIntros "Hcond". destruct b; try done.
-    iDestruct "Hcond" as "(%Heq & #Heq & #Hub)".
-    subst rt2.
+    iDestruct "Hcond" as "(% & %Heq & #Heq & #Hub)".
+    subst rt2. iR.
     iExists eq_refl. cbn. simp_ltypes.
     iSplitL; done.
   Qed.
@@ -532,8 +577,8 @@ Section place.
     typed_place_cond (UpdUniq κ) lt1 lt2 -∗
     typed_place_cond (UpdUniq κ) lt1 (CoreableLtype κs lt2).
   Proof.
-    iIntros "#Hincl (%Heq & Heq & Hub)".
-    rewrite (UIP_refl _ _ Heq).
+    iIntros "#Hincl (% & %Heq & Heq & Hub)".
+    rewrite (UIP_refl _ _ Heq). iR.
     iExists eq_refl. cbn.
     simp_ltypes. iSplitL "Heq"; first done.
     iApply imp_unblockable_lft_incl; last iApply coreable_ltype_imp_unblockable.
@@ -544,8 +589,8 @@ Section place.
     typed_place_cond b (CoreableLtype κs lt1) lt2.
   Proof.
     iIntros "Hcond". destruct b; try done.
-    iDestruct "Hcond" as "(%Heq & Heq & Hub)".
-    subst rt2.
+    iDestruct "Hcond" as "(% & %Heq & Heq & Hub)".
+    subst rt2. iR.
     iExists eq_refl. cbn. simp_ltypes. by iFrame.
   Qed.
 
@@ -554,8 +599,8 @@ Section place.
     typed_place_cond b (ShadowedLtype lt_cur r_cur lt_full) lt2.
   Proof.
     unfold typed_place_cond. destruct b; try by eauto.
-    iIntros "(%Heq & Ha & Hb)".
-    subst rt2. iExists eq_refl. iFrame.
+    iIntros "(% & %Heq & Ha & Hb)".
+    subst rt2. iR. iExists eq_refl. iFrame.
     simp_ltypes. done.
   Qed.
   Lemma typed_place_cond_shadowed_r {rt_cur rt_full rt2} (lt_cur : ltype rt_cur) (lt_full : ltype rt_full) (lt2 : ltype rt2) b r_cur :
@@ -563,8 +608,8 @@ Section place.
     typed_place_cond b lt2 (ShadowedLtype lt_cur r_cur lt_full).
   Proof.
     unfold typed_place_cond. destruct b; try by eauto.
-    iIntros "(%Heq & Ha & Hb)".
-    subst rt2. iExists eq_refl.
+    iIntros "(% & %Heq & Ha & Hb)".
+    subst rt2. iR. iExists eq_refl.
     simp_ltypes. iFrame.
     iApply shadowed_ltype_imp_unblockable.
     done.
@@ -574,8 +619,8 @@ Section place.
     ⊢ typed_place_cond b lt (ltype_core lt).
   Proof.
     iStartProof.
-    destruct b; simpl; try done.
-    iExists eq_refl. cbn.
+    destruct b; simpl; simp_ltypes; try done.
+    iR. iExists eq_refl. cbn.
     iSplitL.
     - rewrite ltype_core_idemp.
       iIntros (??). iApply ltype_eq_refl.
@@ -587,6 +632,7 @@ Section place.
   (* controls conditions on refinement type changes *)
   Definition place_access_rt_rel (bmin : place_update_kind) (rt1 rt2 : RT) :=
     match bmin with
+    | UpdInit => True
     | UpdStrong => True
     | _ => rt1 = rt2
     end.
@@ -600,24 +646,30 @@ Section place.
   Proof.
     iIntros "Hincl Hcond".
     destruct k; simpl; try done.
-    all: iDestruct "Hcond" as "(%Heq & Ha)"; iClear "Ha"; by done.
+    all: iDestruct "Hcond" as "(% & %Heq & Ha)"; iClear "Ha"; by done.
   Qed.
 
   (* NOTE: if put the ltype_eq disjunct for the Uniq case into typed_place_cond,
       then we would get a direct subsumption lemma. *)
-  Lemma ltype_eq_place_cond_ty_trans {rt rt2} (lt1 lt2 : ltype rt) (lt3 : ltype rt2) b :
+  Lemma ltype_eq_place_cond_trans {rt rt2} (lt1 lt2 : ltype rt) (lt3 : ltype rt2) b :
     (∀ b' r, ltype_eq b' r r lt1 lt2) -∗
     typed_place_cond b lt2 lt3 -∗
     typed_place_cond b lt1 lt3.
   Proof.
-    iIntros "Heq Hc".
+    iIntros "#Heq Hc".
+    iPoseProof ("Heq" $! inhabitant inhabitant) as "Heq1".
+    iPoseProof (ltype_eq_syn_type with "Heq1") as "%Hst1".
+    rewrite /typed_place_cond.
     destruct b; simpl.
-    - done.
-    - done.
-    - iDestruct "Hc" as "(%Heq & Heq' & $)". subst. iExists eq_refl.
+    - rewrite Hst1. done.
+    - rewrite Hst1. done.
+    - rewrite Hst1. done.
+    - iDestruct "Hc" as "(%Hst2 & %Heq & Heq' & $)". subst.
+      rewrite Hst1. iR.
+      iExists eq_refl.
       iIntros (??).
-      iPoseProof (ltype_eq_core with "Heq") as "Heq".
-      iApply (ltype_eq_trans with "Heq Heq'").
+      iPoseProof (ltype_eq_core with "Heq") as "Heq2".
+      iApply (ltype_eq_trans with "Heq2 Heq'").
   Qed.
   Lemma place_cond_ltype_eq_trans b {rt1 rt2} (lt1 : ltype rt1) (lt2 lt3 : ltype  rt2) :
     typed_place_cond b lt1 lt2 -∗
@@ -625,39 +677,18 @@ Section place.
     typed_place_cond b lt1 lt3.
   Proof.
     iIntros "Hcond #Heq".
+    iPoseProof ("Heq" $! inhabitant inhabitant) as "Heq1".
+    iPoseProof (ltype_eq_syn_type with "Heq1") as "%Hst1".
+    rewrite /typed_place_cond.
     destruct b; simpl.
-    - done.
-    - done.
-    - iDestruct "Hcond" as "(%Heq & #Heq2 & Hub)". subst rt2.
+    - rewrite Hst1; done.
+    - rewrite Hst1; done.
+    - rewrite Hst1; done.
+    - iDestruct "Hcond" as "(%Hst2 & %Heq & #Heq2 & Hub)". subst rt2.
+      rewrite Hst2. iR.
       iExists eq_refl.
       iSplitR. { iIntros (??). iPoseProof (ltype_eq_core with "Heq") as "Heq'". iApply ltype_eq_trans; done. }
       iApply ltype_eq_imp_unblockable; done.
-  Qed.
-  Lemma ltype_eq_place_cond_trans {rt rt2} (lt1 lt2 : ltype rt) (lt3 : ltype rt2) b :
-    (∀ b' r, ltype_eq b' r r lt1 lt2) -∗
-    typed_place_cond b lt2 lt3 -∗
-    typed_place_cond b lt1 lt3.
-  Proof.
-    iIntros "Heq Hc".
-    iApply (ltype_eq_place_cond_ty_trans with "Heq Hc").
-  Qed.
-
-  Lemma typed_place_cond_ltype_eq_ofty {rt rt2} (lt1 : ltype rt) (lt2 : ltype rt2) (ty3 : type rt2) b :
-    typed_place_cond b lt1 lt2  -∗
-    (∀ b' r, ltype_eq b' r r lt2 (◁ ty3)%I) -∗
-    typed_place_cond b lt1 (◁ ty3)%I.
-  Proof.
-    iIntros "Hc Heq".
-    destruct b; simpl.
-    - done.
-    - done.
-    - iDestruct "Hc" as "(%Heq & Heq' & Hub)". destruct Heq. iExists eq_refl. cbn.
-      iSplitL. {
-        iIntros (??).
-        iApply (ltype_eq_trans with "Heq'").
-        iApply (ltype_eq_core _ _ _ _ (◁ _)%I). done.
-      }
-      iApply ofty_imp_unblockable.
   Qed.
 
   (** We can mutably borrow from the place, assuming that the ownership [b] of the place is at least Uniq κ. *)
@@ -667,8 +698,9 @@ Section place.
   Proof.
     destruct b; simpl.
     - iIntros "_". done.
+    - iIntros "_". done.
     - iIntros "Ha". done.
-    - iIntros "#Hincl".
+    - iIntros "#Hincl".  iR.
       iExists eq_refl. cbn. iSplitR.
       + simp_ltypes. iIntros (??). iApply ltype_eq_refl.
       + iApply (imp_unblockable_lft_incl); last iApply blocked_imp_unblockable.
@@ -682,8 +714,9 @@ Section place.
   Proof.
     destruct b; simpl.
     - iIntros "_". done.
+    - iIntros "_". done.
     - iIntros "Ha". done.
-    - iIntros "#Hincl".
+    - iIntros "#Hincl". iR.
       iExists eq_refl. cbn. iSplitR.
       + simp_ltypes. iIntros (??). iApply ltype_eq_refl.
       + iApply (imp_unblockable_lft_incl); last iApply shr_blocked_imp_unblockable.

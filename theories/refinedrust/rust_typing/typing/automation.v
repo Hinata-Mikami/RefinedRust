@@ -1441,8 +1441,8 @@ Ltac sidecond_hook_core :=
       solve_layout_wf
   | |- ly_align_in_bounds _ =>
       solve_ly_align_ib
-  (*| |- syn_type_compat _ _ =>*)
-      (*solve_syn_type_compat*)
+  | |- syn_type_compat _ _ =>
+      solve_syn_type_compat
   | |- ty_allows_reads _ =>
       solve_ty_allows
   | |- ty_allows_writes _ =>
@@ -1514,8 +1514,8 @@ Ltac is_builtin_sidecond P :=
       idtac
   | ly_align_in_bounds _ =>
       idtac
-  (*| syn_type_compat _ _ =>*)
-      (*idtac*)
+  | syn_type_compat _ _ =>
+      idtac
   | ty_allows_reads _ =>
       idtac
   | ty_allows_writes _ =>
@@ -1562,6 +1562,8 @@ Ltac is_fast_builtin_sidecond P :=
       idtac
   | local_fresh _ _ =>
       (* for local variables *)
+      idtac
+  | syn_type_compat _ _ =>
       idtac
   | lctx_place_update_kind_outlives _ _ _ _ =>
       idtac

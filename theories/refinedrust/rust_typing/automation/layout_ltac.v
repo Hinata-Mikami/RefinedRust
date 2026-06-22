@@ -665,6 +665,26 @@ Ltac solve_compute_enum_layout ::=
   simplify_layout_goal;
   first [eassumption | progress solve_layout_alg; shelve]].
 
+(** syn_type_compat solver *)
+Section syntype_compat.
+  Context `{!LayoutAlg}.
+
+End syntype_compat.
+Global Arguments syn_type_compat : simpl never.
+
+Ltac solve_syn_type_compat_step :=
+  lazymatch goal with
+  | |- syn_type_compat ?st ?st =>
+      refine (syn_type_compat_refl _)
+  | |- syn_type_compat ?st1 (UntypedSynType ?st2) =>
+      refine (syn_type_compat_untyped_r _ _ _)
+  | |- syn_type_compat (UntypedSynType ?st1) ?st2 =>
+      refine (syn_type_compat_untyped_l _ _ _)
+  end.
+Ltac solve_syn_type_compat :=
+  repeat solve_syn_type_compat_step.
+
+
 (** ** Op-alg solver *)
 
 Section opalg.

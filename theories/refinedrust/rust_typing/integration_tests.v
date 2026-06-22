@@ -61,7 +61,7 @@ Proof.
   intros ls_dst ls_src.
   repeat liRStep; liShow.
 
-  Unshelve. all: unshelve_sidecond; sidecond_hook.
+  Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
 Qed.
 
@@ -82,7 +82,7 @@ Proof.
   intros ls_dst ls_src.
   repeat liRStep; liShow.
 
-  Unshelve. all: unshelve_sidecond; sidecond_hook.
+  Unshelve. all: sidecond_solver.
   Unshelve. all: try solve_goal.
 Qed.
 

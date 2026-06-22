@@ -45,7 +45,7 @@ Section stratify.
     - iAssert (T L' R _ (MutLtype lt' κ) (PlaceIn (r', γ)))%I with "[Hc]" as "Hc".
       { destruct ma; done. }
       iModIntro. iExists L', R, _, _, _. iFrame.
-    iSplitR. { simp_ltypes; done. }
+      iSplitR. { simp_ltypes; done. }
       iApply logical_step_fupd.
       iApply (logical_step_compose with "Hcl").
       iApply (logical_step_compose with "Hstep").
@@ -112,7 +112,7 @@ Section stratify.
       iApply (logical_step_compose with "Hcl").
       iModIntro. iApply logical_step_intro.
       iIntros "[Hcl _] (Hb & HR)".
-      iFrame. iMod ("Hcl" with "Hl Hb Hincl2 [//] Hcond") as "(Hl & $ & _)".
+      iFrame. iMod ("Hcl" with "Hl Hb Hincl2 Hcond") as "(Hl & $ & _)".
       iDestruct ("Heq" $! _ _) as "(Heq1 & _)".
       iMod (ltype_incl_use with "Heq1 Hl") as "Hb"; done.
     - (* strong *)

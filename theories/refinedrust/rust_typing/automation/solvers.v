@@ -2000,6 +2000,12 @@ Section place_update_kind_outlives.
     iIntros (?) "HL HE". done.
   Qed.
 
+  Lemma tac_lctx_place_update_kind_outlives_init E L κs :
+    lctx_place_update_kind_outlives E L UpdInit κs.
+  Proof.
+    iIntros (?) "HL HE". done.
+  Qed.
+
   Lemma tac_lctx_place_update_kind_outlives_weak E L κs :
     lctx_place_update_kind_outlives E L UpdWeak κs.
   Proof.
@@ -2028,6 +2034,8 @@ Ltac solve_place_update_kind_outlives :=
       fail 1000 "solve_place_update_kind_outlives: not an lctx_place_update_kind_outlives goal"
   end;
   lazymatch goal with
+  | |- lctx_place_update_kind_outlives ?E ?L UpdInit _ =>
+      refine (tac_lctx_place_update_kind_outlives_init E L _)
   | |- lctx_place_update_kind_outlives ?E ?L UpdStrong _ =>
       refine (tac_lctx_place_update_kind_outlives_strong E L _)
   | |- lctx_place_update_kind_outlives ?E ?L UpdWeak _ =>
@@ -2051,10 +2059,26 @@ Section place_update_kind_incl_tac.
     intros -> ->. done.
   Qed.
 
-  Lemma tac_lctx_place_update_kind_incl_any_strong E L b :
-    lctx_place_update_kind_incl E L b UpdStrong.
+  Lemma tac_lctx_place_update_kind_incl_any_init E L b :
+    lctx_place_update_kind_incl E L b UpdInit.
   Proof.
     iIntros (?) "HL !> HE". destruct b; done.
+  Qed.
+
+  Lemma tac_lctx_place_update_kind_incl_strong_strong E L :
+    lctx_place_update_kind_incl E L UpdStrong UpdStrong.
+  Proof.
+    iIntros (?) "HL !> HE". done.
+  Qed.
+  Lemma tac_lctx_place_update_kind_incl_weak_strong E L :
+    lctx_place_update_kind_incl E L UpdWeak UpdStrong.
+  Proof.
+    iIntros (?) "HL !> HE". done.
+  Qed.
+  Lemma tac_lctx_place_update_kind_incl_uniq_strong E L κs :
+    lctx_place_update_kind_incl E L (UpdUniq κs) UpdStrong.
+  Proof.
+    iIntros (?) "HL !> HE". done.
   Qed.
 
   Lemma tac_lctx_place_update_kind_incl_uniq_uniq E L κs κs' :
@@ -2097,8 +2121,14 @@ Ltac solve_place_update_kind_incl :=
       fail 1000 "solve_place_update_kind_incl: not an lctx_place_update_kind_incl"
   end;
   match goal with
-  | |- lctx_place_update_kind_incl ?E ?L _ UpdStrong =>
-      refine (tac_lctx_place_update_kind_incl_any_strong _ _ _); solve[fail]
+  | |- lctx_place_update_kind_incl ?E ?L _ UpdInit =>
+      refine (tac_lctx_place_update_kind_incl_any_init _ _ _); solve[fail]
+  | |- lctx_place_update_kind_incl ?E ?L UpdStrong UpdStrong =>
+      refine (tac_lctx_place_update_kind_incl_strong_strong _ _); solve[fail]
+  | |- lctx_place_update_kind_incl ?E ?L UpdWeak UpdStrong =>
+      refine (tac_lctx_place_update_kind_incl_weak_strong _ _); solve[fail]
+  | |- lctx_place_update_kind_incl ?E ?L (UpdUniq _) UpdStrong =>
+      refine (tac_lctx_place_update_kind_incl_uniq_strong _ _ _); solve[fail]
   | |- lctx_place_update_kind_incl ?E ?L (UpdUniq _) (UpdUniq _) =>
       refine (tac_lctx_place_update_kind_incl_uniq_uniq _ _ _ _ _); [solve_lft_list_incl]
   | |- lctx_place_update_kind_incl ?E ?L (UpdUniq _) UpdWeak =>

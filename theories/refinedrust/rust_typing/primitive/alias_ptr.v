@@ -239,7 +239,7 @@ Section place.
   Lemma typed_place_ofty_alias_ptr_owned E L f l l2 bmin0 P T :
     find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
       ⌜π2 = f.1⌝ ∗
-      typed_place E L f l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
+      typed_place E L f l2 lt2 r2 UpdInit b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
         T L' κs li b3 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
             cont (mkPUpd _ _ _ (◁ alias_ptr_t) (# l2)
@@ -264,7 +264,7 @@ Section place.
     ⌜lctx_lft_alive E L κ⌝ ∗
     find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
       ⌜π2 = f.1⌝ ∗
-      typed_place E L f l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
+      typed_place E L f l2 lt2 r2 UpdInit b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
         T L' κs li b3 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
             cont (mkPUpd _ _ _ (◁ alias_ptr_t) (# l2)
@@ -289,7 +289,7 @@ Section place.
     ⌜lctx_lft_alive E L κ⌝ ∗
     find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
       ⌜π2 = f.1⌝ ∗
-      typed_place E L f l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
+      typed_place E L f l2 lt2 r2 UpdInit b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
         T L' κs li b3 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
             cont (mkPUpd _ _ _ (◁ alias_ptr_t) (# l2)
@@ -337,7 +337,7 @@ Section alias_ltype.
   Lemma typed_place_alias_owned E L f l l2 rt (r : place_rfn rt) st bmin0 P T :
     find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
       ⌜π2 = f.1⌝ ∗
-      typed_place E L f l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
+      typed_place E L f l2 lt2 r2 UpdInit b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
         T L' κs li b3 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
             cont (mkPUpd _ _ _ (AliasLtype rt st l2) r
@@ -355,14 +355,13 @@ Section alias_ltype.
     iIntros (L' κs l2 b0 bmin rti ltyi ri updcx) "Hl2 Hcl HT HL Hf".
     iApply ("Hcont" with "Hl2 [Hcl] HT HL Hf").
 
-    iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
-    iMod ("Hcl" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
+    iIntros (upd) "#Hincl Hl2 ? Hcond".
+    iMod ("Hcl" with "Hincl Hl2 [$] Hcond") as "Hs".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
     iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & ? & ? & ? & ? & ? & HL & ?)".
     iFrame. simpl.
     iSplitL.
     { rewrite ltype_own_alias_unfold /alias_lty_own. eauto 8 with iFrame. }
-    iR.
     iSplitL; last iApply upd_bot_min.
     iApply typed_place_cond_refl. iModIntro.
     iApply lft_list_incl_refl.
@@ -373,7 +372,7 @@ Section alias_ltype.
   Lemma typed_place_alias_shared E L f l l2 (rt : RT) (r : place_rfn rt) st bmin0 κ P T :
     find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
       ⌜π2 = f.1⌝ ∗
-      typed_place E L f l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
+      typed_place E L f l2 lt2 r2 UpdInit b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
         T L' κs li b3 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
             cont (mkPUpd _ _ _ (AliasLtype rt st l2) r
@@ -393,14 +392,13 @@ Section alias_ltype.
     iIntros (L' κs l2 b0 bmin rti ltyi ri updcx) "Hl2 Hcl HT HL".
     iApply ("Hcont" with "Hl2 [Hcl] HT HL").
 
-    iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
-    iMod ("Hcl" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
+    iIntros (upd) "#Hincl Hl2 ? Hcond".
+    iMod ("Hcl" with "Hincl Hl2 [$] Hcond") as "Hs".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
     iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & ? & ? & ? & ? & ? & HL & ?)".
     iFrame. simpl.
     iSplitL.
     { rewrite ltype_own_alias_unfold /alias_lty_own. eauto 8 with iFrame. }
-    iR.
     iSplitL; last iApply upd_bot_min.
     iApply typed_place_cond_refl. iModIntro.
     iApply lft_list_incl_refl.
@@ -482,11 +480,11 @@ Section alias_ltype.
 
 
   (** Deinitialization: fold back AliasLtype *)
-  Lemma owned_subltype_alias_uninit π E L step l l2 {rt1 : RT} (r1 : place_rfn rt1) r2 st st2 T :
+  Lemma owned_subltype_alias_typed_value π E L step l l2 {rt1 : RT} (r1 : place_rfn rt1) r2 st st2 T :
     find_in_context (FindLoc l2) (λ '(existT rt1' (lt1', r1', b1, π1')),
       ⌜π = π1'⌝ ∗ ⌜ltype_st lt1' = st⌝ ∗ ⌜b1 = Owned⌝ ∗
-      owned_subltype_step π E L step l r1' r2 lt1' (◁ uninit st2) T)
-    ⊢ owned_subltype_step π E L step l r1 r2 (AliasLtype rt1 st l2) (◁ uninit st2) T.
+      owned_subltype_step π E L step l r1' r2 lt1' (◁ typed_value_t st2) T)
+    ⊢ owned_subltype_step π E L step l r1 r2 (AliasLtype rt1 st l2) (◁ typed_value_t st2) T.
   Proof.
     iIntros "HT".
     iIntros (????) "#CTX #HE HL Hl".
@@ -496,8 +494,8 @@ Section alias_ltype.
     iDestruct "Hl" as "(%ly & %Halg & -> & %Hly & Hlb)".
     done.
   Qed.
-  Definition owned_subltype_alias_uninit_inst := [instance @owned_subltype_alias_uninit].
-  Global Existing Instance owned_subltype_alias_uninit_inst.
+  Definition owned_subltype_alias_typed_value_inst := [instance @owned_subltype_alias_typed_value].
+  Global Existing Instance owned_subltype_alias_typed_value_inst.
 
   (** Addr-Of Instance for &raw mut, in the case that the place type is AliasLtype. This case is fairly trivial. *)
   Lemma typed_addr_of_mut_end_alias π E L l l2 st rt r b2 bmin (T : typed_addr_of_mut_end_cont_t) :

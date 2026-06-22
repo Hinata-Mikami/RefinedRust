@@ -231,11 +231,13 @@ Section acc.
     typed_place_cond b lt1 lt2 -∗
     typed_place_cond b (ShrLtype lt1 κ) (ShrLtype lt2 κ).
   Proof.
+    unfold typed_place_cond.
     destruct b; simpl.
     - iIntros "_". done.
-    - iIntros "->". done.
-    - iIntros "(%Hrefl & Heq & Hub)".
-      subst rt2. cbn.
+    - iIntros "_". done.
+    - iIntros "(% & ->)". done.
+    - iIntros "(% & %Hrefl & Heq & Hub)".
+      subst rt2. cbn. iR.
       iExists eq_refl. cbn. iSplitR "Hub".
       + simp_ltypes. iIntros (??). iApply (shr_ltype_eq with "Heq"); iApply lft_incl_refl.
       + by iApply shr_ltype_imp_unblockable.
@@ -280,12 +282,11 @@ Section acc.
       logical_step F
       ( (* weak update *)
        (∀ (bmin : place_update_kind) (lt2 : ltype rt) r2,
-        l ↦ l' -∗
-        l' ◁ₗ[π, Shared κ'] r2 @ lt2 -∗
-        ⌜ltype_st lt2 = ltype_st lt⌝ -∗
-        bmin ⪯ₚ UpdUniq [κ] -∗
-        typed_place_cond bmin lt lt2 ={F}=∗
-        l ◁ₗ[π, Uniq κ γ] #r2 @ ShrLtype lt2 κ' ∗
+         l ↦ l' -∗
+         l' ◁ₗ[π, Shared κ'] r2 @ lt2 -∗
+         bmin ⪯ₚ UpdUniq [κ] -∗
+         typed_place_cond bmin lt lt2 ={F}=∗
+         l ◁ₗ[π, Uniq κ γ] #r2 @ ShrLtype lt2 κ' ∗
         R ∗
         typed_place_cond bmin (ShrLtype lt κ') (ShrLtype lt2 κ')) ∧
       (* strong update, go to Opened *)
@@ -317,10 +318,10 @@ Section acc.
     iModIntro.
     iSplit.
     - (* close *)
-      iIntros (bmin lt2 r2) "Hl Hb %Hst_eq #Hincl_k #Hcond".
+      iIntros (bmin lt2 r2) "Hl Hb #Hincl_k #Hcond".
       (* extract the necessary info from the place_cond *)
       iPoseProof (typed_place_cond_incl with "Hincl_k Hcond") as "Hcond'".
-      iDestruct "Hcond'" as "(%Heq & Heq & _)".
+      iDestruct "Hcond'" as "(% & %Heq & Heq & _)".
       rewrite (UIP_refl _ _ Heq). cbn.
       (* close the borrow *)
       iMod (gvar_update r2 with "Hauth Hrfn") as "(Hauth & Hrfn)".
@@ -351,15 +352,14 @@ Section acc.
         (* need to adapt the pinned part, too *)
         iApply (pinned_bor_iff with "[] [] Hb").
         { iNext. iModIntro. eauto. }
-        clear -Hst_eq.
         iNext. iModIntro. iSplit.
         - iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame.
-          iMod "Hb" as "(%l' & Hl & Hb)".
+          iMod "Hb" as "(%l'' & Hl & Hb)".
           iDestruct ("Heq" $! (Shared _) _) as "((_ & #Heq1 & _) & (_ & #Heq2 & _))".
           rewrite ltype_own_core_equiv. iPoseProof ("Heq1" with "Hb") as "Hb". rewrite -ltype_own_core_equiv.
           eauto with iFrame.
         - iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame.
-          iMod "Hb" as "(%l' & Hl & Hb)".
+          iMod "Hb" as "(%l'' & Hl & Hb)".
           iDestruct ("Heq" $! (Shared _) _) as "((_ & #Heq1 & _) & (_ & #Heq2 & _))".
           rewrite ltype_own_core_equiv. iPoseProof ("Heq2" with "Hb") as "Hb". rewrite -ltype_own_core_equiv.
           eauto with iFrame.

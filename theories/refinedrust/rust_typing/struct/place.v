@@ -68,16 +68,28 @@ Section place.
     rewrite list_lookup_insert_ne in Hlook2; last done.
     rewrite Hlook2 in Hlook1. injection Hlook1 as [= -> Heq2].
     apply existT_inj in Heq2 as ->.
-    iApply typed_place_cond_refl.
+iApply typed_place_cond_refl.
     iApply (big_sepL_lookup _ _ k with "Houtl").
     rewrite list_lookup_insert_ne; last done. done.
   Qed.
 
   Lemma struct_opt_place_update_eq_lift {rts} i rt2 b :
     opt_place_update_eq b (lnth (unit : RT) rts i) rt2 →
-    opt_place_update_eq b (plist place_rfnRT rts) (plist place_rfnRT (<[i := rt2]> rts)).
+    opt_place_update_eq (b) (plist place_rfnRT rts) (plist place_rfnRT (<[i := rt2]> rts)).
   Proof.
     unfold opt_place_update_eq. destruct b; simpl.
+    - intros; exact I.
+    - intros; exact I.
+    - intros <-. rewrite list_insert_lnth//.
+    - intros <-. rewrite list_insert_lnth//.
+  Defined.
+
+  Lemma struct_opt_place_update_eq_lift_1 {rts} i rt2 b :
+    opt_place_update_eq (b  ⊓ₚ RestrictStrong) (lnth (unit : RT) rts i) rt2 →
+    opt_place_update_eq (b) (plist place_rfnRT rts) (plist place_rfnRT (<[i := rt2]> rts)).
+  Proof.
+    unfold opt_place_update_eq. destruct b; simpl.
+    - intros; exact I.
     - intros; exact I.
     - intros <-. rewrite list_insert_lnth//.
     - intros <-. rewrite list_insert_lnth//.
@@ -130,7 +142,7 @@ Section place.
      ∃ lto (ro : place_rfn (lnth (unit : RT) rts i)),
       ⌜hnth (UninitLtype UnitSynType) lts i = lto⌝ ∗
       ⌜pnth (#tt) r i = ro⌝ ∗
-      typed_place E L fp (l atst{sls}ₗ f) lto ro bmin0 (Owned) P
+      typed_place E L fp (l atst{sls}ₗ f) lto ro (bmin0 ⊓ₚ RestrictStrong) (Owned) P
         (λ L' κs l1 b2 bmin rti ltyi ri updcx,
           T L' κs l1 b2 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
@@ -139,9 +151,9 @@ Section place.
               (StructLtype (hlist_insert rts lts i _ upd'.(pupd_lt)) sls)
               (#(plist_insert rts r i _ upd'.(pupd_rfn)))
               upd'.(pupd_R)
-              (upd'.(pupd_performed) ⊔ₚₖ UpdUniq (mjoin ((@ltype_blocked_lfts  _ _) +c<$> lts)))
+              ((upd'.(pupd_performed) )⊔ₚₖ UpdUniq (mjoin ((@ltype_blocked_lfts  _ _) +c<$> lts)))
               (opt_place_update_eq_lift_join _ _ $ struct_opt_place_update_eq_lift i upd'.(pupd_rt) _ upd'.(pupd_eq_1))
-              (struct_opt_place_update_eq_lift i upd'.(pupd_rt) _ upd'.(pupd_eq_2)))))
+              (struct_opt_place_update_eq_lift_1 i upd'.(pupd_rt) _ upd'.(pupd_eq_2)))))
           )))
     ⊢ typed_place E L fp l (StructLtype lts sls) (#r) bmin0 (Owned) (GetMemberPCtx sls f :: P) T.
   Proof.
@@ -179,21 +191,25 @@ Section place.
     iIntros (L' κs l2 bmin b2 rti ltyi ri updcx) "Hli Hcont".
     iApply ("HΦ" $! _ _ _ bmin with "Hli").
 
-    iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
-    iMod ("Hcont" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
+    iIntros (upd) "#Hincl Hl2 ? Hcond".
+    iMod ("Hcont" with "Hincl Hl2 [$] Hcond") as "Hs".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl2 & %Hsteq2 & Hcond & #Hmin & ? & ? & HL & Hf & Hcont)".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl2 & Hcond & #Hmin & ? & ? & HL & Hf & Hcont)".
 
     iFrame. simpl.
     iDestruct "Hc_close" as "[Hc_close _]".
+    iPoseProof (typed_place_cond_syn_type_eq with "[] Hcond") as "%Hsteq2".
+    { iApply place_update_kind_incl_trans; first done.
+      destruct bmin0; done. }
     iPoseProof ("Hc_close" with "Hl2 []") as "Ha".
     { rewrite -Hsteq2. done. }
     iMod ("Hcl" with "[] Ha") as "Hl".
     { rewrite length_insert//. }
     iFrame "∗ #".
-    iR.
     iSplitL; first last.
-    { iApply place_update_kind_incl_lub; done. }
+    { iApply place_update_kind_incl_lub; last done.
+      iApply place_update_kind_incl_trans; first done.
+      iApply place_update_kind_restrict_incl. }
     iApply struct_ltype_place_cond.
     iApply struct_lift_place_cond.
     { done. }
@@ -221,7 +237,7 @@ Section place.
      ∃ lto (ro : place_rfn (lnth (unit : RT) rts i)),
       ⌜hnth (UninitLtype UnitSynType) lts i = lto⌝ ∗
       ⌜pnth (#tt) r i = ro⌝ ∗
-      typed_place E L2 fp (l atst{sls}ₗ f) lto ro bmin0 (Owned) P
+      typed_place E L2 fp (l atst{sls}ₗ f) lto ro (bmin0 ⊓ₚ RestrictStrong) (Owned) P
         (λ L' κs' l1 b2 bmin rti ltyi ri updcx,
           T L' (κs') l1 b2 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
@@ -248,7 +264,7 @@ Section place.
                   upd'.(pupd_R)
                   UpdStrong
                   I
-                  (struct_opt_place_update_eq_lift i upd'.(pupd_rt) _ upd'.(pupd_eq_2)))
+                  (struct_opt_place_update_eq_lift_1 i upd'.(pupd_rt) _ upd'.(pupd_eq_2)))
               end))
           )))))
     ⊢ typed_place E L fp l (StructLtype lts sls) (#r) bmin0 (Uniq κ γ) (GetMemberPCtx sls f :: P) T.
@@ -296,12 +312,15 @@ Section place.
     iIntros (L2 κs' l2 b2 bmin rti ltyi ri updcx) "Hli Hcont".
     iApply ("HΦ" $! _ _ _ _ bmin with "Hli").
 
-    iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
-    iMod ("Hcont" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
+    iIntros (upd) "#Hincl Hl2 ? Hcond".
+    iMod ("Hcont" with "Hincl Hl2 [$] Hcond") as "Hs".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl2 & %Hsteq2 & Hcond & #Hmin & ? & ? & HL & Hf & Hcont)".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl2 & Hcond & #Hmin & ? & ? & HL & Hf & Hcont)".
     unfold check_llctx_place_update_kind_incl_uniq_goal.
     iDestruct "Hcont" as (b Hb) "Hcont".
+    iPoseProof (typed_place_cond_syn_type_eq with "[] Hcond") as "%Hsteq2".
+    { iApply place_update_kind_incl_trans; first done.
+    destruct bmin0; done. }
     destruct b as [Heqb | ]; simpl in *.
     - (* weak *)
       iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hinclupd"; first apply Hb.
@@ -338,13 +357,13 @@ Section place.
   Lemma typed_place_struct_shared {rts} (lts : hlist ltype rts) E L fp (r : plistRT rts) sls f κ bmin0 P l
     (T : place_cont_t (plistRT rts) bmin0) :
     ((* sidecondition for other components *)
-    ⌜lctx_place_update_kind_outlives E L bmin0 (mjoin ((λ _, ltype_blocked_lfts) +c<$> lts))⌝ ∗
+    ⌜lctx_place_update_kind_outlives E L (bmin0) (mjoin ((λ _, ltype_blocked_lfts) +c<$> lts))⌝ ∗
     (* recursively check place *)
     (∃ i, ⌜sls_field_index_of sls.(sls_fields) f = Some i⌝ ∗
      ∃ lto (ro : place_rfn (lnth (unit : RT) rts i)),
       ⌜hnth (UninitLtype UnitSynType) lts i = lto⌝ ∗
       ⌜pnth (#tt) r i = ro⌝ ∗
-      typed_place E L fp (l atst{sls}ₗ f) lto ro bmin0 (Shared κ) P
+      typed_place E L fp (l atst{sls}ₗ f) lto ro (bmin0 ⊓ₚ RestrictStrong) (Shared κ) P
         (λ L' κs l1 b2 bmin rti ltyi ri updcx,
           T L' κs l1 b2 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
@@ -356,7 +375,7 @@ Section place.
               upd'.(pupd_R)
               (upd'.(pupd_performed) ⊔ₚₖ UpdUniq (mjoin ((@ltype_blocked_lfts  _ _) +c<$> lts)))
               (opt_place_update_eq_lift_join _ _ $ struct_opt_place_update_eq_lift i upd'.(pupd_rt) _ upd'.(pupd_eq_1))
-              (struct_opt_place_update_eq_lift i upd'.(pupd_rt) _ upd'.(pupd_eq_2)))))
+              (struct_opt_place_update_eq_lift_1 i upd'.(pupd_rt) _ upd'.(pupd_eq_2)))))
 
           )))
     ⊢ typed_place E L fp l (StructLtype lts sls) (#r) bmin0 (Shared κ) (GetMemberPCtx sls f :: P) T.
@@ -396,20 +415,24 @@ Section place.
     iIntros (L' κs l2 b2 bmin rti ltyi ri updcx) "Hli Hcont".
     iApply ("HΦ" with "Hli").
 
-    iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
-    iMod ("Hcont" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
+    iIntros (upd) "#Hincl Hl2 ? Hcond".
+    iMod ("Hcont" with "Hincl Hl2 [$] Hcond") as "Hs".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
-    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl2 & %Hsteq2 & Hcond & #Hmin & ? & ? & HL & Hf & Hcont)".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl2 & Hcond & #Hmin & ? & ? & HL & Hf & Hcont)".
     iFrame. simpl.
     iDestruct "Hc_close" as "[Hc_close _]".
+    iPoseProof (typed_place_cond_syn_type_eq with "[] Hcond") as "%Hsteq2".
+    { iApply place_update_kind_incl_trans; first done.
+      destruct bmin0; done. }
     iPoseProof ("Hc_close" with "Hl2 []") as "Ha".
     { rewrite -Hsteq2. done. }
     iMod ("Hcl" with "[] Ha") as "Hl".
     { rewrite length_insert//. }
     iFrame "∗ #".
-    iR.
     iSplitL; first last.
-    { iApply place_update_kind_incl_lub; done. }
+    { iApply place_update_kind_incl_lub; last done.
+      iApply place_update_kind_incl_trans; first done.
+      iApply place_update_kind_restrict_incl. }
     iApply struct_ltype_place_cond.
     iApply struct_lift_place_cond.
     { done. }
