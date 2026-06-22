@@ -1,4 +1,4 @@
-From refinedrust Require Export base type ltypes.
+From refinedrust Require Export base type ltypes base.value.
 From refinedrust Require Import ltype_rules.
 From refinedrust Require Import programs uninit.
 From refinedrust.struct Require Import subltype unfold.
@@ -13,11 +13,11 @@ Section deinit.
     match ls with
     | [] => +[]
     | st :: sts =>
-        uninit st +:: uninit_tys sts
+        typed_value_t st +:: uninit_tys sts
     end.
   Lemma uninit_tys_lookup_inv (sts : list syn_type) k x :
     hzipl _ (uninit_tys sts) !! k = Some x →
-    ∃ st, sts !! k = Some st ∧ x = existT (unit : RT) (uninit st).
+    ∃ st, sts !! k = Some st ∧ x = existT (unit : RT) (typed_value_t st).
   Proof.
     induction sts as [ | st sts IH] in k, x |-*; simpl; first done.
     destruct k as [ | k]; simpl.
@@ -44,7 +44,7 @@ Section deinit.
   Lemma ltype_deinit_struct F π (sls : struct_layout_spec) rs l :
     lftE ⊆ F →
     (l ◁ₗ[π, Owned] (#rs) @ (StructLtype (hmap (@OfTy _ _) (uninit_tys (sls_fields sls).*2)) sls)) ={F}=∗
-    l ◁ₗ[π, Owned] #() @ (◁ uninit sls).
+    l ◁ₗ[π, Owned] #() @ (◁ typed_value_t sls).
   Proof.
     iIntros (?) "Hl".
     iPoseProof (struct_t_unfold_2_owned) as "#Ha".
@@ -53,11 +53,11 @@ Section deinit.
     iMod "Hcl" as "_". iClear "Ha".
 
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Halg & %Hl)".
+    iMod (ofty_own_split_value_typed with "Hl") as "(%v & Hv & Hl)"; first done.
     simp_ltypes in Halg. simpl in Halg.
     iApply (ofty_owned_subtype_aligned with "[] Hl"); [ | done | ].
-    { apply syn_type_has_layout_untyped. done. }
-    iApply (owned_type_incl_uninit'); simpl.
-    apply syn_type_size_eq_refl.
+    { done. }
+    iApply owned_type_incl_value_typed_value.
   Qed.
 End deinit.
 
@@ -66,11 +66,11 @@ Context `{!typeGS Σ}.
 
   (* We iterate over all the fields to deinitialize them first, and then deinitialize the struct itself *)
   Lemma owned_subltype_step_struct_uninit π E L step l {rts} (lts : hlist ltype rts) rs (sls : struct_layout_spec) (st : syn_type) T :
-    owned_subltype_step π E L step l #rs #() (StructLtype lts sls) (◁ uninit st) T :-
+    owned_subltype_step π E L step l #rs #() (StructLtype lts sls) (◁ typed_value_t st) T :-
     exhale (⌜st = sls⌝);
     L2, R2 ← iterate: zip (hpzipl rts lts rs) sls.(sls_fields) with L, True%I {{ '((existT rt (lt, r)), (field, stf)) T L2 R2,
-      exhale (⌜syn_type_compat (ltype_st lt) stf⌝);
-      return owned_subltype_step π E L2 step (l atst{sls}ₗ field) r #() lt (◁ uninit stf) (λ L3 R3,
+      exhale (⌜(ltype_st lt) = stf⌝);
+      return owned_subltype_step π E L2 step (l atst{sls}ₗ field) r #() lt (◁ typed_value_t stf) (λ L3 R3,
         T L3 (R2 ∗ R3))
       }};
     return T L2 R2.
@@ -95,8 +95,8 @@ Context `{!typeGS Σ}.
           if decide (i < idx) then
           ∃ (name : string) (st : syn_type),
           ⌜sls_fields sls !! i = Some (name, st)⌝ ∗
-          ⌜syn_type_compat (ltype_st lt) st⌝ ∗
-          l atst{sls}ₗ name ◁ₗ[ π, Owned] #() @ ◁ uninit st
+          ⌜(ltype_st lt) = st⌝ ∗
+          l atst{sls}ₗ name ◁ₗ[ π, Owned] #() @ ◁ typed_value_t st
           else True)
       ))%I).
 
@@ -140,7 +140,7 @@ Context `{!typeGS Σ}.
     clear INV.
 
     (* extract pure info from invariant *)
-    iAssert (⌜Forall2 (λ '(existT rt (lt, _)) st, syn_type_compat (ltype_st lt) st) (hpzipl rts lts rs') (sls_fields sls).*2⌝)%I with "[Hx]" as "%Hf".
+    iAssert (⌜Forall2 (λ '(existT rt (lt, _)) st, (ltype_st lt) = st) (hpzipl rts lts rs') (sls_fields sls).*2⌝)%I with "[Hx]" as "%Hf".
     { iApply big_sepL2_Forall2.
       iPoseProof (big_sepL_extend_r with "Hx") as "Hx"; last iApply (big_sepL2_wand with "Hx").
       { rewrite length_fmap length_hpzipl Hlen//. }
@@ -157,7 +157,7 @@ Context `{!typeGS Σ}.
     iPoseProof ("Hclose_l" $! _ lts' rs'' with "[] [] [Hx]")as "Hx".
     { iPureIntro. rewrite -Hlen length_replicate length_fmap//. }
     { iPureIntro.
-      eapply (Forall2_trans _ (λ st '(existT rt (lt, _)), syn_type_compat st (ltype_st lt))); [ | apply Hf | ].
+      eapply (Forall2_trans _ (λ st '(existT rt (lt, _)), st = (ltype_st lt))); [ | apply Hf | ].
       - intros [? []] st' [? []]; simpl.
         intros Hcomp1 Hcomp2.
         etrans; done.
@@ -169,9 +169,7 @@ Context `{!typeGS Σ}.
         clear. induction sts as [ | st sts IH]; simpl; first done.
         intros [(? & ?)?]%Forall_cons.
         econstructor.
-        + simp_ltypes.
-          apply syn_type_compat_untyped_r.
-          by eapply syn_type_compat_refl.
+        + simp_ltypes. done.
         + by eapply IH. }
     { iApply big_sepL2_elim_r.
       iPoseProof (big_sepL_extend_l with "Hx") as "Hx"; last iApply (big_sepL2_wand with "Hx").

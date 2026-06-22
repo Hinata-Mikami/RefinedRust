@@ -90,7 +90,7 @@ Section stratify.
     iIntros "Hcl (Ha & $)".
     iPoseProof ("Hlcl" $! rts' lts' rs' with "[//] [Hst] [Ha]") as "Hl".
     { iApply big_sepL2_Forall2.
-      iApply (big_sepL2_impl with "Hst"). iModIntro. iIntros (? [? []] [? []] ? ?). 
+      iApply (big_sepL2_impl with "Hst"). iModIntro. iIntros (? [? []] [? []] ? ?).
       done. }
     { iApply (big_sepL_mono with "Ha"). intros ? [? []] ?. rewrite Nat.add_0_r. eauto. }
     iMod ("Hcl" with "[] Hl") as "Hl"; first done.

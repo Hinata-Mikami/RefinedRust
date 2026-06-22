@@ -188,10 +188,12 @@ Section subtype.
     - iPureIntro.
       intros ly3 Hst1.
       simpl in *.
+      apply syn_type_has_layout_untyped_inv in Hst1.
       assert (ly3 = ly1) as -> by by eapply syn_type_has_layout_inj.
       rewrite Hszeq.
       opose proof (Hszeq' (mk_array_layout ly2 len) _).
-      { eapply syn_type_has_layout_array; [done.. | ].
+      { eapply syn_type_has_layout_array; [try done.. | ].
+        { by apply syn_type_has_layout_untyped. }
         apply use_layout_alg_size in Halg1. lia. }
       done.
     - simpl; done.

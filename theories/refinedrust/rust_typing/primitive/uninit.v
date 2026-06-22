@@ -9,54 +9,24 @@ Section deinit.
   Context `{!typeGS Σ}.
 
   (** ** Instances for deinitializing a type *)
-  (** Types have more specific instances that we generally prefer in [.../deinit.v] *)
 
-
-  (* Required instances;
-     - box (maybe not?)
-     - struct
-     - enum
-     - array
-     Maybe:
-     - opened (in case we did not re-establish the invariant, but still have the underlying struct etc) *)
-
-  (*
-  Lemma owned_subltype_step_array_uninit π E L step l {rts} (lts : hlist ltype rts) rs sls st T :
-    owned_subltype_step π E L step l #rs #() (ArrayLtype def len iml) (◁ uninit st) T :-
-    exhale (⌜st = sls⌝);
-    L2, R2 ← iterate: zip (hpzipl rts lts rs) sls.(sls_fields) with L, True%I {{ '((existT rt (lt, r)), (field, stf)) T L2 R2,
-      return owned_subltype_step π E L2 step (l atst{sls}ₗ field) r #() lt (◁ uninit stf) (λ L3 R3,
-        T L3 (R2 ∗ R3))
-      }};
-    return T L2 R2.
-  Proof.
-    *)
-
-  (* Two low-priority instances that trigger as a fallback for ltypes foldable to a ty (no borrows below) *)
-  (* First, if the syntype is equal *)
+  (* First, if the syntype is equal, go to a show subsumption to a typed value.
+     Then, instances for subsuming to a typed value will trigger. *)
   Lemma owned_subltype_step_ofty_uninit_eq π E L {rt} (lt : ltype rt) r st l `{Hst : !TCDone (ltype_st lt = st)} T :
     owned_subltype_step π E L true l #r #() lt (◁ uninit st) T :-
-    return cast_ltype_to_type E L lt (λ ty, T L (ty_ghost_drop' ty π r)).
+    return owned_subltype_step π E L true l #r #() lt (◁ typed_value_t st) T.
   Proof.
     unfold TCDone in Hst. subst st.
-    iDestruct 1 as "(%ty & %Heqt & HT)".
+    iIntros "HT".
     iIntros (????) "CTX HE HL Hl". simp_ltypes; simpl.
-
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl"; first apply Heqt.
-    iSpecialize ("Hincl" $! (Owned) (#r)).
-    iDestruct "Hincl" as "(Hincl & _)". iDestruct "Hincl" as "(%Hst & Hincl & _)".
-    iMod (ltype_incl'_use with "Hincl Hl") as "Hl"; first done.
-    iExists _, _. iFrame.
-    iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Hst' & %)".
-    simp_ltypes in Hst'.
-    iMod (ofty_own_split_value_untyped with " Hl") as "(%v & Hv & Hl)"; [done.. | ].
-    iPoseProof (ty_own_ghost_drop with "Hv") as "Hb"; first done.
-    iModIntro.
-    iApply (logical_step_wand with "Hb"). iIntros "$".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL Hl") as "(%L2 & % & Hstep & HL & HT)".
+    iFrame.
+    iApply (logical_step_wand with "Hstep").
+    iIntros "!>(Hl & $)".
+    iPoseProof (ltype_own_has_layout with "Hl") as "(% & %Hst & %)".
     iApply (ofty_owned_subtype_aligned with "[] Hl").
-    { simpl. rewrite Hst.  apply syn_type_has_layout_untyped. done. }
+    { simpl. apply syn_type_has_layout_untyped. done. }
     { done. }
-    rewrite Hst.
     iApply owned_type_incl_uninit'.
     simpl. apply syn_type_size_eq_refl.
   Qed.

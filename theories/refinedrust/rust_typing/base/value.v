@@ -1026,6 +1026,10 @@ Section unify_val.
   Global Existing Instance owned_subtype_value_array_inst | 15.
 End unify_val.
 
+
+
+
+
 Section rules.
   Context `{!typeGS Σ}.
 
@@ -1258,3 +1262,90 @@ End rules.
 
 Global Typeclasses Opaque value_t.
 Global Hint Unfold value_t : tyunfold.
+
+
+Section typed_value.
+  Context `{!typeGS Σ}.
+
+  (** A thin wrapper that abstracts over the value refinement.
+      Basically says that there is a valid value for the given syntype.*)
+  Program Definition typed_value_t (st : syn_type) : type unitRT := {|
+    st_own π r v :=
+      (∃ vs, v ◁ᵥ{π, MetaNone} vs @ value_t true st)%I;
+    st_syn_type := st;
+    st_has_op_type ot' mt := is_value_ot true st ot' mt;
+  |}.
+  Next Obligation.
+    iIntros (st π [] v) "(%vs & Hv)".
+    by iPoseProof (ty_has_layout with "Hv") as "?".
+  Qed.
+  Next Obligation.
+    simpl.
+    intros st ot mt Hot.
+    eapply (ty_op_type_stable (ty:=value_t true st)).
+    rewrite ty_has_op_type_unfold. done.
+  Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
+  Next Obligation.
+    iIntros (st ot mt ? π [] v Hot) "(%vs & Hv)".
+    iPoseProof (ty_memcast_compat with "Hv") as "Hv".
+    { rewrite ty_has_op_type_unfold. done. }
+    destruct mt; iFrame.
+  Qed.
+  Next Obligation.
+    intros st mt ly Hst. simpl.
+    by apply (_ty_has_op_type_untyped _ (value_t true st)).
+  Qed.
+
+  Global Instance typed_value_copy st : Copyable (typed_value_t st).
+  Proof. apply _. Qed.
+
+  Global Instance typed_value_sized st : TySized (typed_value_t st).
+  Proof. apply _. Qed.
+
+  Lemma owned_type_incl_value_typed_value π v st :
+    ⊢ owned_type_incl π v () (value_t true st) (typed_value_t st).
+  Proof.
+    iR. iSplitR. { eauto. }
+    iIntros (vs) "Hv".
+    iEval (rewrite /ty_own_val/=).
+    by iFrame.
+  Qed.
+
+End typed_value.
+
+
+Section deinit.
+  Context `{!typeGS Σ}.
+
+  (** ** Instances for deinitializing a type *)
+  (** Types have more specific instances that we generally prefer in [.../deinit.v] *)
+
+  Lemma owned_subltype_step_ofty_val_eq π E L {rt} (lt : ltype rt) r st l `{Hst : !TCDone (ltype_st lt = st)} T :
+    owned_subltype_step π E L true l #r #() lt (◁ typed_value_t st) T :-
+    return cast_ltype_to_type E L lt (λ ty, T L (ty_ghost_drop' ty π r)).
+  Proof.
+    unfold TCDone in Hst. subst st.
+    iDestruct 1 as "(%ty & %Heqt & HT)".
+    iIntros (????) "CTX HE HL Hl". simp_ltypes; simpl.
+
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl"; first apply Heqt.
+    iSpecialize ("Hincl" $! (Owned) (#r)).
+    iDestruct "Hincl" as "(Hincl & _)". iDestruct "Hincl" as "(%Hst & Hincl & _)".
+    iMod (ltype_incl'_use with "Hincl Hl") as "Hl"; first done.
+    iExists _, _. iFrame.
+    iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Hst' & %)".
+    simp_ltypes in Hst'.
+    iMod (ofty_own_split_value_typed with " Hl") as "(%v & Hv & Hl)"; [done.. | ].
+    iPoseProof (ty_own_ghost_drop with "Hv") as "Hb"; first done.
+    iModIntro.
+    iApply (logical_step_wand with "Hb"). iIntros "$".
+    iApply (ofty_owned_subtype_aligned with "[] Hl").
+    { simpl. rewrite Hst. done. }
+    { done. }
+    rewrite Hst.
+    iApply owned_type_incl_value_typed_value.
+  Qed.
+  Definition owned_subltype_step_ofty_val_eq_inst := [instance owned_subltype_step_ofty_val_eq].
+  Global Existing Instance owned_subltype_step_ofty_val_eq_inst | 100.
+End deinit.

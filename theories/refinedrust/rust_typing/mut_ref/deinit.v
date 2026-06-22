@@ -13,7 +13,7 @@ Section deinit.
     lftE ⊆ F →
     ltype_uniq_extractable lt = Some κm →
     (l ◁ₗ[π, Owned] #(r, γ) @ (MutLtype lt κ)) ={F}=∗
-    ∃ v, l ◁ₗ[π, Owned] #v @ (◁ value_t true PtrSynType) ∗ MaybeInherit κm (place_rfn_interp_mut r γ).
+    l ◁ₗ[π, Owned] .@ (◁ typed_value_t PtrSynType) ∗ MaybeInherit κm (place_rfn_interp_mut r γ).
   Proof.
     iIntros (? Hdeinit).
     iIntros "Hl".
@@ -24,12 +24,13 @@ Section deinit.
     iDestruct "Hc" as "(%l' & Hl & Hb)".
     iPoseProof (ltype_own_addr_in_usize with "Hb") as "%".
     iMod (ltype_own_extract_ghost_drop_uniq with "Hb") as "Hrfn"; [done.. | ].
-    iFrame. iExists (l2v l').
+    iFrame.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own. iExists ly.
     simpl. iFrame. iR. iR.
     iExists _. iR.
     iModIntro. iModIntro.
-    iApply type_loc_value.
+    rewrite /ty_own_val/=. iR.
+    iExists _. iApply type_loc_value.
     by apply val_to_loc_Some_l2v.
   Qed.
 End deinit.
@@ -39,7 +40,7 @@ Section extract.
 
   (* Extract an observation  *)
   Lemma stratify_ltype_extract_ofty_mut π E L {rt} (ty : type rt) r κ γ l (T : stratify_ltype_post_hook_cont_t) :
-    (∀ v, T L (place_rfn_interp_mut r γ) _ (◁ value_t true PtrSynType)%I (#v))
+    (T L (place_rfn_interp_mut r γ) _ (◁ typed_value_t PtrSynType)%I (#()))
     ⊢ stratify_ltype_post_hook π E L (StratifyExtractOp κ) l (◁ (mut_ref κ ty)) (#(r, γ)) (Owned) T.
   Proof.
     iIntros "HT".
@@ -50,7 +51,6 @@ Section extract.
     iDestruct "Hb" as "(%v & Hl & Hb)".
     rewrite /ty_own_val/= mut_ref_own_val_unfold.
     iDestruct "Hb" as "(%l' & %ly' & _ & %Hv & ? & ? & ? & ? & Hb & Hcred' & ?)".
-    iSpecialize ("HT" $! (l2v l')).
     iExists _, _, _, _, _. iFrame. iFrame.
     iR.
     apply syn_type_has_layout_ptr_inv in Hst as ->.
@@ -60,6 +60,8 @@ Section extract.
     iSplitR; first done. iSplitL "Hlb"; first done.
     iExists _. iR. iModIntro.
     iExists v. iFrame.
+    rewrite /ty_own_val/=.
+    iR. iExists _.
     by iApply type_loc_value.
   Qed.
   Definition stratify_ltype_extract_ofty_mut_inst := [instance @stratify_ltype_extract_ofty_mut].
@@ -71,7 +73,7 @@ Section extract.
     | None =>
         T L True%I _ (MutLtype lt κ) (#(r, γ))
     | Some κm =>
-        ∀ v, T L (MaybeInherit κm (place_rfn_interp_mut_extracted r γ)) _ (◁ value_t true PtrSynType)%I (#v)
+        T L (MaybeInherit κm (place_rfn_interp_mut_extracted r γ)) _ (◁ typed_value_t PtrSynType)%I (#())
     end
     ⊢ stratify_ltype_post_hook π E L (StratifyExtractOp κ) l (MutLtype lt κ) (#(r, γ)) (Owned) T.
   Proof.
@@ -79,8 +81,7 @@ Section extract.
     iIntros (????) "#CTX #HE HL Hl".
     destruct (ltype_uniq_extractable lt) as [ κm | ] eqn:Hextract; first last.
     { iExists L, True%I, _, _, _. iFrame. done. }
-    iMod (ltype_uniq_extractable_deinit_mut with "Hl") as "(%v & Hl & Hrfn)"; [done.. | ].
-    iSpecialize ("HT" $! v).
+    iMod (ltype_uniq_extractable_deinit_mut with "Hl") as "(Hl & Hrfn)"; [done.. | ].
     iPoseProof (MaybeInherit_update (place_rfn_interp_mut_extracted r γ) with "[] Hrfn") as "Ha".
     { iIntros (?) "Ha". iMod (place_rfn_interp_mut_extract with "Ha") as "?". done. }
     iExists _, _, _, _, _. iFrame.
@@ -94,7 +95,7 @@ Section rule.
   Context `{!typeGS Σ}.
 
   Lemma owned_subltype_step_mutltype_uninit π E L step {rt} (lt : ltype rt) r γ st κ l T :
-    owned_subltype_step π E L step l #(r, γ) #() (MutLtype lt κ) (◁ uninit st) T :-
+    owned_subltype_step π E L step l #(r, γ) #() (MutLtype lt κ) (◁ typed_value_t st) T :-
     return match ltype_uniq_extractable lt with
     | None => False
     | Some κm =>
@@ -107,18 +108,10 @@ Section rule.
     destruct (ltype_uniq_extractable lt) eqn:Hextract; last done.
     iDestruct "HT" as "(-> & HT)".
     iExists _, _. iFrame.
-    iMod (ltype_uniq_extractable_deinit_mut with "Hl") as "(%v & Hl & Hf)"; [done.. | ].
+    iMod (ltype_uniq_extractable_deinit_mut with "Hl") as "(Hl & Hf)"; [done.. | ].
     iPoseProof (MaybeInherit_update (place_rfn_interp_mut_extracted r γ) with "[] Hf") as "Hf".
     { iIntros (?) "Hrfn". iMod (place_rfn_interp_mut_extract with "Hrfn") as "?". done. }
     iModIntro. iApply maybe_logical_step_intro. iFrame.
-    iPoseProof (ltype_own_has_layout with "Hl") as "(% & %Hst & %)".
-    simp_ltypes in Hst. simpl in Hst.
-    apply syn_type_has_layout_ptr_inv in Hst as ->.
-    iApply (ofty_owned_subtype_aligned with "[] Hl").
-    - simpl. apply syn_type_has_layout_untyped.
-      by apply syn_type_has_layout_ptr.
-    - done.
-    - by iApply owned_type_incl_uninit.
   Qed.
   Definition owned_subltype_step_mutltype_uninit_inst := [instance owned_subltype_step_mutltype_uninit].
   Global Existing Instance owned_subltype_step_mutltype_uninit_inst | 20.

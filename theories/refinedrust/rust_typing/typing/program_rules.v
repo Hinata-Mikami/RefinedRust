@@ -1685,20 +1685,22 @@ Section subsume.
   Global Existing Instance mut_eqltype_ofty_inst | 5.
 
   (** ** Subtyping instances: [owned_subltype_step] *)
-  Lemma owned_subltype_step_to_ofty π E L step l {rt1 rt2} r1 r2 (lt1 : ltype rt1) (ty2 : type rt2) T :
+  Lemma owned_subltype_step_to_ofty π E L step l {rt1 rt2} r1 r2 (lt1 : ltype rt1) (ty2 : type rt2) `{!TySized ty2} T :
     cast_ltype_to_type E L lt1 (λ ty1,
-      ⌜(∀ m : metadata, st_of ty1 m = st_of ty2 m)⌝ ∗
-      owned_subtype π E L false r1 r2 ty1 ty2 (λ L2, T L2 True%I))
+      find_tc_inst (TySized ty1) (λ TS1,
+      ⌜(st_of ty1 MetaNone = st_of ty2 MetaNone)⌝ ∗
+      owned_subtype π E L false r1 r2 ty1 ty2 (λ L2, T L2 True%I)))
     ⊢ owned_subltype_step π E L step l (#r1) (#r2) lt1 (◁ ty2) T.
   Proof.
     iIntros "HT".
     iIntros (????) "#CTX #HE HL Hl".
-    iDestruct "HT" as "(%ty1 & %Heqt & %Hst & HT)".
+    iDestruct "HT" as "(%ty1 & %Heqt & %Hsized & %Hst & HT)".
     iPoseProof (full_eqltype_use with "CTX HE HL") as "(Hincl & HL)"; [ | done | ]; first done.
     iMod ("Hincl" with "Hl") as "Hl".
     iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & Hincl & $ & $)".
     iDestruct "Hincl" as "(_ & Hsc & Hv)".
-    iPoseProof (type_ltype_incl_owned_in_strong with "Hv Hsc") as "Hincl"; first done.
+    iPoseProof (type_ltype_incl_owned_in_strong with "Hv Hsc") as "Hincl".
+    { intros m. by rewrite !(ty_sized_syn_type_eq m MetaNone). }
     iPoseProof ("Hincl" with "Hl") as "Hl".
     iApply maybe_logical_step_intro. by iFrame.
   Qed.
@@ -3721,7 +3723,7 @@ Section subsume.
   (** This does not allow updates to the refinement type, rt stays the same. *)
   (* TODO: also allow writes here if the place is not an ofty *)
   (* Write v : r1 @ ty to l : #r2 @ ◁ ty2.
-     We first need to show that ty is a subtype of ty2 (in order to handl e
+     We first need to show that ty is a subtype of ty2.
      Afterwards, we obtain l : #r3 @ ◁ ty2 for some r3, as well as the result of ghost-dropping r2 @ ty2. *)
   Lemma type_write_ofty_weak E L {rt} π b2 bmin l (ty ty2 : type rt) r1 r2 v ot (T : typed_write_end_cont_t bmin rt) :
     (∃ r3, owned_subtype π E L false r1 r3 ty ty2 (λ L2,
