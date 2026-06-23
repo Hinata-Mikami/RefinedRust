@@ -735,6 +735,19 @@ Section place.
     | _ => True
     end.
 
+  Definition place_update_kind_allows_strong_updates (bmin : place_update_kind) : Prop :=
+    match bmin with
+    | UpdInit => True
+    | UpdStrong => True
+    | _ => False
+    end.
+  Lemma opt_place_update_eq_strong {rt1 rt2} bmin (Heq : place_update_kind_allows_strong_updates bmin) :
+    opt_place_update_eq bmin rt1 rt2.
+  Proof.
+    unfold opt_place_update_eq.
+    destruct bmin; simpl; done.
+  Defined.
+
   (** ** Prove a typed_place_cond (used together with [stratify_ltype]) *)
   Record place_update_kind_res (allowed : place_update_kind) (rt1 rt2 : RT) : Type := mkPUKRes{
     puk_res_k :> place_update_kind;

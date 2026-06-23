@@ -2637,6 +2637,17 @@ Ltac simplify_ot :=
 Ltac solve_ty_has_op_type :=
   idtac.
 
+
+Ltac solve_is_value_ot_core :=
+  lazymatch goal with
+  | |- is_value_ot_core ?ot (UntypedOp ?ly) ?mt =>
+    notypeclasses refine (is_value_ot_core_untyped _ _ _ _);
+    solve_layout_eq
+  | |- is_value_ot_core ?ot ?ot ?mt =>
+    notypeclasses refine (is_value_ot_core_refl _ _ _);
+    done
+  end.
+
 Ltac solve_ty_has_op_type_core_step1 :=
   first
   [ match goal with
@@ -2652,8 +2663,11 @@ Ltac solve_ty_has_op_type_core_step :=
   | (* recursive call; crucially only after we've made progress with splitting the goal *)
     first [
       solve [solve_ty_has_op_type]
-    | solve [solve_layout_alg]]
-  | shelve ].
+    | solve [solve_layout_alg]
+    | solve [solve_op_alg]
+    | solve [solve_is_value_ot_core]
+    ]
+  | goal_has_no_evars; shelve ].
 Ltac solve_ty_has_op_type_core :=
   repeat solve_ty_has_op_type_core_step.
 

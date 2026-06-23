@@ -110,12 +110,12 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedCall E L f eκs etys v P vl tys) T))
   | typed_place ?E ?L ?f ?l ?lt ?r ?bmin0 ?b ?P ?T =>
       cont uconstr:(((_ : TypedPlace E L f l lt r bmin0 b P) T))
-  | typed_if ?E ?L ?v ?P ?T1 ?T2 =>
-      cont uconstr:(((_ : TypedIf E L v P) T1 T2))
+  | typed_if ?E ?L ?π ?v ?P ?T1 ?T2 =>
+      cont uconstr:(((_ : TypedIf E L π v P) T1 T2))
   | typed_annot_stmt ?π ?n ?a ?E ?L ?T =>
       cont uconstr:(((_ : TypedAnnotStmt π n a) E L T))
-  | typed_switch ?E ?L ?f ?v ?rt ?ty ?r ?it ?m ?ss ?def ?fn ?R ?ϝ =>
-      cont uconstr:(((_ : TypedSwitch E L f v rt ty r it) m ss def fn R ϝ))
+  | typed_switch ?E ?L ?f ?v ?ty ?r ?it ?m ?ss ?def ?fn ?R ?ϝ =>
+      cont uconstr:(((_ : TypedSwitch E L f v ty r it) m ss def fn R ϝ))
   | typed_assert ?E ?L ?f ?v ?ty ?r ?s ?fn ?R ?ϝ =>
       cont uconstr:(((_ : TypedAssert E L f v ty r) s fn R ϝ))
   | typed_read_end ?π ?E ?L ?l ?ty ?r ?b2 ?bmin ?ot ?m ?T =>
@@ -192,6 +192,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedDiscriminantEnd π E L l lt r b2 els) T))
   | interpret_typing_hint ?E ?L ?orty ?bmin ?ty ?r ?T =>
       cont uconstr:(((_ : InterpretTypingHint E L orty bmin ty r) T))
+  | simplify_hyp_value ?E ?L ?π ?P ?T =>
+      cont uconstr:(((_ : SimplifyHypValue E L π P) T))
   end.
 
 (** Strategy to directly unfold the instance we're applying;

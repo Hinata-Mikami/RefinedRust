@@ -123,11 +123,12 @@ Proof.
   rewrite length_fmap in Hlen_eq.
   iPoseProof (ltype_own_has_layout with "Hls") as "(%ly' & %Hst' & %Hlyl)".
   apply syn_type_has_layout_array_inv in Hst' as (ly_T & Hst' & -> & ?).
+  apply syn_type_has_layout_untyped_inv in Hst'.
   iSplitL "Hls".
   { set (R := λ r1 (r2 : T_rt), ⌜r1 = Some (#r2)⌝%I : iProp Σ).
     iMod (ltype_own_array_subtype_strong _ _ _ _ (T_ty) _ _ _ R with "[] Hls") as "(%rs' & HR & Hls)".
     { done. }
-    { simpl. apply syn_type_size_eq_refl. }
+    { simpl. apply syn_type_size_eq_untyped_l. }
     { done. }
     { done. }
     { iModIntro. iIntros (??? Heq). revert Heq.
@@ -157,8 +158,8 @@ Proof.
   { set (R := λ (r1 : T_rt') r2, ⌜r2 = Some (#r1)⌝%I : iProp Σ).
     iMod (ltype_own_array_subtype_strong _ _ _ _ (maybe_uninit T_ty') _ _ _ R with "[] Hls") as "(%rs'' & HR & Hls)".
     { done. }
-    { simpl. apply syn_type_size_eq_refl. }
-    { simpl. rewrite Hst''. done. }
+    { simpl. apply syn_type_size_eq_untyped_r. }
+    { simpl. rewrite Hst''. apply syn_type_has_layout_untyped. done. }
     { done. }
     { iModIntro. iIntros (??? Heq).
       iIntros "Hv". iPoseProof (ty_own_val_maybe_uninit_Some with "Hv") as "Hv".
@@ -172,11 +173,13 @@ Proof.
 
   iPoseProof (ltype_own_has_layout with "Huninit") as "(%ly4 & %Hst4 & %Hlyl2)".
   apply syn_type_has_layout_array_inv in Hst4 as (ly_T2 & Hst4 & -> & ?).
-  simpl in Hst4. assert (ly_T2 = ly_T) as -> by by eapply syn_type_has_layout_inj.
+  simpl in Hst4.
+  apply syn_type_has_layout_untyped_inv in Hst4.
+  assert (ly_T2 = ly_T) as -> by by eapply syn_type_has_layout_inj.
   iMod (ltype_own_array_subtype_strong _ _ _ _ (maybe_uninit T_ty') _ _ _ (λ _ r2, ⌜r2 = None⌝%I : iProp Σ) with "[] Huninit") as "(%rs'' & HR & Huninit)".
   { done. }
   { simpl. rewrite Hst''. apply syn_type_size_eq_refl. }
-  { simpl. rewrite Hst''. done. }
+  { simpl. rewrite Hst''. solve_layout_alg. }
   { done. }
   { iModIntro. iIntros (??? Heq). apply lookup_replicate in Heq as (-> & ?).
     iIntros "Hv". iExists None. iR.
@@ -192,7 +195,10 @@ Proof.
   iMod (array_t_ofty_merge with "Hls Huninit") as "Hls".
   { done. }
   { simpl. rewrite Hst''.
-    move: Hbound. case_decide; first lia.
+    move: Hbound.
+    simpl.
+    rewrite /size_of_st. simplify_layout_goal.
+    case_decide; first lia.
     unfold size_of_array_in_bytes. rewrite /size_of_st/use_layout_alg' Hst'.
     simpl. nia.  }
 

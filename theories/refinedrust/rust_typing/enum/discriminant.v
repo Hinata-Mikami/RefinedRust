@@ -198,7 +198,7 @@ Section switch.
   | DestructHintSwitchEnumKnown {rt} (r : rt) (n : string)
   .
 
-  Lemma type_switch_enum E L f {rt} (en : enum rt) r (it : int_type) m ss def fn R ϝ v:
+  Lemma type_switch_enum E L f {rt} (en : enum rt) r (it : int_type) v m ss def fn R ϝ :
     ⌜it = en.(enum_els).(els_tag_it)⌝ ∗
     case_destruct r (λ c b,
       ∃ tag, ⌜enum_tag en c = Some tag⌝ ∗
@@ -212,28 +212,29 @@ Section switch.
         | None =>
           normalize_spatial_context E L True (λ L2, typed_stmt E L2 f def fn R ϝ)
         end))))
-    ⊢ typed_switch E L f v _ (enum_discriminant_t en) r it m ss def fn R ϝ.
+    ⊢ typed_switch E L f v (enum_discriminant_t en) r it m ss def fn R ϝ.
   Proof.
     unfold li_trace.
-    iIntros "HT Hit". rewrite /ty_own_val/=.
+    iIntros "HT".
+    iIntros (??) "#CTX #HE HL Hit".
+    rewrite /ty_own_val/=.
     iDestruct "Hit" as "(_ & %tag & %Htag & _ & Hown)".
     iPoseProof (int_own_val_to_eq with "Hown") as "%Hv".
     iDestruct "HT" as "(-> & Hc)".
     rewrite /compute_map_lookup_goal.
     iDestruct "Hc" as "(%b & %tag' & %Htag' & %idx & <- & %res & <- & Ha)".
     simplify_eq.
-    iExists _. iR.
+    iExists _. iFrame "HL". iR. iModIntro.
     unfold els_lookup_tag. case_match.
     - iDestruct "Ha" as "(%s & % & HT)".
       iExists _. iR.
-      iIntros (?) "#CTX #HE HL Hf Hpost".
+      iIntros (?) "_ _ HL Hf Hpost".
       iMod ("HT" with "[] CTX HE HL [//]") as "(%L2 & HL & HT)"; first done.
       iApply ("HT" with "CTX HE HL Hf Hpost").
-    - iIntros (?) "#CTX #HE HL Hf Hpost".
+    - iIntros (?) "_ _ HL Hf Hpost".
       iMod ("Ha" with "[] CTX HE HL [//]") as "(%L2 & HL & HT)"; first done.
       iApply ("HT" with "CTX HE HL Hf Hpost").
   Qed.
-  Global Instance type_switch_enum_inst E L f {rt} (en : enum rt) r v it : TypedSwitch E L f v _ (enum_discriminant_t en) r it :=
-    λ m ss def fn R ϝ, i2p (type_switch_enum E L f en r it m ss def fn R ϝ v).
-
+  Definition type_switch_enum_inst := [instance @type_switch_enum].
+  Global Existing Instance type_switch_enum_inst.
 End switch.

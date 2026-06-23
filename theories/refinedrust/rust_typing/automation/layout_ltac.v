@@ -675,11 +675,12 @@ Global Arguments syn_type_compat : simpl never.
 Ltac solve_syn_type_compat_step :=
   lazymatch goal with
   | |- syn_type_compat ?st ?st =>
-      refine (syn_type_compat_refl _)
+      reflexivity
   | |- syn_type_compat ?st1 (UntypedSynType ?st2) =>
       refine (syn_type_compat_untyped_r _ _ _)
   | |- syn_type_compat (UntypedSynType ?st1) ?st2 =>
       refine (syn_type_compat_untyped_l _ _ _)
+  | |- _ => reflexivity
   end.
 Ltac solve_syn_type_compat :=
   repeat solve_syn_type_compat_step.

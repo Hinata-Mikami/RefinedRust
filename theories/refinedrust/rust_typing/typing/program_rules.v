@@ -53,7 +53,7 @@ Section find.
   Lemma find_in_context_type_val_id v T :
     (∃ π m rt (ty : type rt) r, v ◁ᵥ{π, m} r @ ty ∗ T (existT rt (ty, r, π, m)))
     ⊢ find_in_context (FindVal v) T.
-  Proof. iDestruct 1 as (π m rt ty r) "[Hl HT]". iExists _ => /=. iFrame. Qed.
+Proof. iDestruct 1 as (π m rt ty r) "[Hl HT]". iExists _ => /=. iFrame. Qed.
   Global Instance find_in_context_type_val_id_inst v :
     FindInContext (FindVal v) FICSyntactic | 1 :=
     λ T, i2p (find_in_context_type_val_id v T).
@@ -1093,7 +1093,7 @@ Section prove_subtype.
   Global Existing Instance prove_with_subtype_simplify_goal_inst.
   (** Note: run fully-fledged simplification only after context search *)
   Definition prove_with_subtype_simplify_goal_inst' := [instance @prove_with_subtype_simplify_goal].
-  Global Existing Instance prove_with_subtype_simplify_goal_inst' | 1001.
+  Global Existing Instance prove_with_subtype_simplify_goal_inst' | 1003.
 
   (* Make low priority to enable overrides before we initiate context search. *)
   Lemma prove_with_subtype_find_direct E L step pm P A `{!CheckOwnInContext P} T :
@@ -1749,6 +1749,18 @@ Section subsume.
   Global Existing Instance prove_place_cond_ofty_refl_inst | 2.
 
   (* Low priority instances for strong and weak updates *)
+  Lemma prove_place_cond_init_trivial E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) T :
+    ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ T (mkPUKRes (allowed:=UpdInit) UpdInit I I)
+    ⊢ prove_place_cond E L UpdInit lt1 lt2 T.
+  Proof.
+    iIntros "(%Hst & HT)". unfold prove_place_cond.
+    iIntros (??) "#CTX #HE HL".
+    iFrame.
+    iL. rewrite /typed_place_cond/=. rewrite Hst//.
+  Qed.
+  Definition prove_place_cond_init_trivial_inst := [instance @prove_place_cond_init_trivial].
+  Global Existing Instance prove_place_cond_init_trivial_inst | 1000.
+
   Lemma prove_place_cond_strong_trivial E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) T :
     ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ T (mkPUKRes (allowed:=UpdStrong) UpdStrong I I)
     ⊢ prove_place_cond E L UpdStrong lt1 lt2 T.
@@ -1759,6 +1771,7 @@ Section subsume.
   Qed.
   Definition prove_place_cond_strong_trivial_inst := [instance @prove_place_cond_strong_trivial].
   Global Existing Instance prove_place_cond_strong_trivial_inst | 1000.
+
   Lemma prove_place_cond_weak_trivial E L {rt} (lt1 lt2 : ltype rt)  T :
     ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ T (mkPUKRes (allowed:=UpdWeak) UpdWeak eq_refl eq_refl)
     ⊢ prove_place_cond E L UpdWeak lt1 lt2 T.
@@ -2311,7 +2324,7 @@ Section subsume.
   Lemma stratify_ltype_opened_Owned {M} (ml : M) {rt_cur rt_inner rt_full} π E L mdu ma l
       (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full)
       (Cpre Cpost : rt_inner → rt_full → iProp Σ) r `{!StratifyLtypeShouldCloseInv ml Owned} (T : stratify_ltype_cont_t) :
-    stratify_ltype π E L mdu ma ml l lt_cur r (Owned) (λ L' R rt_cur' lt_cur' (r' : place_rfn rt_cur'),
+    stratify_ltype π E L mdu ma StratifyTypeInvOp l lt_cur r (Owned) (λ L' R rt_cur' lt_cur' (r' : place_rfn rt_cur'),
       if decide (ma = StratNoRefold)
         then (* keep it open *)
           T L' R _ (OpenedLtype lt_cur' lt_inner lt_full Cpre Cpost) r'
@@ -2320,6 +2333,8 @@ Section subsume.
           (* fold the invariant *)
           ∃ ri,
             (* show that the core of lt_cur' is a subtype of lt_inner and then fold to lt_full *)
+            (* this uses [weak_subltype] instead of an owned version that can use ownership from the context,
+              because we use this subtyping in the inheritance for the core *)
             weak_subltype E L' (Owned) (r') (#ri) (lt_cur'') lt_inner (
               (* re-establish the invariant *)
               ∃ rf, prove_with_subtype E L' true ProveWithStratify (Cpre ri rf) True%I (λ L'' κs R2,
@@ -2422,15 +2437,18 @@ Section subsume.
   Lemma stratify_ltype_opened_Uniq {M} (ml : M) {rt_cur rt_inner rt_full} π E L mdu ma l
       (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full)
       (Cpre Cpost : rt_inner → rt_full → iProp Σ) r κ γ `{!StratifyLtypeShouldCloseInv ml (Uniq κ γ) } T :
-    stratify_ltype π E L mdu ma ml l lt_cur r (Owned) (λ L' R rt_cur' lt_cur' (r' : place_rfn rt_cur'),
+    stratify_ltype π E L mdu ma StratifyTypeInvOp l lt_cur r (Owned) (λ L' R rt_cur' lt_cur' (r' : place_rfn rt_cur'),
       if decide (ma = StratNoRefold)
         then (* keep it open *)
           T L' R _ (OpenedLtype lt_cur' lt_inner lt_full Cpre Cpost) r'
         else
           (* fold the invariant *)
           ∃ ri,
-            (* show that lt_cur' is a subtype of lt_inner and then fold to lt_full *)
-            weak_subltype E L' (Owned) (r') (#ri) (lt_cur') lt_inner (
+            trigger_tc (SimpLtype (ltype_core lt_cur')) (λ lt_cur'',
+            (* show that ltype_core lt_cur' is a subtype of lt_inner and then fold to lt_full *)
+            (* this uses [weak_subltype] instead of an owned version that can use ownership from the context,
+              because we use this subtyping in the inheritance for the core *)
+            weak_subltype E L' (Owned) (r') (#ri) (lt_cur'') lt_inner (
               (* re-establish the invariant *)
               ∃ rf,
               prove_with_subtype E L' true ProveWithStratify (Cpre ri rf) True%I (λ L'' κs R2,
@@ -2443,7 +2461,7 @@ Section subsume.
                     (* inclusion sidecondition: require that all the blocked stuff ends before κ *)
                     ([∗ list] κ' ∈ κs ++ κs', ⌜lctx_lft_incl E L'' κ' κ⌝) ∗
                     (T L'' (Cpost ri rf ∗ R2 ∗ R) rt_full (CoreableLtype (κs ++ κs') lt_full) (#rf))
-              end)))
+              end))))
     ⊢ stratify_ltype π E L mdu ma ml l (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost) r (Uniq κ γ) T.
   Proof.
     iIntros "Hstrat". iIntros (F ???) "#CTX #HE HL Hl".
@@ -2466,6 +2484,7 @@ Section subsume.
       iSplitR; first done. done.
     - (* fold it again *)
       iDestruct "HT" as "(%ri & HT)".
+      iDestruct "HT" as "(%lt_cur_core & %Hsimp & HT)".
       iMod ("HT" with "[//] CTX HE HL") as "(#Hincl & HL & %rf & HT)".
       iSpecialize ("HT" $! F True%I).
       iMod ("HT" with "[//] [//] [//] CTX HE HL []") as "(%L3 & %κs & %R2 & Hstep' & HL & HT)".
@@ -2490,7 +2509,9 @@ Section subsume.
         { iModIntro. iIntros "_ Hb".
           iMod ("Hub" with "[] Hb") as "Hb". { iApply big_sepL_nil. done. }
           rewrite !ltype_own_core_equiv.
-          iApply (ltype_incl_use_core with "Hincl Hb"); first done. }
+          iApply (ltype_incl_use_core with "Hincl [Hb]"); first done.
+          destruct Hsimp as [Hsimp].
+          rewrite -Hsimp ltype_core_idemp//.  }
         iDestruct "Ha" as "($ & Hobs & Hcl)".
         iMod ("Hcl" with "[] Hobs") as "Hl".
         { by iApply lft_dead_list_nil. }
@@ -2516,7 +2537,9 @@ Section subsume.
           rewrite lft_dead_list_app. iDestruct "Hdead" as "(_ & Hdead)".
           iMod ("Hub" with "Hdead Hb") as "Hb".
           rewrite !ltype_own_core_equiv.
-          iApply (ltype_incl_use_core with "Hincl Hb"); first done. }
+          iApply (ltype_incl_use_core with "Hincl [Hb]"); first done.
+          destruct Hsimp as [Hsimp].
+          rewrite -Hsimp ltype_core_idemp//.  }
         iDestruct "Ha" as "($ & Hobs & Hcl)".
         iMod "Hcl_F" as "_".
         iModIntro. iFrame "HR2". rewrite ltype_own_coreable_unfold /coreable_ltype_own.
@@ -2556,14 +2579,14 @@ Section subsume.
   Lemma stratify_ltype_opened_na_Owned {rt_cur rt_inner} π E L mdu ma {M} (ml : M) l
       (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner)
       (Cpre Cpost : rt_inner → iProp Σ) r `{!StratifyLtypeShouldCloseInv ml Owned} (T : stratify_ltype_cont_t) :
-    stratify_ltype π E L mdu ma ml l lt_cur r (Owned)
+    stratify_ltype π E L mdu ma StratifyTypeInvOp l lt_cur r (Owned)
       (λ L' R rt_cur' lt_cur' (r' : place_rfn rt_cur'),
         if decide (ma = StratNoRefold)
         then (* keep it open *)
           T L' R _ (OpenedNaLtype lt_cur' lt_inner Cpre Cpost) r'
         else (* fold the invariant *)
           ∃ ri,
-            (* show that the core of lt_cur' is a subtype of lt_inner *)
+            (* show that lt_cur' is a subtype of lt_inner *)
             weak_subltype E L' (Owned) (r') (#ri) lt_cur' lt_inner (
               (* re-establish the invariant *)
               prove_with_subtype E L' true ProveDirect (Cpre ri) True%I
@@ -2782,19 +2805,19 @@ Section subsume.
 
 
   (* instances for Opened *)
-  Lemma typed_place_opened_owned E L f {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost r l P  T :
+  Lemma typed_place_opened_owned E L f {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost r l P bmin `{Hstrong: !TCDone (place_update_kind_allows_strong_updates bmin)} T :
     (* no weak access possible -- we currently don't have the machinery to restore and fold invariants at this point, though we could in principle enable this *)
-    typed_place E L f l lt_cur r UpdStrong (Owned) P (λ L' κs l2 b2 bmin rti ltyi ri updcx,
-      T L' κs l2 b2 bmin rti ltyi ri
+    typed_place E L f l lt_cur r UpdStrong (Owned) P (λ L' κs l2 b2 bmin' rti ltyi ri updcx,
+      T L' κs l2 b2 bmin' rti ltyi ri
         (λ L2 upd cont,
           updcx L2 upd (λ upd',
-            cont (mkPUpd _ UpdStrong
+            cont (mkPUpd _ bmin
             (upd').(pupd_rt)
             (OpenedLtype (upd').(pupd_lt) lt_inner lt_full Cpre Cpost)
             (upd').(pupd_rfn)
             (upd').(pupd_R)
-            UpdStrong I I))))
-    ⊢ typed_place E L f l (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost) r UpdStrong (Owned) P T.
+            UpdStrong I (opt_place_update_eq_strong _ Hstrong)))))
+    ⊢ typed_place E L f l (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost) r bmin (Owned) P T.
   Proof.
     iIntros "HT". iIntros (Φ F ??) "#CTX #HE HL Hf Hl HR".
     iPoseProof (opened_ltype_acc_owned with "Hl") as "(Hl & Hcl)".
@@ -2808,7 +2831,10 @@ Section subsume.
     iFrame.
     iPoseProof (typed_place_cond_syn_type_eq with "Hincl Hcond") as "%".
     iPoseProof ("Hcl" with "Hl [//]") as "Hl".
-    eauto with iFrame.
+    simpl. iFrame.
+    iSplitL.
+    - done.
+    - by destruct bmin.
   Qed.
 
   (* By default, don't descend below [Opened] if we don't make another place access *)
@@ -2823,19 +2849,19 @@ Section subsume.
   Definition typed_place_opened_owned_config_inst := [instance @typed_place_opened_owned_config].
   Global Existing Instance typed_place_opened_owned_config_inst | 5.
 
-  Lemma typed_place_opened_uniq f E L {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost r l κ γ P T :
+  Lemma typed_place_opened_uniq f E L {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost r l κ γ P bmin `{Hstrong: !TCDone (place_update_kind_allows_strong_updates bmin)} T :
     (* no weak access possible -- we currently don't have the machinery to restore and fold invariants at this point, though we could in principle enable this *)
-    typed_place E L f l lt_cur r UpdStrong (Owned) P (λ L' κs l2 b2 bmin rti ltyi ri updcx,
-      T L' κs l2 b2 bmin rti ltyi ri
+    typed_place E L f l lt_cur r UpdStrong (Owned) P (λ L' κs l2 b2 bmin' rti ltyi ri updcx,
+      T L' κs l2 b2 bmin' rti ltyi ri
         (λ L2 upd cont,
           updcx L2 upd (λ upd',
-            cont (mkPUpd _ UpdStrong
+            cont (mkPUpd _ bmin
             (upd').(pupd_rt)
             (OpenedLtype (upd').(pupd_lt) lt_inner lt_full Cpre Cpost)
             (upd').(pupd_rfn)
             (upd').(pupd_R)
-            UpdStrong I I))))
-    ⊢ typed_place E L f l (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost) r UpdStrong (Uniq κ γ) P T.
+            UpdStrong I (opt_place_update_eq_strong _ Hstrong)))))
+    ⊢ typed_place E L f l (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost) r bmin (Uniq κ γ) P T.
   Proof.
     iIntros "HT". iIntros (Φ F ??) "#CTX #HE HL Hf Hl HR".
     iPoseProof (opened_ltype_acc_uniq with "Hl") as "(Hl & Hcl)".
@@ -2850,7 +2876,10 @@ Section subsume.
     iFrame.
     iPoseProof (typed_place_cond_syn_type_eq with "Hincl Hcond") as "%".
     iPoseProof ("Hcl" with "Hl [//]") as "Hl".
-    eauto with iFrame.
+    simpl. iFrame.
+    iSplitL.
+    - done.
+    - by destruct bmin.
   Qed.
 
   (* By default, don't descend below [Opened] if we don't make another place access *)
@@ -2934,14 +2963,14 @@ Section subsume.
   Definition interpret_typing_hint_ignore_disabled_inst := [instance @interpret_typing_hint_ignore_disabled].
   Global Existing Instance interpret_typing_hint_ignore_disabled_inst | 15.
 
-  Lemma interpret_typing_hint_some_strong E L rty {rt} (ty : type rt) r (T : interpret_typing_hint_cont_t UpdStrong rt) :
+  Lemma interpret_typing_hint_some_strong E L rty {rt} (ty : type rt) r bmin `{Hstrong: !TCDone (place_update_kind_allows_strong_updates bmin)} (T : interpret_typing_hint_cont_t bmin rt) :
     find_in_context (FindNamedLfts) (λ M, named_lfts M -∗
       (** Interpret the type annotation *)
       li_tactic (interpret_rust_type_goal M rty) (λ '(existT rt2 ty2),
       (* TODO it would be really nice to have a stronger form of subtyping here that also supports unfolding/folding of invariants *)
       ∃ r2, weak_subtype E L r r2 ty ty2 (
-        T rt2 ty2 r2 (mkPUKRes (allowed:=UpdStrong) UpdStrong I I))))
-    ⊢ interpret_typing_hint E L (Some rty) UpdStrong ty r T.
+        T rt2 ty2 r2 (mkPUKRes (allowed:=bmin) UpdStrong I (opt_place_update_eq_strong _ Hstrong)))))
+    ⊢ interpret_typing_hint E L (Some rty) bmin ty r T.
   Proof.
     iIntros "HT".
     rewrite /FindNamedLfts.
@@ -2950,11 +2979,11 @@ Section subsume.
     iIntros (????) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(#Hincl3 & HL & HT)".
     iModIntro. iPoseProof "Hincl3" as "(%Hsteq' & _)".
-    set (updstrong := mkPUKRes (allowed:=UpdStrong)(rt1:=rt)(rt2:=rt2) UpdStrong I I).
+    set (updstrong := mkPUKRes (allowed:=bmin)(rt1:=rt)(rt2:=rt2) UpdStrong I (opt_place_update_eq_strong _ Hstrong)).
     iExists rt2, ty2, r2, updstrong. iFrame "HL HT".
     iR. simpl.
     rewrite /typed_place_cond/=.  simp_ltypes.
-    done.
+    iR. destruct bmin; done.
   Qed.
   Definition interpret_typing_hint_some_strong_inst := [instance @interpret_typing_hint_some_strong].
   Global Existing Instance interpret_typing_hint_some_strong_inst | 20.
@@ -2998,10 +3027,10 @@ Section subsume.
     iApply ("HΦ" with "HL Hf Hv"). by iApply "HT".
   Qed.
 
-  Lemma typed_if_wand E L v P (T1 T2 T1' T2' : llctx → iProp Σ):
-    typed_if E L v P T1 T2 -∗
+  Lemma typed_if_wand E L π v P (T1 T2 T1' T2' : llctx → iProp Σ):
+    typed_if E L π v P T1 T2 -∗
     ((∀ L2, T1 L2 -∗ T1' L2) ∧ (∀ L2, T2 L2 -∗ T2' L2)) -∗
-    typed_if E L v P T1' T2'.
+    typed_if E L π v P T1' T2'.
   Proof.
     iIntros "Hif HT". iIntros (??) "CTX HE HL Hv".
     iMod ("Hif" with "[] CTX HE HL Hv") as (b ?) "($ & $ & HC)"; first done.
@@ -3064,6 +3093,7 @@ Section subsume.
   Qed.
   Definition typed_binop_simplify_inst := [instance typed_binop_simplify].
   Global Existing Instance typed_binop_simplify_inst | 1000.
+
 
   Lemma type_val_context v π (T : typed_value_cont_t) :
     (find_in_context (FindVal v) (λ '(existT rt (ty, r, π', m')),
@@ -3186,7 +3216,7 @@ Section subsume.
 
   Lemma type_ife E L f e1 e2 e3 T:
     typed_val_expr E L f e1 (λ L' v m rt ty r,
-      typed_if E L' v (v ◁ᵥ{f.1, m} r @ ty) (λ L2, typed_val_expr E L2 f e2 T) (λ L2, typed_val_expr E L2 f e3 T))
+      typed_if E L' f.1 v (v ◁ᵥ{f.1, m} r @ ty) (λ L2, typed_val_expr E L2 f e2 T) (λ L2, typed_val_expr E L2 f e3 T))
     ⊢ typed_val_expr E L f (IfE BoolOp e1 e2 e3) T.
   Proof.
     iIntros "He1" (Φ) "#LFT #HE HL Hf HΦ".
@@ -3245,9 +3275,9 @@ Section subsume.
 
   Lemma type_logical_and E L f e1 e2 T:
     typed_val_expr E L f e1 (λ L1 v1 m1 rt1 ty1 r1,
-      typed_if E L1 v1 (v1 ◁ᵥ{f.1, m1} r1 @ ty1)
+      typed_if E L1 f.1 v1 (v1 ◁ᵥ{f.1, m1} r1 @ ty1)
        (λ L2, typed_val_expr E L2 f e2 (λ L3 v2 m2 rt2 ty2 r2,
-        typed_if E L3 v2 (v2 ◁ᵥ{f.1, m2} r2 @ ty2)
+        typed_if E L3 f.1 v2 (v2 ◁ᵥ{f.1, m2} r2 @ ty2)
            (λ L4, typed_value f.1 (val_of_bool true) (T L4 (val_of_bool true)))
            (λ L4, typed_value f.1 (val_of_bool false) (T L4 (val_of_bool false)))))
        (λ L2, typed_value f.1 (val_of_bool false) (T L2 (val_of_bool false))))
@@ -3265,10 +3295,10 @@ Section subsume.
 
   Lemma type_logical_or E L f e1 e2 T:
     typed_val_expr E L f e1 (λ L1 v1 m1 rt1 ty1 r1,
-      typed_if E L1 v1 (v1 ◁ᵥ{f.1, m1} r1 @ ty1)
+      typed_if E L1 f.1 v1 (v1 ◁ᵥ{f.1, m1} r1 @ ty1)
       (λ L2, typed_value f.1 (val_of_bool true) (T L2 (val_of_bool true)))
       (λ L2, typed_val_expr E L2 f e2 (λ L3 v2 m2 rt2 ty2 r2,
-        typed_if E L3 v2 (v2 ◁ᵥ{f.1, m2} r2 @ ty2)
+        typed_if E L3 f.1 v2 (v2 ◁ᵥ{f.1, m2} r2 @ ty2)
           (λ L4, typed_value f.1 (val_of_bool true) (T L4 (val_of_bool true)))
           (λ L4, typed_value f.1 (val_of_bool false) (T L4 (val_of_bool false))))))
     ⊢ typed_val_expr E L f (e1 ||{BoolOp, BoolOp, U8} e2)%E T.
@@ -3761,13 +3791,13 @@ Section subsume.
   (* Write v : r1 @ ty to l : #r2 @ ◁ ty2.
      We first need to show that ty is a subtype of ty2.
      Afterwards, we obtain l : #r3 @ ◁ ty2 for some r3, as well as the result of ghost-dropping r2 @ ty2. *)
-  Lemma type_write_ofty_weak E L {rt} π b2 bmin l (ty ty2 : type rt) r1 r2 v ot (T : typed_write_end_cont_t bmin rt) :
+  Lemma type_write_ofty_weak E L {rt1 rt2} π b2 bmin l (ty : type rt1) (ty2 : type rt2) r1 r2 v ot (T : typed_write_end_cont_t bmin rt2) :
     (∃ r3, owned_subtype π E L false r1 r3 ty ty2 (λ L2,
       ⌜ty_syn_type ty = ty_syn_type ty2⌝ ∗ (* TODO: would be nice to remove this requirement *)
       ⌜ty_has_op_type ty ot MCNone⌝ ∗ ⌜lctx_bor_kind_alive E L2 b2⌝ ∗
       ⌜bor_kind_writeable b2⌝ ∗
       (ty_ghost_drop' ty2 π r2 -∗
-        T L2 rt ty2 r3 (mkPUKRes UpdBot opt_place_update_eq_refl opt_place_update_eq_refl))))
+        T L2 rt2 ty2 r3 (mkPUKRes UpdBot opt_place_update_eq_refl opt_place_update_eq_refl))))
     ⊢ typed_write_end π E L ot v ty r1 b2 bmin l (◁ ty2) (#r2) T.
   Proof.
     iIntros "(%r3 & HT)".
@@ -3938,14 +3968,6 @@ Section subsume.
     Of course, with nested products, this gets more complicated...
    *)
 
-  Lemma opt_place_update_eq_strong {rt1 rt2} bmin (Heq : bmin = UpdStrong) :
-    opt_place_update_eq bmin rt1 rt2.
-  Proof.
-    unfold opt_place_update_eq.
-    rewrite Heq.
-    exact I.
-  Defined.
-
   Lemma type_addr_of_mut E L f (e : expr) (T : typed_addr_of_mut_cont_t) T' :
     IntoPlaceCtx E f e T' →
     T' L (λ L1 K l, find_in_context (FindLoc l) (λ '(existT rto (lt1, r1, b, π)),
@@ -3953,8 +3975,8 @@ Section subsume.
       (* place *)
       typed_place E L1 f l lt1 r1 UpdStrong b K (λ L2 κs (l2 : loc) (b2 : bor_kind) (bmin : place_update_kind) rti (lt2 : ltype rti) (ri2 : place_rfn rti) updcx,
         (* We need to be able to do a strong update *)
-        ∃ (Heqmin : bmin = UpdStrong),
-        typed_addr_of_mut_end f.1 E L2 l2 lt2 ri2 b2 UpdStrong (λ L3 rtb tyb rb rt' lt' r',
+        ∃ (Heqmin : place_update_kind_allows_strong_updates bmin),
+        typed_addr_of_mut_end f.1 E L2 l2 lt2 ri2 b2 bmin (λ L3 rtb tyb rb rt' lt' r',
           typed_place_finish f.1 E L3 updcx (mkPUKRes UpdStrong I (opt_place_update_eq_strong bmin Heqmin)) (llft_elt_toks κs) l b lt' r' (λ L4,
             (* in case lt2 is already an AliasLtype, the simplify_hyp instance for it will make sure that we don't actually introduce that assignment into the context *)
             l2 ◁ₗ[π, Owned] ri2 @ lt2 -∗
@@ -3976,7 +3998,7 @@ Section subsume.
     set (upd_strong := (mkPUKRes UpdStrong I (opt_place_update_eq_strong bmin Heqmin))).
     set (upd_inner := typed_place_finish_upd upd_strong lt' r').
     iMod ("Hs" $! upd_inner with "[] Hl2 [] []") as "Hs".
-    { simpl. by rewrite Heqmin. }
+    { simpl. destruct bmin; done. }
     { simpl. done. }
     { rewrite /typed_place_cond/=. done. }
     iMod ("Hs" with "HL Hf HT") as (upd') "(Hl & Hcond & ? & ? & ? & HL & Hf & HT)".
@@ -4295,10 +4317,10 @@ Section subsume.
       (* certify that this stratification is allowed, or otherwise commit to a strong update *)
       prove_place_cond E L3 bmin lt2 lt2' (λ upd,
       (* finish borrow *)
-      typed_borrow_shr_end f.1 E L3 κ l2 orty lt2' ri2' b2 bmin (λ rt3 (lt3 : ltype rt3) (r3 : place_rfn rt3) (ty4 : type rt3) r4 upd',
+      typed_borrow_shr_end f.1 E L3 κ l2 orty lt2' ri2' b2 bmin (λ L4 rt3 (lt3 : ltype rt3) (r3 : place_rfn rt3) (ty4 : type rt3) r4 upd',
       (* return toks *)
-      typed_place_finish f.1 E L3 updcx (place_update_kind_res_trans upd upd') (R ∗ llft_elt_toks κs) l b lt3 r3
-        (λ L4, T L4 (l2v l2) rt3 ty4 (#r4))))))))
+      typed_place_finish f.1 E L4 updcx (place_update_kind_res_trans upd upd') (R ∗ llft_elt_toks κs) l b lt3 r3
+        (λ L5, T L5 (l2v l2) rt3 ty4 (#r4))))))))
     ⊢ typed_borrow_shr E L f e κ orty T.
   Proof.
     iIntros (HT') "HT'". iIntros (Φ F ????) "#CTX #HE HL Hf HΦ".
@@ -4323,7 +4345,7 @@ Section subsume.
     iPoseProof ("HT" $! F with "[//] [//] [//] [//] CTX HE HL Hl2") as ">Hb".
     iModIntro. iApply logical_step_fupd. iApply (logical_step_wand with "Hb").
     iIntros "Ha !> Hcred".
-    iMod ("Ha" with "Hcred") as "(%ly' & %rt2 & %lt2 & %r2 & %ty3 & %upd' & HT)".
+    iMod ("Ha" with "Hcred") as "(%L4 & %ly' & %rt2 & %lt2 & %r2 & %ty3 & %upd' & HT)".
     iDestruct "HT" as "(Hshr & %Halg' & Hlb & Hsc & Hblocked & Hcond' & %Hsteq1 & %Hsteq2 & #Hincl & HL & HT)".
     assert (ly' = ly) as ->. {
       move: Halg' Halg.
@@ -4345,7 +4367,7 @@ Section subsume.
 
     iMod ("Hs" with "HL Hf HT") as (?) "(Hl & Hcond'' & ? & HR' & ? & HL & Hf & HT)".
     iPoseProof ("HT" with "Hl") as "Hfin".
-    iMod ("Hfin" with "[] [$] HE HL [$]") as "(%L4 & HL & HT)"; first done.
+    iMod ("Hfin" with "[] [$] HE HL [$]") as "(%L5 & HL & HT)"; first done.
     iModIntro. iExists _. iFrame.
     iL. done.
   Qed.
@@ -4353,27 +4375,41 @@ Section subsume.
   Lemma type_borrow_shr_end_owned E L π κ l orty {rt : RT} (ty : type rt) (r : rt) bmin (T : typed_borrow_shr_end_cont_t bmin rt):
     ⌜lctx_place_update_kind_incl E L (UpdUniq [κ]) bmin⌝ ∗
     ⌜lctx_lft_alive E L κ⌝ ∗
-    ⌜Forall (lctx_lft_alive E L) (ty_lfts ty)⌝ ∗
-    find_in_context (FindNaOwn π) (λ E,
-    na_own π E -∗
-    (T rt (ShrBlockedLtype ty κ) (#r) ty r (mkPUKRes (UpdUniq [κ]) eq_refl opt_place_update_eq_refl)))
+    (** Interpret the type annotation *)
+    interpret_typing_hint E L orty bmin ty r (λ rt2 ty2 r2 upd,
+      ⌜Forall (lctx_lft_alive E L) (ty_lfts ty2)⌝ ∗
+      find_in_context (FindNaOwn π) (λ E,
+      na_own π E -∗
+      (T L rt2 (ShrBlockedLtype ty2 κ) (#r2) ty2 r2
+        (place_update_kind_res_trans upd (mkPUKRes (UpdUniq [κ]) eq_refl opt_place_update_eq_refl))
+      )))
     ⊢ typed_borrow_shr_end π E L κ l orty (◁ ty) (#r) (Owned) bmin T.
   Proof.
-    simpl. iIntros "(%Hincl & %Hal & %Hal' & %E' & Hna & HT)".
+    simpl. iIntros "(%Hincl & %Hal & HT)".
+    iIntros (F ????) "#CTX #HE HL Hl".
+
+    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%rt2 & %ty2 & %r2 & %upd & HL & #Hincl2 & #Hcond1 & #Hincl3 & HT)".
+    iPoseProof (type_ltype_incl_owned_in  with "Hincl2") as "Hincl2'".
+    iMod (ltype_incl_use with "Hincl2' Hl") as "Hl"; first done.
+
+    set (upd1 := (mkPUKRes (allowed:=bmin)(rt1:=rt2) (UpdUniq [κ]) eq_refl opt_place_update_eq_refl)).
+
+    iDestruct "HT" as "(%Hal' & %E' & Hna & HT)".
     iPoseProof (na_own_empty with "Hna") as "#Hna'".
     iSpecialize ("HT" with "Hna").
-    iIntros (F ????) "#[LFT LLCTX] #HE HL Hl".
+
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & Hcl_L)".
     iDestruct (Hincl with "HL HE") as "#Hincl".
-    iMod (lctx_lft_alive_tok_noend (κ ⊓ (lft_intersect_list (ty_lfts ty))) with "HE HL") as "Ha"; first done.
+    iMod (lctx_lft_alive_tok_noend (κ ⊓ (lft_intersect_list (ty_lfts ty2))) with "HE HL") as "Ha"; first done.
     { eapply lctx_lft_alive_intersect; first done. by eapply lctx_lft_alive_intersect_list. }
     iDestruct "Ha" as "(%q' & Htok & HL & Hcl_L')".
     (* owned *)
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hl" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & %r' & Hrfn & Hl)".
+    iDestruct "Hl" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & %r' & <- & Hl)".
     iMod (fupd_mask_mono with "Hl") as "(%v & Hl & Hv)"; first done.
     iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
-    iMod (bor_create lftE κ (∃ v, l ↦ v ∗ v ◁ᵥ{π, MetaNone} r' @ ty)%I with "LFT [Hv Hl]") as "(Hb & Hinh)"; first done.
+    iDestruct "CTX" as "[LFT LLCTX]".
+    iMod (bor_create lftE κ (∃ v, l ↦ v ∗ v ◁ᵥ{π, MetaNone} r2 @ ty2)%I with "LFT [Hv Hl]") as "(Hb & Hinh)"; first done.
     { eauto with iFrame. }
     iMod "Hcl_F" as "_".
     (*iPoseProof (place_rfn_interp_owned_share' with "Hrfn") as "#Hrfn'".*)
@@ -4385,27 +4421,112 @@ Section subsume.
     iModIntro. iIntros "(#Hshr & Htok) !> Hcred1".
     iMod ("Hcl_L'" with "Htok HL") as "HL".
     iPoseProof ("Hcl_L" with "HL") as "HL".
-    set (upd := (mkPUKRes (UpdUniq [κ]) eq_refl opt_place_update_eq_refl)).
-    iExists ly, rt, (ShrBlockedLtype ty κ), _, ty, upd.
+
+    (*set (upd := (mkPUKRes (UpdUniq [κ]) eq_refl opt_place_update_eq_refl)).*)
+    iExists _, ly, _, (ShrBlockedLtype ty2 κ), _, ty2, _.
     iFrame "Hshr Hlb Hsc HL". iSplitR; first done.
     iSplitL "Hinh Hcred1".
     { iModIntro. rewrite ltype_own_shrblocked_unfold /shr_blocked_lty_own.
       iExists ly. iFrame "Hlb Hsc". iSplitR; first done. iSplitR; first done.
-      iExists r'. iSplitR; first done. iFrame "Hshr".
+      iExists r2. iSplitR; first done. iFrame "Hshr".
       iIntros "Hdead". iMod ("Hinh" with "Hdead"). iApply (lc_fupd_add_later with "Hcred1").
       iNext. eauto with iFrame. }
     iModIntro.
-    iSplitR.
-    { simpl. iR. iExists eq_refl.
-      simp_ltypes. iSplitR. { iIntros (??). iApply ltype_eq_refl. }
-      iApply shr_blocked_imp_unblockable.
-    }
-    simp_ltypes. iR. iR. iR.
-    iDestruct "Hrfn" as "->".
-    iApply "HT".
+    iFrame "HT".
+
+    iSplitL. {
+      simpl. iApply typed_place_cond_trans.
+      { iApply typed_place_cond_incl; last done.
+        iApply place_update_kind_max_incl_l. }
+      iApply typed_place_cond_incl; last iApply ofty_shr_blocked_place_cond; last iApply place_update_kind_incl_refl.
+      iApply place_update_kind_max_incl_r. }
+    iPoseProof (ltype_incl_syn_type with "Hincl2'") as "->".
+    simp_ltypes. iR. iR.
+    simpl. iApply place_update_kind_incl_lub; done.
   Qed.
   Definition type_borrow_shr_end_owned_inst := [instance @type_borrow_shr_end_owned].
   Global Existing Instance type_borrow_shr_end_owned_inst | 20.
+
+  (* Strong variant for borrowing from fully Owned places (bmin = Owned) with a typing hint.
+    This then first establishes the typing hint using strong subtyping (instead of [weak_subtype]), allowing to establish safety/representation invariants. *)
+  Lemma type_borrow_shr_end_owned_strong E L π κ l rty (rt : RT) (ty : type rt) (r : rt)
+    `{!TCUnless (CheckConfig rr_config_dont_interpret_typing_hints)}
+    (T : typed_borrow_shr_end_cont_t UpdStrong rt) :
+
+    (* Interpret the typing hint *)
+    find_in_context (FindNamedLfts) (λ M, named_lfts M -∗
+      (** Interpret the type annotation *)
+      li_tactic (interpret_rust_type_goal M rty) (λ '(existT rt2 ty2),
+      ∃ r2, owned_subtype π E L false r r2 ty ty2 (λ L2,
+      (* alignment needs to be the same, too *)
+      ⌜ty_syn_type ty MetaNone = ty_syn_type ty2 MetaNone⌝ ∗
+      (** The lifetime at which we borrow still needs to be alive *)
+      ⌜lctx_lft_alive E L2 κ⌝ ∗
+      ⌜Forall (lctx_lft_alive E L2) (ty_lfts ty2)⌝ ∗
+      (** Then, the place becomes blocked *)
+      find_in_context (FindNaOwn π) (λ E,
+      na_own π E -∗
+      (T L2 rt2 (ShrBlockedLtype ty2 κ) (#r2) ty2 r2
+        (@mkPUKRes UpdStrong _ _ UpdStrong I I))))))
+    ⊢ typed_borrow_shr_end π E L κ l (Some rty) (◁ ty) (#r) (Owned) UpdStrong T.
+  Proof.
+    simpl. iIntros "HT".
+    iIntros (F ????) "#CTX #HE HL Hl".
+    iDestruct "HT" as "(%M & Hnamed & HT)".
+    iPoseProof ("HT" with "Hnamed") as "HT".
+    rewrite /interpret_rust_type_goal.
+    iDestruct "HT" as (rt2 ty2 r2) "HT".
+    iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & Hincl & HL & %Hst & HT)"; [done.. | ].
+    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+    iDestruct "Hl" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & (%r' & Hrfn & Hb))".
+    iDestruct "Hrfn" as "<-".
+    iMod (fupd_mask_subseteq lftE) as "Hcl_m"; first done.
+    iMod "Hb" as "(%v & Hl & Hv)".
+    iDestruct "Hincl" as "(% & Hscincl & Hincl)". iPoseProof ("Hincl" with "Hv") as "Hv2".
+
+    iDestruct "CTX" as "(LFT & LLFT)".
+
+    iDestruct "HT" as "(%Hal & %Hal' & %E' & Hna & HT)".
+    iPoseProof (na_own_empty with "Hna") as "#Hna'".
+    iSpecialize ("HT" with "Hna").
+
+    iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & Hcl_L)".
+    iMod (lctx_lft_alive_tok_noend (κ ⊓ (lft_intersect_list (ty_lfts ty2))) with "HE HL") as "Ha"; first done.
+    { eapply lctx_lft_alive_intersect; first done. by eapply lctx_lft_alive_intersect_list. }
+    iDestruct "Ha" as "(%q' & Htok & HL & Hcl_L')".
+
+    iMod (bor_create lftE κ (∃ v, l ↦ v ∗ v ◁ᵥ{π, MetaNone} r2 @ ty2)%I with "LFT [Hv2 Hl]") as "(Hb & Hinh)"; first done.
+    { eauto with iFrame. }
+    (*iPoseProof (place_rfn_interp_owned_share' with "Hrfn") as "#Hrfn'".*)
+    rewrite ty_lfts_unfold.
+    iPoseProof (ty_share _ F with "[$LFT $LLFT] Hna' Htok [] [//] Hlb Hb") as "Hshr"; first done.
+    { rewrite -Hst//. }
+    iApply logical_step_fupd.
+    iApply (logical_step_compose with "Hshr").
+    iApply logical_step_intro.
+    iMod "Hcl_m" as "_".
+    iModIntro.
+    iIntros "(#Hshr & Htok) !> Hcred1".
+    iMod (fupd_mask_mono with "(Hcl_L' Htok HL)") as "HL"; first done.
+    iPoseProof ("Hcl_L" with "HL") as "HL".
+
+    iExists _, ly, _, (ShrBlockedLtype ty2 κ), _, ty2, _.
+    iPoseProof ("Hscincl" with "Hsc") as "#Hsc2".
+    iFrame "Hshr Hlb HL HT Hsc2".
+    rewrite -Hst. iR.
+    iSplitL "Hinh Hcred1".
+    { iModIntro. rewrite ltype_own_shrblocked_unfold /shr_blocked_lty_own.
+      iExists ly. iFrame "Hlb Hsc2".
+      rewrite -Hst. do 2 iR.
+      iExists r2. iR. iFrame "Hshr".
+      iIntros "Hdead". iMod ("Hinh" with "Hdead"). iApply (lc_fupd_add_later with "Hcred1").
+      iNext. eauto with iFrame. }
+    iModIntro.
+    iSplitL. { done. }
+    simp_ltypes. rewrite -Hst. done.
+  Qed.
+  Definition type_borrow_shr_end_owned_strong_inst := [instance @type_borrow_shr_end_owned_strong].
+  Global Existing Instance type_borrow_shr_end_owned_strong_inst | 19.
 
   Lemma type_borrow_shr_end_uniq E L π κ l orty {rt : RT} (ty : type rt) (r : rt) bmin κ' γ (T : typed_borrow_shr_end_cont_t bmin rt):
     ⌜lctx_place_update_kind_incl E L (UpdUniq [κ]) bmin⌝ ∗
@@ -4413,7 +4534,7 @@ Section subsume.
     ⌜lctx_lft_alive E L κ⌝ ∗
     ⌜Forall (lctx_lft_alive E L) (ty_lfts ty)⌝ ∗
     find_in_context (FindNaOwn π) (λ E, na_own π E -∗
-    (T rt (ShrBlockedLtype ty κ) (#r) ty r (mkPUKRes (UpdUniq [κ]) eq_refl opt_place_update_eq_refl)))
+    (T L rt (ShrBlockedLtype ty κ) (#r) ty r (mkPUKRes (UpdUniq [κ]) eq_refl opt_place_update_eq_refl)))
     ⊢ typed_borrow_shr_end π E L κ l orty (◁ ty) (#r) (Uniq κ' γ) bmin T.
   Proof.
     simpl. iIntros "(%Hincl & %Hincl2 & %Hal & %Hal' & %E' & Hna & HT)".
@@ -4459,7 +4580,7 @@ Section subsume.
     iDestruct "Hrfn" as "<-".
 
     set (upd := (mkPUKRes (UpdUniq [κ]) eq_refl opt_place_update_eq_refl)).
-    iExists ly, rt, (ShrBlockedLtype ty κ), r, ty, upd. iFrame.
+    iExists _, ly, rt, (ShrBlockedLtype ty κ), r, ty, upd. iFrame.
     iR. iR. iR.
     rewrite lft_tok_sep.
     rewrite ty_lfts_unfold.
@@ -4482,7 +4603,7 @@ Section subsume.
 
   Lemma type_borrow_shr_end_shared E L π κ l orty {rt : RT} (ty : type rt) (r : rt) κ' bmin (T : typed_borrow_shr_end_cont_t bmin rt) :
     ⌜lctx_lft_incl E L κ κ'⌝ ∗
-    (T rt (◁ ty) (#r) ty r (mkPUKRes UpdBot eq_refl opt_place_update_eq_refl))
+    (T L rt (◁ ty) (#r) ty r (mkPUKRes UpdBot eq_refl opt_place_update_eq_refl))
     ⊢ typed_borrow_shr_end π E L κ l orty (◁ ty) (#r) (Shared κ') bmin T.
   Proof.
     simpl. iIntros "(%Hincl & HT)".
@@ -4493,7 +4614,7 @@ Section subsume.
     iDestruct "Hl" as "(%ly & %Halg & %Hly & Hsc & Hlb & %r' & Hrfn & #Hl)".
     iDestruct "Hl" as "-#Hl". iMod (fupd_mask_mono with "Hl") as "#Hl"; first done.
     set (upd := (mkPUKRes UpdBot eq_refl opt_place_update_eq_refl)).
-    iExists ly, rt, (◁ ty)%I, r, ty, upd.
+    iExists _, ly, rt, (◁ ty)%I, r, ty, upd.
     iDestruct "Hrfn" as "<-".
     iPoseProof (ty_shr_mono with "Hincl Hl") as "$".
     iR. iFrame "Hlb Hsc". iModIntro.
@@ -4522,7 +4643,7 @@ Section subsume.
     iMod ("HT" with "[//] [//] [//] [//] CTX HE HL Hl") as "Ha".
     iApply (logical_step_wand with "Ha").
     iModIntro. iIntros "HT Hcred".
-    iMod ("HT" with "Hcred") as "(%ly & % & %lt2 & % & %ty2 & %res & Hl & %Hst1 & ? & ? & Hl' & Hcond & %Hst2 & %Hst3 & ? & HL & HT)".
+    iMod ("HT" with "Hcred") as "(%L2 & %ly & % & %lt2 & % & %ty2 & %res & Hl & %Hst1 & ? & ? & Hl' & Hcond & %Hst2 & %Hst3 & ? & HL & HT)".
     iFrame. iR.
     rewrite -Hst3 -Hst2 -Hst0. iL.
     iApply (ltype_eq_place_cond_trans with "[//] Hcond").
@@ -4676,7 +4797,7 @@ Section subsume.
   Proof.
     iIntros "He". iIntros (?) "#CTX #HE HL Hf Hcont". wps_bind.
     iApply ("He" with "CTX HE HL Hf"). iIntros (L' v rt ty r m) "HL Hf Hv (-> & Hs)".
-    iDestruct ("Hs" with "CTX HE HL Hf Hv") as (?) "(HL & Hf & Hs)".
+    iMod ("Hs" with "[] CTX HE HL Hf Hv") as (?) "(HL & Hf & Hs)"; first done.
     iApply wps_assert_bool; [done.. | ].
     iApply physical_step_intro; iNext.
     by iApply ("Hs" with "CTX HE HL Hf").
@@ -4684,7 +4805,7 @@ Section subsume.
 
   Lemma type_if E L f e s1 s2 fn R ϝ :
     typed_val_expr E L f e (λ L' v m rt ty r,
-      typed_if E L' v (v ◁ᵥ{f.1, m} r @ ty)
+      typed_if E L' f.1 v (v ◁ᵥ{f.1, m} r @ ty)
           (λ L2, typed_stmt E L2 f s1 fn R ϝ) (λ L2, typed_stmt E L2 f s2 fn R ϝ))
     ⊢ typed_stmt E L f (if{BoolOp}: e then s1 else s2) fn R ϝ.
   Proof.
@@ -4699,7 +4820,7 @@ Section subsume.
   Lemma type_switch E L f it e m ss def fn R ϝ:
     typed_val_expr E L f e (λ L' v ma rt ty r,
       ⌜ma = MetaNone⌝ ∗
-      typed_switch E L' f v rt ty r it m ss def fn R ϝ)
+      typed_switch E L' f v ty r it m ss def fn R ϝ)
     ⊢ typed_stmt E L f (Switch it e m ss def) fn R ϝ.
   Proof.
     iIntros "He" (?) "#CTX #HE HL Hf Hcont".
@@ -4709,7 +4830,7 @@ Section subsume.
     rewrite /W.to_expr /W.to_stmt /= -list_fmap_compose list_fmap_id.
 
     iApply ("He" with "CTX HE HL Hf"). iIntros (L' v ma rt ty r) "HL Hf Hv (-> & Hs)".
-    iDestruct ("Hs" with "Hv") as (z Hn) "Hs".
+    iMod ("Hs" with "[] CTX HE HL Hv") as (z) "(HL & %Hn & Hs)"; first done.
     iAssert (⌜∀ i : nat, m !! z = Some i → is_Some (ss !! i)⌝%I) as %?. {
       iIntros (i ->). iDestruct "Hs" as (s ->) "_"; by eauto.
     }

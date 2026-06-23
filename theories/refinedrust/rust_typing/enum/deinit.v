@@ -1,5 +1,5 @@
 From refinedrust Require Export type ltypes.
-From refinedrust Require Import uninit int int_rules.
+From refinedrust Require Import uninit int int_rules base.value.
 From refinedrust Require Import programs ltypes.
 From refinedrust Require Import options.
 
@@ -7,11 +7,11 @@ Section rules.
   Context `{!typeGS Σ}.
 
   Lemma owned_subltype_step_enum_uninit π E L step l {rt rte} (en : enum rt) (lte : ltype rte) rs tag re st T  :
-    owned_subltype_step π E L step l #rs #() (EnumLtype en tag lte re) (◁ uninit st) T :-
+    owned_subltype_step π E L step l #rs #() (EnumLtype en tag lte re) (◁ typed_value_t st) T :-
     ∀ le,
       exhale (⌜st = en.(enum_els)⌝);
       (*ste ← tactic (compute_map_lookup_goal (list_to_map (en.(enum_els).(els_variants))) tag false);*)
-      return owned_subltype_step π E L step le #re #() lte (◁ uninit (ltype_st lte)) T.
+      return owned_subltype_step π E L step le #re #() lte (◁ typed_value_t (ltype_st lte)) T.
   Proof.
   Admitted.
   Definition owned_subltype_step_enum_uninit_inst := [instance owned_subltype_step_enum_uninit].

@@ -10,11 +10,19 @@ Definition SHELVED_SIDECOND (P : Prop) : Prop := P.
 Arguments SHELVED_SIDECOND : simpl never.
 Strategy expand [SHELVED_SIDECOND].
 
+Ltac goal_has_no_evars :=
+  match goal with
+  | |- ?G =>
+    assert_fails (has_evar G)
+  end.
 Ltac shelve_sidecond :=
   idtac;
   shelve_sidecond_hook;
   lazymatch goal with
-  | |- ?G => change_no_check (SHELVED_SIDECOND G); shelve
+  | |- ?G =>
+    change_no_check (SHELVED_SIDECOND G);
+    goal_has_no_evars;
+    shelve
   end.
 
 Ltac unshelve_sidecond :=
@@ -338,7 +346,7 @@ Ltac do_instantiate_protected H' tac_with :=
     let tmp := fresh "tmp" in
     intros tmp;
     (* simpl in order to make sure the type in the occurences of [protected] is simplified *)
-    try progress simpl; 
+    try progress simpl;
     replace (protected tmp) with tmp;
     [ | simple refine (tac_protected_eq_app _ _ _); unfold tmp; reflexivity];
     unfold tmp, EVAR_ID; clear tmp

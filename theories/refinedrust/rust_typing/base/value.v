@@ -62,6 +62,13 @@ Proof.
   unfold is_value_ot_core.
   destruct ot; simpl; naive_solver.
 Qed.
+Lemma is_value_ot_core_untyped ot ly mt :
+  ly = ot_layout ot →
+  is_value_ot_core ot (UntypedOp ly) mt.
+Proof.
+  intros ->. left.
+  eauto.
+Qed.
 
 (* [is_memcast_val] is preserved by optypes behaving by [is_value_ot_core] *)
 Lemma is_value_ot_core_is_memcast_val_pres (typed : bool) ot ot1 vs v st :
@@ -518,7 +525,7 @@ Section ofty_lemmas.
     by iApply (own_val_merge_value_typed with "Hv' Hv").
   Qed.
 
-  Lemma ofty_own_merge_value_untyped {rt} π (ty : type rt) `{!TySized ty} v r st l ly :
+  Lemma ofty_own_merge_value_untyped {rt} π (ty : type rt) v r st l ly :
     syn_type_has_layout (ty_syn_type ty MetaNone) ly →
     syn_type_has_layout st ly →
     v ◁ᵥ{ π, MetaNone} r @ ty -∗
@@ -838,7 +845,7 @@ Section rules.
   Qed.
   (* shouldn't have super high priority because the conclusion is very general *)
   Definition owned_subtype_merge_typed_value_inst := [instance @owned_subtype_merge_typed_value].
-  Global Existing Instance owned_subtype_merge_typed_value_inst | 100.
+  Global Existing Instance owned_subtype_merge_typed_value_inst | 30.
 
   Lemma owned_subtype_merge_untyped_value {rt} π E L (ty : type rt) r v' st T :
     prove_with_subtype E L false ProveDirect (v' ◁ᵥ{π, MetaNone} r @ ty) True (λ L' _ R,
@@ -864,7 +871,7 @@ Section rules.
   Qed.
   (* shouldn't have super high priority because the conclusion is very general *)
   Definition owned_subtype_merge_untyped_value_inst := [instance @owned_subtype_merge_untyped_value].
-  Global Existing Instance owned_subtype_merge_untyped_value_inst | 100.
+  Global Existing Instance owned_subtype_merge_untyped_value_inst | 30.
 End rules.
 
 Section unify_loc.
@@ -1220,49 +1227,185 @@ Section rules.
   *)
 
 
-  (* We also need stratification instances: should we generally move values back in during stratification?
-    - One option: always cancel value_t in stratification.
-        This limits expressivity a bit for specs, because when we really want to have value_t there, we get stuck.
-      => do this for now, it should suffice.
-     - Other option: have a (non-semantic) guidance parameter that gets provided by OpenedLtype.
-       Only if that guidance parameter is not giving us identity do we fold the value_t.
-     - Other option: do not let stratify do this, but rather have subtyping do this before folding.
-
-     TODO: currently not an instance, because we sometimes do not want to do this!
-     Instead, should give stratify some syntactic guidance from OpenedLtype above it.
-   *)
-   (*
-  Lemma stratify_ltype_ofty_value_owned π E L mdu ma {M} (m : M) l st v (T : stratify_ltype_cont_t) :
+  (* We only stratify values if enabled for this mode *)
+  Lemma stratify_ltype_ofty_typed_value_owned π E L mdu ma {M} (m : M) l st v `{!StratifyLtypeShouldMoveValues m} (T : stratify_ltype_cont_t) :
     find_in_context (FindVal v) (λ '(existT rt (ty', r', π', m)),
       ⌜π' = π⌝ ∗ ⌜m = MetaNone⌝ ∗
-      find_tc_inst (TySized ty') (λ _,
       ⌜ty_has_op_type ty' (use_op_alg' (ty'.(ty_syn_type) m)) MCCopy⌝ ∗
       ⌜ty'.(ty_syn_type) m = st⌝ ∗
-      stratify_ltype π E L mdu ma m l (◁ ty') (#r') (Owned) T))
-    ⊢ stratify_ltype π E L mdu ma m l (◁ value_t st)%I (#v) (Owned) T.
+      stratify_ltype π E L mdu ma m l (◁ ty') (#r') (Owned) T)
+    ⊢ stratify_ltype π E L mdu ma m l (◁ value_t true st)%I (#v) (Owned) T.
   Proof.
-    iDestruct 1 as ([rt [[[ty' r'] π'] m']]) "(Hv & -> & -> & % & %Hot & %Heq & HT)" => /=.
+    iDestruct 1 as ([rt [[[ty' r'] π'] m']]) "(Hv & -> & -> & %Hot & %Heq & HT)" => /=.
     iIntros (????) "#CTX #HE HL Hl".
     iPoseProof (ltype_own_has_layout with "Hl") as "#(%ly & %Hst &_)".
-    iPoseProof (ofty_own_merge_value with "Hv Hl") as "Ha".
-    { subst st. destruct (ty_syn_type ty'); try done.
-      simp_ltypes in Hst. simpl in Hst.
-      specialize (syn_type_has_layout_untyped_inv _ _ Hst) as (-> & _).
-      done. }
+    subst st.
+    iPoseProof (ofty_own_merge_value_typed with "Hv Hl") as "Ha".
+    { done. }
     iMod ("HT" with "[//] [//] [//] CTX HE HL Ha") as "Ha".
-    subst st. eauto.
+    eauto.
   Qed.
-  *)
   (* needs to have a higher priority than the ofty_resolve_ghost instance *)
-  (*Global Instance stratify_ltype_unblock_ofty_value_owned_inst π E L mu mdu ma l st v wl :*)
-    (*StratifyLtype π E L mu mdu ma StratifyUnblockOp l (◁ value_t st)%I (PlaceIn v) (Owned wl) | 10:=*)
-    (*λ T, i2p (stratify_ltype_ofty_value_owned π E L mu mdu ma StratifyUnblockOp l st v wl T).*)
-  (* TODO: not an instance right now since we don't always want to stratify this -- esp. not for functions passing values in their interface *)
+  Definition stratify_ltype_ofty_typed_value_owned_inst := [instance @stratify_ltype_ofty_typed_value_owned].
+  Global Existing Instance stratify_ltype_ofty_typed_value_owned_inst | 10.
+
+  Lemma stratify_ltype_ofty_untyped_value_owned π E L mdu ma {M} (m : M) l st v `{!StratifyLtypeShouldMoveValues m} (T : stratify_ltype_cont_t) :
+    find_in_context (FindVal v) (λ '(existT rt (ty', r', π', m)),
+      ⌜π' = π⌝ ∗ ⌜m = MetaNone⌝ ∗
+      ⌜ty'.(ty_syn_type) m = st⌝ ∗
+      stratify_ltype π E L mdu ma m l (◁ ty') (#r') (Owned) T)
+    ⊢ stratify_ltype π E L mdu ma m l (◁ value_t false st)%I (#v) (Owned) T.
+  Proof.
+    iDestruct 1 as ([rt [[[ty' r'] π'] m']]) "(Hv & -> & -> & %Heq & HT)" => /=.
+    iIntros (????) "#CTX #HE HL Hl".
+    iPoseProof (ltype_own_has_layout with "Hl") as "#(%ly & %Hst &_)".
+    subst st.
+    iPoseProof (ofty_own_merge_value_untyped with "Hv Hl") as "Ha".
+    { done. }
+    { done. }
+    iMod ("HT" with "[//] [//] [//] CTX HE HL Ha") as "Ha".
+    eauto.
+  Qed.
+  (* needs to have a higher priority than the ofty_resolve_ghost instance *)
+  Definition stratify_ltype_ofty_untyped_value_owned_inst := [instance @stratify_ltype_ofty_untyped_value_owned].
+  Global Existing Instance stratify_ltype_ofty_untyped_value_owned_inst | 10.
 End rules.
+
+Section op_rules.
+  Context `{!typeGS Σ}.
+
+  (** Rules for simplifying value hypotheses in operands *)
+
+  Lemma simplify_hyp_value_merge_typed E L π v vs st T :
+    find_in_context (FindVal vs) (λ '(existT rt (ty, r, π', m)),
+      ⌜π' = π⌝ ∗ ⌜m = MetaNone⌝ ∗
+      ⌜ty_has_op_type ty (use_op_alg' (st_of ty MetaNone)) MCCopy⌝ ∗
+      ⌜st = st_of ty MetaNone⌝ ∗
+      T v rt r ty)
+    ⊢ simplify_hyp_value E L π (v ◁ᵥ{π, MetaNone} vs @ value_t true st) T.
+  Proof.
+    rewrite /FindVal.
+    iIntros "(%ty & HT)".
+    simpl. destruct ty as [rt (((ty & r) & π') & m)].
+    simpl. iDestruct "HT" as "(Hv & -> & -> & %Hot & -> & HT)".
+    iIntros (??) "CTX HE HL HP".
+    iPoseProof (own_val_merge_value_typed with "HP Hv") as "Hv"; first done.
+    by iFrame.
+  Qed.
+  Definition simplify_hyp_value_merge_typed_inst := [instance @simplify_hyp_value_merge_typed].
+  Global Existing Instance simplify_hyp_value_merge_typed_inst.
+
+  Lemma simplify_hyp_value_merge_untyped E L π v vs st T :
+    find_in_context (FindVal vs) (λ '(existT rt (ty, r, π', m)),
+      ⌜π' = π⌝ ∗ ⌜m = MetaNone⌝ ∗
+      ⌜st = st_of ty MetaNone⌝ ∗
+      T v rt r ty)
+    ⊢ simplify_hyp_value E L π (v ◁ᵥ{π, MetaNone} vs @ value_t false st) T.
+  Proof.
+    rewrite /FindVal.
+    iIntros "(%ty & HT)".
+    simpl. destruct ty as [rt (((ty & r) & π') & m)].
+    simpl. iDestruct "HT" as "(Hv & -> & -> & -> & HT)".
+    iIntros (??) "CTX HE HL HP".
+    iPoseProof (own_val_merge_value_untyped with "HP Hv") as "Hv".
+    by iFrame.
+  Qed.
+  Definition simplify_hyp_value_merge_untyped_inst := [instance @simplify_hyp_value_merge_untyped].
+  Global Existing Instance simplify_hyp_value_merge_untyped_inst.
+
+  Lemma typed_un_op_simplify_hyp_value E L f v P op ot T :
+    simplify_hyp_value E L f.1 P (λ v' rt r ty,
+      typed_un_op E L f v (v' ◁ᵥ{f.1, MetaNone} r @ ty) op ot T)
+    ⊢ typed_un_op E L f v P op ot T.
+  Proof.
+    iIntros "HT HP".
+    iIntros (?) "#CTX #HE HL Hf Hcont".
+    iMod ("HT" with "[] CTX HE HL HP") as "(%v' & %rt & %ty & %r & HL & Hv & HT)"; [done.. | ].
+    iApply ("HT" with "Hv CTX HE HL Hf Hcont").
+  Qed.
+  Definition typed_un_op_simplify_hyp_value_value_t E L f v vs m typed st op ot T :=
+    typed_un_op_simplify_hyp_value E L f v (v ◁ᵥ{f.1, m} vs @ value_t typed st) op ot T.
+  Definition typed_un_op_simplify_hyp_value_value_t_inst := [instance @typed_un_op_simplify_hyp_value_value_t].
+  Global Existing Instance typed_un_op_simplify_hyp_value_value_t_inst | 1001.
+
+  Lemma typed_bin_op_simplify_hyp_value_l E L f v1 P1 v2 P2 op ot1 ot2 T :
+    simplify_hyp_value E L f.1 P1 (λ v' rt r ty,
+      typed_bin_op E L f v1 (v' ◁ᵥ{f.1, MetaNone} r @ ty) v2 P2 op ot1 ot2 T)
+    ⊢ typed_bin_op E L f v1 P1 v2 P2 op ot1 ot2 T.
+  Proof.
+    iIntros "HT HP1 HP2".
+    iIntros (?) "#CTX #HE HL Hf Hcont".
+    iMod ("HT" with "[] CTX HE HL HP1") as "(%v' & %rt & %ty & %r & HL & Hv & HT)"; [done.. | ].
+    iApply ("HT" with "Hv HP2 CTX HE HL Hf Hcont").
+  Qed.
+  Definition typed_bin_op_simplify_hyp_value_value_t_l E L f v1 v2 P2 vs m typed st op ot1 ot2 T :=
+    typed_bin_op_simplify_hyp_value_l E L f v1 (v1 ◁ᵥ{f.1, m} vs @ value_t typed st) v2 P2 op ot1 ot2 T.
+  Definition typed_bin_op_simplify_hyp_value_value_t_l_inst := [instance @typed_bin_op_simplify_hyp_value_value_t_l].
+  Global Existing Instance typed_bin_op_simplify_hyp_value_value_t_l_inst | 1001.
+
+  Lemma typed_bin_op_simplify_hyp_value_r E L f v1 P1 v2 P2 op ot1 ot2 T :
+    simplify_hyp_value E L f.1 P2 (λ v' rt r ty,
+      typed_bin_op E L f v1 P1 v2 (v' ◁ᵥ{f.1, MetaNone} r @ ty) op ot1 ot2 T)
+    ⊢ typed_bin_op E L f v1 P1 v2 P2 op ot1 ot2 T.
+  Proof.
+    iIntros "HT HP1 HP2".
+    iIntros (?) "#CTX #HE HL Hf Hcont".
+    iMod ("HT" with "[] CTX HE HL HP2") as "(%v' & %rt & %ty & %r & HL & Hv & HT)"; [done.. | ].
+    iApply ("HT" with "HP1 Hv CTX HE HL Hf Hcont").
+  Qed.
+  Definition typed_bin_op_simplify_hyp_value_value_t_r E L f v1 v2 P1 vs m typed st op ot1 ot2 T :=
+    typed_bin_op_simplify_hyp_value_r E L f v1 P1 v2 (v2 ◁ᵥ{f.1, m} vs @ value_t typed st) op ot1 ot2 T.
+  Definition typed_bin_op_simplify_hyp_value_value_t_r_inst := [instance @typed_bin_op_simplify_hyp_value_value_t_r].
+  Global Existing Instance typed_bin_op_simplify_hyp_value_value_t_r_inst | 1001.
+
+  Lemma typed_if_simplify_hyp_value E L π v P T1 T2 :
+    simplify_hyp_value E L π P (λ v' rt r ty,
+      typed_if E L π v (v' ◁ᵥ{π, MetaNone} r @ ty) T1 T2)
+    ⊢ typed_if E L π v P T1 T2.
+  Proof.
+    iIntros "HT". iIntros (??) "#CTX #HE HL HP".
+    iMod ("HT" with "[//] CTX HE HL HP") as "(%v' & %rt & %ty & %r & HL & Hv & HT)".
+    by iApply ("HT" with "[] CTX HE HL Hv").
+  Qed.
+  Definition typed_if_simplify_hyp_value_value_t E L π v vs m typed st T1 T2 :=
+    typed_if_simplify_hyp_value E L π v (v ◁ᵥ{π, m} vs @ value_t typed st) T1 T2.
+  Definition typed_if_simplify_hyp_value_value_t_inst := [instance @typed_if_simplify_hyp_value_value_t].
+  Global Existing Instance typed_if_simplify_hyp_value_value_t_inst | 1001.
+
+  Lemma typed_switch_simplify_hyp_value_value_t E L f v typed st vs it M s def fn R ϝ :
+    simplify_hyp_value E L f.1 (v ◁ᵥ{f.1, MetaNone} vs @ value_t typed st) (λ v' rt' r' ty',
+      ⌜v = v'⌝ ∗
+      typed_switch E L f v ty' r' it M s def fn R ϝ)
+    ⊢ typed_switch E L f v (value_t typed st) vs it M s def fn R ϝ.
+  Proof.
+    iIntros "HT".
+    iIntros (??) "#CTX #HE HL HP".
+    iMod ("HT" with "[//] CTX HE HL HP") as "(%v' & %rt & %ty & %r & HL & Hv & <- & HT)".
+    by iApply ("HT" with "[] CTX HE HL Hv").
+  Qed.
+  Definition typed_switch_simplify_hyp_value_value_t_inst := [instance @typed_switch_simplify_hyp_value_value_t].
+  Global Existing Instance typed_switch_simplify_hyp_value_value_t_inst.
+
+  Lemma typed_assert_simplify_hyp_value_value_t E L f v typed st vs s fn R ϝ :
+    simplify_hyp_value E L f.1 (v ◁ᵥ{f.1, MetaNone} vs @ value_t typed st) (λ v' rt' r' ty',
+      ⌜v = v'⌝ ∗
+      typed_assert E L f v ty' r' s fn R ϝ)
+    ⊢ typed_assert E L f v (value_t typed st) vs s fn R ϝ.
+  Proof.
+    iIntros "HT".
+    iIntros (??) "#CTX #HE HL Hf HP".
+    iMod ("HT" with "[//] CTX HE HL HP") as "(%v' & %rt & %ty & %r & HL & Hv & <- & HT)".
+    by iApply ("HT" with "[] CTX HE HL Hf Hv").
+  Qed.
+  Definition typed_assert_simplify_hyp_value_value_t_inst := [instance @typed_assert_simplify_hyp_value_value_t].
+  Global Existing Instance typed_assert_simplify_hyp_value_value_t_inst.
+End op_rules.
+
 
 Global Typeclasses Opaque value_t.
 Global Hint Unfold value_t : tyunfold.
 
+Global Arguments use_op_alg_typed _ /! _ _ : simpl nomatch.
 
 Section typed_value.
   Context `{!typeGS Σ}.

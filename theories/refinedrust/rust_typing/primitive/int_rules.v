@@ -393,11 +393,14 @@ Section switch.
              ⌜discriminate_hint (n = i)⌝ -∗ ∃ s, ⌜ss !! mi = Some s⌝ ∗ typed_stmt E L f s fn R ϝ)) ∧
     (li_trace (DestructHintSwitchIntDefault) (
                      ⌜discriminate_hint (n ∉ (map_to_list m).*1)⌝ -∗ typed_stmt E L f def fn R ϝ))
-    ⊢ typed_switch E L f v _ (int it) n it m ss def fn R ϝ.
+    ⊢ typed_switch E L f v (int it) n it m ss def fn R ϝ.
   Proof.
     unfold li_trace, discriminate_hint.
-    iIntros "HT Hit". rewrite /ty_own_val/= int_own_val_unfold. iDestruct "Hit" as "(_ & %Hv)".
-    iExists n. iSplit; first done.
+    iIntros "HT".
+    iIntros (??) "#CTX #HE HL Hit".
+    rewrite /ty_own_val/= int_own_val_unfold.
+    iDestruct "Hit" as "(_ & %Hv)".
+    iExists n. iFrame "HL". iModIntro. iR.
     iInduction m as [] "IH" using map_ind; simplify_map_eq => //.
     { iDestruct "HT" as "[_ HT]". iApply "HT". iPureIntro.
       rewrite map_to_list_empty. set_solver. }
@@ -407,8 +410,8 @@ Section switch.
       iIntros (Hn). iDestruct "HT" as "[_ HT]". iApply "HT". iPureIntro.
       rewrite map_to_list_insert //. set_solver.
   Qed.
-  Global Instance type_switch_int_inst E L f n v it : TypedSwitch E L f v _ (int it) n it :=
-    λ m ss def fn R ϝ, i2p (type_switch_int E L f n it v m ss def fn R ϝ).
+  Definition type_switch_int_inst := [instance @type_switch_int].
+  Global Existing Instance type_switch_int_inst.
 End switch.
 
 
@@ -614,7 +617,7 @@ Section bool.
     (case_destruct b (λ b' _,
       li_trace (TraceIfBool b, b') (
       normalize_spatial_context E L True (if b' then T1 else T2))))
-    ⊢ typed_if E L v (v ◁ᵥ{π, m} b @ bool_t) T1 T2.
+    ⊢ typed_if E L π v (v ◁ᵥ{π, m} b @ bool_t) T1 T2.
   Proof.
     unfold li_trace, case_destruct.
     rewrite /ty_own_val/= bool_own_val_unfold.
@@ -631,7 +634,7 @@ Section bool.
     (⌜b = true⌝ ∗ typed_stmt E L f s fn R ϝ)
     ⊢ typed_assert E L f v (bool_t) b s fn R ϝ.
   Proof.
-    iIntros "[-> Hs] #CTX #HE HL Hf (_ & Hb)".
+    iIntros "[-> Hs]" (??) "#CTX #HE HL Hf (_ & Hb)".
     iPoseProof (bool_own_val_to_eq with "Hb") as "%". by iFrame.
   Qed.
   Global Instance type_assert_bool_inst E L f b v : TypedAssert E L f v (bool_t) b :=

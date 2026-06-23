@@ -644,15 +644,15 @@ Section judgments.
   Class TypedCall (E : elctx) (L : llctx) (f : frame_path) (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt, type rt * rt)%type)) : Type :=
     typed_call_proof T : iProp_to_Prop (typed_call E L f eκs etys v P vl tys T).
 
-  Definition typed_if (E : elctx) (L : llctx) (v : val) (P : iProp Σ) (T1 T2 : llctx → iProp Σ) : iProp Σ :=
+  Definition typed_if (E : elctx) (L : llctx) (π : thread_id) (v : val) (P : iProp Σ) (T1 T2 : llctx → iProp Σ) : iProp Σ :=
     (∀ F,
     ⌜lftE ⊆ F⌝ -∗
     rrust_ctx -∗
     elctx_interp E -∗
     llctx_interp L -∗
     P ={F}=∗ ∃ b L2, ⌜val_to_bool v = Some b⌝ ∗ llctx_interp L2 ∗ (if b then T1 L2 else T2 L2)).
-  Class TypedIf E L (v : val) (P : iProp Σ) : Type :=
-    typed_if_proof T1 T2 : iProp_to_Prop (typed_if E L v P T1 T2).
+  Class TypedIf E L (π : thread_id) (v : val) (P : iProp Σ) : Type :=
+    typed_if_proof T1 T2 : iProp_to_Prop (typed_if E L π v P T1 T2).
 
   (** Typing of annotated expressions -- annotation determined by the [A]*)
   (* A is the annotation from the code *)
@@ -782,13 +782,19 @@ Section judgments.
 
   (** for all succeeding statements [s], assuming that [v] has type [ty], it can be converted to a non-zero integer *)
   Definition typed_assert (E : elctx) (L : llctx) (f : frame_path) (v : val) {rt} (ty : type rt) (r : rt) (s : stmt) (fn : function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
-    (rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
+    (∀ F,
+      ⌜lftE ⊆ F⌝ -∗
+      rrust_ctx -∗
+      elctx_interp E -∗
+      llctx_interp L -∗
       current_frame f.1 f.2 -∗
-      v ◁ᵥ{f.1, MetaNone} r @ ty -∗
-      ⌜val_to_bool v = Some true⌝ ∗ llctx_interp L ∗ current_frame f.1 f.2 ∗ typed_stmt E L f s fn R ϝ)%I.
+      v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
+      ⌜val_to_bool v = Some true⌝ ∗
+      llctx_interp L ∗
+      current_frame f.1 f.2 ∗
+      typed_stmt E L f s fn R ϝ)%I.
   Class TypedAssert (E : elctx) (L : llctx) (f : frame_path) (v : val) {rt} (ty : type rt) (r : rt) : Type :=
     typed_assert_proof s fn R ϝ : iProp_to_Prop (typed_assert E L f v ty r s fn R ϝ).
-
 
   (** annotated statements are allowed to execute an update and take a step *)
   Definition typed_annot_stmt (π : thread_id) (n : nat) {A} (a : A) (E : elctx) (L : llctx) (T : llctx → iProp Σ) : iProp Σ :=
@@ -799,14 +805,20 @@ Section judgments.
   Class TypedAnnotStmt (π : thread_id) (n : nat) {A} (a : A) : Type :=
     typed_annot_stmt_proof E L T : iProp_to_Prop (typed_annot_stmt π n a E L T).
 
-  Definition typed_switch (E : elctx) (L : llctx) (f : frame_path) (v : val) rt (ty : type rt) (r : rt) (it : int_type) (m : gmap Z nat) (ss : list stmt) (def : stmt) (fn : function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
-    (v ◁ᵥ{f.1, MetaNone} r @ ty -∗ ∃ z, ⌜val_to_Z v it = Some z⌝ ∗
+  Definition typed_switch (E : elctx) (L : llctx) (f : frame_path) (v : val) {rt} (ty : type rt) (r : rt) (it : int_type) (m : gmap Z nat) (ss : list stmt) (def : stmt) (fn : function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
+    ∀ F,
+    ⌜lftE ⊆ F⌝ -∗
+    rrust_ctx -∗
+    elctx_interp E -∗
+    llctx_interp L -∗
+    v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
+      ∃ z, llctx_interp L ∗ ⌜val_to_Z v it = Some z⌝ ∗
       match m !! z with
       | Some i => ∃ s, ⌜ss !! i = Some s⌝ ∗ typed_stmt E L f s fn R ϝ
       | None   => typed_stmt E L f def fn R ϝ
-      end).
-  Class TypedSwitch (E : elctx) (L : llctx) (f : frame_path) (v : val) rt (ty : type rt) (r : rt) (it : int_type) : Type :=
-    typed_switch_proof m ss def fn R ϝ : iProp_to_Prop (typed_switch E L f v rt ty r it m ss def fn R ϝ).
+      end.
+  Class TypedSwitch (E : elctx) (L : llctx) (f : frame_path) (v : val) {rt} (ty : type rt) (r : rt) (it : int_type) : Type :=
+    typed_switch_proof m ss def fn R ϝ : iProp_to_Prop (typed_switch E L f v ty r it m ss def fn R ϝ).
 
   (** Fold an [lty] to a [type].
     This is usually used after accessing a place, to push the ◁ to the outside again.
@@ -1075,9 +1087,13 @@ Section judgments.
   Class StratifyLtypeShouldCloseInv {M} (m : M) (bk : bor_kind) := {}.
   Global Hint Mode StratifyLtypeShouldCloseInv + + + : typeclass_instances.
 
-  (* Typeclass to decide whether we should try to unblocked [BlockedLtype]/[CoreableLtype]/[ShrBlockedLtype] *)
+  (* Typeclass to decide whether we should try to unblock [BlockedLtype]/[CoreableLtype]/[ShrBlockedLtype] *)
   Class StratifyLtypeShouldUnblock {M} (m : M) := {}.
   Global Hint Mode StratifyLtypeShouldUnblock + + : typeclass_instances.
+
+  (* Typeclass to decide whether we should move in values *)
+  Class StratifyLtypeShouldMoveValues {M} (m : M) := {}.
+  Global Hint Mode StratifyLtypeShouldMoveValues + + : typeclass_instances.
 
   Class StratifyLtypeShouldDescendMutRef {M} (m : M) := {}.
   Global Hint Mode StratifyLtypeShouldDescendMutRef + + : typeclass_instances.
@@ -1097,6 +1113,19 @@ Section judgments.
 
   Global Instance stratify_unblock_descend_shr : StratifyLtypeShouldDescendShrRef (StratifyUnblockOp) := {}.
   Global Instance stratify_unblock_descend_mut : StratifyLtypeShouldDescendMutRef (StratifyUnblockOp) := {}.
+
+  (** Operation for re-establishing type invariants below [Opened] *)
+  (* Compared to [StratifyUnblockOp], this adds the option to move in values *)
+  Inductive StratifyTypeInv :=
+    | StratifyTypeInvOp.
+
+  Global Instance stratify_type_inv_close_inv bk : StratifyLtypeShouldCloseInv StratifyTypeInvOp bk := {}.
+  Global Instance stratify_type_inv_unblock : StratifyLtypeShouldUnblock StratifyTypeInvOp := {}.
+
+  Global Instance stratify_type_inv_move_values : StratifyLtypeShouldMoveValues StratifyTypeInvOp := {}.
+
+  Global Instance stratify_type_inv_descend_shr : StratifyLtypeShouldDescendShrRef (StratifyTypeInvOp) := {}.
+  Global Instance stratify_type_inv_descend_mut : StratifyLtypeShouldDescendMutRef (StratifyTypeInvOp) := {}.
 
   (** Operation for extracting observations from dead references. *)
   Inductive StratifyExtract :=
@@ -1127,6 +1156,8 @@ Section judgments.
     TCFastListElemOf (κ ∈ κs) →
     StratifyLtypeShouldCloseInv (StratifyCloseOp κs) (Uniq κ γ) := {}.
   Global Instance stratify_close_inv_unblock κs : StratifyLtypeShouldUnblock (StratifyCloseOp κs) := {}.
+
+  Global Instance stratify_close_inv_move_values κs : StratifyLtypeShouldMoveValues (StratifyCloseOp κs) := {}.
 
   Global Instance stratify_close_descend_mut κs : StratifyLtypeShouldDescendMutRef (StratifyCloseOp κs) := {}.
 
@@ -1313,6 +1344,21 @@ Section judgments.
         maybe_logical_step step F (R ∗ ((if pm is ProveWithStratify then (lft_dead_list κs ={lftE}=∗ P) else P) ∗ Acc')) ∗ llctx_interp L' ∗ T L' κs R.
   Class ProveWithSubtype (E : elctx) (L : llctx) (step : bool) (pm : ProofMode) (P : iProp Σ) (Acc : iProp Σ) : Type :=
     prove_with_subtype_proof T : iProp_to_Prop (prove_with_subtype E L step pm P Acc T).
+
+
+  (** Extensible judgment for simplifying a value prop as a fallback for value-based judgments like [typed_un_op] *)
+  Definition simplify_hyp_value_cont_t := val → ∀ rt : RT, rt → type rt → iProp Σ.
+  Definition simplify_hyp_value (E : elctx) (L : llctx) (π : thread_id) (P : iProp Σ) (T : simplify_hyp_value_cont_t) : iProp Σ :=
+    ∀ F,
+    ⌜lftE ⊆ F⌝ →
+    rrust_ctx -∗
+    elctx_interp E -∗
+    llctx_interp L -∗
+    P ={F}=∗
+    ∃ v rt (ty : type rt) r,
+    llctx_interp L ∗ v ◁ᵥ{π, MetaNone} r @ ty ∗ T v rt r ty.
+  Class SimplifyHypValue (E : elctx) (L : llctx) (π : thread_id) (P : iProp Σ) : Type :=
+    simplify_hyp_value_proof T : iProp_to_Prop (simplify_hyp_value E L π P T).
 
   (** Interpreting typing hints *)
   Definition interpret_typing_hint_cont_t (bmin : place_update_kind) (rt : RT) :=
@@ -1581,7 +1627,7 @@ Section judgments.
         Φ (l2v l)) -∗
       WPe{f.1} e {{ Φ }})%I.
 
-  Definition typed_borrow_shr_end_cont_t bmin rt := ∀ rt', ltype rt' → place_rfn rt' → type rt' → rt' → place_update_kind_res bmin rt rt' → iProp Σ.
+  Definition typed_borrow_shr_end_cont_t bmin rt := llctx → ∀ rt', ltype rt' → place_rfn rt' → type rt' → rt' → place_update_kind_res bmin rt rt' → iProp Σ.
   Definition typed_borrow_shr_end π (E : elctx) (L : llctx) (κ : lft) (l : loc) (orty : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (T : typed_borrow_shr_end_cont_t bmin rt) : iProp Σ :=
     (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
@@ -1592,7 +1638,7 @@ Section judgments.
     logical_step F (
     (* one credit for the inheritance VS *)
     £1 ={F}=∗
-    ∃ ly rt2 (lt2 : ltype rt2) (r2 : rt2) (ty2 : type rt2) (res : place_update_kind_res bmin rt rt2),
+    ∃ L2 ly rt2 (lt2 : ltype rt2) (r2 : rt2) (ty2 : type rt2) (res : place_update_kind_res bmin rt rt2),
     (*place_rfn_interp_shared r r2 ∗*)
     ty2.(ty_shr) κ π r2 MetaNone l ∗
     ⌜syn_type_has_layout (ty2.(ty_syn_type) MetaNone) ly⌝ ∗
@@ -1605,8 +1651,8 @@ Section judgments.
     ⌜ltype_st lt = ty_syn_type ty2 MetaNone⌝ ∗
     res ⪯ₚ bmin ∗
     (* and the context and postco *)
-    llctx_interp L ∗
-    T rt2 lt2 (#r2) ty2 r2 res)).
+    llctx_interp L2 ∗
+    T L2 rt2 lt2 (#r2) ty2 r2 res)).
   Class TypedBorrowShrEnd π (E : elctx) (L : llctx) (κ : lft) (l : loc) (orty : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) : Type :=
     typed_borrow_shr_end_proof T : iProp_to_Prop (typed_borrow_shr_end π E L κ l orty lt r b2 bmin T).
 
@@ -1655,19 +1701,6 @@ Section judgments.
     T L' rt0 ty0 r0 rt' lt' r')).
   Class TypedAddrOfMutEnd (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) : Type :=
     typed_addr_of_mut_end_proof T : iProp_to_Prop (typed_addr_of_mut_end π E L l lt r b2 bmin T).
-
-  (*
-     expected flow:
-     - we do a typed_place
-     - now we need to reshape the resulting ltype to an Owned ofty
-       in order to be able to take that ownership out.
-     - one possibility to do this: just have different _end instances for Owned, Uniq and Shared.
-       Owned is straight; for Uniq and Shared we do a strong update.
-       Shared is more challenging though: we can only get one fraction out.
-       Also, we can't write here.
-       There we again face the problem of specifying shared pointers in a reasonable way.
-      For now: just don't support it for shared pointers.
-   *)
 
   (* TODO addr_of_const
       This should give us some kind of shared ownership.
@@ -2255,6 +2288,7 @@ End laws.
 
 Global Hint Mode LearnFromHyp + + + : typeclass_instances.
 Global Hint Mode LearnFromHypVal + + + + + : typeclass_instances.
+Global Hint Mode SimplifyHypValue + + + + + + : typeclass_instances.
 
 Global Hint Mode SubsumeFull + + + + + : typeclass_instances.
 Global Hint Mode IntroduceWithHooks + + + + ! : typeclass_instances.
@@ -2270,13 +2304,13 @@ Global Hint Mode TypedCheckBinOp + + + + + + + + + + + + : typeclass_instances.
 Global Hint Mode TypedCheckUnOp + + + + + + + + + : typeclass_instances.
 Global Hint Mode TypedAssert  + + + + + + + + + : typeclass_instances.
 Global Hint Mode TypedAnnotStmt + + + + + + : typeclass_instances.
-Global Hint Mode TypedSwitch + + + + +  + + + + + : typeclass_instances.
+Global Hint Mode TypedSwitch + + + + + + + + + + : typeclass_instances.
 Global Hint Mode CastLtypeToType + + + + + + : typeclass_instances.
 Global Hint Mode TypedPlace + + + + + + + + + + + + : typeclass_instances.
 Global Hint Mode ProvePlaceCond + + + + + + + + + :  typeclass_instances.
 
 Global Hint Mode TypedCall + + + + + + + + + + + : typeclass_instances.
-Global Hint Mode TypedIf + + + + + + : typeclass_instances.
+Global Hint Mode TypedIf + + + + + + + : typeclass_instances.
 Global Hint Mode TypedAnnotExpr + + + + + + + + + + : typeclass_instances.
 
 Global Hint Mode ResolveGhost + + + + + + + + + + + + : typeclass_instances.
@@ -3721,9 +3755,8 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
     constr:(TypedBorrowShrEnd π E L κ l orty lt r b1 b2)
   | typed_addr_of_mut_end ?π ?E ?L ?l ?lt ?r ?b1 ?b2 => constr:(TypedAddrOfMutEnd π E L l lt r b1 b2)
   | typed_annot_expr ?E ?L ?f ?n ?a ?v ?P => constr:(TypedAnnotExpr E L f n a v P)
-  | typed_if ?E ?L ?v ?P => constr:(TypedIf E L v P)
+  | typed_if ?E ?L ?π ?v ?P => constr:(TypedIf E L π v P)
   | typed_assert ?E ?L ?f ?v ?ty ?r  => constr:(TypedAssert E L f v ty r)
-  | typed_switch ?E ?L ?f ?v ?ty ?r ?it => constr:(TypedSwitch E L f v ty r it)
   | typed_annot_stmt ?π ?n ?a => constr:(TypedAnnotStmt π n a)
   | introduce_with_hooks ?E ?L ?P => constr:(IntroduceWithHooks E L P)
   | iterate_with_hooks ?E ?L ?m => constr:(IterateWithHooks E L m)
@@ -3732,6 +3765,7 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | resolve_ghost_adt ?π ?E ?L ?rm ?r ?ty => constr:(ResolveGhostADT π E L rm r ty)
   | resolve_ghost_iter ?π ?E ?L ?rm ?b ?l ?st ?ltys ?bk ?rs ?ig ?i => constr:(ResolveGhostIter π E L rm b l st ltys bk rs ig i)
   | prove_place_cond ?E ?L ?bk ?lt1 ?lt2 => constr:(ProvePlaceCond E L bk lt1 lt2)
+  | simplify_hyp_value ?E ?L ?π ?P => constr:(SimplifyHypValue E L π P)
   | prove_with_subtype ?E ?L ?wl ?pm ?P ?Acc => constr:(ProveWithSubtype E L wl pm P Acc)
   | weak_subtype ?E ?L ?r1 ?r2 ?ty1 ?ty2 => constr:(Subtype E L r1 r2 ty1 ty2)
   | mut_subtype ?E ?L ?ty1 ?ty2 => constr:(MutSubtype E L ty1 ty2)

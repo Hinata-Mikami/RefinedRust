@@ -40,7 +40,9 @@ Proof.
   { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     assert (syn_type_has_layout (LiteralSynType ly) ly) as Hly'.
     { solve_layout_alg. }
-    iExists ly. simpl. do 3 iR.
+    iExists ly. simpl.
+    iSplitR. { iPureIntro. by apply syn_type_has_layout_untyped. }
+    do 2 iR.
     iSplitR. { rewrite length_replicate /ly /ly_size /=. done. }
     iExists tt. iR.
     iModIntro. iExists _. iFrame. rewrite uninit_own_spec. iR. iExists ly.
