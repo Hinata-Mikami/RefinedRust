@@ -14,26 +14,22 @@
 
 use std::ptr;
 
-#[rr::refined_by("(v, next)" : "(Z * loc)")]
+// struct Cell
+// struct All_Cells
+// fn All_Cells::new(v1: i32, v2: i32) -> Self
+
+// fn 
+// fn set_next(cell: *mut Cell, next: *mut Cell)
+// fn read_next_value_raw(cell: *mut Cell) -> i32
+
+
+// #[rr::refined_by("(v, next)" : "(Z * loc)")]
 struct Cell {
-    #[rr::field("v")]
+    // #[rr::field("v")]
     value: i32,
 
-    #[rr::field("next")]
+    // #[rr::field("next")]
     next: *mut Cell,
-}
-
-// まだ一旦 trust_me
-#[rr::trust_me]
-#[rr::params("cell" : "loc", "next" : "loc", "v" : "Z", "old_next" : "loc")]
-#[rr::args("cell", "next")]
-#[rr::requires(#type "cell" : "(v, old_next)" @ "(Cell_inv_t <INST!>)")]
-#[rr::ensures(#type "cell" : "(v, next)" @ "(Cell_inv_t <INST!>)")]
-#[rr::returns("()")]
-unsafe fn set_next(cell: *mut Cell, next: *mut Cell) {
-    unsafe {
-        (*cell).next = next;
-    }
 }
 
 
@@ -46,21 +42,7 @@ unsafe fn set_next(cell: *mut Cell, next: *mut Cell) {
 #[rr::inv("Hlen_nexts" : "length nexts = length xs")]
 #[rr::inv("Hnext_valid" : "Forall (λ n, n = NULL_loc ∨ #n ∈ locs) nexts")]
 // StructLtype を Cell_inv_t に自動で畳み込めない
-// #[rr::inv(#iris "
-//   ([∗ list] i ↦ x ∈ xs,
-//     ∃ l n : loc,
-//       ⌜locs !! i = Some (#l)⌝ ∗
-//       ⌜nexts !! i = Some n⌝ ∗
-//       guarded true
-//         (l ◁ₗ[π, Owned]
-//           #(x, n)
-//           @ ◁(Cell_inv_t <INST!>)) ∗
-//       freeable_nz l
-//         (ly_size (use_layout_alg' Cell_sls))
-//         1 HeapAlloc)
-// ")]
-
-// shareable_ltype_own の instance @ ◁ ty の形 にマッチしない
+// そのため，r @ Cell_inv_t -> -[r] @ Cell_ty に変換
 #[rr::inv(#iris "
   ([∗ list] i ↦ x ∈ xs,
     ∃ l n : loc,
@@ -69,11 +51,13 @@ unsafe fn set_next(cell: *mut Cell, next: *mut Cell) {
       guarded true
         (l ◁ₗ[π, Owned]
           # -[#x; #n]
-          @ StructLtype +[◁ int i32; ◁ alias_ptr_t] Cell_sls) ∗
+          @ ◁(Cell_ty <INST!>)) ∗
       freeable_nz l
         (ly_size (use_layout_alg' Cell_sls))
         1 HeapAlloc)
 ")]
+
+
 
 struct All_Cells {
     #[rr::field("locs")]
@@ -84,6 +68,10 @@ struct All_Cells {
 }
 
 impl All_Cells {
+
+    // Cell_inv_t -> Cell_ty にしたことでエラーに
+    // Box が返す所有権が Cell_inv_t -> 畳み込めない
+    // 洗い出しのためBoxを使う部分をヘルパー関数(make_cells)に
     #[rr::params("v1" : "Z", "v2" : "Z")]
     #[rr::args("v1", "v2")]
     #[rr::requires("MinInt i32 ≤ v1")]
@@ -92,18 +80,11 @@ impl All_Cells {
     #[rr::requires("v2 ≤ MaxInt i32")]
     #[rr::exists("a" : "loc", "b" : "loc")]
     #[rr::returns("([v1; v2], (<$#> [a; b]), [b; a])")]
+    #[rr::ensures("a.(loc_a) ≠ 0")]
+    #[rr::ensures("b.(loc_a) ≠ 0")]
     fn new(v1: i32, v2: i32) -> Self {
-        let boxed_a = Box::new(Cell {
-            value: v1,
-            next: std::ptr::null_mut(),
-        });
-        let a = Box::into_raw(boxed_a);
-
-        let boxed_b = Box::new(Cell {
-            value: v2,
-            next: std::ptr::null_mut(),
-        });
-        let b = Box::into_raw(boxed_b);
+        let a = make_cell(v1);
+        let b = make_cell(v2);
 
         unsafe {
             set_next(a, b);
@@ -120,128 +101,91 @@ impl All_Cells {
         }
     }
 
-    // Vec indexing 不可 -> とりあえず all_cells に head を作る
     // head = a, a.next = b, b.value = v2
-    #[rr::params("a" : "loc", "b" : "loc", "v1" : "Z", "v2" : "Z", "γ")]
-    #[rr::args("(([v1; v2], (<$#> [a; b]), [b; a]), γ)")]
-    #[rr::observe("γ": "([v1; v2], (<$#> [a; b]), [b; a])")]
-    #[rr::returns("v2")]
-    unsafe fn read_next_value(&mut self) -> i32 {
-        let cell = self.head;
-        let next = unsafe { (*cell).next };
-        let v = unsafe { (*next).value };
-        v
+    // #[rr::params("a" : "loc", "b" : "loc", "v1" : "Z", "v2" : "Z", "γ")]
+    // #[rr::args("(([v1; v2], (<$#> [a; b]), [b; a]), γ)")]
+    // #[rr::observe("γ": "([v1; v2], (<$#> [a; b]), [b; a])")]
+    // #[rr::returns("v2")]
+    // unsafe fn read_next_value(&mut self) -> i32 {
+    //     let cell = self.head;
+    //     let next = unsafe { (*cell).next };
+    //     let v = unsafe { (*next).value };
+    //     v
+    // }
+}
+
+// All_Cells::new 内のエラーの洗い出し
+// ok
+// struct Cellのrefined_byを削除したら通った
+
+// 以下 ChatGPT より
+// #[rr::refined_by(...)] により RefinedRust が Cell の外向きの型として Cell_inv_t を生成・使用。
+// 消したことで、Cell_inv_t が不要に
+// Box::new / Box::into_raw が Cell_ty 側の所有権を返すようになった
+// または少なくとも Cell_inv_t を経由しなくなった。
+
+// #[rr::trust_me]
+#[rr::params("v" : "Z")]
+#[rr::args("v")]
+#[rr::requires("MinInt i32 ≤ v")]
+#[rr::requires("v ≤ MaxInt i32")]
+#[rr::exists("l" : "loc")]
+#[rr::returns("l")]
+#[rr::ensures(#type "l" : "-[#v; #NULL_loc]" @ "(Cell_ty <INST!>)")]
+#[rr::ensures(#iris "freeable_nz l (ly_size (use_layout_alg' Cell_sls)) 1 HeapAlloc")]
+#[rr::ensures("l.(loc_a) ≠ 0")]
+#[rr::ensures("MinInt usize ≤ l.(loc_a)")]
+#[rr::ensures("l.(loc_a) ≤ MaxInt usize")]
+fn make_cell(v: i32) -> *mut Cell {
+    let boxed = Box::new(Cell {
+        value: v,
+        next: std::ptr::null_mut(),
+    });
+    Box::into_raw(boxed)
+}
+
+// #[rr::trust_me]
+// ok?
+#[rr::params("cell" : "loc", "next" : "loc", "v" : "Z", "old_next" : "loc")]
+#[rr::args("cell", "next")]
+#[rr::requires(#type "cell" : "-[#v; #old_next]" @ "(Cell_ty <INST!>)")]
+#[rr::ensures(#type "cell" : "-[#v; #next]" @ "(Cell_ty <INST!>)")]
+#[rr::returns("()")]
+unsafe fn set_next(cell: *mut Cell, next: *mut Cell) {
+    unsafe {
+        (*cell).next = next;
     }
 }
+
+// ok (All_Cells のメソッドとしてではなく，任意のセルからnextを読む方針)
+#[rr::params(
+    "cell" : "loc",
+    "next" : "loc",
+    "v" : "Z",
+    "next_v" : "Z",
+    "next_next" : "loc"
+)]
+#[rr::args("cell")]
+#[rr::requires("next.(loc_a) ≠ 0")]
+#[rr::requires(#type "cell" : "-[#v; #next]" @ "(Cell_ty <INST!>)")]
+#[rr::requires(#type "next" : "-[#next_v; #next_next]" @ "(Cell_ty <INST!>)")]
+#[rr::ensures(#type "cell" : "-[#v; #next]" @ "(Cell_ty <INST!>)")]
+#[rr::ensures(#type "next" : "-[#next_v; #next_next]" @ "(Cell_ty <INST!>)")]
+#[rr::returns("next_v")]
+unsafe fn read_next_value_raw(cell: *mut Cell) -> i32 {
+    let next = unsafe { (*cell).next };
+    unsafe { (*next).value }
+}
+
 
 fn main() {
     let mut cells = All_Cells::new(10, 20);
 
     unsafe {
-        let x = cells.read_next_value();
+        let x = read_next_value_raw(cells.head);
         let _ = x;
     }
 }
 
 // セルへのrawポインタを受け取って，セルにアクセスするメソッド（最低限の例）
 // 事前条件・事後条件をどう定義すればいいかをいろいろ試してみることから
-
-/*
-Type system got stuck in function "All_Cells_read_next_value" !
-Goal:
-RRGS : (refinedrustGS Σ)
-π : thread_id
-FN_NAME : string
-Cell_sl : struct_layout
-H : CACHED
-All_Cells_sl : struct_layout
-H0 : CACHED
-Hcache : JCACHED
-Vec_sl : struct_layout
-H1 : CACHED
-Global_sl : struct_layout
-core_marker_PhantomData_sl : struct_layout
-H2 : CACHED
-H3 : CACHED
-ulft_1 : (id lft)
-ϝ : lft
-_fid : nat
-v1 : Z
-v2 : Z
-γ : gname
-arg_self : loc
-loop_map : BB_INV
-tyvars : (TYVAR_MAP ∅)
-H4 : CACHED
-FN : function
-x0 : loc
-x1 : loc
-R : typed_stmt_R_t
-l' : loc
-local___0 : loc
-x : thread_id
-H6 : CACHED
-Hnext_valid : (x0 = NULL_loc ∨ x0 = x1 ∨ True)
-H5 : (x1 = NULL_loc ∨ True ∨ x1 = x0)
-x2 : thread_id
-H7 : CACHED
-v : val
-v0 : val
-v3 : val
-v4 : val
----------------------------------------
-_ : na_own π ⊤
-_ : named_lfts
-      (named_lft_update "plft3" ulft_1
-         (named_lft_update "ulft_1" ulft_1
-            (named_lft_update "_flft" ϝ (named_lft_update "static" static ∅))))
-_ : "self" is_live{ (π, _fid), PtrSynType} arg_self
-_ : freeable_nz x1 (ly_size (use_layout_alg' Cell_sls)) 1 HeapAlloc
-_ : freeable_nz x0 (ly_size (use_layout_alg' Cell_sls)) 1 HeapAlloc
-_ : arg_self ◁ₗ[ π, Owned] # (# -[# [# x1; # x0]; # x1], γ) @
-    MutLtype
-      (OpenedLtype
-         (StructLtype
-            +[◁ (Vec_inv_t loc Global_rt GlobalasAllocator_spec_attrs <TY>
-                 alias_ptr_t <TY> (Global_ty <INST!>) <INST!>); ◁ alias_ptr_t]
-            All_Cells_sls)
-         (◁ (All_Cells_ty <INST!>))
-         (◁ (∃; All_Cells_inv_t_inv_spec <INST!>, (All_Cells_ty <INST!>)))
-         (λ (r : plist (RT_rt ∘ place_rfnRT)
-                   [Vec_inv_t_rt loc Global_rt; loc]) '(
-            xs, locs, nexts),
-            ∃ hd : name_hint_ty "hd" loc, ⌜r = -[# locs; # hd]⌝ ∗
-              ⌜name_hint "Hhead" (locs !! 0%nat = Some # hd)⌝ ∗
-              ⌜name_hint "Hlen_locs" (length locs = length xs)⌝ ∗
-              ⌜name_hint "Hlen_nexts" (length nexts = length xs)⌝ ∗
-              ⌜name_hint "Hnext_valid"
-                 (Forall (λ n : loc, n = NULL_loc ∨ # n ∈ locs) nexts)⌝ ∗
-              ([∗ list] i↦x0 ∈ xs, ∃ l n : loc, ⌜locs !! i = Some # l⌝ ∗
-                                     ⌜nexts !! i = Some n⌝ ∗
-                                     guarded true
-                                       (l ◁ₗ[ π, Owned] # (
-                                        x0, n) @ (◁ (Cell_inv_t <INST!>))) ∗        // invariant で Cell_inv_t <INST!> 型を要求
-                                     freeable_nz l
-                                       (ly_size (use_layout_alg' Cell_sls)) 1
-                                       HeapAlloc) ∗
-              True)
-         (λ (_ : plist (RT_rt ∘ place_rfnRT)
-                   [Vec_inv_t_rt loc Global_rt; loc]) 
-            (_ : list Z * list (place_rfn loc) * list loc), 
-            llft_elt_toks [ϝ]))
-      ulft_1
-_ : x1 ◁ₗ[ π, Owned] # -[# v1; # x0] @                                  // たぶん cell
-    StructLtype +[◁ int i32; ◁ alias_ptr_t] Cell_sls                    // Cell_inv_t <INST!> に畳み込めていないことが原因？
-_ : x0 ◁ₗ[ π, Owned] # -[# v2; # x1] @                                  // たぶん next
-    StructLtype +[◁ int i32; ◁ alias_ptr_t] Cell_sls
-_ : "__0" is_live{ (π, _fid), IntSynType i32} local___0
-_ : local___0 ◁ₗ[ π, Owned] # v2 @ (◁ int i32)                          // 返り値用ローカル? v2 は読めてる
-_ : credit_store 45 18
-_ : allocated_locals (π, _fid) ["__0"; "self"]
---------------------------------------∗
-typed_val_expr [ϝ ⊑ₑ ulft_1; ϝ ⊑ₑ ulft_1] [ϝ ⊑ₗ{ 1} []] (
-  π, _fid) (move{IntOp i32} "__0")%E
-  (λ (L' : llctx) (v : val) (m : metadata) (rt : RT) (ty : type rt) (r :rt),
-     introduce_with_hooks [ϝ ⊑ₑ ulft_1; ϝ ⊑ₑ ulft_1] L' 
-     v ◁ᵥ{ π, m} r @ ty HIDDEN_CONT)
-*/
