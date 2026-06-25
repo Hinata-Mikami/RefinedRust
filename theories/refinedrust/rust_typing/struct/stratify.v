@@ -193,9 +193,9 @@ Section stratify.
       { destruct ma; [ | iFrame; iPureIntro; reflexivity.. ].
         iDestruct "HT" as "(%ty & %Heqt & HT)". by iFrame. }
 
-      iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hinc"; [ apply Heqt | ].
+      iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Hinc)"; [ apply Heqt | ].
       iFrame.
-      iSplitR. { iSpecialize ("Hinc" $! Owned inhabitant). iApply (ltype_eq_syn_type with "Hinc"). }
+      iSplitR. { rewrite -Hst. done. }
       iApply logical_step_fupd.
       iApply (logical_step_compose with "Hstep").
       iApply (logical_step_compose with "Hcl").
@@ -209,7 +209,7 @@ Section stratify.
       { iPureIntro. eapply Forall2_impl; first apply Hf.  intros [? []] [?[]]. done. }
 
       iMod ("Hcl" with "Hincl Ha Hupd") as "(Hl & $ & _)".
-      iDestruct ("Hinc" $! (Uniq κ γ) _) as "((_ & #Hinc1 & _) & _)".
+      iDestruct ("Hinc" $! (Uniq κ γ) _) as "((#Hinc1 & _) & _)".
       iPoseProof ("Hinc1" with "Hl") as "Hl".
       by iFrame.
     - (* update doesn't obey contract, leave open *)

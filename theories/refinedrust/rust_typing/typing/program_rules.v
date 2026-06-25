@@ -1026,7 +1026,7 @@ Section prove_subtype.
     iMod ("Ha" with "[//] [//] [//] CTX HE HL Hl") as "(%L2 & %R2 & %rt2 & %lt2 & %r2 & HL & %Hsteq & Hstep & HT)".
     destruct (decide (ltype_blocked_lfts lt2 = [])) as [-> | Hneq].
     - iDestruct "HT" as "(<- & HT)".
-      iMod ("HT" with "[//] CTX HE HL") as "(#Hincl & HL & HT)".
+      iMod ("HT" with "[//] CTX HE HL") as "(_ & #Hincl & HL & HT)".
       iExists _, [], _. iFrame.
       simpl. iModIntro.
       iApply logical_step_fupd.
@@ -1034,14 +1034,14 @@ Section prove_subtype.
       iApply (logical_step_compose with "HA").
       iApply logical_step_intro.
       iIntros "($ & $) (Hl & $)".
-      iDestruct "Hincl" as "(_ & Hincl & _)".
+      iDestruct "Hincl" as "(Hincl & _)".
       iMod (ltype_incl'_use with "Hincl Hl"); first done.
       iModIntro. by iIntros "_ !>".
     - iAssert (⌜bk = bk'⌝ ∗ trigger_tc (SimpLtype (ltype_core lt2)) (λ lt2', weak_subltype E L2 bk r2 r lt2' (◁ ty) (T L2 (ltype_blocked_lfts lt2) (A ∗ R2))))%I with "[HT]" as "(<- & HT)".
       { destruct (ltype_blocked_lfts lt2); done. }
       iDestruct "HT" as "(%lt2' & %Heq & HT)".
       destruct Heq as [<-].
-      iMod ("HT" with "[//] CTX HE HL") as "(#Hincl & HL & HT)".
+      iMod ("HT" with "[//] CTX HE HL") as "(_ & #Hincl & HL & HT)".
       iModIntro. iExists _, _, _. iFrame.
       iApply (logical_step_compose with "Hstep").
       iApply (logical_step_compose with "HA").
@@ -1049,7 +1049,7 @@ Section prove_subtype.
       iIntros "($ & $) (Hl & $)".
       iIntros "Hdead".
       iPoseProof (imp_unblockable_blocked_dead lt2) as "Hunblock".
-      iDestruct "Hincl" as "(_ & Hincl & _)".
+      iDestruct "Hincl" as "(Hincl & _)".
       iMod (imp_unblockable_use with "Hunblock Hdead Hl") as "Hl"; first done.
       by iMod (ltype_incl'_use with "Hincl Hl") as "$".
   Qed.
@@ -1530,7 +1530,7 @@ Section subsume.
     iIntros "(%Hincl & HT)" (F ???) "#CTX #HE HL Hl".
     iPoseProof (lctx_bor_kind_direct_incl_use with "HE HL") as "#Hincl"; first done.
     iPoseProof (ltype_bor_kind_direct_incl with "Hincl Hl") as "Hl".
-    iMod ("HT" with "[//] CTX HE HL") as "(Hincl' & HL & HT)".
+    iMod ("HT" with "[//] CTX HE HL") as "(_ & Hincl' & HL & HT)".
     iMod (ltype_incl_use with "Hincl' Hl") as "Hl"; first done.
     iExists _, True%I. iFrame. iApply maybe_logical_step_intro. by iFrame.
   Qed.
@@ -1623,8 +1623,8 @@ Section subsume.
     ⊢ weak_subltype E L k r1 r2 lt1 lt2 T.
   Proof.
     iIntros "(<- & %Hsub & HT)" (??) "#CTX #HE HL".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hsub"; first done.
-    iFrame.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(% & #Hsub)"; first done.
+    iFrame. iR.
     iApply ltype_eq_ltype_incl_l.
     done.
   Qed.
@@ -1637,6 +1637,8 @@ Section subsume.
   Proof.
     iIntros "(%r2' & -> & HT)" (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
+    iPoseProof (type_incl_syn_type_eq with "Hincl") as "%Hst".
+    simp_ltypes. iR.
     by iApply type_ltype_incl_owned_in.
   Qed.
   Definition weak_subltype_ofty_ofty_owned_in_inst := [instance @weak_subltype_ofty_ofty_owned_in].
@@ -1648,6 +1650,8 @@ Section subsume.
   Proof.
     iIntros "(%r2' & -> & HT)" (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
+    iPoseProof (type_incl_syn_type_eq with "Hincl") as "%Hst".
+    simp_ltypes. iR.
     by iApply type_ltype_incl_shared_in.
   Qed.
   Definition weak_subltype_ofty_ofty_shared_in_inst := [instance @weak_subltype_ofty_ofty_shared_in].
@@ -2370,7 +2374,7 @@ Section subsume.
     - (* fold it again *)
       iDestruct "HT" as "(%lt_cur'' & %Heq & HT)". destruct Heq as [<-].
       iDestruct "HT" as "(%ri & HT)".
-      iMod ("HT" with "[//] CTX HE HL") as "(Hincl & HL & %rf & HT)".
+      iMod ("HT" with "[//] CTX HE HL") as "(% & Hincl & HL & %rf & HT)".
       iSpecialize ("HT" $! F True%I).
       iMod ("HT" with "[//] [//] [//] CTX HE HL []") as "(%L3 & %κs & %R2 & Hstep' & HL & HT)".
       { iApply maybe_logical_step_intro. iSplit; done. }
@@ -2485,7 +2489,7 @@ Section subsume.
     - (* fold it again *)
       iDestruct "HT" as "(%ri & HT)".
       iDestruct "HT" as "(%lt_cur_core & %Hsimp & HT)".
-      iMod ("HT" with "[//] CTX HE HL") as "(#Hincl & HL & %rf & HT)".
+      iMod ("HT" with "[//] CTX HE HL") as "(_ & #Hincl & HL & %rf & HT)".
       iSpecialize ("HT" $! F True%I).
       iMod ("HT" with "[//] [//] [//] CTX HE HL []") as "(%L3 & %κs & %R2 & Hstep' & HL & HT)".
       { iApply maybe_logical_step_intro. iSplit; done. }
@@ -2617,7 +2621,7 @@ Section subsume.
 
     - (* fold it again *)
       iDestruct "HT" as "(%ri & HT)".
-      iMod ("HT" with "[//] CTX HE HL") as "(Hincl & HL & HT)".
+      iMod ("HT" with "[//] CTX HE HL") as "(_ & Hincl & HL & HT)".
       iSpecialize ("HT" $! F True%I).
       iMod ("HT" with "[//] [//] [//] CTX HE HL []") as "(%L3 & %κs & %R2 & Hstep' & HL & HT)".
       { iApply maybe_logical_step_intro. iSplit; done. }
@@ -3520,7 +3524,7 @@ Section subsume.
     iApply (logical_step_wand with "Hl2").
     iIntros "!> (Hl2 & HR)".
     iDestruct "HT" as "(%ty3 & %Heqt & HT)".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; first apply Heqt.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(% & #Heq)"; first apply Heqt.
     iPoseProof (full_eqltype_use F with "CTX HE HL") as "(Hincl' & HL)"; first done; first apply Heqt.
     iMod  ("Hincl'" with "Hl2") as "Hl2".
     iMod ("HT" with "[//] [//] [//] [//] CTX HE HL Hl2") as "Hread".
@@ -3541,7 +3545,9 @@ Section subsume.
       iApply (typed_place_cond_trans with "[Hcond]").
       { iApply typed_place_cond_incl; last done.
         iApply place_update_kind_max_incl_l. }
-      iApply ltype_eq_place_cond_trans; first iApply "Heq".
+      iApply ltype_eq_place_cond_trans.
+      { done. }
+      { iApply "Heq". }
       iApply typed_place_cond_incl; last done.
       iApply place_update_kind_max_incl_r. }
     iMod ("Hs" with "HL Hf Hfin") as (upd') "(Hl & Hcond'' & ? & HR' & ? & HL & Hf & HT)".
@@ -3900,16 +3906,16 @@ Section subsume.
   Proof.
     iIntros "(%ty' & %Heqt & HT)".
     iIntros (?????) "#CTX #HE HL Hl Hv".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; first apply Heqt.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(% & #Heq)"; first apply Heqt.
     iDestruct ("Heq" $! _ _) as "(#Hincl & _)".
     iMod (ltype_incl_use with "Hincl Hl") as "Hl"; first done.
-    iDestruct "Hincl" as "(%Hst & _)".
     iMod ("HT" with "[] [] [] [] CTX HE HL Hl Hv") as "(% & $ & Hstep)"; [done.. | ].
     iR. iApply (logical_step_wand with "Hstep").
     iModIntro. iIntros "HT Hl".
     iMod ("HT" with "Hl") as "(%L2 & % & % & % & % & HL & Hl & ? & Hcond & ?)".
     iFrame.
     iApply ltype_eq_place_cond_trans; last done.
+    { done. }
     done.
   Qed.
   Definition type_write_end_fold_to_ofty_inst := [instance @type_write_end_fold_to_ofty].
@@ -4268,13 +4274,13 @@ Section subsume.
     unfold cast_ltype_to_type, typed_borrow_mut_end.
     iIntros "(%ty & %Heqt & HT)".
     iIntros (?????) "#CTX #HE HL Hl Hcred".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl"; [apply Heqt | ].
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(% & #Hincl)"; [apply Heqt | ].
     iDestruct ("Hincl" $! _ _) as "(Hincl1 & _)".
-    iPoseProof (ltype_incl_syn_type with "Hincl1") as "%Hst0".
     iMod (ltype_incl_use with "Hincl1 Hl") as "Hl"; first done.
     iMod ("HT" with "[//] [//] [//] [//] CTX HE HL Hl Hcred") as "(%L2 & %γ & %ly & % & %ty2 & % & %res & Hrfn & ? & ? & %Hst & ? & hl & ? & Hcond & HL & HT)".
     iFrame. iR.
-    iApply (ltype_eq_place_cond_trans with "[//] Hcond").
+    iApply (ltype_eq_place_cond_trans with "[//] [] Hcond").
+    done.
   Qed.
   Definition typed_borrow_mut_end_fold_inst := [instance @typed_borrow_mut_end_fold].
   Global Existing Instance typed_borrow_mut_end_fold_inst | 1000.
@@ -4541,16 +4547,15 @@ Section subsume.
     unfold cast_ltype_to_type, typed_borrow_shr_end.
     iIntros "(%ty & %Heqt & HT)".
     iIntros (?????) "#CTX #HE HL Hl".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl"; [apply Heqt | ].
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(% & #Hincl)"; [apply Heqt | ].
     iDestruct ("Hincl" $! _ _) as "(Hincl1 & _)".
-    iPoseProof (ltype_incl_syn_type with "Hincl1") as "%Hst0".
     iMod (ltype_incl_use with "Hincl1 Hl") as "Hl"; first done.
     iMod ("HT" with "[//] [//] [//] [//] CTX HE HL Hl") as "Ha".
     iApply (logical_step_wand with "Ha").
     iModIntro. iIntros "HT Hcred".
     iMod ("HT" with "Hcred") as "(%L2 & %ly & % & %lt2 & % & %ty2 & %res & Hl & %Hst1 & ? & ? & Hl' & Hcond & %Hst2 & ? & HL & HT)".
     iFrame. iR.  iL.
-    iApply (ltype_eq_place_cond_trans with "[//] Hcond").
+    iApply (ltype_eq_place_cond_trans with "[//] [//] Hcond").
   Qed.
   Definition typed_borrow_shr_end_fold_inst := [instance @typed_borrow_shr_end_fold].
   Global Existing Instance typed_borrow_shr_end_fold_inst | 1000.

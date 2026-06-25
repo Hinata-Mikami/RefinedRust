@@ -652,13 +652,13 @@ Section place.
   (* NOTE: if put the ltype_eq disjunct for the Uniq case into typed_place_cond,
       then we would get a direct subsumption lemma. *)
   Lemma ltype_eq_place_cond_trans {rt rt2} (lt1 lt2 : ltype rt) (lt3 : ltype rt2) b :
+    ⌜ltype_st lt1 = ltype_st lt2⌝ -∗
     (∀ b' r, ltype_eq b' r r lt1 lt2) -∗
     typed_place_cond b lt2 lt3 -∗
     typed_place_cond b lt1 lt3.
   Proof.
-    iIntros "#Heq Hc".
+    iIntros "%Hst1 #Heq Hc".
     iPoseProof ("Heq" $! inhabitant inhabitant) as "Heq1".
-    iPoseProof (ltype_eq_syn_type with "Heq1") as "%Hst1".
     rewrite /typed_place_cond.
     destruct b; simpl.
     - rewrite Hst1. done.
@@ -672,13 +672,13 @@ Section place.
       iApply (ltype_eq_trans with "Heq2 Heq'").
   Qed.
   Lemma place_cond_ltype_eq_trans b {rt1 rt2} (lt1 : ltype rt1) (lt2 lt3 : ltype  rt2) :
+    ⌜ltype_st lt2 = ltype_st lt3⌝ -∗
     typed_place_cond b lt1 lt2 -∗
     (∀ b' r, ltype_eq b' r r lt2 lt3) -∗
     typed_place_cond b lt1 lt3.
   Proof.
-    iIntros "Hcond #Heq".
+    iIntros "%Hst1 Hcond #Heq".
     iPoseProof ("Heq" $! inhabitant inhabitant) as "Heq1".
-    iPoseProof (ltype_eq_syn_type with "Heq1") as "%Hst1".
     rewrite /typed_place_cond.
     destruct b; simpl.
     - rewrite Hst1; done.
@@ -688,7 +688,8 @@ Section place.
       rewrite Hst2. iR.
       iExists eq_refl.
       iSplitR. { iIntros (??). iPoseProof (ltype_eq_core with "Heq") as "Heq'". iApply ltype_eq_trans; done. }
-      iApply ltype_eq_imp_unblockable; done.
+      iApply ltype_eq_imp_unblockable; last done.
+      iApply "Heq".
   Qed.
 
   (** We can mutably borrow from the place, assuming that the ownership [b] of the place is at least Uniq κ. *)

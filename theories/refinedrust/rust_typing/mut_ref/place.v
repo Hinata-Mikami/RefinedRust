@@ -229,8 +229,9 @@ Section place.
     simpl.
     iApply ltype_eq_place_cond_trans; simpl; first last.
     { by iApply mut_ltype_place_cond. }
-    iIntros (??). iApply mut_ltype_eq; [ | done..].
-    iIntros (??). iApply ltype_eq_refl.
+    { iIntros (??). iApply mut_ltype_eq; [ | done..].
+      iIntros (??). iApply ltype_eq_refl. }
+    { done. }
   Qed.
   Definition prove_place_cond_mut_ltype_inst := [instance @prove_place_cond_mut_ltype].
   Global Existing Instance prove_place_cond_mut_ltype_inst | 5.

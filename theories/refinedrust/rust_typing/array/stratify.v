@@ -42,6 +42,20 @@ Section stratify.
   Global Existing Instance stratify_ltype_array_iter_nil_inst.
 
   Import EqNotations.
+
+  (** Here I have a problem now:
+      - in case I have borrowed, I'll need to use the second branch.
+        There, I can't use owned_subltype.
+        I'd need a variant that is more like owned_subtype, but which also includes the core.
+        Probably can't reasonably capture ownership, but needs to allow syn_type_compat.
+
+        Basically this will be a judgment that just handles the maybe uninit case and otherwise escapes to weak_subltype.
+        weak_subltype
+        mut_eqltype
+        ltype_incl
+  *)
+
+
   Lemma stratify_ltype_array_iter_cons_no_ignore π E L mdu ma {M} (m : M) (l : loc) (ig : list nat) {rt} (def : type rt) (rs : list (place_rfn rt)) (len : nat) (iml : list (nat * ltype rt)) (lt : ltype rt) j k `{Hnel : !CanSolve (j ∉ ig)%nat} T :
     ⌜j < len⌝ ∗ (∀ r, ⌜rs !! j = Some r⌝ -∗
     stratify_ltype_array_iter π E L mdu ma m l (j :: ig) def len iml rs k (λ L2 R2 iml2 rs2,
@@ -50,10 +64,10 @@ Section stratify.
           match ltype_blocked_lfts lty3 with
           | [] =>
               (* directly fold completely *)
-              ∃ r4, weak_subltype E L3 k r3 r4 lty3 (◁ def) (T L3 (R3 ∗ R2) ((j, ◁ def) :: iml2) (<[j := r4]> rs2))
+              ∃ r4,
+              weak_subltype E L3 k r3 r4 lty3 (◁ def) (T L3 (R3 ∗ R2) ((j, ◁ def) :: iml2) (<[j := r4]> rs2))
           | _ =>
-              (* we directly try to go to Coreable here in order to use the syntactic hint by [def] on which refinement type we need to go to.
-                  If arrays supported heterogeneous refinements, we could also defer this. *)
+              (* we directly try to go to Coreable here in order to use the syntactic hint by [def] on which refinement type we need to go to. If arrays supported heterogeneous refinements, we could also defer this. *)
               (*∃ (Heq : rt3 = rt), T L3 (R3 ∗ R2) ((j, rew Heq in lty3) :: iml2) (<[j := rew Heq in r3]> rs2)*)
               ⌜if k is Owned then True else False⌝ ∗
               (* we cannot have blocked lfts below shared; TODO: also allow Uniq *)
@@ -115,8 +129,8 @@ Section stratify.
       rewrite decide_True; last set_solver. done. }
     destruct (ltype_blocked_lfts lt') eqn:Hbl.
     - iDestruct "HT" as "(%r4 & HT)".
-      iMod ("HT" with "[//] CTX HE HL") as "(#Hincl & HL & HT)".
-      iDestruct "Hincl" as "(%Hsteq & Hincl & _)".
+      iMod ("HT" with "[//] CTX HE HL") as "(%Hst_eq & #Hincl & HL & HT)".
+      iDestruct "Hincl" as "(Hincl & _)".
       iExists _, _, _, _. iFrame.
       iSplitR. { iPureIntro. rewrite length_insert//. }
       iApply logical_step_fupd.
@@ -131,7 +145,7 @@ Section stratify.
       iMod (ltype_incl'_use with "Hincl Hl") as "Hl"; first done.
       rewrite -Hleneq. iApply "Ha".
       iSplitL "Hl".
-      { rewrite decide_True; last set_solver. iFrame. rewrite -Hsteq -Hst'. done. }
+      { rewrite decide_True; last set_solver. iFrame. rewrite -Hst_eq -Hst'. done. }
       iApply (big_sepL2_mono with "Hl2").
       iIntros (k0 ? ? Hlook1 Hlook2) "Ha".
       destruct (decide (k0 = j)); first done.
@@ -140,8 +154,8 @@ Section stratify.
     - (* *)
       iDestruct "HT" as "(%Hown & % & %Heq & %r4 & HT)".
       destruct Heq as [<-].
-      iMod ("HT" with "[//] CTX HE HL") as "(#Hincl & HL & HT)".
-      iDestruct "Hincl" as "(%Hsteq & Hincl & _)".
+      iMod ("HT" with "[//] CTX HE HL") as "(%Hsteq & #Hincl & HL & HT)".
+      iDestruct "Hincl" as "(Hincl & _)".
       iExists _, _, _, _. iFrame.
       iSplitR. { iPureIntro. rewrite length_insert//. }
       iApply logical_step_fupd.

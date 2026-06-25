@@ -39,7 +39,7 @@ Section stratify.
       iApply logical_step_intro. iIntros "(Hb & $) Hcl".
       iMod ("Hvs" with "Hb") as "Hb".
       iMod ("Hcl" with "Hl Hb") as "Hb".
-      iDestruct (mut_ref_unfold_1 ty' κ (Owned)) as "(_ & #Hi & _)".
+      iDestruct (mut_ref_unfold_1 ty' κ (Owned)) as "( #Hi & _)".
       iMod (fupd_mask_mono with "(Hi Hb)") as "$"; first done.
       done.
     - iAssert (T L' R _ (MutLtype lt' κ) (PlaceIn (r', γ)))%I with "[Hc]" as "Hc".
@@ -102,11 +102,9 @@ Section stratify.
         - iFrame. done.
         - iFrame. done. }
       iDestruct "HT" as "(%lt2 & %Heql & $)".
-      iPoseProof (full_eqltype_acc with "[$LFT $LLCTX] HE HL") as "#Heq"; [apply Heql | ].
+      iPoseProof (full_eqltype_acc with "[$LFT $LLCTX] HE HL") as "(%Hst & #Heq)"; [apply Heql | ].
       iFrame.
-      iSplitR. {
-        unshelve iSpecialize ("Heq" $! inhabitant inhabitant); [apply _.. | ].
-        iApply (ltype_eq_syn_type with "Heq"). }
+      iR.
       iApply logical_step_fupd.
       iApply (logical_step_compose with "Hstep").
       iApply (logical_step_compose with "Hcl").
@@ -137,6 +135,7 @@ Section stratify.
   Proof.
     iIntros "Hp". iApply stratify_ltype_eqltype; iFrame.
     iPureIntro. iIntros (?) "HL CTX HE".
+    iR.
     iApply ltype_eq_sym. iApply mut_ref_unfold.
   Qed.
   Definition stratify_ltype_ofty_mut_inst := [instance @stratify_ltype_ofty_mut].

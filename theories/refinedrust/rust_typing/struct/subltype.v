@@ -68,6 +68,7 @@ Section subltype.
 
   Local Lemma struct_ltype_incl'_shared_in {rts1 rts2} (lts1 : hlist ltype rts1) (lts2 : hlist ltype rts2) κ' rs1 rs2 sls :
     ([∗ list] lt1; lt2 ∈ hpzipl _ lts1 rs1; hpzipl _ lts2 rs2,
+      ⌜ltype_st (projT2 lt1).1 = ltype_st (projT2 lt2).1⌝ ∗
       ltype_incl (Shared κ') (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) -∗
     ltype_incl' (Shared κ') #rs1 #rs2 (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
@@ -87,29 +88,34 @@ Section subltype.
     destruct (pad_struct_hpzipl_2_inv _ _ _ _ _ _ _ _ _ Hlen Hlook1 Hlook2) as
       [ (rt1 & rt2 & lt1' & lt2' & r1 & r2 & -> & -> & Hlook1' & Hlook2') | (ly & -> & ->)]; last by eauto.
     simpl. iPoseProof (big_sepL2_lookup with "Heq") as "Hb"; [done.. | ]. simpl.
-    iDestruct "Hb" as "(%Hst & #Hb & _)".
+    iDestruct "Hb" as "(%Hst & #Hb)".
     iIntros "(%ly & ? & ? & Hc)". iExists ly. rewrite Hst. iFrame.
+    iDestruct "Hb" as "(#Hb & _)".
     by iApply "Hb".
   Qed.
   Lemma struct_ltype_incl_shared_in {rts1 rts2} (lts1 : hlist ltype rts1) (lts2 : hlist ltype rts2) κ' rs1 rs2 sls :
     ([∗ list] lt1; lt2 ∈ hpzipl _ lts1 rs1; hpzipl _ lts2 rs2,
+      ⌜ltype_st (projT2 lt1).1 = ltype_st (projT2 lt2).1⌝ ∗
       ltype_incl (Shared κ') (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) -∗
     ltype_incl (Shared κ') #rs1 #rs2 (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
-    iSplitR; first done. iModIntro.
+    iModIntro.
     simp_ltypes.
     iSplit; (iApply struct_ltype_incl'_shared_in).
     - done.
     - rewrite !hpzipl_hmap.
       rewrite big_sepL2_fmap_l big_sepL2_fmap_r.
       iApply (big_sepL2_mono with "Heq").
-        iIntros (k [rt1 [lt1 r1]] [rt2 [lt2 r2]] ??). simpl. iApply ltype_incl_core; done.
+        iIntros (k [rt1 [lt1 r1]] [rt2 [lt2 r2]] ??). simpl. iIntros "(%Hst & Ha)".
+        iSplitR. { rewrite !ltype_core_syn_type_eq //. }
+        iApply ltype_incl_core; done.
   Qed.
 
   Local Lemma struct_ltype_incl'_shared {rts} (lts1 lts2 : hlist ltype rts) κ' rs sls :
     (([∗ list] ltp ∈ (hzipl2 rts lts1 lts2),
-      ∀ r, ltype_incl (Shared κ') r r (projT2 ltp).1 (projT2 ltp).2)) -∗
+      ∀ r, ⌜ltype_st (projT2 ltp).1 = ltype_st (projT2 ltp).2⌝ ∗
+        ltype_incl (Shared κ') r r (projT2 ltp).1 (projT2 ltp).2)) -∗
     ltype_incl' (Shared κ') rs rs (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
@@ -127,27 +133,32 @@ Section subltype.
     destruct (pad_struct_hpzipl_2_inv' _ _ _ _ _ _ _ _ Hlook1 Hlook2) as
       [ (rt & lt1' & lt2' & r & -> & -> & Hlook) | (ly & -> & ->)]; last by eauto.
     simpl. iPoseProof (big_sepL_lookup with "Heq") as "Hb"; first done. simpl.
-    iDestruct ("Hb" $! r) as "(%Hst & #Hb' & _)".
+    iDestruct ("Hb" $! r) as "(%Hst & #Hb')".
     iIntros "(%ly & ? & ? & Hc)". iExists ly. rewrite Hst. iFrame.
+    iDestruct "Hb'" as "(#Hb' & _)".
     by iApply "Hb'".
   Qed.
   Lemma struct_ltype_incl_shared {rts} (lts1 lts2 : hlist ltype rts) κ' rs sls :
     ([∗ list] ltp ∈ (hzipl2 rts lts1 lts2),
-      ∀ r, ltype_incl (Shared κ') r r (projT2 ltp).1 (projT2 ltp).2) -∗
+      ∀ r, ⌜ltype_st (projT2 ltp).1 = ltype_st (projT2 ltp).2⌝ ∗
+        ltype_incl (Shared κ') r r (projT2 ltp).1 (projT2 ltp).2) -∗
     ltype_incl (Shared κ') rs rs (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
-    iSplitR; first done. iModIntro.
+    iModIntro.
     simp_ltypes.
     iSplit; (iApply struct_ltype_incl'_shared).
     - done.
     - rewrite hzipl2_fmap big_sepL_fmap. iApply (big_sepL_mono with "Heq").
       iIntros (k [rt [lt1 lt2]] ?). simpl.
-      iIntros "Heq" (r). iApply ltype_incl_core; done.
+      iIntros "Heq" (r). iDestruct ("Heq" $! r) as "(%Hst & Heq)".
+      iSplitR. { rewrite !ltype_core_syn_type_eq //. }
+      iApply ltype_incl_core; done.
   Qed.
 
   Local Lemma struct_ltype_incl'_owned_in {rts1 rts2} (lts1 : hlist ltype rts1) (lts2 : hlist ltype rts2) rs1 rs2 sls :
     ([∗ list] lt1; lt2 ∈ (hpzipl _ lts1 rs1); hpzipl _ lts2 rs2,
+      ⌜ltype_st (projT2 lt1).1 = ltype_st (projT2 lt2).1⌝ ∗
       ltype_incl (Owned) (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) -∗
     ltype_incl' (Owned) #rs1 #rs2 (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
@@ -165,29 +176,34 @@ Section subltype.
     destruct (pad_struct_hpzipl_2_inv _ _ _ _ _ _ _ _ _ Hlen Hlook1 Hlook2) as
       [ (rt1 & rt2 & lt1' & lt2' & r1 & r2 & -> & -> & Hlook1' & Hlook2') | (ly & -> & ->)]; last by eauto.
     simpl. iPoseProof (big_sepL2_lookup with "Heq") as "Hb"; [done.. | ]. simpl.
-    iDestruct "Hb" as "(%Hst & #Hb & _)".
+    iDestruct "Hb" as "(%Hst & #Hb)".
     iIntros "(%ly & ? & ? & Hc)". iExists ly. rewrite Hst. iFrame.
+    iDestruct "Hb" as "(#Hb & _)".
     by iMod ("Hb" with "Hc").
   Qed.
   Lemma struct_ltype_incl_owned_in {rts1 rts2} (lts1 : hlist ltype rts1) (lts2 : hlist ltype rts2) rs1 rs2 sls :
     ([∗ list] lt1; lt2 ∈ hpzipl _ lts1 rs1; hpzipl _ lts2 rs2,
+      ⌜ltype_st (projT2 lt1).1 = ltype_st (projT2 lt2).1⌝ ∗
       ltype_incl (Owned) (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) -∗
     ltype_incl (Owned) #rs1 #rs2 (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
-    iSplitR; first done. iModIntro.
+    iModIntro.
     simp_ltypes.
     iSplit; (iApply struct_ltype_incl'_owned_in).
     - done.
     - rewrite !hpzipl_hmap.
       rewrite big_sepL2_fmap_l big_sepL2_fmap_r.
       iApply (big_sepL2_mono with "Heq").
-        iIntros (k [rt1 [lt1 r1]] [rt2 [lt2 r2]] ??). simpl. iApply ltype_incl_core; done.
+        iIntros (k [rt1 [lt1 r1]] [rt2 [lt2 r2]] ??). simpl. iIntros "(%Hst & Ha)".
+        iSplitR. { rewrite !ltype_core_syn_type_eq //. }
+        iApply ltype_incl_core; done.
   Qed.
 
   Local Lemma struct_ltype_incl'_owned {rts} (lts1 lts2 : hlist ltype rts) rs sls :
     (([∗ list] ltp ∈ (hzipl2 rts lts1 lts2),
-      ∀ r, ltype_incl (Owned) r r (projT2 ltp).1 (projT2 ltp).2)) -∗
+      ∀ r, ⌜ltype_st (projT2 ltp).1 = ltype_st (projT2 ltp).2⌝ ∗
+        ltype_incl (Owned) r r (projT2 ltp).1 (projT2 ltp).2)) -∗
     ltype_incl' (Owned) rs rs (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
@@ -204,28 +220,33 @@ Section subltype.
     destruct (pad_struct_hpzipl_2_inv' _ _ _ _ _ _ _ _ Hlook1 Hlook2) as
       [ (rt & lt1' & lt2' & r & -> & -> & Hlook) | (ly & -> & ->)]; last by eauto.
     simpl. iPoseProof (big_sepL_lookup with "Heq") as "Hb"; first done. simpl.
-    iDestruct ("Hb" $! r) as "(%Hst & #Hb' & _)".
+    iDestruct ("Hb" $! r) as "(%Hst & #Hb')".
     iIntros "(%ly & ? & ? & Hc)". iExists ly. rewrite Hst. iFrame.
+    iDestruct "Hb'" as "(#Hb' & _)".
     by iApply "Hb'".
   Qed.
   Lemma struct_ltype_incl_owned {rts} (lts1 lts2 : hlist ltype rts) rs sls :
     ([∗ list] ltp ∈ (hzipl2 rts lts1 lts2),
-      ∀ r, ltype_incl (Owned) r r (projT2 ltp).1 (projT2 ltp).2) -∗
+      ∀ r, ⌜ltype_st (projT2 ltp).1 = ltype_st (projT2 ltp).2⌝ ∗
+        ltype_incl (Owned) r r (projT2 ltp).1 (projT2 ltp).2) -∗
     ltype_incl (Owned) rs rs (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
-    iSplitR; first done. iModIntro.
+    iModIntro.
     simp_ltypes.
     iSplit; (iApply struct_ltype_incl'_owned).
     - done.
     - rewrite hzipl2_fmap big_sepL_fmap. iApply (big_sepL_mono with "Heq").
       iIntros (k [rt [lt1 lt2]] ?). simpl.
-      iIntros "Heq" (r). iApply ltype_incl_core; done.
+      iIntros "Heq" (r). iDestruct ("Heq" $! r) as "(%Hst & Heq)".
+      iSplitR. { rewrite !ltype_core_syn_type_eq //. }
+      iApply ltype_incl_core; done.
   Qed.
 
   Local Lemma struct_ltype_incl'_uniq {rts} (lts1 lts2 : hlist ltype rts) κ γ rs sls :
     (([∗ list] ltp ∈ (hzipl2 rts lts1 lts2),
-      ∀ r, ltype_eq (Owned) r r (projT2 ltp).1 (projT2 ltp).2)) -∗
+      ∀ r, ⌜ltype_st (projT2 ltp).1 = ltype_st (projT2 ltp).2⌝ ∗
+        ltype_eq (Owned) r r (projT2 ltp).1 (projT2 ltp).2)) -∗
     ltype_incl' (Uniq κ γ) rs rs (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
@@ -245,8 +266,9 @@ Section subltype.
           [ (rt & lt1' & lt2' & r0 & -> & -> & Hlook) | (ly & -> & ->)]; last by eauto.
         simpl.
         iPoseProof (big_sepL_lookup with "Heq") as "Hb"; first done. simpl.
-        iDestruct ("Hb" $! _) as "((%Hst & #Hb' & _) & _)".
+        iDestruct ("Hb" $! _) as "(%Hst & (#Hb' & _))".
         iIntros "(%ly & ? & ? & Hc)". iExists ly. rewrite Hst. iFrame.
+        iDestruct "Hb'" as "(#Hb' & _)".
         by iApply "Hb'".
       * iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame. iMod "Hb" as "Hb".
         iApply big_sepL_fupd.
@@ -256,8 +278,9 @@ Section subltype.
           [ (rt & lt1' & lt2' & r0 & -> & -> & Hlook) | (ly & -> & ->)]; last by eauto.
         simpl.
         iPoseProof (big_sepL_lookup with "Heq") as "Hb"; first done. simpl.
-        iDestruct ("Hb" $! _) as "(_ & (%Hst & #Hb' & _))".
+        iDestruct ("Hb" $! _) as "(%Hst & (_ & #Hb'))".
         iIntros "(%ly & ? & ? & Hc)". iExists ly. rewrite Hst. iFrame.
+        iDestruct "Hb'" as "(#Hb' & _)".
         by iApply "Hb'".
     + iNext. iModIntro. iSplit.
       * iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame. iMod "Hb" as "Hb".
@@ -268,7 +291,7 @@ Section subltype.
           [ (rt & lt1' & lt2' & r0 & -> & -> & Hlook) | (ly & -> & ->)]; last by eauto.
         simpl.
         iPoseProof (big_sepL_lookup with "Heq") as "Hb"; first done. simpl.
-        iDestruct ("Hb" $! _) as "((%Hst & _ & #Hb') & _)".
+        iDestruct ("Hb" $! _) as "(%Hst & ((_ & #Hb') & _))".
         iIntros "(%ly & ? & ? & Hc)". iExists ly. rewrite Hst. iFrame.
         rewrite !ltype_own_core_equiv. by iApply "Hb'".
       * iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame. iMod "Hb" as "Hb".
@@ -279,28 +302,32 @@ Section subltype.
           [ (rt & lt1' & lt2' & r0 & -> & -> & Hlook) | (ly & -> & ->)]; last by eauto.
         simpl.
         iPoseProof (big_sepL_lookup with "Heq") as "Hb"; first done. simpl.
-        iDestruct ("Hb" $! _) as "(_ & (%Hst & _ & #Hb'))".
+        iDestruct ("Hb" $! _) as "(%Hst & (_ & (_ & #Hb')))".
         iIntros "(%ly & ? & ? & Hc)". iExists ly. rewrite Hst. iFrame.
         rewrite !ltype_own_core_equiv. by iApply "Hb'".
   Qed.
   Lemma struct_ltype_incl_uniq {rts} (lts1 lts2 : hlist ltype rts) κ γ rs sls :
     ([∗ list] ltp ∈ (hzipl2 rts lts1 lts2),
-      ∀ r, ltype_eq (Owned) r r (projT2 ltp).1 (projT2 ltp).2) -∗
+      ∀ r, ⌜ltype_st (projT2 ltp).1 = ltype_st (projT2 ltp).2⌝ ∗
+        ltype_eq (Owned) r r (projT2 ltp).1 (projT2 ltp).2) -∗
     ltype_incl (Uniq κ γ) rs rs (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
-    iSplitR; first done. iModIntro.
+    iModIntro.
     simp_ltypes.
     iSplit; (iApply struct_ltype_incl'_uniq).
     - done.
     - rewrite hzipl2_fmap big_sepL_fmap. iApply (big_sepL_mono with "Heq").
       iIntros (k [rt [lt1 lt2]] ?). simpl.
-      iIntros "Heq" (r). iApply ltype_eq_core; done.
+      iIntros "Heq" (r). iDestruct ("Heq" $! r) as "(%Hst & Heq)".
+      iSplitR. { rewrite !ltype_core_syn_type_eq //. }
+      iApply ltype_eq_core; done.
   Qed.
 
   Lemma struct_ltype_incl {rts} (lts1 lts2 : hlist ltype rts) k rs sls :
     (∀ k, [∗ list] ltp ∈ (hzipl2 rts lts1 lts2),
-      ∀ r, ltype_eq k r r (projT2 ltp).1 (projT2 ltp).2) -∗
+      ∀ r, ⌜ltype_st (projT2 ltp).1 = ltype_st (projT2 ltp).2⌝ ∗
+        ltype_eq k r r (projT2 ltp).1 (projT2 ltp).2) -∗
     ltype_incl k rs rs (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
@@ -308,16 +335,17 @@ Section subltype.
     - iApply (struct_ltype_incl_owned lts1 lts2) .
       iApply (big_sepL_wand with "Heq"). iApply big_sepL_intro.
       iIntros "!>" (? [rt [lt1 lt2]] ?) "Ha". iIntros (r).
-      iDestruct ("Ha" $! r) as "[$ _]".
+      iDestruct ("Ha" $! r) as "($ & Ha)". iDestruct "Ha" as "[$ _]".
     - iApply struct_ltype_incl_shared.
       iApply (big_sepL_wand with "Heq"). iApply big_sepL_intro.
       iIntros "!>" (? [rt [lt1 lt2]] ?) "Ha". iIntros (r).
-      iDestruct ("Ha" $! r) as "[$ _]".
+      iDestruct ("Ha" $! r) as "($ & Ha)". iDestruct "Ha" as "[$ _]".
     - iApply struct_ltype_incl_uniq. done.
   Qed.
   Lemma struct_ltype_eq {rts} (lts1 lts2 : hlist ltype rts) k rs sls :
     (∀ k, [∗ list] ltp ∈ (hzipl2 rts lts1 lts2),
-      ∀ r, ltype_eq k r r (projT2 ltp).1 (projT2 ltp).2) -∗
+      ∀ r, ⌜ltype_st (projT2 ltp).1 = ltype_st (projT2 ltp).2⌝ ∗
+        ltype_eq k r r (projT2 ltp).1 (projT2 ltp).2) -∗
     ltype_eq k rs rs (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
@@ -328,7 +356,9 @@ Section subltype.
       rewrite hzipl2_swap big_sepL_fmap.
       iApply (big_sepL_wand with "Heq").
       iApply big_sepL_intro. iIntros "!>" (? [? []] ?) "Heq'".
-      iIntros (?). iApply ltype_eq_sym. done.
+      iIntros (?). iDestruct ("Heq'" $! _) as "(%Hst & Heq')".
+      iSplitR. { done. }
+      iApply ltype_eq_sym. done.
   Qed.
 
   Lemma struct_full_subltype E L {rts} (lts1 lts2 : hlist ltype rts) sls :
@@ -338,15 +368,17 @@ Section subltype.
     intros Hsub.
     iIntros (qL) "HL #CTX #HE".
     iAssert (∀ k, [∗ list] ltp ∈ (hzipl2 rts lts1 lts2),
-      ∀ r, ltype_eq k r r (projT2 ltp).1 (projT2 ltp).2)%I with "[HL]" as "#Heq".
+      ∀ r, ⌜ltype_st (projT2 ltp).1 = ltype_st (projT2 ltp).2⌝ ∗
+        ltype_eq k r r (projT2 ltp).1 (projT2 ltp).2)%I with "[HL]" as "#Heq".
     { iIntros (k). iInduction rts as [ | rt rts] "IH"; first done.
       inv_hlist lts1 => lt1 lts1. inv_hlist lts2 => lt2 lts2.
       rewrite hzipl2_cons. rewrite Forall_cons.
       intros [Heq Heqs].
-      iPoseProof (Heq with "HL CTX HE") as "#Heq".
+      iPoseProof (Heq with "HL CTX HE") as "(%Hst & #Heq)".
       iPoseProof ("IH" with "[//] HL") as "Heqs".
-      iApply big_sepL_cons. iFrame. done.
+      iApply big_sepL_cons. iFrame. iIntros (r). iSplitR; done.
     }
+    iSplitR; first done.
     iIntros (k r). iApply (struct_ltype_incl lts1 lts2). done.
   Qed.
   Lemma struct_full_eqltype E L {rts} (lts1 lts2 : hlist ltype rts) sls :
@@ -514,6 +546,37 @@ Section accessors.
       simpl in Heq1. rewrite -Heq1 -Heq2//.
   Qed.
 
+  Local Lemma typed_place_cond_uniq_core_eq_struct {rts} (lts1 : hlist ltype rts) (lts2 : hlist ltype rts) κs :
+    ([∗ list] ty1; ty2 ∈ hzipl rts lts1; hzipl rts lts2,
+      typed_place_cond (UpdUniq κs) (projT2 ty1) (projT2 ty2)) -∗
+    ([∗ list] ty ∈ hzipl2 rts lts1 lts2,
+      ∀ b' r, ⌜ltype_st (ltype_core (projT2 ty).1) = ltype_st (ltype_core (projT2 ty).2)⌝ ∗
+        ltype_eq b' r r (ltype_core (projT2 ty).1) (ltype_core (projT2 ty).2)).
+  Proof.
+    iIntros "Hcond".
+    iPoseProof (big_sepL2_to_zip with "Hcond") as "Hcond".
+    rewrite zip_hzipl_hzipl2 big_sepL_fmap.
+    iApply (big_sepL_impl with "Hcond"). iModIntro. iIntros (? [rt [lt1 lt2]] Hlook) "#Hcond".
+    iIntros (b' r). iSplitR.
+    - iPoseProof (typed_place_cond_syn_type_eq with "[] Hcond") as "%Hst"; first done.
+      rewrite !ltype_core_syn_type_eq //.
+    - iPoseProof (typed_place_cond_uniq_core_eq with "Hcond") as "Heq".
+      simpl. iApply "Heq".
+  Qed.
+  Local Lemma typed_place_cond_uniq_unblockable_struct {rts} (lts1 : hlist ltype rts) (lts2 : hlist ltype rts) κs :
+    ([∗ list] ty1; ty2 ∈ hzipl rts lts1; hzipl rts lts2,
+      typed_place_cond (UpdUniq κs) (projT2 ty1) (projT2 ty2)) -∗
+    ([∗ list] ty ∈ hzipl2 rts lts1 lts2,
+      imp_unblockable κs (projT2 ty).2).
+  Proof.
+    iIntros "Hcond".
+    iPoseProof (big_sepL2_to_zip with "Hcond") as "Hcond".
+    rewrite zip_hzipl_hzipl2 big_sepL_fmap.
+    iApply (big_sepL_impl with "Hcond").
+    iModIntro. iIntros (? [rt [lt1 lt2]] Hlook).
+    iApply typed_place_cond_uniq_unblockable.
+  Qed.
+
 
   (** Note: regrettably, this does not allow us to just preserve one component trivially.
     This is due to the way how mutable references of products are setup.
@@ -529,34 +592,32 @@ Section accessors.
     destruct b; simpl.
     - iIntros "_". done.
     - iIntros "_". done.
-    - iIntros "Hrel".
+    - iIntros "#Hrel".
       unfold typed_place_cond; simpl.
       iR.
       rewrite big_sepL2_sep. iDestruct "Hrel" as "(_ & Hrel)".
       iPoseProof (big_sepL2_Forall2 with "Hrel") as "%Heq".
       iPureIntro. f_equiv.
       by eapply lift_eq.
-    - iIntros "Hrel".
+    - iIntros "#Hrel".
       iPoseProof (big_sepL2_impl _ (λ _ lt1 lt2, ⌜projT1 lt1 = projT1 lt2⌝)%I with "Hrel []") as "#Hx".
       { iModIntro. iIntros (?????). iIntros "(% & %Heq & Ha)". done. }
       iPoseProof (big_sepL2_Forall2 with "Hx") as "%Heq". iClear "Hx".
       apply lift_eq in Heq. subst rts'.
-      rewrite big_sepL2_sep. iDestruct "Hrel" as "(_ & Hrel)".
       iR.
       iExists eq_refl.
-      setoid_rewrite <-bi.sep_exist_r.
-      rewrite big_sepL2_sep_sepL_r. iDestruct "Hrel" as "(#Heq & #Hub)".
       iSplitL.
       + cbn. simp_ltypes. iIntros (k r). iApply struct_ltype_eq. iIntros (k').
         rewrite hzipl2_fmap big_sepL_fmap.
-        rewrite (big_sepL2_hzipl_hzipl_sepL_hzipl2 _ _ _
-          (λ _ a b, ∃ Heq, ∀ k r, ltype_eq k r r (ltype_core $ projT2 a) (ltype_core $ rew <-[ltype] Heq in projT2 b))%I
-          (λ _ ltp, ∀ k r, ltype_eq k r r (ltype_core (projT2 ltp).1) (ltype_core (projT2 ltp).2))%I 0).
-        { iApply big_sepL_mono; last done. iIntros (? [? [??]] ?). eauto. }
-        intros _ x a b. iSplit.
-        * iIntros "(%Heq & Heq)". rewrite (UIP_refl _ _ Heq). done.
-        * iIntros "Heq". iExists eq_refl. done.
-      + iApply struct_ltype_imp_unblockable. done.
+        iPoseProof (typed_place_cond_uniq_core_eq_struct with "Hrel") as "Hcore".
+        iApply (big_sepL_mono with "Hcore").
+        iIntros (? [rt [lt1 lt2]] ?) "Hcore". done.
+      + iApply struct_ltype_imp_unblockable.
+        iPoseProof (typed_place_cond_uniq_unblockable_struct with "Hrel") as "Hub".
+        iInduction rts as [ | rt rts] "IH" forall (lts lts'); inv_hlist lts; inv_hlist lts'; simpl; first done.
+        intros lt lts lt' lts'. simpl.
+        iDestruct "Hub" as "($ & Hub)". iDestruct "Hrel" as "(_ & Hrel)".
+        iApply ("IH" with "Hrel Hub").
   Qed.
 
   Lemma struct_ltype_acc_owned {rts} F π (lts : hlist ltype rts) (r : plist place_rfnRT rts) l sls :
@@ -611,36 +672,11 @@ Section accessors.
     destruct ty as [? []]; simpl. rewrite ltype_core_syn_type_eq //.
   Qed.
 
-  Local Lemma typed_place_cond_uniq_core_eq_struct {rts} (lts1 : hlist ltype rts) (lts2 : hlist ltype rts) κs :
-    ([∗ list] ty1; ty2 ∈ hzipl rts lts1; hzipl rts lts2,
-      typed_place_cond (UpdUniq κs) (projT2 ty1) (projT2 ty2)) -∗
-    ([∗ list] ty ∈ hzipl2 rts lts1 lts2,
-      ∀ b' r, ltype_eq b' r r (ltype_core (projT2 ty).1) (ltype_core (projT2 ty).2)).
-  Proof.
-    iIntros "Hcond".
-    iPoseProof (big_sepL2_to_zip with "Hcond") as "Hcond".
-    rewrite zip_hzipl_hzipl2 big_sepL_fmap.
-    iApply (big_sepL_impl with "Hcond"). iModIntro. iIntros (? [rt [lt1 lt2]] Hlook).
-    iApply typed_place_cond_uniq_core_eq.
-  Qed.
-  Local Lemma typed_place_cond_uniq_unblockable_struct {rts} (lts1 : hlist ltype rts) (lts2 : hlist ltype rts) κs :
-    ([∗ list] ty1; ty2 ∈ hzipl rts lts1; hzipl rts lts2,
-      typed_place_cond (UpdUniq κs) (projT2 ty1) (projT2 ty2)) -∗
-    ([∗ list] ty ∈ hzipl2 rts lts1 lts2,
-      imp_unblockable κs (projT2 ty).2).
-  Proof.
-    iIntros "Hcond".
-    iPoseProof (big_sepL2_to_zip with "Hcond") as "Hcond".
-    rewrite zip_hzipl_hzipl2 big_sepL_fmap.
-    iApply (big_sepL_impl with "Hcond").
-    iModIntro. iIntros (? [rt [lt1 lt2]] Hlook).
-    iApply typed_place_cond_uniq_unblockable.
-  Qed.
-
   Local Lemma struct_acc_uniq_elems_core π l {rts} (lts lts' : hlist ltype rts) (rs : plist place_rfnRT rts) fields :
     length (field_names fields) = length rts →
     ([∗ list] ty ∈ hzipl2 rts lts lts',
-      ∀ b' r, ltype_eq b' r r (ltype_core (projT2 ty).1) (ltype_core (projT2 ty).2)) -∗
+      ∀ b' r, ⌜ltype_st (ltype_core (projT2 ty).1) = ltype_st (ltype_core (projT2 ty).2)⌝ ∗
+        ltype_eq b' r r (ltype_core (projT2 ty).1) (ltype_core (projT2 ty).2)) -∗
     ((|={lftE}=> [∗ list] i↦ty ∈ pad_struct fields (hpzipl rts lts rs) struct_make_uninit_ltype,
       ∃ ly : layout, ⌜snd <$> fields !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗ (l +ₗ offset_of_idx fields i) ◁ₗ[ π, Owned] (projT2 ty).2 @ ltype_core (projT2 ty).1)) -∗
     ((|={lftE}=> [∗ list] i↦ty ∈ pad_struct fields (hpzipl rts lts' rs) struct_make_uninit_ltype,
@@ -666,7 +702,7 @@ Section accessors.
         iPoseProof (big_sepL_lookup with "Hcond")as "Heq".
         { apply hzipl_hzipl2_lookup; done. }
         (*iPoseProof (typed_place_cond_incl _ (Uniq κ γ) with "Hincl_k Hcond'") as "Hcond''".*)
-        iDestruct ("Heq" $! (Owned) _) as "((%Hst1 & #Heq1 & _) & (_ & #Heq2 & _))".
+        iDestruct ("Heq" $! (Owned) _) as "(%Hst1 & ((#Heq1 & _) & (_ & #Heq2)))".
         (*setoid_rewrite ltype_own_core_equiv. *)
         iPoseProof ("Heq1" with "Hl") as "Hb".
         simpl in Hst1. rewrite !ltype_core_syn_type_eq in Hst1.
@@ -720,8 +756,10 @@ Section accessors.
         { apply hzipl_hzipl2_lookup; done. }
         cbn.
         iMod (imp_unblockable_use with "Hub1 Hdead Hl") as "Hl"; first done.
-        iDestruct ("Heq1" $! (Owned) _) as "((%Hst1 & #Heq1' & _) & (_ & #Heq2 & _))".
+        iDestruct ("Heq1" $! (Owned) _) as "(%Hst1 & ((#Heq1' & _) & (_ & #Heq2)))".
+        iEval (rewrite -(ltype_core_idemp l0)) in "Hl".
         iMod ("Heq2" with "Hl") as "Hl".
+        iEval (rewrite ltype_core_idemp) in "Hl".
         rewrite !ltype_core_syn_type_eq in Hst1.
         rewrite -Hst1.
         eauto with iFrame.
@@ -843,7 +881,8 @@ Section accessors.
           iPoseProof (typed_place_cond_uniq_core_eq_struct with "Ha") as "Hb".
           iApply (big_sepL_impl with "Hb").
           iModIntro. iIntros (? [? []] ?) "Heq" => /=.
-          iIntros (??). iApply ltype_eq_sym. iApply "Heq".
+          iIntros (??). iDestruct ("Heq" $! _ _) as "(%Hst & Heq)".
+          iSplitR; first done. iApply ltype_eq_sym. done.
       }
       iApply (struct_ltype_place_cond _ _ lts' sls with "Hcond").
     - (* shift to OpenedLtype *)

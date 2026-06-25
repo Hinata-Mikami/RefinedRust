@@ -92,9 +92,9 @@ Section subltype.
     ⊢ weak_subltype E L (Owned) #(r1, γ) r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof.
     iIntros "(%r2' & -> & %Hincl & HT)" (??) "#CTX #HE HL".
-    iMod ("HT" with "[//] CTX HE HL") as "(Hincl' & HL & $)".
+    iMod ("HT" with "[//] CTX HE HL") as "(% & Hincl' & HL & $)".
     iPoseProof (lctx_lft_incl_incl with "HL") as "#Hincl"; first done.
-    iSpecialize ("Hincl" with "HE"). iFrame.
+    iSpecialize ("Hincl" with "HE"). iFrame. iR.
     iApply (mut_ltype_incl_owned_in with "Hincl'").
     done.
   Qed.
@@ -120,9 +120,10 @@ Section subltype.
     ⊢ weak_subltype E L (Owned) r1 r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof.
     iIntros "(-> & %Hincl & %Heqt & HT)" (??) "#CTX #HE HL".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hsub"; first apply Heqt.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(% & #Hsub)"; first apply Heqt.
     iPoseProof (lctx_lft_incl_incl with "HL") as "#Hincl"; first done.
     iSpecialize ("Hincl" with "HE"). iFrame.
+    iR.
     iApply (mut_ltype_incl_owned); last done.
     iIntros (??). iApply ltype_eq_ltype_incl_l.
     iApply "Hsub".
@@ -138,9 +139,10 @@ Section subltype.
     ⊢ weak_subltype E L (Shared κ) #(r1, γ) r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof.
     iIntros "(%r2' & -> & %Hincl & HT)" (??) "#CTX #HE HL".
-    iMod ("HT" with "[//] CTX HE HL") as "(Hincl' & HL & $)".
+    iMod ("HT" with "[//] CTX HE HL") as "(% & Hincl' & HL & $)".
     iPoseProof (lctx_lft_incl_incl with "HL") as "#Hincl"; first done.
     iSpecialize ("Hincl" with "HE"). iFrame.
+    iR.
     iApply (mut_ltype_incl_shared_in with "[Hincl']"); last done.
     done.
   Qed.
@@ -154,9 +156,9 @@ Section subltype.
     ⊢ weak_subltype E L (Shared κ) r1 r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof.
     iIntros "(-> & %Hincl & %Heqt & HT)" (??) "#CTX #HE HL".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hsub"; first apply Heqt.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(% & #Hsub)"; first apply Heqt.
     iPoseProof (lctx_lft_incl_incl with "HL") as "#Hincl"; first done.
-    iSpecialize ("Hincl" with "HE"). iFrame.
+    iSpecialize ("Hincl" with "HE"). iFrame. iR.
     iApply (mut_ltype_incl_shared); last done.
     iIntros (?). iApply ltype_eq_ltype_incl_l.
     iApply "Hsub".
@@ -209,7 +211,8 @@ Section subltype.
     ⊢ weak_subltype E L k r1 r2 (MutLtype lt1 κ1) (◁ (mut_ref κ2 ty2)) T.
   Proof.
     iIntros "HT". iIntros (??) "#CTX #HE HL".
-    iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
+    iMod ("HT" with "[//] CTX HE HL") as "(% & Hincl & $ & $)".
+    iR.
     iApply (ltype_incl_trans with "Hincl").
     iApply mut_ref_unfold_1.
   Qed.
@@ -221,7 +224,8 @@ Section subltype.
     ⊢ weak_subltype E L k r1 r2 (◁ (mut_ref κ1 ty1)) (MutLtype lt2 κ2) T.
   Proof.
     iIntros "HT" (??) "#CTX #HE HL".
-    iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
+    iMod ("HT" with "[//] CTX HE HL") as "(% & Hincl & $ & $)".
+    iR.
     iApply (ltype_incl_trans with "[] Hincl").
     iApply mut_ref_unfold_2.
   Qed.

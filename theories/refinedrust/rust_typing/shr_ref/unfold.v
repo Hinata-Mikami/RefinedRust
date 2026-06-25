@@ -114,7 +114,7 @@ Section ltype_agree.
   Lemma shr_ref_unfold_1 κ k r :
     ⊢ ltype_incl k r r (ShrLtype (◁ ty) κ) (◁ (shr_ref κ ty)).
   Proof.
-    iSplitR; first done. iModIntro. iSplit.
+    iModIntro. iSplit.
     - iApply shr_ref_unfold_1'.
     - simp_ltypes. iApply shr_ref_unfold_1'.
   Qed.
@@ -208,7 +208,7 @@ Section ltype_agree.
   Lemma shr_ref_unfold_2 κ k r :
     ⊢ ltype_incl k r r (◁ (shr_ref κ ty)) (ShrLtype (◁ ty) κ).
   Proof.
-    iSplitR; first done. iModIntro; iSplit.
+    iModIntro; iSplit.
     - iApply shr_ref_unfold_2'.
     - simp_ltypes. iApply shr_ref_unfold_2'.
   Qed.
@@ -225,8 +225,8 @@ Section ltype_agree.
     full_eqltype E L lt (◁ ty)%I →
     full_eqltype E L (ShrLtype lt κ) (◁ (shr_ref κ ty))%I.
   Proof.
-    iIntros (Heql ?) "HL #CTX #HE". iIntros (??).
-    iPoseProof (Heql with "HL CTX HE") as "#Heql".
+    iIntros (Heql ?) "HL #CTX #HE". iR. iIntros (??).
+    iPoseProof (Heql with "HL CTX HE") as "(_ & #Heql)".
     iApply ltype_eq_trans; last iApply shr_ref_unfold.
     iApply shr_ltype_eq; [ | iApply lft_incl_refl.. ].
     by iApply "Heql".
@@ -242,7 +242,7 @@ Section place.
   Proof.
     iIntros "Hp". iApply typed_place_eqltype; last done.
     iIntros (?) "HL CTX HE".
-    iIntros (??). iApply ltype_eq_sym. iApply shr_ref_unfold.
+    iR. iIntros (??). iApply ltype_eq_sym. iApply shr_ref_unfold.
   Qed.
   Definition typed_place_ofty_shr_inst := [instance @typed_place_ofty_shr].
   Global Existing Instance typed_place_ofty_shr_inst | 30.
@@ -263,4 +263,3 @@ Section cast.
   Definition cast_ltype_to_type_shr_inst := [instance @cast_ltype_to_type_shr].
   Global Existing Instance cast_ltype_to_type_shr_inst.
 End cast.
-

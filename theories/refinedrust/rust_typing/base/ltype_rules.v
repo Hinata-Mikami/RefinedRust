@@ -295,27 +295,6 @@ Proof.
   iIntros "Hincl". iApply ltype_bor_kind_direct_incl. iSplitL; done.
 Qed.
 
-Section subtype.
-  Context `{!typeGS Σ}.
-
-  Lemma ltype_incl_syn_type {rt1 rt2} b r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) :
-    ltype_incl b r1 r2 lt1 lt2 -∗ ⌜ltype_st lt1 = ltype_st lt2⌝.
-  Proof.
-    iIntros "(#$ & _)".
-  Qed.
-  Lemma ltype_incl_core {rt1 rt2} b r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) :
-    ltype_incl b r1 r2 lt1 lt2 -∗ ltype_incl b r1 r2 (ltype_core lt1) (ltype_core lt2).
-  Proof.
-    iIntros "(%Hst & _ & #Hi)".
-    iSplitR. { rewrite !ltype_core_syn_type_eq. done. }
-    iSplitR; iModIntro.
-    - done.
-    - rewrite !ltype_core_idemp. done.
-  Qed.
-
-  (* TODO subtyping for OpenedLtype and CoreableLtype? *)
-End subtype.
-
 Section accessors.
   Context `{typeGS Σ}.
 

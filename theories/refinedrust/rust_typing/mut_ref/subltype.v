@@ -19,7 +19,7 @@ Section subltype.
     iIntros "(%ly & ? & ? & ? & (%r' & %γ' & %Hrfn & #Hb))".
     iExists ly. iFrame. iExists _, _. iFrame. iSplitR; first done.
     iModIntro. iMod "Hb" as "(%li & Hs & Hb)". iModIntro.
-    iDestruct ("Heq") as "(%Hly_eq & #Hi1 & #Hc1)".
+    iDestruct ("Heq") as "(#Hi1 & #Hc1)".
     injection Hrfn as -> ->.
     iExists li. iFrame. iApply ltype_own_shr_mono; last by iApply "Hi1".
     iApply lft_intersect_mono; first done.
@@ -31,8 +31,7 @@ Section subltype.
     ltype_incl (Shared κ') #(r1, γ) #(r2, γ) (MutLtype lt1 κ1) (MutLtype lt2 κ2).
   Proof.
     iIntros "#Heq #Hincl1".
-    iPoseProof (ltype_incl_syn_type with "Heq") as "%Hst".
-    iSplitR; first done. iModIntro.
+    iModIntro.
     simp_ltypes.
     iSplit; (iApply mut_ltype_incl'_shared_in; [ | done  ]).
     - done.
@@ -50,7 +49,7 @@ Section subltype.
     iIntros "(%ly & ? & ? & ? & (%r' & %γ & Hrfn & #Hb))".
     iExists ly. iFrame.
     iModIntro. iMod "Hb" as "(%li & Hs & Hb)". iModIntro.
-    iDestruct ("Heq" $! r') as "(%Hly_eq & #Hi1 & #Hc1)".
+    iDestruct ("Heq" $! r') as "(#Hi1 & #Hc1)".
     iExists li. iFrame. iApply ltype_own_shr_mono; last by iApply "Hi1".
     iApply lft_intersect_mono; first done.
     iApply lft_incl_refl.
@@ -62,8 +61,7 @@ Section subltype.
     ltype_incl (Shared κ') r r (MutLtype lt1 κ1) (MutLtype lt2 κ2).
   Proof.
     iIntros "#Heq #Hincl1".
-    iPoseProof (ltype_incl_syn_type _ inhabitant with "Heq") as "%Hst".
-    iSplitR; first done. iModIntro.
+    iModIntro.
     simp_ltypes.
     iSplit; (iApply mut_ltype_incl'_shared; [ | done  ]).
     - done.
@@ -82,7 +80,7 @@ Section subltype.
     iModIntro.
     iExists ly. iFrame. iExists γ, r2. iSplitR; first done.
     iMod "Hl" as "(%l' & Hl & Hb)".
-    iExists l'. iFrame. iDestruct "Heq" as "(_ & Heq & _)".
+    iExists l'. iFrame. iDestruct "Heq" as "(Heq & _)".
     iApply ltype_own_uniq_mono; last by iApply "Heq". done.
   Qed.
   Lemma mut_ltype_incl_owned_in {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ1 κ2 r1 r2 γ :
@@ -91,8 +89,7 @@ Section subltype.
     ltype_incl (Owned) #(r1, γ) #(r2, γ) (MutLtype lt1 κ1) (MutLtype lt2 κ2).
   Proof.
     iIntros "#Heq #Hincl1".
-    iPoseProof (ltype_incl_syn_type with "Heq") as "%Hst".
-    iSplitR; first done. iModIntro.
+    iModIntro.
     simp_ltypes.
     iSplit; (iApply mut_ltype_incl'_owned_in; [ | done  ]).
     - done.
@@ -112,7 +109,7 @@ Section subltype.
     iMod "Hl" as "(%l' & Hl & Hb)".
     iExists l'. iFrame. iModIntro.
     iApply ltype_own_uniq_mono; first done.
-    iDestruct ("Heq" $! _ _) as "(_ & #Heq' & _)". by iApply "Heq'".
+    iDestruct ("Heq" $! _ _) as "(#Heq' & _)". by iApply "Heq'".
   Qed.
   Lemma mut_ltype_incl_owned {rt} (lt1 : ltype rt) (lt2 : ltype rt) κ1 κ2 r :
     (∀ γ r, ltype_incl (Uniq κ1 γ) r r lt1 lt2)  -∗
@@ -120,8 +117,7 @@ Section subltype.
     ltype_incl (Owned) r r (MutLtype lt1 κ1) (MutLtype lt2 κ2).
   Proof.
     iIntros "#Heq #Hincl1".
-    iPoseProof (ltype_incl_syn_type (Uniq _ inhabitant) inhabitant with "Heq") as "%Hst".
-    iSplitR; first done. iModIntro.
+    iModIntro.
     simp_ltypes.
     iSplit; (iApply mut_ltype_incl'_owned; [ | done  ]).
     - done.
@@ -145,21 +141,21 @@ Section subltype.
     + iNext. iModIntro. iSplit.
       * iIntros "(%r' & Hauth & Hb)"; iExists _; iFrame.
         iMod "Hb" as "(%l' & Hl & Hb)". iModIntro. iExists _. iFrame.
-        iDestruct ("Heq" $! _ r'.1) as "((%Hly_eq & #Hi1 & #Hc1) & (_ & #Hi2 & #Hc2))".
+        iDestruct ("Heq" $! _ r'.1) as "((#Hi1 & #Hc1) & (#Hi2 & #Hc2))".
         iApply ltype_own_uniq_mono; last by iApply "Hi1". done.
       * iIntros "(%r' & Hauth & Hb)"; iExists _; iFrame.
         iMod "Hb" as "(%l' & Hl & Hb)". iModIntro. iExists _. iFrame.
-        iDestruct ("Heq" $! _ r'.1) as "((%Hly_eq & #Hi1 & #Hc1) & (_ & #Hi2 & #Hc2))".
+        iDestruct ("Heq" $! _ r'.1) as "((#Hi1 & #Hc1) & (#Hi2 & #Hc2))".
         iApply "Hi2". iApply ltype_own_uniq_mono; done.
     + iNext. iModIntro. iSplit.
       * iIntros "(%r' & Hauth & Hb)"; iExists _; iFrame.
         iMod "Hb" as "(%l' & Hl & Hb)". iModIntro. iExists _. iFrame.
-        iDestruct ("Heq" $! _ r'.1) as "((%Hly_eq & #Hi1 & #Hc1) & (_ & #Hi2 & #Hc2))".
+        iDestruct ("Heq" $! _ r'.1) as "((#Hi1 & #Hc1) & (#Hi2 & #Hc2))".
         rewrite !ltype_own_core_equiv.
         iApply ltype_own_uniq_mono; last by iApply "Hc1". done.
       * iIntros "(%r' & Hauth & Hb)"; iExists _; iFrame.
         iMod "Hb" as "(%l' & Hl & Hb)". iModIntro. iExists _. iFrame.
-        iDestruct ("Heq" $! _ r'.1) as "((%Hly_eq & #Hi1 & #Hc1) & (_ & #Hi2 & #Hc2))".
+        iDestruct ("Heq" $! _ r'.1) as "((#Hi1 & #Hc1) & (#Hi2 & #Hc2))".
         rewrite !ltype_own_core_equiv.
         iApply "Hc2". iApply ltype_own_uniq_mono; done.
   Qed.
@@ -170,8 +166,7 @@ Section subltype.
     ltype_incl (Uniq κ γ) r r (MutLtype lt1 κ1) (MutLtype lt2 κ2).
   Proof.
     iIntros "#Heq #Hincl1 #Hincl2".
-    iPoseProof (ltype_eq_syn_type (Uniq _ inhabitant) inhabitant with "Heq") as "%Hst".
-    iSplitR; first done. iModIntro.
+    iModIntro.
     simp_ltypes.
     iSplit; (iApply mut_ltype_incl'_uniq; [ | done  | done]).
     - done.
@@ -210,8 +205,8 @@ Section subltype.
     full_subltype E L (MutLtype lt1 κ1) (MutLtype lt2 κ2).
   Proof.
     intros Heq Hincl1 Hincl2.
-    iIntros (qL) "HL #CTX #HE". iIntros (b r).
-    iPoseProof (Heq with "HL CTX HE") as "#Heq".
+    iIntros (qL) "HL #CTX #HE". iR. iIntros (b r).
+    iPoseProof (Heq with "HL CTX HE") as "(% & #Heq)".
     iPoseProof (lctx_lft_incl_incl_noend with "HL HE") as "#Hincl1"; first apply Hincl1.
     iPoseProof (lctx_lft_incl_incl_noend with "HL HE") as "#Hincl2"; first apply Hincl2.
     iApply mut_ltype_incl; done.
@@ -342,7 +337,7 @@ Section access.
         (* unblock *)
         iMod ("Hub" with "[$Hdead //] Ha") as "Ha".
         (* use that the cores are equal *)
-        iDestruct ("Heq" $! (Uniq _ _) _) as "(_ & (%Hst & #Hi & _))".
+        iDestruct ("Heq" $! (Uniq _ _) _) as "(_ & ( #Hi & _))".
         rewrite ltype_own_core_equiv. iPoseProof ("Hi" with "Ha") as "Ha".
         rewrite -ltype_own_core_equiv. eauto with iFrame. }
       { iModIntro. rewrite /V. eauto 8 with iFrame. }
@@ -362,12 +357,12 @@ Section access.
         iNext. iModIntro. iSplit.
         - iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame.
           iMod "Hb" as "(%l'' & Hl & Hb)".
-          iDestruct ("Heq" $! (Uniq _ _) _) as "((_ & #Heq1 & _) & (_ & #Heq2 & _))".
+          iDestruct ("Heq" $! (Uniq _ _) _) as "((#Heq1 & _) & (#Heq2 & _))".
           rewrite ltype_own_core_equiv. iPoseProof ("Heq1" with "Hb") as "Hb". rewrite -ltype_own_core_equiv.
           eauto with iFrame.
         - iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame.
           iMod "Hb" as "(%l'' & Hl & Hb)".
-          iDestruct ("Heq" $! (Uniq _ _) _) as "((_ & #Heq1 & _) & (_ & #Heq2 & _))".
+          iDestruct ("Heq" $! (Uniq _ _) _) as "((#Heq1 & _) & (#Heq2 & _))".
           rewrite ltype_own_core_equiv. iPoseProof ("Heq2" with "Hb") as "Hb". rewrite -ltype_own_core_equiv.
           eauto with iFrame.
       }

@@ -18,8 +18,9 @@ Section unfolding.
   Proof.
     iIntros "(%ty1 & %Heqt & HT)".
     iIntros (??) "#CTX #HE HL".
-    iMod ("HT" with "[] CTX HE HL") as "(#Hincl & HL & $)"; first done.
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; first apply Heqt.
+    iMod ("HT" with "[] CTX HE HL") as "(% & Hincl & HL & $)"; first done.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(% & #Heq)"; first apply Heqt.
+    simp_ltypes. iR.
     iFrame. iApply ltype_incl_trans; last done.
     iApply ltype_eq_ltype_incl_l.
     done.

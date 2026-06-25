@@ -52,9 +52,9 @@ Section deinit.
     iDestruct ("HT" with "[//]") as "(%ly2 & %Hst2 & HT)".
     iIntros (????) "CTX HE HL Hl". simp_ltypes; simpl.
 
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl"; first apply Heqt.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Hincl)"; first apply Heqt.
     iSpecialize ("Hincl" $! (Owned) (#r)).
-    iDestruct "Hincl" as "(Hincl & _)". iDestruct "Hincl" as "(%Hst & Hincl & _)".
+    iDestruct "Hincl" as "(Hincl & _)". iDestruct "Hincl" as "(Hincl & _)".
     iMod (ltype_incl'_use with "Hincl Hl") as "Hl"; first done.
 
     iPoseProof (ltype_own_has_layout' with "Hl") as "%". { simp_ltype. rewrite Heq_lt. done. }
@@ -127,8 +127,9 @@ Section deinit_fallback.
     rewrite /compute_layout_goal.
     iIntros "(%ly & %Hst_layout & %Hst & HT)".
     iIntros  (??) "#CTX #HE HL". iFrame.
-    iModIntro. iModIntro. simp_ltypes. iSplitR.
-    { iPureIntro. simpl. rewrite Hst. done. }
+    iModIntro.
+    iR.
+    iModIntro. simp_ltypes.
     rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (??) "Hl".
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly' & %Hst' & %Hly)".

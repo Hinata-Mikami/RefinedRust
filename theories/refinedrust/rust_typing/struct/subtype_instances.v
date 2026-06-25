@@ -150,16 +150,18 @@ Section subtype.
     ⊢ weak_subltype E L (Owned) (#rs1) (#rs2) (StructLtype lts1 sls1) (StructLtype lts2 sls2) T.
   Proof.
     iIntros "(-> & %Hlen & Ha)" (??) "#CTX #HE HL".
-    iAssert (|={F}=> ([∗ list] lt1; lt2 ∈ hpzipl _ lts1 rs1; hpzipl _ lts2 rs2, ltype_incl (Owned) (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) ∗ llctx_interp L ∗ T)%I with "[Ha HL]" as ">(Ha & $ & $)"; first last.
-    { iApply (struct_ltype_incl_owned_in lts1 lts2). done. }
+    iAssert (|={F}=> ([∗ list] lt1; lt2 ∈ hpzipl _ lts1 rs1; hpzipl _ lts2 rs2,
+      ⌜ltype_st (projT2 lt1).1 = ltype_st (projT2 lt2).1⌝ ∗
+      ltype_incl (Owned) (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) ∗ llctx_interp L ∗ T)%I with "[Ha HL]" as ">(Ha & $ & $)"; first last.
+    { iSplitR; first done. iApply (struct_ltype_incl_owned_in lts1 lts2). done. }
     iInduction rts1 as [ | rt1 rts1] "IH" forall (rts2 lts1 lts2 rs1 rs2 Hlen); destruct rts2 as [ | rt2 rts2]; try done;
       inv_hlist lts2; inv_hlist lts1.
     { simpl. by iFrame. }
     intros lt1 lts1 lt2 lts2. simpl in Hlen.
     destruct rs1 as [r1 rs1]. destruct rs2 as [r2 rs2].
-    simpl. iMod ("Ha" with "[//] CTX HE HL") as "(Hincl1 & HL & HT)".
+    simpl. iMod ("Ha" with "[//] CTX HE HL") as "(%Hst & Hincl1 & HL & HT)".
     iMod ("IH" with "[] HT HL") as "(Hincl & $ & $)"; first (iPureIntro; lia).
-    by iFrame.
+    iModIntro. iFrame. done.
   Qed.
   Definition weak_subltype_struct_owned_in_inst := [instance @weak_subltype_struct_owned_in].
   Global Existing Instance weak_subltype_struct_owned_in_inst | 10.
@@ -171,16 +173,18 @@ Section subtype.
     ⊢ weak_subltype E L (Owned) (rs1) (rs2) (StructLtype lts1 sls1) (StructLtype lts2 sls2) T.
   Proof.
     iIntros "(-> & -> & HT)" (??) "#CTX #HE HL".
-    iAssert (([∗ list] ltp ∈ hzipl2 rts lts1 lts2, ∀ r, ltype_incl (Owned ) r r (projT2 ltp).1 (projT2 ltp).2) ∗ llctx_interp L ∗ T)%I with "[HT HL]" as "(Ha & $ & $)"; first last.
-    { iApply (struct_ltype_incl_owned lts1 lts2). done. }
+    iAssert (([∗ list] ltp ∈ hzipl2 rts lts1 lts2, ∀ r,
+      ⌜ltype_st (projT2 ltp).1 = ltype_st (projT2 ltp).2⌝ ∗
+      ltype_incl (Owned ) r r (projT2 ltp).1 (projT2 ltp).2) ∗ llctx_interp L ∗ T)%I with "[HT HL]" as "(Ha & $ & $)"; first last.
+    { iSplitR; first done. iApply (struct_ltype_incl_owned lts1 lts2). done. }
     clear rs2.
     iInduction rts as [ | rt rts] "IH" forall (lts1 lts2); inv_hlist lts2; inv_hlist lts1.
     { simpl. iFrame. }
     intros lt1 lts1 lt2 lts2.
     simpl. iDestruct "HT" as "(%Hsubt & HT)".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl1"; first apply Hsubt.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Hincl1)"; first apply Hsubt.
     iPoseProof ("IH" with "HT HL")  as "(Hincl & $ & $)".
-    iFrame. iIntros (?).
+    iFrame. iIntros (?). iR.
     iApply ltype_eq_ltype_incl_l.
     iApply "Hincl1".
   Qed.
@@ -194,17 +198,19 @@ Section subtype.
     ⊢ weak_subltype E L (Shared κ) (#rs1) (#rs2) (StructLtype lts1 sls1) (StructLtype lts2 sls2) T.
   Proof.
     iIntros "(-> & %Hlen & Ha)" (??) "#CTX #HE HL".
-    iAssert (|={F}=> ([∗ list] lt1; lt2 ∈ hpzipl _ lts1 rs1; hpzipl _ lts2 rs2, ltype_incl (Shared κ) (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) ∗ llctx_interp L ∗ T)%I with "[Ha HL]" as ">(Ha & $ & $)"; first last.
-    { iApply (struct_ltype_incl_shared_in lts1 lts2). done. }
+    iAssert (|={F}=> ([∗ list] lt1; lt2 ∈ hpzipl _ lts1 rs1; hpzipl _ lts2 rs2,
+      ⌜ltype_st (projT2 lt1).1 = ltype_st (projT2 lt2).1⌝ ∗
+      ltype_incl (Shared κ) (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) ∗ llctx_interp L ∗ T)%I with "[Ha HL]" as ">(Ha & $ & $)"; first last.
+    { iSplitR; first done. iApply (struct_ltype_incl_shared_in lts1 lts2). done. }
     (* TODO duplicated *)
     iInduction rts1 as [ | rt1 rts1] "IH" forall (rts2 lts1 lts2 rs1 rs2 Hlen); destruct rts2 as [ | rt2 rts2]; try done;
       inv_hlist lts2; inv_hlist lts1.
     { simpl. by iFrame. }
     intros lt1 lts1 lt2 lts2. simpl in Hlen.
     destruct rs1 as [r1 rs1]. destruct rs2 as [r2 rs2].
-    simpl. iMod ("Ha" with "[//] CTX HE HL") as "(Hincl1 & HL & HT)".
+    simpl. iMod ("Ha" with "[//] CTX HE HL") as "(%Hst & Hincl1 & HL & HT)".
     iMod ("IH" with "[] HT HL") as "(Hincl & $ & $)"; first (iPureIntro; lia).
-    by iFrame.
+    iModIntro. iFrame. done.
   Qed.
   Definition weak_subltype_struct_shared_in_inst := [instance @weak_subltype_struct_shared_in].
   Global Existing Instance weak_subltype_struct_shared_in_inst | 10.
@@ -216,16 +222,18 @@ Section subtype.
     ⊢ weak_subltype E L (Shared κ) (rs1) (rs2) (StructLtype lts1 sls1) (StructLtype lts2 sls2) T.
   Proof.
     iIntros "(-> & -> & HT)" (??) "#CTX #HE HL". iModIntro.
-    iAssert (([∗ list] ltp ∈ hzipl2 rts lts1 lts2, ∀ r, ltype_incl (Shared κ) r r (projT2 ltp).1 (projT2 ltp).2) ∗ llctx_interp L ∗ T)%I with "[HT HL]" as "(Ha & $ & $)"; first last.
-    { iApply (struct_ltype_incl_shared lts1 lts2). done. }
+    iAssert (([∗ list] ltp ∈ hzipl2 rts lts1 lts2, ∀ r,
+      ⌜ltype_st (projT2 ltp).1 = ltype_st (projT2 ltp).2⌝ ∗
+      ltype_incl (Shared κ) r r (projT2 ltp).1 (projT2 ltp).2) ∗ llctx_interp L ∗ T)%I with "[HT HL]" as "(Ha & $ & $)"; first last.
+    { iSplitR; first done. iApply (struct_ltype_incl_shared lts1 lts2). done. }
     (* TODO duplicated *)
     clear rs2. iInduction rts as [ | rt rts] "IH" forall (lts1 lts2); inv_hlist lts2; inv_hlist lts1.
     { simpl. iFrame. }
     intros lt1 lts1 lt2 lts2.
     simpl. iDestruct "HT" as "(%Hsubt & HT)".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl1"; first apply Hsubt.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Hincl1)"; first apply Hsubt.
     iPoseProof ("IH" with "HT HL")  as "(Hincl & $ & $)".
-    iFrame. iIntros (?).
+    iFrame. iIntros (?). iR.
     iApply ltype_eq_ltype_incl_l.
     iApply "Hincl1".
   Qed.
@@ -239,16 +247,18 @@ Section subtype.
     ⊢ weak_subltype E L k rs1 rs2 (StructLtype lts1 sls1) (StructLtype lts2 sls2) T.
   Proof.
     iIntros "(-> & -> & HT)" (??) "#CTX #HE HL". iModIntro.
-    iAssert ((∀ k, [∗ list] ltp ∈ hzipl2 rts lts1 lts2, ∀ r, ltype_eq k r r (projT2 ltp).1 (projT2 ltp).2) ∗ llctx_interp L ∗ T)%I with "[HT HL]" as "(Ha & $ & $)"; first last.
-    { iApply (struct_ltype_incl lts1 lts2). done. }
+    iAssert ((∀ k, [∗ list] ltp ∈ hzipl2 rts lts1 lts2, ∀ r,
+      ⌜ltype_st (projT2 ltp).1 = ltype_st (projT2 ltp).2⌝ ∗
+      ltype_eq k r r (projT2 ltp).1 (projT2 ltp).2) ∗ llctx_interp L ∗ T)%I with "[HT HL]" as "(Ha & $ & $)"; first last.
+    { iSplitR; first done. iApply (struct_ltype_incl lts1 lts2). done. }
     clear rs2. iInduction rts as [ | rt rts] "IH" forall (lts1 lts2); inv_hlist lts2; inv_hlist lts1.
     { simpl. by iFrame. }
     intros lt1 lts1 lt2 lts2.
     simpl. iDestruct "HT" as "(%Hsubt & HT)".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl1"; first apply Hsubt.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Hincl1)"; first apply Hsubt.
     iPoseProof ("IH" with "HT HL")  as "(Hincl & $ & $)".
     iFrame. iIntros (?). iSplitR.
-    - iIntros (?). iApply "Hincl1".
+    - iIntros (?). iSplitR; first done. iApply "Hincl1".
     - iApply "Hincl".
   Qed.
   Definition weak_subltype_struct_base_inst := [instance @weak_subltype_struct_base].
@@ -293,7 +303,8 @@ Section subtype.
     ⊢ weak_subltype E L k r1 r2 (StructLtype lts1 sls) (◁ ty2) T.
   Proof.
     iIntros "(%tys2 & -> & Hsubt)" (??) "#CTX #HE HL".
-    iMod ("Hsubt" with "[//] CTX HE HL") as "(Hincl & $ & $)".
+    iMod ("Hsubt" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & $)".
+    iSplitR. { iPureIntro. etrans; first apply Hst. done. }
     iApply (ltype_incl_trans with "Hincl").
     iApply struct_t_unfold_2.
   Qed.
@@ -305,7 +316,8 @@ Section subtype.
     ⊢ weak_subltype E L k r1 r2 (StructLtype lts1 sls1) (◁ struct_t sls2 tys2) T.
   Proof.
     iIntros "(-> & Hsubt)" (??) "#CTX #HE HL".
-    iMod ("Hsubt" with "[//] CTX HE HL") as "(Hincl & $ & $)".
+    iMod ("Hsubt" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & $)".
+    iSplitR. { iPureIntro. etrans; first apply Hst. done. }
     iApply (ltype_incl_trans with "Hincl").
     iApply struct_t_unfold_2.
   Qed.
@@ -317,7 +329,8 @@ Section subtype.
     ⊢ weak_subltype E L k r1 r2 (◁ struct_t sls1 tys1) (StructLtype lts2 sls2) T.
   Proof.
     iIntros "Hsubt" (??) "#CTX #HE HL".
-    iMod ("Hsubt" with "[//] CTX HE HL") as "(Hincl & $ & $)".
+    iMod ("Hsubt" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & $)".
+    iSplitR. { iPureIntro. etrans; last apply Hst. done. }
     iApply (ltype_incl_trans with "[] Hincl").
     iApply struct_t_unfold_1.
   Qed.

@@ -468,7 +468,6 @@ Section unfold.
     ⊢ ltype_incl k rs rs (ArrayLtype ty len []) (◁ (array_t len ty)).
   Proof.
     iModIntro.
-    iSplitR. { simp_ltypes. rewrite {2}/ty_syn_type /array_t //. }
     iSplitR.
     - by iApply array_t_unfold_1'.
     - simp_ltypes. by iApply array_t_unfold_1'.
@@ -607,7 +606,6 @@ Section unfold.
     ⊢ ltype_incl k rs rs (◁ (array_t len ty)) (ArrayLtype ty len []).
   Proof.
     iModIntro.
-    iSplitR. { simp_ltypes. rewrite {2}/ty_syn_type /array_t //. }
     iSplitR.
     - by iApply array_t_unfold_2'.
     - simp_ltypes. by iApply array_t_unfold_2'.
@@ -624,7 +622,9 @@ Section unfold.
   Lemma array_t_unfold_full_eqltype E L {rt} (ty : type rt) (len : nat) :
     full_eqltype E L (◁ (array_t len ty))%I (ArrayLtype ty len []).
   Proof.
-    iIntros (?) "HL CTX HE". iIntros (??). iApply array_t_unfold.
+    iIntros (?) "HL CTX HE".
+    iR.
+    iIntros (??). iApply array_t_unfold.
   Qed.
 End unfold.
 

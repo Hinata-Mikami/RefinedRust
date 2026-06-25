@@ -13,7 +13,7 @@ Section access.
     ⊢ typed_array_access π E L base off st (◁ array_t len ty) rs k T.
   Proof.
     iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
-    iPoseProof (array_t_unfold k ty len rs) as "((_ & HIncl & _) & _)".
+    iPoseProof (array_t_unfold k ty len rs) as "((HIncl & _) & _)".
     iMod (ltype_incl'_use with "HIncl Hl") as "Hl"; first done.
     iApply ("HT" with "[//] [//] [//] CTX HE HL Hl").
   Qed.

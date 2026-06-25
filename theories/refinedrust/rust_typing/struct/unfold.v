@@ -267,7 +267,7 @@ Section unfold.
   Lemma struct_t_unfold_1 {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) k r :
     ⊢ ltype_incl k r r (◁ (struct_t sls tys))%I (StructLtype (hmap (λ _, OfTy) tys) sls).
   Proof.
-    iSplitR; first done. iModIntro. iSplit.
+    iModIntro. iSplit.
     + iApply struct_t_unfold_1'.
     + simp_ltypes. rewrite ltype_core_hmap_ofty. by iApply struct_t_unfold_1'.
   Qed.
@@ -446,7 +446,7 @@ Section unfold.
   Lemma struct_t_unfold_2 {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) k r :
     ⊢ ltype_incl k r r (StructLtype (hmap (λ _, OfTy) tys) sls) (◁ (struct_t sls tys))%I.
   Proof.
-    iSplitR; first done. iModIntro. iSplit.
+    iModIntro. iSplit.
     + iApply struct_t_unfold_2'.
     + simp_ltypes. rewrite ltype_core_hmap_ofty. iApply struct_t_unfold_2'.
   Qed.
@@ -464,27 +464,30 @@ Section unfold.
     full_eqltype E L (StructLtype lts sls) (◁ (struct_t sls tys))%I.
   Proof.
     iIntros (Heq ?) "HL #CTX #HE".
-    iAssert ([∗ list] ltp ∈ hzipl2 rts lts tys, ∀ k r, ltype_eq k r r (projT2 ltp).1 (◁ (projT2 ltp).2)%I)%I with "[HL]" as "Ha".
+    iAssert ([∗ list] ltp ∈ hzipl2 rts lts tys, ∀ k r,
+      ⌜ltype_st (projT2 ltp).1 = ltype_st (◁ (projT2 ltp).2)%I⌝ ∗
+      ltype_eq k r r (projT2 ltp).1 (◁ (projT2 ltp).2)%I)%I with "[HL]" as "Ha".
     { iInduction rts as [ | rt rts] "IH"; first done.
       inv_hlist tys. inv_hlist lts. intros lt lts ty tys.
       rewrite hzipl2_cons. rewrite Forall_cons. intros [Heq Heqs].
-      iPoseProof (Heq with "HL CTX HE") as "#Heq".
+      iPoseProof (Heq with "HL CTX HE") as "(%Hst & #Heq)".
       iPoseProof ("IH" with "[//] HL") as "Heqs".
-      iFrame. simpl. done. }
+      iApply big_sepL_cons. iFrame. simpl. iIntros (k r). iSplitR; done. }
+    iSplitR; first done.
     iIntros (b r).
     iApply (ltype_eq_trans with "[Ha]"); last (iApply ltype_eq_sym; iApply struct_t_unfold).
     iApply (struct_ltype_eq lts).
     iIntros (k). rewrite hzipl2_fmap_r big_sepL_fmap.
     iApply (big_sepL_impl with "Ha").
     iModIntro. iIntros (? [? []] ?) "Ha".
-    iIntros (r'). iApply "Ha".
+    iIntros (r'). iDestruct ("Ha" $! _ _) as "($ & Ha)". done.
   Qed.
 
   Lemma struct_t_unfold_full_eqltype E L {rts} (tys : hlist type rts) sls :
     (*full_eqltype E L lt (◁ ty)%I →*)
     full_eqltype E L (StructLtype (hmap (λ _, OfTy) tys) sls) (◁ (struct_t sls tys))%I.
   Proof.
-    iIntros (?) "HL #CTX #HE". iIntros (b r).
+    iIntros (?) "HL #CTX #HE". iSplitR; first done. iIntros (b r).
     iApply ltype_eq_sym.
     iApply struct_t_unfold.
   Qed.
@@ -500,7 +503,7 @@ Section place.
   Proof.
     iIntros "Hp". iApply typed_place_eqltype; last iFrame.
     iIntros (?) "HL CTX HE".
-    iIntros (??). iApply struct_t_unfold.
+    iSplitR; first done. iIntros (??). iApply struct_t_unfold.
   Qed.
   Definition typed_place_ofty_struct_inst := [instance @typed_place_ofty_struct].
   Global Existing Instance typed_place_ofty_struct_inst | 30.
@@ -515,7 +518,7 @@ Section stratify.
   Proof.
     iIntros "Hp". iApply stratify_ltype_eqltype; iFrame.
     iPureIntro. iIntros (?) "HL CTX HE".
-    iApply struct_t_unfold.
+    iSplitR; first done. iApply struct_t_unfold.
   Qed.
   Definition stratify_ltype_ofty_struct_inst := [instance @stratify_ltype_ofty_struct].
   Global Existing Instance stratify_ltype_ofty_struct_inst | 30.

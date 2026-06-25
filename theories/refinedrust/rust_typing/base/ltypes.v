@@ -3720,8 +3720,8 @@ Definition ltype_incl' `{!typeGS Σ} {rt1 rt2 : RT} (b : bor_kind) r1 r2 (lt1 : 
     end).
 
 Definition ltype_incl `{!typeGS Σ} {rt1 rt2 : RT} (b : bor_kind) r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) : iProp Σ :=
-  (□ (* same layout *)
-  (⌜ltype_st lt1 = ltype_st lt2⌝ ∗
+  (□
+  (
    ltype_incl' b r1 r2 lt1 lt2 ∗
    ltype_incl' b r1 r2 (ltype_core lt1) (ltype_core lt2)
   )).
@@ -3733,25 +3733,25 @@ Global Instance ltype_eq_persistent `{!typeGS Σ} {rt1 rt2} b r1 r2 (lt1 : ltype
 
 (** Heterogeneous ltype equality *)
 Definition eqltype `{!typeGS Σ} (E : elctx) (L : llctx) {rt1 rt2} b r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) : Prop :=
-  ∀ qL, llctx_interp_noend L qL -∗ (rrust_ctx -∗ elctx_interp E -∗ ltype_eq b r1 r2 lt1 lt2).
+  ∀ qL, llctx_interp_noend L qL -∗ (rrust_ctx -∗ elctx_interp E -∗ ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ltype_eq b r1 r2 lt1 lt2).
 #[export]
 Instance: Params (@eqltype) 6 := {}.
 
 (** Homogeneous ltype equality, disregarding the refinement and borkind *)
 Definition full_eqltype `{!typeGS Σ} (E : elctx) (L : llctx) {rt} (lt1 : ltype rt) (lt2 : ltype rt) : Prop :=
-  ∀ qL, llctx_interp_noend L qL -∗ rrust_ctx -∗ elctx_interp E -∗ ∀ b r, ltype_eq b r r lt1 lt2.
+  ∀ qL, llctx_interp_noend L qL -∗ rrust_ctx -∗ elctx_interp E -∗ ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ b r, ltype_eq b r r lt1 lt2.
 #[export]
 Instance: Params (@full_eqltype) 5 := {}.
 
 (** Heterogeneous ltype subtyping *)
 Definition subltype `{!typeGS Σ} (E : elctx) (L : llctx) {rt1 rt2} b r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) : Prop :=
-  ∀ qL, llctx_interp_noend L qL -∗ rrust_ctx -∗ (elctx_interp E -∗ ltype_incl b r1 r2 lt1 lt2).
+  ∀ qL, llctx_interp_noend L qL -∗ rrust_ctx -∗ (elctx_interp E -∗ ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ltype_incl b r1 r2 lt1 lt2).
 #[export]
 Instance: Params (@subltype) 6 := {}.
 
 (** Homogeneous ltype subtyping, disregarding the refinement and borkind *)
 Definition full_subltype `{!typeGS Σ} (E : elctx) (L : llctx) {rt} (lt1 : ltype rt) (lt2 : ltype rt) : Prop :=
-  ∀ qL, llctx_interp_noend L qL -∗ rrust_ctx -∗ elctx_interp E -∗ ∀ b r, ltype_incl b r r lt1 lt2.
+  ∀ qL, llctx_interp_noend L qL -∗ rrust_ctx -∗ elctx_interp E -∗ ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ b r, ltype_incl b r r lt1 lt2.
 #[export]
 Instance: Params (@full_subltype) 5 := {}.
 
@@ -3774,7 +3774,7 @@ Lemma ltype_incl_use `{!typeGS Σ} {rt1 rt2} π F b r1 r2 l (lt1 : ltype rt1) (l
   l ◁ₗ[π, b] r1 @ lt1 ={F}=∗ l ◁ₗ[π, b] r2 @ lt2.
 Proof.
   iIntros (?) "Hincl Ha".
-  iDestruct "Hincl" as "(_ & #Hincl & _)".
+  iDestruct "Hincl" as "(#Hincl & _)".
   destruct b.
   - iApply (fupd_mask_mono with "(Hincl Ha)"); done.
   - by iApply "Hincl".
@@ -3786,13 +3786,21 @@ Lemma ltype_incl_use_core `{!typeGS Σ} {rt1 rt2} π F b r1 r2 l (lt1 : ltype rt
   l ◁ₗ[π, b] r1 @ ltype_core lt1 ={F}=∗ l ◁ₗ[π, b] r2 @ ltype_core lt2.
 Proof.
   iIntros (?) "Hincl Ha".
-  iDestruct "Hincl" as "(_ & _ & #Hincl)".
+  iDestruct "Hincl" as "( _ & #Hincl)".
   destruct b.
   - iApply (fupd_mask_mono with "(Hincl Ha)"); done.
   - by iApply "Hincl".
   - by iApply "Hincl".
 Qed.
 
+Lemma ltype_incl_core `{!typeGS Σ}  {rt1 rt2} b r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) :
+  ltype_incl b r1 r2 lt1 lt2 -∗ ltype_incl b r1 r2 (ltype_core lt1) (ltype_core lt2).
+Proof.
+  iIntros "(_ & #Hi)".
+  iSplitR; iModIntro.
+  - done.
+  - rewrite !ltype_core_idemp. done.
+Qed.
 
 Section accessors.
   Context `{!typeGS Σ}.
@@ -3806,7 +3814,7 @@ Section accessors.
   Proof.
     iIntros (? Hsubt) "#CTX #HE HL".
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & _)".
-    iPoseProof (Hsubt with "HL CTX HE") as "#Hincl".
+    iPoseProof (Hsubt with "HL CTX HE") as "(_ & #Hincl)".
     iModIntro. iIntros (π l). iApply ltype_incl_use; done.
   Qed.
   Lemma subltype_use_core {rt1 rt2} F E L b r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) :
@@ -3819,7 +3827,7 @@ Section accessors.
   Proof.
     iIntros (? Hsubt) "#CTX #HE HL".
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & _)".
-    iPoseProof (Hsubt with "HL CTX HE") as "#Hincl".
+    iPoseProof (Hsubt with "HL CTX HE") as "(_ & #Hincl)".
     iModIntro. iIntros (π l). iApply ltype_incl_use_core; done.
   Qed.
 
@@ -3828,7 +3836,7 @@ Section accessors.
     rrust_ctx -∗
     elctx_interp E -∗
     llctx_interp L -∗
-    ltype_incl b r1 r2 lt1 lt2.
+    ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ltype_incl b r1 r2 lt1 lt2.
   Proof.
     iIntros (Hsubt) "#CTX #HE HL".
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & _)".
@@ -3839,12 +3847,12 @@ Section accessors.
     rrust_ctx -∗
     elctx_interp E -∗
     llctx_interp L -∗
-    ∀ b r, ltype_incl b r r lt1 lt2.
+    ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ b r, ltype_incl b r r lt1 lt2.
   Proof.
     iIntros (Hsubt) "#CTX #HE HL".
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & _)".
-    iPoseProof (Hsubt with "HL CTX HE") as "#Hincl".
-    iIntros (b r). iApply "Hincl".
+    iPoseProof (Hsubt with "HL CTX HE") as "(% & #Hincl)".
+    iR. iIntros (b r). iApply "Hincl".
   Qed.
 
   Lemma eqltype_use_noend F E L {rt1 rt2} b r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) qL l π :
@@ -3857,9 +3865,9 @@ Section accessors.
     llctx_interp_noend L qL.
   Proof.
     iIntros (? Hunfold) "#CTX #HE HL".
-    iPoseProof (Hunfold with "HL CTX HE") as "#Hll". iFrame.
+    iPoseProof (Hunfold with "HL CTX HE") as "(% & #Hll)". iFrame.
     iIntros "Hl".
-    iDestruct "Hll" as "((_ & #Ha & _) & _)".
+    iDestruct "Hll" as "((#Ha & _) & _)".
     destruct b.
     - iMod (fupd_mask_subseteq lftE) as "Hcl"; first solve_ndisj.
       iMod ("Ha" with "Hl") as "$". by iMod "Hcl" as "_".
@@ -3885,7 +3893,7 @@ Section accessors.
     rrust_ctx -∗
     elctx_interp E -∗
     llctx_interp L -∗
-    ltype_eq b r1 r2 lt1 lt2.
+    ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ltype_eq b r1 r2 lt1 lt2.
   Proof.
     iIntros (Heq) "CTX HE HL".
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
@@ -3896,7 +3904,7 @@ Section accessors.
     rrust_ctx -∗
     elctx_interp E -∗
     llctx_interp L -∗
-    ∀ b r, ltype_eq b r r lt1 lt2.
+    ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ b r, ltype_eq b r r lt1 lt2.
   Proof.
     iIntros (Heq) "CTX HE HL".
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
@@ -3920,7 +3928,7 @@ Section accessors.
     llctx_interp L.
   Proof.
     iIntros (? Heq) "#CTX #HE HL".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; [done | ].
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(% & #Heq)"; [done | ].
     iFrame. iIntros "Hl". iDestruct ("Heq" $! _ _) as "[Hincl _]".
     by iApply (ltype_incl_use with "Hincl Hl").
   Qed.
@@ -3933,8 +3941,8 @@ Section accessors.
     ⌜ltype_st lt1 = ltype_st lt2⌝.
   Proof.
     iIntros (Hunfold) "#CTX #HE HL".
-    iPoseProof (Hunfold with "HL CTX HE") as "#Hll".
-    iDestruct "Hll" as "((#$ & _) & _)".
+    iPoseProof (Hunfold with "HL CTX HE") as "(% & #Hll)".
+    done.
   Qed.
   Lemma eqltype_syn_type_eq E L {rt1 rt2} b r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) :
     eqltype E L b r1 r2 lt1 lt2 →
@@ -3966,14 +3974,13 @@ Section eqltype.
   Qed.
   Lemma ltype_incl_refl {rt} b r (lt : ltype rt) : ⊢ ltype_incl b r r lt lt.
   Proof.
-    iIntros "!>". iSplit; first done. iSplit; iApply ltype_incl'_refl.
+    iIntros "!>". iSplit; iApply ltype_incl'_refl.
   Qed.
   Lemma ltype_incl_trans {rt1 rt2 rt3} b r1 r2 r3 (lt1 : ltype rt1) (lt2 : ltype rt2) (lt3 : ltype rt3) :
     ltype_incl b r1 r2 lt1 lt2 -∗ ltype_incl b r2 r3 lt2 lt3 -∗ ltype_incl b r1 r3 lt1 lt3.
   Proof.
-    iIntros "(%Hly1 & #Hi1 & #Hc1) (%Hly2 & #Hi2 & #Hc2)".
+    iIntros "(#Hi1 & #Hc1) (#Hi2 & #Hc2)".
     iModIntro.
-    iSplit. { rewrite Hly1 Hly2. done. }
     iSplit.
     - iModIntro. destruct b.
       + iIntros (??) "Ha". iMod ("Hi1" with "Ha") as "Ha". by iApply "Hi2".
@@ -4008,21 +4015,13 @@ Section eqltype.
     - iApply (ltype_incl_trans with "Hj2 Hi2").
   Qed.
 
-  Lemma ltype_eq_syn_type {rt1 rt2} b r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) :
-    ltype_eq b r1 r2 lt1 lt2 -∗
-    ⌜ltype_st lt1 = ltype_st lt2⌝.
-  Proof.
-    iIntros "((#$ & _) & _)".
-  Qed.
   Lemma ltype_eq_core {rt1 rt2} b r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) :
     ltype_eq b r1 r2 lt1 lt2 -∗ ltype_eq b r1 r2 (ltype_core lt1) (ltype_core lt2).
   Proof.
-    iIntros "((%Hly_eq & #Hi & #Hc) & (_ & #Hi2 & #Hc2))".
+    iIntros "((#Hi & #Hc) & (#Hi2 & #Hc2))".
     iSplit; iModIntro.
-    - iSplit. { by rewrite !ltype_core_syn_type_eq. }
-      rewrite !ltype_core_idemp. iSplit; done.
-    - iSplit. { by rewrite !ltype_core_syn_type_eq. }
-      rewrite !ltype_core_idemp. iSplit; done.
+    - rewrite !ltype_core_idemp. iSplit; done.
+    - rewrite !ltype_core_idemp. iSplit; done.
   Qed.
 
   (** *** [eqltype] / [subltype] / [full_eqltype] / [full_subltype] *)
@@ -4030,32 +4029,44 @@ Section eqltype.
     full_eqltype E L lt1 lt2 ↔ (∀ b r, eqltype E L b r r lt1 lt2).
   Proof.
     split.
-    - iIntros (Heq b r qL) "HL CTX HE". iApply (Heq with "HL CTX HE").
-    - iIntros (Heq qL) "HL CTX HE". iIntros (b r). iApply (Heq with "HL CTX HE").
+    - iIntros (Heq b r qL) "HL CTX HE". iPoseProof (Heq with "HL CTX HE") as "(%Hst & ?)".
+      iR. done.
+    - iIntros (Heq qL) "HL CTX HE".
+      iPoseProof (Heq inhabitant inhabitant with "HL CTX HE") as "(%Hst & #?)".
+      iR. iIntros (b r).
+      iPoseProof (Heq with "HL CTX HE") as "(_ & #?)".
+      done.
   Qed.
   Lemma full_subltype_alt E L {rt} (lt1 lt2 : ltype rt) :
     full_subltype E L lt1 lt2 ↔ (∀ b r, subltype E L b r r lt1 lt2).
   Proof.
     split.
-    - iIntros (Hsub b r qL) "HL CTX HE". iApply (Hsub with "HL CTX HE").
-    - iIntros (Hsub qL) "HL CTX HE". iIntros (b r). iApply (Hsub with "HL CTX HE").
+    - iIntros (Hsub b r qL) "HL CTX HE".
+      iPoseProof (Hsub with "HL CTX HE") as "(%Hst & ?)".
+      iR. done.
+    - iIntros (Hsub qL) "HL CTX HE".
+      iPoseProof (Hsub inhabitant inhabitant with "HL CTX HE") as "(%Hst & #?)".
+      iR. iIntros (b r).
+      iPoseProof (Hsub with "HL CTX HE") as "(_ & #?)".
+      done.
   Qed.
 
   Global Instance eqltype_refl E L {rt} b r : Reflexive (eqltype E L b (rt1:=rt) (rt2:=rt) r r).
-  Proof. iIntros (??) "? ? ?". iApply ltype_eq_refl. Qed.
+  Proof. iIntros (??) "? ? ?". iR. iApply ltype_eq_refl. Qed.
   Lemma eqltype_symm E L {rt1 rt2} b r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) :
     eqltype E L b r1 r2 lt1 lt2 → eqltype E L b r2 r1 lt2 lt1.
   Proof.
     intros Heq.
-    iIntros (?) "HL CTX HE". iDestruct (Heq with "HL CTX HE") as "#Heq".
-    by iApply ltype_eq_sym.
+    iIntros (?) "HL CTX HE". iDestruct (Heq with "HL CTX HE") as "(% & #Heq)".
+    iR. by iApply ltype_eq_sym.
   Qed.
   Lemma eqltype_trans E L {rt1 rt2 rt3} b r1 r2 r3 (lt1 : ltype rt1) (lt2 : ltype rt2) (lt3 : ltype rt3) :
     eqltype E L b r1 r2 lt1 lt2 → eqltype E L b r2 r3 lt2 lt3 → eqltype E L b r1 r3 lt1 lt3.
   Proof.
     intros H1 H2.
-    iIntros (?) "HL #CTX #HE". iDestruct (H1 with "HL CTX HE") as "#Heq1".
-    iDestruct (H2 with "HL CTX HE") as "#Heq2".
+    iIntros (?) "HL #CTX #HE". iDestruct (H1 with "HL CTX HE") as "(%Hst1 & #Heq1)".
+    iDestruct (H2 with "HL CTX HE") as "(%Hst2 & #Heq2)".
+    rewrite Hst1 Hst2. iR.
     iApply ltype_eq_trans; done.
   Qed.
 
@@ -4070,16 +4081,17 @@ Section eqltype.
 
   Global Instance subltype_refl E L {rt} b r : Reflexive (subltype E L (rt1:=rt) (rt2:=rt) b r r).
   Proof.
-    iIntros (lt ?) "HL CTX HE !>".
-    iSplitR; first done.
+    iIntros (lt ?) "HL CTX HE".
+    iR. iModIntro.
     iSplit; iApply ltype_incl'_refl.
   Qed.
   Lemma subltype_trans E L {rt1 rt2 rt3} b r1 r2 r3 (lt1 : ltype rt1) (lt2 : ltype rt2) (lt3 : ltype rt3) :
     subltype E L b r1 r2 lt1 lt2 → subltype E L b r2 r3 lt2 lt3 → subltype E L b r1 r3 lt1 lt3.
   Proof.
     iIntros (Hsub12 Hsub23). iIntros (?) "HL #CTX #HE".
-    iPoseProof (Hsub12 with "HL CTX HE") as "#Hsub12".
-    iPoseProof (Hsub23 with "HL CTX HE") as "#Hsub23".
+    iPoseProof (Hsub12 with "HL CTX HE") as "(%Hst1 & #Hsub12)".
+    iPoseProof (Hsub23 with "HL CTX HE") as "(%Hst2 & #Hsub23)".
+    rewrite Hst1 Hst2. iR.
     iApply (ltype_incl_trans with "Hsub12 Hsub23").
   Qed.
   Global Instance full_subltype_preorder E L {rt} : PreOrder (full_subltype E L (rt := rt)).
@@ -4091,31 +4103,37 @@ Section eqltype.
 
   Lemma all_subltype_alt E L {rt} b (lt1 lt2 : ltype rt) :
     (∀ r, subltype E L b r r lt1 lt2) ↔
-    (∀ qL, llctx_interp_noend L qL -∗ rrust_ctx -∗ elctx_interp E -∗ ∀ r, ltype_incl b r r lt1 lt2).
+    (∀ qL, llctx_interp_noend L qL -∗ rrust_ctx -∗ elctx_interp E -∗ ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_incl b r r lt1 lt2).
   Proof.
     split.
-    - intros Ha qL. iIntros "HL CTX HE" (r).
-      by iPoseProof (Ha r with "HL CTX HE") as "Ha".
+    - intros Ha qL. iIntros "HL CTX HE".
+      iPoseProof (Ha inhabitant with "HL CTX HE") as "(% & #?)".
+      iR.
+      iIntros (r). by iPoseProof (Ha r with "HL CTX HE") as "(_ & Ha)".
     - intros Ha r. iIntros (qL) "HL CTX HE".
-      iApply (Ha with "HL CTX HE").
+      iPoseProof (Ha with "HL CTX HE") as "(% & Ha)".
+      iR. done.
   Qed.
   Lemma all_eqltype_alt E L {rt} b (lt1 lt2 : ltype rt) :
     (∀ r, eqltype E L b r r lt1 lt2) ↔
-    (∀ qL, llctx_interp_noend L qL -∗ rrust_ctx -∗ elctx_interp E -∗ ∀ r, ltype_eq b r r lt1 lt2).
+    (∀ qL, llctx_interp_noend L qL -∗ rrust_ctx -∗ elctx_interp E -∗ ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_eq b r r lt1 lt2).
   Proof.
     split.
-    - intros Ha qL. iIntros "HL CTX HE" (r).
-      by iPoseProof (Ha r with "HL CTX HE") as "Ha".
+    - intros Ha qL. iIntros "HL CTX HE".
+      iPoseProof (Ha inhabitant with "HL CTX HE") as "(% & #?)".
+      iR. iIntros (r).
+      by iPoseProof (Ha r with "HL CTX HE") as "(_ & Ha)".
     - intros Ha r. iIntros (qL) "HL CTX HE".
-      iApply (Ha with "HL CTX HE").
+      iPoseProof (Ha with "HL CTX HE") as "(% & Ha)".
+      iR. done.
   Qed.
 
   Lemma subltype_eqltype E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) b r1 r2 :
     subltype E L b r1 r2 lt1 lt2 → subltype E L b r2 r1 lt2 lt1 → eqltype E L b r1 r2 lt1 lt2.
   Proof.
     intros Ha Hb. iIntros (?) "HL #CTX #HE".
-    iPoseProof (Ha with "HL CTX HE") as "#Ha". iPoseProof (Hb with "HL CTX HE") as "#Hb".
-    iSplit; done.
+    iPoseProof (Ha with "HL CTX HE") as "(%Hst1 & #Ha)". iPoseProof (Hb with "HL CTX HE") as "(%Hst2 & #Hb)".
+    iR. iSplit; done.
   Qed.
   Lemma full_subltype_eqltype E L {rt} (lt1 lt2 : ltype rt) :
     full_subltype E L lt1 lt2 → full_subltype E L lt2 lt1 → full_eqltype E L lt1 lt2.
@@ -4163,9 +4181,10 @@ Section eqltype.
   Proof.
     iIntros "Hsub".
     iDestruct ("Hsub") as "(%Hst & #Hsceq & #Hown & #Hshr)".
-    iSplitR; iModIntro; simpl. { unfold ltype_st. iPureIntro. simpl. by rewrite Hst.  }
+    (*iSplitR; iModIntro; simpl.*)
+    rewrite /ltype_incl.
     simpl. simp_ltypes. rewrite -bi.persistent_sep_dup.
-    iModIntro. iIntros (π l) "Hb". rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
+    iModIntro. iModIntro. iIntros (π l) "Hb". rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hb" as "(%ly & Hst & ? & Hsc & ? & %r' & -> & #Hb)".
     iExists ly. rewrite Hst. iFrame.
     iSplitL "Hsc"; first by iApply "Hsceq".
@@ -4176,7 +4195,9 @@ Section eqltype.
     subltype E L (Shared κ) (PlaceIn r1) (PlaceIn r2) (◁ ty1)%I (◁ ty2)%I.
   Proof.
     iIntros (Hsub qL) "HL #CTX #HE". iPoseProof (Hsub with "HL HE") as "#Hsub".
-    by iApply (type_ltype_incl_shared_in).
+    simp_ltypes.
+    iPoseProof (type_incl_syn_type_eq with "Hsub") as "%".
+    iR.  by iApply (type_ltype_incl_shared_in).
   Qed.
 
   Lemma type_ltype_incl_shared {rt : RT} κ (ty1 : type rt) (ty2 : type rt) :
@@ -4185,7 +4206,7 @@ Section eqltype.
   Proof.
     iIntros "#Hsub". iIntros (r).
     iPoseProof ("Hsub" $! inhabitant) as "(%Hst & #Hsceq & _)".
-    iSplitR; first by setoid_rewrite Hst. iModIntro.
+    iModIntro.
     simp_ltypes. rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (π l) "Hb". rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hb" as "(%ly & Hst & ? & Hsc & ? & %r' & Hrfn & #Hb)".
@@ -4202,6 +4223,8 @@ Section eqltype.
     iIntros (Hsub r qL) "HL #CTX #HE".
     rewrite all_subtype_alt in Hsub.
     iPoseProof (Hsub with "HL HE") as "#Hsub".
+    iPoseProof ("Hsub" $! inhabitant) as "(% & _)".
+    simp_ltypes. iR.
     iApply (type_ltype_incl_shared with "Hsub").
   Qed.
 
@@ -4226,7 +4249,6 @@ Section eqltype.
   Proof.
     iIntros "Hsub".
     iDestruct ("Hsub") as "(%Hst & #Hsceq & #Hown & #Hshr)".
-    iSplitR; first by setoid_rewrite Hst.
     iModIntro; simpl.
     simpl. simp_ltypes. rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (π l) "Hb".
@@ -4237,6 +4259,8 @@ Section eqltype.
     subtype E L r1 r2 ty1 ty2 → subltype E L Owned #r1 #r2 (◁ ty1)%I (◁ ty2)%I.
   Proof.
     iIntros (Hsub qL) "HL #CTX #HE". iPoseProof (Hsub with "HL HE") as "#Hsub".
+    iPoseProof (type_incl_syn_type_eq with "Hsub") as "%".
+    simp_ltypes. iR.
     by iApply (type_ltype_incl_owned_in).
   Qed.
 
@@ -4245,7 +4269,7 @@ Section eqltype.
   Proof.
     iIntros "#Hsub" (r).
     iPoseProof ("Hsub" $! inhabitant) as "(%Hst & #Hsceq & _)".
-    iSplitR; first by setoid_rewrite Hst. iModIntro; simpl.
+    iModIntro; simpl.
     simpl. simp_ltypes. rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (π l) "Hb".
     iModIntro.
@@ -4262,6 +4286,8 @@ Section eqltype.
   Proof.
     iIntros (Hsub r qL) "HL #CTX #HE". rewrite all_subtype_alt in Hsub.
     iPoseProof (Hsub with "HL HE") as "#Hsub".
+    iPoseProof ("Hsub" $! inhabitant) as "(%Hst & #Hsceq & _)".
+    simp_ltypes. iR.
     iApply (type_ltype_incl_owned with "Hsub").
   Qed.
 
@@ -4281,7 +4307,7 @@ Section eqltype.
   Proof.
     iIntros "#Hsub1 #Hsub2" (r).
     iPoseProof ("Hsub1" $! inhabitant) as "(%Hst & #Hsceq & _)".
-    iSplitR; first by setoid_rewrite Hst. iModIntro; simpl.
+    iModIntro; simpl.
     simpl. simp_ltypes. rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (π l) "Hb".
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
@@ -4309,6 +4335,10 @@ Section eqltype.
     iIntros (Hsub r qL) "HL #CTX #HE". apply all_eqtype_alt in Hsub as [Hsub1 Hsub2].
     iPoseProof (Hsub1 with "HL HE") as "#Hsub1".
     iPoseProof (Hsub2 with "HL HE") as "#Hsub2".
+
+    unshelve iPoseProof (type_incl_syn_type_eq with "Hsub1") as "%Hst1"; first apply inhabitant.
+    unshelve iPoseProof (type_incl_syn_type_eq with "Hsub2") as "%Hst2"; first apply inhabitant.
+    simp_ltypes. rewrite Hst1 Hst2. iR.
     iApply (type_eq_ltype_incl_uniq with "Hsub1 Hsub2").
   Qed.
 
@@ -4333,16 +4363,20 @@ Section eqltype.
   Lemma full_eqltype_subltype_l E L {rt : RT} (lt1 lt2 : ltype rt) :
     full_eqltype E L lt1 lt2 → full_subltype E L lt1 lt2.
   Proof.
-    iIntros (Heq ?) "HL #CTX #HE". iIntros (??).
-    iDestruct (Heq with "HL CTX HE") as "Ha".
-    iDestruct ("Ha" $! _ _) as "($ & _)".
+    iIntros (Heq ?) "HL #CTX #HE".
+    iPoseProof (Heq with "HL CTX HE") as "(%Hst & Hincl)".
+    iR.
+    iIntros (??).
+    iDestruct ("Hincl" $! _ _) as "($ & _)".
   Qed.
   Lemma full_eqltype_subltype_r E L {rt : RT} (lt1 lt2 : ltype rt) :
     full_eqltype E L lt1 lt2 → full_subltype E L lt2 lt1.
   Proof.
-    iIntros (Heq ?) "HL #CTX #HE". iIntros (??).
-    iDestruct (Heq with "HL CTX HE") as "Ha".
-    iDestruct ("Ha" $! _ _) as "(_ & $)".
+    iIntros (Heq ?) "HL #CTX #HE".
+    iPoseProof (Heq with "HL CTX HE") as "(%Hst & Hincl)".
+    iR.
+    iIntros (??).
+    iDestruct ("Hincl" $! _ _) as "(_ & $)".
   Qed.
 End eqltype.
 
@@ -4813,12 +4847,12 @@ Section blocked.
     iIntros "#Heq (#Hub1 & #Hub2)".
     iSplitL; iModIntro.
     - iIntros (κ' γ' π r l) "#Hdead Hb".
-      iDestruct ("Heq" $! (Uniq κ' γ') r) as "((% & #Hi1 & #Hc1) & (_ & #Hi2 & #Hc2))".
+      iDestruct ("Heq" $! (Uniq κ' γ') r) as "((#Hi1 & #Hc1) & (#Hi2 & #Hc2))".
       iDestruct ("Hub1" with "Hdead") as "#Hub1'".
       iApply ltype_own_core_equiv. iApply "Hc1". iApply ltype_own_core_equiv.
       iApply "Hub1'". by iApply "Hi2".
     - iIntros (π r l) "#Hdead Hb".
-      iDestruct ("Heq" $! (Owned) r) as "((% & #Hi1 & #Hc1) & (_ & #Hi2 & #Hc2))".
+      iDestruct ("Heq" $! (Owned) r) as "((#Hi1 & #Hc1) & (#Hi2 & #Hc2))".
       iMod ("Hi2" with "Hb") as "Hb".
       iMod ("Hub2" with "Hdead Hb") as "Hb".
       rewrite !ltype_own_core_equiv. by iApply "Hc1".

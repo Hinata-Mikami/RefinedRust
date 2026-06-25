@@ -38,7 +38,7 @@ Section stratify.
       iApply logical_step_intro. iIntros "(Hb & $)".
       iMod ("Hvs" with "Hb") as "Hb".
       iMod ("Hcl" with "Hl Hb") as "Hb".
-      iDestruct (shr_ref_unfold_1 ty' κ (Owned)) as "(_ & #Hi & _)".
+      iDestruct (shr_ref_unfold_1 ty' κ (Owned)) as "(#Hi & _)".
       iMod (fupd_mask_mono with "(Hi Hb)") as "$"; first done.
       done.
     - iAssert (T L' R _ (ShrLtype lt' κ) (#r')) with "[Hc]" as "Hc".
@@ -103,9 +103,9 @@ Section stratify.
     destruct Hsimp as [<-].
     iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
     iDestruct "HT" as "(%ty & %Heq & HT)".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; first apply Heq.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Heq)"; first apply Heq.
     iPoseProof (ltype_own_shared_to_core with "Hl") as "Hl".
-    iDestruct ("Heq" $! (Shared κ) r) as "((%Hsteq & #Hinc & _) & _)".
+    iDestruct ("Heq" $! (Shared κ) r) as "((#Hinc & _) & _)".
     iPoseProof ("Hinc" with "Hl") as "Hl".
     iExists L, _, _, _, _. iFrame.
     iModIntro. iSplitR. { simp_ltypes. done. }
@@ -125,6 +125,7 @@ Section stratify.
   Proof.
     iIntros "Hp". iApply stratify_ltype_eqltype; iFrame.
     iPureIntro. iIntros (?) "HL CTX HE".
+    iR.
     iApply ltype_eq_sym. iApply shr_ref_unfold.
   Qed.
   Definition stratify_ltype_ofty_shr_inst := [instance @stratify_ltype_ofty_shr].

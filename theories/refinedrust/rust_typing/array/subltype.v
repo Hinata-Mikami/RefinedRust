@@ -11,7 +11,7 @@ Section subltype.
     lftE ⊆ F →
     length rs1 = len → length rs2 = len →
     ty_syn_type def1 = ty_syn_type def2 →
-    ([∗ list] lt1;lt2 ∈ zip (interpret_iml (◁ def1) len lts1) rs1; zip (interpret_iml (◁ def2) len lts2) rs2, ltype_incl b lt1.2 lt2.2 lt1.1 lt2.1) -∗
+    ([∗ list] lt1;lt2 ∈ zip (interpret_iml (◁ def1) len lts1) rs1; zip (interpret_iml (◁ def2) len lts2) rs2, ⌜ltype_st lt1.1 = ltype_st lt2.1⌝ ∗ ltype_incl b lt1.2 lt2.2 lt1.1 lt2.1) -∗
     ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def1) len lts1;rs1, ⌜ltype_st lt = ty_syn_type def1 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ lt) ={F}=∗
     ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def2) len lts2;rs2, ⌜ltype_st lt = ty_syn_type def2 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ lt).
   Proof.
@@ -23,16 +23,15 @@ Section subltype.
     simpl.
     rewrite !interpret_iml_succ. simpl.
     iDestruct "Ha" as "((%Hsteq & Ha) & Hb)".
-    iDestruct "Hincl" as "(Hincl1 & Hincl)".
+    iDestruct "Hincl" as "((%Hst_eq1 & Hincl1) & Hincl)".
     simpl in *.
     iSpecialize ("IH" $! (S k) with "[] [] Hincl [Hb]").
     { iPureIntro. lia. }
     { iPureIntro. lia. }
     { setoid_rewrite Nat.add_succ_r. done. }
     iMod "IH" as "IH".
-    iPoseProof "Hincl1" as "(%Hst & _)".
     iMod (ltype_incl_use with "Hincl1 Ha") as "$"; first done.
-    iSplitR. { rewrite -Hst -Hstdef. done. }
+    iSplitR. { rewrite -Hst_eq1 -Hstdef. done. }
     setoid_rewrite Nat.add_succ_r. done.
   Qed.
 
@@ -40,7 +39,7 @@ Section subltype.
     lftE ⊆ F →
     length rs = len →
     ty_syn_type def1 = ty_syn_type def2 →
-    ([∗ list] lt1;lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2, ∀ r, ltype_incl b r r lt1 lt2) -∗
+    ([∗ list] lt1;lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2,  ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_incl b r r lt1 lt2) -∗
     ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def1) len lts1;rs, ⌜ltype_st lt = ty_syn_type def1 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ lt) ={F}=∗
     ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def2) len lts2;rs, ⌜ltype_st lt = ty_syn_type def2 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ lt).
   Proof.
@@ -51,22 +50,21 @@ Section subltype.
     simpl.
     rewrite !interpret_iml_succ. simpl.
     iDestruct "Ha" as "((%Hsteq & Ha) & Hb)".
-    iDestruct "Hincl" as "(Hincl1 & Hincl)".
+    iDestruct "Hincl" as "((%Hsteq1 & Hincl1) & Hincl)".
     simpl in *.
     setoid_rewrite Nat.add_succ_r.
     iSpecialize ("IH" $! (S k) rs with "[] Hincl Hb").
     { iPureIntro. lia. }
     iMod "IH" as "IH".
-    iPoseProof ("Hincl1" $! r) as "(%Hst & _)".
     iMod (ltype_incl_use with "Hincl1 Ha") as "$"; first done.
-    iSplitR. { rewrite -Hst -Hstdef. done. }
+    iSplitR. { rewrite -Hsteq1 -Hstdef. done. }
     done.
   Qed.
   Local Lemma array_ltype_incl_big_wand_core {rt} k π F (def1 : type rt) (def2 : type rt) len (lts1 : list (nat * ltype rt)) (lts2 : list (nat * ltype rt)) rs l b ly :
     lftE ⊆ F →
     length rs = len →
     ty_syn_type def1 = ty_syn_type def2 →
-    ([∗ list] lt1;lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2, ∀ r, ltype_incl b r r lt1 lt2) -∗
+    ([∗ list] lt1;lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2, ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_incl b r r lt1 lt2) -∗
     ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def1) len lts1;rs, ⌜ltype_st lt = ty_syn_type def1 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ ltype_core lt) ={F}=∗
     ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def2) len lts2;rs, ⌜ltype_st lt = ty_syn_type def2 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ ltype_core lt).
   Proof.
@@ -78,7 +76,8 @@ Section subltype.
     - iEval (rewrite -(ltype_core_ofty def1)). iEval (rewrite -(ltype_core_ofty def2)).
       rewrite !interpret_iml_fmap big_sepL2_fmap_l big_sepL2_fmap_r.
       iApply (big_sepL2_impl with "Hincl").
-      iModIntro. iIntros (??? Hlook1 Hlook2) "Ha".
+      iModIntro. iIntros (??? Hlook1 Hlook2) "(%Hst & Ha)".
+      iSplitR. { simp_ltypes. done. }
       iIntros (?). by iApply ltype_incl_core.
     - iEval (rewrite -(ltype_core_ofty def1)).
       rewrite !interpret_iml_fmap big_sepL2_fmap_l. setoid_rewrite ltype_core_syn_type_eq. done.
@@ -89,7 +88,7 @@ Section subltype.
   Local Lemma array_ltype_incl'_shared_in {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) κ' rs1 rs2 :
     ty_syn_type def1 = ty_syn_type def2 →
     (⌜length rs1 = len⌝ -∗ ⌜length rs2 = len⌝ ∗ ([∗ list] lt1; lt2 ∈ zip (interpret_iml (◁ def1) len lts1) rs1; zip (interpret_iml (◁ def2) len lts2) rs2,
-      ltype_incl (Shared κ') (lt1).2 (lt2).2 (lt1).1 (lt2).1)) -∗
+      ⌜ltype_st lt1.1 = ltype_st lt2.1⌝ ∗ ltype_incl (Shared κ') (lt1).2 (lt2).2 (lt1).1 (lt2).1)) -∗
     ltype_incl' (Shared κ') #rs1 #rs2 (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
     iIntros (Hst) "#Hel".
@@ -107,27 +106,30 @@ Section subltype.
   Lemma array_ltype_incl_shared_in {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) κ' rs1 rs2 :
     ty_syn_type def1 = ty_syn_type def2 →
     (⌜length rs1 = len⌝ -∗ ⌜length rs2 = len⌝ ∗ [∗ list] lt1; lt2 ∈ zip (interpret_iml (◁ def1) len lts1) rs1; zip (interpret_iml (◁ def2) len lts2) rs2,
-      ltype_incl (Shared κ') (lt1).2 (lt2).2 (lt1).1 (lt2).1) -∗
+      ⌜ltype_st lt1.1 = ltype_st lt2.1⌝ ∗ ltype_incl (Shared κ') (lt1).2 (lt2).2 (lt1).1 (lt2).1) -∗
     ltype_incl (Shared κ') #rs1 #rs2 (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
     iIntros (Hst) "#Heq".
-    iSplitR. { iPureIntro. simp_ltypes. rewrite Hst//. }
+    (*iSplitR. { iPureIntro. simp_ltypes. rewrite Hst//. }*)
     iModIntro. simp_ltypes.
     iSplit; (iApply array_ltype_incl'_shared_in; first done).
     - done.
-    - iIntros (Hlen'). iSpecialize ("Heq" with "[//]"). iDestruct "Heq" as "($ & Heq)".
+    - iIntros (Hlen'). iSpecialize ("Heq" with "[//]"). iDestruct "Heq" as "(% & Heq)".
       rewrite -{2}(ltype_core_ofty def1) -{2}(ltype_core_ofty def2).
       rewrite !interpret_iml_fmap.
       rewrite !zip_fmap_l.
       rewrite big_sepL2_fmap_l big_sepL2_fmap_r.
+      iR.
       iApply (big_sepL2_mono with "Heq").
-      iIntros (k [lt1 r1] [lt2 r2] ??). simpl. iApply ltype_incl_core; done.
+      iIntros (k [lt1 r1] [lt2 r2] ??). simpl.
+      iIntros "(% & Hincl)". simp_ltypes. iR.
+      iApply ltype_incl_core; done.
   Qed.
 
   Local Lemma array_ltype_incl'_shared {rt} (def1 : type rt) (def2 : type rt) len (lts1 : list (nat * ltype rt)) (lts2 : list (nat * ltype rt)) κ' rs :
     ty_syn_type def1 = ty_syn_type def2 →
     ([∗ list] lt1; lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2,
-      ∀ r, ltype_incl (Shared κ') r r lt1 lt2) -∗
+      ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_incl (Shared κ') r r lt1 lt2) -∗
     ltype_incl' (Shared κ') rs rs (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
     iIntros (Hst) "#Hel".
@@ -143,11 +145,10 @@ Section subltype.
   Lemma array_ltype_incl_shared {rt} (def1 : type rt) (def2 : type rt) len (lts1 : list (nat * ltype rt)) (lts2 : list (nat * ltype rt)) κ' rs :
     ty_syn_type def1 = ty_syn_type def2 →
     ([∗ list] lt1; lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2,
-      ∀ r, ltype_incl (Shared κ') r r lt1 lt2) -∗
+      ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_incl (Shared κ') r r lt1 lt2) -∗
     ltype_incl (Shared κ') rs rs (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
     iIntros (Hst) "#Heq".
-    iSplitR. { iPureIntro. simp_ltypes. rewrite Hst//. }
     iModIntro. simp_ltypes.
     iSplit; (iApply array_ltype_incl'_shared; first done).
     - done.
@@ -155,13 +156,15 @@ Section subltype.
       rewrite !interpret_iml_fmap.
       rewrite big_sepL2_fmap_l big_sepL2_fmap_r.
       iApply (big_sepL2_mono with "Heq").
-      iIntros (k lt1 lt2 ??). simpl. iIntros "Ha" (?). iApply ltype_incl_core; done.
+      iIntros (k lt1 lt2 ??). simpl.
+      iIntros "(% & Ha)". simp_ltypes. iR.
+      iIntros (?). iApply ltype_incl_core; done.
   Qed.
 
   Local Lemma array_ltype_incl'_owned_in {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) rs1 rs2 :
     ty_syn_type def1 = ty_syn_type def2 →
     (⌜length rs1 = len⌝ -∗ ⌜length rs2 = len⌝ ∗ [∗ list] lt1; lt2 ∈ zip (interpret_iml (◁ def1) len lts1) rs1; zip (interpret_iml (◁ def2) len lts2) rs2,
-      ltype_incl (Owned) (lt1).2 (lt2).2 (lt1).1 (lt2).1) -∗
+      ⌜ltype_st lt1.1 = ltype_st lt2.1⌝ ∗ ltype_incl (Owned) (lt1).2 (lt2).2 (lt1).1 (lt2).1) -∗
     ltype_incl' (Owned) #rs1 #rs2 (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
     iIntros (Hst) "#Hel".
@@ -179,11 +182,10 @@ Section subltype.
   Lemma array_ltype_incl_owned_in {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) rs1 rs2 :
     ty_syn_type def1 = ty_syn_type def2 →
     (⌜length rs1 = len⌝ -∗ ⌜length rs2 = len⌝ ∗ [∗ list] lt1; lt2 ∈ zip (interpret_iml (◁ def1) len lts1) rs1; zip (interpret_iml (◁ def2) len lts2) rs2,
-      ltype_incl (Owned) (lt1).2 (lt2).2 (lt1).1 (lt2).1) -∗
+      ⌜ltype_st lt1.1 = ltype_st lt2.1⌝ ∗ ltype_incl (Owned) (lt1).2 (lt2).2 (lt1).1 (lt2).1) -∗
     ltype_incl (Owned) #rs1 #rs2 (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
     iIntros (Hst) "#Heq".
-    iSplitR. { iPureIntro. simp_ltypes. rewrite Hst//. }
     iModIntro. simp_ltypes.
     iSplit; (iApply array_ltype_incl'_owned_in; first done).
     - done.
@@ -193,13 +195,15 @@ Section subltype.
       rewrite !zip_fmap_l.
       rewrite big_sepL2_fmap_l big_sepL2_fmap_r.
       iApply (big_sepL2_mono with "Heq").
-      iIntros (k [lt1 r1] [lt2 r2] ??). simpl. iApply ltype_incl_core; done.
+      iIntros (k [lt1 r1] [lt2 r2] ??). simpl.
+      iIntros "(% & Hincl)". simp_ltypes. iR.
+      iApply ltype_incl_core; done.
   Qed.
 
   Local Lemma array_ltype_incl'_owned {rt} (def1 : type rt) (def2 : type rt) len (lts1 : list (nat * ltype rt)) (lts2 : list (nat * ltype rt)) rs :
     ty_syn_type def1 = ty_syn_type def2 →
     ([∗ list] lt1; lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2,
-      ∀ r, ltype_incl (Owned) r r lt1 lt2) -∗
+      ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_incl (Owned) r r lt1 lt2) -∗
     ltype_incl' (Owned) rs rs (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
     iIntros (Hst) "#Hel".
@@ -216,11 +220,10 @@ Section subltype.
   Lemma array_ltype_incl_owned {rt} (def1 : type rt) (def2 : type rt) len (lts1 : list (nat * ltype rt)) (lts2 : list (nat * ltype rt)) rs :
     ty_syn_type def1 = ty_syn_type def2 →
     ([∗ list] lt1; lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2,
-      ∀ r, ltype_incl (Owned) r r lt1 lt2) -∗
+      ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_incl (Owned) r r lt1 lt2) -∗
     ltype_incl (Owned) rs rs (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
     iIntros (Hst) "#Heq".
-    iSplitR. { iPureIntro. simp_ltypes. rewrite Hst//. }
     iModIntro. simp_ltypes.
     iSplit; (iApply array_ltype_incl'_owned; first done).
     - done.
@@ -228,13 +231,15 @@ Section subltype.
       rewrite !interpret_iml_fmap.
       rewrite big_sepL2_fmap_l big_sepL2_fmap_r.
       iApply (big_sepL2_mono with "Heq").
-      iIntros (k lt1 lt2 ??). simpl. iIntros "Ha" (?). iApply ltype_incl_core; done.
+      iIntros (k lt1 lt2 ??). simpl.
+      iIntros "(% & Ha)". simp_ltypes. iR.
+      iIntros (?). iApply ltype_incl_core; done.
   Qed.
 
   Local Lemma array_ltype_incl'_uniq {rt} (def1 : type rt) (def2 : type rt) len (lts1 : list (nat * ltype rt)) (lts2 : list (nat * ltype rt)) κ' γ rs :
     ty_syn_type def1 = ty_syn_type def2 →
     ([∗ list] lt1; lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2,
-      ∀ r, ltype_eq (Owned) r r lt1 lt2) -∗
+      ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_eq (Owned) r r lt1 lt2) -∗
     ltype_incl' (Uniq κ' γ) rs rs (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
     iIntros (Hst) "#Hel".
@@ -247,24 +252,28 @@ Section subltype.
     iApply (pinned_bor_iff with "[] [] Ha"); iNext; iModIntro.
     - iSplit; iIntros "(%r' & ? & Ha)"; iExists _; iFrame "∗%"; iMod "Ha" as "(% & Ha)";
         (iMod (array_ltype_incl_big_wand 0 with "[Hel] Ha") as "Hx"; [done.. |  | iR; done]).
-      + iApply (big_sepL2_mono with "Hel"). iIntros (?????) "Ha". iIntros (?). iDestruct ("Ha" $! _) as "($ & _)".
+      + iApply (big_sepL2_mono with "Hel"). iIntros (?????) "(% & Ha)".
+        iR.
+        iIntros (?). iDestruct ("Ha" $! _) as "($ & _)".
       + rewrite big_sepL2_flip.
-        iApply (big_sepL2_mono with "Hel"). iIntros (?????) "Ha". iIntros (?). iDestruct ("Ha" $! _) as "(_ & $)".
+        iApply (big_sepL2_mono with "Hel"). iIntros (?????) "(% & Ha)".
+        iR. iIntros (?). iDestruct ("Ha" $! _) as "(_ & $)".
     - iSplit; iIntros "(%r' & ? & Ha)"; iExists _; iFrame "∗%"; iMod "Ha" as "(% & Ha)".
       all: setoid_rewrite ltype_own_core_equiv.
       all: iMod (array_ltype_incl_big_wand_core 0 with "[Hel] Ha") as "Hx"; [done.. |  | iR; done ].
-      + iApply (big_sepL2_mono with "Hel"). iIntros (?????) "Ha". iIntros (?). iDestruct ("Ha" $! _) as "($ & _)".
+      + iApply (big_sepL2_mono with "Hel"). iIntros (?????) "(% & Ha)".
+        iR. iIntros (?). iDestruct ("Ha" $! _) as "($ & _)".
       + rewrite big_sepL2_flip.
-        iApply (big_sepL2_mono with "Hel"). iIntros (?????) "Ha". iIntros (?). iDestruct ("Ha" $! _) as "(_ & $)".
+        iApply (big_sepL2_mono with "Hel"). iIntros (?????) "(% & Ha)".
+        iR. iIntros (?). iDestruct ("Ha" $! _) as "(_ & $)".
   Qed.
   Lemma array_ltype_incl_uniq {rt} (def1 : type rt) (def2 : type rt) len (lts1 : list (nat * ltype rt)) (lts2 : list (nat * ltype rt)) κ' γ rs :
     ty_syn_type def1 = ty_syn_type def2 →
     ([∗ list] lt1; lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2,
-      ∀ r, ltype_eq (Owned) r r lt1 lt2) -∗
+      ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_eq (Owned) r r lt1 lt2) -∗
     ltype_incl (Uniq κ' γ) rs rs (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
     iIntros (Hst) "#Heq".
-    iSplitR. { iPureIntro. simp_ltypes. rewrite Hst//. }
     iModIntro. simp_ltypes.
     iSplit; (iApply array_ltype_incl'_uniq; first done).
     - done.
@@ -272,13 +281,15 @@ Section subltype.
       rewrite !interpret_iml_fmap.
       rewrite big_sepL2_fmap_l big_sepL2_fmap_r.
       iApply (big_sepL2_mono with "Heq").
-      iIntros (k lt1 lt2 ??). simpl. iIntros "Ha" (?). iApply ltype_eq_core; done.
+      iIntros (k lt1 lt2 ??). simpl.
+      iIntros "(% & Ha)". simp_ltypes. iR.
+      iIntros (?). iApply ltype_eq_core; done.
   Qed.
 
   Lemma array_ltype_incl {rt} (def1 def2 : type rt) len (lts1 lts2 : list (nat * ltype rt)) k rs :
     ty_syn_type def1 = ty_syn_type def2 →
     (∀ k, [∗ list] lt1; lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2,
-      ∀ r, ltype_eq k r r lt1 lt2) -∗
+      ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_eq k r r lt1 lt2) -∗
     ltype_incl k rs rs (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
     iIntros (?) "#Heq".
@@ -286,12 +297,16 @@ Section subltype.
     - iApply array_ltype_incl_owned; first done.
       iApply (big_sepL2_wand with "Heq"). iApply big_sepL2_intro.
       { rewrite !length_interpret_iml//. }
-      iIntros "!>" (? lt1 lt2 ? ?) "Ha". iIntros (r).
+      iIntros "!>" (? lt1 lt2 ? ?) "(% & Ha)".
+      iR.
+      iIntros (r).
       iDestruct ("Ha" $! r) as "[$ _]".
     - iApply array_ltype_incl_shared; first done.
       iApply (big_sepL2_wand with "Heq"). iApply big_sepL2_intro.
       { rewrite !length_interpret_iml//. }
-      iIntros "!>" (? lt1 lt2 ? ?) "Ha". iIntros (r).
+      iIntros "!>" (? lt1 lt2 ? ?) "(% & Ha)".
+      iR.
+      iIntros (r).
       iDestruct ("Ha" $! r) as "[$ _]".
     - iApply array_ltype_incl_uniq; done.
   Qed.
@@ -299,7 +314,7 @@ Section subltype.
   Lemma array_ltype_eq {rt} (def1 def2 : type rt) (lts1 lts2 : list (nat * ltype rt)) len rs k :
     ty_syn_type def1 = ty_syn_type def2 →
     (∀ k, [∗ list] lt1; lt2 ∈ (interpret_iml (◁ def1) len lts1); (interpret_iml (◁ def2) len lts2),
-      ∀ r, ltype_eq k r r lt1 lt2) -∗
+      ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_eq k r r lt1 lt2) -∗
     ltype_eq k rs rs (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
     iIntros (?) "#Heq".
@@ -310,8 +325,8 @@ Section subltype.
       iApply big_sepL2_flip.
       iApply (big_sepL2_wand with "Heq").
       iApply big_sepL2_intro. { rewrite !length_interpret_iml//. }
-      iIntros "!>" (? ?? ??) "Heq'".
-      iIntros (?). iApply ltype_eq_sym. done.
+      iIntros "!>" (? ?? ??) "(% & Heq')".
+      iR. iIntros (?). iApply ltype_eq_sym. done.
   Qed.
 
   Lemma array_full_subltype E L {rt} (def1 def2 : type rt) (lts1 lts2 : list (nat * ltype rt)) len :
@@ -319,18 +334,18 @@ Section subltype.
     Forall2 (λ lt1 lt2, full_eqltype E L lt1 lt2) (interpret_iml (◁ def1) len lts1)%I (interpret_iml (◁ def2)%I len lts2) →
     full_subltype E L (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
-    intros ? Hsub.
+    intros Hst Hsub.
     iIntros (qL) "HL #CTX #HE".
     iAssert (∀ k, [∗ list] lt1; lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2)%I len lts2,
-      ∀ r, ltype_eq k r r lt1 lt2)%I with "[HL]" as "#Heq".
+      ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_eq k r r lt1 lt2)%I with "[HL]" as "#Heq".
     { iIntros (k).
       iPoseProof (Forall2_big_sepL2 with "HL []") as "(Ha & HL)"; first apply Hsub.
       { rewrite !length_interpret_iml. done. }
       { iModIntro. iIntros (lt1 lt2) "HL _ _ %Heqt".
         iPoseProof (Heqt with "HL CTX HE") as "#Ha". iFrame "HL". iApply "Ha". }
       iApply (big_sepL2_mono with "Ha").
-      iIntros (??? ??) "#Heq". iIntros (r). iApply "Heq". }
-    iIntros (k r). iApply array_ltype_incl; done.
+      iIntros (??? ??) "(% & #Heq)". iR. iIntros (r). iApply "Heq". }
+    simp_ltypes. rewrite Hst. iR. iIntros (k r). iApply array_ltype_incl; done.
   Qed.
   Lemma array_full_eqltype E L {rt} (def1 def2 : type rt) len (lts1 lts2 : list (nat * ltype rt)) :
     ty_syn_type def1 = ty_syn_type def2 →
@@ -418,7 +433,7 @@ Section to_default.
   Qed.
 
   Lemma array_ltype_make_defaults {rt} (def : type rt) b r len lts :
-    ([∗ list] lt ∈ interpret_iml (◁ def)%I len lts, ∀ b r, ltype_eq b r r lt (◁ def)) -∗
+    ([∗ list] lt ∈ interpret_iml (◁ def)%I len lts, ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ ∀ b r, ltype_eq b r r lt (◁ def)) -∗
     ltype_eq b r r (ArrayLtype def len lts) (ArrayLtype def len []).
   Proof.
     iIntros "#Hincl".
@@ -428,14 +443,17 @@ Section to_default.
     rewrite big_sepL2_replicate_r; first last.
     { rewrite length_interpret_iml//. }
     iApply (big_sepL_impl with "Hincl").
-    iModIntro. iIntros (?? Hlook) "Ha". iIntros (?). iApply "Ha".
+    iModIntro. iIntros (?? Hlook) "(% & Ha)". iR.
+    iIntros (?). iApply "Ha".
   Qed.
 
   Lemma array_ltype_make_defaults_full_eqltype E L {rt} (def : type rt) len lts :
     Forall (λ lt, full_eqltype E L lt (◁ def)%I) (interpret_iml (◁ def)%I len lts) →
     full_eqltype E L (ArrayLtype def len lts) (ArrayLtype def len []).
   Proof.
-    intros Ha. iIntros (?) "HL #CTX #HE". iIntros (??).
+    intros Ha. iIntros (?) "HL #CTX #HE".
+    iR.
+    iIntros (??).
     iPoseProof (Forall_big_sepL with "HL []") as "(Ha & HL)"; first apply Ha.
     { iModIntro. iIntros (lt) "HL _%Heqt". iPoseProof (Heqt with "HL CTX HE") as "#Heq".
       iFrame "HL". iApply "Heq". }
@@ -446,7 +464,8 @@ Section to_default.
   Lemma array_ltype_place_cond b {rt rt'} (def : type rt) (def' : type rt') (len : nat) (lts : list (nat * ltype rt)) (lts' : list (nat * ltype rt')) :
     place_access_rt_rel b rt rt' →
     ty_syn_type def = ty_syn_type def' →
-    ([∗ list] lt; lt' ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def') len lts', typed_place_cond b lt lt') -∗
+    ([∗ list] lt; lt' ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def') len lts',
+      typed_place_cond b lt lt') -∗
     typed_place_cond b (ArrayLtype def len lts) (ArrayLtype def' len lts').
   Proof.
     iIntros (Hrel Hst). destruct b; simpl.
@@ -464,16 +483,23 @@ Section to_default.
       iSplit.
       { iPureIntro. simp_ltypes. rewrite Hst. done. }
       iExists eq_refl.
-      rewrite big_sepL2_sep. iDestruct "Hrel" as "(_ & Hrel)".
+      (*rewrite big_sepL2_sep. iDestruct "Hrel" as "(Hst_eq & Hrel)".*)
+      (*iPoseProof (big_sepL2_Forall2 with "Hst_eq") as "%".*)
       setoid_rewrite <-bi.sep_exist_r.
+      iEval (setoid_rewrite  bi.sep_assoc) in "Hrel".
       rewrite big_sepL2_sep_sepL_r. iDestruct "Hrel" as "(#Heq & #Hub)".
       iSplitL.
       + cbn. simp_ltypes. iIntros (k r). iApply array_ltype_eq; first done. iIntros (k').
         rewrite -{-1}(ltype_core_ofty def) -{-1}(ltype_core_ofty def').
         rewrite !interpret_iml_fmap. rewrite big_sepL2_fmap_l big_sepL2_fmap_r.
         iApply (big_sepL2_mono with "Heq").
-        iIntros (? lt1 lt2 Hlook1 Hlook2). iIntros "(%Heq & Ha)".
-        rewrite (UIP_refl _ _ Heq). iIntros (?). iApply "Ha".
+        iIntros (? lt1 lt2 Hlook1 Hlook2).
+        iIntros "(%Hst' & %Heq & Ha)".
+        rewrite (UIP_refl _ _ Heq).
+        simp_ltypes.
+        rewrite Hst'.
+        iR.
+        iIntros (?). iApply "Ha".
       + iApply array_ltype_imp_unblockable. done.
   Qed.
 End to_default.
@@ -514,11 +540,13 @@ Section accessors.
     ([∗ list] ty1; ty2 ∈ interpret_iml (◁ def)%I len lts; interpret_iml (◁ def')%I len lts',
       typed_place_cond (UpdUniq κs) ty1 ty2) -∗
     ([∗ list] ty1; ty2 ∈ interpret_iml (◁ def)%I len lts; interpret_iml (◁ def')%I len lts',
-      ∀ b' r, ltype_eq b' r r (ltype_core ty1) (ltype_core ty2)).
+      ⌜ltype_st ty1 = ltype_st ty2⌝ ∗ ∀ b' r, ltype_eq b' r r (ltype_core ty1) (ltype_core ty2)).
   Proof.
     iIntros "Hcond". iApply (big_sepL2_impl with "Hcond").
     iModIntro. iIntros (? lt1 lt2 Hlook1 Hlook2).
-    iApply typed_place_cond_uniq_core_eq.
+    iIntros "Hcond". iPoseProof (typed_place_cond_syn_type_eq with "[] Hcond") as "%Hst"; first done.
+    iR.
+    by iApply typed_place_cond_uniq_core_eq.
   Qed.
   Local Lemma typed_place_cond_uniq_unblockable_array {rt} (def : type rt) (def' : type rt) lts lts' len κs :
     ([∗ list] ty1; ty2 ∈ interpret_iml (◁ def)%I len lts; interpret_iml (◁ def')%I len lts',
@@ -552,12 +580,12 @@ Section accessors.
       assert (r1 = r2) as -> by naive_solver.
       iPoseProof (typed_place_cond_uniq_core_eq_array _ _ _ _ _ κs with "Hcond") as "Heq".
       iPoseProof (typed_place_cond_uniq_unblockable_array _ _ _ _ _ κs with "Hcond") as "Hub".
-      iPoseProof (big_sepL2_lookup with "Heq") as "Heq1"; [ done.. | ].
+      iPoseProof (big_sepL2_lookup with "Heq") as "(% & Heq1)"; [ done.. | ].
       iPoseProof (big_sepL2_lookup with "Hub") as "Hub1"; [ done.. | ].
       iMod (imp_unblockable_use with "Hub1 Hdead Hl") as "Hl"; first done.
-      iDestruct ("Heq1" $! (Owned) _) as "((%Hst1' & #Heq1' & _) & (_ & #Heq2 & _))".
+      iDestruct ("Heq1" $! (Owned) _) as "((#Heq1' & _) & (#Heq2 & _))".
       iMod ("Heq2" with "Hl") as "Hl".
-      rewrite !ltype_core_syn_type_eq in Hst1'.
+      (*rewrite !ltype_core_syn_type_eq in Hst1'.*)
       rewrite -Hst1. eauto with iFrame.
     }
     rewrite !length_zip !length_interpret_iml//.
@@ -566,7 +594,7 @@ Section accessors.
     syn_type_has_layout (ty_syn_type def MetaNone) ly →
     ty_syn_type def = ty_syn_type def' →
     ([∗ list] ty1;ty2 ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def')%I len lts',
-      ∀ b' r, ltype_eq b' r r (ltype_core ty1) (ltype_core ty2)) -∗
+      ⌜ltype_st ty1 = ltype_st ty2⌝ ∗ ∀ b' r, ltype_eq b' r r (ltype_core ty1) (ltype_core ty2)) -∗
     (|={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs,
       ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned] r0 @ ltype_core lt) -∗
     |={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs,
@@ -583,11 +611,11 @@ Section accessors.
       apply lookup_zip in Hlook1 as (Hlook1 & Hlook1').
       apply lookup_zip in Hlook2 as (Hlook2 & Hlook2'). simpl in *.
       assert (r1 = r2) as -> by naive_solver.
-      iPoseProof (big_sepL2_lookup with "Heq") as "Heq1"; [ done.. | ].
-      iDestruct ("Heq1" $! (Owned) _) as "((%Hst1' & #Heq1' & _) & (_ & #Heq2 & _))".
+      iPoseProof (big_sepL2_lookup with "Heq") as "(%Hsteq & Heq1)"; [ done.. | ].
+      iDestruct ("Heq1" $! (Owned) _) as "((#Heq1' & _) & (#Heq2 & _))".
       iMod ("Heq1'" with "Hl") as "Hl".
-      rewrite !ltype_core_syn_type_eq in Hst1'.
-      rewrite -Hst1. eauto with iFrame.
+      rewrite -Hsteq Hst1. iR.
+      eauto with iFrame.
     }
     rewrite !length_zip !length_interpret_iml//.
   Qed.
@@ -683,7 +711,8 @@ Section accessors.
         { rewrite -Hst_eq. done. } { done. }
         iPoseProof (typed_place_cond_uniq_core_eq_array with "Ha") as "Hb".
         iApply big_sepL2_flip. iApply (big_sepL2_impl with "Hb").
-        iModIntro. iIntros (? ? ? ? ?) "Heq" => /=.
+        iModIntro. iIntros (? ? ? ? ?) "(% & Heq)" => /=.
+        iR.
         iIntros (??). iApply ltype_eq_sym. iApply "Heq".
     }
     iApply (array_ltype_place_cond _ _  with "Hcond_ty"); last done.

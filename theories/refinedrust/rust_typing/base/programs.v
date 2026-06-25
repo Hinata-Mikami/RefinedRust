@@ -1076,8 +1076,7 @@ Section judgments.
     iIntros (????) "#CTX #HE HL Hb".
     iPoseProof (eqltype_use F with "CTX HE HL") as "(Hvs & HL)"; [done.. | ].
     iMod ("Hvs" with "Hb") as "Hb".
-    iPoseProof (eqltype_acc with "CTX HE HL") as "#Heq"; first done.
-    iPoseProof (ltype_eq_syn_type with "Heq") as "->".
+    iPoseProof (eqltype_acc with "CTX HE HL") as "(-> & #Heq)"; first done.
     iPoseProof ("Hs" with "[//] [//] [//] CTX HE HL Hb") as ">Hb". iModIntro.
     iDestruct "Hb" as "(%L' & %R & %rt' & %lt' & %r' & HL & Hstep & HT)".
     iExists L', R, rt', lt', r'. iFrame.
@@ -1223,13 +1222,13 @@ Section judgments.
     rrust_ctx -∗
     elctx_interp E -∗
     llctx_interp L ={F}=∗
-    ltype_incl b r1 r2 lt1 lt2 ∗ llctx_interp L ∗ T.
+    ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ltype_incl b r1 r2 lt1 lt2 ∗ llctx_interp L ∗ T.
   Class SubLtype (E : elctx) (L : llctx) {rt1 rt2} b r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) : Type :=
     subltype_proof T : iProp_to_Prop (weak_subltype E L b r1 r2 lt1 lt2 T).
 
   Lemma weak_subltype_id E L {rt} (lt : ltype rt) k r T :
     T ⊢ weak_subltype E L k r r lt lt T.
-  Proof. iIntros "$" (??) "_ _ $". iApply ltype_incl_refl. Qed.
+  Proof. iIntros "$" (??) "_ _ $". iR. iApply ltype_incl_refl. Qed.
 
   Definition owned_subtype π E L (pers : bool) {rt1 rt2 : RT} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) (T : llctx → iProp Σ) : iProp Σ :=
     ∀ F,
@@ -2064,8 +2063,8 @@ Section laws.
     ⊢ owned_subltype_step π E L step l r1 r2 lt1 lt2 T.
   Proof.
     iIntros "HT" (????) "CTX HE HL Hl".
-    iExists L, True%I. iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
-    iModIntro. iDestruct "Hincl" as "(%Hst & #Hincl & _)".
+    iExists L, True%I. iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & $)".
+    iModIntro. iDestruct "Hincl" as "( #Hincl & _)".
     iApply maybe_logical_step_fupd. iApply maybe_logical_step_intro.
     iMod (fupd_mask_mono with "(Hincl Hl)"); first done.
     eauto.
@@ -2077,7 +2076,7 @@ Section laws.
     typed_place E L f l lt1 r bmin0 b P T.
   Proof.
     iIntros (Heq) "Hp". iIntros (????) "#CTX #HE HL Hf Hl HΦ".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; [apply Heq | ].
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Heq)"; [apply Heq | ].
     iDestruct ("Heq" $! b r) as "[Hi1 Hi2]".
     iApply fupd_place_to_wp.
     iMod (ltype_incl_use with "Hi1 Hl") as "Hl"; first done. iModIntro.
@@ -2093,7 +2092,7 @@ Section laws.
     iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & ? & ? & ? & ?)".
     iExists upd'.
     iFrame.
-    iApply ltype_eq_place_cond_trans; last done.
+    iApply ltype_eq_place_cond_trans; last done; first done.
     iApply "Heq".
   Qed.
   (* intentionally not an instance -- since [eqltype] is transitive, that would not be a good idea. *)
@@ -2266,11 +2265,10 @@ Section laws.
     prove_place_cond E L bmin lt1 lt2 T.
   Proof.
     iIntros (Heq) "Hcond". iIntros (F ?) "#CTX #HE HL".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; [done.. | ].
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Heq)"; [done.. | ].
     iMod ("Hcond" with "[//] CTX HE HL") as "($ & Hcond)".
     iDestruct "Hcond" as "(%upd & Hcond & Hcond' & <- & HT)".
     iExists upd. iFrame.
-    iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->".
     iL. iApply ltype_eq_place_cond_trans; done.
   Qed.
   Lemma prove_place_cond_eqltype_r E L bmin {rt1 rt2} (lt1 : ltype rt1) (lt2 lt2' : ltype rt2) T :
@@ -2279,12 +2277,11 @@ Section laws.
     prove_place_cond E L bmin lt1 lt2 T.
   Proof.
     iIntros (Heq) "Hcond". iIntros (F ?) "#CTX #HE HL".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; [done.. | ].
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Heq)"; [done.. | ].
     iMod ("Hcond" with "[//] CTX HE HL") as "($ & Hcond)".
     iDestruct "Hcond" as "(%upd & Hcond & #Hcond' & -> & HT)".
-    iExists upd. iFrame.
-    iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". iL.
-    iApply (place_cond_ltype_eq_trans with "Hcond'").
+    iExists upd. iFrame. iL.
+    iApply (place_cond_ltype_eq_trans with "[] Hcond'"); first done.
     iModIntro. iIntros (??). iApply ltype_eq_sym. done.
   Qed.
 End laws.

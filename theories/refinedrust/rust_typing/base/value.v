@@ -1487,9 +1487,9 @@ Section deinit.
     iDestruct 1 as "(%ty & %Heqt & HT)".
     iIntros (????) "CTX HE HL Hl". simp_ltypes; simpl.
 
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl"; first apply Heqt.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Hincl)"; first apply Heqt.
     iSpecialize ("Hincl" $! (Owned) (#r)).
-    iDestruct "Hincl" as "(Hincl & _)". iDestruct "Hincl" as "(%Hst & Hincl & _)".
+    iDestruct "Hincl" as "(Hincl & _)". iDestruct "Hincl" as "(Hincl & _)".
     iMod (ltype_incl'_use with "Hincl Hl") as "Hl"; first done.
     iExists _, _. iFrame.
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Hst' & %)".

@@ -100,7 +100,7 @@ Section ltype_agree.
   Lemma mut_ref_unfold_1 κ k r :
     ⊢ ltype_incl k r r (MutLtype (◁ ty) κ) (◁ (mut_ref κ ty)).
   Proof.
-    iSplitR; first done. iModIntro. iSplit.
+    iModIntro. iSplit.
     - iApply mut_ref_unfold_1'.
     - simp_ltypes. iApply mut_ref_unfold_1'.
   Qed.
@@ -169,7 +169,7 @@ Section ltype_agree.
   Lemma mut_ref_unfold_2 κ k r :
     ⊢ ltype_incl k r r (◁ (mut_ref κ ty)) (MutLtype (◁ ty) κ).
   Proof.
-    iSplitR; first done. iModIntro. iSplit.
+    iModIntro. iSplit.
     - iApply mut_ref_unfold_2'.
     - simp_ltypes. iApply mut_ref_unfold_2'.
   Qed.
@@ -186,8 +186,8 @@ Section ltype_agree.
     full_eqltype E L lt (◁ ty)%I →
     full_eqltype E L (MutLtype lt κ) (◁ (mut_ref κ ty))%I.
   Proof.
-    iIntros (Heql ?) "HL #CTX #HE". iIntros (b r).
-    iPoseProof (Heql with "HL CTX HE") as "#Heql".
+    iIntros (Heql ?) "HL #CTX #HE". iR. iIntros (b r).
+    iPoseProof (Heql with "HL CTX HE") as "(% & #Heql)".
     iApply ltype_eq_trans; last iApply mut_ref_unfold.
     iApply mut_ltype_eq; [ | iApply lft_incl_refl.. ].
     by iApply "Heql".
@@ -203,7 +203,7 @@ Section place.
     ⊢ typed_place E L f l (◁ (mut_ref κ ty)) r bmin0 b P T.
   Proof.
     iIntros "Hp". iApply typed_place_eqltype; last done.
-    iIntros (?) "HL CTX HE". iIntros (??).
+    iIntros (?) "HL CTX HE". iR. iIntros (??).
     iApply ltype_eq_sym. iApply mut_ref_unfold.
   Qed.
   Definition typed_place_ofty_mut_inst := [instance @typed_place_ofty_mut].

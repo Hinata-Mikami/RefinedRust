@@ -231,7 +231,7 @@ Section instances.
       fr_inv := length rs1 = length rs2;
       fr_elim_mode := true;
       fr_core_rel E L (i : nat) (lt1 : (ltype rt1)) (lt2 : (ltype rt2))  :=
-        (∃ r1 r2,  ⌜rs1 !! i = Some r1⌝ ∗ ⌜rs2 !! i = Some r2⌝ ∗ ltype_incl k r1 r2 lt1 lt2)%I;
+        (∃ r1 r2, ⌜rs1 !! i = Some r1⌝ ∗ ⌜rs2 !! i = Some r2⌝ ∗ ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ltype_incl k r1 r2 lt1 lt2)%I;
     |}.
   Next Obligation.
     iIntros (??? rs1 rs2 E L i a b T ? ?) "#CTX #HE HL (%r1 & %r2 & %Hlook1 & %Hlook2 & Hsubt)".
@@ -253,14 +253,14 @@ Section instances.
     iIntros "(%Heq & %Hsubt & HT)".
     iApply relate_list_replicate_elim_full; first done; last done.
     simpl. iIntros "#CTX HE HL %Hlen".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl"; first done.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(% & #Hincl)"; first done.
     iModIntro. iIntros (i) "%Hlt %Hnel".
     specialize (Heq i) as (? & Hi).
     destruct (lookup_lt_is_Some_2 rs1 i) as (r1 & Hlook1). { lia. }
     destruct (lookup_lt_is_Some_2 rs2 i) as (r2 & Hlook2). { lia. }
     iExists r1, r2. iR. iR. assert (r1 = r2) as <-.
     { specialize (Hi Hnel). congruence. }
-    iApply ltype_eq_ltype_incl_l.
+    iR. iApply ltype_eq_ltype_incl_l.
     iApply "Hincl".
   Qed.
   Definition weak_subltype_list_replicate_1_inst := [instance @weak_subltype_list_replicate_1].
@@ -273,7 +273,7 @@ Section instances.
       fr_inv := True;
       fr_elim_mode := interp;
       fr_core_rel E L (i : nat) (lt1 : (ltype rt)) (lt2 : (ltype rt))  :=
-        if interp then (∀ k r,  ltype_incl k r r lt1 lt2 ∗ ltype_incl k r r lt2 lt1)%I else ⌜full_eqltype E L lt1 lt2⌝%I;
+        if interp then (⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ k r, ltype_incl k r r lt1 lt2 ∗ ltype_incl k r r lt2 lt1)%I else ⌜full_eqltype E L lt1 lt2⌝%I;
     |}.
   Next Obligation.
     iIntros (rt _ interp E L i a b). destruct interp.
@@ -317,8 +317,9 @@ Section instances.
 
   Local Lemma weak_subltype_array_helper {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len1 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) rs1 rs2 b1 :
     length rs2 = len1 → length rs1 = len1 →
-    ([∗ list] i↦a;b ∈ interpret_iml (◁ def1) len1 lts1; interpret_iml (◁ def2) len1 lts2, ∃ (r1 : place_rfn rt1) (r2 : place_rfn rt2), ⌜rs1 !! i = Some r1⌝ ∗ ⌜rs2 !! i = Some r2⌝ ∗ ltype_incl b1 r1 r2 a b) -∗
-    [∗ list] lt1;lt2 ∈ zip (interpret_iml (◁ def1) len1 lts1) rs1; zip (interpret_iml (◁ def2) len1 lts2) rs2, ltype_incl b1 lt1.2 lt2.2 lt1.1 lt2.1.
+    ([∗ list] i↦a;b ∈ interpret_iml (◁ def1) len1 lts1; interpret_iml (◁ def2) len1 lts2,
+      ∃ (r1 : place_rfn rt1) (r2 : place_rfn rt2), ⌜rs1 !! i = Some r1⌝ ∗ ⌜rs2 !! i = Some r2⌝ ∗ ⌜ltype_st a = ltype_st b⌝ ∗ ltype_incl b1 r1 r2 a b) -∗
+    [∗ list] lt1;lt2 ∈ zip (interpret_iml (◁ def1) len1 lts1) rs1; zip (interpret_iml (◁ def2) len1 lts2) rs2, ⌜ltype_st lt1.1 = ltype_st lt2.1⌝ ∗ ltype_incl b1 lt1.2 lt2.2 lt1.1 lt2.1.
   Proof.
     iIntros (??) "Ha".
     iPoseProof (big_sepL2_to_zip with "Ha") as "Ha".
@@ -346,7 +347,7 @@ Section instances.
   Proof.
     iIntros "(<- & %rs2' & -> & %Hst & HT)". iIntros (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(Ha & $ & (%Hlen' & $))".
-    iModIntro.
+    iModIntro. simp_ltypes. rewrite Hst. iR.
     iApply array_ltype_incl_owned_in; first done.
     simpl. iIntros (?). rewrite length_interpret_iml.
     iSpecialize ("Ha" with "[] []"). { iPureIntro. lia. } {iPureIntro. simpl in *. lia. }
@@ -364,11 +365,13 @@ Section instances.
     iIntros "(<- & <- & %Hst & HT)". iIntros (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(Ha & $ & $)".
     iModIntro.
+    simp_ltypes. rewrite Hst. iR.
     iApply array_ltype_incl_owned; first done.
     simpl. rewrite length_interpret_iml.
     iSpecialize ("Ha" with "[] [//]"). { iPureIntro. lia. }
     iApply (big_sepL2_mono with "Ha").
-    iIntros (?????) "Hincl". iIntros (?). iDestruct ("Hincl" $! _ _) as "(Hincl1 & _)".
+    iIntros (?????) "(% & Hincl)". iR.
+    iIntros (?). iDestruct ("Hincl" $! _ _) as "(Hincl1 & _)".
     done.
   Qed.
   Definition weak_subltype_array_owned_inst := [instance @weak_subltype_array_owned].
@@ -385,6 +388,7 @@ Section instances.
     iIntros "(<- & %rs2' & -> & %Hst & HT)". iIntros (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(Ha & $ & (%Hlen' & $))".
     iModIntro.
+    simp_ltypes. rewrite Hst. iR.
     iApply array_ltype_incl_shared_in; first done.
     simpl. iIntros (?). rewrite length_interpret_iml.
     iSpecialize ("Ha" with "[] []"). { iPureIntro. lia. } {iPureIntro. simpl in *. lia. }
@@ -402,11 +406,14 @@ Section instances.
     iIntros "(<- & <- & %Hst & HT)". iIntros (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(Ha & $ & $)".
     iModIntro.
+    simp_ltypes. rewrite Hst. iR.
     iApply array_ltype_incl_shared; first done.
     simpl. rewrite length_interpret_iml.
     iSpecialize ("Ha" with "[] [//]"). { iPureIntro. lia. }
     iApply (big_sepL2_mono with "Ha").
-    iIntros (?????) "Hincl". iIntros (?). iDestruct ("Hincl" $! _ _) as "(Hincl1 & _)".
+    iIntros (?????) "(% & Hincl)".
+    iR.
+    iIntros (?). iDestruct ("Hincl" $! _ _) as "(Hincl1 & _)".
     done.
   Qed.
   Definition weak_subltype_array_shared_inst := [instance @weak_subltype_array_shared].
@@ -420,10 +427,12 @@ Section instances.
     iIntros "(<- & <- & %Hst & HT)". iIntros (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(Ha & $ & $)".
     iModIntro.
+    simp_ltypes. rewrite Hst. iR.
     iApply array_ltype_incl_uniq; first done.
     simpl. rewrite length_interpret_iml.
     iSpecialize ("Ha" with "[] [//]"). { iPureIntro. lia. }
-    iApply (big_sepL2_mono with "Ha"). eauto.
+    iApply (big_sepL2_mono with "Ha").
+    iIntros (?????) "(% & ?)". by iR.
   Qed.
   Definition weak_subltype_array_base_inst := [instance @weak_subltype_array_base].
   Global Existing Instance weak_subltype_array_base_inst | 20.
@@ -437,13 +446,13 @@ Section instances.
       fp_inv := True;
       fp_elim_mode := req;
       fp_core_pred E L (i : nat) (lt : ltype rt) :=
-        if req then (∀ k r, ltype_incl k r r lt (◁ def))%I else ⌜full_eqltype E L lt (◁ def)⌝%I;
+        if req then (⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ ∀ k r, ltype_incl k r r lt (◁ def))%I else ⌜full_eqltype E L lt (◁ def)⌝%I;
     |}.
   Next Obligation.
     iIntros (rt def ? req E L i lt). destruct req.
     - iIntros (T ??) "#CTX #HE HL (%Hsubt & $)".
-      iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl"; first apply Hsubt.
-      iModIntro. iFrame.
+      iPoseProof (full_eqltype_acc with "CTX HE HL") as "(% & #Hincl)"; first apply Hsubt.
+      iModIntro. iFrame. iR.
       iIntros (??). iApply ltype_eq_ltype_incl_l.
       done.
     - iIntros (T) "(%Heqt & $)". done.
@@ -456,8 +465,9 @@ Section instances.
     destruct req; iIntros "(%Hsubt & HT)".
     - iApply fold_list_replicate_elim_full; first done; last done.
       simpl. iIntros "#CTX #HE HL _".
-      iPoseProof (full_eqltype_acc with "CTX HE HL")as "#Hincl"; first apply Hsubt.
-      iModIntro. iIntros (i ? k r).
+      iPoseProof (full_eqltype_acc with "CTX HE HL")as "(% & #Hincl)"; first apply Hsubt.
+      iModIntro. iIntros (i ?).
+      iR. iIntros ( k r).
       iApply ltype_eq_ltype_incl_l.
       iApply "Hincl".
     - iApply fold_list_replicate_elim_weak; first done; last done.
@@ -481,11 +491,13 @@ Section instances.
     { simpl. rewrite length_interpret_iml. iPureIntro. lia. }
     { simpl. done. }
     specialize (full_eqtype_eqltype _ _ _ _ Hsubt) as Hs.
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hb"; first apply Hs.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst1 & #Hb)"; first apply Hs.
     iPoseProof (big_sepL_Forall with "Hf") as "%Ha".
     apply array_ltype_make_defaults_full_eqltype in Ha.
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hc"; first apply Ha.
-    iFrame. iModIntro. iApply (ltype_incl_trans with "[Hf]"); first last.
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst2 & #Hc)"; first apply Ha.
+    iFrame. iModIntro.
+    iR.
+    iApply (ltype_incl_trans with "[Hf]"); first last.
     { iApply ltype_incl_trans.
       { iApply array_t_unfold_1. }
       iApply ltype_eq_ltype_incl_l.
@@ -500,7 +512,8 @@ Section instances.
     ⊢ weak_subltype E L k rs1 rs2 (◁ array_t len1 def1) (ArrayLtype def2 len2 lts2) T.
   Proof.
     iIntros "Hsubt" (??) "#CTX #HE HL".
-    iMod ("Hsubt" with "[//] CTX HE HL") as "(Ha & $ & $)".
+    iMod ("Hsubt" with "[//] CTX HE HL") as "(% & Ha & $ & $)".
+    iR.
     iModIntro. iApply ltype_incl_trans; last done.
     iApply array_t_unfold_2.
   Qed.

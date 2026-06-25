@@ -231,8 +231,9 @@ iMod ("HR" with "[] [$] HE HL [Hcred]") as "(%L1 & HL & HR)"; first done.
     simpl.
     iApply ltype_eq_place_cond_trans; simpl; first last.
     { by iApply shr_ltype_place_cond. }
-    iIntros (??). iApply shr_ltype_eq; [ | done..].
-    iIntros (??). iApply ltype_eq_refl.
+    { iIntros (??). iApply shr_ltype_eq; [ | done..].
+      iIntros (??). iApply ltype_eq_refl. }
+    { done. }
   Qed.
   Definition prove_place_cond_shr_ltype_inst := [instance @prove_place_cond_shr_ltype].
   Global Existing Instance prove_place_cond_shr_ltype_inst | 5.

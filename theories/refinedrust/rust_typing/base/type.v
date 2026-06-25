@@ -1876,6 +1876,12 @@ Section subtyping.
     - iApply "Hs23". iApply "Hs12". done.
   Qed.
 
+  Lemma type_incl_syn_type_eq {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 :
+    type_incl r1 r2 ty1 ty2 -∗ ⌜∀ m, st_of ty1 m = st_of ty2 m⌝.
+  Proof.
+    by iIntros "(% & _)".
+  Qed.
+
   (** *** [owned_type_incl] *)
   Lemma owned_type_incl_refl π {rt} (ty : type rt) (r : rt) :
     ⊢ owned_type_incl π r r ty ty.
