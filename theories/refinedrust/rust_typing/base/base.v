@@ -80,6 +80,15 @@ Global Existing Instance TCTForall_nil.
 Global Existing Instance TCTForall_cons.
 Global Hint Mode TCTForall ! ! ! : typeclass_instances.
 
+(** [TCOr] but for [Type] instead of [Prop] *)
+Inductive TCOrT (P1 P2 : Type) : Type :=
+  | TCOrT_l : P1 → TCOrT P1 P2
+  | TCOrT_r : P2 → TCOrT P1 P2.
+Existing Class TCOrT.
+Global Existing Instance TCOrT_l | 9.
+Global Existing Instance TCOrT_r | 10.
+Global Hint Mode TCOrT ! ! : typeclass_instances.
+
 (** Solve a goal with [set_solver] *)
 Class TCSetSolver (P : Prop) : Prop := set_solver_proof : P.
 Global Hint Extern 1 (TCSetSolver ?P) => (change P; set_solver) : typeclass_instances.

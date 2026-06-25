@@ -9,6 +9,9 @@ Inductive rr_config_dont_fold_places : Prop :=
 Inductive rr_config_dont_interpret_typing_hints : Prop :=
 | RR_CONFIG_DONT_INTERPRET_TYPING_HINTS.
 
+Inductive rr_config_dont_interpret_shrref_typing_hints : Prop :=
+| RR_CONFIG_DONT_INTERPRET_SHR_REF_TYPING_HINTS.
+
 Class CheckConfig (C : Prop) : Prop := mk_check_config { check_config_witness : C }.
 Global Hint Extern 10 (CheckConfig ?C) =>
   match goal with

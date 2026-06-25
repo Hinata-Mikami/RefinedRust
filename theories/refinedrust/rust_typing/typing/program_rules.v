@@ -4372,11 +4372,11 @@ Section subsume.
     iL. done.
   Qed.
 
-  Lemma type_borrow_shr_end_owned E L π κ l orty {rt : RT} (ty : type rt) (r : rt) bmin (T : typed_borrow_shr_end_cont_t bmin rt):
+  Lemma type_borrow_shr_end_owned E L π κ l orty {rt : RT} (ty : type rt) (r : rt) bmin `{Hint : !TCOrT (CheckConfig rr_config_dont_interpret_shrref_typing_hints) TCTrue} (T : typed_borrow_shr_end_cont_t bmin rt):
     ⌜lctx_place_update_kind_incl E L (UpdUniq [κ]) bmin⌝ ∗
     ⌜lctx_lft_alive E L κ⌝ ∗
     (** Interpret the type annotation *)
-    interpret_typing_hint E L orty bmin ty r (λ rt2 ty2 r2 upd,
+    interpret_typing_hint E L (if Hint then None else orty) bmin ty r (λ rt2 ty2 r2 upd,
       ⌜Forall (lctx_lft_alive E L) (ty_lfts ty2)⌝ ∗
       find_in_context (FindNaOwn π) (λ E,
       na_own π E -∗
@@ -4451,6 +4451,7 @@ Section subsume.
     This then first establishes the typing hint using strong subtyping (instead of [weak_subtype]), allowing to establish safety/representation invariants. *)
   Lemma type_borrow_shr_end_owned_strong E L π κ l rty (rt : RT) (ty : type rt) (r : rt)
     `{!TCUnless (CheckConfig rr_config_dont_interpret_typing_hints)}
+    `{!TCUnless (CheckConfig rr_config_dont_interpret_shrref_typing_hints)}
     (T : typed_borrow_shr_end_cont_t UpdStrong rt) :
 
     (* Interpret the typing hint *)
