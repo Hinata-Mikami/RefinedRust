@@ -1362,8 +1362,8 @@ Section judgments.
 
   (** Interpreting typing hints *)
   Definition interpret_typing_hint_cont_t (bmin : place_update_kind) (rt : RT) :=
-    ∀ (rt' : RT), type rt' → rt' → place_update_kind_res bmin rt rt' → iProp Σ.
-  Definition interpret_typing_hint (E : elctx) (L : llctx) (orty : option rust_type) (bmin : place_update_kind) {rt} (ty : type rt) (r : rt) (T : interpret_typing_hint_cont_t bmin rt) : iProp Σ :=
+    llctx → ∀ (rt' : RT), type rt' → rt' → place_update_kind_res bmin rt rt' → iProp Σ.
+  Definition interpret_typing_hint (E : elctx) (L : llctx) (π : thread_id) (orty : option rust_type) (bmin : place_update_kind) {rt} (ty : type rt) (r : rt) (T : interpret_typing_hint_cont_t bmin rt) : iProp Σ :=
     ∀ F,
       ⌜lftE ⊆ F⌝ →
       ⌜↑rrustN ⊆ F⌝ →
@@ -1371,15 +1371,20 @@ Section judgments.
       rrust_ctx -∗
       elctx_interp E -∗
       llctx_interp L ={F}=∗
-      ∃ (rt2 : RT) (ty2 : type rt2) (r2 : rt2) (upd : place_update_kind_res bmin rt rt2),
-        llctx_interp L ∗
-        type_incl r r2 ty ty2 ∗
+      ∃ (L2 : llctx) (rt2 : RT) (ty2 : type rt2) (r2 : rt2) (upd : place_update_kind_res bmin rt rt2),
+        llctx_interp L2 ∗
+        (* either owned inclusion or weak inclusion, depending on the allowed permissions *)
+        (match bmin with
+         | UpdInit => owned_type_incl π r r2 ty ty2
+         | UpdStrong => owned_type_incl π r r2 ty ty2
+         | _ => type_incl r r2 ty ty2
+         end) ∗
         typed_place_cond upd (◁ ty) (◁ ty2) ∗
         upd ⪯ₚ bmin ∗
-        T rt2 ty2 r2 upd
+        T L2 rt2 ty2 r2 upd
     .
-  Class InterpretTypingHint (E : elctx) (L : llctx) (orty : option rust_type) (bmin : place_update_kind) {rt} (ty : type rt) (r : rt) : Type :=
-    interpret_typing_hint_proof T : iProp_to_Prop (interpret_typing_hint E L orty bmin ty r T).
+  Class InterpretTypingHint (E : elctx) (L : llctx) (π : thread_id) (orty : option rust_type) (bmin : place_update_kind) {rt} (ty : type rt) (r : rt) : Type :=
+    interpret_typing_hint_proof T : iProp_to_Prop (interpret_typing_hint E L π orty bmin ty r T).
 
 
   (** ** Read judgments *)
@@ -1589,7 +1594,6 @@ Section judgments.
     res ⪯ₚ bmin ∗
     (* and a proof that we can unblock again *)
     typed_place_cond res lt (BlockedLtype ty2 κ) ∗
-    ⌜ltype_st lt = ty_syn_type ty2 MetaNone⌝ ∗
     (* and the context and postco *)
     llctx_interp L' ∗
     T L' γ rt2 (BlockedLtype ty2 κ) (PlaceGhost γ) ty2 r2 res).
@@ -1647,8 +1651,7 @@ Section judgments.
     l ◁ₗ[π, b2] #r2 @ lt2  ∗
     (* and a proof that we can unblock again *)
     typed_place_cond res lt lt2 ∗
-    ⌜ltype_st lt = ltype_st lt2⌝ ∗
-    ⌜ltype_st lt = ty_syn_type ty2 MetaNone⌝ ∗
+    ⌜ltype_st lt2 = ty_syn_type ty2 MetaNone⌝ ∗
     res ⪯ₚ bmin ∗
     (* and the context and postco *)
     llctx_interp L2 ∗
@@ -2331,7 +2334,7 @@ Global Hint Mode MutEqtype + + + + + + ! : typeclass_instances.
 Global Hint Mode MutEqLtype + + + + + + ! : typeclass_instances.
 Global Hint Mode SubtypeADT + + + + + + + ! : typeclass_instances.
 
-Global Hint Mode InterpretTypingHint + + + + + + + + + : typeclass_instances.
+Global Hint Mode InterpretTypingHint + + + + + + + + + + : typeclass_instances.
 
 Global Hint Mode TypedReadEnd + + + + + + + + + + + + + : typeclass_instances.
 Global Hint Mode TypedWriteEnd + + + + + + + + + + + + + + + + : typeclass_instances.
@@ -3785,8 +3788,8 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
       constr:(StratifyLtypePostHook π E L m l lt r b)
   | stratify_ltype_array_iter ?π ?E ?L ?mdu ?ma ?m ?l ?ig ?def ?len ?iml ?rs ?b =>
       constr:(StratifyLtypeArrayIter π E L mdu ma m l ig def len iml rs b)
-  | interpret_typing_hint ?E ?L ?orty ?bmin ?ty ?r =>
-      constr:(InterpretTypingHint E L orty bmin ty r)
+  | interpret_typing_hint ?E ?L ?π ?orty ?bmin ?ty ?r =>
+      constr:(InterpretTypingHint E L π orty bmin ty r)
   | typed_context_fold ?P ?E ?L ?m ?tctx ?acc =>
       constr:(TypedContextFold P E L m tctx acc)
   | typed_pre_context_fold ?π ?E ?L ?m =>

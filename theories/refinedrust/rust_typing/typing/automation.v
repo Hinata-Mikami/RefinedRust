@@ -190,8 +190,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : ResolveGhostIter π E L rm lb l st lts b rs ig i0) T))
   | typed_discriminant_end ?π ?E ?L ?l ?lt ?r ?b2 ?els ?T =>
       cont uconstr:(((_ : TypedDiscriminantEnd π E L l lt r b2 els) T))
-  | interpret_typing_hint ?E ?L ?orty ?bmin ?ty ?r ?T =>
-      cont uconstr:(((_ : InterpretTypingHint E L orty bmin ty r) T))
+  | interpret_typing_hint ?E ?L ?π ?orty ?bmin ?ty ?r ?T =>
+      cont uconstr:(((_ : InterpretTypingHint E L π orty bmin ty r) T))
   | simplify_hyp_value ?E ?L ?π ?P ?T =>
       cont uconstr:(((_ : SimplifyHypValue E L π P) T))
   end.
