@@ -37,7 +37,7 @@ Section stratify.
 
   Lemma stratify_ltype_struct_iter_nil π E L md ma {M} (m : M) (l : loc) sls k i0 (T : stratify_ltype_struct_iter_cont_t) :
     T L True [] +[] -[]
-  ⊢ stratify_ltype_struct_iter π E L md ma m l i0 sls +[] -[] k T.
+    ⊢ stratify_ltype_struct_iter π E L md ma m l i0 sls +[] -[] k T.
   Proof.
     iIntros "HT". iIntros (?????) "#CTX #HE HL ??? Hl".
     iModIntro. iExists L, True%I, [], +[], -[].
@@ -49,6 +49,8 @@ Section stratify.
     stratify_ltype_struct_iter π E L mdu ma m l (S i0) sls ltys rfns0 k (λ L2 R2 rts2 ltys2 rs2,
       (∀ name st, ⌜sls.(sls_fields) !! i0 = Some (name, st)⌝ -∗
       stratify_ltype π E L2 mdu ma m (l atst{sls}ₗ name) lty r k (λ L3 R3 rt3 lty3 r3,
+        (* the syntype needs to stay constant *)
+        ⌜ltype_st lty3 = ltype_st lty⌝ ∗
         T L3 (R3 ∗ R2) (rt3 :: rts2) (lty3 +:: ltys2) (r3 -:: rs2)))))
     ⊢ stratify_ltype_struct_iter π E L mdu ma m l i0 sls (lty +:: ltys) (rfns) k T.
   Proof.
@@ -60,9 +62,10 @@ Section stratify.
     { iApply (big_sepL_mono with "Hl2"). intros ? [? []] ?. by rewrite Nat.add_succ_r. }
     iDestruct "Hl" as "(%name & %st & %Hlook & Hl)".
 (*edestruct (lookup_lt_is_Some_2 sls.(sls_fields) i0) as ([name ?] & Hlook); first by lia.*)
-    iMod ("HT" with "[//] [//] [//] [//] CTX HE HL Hl") as "(%L3 & %R3 & %rt' & %lt' & %r' & HL & Hst1 & Hl & HT)".
+    iMod ("HT" with "[//] [//] [//] [//] CTX HE HL Hl") as "(%L3 & %R3 & %rt' & %lt' & %r' & HL & Hst1 & Hl & %Hsteq & HT)".
     iModIntro. iExists L3, (R3 ∗ R2')%I, _, _, _. iFrame.
     iSplitR. { rewrite Hlen'. done. }
+    iR.
     iApply (logical_step_compose with "Hl2"). iApply (logical_step_wand with "Hl").
     iIntros "(Hl & HR1) (Hl2 & HR2)".
     simpl. iFrame "HR1 HR2".

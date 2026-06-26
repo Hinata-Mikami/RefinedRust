@@ -15,7 +15,7 @@ Section stratify.
     (∀ l', stratify_ltype π E L mdu ma ml l' lt r (Shared κ) (λ L' R rt' lt' r',
       match ma with
       | StratRefoldFull =>
-          ∃ (_ : Inhabited rt'), cast_ltype_to_type E L' lt' (λ ty', T L' R _ (◁ (shr_ref κ ty'))%I (#r'))
+          cast_ltype_to_type E L' lt' (λ ty', T L' R _ (◁ (shr_ref κ ty'))%I (#r'))
       | _ => T L' R _ (ShrLtype lt' κ) (#r')
       end))
     ⊢ stratify_ltype π E L mdu ma ml l (ShrLtype lt κ) (#r) (Owned) T.
@@ -27,7 +27,7 @@ Section stratify.
     iMod "Hb" as "(%L' & %R & %rt' & %lt' & %r' & HL & %Hcond & Hstep & Hc)".
     destruct (decide (ma = StratRefoldFull)) as [Heq | ].
     - subst ma.
-      iDestruct "Hc" as "(% & %ty' & %Heq & HT)".
+      iDestruct "Hc" as "(%ty' & %Heq & HT)".
       iPoseProof (eqltype_use F with "[$LFT $LLCTX] HE HL") as "(Hvs & HL)"; [done | .. ].
       { apply full_eqltype_alt. apply Heq. }
       (*iPoseProof (eqltype_acc with "[$LFT $LLCTX] HE HL") as "#Heq"; first done.*)
@@ -108,7 +108,7 @@ Section stratify.
     iDestruct ("Heq" $! (Shared κ) r) as "((#Hinc & _) & _)".
     iPoseProof ("Hinc" with "Hl") as "Hl".
     iExists L, _, _, _, _. iFrame.
-    iModIntro. iSplitR. { simp_ltypes. done. }
+    iModIntro. iSplitR. { rewrite -Hst. simp_ltypes; done. }
     iApply logical_step_intro. iSplitL; done.
   Qed.
   Global Instance stratify_ltype_shared_inst1 {rt} π E L mdu {M} (ml : M) l (lt lt' : ltype rt) κ (r : place_rfn rt) `{!SimpLtype (ltype_core lt) lt'} :

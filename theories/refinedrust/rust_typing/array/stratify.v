@@ -62,6 +62,7 @@ Section stratify.
               strong_subltype E L3 k r3 r4 lty3' (◁ def) (T L3 (R3 ∗ R2) ((j, CoreableLtype (ltype_blocked_lfts lty3) (◁ def)) :: iml2) (<[j := r4]> rs2)))
           end
         else
+            ⌜ltype_st lty3 = st_of def MetaNone⌝ ∗
             ∃ (Heq : rt = rt3),
             T L3 (R3 ∗ R2) ((j, rew <- [ltype] Heq in lty3) :: iml2) (<[j := rew <-[place_rfnRT] Heq in r3]> rs2)
       )))
@@ -91,7 +92,7 @@ Section stratify.
     iMod ("HT" with "[//] [//] [//] CTX HE HL Hl") as "(%L3 & %R3 & %rt' & %lt' & %r' & HL & %Hst' & Hstep' & HT)".
 
     destruct (decide (ma = StratRefoldFull)); first last.
-    { iDestruct "HT" as "(%Heq & HT)".
+    { iDestruct "HT" as "(%Hst_eq & %Heq & HT)".
       subst.
       iExists _, _, _, _. iFrame.
       iSplitR. { iPureIntro. rewrite length_insert//. }
@@ -107,7 +108,7 @@ Section stratify.
       rewrite -Hleneq. iApply "Ha".
       iSplitL "Hl".
       { rewrite decide_True; last set_solver. iFrame.
-        iPureIntro. rewrite -Hst' Hst//. }
+        iPureIntro. rewrite Hst_eq//. }
       iApply (big_sepL2_mono with "Hl2").
       iIntros (k0 ? ? Hlook1 Hlook2) "Ha".
       destruct (decide (k0 = j)); first done.

@@ -412,7 +412,7 @@ Section alias_ltype.
     | StratNoRefold => T L True _ (AliasLtype rt st l2) r
     | _ =>
       find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
-        ⌜π = π2⌝ ∗ ⌜ltype_st lt2 = st⌝ ∗ ⌜b2 = Owned⌝ ∗
+        ⌜π = π2⌝ ∗ ⌜syn_type_compat st (ltype_st lt2)⌝ ∗ ⌜b2 = Owned⌝ ∗
         (* recursively stratify *)
         stratify_ltype π E L mdu ma m l2 lt2 r2 b2 (λ L2 R rt2' lt2' r2',
           T L2 R rt2' lt2' r2'))
@@ -423,15 +423,17 @@ Section alias_ltype.
     destruct (decide (ma = StratNoRefold)) as [-> | ].
     { iIntros (????) "#CTX #HE HL Hl". iModIntro. iExists _, _, _, _, _. iFrame.
       iSplitR; first done. iApply logical_step_intro. by iFrame. }
-    iAssert (find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)), ⌜π = π2⌝ ∗ ⌜ltype_st lt2 = st⌝ ∗ ⌜b2 = Owned⌝ ∗ stratify_ltype π E L mdu ma m l2 lt2 r2 b2 T))%I with "[HT]" as "HT".
+    iAssert (find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)), ⌜π = π2⌝ ∗ ⌜syn_type_compat st (ltype_st lt2)⌝ ∗ ⌜b2 = Owned⌝ ∗ stratify_ltype π E L mdu ma m l2 lt2 r2 b2 T))%I with "[HT]" as "HT".
     { destruct ma; done. }
-    iDestruct "HT" as ([rt2 [[[lt2 r2] b2] π2]]) "(Hl2 & <- & <- & -> & HT)".
+    iDestruct "HT" as ([rt2 [[[lt2 r2] b2] π2]]) "(Hl2 & <- & %Hcomp & -> & HT)".
     simpl. iIntros (????) "#CTX #HE HL Hl".
     rewrite ltype_own_alias_unfold /alias_lty_own.
     iDestruct "Hl" as "(%ly & %Halg & -> & %Hly & Hlb)".
     simp_ltypes.
     iMod ("HT" with "[//] [//] [//] CTX HE HL Hl2") as (L3 R rt2' lt2' r2') "(HL & %Hst & Hstep & HT)".
-    iModIntro. iExists _, _, _, _, _. iFrame. done.
+    iModIntro. iExists _, _, _, _, _. iFrame.
+    iPureIntro.
+    etrans; done.
   Qed.
   Definition stratify_ltype_alias_owned_inst := [instance @stratify_ltype_alias_owned].
   Global Existing Instance stratify_ltype_alias_owned_inst.
@@ -442,7 +444,7 @@ Section alias_ltype.
         T L True _ (AliasLtype rt''' st l2) r
       else
         find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
-          ⌜π = π2⌝ ∗ ⌜ltype_st lt2 = st⌝ ∗ ⌜b2 = Owned⌝ ∗
+          ⌜π = π2⌝ ∗ ⌜syn_type_compat st (ltype_st lt2)⌝ ∗ ⌜b2 = Owned⌝ ∗
           (* recursively stratify *)
           stratify_ltype π E L mdu ma m l2 lt2 r2 b2
             (λ L2 R rt2' lt2' r2',
@@ -456,7 +458,7 @@ Section alias_ltype.
     { iIntros (????) "#CTX #HE HL Hl". iModIntro. iExists _, _, _, _, _. iFrame.
       iSplitR; first done. iApply logical_step_intro. by iFrame. }
 
-    iDestruct "HT" as ([rt2 [[[lt2 r2] b2] π2]]) "(Hl2 & <- & <- & -> & HT)"; simpl.
+    iDestruct "HT" as ([rt2 [[[lt2 r2] b2] π2]]) "(Hl2 & <- & %Hcomp & -> & HT)"; simpl.
 
     iIntros (????) "#CTX #HE HL Hl".
     rewrite ltype_own_alias_unfold /alias_lty_own.

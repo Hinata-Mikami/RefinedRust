@@ -1004,7 +1004,7 @@ Section judgments.
       l ◁ₗ[π, b] r @ lt ={F}=∗
       ∃ L' R (rt' : RT) (lt' : ltype rt') (r' : place_rfn rt'),
       llctx_interp L' ∗
-      ⌜ltype_st lt = ltype_st lt'⌝ ∗
+      ⌜syn_type_compat (ltype_st lt) (ltype_st lt')⌝ ∗
       logical_step F (l ◁ₗ[π, b] r' @ lt' ∗ R) ∗
       T L' R rt' lt' r'.
 
@@ -1061,8 +1061,8 @@ Section judgments.
     ⊢ stratify_ltype π E L mdu ma ml l lt r b T.
   Proof.
     iIntros "HT" (????) "CTX HE HL Hb".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL Hb") as "(%L2 & %R2 & %rt2 & %lt2 & %r2 & HL & Hst & Hb & HR & HT)".
-    iExists _, _, _, _, _. iFrame. iApply logical_step_intro. by iFrame.
+    iMod ("HT" with "[//] [//] [//] CTX HE HL Hb") as "(%L2 & %R2 & %rt2 & %lt2 & %r2 & HL & %Hst & Hb & HR & HT)".
+    iExists _, _, _, _, _. iFrame. rewrite Hst. iR. iApply logical_step_intro. by iFrame.
   Qed.
   (* TODO: remove this instance *)
   Global Instance stratify_ltype_id_inst {rt} π E L mdu ma {M} (ml : M) l (lt : ltype rt) (r : place_rfn rt) b :

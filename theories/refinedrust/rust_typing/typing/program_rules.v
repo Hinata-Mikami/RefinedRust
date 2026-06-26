@@ -2316,7 +2316,7 @@ Section subsume.
       iPoseProof ("Hp" with "[//] [//] [//] [//] HE HL Hl") as ">Hb".
       iDestruct "Hb" as "(%L' & %R2 & %rt' & %lt' & %r' & Hl & %Hst & HT)".
       iModIntro. iExists L', _, rt', lt', r'. iFrame.
-      iPureIntro. rewrite -Hst ltype_core_syn_type_eq. by simp_ltypes.
+      iPureIntro. simp_ltypes. move: Hst. simp_ltypes. done.
   Qed.
   Definition stratify_ltype_coreable_inst := [instance @stratify_ltype_coreable].
   Global Existing Instance stratify_ltype_coreable_inst | 5.
@@ -2377,6 +2377,7 @@ Section subsume.
     stratify_ltype π E L mdu ma StratifyTypeInvOp l lt_cur r (Owned) (λ L' R rt_cur' lt_cur' (r' : place_rfn rt_cur'),
       if decide (ma = StratNoRefold)
         then (* keep it open *)
+          ⌜ltype_st lt_cur' = ltype_st lt_cur⌝ ∗
           T L' R _ (OpenedLtype lt_cur' lt_inner lt_full Cpre Cpost) r'
         else
           trigger_tc (SimpLtype (ltype_core lt_cur')) (λ lt_cur'',
@@ -2404,7 +2405,7 @@ Section subsume.
     iMod ("Hstrat" with "[//] [//] [//] CTX HE HL Hl") as "(%L2 & %R & %rt_cur' & %lt_cur' & %r' & HL & %Hst & Hstep & HT)".
     destruct (decide (ma = StratNoRefold)) as [-> | ].
     - (* don't fold *)
-      iModIntro.
+      iModIntro. iDestruct "HT" as "(%Hst' & HT)".
       iExists _, _, _, _, _. iFrame.
       iSplitR. { iPureIntro. simp_ltypes. done. }
       iApply logical_step_fupd.
@@ -2413,10 +2414,9 @@ Section subsume.
       iIntros "(Hl & $)".
       rewrite ltype_own_opened_unfold /opened_ltype_own.
       iExists ly. iFrame.
-      rewrite -Hst.
-      iSplitR. { done. }
-      iSplitR; first done. iSplitR; first done.
-      iSplitR; first done. done.
+      apply Hst in Halg.
+      iR. iR. iR.
+      iL. rewrite Hst'. done.
     - (* fold it again *)
       iDestruct "HT" as "(%lt_cur'' & %Heq & HT)". destruct Heq as [<-].
       iDestruct "HT" as "(%ri & HT)".
@@ -2490,6 +2490,7 @@ Section subsume.
     stratify_ltype π E L mdu ma StratifyTypeInvOp l lt_cur r (Owned) (λ L' R rt_cur' lt_cur' (r' : place_rfn rt_cur'),
       if decide (ma = StratNoRefold)
         then (* keep it open *)
+          ⌜ltype_st lt_cur' = ltype_st lt_cur⌝ ∗
           T L' R _ (OpenedLtype lt_cur' lt_inner lt_full Cpre Cpost) r'
         else
           (* fold the invariant *)
@@ -2520,7 +2521,9 @@ Section subsume.
     iMod ("Hstrat" with "[//] [//] [//] CTX HE HL Hl") as "(%L2 & %R & %rt_cur' & %lt_cur' & %r' & HL & %Hst & Hstep & HT)".
     destruct (decide (ma = StratNoRefold)).
     - (* don't fold *)
-      iModIntro. iExists _, _, _, _, _. iFrame.
+      iModIntro.
+      iDestruct "HT" as "(%Hst' & HT)".
+      iExists _, _, _, _, _. iFrame.
       iSplitR. { iPureIntro. simp_ltypes. done. }
       iApply logical_step_fupd.
       iApply (logical_step_compose with "Hstep").
@@ -2528,7 +2531,7 @@ Section subsume.
       iIntros "(Hl & $)".
       rewrite ltype_own_opened_unfold /opened_ltype_own.
       iExists ly. iFrame.
-      rewrite -Hst.
+      rewrite Hst'.
       iSplitR. { done. }
       iSplitR; first done. iSplitR; first done.
       iSplitR; first done. done.
@@ -2633,6 +2636,7 @@ Section subsume.
       (λ L' R rt_cur' lt_cur' (r' : place_rfn rt_cur'),
         if decide (ma = StratNoRefold)
         then (* keep it open *)
+          ⌜ltype_st lt_cur' = ltype_st lt_cur⌝ ∗
           T L' R _ (OpenedNaLtype lt_cur' lt_inner Cpre Cpost) r'
         else (* fold the invariant *)
           ∃ ri,
@@ -2654,6 +2658,7 @@ Section subsume.
     destruct (decide (ma = StratNoRefold)) as [-> | ].
     - (* don't fold *)
       iModIntro.
+      iDestruct "HT" as "(%Hst2 & HT)".
       iExists _, _, _, _, _; iFrame; iR.
 
       iApply (logical_step_compose with "Hstep").
@@ -2662,8 +2667,9 @@ Section subsume.
 
       rewrite ltype_own_opened_na_unfold /opened_na_ltype_own.
       iExists ly; iFrame.
-      rewrite -Hst'; do 3 iR.
-      done.
+      apply Hst' in Halg.
+      do 3 iR.
+      rewrite Hst2. done.
 
     - (* fold it again *)
       iDestruct "HT" as "(%ri & HT)".
@@ -2674,7 +2680,7 @@ Section subsume.
 
       iExists L3, _, _, _, _; iFrame.
       iSplitR.
-      { by simp_ltypes. }
+      { simp_ltypes. rewrite Hst//. }
 
       iApply logical_step_fupd.
       iApply (logical_step_compose with "Hstep").

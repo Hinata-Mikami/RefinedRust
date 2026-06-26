@@ -104,7 +104,7 @@ Section stratify.
       iDestruct "HT" as "(%lt2 & %Heql & $)".
       iPoseProof (full_eqltype_acc with "[$LFT $LLCTX] HE HL") as "(%Hst & #Heq)"; [apply Heql | ].
       iFrame.
-      iR.
+      rewrite -Hst. iSplitR. { clear. by simp_ltypes. }
       iApply logical_step_fupd.
       iApply (logical_step_compose with "Hstep").
       iApply (logical_step_compose with "Hcl").

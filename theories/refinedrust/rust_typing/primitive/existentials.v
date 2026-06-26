@@ -666,7 +666,7 @@ Section stratify.
     iDestruct "Ha" as "(%L2 & %R' & %rt' & %lt' & %r' & HL & %Hst & Hstep & HT)".
     iExists _, _, _, _, _. iFrame.
     iModIntro.
-    iPureIntro. simp_ltypes. rewrite -Hst. done.
+    iPureIntro. simp_ltypes. simpl. done.
   Qed.
   (*Global Instance stratify_unfold_ex_plain_t_owned_inst {M} π E L smu sa (sm : M) l (ty : type rt) x wl :*)
   (*StratifyLtype π E L smu StratDoUnfold sa sm l (◁ (∃; P, ty))%I (PlaceIn x) (Owned wl) :=*)
@@ -676,6 +676,8 @@ Section stratify.
     li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L'),
     (∀ r, P.(inv_P) π r x -∗ stratify_ltype π E L' StratDoUnfold sa sm l (◁ ty) (PlaceIn r) (Owned)
       (λ L2 R' rt' lt' r',
+        (* opened ltype requires the syntypes to be the same *)
+        ⌜ltype_st lt' = st_of ty MetaNone⌝ ∗
         T L2 R' _ (OpenedLtype lt' (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) π r x) (λ r x, llft_elt_toks κs)) r')))
     ⊢ stratify_ltype π E L StratDoUnfold sa sm l (◁ (∃; P, ty)) (PlaceIn x) (Uniq κ γ) T.
   Proof.
@@ -686,7 +688,7 @@ Section stratify.
     iMod "Hcl_F" as "_".
     iMod (ex_plain_t_open_uniq with "CTX Htok Hcl_tok Hb") as "(%r & HP & Hb & Hcl)"; first done.
     iMod ("HT" with "HP [//] [//] [//] CTX HE HL Hb") as "Ha".
-    iDestruct "Ha" as "(%L2 & %R' & %rt' & %lt' & %r' & HL & %Hst & Hstep & HT)".
+    iDestruct "Ha" as "(%L2 & %R' & %rt' & %lt' & %r' & HL & %Hst & Hstep & %Hst' & HT)".
     iExists _, _, _, _, _. iFrame.
     iSplitR. { iPureIntro. simp_ltypes. done. }
     iModIntro.
