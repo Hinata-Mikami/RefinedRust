@@ -12,12 +12,17 @@ Lemma Vec_T_pop_proof (π : thread_id) :
   Vec_T_pop_lemma π.
 Proof.
   generalize RR_CONFIG_DONT_FOLD_PLACES; intros ?.
+  generalize RR_CONFIG_DONT_INTERPRET_SHR_REF_TYPING_HINTS; intros ?.
   Vec_T_pop_prelude.
 
   rep <-! liRStep; liShow.
-  apply_update (updateable_typed_array_access l (length xs - 1) (st_of T_ty MetaNone)).
+  apply_update (updateable_typed_array_access l (length xs - 1) (UntypedSynType $ st_of T_ty MetaNone)).
   liRStepUntil typed_call.
   (* We need to manually extract it now *)
+  (* First, project to the T_ty case of maybe_uninit, so that we can extract it as a typed value *)
+  apply_update (updateable_subsume_to (l offsetst{st_of T_ty MetaNone}ₗ (length xs - 1)) (◁ T_ty)%I (((<#> (<$#@{ T_rt }> xs)) !!! (length xs - Z.to_nat 1)%nat))).
+  liRStepUntil typed_call.
+  (* now, extract a typed value *)
   apply_update (updateable_extract_typed_value (l offsetst{st_of T_ty MetaNone}ₗ (length xs - 1))).
   rep <-! liRStep; liShow.
   apply_update (updateable_subsume_to (l offsetst{st_of T_ty MetaNone}ₗ (length xs - 1)) (◁ uninit (st_of T_ty MetaNone))%I (# ())).

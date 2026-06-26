@@ -12,13 +12,14 @@ Lemma Vec_T_push_proof (π : thread_id) :
   Vec_T_push_lemma π.
 Proof.
   generalize RR_CONFIG_DONT_FOLD_PLACES; intros ?.
+  generalize RR_CONFIG_DONT_INTERPRET_SHR_REF_TYPING_HINTS; intros ?.
   Vec_T_push_prelude.
 
   rep <-! liRStep; liShow.
-  { apply_update (updateable_typed_array_access x'0 (length self ) (st_of T_ty MetaNone)).
+  { apply_update (updateable_typed_array_access x'0 (length self ) (UntypedSynType $ st_of T_ty MetaNone)).
     repeat liRStep; liShow. }
   { rep <-! liRStep; liShow.
-    apply_update (updateable_typed_array_access l (length self ) (st_of T_ty MetaNone)).
+    apply_update (updateable_typed_array_access l (length self ) (UntypedSynType $ st_of T_ty MetaNone)).
     repeat liRStep; liShow. }
 
 
