@@ -37,7 +37,8 @@ Section value.
     simpl.
     iSplitR. { iPureIntro.
       apply syn_type_has_layout_op_alg in Hst as (ot2 & Hot2 & <-).
-      eapply use_op_alg_untyped; done. }
+      eapply use_op_alg_untyped; first done.
+      by apply syn_type_has_layout_untyped. }
     iSplitR. { iPureIntro. by left. }
     iSplitR. {
       destruct (decide (ly_size ly = 0)) as [Hzero | ].
@@ -80,7 +81,8 @@ Section value.
       iR. opose proof* syn_type_has_layout_op_alg as (ot & Hot & heq); first apply Hst.
       subst ly. iExists (UntypedOp (ot_layout ot)).
       iPureIntro. split_and!.
-      + by eapply use_op_alg_untyped.
+      + eapply use_op_alg_untyped; first done.
+        by apply syn_type_has_layout_untyped.
       + by left.
       + done.
       + done.
@@ -106,10 +108,10 @@ Section value.
     iExists (UntypedOp (mk_array_layout ly (length vs'))).
     iSplitR. {
       iPureIntro.
-      eapply syn_type_has_layout_op_alg in Hst' as (ot & Hot & Hot_eq).
+      specialize (syn_type_has_layout_op_alg _ _ Hst') as (ot & Hot & Hot_eq).
       eapply use_op_alg_untyped; first last.
-      - done.
-      - rewrite Hot_eq//. }
+      - apply syn_type_has_layout_untyped. done.
+      - done. }
 
     rewrite big_sepL2_fmap_l.
     (* have: agreement between the values *)

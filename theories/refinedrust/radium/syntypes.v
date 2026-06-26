@@ -1440,14 +1440,15 @@ Fixpoint use_op_alg `{!LayoutAlg} (st : syn_type) : option op_type :=
   | UnitSynType => Some $ StructOp unit_sl []
   | ArraySynType st n =>
     (* NOTE ideally, we'd have an ArrayOp -- however, reading a whole array in one go with a typed op is not something we usually do. *)
-    ly ← use_layout_alg st;
-    Some $ UntypedOp (mk_array_layout ly n)
+    ly ← use_layout_alg (ArraySynType st n);
+    Some $ UntypedOp ly
   | UnsafeCell st =>
       use_op_alg st
   | UntypedSynType st =>
-      op ← use_op_alg st;
-      Some $ UntypedOp (ot_layout op)
+      ly ← use_layout_alg (UntypedSynType st);
+      Some $ UntypedOp ly
   | LiteralSynType ly =>
+      ly ← use_layout_alg (LiteralSynType ly);
       Some $ UntypedOp ly
   | EnumSynType _ _ _ _ =>
       (* TODO this does not match Rust semantics -- ops on enums in Rust enforce validity *)
@@ -1557,33 +1558,36 @@ Lemma use_op_alg_unsafecell `{!LayoutAlg} st op :
 Proof. simpl. done. Qed.
 
 
-Lemma use_op_alg_untyped `{!LayoutAlg} st ot ot1 :
-  ot = (UntypedOp (ot_layout ot1)) →
-  use_op_alg st = Some ot1 →
+Lemma use_op_alg_untyped `{!LayoutAlg} st ot ly :
+  ot = (UntypedOp ly) →
+  use_layout_alg (UntypedSynType st) = Some ly →
   use_op_alg (UntypedSynType st) = Some ot.
 Proof.
-  intros ->.
-  simpl. intros ->; simpl.
-  done.
+  intros -> Hly. rewrite /use_op_alg Hly //.
 Qed.
 Lemma use_op_alg_untyped_inv `{!LayoutAlg} st ot :
   use_op_alg (UntypedSynType st) = Some ot →
-  ∃ ot1, use_op_alg st = Some ot1 ∧ ot = (UntypedOp (ot_layout ot1)).
+  ∃ ly, use_layout_alg (UntypedSynType st) = Some ly ∧ ot = (UntypedOp ly).
 Proof.
-  simpl.
-  rewrite bind_Some.
-  intros (ot1 & Hot1 & [=<-]).
+  rewrite /use_op_alg.
+  intros (ly & Hly & [= <-])%bind_Some.
   eauto.
 Qed.
 
 Lemma use_op_alg_literal `{!LayoutAlg} ly ot :
   ot = (UntypedOp ly) →
+  use_layout_alg (LiteralSynType ly) = Some ly →
   use_op_alg (LiteralSynType ly) = Some ot.
-Proof. intros ->. done. Qed.
+Proof. intros -> Hly. rewrite /use_op_alg Hly //. Qed.
 Lemma use_op_alg_literal_inv `{!LayoutAlg} ly ot :
-  use_op_alg (LiteralSynType ly) = Some ot → ot = (UntypedOp ly).
+  use_op_alg (LiteralSynType ly) = Some ot →
+  use_layout_alg (LiteralSynType ly) = Some ly ∧ ot = (UntypedOp ly).
 Proof.
-  rewrite /use_op_alg. intros [= <-]; done.
+  rewrite /use_op_alg.
+  intros (ly' & Hly & [= <-])%bind_Some.
+  apply syn_type_has_layout_literal_inv in Hly as (<- & ? & ? & ?).
+  split; last done.
+  by apply syn_type_has_layout_literal.
 Qed.
 
 
@@ -1592,14 +1596,27 @@ Qed.
 Arguments use_op_alg : simpl never.
 
 
-(* NOTE: does not hold currently because we are lacking some of the safety checks regarding size. *)
-(*
 Lemma use_op_alg_layout_alg `{!LayoutAlg} st op :
   use_op_alg st = Some op →
   use_layout_alg st = Some (ot_layout op).
 Proof.
-  induction st in op |-*; simpl; intros Ha; simplify_eq; try done.
- *)
+  induction st in op |-* using syn_type_strong_ind; rewrite /use_op_alg; simpl; fold use_op_alg; intros Ha; simplify_option_eq.
+  - unfold_layout_alg. rewrite /use_layout_alg_def decide_True; first done.
+    apply it_size_bounded.
+  - unfold_layout_alg. rewrite /use_layout_alg_def /bool_layout /it_layout /bytes_per_int /=. done.
+  - unfold_layout_alg. done.
+  - unfold_layout_alg. done.
+  - change (use_layout_alg (syn_type_of_sls (mk_sls sn field_list repr)) = Some (layout_of H1)).
+    by eapply use_struct_layout_alg_Some_inv.
+  - unfold_layout_alg. done.
+  - unfold_layout_alg. done.
+  - unfold_layout_alg. by apply IHst.
+  - done.
+  - unfold_layout_alg. done.
+  - done.
+  - done.
+  - unfold_layout_alg. done.
+Qed.
 
 Lemma use_struct_layout_alg_op_alg `{!LayoutAlg} (sls : struct_layout_spec) (sl: struct_layout) :
   use_struct_layout_alg sls = Some sl →
@@ -1669,15 +1686,22 @@ Proof.
   - intros ->%syn_type_has_layout_unit_inv. exists (StructOp unit_sl []). done.
   - intros (ly' & Ha & -> & Hb)%syn_type_has_layout_array_inv.
     exists (UntypedOp (mk_array_layout ly' len)). split; last done.
-    rewrite /use_op_alg. rewrite Ha. done.
+    rewrite /use_op_alg.
+    apply bind_Some. eexists. split; last done.
+    rewrite /syn_type_has_layout in Ha.
+    unfold_layout_alg. rewrite /use_layout_alg_def/=. fold use_layout_alg_def.
+    rewrite Ha. simpl. rewrite decide_True; done.
   - intros Ha%syn_type_has_layout_unsafecell_inv. by apply IH.
   - intros Ha%syn_type_has_layout_untyped_inv.
-    apply IH in Ha as (ot & Hot & <-).
-    exists (UntypedOp (ot_layout ot)). simpl.
-    split; last done.
-    apply bind_Some. eexists. split; done.
+    exists (UntypedOp ly). split; last done.
+    rewrite /use_op_alg.
+    apply bind_Some. eexists. split; last done.
+    by apply syn_type_has_layout_untyped.
   - intros (<- & ? & ? & ?)%syn_type_has_layout_literal_inv.
-    exists (UntypedOp ly). done.
+    exists (UntypedOp ly). split; last done.
+    rewrite /use_op_alg.
+    apply bind_Some. eexists. split; last done.
+    by apply syn_type_has_layout_literal.
   - intros Halg. exists (UntypedOp ly).
     split; last done.
     rewrite /use_op_alg.
@@ -1739,10 +1763,11 @@ Proof.
       apply syn_type_has_layout_op_alg in Hst as (ot' & Hot' & <-).
       f_equiv. by eapply use_op_alg_inj.
     + apply IH2; done.
-  - intros (ly & Halg & [= <-])%bind_Some. done.
-  - intros (ly & Halg & [= <-])%bind_Some. done.
-  - intros (ly & Halg & [= <-])%bind_Some. done.
-  - intros (ly & Halg & [= <-])%bind_Some. done.
+  - intros (ly0 & Halg & [= <-])%bind_Some. done.
+  - intros (ly0 & Halg & [= <-])%bind_Some. done.
+  - intros (ly0 & Halg & [= <-])%bind_Some. done.
+  - intros (ly0 & Halg & [= <-])%bind_Some. done.
+  - intros (ly0 & Halg & [= <-])%bind_Some. done.
 Qed.
 
 (** A relation requirement size equality, without caring about the alignment. *)

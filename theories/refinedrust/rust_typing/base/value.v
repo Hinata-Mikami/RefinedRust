@@ -15,7 +15,10 @@ Lemma use_op_alg_typed_inv `{!LayoutAlg} typed st ot :
 Proof.
   unfold use_op_alg_typed.  destruct typed; simpl.
   - eauto.
-  - intros Ha%use_op_alg_untyped_inv. done.
+  - intros (ly & Hly & ->)%use_op_alg_untyped_inv.
+    apply syn_type_has_layout_untyped_inv in Hly.
+    apply syn_type_has_layout_op_alg in Hly as (ot1 & Hot1 & <-).
+    eauto.
 Qed.
 Lemma use_op_alg_typed_Some `{!LayoutAlg} (typed : bool) st ot ot1 :
   use_op_alg st = Some ot1 →
@@ -25,19 +28,24 @@ Proof.
   intros Hot ->.
   unfold use_op_alg_typed.
   destruct typed; simpl; first done.
-  by eapply use_op_alg_untyped.
+  eapply use_op_alg_untyped; first done.
+  apply syn_type_has_layout_untyped.
+  by eapply use_op_alg_layout_alg.
 Qed.
 
 (* TODO: will change once we have [ArrayOp] *)
 Lemma use_op_alg_typed_array `{!LayoutAlg} typed st n ly :
-  syn_type_has_layout st ly →
+  syn_type_has_layout (ArraySynType st n) (mk_array_layout ly n) →
   use_op_alg_typed typed (ArraySynType st n) = Some (UntypedOp (mk_array_layout ly n)).
 Proof.
   intros Hst. rewrite /syn_type_has_layout in Hst.
-  destruct typed; rewrite /use_op_alg_typed /use_op_alg /=; rewrite Hst; done.
+  destruct typed; rewrite /use_op_alg_typed /use_op_alg /=.
+  - rewrite Hst. done.
+  - apply bind_Some. eexists. split; last done.
+    by apply syn_type_has_layout_untyped.
 Qed.
 Lemma use_op_alg_typed_array_inv `{!LayoutAlg} typed st n ly ot :
-  syn_type_has_layout st ly →
+  syn_type_has_layout (ArraySynType st n) (mk_array_layout ly n) →
   use_op_alg_typed typed (ArraySynType st n) = Some ot →
   ot = UntypedOp (mk_array_layout ly n).
 Proof.
@@ -112,7 +120,12 @@ Lemma is_value_ot_literal `{!LayoutAlg} t st mt ly :
   is_value_ot t (LiteralSynType ly) (UntypedOp ly) mt.
 Proof.
   intros Halg. eexists (UntypedOp ly). split_and!.
-  - destruct t; try done.
+  - destruct t; rewrite /use_op_alg_typed /use_op_alg /=.
+    + apply bind_Some. eexists. split; last done.
+      by eapply syn_type_has_layout_make_literal.
+    + apply bind_Some. eexists. split; last done.
+      apply syn_type_has_layout_untyped.
+      by eapply syn_type_has_layout_make_literal.
   - left. eauto.
   - by eapply syn_type_has_layout_make_literal.
 Qed.
@@ -140,7 +153,8 @@ Proof.
   rewrite /is_value_ot.
   exists (UntypedOp (ot_layout ot)).
   simpl. split_and!; last done.
-  - by eapply use_op_alg_untyped.
+  - eapply use_op_alg_untyped; first done.
+    by apply syn_type_has_layout_untyped.
   - left. eauto.
 Qed.
 
@@ -222,7 +236,8 @@ Section value.
       exists (UntypedOp (ot_layout ot)).
       rewrite /use_op_alg_typed.
       split_and!.
-      + by eapply use_op_alg_untyped.
+      + eapply use_op_alg_untyped; first done.
+        by apply syn_type_has_layout_untyped.
       + left. eexists. split; done.
       + done.
   Qed.
@@ -299,7 +314,8 @@ Section lemmas.
     iR. iPureIntro.
     exists (UntypedOp (ot_layout ot)).
     split_and!.
-    - by eapply use_op_alg_untyped.
+    - eapply use_op_alg_untyped; first done.
+      by apply syn_type_has_layout_untyped.
     - by left.
     - done.
     - done.
@@ -330,7 +346,7 @@ Section lemmas.
     iEval (rewrite /ty_own_val/=) in "Hv1".
     iDestruct "Hv1" as "(_ & (%ot & %Hot' & %Hmc & %Hvs & %Hst))".
     rewrite /use_op_alg_typed/= in Hot'.
-    apply use_op_alg_untyped_inv in Hot' as (ot1 & Hot' & ->).
+    apply use_op_alg_untyped_inv in Hot' as (ly & Hot' & ->).
     destruct Hmc as [-> | (? & ->)]; first done.
     by rewrite mem_cast_UntypedOp.
   Qed.
@@ -347,14 +363,22 @@ Section lemmas.
     iDestruct "Hv1" as "(-> & %ot1 & %Heq1 & %Hmc1 & %Hly1 & %Halg1)".
     iDestruct "Hv2" as "(_ & %ot2 & %Heq2 & %Hmc2 & %Hly2 & %Halg2)".
     apply syn_type_has_layout_array_inv in Hst_n as (ly_st & Hst & -> & Hsz).
-    apply syn_type_has_layout_array_inv in Halg1 as (ly1 & Hst1 & _ & _).
-    apply syn_type_has_layout_array_inv in Halg2 as (ly2 & Hst2 & _ & _).
+    apply syn_type_has_layout_array_inv in Halg1 as (ly1 & Hst1 & Hot1 & Hsz1).
+    apply syn_type_has_layout_array_inv in Halg2 as (ly2 & Hst2 & Hot2 & Hsz2).
     assert (ly1 = ly_st) as -> by by eapply syn_type_has_layout_inj.
     assert (ly2 = ly_st) as -> by by eapply syn_type_has_layout_inj.
-    pose proof (use_op_alg_typed_array_inv typed st n1 ly_st ot1 Hst Heq1) as ->.
-    pose proof (use_op_alg_typed_array_inv typed st n2 ly_st ot2 Hst Heq2) as ->.
+    rewrite Hot1 ly_size_mk_array_layout in Hsz1.
+    rewrite Hot2 ly_size_mk_array_layout in Hsz2.
+    assert (ly_size ly_st * n1 ≤ MaxInt ISize)%Z as Hsz1' by lia.
+    assert (ly_size ly_st * n2 ≤ MaxInt ISize)%Z as Hsz2' by lia.
+    pose proof (syn_type_has_layout_array st n1 ly_st (mk_array_layout ly_st n1) eq_refl Hst Hsz1') as Halg1.
+    pose proof (syn_type_has_layout_array st n2 ly_st (mk_array_layout ly_st n2) eq_refl Hst Hsz2') as Halg2.
+    pose proof (use_op_alg_typed_array_inv typed st n1 ly_st ot1 Halg1 Heq1) as ->.
+    pose proof (use_op_alg_typed_array_inv typed st n2 ly_st ot2 Halg2 Heq2) as ->.
     iR. iExists (UntypedOp (mk_array_layout ly_st (n1 + n2))).
-    iSplitR. { iPureIntro. by apply use_op_alg_typed_array. }
+    iSplitR. { iPureIntro. apply use_op_alg_typed_array.
+      eapply syn_type_has_layout_array; [done | done |].
+      rewrite ly_size_mk_array_layout in Hsz. lia. }
     iSplitR. {
       iPureIntro. eapply is_memcast_val_array_op_merge; [| done..].
       by apply array_op_merge_untyped. }
@@ -382,9 +406,13 @@ Section lemmas.
   Proof.
     iIntros (Hst1 -> -> -> Hv1_len Hv2_len Hr1_len Hr2_len) "Hv".
     rewrite /ty_own_val/=. iDestruct "Hv" as "(-> & %ot & %Hot & %Hmc & %Hly & %Hst)".
-    apply syn_type_has_layout_array_inv in Hst as (ly_st & Hst & _ & Hsz).
+    apply syn_type_has_layout_array_inv in Hst as (ly_st & Hst & Hotly & Hsz).
     assert (ly_st = ly) as -> by by eapply syn_type_has_layout_inj.
-    pose proof (use_op_alg_typed_array_inv typed st (n1 + n2) ly ot Hst1 Hot) as ->.
+    rewrite Hotly in Hsz.
+    rewrite ly_size_mk_array_layout in Hsz.
+    assert (ly_size ly * (n1 + n2)%nat ≤ MaxInt ISize)%Z as Hsz' by lia.
+    pose proof (syn_type_has_layout_array st (n1 + n2) ly (mk_array_layout ly (n1 + n2)) eq_refl Hst1 Hsz') as Halg.
+    pose proof (use_op_alg_typed_array_inv typed st (n1 + n2) ly ot Halg Hot) as ->.
     pose proof (is_memcast_val_array_op_split st n1 n2
       (UntypedOp (mk_array_layout ly (n1 + n2)))
       (UntypedOp (mk_array_layout ly n1))
@@ -396,17 +424,21 @@ Section lemmas.
     { done. }
     iSplit.
     - iR. iExists (UntypedOp (mk_array_layout ly n1)).
-      iSplitR. { iPureIntro. by apply use_op_alg_typed_array. }
+      iSplitR. { iPureIntro. apply use_op_alg_typed_array.
+        eapply syn_type_has_layout_array; [done | done |].
+        lia. }
       iSplitR. { done. }
       iSplitR. { iPureIntro. rewrite /has_layout_val ly_size_mk_array_layout. lia. }
       iPureIntro. eapply syn_type_has_layout_array; [done | done |].
-      rewrite ly_size_mk_array_layout in Hsz. lia.
+      lia.
     - iR. iExists (UntypedOp (mk_array_layout ly n2)).
-      iSplitR. { iPureIntro. by apply use_op_alg_typed_array. }
+      iSplitR. { iPureIntro. apply use_op_alg_typed_array.
+        eapply syn_type_has_layout_array; [done | done |].
+        lia. }
       iSplitR. { done. }
       iSplitR. { iPureIntro. rewrite /has_layout_val ly_size_mk_array_layout. lia. }
       iPureIntro. eapply syn_type_has_layout_array; [done | done |].
-      rewrite ly_size_mk_array_layout in Hsz. lia.
+      lia.
   Qed.
 
   Lemma value_t_splittable_type_app π typed st n1 n2 (vs1 vs2 : val) :
@@ -650,9 +682,9 @@ Section byte_lemmas.
     assert (ly = ot_layout ot1) as -> by by eapply syn_type_has_layout_inj.
     iExists (UntypedOp (ot_layout ot1)).
     iPureIntro. split_and!.
-    - eapply use_op_alg_untyped; first last.
-      { apply use_op_alg_literal. done. }
-      done.
+    - eapply use_op_alg_untyped; first done.
+      apply syn_type_has_layout_untyped.
+      by eapply syn_type_has_layout_make_literal.
     - done.
     - done.
     - by eapply syn_type_has_layout_make_literal.
@@ -670,9 +702,8 @@ Section byte_lemmas.
     simpl in *.
     iExists (UntypedOp (ot_layout ot1)).
     iPureIntro. split_and!.
-    - apply syn_type_has_layout_op_alg in Hst as (ot' & ? & Heq).
-      eapply use_op_alg_untyped; last done.
-      rewrite Heq. done.
+    - eapply use_op_alg_untyped; first done.
+      by apply syn_type_has_layout_untyped.
     - done.
     - done.
     - done.
@@ -737,10 +768,21 @@ Section byte_lemmas.
   Proof.
     iIntros (Hsz Hwf Hal) "Hv". rewrite /ty_own_val /=.
     iDestruct "Hv" as "(-> & %ot & %Heq & %Hmc & %Hly & %Hst)".
-    injection Heq as <-. iR. iExists _. iSplitR; first done.
+    apply use_op_alg_typed_inv in Heq as (ot1 & Hot1 & ->).
+    simpl in Hst, Hmc, Hly.
+    apply syn_type_has_layout_literal_inv in Hst as (Hotly & Hwf' & Hsz_le & Hal').
+    rewrite Hotly in Hmc, Hly.
+    iR. iExists (UntypedOp ly2). iSplitR.
+    { iPureIntro. rewrite /use_op_alg_typed.
+      eapply use_op_alg_untyped; first done.
+      apply syn_type_has_layout_untyped.
+      eapply syn_type_has_layout_literal; first done.
+      - by apply Hwf.
+      - lia.
+      - by apply Hal. }
     iSplitR. { apply is_memcast_val_untyped_inv in Hmc. by iLeft. }
     simpl. iSplitR. { rewrite /has_layout_val -Hsz //. }
-    iPureIntro. simpl in Hst. apply syn_type_has_layout_literal_inv in Hst as (_ & Hwf' & Hsz_le & ?).
+    iPureIntro.
     eapply syn_type_has_layout_literal.
     - done.
     - by apply Hwf.

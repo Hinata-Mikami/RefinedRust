@@ -722,8 +722,9 @@ Section opalg.
     use_op_alg (UntypedSynType st) = Some ot.
   Proof.
     intros Halg ->.
-    apply syn_type_has_layout_op_alg in Halg as (ot & Hot & <-).
-    eapply use_op_alg_untyped; done.
+    (*apply syn_type_has_layout_op_alg in Halg as (ot & Hot & <-).*)
+    eapply use_op_alg_untyped; first done.
+    by apply syn_type_has_layout_untyped.
   Qed.
 End opalg.
 
@@ -843,7 +844,7 @@ Ltac solve_op_alg_core_step :=
   | |- use_op_alg (LiteralSynType ?ly) = Some ?ot =>
       simplify_layout ly;
       notypeclasses refine (use_op_alg_literal _ ot _);
-      [solve_ot_eq ]
+      [solve_ot_eq | solve_layout_alg]
   | |- use_op_alg (ty_syn_type _ _) = Some ?ot =>
       notypeclasses refine (use_op_alg_tyvar_tac (ty_syn_type _ _) _ ot _ _);
       [solve_layout_alg | solve_ot_eq]
