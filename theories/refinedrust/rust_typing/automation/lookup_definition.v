@@ -12,22 +12,37 @@ Module StringConstr.
           (Message.concat (Message.of_string "; ") (make_message s))
     end.
   Ltac2 Type exn ::= [ MultipleMatches(message) | NoMatches | NotAConstr ].
-  Ltac2 ident_to_constr (s : ident list) :=
-    let ref := Env.expand s in
-    match ref with
-    | msg :: rs =>
-        match rs with
-        | [] => ()
-        | _ =>
-          let msg := make_message rs in
-          Control.throw (MultipleMatches (Message.concat (Message.of_string "other matches: [") msg))
-        end;
-        let cstr := Env.instantiate msg in
-        Some(cstr)
+  Ltac2 local_ident_to_constr (s : ident list) :=
+    let rec find_hyp i (hyps : (ident * constr option * constr) list) :=
+      match hyps with
+      | [] => None
+      | (j, _, _) :: hyps =>
+          if Ident.equal i j then Some (Control.hyp j) else find_hyp i hyps
+      end in
+    match s with
+    | [i] => find_hyp i (Control.hyps ())
     | _ => None
     end.
+  Ltac2 ident_to_constr (s : ident list) :=
+    match local_ident_to_constr s with
+    | Some cstr => Some cstr
+    | None =>
+        let ref := Env.expand s in
+        match ref with
+        | msg :: rs =>
+            match rs with
+            | [] => ()
+            | _ =>
+              let msg := make_message rs in
+              Control.throw (MultipleMatches (Message.concat (Message.of_string "other matches: [") msg))
+            end;
+            let cstr := Env.instantiate msg in
+            Some(cstr)
+        | _ => None
+        end
+    end.
 
-  Ltac2 rec list_string_to_ident (s : constr) : (ident list) := 
+  Ltac2 rec list_string_to_ident (s : constr) : (ident list) :=
     match! s with
     | nil => []
     | cons ?str ?rest =>
@@ -62,7 +77,7 @@ End StringConstr.
 (** Looks up a definition with name [s].
    [cont] is a continuation that will be called with the looked-up term of form [@s]
     (i.e. all arguments are expected to be given explicitly).
-   [s] is a constr of [list string] type giving a suffix of the fully qualified path. 
+   [s] is a constr of [list string] type giving a suffix of the fully qualified path.
 
    This will fail if there are multiple possible matches of [s].
  *)
@@ -70,18 +85,18 @@ Ltac lookup_definition cont s :=
   let run := ltac2:(s cont |- StringConstr.ltac1_constr_to_constr cont s) in
   run s cont.
 
-Require Import String.
+From Stdlib Require Import String.
 From stdpp Require Import base.
 Local Open Scope string_scope.
 Goal ∀ x : nat, True.
 Proof.
+  intros x.
   lookup_definition ltac:(fun x => idtac x) constr:(["list"]).
 
-  (* NOTE: doesn't work due to local context. *)
   lookup_definition ltac:(fun x => idtac x) constr:(["x"]).
 
   (* NOTE: fails due to ambiguity! *)
-  (*lookup_definition ltac:(fun x => idtac x) constr:(["concat"]).*)
+  Fail lookup_definition ltac:(fun x => idtac x) constr:(["concat"]).
 
   lookup_definition ltac:(fun x => idtac x) constr:(["List"; "concat"]).
 Abort.
