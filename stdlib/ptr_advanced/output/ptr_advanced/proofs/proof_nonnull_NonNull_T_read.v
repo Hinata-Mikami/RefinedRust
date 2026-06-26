@@ -15,14 +15,16 @@ Proof.
   rep liRStep; liShow.
   simp_ltypes.
   rep liRStep; liShow.
+  all: rename select (st_of _ _ = st_of _ _) into Hst_eq; try rewrite -Hst_eq.
+  rep liRStep; liShow.
+  rewrite -Hst_eq.
+  rep liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  all: rename select (st_of _ _ = st_of _ _) into Hst_eq; try rewrite -Hst_eq.
+  all: rewrite -Hst_eq.
   all: try sidecond_hook.
-  all: repeat match goal with H : use_layout_alg _ = _ |- _ => try rewrite Hst_eq in H end; simplify_eq; try done.
-
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

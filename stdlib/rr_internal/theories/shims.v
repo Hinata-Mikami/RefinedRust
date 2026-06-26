@@ -85,6 +85,7 @@ Proof.
   iPoseProof (ltype_own_has_layout with "Hold") as "(%ly_old & %Halg_old & %)".
   iPoseProof (ltype_own_has_layout with "Hnew") as "(%ly_new & %Halg_new & %)".
   simp_ltypes in Halg_old.
+  apply syn_type_has_layout_untyped_inv in Halg_old.
   apply syn_type_has_layout_literal_inv in Halg_old as (-> & ? & ?).
   simp_ltypes in Halg_new.
   apply syn_type_has_layout_untyped_inv in Halg_new.
