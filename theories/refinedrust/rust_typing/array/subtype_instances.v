@@ -97,7 +97,8 @@ Section subtype.
     ⊢ owned_subtype π E L pers r1 r2 (array_t len ty1) (array_t len ty2) T.
   Proof.
     iIntros "(<- & Hsubt)".
-    iApply owned_subtype_weak_subtype.
+    iApply owned_subtype_strong_subtype.
+    iApply weak_subtype_strong_subtype.
     iApply weak_subtype_array. iR. iR. done.
   Qed.
   Definition owned_subtype_array_evar_inst := [instance @owned_subtype_array_evar].
@@ -108,7 +109,8 @@ Section subtype.
     ⊢ owned_subtype π E L pers r1 r2 (array_t len ty1) (array_t len ty2) T.
   Proof.
     iIntros "Hsubt".
-    iApply owned_subtype_weak_subtype.
+    iApply owned_subtype_strong_subtype.
+    iApply weak_subtype_strong_subtype.
     iApply weak_subtype_array. iR. iR. done.
   Qed.
   Definition owned_subtype_array_refl_inst := [instance @owned_subtype_array_refl].

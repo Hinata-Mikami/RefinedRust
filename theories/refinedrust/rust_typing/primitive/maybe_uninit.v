@@ -297,81 +297,89 @@ Section rules.
   Context `{!typeGS Σ}.
 
   (** subtyping rules: *)
-
-  (* NOTE: does not hold anymore because it is Untyped.
-    We'll have to switch to owned_subtype.
-  Lemma weak_subtype_None_maybe_uninit E L {rt} (ty : type rt) `{!TySized ty} (r2 : unit) T :
-    ⌜r2 = tt⌝ ∗ T ⊢ weak_subtype E L None r2 (maybe_uninit ty) (uninit (ty.(ty_syn_type) MetaNone)) T.
+  Lemma strong_subtype_None_maybe_uninit E L {rt} (ty : type rt) `{!TySized ty} (r2 : unit) T :
+    ⌜r2 = tt⌝ ∗ T ⊢ strong_subtype E L None r2 (maybe_uninit ty) (uninit (ty.(ty_syn_type) MetaNone)) T.
   Proof.
-    iIntros "(-> & HT)" (??) "#CTX #HE HL". iFrame. by iApply type_incl_None_maybe_uninit.
+    iIntros "(-> & HT)" (??) "#CTX #HE HL". iFrame.
+    iSplitR; last by iApply type_incl_None_maybe_uninit.
+    iPureIntro. simpl. intros m.
+    by rewrite (ty_sized_syn_type_eq _ MetaNone).
   Qed.
-  Definition weak_subtype_None_maybe_uninit_inst := [instance @weak_subtype_None_maybe_uninit].
-  Global Existing Instance weak_subtype_None_maybe_uninit_inst.
+  Definition strong_subtype_None_maybe_uninit_inst := [instance @strong_subtype_None_maybe_uninit].
+  Global Existing Instance strong_subtype_None_maybe_uninit_inst.
 
   (* a variant that works in case the goal is an evar *)
-  Lemma weak_subtype_None_maybe_uninit_evar E L {rt} (ty : type rt) `{!TySized ty} (r2 : unit) (ty2 : type unit) `{!IsProtected ty2} T :
-    ⌜r2 = tt⌝ ∗ ⌜ty2 = (uninit (ty.(ty_syn_type) MetaNone))⌝ ∗ T ⊢ weak_subtype E L None r2 (maybe_uninit ty) ty2 T.
+  Lemma strong_subtype_None_maybe_uninit_evar E L {rt} (ty : type rt) `{!TySized ty} (r2 : unit) (ty2 : type unit) `{!IsProtected ty2} T :
+    ⌜r2 = tt⌝ ∗ ⌜ty2 = (uninit (ty.(ty_syn_type) MetaNone))⌝ ∗ T ⊢ strong_subtype E L None r2 (maybe_uninit ty) ty2 T.
   Proof.
-    iIntros "(-> & -> & HT)". iApply weak_subtype_None_maybe_uninit. iR; done.
+    iIntros "(-> & -> & HT)". iApply strong_subtype_None_maybe_uninit. iR; done.
   Qed.
-  Definition weak_subtype_None_maybe_uninit_evar_inst := [instance @weak_subtype_None_maybe_uninit_evar].
-  Global Existing Instance weak_subtype_None_maybe_uninit_evar_inst.
+  Definition strong_subtype_None_maybe_uninit_evar_inst := [instance @strong_subtype_None_maybe_uninit_evar].
+  Global Existing Instance strong_subtype_None_maybe_uninit_evar_inst.
 
-  Lemma weak_subtype_maybe_uninit_None E L {rt} (ty : type rt) `{!TySized ty} r2 T :
-    ⌜r2 = None⌝ ∗ T ⊢ weak_subtype E L () r2 (uninit (ty.(ty_syn_type) MetaNone)) (maybe_uninit ty) T.
+  Lemma strong_subtype_maybe_uninit_None E L {rt} (ty : type rt) `{!TySized ty} r2 T :
+    ⌜r2 = None⌝ ∗ T ⊢ strong_subtype E L () r2 (uninit (ty.(ty_syn_type) MetaNone)) (maybe_uninit ty) T.
   Proof.
-    iIntros "(-> & HT)" (??) "#CTX #HE HL". iFrame. by iApply type_incl_maybe_uninit_None.
+    iIntros "(-> & HT)" (??) "#CTX #HE HL". iFrame.
+    iSplitR; last by iApply type_incl_maybe_uninit_None.
+    iPureIntro. intros m. simpl. by rewrite (ty_sized_syn_type_eq _ MetaNone).
   Qed.
-  Definition weak_subtype_maybe_uninit_None_inst := [instance @weak_subtype_maybe_uninit_None].
-  Global Existing Instance weak_subtype_maybe_uninit_None_inst.
+  Definition strong_subtype_maybe_uninit_None_inst := [instance @strong_subtype_maybe_uninit_None].
+  Global Existing Instance strong_subtype_maybe_uninit_None_inst.
 
-  Lemma weak_subtype_Some_maybe_uninit E L {rt} (ty : type rt) (x : place_rfn rt) r2 T :
-    (∃ x', ⌜x = #x'⌝ ∗ ⌜r2 = x'⌝ ∗ ty_sidecond ty ∗ T) ⊢ weak_subtype E L (Some x) r2 (maybe_uninit ty) ty T.
+  Lemma strong_subtype_Some_maybe_uninit E L {rt} (ty : type rt) (x : place_rfn rt) r2 T :
+    (∃ x', ⌜x = #x'⌝ ∗ ⌜r2 = x'⌝ ∗ ty_sidecond ty ∗ T) ⊢ strong_subtype E L (Some x) r2 (maybe_uninit ty) ty T.
   Proof.
-    iIntros "(%x' & -> & -> & Hsc & HT)" (??) "#CTX #HE HL". iFrame. by iApply type_incl_Some_maybe_uninit.
+    iIntros "(%x' & -> & -> & Hsc & HT)" (??) "#CTX #HE HL". iFrame.
+    iSplitR; last by iApply type_incl_Some_maybe_uninit.
+    iPureIntro. intros m. apply syn_type_compat_untyped_l. done.
   Qed.
-  Definition weak_subtype_Some_maybe_uninit_inst := [instance @weak_subtype_Some_maybe_uninit].
-  Global Existing Instance weak_subtype_Some_maybe_uninit_inst.
+  Definition strong_subtype_Some_maybe_uninit_inst := [instance @strong_subtype_Some_maybe_uninit].
+  Global Existing Instance strong_subtype_Some_maybe_uninit_inst.
 
   (* a variant that works in case the goal is an evar *)
-  Lemma weak_subtype_Some_maybe_uninit_evar E L {rt} (ty : type rt) (x : place_rfn rt) r2 ty2 `{!IsProtected ty2} T :
-    (∃ x', ⌜x = #x'⌝ ∗ ⌜r2 = x'⌝ ∗ ⌜ty2 = ty⌝ ∗ ty_sidecond ty ∗ T) ⊢ weak_subtype E L (Some x) r2 (maybe_uninit ty) ty2 T.
+  Lemma strong_subtype_Some_maybe_uninit_evar E L {rt} (ty : type rt) (x : place_rfn rt) r2 ty2 `{!IsProtected ty2} T :
+    (∃ x', ⌜x = #x'⌝ ∗ ⌜r2 = x'⌝ ∗ ⌜ty2 = ty⌝ ∗ ty_sidecond ty ∗ T) ⊢ strong_subtype E L (Some x) r2 (maybe_uninit ty) ty2 T.
   Proof.
-    iIntros "(%x' & -> & -> & -> & Hsc & HT)" (??) "#CTX #HE HL". iFrame. by iApply type_incl_Some_maybe_uninit.
+    iIntros "(%x' & -> & -> & -> & Hsc & HT)" (??) "#CTX #HE HL". iFrame.
+    iSplitR; last by iApply type_incl_Some_maybe_uninit.
+    iPureIntro. intros m. apply syn_type_compat_untyped_l. done.
   Qed.
-  Definition weak_subtype_Some_maybe_uninit_evar_inst := [instance @weak_subtype_Some_maybe_uninit_evar].
-  Global Existing Instance weak_subtype_Some_maybe_uninit_evar_inst.
+  Definition strong_subtype_Some_maybe_uninit_evar_inst := [instance @strong_subtype_Some_maybe_uninit_evar].
+  Global Existing Instance strong_subtype_Some_maybe_uninit_evar_inst.
 
-  Lemma weak_subtype_maybe_uninit_Some E L {rt} (ty : type rt) (x : rt) r2 T :
-    ⌜r2 = Some #x⌝ ∗ T ⊢ weak_subtype E L x r2 ty (maybe_uninit ty) T.
+  Lemma strong_subtype_maybe_uninit_Some E L {rt} (ty : type rt) (x : rt) r2 T :
+    ⌜r2 = Some #x⌝ ∗ T ⊢ strong_subtype E L x r2 ty (maybe_uninit ty) T.
   Proof.
-    iIntros "(-> & HT)" (??) "#CTX #HE HL". iFrame. iApply type_incl_maybe_uninit_Some.
+    iIntros "(-> & HT)" (??) "#CTX #HE HL". iFrame.
+    iSplitR; last by iApply type_incl_maybe_uninit_Some.
+    iPureIntro. intros m. by apply syn_type_compat_untyped_r.
   Qed.
-  Definition weak_subtype_maybe_uninit_Some_inst := [instance @weak_subtype_maybe_uninit_Some].
-  Global Existing Instance weak_subtype_maybe_uninit_Some_inst.
+  Definition strong_subtype_maybe_uninit_Some_inst := [instance @strong_subtype_maybe_uninit_Some].
+  Global Existing Instance strong_subtype_maybe_uninit_Some_inst.
 
-  Lemma weak_subltype_maybe_uninit_ghost E L {rt} (ty : type rt) γ r2 T :
+  Lemma strong_subltype_maybe_uninit_ghost E L {rt} (ty : type rt) γ r2 T :
     ⌜r2 = #(Some (👻 γ))⌝ ∗ T
-    ⊢ weak_subltype E L (Owned) (👻 γ) r2 (◁ ty) (◁ (maybe_uninit ty)) T.
+    ⊢ strong_subltype E L (Owned) (👻 γ) r2 (◁ ty) (◁ (maybe_uninit ty)) T.
   Proof.
     iIntros "(-> & HT)".
     iIntros (??) "#CTX #HE HL". iFrame. iModIntro.
-    iSplitR; first done.
+    iSplitR. { iPureIntro. by apply syn_type_compat_untyped_r. }
     iModIntro. simp_ltypes.
     rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (π l) "Hl".
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hl" as "(%ly & %Hst & %Hly & Hsc & Hlb & %r' & Hrfn & Hl)".
     iMod "Hl" as "(%v & Hl & Hv)".
-    iModIntro. iExists ly. iR. iR. iSplitR. { rewrite /maybe_uninit. done. }
+    iModIntro. iExists ly.
+    iSplitR. { iPureIntro. by apply syn_type_has_layout_untyped. }
+    iR. iSplitR. { rewrite /maybe_uninit. done. }
     iFrame. iExists (Some (👻 γ)). iR. iModIntro.
     rewrite {2}/ty_own_val/= maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
     eauto with iFrame.
   Qed.
-  Definition weak_subltype_maybe_uninit_ghost_inst := [instance @weak_subltype_maybe_uninit_ghost].
-  Global Existing Instance weak_subltype_maybe_uninit_ghost_inst | 40.
-
-  *)
+  Definition strong_subltype_maybe_uninit_ghost_inst := [instance @strong_subltype_maybe_uninit_ghost].
+  Global Existing Instance strong_subltype_maybe_uninit_ghost_inst | 40.
 
   Lemma owned_subtype_uninit_maybe_uninit π E L pers {rt} (ty : type rt) (st : syn_type) T :
     li_tactic (compute_layout_goal st) (λ ly1,

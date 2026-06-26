@@ -1550,6 +1550,15 @@ Section subsume.
   Definition subsume_own_loc_inst := [instance @subsume_own_loc].
   Global Existing Instance subsume_own_loc_inst.
 
+  (** ** Subtyping instances: [strong_subtype] *)
+  Lemma strong_subtype_evar2 E L {rt} (ty ty2 : type rt) r r2 `{!ContainsProtected ty2} T :
+    ⌜ty = ty2⌝ ∗ strong_subtype E L r r2 ty ty T ⊢ strong_subtype E L r r2 ty ty2 T.
+  Proof. iIntros "(<- & $)". Qed.
+  Definition strong_subtype_evar2_inst := [instance @strong_subtype_evar2].
+  Global Existing Instance strong_subtype_evar2_inst | 1000.
+
+  Definition weak_subtype_strong_subtype_inst := [instance @weak_subtype_strong_subtype].
+  Global Existing Instance weak_subtype_strong_subtype_inst | 1001.
 
   (** ** Subtyping instances: [weak_subtype] *)
   Lemma weak_subtype_evar2 E L {rt} (ty ty2 : type rt) r r2 `{!ContainsProtected ty2} T :
@@ -1672,35 +1681,29 @@ Section subsume.
   Definition strong_subltype_weak_subltype_inst := [instance @strong_subltype_weak_subltype].
   Global Existing Instance strong_subltype_weak_subltype_inst | 1001.
 
-  (* TODO
   Lemma strong_subltype_ofty_ofty_owned_in E L {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 T :
     (∃ r2', ⌜r2 = #r2'⌝ ∗ strong_subtype E L r1 r2' ty1 ty2 T)
     ⊢ strong_subltype E L (Owned) (#r1) r2 (◁ ty1) (◁ ty2) T.
   Proof.
     iIntros "(%r2' & -> & HT)" (??) "#CTX #HE HL".
-    iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
-    iPoseProof (type_incl_syn_type_eq with "Hincl") as "%Hst".
+    iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & $)".
     simp_ltypes. iR.
     by iApply type_ltype_incl_owned_in.
   Qed.
   Definition strong_subltype_ofty_ofty_owned_in_inst := [instance @strong_subltype_ofty_ofty_owned_in].
   Global Existing Instance strong_subltype_ofty_ofty_owned_in_inst | 10.
-  *)
 
-  (* TODO
   Lemma strong_subltype_ofty_ofty_shared_in E L {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) κ r1 r2 T :
     (∃ r2', ⌜r2 = #r2'⌝ ∗ strong_subtype E L r1 r2' ty1 ty2 T)
     ⊢ strong_subltype E L (Shared κ) (#r1) (r2) (◁ ty1) (◁ ty2) T.
   Proof.
     iIntros "(%r2' & -> & HT)" (??) "#CTX #HE HL".
-    iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
-    iPoseProof (type_incl_syn_type_eq with "Hincl") as "%Hst".
+    iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & $)".
     simp_ltypes. iR.
     by iApply type_ltype_incl_shared_in.
   Qed.
   Definition strong_subltype_ofty_ofty_shared_in_inst := [instance @strong_subltype_ofty_ofty_shared_in].
   Global Existing Instance strong_subltype_ofty_ofty_shared_in_inst | 10.
-  *)
 
   (** ** Subtyping instances: [mut_eqltype] *)
   Lemma mut_eqltype_base_evar E L {rt} (lt1 lt2 : ltype rt)`{!ContainsProtected lt2}  T :
@@ -3070,7 +3073,6 @@ Section subsume.
     find_in_context (FindNamedLfts) (λ M, named_lfts M -∗
       (** Interpret the type annotation *)
       li_tactic (interpret_rust_type_goal M rty) (λ '(existT rt2 ty2),
-      (* TODO it would be really nice to have a stronger form of subtyping here that also supports unfolding/folding of invariants *)
       ∃ (Heq : rt = rt2),
       ∃ r2, weak_subtype E L r r2 ty ty2 (
         T L rt2 ty2 r2 (mkPUKRes (allowed:=UpdWeak) UpdWeak Heq Heq))))
@@ -5623,6 +5625,7 @@ Global Typeclasses Opaque resolve_ghost_adt.
 Global Typeclasses Opaque resolve_ghost_iter.
 
 Global Typeclasses Opaque owned_subtype.
+Global Typeclasses Opaque strong_subtype.
 Global Typeclasses Opaque weak_subtype.
 Global Typeclasses Opaque mut_subtype.
 Global Typeclasses Opaque mut_eqtype.

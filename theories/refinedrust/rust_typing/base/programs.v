@@ -1171,13 +1171,21 @@ Section judgments.
 
   (** ** Subtyping judgment with access to lifetime contexts. *)
 
-  (** These are the core judgments used for subtyping by the type system.
-     The main entry point is from [subsume_full].
-     These judgments enforce stronger requirements than, e.g., [subsume_full]:
-     - they require compatibility of [ty_sidecond] and [ty_syn_type]
-     - they require subtyping to be persistent
-     This allows to get compatibility lemmas, including for shared references.
-     However, they are not compatible with mutable references, which have stronger requirements still. *)
+  (* Notion of subtyping requiring just compatibility of the syntypes *)
+  Definition strong_subtype E L {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) (T : iProp Σ) : iProp Σ :=
+    ∀ F, ⌜lftE ⊆ F⌝ -∗
+    rrust_ctx -∗
+    elctx_interp E -∗
+    llctx_interp L ={F}=∗
+    ⌜∀ m, syn_type_compat (ty1.(ty_syn_type) m) (ty2.(ty_syn_type) m)⌝ ∗ type_incl r1 r2 ty1 ty2 ∗ llctx_interp L ∗ T.
+  Class StrongSubtype (E : elctx) (L : llctx) {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) : Type :=
+    strong_subtype_proof T : iProp_to_Prop (strong_subtype E L r1 r2 ty1 ty2 T).
+
+  Lemma strong_subtype_id E L {rt} (ty : type rt) r T :
+    T ⊢ strong_subtype E L r r ty ty T.
+  Proof.
+    iIntros "$" (??) "?? $". iR. iApply type_incl_refl.
+  Qed.
 
   (** This is called "weak" because it just requires the subtyping to hold for a particular combination of refinements. *)
   Definition weak_subtype E L {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) (T : iProp Σ) : iProp Σ :=
@@ -1221,6 +1229,16 @@ Section judgments.
     iApply type_incl_trans; done.
   Qed.
 
+  Lemma weak_subtype_strong_subtype E L {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) T :
+    weak_subtype E L r1 r2 ty1 ty2 T
+    ⊢ strong_subtype E L r1 r2 ty1 ty2 T.
+  Proof.
+    iIntros "HT".
+    iIntros (??) "#CTX #HE HL".
+    iMod ("HT" with "[//] CTX HE HL") as "(%Hst & $ & $ & $)".
+    iPureIntro. intros. rewrite Hst//.
+  Qed.
+
   Definition weak_subltype E L {rt1 rt2} (b : bor_kind) r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) (T : iProp Σ) : iProp Σ :=
     ∀ F, ⌜lftE ⊆ F⌝ -∗
     rrust_ctx -∗
@@ -1257,8 +1275,8 @@ Section judgments.
   Class OwnedSubtype (π : thread_id) (E : elctx) (L : llctx) (pers : bool) {rt1 rt2 : RT} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : Type :=
     owned_subtype_proof T : iProp_to_Prop (owned_subtype π E L pers r1 r2 ty1 ty2 T).
 
-  Lemma owned_subtype_weak_subtype π E L pers {rt1 rt2} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) T :
-    weak_subtype E L r1 r2 ty1 ty2 (T L)
+  Lemma owned_subtype_strong_subtype π E L pers {rt1 rt2} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) T :
+    strong_subtype E L r1 r2 ty1 ty2 (T L)
     ⊢ owned_subtype π E L pers r1 r2 ty1 ty2 T.
   Proof.
     iIntros "HT" (????) "#CTX #HE HL".
@@ -1266,11 +1284,12 @@ Section judgments.
     iExists L. iFrame.
     iModIntro. iApply bi.intuitionistically_intuitionistically_if. iModIntro.
     iPoseProof (type_incl_owned_type_incl with "[] Hincl") as "Hincl'".
-    { iPureIntro. intros m. rewrite Hst. apply syn_type_size_eq_refl. }
+    { iPureIntro. intros m.
+      by apply syn_type_compat_size_eq. }
     done.
   Qed.
-  Global Instance owned_subtype_weak_subtype_inst π E L pers {rt1 rt2} (r1 : rt1) (r2 : rt2) ty1 ty2 :
-    OwnedSubtype π E L pers r1 r2 ty1 ty2 | 1000 := λ T, i2p (owned_subtype_weak_subtype π E L pers r1 r2 ty1 ty2 T).
+  Global Instance owned_subtype_strong_subtype_inst π E L pers {rt1 rt2} (r1 : rt1) (r2 : rt2) ty1 ty2 :
+    OwnedSubtype π E L pers r1 r2 ty1 ty2 | 1000 := λ T, i2p (owned_subtype_strong_subtype π E L pers r1 r2 ty1 ty2 T).
 
   Lemma owned_subtype_id π E L step {rt} (r1 r2 : rt) (ty : type rt) T :
     ⌜r1 = r2⌝ ∗ T L ⊢ owned_subtype π E L step r1 r2 ty ty T.
@@ -2350,6 +2369,7 @@ Global Hint Mode StratifyLtypeArrayIter + + + + + + + + + + + + + + + + + : type
 Global Hint Mode StratifyLtypePostHook + + + + + + + + + + + + : typeclass_instances.
 
 Global Hint Mode Subtype + + + + + + + - + ! : typeclass_instances.
+Global Hint Mode StrongSubtype + + + + + + + - + ! : typeclass_instances.
 Global Hint Mode SubLtype + + + + + + + + - + ! : typeclass_instances.
 Global Hint Mode StrongSubLtype + + + + + + + + - + ! : typeclass_instances.
 Global Hint Mode OwnedSubtype + + + + + + + + + - + ! : typeclass_instances.
@@ -3796,6 +3816,7 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | simplify_hyp_value ?E ?L ?π ?P => constr:(SimplifyHypValue E L π P)
   | prove_with_subtype ?E ?L ?wl ?pm ?P ?Acc => constr:(ProveWithSubtype E L wl pm P Acc)
   | weak_subtype ?E ?L ?r1 ?r2 ?ty1 ?ty2 => constr:(Subtype E L r1 r2 ty1 ty2)
+  | strong_subtype ?E ?L ?r1 ?r2 ?ty1 ?ty2 => constr:(StrongSubtype E L r1 r2 ty1 ty2)
   | mut_subtype ?E ?L ?ty1 ?ty2 => constr:(MutSubtype E L ty1 ty2)
   | mut_eqtype ?E ?L ?ty1 ?ty2 => constr:(MutEqtype E L ty1 ty2)
   | subtype_adt ?E ?L ?P1 ?P2 => constr:(SubtypeADT E L P1 P2)

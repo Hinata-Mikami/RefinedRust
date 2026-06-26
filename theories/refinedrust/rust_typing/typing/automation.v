@@ -148,6 +148,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:((_ : @Subtype _ _ E L rt1 rt2 r1 r2 ty1 ty2) T)
   | weak_subltype ?E ?L ?k ?r1 ?r2 ?lt1 ?lt2 ?T =>
       cont uconstr:((_ : SubLtype E L k r1 r2 lt1 lt2) T)
+  | @strong_subtype _ _ ?E ?L ?rt1 ?rt2 ?r1 ?r2 ?ty1 ?ty2 ?T =>
+      cont uconstr:((_ : @StrongSubtype _ _ E L rt1 rt2 r1 r2 ty1 ty2) T)
   | strong_subltype ?E ?L ?k ?r1 ?r2 ?lt1 ?lt2 ?T =>
       cont uconstr:((_ : StrongSubLtype E L k r1 r2 lt1 lt2) T)
   | mut_subtype ?E ?L ?ty1 ?ty2 ?T =>

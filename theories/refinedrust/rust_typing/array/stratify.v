@@ -42,23 +42,6 @@ Section stratify.
   Global Existing Instance stratify_ltype_array_iter_nil_inst.
 
   Import EqNotations.
-
-  (** Here I have a problem now:
-      - in case I have borrowed, I'll need to use the second branch.
-        There, I can't use owned_subltype.
-        I'd need a variant that is more like owned_subtype, but which also includes the core.
-        Probably can't reasonably capture ownership, but needs to allow syn_type_compat.
-
-        Basically this will be a judgment that just handles the maybe uninit case and otherwise escapes to weak_subltype.
-        weak_subltype
-        mut_eqltype
-        ltype_incl
-  *)
-  (*owned_subtype*)
-  (*owned_subltype_step*)
-  (*type_incl*)
-
-
   Lemma stratify_ltype_array_iter_cons_no_ignore π E L mdu ma {M} (m : M) (l : loc) (ig : list nat) {rt} (def : type rt) (rs : list (place_rfn rt)) (len : nat) (iml : list (nat * ltype rt)) (lt : ltype rt) j k `{Hnel : !CanSolve (j ∉ ig)%nat} T :
     ⌜j < len⌝ ∗ (∀ r, ⌜rs !! j = Some r⌝ -∗
     stratify_ltype_array_iter π E L mdu ma m l (j :: ig) def len iml rs k (λ L2 R2 iml2 rs2,
