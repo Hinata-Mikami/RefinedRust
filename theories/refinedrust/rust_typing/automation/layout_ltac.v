@@ -680,6 +680,9 @@ Ltac solve_syn_type_compat_step :=
       refine (syn_type_compat_untyped_r _ _ _)
   | |- syn_type_compat (UntypedSynType ?st1) ?st2 =>
       refine (syn_type_compat_untyped_l _ _ _)
+  | |- syn_type_compat (ArraySynType ?st1 ?n1) (ArraySynType ?st2 ?n2) =>
+      refine (syn_type_compat_array _ _ _ _ _ _);
+      [lia | ]
   | |- _ => reflexivity
   end.
 Ltac solve_syn_type_compat :=

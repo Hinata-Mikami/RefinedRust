@@ -1667,7 +1667,7 @@ Section judgments.
         Φ (l2v l)) -∗
       WPe{f.1} e {{ Φ }})%I.
 
-  Definition typed_borrow_shr_end_cont_t bmin rt := llctx → ∀ rt', ltype rt' → place_rfn rt' → type rt' → rt' → place_update_kind_res bmin rt rt' → iProp Σ.
+  Definition typed_borrow_shr_end_cont_t bmin rt := llctx → ∀ rt', ltype rt' → place_rfn rt' → ∀ rt2, type rt2 → rt2 → place_update_kind_res bmin rt rt' → iProp Σ.
   Definition typed_borrow_shr_end π (E : elctx) (L : llctx) (κ : lft) (l : loc) (orty : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (T : typed_borrow_shr_end_cont_t bmin rt) : iProp Σ :=
     (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
@@ -1678,9 +1678,9 @@ Section judgments.
     logical_step F (
     (* one credit for the inheritance VS *)
     £1 ={F}=∗
-    ∃ L2 ly rt2 (lt2 : ltype rt2) (r2 : rt2) (ty2 : type rt2) (res : place_update_kind_res bmin rt rt2),
+    ∃ L2 ly rt2 (lt2 : ltype rt2) (r2 : rt2) rt2' (ty2 : type rt2') (r2' : rt2') (res : place_update_kind_res bmin rt rt2),
     (*place_rfn_interp_shared r r2 ∗*)
-    ty2.(ty_shr) κ π r2 MetaNone l ∗
+    ty2.(ty_shr) κ π r2' MetaNone l ∗
     ⌜syn_type_has_layout (ty2.(ty_syn_type) MetaNone) ly⌝ ∗
     loc_in_bounds l 0 (ly.(ly_size)) ∗ ty2.(ty_sidecond) ∗
     (* and a blocked ownership of the borrowed location *)
@@ -1691,7 +1691,7 @@ Section judgments.
     res ⪯ₚ bmin ∗
     (* and the context and postco *)
     llctx_interp L2 ∗
-    T L2 rt2 lt2 (#r2) ty2 r2 res)).
+    T L2 rt2 lt2 (#r2) rt2' ty2 r2' res)).
   Class TypedBorrowShrEnd π (E : elctx) (L : llctx) (κ : lft) (l : loc) (orty : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) : Type :=
     typed_borrow_shr_end_proof T : iProp_to_Prop (typed_borrow_shr_end π E L κ l orty lt r b2 bmin T).
 

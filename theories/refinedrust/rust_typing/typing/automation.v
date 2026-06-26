@@ -1625,17 +1625,19 @@ Ltac liSidecond_hook P ::=
   | fast_sublist_hint _ => split; [clear; unfold fast_sublist_hint; simpl; solve_sublist | ]
   | _ =>
       is_builtin_sidecond P;
-      first [
-        is_fast_builtin_sidecond P;
-        split;
+      tryif is_fast_builtin_sidecond P
+      then
+        (split;
         [ first [
             fast_done
             | prepare_sideconditions_fast;
               liSimpl;
               solve [sidecond_hook_core]
-            | shelve_sidecond]
-        | ]
-      | split; first shelve_sidecond ]
+            | fail 100 "unsolvable builtin sidecondition"
+            (*| shelve_sidecond*)
+            ]
+        | ])
+      else (split; first shelve_sidecond)
 end.
 (** If this is not a built-in sidecond, cache it so we don't have to solve it again in the future *)
 Ltac hooks.liAfterSidecond_hook P ::=

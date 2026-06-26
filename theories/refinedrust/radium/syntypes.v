@@ -1856,6 +1856,20 @@ Proof.
   by apply syn_type_has_layout_untyped.
 Qed.
 
+Lemma syn_type_compat_array `{!LayoutAlg} st1 st2 n1 n2 :
+  n1 = n2 →
+  syn_type_compat st1 st2 →
+  syn_type_compat (ArraySynType st1 n1) (ArraySynType st2 n2).
+Proof.
+  intros -> Hcomp.
+  intros ly Halg. apply syn_type_has_layout_array_inv in Halg as (ly' & Halg1 & -> & Hsz).
+  apply Hcomp in Halg1.
+  eapply syn_type_has_layout_array; first done; first done.
+  move: Hsz. rewrite ly_size_mk_array_layout.
+  lia.
+Qed.
+
+
 Lemma syn_type_compat_size_eq `{!LayoutAlg} st1 st2 :
   syn_type_compat st1 st2 →
   syn_type_size_eq st1 st2.

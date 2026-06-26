@@ -9,6 +9,43 @@ Section subtype.
   Context `{!typeGS Σ}.
 
   (** subtyping *)
+  Lemma strong_subtype_shr_in E L {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) κ1 κ2 r1 r2 T :
+    (⌜lctx_lft_incl E L κ2 κ1⌝ ∗ strong_subtype E L r1 r2 ty1 ty2 T)
+    ⊢ strong_subtype E L #r1 #r2 (shr_ref κ1 ty1) (shr_ref κ2 ty2) T.
+  Proof.
+    iIntros "(%Hincl & HT)". iIntros (??) "#CTX #HE HL".
+    iPoseProof (lctx_lft_incl_incl with "HL") as "#Hincl"; first done.
+    iSpecialize ("Hincl" with "HE").
+    iMod ("HT" with "[//] CTX HE HL") as "(%Hst & #Hsub & $ & $)".
+    iSplitR; first done.
+    iApply (shr_ref_type_incl_in with "[] Hincl Hsub").
+    done.
+  Qed.
+  Definition strong_subtype_shr_in_inst := [instance @strong_subtype_shr_in].
+  Global Existing Instance strong_subtype_shr_in_inst | 10.
+
+  Lemma strong_subtype_shr E L {rt} (ty1 ty2 : type rt) κ1 κ2 r1 r2 T :
+    (⌜r1 = r2⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ mut_subtype E L ty1 ty2 T)
+    ⊢ strong_subtype E L r1 r2 (shr_ref κ1 ty1) (shr_ref κ2 ty2) T.
+  Proof.
+    iIntros "(-> & %Hincl & %Hsubt & HT)". iIntros (??) "#CTX #HE HL".
+    iPoseProof (lctx_lft_incl_incl with "HL") as "#Hincl"; first done.
+    iSpecialize ("Hincl" with "HE").
+    iPoseProof (full_subtype_acc with "HE HL") as "(%Hst & #Hsub)"; first done.
+    iFrame. iSplitR; first done.
+    iApply (shr_ref_type_incl with "[] Hincl Hsub").
+    rewrite Hst//.
+  Qed.
+  Definition strong_subtype_shr_inst := [instance @strong_subtype_shr].
+  Global Existing Instance strong_subtype_shr_inst | 11.
+
+  Lemma strong_subtype_shr_evar_lft E L {rt} (ty1 ty2 : type rt) κ1 κ2 r1 r2 `{!IsProtected κ2}  T :
+    ⌜κ1 = κ2⌝ ∗ strong_subtype E L r1 r2 (shr_ref κ1 ty1) (shr_ref κ1 ty2) T
+    ⊢ strong_subtype E L r1 r2 (shr_ref κ1 ty1) (shr_ref κ2 ty2) T.
+  Proof. iIntros "(<- & $)". Qed.
+  Definition strong_subtype_shr_evar_lft_inst := [instance @strong_subtype_shr_evar_lft].
+  Global Existing Instance strong_subtype_shr_evar_lft_inst | 9.
+
   Lemma weak_subtype_shr_in E L {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) κ1 κ2 r1 r2 T :
     (⌜lctx_lft_incl E L κ2 κ1⌝ ∗ weak_subtype E L r1 r2 ty1 ty2 T)
     ⊢ weak_subtype E L #r1 #r2 (shr_ref κ1 ty1) (shr_ref κ2 ty2) T.

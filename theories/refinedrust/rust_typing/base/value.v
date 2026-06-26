@@ -649,31 +649,31 @@ Section byte_lemmas.
 
   Lemma ofty_value_untyped_from_literal st l π vs ly :
     syn_type_has_layout st ly →
-    (l ◁ₗ[π, Owned] #vs @ ◁ value_t false (LiteralSynType ly)) -∗
-    l ◁ₗ[π, Owned] #vs @ ◁ value_t false st.
+    (l ◁ₗ[π, Owned] vs @ ◁ value_t false (LiteralSynType ly)) -∗
+    l ◁ₗ[π, Owned] vs @ ◁ value_t false st.
   Proof.
     iIntros (Hst) "Hl".
-    iApply (ofty_mono_ly_strong_in with "[] [] Hl"); simpl.
+    iApply (ofty_mono_ly_strong with "[] [] Hl"); simpl.
     - by eapply syn_type_has_layout_make_literal.
     - done.
     - done.
     - done.
-    - iIntros (v) "Hv".
+    - iIntros (v r) "Hv".
       by iApply value_untyped_from_literal.
     - eauto.
   Qed.
   Lemma ofty_value_untyped_to_literal l π vs st ly :
     syn_type_has_layout st ly →
-    (l ◁ₗ[π, Owned] #vs @ ◁ value_t false st) -∗
-    (l ◁ₗ[π, Owned] #vs @ ◁ value_t false (LiteralSynType ly)).
+    (l ◁ₗ[π, Owned] vs @ ◁ value_t false st) -∗
+    (l ◁ₗ[π, Owned] vs @ ◁ value_t false (LiteralSynType ly)).
   Proof.
     iIntros (Hst) "Hl".
-    iApply (ofty_mono_ly_strong_in with "[] [] Hl"); simpl.
+    iApply (ofty_mono_ly_strong with "[] [] Hl"); simpl.
     - done.
     - by eapply syn_type_has_layout_make_literal.
     - done.
     - done.
-    - iIntros (v) "Hv".
+    - iIntros (v r) "Hv".
       by iApply value_untyped_to_literal.
     - eauto.
   Qed.
@@ -937,19 +937,82 @@ Section unify_loc.
   Definition owned_subltype_step_ofty_value_literal_full_inst := [instance @owned_subltype_step_ofty_value_literal_full].
   Global Existing Instance owned_subltype_step_ofty_value_literal_full_inst | 6.
 
-  Lemma owned_subltype_step_ofty_value_array π E L step l vs1 vs2 typed st1 st2 n1 n2  T :
+  Lemma owned_subltype_step_ofty_value_array_typed π E L step l vs1 vs2 st1 st2 n1 n2  T :
     ⌜fast_eq_hint (st1 = st2)⌝ ∗ ⌜fast_lia_hint (n1 = n2)⌝ ∗
     ⌜vs1 = vs2⌝ ∗
     T L True%I
-    ⊢ owned_subltype_step π E L step l vs1 vs2 (◁ value_t typed (ArraySynType st1 n1)) (◁ value_t typed (ArraySynType st2 n2)) T.
+    ⊢ owned_subltype_step π E L step l vs1 vs2 (◁ value_t true (ArraySynType st1 n1)) (◁ value_t true (ArraySynType st2 n2)) T.
   Proof.
     iIntros "(<- & <- & <- & HT)".
     iIntros (????) "CTX HE ? ?".
     iFrame. iApply maybe_logical_step_intro.
     by iFrame.
   Qed.
-  Definition owned_subltype_step_ofty_value_array_inst := [instance @owned_subltype_step_ofty_value_array].
-  Global Existing Instance owned_subltype_step_ofty_value_array_inst | 15.
+  Definition owned_subltype_step_ofty_value_array_typed_inst := [instance @owned_subltype_step_ofty_value_array_typed].
+  Global Existing Instance owned_subltype_step_ofty_value_array_typed_inst | 15.
+
+  (** For untyped values, we can collapse UntypedSynType *)
+  Lemma owned_subltype_step_ofty_value_untyped_l π E L step l vs1 vs2 st1 st2 T :
+    owned_subltype_step  π E L step l vs1 vs2
+      (◁ value_t false st1) (◁ value_t false st2) T
+    ⊢ owned_subltype_step π E L step l vs1 vs2
+      (◁ value_t false (UntypedSynType st1)) (◁ value_t false st2) T.
+  Proof.
+    iIntros "HT".
+    iIntros (F ???) "#CTX #HE HL Hl".
+    iPoseProof (ltype_own_has_layout with "Hl") as "(%ly' & %Hly' & %Hlyl)". simp_ltypes in Hly'. simpl in *.
+    apply syn_type_has_layout_untyped_inv in Hly'.
+    (*iPoseProof ("HT" with "[//] [//]") as "(% & -> & % & % & HT)".*)
+    iPoseProof (ofty_value_untyped_to_literal with "Hl") as "Hl".
+    { apply syn_type_has_layout_untyped; done. }
+    iPoseProof (ofty_value_untyped_from_literal st1 with "Hl") as "Hl".
+    { done. }
+    iApply ("HT" with "[] [] [] CTX HE HL Hl"); done.
+  Qed.
+  Definition owned_subltype_step_ofty_value_untyped_l_inst := [instance @owned_subltype_step_ofty_value_untyped_l].
+  Global Existing Instance owned_subltype_step_ofty_value_untyped_l_inst | 14.
+
+  Lemma owned_subltype_step_ofty_value_untyped_r π E L step l vs1 vs2 st1 st2 T :
+    owned_subltype_step  π E L step l vs1 vs2
+      (◁ value_t false st1) (◁ value_t false st2) T
+    ⊢ owned_subltype_step π E L step l vs1 vs2
+      (◁ value_t false st1) (◁ value_t false (UntypedSynType st2)) T.
+  Proof.
+    iIntros "HT".
+    iIntros (F ???) "#CTX #HE HL Hl".
+    iMod ("HT" with "[] [] [] CTX HE HL Hl") as "(%L2 & %R & Hstep & HL & HT)"; [done.. | ].
+    iFrame.
+    iApply (maybe_logical_step_wand with "[] Hstep").
+    iIntros "(Hl & $)".
+    iPoseProof (ltype_own_has_layout with "Hl") as "(%ly' & %Hly' & %Hlyl)". simp_ltypes in Hly'. simpl in *.
+    iPoseProof (ofty_value_untyped_to_literal with "Hl") as "Hl".
+    { done. }
+    iPoseProof (ofty_value_untyped_from_literal (UntypedSynType st2) with "Hl") as "Hl".
+    { apply syn_type_has_layout_untyped. done. }
+    done.
+  Qed.
+  Definition owned_subltype_step_ofty_value_untyped_r_inst := [instance @owned_subltype_step_ofty_value_untyped_r].
+  Global Existing Instance owned_subltype_step_ofty_value_untyped_r_inst | 14.
+
+  Lemma owned_subltype_step_ofty_untyped π E L step l vs1 vs2 st1 st2 T :
+    ⌜syn_type_compat st1 st2⌝ ∗ ⌜vs1 = vs2⌝ ∗
+    T L True%I
+    ⊢ owned_subltype_step π E L step l vs1 vs2 (◁ value_t false st1) (◁ value_t false st2) T.
+  Proof.
+    iIntros "(%Hcomp & <- & HT)".
+    iIntros (????) "CTX HE ? Hl".
+    iFrame. iApply maybe_logical_step_intro.
+    iL.
+    iPoseProof (ltype_own_has_layout with "Hl") as "(%ly' & %Hly' & %Hlyl)". simp_ltypes in Hly'. simpl in *.
+    iPoseProof (ofty_value_untyped_to_literal with "Hl") as "Hl".
+    { done. }
+
+    iPoseProof (ofty_value_untyped_from_literal st2 with "Hl") as "Hl".
+    { by apply Hcomp. }
+    done.
+  Qed.
+  Definition owned_subltype_step_ofty_untyped_inst := [instance @owned_subltype_step_ofty_untyped].
+  Global Existing Instance owned_subltype_step_ofty_untyped_inst | 40.
 End unify_loc.
 
 Section unify_val.
