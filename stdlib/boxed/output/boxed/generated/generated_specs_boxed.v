@@ -127,21 +127,22 @@ Section contractive.
     rewrite /mut_subtype /subtype_adt.
     iIntros "(%HsubT & %HsubA & $)". iPureIntro.
     iIntros (?) "HL HE".
-    iPoseProof (full_subtype_acc_noend with "HE HL") as "#HinclT"; first apply HsubT.
-    iPoseProof (full_subtype_acc_noend with "HE HL") as "#HinclA"; first apply HsubA.
+    iPoseProof (full_subtype_acc_noend with "HE HL") as "(%HstT & #HinclT)"; first apply HsubT.
+    iPoseProof (full_subtype_acc_noend with "HE HL") as "(%HstA & #HinclA)"; first apply HsubA.
     iSplit; iModIntro.
     - iIntros (? x r). simpl.
       iIntros "(%l & %a & -> & Hl & Hperm)".
       iExists _, _. iR.
-      iDestruct ("HinclT" $! inhabitant) as "(%Hst & _ )".
-      rewrite Hst. iFrame.
+      rewrite HstT. iFrame.
       iApply (guarded_mono with "[] Hl").
-      iIntros "Hl". by iApply type_incl_ltype_owned_wand.
+      iIntros "Hl". iApply type_incl_ltype_owned_wand; [ | done..].
+      rewrite HstT//.
     - iIntros (? ? x r). simpl.
       iIntros "(%l & %a & -> & Hl & Hperm)".
       iExists _, _. iR. iL.
       iApply (guarded_mono with "[] Hl").
-      iIntros "Hl". by iApply type_incl_ltype_shared_wand.
+      iIntros "Hl". iApply type_incl_ltype_shared_wand; [ | done..].
+      rewrite HstT//.
   Qed.
   Definition subtype_box_inst := [instance @subtype_box].
   Global Existing Instance subtype_box_inst.
