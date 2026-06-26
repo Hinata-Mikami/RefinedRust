@@ -20,6 +20,7 @@ Section subtype.
     ⌜e1.(enum_els) = e2.(enum_els)⌝ ∗
     ⌜e1.(enum_tag) = e2.(enum_tag)⌝ ∗
     (∀ r, ∃ (Heq : e1.(enum_rt) r = e2.(enum_rt) r),
+      ⌜(st_of (enum_ty e1 r) MetaNone) = (st_of (enum_ty e2 r) MetaNone)⌝ ∗
       type_incl (rew [RT_rt]Heq in e1.(enum_r) r) (e2.(enum_r) r) (rew Heq in e1.(enum_ty) r) (e2.(enum_ty) r))
   .
   Global Instance enum_incl_pers {rt} (e1 e2 : enum rt) : Persistent (enum_incl e1 e2).
@@ -33,7 +34,7 @@ Section subtype.
     iIntros (π v) "Hv".
     rewrite /ty_own_val/=.
     iDestruct "Hv" as "(%ly & %tag & -> & %Hst & %Htag' & Hv)".
-    iDestruct ("Hincl" $! r) as "(%Heq & Hincl')".
+    iDestruct ("Hincl" $! r) as "(%Heq & %Hst_eq & Hincl')".
     iExists ly, tag.
     rewrite -Hels. iR. rewrite -Htag. iR. iR.
     simpl.
@@ -42,9 +43,10 @@ Section subtype.
     iApply struct_t_incl_precond_from_strong.
     rewrite /struct_t_incl_precond. simpl.
     iFrame.
-    iSplit. { rewrite Hels. iApply type_incl_refl. }
+    iSplit. { rewrite Hels/=. iR. iApply type_incl_refl. }
     iSplit; last done.
-    simpl. iApply active_union_type_incl; first done.
+    simpl. iR. iApply active_union_type_incl; first done.
+    { rewrite Hst_eq//. }
     destruct Heq. done.
   Qed.
   Lemma enum_shr_mono {rt} (e1 e2 : enum rt) r m :
@@ -55,14 +57,17 @@ Section subtype.
     iIntros (κ π l) "Hl".
     rewrite /ty_shr/=.
     iDestruct "Hl" as "(%ly & %tag & -> & %Hst & %Htag' & Hl)".
-    iDestruct ("Hincl" $! r) as "(%Heq & Hincl')".
+    iDestruct ("Hincl" $! r) as "(%Heq & %Hst_eq & Hincl')".
     iExists ly, tag.
     rewrite -Hels. rewrite -Htag. iR. iR. iR.
     iApply (struct_t_shr_mono with "[] Hl").
     rewrite /struct_t_incl_precond. simpl.
-    iSplit. { rewrite Hels. iApply type_incl_refl. }
+    iSplit. { rewrite Hels/=. iR. iApply type_incl_refl. }
     iSplit; last done.
-    simpl. iApply active_union_type_incl; first done. destruct Heq. done.
+    simpl. iR.
+    iApply active_union_type_incl; first done.
+    { rewrite Hst_eq//. }
+    destruct Heq. done.
   Qed.
 
   Lemma enum_type_incl {rt} (e1 e2 : enum rt) r :
@@ -71,8 +76,7 @@ Section subtype.
   Proof.
     iIntros "#Hincl".
     iPoseProof "Hincl" as "(%Hels & %Htag & #Hincl')".
-    iSplitR. { simpl. rewrite Hels //. }
-    iSplitR. { iModIntro. simpl. eauto. }
+    iR.
     iSplit; iModIntro.
     - iIntros (???) "?". by iApply enum_own_val_mono.
     - iIntros (????) "?". by iApply enum_shr_mono.
@@ -86,7 +90,9 @@ Section subtype.
     full_subtype E L (enum_t e1) (enum_t e2).
   Proof.
     intros Hsubt r. iIntros (?) "HL #HE".
-    iApply enum_type_incl.
-    iApply (Hsubt with "HL HE").
+    simpl.
+    iPoseProof (Hsubt with "HL HE") as "(%Hst_eq & % & ?)".
+    rewrite Hst_eq. iR.
+    iApply enum_type_incl. iR. iR. done.
   Qed.
 End subtype.

@@ -163,6 +163,7 @@ Section subtype.
     iIntros "(%tag & %Htag & -> & -> & HT)".
     iIntros (??) "#CTX HE HL".
     iFrame.
+    iR.
     by iApply type_incl_enum_discriminant_int.
   Qed.
   Definition weak_subtype_enum_discriminant_int_inst := [instance @weak_subtype_enum_discriminant_int].

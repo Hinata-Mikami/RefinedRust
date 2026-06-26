@@ -247,11 +247,10 @@ Section subtype.
   Qed.
 
   (** Subtyping *)
-  (* NOTE: does not hold anymore, because maybe_uninit is now untyped.
   Lemma type_incl_maybe_uninit_Some {rt} (ty : type rt) (x : rt) :
     ⊢ type_incl x (Some (#x)) ty (maybe_uninit ty).
   Proof.
-    iSplitR; first done. iSplitR; first iModIntro. { simpl. eauto. }
+    iSplitR; first iModIntro. { simpl. eauto. }
     iSplit; iModIntro.
     - iIntros (π m v) "Hv".
       rewrite maybe_uninit_Some_unfold. done.
@@ -262,7 +261,7 @@ Section subtype.
     ty_sidecond ty -∗
     type_incl (Some (#x)) x (maybe_uninit ty) ty.
   Proof.
-    iIntros "#Hsc". iSplitR; first done. iSplitR; first iModIntro. { simpl; eauto. }
+    iIntros "#Hsc". iSplitR; first iModIntro. { simpl; eauto. }
     iSplit; iModIntro.
     - iIntros (???). iApply ty_own_val_Some_maybe_uninit.
     - rewrite {1}/ty_shr/=. iIntros (κ π m v) "(% & <- & Hl)". done.
@@ -271,8 +270,6 @@ Section subtype.
   Lemma type_incl_maybe_uninit_None {rt} (ty : type rt) `{!TySized ty} :
     ⊢ type_incl () None (uninit (ty.(ty_syn_type) MetaNone)) (maybe_uninit ty).
   Proof.
-    iSplitR.
-    { iPureIntro. intros m. simpl. apply ty_sized_syn_type_eq. }
     iSplitR; first iModIntro. { simpl. eauto. }
     iSplit; iModIntro.
     - iIntros (π m v) "Hv". simpl.
@@ -286,8 +283,6 @@ Section subtype.
   Lemma type_incl_None_maybe_uninit {rt} (ty : type rt) `{!TySized ty} :
     ⊢ type_incl None () (maybe_uninit ty) (uninit (ty.(ty_syn_type) MetaNone)).
   Proof.
-    iSplitR.
-    { iPureIntro. intros m. simpl. apply ty_sized_syn_type_eq. }
     iSplitR; first iModIntro. { simpl. eauto. }
     iSplit; iModIntro.
     - iIntros (π m v) "Hv". simpl.
@@ -296,8 +291,6 @@ Section subtype.
       iEval (rewrite /ty_shr/=).
       rewrite (ty_sized_syn_type_eq _ m). done.
   Qed.
-  *)
-
 End subtype.
 
 Section rules.

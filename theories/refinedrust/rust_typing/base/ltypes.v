@@ -4144,49 +4144,56 @@ Section eqltype.
 
   (** ** Compatibilty of [OfTy] with subtyping *)
   Lemma type_incl_ltype_owned_wand {rt} (ty1 ty2 : type rt) π l :
+    ⌜syn_type_compat (ty1.(ty_syn_type) MetaNone) (ty2.(ty_syn_type) MetaNone)⌝ -∗
     (∀ r, type_incl r r ty1 ty2) -∗
     ∀ r, l ◁ₗ[π, Owned] r @ (◁ ty1) -∗ l ◁ₗ[π, Owned] r @ (◁ ty2).
   Proof.
-    iIntros "#Hincl" (r) "Hl".
+    iIntros "%Hcomp #Hincl" (r) "Hl".
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hl" as "(%ly & Hst & ? & Hsc & ? & %r' & Hrfn & Hb)".
+    iDestruct "Hl" as "(%ly & %Hst & ? & Hsc & ? & %r' & Hrfn & Hb)".
     iExists ly.
-    iPoseProof ("Hincl" $! inhabitant) as "(%Hst & Hsceq & _)".
-    rewrite Hst. iFrame.
+    iPoseProof ("Hincl" $! inhabitant) as "(Hsceq & _)".
+    apply Hcomp in Hst. iR.
+    iFrame.
     iSplitL "Hsceq Hsc". { by iApply "Hsceq". }
     iMod "Hb" as "(% & ? & Hv)". iExists _. iFrame.
     iModIntro.
-    iDestruct ("Hincl" $! r') as "(_ & _ & #Hincl' & _)".
+    iDestruct ("Hincl" $! r') as "(_ & #Hincl' & _)".
     by iApply "Hincl'".
   Qed.
   Lemma type_incl_ltype_shared_wand {rt} (ty1 ty2 : type rt) π l κ :
+    ⌜syn_type_compat (ty1.(ty_syn_type) MetaNone) (ty2.(ty_syn_type) MetaNone)⌝ -∗
     (∀ r, type_incl r r ty1 ty2) -∗
     ∀ r, l ◁ₗ[π, Shared κ] r @ (◁ ty1) -∗ l ◁ₗ[π, Shared κ] r @ (◁ ty2).
   Proof.
-    iIntros "#Hincl" (r) "Hl".
+    iIntros "%Hcomp #Hincl" (r) "Hl".
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hl" as "(%ly & Hst & ? & Hsc & ? & %r' & Hrfn & #Hb)".
+    iDestruct "Hl" as "(%ly & %Hst & ? & Hsc & ? & %r' & Hrfn & #Hb)".
     iExists ly.
-    iPoseProof ("Hincl" $! inhabitant) as "(%Hst & Hsceq & _)".
-    rewrite Hst. iFrame.
+    iPoseProof ("Hincl" $! inhabitant) as "(Hsceq & _)".
+    apply Hcomp in Hst. iR.
+    iFrame.
     iSplitL "Hsceq Hsc". { by iApply "Hsceq". }
     iModIntro. iMod "Hb" as "Hshr".
-    iDestruct ("Hincl" $! r') as "(_ & _ & _ & #Hincl')".
+    iDestruct ("Hincl" $! r') as "(_ & _ & #Hincl')".
     by iApply "Hincl'".
   Qed.
 
   Lemma type_ltype_incl_shared_in {rt1 rt2} r1 r2 κ (ty1 : type rt1) (ty2 : type rt2) :
+    ⌜syn_type_compat (ty1.(ty_syn_type) MetaNone) (ty2.(ty_syn_type) MetaNone)⌝ -∗
     type_incl r1 r2 ty1 ty2 -∗
     ltype_incl (Shared κ) #r1 #r2 (◁ ty1)%I (◁ ty2)%I.
   Proof.
-    iIntros "Hsub".
-    iDestruct ("Hsub") as "(%Hst & #Hsceq & #Hown & #Hshr)".
+    iIntros "%Hcomp Hsub".
+    iDestruct ("Hsub") as "(#Hsceq & #Hown & #Hshr)".
     (*iSplitR; iModIntro; simpl.*)
     rewrite /ltype_incl.
     simpl. simp_ltypes. rewrite -bi.persistent_sep_dup.
     iModIntro. iModIntro. iIntros (π l) "Hb". rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & Hst & ? & Hsc & ? & %r' & -> & #Hb)".
-    iExists ly. rewrite Hst. iFrame.
+    iDestruct "Hb" as "(%ly & %Hst & ? & Hsc & ? & %r' & -> & #Hb)".
+    iExists ly.
+    apply Hcomp in Hst. iR.
+    iFrame.
     iSplitL "Hsc"; first by iApply "Hsceq".
     iExists r2. iSplitR; first done. iModIntro. iMod "Hb". iModIntro. by iApply "Hshr".
   Qed.
@@ -4194,26 +4201,29 @@ Section eqltype.
     subtype E L r1 r2 ty1 ty2 →
     subltype E L (Shared κ) (PlaceIn r1) (PlaceIn r2) (◁ ty1)%I (◁ ty2)%I.
   Proof.
-    iIntros (Hsub qL) "HL #CTX #HE". iPoseProof (Hsub with "HL HE") as "#Hsub".
+    iIntros (Hsub qL) "HL #CTX #HE". iPoseProof (Hsub with "HL HE") as "(%Hst & #Hsub)".
     simp_ltypes.
-    iPoseProof (type_incl_syn_type_eq with "Hsub") as "%".
-    iR.  by iApply (type_ltype_incl_shared_in).
+    iR. iApply (type_ltype_incl_shared_in); last done.
+    rewrite Hst//.
   Qed.
 
   Lemma type_ltype_incl_shared {rt : RT} κ (ty1 : type rt) (ty2 : type rt) :
+    ⌜syn_type_compat (ty1.(ty_syn_type) MetaNone) (ty2.(ty_syn_type) MetaNone)⌝ -∗
     (∀ r, type_incl r r ty1 ty2) -∗
     ∀ r, ltype_incl (Shared κ) r r (◁ ty1)%I (◁ ty2)%I.
   Proof.
-    iIntros "#Hsub". iIntros (r).
-    iPoseProof ("Hsub" $! inhabitant) as "(%Hst & #Hsceq & _)".
+    iIntros "%Hcomp #Hsub". iIntros (r).
+    iPoseProof ("Hsub" $! inhabitant) as "(#Hsceq & _)".
     iModIntro.
     simp_ltypes. rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (π l) "Hb". rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & Hst & ? & Hsc & ? & %r' & Hrfn & #Hb)".
-    iExists ly. rewrite Hst. iFrame.
+    iDestruct "Hb" as "(%ly & %Hst & ? & Hsc & ? & %r' & Hrfn & #Hb)".
+    iExists ly.
+    apply Hcomp in Hst. iR.
+    iFrame.
     iSplitL "Hsc"; first by iApply "Hsceq".
     iFrame. iModIntro. iMod "Hb". iModIntro.
-    iDestruct ("Hsub" $! r') as "(_ & _ & _ & Hshr)".
+    iDestruct ("Hsub" $! r') as "(_ & _ & Hshr)".
     by iApply "Hshr".
   Qed.
   Lemma subtype_subltype_shared E L {rt : RT} κ (ty1 : type rt) (ty2 : type rt) :
@@ -4222,33 +4232,36 @@ Section eqltype.
   Proof.
     iIntros (Hsub r qL) "HL #CTX #HE".
     rewrite all_subtype_alt in Hsub.
-    iPoseProof (Hsub with "HL HE") as "#Hsub".
-    iPoseProof ("Hsub" $! inhabitant) as "(% & _)".
+    iPoseProof (Hsub with "HL HE") as "(%Hcomp & #Hsub)".
     simp_ltypes. iR.
-    iApply (type_ltype_incl_shared with "Hsub").
+    iApply (type_ltype_incl_shared with "[] Hsub").
+    rewrite Hcomp//.
   Qed.
 
   Lemma type_ltype_incl_owned_in_strong {rt1 rt2} π r1 r2 (ty1 : type rt1) (ty2 : type rt2) :
-    (∀ m, ty1.(ty_syn_type) m = ty2.(ty_syn_type) m) →
+    syn_type_compat (ty1.(ty_syn_type) MetaNone) (ty2.(ty_syn_type) MetaNone) →
     (∀ v, v ◁ᵥ{π, MetaNone} r1 @ ty1 -∗ v ◁ᵥ{π, MetaNone} r2 @ ty2) -∗
     (ty1.(ty_sidecond) -∗ ty2.(ty_sidecond)) -∗
     ∀ l, l ◁ₗ[π, Owned] #r1 @ (◁ ty1) -∗ l ◁ₗ[π, Owned] #r2 @ (◁ ty2)%I.
   Proof.
-    iIntros (Hst) "Hsub Hsceq".
+    iIntros (Hcomp) "Hsub Hsceq".
     iIntros (l) "Hb".
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & Hst & ? & Hsc & ? & %r' & Hrfn & Hb)".
-    iExists ly. rewrite Hst. iFrame.
+    iDestruct "Hb" as "(%ly & %Hst & ? & Hsc & ? & %r' & Hrfn & Hb)".
+    iExists ly.
+    apply Hcomp in Hst. iR.
+    iFrame.
     iSplitL "Hsceq Hsc". { by iApply "Hsceq". }
     iExists r2. iSplitR; first done. iMod "Hb" as "(% & ? & Hv)". iExists _. iFrame.
     iModIntro. iDestruct "Hrfn" as "->". by iApply "Hsub".
   Qed.
 
   Lemma type_ltype_incl_owned_in {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) :
+    ⌜syn_type_compat (ty1.(ty_syn_type) MetaNone) (ty2.(ty_syn_type) MetaNone)⌝ -∗
     type_incl r1 r2 ty1 ty2 -∗ ltype_incl Owned #r1 #r2 (◁ ty1)%I (◁ ty2)%I.
   Proof.
-    iIntros "Hsub".
-    iDestruct ("Hsub") as "(%Hst & #Hsceq & #Hown & #Hshr)".
+    iIntros "%Hcomp Hsub".
+    iDestruct ("Hsub") as "(#Hsceq & #Hown & #Hshr)".
     iModIntro; simpl.
     simpl. simp_ltypes. rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (π l) "Hb".
@@ -4258,25 +4271,28 @@ Section eqltype.
   Lemma subtype_subltype_owned_in E L {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) :
     subtype E L r1 r2 ty1 ty2 → subltype E L Owned #r1 #r2 (◁ ty1)%I (◁ ty2)%I.
   Proof.
-    iIntros (Hsub qL) "HL #CTX #HE". iPoseProof (Hsub with "HL HE") as "#Hsub".
-    iPoseProof (type_incl_syn_type_eq with "Hsub") as "%".
+    iIntros (Hsub qL) "HL #CTX #HE". iPoseProof (Hsub with "HL HE") as "(%Hst & #Hsub)".
     simp_ltypes. iR.
-    by iApply (type_ltype_incl_owned_in).
+    iApply (type_ltype_incl_owned_in); last done.
+    rewrite Hst//.
   Qed.
 
   Lemma type_ltype_incl_owned {rt : RT} (ty1 : type rt) (ty2 : type rt) :
+    ⌜syn_type_compat (ty1.(ty_syn_type) MetaNone) (ty2.(ty_syn_type) MetaNone)⌝ -∗
     (∀ r, type_incl r r ty1 ty2) -∗ ∀ r, ltype_incl Owned r r (◁ ty1)%I (◁ ty2)%I.
   Proof.
-    iIntros "#Hsub" (r).
-    iPoseProof ("Hsub" $! inhabitant) as "(%Hst & #Hsceq & _)".
+    iIntros "%Hcomp #Hsub" (r).
+    iPoseProof ("Hsub" $! inhabitant) as "(#Hsceq & _)".
     iModIntro; simpl.
     simpl. simp_ltypes. rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (π l) "Hb".
     iModIntro.
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & Hst & ? & Hsc & ? & %r' & Hrfn & Hb)".
-    iDestruct ("Hsub" $! r') as "(_ & _ & #Hown & #Hshr)".
-    iExists ly. rewrite Hst. iFrame.
+    iDestruct "Hb" as "(%ly & %Hst & ? & Hsc & ? & %r' & Hrfn & Hb)".
+    iDestruct ("Hsub" $! r') as "(_ & #Hown & #Hshr)".
+    iExists ly.
+    apply Hcomp in Hst. iR.
+    iFrame.
     iSplitL "Hsc"; first by iApply "Hsceq".
     iFrame. iMod "Hb" as "(% & ? & Hv)". iExists _. iFrame.
     iModIntro. by iApply "Hown".
@@ -4285,10 +4301,10 @@ Section eqltype.
     (∀ r, subtype E L r r ty1 ty2) → ∀ r, subltype E L Owned r r (◁ ty1)%I (◁ ty2)%I.
   Proof.
     iIntros (Hsub r qL) "HL #CTX #HE". rewrite all_subtype_alt in Hsub.
-    iPoseProof (Hsub with "HL HE") as "#Hsub".
-    iPoseProof ("Hsub" $! inhabitant) as "(%Hst & #Hsceq & _)".
+    iPoseProof (Hsub with "HL HE") as "(%Hst & #Hsub)".
     simp_ltypes. iR.
-    iApply (type_ltype_incl_owned with "Hsub").
+    iApply (type_ltype_incl_owned with "[] Hsub").
+    rewrite Hst//.
   Qed.
 
   (* NOTE: We do not get a direct heterogeneous subtyping lemma in the Uniq, because we cannot update the ghost variables in general.
@@ -4303,16 +4319,19 @@ Section eqltype.
   Abort.
 
   Lemma type_eq_ltype_incl_uniq {rt : RT} κ γ (ty1 : type rt) (ty2 : type rt) :
+    ⌜syn_type_compat (ty1.(ty_syn_type) MetaNone) (ty2.(ty_syn_type) MetaNone)⌝ -∗
     (∀ r, type_incl r r ty1 ty2) -∗ (∀ r, type_incl r r ty2 ty1) -∗ ∀ r, ltype_incl (Uniq κ γ) r r (◁ ty1)%I (◁ ty2)%I.
   Proof.
-    iIntros "#Hsub1 #Hsub2" (r).
-    iPoseProof ("Hsub1" $! inhabitant) as "(%Hst & #Hsceq & _)".
+    iIntros "%Hcomp #Hsub1 #Hsub2" (r).
+    iPoseProof ("Hsub1" $! inhabitant) as "(#Hsceq & _)".
     iModIntro; simpl.
     simpl. simp_ltypes. rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (π l) "Hb".
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & Hst & ? & Hsc & Hlb & ? & Hrfn & Hb)".
-    iExists ly. iFrame. rewrite Hst. iFrame.
+    iDestruct "Hb" as "(%ly & %Hst & ? & Hsc & Hlb & ? & Hrfn & Hb)".
+    iExists ly. iFrame.
+    apply Hcomp in Hst. iR.
+    iFrame.
     iSplitL "Hsc"; first by iApply "Hsceq".
 
     iMod "Hb". iModIntro.
@@ -4321,25 +4340,24 @@ Section eqltype.
     * iIntros "(%r' & Hrfn & Hb)". iExists _. iFrame.
       iMod "Hb". iModIntro.
       iDestruct "Hb" as "(%v & Hl & Hv)". iExists _. iFrame.
-      iDestruct ("Hsub1" $! r') as "(_ & _ & Hown & _)".
+      iDestruct ("Hsub1" $! r') as "(_ & Hown & _)".
       by iApply "Hown".
     * iIntros "(%r' & Hrfn & Hb)". iExists _. iFrame.
       iMod "Hb". iModIntro.
       iDestruct "Hb" as "(%v & Hl & Hv)". iExists _. iFrame.
-      iDestruct ("Hsub2" $! r') as "(_ & _ & Hown & _)".
+      iDestruct ("Hsub2" $! r') as "(_ & Hown & _)".
       by iApply "Hown".
   Qed.
   Lemma eqtype_subltype_uniq E L {rt : RT} κ γ (ty1 : type rt) (ty2 : type rt) :
     (∀ r, eqtype E L r r ty1 ty2) → ∀ r, subltype E L (Uniq κ γ) r r (◁ ty1)%I (◁ ty2)%I.
   Proof.
     iIntros (Hsub r qL) "HL #CTX #HE". apply all_eqtype_alt in Hsub as [Hsub1 Hsub2].
-    iPoseProof (Hsub1 with "HL HE") as "#Hsub1".
-    iPoseProof (Hsub2 with "HL HE") as "#Hsub2".
+    iPoseProof (Hsub1 with "HL HE") as "(%Hst1 & #Hsub1)".
+    iPoseProof (Hsub2 with "HL HE") as "(%Hst2 & #Hsub2)".
 
-    unshelve iPoseProof (type_incl_syn_type_eq with "Hsub1") as "%Hst1"; first apply inhabitant.
-    unshelve iPoseProof (type_incl_syn_type_eq with "Hsub2") as "%Hst2"; first apply inhabitant.
-    simp_ltypes. rewrite Hst1 Hst2. iR.
-    iApply (type_eq_ltype_incl_uniq with "Hsub1 Hsub2").
+    simp_ltypes. iR.
+    iApply (type_eq_ltype_incl_uniq with "[] Hsub1 Hsub2").
+    rewrite Hst1//.
   Qed.
 
   Lemma full_eqtype_subltype E L {rt : RT} (ty1 : type rt) (ty2 : type rt) :

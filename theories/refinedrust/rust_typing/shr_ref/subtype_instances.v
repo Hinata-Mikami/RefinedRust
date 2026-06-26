@@ -16,8 +16,10 @@ Section subtype.
     iIntros "(%Hincl & HT)". iIntros (??) "#CTX #HE HL".
     iPoseProof (lctx_lft_incl_incl with "HL") as "#Hincl"; first done.
     iSpecialize ("Hincl" with "HE").
-    iMod ("HT" with "[//] CTX HE HL") as "(#Hsub & $ & $)".
-    iApply shr_ref_type_incl_in; done.
+    iMod ("HT" with "[//] CTX HE HL") as "(%Hst & #Hsub & $ & $)".
+    iSplitR; first done.
+    iApply (shr_ref_type_incl_in with "[] Hincl Hsub").
+    rewrite Hst//.
   Qed.
   Definition weak_subtype_shr_in_inst := [instance @weak_subtype_shr_in].
   Global Existing Instance weak_subtype_shr_in_inst | 10.
@@ -29,8 +31,10 @@ Section subtype.
     iIntros "(-> & %Hincl & %Hsubt & HT)". iIntros (??) "#CTX #HE HL".
     iPoseProof (lctx_lft_incl_incl with "HL") as "#Hincl"; first done.
     iSpecialize ("Hincl" with "HE").
-    iPoseProof (full_subtype_acc with "HE HL") as "#Hsub"; first done.
-    iFrame. unshelve iApply shr_ref_type_incl; done.
+    iPoseProof (full_subtype_acc with "HE HL") as "(%Hst & #Hsub)"; first done.
+    iFrame. iSplitR; first done.
+    iApply (shr_ref_type_incl with "[] Hincl Hsub").
+    rewrite Hst//.
   Qed.
   Definition weak_subtype_shr_inst := [instance @weak_subtype_shr].
   Global Existing Instance weak_subtype_shr_inst | 11.

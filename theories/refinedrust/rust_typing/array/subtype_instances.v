@@ -46,9 +46,9 @@ Section subtype.
     ⊢ weak_subtype E L rs1 rs2 (array_t len1 ty1) (array_t len2 ty2) T.
   Proof.
     iIntros "(<- & <- & %Hsubt & HT)".
-    iIntros (??) "#CTX #HE HL". iPoseProof (full_subtype_acc with "HE HL") as "#Hincl"; first done.
-    iPoseProof ("Hincl" $! inhabitant) as "(%Hst & _)".
-    iFrame. iApply array_t_type_incl; done.
+    iIntros (??) "#CTX #HE HL". iPoseProof (full_subtype_acc with "HE HL") as "(%Hst & #Hincl)"; first done.
+    iFrame. iSplitR. { iPureIntro. intros m. simpl. by rewrite Hst. }
+    iApply array_t_type_incl; first apply Hst. done.
   Qed.
   Definition weak_subtype_array_inst := [instance @weak_subtype_array].
   Global Existing Instance weak_subtype_array_inst.

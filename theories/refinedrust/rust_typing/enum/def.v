@@ -279,16 +279,17 @@ Section type_incl.
 
   Lemma active_union_type_incl {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 variant1 variant2 uls :
     variant1 = variant2 →
+    syn_type_compat (st_of ty1 MetaNone) (st_of ty2 MetaNone) →
     type_incl r1 r2 ty1 ty2 -∗
     type_incl r1 r2 (active_union_t ty1 variant1 uls) (active_union_t ty2 variant2 uls).
   Proof.
-    iIntros (->) "(%Hst & #Hsc & #Hincl & #Hincl2)".
-    iSplitR. { simpl. done. }
+    iIntros (-> Hcompat) "(#Hsc & #Hincl & #Hincl2)".
     iSplitR. { simpl. eauto. }
     iSplitR; iModIntro.
     - iIntros (π m v) "Hv". rewrite {3 4}/ty_own_val/=.
-      iDestruct "Hv" as "(%ul & %ly & -> & %Huls & %Hly & % & Hv1 & Hv2)".
-      rewrite -Hst. iExists ul, ly. iR. iR. iR. iR. iSplitL "Hv1".
+      iDestruct "Hv" as "(%ul & %ly & -> & %Huls & %Hly & %Hst & Hv1 & Hv2)".
+      apply Hcompat in Hst.
+      iExists ul, ly. iR. iR. iR. iR. iSplitL "Hv1".
       + iApply "Hincl". done.
       + done.
     - iIntros (κ π m l) "Hl". rewrite {3 4}/ty_shr/=.

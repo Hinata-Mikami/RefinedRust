@@ -1185,14 +1185,14 @@ Section judgments.
     rrust_ctx -∗
     elctx_interp E -∗
     llctx_interp L ={F}=∗
-    type_incl r1 r2 ty1 ty2 ∗ llctx_interp L ∗ T.
+    ⌜∀ m, ty1.(ty_syn_type) m = ty2.(ty_syn_type) m⌝ ∗ type_incl r1 r2 ty1 ty2 ∗ llctx_interp L ∗ T.
   Class Subtype (E : elctx) (L : llctx) {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) : Type :=
     subtype_proof T : iProp_to_Prop (weak_subtype E L r1 r2 ty1 ty2 T).
 
   Lemma weak_subtype_id E L {rt} (ty : type rt) r T :
     T ⊢ weak_subtype E L r r ty ty T.
   Proof.
-    iIntros "$" (??) "?? $". iApply type_incl_refl.
+    iIntros "$" (??) "?? $". iR. iApply type_incl_refl.
   Qed.
   Lemma weak_subtype_subtype_l {rt1 rt2 rt1'} (ty1 : type rt1) (ty1' : type rt1') (ty2 : type rt2) r1 r1' r2 E L T :
     subtype E L r1 r1' ty1 ty1' →
@@ -1201,9 +1201,11 @@ Section judgments.
   Proof.
     iIntros (Hsub) "HT". rewrite /weak_subtype.
     iIntros (??) "#CTX #HE HL".
-    iPoseProof (subtype_acc with "HE HL") as "#Hincl1"; first done.
-    iMod ("HT" with "[] CTX HE HL") as "(#Hincl2 & $ & $)"; first done.
-    iModIntro. iApply type_incl_trans; done.
+    iPoseProof (subtype_acc with "HE HL") as "(%Hst1 & #Hincl1)"; first done.
+    iMod ("HT" with "[] CTX HE HL") as "(%Hst2 & #Hincl2 & $ & $)"; first done.
+    iModIntro. iSplitR.
+    { iPureIntro. intros m. rewrite Hst1 Hst2 //. }
+    iApply type_incl_trans; done.
   Qed.
   Lemma weak_subtype_subtype_r {rt1 rt2 rt2'} (ty1 : type rt1) (ty2' : type rt2') (ty2 : type rt2) r1 r2' r2 E L T :
     subtype E L r2' r2 ty2' ty2 →
@@ -1212,9 +1214,11 @@ Section judgments.
   Proof.
     iIntros (Hsub) "HT". rewrite /weak_subtype.
     iIntros (??) "#CTX #HE HL".
-    iPoseProof (subtype_acc with "HE HL") as "#Hincl1"; first done.
-    iMod ("HT" with "[] CTX HE HL") as "(#Hincl2 & $ & $)"; first done.
-    iModIntro. iApply type_incl_trans; done.
+    iPoseProof (subtype_acc with "HE HL") as "(%Hst1 & #Hincl1)"; first done.
+    iMod ("HT" with "[] CTX HE HL") as "(%Hst2 & #Hincl2 & $ & $)"; first done.
+    iModIntro. iSplitR.
+    { iPureIntro. intros m. rewrite Hst2 Hst1 //. }
+    iApply type_incl_trans; done.
   Qed.
 
   Definition weak_subltype E L {rt1 rt2} (b : bor_kind) r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) (T : iProp Σ) : iProp Σ :=
@@ -1258,10 +1262,11 @@ Section judgments.
     ⊢ owned_subtype π E L pers r1 r2 ty1 ty2 T.
   Proof.
     iIntros "HT" (????) "#CTX #HE HL".
-    iMod ("HT" with "[//] CTX HE HL") as "(#Hincl & ? & ?)".
+    iMod ("HT" with "[//] CTX HE HL") as "(%Hst & #Hincl & ? & ?)".
     iExists L. iFrame.
     iModIntro. iApply bi.intuitionistically_intuitionistically_if. iModIntro.
-    iPoseProof (type_incl_owned_type_incl with "Hincl") as "Hincl'".
+    iPoseProof (type_incl_owned_type_incl with "[] Hincl") as "Hincl'".
+    { iPureIntro. intros m. rewrite Hst. apply syn_type_size_eq_refl. }
     done.
   Qed.
   Global Instance owned_subtype_weak_subtype_inst π E L pers {rt1 rt2} (r1 : rt1) (r2 : rt2) ty1 ty2 :
@@ -1285,13 +1290,13 @@ Section judgments.
     iIntros (Heqt) "HT".
     rewrite /owned_subtype.
     iIntros (????) "#CTX #HE HL".
-    iPoseProof (subtype_acc with "HE  HL") as "#Hincl1"; first done.
+    iPoseProof (subtype_acc with "HE  HL") as "(%Hst1 & #Hincl1)"; first done.
     iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & Hincl & HL & HT)"; [done.. | ].
     iModIntro. iExists L2. iFrame.
     destruct b; simpl.
     - iDestruct "Hincl" as "#Hincl". iModIntro.
-      iApply owned_type_incl_incl_l; done.
-    - iApply owned_type_incl_incl_l; done.
+      iApply (owned_type_incl_incl_l with "[] Hincl1 Hincl"); done.
+    - iApply (owned_type_incl_incl_l with "[] Hincl1 Hincl"); done.
   Qed.
   Lemma owned_subtype_subtype_r {rt1 rt2 rt2'} (ty1 : type rt1) (ty2' : type rt2') (ty2 : type rt2) r1 r2' r2 π E L b T :
     subtype E L r2' r2 ty2' ty2 →
@@ -1301,13 +1306,13 @@ Section judgments.
     iIntros (Heqt) "HT".
     rewrite /owned_subtype.
     iIntros (????) "#CTX #HE HL".
-    iPoseProof (subtype_acc with "HE  HL") as "#Hincl1"; first done.
+    iPoseProof (subtype_acc with "HE  HL") as "(%Hst1 & #Hincl1)"; first done.
     iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & Hincl & HL & HT)"; [done.. | ].
     iModIntro. iExists L2. iFrame.
     destruct b; simpl.
     - iDestruct "Hincl" as "#Hincl". iModIntro.
-      iApply owned_type_incl_incl_r; done.
-    - iApply (owned_type_incl_incl_r with "Hincl"); done.
+      iApply (owned_type_incl_incl_r with "[] Hincl Hincl1"); done.
+    - iApply (owned_type_incl_incl_r with "[] Hincl Hincl1"); done.
   Qed.
 
 
@@ -1389,7 +1394,7 @@ Section judgments.
         (match bmin with
          | UpdInit => owned_type_incl π r r2 ty ty2
          | UpdStrong => owned_type_incl π r r2 ty ty2
-         | _ => type_incl r r2 ty ty2
+         | _ => ⌜∀ m, syn_type_size_eq (st_of ty m) (st_of ty2 m)⌝ ∗ type_incl r r2 ty ty2
          end) ∗
         typed_place_cond upd (◁ ty) (◁ ty2) ∗
         upd ⪯ₚ bmin ∗

@@ -478,16 +478,14 @@ Section fixpoint.
 
   Lemma type_fixpoint_incl_1 r : ⊢ type_incl r r (type_fixpoint T) (T (type_fixpoint T)).
   Proof.
-    iSplit; last iSplit; last iSplit.
-    - iPureIntro. rewrite !type_fixpoint_syn_type. apply HT.
+    iSplit; last iSplit.
     - iModIntro. simpl. rewrite type_ctr_sidecond; eauto.
     - iModIntro. iIntros (π ? v). rewrite type_fixpoint_own_val_unfold. eauto.
     - iModIntro. iIntros (????). rewrite type_fixpoint_shr_unfold. eauto.
   Qed.
   Lemma type_fixpoint_incl_2 r : ⊢ type_incl r r (T (type_fixpoint T)) (type_fixpoint T).
   Proof.
-    iSplit; last iSplit; last iSplit.
-    - iPureIntro. rewrite !type_fixpoint_syn_type. apply HT.
+    iSplit; last iSplit.
     - iModIntro. simpl. rewrite type_ctr_sidecond; eauto.
     - iModIntro. iIntros (π ? v). rewrite type_fixpoint_own_val_unfold. eauto.
     - iModIntro. iIntros (????). rewrite type_fixpoint_shr_unfold. eauto.
@@ -495,11 +493,15 @@ Section fixpoint.
 
   Lemma type_fixpoint_subtype_1 E L r : subtype E L r r (type_fixpoint T) (T (type_fixpoint T)).
   Proof.
-    iIntros (?) "HL HE". iApply type_fixpoint_incl_1.
+    iIntros (?) "HL HE".
+    iSplitR; last iApply type_fixpoint_incl_1.
+    iPureIntro. rewrite !type_fixpoint_syn_type. apply HT.
   Qed.
   Lemma type_fixpoint_subtype_2 E L r : subtype E L r r (T (type_fixpoint T)) (type_fixpoint T).
   Proof.
-    iIntros (?) "HL HE". iApply type_fixpoint_incl_2.
+    iIntros (?) "HL HE".
+    iSplitR; last iApply type_fixpoint_incl_2.
+    iPureIntro. rewrite !type_fixpoint_syn_type. apply HT.
   Qed.
 
   Lemma type_fixpoint_unfold_eqtype E L r : eqtype E L r r (type_fixpoint T) (T (type_fixpoint T)).

@@ -430,8 +430,8 @@ Section subtype.
   Proof.
     intros Hsub1 Hsub2 ?.
     iIntros (?) "HL HE". unfold type_incl.
-    iPoseProof (full_subtype_acc_noend with "HE HL") as "#Hincl"; first apply Hsub1.
-    iPoseProof ("Hincl" $! inhabitant) as "(%Hm & #Hsc & #_)".
+    iPoseProof (full_subtype_acc_noend with "HE HL") as "(%Hm & #Hincl)"; first apply Hsub1.
+    iPoseProof ("Hincl" $! inhabitant) as "(#Hsc & #_)".
     iPoseProof (Hsub2 with "HL HE") as "(#HinclP & #HinclPshr)".
     iSplitR. { done. }
     iSplitR. { done. }
@@ -441,12 +441,12 @@ Section subtype.
       iEval (rewrite /ty_own_val/= ex_plain_own_val_unfold /ex_plain_own_val_def).
       iExists x. iSplitL "Hinv".
       + by iApply "HinclP".
-      + iDestruct ("Hincl" $! x) as "(_ & _  & Hv & _)". by iApply "Hv".
+      + iDestruct ("Hincl" $! x) as "(_  & Hv & _)". by iApply "Hv".
     - iEval (rewrite /ty_shr/=).
       iIntros (????) "(%x & Hinv & Hv1)".
       iExists x. iSplitL "Hinv".
       + by iApply "HinclPshr".
-      + iDestruct ("Hincl" $! x) as "(_ & _  & _ & Hshr)". by iApply "Hshr".
+      + iDestruct ("Hincl" $! x) as "(_  & _ & Hshr)". by iApply "Hshr".
   Qed.
 
   Lemma mut_subtype_ex_plain_t E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) T :

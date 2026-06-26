@@ -1797,11 +1797,7 @@ End ne.
 
 (** ** Subtyping etc. *)
 Definition type_incl `{!typeGS Σ} {rt1 rt2 : RT}  (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : iProp Σ :=
-  (* Require equality of the syntypes.
-     This also ensures that the alignment requirements are the same, so that we can use [type_incl] below pointers. *)
-  (* TODO: can we just require the layout to be the same? *)
-  (⌜∀ m, ty1.(ty_syn_type) m = ty2.(ty_syn_type) m⌝ ∗
-  (□ (ty1.(ty_sidecond) -∗ ty2.(ty_sidecond))) ∗
+  ((□ (ty1.(ty_sidecond) -∗ ty2.(ty_sidecond))) ∗
   (□ ∀ π m v, ty1.(ty_own_val) π r1 m v -∗ ty2.(ty_own_val) π r2 m v) ∗
   (□ ∀ κ π m l, ty1.(ty_shr) κ π r1 m l -∗ ty2.(ty_shr) κ π r2 m l))%I.
 #[export] Instance: Params (@type_incl) 4 := {}.
@@ -1815,7 +1811,7 @@ Definition owned_type_incl `{!typeGS Σ}  π {rt1 rt2 : RT} (r1 : rt1) (r2 : rt2
 
 (* Heterogeneous subtyping *)
 Definition subtype `{!typeGS Σ} (E : elctx) (L : llctx) {rt1 rt2 : RT} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : Prop :=
-  ∀ qL, llctx_interp_noend L qL  -∗ (elctx_interp E -∗ type_incl r1 r2 ty1 ty2).
+  ∀ qL, llctx_interp_noend L qL  -∗ (elctx_interp E -∗ ⌜∀ m, ty1.(ty_syn_type) m = ty2.(ty_syn_type) m⌝ ∗ type_incl r1 r2 ty1 ty2).
 #[export] Instance: Params (@subtype) 6 := {}.
 
 (* Homogeneous subtyping independently of the refinement *)
@@ -1841,9 +1837,7 @@ Section subtyping.
   Global Instance type_incl_ne {rt1 rt2} r1 r2 : NonExpansive2 (type_incl (rt1 := rt1) (rt2 := rt2) r1 r2).
   Proof.
     iIntros (n ty1 ty1' Heq ty2 ty2' Heq2).
-    unfold type_incl. f_equiv.
-    { f_equiv. destruct Heq as [? ? ? ? ? Heq1 ?], Heq2 as [? ? ? ? ? Heq2 ?].
-      setoid_rewrite Heq1. setoid_rewrite Heq2. done. }
+    unfold type_incl.
     f_equiv.
     { f_equiv. f_equiv; by destruct Heq, Heq2. }
     do 2 f_equiv.
@@ -1860,7 +1854,6 @@ Section subtyping.
 
   Lemma type_incl_refl {rt} (r : rt) (ty : type rt) : ⊢ type_incl r r ty ty.
   Proof.
-    iSplit; first done.
     iSplitR. { iModIntro; iIntros "$". }
     iSplit; iModIntro; iIntros; done.
   Qed.
@@ -1868,18 +1861,11 @@ Section subtyping.
   Lemma type_incl_trans {rt1 rt2 rt3} r1 r2 r3 (ty1 : type rt1) (ty2 : type rt2) (ty3 : type rt3) :
     type_incl r1 r2 ty1 ty2 -∗ type_incl r2 r3 ty2 ty3 -∗ type_incl r1 r3 ty1 ty3.
   Proof.
-    iIntros "(% & #Hsc12 & #Ho12 & #Hs12) (% & #Hsc23 & #Ho23 & #Hs23)".
-    iSplit. { iPureIntro. iIntros (m). etrans; eauto. }
+    iIntros "(#Hsc12 & #Ho12 & #Hs12) (#Hsc23 & #Ho23 & #Hs23)".
     iSplitR. { iModIntro. iIntros "H1". iApply "Hsc23". by iApply "Hsc12". }
     iSplit; iModIntro; iIntros.
     - iApply "Ho23". iApply "Ho12". done.
     - iApply "Hs23". iApply "Hs12". done.
-  Qed.
-
-  Lemma type_incl_syn_type_eq {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 :
-    type_incl r1 r2 ty1 ty2 -∗ ⌜∀ m, st_of ty1 m = st_of ty2 m⌝.
-  Proof.
-    by iIntros "(% & _)".
   Qed.
 
   (** *** [owned_type_incl] *)
@@ -1891,19 +1877,21 @@ Section subtyping.
     iIntros (v). eauto.
   Qed.
   Lemma type_incl_owned_type_incl π {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) :
-    type_incl r1 r2 ty1 ty2 -∗ □ owned_type_incl π r1 r2 ty1 ty2.
+    ⌜∀ m, syn_type_size_eq (ty1.(ty_syn_type) m) (ty2.(ty_syn_type) m)⌝ -∗
+    type_incl r1 r2 ty1 ty2 -∗
+    □ owned_type_incl π r1 r2 ty1 ty2.
   Proof.
-    iIntros "(%Hst & #$ & #Hv & _)".
+    iIntros "%Hst (#$ & #Hv & _)".
     iDestruct ("Hv" $! π _) as "$".
-    iPureIntro. setoid_rewrite Hst.
-    apply syn_type_size_eq_refl.
+    iPureIntro. done.
   Qed.
   Lemma owned_type_incl_incl_l π {rt1 rt2 rt3} (ty1 : type rt1) (ty2 : type rt2) (ty3 : type rt3) r1 r2 r3 :
+    ⌜∀ m, ty1.(ty_syn_type) m = ty2.(ty_syn_type) m⌝ -∗
     type_incl r1 r2 ty1 ty2 -∗
     owned_type_incl π r2 r3 ty2 ty3 -∗
     owned_type_incl π r1 r3 ty1 ty3.
   Proof.
-    iIntros "(%Hst1 & Hsc1 & Hv1 & _) (%Hst2 & Hsc2 & Hv2)".
+    iIntros "%Hst1 (Hsc1 & Hv1 & _) (%Hst2 & Hsc2 & Hv2)".
     iSplit; last iSplitR "Hv1 Hv2".
     - iPureIntro.
       intros ? Ha1.
@@ -1914,11 +1902,12 @@ Section subtyping.
     - iIntros (v) "Hv". iApply "Hv2". by iApply "Hv1".
   Qed.
   Lemma owned_type_incl_incl_r π {rt1 rt2 rt3} (ty1 : type rt1) (ty2 : type rt2) (ty3 : type rt3) r1 r2 r3 :
+    ⌜∀ m, ty2.(ty_syn_type) m = ty3.(ty_syn_type) m⌝ -∗
     owned_type_incl π r1 r2 ty1 ty2 -∗
     type_incl r2 r3 ty2 ty3 -∗
     owned_type_incl π r1 r3 ty1 ty3.
   Proof.
-    iIntros "(%Hst1 & Hsc1 & Hv1) (%Hst2 & Hsc2 & Hv2 & _)".
+    iIntros "%Hst2 (%Hst1 & Hsc1 & Hv1) (Hsc2 & Hv2 & _)".
     iSplit; last iSplitR "Hv1 Hv2".
     - iPureIntro.
       intros ? Ha1.
@@ -1930,13 +1919,14 @@ Section subtyping.
 
   (** *** [subtype] *)
   Lemma subtype_refl E L {rt} r (ty : type rt) : subtype E L r r ty ty.
-  Proof. iIntros (?) "_ _". iApply type_incl_refl. Qed.
+  Proof. iIntros (?) "_ _". iR. iApply type_incl_refl. Qed.
   Lemma subtype_trans E L {rt1 rt2 rt3} r1 r2 r3 (ty1 : type rt1) (ty2 : type rt2) (ty3 : type rt3) :
     subtype E L r1 r2 ty1 ty2 → subtype E L r2 r3 ty2 ty3 → subtype E L r1 r3 ty1 ty3.
   Proof.
     intros H12 H23. iIntros (?) "HL #HE".
-    iDestruct (H12 with "HL HE") as "#H12".
-    iDestruct (H23 with "HL HE") as "#H23".
+    iDestruct (H12 with "HL HE") as "(%Hst1 & #H12)".
+    iDestruct (H23 with "HL HE") as "(%Hst2 & #H23)".
+    iSplitR. { iPureIntro. intros. rewrite Hst1 Hst2//. }
     iApply (type_incl_trans with "[#]"); [by iApply "H12" | by iApply "H23"].
   Qed.
 
@@ -1952,6 +1942,7 @@ Section subtyping.
     subtype E L r1 r2 ty1 ty2 →
     elctx_interp E -∗
     llctx_interp L -∗
+    ⌜∀ m, ty1.(ty_syn_type) m = ty2.(ty_syn_type) m⌝ ∗
     type_incl r1 r2 ty1 ty2.
   Proof.
     iIntros (Hsub) "HE HL".
@@ -1962,24 +1953,37 @@ Section subtyping.
     full_subtype E L ty1 ty2 →
     elctx_interp E -∗
     llctx_interp L -∗
+    ⌜∀ m, ty1.(ty_syn_type) m = ty2.(ty_syn_type) m⌝ ∗
     ∀ r, type_incl r r ty1 ty2.
   Proof.
     iIntros (Hsub) "HE HL".
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & Hcl_L)".
-    iIntros (?). iPoseProof (Hsub with "HL HE") as "#Hincl". done.
+    iPoseProof (Hsub inhabitant with "HL HE") as "(%Hst & #?)".
+    iR.
+    iIntros (?). iPoseProof (Hsub with "HL HE") as "(_ & #Hincl)". done.
   Qed.
   Lemma full_subtype_acc_noend E L {rt} (ty1 : type rt) (ty2 : type rt) qL :
     full_subtype E L ty1 ty2 →
     elctx_interp E -∗
     llctx_interp_noend L qL -∗
+    ⌜∀ m, ty1.(ty_syn_type) m = ty2.(ty_syn_type) m⌝ ∗
     ∀ r, type_incl r r ty1 ty2.
   Proof.
     iIntros (Hsub) "HE HL".
-    iIntros (?). iPoseProof (Hsub with "HL HE") as "#Hincl". done.
+    iPoseProof (Hsub inhabitant with "HL HE") as "(%Hst & #?)".
+    iR.
+    iIntros (?). iPoseProof (Hsub with "HL HE") as "(_ & #Hincl)". done.
   Qed.
 
   Lemma equiv_full_subtype E L {rt} (ty1 ty2 : type rt) : ty1 ≡ ty2 → full_subtype E L ty1 ty2.
-  Proof. unfold subtype=>EQ ? ?. setoid_rewrite EQ. apply subtype_refl. Qed.
+  Proof.
+    unfold subtype=>EQ ? ?.
+    iIntros "??".
+    iSplit.
+    - iPureIntro. apply EQ.
+    - setoid_rewrite EQ.
+      iApply type_incl_refl.
+  Qed.
 
   Lemma eqtype_unfold E L {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) :
     eqtype E L r1 r2 ty1 ty2 ↔
@@ -2037,7 +2041,7 @@ Section subtyping.
     ⌜st1.(st_syn_type) = st2.(st_syn_type)⌝ -∗
     type_incl r1 r2 st1 st2.
   Proof.
-    iIntros "#Hst %Hly". iSplit; first done. iSplitR; first done. iSplit; iModIntro.
+    iIntros "#Hst %Hly". iSplit; first done. iSplit; iModIntro.
     - simpl. iIntros (???) "(-> & Ha)". iR. by iApply "Hst".
     - iIntros (???).
       iDestruct 1 as (vl ly) "(-> & Hf & Hown & %Hst & %Hly')". iExists vl, ly. iFrame "Hf". iR.
@@ -2052,6 +2056,7 @@ Section subtyping.
   Proof.
     intros Hst. iIntros (qL) "HL HE". iDestruct (Hst with "HL HE") as "#Hst".
     iClear "∗". iDestruct ("Hst") as "[Hst' %Hly]".
+    iR.
     iApply type_incl_simple_type.
     - iIntros "!#" (??) "?". by iApply "Hst'".
     - done.
@@ -2075,18 +2080,21 @@ Section subtyping.
 
   Lemma all_subtype_alt E L {rt} (ty1 ty2 : type rt) :
     (∀ r, subtype E L r r ty1 ty2) ↔
-    (∀ qL, llctx_interp_noend L qL -∗ (elctx_interp E -∗ ∀ r, type_incl r r ty1 ty2)).
+    (∀ qL, llctx_interp_noend L qL -∗ (elctx_interp E -∗ ⌜∀ m, ty1.(ty_syn_type) m = ty2.(ty_syn_type) m⌝ ∗ ∀ r, type_incl r r ty1 ty2)).
   Proof.
     split.
-    - intros Ha qL. iIntros "HL HE" (r).
-      by iPoseProof (Ha r with "HL HE") as "Ha".
+    - intros Ha qL. iIntros "HL HE".
+      iPoseProof (Ha inhabitant with "HL HE") as "(% & #?)".
+      iR. iIntros (r).
+      by iPoseProof (Ha r with "HL HE") as "(% & Ha)".
     - intros Ha r. iIntros (qL) "HL HE".
-      iApply (Ha with "HL HE").
+      iPoseProof (Ha with "HL HE") as "(% & Ha)".
+      iR. done.
   Qed.
   Lemma all_eqtype_alt E L {rt} (ty1 ty2 : type rt) :
     (∀ r, eqtype E L r r ty1 ty2) ↔
-    ((∀ qL, llctx_interp_noend L qL -∗ elctx_interp E -∗ ∀ r, type_incl r r ty1 ty2) ∧
-    (∀ qL, llctx_interp_noend L qL -∗ elctx_interp E -∗ ∀ r, type_incl r r ty2 ty1)).
+    ((∀ qL, llctx_interp_noend L qL -∗ elctx_interp E -∗ ⌜∀ m, ty1.(ty_syn_type) m = ty2.(ty_syn_type) m⌝ ∗ ∀ r, type_incl r r ty1 ty2) ∧
+    (∀ qL, llctx_interp_noend L qL -∗ elctx_interp E -∗ ⌜∀ m, ty2.(ty_syn_type) m = ty1.(ty_syn_type) m⌝ ∗ ∀ r, type_incl r r ty2 ty1)).
   Proof.
     rewrite forall_and_distr !all_subtype_alt //.
   Qed.
@@ -2118,8 +2126,8 @@ Section subtyping.
   Proof.
     iIntros ([Hsub1 Hsub2]) "HE HL".
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & Hcl_L)".
-    iPoseProof (Hsub1 with "HL HE") as "#Hincl1".
-    iPoseProof (Hsub2 with "HL HE") as "#Hincl2".
+    iPoseProof (Hsub1 with "HL HE") as "(% & #Hincl1)".
+    iPoseProof (Hsub2 with "HL HE") as "(% & #Hincl2)".
     iFrame "#".
   Qed.
   Lemma eqtype_acc_noend E L {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) qL :
@@ -2129,8 +2137,8 @@ Section subtyping.
     type_incl r1 r2 ty1 ty2 ∗ type_incl r2 r1 ty2 ty1.
   Proof.
     iIntros ([Hsub1 Hsub2]) "HE HL".
-    iPoseProof (Hsub1 with "HL HE") as "#Hincl1".
-    iPoseProof (Hsub2 with "HL HE") as "#Hincl2".
+    iPoseProof (Hsub1 with "HL HE") as "(% & #Hincl1)".
+    iPoseProof (Hsub2 with "HL HE") as "(% & #Hincl2)".
     iFrame "#".
   Qed.
   Lemma full_eqtype_acc E L {rt} (ty1 : type rt) (ty2 : type rt) :
@@ -2142,8 +2150,8 @@ Section subtyping.
     iIntros (Heq) "HE HL".
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & Hcl_L)".
     iIntros (r). destruct (Heq r) as [Hsub1 Hsub2].
-    iPoseProof (Hsub1 with "HL HE") as "#$".
-    iPoseProof (Hsub2 with "HL HE") as "#$".
+    iPoseProof (Hsub1 with "HL HE") as "(% & #$)".
+    iPoseProof (Hsub2 with "HL HE") as "(% & #$)".
   Qed.
   Lemma full_eqtype_acc_noend E L {rt} (ty1 : type rt) (ty2 : type rt) qL :
     full_eqtype E L ty1 ty2 →
@@ -2153,8 +2161,8 @@ Section subtyping.
   Proof.
     iIntros (Heq) "HE HL".
     iIntros (r). destruct (Heq r) as [Hsub1 Hsub2].
-    iPoseProof (Hsub1 with "HL HE") as "#$".
-    iPoseProof (Hsub2 with "HL HE") as "#$".
+    iPoseProof (Hsub1 with "HL HE") as "(% & #$)".
+    iPoseProof (Hsub2 with "HL HE") as "(% & #$)".
   Qed.
 End subtyping.
 

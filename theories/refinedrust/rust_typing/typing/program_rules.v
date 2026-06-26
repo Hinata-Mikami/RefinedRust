@@ -40,7 +40,7 @@ Section find.
   Global Instance related_to_loc_in_bounds l pre suf : RelatedTo (loc_in_bounds l pre suf) | 100 :=
     {| rt_fic := FindLocInBounds l |}.
 
-Global Instance related_to_local_live f x st l : RelatedTo (x is_live{f, st} l) | 100 :=
+  Global Instance related_to_local_live f x st l : RelatedTo (x is_live{f, st} l) | 100 :=
     {| rt_fic := FindLocal f x |}.
 
   Global Instance related_to_alloc_locals f locals : RelatedTo (allocated_locals f locals) | 100 :=
@@ -53,7 +53,7 @@ Global Instance related_to_local_live f x st l : RelatedTo (x is_live{f, st} l) 
   Lemma find_in_context_type_val_id v T :
     (∃ π m rt (ty : type rt) r, v ◁ᵥ{π, m} r @ ty ∗ T (existT rt (ty, r, π, m)))
     ⊢ find_in_context (FindVal v) T.
-Proof. iDestruct 1 as (π m rt ty r) "[Hl HT]". iExists _ => /=. iFrame. Qed.
+  Proof. iDestruct 1 as (π m rt ty r) "[Hl HT]". iExists _ => /=. iFrame. Qed.
   Global Instance find_in_context_type_val_id_inst v :
     FindInContext (FindVal v) FICSyntactic | 1 :=
     λ T, i2p (find_in_context_type_val_id v T).
@@ -70,7 +70,7 @@ Proof. iDestruct 1 as (π m rt ty r) "[Hl HT]". iExists _ => /=. iFrame. Qed.
     (∃ π rt (lt : ltype rt) r, l ◁ₗ[π, Owned] r @ lt ∗ T (l ◁ₗ[π, Owned] r @ lt))
     ⊢ find_in_context (FindValP (l2v l)) T.
   Proof. iDestruct 1 as (π rt lt r) "(Hl & HT)". iExists (l ◁ₗ[π, Owned] r @ lt)%I. iFrame. Qed.
-Global Instance find_in_context_type_valp_loc_inst l :
+  Global Instance find_in_context_type_valp_loc_inst l :
     FindInContext (FindValP (l2v l)) FICSyntactic | 5 :=
     λ T, i2p (find_in_context_type_valp_loc l T).
 
@@ -1636,10 +1636,11 @@ Section subsume.
     ⊢ weak_subltype E L (Owned) (#r1) r2 (◁ ty1) (◁ ty2) T.
   Proof.
     iIntros "(%r2' & -> & HT)" (??) "#CTX #HE HL".
-    iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
-    iPoseProof (type_incl_syn_type_eq with "Hincl") as "%Hst".
+    iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & $)".
     simp_ltypes. iR.
-    by iApply type_ltype_incl_owned_in.
+    iApply type_ltype_incl_owned_in.
+    { iPureIntro. rewrite Hst//. }
+    done.
   Qed.
   Definition weak_subltype_ofty_ofty_owned_in_inst := [instance @weak_subltype_ofty_ofty_owned_in].
   Global Existing Instance weak_subltype_ofty_ofty_owned_in_inst | 10.
@@ -1649,10 +1650,11 @@ Section subsume.
     ⊢ weak_subltype E L (Shared κ) (#r1) (r2) (◁ ty1) (◁ ty2) T.
   Proof.
     iIntros "(%r2' & -> & HT)" (??) "#CTX #HE HL".
-    iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
-    iPoseProof (type_incl_syn_type_eq with "Hincl") as "%Hst".
+    iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & $)".
     simp_ltypes. iR.
-    by iApply type_ltype_incl_shared_in.
+    iApply type_ltype_incl_shared_in.
+    { iPureIntro. rewrite Hst//. }
+    done.
   Qed.
   Definition weak_subltype_ofty_ofty_shared_in_inst := [instance @weak_subltype_ofty_ofty_shared_in].
   Global Existing Instance weak_subltype_ofty_ofty_shared_in_inst | 10.
@@ -1745,7 +1747,7 @@ Section subsume.
     iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & Hincl & $ & $)".
     iDestruct "Hincl" as "(_ & Hsc & Hv)".
     iPoseProof (type_ltype_incl_owned_in_strong with "Hv Hsc") as "Hincl".
-    { intros m. by rewrite !(ty_sized_syn_type_eq m MetaNone). }
+    { rewrite Hst//. }
     iPoseProof ("Hincl" with "Hl") as "Hl".
     iApply maybe_logical_step_intro. by iFrame.
   Qed.
@@ -2991,8 +2993,8 @@ Section subsume.
     { destruct bmin; simpl.
       - iApply owned_type_incl_refl.
       - iApply owned_type_incl_refl.
-      - iApply type_incl_refl.
-      - iApply type_incl_refl. }
+      - iR. iApply type_incl_refl.
+      - iR. iApply type_incl_refl. }
     iSplitL.
     { iApply typed_place_cond_refl_ofty. }
     iApply upd_bot_min.
@@ -3080,11 +3082,12 @@ Section subsume.
     rewrite /interpret_rust_type_goal. iDestruct "Ha" as "(%rt2 & %ty2 & %Heq & %r2 & HT)".
     subst.
     iIntros (????) "#CTX #HE HL".
-    iMod ("HT" with "[//] CTX HE HL") as "(#Hincl3 & HL & HT)".
-    iModIntro. iPoseProof "Hincl3" as "(%Hsteq' & _)".
+    iMod ("HT" with "[//] CTX HE HL") as "(%Hsteq' & #Hincl3 & HL & HT)".
+    iModIntro.
     set (updstrong := mkPUKRes (allowed:=UpdWeak)(rt1:=rt2)(rt2:=rt2) UpdWeak eq_refl eq_refl).
     iExists L, rt2, ty2, r2, updstrong. iFrame "HL HT".
-    iR. simpl.
+    iFrame "Hincl3".
+    iSplitR. { iPureIntro. intros. rewrite Hsteq'//. }
     rewrite /typed_place_cond/=.  simp_ltypes.
     done.
   Qed.
@@ -4197,8 +4200,10 @@ Section subsume.
     iDestruct "Hrfn" as "<-".
     iMod (fupd_mask_subseteq lftE) as "Hcl_m"; first done.
     iMod "Hb" as "(%v & Hl & Hv)".
+
     iAssert (owned_type_incl π r r2 ty ty2)%I with "[Hincl]" as "Hincl".
-    { destruct bmin; simpl; [done | done | iPoseProof (type_incl_owned_type_incl with "Hincl")as "?".. ]; done.  }
+    { destruct bmin; simpl; [done | done |  | ].
+      all: iDestruct "Hincl" as "(%Hsteq & Hincl)"; iPoseProof (type_incl_owned_type_incl with "[] Hincl")as "?"; done. }
     iDestruct "Hincl" as "(_ & Hscincl & Hincl)". iPoseProof ("Hincl" with "Hv") as "Hv2".
 
     iDestruct "CTX" as "(LFT & LLFT)".
@@ -4413,10 +4418,8 @@ Section subsume.
     iPoseProof (typed_place_cond_syn_type_compat with "Hcond1") as "%Hst_compat".
 
     iAssert (owned_type_incl π r r2 ty ty2)%I with "[Hincl2]" as "Hincl".
-    { destruct bmin; simpl; [done | done | iPoseProof (type_incl_owned_type_incl with "Hincl2")as "?".. ]; done.  }
-
-    (*iPoseProof (type_ltype_incl_owned_in  with "Hincl2") as "Hincl2'".*)
-    (*iMod (ltype_incl_use with "Hincl2' Hl") as "Hl"; first done.*)
+    { destruct bmin; simpl; [done | done |  | ].
+      all: iDestruct "Hincl2" as "(%Hsteq & Hincl)"; iPoseProof (type_incl_owned_type_incl with "[] Hincl")as "?"; done. }
 
     set (upd1 := (mkPUKRes (allowed:=bmin)(rt1:=rt2) (UpdUniq [κ]) eq_refl opt_place_update_eq_refl)).
 

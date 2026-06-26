@@ -31,8 +31,12 @@ Section subtype.
   Definition struct_t_incl_precond_strong {rts1 rts2 : list RT} (tys1 : hlist type rts1) (tys2 : hlist type rts2) (rs1 : plist place_rfnRT rts1) (rs2 : plist place_rfnRT rts2) :=
     ([∗ list] t1; t2 ∈ hpzipl _ tys1 rs1; hpzipl _ tys2 rs2,
       match (projT2 t1).2, (projT2 t2).2 with
-      | #r1, #r2 => type_incl r1 r2 (projT2 t1).1 (projT2 t2).1
-      | _, _ => ∃ (Heq : projT1 t1 = projT1 t2), ⌜(projT2 t1).2 = rew <- [place_rfnRT] Heq in (projT2 t2).2⌝ ∗ ∀ (r : (projT1 t1 : RT)), type_incl r (rew [RT_rt] Heq in r) (projT2 t1).1 (projT2 t2).1
+      | #r1, #r2 =>
+        ⌜∀ m, ty_syn_type (projT2 t1).1 m = ty_syn_type (projT2 t2).1 m⌝ ∗
+        type_incl r1 r2 (projT2 t1).1 (projT2 t2).1
+      | _, _ => ∃ (Heq : projT1 t1 = projT1 t2), ⌜(projT2 t1).2 = rew <- [place_rfnRT] Heq in (projT2 t2).2⌝ ∗
+        ⌜∀ m, ty_syn_type (projT2 t1).1 m = ty_syn_type (projT2 t2).1 m⌝ ∗
+        ∀ (r : (projT1 t1 : RT)), type_incl r (rew [RT_rt] Heq in r) (projT2 t1).1 (projT2 t2).1
       end)%I.
   Global Instance struct_t_incl_precond_strong_pers {rts1 rts2} (tys1 : hlist type rts1) (tys2 : hlist type rts2) rs1 rs2 :
     Persistent (struct_t_incl_precond_strong tys1 tys2 rs1 rs2).
@@ -48,15 +52,16 @@ Section subtype.
     iModIntro. iIntros (? [rt1 [ty1 r1]] [rt2 [ty2 r2]] Hlook1 Hlook2).
     simpl.
     destruct r1 as [r1 | ], r2 as [r2 | ].
-    - iIntros "#Hincl". iSplit; last iApply (type_incl_owned_type_incl with "Hincl").
-      iDestruct "Hincl" as "(% & _)". done.
+    - iIntros "(%Hst & #Hincl)". iR. iApply (type_incl_owned_type_incl with "[] Hincl").
+      iPureIntro. intros ?. rewrite Hst//.
     - iIntros "(%Heq & %Ha & _)". destruct Heq. done.
     - iIntros "(%Heq & %Ha & _)". destruct Heq. done.
-    - iIntros "(%Heq & %Ha & #Hb)". destruct Heq. simpl in *.
+    - iIntros "(%Heq & %Ha & %Hst & #Hb)". destruct Heq. simpl in *.
       injection Ha as <-. iExists eq_refl.
-      iSplit. { iDestruct ("Hb" $! inhabitant) as "(%Hst & _)". done. }
       iR.
-      iIntros (r). iPoseProof (type_incl_owned_type_incl with "Hb") as "Ha"; done.
+      iR.
+      iIntros (r). iPoseProof (type_incl_owned_type_incl with "[] Hb") as "Ha"; last done.
+      iPureIntro. intros. rewrite Hst//.
   Qed.
 
   Lemma struct_t_own_val_mono {rts1 rts2} π pers (tys1 : hlist type rts1) (tys2 : hlist type rts2) rs1 rs2 sls v m :
@@ -157,8 +162,8 @@ Section subtype.
       rewrite Hly'' -Hst. iFrame "#". eauto with iFrame.
     + iDestruct "Ha" as "(%Heq & %Heq' & Ha)". subst.
       iDestruct "Hrfn" as "<-". done.
-    + iDestruct "Ha" as "(%Heq & %Heq' & Ha)". subst. cbn in Heq'. subst.
-      iDestruct ("Ha" $! r') as "(%Hst & #Hsc & _ & #Ha')". iPoseProof ("Ha'" with "Hl") as "Hl".
+    + iDestruct "Ha" as "(%Heq & %Heq' & %Hst & Ha)". subst. cbn in Heq'. subst.
+      iDestruct ("Ha" $! r') as "(#Hsc & _ & #Ha')". iPoseProof ("Ha'" with "Hl") as "Hl".
       iPoseProof ("Hsc" with "Hsc1") as "Hsc2".
       rewrite Hly'' -Hst. iFrame "#". eauto with iFrame.
   Qed.
@@ -170,7 +175,7 @@ Section subtype.
     iIntros "#Hincl".
     iPoseProof (big_sepL2_length with "Hincl") as "%Hlen".
     rewrite !length_hpzipl in Hlen.
-    iSplitR; first done. iSplitR. { simpl. rewrite Hlen. done. }
+    iSplitR. { simpl. rewrite Hlen. done. }
     iSplit; iModIntro.
     - iIntros (???). iApply struct_t_own_val_mono.
       by iApply struct_t_incl_precond_from_strong.
@@ -182,6 +187,7 @@ Section subtype.
     full_subtype E L (struct_t sls tys1) (struct_t sls tys2).
   Proof.
     intros Hsubt r. iIntros (?) "HL #HE".
+    iR.
     iApply struct_t_type_incl.
     iApply big_sepL2_forall.
     { intros ? [? [? []]] [? [? []]]; apply _. }
@@ -195,10 +201,10 @@ Section subtype.
     rewrite Hlook22 in Hlook12. injection Hlook12 as [= <-%existT_inj].
     opose proof* (hzipl_hzipl2_lookup _ tys1 tys2) as Hlook; [done.. | ].
     specialize (Forall_lookup_1 _ _ _ _ Hsubt Hlook) as Hx.
-    iPoseProof (full_subtype_acc_noend with "HE HL") as "Ha"; first apply Hx.
+    iPoseProof (full_subtype_acc_noend with "HE HL") as "(% & Ha)"; first apply Hx.
     destruct r2.
-    - iApply "Ha".
-    - iExists eq_refl. iR. done.
+    - iR. iApply "Ha".
+    - iExists eq_refl. iR. iR. done.
   Qed.
 End subtype.
 

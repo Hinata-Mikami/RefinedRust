@@ -51,16 +51,16 @@ Section subtype.
       iMod ("IH" with "[] HT HL") as "(%L3 & Hi2 & $ & $)"; last by iFrame.
       iPureIntro; lia.
     - iDestruct "Hb" as "(%Heq & %Heq' & %Hb & HT)". subst.
-      iPoseProof (full_subtype_acc with "HE HL") as "#Hsub"; first apply Hb.
+      iPoseProof (full_subtype_acc with "HE HL") as "(%Hst & #Hsub)"; first apply Hb.
       iMod ("IH" with "[] HT HL") as "(%L2 & Hi2 & $ & $)". { iPureIntro; lia. }
       rewrite {3}/struct_t_incl_precond; simpl. iFrame.
-      iDestruct ("Hsub" $! inhabitant) as "(%Hst & _)".
       iExists eq_refl. iR. iR.
       iModIntro.
       iApply bi.intuitionistically_intuitionistically_if.
       iModIntro. iIntros (r).
       iSpecialize ("Hsub" $! r).
-      iPoseProof (type_incl_owned_type_incl with "Hsub") as "#Ha".
+      iPoseProof (type_incl_owned_type_incl with "[] Hsub") as "#Ha".
+      { iPureIntro. intros. rewrite Hst//. }
       done.
   Qed.
   Definition owned_subtype_struct_inst := [instance @owned_subtype_struct].
@@ -69,7 +69,7 @@ Section subtype.
   (* TODO replace foldr with relate_hlist *)
   Lemma weak_subtype_struct E L {rts1 rts2} (tys1 : hlist type rts1) (tys2 : hlist type rts2) (rs1 : plist place_rfnRT rts1) (rs2 : plist place_rfnRT rts2)  sls1 sls2 T :
     ⌜sls1 = sls2⌝ ∗
-  ⌜length rts1 = length rts2⌝ ∗
+    ⌜length rts1 = length rts2⌝ ∗
     foldr (λ '(existT rt1 (ty1, r1'), existT rt2 (ty2, r2')) T,
       match r1' with
       | #r1 => ∃ r2, ⌜r2' = #r2⌝ ∗ weak_subtype E L r1 r2 ty1 ty2 T
@@ -80,7 +80,7 @@ Section subtype.
     iIntros "(-> & %Hlen & Hb)". iIntros (??) "#CTX #HE HL".
     match goal with |- context[foldr ?P _ _] => set (Q := P) end.
     iAssert (|={F}=> struct_t_incl_precond_strong tys1 tys2 rs1 rs2 ∗ llctx_interp L ∗ T)%I with "[Hb HL]" as ">(Hp & $ & $)"; first last.
-    { by iApply struct_t_type_incl. }
+    { iR. by iApply struct_t_type_incl. }
     iInduction rts1 as [ | rt1 rts1] "IH" forall (rts2 tys1 tys2 rs1 rs2 Hlen); destruct rts2 as [ | rt2 rts2]; simpl in Hlen; try done;
       inv_hlist tys2; inv_hlist tys1.
     { simpl. iFrame. by iApply big_sepL2_nil. }
@@ -89,7 +89,7 @@ Section subtype.
     simpl.
     destruct r1.
     - iDestruct "Hb" as "(%r2' & -> & HT)".
-      iMod ("HT" with "[//] CTX HE HL") as "(Hi & HL & HT)".
+      iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hi & HL & HT)".
       iMod ("IH" with "[] HT HL") as "(Hi2 & $ & $)"; last by iFrame.
       iPureIntro; lia.
     - iDestruct "Hb" as "(%Heq & %Heq' & %Hb & HT)". subst.

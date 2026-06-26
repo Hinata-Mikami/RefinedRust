@@ -28,10 +28,10 @@ Section subtype.
   (* TODO move *)
   Lemma type_incl_use_val π {rt1 rt2} (r1 : rt1) (r2 : rt2) ty1 ty2 v m :
     type_incl r1 r2 ty1 ty2 -∗ v ◁ᵥ{π, m} r1 @ ty1 -∗ v ◁ᵥ{π, m} r2 @ ty2.
-  Proof. iIntros "#(_ & _ & Hval & _) Hv". by iApply "Hval". Qed.
+  Proof. iIntros "#(_ & Hval & _) Hv". by iApply "Hval". Qed.
   Lemma type_incl_use_shr π κ {rt1 rt2} (r1 : rt1) (r2 : rt2) ty1 ty2 l m :
     type_incl r1 r2 ty1 ty2 -∗ l ◁ₗ{π, m, κ} r1 @ ty1 -∗ l ◁ₗ{π, m, κ} r2 @ ty2.
-  Proof. iIntros "#(_ & _ & _ & Hshr) Hl". by iApply "Hshr". Qed.
+  Proof. iIntros "#(_ & _ & Hshr) Hl". by iApply "Hshr". Qed.
 
   (* TODO: in practice, we probably just want equality for the refinements? think about the symbolic case.. *)
   Lemma array_t_own_val_mono' {rt1 rt2} π (ty1 : type rt1) (ty2 : type rt2) rs1 rs2 len v m :
@@ -133,8 +133,7 @@ Section subtype.
     type_incl rs1 rs2 (array_t len ty1) (array_t len ty2).
   Proof.
     iIntros (Hst) "#Ha".
-    iSplit; last iSplit; last iSplit.
-    - simpl. rewrite Hst. done.
+    iSplit; last iSplit.
     - simpl. eauto.
     - iModIntro. iIntros (π m v) "Hv".
       iApply array_t_own_val_mono'; done.
@@ -147,8 +146,7 @@ Section subtype.
     type_incl rs rs (array_t len ty1) (array_t len ty2).
   Proof.
     iIntros (Hst) "#Ha".
-    iSplit; last iSplit; last iSplit.
-    - simpl. rewrite Hst. done.
+    iSplit; last iSplit.
     - simpl. eauto.
     - iModIntro. iIntros (π m v) "Hv".
       iApply array_t_own_val_mono; done.
@@ -161,10 +159,9 @@ Section subtype.
     full_subtype E L (array_t len ty1) (array_t len ty2).
   Proof.
     iIntros (Hsubt rs qL) "HL HE".
-    iAssert (∀ r, type_incl r r ty1 ty2)%I with "[HL HE]" as "#Hincl".
-    { iIntros (r). iApply (Hsubt with "HL HE"). }
-    iDestruct ("Hincl" $! inhabitant) as "(%Hst & _)".
-    iApply array_t_type_incl; done.
+    iPoseProof (full_subtype_acc_noend with "HE HL") as "(%Hst & #Hincl)"; first done.
+    iSplitR. { iPureIntro. intros m. simpl. by rewrite Hst. }
+    iApply array_t_type_incl; first apply Hst. done.
   Qed.
   Lemma array_t_full_eqtype E L {rt} (ty1 ty2 : type rt) len :
     full_eqtype E L ty1 ty2 →
@@ -175,5 +172,3 @@ Section subtype.
     - apply array_t_full_subtype. by apply full_eqtype_subtype_r.
   Qed.
 End subtype.
-
-

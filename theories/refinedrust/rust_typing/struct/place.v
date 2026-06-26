@@ -68,7 +68,7 @@ Section place.
     rewrite list_lookup_insert_ne in Hlook2; last done.
     rewrite Hlook2 in Hlook1. injection Hlook1 as [= -> Heq2].
     apply existT_inj in Heq2 as ->.
-iApply typed_place_cond_refl.
+    iApply typed_place_cond_refl.
     iApply (big_sepL_lookup _ _ k with "Houtl").
     rewrite list_lookup_insert_ne; last done. done.
   Qed.
