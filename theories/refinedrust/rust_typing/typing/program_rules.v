@@ -1012,11 +1012,11 @@ Section prove_subtype.
         match ltype_blocked_lfts lt2 with
         | [] =>
             (* we could unblock everything, directly subsume *)
-            ⌜bk = bk'⌝ ∗ weak_subltype E L2 bk r2 r lt2 (◁ ty) (T L2 [] (A ∗ R2))
+            ⌜bk = bk'⌝ ∗ strong_subltype E L2 bk r2 r lt2 (◁ ty) (T L2 [] (A ∗ R2))
         | κs =>
             ⌜bk = bk'⌝ ∗
             trigger_tc (SimpLtype (ltype_core lt2)) (λ lt2',
-            weak_subltype E L2 bk r2 r lt2' (◁ ty) (T L2 κs (A ∗ R2)))
+            strong_subltype E L2 bk r2 r lt2' (◁ ty) (T L2 κs (A ∗ R2)))
         end))
     ⊢ prove_with_subtype E L true ProveWithStratify (l ◁ₗ[π, bk] r @ (◁ ty))%I A T.
   Proof.
@@ -1037,7 +1037,7 @@ Section prove_subtype.
       iDestruct "Hincl" as "(Hincl & _)".
       iMod (ltype_incl'_use with "Hincl Hl"); first done.
       iModIntro. by iIntros "_ !>".
-    - iAssert (⌜bk = bk'⌝ ∗ trigger_tc (SimpLtype (ltype_core lt2)) (λ lt2', weak_subltype E L2 bk r2 r lt2' (◁ ty) (T L2 (ltype_blocked_lfts lt2) (A ∗ R2))))%I with "[HT]" as "(<- & HT)".
+    - iAssert (⌜bk = bk'⌝ ∗ trigger_tc (SimpLtype (ltype_core lt2)) (λ lt2', strong_subltype E L2 bk r2 r lt2' (◁ ty) (T L2 (ltype_blocked_lfts lt2) (A ∗ R2))))%I with "[HT]" as "(<- & HT)".
       { destruct (ltype_blocked_lfts lt2); done. }
       iDestruct "HT" as "(%lt2' & %Heq & HT)".
       destruct Heq as [<-].
@@ -1524,7 +1524,7 @@ Section subsume.
 
   (* TODO should make compatible with location simplification *)
   Lemma subsume_full_own_loc {rt1 rt2} π step l (lt1 : ltype rt1) (lt2 : ltype rt2) b1 b2 r1 r2 E L T :
-    ⌜lctx_bor_kind_direct_incl E L b2 b1⌝ ∗ weak_subltype E L b2 r1 r2 lt1 lt2 (T L True%I)
+    ⌜lctx_bor_kind_direct_incl E L b2 b1⌝ ∗ strong_subltype E L b2 r1 r2 lt1 lt2 (T L True%I)
     ⊢ subsume_full step (l ◁ₗ[π, b1] r1 @ lt1) (l ◁ₗ[π, b2] r2 @ lt2) E L T.
   Proof.
     iIntros "(%Hincl & HT)" (F ???) "#CTX #HE HL Hl".
@@ -1659,6 +1659,47 @@ Section subsume.
 
   (* Note: no similar rule for Uniq -- we can just get strong subtyping through the base lemmas *)
 
+  (** Subtyping instances: [strong_subltype] *)
+  Lemma strong_subltype_evar2 E L {rt} (lt1 lt2 : ltype rt) k r1 r2  `{!ContainsProtected lt2} T :
+    ⌜lt1 = lt2⌝ ∗ strong_subltype E L k r1 r2 lt1 lt1 T ⊢ strong_subltype E L k r1 r2 lt1 lt2 T.
+  Proof. iIntros "(<- & $)". Qed.
+  Definition strong_subltype_evar2_inst := [instance @strong_subltype_evar2].
+  Global Existing Instance strong_subltype_evar2_inst | 1000.
+
+  (* Escape into the stronger subtyping judgment. Note: should not be used when lt2 is an evar. *)
+  Definition strong_subltype_weak_subltype_inst := [instance @strong_subltype_weak_subltype].
+  Global Existing Instance strong_subltype_weak_subltype_inst | 1001.
+
+  (* TODO
+  Lemma strong_subltype_ofty_ofty_owned_in E L {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 T :
+    (∃ r2', ⌜r2 = #r2'⌝ ∗ strong_subtype E L r1 r2' ty1 ty2 T)
+    ⊢ strong_subltype E L (Owned) (#r1) r2 (◁ ty1) (◁ ty2) T.
+  Proof.
+    iIntros "(%r2' & -> & HT)" (??) "#CTX #HE HL".
+    iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
+    iPoseProof (type_incl_syn_type_eq with "Hincl") as "%Hst".
+    simp_ltypes. iR.
+    by iApply type_ltype_incl_owned_in.
+  Qed.
+  Definition strong_subltype_ofty_ofty_owned_in_inst := [instance @strong_subltype_ofty_ofty_owned_in].
+  Global Existing Instance strong_subltype_ofty_ofty_owned_in_inst | 10.
+  *)
+
+  (* TODO
+  Lemma strong_subltype_ofty_ofty_shared_in E L {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) κ r1 r2 T :
+    (∃ r2', ⌜r2 = #r2'⌝ ∗ strong_subtype E L r1 r2' ty1 ty2 T)
+    ⊢ strong_subltype E L (Shared κ) (#r1) (r2) (◁ ty1) (◁ ty2) T.
+  Proof.
+    iIntros "(%r2' & -> & HT)" (??) "#CTX #HE HL".
+    iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
+    iPoseProof (type_incl_syn_type_eq with "Hincl") as "%Hst".
+    simp_ltypes. iR.
+    by iApply type_ltype_incl_shared_in.
+  Qed.
+  Definition strong_subltype_ofty_ofty_shared_in_inst := [instance @strong_subltype_ofty_ofty_shared_in].
+  Global Existing Instance strong_subltype_ofty_ofty_shared_in_inst | 10.
+  *)
+
   (** ** Subtyping instances: [mut_eqltype] *)
   Lemma mut_eqltype_base_evar E L {rt} (lt1 lt2 : ltype rt)`{!ContainsProtected lt2}  T :
     ⌜lt1 = lt2⌝ ∗ T
@@ -1711,8 +1752,8 @@ Section subsume.
   Definition owned_subltype_step_to_ofty_inst := [instance @owned_subltype_step_to_ofty].
   Global Existing Instance owned_subltype_step_to_ofty_inst | 999.
 
-  Definition owned_subltype_step_weak_subltype_inst := [instance @owned_subltype_step_weak_subltype].
-  Global Existing Instance owned_subltype_step_weak_subltype_inst | 1000.
+  Definition owned_subltype_step_strong_subltype_inst := [instance @owned_subltype_step_strong_subltype].
+  Global Existing Instance owned_subltype_step_strong_subltype_inst | 1000.
 
   Lemma owned_subltype_step_resolve_ghost π E L step l {rt1 rt2 : RT} γ1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) T :
     resolve_ghost π E L ResolveAll false l lt1 Owned (👻 γ1) (λ L2 r1' R progress,
@@ -2337,9 +2378,9 @@ Section subsume.
           (* fold the invariant *)
           ∃ ri,
             (* show that the core of lt_cur' is a subtype of lt_inner and then fold to lt_full *)
-            (* this uses [weak_subltype] instead of an owned version that can use ownership from the context,
+            (* this uses [strong_subltype] instead of an owned version that can use ownership from the context,
               because we use this subtyping in the inheritance for the core *)
-            weak_subltype E L' (Owned) (r') (#ri) (lt_cur'') lt_inner (
+            strong_subltype E L' (Owned) (r') (#ri) (lt_cur'') lt_inner (
               (* re-establish the invariant *)
               ∃ rf, prove_with_subtype E L' true ProveWithStratify (Cpre ri rf) True%I (λ L'' κs R2,
               (* either fold to coreable, or to the core of lt_full *)
@@ -2450,9 +2491,9 @@ Section subsume.
           ∃ ri,
             trigger_tc (SimpLtype (ltype_core lt_cur')) (λ lt_cur'',
             (* show that ltype_core lt_cur' is a subtype of lt_inner and then fold to lt_full *)
-            (* this uses [weak_subltype] instead of an owned version that can use ownership from the context,
+            (* this uses [strong_subltype] instead of an owned version that can use ownership from the context,
               because we use this subtyping in the inheritance for the core *)
-            weak_subltype E L' (Owned) (r') (#ri) (lt_cur'') lt_inner (
+            strong_subltype E L' (Owned) (r') (#ri) (lt_cur'') lt_inner (
               (* re-establish the invariant *)
               ∃ rf,
               prove_with_subtype E L' true ProveWithStratify (Cpre ri rf) True%I (λ L'' κs R2,
@@ -2591,13 +2632,13 @@ Section subsume.
         else (* fold the invariant *)
           ∃ ri,
             (* show that lt_cur' is a subtype of lt_inner *)
-            weak_subltype E L' (Owned) (r') (#ri) lt_cur' lt_inner (
+            strong_subltype E L' (Owned) (r') (#ri) lt_cur' lt_inner (
               (* re-establish the invariant *)
               prove_with_subtype E L' true ProveDirect (Cpre ri) True%I
                 (λ L'' _ R2, T L'' (Cpost ri ∗ R2 ∗ R) unit (AliasLtype unit (ltype_st lt_inner) l) #tt)))
     ⊢ stratify_ltype π E L mdu ma ml l (OpenedNaLtype lt_cur lt_inner Cpre Cpost) r (Owned) T.
   Proof.
-    rewrite /stratify_ltype /weak_subltype /prove_with_subtype.
+    rewrite /stratify_ltype /strong_subltype /prove_with_subtype.
 
     iIntros "Hstrat" (F ???) "#CTX #HE HL Hl".
     rewrite ltype_own_opened_na_unfold /opened_na_ltype_own.
@@ -5584,6 +5625,7 @@ Global Typeclasses Opaque mut_subtype.
 Global Typeclasses Opaque mut_eqtype.
 
 Global Typeclasses Opaque owned_subltype_step.
+Global Typeclasses Opaque strong_subltype.
 Global Typeclasses Opaque weak_subltype.
 Global Typeclasses Opaque mut_eqltype.
 
@@ -5619,6 +5661,7 @@ Notation "'stratify_ltype' π E L mdu ma m l lt r b 'HIDDEN_CONT'" := (stratify_
 Notation "'typed_context_fold_step' step π E L m l lt r ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typed_context_fold_step step π E L m l lt r ls _ _) (only printing) : rr_hidden.
 Notation "'typed_context_fold' step E L m ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typed_context_fold step E L m ls _ _) (only printing) : rr_hidden.
 Notation "'weak_subltype' E L b r1 r2 lt1 lt2 'HIDDEN_CONT'" := (weak_subltype E L b r1 r2 lt1 lt2 _) (only printing) : rr_hidden.
+Notation "'strong_subltype' E L b r1 r2 lt1 lt2 'HIDDEN_CONT'" := (strong_subltype E L b r1 r2 lt1 lt2 _) (only printing) : rr_hidden.
 
 
 Notation "'typed_block' 'HIDDEN_INV' E L f l rf R ϝ" := (typed_block E L _ f l rf R ϝ) (only printing, at level 100) : rr_hidden.

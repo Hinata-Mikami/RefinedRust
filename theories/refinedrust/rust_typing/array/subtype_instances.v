@@ -212,15 +212,15 @@ Section instances.
 
   (** ** subltype *)
 
-  (* For now, always go to [weak_subltype], as we don't have strong owned rules yet. This overrides the default fallback for array. *)
-  Lemma owned_subltype_step_weak_subltype_array π E L (step : bool) l {rt1 rt2} rs1 rs2 (def : type rt1) len overrides (lt2 : ltype rt2) T :
-    weak_subltype E L Owned rs1 rs2 (ArrayLtype def len overrides) lt2 (T L True%I)
+  (* For now, always go to [strong_subltype], as we don't have strong owned rules yet. This overrides the default fallback for array. *)
+  Lemma owned_subltype_step_strong_subltype_array π E L (step : bool) l {rt1 rt2} rs1 rs2 (def : type rt1) len overrides (lt2 : ltype rt2) T :
+    strong_subltype E L Owned rs1 rs2 (ArrayLtype def len overrides) lt2 (T L True%I)
     ⊢ owned_subltype_step π E L step l rs1 rs2 (ArrayLtype def len overrides) lt2 T.
   Proof.
-    iApply owned_subltype_step_weak_subltype.
+    iApply owned_subltype_step_strong_subltype.
   Qed.
-  Definition owned_subltype_step_weak_subltype_array_inst := [instance @owned_subltype_step_weak_subltype_array].
-  Global Existing Instance owned_subltype_step_weak_subltype_array_inst | 998.
+  Definition owned_subltype_step_strong_subltype_array_inst := [instance @owned_subltype_step_strong_subltype_array].
+  Global Existing Instance owned_subltype_step_strong_subltype_array_inst | 998.
 
   (* we use the [relate_list] mechanism *)
   Program Definition weak_subltype_list_interp {rt1 rt2 : RT} (k : bor_kind) (rs1 : list (place_rfn rt1)) (rs2 : list (place_rfn rt2)) : FoldableRelation :=

@@ -54,6 +54,9 @@ Section stratify.
         mut_eqltype
         ltype_incl
   *)
+  (*owned_subtype*)
+  (*owned_subltype_step*)
+  (*type_incl*)
 
 
   Lemma stratify_ltype_array_iter_cons_no_ignore π E L mdu ma {M} (m : M) (l : loc) (ig : list nat) {rt} (def : type rt) (rs : list (place_rfn rt)) (len : nat) (iml : list (nat * ltype rt)) (lt : ltype rt) j k `{Hnel : !CanSolve (j ∉ ig)%nat} T :
@@ -65,7 +68,7 @@ Section stratify.
           | [] =>
               (* directly fold completely *)
               ∃ r4,
-              weak_subltype E L3 k r3 r4 lty3 (◁ def) (T L3 (R3 ∗ R2) ((j, ◁ def) :: iml2) (<[j := r4]> rs2))
+              strong_subltype E L3 k r3 r4 lty3 (◁ def) (T L3 (R3 ∗ R2) ((j, ◁ def) :: iml2) (<[j := r4]> rs2))
           | _ =>
               (* we directly try to go to Coreable here in order to use the syntactic hint by [def] on which refinement type we need to go to. If arrays supported heterogeneous refinements, we could also defer this. *)
               (*∃ (Heq : rt3 = rt), T L3 (R3 ∗ R2) ((j, rew Heq in lty3) :: iml2) (<[j := rew Heq in r3]> rs2)*)
@@ -73,7 +76,7 @@ Section stratify.
               (* we cannot have blocked lfts below shared; TODO: also allow Uniq *)
               trigger_tc (SimpLtype (ltype_core lty3)) (λ lty3',
               ∃ r4,
-              weak_subltype E L3 k r3 r4 lty3' (◁ def) (T L3 (R3 ∗ R2) ((j, CoreableLtype (ltype_blocked_lfts lty3) (◁ def)) :: iml2) (<[j := r4]> rs2)))
+              strong_subltype E L3 k r3 r4 lty3' (◁ def) (T L3 (R3 ∗ R2) ((j, CoreableLtype (ltype_blocked_lfts lty3) (◁ def)) :: iml2) (<[j := r4]> rs2)))
           end
         else
             ∃ (Heq : rt = rt3),
@@ -130,6 +133,7 @@ Section stratify.
     destruct (ltype_blocked_lfts lt') eqn:Hbl.
     - iDestruct "HT" as "(%r4 & HT)".
       iMod ("HT" with "[//] CTX HE HL") as "(%Hst_eq & #Hincl & HL & HT)".
+      clear Hst_eq.
       iDestruct "Hincl" as "(Hincl & _)".
       iExists _, _, _, _. iFrame.
       iSplitR. { iPureIntro. rewrite length_insert//. }
@@ -145,7 +149,7 @@ Section stratify.
       iMod (ltype_incl'_use with "Hincl Hl") as "Hl"; first done.
       rewrite -Hleneq. iApply "Ha".
       iSplitL "Hl".
-      { rewrite decide_True; last set_solver. iFrame. rewrite -Hst_eq -Hst'. done. }
+      { rewrite decide_True; last set_solver. iFrame. done. }
       iApply (big_sepL2_mono with "Hl2").
       iIntros (k0 ? ? Hlook1 Hlook2) "Ha".
       destruct (decide (k0 = j)); first done.
@@ -177,9 +181,9 @@ Section stratify.
         iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Halg & %Hly)".
         iPoseProof (ltype_own_loc_in_bounds with "Hl") as "#Hlb"; first done.
         iExists ly. simp_ltypes.
-        match goal with H : ty_syn_type def MetaNone = ltype_st lt' |- _ => rename H into Hsteq end.
-        rewrite Hsteq. iR.
-        simpl. rewrite -Hsteq. iR. iR.
+        simp_ltypes in Hsteq.
+        apply Hsteq in Halg. iR.
+        simpl. iR. iR.
         iIntros "Hdead".
         iPoseProof (imp_unblockable_blocked_dead lt') as "(_ & #Himp)".
         iMod ("Himp" with "Hdead Hl") as "Hl". rewrite !ltype_own_core_equiv.

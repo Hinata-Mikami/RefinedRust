@@ -1230,6 +1230,19 @@ Section judgments.
     T ⊢ weak_subltype E L k r r lt lt T.
   Proof. iIntros "$" (??) "_ _ $". iR. iApply ltype_incl_refl. Qed.
 
+  Definition strong_subltype E L {rt1 rt2} (b : bor_kind) r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) (T : iProp Σ) : iProp Σ :=
+    ∀ F, ⌜lftE ⊆ F⌝ -∗
+    rrust_ctx -∗
+    elctx_interp E -∗
+    llctx_interp L ={F}=∗
+    ⌜syn_type_compat (ltype_st lt1) (ltype_st lt2)⌝ ∗ ltype_incl b r1 r2 lt1 lt2 ∗ llctx_interp L ∗ T.
+  Class StrongSubLtype (E : elctx) (L : llctx) {rt1 rt2} b r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) : Type :=
+    strong_subltype_proof T : iProp_to_Prop (strong_subltype E L b r1 r2 lt1 lt2 T).
+
+  Lemma strong_subltype_id E L {rt} (lt : ltype rt) k r T :
+    T ⊢ strong_subltype E L k r r lt lt T.
+  Proof. iIntros "$" (??) "_ _ $". iR. iApply ltype_incl_refl. Qed.
+
   Definition owned_subtype π E L (pers : bool) {rt1 rt2 : RT} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) (T : llctx → iProp Σ) : iProp Σ :=
     ∀ F,
     ⌜lftE ⊆ F⌝ -∗ ⌜lft_userE ⊆ F⌝ -∗ ⌜shrE ⊆ F⌝ -∗
@@ -2058,8 +2071,17 @@ End place.
 Section laws.
   Context `{typeGS Σ}.
 
-  Lemma owned_subltype_step_weak_subltype π E L step l {rt1 rt2 : RT} (r1 : place_rfn rt1) (r2 : place_rfn rt2) lt1 lt2 T :
-    weak_subltype E L (Owned) r1 r2 lt1 lt2 (T L True)
+  Lemma strong_subltype_weak_subltype E L k {rt1 rt2 : RT} (r1 : place_rfn rt1) (r2 : place_rfn rt2) lt1 lt2 T :
+    weak_subltype E L k r1 r2 lt1 lt2 T
+    ⊢ strong_subltype E L k r1 r2 lt1 lt2 T.
+  Proof.
+    iIntros "HT" (??) "#CTX #HE HL".
+    iMod ("HT" with "[//] CTX HE HL") as "(-> & Hincl & $)".
+    iR. done.
+  Qed.
+
+  Lemma owned_subltype_step_strong_subltype π E L step l {rt1 rt2 : RT} (r1 : place_rfn rt1) (r2 : place_rfn rt2) lt1 lt2 T :
+    strong_subltype E L (Owned) r1 r2 lt1 lt2 (T L True)
     ⊢ owned_subltype_step π E L step l r1 r2 lt1 lt2 T.
   Proof.
     iIntros "HT" (????) "CTX HE HL Hl".
@@ -2324,6 +2346,7 @@ Global Hint Mode StratifyLtypePostHook + + + + + + + + + + + + : typeclass_insta
 
 Global Hint Mode Subtype + + + + + + + - + ! : typeclass_instances.
 Global Hint Mode SubLtype + + + + + + + + - + ! : typeclass_instances.
+Global Hint Mode StrongSubLtype + + + + + + + + - + ! : typeclass_instances.
 Global Hint Mode OwnedSubtype + + + + + + + + + - + ! : typeclass_instances.
 Global Hint Mode OwnedSubltypeStep + + + + + + + + + + - + ! : typeclass_instances.
 Global Hint Mode MutSubtype + + + + + + ! : typeclass_instances.
@@ -3772,6 +3795,7 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | mut_eqtype ?E ?L ?ty1 ?ty2 => constr:(MutEqtype E L ty1 ty2)
   | subtype_adt ?E ?L ?P1 ?P2 => constr:(SubtypeADT E L P1 P2)
   | owned_subtype ?π ?E ?L ?wl ?r1 ?r2 ?ty1 ?ty2 => constr:(OwnedSubtype π E L wl r1 r2 ty1 ty2)
+  | strong_subltype ?E ?L ?k ?r1 ?r2 ?lt1 ?lt2 => constr:(StrongSubLtype E L k r1 r2 lt1 lt2)
   | weak_subltype ?E ?L ?k ?r1 ?r2 ?lt1 ?lt2 => constr:(SubLtype E L k r1 r2 lt1 lt2)
   | mut_eqltype ?E ?L ?lt1 ?lt2 => constr:(MutEqLtype E L lt1 lt2)
   | owned_subltype_step ?π ?E ?L ?step ?l ?r1 ?r2 ?lt1 ?lt2 => constr:(OwnedSubltypeStep π E L step l r1 r2 lt1 lt2)
