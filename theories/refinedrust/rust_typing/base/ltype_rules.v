@@ -692,9 +692,12 @@ Section array.
   Context `{!typeGS Σ}.
 
   Definition splittable_type {rt : RT} π (st : syn_type) (n n1 n2 : nat) (r r1 r2 : rt) (ty ty1 ty2 : type rt) :=
-    st_of ty MetaNone = ArraySynType st n ∧
-    st_of ty1 MetaNone = ArraySynType st n1 ∧
-    st_of ty2 MetaNone = ArraySynType st n2 ∧
+    syn_type_compat (st_of ty MetaNone) (ArraySynType st n) ∧
+    syn_type_compat (ArraySynType st n) (st_of ty MetaNone) ∧
+    syn_type_compat (st_of ty1 MetaNone) (ArraySynType st n1) ∧
+    syn_type_compat (st_of ty2 MetaNone) (ArraySynType st n2) ∧
+    syn_type_compat (ArraySynType st n1) (st_of ty1 MetaNone) ∧
+    syn_type_compat (ArraySynType st n2) (st_of ty2 MetaNone)  ∧
     ((size_of_st st * n ≤ MaxInt ISize)%Z →
     ∀ v v1 v2,
       v = v1 ++ v2 →
@@ -712,16 +715,14 @@ Section array.
     (l offsetst{st}ₗ n1) ◁ₗ[π, Owned] #r2 @ ◁ ty2.
   Proof.
     iIntros (? -> Hsplit) "Hl".
-    destruct Hsplit as (Hty & Hty1 & Hty2 & Hval_split).
+    destruct Hsplit as (Hty & Hty' & Hty11 & Hty21 & Hty12 & Hty22 & Hval_split).
     rewrite ltype_own_ofty_unfold/lty_of_ty_own.
     iDestruct "Hl" as "(%ly & %Hst & %Hly & _ & #Hlb & %r' & <- & Hx)".
-    rewrite Hty in Hst.
-    apply syn_type_has_layout_array_inv in Hst as (ly' & Hst & -> & Hsz).
+    opose proof (Hty _ Hst) as Hst'.
+    apply syn_type_has_layout_array_inv in Hst' as (ly' & Hst2 & -> & Hsz).
     iMod (fupd_mask_mono with "Hx") as "Hx"; first done.
     iDestruct "Hx" as "(%v & Hl & Hv)".
-    iPoseProof (ty_own_val_has_layout ty (mk_array_layout ly' (n1 + n2)) with "Hv") as "%Hlyv".
-    { rewrite Hty. eapply syn_type_has_layout_array; [done | done |].
-      move: Hsz. rewrite ly_size_mk_array_layout. lia. }
+    iPoseProof (ty_own_val_has_layout ty (mk_array_layout ly' (n1 + n2)) with "Hv") as "%Hlyv"; first done.
     assert (size_of_st st * (n1 + n2)%nat ≤ MaxInt ISize)%Z as Hbound.
     { move: Hsz. rewrite ly_size_mk_array_layout /size_of_st.
       erewrite use_layout_alg_eq'; last done. lia. }
@@ -739,29 +740,31 @@ Section array.
     iPoseProof (ty_own_val_sidecond with "Hv1") as "#Hsc1".
     iPoseProof (ty_own_val_sidecond with "Hv2") as "#Hsc2".
     iSplitL "Hl1 Hv1 Hsc1".
-    - rewrite ltype_own_ofty_unfold/lty_of_ty_own Hty1.
+    - rewrite ltype_own_ofty_unfold/lty_of_ty_own.
       iExists (mk_array_layout ly' n1).
-      iSplitR. { iPureIntro. eapply syn_type_has_layout_array; try done.
+      iSplitR. { iPureIntro. eapply Hty12.
+        eapply syn_type_has_layout_array; try done.
         move: Hsz. rewrite ly_size_mk_array_layout. lia. }
       iSplitR. { done. }
       iFrame "Hsc1".
       iSplitR. { iApply (loc_in_bounds_offset with "Hlb"); [done.. | ].
         rewrite !ly_size_mk_array_layout. lia. }
       iExists _. iR. iModIntro. iExists v1. iFrame. done.
-    - rewrite ltype_own_ofty_unfold/lty_of_ty_own Hty2.
+    - rewrite ltype_own_ofty_unfold/lty_of_ty_own.
       iExists (mk_array_layout ly' n2).
-      iSplitR. { iPureIntro. eapply syn_type_has_layout_array; try done.
+      iSplitR. { iPureIntro. eapply Hty22.
+        eapply syn_type_has_layout_array; try done.
         move: Hsz. rewrite ly_size_mk_array_layout. lia. }
       iSplitR. { iPureIntro.
         rewrite /has_layout_loc ly_align_mk_array_layout.
         eapply has_layout_loc_offset_loc'.
-        - rewrite /use_layout_alg' Hst//.
-        - rewrite /use_layout_alg' Hst//. by eapply use_layout_alg_wf.
-        - rewrite /use_layout_alg' Hst//. }
+        - rewrite /use_layout_alg' Hst2//.
+        - rewrite /use_layout_alg' Hst2//. by eapply use_layout_alg_wf.
+        - rewrite /use_layout_alg' Hst2//. }
       iFrame "Hsc2".
       iSplitR. { iApply (loc_in_bounds_offset with "Hlb"); [ done | | ].
-        - rewrite /OffsetLocSt/offset_loc/use_layout_alg' Hst/=. lia.
-        - rewrite /OffsetLocSt/offset_loc/use_layout_alg' Hst/=.
+        - rewrite /OffsetLocSt/offset_loc/use_layout_alg' Hst2/=. lia.
+        - rewrite /OffsetLocSt/offset_loc/use_layout_alg' Hst2/=.
           rewrite !ly_size_mk_array_layout. lia. }
       iExists _. iR. iModIntro.
       rewrite /OffsetLocSt. erewrite use_layout_alg_eq'; last done.
@@ -770,7 +773,6 @@ Section array.
       { rewrite -Heq. iModIntro. iExists v2. iFrame. }
       subst v1. rewrite length_take Hlyv ly_size_mk_array_layout. lia.
   Qed.
-
 
   Lemma ofty_array_merge F {rt : RT} π st n n1 n2 l (r r1 r2 : rt) (ty ty1 ty2 : type rt) :
     lftE ⊆ F →
@@ -782,26 +784,22 @@ Section array.
     (l ◁ₗ[π, Owned] #r @ ◁ ty).
   Proof.
     iIntros (? -> Hbound Hsplit) "Hl1 Hl2".
-    destruct Hsplit as (Hty & Hty1 & Hty2 & Hval_split).
+    destruct Hsplit as (Hty & Hty' & Hty11 & Hty21 & Hty12 & Hty22 & Hval_split).
     rewrite !ltype_own_ofty_unfold/lty_of_ty_own.
     iDestruct "Hl1" as "(%ly1 & %Hst1 & %Hlyl & _ & Hlb & %r1' & -> & Harr1)".
-    rewrite Hty1 in Hst1.
-    apply syn_type_has_layout_array_inv in Hst1 as (ly1' & Hst1 & -> & Hsz1).
+    opose proof (Hty11 _ Hst1) as Hst1'.
+    apply syn_type_has_layout_array_inv in Hst1' as (ly1' & Hst12 & -> & Hsz1).
     iDestruct "Hl2" as "(%ly2 & %Hst2 & _ & _ & Hlb2 & %r2' & -> & Harr2)".
-    rewrite Hty2 in Hst2.
-    apply syn_type_has_layout_array_inv in Hst2 as (ly2' & Hst2 & -> & Hsz2).
+    opose proof (Hty21 _ Hst2) as Hst2'.
+    apply syn_type_has_layout_array_inv in Hst2' as (ly2' & Hst22 & -> & Hsz2).
     assert (ly2' = ly1') as -> by by eapply syn_type_has_layout_inj.
     iMod (fupd_mask_mono with "Harr1") as "(%v1 & Hl1 & Hv1)"; first done.
     iMod (fupd_mask_mono with "Harr2") as "(%v2 & Hl2 & Hv2)"; first done.
-    iPoseProof (ty_own_val_has_layout ty1 (mk_array_layout ly1' n1) with "Hv1") as "%Hlyv1".
-    { rewrite Hty1. eapply syn_type_has_layout_array; [done | done |].
-      move: Hsz1. rewrite ly_size_mk_array_layout. lia. }
-    iPoseProof (ty_own_val_has_layout ty2 (mk_array_layout ly1' n2) with "Hv2") as "%Hlyv2".
-    { rewrite Hty2. eapply syn_type_has_layout_array; [done | done |].
-      move: Hsz2. rewrite ly_size_mk_array_layout. lia. }
+    iPoseProof (ty_own_val_has_layout ty1 (mk_array_layout ly1' n1) with "Hv1") as "%Hlyv1"; first done.
+    iPoseProof (ty_own_val_has_layout ty2 (mk_array_layout ly1' n2) with "Hv2") as "%Hlyv2"; first done.
 
     iPoseProof (heap_pointsto_app with "[$Hl1 Hl2]") as "Hl".
-    { rewrite /OffsetLocSt/offset_loc/use_layout_alg' Hst1 Hlyv1.
+    { rewrite /OffsetLocSt/offset_loc/use_layout_alg' Hst12 Hlyv1.
       rewrite ly_size_mk_array_layout/= Nat2Z.inj_mul//. }
     iPoseProof ((Hval_split Hbound (v1 ++ v2) v1 v2) with "[$Hv1 $Hv2]") as "Hv".
     { done. }
@@ -813,8 +811,8 @@ Section array.
 
     iModIntro.
     iExists (mk_array_layout ly1' (n1 + n2)).
-    iSplitR. { iPureIntro. rewrite Hty. eapply syn_type_has_layout_array; [done | done |].
-      move: Hbound. rewrite /size_of_st/use_layout_alg' Hst1/=. lia. }
+    iSplitR. { iPureIntro. eapply Hty'. eapply syn_type_has_layout_array; [done | done |].
+      move: Hbound. rewrite /size_of_st/use_layout_alg' Hst12/=. lia. }
     iSplitR. { done. }
     iFrame "Hsc".
     iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb'".

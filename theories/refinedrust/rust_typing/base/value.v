@@ -172,17 +172,21 @@ Section value.
         ⌜is_memcast_val vs ot v⌝ ∗
         ⌜v `has_layout_val` (ot_layout ot)⌝ ∗
         ⌜syn_type_has_layout st (ot_layout ot)⌝)%I;
-    (* TODO: probably should put UntypedSynType around it if untyped *)
-    st_syn_type := st;
+    st_syn_type := if typed then st else UntypedSynType st;
     st_has_op_type ot' mt := is_value_ot typed st ot' mt;
   |}.
   Next Obligation.
-    iIntros (typed st π vs v) "(%ot & % & % & % & %)". eauto.
+    iIntros (typed st π vs v) "(%ot & % & % & % & %)".
+    destruct typed.
+    - eauto.
+    - iPureIntro. eexists _. split; first by apply syn_type_has_layout_untyped. done.
   Qed.
   Next Obligation.
     simpl. intros typed st ot' mt (ot & Halg & Hot & Hst).
     rewrite (is_value_ot_core_layout _ _ _ Hot).
-    done.
+    destruct typed.
+    - done.
+    - by apply syn_type_has_layout_untyped.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
@@ -206,14 +210,21 @@ Section value.
   Next Obligation.
     intros typed st mt ly Hst. simpl.
     unfold is_value_ot.
-    specialize (syn_type_has_layout_op_alg st ly Hst) as (ot & Hot & <-).
-    exists (if typed then ot else UntypedOp (ot_layout ot)).
-    split_and!.
-    - destruct typed; first done.
-      eapply use_op_alg_untyped;done.
-    - left. eexists. split; first done.
-      by destruct typed.
-    - destruct typed; done.
+    destruct typed.
+    - specialize (syn_type_has_layout_op_alg st ly Hst) as (ot & Hot & <-).
+      exists (ot).
+      split_and!.
+      + done.
+      + left. eexists. done.
+      + done.
+    - apply syn_type_has_layout_untyped_inv in Hst.
+      specialize (syn_type_has_layout_op_alg st ly Hst) as (ot & Hot & <-).
+      exists (UntypedOp (ot_layout ot)).
+      rewrite /use_op_alg_typed.
+      split_and!.
+      + by eapply use_op_alg_untyped.
+      + left. eexists. split; done.
+      + done.
   Qed.
 
   Global Instance value_copy typed st : Copyable (value_t typed st).
@@ -226,6 +237,20 @@ End value.
 Section lemmas.
   Context `{!typeGS Σ}.
 
+  Lemma value_syn_type_inv st typed ly :
+    syn_type_has_layout (st_of (value_t typed st) MetaNone) ly →
+    syn_type_has_layout st ly.
+  Proof.
+    destruct typed; first done.
+    apply syn_type_has_layout_untyped_inv.
+  Qed.
+  Lemma value_syn_type st typed ly :
+    syn_type_has_layout st ly →
+    syn_type_has_layout (st_of (value_t typed st) MetaNone) ly.
+  Proof.
+    destruct typed; first done.
+    apply syn_type_has_layout_untyped.
+  Qed.
 
   Lemma value_has_length π v v1 st ly typed m :
     syn_type_has_layout st ly →
@@ -394,6 +419,7 @@ Section lemmas.
   Proof.
     intros Hvs1 Hvs2.
     rewrite /splittable_type /=. split_and!; try done.
+    1-6: destruct typed; first [done | apply syn_type_compat_untyped_l | apply syn_type_compat_untyped_r]; done.
     intros Hbound v v1 v2 -> Hv1 Hv2. iSplit.
     - iIntros "Hv".
       iDestruct "Hv" as "(_ & %ot & %Hot & %Hmc & %Hly & %Hly_arr)".
@@ -461,11 +487,14 @@ Section ofty_lemmas.
   Proof.
     iIntros (??) "Hl".
     rewrite ltype_own_ofty_unfold/lty_of_ty_own.
-    iDestruct "Hl" as "(%ly' & % & % & ? & ? & %r' & <- & Hb)".
+    iDestruct "Hl" as "(%ly' & %Hst & % & ? & ? & %r' & <- & Hb)".
     iMod (fupd_mask_mono with "Hb") as "(%v & Hl & Hv)"; first done.
     iPoseProof (value_has_length with "Hv") as "(% & %)"; first done.
+    apply value_syn_type_inv in Hst.
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
-    iR. iModIntro. iExists _. by iFrame.
+    iR. iModIntro. iExists _. iFrame.
+    iSplitR. { iPureIntro. by apply value_syn_type. }
+    done.
   Qed.
 
   Lemma ofty_own_split_value_typed π F l {rt} (ty : type rt) r :
@@ -501,6 +530,7 @@ Section ofty_lemmas.
     iExists v. iFrame.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iExists _. simpl.
+    iSplitR. { iPureIntro. by apply syn_type_has_layout_untyped. }
     iR. iR. iFrame. done.
   Qed.
 
@@ -536,6 +566,7 @@ Section ofty_lemmas.
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hl" as "(%ly1 & %Halg & % & Hsc & Hlb & %r' & Hrfn & Hb)".
     simpl in Halg.
+    apply syn_type_has_layout_untyped_inv in Halg.
     assert (ly1 = ly) as -> by by eapply syn_type_has_layout_inj.
     iExists ly.
     iFrame "%".
@@ -654,8 +685,9 @@ Section byte_lemmas.
   Proof.
     iIntros (Hst) "Hl".
     iApply (ofty_mono_ly_strong with "[] [] Hl"); simpl.
-    - by eapply syn_type_has_layout_make_literal.
-    - done.
+    - apply syn_type_has_layout_untyped.
+      by eapply syn_type_has_layout_make_literal.
+    - by apply syn_type_has_layout_untyped.
     - done.
     - done.
     - iIntros (v r) "Hv".
@@ -669,8 +701,9 @@ Section byte_lemmas.
   Proof.
     iIntros (Hst) "Hl".
     iApply (ofty_mono_ly_strong with "[] [] Hl"); simpl.
-    - done.
-    - by eapply syn_type_has_layout_make_literal.
+    - by apply syn_type_has_layout_untyped.
+    - apply syn_type_has_layout_untyped.
+      by eapply syn_type_has_layout_make_literal.
     - done.
     - done.
     - iIntros (v r) "Hv".
@@ -726,10 +759,15 @@ Section byte_lemmas.
     iIntros (Hsz Halign ? Halmon) "Hl".
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Halg & #_)".
     simp_ltypes in Halg. simpl in Halg.
+    apply syn_type_has_layout_untyped_inv in Halg.
     apply syn_type_has_layout_literal_inv in Halg as (-> & Hwf1 & Hsz_le & Hal).
     iApply (ofty_mono_ly_strong with "[] [] Hl").
-    + simpl. eapply syn_type_has_layout_literal; done.
-    + simpl. eapply syn_type_has_layout_literal; first done.
+    + simpl.
+      apply syn_type_has_layout_untyped.
+      eapply syn_type_has_layout_literal; done.
+    + simpl.
+      apply syn_type_has_layout_untyped.
+      eapply syn_type_has_layout_literal; first done.
       - done.
       - lia.
       - by apply Halmon.
@@ -747,6 +785,7 @@ Section byte_lemmas.
     (* We can always go to something with a lower alignment *)
     iIntros "Hl". iPoseProof (ltype_own_has_layout with "Hl") as "(%ly' & %Halg & %Hly)".
     simp_ltypes in Halg. simpl in Halg.
+    apply syn_type_has_layout_untyped_inv in Halg.
     apply syn_type_has_layout_literal_inv in Halg as (-> & ? & ?).
     iApply (ofty_value_untyped_update_layout with "Hl").
     - rewrite /mk_array_layout{2}/ly_size/=. lia.
@@ -763,6 +802,7 @@ Section byte_lemmas.
     iIntros "Hv".
     iPoseProof (ltype_own_has_layout with "Hv") as "(%ly' & %Hst & %)".
     simp_ltypes in Hst. simpl in Hst.
+    apply syn_type_has_layout_untyped_inv in Hst.
     apply syn_type_has_layout_literal_inv in Hst as (-> & ? & ? & ?).
     iPoseProof (ofty_value_untyped_update_layout with "Hv") as "Hv"; first last.
     { iApply ofty_value_untyped_from_literal; last done.
@@ -864,7 +904,8 @@ Section rules.
     iExists _. iFrame. iModIntro.
     iPoseProof (ty_own_val_sidecond with "Hv'") as "#$".
     iSplitR. { iPureIntro. simpl.
-      eapply syn_type_size_eq_prove; done. }
+      eapply syn_type_size_eq_prove; [ | done..].
+      by apply syn_type_has_layout_untyped. }
     iSplitR; first by eauto.
     iIntros (v) "Hv".
     by iApply (own_val_merge_value_untyped with "Hv Hv'").
@@ -925,6 +966,7 @@ Section unify_loc.
     iIntros "HT".
     iIntros (F ???) "#CTX #HE HL Hl". iModIntro. iExists L, True%I. iFrame.
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly' & %Hly' & %Hlyl)". simp_ltypes in Hly'. simpl in *.
+    apply syn_type_has_layout_untyped_inv in Hly'.
     apply syn_type_has_layout_literal_inv in Hly' as (-> & ? & ? & ?).
     iPoseProof ("HT" with "[//] [//]") as "(% & -> & % & % & HT)".
     iPoseProof (ofty_value_untyped_update_layout ly2 with "Hl") as "Hl".
@@ -964,9 +1006,9 @@ Section unify_loc.
     apply syn_type_has_layout_untyped_inv in Hly'.
     (*iPoseProof ("HT" with "[//] [//]") as "(% & -> & % & % & HT)".*)
     iPoseProof (ofty_value_untyped_to_literal with "Hl") as "Hl".
-    { apply syn_type_has_layout_untyped; done. }
-    iPoseProof (ofty_value_untyped_from_literal st1 with "Hl") as "Hl".
     { done. }
+    iPoseProof (ofty_value_untyped_from_literal st1 with "Hl") as "Hl".
+    { apply syn_type_has_layout_untyped_inv in Hly'. done. }
     iApply ("HT" with "[] [] [] CTX HE HL Hl"); done.
   Qed.
   Definition owned_subltype_step_ofty_value_untyped_l_inst := [instance @owned_subltype_step_ofty_value_untyped_l].
@@ -986,9 +1028,9 @@ Section unify_loc.
     iIntros "(Hl & $)".
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly' & %Hly' & %Hlyl)". simp_ltypes in Hly'. simpl in *.
     iPoseProof (ofty_value_untyped_to_literal with "Hl") as "Hl".
-    { done. }
+    { apply syn_type_has_layout_untyped_inv in Hly'. done. }
     iPoseProof (ofty_value_untyped_from_literal (UntypedSynType st2) with "Hl") as "Hl".
-    { apply syn_type_has_layout_untyped. done. }
+    { done. }
     done.
   Qed.
   Definition owned_subltype_step_ofty_value_untyped_r_inst := [instance @owned_subltype_step_ofty_value_untyped_r].
@@ -1005,10 +1047,10 @@ Section unify_loc.
     iL.
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly' & %Hly' & %Hlyl)". simp_ltypes in Hly'. simpl in *.
     iPoseProof (ofty_value_untyped_to_literal with "Hl") as "Hl".
-    { done. }
+    { apply syn_type_has_layout_untyped_inv in Hly'. done. }
 
     iPoseProof (ofty_value_untyped_from_literal st2 with "Hl") as "Hl".
-    { by apply Hcomp. }
+    { apply Hcomp. by apply syn_type_has_layout_untyped_inv. }
     done.
   Qed.
   Definition owned_subltype_step_ofty_untyped_inst := [instance @owned_subltype_step_ofty_untyped].
@@ -1068,8 +1110,8 @@ Section unify_val.
     iModIntro.
     iSplitR.
     { iPureIntro. eapply syn_type_size_eq_prove.
-      - exact Halg1'.
-      - exact Halg2'.
+      - apply value_syn_type. exact Halg1'.
+      - apply value_syn_type. exact Halg2'.
       - done. }
     iSplitR; first by eauto.
     iIntros (v) "Hv".
@@ -1387,11 +1429,12 @@ Section stratify.
     iIntros (????) "#CTX #HE HL Hl".
     iPoseProof (ltype_own_has_layout with "Hl") as "#(%ly & %Hst &_)".
     subst st.
+    simp_ltypes.  simpl.
     iPoseProof (ofty_own_merge_value_untyped with "Hv Hl") as "Ha".
-    { done. }
-    { done. }
-    iMod ("HT" with "[//] [//] [//] CTX HE HL Ha") as "Ha".
-    eauto.
+    { apply value_syn_type_inv in Hst. done. }
+    { apply value_syn_type_inv in Hst. done. }
+    iMod ("HT" with "[//] [//] [//] CTX HE HL Ha") as "(% & % & % & % & % & ? & %Hcomp & ? & ?)".
+    iFrame. iPureIntro. by apply syn_type_compat_untyped_l.
   Qed.
   (* needs to have a higher priority than the ofty_resolve_ghost instance *)
   Definition stratify_ltype_ofty_untyped_value_owned_inst := [instance @stratify_ltype_ofty_untyped_value_owned].

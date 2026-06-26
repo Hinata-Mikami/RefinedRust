@@ -70,17 +70,18 @@ Ltac lookup_definition cont s :=
   let run := ltac2:(s cont |- StringConstr.ltac1_constr_to_constr cont s) in
   run s cont.
 
-(*
 Require Import String.
 From stdpp Require Import base.
 Local Open Scope string_scope.
-Goal True.
+Goal ∀ x : nat, True.
 Proof.
   lookup_definition ltac:(fun x => idtac x) constr:(["list"]).
+
+  (* NOTE: doesn't work due to local context. *)
+  lookup_definition ltac:(fun x => idtac x) constr:(["x"]).
 
   (* NOTE: fails due to ambiguity! *)
   (*lookup_definition ltac:(fun x => idtac x) constr:(["concat"]).*)
 
   lookup_definition ltac:(fun x => idtac x) constr:(["List"; "concat"]).
 Abort.
- *)

@@ -118,6 +118,7 @@ Ltac apply_type_term_het_evar term lfts tys attrs cont :=
 (** This interprets syntactic Rust types used in some annotations into semantic RefinedRust types *)
 (* NOTE: Be REALLY careful with this. The Ltac2 for looking up definitions will easily go haywire, and we cannot properly handle the exceptions here or show them.
    In particular, if this fails for some unknown reason, make sure that there are NO other definitions with the same name in scope, even below other modules! *)
+(* The actual definition lives in [typing/automation.v], so that we can use the semantic type definitions. *)
 Ltac interpret_rust_type_core lfts env ty := idtac.
 Ltac interpret_lit_term lfts env term := idtac.
 

@@ -70,7 +70,8 @@ Section deinit.
     { done. }
     iApply owned_type_incl_uninit'.
     simpl.
-    intros ly' ?.
+    intros ly' Hst'.
+    apply syn_type_has_layout_untyped_inv in Hst'.
     assert (ly' = ly1) as -> by by eapply syn_type_has_layout_inj.
     eauto.
   Qed.

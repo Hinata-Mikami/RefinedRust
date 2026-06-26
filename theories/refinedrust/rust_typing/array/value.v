@@ -22,7 +22,7 @@ Section value.
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
     iExists ly.
     iR.
-    iR.
+    iSplitR. { iPureIntro. by apply value_syn_type. }
     iSplitR. { iPureIntro. rewrite Hot_eq in Hsz. rewrite ly_size_mk_array_layout in Hsz. lia. }
     iSplitR. { rewrite length_fmap length_reshape length_replicate //. }
     iSplitR. { rewrite Hot_eq in Hv. done. }
@@ -101,7 +101,8 @@ Section value.
     (*apply syn_type_has_layout_untyped_inv in Hst as (-> & Hwf & Hsz' & Hal).*)
     rewrite length_fmap. rewrite length_fmap in Hv.
     rewrite length_fmap in Hsz.
-    opose proof* (syn_type_has_layout_array st (length vs')) as Hst'; [ done | done  | done | ].
+    opose proof* (syn_type_has_layout_array st (length vs')) as Hst'; [ done | | done | ].
+    { by apply syn_type_has_layout_untyped_inv. }
     iExists (UntypedOp (mk_array_layout ly (length vs'))).
     iSplitR. {
       iPureIntro.
@@ -118,6 +119,7 @@ Section value.
         iIntros (? v1 v2 _ _) "(%v3 & -> & Ha)".
         rewrite value_t_untyped_equiv.
         iDestruct "Ha" as "(%ly' & <- & % & %)".
+        apply syn_type_has_layout_untyped_inv in Hst.
         assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
         done. }
       rewrite big_sepL2_sep. iDestruct "Hl" as "(Hl1 & Hl)".
@@ -133,7 +135,7 @@ Section value.
     iPureIntro. simpl.
     eapply syn_type_has_layout_array.
     - done.
-    - done.
+    - by apply syn_type_has_layout_untyped_inv.
     - done.
   Qed.
   Lemma value_t_untyped_from_array π v vs n k st m :
@@ -158,7 +160,9 @@ Section value.
     (*apply syn_type_has_layout_untyped_inv in Hst as (-> & Hwf & Hsz & Hal).*)
     iApply (ofty_mono_ly_strong_in with "[] [] Ha").
     - simpl. done.
-    - simpl. done.
+    - simpl. apply syn_type_has_layout_untyped_inv in Hst.
+      eapply syn_type_compat_array; last done; first done.
+      by apply syn_type_compat_untyped_r.
     - done.
     - done.
     - iIntros (v) "Ha".
@@ -177,7 +181,9 @@ Section value.
     specialize (syn_type_has_layout_array_inv _ _ _ Hst) as (ly2 & Hst' & -> & Hsz).
     iApply (ofty_mono_ly_strong_in with "[] [] Ha").
     - simpl. done.
-    - simpl. done.
+    - simpl. apply syn_type_has_layout_untyped.
+      eapply syn_type_compat_array; last done; first done.
+      by apply syn_type_compat_untyped_l.
     - done.
     - done.
     - iIntros (v) "Ha".
