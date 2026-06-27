@@ -397,19 +397,19 @@ Section na_subtype.
     rewrite ltype_own_opened_na_unfold /opened_ltype_own.
     iExists ly. rewrite Hst. eauto with iFrame.
   Qed.
-  Lemma typed_place_opened_na_owned E L f {rt_cur rt_inner} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) Cpre Cpost r l P''' T :
-    typed_place E L f l lt_cur r UpdStrong (Owned) P''' (λ L' κs l2 b2 bmin rti ltyi ri updcx,
-      T L' κs l2 b2 bmin rti ltyi ri
+  Lemma typed_place_opened_na_owned E L f {rt_cur rt_inner} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) Cpre Cpost r l P''' bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} T :
+    typed_place E L f l lt_cur r UpdStrong (Owned) P''' (λ L' κs l2 b2 bmin' rti ltyi ri updcx,
+      T L' κs l2 b2 bmin' rti ltyi ri
         (λ L2 upd cont, updcx L2 upd (λ upd',
-          cont (mkPUpd _ UpdStrong
+          cont (mkPUpd _ bmin
             upd'.(pupd_rt)
             (OpenedNaLtype upd'.(pupd_lt) lt_inner Cpre Cpost)
             upd'.(pupd_rfn)
             upd'.(pupd_R)
             UpdStrong
-            I I))
+            I (opt_place_update_eq_strong _ Hstrong)))
         ))
-    ⊢ typed_place E L f l (OpenedNaLtype lt_cur lt_inner Cpre Cpost) r UpdStrong (Owned) P''' T.
+    ⊢ typed_place E L f l (OpenedNaLtype lt_cur lt_inner Cpre Cpost) r bmin (Owned) P''' T.
   Proof.
     unfold introduce_with_hooks, typed_place.
 
@@ -426,7 +426,7 @@ Section na_subtype.
     iFrame. simpl.
     iPoseProof (typed_place_cond_syn_type_eq with "[$] Hcond") as "%".
     iPoseProof ("Hcl" with "Hl [//]") as "$".
-    done.
+    iR. destruct bmin; done.
   Qed.
   Definition typed_place_opened_na_owned_inst := [instance @typed_place_opened_na_owned].
   Global Existing Instance typed_place_opened_na_owned_inst | 5.
@@ -481,17 +481,17 @@ Section na_subtype.
     done.
   Qed.
 
-  Lemma typed_place_na_ex_plain_t_owned E L f l (ty : type rt) x K `{!TCDone (K ≠ [])} T :
+  Lemma typed_place_na_ex_plain_t_owned E L f l (ty : type rt) x K `{!TCDone (K ≠ [])} bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} T :
     (∀ r, introduce_with_hooks E L (P.(na_inv_P) f.1 r x)
       (λ L2, typed_place E L2 f l (◁ ty) (#r) UpdStrong (Owned) K
         (λ L2 κs li b2 bmin' rti ltyi ri updcx,
           T L2 κs li b2 bmin' rti ltyi ri
             (λ L3 upd cont, updcx L3 upd (λ upd',
-            cont (@mkPUpd _ _ _ UpdStrong _
+            cont (@mkPUpd _ _ _ bmin _
               upd'.(pupd_lt) upd'.(pupd_rfn) upd'.(pupd_R) UpdStrong
-              I I)))
+              I (opt_place_update_eq_strong _ Hstrong))))
         )))
-    ⊢ typed_place E L f l (◁ (∃na; P, ty))%I (#x) UpdStrong (Owned) K T.
+    ⊢ typed_place E L f l (◁ (∃na; P, ty))%I (#x) bmin (Owned) K T.
   Proof.
     unfold introduce_with_hooks, typed_place.
 
@@ -508,7 +508,8 @@ Section na_subtype.
     iModIntro. iIntros (? cont) "HL Hf Hcont".
     iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & Hcond & ? & ? & ? & ? & ?)".
     iPoseProof (typed_place_cond_syn_type_eq with "[$] Hcond") as "%".
-    iFrame. simp_ltypes. done.
+    iFrame. simp_ltypes.
+    iR. destruct bmin; done.
   Qed.
   Definition typed_place_na_ex_plain_t_owned_inst := [instance @typed_place_na_ex_plain_t_owned].
   Global Existing Instance typed_place_na_ex_plain_t_owned_inst | 15.
