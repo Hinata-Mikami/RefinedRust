@@ -159,7 +159,7 @@ Section na_ex.
       (∃ ly : layout, ⌜l `has_layout_loc` ly⌝ ∗ ⌜syn_type_has_layout (ty_syn_type ty m) ly⌝);
 
     ty_syn_type := ty.(ty_syn_type);
-    _ty_has_op_type ot mt := ty_has_op_type ty ot mt;
+    _ty_has_op_type ot := ty_has_op_type ty ot;
     ty_sidecond := ty.(ty_sidecond);
     _ty_ghost_drop _ _ := True%I;
 
@@ -180,7 +180,7 @@ Section na_ex.
 
   (* _ty_op_type_stable *)
   Next Obligation.
-    iIntros (????).
+    iIntros (???).
     by eapply ty_op_type_stable.
   Qed.
 
@@ -245,13 +245,13 @@ Qed.
 
   (* _ty_memcast_compat *)
   Next Obligation.
-    iIntros (ty ot mt st π r m v Hot) "(%x & ? & Hv)".
+    iIntros (ty ot st π r m v Hot) "(%x & ? & Hv)".
     iPoseProof (ty_memcast_compat with "Hv") as "Hm"; first done.
-    destruct mt; eauto with iFrame.
+    eauto with iFrame.
   Qed.
 
   Next Obligation.
-    intros ty ly mt Heq Hst.
+    intros ty ly Heq Hst.
     rewrite ty_has_op_type_unfold.
     by apply _ty_has_op_type_untyped.
   Qed.

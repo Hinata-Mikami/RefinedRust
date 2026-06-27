@@ -10,20 +10,18 @@ From refinedrust Require Import options.
    - parameterize by the [struct_layout_spec] *)
 
 (** We define [is_struct_ot] not just on the syntactic type, but also directly involve the component types [tys],
-  because this stratifies the recursion going on and we anyways need to define a relation involving the [mt] for the semantic types. *)
+  because this stratifies the recursion going on and we anyways need to define a relation for the semantic types. *)
 Definition is_struct_ot `{typeGS Σ} (sls : struct_layout_spec)
-    {rts : list RT} (tys : hlist type rts) (ot : op_type) (mt : memcast_compat_type) :=
+    {rts : list RT} (tys : hlist type rts) (ot : op_type)  :=
   match ot with
   | StructOp sl ots =>
       length (sls.(sls_fields)) = length rts ∧
-      (* padding bits will be garbled, so we cannot fulfill MCId *)
-      mt ≠ MCId ∧
       (* sl is a valid layout for this sls *)
       use_struct_layout_alg sls = Some sl ∧
       length ots = length rts ∧
       (* pointwise, the members have the right op_type and a layout matching the optype *)
       foldr (λ ty, and (let '(ty, ot) := ty in
-     ty_has_op_type (projT2 ty : type _) ot mt ∧
+     ty_has_op_type (projT2 ty : type _) ot ∧
           syn_type_has_layout ((projT2 ty).(ty_syn_type) MetaNone) (ot_layout ot)))
         True (zip (hzipl _ tys) ots)
   | UntypedOp ly =>
@@ -33,9 +31,9 @@ Definition is_struct_ot `{typeGS Σ} (sls : struct_layout_spec)
   end.
 Global Typeclasses Opaque is_struct_ot.
 
-Lemma is_struct_ot_layout `{typeGS Σ} sls sl {rts} (tys : hlist type rts) ot mt :
+Lemma is_struct_ot_layout `{typeGS Σ} sls sl {rts} (tys : hlist type rts) ot :
   use_struct_layout_alg sls = Some sl →
-  is_struct_ot sls tys ot mt → ot_layout ot = sl.
+  is_struct_ot sls tys ot → ot_layout ot = sl.
 Proof. move => ? ?. destruct ot => //; naive_solver. Qed.
 
 (** ** Full structs *)
@@ -231,8 +229,8 @@ Section structs.
     ty_trivial_drop := forallb (λ ty, (projT2 ty).(ty_trivial_drop)) (hzipl rts tys);
     ty_own_val := struct_t_own_val _ sls tys;
     ty_sidecond := ⌜length rts = length (sls_fields sls)⌝;
-    _ty_has_op_type ot mt :=
-      is_struct_ot sls tys ot mt;
+    _ty_has_op_type ot :=
+      is_struct_ot sls tys ot ;
     ty_syn_type _ := sls : syn_type;
     ty_shr := struct_t_shr _ sls tys;
     _ty_ghost_drop π r :=
@@ -256,7 +254,7 @@ Section structs.
     by apply use_struct_layout_alg_Some_inv.
   Qed.
   Next Obligation.
-    iIntros (rts sls tys ot mt Hot).
+    iIntros (rts sls tys ot Hot).
     destruct ot.
     all: simpl in *.
     all: try done.
@@ -440,80 +438,77 @@ Section structs.
   Qed.
   Next Obligation.
     rewrite struct_t_own_val_unfold.
-    iIntros (rts sls tys ot mt st π r m v Hot).
+    iIntros (rts sls tys ot st π r m v Hot).
     apply (mem_cast_compat_Untyped) => ?.
     iIntros "(%sl & -> & %Halg & %Hlen & %Hsl & Hmem)".
     destruct ot as [ | | | sl' ots | | ]; try done.
-    destruct Hot as (Hlen' & ? & Halg' & Hlen_ots & Hot%Forall_fold_right).
+    destruct Hot as (Hlen' & Halg' & Hlen_ots & Hot%Forall_fold_right).
     assert (sl' = sl) as ->. { by eapply struct_layout_spec_has_layout_inj. }
-    destruct mt.
-    - done.
-    - iExists sl. do 3 iR.
-      iSplitR. { rewrite /has_layout_val mem_cast_length. done. }
-      assert (length (field_names (sl_members sl)) = length (sls_fields sls)) as Hlen2.
-      { by eapply struct_layout_spec_has_layout_fields_length. }
-      (* we memcast the value and need to show that it is preserved *)
-      iAssert ⌜∀ i v' n ly,
-           reshape (ly_size <$> (sl_members sl).*2) v !! i = Some v' →
-           sl_members sl !! i = Some (Some n, ly) → v' `has_layout_val` ly⌝%I as %?. {
-        iIntros (i v' n ly Hv' Hly).
-        (* lookup the corresponding index and type assignment for the member *)
-        have [|rt Hlook]:= lookup_lt_is_Some_2 rts (field_idx_of_idx (sl_members sl) i).
-        { have := field_idx_of_idx_bound sl i _ _ ltac:(done). lia. }
-        edestruct (hpzipl_lookup rts tys r) as [ty [r' Hlook2]]; first done.
-        iDestruct (big_sepL2_lookup with "Hmem") as "Hv"; [done| |].
-        { apply/pad_struct_lookup_Some. { rewrite length_hpzipl Hlen. done. }
-          naive_solver. }
-        (* lookup the ot *)
-        have [|ot ?]:= lookup_lt_is_Some_2 ots (field_idx_of_idx (sl_members sl) i).
-        { have := field_idx_of_idx_bound sl i _ _ ltac:(done). lia. }
-        iDestruct "Hv" as "(%r'' & %ly0 & Hrfn & %Ha & % & Hv)".
-        iPoseProof (ty_has_layout with "Hv") as "(%ly' & %Halg'' & %Hly')".
-        enough (ly' = ly) as ->; first done.
-        assert (ly0 = ly') as -> by by eapply syn_type_has_layout_inj.
-        rewrite Hly in Ha. by injection Ha.
-      }
-      iFrame. iApply (big_sepL2_impl' with "Hmem"); [by rewrite !length_reshape |done|].
-      iIntros "!>" (k v1 ty1 v2 ty2 Hv1 Hty1 Hv2 Hty2) "Hv"; simplify_eq.
-      destruct ty1 as (rt1 & ty1 & r1).
-      rewrite mem_cast_struct_reshape // in Hv2; last congruence.
-      move: Hv2 => /lookup_zip_with_Some [?[?[?[Hpad Hv']]]]. simplify_eq.
-      rewrite Hv1 in Hv'. simplify_eq.
-      iDestruct "Hv" as "(%r' & % & Hrfn & %Hlook & %Hst & Hv)". iExists r', _. iFrame.
-      move: Hty1 => /pad_struct_lookup_Some[|n[?[Hlook2 Hor1]]].
-      { rewrite length_hpzipl Hlen. done. }
-      move: Hpad => /pad_struct_lookup_Some[|?[?[? Hor2]]]. { rewrite length_fmap. congruence. } simplify_eq.
-      destruct Hor1 as [[??] | [? ?]], Hor2 as [[? Hl] |[? ?]]; simplify_eq.
-      + rewrite list_lookup_fmap in Hl. move: Hl => /fmap_Some[ot [??]]. simplify_eq.
-        iSplitR; first done. iSplitR; first done.
-        iApply ty_memcast_compat_copy; [|done]. destruct n as [n|] => //.
-        (* lookup layout in sl *)
-        (*have [|p ?]:= lookup_lt_is_Some_2 (field_members (sl_members sl)) (field_idx_of_idx (sl_members sl) k).*)
-        (*{ have := field_idx_of_idx_bound sl k _ _ ltac:(done). rewrite field_members_length. lia. }*)
-        simpl in *.
-        move: Hot => /(Forall_lookup_1 _ _ (field_idx_of_idx (sl_members sl) k) (existT _ ty1, ot)).
-        (*destruct p as [p ?].*)
-        move => [|??]; last done.
-        apply/lookup_zip_with_Some. eexists _, _. split_and!; [done| |done].
-        (*apply/lookup_zip_with_Some. eexists _, _.*)
-        (*split; first done. split; last done.*)
-        match goal with
-        | H : hpzipl rts _ _ !! _ = Some _ |- _ => eapply (hpzipl_lookup_inv_hzipl_pzipl rts tys r) in H as [-> _]
-        end. done.
-      + unfold struct_make_uninit_type in *.
-        match goal with | H : existT _ _ = existT _ _ |- _ => rename H into Heq end.
-        injection Heq => Heq1 Heq2 ?. subst.
-        apply existT_inj in Heq1. apply existT_inj in Heq2. subst.
-        do 3 iR.
-        iExists _; iPureIntro.
-        split. { simpl in Hst. by apply syn_type_has_layout_untyped_inv in Hst. }
-        rewrite /has_layout_val length_replicate.
-        rewrite Hlook2 in Hlook. injection Hlook as [= ->].
-        done.
-    - iPureIntro. done.
+    iExists sl. do 3 iR.
+    iSplitR. { rewrite /has_layout_val mem_cast_length. done. }
+    assert (length (field_names (sl_members sl)) = length (sls_fields sls)) as Hlen2.
+    { by eapply struct_layout_spec_has_layout_fields_length. }
+    (* we memcast the value and need to show that it is preserved *)
+    iAssert ⌜∀ i v' n ly,
+         reshape (ly_size <$> (sl_members sl).*2) v !! i = Some v' →
+         sl_members sl !! i = Some (Some n, ly) → v' `has_layout_val` ly⌝%I as %?. {
+      iIntros (i v' n ly Hv' Hly).
+      (* lookup the corresponding index and type assignment for the member *)
+      have [|rt Hlook]:= lookup_lt_is_Some_2 rts (field_idx_of_idx (sl_members sl) i).
+      { have := field_idx_of_idx_bound sl i _ _ ltac:(done). lia. }
+      edestruct (hpzipl_lookup rts tys r) as [ty [r' Hlook2]]; first done.
+      iDestruct (big_sepL2_lookup with "Hmem") as "Hv"; [done| |].
+      { apply/pad_struct_lookup_Some. { rewrite length_hpzipl Hlen. done. }
+        naive_solver. }
+      (* lookup the ot *)
+      have [|ot ?]:= lookup_lt_is_Some_2 ots (field_idx_of_idx (sl_members sl) i).
+      { have := field_idx_of_idx_bound sl i _ _ ltac:(done). lia. }
+      iDestruct "Hv" as "(%r'' & %ly0 & Hrfn & %Ha & % & Hv)".
+      iPoseProof (ty_has_layout with "Hv") as "(%ly' & %Halg'' & %Hly')".
+      enough (ly' = ly) as ->; first done.
+      assert (ly0 = ly') as -> by by eapply syn_type_has_layout_inj.
+      rewrite Hly in Ha. by injection Ha.
+    }
+    iFrame. iApply (big_sepL2_impl' with "Hmem"); [by rewrite !length_reshape |done|].
+    iIntros "!>" (k v1 ty1 v2 ty2 Hv1 Hty1 Hv2 Hty2) "Hv"; simplify_eq.
+    destruct ty1 as (rt1 & ty1 & r1).
+    rewrite mem_cast_struct_reshape // in Hv2; last congruence.
+    move: Hv2 => /lookup_zip_with_Some [?[?[?[Hpad Hv']]]]. simplify_eq.
+    rewrite Hv1 in Hv'. simplify_eq.
+    iDestruct "Hv" as "(%r' & % & Hrfn & %Hlook & %Hst & Hv)". iExists r', _. iFrame.
+    move: Hty1 => /pad_struct_lookup_Some[|n[?[Hlook2 Hor1]]].
+    { rewrite length_hpzipl Hlen. done. }
+    move: Hpad => /pad_struct_lookup_Some[|?[?[? Hor2]]]. { rewrite length_fmap. congruence. } simplify_eq.
+    destruct Hor1 as [[??] | [? ?]], Hor2 as [[? Hl] |[? ?]]; simplify_eq.
+    + rewrite list_lookup_fmap in Hl. move: Hl => /fmap_Some[ot [??]]. simplify_eq.
+      iSplitR; first done. iSplitR; first done.
+      iApply ty_memcast_compat; [|done]. destruct n as [n|] => //.
+      (* lookup layout in sl *)
+      (*have [|p ?]:= lookup_lt_is_Some_2 (field_members (sl_members sl)) (field_idx_of_idx (sl_members sl) k).*)
+      (*{ have := field_idx_of_idx_bound sl k _ _ ltac:(done). rewrite field_members_length. lia. }*)
+      simpl in *.
+      move: Hot => /(Forall_lookup_1 _ _ (field_idx_of_idx (sl_members sl) k) (existT _ ty1, ot)).
+      (*destruct p as [p ?].*)
+      move => [|??]; last done.
+      apply/lookup_zip_with_Some. eexists _, _. split_and!; [done| |done].
+      (*apply/lookup_zip_with_Some. eexists _, _.*)
+      (*split; first done. split; last done.*)
+      match goal with
+      | H : hpzipl rts _ _ !! _ = Some _ |- _ => eapply (hpzipl_lookup_inv_hzipl_pzipl rts tys r) in H as [-> _]
+      end. done.
+    + unfold struct_make_uninit_type in *.
+      match goal with | H : existT _ _ = existT _ _ |- _ => rename H into Heq end.
+      injection Heq => Heq1 Heq2 ?. subst.
+      apply existT_inj in Heq1. apply existT_inj in Heq2. subst.
+      do 3 iR.
+      iExists _; iPureIntro.
+      split. { simpl in Hst. by apply syn_type_has_layout_untyped_inv in Hst. }
+      rewrite /has_layout_val length_replicate.
+      rewrite Hlook2 in Hlook. injection Hlook as [= ->].
+      done.
   Qed.
   Next Obligation.
-    intros ??? ly mt _ Hst.
+    intros ??? ly _ Hst.
     apply syn_type_has_layout_struct_inv in Hst as (fields & sl & -> & Halg & Hf).
     simpl. exists sl. split; last done.
     by eapply use_struct_layout_alg_Some.
@@ -626,12 +621,12 @@ Section structs.
         { eapply ty_lft_morphism_to_direct.
           apply Hne1. }
         by apply IH.
-    - move => ty ty' Hst ? Hot ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
+    - move => ty ty' Hst ? Hot ot /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
       rewrite Hst.
       destruct HT as [Ts' Hne ->].
       destruct ot as [ | | | sl ots | ly | ] => //=.
       apply and_proper => Hsl.
-      f_equiv. apply and_proper => Halg. apply and_proper => Hots. rewrite -!Forall_fold_right.
+      apply and_proper => Halg. apply and_proper => Hots. rewrite -!Forall_fold_right.
       erewrite <-struct_layout_spec_has_layout_fields_length in Hsl; last done.
       rewrite -field_members_length in Hsl.
 
@@ -718,12 +713,12 @@ Section structs.
         simpl. apply direct_lft_morphism_app; last by apply IH.
         eapply ty_lft_morphism_to_direct.
         apply Hne1.
-    - move => ty ty' ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
+    - move => ty ty' ot /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
       erewrite Hst.
       destruct HT as [Ts' Hne ->].
       destruct ot as [ | | | sl ots | ly | ] => //=.
       apply and_proper => Hsl.
-      f_equiv. apply and_proper => Halg. apply and_proper => Hots. rewrite -!Forall_fold_right.
+      apply and_proper => Halg. apply and_proper => Hots. rewrite -!Forall_fold_right.
       erewrite <-struct_layout_spec_has_layout_fields_length in Hsl; last done.
       rewrite -field_members_length in Hsl.
 

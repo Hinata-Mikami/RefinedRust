@@ -25,7 +25,7 @@ Section alias.
     st_own π (l : loc) v :=
       alias_ptr_own_val π l v;
     st_syn_type := PtrSynType;
-    st_has_op_type ot mt := is_ptr_ot ot;
+    st_has_op_type ot := is_ptr_ot ot;
   |}.
   Next Obligation.
     rewrite alias_ptr_own_val_unfold.
@@ -35,7 +35,7 @@ Section alias.
   Qed.
   Next Obligation.
     unfold is_ptr_ot.
-    iIntros (ot mt Hot).
+    iIntros (ot Hot).
     destruct ot; try done.
     - by apply syn_type_has_layout_ptr.
     - subst. by apply syn_type_has_layout_ptr.
@@ -43,15 +43,14 @@ Section alias.
   Next Obligation. rewrite alias_ptr_own_val_unfold. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     rewrite alias_ptr_own_val_unfold.
-    iIntros (ot mt st π l v Hot) "Hv".
+    iIntros (ot st π l v Hot) "Hv".
     simpl in Hot.
     iPoseProof (mem_cast_compat_loc (λ v, ⌜val_to_loc v = Some l⌝)%I with "Hv") as "%Hid"; first done.
     { iIntros "->". eauto. }
-    destruct mt; [done | | done].
     rewrite Hid. done.
   Qed.
   Next Obligation.
-    intros mt ly Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
+    intros ly Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
     done.
   Qed.
 

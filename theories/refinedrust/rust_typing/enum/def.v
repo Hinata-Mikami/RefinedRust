@@ -104,9 +104,8 @@ Section union.
         take ly.(ly_size) v ◁ᵥ{π, MetaNone} r @ ty ∗
         drop ly.(ly_size) v ◁ᵥ{π, MetaNone} () @ uninit (LiteralSynType $ active_union_rest_ly ul ly))%I;
     ty_syn_type _ := uls;
-    _ty_has_op_type ot mt :=
+    _ty_has_op_type ot :=
       (* only untyped reads are allowed *)
-      (* TODO maybe make this more precise. Typed ops would be allowed for the first segment *)
       ∃ ul, use_union_layout_alg uls = Some ul ∧ ot = UntypedOp ul;
     ty_shr κ π r m l :=
       (∃ ul ly,
@@ -136,7 +135,7 @@ Section union.
     lia.
   Qed.
   Next Obligation.
-    intros ??? uls ot mt (ul & Hul & ->).
+    intros ??? uls ot (ul & Hul & ->).
     simpl. by eapply use_union_layout_alg_Some_inv.
   Qed.
   Next Obligation.
@@ -261,13 +260,12 @@ Section union.
     iApply (logical_step_wand with "Ha"); eauto.
   Qed.
   Next Obligation.
-    intros rt ty variant uls ot mt st π r m v (ul & Hul & ->).
+    intros rt ty variant uls ot st π r m v (ul & Hul & ->).
     iIntros "Hv".
-    destruct mt; first done; last done.
     by rewrite mem_cast_UntypedOp.
   Qed.
   Next Obligation.
-    intros ??? uls ly mt _ Hst.
+    intros ??? uls ly _ Hst.
     apply syn_type_has_layout_union_inv in Hst as (variants & ul & -> & Hul & Hf).
     exists ul. split; last done.
     by eapply use_union_layout_alg_Some.
@@ -307,7 +305,7 @@ Section enum.
 
   (* NOTE: for now, we only support untyped reads from enums.
       To handle this more accurately, we should probably figure out the proper model for enums with niches etc first. *)
-  Definition is_enum_ot {rt} (en : enum rt) (ot : op_type) (mt : memcast_compat_type) :=
+  Definition is_enum_ot {rt} (en : enum rt) (ot : op_type) :=
     match ot with
     | UntypedOp ly =>
         ∃ el : struct_layout, use_enum_layout_alg en.(enum_els) = Some el ∧
@@ -345,8 +343,8 @@ Section enum.
       l ◁ₗ{π, MetaNone, κ} -[#(els_lookup_tag e.(enum_els) tag); #(e.(enum_r) r)] @ struct_t (sls_of_els e.(enum_els))
         +[int e.(enum_els).(els_tag_it); active_union_t (e.(enum_ty) r) tag (uls_of_els e.(enum_els))])%I;
     ty_syn_type _ := e.(enum_els);
-    _ty_has_op_type ot mt :=
-      is_enum_ot e ot mt;
+    _ty_has_op_type ot :=
+      is_enum_ot e ot ;
     ty_sidecond := True%I;
     _ty_ghost_drop π r :=
       (* TODO *)
@@ -365,7 +363,7 @@ Section enum.
   Qed.
   Next Obligation.
     rewrite /is_enum_ot. simpl.
-    intros rt en ot mt Hot.
+    intros rt en ot Hot.
     destruct ot as [ | | | | ly| ]; try done.
     destruct Hot as (el & Halg & ->).
     simpl. by apply use_enum_layout_alg_Some_inv.
@@ -434,13 +432,11 @@ Section enum.
     intros. iIntros "_". by iApply logical_step_intro.
   Qed.
   Next Obligation.
-    iIntros (rt en ot mt st π r m v Hot) "Hl".
+    iIntros (rt en ot st π r m v Hot) "Hl".
     iDestruct "Hl" as "(%ly & %tag & -> & %Hst & %Htag & Ha)".
-    destruct mt; first done; first last.
-    { destruct ot; done. }
     iExists ly, tag. iR. iR. iR.
 
-    iApply (ty_memcast_compat _ _ _ MCCopy with "Ha").
+    iApply (ty_memcast_compat with "Ha").
     rewrite ty_has_op_type_unfold. simpl. rewrite /is_struct_ot/=.
     (*split; first done.*)
     destruct ot as [ | | | | ly' | ]; try done.
@@ -465,7 +461,7 @@ Section enum.
      *)
   Qed.
   Next Obligation.
-    intros ?? ly mt _ Hst.
+    intros ?? ly _ Hst.
     apply syn_type_has_layout_enum_inv in Hst as (el & ul & variants & Hul & Hsl & -> & Hf).
     simpl. exists el. split; last done.
     by eapply use_enum_layout_alg_Some.
@@ -641,7 +637,7 @@ Section ne.
       rewrite /=ty_wf_E_unfold.
       apply enum_ne_lft_mor.
     - rewrite !ty_has_op_type_unfold.
-      intros ty ty' Hst ? Hot ot mt. simpl.
+      intros ty ty' Hst ? Hot ot . simpl.
       unfold is_enum_ot.
       destruct ot as [ | | | | ly | ]; try done.
       do 4 f_equiv.
@@ -727,7 +723,7 @@ Section ne.
       rewrite /=ty_wf_E_unfold.
       apply enum_contr_lft_mor.
     - rewrite !ty_has_op_type_unfold.
-      intros ty ty' ot mt. simpl.
+      intros ty ty' ot . simpl.
       unfold is_enum_ot.
       destruct ot as [ | | | | ly | ]; try done.
       do 3 f_equiv.

@@ -2617,10 +2617,10 @@ Ltac solve_simplify_local_list ::=
 Section tac.
   Context `{!typeGS Σ}.
 
-  Lemma ty_has_op_type_simplify_tac {rt} (ty : type rt) ot ot2 mt :
+  Lemma ty_has_op_type_simplify_tac {rt} (ty : type rt) ot ot2 :
     ot = ot2 →
-    ty_has_op_type ty ot2 mt →
-    ty_has_op_type ty ot mt.
+    ty_has_op_type ty ot2 →
+    ty_has_op_type ty ot.
   Proof. intros ->; done. Qed.
 End tac.
 
@@ -2641,12 +2641,11 @@ Ltac solve_ty_has_op_type :=
 
 Ltac solve_is_value_ot_core :=
   lazymatch goal with
-  | |- is_value_ot_core ?ot (UntypedOp ?ly) ?mt =>
-    notypeclasses refine (is_value_ot_core_untyped _ _ _ _);
+  | |- is_value_ot_core ?ot (UntypedOp ?ly) =>
+    notypeclasses refine (is_value_ot_core_untyped _ _ _);
     solve_layout_eq
-  | |- is_value_ot_core ?ot ?ot ?mt =>
-    notypeclasses refine (is_value_ot_core_refl _ _ _);
-    done
+  | |- is_value_ot_core ?ot ?ot  =>
+    notypeclasses refine (is_value_ot_core_refl _)
   end.
 
 Ltac solve_ty_has_op_type_core_step1 :=
@@ -2675,24 +2674,24 @@ Ltac solve_ty_has_op_type_core :=
 Ltac solve_ty_has_op_type_prepare :=
   (* simplify op_type *)
   lazymatch goal with
-  | |- ty_has_op_type ?ty ?ot ?mc =>
-        refine (ty_has_op_type_simplify_tac ty ot _ mc _ _);
+  | |- ty_has_op_type ?ty ?ot =>
+        refine (ty_has_op_type_simplify_tac ty ot _ _ _);
          [ simplify_ot |  ]
   end;
   (* unfold *)
   repeat lazymatch goal with
-  | |- ty_has_op_type ?ty ?ot ?mc =>
+  | |- ty_has_op_type ?ty ?ot =>
       first [ assert_fails (is_var ty); rewrite ty_has_op_type_unfold/_ty_has_op_type/= | idtac]
   end;
   (* specific handling for a few cases *)
   lazymatch goal with
-  | |- is_value_ot true ?st (use_op_alg' ?st) ?mc =>
-        refine (is_value_ot_typed_use_op_alg st _ mc _ _);
-        [ done | solve_layout_alg]
-  | |- is_value_ot false ?st (UntypedOp _) ?mc =>
-        refine (is_value_ot_untyped_use_op_alg st _ mc _);
+  | |- is_value_ot true ?st (use_op_alg' ?st) =>
+        refine (is_value_ot_typed_use_op_alg st _ _);
+        [ solve_layout_alg]
+  | |- is_value_ot false ?st (UntypedOp _) =>
+        refine (is_value_ot_untyped_use_op_alg st _ _);
         [solve_layout_alg]
-  | |- is_value_ot _ _ _ _ => rewrite /is_value_ot; eexists _
+  | |- is_value_ot _ _ _ => rewrite /is_value_ot; eexists _
   | |- _ =>
       (*otherwise unfold *)
       hnf

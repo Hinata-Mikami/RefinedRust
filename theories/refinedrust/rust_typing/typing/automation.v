@@ -1441,7 +1441,7 @@ Ltac sidecond_hook_core :=
       solve_local_fresh
   | |- lctx_place_update_kind_outlives ?E ?L ?b ?κs =>
       solve_place_update_kind_outlives
-  | |- ty_has_op_type _ _ _ =>
+  | |- ty_has_op_type _ _ =>
       solve_ty_has_op_type
   | |- layout_wf _ =>
       solve_layout_wf
@@ -1514,7 +1514,7 @@ Ltac is_builtin_sidecond P :=
       idtac
   | lctx_place_update_kind_outlives _ _ _ _ =>
       idtac
-  | ty_has_op_type _ _ _ =>
+  | ty_has_op_type _ _ =>
       idtac
   | layout_wf _ =>
       idtac
@@ -1575,7 +1575,7 @@ Ltac is_fast_builtin_sidecond P :=
       idtac
   | Copyable _ =>
       idtac
-  | ty_has_op_type _ _ _ =>
+  | ty_has_op_type _ _ =>
       idtac
   | ty_allows_reads _ =>
       idtac

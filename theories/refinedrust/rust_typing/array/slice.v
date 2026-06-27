@@ -35,7 +35,7 @@ Section def.
           ArraySynType (ty.(ty_syn_type) MetaNone) len
       | _ => UnitSynType
       end;
-    _ty_has_op_type ot mt :=
+    _ty_has_op_type ot :=
       (* no copies supported since this is unsized *)
       False;
     _ty_ghost_drop π r :=
@@ -52,7 +52,7 @@ Section def.
     done.
   Qed.
   Next Obligation.
-    iIntros (ty ot mt Hot).
+    iIntros (ty ot Hot).
     destruct ot; try done.
   Qed.
   Next Obligation.
@@ -156,11 +156,11 @@ Section def.
     intros. iIntros "_". by iApply logical_step_intro.
   Qed.
   Next Obligation.
-    iIntros (ty ot mt st π r m v Hot) "Hb".
+    iIntros (ty ot st π r m v Hot) "Hb".
     destruct ot as [ | | | | ly' | ]; try done.
   Qed.
   Next Obligation.
-    intros ty ly mt ? Hst.
+    intros ty ly ? Hst.
     simpl.
     done.
   Qed.

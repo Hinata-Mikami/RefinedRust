@@ -174,7 +174,7 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
     st_own π f v := (∃ fn, ⌜val_to_loc v = Some f⌝ ∗ fntbl_entry f fn ∗
       ⌜Forall2 syn_type_has_layout arg_types fn.(f_args).*2⌝ ∗
       ▷ typed_function π fn fp)%I;
-    st_has_op_type ot mt := is_ptr_ot ot;
+    st_has_op_type ot := is_ptr_ot ot;
     st_syn_type := FnPtrSynType;
   |}.
   Next Obligation.
@@ -183,23 +183,19 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
     by apply val_to_loc_length.
   Qed.
   Next Obligation.
-    intros ??? ? ot mt Hot. apply is_ptr_ot_layout in Hot. rewrite Hot.
+    intros ??? ? ot Hot. apply is_ptr_ot_layout in Hot. rewrite Hot.
     by apply syn_type_has_layout_fnptr.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
-    simpl. iIntros (lfts lya rts fp ot mt st π r v Hot).
-    destruct mt.
-    - eauto.
-    - iIntros "(%fn & %Hv & Hfntbl & %Halg & Hfn)".
-      iExists fn. iFrame. iPureIntro. split; last done.
-      destruct ot; try done.
-      unfold mem_cast. rewrite Hv. done.
-    - iApply (mem_cast_compat_loc (λ v, _)); first done.
-      iIntros "(%fn & -> & _)". eauto.
+    simpl. iIntros (lfts lya rts fp ot st π r v Hot).
+    iIntros "(%fn & %Hv & Hfntbl & %Halg & Hfn)".
+    iExists fn. iFrame. iPureIntro. split; last done.
+    destruct ot; try done.
+    unfold mem_cast. rewrite Hv. done.
   Qed.
   Next Obligation.
-    intros ???? mt ly Hst.
+    intros ???? ly Hst.
     apply syn_type_has_layout_fnptr_inv in Hst as ->.
     done.
   Qed.

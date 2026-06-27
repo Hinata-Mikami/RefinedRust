@@ -14,7 +14,7 @@ Local Open Scope nat_scope.
 
 
 (* TODO: should we also have an ArrayOp that reads the array elements at an op that is valid for the element types? *)
-Definition is_array_ot `{!typeGS Σ} {rt} (ty : type rt) (len : nat) (ot : op_type) (mt : memcast_compat_type) : Prop :=
+Definition is_array_ot `{!typeGS Σ} {rt} (ty : type rt) (len : nat) (ot : op_type) : Prop :=
   match ot with
   | UntypedOp ly =>
       syn_type_has_layout (ArraySynType (ty.(ty_syn_type) MetaNone) len) ly
@@ -170,7 +170,7 @@ Section array.
     done.
   Qed.
   Next Obligation.
-    iIntros (len ty ot mt Hot).
+    iIntros (len ty ot Hot).
     destruct ot; try done.
     (*destruct Hot as (ly' & -> & Hot & Hsz & Hwf).*)
     (*eapply ty_op_type_stable in Hot.*)
@@ -292,15 +292,13 @@ Section array.
     iIntros "Hb". iPoseProof (big_sepL2_const_sepL_l with "Hb") as "(_ & $)".
   Qed.
   Next Obligation.
-    iIntros (len ty ot mt st π r m v Hot) "Hb".
+    iIntros (len ty ot st π r m v Hot) "Hb".
     destruct ot as [ | | | | ly' | ]; try done.
-    unfold is_array_ot in Hot.
     (*destruct Hot as (ly0 & -> & Hot & Hwf).*)
-    destruct mt; [done | done | done].
     (* TODO maybe the second case should really change once we support an ArrayOpType? *)
   Qed.
   Next Obligation.
-    intros len ty ly mt _ Hst.
+    intros len ty ly _ Hst.
     done.
     (*
     apply syn_type_has_layout_array_inv in Hst as (ly' & Hst & -> & Hsz).
@@ -338,7 +336,7 @@ Section ne.
     - rewrite ty_has_op_type_unfold/=.
       unfold is_array_ot.
       intros ?? Hst ? Hot.
-      intros ot mt.
+      intros ot .
       destruct ot; try done.
       rewrite Hst. done.
     - done.

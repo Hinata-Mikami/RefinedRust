@@ -47,7 +47,7 @@ Section shr_ref.
     ty_trivial_drop := true;
     ty_own_val := shr_ref_own_val _ κ inner;
 
-    _ty_has_op_type ot mt := is_ptr_ot ot;
+    _ty_has_op_type ot := is_ptr_ot ot;
     ty_syn_type m := PtrSynType;
 
     ty_shr := shr_ref_shr _ κ inner;
@@ -67,8 +67,8 @@ Section shr_ref.
   Next Obligation.
     iIntros (??? ot Hot) => /=.
     destruct ot => /=//.
-    - intros; by apply syn_type_has_layout_ptr.
-    - intros ->; by apply syn_type_has_layout_ptr.
+    - by apply syn_type_has_layout_ptr.
+    - by apply syn_type_has_layout_ptr.
   Qed.
   Next Obligation. iIntros (??? ????) "_". done. Qed.
   Next Obligation. iIntros (??? ?????) "_". done. Qed.
@@ -125,20 +125,16 @@ Section shr_ref.
     intros. iIntros "_". by iApply logical_step_intro.
   Qed.
   Next Obligation.
-    iIntros (??? ot mt st ? r m ? Hot).
+    iIntros (??? ot st ? r m ? Hot).
     rewrite shr_ref_own_val_unfold.
-    destruct mt.
-    - eauto.
-    - iIntros "(%l & %ly & %ri & -> & %Hv & ? & ? & ?)".
-      iExists l, ly, ri. iFrame.
-      iPureIntro. split; first done.
-      move: ot Hot => [] /= // _.
-      rewrite /mem_cast Hv//.
-    - iApply (mem_cast_compat_loc (λ v, _)); first done.
-      iIntros "(%l & %ly & %ri & -> & -> & _)". eauto.
+    iIntros "(%l & %ly & %ri & -> & %Hv & ? & ? & ?)".
+    iExists l, ly, ri. iFrame.
+    iPureIntro. split; first done.
+    move: ot Hot => [] /= // _.
+    rewrite /mem_cast Hv//.
   Qed.
   Next Obligation.
-    intros ??? ly mt _ Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
+    intros ??? ly _ Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
     done.
   Qed.
 End shr_ref.

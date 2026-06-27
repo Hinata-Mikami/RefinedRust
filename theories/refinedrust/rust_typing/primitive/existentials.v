@@ -29,7 +29,7 @@ Section ex.
     ty_shr κ π r m l :=
       (∃ x : X, P.(inv_P_shr) π κ x r ∗ ty.(ty_shr) κ π x m l)%I;
     ty_syn_type := ty.(ty_syn_type);
-    _ty_has_op_type ot mt := ty_has_op_type ty ot mt;
+    _ty_has_op_type ot := ty_has_op_type ty ot;
     ty_sidecond :=
       ty.(ty_sidecond);
     _ty_ghost_drop π r :=
@@ -46,7 +46,7 @@ Section ex.
     by iApply ty_has_layout.
   Qed.
   Next Obligation.
-    iIntros (ty ot mt Hot). by eapply ty_op_type_stable.
+    iIntros (ty ot Hot). by eapply ty_op_type_stable.
   Qed.
   Next Obligation.
     rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
@@ -104,12 +104,12 @@ Section ex.
   Qed.
   Next Obligation.
     rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
-    iIntros (ty ot mt st π r m v Hot) "(%x & HP & Hv)".
+    iIntros (ty ot st π r m v Hot) "(%x & HP & Hv)".
     iPoseProof (ty_memcast_compat with "Hv") as "Hm"; first done.
-    destruct mt; eauto with iFrame.
+    eauto with iFrame.
   Qed.
   Next Obligation.
-    intros ty ly mt Heq Hst. simpl.
+    intros ty ly Heq Hst. simpl.
     rewrite ty_has_op_type_unfold.
     by apply _ty_has_op_type_untyped.
   Qed.

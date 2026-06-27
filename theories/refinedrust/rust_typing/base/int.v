@@ -26,7 +26,7 @@ Section int.
   (* Separate definition such that we can make it typeclasses opaque later. *)
   Program Definition int (it : int_type) : type ZRT := {|
     st_own tid z v := int_own_val it tid z v;
-    st_has_op_type ot mt := is_int_ot ot it;
+    st_has_op_type ot := is_int_ot ot it;
     st_syn_type := IntSynType it;
   |}%I.
   Next Obligation.
@@ -36,23 +36,19 @@ Section int.
     apply syn_type_has_layout_int; first done.
   Qed.
   Next Obligation.
-    intros it ot mt Hot. simpl. rewrite (is_int_ot_layout _ _ Hot).
+    intros it ot Hot. simpl. rewrite (is_int_ot_layout _ _ Hot).
     destruct ot; try done.
     all: by eapply syn_type_has_layout_int.
   Qed.
   Next Obligation. rewrite int_own_val_unfold. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     rewrite int_own_val_unfold.
-    simpl. iIntros (it ot mt st π r v Hot).
-    destruct mt.
-    - eauto.
-    - iPureIntro. intros Hv. destruct ot; simpl in *; try done. subst.
-      unfold mem_cast. erewrite val_to_bytes_id; last done. done.
-    - iApply (mem_cast_compat_int (λ v, _)); first done.
-      iIntros "%". eauto.
+    simpl. iIntros (it ot st π r v Hot).
+    iPureIntro. intros Hv. destruct ot; simpl in *; try done. subst.
+    unfold mem_cast. erewrite val_to_bytes_id; last done. done.
   Qed.
   Next Obligation.
-    intros ??? Hst. apply syn_type_has_layout_int_inv in Hst as ->.
+    intros ?? Hst. apply syn_type_has_layout_int_inv in Hst as ->.
     done.
   Qed.
 
@@ -97,7 +93,7 @@ Section boolean.
   Program Definition bool_t : type boolRT := {|
     st_own tid b v := bool_own_val tid b v;
     st_syn_type := BoolSynType;
-    st_has_op_type ot mt := is_bool_ot ot;
+    st_has_op_type ot := is_bool_ot ot;
   |}%I.
   Next Obligation.
     rewrite bool_own_val_unfold.
@@ -106,22 +102,19 @@ Section boolean.
     unfold has_layout_val. erewrite val_to_bool_length; done.
   Qed.
   Next Obligation.
-    intros ot mt Hot. simpl in *. rewrite (is_bool_ot_layout _ Hot). by apply syn_type_has_layout_bool.
+    intros ot Hot. simpl in *. rewrite (is_bool_ot_layout _ Hot). by apply syn_type_has_layout_bool.
   Qed.
   Next Obligation. rewrite bool_own_val_unfold. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     rewrite bool_own_val_unfold.
-    simpl. iIntros (ot mt st π r v Hot).
-    destruct mt.
-    - eauto.
-    - destruct ot; simpl in *; try done.
-      { iPureIntro. intros Hv. unfold mem_cast.
-      rewrite Hv. by erewrite val_to_bytes_id_bool. }
-      subst; eauto.
-    - iApply (mem_cast_compat_bool (λ v, _)); first done. eauto.
+    simpl. iIntros (ot st π r v Hot).
+    destruct ot; simpl in *; try done.
+    { iPureIntro. intros Hv. unfold mem_cast.
+    rewrite Hv. by erewrite val_to_bytes_id_bool. }
+    subst; eauto.
   Qed.
   Next Obligation.
-    intros ?? Hst. apply syn_type_has_layout_bool_inv in Hst as ->.
+    intros ? Hst. apply syn_type_has_layout_bool_inv in Hst as ->.
     done.
   Qed.
 
@@ -155,7 +148,7 @@ Section char.
   Program Definition char_t : type ZRT := {|
     st_own tid z v := char_own_val tid z v;
     st_syn_type := CharSynType;
-    st_has_op_type ot mt := is_char_ot ot;
+    st_has_op_type ot := is_char_ot ot;
   |}%I.
   Next Obligation.
     rewrite char_own_val_unfold.
@@ -164,22 +157,19 @@ Section char.
     unfold has_layout_val. erewrite val_to_char_length; done.
   Qed.
   Next Obligation.
-    intros ot mt Hot. simpl in *. rewrite (is_char_ot_layout _ Hot). by apply syn_type_has_layout_char.
+    intros ot Hot. simpl in *. rewrite (is_char_ot_layout _ Hot). by apply syn_type_has_layout_char.
   Qed.
   Next Obligation. rewrite char_own_val_unfold. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     rewrite char_own_val_unfold.
-    simpl. iIntros (ot mt st π r v Hot).
-    destruct mt.
-    - eauto.
-    - destruct ot; simpl in *; try done.
-      { subst; eauto. }
-      { iPureIntro. intros Hv. unfold mem_cast. rewrite Hv.
-        by erewrite val_to_bytes_id_char. }
-    - iApply (mem_cast_compat_char (λ v, _)); first done. eauto.
+    simpl. iIntros (ot st π r v Hot).
+    destruct ot; simpl in *; try done.
+    { subst; eauto. }
+    { iPureIntro. intros Hv. unfold mem_cast. rewrite Hv.
+      by erewrite val_to_bytes_id_char. }
   Qed.
   Next Obligation.
-    intros ?? Hst. apply syn_type_has_layout_char_inv in Hst as ->.
+    intros ? Hst. apply syn_type_has_layout_char_inv in Hst as ->.
     done.
   Qed.
 

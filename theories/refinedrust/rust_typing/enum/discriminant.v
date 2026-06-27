@@ -11,7 +11,7 @@ Section discriminant.
     st_own π r v :=
       ∃ tag, ⌜en.(enum_tag) r = Some tag⌝ ∗
       v ◁ᵥ{π, MetaNone} (els_lookup_tag en.(enum_els) tag) @ int en.(enum_els).(els_tag_it);
-    st_has_op_type ot mt := is_int_ot ot en.(enum_els).(els_tag_it);
+    st_has_op_type ot := is_int_ot ot en.(enum_els).(els_tag_it);
     st_syn_type := IntSynType en.(enum_els).(els_tag_it);
   |}%I.
   Next Obligation.
@@ -23,18 +23,18 @@ Section discriminant.
     iApply (ty_has_layout with "Hv").
   Qed.
   Next Obligation.
-    simpl. intros. eapply (@ty_op_type_stable _ _ _ (int _) _ mt).
+    simpl. intros. eapply (@ty_op_type_stable _ _ _ (int _) _).
     rewrite ty_has_op_type_unfold. done.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
-    simpl. intros ???????? Hv. iIntros "(%tag & %Htag & Hv)".
-    iPoseProof (ty_memcast_compat _ _ _ mt with "Hv") as "Ha".
+    simpl. intros ??????? Hv. iIntros "(%tag & %Htag & Hv)".
+    iPoseProof (ty_memcast_compat with "Hv") as "Ha".
     { rewrite ty_has_op_type_unfold. apply Hv. }
-    destruct mt; eauto.
+    eauto.
   Qed.
 Next Obligation.
-    intros ?? mt ly Hst.
+    intros ?? ly Hst.
     apply syn_type_has_layout_int_inv in Hst as ->.
     done.
   Qed.

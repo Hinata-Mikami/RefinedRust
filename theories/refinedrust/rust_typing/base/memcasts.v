@@ -4,17 +4,6 @@ From refinedrust Require Import options.
 
 (** ** op_types and mem_casts *)
 
-(** [memcast_compat_type] describes how a type can transfered via a
-mem_cast (see also [ty_memcast_compat] below):
-- MCNone: The type cannot be transferred across a mem_cast.
-- MCCopy: The value type can be transferred to a mem_casted value.
-- MCId: mem_cast on a value of this type is the identity.
-
-MCId implies the other two and MCCopy implies MCNone.
-  *)
-Inductive memcast_compat_type : Set :=
-| MCNone | MCCopy | MCId.
-
 Definition is_int_ot (ot : op_type) (it : int_type) : Prop :=
   match ot with
     | IntOp it' => it = it'
@@ -61,14 +50,15 @@ Qed.
 
 Section optypes.
   Context `{refinedcG Σ}.
-  Lemma mem_cast_compat_id (P : val → iProp Σ) v ot st mt:
+  Lemma mem_cast_compat_id (P : val → iProp Σ) v ot st :
     (P v ⊢ ⌜mem_cast_id v ot⌝) →
-    (P v ⊢ match mt with | MCNone => True | MCCopy => P (mem_cast v ot st) | MCId => ⌜mem_cast_id v ot⌝ end).
-  Proof. iIntros (HP) "HP". iDestruct (HP with "HP") as %Hm. rewrite Hm. by destruct mt. Qed.
+    (P v ⊢ P (mem_cast v ot st)).
+  Proof. iIntros (HP) "HP". iDestruct (HP with "HP") as %Hm. rewrite Hm. done. Qed.
 
-  Lemma mem_cast_compat_Untyped (P : val → iProp Σ) v ot st mt:
-    ((if ot is UntypedOp _ then False else True) → ⊢ P v -∗ match mt with | MCNone => True | MCCopy => P (mem_cast v ot st) | MCId => ⌜mem_cast_id v ot⌝ end) →
-    ⊢ P v -∗ match mt with | MCNone => True | MCCopy => P (mem_cast v ot st) | MCId => ⌜mem_cast_id v ot⌝ end.
+  Lemma mem_cast_compat_Untyped (P : val → iProp Σ) v ot st :
+    ((if ot is UntypedOp _ then False else True) →
+      ⊢ P v -∗ P (mem_cast v ot st)) →
+    ⊢ P v -∗ P (mem_cast v ot st).
   Proof. move => Hot. destruct ot; try by apply: Hot. apply bi.entails_wand'. apply: mem_cast_compat_id. by iIntros "?". Qed.
 
   Lemma mem_cast_compat_int (P : val → iProp Σ) v ot it:

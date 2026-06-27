@@ -10,7 +10,7 @@ Section unit.
   Program Definition unit_t : type unit := {|
     st_own π _ v := ⌜v = zst_val⌝;
     st_syn_type := UnitSynType;
-    st_has_op_type ot mt := is_unit_ot ot;
+    st_has_op_type ot := is_unit_ot ot;
   |}%I.
   Next Obligation.
     iIntros (π _ v ->).
@@ -18,19 +18,16 @@ Section unit.
     done.
   Qed.
   Next Obligation.
-    intros ot mt ->%is_unit_ot_layout.
+    intros ot ->%is_unit_ot_layout.
     by apply syn_type_has_layout_unit.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
-    simpl. iIntros (ot ?? _ _  v Hot ->).
-    destruct mt.
-    - done.
-    - destruct ot; try by destruct Hot. destruct Hot as [-> ->]. done.
-    - iApply (mem_cast_compat_unit (λ _, True)%I); eauto.
+    simpl. iIntros (ot ? _ _  v Hot ->).
+    destruct ot; try by destruct Hot. destruct Hot as [-> ->]. done.
   Qed.
   Next Obligation.
-    intros mt ly Hst.
+    intros ly Hst.
     apply syn_type_has_layout_unit_inv in Hst as ->.
     done.
   Qed.

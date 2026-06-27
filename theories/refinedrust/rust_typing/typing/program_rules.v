@@ -3611,7 +3611,7 @@ Section subsume.
   (** [type_read_end] instance that does a copy *)
   Lemma type_read_ofty_copy E L {rt} π b2 bmin l (ty : type rt) r ot `{!Copyable ty} (T : typed_read_end_cont_t bmin rt) :
     (** We have to show that the type allows reads *)
-    (⌜ty_has_op_type ty ot MCCopy⌝ ∗ ⌜lctx_bor_kind_alive E L b2⌝ ∗
+    (⌜ty_has_op_type ty ot⌝ ∗ ⌜lctx_bor_kind_alive E L b2⌝ ∗
       (** The place is left as-is *)
       ∀ v, T L v rt ty r rt (◁ ty) (#r) (mkPUKRes UpdBot opt_place_update_eq_refl opt_place_update_eq_refl))
     ⊢ typed_read_end π E L l (◁ ty) (#r) b2 bmin ot ReadDoCopy T.
@@ -3800,7 +3800,7 @@ Section subsume.
   (** Strong typing rule to initialize top-level places, where we are allowed to change the syntype *)
   Lemma type_write_ofty_init E L {rt rt2} π l (ty : type rt) (ty2 : type rt2) r1 (r2 : rt2) v ot (T : typed_write_end_cont_t UpdInit rt2) :
     (⌜syn_type_compat (st_of ty2 MetaNone) (st_of ty MetaNone)⌝ ∗
-     ⌜ty_has_op_type ty ot MCNone⌝ ∗
+     ⌜ty_has_op_type ty ot⌝ ∗
      (ty_ghost_drop' ty2 π r2 -∗ T L rt ty r1 (mkPUKRes (allowed:=UpdInit) UpdInit I I)))
     ⊢ typed_write_end π E L ot v ty r1 (Owned) UpdInit l (◁ ty2) (#r2) T.
   Proof.
@@ -3840,7 +3840,7 @@ Section subsume.
      This only works if the path is fully owned ([bmin = Owned]).
      We could in principle allow this also for Uniq paths by suspending the mutable reference's contract with [OpenedLtype], but currently we have decided against that. *)
   Lemma type_write_ofty_strong E L {rt rt2} π l (ty : type rt) (ty2 : type rt2) r1 (r2 : rt2) v ot `{Hst_eq : !TCDone (ty_syn_type ty MetaNone = ty_syn_type ty2 MetaNone)} (T : typed_write_end_cont_t UpdStrong rt2) :
-    (⌜ty_has_op_type ty ot MCNone⌝ ∗
+    (⌜ty_has_op_type ty ot⌝ ∗
         (ty_ghost_drop' ty2 π r2 -∗ T L rt ty r1 (mkPUKRes (allowed:=UpdStrong) UpdStrong I I)))
     ⊢ typed_write_end π E L ot v ty r1 (Owned) UpdStrong l (◁ ty2) (#r2) T.
   Proof.
@@ -3883,7 +3883,7 @@ Section subsume.
   Lemma type_write_ofty_weak E L {rt1 rt2} π b2 bmin l (ty : type rt1) (ty2 : type rt2) r1 r2 v ot (T : typed_write_end_cont_t bmin rt2) :
     (∃ r3, owned_subtype π E L false r1 r3 ty ty2 (λ L2,
       ⌜ty_syn_type ty = ty_syn_type ty2⌝ ∗ (* TODO: would be nice to remove this requirement *)
-      ⌜ty_has_op_type ty ot MCNone⌝ ∗ ⌜lctx_bor_kind_alive E L2 b2⌝ ∗
+      ⌜ty_has_op_type ty ot⌝ ∗ ⌜lctx_bor_kind_alive E L2 b2⌝ ∗
       ⌜bor_kind_writeable b2⌝ ∗
       (ty_ghost_drop' ty2 π r2 -∗
         T L2 rt2 ty2 r3 (mkPUKRes UpdBot opt_place_update_eq_refl opt_place_update_eq_refl))))

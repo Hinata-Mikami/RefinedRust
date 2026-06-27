@@ -29,16 +29,12 @@ Section type.
     ty_trivial_drop := T.(ty_trivial_drop);
     ty_own_val := @maybe_uninit_own_val rt T;
     ty_syn_type m := UntypedSynType ((T.(ty_syn_type) m));
-    _ty_has_op_type ot mt :=
+    _ty_has_op_type ot :=
       ∃ ly,
       syn_type_has_layout (T.(ty_syn_type) MetaNone) ly ∧
       T.(ty_metadata_kind) = MetadataNone ∧
       ot_layout ot = ly ∧
-      match mt with
-      | MCId => ot = UntypedOp ly
-      | MCCopy => ot = UntypedOp ly
-      | MCNone => True
-      end;
+      ot = UntypedOp ly;
     ty_shr κ π r m l :=
       match r with
       | Some r' => ∃ r'', place_rfn_interp_shared r' r'' ∗ T.(ty_shr) κ π r'' m l
@@ -65,7 +61,7 @@ Section type.
       iApply (ty_has_layout with "Hv").
   Qed.
   Next Obligation.
-    simpl; iIntros (rt T ot mt Hot).
+    simpl; iIntros (rt T ot Hot).
     destruct Hot as (ly & Hot & ? & <- & Hmt).
     by apply syn_type_has_layout_untyped.
   Qed.
@@ -140,31 +136,24 @@ Section type.
     iExists _. iFrame.
   Qed.
   Next Obligation.
-    iIntros (rt T ot mt st π r m v (ly & Hst & ? & <- & Hmt)) "Ha".
-    destruct mt; [done | | ].
-    - (* copy *)
-      subst.
-      destruct r as [r | ]; simpl; first last.
-      { rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
-        by iApply uninit_memcast. }
-      rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
-      iDestruct "Ha" as "(%r'' & Hrfn & Hv)".
-      iExists r''. iFrame.
-      iApply ty_memcast_compat_copy; last done.
-      rewrite Hmt.
-      rewrite ty_has_op_type_unfold.
-      apply _ty_has_op_type_untyped; done.
-    - rewrite Hmt. simpl.
-      iPureIntro.
-      rewrite /mem_cast_id/=. intros ?.
-      rewrite mem_cast_UntypedOp//.
+    iIntros (rt T ot st π r m v (ly & Hst & ? & <- & Hmt)) "Ha".
+    subst.
+    destruct r as [r | ]; simpl; first last.
+    { rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+      by iApply uninit_memcast. }
+    rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+    iDestruct "Ha" as "(%r'' & Hrfn & Hv)".
+    iExists r''. iFrame.
+    iApply ty_memcast_compat; last done.
+    rewrite Hmt.
+    rewrite ty_has_op_type_unfold.
+    apply _ty_has_op_type_untyped; done.
   Qed.
   Next Obligation.
-    intros ?? ly mt Heq Hst.
+    intros ?? ly Heq Hst.
     simpl. exists ly.
     apply syn_type_has_layout_untyped_inv in Hst.
-    split_and!; [done.. | ].
-    destruct mt; done.
+    done.
   Qed.
 
   Global Instance maybe_uninit_sized {rt} (ty : type rt) :
@@ -191,7 +180,7 @@ Section ne.
       + rewrite {1}ty_wf_E_unfold//.
     - rewrite ty_has_op_type_unfold/=.
       intros ?? -> -> Hot.
-      intros ot mt.
+      intros ot.
       do 4 f_equiv.
     - done.
     - intros n ty ty' ?.

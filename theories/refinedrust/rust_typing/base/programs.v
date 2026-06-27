@@ -2145,7 +2145,7 @@ Section laws.
 
   (* generic instance constructors for descending below ofty *)
   Lemma typed_place_ofty_access_val_owned E L (f : frame_path) {rt} l (ty : type rt) (r : rt) bmin0 P T :
-    ty_has_op_type ty PtrOp MCCopy →
+    ty_has_op_type ty PtrOp →
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
       v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
       ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
@@ -2197,7 +2197,7 @@ Section laws.
 
   (* TODO generalize this similarly as the one above? *)
   Lemma typed_place_ofty_access_val_uniq E L f {rt} l (ty : type rt) (r : rt) bmin0 κ γ P T :
-    ty_has_op_type ty PtrOp MCCopy →
+    ty_has_op_type ty PtrOp →
     ⌜lctx_lft_alive E L κ⌝ ∗
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
       v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
@@ -2252,7 +2252,7 @@ Section laws.
 
   (* NOTE: we need to require it to be a simple type to get this generic lemma *)
   Lemma typed_place_ofty_access_val_shared E L f {rt} l (ty : simple_type rt) (r : rt) bmin0 κ P T :
-    ty_has_op_type ty PtrOp MCCopy →
+    ty_has_op_type ty PtrOp →
     ⌜lctx_lft_alive E L κ⌝ ∗
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
       v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗

@@ -10,7 +10,7 @@ Section type_inh.
   Global Program Instance simple_type_inhabited : Inhabited (simple_type T_rt) := populate {|
       st_own π r v := ⌜v = []⌝%I;
       st_syn_type := UnitSynType;
-      st_has_op_type ot _ := ot = UntypedOp unit_sl;
+      st_has_op_type ot := ot = UntypedOp unit_sl;
   |}.
   Next Obligation.
     simpl.
@@ -21,17 +21,17 @@ Section type_inh.
     - done.
   Qed.
   Next Obligation.
-    simpl. intros ? ? ->.
+    simpl. intros ? ->.
     by apply syn_type_has_layout_unit.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
-    simpl. intros ??? ??? ->.
+    simpl. intros ????? ->.
     iIntros "->".
-    destruct mt; simpl; iPureIntro; done.
+    simpl; iPureIntro; done.
   Qed.
   Next Obligation.
-    intros mt ly Hst.
+    intros ly Hst.
     apply syn_type_has_layout_unit_inv in Hst as ->.
     done.
   Qed.
@@ -100,8 +100,8 @@ Section fixpoint_def.
       iApply (IH (S (S n))); lia.
   Qed.
 
-  Lemma Fn_has_op_type_const n m ot mt :
-    ty_has_op_type (Fn n) ot mt ↔ ty_has_op_type (Fn m) ot mt.
+  Lemma Fn_has_op_type_const n m ot :
+    ty_has_op_type (Fn n) ot ↔ ty_has_op_type (Fn m) ot.
   Proof using Hcr.
     unfold Fn; simpl. eapply Hcr.
   Qed.
@@ -263,14 +263,14 @@ Section fixpoint_def.
     eapply @limit_preserving_compl.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. f_equiv; first eapply Heq.
-      f_equiv. eapply Heq.
+      eapply Heq.
     - intros ?.
       simpl. eapply _ty_memcast_compat.
       rewrite -ty_has_op_type_unfold.
       eapply Fn_has_op_type_const. by rewrite ty_has_op_type_unfold.
   Qed.
   Next Obligation.
-    intros ly mt ? Hst.
+    intros ly ? Hst.
     by eapply _ty_has_op_type_untyped.
   Qed.
 

@@ -230,7 +230,7 @@ Section updateable_rules.
         find_in_context (FindVal v) (λ '(existT rt (ty', r', π', m')),
         ⌜π' = π⌝ ∗ ⌜m' = MetaNone⌝ ∗
         find_tc_inst (TySized ty') (λ _,
-        ⌜ty_has_op_type ty' (use_op_alg' (ty'.(ty_syn_type) MetaNone)) MCCopy⌝ ∗
+        ⌜ty_has_op_type ty' (use_op_alg' (ty'.(ty_syn_type) MetaNone)) ⌝ ∗
         ⌜ty'.(ty_syn_type) MetaNone = st⌝ ∗
         introduce_with_hooks updateable_E L2 ((l ◁ₗ[π, Owned] #r' @ ◁ ty') ∗ R2)%I (λ L3,
           updateable_core updateable_E L3)))))
