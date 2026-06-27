@@ -256,7 +256,7 @@ Section place.
                   )
               | None =>
                 (* open *)
-                ⌜bmin0 = UpdStrong⌝ ∗
+                ⌜place_update_kind_allows_strong_updates bmin0⌝ ∗
                 cont (mkPUpd _ bmin0
                   (plist place_rfnRT (<[i := upd'.(pupd_rt)]> rts))
                   (OpenedLtype (StructLtype (hlist_insert rts lts i _ upd'.(pupd_lt)) sls) (StructLtype lts sls) (StructLtype lts sls) (λ r1 r1', ⌜r1 = r1'⌝) (λ _ _, llft_elt_toks κs))
@@ -341,7 +341,7 @@ Section place.
       done.
     - (* strong *)
       iFrame. simpl.
-      iDestruct "Hcont" as "(-> & Hcont)".
+      iDestruct "Hcont" as "(%Hstrong & Hcont)".
       iDestruct "Hc_close" as "[Hc_close _]".
       iPoseProof ("Hc_close" with "Hl2 []") as "Ha".
       { rewrite -Hsteq2. done. }
@@ -349,7 +349,7 @@ Section place.
       iPoseProof ("Hcl" with "[] Ha") as "Hl".
       { rewrite length_insert//. }
       iFrame "∗ #". simpl. iFrame.
-      done.
+      iR. destruct bmin0; done.
   Qed.
   Definition typed_place_struct_uniq_inst := [instance @typed_place_struct_uniq].
   Global Existing Instance typed_place_struct_uniq_inst | 30.

@@ -23,8 +23,8 @@ Proof.
 
   all: print_remaining_goal.
 
+  Unshelve. all: sidecond_solver.
   Unshelve.
-  all: sidecond_solver.
   (* !start proof(knights_tour.knights_tour) *)
   all: try (revert select (_ ∈ []); solve_goal).
   all: try rename select (∀ a b : Z, _ -> a ≤ 2 ∧ _) into Hbound.

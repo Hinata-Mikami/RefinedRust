@@ -2716,6 +2716,10 @@ Section subsume.
     StratifyLtype π E L mdu ma StratifyUnblockOp l (◁ ty)%I (#r) b | 100 :=
     λ T, i2p (stratify_ltype_resolve_ghost_leaf π E L mdu ma StratifyUnblockOp ResolveTry l (◁ ty)%I b (#r) T).
 
+  Global Instance stratify_ltype_type_inv_ofty_in_inst {rt} π E L mdu ma l (ty : type rt) (r : rt) b :
+    StratifyLtype π E L mdu ma StratifyTypeInvOp l (◁ ty)%I (#r) b | 100 :=
+    λ T, i2p (stratify_ltype_resolve_ghost_leaf π E L mdu ma StratifyTypeInvOp ResolveTry l (◁ ty)%I b (#r) T).
+
   (* Also trigger resolve instances for ADTs. *)
   Global Instance stratify_ltype_resolve_ofty_in_inst {rt} π E L mdu ma l (ty : type rt) (r : rt) b :
     StratifyLtype π E L mdu ma StratifyResolveOp l (◁ ty)%I (#r) b | 100 :=
@@ -4187,12 +4191,12 @@ Section subsume.
 
   (** Finish a mutable borrow *)
   Lemma type_borrow_mut_end_owned E L π κ l orty (rt : RT) (ty : type rt) (r : rt) bmin
-    `{!TCUnless (CheckConfig rr_config_dont_interpret_typing_hints)}
+    `{Hint : !TCOrT (CheckConfig rr_config_dont_interpret_typing_hints) TCTrue}
     (T : typed_borrow_mut_end_cont_t bmin rt) :
     ⌜lctx_place_update_kind_incl E L (UpdUniq [κ]) bmin⌝ ∗
     (** The lifetime at which we borrow still needs to be alive *)
     ⌜lctx_lft_alive E L κ⌝ ∗
-    interpret_typing_hint E L π orty bmin ty r (λ L2 rt2 ty2 r2 upd,
+    interpret_typing_hint E L π (if Hint then None else orty) bmin ty r (λ L2 rt2 ty2 r2 upd,
       (** Then, the place becomes blocked *)
       (∀ γ, T L2 γ rt2 (BlockedLtype ty2 κ) (PlaceGhost γ) ty2 r2
         (place_update_kind_res_trans upd (mkPUKRes (UpdUniq [κ]) eq_refl opt_place_update_eq_refl))))
