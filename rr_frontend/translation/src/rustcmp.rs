@@ -82,7 +82,7 @@ fn ty_discriminant(ty: ty::Ty<'_>) -> usize {
         TyKind::Never => 19,
         TyKind::Tuple(_) => 20,
         TyKind::Pat(_, _) => 21,
-        TyKind::Alias(_) => 22,
+        TyKind::Alias(..) => 22,
         TyKind::Param(_) => 23,
         TyKind::Bound(_, _) => 24,
         TyKind::Placeholder(_) => 25,
@@ -107,6 +107,22 @@ const fn alias_kind_variant(kind: ty::AliasTyKind<'_>) -> u8 {
         ty::AliasTyKind::Inherent { .. } => 1,
         ty::AliasTyKind::Opaque { .. } => 2,
         ty::AliasTyKind::Free { .. } => 3,
+    }
+}
+
+const fn alias_kind_def_id(kind: ty::AliasTyKind<'_>) -> DefId {
+    match kind {
+        ty::AliasTyKind::Projection { def_id }
+        | ty::AliasTyKind::Inherent { def_id }
+        | ty::AliasTyKind::Opaque { def_id }
+        | ty::AliasTyKind::Free { def_id } => def_id,
+    }
+}
+
+const fn is_rigid_variant(is_rigid: ty::IsRigid) -> u8 {
+    match is_rigid {
+        ty::IsRigid::No => 0,
+        ty::IsRigid::Yes => 1,
     }
 }
 
@@ -158,9 +174,10 @@ fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Orde
             (TyKind::Tuple(a_t), TyKind::Tuple(b_t)) => {
                 a_t.iter().cmp_by(b_t.iter(), |a, b| cmp_ty(tcx, a, b))
             },
-            (TyKind::Alias(a), TyKind::Alias(b)) => alias_kind_variant(a.kind)
-                .cmp(&alias_kind_variant(b.kind))
-                .then_with(|| cmp_defid(tcx, a.kind.def_id(), b.kind.def_id()))
+            (TyKind::Alias(a_rigid, a), TyKind::Alias(b_rigid, b)) => is_rigid_variant(*a_rigid)
+                .cmp(&is_rigid_variant(*b_rigid))
+                .then_with(|| alias_kind_variant(a.kind).cmp(&alias_kind_variant(b.kind)))
+                .then_with(|| cmp_defid(tcx, alias_kind_def_id(a.kind), alias_kind_def_id(b.kind)))
                 .then_with(|| cmp_arg_refs(tcx, a.args, b.args)),
             (TyKind::Param(a_p), TyKind::Param(b_p)) => a_p.cmp(b_p),
             (TyKind::Bound(..), TyKind::Bound(..)) => {
@@ -287,7 +304,7 @@ pub(crate) fn cmp_alias_ty<'tcx>(
     a: &ty::AliasTy<'tcx>,
     b: &ty::AliasTy<'tcx>,
 ) -> Ordering {
-    let did_cmp = cmp_defid(tcx, a.kind.def_id(), b.kind.def_id());
+    let did_cmp = cmp_defid(tcx, alias_kind_def_id(a.kind), alias_kind_def_id(b.kind));
 
     alias_kind_variant(a.kind)
         .cmp(&alias_kind_variant(b.kind))

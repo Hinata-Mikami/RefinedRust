@@ -12,7 +12,6 @@ use derive_more::Debug;
 use log::info;
 use radium::{code, coq};
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::TypeFolder as _;
 
 use crate::base::*;
 use crate::environment::borrowck::facts;

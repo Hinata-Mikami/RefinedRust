@@ -955,8 +955,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                                 ty::AliasTyKind::Projection { def_id: did },
                                 trait_args,
                             );
-                            let tykind = ty::TyKind::Alias(alias);
-                            let ty = self.tcx.mk_ty_from_kind(tykind);
+                            let ty = ty::Ty::new_alias(self.tcx, ty::IsRigid::No, alias);
                             assoc_types.push(ty);
                         }
                     }
@@ -1089,7 +1088,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             let args = req.trait_ref.args;
             let mut subst_args = Vec::new();
             for arg in args {
-                let bound = ty::EarlyBinder::bind(arg);
+                let bound = ty::EarlyBinder::bind(self.tcx, arg);
                 let bound = bound.instantiate(self.tcx, params.as_slice()).skip_norm_wip();
                 subst_args.push(bound);
             }
@@ -1869,7 +1868,7 @@ impl<'tcx> RegionBiFolder<'tcx> for RegionUnifier<'tcx> {
             return true;
         }
 
-        !matches!(ty1.kind(), ty::TyKind::Alias(_)) && !matches!(ty2.kind(), ty::TyKind::Alias(_))
+        !matches!(ty1.kind(), ty::TyKind::Alias(..)) && !matches!(ty2.kind(), ty::TyKind::Alias(..))
     }
 
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {

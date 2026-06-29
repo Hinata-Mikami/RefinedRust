@@ -767,7 +767,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                     ty::AliasTyKind::Projection { def_id: assoc_did },
                     req.trait_ref.args,
                 );
-                let self_ty = tcx.mk_ty_from_kind(ty::TyKind::Alias(alias));
+                let self_ty = ty::Ty::new_alias(tcx, ty::IsRigid::No, alias);
                 assoc_tys.push((self_ty, req.origin));
             }
         }
@@ -796,7 +796,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                     ty::AliasTyKind::Projection { def_id: assoc_did },
                     req.trait_ref.args,
                 );
-                let self_ty = tcx.mk_ty_from_kind(ty::TyKind::Alias(alias));
+                let self_ty = ty::Ty::new_alias(tcx, ty::IsRigid::No, alias);
                 self_trait_assoc_tys.push(self_ty);
             }
         }

@@ -10,7 +10,6 @@ use std::collections::HashSet;
 
 use radium::code;
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::TypeFolder as _;
 
 use crate::environment::borrowck::facts;
 use crate::environment::region_folder::*;

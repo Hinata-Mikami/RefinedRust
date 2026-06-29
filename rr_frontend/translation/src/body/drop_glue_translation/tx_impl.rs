@@ -114,7 +114,7 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for DropGlueGenericCollector<'tcx> {
                 self.tyvars.insert(*param);
                 t
             },
-            ty::TyKind::Alias(alias_ty) if matches!(alias_ty.kind, ty::AliasTyKind::Projection { .. }) => {
+            ty::TyKind::Alias(_, alias_ty) if matches!(alias_ty.kind, ty::AliasTyKind::Projection { .. }) => {
                 self.projections.insert(*alias_ty);
                 t.super_fold_with(self)
             },
@@ -356,7 +356,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             scope.add_ty_param(lit);
         }
         for alias_ty in projections {
-            let assoc_did = alias_ty.kind.def_id();
+            let ty::AliasTyKind::Projection { def_id: assoc_did } = alias_ty.kind else {
+                continue;
+            };
             let trait_did = self.tcx.parent(assoc_did);
             let entry = self.generic_scope.trait_scope().lookup_trait_use(self.tcx, trait_did, alias_ty.args);
             let assoc_type = entry.get_associated_type_use(self.tcx, assoc_did);

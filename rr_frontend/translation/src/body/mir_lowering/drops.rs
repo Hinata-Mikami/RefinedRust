@@ -58,7 +58,7 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
             ty::TyKind::Adt(adt_def, adt_args) => self.register_use_adt_drop_glue(*adt_def, adt_args),
             ty::TyKind::Tuple(args) => self.register_use_tuple_drop_glue(args),
             ty::TyKind::Param(_) => self.register_use_assumed_drop_glue(dropped_ty),
-            ty::TyKind::Alias(alias_ty) if matches!(alias_ty.kind, ty::AliasTyKind::Projection { .. }) => {
+            ty::TyKind::Alias(_, alias_ty) if matches!(alias_ty.kind, ty::AliasTyKind::Projection { .. }) => {
                 self.register_use_assumed_drop_glue(dropped_ty)
             },
             _ => Err(TranslationError::ErrorReported(self.tcx().dcx().err(Message::UnsupportedFeature(

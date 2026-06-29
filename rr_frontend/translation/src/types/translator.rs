@@ -1765,10 +1765,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 ))))
             },
 
-            ty::TyKind::Alias(alias_ty) => {
+            ty::TyKind::Alias(_, alias_ty) => {
                 // TODO do we get a problem because we are erasing regions?
                 if let Ok(normalized_ty) = state.normalize_type_erasing_regions(self.tcx, ty)
-                    && !matches!(normalized_ty.kind(), ty::TyKind::Alias(_))
+                    && !matches!(normalized_ty.kind(), ty::TyKind::Alias(..))
                 {
                     // if we managed to normalize it, translate the normalized type
                     return self.translate_type_in_state(normalized_ty, state);

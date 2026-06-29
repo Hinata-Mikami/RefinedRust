@@ -489,7 +489,9 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         // Also bind surrounding associated types we use
         for alias_ty in projections {
             let tcx = self.translator.tcx();
-            let assoc_did = alias_ty.kind.def_id();
+            let ty::AliasTyKind::Projection { def_id: assoc_did } = alias_ty.kind else {
+                continue;
+            };
             let trait_did = tcx.parent(assoc_did);
             let param_scope = self.scope.borrow().make_params_scope();
             let entry = param_scope.trait_scope().lookup_trait_use(tcx, trait_did, alias_ty.args);

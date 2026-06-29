@@ -90,8 +90,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
 
         let span = tcx.def_span(adt_did);
         let drop_glue_did = tcx.require_lang_item(hir::LangItem::DropGlue, span);
-        let instance = ty::InstanceKind::DropGlue(drop_glue_did, Some(mir_source_ty));
-        let body = tcx.mir_shims(instance);
+        let shim = ty::ShimKind::DropGlue(drop_glue_did, Some(mir_source_ty));
+        let body = tcx.mir_shims(shim);
         Self::log_mir(tcx, adt_did, adt_ty, mir_source_ty, body);
 
         let mut translated_fn = Self::make_function_builder(meta);

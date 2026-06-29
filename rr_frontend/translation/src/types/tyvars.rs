@@ -58,7 +58,7 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyVarFolder<'tcx> {
                 self.tyvars.insert(*param);
                 t
             },
-            ty::TyKind::Alias(alias_ty) => {
+            ty::TyKind::Alias(_, alias_ty) => {
                 if matches!(alias_ty.kind, ty::AliasTyKind::Projection { .. }) {
                     self.projections.insert(*alias_ty);
                 }
