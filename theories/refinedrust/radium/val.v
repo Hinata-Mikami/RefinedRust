@@ -5,6 +5,7 @@ Set Default Proof Using "Type".
 Inductive op_type : Set :=
 | BoolOp
 | IntOp (i : int_type)
+| FnPtrOp
 | PtrOp
 | StructOp (sl : struct_layout) (ots : list op_type)
 | EnumOp (el : enum_layout) (variant_ots : list (var_name * list op_type))
@@ -15,6 +16,7 @@ Inductive op_type : Set :=
 Definition ot_layout (ot : op_type) : layout :=
   match ot with
   | BoolOp => bool_layout
+  | FnPtrOp => void*
   | PtrOp => void*
   | IntOp it => it_layout it
   | StructOp sl ots => sl
@@ -26,6 +28,7 @@ Definition ot_layout (ot : op_type) : layout :=
 Lemma op_type_recursor (P : op_type → Type) :
   P BoolOp →
   (∀ it, P (IntOp it)) →
+  P FnPtrOp →
   P PtrOp →
   (∀ sl ots, list_is_list _ P ots → P (StructOp sl ots)) →
   (∀ el variant_ots tag_int,
@@ -35,11 +38,12 @@ Lemma op_type_recursor (P : op_type → Type) :
   P CharOp →
   ∀ ot, P ot.
 Proof.
-  intros Hbool Hint Hptr Hstruct Henum Huntyped Hchar.
+  intros Hbool Hint Hfn Hptr Hstruct Henum Huntyped Hchar.
   refine (fix IH ot {struct ot} := _ ).
   destruct ot.
   - apply Hbool.
   - apply Hint.
+  - apply Hfn.
   - apply Hptr.
   - apply Hstruct.
     by apply list_is_list_full.

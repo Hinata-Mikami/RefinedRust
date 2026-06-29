@@ -933,6 +933,13 @@ Section ltype_def.
 
 
   Import EqNotations.
+
+  Definition ptr_loc_own (l li : loc) : iProp Σ :=
+    (∃ vi : val, l ↦ vi ∗ ⌜val_decodes_to_loc vi li⌝)%I.
+
+  Definition ptr_loc_own_frac (l : loc) (q : Qp) (li : loc) : iProp Σ :=
+    (∃ vi : val, l ↦{q} vi ∗ ⌜val_decodes_to_loc vi li⌝)%I.
+
   Equations lty_own_pre (core : bool) (ltp : lty) (k : bor_kind) (π : thread_id) (r : place_rfn (lty_rt ltp)) (l : loc) : iProp Σ by wf ltp lty_size_rel :=
     lty_own_pre core (OfTyLty ty) k π r l :=
       (* OfTy *)
@@ -958,7 +965,7 @@ Section ltype_def.
           ∃ (γ : gname) (r' : place_rfn (lty_rt lt)) ,
           place_rfn_interp_owned r (r', γ) ∗
           (* TODO layout requirements on l' here? *)
-          |={lftE}=> ∃ l' : loc , l ↦ l' ∗ (lty_own_pre core lt (Uniq κ γ) π r' l')
+          |={lftE}=> ∃ l' : loc, ptr_loc_own l l' ∗ (lty_own_pre core lt (Uniq κ γ) π r' l')
       | Uniq κ' γ' =>
             have_creds ∗
             place_rfn_interp_mut r γ' ∗
@@ -967,20 +974,21 @@ Section ltype_def.
                 gvar_auth γ' r' ∗
                 (* update here to be compatible with ofty *)
                 |={lftE}=>
-                ∃ (l' : loc), l ↦ l' ∗
+                ∃ (l' : loc), ptr_loc_own l l' ∗
                 lty_own_pre true lt (Uniq κ r'.2) π r'.1 l'
               ]
               (∃ (r' : (place_rfn (lty_rt lt)) * gname),
                 gvar_auth γ' r' ∗
                 (* update here to be compatible with ofty *)
                 |={lftE}=>
-                ∃ (l' : loc), l ↦ l' ∗
+                ∃ (l' : loc), ptr_loc_own l l' ∗
                 lty_own_pre core lt (Uniq κ r'.2) π r'.1 l')
       | Shared κ' =>
         (∃ r' γ, place_rfn_interp_shared r (r', γ) ∗
         (* the update is also over the fractional borrow to deal with timelessness *)
-        □ |={lftE}=> ∃ (li : loc),
-          &frac{κ'}(λ q', l ↦{q'} li) ∗
+        □ |={lftE}=> ∃ (vi : val) (li : loc),
+          &frac{κ'}(λ q', l ↦{q'} vi) ∗
+          ⌜val_decodes_to_loc vi li⌝ ∗
           (* later is for contractiveness, the update for timelessness *)
           ▷ lty_own_pre core lt (Shared (κ⊓κ')) π r' li)%I
       end)%I;
@@ -992,24 +1000,25 @@ Section ltype_def.
         match k with
         | Owned =>
             ∃ (r' : place_rfn (lty_rt lt)), place_rfn_interp_owned r r' ∗
-            |={lftE}=> ∃ (l' : loc), l ↦ l' ∗
+            |={lftE}=> ∃ (l' : loc), ptr_loc_own l l' ∗
             lty_own_pre core lt (Shared κ) π r' l'
         | Uniq κ' γ' =>
             have_creds ∗
             place_rfn_interp_mut r γ' ∗
             |={lftE}=> &pin{κ'}
               [∃ (r' : place_rfn (lty_rt lt)), gvar_auth γ' r' ∗
-                |={lftE}=> ∃ (l' : loc), l ↦ l' ∗ lty_own_pre true lt (Shared κ) π r' l']
+                |={lftE}=> ∃ (l' : loc), ptr_loc_own l l' ∗ lty_own_pre true lt (Shared κ) π r' l']
               (∃ (r' : place_rfn (lty_rt lt)), gvar_auth γ' r' ∗
-                |={lftE}=> ∃ (l' : loc), l ↦ l' ∗ lty_own_pre core lt (Shared κ) π r' l')
+                |={lftE}=> ∃ (l' : loc), ptr_loc_own l l' ∗ lty_own_pre core lt (Shared κ) π r' l')
         | Shared κ' =>
             ∃ (r' : place_rfn (lty_rt lt)),
             place_rfn_interp_shared r r' ∗
             (* the update is also over the fractional borrow to deal with timelessness *)
-            □ |={lftE}=> ∃ (l' : loc),
-            &frac{κ'} (λ q, l ↦{q} l') ∗
+            □ |={lftE}=> ∃ (vi : val) (li : loc),
+            &frac{κ'} (λ q, l ↦{q} vi) ∗
+            ⌜val_decodes_to_loc vi li⌝ ∗
             (* no intersection here, as we also don't do that for the type interpretation *)
-            ▷ lty_own_pre core lt (Shared κ) π r' l'
+            ▷ lty_own_pre core lt (Shared κ) π r' li
         end)%I;
 
     lty_own_pre core (StructLty lts sls) k π r l :=
@@ -1813,8 +1822,9 @@ Section ltype_def.
         normalize_dep_rt_goal_prepare.
         generalize (RT_rt (lty_rt lt)).
         normalize_dep_rt_goal. }
-      iModIntro. iMod "Hl" as "(%li & Hf & Hl)". iModIntro. iExists li. iFrame.
-      iApply IH. done.
+      iModIntro. iMod "Hl" as "(%vi & %li & Hf & %Hdec & Hl)". iModIntro. iExists vi, li. iFrame.
+      iSplitR; first done.
+      iNext. iApply IH. done.
     - simp lty_own_pre. fold lty_rt.
       iIntros "(%ly & %Halg & %Hly & Hlb & %r' & Ha & #Hl)".
       iExists ly. iR. iR. iFrame.
@@ -1825,7 +1835,8 @@ Section ltype_def.
         normalize_dep_rt_goal_prepare.
         generalize (RT_rt (lty_rt lt)).
         normalize_dep_rt_goal. }
-      iModIntro. iMod "Hl" as "(%li & Hf & Hl)". iModIntro. iExists li. iFrame.
+      iModIntro. iMod "Hl" as "(%vi & %li & Hf & %Hdec & Hl)". iModIntro. iExists vi, li. iFrame.
+      iSplitR; first done.
       iApply IH. done.
     - (* struct *)
       simp lty_own_pre. fold lty_rt.
@@ -2292,22 +2303,23 @@ Section ltype_def.
         match k with
         | Owned =>
             ∃ (r' : place_rfn rt), place_rfn_interp_owned r r' ∗
-            |={lftE}=>  ∃ (l' : loc), l ↦ l' ∗
+            |={lftE}=>  ∃ (l' : loc), ptr_loc_own l l' ∗
             rec _ lt (Shared κ) π r' l'
         | Uniq κ' γ' =>
             have_creds ∗
             place_rfn_interp_mut r γ' ∗
             |={lftE}=> &pin{κ'}
-              [∃ (r' : place_rfn rt), gvar_auth γ' r' ∗ |={lftE}=>  ∃ (l' : loc), l ↦ l' ∗ rec_core _ lt (Shared κ) π r' l']
-              (∃ (r' : place_rfn rt), gvar_auth γ' r' ∗ |={lftE}=>  ∃ (l' : loc), l ↦ l' ∗ rec _ lt (Shared κ) π r' l')
+              [∃ (r' : place_rfn rt), gvar_auth γ' r' ∗ |={lftE}=>  ∃ (l' : loc), ptr_loc_own l l' ∗ rec_core _ lt (Shared κ) π r' l']
+              (∃ (r' : place_rfn rt), gvar_auth γ' r' ∗ |={lftE}=>  ∃ (l' : loc), ptr_loc_own l l' ∗ rec _ lt (Shared κ) π r' l')
         | Shared κ' =>
             ∃ (r' : place_rfn rt),
             place_rfn_interp_shared r r' ∗
             (* the update is also over the fractional borrow to deal with timelessness *)
-            □ |={lftE}=> ∃ (l' : loc),
-            &frac{κ'} (λ q, l ↦{q} l') ∗
+            □ |={lftE}=> ∃ (vi : val) (li : loc),
+            &frac{κ'} (λ q, l ↦{q} vi) ∗
+            ⌜val_decodes_to_loc vi li⌝ ∗
             (* no intersection here, as we also don't do that for the type interpretation *)
-            ▷ rec _ lt (Shared κ) π r' l'
+            ▷ rec _ lt (Shared κ) π r' li
         end)%I.
 
   Definition mut_ltype_own
@@ -2324,7 +2336,7 @@ Section ltype_def.
           ∃ (γ : gname) (r' : place_rfn rt) ,
           place_rfn_interp_owned r (r', γ) ∗
           (* TODO layout requirements on l' here? *)
-          |={lftE}=>  ∃ l' : loc , l ↦ l' ∗ (rec _ lt (Uniq κ γ) π r' l')
+          |={lftE}=>  ∃ l' : loc, ptr_loc_own l l' ∗ (rec _ lt (Uniq κ γ) π r' l')
       | Uniq κ' γ' =>
           have_creds ∗
           place_rfn_interp_mut r γ' ∗
@@ -2333,20 +2345,21 @@ Section ltype_def.
               gvar_auth γ' r' ∗
               (* update here to be compatible with ofty *)
               |={lftE}=>
-              ∃ (l' : loc), l ↦ l' ∗
+              ∃ (l' : loc), ptr_loc_own l l' ∗
               rec_core _ lt (Uniq κ r'.2) π r'.1 l'
             ]
             (∃ (r' : (place_rfn rt) * gname),
               gvar_auth γ' r' ∗
               (* update here to be compatible with ofty *)
               |={lftE}=>
-              ∃ (l' : loc), l ↦ l' ∗
+              ∃ (l' : loc), ptr_loc_own l l' ∗
               rec _ lt (Uniq κ r'.2) π r'.1 l')
       | Shared κ' =>
         (∃ r' γ, place_rfn_interp_shared r (r', γ) ∗
         (* the update is also over the fractional borrow to deal with timelessness *)
-        □ |={lftE}=> ∃ (li : loc),
-          &frac{κ'}(λ q', l ↦{q'} li) ∗
+        □ |={lftE}=> ∃ (vi : val) (li : loc),
+          &frac{κ'}(λ q', l ↦{q'} vi) ∗
+          ⌜val_decodes_to_loc vi li⌝ ∗
           (* later is for contractiveness, the update for timelessness *)
           ▷ rec _ lt (Shared (κ⊓κ')) π r' li)%I
       end)%I.

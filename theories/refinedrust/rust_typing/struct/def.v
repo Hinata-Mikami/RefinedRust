@@ -161,6 +161,20 @@ Proof.
       eexists. split; last done. exact Hfield.
 Qed.
 
+Lemma reshape_lookup_length {A} szs (l : list A) i li sz :
+  length l = sum_list szs →
+  szs !! i = Some sz →
+  reshape szs l !! i = Some li →
+  length li = sz.
+Proof.
+  induction szs as [|sz0 szs IH] in l, i |-*; destruct i; simpl; try done.
+  - intros Hlen Hsz Hlook. injection Hsz as <-. injection Hlook as <-.
+    rewrite length_take. lia.
+  - intros Hlen Hsz Hlook.
+    eapply IH; [|exact Hsz|exact Hlook].
+    rewrite length_drop. lia.
+Qed.
+
 (** ** Full structs *)
 Section structs.
   Context `{!typeGS Σ}.
@@ -383,15 +397,16 @@ Section structs.
   Definition struct_t_own_val := struct_t_own_val_aux.(unseal).
   Definition struct_t_own_val_unfold : @struct_t_own_val = @struct_t_own_val_def := struct_t_own_val_aux.(seal_eq).
 
-  Lemma struct_t_encode_compat_copy π sls sl {rts : list RT} (tys : hlist type rts) ots st r v ov :
+  Lemma struct_t_decode_compat_copy π sls sl {rts : list RT} (tys : hlist type rts) ots st r v v' :
     is_struct_ot sls tys (StructOp sl ots) →
-    decode_op_val v (StructOp sl ots) st = Some ov →
+    is_same_decoded_val_at st v (StructOp sl ots) v' →
     struct_t_own_val rts sls tys π r MetaNone v -∗
-    struct_t_own_val rts sls tys π r MetaNone (encode_op_val ov).
+    struct_t_own_val rts sls tys π r MetaNone v'.
   Proof.
-    iIntros (Hot Hdec) "Hv".
+    iIntros (Hot Hsame) "Hv".
     pose proof Hot as Hot_struct.
     destruct Hot_struct as (Hlen & Halg & Hlen_ots & Hwf & Hfields).
+    destruct Hsame as (Hsame & [ov Hdec]).
     pose proof Hdec as Hdec_struct.
     simp decode_op_val in Hdec.
     case_bool_decide; last done.
@@ -399,59 +414,66 @@ Section structs.
     have Hfields_ty : Forall2 op_val_has_type fields ots.
     { pose proof (decode_op_val_has_type _ _ _ _ Hdec_struct) as Hty. by inversion Hty. }
     pose proof (Forall2_length _ _ _ Hfields_ty) as Hfields_len.
+    have Hdec' : decode_op_val v' (StructOp sl ots) st = Some (OVStruct sl fields).
+    { by rewrite -Hsame Hdec_struct. }
+    have Hdec_fields' :
+      decode_struct_fields sl ots
+        (λ (v' : val) (ot : op_type) (_ : op_type_size_rel ot (StructOp sl ots)),
+          decode_op_val v' ot st)
+        (sl_members sl) (reshape (ly_size <$> (sl_members sl).*2) v') 0 = Some fields.
+    { pose proof Hdec' as Hdec_tmp.
+      simp decode_op_val in Hdec_tmp. case_bool_decide; last done.
+      apply bind_Some in Hdec_tmp as (fields' & Hfields' & [= <-]).
+      done. }
+    have Hly' : v' `has_layout_val` sl.
+    { change (v' `has_layout_val` ot_layout (StructOp sl ots)).
+      by eapply decode_op_val_has_layout. }
     have Hfield_len : length (field_names (sl_members sl)) = length (sls_fields sls).
     { by eapply struct_layout_spec_has_layout_fields_length. }
     rewrite struct_t_own_val_unfold /struct_t_own_val_def.
     iDestruct "Hv" as "(%sl' & %Hmeta & %Halg' & %Hlen' & %Hly & Hmem)".
     assert (sl' = sl) as -> by by eapply struct_layout_spec_has_layout_inj.
     iExists sl. do 3 iR.
-    iSplitR.
-    { iPureIntro. change (encode_op_val (OVStruct sl fields) `has_layout_val` sl).
-      rewrite /has_layout_val.
-      change (length (encode_op_val (OVStruct sl fields)) = ly_size (ot_layout (StructOp sl ots))).
-      eapply encode_op_val_length; first done.
-      by constructor. }
-    rewrite (reshape_encode_struct sl fields ots); [|done|done].
+    iSplitR; first done.
     iApply (big_sepL2_impl' with "Hmem").
-    { rewrite length_reshape !length_fmap pad_struct_length //. }
+    { rewrite !length_reshape //. }
     { done. }
     iIntros "!>" (k v_old ty_old v_new ty_new Hv_old Hty_old Hv_new Hty_new) "Hel".
     rewrite Hty_old in Hty_new. injection Hty_new as <-.
     destruct ty_old as (rt_old & ty_old & rfn_old).
     move: Hty_old => /pad_struct_lookup_Some[|n_old[ly_old[Hmember_old Hor_old]]].
     { rewrite length_hpzipl -Hlen. symmetry. done. }
-    move: Hv_new => /pad_struct_lookup_Some[|n_new[ly_new[Hmember_new Hor_new]]].
-    { rewrite length_fmap Hfields_len Hlen_ots -Hlen. symmetry. done. }
     iDestruct "Hel" as "(%r' & %ly0 & Hrfn & %Hlook & %Hst & Hown)".
-    destruct Hor_old as [[Hnamed_old Hfield_old] | [Hpad_old Heq_old]];
-      destruct Hor_new as [[Hnamed_new Hfield_new] | [Hpad_new Heq_new]].
-    - destruct n_new as [n|]; last done.
-      rewrite Hmember_old in Hmember_new. injection Hmember_new as [= -> <-].
-      rewrite list_lookup_fmap in Hfield_new.
-      apply fmap_Some in Hfield_new as (ov_field & Hfield_new & ->).
+    destruct Hor_old as [[Hnamed_old Hfield_old] | [Hpad_old Heq_old]].
+    - destruct n_old as [n|]; last done.
       destruct (is_struct_ot_field_lookup sls sl tys ots r k n ly_old ty_old rfn_old) as
         (ot & Hot_field & Hmeta_field & Hhas & _); [done | exact Hfield_old | done |].
       destruct (decode_struct_fields_lookup_decode sl ots (sl_members sl)
         (reshape (ly_size <$> (sl_members sl).*2) v) fields 0 st k v_old n ly_old ot)
         as (ov' & Hov_lookup & Hov_dec); [done | done | done | by rewrite Nat.add_0_l |].
-      rewrite Hfield_new in Hov_lookup. injection Hov_lookup as ->.
+      destruct (decode_struct_fields_lookup_decode sl ots (sl_members sl)
+        (reshape (ly_size <$> (sl_members sl).*2) v') fields 0 st k v_new n ly_old ot)
+        as (ov_new & Hov_lookup' & Hov_dec'); [exact Hdec_fields' | done | done | by rewrite Nat.add_0_l |].
+      rewrite Hov_lookup in Hov_lookup'. injection Hov_lookup' as ->.
       iExists r', ly0. iFrame "Hrfn". iSplitR; first done. iSplitR; first done.
-      iApply (ty_encode_compat _ ty_old ot st π r' v_old ov' with "Hown"); done.
-    - rewrite Hmember_old in Hmember_new. injection Hmember_new as [= -> _]. done.
-    - rewrite Hmember_old in Hmember_new. injection Hmember_new as [= <- _]. done.
+      iApply (ty_decode_compat _ ty_old ot st π r' v_old v_new with "Hown"); [done | done |].
+      split; first by rewrite Hov_dec Hov_dec'.
+      eauto.
     - unfold struct_make_uninit_type in *.
-      rewrite Hmember_old in Hmember_new. injection Hmember_new as [= _ <-].
       match goal with | H : existT _ _ = existT _ _ |- _ => rename H into Heq end.
       injection Heq => Heq1 Heq2 ?. subst.
       apply existT_inj in Heq1. apply existT_inj in Heq2. subst.
       rewrite /struct_own_el_val /=.
       iExists r', ly0. iFrame "Hrfn". iSplitR; first done. iSplitR; first done.
       rewrite uninit_own_spec. iSplitR; first done. iExists ly0.
-      iPureIntro. rewrite /has_layout_val length_replicate.
+      iPureIntro.
       move: Hlook. rewrite Hmember_old /= => [= ->].
       simpl in *. apply syn_type_has_layout_untyped_inv in Hst.
       opose proof* syn_type_has_layout_literal_inv as (Heq' & _); first apply Hst.
-      subst ly0. done.
+      subst ly0. split; first done. rewrite /has_layout_val.
+      eapply reshape_lookup_length; [| |exact Hv_new].
+      { rewrite /has_layout_val in Hly'. exact Hly'. }
+      rewrite list_lookup_fmap. by rewrite list_lookup_fmap Hmember_old.
   Qed.
 
   Definition struct_t_shr_def {rts : list RT} (sls : struct_layout_spec) (tys : hlist type rts) κ π (r : plistRT rts) m l : iProp Σ :=
@@ -691,7 +713,7 @@ Section structs.
   Next Obligation.
     rewrite struct_t_own_val_unfold.
     iIntros (rts sls tys ot st π r v _ Hot) "Hv".
-    destruct ot as [ | | | sl' ots | ? ? ? | | ]; try done.
+    destruct ot as [ | | | | sl' ots | ? ? ? | | ]; try done.
     - pose proof Hot as Hot_struct.
       destruct Hot as (_ &  Halg & _ & _ & _).
       iDestruct "Hv" as "(%sl & %Hmeta & %Halg' & %Hlen & %Hly & Hmem)".
@@ -706,15 +728,20 @@ Section structs.
       simp decode_op_val. rewrite bool_decide_true; done.
   Qed.
   Next Obligation.
-    (* use struct_t_encode_compat_copy *)
-    iIntros (rts sls tys ot st π r v ov _ Hot Hdec) "Hv".
-    destruct ot as [ | | | sl ots | ? ? ? | ly | ]; try done.
+    iIntros (rts sls tys ot st π r v v' _ Hot Hsame) "Hv".
+    destruct ot as [ | | | | sl ots | ? ? ? | ly | ]; try done.
     - pose proof Hot as Hot_struct.
       destruct Hot as (_ & _ & _ & _ & _).
-      iApply (struct_t_encode_compat_copy π sls sl tys ots st r v ov with "Hv"); [exact Hot_struct | done].
+      iApply (struct_t_decode_compat_copy π sls sl tys ots st r v v' with "Hv"); [exact Hot_struct | done].
     - destruct Hot as (sl & Halg & ->).
+      pose proof Hsame as Hsame_at.
+      destruct Hsame as [_ [ov Hdec]].
+      pose proof Hdec as Hdec'.
       simp decode_op_val in Hdec. case_bool_decide; last done.
-      injection Hdec as <-. done.
+      injection Hdec as <-.
+      apply is_same_decoded_val_at_untyped_inv in Hsame_at; [subst; done | done |].
+      pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame_at) as Hly'.
+      exact Hly'.
   Qed.
   Next Obligation.
     intros ??? ly _ Hst.
@@ -847,7 +874,7 @@ Section structs.
     is_struct_ot sls (happly Ts ty') ot .
   Proof.
     intros Hproper.
-    destruct ot as [ | | | sl ots | ? ? ? | ly | ] => //=.
+    destruct ot as [ | | | | sl ots | ? ? ? | ly | ] => //=.
     apply and_proper => Hlen.
     (*apply and_proper => Hmt.*)
     apply and_proper => Halg.

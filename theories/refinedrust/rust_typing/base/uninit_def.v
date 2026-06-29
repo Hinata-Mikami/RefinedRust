@@ -45,10 +45,11 @@ Section uninit.
     done.
   Qed.
   Next Obligation.
-    simpl. iIntros (st ot st' π [] v ov (ly & Hst & Hot) Hdec) "(%ly' & %Hst' & %Hly')".
+    simpl. iIntros (st ot st' π [] v ov (ly & Hst & Hot) Hsame) "(%ly' & %Hst' & %Hly')".
     subst ot.
-    simp decode_op_val in Hdec.
-    case_bool_decide; simplify_eq/=; eauto.
+    iExists ly. iPureIntro. split; first done.
+    pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly.
+    rewrite /has_layout_val /= in Hly. done.
   Qed.
   Next Obligation.
     intros st ly Hst.

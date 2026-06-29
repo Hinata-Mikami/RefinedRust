@@ -11,15 +11,24 @@ Section alias.
   Context `{!typeGS Σ}.
 
   Definition alias_ptr_own_val_def (π : thread_id) (l : loc) (v : val) : iProp Σ :=
-    ⌜val_to_loc v = Some l⌝%I.
+    ⌜val_decodes_to_loc v l⌝%I.
   Definition alias_ptr_own_val_aux : seal (@alias_ptr_own_val_def).
   Proof. by eexists. Qed.
   Definition alias_ptr_own_val := alias_ptr_own_val_aux.(unseal).
   Definition alias_ptr_own_val_unfold : @alias_ptr_own_val = @alias_ptr_own_val_def := alias_ptr_own_val_aux.(seal_eq).
 
-  Lemma alias_ptr_own_val_to_eq π l v :
-    alias_ptr_own_val π l v -∗ ⌜val_to_loc v = Some l⌝.
+  Lemma alias_ptr_own_val_to_decodes π l v :
+    alias_ptr_own_val π l v -∗ ⌜val_decodes_to_loc v l⌝.
   Proof. rewrite alias_ptr_own_val_unfold. iIntros "%Hv". done. Qed.
+
+  Lemma val_decodes_to_loc_in_usize v l :
+    val_decodes_to_loc v l →
+    l.(loc_a) ∈ USize.
+  Proof.
+    intros Hdec. specialize (Hdec inhabitant).
+    pose proof (decode_op_val_has_type _ _ _ _ Hdec) as Hty.
+    inversion Hty; done.
+  Qed.
 
   Program Definition alias_ptr_t : type locRT := {|
     st_own π (l : loc) v :=
@@ -31,7 +40,7 @@ Section alias.
     rewrite alias_ptr_own_val_unfold.
     iIntros (π l v Hv). iExists void*.
     iPureIntro. split; first by apply syn_type_has_layout_ptr.
-    by apply val_to_loc_length.
+    by apply val_decodes_to_loc_length in Hv.
   Qed.
   Next Obligation.
     unfold is_ptr_ot.
@@ -40,14 +49,25 @@ Section alias.
     - by apply syn_type_has_layout_ptr.
     - subst. by apply syn_type_has_layout_ptr.
   Qed.
+  Next Obligation.
+    unfold is_ptr_ot.
+    intros ot Hot. destruct ot; done.
+  Qed.
   Next Obligation. rewrite alias_ptr_own_val_unfold. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     rewrite alias_ptr_own_val_unfold.
-    iIntros (ot st π l v Hot) "Hv".
-    simpl in Hot.
-    iPoseProof (mem_cast_compat_loc (λ v, ⌜val_to_loc v = Some l⌝)%I with "Hv") as "%Hid"; first done.
-    { iIntros "->". eauto. }
-    rewrite Hid. done.
+    iIntros (ot st π l v Hot) "%Hv".
+    iPureIntro.
+    destruct ot as [| | | | | |ly| ]; simpl in Hot; try done.
+    - exists (OVPtr l). apply Hv.
+    - subst ly. exists (OVUntyped void* v). simp decode_op_val.
+      rewrite bool_decide_true; first done.
+      by apply val_decodes_to_loc_length in Hv.
+  Qed.
+  Next Obligation.
+    rewrite alias_ptr_own_val_unfold.
+    iIntros (ot st π l v v' Hot Hsame) "%Hv".
+    iPureIntro. by eapply val_decodes_to_loc_same_decoded.
   Qed.
   Next Obligation.
     intros ly Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
@@ -76,7 +96,7 @@ Section rules.
     iIntros "(<- & -> & $)".
     unfold CanSolve in *.
     rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro.
-    apply val_to_loc_Some_l2v. done.
+    by apply l2v_decodes_to_loc.
   Qed.
   Definition alias_ptr_simplify_goal_fast_inst := [instance @alias_ptr_simplify_goal_fast with 0%N].
   Global Existing Instance alias_ptr_simplify_goal_fast_inst.
@@ -90,7 +110,7 @@ Section rules.
     iIntros "(-> & -> & %a & %b & Hlb & $)".
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro.
-    by apply val_to_loc_Some_l2v.
+    by apply l2v_decodes_to_loc.
   Qed.
   Definition alias_ptr_simplify_goal_inst := [instance @alias_ptr_simplify_goal with 1%N].
   Global Existing Instance alias_ptr_simplify_goal_inst.
@@ -102,22 +122,22 @@ Section rules.
     iIntros (??????) "Hv".
     rewrite /ty_own_val/= alias_ptr_own_val_unfold.
     iDestruct "Hv" as "(-> & %Hv)".
-    specialize (val_to_loc_Some_inv _ _ Hv) as [_ Hv'].
-    iModIntro. iPureIntro. split_and!; done.
+    iModIntro. iPureIntro.
+    split; first done.
+    by apply val_decodes_to_loc_in_usize in Hv.
   Qed.
 
   (* In case we introduce a value, override and get something stronger *)
   Global Program Instance learn_from_hyp_alias_ptr v π m l :
     LearnFromHyp (v ◁ᵥ{π, m} l @ alias_ptr_t) | 10 :=
-    {| learn_from_hyp_Q := ⌜m = MetaNone⌝ ∗ ⌜v = l2v l⌝ ∗ ⌜l.(loc_a) ∈ USize⌝ |}.
+    {| learn_from_hyp_Q := ⌜m = MetaNone⌝ ∗ ⌜l.(loc_a) ∈ USize⌝ |}.
   Next Obligation.
     iIntros (??????) "Hv".
     rewrite /ty_own_val/= alias_ptr_own_val_unfold.
     iDestruct "Hv" as "(-> & %Hv)".
     iModIntro. iPureIntro.
-    specialize (val_to_loc_Some_inv _ _ Hv) as [_ Hv'].
     split_and!; try done.
-    by rewrite (l2v_correct' _ v).
+    by apply val_decodes_to_loc_in_usize in Hv.
   Qed.
 End rules.
 
@@ -182,7 +202,7 @@ Section cast.
     ⊢ typed_un_op E L f v (v ◁ᵥ{π, MetaNone} l @ alias_ptr_t)%I (CastOp (IntOp USize)) PtrOp T.
   Proof.
     rewrite /ty_own_val/= alias_ptr_own_val_unfold.
-    iIntros "(-> & HT) (_ & %Hv) %Φ #CTX #HE HL Hf HΦ".
+    iIntros "(-> & HT) (_ & _) %Φ #CTX #HE HL Hf HΦ".
     specialize (val_to_loc_Some_inv _ _ Hv) as [_ Husize].
     odestruct (val_of_Z_is_Some _ _ _) as (? & ?); first apply Husize.
     iApply wp_cast_ptr_int; [done.. | ].
@@ -228,7 +248,7 @@ Section cast.
     iApply ("HΦ" with "HL Hf [] (HT Hl2)") => //.
 
     rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR.
-    iPureIntro. by apply val_to_of_loc.
+    iPureIntro. apply val_to_loc_decodes_to_loc. by apply val_to_of_loc.
   Qed.
   Definition type_cast_int_ptr_inst := [instance @type_cast_int_ptr].
   Global Existing Instance type_cast_int_ptr_inst.
@@ -253,9 +273,9 @@ Section place.
     iApply typed_place_ofty_access_val_owned. { rewrite ty_has_op_type_unfold; done. }
     iIntros (? v ?) "Hv !>". rewrite /ty_own_val /=.
     iDestruct "Hv" as "(_ & Hv)".
-    iPoseProof (alias_ptr_own_val_to_eq with "Hv") as "%Hv".
+    iPoseProof (alias_ptr_own_val_to_decodes with "Hv") as "%Hv".
     iExists l2, _, _, _, _.
-    rewrite (l2v_correct' _ v); last done. iR.
+    iR.
     iFrame "Hv Hl2 HP". done.
   Qed.
   Definition typed_place_ofty_alias_ptr_owned_inst := [instance @typed_place_ofty_alias_ptr_owned].
@@ -278,9 +298,9 @@ Section place.
     iApply typed_place_ofty_access_val_uniq. { rewrite ty_has_op_type_unfold; done. } iSplitR; first done.
     iIntros (? v ?) "Hv !>". rewrite /ty_own_val /=.
     iDestruct "Hv" as "(_ & Hv)".
-    iPoseProof (alias_ptr_own_val_to_eq with "Hv") as "%Hv".
+    iPoseProof (alias_ptr_own_val_to_decodes with "Hv") as "%Hv".
     iExists l2, _, _, _, _.
-    rewrite (l2v_correct' _ v); last done. iR.
+    iR.
     iFrame "Hv Hl2 HP". done.
   Qed.
   Definition typed_place_ofty_alias_ptr_uniq_inst := [instance @typed_place_ofty_alias_ptr_uniq].
@@ -303,9 +323,9 @@ Section place.
     iApply typed_place_ofty_access_val_shared. { rewrite ty_has_op_type_unfold; done. } iSplitR; first done.
     iIntros (? v ?) "Hv !>". rewrite /ty_own_val /=.
     iDestruct "Hv" as "(_ & Hv)".
-    iPoseProof (alias_ptr_own_val_to_eq with "Hv") as "%Hv".
+    iPoseProof (alias_ptr_own_val_to_decodes with "Hv") as "%Hv".
     iExists l2, _, _, _, _.
-    rewrite (l2v_correct' _ v); last done. iR.
+    iR.
     iFrame "Hv Hl2 HP". done.
   Qed.
   Definition typed_place_ofty_alias_ptr_shared_inst := [instance @typed_place_ofty_alias_ptr_shared].
@@ -512,7 +532,7 @@ Section alias_ltype.
       iApply logical_step_intro. iExists _, _, _, _, _, _, _. iFrame.
       iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Husize".
       rewrite !ltype_own_alias_unfold /alias_lty_own.
-      iSplitL. { rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro. by apply val_to_loc_Some_l2v. }
+      iSplitL. { rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro. by apply l2v_decodes_to_loc. }
       iSplitL. { eauto 8 with iFrame. }
       iSplitR. { eauto 8 with iFrame. }
       done.
@@ -520,7 +540,7 @@ Section alias_ltype.
       iSpecialize ("HT" with "[//]").
       iApply logical_step_intro. iExists _, _, _, _, _, _, _. iFrame.
       iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Husize".
-      iSplitL. { rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro. by apply val_to_loc_Some_l2v. }
+      iSplitL. { rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro. by apply l2v_decodes_to_loc. }
       rewrite !ltype_own_alias_unfold /alias_lty_own.
       iSplitL. { eauto 8 with iFrame. }
       iSplitR. { eauto 8 with iFrame. }
@@ -550,7 +570,7 @@ Section alias_ltype.
     iPoseProof (ltype_own_make_alias with "Hl") as "(Hl & Halias)".
     iExists _, _, _, _, _, _, _. iFrame. simp_ltypes.
     iL.
-    rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro. by apply val_to_loc_Some_l2v.
+    rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro. by apply l2v_decodes_to_loc.
   Qed.
   Definition typed_addr_of_mut_end_owned_inst := [instance @typed_addr_of_mut_end_owned].
   Global Existing Instance typed_addr_of_mut_end_owned_inst.
@@ -581,7 +601,7 @@ Section alias_ltype.
     iExists _, _, _, _, _, _, _. iFrame. simp_ltypes.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Husize".
     iL.
-    rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro. by apply val_to_loc_Some_l2v.
+    rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro. by apply l2v_decodes_to_loc.
   Qed.
 
   Lemma typed_addr_of_mut_end_uniq_ofty π E L l {rt} (ty : type rt) r κ γ bmin (T : typed_addr_of_mut_end_cont_t) :

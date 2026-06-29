@@ -16,18 +16,17 @@ Section deinit.
     iIntros (?) "Hl".
     rewrite ltype_own_shr_ref_unfold /shr_ltype_own.
     iDestruct "Hl" as "(%ly & %Halg & % & Hlb & %r' & ? & Hb)".
-    iMod (fupd_mask_mono with "Hb") as "(%l' & Hl & Hb)"; first done.
+    iMod (fupd_mask_mono with "Hb") as "(%l' & (%vi & Hl & %Hdec) & Hb)"; first done.
     iPoseProof (ltype_own_addr_in_usize with "Hb") as "%".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iModIntro. iExists ly. simpl. iR.
     iR. iR.
     iSplitL "Hlb"; first by iFrame.
     iExists _. iR.
-    iModIntro. iExists l'. iFrame.
+    iModIntro. iExists vi. iFrame.
     rewrite /ty_own_val/=. iR.
     iExists _.
-    iApply type_loc_value.
-    by apply val_to_loc_Some_l2v.
+    by iApply type_loc_value.
   Qed.
 End deinit.
 

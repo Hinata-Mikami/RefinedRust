@@ -180,6 +180,10 @@ Section array.
     (*- rewrite /ly_size /mk_array_layout in Hsz. simpl in Hsz. lia.*)
   Qed.
   Next Obligation.
+    intros len ty ot Hot.
+    destruct ot; simpl in *; done.
+  Qed.
+  Next Obligation.
     iIntros (len ty π r m v) "_". done.
   Qed.
   Next Obligation.
@@ -292,10 +296,26 @@ Section array.
     iIntros "Hb". iPoseProof (big_sepL2_const_sepL_l with "Hb") as "(_ & $)".
   Qed.
   Next Obligation.
-    iIntros (len ty ot st π r m v Hot) "Hb".
-    destruct ot as [ | | | |  ? ? ? | ly' | ]; try done.
-    (*destruct Hot as (ly0 & -> & Hot & Hwf).*)
-    (* TODO maybe the second case should really change once we support an ArrayOpType? *)
+    intros len ty ot st π r v _ Hot.
+    rewrite /array_t_own_val array_t_own_val_aux.(seal_eq) /array_t_own_val_def.
+    iIntros "Hb".
+    iDestruct "Hb" as "(%ly & _ & %Hst & %Hsz & %Hlen & %Hly & Hb)".
+    destruct ot as [ | | | | | ? ? ? | ly' | ]; try done.
+    iExists (OVUntyped ly' v).
+    iPureIntro.
+    pose proof (syn_type_has_layout_array (ty_syn_type ty MetaNone) len ly (mk_array_layout ly len) eq_refl Hst Hsz) as Hst_array.
+    assert (ly' = mk_array_layout ly len) as ->.
+    { by eapply syn_type_has_layout_inj. }
+    simp decode_op_val. rewrite bool_decide_true; first done.
+    exact Hly.
+  Qed.
+  Next Obligation.
+    iIntros (len ty ot st π r v v' _ Hot Hsame) "Hv".
+    destruct ot as [ | | | | | ? ? ? | ly | ]; try done.
+    pose proof (is_same_decoded_val_at_has_layout_l _ _ _ _ Hsame) as Hly.
+    pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly'.
+    pose proof (is_same_decoded_val_at_untyped_inv _ _ _ _ Hly Hly' Hsame) as ->.
+    done.
   Qed.
   Next Obligation.
     intros len ty ly _ Hst.
@@ -344,7 +364,7 @@ Section ne.
     - intros ?? ->. done.
     - rewrite ty_has_op_type_unfold/=.
       unfold is_array_ot.
-      intros ?? Hst ? Hot.
+      intros ?? _ Hst Hot.
       intros ot .
       destruct ot; try done.
       rewrite Hst. done.

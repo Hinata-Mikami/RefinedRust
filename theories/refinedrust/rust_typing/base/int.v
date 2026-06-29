@@ -58,11 +58,17 @@ Section int.
       done.
   Qed.
   Next Obligation.
-    intros it ot st π r v ov Hot Hdec.
+    intros it ot st π r v v' Hot Hsame.
     rewrite int_own_val_unfold.
-    simpl. iIntros "%Hv".
-    iPureIntro. eapply encode_decode_compat_int; try done.
-    done.
+    simpl. iIntros "%Hv". iPureIntro.
+    destruct ot; simpl in Hot; try done.
+    - subst. destruct Hsame as [Heq _].
+      simp decode_op_val in Heq. rewrite Hv in Heq.
+      destruct (val_to_Z v' i) eqn:Hz'; simpl in Heq; inversion Heq; subst; done.
+    - subst. pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly'.
+      rewrite /has_layout_val /= in Hly'.
+      pose proof (is_same_decoded_val_at_untyped_inv st v v' (it_layout it) ltac:(by eapply val_to_Z_length) Hly' Hsame) as <-.
+      done.
   Qed.
   Next Obligation.
     intros ?? Hst. apply syn_type_has_layout_int_inv in Hst as ->.
@@ -142,10 +148,17 @@ Section boolean.
       done.
   Qed.
   Next Obligation.
-    intros ot st π r v ov Hot Hdec.
+    intros ot st π r v v' Hot Hsame.
     rewrite bool_own_val_unfold.
-    simpl. iIntros "%Hv".
-    iPureIntro. by eapply encode_decode_compat_bool.
+    simpl. iIntros "%Hv". iPureIntro.
+    destruct ot; simpl in Hot; try done.
+    - destruct Hsame as [Heq _].
+      simp decode_op_val in Heq. rewrite Hv in Heq.
+      destruct (val_to_bool v') eqn:Hb'; simpl in Heq; inversion Heq; subst; done.
+    - subst. pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly'.
+      rewrite /has_layout_val /= in Hly'.
+      pose proof (is_same_decoded_val_at_untyped_inv st v v' U8 ltac:(by eapply val_to_bool_length) Hly' Hsame) as <-.
+      done.
   Qed.
   Next Obligation.
     intros ? Hst. apply syn_type_has_layout_bool_inv in Hst as ->.
@@ -212,10 +225,17 @@ Section char.
       rewrite Hv. done.
   Qed.
   Next Obligation.
-    intros ot st π r v ov Hot Hdec.
+    intros ot st π r v v' Hot Hsame.
     rewrite char_own_val_unfold.
-    simpl. iIntros "%Hv".
-    iPureIntro. by eapply encode_decode_compat_char.
+    simpl. iIntros "%Hv". iPureIntro.
+    destruct ot; simpl in Hot; try done.
+    - subst. pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly'.
+      rewrite /has_layout_val /= in Hly'.
+      pose proof (is_same_decoded_val_at_untyped_inv st v v' U32 ltac:(by eapply val_to_char_length) Hly' Hsame) as <-.
+      done.
+    - destruct Hsame as [Heq _].
+      simp decode_op_val in Heq. rewrite Hv in Heq.
+      destruct (val_to_char v') eqn:Hz'; simpl in Heq; inversion Heq; subst; done.
   Qed.
   Next Obligation.
     intros ? Hst. apply syn_type_has_layout_char_inv in Hst as ->.

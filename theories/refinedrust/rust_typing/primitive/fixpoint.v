@@ -152,6 +152,9 @@ Section fixpoint_def.
     eapply _ty_op_type_stable.
   Qed.
   Next Obligation.
+    eapply _ty_op_type_wf.
+  Qed.
+  Next Obligation.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
     eapply @limit_preserving_compl.
     - eapply bi.limit_preserving_entails; first apply _.
@@ -224,12 +227,27 @@ Section fixpoint_def.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
     eapply @limit_preserving_compl.
     - eapply bi.limit_preserving_entails; first apply _.
+      intros ? [] [] Heq. f_equiv. eapply Heq.
+    - intros ?.
+      simpl. eapply _ty_decodable.
+      + rewrite (type_ctr_metadata (Fn (S (S n))) inhabitant). done.
+      + rewrite -ty_has_op_type_unfold in H0.
+        rewrite <- (@ty_has_op_type_unfold Σ _).
+        eapply Fn_has_op_type_const. done.
+  Qed.
+  Next Obligation.
+    intros. unfold F_ty_own_val_ty_shr_fixpoint.
+    eapply @limit_preserving_compl.
+    - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. f_equiv; first eapply Heq.
       eapply Heq.
     - intros ?.
-      simpl. eapply _ty_memcast_compat.
-      rewrite -ty_has_op_type_unfold.
-      eapply Fn_has_op_type_const. by rewrite ty_has_op_type_unfold.
+      simpl. eapply (_ty_decode_compat rt (Fn (S (S (S n)))) ot st π r v v').
+      + rewrite (type_ctr_metadata (Fn (S (S n))) inhabitant). done.
+      + rewrite -ty_has_op_type_unfold in H0.
+        rewrite <- (@ty_has_op_type_unfold Σ _).
+        eapply Fn_has_op_type_const. done.
+      + done.
   Qed.
   Next Obligation.
     intros ly ? Hst.

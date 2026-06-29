@@ -20,7 +20,7 @@ Section subltype.
     iExists ly. iFrame. rewrite -?Hd -?Hly_eq. iFrame.
     iDestruct "Hrfn" as "->".
     iExists r2. iSplitR; first done. iModIntro. iMod "Hb".
-    iDestruct "Hb" as "(%li & Hs & Hb)". iModIntro. iExists li. iFrame. iNext.
+    iDestruct "Hb" as "(%vi & %li & Hs & %Hdec & Hb)". iModIntro. iExists vi, li. iFrame. iSplitR; first done. iNext.
     iDestruct "Heq" as "(Hi1 & _)".
     iApply ltype_own_shr_mono; last by iApply "Hi1". done.
   Qed.
@@ -48,7 +48,7 @@ Section subltype.
     iIntros "(%ly & ? & ? & Hlb & %ri & Hrfn & #Hb)".
     iExists ly. iFrame. rewrite -?Hd -?Hly_eq. iFrame.
     iModIntro. iMod "Hb".
-    iDestruct "Hb" as "(%li & Hs & Hb)". iModIntro. iExists li. iFrame. iNext.
+    iDestruct "Hb" as "(%vi & %li & Hs & %Hdec & Hb)". iModIntro. iExists vi, li. iFrame. iSplitR; first done. iNext.
     iDestruct ("Heq" $! _) as "(Hi1 & _)".
     iApply ltype_own_shr_mono; last by iApply "Hi1". done.
   Qed.
@@ -243,9 +243,9 @@ Section acc.
     rrust_ctx -∗
     l ◁ₗ[π, Owned] PlaceIn (r) @ ShrLtype lt κ' -∗
     ⌜l `has_layout_loc` void*⌝ ∗ loc_in_bounds l 0 (ly_size void*) ∗ |={F}=>
-      ∃ (l' : loc), l ↦ l' ∗ l' ◁ₗ[π, Shared κ'] r @ lt ∗
+      ∃ (l' : loc), ptr_loc_own l l' ∗ l' ◁ₗ[π, Shared κ'] r @ lt ∗
       (∀ rt' (lt2 : ltype rt') r2,
-        l ↦ l' -∗
+        ptr_loc_own l l' -∗
         l' ◁ₗ[π, Shared κ'] r2 @ lt2 ={F}=∗
         l ◁ₗ[π, Owned] #r2 @ ShrLtype lt2 κ').
   Proof.
@@ -273,11 +273,11 @@ Section acc.
     (q.[κ] ={lftE}=∗ R) -∗
     l ◁ₗ[π, Uniq κ γ] #r @ ShrLtype lt κ' -∗
     ⌜l `has_layout_loc` void*⌝ ∗ loc_in_bounds l 0 (ly_size void*) ∗ |={F}=>
-      ∃ l' : loc, l ↦ l' ∗ (l' ◁ₗ[π, Shared κ'] r @ lt) ∗
+      ∃ l' : loc, ptr_loc_own l l' ∗ (l' ◁ₗ[π, Shared κ'] r @ lt) ∗
       logical_step F
       ( (* weak update *)
        (∀ (bmin : place_update_kind) (lt2 : ltype rt) r2,
-         l ↦ l' -∗
+          ptr_loc_own l l' -∗
          l' ◁ₗ[π, Shared κ'] r2 @ lt2 -∗
          bmin ⪯ₚ UpdUniq [κ] -∗
          typed_place_cond bmin lt lt2 ={F}=∗
@@ -286,7 +286,7 @@ Section acc.
         typed_place_cond bmin (ShrLtype lt κ') (ShrLtype lt2 κ')) ∧
       (* strong update, go to Opened *)
       (∀ rt2 (lt2 : ltype rt2) r2,
-        l ↦ l' -∗
+        ptr_loc_own l l' -∗
         ⌜ltype_st lt2 = ltype_st lt⌝ -∗
         l' ◁ₗ[π, Shared κ'] r2 @ lt2 ={F}=∗
         l ◁ₗ[π, Uniq κ γ] #r2 @ OpenedLtype (ShrLtype lt2 κ') (ShrLtype lt κ') (ShrLtype lt κ')
@@ -323,7 +323,7 @@ Section acc.
       iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
       iDestruct "Hcred" as "(Hcred1 & Hcred)".
       (* Throw away the existing coring viewshift [Hx] *)
-      set (V := (∃ r', gvar_auth γ r' ∗ (|={lftE}=> ∃ (l' : loc), l ↦ l' ∗ ltype_own lt2 (Shared κ') π r' l'))%I).
+      set (V := (∃ r', gvar_auth γ r' ∗ (|={lftE}=> ∃ (l' : loc), ptr_loc_own l l' ∗ ltype_own lt2 (Shared κ') π r' l'))%I).
       iMod ("Hb_cl" $! V with "[] Hcred1 [Hauth Hl Hb]") as "(Hb & Htok)".
       { iNext. iIntros "(%r' & Hauth & Hb) Hdead".
         iModIntro. iNext. iExists r'. iFrame "Hauth".
@@ -388,10 +388,11 @@ Section acc.
     q.[κ] -∗
     l ◁ₗ[π, Shared κ] #r @ ShrLtype lt κ' -∗
     ⌜l `has_layout_loc` void*⌝ ∗ loc_in_bounds l 0 (ly_size void*) ∗ |={F}=>
-      ∃ (l' : loc) q', l ↦{q'} l' ∗ (|={F}▷=> l' ◁ₗ[π, Shared κ'] r @ lt) ∗
+      ∃ (vi : val) (li : loc) q', l ↦{q'} vi ∗ ⌜val_decodes_to_loc vi li⌝ ∗
+        (|={F}▷=> li ◁ₗ[π, Shared κ'] r @ lt) ∗
     (∀ rt' (lt' : ltype rt') r',
-      l ↦{q'} l' -∗
-      l' ◁ₗ[π, Shared κ'] r' @ lt' -∗ |={F}=>
+      l ↦{q'} vi -∗
+      li ◁ₗ[π, Shared κ'] r' @ lt' -∗ |={F}=>
       l ◁ₗ[π, Shared κ] #r' @ ShrLtype lt' κ' ∗
       q.[κ]).
   Proof.
@@ -399,9 +400,10 @@ Section acc.
     iDestruct "Hb" as "(%ly & %Hst & %Hly & #Hlb & %r' & -> & #Hb)".
     apply syn_type_has_layout_ptr_inv in Hst as ?. subst ly.
     iR. iR.
-    iMod (fupd_mask_mono with "Hb") as "(%li & #Hf & #Hl)"; first done.
+    iMod (fupd_mask_mono with "Hb") as "(%vi & %li & #Hf & %Hdec & #Hl)"; first done.
     iMod (frac_bor_acc with "LFT Hf Hκ") as "(%q' & >Hpts & Hclf)"; first done.
-    iModIntro. iExists _, _. iFrame.
+    iModIntro. iExists vi, li, _. iFrame.
+    iSplitR; first done.
     iSplitR. { iApply step_fupd_intro; first done. auto. }
     iIntros (rt' lt' r'') "Hpts #Hl'".
     iMod ("Hclf" with "Hpts") as "Htok".

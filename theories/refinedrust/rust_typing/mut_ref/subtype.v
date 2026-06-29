@@ -44,9 +44,9 @@ Section subtype.
     l ◁ₗ{π, m, κ} (#r2, γ) @ mut_ref κ1 ty2.
   Proof.
     rewrite /ty_shr/= mut_ref_shr_unfold.
-    iIntros "%Hcomp #Hincl #Ht12 (%li & %ly & %r' & -> & ? & <- & Hs & %Halg & ? & ? & ? & Hsc & Hb)".
+    iIntros "%Hcomp #Hincl #Ht12 (%vi & %li & %ly & %r' & -> & ? & <- & Hs & %Halg & ? & ? & ? & ? & Hsc & Hb)".
     iDestruct "Ht12" as "(#Hsceq & #Hv12 & #Hs12)".
-    iExists li, ly, r2. iFrame. iR. iR.
+    iExists vi,li, ly, r2. iFrame. iR. iR.
     iSplitR. { iPureIntro. by apply Hcomp. }
     iFrame.
     iSplitL "Hsc". { by iApply "Hsceq". }
@@ -66,9 +66,9 @@ Section subtype.
   Proof.
     destruct r as [r γ].
     rewrite /ty_shr/= mut_ref_shr_unfold.
-    iIntros "%Hcomp #Hincl #Ht12 (%li & %ly & %r' & -> & ? & ? & Hs & %Halg & ? & ? & ? & Hsc & Hb)".
+    iIntros "%Hcomp #Hincl #Ht12 (%vi & %li & %ly & %r' & -> & ? & ? & Hs & %Halg & ? & ? & ? & ? & Hsc & Hb)".
     iDestruct ("Ht12" $! inhabitant) as "(#Hsceq & _)".
-    iExists li, ly, r'. iFrame.
+    iExists vi, li, ly, r'. iFrame.
     iR.
     iSplitR. { iPureIntro. by apply Hcomp. }
     iFrame.

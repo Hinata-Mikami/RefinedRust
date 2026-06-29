@@ -18,10 +18,10 @@ Section subltype.
     iIntros (π l). rewrite !ltype_own_mut_ref_unfold /mut_ltype_own /=.
     iIntros "(%ly & ? & ? & ? & (%r' & %γ' & %Hrfn & #Hb))".
     iExists ly. iFrame. iExists _, _. iFrame. iSplitR; first done.
-    iModIntro. iMod "Hb" as "(%li & Hs & Hb)". iModIntro.
+    iModIntro. iMod "Hb" as "(%vi & %li & Hs & %Hdec & Hb)". iModIntro.
     iDestruct ("Heq") as "(#Hi1 & #Hc1)".
     injection Hrfn as -> ->.
-    iExists li. iFrame. iApply ltype_own_shr_mono; last by iApply "Hi1".
+    iExists vi, li. iFrame. iSplitR; first done. iApply ltype_own_shr_mono; last by iApply "Hi1".
     iApply lft_intersect_mono; first done.
     iApply lft_incl_refl.
   Qed.
@@ -48,9 +48,9 @@ Section subltype.
     iIntros (π l). rewrite !ltype_own_mut_ref_unfold /mut_ltype_own /=.
     iIntros "(%ly & ? & ? & ? & (%r' & %γ & Hrfn & #Hb))".
     iExists ly. iFrame.
-    iModIntro. iMod "Hb" as "(%li & Hs & Hb)". iModIntro.
+    iModIntro. iMod "Hb" as "(%vi & %li & Hs & %Hdec & Hb)". iModIntro.
     iDestruct ("Heq" $! r') as "(#Hi1 & #Hc1)".
-    iExists li. iFrame. iApply ltype_own_shr_mono; last by iApply "Hi1".
+    iExists vi, li. iFrame. iSplitR; first done. iApply ltype_own_shr_mono; last by iApply "Hi1".
     iApply lft_intersect_mono; first done.
     iApply lft_incl_refl.
   Qed.
@@ -79,7 +79,7 @@ Section subltype.
     injection Hrfn as <- <-.
     iModIntro.
     iExists ly. iFrame. iExists γ, r2. iSplitR; first done.
-    iMod "Hl" as "(%l' & Hl & Hb)".
+    iMod "Hl" as "(%l' & Hptr & Hb)".
     iExists l'. iFrame. iDestruct "Heq" as "(Heq & _)".
     iApply ltype_own_uniq_mono; last by iApply "Heq". done.
   Qed.
@@ -106,7 +106,7 @@ Section subltype.
     iIntros "(%ly & ? & ? & ? & (%γ' & %r' & Hrfn & Hl))".
     iModIntro.
     iExists ly. iFrame.
-    iMod "Hl" as "(%l' & Hl & Hb)".
+    iMod "Hl" as "(%l' & Hptr & Hb)".
     iExists l'. iFrame. iModIntro.
     iApply ltype_own_uniq_mono; first done.
     iDestruct ("Heq" $! _ _) as "(#Heq' & _)". by iApply "Heq'".
@@ -140,21 +140,21 @@ Section subltype.
     iMod "Hb". iModIntro. iApply (pinned_bor_iff with "[] [] Hb").
     + iNext. iModIntro. iSplit.
       * iIntros "(%r' & Hauth & Hb)"; iExists _; iFrame.
-        iMod "Hb" as "(%l' & Hl & Hb)". iModIntro. iExists _. iFrame.
+        iMod "Hb" as "(%l' & Hptr & Hb)". iModIntro. iExists _. iFrame.
         iDestruct ("Heq" $! _ r'.1) as "((#Hi1 & #Hc1) & (#Hi2 & #Hc2))".
         iApply ltype_own_uniq_mono; last by iApply "Hi1". done.
       * iIntros "(%r' & Hauth & Hb)"; iExists _; iFrame.
-        iMod "Hb" as "(%l' & Hl & Hb)". iModIntro. iExists _. iFrame.
+        iMod "Hb" as "(%l' & Hptr & Hb)". iModIntro. iExists _. iFrame.
         iDestruct ("Heq" $! _ r'.1) as "((#Hi1 & #Hc1) & (#Hi2 & #Hc2))".
         iApply "Hi2". iApply ltype_own_uniq_mono; done.
     + iNext. iModIntro. iSplit.
       * iIntros "(%r' & Hauth & Hb)"; iExists _; iFrame.
-        iMod "Hb" as "(%l' & Hl & Hb)". iModIntro. iExists _. iFrame.
+        iMod "Hb" as "(%l' & Hptr & Hb)". iModIntro. iExists _. iFrame.
         iDestruct ("Heq" $! _ r'.1) as "((#Hi1 & #Hc1) & (#Hi2 & #Hc2))".
         rewrite !ltype_own_core_equiv.
         iApply ltype_own_uniq_mono; last by iApply "Hc1". done.
       * iIntros "(%r' & Hauth & Hb)"; iExists _; iFrame.
-        iMod "Hb" as "(%l' & Hl & Hb)". iModIntro. iExists _. iFrame.
+        iMod "Hb" as "(%l' & Hptr & Hb)". iModIntro. iExists _. iFrame.
         iDestruct ("Heq" $! _ r'.1) as "((#Hi1 & #Hc1) & (#Hi2 & #Hc2))".
         rewrite !ltype_own_core_equiv.
         iApply "Hc2". iApply ltype_own_uniq_mono; done.
@@ -248,10 +248,10 @@ Section access.
     rrust_ctx -∗
     l ◁ₗ[π, Owned] #(r, γ') @ MutLtype lt κ' -∗
     ⌜l `has_layout_loc` void*⌝ ∗ loc_in_bounds l 0 (ly_size void*) ∗ |={F}=>
-      ∃ l' : loc, l ↦ l' ∗ l' ◁ₗ[π, Uniq κ' γ'] r @ lt ∗
+      ∃ l' : loc, ptr_loc_own l l' ∗ l' ◁ₗ[π, Uniq κ' γ'] r @ lt ∗
       logical_step F
       (∀ rt' (lt2 : ltype rt') r2,
-        l ↦ l' -∗
+        ptr_loc_own l l' -∗
         l' ◁ₗ[π, Uniq κ' γ'] r2 @ lt2 ={F}=∗
         l ◁ₗ[π, Owned] #(r2, γ') @ MutLtype lt2 κ').
   Proof.
@@ -278,11 +278,11 @@ Section access.
     (q.[κ] ={lftE}=∗ R) -∗
     l ◁ₗ[π, Uniq κ γ] #(r, γ') @ MutLtype lt κ' -∗
     ⌜l `has_layout_loc` void*⌝ ∗ loc_in_bounds l 0 (ly_size void*) ∗ |={F}=>
-      ∃ l' : loc, l ↦ l' ∗ (l' ◁ₗ[π, Uniq κ' γ'] r @ lt) ∗
+      ∃ l' : loc, ptr_loc_own l l' ∗ (l' ◁ₗ[π, Uniq κ' γ'] r @ lt) ∗
       logical_step F
       ( (* weak update *)
        (∀ bmin (lt2 : ltype rt) r2,
-        l ↦ l' -∗
+        ptr_loc_own l l' -∗
         l' ◁ₗ[π, Uniq κ' γ'] r2 @ lt2  -∗
         bmin ⪯ₚ UpdUniq [κ] -∗
         typed_place_cond bmin lt lt2 ={F}=∗
@@ -291,7 +291,7 @@ Section access.
         typed_place_cond bmin (MutLtype lt κ') (MutLtype lt2 κ')) ∧
       (* strong update, go to Opened *)
       (∀ rt2 (lt2 : ltype rt2) r2,
-        l ↦ l' -∗
+        ptr_loc_own l l' -∗
         ⌜ltype_st lt2 = ltype_st lt⌝ -∗
         l' ◁ₗ[π, Uniq κ' γ'] r2 @ lt2 ={F}=∗
         l ◁ₗ[π, Uniq κ γ] PlaceIn (r2, γ') @ OpenedLtype (MutLtype lt2 κ') (MutLtype lt κ') (MutLtype lt κ')
@@ -326,7 +326,7 @@ Section access.
       rewrite (UIP_refl _ _ Heq). cbn.
       (* close the borrow *)
       iMod (gvar_update (r2, γ') with "Hauth Hrfn") as "(Hauth & Hrfn)".
-      set (V := (∃ r', gvar_auth γ r' ∗ (|={lftE}=> ∃ (l' : loc), l ↦ l' ∗ ltype_own lt2 (Uniq κ' r'.2) π r'.1 l'))%I).
+      set (V := (∃ r', gvar_auth γ r' ∗ (|={lftE}=> ∃ (l' : loc), ptr_loc_own l l' ∗ ltype_own lt2 (Uniq κ' r'.2) π r'.1 l'))%I).
       iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
       iDestruct "Hcred" as "(Hcred1 & Hcred)".
       iMod ("Hb_cl" $! V with "[] Hcred1 [Hauth Hl Hb]") as "(Hb & Htok)".
@@ -394,10 +394,11 @@ Section access.
     q.[κ] -∗
     l ◁ₗ[π, Shared κ] #(r, γ) @ MutLtype lt κ' -∗
     ⌜l `has_layout_loc` void*⌝ ∗ loc_in_bounds l 0 (ly_size void*) ∗ |={F}=>
-      ∃ (l' : loc) q', l ↦{q'} l' ∗ (|={F}▷=> l' ◁ₗ[π, Shared (κ' ⊓ κ)] r @ lt) ∗
+      ∃ (vi : val) (li : loc) q', l ↦{q'} vi ∗ ⌜val_decodes_to_loc vi li⌝ ∗
+        (|={F}▷=> li ◁ₗ[π, Shared (κ' ⊓ κ)] r @ lt) ∗
     (∀ rt' (lt' : ltype rt') r',
-      l ↦{q'} l' -∗
-      l' ◁ₗ[π, Shared (κ' ⊓ κ)] r' @ lt' -∗ |={F}=>
+      l ↦{q'} vi -∗
+      li ◁ₗ[π, Shared (κ' ⊓ κ)] r' @ lt' -∗ |={F}=>
       l ◁ₗ[π, Shared κ] #(r', γ) @ MutLtype lt' κ' ∗
       q.[κ]).
   Proof.
@@ -406,16 +407,18 @@ Section access.
     injection Ha as <- <-.
     apply syn_type_has_layout_ptr_inv in Hst as ?. subst ly.
     iR. iR.
-    iMod (fupd_mask_mono with "Hb") as "(%li & #Hf & #Hl)"; first done.
+    iMod (fupd_mask_mono with "Hb") as "(%vi & %li & #Hf & %Hdec & #Hl)"; first done.
     iMod (frac_bor_acc with "LFT Hf Hκ") as "(%q' & >Hpts & Hclf)"; first done.
-    iModIntro. iExists _, _. iFrame.
+    iModIntro. iExists vi, li, _. iFrame.
+    iSplitR; first done.
     iSplitR. { iApply step_fupd_intro; first done. auto. }
     iIntros (rt' lt' r'') "Hpts #Hl'".
     iMod ("Hclf" with "Hpts") as "Htok".
     iFrame.
     iModIntro.
     rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
-    iExists void*. iFrame "% #". by iExists _.
+    iExists void*. iFrame "% #". iExists γ. iSplitR; first done.
+    done.
   Qed.
 
 End access.

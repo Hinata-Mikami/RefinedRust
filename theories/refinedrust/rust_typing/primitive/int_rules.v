@@ -75,7 +75,7 @@ Section relop.
     1-2: iPureIntro; by apply: val_to_Z_in_range.
     iApply (wp_binop_det_pure (val_of_bool b)).
     { split.
-      - destruct op => //; inversion 1; simplify_eq; symmetry;
+      - destruct op => //; inversion 1; simplify_eq/=; symmetry;
         by apply val_of_bool_iff_val_of_Z.
       - move => ->. econstructor; [done.. | ].
         by apply val_of_bool_iff_val_of_Z. }
@@ -187,7 +187,7 @@ Section arithop.
   Proof.
     move => Hn1 Hn2 Hn Hsc Hran.
     destruct op => //=; simpl in Hsc, Hran, Hn; destruct_and? => //.
-    all: inversion Hn; simplify_eq.
+    all: inversion Hn; simplify_eq/=.
     - apply (bitwise_op_result_in_range Z.land andb) => //.
       + rewrite Z.land_nonneg; naive_solver.
       + repeat case_bool_decide; try rewrite -> Z.land_neg in *; naive_solver.
@@ -541,7 +541,7 @@ Section bool.
     rewrite /ty_own_val/= bool_own_val_unfold.
     iIntros "%Hop HT (-> & %Hv1) (-> & %Hv2)" (Φ) "#CTX #HE HL Hf HΦ".
     iApply (wp_binop_det_pure (val_of_bool b)).
-    { destruct op, b1, b2; simplify_eq.
+    { destruct op, b1, b2; simplify_eq/=.
       all: split; [ inversion 1; simplify_eq/= | move => -> ]; simplify_eq/=.
       all: try by (symmetry; eapply val_of_bool_iff_val_of_Z).
       all: econstructor => //; case_bool_decide; try done.
@@ -592,7 +592,7 @@ Section bool.
     rewrite /ty_own_val/= bool_own_val_unfold.
     iIntros "%Hop HT (-> & %Hv1) (-> & %Hv2) %Φ #CTX #HE HL Hf HΦ".
     iApply (wp_binop_det_pure (val_of_bool b)).
-    { destruct op, b1, b2; simplify_eq.
+    { destruct op, b1, b2; simplify_eq/=.
       all: split; [ inversion 1; simplify_eq/= | move => -> ]; simplify_eq/=; try done.
       all: eapply ArithOpBB; done. }
     iApply physical_step_intro. iNext.

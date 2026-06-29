@@ -10,7 +10,7 @@ Section mut_ref.
     let '(r, γ) := rγ in
     (∃ (l : loc) (ly : layout),
       ⌜m = MetaNone⌝ ∗
-      ⌜val_to_loc v = Some l⌝ ∗
+      ⌜val_decodes_to_loc v l⌝ ∗
       ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
       ⌜l `has_layout_loc` ly⌝ ∗
       loc_in_bounds l 0 ly.(ly_size) ∗
@@ -25,13 +25,14 @@ Section mut_ref.
 
   Definition mut_ref_shr_def {rt : RT} κ (inner : type rt) κ' π (rγ : place_rfn rt * gname) m (l : loc) : iProp Σ :=
     let '(r, γ) := rγ in
-    (∃ (li : loc) (ly : layout) (r' : rt),
+    (∃ (vi : val) (li : loc) (ly : layout) (r' : rt),
       ⌜m = MetaNone⌝ ∗
       ⌜l `has_layout_loc` void*⌝ ∗
       place_rfn_interp_shared r r' ∗
-        &frac{κ'}(λ q', l ↦{q'} li) ∗
+        &frac{κ'}(λ q', l ↦{q'} vi) ∗
         (* needed explicity because there is a later + fupd over the sharing predicate *)
         ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
+        ⌜val_decodes_to_loc vi li⌝ ∗
         ⌜li `has_layout_loc` ly⌝ ∗
         loc_in_bounds l 0 void*.(ly_size) ∗
         loc_in_bounds li 0 ly.(ly_size) ∗
@@ -73,7 +74,7 @@ Section mut_ref.
     rewrite mut_ref_own_val_unfold.
     iIntros (? κ inner  π [r γ] m v) "(%l & %ly & -> & %Hv & _)".
     iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
-    unfold has_layout_val. apply val_to_loc_length. eexists. done.
+    by apply val_decodes_to_loc_has_layout in Hv.
   Qed.
   Next Obligation.
     intros ??? ot _ Hot => /=. destruct ot => /=//.
@@ -96,7 +97,7 @@ Section mut_ref.
   Qed.
   Next Obligation.
     rewrite mut_ref_shr_unfold.
-    iIntros (??????[r γ] m) "(%li & %ly & %r' & -> & % & ? &  _)".
+    iIntros (??????[r γ] m) "(%vi & %li & %ly & %r' & -> & % & ? &  _)".
     iPureIntro. eexists _. split; last by apply syn_type_has_layout_ptr.
     done.
   Qed.
@@ -200,21 +201,21 @@ Section mut_ref.
     iCombine "Htok Htok2" as "Htok".
     rewrite {2}lft_intersect_comm lft_intersect_assoc.
     iFrame "Htok".
-    iExists l0, ly0, r'. iR.
-    erewrite l2v_correct'; last done. iFrame "Hl".
+    iExists _, l0, ly0, r'. iR.
+    iFrame "Hl".
     apply syn_type_has_layout_ptr_inv in Hst as ->.
     iR. iSplitR. { destruct r; simpl; eauto. }
-    iSplitR; first done. iSplitR; first done.
-    iSplitR. { replace (ly_size void*) with (length v); first done.
-      rewrite (val_to_loc_length v); first done. eexists. done. }
+    iSplitR; first done. iSplitR; first done. iSplitR; first done.
+    iSplitR. { replace (ly_size void*) with (length v); last by eapply val_decodes_to_loc_length.
+      iFrame "Hlb'". }
     iSplitR; first done. iSplitR; first done.
     iNext. iModIntro. iModIntro. done.
   Qed.
   Next Obligation.
     iIntros (? κ inner κ0 κ' π [r γ] m l) "#Hincl".
     rewrite mut_ref_shr_unfold.
-    iIntros "(%li & %ly & %r' & -> & Hly & Hrfn & Hf & ? & ? & ? & ? & ? & #Hb)".
-    iExists li, ly, r'. iR. iFrame.
+    iIntros "(%vi & %li & %ly & %r' & -> & Hly & Hrfn & Hf & ? & ? & ? & ? & ? & ? & #Hb)".
+    iExists vi, li, ly, r'. iR. iFrame.
     iSplitL "Hf". { iApply frac_bor_shorten; done. }
     iNext. iDestruct "Hb" as "#Hb". iModIntro. iMod "Hb". iModIntro.
     iApply ty_shr_mono; last done.
@@ -236,9 +237,9 @@ Section mut_ref.
     iDestruct "Hown" as (l ly) "(%Hmeta & %Hv & _)".
     iPureIntro.
     destruct ot; simpl in *; try done; subst.
-    - eexists (OVPtr _). simp decode_op_val. rewrite Hv. done.
+    - eexists (OVPtr _). apply Hv.
     - eexists (OVUntyped void* v). simp decode_op_val.
-      rewrite bool_decide_true; last by apply val_to_loc_length; eexists; done.
+      rewrite bool_decide_true; last by eapply val_decodes_to_loc_length.
       done.
   Qed.
   Next Obligation.
@@ -248,7 +249,7 @@ Section mut_ref.
     iIntros "Hown".
     iDestruct "Hown" as (l ly) "(%Hmeta & %Hv & Halg & Hly & Hlb & Hsc & Hrfn & Hcred & Hbor)".
     iExists l, ly. iFrame. iR.
-    iPureIntro. by eapply encode_decode_compat_loc.
+    iPureIntro. by eapply val_decodes_to_loc_same_decoded.
   Qed.
   Next Obligation.
     intros ??? ly _ Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.

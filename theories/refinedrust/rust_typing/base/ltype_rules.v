@@ -41,8 +41,9 @@ Proof.
   + rewrite !ltype_own_mut_ref_unfold /mut_ltype_own.
     iIntros "(%ly & ? & ? & ? & %r' & %γ & ? & #Hb)".
     iExists ly. iFrame. iModIntro. iMod "Hb".
-    iDestruct "Hb" as "(%li & Hf & Hb)". iModIntro. iExists li.
+    iDestruct "Hb" as "(%vi & %li & Hf & %Hdec & Hb)". iModIntro. iExists vi, li.
     iSplitL "Hf". { by iApply frac_bor_shorten. }
+    iSplitR; first done.
     iNext. iApply IH; last done.
     unfold bor_kind_direct_incl.
     iApply lft_intersect_mono; last done. iApply lft_incl_refl.
@@ -62,8 +63,9 @@ Proof.
   + rewrite !ltype_own_shr_ref_unfold /shr_ltype_own.
     iIntros "(%ly & ? & ? & ? & %r' & ? & #Hb)".
     iExists ly. iFrame. iModIntro. iMod "Hb".
-    iDestruct "Hb" as "(%li & Hf & Hb)". iModIntro. iExists li.
+    iDestruct "Hb" as "(%vi & %li & Hf & %Hdec & Hb)". iModIntro. iExists vi, li.
     iSplitL "Hf". { by iApply frac_bor_shorten. }
+    iSplitR; first done.
     done.
   + iDestruct "Hincl" as "(Hincl & ->)".
     rewrite !ltype_own_shr_ref_unfold /shr_ltype_own.

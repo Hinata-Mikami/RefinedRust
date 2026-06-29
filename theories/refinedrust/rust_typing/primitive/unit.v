@@ -21,10 +21,27 @@ Section unit.
     intros ot ->%is_unit_ot_layout.
     by apply syn_type_has_layout_unit.
   Qed.
+  Next Obligation.
+    intros ot Hot.
+    destruct ot; simpl in Hot; try done.
+    destruct Hot as [-> ->]. done.
+  Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
-    simpl. iIntros (ot ? _ _  v Hot ->).
-    destruct ot; try by destruct Hot. destruct Hot as [-> ->]. done.
+    simpl. iIntros (ot st π [] v Hot ->).
+    destruct ot; simpl in Hot; try done.
+    - destruct Hot as [-> ->]. iExists (OVStruct unit_sl []). iPureIntro.
+      simp decode_op_val. rewrite bool_decide_true; last by rewrite /unit_sl /=.
+      rewrite /unit_sl /=. done.
+    - subst. iExists (OVUntyped unit_sl []). iPureIntro.
+      simp decode_op_val. rewrite bool_decide_true; done.
+  Qed.
+  Next Obligation.
+    simpl. iIntros (ot st π [] v v' Hot Hsame ->).
+    iPureIntro.
+    pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly.
+    rewrite /has_layout_val (is_unit_ot_layout _ Hot) /unit_sl /= in Hly.
+    by destruct v'.
   Qed.
   Next Obligation.
     intros ly Hst.

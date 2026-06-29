@@ -333,14 +333,14 @@ Record type `{!typeGS Σ} (rt : RT) := {
     ty_own_val π r MetaNone v -∗
     ∃ ov, ⌜decode_op_val v ot st = Some ov⌝;
 
-  (** After a successful decode, the canonical encoding is compatible with the
-    semantic type. *)
-  _ty_encode_compat ot st π r v ov :
+  (** Ownership is invariant under byte representations that decode to the same
+    operational value. *)
+  _ty_decode_compat ot st π r v v' :
     ty_metadata_kind = MetadataNone →
     _ty_has_op_type ot →
-    decode_op_val v ot st = Some ov →
+    is_same_decoded_val_at st v ot v' →
     ty_own_val π r MetaNone v -∗
-    ty_own_val π r MetaNone (encode_op_val ov);
+    ty_own_val π r MetaNone v';
 
   (* TODO this would be a good property to have, but currently uninit doesn't satisfy it. *)
   (* we require that ops at least as given by the "canonical" optype obtained by [use_op_alg] are allowed *)
@@ -400,7 +400,7 @@ Lemma ty_op_type_stable `{!typeGS Σ} {rt} (ty : type rt) ot :
   ty_has_op_type ty ot →
   syn_type_has_layout (ty.(ty_syn_type) MetaNone) (ot_layout ot).
 Proof. rewrite ty_has_op_type_unfold. apply _ty_op_type_stable. Qed.
-Global Arguments ty_op_type_stable {_ _ _} [_ _].
+Global Arguments ty_op_type_stable {_ _ _} _ _.
 
 Lemma ty_op_type_wf `{!typeGS Σ} {rt} (ty : type rt) ot :
   ty_has_op_type ty ot →
@@ -415,7 +415,7 @@ Proof.
   rewrite ty_has_op_type_unfold. apply _ty_has_op_type_untyped.
   apply ty_sized_metadata_none.
 Qed.
-Global Arguments ty_sized_has_op_type_untyped {_ _ _} [_ _ _].
+Global Arguments ty_sized_has_op_type_untyped {_ _ _} _ _ _.
 
 Lemma ty_decodable `{!typeGS Σ} rt (ty : type rt) ot st π r v :
   ty.(ty_metadata_kind) = MetadataNone →
@@ -424,13 +424,25 @@ Lemma ty_decodable `{!typeGS Σ} rt (ty : type rt) ot st π r v :
   ∃ ov, ⌜decode_op_val v ot st = Some ov⌝.
 Proof. rewrite ty_has_op_type_unfold. apply _ty_decodable. Qed.
 
+Lemma ty_decode_compat `{!typeGS Σ} rt (ty : type rt) ot st π r v v' :
+  ty.(ty_metadata_kind) = MetadataNone →
+  ty_has_op_type ty ot →
+  is_same_decoded_val_at st v ot v' →
+  ty.(ty_own_val) π r MetaNone v -∗
+  ty.(ty_own_val) π r MetaNone v'.
+Proof. rewrite ty_has_op_type_unfold. apply _ty_decode_compat. Qed.
+
 Lemma ty_encode_compat `{!typeGS Σ} rt (ty : type rt) ot st π r v ov :
   ty.(ty_metadata_kind) = MetadataNone →
   ty_has_op_type ty ot →
   decode_op_val v ot st = Some ov →
   ty.(ty_own_val) π r MetaNone v -∗
   ty.(ty_own_val) π r MetaNone (encode_op_val ov).
-Proof. rewrite ty_has_op_type_unfold. apply _ty_encode_compat. Qed.
+Proof.
+  intros Hm Hot Hdec.
+  iIntros "Hv". iApply (ty_decode_compat with "Hv"); [done | done |].
+  by eapply is_same_decoded_val_at_encode; [eapply ty_op_type_wf |].
+Qed.
 
 Lemma ty_memcast_compat `{!typeGS Σ} rt (ty : type rt) ot st π r v :
   ty.(ty_metadata_kind) = MetadataNone →
@@ -595,11 +607,11 @@ Record simple_type `{!typeGS Σ} (rt : RT) :=
       st_own π r v -∗
       ∃ ov, ⌜decode_op_val v ot st = Some ov⌝;
 
-    st_encode_compat ot st π r v ov :
+    st_decode_compat ot st π r v v' :
       st_has_op_type ot →
-      decode_op_val v ot st = Some ov →
+      is_same_decoded_val_at st v ot v' →
       st_own π r v -∗
-      st_own π r (encode_op_val ov);
+      st_own π r v';
 
     st_has_op_type_untyped ly :
       syn_type_has_layout st_syn_type ly →
@@ -697,8 +709,8 @@ Next Obligation.
   by iApply (st_decodable with "Hown").
 Qed.
 Next Obligation.
-  iIntros (??? st ot st' π r v ov _ Hot Hdec) "(_ & Hown)".
-  iR. by iApply (st_encode_compat _ _ _ with "Hown").
+  iIntros (??? st ot st' π r v v' _ Hot Hsame) "(_ & Hown)".
+  iR. by iApply (st_decode_compat _ _ _ with "Hown").
 Qed.
 Next Obligation.
   intros. by apply st_has_op_type_untyped.
@@ -742,11 +754,11 @@ Section type_inh.
     simp decode_op_val. done.
   Qed.
   Next Obligation.
-    intros ot st π r v ov ->.
-    simp decode_op_val. simpl.
-    destruct v; last done.
-    simpl. intros [=<-].
-    eauto.
+    simpl. intros ot st π r v v' -> Hsame.
+    iIntros "->". iPureIntro.
+    pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly.
+    rewrite /has_layout_val /unit_sl /= in Hly.
+    by destruct v'.
   Qed.
   Next Obligation.
     intros ly Hst.
@@ -881,9 +893,9 @@ Section ofe.
     (* ty_decodable *)
     (∀ ot st π r v, x.1.1.1.1.1.2 = MetadataNone → x.1.1.1.2 ot → x.1.1.1.1.1.1.1.1 π r MetaNone v -∗
       ∃ ov, ⌜decode_op_val v ot st = Some ov⌝) ∧
-    (* ty_encode_compat *)
-    (∀ ot st π r v ov, x.1.1.1.1.1.2 = MetadataNone → x.1.1.1.2 ot → decode_op_val v ot st = Some ov → x.1.1.1.1.1.1.1.1 π r MetaNone v -∗
-      x.1.1.1.1.1.1.1.1 π r MetaNone (encode_op_val ov)) ∧
+    (* ty_decode_compat *)
+    (∀ ot st π r v v', x.1.1.1.1.1.2 = MetadataNone → x.1.1.1.2 ot → is_same_decoded_val_at st v ot v' → x.1.1.1.1.1.1.1.1 π r MetaNone v -∗
+      x.1.1.1.1.1.1.1.1 π r MetaNone v') ∧
     (* ty_has_op_type_untyped *)
     (∀ (ly : layout) m,
       x.1.1.1.1.1.2 = MetadataNone →
@@ -1023,9 +1035,9 @@ Section st_ofe.
     (* ty_decodable *)
     (∀ ot st π r v, x.2 ot → x.1.1 π r v -∗
       ∃ ov, ⌜decode_op_val v ot st = Some ov⌝) ∧
-    (* ty_encode_compat *)
-    (∀ ot st π r v ov, x.2 ot → decode_op_val v ot st = Some ov → x.1.1 π r v -∗
-      x.1.1 π r (encode_op_val ov)).
+    (* ty_decode_compat *)
+    (∀ ot st π r v v', x.2 ot → is_same_decoded_val_at st v ot v' → x.1.1 π r v -∗
+      x.1.1 π r v').
 
   (* to handle the let destruct in an acceptable way *)
   Local Set Program Cases.

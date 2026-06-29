@@ -41,6 +41,31 @@ Section deinit.
     - apply IH.
   Qed.
 
+  Lemma uninit_tys_has_op_types (fields : list (string * syn_type)) ots :
+    Forall2 (λ field ot, use_op_alg field.2 = Some ot) fields ots →
+    foldr
+      (λ ty, and
+        (let '(ty0, ot) := ty in
+          ty_metadata_kind (projT2 ty0) = MetadataNone ∧
+          ty_has_op_type (projT2 ty0) ot ∧
+          syn_type_has_layout (st_of (projT2 ty0) MetaNone) (ot_layout ot)))
+      True
+      (zip
+        (hzipl (replicate (length fields.*2) (()%type : RT)) (uninit_tys fields.*2))
+        ots).
+  Proof.
+    induction fields as [| [name st] fields IH] in ots |-*; intros Hots; simpl.
+    - apply Forall2_nil_inv_l in Hots as ->. done.
+    - apply Forall2_cons_inv_l in Hots as (ot & ots' & Hot & Hots & ->).
+      split_and!; simpl.
+      + done.
+      + rewrite ty_has_op_type_unfold. simpl.
+        exists ot. split_and!; [done | by apply is_value_ot_core_refl | ].
+        by eapply use_op_alg_layout_alg.
+      + by eapply use_op_alg_layout_alg.
+      + by apply IH.
+  Qed.
+
   Lemma ltype_deinit_struct F π (sls : struct_layout_spec) rs l :
     lftE ⊆ F →
     (l ◁ₗ[π, Owned] (#rs) @ (StructLtype (hmap (@OfTy _ _) (uninit_tys (sls_fields sls).*2)) sls)) ={F}=∗
@@ -54,6 +79,20 @@ Section deinit.
 
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Halg & %Hl)".
     iMod (ofty_own_split_value_typed with "Hl") as "(%v & Hv & Hl)"; first done.
+    { simpl in *. simp_ltypes in Halg. simpl in Halg.
+      opose proof* syn_type_has_layout_op_alg as (ot & Hot & Heq); first apply Halg.
+      subst ly.
+      rewrite ty_has_op_type_unfold. simpl.
+      rewrite /def.is_struct_ot.
+      rewrite /use_op_alg' Hot /=.
+      apply use_op_alg_struct_inv in Hot as (sl & ots & Hsl & Hots & ->).
+      split_and!;simpl.
+      - rewrite length_replicate length_fmap//.
+      - done.
+      - rewrite length_replicate length_fmap. apply Forall2_length in Hots. done.
+      - by eapply use_struct_layout_alg_op_type_wf.
+      - simpl.
+        by eapply uninit_tys_has_op_types. }
     simp_ltypes in Halg. simpl in Halg.
     iApply (ofty_owned_subtype_aligned with "[] Hl"); [ | done | ].
     { done. }
@@ -150,7 +189,7 @@ Context `{!typeGS Σ}.
       rewrite decide_True; first last. { rewrite length_zip length_hpzipl Hlen.
         apply (hpzipl_lookup_inv _ _ rs') in Hlook1. apply lookup_lt_Some in Hlook1. lia. }
       iIntros "(% & % & %Hlook3 & % &  _)".
-      simplify_eq. done. }
+      simplify_eq/=. done. }
 
     set (lts' := (hmap (@OfTy _ _) (uninit_tys (sls_fields sls).*2))).
     set (rs'' := (pmap (λ _ x, #x) (uninit_rs  (sls_fields sls).*2))).
@@ -197,7 +236,7 @@ Context `{!typeGS Σ}.
       iIntros "(%name & %st'' & %Hlook_fields & %Hcomp & Ha)".
       iExists name, _. iR.
       apply list_lookup_fmap_Some in Hlook1_1 as ([name' st'''] & -> & Hlook1_1).
-      simplify_eq. simpl. done. }
+      simplify_eq/=. simpl. done. }
     iApply (ltype_deinit_struct _ _ sls (rs'')); first done.
 
     rewrite ltype_own_struct_unfold/struct_ltype_own.

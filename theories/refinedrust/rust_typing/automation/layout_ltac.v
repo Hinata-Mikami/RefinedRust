@@ -1044,7 +1044,7 @@ Section handle_duplicate.
     sl0 = sl1.
   Proof.
     rewrite /CACHED.
-    intros ??. by simplify_eq.
+    intros ??. by simplify_eq/=.
   Qed.
 
   Lemma handle_duplicate_union_layout_alg_tac name variants repr ul0 ul1 :
@@ -1053,7 +1053,7 @@ Section handle_duplicate.
     ul0 = ul1.
   Proof.
     rewrite /CACHED.
-    intros ??. by simplify_eq.
+    intros ??. by simplify_eq/=.
   Qed.
 
 End handle_duplicate.

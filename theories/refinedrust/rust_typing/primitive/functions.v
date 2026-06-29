@@ -174,7 +174,7 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
     st_own π f v := (∃ fn, ⌜val_to_loc v = Some f⌝ ∗ fntbl_entry f fn ∗
       ⌜Forall2 syn_type_has_layout arg_types fn.(f_args).*2⌝ ∗
       ▷ typed_function π fn fp)%I;
-    st_has_op_type ot := is_ptr_ot ot;
+    st_has_op_type ot := is_fnptr_ot ot;
     st_syn_type := FnPtrSynType;
   |}.
   Next Obligation.
@@ -183,16 +183,40 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
     by apply val_to_loc_length.
   Qed.
   Next Obligation.
-    intros ??? ? ot Hot. apply is_ptr_ot_layout in Hot. rewrite Hot.
+    intros ??? ? ot Hot.
+    apply is_fnptr_ot_layout in Hot. rewrite Hot.
     by apply syn_type_has_layout_fnptr.
+  Qed.
+  Next Obligation.
+    unfold is_fnptr_ot.
+    intros ???? ot Hot. destruct ot; done.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     simpl. iIntros (lfts lya rts fp ot st π r v Hot).
     iIntros "(%fn & %Hv & Hfntbl & %Halg & Hfn)".
+    iPureIntro.
+    destruct ot as [| | | | | |ly| ]; simpl in Hot; try done.
+    - exists (OVFnPtr r).
+      simp decode_op_val. rewrite Hv//.
+    - subst ly. eexists. simp decode_op_val.
+      rewrite bool_decide_true; first done.
+      by eapply val_to_loc_length.
+  Qed.
+  Next Obligation.
+    simpl. iIntros (lfts lya rts fp ot st π r v v' Hot Hsame).
+    iIntros "(%fn & %Hv & Hfntbl & %Halg & Hfn)".
     iExists fn. iFrame. iPureIntro. split; last done.
-    destruct ot; try done.
-    unfold mem_cast. rewrite Hv. done.
+    destruct ot as [| | | | | |ly| ]; simpl in Hot; try done.
+    - destruct Hsame as [Heq _].
+      simp decode_op_val in Heq.
+      destruct (val_to_loc v), (val_to_loc v'); try done.
+      injection Heq. intros <-. done.
+    - subst ly.
+      pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly'.
+      pose proof (is_same_decoded_val_at_untyped_inv st v v' void*
+        ltac:(by eapply val_to_loc_length) Hly' Hsame) as ->.
+      done.
   Qed.
   Next Obligation.
     intros ???? ly Hst.

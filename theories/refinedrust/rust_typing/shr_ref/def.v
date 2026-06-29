@@ -9,7 +9,7 @@ Section shr_ref.
   Definition shr_ref_own_val_def {rt : RT} κ (inner : type rt) π r m v : iProp Σ :=
     (∃ (l : loc) (ly : layout) (r' : rt),
       ⌜m = MetaNone⌝ ∗
-      ⌜val_to_loc v = Some l⌝ ∗
+      ⌜val_decodes_to_loc v l⌝ ∗
       ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
       loc_in_bounds l 0 ly.(ly_size) ∗
       inner.(ty_sidecond) ∗
@@ -22,7 +22,7 @@ Section shr_ref.
   Definition shr_ref_own_val_unfold : @shr_ref_own_val = @shr_ref_own_val_def := shr_ref_own_val_aux.(seal_eq).
 
   Definition shr_ref_shr_def {rt : RT} κ (inner : type rt) κ' π r m l : iProp Σ :=
-    (∃ (li : loc) (ly : layout) (ri : rt),
+    (∃ (vi : val) (li : loc) (ly : layout) (ri : rt),
       ⌜m = MetaNone⌝ ∗
       ⌜l `has_layout_loc` void*⌝ ∗
       (*loc_in_bounds l void*.(ly_size) ∗*)
@@ -31,7 +31,8 @@ Section shr_ref.
       loc_in_bounds li 0 ly.(ly_size) ∗
       inner.(ty_sidecond) ∗
       place_rfn_interp_shared r ri ∗
-      &frac{κ'} (λ q, l ↦{q} li) ∗ ▷ □ |={lftE}=> inner.(ty_shr) (κ) π ri MetaNone li)%I.
+      &frac{κ'} (λ q, l ↦{q} vi) ∗ ⌜val_decodes_to_loc vi li⌝ ∗
+      ▷ □ |={lftE}=> inner.(ty_shr) (κ) π ri MetaNone li)%I.
   Definition shr_ref_shr_aux : seal (@shr_ref_shr_def).
   Proof. by eexists. Qed.
   Definition shr_ref_shr := shr_ref_shr_aux.(unseal).
@@ -60,9 +61,9 @@ Section shr_ref.
   Qed.
   Next Obligation.
     rewrite shr_ref_own_val_unfold.
-    iIntros (???????) "(%l & %ly & %r' & -> & % & ? & ? & ?)".
+    iIntros (???????) "(%l & %ly & %r' & -> & %Hdec & ? & ? & ?)".
     iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
-    by apply val_to_loc_length.
+    by apply val_decodes_to_loc_has_layout in Hdec.
   Qed.
   Next Obligation.
     intros ??? ot _ Hot => /=. destruct ot => /=//.
@@ -82,7 +83,7 @@ Section shr_ref.
   Next Obligation.
     iIntros (??? ?????). simpl.
     rewrite shr_ref_shr_unfold.
-    iIntros "(%l' & %ly & %r' & % & % & ? & ? & _)".
+    iIntros "(%vi & %li & %ly & %r' & % & % & ? & ? & _)".
     iPureIntro. eexists _. split; last by apply syn_type_has_layout_ptr.
     done.
   Qed.
@@ -111,16 +112,15 @@ Section shr_ref.
     iExists ly'.
     iR.
     do 4 iR.
-    erewrite l2v_correct'; last done.
-    iFrame. iFrame "Hsc".
+    iFrame. iFrame "Hsc". done.
   Qed.
   Next Obligation.
     iIntros (??? κ' κ'' π r m l) "#Hord H".
     rewrite shr_ref_shr_unfold.
-    iDestruct "H" as (li ly ri ->) "(? & ? & ? & Hlb & Hsc & Hr & #Hf & #Hown)".
-    iExists li, ly, ri. iR. iFrame. iSplit.
+    iDestruct "H" as (vi li ly ri ->) "(? & ? & ? & Hlb & Hsc & Hr & #Hf & %Hdec & #Hown)".
+    iExists vi, li, ly, ri. iR. iFrame. iSplitL "Hf".
     - by iApply (frac_bor_shorten with "Hord").
-    - iNext. iDestruct "Hown" as "#Hown". iModIntro. iMod "Hown". iModIntro.
+    - iSplitR; first done. iNext. iDestruct "Hown" as "#Hown". iModIntro. iMod "Hown". iModIntro.
       done.
   Qed.
   Next Obligation.
@@ -133,9 +133,9 @@ Section shr_ref.
     iDestruct "Hown" as (l ly ri) "(%Hmeta & %Hv & _)".
     iPureIntro.
     destruct ot; simpl in *; try done; subst.
-    - eexists (OVPtr _). simp decode_op_val. rewrite Hv. done.
+    - eexists (OVPtr _). apply Hv.
     - eexists (OVUntyped void* v). simp decode_op_val.
-      rewrite bool_decide_true; last by apply val_to_loc_length; eexists; done.
+      rewrite bool_decide_true; last by eapply val_decodes_to_loc_length.
       done.
   Qed.
   Next Obligation.
@@ -144,7 +144,7 @@ Section shr_ref.
     iIntros "Hown".
     iDestruct "Hown" as (l ly ri) "(%Hmeta & %Hv & Halg & Hly & Hlb & Hsc & Hrfn & Hshr)".
     iExists l, ly, ri. iFrame. iR.
-    iPureIntro. by eapply encode_decode_compat_loc.
+    iPureIntro. by eapply val_decodes_to_loc_same_decoded.
   Qed.
   Next Obligation.
     intros ??? ly _ Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
@@ -165,7 +165,7 @@ Section props.
     constructor.
     { intros. rewrite /ty_own_val/= shr_ref_own_val_unfold. apply _. }
     rewrite /ty_shr/= shr_ref_shr_unfold.
-    iIntros (κ' π E l r ? ? ?) "[LFT TIME] (%li & %ly' & %r' & -> & %Hly' & % & % & #Hlb & #Hsc & #Hr & Hf & #Hown) Hlft".
+    iIntros (κ' π E l r ? ? ?) "[LFT TIME] (%vi & %li & %ly' & %r' & -> & %Hly' & % & % & #Hlb & #Hsc & #Hr & Hf & %Hdec & #Hown) Hlft".
     iMod (frac_bor_acc with "LFT Hf Hlft") as (q') "[Hmt Hclose]"; first solve_ndisj.
     iModIntro.
     (*apply syn_type_has_layout_ptr_inv in Ha as ->.*)
@@ -173,13 +173,12 @@ Section props.
     iExists _.
     iSplitR. { simpl. iPureIntro. by apply syn_type_has_layout_ptr. }
     iR.
-    iExists _, li. iDestruct "Hmt" as "[Hmt1 Hmt2]".
+    iExists _, vi. iDestruct "Hmt" as "[Hmt1 Hmt2]".
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iSplitL "Hmt1". { iNext. iFrame "Hmt1".
       rewrite /ty_own_val/= shr_ref_own_val_unfold.
       iExists li, ly', r'.
-      iFrame "#". iPureIntro. split_and!; try done.
-      apply val_to_of_loc. by apply val_of_loc_Some_l2v. }
+      iFrame "#". iPureIntro. split_and!; done. }
     iIntros "Hmt1".
     iApply "Hclose". iModIntro. rewrite -{3}(Qp.div_2 q').
     iPoseProof (heap_pointsto_agree with "Hmt1 Hmt2") as "%Heq"; first done.

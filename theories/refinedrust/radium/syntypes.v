@@ -1826,7 +1826,7 @@ Fixpoint use_op_alg `{!LayoutAlg} (st : syn_type) : option op_type :=
   | BoolSynType => Some BoolOp
   | CharSynType => Some CharOp
   | PtrSynType => Some PtrOp
-  | FnPtrSynType => Some PtrOp
+  | FnPtrSynType => Some FnPtrOp
   | StructSynType name fields repr =>
     sl ← use_struct_layout_alg (mk_sls name fields repr);
     ots ← list_map_option (λ '(name, st), use_op_alg st) fields;
@@ -1885,6 +1885,20 @@ Lemma use_op_alg_sls `{!LayoutAlg} sls sl ots ot :
 Proof.
   intros. by eapply use_op_alg_struct.
 Qed.
+Lemma use_op_alg_struct_inv `{!LayoutAlg} name fields repr op :
+  use_op_alg (StructSynType name fields repr) = Some op →
+  ∃ sl ots,
+    use_struct_layout_alg (mk_sls name fields repr) = Some sl ∧
+    Forall2 (λ field ot, use_op_alg field.2 = Some ot) fields ots ∧
+    op = StructOp sl ots.
+Proof.
+  intros Ha. apply bind_Some in Ha as (sl & Hsl & Hots).
+  apply bind_Some in Hots as (ots & Hots & [= <-]).
+  exists sl, ots. split_and!; try done.
+  apply list_map_option_alt in Hots.
+  eapply Forall2_impl; first done.
+  intros [] ?. done.
+Qed.
 
 Lemma use_op_alg_enum `{!LayoutAlg} name it variants ly ot repr :
   use_layout_alg (EnumSynType name it variants repr) = Some ly →
@@ -1939,7 +1953,7 @@ Lemma use_op_alg_ptr `{!LayoutAlg} ot :
   use_op_alg PtrSynType = Some ot.
 Proof. intros ->. done. Qed.
 Lemma use_op_alg_fnptr `{!LayoutAlg} ot :
-  ot = PtrOp →
+  ot = FnPtrOp →
   use_op_alg FnPtrSynType = Some ot.
 Proof. intros ->. done. Qed.
 Lemma use_op_alg_unit `{!LayoutAlg} ot :
@@ -2072,7 +2086,7 @@ Proof.
   - intros ->%syn_type_has_layout_ptr_inv.
     exists PtrOp. split; last done. done.
   - intros ->%syn_type_has_layout_fnptr_inv.
-    exists PtrOp. split; last done. done.
+    exists FnPtrOp. split; last done. done.
   - intros Hsl.
     specialize (syn_type_has_layout_struct_inv _ _ _ _ Hsl) as (field_lys & sl & -> & Halg & Hfields).
     eapply (use_struct_layout_alg_op_alg (mk_sls _ _ _)); last done.
@@ -2162,6 +2176,21 @@ Proof.
   - intros (ly0 & Halg & [= <-])%bind_Some. done.
   - intros (ly0 & Halg & [= <-])%bind_Some. done.
   - intros (ly0 & Halg & [= <-])%bind_Some. done.
+Qed.
+
+Lemma use_struct_layout_alg_op_type_wf `{!LayoutAlg} sls sl ots :
+  use_struct_layout_alg sls = Some sl →
+  Forall2 (λ field ot, use_op_alg field.2 = Some ot) sls.(sls_fields) ots →
+  op_type_wf (StructOp sl ots).
+Proof.
+  intros Hsl Hots. simpl. rewrite -Forall2_Forall2_cb.
+  pose proof (struct_layout_spec_has_layout_alt_2 sls sl Hsl) as Hlys.
+  induction Hlys as [| [name st] [name' ly] fields nfields [Hly <-] Hlys IH] in ots, Hots |-*.
+  - apply Forall2_nil_inv_l in Hots as ->. constructor.
+  - apply Forall2_cons_inv_l in Hots as (ot & ots' & Hot & Hots & ->).
+    constructor; last by apply IH.
+    split; first by eapply use_op_alg_wf.
+    pose proof (use_op_alg_layout_alg _ _ Hot) as Hly'. simpl in Hly'. congruence.
 Qed.
 
 (** A relation requirement size equality, without caring about the alignment. *)

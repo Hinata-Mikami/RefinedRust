@@ -29,9 +29,10 @@ Section deinit.
     simpl. iFrame. iR. iR.
     iExists _. iR.
     iModIntro. iModIntro.
-    rewrite /ty_own_val/=. iR.
-    iExists _. iApply type_loc_value.
-    by apply val_to_loc_Some_l2v.
+    rewrite /ty_own_val/=.
+    iDestruct "Hl" as "(%vi & Hl & %Hdec)".
+    iExists _. iFrame. iR.
+    iExists _. iApply type_loc_value; done.
   Qed.
 End deinit.
 
@@ -50,7 +51,7 @@ Section extract.
     iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
     iDestruct "Hb" as "(%v & Hl & Hb)".
     rewrite /ty_own_val/= mut_ref_own_val_unfold.
-    iDestruct "Hb" as "(%l' & %ly' & _ & %Hv & ? & ? & ? & ? & Hb & Hcred' & ?)".
+    iDestruct "Hb" as "(%l' & %ly' & _ & %Hv & ? & ? & Hlb' & ? & Hb & Hcred' & ?)".
     iExists _, _, _, _, _. iFrame. iFrame.
     iR.
     apply syn_type_has_layout_ptr_inv in Hst as ->.
@@ -60,6 +61,7 @@ Section extract.
     iSplitR; first done. iSplitL "Hlb"; first done.
     iExists _. iR. iModIntro.
     iExists v. iFrame.
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb'") as "%".
     rewrite /ty_own_val/=.
     iR. iExists _.
     by iApply type_loc_value.

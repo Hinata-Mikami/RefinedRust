@@ -17,8 +17,13 @@ Definition is_char_ot (ot : op_type) : Prop :=
   match ot with | CharOp => True | UntypedOp ly => ly = it_layout U32 | _ => False end.
 Definition is_ptr_ot (ot : op_type) : Prop :=
   match ot with | PtrOp => True | UntypedOp ly => ly = void* | _ => False end.
+Definition is_fnptr_ot (ot : op_type) : Prop :=
+  match ot with | FnPtrOp => True | UntypedOp ly => ly = void* | _ => False end.
 Definition is_unit_ot (ot : op_type) : Prop :=
   match ot with | StructOp sl ots => sl = unit_sl ∧ ots = [] | UntypedOp ly => ly = unit_sl | _ => False end.
+
+Definition val_decodes_to_loc (v : val) (l : loc) : Prop :=
+  ∀ st, decode_op_val v PtrOp st = Some (OVPtr l).
 
 Lemma is_int_ot_layout it ot:
   is_int_ot ot it → ot_layout ot = it_layout it.
@@ -43,6 +48,10 @@ Lemma is_ptr_ot_layout ot:
   is_ptr_ot ot → ot_layout ot = void*.
 Proof. by destruct ot => //= ->. Qed.
 
+Lemma is_fnptr_ot_layout ot:
+  is_fnptr_ot ot → ot_layout ot = void*.
+Proof. by destruct ot => //= ->. Qed.
+
 Lemma is_unit_ot_layout ot :
   is_unit_ot ot → ot_layout ot = unit_sl.
 Proof.
@@ -65,7 +74,7 @@ Lemma encode_decode_id_int v ov ot it z st :
   encode_op_val ov = v.
 Proof.
   intros Hot Hz Hdec.
-  destruct ot as [|it'| | | |ly| ]; simpl in Hot; try done.
+  destruct ot as [|it'| | | | |ly| ]; simpl in Hot; try done.
   - subst it'. simp decode_op_val in Hdec.
     move: Hdec => /fmap_Some[z' [Hz' ->]].
     rewrite Hz in Hz'. injection Hz' as ->.
@@ -91,7 +100,7 @@ Lemma encode_decode_id_bool v ov ot b st :
   encode_op_val ov = v.
 Proof.
   intros Hot Hb Hdec.
-  destruct ot as [| | | | |ly| ]; simpl in Hot; try done.
+  destruct ot as [| | | | | |ly| ]; simpl in Hot; try done.
   - simp decode_op_val in Hdec.
     move: Hdec => /fmap_Some[b' [Hb' ->]].
     rewrite Hb in Hb'. injection Hb' as ->.
@@ -117,7 +126,7 @@ Lemma encode_decode_id_char v ov ot z st :
   encode_op_val ov = v.
 Proof.
   intros Hot Hz Hdec.
-  destruct ot as [| | | | |ly| ]; simpl in Hot; try done.
+  destruct ot as [| | | | | |ly| ]; simpl in Hot; try done.
   - subst ly. simp decode_op_val in Hdec.
     case_bool_decide; simplify_eq. done.
   - simp decode_op_val in Hdec.
@@ -143,7 +152,7 @@ Lemma encode_decode_id_loc v ov ot l st :
   encode_op_val ov = v.
 Proof.
   intros Hot Hl Hdec.
-  destruct ot as [| | | | |ly| ]; simpl in Hot; try done.
+  destruct ot as [| | | | | |ly| ]; simpl in Hot; try done.
   - simp decode_op_val in Hdec.
     rewrite Hl in Hdec. injection Hdec as <-.
     by apply l2v_correct'.
@@ -161,6 +170,84 @@ Proof.
   by rewrite (encode_decode_id_loc _ _ _ _ _ Hot Hl Hdec).
 Qed.
 
+Lemma encode_decode_id_fn_loc v ov ot l st :
+  is_fnptr_ot ot →
+  val_to_loc v = Some l →
+  decode_op_val v ot st = Some ov →
+  encode_op_val ov = v.
+Proof.
+  intros Hot Hl Hdec.
+  destruct ot as [| | | | | |ly| ]; simpl in Hot; try done.
+  - simp decode_op_val in Hdec.
+    rewrite Hl in Hdec. injection Hdec as <-.
+    by apply l2v_correct'.
+  - subst ly. simp decode_op_val in Hdec.
+    case_bool_decide; simplify_eq. done.
+Qed.
+
+Lemma encode_decode_compat_fn_loc v ov ot l st :
+  is_fnptr_ot ot →
+  val_to_loc v = Some l →
+  decode_op_val v ot st = Some ov →
+  val_to_loc (encode_op_val ov) = Some l.
+Proof.
+  intros Hot Hl Hdec.
+  by rewrite (encode_decode_id_fn_loc _ _ _ _ _ Hot Hl Hdec).
+Qed.
+
+Lemma val_to_loc_decodes_to_loc v l :
+  val_to_loc v = Some l →
+  val_decodes_to_loc v l.
+Proof.
+  intros Hv st. simp decode_op_val. by rewrite Hv.
+Qed.
+
+Lemma l2v_decodes_to_loc l :
+  l.(loc_a) ∈ USize →
+  val_decodes_to_loc (l2v l) l.
+Proof.
+  intros Hin. apply val_to_loc_decodes_to_loc.
+  by apply val_to_loc_Some_l2v.
+Qed.
+
+Lemma val_decodes_to_loc_l2v_inv l l' :
+  val_decodes_to_loc (l2v l) l' →
+  l = l'.
+Proof.
+  intros Hdec. specialize (Hdec inhabitant).
+  destruct (decide (l.(loc_a) ∈ USize)) as [Hin|Hnin].
+  - simp decode_op_val in Hdec.
+    rewrite (val_to_loc_Some_l2v _ Hin) in Hdec.
+    by injection Hdec as ->.
+  - rewrite /l2v /val_of_loc bool_decide_false in Hdec; last done.
+    simpl in Hdec. simp decode_op_val in Hdec. simpl in Hdec. done.
+Qed.
+
+Lemma val_decodes_to_loc_has_layout v l :
+  val_decodes_to_loc v l →
+  v `has_layout_val` void*.
+Proof.
+  intros Hdec. specialize (Hdec inhabitant).
+  by eapply decode_op_val_has_layout in Hdec.
+Qed.
+
+Lemma val_decodes_to_loc_length v l :
+  val_decodes_to_loc v l →
+  length v = ly_size void*.
+Proof. apply val_decodes_to_loc_has_layout. Qed.
+
+Lemma val_decodes_to_loc_mem_cast v l st :
+  l.(loc_a) ∈ USize →
+  val_decodes_to_loc v l →
+  val_to_loc (mem_cast v PtrOp st) = Some l.
+Proof.
+  intros Hin Hdec. rewrite /mem_cast. pose proof (Hdec st) as Hdec_st.
+  rewrite Hdec_st /=.
+  rewrite (val_decodes_to_loc_length _ _ Hdec).
+  rewrite resize_all_alt; last by symmetry; apply l2v_has_layout_val.
+  apply val_to_of_loc. by apply val_of_loc_Some_l2v.
+Qed.
+
 Lemma encode_decode_id_unit v ov ot st :
   is_unit_ot ot →
   v = zst_val →
@@ -168,7 +255,7 @@ Lemma encode_decode_id_unit v ov ot st :
   encode_op_val ov = v.
 Proof.
   intros Hot -> Hdec.
-  destruct ot as [| | |sl ots| |ly| ]; simpl in Hot; try done.
+  destruct ot as [| | | |sl ots| |ly| ]; simpl in Hot; try done.
   - destruct Hot as [-> ->]. simp decode_op_val in Hdec.
     simpl in Hdec. simplify_eq. done.
   - subst ly. simp decode_op_val in Hdec.
@@ -255,11 +342,259 @@ Section optypes.
   Proof.
     destruct ot => //; simplify_eq/=.
     - intros [-> ->]. etrans; first done. iPureIntro => -> st'.
-      by rewrite /mem_cast decode_op_val_equation_4 /=.
+      rewrite /mem_cast /=.
+      simp decode_op_val. done.
     - intros ->. etrans; first done. iPureIntro => -> st'.
       apply mem_cast_UntypedOp. done.
   Qed.
 End optypes.
+
+(** For now, we show stability of decoding.
+  This works because currently decoding doesn't actually depend on the state.
+  It is needed to make [value_t] work.
+  Eventually, when handling exposed provenance, we likely want to replace that with a notion of monotonicity on state,
+  and connect that with separation logic resources.
+  *)
+Lemma decode_struct_fields_stable sl ots rec1 rec2 fields vs i :
+  (∀ v ot Hot, rec1 v ot Hot = rec2 v ot Hot) →
+  decode_struct_fields sl ots rec1 fields vs i =
+  decode_struct_fields sl ots rec2 fields vs i.
+Proof.
+  intros Hrec. revert vs i.
+  induction fields as [|[[n|] ly] fields IH]; intros [|v vs] i; simpl; try done.
+  destruct (lookup_struct_ot ots i) as [[ot Hot]|]; simpl; last done.
+  rewrite Hrec. destruct (rec2 v ot _) as [ov|]; simpl; last done.
+    by rewrite IH.
+Qed.
+
+Lemma decode_struct_fields_stable_lookup sl ots rec1 rec2 fields vs i :
+  (∀ j v ot Hot, ots !! j = Some ot → rec1 v ot Hot = rec2 v ot Hot) →
+  decode_struct_fields sl ots rec1 fields vs i =
+  decode_struct_fields sl ots rec2 fields vs i.
+Proof.
+  intros Hrec. revert vs i.
+  induction fields as [|[[n|] ly] fields IH]; intros [|v vs] i; simpl; try done.
+  - destruct (lookup_struct_ot ots i) as [[ot Hot]|]; simpl; last done.
+    rewrite (Hrec i v ot _ Hot). destruct (rec2 v ot _) as [ov|]; simpl; last done.
+    by rewrite IH.
+Qed.
+
+Lemma list_is_list_lookup {A} (P : A → Type) l i x :
+  list_is_list A P l →
+  l !! i = Some x →
+  P x.
+Proof.
+  intros Hl. induction Hl as [|a Ha l Hl IH] in i |-*; destruct i; simpl; naive_solver.
+Qed.
+
+Lemma decode_op_val_stable v ot st st' :
+  decode_op_val v ot st = decode_op_val v ot st'.
+Proof.
+  revert v. induction ot using op_type_recursor; intros v; simp decode_op_val; try done.
+  - rewrite (decode_struct_fields_stable_lookup sl ots
+      (λ v' ot Hot, decode_op_val v' ot st)
+      (λ v' ot Hot, decode_op_val v' ot st')).
+    + done.
+    + intros j v' ot Hot Hlook.
+      pose proof (list_is_list_lookup
+        (λ ot0, ∀ v0, decode_op_val v0 ot0 st = decode_op_val v0 ot0 st')
+        ots j ot H Hlook) as IH.
+      by apply IH.
+Qed.
+
+Definition is_same_decoded_val_at (st : gset addr * heap_state) (v1 : val) (ot : op_type) (v2 : val) : Prop :=
+  decode_op_val v1 ot st = decode_op_val v2 ot st ∧
+  is_Some (decode_op_val v1 ot st).
+
+Definition is_same_decoded_val (v1 : val) (ot : op_type) (v2 : val) : Prop :=
+  ∀ st, is_same_decoded_val_at st v1 ot v2.
+
+Lemma is_same_decoded_val_at_sym st v1 ot v2 :
+  is_same_decoded_val_at st v1 ot v2 → is_same_decoded_val_at st v2 ot v1.
+Proof.
+  intros [Heq [ov Hdec]]. split; first by symmetry.
+  exists ov. by rewrite -Heq.
+Qed.
+
+Lemma is_same_decoded_val_at_stable st st' v1 ot v2 :
+  is_same_decoded_val_at st v1 ot v2 →
+  is_same_decoded_val_at st' v1 ot v2.
+Proof.
+  intros [Heq Hsome]. split.
+  - rewrite -(decode_op_val_stable v1 ot st st').
+    rewrite -(decode_op_val_stable v2 ot st st'). done.
+  - destruct Hsome as [ov Hdec]. exists ov.
+    by rewrite -(decode_op_val_stable v1 ot st st').
+Qed.
+
+Lemma is_same_decoded_val_of_at st v1 ot v2 :
+  is_same_decoded_val_at st v1 ot v2 →
+  is_same_decoded_val v1 ot v2.
+Proof. intros Hsame st'. by eapply is_same_decoded_val_at_stable. Qed.
+
+Lemma is_same_decoded_val_sym v1 ot v2 :
+  is_same_decoded_val v1 ot v2 → is_same_decoded_val v2 ot v1.
+Proof.
+  intros Hsame st. by apply is_same_decoded_val_at_sym.
+Qed.
+
+Lemma is_same_decoded_val_at_trans st v1 ot v2 v3 :
+  is_same_decoded_val_at st v1 ot v2 →
+  is_same_decoded_val_at st v2 ot v3 →
+  is_same_decoded_val_at st v1 ot v3.
+Proof.
+  intros [Heq12 Hsome] [Heq23 _]. split; first by etrans.
+  done.
+Qed.
+
+Lemma is_same_decoded_val_trans v1 ot v2 v3 :
+  is_same_decoded_val v1 ot v2 →
+  is_same_decoded_val v2 ot v3 →
+  is_same_decoded_val v1 ot v3.
+Proof.
+  intros H12 H23 st. eapply is_same_decoded_val_at_trans; [apply H12 | apply H23].
+Qed.
+
+Lemma is_same_decoded_val_at_decodable_l st v1 ot v2 :
+  is_same_decoded_val_at st v1 ot v2 → ∃ ov, decode_op_val v1 ot st = Some ov.
+Proof. by intros [_ Hsome]. Qed.
+
+Lemma is_same_decoded_val_at_decodable_r st v1 ot v2 :
+  is_same_decoded_val_at st v1 ot v2 → ∃ ov, decode_op_val v2 ot st = Some ov.
+Proof.
+  intros [Heq [ov Hdec]]. exists ov. by rewrite -Heq.
+Qed.
+
+Lemma is_same_decoded_val_decodable_l v1 ot v2 st :
+  is_same_decoded_val v1 ot v2 → ∃ ov, decode_op_val v1 ot st = Some ov.
+Proof. intros Hsame. by eapply is_same_decoded_val_at_decodable_l. Qed.
+
+Lemma is_same_decoded_val_decodable_r v1 ot v2 st :
+  is_same_decoded_val v1 ot v2 → ∃ ov, decode_op_val v2 ot st = Some ov.
+Proof. intros Hsame. by eapply is_same_decoded_val_at_decodable_r. Qed.
+
+Lemma is_same_decoded_val_at_has_layout_l st v1 ot v2 :
+  is_same_decoded_val_at st v1 ot v2 → v1 `has_layout_val` ot_layout ot.
+Proof.
+  intros Hsame. destruct (is_same_decoded_val_at_decodable_l _ _ _ _ Hsame) as [ov Hdec].
+  by eapply decode_op_val_has_layout.
+Qed.
+
+Lemma is_same_decoded_val_at_has_layout_r st v1 ot v2 :
+  is_same_decoded_val_at st v1 ot v2 → v2 `has_layout_val` ot_layout ot.
+Proof.
+  intros Hsame. destruct (is_same_decoded_val_at_decodable_r _ _ _ _ Hsame) as [ov Hdec].
+  by eapply decode_op_val_has_layout.
+Qed.
+
+Lemma is_same_decoded_val_has_layout_l v1 ot v2 :
+  is_same_decoded_val v1 ot v2 → v1 `has_layout_val` ot_layout ot.
+Proof.
+  intros Hsame. destruct (is_same_decoded_val_decodable_l _ _ _ inhabitant Hsame) as [ov Hdec].
+  by eapply decode_op_val_has_layout.
+Qed.
+
+Lemma is_same_decoded_val_has_layout_r v1 ot v2 :
+  is_same_decoded_val v1 ot v2 → v2 `has_layout_val` ot_layout ot.
+Proof.
+  intros Hsame. destruct (is_same_decoded_val_decodable_r _ _ _ inhabitant Hsame) as [ov Hdec].
+  by eapply decode_op_val_has_layout.
+Qed.
+
+Lemma is_same_decoded_val_length v1 ot v2 :
+  is_same_decoded_val v1 ot v2 → length v1 = length v2.
+Proof.
+  intros Hsame.
+  pose proof (is_same_decoded_val_has_layout_l _ _ _ Hsame) as Hly1.
+  pose proof (is_same_decoded_val_has_layout_r _ _ _ Hsame) as Hly2.
+  rewrite /has_layout_val in Hly1, Hly2. lia.
+Qed.
+
+Lemma is_same_decoded_val_untyped_inv v1 v2 ly :
+  length v1 = ly_size ly →
+  length v2 = ly_size ly →
+  is_same_decoded_val v1 (UntypedOp ly) v2 → v1 = v2.
+Proof.
+  intros ?? Hsame.
+  destruct (Hsame inhabitant) as [Heq _].
+  simp decode_op_val in Heq.
+  repeat case_bool_decide; simplify_eq; done.
+Qed.
+
+Lemma is_same_decoded_val_at_untyped_inv st v1 v2 ly :
+  length v1 = ly_size ly →
+  length v2 = ly_size ly →
+  is_same_decoded_val_at st v1 (UntypedOp ly) v2 → v1 = v2.
+Proof.
+  intros ?? [Heq _].
+  simp decode_op_val in Heq.
+  repeat case_bool_decide; simplify_eq; done.
+Qed.
+
+Lemma is_same_decoded_val_refl v ot :
+  (∀ st, ∃ ov, decode_op_val v ot st = Some ov) →
+  is_same_decoded_val v ot v.
+Proof. intros Hdec st. split; first done. apply Hdec. Qed.
+
+Lemma is_same_decoded_val_at_refl st v ot :
+  (∃ ov, decode_op_val v ot st = Some ov) →
+  is_same_decoded_val_at st v ot v.
+Proof. intros Hdec. split; first done. apply Hdec. Qed.
+
+Lemma is_same_decoded_val_at_encode st v ot ov :
+  op_type_wf ot →
+  decode_op_val v ot st = Some ov →
+  is_same_decoded_val_at st v ot (encode_op_val ov).
+Proof.
+  intros Hwf Hdec. split.
+  - rewrite Hdec. symmetry. eapply decode_encode_op_val; [done|].
+    by eapply decode_op_val_has_type.
+  - eauto.
+Qed.
+
+Lemma val_decodes_to_loc_same_decoded v ot v' l st :
+  is_ptr_ot ot →
+  val_decodes_to_loc v l →
+  is_same_decoded_val_at st v ot v' →
+  val_decodes_to_loc v' l.
+Proof.
+  intros Hot Hv Hsame st'.
+  destruct ot as [| | | | | |ly| ]; simpl in Hot; try done.
+  - destruct Hsame as [Heq _]. specialize (Hv st).
+    rewrite Hv in Heq.
+    simp decode_op_val in Heq. simp decode_op_val. by symmetry.
+  - subst ly.
+    pose proof (val_decodes_to_loc_has_layout _ _ Hv) as Hly.
+    pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly'.
+    rewrite /has_layout_val /= in Hly'.
+    pose proof (is_same_decoded_val_at_untyped_inv st v v' void* Hly Hly' Hsame) as ->.
+    apply Hv.
+Qed.
+
+(*
+Lemma is_same_decoded_val_refl_once v ot st ov :
+  decode_op_val v ot st = Some ov →
+  is_same_decoded_val v ot v.
+Proof.
+  intros Hdec st'. split; first done.
+  exists ov.
+  rewrite -(decode_op_val_stable v ot st st'). done.
+Qed.
+*)
+
+(*
+Lemma is_same_decoded_val_encode v ot ov st :
+  op_type_wf ot →
+  decode_op_val v ot st = Some ov →
+  is_same_decoded_val v ot (encode_op_val ov).
+Proof.
+  intros Hwf Hdec st'. split.
+  - rewrite -(decode_op_val_stable v ot st st') Hdec.
+    symmetry. eapply decode_encode_op_val; [done|].
+    by eapply decode_op_val_has_type.
+  - exists ov. by rewrite -(decode_op_val_stable v ot st st').
+Qed.
+*)
 
 Definition is_memcast_val (v : val) (ot : op_type) (v' : val) : Prop :=
   (v' = v) ∨ ∃ st, v' = mem_cast v ot st.

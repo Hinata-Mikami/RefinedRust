@@ -3613,7 +3613,7 @@ Section subsume.
   Qed.
 
   (** [type_read_end] instance that does a copy *)
-  Lemma type_read_ofty_copy E L {rt} π b2 bmin l (ty : type rt) r ot `{!Copyable ty} (T : typed_read_end_cont_t bmin rt) :
+  Lemma type_read_ofty_copy E L {rt} π b2 bmin l (ty : type rt) r ot `{!Copyable ty} `{!TySized ty} (T : typed_read_end_cont_t bmin rt) :
     (** We have to show that the type allows reads *)
     (⌜ty_has_op_type ty ot⌝ ∗ ⌜lctx_bor_kind_alive E L b2⌝ ∗
       (** The place is left as-is *)
@@ -3629,7 +3629,8 @@ Section subsume.
     - iIntros "Hb".
       iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & #Hv & Hcl))"; first done.
       iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
-      specialize (ty_op_type_stable Hot) as Halg''.
+      opose proof (ty_op_type_stable _ _ _ Hot) as Halg''.
+      { apply ty_sized_metadata_none. }
       assert (ly = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
       iModIntro. iExists _, _, rt, _, _.
       iFrame "Hl Hv".
@@ -3637,7 +3638,10 @@ Section subsume.
       iApply (logical_step_wand with "Hcl").
       iIntros "Hcl %st Hl _". iMod ("Hcl" with "Hl [//] Hsc Hv") as "Hl".
       iModIntro. iExists L, rt, ty, r.
-      iPoseProof (ty_memcast_compat with "Hv") as "Ha"; first done. iFrame "Ha HL".
+      iPoseProof (ty_memcast_compat with "Hv") as "Ha".
+      { apply ty_sized_metadata_none. }
+      { done. }
+      iFrame "Ha HL".
       iExists _, _, _, weak_upd. iFrame.
       iR. iSplitR. { iApply upd_bot_min. }
       iSplitR. { iApply typed_place_cond_refl_ofty. }
@@ -3646,7 +3650,9 @@ Section subsume.
       simpl in Hal.
       iPoseProof (ofty_ltype_acc_shared with "Hl") as "(%ly & %Halg & %Hly & Hlb & >Hl')"; first done.
       assert (ly = ot_layout ot) as ->.
-      { specialize (ty_op_type_stable Hot) as ?. eapply syn_type_has_layout_inj; done. }
+      { opose proof (ty_op_type_stable _ _ _ Hot) as ?.
+        - apply ty_sized_metadata_none.
+        - eapply syn_type_has_layout_inj; done. }
 
       iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
       iMod (lctx_lft_alive_tok_noend κ with "HE HL") as (q') "(Htok & HL & Hclose)"; [solve_ndisj | done | ].
@@ -3663,7 +3669,10 @@ Section subsume.
       iMod ("Hclose" with "Htok HL") as "HL".
       iPoseProof ("HL_cl" with "HL") as "HL".
       iModIntro. iExists L, rt, ty, r.
-      iPoseProof (ty_memcast_compat with "Hv'") as "Hid"; first done. simpl. iFrame.
+      iPoseProof (ty_memcast_compat with "Hv'") as "Hid".
+      { apply ty_sized_metadata_none. }
+      { done. }
+      simpl. iFrame.
 
       iExists _, _, _, weak_upd.
       iFrame "Hl".
@@ -3678,7 +3687,9 @@ Section subsume.
       iPoseProof (ofty_ltype_acc_uniq with "CTX Htok HL_cl2 Hl") as "(%ly & %Halg & %Hly & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
       iMod "HF_cl" as "_".
       assert (ly = ot_layout ot) as ->.
-      { specialize (ty_op_type_stable Hot) as ?. eapply syn_type_has_layout_inj; done. }
+      { opose proof (ty_op_type_stable _ _ _ Hot) as ?.
+        - apply ty_sized_metadata_none.
+        - eapply syn_type_has_layout_inj; done. }
       iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
       iModIntro. iExists _, _, _, _, _. iFrame.
       iSplitR; first done. iSplitR; first done.
@@ -3687,7 +3698,10 @@ Section subsume.
       iIntros (st) "Hl #Hv".
       iMod (fupd_mask_mono with "(Hcl Hl Hv)") as "(Hl & HL)"; first done.
       iPoseProof ("HL_cl" with "HL") as "HL".
-      iPoseProof (ty_memcast_compat with "Hv") as "Hid"; first done. simpl.
+      iPoseProof (ty_memcast_compat with "Hv") as "Hid".
+      { apply ty_sized_metadata_none. }
+      { done. }
+      simpl.
       iModIntro. iExists L, rt, ty, r. iFrame "Hid HL".
 
       iExists _, _, _, weak_upd.
@@ -3802,7 +3816,7 @@ Section subsume.
   Qed.
 
   (** Strong typing rule to initialize top-level places, where we are allowed to change the syntype *)
-  Lemma type_write_ofty_init E L {rt rt2} π l (ty : type rt) (ty2 : type rt2) r1 (r2 : rt2) v ot (T : typed_write_end_cont_t UpdInit rt2) :
+  Lemma type_write_ofty_init E L {rt rt2} π l (ty : type rt) `{!TySized ty} (ty2 : type rt2) r1 (r2 : rt2) v ot (T : typed_write_end_cont_t UpdInit rt2) :
     (⌜syn_type_compat (st_of ty2 MetaNone) (st_of ty MetaNone)⌝ ∗
      ⌜ty_has_op_type ty ot⌝ ∗
      (ty_ghost_drop' ty2 π r2 -∗ T L rt ty r1 (mkPUKRes (allowed:=UpdInit) UpdInit I I)))
@@ -3817,7 +3831,8 @@ Section subsume.
     iDestruct (ty_has_layout with "Hv") as "#(%ly' & % & %Hlyv)".
     opose proof* syn_type_compat_use as Hly_eq; [ apply Hcomp | done | done | ].
     subst ly'.
-    specialize (ty_op_type_stable Hot) as Halg'.
+    opose proof (ty_op_type_stable _ _ _ Hot) as Halg'.
+    { apply ty_sized_metadata_none. }
     assert (ly = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
     iModIntro. iSplitR; first done.
     iSplitL "Hl0".
@@ -3843,7 +3858,7 @@ Section subsume.
   (** Currently have [ty2], want to write [ty]. This allows updates of the refinement type (from rt to rt2).
      This only works if the path is fully owned ([bmin = Owned]).
      We could in principle allow this also for Uniq paths by suspending the mutable reference's contract with [OpenedLtype], but currently we have decided against that. *)
-  Lemma type_write_ofty_strong E L {rt rt2} π l (ty : type rt) (ty2 : type rt2) r1 (r2 : rt2) v ot `{Hst_eq : !TCDone (ty_syn_type ty MetaNone = ty_syn_type ty2 MetaNone)} (T : typed_write_end_cont_t UpdStrong rt2) :
+  Lemma type_write_ofty_strong E L {rt rt2} π l (ty : type rt) `{!TySized ty} (ty2 : type rt2) r1 (r2 : rt2) v ot `{Hst_eq : !TCDone (ty_syn_type ty MetaNone = ty_syn_type ty2 MetaNone)} (T : typed_write_end_cont_t UpdStrong rt2) :
     (⌜ty_has_op_type ty ot⌝ ∗
         (ty_ghost_drop' ty2 π r2 -∗ T L rt ty r1 (mkPUKRes (allowed:=UpdStrong) UpdStrong I I)))
     ⊢ typed_write_end π E L ot v ty r1 (Owned) UpdStrong l (◁ ty2) (#r2) T.
@@ -3856,7 +3871,8 @@ Section subsume.
     iDestruct (ty_own_val_has_layout with "Hv0") as "%Hlyv0"; first done.
     iDestruct (ty_has_layout with "Hv") as "#(%ly' & % & %Hlyv)".
     assert (ly' = ly) as ->. { eapply syn_type_has_layout_inj; first done. by rewrite Hst_eq. }
-    specialize (ty_op_type_stable Hot) as Halg'.
+    opose proof (ty_op_type_stable _ _ _ Hot) as Halg'.
+    { apply ty_sized_metadata_none. }
     assert (ly = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
     iModIntro. iSplitR; first done.
     iSplitL "Hl0".
@@ -3884,7 +3900,7 @@ Section subsume.
   (* Write v : r1 @ ty to l : #r2 @ ◁ ty2.
      We first need to show that ty is a subtype of ty2.
      Afterwards, we obtain l : #r3 @ ◁ ty2 for some r3, as well as the result of ghost-dropping r2 @ ty2. *)
-  Lemma type_write_ofty_weak E L {rt1 rt2} π b2 bmin l (ty : type rt1) (ty2 : type rt2) r1 r2 v ot (T : typed_write_end_cont_t bmin rt2) :
+  Lemma type_write_ofty_weak E L {rt1 rt2} π b2 bmin l (ty : type rt1) `{!TySized ty} (ty2 : type rt2) r1 r2 v ot (T : typed_write_end_cont_t bmin rt2) :
     (∃ r3, owned_subtype π E L false r1 r3 ty ty2 (λ L2,
       ⌜ty_syn_type ty = ty_syn_type ty2⌝ ∗ (* TODO: would be nice to remove this requirement *)
       ⌜ty_has_op_type ty ot⌝ ∗ ⌜lctx_bor_kind_alive E L2 b2⌝ ∗
@@ -3906,7 +3922,8 @@ Section subsume.
       iDestruct (ty_own_val_has_layout with "Hv0") as "%"; first done.
       iDestruct (ty_has_layout with "Hv") as "(%ly'' & % & %)".
       assert (ly'' = ly) as ->. { by eapply syn_type_has_layout_inj. }
-      specialize (ty_op_type_stable Hot) as ?.
+      opose proof (ty_op_type_stable _ _ _ Hot) as ?.
+      { apply ty_sized_metadata_none. }
       assert (ly = ot_layout ot) as ->. { eapply syn_type_has_layout_inj; first done. by rewrite -Hst_eq. }
       iModIntro. iSplitR; first done. iSplitL "Hl".
       { iExists v0. iFrame. done. }
@@ -3934,7 +3951,8 @@ Section subsume.
       iDestruct (ty_own_val_has_layout with "Hv0") as "%"; first done.
       iDestruct (ty_has_layout with "Hv") as "(%ly'' & % & %)".
       assert (ly'' = ly) as ->. { by eapply syn_type_has_layout_inj. }
-      specialize (ty_op_type_stable  Hot) as ?.
+      opose proof (ty_op_type_stable _ _ _ Hot) as ?.
+      { apply ty_sized_metadata_none. }
       assert (ly = ot_layout ot) as ->. { eapply syn_type_has_layout_inj; first done. by rewrite -Hst_eq. }
       iModIntro. iSplitR; first done. iSplitL "Hl".
       { iExists v0. iFrame. done. }
@@ -5559,7 +5577,7 @@ Section subsume.
     iSpecialize ("Hcont" $! _ v with "HL Hf Hlocals").
     clear.
     iAssert (|={⊤}=> ([∗ list] x ∈ locals, ∃ (ly : layout) (l : loc) (st : syn_type), ⌜syn_type_has_layout st ly⌝ ∗ x is_live{ f, st} l ∗ l ↦|ly|))%I with "[Ha]" as ">Ha".
-    { iInduction locals as [|x locals] "IH"; csimpl in*; simplify_eq.
+    { iInduction locals as [|x locals] "IH"; csimpl in*; simplify_eq/=.
       { done. }
       iDestruct "Ha" as "(%st & %l & Hx & Hl & HR)".
       iMod ("IH" with "HR") as "$".

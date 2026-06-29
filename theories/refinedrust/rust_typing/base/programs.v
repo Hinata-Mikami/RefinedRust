@@ -2147,7 +2147,7 @@ Section laws.
     ty_has_op_type ty PtrOp →
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
       v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
-      ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
+      ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜val_decodes_to_loc v l2⌝ ∗
         v ◁ᵥ{f.1, MetaNone} r @ ty ∗ l2 ◁ₗ[f.1, b2] r2 @ lt2 ∗
         typed_place E L f l2 lt2 r2 UpdInit b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
           (* point: the outer place is not updated, it stays at ◁ ty.
@@ -2168,7 +2168,7 @@ Section laws.
     iDestruct "CTX" as "(LFT & LLCTX)".
     iApply wpe_fupd.
     iApply (wpe_logical_step with "Hcl"); [done.. | ].
-    opose proof (ty_op_type_stable _ Hot) as Halg'; first apply ty_sized_metadata_none.
+    opose proof (ty_op_type_stable _ _ _ Hot) as Halg'; first apply ty_sized_metadata_none.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
@@ -2176,12 +2176,12 @@ Section laws.
     { apply val_to_of_loc. by apply val_of_loc_Some_l2v. }
     iApply physical_step_intro. iNext.
     iIntros (st) "Hl Ha".
-    iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & -> & Hv & Hl2 & HT)"; first done.
+    iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & %Hdec & Hv & Hl2 & HT)"; first done.
     iMod ("Ha" with "Hl [//] Hsc Hv") as "Hl".
     iModIntro.
     iPoseProof (ltype_own_addr_in_usize with "Hl2") as "%".
-    iExists l2. rewrite (mem_cast_id_loc l2); last by apply val_to_loc_Some_l2v.
-    iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
+    iExists l2.
+    iSplitR. { iPureIntro. by apply val_decodes_to_loc_mem_cast. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
     iApply ("Hcont" with "Hl3 [Hcl Hl] HT HL Hf"). simpl.
@@ -2200,7 +2200,7 @@ Section laws.
     ⌜lctx_lft_alive E L κ⌝ ∗
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
       v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
-      ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
+      ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜val_decodes_to_loc v l2⌝ ∗
         v ◁ᵥ{f.1, MetaNone} r @ ty ∗ l2 ◁ₗ[f.1, b2] r2 @ lt2 ∗
         typed_place E L f l2 lt2 r2 UpdInit b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
           T L' κs li b3 bmin rti ltyi ri
@@ -2222,7 +2222,7 @@ Section laws.
     iDestruct "CTX" as "(LFT & LLCTX)".
     iApply wpe_fupd.
     iApply (wpe_logical_step with "Hcl"); [done.. | ].
-    opose proof (ty_op_type_stable _ Hot) as Halg'; first apply ty_sized_metadata_none.
+    opose proof (ty_op_type_stable _ _ _ Hot) as Halg'; first apply ty_sized_metadata_none.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
@@ -2230,13 +2230,13 @@ Section laws.
     { by apply val_to_loc_Some_l2v. }
     iApply physical_step_intro. iNext.
     iIntros (st) "Hl [Ha _]".
-    iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & -> & Hv & Hl2 & HT)"; first done.
+    iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & %Hdec & Hv & Hl2 & HT)"; first done.
     iMod (fupd_mask_mono with "(Ha Hl Hv)") as "(Hl & HL)"; first done.
     iPoseProof ("HL_cl" with "HL") as "HL".
     iModIntro.
     iPoseProof (ltype_own_addr_in_usize with "Hl2") as "%".
-    iExists l2. rewrite (mem_cast_id_loc l2); last by apply val_to_loc_Some_l2v.
-    iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
+    iExists l2.
+    iSplitR. { iPureIntro. by apply val_decodes_to_loc_mem_cast. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
     iApply ("Hcont" with "Hl3 [Hcl Hl] HT HL Hf"). simpl.
@@ -2255,7 +2255,7 @@ Section laws.
     ⌜lctx_lft_alive E L κ⌝ ∗
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
       v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
-      ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
+      ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜val_decodes_to_loc v l2⌝ ∗
         v ◁ᵥ{f.1, MetaNone} r @ ty ∗ l2 ◁ₗ[f.1, b2] r2 @ lt2 ∗
         typed_place E L f l2 lt2 r2 UpdInit b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
           T L' κs li b3 bmin rti ltyi ri
@@ -2276,7 +2276,7 @@ Section laws.
     iDestruct "CTX" as "(LFT & LLCTX)".
     iMod (frac_bor_acc with "LFT Hloc Htok") as "(%q0 & >Hloc & Hl_cl)"; first done.
     simpl. iModIntro.
-    opose proof (ty_op_type_stable _ Hot) as Halg'; first done.
+    opose proof (ty_op_type_stable _ _ _ Hot) as Halg'; first done.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "#>%Hlyv"; first done.
     iApply wpe_fupd.
@@ -2285,13 +2285,13 @@ Section laws.
     { by rewrite val_to_loc_Some_l2v. }
     iApply physical_step_intro. iNext.
     iIntros (st) "Hloc".
-    iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & -> & Hv & Hl2 & HT)"; first done.
+    iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & %Hdec & Hv & Hl2 & HT)"; first done.
     iMod ("Hl_cl" with "Hloc") as "Htok".
     iMod ("HL_cl2" with "Htok") as "HL". iPoseProof ("HL_cl" with "HL") as "HL".
     iModIntro.
     iPoseProof (ltype_own_addr_in_usize with "Hl2") as "%".
-    iExists l2. rewrite (mem_cast_id_loc l2); last by apply val_to_loc_Some_l2v.
-    iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
+    iExists l2.
+    iSplitR. { iPureIntro. by apply val_decodes_to_loc_mem_cast. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
     iApply ("Hcont" with "Hl3 [Hcl Hv] HT HL Hf"). simpl.

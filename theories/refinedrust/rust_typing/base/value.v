@@ -80,20 +80,21 @@ Qed.
 
 (* [is_memcast_val] is preserved by optypes behaving by [is_value_ot_core] *)
 Lemma is_value_ot_core_is_memcast_val_pres (typed : bool) ot ot1 vs v st :
+  v `has_layout_val` ot_layout ot1 →
   vs `has_layout_val` ot_layout ot1 →
   op_type_wf ot1 →
   is_value_ot_core (if typed then ot1 else UntypedOp (ot_layout ot1)) ot →
   is_memcast_val vs (if typed then ot1 else UntypedOp (ot_layout ot1)) v →
   is_memcast_val vs (if typed then ot1 else UntypedOp (ot_layout ot1)) (mem_cast v ot st).
 Proof.
-  intros ? ? Hot Hmc. destruct typed; simpl.
+  intros ? ? ? Hot Hmc. destruct typed; simpl.
   - destruct Hot as [(ly & -> & ->) | ->].
-    + rewrite mem_cast_UntypedOp. done.
+    + rewrite mem_cast_UntypedOp; done.
     + apply is_memcast_val_memcast; done.
-  - apply is_memcast_val_untyped_inv in Hmc as ->.
+  - apply is_memcast_val_untyped_inv in Hmc as ->; last done.
     destruct Hot as [(ly & -> & ->) | ->].
-    + rewrite mem_cast_UntypedOp. by left.
-    + rewrite mem_cast_UntypedOp. by left.
+    + rewrite mem_cast_UntypedOp; last done. by left.
+    + rewrite mem_cast_UntypedOp; last done. by left.
 Qed.
 
 Definition is_value_ot `{!LayoutAlg} (typed : bool) (st : syn_type) (ot : op_type) : Prop :=
@@ -148,6 +149,58 @@ Proof.
   - left. eauto.
 Qed.
 
+Lemma value_mem_cast_decode v ot st ov :
+  op_type_wf ot →
+  decode_op_val v ot st = Some ov →
+  mem_cast v ot st = encode_op_val ov.
+Proof.
+  intros Hwf Hdec. rewrite /mem_cast Hdec /=.
+  rewrite resize_all_alt; first done.
+  rewrite (encode_op_val_length _ _ Hwf (decode_op_val_has_type _ _ _ _ Hdec)).
+  by eapply decode_op_val_has_layout.
+Qed.
+
+Lemma value_encode_compat_canonical `{!LayoutAlg} st ot hst vs v ov :
+  use_op_alg st = Some ot →
+  is_memcast_val vs ot v →
+  v `has_layout_val` ot_layout ot →
+  syn_type_has_layout st (ot_layout ot) →
+  decode_op_val v ot hst = Some ov →
+  ∃ ot', use_op_alg st = Some ot' ∧
+    is_memcast_val vs ot' (encode_op_val ov) ∧
+    encode_op_val ov `has_layout_val` ot_layout ot' ∧
+    syn_type_has_layout st (ot_layout ot') ∧
+    ∀ hst', ∃ ov', decode_op_val (encode_op_val ov) ot' hst' = Some ov'.
+Proof.
+  intros Halg Hmc Hly Hst Hdec. exists ot. split_and!; [done | | | done |].
+  - rewrite -(value_mem_cast_decode v ot hst ov); last done.
+    + eapply is_memcast_val_memcast; [by eapply is_memcast_val_has_layout_val' | by eapply use_op_alg_wf | done].
+    + by eapply use_op_alg_wf.
+  - rewrite -(value_mem_cast_decode v ot hst ov); last done.
+    + by apply has_layout_val_mem_cast.
+    + by eapply use_op_alg_wf.
+  - intros hst'. exists ov. eapply decode_encode_op_val; [by eapply use_op_alg_wf |].
+    by eapply decode_op_val_has_type.
+Qed.
+
+Lemma value_encode_compat_untyped `{!LayoutAlg} st ot hst vs v ov :
+  use_op_alg st = Some ot →
+  is_memcast_val vs ot v →
+  v `has_layout_val` ot_layout ot →
+  syn_type_has_layout st (ot_layout ot) →
+  (∀ hst', ∃ ov', decode_op_val v ot hst' = Some ov') →
+  decode_op_val v (UntypedOp (ot_layout ot)) hst = Some ov →
+  ∃ ot', use_op_alg st = Some ot' ∧
+    is_memcast_val vs ot' (encode_op_val ov) ∧
+    encode_op_val ov `has_layout_val` ot_layout ot' ∧
+    syn_type_has_layout st (ot_layout ot') ∧
+    ∀ hst', ∃ ov', decode_op_val (encode_op_val ov) ot' hst' = Some ov'.
+Proof.
+  intros Halg Hmc Hly Hst Hdec_can Hdec.
+  simp decode_op_val in Hdec. case_bool_decide; last done.
+  injection Hdec as <-. exists ot. split_and!; done.
+Qed.
+
 
 Section value.
   Context `{!typeGS Σ}.
@@ -173,7 +226,7 @@ Section value.
     st_own π vs v :=
       (∃ ot,
         ⌜use_op_alg_typed typed st = Some ot⌝ ∗
-        ⌜is_memcast_val vs ot v⌝ ∗
+        ⌜is_same_decoded_val vs ot v⌝ ∗
         ⌜v `has_layout_val` (ot_layout ot)⌝ ∗
         ⌜syn_type_has_layout st (ot_layout ot)⌝)%I;
     st_syn_type := if typed then st else UntypedSynType st;
@@ -193,27 +246,46 @@ Section value.
     - by apply syn_type_has_layout_untyped.
   Qed.
   Next Obligation.
-    intros st ot mt Hot ?. 
-    destruct Hot as (ot' & Halg & Hot & Hst).
-    destruct ot; try done.
-    all: destruct Hot as [<- ?].
-    all: eapply use_op_alg_wf; done.
+    intros typed st ot Hot.
+    destruct Hot as (ot' & Hot & Hot' & ?).
+    destruct Hot' as [(ly & -> & ->) | ->].
+    - done.
+    - by eapply use_op_alg_wf.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
-    (* mem-cast *)
-    intros typed st ot' ? π vs v (ot & Halg & Hot & Hst).
-    iIntros "(%ot'' & %Halg' & %Hmc & %Hly & %Hst')".
+    intros typed st ot' hst π vs v (ot & Halg & Hot & Hst).
+    iIntros "(%ot'' & %Halg' & %Hvs & %Hly & %Hst')".
+    eapply use_op_alg_typed_inv in Halg' as (ot1 & Halg' & ->).
+    apply use_op_alg_typed_inv in Halg as (ot2 & Hot2 & ->).
+    assert (ot2 = ot1) as -> by by eapply use_op_alg_inj.
+    iPureIntro. destruct Hot as [(ly & -> & ->) | ->].
+    - exists (OVUntyped (ot_layout (if typed then ot1 else UntypedOp (ot_layout ot1))) v). simp decode_op_val.
+      rewrite /has_layout_val in Hly. case_bool_decide; done || lia.
+    - by eapply is_same_decoded_val_decodable_r.
+  Qed.
+  Next Obligation.
+    (* decode compatibility *)
+    intros typed st ot' hst π vs v v' (ot & Halg & Hot & Hst) Hsame.
+    iIntros "(%ot'' & %Halg' & %Hvs & %Hly & %Hst')".
     eapply use_op_alg_typed_inv in Halg' as (ot1 & Halg' & ->).
     apply use_op_alg_typed_inv in Halg as (ot2 & Hot2 & ->).
     assert (ot2 = ot1) as -> by by eapply use_op_alg_inj.
     iPureIntro. eexists _. split_and!; [ | | | done].
     + eapply use_op_alg_typed_Some; first done. done.
-    + specialize (is_memcast_val_has_layout_val' _ _ _ _ Hmc Hly) as Hly'.
-      eapply is_value_ot_core_is_memcast_val_pres; try done.
-      { destruct typed; done. }
-      { by eapply use_op_alg_wf. }
-    + by apply has_layout_val_mem_cast.
+    + destruct Hot as [(ly & -> & ->) | ->].
+      * pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly'.
+        pose proof (is_same_decoded_val_at_untyped_inv hst v v'
+          (ot_layout (if typed then ot1 else UntypedOp (ot_layout ot1))) Hly Hly' Hsame) as ->.
+        done.
+      * eapply is_same_decoded_val_trans; first done.
+        by eapply is_same_decoded_val_of_at.
+    + destruct Hot as [(ly & -> & ->) | ->].
+      * pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly'.
+        pose proof (is_same_decoded_val_at_untyped_inv hst v v'
+          (ot_layout (if typed then ot1 else UntypedOp (ot_layout ot1))) Hly Hly' Hsame) as ->.
+        done.
+      * by eapply is_same_decoded_val_at_has_layout_r.
   Qed.
   Next Obligation.
     intros typed st ly Hst. simpl.
@@ -269,7 +341,7 @@ Section lemmas.
     rewrite /ty_own_val/=.
     iDestruct 1 as "(-> & %ot & %Hot & %Hmc & %Hly & %Hst)".
     assert (ly = ot_layout ot) as -> by by eapply syn_type_has_layout_inj.
-    iL. iPureIntro. apply is_memcast_val_length in Hmc as ->; done.
+    iL. iPureIntro. apply is_same_decoded_val_length in Hmc as ->; done.
   Qed.
 
   Lemma value_has_layout π typed st v vs m :
@@ -281,18 +353,23 @@ Section lemmas.
     iExists (ot_layout ot). iR. done.
   Qed.
 
-  Lemma own_val_split_value π {rt} (ty : type rt) r v ly m :
-    syn_type_has_layout (ty_syn_type ty m) ly →
-    v ◁ᵥ{π, m} r @ ty -∗
-    v ◁ᵥ{π, MetaNone} v @ value_t true (ty_syn_type ty m) ∗ v ◁ᵥ{π, m} r @ ty.
+  Lemma own_val_split_value π {rt} (ty : type rt) `{!TySized ty} r v ly :
+    syn_type_has_layout (ty_syn_type ty MetaNone) ly →
+    ty_has_op_type ty (use_op_alg' (ty_syn_type ty MetaNone)) →
+    v ◁ᵥ{π, MetaNone} r @ ty -∗
+    v ◁ᵥ{π, MetaNone} v @ value_t true (ty_syn_type ty MetaNone) ∗ v ◁ᵥ{π, MetaNone} r @ ty.
   Proof.
-    iIntros (Hly) "Hv".
+    iIntros (Hly Htyot) "Hv".
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv"; first done.
-    subst. iFrame.
+    subst.
     specialize (syn_type_has_layout_op_alg _ _ Hly) as (ot & Hot & <-).
+    rewrite /use_op_alg' Hot /= in Htyot.
+    iPoseProof (ty_decodable _ ty ot inhabitant π r v with "Hv") as (ov) "%Hdec"; [apply ty_sized_metadata_none | done |].
+    iFrame.
     iR.
     iExists ot. iSplitR; first done.
-    iSplitR. { iLeft. done. }
+    iSplitR. { iPureIntro. eapply is_same_decoded_val_of_at.
+      by apply is_same_decoded_val_at_refl; eauto. }
     done.
   Qed.
 
@@ -310,12 +387,14 @@ Section lemmas.
     split_and!.
     - eapply use_op_alg_untyped; first done.
       by apply syn_type_has_layout_untyped.
-    - by left.
+    - apply is_same_decoded_val_refl. intros hst.
+      exists (OVUntyped (ot_layout ot) v). simp decode_op_val.
+      rewrite /has_layout_val in Hv. case_bool_decide; done || lia.
     - done.
     - done.
   Qed.
 
-  Lemma own_val_merge_value_typed π {rt} (ty : type rt) r v vs :
+  Lemma own_val_merge_value_typed π {rt} (ty : type rt) `{!TySized ty} r v vs :
     (* TODO: this requirement should become trivial soon *)
     ty_has_op_type ty (use_op_alg' (ty_syn_type ty MetaNone)) →
     vs ◁ᵥ{π, MetaNone} v @ value_t true (ty_syn_type ty MetaNone) -∗
@@ -327,8 +406,7 @@ Section lemmas.
     iDestruct "Hv1" as "(_ & (%ot & %Hot' & %Hmc & %Hvs & %Hst))".
     rewrite /use_op_alg_typed in Hot'.
     rewrite /use_op_alg'/= Hot'/= in Hot.
-    destruct Hmc as [-> | (? & ->)]; first done.
-    by iApply (ty_memcast_compat with "Hv2").
+    iApply (ty_decode_compat with "Hv2"); [apply ty_sized_metadata_none | done | exact (Hmc inhabitant)].
   Qed.
 
   Lemma own_val_merge_value_untyped π {rt} (ty : type rt) st r v vs :
@@ -341,8 +419,9 @@ Section lemmas.
     iDestruct "Hv1" as "(_ & (%ot & %Hot' & %Hmc & %Hvs & %Hst))".
     rewrite /use_op_alg_typed/= in Hot'.
     apply use_op_alg_untyped_inv in Hot' as (ly & Hot' & ->).
-    destruct Hmc as [-> | (? & ->)]; first done.
-    by rewrite mem_cast_UntypedOp.
+    pose proof (is_same_decoded_val_has_layout_l _ _ _ Hmc) as Hly.
+    pose proof (is_same_decoded_val_untyped_inv _ _ _ Hly Hvs Hmc) as ->.
+    done.
   Qed.
 
   Lemma value_array_merge π typed v1 v2 r1 r2 st n1 n2 n m ly :
@@ -374,8 +453,18 @@ Section lemmas.
       eapply syn_type_has_layout_array; [done | done |].
       rewrite ly_size_mk_array_layout in Hsz. lia. }
     iSplitR. {
-      iPureIntro. eapply is_memcast_val_array_op_merge; [| done..].
-      by apply array_op_merge_untyped. }
+      iPureIntro.
+      pose proof (is_same_decoded_val_has_layout_l _ _ _ Hmc1) as Hrly1.
+      pose proof (is_same_decoded_val_has_layout_l _ _ _ Hmc2) as Hrly2.
+      pose proof (is_same_decoded_val_untyped_inv _ _ _ Hrly1 Hly1 Hmc1) as ->.
+      pose proof (is_same_decoded_val_untyped_inv _ _ _ Hrly2 Hly2 Hmc2) as ->.
+      apply is_same_decoded_val_refl. intros hst.
+      exists (OVUntyped (mk_array_layout ly_st (n1 + n2)) (v1 ++ v2)). simp decode_op_val.
+      rewrite /has_layout_val length_app.
+      rewrite /has_layout_val in Hly1, Hly2.
+      rewrite !ly_size_mk_array_layout in Hly1, Hly2.
+      rewrite ly_size_mk_array_layout.
+      case_bool_decide; done || lia. }
     iSplitR. {
       iPureIntro. rewrite /has_layout_val length_app.
       rewrite /has_layout_val in Hly1, Hly2.
@@ -407,21 +496,18 @@ Section lemmas.
     assert (ly_size ly * (n1 + n2)%nat ≤ MaxInt ISize)%Z as Hsz' by lia.
     pose proof (syn_type_has_layout_array st (n1 + n2) ly (mk_array_layout ly (n1 + n2)) eq_refl Hst1 Hsz') as Halg.
     pose proof (use_op_alg_typed_array_inv typed st (n1 + n2) ly ot Halg Hot) as ->.
-    pose proof (is_memcast_val_array_op_split st n1 n2
-      (UntypedOp (mk_array_layout ly (n1 + n2)))
-      (UntypedOp (mk_array_layout ly n1))
-      (UntypedOp (mk_array_layout ly n2)) r1 r2 v1 v2) as Hsplit.
-    destruct Hsplit as [Hmc1 Hmc2].
-    { by apply array_op_split_untyped. }
-    { rewrite ly_size_mk_array_layout. lia. }
-    { rewrite ly_size_mk_array_layout. lia. }
-    { done. }
+    pose proof (is_same_decoded_val_has_layout_l _ _ _ Hmc) as Hrly.
+    pose proof (is_same_decoded_val_untyped_inv _ _ _ Hrly Hly Hmc) as Happ.
+    destruct (app_inj_1 r1 v1 r2 v2 ltac:(lia) Happ) as [-> ->].
     iSplit.
     - iR. iExists (UntypedOp (mk_array_layout ly n1)).
       iSplitR. { iPureIntro. apply use_op_alg_typed_array.
         eapply syn_type_has_layout_array; [done | done |].
         lia. }
-      iSplitR. { done. }
+      iSplitR. { iPureIntro. apply is_same_decoded_val_refl. intros hst.
+        exists (OVUntyped (mk_array_layout ly n1) v1). simp decode_op_val.
+        rewrite /has_layout_val ly_size_mk_array_layout.
+        case_bool_decide; done || lia. }
       iSplitR. { iPureIntro. rewrite /has_layout_val ly_size_mk_array_layout. lia. }
       iPureIntro. eapply syn_type_has_layout_array; [done | done |].
       lia.
@@ -429,7 +515,10 @@ Section lemmas.
       iSplitR. { iPureIntro. apply use_op_alg_typed_array.
         eapply syn_type_has_layout_array; [done | done |].
         lia. }
-      iSplitR. { done. }
+      iSplitR. { iPureIntro. apply is_same_decoded_val_refl. intros hst.
+        exists (OVUntyped (mk_array_layout ly n2) v2). simp decode_op_val.
+        rewrite /has_layout_val ly_size_mk_array_layout.
+        case_bool_decide; done || lia. }
       iSplitR. { iPureIntro. rewrite /has_layout_val ly_size_mk_array_layout. lia. }
       iPureIntro. eapply syn_type_has_layout_array; [done | done |].
       lia.
@@ -485,19 +574,22 @@ Section types.
   Context `{!typeGS Σ}.
 
   Lemma type_loc_value π v (l : loc) :
-    val_to_loc v = Some l →
+    val_decodes_to_loc v l →
+    loc_a l ∈ USize →
     ⊢ v ◁ᵥ{ π, MetaNone} (l2v l) @ value_t true PtrSynType.
   Proof.
-    iIntros (Hv).
+    iIntros (Hv ?).
     rewrite /ty_own_val/=.
     iR. iExists PtrOp.
     iR. iPureIntro. split_and!.
-    - right.
-      exists inhabitant. rewrite mem_cast_l2v_id.
-      { erewrite l2v_correct'; done. }
-      { apply val_to_loc_Some_inv in Hv.
-        destruct Hv as [_ ?]. done. }
-    - rewrite /has_layout_val val_to_loc_length; done.
+    - intros hst. split.
+      + rewrite Hv.
+        simp decode_op_val.
+        by rewrite (val_to_loc_Some_l2v l).
+      + exists (OVPtr l). simp decode_op_val.
+        by rewrite (val_to_loc_Some_l2v l).
+    - rewrite /has_layout_val.
+      erewrite val_decodes_to_loc_length; done.
     - by apply syn_type_has_layout_ptr.
   Qed.
 End types.
@@ -523,18 +615,18 @@ Section ofty_lemmas.
     done.
   Qed.
 
-  Lemma ofty_own_split_value_typed π F l {rt} (ty : type rt) r :
+  Lemma ofty_own_split_value_typed π F l {rt} (ty : type rt) `{!TySized ty} r :
     lftE ⊆ F →
+    ty_has_op_type ty (use_op_alg' (ty_syn_type ty MetaNone)) →
     (l ◁ₗ[π, Owned] #r @ ◁ ty)%I -∗ |={F}=> ∃ v,
     v ◁ᵥ{π, MetaNone} r @ ty ∗ l ◁ₗ[π, Owned] #v @ ◁ (value_t true (ty_syn_type ty MetaNone)).
   Proof.
-    iIntros (?) "Hty".
+    iIntros (? Hot) "Hty".
     rewrite (ltype_own_ofty_unfold ty) /lty_of_ty_own.
     iDestruct "Hty" as "(%ly' & % & % & Hsc & Hlb & %r' & <- & Hb)".
     (*assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.*)
     iMod (fupd_mask_mono with "Hb") as "(%v & Hl & Hv)"; first done.
-    iPoseProof (own_val_split_value _ _ _ _ with "Hv") as "(Hv' & Hv)".
-    { done. }
+    iPoseProof (own_val_split_value with "Hv") as "(Hv' & Hv)"; [done | done |].
     iExists v. iFrame.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iExists _. simpl.
@@ -560,7 +652,7 @@ Section ofty_lemmas.
     iR. iR. iFrame. done.
   Qed.
 
-  Lemma ofty_own_merge_value_typed {rt} π (ty : type rt) v r l :
+  Lemma ofty_own_merge_value_typed {rt} π (ty : type rt) `{!TySized ty} v r l :
     ty_has_op_type ty (use_op_alg' (ty_syn_type ty MetaNone)) →
     v ◁ᵥ{ π, MetaNone} r @ ty -∗
     l ◁ₗ[ π, Owned] #v @ (◁ value_t true (ty_syn_type ty MetaNone)) -∗
@@ -578,7 +670,7 @@ Section ofty_lemmas.
     iMod "Hb" as "(%v' & Hl & Hv')". iModIntro.
     iDestruct "Hrfn" as "<-".
     iExists v'. iFrame.
-    by iApply (own_val_merge_value_typed with "Hv' Hv").
+    iApply (own_val_merge_value_typed with "Hv' Hv"). done.
   Qed.
 
   Lemma ofty_own_merge_value_untyped {rt} π (ty : type rt) v r st l ly :
@@ -774,7 +866,13 @@ Section byte_lemmas.
       - by apply Hwf.
       - lia.
       - by apply Hal. }
-    iSplitR. { apply is_memcast_val_untyped_inv in Hmc. by iLeft. }
+    iSplitR. { iPureIntro.
+      pose proof (is_same_decoded_val_has_layout_l _ _ _ Hmc) as Hvs.
+      pose proof (is_same_decoded_val_untyped_inv _ _ _ Hvs Hly Hmc) as ->.
+      apply is_same_decoded_val_refl. intros hst.
+      exists (OVUntyped ly2 v). simp decode_op_val.
+      rewrite /has_layout_val in Hly. rewrite Hly Hsz.
+      case_bool_decide; done || lia. }
     simpl. iSplitR. { rewrite /has_layout_val -Hsz //. }
     iPureIntro.
     eapply syn_type_has_layout_literal.
@@ -872,13 +970,14 @@ Section rules.
 
   (* No instances, as we cannot use the universally quantified [v] for evar instantiation.
     Should be manually applied if needed. *)
-  Lemma owned_subltype_step_to_typed_value π E L step {rt} l v' st (ty : type rt) r T:
-    (∀ v, v ◁ᵥ{π, MetaNone} r @ ty -∗
+  Lemma owned_subltype_step_to_typed_value π E L step {rt} l v' st (ty : type rt) `{!TySized ty} r T:
+    (⌜ty_has_op_type ty (use_op_alg' (ty_syn_type ty MetaNone))⌝ ∗
+    ∀ v, v ◁ᵥ{π, MetaNone} r @ ty -∗
       owned_subltype_step π E L step l #v #v' (◁ value_t true (ty_syn_type ty MetaNone)) (◁ value_t true st) T)
     ⊢ owned_subltype_step π E L step l #r #v' (◁ ty) (◁ value_t true st) T.
   Proof.
     rewrite /compute_layout_goal.
-    iIntros "HT" (????) "#CTX #HE HL Hty".
+    iIntros "(%Hot & HT)" (????) "#CTX #HE HL Hty".
     iMod (ofty_own_split_value_typed with "Hty") as "(%v & Hv & Hty)"; [done.. | ].
     iDestruct ("HT" with "Hv") as "HT".
     by iApply ("HT" with "[//] [//] [//] CTX HE HL").
@@ -899,7 +998,7 @@ Section rules.
   Definition owned_subtype_value_id_inst := [instance @owned_subtype_value_id].
   Global Existing Instance owned_subtype_value_id_inst | 10.
 
-  Lemma owned_subtype_merge_typed_value {rt} π E L (ty : type rt) r v' st T :
+  Lemma owned_subtype_merge_typed_value {rt} π E L (ty : type rt) `{!TySized ty} r v' st T :
     prove_with_subtype E L false ProveDirect (v' ◁ᵥ{π, MetaNone} r @ ty) True (λ L' _ R,
       introduce_with_hooks E L' R (λ L2,
       ⌜ty_has_op_type ty (use_op_alg' (ty.(ty_syn_type) MetaNone))⌝ ∗
@@ -1192,15 +1291,25 @@ Section typed_value.
   Next Obligation.
     simpl.
     intros st ot Hot.
-    eapply (ty_op_type_stable (ty:=value_t true st)).
-    rewrite ty_has_op_type_unfold. done.
+    eapply (@ty_op_type_stable _ _ _ (value_t true st) ot).
+    - done.
+    - rewrite ty_has_op_type_unfold. done.
+  Qed.
+  Next Obligation.
+    simpl. intros st ot Hot.
+    eapply (ty_op_type_wf (value_t true st)).
+    rewrite ty_has_op_type_unfold//.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
-    iIntros (st ot ? π [] v Hot) "(%vs & Hv)".
-    iPoseProof (ty_memcast_compat with "Hv") as "Hv".
-    { rewrite ty_has_op_type_unfold. done. }
-    iFrame.
+    iIntros (st ot hst π [] v Hot) "(%vs & Hv)".
+    iApply (ty_decodable valRT (value_t true st) ot hst π vs v with "Hv"); [done |].
+    rewrite ty_has_op_type_unfold//.
+  Qed.
+  Next Obligation.
+    iIntros (st ot hst π [] v v' Hot Hsame) "(%vs & Hv)".
+    iExists vs. iApply (ty_decode_compat valRT (value_t true st) ot hst π vs v v' with "Hv"); [done | | done].
+    rewrite ty_has_op_type_unfold//.
   Qed.
   Next Obligation.
     intros st ly Hst. simpl.
@@ -1239,7 +1348,7 @@ Section move_value.
     *)
 
 
-  Lemma type_read_ofty_move_owned_value E L {rt} π l (ty : type rt) r ot bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} (T : typed_read_end_cont_t bmin rt) :
+  Lemma type_read_ofty_move_owned_value E L {rt} π l (ty : type rt) `{!TySized ty} r ot bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} (T : typed_read_end_cont_t bmin rt) :
     (⌜use_op_alg (ty_syn_type ty MetaNone) = Some ot⌝ ∗
       ⌜ty_has_op_type ty ot⌝ ∗
       ∀ v v', v ◁ᵥ{π, MetaNone} r @ ty -∗
@@ -1251,7 +1360,7 @@ Section move_value.
     iIntros "(%Hotalg & %Hot & Hs)" (F ????) "#CTX #HE HL Hb".
     iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
-    specialize (ty_op_type_stable Hot) as Halg''.
+    specialize (@ty_op_type_stable _ _ _ ty ot ty_sized_metadata_none Hot) as Halg''.
     rewrite /use_op_alg' in Halg''.
     assert (ly = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
     iModIntro. iExists _, _, rt, _, _.
@@ -1261,6 +1370,7 @@ Section move_value.
     iIntros "Hcl %st Hl Hv".
     iPoseProof (own_val_split_value with "Hv") as "(#Hv1 & Hv)".
     { done. }
+    { rewrite /use_op_alg' Hotalg /=. done. }
     iMod ("Hcl" $! v _ (value_t true (ty.(ty_syn_type) MetaNone)) (v) with "Hl [//] [] []") as "Hl".
     { simpl. done. }
     { done. }
@@ -1272,7 +1382,8 @@ Section move_value.
       From the fact that [ty] is compatible with an optype, it doesn't follow that the corresponding value is compatible.
       Maybe this is somethign we can fix?
     *)
-    iPoseProof (ty_memcast_compat _ _ ot st with "Hv1") as "Hv2".
+    iPoseProof (ty_memcast_compat valRT (value_t true (ty.(ty_syn_type) MetaNone)) ot st with "Hv1") as "Hv2".
+    { done. }
     { rewrite ty_has_op_type_unfold. exists ot. split_and!; first done; last done. by apply is_value_ot_core_refl. }
     iR. iR. iL. destruct bmin; done.
   Qed.
@@ -1280,15 +1391,16 @@ Section move_value.
   (*Global Existing Instance type_read_ofty_move_owned_value_inst | 21.*)
 
   (* We have a more specialized instance for [Untyped] *)
-  Lemma type_read_ofty_move_owned_value_untyped E L {rt} π l (ty : type rt) r ly bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} (T : typed_read_end_cont_t bmin rt) :
+  Lemma type_read_ofty_move_owned_value_untyped E L {rt} π l (ty : type rt) `{!TySized ty} r ly bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} (T : typed_read_end_cont_t bmin rt) :
     (⌜use_layout_alg (ty_syn_type ty MetaNone) = Some ly⌝ ∗
+      ⌜ty_has_op_type ty (use_op_alg' (ty_syn_type ty MetaNone))⌝ ∗
       ∀ v v', v ◁ᵥ{π, MetaNone} r @ ty -∗
       T L v' _ (value_t false (ty_syn_type ty MetaNone)) v val
       (◁ value_t true (ty.(ty_syn_type) MetaNone)) (#v)
       (mkPUKRes (allowed:=bmin) UpdStrong I (opt_place_update_eq_strong _ Hstrong)))
     ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned) bmin (UntypedOp ly) ReadDoMove T.
   Proof.
-    iIntros "(%Halg & Hs)" (F ????) "#CTX #HE HL Hb".
+    iIntros "(%Halg & %Htyot & Hs)" (F ????) "#CTX #HE HL Hb".
     iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly' & %Halg' & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
     assert (ly' = ly) as ->. { by eapply syn_type_has_layout_inj. }
@@ -1301,6 +1413,7 @@ Section move_value.
     eapply syn_type_has_layout_op_alg in Halg as (ot & Hot & <-).
     iPoseProof (own_val_split_value with "Hv") as "(Hv' & Hv)".
     { done. }
+    { done. }
     iPoseProof (own_val_split_value_untyped with "Hv") as "(Hv'' & Hv)".
     { done. }
 
@@ -1308,7 +1421,9 @@ Section move_value.
     { simpl. done. }
     iModIntro.
     iSpecialize ("Hs" with "Hv").
-    iFrame. iR. iL.
+    rewrite mem_cast_UntypedOp; last done.
+    iFrame.
+    iR. iL.
     destruct bmin; done.
   Qed.
   Definition type_read_ofty_move_owned_value_untyped_inst := [instance @type_read_ofty_move_owned_value_untyped].
@@ -1322,7 +1437,7 @@ Section move_uninit.
 
     We don't have a corresponding rule for Untyped reads right now, but could add one. *)
 
-  Lemma type_read_ofty_move_owned_typed_value E L {rt} π l (ty : type rt) r ot bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} (T : typed_read_end_cont_t bmin rt) :
+  Lemma type_read_ofty_move_owned_typed_value E L {rt} π l (ty : type rt) `{!TySized ty} r ot bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} (T : typed_read_end_cont_t bmin rt) :
     (⌜use_op_alg (ty_syn_type ty MetaNone) = Some ot⌝ ∗
       ⌜ty_has_op_type ty ot⌝ ∗
       ∀ v,
@@ -1334,7 +1449,7 @@ Section move_uninit.
     iIntros "(%Hotalg & %Hot & Hs)" (F ????) "#CTX #HE HL Hb".
     iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
-    specialize (ty_op_type_stable Hot) as Halg''.
+    specialize (@ty_op_type_stable _ _ _ ty ot ty_sized_metadata_none Hot) as Halg''.
     rewrite /use_op_alg' in Halg''.
     assert (ly = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
     iModIntro. iExists _, _, rt, _, _.
@@ -1344,6 +1459,7 @@ Section move_uninit.
     iIntros "Hcl %st Hl Hv".
     iPoseProof (own_val_split_value with "Hv") as "(#Hv1 & Hv)".
     { done. }
+    { rewrite /use_op_alg' Hotalg /=. done. }
 
     iSpecialize ("Hs" $! _).
     iFrame.
@@ -1358,7 +1474,8 @@ Section move_uninit.
       From the fact that [ty] is compatible with an optype, it doesn't follow that the corresponding value is compatible.
       Maybe this is somethign we can fix?
     *)
-    iPoseProof (ty_memcast_compat _ _ ot st with "Hv1") as "Hv2".
+    iPoseProof (ty_memcast_compat valRT (value_t true (ty.(ty_syn_type) MetaNone)) ot st with "Hv1") as "Hv2".
+    { done. }
     { rewrite ty_has_op_type_unfold. exists ot. split_and!; first done; last done. by apply is_value_ot_core_refl. }
     iPoseProof (own_val_merge_value_typed with "Hv2 Hv") as "$".
     { rewrite /use_op_alg' Hotalg//. }
@@ -1369,7 +1486,7 @@ Section move_uninit.
 
   (* We also have a corresponding rule for Uniq ownership that leaves [Opened].
     This allows us to move out of mutable references, as long as another object is moved in at a later point. *)
-  Lemma type_read_ofty_move_uniq_typed_value E L {rt} π l (ty : type rt) κ γ r ot bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} (T : typed_read_end_cont_t bmin rt) :
+  Lemma type_read_ofty_move_uniq_typed_value E L {rt} π l (ty : type rt) `{!TySized ty} κ γ r ot bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} (T : typed_read_end_cont_t bmin rt) :
     li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
     (⌜use_op_alg (ty_syn_type ty MetaNone) = Some ot⌝ ∗
       ⌜ty_has_op_type ty ot⌝ ∗
@@ -1389,7 +1506,7 @@ Section move_uninit.
     iPoseProof (ofty_ltype_acc_uniq with "CTX Htok Hcl_tok Hb") as "(%ly & %Halg & %Hly & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
 
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
-    specialize (ty_op_type_stable Hot) as Halg''.
+    specialize (@ty_op_type_stable _ _ _ ty ot ty_sized_metadata_none Hot) as Halg''.
     rewrite /use_op_alg' in Halg''.
     assert (ly = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
     iMod "Hcl_F" as "_".
@@ -1404,6 +1521,7 @@ Section move_uninit.
 
     iPoseProof (own_val_split_value with "Hv") as "(#Hv1 & Hv)".
     { done. }
+    { rewrite /use_op_alg' Hotalg /=. done. }
 
     iSpecialize ("HT" $! _).
     iFrame "HT".
@@ -1418,7 +1536,8 @@ Section move_uninit.
       From the fact that [ty] is compatible with an optype, it doesn't follow that the corresponding value is compatible.
       Maybe this is somethign we can fix?
     *)
-    iPoseProof (ty_memcast_compat _ _ ot st with "Hv1") as "Hv2".
+    iPoseProof (ty_memcast_compat valRT (value_t true (ty.(ty_syn_type) MetaNone)) ot st with "Hv1") as "Hv2".
+    { done. }
     { rewrite ty_has_op_type_unfold. exists ot. split_and!; first done; last done. by apply is_value_ot_core_refl. }
     iPoseProof (own_val_merge_value_typed with "Hv2 Hv") as "$".
     { rewrite /use_op_alg' Hotalg//. }
@@ -1436,12 +1555,13 @@ Section stratify.
   Lemma stratify_ltype_ofty_typed_value_owned π E L mdu ma {M} (m : M) l st v `{!StratifyLtypeShouldMoveValues m} (T : stratify_ltype_cont_t) :
     find_in_context (FindVal v) (λ '(existT rt (ty', r', π', m)),
       ⌜π' = π⌝ ∗ ⌜m = MetaNone⌝ ∗
+      find_tc_inst (TySized ty') (λ _,
       ⌜ty_has_op_type ty' (use_op_alg' (ty'.(ty_syn_type) m))⌝ ∗
       ⌜ty'.(ty_syn_type) m = st⌝ ∗
-      stratify_ltype π E L mdu ma m l (◁ ty') (#r') (Owned) T)
+      stratify_ltype π E L mdu ma m l (◁ ty') (#r') (Owned) T))
     ⊢ stratify_ltype π E L mdu ma m l (◁ value_t true st)%I (#v) (Owned) T.
   Proof.
-    iDestruct 1 as ([rt [[[ty' r'] π'] m']]) "(Hv & -> & -> & %Hot & %Heq & HT)" => /=.
+    iDestruct 1 as ([rt [[[ty' r'] π'] m']]) "(Hv & -> & -> & % & %Hot & %Heq & HT)" => /=.
     iIntros (????) "#CTX #HE HL Hl".
     iPoseProof (ltype_own_has_layout with "Hl") as "#(%ly & %Hst &_)".
     subst st.
@@ -1485,15 +1605,16 @@ Section op_rules.
   Lemma simplify_hyp_value_merge_typed E L π v vs st T :
     find_in_context (FindVal vs) (λ '(existT rt (ty, r, π', m)),
       ⌜π' = π⌝ ∗ ⌜m = MetaNone⌝ ∗
+      find_tc_inst (TySized ty) (λ _,
       ⌜ty_has_op_type ty (use_op_alg' (st_of ty MetaNone))⌝ ∗
       ⌜st = st_of ty MetaNone⌝ ∗
-      T v rt r ty)
+      T v rt r ty))
     ⊢ simplify_hyp_value E L π (v ◁ᵥ{π, MetaNone} vs @ value_t true st) T.
   Proof.
     rewrite /FindVal.
     iIntros "(%ty & HT)".
     simpl. destruct ty as [rt (((ty & r) & π') & m)].
-    simpl. iDestruct "HT" as "(Hv & -> & -> & %Hot & -> & HT)".
+    simpl. iDestruct "HT" as "(Hv & -> & -> & % & %Hot & -> & HT)".
     iIntros (??) "CTX HE HL HP".
     iPoseProof (own_val_merge_value_typed with "HP Hv") as "Hv"; first done.
     by iFrame.
@@ -1623,10 +1744,13 @@ Section deinit.
 
   Lemma owned_subltype_step_ofty_val_eq π E L {rt} (lt : ltype rt) r st l `{Hst : !TCDone (ltype_st lt = st)} T :
     owned_subltype_step π E L true l #r #() lt (◁ typed_value_t st) T :-
-    return cast_ltype_to_type E L lt (λ ty, T L (ty_ghost_drop' ty π r)).
+    return cast_ltype_to_type E L lt (λ ty,
+      find_tc_inst (TySized ty) (λ _,
+      ⌜ty_has_op_type ty (use_op_alg' (st_of ty MetaNone))⌝ ∗
+      T L (ty_ghost_drop' ty π r))).
   Proof.
     unfold TCDone in Hst. subst st.
-    iDestruct 1 as "(%ty & %Heqt & HT)".
+    iDestruct 1 as "(%ty & %Heqt & % & %Hot & HT)".
     iIntros (????) "CTX HE HL Hl". simp_ltypes; simpl.
 
     iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Hincl)"; first apply Heqt.
@@ -1636,7 +1760,7 @@ Section deinit.
     iExists _, _. iFrame.
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Hst' & %)".
     simp_ltypes in Hst'.
-    iMod (ofty_own_split_value_typed with " Hl") as "(%v & Hv & Hl)"; [done.. | ].
+    iMod (ofty_own_split_value_typed with "Hl") as "(%v & Hv & Hl)"; [done.. | ].
     iPoseProof (ty_own_ghost_drop with "Hv") as "Hb"; first done.
     iModIntro.
     iApply (logical_step_wand with "Hb"). iIntros "$".

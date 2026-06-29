@@ -1,8 +1,8 @@
 From refinedrust Require Export type.
 From refinedrust Require Import uninit_def int.
+From refinedrust Require Import array.def.
 From refinedrust Require Import options.
 
-From refinedrust Require Import array.def.
 
 Section def.
   Context `{!typeGS Σ}.
@@ -54,6 +54,9 @@ Section def.
   Next Obligation.
     iIntros (ty ot Hot).
     destruct ot; try done.
+  Qed.
+  Next Obligation.
+    intros ty ot Hot. done.
   Qed.
   Next Obligation.
     iIntros (ty π r m v) "_". done.
@@ -156,8 +159,10 @@ Section def.
     intros. iIntros "_". by iApply logical_step_intro.
   Qed.
   Next Obligation.
-    iIntros (ty ot st π r m v Hot) "Hb".
-    destruct ot as [ | | | | ? ? ? | ly' | ]; try done.
+    iIntros (ty ot st π r v Hmeta Hot) "Hb". done.
+  Qed.
+  Next Obligation.
+    iIntros (ty ot st π r v v' Hmeta Hot Hsame) "Hb". done.
   Qed.
   Next Obligation.
     intros ty ly ? Hst.

@@ -19,6 +19,7 @@ Definition cast_to_bool (ot: op_type) (v: val) (st: heap_state) : option bool :=
 Inductive op_val : Set :=
 | OVBool (b : bool)
 | OVInt (it : int_type) (z : Z)
+| OVFnPtr (l : loc)
 | OVPtr (l : loc)
 | OVStruct (sl : struct_layout) (fields : list op_val)
 | OVEnum (el : enum_layout) (variant : var_name) (tag : Z)
@@ -29,6 +30,7 @@ Inductive op_val : Set :=
 Inductive op_val_has_type : op_val → op_type → Prop :=
 | OVBool_has_type b : op_val_has_type (OVBool b) BoolOp
 | OVInt_has_type it z : z ∈ it → op_val_has_type (OVInt it z) (IntOp it)
+| OVFnPtr_has_type l : l.(loc_a) ∈ USize → op_val_has_type (OVFnPtr l) FnPtrOp
 | OVPtr_has_type l : l.(loc_a) ∈ USize → op_val_has_type (OVPtr l) PtrOp
 | OVStruct_has_type sl fields ots :
     Forall2 op_val_has_type fields ots →
@@ -43,6 +45,7 @@ Fixpoint encode_op_val (ov : op_val) : val :=
   match ov with
   | OVBool b => val_of_bool b
   | OVInt it z => i2v z it
+  | OVFnPtr l => l2v l
   | OVPtr l => l2v l
   | OVStruct sl fields =>
       mjoin $ pad_struct sl.(sl_members) (encode_op_val <$> fields)
@@ -132,6 +135,9 @@ Fixpoint decode_struct_fields
 Equations decode_op_val (v : val) (ot : op_type) (st : (gset addr * heap_state)) : option op_val by wf ot op_type_size_rel :=
   decode_op_val v BoolOp st := OVBool <$> val_to_bool v;
   decode_op_val v (IntOp it) st := OVInt it <$> val_to_Z v it;
+  decode_op_val v FnPtrOp st :=
+    (* don't allow integer-pointer casts here *)
+    OVFnPtr <$> val_to_loc v;
   decode_op_val v PtrOp st :=
       match val_to_loc v with
       | Some l => Some (OVPtr l)
@@ -188,6 +194,7 @@ Proof.
   destruct ot; simp decode_op_val in Hdec.
   - move: Hdec => /fmap_Some[b[Hb Hov]]. by apply val_to_bool_length in Hb.
   - move: Hdec => /fmap_Some[z[Hz Hov]]. by apply val_to_Z_length in Hz.
+  - move: Hdec => /fmap_Some[l[Hl Hov]]. by apply val_to_loc_length.
   - destruct (val_to_loc v) as [l|] eqn:Hl.
     + apply val_to_loc_length. eexists. done.
     + apply bind_Some in Hdec as (v' & Hv & Hdec).
@@ -213,6 +220,8 @@ Proof.
   destruct ot; simp decode_op_val in Hdec.
   - move: Hdec => /fmap_Some[b[Hb Hov]]. simplify_eq. constructor.
   - move: Hdec => /fmap_Some[z[Hz Hov]]. simplify_eq. constructor. by eapply val_to_Z_in_range.
+  - move: Hdec => /fmap_Some[l[Hl Hov]]. simplify_eq. constructor.
+    by apply val_to_loc_Some_inv in Hl as [_ ?].
   - destruct (val_to_loc v) as [l|] eqn:Hl.
     + injection Hdec as <-. constructor. by apply val_to_loc_Some_inv in Hl as [_ ?].
     + apply bind_Some in Hdec as (v' & Hv & Hdec).
@@ -244,6 +253,7 @@ Proof.
   intros ov Hwf Hty.
   destruct Hty; simpl; try done.
   - rewrite i2v_length. done.
+  - rewrite l2v_length. done.
   - rewrite l2v_length. done.
   - simpl in Hwf. simpl.
     move: Hwf. rewrite -Forall2_Forall2_cb => Hwf.
@@ -465,6 +475,7 @@ Proof.
   - by destruct b.
   - by rewrite val_to_Z_i2v.
   - by rewrite val_to_loc_Some_l2v.
+  - by rewrite val_to_loc_Some_l2v.
   - rewrite bool_decide_true.
     2: { change (length (encode_op_val (OVStruct sl fields)) = ly_size (ot_layout (StructOp sl ots))).
          apply encode_op_val_length; first done. by constructor. }
@@ -499,6 +510,7 @@ Proof.
   destruct ot; simp decode_op_val in Hdec; simpl in Hdec |-*.
   - by destruct (val_to_bool (replicate 1 MPoison)) as [b|] eqn:Hb; simpl in Hdec; simplify_eq.
   - move: Hdec => /fmap_Some[z[Hz ->]]. by apply i2v_of_val_to_Z.
+  - done.
   - by destruct (val_to_loc (replicate (ly_size void*) MPoison)) as [l|] eqn:Hl;
       simpl in Hdec; simplify_eq;
       destruct (val_to_bytes (replicate (ly_size void*) MPoison)) as [v'|] eqn:Hv;
@@ -556,6 +568,13 @@ Qed.
 Lemma mem_cast_id_loc l v :
   val_to_loc v = Some l →
   mem_cast_id v PtrOp.
+Proof.
+  move => Hl st. rewrite /mem_cast. simp decode_op_val.
+  rewrite Hl /= (l2v_correct' _ _ Hl). by rewrite resize_all.
+Qed.
+Lemma mem_cast_id_fn_loc l v :
+  val_to_loc v = Some l →
+  mem_cast_id v FnPtrOp.
 Proof.
   move => Hl st. rewrite /mem_cast. simp decode_op_val.
   rewrite Hl /= (l2v_correct' _ _ Hl). by rewrite resize_all.

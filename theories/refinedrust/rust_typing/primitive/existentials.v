@@ -49,6 +49,9 @@ Section ex.
     iIntros (ty ot Hot). by eapply ty_op_type_stable.
   Qed.
   Next Obligation.
+    intros ty ot Hot. by eapply ty_op_type_wf.
+  Qed.
+  Next Obligation.
     rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
     iIntros (ty π r m v) "(%x & HP & Hv)". by iApply ty_own_val_sidecond.
   Qed.
@@ -104,9 +107,14 @@ Section ex.
   Qed.
   Next Obligation.
     rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
-    iIntros (ty ot st π r m v Hot) "(%x & HP & Hv)".
-    iPoseProof (ty_memcast_compat with "Hv") as "Hm"; first done.
-    eauto with iFrame.
+    iIntros (ty ot st π r v Hmeta Hot) "(%x & HP & Hv)".
+    iApply (ty_decodable X ty ot st π x v with "Hv"); done.
+  Qed.
+  Next Obligation.
+    rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
+    iIntros (ty ot st π r v v' Hmeta Hot Hsame) "(%x & HP & Hv)".
+    iExists x. iFrame "HP".
+    iApply (ty_decode_compat X ty ot st π x v v' with "Hv"); done.
   Qed.
   Next Obligation.
     intros ty ly Heq Hst. simpl.

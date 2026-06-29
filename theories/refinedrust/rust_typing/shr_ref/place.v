@@ -28,17 +28,17 @@ Section place.
     iIntros "#(LFT & LLCTX) #HE HL Hf HP HΦ/=".
     iPoseProof (shr_ltype_acc_owned F with "[$LFT $LLCTX] HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
     iApply fupd_wpe. iMod (fupd_mask_subseteq F) as "HclF"; first done.
-    iMod "Hb" as "(%l' & Hl & Hb & Hcl)". iMod "HclF" as "_". iModIntro.
+    iMod "Hb" as "(%l' & (%vi & Hl & %Hdec) & Hb & Hcl)". iMod "HclF" as "_". iModIntro.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iApply wpe_fupd.
     iApply (wp_deref with "Hl") => //; [solve_ndisj | | | ].
     { by apply val_to_loc_Some_l2v. }
-    { apply l2v_has_layout_val. }
+    { by apply val_decodes_to_loc_has_layout in Hdec. }
     iApply physical_step_intro_lc. iIntros "Hcred !> !>".
     iIntros (st) "Hl". iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iPoseProof (ltype_own_addr_in_usize with "Hb") as "%".
     iMod "HclF" as "_". iExists l'.
-    iSplitR. { iPureIntro. rewrite mem_cast_l2v_id; last done. by apply val_to_loc_Some_l2v. }
+    iSplitR. { iPureIntro. by apply val_decodes_to_loc_mem_cast. }
 iMod ("HR" with "[] [$] HE HL [Hcred]") as "(%L1 & HL & HR)"; first done.
     { iApply lc_weaken; last done. unfold num_laters_per_step. lia. }
     iApply ("HR" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
@@ -49,7 +49,8 @@ iMod ("HR" with "[] [$] HE HL [Hcred]") as "(%L1 & HL & HR)"; first done.
     iModIntro. iIntros (? cont) "HL Hf Hcont".
     iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hb & Hcond & HR & ? & ? & ?)".
     iFrame. simpl.
-    iMod ("Hcl" with "Hl Hb") as "Hb".
+    iMod ("Hcl" with "[Hl] Hb") as "Hb".
+    { iExists vi. iFrame. done. }
     iFrame. simp_ltypes.
     by iApply shr_ltype_place_cond.
   Qed.
@@ -98,18 +99,18 @@ iMod ("HR" with "[] [$] HE HL [Hcred]") as "(%L1 & HL & HR)"; first done.
     iMod (lctx_lft_alive_count_tok lftE with "HE HL") as (q) "(Hκ' & Hclκ' & HL)"; [done.. | ].
     iMod "HclF" as "_". iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iPoseProof (shr_ltype_acc_uniq F with "[$LFT $LLCTX] Hκ' Hclκ' HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
-    iMod "Hb" as "(%l' & Hl & Hb & Hcl)". iMod "HclF" as "_". iModIntro.
+    iMod "Hb" as "(%l' & (%vi & Hl & %Hdec) & Hb & Hcl)". iMod "HclF" as "_". iModIntro.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iApply wpe_fupd.
     iApply (wpe_logical_step with "Hcl"); [solve_ndisj.. | ].
     iApply (wp_deref with "Hl") => //; [solve_ndisj | | | ].
     { by apply val_to_loc_Some_l2v. }
-    { apply l2v_has_layout_val. }
+    { by apply val_decodes_to_loc_has_layout in Hdec. }
     iApply physical_step_intro_lc. iIntros "Hcred !> !>".
     iIntros (st) "Hl Hc". iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iPoseProof (ltype_own_addr_in_usize with "Hb") as "%".
     iMod "HclF" as "_". iExists l'.
-    iSplitR. { iPureIntro. rewrite mem_cast_l2v_id; last done. rewrite val_to_loc_Some_l2v; done. }
+    iSplitR. { iPureIntro. by apply val_decodes_to_loc_mem_cast. }
     iMod ("HT" with "[] [$] HE HL [Hcred]") as "(%L1 & HL & HT)"; first done.
     { iApply lc_weaken; last done. unfold num_laters_per_step. lia. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
@@ -128,7 +129,8 @@ iMod ("HR" with "[] [$] HE HL [Hcred]") as "(%L1 & HL & HR)"; first done.
       iPoseProof (pupd_performed_incl_uniq_rt with "Hincl2") as "%Heq".
       destruct upd' as [rt' ? ? ? ? Heq1 ? ]; simpl in *.
       subst rt'.
-      iMod ("Hc" with "Hl Hb [] Hcond") as "(Hb & ? & Hcond')".
+      iMod ("Hc" with "[Hl] Hb [] Hcond") as "(Hb & ? & Hcond')".
+      { iExists vi. iFrame. done. }
       { done. }
       iFrame. simpl. iFrame.
       done.
@@ -136,7 +138,8 @@ iMod ("HR" with "[] [$] HE HL [Hcred]") as "(%L1 & HL & HR)"; first done.
       iDestruct "HT" as "(-> & HT)".
       iDestruct "Hc" as "[_ Hc]".
       iPoseProof (typed_place_cond_syn_type_eq with "[$] Hcond") as "%Hsteq".
-      iMod ("Hc" with "Hl [] Hb") as "Hb".
+      iMod ("Hc" with "[Hl] [] Hb") as "Hb".
+      { iExists vi. iFrame. done. }
       { rewrite Hsteq. done. }
       iFrame. simpl. iFrame.
       done.
@@ -170,17 +173,17 @@ iMod ("HR" with "[] [$] HE HL [Hcred]") as "(%L1 & HL & HR)"; first done.
     iMod (lctx_lft_alive_count_tok lftE with "HE HL") as (q) "(Hκ' & Hclκ' & HL)"; [done.. | ].
     iMod "HclF" as "_". iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iPoseProof (shr_ltype_acc_shared F with "[$LFT $LLCTX] Hκ' HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
-    iMod "Hb" as "(%l' & %q' & Hl & >Hb & Hcl)". iMod "HclF" as "_".
+    iMod "Hb" as "(%vi & %li & %q' & Hl & %Hdec & >Hb & Hcl)". iMod "HclF" as "_".
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iModIntro. iApply wpe_fupd.
     iApply (wp_deref with "Hl") => //; [solve_ndisj | | | ].
     { by apply val_to_loc_Some_l2v. }
-    { apply l2v_has_layout_val. }
+    { by apply val_decodes_to_loc_has_layout in Hdec. }
     iApply physical_step_intro_lc. iIntros "Hcred !>!>".
     iIntros (st) "Hl". iMod (fupd_mask_mono with "Hb") as "#Hb"; first done.
-    iExists l'.
+    iExists li.
     iPoseProof (ltype_own_addr_in_usize with "Hb") as "%".
-    iSplitR. { iPureIntro. rewrite mem_cast_l2v_id; last done. by apply val_to_loc_Some_l2v. }
+    iSplitR. { iPureIntro. by apply val_decodes_to_loc_mem_cast. }
     iMod ("HT" with "[] [$] HE HL [Hcred]") as "(%L1 & HL &HT)"; first done.
     { iApply lc_weaken; last done. unfold num_laters_per_step. lia. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").

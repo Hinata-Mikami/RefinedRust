@@ -17,7 +17,9 @@ Section value.
     unfold use_op_alg_typed in Hot.
     apply use_op_alg_untyped_inv in Hot as (ot1 & Hot & ->).
     simpl in *.
-    apply is_memcast_val_untyped_inv in Hmv as <-.
+    pose proof (is_same_decoded_val_has_layout_l _ _ _ Hmv) as Hvsly.
+    pose proof (is_same_decoded_val_has_layout_r _ _ _ Hmv) as Hvly.
+    apply is_same_decoded_val_untyped_inv in Hmv as <-; [|done..].
     apply syn_type_has_layout_array_inv in Hst as (ly' & Hst & Hot_eq & Hsz).
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
     iExists ly.
@@ -31,6 +33,16 @@ Section value.
     iModIntro. iIntros (k ?? Hlook1 Hlook2).
     rewrite list_lookup_fmap in Hlook1.
     rewrite Hlook2 in Hlook1.  simpl in Hlook1. injection Hlook1 as [= <-].
+    assert (Hx2ly : x2 `has_layout_val` ly).
+    { destruct (decide (ly_size ly = 0)) as [Hzero | ].
+      - rewrite Hzero reshape_replicate_0 in Hlook2.
+        apply lookup_replicate_1 in Hlook2 as (-> & ?).
+        rewrite /has_layout_val Hzero //.
+      - rewrite sublist_lookup_reshape in Hlook2.
+        { rewrite sublist_lookup_Some' in Hlook2. destruct Hlook2 as (-> & ?).
+          rewrite /has_layout_val length_take length_drop. lia. }
+        { lia. }
+        { rewrite Hv Hot_eq ly_size_mk_array_layout. lia. } }
     iExists _. iR.
     rewrite /ty_own_val/=. iR.
     iExists (UntypedOp ly).
@@ -39,19 +51,10 @@ Section value.
       apply syn_type_has_layout_op_alg in Hst as (ot2 & Hot2 & <-).
       eapply use_op_alg_untyped; first done.
       by apply syn_type_has_layout_untyped. }
-    iSplitR. { iPureIntro. by left. }
-    iSplitR. {
-      destruct (decide (ly_size ly = 0)) as [Hzero | ].
-      - (* size is 0 *)
-        rewrite Hzero reshape_replicate_0 in Hlook2.
-        apply lookup_replicate_1 in Hlook2 as (-> & ?).
-        rewrite /has_layout_val Hzero //.
-      - rewrite sublist_lookup_reshape in Hlook2.
-        { rewrite sublist_lookup_Some' in Hlook2. destruct Hlook2 as (-> & ?).
-          iPureIntro. rewrite /has_layout_val length_take length_drop. lia. }
-        { lia. }
-        { rewrite Hv Hot_eq ly_size_mk_array_layout. lia. }
-    }
+    iSplitR. { iPureIntro. apply is_same_decoded_val_refl. intros hst.
+      exists (OVUntyped ly x2). simp decode_op_val.
+      rewrite bool_decide_true; first done. exact Hx2ly. }
+    iSplitR. { done. }
     iPureIntro. done.
   Qed.
   Lemma value_t_untyped_to_array  π v vs n st ly m :
@@ -74,16 +77,19 @@ Section value.
     - iIntros "(_ & (%ot & %Hot & %Hmc & % & %))".
       iPureIntro.
       apply use_op_alg_untyped_inv in Hot as (ot1 & Hot & ->).
-      destruct Hmc as [-> | (st' & ->)].
-      + eauto.
-      + rewrite mem_cast_UntypedOp. eauto.
+      pose proof (is_same_decoded_val_has_layout_l _ _ _ Hmc) as Hvly.
+      pose proof (is_same_decoded_val_has_layout_r _ _ _ Hmc) as Hv'ly.
+      apply is_same_decoded_val_untyped_inv in Hmc as ->; [|done..].
+      eauto.
     - iIntros "(%ly & <- & %Hst & %Hly)".
       iR. opose proof* syn_type_has_layout_op_alg as (ot & Hot & heq); first apply Hst.
       subst ly. iExists (UntypedOp (ot_layout ot)).
       iPureIntro. split_and!.
       + eapply use_op_alg_untyped; first done.
         by apply syn_type_has_layout_untyped.
-      + by left.
+      + apply is_same_decoded_val_refl. intros hst.
+        exists (OVUntyped (ot_layout ot) v). simp decode_op_val.
+        rewrite bool_decide_true; first done. exact Hly.
       + done.
       + done.
   Qed.
@@ -130,7 +136,9 @@ Section value.
       iClear "Hl1". rewrite big_sepL2_elim_r.
       rewrite length_reshape length_replicate.
       rewrite join_reshape.
-      - iPureIntro. left. done.
+      - iPureIntro. apply is_same_decoded_val_refl. intros hst.
+        exists (OVUntyped (mk_array_layout ly (length vs')) v). simp decode_op_val.
+        rewrite bool_decide_true; first done. exact Hv.
       - rewrite sum_list_replicate Hv ly_size_mk_array_layout.
         lia. }
     iSplitR. { iPureIntro. rewrite /has_layout_val Hv /= //. }

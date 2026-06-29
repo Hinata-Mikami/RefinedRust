@@ -32,7 +32,7 @@ Section rule.
     rewrite /ty_own_val/= shr_ref_own_val_unfold.
     iExists l, ly, r'. iR.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
-    iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
+    iSplitR. { iPureIntro. by apply l2v_decodes_to_loc. }
     iR. iFrame "Hlb Hrfn Hsc %".
     iModIntro. iModIntro. done.
   Qed.

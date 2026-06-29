@@ -61,9 +61,13 @@ Section type.
       iApply (ty_has_layout with "Hv").
   Qed.
   Next Obligation.
-    simpl; iIntros (rt T ot Hot).
-    destruct Hot as (ly & Hot & ? & <- & Hmt).
+    simpl; iIntros (rt T ot Hmt Hot).
+    destruct Hot as (ly & Hst & ? & Hly & ->).
+    rewrite Hly.
     by apply syn_type_has_layout_untyped.
+  Qed.
+  Next Obligation.
+    intros rt T ot (ly & Hst & ? & _ & ->). constructor.
   Qed.
   Next Obligation.
     iIntros (rt T π r m v) "_". done.
@@ -136,18 +140,38 @@ Section type.
     iExists _. iFrame.
   Qed.
   Next Obligation.
-    iIntros (rt T ot st π r m v (ly & Hst & ? & <- & Hmt)) "Ha".
+    iIntros (rt T ot st π r v Hmt (ly & Hst & ? & <- & Hot)) "Ha".
     subst.
     destruct r as [r | ]; simpl; first last.
     { rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
-      by iApply uninit_memcast. }
+      iApply (ty_decodable unitRT (uninit (ty_syn_type T MetaNone)) ot st π () v with "Ha").
+      - done.
+      - rewrite ty_has_op_type_unfold/=. exists (ot_layout ot). done.
+    }
+    rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+    iDestruct "Ha" as "(%r'' & Hrfn & Hv)".
+    iApply (ty_decodable rt T ot st π r'' v with "Hv").
+    - done.
+    - rewrite Hot. rewrite ty_has_op_type_unfold. apply _ty_has_op_type_untyped; done.
+  Qed.
+  Next Obligation.
+    iIntros (rt T ot st π r v v' Hmt (ly & Hst & ? & <- & Hot) Hsame) "Ha".
+    subst.
+    destruct r as [r | ]; simpl; first last.
+    { rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+      iApply (ty_decode_compat unitRT (uninit (ty_syn_type T MetaNone)) ot st π () v v' with "Ha").
+      - done.
+      - rewrite ty_has_op_type_unfold/=. exists (ot_layout ot). done.
+      - done.
+    }
     rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
     iDestruct "Ha" as "(%r'' & Hrfn & Hv)".
     iExists r''. iFrame.
-    iApply ty_memcast_compat; last done.
-    rewrite Hmt.
-    rewrite ty_has_op_type_unfold.
-    apply _ty_has_op_type_untyped; done.
+    iApply (ty_decode_compat rt T ot st π r'' v v' with "Hv").
+    - done.
+    - rewrite Hot. rewrite ty_has_op_type_unfold.
+      apply _ty_has_op_type_untyped; done.
+    - done.
   Qed.
   Next Obligation.
     intros ?? ly Heq Hst.
