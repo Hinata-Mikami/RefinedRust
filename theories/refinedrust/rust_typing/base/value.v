@@ -78,25 +78,6 @@ Proof.
   eauto.
 Qed.
 
-(* [is_memcast_val] is preserved by optypes behaving by [is_value_ot_core] *)
-Lemma is_value_ot_core_is_memcast_val_pres (typed : bool) ot ot1 vs v st :
-  v `has_layout_val` ot_layout ot1 →
-  vs `has_layout_val` ot_layout ot1 →
-  op_type_wf ot1 →
-  is_value_ot_core (if typed then ot1 else UntypedOp (ot_layout ot1)) ot →
-  is_memcast_val vs (if typed then ot1 else UntypedOp (ot_layout ot1)) v →
-  is_memcast_val vs (if typed then ot1 else UntypedOp (ot_layout ot1)) (mem_cast v ot st).
-Proof.
-  intros ? ? ? Hot Hmc. destruct typed; simpl.
-  - destruct Hot as [(ly & -> & ->) | ->].
-    + rewrite mem_cast_UntypedOp; done.
-    + apply is_memcast_val_memcast; done.
-  - apply is_memcast_val_untyped_inv in Hmc as ->; last done.
-    destruct Hot as [(ly & -> & ->) | ->].
-    + rewrite mem_cast_UntypedOp; last done. by left.
-    + rewrite mem_cast_UntypedOp; last done. by left.
-Qed.
-
 Definition is_value_ot `{!LayoutAlg} (typed : bool) (st : syn_type) (ot : op_type) : Prop :=
   ∃ ot',
     use_op_alg_typed typed st = Some ot' ∧
@@ -149,59 +130,6 @@ Proof.
   - left. eauto.
 Qed.
 
-Lemma value_mem_cast_decode v ot st ov :
-  op_type_wf ot →
-  decode_op_val v ot st = Some ov →
-  mem_cast v ot st = encode_op_val ov.
-Proof.
-  intros Hwf Hdec. rewrite /mem_cast Hdec /=.
-  rewrite resize_all_alt; first done.
-  rewrite (encode_op_val_length _ _ Hwf (decode_op_val_has_type _ _ _ _ Hdec)).
-  by eapply decode_op_val_has_layout.
-Qed.
-
-Lemma value_encode_compat_canonical `{!LayoutAlg} st ot hst vs v ov :
-  use_op_alg st = Some ot →
-  is_memcast_val vs ot v →
-  v `has_layout_val` ot_layout ot →
-  syn_type_has_layout st (ot_layout ot) →
-  decode_op_val v ot hst = Some ov →
-  ∃ ot', use_op_alg st = Some ot' ∧
-    is_memcast_val vs ot' (encode_op_val ov) ∧
-    encode_op_val ov `has_layout_val` ot_layout ot' ∧
-    syn_type_has_layout st (ot_layout ot') ∧
-    ∀ hst', ∃ ov', decode_op_val (encode_op_val ov) ot' hst' = Some ov'.
-Proof.
-  intros Halg Hmc Hly Hst Hdec. exists ot. split_and!; [done | | | done |].
-  - rewrite -(value_mem_cast_decode v ot hst ov); last done.
-    + eapply is_memcast_val_memcast; [by eapply is_memcast_val_has_layout_val' | by eapply use_op_alg_wf | done].
-    + by eapply use_op_alg_wf.
-  - rewrite -(value_mem_cast_decode v ot hst ov); last done.
-    + by apply has_layout_val_mem_cast.
-    + by eapply use_op_alg_wf.
-  - intros hst'. exists ov. eapply decode_encode_op_val; [by eapply use_op_alg_wf |].
-    by eapply decode_op_val_has_type.
-Qed.
-
-Lemma value_encode_compat_untyped `{!LayoutAlg} st ot hst vs v ov :
-  use_op_alg st = Some ot →
-  is_memcast_val vs ot v →
-  v `has_layout_val` ot_layout ot →
-  syn_type_has_layout st (ot_layout ot) →
-  (∀ hst', ∃ ov', decode_op_val v ot hst' = Some ov') →
-  decode_op_val v (UntypedOp (ot_layout ot)) hst = Some ov →
-  ∃ ot', use_op_alg st = Some ot' ∧
-    is_memcast_val vs ot' (encode_op_val ov) ∧
-    encode_op_val ov `has_layout_val` ot_layout ot' ∧
-    syn_type_has_layout st (ot_layout ot') ∧
-    ∀ hst', ∃ ov', decode_op_val (encode_op_val ov) ot' hst' = Some ov'.
-Proof.
-  intros Halg Hmc Hly Hst Hdec_can Hdec.
-  simp decode_op_val in Hdec. case_bool_decide; last done.
-  injection Hdec as <-. exists ot. split_and!; done.
-Qed.
-
-
 Section value.
   Context `{!typeGS Σ}.
 
@@ -218,9 +146,6 @@ Section value.
 
     The relevant thing is: what values can I merge it with again later?
     if it's typed, it has been potentially roundtripped, so then the type to merge needs to be compatible with that.
-    *)
-  (* is_memcast_val is somewhat strange, as it requires showing that v' is a memcast val.
-       instead, it should be a compatible val (decoding yields the same abstract value).
     *)
   Program Definition value_t (typed : bool) (st : syn_type) : type valRT := {|
     st_own π vs v :=

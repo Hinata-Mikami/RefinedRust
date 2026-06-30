@@ -539,6 +539,60 @@ Proof.
   - by destruct (val_to_char (replicate 4 MPoison)) as [z|] eqn:Hz; simpl in Hdec; simplify_eq.
 Qed.
 
+(** For now, we show stability of decoding.
+  This works because currently decoding doesn't actually depend on the state.
+  It is needed to make [value_t] work.
+  Eventually, when handling exposed provenance, we likely want to replace that with a notion of monotonicity on state,
+  and connect that with separation logic resources.
+  *)
+Lemma decode_struct_fields_stable sl ots rec1 rec2 fields vs i :
+  (∀ v ot Hot, rec1 v ot Hot = rec2 v ot Hot) →
+  decode_struct_fields sl ots rec1 fields vs i =
+  decode_struct_fields sl ots rec2 fields vs i.
+Proof.
+  intros Hrec. revert vs i.
+  induction fields as [|[[n|] ly] fields IH]; intros [|v vs] i; simpl; try done.
+  destruct (lookup_struct_ot ots i) as [[ot Hot]|]; simpl; last done.
+  rewrite Hrec. destruct (rec2 v ot _) as [ov|]; simpl; last done.
+    by rewrite IH.
+Qed.
+
+Lemma decode_struct_fields_stable_lookup sl ots rec1 rec2 fields vs i :
+  (∀ j v ot Hot, ots !! j = Some ot → rec1 v ot Hot = rec2 v ot Hot) →
+  decode_struct_fields sl ots rec1 fields vs i =
+  decode_struct_fields sl ots rec2 fields vs i.
+Proof.
+  intros Hrec. revert vs i.
+  induction fields as [|[[n|] ly] fields IH]; intros [|v vs] i; simpl; try done.
+  - destruct (lookup_struct_ot ots i) as [[ot Hot]|]; simpl; last done.
+    rewrite (Hrec i v ot _ Hot). destruct (rec2 v ot _) as [ov|]; simpl; last done.
+    by rewrite IH.
+Qed.
+
+Lemma list_is_list_lookup {A} (P : A → Type) l i x :
+  list_is_list A P l →
+  l !! i = Some x →
+  P x.
+Proof.
+  intros Hl. induction Hl as [|a Ha l Hl IH] in i |-*; destruct i; simpl; naive_solver.
+Qed.
+
+Lemma decode_op_val_stable v ot st st' :
+  decode_op_val v ot st = decode_op_val v ot st'.
+Proof.
+  revert v. induction ot using op_type_recursor; intros v; simp decode_op_val; try done.
+  - rewrite (decode_struct_fields_stable_lookup sl ots
+      (λ v' ot Hot, decode_op_val v' ot st)
+      (λ v' ot Hot, decode_op_val v' ot st')).
+    + done.
+    + intros j v' ot Hot Hlook.
+      pose proof (list_is_list_lookup
+        (λ ot0, ∀ v0, decode_op_val v0 ot0 st = decode_op_val v0 ot0 st')
+        ots j ot H Hlook) as IH.
+      by apply IH.
+Qed.
+
+
 (** ** MemCast: Transforming bytes read from memory.
   [mem_cast] should only be called with length of [v] matching [ot]
   The dependence on [st] is not necessary right now, but should one day make it easier to support exposed provenance casts. *)
