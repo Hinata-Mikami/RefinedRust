@@ -31,7 +31,7 @@ Proof.
   destruct i as [ | i]; simpl.
   - intros [= ->]. done.
   - intros Ha%IH; done.
-Qed.
+Defined.
 
 
 Class Inj3 {A B C D} (R1: relation A) (R2: relation B) (R3: relation C)
@@ -624,6 +624,116 @@ Global Instance hnth_proper {D} :
   Proper ((=) ==> (≡) ==> forall_relation (λ _, (≡))) (@hnth _ F Xl D).
 Proof. move=> ??->?? /equiv_dist ??. apply equiv_dist=> ?. by apply hnth_ne. Qed.
 End hlist_ofe_lemmas.
+
+Section hlist_cofe.
+  Context {A : Type} {F : A → ofe} `{∀ X, Cofe (F X)}.
+
+  Definition hlist_head {X Xl} (xl : hlist F (X :: Xl)) : F X :=
+    match xl with x +:: _ => x end.
+
+  Definition hlist_tail {X Xl} (xl : hlist F (X :: Xl)) : hlist F Xl :=
+    match xl with _ +:: xl' => xl' end.
+
+  Program Definition hlist_chain_head {X Xl} (c : chain (hlistO F (X :: Xl))) :
+      chain (F X) := {|
+    chain_car n := hlist_head (c n);
+  |}.
+  Next Obligation.
+    intros X Xl c n m Hle.
+    pose proof (chain_cauchy c n m Hle) as Hc.
+    change (HForallTwo (λ _, dist n) (c m) (c n)) in Hc.
+    dependent destruction Hc. rewrite <- x1, <- x. done.
+  Qed.
+
+  Program Definition hlist_chain_tail {X Xl} (c : chain (hlistO F (X :: Xl))) :
+      chain (hlistO F Xl) := {|
+    chain_car n := hlist_tail (c n);
+  |}.
+  Next Obligation.
+    intros X Xl c n m Hle.
+    pose proof (chain_cauchy c n m Hle) as Hc.
+    change (HForallTwo (λ _, dist n) (c m) (c n)) in Hc.
+    dependent destruction Hc. rewrite <- x1, <- x. done.
+  Qed.
+
+  Program Definition hlist_bchain_head {X Xl} {n} (c : bchain (hlistO F (X :: Xl)) n) :
+      bchain (F X) n := {|
+    bchain_car m Hm := hlist_head (c m Hm);
+  |}.
+  Next Obligation.
+    intros X Xl n c m p Hm Hp Hle.
+    pose proof (bchain_cauchy n c m p Hm Hp Hle) as Hc.
+    change (HForallTwo (λ _, dist m) (c p Hp) (c m Hm)) in Hc.
+    dependent destruction Hc. rewrite <- x1, <- x. done.
+  Qed.
+
+  Program Definition hlist_bchain_tail {X Xl} {n} (c : bchain (hlistO F (X :: Xl)) n) :
+      bchain (hlistO F Xl) n := {|
+    bchain_car m Hm := hlist_tail (c m Hm);
+  |}.
+  Next Obligation.
+    intros X Xl n c m p Hm Hp Hle.
+    pose proof (bchain_cauchy n c m p Hm Hp Hle) as Hc.
+    change (HForallTwo (λ _, dist m) (c p Hp) (c m Hm)) in Hc.
+    dependent destruction Hc. rewrite <- x1, <- x. done.
+  Qed.
+
+  Definition hnilO : hlist (λ X : A, ofe_car (F X)) [] :=
+    @hnil A (λ X : A, ofe_car (F X)).
+
+  Definition hconsO {X Xl}
+      (x : ofe_car (F X))
+      (xl : hlist (λ X : A, ofe_car (F X)) Xl) :
+      hlist (λ X : A, ofe_car (F X)) (X :: Xl) :=
+    @hcons A (λ X : A, ofe_car (F X)) X Xl x xl.
+
+  Global Instance hlist_cofe {Xl : list A} : Cofe (hlistO F Xl).
+  Proof.
+    induction Xl as [|X Xl IH].
+    - refine (Build_Cofe _ _ (λ _, +[]) (λ _ _ _, +[]) _ _ _).
+      + intros n c. change (HForallTwo (λ _, dist n) +[] (c n)).
+        generalize (c n). intros xl. inv_hlist xl. constructor.
+      + intros n Hn c m Hm. change (HForallTwo (λ _, dist m) +[] (c m Hm)).
+        generalize (c m Hm). intros xl. inv_hlist xl. constructor.
+      + intros n Hn c1 c2 m Heq. constructor.
+    - refine (Build_Cofe _ _
+        (λ c, hconsO (compl (hlist_chain_head c)) (compl (hlist_chain_tail c)))
+        (λ n Hn c, hconsO (lbcompl Hn (hlist_bchain_head c)) (lbcompl Hn (hlist_bchain_tail c)))
+        _ _ _).
+      + intros n c.
+        change (HForallTwo (λ _, dist n)
+          (hconsO (compl (hlist_chain_head c)) (compl (hlist_chain_tail c))) (c n)).
+        remember (c n) as cn eqn:Hcn. revert Hcn.
+        inv_hlist cn. intros x xl Hcn. constructor.
+        * etrans; first apply conv_compl.
+          change (hlist_head (c n) ≡{n}≡ x). rewrite -Hcn. done.
+        * etrans; first exact (conv_compl n (hlist_chain_tail c)).
+          change (hlist_tail (c n) ≡{n}≡ xl). rewrite -Hcn. done.
+      + intros n Hn c m Hm.
+        change (HForallTwo (λ _, dist m)
+          (hconsO (lbcompl Hn (hlist_bchain_head c)) (lbcompl Hn (hlist_bchain_tail c)))
+          (c m Hm)).
+        remember (c m Hm) as cn eqn:Hcn. revert Hcn.
+        inv_hlist cn. intros x xl Hcn. constructor.
+        * etrans; first exact (conv_lbcompl Hn (hlist_bchain_head c) Hm).
+          change (hlist_head (c m Hm) ≡{m}≡ x). rewrite -Hcn. done.
+        * etrans; first exact (conv_lbcompl Hn (hlist_bchain_tail c) Hm).
+          change (hlist_tail (c m Hm) ≡{m}≡ xl). rewrite -Hcn. done.
+      + intros n Hn c1 c2 m Heq. constructor.
+        * eapply lbcompl_ne. intros p Hp.
+          specialize (Heq p Hp). change (HForallTwo (λ _, dist m) (c1 p Hp) (c2 p Hp)) in Heq.
+          dependent destruction Heq.
+          change (hlist_head (c1 p Hp) ≡{m}≡ hlist_head (c2 p Hp)).
+          rewrite <- x1, <- x. done.
+        * change (lbcompl Hn (hlist_bchain_tail c1) ≡{m}≡ lbcompl Hn (hlist_bchain_tail c2)).
+          eapply lbcompl_ne. intros p Hp.
+          specialize (Heq p Hp). change (HForallTwo (λ _, dist m) (c1 p Hp) (c2 p Hp)) in Heq.
+          dependent destruction Heq.
+          change (hlist_tail (c1 p Hp) ≡{m}≡ hlist_tail (c2 p Hp)).
+          rewrite <- x1, <- x. done.
+  Defined.
+End hlist_cofe.
+
 
 (** Forall2 for plist *)
 Section pforall.

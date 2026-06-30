@@ -452,3 +452,90 @@ Section test_struct.
 
    *)
 End test_struct.
+
+Section test_mutual_rectypes.
+  Context `{!typeGS Σ}.
+
+  Context (Box_ty : ∀ rt : RT, type rt → type (place_rfnRT rt)).
+  Context (Box_ty_contractive :
+    ∀ (rt1 rt2 : RT) (F : type rt1 → type rt2),
+      TypeNonExpansive F → TypeContractive (λ ty, Box_ty rt2 (F ty))).
+  Context (Box_ty_lfts : ∀ rt (ty : type rt), ty_lfts (Box_ty rt ty) = ty_lfts ty).
+  Context (Box_ty_wf_E : ∀ rt (ty : type rt), ty_wf_E (Box_ty rt ty) = ty_wf_E ty).
+
+  Local Program Definition unit_abs_inv {X : RT} : ex_inv_def X unitRT :=
+    mk_ex_inv_def (λ _ _ _, True)%I (λ _ _ _ _, True)%I (λ _ _ _, True)%I
+      true [] [] _ _ _ _.
+  Next Obligation. intros. unfold TCNoResolve. apply _. Qed.
+  Next Obligation. eauto. Qed.
+  Next Obligation.
+    simpl. intros X F tid κ x y q ?.
+    iIntros "_ _ Htok _".
+    iApply logical_step_intro. iFrame.
+  Qed.
+  Next Obligation.
+    simpl. intros X F tid x y ? ?.
+    iIntros "_".
+    iApply logical_step_intro. done.
+  Qed.
+
+  Local Definition Foo_sls : struct_layout_spec :=
+    mk_sls "Foo" [("x", PtrSynType); ("y", PtrSynType)] StructReprRust.
+
+  Local Definition Bar_sls : struct_layout_spec :=
+    mk_sls "Bar" [("x", PtrSynType)] StructReprRust.
+
+  Local Definition FooBar_rts : list RT := [unitRT; unitRT].
+
+  Local Definition FooBar_F (tys : mut_types FooBar_rts) : mut_types FooBar_rts :=
+    let Foo_ty := mut_type_project tys 0 eq_refl in
+    let Bar_ty := mut_type_project tys 1 eq_refl in
+    let Foo_inner := struct_t Foo_sls +[
+      Box_ty unitRT Foo_ty;
+      Box_ty unitRT Bar_ty] in
+    let Bar_inner := struct_t Bar_sls +[
+      Box_ty unitRT Foo_ty] in
+    ex_plain_t _ _ unit_abs_inv Foo_inner +::
+    ex_plain_t _ _ unit_abs_inv Bar_inner +::
+    +[].
+
+  Instance : MutComponentLifecycleStable FooBar_F (λ tys : mut_types FooBar_rts,
+      ∃; unit_abs_inv,
+      struct_t Foo_sls
+        +[Box_ty unitRT (mut_type_project tys 0 eq_refl); 
+        Box_ty unitRT (mut_type_project tys 1 eq_refl)]).
+  Proof.
+    econstructor.
+    - intros tys. 
+      do 2 rewrite ty_lfts_unfold/=.
+      rewrite !Box_ty_lfts.
+      rewrite {1 2}ty_lfts_unfold/=.
+      unfold FooBar_F.
+      rewrite mut_type_project_unfold.
+      simpl. 
+      rewrite {1 2}ty_lfts_unfold/=.
+      rewrite !Box_ty_lfts.
+      admit.
+    - intros. 
+      do 2 rewrite ty_wf_E_unfold/=.
+      rewrite !Box_ty_wf_E.
+      rewrite {1 2}ty_wf_E_unfold/=.
+      (*unfold FooBar_F.*)
+      rewrite mut_type_project_unfold.
+      simpl. 
+      rewrite {1 2}ty_wf_E_unfold/=.
+      rewrite !Box_ty_wf_E.
+  Admitted.
+      
+
+
+  Program Definition FooBar_tys : mut_types FooBar_rts :=
+    @mut_type_fixpoint _ _ _ FooBar_F _ _.
+  Next Obligation.
+    (*apply _.*)
+  Abort.
+
+
+  Definition Foo_ty : type unitRT := mut_type_project FooBar_tys 0 eq_refl.
+  Definition Bar_ty : type unitRT := mut_type_project FooBar_tys 1 eq_refl.
+End test_mutual_rectypes.

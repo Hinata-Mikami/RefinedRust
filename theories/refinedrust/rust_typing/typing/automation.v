@@ -1181,9 +1181,6 @@ Global Typeclasses Opaque ty_own_val.
 
 Global Typeclasses Opaque find_in_context.
 
-Global Arguments ty_lfts : simpl nomatch.
-Global Arguments ty_wf_E : simpl nomatch.
-
 Global Arguments layout_of : simpl never.
 
 Global Arguments plist : simpl never.

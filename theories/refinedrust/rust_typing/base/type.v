@@ -630,6 +630,45 @@ Qed.
 
 Coercion ty_of_st : simple_type >-> type.
 
+Section type_inh.
+  Context `{!typeGS Σ}.
+
+  (* We need [Inhabited (RT_xt T_rt)] because of [ty_xt_inhabited]. *)
+  Context {T_rt : RT} `{!Inhabited (RT_xt T_rt)}.
+
+  Global Program Instance simple_type_inhabited : Inhabited (simple_type T_rt) := populate {|
+      st_own π r v := ⌜v = []⌝%I;
+      st_syn_type := UnitSynType;
+      st_has_op_type ot := ot = UntypedOp unit_sl;
+  |}.
+  Next Obligation.
+    simpl.
+    iIntros (??? ->).
+    iExists unit_sl. iPureIntro.
+    split.
+    - by apply syn_type_has_layout_unit.
+    - done.
+  Qed.
+  Next Obligation.
+    simpl. intros ? ->.
+    by apply syn_type_has_layout_unit.
+  Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
+  Next Obligation.
+    simpl. intros ????? ->.
+    iIntros "->".
+    simpl; iPureIntro; done.
+  Qed.
+  Next Obligation.
+    intros ly Hst.
+    apply syn_type_has_layout_unit_inv in Hst as ->.
+    done.
+  Qed.
+
+  Definition type_inhabitant : type T_rt := ty_of_st _ inhabitant.
+  Global Instance type_inhabited : Inhabited (type T_rt) := populate type_inhabitant.
+End type_inh.
+
 Global Instance simple_type_sized `{!typeGS Σ} {rt} (ty : simple_type rt) :
   TySized ty.
 Proof.
@@ -2286,7 +2325,8 @@ Section copy.
 End copy.
 
 
-(** Lifetime morphisms which are not composable, but work for any projections into a lifetime list + elctx *)
+(** Lifetime morphisms which are not composable, but work for any projections into a lifetime list + elctx
+  (i.e. it gets two functors computing the lifetime list and elctx) *)
 (* This is very convenient to use in order to show that something is a [TyLftMorphism]. *)
 Section lft_mor.
 Context `{!typeGS Σ}.

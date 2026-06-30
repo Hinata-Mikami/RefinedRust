@@ -1,44 +1,6 @@
 From refinedrust Require Import type programs.
 From refinedrust Require Import options.
 
-Section type_inh.
-  Context `{!typeGS Σ}.
-
-  (* We need [Inhabited T_rt] because of [ty_xt_inhabited]. *)
-  Context {T_rt : RT} `{!Inhabited (RT_xt T_rt)}.
-
-  Global Program Instance simple_type_inhabited : Inhabited (simple_type T_rt) := populate {|
-      st_own π r v := ⌜v = []⌝%I;
-      st_syn_type := UnitSynType;
-      st_has_op_type ot := ot = UntypedOp unit_sl;
-  |}.
-  Next Obligation.
-    simpl.
-    iIntros (??? ->).
-    iExists unit_sl. iPureIntro.
-    split.
-    - by apply syn_type_has_layout_unit.
-    - done.
-  Qed.
-  Next Obligation.
-    simpl. intros ? ->.
-    by apply syn_type_has_layout_unit.
-  Qed.
-  Next Obligation. unfold TCNoResolve. apply _. Qed.
-  Next Obligation.
-    simpl. intros ????? ->.
-    iIntros "->".
-    simpl; iPureIntro; done.
-  Qed.
-  Next Obligation.
-    intros ly Hst.
-    apply syn_type_has_layout_unit_inv in Hst as ->.
-    done.
-  Qed.
-  Definition type_inhabitant : type T_rt := ty_of_st _ inhabitant.
-  Global Instance type_inhabited : Inhabited (type T_rt) := populate type_inhabitant.
-End type_inh.
-
 Section fixpoint_def.
   Context `{!typeGS Σ}.
 
@@ -621,3 +583,117 @@ Section rules.
   Definition mut_eqtype_fixpoint_r_inst := [instance @mut_eqtype_fixpoint_r].
   Global Existing Instance mut_eqtype_fixpoint_r_inst | 6.
 End rules.
+
+Section fixpoint_uniqueness.
+  Context `{!typeGS Σ}.
+
+  Lemma type_dist_full_eqtype E L {rt} (ty1 ty2 : type rt) :
+    (∀ n, TypeDist n ty1 ty2) →
+    full_eqtype E L ty1 ty2.
+  Proof.
+    intros Hdist r. apply eqtype_unfold.
+    iIntros (qL) "_ _".
+    iSplitR.
+    { iPureIntro. intros m. destruct (Hdist 0). by apply type_dist_st. }
+    iSplit; last iSplit.
+    - iModIntro. iSplit; iIntros "Hsc".
+      + destruct (Hdist 0). rewrite type_dist_sc. done.
+      + destruct (Hdist 0). rewrite type_dist_sc. done.
+    - iModIntro. iIntros (π m v). iSplit; iIntros "Hown".
+      + assert ((v ◁ᵥ{π, m} r @ ty1)%I ≡ (v ◁ᵥ{π, m} r @ ty2)%I) as Heq.
+        { apply equiv_dist => n. destruct (Hdist n). by apply type_dist_own_val. }
+        rewrite Heq. done.
+      + assert ((v ◁ᵥ{π, m} r @ ty1)%I ≡ (v ◁ᵥ{π, m} r @ ty2)%I) as Heq.
+        { apply equiv_dist => n. destruct (Hdist n). by apply type_dist_own_val. }
+        rewrite Heq. done.
+    - iModIntro. iIntros (κ π m l). iSplit; iIntros "Hshr".
+      + assert ((l ◁ₗ{π, m, κ} r @ ty1)%I ≡ (l ◁ₗ{π, m, κ} r @ ty2)%I) as Heq.
+        { apply equiv_dist => n. destruct (Hdist n). by apply type_dist_shr. }
+        rewrite Heq. done.
+      + assert ((l ◁ₗ{π, m, κ} r @ ty1)%I ≡ (l ◁ₗ{π, m, κ} r @ ty2)%I) as Heq.
+        { apply equiv_dist => n. destruct (Hdist n). by apply type_dist_shr. }
+        rewrite Heq. done.
+  Qed.
+
+  Context {rt : RT} `{!Inhabited (RT_xt rt)} (F : type rt → type rt) `{!TypeContractive F}.
+
+  Lemma type_fixpoint_unique_dist (ty : type rt) :
+    (∀ n, TypeDist n ty (F ty)) →
+    ∀ n, TypeDist n ty (type_fixpoint F).
+  Proof.
+    intros Hfix.
+    assert (Hst : ∀ m, ty_syn_type ty m = ty_syn_type (type_fixpoint F) m).
+    { intros m. rewrite type_fixpoint_syn_type.
+      destruct (Hfix 0) as [Hst0 _ _ _].
+      etrans; first apply Hst0.
+      unfold Fn. simpl.
+      apply type_ctr_syn_type. }
+    assert (Hsc : ty_sidecond ty ≡ ty_sidecond (type_fixpoint F)).
+    { rewrite type_fixpoint_sidecond.
+      destruct (Hfix 0) as [_ Hsc0 _ _].
+      etrans; first apply Hsc0.
+      unfold Fn. simpl.
+      eapply type_ctr_sidecond.
+      intros m. rewrite -type_fixpoint_syn_type. apply Hst. }
+    induction n as [|n IH].
+    { assert (Hshr0 : ∀ κ π r m l,
+        (l ◁ₗ{π, m, κ} r @ ty ≡{0}≡ l ◁ₗ{π, m, κ} r @ type_fixpoint F)%I).
+      { intros κ π r m l.
+        destruct (Hfix 0) as [_ _ _ Hfix_shr].
+        etrans; first apply Hfix_shr.
+        etrans.
+        { eapply type_ctr_shr. constructor; [done | done | | ].
+          - intros π' r' m' v'. dist_later_2_intro. lia.
+          - intros κ' π' r' m' l'. dist_later_intro. unfold_sidx. lia. }
+        rewrite -type_fixpoint_shr_unfold. done. }
+      constructor; [done | done | | done].
+      intros π r m v.
+      destruct (Hfix 0) as [_ _ Hfix_own _].
+      etrans; first apply Hfix_own.
+      etrans.
+      { eapply type_ctr_own_val. constructor; [done | done | | done].
+        intros π' r' m' v'. dist_later_intro. unfold_sidx. lia. }
+      rewrite -type_fixpoint_own_val_unfold. done. }
+    assert (HshrS : ∀ κ π r m l,
+      (l ◁ₗ{π, m, κ} r @ ty ≡{S n}≡ l ◁ₗ{π, m, κ} r @ type_fixpoint F)%I).
+    { intros κ π r m l.
+      destruct (Hfix (S n)) as [_ _ _ Hfix_shr].
+      etrans; first apply Hfix_shr.
+      etrans.
+      { eapply type_ctr_shr. constructor; [done | done | | ].
+        - intros π' r' m' v'. dist_later_2_intro.
+          destruct IH as [_ _ Hown_n _].
+          eapply dist_le; first apply Hown_n. lia.
+        - intros κ' π' r' m' l'. dist_later_intro.
+          destruct IH as [_ _ _ Hshr_n].
+          eapply dist_le; first apply Hshr_n. unfold_sidx. lia. }
+      rewrite -type_fixpoint_shr_unfold. done. }
+    constructor; [done | done | | done].
+    intros π r m v.
+    destruct (Hfix (S n)) as [_ _ Hfix_own _].
+    etrans; first apply Hfix_own.
+    etrans.
+    { eapply type_ctr_own_val. constructor; [done | done | | done].
+      intros π' r' m' v'. dist_later_intro.
+      destruct IH as [_ _ Hown_n _].
+      eapply dist_le; first apply Hown_n. unfold_sidx. lia. }
+    rewrite -type_fixpoint_own_val_unfold. done.
+  Qed.
+
+  Lemma type_fixpoint_unique_eqtype_dist E L (ty : type rt) :
+    (∀ n, TypeDist n ty (F ty)) →
+    full_eqtype E L ty (type_fixpoint F).
+  Proof.
+    intros Hdist. eapply type_dist_full_eqtype.
+    apply type_fixpoint_unique_dist. done.
+  Qed.
+
+  Lemma type_fixpoint_unique_eqtype E L (ty : type rt) :
+    ty ≡ F ty →
+    full_eqtype E L ty (type_fixpoint F).
+  Proof.
+    intros Heq. eapply type_fixpoint_unique_eqtype_dist.
+    intros n. destruct Heq as [_ _ Hown Hshr _ Hst Hsc _ _].
+    constructor; [done | done | | ]; intros; apply equiv_dist; [apply Hown | apply Hshr].
+  Qed.
+End fixpoint_uniqueness.
