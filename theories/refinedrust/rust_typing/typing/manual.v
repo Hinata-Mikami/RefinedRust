@@ -203,9 +203,11 @@ Section updateable_rules.
   Lemma updateable_extract_typed_value l :
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
       ∃ ty r', ⌜bk = Owned⌝ ∗ ⌜lt = ◁ty⌝ ∗ ⌜r = #r'⌝ ∗
+      find_tc_inst (TySized ty) (λ _,
+      ⌜ty_allows_reads ty⌝ ∗
       (∀ v3, v3 ◁ᵥ{π, MetaNone} r' @ ty -∗
         l ◁ₗ[π, Owned] #v3 @ (◁ value_t true (st_of ty MetaNone)) -∗
-        updateable_core updateable_E updateable_L))
+        updateable_core updateable_E updateable_L)))
     ⊢ P.
   Proof.
     iIntros "HT".
@@ -213,7 +215,7 @@ Section updateable_rules.
     iIntros "#CTX #HE HL".
     rewrite /FindLoc /find_in_context.
     iDestruct "HT" as ([rt [[[lt r] bk] π]]) "(Ha & Hb)"; simpl.
-    iDestruct "Hb" as "(%ty & %r' & -> & -> & -> & HT)".
+    iDestruct "Hb" as "(%ty & %r' & -> & -> & -> & %Hsz & %Hot & HT)".
     iMod (ofty_own_split_value_typed with "Ha") as "Ha"; [done.. | ].
     iDestruct "Ha" as "(%v & Hv & Hl)".
     iPoseProof ("HT" with "Hv Hl") as "HT".

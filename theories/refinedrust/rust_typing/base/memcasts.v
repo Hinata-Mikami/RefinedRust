@@ -349,7 +349,7 @@ Section optypes.
   Qed.
 End optypes.
 
-Definition is_same_decoded_val_at (st : gset addr * heap_state) (v1 : val) (ot : op_type) (v2 : val) : Prop :=
+Definition is_same_decoded_val_at (st : heap_state) (v1 : val) (ot : op_type) (v2 : val) : Prop :=
   decode_op_val v1 ot st = decode_op_val v2 ot st ∧
   is_Some (decode_op_val v1 ot st).
 

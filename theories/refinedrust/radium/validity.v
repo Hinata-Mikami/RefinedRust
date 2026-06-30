@@ -132,7 +132,7 @@ Fixpoint decode_struct_fields
       end
   end.
 
-Equations decode_op_val (v : val) (ot : op_type) (st : (gset addr * heap_state)) : option op_val by wf ot op_type_size_rel :=
+Equations decode_op_val (v : val) (ot : op_type) (st : (heap_state)) : option op_val by wf ot op_type_size_rel :=
   decode_op_val v BoolOp st := OVBool <$> val_to_bool v;
   decode_op_val v (IntOp it) st := OVInt it <$> val_to_Z v it;
   decode_op_val v FnPtrOp st :=
@@ -592,11 +592,20 @@ Proof.
       by apply IH.
 Qed.
 
+Lemma val_to_loc_decode v st l :
+  val_to_loc v = Some l →
+  decode_op_val v PtrOp st = Some (OVPtr l).
+Proof.
+  intros Hv.
+  simp decode_op_val.
+  rewrite Hv//.
+Qed.
+
 
 (** ** MemCast: Transforming bytes read from memory.
   [mem_cast] should only be called with length of [v] matching [ot]
   The dependence on [st] is not necessary right now, but should one day make it easier to support exposed provenance casts. *)
-Definition mem_cast (v : val) (ot : op_type) (st : (gset addr * heap_state)) : val :=
+Definition mem_cast (v : val) (ot : op_type) (st : (heap_state)) : val :=
   resize (length v) MPoison $
     default (replicate (length v) MPoison) $
       encode_op_val <$> decode_op_val v ot st.

@@ -35,6 +35,7 @@ Proof.
   iIntros (?) "%Hv".
   iApply ("Hcont" $! _   _ _ (alias_ptr_t) with "HL Hf").
   { rewrite /ty_own_val /= alias_ptr_own_val_unfold. iPureIntro. split; first done.
+    apply val_to_loc_decodes_to_loc.
     by apply val_to_of_loc. }
 
   repeat liRStep; liShow.

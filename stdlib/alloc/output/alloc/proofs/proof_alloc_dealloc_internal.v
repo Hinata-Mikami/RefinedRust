@@ -36,12 +36,19 @@ Proof.
   iPoseProof (ty_own_val_has_layout with "Hv'") as "%Hlyv'"; first done.
   iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
 
+  iRename select (_ ◁ᵥ{_, _} ptr @ alias_ptr_t)%I into "Hal".
+  iPoseProof ("Hal") as "#Hal'".
+  iEval (rewrite /ty_own_val/=) in "Hal'".
+  iDestruct "Hal'" as "(_ & Hal')".
+  iPoseProof (alias_ptr_own_val_to_decodes with "Hal'") as "%".
+
+
   iApply (wps_free _ _ _ _ ptr _ _ _ (Z.to_nat size) (Z.to_nat align_log2) with "[Hptr] [Hfree]").
   { rewrite Hsize. f_equiv.
     apply val_to_Z_unsigned_nonneg in Hsize; last done. lia. }
   { rewrite Halign_log2. f_equiv.
     apply val_to_Z_unsigned_nonneg in Halign_log2; last done. lia. }
-  { by apply val_to_loc_Some_l2v. }
+  { done. }
   { lia. }
   { iExists _. iFrame. fold ly. done. }
   { rewrite /freeable_nz.

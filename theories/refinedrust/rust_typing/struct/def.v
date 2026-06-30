@@ -21,11 +21,7 @@ Definition is_struct_ot `{typeGS Σ} (sls : struct_layout_spec)
       length ots = length rts ∧
       op_type_wf (StructOp sl ots) ∧
       (* pointwise, the members have the right op_type and a layout matching the optype *)
-      foldr (λ ty, and (let '(ty, ot) := ty in
-         (projT2 ty : type _).(ty_metadata_kind) = MetadataNone ∧
-         ty_has_op_type (projT2 ty : type _) ot ∧
-         syn_type_has_layout ((projT2 ty).(ty_syn_type) MetaNone) (ot_layout ot)))
-       True (zip (hzipl _ tys) ots)
+      Forall2 (λ ty ot, ty_metadata_kind (projT2 ty) = MetadataNone ∧ ty_has_op_type (projT2 ty) ot) (hzipl _ tys) ots
   | UntypedOp ly =>
       (* lyis a valid layout for this sls *)
       ∃ sl, use_struct_layout_alg sls = Some sl ∧ ly = sl
@@ -59,11 +55,13 @@ Proof.
   have [ot Hot] : is_Some (ots !! field_idx_of_idx (sl_members sl) i).
   { apply lookup_lt_is_Some_2. rewrite Hlen_ots. done. }
   exists ot. split; first done.
-  rewrite -Forall_fold_right in Hmem.
+  apply base.Forall2_Forall in Hmem.
   eapply (Forall_lookup_1 _ _ (field_idx_of_idx (sl_members sl) i)
     (existT rt ty, ot)) in Hmem; last first.
   { apply/lookup_zip_with_Some. eexists _, _. split_and!; [done | done | done]. }
-  simpl in Hmem. done.
+  simpl in Hmem. destruct Hmem as [? Hot1].
+  split_and!; [done.. | ].
+  eapply ty_op_type_stable; done.
 Qed.
 
 Lemma decode_struct_fields_exists sl ots rec members vs i :
@@ -881,7 +879,6 @@ Section structs.
     apply and_proper => Hots.
     apply and_proper => Hwf.
     clear Hwf.
-    rewrite -!Forall_fold_right.
     erewrite <-struct_layout_spec_has_layout_fields_length in Hlen; last done.
     rewrite -field_members_length in Hlen.
     elim: (field_members (sl_members sl)) ots rts Ts Hproper Hlen Hots => //; csimpl.
@@ -893,19 +890,17 @@ Section structs.
     intros Hproper_all.
     apply HTForall_cons_inv in Hproper_all as (Hproper1 & Hproper2).
     destruct Hproper1 as [Hmeta [Hst Hot]].
-    simplify_eq/=; rewrite !Forall_cons/=.
+    simplify_eq/=; rewrite !Forall2_cons/=.
     split.
     - intros [Hhead Htail]. split.
-      + destruct Hhead as (Hmeta_none & Hhas & Hsyn). split_and!.
+      + destruct Hhead as (Hmeta_none & Hhas). split_and!.
         * by rewrite -Hmeta.
         * by apply Hot.
-        * by rewrite -(Hst MetaNone).
       + eapply IH; done.
     - intros [Hhead Htail]. split.
-      + destruct Hhead as (Hmeta_none & Hhas & Hsyn). split_and!.
+      + destruct Hhead as (Hmeta_none & Hhas). split_and!.
         * by rewrite Hmeta.
         * by apply Hot.
-        * by rewrite (Hst MetaNone).
       + eapply IH; done.
   Qed.
 
@@ -1109,6 +1104,29 @@ Section structs.
     TypeContractive (λ ty, struct_t sls (Ts ty)).
   Proof.
     intros. eapply (struct_t_contr (λ _, _)); done.
+  Qed.
+
+  Lemma ty_has_op_type_struct_canonical {rts} (tys : hlist type rts) (sls : struct_layout_spec) ots ot sl :
+    use_op_alg sls = Some (StructOp sl ots) →
+    ot = (StructOp sl ots) →
+    Forall2 (λ ty ot, ty_metadata_kind (projT2 ty) = MetadataNone ∧ ty_has_op_type (projT2 ty) ot) (hzipl _ tys) ots →
+    ty_has_op_type (struct_t sls tys) ot.
+  Proof.
+    intros Hot -> Ha.
+    simpl in *.
+    rewrite ty_has_op_type_unfold. simpl.
+    rewrite /def.is_struct_ot.
+    apply use_op_alg_struct_inv in Hot as (sl' & ots' & Hsl & Hots & [= <- <-]).
+    split_and!;simpl.
+    - apply Forall2_length in Hots.
+      apply Forall2_length in Ha.
+      rewrite length_hzipl in Ha. rewrite Ha.
+      done.
+    - done.
+    - apply Forall2_length in Ha.
+      rewrite length_hzipl in Ha. rewrite Ha. done.
+    - by eapply use_struct_layout_alg_op_type_wf.
+    - done.
   Qed.
 End structs.
 

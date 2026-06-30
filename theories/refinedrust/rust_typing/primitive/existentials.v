@@ -237,6 +237,19 @@ Section lft_morphism.
   Defined.
 End lft_morphism.
 
+Section sized.
+  Context `{!typeGS Σ}.
+
+  Global Instance ex_plain_t_sized {X Y : RT} ty (P : ex_inv_def X Y) :
+    TySized ty →
+    TySized (ex_plain_t X Y P ty).
+  Proof.
+    intros Hsz. econstructor.
+    - apply Hsz.
+    - apply Hsz.
+  Qed.
+End sized.
+
 Section contr.
   Context `{!typeGS Σ}.
 

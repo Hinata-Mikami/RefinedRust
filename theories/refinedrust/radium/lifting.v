@@ -1,3 +1,4 @@
+From Equations Require Import Equations.
 From iris.proofmode Require Import proofmode.
 From radium.program_logic Require Export weakestpre.
 From radium.program_logic Require Import ectx_lifting.
@@ -835,7 +836,7 @@ Proof.
 Qed.
 
 Lemma wp_cast_loc Φ v l π E:
-  val_to_loc v = Some l →
+  (∀ st, decode_op_val v PtrOp st = Some $ OVPtr l) →
   (|={E}⧗=> Φ v) -∗ WPe{π} UnOp (CastOp PtrOp) PtrOp (Val v) @ E {{ Φ }}.
 Proof.
   iIntros (Hv) "HΦ".
@@ -858,7 +859,7 @@ Proof.
 Qed.
 
 Lemma wp_cast_ptr_int Φ v v' l π E it:
-  val_to_loc v = Some l →
+  (∀ st, decode_op_val v PtrOp st = Some $ OVPtr l) →
   val_of_Z l.(loc_a) it = Some v' →
   (|={E}⧗=> Φ (v')) -∗
   WPe{π} UnOp (CastOp (IntOp it)) PtrOp (Val v) @ E {{ Φ }}.
@@ -870,7 +871,9 @@ Proof.
   iModIntro.
   iSplit. {
     iPureIntro. split.
-    - inversion 1; by simplify_eq/=.
+    - inversion 1; simplify_eq/=.
+      rename select (decode_op_val _ _ _ = Some _) into Hdec.
+      rewrite Hv in Hdec. by simplify_eq/=.
     - move => ->. by econstructor.
   }
   iMod "Hcl" as "_".
@@ -886,7 +889,9 @@ Lemma wp_cast_null_int Φ v π E it:
 Proof.
   iIntros (Hv) "HΦ".
   iApply wp_cast_ptr_int.
-  { apply (val_to_of_loc NULL_loc).
+  { intros.
+    simp decode_op_val.
+    rewrite (val_to_of_loc NULL_loc); first done.
     apply val_of_loc_Some. simpl.
     rewrite int_elem_of_it_iff. done. }
   { done. }
@@ -931,7 +936,7 @@ Qed.
 
 Lemma wp_copy_alloc_id Φ it a l v1 v2 π E :
   val_to_Z v1 it = Some a →
-  val_to_loc v2 = Some l →
+  (∀ st, decode_op_val v2 PtrOp st = Some $ OVPtr l) →
   a ∈ USize →
   (|={E}⧗=> ∀ v, ⌜val_of_loc (Loc l.(loc_p) a) = Some v⌝ -∗ Φ v) -∗
   WPe{π} CopyAllocId (IntOp it) (Val v1) (Val v2) @ E {{ Φ }}.
@@ -946,7 +951,10 @@ Proof.
   iIntros (???? Hstep ?). inv_expr_step.
   iApply (physical_step_wand with "HΦ"). iIntros "HΦ".
   iSplit => //. iFrame.
-  iApply wp_value. by iApply ("HΦ").
+  iApply wp_value. iApply ("HΦ").
+  rename select (decode_op_val _ _ _ = Some _) into Hdec.
+  rewrite Hl in Hdec. simplify_eq.
+  done.
 Qed.
 
 Definition int_arithop_result (it : int_type) n1 n2 op : option Z :=
@@ -1039,8 +1047,8 @@ Proof.
 Qed.
 
 Lemma wp_ptr_relop Φ op v1 v2 v l1 l2 b rit π E :
-  val_to_loc v1 = Some l1 →
-  val_to_loc v2 = Some l2 →
+  (∀ st, decode_op_val v1 PtrOp st = Some $ OVPtr l1) →
+  (∀ st, decode_op_val v2 PtrOp st = Some $ OVPtr l2) →
   val_of_Z (bool_to_Z b) rit = Some v →
   match op with
   | EqOp rit => Some (bool_decide (l1.(loc_a) = l2.(loc_a)), rit)
@@ -1065,10 +1073,14 @@ Proof.
   iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
   iIntros (v' Hstep). iMod "HE" as "_". iModIntro. iFrame.
   inversion Hstep; simplify_eq => //.
+  rename select (decode_op_val v1 _ _ = Some _) into Hdec1.
+  rename select (decode_op_val v2 _ _ = Some _) into Hdec2.
+  rewrite Hv1 in Hdec1. rewrite Hv2 in Hdec2.
+  simplify_eq/=. done.
 Qed.
 
 Lemma wp_ptr_offset Φ vl l π E it o ly vo:
-  val_to_loc vl = Some l →
+  (∀ st, decode_op_val vl PtrOp st = Some $ OVPtr l) →
   val_to_Z vo it = Some o →
   ly_size ly * o ∈ ISize →
   loc_in_bounds (l offset{ly}ₗ o) 0 0 -∗
@@ -1085,7 +1097,10 @@ Proof.
   iDestruct (loc_in_bounds_in_range_usize with "Hl") as %?.
   iSplit. {
     iPureIntro. split.
-    - inversion 1. simplify_eq. erewrite l2v_correct; done.
+    - inversion 1. simplify_eq.
+      rename select (decode_op_val _ _ _ = Some _) into Hdec.
+      rewrite Hvl in Hdec. simplify_eq/=.
+      erewrite l2v_correct; done.
     - move => ->. eapply PtrOffsetOpIP; try done.
       by apply val_of_loc_Some_l2v. }
   iMod "HE" as "_".
@@ -1097,7 +1112,7 @@ Proof.
 Qed.
 
 Lemma wp_ptr_neg_offset Φ vl l π E it o ly vo:
-  val_to_loc vl = Some l →
+  (∀ st, decode_op_val vl PtrOp st = Some $ OVPtr l) →
   val_to_Z vo it = Some o →
   ly_size ly * -o ∈ ISize →
   loc_in_bounds (l offset{ly}ₗ -o) 0 0 -∗
@@ -1114,7 +1129,10 @@ Proof.
   iDestruct (loc_in_bounds_in_range_usize with "Hl") as %?.
   iSplit. {
     iPureIntro. split.
-    - inversion 1. simplify_eq. erewrite l2v_correct; done.
+    - inversion 1. simplify_eq.
+      rename select (decode_op_val _ _ _ = Some _) into Hdec.
+      rewrite Hvl in Hdec. simplify_eq/=.
+      erewrite l2v_correct; done.
     - move => ->. eapply PtrNegOffsetOpIP; try done.
       by apply val_of_loc_Some_l2v.
   }
@@ -1127,7 +1145,7 @@ Proof.
 Qed.
 
 Lemma wp_ptr_wrapping_neg_offset Φ vl l π E it o ly vo:
-  val_to_loc vl = Some l →
+  (∀ st, decode_op_val vl PtrOp st = Some $ OVPtr l) →
   val_to_Z vo it = Some o →
   (|={E}⧗=> ∀ v, ⌜val_of_loc (l wrapping_offset{ly}ₗ -o) = Some v⌝ -∗ Φ v) -∗
   WPe{π} Val vl at_wrapping_neg_offset{ ly , PtrOp, IntOp it} Val vo @ E {{ Φ }}.
@@ -1139,7 +1157,10 @@ Proof.
   { apply val_of_loc_Some_l2v. apply wrapping_shift_loc_in_range. }
   iSplit. {
     iPureIntro. split.
-    - inversion 1. by simplify_eq.
+    - inversion 1. simplify_eq.
+      rename select (decode_op_val _ _ _ = Some _) into Hdec.
+      rewrite Hvl in Hdec. simplify_eq/=.
+      erewrite l2v_correct; done.
     - move => ->. eapply PtrWrappingNegOffsetOpIP; try done.
   }
   iMod "HE" as "_".
@@ -1151,7 +1172,7 @@ Proof.
   apply wrapping_shift_loc_in_range.
 Qed.
 Lemma wp_ptr_wrapping_offset Φ vl l π E it o ly vo:
-  val_to_loc vl = Some l →
+  (∀ st, decode_op_val vl PtrOp st = Some $ OVPtr l) →
   val_to_Z vo it = Some o →
   (|={E}⧗=> ∀ v, ⌜val_of_loc (l wrapping_offset{ly}ₗ o) = Some v⌝ -∗ Φ v) -∗
   WPe{π} Val vl at_wrapping_offset{ ly , PtrOp, IntOp it} Val vo @ E {{ Φ }}.
@@ -1163,7 +1184,10 @@ Proof.
   { apply val_of_loc_Some_l2v. apply wrapping_shift_loc_in_range. }
   iSplit. {
     iPureIntro. split.
-    - inversion 1. by simplify_eq.
+    - inversion 1. simplify_eq.
+      rename select (decode_op_val _ _ _ = Some _) into Hdec.
+      rewrite Hvl in Hdec. simplify_eq/=.
+      erewrite l2v_correct; done.
     - move => ->. by eapply PtrWrappingOffsetOpIP.
   }
   iMod "HE" as "_".
@@ -1176,8 +1200,8 @@ Proof.
 Qed.
 
 Lemma wp_ptr_diff π Φ vl1 l1 vl2 l2 ly vo:
-  val_to_loc vl1 = Some l1 →
-  val_to_loc vl2 = Some l2 →
+  (∀ st, decode_op_val vl1 PtrOp st = Some $ OVPtr l1) →
+  (∀ st, decode_op_val vl2 PtrOp st = Some $ OVPtr l2) →
   val_of_Z ((l1.(loc_a) - l2.(loc_a)) `div` ly.(ly_size)) ISize = Some vo →
   l1.(loc_p) = l2.(loc_p) →
   0 < ly.(ly_size) →
@@ -1203,7 +1227,11 @@ Proof.
   iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
   iSplit. {
     iPureIntro. split.
-    - inversion 1; by simplify_eq.
+    - inversion 1; simplify_eq.
+      rename select (decode_op_val vl1 _ _ = Some _) into Hdec1.
+      rename select (decode_op_val vl2 _ _ = Some _) into Hdec2.
+      rewrite Hvl1 in Hdec1. rewrite Hvl2 in Hdec2.
+      simplify_eq/=. done.
     - move => ->. by apply: PtrDiffOpPP.
   }
   iMod "HE" as "_".
@@ -1228,7 +1256,8 @@ Proof.
     split; first by rewrite /min_int /int_half_modulus/=; lia.
     by apply offset_of_bound. }
   rewrite Hv /=. move: Hv => /val_to_of_Z Hv.
-  iApply wp_ptr_offset; [done| done | .. ].
+  iApply wp_ptr_offset; [| done | .. ].
+  { intros. by apply val_to_loc_decode. }
   { have ? := offset_of_idx_le_size sl i.
     replace (ly_size U8) with 1%nat by done. rewrite Z.mul_1_l.
     have Hs : ly_size sl < max_int ISize + 1 by apply sl_size.
@@ -1796,14 +1825,14 @@ Qed.
 Lemma wps_free π Q Ψ s l v_size v_align vl (n_size n_align : nat) :
   val_to_Z v_size USize = Some (Z.of_nat n_size) →
   val_to_Z v_align USize = Some (Z.of_nat n_align) →
-  val_to_loc vl = Some l →
+  (∀ st, decode_op_val vl PtrOp st = Some (OVPtr l)) →
   n_size > 0 →
   l ↦|Layout n_size n_align| -∗
   freeable l n_size 1 HeapAlloc -∗
   (|={⊤}⧗=> WPs{π} s {{ Q, Ψ }}) -∗
   WPs{π} (Free (Val v_size) (Val v_align) vl s) {{ Q, Ψ }}.
 Proof.
-  iIntros (????) "Hl Hf HWP". rewrite !stmt_wp_unfold. iIntros (???) "?". subst.
+  iIntros (?? Hl ?) "Hl Hf HWP". rewrite !stmt_wp_unfold. iIntros (???) "?". subst.
   iPoseProof (heap_pointsto_layout_has_layout with "Hl") as "%".
   iApply wp_lift_stmt_step. iIntros (σ) "(Hhctx&Hfctx)".
   iMod (heap_free_block_upd with "Hl Hf Hhctx") as (σ') "(%Hf & Hhctx)".
@@ -1811,7 +1840,10 @@ Proof.
   iIntros (???? Hstep ?). inv_stmt_step.
   iApply (physical_step_wand with "HWP"). iIntros "HWP".
   iSplitR; first done.
-  erewrite (free_block_inj σ.(st_heap) _ (Layout n_size n_align) HeapAlloc hs' σ'); [ | done..].
+  rename select (decode_op_val _ _ _ = Some _) into Hdec.
+  rewrite Hl in Hdec.
+  simplify_eq/=.
+  erewrite (free_block_inj σ.(st_heap) _ (Layout n_size n_align) HeapAlloc hs' σ'); [ | done.. ].
   iFrame. by iApply "HWP".
 Qed.
 

@@ -202,8 +202,8 @@ Section cast.
     ⊢ typed_un_op E L f v (v ◁ᵥ{π, MetaNone} l @ alias_ptr_t)%I (CastOp (IntOp USize)) PtrOp T.
   Proof.
     rewrite /ty_own_val/= alias_ptr_own_val_unfold.
-    iIntros "(-> & HT) (_ & _) %Φ #CTX #HE HL Hf HΦ".
-    specialize (val_to_loc_Some_inv _ _ Hv) as [_ Husize].
+    iIntros "(-> & HT) (_ & %Hdec) %Φ #CTX #HE HL Hf HΦ".
+    opose proof* val_decodes_to_loc_in_usize as Husize; first done.
     odestruct (val_of_Z_is_Some _ _ _) as (? & ?); first apply Husize.
     iApply wp_cast_ptr_int; [done.. | ].
     iApply physical_step_intro. iNext. iApply ("HΦ" with "HL Hf [] HT") => //.

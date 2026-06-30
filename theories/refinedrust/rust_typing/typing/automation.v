@@ -6,7 +6,7 @@ From lithium Require Import hooks.
 From refinedrust.automation Require Import lookup_definition.
 From refinedrust.base Require Import int programs xmap value.
 From refinedrust.primitive Require Import functions unit alias_ptr mutual_fixpoint.
-From refinedrust Require Import mut_ref.mut_ref shr_ref struct.struct array.array enum primitive.existentials.
+From refinedrust Require Import primitive.existentials_na mut_ref.mut_ref shr_ref struct.struct array.array enum primitive.existentials.
 From refinedrust.typing Require Import program_rules.
 (* Important: import proof_state last as it overrides some Lithium tactics *)
 From refinedrust.automation Require Export loops existentials simpl solvers proof_state.
@@ -1433,6 +1433,42 @@ Ltac solve_fixpoint_ne :=
   unfold TCNoResolve; apply _.
 Ltac solve_fixpoint_contr :=
   unfold TCNoResolve; apply _.
+
+(* Special ty_has_op_type hooks *)
+Lemma ty_has_op_type_value_canonical `{!typeGS Σ} st ly :
+  syn_type_has_layout st ly →
+  ty_has_op_type (value_t true st) (use_op_alg' st).
+Proof.
+  rewrite ty_has_op_type_unfold.
+  apply is_value_ot_typed_use_op_alg.
+Qed.
+Lemma ty_has_op_type_ex_plain_t_canonical `{!typeGS Σ} {X Y} P ty ot :
+  ty_has_op_type ty ot →
+  ty_has_op_type (ex_plain_t X Y P ty) ot.
+Proof.
+  intros ?. rewrite ty_has_op_type_unfold. done.
+Qed.
+Lemma ty_has_op_type_ex_na_t_canonical `{!typeGS Σ} {X Y} P ty ot :
+  ty_has_op_type ty ot →
+  ty_has_op_type (na_ex_plain_t X Y P ty) ot.
+Proof.
+  intros ?. rewrite ty_has_op_type_unfold. done.
+Qed.
+Ltac solve_ty_has_op_type_cases ::=
+  lazymatch goal with
+  | |- ty_has_op_type (value_t true ?st) (use_op_alg' _) =>
+        refine (ty_has_op_type_value_canonical st _ _);
+        [ solve_layout_alg]
+  | |- _ =>
+    first [
+      refine (ty_has_op_type_struct_canonical _ _ _ _ _ _ _ _);
+      [ solve_op_alg
+      | solve_ot_eq
+      | solve_ty_has_op_type_struct_fields]
+    | refine (ty_has_op_type_ex_plain_t_canonical _ _ _ _)
+    | refine (ty_has_op_type_ex_na_t_canonical _ _ _ _)
+    ]
+  end.
 
 (* Fast function type equality *)
 Ltac solve_fast_function_spec_eq :=

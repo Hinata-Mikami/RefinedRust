@@ -2741,7 +2741,8 @@ Ltac solve_ty_has_op_type_core_step :=
     | solve [solve_op_alg]
     | solve [solve_is_value_ot_core]
     ]
-  | goal_has_no_evars; shelve ].
+  (* | goal_has_no_evars; shelve *)
+  ].
 Ltac solve_ty_has_op_type_core :=
   repeat solve_ty_has_op_type_core_step.
 
@@ -2759,9 +2760,6 @@ Ltac solve_ty_has_op_type_prepare :=
   end;
   (* specific handling for a few cases *)
   lazymatch goal with
-  | |- is_value_ot true ?st (use_op_alg' ?st) =>
-        refine (is_value_ot_typed_use_op_alg st _ _);
-        [ solve_layout_alg]
   | |- is_value_ot false ?st (UntypedOp _) =>
         refine (is_value_ot_untyped_use_op_alg st _ _);
         [solve_layout_alg]
@@ -2770,9 +2768,31 @@ Ltac solve_ty_has_op_type_prepare :=
       (*otherwise unfold *)
       hnf
   end.
+
+
+Ltac solve_ty_has_op_type_struct_fields :=
+  simpl;
+  match goal with
+  | |- Forall2 _ (_ :: _)  (_ :: _) =>
+    apply Forall2_cons; split;
+    [split_and!; [apply ty_sized_metadata_none | simpl ] | solve_ty_has_op_type_struct_fields]
+  | |- Forall2 _ [] [] =>
+    by apply Forall2_nil
+  end
+.
+
+(* Problem: Ltac matching won't work well  because of unification *)
+Ltac solve_ty_has_op_type_cases :=
+  idtac.
+
+Ltac solve_ty_has_op_type_step :=
+  first
+  [ solve_ty_has_op_type_cases
+  | solve_ty_has_op_type_prepare;
+    solve_ty_has_op_type_core
+  ].
 Ltac solve_ty_has_op_type ::=
-  solve_ty_has_op_type_prepare;
-  solve_ty_has_op_type_core.
+  repeat solve_ty_has_op_type_step.
 
 
 (** Solver for goals of the form [ty_allows_reads ?ty] and [ty_allows_writes ?ty] *)

@@ -317,7 +317,7 @@ Definition compute_arith_bin_op (n1 n2 : Z) (it : _) (op : _) : option Z :=
 Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val → val → Prop :=
 | PtrOffsetOpIP v1 v2 σ o l ly it v' :
     val_to_Z v1 it = Some o →
-    val_to_loc v2 = Some l →
+    decode_op_val v2 PtrOp σ.(st_heap) = Some (OVPtr l) →
     (* TODO: should we have an alignment check here? *)
     heap_state_loc_in_bounds (l offset{ly}ₗ o) 0 σ.(st_heap) →
 
@@ -332,7 +332,7 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
     eval_bin_op (PtrOffsetOp ly) (IntOp it) PtrOp σ v1 v2 v'
 | PtrNegOffsetOpIP v1 v2 σ o l ly it v' :
     val_to_Z v1 it = Some o →
-    val_to_loc v2 = Some l →
+    decode_op_val v2 PtrOp σ.(st_heap) = Some (OVPtr l) →
     heap_state_loc_in_bounds (l offset{ly}ₗ -o) 0 σ.(st_heap) →
     (* TODO: should we have an alignment check here? *)
 
@@ -348,19 +348,19 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
 
 | PtrWrappingOffsetOpIP v1 v2 σ o l ly it v' :
     val_to_Z v1 it = Some o →
-    val_to_loc v2 = Some l →
+    decode_op_val v2 PtrOp σ.(st_heap) = Some (OVPtr l) →
     val_of_loc (l wrapping_offset{ly}ₗ o) = Some v' →
     eval_bin_op (PtrWrappingOffsetOp ly) (IntOp it) (PtrOp) σ v1 v2 v'
 | PtrWrappingNegOffsetOpIP v1 v2 σ o l ly it v' :
     val_to_Z v1 it = Some o →
-    val_to_loc v2 = Some l →
+    decode_op_val v2 PtrOp σ.(st_heap) = Some (OVPtr l) →
     val_of_loc (l wrapping_offset{ly}ₗ -o) = Some v' →
     eval_bin_op (PtrWrappingNegOffsetOp ly) (IntOp it) (PtrOp) σ v1 v2 v'
 
 (* for `offset_from` *)
 | PtrDiffOpPP v1 v2 σ l1 l2 ly v:
-    val_to_loc v1 = Some l1 →
-    val_to_loc v2 = Some l2 →
+    decode_op_val v1 PtrOp σ.(st_heap) = Some (OVPtr l1) →
+    decode_op_val v2 PtrOp σ.(st_heap) = Some (OVPtr l2) →
     (* derived from the same object, i.e., same provenance *)
     l1.(loc_p) = l2.(loc_p) →
     (* excludes the case of ZSTs (the Rust version panics in that case) *)
@@ -372,8 +372,8 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
     eval_bin_op (PtrDiffOp ly) PtrOp PtrOp σ v1 v2 v
 
 | RelOpPP v1 v2 σ l1 l2 p1 p2 a1 a2 v b op rit:
-    val_to_loc v1 = Some l1 →
-    val_to_loc v2 = Some l2 →
+    decode_op_val v1 PtrOp σ.(st_heap) = Some (OVPtr l1) →
+    decode_op_val v2 PtrOp σ.(st_heap) = Some (OVPtr l2) →
     (* We do not compare the provenance *)
     l1 = Loc p1 a1 →
     l2 = Loc p2 a2 →
@@ -458,13 +458,13 @@ Inductive eval_un_op : un_op → op_type → state → val → val → Prop :=
     val_of_Z i' itt  = Some vt →
     eval_un_op (CastOp (IntOp itt)) (IntOp its) σ vs vt
 | CastOpPP σ vs l:
-    val_to_loc vs = Some l →
+    decode_op_val vs PtrOp σ.(st_heap) = Some (OVPtr l) →
     eval_un_op (CastOp PtrOp) PtrOp σ vs vs
 | CastOpPI it σ vs vt l:
     (* This is always possible.
        We do not require a valid provenance.
        This does not expose the provenance and thus is stricter than Rust's casts (akin to Rusts strict-provenance ptr.addr()). *)
-    val_to_loc vs = Some l →
+    decode_op_val vs PtrOp σ.(st_heap) = Some (OVPtr l) →
     val_of_Z l.(loc_a) it = Some vt →
     eval_un_op (CastOp (IntOp it)) PtrOp σ vs vt
 | CastOpIP it σ vs vt l a:
@@ -547,7 +547,7 @@ Inductive expr_step : expr → thread_id → state → list Empty_set → runtim
       if o is Na1Ord then
         Deref Na2Ord ot (Val v)
       else
-        Val (mem_cast v' ot (dom σ.(st_fntbl), σ.(st_heap))) in
+        Val (mem_cast v' ot (σ.(st_heap))) in
     val_to_loc v = Some l →
     heap_at l (ot_layout ot) v' start_st σ.(st_heap).(hs_heap) →
     expr_step (Deref o ot (Val v)) π σ [] (to_rtexpr π end_expr) (heap_fmap (heap_upd l v' end_st) σ) []
@@ -610,7 +610,7 @@ comparing pointers? (see lambda rust) *)
 (* for ptr::with_addr *)
 | CopyAllocIdS π σ v1 v2 a it l v' :
     val_to_Z v1 it = Some a →
-    val_to_loc v2 = Some l →
+    decode_op_val v2 PtrOp σ.(st_heap) = Some (OVPtr l) →
     val_of_loc (Loc l.(loc_p) a) = Some v' →
     expr_step (CopyAllocId (IntOp it) (Val v1) (Val v2)) π σ [] (RTVal v') σ []
 | IfES v ot e1 e2 b π σ:
@@ -664,7 +664,7 @@ Inductive stmt_step : stmt → thread_id → function → state → list Empty_s
 | FreeS v_size v_align (n_size n_align : nat) v l s π rf σ hs' :
     val_to_Z v_size USize = Some (Z.of_nat n_size) →
     val_to_Z v_align USize = Some (Z.of_nat n_align) →
-    val_to_loc v = Some l →
+    decode_op_val v PtrOp σ.(st_heap) = Some (OVPtr l) →
     n_size > 0 →
     l `has_layout_loc` (Layout n_size n_align) →
     free_block σ.(st_heap) HeapAlloc l (Layout n_size n_align) hs' →

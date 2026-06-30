@@ -99,7 +99,8 @@ Section place.
     iDestruct "CTX" as "(LFT & LLCTX)".
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
     iApply wp_ptr_offset.
-    { by apply val_to_loc_Some_l2v. }
+    { intros. apply val_to_loc_decode.
+      by apply val_to_loc_Some_l2v. }
     { done. }
     { split; last nia.
       specialize (MinInt_le_0 ISize). lia. }
@@ -217,7 +218,8 @@ Section place.
     iApply (wpe_logical_step with "Hcl"); [done.. | ].
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
     iApply wp_ptr_offset.
-    { by apply val_to_loc_Some_l2v. }
+    { intros. apply val_to_loc_decode.
+      by apply val_to_loc_Some_l2v. }
     { done. }
     { split; last nia.
       specialize (MinInt_le_0 ISize). lia. }
@@ -322,7 +324,8 @@ Section place.
     iApply wpe_fupd.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
     iApply wp_ptr_offset.
-    { by apply val_to_loc_Some_l2v. }
+    { intros. apply val_to_loc_decode.
+      by apply val_to_loc_Some_l2v. }
     { done. }
     { split; last nia.
       specialize (MinInt_le_0 ISize). lia. }

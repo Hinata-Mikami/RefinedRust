@@ -71,16 +71,6 @@ Section uninit.
     - iIntros "(-> & %ly & ? & ?)"; iR. iExists ly. by iFrame.
     - iIntros "(-> & %ly & ? & ?)"; iR. iExists ly. iFrame.
   Qed.
-
-  Lemma uninit_memcast π v r st ot m hst :
-    v ◁ᵥ{π, m} r @ uninit st -∗
-    mem_cast v ot hst ◁ᵥ{π, m} r @ uninit st.
-  Proof.
-    rewrite !uninit_own_spec.
-    iIntros "(-> & %ly & %Hst & %Hly)".
-    iR. iExists ly. iR. iPureIntro.
-    by apply has_layout_val_mem_cast.
-  Qed.
 End uninit.
 
 Section lemmas.

@@ -453,7 +453,7 @@ Section test.
     open_cache.
     intros ?.
 
-    simplify_eq.
+    simplify_eq/=.
     open_cache.
   Abort.
 End test.
@@ -723,9 +723,9 @@ Section test.
     ty_allows_reads (struct_t (s1_spec (ty_syn_type T_ty MetaNone)) +[T_ty; int I32]).
   Proof.
     intros. inv_layout_alg.
-    solve_ty_allows.
+    unfold ty_allows_reads.
+    solve_ty_has_op_type.
     Unshelve.
-    all: solve_goal.
     all: solve [fail].
   Abort.
 

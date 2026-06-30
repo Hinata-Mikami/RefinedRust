@@ -23,17 +23,28 @@ Section discriminant.
     iApply (ty_has_layout with "Hv").
   Qed.
   Next Obligation.
-    simpl. intros. eapply (@ty_op_type_stable _ _ _ (int _) _).
+    simpl. intros rt en ot Hot.
+    eapply (@ty_op_type_stable _ _ _ (int _) _); first done.
     rewrite ty_has_op_type_unfold. done.
+  Qed.
+  Next Obligation.
+    simpl. intros rt en ot Hot.
+    destruct ot as [ | | | | ? ? | ? ? ? | ? | ]; done.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
-    simpl. intros ??????? Hv. iIntros "(%tag & %Htag & Hv)".
-    iPoseProof (ty_memcast_compat with "Hv") as "Ha".
-    { rewrite ty_has_op_type_unfold. apply Hv. }
-    eauto.
+    simpl. intros rt en ot st π r v Hot. iIntros "(%tag & %Htag & Hv)".
+    iPoseProof (ty_decodable _ (int en.(enum_els).(els_tag_it)) ot st π _ v with "Hv") as (ov) "%Hdec"; [done | | ].
+    { rewrite ty_has_op_type_unfold. exact Hot. }
+    iExists ov. done.
   Qed.
-Next Obligation.
+  Next Obligation.
+    simpl. intros rt en ot st π r v v' Hot Hsame. iIntros "(%tag & %Htag & Hv)".
+    iExists tag. iSplit; first done.
+    iApply (ty_decode_compat _ (int en.(enum_els).(els_tag_it)) ot st π _ v v' with "Hv"); [done | | done].
+    rewrite ty_has_op_type_unfold. exact Hot.
+  Qed.
+  Next Obligation.
     intros ?? ly Hst.
     apply syn_type_has_layout_int_inv in Hst as ->.
     done.
@@ -148,8 +159,8 @@ Section subtype.
   Proof.
     intros Htag.
     iApply type_incl_simple_type; simpl; last done.
-    iIntros "!>" (??) "(%tag' & % & (_ & Hv))".
-    simplify_eq. done.
+    iIntros "!>" (??) "(%tag' & %Htag' & (_ & Hv))".
+    assert (tag' = tag) as -> by congruence. done.
   Qed.
 
   Lemma weak_subtype_enum_discriminant_int E L {rt} (en : enum rt) r i it T :
@@ -224,7 +235,7 @@ Section switch.
     iDestruct "HT" as "(-> & Hc)".
     rewrite /compute_map_lookup_goal.
     iDestruct "Hc" as "(%b & %tag' & %Htag' & %idx & <- & %res & <- & Ha)".
-    simplify_eq.
+    assert (tag' = tag) as -> by congruence.
     iExists _. iFrame "HL". iR. iModIntro.
     unfold els_lookup_tag. case_match.
     - iDestruct "Ha" as "(%s & % & HT)".

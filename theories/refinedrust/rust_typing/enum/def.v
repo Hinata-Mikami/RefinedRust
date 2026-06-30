@@ -137,19 +137,22 @@ Section union.
     lia.
   Qed.
   Next Obligation.
-    intros ??? uls ot (ul & Hul & ->).
+    intros ??? uls ot _ (ul & Hul & ->).
     simpl. by eapply use_union_layout_alg_Some_inv.
   Qed.
   Next Obligation.
-    eauto.
+    intros ??? uls ot (ul & Hul & ->). done.
   Qed.
   Next Obligation.
-    eauto.
+    iIntros (rt ty variant uls π r m v) "_". done.
+  Qed.
+  Next Obligation.
+    iIntros (rt ty variant uls κ π r m l) "_". done.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
-    iIntros (?????????) "(%ul & %ly & -> & % & % & % & _)". iExists ul.
-    iSplitR; first done. iPureIntro. by eapply use_union_layout_alg_Some_inv.
+    iIntros (rt ty variant uls κ π l r m) "(%ul & %ly & -> & %Hul & % & %Hloc & _)".
+    iExists ul. iSplitR; first done. iPureIntro. by eapply use_union_layout_alg_Some_inv.
   Qed.
   Next Obligation.
     iIntros (rt ty variant uls E κ l ly π r m q ?) "CTX #Hna Htok %Halg %Hly #Hlb Hb".
@@ -256,15 +259,51 @@ Section union.
     iApply ty_shr_mono; done.
   Qed.
   Next Obligation.
-    iIntros (?????????? Hdrop) "Hb".
+    iIntros (rt ty variant uls π r m v F ? Hdrop) "Hb".
     iDestruct "Hb" as "(%ul & %ly & -> & %Halg & %Hly & ? & Hv & _)".
     iPoseProof (ty_own_ghost_drop_trivial with "Hv") as "Ha"; [done | done | ].
     iApply (logical_step_wand with "Ha"); eauto.
   Qed.
   Next Obligation.
-    intros rt ty variant uls ot st π r m v (ul & Hul & ->).
+    intros rt ty variant uls ot st π r v _ (ul & Hul & ->).
     iIntros "Hv".
-    by rewrite mem_cast_UntypedOp.
+    iEval (rewrite /ty_own_val /=) in "Hv".
+    iDestruct "Hv" as "(%ul' & %ly & %Hmeta & %Halg & %Hly & %Hst & Hv & %Hmeta2 & %ly0 & %Halg1 & %Hv1)".
+    assert (ul' = ul) as -> by naive_solver.
+    iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv0"; first done.
+    pose proof Halg1 as Halg_tail.
+    apply syn_type_has_layout_literal_inv in Halg1 as (-> & _ & _).
+    iExists (OVUntyped ul v). iPureIntro.
+    simp decode_op_val.
+    rewrite bool_decide_true; first done.
+    move: Hv0 Hv1. apply ly_size_layout_of_union_member in Hly.
+    rewrite /has_layout_val/active_union_rest_ly.
+    rewrite length_take length_drop.
+    rewrite {4}/ly_size.
+    lia.
+  Qed.
+  Next Obligation.
+    intros rt ty variant uls ot st π r v v' _ (ul & Hul & ->) Hsame.
+    iIntros "Hv".
+    iEval (rewrite /ty_own_val /=) in "Hv".
+    iDestruct "Hv" as "(%ul' & %ly & %Hmeta & %Halg & %Hly & %Hst & Hv & %Hmeta2 & %ly0 & %Halg1 & %Hv1)".
+    assert (ul' = ul) as -> by naive_solver.
+    iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv0"; first done.
+    pose proof Halg1 as Halg_tail.
+    apply syn_type_has_layout_literal_inv in Halg1 as (-> & _ & _).
+    pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hlyv'.
+    rewrite /has_layout_val /= in Hlyv'.
+    pose proof (ly_size_layout_of_union_member _ _ _ Hly) as Hlyle.
+    assert (v `has_layout_val` ul) as Hlyv.
+    { move: Hv0 Hv1 Hlyle.
+      rewrite /has_layout_val/active_union_rest_ly.
+      rewrite length_take length_drop.
+      rewrite {4}/ly_size.
+      lia. }
+    pose proof (is_same_decoded_val_at_untyped_inv st v v' ul Hlyv Hlyv' Hsame) as ->.
+    iExists ul, ly. iFrame.
+    repeat iSplit; try done.
+    iExists (active_union_rest_ly ul ly). iSplit; done.
   Qed.
   Next Obligation.
     intros ??? uls ly _ Hst.
@@ -516,16 +555,20 @@ Section enum.
   Qed.
   Next Obligation.
     rewrite /is_enum_ot. simpl.
-    intros rt en ot Hot.
-    destruct ot as [ | | | | ? ? ? |ly| ]; try done.
+    intros rt en ot _ Hot.
+    destruct ot as [ | | | | ? ? | ? ? ? |ly| ]; try done.
     destruct Hot as (el & Halg & ->).
     simpl. by apply use_enum_layout_alg_Some_inv.
   Qed.
   Next Obligation.
-    eauto.
+    intros rt en ot Hot.
+    destruct ot as [ | | | | ? ? | ? ? ? |ly| ]; try done.
   Qed.
   Next Obligation.
-    eauto.
+    iIntros (rt e π r m v) "_". done.
+  Qed.
+  Next Obligation.
+    iIntros (rt e κ π r m l) "_". done.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
@@ -585,33 +628,32 @@ Section enum.
     intros. iIntros "_". by iApply logical_step_intro.
   Qed.
   Next Obligation.
-    iIntros (rt en ot st π r m v Hot) "Hl".
-    iDestruct "Hl" as "(%ly & %tag & -> & %Hst & %Htag & Ha)".
-    iExists ly, tag. iR. iR. iR.
-
-    iApply (ty_memcast_compat with "Ha").
-    rewrite ty_has_op_type_unfold. simpl. rewrite /is_struct_ot/=.
-    (*split; first done.*)
-    destruct ot as [ | | | | ? ? ? | ly' | ]; try done.
-    (*
-    rewrite ty_has_op_type_unfold.
+    intros rt en ot st π r v _ Hot.
     rewrite /is_enum_ot in Hot.
-    destruct Hot as (el & Hel & ->).
-    exists el. split; first done. split; first done.
-    split.
-    { exists (els_tag_it (enum_els en)). simpl. split_and!.
-      - eapply syn_type_has_layout_int; done.
-      - done.
-      - apply it_size_bounded. }
-    split; last done.
-    apply use_enum_layout_alg_inv in Hel as (ul & variants & Hul & Hel & Hvariants).
-    exists ul.
-    assert (syn_type_has_layout (uls_of_els (enum_els en)) ul) as Hul'.
-    { eapply syn_type_has_layout_union; last done. done. }
-    split; first done.
-    exists ul. split; last done.
-    eapply use_union_layout_alg_Some; done.
-     *)
+    destruct ot as [ | | | | ? ? | ? ? ? | el | ]; try done.
+    destruct Hot as (el' & Hel & ->).
+    iIntros "Hv".
+    iDestruct "Hv" as "(%el0 & %tag & %Hmeta & %Halg & %Htag & Ha)".
+    assert (el0 = el') as -> by naive_solver.
+    iPoseProof (ty_own_val_has_layout with "Ha") as "%Hlyv".
+    { simpl. by apply use_struct_layout_alg_Some_inv. }
+    iExists (OVUntyped el' v). iPureIntro.
+    simp decode_op_val. by rewrite bool_decide_true.
+  Qed.
+  Next Obligation.
+    intros rt en ot st π r v v' _ Hot Hsame.
+    rewrite /is_enum_ot in Hot.
+    destruct ot as [ | | | | ? ? | ? ? ? | el | ]; try done.
+    destruct Hot as (el' & Hel & ->).
+    iIntros "Hv".
+    iDestruct "Hv" as "(%el0 & %tag & %Hmeta & %Halg & %Htag & Ha)".
+    assert (el0 = el') as -> by naive_solver.
+    iPoseProof (ty_own_val_has_layout with "Ha") as "%Hlyv".
+    { simpl. by apply use_struct_layout_alg_Some_inv. }
+    pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hlyv'.
+    rewrite /has_layout_val /= in Hlyv'.
+    pose proof (is_same_decoded_val_at_untyped_inv st v v' el' Hlyv Hlyv' Hsame) as ->.
+    iExists el', tag. iFrame. done.
   Qed.
   Next Obligation.
     intros ?? ly _ Hst.
@@ -811,7 +853,7 @@ Section ne.
     - rewrite !ty_has_op_type_unfold.
       intros ty ty' Hst ? Hot ot . simpl.
       unfold is_enum_ot.
-      destruct ot as [ | | | | ? ? ? | ly | ]; try done.
+      destruct ot as [ | | | | ? ? | ? ? ? | ly | ]; try done.
       do 4 f_equiv.
       erewrite enum_ne_els; first done. done.
     - simpl. eauto.
@@ -897,7 +939,7 @@ Section ne.
     - rewrite !ty_has_op_type_unfold.
       intros ty ty' ot . simpl.
       unfold is_enum_ot.
-      destruct ot as [ | | | | ? ? ? | ly | ]; try done.
+      destruct ot as [ | | | | ? ? | ? ? ? | ly | ]; try done.
       do 3 f_equiv.
       erewrite enum_contr_els; last done.
     - simpl. eauto.
