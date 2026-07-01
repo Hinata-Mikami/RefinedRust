@@ -66,7 +66,7 @@ Section shr_ref.
     by apply val_decodes_to_loc_has_layout in Hdec.
   Qed.
   Next Obligation.
-    intros ??? ot _ Hot => /=. destruct ot => /=//.
+    intros ??? ot Hot => /=. destruct ot => /=//.
     - by apply syn_type_has_layout_ptr.
     - simpl in Hot. subst ly; by apply syn_type_has_layout_ptr.
   Qed.
@@ -127,7 +127,7 @@ Section shr_ref.
     intros. iIntros "_". by iApply logical_step_intro.
   Qed.
   Next Obligation.
-    iIntros (??? ot st π r v _ Hot).
+    iIntros (??? ot st π r v Hot).
     rewrite shr_ref_own_val_unfold.
     iIntros "Hown".
     iDestruct "Hown" as (l ly ri) "(%Hmeta & %Hv & _)".
@@ -139,7 +139,7 @@ Section shr_ref.
       done.
   Qed.
   Next Obligation.
-    iIntros (??? ot st π r v ov _ Hot Hdec).
+    iIntros (??? ot st π r v ov Hot Hdec).
     rewrite shr_ref_own_val_unfold.
     iIntros "Hown".
     iDestruct "Hown" as (l ly ri) "(%Hmeta & %Hv & Halg & Hly & Hlb & Hsc & Hrfn & Hshr)".

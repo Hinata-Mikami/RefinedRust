@@ -279,7 +279,6 @@ Record type `{!typeGS Σ} (rt : RT) := {
     In particular, this needs to be independent of the metadata -- forcing [ty_has_op_type] for unsized types to be [False].
   *)
   _ty_op_type_stable ot :
-    ty_metadata_kind = MetadataNone →
     _ty_has_op_type ot → syn_type_has_layout (ty_syn_type MetaNone) (ot_layout ot);
 
   (** The operational type is well-formed. This lets decode/encode facts avoid
@@ -328,7 +327,6 @@ Record type `{!typeGS Σ} (rt : RT) := {
   (** Values owned at nontrivial memcast modes must decode at the advertised
     op type. [MCNone] only promises layout compatibility. *)
   _ty_decodable ot st π r v :
-    ty_metadata_kind = MetadataNone →
     _ty_has_op_type ot →
     ty_own_val π r MetaNone v -∗
     ∃ ov, ⌜decode_op_val v ot st = Some ov⌝;
@@ -336,7 +334,6 @@ Record type `{!typeGS Σ} (rt : RT) := {
   (** Ownership is invariant under byte representations that decode to the same
     operational value. *)
   _ty_decode_compat ot st π r v v' :
-    ty_metadata_kind = MetadataNone →
     _ty_has_op_type ot →
     is_same_decoded_val_at st v ot v' →
     ty_own_val π r MetaNone v -∗
@@ -384,6 +381,7 @@ Class TySized `{!typeGS Σ} {rt} (ty : type rt) := {
   ty_sized_metadata_none : ty.(ty_metadata_kind) = MetadataNone;
   ty_sized_syn_type_eq : ∀ m1 m2, ty.(ty_syn_type) m1 = ty.(ty_syn_type) m2;
 }.
+Global Hint Mode TySized + + + + : typeclass_instances.
 
 Definition ty_sized_syn_type `{!typeGS Σ} {rt} (ty : type rt) `{!TySized ty} : syn_type :=
   ty.(ty_syn_type) MetaNone.
@@ -396,7 +394,6 @@ Definition ty_has_op_type_unfold `{!typeGS Σ} : ty_has_op_type = _ty_has_op_typ
 Arguments ty_has_op_type {_ _ _}.
 
 Lemma ty_op_type_stable `{!typeGS Σ} {rt} (ty : type rt) ot :
-  ty.(ty_metadata_kind) = MetadataNone →
   ty_has_op_type ty ot →
   syn_type_has_layout (ty.(ty_syn_type) MetaNone) (ot_layout ot).
 Proof. rewrite ty_has_op_type_unfold. apply _ty_op_type_stable. Qed.
@@ -418,14 +415,12 @@ Qed.
 Global Arguments ty_sized_has_op_type_untyped {_ _ _} _ _ _.
 
 Lemma ty_decodable `{!typeGS Σ} rt (ty : type rt) ot st π r v :
-  ty.(ty_metadata_kind) = MetadataNone →
   ty_has_op_type ty ot →
   ty.(ty_own_val) π r MetaNone v -∗
   ∃ ov, ⌜decode_op_val v ot st = Some ov⌝.
 Proof. rewrite ty_has_op_type_unfold. apply _ty_decodable. Qed.
 
 Lemma ty_decode_compat `{!typeGS Σ} rt (ty : type rt) ot st π r v v' :
-  ty.(ty_metadata_kind) = MetadataNone →
   ty_has_op_type ty ot →
   is_same_decoded_val_at st v ot v' →
   ty.(ty_own_val) π r MetaNone v -∗
@@ -433,27 +428,25 @@ Lemma ty_decode_compat `{!typeGS Σ} rt (ty : type rt) ot st π r v v' :
 Proof. rewrite ty_has_op_type_unfold. apply _ty_decode_compat. Qed.
 
 Lemma ty_encode_compat `{!typeGS Σ} rt (ty : type rt) ot st π r v ov :
-  ty.(ty_metadata_kind) = MetadataNone →
   ty_has_op_type ty ot →
   decode_op_val v ot st = Some ov →
   ty.(ty_own_val) π r MetaNone v -∗
   ty.(ty_own_val) π r MetaNone (encode_op_val ov).
 Proof.
-  intros Hm Hot Hdec.
-  iIntros "Hv". iApply (ty_decode_compat with "Hv"); [done | done |].
+  intros Hot Hdec.
+  iIntros "Hv". iApply (ty_decode_compat with "Hv"); [done |].
   by eapply is_same_decoded_val_at_encode; [eapply ty_op_type_wf |].
 Qed.
 
 Lemma ty_memcast_compat `{!typeGS Σ} rt (ty : type rt) ot st π r v :
-  ty.(ty_metadata_kind) = MetadataNone →
   ty_has_op_type ty ot →
   ty.(ty_own_val) π r MetaNone v -∗
   ty.(ty_own_val) π r MetaNone (mem_cast v ot st).
 Proof.
-  intros Hm Hot.
+  intros Hot.
   iIntros "Hv".
-  iPoseProof (ty_decodable rt ty ot st π r v with "Hv") as (ov) "%Hdec"; [done | done | ].
-  iPoseProof (ty_encode_compat rt ty ot st π r v ov with "Hv") as "Hv"; [done | done | done | ].
+  iPoseProof (ty_decodable rt ty ot st π r v with "Hv") as (ov) "%Hdec"; [done | ].
+  iPoseProof (ty_encode_compat rt ty ot st π r v ov with "Hv") as "Hv"; [done | done | ].
   rewrite /mem_cast Hdec /=.
   replace (resize (length v) MPoison (encode_op_val ov)) with (encode_op_val ov); first done.
   rewrite resize_all_alt; last first.
@@ -705,11 +698,11 @@ Next Obligation.
   intros. iIntros "_". by iApply logical_step_intro.
 Qed.
 Next Obligation.
-  iIntros (??? st ot st' π r v _ Hot) "(_ & Hown)".
+  iIntros (??? st ot st' π r v Hot) "(_ & Hown)".
   by iApply (st_decodable with "Hown").
 Qed.
 Next Obligation.
-  iIntros (??? st ot st' π r v v' _ Hot Hsame) "(_ & Hown)".
+  iIntros (??? st ot st' π r v v' Hot Hsame) "(_ & Hown)".
   iR. by iApply (st_decode_compat _ _ _ with "Hown").
 Qed.
 Next Obligation.
@@ -891,10 +884,10 @@ Section ofe.
     (* ty_own_ghost_drop *)
     (∀ π r m v F, lftE ⊆ F → x.1.1.1.1.1.1.1.1 π r m v -∗ logical_step F (x.1.1.1.1.1.1.2 π r)) ∧
     (* ty_decodable *)
-    (∀ ot st π r v, x.1.1.1.1.1.2 = MetadataNone → x.1.1.1.2 ot → x.1.1.1.1.1.1.1.1 π r MetaNone v -∗
+    (∀ ot st π r v, x.1.1.1.2 ot → x.1.1.1.1.1.1.1.1 π r MetaNone v -∗
       ∃ ov, ⌜decode_op_val v ot st = Some ov⌝) ∧
     (* ty_decode_compat *)
-    (∀ ot st π r v v', x.1.1.1.1.1.2 = MetadataNone → x.1.1.1.2 ot → is_same_decoded_val_at st v ot v' → x.1.1.1.1.1.1.1.1 π r MetaNone v -∗
+    (∀ ot st π r v v', x.1.1.1.2 ot → is_same_decoded_val_at st v ot v' → x.1.1.1.1.1.1.1.1 π r MetaNone v -∗
       x.1.1.1.1.1.1.1.1 π r MetaNone v') ∧
     (* ty_has_op_type_untyped *)
     (∀ (ly : layout) m,

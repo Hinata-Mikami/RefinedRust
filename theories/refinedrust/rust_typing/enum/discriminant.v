@@ -24,7 +24,7 @@ Section discriminant.
   Qed.
   Next Obligation.
     simpl. intros rt en ot Hot.
-    eapply (@ty_op_type_stable _ _ _ (int _) _); first done.
+    eapply (@ty_op_type_stable _ _ _ (int _) _).
     rewrite ty_has_op_type_unfold. done.
   Qed.
   Next Obligation.
@@ -34,14 +34,14 @@ Section discriminant.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     simpl. intros rt en ot st π r v Hot. iIntros "(%tag & %Htag & Hv)".
-    iPoseProof (ty_decodable _ (int en.(enum_els).(els_tag_it)) ot st π _ v with "Hv") as (ov) "%Hdec"; [done | | ].
+    iPoseProof (ty_decodable _ (int en.(enum_els).(els_tag_it)) ot st π _ v with "Hv") as (ov) "%Hdec"; [| ].
     { rewrite ty_has_op_type_unfold. exact Hot. }
     iExists ov. done.
   Qed.
   Next Obligation.
     simpl. intros rt en ot st π r v v' Hot Hsame. iIntros "(%tag & %Htag & Hv)".
     iExists tag. iSplit; first done.
-    iApply (ty_decode_compat _ (int en.(enum_els).(els_tag_it)) ot st π _ v v' with "Hv"); [done | | done].
+    iApply (ty_decode_compat _ (int en.(enum_els).(els_tag_it)) ot st π _ v v' with "Hv"); [| done].
     rewrite ty_has_op_type_unfold. exact Hot.
   Qed.
   Next Obligation.

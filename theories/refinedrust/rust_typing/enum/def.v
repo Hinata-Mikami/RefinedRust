@@ -137,7 +137,7 @@ Section union.
     lia.
   Qed.
   Next Obligation.
-    intros ??? uls ot _ (ul & Hul & ->).
+    intros ??? uls ot (ul & Hul & ->).
     simpl. by eapply use_union_layout_alg_Some_inv.
   Qed.
   Next Obligation.
@@ -265,7 +265,7 @@ Section union.
     iApply (logical_step_wand with "Ha"); eauto.
   Qed.
   Next Obligation.
-    intros rt ty variant uls ot st π r v _ (ul & Hul & ->).
+    intros rt ty variant uls ot st π r v (ul & Hul & ->).
     iIntros "Hv".
     iEval (rewrite /ty_own_val /=) in "Hv".
     iDestruct "Hv" as "(%ul' & %ly & %Hmeta & %Halg & %Hly & %Hst & Hv & %Hmeta2 & %ly0 & %Halg1 & %Hv1)".
@@ -283,7 +283,7 @@ Section union.
     lia.
   Qed.
   Next Obligation.
-    intros rt ty variant uls ot st π r v v' _ (ul & Hul & ->) Hsame.
+    intros rt ty variant uls ot st π r v v' (ul & Hul & ->) Hsame.
     iIntros "Hv".
     iEval (rewrite /ty_own_val /=) in "Hv".
     iDestruct "Hv" as "(%ul' & %ly & %Hmeta & %Halg & %Hly & %Hst & Hv & %Hmeta2 & %ly0 & %Halg1 & %Hv1)".
@@ -555,7 +555,7 @@ Section enum.
   Qed.
   Next Obligation.
     rewrite /is_enum_ot. simpl.
-    intros rt en ot _ Hot.
+    intros rt en ot Hot.
     destruct ot as [ | | | | ? ? | ? ? ? |ly| ]; try done.
     destruct Hot as (el & Halg & ->).
     simpl. by apply use_enum_layout_alg_Some_inv.
@@ -628,7 +628,7 @@ Section enum.
     intros. iIntros "_". by iApply logical_step_intro.
   Qed.
   Next Obligation.
-    intros rt en ot st π r v _ Hot.
+    intros rt en ot st π r v Hot.
     rewrite /is_enum_ot in Hot.
     destruct ot as [ | | | | ? ? | ? ? ? | el | ]; try done.
     destruct Hot as (el' & Hel & ->).
@@ -641,7 +641,7 @@ Section enum.
     simp decode_op_val. by rewrite bool_decide_true.
   Qed.
   Next Obligation.
-    intros rt en ot st π r v v' _ Hot Hsame.
+    intros rt en ot st π r v v' Hot Hsame.
     rewrite /is_enum_ot in Hot.
     destruct ot as [ | | | | ? ? | ? ? ? | el | ]; try done.
     destruct Hot as (el' & Hel & ->).

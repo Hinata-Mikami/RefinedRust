@@ -2770,17 +2770,6 @@ Ltac solve_ty_has_op_type_prepare :=
   end.
 
 
-Ltac solve_ty_has_op_type_struct_fields :=
-  simpl;
-  match goal with
-  | |- Forall2 _ (_ :: _)  (_ :: _) =>
-    apply Forall2_cons; split;
-    [split_and!; [apply ty_sized_metadata_none | simpl ] | solve_ty_has_op_type_struct_fields]
-  | |- Forall2 _ [] [] =>
-    by apply Forall2_nil
-  end
-.
-
 (* Problem: Ltac matching won't work well  because of unification *)
 Ltac solve_ty_has_op_type_cases :=
   idtac.

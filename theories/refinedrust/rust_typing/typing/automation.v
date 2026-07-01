@@ -1454,6 +1454,16 @@ Lemma ty_has_op_type_ex_na_t_canonical `{!typeGS Σ} {X Y} P ty ot :
 Proof.
   intros ?. rewrite ty_has_op_type_unfold. done.
 Qed.
+Ltac solve_ty_has_op_type_struct_fields :=
+  simpl;
+  match goal with
+  | |- Forall2 _ (_ :: _)  (_ :: _) =>
+    apply Forall2_cons; split;
+    [simpl | solve_ty_has_op_type_struct_fields]
+  | |- Forall2 _ [] [] =>
+    by apply Forall2_nil
+  end
+.
 Ltac solve_ty_has_op_type_cases ::=
   lazymatch goal with
   | |- ty_has_op_type (value_t true ?st) (use_op_alg' _) =>

@@ -230,8 +230,7 @@ Section fixpoint_def.
       intros ? [] [] Heq. f_equiv. eapply Heq.
     - intros ?.
       simpl. eapply _ty_decodable.
-      + rewrite (type_ctr_metadata (Fn (S (S n))) inhabitant). done.
-      + rewrite -ty_has_op_type_unfold in H0.
+      + rewrite -ty_has_op_type_unfold in H.
         rewrite <- (@ty_has_op_type_unfold Σ _).
         eapply Fn_has_op_type_const. done.
   Qed.
@@ -243,8 +242,7 @@ Section fixpoint_def.
       eapply Heq.
     - intros ?.
       simpl. eapply (_ty_decode_compat rt (Fn (S (S (S n)))) ot st π r v v').
-      + rewrite (type_ctr_metadata (Fn (S (S n))) inhabitant). done.
-      + rewrite -ty_has_op_type_unfold in H0.
+      + rewrite -ty_has_op_type_unfold in H.
         rewrite <- (@ty_has_op_type_unfold Σ _).
         eapply Fn_has_op_type_const. done.
       + done.

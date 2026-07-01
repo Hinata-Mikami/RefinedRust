@@ -44,9 +44,7 @@ Section deinit.
   Lemma uninit_tys_has_op_types (fields : list (string * syn_type)) ots :
     Forall2 (λ field ot, use_op_alg field.2 = Some ot) fields ots →
     Forall2
-      (λ ty ot,
-        (ty_metadata_kind (projT2 ty) = MetadataNone ∧
-         ty_has_op_type (projT2 ty) ot))
+      (λ ty ot, ty_has_op_type (projT2 ty) ot)
     (hzipl (replicate (length fields.*2) (()%type : RT)) (uninit_tys fields.*2))
     ots.
   Proof.
@@ -54,11 +52,9 @@ Section deinit.
     - apply Forall2_nil_inv_l in Hots as ->. done.
     - apply Forall2_cons_inv_l in Hots as (ot & ots' & Hot & Hots & ->).
       econstructor; last by apply IH.
-      split_and!; simpl.
-      + done.
-      + rewrite ty_has_op_type_unfold. simpl.
-        exists ot. split_and!; [done | by apply is_value_ot_core_refl | ].
-        by eapply use_op_alg_layout_alg.
+      rewrite ty_has_op_type_unfold. simpl.
+      exists ot. split_and!; [done | by apply is_value_ot_core_refl | ].
+      by eapply use_op_alg_layout_alg.
   Qed.
 
   Lemma ltype_deinit_struct F π (sls : struct_layout_spec) rs l :

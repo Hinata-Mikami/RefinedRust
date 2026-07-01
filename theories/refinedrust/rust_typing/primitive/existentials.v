@@ -107,12 +107,12 @@ Section ex.
   Qed.
   Next Obligation.
     rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
-    iIntros (ty ot st π r v Hmeta Hot) "(%x & HP & Hv)".
+    iIntros (ty ot st π r v Hot) "(%x & HP & Hv)".
     iApply (ty_decodable X ty ot st π x v with "Hv"); done.
   Qed.
   Next Obligation.
     rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
-    iIntros (ty ot st π r v v' Hmeta Hot Hsame) "(%x & HP & Hv)".
+    iIntros (ty ot st π r v v' Hot Hsame) "(%x & HP & Hv)".
     iExists x. iFrame "HP".
     iApply (ty_decode_compat X ty ot st π x v v' with "Hv"); done.
   Qed.

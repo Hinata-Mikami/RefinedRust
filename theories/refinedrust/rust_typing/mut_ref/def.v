@@ -77,7 +77,7 @@ Section mut_ref.
     by apply val_decodes_to_loc_has_layout in Hv.
   Qed.
   Next Obligation.
-    intros ??? ot _ Hot => /=. destruct ot => /=//.
+    intros ??? ot Hot => /=. destruct ot => /=//.
     - by apply syn_type_has_layout_ptr.
     - simpl in Hot. subst ly; by apply syn_type_has_layout_ptr.
   Qed.
@@ -230,7 +230,7 @@ Section mut_ref.
     - by iApply logical_step_intro.
   Qed.
   Next Obligation.
-    iIntros (??? ot st π [r γ] v _ Hot).
+    iIntros (??? ot st π [r γ] v Hot).
     rewrite mut_ref_own_val_unfold.
     rewrite /mut_ref_own_val_def /=.
     iIntros "Hown".
@@ -243,7 +243,7 @@ Section mut_ref.
       done.
   Qed.
   Next Obligation.
-    iIntros (??? ot st π [r γ] v ov _ Hot Hdec).
+    iIntros (??? ot st π [r γ] v ov Hot Hdec).
     rewrite mut_ref_own_val_unfold.
     rewrite /mut_ref_own_val_def /=.
     iIntros "Hown".

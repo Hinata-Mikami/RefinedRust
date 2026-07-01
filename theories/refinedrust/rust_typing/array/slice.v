@@ -159,10 +159,10 @@ Section def.
     intros. iIntros "_". by iApply logical_step_intro.
   Qed.
   Next Obligation.
-    iIntros (ty ot st π r v Hmeta Hot) "Hb". done.
+    iIntros (ty ot st π r v Hot) "Hb". done.
   Qed.
   Next Obligation.
-    iIntros (ty ot st π r v v' Hmeta Hot Hsame) "Hb". done.
+    iIntros (ty ot st π r v v' Hot Hsame) "Hb". done.
   Qed.
   Next Obligation.
     intros ty ly ? Hst.

@@ -21,7 +21,7 @@ Definition is_struct_ot `{typeGS Σ} (sls : struct_layout_spec)
       length ots = length rts ∧
       op_type_wf (StructOp sl ots) ∧
       (* pointwise, the members have the right op_type and a layout matching the optype *)
-      Forall2 (λ ty ot, ty_metadata_kind (projT2 ty) = MetadataNone ∧ ty_has_op_type (projT2 ty) ot) (hzipl _ tys) ots
+      Forall2 (λ ty ot, ty_has_op_type (projT2 ty) ot) (hzipl _ tys) ots
   | UntypedOp ly =>
       (* lyis a valid layout for this sls *)
       ∃ sl, use_struct_layout_alg sls = Some sl ∧ ly = sl
@@ -41,7 +41,6 @@ Lemma is_struct_ot_field_lookup `{typeGS Σ} sls sl {rts} (tys : hlist type rts)
   sl.(sl_members) !! i = Some (Some n, ly) →
   ∃ ot,
     ots !! field_idx_of_idx sl.(sl_members) i = Some ot ∧
-    ty.(ty_metadata_kind) = MetadataNone ∧
     ty_has_op_type ty ot ∧
     syn_type_has_layout (ty.(ty_syn_type) MetaNone) (ot_layout ot).
 Proof.
@@ -59,7 +58,7 @@ Proof.
   eapply (Forall_lookup_1 _ _ (field_idx_of_idx (sl_members sl) i)
     (existT rt ty, ot)) in Hmem; last first.
   { apply/lookup_zip_with_Some. eexists _, _. split_and!; [done | done | done]. }
-  simpl in Hmem. destruct Hmem as [? Hot1].
+  simpl in Hmem.
   split_and!; [done.. | ].
   eapply ty_op_type_stable; done.
 Qed.
@@ -242,9 +241,9 @@ Section structs.
       iPoseProof (big_sepL2_lookup with "Hmem") as "Hel"; [exact Hv | exact Hpad |].
       iDestruct "Hel" as "(%r' & %ly0 & Hrfn & %Hlook & %Hst & Hown)".
       destruct (is_struct_ot_field_lookup sls sl tys ots r j n ly ty rfn) as
-        (ot' & Hot' & Hmeta & Hhas & _); [exact Hot | exact Htyr | exact Hmember |].
+        (ot' & Hot' & Hmeta & _); [exact Hot | exact Htyr | exact Hmember |].
       rewrite Hot_lookup in Hot'. injection Hot' as ->.
-      iPoseProof (ty_decodable _ ty ot' st π r' v' with "Hown") as (ov) "%Hdec"; [done | done |].
+      iPoseProof (ty_decodable _ ty ot' st π r' v' with "Hown") as (ov) "%Hdec"; [done |].
       iPureIntro. eauto. }
     destruct (decode_struct_fields_exists sl ots
       (λ (v' : val) (ot : op_type) (_ : op_type_size_rel ot (StructOp sl ots)),
@@ -445,7 +444,7 @@ Section structs.
     destruct Hor_old as [[Hnamed_old Hfield_old] | [Hpad_old Heq_old]].
     - destruct n_old as [n|]; last done.
       destruct (is_struct_ot_field_lookup sls sl tys ots r k n ly_old ty_old rfn_old) as
-        (ot & Hot_field & Hmeta_field & Hhas & _); [done | exact Hfield_old | done |].
+        (ot & Hot_field & Hmeta_field &  _); [done | exact Hfield_old | done |].
       destruct (decode_struct_fields_lookup_decode sl ots (sl_members sl)
         (reshape (ly_size <$> (sl_members sl).*2) v) fields 0 st k v_old n ly_old ot)
         as (ov' & Hov_lookup & Hov_dec); [done | done | done | by rewrite Nat.add_0_l |].
@@ -454,7 +453,7 @@ Section structs.
         as (ov_new & Hov_lookup' & Hov_dec'); [exact Hdec_fields' | done | done | by rewrite Nat.add_0_l |].
       rewrite Hov_lookup in Hov_lookup'. injection Hov_lookup' as ->.
       iExists r', ly0. iFrame "Hrfn". iSplitR; first done. iSplitR; first done.
-      iApply (ty_decode_compat _ ty_old ot st π r' v_old v_new with "Hown"); [done | done |].
+      iApply (ty_decode_compat _ ty_old ot st π r' v_old v_new with "Hown"); [done |].
       split; first by rewrite Hov_dec Hov_dec'.
       eauto.
     - unfold struct_make_uninit_type in *.
@@ -520,7 +519,7 @@ Section structs.
     by apply use_struct_layout_alg_Some_inv.
   Qed.
   Next Obligation.
-    iIntros (rts sls tys ot _ Hot).
+    intros rts sls tys ot Hot.
     destruct ot.
     all: simpl in *.
     all: try done.
@@ -710,7 +709,7 @@ Section structs.
   Qed.
   Next Obligation.
     rewrite struct_t_own_val_unfold.
-    iIntros (rts sls tys ot st π r v _ Hot) "Hv".
+    iIntros (rts sls tys ot st π r v Hot) "Hv".
     destruct ot as [ | | | | sl' ots | ? ? ? | | ]; try done.
     - pose proof Hot as Hot_struct.
       destruct Hot as (_ &  Halg & _ & _ & _).
@@ -726,7 +725,7 @@ Section structs.
       simp decode_op_val. rewrite bool_decide_true; done.
   Qed.
   Next Obligation.
-    iIntros (rts sls tys ot st π r v v' _ Hot Hsame) "Hv".
+    iIntros (rts sls tys ot st π r v v' Hot Hsame) "Hv".
     destruct ot as [ | | | | sl ots | ? ? ? | ly | ]; try done.
     - pose proof Hot as Hot_struct.
       destruct Hot as (_ & _ & _ & _ & _).
@@ -865,8 +864,7 @@ Section structs.
   Lemma is_struct_ot_happly_proper_core {rt rts} sls
       (Ts : hlist (λ rt', type rt → type rt') rts) ty ty' ot :
     HTForall (λ _, λ T,
-      (((T ty).(ty_metadata_kind) = (T ty').(ty_metadata_kind)) *
-       ((∀ m, (T ty).(ty_syn_type) m = (T ty').(ty_syn_type) m) *
+      (((∀ m, (T ty).(ty_syn_type) m = (T ty').(ty_syn_type) m) *
         (∀ ot, ty_has_op_type (T ty) ot ↔ ty_has_op_type (T ty') ot)))%type) Ts →
     is_struct_ot sls (happly Ts ty) ot ↔
     is_struct_ot sls (happly Ts ty') ot .
@@ -889,18 +887,14 @@ Section structs.
     inv_hlist Ts => T Ts.
     intros Hproper_all.
     apply HTForall_cons_inv in Hproper_all as (Hproper1 & Hproper2).
-    destruct Hproper1 as [Hmeta [Hst Hot]].
+    destruct Hproper1 as [Hst Hot].
     simplify_eq/=; rewrite !Forall2_cons/=.
     split.
     - intros [Hhead Htail]. split.
-      + destruct Hhead as (Hmeta_none & Hhas). split_and!.
-        * by rewrite -Hmeta.
-        * by apply Hot.
+      + by apply Hot.
       + eapply IH; done.
     - intros [Hhead Htail]. split.
-      + destruct Hhead as (Hmeta_none & Hhas). split_and!.
-        * by rewrite Hmeta.
-        * by apply Hot.
+      + by apply Hot.
       + eapply IH; done.
   Qed.
 
@@ -920,10 +914,8 @@ Section structs.
       apply HTForall_cons_inv in Hne as [HneT Hne].
       constructor.
       + split.
-        * by apply type_ne_metadata.
-        * split.
-          -- by apply type_ne_syn_type.
-          -- by apply type_ne_has_op_type.
+        -- by apply type_ne_syn_type.
+        -- by apply type_ne_has_op_type.
       + by apply IH.
   Qed.
 
@@ -940,10 +932,8 @@ Section structs.
       apply HTForall_cons_inv in Hcontr as [HcontrT Hcontr].
       constructor.
       + split.
-        * by apply type_ctr_metadata.
-        * split.
-          -- by apply type_ctr_syn_type.
-          -- by apply type_ctr_has_op_type.
+        -- by apply type_ctr_syn_type.
+        -- by apply type_ctr_has_op_type.
       + by apply IH.
   Qed.
 
@@ -1109,7 +1099,7 @@ Section structs.
   Lemma ty_has_op_type_struct_canonical {rts} (tys : hlist type rts) (sls : struct_layout_spec) ots ot sl :
     use_op_alg sls = Some (StructOp sl ots) →
     ot = (StructOp sl ots) →
-    Forall2 (λ ty ot, ty_metadata_kind (projT2 ty) = MetadataNone ∧ ty_has_op_type (projT2 ty) ot) (hzipl _ tys) ots →
+    Forall2 (λ ty ot, ty_has_op_type (projT2 ty) ot) (hzipl _ tys) ots →
     ty_has_op_type (struct_t sls tys) ot.
   Proof.
     intros Hot -> Ha.

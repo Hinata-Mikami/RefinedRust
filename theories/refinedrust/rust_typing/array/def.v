@@ -296,7 +296,7 @@ Section array.
     iIntros "Hb". iPoseProof (big_sepL2_const_sepL_l with "Hb") as "(_ & $)".
   Qed.
   Next Obligation.
-    intros len ty ot st π r v _ Hot.
+    intros len ty ot st π r v Hot.
     rewrite /array_t_own_val array_t_own_val_aux.(seal_eq) /array_t_own_val_def.
     iIntros "Hb".
     iDestruct "Hb" as "(%ly & _ & %Hst & %Hsz & %Hlen & %Hly & Hb)".
@@ -310,7 +310,7 @@ Section array.
     exact Hly.
   Qed.
   Next Obligation.
-    iIntros (len ty ot st π r v v' _ Hot Hsame) "Hv".
+    iIntros (len ty ot st π r v v' Hot Hsame) "Hv".
     destruct ot as [ | | | | | ? ? ? | ly | ]; try done.
     pose proof (is_same_decoded_val_at_has_layout_l _ _ _ _ Hsame) as Hly.
     pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly'.
