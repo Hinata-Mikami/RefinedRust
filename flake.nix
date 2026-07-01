@@ -426,6 +426,10 @@
             src = ./case_studies/minivec;
           }
           {
+            pname = "minicell";
+            src = ./case_studies/minicell;
+          }
+          {
             pname = "linkedlist";
             src = ./case_studies/linkedlist;
           }
