@@ -22,10 +22,16 @@ Inductive op_val : Set :=
 | OVFnPtr (l : loc)
 | OVPtr (l : loc)
 | OVStruct (sl : struct_layout) (fields : list op_val)
-| OVEnum (el : enum_layout) (variant : var_name) (tag : Z)
-    (sl : struct_layout) (fields : list op_val)
+| OVEnum (el : enum_layout) (variant : var_name) (tag : Z) (payload : op_val)
 | OVUntyped (ly : layout) (v : val)
 | OVChar (z : Z).
+
+Definition enum_variant_ots_lookup
+    (variant_ots : list (var_name * list op_type)) (variant : var_name) : option (list op_type) :=
+  (λ x, snd (snd x)) <$> list_find (λ x, x.1 = variant) variant_ots.
+
+Definition enum_tag_lookup (tag_int : list (var_name * Z)) (tag : Z) : option var_name :=
+  (λ x, fst (snd x)) <$> list_find (λ x, snd x = tag) tag_int.
 
 Inductive op_val_has_type : op_val → op_type → Prop :=
 | OVBool_has_type b : op_val_has_type (OVBool b) BoolOp
@@ -35,11 +41,68 @@ Inductive op_val_has_type : op_val → op_type → Prop :=
 | OVStruct_has_type sl fields ots :
     Forall2 op_val_has_type fields ots →
     op_val_has_type (OVStruct sl fields) (StructOp sl ots)
+| OVEnum_has_type el variant tag variant_ots tag_int sl ots payload :
+    enum_tag_lookup tag_int tag = Some variant →
+    enum_variant_lookup el.(el_variants) variant = Some sl →
+    enum_variant_ots_lookup variant_ots variant = Some ots →
+    op_val_has_type payload (StructOp sl ots) →
+    op_val_has_type (OVEnum el variant tag payload) (EnumOp el variant_ots tag_int)
 | OVUntyped_has_type ly v : v `has_layout_val` ly → op_val_has_type (OVUntyped ly v) (UntypedOp ly)
 | OVChar_has_type z : is_valid_char z → op_val_has_type (OVChar z) CharOp.
 
 Definition overwrite_val (off : nat) (w v : val) : val :=
   take off v ++ w ++ drop (off + length w) v.
+
+Lemma overwrite_val_length off w v :
+  (off + length w ≤ length v)%nat →
+  length (overwrite_val off w v) = length v.
+Proof. rewrite /overwrite_val !length_app length_take length_drop. lia. Qed.
+
+Lemma take_overwrite_val_before off w v n :
+  (off ≤ length v)%nat →
+  (n ≤ off)%nat →
+  take n (overwrite_val off w v) = take n v.
+Proof.
+  intros Hoff Hn. rewrite /overwrite_val.
+  change (take off v ++ w ++ drop (off + length w) v) with
+    (take off v ++ (w ++ drop (off + length w) v)).
+  rewrite take_app_le; last by rewrite length_take; lia.
+  by rewrite take_take Nat.min_l.
+Qed.
+
+Lemma take_overwrite_val_0 w v :
+  (length w ≤ length v)%nat →
+  take (length w) (overwrite_val 0 w v) = w.
+Proof.
+  intros Hlen. rewrite /overwrite_val take_0 /=.
+  by rewrite take_app_length.
+Qed.
+
+Lemma take_drop_overwrite_val off w v :
+  (off + length w ≤ length v)%nat →
+  take (length w) (drop off (overwrite_val off w v)) = w.
+Proof.
+  intros Hlen. rewrite /overwrite_val.
+  rewrite drop_app_length'; last by rewrite length_take_le; lia.
+  by rewrite take_app_length.
+Qed.
+
+Lemma take_drop_replicate {A} off n m (x : A) :
+  (off + n ≤ m)%nat →
+  take n (drop off (replicate m x)) = replicate n x.
+Proof.
+  intros Hbound. rewrite drop_replicate take_replicate.
+  f_equal. lia.
+Qed.
+
+Lemma overwrite_val_replicate off n m x :
+  (off + n ≤ m)%nat →
+  overwrite_val off (replicate n x) (replicate m x) = replicate m x.
+Proof.
+  intros Hbound. rewrite /overwrite_val.
+  rewrite length_replicate take_replicate drop_replicate.
+  rewrite -!replicate_add. f_equal. lia.
+Qed.
 
 Fixpoint encode_op_val (ov : op_val) : val :=
   match ov with
@@ -50,11 +113,10 @@ Fixpoint encode_op_val (ov : op_val) : val :=
   | OVStruct sl fields =>
       mjoin $ pad_struct sl.(sl_members) (encode_op_val <$> fields)
         (λ ly, replicate (ly_size ly) MPoison)
-  | OVEnum el _ tag sl fields =>
+  | OVEnum el _ tag payload =>
       overwrite_val el.(el_data_offset)
-        (mjoin $ pad_struct sl.(sl_members) (encode_op_val <$> fields)
-          (λ ly, replicate (ly_size ly) MPoison)) $
-      overwrite_val el.(el_tag_offset) (i2v tag el.(el_tag_it)) $
+        (encode_op_val payload) $
+      overwrite_val 0 (i2v tag el.(el_tag_it)) $
       replicate el.(el_size) MPoison
   | OVUntyped _ v => v
   | OVChar z => i2v z CharIt
@@ -73,7 +135,7 @@ Fixpoint op_type_size (ot : op_type) : nat :=
     end in
   match ot with
   | StructOp _ ots => S (op_type_list_size ots)
-  | EnumOp _ variant_ots _ => S (variant_op_type_list_size variant_ots)
+  | EnumOp _ variant_ots _ => S (S (variant_op_type_list_size variant_ots))
   | _ => 1%nat
   end.
 
@@ -95,6 +157,74 @@ Qed.
 Lemma struct_ot_lookup_smaller sl ots i ot :
   ots !! i = Some ot → op_type_size_rel ot (StructOp sl ots).
 Proof. intros Hot. apply struct_ot_smaller. by eapply list_elem_of_lookup_2. Qed.
+
+Lemma enum_variant_struct_ot_smaller el variant_ots tag_int variant ots sl :
+  enum_variant_ots_lookup variant_ots variant = Some ots →
+  op_type_size_rel (StructOp sl ots) (EnumOp el variant_ots tag_int).
+Proof.
+  rewrite /enum_variant_ots_lookup /op_type_size_rel /ltof fmap_Some.
+  intros ([i [variant' ots']] & Hfind%list_find_Some & ?); simplify_eq/=.
+  destruct Hfind as (Hlook & _ & _).
+  induction variant_ots as [|[variant'' ots''] variant_ots IH] in i, Hlook |-*;
+    simpl in Hlook; first done.
+  destruct i as [|i]; simpl in Hlook.
+  - simplify_eq/=. lia.
+  - specialize (IH i Hlook). simpl. lia.
+Qed.
+
+Definition lookup_enum_variant_ots
+    (variant_ots : list (var_name * list op_type)) (variant : var_name) :
+    option { ots : list op_type & enum_variant_ots_lookup variant_ots variant = Some ots } :=
+  match enum_variant_ots_lookup variant_ots variant as oots return
+      enum_variant_ots_lookup variant_ots variant = oots →
+      option { ots : list op_type & enum_variant_ots_lookup variant_ots variant = Some ots }
+  with
+  | Some ots => λ Hots, Some (@existT (list op_type)
+      (λ ots, enum_variant_ots_lookup variant_ots variant = Some ots) ots Hots)
+  | None => λ _, None
+  end eq_refl.
+
+Lemma enum_variant_ots_lookup_in variant_ots variant ots :
+  enum_variant_ots_lookup variant_ots variant = Some ots →
+  (variant, ots) ∈ variant_ots.
+Proof.
+  rewrite /enum_variant_ots_lookup fmap_Some.
+  intros ([i [variant' ots']] & Hfind%list_find_Some & ?); simplify_eq/=.
+  destruct Hfind as (Hlook & Heq & _). simpl in Heq. subst variant'.
+  by eapply list_elem_of_lookup_2.
+Qed.
+
+Lemma enum_tag_lookup_in tag_int tag variant :
+  enum_tag_lookup tag_int tag = Some variant →
+  (variant, tag) ∈ tag_int.
+Proof.
+  rewrite /enum_tag_lookup fmap_Some.
+  intros ([i [variant' tag']] & Hfind%list_find_Some & ?); simplify_eq/=.
+  destruct Hfind as (Hlook & Heq & _). simpl in Heq. subst tag'.
+  by eapply list_elem_of_lookup_2.
+Qed.
+
+Lemma enum_tag_lookup_in_range el variant_ots tag_int tag variant :
+  op_type_wf (EnumOp el variant_ots tag_int) →
+  enum_tag_lookup tag_int tag = Some variant →
+  tag ∈ el.(el_tag_it).
+Proof.
+  simpl. intros (_ & _ & _ & Hrange & _) Htag.
+  eapply (proj1 (Forall_forall _ _) Hrange (variant, tag)); last by eapply enum_tag_lookup_in.
+Qed.
+
+Lemma enum_variant_payload_wf el variant_ots tag_int variant sl ots :
+  op_type_wf (EnumOp el variant_ots tag_int) →
+  enum_variant_lookup el.(el_variants) variant = Some sl →
+  enum_variant_ots_lookup variant_ots variant = Some ots →
+  op_type_wf (StructOp sl ots).
+Proof.
+  simpl. intros (_ & _ & _ & _ & Hvariants) Hsl Hots.
+  apply Forall_Forall_cb in Hvariants.
+  pose proof (enum_variant_ots_lookup_in _ _ _ Hots) as Hin.
+  pose proof (proj1 (Forall_forall _ _) Hvariants _ Hin) as (sl' & Hsl' & Hwf).
+  rewrite Hsl in Hsl'. injection Hsl' as <-. exact Hwf.
+Qed.
 
 Definition lookup_struct_ot (ots : list op_type) (i : nat) : option { ot : op_type & ots !! i = Some ot } :=
   match ots !! i as oot return ots !! i = oot → option { ot : op_type & ots !! i = Some ot } with
@@ -152,12 +282,25 @@ Equations decode_op_val (v : val) (ot : op_type) (st : (heap_state)) : option op
           sl.(sl_members) (reshape (ly_size <$> sl.(sl_members).*2) v) 0%nat;
         Some (OVStruct sl fields)
       else None;
-  decode_op_val v (EnumOp _ _ _) st := None;
+  decode_op_val v (EnumOp el variant_ots tag_int) st :=
+      if bool_decide (length v = ly_size el) then
+        tag ← val_to_Z (take (ly_size (it_layout el.(el_tag_it))) v) el.(el_tag_it);
+        variant ← enum_tag_lookup tag_int tag;
+        sl ← enum_variant_lookup el.(el_variants) variant;
+        ots ← lookup_enum_variant_ots variant_ots variant;
+        payload ← decode_op_val (take (ly_size (layout_of sl)) (drop el.(el_data_offset) v))
+          (StructOp (sl : struct_layout) (projT1 ots)) st;
+        Some (OVEnum el variant tag payload)
+      else None;
   decode_op_val v (UntypedOp ly) st :=
       if bool_decide (length v = ly_size ly) then Some (OVUntyped ly v) else None;
   decode_op_val v CharOp st := OVChar <$> val_to_char v.
 Next Obligation.
   done.
+Qed.
+Next Obligation.
+  destruct ots as [ots Hots]. simpl.
+  by eapply enum_variant_struct_ot_smaller.
 Qed.
 
 Lemma decode_struct_fields_has_type sl ots rec fields vs i ovs :
@@ -204,7 +347,8 @@ Proof.
       rewrite /has_layout_val /= -Hv Ha. done.
   - case_bool_decide as Hly; last done.
     rewrite /has_layout_val /=. done.
-  - done.
+  - case_bool_decide as Hly; last done.
+    by rewrite /has_layout_val /=.
   - case_bool_decide as Hly; last done.
     by rewrite /has_layout_val.
   - move: Hdec => /fmap_Some[z[Hz Hov]]. by apply val_to_char_length in Hz.
@@ -234,7 +378,17 @@ Proof.
     eapply decode_struct_fields_has_type; last done.
     intros v' ot' Hot ov' Hdec.
     exact (IH ot' Hot v' st ov' Hdec).
-  - done.
+  - case_bool_decide; last done.
+    apply bind_Some in Hdec as (tag & Htag & Hdec).
+    apply bind_Some in Hdec as (variant & Hvariant & Hdec).
+    apply bind_Some in Hdec as (sl & Hsl & Hdec).
+    apply bind_Some in Hdec as (ots_sig & Hots & Hdec).
+    apply bind_Some in Hdec as (payload & Hpayload & Hov).
+    injection Hov as <-.
+    econstructor; [done|done| |].
+    + exact (projT2 ots_sig).
+    + eapply IH; last exact Hpayload.
+      simpl. eapply enum_variant_struct_ot_smaller. exact (projT2 ots_sig).
   - case_bool_decide as Hly; last done.
     injection Hdec as <-. constructor. by rewrite /has_layout_val.
   - move: Hdec => /fmap_Some[z[Hz Hov]]. simplify_eq. constructor.
@@ -289,6 +443,24 @@ Proof.
     + rewrite length_replicate.
       move: Hlook_ly. change ((ly_size <$> (snd <$> sl_members sl)) !! i = Some n2 → ly_size ly = n2).
       rewrite !list_lookup_fmap Hlook_member /=. intros [= <-]. done.
+  - pose proof (enum_variant_payload_wf el variant_ots tag_int variant sl ots Hwf H0 H1) as Hwf_payload.
+    pose proof (IH (StructOp sl ots) (enum_variant_struct_ot_smaller el variant_ots tag_int variant ots sl H1)
+      payload Hwf_payload Hty) as Hpayload_len.
+    simpl in Hpayload_len.
+    rewrite (overwrite_val_length el.(el_data_offset) (encode_op_val payload)).
+    + rewrite (overwrite_val_length 0 (i2v tag el.(el_tag_it))).
+      * rewrite length_replicate. done.
+      * rewrite i2v_length length_replicate.
+        pose proof (el_tag_before_data el) as Htag_before.
+        rewrite /it_layout /ly_size in Htag_before.
+        pose proof (enum_variant_lookup_in_bounds el variant sl H0). lia.
+    + rewrite (overwrite_val_length 0 (i2v tag el.(el_tag_it))).
+      * rewrite length_replicate Hpayload_len.
+        pose proof (enum_variant_lookup_in_bounds el variant sl H0). lia.
+      * rewrite i2v_length length_replicate.
+        pose proof (el_tag_before_data el) as Htag_before.
+        rewrite /it_layout /ly_size in Htag_before.
+        pose proof (enum_variant_lookup_in_bounds el variant sl H0). lia.
   - rewrite i2v_length. done.
 Qed.
 
@@ -494,6 +666,45 @@ Proof.
       + move: Hwf. simpl. rewrite -Forall2_Forall2_cb. by rewrite drop_0.
       + lia. }
     by rewrite Hfields.
+  - pose proof (enum_variant_payload_wf el variant_ots tag_int variant sl ots Hwf H0 H1) as Hwf_payload.
+    pose proof (IH (StructOp sl ots) (enum_variant_struct_ot_smaller el variant_ots tag_int variant ots sl H1)
+      payload Hwf_payload Hty) as Hpayload_dec.
+    pose proof (encode_op_val_length payload (StructOp sl ots) Hwf_payload Hty) as Hpayload_len.
+    simpl in Hpayload_len.
+    rewrite bool_decide_true.
+    2: { change (length (encode_op_val (OVEnum el variant tag payload)) = ly_size (ot_layout (EnumOp el variant_ots tag_int))).
+         apply encode_op_val_length; first done. by econstructor. }
+    rewrite take_overwrite_val_before.
+    3: { pose proof (el_tag_before_data el). lia. }
+    2: { rewrite overwrite_val_length.
+         - rewrite length_replicate.
+           pose proof (enum_variant_lookup_in_bounds el variant sl H0). lia.
+         - rewrite i2v_length length_replicate.
+           pose proof (el_tag_before_data el) as Htag_before.
+           rewrite /it_layout /ly_size in Htag_before.
+           pose proof (enum_variant_lookup_in_bounds el variant sl H0). lia. }
+    rewrite /it_layout /ly_size.
+    rewrite -(i2v_length tag el.(el_tag_it)).
+    rewrite take_overwrite_val_0.
+    2: { rewrite i2v_length length_replicate.
+         pose proof (el_tag_before_data el) as Htag_before.
+         rewrite /it_layout /ly_size in Htag_before.
+         pose proof (enum_variant_lookup_in_bounds el variant sl H0). lia. }
+    rewrite val_to_Z_i2v; last by eapply enum_tag_lookup_in_range.
+    simpl.
+    rewrite H /=.
+    rewrite H0 /lookup_enum_variant_ots H1 /=.
+    change (sum_list (ly_size <$> (sl_members sl).*2)) with (ly_size sl).
+    rewrite -Hpayload_len.
+    rewrite take_drop_overwrite_val.
+    2: { rewrite overwrite_val_length.
+         - rewrite length_replicate Hpayload_len.
+           pose proof (enum_variant_lookup_in_bounds el variant sl H0). lia.
+         - rewrite i2v_length length_replicate.
+           pose proof (el_tag_before_data el) as Htag_before.
+           rewrite /it_layout /ly_size in Htag_before.
+           pose proof (enum_variant_lookup_in_bounds el variant sl H0). lia. }
+    by rewrite Hpayload_dec.
   - rewrite bool_decide_true; first done.
     by rewrite /has_layout_val.
   - by rewrite val_to_char_i2v.
@@ -533,7 +744,38 @@ Proof.
     { intros v ot Hot ov' Hwf_ot Hv Hdec'.
       subst v. eapply IH; first exact Hot; done. }
     rewrite /ly_size /=. by rewrite mjoin_layout_replicate_chunks.
-  - done.
+  - rewrite bool_decide_true in Hdec; last by rewrite length_replicate.
+    apply bind_Some in Hdec as (tag & Htag & Hdec).
+    apply bind_Some in Hdec as (variant & Hvariant & Hdec).
+    apply bind_Some in Hdec as (sl & Hsl & Hdec).
+    apply bind_Some in Hdec as (ots_sig & Hots & Hdec).
+    apply bind_Some in Hdec as (payload & Hpayload & [= <-]).
+    pose proof (projT2 ots_sig) as Hots_lookup.
+    pose proof (enum_variant_payload_wf el variant_ots tag_int variant sl (projT1 ots_sig) Hwf Hsl Hots_lookup) as Hwf_payload.
+    assert (Hpayload_poison : encode_op_val payload = replicate (ly_size sl) MPoison).
+    { change (replicate (ly_size sl) MPoison) with
+        (replicate (ly_size (ot_layout (StructOp sl (projT1 ots_sig)))) MPoison).
+      eapply IH with (y := StructOp sl (projT1 ots_sig));
+        first exact (enum_variant_struct_ot_smaller el variant_ots tag_int variant (projT1 ots_sig) sl Hots_lookup).
+      - exact Hwf_payload.
+      - rewrite -Hpayload.
+        rewrite /ly_size /= take_drop_replicate; first done.
+        change (sum_list (ly_size <$> (sl_members sl).*2)) with (ly_size sl).
+        pose proof (enum_variant_lookup_in_bounds el variant sl Hsl). lia. }
+    assert (Htag_poison : i2v tag el.(el_tag_it) = replicate (bytes_per_int el.(el_tag_it)) MPoison).
+    { apply i2v_of_val_to_Z.
+      rewrite -Htag. rewrite /it_layout /ly_size.
+      rewrite take_replicate. f_equal. f_equal.
+      pose proof (el_tag_before_data el) as Htag_before.
+      rewrite /it_layout /ly_size in Htag_before.
+      pose proof (enum_variant_lookup_in_bounds el variant sl Hsl). lia. }
+    simpl. rewrite Hpayload_poison Htag_poison.
+    rewrite overwrite_val_replicate.
+    2: { pose proof (el_tag_before_data el) as Htag_before.
+         rewrite /it_layout /ly_size in Htag_before.
+         pose proof (enum_variant_lookup_in_bounds el variant sl Hsl). lia. }
+    rewrite overwrite_val_replicate; first done.
+    pose proof (enum_variant_lookup_in_bounds el variant sl Hsl). lia.
   - rewrite bool_decide_true in Hdec; last by rewrite length_replicate.
     simplify_eq. simpl. done.
   - by destruct (val_to_char (replicate 4 MPoison)) as [z|] eqn:Hz; simpl in Hdec; simplify_eq.
@@ -580,16 +822,21 @@ Qed.
 Lemma decode_op_val_stable v ot st st' :
   decode_op_val v ot st = decode_op_val v ot st'.
 Proof.
-  revert v. induction ot using op_type_recursor; intros v; simp decode_op_val; try done.
+  revert v.
+  induction ot as [ot IH] using (well_founded_induction op_type_size_rel_wf).
+  intros v. destruct ot; simp decode_op_val; try done.
   - rewrite (decode_struct_fields_stable_lookup sl ots
       (λ v' ot Hot, decode_op_val v' ot st)
       (λ v' ot Hot, decode_op_val v' ot st')).
     + done.
-    + intros j v' ot Hot Hlook.
-      pose proof (list_is_list_lookup
-        (λ ot0, ∀ v0, decode_op_val v0 ot0 st = decode_op_val v0 ot0 st')
-        ots j ot H Hlook) as IH.
-      by apply IH.
+    + intros j v' ot Hot Hlook. exact (IH ot Hot v').
+  - destruct (bool_decide (length v = ly_size el)); simpl; last done.
+    destruct (val_to_Z (take (ly_size (it_layout (el_tag_it el))) v) (el_tag_it el)) as [tag|]; simpl; last done.
+    destruct (enum_tag_lookup tag_int tag) as [variant|]; simpl; last done.
+    destruct (enum_variant_lookup (el_variants el) variant) as [sl|] eqn:Hsl; simpl; last done.
+    destruct (lookup_enum_variant_ots variant_ots variant) as [[ots Hots]|] eqn:Hots_sig; simpl; last done.
+    rewrite (IH (StructOp sl ots) (enum_variant_struct_ot_smaller el variant_ots tag_int variant ots sl Hots)).
+    done.
 Qed.
 
 Lemma val_to_loc_decode v st l :
