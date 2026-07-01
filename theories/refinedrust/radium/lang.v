@@ -548,16 +548,16 @@ Inductive expr_step : expr → thread_id → state → list Empty_set → runtim
         Deref Na2Ord ot (Val v)
       else
         Val (mem_cast v' ot (σ.(st_heap))) in
-    val_to_loc v = Some l →
+    decode_op_val v PtrOp σ.(st_heap) = Some (OVPtr l) →
     heap_at l (ot_layout ot) v' start_st σ.(st_heap).(hs_heap) →
     expr_step (Deref o ot (Val v)) π σ [] (to_rtexpr π end_expr) (heap_fmap (heap_upd l v' end_st) σ) []
 (* TODO: look at CAS and see whether it makes sense. Also allow
 comparing pointers? (see lambda rust) *)
 (* corresponds to atomic_compare_exchange_strong, see https://en.cppreference.com/w/c/atomic/atomic_compare_exchange *)
 | CasFailS l1 l2 vo ve σ π z1 z2 v1 v2 v3 ot:
-    val_to_loc v1 = Some l1 →
+    decode_op_val v1 PtrOp σ.(st_heap) = Some (OVPtr l1) →
     heap_at l1 (ot_layout ot) vo (λ st, ∃ n, st = RSt n) σ.(st_heap).(hs_heap) →
-    val_to_loc v2 = Some l2 →
+    decode_op_val v2 PtrOp σ.(st_heap) = Some (OVPtr l2) →
     heap_at l2 (ot_layout ot) ve (λ st, st = RSt 0%nat) σ.(st_heap).(hs_heap) →
     val_to_Z_ot vo ot = Some z1 →
     val_to_Z_ot ve ot = Some z2 →
@@ -567,9 +567,9 @@ comparing pointers? (see lambda rust) *)
     expr_step (CAS ot (Val v1) (Val v2) (Val v3)) π σ []
               (RTVal (val_of_bool false)) (heap_fmap (heap_upd l2 vo (λ _, RSt 0%nat)) σ) []
 | CasSucS l1 l2 ot vo ve σ π z1 z2 v1 v2 v3:
-    val_to_loc v1 = Some l1 →
+    decode_op_val v1 PtrOp σ.(st_heap) = Some (OVPtr l1) →
     heap_at l1 (ot_layout ot) vo (λ st, st = RSt 0%nat) σ.(st_heap).(hs_heap) →
-    val_to_loc v2 = Some l2 →
+    decode_op_val v2 PtrOp σ.(st_heap) = Some (OVPtr l2) →
     heap_at l2 (ot_layout ot) ve (λ st, ∃ n, st = RSt n) σ.(st_heap).(hs_heap) →
     val_to_Z_ot vo ot = Some z1 →
     val_to_Z_ot ve ot = Some z2 →
@@ -641,7 +641,7 @@ Inductive stmt_step : stmt → thread_id → function → state → list Empty_s
     let end_st _ := if o is Na1Ord then WSt else RSt 0%nat in
     let end_val  := if o is Na1Ord then v' else v2 in
     let end_stmt := if o is Na1Ord then Assign Na2Ord ot (Val v1) (Val v2) s else s in
-    val_to_loc v1 = Some l →
+    decode_op_val v1 PtrOp σ.(st_heap) = Some (OVPtr l) →
     v2 `has_layout_val` (ot_layout ot) →
     heap_at l (ot_layout ot) v' start_st σ.(st_heap).(hs_heap) →
     stmt_step (Assign o ot (Val v1) (Val v2) s) π rf σ [] (to_rtstmt π rf end_stmt) (heap_fmap (heap_upd l end_val end_st) σ) []

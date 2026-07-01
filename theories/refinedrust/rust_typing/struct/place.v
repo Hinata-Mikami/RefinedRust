@@ -172,7 +172,7 @@ Section place.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
     iApply (wpe_logical_step with "Hcl"); [done | solve_ndisj.. | ].
     iApply (wp_get_member).
-    { by apply val_to_loc_Some_l2v. }
+    { intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v. }
     { done. }
     { by eapply field_index_of_to_index_of. }
     { done. }
@@ -292,7 +292,7 @@ Section place.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
     iApply (wpe_logical_step with "Hcl"); [done | solve_ndisj.. | ].
     iApply (wp_get_member).
-    { by apply val_to_loc_Some_l2v. }
+    { intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v. }
     { done. }
     { by eapply field_index_of_to_index_of. }
     { done. }
@@ -395,7 +395,7 @@ Section place.
     (*iApply (wp_logical_step with "Hcl"); [done | solve_ndisj.. | ].*)
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
     iApply (wp_get_member).
-    { by apply val_to_loc_Some_l2v. }
+    { intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v. }
     { done. }
     { by eapply field_index_of_to_index_of. }
     { done. }

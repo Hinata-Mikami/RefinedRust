@@ -684,7 +684,7 @@ Qed.
 
 Lemma wp_deref v Φ vl l ot q π E o:
   o = ScOrd ∨ o = Na1Ord →
-  val_to_loc vl = Some l →
+  (∀ st, decode_op_val vl PtrOp st = Some $ OVPtr l) →
   l `has_layout_loc` ot_layout ot →
   v `has_layout_val` ot_layout ot →
   l↦{q}v -∗ (|={E}⧗=> (∀ st, l ↦{q} v -∗ Φ (mem_cast v ot st))) -∗ WPe{π} !{ot, o} (Val vl) @ E {{ Φ }}.
@@ -698,6 +698,8 @@ Proof.
   - iModIntro. iDestruct (heap_pointsto_lookup_q (λ st, ∃ n, st = RSt n) with "Hhctx Hmt") as %Hat. { naive_solver. }
     iSplit; first by eauto 11 using DerefS.
     iIntros (? e2 σ2 efs Hst ?). inv_expr_step.
+    rename select (decode_op_val _ _ _ = Some _) into Hdec.
+    rewrite Hl in Hdec. simplify_eq/=.
     iApply (physical_step_wand with "HΦ"). iIntros "HΦ".
     iSplit => //. unfold end_st, end_expr.
     have <- : (v = v') by apply: heap_at_inj_val.
@@ -707,6 +709,8 @@ Proof.
   - iMod (heap_read_na with "Hhctx Hmt") as "(% & Hσ & Hσclose)" => //. iModIntro.
     iSplit; first by eauto 11 using DerefS.
     iIntros (? e2 σ2 efs Hst ?). inv_expr_step.
+    rename select (decode_op_val _ _ _ = Some _) into Hdec.
+    rewrite Hl in Hdec. simplify_eq/=.
     iApply (physical_step_wand with "HΦ"). iIntros "HΦ".
     iSplit => //. unfold end_st, end_expr.
     have ? : (v = v') by apply: heap_at_inj_val. subst v'.
@@ -717,7 +721,10 @@ Proof.
     iModIntro; iSplit; first by eauto 11 using DerefS.
     iIntros (? e2 σ2 efs Hst ?).
     iApply physical_step_intro.
-    inv_expr_step. iSplit => //.
+    inv_expr_step.
+    rename select (decode_op_val _ _ _ = Some _) into Hdec.
+    rewrite Hl in Hdec. simplify_eq/=.
+    iSplit => //.
     have ? : (v = v') by apply: (heap_at_inj_val _ _ h2). subst.
     iFrame. iSplit; first done.
     iApply wp_value. by iApply ("HΦ" with "Hv").
@@ -741,8 +748,8 @@ Qed.
 *)
 
 Lemma wp_cas_fail vl1 vl2 vd vo ve z1 z2 Φ l1 l2 ot q π E:
-  val_to_loc vl1 = Some l1 →
-  val_to_loc vl2 = Some l2 →
+  (∀ st, decode_op_val vl1 PtrOp st = Some $ OVPtr l1) →
+  (∀ st, decode_op_val vl2 PtrOp st = Some $ OVPtr l2) →
   l1 `has_layout_loc` ot_layout ot →
   l2 `has_layout_loc` ot_layout ot →
   val_to_Z_ot vo ot = Some z1 →
@@ -764,20 +771,28 @@ Proof.
   iDestruct (heap_pointsto_lookup_q (λ st : lock_state, ∃ n : nat, st = RSt n) with "Hhctx Hl1") as %? => //. { naive_solver. }
   iDestruct (heap_pointsto_lookup_1 (λ st : lock_state, st = RSt 0%nat) with "Hhctx Hl2") as %? => //.
   iModIntro. iSplit; first by eauto 15 using CasFailS.
-  iIntros (? e2 σ2 efs Hst ?). inv_expr_step;
-    have ? : (vo = vo0) by [apply: heap_lookup_loc_inj_val => //; congruence];
-    have ? : (ve = ve0) by [apply: heap_lookup_loc_inj_val => //; congruence]; simplify_eq.
-  have ? : (length ve0 = length vo0) by congruence.
-  iApply physical_step_fupd.
-  iApply (physical_step_wand with "HΦ"). iIntros "HΦ".
-  iMod (heap_write with "Hhctx Hl2") as "[$ Hl2]" => //. iModIntro.
-  iFrame. iSplit => //. iSplit; first done.
-  iApply wp_value. by iApply ("HΦ" with "[$] [$]").
+  iIntros (? e2 σ2 efs Hst ?). inv_expr_step.
+  - rename select (decode_op_val vl1 _ _ = Some _) into Hdec1.
+    rename select (decode_op_val vl2 _ _ = Some _) into Hdec2.
+    rewrite Hl1 in Hdec1. rewrite Hl2 in Hdec2. simplify_eq/=.
+    have ? : (vo = vo0) by apply: heap_lookup_loc_inj_val.
+    have ? : (ve = ve0) by apply: heap_lookup_loc_inj_val. simplify_eq.
+    have ? : (length ve0 = length vo0) by congruence.
+    iApply physical_step_fupd.
+    iApply (physical_step_wand with "HΦ"). iIntros "HΦ".
+    iMod (heap_write with "Hhctx Hl2") as "[$ Hl2]" => //. iModIntro.
+    iFrame. iSplit => //. iSplit; first done.
+    iApply wp_value. by iApply ("HΦ" with "[$] [$]").
+  - rename select (decode_op_val vl1 _ _ = Some _) into Hdec1.
+    rename select (decode_op_val vl2 _ _ = Some _) into Hdec2.
+    rewrite Hl1 in Hdec1. rewrite Hl2 in Hdec2. simplify_eq/=.
+    have ? : (vo = vo0) by apply: heap_lookup_loc_inj_val.
+    have ? : (ve = ve0) by apply: heap_lookup_loc_inj_val. simplify_eq.
 Qed.
 
 Lemma wp_cas_suc vl1 vl2 vd vo ve z1 z2 Φ l1 l2 ot π E q:
-  val_to_loc vl1 = Some l1 →
-  val_to_loc vl2 = Some l2 →
+  (∀ st, decode_op_val vl1 PtrOp st = Some $ OVPtr l1) →
+  (∀ st, decode_op_val vl2 PtrOp st = Some $ OVPtr l2) →
   l1 `has_layout_loc` ot_layout ot →
   l2 `has_layout_loc` ot_layout ot →
   val_to_Z_ot vo ot = Some z1 →
@@ -799,15 +814,23 @@ Proof.
   iDestruct (heap_pointsto_lookup_1 (λ st : lock_state, st = RSt 0%nat) with "Hhctx Hl1") as %? => //.
   iDestruct (heap_pointsto_lookup_q (λ st : lock_state, ∃ n : nat, st = RSt n) with "Hhctx Hl2") as %? => //. { naive_solver. }
   iModIntro. iSplit; first by eauto 15 using CasSucS.
-  iIntros (? e2 σ2 efs Hst ?). inv_expr_step;
-      have ? : (ve = ve0) by [apply: heap_lookup_loc_inj_val => //; congruence];
-      have ? : (vo = vo0) by [apply: heap_lookup_loc_inj_val => //; congruence]; simplify_eq.
-  have ? : (length vo0 = length vd) by congruence.
-  iApply physical_step_fupd.
-  iApply (physical_step_wand with "HΦ"). iIntros "HΦ".
-  iMod (heap_write with "Hhctx Hl1") as "[$ Hmt]" => //. iModIntro.
-  iFrame. iSplit => //. iSplit; first done.
-  iApply wp_value. by iApply ("HΦ" with "[$] [$]").
+  iIntros (? e2 σ2 efs Hst ?). inv_expr_step.
+  - rename select (decode_op_val vl1 _ _ = Some _) into Hdec1.
+    rename select (decode_op_val vl2 _ _ = Some _) into Hdec2.
+    rewrite Hl1 in Hdec1. rewrite Hl2 in Hdec2. simplify_eq/=.
+    have ? : (ve = ve0) by apply: heap_lookup_loc_inj_val.
+    have ? : (vo = vo0) by apply: heap_lookup_loc_inj_val. simplify_eq.
+  - rename select (decode_op_val vl1 _ _ = Some _) into Hdec1.
+    rename select (decode_op_val vl2 _ _ = Some _) into Hdec2.
+    rewrite Hl1 in Hdec1. rewrite Hl2 in Hdec2. simplify_eq/=.
+    have ? : (ve = ve0) by apply: heap_lookup_loc_inj_val.
+    have ? : (vo = vo0) by apply: heap_lookup_loc_inj_val. simplify_eq.
+    have ? : (length vo0 = length vd) by congruence.
+    iApply physical_step_fupd.
+    iApply (physical_step_wand with "HΦ"). iIntros "HΦ".
+    iMod (heap_write with "Hhctx Hl1") as "[$ Hmt]" => //. iModIntro.
+    iFrame. iSplit => //. iSplit; first done.
+    iApply wp_value. by iApply ("HΦ" with "[$] [$]").
 Qed.
 
 Lemma wp_neg_int Φ v v' n π E it:
@@ -1241,7 +1264,7 @@ Proof.
 Qed.
 
 Lemma wp_get_member `{!LayoutAlg} Φ vl l sls sl n π E:
-  val_to_loc vl = Some l →
+  (∀ st, decode_op_val vl PtrOp st = Some $ OVPtr l) →
   use_struct_layout_alg sls = Some sl →
   is_Some (index_of sl.(sl_members) n) →
   loc_in_bounds l 0 (ly_size sl) -∗
@@ -1257,7 +1280,7 @@ Proof.
     by apply offset_of_bound. }
   rewrite Hv /=. move: Hv => /val_to_of_Z Hv.
   iApply wp_ptr_offset; [| done | .. ].
-  { intros. by apply val_to_loc_decode. }
+  { done. }
   { have ? := offset_of_idx_le_size sl i.
     replace (ly_size U8) with 1%nat by done. rewrite Z.mul_1_l.
     have Hs : ly_size sl < max_int ISize + 1 by apply sl_size.
@@ -1876,7 +1899,7 @@ Qed.
 Lemma wps_assign π Q Ψ vl ot vr s l o:
   let E := if o is ScOrd then ∅ else ⊤ in
   o = ScOrd ∨ o = Na1Ord →
-  val_to_loc vl = Some l →
+  (∀ st, decode_op_val vl PtrOp st = Some (OVPtr l)) →
   (|={⊤,E}=> ⌜vr `has_layout_val` ot_layout ot⌝ ∗ l↦|ot_layout ot| ∗
     |={E}⧗=> (l↦vr ={E,⊤}=∗ WPs{π} s {{Q, Ψ}})) -∗
   WPs{π} (Assign o ot (Val vl) (Val vr) s) {{ Q , Ψ }}.
@@ -1891,6 +1914,8 @@ Proof.
     iDestruct (heap_pointsto_lookup_1 (λ st : lock_state, st = RSt 0%nat) with "Hhctx Hl") as %? => //.
     iSplit; first by eauto 12 using AssignS.
     iIntros (? e2 σ2 efs Hstep ?). inv_stmt_step. unfold end_val.
+    rename select (decode_op_val _ _ _ = Some _) into Hdec.
+    rewrite Hvl in Hdec. simplify_eq/=.
     iApply (physical_step_wand with "HWP"). iIntros "HWP".
     iMod (heap_write with "Hhctx Hl") as "[$ Hl]" => //; first congruence.
     iMod ("HWP" with "Hl") as "HWP".
@@ -1898,6 +1923,8 @@ Proof.
   - iMod (heap_write_na _ _ _ vr with "Hhctx Hl") as (?) "[Hhctx Hc]" => //; first by congruence.
     iModIntro. iSplit; first by eauto 12 using AssignS.
     iIntros (? e2 σ2 efs Hst ?). inv_stmt_step.
+    rename select (decode_op_val _ _ _ = Some _) into Hdec.
+    rewrite Hvl in Hdec. simplify_eq/=.
     have ? : (v' = v'0) by [apply: heap_at_inj_val]; subst v'0.
     iFrame => /=. iMod "HE" as "_".
     iApply (physical_step_wand with "HWP"). iIntros "HWP".
@@ -1911,6 +1938,8 @@ Proof.
     iMod ("Hc" with "Hhctx") as (?) "[Hhctx Hmt]".
     iModIntro. iSplit; first by eauto 12 using AssignS. unfold end_stmt.
     iIntros (? e2 σ2 efs Hst ?). inv_stmt_step.
+    rename select (decode_op_val _ _ _ = Some _) into Hdec.
+    rewrite Hvl in Hdec. simplify_eq/=.
 
     have ? : (v' = v'0) by [apply: heap_lookup_loc_inj_val]; subst v'0.
     iApply physical_step_fupd.

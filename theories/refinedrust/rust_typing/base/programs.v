@@ -2173,7 +2173,7 @@ Section laws.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iApply (wp_deref with "Hl"); [by right | | done | done | ].
-    { apply val_to_of_loc. by apply val_of_loc_Some_l2v. }
+    { intros. apply val_to_loc_decode. apply val_to_of_loc. by apply val_of_loc_Some_l2v. }
     iApply physical_step_intro. iNext.
     iIntros (st) "Hl Ha".
     iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & %Hdec & Hv & Hl2 & HT)"; first done.
@@ -2227,7 +2227,7 @@ Section laws.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iApply (wp_deref with "Hl"); [by right | | done | done | ].
-    { by apply val_to_loc_Some_l2v. }
+    { intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v. }
     iApply physical_step_intro. iNext.
     iIntros (st) "Hl [Ha _]".
     iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & %Hdec & Hv & Hl2 & HT)"; first done.
@@ -2282,7 +2282,7 @@ Section laws.
     iApply wpe_fupd.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iApply (wp_deref with "Hloc"); [by right | | done | done | ].
-    { by rewrite val_to_loc_Some_l2v. }
+    { intros. apply val_to_loc_decode. by rewrite val_to_loc_Some_l2v. }
     iApply physical_step_intro. iNext.
     iIntros (st) "Hloc".
     iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & %Hdec & Hv & Hl2 & HT)"; first done.

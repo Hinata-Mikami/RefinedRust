@@ -3433,7 +3433,7 @@ Section subsume.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iApply (wp_deref with "Hl") => //; try by eauto using val_to_of_loc.
     { destruct o; naive_solver. }
-    { by apply val_to_loc_Some_l2v. }
+    { intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v. }
     iApply (physical_step_intro_tr with "Hat").
     iIntros "!> Hat Hcred2 !> %st Hl Hcl".
     iMod ("Hcl" with "Hl Hv") as "(%L' & %rt' & %ty' & %r' & HL & Hf & Hv & HT)".
@@ -3503,7 +3503,7 @@ Section subsume.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iApply wps_assign.
     { destruct o; naive_solver. }
-    { by apply val_to_loc_Some_l2v. }
+    { intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v. }
     iMod (fupd_mask_subseteq) as "Hcl_m"; last iApply fupd_intro.
     { destruct o; solve_ndisj. }
     iFrame. iR.

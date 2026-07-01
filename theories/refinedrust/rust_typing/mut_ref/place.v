@@ -36,7 +36,7 @@ Section place.
     iPoseProof (ltype_own_addr_in_usize with "Hb") as "%Haddr".
     iApply (wp_deref with "Hl").
     - solve_ndisj.
-    - by apply val_to_loc_Some_l2v.
+    - intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v.
     - exact Hly.
     - by apply val_decodes_to_loc_has_layout in Hdec.
     - iApply physical_step_intro_lc. iIntros "Hcred !>!>".
@@ -106,7 +106,7 @@ Section place.
     iPoseProof (ltype_own_addr_in_usize with "Hb") as "%Haddr".
     iApply (wp_deref with "Hl").
     - solve_ndisj.
-    - by apply val_to_loc_Some_l2v.
+    - intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v.
     - exact Hly.
     - by apply val_decodes_to_loc_has_layout in Hdec.
     - iApply physical_step_intro_lc. iIntros "Hcred !>!>".
@@ -178,7 +178,7 @@ Section place.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
     iApply (wp_deref with "Hl").
     - solve_ndisj.
-    - by apply val_to_loc_Some_l2v.
+    - intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v.
     - exact Hly.
     - change (vi `has_layout_val` void*). by apply val_decodes_to_loc_has_layout in Hdec.
     - iApply physical_step_intro; iNext.
