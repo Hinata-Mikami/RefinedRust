@@ -326,6 +326,19 @@ Section lft_morphism.
   Qed.
 End lft_morphism.
 
+Section sized.
+  Context `{!typeGS Σ}.
+
+  Global Instance na_ex_plain_t_sized {X Y : RT} ty (P : na_ex_inv_def X Y) :
+    TySized ty →
+    TySized (na_ex_plain_t X Y P ty).
+  Proof.
+    intros Hsz. econstructor.
+    - apply Hsz.
+    - apply Hsz.
+  Qed.
+End sized.
+
 Section contr.
   Context `{!typeGS Σ}.
 
