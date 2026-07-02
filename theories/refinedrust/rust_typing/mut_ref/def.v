@@ -243,14 +243,42 @@ Section mut_ref.
     econstructor; done.
   Qed.
 
+  Lemma mut_ref_ty_lft_morphism {rt : RT} κ : TyLftMorphism (mut_ref (rt:=rt) κ).
+  Proof.
+    eapply ty_lft_morph_make_ref.
+    - rewrite {1}ty_lfts_unfold. done.
+    - rewrite {1}ty_wf_E_unfold. done.
+  Qed.
+
+  Global Instance mut_ref_lft_morphism {A rt} `{!Lifecycle A}
+      (T : A → type rt) κ :
+    LftMorphism T →
+    LftMorphism (λ x, mut_ref κ (T x)).
+  Proof.
+    intros HT.
+    change (LftMorphism ((mut_ref κ) ∘ T)).
+    eapply LftMorphism_compose; first exact HT.
+    apply mut_ref_ty_lft_morphism.
+  Qed.
+
+  Global Program Instance mut_ref_dep_lft_morphism {rts rt} deps
+      (T : mut_types rts → type rt) κ :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x, mut_ref κ (T x)) :=
+    λ HT, dep_lft_morph_make_ref deps T (λ x, mut_ref κ (T x)) κ HT _ _.
+  Next Obligation.
+    rewrite {1}ty_lfts_unfold. done.
+  Qed.
+  Next Obligation.
+    rewrite {1}ty_wf_E_unfold. done.
+  Qed.
+
   Global Instance mut_ref_type_contractive {rt : RT} κ : TypeContractive (mut_ref (rt:=rt) κ).
   Proof.
     constructor; simpl.
     - done.
     - done.
-    - eapply ty_lft_morph_make_ref.
-      + rewrite {1}ty_lfts_unfold. done.
-      + rewrite {1}ty_wf_E_unfold. done.
+    - apply mut_ref_ty_lft_morphism.
     - rewrite ty_has_op_type_unfold/=. done.
     - done.
     - intros n ty ty' ?.

@@ -324,15 +324,44 @@ End array.
 Section ne.
   Context `{!typeGS Σ}.
 
+  Lemma array_t_ty_lft_morphism {rt : RT} (n : nat) :
+    TyLftMorphism (λ ty, array_t (rt:=rt) n ty).
+  Proof.
+    eapply ty_lft_morph_make_id.
+    - rewrite {1}ty_lfts_unfold//.
+    - rewrite {1}ty_wf_E_unfold//.
+  Qed.
+
+  Global Instance array_t_lft_morphism {A rt} `{!Lifecycle A}
+      (T : A → type rt) (n : nat) :
+    LftMorphism T →
+    LftMorphism (λ x, array_t n (T x)).
+  Proof.
+    intros HT.
+    change (LftMorphism ((λ ty, array_t n ty) ∘ T)).
+    eapply LftMorphism_compose; first exact HT.
+    apply array_t_ty_lft_morphism.
+  Qed.
+
+  Global Program Instance array_t_dep_lft_morphism {rts rt} deps
+      (T : mut_types rts → type rt) (n : nat) :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x, array_t n (T x)) :=
+    λ HT, dep_lft_morph_make_id deps T (λ x, array_t n (T x)) HT _ _.
+  Next Obligation.
+    simpl. rewrite {1}ty_lfts_unfold. done.
+  Qed.
+  Next Obligation.
+    simpl. rewrite {1}ty_wf_E_unfold. done.
+  Qed.
+
   Global Instance array_t_ne {rt} (n : nat) :
     TypeNonExpansive (λ ty, array_t (rt:=rt) n ty).
   Proof.
     constructor; simpl.
     - done.
     - intros ?? ->. done.
-    - eapply ty_lft_morph_make_id.
-      + rewrite {1}ty_lfts_unfold//.
-      + rewrite {1}ty_wf_E_unfold//.
+    - apply array_t_ty_lft_morphism.
     - rewrite ty_has_op_type_unfold/=.
       unfold is_array_ot.
       intros ?? Hst ? Hot.

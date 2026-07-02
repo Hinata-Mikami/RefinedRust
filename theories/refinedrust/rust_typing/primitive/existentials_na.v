@@ -258,6 +258,69 @@ Qed.
 
 End na_ex.
 
+Section lft_morphism.
+  Context `{!typeGS Σ}.
+
+  Global Instance lifecycle_na_ex_inv_def {X Y : RT} : Lifecycle (na_ex_inv_def X Y) := {|
+    lifecycle_lfts := na_inv_P_lfts;
+    lifecycle_wf_E := na_inv_P_wf_E;
+  |}.
+
+  Global Program Instance na_ex_plain_t_dep_lft_morphism {rts : list RT} {X Y : RT}
+      depsP depsT (P : mut_types rts → na_ex_inv_def X Y) (T : mut_types rts → type X) :
+    DepLftMorphism depsP P →
+    DepLftMorphism depsT T →
+    DepLftMorphism (depsP ∪ depsT) (λ x, na_ex_plain_t X Y (P x) (T x)) :=
+    λ HP HT,
+      mk_dep_lft_morph
+        (dep_lft_morph_α HP ⊓ dep_lft_morph_α HT)
+        (dep_lft_morph_E HP ++ dep_lft_morph_E HT)
+        (dep_lft_morph_βdeps HP ++ dep_lft_morph_βdeps HT)
+        _ _.
+  Next Obligation.
+    iIntros (rts X Y depsP depsT P T HP HT x).
+    change (lifecycle_lfts (na_ex_plain_t X Y (P x) (T x))) with (ty_lfts (na_ex_plain_t X Y (P x) (T x))).
+    rewrite ty_lfts_unfold /= lft_intersect_list_app.
+    iApply lft_equiv_trans.
+    { iApply lft_equiv_intersect; [iApply (dep_lft_morph_lfts HP) | iApply (dep_lft_morph_lfts HT)]. }
+    iSplit.
+    - iApply lft_incl_glb.
+      { iApply lft_incl_glb.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_l. iApply lft_intersect_incl_l.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_r. iApply lft_intersect_incl_l. }
+      iApply lft_incl_trans.
+      { iApply lft_incl_glb.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_l. iApply lft_intersect_incl_r.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_r. iApply lft_intersect_incl_r. }
+      iApply lft_equiv_incl_r. iApply dep_lfts_union.
+    - iApply lft_incl_glb.
+      { iApply lft_incl_glb.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_l. iApply lft_intersect_incl_l.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_r.
+          iApply lft_incl_trans.
+          { iApply lft_equiv_incl_l. iApply dep_lfts_union. }
+          iApply lft_intersect_incl_l. }
+      iApply lft_incl_glb.
+      { iApply lft_incl_trans; first iApply lft_intersect_incl_l. iApply lft_intersect_incl_r. }
+      iApply lft_incl_trans; first iApply lft_intersect_incl_r.
+      iApply lft_incl_trans.
+      { iApply lft_equiv_incl_l. iApply dep_lfts_union. }
+      iApply lft_intersect_incl_r.
+  Qed.
+  Next Obligation.
+    intros rts X Y depsP depsT P T HP HT x.
+    change (lifecycle_wf_E ((λ x0 : mut_types rts, na_ex_plain_t X Y (P x0) (T x0)) x)) with
+      (ty_wf_E (na_ex_plain_t X Y (P x) (T x))).
+    rewrite ty_wf_E_unfold /= !elctx_interp_app.
+    rewrite (dep_lft_morph_wf_E HP x) (dep_lft_morph_wf_E HT x).
+    rewrite /dep_beta_interp big_sepL_app dep_wf_E_union.
+    rewrite -!assoc.
+    iSplit.
+    - iIntros "(HE & HW & Hβ & HEs & HWs & Hβs)". iFrame.
+    - iIntros "(HE & HEs & HW & HWs & Hβ & Hβs)". iFrame.
+  Qed.
+End lft_morphism.
+
 Section contr.
   Context `{!typeGS Σ}.
 

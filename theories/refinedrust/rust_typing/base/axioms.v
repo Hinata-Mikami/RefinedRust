@@ -1,5 +1,7 @@
 Require Import Stdlib.Logic.ProofIrrelevance.
 Require Export Stdlib.Logic.FunctionalExtensionality.
+(* uses UIP *)
+Require Export Stdlib.Program.Equality.
 From Equations Require Import Equations.
 From stdpp Require Import base.
 From iris Require Import prelude.

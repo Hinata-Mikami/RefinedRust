@@ -453,15 +453,96 @@ Section test_struct.
    *)
 End test_struct.
 
-Section test_mutual_rectypes.
-  Context `{!typeGS Σ}.
+Section test_box.
+  Context `{RRGS : !typeGS Σ}.
 
-  Context (Box_ty : ∀ rt : RT, type rt → type (place_rfnRT rt)).
-  Context (Box_ty_contractive :
-    ∀ (rt1 rt2 : RT) (F : type rt1 → type rt2),
-      TypeNonExpansive F → TypeContractive (λ ty, Box_ty rt2 (F ty))).
-  Context (Box_ty_lfts : ∀ rt (ty : type rt), ty_lfts (Box_ty rt ty) = ty_lfts ty).
-  Context (Box_ty_wf_E : ∀ rt (ty : type rt), ty_wf_E (Box_ty rt ty) = ty_wf_E ty).
+  Section Box_ty.
+    Definition Box_sls (T_st: syn_type) : struct_layout_spec :=
+      let Box_st (T_st: syn_type) := UnitSynType in
+      mk_sls "Box" [
+      ("0", (PtrSynType : syn_type))] StructReprRust.
+    Definition Box_st (T_st: syn_type) : syn_type := Box_sls T_st.
+
+    Context (T_rt : RT).
+
+    Definition Box_ty : (spec_with 0 [(T_rt)] ((type (plist place_rfnRT [loc : RT])))).
+    Proof.
+      exact (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (Box_sls ((T_ty.(ty_syn_type) (MetaNone))) ) +[alias_ptr_t]))).
+    Defined.
+
+    Definition Box_rt  : RT.
+    Proof using T_rt.
+      let __a := (normalized_rt_of_spec_ty (Box_ty)) in exact __a.
+    Defined.
+
+    #[global] Typeclasses Transparent Box_ty.
+    #[global] Typeclasses Transparent Box_rt.
+  End Box_ty.
+  Global Arguments Box_rt : clear implicits.
+  Section Box_inv_t.
+    Context (T_rt : RT).
+
+    Program Definition Box_inv_t_inv_spec  : spec_with 0 [T_rt] (ex_inv_def ((Box_rt (T_rt)))%type ((place_rfn (T_rt)))%type) := spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), mk_ex_inv_def_auto_shr
+      (λ π inner_rfn (_ty_rfn : RT_rt ((place_rfn (T_rt))%type : RT)),
+              let 'x := _ty_rfn in ∃ (l: name_hint_ty "l" ((loc))%Z) , ⌜inner_rfn = -[#(l)]⌝ ∗ guarded true (l ◁ₗ[π, Owned] x @ ◁ T_ty) ∗ True)%I
+      (λ π _ (_rfn_binder : RT_rt ((place_rfn (T_rt))%type : RT)),
+              let 'x := _rfn_binder in (∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop T_ty π r) ∗ True)%I
+      (false)
+      ([] ++ ty_lfts T_ty)
+      ([] ++ ty_wf_E T_ty)
+      _ _ _ _
+    .
+    Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+    Next Obligation. ex_t_solve_persistent. Qed.
+    Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
+    Next Obligation. intros ?; ex_plain_t_solve_ghost_drop. Qed.
+
+    Definition Box_inv_t  : spec_with 0 [T_rt] (type ((place_rfn (T_rt)))%type) :=
+      spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (Box_inv_t_inv_spec -[] -[T_ty]) (((Box_ty (T_rt) )) -[] -[T_ty]).
+  Global Arguments Box_inv_t_inv_spec : simpl never.
+  Global Arguments Box_inv_t : simpl never.
+    Global Typeclasses Transparent Box_inv_t.
+    Definition Box_inv_t_rt : RT.
+    Proof using T_rt . let __a := normalized_rt_of_spec_ty Box_inv_t in exact __a. Defined.
+    Global Typeclasses Transparent Box_inv_t_rt.
+  End Box_inv_t.
+  Global Arguments Box_inv_t_rt : clear implicits.
+
+  
+  Global Instance Box_inv_t_contr {rt1 T_rt : RT} (T : type rt1 → type T_rt) :
+    TypeNonExpansive T →
+    TypeContractive (λ ty, Box_inv_t T_rt <TY> (T ty) <INST!>).
+  Proof.
+    intros X.
+    apply ex_plain_t_contr.
+    - constructor.
+      + simpl. apply ty_lft_morphism_to_direct.
+        apply X.
+      + solve_proper_prepare.
+        repeat solve_proper_step.
+      + solve_proper_prepare.
+        repeat solve_proper_step.
+    - cbn; apply _.
+  Qed.
+  Global Instance Box_inv_t_ne {rt1 T_rt : RT} (T : type rt1 → type T_rt) :
+    TypeNonExpansive T →
+    TypeNonExpansive (λ ty, Box_inv_t T_rt <TY> (T ty) <INST!>).
+  Proof. apply _. Qed.
+
+  Global Instance Box_inv_t_dep_lft_mor rts (rt : RT) (T : mut_types rts → type rt) deps : 
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, Box_inv_t_inv_spec rt *[] *[(T x)]).
+  Proof.
+    simpl.
+    intros Hdep.
+    eapply (dep_lft_morph_make_id _ T); first done.
+    - done.
+    - done.
+  Defined.
+End test_box.
+
+Section test_rectypes.
+  Context `{!typeGS Σ}.
 
   Local Program Definition unit_abs_inv {X : RT} : ex_inv_def X unitRT :=
     mk_ex_inv_def (λ _ _ _, True)%I (λ _ _ _ _, True)%I (λ _ _ _, True)%I
@@ -479,11 +560,81 @@ Section test_mutual_rectypes.
     iApply logical_step_intro. done.
   Qed.
 
+  Local Definition Boo_sls : struct_layout_spec :=
+    mk_sls "Boo" [("x", PtrSynType)] StructReprRust.
+
+  Local Definition Boo_rts : list RT := [unitRT].
+
+  Local Definition Boo_F (tys : mut_types Boo_rts) : mut_types Boo_rts :=
+    let Boo_ty := mut_type_project tys 0 eq_refl in
+    let Boo_inner := struct_t Boo_sls +[
+      Box_inv_t unitRT -[] -[Boo_ty]] in
+    ex_plain_t _ _ unit_abs_inv Boo_inner +::
+    +[].
+
+
+  Global Instance lft_morph_ignore {A B} `{!Lifecycle A} `{!Lifecycle B} (x : B) : 
+    LftMorphism (λ _ : A, x).
+  Proof.
+    apply lft_morph_const.
+    exists (lft_intersect_list $ lifecycle_lfts x) (lifecycle_wf_E x).
+    - iIntros (?). iApply lft_equiv_refl.
+    - done.
+  Qed.
+
+  Global Program Instance dep_lft_morph_ignore {rts B} `{!Lifecycle B} (x : B) : 
+    DepLftMorphism ∅ (λ _ : mut_types rts, x) := 
+      dep_lft_morph_const _ (mk_dep_lft_morph_const _ (lft_intersect_list $ lifecycle_lfts x) (lifecycle_wf_E x) _ _).
+  Next Obligation.
+    done.
+  Defined.
+  Next Obligation.
+    iIntros (?????). iApply lft_equiv_refl.
+  Qed.
+  Next Obligation.
+    done.
+  Qed.
+
+  Program Definition Boo_tys : mut_types Boo_rts :=
+    @mut_fixpoint _ _ _ Boo_F _ _ _.
+  Next Obligation.
+    Ltac bla := (first
+   [ progress cbn
+   | intro
+   | eapply mut_type_contractive_of_htype
+   | eapply mut_htype_contractive_cons
+   | eapply mut_htype_contractive_nil
+   | eapply mut_component_contractive_pointwise
+   | eapply mut_component_pointwise_contractive_cons
+   | eapply mut_component_pointwise_contractive_nil]).
+
+    bla. bla. 2: bla. 2: repeat bla. 
+    3: bla. 
+    2: apply _.
+
+    apply LftMorphism_hcons. 
+    2: apply _.
+    { unshelve eapply DepLftMorphism_to_LftMorphism.
+    { unfold DepsFull. unfold full_deps. simpl. set_solver. }
+    { cbn.
+      exists [].
+      simpl. intros ?.
+      unfold dep_beta_interp. simpl. 
+      done.
+      } 
+    }
+  Qed.
+
+End test_rectypes.
+
+Section test_mutual_rectypes.
+  Context `{!typeGS Σ}.
+
   Local Definition Foo_sls : struct_layout_spec :=
     mk_sls "Foo" [("x", PtrSynType); ("y", PtrSynType)] StructReprRust.
 
   Local Definition Bar_sls : struct_layout_spec :=
-    mk_sls "Bar" [("x", PtrSynType)] StructReprRust.
+    mk_sls "Bar" [("x", Foo_sls : syn_type)] StructReprRust.
 
   Local Definition FooBar_rts : list RT := [unitRT; unitRT].
 
@@ -491,49 +642,98 @@ Section test_mutual_rectypes.
     let Foo_ty := mut_type_project tys 0 eq_refl in
     let Bar_ty := mut_type_project tys 1 eq_refl in
     let Foo_inner := struct_t Foo_sls +[
-      Box_ty unitRT Foo_ty;
-      Box_ty unitRT Bar_ty] in
+      Box_inv_t unitRT -[] -[Foo_ty];
+      Box_inv_t unitRT -[] -[Bar_ty]] in
     let Bar_inner := struct_t Bar_sls +[
-      Box_ty unitRT Foo_ty] in
+      Foo_ty] in
     ex_plain_t _ _ unit_abs_inv Foo_inner +::
     ex_plain_t _ _ unit_abs_inv Bar_inner +::
     +[].
 
-  Instance : MutComponentLifecycleStable FooBar_F (λ tys : mut_types FooBar_rts,
-      ∃; unit_abs_inv,
-      struct_t Foo_sls
-        +[Box_ty unitRT (mut_type_project tys 0 eq_refl); 
-        Box_ty unitRT (mut_type_project tys 1 eq_refl)]).
+  Lemma mut_type_project_unfold_lem {rts : list RT} (tys : hlist type rts) {rt : RT} `{!Inhabited (RT_xt rt)} i Hi :
+    @mut_type_project _ _ rts tys rt _ i Hi = mut_type_project_def tys i Hi.
   Proof.
-    econstructor.
-    - intros tys. 
-      do 2 rewrite ty_lfts_unfold/=.
-      rewrite !Box_ty_lfts.
-      rewrite {1 2}ty_lfts_unfold/=.
-      unfold FooBar_F.
-      rewrite mut_type_project_unfold.
-      simpl. 
-      rewrite {1 2}ty_lfts_unfold/=.
-      rewrite !Box_ty_lfts.
-      admit.
-    - intros. 
-      do 2 rewrite ty_wf_E_unfold/=.
-      rewrite !Box_ty_wf_E.
-      rewrite {1 2}ty_wf_E_unfold/=.
-      (*unfold FooBar_F.*)
-      rewrite mut_type_project_unfold.
-      simpl. 
-      rewrite {1 2}ty_wf_E_unfold/=.
-      rewrite !Box_ty_wf_E.
-  Admitted.
-      
+    rewrite mut_type_project_unfold//.
+  Qed.
 
 
+  (*
+
+    Foo1
+    Foo2
+    Foo3
+    Foo4
+    Foo1
+
+    cycle of length 5
+
+    stabilizes only after 5 unfoldings.
+    So clearly I need to change the stability requirement there in the fixpoint construction.
+
+    Ideally, I prove that the syntactic criterion of the individual type constructors is enough to establish this.
+
+
+
+  *)
+
+  (* TODO: we should generalize ExInvDefContractive / have a separate LftMorphism obligation *)
+
+
+    Hint Extern 3 (LftMorphism _) => simple eapply DepLftMorphism_to_LftMorphism : typeclass_instances. 
+
+Existing Instance LftMorphism_hcons.
+
+(*Set Typeclasses Debug.*)
   Program Definition FooBar_tys : mut_types FooBar_rts :=
-    @mut_type_fixpoint _ _ _ FooBar_F _ _.
+    @mut_fixpoint _ _ _ FooBar_F _ _ _.
   Next Obligation.
-    (*apply _.*)
-  Abort.
+    Ltac bla := (first
+   [ progress cbn
+   | intro
+   | eapply mut_type_contractive_of_htype
+   | eapply mut_htype_contractive_cons
+   | eapply mut_htype_contractive_nil
+   | eapply mut_component_contractive_pointwise
+   | eapply mut_component_pointwise_contractive_cons
+   | eapply mut_component_pointwise_contractive_nil]).
+
+   bla. bla. 
+   { apply LftMorphism_hcons. 
+    2: apply LftMorphism_hcons.
+    all: apply _.
+    { 
+
+    apply _.
+
+    simple apply DepLftMorphism_to_LftMorphism.
+      all: apply _.
+      { apply _. }
+      { 
+        
+        unfold DepLftMorphismBetaFull; 
+        simpl; 
+        solve_dep_beta_full
+        .
+
+        unfold DepLftMorphismBetaFull. 
+        simpl. 
+        exists [].
+        simpl. intros ?.
+        unfold dep_beta_interp. simpl. 
+        done. }
+    } 
+    { eapply DepLftMorphism_to_LftMorphism.
+      { unfold DepsFull. unfold full_deps. simpl. set_solver. }
+      { unfold DepLftMorphismBetaFull. 
+        simpl. 
+        exists [].
+        simpl. intros ?.
+        unfold dep_beta_interp. simpl. 
+        done. }
+    }
+  } 
+  { apply _. }
+  Qed.
 
 
   Definition Foo_ty : type unitRT := mut_type_project FooBar_tys 0 eq_refl.

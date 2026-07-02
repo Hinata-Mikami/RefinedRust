@@ -600,6 +600,112 @@ Section structs.
       apply IH; done.
   Qed.
 
+  Lemma HTForall_type_ne_lft_morphism {rt rts}
+      (Ts : hlist (λ rt', type rt → type rt') rts) :
+    HTForall (λ _, TypeNonExpansive) Ts →
+    HTForall (λ _, TyLftMorphism) Ts.
+  Proof.
+    induction rts as [ | rt1 rts IH]; inv_hlist Ts.
+    - intros _. constructor.
+    - intros T1 Ts [Hne1 Hne]%HTForall_cons_inv. constructor.
+      + apply type_ne_lft_mor.
+      + by apply IH.
+  Qed.
+
+  Lemma HTForall_type_ctr_lft_morphism {rt rts}
+      (Ts : hlist (λ rt', type rt → type rt') rts) :
+    HTForall (λ _, TypeContractive) Ts →
+    HTForall (λ _, TyLftMorphism) Ts.
+  Proof.
+    induction rts as [ | rt1 rts IH]; inv_hlist Ts.
+    - intros _. constructor.
+    - intros T1 Ts [Hctr1 Hctr]%HTForall_cons_inv. constructor.
+      + apply type_ctr_lft_mor.
+      + by apply IH.
+  Qed.
+
+  Lemma HTypeLftMorphism_happly {A rts} `{!Lifecycle A}
+      (Ts : hlist (λ rt', A → type rt') rts) :
+    HTForall (λ _, LftMorphism) Ts →
+    HTypeLftMorphism (λ x, happly Ts x).
+  Proof.
+    induction rts as [ | rt1 rts IH]; inv_hlist Ts.
+    - intros _. apply HTypeLftMorphism_nil.
+    - intros T1 Ts [HT1 HTs]%HTForall_cons_inv.
+      eapply HTypeLftMorphism_cons; first apply HT1.
+      by apply IH.
+  Qed.
+
+  Global Instance struct_t_lft_morphism {A} {rts : list RT} `{!Lifecycle A} sls
+      (Ts : A → hlist type rts) :
+    HTypeLftMorphism Ts →
+    LftMorphism (λ x, struct_t (sls x) (Ts x)).
+  Proof.
+    intros [HT]. destruct HT as [HT | HT].
+    - apply lft_morph_const.
+      refine (mk_lft_morph_const (ty_lft_morph_const_α HT) (ty_lft_morph_const_E HT) _ _).
+      + iIntros (x).
+        change (lifecycle_lfts (struct_t (sls x) (Ts x))) with (ty_lfts (struct_t (sls x) (Ts x))).
+        rewrite ty_lfts_unfold/=. rewrite -hcmap_hzipl_fmap.
+        iApply (ty_lft_morph_const_lfts HT).
+      + intros x.
+        change (lifecycle_wf_E (struct_t (sls x) (Ts x))) with (ty_wf_E (struct_t (sls x) (Ts x))).
+        rewrite ty_wf_E_unfold/=. rewrite -hcmap_hzipl_fmap.
+        iApply (ty_lft_morph_const_wf_E HT).
+    - apply lft_morph_add.
+      refine (mk_lft_morph_add (ty_lft_morph_add_α HT) (ty_lft_morph_add_E HT) (ty_lft_morph_add_βs HT) _ _).
+      + iIntros (x).
+        change (lifecycle_lfts (struct_t (sls x) (Ts x))) with (ty_lfts (struct_t (sls x) (Ts x))).
+        rewrite ty_lfts_unfold/=. rewrite -hcmap_hzipl_fmap.
+        iApply (ty_lft_morph_add_lfts HT).
+      + intros x.
+        change (lifecycle_wf_E (struct_t (sls x) (Ts x))) with (ty_wf_E (struct_t (sls x) (Ts x))).
+        rewrite ty_wf_E_unfold/=. rewrite -hcmap_hzipl_fmap.
+        iApply (ty_lft_morph_add_wf_E HT).
+  Qed.
+  Global Instance struct_t_lft_morphism' {A} {rts : list RT} `{!Lifecycle A} sls
+      (Ts : A → hlist type rts) :
+    HTypeLftMorphism Ts →
+    LftMorphism (λ x, struct_t sls (Ts x)).
+  Proof. apply struct_t_lft_morphism. Qed.
+
+  Global Program Instance struct_t_dep_lft_morphism {rts rts'} deps sls
+      (Ts : mut_types rts → hlist type rts') :
+    DepHTypeLftMorphism deps Ts →
+    DepLftMorphism deps (λ x, struct_t (sls x) (Ts x)) :=
+    λ HT,
+      let HT := @dep_htype_lft_morphism_lft _ _ _ _ deps Ts HT in
+      mk_dep_lft_morph (dep_lft_morph_α HT) (dep_lft_morph_E HT)
+        (dep_lft_morph_βdeps HT) _ _.
+  Next Obligation.
+    iIntros (rts rts' deps sls Ts Hm HT x).
+    change (lifecycle_lfts (struct_t (sls x) (Ts x))) with (ty_lfts (struct_t (sls x) (Ts x))).
+    rewrite ty_lfts_unfold/=. rewrite -hcmap_hzipl_fmap.
+    iApply (dep_lft_morph_lfts (dep_htype_lft_morphism_lft (DepHTypeLftMorphism:=Hm))).
+  Qed.
+  Next Obligation.
+    intros rts rts' deps sls Ts Hm HT x.
+    change (elctx_interp (ty_wf_E (struct_t (sls x) (Ts x))) ≡
+      (elctx_interp (dep_lft_morph_E (dep_htype_lft_morphism_lft (DepHTypeLftMorphism:=Hm))) ∗ elctx_interp (dep_wf_E deps x) ∗
+        dep_beta_interp (dep_lft_morph_βdeps (dep_htype_lft_morphism_lft (DepHTypeLftMorphism:=Hm))) x)%I).
+    rewrite ty_wf_E_unfold/=. rewrite -hcmap_hzipl_fmap.
+    iApply (dep_lft_morph_wf_E (dep_htype_lft_morphism_lft (DepHTypeLftMorphism:=Hm))).
+  Qed.
+  Global Instance struct_t_dep_lft_morphism' {rts rts'} deps sls
+      (Ts : mut_types rts → hlist type rts') :
+    DepHTypeLftMorphism deps Ts →
+    DepLftMorphism deps (λ x, struct_t sls (Ts x)).
+  Proof. apply struct_t_dep_lft_morphism. Defined.
+
+  Lemma struct_t_lft_morphism_of_hlist {rt} {rts : list RT} sls
+      (Ts : hlist (λ rt', type rt → type rt') rts) :
+    HTForall (λ _, TyLftMorphism) Ts →
+    TyLftMorphism (λ ty, struct_t (sls (st_of ty MetaNone)) (happly Ts ty)).
+  Proof.
+    intros HT. eapply struct_t_lft_morphism.
+    by apply HTypeLftMorphism_happly.
+  Qed.
+
   Global Instance struct_t_ne {rt} {rts : list RT} sls (Ts : type rt → hlist type rts) :
     HTypeNonExpansive Ts →
     TypeNonExpansive (λ ty, struct_t (sls (st_of ty MetaNone)) (Ts ty)).
@@ -607,20 +713,9 @@ Section structs.
     intros HT. constructor.
     - simpl. done.
     - simpl. intros ?? Hst _. rewrite Hst. done.
-    - apply ty_lft_morphism_of_direct.
-      rewrite ty_wf_E_unfold/=.
-      rewrite ty_lfts_unfold/=.
-      simpl.
-      destruct HT as [HT' Hne ->].
-      induction rts as [ | rt1 rts IH].
-      + inv_hlist HT'. intros _. simpl.
-        apply direct_lft_morph_make_const.
-      + inv_hlist HT' => T1 HT.
-        intros [Hne1 Hne]%HTForall_cons_inv.
-        simpl. apply direct_lft_morphism_app.
-        { eapply ty_lft_morphism_to_direct.
-          apply Hne1. }
-        by apply IH.
+    - destruct HT as [HT' Hne ->].
+      eapply struct_t_lft_morphism_of_hlist.
+      by apply HTForall_type_ne_lft_morphism.
     - move => ty ty' Hst ? Hot ot /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
       rewrite Hst.
       destruct HT as [Ts' Hne ->].
@@ -690,6 +785,14 @@ Section structs.
         setoid_rewrite <-shift_loc_assoc_nat. apply IH; done.
   Qed.
 
+  (* variant with constant sls *)
+  Global Instance struct_t_ne' {rt} {rts : list RT} sls (Ts : type rt → hlist type rts) :
+    HTypeNonExpansive Ts →
+    TypeNonExpansive (λ ty, struct_t sls (Ts ty)).
+  Proof.
+    intros. eapply (struct_t_ne (λ _, _)); done.
+  Qed.
+
   (* For this to be contractive, the [sls] must not depend on the recursive type *)
   (* TODO reduce duplication? *)
   Global Instance struct_t_contr {rt} {rts : list RT} sls (Ts : type rt → hlist type rts) :
@@ -700,19 +803,9 @@ Section structs.
     intros Hst HT. constructor.
     - done.
     - simpl. intros. erewrite Hst. done.
-    - apply ty_lft_morphism_of_direct.
-      simpl.
-      rewrite ty_wf_E_unfold/=.
-      rewrite ty_lfts_unfold/=.
-      destruct HT as [HT' Hne ->].
-      induction rts as [ | rt1 rts IH].
-      + inv_hlist HT'. intros _. simpl.
-        apply direct_lft_morph_make_const.
-      + inv_hlist HT' => T1 HT.
-        intros [Hne1 Hne]%HTForall_cons_inv.
-        simpl. apply direct_lft_morphism_app; last by apply IH.
-        eapply ty_lft_morphism_to_direct.
-        apply Hne1.
+    - destruct HT as [HT' Hctr ->].
+      eapply struct_t_lft_morphism_of_hlist.
+      by apply HTForall_type_ctr_lft_morphism.
     - move => ty ty' ot /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
       erewrite Hst.
       destruct HT as [Ts' Hne ->].
