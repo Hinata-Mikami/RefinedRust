@@ -990,177 +990,217 @@ End st_ofe.
 Section lft_morph.
   Context `{!typeGS Σ}.
 
+  Class Lifecycle (A : Type) := {
+    lifecycle_lfts : A → list lft;
+    lifecycle_wf_E : A → elctx;
+  }.
+
+  Global Instance lifecycle_type {rt} : Lifecycle (type rt) := {|
+    lifecycle_lfts := ty_lfts;
+    lifecycle_wf_E := ty_wf_E;
+  |}.
+
   (* The functor has constant lifetime requirements *)
-  Record TyLftMorphismConst {rt1 rt2} (F : type rt1 → type rt2) : Type := mk_lft_morph_const {
+  Record LftMorphismConst {A B} `{!Lifecycle A} `{!Lifecycle B} (F : A → B) : Type := mk_lft_morph_const {
     ty_lft_morph_const_α : lft;
     ty_lft_morph_const_E : elctx;
     ty_lft_morph_const_lfts :
-      ⊢ ∀ ty, lft_equiv (lft_intersect_list (ty_lfts (F ty))) ty_lft_morph_const_α;
+      ⊢ ∀ ty, lft_equiv (lft_intersect_list (lifecycle_lfts (F ty))) ty_lft_morph_const_α;
     ty_lft_morph_const_wf_E :
-      ∀ ty, elctx_interp (ty_wf_E (F ty)) ≡ elctx_interp ty_lft_morph_const_E;
+      ∀ ty, elctx_interp (lifecycle_wf_E (F ty)) ≡ elctx_interp ty_lft_morph_const_E;
   }.
+  Definition TyLftMorphismConst {rt1 rt2} (F : type rt1 → type rt2) : Type := LftMorphismConst F.
   Existing Class TyLftMorphismConst.
-  Global Arguments mk_lft_morph_const {_ _ _}.
-  Global Arguments ty_lft_morph_const_lfts {_ _ _ _}.
-  Global Arguments ty_lft_morph_const_wf_E {_ _ _ _}.
+  Existing Class LftMorphismConst.
+  Global Arguments mk_lft_morph_const {_ _ _ _ _}.
+  Global Arguments ty_lft_morph_const_α {_ _ _ _ _} _.
+  Global Arguments ty_lft_morph_const_E {_ _ _ _ _} _.
+  Global Arguments ty_lft_morph_const_lfts {_ _ _ _ _} _.
+  Global Arguments ty_lft_morph_const_wf_E {_ _ _ _ _} _.
 
   (* An application of the functor adds some lifetime requirements which are essentially constant *)
-  Record TyLftMorphismAdd {rt1 rt2} (F : type rt1 → type rt2) : Type := mk_lft_morph_add {
+  Record LftMorphismAdd {A B} `{!Lifecycle A} `{!Lifecycle B} (F : A → B) : Type := mk_lft_morph_add {
     ty_lft_morph_add_α : lft;
     ty_lft_morph_add_E : elctx;
     ty_lft_morph_add_βs : list lft;
     ty_lft_morph_add_lfts :
-      ⊢ ∀ ty, lft_equiv (lft_intersect_list (ty_lfts (F ty))) (ty_lft_morph_add_α ⊓ lft_intersect_list (ty_lfts ty));
+      ⊢ ∀ ty, lft_equiv (lft_intersect_list (lifecycle_lfts (F ty))) (ty_lft_morph_add_α ⊓ lft_intersect_list (lifecycle_lfts ty));
     ty_lft_morph_add_wf_E :
-      ∀ ty, elctx_interp (ty_wf_E (F ty)) ≡
-          (elctx_interp ty_lft_morph_add_E ∗ elctx_interp (ty_wf_E ty) ∗
+      ∀ ty, elctx_interp (lifecycle_wf_E (F ty)) ≡
+          (elctx_interp ty_lft_morph_add_E ∗ elctx_interp (lifecycle_wf_E ty) ∗
             (* some requirements of lifetimes that the type has to outlive *)
-            [∗ list] β ∈ ty_lft_morph_add_βs, β ⊑ lft_intersect_list (ty_lfts ty))%I;
+            [∗ list] β ∈ ty_lft_morph_add_βs, β ⊑ lft_intersect_list (lifecycle_lfts ty))%I;
   }.
+  Definition TyLftMorphismAdd {rt1 rt2} (F : type rt1 → type rt2) : Type := LftMorphismAdd F.
   Existing Class TyLftMorphismAdd.
-  Global Arguments mk_lft_morph_add {_ _ _}.
+  Existing Class LftMorphismAdd.
+  Global Arguments mk_lft_morph_add {_ _ _ _ _}.
+  Global Arguments ty_lft_morph_add_α {_ _ _ _ _} _.
+  Global Arguments ty_lft_morph_add_E {_ _ _ _ _} _.
+  Global Arguments ty_lft_morph_add_βs {_ _ _ _ _} _.
+  Global Arguments ty_lft_morph_add_lfts {_ _ _ _ _} _.
+  Global Arguments ty_lft_morph_add_wf_E {_ _ _ _ _} _.
   (*Global Arguments ty_lft_morph_add_lfts {_ _ _ _}.*)
   (*Global Arguments ty_lft_morph_add_wf_E {_ _ _ _}.*)
 
-  Inductive TyLftMorphism {rt1 rt2} (F : type rt1 → type rt2) : Type :=
-  | ty_lft_morph_const (_ : TyLftMorphismConst F)
-  | ty_lft_morph_add (_ : TyLftMorphismAdd F)
+  Inductive LftMorphism {A B} `{!Lifecycle A} `{!Lifecycle B} (F : A → B) : Type :=
+  | lft_morph_const (_ : LftMorphismConst F)
+  | lft_morph_add (_ : LftMorphismAdd F)
   .
+  Definition TyLftMorphism {rt1 rt2} (F : type rt1 → type rt2) : Type := LftMorphism F.
+  Notation ty_lft_morph_const := lft_morph_const.
+  Notation ty_lft_morph_add := lft_morph_add.
   Existing Class TyLftMorphism.
+  Existing Class LftMorphism.
 
-  Global Instance TyLftMorphism_compose {rt1 rt2 rt3} (F1 : type rt1 → type rt2) (F2 : type rt2 → type rt3) :
-    TyLftMorphism F1 →
-    TyLftMorphism F2 →
-    TyLftMorphism (F2 ∘ F1).
+  Global Instance LftMorphism_compose {A B C} `{!Lifecycle A} `{!Lifecycle B} `{!Lifecycle C} (F1 : A → B) (F2 : B → C) :
+    LftMorphism F1 →
+    LftMorphism F2 →
+    LftMorphism (F2 ∘ F1).
   Proof.
     intros X1 [C2 | A2].
     { apply ty_lft_morph_const.
-      refine (mk_lft_morph_const (C2.(ty_lft_morph_const_α _)) C2.(ty_lft_morph_const_E _) _ _).
-      - simpl. iIntros (?). iApply ty_lft_morph_const_lfts.
-      - simpl. iIntros (?). iApply ty_lft_morph_const_wf_E. }
+      refine (mk_lft_morph_const C2.(ty_lft_morph_const_α) C2.(ty_lft_morph_const_E) _ _).
+      - simpl. iIntros (?). iApply (ty_lft_morph_const_lfts C2).
+      - simpl. iIntros (?). iApply (ty_lft_morph_const_wf_E C2). }
     destruct X1 as [C1 | A1].
     - apply ty_lft_morph_const.
-      refine (mk_lft_morph_const (A2.(ty_lft_morph_add_α _) ⊓ C1.(ty_lft_morph_const_α _))
-      (A2.(ty_lft_morph_add_E _) ++ C1.(ty_lft_morph_const_E _) ++ ((λ β, β ⊑ₑ C1.(ty_lft_morph_const_α _)) <$> A2.(ty_lft_morph_add_βs _))) _ _).
+      refine (mk_lft_morph_const (A2.(ty_lft_morph_add_α) ⊓ C1.(ty_lft_morph_const_α))
+      (A2.(ty_lft_morph_add_E) ++ C1.(ty_lft_morph_const_E) ++ ((λ β, β ⊑ₑ C1.(ty_lft_morph_const_α)) <$> A2.(ty_lft_morph_add_βs))) _ _).
       + simpl. iIntros (?).
-        iApply lft_equiv_trans. { iApply ty_lft_morph_add_lfts. }
+        iApply lft_equiv_trans. { iApply (ty_lft_morph_add_lfts A2). }
         iApply lft_equiv_intersect; first iApply lft_equiv_refl.
         iApply lft_equiv_trans.
-        { iApply ty_lft_morph_const_lfts. }
+        { iApply (ty_lft_morph_const_lfts C1). }
         iApply lft_equiv_refl.
       + simpl. iIntros (?).
-        etrans. { iApply ty_lft_morph_add_wf_E. }
+        etrans. { iApply (ty_lft_morph_add_wf_E A2). }
         rewrite !elctx_interp_app.
-        f_equiv; first done.
-        f_equiv. { apply ty_lft_morph_const_wf_E. }
-        unfold elctx_interp.
-        rewrite big_sepL_fmap.
-        apply big_sepL_proper.
-        unfold elctx_elt_interp; simpl.
-        intros ???.
-        apply lft_incl_proper; first apply lft_equiv_refl.
-        iApply ty_lft_morph_const_lfts.
+        rewrite (ty_lft_morph_const_wf_E C1 ty).
+        iSplit.
+        * iIntros "($ & $ & Hβs)".
+          unfold elctx_interp. rewrite big_sepL_fmap.
+          iApply (big_sepL_impl with "Hβs"). iModIntro.
+          iIntros (???). rewrite /elctx_elt_interp/=.
+          iIntros "Hβ". iApply (lft_incl_trans with "Hβ").
+          iApply lft_equiv_incl_l. iApply (ty_lft_morph_const_lfts C1).
+        * rewrite /elctx_interp big_sepL_fmap.
+          iIntros "($ & $ & Hβs)".
+          iApply (big_sepL_impl with "Hβs"). iModIntro.
+          iIntros (???). rewrite /elctx_elt_interp/=.
+          iIntros "Hβ". iApply (lft_incl_trans with "Hβ").
+          iApply lft_equiv_incl_r. iApply (ty_lft_morph_const_lfts C1).
     - apply ty_lft_morph_add.
-      refine (mk_lft_morph_add (A2.(ty_lft_morph_add_α _) ⊓ A1.(ty_lft_morph_add_α _))
-      (A2.(ty_lft_morph_add_E _) ++ A1.(ty_lft_morph_add_E _) ++ ((λ β, β ⊑ₑ A1.(ty_lft_morph_add_α _)) <$> (ty_lft_morph_add_βs F2 A2)))
-        (A2.(ty_lft_morph_add_βs _) ++ A1.(ty_lft_morph_add_βs _))
+      refine (mk_lft_morph_add (A2.(ty_lft_morph_add_α) ⊓ A1.(ty_lft_morph_add_α))
+      (A2.(ty_lft_morph_add_E) ++ A1.(ty_lft_morph_add_E) ++ ((λ β, β ⊑ₑ A1.(ty_lft_morph_add_α)) <$> A2.(ty_lft_morph_add_βs)))
+        (A2.(ty_lft_morph_add_βs) ++ A1.(ty_lft_morph_add_βs))
         _ _).
       + simpl. iIntros (?).
-        iApply lft_equiv_trans. { iApply ty_lft_morph_add_lfts. }
+        iApply lft_equiv_trans. { iApply (ty_lft_morph_add_lfts A2). }
         rewrite -lft_intersect_assoc.
         iApply lft_equiv_intersect; first iApply lft_equiv_refl.
-        iApply ty_lft_morph_add_lfts.
+        iApply (ty_lft_morph_add_lfts A1).
       + simpl. iIntros (?).
         rewrite !elctx_interp_app.
         rewrite -assoc.
-        etrans. { iApply ty_lft_morph_add_wf_E. }
-        f_equiv; first done.
-        etrans. { apply bi.sep_proper; last done. apply ty_lft_morph_add_wf_E. }
+        etrans. { iApply (ty_lft_morph_add_wf_E A2). }
+        rewrite (ty_lft_morph_add_wf_E A1 ty).
         rewrite -!assoc.
-        f_equiv.
         iSplit.
-        * iIntros "(? & ? & Ha)". iFrame.
+        * iIntros "(? & ? & ? & ? & Ha)". iFrame.
           unfold elctx_interp. rewrite big_sepL_fmap.
           iApply big_sepL_sep.
           iApply (big_sepL_impl with "Ha"). iModIntro. iIntros (???).
           rewrite /elctx_elt_interp/=.
           iIntros "#Ha". iSplit; iApply (lft_incl_trans with "Ha").
-          all: iApply lft_incl_trans; first (iApply lft_equiv_incl_l; iApply ty_lft_morph_add_lfts).
+          all: iApply lft_incl_trans; first (iApply lft_equiv_incl_l; iApply (ty_lft_morph_add_lfts A1)).
           { iApply lft_intersect_incl_l. }
           { iApply lft_intersect_incl_r. }
-        * rewrite big_sepL_app.
-          iIntros "(Hb & ? & Ha & ?)". iFrame.
-          unfold elctx_interp. rewrite big_sepL_fmap.
+        * rewrite big_sepL_app /elctx_interp big_sepL_fmap.
+          iIntros "(? & ? & Hb & ? & Ha & ?)". iFrame.
           iCombine "Ha Hb" as "Ha".
           rewrite -big_sepL_sep.
           iApply (big_sepL_impl with "Ha"). iModIntro. iIntros (???).
           rewrite /elctx_elt_interp/=.
           iIntros "#[Ha Hb]".
           (*iSplit; iApply (lft_incl_trans with "Ha").*)
-          iApply lft_incl_trans; last (iApply lft_equiv_incl_r; iApply ty_lft_morph_add_lfts).
+          iApply lft_incl_trans; last (iApply lft_equiv_incl_r; iApply (ty_lft_morph_add_lfts A1)).
           iApply lft_incl_glb; done.
-          Unshelve. apply _.
   Qed.
+  Global Instance TyLftMorphism_compose {rt1 rt2 rt3} (F1 : type rt1 → type rt2) (F2 : type rt2 → type rt3) :
+    TyLftMorphism F1 →
+    TyLftMorphism F2 →
+    TyLftMorphism (F2 ∘ F1) := LftMorphism_compose F1 F2.
 
   Lemma TyLftMorphism_ty_lfts_proper {rt1 rt2} (F : type rt1 → type rt2) `{HF : !TyLftMorphism F} ty ty' :
     (⊢ lft_equiv (lft_intersect_list (ty_lfts ty)) (lft_intersect_list (ty_lfts ty'))) →
     ⊢ lft_equiv (lft_intersect_list (ty_lfts (F ty))) (lft_intersect_list (ty_lfts (F ty'))).
   Proof.
     intros Ha.
+    change (⊢ lft_equiv (lft_intersect_list (lifecycle_lfts ty)) (lft_intersect_list (lifecycle_lfts ty'))) in Ha.
+    change (⊢ lft_equiv (lft_intersect_list (lifecycle_lfts (F ty))) (lft_intersect_list (lifecycle_lfts (F ty')))).
     destruct HF as [HF | HF].
-    - iApply lft_equiv_trans. { iApply ty_lft_morph_const_lfts. }
-      iApply lft_equiv_sym. iApply lft_equiv_trans. { iApply ty_lft_morph_const_lfts. }
+    - iApply lft_equiv_trans. { iApply (ty_lft_morph_const_lfts HF). }
+      iApply lft_equiv_sym. iApply lft_equiv_trans. { iApply (ty_lft_morph_const_lfts HF). }
       iApply lft_equiv_refl.
-    - iApply lft_equiv_trans. { iApply ty_lft_morph_add_lfts. }
-      iApply lft_equiv_sym. iApply lft_equiv_trans. { iApply ty_lft_morph_add_lfts. }
+    - iApply lft_equiv_trans. { iApply (ty_lft_morph_add_lfts HF). }
+      iApply lft_equiv_sym. iApply lft_equiv_trans. { iApply (ty_lft_morph_add_lfts HF). }
       iApply lft_equiv_intersect; first iApply lft_equiv_refl.
       iApply lft_equiv_sym. done.
-      Unshelve. apply _.
   Qed.
   Lemma TyLftMorphism_ty_wf_E_proper {rt1 rt2} (F : type rt1 → type rt2) `{HF : !TyLftMorphism F} ty ty' :
     elctx_interp (ty_wf_E ty) ≡ elctx_interp (ty_wf_E ty') →
     (⊢ lft_equiv (lft_intersect_list (ty_lfts ty)) (lft_intersect_list (ty_lfts ty'))) →
     elctx_interp (ty_wf_E (F ty)) ≡ elctx_interp (ty_wf_E (F ty')).
   Proof.
-    intros Heq Heq2. destruct HF as [HF | HF].
-    - etrans. { iApply ty_lft_morph_const_wf_E. }
-      symmetry. apply ty_lft_morph_const_wf_E.
-    - etrans. { iApply ty_lft_morph_add_wf_E. }
-      symmetry. etrans. { iApply ty_lft_morph_add_wf_E. }
+    intros Heq Heq2.
+    change (elctx_interp (lifecycle_wf_E ty) ≡ elctx_interp (lifecycle_wf_E ty')) in Heq.
+    change (⊢ lft_equiv (lft_intersect_list (lifecycle_lfts ty)) (lft_intersect_list (lifecycle_lfts ty'))) in Heq2.
+    change (elctx_interp (lifecycle_wf_E (F ty)) ≡ elctx_interp (lifecycle_wf_E (F ty'))).
+    destruct HF as [HF | HF].
+    - etrans. { iApply (ty_lft_morph_const_wf_E HF). }
+      symmetry. apply (ty_lft_morph_const_wf_E HF).
+    - etrans. { iApply (ty_lft_morph_add_wf_E HF). }
+      symmetry. etrans. { iApply (ty_lft_morph_add_wf_E HF). }
       rewrite Heq.
-      f_equiv; first done.
-      f_equiv.
-      f_equiv. intros ??. apply lft_incl_proper; first apply lft_equiv_refl.
-      iApply lft_equiv_sym. iApply Heq2.
-      Unshelve. apply _.
+      iSplit.
+      * iIntros "($ & $ & Hβs)".
+        iApply (big_sepL_impl with "Hβs"). iModIntro.
+        iIntros (???) "Hβ". iApply (lft_incl_trans with "Hβ").
+        iApply lft_equiv_incl_r. iApply Heq2.
+      * iIntros "($ & $ & Hβs)".
+        iApply (big_sepL_impl with "Hβs"). iModIntro.
+        iIntros (???) "Hβ". iApply (lft_incl_trans with "Hβ").
+        iApply lft_equiv_incl_l. iApply Heq2.
   Qed.
 
   (* Key property needed for recursive types -- the lifetimes become constant after one iteration. *)
   Lemma TyLftMorphism_ty_lfts_idempotent {rt} (F : type rt → type rt) `{HF : !TyLftMorphism F} ty :
     ⊢ lft_equiv (lft_intersect_list (ty_lfts (F (F ty)))) (lft_intersect_list (ty_lfts (F ty))).
   Proof.
+    change (⊢ lft_equiv (lft_intersect_list (lifecycle_lfts (F (F ty)))) (lft_intersect_list (lifecycle_lfts (F ty)))).
     destruct HF as [ HF | HF].
-    - iApply lft_equiv_trans. { iApply ty_lft_morph_const_lfts. }
-      iApply lft_equiv_sym. iApply ty_lft_morph_const_lfts.
-    - iApply lft_equiv_trans. { iApply ty_lft_morph_add_lfts. }
+    - iApply lft_equiv_trans. { iApply (ty_lft_morph_const_lfts HF). }
+      iApply lft_equiv_sym. iApply (ty_lft_morph_const_lfts HF).
+    - iApply lft_equiv_trans. { iApply (ty_lft_morph_add_lfts HF). }
       iApply lft_equiv_trans. {
         iApply lft_equiv_intersect; first iApply lft_equiv_refl.
-        iApply ty_lft_morph_add_lfts. }
+        iApply (ty_lft_morph_add_lfts HF). }
       rewrite assoc.
-      iApply lft_equiv_sym. iApply lft_equiv_trans. { iApply ty_lft_morph_add_lfts. }
+      iApply lft_equiv_sym. iApply lft_equiv_trans. { iApply (ty_lft_morph_add_lfts HF). }
       iApply lft_equiv_intersect; last iApply lft_equiv_refl.
       iApply lft_intersect_idempotent.
-      Unshelve. apply _.
   Qed.
   (* Same for [ty_wf_E].
      Here, we need two iterations for a fixpoint, as the outlives requirements are only stable after two iterations. *)
   Lemma TyLftMorphism_ty_wf_E_idempotent {rt} (F : type rt → type rt) `{HF : !TyLftMorphism F} ty :
     elctx_interp (ty_wf_E (F (F (F ty)))) ≡ elctx_interp (ty_wf_E (F (F ty))).
   Proof.
+    change (elctx_interp (lifecycle_wf_E (F (F (F ty)))) ≡ elctx_interp (lifecycle_wf_E (F (F ty)))).
     destruct HF as [ HF | HF].
-    - etrans. { apply ty_lft_morph_const_wf_E. }
-      symmetry. apply ty_lft_morph_const_wf_E.
-    - rewrite !ty_lft_morph_add_wf_E.
+    - etrans. { apply (ty_lft_morph_const_wf_E HF). }
+      symmetry. apply (ty_lft_morph_const_wf_E HF).
+    - rewrite !(ty_lft_morph_add_wf_E HF).
       rewrite -!assoc.
       iSplit.
       { iIntros "(? & _ & ? & ? & ? & ? & ?)". iFrame. }
@@ -1169,14 +1209,13 @@ Section lft_morph.
         iApply (big_sepL_impl with "Hc").
         iModIntro. iIntros (???) "Hincl".
         iApply (lft_incl_trans with "Hincl").
-        rewrite lft_incl_proper; [ | iApply ty_lft_morph_add_lfts | ].
-        2: { iApply lft_equiv_trans; first iApply ty_lft_morph_add_lfts.
+        rewrite lft_incl_proper; [ | iApply (ty_lft_morph_add_lfts HF) | ].
+        2: { iApply lft_equiv_trans; first iApply (ty_lft_morph_add_lfts HF).
           iApply lft_equiv_intersect; first iApply lft_equiv_refl.
-          iApply ty_lft_morph_add_lfts. }
+          iApply (ty_lft_morph_add_lfts HF). }
         rewrite assoc.
         iApply lft_intersect_mono; last iApply lft_incl_refl.
         iApply lft_incl_glb; iApply lft_incl_refl.
-        Unshelve. apply _.
       }
   Qed.
 
@@ -1192,8 +1231,14 @@ Section lft_morph.
   Proof.
     intros Hlfts HwfE. eapply ty_lft_morph_add.
     apply (mk_lft_morph_add static [] []).
-    - iIntros (ty). rewrite left_id. rewrite Hlfts. iApply lft_equiv_refl.
-    - intros ty. rewrite HwfE. simpl. rewrite right_id.
+    - iIntros (ty). rewrite left_id.
+      change (lifecycle_lfts (F ty)) with (ty_lfts (F ty)).
+      change (lifecycle_lfts ty) with (ty_lfts ty).
+      rewrite Hlfts. iApply lft_equiv_refl.
+    - intros ty.
+      change (lifecycle_wf_E (F ty)) with (ty_wf_E (F ty)).
+      change (lifecycle_wf_E ty) with (ty_wf_E ty).
+      rewrite HwfE. simpl. rewrite right_id.
       rewrite elctx_interp_nil left_id//.
   Qed.
 
@@ -1204,8 +1249,15 @@ Section lft_morph.
   Proof.
     intros Hlfts HwfE. eapply ty_lft_morph_add.
     apply (mk_lft_morph_add α [] [α]).
-    - iIntros (ty). rewrite Hlfts. iApply lft_equiv_refl.
-    - intros ty. rewrite HwfE. simpl. rewrite right_id.
+    - iIntros (ty).
+      change (lifecycle_lfts (F ty)) with (ty_lfts (F ty)).
+      change (lifecycle_lfts ty) with (ty_lfts ty).
+      rewrite Hlfts. iApply lft_equiv_refl.
+    - intros ty.
+      change (lifecycle_wf_E (F ty)) with (ty_wf_E (F ty)).
+      change (lifecycle_wf_E ty) with (ty_wf_E ty).
+      change (lifecycle_lfts ty) with (ty_lfts ty).
+      rewrite HwfE. simpl. rewrite right_id.
       rewrite elctx_interp_app elctx_interp_nil left_id//.
       f_equiv.
       rewrite /ty_outlives_E lfts_outlives_E_fmap /elctx_interp/elctx_elt_interp big_sepL_fmap/=.
@@ -1225,8 +1277,12 @@ Section lft_morph.
   Proof.
     intros Hlfts HwfE. eapply ty_lft_morph_const.
     apply (mk_lft_morph_const (lft_intersect_list α) E).
-    - iIntros (ty). rewrite Hlfts. iApply lft_equiv_refl.
-    - intros ty. rewrite HwfE. done.
+    - iIntros (ty).
+      change (lifecycle_lfts (F ty)) with (ty_lfts (F ty)).
+      rewrite Hlfts. iApply lft_equiv_refl.
+    - intros ty.
+      change (lifecycle_wf_E (F ty)) with (ty_wf_E (F ty)).
+      rewrite HwfE. done.
   Qed.
 End lft_morph.
 
@@ -1323,6 +1379,17 @@ Class TypeDistLater2 `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Prop := 
   type_dist_later2_shr :
     (∀ κ π r m l, dist_later n (l ◁ₗ{π, m, κ} r @ ty1)%I (l ◁ₗ{π, m, κ} r @ ty2)%I);
 }.
+
+Lemma TypeDist_sym `{!typeGS Σ}  {rt} n (ty1 ty2 : type rt) :
+  TypeDist n ty1 ty2 → TypeDist n ty2 ty1.
+Proof.
+  intros Hdist. constructor.
+  - intros m. symmetry. apply Hdist.
+  - symmetry. apply Hdist.
+  - intros. symmetry. apply Hdist.
+  - intros. symmetry. apply Hdist.
+Qed.
+
 Global Instance type_dist_later `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) :
   TypeDist (Nat.pred n) ty1 ty2 → TypeDistLater n ty1 ty2.
 Proof.
@@ -2371,11 +2438,11 @@ Global Instance ty_lft_morphism_of_direct {rt1 rt2} (F : type rt1 → type rt2) 
   TyLftMorphism F.
 Proof.
   intros [Hm | Hm].
-  - apply ty_lft_morph_const.
+  - apply lft_morph_const.
     destruct Hm as [α E Hα HE].
     refine (mk_lft_morph_const α E _ _); done.
   - destruct Hm as [α E βs Hα HE].
-    apply ty_lft_morph_add.
+    apply lft_morph_add.
     refine (mk_lft_morph_add α E βs _ _); done.
 Qed.
 Global Instance ty_lft_morphism_to_direct {rt1 rt2} (F : type rt1 → type rt2) :
