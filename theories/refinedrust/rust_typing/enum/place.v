@@ -25,6 +25,7 @@ Section rules.
   Global Existing Instance typed_place_ofty_enum_owned_inst | 30.
 
   (* Also directly unfold the struct field *)
+  (*
   Lemma typed_place_ofty_enum_struct_owned {rt} E L f l (en : enum rt) (r : rt) {rts} (tys : hlist type rts) rs sls tag bmin0 P T :
     typed_place E L f l (EnumLtype en tag (StructLtype (hmap (λ _, OfTy) tys) sls) (rs)) (#r) bmin0 (Owned) P T
     ⊢ typed_place E L f l (EnumLtype en tag (◁ struct_t sls tys) (rs)) (#r) bmin0 (Owned) P T.
@@ -32,6 +33,7 @@ Section rules.
   Admitted.
   Definition typed_place_ofty_enum_struct_owned_inst := [instance @typed_place_ofty_enum_struct_owned].
   Global Existing Instance typed_place_ofty_enum_struct_owned_inst | 30.
+  *)
 
   Lemma typed_place_ofty_enum_shared {rt} E L f l (en : enum rt) (r : rt) bmin0 κ P T :
     typed_place E L f l (EnumLtype en (enum_tag' en r) (◁ enum_ty en r) (enum_r en r)) (#r) bmin0 (Shared κ) P T
@@ -46,6 +48,7 @@ Section rules.
   Global Existing Instance typed_place_ofty_enum_shared_inst | 30.
 
   (* Also directly unfold the struct field *)
+  (*
   Lemma typed_place_ofty_enum_struct_shared {rt} E L f l (en : enum rt) (r : rt) {rts} (tys : hlist type rts) rs sls tag bmin0 κ P T :
     typed_place E L f l (EnumLtype en tag (StructLtype (hmap (λ _, OfTy) tys) sls) (rs)) (#r) bmin0 (Shared κ) P T
     ⊢ typed_place E L f l (EnumLtype en tag (◁ struct_t sls tys) (rs)) (#r) bmin0 (Shared κ) P T.
@@ -53,6 +56,7 @@ Section rules.
   Admitted.
   Definition typed_place_ofty_enum_struct_shared_inst := [instance @typed_place_ofty_enum_struct_shared].
   Global Existing Instance typed_place_ofty_enum_struct_shared_inst | 30.
+  *)
 
   (* TODO also need resolve ghost instances, eventually *)
   (* TODO: plan for allowing strong updates:
@@ -103,6 +107,7 @@ Section rules.
     (*| _ => def*)
     (*end.*)
 
+(*
   Lemma typed_place_enum_data_field_owned {rt} E L f l (en : enum rt) (r : rt) bmin0 els tag tag' sls mem {rts} (lts : hlist ltype rts) rs P T :
     typed_place E L f l (EnumLtype en tag (StructLtype lts sls) rs) (#r) bmin0 (Owned) (EnumDataPCtx els tag' :: GetMemberPCtx sls mem :: P) T :-
       exhale (⌜en.(enum_els) = els⌝);
@@ -117,8 +122,8 @@ Section rules.
       return (typed_place E L f ((GetEnumDataLocSt l els) atst{sls}ₗ mem) lto ro bmin0 (Owned ) P (λ L2 κs l2 b2 bmin2 rti ltyi ri updcx,
         T L2 κs l2 b2 bmin2 rti ltyi ri
           (λ L3 upd cont, updcx L3 upd (λ upd',
-            cont (mkPUpd _ bmin0 
-              _ 
+            cont (mkPUpd _ bmin0
+              _
               (EnumLtype en tag (StructLtype (hlist_insert rts lts i _ upd'.(pupd_lt)) sls) (plist_insert rts rs i _ upd'.(pupd_rfn)))
               (* no update, as we are owned *)
               #r
@@ -131,8 +136,33 @@ Section rules.
   Admitted.
   Definition typed_place_enum_data_field_owned_inst := [instance @typed_place_enum_data_field_owned].
   Global Existing Instance typed_place_enum_data_field_owned_inst.
+  *)
 
-  (*typed_place_struct_uniq*)
+  Lemma typed_place_enum_data_field_owned' {rt} E L f l (en : enum rt) (r : rt) bmin0 els tag tag' {rte} (lte : ltype rte) re P T :
+    typed_place E L f l (EnumLtype en tag lte re) (#r) bmin0 (Owned) (EnumDataPCtx els tag' :: P) T :-
+      exhale (⌜en.(enum_els) = els⌝);
+      exhale (⌜tag = tag'⌝);
+      return (typed_place E L f ((GetEnumDataLocSt l els)) lte (#re) bmin0 (Owned ) P (λ L2 κs l2 b2 bmin2 rti ltyi ri updcx,
+        T L2 κs l2 b2 bmin2 rti ltyi ri
+          (λ L3 upd cont, updcx L3 upd (λ upd',
+            (* we cannot borrow the whole variant itself in Rust *)
+            ∃ r', ⌜upd'.(pupd_rfn) = #r'⌝ ∗
+            cont (mkPUpd _ bmin0
+              _
+              (EnumLtype en tag upd'.(pupd_lt) r')
+              (* no update, as we are owned *)
+              #r
+              upd'.(pupd_R)
+              upd'.(pupd_performed)
+              opt_place_update_eq_refl
+              opt_place_update_eq_refl)))
+      )).
+  Proof.
+  Admitted.
+  Definition typed_place_enum_data_field_owned'_inst := [instance @typed_place_enum_data_field_owned'].
+  Global Existing Instance typed_place_enum_data_field_owned'_inst.
+
+  (*
   Lemma typed_place_enum_data_field_shared {rt} E L f l (en : enum rt) (r : rt) bmin0 els tag tag' sls mem {rts} (lts : hlist ltype rts) rs κ P T :
     typed_place E L f l (EnumLtype en tag (StructLtype lts sls) rs) (#r) bmin0 (Shared κ) (EnumDataPCtx els tag' :: GetMemberPCtx sls mem :: P) T :-
       exhale (⌜en.(enum_els) = els⌝);
@@ -147,8 +177,8 @@ Section rules.
       return (typed_place E L f ((GetEnumDataLocSt l els) atst{sls}ₗ mem) lto ro bmin0 (Shared κ) P (λ L2 κs l2 b2 bmin2 rti ltyi ri updcx,
         T L2 κs l2 b2 bmin2 rti ltyi ri
           (λ L3 upd cont, updcx L3 upd (λ upd',
-            cont (mkPUpd _ bmin0 
-              _ 
+            cont (mkPUpd _ bmin0
+              _
               (EnumLtype en tag (StructLtype (hlist_insert rts lts i _ upd'.(pupd_lt)) sls) (plist_insert rts rs i _ upd'.(pupd_rfn)))
               (* no update, as we are shared *)
               #r
@@ -161,6 +191,32 @@ Section rules.
   Admitted.
   Definition typed_place_enum_data_field_shared_inst := [instance @typed_place_enum_data_field_shared].
   Global Existing Instance typed_place_enum_data_field_shared_inst.
+  *)
+
+  Lemma typed_place_enum_data_field_shared' {rt} E L f l (en : enum rt) (r : rt) bmin0 els tag tag' {rte} (lte : ltype rte) re κ P T :
+    typed_place E L f l (EnumLtype en tag lte re) (#r) bmin0 (Shared κ) (EnumDataPCtx els tag' :: P) T :-
+      exhale (⌜en.(enum_els) = els⌝);
+      exhale (⌜tag = tag'⌝);
+      ∃ (Heq : enum_tag en r = Some tag),
+      ∃ (i : nat),
+      return (typed_place E L f ((GetEnumDataLocSt l els)) lte (#re) bmin0 (Shared κ) P (λ L2 κs l2 b2 bmin2 rti ltyi ri updcx,
+        T L2 κs l2 b2 bmin2 rti ltyi ri
+          (λ L3 upd cont, updcx L3 upd (λ upd',
+            ∃ r', ⌜upd'.(pupd_rfn) = #r'⌝ ∗
+            cont (mkPUpd _ bmin0
+              _
+              (EnumLtype en tag upd'.(pupd_lt) r')
+              (* no update, as we are shared *)
+              #r
+              upd'.(pupd_R)
+              upd'.(pupd_performed)
+              opt_place_update_eq_refl
+              opt_place_update_eq_refl)))
+      )).
+  Proof.
+  Admitted.
+  Definition typed_place_enum_data_field_shared'_inst := [instance @typed_place_enum_data_field_shared'].
+  Global Existing Instance typed_place_enum_data_field_shared'_inst.
 
   (* NOTE for the uniq case, I'll need to know that the enum ty here is a struct. Will need some eqcasts, I guess.
 
@@ -178,6 +234,7 @@ Section rules.
 
   *)
 
+  (*
   Lemma typed_place_enum_data_field_uniq {rt} E L f l (en : enum rt) (r : rt) bmin0 els tag tag' sls mem {rts} (lts : hlist ltype rts) rs κ γ P T :
     typed_place E L f l (EnumLtype en tag (StructLtype lts sls) rs) (#r) bmin0 (Uniq κ γ) (EnumDataPCtx els tag' :: GetMemberPCtx sls mem :: P) T :-
       exhale (⌜en.(enum_els) = els⌝);
@@ -196,7 +253,7 @@ Section rules.
       exhale (⌜pnth (# tt) rs i = ro⌝);
       return (typed_place E L f ((GetEnumDataLocSt l els) atst{sls}ₗ mem) lto ro bmin0 (Uniq κ γ) P (λ L2 κs l2 b2 bmin2 rti ltyi ri updcx,
         T L2 κs l2 b2 bmin2 rti ltyi ri
-          (λ L3 upd cont, updcx L3 upd (λ upd', 
+          (λ L3 upd cont, updcx L3 upd (λ upd',
             li_tactic (check_llctx_place_update_kind_incl_uniq_goal E L3 upd'.(pupd_performed) ([κ])) (λ oeq,
               match oeq with
               | Some Heq3 =>
@@ -204,7 +261,7 @@ Section rules.
                   (EnumLtype en tag (StructLtype (hlist_insert rts lts i _ upd'.(pupd_lt)) sls) (plist_insert rts rs i _ upd'.(pupd_rfn)))
                   (#(enum_tag_rfn_inj en tag r Heq (rew <- [RT_rt] Heq2 in (plist_insert_id (unit : RT) rts rs i (
                     rew <- opt_place_update_eq_use _ _ _ Heq3 upd'.(pupd_eq_1)  in upd'.(pupd_rfn))))))
-                  upd'.(pupd_R) 
+                  upd'.(pupd_R)
                   upd'.(pupd_performed)
                   opt_place_update_eq_refl
                   opt_place_update_eq_refl
@@ -219,6 +276,42 @@ Section rules.
   Admitted.
   Definition typed_place_enum_data_field_uniq_inst := [instance @typed_place_enum_data_field_uniq].
   Global Existing Instance typed_place_enum_data_field_uniq_inst.
+  *)
+
+  Lemma typed_place_enum_data_field_uniq {rt} E L f l (en : enum rt) (r : rt) bmin0 els tag tag' {rte} (lte : ltype rte) re κ γ P T :
+    typed_place E L f l (EnumLtype en tag lte re) (#r) bmin0 (Uniq κ γ) (EnumDataPCtx els tag' :: P) T :-
+      exhale (⌜en.(enum_els) = els⌝);
+      exhale (⌜tag = tag'⌝);
+      ∃ (Heq : enum_tag en r = Some tag),
+      (* the variant is in sync with the tag
+        (we could also assume this from the interpretation, but we want that this is eq_refl) *)
+      ∃ (Heq2 : enum_rt en r = rte),
+      inhale (⌜re = rew [RT_rt] Heq2 in (enum_r en r)⌝);
+      (* access the struct field *)
+      return (typed_place E L f ((GetEnumDataLocSt l els)) lte (#re) bmin0 (Uniq κ γ) P (λ L2 κs l2 b2 bmin2 rti ltyi ri updcx,
+        T L2 κs l2 b2 bmin2 rti ltyi ri
+          (λ L3 upd cont, updcx L3 upd (λ upd',
+            li_tactic (check_llctx_place_update_kind_incl_uniq_goal E L3 upd'.(pupd_performed) ([κ])) (λ oeq,
+              match oeq with
+              | Some Heq3 =>
+                ∃ r', ⌜upd'.(pupd_rfn) = #r'⌝ ∗
+                cont (mkPUpd _ bmin0 _
+                  (EnumLtype en tag upd'.(pupd_lt) r')
+                  (#(enum_tag_rfn_inj en tag r Heq (rew <- [RT_rt] Heq2 in (
+                    rew <- opt_place_update_eq_use _ _ _ Heq3 upd'.(pupd_eq_1)  in r'))))
+                  upd'.(pupd_R)
+                  upd'.(pupd_performed)
+                  opt_place_update_eq_refl
+                  opt_place_update_eq_refl
+                )
+              | None =>
+                (* TODO strong update with Opened *)
+                False
+              end
+            )))
+        )).
+  Proof.
+  Admitted.
 
   (** Stratification *)
   (*stratify_ltype*)
