@@ -8,26 +8,26 @@ Set Default Proof Using "Type".
   We do not model niche optimizations here. An enum consists of a
   discriminant at offset [0] and a shared data region at [el_data_offset].
   Every variant payload starts at this shared data offset and is described by
-  a [struct_layout]. *)
+  its layout. *)
 
-Definition enum_variant_list := list (var_name * struct_layout).
+Definition enum_variant_list := list (var_name * layout).
 
 Definition enum_variant_names (variants : enum_variant_list) : list var_name :=
   variants.*1.
 
-Definition enum_variant_layouts (variants : enum_variant_list) : list struct_layout :=
+Definition enum_variant_layouts (variants : enum_variant_list) : list layout :=
   variants.*2.
 
 Definition enum_variant_index_of (variants : enum_variant_list) (n : var_name) : option nat :=
   fst <$> list_find (λ x, x.1 = n) variants.
 
-Definition enum_variant_lookup (variants : enum_variant_list) (n : var_name) : option struct_layout :=
+Definition enum_variant_lookup (variants : enum_variant_list) (n : var_name) : option layout :=
   (λ x, x.2.2) <$> list_find (λ x, x.1 = n) variants.
 
-Definition enum_variant_wf (data_offset : nat) (variant : var_name * struct_layout) : Prop :=
-  let sl := variant.2 in
-  layout_wf sl ∧
-  data_offset `mod` ly_align sl = 0.
+Definition enum_variant_wf (data_offset : nat) (variant : var_name * layout) : Prop :=
+  let ly := variant.2 in
+  layout_wf ly ∧
+  data_offset `mod` ly_align ly = 0.
 
 Record enum_layout := {
   el_size : nat;
@@ -47,7 +47,7 @@ Record enum_layout := {
 
   el_variants_wf : Forall (enum_variant_wf el_data_offset) el_variants;
   el_variants_in_bounds :
-    Forall (λ variant : var_name * struct_layout, el_data_offset + ly_size variant.2 ≤ el_size) el_variants;
+    Forall (λ variant : var_name * layout, el_data_offset + ly_size variant.2 ≤ el_size) el_variants;
 }.
 
 Definition layout_of_enum (el : enum_layout) : layout := {|

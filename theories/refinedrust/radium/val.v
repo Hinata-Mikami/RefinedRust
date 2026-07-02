@@ -8,7 +8,7 @@ Inductive op_type : Set :=
 | FnPtrOp
 | PtrOp
 | StructOp (sl : struct_layout) (ots : list op_type)
-| EnumOp (el : enum_layout) (variant_ots : list (var_name * list op_type))
+| EnumOp (el : enum_layout) (variant_ots : list (var_name * op_type))
     (tag_int : list (var_name * Z))
 | UntypedOp (ly : layout)
 | CharOp.
@@ -32,7 +32,7 @@ Lemma op_type_recursor (P : op_type → Type) :
   P PtrOp →
   (∀ sl ots, list_is_list _ P ots → P (StructOp sl ots)) →
   (∀ el variant_ots tag_int,
-    list_is_list _ (λ variant_ot, list_is_list _ P variant_ot.2) variant_ots →
+    list_is_list _ (λ variant_ot, P variant_ot.2) variant_ots →
     P (EnumOp el variant_ots tag_int)) →
   (∀ ly, P (UntypedOp ly)) →
   P CharOp →
@@ -49,14 +49,14 @@ Proof.
     by apply list_is_list_full.
   - apply Henum.
     apply list_is_list_full. intros [n ots].
-    by apply list_is_list_full.
+    apply IH.
   - apply Huntyped.
   - apply Hchar.
 Qed.
 
 (* Well-formedness of op_types requires that structured op_types have coherent
    component op_types. For enums, the discriminant is always validated as
-   [IntOp el.(el_tag_it)], and [variant_ots] describes the active payload. *)
+   [IntOp el.(el_tag_it)], and [variant_ots] describes variant payloads. *)
 Fixpoint op_type_wf (ot : op_type) : Prop :=
   match ot with
   | StructOp sl ots =>
@@ -66,11 +66,11 @@ Fixpoint op_type_wf (ot : op_type) : Prop :=
       tag_int.*1 = enum_variant_names el.(el_variants) ∧
       NoDup tag_int.*1 ∧
       Forall (λ tag, tag.2 ∈ el.(el_tag_it)) tag_int ∧
-      Forall_cb (λ '(name, ots),
-            ∃ sl,
-              enum_variant_lookup el.(el_variants) name = Some sl ∧
-              Forall2_cb (λ ot '(n, ly), op_type_wf ot ∧ ot_layout ot = ly)
-                ots (named_fields sl.(sl_members))) variant_ots
+      Forall_cb (λ '(name, ot),
+            ∃ ly,
+              enum_variant_lookup el.(el_variants) name = Some ly ∧
+              op_type_wf ot ∧
+              ot_layout ot = ly) variant_ots
   | _ => True
   end.
 
