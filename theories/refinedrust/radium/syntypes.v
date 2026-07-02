@@ -276,26 +276,6 @@ Definition syn_type_of_els (els : enum_layout_spec) : syn_type :=
   EnumSynType els.(els_name) els.(els_tag_it) els.(els_variants) els.(els_repr).
 Coercion syn_type_of_els : enum_layout_spec >-> syn_type.
 
-(** We currently represent enums by a struct containing the discriminant as well as a union of structs for the data.
-  NOTE: This is not an accurate model, and fails to account for the following things:
-   - if the enum is annotated with a repr(C), the exact padding
-   - niche optimizations
-*)
-Definition enum_sls union_name variants (tag_it : int_type) urepr srepr : struct_layout_spec :=
-  mk_sls union_name [("discriminant", IntSynType tag_it); ("data", UnionSynType union_name variants urepr)] srepr.
-
-Definition struct_repr_of_enum_repr (r : enum_repr) : struct_repr :=
-  match r with
-  | EnumReprC => StructReprC
-  | EnumReprRust => StructReprRust
-  | EnumReprTransparent => StructReprTransparent
-  end.
-Definition union_repr_of_enum_repr (r : enum_repr) : union_repr :=
-  UnionReprC.
-Definition sls_of_els (els : enum_layout_spec) : struct_layout_spec :=
-  (enum_sls els.(els_name) els.(els_variants) els.(els_tag_it) (union_repr_of_enum_repr els.(els_repr)) (struct_repr_of_enum_repr els.(els_repr))).
-Definition uls_of_els (els : enum_layout_spec) : union_layout_spec :=
-  (mk_uls els.(els_name) els.(els_variants) (union_repr_of_enum_repr els.(els_repr))).
 Definition els_lookup_tag (els : enum_layout_spec) (f : string) : Z :=
   let discriminant_map : gmap _ _ := list_to_map (els.(els_tag_int)) in
   default 0%Z (discriminant_map !! f).
@@ -309,6 +289,9 @@ Definition sl_has_members (sl : struct_layout) (fields : list (var_name * layout
 *)
 Definition ul_has_variants (ul : union_layout) (variants : list (var_name * layout)) :=
   variants = ul.(ul_members).
+
+Definition el_has_variants (el : enum_layout) (tag_it : int_type) (variants : list (var_name * layout)) :=
+  el.(el_tag_it) = tag_it ∧ variants = el.(el_variants).
 
 
 Section C_alg.
@@ -681,6 +664,7 @@ Class LayoutAlg : Type := {
   (* Note that we assume that fields have already been layouted: this encodes a kind of coherence requirement on the fields, i.e. that the algorithm really first layouts the fields according to their layout rules. *)
   struct_layout_alg : string → list (string * layout) → struct_repr → option struct_layout;
   union_layout_alg : string → list (string * layout) → union_repr → option union_layout;
+  enum_layout_alg : string → int_type → list (string * layout) → enum_repr → option enum_layout;
   (* the named (= non-padding) fields should be exactly the input fields *)
   struct_layout_alg_has_fields sn fields repr sl :
     struct_layout_alg sn fields repr = Some sl →
@@ -708,6 +692,16 @@ Class LayoutAlg : Type := {
     layout_wf ul;
   union_layout_alg_repr_C un variants :
     union_layout_alg un variants UnionReprC = C_union_layout_alg variants;
+
+  (* the variants and tag integer type should be exactly as given *)
+  enum_layout_alg_has_variants en tag_it variants repr el :
+    enum_layout_alg en tag_it variants repr = Some el →
+    el_has_variants el tag_it variants;
+  enum_layout_alg_align_in_bounds en tag_it variants repr el :
+    Forall (λ '(_, ly), ly_align ly ≤ max_alloc_end_zero) variants →
+    enum_layout_alg en tag_it variants repr = Some el →
+    ly_align el ≤ max_alloc_end_zero;
+  (* TODO: add requirements on repr *)
 }.
 
 Program Definition LayoutAlg_C : LayoutAlg := {|
@@ -750,6 +744,16 @@ Program Definition neverlike_ul : union_layout := {|
   ul_size := 0;
 |}.
 Solve Obligations with done.
+
+Definition empty_el : enum_layout.
+Proof.
+  refine {| el_size := 1%nat;
+            el_align_log := 0%nat;
+            el_tag_it := U8;
+            el_data_offset := 1%nat;
+            el_variants := [] |}; simpl; try done; try lia.
+  rewrite /layout_wf /ly_size /ly_align /=. exists 1. lia.
+Defined.
 
 (** The alignment has to fit in [usize].
    More restrictively, in order to make [NonNull::dangling] work, the alignment also needs to be a valid address. *)
@@ -839,13 +843,11 @@ Fixpoint use_layout_alg_def `{!LayoutAlg} (synty : syn_type) : option layout :=
       ul ← union_layout_alg un variant_lys repr;
       Some (ul_layout ul)
   | EnumSynType en tag variants repr =>
-      (* NOTE: this interface currently relies on union layouting not changing the order of variants to correctly map it to the tags. *)
       variant_lys ← list_map_option (λ '(variant_name, variant_spec),
         ly ← use_layout_alg_def variant_spec;
         Some (variant_name, ly)) variants;
-      ul ← union_layout_alg en variant_lys (union_repr_of_enum_repr repr);
-      sl ← struct_layout_alg en [("discriminant", it_layout tag); ("data", ul_layout ul)] (struct_repr_of_enum_repr repr);
-      Some (layout_of sl)
+      el ← enum_layout_alg en tag variant_lys repr;
+      Some (layout_of_enum el)
   | UntypedSynType st =>
       use_layout_alg_def st
   | LiteralSynType ly =>
@@ -1054,8 +1056,12 @@ Proof.
 Qed.
 
 (** Enum *)
-Definition use_enum_layout_alg `{!LayoutAlg} (els : enum_layout_spec) : option struct_layout :=
-  use_struct_layout_alg (sls_of_els els).
+Definition use_enum_layout_alg `{!LayoutAlg} (els : enum_layout_spec) : option enum_layout :=
+  variant_lys ← list_map_option (λ '(variant_name, variant_spec),
+    ly ← use_layout_alg variant_spec;
+    Some (variant_name, ly)) els.(els_variants);
+  enum_layout_alg els.(els_name) els.(els_tag_it) variant_lys els.(els_repr).
+Arguments use_enum_layout_alg : simpl never.
 
 Lemma els_tag_it_size (els : enum_layout_spec) :
   ly_size (it_layout $ els_tag_it els) ≤ MaxInt ISize.
@@ -1066,47 +1072,38 @@ Qed.
 
 Lemma use_enum_layout_alg_Some_inv `{!LayoutAlg} (els : enum_layout_spec) el :
   use_enum_layout_alg els = Some el →
-  use_layout_alg els = Some (layout_of el).
+  use_layout_alg els = Some (layout_of_enum el).
 Proof.
   intros Hly.
-  unfold use_enum_layout_alg in Hly.
-  apply use_struct_layout_alg_Some_inv in Hly.
-  unfold_layout_alg. simpl.
-  unfold use_layout_alg in Hly. simpl in Hly. fold use_layout_alg in Hly.
-  rewrite -Hly. simplify_option_eq; eauto.
+  unfold use_enum_layout_alg in Hly. simplify_option_eq.
+  unfold_layout_alg. simpl. fold use_layout_alg_def.
+  simplify_option_eq; eauto.
 Qed.
 Lemma use_layout_alg_enum_Some_inv `{!LayoutAlg} (els : enum_layout_spec) ly :
   use_layout_alg els = Some ly →
-  ∃ el, use_enum_layout_alg els = Some el ∧ ly = layout_of el.
+  ∃ el, use_enum_layout_alg els = Some el ∧ ly = layout_of_enum el.
 Proof.
   intros Hly.
   unfold_layout_alg. simpl in Hly.
   apply bind_Some in Hly as (vars & Hvars & Hul).
-  apply bind_Some in Hul as (ul & Hul & Hsl).
-  apply bind_Some in Hsl as (sl & Hsl & [= <-]).
-  eexists _. unfold use_enum_layout_alg, enum_sls, use_struct_layout_alg. simpl.
+  apply bind_Some in Hul as (el & Hel & [= <-]).
+  eexists _. unfold use_enum_layout_alg. simpl.
   unfold_layout_alg; simpl.
-  rewrite Hvars /= Hul /=.
-  rewrite decide_True; last apply els_tag_it_size.
-  simpl. rewrite Hsl //.
+  rewrite Hvars /= Hel //.
 Qed.
-Lemma use_enum_layout_alg_Some `{!LayoutAlg} els el ul variants' :
+Lemma use_enum_layout_alg_Some `{!LayoutAlg} els el variants' :
   Forall2 (λ '(fname, fst) '(fname', fly), fname = fname' ∧ use_layout_alg fst = Some fly) els.(els_variants) variants' →
-  union_layout_alg els.(els_name) variants' (union_repr_of_enum_repr els.(els_repr)) = Some ul →
-  struct_layout_alg els.(els_name) [("discriminant", it_layout els.(els_tag_it)); ("data", ul_layout ul)] (struct_repr_of_enum_repr els.(els_repr)) = Some el →
+  enum_layout_alg els.(els_name) els.(els_tag_it) variants' els.(els_repr) = Some el →
   use_enum_layout_alg els = Some el.
 Proof.
-  intros Ha Hb Hc. rewrite /use_enum_layout_alg.
-  eapply use_struct_layout_alg_Some; last done.
-  econstructor.
-  { split; first done. unfold_layout_alg.
-    rewrite /use_layout_alg_def.
-    rewrite decide_True; first done.
-    apply els_tag_it_size. }
-  econstructor; last done.
-  split; first done.
-  eapply syn_type_has_layout_union; last done.
-  done.
+  intros Ha Hb. rewrite /use_enum_layout_alg.
+  apply bind_Some. exists variants'.
+  split; last done.
+  clear Hb. move: Ha. generalize (els_variants els) as variants. clear els.
+  induction variants as [ | [name st] variants IH] in variants' |-*; simpl.
+  - by intros []%Forall2_nil_inv_l.
+  - intros ([name' ly] & variants'' & [<- Hst] & Ha & ->)%Forall2_cons_inv_l.
+    erewrite IH; last done. simpl. rewrite Hst//.
 Qed.
 
 Lemma syn_type_has_layout_array `{!LayoutAlg} st (len : nat) ly ly' :
@@ -1405,78 +1402,57 @@ Proof. rewrite /union_layout_spec_has_layout => ??. simplify_option_eq => //. Qe
 
 
 (** More on enums *)
-Definition enum_layout_spec_has_layout `{!LayoutAlg} (els : enum_layout_spec) (el : struct_layout) : Prop :=
+Definition enum_layout_spec_has_layout `{!LayoutAlg} (els : enum_layout_spec) (el : enum_layout) : Prop :=
   use_enum_layout_alg els = Some el.
 Lemma enum_layout_spec_has_layout_inj `{!LayoutAlg} els el1 el2 :
   enum_layout_spec_has_layout els el1 → enum_layout_spec_has_layout els el2 → el1 = el2.
 Proof. rewrite /enum_layout_spec_has_layout => ??. simplify_option_eq => //. Qed.
 
-Lemma use_enum_layout_alg_inv' `{!LayoutAlg} els el :
-  use_enum_layout_alg els = Some el →
-  use_struct_layout_alg (sls_of_els els) = Some el.
-Proof. done. Qed.
 Lemma use_enum_layout_alg_inv `{!LayoutAlg} els el :
   use_enum_layout_alg els = Some el →
-  ∃ ul (variant_lys : list (string * layout)),
-    union_layout_alg els.(els_name) variant_lys (union_repr_of_enum_repr els.(els_repr)) = Some ul ∧
-    struct_layout_alg els.(els_name) [("discriminant", it_layout els.(els_tag_it)); ("data", ul : layout)] (struct_repr_of_enum_repr els.(els_repr)) = Some el ∧
+  ∃ (variant_lys : list (string * layout)),
+    enum_layout_alg els.(els_name) els.(els_tag_it) variant_lys els.(els_repr) = Some el ∧
     Forall2 (λ '(fname, fst) '(fname', fly), fname = fname' ∧ syn_type_has_layout fst fly) els.(els_variants) variant_lys.
 Proof.
-  intros Ha%use_enum_layout_alg_inv'.
-  apply use_struct_layout_alg_inv in Ha as (field_ls & Halg & Hf).
-  simpl in Hf.
-  apply Forall2_cons_inv_l in Hf as ([? ly1] & lys & [<- Hly1] & Ha & ->).
-  apply Forall2_cons_inv_l in Ha as ([? ly2] & lys' & [<- Hly2] & Ha & ->).
-  apply Forall2_nil_inv_l in Ha as ->.
-  apply syn_type_has_layout_union_inv in Hly2 as (variant_lys & ul & -> & Hul & Hvariants).
-  apply syn_type_has_layout_int_inv in Hly1 as ->.
-  exists ul, variant_lys. eauto.
+  intros (variant_lys & Hvars%list_map_option_alt & Halg)%bind_Some.
+  exists variant_lys. split_and!; [done.. | ].
+  eapply Forall2_impl; first done.
+  intros [] []. intros (fly & ? & [= <- <-])%bind_Some. done.
 Qed.
 Lemma syn_type_has_layout_enum_inv `{!LayoutAlg} ly name it variants repr :
   syn_type_has_layout (EnumSynType name it variants repr) ly →
-  ∃ el ul (variant_lys : list (string * layout)),
-    union_layout_alg name variant_lys (union_repr_of_enum_repr repr) = Some ul ∧
-    struct_layout_alg name [("discriminant", it_layout it); ("data", ul : layout)] (struct_repr_of_enum_repr repr) = Some el ∧
-    ly = el ∧
+  ∃ el (variant_lys : list (string * layout)),
+    enum_layout_alg name it variant_lys repr = Some el ∧
+    ly = layout_of_enum el ∧
     Forall2 (λ '(fname, fst) '(fname', fly), fname = fname' ∧ syn_type_has_layout fst fly) variants variant_lys.
 Proof.
   simpl. rewrite /syn_type_has_layout/=.
   unfold_layout_alg.
   intros (variant_lys & Hvariants & Ha)%bind_Some.
   apply list_map_option_alt in Hvariants.
-  apply bind_Some in Ha as (ul & Hul & Ha).
-  apply bind_Some in Ha as (sl & Hsl & [= <-]).
-  exists sl, ul, variant_lys. split_and!; try done.
+  apply bind_Some in Ha as (el & Hel & [= <-]).
+  exists el, variant_lys. split_and!; try done.
   eapply Forall2_impl; first done.
   intros [] [].
   intros (ly & Halg & [= -> ->])%bind_Some.
   eauto.
 Qed.
-Lemma syn_type_has_layout_enum `{!LayoutAlg} name (it : int_type) variants variants' repr ly ul sl :
+Lemma syn_type_has_layout_enum `{!LayoutAlg} name (it : int_type) variants variants' repr ly el :
   Forall2 (λ '(fname, fst) '(fname', fly), fname = fname' ∧ syn_type_has_layout fst fly) variants variants' →
-  union_layout_alg name variants' (union_repr_of_enum_repr repr) = Some ul →
-  struct_layout_alg name [("discriminant", it_layout it); ("data", ul_layout ul)] (struct_repr_of_enum_repr repr) = Some sl →
-  ly = layout_of sl →
+  enum_layout_alg name it variants' repr = Some el →
+  ly = layout_of_enum el →
   syn_type_has_layout (EnumSynType name it variants repr) ly.
 Proof.
-  intros Ha Hb Hc ->.
+  intros Ha Hb ->.
   rewrite /syn_type_has_layout.
   unfold_layout_alg.
   eapply bind_Some. exists variants'.
   split. { apply list_map_option_alt. eapply Forall2_impl; first done.
     rewrite /syn_type_has_layout.
-    unfold_layout_alg.
-    fold use_layout_alg_def.
-    intros [] [] [-> ->]. done. }
-  rewrite Hb/=Hc/=//.
-Qed.
-Lemma syn_type_has_layout_els_sls `{!LayoutAlg} (els : enum_layout_spec) (ly : layout) :
-  syn_type_has_layout els ly →
-  ∃ (sl : struct_layout), struct_layout_spec_has_layout (sls_of_els els) sl ∧ ly = sl.
-Proof.
-  intros (el & Ha & ->)%use_layout_alg_enum_Some_inv.
-  exists el.
-  split; last done. by apply use_enum_layout_alg_inv'.
+     unfold_layout_alg.
+     fold use_layout_alg_def.
+     intros [] [] [-> ->]. done. }
+  rewrite Hb/=//.
 Qed.
 
 (** Well-formedness: the size is divisible by the alignment *)
@@ -1500,7 +1476,7 @@ Lemma use_enum_layout_alg_wf `{!LayoutAlg} els el :
   use_enum_layout_alg els = Some el →
   layout_wf el.
 Proof.
-  apply use_struct_layout_alg_wf.
+  intros _. apply enum_layout_wf.
 Qed.
 Lemma use_layout_alg_wf `{!LayoutAlg} st ly :
   use_layout_alg st = Some ly →
@@ -1520,7 +1496,7 @@ Proof.
   - eauto.
   - naive_solver.
   - naive_solver.
-  - by eapply struct_layout_alg_wf.
+  - apply enum_layout_wf.
   - by eapply union_layout_alg_wf.
   - apply char_layout_wf.
 Qed.
@@ -1545,7 +1521,7 @@ Proof.
   - naive_solver.
   - naive_solver.
   - rewrite /ly_size /=.
-    match goal with | H : struct_layout |- _ => specialize (sl_size H) end.
+    match goal with | H : enum_layout |- _ => pose proof (el_size_bounded H) end.
     rewrite MaxInt_eq. lia.
   - match goal with | H : union_layout |- _ => rename H into ul end.
     specialize (ul_size_bound_1 ul) as Hsz.
@@ -1573,7 +1549,7 @@ Lemma use_enum_layout_alg_size `{!LayoutAlg} els el :
   ly_size el ≤ MaxInt ISize.
 Proof.
   intros _. rewrite /ly_size /=.
-  pose (sl_size el) as Ha. rewrite MaxInt_eq. lia.
+  pose proof (el_size_bounded el) as Ha. rewrite MaxInt_eq. lia.
 Qed.
 
 (** Alignment limits *)
@@ -1687,15 +1663,8 @@ Proof.
     rename select (list_map_option _ _ = Some _) into Halgs.
     match type of Halgs with list_map_option _ _ = Some ?Ha => rename Ha into mems end.
     apply list_map_option_alt in Halgs.
-    rename select (struct_layout_alg _ _ _ = _) into Hstruct.
-    rename select (union_layout_alg _ _ _ = _) into Hunion.
-    eapply struct_layout_alg_align_in_bounds; last done.
-    econstructor.
-    { rewrite /ly_align_in_bounds.
-      specialize (IntType_align_le tag_it). simpl.
-      unsafe_unfold_common_radium_defs. simpl. lia. }
-    econstructor; last econstructor.
-    eapply union_layout_alg_align_in_bounds; last done.
+    rename select (enum_layout_alg _ _ _ _ = _) into Henum.
+    eapply enum_layout_alg_align_in_bounds; last done.
     clear -IH Halgs.
     induction mems as [ | [n ly] mems IH'] in variant_list, IH, Halgs |-*; simpl in *.
     { econstructor. }
@@ -1770,7 +1739,8 @@ Global Instance union_layout_inhabited : Inhabited union_layout := populate neve
 Definition use_union_layout_alg' `{!LayoutAlg} (uls : union_layout_spec) : union_layout :=
   default inhabitant (use_union_layout_alg uls).
 
-Definition use_enum_layout_alg' `{!LayoutAlg} (els : enum_layout_spec) : struct_layout :=
+Global Instance enum_layout_inhabited : Inhabited enum_layout := populate empty_el.
+Definition use_enum_layout_alg' `{!LayoutAlg} (els : enum_layout_spec) : enum_layout :=
   default inhabitant (use_enum_layout_alg els).
 
 (** Size of syn_types *)
@@ -1910,7 +1880,7 @@ Proof.
 Qed.
 Lemma use_op_alg_els `{!LayoutAlg} els sl ot :
   use_enum_layout_alg els = Some sl →
-  ot = (UntypedOp sl) →
+  ot = (UntypedOp (layout_of_enum sl)) →
   use_op_alg (syn_type_of_els els) = Some ot.
 Proof.
   intros Halg ->.

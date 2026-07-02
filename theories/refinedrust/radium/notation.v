@@ -293,33 +293,33 @@ Arguments OffsetOfUnion : simpl never.
 
 (** ** Enums *)
 Definition EnumInit `{!LayoutAlg} (els : enum_layout_spec) (variant : string) (ty : rust_enum_def) (e : expr) : expr :=
-  let sts : gmap string syn_type := list_to_map els.(els_variants) in
-  let variant_st := default UnitSynType (sts !! variant) in
-  let ul := use_union_layout_alg' (uls_of_els els) in
-  let variant_ly := use_layout_alg' variant_st in
-  let padding := Val (replicate (ly_size ul - ly_size variant_ly) MPoison) in
+  let el := use_enum_layout_alg' els in
+  let variant_ly : layout := default (layout_of unit_sl) (enum_variant_lookup el.(el_variants) variant) in
+  let tag_padding := Val (replicate (el.(el_data_offset) - ly_size (it_layout els.(els_tag_it))) MPoison) in
+  let data_padding := Val (replicate (el.(el_size) - el.(el_data_offset) - ly_size variant_ly) MPoison) in
   let discriminant_map : gmap string Z := list_to_map (els.(els_tag_int)) in
   let discriminant : Z := default 0%Z (discriminant_map !! variant) in
-  StructInit (sls_of_els els) [("discriminant", Val (i2v discriminant els.(els_tag_it))); ("data", Concat [e; padding])].
+  Concat [Val (i2v discriminant els.(els_tag_it)); tag_padding; e; data_padding].
 Global Typeclasses Opaque EnumInit.
 Arguments EnumInit : simpl never.
 
 Definition EnumDiscriminant `{!LayoutAlg} (els : enum_layout_spec) (e : expr) : expr :=
-  (Deref Na1Ord (IntOp (els.(els_tag_it))) (GetMember e (sls_of_els els) "discriminant"))%E.
+  (Deref Na1Ord (IntOp (els.(els_tag_it)))
+    (e at_offset{U8, PtrOp, IntOp ISize} Val (i2v 0 ISize)))%E.
 Global Typeclasses Opaque EnumDiscriminant.
 Arguments EnumDiscriminant : simpl never.
 
 Definition EnumData `{!LayoutAlg} (els : enum_layout_spec) (variant : var_name) (e : expr) : expr :=
-  GetMemberUnion (GetMember e (sls_of_els els) "data") (uls_of_els els) variant.
+  let el := use_enum_layout_alg' els in
+  (e at_offset{U8, PtrOp, IntOp ISize} Val (default [MPoison] (val_of_Z (Z.of_nat el.(el_data_offset)) ISize)))%E.
 Global Typeclasses Opaque EnumData.
 Arguments EnumData : simpl never.
 
 Definition GetEnumDataLocSt `{!LayoutAlg} (l : loc) (els : enum_layout_spec) : loc :=
   let el := use_enum_layout_alg' els in
-  (l +ₗ Z.of_nat (default 0%nat (offset_of el.(sl_members) "data"))).
+  (l +ₗ Z.of_nat el.(el_data_offset)).
 Definition GetEnumDiscriminantLocSt `{!LayoutAlg} (l : loc) (els : enum_layout_spec) : loc :=
-  let el := use_enum_layout_alg' els in
-  (l +ₗ Z.of_nat (default 0%nat (offset_of el.(sl_members) "discriminant"))).
+  l.
 
 (** ** Arrays *)
 (** Shift a location by [z] times the size of [ly]. *)

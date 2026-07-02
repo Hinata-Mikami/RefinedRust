@@ -1542,29 +1542,30 @@ Qed.
 Lemma wp_enum_init `{!LayoutAlg} π E Φ (els : enum_layout_spec) el variant rsty e :
   use_enum_layout_alg els = Some el →
   WPe{π} e @ E {{ λ v,
-    |={E}⧗=> Φ (mjoin $ pad_struct el.(sl_members) [(i2v (default 0 $ (list_to_map els.(els_tag_int) : gmap _ _) !! variant) els.(els_tag_it)); (v ++ replicate (ly_size (use_union_layout_alg' (uls_of_els els)) - ly_size (use_layout_alg' (default UnitSynType ((list_to_map els.(els_variants) : gmap _ _) !! variant)))) ☠%V)] (λ ly, (replicate (ly_size ly) MPoison))) }} -∗
+    |={E}⧗=> Φ (mjoin [i2v (default 0 $ (list_to_map els.(els_tag_int) : gmap _ _) !! variant) els.(els_tag_it);
+                         replicate (el.(el_data_offset) - ly_size (it_layout els.(els_tag_it))) MPoison;
+                         v;
+                         replicate (el.(el_size) - el.(el_data_offset) - ly_size (default (layout_of unit_sl) (enum_variant_lookup el.(el_variants) variant))) MPoison]) }} -∗
   WPe{π} EnumInit els variant rsty e @ E {{ Φ }}.
 Proof.
-  iIntros (Halg ) "HT".
+  iIntros (Halg) "HT".
   rewrite /EnumInit.
-  cbn.
-  iApply wp_struct_init.
-  { by apply use_enum_layout_alg_inv'. }
-  simpl. iIntros (ly' Hit).
-  apply syn_type_has_layout_int_inv in Hit as ->.
-  rewrite lookup_insert_eq/=.
+  rewrite /use_enum_layout_alg'. rewrite Halg.
+  simpl.
+  iApply wp_concat_bind. simpl.
   iEval (rewrite expr_wp_unfold).
   iApply wp_value.
-  iIntros (ly'' Hunion).
-  apply (syn_type_has_layout_union_inv) in Hunion as (variant_lys & ul & -> & Hul & Hvariants).
-  rewrite lookup_insert_ne//. rewrite lookup_insert_eq/=.
-  iApply wp_concat_bind. simpl.
+  iEval (rewrite expr_wp_unfold).
+  iApply wp_value.
   iApply (wpe_wand with "HT").
   iIntros (v) "HP".
   rewrite expr_wp_unfold.
-  iApply wp_value. iApply (wp_concat _ _ _ [v; replicate _ _]).
-  iApply physical_step_intro. iNext.
-  simpl. rewrite app_nil_r. done.
+  iApply wp_value.
+  iApply (wp_concat _ _ _ [i2v (default 0 $ (list_to_map els.(els_tag_int) : gmap _ _) !! variant) els.(els_tag_it);
+                            replicate (el.(el_data_offset) - ly_size (it_layout els.(els_tag_it))) MPoison;
+                            v;
+                            replicate (el.(el_size) - el.(el_data_offset) - ly_size (default (layout_of unit_sl) (enum_variant_lookup el.(el_variants) variant))) MPoison]).
+  simpl. rewrite !app_nil_r. done.
 Qed.
 
 Lemma wp_alloc π E Φ (v_size v_align : val) (n_size n_align : nat) :
