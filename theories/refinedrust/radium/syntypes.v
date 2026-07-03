@@ -9,7 +9,7 @@ From radium Require Import lang.
 (* TODO move *)
 Lemma Nat_pow_max x n1 n2 :
   (1 ≤ x)%nat →
-  (x^(Nat.max n1 n2))%nat = Nat.max (x^n1) (x^n2).
+  (x ^ Nat.max n1 n2 = Nat.max (x ^ n1) (x ^ n2))%nat.
 Proof.
   intros ?.
   destruct (Nat.max_spec n1 n2) as [[Hle ->] | [Hle ->]].
@@ -30,6 +30,30 @@ Lemma Nat_Z_in_bounds_max_1 (h : Z) (n1 n2 : nat) :
   ((n1 `max` n2)%nat ≤ h).
 Proof.
   intros Ha Hb. destruct (Nat.max_spec n1 n2) as [[Hle ->] | [Hle ->]]; lia.
+Qed.
+
+Lemma max_list_pow (n : nat) l :
+  1 ≤ n →
+  n ^ (max_list l) = max 1 (max_list ((λ x, (n ^ x)%nat) <$> l)).
+Proof.
+  intros ?.
+  induction l as [ | x l IH]; simpl; first done.
+  change (n ^ max_list l = (1 `max` max_list (list_fmap nat nat (λ x0 : nat, (n ^ x0)%nat) l))%nat) in IH.
+  destruct (Nat.max_spec x (max_list l)) as [[Hle Hmax] | [Hle Hmax]]; rewrite Hmax.
+  - rewrite IH.
+    assert (Hpow : (n ^ x ≤ n ^ max_list l)%nat) by (apply Nat.pow_le_mono_r; lia).
+    set (M := max_list (list_fmap nat nat (λ x0 : nat, (n ^ x0)%nat) l)).
+    destruct (Nat.max_spec (n ^ x) M) as [[Hxm Hin] | [Hmx Hin]]; rewrite Hin; subst M; first done.
+    destruct (Nat.max_spec 1 (max_list (list_fmap nat nat (λ x0 : nat, (n ^ x0)%nat) l))) as [[H1M H1max] | [HM1 H1max]]; rewrite H1max; lia.
+  - assert (Hpow : (n ^ max_list l ≤ n ^ x)%nat) by (apply Nat.pow_le_mono_r; lia).
+    assert (HM : (max_list (list_fmap nat nat (λ x0 : nat, (n ^ x0)%nat) l) ≤ n ^ x)%nat).
+    { lia. }
+    assert (Hone : (1 ≤ n ^ x)%nat).
+    { rewrite -(Nat.pow_1_l x).
+      apply Nat.pow_le_mono_l; lia. }
+    rewrite Nat.max_r; last lia.
+    rewrite Nat.max_l; first lia.
+    lia.
 Qed.
 
 (* TODO move *)
@@ -365,6 +389,19 @@ Section C_alg.
       lia.
   Qed.
 
+  Local Lemma padding_needed_zero_inv_nat off a :
+    a <> 0%nat →
+    padding_needed off a = 0%nat →
+    ((off mod a)%nat = 0%nat).
+  Proof.
+    intros Ha Hpad.
+    unfold padding_needed in Hpad.
+    destruct (off mod a)%nat eqn:Hmod; first done.
+    simpl in Hpad.
+    rewrite Nat.mod_small in Hpad; last lia.
+    lia.
+  Qed.
+
   Local Lemma padding_needed_mod_zero (off a : nat) :
     a <> 0%nat →
     ((off + padding_needed off a) mod a)%nat = 0%nat.
@@ -515,12 +552,16 @@ Section C_alg.
         pose proof (ly_align_ge_1 ly) as Hly.
         set (X := max_list (ly_align <$> (C_struct_layout_alg_raw_go (off + padding_needed off (ly_align ly) + ly_size ly) (Nat.max a (ly_align ly)) fields).*2)).
         set (Y := max_list (ly_align <$> fields.*2)).
+
         assert (HX : (1 `max` (1 `max` (ly_align ly `max` X)))%nat = (ly_align ly `max` (1 `max` X))%nat) by lia.
-        assert (HY : (1 `max` (ly_align ly `max` Y))%nat = (ly_align ly `max` (1 `max` Y))%nat) by lia.
+        assert (HY : (1 `max` (ly_align ly `max` Y))%nat = (ly_align ly `max` (1 `max` Y))%nat).
+        (* TODO: without the clear, coqlsp crashes lol *)
+        { clear X HX. lia. }
         rewrite HX HY.
         apply (f_equal (Nat.max (ly_align ly))) in Hrec.
         exact Hrec.
   Qed.
+
   Local Lemma C_struct_layout_alg_raw_go_size_mod fields off a :
     a <> 0%nat →
     ((off + sum_list (ly_size <$> (C_struct_layout_alg_raw_go off a fields).*2)) mod (C_struct_layout_alg_align_go a fields))%nat = 0%nat.
@@ -616,13 +657,38 @@ Section C_alg.
     apply C_struct_layout_alg_raw_go_pad_align.
   Qed.
 
+  Local Lemma max_list_ly_align_le (variants : list (var_name * layout)) (n : nat) :
+    Forall (λ '(_, ly), ly_align ly ≤ n) variants →
+    (1 ≤ n)%nat →
+    max_list (ly_align <$> variants.*2) ≤ n.
+  Proof.
+    intros Hn Hnz.
+    induction Hn as [ | [name ly] variants Hly Hvariants IH]; simpl; first lia.
+    unfold fmap in *. lia.
+  Qed.
+  Lemma C_struct_layout_alg_align_le fields sl (n : nat) :
+    C_struct_layout_alg fields = Some sl →
+    Forall (λ '(_, ly), ly_align ly ≤ n) fields →
+    (1 ≤ n)%nat →
+    ly_align sl ≤ n.
+  Proof.
+    intros Halg Hfields Hn.
+    unfold C_struct_layout_alg in Halg.
+    destruct (decide (NoDup (field_names (C_struct_layout_alg_raw fields)))) as [Hnd|Hnd]; last discriminate.
+    destruct (decide (sum_list (ly_size <$> (C_struct_layout_alg_raw fields).*2) ≤ max_int ISize)) as [Hle|Hle]; last discriminate.
+    inversion Halg; subst sl; clear Halg.
+    rewrite sl_align_eq_local /=.
+    unfold C_struct_layout_alg_raw.
+    rewrite C_struct_layout_alg_raw_go_max_align_preserve.
+    pose proof (max_list_ly_align_le fields n Hfields Hn) as Hmax.
+    lia.
+  Qed.
 
+  (** Unions *)
   Definition C_union_layout_alg_raw (variants : list (var_name * layout)) : nat :=
     let max_sz := max_list (ly_size <$> variants.*2) in
     let max_al := (2 ^ (max_list (ly_align_log <$> variants.*2)))%nat in
     (max_sz + padding_needed max_sz max_al)%nat.
-
-
 
   Program Definition C_union_layout_alg (variants : list (var_name * layout)) : option union_layout :=
     let sz := C_union_layout_alg_raw variants in
@@ -682,6 +748,372 @@ Section C_alg.
     pose proof (padding_needed_mod_zero m a ltac:(subst a; apply Nat.pow_nonzero; lia)) as Hmod.
     lia.
   Qed.
+
+  Lemma C_union_layout_alg_nodup variants ul :
+    C_union_layout_alg variants = Some ul →
+    NoDup variants.*1.
+  Proof.
+    intros Halg.
+    unfold C_union_layout_alg in Halg.
+    destruct (decide (NoDup variants.*1)) as [Hnd|Hnd]; last discriminate.
+    done.
+  Qed.
+
+  Lemma C_union_layout_alg_variant_size_le variants ul :
+    C_union_layout_alg variants = Some ul →
+    Forall (λ '(_, ly), Nat.le (ly_size ly) (ly_size ul)) variants.
+  Proof.
+    intros Halg.
+    unfold C_union_layout_alg in Halg.
+    destruct (decide (NoDup variants.*1)) as [Hnd|Hnd]; last discriminate.
+    destruct (decide (max_list (ly_size <$> variants.*2) ≤ C_union_layout_alg_raw variants)) as [Hle|Hle]; last discriminate.
+    destruct (decide (C_union_layout_alg_raw variants ≤ max_int ISize)) as [Hsz|Hsz]; last discriminate.
+    inversion Halg; subst ul; clear Halg.
+    rewrite Forall_forall.
+    intros [name [sz al]] Hel.
+    rewrite /ly_size/ul_layout /=.
+    assert (sz ≤ max_list (ly_size <$> variants.*2))%nat as Hmax.
+    { eapply max_list_elem_of_le.
+      apply list_elem_of_fmap.
+      exists {| ly_size := sz; ly_align_log := al |}. split; first done.
+      apply list_elem_of_fmap.
+      exists (name, {| ly_size := sz; ly_align_log := al |}). done. }
+    lia.
+  Qed.
+
+  Lemma C_union_layout_alg_variant_align_log_le variants ul :
+    C_union_layout_alg variants = Some ul →
+    Forall (λ '(_, ly), Nat.le (ly_align_log ly) (ly_align_log ul)) variants.
+  Proof.
+    intros Halg.
+    unfold C_union_layout_alg in Halg.
+    destruct (decide (NoDup variants.*1)) as [Hnd|Hnd]; last discriminate.
+    destruct (decide (max_list (ly_size <$> variants.*2) ≤ C_union_layout_alg_raw variants)) as [Hle|Hle]; last discriminate.
+    destruct (decide (C_union_layout_alg_raw variants ≤ max_int ISize)) as [Hsz|Hsz]; last discriminate.
+    inversion Halg; subst ul; clear Halg.
+    rewrite Forall_forall.
+    intros [name [sz al]] Hel.
+    rewrite /ly_align_log/ul_layout /=.
+    change (al ≤ max_list (ly_align_log <$> variants.*2))%nat.
+    assert (al ≤ max_list (ly_align_log <$> variants.*2))%nat as Hmax.
+    { eapply max_list_elem_of_le.
+      apply list_elem_of_fmap.
+      exists {| ly_size := sz; ly_align_log := al |}. split; first done.
+      apply list_elem_of_fmap.
+      exists (name, {| ly_size := sz; ly_align_log := al |}). done. }
+    exact Hmax.
+  Qed.
+
+  Lemma C_union_layout_alg_align_le variants ul (n : nat) :
+    C_union_layout_alg variants = Some ul →
+    Forall (λ '(_, ly), ly_align ly ≤ n) variants →
+    (1 ≤ n)%nat →
+    ly_align ul ≤ n.
+  Proof.
+    intros Halg Hvariants Hn.
+    apply C_union_layout_alg_has_variants in Halg as Hmembers.
+    rewrite /ul_has_variants in Hmembers. subst variants.
+    rewrite /ly_align/ul_layout/ly_align_log /=.
+    change ((2 ^ max_list (ly_align_log <$> (ul_members ul).*2))%nat ≤ n).
+    pose proof (max_list_pow 2 (ly_align_log <$> (ul_members ul).*2) ltac:(lia)) as Hpow.
+    rewrite -list_fmap_compose list_fmap_compose.
+    pose proof (max_list_ly_align_le ul.(ul_members) n Hvariants Hn) as Hmax.
+    rewrite /ly_align in Hmax.
+    simpl in Hmax.
+    assert (Hmax' : (max_list ((λ x : nat, (2 ^ x)%nat) <$> (ly_align_log <$> (ul_members ul).*2)) ≤ n)%nat).
+    { rewrite -list_fmap_compose.
+      change (max_list ((λ ly : layout, (2 ^ ly_align_log ly)%nat) <$> (ul_members ul).*2) ≤ n)%nat.
+      lia. }
+    lia.
+  Qed.
+
+  (** Enums *)
+  Local Lemma padding_needed_0 a :
+    a <> 0%nat →
+    padding_needed 0 a = 0%nat.
+  Proof.
+    intros Ha.
+    rewrite /padding_needed Nat.Div0.mod_0_l Nat.sub_0_r Nat.Div0.mod_same; lia.
+  Qed.
+
+  Local Lemma C_struct_layout_alg_raw_enum_data_after_tag tag_it ul :
+    ly_size (it_layout tag_it) ≤
+    default 0%nat (offset_of (C_struct_layout_alg_raw [("discriminant", it_layout tag_it); ("data", ul_layout ul)]) "data").
+  Proof.
+    rewrite /C_struct_layout_alg_raw /C_struct_layout_alg_raw_go.
+    destruct (decide (padding_needed 0 (ly_align (it_layout tag_it)) = 0%nat)) as [Htag|Htag]; last first.
+    { rewrite padding_needed_0 in Htag; [done | apply ly_align_nonzero]. }
+    rewrite Htag.
+    repeat match goal with | |- context[(0 + 0 + ?n)%nat] => replace (0 + 0 + n)%nat with n by lia end.
+    simpl.
+    destruct (decide (padding_needed (ly_size (it_layout tag_it)) (ly_align ul) = 0%nat)) as [Hpad|Hpad]; simpl.
+    - rewrite Hpad /= /offset_of_idx /=. lia.
+    - rewrite /offset_of_idx /pad_layout /=. lia.
+  Qed.
+
+  Local Lemma C_struct_layout_alg_raw_enum_data_aligned tag_it ul :
+    (default 0%nat (offset_of (C_struct_layout_alg_raw [("discriminant", it_layout tag_it); ("data", ul_layout ul)]) "data") `mod` ly_align ul)%nat = 0%nat.
+  Proof.
+    rewrite /C_struct_layout_alg_raw /C_struct_layout_alg_raw_go.
+    destruct (decide (padding_needed 0 (ly_align (it_layout tag_it)) = 0%nat)) as [Htag|Htag]; last first.
+    { rewrite padding_needed_0 in Htag; [done | apply ly_align_nonzero]. }
+    rewrite Htag.
+    repeat match goal with | |- context[(0 + 0 + ?n)%nat] => replace (0 + 0 + n)%nat with n by lia end.
+    simpl.
+    destruct (decide (padding_needed (ly_size (it_layout tag_it)) (ly_align ul) = 0%nat)) as [Hpad|Hpad]; simpl.
+    - rewrite Hpad /= /offset_of_idx /=.
+      replace (ly_size (it_layout tag_it) + 0)%nat with (ly_size (it_layout tag_it)) by lia.
+      assert (Hmod : ((ly_size (it_layout tag_it) `mod` ly_align ul)%nat = 0%nat)).
+      { apply padding_needed_zero_inv_nat; [apply ly_align_nonzero | done]. }
+      exact Hmod.
+    - rewrite /offset_of_idx /pad_layout /=.
+      repeat match goal with
+      | |- context[ly_size {| ly_size := ?sz; ly_align_log := ?al |}] =>
+          replace (ly_size {| ly_size := sz; ly_align_log := al |}) with sz by done
+      end.
+      replace (ly_size (it_layout tag_it) + (padding_needed (ly_size (it_layout tag_it)) (ly_align ul) + 0))%nat with
+        (ly_size (it_layout tag_it) + padding_needed (ly_size (it_layout tag_it)) (ly_align ul))%nat by lia.
+      apply padding_needed_mod_zero. apply ly_align_nonzero.
+  Qed.
+
+  Local Lemma C_struct_layout_alg_raw_enum_data_in_bounds tag_it ul :
+    (default 0%nat (offset_of (C_struct_layout_alg_raw [("discriminant", it_layout tag_it); ("data", ul_layout ul)]) "data") + ly_size ul ≤
+     sum_list (ly_size <$> (C_struct_layout_alg_raw [("discriminant", it_layout tag_it); ("data", ul_layout ul)]).*2))%nat.
+  Proof.
+    rewrite /C_struct_layout_alg_raw /C_struct_layout_alg_raw_go.
+    destruct (decide (padding_needed 0 (ly_align (it_layout tag_it)) = 0%nat)) as [Htag|Htag]; last first.
+    { rewrite padding_needed_0 in Htag; [done | apply ly_align_nonzero]. }
+    rewrite Htag.
+    repeat match goal with | |- context[(0 + 0 + ?n)%nat] => replace (0 + 0 + n)%nat with n by lia end.
+    simpl.
+    destruct (decide (padding_needed (ly_size (it_layout tag_it)) (ly_align ul) = 0%nat)) as [Hpad|Hpad]; simpl.
+    - rewrite Hpad /= /offset_of_idx /=.
+      destruct (decide (padding_needed (ly_size (it_layout tag_it) + 0 + ly_size ul)
+        ((1 `max` ly_align (it_layout tag_it)) `max` ly_align ul) = 0%nat)); simpl; rewrite /pad_layout /=; lia.
+    - rewrite /offset_of_idx /pad_layout /=.
+      destruct (decide (padding_needed (ly_size (it_layout tag_it) + padding_needed (ly_size (it_layout tag_it)) (ly_align ul) + ly_size ul)
+        ((1 `max` ly_align (it_layout tag_it)) `max` ly_align ul) = 0%nat)); simpl; rewrite /pad_layout /=; lia.
+  Qed.
+
+  Local Lemma C_struct_layout_alg_enum_data_after_tag tag_it ul sl :
+    C_struct_layout_alg [("discriminant", it_layout tag_it); ("data", ul_layout ul)] = Some sl →
+    ly_size (it_layout tag_it) ≤ default 0%nat (offset_of sl.(sl_members) "data").
+  Proof.
+    intros Halg.
+    unfold C_struct_layout_alg in Halg.
+    destruct (decide (NoDup (field_names (C_struct_layout_alg_raw [("discriminant", it_layout tag_it); ("data", ul_layout ul)])))) as [Hnd|Hnd]; last discriminate.
+    destruct (decide (sum_list (ly_size <$> (C_struct_layout_alg_raw [("discriminant", it_layout tag_it); ("data", ul_layout ul)]).*2) ≤ max_int ISize)) as [Hle|Hle]; last discriminate.
+    inversion Halg; subst sl; clear Halg. simpl.
+    apply C_struct_layout_alg_raw_enum_data_after_tag.
+  Qed.
+
+  Local Lemma C_struct_layout_alg_enum_data_aligned tag_it ul sl :
+    C_struct_layout_alg [("discriminant", it_layout tag_it); ("data", ul_layout ul)] = Some sl →
+    (default 0%nat (offset_of sl.(sl_members) "data") `mod` ly_align ul)%nat = 0%nat.
+  Proof.
+    intros Halg.
+    unfold C_struct_layout_alg in Halg.
+    destruct (decide (NoDup (field_names (C_struct_layout_alg_raw [("discriminant", it_layout tag_it); ("data", ul_layout ul)])))) as [Hnd|Hnd]; last discriminate.
+    destruct (decide (sum_list (ly_size <$> (C_struct_layout_alg_raw [("discriminant", it_layout tag_it); ("data", ul_layout ul)]).*2) ≤ max_int ISize)) as [Hle|Hle]; last discriminate.
+    inversion Halg; subst sl; clear Halg. simpl.
+    apply C_struct_layout_alg_raw_enum_data_aligned.
+  Qed.
+
+  Local Lemma C_struct_layout_alg_enum_data_in_bounds tag_it ul sl :
+    C_struct_layout_alg [("discriminant", it_layout tag_it); ("data", ul_layout ul)] = Some sl →
+    (default 0%nat (offset_of sl.(sl_members) "data") + ly_size ul ≤ ly_size sl)%nat.
+  Proof.
+    intros Halg.
+    unfold C_struct_layout_alg in Halg.
+    destruct (decide (NoDup (field_names (C_struct_layout_alg_raw [("discriminant", it_layout tag_it); ("data", ul_layout ul)])))) as [Hnd|Hnd]; last discriminate.
+    destruct (decide (sum_list (ly_size <$> (C_struct_layout_alg_raw [("discriminant", it_layout tag_it); ("data", ul_layout ul)]).*2) ≤ max_int ISize)) as [Hle|Hle]; last discriminate.
+    inversion Halg; subst sl; clear Halg. simpl.
+    apply C_struct_layout_alg_raw_enum_data_in_bounds.
+  Qed.
+
+  Local Lemma pow_align_log_dvd a b :
+    (a ≤ b)%nat →
+    (2 ^ a | 2 ^ b)%nat.
+  Proof.
+    intros Hle.
+    exists (2 ^ (b - a))%nat.
+    rewrite -Nat.pow_add_r.
+    f_equal. lia.
+  Qed.
+
+  Local Lemma mod_pow_align_log a b (n : nat) :
+    (a ≤ b)%nat →
+    (n mod (2 ^ b))%nat = 0%nat →
+    (n mod (2 ^ a))%nat = 0%nat.
+  Proof.
+    intros Hle Hmod.
+    apply Nat.mod_divide.
+    { apply Nat.pow_nonzero. lia. }
+    apply Nat.mod_divide in Hmod; last apply Nat.pow_nonzero; last lia.
+    destruct Hmod as [k ->].
+    destruct (pow_align_log_dvd a b Hle) as [k' ->].
+    exists (k' * k)%nat. lia.
+  Qed.
+
+  Program Definition C_enum_layout_from_alg_results
+      (tag_it : int_type) (variants : list (var_name * layout))
+      (ul : union_layout) (sl : struct_layout)
+      (Hul : C_union_layout_alg variants = Some ul)
+      (Hsl : C_struct_layout_alg [("discriminant", it_layout tag_it); ("data", ul_layout ul)] = Some sl)
+      (Hwf : Forall (λ '(_, ly), layout_wf ly) variants) : enum_layout :=
+    let data_offset := default 0%nat (offset_of sl.(sl_members) "data") in
+    {| el_size := ly_size sl;
+       el_align_log := ly_align_log sl;
+       el_tag_it := tag_it;
+       el_data_offset := data_offset;
+       el_variants := variants |}.
+  Next Obligation.
+    intros. rewrite bool_decide_true; first done.
+    by eapply C_union_layout_alg_nodup.
+  Qed.
+  Next Obligation.
+    intros. apply sl_size.
+  Qed.
+  Next Obligation.
+    intros. eapply C_struct_layout_alg_wf. done.
+  Qed.
+  Next Obligation.
+    intros.
+    subst data_offset. by eapply C_struct_layout_alg_enum_data_after_tag.
+  Qed.
+  Next Obligation.
+    intros tag_it variants ul sl Hul Hsl Hwf data_offset.
+    apply Forall_forall.
+    intros [name [sz al]] Hel.
+    split; first exact (proj1 (Forall_forall _ _) Hwf (name, {| ly_size := sz; ly_align_log := al |}) Hel).
+    subst data_offset.
+    pose proof (C_struct_layout_alg_enum_data_aligned _ _ _ Hsl) as Hul_align.
+    rewrite /ly_align in Hul_align |- *.
+    replace (ly_align_log (name, {| ly_size := sz; ly_align_log := al |}).2) with al by done.
+    assert (Hdata : ((default 0 (offset_of (sl_members sl) "data") mod (2 ^ al))%nat = 0%nat)).
+    { eapply mod_pow_align_log; last exact Hul_align.
+      pose proof (proj1 (Forall_forall _ _) (C_union_layout_alg_variant_align_log_le _ _ Hul) (name, {| ly_size := sz; ly_align_log := al |}) Hel) as Hle.
+      exact Hle. }
+    rewrite -Nat2Z.inj_mod.
+    rewrite Hdata. done.
+  Qed.
+  Next Obligation.
+    intros tag_it variants ul sl Hul Hsl Hwf data_offset.
+    pose proof (C_union_layout_alg_variant_size_le _ _ Hul) as Hsize.
+    apply Forall_forall.
+    intros [name [sz al]] Hel.
+    pose proof (proj1 (Forall_forall _ _) Hsize (name, {| ly_size := sz; ly_align_log := al |}) Hel) as Hsize'.
+    subst data_offset.
+    pose proof (C_struct_layout_alg_enum_data_in_bounds _ _ _ Hsl) as Hbounds.
+    replace (ly_size (name, {| ly_size := sz; ly_align_log := al |}).2) with sz by done.
+    change (Nat.le sz (ly_size ul)) in Hsize'.
+    lia.
+  Qed.
+
+  Definition C_enum_layout_alg (tag_it : int_type) (variants : list (var_name * layout)) : option enum_layout :=
+    match C_union_layout_alg variants as x return C_union_layout_alg variants = x → option enum_layout with
+    | Some ul =>
+      fun Hul =>
+      match C_struct_layout_alg [("discriminant", it_layout tag_it); ("data", ul_layout ul)] as x
+          return C_struct_layout_alg [("discriminant", it_layout tag_it); ("data", ul_layout ul)] = x → option enum_layout with
+      | Some sl =>
+        fun Hsl =>
+          match decide (Forall (λ '(_, ly), layout_wf ly) variants) with
+          | left Hwf => Some (C_enum_layout_from_alg_results tag_it variants ul sl Hul Hsl Hwf)
+          | right _ => None
+          end
+      | None => fun _ => None
+      end eq_refl
+    | None => fun _ => None
+    end eq_refl.
+
+  Lemma C_enum_layout_from_alg_results_has_variants tag_it variants ul sl Hul Hsl Hwf :
+    el_has_variants (C_enum_layout_from_alg_results tag_it variants ul sl Hul Hsl Hwf) tag_it variants.
+  Proof.
+    split; done.
+  Qed.
+
+  Lemma C_enum_layout_alg_Some_inv tag_it variants el :
+    C_enum_layout_alg tag_it variants = Some el →
+    ∃ ul sl Hul Hsl Hwf,
+      el = C_enum_layout_from_alg_results tag_it variants ul sl Hul Hsl Hwf.
+  Proof.
+    unfold C_enum_layout_alg.
+    refine ((match C_union_layout_alg variants as ou return ∀ Hul : C_union_layout_alg variants = ou,
+      ((match ou as x return C_union_layout_alg variants = x → option enum_layout with
+        | Some ul =>
+          fun Hul =>
+          match C_struct_layout_alg [("discriminant", it_layout tag_it); ("data", ul_layout ul)] as x
+              return C_struct_layout_alg _ = x → option enum_layout with
+          | Some sl =>
+            fun Hsl =>
+              match decide (Forall (λ '(_, ly), layout_wf ly) variants) with
+              | left Hwf => Some (C_enum_layout_from_alg_results tag_it variants ul sl Hul Hsl Hwf)
+              | right _ => None
+              end
+          | None => fun _ => None
+          end eq_refl
+        | None => fun _ => None
+        end Hul) = Some el →
+        ∃ ul sl Hul Hsl Hwf, el = C_enum_layout_from_alg_results tag_it variants ul sl Hul Hsl Hwf) with
+      | Some ul => fun Hul => _
+      | None => fun _ => _
+      end) eq_refl).
+    - refine ((match C_struct_layout_alg [("discriminant", it_layout tag_it); ("data", ul_layout ul)] as os
+          return ∀ Hsl : C_struct_layout_alg _ = os,
+        ((match os as x return C_struct_layout_alg _ = x → option enum_layout with
+          | Some sl =>
+            fun Hsl =>
+              match decide (Forall (λ '(_, ly), layout_wf ly) variants) with
+              | left Hwf => Some (C_enum_layout_from_alg_results tag_it variants ul sl Hul Hsl Hwf)
+              | right _ => None
+              end
+          | None => fun _ => None
+          end Hsl) = Some el →
+          ∃ ul sl Hul Hsl Hwf, el = C_enum_layout_from_alg_results tag_it variants ul sl Hul Hsl Hwf) with
+        | Some sl => fun Hsl => _
+        | None => fun _ => _
+        end) eq_refl).
+      + destruct (decide (Forall (λ '(_, ly), layout_wf ly) variants)) as [Hwf|]; simpl; last done.
+        intros [= <-]. eexists _, _, _, _, _. done.
+      + done.
+    - done.
+  Qed.
+
+  Lemma C_enum_layout_alg_has_variants tag_it variants el :
+    C_enum_layout_alg tag_it variants = Some el →
+    el_has_variants el tag_it variants.
+  Proof.
+    intros (ul & sl & Hul & Hsl & Hwf & ->)%C_enum_layout_alg_Some_inv.
+    apply C_enum_layout_from_alg_results_has_variants.
+  Qed.
+
+  Lemma C_enum_layout_alg_align_in_bounds tag_it variants el :
+    Forall (λ '(_, ly), ly_align ly ≤ max_alloc_end_zero) variants →
+    C_enum_layout_alg tag_it variants = Some el →
+    ly_align el ≤ max_alloc_end_zero.
+  Proof.
+    intros Hvariants.
+    intros (ul & sl & Hul & Hsl & Hwf & ->)%C_enum_layout_alg_Some_inv.
+    simpl.
+    assert (Hvariants_nat : Forall (λ '(_, ly), ly_align ly ≤ Z.to_nat max_alloc_end_zero) variants).
+    { eapply Forall_impl; first exact Hvariants.
+      intros [name ly] Hly.
+      lia. }
+    assert (Hul_align : ly_align ul ≤ Z.to_nat max_alloc_end_zero).
+    { eapply (C_union_layout_alg_align_le variants ul (Z.to_nat max_alloc_end_zero)); [done | done |].
+      unfold_common_radium_defs. simpl. lia. }
+    assert (Htag : ly_align (it_layout tag_it) ≤ Z.to_nat max_alloc_end_zero).
+    { etrans; first apply IntType_align_le.
+      unfold_common_radium_defs; simpl. lia. }
+    assert (Hsl_align : ly_align sl ≤ Z.to_nat max_alloc_end_zero).
+    { eapply (C_struct_layout_alg_align_le _ sl (Z.to_nat max_alloc_end_zero)); first done.
+      - repeat constructor; done.
+      - unfold_common_radium_defs. simpl. lia. }
+    move: Hsl_align.
+    rewrite /ly_align/=.
+    lia.
+  Qed.
 End C_alg.
 
 (** A layout algorithm takes a syn_type and produces a layout for it, if possible.
@@ -728,12 +1160,14 @@ Class LayoutAlg : Type := {
     Forall (λ '(_, ly), ly_align ly ≤ max_alloc_end_zero) variants →
     enum_layout_alg en tag_it variants repr = Some el →
     ly_align el ≤ max_alloc_end_zero;
-  (* TODO: add requirements on repr *)
+  enum_layout_alg_repr_C en it variants :
+    enum_layout_alg en it variants EnumReprC = C_enum_layout_alg it variants;
 }.
 
 Program Definition LayoutAlg_C : LayoutAlg := {|
   struct_layout_alg _ fields _ := C_struct_layout_alg fields;
-  union_layout_alg _ variants _ := C_union_layout_alg variants; |}.
+  union_layout_alg _ variants _ := C_union_layout_alg variants;
+  enum_layout_alg _ tag_it variants _ := C_enum_layout_alg tag_it variants; |}.
 Next Obligation.
   intros.
   unfold sl_has_members. symmetry.
@@ -756,6 +1190,16 @@ Next Obligation.
 Qed.
 Next Obligation.
   simpl. done.
+Qed.
+Next Obligation.
+  intros. by apply C_enum_layout_alg_has_variants.
+Qed.
+Next Obligation.
+  simpl.
+  intros. by eapply C_enum_layout_alg_align_in_bounds.
+Qed.
+Next Obligation.
+  done.
 Qed.
 Global Instance LayoutAlg_inhabited : Inhabited LayoutAlg :=
   {| inhabitant := LayoutAlg_C |}.
