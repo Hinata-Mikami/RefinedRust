@@ -111,6 +111,21 @@ Proof. solve_decision. Defined.
 Global Instance enum_repr_inhabited : Inhabited enum_repr.
 Proof. exact (populate EnumReprRust). Qed.
 
+Record enum_layout_spec_raw_gen (A : Set) : Set := mk_els_raw
+  { raw_els_name : string;
+    (* This is fixed (and not something chooseable by the layout algorithm), because Rust's MIR already has this type fixed. *)
+    raw_els_tag_it : int_type;
+    raw_els_variants : list (string * A);
+    raw_els_repr : enum_repr;
+    (* This is additional information that doesn't affect the layout algorithm, but just the operational behavior of enum operations *)
+    raw_els_tag_int : list (var_name * Z);
+  }.
+Global Arguments raw_els_name {_} _.
+Global Arguments raw_els_tag_it {_} _.
+Global Arguments raw_els_variants {_} _.
+Global Arguments raw_els_repr {_} _.
+Global Arguments raw_els_tag_int {_} _.
+
 (** ** Syntactic types *)
 (** Syntactic types describe primitive types relevant to the operational semantics *before* layouting.
   They are not to be confused with proper semantic types.
@@ -138,7 +153,7 @@ Inductive syn_type : Set :=
   (* we use this mostly to refer to untyped chunks of memory at runtime *)
   | LiteralSynType (ly : layout)
   (* enums *)
-  | EnumSynType (en : string) (tag_it : int_type) (variant_list : list (string * syn_type)) (repr : enum_repr)
+  | EnumSynType (els : enum_layout_spec_raw_gen syn_type)
   (* unions *)
   | UnionSynType (un : string) (variant_list : list (string * syn_type)) (repr : union_repr)
   (* char *)
@@ -167,12 +182,13 @@ Proof.
     | LiteralSynType ly1, LiteralSynType ly2 => cast_if (decide (ly1 = ly2))
     | UnsafeCell st1, UnsafeCell st2 =>
         cast_if (go st1 st2)
-    | EnumSynType en1 tag1 vars1 repr1, EnumSynType en2 tag2 vars2 repr2 =>
-        if decide (repr1 = repr2) then
-        if (decide (en1 = en2)) then
-          cast_if_and (decide (tag1 = tag2))
-            (List.list_eq_dec _ vars1 vars2) else right _
-        else right _
+    | EnumSynType els1, EnumSynType els2 =>
+        if decide (els1.(raw_els_repr) = els2.(raw_els_repr)) then
+        if decide (els1.(raw_els_name) = els2.(raw_els_name)) then
+        if decide (els1.(raw_els_tag_it) = els2.(raw_els_tag_it)) then
+        if List.list_eq_dec _ els1.(raw_els_variants) els2.(raw_els_variants) then
+        if List.list_eq_dec _ els1.(raw_els_tag_int) els2.(raw_els_tag_int) then left _ else right _
+        else right _ else right _ else right _ else right _
     | UnionSynType un1 vars1 repr1, UnionSynType un2 vars2 repr2 =>
         if decide (repr1 = repr2) then
         cast_if_and (decide (un1 = un2))
@@ -183,7 +199,9 @@ Proof.
     | _, _ => right _
     end);
     try (clear go; abstract intuition congruence).
-    all: unshelve eapply prod_eq_dec; exact go.
+    all: try (destruct els1, els2; simpl in *; subst; reflexivity).
+    all: try solve_decision.
+    all: unshelve eapply prod_eq_dec; [solve_decision | exact go].
 Defined.
 
 Lemma syn_type_strong_ind (P : syn_type → Prop) :
@@ -199,9 +217,9 @@ Lemma syn_type_strong_ind (P : syn_type → Prop) :
   (∀ st : syn_type, P st → P (UnsafeCell st)) →
   (∀ st : syn_type, P st → P (UntypedSynType st)) →
   (∀ ly : layout, P (LiteralSynType ly)) →
-  (∀ (en : string) (tag_it : int_type) (variant_list : list (string * syn_type)) repr,
-    Forall (λ '(_, st), P st) variant_list →
-    P (EnumSynType en tag_it variant_list repr)) →
+  (∀ (els : enum_layout_spec_raw_gen syn_type),
+    Forall (λ '(_, st), P st) els.(raw_els_variants) →
+    P (EnumSynType els)) →
   (∀ (un : string) (variant_list : list (string * syn_type)) repr,
     Forall (λ '(_, st), P st) variant_list →
     P (UnionSynType un variant_list repr)) →
@@ -224,7 +242,7 @@ Proof.
   - by apply Huntyped.
   - apply Hlayout.
   - apply Henum.
-    induction variant_list as [ | [f st] H IH]; first done.
+    induction (raw_els_variants els) as [ | [f st] H IH]; first done.
     econstructor; first apply F. apply IH.
   - apply Hunion.
     induction variant_list as [ | [f st] H IH]; first done.
@@ -272,13 +290,22 @@ Record enum_layout_spec : Set := mk_els
       Forall (λ '(_, tag), int_elem_of_it tag (els_tag_it : int_type)) els_tag_int;
   }.
 
+Definition enum_layout_spec_raw (els : enum_layout_spec) : enum_layout_spec_raw_gen syn_type :=
+  @mk_els_raw syn_type els.(els_name) els.(els_tag_it) els.(els_variants) els.(els_repr) els.(els_tag_int).
+
 Definition syn_type_of_els (els : enum_layout_spec) : syn_type :=
-  EnumSynType els.(els_name) els.(els_tag_it) els.(els_variants) els.(els_repr).
+    EnumSynType (enum_layout_spec_raw els).
 Coercion syn_type_of_els : enum_layout_spec >-> syn_type.
 
 Definition els_lookup_tag (els : enum_layout_spec) (f : string) : Z :=
   let discriminant_map : gmap _ _ := list_to_map (els.(els_tag_int)) in
   default 0%Z (discriminant_map !! f).
+
+Definition enum_tag_int_wf (it : int_type) (variants : list (string * syn_type)) (tag_int : list (var_name * Z)) : Prop :=
+  tag_int.*1 = variants.*1 ∧
+  NoDup tag_int.*1 ∧
+  NoDup tag_int.*2 ∧
+  Forall (λ '(_, tag), int_elem_of_it tag it) tag_int.
 
 (* TODO: generalize to permutations + subset? (it should work even when we ignore some named fields, I think, and reordering is allowed) *)
 Definition sl_has_members (sl : struct_layout) (fields : list (var_name * layout)) :=
@@ -842,12 +869,12 @@ Fixpoint use_layout_alg_def `{!LayoutAlg} (synty : syn_type) : option layout :=
         Some (variant_name, ly)) variants;
       ul ← union_layout_alg un variant_lys repr;
       Some (ul_layout ul)
-  | EnumSynType en tag variants repr =>
+  | EnumSynType els =>
       variant_lys ← list_map_option (λ '(variant_name, variant_spec),
         ly ← use_layout_alg_def variant_spec;
-        Some (variant_name, ly)) variants;
-      el ← enum_layout_alg en tag variant_lys repr;
-      Some (layout_of_enum el)
+        Some (variant_name, ly)) els.(raw_els_variants);
+      el ← enum_layout_alg els.(raw_els_name) els.(raw_els_tag_it) variant_lys els.(raw_els_repr);
+      if decide (enum_tag_int_wf els.(raw_els_tag_it) els.(raw_els_variants) els.(raw_els_tag_int)) then Some (layout_of_enum el) else None
   | UntypedSynType st =>
       use_layout_alg_def st
   | LiteralSynType ly =>
@@ -1077,7 +1104,12 @@ Proof.
   intros Hly.
   unfold use_enum_layout_alg in Hly. simplify_option_eq.
   unfold_layout_alg. simpl. fold use_layout_alg_def.
-  simplify_option_eq; eauto.
+  rewrite Heqo /= Hly /= decide_True //.
+  rewrite /enum_tag_int_wf /=. split_and!.
+  - apply els_tag_int_agree.
+  - rewrite (els_tag_int_agree els). apply els_variants_nodup.
+  - apply els_tag_int_nodup.
+  - apply els_tag_int_wf3.
 Qed.
 Lemma use_layout_alg_enum_Some_inv `{!LayoutAlg} (els : enum_layout_spec) ly :
   use_layout_alg els = Some ly →
@@ -1086,7 +1118,9 @@ Proof.
   intros Hly.
   unfold_layout_alg. simpl in Hly.
   apply bind_Some in Hly as (vars & Hvars & Hul).
-  apply bind_Some in Hul as (el & Hel & [= <-]).
+  apply bind_Some in Hul as (el & Hel & Hul).
+  case_decide; last done.
+  injection Hul as <-.
   eexists _. unfold use_enum_layout_alg. simpl.
   unfold_layout_alg; simpl.
   rewrite Hvars /= Hel //.
@@ -1419,31 +1453,35 @@ Proof.
   eapply Forall2_impl; first done.
   intros [] []. intros (fly & ? & [= <- <-])%bind_Some. done.
 Qed.
-Lemma syn_type_has_layout_enum_inv `{!LayoutAlg} ly name it variants repr :
-  syn_type_has_layout (EnumSynType name it variants repr) ly →
+Lemma syn_type_has_layout_enum_inv `{!LayoutAlg} ly (els : enum_layout_spec_raw_gen syn_type) :
+  syn_type_has_layout (EnumSynType els) ly →
   ∃ el (variant_lys : list (string * layout)),
-    enum_layout_alg name it variant_lys repr = Some el ∧
+    enum_layout_alg els.(raw_els_name) els.(raw_els_tag_it) variant_lys els.(raw_els_repr) = Some el ∧
     ly = layout_of_enum el ∧
-    Forall2 (λ '(fname, fst) '(fname', fly), fname = fname' ∧ syn_type_has_layout fst fly) variants variant_lys.
+    Forall2 (λ '(fname, fst) '(fname', fly), fname = fname' ∧ syn_type_has_layout fst fly) els.(raw_els_variants) variant_lys ∧
+    enum_tag_int_wf els.(raw_els_tag_it) els.(raw_els_variants) els.(raw_els_tag_int).
 Proof.
   simpl. rewrite /syn_type_has_layout/=.
   unfold_layout_alg.
   intros (variant_lys & Hvariants & Ha)%bind_Some.
   apply list_map_option_alt in Hvariants.
-  apply bind_Some in Ha as (el & Hel & [= <-]).
+  apply bind_Some in Ha as (el & Hel & Ha).
+  case_decide as Htag; last done.
+  injection Ha as <-.
   exists el, variant_lys. split_and!; try done.
   eapply Forall2_impl; first done.
   intros [] [].
   intros (ly & Halg & [= -> ->])%bind_Some.
   eauto.
 Qed.
-Lemma syn_type_has_layout_enum `{!LayoutAlg} name (it : int_type) variants variants' repr ly el :
-  Forall2 (λ '(fname, fst) '(fname', fly), fname = fname' ∧ syn_type_has_layout fst fly) variants variants' →
-  enum_layout_alg name it variants' repr = Some el →
+Lemma syn_type_has_layout_enum `{!LayoutAlg} (els : enum_layout_spec_raw_gen syn_type) variants' ly el :
+  Forall2 (λ '(fname, fst) '(fname', fly), fname = fname' ∧ syn_type_has_layout fst fly) els.(raw_els_variants) variants' →
+  enum_layout_alg els.(raw_els_name) els.(raw_els_tag_it) variants' els.(raw_els_repr) = Some el →
+  enum_tag_int_wf els.(raw_els_tag_it) els.(raw_els_variants) els.(raw_els_tag_int) →
   ly = layout_of_enum el →
-  syn_type_has_layout (EnumSynType name it variants repr) ly.
+  syn_type_has_layout (EnumSynType els) ly.
 Proof.
-  intros Ha Hb ->.
+  intros Ha Hb Htag ->.
   rewrite /syn_type_has_layout.
   unfold_layout_alg.
   eapply bind_Some. exists variants'.
@@ -1452,7 +1490,7 @@ Proof.
      unfold_layout_alg.
      fold use_layout_alg_def.
      intros [] [] [-> ->]. done. }
-  rewrite Hb/=//.
+  rewrite Hb/=//. by rewrite decide_True.
 Qed.
 
 (** Well-formedness: the size is divisible by the alignment *)
@@ -1665,8 +1703,9 @@ Proof.
     apply list_map_option_alt in Halgs.
     rename select (enum_layout_alg _ _ _ _ = _) into Henum.
     eapply enum_layout_alg_align_in_bounds; last done.
-    clear -IH Halgs.
-    induction mems as [ | [n ly] mems IH'] in variant_list, IH, Halgs |-*; simpl in *.
+    move: tag_it Halgs. generalize (raw_els_variants en) as variants.
+    intros variants IH Halgs.
+    induction mems as [ | [n ly] mems IH'] in variants, IH, Halgs |-*; simpl in *.
     { econstructor. }
     apply Forall2_cons_inv_r in Halgs as ([n' st] & fields' & Ha & Hb & ->).
     apply bind_Some in Ha as (ly' & Halg & [= -> ->]).
@@ -1814,10 +1853,11 @@ Fixpoint use_op_alg `{!LayoutAlg} (st : syn_type) : option op_type :=
   | LiteralSynType ly =>
       ly ← use_layout_alg (LiteralSynType ly);
       Some $ UntypedOp ly
-  | EnumSynType _ _ _ _ =>
-      (* TODO this does not match Rust semantics -- ops on enums in Rust enforce validity *)
-      ly ← use_layout_alg st;
-      Some $ UntypedOp ly
+  | EnumSynType els =>
+      variant_lys ← list_map_option (λ '(name, st), ly ← use_layout_alg st; Some (name, ly)) els.(raw_els_variants);
+      el ← enum_layout_alg els.(raw_els_name) els.(raw_els_tag_it) variant_lys els.(raw_els_repr);
+      variant_ots ← list_map_option (λ '(name, st), ot ← use_op_alg st; Some (name, ot)) els.(raw_els_variants);
+      if decide (enum_tag_int_wf els.(raw_els_tag_it) els.(raw_els_variants) els.(raw_els_tag_int)) then Some $ EnumOp el variant_ots els.(raw_els_tag_int) else None
   | UnionSynType _ _ _ =>
       ly ← use_layout_alg st;
       Some $ UntypedOp ly
@@ -1870,22 +1910,34 @@ Proof.
   intros [] ?. done.
 Qed.
 
-Lemma use_op_alg_enum `{!LayoutAlg} name it variants ly ot repr :
-  use_layout_alg (EnumSynType name it variants repr) = Some ly →
-  ot = (UntypedOp ly) →
-  use_op_alg (EnumSynType name it variants repr) = Some ot.
+Lemma use_op_alg_enum `{!LayoutAlg} (els : enum_layout_spec_raw_gen syn_type) variant_lys el variant_ots ot :
+  list_map_option (λ '(name, st), ly ← use_layout_alg st; Some (name, ly)) els.(raw_els_variants) = Some variant_lys →
+  enum_layout_alg els.(raw_els_name) els.(raw_els_tag_it) variant_lys els.(raw_els_repr) = Some el →
+  list_map_option (λ '(name, st), ot ← use_op_alg st; Some (name, ot)) els.(raw_els_variants) = Some variant_ots →
+  enum_tag_int_wf els.(raw_els_tag_it) els.(raw_els_variants) els.(raw_els_tag_int) →
+  ot = EnumOp el variant_ots els.(raw_els_tag_int) →
+  use_op_alg (EnumSynType els) = Some ot.
 Proof.
-  intros Halg ->.
-  rewrite /use_op_alg Halg//.
+  intros Hlys Hel Hots Htag ->.
+  rewrite /use_op_alg Hlys /= Hel /= Hots /= decide_True //.
 Qed.
-Lemma use_op_alg_els `{!LayoutAlg} els sl ot :
+Lemma use_op_alg_els `{!LayoutAlg} els sl ots ot :
   use_enum_layout_alg els = Some sl →
-  ot = (UntypedOp (layout_of_enum sl)) →
+  list_map_option (λ '(name, st), ot ← use_op_alg st; Some (name, ot)) els.(els_variants) = Some ots →
+  ot = EnumOp sl ots els.(els_tag_int) →
   use_op_alg (syn_type_of_els els) = Some ot.
 Proof.
-  intros Halg ->.
-  eapply use_op_alg_enum; last done.
-  by eapply use_enum_layout_alg_Some_inv.
+  intros (variant_lys & Halg & Hlys)%use_enum_layout_alg_inv Hots ->.
+  rewrite /syn_type_of_els /enum_layout_spec_raw /use_op_alg /=. fold use_op_alg.
+  assert (list_map_option (λ '(name, st), use_layout_alg st ≫= λ ly : layout, Some (name, ly)) (els_variants els) = Some variant_lys) as ->.
+  { apply list_map_option_alt. eapply Forall2_impl; first done.
+    intros [] [] [-> Hst]. rewrite /syn_type_has_layout in Hst. by rewrite Hst. }
+  rewrite /= Halg /= Hots /= decide_True //.
+  rewrite /enum_tag_int_wf /=. split_and!.
+  - apply els_tag_int_agree.
+  - rewrite (els_tag_int_agree els). apply els_variants_nodup.
+  - apply els_tag_int_nodup.
+  - apply els_tag_int_wf3.
 Qed.
 
 Lemma use_op_alg_union `{!LayoutAlg} name variants ly ot repr :
@@ -1991,7 +2043,7 @@ Proof.
   - unfold_layout_alg. by apply IHst.
   - done.
   - unfold_layout_alg. done.
-  - done.
+  - unfold_layout_alg. rewrite /use_layout_alg_def /=. rewrite Heqo /= Heqo0 /= decide_True //.
   - done.
   - unfold_layout_alg. done.
 Qed.
@@ -2048,7 +2100,7 @@ Lemma syn_type_has_layout_op_alg `{!LayoutAlg} st ly :
   syn_type_has_layout st ly →
   ∃ ot, use_op_alg st = Some ot ∧ ot_layout ot = ly.
 Proof.
-  induction st as [ it | | | | sn fields IH | | st IH len | st IH | st IH | ly' | en tag_it variant_list IH | un variant_list IH | ] using syn_type_strong_ind in ly |-*.
+  induction st as [ it | | | | sn fields IH | | st IH len | st IH | st IH | ly' | en IH | un variant_list IH | ] using syn_type_strong_ind in ly |-*.
   - intros ->%syn_type_has_layout_int_inv.
     exists (IntOp it). split; last done. done.
   - intros ->%syn_type_has_layout_bool_inv.
@@ -2080,10 +2132,24 @@ Proof.
     rewrite /use_op_alg.
     apply bind_Some. eexists. split; last done.
     by apply syn_type_has_layout_literal.
-  - intros Halg. exists (UntypedOp ly).
-    split; last done.
-    rewrite /use_op_alg.
-    rewrite Halg. done.
+  - intros (el & variant_lys & Halg & -> & Hvariants & Htag)%syn_type_has_layout_enum_inv.
+    assert (∃ variant_ots, Forall2 (λ '(name, st) '(name', ot), name = name' ∧ use_op_alg st = Some ot) (raw_els_variants en) variant_ots) as (variant_ots & Hots).
+    { clear -IH Hvariants.
+      induction Hvariants as [|[name st] [name' ly] variants variant_lys [<- Hst] Hvariants IHvars] in IH |-*.
+      { exists []. constructor. }
+      inversion IH as [|?? Hst_IH IH']; subst.
+      apply Hst_IH in Hst as (ot & Hot & <-).
+      destruct (IHvars IH') as (ots & Hots).
+      exists ((name, ot) :: ots). constructor; done. }
+    exists (EnumOp el variant_ots (raw_els_tag_int en)). split; last done.
+    rewrite /use_op_alg. fold use_op_alg.
+    apply bind_Some. exists variant_lys. split.
+    { apply list_map_option_alt. eapply Forall2_impl; first done.
+      intros [] [] [-> Hst]. rewrite /syn_type_has_layout in Hst. by rewrite Hst. }
+    rewrite Halg /=.
+    apply bind_Some. exists variant_ots. split; last by rewrite decide_True.
+    apply list_map_option_alt. eapply Forall2_impl; first done.
+    intros [] [] [-> Hot]. by rewrite Hot.
     (* TODO: maybe we should at least make the read of the top-level struct typed? *)
     (*
     intros Halg%syn_type_has_layout_enum_inv.
@@ -2120,7 +2186,7 @@ Lemma use_op_alg_wf `{!LayoutAlg} st ot :
   use_op_alg st = Some ot →
   op_type_wf ot.
 Proof.
-  induction st as [ | | | | sn fields repr IH | | | | | | en tag_it variants repr IH | un variants repr IH | ] in ot |-* using syn_type_strong_ind; rewrite /use_op_alg; simpl; fold use_op_alg; try naive_solver.
+  induction st as [ | | | | sn fields repr IH | | | | | | en IH | un variants repr IH | ] in ot |-* using syn_type_strong_ind; rewrite /use_op_alg; simpl; fold use_op_alg; try naive_solver.
   - intros (sl & Halg & Hfields)%bind_Some.
     apply bind_Some in Hfields as (ots & Hots & [= <-]). simpl.
     apply use_struct_layout_alg_inv in Halg as (field_lys & Halg & Hfields).
@@ -2144,7 +2210,42 @@ Proof.
   - intros (ly0 & Halg & [= <-])%bind_Some. done.
   - intros (ly0 & Halg & [= <-])%bind_Some. done.
   - intros (ly0 & Halg & [= <-])%bind_Some. done.
-  - intros (ly0 & Halg & [= <-])%bind_Some. done.
+  - intros (variant_lys & Hlys & Henum)%bind_Some.
+    apply bind_Some in Henum as (el & Hel & Hots_tag).
+    apply bind_Some in Hots_tag as (variant_ots & Hots & Htag_eq).
+    case_decide as Htag; last done.
+    injection Htag_eq as <-. simpl.
+    rewrite /enum_tag_int_wf in Htag. destruct Htag as (Hnames & Hnodup_names & Hnodup_tags & Hrange).
+    apply enum_layout_alg_has_variants in Hel as [Hel_tag Hvariants].
+    apply list_map_option_alt in Hlys.
+    apply list_map_option_alt in Hots.
+    assert (Hlys_names : variant_lys.*1 = (raw_els_variants en).*1).
+    { clear -Hlys. induction Hlys as [|[name st] [name' ly] variants variant_lys Hly Hlys IHlys]; simpl; first done.
+      apply bind_Some in Hly as (ly' & Hly & [= <- <-]). by f_equal. }
+    assert (Hots_names : variant_ots.*1 = (raw_els_variants en).*1).
+    { clear -Hots. induction Hots as [|[name st] [name' ot'] variants variant_ots Hot Hots IHots]; simpl; first done.
+      apply bind_Some in Hot as (ot'' & Hot & [= <- <-]). by f_equal. }
+    split_and!.
+    + rewrite /enum_variant_names -Hvariants Hots_names Hlys_names //.
+    + rewrite /enum_variant_names -Hvariants Hnames Hlys_names //.
+    + done.
+    + change (Forall (λ tag : string * Z, int_elem_of_it tag.2 el.(el_tag_it)) (raw_els_tag_int en)).
+      rewrite Hel_tag. eapply Forall_impl; first exact Hrange.
+      intros [name tag] Htag'. exact Htag'.
+    + rewrite -Forall_Forall_cb Forall_forall.
+      intros [name ot'] Hin.
+      apply list_elem_of_lookup_1 in Hin as [i Hot_lookup].
+      eapply Forall2_lookup_r in Hots as ([name0 st] & Hraw_lookup & Hot); last done.
+      apply bind_Some in Hot as (ot'' & Hot & [= <- <-]).
+      eapply Forall2_lookup_l in Hlys as ([name1 ly] & Hvariant_lookup & Hly); last done.
+      apply bind_Some in Hly as (ly' & Hly & [= <- <-]).
+      exists ly'. split.
+      { apply enum_variant_lookup_is_Some. rewrite -Hvariants. by eapply list_elem_of_lookup_2. }
+      split.
+      * rewrite Forall_forall in IH.
+        exact (IH (name0, st) (list_elem_of_lookup_2 _ _ _ Hraw_lookup) ot'' Hot).
+      * pose proof (use_op_alg_layout_alg _ _ Hot) as Hot_layout.
+        rewrite /syn_type_has_layout in Hly. congruence.
   - intros (ly0 & Halg & [= <-])%bind_Some. done.
 Qed.
 
