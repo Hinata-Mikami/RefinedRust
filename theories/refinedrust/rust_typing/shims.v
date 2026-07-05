@@ -71,7 +71,7 @@ Section def.
     TypeContractive (λ ty, core_marker_PhantomData_ty T_rt <TY> (T ty) <INST!>).
   Proof.
     intros ?.
-    apply ex_inv_def_contractive.
+    apply ex_plain_t_contr.
     - unfold core_marker_PhantomData_inv. simpl.
       constructor.
       + simpl. apply _.
@@ -84,7 +84,7 @@ Section def.
     TypeNonExpansive (λ ty, core_marker_PhantomData_ty T_rt <TY> (T ty) <INST!>).
   Proof.
     intros ?.
-    apply ex_inv_def_ne.
+    apply ex_plain_t_ne.
     - unfold core_marker_PhantomData_inv. simpl.
       constructor.
       + simpl. apply _.

@@ -1,4 +1,4 @@
-From refinedrust Require Import type programs.
+From refinedrust Require Import type programs lftmor.
 From refinedrust Require Import options.
 
 Import EqNotations.
@@ -20,8 +20,6 @@ Import EqNotations.
 Section mutual_fixpoint_defs.
   Context `{!typeGS Σ}.
 
-  Definition mut_types (rts : list RT) : Type := hlist type rts.
-
   Definition mut_typeO (rts : list RT) : ofe :=
     hlistO (λ rt : RT, typeO (rt:=rt)) rts.
 
@@ -32,23 +30,6 @@ Section mutual_fixpoint_defs.
 
   Definition mut_type_fun (rts : list RT) : Type :=
     mut_types rts → mut_types rts.
-
-
-  Definition mut_component {rts : list RT} (default_rt : RT)
-      (default : type default_rt) (tys : mut_types rts) (i : nat) :
-      type (lnth default_rt rts i) :=
-    hnth default tys i.
-
-  Definition mut_type_project_def {rts : list RT} (tys : mut_types rts)
-      {rt : RT} `{!Inhabited (RT_xt rt)} (i : nat)
-      (Hlook : rts !! i = Some rt) : type rt :=
-    rew [type] (lookup_lnth rts rt i rt Hlook) in
-      mut_component rt type_inhabitant tys i.
-  Definition mut_type_project_aux : seal (@mut_type_project_def). Proof. by eexists. Qed.
-  Definition mut_type_project := mut_type_project_aux.(unseal).
-  Definition mut_type_project_unfold : @mut_type_project = @mut_type_project_def :=
-    mut_type_project_aux.(seal_eq).
-  Global Arguments mut_type_project {_} _ {_} {_} _ _.
 
   Definition mut_own_shr_of_type {rt : RT} (ty : type rt) :
       prodO (thread_id -d> rt -d> metadataO -d> val -d> iPropO Σ)
@@ -1775,17 +1756,59 @@ Section rules.
   Global Existing Instance mut_eqtype_mut_fixpoint_r_inst | 6.
 End rules.
 
-Section mut_type_contractiveness_instances.
+Section decompose_mut_type_contractive.
   Context `{!typeGS Σ}.
 
-  (** Ergonomic contractiveness layer for mutual recursive type functors.
+  (** Decompose [MutTypeContractive]/[MutTypeNonExpansive] over [mut_types _ → mut_types _] functors into [MutHTypeContractive]/[MutHTypeNonExpansive] *)
 
-      [MutTypeContractive] is intentionally stated over the whole SCC, because
-      the guarded fixpoint construction needs aggregate lifecycle stabilization
-      facts for [F (F tys)] versus [F tys].  The classes below decompose the
-      non-lifecycle obligations by output component; lifecycle stabilization is
-      supplied separately by the whole-SCC [LftMorphism F] premise.
-   *)
+  Class MutHTypeContractive {rts rts'}
+      (F : mut_type_fun rts) (G : mut_types rts → mut_types rts') : Type := {
+    mut_htype_ctr_syn_type : ∀ tys tys', HTypeSynTypeEq (G tys) (G tys');
+    mut_htype_ctr_sidecond : ∀ tys tys',
+      HTypeSynTypeEq tys tys' → HTypeSidecondEq (G tys) (G tys');
+    mut_htype_ctr_has_op_type : ∀ tys tys', HTypeHasOpTypeEq (G tys) (G tys');
+    mut_htype_ctr_dist : ∀ n tys tys',
+      HTypeDist2 n tys tys' → HTypeDist n (G tys) (G tys');
+    mut_htype_ctr_dist2 : ∀ n tys tys',
+      HTypeDistLater2 n tys tys' → HTypeDist2 n (G tys) (G tys');
+  }.
+
+  Class MutHTypeNonExpansive {rts rts'}
+      (G : mut_types rts → mut_types rts') : Type := {
+    mut_htype_ne_dist : ∀ n tys tys',
+      HTypeDist n tys tys' → HTypeDist n (G tys) (G tys');
+    mut_htype_ne_dist2 : ∀ n tys tys',
+      HTypeDist2 n tys tys' → HTypeDist2 n (G tys) (G tys');
+  }.
+
+
+  Global Instance mut_type_ne_of_htype {rts} (F : mut_type_fun rts) :
+    MutHTypeNonExpansive F → MutTypeNonExpansive F.
+  Proof.
+    intros HF. constructor.
+    - apply mut_htype_ne_dist.
+    - apply mut_htype_ne_dist2.
+  Qed.
+
+  Global Instance mut_type_contractive_of_htype {rts} (F : mut_type_fun rts) :
+    LftMorphism F →
+    MutHTypeContractive F F → MutTypeContractive F.
+  Proof.
+    intros Hlft HF. constructor.
+    - exact Hlft.
+    - apply mut_htype_ctr_syn_type.
+    - apply mut_htype_ctr_sidecond.
+    - apply mut_htype_ctr_has_op_type.
+    - apply mut_htype_ctr_dist.
+    - apply mut_htype_ctr_dist2.
+  Qed.
+End decompose_mut_type_contractive.
+
+Section decompose_mut_htype_contractive.
+  Context `{!typeGS Σ}.
+
+  (** Decompose [MutHTypeContractive]/[MutHTypeNonExpansive] into componentwise contractiveness/non-expansiveness. *)
+
   Class MutComponentContractive {rts rt}
       (F : mut_type_fun rts) (G : mut_types rts → type rt) : Type := {
     mut_comp_ctr_syn_type : ∀ tys tys' m,
@@ -1800,18 +1823,6 @@ Section mut_type_contractiveness_instances.
       HTypeDistLater2 n tys tys' → TypeDist2 n (G tys) (G tys');
   }.
 
-  Class MutHTypeContractive {rts rts'}
-      (F : mut_type_fun rts) (G : mut_types rts → mut_types rts') : Type := {
-    mut_htype_ctr_syn_type : ∀ tys tys', HTypeSynTypeEq (G tys) (G tys');
-    mut_htype_ctr_sidecond : ∀ tys tys',
-      HTypeSynTypeEq tys tys' → HTypeSidecondEq (G tys) (G tys');
-    mut_htype_ctr_has_op_type : ∀ tys tys', HTypeHasOpTypeEq (G tys) (G tys');
-    mut_htype_ctr_dist : ∀ n tys tys',
-      HTypeDist2 n tys tys' → HTypeDist n (G tys) (G tys');
-    mut_htype_ctr_dist2 : ∀ n tys tys',
-      HTypeDistLater2 n tys tys' → HTypeDist2 n (G tys) (G tys');
-  }.
-
   Class MutComponentNonExpansive {rts rt}
       (G : mut_types rts → type rt) : Type := {
     mut_comp_ne_dist : ∀ n tys tys',
@@ -1820,16 +1831,12 @@ Section mut_type_contractiveness_instances.
       HTypeDist2 n tys tys' → TypeDist2 n (G tys) (G tys');
   }.
 
-  Class MutHTypeNonExpansive {rts rts'}
-      (G : mut_types rts → mut_types rts') : Type := {
-    mut_htype_ne_dist : ∀ n tys tys',
-      HTypeDist n tys tys' → HTypeDist n (G tys) (G tys');
-    mut_htype_ne_dist2 : ∀ n tys tys',
-      HTypeDist2 n tys tys' → HTypeDist2 n (G tys) (G tys');
-  }.
-
   Global Instance mut_htype_ne_nil {rts} :
     MutHTypeNonExpansive (λ _ : mut_types rts, +[]).
+  Proof. constructor; intros; constructor. Qed.
+
+  Global Instance mut_htype_contractive_nil {rts} (F : mut_type_fun rts) :
+    MutHTypeContractive F (λ _ : mut_types rts, +[]).
   Proof. constructor; intros; constructor. Qed.
 
   Global Instance mut_htype_ne_cons {rts rt rts'}
@@ -1845,19 +1852,6 @@ Section mut_type_contractiveness_instances.
     - eapply mut_comp_ne_dist2; done.
     - eapply mut_htype_ne_dist2; done.
   Qed.
-
-  Global Instance mut_type_ne_of_htype {rts} (F : mut_type_fun rts) :
-    MutHTypeNonExpansive F → MutTypeNonExpansive F.
-  Proof.
-    intros HF. constructor.
-    - apply mut_htype_ne_dist.
-    - apply mut_htype_ne_dist2.
-  Qed.
-
-  Global Instance mut_htype_contractive_nil {rts} (F : mut_type_fun rts) :
-    MutHTypeContractive F (λ _ : mut_types rts, +[]).
-  Proof. constructor; intros; constructor. Qed.
-
   Global Instance mut_htype_contractive_cons {rts rt rts'}
       (F : mut_type_fun rts)
       (G : mut_types rts → type rt)
@@ -1878,43 +1872,14 @@ Section mut_type_contractiveness_instances.
     - eapply mut_comp_ctr_dist2; done.
     - eapply mut_htype_ctr_dist2; done.
   Qed.
+End decompose_mut_htype_contractive.
 
-  Global Instance mut_type_contractive_of_htype {rts} (F : mut_type_fun rts) :
-    LftMorphism F →
-    MutHTypeContractive F F → MutTypeContractive F.
-  Proof.
-    intros Hlft HF. constructor.
-    - exact Hlft.
-    - apply mut_htype_ctr_syn_type.
-    - apply mut_htype_ctr_sidecond.
-    - apply mut_htype_ctr_has_op_type.
-    - apply mut_htype_ctr_dist.
-    - apply mut_htype_ctr_dist2.
-  Qed.
+Section decompose_mut_component_contractive.
+  Context `{!typeGS Σ}.
 
-  Local Lemma TypeDist_trans {rt} n (ty1 ty2 ty3 : type rt) :
-    TypeDist n ty1 ty2 → TypeDist n ty2 ty3 → TypeDist n ty1 ty3.
-  Proof.
-    intros H12 H23. constructor.
-    - intros m. etrans; [apply H12 | apply H23].
-    - etrans; [apply H12 | apply H23].
-    - intros. etrans; [apply H12 | apply H23].
-    - intros. etrans; [apply H12 | apply H23].
-  Qed.
+  (** Decompose [MutComponentContractive]/[MutComponentNonExpansive] pointwise over the input functor,
+    so that we can reduce to ordinary [TypeContractive]/[TypeNonExpansive] facts. *)
 
-  Local Lemma TypeDist2_trans {rt} n (ty1 ty2 ty3 : type rt) :
-    TypeDist2 n ty1 ty2 → TypeDist2 n ty2 ty3 → TypeDist2 n ty1 ty3.
-  Proof.
-    intros H12 H23. constructor.
-    - intros m. etrans; [apply H12 | apply H23].
-    - etrans; [apply H12 | apply H23].
-    - intros. etrans; [apply H12 | apply H23].
-    - intros. etrans; [apply H12 | apply H23].
-  Qed.
-
-  (** Pointwise input decomposition.  The [cons] constructor stores the unary
-      [TypeContractive] evidence for the head coordinate and recurses on the
-      tail, so the bridge to [MutComponentContractive] can destruct it. *)
   Inductive MutComponentPointwiseNonExpansive :
       ∀ {rts rt}, (mut_types rts → type rt) → Type :=
   | mut_component_pointwise_ne_nil {rt}
@@ -2042,117 +2007,7 @@ Section mut_type_contractiveness_instances.
       eapply IHtail. done.
   Qed.
 
-  Global Instance mut_type_project_cons_head_ne {rt rts} `{!Inhabited (RT_xt rt)}
-      (tys : mut_types rts) :
-    TypeNonExpansive (λ ty : type rt, mut_type_project (ty +:: tys) 0 eq_refl).
-  Proof.
-    rewrite (@mut_type_project_unfold).
-    unfold mut_type_project_def, mut_component. simpl.
-    set (Hrew := lookup_lnth (rt :: rts) rt 0 rt eq_refl).
-    change (TypeNonExpansive (λ ty : type rt, rew [type] Hrew in ty)).
-    destruct Hrew. apply _.
-  Qed.
-
-  Global Instance mut_type_project_cons_tail_ne {rt rt' rts} `{!Inhabited (RT_xt rt')}
-      (tys : mut_types rts) i (Hlook : (rt :: rts) !! S i = Some rt') :
-    TypeNonExpansive (λ ty : type rt, mut_type_project (ty +:: tys) (S i) Hlook).
-  Proof.
-    rewrite (@mut_type_project_unfold).
-    unfold mut_type_project_def, mut_component. simpl.
-    apply _.
-  Qed.
-
-  Global Instance mut_type_project_cons_head_fun_ne {rt rt0 rt' rts}
-      `{!Inhabited (RT_xt rt')}
-      (G : type rt → type rt0) (Gs : type rt → mut_types rts)
-      (Hlook : (rt0 :: rts) !! 0 = Some rt') :
-    TypeNonExpansive G →
-    TypeNonExpansive (λ ty : type rt, mut_type_project (G ty +:: Gs ty) 0 Hlook).
-  Proof.
-    intros Hne.
-    rewrite (@mut_type_project_unfold).
-    unfold mut_type_project_def, mut_component. simpl.
-    set (Hrew := lookup_lnth (rt0 :: rts) rt' 0 rt' Hlook).
-    change (TypeNonExpansive (λ ty : type rt, rew [type] Hrew in G ty)).
-    destruct Hrew. exact Hne.
-  Qed.
-
-  Global Instance mut_type_project_cons_tail_fun_ne {rt rt0 rt' rts}
-      `{!Inhabited (RT_xt rt')}
-      (G : type rt → type rt0) (Gs : type rt → mut_types rts)
-      i (Hlook : (rt0 :: rts) !! S i = Some rt') :
-    TypeNonExpansive (λ ty : type rt, mut_type_project (Gs ty) i Hlook) →
-    TypeNonExpansive (λ ty : type rt, mut_type_project (G ty +:: Gs ty) (S i) Hlook).
-  Proof.
-    intros Hne.
-    rewrite (@mut_type_project_unfold) in Hne.
-    unfold mut_type_project_def, mut_component in Hne. simpl in Hne.
-    rewrite (@mut_type_project_unfold).
-    unfold mut_type_project_def, mut_component. simpl.
-    replace (lookup_lnth (rt0 :: rts) rt' (S i) rt' Hlook) with
-      (lookup_lnth rts rt' i rt' Hlook) by apply proof_irrelevance.
-    exact Hne.
-  Qed.
-
-  Global Instance mut_type_project_cons_head_fun_contr {rt rt0 rt' rts}
-      `{!Inhabited (RT_xt rt')}
-      (G : type rt → type rt0) (Gs : type rt → mut_types rts)
-      (Hlook : (rt0 :: rts) !! 0 = Some rt') :
-    TypeContractive G →
-    TypeContractive (λ ty : type rt, mut_type_project (G ty +:: Gs ty) 0 Hlook).
-  Proof.
-    intros Hne.
-    rewrite (@mut_type_project_unfold).
-    unfold mut_type_project_def, mut_component. simpl.
-    set (Hrew := lookup_lnth (rt0 :: rts) rt' 0 rt' Hlook).
-    change (TypeContractive (λ ty : type rt, rew [type] Hrew in G ty)).
-    destruct Hrew. exact Hne.
-  Qed.
-
-  Global Instance mut_type_project_cons_tail_fun_contr {rt rt0 rt' rts}
-      `{!Inhabited (RT_xt rt')}
-      (G : type rt → type rt0) (Gs : type rt → mut_types rts)
-      i (Hlook : (rt0 :: rts) !! S i = Some rt') :
-    TypeContractive (λ ty : type rt, mut_type_project (Gs ty) i Hlook) →
-    TypeContractive (λ ty : type rt, mut_type_project (G ty +:: Gs ty) (S i) Hlook).
-  Proof.
-    intros Hne.
-    rewrite (@mut_type_project_unfold) in Hne.
-    unfold mut_type_project_def, mut_component in Hne. simpl in Hne.
-    rewrite (@mut_type_project_unfold).
-    unfold mut_type_project_def, mut_component. simpl.
-    replace (lookup_lnth (rt0 :: rts) rt' (S i) rt' Hlook) with
-      (lookup_lnth rts rt' i rt' Hlook) by apply proof_irrelevance.
-    exact Hne.
-  Qed.
-
-  Global Instance mut_type_project_fixed_cons_head_ne {rt0 rt rt' rts}
-      `{!Inhabited (RT_xt rt')} (ty0 : type rt0)
-      (G : type rt → mut_types rts) (Hlook : (rt0 :: rts) !! 0 = Some rt') :
-    TypeNonExpansive (λ ty : type rt, mut_type_project (ty0 +:: G ty) 0 Hlook).
-  Proof.
-    rewrite (@mut_type_project_unfold).
-    unfold mut_type_project_def, mut_component. simpl.
-    apply _.
-  Qed.
-
-  Global Instance mut_type_project_fixed_cons_tail_ne {rt0 rt rt' rts}
-      `{!Inhabited (RT_xt rt')} (ty0 : type rt0)
-      (G : type rt → mut_types rts) i (Hlook : (rt0 :: rts) !! S i = Some rt') :
-    TypeNonExpansive (λ ty : type rt, mut_type_project (G ty) i Hlook) →
-    TypeNonExpansive (λ ty : type rt, mut_type_project (ty0 +:: G ty) (S i) Hlook).
-  Proof.
-    intros Hne.
-    rewrite (@mut_type_project_unfold) in Hne.
-    unfold mut_type_project_def, mut_component in Hne. simpl in Hne.
-    rewrite (@mut_type_project_unfold).
-    unfold mut_type_project_def, mut_component. simpl.
-    replace (lookup_lnth (rt0 :: rts) rt' (S i) rt' Hlook) with
-      (lookup_lnth rts rt' i rt' Hlook) by apply proof_irrelevance.
-    exact Hne.
-  Qed.
-
-  Lemma mut_component_contractive_of_pointwise {rts rt}
+  Global Instance mut_component_contractive_of_pointwise {rts rt}
       (F : mut_type_fun rts) (G : mut_types rts → type rt) :
     MutComponentPointwiseContractive G →
     MutComponentContractive F G.
@@ -2166,13 +2021,7 @@ Section mut_type_contractiveness_instances.
     - eapply mut_component_pointwise_dist2; done.
   Qed.
 
-  Global Instance mut_component_contractive_pointwise {rts rt}
-      (F : mut_type_fun rts) (G : mut_types rts → type rt) :
-    MutComponentPointwiseContractive G →
-    MutComponentContractive F G :=
-    mut_component_contractive_of_pointwise F G.
-
-  Lemma mut_component_ne_of_pointwise {rts rt}
+  Global Instance mut_component_ne_of_pointwise {rts rt}
       (G : mut_types rts → type rt) :
     MutComponentPointwiseNonExpansive G →
     MutComponentNonExpansive G.
@@ -2181,274 +2030,5 @@ Section mut_type_contractiveness_instances.
     - eapply mut_component_pointwise_ne_dist; done.
     - eapply mut_component_pointwise_ne_dist2; done.
   Qed.
+End decompose_mut_component_contractive.
 
-  Global Instance mut_component_ne_pointwise {rts rt}
-      (G : mut_types rts → type rt) :
-    MutComponentPointwiseNonExpansive G →
-    MutComponentNonExpansive G :=
-    mut_component_ne_of_pointwise G.
-
-End mut_type_contractiveness_instances.
-
-Ltac solve_mut_type_ne :=
-  repeat first [
-    progress cbn
-  | intro
-  | eapply mut_type_ne_of_htype
-  | eapply mut_htype_ne_cons
-  | eapply mut_htype_ne_nil
-  | eapply mut_component_ne_pointwise
-  | eapply mut_component_pointwise_ne_cons
-  | eapply mut_component_pointwise_ne_nil
-  | apply _
-  ].
-
-Ltac solve_mut_type_contractive :=
-  repeat first [
-    progress cbn
-  | intro
-  | eapply mut_type_contractive_of_htype
-  | eapply mut_htype_contractive_cons
-  | eapply mut_htype_contractive_nil
-  | eapply mut_component_contractive_pointwise
-  | eapply mut_component_pointwise_contractive_cons
-  | eapply mut_component_pointwise_contractive_nil
-  | apply _
-  ].
-
-Section htype_lft_morphism.
-  Context `{!typeGS Σ}.
-
-
-  Lemma LftMorphism_lifecycle_equiv {A B} `{!Lifecycle A} `{!Lifecycle B}
-      (F G : A → B) :
-    (∀ x, ⊢ lft_equiv (lft_intersect_list (lifecycle_lfts (F x)))
-        (lft_intersect_list (lifecycle_lfts (G x)))) →
-    (∀ x, elctx_interp (lifecycle_wf_E (F x)) ≡
-        elctx_interp (lifecycle_wf_E (G x))) →
-    LftMorphism G →
-    LftMorphism F.
-  Proof.
-    intros Hlfts Hwf [HG | HG].
-    - apply lft_morph_const.
-      refine (mk_lft_morph_const (ty_lft_morph_const_α HG) (ty_lft_morph_const_E HG) _ _).
-      + iIntros (x). iApply lft_equiv_trans; first iApply Hlfts.
-        iApply (ty_lft_morph_const_lfts HG).
-      + intros x. rewrite Hwf. apply (ty_lft_morph_const_wf_E HG).
-    - apply lft_morph_add.
-      refine (mk_lft_morph_add (ty_lft_morph_add_α HG) (ty_lft_morph_add_E HG) (ty_lft_morph_add_βs HG) _ _).
-      + iIntros (x). iApply lft_equiv_trans; first iApply Hlfts.
-        iApply (ty_lft_morph_add_lfts HG).
-      + intros x. rewrite Hwf. apply (ty_lft_morph_add_wf_E HG).
-  Qed.
-
-  Lemma mut_type_project_cons_head_eq {rt rts} `{!Inhabited (RT_xt rt)}
-      (tys : mut_types (rt :: rts)) :
-    mut_type_project tys 0 eq_refl = hlist_head tys.
-  Proof.
-    rewrite (@mut_type_project_unfold).
-    dependent destruction tys. simpl.
-    set (Hrew := lookup_lnth (rt :: rts) rt 0 rt eq_refl).
-    change (rew [type] Hrew in t = t).
-    replace Hrew with (@eq_refl RT rt) by apply proof_irrelevance. done.
-  Qed.
-
-  Lemma mut_type_project_cons_tail_eq {rt0 rt rts} `{!Inhabited (RT_xt rt)}
-      (tys : mut_types (rt0 :: rts)) i
-      (Hlook : rts !! i = Some rt) (Hlook' : (rt0 :: rts) !! S i = Some rt) :
-    mut_type_project (hlist_tail tys) i Hlook =
-      mut_type_project tys (S i) Hlook'.
-  Proof.
-    rewrite !(@mut_type_project_unfold).
-    dependent destruction tys. simpl.
-    unfold mut_type_project_def, mut_component. simpl.
-    replace Hlook' with Hlook by apply proof_irrelevance.
-    done.
-  Qed.
-
-  Lemma dep_lfts_aux_singleton_before {rts : list RT} k offset
-      (tys : mut_types rts) :
-    (k < offset)%nat → dep_lfts_aux ({[k]} : gset nat) offset tys = [].
-  Proof.
-    revert offset. induction tys as [|rt rts ty tys IH]; intros offset Hlt; simpl; first done.
-    destruct (decide (offset ∈ ({[k]} : gset nat))) as [Hin | _].
-    { apply elem_of_singleton in Hin. lia. }
-    apply IH. lia.
-  Qed.
-
-  Lemma dep_wf_E_aux_singleton_before {rts : list RT} k offset
-      (tys : mut_types rts) :
-    (k < offset)%nat → dep_wf_E_aux ({[k]} : gset nat) offset tys = [].
-  Proof.
-    revert offset. induction tys as [|rt rts ty tys IH]; intros offset Hlt; simpl; first done.
-    destruct (decide (offset ∈ ({[k]} : gset nat))) as [Hin | _].
-    { apply elem_of_singleton in Hin. lia. }
-    apply IH. lia.
-  Qed.
-
-  Lemma dep_lfts_aux_singleton_project_def {rts rt} (Hinh : Inhabited (RT_xt rt))
-      offset i (Hlook : rts !! i = Some rt) (tys : mut_types rts) :
-    dep_lfts_aux ({[offset + i]} : gset nat) offset tys =
-      ty_lfts (rew [type] (lookup_lnth rts rt i rt Hlook) in
-        @mut_component _ _ rts rt type_inhabitant tys i).
-  Proof.
-    revert offset i rt Hinh Hlook.
-    induction tys as [|rt0 rts ty tys IH]; intros offset i rt Hinh Hlook; simpl in Hlook.
-    { exfalso. rewrite lookup_nil in Hlook. done. }
-    destruct i as [|i].
-    - injection Hlook as <-. simpl.
-      destruct (decide (offset ∈ ({[offset + 0]} : gset nat))) as [_ | Hnot].
-      2: { exfalso. apply Hnot. set_solver. }
-      rewrite dep_lfts_aux_singleton_before; last lia.
-      rewrite app_nil_r.
-      set (Hrew := lookup_lnth (rt0 :: rts) rt0 0 rt0 Hlook).
-      change (ty_lfts ty = ty_lfts (rew [type] Hrew in ty)).
-      replace Hrew with (@eq_refl RT rt0) by apply proof_irrelevance. done.
-    - simpl.
-      destruct (decide (offset ∈ ({[offset + S i]} : gset nat))) as [Hin | _].
-      { apply elem_of_singleton in Hin. lia. }
-      replace (offset + S i)%nat with (S offset + i)%nat by lia.
-      apply IH.
-  Qed.
-
-  Lemma dep_wf_E_aux_singleton_project_def {rts rt} (Hinh : Inhabited (RT_xt rt))
-      offset i (Hlook : rts !! i = Some rt) (tys : mut_types rts) :
-    dep_wf_E_aux ({[offset + i]} : gset nat) offset tys =
-      ty_wf_E (rew [type] (lookup_lnth rts rt i rt Hlook) in
-        @mut_component _ _ rts rt type_inhabitant tys i).
-  Proof.
-    revert offset i rt Hinh Hlook.
-    induction tys as [|rt0 rts ty tys IH]; intros offset i rt Hinh Hlook; simpl in Hlook.
-    { exfalso. rewrite lookup_nil in Hlook. done. }
-    destruct i as [|i].
-    - injection Hlook as <-. simpl.
-      destruct (decide (offset ∈ ({[offset + 0]} : gset nat))) as [_ | Hnot].
-      2: { exfalso. apply Hnot. set_solver. }
-      rewrite dep_wf_E_aux_singleton_before; last lia.
-      rewrite app_nil_r.
-      set (Hrew := lookup_lnth (rt0 :: rts) rt0 0 rt0 Hlook).
-      change (ty_wf_E ty = ty_wf_E (rew [type] Hrew in ty)).
-      replace Hrew with (@eq_refl RT rt0) by apply proof_irrelevance. done.
-    - simpl.
-      destruct (decide (offset ∈ ({[offset + S i]} : gset nat))) as [Hin | _].
-      { apply elem_of_singleton in Hin. lia. }
-      replace (offset + S i)%nat with (S offset + i)%nat by lia.
-      apply IH.
-  Qed.
-
-  Lemma dep_lfts_singleton_project {rts rt} `{!Inhabited (RT_xt rt)}
-      i (Hlook : rts !! i = Some rt) (tys : mut_types rts) :
-    dep_lfts ({[i]} : gset nat) tys = ty_lfts (mut_type_project tys i Hlook).
-  Proof.
-    rewrite mut_type_project_unfold /mut_type_project_def /dep_lfts.
-    replace i with (0 + i)%nat at 1 by lia.
-    apply dep_lfts_aux_singleton_project_def.
-  Qed.
-
-  Lemma dep_wf_E_singleton_project {rts rt} `{!Inhabited (RT_xt rt)}
-      i (Hlook : rts !! i = Some rt) (tys : mut_types rts) :
-    dep_wf_E ({[i]} : gset nat) tys = ty_wf_E (mut_type_project tys i Hlook).
-  Proof.
-    rewrite mut_type_project_unfold /mut_type_project_def /dep_wf_E.
-    replace i with (0 + i)%nat at 1 by lia.
-    apply dep_wf_E_aux_singleton_project_def.
-  Qed.
-
-  Global Instance mut_type_project_dep_lft_morphism {rts rt}
-      `{!Inhabited (RT_xt rt)} i (Hlook : rts !! i = Some rt) :
-    DepLftMorphism ({[i]} : gset nat) (λ tys : mut_types rts, mut_type_project tys i Hlook).
-  Proof.
-    refine (mk_dep_lft_morph static [] [] _ _).
-    - abstract (iIntros (tys); rewrite dep_lfts_singleton_project left_id;
-      iApply lft_equiv_refl).
-    - abstract (intros tys; rewrite dep_wf_E_singleton_project elctx_interp_nil;
-      iSplit; iIntros "H";
-      [iFrame; rewrite /dep_beta_interp /=; done
-      | iDestruct "H" as "(_ & H & _)"; done]).
-  Defined.
-
-  Global Instance mut_type_project_cons_head_lft_morphism {rts1 rt rt' rts}
-      `{!Inhabited (RT_xt rt')}
-      (G : mut_types rts1 → type rt) (Gs : mut_types rts1 → mut_types rts)
-      (Hlook : (rt :: rts) !! 0%nat = Some rt') deps :
-    DepLftMorphism deps G →
-    DepLftMorphism deps (λ x, mut_type_project (G x +:: Gs x) 0 Hlook).
-  Proof.
-    intros HG.
-    eapply (dep_lft_morph_make_id deps G
-      (λ x, mut_type_project (G x +:: Gs x) 0 Hlook) HG).
-    - abstract (intros x; injection Hlook as <-;
-      replace Hlook with (@eq_refl (option RT) (Some rt)) by apply proof_irrelevance;
-      rewrite mut_type_project_cons_head_eq; done).
-    - abstract (intros x; injection Hlook as <-;
-      replace Hlook with (@eq_refl (option RT) (Some rt)) by apply proof_irrelevance;
-      rewrite mut_type_project_cons_head_eq; done).
-  Defined.
-
-  Global Instance mut_type_project_cons_tail_lft_morphism {rts1 rt rt' rts}
-      `{!Inhabited (RT_xt rt')}
-      (Gs : mut_types rts1 → mut_types (rt :: rts))
-      i (Hlook : (rt :: rts) !! S i = Some rt') deps
-      :
-    DepLftMorphism deps (λ x, mut_type_project (hlist_tail $ Gs x) i Hlook) →
-    DepLftMorphism deps (λ x, mut_type_project (Gs x) (S i) Hlook).
-  Proof.
-    intros HGs.
-    eapply (dep_lft_morph_make_id deps
-      (λ x, mut_type_project (hlist_tail $ Gs x) i Hlook)
-      (λ x, mut_type_project (Gs x) (S i) Hlook) HGs).
-    - abstract (intros x; rewrite -(mut_type_project_cons_tail_eq (Gs x) i Hlook Hlook); done).
-    - abstract (intros x; rewrite -(mut_type_project_cons_tail_eq (Gs x) i Hlook Hlook); done).
-  Defined.
-
-  Global Instance LftMorphism_hlist_head_of_project {A rt rts} `{!Lifecycle A}
-      `{!Inhabited (RT_xt rt)} (F : A → mut_types (rt :: rts)) :
-    LftMorphism (λ x, mut_type_project (F x) 0 eq_refl) →
-    LftMorphism (λ x, hlist_head (F x)).
-  Proof.
-    intros [HG | HG].
-    - apply lft_morph_const.
-      refine (mk_lft_morph_const (ty_lft_morph_const_α HG) (ty_lft_morph_const_E HG) _ _).
-      + iIntros (x). rewrite -(mut_type_project_cons_head_eq (F x)). iApply (ty_lft_morph_const_lfts HG).
-      + intros x. rewrite -(mut_type_project_cons_head_eq (F x)). apply (ty_lft_morph_const_wf_E HG).
-    - apply lft_morph_add.
-      refine (mk_lft_morph_add (ty_lft_morph_add_α HG) (ty_lft_morph_add_E HG) (ty_lft_morph_add_βs HG) _ _).
-      + iIntros (x). rewrite -(mut_type_project_cons_head_eq (F x)). iApply (ty_lft_morph_add_lfts HG).
-      + intros x. rewrite -(mut_type_project_cons_head_eq (F x)). apply (ty_lft_morph_add_wf_E HG).
-  Qed.
-
-  Global Instance LftMorphism_tail_project_of_project {A rt0 rt rts} `{!Lifecycle A}
-      `{!Inhabited (RT_xt rt)} (F : A → mut_types (rt0 :: rts)) i
-      (Hlook : rts !! i = Some rt) (Hlook' : (rt0 :: rts) !! S i = Some rt) :
-    LftMorphism (λ x, mut_type_project (F x) (S i) Hlook') →
-    LftMorphism (λ x, mut_type_project (hlist_tail (F x)) i Hlook).
-  Proof.
-    intros [HG | HG].
-    - apply lft_morph_const.
-      refine (mk_lft_morph_const (ty_lft_morph_const_α HG) (ty_lft_morph_const_E HG) _ _).
-      + iIntros (x). rewrite (mut_type_project_cons_tail_eq (F x) i Hlook Hlook'). iApply (ty_lft_morph_const_lfts HG).
-      + intros x. rewrite (mut_type_project_cons_tail_eq (F x) i Hlook Hlook'). apply (ty_lft_morph_const_wf_E HG).
-    - apply lft_morph_add.
-      refine (mk_lft_morph_add (ty_lft_morph_add_α HG) (ty_lft_morph_add_E HG) (ty_lft_morph_add_βs HG) _ _).
-      + iIntros (x). rewrite (mut_type_project_cons_tail_eq (F x) i Hlook Hlook'). iApply (ty_lft_morph_add_lfts HG).
-      + intros x. rewrite (mut_type_project_cons_tail_eq (F x) i Hlook Hlook'). apply (ty_lft_morph_add_wf_E HG).
-  Qed.
-
-  Global Instance HTypeLftMorphism_cons_project {A rt rts} `{!Lifecycle A}
-      `{!Inhabited (RT_xt rt)} (F : A → mut_types (rt :: rts)) :
-    LftMorphism (λ x, mut_type_project (F x) 0 eq_refl) →
-    HTypeLftMorphism (λ x, hlist_tail (F x)) →
-    HTypeLftMorphism F.
-  Proof.
-    intros HG HGs. constructor.
-    eapply LftMorphism_lifecycle_equiv with
-      (G := λ x, mut_type_project (F x) 0 eq_refl +:: hlist_tail (F x)).
-    - iIntros (x). remember (F x) as Fx. dependent destruction Fx. simpl.
-      rewrite mut_type_project_cons_head_eq. iApply lft_equiv_refl.
-    - intros x. remember (F x) as Fx. dependent destruction Fx. simpl.
-      rewrite mut_type_project_cons_head_eq. done.
-    - eapply LftMorphism_hcons; first exact HG.
-      apply HGs.
-  Qed.
-
-End htype_lft_morphism.

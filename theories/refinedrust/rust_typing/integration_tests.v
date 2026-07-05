@@ -508,7 +508,7 @@ Section test_box.
   End Box_inv_t.
   Global Arguments Box_inv_t_rt : clear implicits.
 
-  
+
   Global Instance Box_inv_t_contr {rt1 T_rt : RT} (T : type rt1 → type T_rt) :
     TypeNonExpansive T →
     TypeContractive (λ ty, Box_inv_t T_rt <TY> (T ty) <INST!>).
@@ -529,7 +529,7 @@ Section test_box.
     TypeNonExpansive (λ ty, Box_inv_t T_rt <TY> (T ty) <INST!>).
   Proof. apply _. Qed.
 
-  Global Instance Box_inv_t_dep_lft_mor rts (rt : RT) (T : mut_types rts → type rt) deps : 
+  Global Instance Box_inv_t_dep_lft_mor rts (rt : RT) (T : mut_types rts → type rt) deps :
     DepLftMorphism deps T →
     DepLftMorphism deps (λ x : mut_types rts, Box_inv_t_inv_spec rt *[] *[(T x)]).
   Proof.
@@ -572,59 +572,8 @@ Section test_rectypes.
     ex_plain_t _ _ unit_abs_inv Boo_inner +::
     +[].
 
-
-  Global Instance lft_morph_ignore {A B} `{!Lifecycle A} `{!Lifecycle B} (x : B) : 
-    LftMorphism (λ _ : A, x).
-  Proof.
-    apply lft_morph_const.
-    exists (lft_intersect_list $ lifecycle_lfts x) (lifecycle_wf_E x).
-    - iIntros (?). iApply lft_equiv_refl.
-    - done.
-  Qed.
-
-  Global Program Instance dep_lft_morph_ignore {rts B} `{!Lifecycle B} (x : B) : 
-    DepLftMorphism ∅ (λ _ : mut_types rts, x) := 
-      dep_lft_morph_const _ (mk_dep_lft_morph_const _ (lft_intersect_list $ lifecycle_lfts x) (lifecycle_wf_E x) _ _).
-  Next Obligation.
-    done.
-  Defined.
-  Next Obligation.
-    iIntros (?????). iApply lft_equiv_refl.
-  Qed.
-  Next Obligation.
-    done.
-  Qed.
-
   Program Definition Boo_tys : mut_types Boo_rts :=
     @mut_fixpoint _ _ _ Boo_F _ _ _.
-  Next Obligation.
-    Ltac bla := (first
-   [ progress cbn
-   | intro
-   | eapply mut_type_contractive_of_htype
-   | eapply mut_htype_contractive_cons
-   | eapply mut_htype_contractive_nil
-   | eapply mut_component_contractive_pointwise
-   | eapply mut_component_pointwise_contractive_cons
-   | eapply mut_component_pointwise_contractive_nil]).
-
-    bla. bla. 2: bla. 2: repeat bla. 
-    3: bla. 
-    2: apply _.
-
-    apply LftMorphism_hcons. 
-    2: apply _.
-    { unshelve eapply DepLftMorphism_to_LftMorphism.
-    { unfold DepsFull. unfold full_deps. simpl. set_solver. }
-    { cbn.
-      exists [].
-      simpl. intros ?.
-      unfold dep_beta_interp. simpl. 
-      done.
-      } 
-    }
-  Qed.
-
 End test_rectypes.
 
 Section test_mutual_rectypes.
@@ -650,91 +599,8 @@ Section test_mutual_rectypes.
     ex_plain_t _ _ unit_abs_inv Bar_inner +::
     +[].
 
-  Lemma mut_type_project_unfold_lem {rts : list RT} (tys : hlist type rts) {rt : RT} `{!Inhabited (RT_xt rt)} i Hi :
-    @mut_type_project _ _ rts tys rt _ i Hi = mut_type_project_def tys i Hi.
-  Proof.
-    rewrite mut_type_project_unfold//.
-  Qed.
-
-
-  (*
-
-    Foo1
-    Foo2
-    Foo3
-    Foo4
-    Foo1
-
-    cycle of length 5
-
-    stabilizes only after 5 unfoldings.
-    So clearly I need to change the stability requirement there in the fixpoint construction.
-
-    Ideally, I prove that the syntactic criterion of the individual type constructors is enough to establish this.
-
-
-
-  *)
-
-  (* TODO: we should generalize ExInvDefContractive / have a separate LftMorphism obligation *)
-
-
-    Hint Extern 3 (LftMorphism _) => simple eapply DepLftMorphism_to_LftMorphism : typeclass_instances. 
-
-Existing Instance LftMorphism_hcons.
-
-(*Set Typeclasses Debug.*)
   Program Definition FooBar_tys : mut_types FooBar_rts :=
     @mut_fixpoint _ _ _ FooBar_F _ _ _.
-  Next Obligation.
-    Ltac bla := (first
-   [ progress cbn
-   | intro
-   | eapply mut_type_contractive_of_htype
-   | eapply mut_htype_contractive_cons
-   | eapply mut_htype_contractive_nil
-   | eapply mut_component_contractive_pointwise
-   | eapply mut_component_pointwise_contractive_cons
-   | eapply mut_component_pointwise_contractive_nil]).
-
-   bla. bla. 
-   { apply LftMorphism_hcons. 
-    2: apply LftMorphism_hcons.
-    all: apply _.
-    { 
-
-    apply _.
-
-    simple apply DepLftMorphism_to_LftMorphism.
-      all: apply _.
-      { apply _. }
-      { 
-        
-        unfold DepLftMorphismBetaFull; 
-        simpl; 
-        solve_dep_beta_full
-        .
-
-        unfold DepLftMorphismBetaFull. 
-        simpl. 
-        exists [].
-        simpl. intros ?.
-        unfold dep_beta_interp. simpl. 
-        done. }
-    } 
-    { eapply DepLftMorphism_to_LftMorphism.
-      { unfold DepsFull. unfold full_deps. simpl. set_solver. }
-      { unfold DepLftMorphismBetaFull. 
-        simpl. 
-        exists [].
-        simpl. intros ?.
-        unfold dep_beta_interp. simpl. 
-        done. }
-    }
-  } 
-  { apply _. }
-  Qed.
-
 
   Definition Foo_ty : type unitRT := mut_type_project FooBar_tys 0 eq_refl.
   Definition Bar_ty : type unitRT := mut_type_project FooBar_tys 1 eq_refl.

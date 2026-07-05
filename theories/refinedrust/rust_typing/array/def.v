@@ -1,4 +1,4 @@
-From refinedrust Require Export type.
+From refinedrust Require Export type lftmor.
 From refinedrust Require Import uninit_def int.
 From refinedrust Require Import options.
 Local Open Scope nat_scope.

@@ -1,4 +1,4 @@
-From refinedrust Require Export type ltypes programs.
+From refinedrust Require Export type ltypes programs lftmor.
 From refinedrust Require Import uninit int ltype_rules.
 From refinedrust Require Import options.
 

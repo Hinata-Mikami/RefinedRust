@@ -1,4 +1,4 @@
-From refinedrust Require Export type.
+From refinedrust Require Export type lftmor.
 From refinedrust Require Import options.
 
 (** * Shared references *)

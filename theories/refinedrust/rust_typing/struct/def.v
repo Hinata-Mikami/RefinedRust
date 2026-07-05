@@ -1,4 +1,4 @@
-From refinedrust Require Export type.
+From refinedrust Require Export type lftmor.
 From refinedrust Require Import util hlist axioms.
 From refinedrust Require Import uninit_def.
 From refinedrust Require Import options.

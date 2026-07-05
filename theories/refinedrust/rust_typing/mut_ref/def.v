@@ -1,4 +1,4 @@
-From refinedrust Require Export base type.
+From refinedrust Require Export base type lftmor.
 From refinedrust Require Import options.
 
 (** * Mutable references *)
