@@ -34,6 +34,20 @@ Section unfold.
     iFrame. iR. iR. iR. done.
   Qed.
 
+  Lemma shared_ofty_from_ty_shr {rt} (ty : type rt) κ π r l ly :
+    syn_type_has_layout (ty_syn_type ty MetaNone) ly →
+    l `has_layout_loc` ly →
+    loc_in_bounds l 0 (ly_size ly) -∗
+    l ◁ₗ{π, MetaNone, κ} r @ ty -∗
+    lty_of_ty_own ty (Shared κ) π #r l.
+  Proof.
+    iIntros (??) "Hlb #Hshr".
+    iPoseProof (ty_shr_sidecond with "Hshr") as "#Hsc".
+    rewrite /lty_of_ty_own/=.
+    iExists ly. iR. iR. iR. iFrame "Hlb".
+    iExists r. iSplitR; first done. iModIntro. iModIntro. done.
+  Qed.
+
   Lemma enum_tag_padding_has_layout_loc el l :
     (l +ₗ ly_size (it_layout el.(el_tag_it))) `has_layout_loc` enum_tag_padding_ly el.
   Proof.
@@ -54,6 +68,15 @@ Section unfold.
     subst r'. done.
   Qed.
 
+  Local Lemma ofty_shared_to_ty_shr {rt} (ty : type rt) κ π r l :
+    lty_of_ty_own ty (Shared κ) π #r l ={lftE}=∗
+    l ◁ₗ{π, MetaNone, κ} r @ ty.
+  Proof.
+    rewrite /lty_of_ty_own.
+    iIntros "(%ly & %Hst & %Hly & Hsc & Hlb & %r' & %Hrfn & #Hb)".
+    subst r'. done.
+  Qed.
+
   Local Lemma type_syn_type_rew {rt1 rt2 : RT} (Heq : rt1 = rt2) (ty : type rt1) m :
     ty_syn_type (rew [type] Heq in ty) m = ty_syn_type ty m.
   Proof. destruct Heq. done. Qed.
@@ -61,6 +84,11 @@ Section unfold.
   Local Lemma type_own_val_rew {rt1 rt2 : RT} (Heq : rt1 = rt2) (ty : type rt1) π (r : rt1) m v :
     ty_own_val (rew [type] Heq in ty) π (rew [RT_rt] Heq in r) m v ≡
     ty_own_val ty π r m v.
+  Proof. destruct Heq. done. Qed.
+
+  Local Lemma type_shr_rew {rt1 rt2 : RT} (Heq : rt1 = rt2) (ty : type rt1) κ π (r : rt1) m l :
+    ty_shr (rew [type] Heq in ty) κ π (rew [RT_rt] Heq in r) m l ≡
+    ty_shr ty κ π r m l.
   Proof. destruct Heq. done. Qed.
 
   Lemma enum_unfold_1_owned {rt : RT} (en : enum rt) r :
@@ -82,11 +110,13 @@ Section unfold.
     set (tag_size := ly_size (it_layout el.(el_tag_it))).
     set (data_offset := el.(el_data_offset)).
     set (variant_size := ly_size variant_ly).
-    iExists el, variant_ly. iR. iR. iR.
+    iExists el. iR.
     iSplitR. { done. }
     iSplitR. { iExact "Hlb". }
     iModIntro. iExists r. iSplitR; first done.
-    iModIntro. iSplitR; first done.
+    iModIntro.
+    iExists variant_ly. iR. iR.
+    iSplitR; first done.
     iAssert (((∃ vtag : val, l ↦ vtag ∗
         vtag ◁ᵥ{π, MetaNone} els_lookup_tag en.(enum_els) variant @ int el.(el_tag_it)) ∗
       (∃ vtag_pad : val, (l +ₗ tag_size) ↦ vtag_pad ∗
@@ -127,14 +157,63 @@ Section unfold.
       iApply (loc_in_bounds_enum_tail_padding with "Hlb"). done.
   Qed.
 
+  Lemma enum_unfold_1_shared {rt : RT} (en : enum rt) κ r :
+    ⊢ ltype_incl' (Shared κ) (#r) (#r) (◁ (enum_t en))%I
+      (EnumLtype en (enum_tag' en r) (◁ enum_ty en r) (enum_r en r)).
+  Proof.
+    iModIntro. iIntros (π l).
+    rewrite ltype_own_ofty_unfold ltype_own_enum_unfold /lty_of_ty_own /enum_ltype_own.
+    iIntros "(%ly & %Hst & %Hly & %Hsc & #Hlb & %r' & %Hrfn & #Hb)".
+    subst r'.
+    apply syn_type_has_layout_enum_inv in Hst as (el & variant_lys & Halg & -> & Hvariants & ?).
+    pose proof (use_enum_layout_alg_Some _ _ _ Hvariants Halg) as Halg_el.
+    iExists el. iSplitR. { done. }
+    iR. iR. iExists r. iR.
+    iModIntro. iMod "Hb" as "Hb".
+    rewrite /ty_shr /= enum_shr_unfold /enum_shr_def.
+    iDestruct "Hb" as "(%el' & %variant & %variant_ly & %Hmeta & %Halg' & %Htag & %Hvariant & %Hpayload_st & %Hly' & Htag & Htag_pad & Hpayload & Htail)".
+    subst.
+    assert (el' = el) as ->.
+    { eapply (enum_layout_spec_has_layout_inj (enum_els en));
+        rewrite /enum_layout_spec_has_layout; [exact Halg'|exact Halg_el]. }
+    pose proof (enum_tag'_Some en r variant Htag) as Htag'.
+    rewrite Htag'.
+    set (tag_size := ly_size (it_layout el.(el_tag_it))).
+    set (data_offset := el.(el_data_offset)).
+    set (variant_size := ly_size variant_ly).
+    iModIntro. iExists variant_ly. iR. iR. iSplitR; first done.
+    iSplitL "Htag".
+    { iApply (shared_ofty_from_ty_shr with "[] Htag").
+      - simpl. apply syn_type_has_layout_int. done.
+      - by apply enum_tag_has_layout_loc.
+      - iApply (loc_in_bounds_enum_tag with "Hlb"). done. }
+    iSplitL "Htag_pad".
+    { iApply (shared_ofty_from_ty_shr with "[] Htag_pad").
+      - by apply enum_tag_padding_uninit_syn_type_has_layout with variant variant_ly.
+      - apply enum_tag_padding_has_layout_loc.
+      - iApply (loc_in_bounds_enum_tag_padding with "Hlb"). done. }
+    iSplitL "Hpayload".
+    { rewrite ltype_own_ofty_unfold.
+      iApply (shared_ofty_from_ty_shr with "[] Hpayload").
+      - done.
+      - by eapply enum_payload_has_layout_loc.
+      - iApply (loc_in_bounds_enum_payload with "Hlb"). done. }
+    rewrite shift_loc_assoc_nat.
+    iApply (shared_ofty_from_ty_shr with "[] Htail").
+    - by apply enum_tail_padding_uninit_syn_type_has_layout with variant.
+    - rewrite -shift_loc_assoc_nat. apply enum_tail_padding_has_layout_loc.
+    - rewrite -/data_offset -/variant_size -shift_loc_assoc_nat.
+      iApply (loc_in_bounds_enum_tail_padding with "Hlb"). done.
+  Qed.
+
   Lemma enum_unfold_2_owned {rt} (en : enum rt) sem tag re r  :
     enum_tag_ty_inj en tag = Some sem →
     ⊢ ltype_incl' Owned r (# (sem.(enum_tag_rt_inj) re)) (EnumLtype en tag (◁ sem.(enum_tag_sem_ty)) re) (◁ enum_t en)%I.
   Proof.
     iIntros (Hsem). iModIntro. iIntros (π l) "Hb".
     rewrite ltype_own_enum_unfold ltype_own_ofty_unfold /enum_ltype_own /lty_of_ty_own.
-    iDestruct "Hb" as "(%el & %variant_ly & %Halg & %Hvariant & %Hst & %Hly & Hlb & %r' & Hrfn & Hb)".
-    iMod "Hb" as "(%Htag & Htag & Htag_pad & Hpayload & Htail)".
+    iDestruct "Hb" as "(%el & %Halg & %Hly & Hlb & %r' & Hrfn & Hb)".
+    iMod "Hb" as "(%variant_ly & %Hvariant & %Hst & %Htag & Htag & Htag_pad & Hpayload & Htail)".
     set (tag_size := ly_size (it_layout el.(el_tag_it))).
     set (data_offset := el.(el_data_offset)).
     set (variant_size := ly_size variant_ly).
@@ -187,15 +266,57 @@ Section unfold.
       iExists _. rewrite shift_loc_assoc_nat. iFrame. }
     iExists v. iFrame "Hl".
     iExists el, tag, variant_ly.
-    do 5 iR. 
+    do 5 iR.
     iFrame.
   Qed.
 
-(*
-  Lemma enum_unfold_1_shared {rt : Type} (en : enum rt) κ r :
-    ⊢ ltype_incl' (Shared κ) (#r) (#r) (◁ (enum_t en))%I (EnumLtype en (enum_tag' en r) (◁ enum_tag_type' en (enum_tag' en r))).
+  Lemma enum_unfold_2_shared {rt} (en : enum rt) κ sem tag re r  :
+    enum_tag_ty_inj en tag = Some sem →
+    ⊢ ltype_incl' (Shared κ) r (# (sem.(enum_tag_rt_inj) re)) (EnumLtype en tag (◁ sem.(enum_tag_sem_ty)) re) (◁ enum_t en)%I.
   Proof.
-  Abort.
+    iIntros (Hsem). iModIntro. iIntros (π l) "Hb".
+    rewrite ltype_own_enum_unfold ltype_own_ofty_unfold /enum_ltype_own /lty_of_ty_own.
+    iDestruct "Hb" as "(%el & %Halg & %Hly & #Hlb & %r' & Hrfn & #Hb)".
+    iExists (layout_of_enum el).
+    iSplitR. { iPureIntro. by eapply use_enum_layout_alg_Some_inv. }
+    iSplitR. { done. }
+    iSplitR. { done. }
+    iSplitR. { iFrame "Hlb". }
+    iExists (sem.(enum_tag_rt_inj) re). iSplitR; first done.
+    iModIntro.
+    iMod "Hb" as "(%variant_ly & %Hvariant & %Hst & %Htag & Htag & Htag_pad & Hpayload & Htail)".
+    iMod (ofty_shared_to_ty_shr with "Htag") as "Htag".
+    iMod (ofty_shared_to_ty_shr with "Htag_pad") as "Htag_pad".
+    iEval (rewrite ltype_own_ofty_unfold) in "Hpayload".
+    iMod (ofty_shared_to_ty_shr with "Hpayload") as "Hpayload".
+    iMod (ofty_shared_to_ty_shr with "Htail") as "Htail".
+    pose proof (enum_tag_ty_inj_tag en tag sem re Hsem) as Htag_out.
+    destruct (enum_tag_ty_inj_r en tag sem re Hsem) as (Heq_rt & Hr_out).
+    pose proof (enum_tag_ty_inj_type_eq_inj en tag sem re Hsem) as Hty_out.
+    pose proof (enum_tag_rt_eq en (sem.(enum_tag_rt_inj) re) tag sem Htag_out Hsem) as Heq_tag.
+    change (enum_tag_rt_eq en (sem.(enum_tag_rt_inj) re) tag sem Htag_out Hsem) with Heq_tag in Hty_out.
+    assert (Heq_tag = Heq_rt) as -> by apply proof_irrelevance.
+    assert (Hst_out : syn_type_has_layout (ty_syn_type (enum_ty en (sem.(enum_tag_rt_inj) re)) MetaNone) variant_ly).
+    { simpl in Hst. rewrite -Hty_out.
+      rewrite type_syn_type_rew.
+      done. }
+    iModIntro.
+    rewrite /ty_shr /= enum_shr_unfold /enum_shr_def.
+    iExists el, tag, variant_ly.
+    do 5 iR.
+    iSplitR; first done.
+    iSplitL "Htag"; first done.
+    iSplitL "Htag_pad"; first done.
+    iSplitL "Hpayload".
+    { rewrite -Hty_out Hr_out.
+      replace (enum_tag_rt_eq en (enum_tag_rt_inj sem re) tag sem
+        (enum_tag_ty_inj_tag en tag sem re Hsem) Hsem) with Heq_rt by apply proof_irrelevance.
+      rewrite type_shr_rew.
+      iFrame. }
+    rewrite shift_loc_assoc_nat. iFrame.
+  Qed.
+
+(*
   Lemma enum_unfold_1_uniq {rt : Type} (en : enum rt) κ γ r :
     ⊢ ltype_incl' (Uniq κ γ) (#r) (#r) (◁ (enum_t en))%I (EnumLtype en (enum_tag' en r) (◁ enum_tag_type' en (enum_tag' en r))).
   Proof.

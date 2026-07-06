@@ -133,10 +133,19 @@ Proof.
   destruct b1, b2; try done; unfold bor_kind_direct_incl.
   + eauto.
   + rewrite !ltype_own_enum_unfold /enum_ltype_own.
-    iIntros "(%el & %variant_ly & %Halg & %Hen & %Hly & Hlb & ? & [])".
+    iIntros "(%el & %Halg & %Hly & Hlb & %r' & Hrfn & #Hown)".
+    iExists el. iR. iR. iFrame "Hlb".
+    iExists r'. iFrame "Hrfn".
+    iModIntro. iMod "Hown" as "(%variant_ly & %Hvariant & %Hst & %Htag & Hdisc & Hpad1 & Hdata & Hpad2)". iModIntro.
+    iExists variant_ly. iR. iR.
+    iSplitR. { done. }
+    iSplitL "Hdisc". { iApply (lty_of_ty_mono with "[] Hdisc"). done. }
+    iSplitL "Hpad1". { iApply (lty_of_ty_mono with "[] Hpad1"). done. }
+    iSplitL "Hdata". { iApply (IH with "[] Hdata"). done. }
+    iApply (lty_of_ty_mono with "[] Hpad2"). done.
   + rewrite !ltype_own_enum_unfold /enum_ltype_own.
     iDestruct "Hincl" as "(Hincl & ->)".
-    iIntros "(%el & %Hen & %Hly & Hlb & ? & ? & ?& [])".
+    iIntros "(%el & %Halg & %Hly & Hlb & [])".
 Qed.
 
 
