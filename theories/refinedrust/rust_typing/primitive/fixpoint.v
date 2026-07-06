@@ -1,4 +1,4 @@
-From refinedrust Require Import type programs.
+From refinedrust Require Import type programs lftmor.
 From refinedrust Require Import options.
 
 Section fixpoint_def.

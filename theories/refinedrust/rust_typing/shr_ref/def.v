@@ -173,24 +173,6 @@ Section props.
     rewrite heap_pointsto_fractional. iFrame.
   Qed.
 
-  Lemma shr_ref_ty_lft_morphism {rt : RT} κ : TyLftMorphism (shr_ref (rt:=rt) κ).
-  Proof.
-    eapply ty_lft_morph_make_ref.
-    - rewrite {1}ty_lfts_unfold; done.
-    - rewrite {1}ty_wf_E_unfold; done.
-  Qed.
-
-  Global Instance shr_ref_lft_morphism {A rt} `{!Lifecycle A}
-      (T : A → type rt) κ :
-    LftMorphism T →
-    LftMorphism (λ x, shr_ref κ (T x)).
-  Proof.
-    intros HT.
-    change (LftMorphism ((shr_ref κ) ∘ T)).
-    eapply LftMorphism_compose; first exact HT.
-    apply shr_ref_ty_lft_morphism.
-  Qed.
-
   Global Program Instance shr_ref_dep_lft_morphism {rts rt} deps
       (T : mut_types rts → type rt) κ :
     DepLftMorphism deps T →

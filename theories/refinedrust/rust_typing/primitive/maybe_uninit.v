@@ -169,24 +169,6 @@ End type.
 Section ne.
   Context `{!typeGS Σ}.
 
-  Lemma maybe_uninit_ty_lft_morphism {rt : RT} : TyLftMorphism (maybe_uninit (rt:=rt)).
-  Proof.
-    eapply ty_lft_morph_make_id.
-    - rewrite {1}ty_lfts_unfold//.
-    - rewrite {1}ty_wf_E_unfold//.
-  Qed.
-
-  Global Instance maybe_uninit_lft_morphism {A rt} `{!Lifecycle A}
-      (T : A → type rt) :
-    LftMorphism T →
-    LftMorphism (λ x, maybe_uninit (T x)).
-  Proof.
-    intros HT.
-    change (LftMorphism (maybe_uninit ∘ T)).
-    eapply LftMorphism_compose; first exact HT.
-    apply maybe_uninit_ty_lft_morphism.
-  Qed.
-
   Global Program Instance maybe_uninit_dep_lft_morphism {rts rt} deps
       (T : mut_types rts → type rt) :
     DepLftMorphism deps T →

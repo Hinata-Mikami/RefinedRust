@@ -492,8 +492,6 @@ Section ne.
   Class EnumNonExpansive {rt1 rt2} (F : type rt1 → enum rt2) := {
     enum_ne_els :
       ∀ ty ty' : type rt1, st_of ty MetaNone = st_of ty' MetaNone → enum_els (F ty) = enum_els (F ty');
-    enum_ne_lft_mor :
-      DirectLftMorphism (λ ty, (F ty).(enum_lfts)) (λ ty, (F ty).(enum_wf_E));
     (* the tag of the variant should not depend on the ty *)
     enum_ne_tag_consistent :
       ∀ ty ty', (F ty).(enum_tag) = (F ty').(enum_tag);
@@ -539,7 +537,6 @@ Section ne.
     unshelve econstructor.
     - done.
     - done.
-    - apply _.
     - done.
     - done.
     - done.
@@ -549,8 +546,6 @@ Section ne.
   Class EnumContractive {rt1 rt2} (F : type rt1 → enum rt2) := {
     enum_contr_els :
       ∀ ty ty' : type rt1, enum_els (F ty) = enum_els (F ty');
-    enum_contr_lft_mor :
-      DirectLftMorphism (λ ty, (F ty).(enum_lfts)) (λ ty, (F ty).(enum_wf_E));
     (* the tag of the variant should not depend on the ty *)
     enum_contr_tag_consistent :
       ∀ ty ty', (F ty).(enum_tag) = (F ty').(enum_tag);

@@ -270,6 +270,9 @@ Section lft_contexts.
     rewrite /elctx_interp.
     rewrite big_sepL_app. done.
   Qed.
+  Lemma elctx_interp_nil :
+    elctx_interp [] ≡ True%I.
+  Proof. done. Qed.
 
   (* Local lifetime contexts. *)
   (** The fraction_map for [κ] is stored at [γ]. *)
