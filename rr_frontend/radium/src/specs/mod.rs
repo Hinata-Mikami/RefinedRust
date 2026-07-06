@@ -13,8 +13,9 @@ use std::marker::PhantomData;
 
 use derive_more::{Constructor, Display};
 
-use crate::{BASE_INDENT, coq, fmt_list, lang, model, push_str_list, write_list};
+use crate::{coq, fmt_list, lang, model, push_str_list, write_list};
 
+pub mod bundles;
 pub mod enums;
 pub mod functions;
 pub mod invariants;
@@ -272,40 +273,6 @@ impl TypeAnnotMeta {
         }
         // TODO: handle the case that it is unknown
     }
-}
-
-fn format_extra_context_items<F>(
-    items: &[coq::binder::Binder],
-    f: &mut F,
-) -> Result<(Vec<String>, Vec<String>), fmt::Error>
-where
-    F: fmt::Write,
-{
-    let mut context_names = Vec::new();
-    let mut context_names_without_sigma = Vec::new();
-    let mut counter = 0;
-
-    // write coq parameters
-    if !items.is_empty() {
-        write!(f, "{} (* Additional parameters *)\n", BASE_INDENT)?;
-        write!(f, "{}Context ", BASE_INDENT)?;
-
-        for it in items {
-            let name = format!("_CTX{}", counter);
-            counter += 1;
-
-            write!(f, "{}", it.clone().set_name(name.clone()))?;
-
-            if !it.is_dependent_on_sigma() {
-                context_names_without_sigma.push(name.clone());
-            }
-            context_names.push(name);
-        }
-        write!(f, ".\n")?;
-    }
-    write!(f, "\n")?;
-
-    Ok((context_names, context_names_without_sigma))
 }
 
 /// The origin of a type parameter.

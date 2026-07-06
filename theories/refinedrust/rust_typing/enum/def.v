@@ -797,7 +797,7 @@ Section ne.
       iExists r', ly'. iFrame. done.
   Qed.
 
-  Global Instance enum_t_ne {rt1 rt2} (F : type rt1 → enum rt2) :
+  Instance enum_t_ne {rt1 rt2} (F : type rt1 → enum rt2) :
     EnumNonExpansive F →
     TypeNonExpansive (λ ty : type rt1, enum_t (F ty)).
   Proof.
@@ -883,7 +883,7 @@ Section ne.
       done.
   Qed.
 
-  Global Instance enum_t_contr {rt1 rt2} (F : type rt1 → enum rt2) :
+  Instance enum_t_contr {rt1 rt2} (F : type rt1 → enum rt2) :
     EnumContractive F →
     TypeContractive (λ ty : type rt1, enum_t (F ty)).
   Proof.

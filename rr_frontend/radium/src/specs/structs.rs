@@ -8,9 +8,12 @@ use std::cell::RefCell;
 use std::fmt;
 use std::fmt::Write as _;
 
+use crate::specs::bundles::BundleableType;
+use crate::specs::invariants::{
+    generate_normalized_rt_def, generate_type_implicit_arg_flags, setup_type_section_context,
+};
 use crate::specs::{
-    GenericScope, GenericScopeInst, LiteralTyParam, Type, format_extra_context_items, invariants, traits,
-    types,
+    GenericScope, GenericScopeInst, LiteralTyParam, TyParamList, Type, invariants, traits, types,
 };
 use crate::{coq, fmt_list, lang, model, push_str_list};
 
@@ -139,7 +142,13 @@ impl<'def> AbstractVariant<'def> {
     }
 
     #[must_use]
-    fn get_coq_type_term(&self, sls_app: Vec<coq::term::Term>) -> coq::term::Type {
+    fn get_coq_type_term(&self, ty_params: &TyParamList) -> coq::term::Type {
+        let sls_app = ty_params
+            .params
+            .iter()
+            .map(|names| coq::term::Term::Literal(format!("(ty_syn_type {} MetaNone)", names.type_term())))
+            .collect();
+
         let sls = coq::term::App::new(coq::term::Term::Literal(self.sls_def_name.clone()), sls_app);
 
         let tys = self.fields.iter().map(|(_, ty)| coq::term::Type::Literal(ty.to_string())).collect();
@@ -147,33 +156,16 @@ impl<'def> AbstractVariant<'def> {
         model::Type::StructT(Box::new(sls).into(), tys).into()
     }
 
-    #[must_use]
-    pub(crate) fn generate_coq_type_def_core(
+    pub(crate) fn generate_coq_type_def_in_context(
         &self,
+        document: &mut coq::Document,
         scope: &GenericScope<'def>,
         ty_context_names: &[String],
         rt_context_names: &[String],
-    ) -> coq::Document {
-        let mut document = coq::Document::default();
-
+    ) {
         let all_ty_params = scope.get_all_ty_params_with_assocs();
 
         let attr_binders = scope.get_all_attr_trait_parameters(super::IncludeSelfReq::Dont);
-
-        // Generate terms to apply the sls app to
-        let sls_app: Vec<_> = all_ty_params
-            .params
-            .iter()
-            .map(|names| {
-                coq::term::Term::App(Box::new(coq::term::App::new(
-                    coq::term::Term::RecordProj(
-                        Box::new(coq::term::Term::Literal(names.type_term())),
-                        "ty_syn_type".to_owned(),
-                    ),
-                    vec![coq::term::Term::Literal("MetaNone".to_owned())],
-                )))
-            })
-            .collect();
 
         // Intro to main def
         document.push(coq::command::Definition {
@@ -187,49 +179,30 @@ impl<'def> AbstractVariant<'def> {
                 ty_context_names.join(" "),
                 coq::proof::Terminator::Defined,
                 |proof| {
-                    proof.push(coq::ltac::LTac::Exact(coq::term::Term::App(Box::new(coq::term::App::new(
-                        // TODO: `ty_params` must create a specific Coq object.
-                        coq::term::Term::Literal(scope.to_string()),
-                        vec![coq::term::Term::Literal(self.get_coq_type_term(sls_app).to_string())],
-                    )))));
+                    proof.push(coq::ltac::LTac::Exact(coq::term::Term::Literal(format!(
+                        "({scope} {})",
+                        self.get_coq_type_term(&all_ty_params)
+                    ))));
                 },
             )),
         });
 
         // Generate the refinement type definition
         let rt_params = all_ty_params.get_coq_ty_rt_params();
-        let using =
-            format!("{} {}", fmt_list!(rt_params.make_using_terms(), " "), rt_context_names.join(" "));
-
-        document.push(coq::command::Definition {
-            program_mode: false,
-            name: self.plain_rt_def_name.clone(),
-            params: coq::binder::BinderList::empty(),
-            ty: Some(coq::term::Type::RT),
-            body: coq::command::DefinitionBody::Proof(coq::proof::Proof::new_using(
-                using,
-                coq::proof::Terminator::Defined,
-                |proof| {
-                    proof.push(coq::ltac::LetIn::new(
-                        "__a",
-                        coq::term::App::new(
-                            coq::term::Term::Literal("normalized_rt_of_spec_ty".to_owned()),
-                            vec![coq::term::Term::Literal(self.plain_ty_name.clone())],
-                        ),
-                        coq::ltac::LTac::Exact(coq::term::Term::Literal("__a".to_owned())),
-                    ));
-                },
-            )),
-        });
+        document.append_document(generate_normalized_rt_def(
+            &self.plain_rt_def_name,
+            &self.plain_ty_name,
+            &rt_params.make_using_terms(),
+            rt_context_names,
+        ));
 
         // Make it Typeclasses Transparent
-        let typeclasses_ty = coq::command::Command::TypeclassesTransparent(self.plain_ty_name.clone());
-        let typeclasses_rt = coq::command::Command::TypeclassesTransparent(self.plain_rt_def_name.clone());
-
-        document.push(coq::command::CommandAttrs::new(typeclasses_ty).attributes("global"));
-        document.push(coq::command::CommandAttrs::new(typeclasses_rt).attributes("global"));
-
-        document
+        document.push(
+            coq::command::CommandAttrs::new(coq::command::Command::TypeclassesTransparent(
+                self.plain_ty_name.clone(),
+            ))
+            .attributes("global"),
+        );
     }
 
     /// Generate a Coq definition for the struct type alias.
@@ -240,53 +213,39 @@ impl<'def> AbstractVariant<'def> {
         &self,
         scope: &GenericScope<'def>,
         extra_context: &[coq::binder::Binder],
-    ) -> String {
-        let mut out = String::with_capacity(200);
-        let indent = "  ";
-        // the write_str impl will always return Ok.
-        write!(out, "Section {}.\n", self.plain_ty_name).unwrap();
-        write!(out, "{}Context `{{RRGS : !refinedrustGS Σ}}.\n", indent).unwrap();
-
+    ) -> coq::Document {
         let all_ty_params = scope.get_all_ty_params_with_assocs();
-
-        // add type parameters, and build a list of terms to apply the sls def to
-        if !all_ty_params.params.is_empty() {
-            // first push the (implicit) refinement type parameters
-            write!(out, "{}Context", indent).unwrap();
-            for names in &all_ty_params.params {
-                write!(out, " ({} : RT)", names.refinement_type()).unwrap();
-            }
-            out.push_str(".\n");
-        }
-        out.push('\n');
+        let mut section_context = setup_type_section_context(&all_ty_params);
 
         // write coq parameters
         let (context_names, context_names_without_sigma) =
-            format_extra_context_items(extra_context, &mut out).unwrap();
+            invariants::format_extra_context_items(extra_context, &mut section_context);
 
-        write!(
-            out,
-            "{}",
-            self.generate_coq_type_def_core(scope, &context_names, &context_names_without_sigma)
-        )
-        .unwrap();
+        self.generate_coq_type_def_in_context(
+            &mut section_context,
+            scope,
+            &context_names,
+            &context_names_without_sigma,
+        );
 
-        write!(out, "End {}.\n", self.plain_ty_name).unwrap();
-        write!(out, "Global Arguments {} : clear implicits.\n", self.plain_rt_def_name).unwrap();
-        if !context_names_without_sigma.is_empty() {
-            //let dep_sigma_str = if dep_sigma { "{_} " } else { "" };
-            let dep_sigma_str = "";
+        let mut out = coq::Document::default();
+        out.push(coq::section::Section::new(self.plain_ty_name.clone(), |doc| {
+            doc.append_document(section_context);
+        }));
 
-            write!(
-                out,
-                "Global Arguments {} {}{} {{{}}}.\n",
-                self.plain_rt_def_name,
-                dep_sigma_str,
-                "_ ".repeat(all_ty_params.params.len()),
-                "_ ".repeat(context_names_without_sigma.len())
-            )
-            .unwrap();
-        }
+        generate_type_implicit_arg_flags(
+            &mut out,
+            &self.plain_rt_def_name,
+            &all_ty_params,
+            &context_names_without_sigma,
+        );
+        invariants::generate_semtype_implicit_arg_flags(
+            &mut out,
+            &self.plain_ty_name,
+            &all_ty_params,
+            extra_context,
+        );
+
         out
     }
 }
@@ -315,6 +274,134 @@ impl fmt::Debug for Abstract<'_> {
 }
 
 pub type AbstractRef<'def> = &'def RefCell<Option<Abstract<'def>>>;
+
+impl<'def> BundleableType<'def> for Abstract<'def> {
+    fn ty_name(&self) -> String {
+        let Some(inv) = &self.invariant else {
+            panic!("only types with invariants are bundleable");
+        };
+
+        inv.type_name()
+    }
+
+    fn rt_name(&self) -> String {
+        let Some(inv) = &self.invariant else {
+            panic!("only types with invariants are bundleable");
+        };
+
+        inv.rt_def_name()
+    }
+
+    fn bundle_rt_term(&self) -> String {
+        let Some(inv) = &self.invariant else {
+            panic!("only types with invariants are bundleable");
+        };
+
+        inv.rfn_type.to_string()
+    }
+
+    fn scope(&self) -> GenericScope<'def> {
+        self.scope.clone()
+    }
+
+    fn extra_coq_params(&self) -> Vec<coq::binder::Binder> {
+        let Some(inv) = &self.invariant else {
+            panic!("only types with invariants are bundleable");
+        };
+
+        inv.coq_params.clone()
+    }
+
+    fn generate_recursive_prelude_entry(&self, doc: &mut coq::Document) {
+        let Some(inv) = self.invariant.as_ref() else {
+            panic!("Recursive types need an invariant");
+        };
+
+        let all_ty_params = self.scope.get_all_ty_params_with_assocs();
+        let type_name = inv.type_name();
+        let rfn_type = &inv.rfn_type;
+        let attr_binders = self.scope.get_all_attr_trait_parameters(super::IncludeSelfReq::Dont);
+
+        let mut recursive_prelude = String::new();
+        write!(recursive_prelude, "Let {}", inv.rt_def_name()).unwrap();
+        for names in &all_ty_params.params {
+            write!(recursive_prelude, " (_{} : RT)", names.refinement_type()).unwrap();
+        }
+        writeln!(recursive_prelude, " := {}.", inv.rfn_type).unwrap();
+
+        let dummy_ty_name = format!("_{type_name}");
+        writeln!(recursive_prelude, "Context ({dummy_ty_name} : type {rfn_type}).").unwrap();
+
+        write!(recursive_prelude, "Let {type_name}").unwrap();
+        for names in &all_ty_params.params {
+            write!(recursive_prelude, " ({} : RT)", names.refinement_type()).unwrap();
+        }
+        if !attr_binders.0.is_empty() {
+            write!(recursive_prelude, " {attr_binders}").unwrap();
+        }
+        writeln!(recursive_prelude, " := {} {dummy_ty_name}.", self.scope).unwrap();
+
+        doc.push(coq::command::Command::Literal(recursive_prelude));
+    }
+
+    fn generate_in_context(
+        &self,
+        doc: &mut coq::Document,
+        ty_name: &str,
+        rt_name: &str,
+        _ty_context_names: &[String],
+        rt_context_names: &[String],
+    ) {
+        let Some(inv) = self.invariant.as_ref() else {
+            panic!("Recursive types need an invariant");
+        };
+
+        let all_ty_params = self.scope.get_all_ty_params_with_assocs();
+        let rt_instantiations = all_ty_params.get_coq_ty_rt_params().make_using_terms();
+
+        doc.push(coq::command::Definition::new(
+            self.variant_def.plain_rt_def_name.clone(),
+            coq::binder::BinderList::empty(),
+            Some(coq::term::Type::RT),
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(
+                self.variant_def.rfn_type().to_string(),
+            )),
+        ));
+        let base_type = format!("({})", self.variant_def.get_coq_type_term(&all_ty_params));
+
+        doc.append_document(inv.generate_coq_type_def_core(
+            &base_type,
+            &self.variant_def.plain_rt_def_name,
+            ty_name,
+            rt_name,
+            &rt_instantiations,
+            &self.scope,
+            rt_context_names,
+        ));
+    }
+
+    fn set_flags(&self, doc: &mut coq::Document, rt_context_names: &[String]) {
+        let Some(inv) = self.invariant.as_ref() else {
+            panic!("Recursive types need an invariant");
+        };
+
+        let all_ty_params = self.scope.get_all_ty_params_with_assocs();
+
+        generate_type_implicit_arg_flags(doc, &inv.rt_def_name(), &all_ty_params, &rt_context_names);
+        invariants::generate_semtype_implicit_arg_flags(
+            doc,
+            &inv.type_name(),
+            &all_ty_params,
+            &inv.coq_params,
+        );
+        invariants::generate_semtype_implicit_arg_flags(
+            doc,
+            &inv.spec_name(),
+            &all_ty_params,
+            &inv.coq_params,
+        );
+    }
+}
 
 impl<'def> Abstract<'def> {
     #[must_use]
@@ -416,10 +503,82 @@ impl<'def> Abstract<'def> {
 
     /// Generate a Coq definition for the struct type alias.
     #[must_use]
-    pub fn generate_coq_type_def(&self) -> String {
+    pub fn generate_coq_type_def(&self) -> coq::Document {
         if self.is_recursive {
-            self.generate_recursive_type_def()
+            // we need an invariant, otherwise we cannot define a recursive type
+            let Some(inv) = self.invariant.as_ref() else {
+                panic!("Recursive types need an invariant");
+            };
+
+            let Some(_) = &inv.abstracted_refinement else {
+                panic!("no abstracted refinement");
+            };
+
+            let all_ty_params = self.scope.get_all_ty_params_with_assocs();
+            let rt_instantiations = all_ty_params.get_coq_ty_rt_params().make_using_terms();
+
+            let mut out = coq::Document::default();
+
+            let mut section_context = setup_type_section_context(&all_ty_params);
+            let (context_names, context_names_without_sigma) =
+                invariants::format_extra_context_items(&inv.coq_params, &mut section_context);
+
+            let type_name = inv.type_name();
+            let rfn_type = &inv.rfn_type;
+            let attr_binders = self.scope.get_all_attr_trait_parameters(super::IncludeSelfReq::Dont);
+            let attr_binders_uses = fmt_list!(attr_binders.make_using_terms(), " ");
+
+            let pre_type_name = format!("{type_name}_pre");
+            let pre_rfn_name = format!("{type_name}_rt_pre");
+            let mut components = coq::Document::default();
+
+            self.generate_in_context(
+                &mut components,
+                &pre_type_name,
+                &pre_rfn_name,
+                &context_names,
+                &context_names_without_sigma,
+            );
+
+            section_context.push(coq::section::Section::new("components".to_owned(), |doc| {
+                self.generate_recursive_prelude_entry(doc);
+                doc.append_document(components);
+            }));
+
+            let pre_args = if attr_binders_uses.is_empty() {
+                self.scope.identity_instantiation_term()
+            } else {
+                format!("{attr_binders_uses} {}", self.scope.identity_instantiation_term())
+            };
+            let fixpoint_body =
+                format!("{} type_fixpoint (λ rec, {pre_type_name} rec {pre_args})", self.scope);
+            section_context.push(coq::command::Definition::new(
+                type_name.clone(),
+                attr_binders,
+                Some(self.scope.get_spec_all_type_term(Box::new(
+                    model::Type::Ttype(Box::new(coq::term::Type::Literal(format!("({rfn_type})")))).into(),
+                ))),
+                coq::command::DefinitionBody::Term(coq::term::Term::Literal(fixpoint_body)),
+            ));
+
+            // set the right flags and geneerate the refinement type definition
+            section_context.append_document(inv.set_invariant_type_flags(&type_name));
+            section_context.append_document(generate_normalized_rt_def(
+                &inv.rt_def_name(),
+                &inv.type_name(),
+                &rt_instantiations,
+                &context_names_without_sigma,
+            ));
+
+            out.push(coq::section::Section::new(inv.type_name(), |doc| doc.append_document(section_context)));
+
+            self.set_flags(&mut out, &context_names_without_sigma);
+
+            out
         } else {
+            // This path makes sure that the raw type gets a proper usable definition; we use this
+            // for the #raw annotation currently.
+
             let extra_context = if let Some(inv) = &self.invariant { inv.coq_params.as_slice() } else { &[] };
 
             // the raw type
@@ -429,148 +588,11 @@ impl<'def> Abstract<'def> {
             if let Some(spec) = self.invariant.as_ref() {
                 let s =
                     spec.generate_coq_type_def(self.plain_ty_name(), self.plain_rt_def_name(), &self.scope);
-                out.push_str(&s);
+                out.append_document(s);
             }
 
             out
         }
-    }
-
-    /// Generate a type definition in case this type is a recursive type.
-    fn generate_recursive_type_def(&self) -> String {
-        // we need an invariant, otherwise we cannot define a recursive type
-        let Some(inv) = self.invariant.as_ref() else {
-            panic!("Recursive types need an invariant");
-        };
-
-        let Some(_) = &inv.abstracted_refinement else {
-            panic!("no abstracted refinement");
-        };
-
-        let all_ty_params = self.scope.get_all_ty_params_with_assocs();
-        let rt_instantiations = all_ty_params.get_coq_ty_rt_params().make_using_terms();
-        let ty_rt_uses = fmt_list!(rt_instantiations.clone(), " ");
-
-        let mut out = coq::Document::default();
-        let mut section_context = coq::Document::default();
-
-        section_context.push(coq::command::Context::refinedrust());
-        if !all_ty_params.params.is_empty() {
-            let rt_param_binders = all_ty_params
-                .params
-                .iter()
-                .map(|names| coq::binder::Binder::new(Some(names.refinement_type()), coq::term::Type::RT))
-                .collect();
-            section_context.push(coq::command::Context::new(coq::binder::BinderList::new(rt_param_binders)));
-        }
-
-        let (_context_names, context_names_without_sigma) =
-            invariants::Spec::format_extra_context_items_doc(&inv.coq_params, &mut section_context);
-
-        // We introduce a let binding for the recursive public refinement type while computing the
-        // raw refinement type of the struct body.
-        let raw_rt_body = format!(
-            "let {} {} := {} in\n{}",
-            inv.rt_def_name(),
-            ty_rt_uses,
-            inv.rfn_type,
-            self.variant_def.rfn_type()
-        );
-        section_context.push(coq::command::Definition::new(
-            self.variant_def.plain_rt_def_name.clone(),
-            coq::binder::BinderList::empty(),
-            Some(coq::term::Type::RT),
-            coq::command::DefinitionBody::Term(coq::term::Term::Literal(raw_rt_body)),
-        ));
-
-        section_context.append_document(
-            inv.generate_coq_invariant_def_doc(&self.scope, &self.variant_def.plain_rt_def_name),
-        );
-
-        let type_name = inv.type_name();
-        let rfn_type = &inv.rfn_type;
-        let attr_binders = self.scope.get_all_attr_trait_parameters(super::IncludeSelfReq::Dont);
-        let attr_binders_uses = fmt_list!(attr_binders.make_using_terms(), " ");
-        if !attr_binders.0.is_empty() {
-            section_context.push(coq::command::Context::new(attr_binders));
-        }
-
-        // Generate terms to apply the sls app to.
-        let sls_app = all_ty_params
-            .params
-            .iter()
-            .map(|names| coq::term::Term::Literal(format!("(ty_syn_type {} MetaNone)", names.type_term())))
-            .collect();
-        let base_type = format!("({})", self.variant_def.get_coq_type_term(sls_app));
-        let wrapped_body = inv.generate_wrapped_type_body_at_current_params(&base_type, &self.scope);
-
-        let rec_body = format!(
-            "let {type_name} {ty_rt_uses} {attr_binders_uses} := {} {type_name}_rec' in\n\
-             let {type_name}_rt {ty_rt_uses} := {rfn_type} in\n\
-             {wrapped_body}",
-            self.scope,
-        );
-
-        let mut rec_params = all_ty_params.get_semantic_ty_params();
-        rec_params.append(vec![coq::binder::Binder::new(
-            Some(format!("{type_name}_rec'")),
-            coq::term::Type::Literal(format!("type ({rfn_type})")),
-        )]);
-        section_context.push(coq::command::Definition::new(
-            format!("{type_name}_rec"),
-            rec_params,
-            Some(coq::term::Type::Literal(format!("type ({rfn_type})"))),
-            coq::command::DefinitionBody::Term(coq::term::Term::Literal(rec_body)),
-        ));
-
-        let fixpoint_body = format!(
-            "{} type_fixpoint ({type_name}_rec {})",
-            self.scope,
-            fmt_list!(all_ty_params.get_semantic_ty_params().make_using_terms(), " "),
-        );
-        section_context.push(coq::command::Definition::new(
-            type_name.clone(),
-            coq::binder::BinderList::empty(),
-            Some(self.scope.get_spec_all_type_term(Box::new(
-                model::Type::Ttype(Box::new(coq::term::Type::Literal(format!("({rfn_type})")))).into(),
-            ))),
-            coq::command::DefinitionBody::Term(coq::term::Term::Literal(fixpoint_body)),
-        ));
-        section_context.push(
-            coq::command::CommandAttrs::new(coq::command::Command::TypeclassesTransparent(type_name))
-                .attributes("global"),
-        );
-        section_context.append_document(
-            inv.generate_normalized_rt_def_doc(&rt_instantiations, &context_names_without_sigma),
-        );
-
-        out.push(coq::section::Section::new(inv.type_name(), |doc| doc.append_document(section_context)));
-        out.push(
-            coq::command::CommandAttrs::new(coq::command::Arguments {
-                name: inv.rt_def_name(),
-                arguments_string: ": clear implicits".to_owned(),
-            })
-            .attributes("global"),
-        );
-        if !context_names_without_sigma.is_empty() {
-            //let dep_sigma_str = if dep_sigma { "{_} " } else { "" };
-            let dep_sigma_str = "";
-
-            out.push(
-                coq::command::CommandAttrs::new(coq::command::Arguments {
-                    name: inv.rt_def_name(),
-                    arguments_string: format!(
-                        "{}{} {{{}}}",
-                        dep_sigma_str,
-                        "_ ".repeat(all_ty_params.params.len()),
-                        "_ ".repeat(context_names_without_sigma.len())
-                    ),
-                })
-                .attributes("global"),
-            );
-        }
-
-        out.to_string()
     }
 
     /// Make a literal type.

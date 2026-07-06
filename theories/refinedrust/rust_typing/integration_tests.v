@@ -575,7 +575,6 @@ Section test_rectypes.
     @mut_fixpoint _ _ _ Boo_F _ _ _.
 End test_rectypes.
 
-
 Section rectypes_List_ty.
   Context `{RRGS : !(typeGS Σ)}.
 
@@ -705,15 +704,7 @@ Section rectypes_List_ty.
 
   End components.
 
-    Arguments enum_ty : simpl never.
-    Program Instance rectypes_List_ty_contractive (T_ty: (type (T_rt))) : EnumContractive (λ rectypes_List_ty, rectypes_List_enum_pre rectypes_List_ty -[] -[T_ty]).
-    Next Obligation. enum_contractive_solve_eq. Qed.
-    Next Obligation. enum_contractive_solve_eq. Qed.
-    Next Obligation. enum_contractive_solve_eq. Defined.
-    Next Obligation. enum_contractive_solve_eq. Qed.
-    Next Obligation. enum_contractive_solve_dist. Qed.
-    Next Obligation. enum_contractive_solve_dist. Qed.
-
+  Arguments enum_ty : simpl never.
   Definition rectypes_List_ty  : (spec_with 0 [(T_rt)] ((type _))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), type_fixpoint (λ rectypes_List_ty, enum_t (rectypes_List_enum_pre rectypes_List_ty -[] -[T_ty])).
   Definition rectypes_List_rt  : RT.

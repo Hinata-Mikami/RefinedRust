@@ -107,16 +107,135 @@ impl PartialOrd<Self> for OrderedDefId {
     }
 }
 
-pub(crate) fn sort_def_ids(tcx: ty::TyCtxt<'_>, dids: &mut [DefId]) {
-    dids.sort_by(|a, b| {
-        LogicalDefKey::new(tcx, *a)
-            .cmp(&LogicalDefKey::new(tcx, *b))
-            .then_with(|| {
-                normalize_def_path_str(&tcx.def_path_str(*a))
-                    .cmp(&normalize_def_path_str(&tcx.def_path_str(*b)))
-            })
-            .then_with(|| a.krate.cmp(&b.krate).then_with(|| a.index.cmp(&b.index)))
-    });
+fn compute_def_sccs(deps: &BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>) -> Vec<Vec<OrderedDefId>> {
+    struct TarjanState {
+        next_index: usize,
+        stack: Vec<OrderedDefId>,
+        indices: BTreeMap<OrderedDefId, usize>,
+        lowlinks: BTreeMap<OrderedDefId, usize>,
+        on_stack: BTreeSet<OrderedDefId>,
+        components: Vec<Vec<OrderedDefId>>,
+    }
+
+    fn strong_connect(
+        node: OrderedDefId,
+        graph: &BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>,
+        state: &mut TarjanState,
+    ) {
+        let index = state.next_index;
+        state.next_index += 1;
+        state.indices.insert(node.clone(), index);
+        state.lowlinks.insert(node.clone(), index);
+        state.stack.push(node.clone());
+        state.on_stack.insert(node.clone());
+
+        if let Some(successors) = graph.get(&node) {
+            for successor in successors {
+                if !state.indices.contains_key(successor) {
+                    strong_connect(successor.clone(), graph, state);
+                    let lowlink = state.lowlinks[&node].min(state.lowlinks[successor]);
+                    state.lowlinks.insert(node.clone(), lowlink);
+                } else if state.on_stack.contains(successor) {
+                    let lowlink = state.lowlinks[&node].min(state.indices[successor]);
+                    state.lowlinks.insert(node.clone(), lowlink);
+                }
+            }
+        }
+
+        if state.lowlinks[&node] == state.indices[&node] {
+            let mut component = Vec::new();
+            loop {
+                let component_node = state.stack.pop().unwrap();
+                state.on_stack.remove(&component_node);
+                let is_root = component_node == node;
+                component.push(component_node);
+                if is_root {
+                    break;
+                }
+            }
+            state.components.push(component);
+        }
+    }
+
+    let mut graph: BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>> = BTreeMap::new();
+    for (did, referenced_dids) in deps {
+        graph.entry(did.clone()).or_default();
+        for did2 in referenced_dids {
+            graph.entry(did2.clone()).or_default().insert(did.clone());
+            graph.entry(did.clone()).or_default();
+        }
+    }
+
+    let mut state = TarjanState {
+        next_index: 0,
+        stack: Vec::new(),
+        indices: BTreeMap::new(),
+        lowlinks: BTreeMap::new(),
+        on_stack: BTreeSet::new(),
+        components: Vec::new(),
+    };
+
+    for node in graph.keys() {
+        if !state.indices.contains_key(node) {
+            strong_connect(node.clone(), &graph, &mut state);
+        }
+    }
+
+    state.components
+}
+
+/// Order definitions topologically, preserving strongly connected components.
+pub(crate) fn order_def_sccs_with_deps(
+    _tcx: ty::TyCtxt<'_>,
+    deps: &BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>,
+) -> Vec<Vec<DefId>> {
+    let components = compute_def_sccs(deps);
+    let mut component_by_node = BTreeMap::new();
+    for (idx, component) in components.iter().enumerate() {
+        for node in component {
+            component_by_node.insert(node.clone(), idx);
+        }
+    }
+
+    let mut topo: TopologicalSort<usize> = TopologicalSort::new();
+    for idx in 0..components.len() {
+        topo.insert(idx);
+    }
+    for (did, referenced_dids) in deps {
+        let did_component = component_by_node[did];
+        for did2 in referenced_dids {
+            let dep_component = component_by_node[did2];
+            if dep_component != did_component {
+                topo.add_dependency(dep_component, did_component);
+            }
+        }
+    }
+
+    let defs: BTreeSet<OrderedDefId> = deps.keys().cloned().collect();
+    let mut defn_order = Vec::new();
+    while !topo.is_empty() {
+        let mut next = topo.pop_all();
+        next.sort_by(|a, b| {
+            let mut a_defs: Vec<&OrderedDefId> =
+                components[*a].iter().filter(|did| defs.contains(*did)).collect();
+            let mut b_defs: Vec<&OrderedDefId> =
+                components[*b].iter().filter(|did| defs.contains(*did)).collect();
+            a_defs.sort();
+            b_defs.sort();
+            a_defs.cmp(&b_defs)
+        });
+
+        for component_idx in next {
+            let mut component_defs: Vec<_> =
+                components[component_idx].iter().filter(|did| defs.contains(*did)).cloned().collect();
+            component_defs.sort();
+            if !component_defs.is_empty() {
+                defn_order.push(component_defs.into_iter().map(|did| did.def_id).collect());
+            }
+        }
+    }
+
+    defn_order
 }
 
 /// Order ADT definitions topologically.
@@ -124,32 +243,19 @@ pub(crate) fn order_defs_with_deps(
     tcx: ty::TyCtxt<'_>,
     deps: &BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>,
 ) -> Vec<DefId> {
-    let mut topo = TopologicalSort::new();
-    let mut defs = BTreeSet::new();
-
-    //info!("Ordering ADT defs: {deps:?}");
-
     for (did, referenced_dids) in deps {
-        defs.insert(did);
-        topo.insert(did.def_id);
-        for did2 in referenced_dids {
-            topo.add_dependency(did2.def_id, did.def_id);
+        if referenced_dids.contains(did) {
+            panic!("RefinedRust does not currently support mutually recursive types");
         }
     }
 
+    let ordered = order_def_sccs_with_deps(tcx, deps);
     let mut defn_order = Vec::new();
-    while !topo.is_empty() {
-        let mut next = topo.pop_all();
-        // sort these by lexicographic order
-        sort_def_ids(tcx, &mut next);
-
-        if next.is_empty() {
-            // dependency cycle detected
-            // TODO
+    for component in ordered {
+        if component.len() > 1 {
             panic!("RefinedRust does not currently support mutually recursive types");
         }
-        // only track actual definitions
-        defn_order.extend(next.into_iter().filter(|x| defs.contains(&OrderedDefId::new(tcx, *x))));
+        defn_order.extend(component);
     }
 
     defn_order

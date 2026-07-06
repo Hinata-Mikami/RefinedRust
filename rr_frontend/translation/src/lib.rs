@@ -474,36 +474,64 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             }
             adt_deps.append(&mut rust_trait_impl_deps);
 
-            let ordered = base::order_defs_with_deps(self.tcx, &adt_deps);
-            info!("ordered ADT defns: {:?}", ordered);
+            let ordered = base::order_def_sccs_with_deps(self.tcx, &adt_deps);
+            info!("ordered ADT defn groups: {:?}", ordered);
 
-            for did in &ordered {
-                let ordered_did = OrderedDefId::new(self.tcx, *did);
-                if let Some(su_ref) = struct_defs.get(&ordered_did) {
-                    let su_ref = su_ref.borrow();
-                    info!("writing struct {:?}, {:?}", did, su_ref);
-                    let su = su_ref.as_ref().unwrap();
+            for group in &ordered {
+                if let [did] = group.as_slice() {
+                    let ordered_did = OrderedDefId::new(self.tcx, *did);
+                    if let Some(su_ref) = struct_defs.get(&ordered_did) {
+                        let su_ref = su_ref.borrow();
+                        info!("writing struct {:?}, {:?}", did, su_ref);
+                        let su = su_ref.as_ref().unwrap();
 
-                    // layout specs
-                    writeln!(code_file, "{}", su.generate_coq_sls_def()).unwrap();
+                        // layout specs
+                        writeln!(code_file, "{}", su.generate_coq_sls_def()).unwrap();
 
-                    // type aliases
-                    writeln!(spec_file, "{}", su.generate_coq_type_def()).unwrap();
-                } else if let Some(eu_ref) = enum_defs.get(&ordered_did) {
-                    let eu = eu_ref.borrow();
-                    let eu = eu.as_ref().unwrap();
-                    info!("writing enum {:?}, {:?}", did, eu);
+                        // type aliases
+                        writeln!(spec_file, "{}", su.generate_coq_type_def()).unwrap();
+                    } else if let Some(eu_ref) = enum_defs.get(&ordered_did) {
+                        let eu = eu_ref.borrow();
+                        let eu = eu.as_ref().unwrap();
+                        info!("writing enum {:?}, {:?}", did, eu);
 
-                    // layout specs
-                    writeln!(code_file, "{}", eu.generate_coq_els_def()).unwrap();
+                        // layout specs
+                        writeln!(code_file, "{}", eu.generate_coq_els_def()).unwrap();
 
-                    // type definition
-                    writeln!(spec_file, "{}", eu.generate_coq_type_def()).unwrap();
-                } else if let Some(impl_ref) = self.trait_impls.get(&registry::ImplKey::Rust(ordered_did)) {
-                    writeln!(spec_file, "Section attrs.").unwrap();
-                    writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
-                    writeln!(spec_file, "{}\n", impl_ref.generate_attr_decl()).unwrap();
-                    writeln!(spec_file, "End attrs.\n").unwrap();
+                        // type definition
+                        writeln!(spec_file, "{}", eu.generate_coq_type_def()).unwrap();
+                    } else if let Some(impl_ref) = self.trait_impls.get(&registry::ImplKey::Rust(ordered_did))
+                    {
+                        writeln!(spec_file, "Section attrs.").unwrap();
+                        writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
+                        writeln!(spec_file, "{}\n", impl_ref.generate_attr_decl()).unwrap();
+                        writeln!(spec_file, "End attrs.\n").unwrap();
+                    }
+                } else {
+                    let mut components = Vec::new();
+                    for did in group {
+                        let ordered_did = OrderedDefId::new(self.tcx, *did);
+                        if let Some(su_ref) = struct_defs.get(&ordered_did) {
+                            let su = su_ref.borrow();
+                            info!("writing bundled struct {:?}, {:?}", did, su);
+                            writeln!(code_file, "{}", su.as_ref().unwrap().generate_coq_sls_def()).unwrap();
+                            components.push(specs::bundles::BundleType::Struct(*su_ref));
+                        } else if let Some(eu_ref) = enum_defs.get(&ordered_did) {
+                            let eu = eu_ref.borrow();
+                            info!("writing bundled enum {:?}, {:?}", did, eu);
+                            writeln!(code_file, "{}", eu.as_ref().unwrap().generate_coq_els_def()).unwrap();
+                            components.push(specs::bundles::BundleType::Enum(*eu_ref));
+                        } else if self.trait_impls.contains_key(&registry::ImplKey::Rust(ordered_did)) {
+                            panic!(
+                                "RefinedRust does not currently support recursive type bundles involving trait impl attrs"
+                            );
+                        } else {
+                            panic!("internal error: unknown definition in recursive type bundle: {did:?}");
+                        }
+                    }
+
+                    let bundle = specs::bundles::Bundle::new(components);
+                    writeln!(spec_file, "{}", bundle.generate()).unwrap();
                 }
             }
         }

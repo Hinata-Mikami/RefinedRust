@@ -1339,6 +1339,26 @@ Ltac enum_contractive_solve_dist :=
         destruct r; simpl; apply _
     end.
 
+Global Hint Extern 100 (TypeContractive (λ x, enum_t _)) =>
+  apply enum_t_contr;
+  unshelve econstructor;
+  [ enum_contractive_solve_eq
+  | enum_contractive_solve_eq
+  | enum_contractive_solve_eq
+  | enum_contractive_solve_eq
+  | enum_contractive_solve_dist
+  | enum_contractive_solve_dist ] : typeclass_instances.
+Global Hint Extern 100 (TypeNonExpansive (λ x, enum_t _)) =>
+  apply enum_t_ne;
+  unshelve econstructor;
+  [ enum_contractive_solve_eq
+  | enum_contractive_solve_eq
+  | enum_contractive_solve_eq
+  | enum_contractive_solve_eq
+  | enum_contractive_solve_dist
+  | enum_contractive_solve_dist ] : typeclass_instances.
+
+
 Ltac els_not_elem_solver :=
     repeat (apply not_elem_of_cons; split; first discriminate);
     apply not_elem_of_nil.
@@ -1701,16 +1721,14 @@ Ltac solve_function_subtype_hook ::=
 (** **  Generics / Traits *)
 Ltac normalized_rt_of_spec_ty_rec ty :=
   match ty with
-  | ∀ x: _, ?B =>
-      normalized_rt_of_spec_ty_rec B
-  | spec_with _ _ (type ?ty) =>
+  | context[spec_with _ _ (type ?ty)] =>
       let hnf_ty := eval hnf in ty in
       constr:(ty)
   end.
-  Ltac normalized_rt_of_spec_ty ty :=
-  match type of ty with
-  | ?B => normalized_rt_of_spec_ty_rec B
-  end.
+Ltac normalized_rt_of_spec_ty ty :=
+match type of ty with
+| ?B => normalized_rt_of_spec_ty_rec B
+end.
 
 Ltac unfold_generic_inst :=
   unfold spec_instantiate_lft_fst;

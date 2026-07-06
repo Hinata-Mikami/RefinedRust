@@ -8,7 +8,7 @@ use std::fmt::Write as _;
 
 use derive_more::Constructor;
 
-use crate::specs::{GenericScope, IncludeSelfReq, TyOwnSpec};
+use crate::specs::{GenericScope, IncludeSelfReq, TyOwnSpec, TyParamList};
 use crate::{coq, fmt_list, model};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -66,7 +66,6 @@ pub struct Spec {
     pub(crate) abstracted_refinement: Option<coq::binder::Pattern>,
 
     // TODO add stuff for non-atomic/atomic invariants
-    /// name, type, implicit or not
     pub(crate) coq_params: Vec<coq::binder::Binder>,
 }
 
@@ -76,33 +75,6 @@ impl Spec {
         I: Into<coq::ltac::LTac>,
     {
         out.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(ltac, terminator)));
-    }
-
-    pub(crate) fn format_extra_context_items_doc(
-        items: &[coq::binder::Binder],
-        out: &mut coq::Document,
-    ) -> (Vec<String>, Vec<String>) {
-        let mut context_names = Vec::new();
-        let mut context_names_without_sigma = Vec::new();
-
-        if items.is_empty() {
-            return (context_names, context_names_without_sigma);
-        }
-
-        let mut binders = Vec::with_capacity(items.len());
-        for (counter, it) in items.iter().enumerate() {
-            let name = format!("_CTX{counter}");
-            if !it.is_dependent_on_sigma() {
-                context_names_without_sigma.push(name.clone());
-            }
-            context_names.push(name.clone());
-            binders.push(it.clone().set_name(name));
-        }
-
-        out.push(coq::Sentence::Comment("Additional parameters".to_owned()));
-        out.push(coq::command::Context::new(coq::binder::BinderList::new(binders)));
-
-        (context_names, context_names_without_sigma)
     }
 
     #[must_use]
@@ -281,7 +253,7 @@ impl Spec {
         Some(out)
     }
 
-    pub(crate) fn generate_coq_invariant_def_doc(
+    pub(crate) fn generate_coq_invariant_def(
         &self,
         scope: &GenericScope<'_>,
         base_rfn_type: &str,
@@ -522,98 +494,42 @@ impl Spec {
         out
     }
 
-    #[expect(dead_code)]
-    pub(crate) fn generate_coq_invariant_def(&self, scope: &GenericScope<'_>, base_rfn_type: &str) -> String {
-        self.generate_coq_invariant_def_doc(scope, base_rfn_type).to_string()
-    }
-
     /// Generate the Coq definition of the type, without the surrounding context assumptions.
     pub(crate) fn generate_coq_type_def_core(
         &self,
         base_type: &str,
         base_rfn_type: &str,
-        generics_rts: &[coq::term::Term],
-        scope: &GenericScope<'_>,
-        context_names: &[String],
-    ) -> String {
-        self.generate_coq_type_def_core_doc(base_type, base_rfn_type, generics_rts, scope, context_names)
-            .to_string()
-    }
-
-    pub(crate) fn generate_coq_type_def_core_doc(
-        &self,
-        base_type: &str,
-        base_rfn_type: &str,
+        inv_type_name: &str,
+        inv_rfn_type_name: &str,
         generics_rts: &[coq::term::Term],
         scope: &GenericScope<'_>,
         context_names: &[String],
     ) -> coq::Document {
         let mut out = coq::Document::default();
 
-        out.append_document(self.generate_coq_invariant_def_doc(scope, base_rfn_type));
-        out.append_document(self.generate_wrapped_type_def_doc(
-            base_type,
-            generics_rts,
-            scope,
-            context_names,
-        ));
-
-        out
-    }
-
-    pub(crate) fn generate_wrapped_type_body(&self, base_type: &str, scope: &GenericScope<'_>) -> String {
-        self.generate_wrapped_type_body_inner(base_type, scope, true)
-    }
-
-    pub(crate) fn generate_wrapped_type_body_at_current_params(
-        &self,
-        base_type: &str,
-        scope: &GenericScope<'_>,
-    ) -> String {
-        self.generate_wrapped_type_body_inner(base_type, scope, false)
-    }
-
-    fn generate_wrapped_type_body_inner(
-        &self,
-        base_type: &str,
-        scope: &GenericScope<'_>,
-        include_scope_abstraction: bool,
-    ) -> String {
-        let spec_name = self.spec_name();
+        out.append_document(self.generate_coq_invariant_def(scope, base_rfn_type));
 
         let attr_binders = scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
         let attr_binders_uses = attr_binders.make_using_terms();
-        let scope_abstraction = if include_scope_abstraction { format!("{scope} ") } else { String::new() };
 
-        if SpecFlags::NonAtomic == self.flags {
+        let spec_name = self.spec_name();
+
+        let body = if SpecFlags::NonAtomic == self.flags {
             format!(
-                "{scope_abstraction}na_ex_plain_t _ _ ({spec_name} {} {}) {base_type}",
+                "{scope} na_ex_plain_t _ _ ({spec_name} {} {}) {base_type}",
                 fmt_list!(attr_binders_uses, " "),
                 scope.identity_instantiation_term(),
             )
         } else {
             format!(
-                "{scope_abstraction}ex_plain_t _ _ ({spec_name} {} {}) {base_type}",
+                "{scope} ex_plain_t _ _ ({spec_name} {} {}) {base_type}",
                 fmt_list!(attr_binders_uses, " "),
                 scope.identity_instantiation_term(),
             )
-        }
-    }
-
-    pub(crate) fn generate_wrapped_type_def_doc(
-        &self,
-        base_type: &str,
-        generics_rts: &[coq::term::Term],
-        scope: &GenericScope<'_>,
-        context_names: &[String],
-    ) -> coq::Document {
-        let mut out = coq::Document::default();
-
-        let attr_binders = scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
-        let body = self.generate_wrapped_type_body(base_type, scope);
+        };
 
         out.push(coq::command::Definition::new(
-            self.type_name(),
+            inv_type_name.to_owned(),
             attr_binders,
             Some(
                 scope.get_spec_all_type_term(Box::new(
@@ -627,6 +543,21 @@ impl Spec {
             coq::command::DefinitionBody::Term(coq::term::Term::Literal(body)),
         ));
 
+        out.append_document(self.set_invariant_type_flags(inv_type_name));
+        out.append_document(generate_normalized_rt_def(
+            inv_rfn_type_name,
+            inv_type_name,
+            generics_rts,
+            context_names,
+        ));
+
+        out
+    }
+
+    /// Set the right flags for the invariant type.
+    pub(crate) fn set_invariant_type_flags(&self, type_name: &str) -> coq::Document {
+        let mut out = coq::Document::default();
+
         out.push(
             coq::command::CommandAttrs::new(coq::command::Arguments {
                 name: self.spec_name(),
@@ -636,96 +567,33 @@ impl Spec {
         );
         out.push(
             coq::command::CommandAttrs::new(coq::command::Arguments {
-                name: self.type_name(),
+                name: type_name.to_owned(),
                 arguments_string: ": simpl never".to_owned(),
             })
             .attributes("global"),
         );
         out.push(
-            coq::command::CommandAttrs::new(coq::command::Command::TypeclassesTransparent(self.type_name()))
-                .attributes("global"),
-        );
-
-        out.append_document(self.generate_normalized_rt_def_doc(generics_rts, context_names));
-
-        out
-    }
-
-    pub(crate) fn generate_normalized_rt_def_doc(
-        &self,
-        generics_rts: &[coq::term::Term],
-        context_names: &[String],
-    ) -> coq::Document {
-        let mut out = coq::Document::default();
-
-        out.push(coq::command::Definition::new(
-            format!("{}_rt", self.type_name()),
-            coq::binder::BinderList::empty(),
-            Some(coq::term::Type::RT),
-            coq::command::DefinitionBody::Proof(coq::proof::Proof::new_using(
-                format!("{} {}", fmt_list!(generics_rts, " "), context_names.join(" ")),
-                coq::proof::Terminator::Defined,
-                |proof| {
-                    proof.push(coq::ltac::LetIn::new(
-                        "__a",
-                        coq::term::App::new(
-                            coq::term::Term::Literal("normalized_rt_of_spec_ty".to_owned()),
-                            vec![coq::term::Term::Literal(self.type_name())],
-                        ),
-                        coq::ltac::LTac::Exact(coq::term::Term::Literal("__a".to_owned())),
-                    ));
-                },
-            )),
-        ));
-        out.push(
-            coq::command::CommandAttrs::new(coq::command::Command::TypeclassesTransparent(format!(
-                "{}_rt",
-                self.type_name()
-            )))
+            coq::command::CommandAttrs::new(coq::command::Command::TypeclassesTransparent(
+                type_name.to_owned(),
+            ))
             .attributes("global"),
         );
 
         out
     }
 
-    /// Generate the definition of the Coq type, including introduction of type parameters to the
-    /// context.
-    pub(crate) fn generate_coq_type_def(
+    pub(crate) fn generate_coq_type_def_in_context(
         &self,
+        section_context: &mut coq::Document,
         base_type_name: &str,
         base_rfn_type: &str,
+        inv_type_name: &str,
+        inv_rfn_type_name: &str,
         scope: &GenericScope<'_>,
-    ) -> String {
-        self.generate_coq_type_def_doc(base_type_name, base_rfn_type, scope).to_string()
-    }
-
-    pub(crate) fn generate_coq_type_def_doc(
-        &self,
-        base_type_name: &str,
-        base_rfn_type: &str,
-        scope: &GenericScope<'_>,
-    ) -> coq::Document {
-        let mut out = coq::Document::default();
-
-        assert!(self.abstracted_refinement.is_some());
-
-        let all_ty_params = scope.get_all_ty_params_with_assocs();
-
-        let mut section_context = coq::Document::default();
-        section_context.push(coq::command::Context::refinedrust());
-        if !all_ty_params.params.is_empty() {
-            let rt_param_binders = all_ty_params
-                .params
-                .iter()
-                .map(|names| coq::binder::Binder::new(Some(names.refinement_type()), coq::term::Type::RT))
-                .collect();
-            section_context.push(coq::command::Context::new(coq::binder::BinderList::new(rt_param_binders)));
-        }
-
-        let (_context_names, context_names_without_sigma) =
-            Self::format_extra_context_items_doc(&self.coq_params, &mut section_context);
-
+        context_names_without_sigma: &[String],
+    ) {
         // get the applied base_rfn_type
+        let all_ty_params = scope.get_all_ty_params_with_assocs();
         let rt_instantiations = all_ty_params.get_coq_ty_rt_params().make_using_terms();
         let applied_base_rt = coq::term::App::new(base_rfn_type, rt_instantiations.clone());
 
@@ -742,40 +610,204 @@ impl Spec {
         );
         let applied_base_type = format!("({applied_base_type} {})", scope.identity_instantiation_term());
 
-        section_context.append_document(self.generate_coq_type_def_core_doc(
+        section_context.append_document(self.generate_coq_type_def_core(
             &applied_base_type,
             applied_base_rt.to_string().as_str(),
+            inv_type_name,
+            inv_rfn_type_name,
             &rt_instantiations,
             scope,
-            &context_names_without_sigma,
+            context_names_without_sigma,
         ));
+    }
+
+    /// Generate the definition of the Coq type, including introduction of type parameters to the
+    /// context.
+    pub(crate) fn generate_coq_type_def(
+        &self,
+        base_type_name: &str,
+        base_rfn_type: &str,
+        scope: &GenericScope<'_>,
+    ) -> coq::Document {
+        let mut out = coq::Document::default();
+
+        assert!(self.abstracted_refinement.is_some());
+
+        let all_ty_params = scope.get_all_ty_params_with_assocs();
+        let mut section_context = setup_type_section_context(&all_ty_params);
+
+        let (_context_names, context_names_without_sigma) =
+            format_extra_context_items(&self.coq_params, &mut section_context);
+
+        self.generate_coq_type_def_in_context(
+            &mut section_context,
+            base_type_name,
+            base_rfn_type,
+            &self.type_name(),
+            &self.rt_def_name(),
+            scope,
+            &context_names_without_sigma,
+        );
 
         out.push(coq::section::Section::new(self.type_name(), |doc| doc.append_document(section_context)));
-        out.push(
-            coq::command::CommandAttrs::new(coq::command::Arguments {
-                name: self.rt_def_name(),
-                arguments_string: ": clear implicits".to_owned(),
-            })
-            .attributes("global"),
-        );
-        if !context_names_without_sigma.is_empty() {
-            //let dep_sigma_str = if dep_sigma { "{_} " } else { "" };
-            let dep_sigma_str = "";
 
-            out.push(
-                coq::command::CommandAttrs::new(coq::command::Arguments {
-                    name: self.rt_def_name(),
-                    arguments_string: format!(
-                        "{}{} {{{}}}",
-                        dep_sigma_str,
-                        "_ ".repeat(all_ty_params.params.len()),
-                        "_ ".repeat(context_names_without_sigma.len())
-                    ),
-                })
-                .attributes("global"),
-            );
-        }
+        generate_type_implicit_arg_flags(
+            &mut out,
+            &self.rt_def_name(),
+            &all_ty_params,
+            &context_names_without_sigma,
+        );
+        generate_semtype_implicit_arg_flags(&mut out, &self.type_name(), &all_ty_params, &self.coq_params);
+        generate_semtype_implicit_arg_flags(&mut out, &self.spec_name(), &all_ty_params, &self.coq_params);
 
         out
     }
+}
+
+/// Generate a definition for the normalized refinement type of the invariant type.
+pub(crate) fn generate_normalized_rt_def(
+    name: &str,
+    type_name: &str,
+    generics_rts: &[coq::term::Term],
+    context_names: &[String],
+) -> coq::Document {
+    let mut out = coq::Document::default();
+
+    out.push(coq::command::Definition::new(
+        name.to_owned(),
+        coq::binder::BinderList::empty(),
+        Some(coq::term::Type::RT),
+        coq::command::DefinitionBody::Proof(coq::proof::Proof::new_using(
+            format!("{} {}", fmt_list!(generics_rts, " "), context_names.join(" ")),
+            coq::proof::Terminator::Defined,
+            |proof| {
+                proof.push(coq::ltac::LetIn::new(
+                    "__a",
+                    coq::term::App::new(
+                        coq::term::Term::Literal("normalized_rt_of_spec_ty".to_owned()),
+                        vec![coq::term::Term::Literal(type_name.to_owned())],
+                    ),
+                    coq::ltac::LTac::Exact(coq::term::Term::Literal("__a".to_owned())),
+                ));
+            },
+        )),
+    ));
+    out.push(
+        coq::command::CommandAttrs::new(coq::command::Command::TypeclassesTransparent(name.to_owned()))
+            .attributes("global"),
+    );
+
+    out
+}
+
+pub(crate) fn setup_type_section_context(all_ty_params: &TyParamList) -> coq::Document {
+    let mut section_context = coq::Document::default();
+    section_context.push(coq::command::Context::refinedrust());
+    if !all_ty_params.params.is_empty() {
+        let rt_param_binders = all_ty_params
+            .params
+            .iter()
+            .map(|names| {
+                coq::binder::Binder::new_implicit(
+                    coq::binder::Kind::MaxImplicit,
+                    Some(names.refinement_type()),
+                    Some(coq::term::Type::RT),
+                )
+            })
+            .collect();
+        section_context.push(coq::command::Context::new(coq::binder::BinderList::new(rt_param_binders)));
+    }
+
+    section_context
+}
+
+pub(crate) fn format_extra_context_items(
+    items: &[coq::binder::Binder],
+    out: &mut coq::Document,
+) -> (Vec<String>, Vec<String>) {
+    let mut context_names = Vec::new();
+    let mut context_names_without_sigma = Vec::new();
+
+    if items.is_empty() {
+        return (context_names, context_names_without_sigma);
+    }
+
+    let mut binders = Vec::with_capacity(items.len());
+    for (counter, it) in items.iter().enumerate() {
+        let name = format!("_CTX{counter}");
+        if !it.is_dependent_on_sigma() {
+            context_names_without_sigma.push(name.clone());
+        }
+        context_names.push(name.clone());
+        binders.push(it.clone().set_name(name));
+    }
+
+    out.push(coq::Sentence::Comment("Additional parameters".to_owned()));
+    out.push(coq::command::Context::new(coq::binder::BinderList::new(binders)));
+
+    (context_names, context_names_without_sigma)
+}
+
+// Set flags for refinement types
+pub(crate) fn generate_type_implicit_arg_flags(
+    out: &mut coq::Document,
+    name: &str,
+    all_ty_params: &TyParamList,
+    context_names_without_sigma: &[String],
+) {
+    out.push(
+        coq::command::CommandAttrs::new(coq::command::Arguments {
+            name: name.to_owned(),
+            arguments_string: ": clear implicits".to_owned(),
+        })
+        .attributes("global"),
+    );
+    if !context_names_without_sigma.is_empty() {
+        out.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: name.to_owned(),
+                arguments_string: format!(
+                    "{} {{{}}}",
+                    "_ ".repeat(all_ty_params.params.len()),
+                    "_ ".repeat(context_names_without_sigma.len())
+                ),
+            })
+            .attributes("global"),
+        );
+    }
+}
+
+// Set flags for semtypes
+pub(crate) fn generate_semtype_implicit_arg_flags(
+    out: &mut coq::Document,
+    name: &str,
+    all_ty_params: &TyParamList,
+    context_items: &[coq::binder::Binder],
+) {
+    out.push(
+        coq::command::CommandAttrs::new(coq::command::Arguments {
+            name: name.to_owned(),
+            arguments_string: ": clear implicits".to_owned(),
+        })
+        .attributes("global"),
+    );
+
+    let mut context_item_string = String::new();
+    for item in context_items {
+        if item.is_implicit() {
+            context_item_string.push_str(" {_}");
+        } else {
+            context_item_string.push_str(" _");
+        }
+    }
+    out.push(
+        coq::command::CommandAttrs::new(coq::command::Arguments {
+            name: name.to_owned(),
+            arguments_string: format!(
+                "{{_ _}} {} {context_item_string}",
+                "_ ".repeat(all_ty_params.params.len()),
+            ),
+        })
+        .attributes("global"),
+    );
 }
