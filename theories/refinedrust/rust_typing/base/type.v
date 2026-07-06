@@ -2591,6 +2591,12 @@ Section enum.
         sigT (λ vinj : enum_rt r → rt,
           enum_tag r = Some variant ∧
           sem = mk_enum_tag_sem (enum_rt r) (enum_ty r) vinj));
+    enum_tag_ty_inj_roundtrip : ∀ (variant : var_name) (sem : enum_tag_sem rt)
+        (re : sem.(enum_tag_sem_rt)),
+      enum_tag_ty_inj variant = Some sem →
+      enum_tag (sem.(enum_tag_rt_inj) re) = Some variant ∧
+      sigT (λ Heq : sem.(enum_tag_sem_rt) = enum_rt (sem.(enum_tag_rt_inj) re),
+        enum_r (sem.(enum_tag_rt_inj) re) = rew [RT_rt] Heq in re);
   }.
   Global Arguments _mk_enum {_}.
   Global Arguments enum_xt_inhabited {_}.
@@ -2601,6 +2607,7 @@ Section enum.
   Global Arguments enum_ty {_}.
   Global Arguments enum_tag_ty {_}.
   Global Arguments enum_tag_ty_inj_compat {_}.
+  Global Arguments enum_tag_ty_inj_roundtrip {_}.
   Global Instance enum_rt_inhabited {rt} (e : enum rt) : Inhabited rt :=
     populate (RT_xrt rt e.(enum_xt_inhabited).(inhabitant)).
 
@@ -2663,6 +2670,37 @@ Section enum.
   Proof.
     destruct (enum_tag_ty_inj_compat en variant sem Hsem) as (r & vinj & Htag & ->).
     exists r. exists eq_refl. done.
+  Qed.
+
+  Lemma enum_tag_ty_inj_tag {rt} (en : enum rt) variant sem
+      (re : sem.(enum_tag_sem_rt)) :
+    enum_tag_ty_inj en variant = Some sem →
+    enum_tag en (sem.(enum_tag_rt_inj) re) = Some variant.
+  Proof.
+    intros Hsem.
+    destruct (enum_tag_ty_inj_roundtrip en variant sem re Hsem) as (Htag & _).
+    done.
+  Qed.
+
+  Lemma enum_tag_ty_inj_r {rt} (en : enum rt) variant sem
+      (re : sem.(enum_tag_sem_rt)) :
+    enum_tag_ty_inj en variant = Some sem →
+    sigT (λ Heq : sem.(enum_tag_sem_rt) = enum_rt en (sem.(enum_tag_rt_inj) re),
+      enum_r en (sem.(enum_tag_rt_inj) re) = rew [RT_rt] Heq in re).
+  Proof.
+    intros Hsem.
+    destruct (enum_tag_ty_inj_roundtrip en variant sem re Hsem) as (_ & Hr).
+    done.
+  Qed.
+
+  Lemma enum_tag_ty_inj_type_eq_inj {rt} (en : enum rt) variant sem
+      (re : sem.(enum_tag_sem_rt))
+      (Hsem : enum_tag_ty_inj en variant = Some sem) :
+    rew ->[type] (enum_tag_rt_eq en (sem.(enum_tag_rt_inj) re) variant sem
+      (enum_tag_ty_inj_tag en variant sem re Hsem) Hsem) in sem.(enum_tag_sem_ty) =
+    enum_ty en (sem.(enum_tag_rt_inj) re).
+  Proof.
+    apply enum_tag_type_eq'.
   Qed.
 End enum.
 
