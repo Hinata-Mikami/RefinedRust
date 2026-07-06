@@ -1354,6 +1354,11 @@ Proof. rewrite ty_wf_E_unfold. done. Qed.
 Ltac solve_mk_enum_tag_consistent :=
   simpl; intro_adt_params;
   intros [] ? [=<-]; eexists _; done.
+Ltac solve_mk_enum_tag_ty_inj_consistent :=
+  simpl; intro_adt_params;
+  intros ? ? Hsem;
+  repeat case_decide; simplify_eq;
+  eexists _; eexists _; split; done.
 
 Ltac enum_contractive_solve_eq := intros; simpl; done.
 Ltac enum_contractive_solve_dist :=

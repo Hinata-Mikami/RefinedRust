@@ -2585,6 +2585,12 @@ Section enum.
     enum_tag_compat : ∀ (r : rt) (variant : var_name),
       enum_tag r = Some variant →
       sigT (λ vinj, enum_tag_ty_find enum_tag_ty variant = Some (mk_enum_tag_sem (enum_rt r) (enum_ty r) vinj));
+    enum_tag_ty_inj_compat : ∀ (variant : var_name) (sem : enum_tag_sem rt),
+      enum_tag_ty_inj variant = Some sem →
+      sigT (λ r : rt,
+        sigT (λ vinj : enum_rt r → rt,
+          enum_tag r = Some variant ∧
+          sem = mk_enum_tag_sem (enum_rt r) (enum_ty r) vinj));
   }.
   Global Arguments _mk_enum {_}.
   Global Arguments enum_xt_inhabited {_}.
@@ -2594,6 +2600,7 @@ Section enum.
   Global Arguments enum_r {_}.
   Global Arguments enum_ty {_}.
   Global Arguments enum_tag_ty {_}.
+  Global Arguments enum_tag_ty_inj_compat {_}.
   Global Instance enum_rt_inhabited {rt} (e : enum rt) : Inhabited rt :=
     populate (RT_xrt rt e.(enum_xt_inhabited).(inhabitant)).
 
@@ -2609,12 +2616,6 @@ Section enum.
 
   Definition enum_lookup_tag {rt} (e : enum rt) (r : rt) : option Z :=
     fmap (els_lookup_tag e.(enum_els)) (e.(enum_tag) r).
-
-  Definition size_of_enum_data (els : enum_layout_spec) :=
-    ly_size (use_union_layout_alg' (uls_of_els els)).
-
-  Definition els_data_ly (els : enum_layout_spec) :=
-    use_union_layout_alg' (uls_of_els els).
 
   Import EqNotations.
   Lemma enum_tag_rt_eq {rt} (en : enum rt) r tag sem :
@@ -2651,6 +2652,17 @@ Section enum.
     simplify_eq.
     generalize (enum_tag_rt_eq en r tag _ Heq Hsem) as Heq2.
     simpl. intros Heq2. rewrite (UIP_refl _ _ Heq2); done.
+  Qed.
+  Lemma enum_tag_ty_inj_type_eq {rt} (en : enum rt) variant sem
+    (Hsem : enum_tag_ty_inj en variant = Some sem) :
+    sigT (λ r : rt,
+      sigT (λ Heq : sem.(enum_tag_sem_rt) = enum_rt en r,
+        enum_tag en r = Some variant ∧
+        sem.(enum_tag_sem_ty) =
+          rew <-[type] Heq in enum_ty en r)).
+  Proof.
+    destruct (enum_tag_ty_inj_compat en variant sem Hsem) as (r & vinj & Htag & ->).
+    exists r. exists eq_refl. done.
   Qed.
 End enum.
 
