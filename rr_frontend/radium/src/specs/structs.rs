@@ -139,18 +139,6 @@ impl<'def> AbstractVariant<'def> {
     }
 
     #[must_use]
-    #[deprecated(note = "Use `get_coq_type_term` instead")]
-    fn generate_coq_type_term(&self, sls_app: Vec<String>) -> String {
-        let mut out = String::with_capacity(200);
-
-        out.push_str(&format!("struct_t {} +[", coq::term::App::new(&self.sls_def_name, sls_app)));
-        push_str_list!(out, &self.fields, ";", |(_, ty)| ty.to_string());
-        out.push(']');
-
-        out
-    }
-
-    #[must_use]
     fn get_coq_type_term(&self, sls_app: Vec<coq::term::Term>) -> coq::term::Type {
         let sls = coq::term::App::new(coq::term::Term::Literal(self.sls_def_name.clone()), sls_app);
 
@@ -450,135 +438,139 @@ impl<'def> Abstract<'def> {
 
     /// Generate a type definition in case this type is a recursive type.
     fn generate_recursive_type_def(&self) -> String {
-        let mut out = String::with_capacity(200);
-
         // we need an invariant, otherwise we cannot define a recursive type
-        if let Some(inv) = self.invariant.as_ref() {
-            let all_ty_params = self.scope.get_all_ty_params_with_assocs();
-
-            let Some(_) = &inv.abstracted_refinement else {
-                panic!("no abstracted refinement");
-            };
-
-            let indent = "  ";
-            // the write_str impl will always return Ok.
-            write!(out, "Section {}.\n", inv.type_name()).unwrap();
-            write!(out, "{}Context `{{RRGS : !refinedrustGS Σ}}.\n", indent).unwrap();
-
-            // add type parameters
-            if !all_ty_params.params.is_empty() {
-                // first push the (implicit) refinement type parameters
-                write!(out, "{}Context", indent).unwrap();
-                for names in &all_ty_params.params {
-                    write!(out, " ({} : RT)", names.refinement_type()).unwrap();
-                }
-                out.push_str(".\n");
-            }
-
-            let (_context_names, context_names_without_sigma) =
-                format_extra_context_items(&inv.coq_params, &mut out).unwrap();
-
-            // generate terms to apply the sls app to
-            let mut sls_app = Vec::new();
-            for names in &all_ty_params.params {
-                // TODO this is duplicated with the same processing for Type::Literal...
-                let term = format!("(ty_syn_type {} MetaNone)", names.type_term());
-                sls_app.push(term);
-            }
-
-            // generate the raw rt def
-            // we introduce a let binding for the recursive rt type
-            write!(out, "{indent}Definition {} : RT :=\n", self.variant_def.plain_rt_def_name).unwrap();
-            let ty_rt_uses = fmt_list!(all_ty_params.get_coq_ty_rt_params().make_using_terms(), " ");
-            write!(out, "{indent}{indent}let {} {}", inv.rt_def_name(), ty_rt_uses).unwrap();
-            write!(out, " := {} in\n", inv.rfn_type).unwrap();
-            write!(out, "{indent}{indent}{}.\n", self.variant_def.rfn_type()).unwrap();
-
-            // invariant def
-            write!(
-                out,
-                "{}",
-                inv.generate_coq_invariant_def(&self.scope, &self.variant_def.plain_rt_def_name)
-            )
-            .unwrap();
-
-            // generate the functor itself
-            let type_name = inv.type_name();
-            let rfn_type = &inv.rfn_type;
-            let spec_name = inv.spec_name();
-
-            let attr_binders = self.scope.get_all_attr_trait_parameters(super::IncludeSelfReq::Dont);
-            let attr_binders_uses = attr_binders.make_using_terms();
-            let attr_binders_uses = fmt_list!(attr_binders_uses, " ");
-
-            if !attr_binders.0.is_empty() {
-                write!(out, "{}\n\n", coq::command::Context::new(attr_binders)).unwrap();
-            }
-
-            write!(
-                out,
-                "{indent}Definition {type_name}_rec {} ({type_name}_rec' : type ({rfn_type})) : type ({rfn_type}) :=\n",
-                all_ty_params.get_semantic_ty_params(),
-                ).unwrap();
-            write!(
-                out,
-                "{indent}{indent}let {type_name} {ty_rt_uses} {attr_binders_uses} := {} {type_name}_rec' in\n",
-                self.scope,
-            )
-            .unwrap();
-            write!(out, "{indent}{indent}let {type_name}_rt {ty_rt_uses} := {rfn_type} in\n").unwrap();
-            #[expect(deprecated)]
-            write!(
-                out,
-                "{indent}{indent}ex_plain_t _ _ ({spec_name} {attr_binders_uses} {}) ({}).\n",
-                self.scope.identity_instantiation_term(),
-                self.variant_def.generate_coq_type_term(sls_app)
-            )
-            .unwrap();
-
-            // write the fixpoint
-            #[expect(deprecated)]
-            write!(
-                out,
-                "{indent}Definition {type_name} : {} (type ({rfn_type})) := {} type_fixpoint ({type_name}_rec {}).\n",
-                self.scope.get_all_type_term(),
-                self.scope,
-                fmt_list!(all_ty_params.get_semantic_ty_params().make_using_terms(), " "),
-            )
-            .unwrap();
-
-            write!(out, "{indent}Global Typeclasses Transparent {}.\n", type_name).unwrap();
-            write!(out, "{indent}Definition {}_rt : RT.\n", type_name).unwrap();
-            write!(
-                out,
-                "{indent}Proof using {ty_rt_uses} {}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
-                context_names_without_sigma.join(" "),
-                type_name
-            )
-            .unwrap();
-            write!(out, "{indent}Global Typeclasses Transparent {}_rt.\n", type_name).unwrap();
-
-            // finish
-            write!(out, "End {}.\n", inv.type_name()).unwrap();
-            write!(out, "Global Arguments {} : clear implicits.\n", inv.rt_def_name()).unwrap();
-            if !context_names_without_sigma.is_empty() {
-                //let dep_sigma_str = if dep_sigma { "{_} " } else { "" };
-                let dep_sigma_str = "";
-
-                write!(
-                    out,
-                    "Global Arguments {} {}{} {{{}}}.\n",
-                    inv.rt_def_name(),
-                    dep_sigma_str,
-                    "_ ".repeat(all_ty_params.params.len()),
-                    "_ ".repeat(context_names_without_sigma.len())
-                )
-                .unwrap();
-            }
-        } else {
+        let Some(inv) = self.invariant.as_ref() else {
             panic!("Recursive types need an invariant");
+        };
+
+        let Some(_) = &inv.abstracted_refinement else {
+            panic!("no abstracted refinement");
+        };
+
+        let all_ty_params = self.scope.get_all_ty_params_with_assocs();
+        let rt_instantiations = all_ty_params.get_coq_ty_rt_params().make_using_terms();
+        let ty_rt_uses = fmt_list!(rt_instantiations.clone(), " ");
+
+        let mut out = coq::Document::default();
+        let mut section_context = coq::Document::default();
+
+        section_context.push(coq::command::Context::refinedrust());
+        if !all_ty_params.params.is_empty() {
+            let rt_param_binders = all_ty_params
+                .params
+                .iter()
+                .map(|names| coq::binder::Binder::new(Some(names.refinement_type()), coq::term::Type::RT))
+                .collect();
+            section_context.push(coq::command::Context::new(coq::binder::BinderList::new(rt_param_binders)));
         }
-        out
+
+        let (_context_names, context_names_without_sigma) =
+            invariants::Spec::format_extra_context_items_doc(&inv.coq_params, &mut section_context);
+
+        // We introduce a let binding for the recursive public refinement type while computing the
+        // raw refinement type of the struct body.
+        let raw_rt_body = format!(
+            "let {} {} := {} in\n{}",
+            inv.rt_def_name(),
+            ty_rt_uses,
+            inv.rfn_type,
+            self.variant_def.rfn_type()
+        );
+        section_context.push(coq::command::Definition::new(
+            self.variant_def.plain_rt_def_name.clone(),
+            coq::binder::BinderList::empty(),
+            Some(coq::term::Type::RT),
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(raw_rt_body)),
+        ));
+
+        section_context.append_document(
+            inv.generate_coq_invariant_def_doc(&self.scope, &self.variant_def.plain_rt_def_name),
+        );
+
+        let type_name = inv.type_name();
+        let rfn_type = &inv.rfn_type;
+        let attr_binders = self.scope.get_all_attr_trait_parameters(super::IncludeSelfReq::Dont);
+        let attr_binders_uses = fmt_list!(attr_binders.make_using_terms(), " ");
+        if !attr_binders.0.is_empty() {
+            section_context.push(coq::command::Context::new(attr_binders));
+        }
+
+        // Generate terms to apply the sls app to.
+        let sls_app = all_ty_params
+            .params
+            .iter()
+            .map(|names| coq::term::Term::Literal(format!("(ty_syn_type {} MetaNone)", names.type_term())))
+            .collect();
+        let base_type = format!("({})", self.variant_def.get_coq_type_term(sls_app));
+        let wrapped_body = inv.generate_wrapped_type_body_at_current_params(&base_type, &self.scope);
+
+        let rec_body = format!(
+            "let {type_name} {ty_rt_uses} {attr_binders_uses} := {} {type_name}_rec' in\n\
+             let {type_name}_rt {ty_rt_uses} := {rfn_type} in\n\
+             {wrapped_body}",
+            self.scope,
+        );
+
+        let mut rec_params = all_ty_params.get_semantic_ty_params();
+        rec_params.append(vec![coq::binder::Binder::new(
+            Some(format!("{type_name}_rec'")),
+            coq::term::Type::Literal(format!("type ({rfn_type})")),
+        )]);
+        section_context.push(coq::command::Definition::new(
+            format!("{type_name}_rec"),
+            rec_params,
+            Some(coq::term::Type::Literal(format!("type ({rfn_type})"))),
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(rec_body)),
+        ));
+
+        let fixpoint_body = format!(
+            "{} type_fixpoint ({type_name}_rec {})",
+            self.scope,
+            fmt_list!(all_ty_params.get_semantic_ty_params().make_using_terms(), " "),
+        );
+        section_context.push(coq::command::Definition::new(
+            type_name.clone(),
+            coq::binder::BinderList::empty(),
+            Some(self.scope.get_spec_all_type_term(Box::new(
+                model::Type::Ttype(Box::new(coq::term::Type::Literal(format!("({rfn_type})")))).into(),
+            ))),
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(fixpoint_body)),
+        ));
+        section_context.push(
+            coq::command::CommandAttrs::new(coq::command::Command::TypeclassesTransparent(type_name.clone()))
+                .attributes("global"),
+        );
+        section_context.append_document(
+            inv.generate_normalized_rt_def_doc(&rt_instantiations, &context_names_without_sigma),
+        );
+
+        out.push(coq::section::Section::new(inv.type_name(), |doc| doc.append_document(section_context)));
+        out.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: inv.rt_def_name(),
+                arguments_string: ": clear implicits".to_owned(),
+            })
+            .attributes("global"),
+        );
+        if !context_names_without_sigma.is_empty() {
+            //let dep_sigma_str = if dep_sigma { "{_} " } else { "" };
+            let dep_sigma_str = "";
+
+            out.push(
+                coq::command::CommandAttrs::new(coq::command::Arguments {
+                    name: inv.rt_def_name(),
+                    arguments_string: format!(
+                        "{}{} {{{}}}",
+                        dep_sigma_str,
+                        "_ ".repeat(all_ty_params.params.len()),
+                        "_ ".repeat(context_names_without_sigma.len())
+                    ),
+                })
+                .attributes("global"),
+            );
+        }
+
+        out.to_string()
     }
 
     /// Make a literal type.

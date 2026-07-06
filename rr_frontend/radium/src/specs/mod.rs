@@ -897,19 +897,6 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
     }
 
     #[must_use]
-    #[deprecated(note = "Use `get_spec_all_type_term` instead")]
-    fn get_all_type_term(&self) -> String {
-        let mut out = String::new();
-
-        out.push_str(&format!("spec_with {} [", self.get_num_lifetimes()));
-        let tys = self.get_all_ty_params_with_assocs();
-        push_str_list!(out, &tys.params, "; ", LiteralTyParam::refinement_type);
-        out.push(']');
-
-        out
-    }
-
-    #[must_use]
     pub fn get_lfts(&self) -> &[LftParam] {
         &self.lfts
     }

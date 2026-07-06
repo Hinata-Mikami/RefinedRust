@@ -409,9 +409,9 @@ impl Document {
         self.0.push(sentence.into());
     }
 
-    //pub fn append(&mut self, mut other: Document) {
-    //self.0.append(&mut other.0);
-    //}
+    pub fn append_document(&mut self, mut other: Self) {
+        self.0.append(&mut other.0);
+    }
 }
 
 /// A [sentence], or a comment.
@@ -423,6 +423,7 @@ impl Document {
 #[transitive(from(command::Context, command::Command))]
 #[transitive(from(command::Definition, command::Command))]
 #[transitive(from(command::Lemma, command::Command))]
+#[transitive(from(command::Arguments, command::Command))]
 #[transitive(from(eval::Compute, command::QueryCommand))]
 #[transitive(from(inductive::Inductive, command::Command))]
 #[transitive(from(module::FromRequire, command::Command))]

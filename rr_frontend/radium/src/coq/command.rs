@@ -111,6 +111,11 @@ impl QueryCommandAttrs {
 /// [command]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-command
 #[derive(Clone, Eq, PartialEq, Debug, Display, From)]
 pub enum Command {
+    /// Literal Rocq command strings for syntax not modeled by the AST yet.
+    #[display("{}", _0)]
+    #[from(ignore)]
+    Literal(String),
+
     /// The [`From ... Require`] command.
     ///
     /// [`From ... Require`]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/vernacular-commands.html#coq:cmd.From-%E2%80%A6-Require
@@ -254,6 +259,40 @@ pub struct Definition {
     pub program_mode: bool,
 }
 
+impl Definition {
+    #[must_use]
+    pub const fn new(
+        name: String,
+        params: binder::BinderList,
+        ty: Option<term::Type>,
+        body: DefinitionBody,
+    ) -> Self {
+        Self {
+            name,
+            params,
+            ty,
+            body,
+            program_mode: false,
+        }
+    }
+
+    #[must_use]
+    pub const fn program(
+        name: String,
+        params: binder::BinderList,
+        ty: Option<term::Type>,
+        body: DefinitionBody,
+    ) -> Self {
+        Self {
+            name,
+            params,
+            ty,
+            body,
+            program_mode: true,
+        }
+    }
+}
+
 impl fmt::Display for Definition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let pref = if self.program_mode { "Program " } else { "" };
@@ -309,6 +348,21 @@ impl fmt::Display for Lemma {
 pub struct ObligationProof {
     pub content: coq::ProofDocument,
     pub terminator: proof::Terminator,
+}
+
+impl ObligationProof {
+    #[must_use]
+    pub fn new<I>(ltac: I, terminator: proof::Terminator) -> Self
+    where
+        I: Into<coq::ltac::LTac>,
+    {
+        let mut content = coq::ProofDocument::default();
+        content.push(ltac.into());
+        Self {
+            content,
+            terminator,
+        }
+    }
 }
 
 impl fmt::Display for ObligationProof {

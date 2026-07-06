@@ -10,7 +10,6 @@ use std::fmt::Write as _;
 use std::ops::Add;
 
 use derive_more::{Constructor, Display};
-use indent_write::fmt::IndentWriter;
 
 use crate::specs::{GenericScope, GenericScopeInst, Type, structs, types};
 use crate::{BASE_INDENT, coq, fmt_list, lang, model, push_str_list};
@@ -436,50 +435,55 @@ impl<'def> Abstract<'def> {
 
     #[must_use]
     pub fn generate_coq_type_def(&self) -> String {
-        let mut out = String::with_capacity(200);
-
         let all_ty_params = self.scope.get_all_ty_params_with_assocs();
+        let mut section_context = coq::Document::default();
 
-        let indent = "  ";
-        // the write_str impl will always return Ok.
-        write!(out, "Section {}.\n", self.plain_ty_name).unwrap();
-        write!(out, "{}Context `{{RRGS : !refinedrustGS Σ}}.\n", indent).unwrap();
+        section_context.push(coq::command::Context::refinedrust());
 
         // add type parameters, and build a list of terms to apply the els def to
         if !all_ty_params.params.is_empty() {
-            // first push the (implicit) refinement type parameters
-            write!(out, "{}Context", indent).unwrap();
-            for names in &all_ty_params.params {
-                write!(out, " {{{} : RT}}", names.refinement_type()).unwrap();
-            }
-            out.push_str(".\n");
+            let rt_param_binders = all_ty_params
+                .params
+                .iter()
+                .map(|names| {
+                    coq::binder::Binder::new_implicit(
+                        coq::binder::Kind::MaxImplicit,
+                        Some(names.refinement_type()),
+                        Some(coq::term::Type::RT),
+                    )
+                })
+                .collect();
+            section_context.push(coq::command::Context::new(coq::binder::BinderList::new(rt_param_binders)));
         }
-        out.push('\n');
 
         let rt_param_uses = all_ty_params.get_coq_ty_rt_params().make_using_terms();
+        let rt_param_uses_string = fmt_list!(rt_param_uses.clone(), " ");
 
-        writeln!(out, "{indent}Section components.").unwrap();
+        let mut components = coq::Document::default();
 
         let ty_context_names = if self.is_recursive {
             // generate the recursive type prelude for wiring up the component type definitions
             // correctly
+            let mut recursive_prelude = String::new();
 
-            write!(out, "{indent}Let {}", self.plain_rt_name).unwrap();
+            write!(recursive_prelude, "Let {}", self.plain_rt_name).unwrap();
             // add dummy binders
             for names in &all_ty_params.params {
-                write!(out, " (_{} : RT)", names.refinement_type()).unwrap();
+                write!(recursive_prelude, " (_{} : RT)", names.refinement_type()).unwrap();
             }
-            writeln!(out, " := {}.", self.spec.rfn_type).unwrap();
+            writeln!(recursive_prelude, " := {}.", self.spec.rfn_type).unwrap();
 
             let dummy_ty_name = format!("_{}", self.plain_ty_name);
-            writeln!(out, "{indent}Context ({dummy_ty_name} : type {}).", self.spec.rfn_type).unwrap();
+            writeln!(recursive_prelude, "Context ({dummy_ty_name} : type {}).", self.spec.rfn_type).unwrap();
 
-            write!(out, "{indent}Let {}", self.plain_ty_name).unwrap();
+            write!(recursive_prelude, "Let {}", self.plain_ty_name).unwrap();
             // add dummy binders
             for names in &all_ty_params.params {
-                write!(out, " ({} : RT)", names.refinement_type()).unwrap();
+                write!(recursive_prelude, " ({} : RT)", names.refinement_type()).unwrap();
             }
-            writeln!(out, " := {} {dummy_ty_name}.", self.scope).unwrap();
+            writeln!(recursive_prelude, " := {} {dummy_ty_name}.", self.scope).unwrap();
+
+            components.push(coq::command::Command::Literal(recursive_prelude));
 
             vec![dummy_ty_name]
         } else {
@@ -491,8 +495,11 @@ impl<'def> Abstract<'def> {
             let v = variant.borrow();
             let v = v.as_ref().unwrap();
             // TODO: might also need to handle extra context items
-            write!(out, "{}\n", v.variant_def.generate_coq_type_def_core(&v.scope, &ty_context_names, &[]))
-                .unwrap();
+            components.append_document(v.variant_def.generate_coq_type_def_core(
+                &v.scope,
+                &ty_context_names,
+                &[],
+            ));
 
             if let Some(inv) = &v.invariant {
                 let base_type = format!(
@@ -507,7 +514,7 @@ impl<'def> Abstract<'def> {
                     &v.scope,
                     &[],
                 );
-                write!(out, "{}\n", inv_def).unwrap();
+                components.push(coq::command::Command::Literal(inv_def));
             }
         }
 
@@ -516,9 +523,6 @@ impl<'def> Abstract<'def> {
             let name = ind.get_name();
 
             let mut document = coq::Document::default();
-
-            let mut out = IndentWriter::new(BASE_INDENT, &mut out);
-            writeln!(out).unwrap();
 
             let comment = format!("Auto-generated representation of {}", name);
             document.push(coq::Sentence::Comment(comment));
@@ -553,7 +557,7 @@ impl<'def> Abstract<'def> {
                 .attributes("global"),
             );
 
-            writeln!(out, "{}", document).unwrap();
+            components.append_document(document);
         }
 
         // build the els term applied to generics
@@ -565,8 +569,8 @@ impl<'def> Abstract<'def> {
         }
         let els_app_term = coq::term::App::new(&self.els_def_name, els_app);
 
-        write!(out, "{indent}{}\n", self.generate_enum_rt()).unwrap();
-        write!(out, "{indent}{}\n", self.generate_enum_ty()).unwrap();
+        components.push(self.generate_enum_rt());
+        components.push(self.generate_enum_ty());
 
         let pre_enum_def_name = if self.is_recursive {
             format!("{}_pre", self.enum_def_name)
@@ -575,24 +579,27 @@ impl<'def> Abstract<'def> {
         };
 
         let scope_inst = self.scope.identity_instantiation().instantiation(true, true);
+        let enum_type = self.scope.get_spec_all_type_term(Box::new(coq::term::Type::Literal(format!(
+            "enum ({})",
+            self.spec.rfn_type
+        ))));
+        let type_type = self
+            .scope
+            .get_spec_all_type_term(Box::new(model::Type::Ttype(Box::new(coq::term::Type::Infer)).into()));
 
         // main def
-        #[expect(deprecated)]
-        write!(
-            out,
-            "{indent}Program Definition {pre_enum_def_name} : {} (enum ({})) := {} mk_enum\n\
-               {indent}{indent}_\n\
-               {indent}{indent}({els_app_term})\n\
-               {indent}{indent}({})\n\
-               {indent}{indent}({})\n\
-               {indent}{indent}({} {})\n\
-               {indent}{indent}({})\n\
-               {indent}{indent}({})\n\
-               {indent}{indent}({})\n\
-               {indent}{indent}({})\n\
-               {indent}{indent}_ _ _.\n",
-            self.scope.get_all_type_term(),
-            self.spec.rfn_type,
+        let enum_body = format!(
+            "{} mk_enum\n\
+               _\n\
+               ({els_app_term})\n\
+               ({})\n\
+               ({})\n\
+               ({} {})\n\
+               ({})\n\
+               ({})\n\
+               ({})\n\
+               ({})\n\
+               _ _ _",
             self.scope,
             self.generate_enum_tag(),
             self.enum_rt_def_name(),
@@ -602,81 +609,157 @@ impl<'def> Abstract<'def> {
             self.generate_enum_match(),
             self.generate_lfts(),
             self.generate_wf_elctx(),
-        )
-        .unwrap();
-        write!(out, "{indent}Next Obligation. solve_inhabited. Defined.\n").unwrap();
-        write!(out, "{indent}Next Obligation. solve_mk_enum_ty_lfts_incl. Qed.\n").unwrap();
-        write!(out, "{indent}Next Obligation. solve_mk_enum_ty_wf_E. Qed.\n").unwrap();
-        write!(out, "{indent}Next Obligation. solve_mk_enum_tag_consistent. Defined.\n\n").unwrap();
+        );
+        components.push(coq::command::Definition::program(
+            pre_enum_def_name.clone(),
+            coq::binder::BinderList::empty(),
+            Some(enum_type.clone()),
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(enum_body)),
+        ));
+        components.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
+            coq::ltac::LTac::Literal("solve_inhabited".to_owned()),
+            coq::proof::Terminator::Defined,
+        )));
+        components.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
+            coq::ltac::LTac::Literal("solve_mk_enum_ty_lfts_incl".to_owned()),
+            coq::proof::Terminator::Qed,
+        )));
+        components.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
+            coq::ltac::LTac::Literal("solve_mk_enum_ty_wf_E".to_owned()),
+            coq::proof::Terminator::Qed,
+        )));
+        components.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
+            coq::ltac::LTac::Literal("solve_mk_enum_tag_consistent".to_owned()),
+            coq::proof::Terminator::Defined,
+        )));
 
-        write!(out, "{indent}Global Arguments {pre_enum_def_name} : simpl never.\n\n").unwrap();
+        components.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: pre_enum_def_name.clone(),
+                arguments_string: ": simpl never".to_owned(),
+            })
+            .attributes("global"),
+        );
 
-        write!(out, "{indent}End components.\n").unwrap();
+        section_context.push(coq::section::Section::new("components".to_owned(), |doc| {
+            doc.append_document(components);
+        }));
 
         if self.is_recursive {
-            writeln!(out, "{}", self.generate_contractive_instance(&pre_enum_def_name)).unwrap();
+            section_context
+                .push(coq::command::Command::Literal(self.generate_contractive_instance(&pre_enum_def_name)));
         }
 
         // define the actual type
         if self.is_recursive {
             let rec_ty_name = &self.plain_ty_name;
-            #[expect(deprecated)]
-            write!(
-                out,
-                "{indent}Definition {} : {} (type _) := {} type_fixpoint (λ {rec_ty_name}, enum_t ({pre_enum_def_name} {rec_ty_name} {})).\n",
-                self.plain_ty_name,
-                self.scope.get_all_type_term(),
-                self.scope,
-                scope_inst,
-            )
-            .unwrap();
+            section_context.push(coq::command::Definition::new(
+                self.plain_ty_name.clone(),
+                coq::binder::BinderList::empty(),
+                Some(type_type.clone()),
+                coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
+                    "{} type_fixpoint (λ {rec_ty_name}, enum_t ({pre_enum_def_name} {rec_ty_name} {scope_inst}))",
+                    self.scope,
+                ))),
+            ));
         } else {
-            #[expect(deprecated)]
-            write!(
-                out,
-                "{indent}Definition {} : {} (type _) := {} enum_t ({pre_enum_def_name} {}).\n",
-                self.plain_ty_name,
-                self.scope.get_all_type_term(),
-                self.scope,
-                scope_inst,
-            )
-            .unwrap();
+            section_context.push(coq::command::Definition::new(
+                self.plain_ty_name.clone(),
+                coq::binder::BinderList::empty(),
+                Some(type_type),
+                coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
+                    "{} enum_t ({pre_enum_def_name} {scope_inst})",
+                    self.scope,
+                ))),
+            ));
         }
 
         // generate the refinement type definition
-        write!(out, "{indent}Definition {} : RT.\n", self.plain_rt_name).unwrap();
-        write!(
-            out,
-            "{indent}Proof using {}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
-            fmt_list!(rt_param_uses, " "),
-            self.plain_ty_name
-        )
-        .unwrap();
+        section_context.push(coq::command::Definition::new(
+            self.plain_rt_name.clone(),
+            coq::binder::BinderList::empty(),
+            Some(coq::term::Type::RT),
+            coq::command::DefinitionBody::Proof(coq::proof::Proof::new_using(
+                rt_param_uses_string,
+                coq::proof::Terminator::Defined,
+                |proof| {
+                    proof.push(coq::ltac::LetIn::new(
+                        "__a",
+                        coq::term::App::new(
+                            coq::term::Term::Literal("normalized_rt_of_spec_ty".to_owned()),
+                            vec![coq::term::Term::Literal(self.plain_ty_name.clone())],
+                        ),
+                        coq::ltac::LTac::Exact(coq::term::Term::Literal("__a".to_owned())),
+                    ));
+                },
+            )),
+        ));
 
         // generate the enum definition with recursive knots tied
         if self.is_recursive {
-            #[expect(deprecated)]
-            writeln!(out, "{indent}Definition {} : {} (enum ({})) := {} {pre_enum_def_name} ({} {scope_inst}) {scope_inst}.",
-                self.enum_def_name,
-                self.scope.get_all_type_term(),
-                self.spec.rfn_type,
-                self.scope,
-                self.plain_ty_name,
-                ).unwrap();
+            section_context.push(coq::command::Definition::new(
+                self.enum_def_name.clone(),
+                coq::binder::BinderList::empty(),
+                Some(enum_type),
+                coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
+                    "{} {pre_enum_def_name} ({} {scope_inst}) {scope_inst}",
+                    self.scope, self.plain_ty_name,
+                ))),
+            ));
         }
 
         // make it Typeclasses Transparent
-        write!(out, "{indent}Global Typeclasses Transparent {}.\n", self.plain_ty_name).unwrap();
-        write!(out, "{indent}Global Typeclasses Transparent {}.\n\n", self.plain_rt_name).unwrap();
+        section_context.push(
+            coq::command::CommandAttrs::new(coq::command::Command::TypeclassesTransparent(
+                self.plain_ty_name.clone(),
+            ))
+            .attributes("global"),
+        );
+        section_context.push(
+            coq::command::CommandAttrs::new(coq::command::Command::TypeclassesTransparent(
+                self.plain_rt_name.clone(),
+            ))
+            .attributes("global"),
+        );
 
-        write!(out, "End {}.\n", self.plain_ty_name).unwrap();
-        write!(out, "Global Arguments {} : simpl never.\n", self.enum_def_name).unwrap();
-        write!(out, "Global Arguments {} : clear implicits.\n", self.plain_rt_name).unwrap();
-        write!(out, "Global Arguments {} : clear implicits.\n", self.plain_ty_name).unwrap();
-        write!(out, "Global Arguments {} {{_ _}}.\n", self.plain_ty_name).unwrap();
-        write!(out, "Global Hint Unfold {} : solve_protected_eq_db.\n", self.plain_ty_name).unwrap();
+        let mut out = coq::Document::default();
+        out.push(coq::section::Section::new(self.plain_ty_name.clone(), |doc| {
+            doc.append_document(section_context);
+        }));
+        out.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: self.enum_def_name.clone(),
+                arguments_string: ": simpl never".to_owned(),
+            })
+            .attributes("global"),
+        );
+        out.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: self.plain_rt_name.clone(),
+                arguments_string: ": clear implicits".to_owned(),
+            })
+            .attributes("global"),
+        );
+        out.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: self.plain_ty_name.clone(),
+                arguments_string: ": clear implicits".to_owned(),
+            })
+            .attributes("global"),
+        );
+        out.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: self.plain_ty_name.clone(),
+                arguments_string: "{_ _}".to_owned(),
+            })
+            .attributes("global"),
+        );
+        out.push(coq::command::Command::Literal(format!(
+            "Global Hint Unfold {} : solve_protected_eq_db.",
+            self.plain_ty_name
+        )));
 
-        out
+        out.to_string()
     }
 
     /// Make a literal type.
