@@ -348,16 +348,12 @@ impl<'def> Abstract<'def> {
                 let inj = format!("(λ '( {rfn}), {})", coq::term::App::new(pat, apps.clone()));
 
                 format!(
-                    "if (decide (variant = \"{name}\")) then Some $ mk_enum_tag_sem _ ({ty} {}) {inj}",
+                    "(\"{name}\", mk_enum_tag_sem _ ({ty} {}) {inj})",
                     v.scope.identity_instantiation_term()
                 )
             })
             .collect();
-        if conditions.is_empty() {
-            "λ variant, None".to_owned()
-        } else {
-            format!("λ variant, {} else None", conditions.join(" else "))
-        }
+        format!("[{}]", conditions.join("; "))
     }
 
     fn generate_lfts(&self) -> String {
@@ -597,6 +593,7 @@ impl<'def> Abstract<'def> {
                ({} {})\n\
                ({})\n\
                ({})\n\
+               _\n\
                ({})\n\
                ({})\n\
                _ _ _",
@@ -619,6 +616,10 @@ impl<'def> Abstract<'def> {
         components.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
             coq::ltac::LTac::Literal("solve_inhabited".to_owned()),
             coq::proof::Terminator::Defined,
+        )));
+        components.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
+            coq::ltac::LTac::Literal("done".to_owned()),
+            coq::proof::Terminator::Qed,
         )));
         components.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
             coq::ltac::LTac::Literal("solve_mk_enum_ty_lfts_incl".to_owned()),
@@ -656,7 +657,7 @@ impl<'def> Abstract<'def> {
             section_context.push(coq::command::Definition::new(
                 self.plain_ty_name.clone(),
                 coq::binder::BinderList::empty(),
-                Some(type_type.clone()),
+                Some(type_type),
                 coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
                     "{} type_fixpoint (λ {rec_ty_name}, enum_t ({pre_enum_def_name} {rec_ty_name} {scope_inst}))",
                     self.scope,

@@ -537,7 +537,7 @@ impl<'def> Abstract<'def> {
             coq::command::DefinitionBody::Term(coq::term::Term::Literal(fixpoint_body)),
         ));
         section_context.push(
-            coq::command::CommandAttrs::new(coq::command::Command::TypeclassesTransparent(type_name.clone()))
+            coq::command::CommandAttrs::new(coq::command::Command::TypeclassesTransparent(type_name))
                 .attributes("global"),
         );
         section_context.append_document(

@@ -1360,11 +1360,11 @@ Ltac enum_contractive_solve_dist :=
     unfold spec_instantiate_typaram_fst;
     unfold spec_instantiate_lft_fst;
     match goal with
-    | |- TypeDist _ (?Hx ?ty1 ?lfts ?tys ?r) (?Hx ?ty2 ?lfts ?tys ?r) =>
-        eapply (type_contractive_dist _ _ (λ ty, Hx ty lfts tys r)); last done;
+    | |- TypeDist _ (enum_ty (?Hx ?ty1 ?lfts ?tys) ?r) (enum_ty (?Hx ?ty2 ?lfts ?tys) ?r) =>
+        eapply (type_contractive_dist _ _ (λ ty, enum_ty (Hx ty lfts tys) r)); last done;
         destruct r; simpl; apply _
-    | |- TypeDist2 _ (?Hx ?ty1 ?lfts ?tys ?r) (?Hx ?ty2 ?lfts ?tys ?r) =>
-        eapply (type_contractive_dist2 _ _ (λ ty, Hx ty lfts tys r)); last done;
+    | |- TypeDist2 _ (enum_ty (?Hx ?ty1 ?lfts ?tys) ?r) (enum_ty (?Hx ?ty2 ?lfts ?tys) ?r) =>
+        eapply (type_contractive_dist2 _ _ (λ ty, enum_ty (Hx ty lfts tys) r)); last done;
         destruct r; simpl; apply _
     end.
 

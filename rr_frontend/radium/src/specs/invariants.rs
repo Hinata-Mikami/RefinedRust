@@ -352,38 +352,37 @@ impl Spec {
                         )
                         .unwrap();
                     }
+                } else if let Some(gd) = self.assemble_ghost_drop() {
+                    write!(
+                        body,
+                        "{scope} mk_ex_inv_def\n\
+                        {indent}{indent}({own_inv})%I\n\
+                        {indent}{indent}({shr_inv})%I\n\
+                        {indent}{indent}({gd})%I\n\
+                        {indent}{indent}({trivial_drop})\n\
+                        {indent}{indent}_\n\
+                        {indent}{indent}({lft_outlives})\n\
+                        {indent}{indent}({lft_wf_elctx})\n\
+                        {indent}{indent}_ _ _\n\
+                        {indent}",
+                    )
+                    .unwrap();
                 } else {
-                    if let Some(gd) = self.assemble_ghost_drop() {
-                        write!(
-                            body,
-                            "{scope} mk_ex_inv_def\n\
-                            {indent}{indent}({own_inv})%I\n\
-                            {indent}{indent}({shr_inv})%I\n\
-                            {indent}{indent}({gd})%I\n\
-                            {indent}{indent}({trivial_drop})\n\
-                            {indent}{indent}_\n\
-                            {indent}{indent}({lft_outlives})\n\
-                            {indent}{indent}({lft_wf_elctx})\n\
-                            {indent}{indent}_ _ _\n\
-                            {indent}",
-                        )
-                        .unwrap();
-                    } else {
-                        write!(
-                            body,
-                            "{scope} mk_ex_inv_def_auto_ghost_drop\n\
-                            {indent}{indent}({own_inv})%I\n\
-                            {indent}{indent}({shr_inv})%I\n\
-                            {indent}{indent}({trivial_drop})\n\
-                            {indent}{indent}_\n\
-                            {indent}{indent}({lft_outlives})\n\
-                            {indent}{indent}({lft_wf_elctx})\n\
-                            {indent}{indent}_ _ _\n\
-                            {indent}",
-                        )
-                        .unwrap();
-                    }
+                    write!(
+                        body,
+                        "{scope} mk_ex_inv_def_auto_ghost_drop\n\
+                        {indent}{indent}({own_inv})%I\n\
+                        {indent}{indent}({shr_inv})%I\n\
+                        {indent}{indent}({trivial_drop})\n\
+                        {indent}{indent}_\n\
+                        {indent}{indent}({lft_outlives})\n\
+                        {indent}{indent}({lft_wf_elctx})\n\
+                        {indent}{indent}_ _ _\n\
+                        {indent}",
+                    )
+                    .unwrap();
                 }
+               
             },
             SpecFlags::NonAtomic => {
                 let own_inv = self.assemble_plain_owned_invariant();
@@ -435,12 +434,12 @@ impl Spec {
                 };
 
                 if self.invariants.iter().all(|(_, mode)| *mode == Mode::All) {
+                    Self::push_obligation(
+                        &mut out,
+                        coq::ltac::LTac::Literal("ex_plain_t_solve_shr_auto".to_owned()),
+                        coq::proof::Terminator::Defined,
+                    );
                     if self.ty_ghost_drop.is_some() {
-                        Self::push_obligation(
-                            &mut out,
-                            coq::ltac::LTac::Literal("ex_plain_t_solve_shr_auto".to_owned()),
-                            coq::proof::Terminator::Defined,
-                        );
                         Self::push_obligation(
                             &mut out,
                             coq::ltac::LTac::Literal("ex_t_solve_persistent".to_owned()),
@@ -457,11 +456,6 @@ impl Spec {
                             coq::proof::Terminator::Qed,
                         );
                     } else {
-                        Self::push_obligation(
-                            &mut out,
-                            coq::ltac::LTac::Literal("ex_plain_t_solve_shr_auto".to_owned()),
-                            coq::proof::Terminator::Defined,
-                        );
                         Self::push_obligation(
                             &mut out,
                             coq::ltac::LTac::Literal("ex_plain_t_solve_ghost_drop_auto".to_owned()),
@@ -539,7 +533,7 @@ impl Spec {
         &self,
         base_type: &str,
         base_rfn_type: &str,
-        generics_rts: &Vec<coq::term::Term>,
+        generics_rts: &[coq::term::Term],
         scope: &GenericScope<'_>,
         context_names: &[String],
     ) -> String {
@@ -551,7 +545,7 @@ impl Spec {
         &self,
         base_type: &str,
         base_rfn_type: &str,
-        generics_rts: &Vec<coq::term::Term>,
+        generics_rts: &[coq::term::Term],
         scope: &GenericScope<'_>,
         context_names: &[String],
     ) -> coq::Document {

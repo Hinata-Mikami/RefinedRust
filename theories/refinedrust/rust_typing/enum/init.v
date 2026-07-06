@@ -17,7 +17,7 @@ Section init.
       li_tactic (interpret_rust_enum_def_goal M rsen) (λ '(existT rto e),
         ⌜e.(enum_els) = els⌝ ∗
         ⌜m = MetaNone⌝ ∗
-        ∃ sem, ⌜e.(enum_tag_ty_inj) variant = Some sem⌝ ∗
+        ∃ sem, ⌜enum_tag_ty_inj e variant = Some sem⌝ ∗
         ⌜(lookup_iml (els_variants els) variant) = Some (st_of sem.(enum_tag_sem_ty) MetaNone)⌝ ∗
           ∃ ri', owned_subtype f.1 E L2 false ri ri' tyi sem.(enum_tag_sem_ty) (λ L3,
             (* could try to remove this by strengthening enum *)

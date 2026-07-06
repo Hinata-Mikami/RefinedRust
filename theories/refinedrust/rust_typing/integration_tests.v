@@ -378,7 +378,8 @@ Section std_option_Option_ty.
     std_option_Option_enum_rt
     std_option_Option_enum_ty
     (λ rfn, match rfn with | None => -[] | Some x => -[x] end)
-    (λ variant, if (decide (variant = "None")) then Some $ mk_enum_tag_sem _ std_option_Option_None_ty (λ _, None) else if decide (variant = "Some") then Some $ mk_enum_tag_sem _ std_option_Option_Some_ty (λ '( *[x]), Some x) else None)
+    ([("None", mk_enum_tag_sem _ std_option_Option_None_ty (λ _, None)); ("Some", mk_enum_tag_sem _ std_option_Option_Some_ty (λ '( *[x]), Some x))])
+    _
     (ty_lfts T_ty)
     (ty_wf_E T_ty)
     _ _ _
@@ -386,6 +387,9 @@ Section std_option_Option_ty.
   Next Obligation.
     solve_inhabited.
   Defined.
+  Next Obligation.
+    done.
+  Qed.
   Next Obligation.
     solve_mk_enum_ty_lfts_incl.
   Qed.
@@ -578,6 +582,191 @@ Section test_rectypes.
   Program Definition Boo_tys : mut_types Boo_rts :=
     @mut_fixpoint _ _ _ Boo_F _ _ _.
 End test_rectypes.
+
+
+Section rectypes_List_ty.
+  Context `{RRGS : !(typeGS Σ)}.
+
+  Section rectypes_List_els.
+
+    Definition rectypes_List_Nil_sls (T_st: syn_type) : struct_layout_spec :=
+      let rectypes_List_Nil_st (T_st: syn_type) := UnitSynType in
+      let rectypes_List_st (T_st: syn_type) := UnitSynType in
+      mk_sls "rectypes_List_Nil" [] StructReprRust.
+    Definition rectypes_List_Nil_st (T_st: syn_type) : syn_type := rectypes_List_Nil_sls T_st.
+
+    Definition rectypes_List_Cons_sls (T_st: syn_type) : struct_layout_spec :=
+      let rectypes_List_Cons_st (T_st: syn_type) := UnitSynType in
+      let rectypes_List_st (T_st: syn_type) := UnitSynType in
+      mk_sls "rectypes_List_Cons" [
+      ("0", T_st);
+      ("1", ((Box_sls ((rectypes_List_st (T_st))) ) : syn_type))] StructReprRust.
+    Definition rectypes_List_Cons_st (T_st: syn_type) : syn_type := rectypes_List_Cons_sls T_st.
+
+    Program Definition rectypes_List_els (T_st: syn_type) : enum_layout_spec := mk_els "rectypes_List" ISize [
+      ("Nil", rectypes_List_Nil_st (T_st: syn_type));
+      ("Cons", rectypes_List_Cons_st (T_st: syn_type))] EnumReprRust [("Nil", 0); ("Cons", 1)] _ _ _ _.
+    Next Obligation. solve_enum_layout_spec_variants_nodup. Qed.
+    Next Obligation. solve_enum_layout_spec_variants_eq. Qed.
+    Next Obligation. solve_enum_layout_spec_discriminant_nodup. Qed.
+    Next Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.
+    Global Typeclasses Opaque rectypes_List_els.
+    Definition rectypes_List_st (T_st: syn_type) : syn_type := rectypes_List_els T_st.
+  End rectypes_List_els.
+
+  Context {T_rt : RT}.
+  Section components.
+    Let rectypes_List_rt (_T_rt : RT) := (list (place_rfn (T_rt))).
+    Context (_rectypes_List_ty : type (list (place_rfn (T_rt)))).
+    Let rectypes_List_ty (T_rt : RT) := spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), _rectypes_List_ty.
+
+    Definition rectypes_List_Nil_ty  : (spec_with 0 [(T_rt)] ((type (plist place_rfnRT [])))).
+    Proof using _rectypes_List_ty.
+      exact (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (rectypes_List_Nil_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[]))).
+    Defined.
+
+    Definition rectypes_List_Nil_rt  : RT.
+    Proof using T_rt .
+      let __a := (normalized_rt_of_spec_ty (rectypes_List_Nil_ty)) in exact __a.
+    Defined.
+
+    #[global] Typeclasses Transparent rectypes_List_Nil_ty.
+    #[global] Typeclasses Transparent rectypes_List_Nil_rt.
+    Definition rectypes_List_Cons_ty  : (spec_with 0 [(T_rt)] ((type (plist place_rfnRT [(T_rt) : RT; ((((Box_inv_t_rt)) (((rectypes_List_rt ((T_rt))))) )) : RT])))).
+    Proof using _rectypes_List_ty.
+      exact (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (rectypes_List_Cons_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[(T_ty); ((Box_inv_t (((rectypes_List_rt ((T_rt)))))  -[] -[(rectypes_List_ty ((T_rt)) -[] -[T_ty])]))]))).
+    Defined.
+
+    Definition rectypes_List_Cons_rt  : RT.
+    Proof using T_rt .
+      let __a := (normalized_rt_of_spec_ty (rectypes_List_Cons_ty)) in exact __a.
+    Defined.
+
+    #[global] Typeclasses Transparent rectypes_List_Cons_ty.
+    #[global] Typeclasses Transparent rectypes_List_Cons_rt.
+    Program Definition rectypes_List_Cons_inv_t_inv_spec  : (spec_with 0 [(T_rt)] ((ex_inv_def (rectypes_List_Cons_rt)%type (((place_rfn (T_rt)) * (list (place_rfn (T_rt)))))%type))) :=
+      spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
+            (λ π inner_rfn (_ty_rfn : RT_rt (((place_rfn (T_rt)) * (list (place_rfn (T_rt))))%type : RT)),
+                    let '(x, xs) := _ty_rfn in ⌜(inner_rfn : RT_rt rectypes_List_Cons_rt)  = -[(x); #(#xs)]⌝ ∗ True)%I
+            (true)
+            ([])
+            ([])
+            _ _ _ _
+          .
+    Next Obligation.
+      ex_plain_t_solve_shr_auto.
+    Defined.
+
+    Next Obligation.
+      ex_plain_t_solve_ghost_drop_auto.
+    Defined.
+
+    Next Obligation.
+      ex_t_solve_persistent.
+    Qed.
+
+    Next Obligation.
+      ex_plain_t_solve_shr_mono.
+    Qed.
+
+    Definition rectypes_List_Cons_inv_t  : (spec_with 0 [(T_rt)] ((type ((((place_rfn (T_rt)) * (list (place_rfn (T_rt)))))%type)))) :=
+      spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (rectypes_List_Cons_inv_t_inv_spec  -[] -[T_ty]) (rectypes_List_Cons_ty -[] -[T_ty]).
+    #[global] Arguments rectypes_List_Cons_inv_t_inv_spec : simpl never.
+
+    #[global] Arguments rectypes_List_Cons_inv_t : simpl never.
+
+    #[global] Typeclasses Transparent rectypes_List_Cons_inv_t.
+    Definition rectypes_List_Cons_inv_t_rt  : RT.
+    Proof using T_rt .
+      let __a := (normalized_rt_of_spec_ty (rectypes_List_Cons_inv_t)) in exact __a.
+    Defined.
+
+    #[global] Typeclasses Transparent rectypes_List_Cons_inv_t_rt.
+
+    Definition rectypes_List_enum_rt  :=
+      λ rfn : (list (place_rfn (T_rt))), match rfn with | [] => rectypes_List_Nil_rt| (cons (x) (xs)) => rectypes_List_Cons_inv_t_rt end.
+    Definition rectypes_List_enum_ty  : (spec_with 0 [(T_rt)] (∀ (x: _), (type (rectypes_List_enum_rt (x))))) :=
+      spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), λ rfn, match rfn as x return type (rectypes_List_enum_rt x) with | [] => rectypes_List_Nil_ty -[] -[T_ty]| (cons (x) (xs)) => rectypes_List_Cons_inv_t -[] -[T_ty] end.
+    Program Definition rectypes_List_enum_pre  : (spec_with 0 [(T_rt)] ((enum ((list (place_rfn (T_rt))))))) :=
+      spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), mk_enum
+        _
+        ((rectypes_List_els ((ty_syn_type T_ty MetaNone))))
+        (λ rfn, Some (match rfn with | [] => "Nil" | (cons (x) (xs)) => "Cons" end))
+        (rectypes_List_enum_rt)
+        (rectypes_List_enum_ty -[] -[T_ty])
+        (λ rfn, match rfn with | [] => *[]| (cons (x) (xs)) => (x, xs) end)
+        ([("Nil", mk_enum_tag_sem _ (rectypes_List_Nil_ty -[] -[T_ty]) (λ '( *[]), [])); ("Cons", mk_enum_tag_sem _ (rectypes_List_Cons_inv_t -[] -[T_ty]) (λ '( (x, xs)), (cons (x) (xs))))])
+        _
+        ((ty_lfts T_ty) ++ ty_lfts (rectypes_List_ty T_rt -[] -[T_ty]) ++ [])
+        ((ty_wf_E T_ty) ++ ty_wf_E (rectypes_List_ty T_rt -[] -[T_ty]) ++ [])
+        _ _ _.
+    Next Obligation.
+      solve_inhabited.
+    Defined.
+    Next Obligation.
+      done.
+    Qed.
+
+    Next Obligation.
+      solve_mk_enum_ty_lfts_incl.
+    Qed.
+
+    Next Obligation.
+      solve_mk_enum_ty_wf_E.
+    Qed.
+
+    Next Obligation.
+      solve_mk_enum_tag_consistent.
+    Defined.
+
+    #[global] Arguments rectypes_List_enum_pre : simpl never.
+
+  End components.
+
+    Arguments enum_ty : simpl never.
+    Program Instance rectypes_List_ty_contractive (T_ty: (type (T_rt))) : EnumContractive (λ rectypes_List_ty, rectypes_List_enum_pre rectypes_List_ty -[] -[T_ty]).
+    Next Obligation. enum_contractive_solve_eq. Qed.
+    Next Obligation. enum_contractive_solve_eq. Qed.
+    Next Obligation. enum_contractive_solve_eq. Defined.
+    Next Obligation. enum_contractive_solve_eq. Qed.
+    Next Obligation. enum_contractive_solve_dist. Qed.
+    Next Obligation. enum_contractive_solve_dist. Qed.
+
+  (*
+  Instance bla (T_ty : type T_rt) :  TyLftMorphism
+     (λ rectypes_List_ty : type (list (place_rfn T_rt)),
+        enum_t (rectypes_List_enum_pre rectypes_List_ty -[] -[T_ty])).
+  Proof.
+    unshelve eapply DepLftMorphism_to_TyLftMorphism.
+    1: apply _.
+    2: {
+      (* point:
+        - we need to track which inputs we actually use
+        - we might want to try to get rid of the explicit enum_wf_E/enum_lfts.
+
+
+        Idea: iterate over the variants, for each variant, use enum_tag_ty_inj and compute DepLftMorphism for that type, then compose all of these in parallel using  some variant of DepLftMorphism_hcons.
+
+        Then get rid of enum_wf_E/enum_lfts. Instead, derive lifetime inclusion necessary for sharing by using enum_tag_compat.
+
+      *)
+      Search hlist DepLftMorphism.
+
+
+
+  Definition rectypes_List_ty  : (spec_with 0 [(T_rt)] ((type _))) :=
+    spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), type_fixpoint (λ rectypes_List_ty, enum_t (rectypes_List_enum_pre rectypes_List_ty -[] -[T_ty])).
+  Definition rectypes_List_rt  : RT.
+  Proof using T_rt.
+    let __a := (normalized_rt_of_spec_ty (rectypes_List_ty)) in exact __a.
+  Defined.
+
+  Definition rectypes_List_enum  : (spec_with 0 [(T_rt)] ((enum ((list (place_rfn (T_rt))))))) :=
+    spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), rectypes_List_enum_pre (rectypes_List_ty -[] -[T_ty]) -[] -[T_ty].
+  #[global] Typeclasses Transparent rectypes_List_ty.
+  #[global] Typeclasses Transparent rectypes_List_rt.
+  *)
+End rectypes_List_ty.
 
 Section test_mutual_rectypes.
   Context `{!typeGS Σ}.

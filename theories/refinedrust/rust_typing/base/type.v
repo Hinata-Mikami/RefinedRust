@@ -2404,6 +2404,9 @@ Section enum.
   Global Arguments enum_tag_sem : clear implicits.
   Global Arguments mk_enum_tag_sem {_}.
 
+  Definition enum_tag_ty_find {rt} (tag_tys : list (var_name * enum_tag_sem rt)) (tag : var_name) : option (enum_tag_sem rt) :=
+    (λ x, x.2.2) <$> (list_find (λ x, x.1 = tag) tag_tys).
+
   Record enum (rt : RT) : Type := _mk_enum {
     enum_xt_inhabited : Inhabited (RT_xt rt);
     (* the layout spec *)
@@ -2415,9 +2418,8 @@ Section enum.
     enum_ty : ∀ r, type (enum_rt r);
     enum_r : ∀ r, enum_rt r;
     (* convenience function: given the variant name, also project out the type *)
-    enum_tag_ty_inj :
-      var_name →
-      option (enum_tag_sem rt);
+    enum_tag_ty : list (var_name * enum_tag_sem rt);
+    enum_tag_tys_complete : enum_tag_ty.*1 = enum_els.(els_variants).*1;
     (* explicitly track the lifetimes each of the variants needs -- needed for sharing *)
     enum_lfts : list lft;
     enum_wf_E : elctx;
@@ -2425,8 +2427,7 @@ Section enum.
     enum_wf_E_complete : ∀ (r : rt), ty_wf_E (enum_ty r) ⊆ enum_wf_E;
     enum_tag_compat : ∀ (r : rt) (variant : var_name),
       enum_tag r = Some variant →
-      (*enum_tag_ty_inj variant = Some (mk_enum_tag_sem (enum_rt r) (enum_ty r));*)
-      sigT (λ vinj, enum_tag_ty_inj variant = Some (mk_enum_tag_sem (enum_rt r) (enum_ty r) vinj));
+      sigT (λ vinj, enum_tag_ty_find enum_tag_ty variant = Some (mk_enum_tag_sem (enum_rt r) (enum_ty r) vinj));
   }.
   Global Arguments _mk_enum {_}.
   Global Arguments enum_xt_inhabited {_}.
@@ -2435,11 +2436,14 @@ Section enum.
   Global Arguments enum_rt {_}.
   Global Arguments enum_r {_}.
   Global Arguments enum_ty {_}.
-  Global Arguments enum_tag_ty_inj {_}.
+  Global Arguments enum_tag_ty {_}.
   Global Arguments enum_lfts {_}.
   Global Arguments enum_wf_E {_}.
   Global Instance enum_rt_inhabited {rt} (e : enum rt) : Inhabited rt :=
     populate (RT_xrt rt e.(enum_xt_inhabited).(inhabitant)).
+
+  Definition enum_tag_ty_inj {rt} (e : enum rt) (tag : var_name) : option (enum_tag_sem rt) :=
+    enum_tag_ty_find e.(enum_tag_ty) tag.
 
   (* Block TC resolution from solving the [Inhabited] requirement automatically to make automation more deterministic *)
   Definition mk_enum {rt : RT} (inh : TCNoResolve (Inhabited (RT_xt rt))) := _mk_enum inh.
@@ -2463,6 +2467,7 @@ Section enum.
     enum_tag_ty_inj en tag = Some sem →
     sem.(enum_tag_sem_rt) = enum_rt en r.
   Proof.
+    unfold enum_tag_ty_inj.
     intros Htag Hsem.
     odestruct (enum_tag_compat _ en) as (vinj & Htg); first done.
     simplify_eq. done.
@@ -2474,6 +2479,7 @@ Section enum.
     sem.(enum_tag_sem_ty) =
     rew <-[type] (enum_tag_rt_eq en r _ _ Heq Hsem) in enum_ty en r.
   Proof.
+    unfold enum_tag_ty_inj in *.
     odestruct (enum_tag_compat _ en) as (vinj & Htg); first done.
     simplify_eq.
     generalize (enum_tag_rt_eq en r tag _ Heq Hsem) as Heq2.
@@ -2485,6 +2491,7 @@ Section enum.
     rew ->[type] (enum_tag_rt_eq en r _ _ Heq Hsem) in sem.(enum_tag_sem_ty) =
     enum_ty en r.
   Proof.
+    unfold enum_tag_ty_inj in *.
     odestruct (enum_tag_compat _ en) as (vinj & Htg); first done.
     simplify_eq.
     generalize (enum_tag_rt_eq en r tag _ Heq Hsem) as Heq2.
