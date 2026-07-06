@@ -1118,34 +1118,31 @@ Section ltype_def.
 
     lty_own_pre core (@EnumLty rt rte en variant lte re) k π r l :=
     (** EnumLty *)
-      ∃ el,
-      ⌜enum_layout_spec_has_layout en.(enum_els) el⌝ ∗
+      ∃ el variant_ly,
+      ⌜use_enum_layout_alg en.(enum_els) = Some el⌝ ∗
+      ⌜enum_variant_lookup el.(el_variants) variant = Some variant_ly⌝ ∗
+      ⌜syn_type_has_layout (lty_st lte) variant_ly⌝ ∗
       ⌜l `has_layout_loc` el⌝ ∗
-      loc_in_bounds l 0 el.(ly_size) ∗
+      loc_in_bounds l 0 el.(el_size) ∗
+      let tag_ly := it_layout el.(el_tag_it) in
+      let tag_size := ly_size tag_ly in
+      let data_offset := el.(el_data_offset) in
 
       match k with
       | Owned =>
         ∃ r' : rt, place_rfn_interp_owned r r' ∗
         |={lftE}=>(
-        (*∃ rty : enum_tag_sem rt,*)
-        (*⌜lty_rt lte = rty.(enum_tag_sem_rt)⌝ ∗*)
         ⌜enum_tag en r' = Some variant⌝ ∗
-        (* require all the tag info to be coherent -- in particular the refinement type *)
-        (*⌜enum_tag_ty_inj en variant = Some rty⌝ ∗*)
-        (*∃ (Heq : lty_rt lte = enum_variant_rt en r'),*)
         (* ownership of the discriminant *)
-        lty_of_ty_own (int en.(enum_els).(els_tag_it)) Owned π (PlaceIn ((els_lookup_tag en.(enum_els) variant))) (l atst{sls_of_els en.(enum_els)}ₗ "discriminant") ∗
+        lty_of_ty_own (int el.(el_tag_it)) Owned π (PlaceIn (els_lookup_tag en.(enum_els) variant)) l ∗
+        (* ownership of the padding between the discriminant and the payload *)
+        lty_of_ty_own (uninit (LiteralSynType (Layout (data_offset - tag_size) 0))) Owned π (PlaceIn ()) (l +ₗ tag_size) ∗
         (* ownership of the data *)
         (∃ Heq : RT_rt (lty_rt lte) = RT_rt rte,
-          lty_own_pre core lte Owned π
-          (PlaceIn (rew <-[id] Heq in re))
-          (*(rew <-[place_rfn]Heq in (PlaceIn (enum_variant_rfn en r')))*)
-          (l atst{sls_of_els en.(enum_els)}ₗ "data")) ∗
-        (* ownership of the remaining padding after the data *)
-        (∃ v, ((l atst{sls_of_els en.(enum_els)}ₗ "data") +ₗ (size_of_st (lty_st lte))) ↦ v ∗ ⌜v `has_layout_val` ly_offset (els_data_ly en.(enum_els)) (size_of_st (lty_st lte))⌝) ∗
-        (* ownership of the padding fields of the sl *)
-        ([∗ list] i ↦ mly ∈ pad_struct el.(sl_members) [None; None] (λ ly, Some ly),
-          from_option (λ ly, lty_of_ty_own (uninit (LiteralSynType ly)) Owned π (PlaceIn ()) (l +ₗ Z.of_nat (offset_of_idx el.(sl_members) i))) True mly)
+          lty_own_pre core lte Owned π (PlaceIn (rew <-[id] Heq in re)) (l +ₗ data_offset)) ∗
+        (* ownership of the remaining padding after the payload *)
+        lty_of_ty_own (uninit (LiteralSynType (Layout (el.(el_size) - data_offset - ly_size variant_ly) 0))) Owned π (PlaceIn ())
+          (l +ₗ data_offset +ₗ ly_size variant_ly)
         )
       | _ =>
           (* TODO *)
@@ -1315,7 +1312,7 @@ Section ltype_def.
       iExists (mk_array_layout ly len). iSplitR; last done.
       iPureIntro. simpl.
       eapply syn_type_has_layout_array; done.
-    - iDestruct "Hown" as (el) "(%Hen & %Hly & Hown)".
+    - iDestruct "Hown" as (el variant_ly) "(%Hen & %Hvariant & %Hst & %Hly & Hown)".
       iExists _. iL.
       iPureIntro. by eapply use_enum_layout_alg_Some_inv in Hen.
     - simpl. iDestruct "Hown" as "(%ly & ? & ? & ? & ? & _)".
@@ -1358,9 +1355,9 @@ Section ltype_def.
       assert (ly0 = ly') as -> by by eapply syn_type_has_layout_inj.
       done.
     - (* enum *)
-      iDestruct "Hown" as (el) "(%Hen & %Hly & Hlb & _)".
+      iDestruct "Hown" as (el variant_ly) "(%Hen & %Hvariant & %Hst & %Hly & Hlb & _)".
       eapply use_enum_layout_alg_Some_inv in Hen.
-      have ?: layout_of el = ly by eapply syn_type_has_layout_inj.
+      have ?: radium.enum.layout_of_enum el = ly by eapply syn_type_has_layout_inj.
       subst. done.
     - iDestruct "Hown" as "(%ly' & %Halg & ? & ? & ? & ? & _)".
       simpl in *. assert (ly' = ly) as ->. { by eapply syn_type_has_layout_inj. }
@@ -1603,14 +1600,12 @@ Section ltype_def.
       all: intros ??? Heq; try rewrite (UIP_refl _ _ Heq); eauto.
     - (* enum *)
       simp lty_own_pre.
-      do 6 f_equiv.
-      f_equiv. f_equiv.
       fold lty_rt. simpl.
       rewrite (UIP_refl _ _ Heq). clear Heq.
-      do 2 f_equiv. { done. }
-      f_equiv. f_equiv.
       rewrite lty_core_syn_type_eq.
-      f_equiv.
+      destruct k; simpl; try done.
+      rewrite /transport_rfn /=.
+      repeat f_equiv.
       iSplit.
       + iIntros "(%Heq & Ha)".
         assert (Heq2 : RT_rt (lty_rt lt) = RT_rt rte).
@@ -1765,11 +1760,11 @@ Section ltype_def.
       all: normalize_dep_rt_goal.
     - (* enum *)
       simp lty_own_pre. fold lty_rt.
-      do 6 f_equiv.
       rewrite (UIP_refl _ _ Heq). clear Heq. simpl.
-      do 4 f_equiv. { done. }
       rewrite lty_core_syn_type_eq.
-      do 3 f_equiv.
+      destruct k; simpl; try done.
+      rewrite /transport_rfn /=.
+      repeat f_equiv.
       iSplit.
       + iIntros "(%Heq & Ha)".
         assert (Heq2 : RT_rt (lty_rt (lty_core lt)) = RT_rt rte).
@@ -1904,8 +1899,7 @@ Section ltype_def.
         normalize_dep_rt_goal.
     - (* enum *)
       simp lty_own_pre.
-      iIntros "(%el & %Hel & %Hly & Hlb & Hf)".
-      done.
+      iIntros "(%el & %variant_ly & %Hel & %Hvariant & %Hst & %Hly & Hlb & [])".
     - simp lty_own_pre.
       iIntros "(%ly & % & % & ? & % & % & [])".
     - simp lty_own_pre.
@@ -2453,29 +2447,29 @@ Section ltype_def.
     (rt rte : RT) (en : enum rt)
     (tag : var_name) (lte : ltype rte) (re : rte)
     (k : bor_kind) (π : thread_id) (r : place_rfn rt) (l : loc) : iProp Σ :=
-      ∃ el,
-      ⌜enum_layout_spec_has_layout en.(enum_els) el⌝ ∗
+      ∃ el variant_ly,
+      ⌜use_enum_layout_alg en.(enum_els) = Some el⌝ ∗
+      ⌜enum_variant_lookup el.(el_variants) tag = Some variant_ly⌝ ∗
+      ⌜syn_type_has_layout (ltype_st lte) variant_ly⌝ ∗
       ⌜l `has_layout_loc` el⌝ ∗
-      loc_in_bounds l 0 el.(ly_size) ∗
+      loc_in_bounds l 0 el.(el_size) ∗
+      let tag_ly := it_layout el.(el_tag_it) in
+      let tag_size := ly_size tag_ly in
+      let data_offset := el.(el_data_offset) in
       match k with
       | Owned =>
         ∃ r' : rt, place_rfn_interp_owned r r' ∗
         |={lftE}=>(
-        (*∃ (Heq : enum_variant_rt en r' = enum_tag_rt' en tag),*)
         ⌜enum_tag en r' = Some tag⌝ ∗
-        (*⌜is_Some (enum_tag_ty_inj en tag)⌝ ∗*)
         (* ownership of the discriminant *)
-        lty_of_ty_own (int en.(enum_els).(els_tag_it)) Owned π (PlaceIn (els_lookup_tag en.(enum_els) tag)) (l atst{sls_of_els en.(enum_els)}ₗ "discriminant") ∗
+        lty_of_ty_own (int el.(el_tag_it)) Owned π (PlaceIn (els_lookup_tag en.(enum_els) tag)) l ∗
+        (* ownership of the padding between the discriminant and the payload *)
+        lty_of_ty_own (uninit (LiteralSynType (Layout (data_offset - tag_size) 0))) Owned π (PlaceIn ()) (l +ₗ tag_size) ∗
         (* ownership of the data *)
-        rec _ lte Owned π
-        (PlaceIn re)
-        (*(rew [place_rfn] Heq in (PlaceIn (enum_variant_rfn en r')))*)
-        (l atst{sls_of_els en.(enum_els)}ₗ "data") ∗
-        (* ownership of the remaining padding after the data *)
-        (∃ v, ((l atst{sls_of_els en.(enum_els)}ₗ "data") +ₗ (size_of_st (ltype_st lte))) ↦ v ∗ ⌜v `has_layout_val` ly_offset (els_data_ly en.(enum_els)) (size_of_st (ltype_st lte))⌝) ∗
-        (* ownership of the padding fields of the sl *)
-        ([∗ list] i ↦ mly ∈ pad_struct el.(sl_members) [None; None] (λ ly, Some ly),
-        if mly is Some ly then lty_of_ty_own (uninit (LiteralSynType ly)) Owned π (PlaceIn ()) (l +ₗ Z.of_nat (offset_of_idx el.(sl_members) i)) else True))
+        rec _ lte Owned π (PlaceIn re) (l +ₗ data_offset) ∗
+        (* ownership of the remaining padding after the payload *)
+        lty_of_ty_own (uninit (LiteralSynType (Layout (el.(el_size) - data_offset - ly_size variant_ly) 0))) Owned π (PlaceIn ())
+          (l +ₗ data_offset +ₗ ly_size variant_ly))
       | _ =>
           (* TODO *)
           False
@@ -2975,9 +2969,9 @@ Section ltype_def.
     fold lty_rt. simpl.
     intros Heq1. rewrite (UIP_refl _ _ Heq1). cbn.
     do 7 f_equiv.
-    intros r'.
-    do 5 f_equiv.
-    2: { done. }
+    { iPureIntro. done. }
+    destruct k; simpl; try done.
+    repeat f_equiv.
     destruct lte as [lte <- ?].
     simpl.
     iSplit.
@@ -3516,7 +3510,7 @@ Section ltype_def.
     - rewrite /lty_own. simp lty_own_pre.
       by iIntros "(%ly & %Halg & %Hly & ? & Hcred & ? & $ & Hb)".
     - rewrite /lty_own. simp lty_own_pre.
-      iDestruct 1 as "(%el & ? & ? & ? & [])".
+      iDestruct 1 as "(%el & %variant_ly & ? & ? & ? & ? & ? & [])".
     - rewrite /lty_own. simp lty_own_pre.
       by iIntros "(%ly & %Halg & ? & ? & $ & _)".
   Qed.
@@ -3592,7 +3586,7 @@ Section ltype_def.
       iIntros "(%ly & %Halg & ? & ? & ? & ? & ? & _)".
       iModIntro. iIntros (??). by iFrame.
     - rewrite /lty_own. simp lty_own_pre. injection Hdeinit as <-.
-      iIntros "(%el & ? & ? & ? & [])".
+      iIntros "(%el & %variant_ly & ? & ? & ? & ? & ? & [])".
     - rewrite /lty_own. simp lty_own_pre. injection Hdeinit as <-.
       iIntros "(%ly & %Halg & ? & ? & ? & _)".
       iModIntro. iIntros (??). by iFrame.
@@ -4747,18 +4741,19 @@ Section blocked.
     - iIntros (κ' γ' π r l) "#Hdead Hb".
       rewrite ltype_own_core_equiv /=. simp_ltypes.
       rewrite !ltype_own_enum_unfold /enum_ltype_own.
-      iDestruct "Hb" as "(%el & %Halg & % & ? &Hb)".
-      done.
+      iDestruct "Hb" as "(%el & %variant_ly & %Halg & %Hvariant & %Hst & %Hly & Hlb & [])".
     - iIntros (π r l) "#Hdead Hb".
       rewrite ltype_own_core_equiv /=. simp_ltypes.
       rewrite !ltype_own_enum_unfold /enum_ltype_own.
-      iDestruct "Hb" as "(%el & %Halg & % & Hlb & %r' & Hr & Hb)".
-      iExists el. iR. iR. iFrame "Hlb ".
-      iModIntro. iExists _. iFrame "Hr".
-      iMod "Hb" as "(%Htag' & ? & Hb & ? & ?)".
-      iR. rewrite ltype_core_syn_type_eq. iFrame.
-      iDestruct "Hub" as "(_ & #Hub_own)". iMod ("Hub_own" with "Hdead Hb") as "Hl".
-      rewrite ltype_own_core_equiv. done.
+      iDestruct "Hb" as "(%el & %variant_ly & %Halg & %Hvariant & %Hst & %Hly & Hlb & %r' & Hr & Hb)".
+      iMod "Hb" as "(%Htag' & Htag & Htag_pad & Hpayload & Htail)".
+      iDestruct "Hub" as "(_ & #Hub_own)".
+      iMod ("Hub_own" with "Hdead Hpayload") as "Hpayload".
+      iEval (rewrite ltype_own_core_equiv) in "Hpayload".
+      iModIntro. iExists el, variant_ly. iR. iR.
+      iSplitR. { iPureIntro. rewrite ltype_core_syn_type_eq. done. }
+      iR. iFrame "Hlb". iExists r'. iFrame "Hr".
+      iModIntro. iSplitR; first done. iFrame.
   Qed.
 
 

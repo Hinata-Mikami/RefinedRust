@@ -2619,13 +2619,13 @@ Ltac solve_compute_struct_layout := fail "implement solve_compute_struct_layout"
     refine (compute_struct_layout_hint _ _ _); solve_compute_struct_layout : typeclass_instances.
 
 (** Tactic hint to compute a enum_layout for a enum_layout_spec *)
-Definition compute_enum_layout_goal `{!typeGS Σ} (sls : enum_layout_spec) (T : struct_layout → iProp Σ) : iProp Σ :=
-  ∃ sl, ⌜enum_layout_spec_has_layout sls sl⌝ ∗ T sl.
+Definition compute_enum_layout_goal `{!typeGS Σ} (els : enum_layout_spec) (T : enum_layout → iProp Σ) : iProp Σ :=
+  ∃ el, ⌜enum_layout_spec_has_layout els el⌝ ∗ T el.
 #[global] Typeclasses Opaque compute_enum_layout_goal.
-Program Definition compute_enum_layout_hint `{!typeGS Σ} (sls : enum_layout_spec) (sl : struct_layout) :
-  enum_layout_spec_has_layout sls sl →
-  LiTactic (compute_enum_layout_goal sls) := λ a, {|
-    li_tactic_P T := T sl;
+Program Definition compute_enum_layout_hint `{!typeGS Σ} (els : enum_layout_spec) (el : enum_layout) :
+  enum_layout_spec_has_layout els el →
+  LiTactic (compute_enum_layout_goal els) := λ a, {|
+    li_tactic_P T := T el;
   |}.
 Next Obligation.
   iIntros (?? sls sl Hly T) "HT". iExists sl. iFrame. done.

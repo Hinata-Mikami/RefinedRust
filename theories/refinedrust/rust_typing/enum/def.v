@@ -299,6 +299,145 @@ Section enum.
   Definition enum_tail_padding_ly (el : enum_layout) (variant_ly : layout) : layout :=
     Layout (el.(el_size) - el.(el_data_offset) - ly_size variant_ly) 0.
 
+  Lemma enum_variant_layout_bounds el variant variant_ly :
+    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+    let tag_size := ly_size (it_layout el.(el_tag_it)) in
+    let data_offset := el.(el_data_offset) in
+    let variant_size := ly_size variant_ly in
+    tag_size ≤ data_offset ∧ data_offset + variant_size ≤ el.(el_size).
+  Proof.
+    intros Hvariant.
+    split.
+    - apply Nat2Z.inj_le. apply el_tag_before_data.
+    - pose proof (enum_variant_lookup_in_bounds _ _ _ Hvariant) as Hvariant_bound.
+      apply Nat2Z.inj_le. rewrite Nat2Z.inj_add. exact Hvariant_bound.
+  Qed.
+
+  Lemma enum_tag_padding_syn_type_has_layout el variant variant_ly :
+    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+    syn_type_has_layout (LiteralSynType (enum_tag_padding_ly el)) (enum_tag_padding_ly el).
+  Proof.
+    intros Hvariant.
+    pose proof (enum_variant_lookup_in_bounds _ _ _ Hvariant) as Hvariant_bound.
+    apply syn_type_has_layout_literal; first done.
+    - rewrite /enum_tag_padding_ly /layout_wf /ly_align /=. apply Z.divide_1_l.
+    - rewrite /enum_tag_padding_ly /=.
+      change (ly_size {| ly_size := el_data_offset el - ly_size (el_tag_it el); ly_align_log := 0 |}) with (el_data_offset el - ly_size (el_tag_it el))%nat.
+      assert (el_data_offset el - ly_size (el_tag_it el) ≤ el_size el)%nat as Hpad_bound.
+      { change (ly_size el) with (el_size el) in Hvariant_bound. lia. }
+      apply Nat2Z.inj_le in Hpad_bound. pose proof (el_size_bounded el). rewrite MaxInt_eq. lia.
+    - rewrite /ly_align_in_bounds /ly_align /enum_tag_padding_ly /=. unfold_common_radium_defs. simpl. nia.
+  Qed.
+
+  Lemma enum_tail_padding_syn_type_has_layout el variant variant_ly :
+    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+    syn_type_has_layout (LiteralSynType (enum_tail_padding_ly el variant_ly)) (enum_tail_padding_ly el variant_ly).
+  Proof.
+    intros Hvariant.
+    pose proof (enum_variant_lookup_in_bounds _ _ _ Hvariant) as Hvariant_bound.
+    apply syn_type_has_layout_literal; first done.
+    - rewrite /enum_tail_padding_ly /layout_wf /ly_align /=. apply Z.divide_1_l.
+    - rewrite /enum_tail_padding_ly /=.
+      change (ly_size {| ly_size := el_size el - el_data_offset el - ly_size variant_ly; ly_align_log := 0 |}) with (el_size el - el_data_offset el - ly_size variant_ly)%nat.
+      assert (el_size el - el_data_offset el - ly_size variant_ly ≤ el_size el)%nat as Hpad_bound.
+      { change (ly_size el) with (el_size el) in Hvariant_bound. lia. }
+      apply Nat2Z.inj_le in Hpad_bound. pose proof (el_size_bounded el). rewrite MaxInt_eq. lia.
+    - rewrite /ly_align_in_bounds /ly_align /enum_tail_padding_ly /=. unfold_common_radium_defs. simpl. nia.
+  Qed.
+
+  Lemma enum_tag_padding_uninit_syn_type_has_layout el variant variant_ly :
+    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+    syn_type_has_layout
+      (ty_syn_type (uninit (LiteralSynType (enum_tag_padding_ly el))) MetaNone)
+      (enum_tag_padding_ly el).
+  Proof.
+    intros Hvariant. simpl.
+    apply syn_type_has_layout_untyped.
+    by apply enum_tag_padding_syn_type_has_layout with variant variant_ly.
+  Qed.
+
+  Lemma enum_tail_padding_uninit_syn_type_has_layout el variant variant_ly :
+    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+    syn_type_has_layout
+      (ty_syn_type (uninit (LiteralSynType (enum_tail_padding_ly el variant_ly))) MetaNone)
+      (enum_tail_padding_ly el variant_ly).
+  Proof.
+    intros Hvariant. simpl.
+    apply syn_type_has_layout_untyped.
+    by apply enum_tail_padding_syn_type_has_layout with variant.
+  Qed.
+
+  Lemma loc_in_bounds_enum_tag el variant variant_ly l :
+    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+    loc_in_bounds l 0 (ly_size el) -∗
+    loc_in_bounds l 0 (ly_size (it_layout el.(el_tag_it))).
+  Proof.
+    intros Hvariant.
+    pose proof (enum_variant_layout_bounds _ _ _ Hvariant) as (Htag_data & Hvariant_bound).
+    iIntros "Hlb". iApply (loc_in_bounds_shorten_suf with "Hlb").
+    simpl. change (ly_size el) with (el_size el). lia.
+  Qed.
+
+  Lemma loc_in_bounds_enum_tag_padding el variant variant_ly l :
+    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+    loc_in_bounds l 0 (ly_size el) -∗
+    loc_in_bounds (l +ₗ ly_size (it_layout el.(el_tag_it))) 0
+      (ly_size (enum_tag_padding_ly el)).
+  Proof.
+    intros Hvariant.
+    pose proof (enum_variant_layout_bounds _ _ _ Hvariant) as (Htag_data & Hvariant_bound).
+    iIntros "Hlb".
+    iApply (loc_in_bounds_offset with "Hlb").
+    - done.
+    - simpl. lia.
+    - simpl. rewrite /enum_tag_padding_ly /=.
+      change (ly_size {| ly_size := el_data_offset el - ly_size (el_tag_it el); ly_align_log := 0 |}) with
+        (el_data_offset el - ly_size (el_tag_it el))%nat.
+      change (ly_size el) with (el_size el).
+      rewrite Nat2Z.inj_sub; last done. lia.
+  Qed.
+
+  Lemma loc_in_bounds_enum_payload el variant variant_ly l :
+    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+    loc_in_bounds l 0 (ly_size el) -∗
+    loc_in_bounds (l +ₗ el.(el_data_offset)) 0 (ly_size variant_ly).
+  Proof.
+    intros Hvariant.
+    pose proof (enum_variant_layout_bounds _ _ _ Hvariant) as (_ & Hvariant_bound).
+    iIntros "Hlb".
+    iApply (loc_in_bounds_offset with "Hlb").
+    - done.
+    - simpl. lia.
+    - simpl. change (ly_size el) with (el_size el). lia.
+  Qed.
+
+  Lemma loc_in_bounds_enum_tail_padding el variant variant_ly l :
+    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+    loc_in_bounds l 0 (ly_size el) -∗
+    loc_in_bounds (l +ₗ el.(el_data_offset) +ₗ ly_size variant_ly) 0
+      (ly_size (enum_tail_padding_ly el variant_ly)).
+  Proof.
+    intros Hvariant.
+    pose proof (enum_variant_layout_bounds _ _ _ Hvariant) as (_ & Hvariant_bound).
+    iIntros "Hlb".
+    rewrite shift_loc_assoc_nat.
+    iApply (loc_in_bounds_offset with "Hlb").
+    - done.
+    - simpl. lia.
+    - simpl. rewrite /enum_tail_padding_ly /=.
+      change (ly_size {| ly_size := el_size el - el_data_offset el - ly_size variant_ly; ly_align_log := 0 |}) with
+        (el_size el - el_data_offset el - ly_size variant_ly)%nat.
+      change (ly_size el) with (el_size el).
+      replace (el_size el - el_data_offset el - ly_size variant_ly)%nat with
+        (el_size el - (el_data_offset el + ly_size variant_ly))%nat by lia.
+      rewrite Nat2Z.inj_sub; lia.
+  Qed.
+
+  Lemma enum_tag'_Some {rt} (en : enum rt) r variant :
+    enum_tag en r = Some variant →
+    enum_tag' en r = variant.
+  Proof. by rewrite /enum_tag' => ->. Qed.
+
   Lemma enum_tag_has_layout_loc (el : enum_layout) l :
     l `has_layout_loc` el →
     l `has_layout_loc` it_layout el.(el_tag_it).
@@ -367,6 +506,126 @@ Section enum.
       lia. }
     change (ly_size el) with el.(el_size).
     lia.
+  Qed.
+
+  Lemma enum_pointsto_val_split {rt} (e : enum rt) π r l el variant variant_ly :
+    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+    syn_type_has_layout (ty_syn_type (e.(enum_ty) r) MetaNone) variant_ly →
+    (∃ v : val,
+      l ↦ v ∗
+      take (ly_size (it_layout el.(el_tag_it))) v
+        ◁ᵥ{π, MetaNone} els_lookup_tag e.(enum_els) variant @ int el.(el_tag_it) ∗
+      take (el.(el_data_offset) - ly_size (it_layout el.(el_tag_it)))
+        (drop (ly_size (it_layout el.(el_tag_it))) v)
+        ◁ᵥ{π, MetaNone} () @ uninit (LiteralSynType (enum_tag_padding_ly el)) ∗
+      take (ly_size variant_ly) (drop el.(el_data_offset) v)
+        ◁ᵥ{π, MetaNone} e.(enum_r) r @ e.(enum_ty) r ∗
+      drop (el.(el_data_offset) + ly_size variant_ly) v
+        ◁ᵥ{π, MetaNone} () @ uninit (LiteralSynType (enum_tail_padding_ly el variant_ly)))
+    ⊣⊢
+    ((∃ vtag : val, l ↦ vtag ∗
+        vtag ◁ᵥ{π, MetaNone} els_lookup_tag e.(enum_els) variant @ int el.(el_tag_it)) ∗
+     (∃ vtag_pad : val, (l +ₗ ly_size (it_layout el.(el_tag_it))) ↦ vtag_pad ∗
+        vtag_pad ◁ᵥ{π, MetaNone} () @ uninit (LiteralSynType (enum_tag_padding_ly el))) ∗
+     (∃ vvariant : val, (l +ₗ el.(el_data_offset)) ↦ vvariant ∗
+        vvariant ◁ᵥ{π, MetaNone} e.(enum_r) r @ e.(enum_ty) r) ∗
+     (∃ vtail : val, (l +ₗ (el.(el_data_offset) + ly_size variant_ly)%nat) ↦ vtail ∗
+        vtail ◁ᵥ{π, MetaNone} () @ uninit (LiteralSynType (enum_tail_padding_ly el variant_ly))))%I.
+  Proof.
+    iIntros (Hvariant Hst).
+    set (tag_size := ly_size (it_layout el.(el_tag_it))).
+    set (tag_pad_size := el.(el_data_offset) - tag_size).
+    set (data_offset := el.(el_data_offset)).
+    set (variant_size := ly_size variant_ly).
+    iSplit.
+    - iIntros "(%v & Hl & Htag & Htag_pad & Hvariant & Htail)".
+      iPoseProof (ty_own_val_has_layout with "Htag") as "%Htag_val".
+      { simpl. apply syn_type_has_layout_int. done. }
+      iPoseProof (ty_has_layout with "Htag_pad") as "(%tag_pad_ly & %Htag_pad_st & %Htag_pad_val)".
+      apply syn_type_has_layout_untyped_inv in Htag_pad_st.
+      apply syn_type_has_layout_literal_inv in Htag_pad_st as (-> & _ & _ & _).
+      iPoseProof (ty_own_val_has_layout with "Hvariant") as "%Hvariant_val"; first done.
+      iPoseProof (ty_has_layout with "Htail") as "(%tail_ly & %Htail_st & %Htail_val)".
+      apply syn_type_has_layout_untyped_inv in Htail_st.
+      apply syn_type_has_layout_literal_inv in Htail_st as (-> & _ & _ & _).
+      rewrite -{1}(take_drop tag_size v) heap_pointsto_app.
+      iDestruct "Hl" as "(Hl_tag & Hl_rest)".
+      rewrite /has_layout_val in Htag_val.
+      fold tag_size in Htag_val.
+      rewrite Htag_val.
+      rewrite -{1}(take_drop tag_pad_size (drop tag_size v)) heap_pointsto_app.
+      iDestruct "Hl_rest" as "(Hl_tag_pad & Hl_rest)".
+      rewrite /has_layout_val /enum_tag_padding_ly /= in Htag_pad_val.
+      fold tag_size in Htag_pad_val. fold tag_pad_size in Htag_pad_val.
+      change (ly_size {| ly_size := tag_pad_size; ly_align_log := 0 |}) with tag_pad_size in Htag_pad_val.
+      rewrite Htag_pad_val.
+      rewrite shift_loc_assoc_nat.
+      replace (tag_size + tag_pad_size)%nat with data_offset by
+        (symmetry; rewrite /tag_pad_size /data_offset Nat.add_comm; apply Nat.sub_add; apply Nat2Z.inj_le; apply el_tag_before_data).
+      replace (drop tag_pad_size (drop tag_size v)) with (drop data_offset v) by
+        (rewrite drop_drop; replace (tag_size + tag_pad_size)%nat with data_offset; first done;
+         symmetry; rewrite /tag_pad_size /data_offset Nat.add_comm; apply Nat.sub_add; apply Nat2Z.inj_le; apply el_tag_before_data).
+      rewrite -{1}(take_drop variant_size (drop data_offset v)) heap_pointsto_app.
+      iDestruct "Hl_rest" as "(Hl_variant & Hl_tail)".
+      rewrite /has_layout_val in Hvariant_val.
+      fold variant_size in Hvariant_val.
+      rewrite Hvariant_val.
+      rewrite shift_loc_assoc_nat.
+      replace (drop variant_size (drop data_offset v)) with (drop (data_offset + variant_size) v) by by rewrite drop_drop.
+      iSplitL "Hl_tag Htag".
+      { iExists _. iFrame. }
+      iSplitL "Hl_tag_pad Htag_pad".
+      { iExists _. iFrame. }
+      iSplitL "Hl_variant Hvariant".
+      { iExists _. iFrame. }
+      iExists (drop (data_offset + variant_size) v).
+      iFrame.
+    - iIntros "((%vtag & Hl_tag & Htag) & (%vtag_pad & Hl_tag_pad & Htag_pad) & (%vvariant & Hl_variant & Hvariant) & (%vtail & Hl_tail & Htail))".
+      iPoseProof (ty_own_val_has_layout with "Htag") as "%Htag_val".
+      { simpl. apply syn_type_has_layout_int. done. }
+      iPoseProof (ty_has_layout with "Htag_pad") as "(%tag_pad_ly & %Htag_pad_st & %Htag_pad_val)".
+      apply syn_type_has_layout_untyped_inv in Htag_pad_st.
+      apply syn_type_has_layout_literal_inv in Htag_pad_st as (-> & _ & _ & _).
+      iPoseProof (ty_own_val_has_layout with "Hvariant") as "%Hvariant_val"; first done.
+      iPoseProof (ty_has_layout with "Htail") as "(%tail_ly & %Htail_st & %Htail_val)".
+      apply syn_type_has_layout_untyped_inv in Htail_st.
+      apply syn_type_has_layout_literal_inv in Htail_st as (-> & _ & _ & _).
+      iExists (vtag ++ vtag_pad ++ vvariant ++ vtail).
+      rewrite heap_pointsto_app.
+      rewrite /has_layout_val in Htag_val.
+      fold tag_size in Htag_val.
+      rewrite Htag_val.
+      rewrite heap_pointsto_app.
+      rewrite /has_layout_val /enum_tag_padding_ly /= in Htag_pad_val.
+      fold tag_size in Htag_pad_val. fold tag_pad_size in Htag_pad_val.
+      change (ly_size {| ly_size := tag_pad_size; ly_align_log := 0 |}) with tag_pad_size in Htag_pad_val.
+      rewrite Htag_pad_val.
+      rewrite shift_loc_assoc_nat.
+      replace (tag_size + tag_pad_size)%nat with data_offset by
+        (symmetry; rewrite /tag_pad_size /data_offset Nat.add_comm; apply Nat.sub_add; apply Nat2Z.inj_le; apply el_tag_before_data).
+      rewrite heap_pointsto_app.
+      rewrite /has_layout_val in Hvariant_val.
+      fold variant_size in Hvariant_val.
+      rewrite Hvariant_val.
+      rewrite shift_loc_assoc_nat.
+      iFrame.
+      rewrite take_app_length'; last lia.
+      iSplitL "Htag"; first done.
+      rewrite drop_app_length'; last lia.
+      rewrite take_app_length'; last lia.
+      iSplitL "Htag_pad"; first done.
+      replace data_offset with (length (vtag ++ vtag_pad)).
+      2: { rewrite length_app Htag_val Htag_pad_val.
+           rewrite /tag_pad_size /data_offset Nat.add_comm. apply Nat.sub_add. apply Nat2Z.inj_le. apply el_tag_before_data. }
+      replace (drop (length (vtag ++ vtag_pad)) (vtag ++ vtag_pad ++ vvariant ++ vtail)) with (vvariant ++ vtail) by
+        (rewrite app_assoc; rewrite drop_app_length'; done).
+      rewrite take_app_length'; last lia.
+      iSplitL "Hvariant"; first done.
+      replace (length (vtag ++ vtag_pad) + variant_size)%nat with (length (vtag ++ vtag_pad ++ vvariant)).
+      2: { rewrite !length_app Hvariant_val. lia. }
+      replace (drop (length (vtag ++ vtag_pad ++ vvariant)) (vtag ++ vtag_pad ++ vvariant ++ vtail)) with vtail by
+        (rewrite !app_assoc; rewrite drop_app_length'; done).
+      done.
   Qed.
 
   Definition enum_own_val_def {rt} (e : enum rt) π r m v : iProp Σ :=
@@ -543,7 +802,6 @@ Section enum.
     apply use_layout_alg_enum_Some_inv in Halg as (el' & Halg'' & ->).
     assert (el' = el) as -> by naive_solver.
     set (tag_size := ly_size (it_layout el.(el_tag_it))).
-    set (tag_pad_size := el.(el_data_offset) - tag_size).
     set (data_offset := el.(el_data_offset)).
     set (variant_size := ly_size variant_ly).
     iPoseProof (bor_iff _ _
@@ -557,104 +815,12 @@ Section enum.
           vtail ◁ᵥ{π, MetaNone} () @ uninit (LiteralSynType (enum_tail_padding_ly el variant_ly))))%I
       with "[] Hb") as "Hb".
     { iNext. iModIntro. iSplit.
-      - iIntros "(%v & Hl & Htag & Htag_pad & Hvariant & Htail)".
-        iPoseProof (ty_own_val_has_layout with "Htag") as "%Htag_val".
-        { simpl. apply syn_type_has_layout_int. done. }
-        iPoseProof (ty_has_layout with "Htag_pad") as "(%tag_pad_ly & %Htag_pad_st & %Htag_pad_val)".
-        apply syn_type_has_layout_untyped_inv in Htag_pad_st.
-        apply syn_type_has_layout_literal_inv in Htag_pad_st as (-> & _ & _ & _).
-        iPoseProof (ty_own_val_has_layout with "Hvariant") as "%Hvariant_val"; first done.
-        iPoseProof (ty_has_layout with "Htail") as "(%tail_ly & %Htail_st & %Htail_val)".
-        apply syn_type_has_layout_untyped_inv in Htail_st.
-        apply syn_type_has_layout_literal_inv in Htail_st as (-> & _ & _ & _).
-        rewrite -{1}(take_drop tag_size v) heap_pointsto_app.
-        iDestruct "Hl" as "(Hl_tag & Hl_rest)".
-        rewrite /has_layout_val in Htag_val.
-        fold tag_size in Htag_val.
-        rewrite Htag_val.
-        rewrite -{1}(take_drop tag_pad_size (drop tag_size v)) heap_pointsto_app.
-        iDestruct "Hl_rest" as "(Hl_tag_pad & Hl_rest)".
-        rewrite /has_layout_val /enum_tag_padding_ly /= in Htag_pad_val.
-        fold tag_size in Htag_pad_val. fold tag_pad_size in Htag_pad_val.
-        change (ly_size {| ly_size := tag_pad_size; ly_align_log := 0 |}) with tag_pad_size in Htag_pad_val.
-        rewrite Htag_pad_val.
-        rewrite shift_loc_assoc_nat.
-        replace (tag_size + tag_pad_size)%nat with data_offset by
-          (symmetry; rewrite /tag_pad_size /data_offset Nat.add_comm; apply Nat.sub_add; apply Nat2Z.inj_le; apply el_tag_before_data).
-        replace (drop tag_pad_size (drop tag_size v)) with (drop data_offset v) by
-          (rewrite drop_drop; replace (tag_size + tag_pad_size)%nat with data_offset; first done;
-           symmetry; rewrite /tag_pad_size /data_offset Nat.add_comm; apply Nat.sub_add; apply Nat2Z.inj_le; apply el_tag_before_data).
-        rewrite -{1}(take_drop variant_size (drop data_offset v)) heap_pointsto_app.
-        iDestruct "Hl_rest" as "(Hl_variant & Hl_tail)".
-        rewrite /has_layout_val in Hvariant_val.
-        fold variant_size in Hvariant_val.
-        rewrite Hvariant_val.
-        rewrite shift_loc_assoc_nat.
-        replace (drop variant_size (drop data_offset v)) with (drop (data_offset + variant_size) v) by by rewrite drop_drop.
-        iSplitL "Hl_tag Htag".
-        { iExists _. iFrame. }
-        iSplitL "Hl_tag_pad Htag_pad".
-        { iExists _. iFrame. }
-        iSplitL "Hl_variant Hvariant".
-        { iExists _. iFrame. }
-        iExists (drop (data_offset + variant_size) v).
-        iSplitL "Hl_tail"; first done. done.
-      - iIntros "((%vtag & Hl_tag & Htag) & (%vtag_pad & Hl_tag_pad & Htag_pad) & (%vvariant & Hl_variant & Hvariant) & (%vtail & Hl_tail & Htail))".
-        iPoseProof (ty_own_val_has_layout with "Htag") as "%Htag_val".
-        { simpl. apply syn_type_has_layout_int. done. }
-        iPoseProof (ty_has_layout with "Htag_pad") as "(%tag_pad_ly & %Htag_pad_st & %Htag_pad_val)".
-        apply syn_type_has_layout_untyped_inv in Htag_pad_st.
-        apply syn_type_has_layout_literal_inv in Htag_pad_st as (-> & _ & _ & _).
-        iPoseProof (ty_own_val_has_layout with "Hvariant") as "%Hvariant_val"; first done.
-        iPoseProof (ty_has_layout with "Htail") as "(%tail_ly & %Htail_st & %Htail_val)".
-        apply syn_type_has_layout_untyped_inv in Htail_st.
-        apply syn_type_has_layout_literal_inv in Htail_st as (-> & _ & _ & _).
-        iExists (vtag ++ vtag_pad ++ vvariant ++ vtail).
-        rewrite heap_pointsto_app.
-        rewrite /has_layout_val in Htag_val.
-        fold tag_size in Htag_val.
-        rewrite Htag_val.
-        rewrite heap_pointsto_app.
-        rewrite /has_layout_val /enum_tag_padding_ly /= in Htag_pad_val.
-        fold tag_size in Htag_pad_val. fold tag_pad_size in Htag_pad_val.
-        change (ly_size {| ly_size := tag_pad_size; ly_align_log := 0 |}) with tag_pad_size in Htag_pad_val.
-        rewrite Htag_pad_val.
-        rewrite shift_loc_assoc_nat.
-        replace (tag_size + tag_pad_size)%nat with data_offset by
-          (symmetry; rewrite /tag_pad_size /data_offset Nat.add_comm; apply Nat.sub_add; apply Nat2Z.inj_le; apply el_tag_before_data).
-        rewrite heap_pointsto_app.
-        rewrite /has_layout_val in Hvariant_val.
-        fold variant_size in Hvariant_val.
-        rewrite Hvariant_val.
-        rewrite shift_loc_assoc_nat.
-        iFrame.
-        rewrite take_app_length'; last lia.
-        iSplitL "Htag"; first done.
-        rewrite drop_app_length'; last lia.
-        rewrite take_app_length'; last lia.
-        iSplitL "Htag_pad"; first done.
-        replace data_offset with (length (vtag ++ vtag_pad)).
-        2: { rewrite length_app Htag_val Htag_pad_val.
-             rewrite /tag_pad_size /data_offset Nat.add_comm. apply Nat.sub_add. apply Nat2Z.inj_le. apply el_tag_before_data. }
-        replace (drop (length (vtag ++ vtag_pad)) (vtag ++ vtag_pad ++ vvariant ++ vtail)) with (vvariant ++ vtail) by
-          (rewrite app_assoc; rewrite drop_app_length'; done).
-        rewrite take_app_length'; last lia.
-        iSplitL "Hvariant"; first done.
-        replace (length (vtag ++ vtag_pad) + variant_size)%nat with (length (vtag ++ vtag_pad ++ vvariant)).
-        2: { rewrite !length_app Hvariant_val. lia. }
-        replace (drop (length (vtag ++ vtag_pad ++ vvariant)) (vtag ++ vtag_pad ++ vvariant ++ vtail)) with vtail by
-          (rewrite !app_assoc; rewrite drop_app_length'; done).
-        done. }
+      - iIntros "H". rewrite /tag_size /data_offset /variant_size. iApply (enum_pointsto_val_split with "H"); done.
+      - iIntros "H". rewrite /tag_size /data_offset /variant_size. iApply (enum_pointsto_val_split with "H"); done. }
     iMod (bor_sep with "LFT Hb") as "(Hb_tag & Hb)"; first done.
     iMod (bor_sep with "LFT Hb") as "(Hb_tag_pad & Hb)"; first done.
     iMod (bor_sep with "LFT Hb") as "(Hb_variant & Hb_tail)"; first done.
 
-    pose proof (enum_variant_lookup_in _ _ _ Hvariant) as Hvariant_in.
-    pose proof (proj1 (Forall_forall _ _) (el_variants_in_bounds el) _ Hvariant_in) as Hvariant_bound.
-    assert (tag_size ≤ data_offset)%nat as Htag_data.
-    { rewrite /tag_size /data_offset. apply Nat2Z.inj_le. apply el_tag_before_data. }
-    assert (data_offset + variant_size ≤ ly_size el)%nat as Hvariant_bound'.
-    { apply Nat2Z.inj_le. rewrite Nat2Z.inj_add /data_offset /variant_size. exact Hvariant_bound. }
     iDestruct "Hlb" as "#Hlb".
 
     iDestruct "Htok1" as "(Htok_tag & Htok1)".
@@ -665,29 +831,13 @@ Section enum.
     { simpl. rewrite right_id. iFrame. }
     { simpl. iPureIntro. apply syn_type_has_layout_int. done. }
     { iPureIntro. by apply enum_tag_has_layout_loc. }
-    { iApply (loc_in_bounds_shorten_suf with "Hlb"). lia. }
+    { iApply (loc_in_bounds_enum_tag with "Hlb"). done. }
 
     iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok_tag_pad] [] [] [] Hb_tag_pad") as "Htag_pad_step"; first done.
     { simpl. rewrite right_id. iFrame. }
-    { simpl. iPureIntro.
-      apply syn_type_has_layout_untyped.
-      apply syn_type_has_layout_literal; first done.
-      - rewrite /enum_tag_padding_ly /layout_wf /ly_align /=. apply Z.divide_1_l.
-      - rewrite /enum_tag_padding_ly /=.
-        change (ly_size {| ly_size := el_data_offset el - ly_size (el_tag_it el); ly_align_log := 0 |}) with (el_data_offset el - ly_size (el_tag_it el))%nat.
-        assert (el_data_offset el - ly_size (el_tag_it el) ≤ el_size el)%nat as Hpad_bound.
-        { change (ly_size el) with (el_size el) in Hvariant_bound'. rewrite -/tag_size -/data_offset. lia. }
-        apply Nat2Z.inj_le in Hpad_bound. pose proof (el_size_bounded el). rewrite MaxInt_eq. lia.
-      - rewrite /ly_align_in_bounds /ly_align /enum_tag_padding_ly /=. unfold_common_radium_defs. simpl. nia. }
+    { iPureIntro. by apply enum_tag_padding_uninit_syn_type_has_layout with variant variant_ly. }
     { iPureIntro. apply has_layout_loc_1. rewrite /enum_tag_padding_ly /ly_align /=. done. }
-    { iApply (loc_in_bounds_offset with "Hlb").
-      - done.
-      - simpl. lia.
-      - simpl. rewrite /enum_tag_padding_ly /=.
-        change (ly_size {| ly_size := el_data_offset el - ly_size (el_tag_it el); ly_align_log := 0 |}) with (el_data_offset el - ly_size (el_tag_it el))%nat.
-        change (ly_size el) with (el_size el). rewrite -/tag_size -/data_offset.
-        rewrite Nat2Z.inj_sub; last done.
-        change (ly_size el) with (el_size el) in Hvariant_bound'. apply Nat2Z.inj_le in Hvariant_bound'. lia. }
+    { iApply (loc_in_bounds_enum_tag_padding with "Hlb"). done. }
 
     iMod (lft_incl_acc _ _ (lft_intersect_list (ty_lfts (e.(enum_ty) r))) with "[] Htok2") as "(%q' & Htok_variant_lfts & Hcl_variant_lfts)"; first done.
     { iApply list_incl_lft_incl_list. apply (enum_lfts_complete _ e r). }
@@ -700,34 +850,14 @@ Section enum.
     { rewrite ty_lfts_unfold -lft_tok_sep. iFrame. }
     { done. }
     { iPureIntro. by eapply enum_payload_has_layout_loc. }
-    { iApply (loc_in_bounds_offset with "Hlb").
-      - done.
-      - simpl. lia.
-      - simpl. lia. }
+    { iApply (loc_in_bounds_enum_payload with "Hlb"). done. }
 
     iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok_tail] [] [] [] Hb_tail") as "Htail_step"; first done.
     { simpl. rewrite right_id. iFrame. }
-    { simpl. iPureIntro.
-      apply syn_type_has_layout_untyped.
-      apply syn_type_has_layout_literal; first done.
-      - rewrite /enum_tail_padding_ly /layout_wf /ly_align /=. apply Z.divide_1_l.
-      - rewrite /enum_tail_padding_ly /=.
-        change (ly_size {| ly_size := el_size el - el_data_offset el - ly_size variant_ly; ly_align_log := 0 |}) with (el_size el - el_data_offset el - ly_size variant_ly)%nat.
-        assert (el_size el - el_data_offset el - ly_size variant_ly ≤ el_size el)%nat as Hpad_bound.
-        { change (ly_size el) with (el_size el) in Hvariant_bound'. rewrite -/variant_size -/data_offset. lia. }
-        apply Nat2Z.inj_le in Hpad_bound. pose proof (el_size_bounded el). rewrite MaxInt_eq. lia.
-      - rewrite /ly_align_in_bounds /ly_align /enum_tail_padding_ly /=. unfold_common_radium_defs. simpl. nia. }
+    { iPureIntro. by apply enum_tail_padding_uninit_syn_type_has_layout with variant. }
     { iPureIntro. apply has_layout_loc_1. rewrite /enum_tail_padding_ly /ly_align /=. done. }
-    { iApply (loc_in_bounds_offset with "Hlb").
-      - done.
-      - simpl. lia.
-      - simpl. rewrite /enum_tail_padding_ly /=.
-        change (ly_size {| ly_size := el_size el - el_data_offset el - ly_size variant_ly; ly_align_log := 0 |}) with (el_size el - el_data_offset el - ly_size variant_ly)%nat.
-        change (ly_size el) with (el_size el). rewrite -/variant_size -/data_offset.
-        replace (el_size el - data_offset - variant_size)%nat with (el_size el - (data_offset + variant_size))%nat by lia.
-        rewrite Nat2Z.inj_sub.
-        2: { change (ly_size el) with (el_size el) in Hvariant_bound'. lia. }
-        lia. }
+    { rewrite -/data_offset -/variant_size -shift_loc_assoc_nat.
+      iApply (loc_in_bounds_enum_tail_padding with "Hlb"). done. }
     iApply logical_step_fupd.
     iApply (logical_step_compose with "Htag_step").
     iApply (logical_step_compose with "Htag_pad_step").
@@ -858,14 +988,7 @@ Section enum.
       { iEval (rewrite /ty_own_val /= int_own_val_unfold). iPureIntro. split; done. }
       iSplitL "".
       { rewrite uninit_own_spec. iSplit; first done. iExists (enum_tag_padding_ly el). iPureIntro. split.
-        - apply syn_type_has_layout_literal; first done.
-          + rewrite /enum_tag_padding_ly /layout_wf /ly_align /=. apply Z.divide_1_l.
-          + rewrite /enum_tag_padding_ly /=.
-            assert (el.(el_data_offset) - ly_size (it_layout el.(el_tag_it)) ≤ el.(el_size))%nat as Hpad_bound.
-            { pose proof (enum_variant_lookup_in_bounds _ _ _ Hvariant). lia. }
-            apply Nat2Z.inj_le in Hpad_bound. pose proof (el_size_bounded el). rewrite MaxInt_eq.
-            change (Z.of_nat (el_data_offset el - ly_size (it_layout (el_tag_it el))) ≤ max_int ISize)%Z. lia.
-          + rewrite /ly_align_in_bounds /ly_align /enum_tag_padding_ly /=. unfold_common_radium_defs. simpl. nia.
+        - by apply enum_tag_padding_syn_type_has_layout with variant variant_ly.
         - rewrite /has_layout_val /enum_tag_padding_ly /= length_take length_drop.
           change (ly_size {| ly_size := el_data_offset el - ly_size (it_layout (el_tag_it el)); ly_align_log := 0 |}) with
             (el_data_offset el - ly_size (it_layout (el_tag_it el)))%nat.
@@ -875,13 +998,7 @@ Section enum.
       iSplitL "Hvariant".
       { by iApply (ty_decode_compat with "Hvariant"); [eapply is_enum_ot_variant_has_op_type; [rewrite /is_enum_ot; split_and!; done|done|done]|]. }
       rewrite uninit_own_spec. iSplit; first done. iExists (enum_tail_padding_ly el variant_ly). iPureIntro. split.
-      { apply syn_type_has_layout_literal; first done.
-        - rewrite /enum_tail_padding_ly /layout_wf /ly_align /=. apply Z.divide_1_l.
-        - rewrite /enum_tail_padding_ly /=.
-          change (ly_size {| ly_size := el_size el - el_data_offset el - ly_size variant_ly; ly_align_log := 0 |}) with (el_size el - el_data_offset el - ly_size variant_ly)%nat.
-          assert (el_size el - el_data_offset el - ly_size variant_ly ≤ el_size el)%nat as Hpad_bound by lia.
-          apply Nat2Z.inj_le in Hpad_bound. pose proof (el_size_bounded el). rewrite MaxInt_eq. lia.
-        - rewrite /ly_align_in_bounds /ly_align /enum_tail_padding_ly /=. unfold_common_radium_defs. simpl. nia. }
+      { by apply enum_tail_padding_syn_type_has_layout with variant. }
       rewrite /has_layout_val /enum_tail_padding_ly /= length_drop.
       change (ly_size {| ly_size := el_size el - el_data_offset el - ly_size variant_ly; ly_align_log := 0 |}) with
         (el_size el - el_data_offset el - ly_size variant_ly)%nat.
