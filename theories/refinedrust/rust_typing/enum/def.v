@@ -300,6 +300,157 @@ Section type_incl.
   Qed.
 End type_incl.
 
+Section enum_computed_lfts.
+  Context `{!typeGS Σ}.
+
+  Definition enum_tag_ty_lfts {rt} (tag_tys : list (var_name * enum_tag_sem rt)) : list lft :=
+    fold_right (λ tag_ty acc, ty_lfts tag_ty.2.(enum_tag_sem_ty) ++ acc) [] tag_tys.
+
+  Definition enum_tag_ty_wf_E {rt} (tag_tys : list (var_name * enum_tag_sem rt)) : elctx :=
+    fold_right (λ tag_ty acc, ty_wf_E tag_ty.2.(enum_tag_sem_ty) ++ acc) [] tag_tys.
+
+  Lemma enum_tag_ty_find_elem {rt} (tag_tys : list (var_name * enum_tag_sem rt)) tag sem :
+    enum_tag_ty_find tag_tys tag = Some sem →
+    (tag, sem) ∈ tag_tys.
+  Proof.
+    rewrite /enum_tag_ty_find.
+    intros ([i [tag' sem']] & Hfind & Heq)%fmap_Some. simpl in Heq. subst sem'.
+    apply list_find_Some in Hfind as (Hlook & Htag & _). simpl in Htag. subst tag'.
+    by eapply list_elem_of_lookup_2.
+  Qed.
+
+  Lemma enum_tag_ty_lfts_elem {rt} (tag_tys : list (var_name * enum_tag_sem rt)) tag sem :
+    (tag, sem) ∈ tag_tys →
+    ty_lfts sem.(enum_tag_sem_ty) ⊆ enum_tag_ty_lfts tag_tys.
+  Proof.
+    induction tag_tys as [|[tag' sem'] tag_tys IH]; first set_solver.
+    intros [Heq | Hin]%elem_of_cons; simpl.
+    - simplify_eq. set_solver.
+    - specialize (IH Hin). set_solver.
+  Qed.
+
+  Lemma enum_tag_ty_wf_E_elem {rt} (tag_tys : list (var_name * enum_tag_sem rt)) tag sem :
+    (tag, sem) ∈ tag_tys →
+    ty_wf_E sem.(enum_tag_sem_ty) ⊆ enum_tag_ty_wf_E tag_tys.
+  Proof.
+    induction tag_tys as [|[tag' sem'] tag_tys IH]; first set_solver.
+    intros [Heq | Hin]%elem_of_cons; simpl.
+    - simplify_eq. set_solver.
+    - specialize (IH Hin). set_solver.
+  Qed.
+
+  Lemma enum_tag_ty_find_lfts {rt} (tag_tys : list (var_name * enum_tag_sem rt)) tag sem :
+    enum_tag_ty_find tag_tys tag = Some sem →
+    ty_lfts sem.(enum_tag_sem_ty) ⊆ enum_tag_ty_lfts tag_tys.
+  Proof.
+    intros Hfind. by eapply enum_tag_ty_lfts_elem, enum_tag_ty_find_elem.
+  Qed.
+
+  Lemma enum_tag_ty_find_wf_E {rt} (tag_tys : list (var_name * enum_tag_sem rt)) tag sem :
+    enum_tag_ty_find tag_tys tag = Some sem →
+    ty_wf_E sem.(enum_tag_sem_ty) ⊆ enum_tag_ty_wf_E tag_tys.
+  Proof.
+    intros Hfind. by eapply enum_tag_ty_wf_E_elem, enum_tag_ty_find_elem.
+  Qed.
+
+  Lemma enum_ty_lfts_incl_tag_ty_lfts {rt} (en : enum rt) r tag :
+    enum_tag en r = Some tag →
+    ty_lfts (enum_ty en r) ⊆ enum_tag_ty_lfts en.(enum_tag_ty).
+  Proof.
+    intros Htag.
+    destruct (enum_tag_compat _ en r tag Htag) as [vinj Hfind].
+    by eapply enum_tag_ty_find_lfts in Hfind.
+  Qed.
+
+  Lemma enum_ty_wf_E_incl_tag_ty_wf_E {rt} (en : enum rt) r tag :
+    enum_tag en r = Some tag →
+    ty_wf_E (enum_ty en r) ⊆ enum_tag_ty_wf_E en.(enum_tag_ty).
+  Proof.
+    intros Htag.
+    destruct (enum_tag_compat _ en r tag Htag) as [vinj Hfind].
+    by eapply enum_tag_ty_find_wf_E in Hfind.
+  Qed.
+
+  Record enum_tag_tys_lifecycle {rt} := mk_enum_tag_tys_lifecycle {
+    enum_tag_tys_of_lifecycle : list (var_name * enum_tag_sem rt);
+  }.
+  Global Arguments mk_enum_tag_tys_lifecycle {_} _.
+  Global Arguments enum_tag_tys_of_lifecycle {_} _.
+
+  Global Instance lifecycle_enum_tag_tys {rt} : Lifecycle (enum_tag_tys_lifecycle (rt:=rt)) := {|
+    lifecycle_lfts tag_tys := enum_tag_ty_lfts tag_tys.(enum_tag_tys_of_lifecycle);
+    lifecycle_wf_E tag_tys := enum_tag_ty_wf_E tag_tys.(enum_tag_tys_of_lifecycle);
+  |}.
+
+  Class DepEnumTagTyLftMorphism {rts rt}
+      (deps : gset nat)
+      (F : mut_types rts → list (var_name * enum_tag_sem rt)) : Type := {
+    dep_enum_tag_ty_lft_morphism_lft :
+      DepLftMorphism deps (λ tys, mk_enum_tag_tys_lifecycle (F tys));
+  }.
+
+  Global Instance DepEnumTagTyLftMorphism_nil {rts rt} :
+    DepEnumTagTyLftMorphism ∅ (λ _ : mut_types rts, @nil (var_name * enum_tag_sem rt)).
+  Proof.
+    constructor. apply _.
+  Defined.
+
+  Global Program Instance DepEnumTagTyLftMorphism_cons {rts rt rt'} depsG depsGs tag
+      (G : mut_types rts → type rt')
+      (inj : rt' → rt)
+      (Gs : mut_types rts → list (var_name * enum_tag_sem rt)) :
+    DepLftMorphism depsG G →
+    DepEnumTagTyLftMorphism depsGs Gs →
+    DepEnumTagTyLftMorphism (depsG ∪ depsGs)
+      (λ tys, (tag, mk_enum_tag_sem rt' (G tys) inj) :: Gs tys) :=
+    λ HG HGs,
+      let HGs := dep_enum_tag_ty_lft_morphism_lft (DepEnumTagTyLftMorphism:=HGs) in
+      {| dep_enum_tag_ty_lft_morphism_lft :=
+          mk_dep_lft_morph
+            (dep_lft_morph_α HG ⊓ dep_lft_morph_α HGs)
+            (dep_lft_morph_E HG ++ dep_lft_morph_E HGs)
+            (dep_lft_morph_βdeps HG ++ dep_lft_morph_βdeps HGs) _ _ |}.
+  Next Obligation.
+    iIntros (rts rt rt' depsG depsGs tag G inj Gs HG Htag_tys HGs tys).
+    simpl. rewrite lft_intersect_list_app.
+    iApply lft_equiv_trans.
+    { iApply lft_equiv_intersect; [iApply (dep_lft_morph_lfts HG) | iApply (dep_lft_morph_lfts HGs)]. }
+    iSplit.
+    - iApply lft_incl_glb.
+      { iApply lft_incl_glb.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_l. iApply lft_intersect_incl_l.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_r. iApply lft_intersect_incl_l. }
+      iApply lft_incl_trans.
+      { iApply lft_incl_glb.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_l. iApply lft_intersect_incl_r.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_r. iApply lft_intersect_incl_r. }
+      iApply lft_equiv_incl_r. iApply dep_lfts_union.
+    - iApply lft_incl_glb.
+      { iApply lft_incl_glb.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_l. iApply lft_intersect_incl_l.
+        + iApply lft_incl_trans; first iApply lft_intersect_incl_r.
+          iApply lft_incl_trans.
+          { iApply lft_equiv_incl_l. iApply dep_lfts_union. }
+          iApply lft_intersect_incl_l. }
+      iApply lft_incl_glb.
+      { iApply lft_incl_trans; first iApply lft_intersect_incl_l. iApply lft_intersect_incl_r. }
+      iApply lft_incl_trans; first iApply lft_intersect_incl_r.
+      iApply lft_incl_trans.
+      { iApply lft_equiv_incl_l. iApply dep_lfts_union. }
+      iApply lft_intersect_incl_r.
+  Qed.
+  Next Obligation.
+    intros rts rt rt' depsG depsGs tag G inj Gs HG Htag_tys HGs tys.
+    simpl. rewrite !elctx_interp_app.
+    rewrite (dep_lft_morph_wf_E HG tys) (dep_lft_morph_wf_E HGs tys).
+    rewrite /dep_beta_interp big_sepL_app dep_wf_E_union.
+    rewrite -!assoc.
+    iSplit.
+    - iIntros "(HE & HW & Hβ & HEs & HWs & Hβs)". iFrame.
+    - iIntros "(HE & HEs & HW & HWs & Hβ & Hβs)". iFrame.
+  Qed.
+End enum_computed_lfts.
+
 Section enum.
   Context `{!typeGS Σ}.
 
@@ -351,8 +502,8 @@ Section enum.
     _ty_ghost_drop π r :=
       (* TODO *)
       True%I;
-    _ty_lfts := e.(enum_lfts);
-    _ty_wf_E := e.(enum_wf_E);
+    _ty_lfts := enum_tag_ty_lfts e.(enum_tag_ty);
+    _ty_wf_E := enum_tag_ty_wf_E e.(enum_tag_ty);
   |}.
   Next Obligation.
     iIntros (rt e π r m v).
@@ -403,8 +554,8 @@ Section enum.
     iMod (bor_persistent with "LFT Halg Htok1") as "(>%Halg' & Htok1)"; first done.
     iMod (bor_sep with "LFT Hb") as "(Htag & Hb)"; first done.
     iMod (bor_persistent with "LFT Htag Htok1") as "(>%Htag & Htok1)"; first done.
-    iPoseProof (list_incl_lft_incl_list (ty_lfts (e.(enum_ty) r)) (enum_lfts e)) as "Hincl".
-    { etrans; last eapply (enum_lfts_complete _ e r). done. }
+    iPoseProof (list_incl_lft_incl_list (ty_lfts (e.(enum_ty) r)) (enum_tag_ty_lfts e.(enum_tag_ty))) as "Hincl".
+    { etrans; last by eapply (enum_ty_lfts_incl_tag_ty_lfts e r tag Htag). done. }
     iMod (lft_incl_acc with "Hincl Htok2") as "(%q' & Htok2 & Htok2_cl)"; first done.
     iPoseProof (lft_tok_lb with "Htok1 Htok2") as "(%q'' & Htok1 & Htok2 & Htok_cl)".
     iCombine ("Htok1 Htok2") as "Htok".
@@ -480,6 +631,30 @@ Section enum.
     TySized (enum_t e).
   Proof.
     econstructor; done.
+  Qed.
+
+  Global Program Instance enum_t_dep_lft_morphism {rts rt} deps
+      (En : mut_types rts → enum rt) :
+    DepEnumTagTyLftMorphism deps (λ x, (En x).(enum_tag_ty)) →
+    DepLftMorphism deps (λ x, enum_t (En x)) :=
+    λ Htag_tys,
+      let Htag_tys := dep_enum_tag_ty_lft_morphism_lft (DepEnumTagTyLftMorphism:=Htag_tys) in
+      mk_dep_lft_morph (dep_lft_morph_α Htag_tys) (dep_lft_morph_E Htag_tys)
+        (dep_lft_morph_βdeps Htag_tys) _ _.
+  Next Obligation.
+    iIntros (rts rt deps En Htag_mor Htag_tys x).
+    change (lifecycle_lfts (enum_t (En x))) with (ty_lfts (enum_t (En x))).
+    rewrite ty_lfts_unfold/=.
+    iApply (dep_lft_morph_lfts (dep_enum_tag_ty_lft_morphism_lft (DepEnumTagTyLftMorphism:=Htag_mor))).
+  Qed.
+  Next Obligation.
+    intros rts rt deps En Htag_mor Htag_tys x.
+    change (elctx_interp (ty_wf_E (enum_t (En x))) ≡
+      (elctx_interp (dep_lft_morph_E (dep_enum_tag_ty_lft_morphism_lft (DepEnumTagTyLftMorphism:=Htag_mor))) ∗
+       elctx_interp (dep_wf_E deps x) ∗
+       dep_beta_interp (dep_lft_morph_βdeps (dep_enum_tag_ty_lft_morphism_lft (DepEnumTagTyLftMorphism:=Htag_mor))) x)%I).
+    rewrite ty_wf_E_unfold/=.
+    apply (dep_lft_morph_wf_E (dep_enum_tag_ty_lft_morphism_lft (DepEnumTagTyLftMorphism:=Htag_mor))).
   Qed.
 End enum.
 

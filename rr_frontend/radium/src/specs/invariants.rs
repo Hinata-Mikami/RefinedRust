@@ -382,7 +382,6 @@ impl Spec {
                     )
                     .unwrap();
                 }
-               
             },
             SpecFlags::NonAtomic => {
                 let own_inv = self.assemble_plain_owned_invariant();

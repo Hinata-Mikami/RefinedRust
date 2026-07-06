@@ -380,21 +380,13 @@ Section std_option_Option_ty.
     (λ rfn, match rfn with | None => -[] | Some x => -[x] end)
     ([("None", mk_enum_tag_sem _ std_option_Option_None_ty (λ _, None)); ("Some", mk_enum_tag_sem _ std_option_Option_Some_ty (λ '( *[x]), Some x))])
     _
-    (ty_lfts T_ty)
-    (ty_wf_E T_ty)
-    _ _ _
+    _
   .
   Next Obligation.
     solve_inhabited.
   Defined.
   Next Obligation.
     done.
-  Qed.
-  Next Obligation.
-    solve_mk_enum_ty_lfts_incl.
-  Qed.
-  Next Obligation.
-    solve_mk_enum_ty_wf_E.
   Qed.
   Next Obligation.
     solve_mk_enum_tag_consistent.
@@ -697,22 +689,12 @@ Section rectypes_List_ty.
         (λ rfn, match rfn with | [] => *[]| (cons (x) (xs)) => (x, xs) end)
         ([("Nil", mk_enum_tag_sem _ (rectypes_List_Nil_ty -[] -[T_ty]) (λ '( *[]), [])); ("Cons", mk_enum_tag_sem _ (rectypes_List_Cons_inv_t -[] -[T_ty]) (λ '( (x, xs)), (cons (x) (xs))))])
         _
-        ((ty_lfts T_ty) ++ ty_lfts (rectypes_List_ty T_rt -[] -[T_ty]) ++ [])
-        ((ty_wf_E T_ty) ++ ty_wf_E (rectypes_List_ty T_rt -[] -[T_ty]) ++ [])
-        _ _ _.
+        _.
     Next Obligation.
       solve_inhabited.
     Defined.
     Next Obligation.
       done.
-    Qed.
-
-    Next Obligation.
-      solve_mk_enum_ty_lfts_incl.
-    Qed.
-
-    Next Obligation.
-      solve_mk_enum_ty_wf_E.
     Qed.
 
     Next Obligation.
@@ -732,28 +714,6 @@ Section rectypes_List_ty.
     Next Obligation. enum_contractive_solve_dist. Qed.
     Next Obligation. enum_contractive_solve_dist. Qed.
 
-  (*
-  Instance bla (T_ty : type T_rt) :  TyLftMorphism
-     (λ rectypes_List_ty : type (list (place_rfn T_rt)),
-        enum_t (rectypes_List_enum_pre rectypes_List_ty -[] -[T_ty])).
-  Proof.
-    unshelve eapply DepLftMorphism_to_TyLftMorphism.
-    1: apply _.
-    2: {
-      (* point:
-        - we need to track which inputs we actually use
-        - we might want to try to get rid of the explicit enum_wf_E/enum_lfts.
-
-
-        Idea: iterate over the variants, for each variant, use enum_tag_ty_inj and compute DepLftMorphism for that type, then compose all of these in parallel using  some variant of DepLftMorphism_hcons.
-
-        Then get rid of enum_wf_E/enum_lfts. Instead, derive lifetime inclusion necessary for sharing by using enum_tag_compat.
-
-      *)
-      Search hlist DepLftMorphism.
-
-
-
   Definition rectypes_List_ty  : (spec_with 0 [(T_rt)] ((type _))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), type_fixpoint (λ rectypes_List_ty, enum_t (rectypes_List_enum_pre rectypes_List_ty -[] -[T_ty])).
   Definition rectypes_List_rt  : RT.
@@ -765,7 +725,6 @@ Section rectypes_List_ty.
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), rectypes_List_enum_pre (rectypes_List_ty -[] -[T_ty]) -[] -[T_ty].
   #[global] Typeclasses Transparent rectypes_List_ty.
   #[global] Typeclasses Transparent rectypes_List_rt.
-  *)
 End rectypes_List_ty.
 
 Section test_mutual_rectypes.

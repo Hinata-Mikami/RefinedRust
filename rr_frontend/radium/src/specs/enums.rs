@@ -356,61 +356,6 @@ impl<'def> Abstract<'def> {
         format!("[{}]", conditions.join("; "))
     }
 
-    fn generate_lfts(&self) -> String {
-        // TODO: probably should build this up modularly over the fields
-
-        let mut v: Vec<_> = self
-            .scope
-            .get_all_ty_params_with_assocs()
-            .params
-            .iter()
-            .map(|p| format!("(ty_lfts {})", p.type_term()))
-            .collect();
-
-        if self.is_recursive {
-            let rec_ty = format!(
-                "ty_lfts ({} {} {})",
-                self.plain_ty_name,
-                fmt_list!(
-                    self.scope.get_all_ty_params_with_assocs().get_coq_ty_rt_params().make_using_terms(),
-                    " "
-                ),
-                self.scope.identity_instantiation().instantiation(true, true),
-            );
-            v.push(rec_ty);
-        }
-
-        v.push("[]".to_owned());
-        v.join(" ++ ")
-    }
-
-    fn generate_wf_elctx(&self) -> String {
-        // TODO: probably should build this up modularly over the fields
-        let mut v: Vec<_> = self
-            .scope
-            .get_all_ty_params_with_assocs()
-            .params
-            .iter()
-            .map(|p| format!("(ty_wf_E {})", p.type_term()))
-            .collect();
-
-        if self.is_recursive {
-            let rec_ty = format!(
-                "ty_wf_E ({} {} {})",
-                self.plain_ty_name,
-                fmt_list!(
-                    self.scope.get_all_ty_params_with_assocs().get_coq_ty_rt_params().make_using_terms(),
-                    " "
-                ),
-                self.scope.identity_instantiation().instantiation(true, true),
-            );
-            v.push(rec_ty);
-        }
-
-        v.push("[]".to_owned());
-        v.join(" ++ ")
-    }
-
     #[must_use]
     fn generate_contractive_instance(&self, def_name: &str) -> String {
         let mut out = String::with_capacity(200);
@@ -594,9 +539,7 @@ impl<'def> Abstract<'def> {
                ({})\n\
                ({})\n\
                _\n\
-               ({})\n\
-               ({})\n\
-               _ _ _",
+               _",
             self.scope,
             self.generate_enum_tag(),
             self.enum_rt_def_name(),
@@ -604,8 +547,6 @@ impl<'def> Abstract<'def> {
             scope_inst,
             self.generate_enum_rfn(),
             self.generate_enum_match(),
-            self.generate_lfts(),
-            self.generate_wf_elctx(),
         );
         components.push(coq::command::Definition::program(
             pre_enum_def_name.clone(),
@@ -619,14 +560,6 @@ impl<'def> Abstract<'def> {
         )));
         components.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
             coq::ltac::LTac::Literal("done".to_owned()),
-            coq::proof::Terminator::Qed,
-        )));
-        components.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
-            coq::ltac::LTac::Literal("solve_mk_enum_ty_lfts_incl".to_owned()),
-            coq::proof::Terminator::Qed,
-        )));
-        components.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
-            coq::ltac::LTac::Literal("solve_mk_enum_ty_wf_E".to_owned()),
             coq::proof::Terminator::Qed,
         )));
         components.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(

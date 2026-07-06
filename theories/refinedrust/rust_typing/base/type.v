@@ -2420,11 +2420,6 @@ Section enum.
     (* convenience function: given the variant name, also project out the type *)
     enum_tag_ty : list (var_name * enum_tag_sem rt);
     enum_tag_tys_complete : enum_tag_ty.*1 = enum_els.(els_variants).*1;
-    (* explicitly track the lifetimes each of the variants needs -- needed for sharing *)
-    enum_lfts : list lft;
-    enum_wf_E : elctx;
-    enum_lfts_complete : ∀ (r : rt), ty_lfts (enum_ty r) ⊆ enum_lfts;
-    enum_wf_E_complete : ∀ (r : rt), ty_wf_E (enum_ty r) ⊆ enum_wf_E;
     enum_tag_compat : ∀ (r : rt) (variant : var_name),
       enum_tag r = Some variant →
       sigT (λ vinj, enum_tag_ty_find enum_tag_ty variant = Some (mk_enum_tag_sem (enum_rt r) (enum_ty r) vinj));
@@ -2437,8 +2432,6 @@ Section enum.
   Global Arguments enum_r {_}.
   Global Arguments enum_ty {_}.
   Global Arguments enum_tag_ty {_}.
-  Global Arguments enum_lfts {_}.
-  Global Arguments enum_wf_E {_}.
   Global Instance enum_rt_inhabited {rt} (e : enum rt) : Inhabited rt :=
     populate (RT_xrt rt e.(enum_xt_inhabited).(inhabitant)).
 

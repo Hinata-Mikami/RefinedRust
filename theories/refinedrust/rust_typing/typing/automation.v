@@ -1314,35 +1314,6 @@ Lemma ty_wf_E_unfold_lem `{!typeGS Σ} {rt} (ty : type rt) :
 Proof. rewrite ty_wf_E_unfold. done. Qed.
 
 (** Enum-related tactic calls *)
-(* TODO better inclusion solvers *)
-Ltac ty_lfts_incl_solver :=
-  repeat match goal with
-  | |- ?a ⊆ ?b =>
-    match a with
-    | context[ty_lfts ?ty] =>
-        assert_fails (is_var ty);
-        rewrite (ty_lfts_unfold_lem ty)
-    end;
-    simpl;
-    try set_solver
-  end.
-Ltac solve_mk_enum_ty_lfts_incl :=
-  simpl; intro_adt_params;
-  intros []; ty_lfts_incl_solver.
-Ltac ty_wf_E_incl_solver :=
-  repeat match goal with
-  | |- ?a ⊆ ?b =>
-    match a with
-    | context[ty_wf_E ?ty] =>
-        assert_fails (is_var ty);
-        rewrite (ty_wf_E_unfold_lem ty)
-    end;
-    simpl;
-    try set_solver
-  end.
-Ltac solve_mk_enum_ty_wf_E :=
-  simpl; intro_adt_params;
-  intros []; ty_wf_E_incl_solver.
 Ltac solve_mk_enum_tag_consistent :=
   simpl; intro_adt_params;
   intros [] ? [=<-]; eexists _; done.
