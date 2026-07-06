@@ -119,110 +119,156 @@ Program Definition Tasconvert_IntoU_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_
 End attrs.
 
 Section convert_Infallible_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-
+  Context `{RRGS : !(refinedrustGS Σ)}.
   Section components.
-  Definition convert_Infallible_enum_rt  :=
-  λ rfn : (unit), match rfn with | _ => unitRT  end.
-  Definition convert_Infallible_enum_ty  : (spec_with 0 [] (∀ (x: _), (type (convert_Infallible_enum_rt (x))))) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), λ rfn, match rfn as x return type (convert_Infallible_enum_rt x) with | _ => unit_t  end.
-  Program Definition convert_Infallible_enum : spec_with 0 [] (enum ((unit))) := spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_enum
-    _
-    (convert_Infallible_els)
-    (λ rfn, match rfn with | _ => None end)
-    (convert_Infallible_enum_rt)
-    (convert_Infallible_enum_ty -[] -[])
-    (λ rfn, match rfn with | _ => ()  end)
-    (λ variant, None)
-    ([])
-    ([])
-    _ _ _.
-  Next Obligation. solve_inhabited. Defined.
-  Next Obligation. solve_mk_enum_ty_lfts_incl. Qed.
-  Next Obligation. solve_mk_enum_ty_wf_E. Qed.
-  Next Obligation. solve_mk_enum_tag_consistent. Defined.
+    Definition convert_Infallible_enum_rt  :=
+      λ rfn : (unit), match rfn with | _ => unitRT  end.
+    Definition convert_Infallible_enum_ty  : (spec_with 0 [] (∀ (x: _), (type (convert_Infallible_enum_rt (x))))) :=
+      spec! ( *[]) : 0 | ( *[]) : ([] : list RT), λ rfn, match rfn as x return type (convert_Infallible_enum_rt x) with | _ => unit_t  end.
+    Program Definition convert_Infallible_enum  : (spec_with 0 [] ((enum ((unit))))) :=
+      spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_enum
+        _
+        (convert_Infallible_els)
+        (λ rfn, match rfn with | _ => None end)
+        (convert_Infallible_enum_rt)
+        (convert_Infallible_enum_ty -[] -[])
+        (λ rfn, match rfn with | _ => ()  end)
+        ([])
+        _
+        _.
+    Next Obligation.
+      solve_inhabited.
+    Defined.
 
-  Global Arguments convert_Infallible_enum : simpl never.
+    Next Obligation.
+      done.
+    Qed.
 
+    Next Obligation.
+      solve_mk_enum_tag_consistent.
+    Defined.
+
+    #[global] Arguments convert_Infallible_enum : simpl never.
+
+    Definition convert_Infallible_ty_pre  : (spec_with 0 [] ((type _))) :=
+      spec! ( *[]) : 0 | ( *[]) : ([] : list RT), enum_t (convert_Infallible_enum -[] -[]).
+    Definition convert_Infallible_rt_pre  : RT.
+    Proof using  .
+      let __a := (normalized_rt_of_spec_ty (convert_Infallible_ty_pre)) in exact __a.
+    Defined.
+
+    #[global] Typeclasses Transparent convert_Infallible_rt_pre.
   End components.
-  Definition convert_Infallible_ty : spec_with 0 [] (type _) := spec! ( *[]) : 0 | ( *[]) : ([] : list RT), enum_t (convert_Infallible_enum -[] -[]).
-  Definition convert_Infallible_rt : RT.
-  Proof using . let __a := normalized_rt_of_spec_ty convert_Infallible_ty in exact __a. Defined.
-  Global Typeclasses Transparent convert_Infallible_ty.
-  Global Typeclasses Transparent convert_Infallible_rt.
+  Arguments enum_ty : simpl never.
 
+  Definition convert_Infallible_ty  : (spec_with 0 [] ((type _))) :=
+    spec! ( *[]) : 0 | ( *[]) : ([] : list RT), enum_t (convert_Infallible_enum -[] -[]).
+  Definition convert_Infallible_rt  : RT.
+  Proof using  .
+    let __a := (normalized_rt_of_spec_ty (convert_Infallible_ty)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent convert_Infallible_rt.
 End convert_Infallible_ty.
-Global Arguments convert_Infallible_enum : simpl never.
-Global Arguments convert_Infallible_rt : clear implicits.
-Global Arguments convert_Infallible_ty : clear implicits.
-Global Arguments convert_Infallible_ty {_ _}.
+#[global] Typeclasses Transparent convert_Infallible_ty.
+#[global] Typeclasses Transparent convert_Infallible_rt.
+#[global] Arguments convert_Infallible_enum : simpl never.
+
+#[global] Arguments convert_Infallible_rt : clear implicits.
+
+#[global] Arguments convert_Infallible_ty : clear implicits.
+
+#[global] Arguments convert_Infallible_ty {_ _}  .
+
 Global Hint Unfold convert_Infallible_ty : solve_protected_eq_db.
 
 Section ControlFlow_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
+  Context `{RRGS : !(refinedrustGS Σ)}.
   Context {B_rt : RT} {C_rt : RT}.
-
   Section components.
-Definition ControlFlow_Continue_ty  : (spec_with 0 [(B_rt); (C_rt)] ((type (plist place_rfnRT [(C_rt) : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), ((struct_t (ControlFlow_Continue_sls ((B_ty.(ty_syn_type) (MetaNone))) ((C_ty.(ty_syn_type) (MetaNone)))) +[(C_ty)]))).
-Defined.
+    Definition ControlFlow_Continue_ty  : (spec_with 0 [(B_rt); (C_rt)] ((type (plist place_rfnRT [(C_rt) : RT])))).
+    Proof.
+      exact (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), (struct_t (ControlFlow_Continue_sls ((ty_syn_type B_ty MetaNone)) ((ty_syn_type C_ty MetaNone))) +[(C_ty)])).
+    Defined.
 
-Definition ControlFlow_Continue_rt  : RT.
-Proof using B_rt C_rt .
-  let __a := (normalized_rt_of_spec_ty (ControlFlow_Continue_ty)) in exact __a.
-Defined.
+    Definition ControlFlow_Continue_rt  : RT.
+    Proof using B_rt C_rt .
+      let __a := (normalized_rt_of_spec_ty (ControlFlow_Continue_ty)) in exact __a.
+    Defined.
 
-#[global] Typeclasses Transparent ControlFlow_Continue_ty.
-#[global] Typeclasses Transparent ControlFlow_Continue_rt.
+    #[global] Typeclasses Transparent ControlFlow_Continue_rt.
+    #[global] Typeclasses Transparent ControlFlow_Continue_ty.
+    Definition ControlFlow_Break_ty  : (spec_with 0 [(B_rt); (C_rt)] ((type (plist place_rfnRT [(B_rt) : RT])))).
+    Proof.
+      exact (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), (struct_t (ControlFlow_Break_sls ((ty_syn_type B_ty MetaNone)) ((ty_syn_type C_ty MetaNone))) +[(B_ty)])).
+    Defined.
 
-Definition ControlFlow_Break_ty  : (spec_with 0 [(B_rt); (C_rt)] ((type (plist place_rfnRT [(B_rt) : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), ((struct_t (ControlFlow_Break_sls ((B_ty.(ty_syn_type) (MetaNone))) ((C_ty.(ty_syn_type) (MetaNone)))) +[(B_ty)]))).
-Defined.
+    Definition ControlFlow_Break_rt  : RT.
+    Proof using B_rt C_rt .
+      let __a := (normalized_rt_of_spec_ty (ControlFlow_Break_ty)) in exact __a.
+    Defined.
 
-Definition ControlFlow_Break_rt  : RT.
-Proof using B_rt C_rt .
-  let __a := (normalized_rt_of_spec_ty (ControlFlow_Break_ty)) in exact __a.
-Defined.
+    #[global] Typeclasses Transparent ControlFlow_Break_rt.
+    #[global] Typeclasses Transparent ControlFlow_Break_ty.
+    Definition ControlFlow_enum_rt  :=
+      λ rfn : (sum (place_rfn (C_rt)) (place_rfn (B_rt))), match rfn with | (inl (x)) => ControlFlow_Continue_rt| (inr (x)) => ControlFlow_Break_rt end.
+    Definition ControlFlow_enum_ty  : (spec_with 0 [(B_rt); (C_rt)] (∀ (x: _), (type (ControlFlow_enum_rt (x))))) :=
+      spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), λ rfn, match rfn as x return type (ControlFlow_enum_rt x) with | (inl (x)) => ControlFlow_Continue_ty -[] -[B_ty; C_ty]| (inr (x)) => ControlFlow_Break_ty -[] -[B_ty; C_ty] end.
+    Program Definition ControlFlow_enum  : (spec_with 0 [(B_rt); (C_rt)] ((enum ((sum (place_rfn (C_rt)) (place_rfn (B_rt))))))) :=
+      spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), mk_enum
+        _
+        ((ControlFlow_els ((ty_syn_type B_ty MetaNone)) ((ty_syn_type C_ty MetaNone))))
+        (λ rfn, Some (match rfn with | (inl (x)) => "Continue" | (inr (x)) => "Break" end))
+        (ControlFlow_enum_rt)
+        (ControlFlow_enum_ty -[] -[B_ty; C_ty])
+        (λ rfn, match rfn with | (inl (x)) => *[x]| (inr (x)) => *[x] end)
+        ([("Continue", mk_enum_tag_sem _ (ControlFlow_Continue_ty -[] -[B_ty; C_ty]) (λ '( *[x]), (inl (x)))); ("Break", mk_enum_tag_sem _ (ControlFlow_Break_ty -[] -[B_ty; C_ty]) (λ '( *[x]), (inr (x))))])
+        _
+        _.
+    Next Obligation.
+      solve_inhabited.
+    Defined.
 
-#[global] Typeclasses Transparent ControlFlow_Break_ty.
-#[global] Typeclasses Transparent ControlFlow_Break_rt.
+    Next Obligation.
+      done.
+    Qed.
 
-  Definition ControlFlow_enum_rt  :=
-  λ rfn : (sum (place_rfn (C_rt)) (place_rfn (B_rt))), match rfn with | (inl (x)) => ControlFlow_Continue_rt| (inr (x)) => ControlFlow_Break_rt end.
-  Definition ControlFlow_enum_ty  : (spec_with 0 [(B_rt); (C_rt)] (∀ (x: _), (type (ControlFlow_enum_rt (x))))) :=
-  spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), λ rfn, match rfn as x return type (ControlFlow_enum_rt x) with | (inl (x)) => ControlFlow_Continue_ty -[] -[B_ty; C_ty]| (inr (x)) => ControlFlow_Break_ty -[] -[B_ty; C_ty] end.
-  Program Definition ControlFlow_enum : spec_with 0 [B_rt; C_rt] (enum ((sum (place_rfn (C_rt)) (place_rfn (B_rt))))) := spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), mk_enum
-    _
-    ((ControlFlow_els ((ty_syn_type B_ty MetaNone)) ((ty_syn_type C_ty MetaNone))))
-    (λ rfn, Some (match rfn with | (inl (x)) => "Continue" | (inr (x)) => "Break" end))
-    (ControlFlow_enum_rt)
-    (ControlFlow_enum_ty -[] -[B_ty; C_ty])
-    (λ rfn, match rfn with | (inl (x)) => *[x]| (inr (x)) => *[x] end)
-    (λ variant, if (decide (variant = "Continue")) then Some $ mk_enum_tag_sem _ (ControlFlow_Continue_ty -[] -[B_ty; C_ty]) (λ '( *[x]), (inl (x))) else if (decide (variant = "Break")) then Some $ mk_enum_tag_sem _ (ControlFlow_Break_ty -[] -[B_ty; C_ty]) (λ '( *[x]), (inr (x))) else None)
-    ((ty_lfts B_ty) ++ (ty_lfts C_ty) ++ [])
-    ((ty_wf_E B_ty) ++ (ty_wf_E C_ty) ++ [])
-    _ _ _.
-  Next Obligation. solve_inhabited. Defined.
-  Next Obligation. solve_mk_enum_ty_lfts_incl. Qed.
-  Next Obligation. solve_mk_enum_ty_wf_E. Qed.
-  Next Obligation. solve_mk_enum_tag_consistent. Defined.
+    Next Obligation.
+      solve_mk_enum_tag_consistent.
+    Defined.
 
-  Global Arguments ControlFlow_enum : simpl never.
+    #[global] Arguments ControlFlow_enum : simpl never.
 
+    Definition ControlFlow_ty_pre  : (spec_with 0 [(B_rt); (C_rt)] ((type _))) :=
+      spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), enum_t (ControlFlow_enum -[] -[B_ty; C_ty]).
+    Definition ControlFlow_rt_pre  : RT.
+    Proof using B_rt C_rt .
+      let __a := (normalized_rt_of_spec_ty (ControlFlow_ty_pre)) in exact __a.
+    Defined.
+
+    #[global] Typeclasses Transparent ControlFlow_rt_pre.
   End components.
-  Definition ControlFlow_ty : spec_with 0 [B_rt; C_rt] (type _) := spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), enum_t (ControlFlow_enum -[] -[B_ty; C_ty]).
-  Definition ControlFlow_rt : RT.
-  Proof using B_rt C_rt. let __a := normalized_rt_of_spec_ty ControlFlow_ty in exact __a. Defined.
-  Global Typeclasses Transparent ControlFlow_ty.
-  Global Typeclasses Transparent ControlFlow_rt.
+  Arguments enum_ty : simpl never.
 
+  Definition ControlFlow_ty  : (spec_with 0 [(B_rt); (C_rt)] ((type _))) :=
+    spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), enum_t (ControlFlow_enum -[] -[B_ty; C_ty]).
+  Definition ControlFlow_rt  : RT.
+  Proof using B_rt C_rt .
+    let __a := (normalized_rt_of_spec_ty (ControlFlow_ty)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent ControlFlow_rt.
 End ControlFlow_ty.
-Global Arguments ControlFlow_enum : simpl never.
-Global Arguments ControlFlow_rt : clear implicits.
-Global Arguments ControlFlow_ty : clear implicits.
-Global Arguments ControlFlow_ty {_ _}.
+#[global] Typeclasses Transparent ControlFlow_ty.
+#[global] Typeclasses Transparent ControlFlow_rt.
+#[global] Arguments ControlFlow_enum : simpl never.
+
+#[global] Arguments ControlFlow_rt : clear implicits.
+
+#[global] Arguments ControlFlow_ty : clear implicits.
+
+#[global] Arguments ControlFlow_ty {_ _} _ _  .
+
 Global Hint Unfold ControlFlow_ty : solve_protected_eq_db.
 
 Section attrs.

@@ -6,70 +6,92 @@ From rrstd.result.result.generated Require Export generated_specs_result.
 From rrstd.option.option Require Export generated_code_option.
 
 Section Option_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
+  Context `{RRGS : !(refinedrustGS Σ)}.
   Context {T_rt : RT}.
-
   Section components.
-Definition Option_None_ty  : (spec_with 0 [(T_rt)] ((type (plist place_rfnRT [])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (Option_None_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[]))).
-Defined.
+    Definition Option_None_ty  : (spec_with 0 [(T_rt)] ((type (plist place_rfnRT [])))).
+    Proof.
+      exact (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (struct_t (Option_None_sls ((ty_syn_type T_ty MetaNone))) +[])).
+    Defined.
 
-Definition Option_None_rt  : RT.
-Proof using T_rt .
-  let __a := (normalized_rt_of_spec_ty (Option_None_ty)) in exact __a.
-Defined.
+    Definition Option_None_rt  : RT.
+    Proof using T_rt .
+      let __a := (normalized_rt_of_spec_ty (Option_None_ty)) in exact __a.
+    Defined.
 
-#[global] Typeclasses Transparent Option_None_ty.
-#[global] Typeclasses Transparent Option_None_rt.
+    #[global] Typeclasses Transparent Option_None_rt.
+    #[global] Typeclasses Transparent Option_None_ty.
+    Definition Option_Some_ty  : (spec_with 0 [(T_rt)] ((type (plist place_rfnRT [(T_rt) : RT])))).
+    Proof.
+      exact (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (struct_t (Option_Some_sls ((ty_syn_type T_ty MetaNone))) +[(T_ty)])).
+    Defined.
 
-Definition Option_Some_ty  : (spec_with 0 [(T_rt)] ((type (plist place_rfnRT [(T_rt) : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (Option_Some_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[(T_ty)]))).
-Defined.
+    Definition Option_Some_rt  : RT.
+    Proof using T_rt .
+      let __a := (normalized_rt_of_spec_ty (Option_Some_ty)) in exact __a.
+    Defined.
 
-Definition Option_Some_rt  : RT.
-Proof using T_rt .
-  let __a := (normalized_rt_of_spec_ty (Option_Some_ty)) in exact __a.
-Defined.
+    #[global] Typeclasses Transparent Option_Some_rt.
+    #[global] Typeclasses Transparent Option_Some_ty.
+    Definition Option_enum_rt  :=
+      λ rfn : (option (place_rfn (T_rt))), match rfn with | None => Option_None_rt| (Some (x)) => Option_Some_rt end.
+    Definition Option_enum_ty  : (spec_with 0 [(T_rt)] (∀ (x: _), (type (Option_enum_rt (x))))) :=
+      spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), λ rfn, match rfn as x return type (Option_enum_rt x) with | None => Option_None_ty -[] -[T_ty]| (Some (x)) => Option_Some_ty -[] -[T_ty] end.
+    Program Definition Option_enum  : (spec_with 0 [(T_rt)] ((enum ((option (place_rfn (T_rt))))))) :=
+      spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), mk_enum
+        _
+        ((Option_els ((ty_syn_type T_ty MetaNone))))
+        (λ rfn, Some (match rfn with | None => "None" | (Some (x)) => "Some" end))
+        (Option_enum_rt)
+        (Option_enum_ty -[] -[T_ty])
+        (λ rfn, match rfn with | None => *[]| (Some (x)) => *[x] end)
+        ([("None", mk_enum_tag_sem _ (Option_None_ty -[] -[T_ty]) (λ '( *[]), None)); ("Some", mk_enum_tag_sem _ (Option_Some_ty -[] -[T_ty]) (λ '( *[x]), (Some (x))))])
+        _
+        _.
+    Next Obligation.
+      solve_inhabited.
+    Defined.
 
-#[global] Typeclasses Transparent Option_Some_ty.
-#[global] Typeclasses Transparent Option_Some_rt.
+    Next Obligation.
+      done.
+    Qed.
 
-  Definition Option_enum_rt  :=
-  λ rfn : (option (place_rfn (T_rt))), match rfn with | None => Option_None_rt| (Some (x)) => Option_Some_rt end.
-  Definition Option_enum_ty  : (spec_with 0 [(T_rt)] (∀ (x: _), (type (Option_enum_rt (x))))) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), λ rfn, match rfn as x return type (Option_enum_rt x) with | None => Option_None_ty -[] -[T_ty]| (Some (x)) => Option_Some_ty -[] -[T_ty] end.
-  Program Definition Option_enum : spec_with 0 [T_rt] (enum ((option (place_rfn (T_rt))))) := spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), mk_enum
-    _
-    ((Option_els ((ty_syn_type T_ty MetaNone))))
-    (λ rfn, Some (match rfn with | None => "None" | (Some (x)) => "Some" end))
-    (Option_enum_rt)
-    (Option_enum_ty -[] -[T_ty])
-    (λ rfn, match rfn with | None => *[]| (Some (x)) => *[x] end)
-    (λ variant, if (decide (variant = "None")) then Some $ mk_enum_tag_sem _ (Option_None_ty -[] -[T_ty]) (λ '( *[]), None) else if (decide (variant = "Some")) then Some $ mk_enum_tag_sem _ (Option_Some_ty -[] -[T_ty]) (λ '( *[x]), (Some (x))) else None)
-    ((ty_lfts T_ty) ++ [])
-    ((ty_wf_E T_ty) ++ [])
-    _ _ _.
-  Next Obligation. solve_inhabited. Defined.
-  Next Obligation. solve_mk_enum_ty_lfts_incl. Qed.
-  Next Obligation. solve_mk_enum_ty_wf_E. Qed.
-  Next Obligation. solve_mk_enum_tag_consistent. Defined.
+    Next Obligation.
+      solve_mk_enum_tag_consistent.
+    Defined.
 
-  Global Arguments Option_enum : simpl never.
+    #[global] Arguments Option_enum : simpl never.
 
+    Definition Option_ty_pre  : (spec_with 0 [(T_rt)] ((type _))) :=
+      spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), enum_t (Option_enum -[] -[T_ty]).
+    Definition Option_rt_pre  : RT.
+    Proof using T_rt .
+      let __a := (normalized_rt_of_spec_ty (Option_ty_pre)) in exact __a.
+    Defined.
+
+    #[global] Typeclasses Transparent Option_rt_pre.
   End components.
-  Definition Option_ty : spec_with 0 [T_rt] (type _) := spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), enum_t (Option_enum -[] -[T_ty]).
-  Definition Option_rt : RT.
-  Proof using T_rt. let __a := normalized_rt_of_spec_ty Option_ty in exact __a. Defined.
-  Global Typeclasses Transparent Option_ty.
-  Global Typeclasses Transparent Option_rt.
+  Arguments enum_ty : simpl never.
 
+  Definition Option_ty  : (spec_with 0 [(T_rt)] ((type _))) :=
+    spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), enum_t (Option_enum -[] -[T_ty]).
+  Definition Option_rt  : RT.
+  Proof using T_rt .
+    let __a := (normalized_rt_of_spec_ty (Option_ty)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent Option_rt.
 End Option_ty.
-Global Arguments Option_enum : simpl never.
-Global Arguments Option_rt : clear implicits.
-Global Arguments Option_ty : clear implicits.
-Global Arguments Option_ty {_ _}.
+#[global] Typeclasses Transparent Option_ty.
+#[global] Typeclasses Transparent Option_rt.
+#[global] Arguments Option_enum : simpl never.
+
+#[global] Arguments Option_rt : clear implicits.
+
+#[global] Arguments Option_ty : clear implicits.
+
+#[global] Arguments Option_ty {_ _} _  .
+
 Global Hint Unfold Option_ty : solve_protected_eq_db.
 
 Section attrs.
@@ -138,6 +160,56 @@ Proof.
 Qed.
 Definition Option_ty_weak_subtype_None_inst := [instance Option_ty_weak_subtype_None].
 #[export] Existing Instance Option_ty_weak_subtype_None_inst.
+
+Global Instance option_contr {rt1 T_rt} (T : type rt1 → type T_rt) : 
+  TypeContractive T → 
+  TypeContractive (λ ty, Option_ty T_rt *[] *[T ty]).
+Proof.
+  intros ?. 
+  apply enum_t_contr.
+  unshelve econstructor.
+  - enum_contractive_solve_eq.
+  - intros. simpl. by erewrite type_ctr_syn_type.
+  - enum_contractive_solve_eq.
+  - enum_contractive_solve_eq.
+  - intros. simpl. 
+    eapply (type_contractive_dist _ _ (λ ty, enum_ty (Option_enum -[] -[T ty]) r)); last done.
+    destruct r; simpl.
+    + apply struct_t_contr; last apply _.
+      intros. by erewrite type_ctr_syn_type.
+    + apply _.
+  - intros. simpl. 
+    eapply (type_contractive_dist2 _ _ (λ ty, enum_ty (Option_enum -[] -[T ty]) r)); last done.
+    destruct r; simpl.
+    + apply struct_t_contr; last apply _.
+      intros. by erewrite type_ctr_syn_type.
+    + apply _.
+Qed.
+Global Instance option_ne {rt1 T_rt} (T : type rt1 → type T_rt) : 
+  TypeNonExpansive T → 
+  TypeNonExpansive (λ ty, Option_ty T_rt *[] *[T ty]).
+Proof.
+  intros ?. 
+  apply enum_t_ne.
+  unshelve econstructor.
+  - enum_contractive_solve_eq.
+  - intros. simpl. by erewrite type_ne_syn_type.
+  - enum_contractive_solve_eq.
+  - enum_contractive_solve_eq.
+  - intros. simpl. 
+    eapply (type_dist_use_ne _ _ _ (λ ty, enum_ty (Option_enum -[] -[T ty]) r)); last done.
+    destruct r; simpl.
+    + apply struct_t_ne; last apply _.
+      intros. by erewrite type_ne_syn_type.
+    + apply _.
+  - intros. simpl. 
+    eapply (type_dist2_use_ne _ _ _ (λ ty, enum_ty (Option_enum -[] -[T ty]) r)); last done.
+    destruct r; simpl.
+    + apply struct_t_ne; last apply _.
+      intros. by erewrite type_ne_syn_type.
+    + apply _.
+Qed.
+
 End extra_specs.
 Section specs.
 Context `{RRGS : !refinedrustGS Σ}.

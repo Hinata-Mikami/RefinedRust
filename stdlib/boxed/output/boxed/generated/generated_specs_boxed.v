@@ -10,53 +10,81 @@ From rrstd.sized.sized.generated Require Export generated_specs_sized.
 From rrstd.boxed.boxed Require Export generated_code_boxed.
 
 Section Box_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT) (A_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT} {A_rt : RT}.
+  Definition Box_ty (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type (plist place_rfnRT [((((unique_Unique_inv_t_rt)) ((T_rt)))) : RT; (A_rt) : RT])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), (struct_t (Box_sls ((ty_syn_type T_ty MetaNone)) ((ty_syn_type A_ty MetaNone))) +[((unique_Unique_inv_t ((T_rt)) -[] -[T_ty])); (A_ty)])).
+  Defined.
 
+  Definition Box_rt  : RT.
+  Proof using T_rt A_rt .
+    let __a := (normalized_rt_of_spec_ty (Box_ty)) in exact __a.
+  Defined.
 
-Definition Box_ty (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type (plist place_rfnRT [((((unique_Unique_inv_t_rt)) ((T_rt)))) : RT; (A_rt) : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((struct_t (Box_sls ((T_ty.(ty_syn_type) (MetaNone))) ((A_ty.(ty_syn_type) (MetaNone)))) +[((unique_Unique_inv_t ((T_rt)) -[] -[T_ty])); (A_ty)]))).
-Defined.
-
-Definition Box_rt  : RT.
-Proof using T_rt A_rt .
-  let __a := (normalized_rt_of_spec_ty (Box_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent Box_ty.
-#[global] Typeclasses Transparent Box_rt.
+  #[global] Typeclasses Transparent Box_rt.
+  #[global] Typeclasses Transparent Box_ty.
 End Box_ty.
-Global Arguments Box_rt : clear implicits.
+#[global] Arguments Box_rt : clear implicits.
+
+#[global] Arguments Box_ty : clear implicits.
+
+#[global] Arguments Box_ty {_ _} _ _  .
+
 Section Box_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT) (A_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT} {A_rt : RT}.
+  Program Definition Box_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((ex_inv_def ((Box_rt (T_rt) (A_rt)))%type ((place_rfn (T_rt)))%type))) :=
+    spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), mk_ex_inv_def_auto_shr
+          (λ π inner_rfn (_ty_rfn : RT_rt ((place_rfn (T_rt))%type : RT)),
+                  let 'x := _ty_rfn in ∃ (l: name_hint_ty "l" ((loc))%Z) (a: name_hint_ty "a" (((RT_xt (A_rt))))%Z), ⌜inner_rfn = -[#(l); #($# a)]⌝ ∗ guarded true (l ◁ₗ[π, Owned] x @ ◁ T_ty) ∗ Allocator_A_spec_attrs.(Allocator_FreeablePerm) a l (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))) ∗ True)%I
+          (λ π _ (_rfn_binder : RT_rt ((place_rfn (T_rt))%type : RT)),
+                  let 'x := _rfn_binder in (∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop T_ty π r) ∗ True)%I
+          (false)
+          ([] ++ ty_lfts T_ty)
+          ([] ++ ty_wf_E T_ty)
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition Box_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [T_rt; A_rt] (ex_inv_def ((Box_rt (T_rt) (A_rt)))%type ((place_rfn (T_rt)))%type) := spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), mk_ex_inv_def_auto_shr
-    (λ π inner_rfn (_ty_rfn : RT_rt ((place_rfn (T_rt))%type : RT)),
-            let 'x := _ty_rfn in ∃ (l: name_hint_ty "l" ((loc))%Z) (a: name_hint_ty "a" (((RT_xt (A_rt))))%Z), ⌜inner_rfn = -[#(l); #($# a)]⌝ ∗ guarded true (l ◁ₗ[π, Owned] x @ ◁ T_ty) ∗ Allocator_A_spec_attrs.(Allocator_FreeablePerm) a l (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))) ∗ True)%I
-    (λ π _ (_rfn_binder : RT_rt ((place_rfn (T_rt))%type : RT)),
-            let 'x := _rfn_binder in (∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop T_ty π r) ∗ True)%I
-    (false)
-    ([] ++ ty_lfts T_ty)
-    ([] ++ ty_wf_E T_ty)
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
-  Next Obligation. intros ?; ex_plain_t_solve_ghost_drop. Qed.
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
 
-  Definition Box_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [T_rt; A_rt] (type ((place_rfn (T_rt)))%type) :=
+  Next Obligation.
+    intros ?; ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Next Obligation.
+    intros ?; ex_plain_t_solve_ghost_drop.
+  Qed.
+
+  Definition Box_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type (((place_rfn (T_rt)))%type)))) :=
     spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ex_plain_t _ _ (Box_inv_t_inv_spec Allocator_A_spec_attrs -[] -[T_ty; A_ty]) (((Box_ty (T_rt) (A_rt)) (Allocator_A_spec_attrs)) -[] -[T_ty; A_ty]).
-Global Arguments Box_inv_t_inv_spec : simpl never.
-Global Arguments Box_inv_t : simpl never.
-  Global Typeclasses Transparent Box_inv_t.
-  Definition Box_inv_t_rt : RT.
-  Proof using T_rt A_rt . let __a := normalized_rt_of_spec_ty Box_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent Box_inv_t_rt.
+  #[global] Arguments Box_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments Box_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent Box_inv_t.
+  Definition Box_inv_t_rt  : RT.
+  Proof using T_rt A_rt .
+    let __a := (normalized_rt_of_spec_ty (Box_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent Box_inv_t_rt.
 End Box_inv_t.
-Global Arguments Box_inv_t_rt : clear implicits.
+#[global] Arguments Box_inv_t_rt : clear implicits.
+
+#[global] Arguments Box_inv_t : clear implicits.
+
+#[global] Arguments Box_inv_t {_ _} _ _  .
+
+#[global] Arguments Box_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments Box_inv_t_inv_spec {_ _} _ _  .
+
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
@@ -79,10 +107,8 @@ Section contractive.
     TypeContractive (λ ty, Box_inv_t T_rt A_rt A_attrs <TY> (T ty) <TY> A_ty <INST!>).
   Proof.
     intros X.
-    apply ex_inv_def_contractive.
+    apply ex_plain_t_contr.
     - constructor.
-      + simpl. apply ty_lft_morphism_to_direct.
-        apply X.
       + solve_proper_prepare.
         repeat solve_proper_step.
       + solve_proper_prepare.
@@ -93,6 +119,25 @@ Section contractive.
     TypeNonExpansive T →
     TypeNonExpansive (λ ty, Box_inv_t T_rt A_rt A_attrs <TY> (T ty) <TY> A_ty <INST!>).
   Proof. apply _. Qed.
+
+  Instance Box_inv_t_dep_lft_mor rts (T_rt A_rt : RT) (A_attrs : Allocator_spec_attrs A_rt) (A_ty : type A_rt) (T : mut_types rts → type T_rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, Box_inv_t_inv_spec T_rt A_rt A_attrs *[] *[(T x); A_ty]).
+  Proof.
+    simpl.
+    intros Hdep.
+    eapply (dep_lft_morph_make_id _ T); first done.
+    - done.
+    - done.
+  Defined.
+  Global Instance Box_inv_t_dep_lft_mor' rts (T_rt A_rt : RT) (A_attrs : Allocator_spec_attrs A_rt) (A_ty : type A_rt) (T : mut_types rts → type T_rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, Box_inv_t T_rt A_rt A_attrs *[] *[(T x); A_ty]).
+  Proof.
+    intros Ha.
+    eapply mk_ex_plain_t_dep_lft_morphism; [apply _.. | ].
+    abstract (set_solver).
+  Defined.
 
   (** Resolve ghost: Resolve observations on the contained value. *)
   Lemma resolve_ghost_box {T_rt A_rt} A_attrs (T_ty : type T_rt) (A_ty : type A_rt) π E L r rm T :

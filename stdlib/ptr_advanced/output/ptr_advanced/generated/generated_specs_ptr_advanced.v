@@ -7,51 +7,79 @@ From rrstd.ptr.ptr.generated Require Export generated_specs_ptr.
 From rrstd.ptr_advanced.ptr_advanced Require Export generated_code_ptr_advanced.
 
 Section nonnull_NonNull_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT}.
+  Definition nonnull_NonNull_ty  : (spec_with 0 [(T_rt)] ((type (plist place_rfnRT [loc : RT])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (struct_t (nonnull_NonNull_sls ((ty_syn_type T_ty MetaNone))) +[(alias_ptr_t)])).
+  Defined.
 
+  Definition nonnull_NonNull_rt  : RT.
+  Proof using T_rt .
+    let __a := (normalized_rt_of_spec_ty (nonnull_NonNull_ty)) in exact __a.
+  Defined.
 
-Definition nonnull_NonNull_ty  : (spec_with 0 [(T_rt)] ((type (plist place_rfnRT [loc : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (nonnull_NonNull_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[(alias_ptr_t)]))).
-Defined.
-
-Definition nonnull_NonNull_rt  : RT.
-Proof using T_rt .
-  let __a := (normalized_rt_of_spec_ty (nonnull_NonNull_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent nonnull_NonNull_ty.
-#[global] Typeclasses Transparent nonnull_NonNull_rt.
+  #[global] Typeclasses Transparent nonnull_NonNull_rt.
+  #[global] Typeclasses Transparent nonnull_NonNull_ty.
 End nonnull_NonNull_ty.
-Global Arguments nonnull_NonNull_rt : clear implicits.
+#[global] Arguments nonnull_NonNull_rt : clear implicits.
+
+#[global] Arguments nonnull_NonNull_ty : clear implicits.
+
+#[global] Arguments nonnull_NonNull_ty {_ _} _  .
+
 Section nonnull_NonNull_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT}.
+  Program Definition nonnull_NonNull_inv_t_inv_spec  : (spec_with 0 [(T_rt)] ((ex_inv_def ((nonnull_NonNull_rt (T_rt)))%type ((loc))%type))) :=
+    spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt ((loc)%type : RT)),
+                  let 'l := _ty_rfn in ⌜inner_rfn = -[#(l)]⌝ ∗ ⌜(l.(loc_a) ≠ 0)%Z⌝ ∗ True)%I
+          (true)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition nonnull_NonNull_inv_t_inv_spec  : spec_with 0 [T_rt] (ex_inv_def ((nonnull_NonNull_rt (T_rt)))%type ((loc))%type) := spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt ((loc)%type : RT)),
-            let 'l := _ty_rfn in ⌜inner_rfn = -[#(l)]⌝ ∗ ⌜(l.(loc_a) ≠ 0)%Z⌝ ∗ True)%I
-    (true)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition nonnull_NonNull_inv_t  : spec_with 0 [T_rt] (type ((loc))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition nonnull_NonNull_inv_t  : (spec_with 0 [(T_rt)] ((type (((loc))%type)))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (nonnull_NonNull_inv_t_inv_spec  -[] -[T_ty]) ((nonnull_NonNull_ty (T_rt)) -[] -[T_ty]).
-Global Arguments nonnull_NonNull_inv_t_inv_spec : simpl never.
-Global Arguments nonnull_NonNull_inv_t : simpl never.
-  Global Typeclasses Transparent nonnull_NonNull_inv_t.
-  Definition nonnull_NonNull_inv_t_rt : RT.
-  Proof using T_rt . let __a := normalized_rt_of_spec_ty nonnull_NonNull_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent nonnull_NonNull_inv_t_rt.
+  #[global] Arguments nonnull_NonNull_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments nonnull_NonNull_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent nonnull_NonNull_inv_t.
+  Definition nonnull_NonNull_inv_t_rt  : RT.
+  Proof using T_rt .
+    let __a := (normalized_rt_of_spec_ty (nonnull_NonNull_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent nonnull_NonNull_inv_t_rt.
 End nonnull_NonNull_inv_t.
-Global Arguments nonnull_NonNull_inv_t_rt : clear implicits.
+#[global] Arguments nonnull_NonNull_inv_t_rt : clear implicits.
+
+#[global] Arguments nonnull_NonNull_inv_t : clear implicits.
+
+#[global] Arguments nonnull_NonNull_inv_t {_ _} _  .
+
+#[global] Arguments nonnull_NonNull_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments nonnull_NonNull_inv_t_inv_spec {_ _} _  .
+
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
@@ -62,51 +90,79 @@ Program Definition nonnull_NonNullTasstd_clone_Clone_spec_attrs `{RRGS : !(refin
 End attrs.
 
 Section unique_Unique_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT}.
+  Definition unique_Unique_ty  : (spec_with 0 [(T_rt)] ((type (plist place_rfnRT [((nonnull_NonNull_inv_t_rt ((T_rt)))) : RT; (((core_marker_PhantomData_rt) ((T_rt)))) : RT])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (struct_t (unique_Unique_sls ((ty_syn_type T_ty MetaNone))) +[((nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty])); ((core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty]))])).
+  Defined.
 
+  Definition unique_Unique_rt  : RT.
+  Proof using T_rt .
+    let __a := (normalized_rt_of_spec_ty (unique_Unique_ty)) in exact __a.
+  Defined.
 
-Definition unique_Unique_ty  : (spec_with 0 [(T_rt)] ((type (plist place_rfnRT [((nonnull_NonNull_inv_t_rt ((T_rt)))) : RT; (((core_marker_PhantomData_rt) ((T_rt)))) : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (unique_Unique_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[((nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty])); ((core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty]))]))).
-Defined.
-
-Definition unique_Unique_rt  : RT.
-Proof using T_rt .
-  let __a := (normalized_rt_of_spec_ty (unique_Unique_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent unique_Unique_ty.
-#[global] Typeclasses Transparent unique_Unique_rt.
+  #[global] Typeclasses Transparent unique_Unique_rt.
+  #[global] Typeclasses Transparent unique_Unique_ty.
 End unique_Unique_ty.
-Global Arguments unique_Unique_rt : clear implicits.
+#[global] Arguments unique_Unique_rt : clear implicits.
+
+#[global] Arguments unique_Unique_ty : clear implicits.
+
+#[global] Arguments unique_Unique_ty {_ _} _  .
+
 Section unique_Unique_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT}.
+  Program Definition unique_Unique_inv_t_inv_spec  : (spec_with 0 [(T_rt)] ((ex_inv_def ((unique_Unique_rt (T_rt)))%type ((loc))%type))) :=
+    spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt ((loc)%type : RT)),
+                  let 'l := _ty_rfn in ⌜inner_rfn = -[#(l); #(tt)]⌝ ∗ True)%I
+          (true)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition unique_Unique_inv_t_inv_spec  : spec_with 0 [T_rt] (ex_inv_def ((unique_Unique_rt (T_rt)))%type ((loc))%type) := spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt ((loc)%type : RT)),
-            let 'l := _ty_rfn in ⌜inner_rfn = -[#(l); #(tt)]⌝ ∗ True)%I
-    (true)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition unique_Unique_inv_t  : spec_with 0 [T_rt] (type ((loc))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition unique_Unique_inv_t  : (spec_with 0 [(T_rt)] ((type (((loc))%type)))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (unique_Unique_inv_t_inv_spec  -[] -[T_ty]) ((unique_Unique_ty (T_rt)) -[] -[T_ty]).
-Global Arguments unique_Unique_inv_t_inv_spec : simpl never.
-Global Arguments unique_Unique_inv_t : simpl never.
-  Global Typeclasses Transparent unique_Unique_inv_t.
-  Definition unique_Unique_inv_t_rt : RT.
-  Proof using T_rt . let __a := normalized_rt_of_spec_ty unique_Unique_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent unique_Unique_inv_t_rt.
+  #[global] Arguments unique_Unique_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments unique_Unique_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent unique_Unique_inv_t.
+  Definition unique_Unique_inv_t_rt  : RT.
+  Proof using T_rt .
+    let __a := (normalized_rt_of_spec_ty (unique_Unique_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent unique_Unique_inv_t_rt.
 End unique_Unique_inv_t.
-Global Arguments unique_Unique_inv_t_rt : clear implicits.
+#[global] Arguments unique_Unique_inv_t_rt : clear implicits.
+
+#[global] Arguments unique_Unique_inv_t : clear implicits.
+
+#[global] Arguments unique_Unique_inv_t {_ _} _  .
+
+#[global] Arguments unique_Unique_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments unique_Unique_inv_t_inv_spec {_ _} _  .
+
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
@@ -145,9 +201,8 @@ Section contractive.
     TypeContractive (λ ty, nonnull_NonNull_inv_t T_rt <TY> (T ty) <INST!>).
   Proof.
     intros X.
-    apply ex_inv_def_contractive.
+    apply ex_plain_t_contr.
     - constructor.
-      + simpl. apply _.
       + solve_proper.
       + solve_proper.
     - cbn. apply _.
@@ -156,14 +211,29 @@ Section contractive.
     TypeNonExpansive T →
     TypeNonExpansive (λ ty, nonnull_NonNull_inv_t T_rt <TY> (T ty) <INST!>).
   Proof. apply _. Qed.
+
+  Global Program Instance NonNull_inv_t_dep_lft_mor rts (T_rt : RT) (T : mut_types rts → type T_rt) :
+    DepLftMorphism ∅ (λ x : mut_types rts, nonnull_NonNull_inv_t T_rt *[] *[(T x)]) :=
+      mk_dep_lft_morph_const _ static [] _ _.
+  Next Obligation.
+    intros. simpl.
+    iIntros (?).
+    repeat rewrite !ty_lfts_unfold/=.
+    iApply lft_equiv_refl.
+  Qed.
+  Next Obligation.
+    intros. rewrite /lifecycle_wf_E/=.
+    repeat rewrite !ty_wf_E_unfold/=.
+    done.
+  Qed.
+
   Global Instance Unique_inv_t_contr {rt1 T_rt : RT} (T : type rt1 → type T_rt) :
     TypeNonExpansive T →
     TypeContractive (λ ty, unique_Unique_inv_t T_rt <TY> (T ty) <INST!>).
   Proof.
     intros X.
-    apply ex_inv_def_contractive.
+    apply ex_plain_t_contr.
     - constructor.
-      + simpl. apply _.
       + solve_proper.
       + solve_proper.
     - cbn; apply _.
@@ -172,6 +242,22 @@ Section contractive.
     TypeNonExpansive T →
     TypeContractive (λ ty, unique_Unique_inv_t T_rt <TY> (T ty) <INST!>).
   Proof. apply _. Qed.
+
+  Global Program Instance Unique_inv_t_dep_lft_mor rts (rt : RT) (T : mut_types rts → type rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, unique_Unique_inv_t rt *[] *[(T x)]) :=
+    λ Ht,
+      dep_lft_morph_make_id _ _ _ Ht _ _.
+  Next Obligation.
+    intros. rewrite /lifecycle_lfts/=.
+    repeat rewrite !ty_lfts_unfold/=.
+    rewrite !right_id//.
+  Qed.
+  Next Obligation.
+    intros. rewrite /lifecycle_wf_E/=.
+    repeat rewrite !ty_wf_E_unfold/=.
+    rewrite !right_id//.
+  Qed.
 End contractive.
 Section specs.
 Context `{RRGS : !refinedrustGS Σ}.

@@ -76,165 +76,252 @@ Program Definition Iastraits_iterator_IntoIterator_spec_attrs `{RRGS : !(refined
 End attrs.
 
 Section adapters_zip_Zip_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (A_rt : RT) (B_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {A_rt : RT} {B_rt : RT}.
+  Definition adapters_zip_Zip_ty  : (spec_with 0 [(A_rt); (B_rt)] ((type (plist place_rfnRT [(A_rt) : RT; (B_rt) : RT])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[A_ty; B_ty]) : ([A_rt; B_rt] : list RT), (struct_t (adapters_zip_Zip_sls ((ty_syn_type A_ty MetaNone)) ((ty_syn_type B_ty MetaNone))) +[(A_ty); (B_ty)])).
+  Defined.
 
+  Definition adapters_zip_Zip_rt  : RT.
+  Proof using A_rt B_rt .
+    let __a := (normalized_rt_of_spec_ty (adapters_zip_Zip_ty)) in exact __a.
+  Defined.
 
-Definition adapters_zip_Zip_ty  : (spec_with 0 [(A_rt); (B_rt)] ((type (plist place_rfnRT [(A_rt) : RT; (B_rt) : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[A_ty; B_ty]) : ([A_rt; B_rt] : list RT), ((struct_t (adapters_zip_Zip_sls ((A_ty.(ty_syn_type) (MetaNone))) ((B_ty.(ty_syn_type) (MetaNone)))) +[(A_ty); (B_ty)]))).
-Defined.
-
-Definition adapters_zip_Zip_rt  : RT.
-Proof using A_rt B_rt .
-  let __a := (normalized_rt_of_spec_ty (adapters_zip_Zip_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent adapters_zip_Zip_ty.
-#[global] Typeclasses Transparent adapters_zip_Zip_rt.
+  #[global] Typeclasses Transparent adapters_zip_Zip_rt.
+  #[global] Typeclasses Transparent adapters_zip_Zip_ty.
 End adapters_zip_Zip_ty.
-Global Arguments adapters_zip_Zip_rt : clear implicits.
+#[global] Arguments adapters_zip_Zip_rt : clear implicits.
+
+#[global] Arguments adapters_zip_Zip_ty : clear implicits.
+
+#[global] Arguments adapters_zip_Zip_ty {_ _} _ _  .
+
 
 Section adapters_map_Map_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (I_rt : RT) (F_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {I_rt : RT} {F_rt : RT}.
+  Definition adapters_map_Map_ty  : (spec_with 0 [(I_rt); (F_rt)] ((type (plist place_rfnRT [(I_rt) : RT; (F_rt) : RT])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[I_ty; F_ty]) : ([I_rt; F_rt] : list RT), (struct_t (adapters_map_Map_sls ((ty_syn_type I_ty MetaNone)) ((ty_syn_type F_ty MetaNone))) +[(I_ty); (F_ty)])).
+  Defined.
 
+  Definition adapters_map_Map_rt  : RT.
+  Proof using I_rt F_rt .
+    let __a := (normalized_rt_of_spec_ty (adapters_map_Map_ty)) in exact __a.
+  Defined.
 
-Definition adapters_map_Map_ty  : (spec_with 0 [(I_rt); (F_rt)] ((type (plist place_rfnRT [(I_rt) : RT; (F_rt) : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[I_ty; F_ty]) : ([I_rt; F_rt] : list RT), ((struct_t (adapters_map_Map_sls ((I_ty.(ty_syn_type) (MetaNone))) ((F_ty.(ty_syn_type) (MetaNone)))) +[(I_ty); (F_ty)]))).
-Defined.
-
-Definition adapters_map_Map_rt  : RT.
-Proof using I_rt F_rt .
-  let __a := (normalized_rt_of_spec_ty (adapters_map_Map_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent adapters_map_Map_ty.
-#[global] Typeclasses Transparent adapters_map_Map_rt.
+  #[global] Typeclasses Transparent adapters_map_Map_rt.
+  #[global] Typeclasses Transparent adapters_map_Map_ty.
 End adapters_map_Map_ty.
-Global Arguments adapters_map_Map_rt : clear implicits.
+#[global] Arguments adapters_map_Map_rt : clear implicits.
+
+#[global] Arguments adapters_map_Map_ty : clear implicits.
+
+#[global] Arguments adapters_map_Map_ty {_ _} _ _  .
+
 Section adapters_map_Map_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (I_rt : RT) (F_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {I_rt : RT} {F_rt : RT}.
+  Program Definition adapters_map_Map_inv_t_inv_spec  : (spec_with 0 [(I_rt); (F_rt)] ((ex_inv_def ((adapters_map_Map_rt (I_rt) (F_rt)))%type ((MapXRT (I_rt) (F_rt)))%type))) :=
+    spec! ( *[]) : 0 | ( *[I_ty; F_ty]) : ([I_rt; F_rt] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt ((MapXRT (I_rt) (F_rt))%type : RT)),
+                  let 'x := _ty_rfn in ⌜inner_rfn = -[#($# x.(map_it)); #($# x.(map_clos))]⌝ ∗ True)%I
+          (false)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition adapters_map_Map_inv_t_inv_spec  : spec_with 0 [I_rt; F_rt] (ex_inv_def ((adapters_map_Map_rt (I_rt) (F_rt)))%type ((MapXRT (I_rt) (F_rt)))%type) := spec! ( *[]) : 0 | ( *[I_ty; F_ty]) : ([I_rt; F_rt] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt ((MapXRT (I_rt) (F_rt))%type : RT)),
-            let 'x := _ty_rfn in ⌜inner_rfn = -[#($# x.(map_it)); #($# x.(map_clos))]⌝ ∗ True)%I
-    (false)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition adapters_map_Map_inv_t  : spec_with 0 [I_rt; F_rt] (type ((MapXRT (I_rt) (F_rt)))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition adapters_map_Map_inv_t  : (spec_with 0 [(I_rt); (F_rt)] ((type (((MapXRT (I_rt) (F_rt)))%type)))) :=
     spec! ( *[]) : 0 | ( *[I_ty; F_ty]) : ([I_rt; F_rt] : list RT), ex_plain_t _ _ (adapters_map_Map_inv_t_inv_spec  -[] -[I_ty; F_ty]) ((adapters_map_Map_ty (I_rt) (F_rt)) -[] -[I_ty; F_ty]).
-Global Arguments adapters_map_Map_inv_t_inv_spec : simpl never.
-Global Arguments adapters_map_Map_inv_t : simpl never.
-  Global Typeclasses Transparent adapters_map_Map_inv_t.
-  Definition adapters_map_Map_inv_t_rt : RT.
-  Proof using I_rt F_rt . let __a := normalized_rt_of_spec_ty adapters_map_Map_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent adapters_map_Map_inv_t_rt.
+  #[global] Arguments adapters_map_Map_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments adapters_map_Map_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent adapters_map_Map_inv_t.
+  Definition adapters_map_Map_inv_t_rt  : RT.
+  Proof using I_rt F_rt .
+    let __a := (normalized_rt_of_spec_ty (adapters_map_Map_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent adapters_map_Map_inv_t_rt.
 End adapters_map_Map_inv_t.
-Global Arguments adapters_map_Map_inv_t_rt : clear implicits.
+#[global] Arguments adapters_map_Map_inv_t_rt : clear implicits.
+
+#[global] Arguments adapters_map_Map_inv_t : clear implicits.
+
+#[global] Arguments adapters_map_Map_inv_t {_ _} _ _  .
+
+#[global] Arguments adapters_map_Map_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments adapters_map_Map_inv_t_inv_spec {_ _} _ _  .
+
 
 Section adapters_skip_Skip_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (I_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {I_rt : RT}.
+  Definition adapters_skip_Skip_ty  : (spec_with 0 [(I_rt)] ((type (plist place_rfnRT [(I_rt) : RT; Z : RT])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), (struct_t (adapters_skip_Skip_sls ((ty_syn_type I_ty MetaNone))) +[(I_ty); ((int USize))])).
+  Defined.
 
+  Definition adapters_skip_Skip_rt  : RT.
+  Proof using I_rt .
+    let __a := (normalized_rt_of_spec_ty (adapters_skip_Skip_ty)) in exact __a.
+  Defined.
 
-Definition adapters_skip_Skip_ty  : (spec_with 0 [(I_rt)] ((type (plist place_rfnRT [(I_rt) : RT; Z : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), ((struct_t (adapters_skip_Skip_sls ((I_ty.(ty_syn_type) (MetaNone)))) +[(I_ty); ((int USize))]))).
-Defined.
-
-Definition adapters_skip_Skip_rt  : RT.
-Proof using I_rt .
-  let __a := (normalized_rt_of_spec_ty (adapters_skip_Skip_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent adapters_skip_Skip_ty.
-#[global] Typeclasses Transparent adapters_skip_Skip_rt.
+  #[global] Typeclasses Transparent adapters_skip_Skip_rt.
+  #[global] Typeclasses Transparent adapters_skip_Skip_ty.
 End adapters_skip_Skip_ty.
-Global Arguments adapters_skip_Skip_rt : clear implicits.
+#[global] Arguments adapters_skip_Skip_rt : clear implicits.
+
+#[global] Arguments adapters_skip_Skip_ty : clear implicits.
+
+#[global] Arguments adapters_skip_Skip_ty {_ _} _  .
+
 Section adapters_skip_Skip_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (I_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {I_rt : RT}.
+  Program Definition adapters_skip_Skip_inv_t_inv_spec  : (spec_with 0 [(I_rt)] ((ex_inv_def ((adapters_skip_Skip_rt (I_rt)))%type (((_ * nat)))%type))) :=
+    spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt (((_ * nat))%type : RT)),
+                  let '(it, n) := _ty_rfn in ⌜inner_rfn = -[#(it); #(Z.of_nat n)]⌝ ∗ True)%I
+          (false)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition adapters_skip_Skip_inv_t_inv_spec  : spec_with 0 [I_rt] (ex_inv_def ((adapters_skip_Skip_rt (I_rt)))%type (((_ * nat)))%type) := spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt (((_ * nat))%type : RT)),
-            let '(it, n) := _ty_rfn in ⌜inner_rfn = -[#(it); #(Z.of_nat n)]⌝ ∗ True)%I
-    (false)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition adapters_skip_Skip_inv_t  : spec_with 0 [I_rt] (type (((_ * nat)))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition adapters_skip_Skip_inv_t  : (spec_with 0 [(I_rt)] ((type ((((_ * nat)))%type)))) :=
     spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), ex_plain_t _ _ (adapters_skip_Skip_inv_t_inv_spec  -[] -[I_ty]) ((adapters_skip_Skip_ty (I_rt)) -[] -[I_ty]).
-Global Arguments adapters_skip_Skip_inv_t_inv_spec : simpl never.
-Global Arguments adapters_skip_Skip_inv_t : simpl never.
-  Global Typeclasses Transparent adapters_skip_Skip_inv_t.
-  Definition adapters_skip_Skip_inv_t_rt : RT.
-  Proof using I_rt . let __a := normalized_rt_of_spec_ty adapters_skip_Skip_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent adapters_skip_Skip_inv_t_rt.
+  #[global] Arguments adapters_skip_Skip_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments adapters_skip_Skip_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent adapters_skip_Skip_inv_t.
+  Definition adapters_skip_Skip_inv_t_rt  : RT.
+  Proof using I_rt .
+    let __a := (normalized_rt_of_spec_ty (adapters_skip_Skip_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent adapters_skip_Skip_inv_t_rt.
 End adapters_skip_Skip_inv_t.
-Global Arguments adapters_skip_Skip_inv_t_rt : clear implicits.
+#[global] Arguments adapters_skip_Skip_inv_t_rt : clear implicits.
+
+#[global] Arguments adapters_skip_Skip_inv_t : clear implicits.
+
+#[global] Arguments adapters_skip_Skip_inv_t {_ _} _  .
+
+#[global] Arguments adapters_skip_Skip_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments adapters_skip_Skip_inv_t_inv_spec {_ _} _  .
+
 
 Section adapters_take_Take_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (I_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {I_rt : RT}.
+  Definition adapters_take_Take_ty  : (spec_with 0 [(I_rt)] ((type (plist place_rfnRT [(I_rt) : RT; Z : RT])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), (struct_t (adapters_take_Take_sls ((ty_syn_type I_ty MetaNone))) +[(I_ty); ((int USize))])).
+  Defined.
 
+  Definition adapters_take_Take_rt  : RT.
+  Proof using I_rt .
+    let __a := (normalized_rt_of_spec_ty (adapters_take_Take_ty)) in exact __a.
+  Defined.
 
-Definition adapters_take_Take_ty  : (spec_with 0 [(I_rt)] ((type (plist place_rfnRT [(I_rt) : RT; Z : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), ((struct_t (adapters_take_Take_sls ((I_ty.(ty_syn_type) (MetaNone)))) +[(I_ty); ((int USize))]))).
-Defined.
-
-Definition adapters_take_Take_rt  : RT.
-Proof using I_rt .
-  let __a := (normalized_rt_of_spec_ty (adapters_take_Take_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent adapters_take_Take_ty.
-#[global] Typeclasses Transparent adapters_take_Take_rt.
+  #[global] Typeclasses Transparent adapters_take_Take_rt.
+  #[global] Typeclasses Transparent adapters_take_Take_ty.
 End adapters_take_Take_ty.
-Global Arguments adapters_take_Take_rt : clear implicits.
+#[global] Arguments adapters_take_Take_rt : clear implicits.
+
+#[global] Arguments adapters_take_Take_ty : clear implicits.
+
+#[global] Arguments adapters_take_Take_ty {_ _} _  .
+
 Section adapters_take_Take_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (I_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {I_rt : RT}.
+  Program Definition adapters_take_Take_inv_t_inv_spec  : (spec_with 0 [(I_rt)] ((ex_inv_def ((adapters_take_Take_rt (I_rt)))%type (((_ * nat)))%type))) :=
+    spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt (((_ * nat))%type : RT)),
+                  let '(it, n) := _ty_rfn in ⌜inner_rfn = -[#(it); #(Z.of_nat n)]⌝ ∗ True)%I
+          (false)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition adapters_take_Take_inv_t_inv_spec  : spec_with 0 [I_rt] (ex_inv_def ((adapters_take_Take_rt (I_rt)))%type (((_ * nat)))%type) := spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt (((_ * nat))%type : RT)),
-            let '(it, n) := _ty_rfn in ⌜inner_rfn = -[#(it); #(Z.of_nat n)]⌝ ∗ True)%I
-    (false)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition adapters_take_Take_inv_t  : spec_with 0 [I_rt] (type (((_ * nat)))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition adapters_take_Take_inv_t  : (spec_with 0 [(I_rt)] ((type ((((_ * nat)))%type)))) :=
     spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), ex_plain_t _ _ (adapters_take_Take_inv_t_inv_spec  -[] -[I_ty]) ((adapters_take_Take_ty (I_rt)) -[] -[I_ty]).
-Global Arguments adapters_take_Take_inv_t_inv_spec : simpl never.
-Global Arguments adapters_take_Take_inv_t : simpl never.
-  Global Typeclasses Transparent adapters_take_Take_inv_t.
-  Definition adapters_take_Take_inv_t_rt : RT.
-  Proof using I_rt . let __a := normalized_rt_of_spec_ty adapters_take_Take_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent adapters_take_Take_inv_t_rt.
+  #[global] Arguments adapters_take_Take_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments adapters_take_Take_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent adapters_take_Take_inv_t.
+  Definition adapters_take_Take_inv_t_rt  : RT.
+  Proof using I_rt .
+    let __a := (normalized_rt_of_spec_ty (adapters_take_Take_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent adapters_take_Take_inv_t_rt.
 End adapters_take_Take_inv_t.
-Global Arguments adapters_take_Take_inv_t_rt : clear implicits.
+#[global] Arguments adapters_take_Take_inv_t_rt : clear implicits.
+
+#[global] Arguments adapters_take_Take_inv_t : clear implicits.
+
+#[global] Arguments adapters_take_Take_inv_t {_ _} _  .
+
+#[global] Arguments adapters_take_Take_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments adapters_take_Take_inv_t_inv_spec {_ _} _  .
+
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.

@@ -16,70 +16,101 @@ Record relax_RelaxStrategy_spec_attrs `{RRGS : !(refinedrustGS Σ)} `{Self_rt : 
 
 
 Section relax_Spin_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition relax_Spin_ty  : (spec_with 0 [] ((type (plist place_rfnRT [])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (struct_t relax_Spin_sls +[])).
+  Defined.
 
+  Definition relax_Spin_rt  : RT.
+  Proof using  .
+    let __a := (normalized_rt_of_spec_ty (relax_Spin_ty)) in exact __a.
+  Defined.
 
-Definition relax_Spin_ty  : (spec_with 0 [] ((type (plist place_rfnRT [])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ((struct_t relax_Spin_sls +[]))).
-Defined.
-
-Definition relax_Spin_rt  : RT.
-Proof using  .
-  let __a := (normalized_rt_of_spec_ty (relax_Spin_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent relax_Spin_ty.
-#[global] Typeclasses Transparent relax_Spin_rt.
+  #[global] Typeclasses Transparent relax_Spin_rt.
+  #[global] Typeclasses Transparent relax_Spin_ty.
 End relax_Spin_ty.
-Global Arguments relax_Spin_rt : clear implicits.
+#[global] Arguments relax_Spin_rt : clear implicits.
+
+#[global] Arguments relax_Spin_ty : clear implicits.
+
+#[global] Arguments relax_Spin_ty {_ _}  .
+
 
 Section rwlock_RwLockReadGuard_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT}.
+  Definition rwlock_RwLockReadGuard_ty  : (spec_with 1 [(T_rt)] ((type (plist place_rfnRT [(place_rfnRT (T_rt)) : RT])))).
+  Proof.
+    exact (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (struct_t (rwlock_RwLockReadGuard_sls ((ty_syn_type T_ty MetaNone))) +[((shr_ref ulft_a T_ty))])).
+  Defined.
 
+  Definition rwlock_RwLockReadGuard_rt  : RT.
+  Proof using T_rt .
+    let __a := (normalized_rt_of_spec_ty (rwlock_RwLockReadGuard_ty)) in exact __a.
+  Defined.
 
-Definition rwlock_RwLockReadGuard_ty  : (spec_with 1 [(T_rt)] ((type (plist place_rfnRT [(place_rfnRT (T_rt)) : RT])))).
-Proof.
-  exact (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (rwlock_RwLockReadGuard_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[((shr_ref ulft_a T_ty))]))).
-Defined.
-
-Definition rwlock_RwLockReadGuard_rt  : RT.
-Proof using T_rt .
-  let __a := (normalized_rt_of_spec_ty (rwlock_RwLockReadGuard_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent rwlock_RwLockReadGuard_ty.
-#[global] Typeclasses Transparent rwlock_RwLockReadGuard_rt.
+  #[global] Typeclasses Transparent rwlock_RwLockReadGuard_rt.
+  #[global] Typeclasses Transparent rwlock_RwLockReadGuard_ty.
 End rwlock_RwLockReadGuard_ty.
-Global Arguments rwlock_RwLockReadGuard_rt : clear implicits.
+#[global] Arguments rwlock_RwLockReadGuard_rt : clear implicits.
+
+#[global] Arguments rwlock_RwLockReadGuard_ty : clear implicits.
+
+#[global] Arguments rwlock_RwLockReadGuard_ty {_ _} _  .
+
 Section rwlock_RwLockReadGuard_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT}.
+  Program Definition rwlock_RwLockReadGuard_inv_t_inv_spec  : (spec_with 1 [(T_rt)] ((ex_inv_def ((rwlock_RwLockReadGuard_rt (T_rt)))%type (((T_rt)))%type))) :=
+    spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt (((T_rt))%type : RT)),
+                  let 'x := _ty_rfn in ⌜inner_rfn = -[#(#x)]⌝ ∗ True)%I
+          (true)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition rwlock_RwLockReadGuard_inv_t_inv_spec  : spec_with 1 [T_rt] (ex_inv_def ((rwlock_RwLockReadGuard_rt (T_rt)))%type (((T_rt)))%type) := spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt (((T_rt))%type : RT)),
-            let 'x := _ty_rfn in ⌜inner_rfn = -[#(#x)]⌝ ∗ True)%I
-    (true)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition rwlock_RwLockReadGuard_inv_t  : spec_with 1 [T_rt] (type (((T_rt)))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition rwlock_RwLockReadGuard_inv_t  : (spec_with 1 [(T_rt)] ((type ((((T_rt)))%type)))) :=
     spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (rwlock_RwLockReadGuard_inv_t_inv_spec  -[ulft_a] -[T_ty]) ((rwlock_RwLockReadGuard_ty (T_rt)) -[ulft_a] -[T_ty]).
-Global Arguments rwlock_RwLockReadGuard_inv_t_inv_spec : simpl never.
-Global Arguments rwlock_RwLockReadGuard_inv_t : simpl never.
-  Global Typeclasses Transparent rwlock_RwLockReadGuard_inv_t.
-  Definition rwlock_RwLockReadGuard_inv_t_rt : RT.
-  Proof using T_rt . let __a := normalized_rt_of_spec_ty rwlock_RwLockReadGuard_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent rwlock_RwLockReadGuard_inv_t_rt.
+  #[global] Arguments rwlock_RwLockReadGuard_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments rwlock_RwLockReadGuard_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent rwlock_RwLockReadGuard_inv_t.
+  Definition rwlock_RwLockReadGuard_inv_t_rt  : RT.
+  Proof using T_rt .
+    let __a := (normalized_rt_of_spec_ty (rwlock_RwLockReadGuard_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent rwlock_RwLockReadGuard_inv_t_rt.
 End rwlock_RwLockReadGuard_inv_t.
-Global Arguments rwlock_RwLockReadGuard_inv_t_rt : clear implicits.
+#[global] Arguments rwlock_RwLockReadGuard_inv_t_rt : clear implicits.
+
+#[global] Arguments rwlock_RwLockReadGuard_inv_t : clear implicits.
+
+#[global] Arguments rwlock_RwLockReadGuard_inv_t {_ _} _  .
+
+#[global] Arguments rwlock_RwLockReadGuard_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments rwlock_RwLockReadGuard_inv_t_inv_spec {_ _} _  .
+
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
@@ -90,149 +121,233 @@ Program Definition relax_Spinasrelax_RelaxStrategy_spec_attrs `{RRGS : !(refined
 End attrs.
 
 Section once_Once_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT) (R_rt : RT).
-
-   (* Additional parameters *)
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT} {R_rt : RT}.
+  (* Additional parameters *)
   Context `{_CTX0 : !(onceG Σ ((RT_xt (T_rt))))}.
+  Definition once_Once_ty  : (spec_with 0 [(T_rt); (R_rt)] ((type (plist place_rfnRT [(((core_marker_PhantomData_rt) ((R_rt)))) : RT; (((core_marker_PhantomData_rt) ((T_rt)))) : RT])))).
+  Proof using _CTX0.
+    exact (spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), (struct_t (once_Once_sls ((ty_syn_type T_ty MetaNone)) ((ty_syn_type R_ty MetaNone))) +[((core_marker_PhantomData_ty ((R_rt)) -[] -[R_ty])); ((core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty]))])).
+  Defined.
 
-Definition once_Once_ty  : (spec_with 0 [(T_rt); (R_rt)] ((type (plist place_rfnRT [(((core_marker_PhantomData_rt) ((R_rt)))) : RT; (((core_marker_PhantomData_rt) ((T_rt)))) : RT])))).
-Proof using _CTX0.
-  exact (spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((struct_t (once_Once_sls ((T_ty.(ty_syn_type) (MetaNone))) ((R_ty.(ty_syn_type) (MetaNone)))) +[((core_marker_PhantomData_ty ((R_rt)) -[] -[R_ty])); ((core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty]))]))).
-Defined.
+  Definition once_Once_rt  : RT.
+  Proof using T_rt R_rt .
+    let __a := (normalized_rt_of_spec_ty (once_Once_ty)) in exact __a.
+  Defined.
 
-Definition once_Once_rt  : RT.
-Proof using T_rt R_rt .
-  let __a := (normalized_rt_of_spec_ty (once_Once_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent once_Once_ty.
-#[global] Typeclasses Transparent once_Once_rt.
+  #[global] Typeclasses Transparent once_Once_rt.
+  #[global] Typeclasses Transparent once_Once_ty.
 End once_Once_ty.
-Global Arguments once_Once_rt : clear implicits.
+#[global] Arguments once_Once_rt : clear implicits.
+
+#[global] Arguments once_Once_ty : clear implicits.
+
+#[global] Arguments once_Once_ty {_ _} _ _   {_}.
+
 Section once_Once_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT) (R_rt : RT).
-   (* Additional parameters *)
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT} {R_rt : RT}.
+  (* Additional parameters *)
   Context `{_CTX0 : !(onceG Σ ((RT_xt (T_rt))))}.
+  Program Definition once_Once_inv_t_inv_spec  : (spec_with 0 [(T_rt); (R_rt)] ((ex_inv_def ((once_Once_rt (T_rt) (R_rt)))%type ((gname))%type))) :=
+    spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt ((gname)%type : RT)),
+                  let 'η := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z) (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(x); #(y)]⌝ ∗ True)%I
+          (true)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition once_Once_inv_t_inv_spec  : spec_with 0 [T_rt; R_rt] (ex_inv_def ((once_Once_rt (T_rt) (R_rt)))%type ((gname))%type) := spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt ((gname)%type : RT)),
-            let 'η := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z) (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(x); #(y)]⌝ ∗ True)%I
-    (true)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition once_Once_inv_t  : spec_with 0 [T_rt; R_rt] (type ((gname))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition once_Once_inv_t  : (spec_with 0 [(T_rt); (R_rt)] ((type (((gname))%type)))) :=
     spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ex_plain_t _ _ (once_Once_inv_t_inv_spec  -[] -[T_ty; R_ty]) ((once_Once_ty (T_rt) (R_rt)) -[] -[T_ty; R_ty]).
-Global Arguments once_Once_inv_t_inv_spec : simpl never.
-Global Arguments once_Once_inv_t : simpl never.
-  Global Typeclasses Transparent once_Once_inv_t.
-  Definition once_Once_inv_t_rt : RT.
-  Proof using T_rt R_rt . let __a := normalized_rt_of_spec_ty once_Once_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent once_Once_inv_t_rt.
+  #[global] Arguments once_Once_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments once_Once_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent once_Once_inv_t.
+  Definition once_Once_inv_t_rt  : RT.
+  Proof using T_rt R_rt .
+    let __a := (normalized_rt_of_spec_ty (once_Once_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent once_Once_inv_t_rt.
 End once_Once_inv_t.
-Global Arguments once_Once_inv_t_rt : clear implicits.
+#[global] Arguments once_Once_inv_t_rt : clear implicits.
+
+#[global] Arguments once_Once_inv_t : clear implicits.
+
+#[global] Arguments once_Once_inv_t {_ _} _ _   {_}.
+
+#[global] Arguments once_Once_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments once_Once_inv_t_inv_spec {_ _} _ _   {_}.
+
 
 Section rwlock_RwLock_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT) (R_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT} {R_rt : RT}.
+  Definition rwlock_RwLock_ty  : (spec_with 0 [(T_rt); (R_rt)] ((type (plist place_rfnRT [(((core_marker_PhantomData_rt) ((R_rt)))) : RT; (((core_marker_PhantomData_rt) ((T_rt)))) : RT])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), (struct_t (rwlock_RwLock_sls ((ty_syn_type T_ty MetaNone)) ((ty_syn_type R_ty MetaNone))) +[((core_marker_PhantomData_ty ((R_rt)) -[] -[R_ty])); ((core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty]))])).
+  Defined.
 
+  Definition rwlock_RwLock_rt  : RT.
+  Proof using T_rt R_rt .
+    let __a := (normalized_rt_of_spec_ty (rwlock_RwLock_ty)) in exact __a.
+  Defined.
 
-Definition rwlock_RwLock_ty  : (spec_with 0 [(T_rt); (R_rt)] ((type (plist place_rfnRT [(((core_marker_PhantomData_rt) ((R_rt)))) : RT; (((core_marker_PhantomData_rt) ((T_rt)))) : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((struct_t (rwlock_RwLock_sls ((T_ty.(ty_syn_type) (MetaNone))) ((R_ty.(ty_syn_type) (MetaNone)))) +[((core_marker_PhantomData_ty ((R_rt)) -[] -[R_ty])); ((core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty]))]))).
-Defined.
-
-Definition rwlock_RwLock_rt  : RT.
-Proof using T_rt R_rt .
-  let __a := (normalized_rt_of_spec_ty (rwlock_RwLock_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent rwlock_RwLock_ty.
-#[global] Typeclasses Transparent rwlock_RwLock_rt.
+  #[global] Typeclasses Transparent rwlock_RwLock_rt.
+  #[global] Typeclasses Transparent rwlock_RwLock_ty.
 End rwlock_RwLock_ty.
-Global Arguments rwlock_RwLock_rt : clear implicits.
+#[global] Arguments rwlock_RwLock_rt : clear implicits.
+
+#[global] Arguments rwlock_RwLock_ty : clear implicits.
+
+#[global] Arguments rwlock_RwLock_ty {_ _} _ _  .
+
 Section rwlock_RwLock_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT) (R_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT} {R_rt : RT}.
+  Program Definition rwlock_RwLock_inv_t_inv_spec  : (spec_with 0 [(T_rt); (R_rt)] ((ex_inv_def ((rwlock_RwLock_rt (T_rt) (R_rt)))%type ((unit))%type))) :=
+    spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt ((unit)%type : RT)),
+                  let '() := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z) (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(y); #(x)]⌝ ∗ True)%I
+          (true)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition rwlock_RwLock_inv_t_inv_spec  : spec_with 0 [T_rt; R_rt] (ex_inv_def ((rwlock_RwLock_rt (T_rt) (R_rt)))%type ((unit))%type) := spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt ((unit)%type : RT)),
-            let '() := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z) (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(y); #(x)]⌝ ∗ True)%I
-    (true)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition rwlock_RwLock_inv_t  : spec_with 0 [T_rt; R_rt] (type ((unit))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition rwlock_RwLock_inv_t  : (spec_with 0 [(T_rt); (R_rt)] ((type (((unit))%type)))) :=
     spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ex_plain_t _ _ (rwlock_RwLock_inv_t_inv_spec  -[] -[T_ty; R_ty]) ((rwlock_RwLock_ty (T_rt) (R_rt)) -[] -[T_ty; R_ty]).
-Global Arguments rwlock_RwLock_inv_t_inv_spec : simpl never.
-Global Arguments rwlock_RwLock_inv_t : simpl never.
-  Global Typeclasses Transparent rwlock_RwLock_inv_t.
-  Definition rwlock_RwLock_inv_t_rt : RT.
-  Proof using T_rt R_rt . let __a := normalized_rt_of_spec_ty rwlock_RwLock_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent rwlock_RwLock_inv_t_rt.
+  #[global] Arguments rwlock_RwLock_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments rwlock_RwLock_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent rwlock_RwLock_inv_t.
+  Definition rwlock_RwLock_inv_t_rt  : RT.
+  Proof using T_rt R_rt .
+    let __a := (normalized_rt_of_spec_ty (rwlock_RwLock_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent rwlock_RwLock_inv_t_rt.
 End rwlock_RwLock_inv_t.
-Global Arguments rwlock_RwLock_inv_t_rt : clear implicits.
+#[global] Arguments rwlock_RwLock_inv_t_rt : clear implicits.
+
+#[global] Arguments rwlock_RwLock_inv_t : clear implicits.
+
+#[global] Arguments rwlock_RwLock_inv_t {_ _} _ _  .
+
+#[global] Arguments rwlock_RwLock_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments rwlock_RwLock_inv_t_inv_spec {_ _} _ _  .
+
 
 Section rwlock_RwLockWriteGuard_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT) (R_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT} {R_rt : RT}.
+  Definition rwlock_RwLockWriteGuard_ty  : (spec_with 1 [(T_rt); (R_rt)] ((type (plist place_rfnRT [(place_rfnRT ((rwlock_RwLock_inv_t_rt ((T_rt)) ((relax_Spin_rt))))) : RT; (R_rt) : RT])))).
+  Proof.
+    exact (spec! ( *[ulft_a]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), (struct_t (rwlock_RwLockWriteGuard_sls ((ty_syn_type T_ty MetaNone)) ((ty_syn_type R_ty MetaNone))) +[((shr_ref ulft_a (rwlock_RwLock_inv_t ((T_rt)) ((relax_Spin_rt))  -[] -[T_ty; (relax_Spin_ty  -[] -[])]))); (R_ty)])).
+  Defined.
 
+  Definition rwlock_RwLockWriteGuard_rt  : RT.
+  Proof using T_rt R_rt .
+    let __a := (normalized_rt_of_spec_ty (rwlock_RwLockWriteGuard_ty)) in exact __a.
+  Defined.
 
-Definition rwlock_RwLockWriteGuard_ty  : (spec_with 1 [(T_rt); (R_rt)] ((type (plist place_rfnRT [(place_rfnRT ((rwlock_RwLock_inv_t_rt ((T_rt)) ((relax_Spin_rt))))) : RT; (R_rt) : RT])))).
-Proof.
-  exact (spec! ( *[ulft_a]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((struct_t (rwlock_RwLockWriteGuard_sls ((T_ty.(ty_syn_type) (MetaNone))) ((R_ty.(ty_syn_type) (MetaNone)))) +[((shr_ref ulft_a (rwlock_RwLock_inv_t ((T_rt)) ((relax_Spin_rt))  -[] -[T_ty; (relax_Spin_ty  -[] -[])]))); (R_ty)]))).
-Defined.
-
-Definition rwlock_RwLockWriteGuard_rt  : RT.
-Proof using T_rt R_rt .
-  let __a := (normalized_rt_of_spec_ty (rwlock_RwLockWriteGuard_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent rwlock_RwLockWriteGuard_ty.
-#[global] Typeclasses Transparent rwlock_RwLockWriteGuard_rt.
+  #[global] Typeclasses Transparent rwlock_RwLockWriteGuard_rt.
+  #[global] Typeclasses Transparent rwlock_RwLockWriteGuard_ty.
 End rwlock_RwLockWriteGuard_ty.
-Global Arguments rwlock_RwLockWriteGuard_rt : clear implicits.
+#[global] Arguments rwlock_RwLockWriteGuard_rt : clear implicits.
+
+#[global] Arguments rwlock_RwLockWriteGuard_ty : clear implicits.
+
+#[global] Arguments rwlock_RwLockWriteGuard_ty {_ _} _ _  .
+
 Section rwlock_RwLockWriteGuard_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT) (R_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT} {R_rt : RT}.
+  Program Definition rwlock_RwLockWriteGuard_inv_t_inv_spec  : (spec_with 1 [(T_rt); (R_rt)] ((ex_inv_def ((rwlock_RwLockWriteGuard_rt (T_rt) (R_rt)))%type ((place_rfn (T_rt)))%type))) :=
+    spec! ( *[ulft_a]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt ((place_rfn (T_rt))%type : RT)),
+                  let 'x := _ty_rfn in ∃ (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(#tt); #(y)]⌝ ∗ True)%I
+          (false)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition rwlock_RwLockWriteGuard_inv_t_inv_spec  : spec_with 1 [T_rt; R_rt] (ex_inv_def ((rwlock_RwLockWriteGuard_rt (T_rt) (R_rt)))%type ((place_rfn (T_rt)))%type) := spec! ( *[ulft_a]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt ((place_rfn (T_rt))%type : RT)),
-            let 'x := _ty_rfn in ∃ (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(#tt); #(y)]⌝ ∗ True)%I
-    (false)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition rwlock_RwLockWriteGuard_inv_t  : spec_with 1 [T_rt; R_rt] (type ((place_rfn (T_rt)))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition rwlock_RwLockWriteGuard_inv_t  : (spec_with 1 [(T_rt); (R_rt)] ((type (((place_rfn (T_rt)))%type)))) :=
     spec! ( *[ulft_a]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ex_plain_t _ _ (rwlock_RwLockWriteGuard_inv_t_inv_spec  -[ulft_a] -[T_ty; R_ty]) ((rwlock_RwLockWriteGuard_ty (T_rt) (R_rt)) -[ulft_a] -[T_ty; R_ty]).
-Global Arguments rwlock_RwLockWriteGuard_inv_t_inv_spec : simpl never.
-Global Arguments rwlock_RwLockWriteGuard_inv_t : simpl never.
-  Global Typeclasses Transparent rwlock_RwLockWriteGuard_inv_t.
-  Definition rwlock_RwLockWriteGuard_inv_t_rt : RT.
-  Proof using T_rt R_rt . let __a := normalized_rt_of_spec_ty rwlock_RwLockWriteGuard_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent rwlock_RwLockWriteGuard_inv_t_rt.
+  #[global] Arguments rwlock_RwLockWriteGuard_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments rwlock_RwLockWriteGuard_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent rwlock_RwLockWriteGuard_inv_t.
+  Definition rwlock_RwLockWriteGuard_inv_t_rt  : RT.
+  Proof using T_rt R_rt .
+    let __a := (normalized_rt_of_spec_ty (rwlock_RwLockWriteGuard_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent rwlock_RwLockWriteGuard_inv_t_rt.
 End rwlock_RwLockWriteGuard_inv_t.
-Global Arguments rwlock_RwLockWriteGuard_inv_t_rt : clear implicits.
+#[global] Arguments rwlock_RwLockWriteGuard_inv_t_rt : clear implicits.
+
+#[global] Arguments rwlock_RwLockWriteGuard_inv_t : clear implicits.
+
+#[global] Arguments rwlock_RwLockWriteGuard_inv_t {_ _} _ _  .
+
+#[global] Arguments rwlock_RwLockWriteGuard_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments rwlock_RwLockWriteGuard_inv_t_inv_spec {_ _} _ _  .
+
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.

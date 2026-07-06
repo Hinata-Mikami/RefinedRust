@@ -47,239 +47,379 @@ Program Definition usizeasprivate_slice_index_Sealed_spec_attrs `{RRGS : !(refin
 End attrs.
 
 Section Iter_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT}.
+  Definition Iter_ty  : (spec_with 1 [(T_rt)] ((type (plist place_rfnRT [loc : RT; (((core_marker_PhantomData_rt) ((place_rfnRT (T_rt))))) : RT])))).
+  Proof.
+    exact (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (struct_t (Iter_sls ((ty_syn_type T_ty MetaNone))) +[(alias_ptr_t); ((core_marker_PhantomData_ty ((place_rfnRT (T_rt))) -[] -[(shr_ref ulft_a T_ty)]))])).
+  Defined.
 
+  Definition Iter_rt  : RT.
+  Proof using T_rt .
+    let __a := (normalized_rt_of_spec_ty (Iter_ty)) in exact __a.
+  Defined.
 
-Definition Iter_ty  : (spec_with 1 [(T_rt)] ((type (plist place_rfnRT [loc : RT; (((core_marker_PhantomData_rt) ((place_rfnRT (T_rt))))) : RT])))).
-Proof.
-  exact (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (Iter_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[(alias_ptr_t); ((core_marker_PhantomData_ty ((place_rfnRT (T_rt))) -[] -[(shr_ref ulft_a T_ty)]))]))).
-Defined.
-
-Definition Iter_rt  : RT.
-Proof using T_rt .
-  let __a := (normalized_rt_of_spec_ty (Iter_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent Iter_ty.
-#[global] Typeclasses Transparent Iter_rt.
+  #[global] Typeclasses Transparent Iter_rt.
+  #[global] Typeclasses Transparent Iter_ty.
 End Iter_ty.
-Global Arguments Iter_rt : clear implicits.
+#[global] Arguments Iter_rt : clear implicits.
+
+#[global] Arguments Iter_ty : clear implicits.
+
+#[global] Arguments Iter_ty {_ _} _  .
+
 Section Iter_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT}.
+  Program Definition Iter_inv_t_inv_spec  : (spec_with 1 [(T_rt)] ((ex_inv_def ((Iter_rt (T_rt)))%type ((list ((T_rt))))%type))) :=
+    spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt ((list ((T_rt)))%type : RT)),
+                  let 'xs := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z) (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(x); #(y)]⌝ ∗ True)%I
+          (true)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition Iter_inv_t_inv_spec  : spec_with 1 [T_rt] (ex_inv_def ((Iter_rt (T_rt)))%type ((list ((T_rt))))%type) := spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt ((list ((T_rt)))%type : RT)),
-            let 'xs := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z) (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(x); #(y)]⌝ ∗ True)%I
-    (true)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition Iter_inv_t  : spec_with 1 [T_rt] (type ((list ((T_rt))))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition Iter_inv_t  : (spec_with 1 [(T_rt)] ((type (((list ((T_rt))))%type)))) :=
     spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (Iter_inv_t_inv_spec  -[ulft_a] -[T_ty]) ((Iter_ty (T_rt)) -[ulft_a] -[T_ty]).
-Global Arguments Iter_inv_t_inv_spec : simpl never.
-Global Arguments Iter_inv_t : simpl never.
-  Global Typeclasses Transparent Iter_inv_t.
-  Definition Iter_inv_t_rt : RT.
-  Proof using T_rt . let __a := normalized_rt_of_spec_ty Iter_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent Iter_inv_t_rt.
+  #[global] Arguments Iter_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments Iter_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent Iter_inv_t.
+  Definition Iter_inv_t_rt  : RT.
+  Proof using T_rt .
+    let __a := (normalized_rt_of_spec_ty (Iter_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent Iter_inv_t_rt.
 End Iter_inv_t.
-Global Arguments Iter_inv_t_rt : clear implicits.
+#[global] Arguments Iter_inv_t_rt : clear implicits.
+
+#[global] Arguments Iter_inv_t : clear implicits.
+
+#[global] Arguments Iter_inv_t {_ _} _  .
+
+#[global] Arguments Iter_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments Iter_inv_t_inv_spec {_ _} _  .
+
 
 Section IterMut_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT}.
+  Definition IterMut_ty  : (spec_with 1 [(T_rt)] ((type (plist place_rfnRT [((((nonnull_NonNull_inv_t_rt)) ((T_rt)))) : RT; loc : RT; (((core_marker_PhantomData_rt) (((place_rfnRT (T_rt)) * gname)%type))) : RT])))).
+  Proof.
+    exact (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (struct_t (IterMut_sls ((ty_syn_type T_ty MetaNone))) +[((nonnull_NonNull_inv_t ((T_rt)) -[] -[T_ty])); (alias_ptr_t); ((core_marker_PhantomData_ty (((place_rfnRT (T_rt)) * gname)%type) -[] -[(mut_ref ulft_a T_ty)]))])).
+  Defined.
 
+  Definition IterMut_rt  : RT.
+  Proof using T_rt .
+    let __a := (normalized_rt_of_spec_ty (IterMut_ty)) in exact __a.
+  Defined.
 
-Definition IterMut_ty  : (spec_with 1 [(T_rt)] ((type (plist place_rfnRT [((((nonnull_NonNull_inv_t_rt)) ((T_rt)))) : RT; loc : RT; (((core_marker_PhantomData_rt) (((place_rfnRT (T_rt)) * gname)%type))) : RT])))).
-Proof.
-  exact (spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((struct_t (IterMut_sls ((T_ty.(ty_syn_type) (MetaNone)))) +[((nonnull_NonNull_inv_t ((T_rt)) -[] -[T_ty])); (alias_ptr_t); ((core_marker_PhantomData_ty (((place_rfnRT (T_rt)) * gname)%type) -[] -[(mut_ref ulft_a T_ty)]))]))).
-Defined.
-
-Definition IterMut_rt  : RT.
-Proof using T_rt .
-  let __a := (normalized_rt_of_spec_ty (IterMut_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent IterMut_ty.
-#[global] Typeclasses Transparent IterMut_rt.
+  #[global] Typeclasses Transparent IterMut_rt.
+  #[global] Typeclasses Transparent IterMut_ty.
 End IterMut_ty.
-Global Arguments IterMut_rt : clear implicits.
+#[global] Arguments IterMut_rt : clear implicits.
+
+#[global] Arguments IterMut_ty : clear implicits.
+
+#[global] Arguments IterMut_ty {_ _} _  .
+
 Section IterMut_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT}.
+  Program Definition IterMut_inv_t_inv_spec  : (spec_with 1 [(T_rt)] ((ex_inv_def ((IterMut_rt (T_rt)))%type (((list ((T_rt) * gname))%type))%type))) :=
+    spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt (((list ((T_rt) * gname))%type)%type : RT)),
+                  let 'xs := _ty_rfn in ∃ (x: name_hint_ty "x" ((loc))%Z) (y: name_hint_ty "y" ((loc))%Z), ⌜inner_rfn = -[#(x); #(y); #(tt)]⌝ ∗ True)%I
+          (true)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition IterMut_inv_t_inv_spec  : spec_with 1 [T_rt] (ex_inv_def ((IterMut_rt (T_rt)))%type (((list ((T_rt) * gname))%type))%type) := spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt (((list ((T_rt) * gname))%type)%type : RT)),
-            let 'xs := _ty_rfn in ∃ (x: name_hint_ty "x" ((loc))%Z) (y: name_hint_ty "y" ((loc))%Z), ⌜inner_rfn = -[#(x); #(y); #(tt)]⌝ ∗ True)%I
-    (true)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition IterMut_inv_t  : spec_with 1 [T_rt] (type (((list ((T_rt) * gname))%type))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition IterMut_inv_t  : (spec_with 1 [(T_rt)] ((type ((((list ((T_rt) * gname))%type))%type)))) :=
     spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ex_plain_t _ _ (IterMut_inv_t_inv_spec  -[ulft_a] -[T_ty]) ((IterMut_ty (T_rt)) -[ulft_a] -[T_ty]).
-Global Arguments IterMut_inv_t_inv_spec : simpl never.
-Global Arguments IterMut_inv_t : simpl never.
-  Global Typeclasses Transparent IterMut_inv_t.
-  Definition IterMut_inv_t_rt : RT.
-  Proof using T_rt . let __a := normalized_rt_of_spec_ty IterMut_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent IterMut_inv_t_rt.
+  #[global] Arguments IterMut_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments IterMut_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent IterMut_inv_t.
+  Definition IterMut_inv_t_rt  : RT.
+  Proof using T_rt .
+    let __a := (normalized_rt_of_spec_ty (IterMut_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent IterMut_inv_t_rt.
 End IterMut_inv_t.
-Global Arguments IterMut_inv_t_rt : clear implicits.
+#[global] Arguments IterMut_inv_t_rt : clear implicits.
+
+#[global] Arguments IterMut_inv_t : clear implicits.
+
+#[global] Arguments IterMut_inv_t {_ _} _  .
+
+#[global] Arguments IterMut_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments IterMut_inv_t_inv_spec {_ _} _  .
+
 
 Section IntoIter_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT) (A_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT} {A_rt : RT}.
+  Definition IntoIter_ty (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type (plist place_rfnRT [(((core_marker_PhantomData_rt) ((T_rt)))) : RT; (A_rt) : RT])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), (struct_t (IntoIter_sls ((ty_syn_type T_ty MetaNone)) ((ty_syn_type A_ty MetaNone))) +[((core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty])); (A_ty)])).
+  Defined.
 
+  Definition IntoIter_rt  : RT.
+  Proof using T_rt A_rt .
+    let __a := (normalized_rt_of_spec_ty (IntoIter_ty)) in exact __a.
+  Defined.
 
-Definition IntoIter_ty (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type (plist place_rfnRT [(((core_marker_PhantomData_rt) ((T_rt)))) : RT; (A_rt) : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((struct_t (IntoIter_sls ((T_ty.(ty_syn_type) (MetaNone))) ((A_ty.(ty_syn_type) (MetaNone)))) +[((core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty])); (A_ty)]))).
-Defined.
-
-Definition IntoIter_rt  : RT.
-Proof using T_rt A_rt .
-  let __a := (normalized_rt_of_spec_ty (IntoIter_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent IntoIter_ty.
-#[global] Typeclasses Transparent IntoIter_rt.
+  #[global] Typeclasses Transparent IntoIter_rt.
+  #[global] Typeclasses Transparent IntoIter_ty.
 End IntoIter_ty.
-Global Arguments IntoIter_rt : clear implicits.
+#[global] Arguments IntoIter_rt : clear implicits.
+
+#[global] Arguments IntoIter_ty : clear implicits.
+
+#[global] Arguments IntoIter_ty {_ _} _ _  .
+
 Section IntoIter_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT) (A_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT} {A_rt : RT}.
+  Program Definition IntoIter_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((ex_inv_def ((IntoIter_rt (T_rt) (A_rt)))%type ((list ((T_rt))))%type))) :=
+    spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt ((list ((T_rt)))%type : RT)),
+                  let 'xs := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z) (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(x); #(y)]⌝ ∗ True)%I
+          (false)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition IntoIter_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [T_rt; A_rt] (ex_inv_def ((IntoIter_rt (T_rt) (A_rt)))%type ((list ((T_rt))))%type) := spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt ((list ((T_rt)))%type : RT)),
-            let 'xs := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z) (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(x); #(y)]⌝ ∗ True)%I
-    (false)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition IntoIter_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [T_rt; A_rt] (type ((list ((T_rt))))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    intros ?; ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition IntoIter_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type (((list ((T_rt))))%type)))) :=
     spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ex_plain_t _ _ (IntoIter_inv_t_inv_spec Allocator_A_spec_attrs -[] -[T_ty; A_ty]) (((IntoIter_ty (T_rt) (A_rt)) (Allocator_A_spec_attrs)) -[] -[T_ty; A_ty]).
-Global Arguments IntoIter_inv_t_inv_spec : simpl never.
-Global Arguments IntoIter_inv_t : simpl never.
-  Global Typeclasses Transparent IntoIter_inv_t.
-  Definition IntoIter_inv_t_rt : RT.
-  Proof using T_rt A_rt . let __a := normalized_rt_of_spec_ty IntoIter_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent IntoIter_inv_t_rt.
+  #[global] Arguments IntoIter_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments IntoIter_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent IntoIter_inv_t.
+  Definition IntoIter_inv_t_rt  : RT.
+  Proof using T_rt A_rt .
+    let __a := (normalized_rt_of_spec_ty (IntoIter_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent IntoIter_inv_t_rt.
 End IntoIter_inv_t.
-Global Arguments IntoIter_inv_t_rt : clear implicits.
+#[global] Arguments IntoIter_inv_t_rt : clear implicits.
+
+#[global] Arguments IntoIter_inv_t : clear implicits.
+
+#[global] Arguments IntoIter_inv_t {_ _} _ _  .
+
+#[global] Arguments IntoIter_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments IntoIter_inv_t_inv_spec {_ _} _ _  .
+
 
 Section RawVecInner_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (A_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {A_rt : RT}.
+  Definition RawVecInner_ty (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(A_rt)] ((type (plist place_rfnRT [((((unique_Unique_inv_t_rt)) (Z))) : RT; Z : RT; (A_rt) : RT])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[A_ty]) : ([A_rt] : list RT), (struct_t (RawVecInner_sls ((ty_syn_type A_ty MetaNone))) +[((unique_Unique_inv_t (Z) -[] -[(int U8)])); ((int USize)); (A_ty)])).
+  Defined.
 
+  Definition RawVecInner_rt  : RT.
+  Proof using A_rt .
+    let __a := (normalized_rt_of_spec_ty (RawVecInner_ty)) in exact __a.
+  Defined.
 
-Definition RawVecInner_ty (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(A_rt)] ((type (plist place_rfnRT [((((unique_Unique_inv_t_rt)) (Z))) : RT; Z : RT; (A_rt) : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[A_ty]) : ([A_rt] : list RT), ((struct_t (RawVecInner_sls ((A_ty.(ty_syn_type) (MetaNone)))) +[((unique_Unique_inv_t (Z) -[] -[(int U8)])); ((int USize)); (A_ty)]))).
-Defined.
-
-Definition RawVecInner_rt  : RT.
-Proof using A_rt .
-  let __a := (normalized_rt_of_spec_ty (RawVecInner_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent RawVecInner_ty.
-#[global] Typeclasses Transparent RawVecInner_rt.
+  #[global] Typeclasses Transparent RawVecInner_rt.
+  #[global] Typeclasses Transparent RawVecInner_ty.
 End RawVecInner_ty.
-Global Arguments RawVecInner_rt : clear implicits.
+#[global] Arguments RawVecInner_rt : clear implicits.
+
+#[global] Arguments RawVecInner_ty : clear implicits.
+
+#[global] Arguments RawVecInner_ty {_ _} _  .
+
 Section RawVecInner_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (A_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {A_rt : RT}.
+  Program Definition RawVecInner_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(A_rt)] ((ex_inv_def ((RawVecInner_rt (A_rt)))%type (((loc * nat * (A_rt) : RT)%type))%type))) :=
+    spec! ( *[]) : 0 | ( *[A_ty]) : ([A_rt] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt (((loc * nat * (A_rt) : RT)%type)%type : RT)),
+                  let '(l, cap, alloc) := _ty_rfn in ⌜inner_rfn = -[#(l); #(Z.of_nat cap); #(alloc)]⌝ ∗ True)%I
+          (false)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition RawVecInner_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [A_rt] (ex_inv_def ((RawVecInner_rt (A_rt)))%type (((loc * nat * (A_rt) : RT)%type))%type) := spec! ( *[]) : 0 | ( *[A_ty]) : ([A_rt] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt (((loc * nat * (A_rt) : RT)%type)%type : RT)),
-            let '(l, cap, alloc) := _ty_rfn in ⌜inner_rfn = -[#(l); #(Z.of_nat cap); #(alloc)]⌝ ∗ True)%I
-    (false)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition RawVecInner_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [A_rt] (type (((loc * nat * (A_rt) : RT)%type))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    intros ?; ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition RawVecInner_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(A_rt)] ((type ((((loc * nat * (A_rt) : RT)%type))%type)))) :=
     spec! ( *[]) : 0 | ( *[A_ty]) : ([A_rt] : list RT), ex_plain_t _ _ (RawVecInner_inv_t_inv_spec Allocator_A_spec_attrs -[] -[A_ty]) (((RawVecInner_ty (A_rt)) (Allocator_A_spec_attrs)) -[] -[A_ty]).
-Global Arguments RawVecInner_inv_t_inv_spec : simpl never.
-Global Arguments RawVecInner_inv_t : simpl never.
-  Global Typeclasses Transparent RawVecInner_inv_t.
-  Definition RawVecInner_inv_t_rt : RT.
-  Proof using A_rt . let __a := normalized_rt_of_spec_ty RawVecInner_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent RawVecInner_inv_t_rt.
+  #[global] Arguments RawVecInner_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments RawVecInner_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent RawVecInner_inv_t.
+  Definition RawVecInner_inv_t_rt  : RT.
+  Proof using A_rt .
+    let __a := (normalized_rt_of_spec_ty (RawVecInner_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent RawVecInner_inv_t_rt.
 End RawVecInner_inv_t.
-Global Arguments RawVecInner_inv_t_rt : clear implicits.
+#[global] Arguments RawVecInner_inv_t_rt : clear implicits.
+
+#[global] Arguments RawVecInner_inv_t : clear implicits.
+
+#[global] Arguments RawVecInner_inv_t {_ _} _  .
+
+#[global] Arguments RawVecInner_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments RawVecInner_inv_t_inv_spec {_ _} _  .
+
 
 Section RawVec_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT) (A_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT} {A_rt : RT}.
+  Definition RawVec_ty (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type (plist place_rfnRT [((RawVecInner_inv_t_rt ((A_rt)))) : RT; (((core_marker_PhantomData_rt) ((T_rt)))) : RT])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), (struct_t (RawVec_sls ((ty_syn_type T_ty MetaNone)) ((ty_syn_type A_ty MetaNone))) +[((RawVecInner_inv_t ((A_rt)) Allocator_A_spec_attrs -[] -[A_ty])); ((core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty]))])).
+  Defined.
 
+  Definition RawVec_rt  : RT.
+  Proof using T_rt A_rt .
+    let __a := (normalized_rt_of_spec_ty (RawVec_ty)) in exact __a.
+  Defined.
 
-Definition RawVec_ty (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type (plist place_rfnRT [((RawVecInner_inv_t_rt ((A_rt)))) : RT; (((core_marker_PhantomData_rt) ((T_rt)))) : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((struct_t (RawVec_sls ((T_ty.(ty_syn_type) (MetaNone))) ((A_ty.(ty_syn_type) (MetaNone)))) +[((RawVecInner_inv_t ((A_rt)) Allocator_A_spec_attrs -[] -[A_ty])); ((core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty]))]))).
-Defined.
-
-Definition RawVec_rt  : RT.
-Proof using T_rt A_rt .
-  let __a := (normalized_rt_of_spec_ty (RawVec_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent RawVec_ty.
-#[global] Typeclasses Transparent RawVec_rt.
+  #[global] Typeclasses Transparent RawVec_rt.
+  #[global] Typeclasses Transparent RawVec_ty.
 End RawVec_ty.
-Global Arguments RawVec_rt : clear implicits.
+#[global] Arguments RawVec_rt : clear implicits.
+
+#[global] Arguments RawVec_ty : clear implicits.
+
+#[global] Arguments RawVec_ty {_ _} _ _  .
+
 Section RawVec_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT) (A_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT} {A_rt : RT}.
+  Program Definition RawVec_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((ex_inv_def ((RawVec_rt (T_rt) (A_rt)))%type (((loc * nat * list (place_rfn (option (place_rfn (T_rt)))))))%type))) :=
+    spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt (((loc * nat * list (place_rfn (option (place_rfn (T_rt))))))%type : RT)),
+                  let '(l, cap, els) := _ty_rfn in ∃ (a: name_hint_ty "a" (_)%Z), ⌜inner_rfn = -[#((l, cap, $# a)); #(tt)]⌝ ∗ guarded true (l ◁ₗ[π, Owned] #(els) @ (◁ array_t cap (maybe_uninit T_ty))) ∗ Allocator_A_spec_attrs.(Allocator_FreeablePerm) a l (size_of_array_in_bytes (ty_syn_type T_ty MetaNone) cap) ∗ True)%I
+          (false)
+          ([] ++ (ty_lfts (T_ty)))
+          ([] ++ (ty_wf_E (T_ty)))
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition RawVec_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [T_rt; A_rt] (ex_inv_def ((RawVec_rt (T_rt) (A_rt)))%type (((loc * nat * list (place_rfn (option (place_rfn (T_rt)))))))%type) := spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt (((loc * nat * list (place_rfn (option (place_rfn (T_rt))))))%type : RT)),
-            let '(l, cap, els) := _ty_rfn in ∃ (a: name_hint_ty "a" (_)%Z), ⌜inner_rfn = -[#((l, cap, $# a)); #(tt)]⌝ ∗ guarded true (l ◁ₗ[π, Owned] #(els) @ (◁ array_t cap (maybe_uninit T_ty))) ∗ Allocator_A_spec_attrs.(Allocator_FreeablePerm) a l (size_of_array_in_bytes (ty_syn_type T_ty MetaNone) cap) ∗ True)%I
-    (false)
-    ([] ++ (ty_lfts (T_ty)))
-    ([] ++ (ty_wf_E (T_ty)))
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition RawVec_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [T_rt; A_rt] (type (((loc * nat * list (place_rfn (option (place_rfn (T_rt)))))))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    intros ?; ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition RawVec_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type ((((loc * nat * list (place_rfn (option (place_rfn (T_rt)))))))%type)))) :=
     spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ex_plain_t _ _ (RawVec_inv_t_inv_spec Allocator_A_spec_attrs -[] -[T_ty; A_ty]) (((RawVec_ty (T_rt) (A_rt)) (Allocator_A_spec_attrs)) -[] -[T_ty; A_ty]).
-Global Arguments RawVec_inv_t_inv_spec : simpl never.
-Global Arguments RawVec_inv_t : simpl never.
-  Global Typeclasses Transparent RawVec_inv_t.
-  Definition RawVec_inv_t_rt : RT.
-  Proof using T_rt A_rt . let __a := normalized_rt_of_spec_ty RawVec_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent RawVec_inv_t_rt.
+  #[global] Arguments RawVec_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments RawVec_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent RawVec_inv_t.
+  Definition RawVec_inv_t_rt  : RT.
+  Proof using T_rt A_rt .
+    let __a := (normalized_rt_of_spec_ty (RawVec_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent RawVec_inv_t_rt.
 End RawVec_inv_t.
-Global Arguments RawVec_inv_t_rt : clear implicits.
+#[global] Arguments RawVec_inv_t_rt : clear implicits.
+
+#[global] Arguments RawVec_inv_t : clear implicits.
+
+#[global] Arguments RawVec_inv_t {_ _} _ _  .
+
+#[global] Arguments RawVec_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments RawVec_inv_t_inv_spec {_ _} _ _  .
+
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
@@ -336,51 +476,81 @@ Program Definition IterMutaTasstd_iter_Iterator_spec_attrs `{RRGS : !(refinedrus
 End attrs.
 
 Section Vec_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT) (A_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT} {A_rt : RT}.
+  Definition Vec_ty (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type (plist place_rfnRT [((RawVec_inv_t_rt ((T_rt)) ((A_rt)))) : RT; Z : RT])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), (struct_t (Vec_sls ((ty_syn_type T_ty MetaNone)) ((ty_syn_type A_ty MetaNone))) +[((RawVec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty])); ((int USize))])).
+  Defined.
 
+  Definition Vec_rt  : RT.
+  Proof using T_rt A_rt .
+    let __a := (normalized_rt_of_spec_ty (Vec_ty)) in exact __a.
+  Defined.
 
-Definition Vec_ty (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type (plist place_rfnRT [((RawVec_inv_t_rt ((T_rt)) ((A_rt)))) : RT; Z : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((struct_t (Vec_sls ((T_ty.(ty_syn_type) (MetaNone))) ((A_ty.(ty_syn_type) (MetaNone)))) +[((RawVec_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty])); ((int USize))]))).
-Defined.
-
-Definition Vec_rt  : RT.
-Proof using T_rt A_rt .
-  let __a := (normalized_rt_of_spec_ty (Vec_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent Vec_ty.
-#[global] Typeclasses Transparent Vec_rt.
+  #[global] Typeclasses Transparent Vec_rt.
+  #[global] Typeclasses Transparent Vec_ty.
 End Vec_ty.
-Global Arguments Vec_rt : clear implicits.
+#[global] Arguments Vec_rt : clear implicits.
+
+#[global] Arguments Vec_ty : clear implicits.
+
+#[global] Arguments Vec_ty {_ _} _ _  .
+
 Section Vec_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (T_rt : RT) (A_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {T_rt : RT} {A_rt : RT}.
+  Program Definition Vec_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((ex_inv_def ((Vec_rt (T_rt) (A_rt)))%type ((list (place_rfn (T_rt))))%type))) :=
+    spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), mk_ex_inv_def_auto_shr
+          (λ π inner_rfn (_ty_rfn : RT_rt ((list (place_rfn (T_rt)))%type : RT)),
+                  let 'xs := _ty_rfn in ∃ (cap: name_hint_ty "cap" ((nat))%Z) (l: name_hint_ty "l" ((loc))%Z) (len: name_hint_ty "len" ((nat))%Z) (els: name_hint_ty "els" (_)%Z), ⌜inner_rfn = -[#((l, cap, els)); #(Z.of_nat len)]⌝ ∗ ⌜(name_hint "Hxs" (xs = project_vec_els len els)%Z)%Z⌝ ∗ ⌜(name_hint "Hlook_1" (∀ i, (0 ≤ i < len)%nat → els !! i = Some (#(Some (xs !!! i))))%Z)%Z⌝ ∗ ⌜(name_hint "Hlook_2" (∀ i, (len ≤ i < cap)%nat → els !! i = Some (#None))%Z)%Z⌝ ∗ ⌜(name_hint "Hlen_eq" (len = length xs)%Z)%Z⌝ ∗ ⌜(name_hint "Hcap" (len ≤ cap)%Z)%Z⌝ ∗ ⌜(name_hint "Hbound" (len ≤ MaxInt usize)%Z)%Z⌝ ∗ ⌜(if decide (size_of_st (ty_syn_type T_ty MetaNone) = 0%nat) then cap = Z.to_nat (MaxInt USize) else (size_of_array_in_bytes (ty_syn_type T_ty MetaNone) cap ≤ MaxInt ISize)%Z)%Z⌝ ∗ True)%I
+          (λ π _ (_rfn_binder : RT_rt ((list (place_rfn (T_rt)))%type : RT)),
+                  let 'xs := _rfn_binder in (True) ∗ True)%I
+          (false)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition Vec_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [T_rt; A_rt] (ex_inv_def ((Vec_rt (T_rt) (A_rt)))%type ((list (place_rfn (T_rt))))%type) := spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt ((list (place_rfn (T_rt)))%type : RT)),
-            let 'xs := _ty_rfn in ∃ (cap: name_hint_ty "cap" ((nat))%Z) (l: name_hint_ty "l" ((loc))%Z) (len: name_hint_ty "len" ((nat))%Z) (els: name_hint_ty "els" (_)%Z), ⌜inner_rfn = -[#((l, cap, els)); #(Z.of_nat len)]⌝ ∗ ⌜(name_hint "Hxs" (xs = project_vec_els len els)%Z)%Z⌝ ∗ ⌜(name_hint "Hlook_1" (∀ i, (0 ≤ i < len)%nat → els !! i = Some (#(Some (xs !!! i))))%Z)%Z⌝ ∗ ⌜(name_hint "Hlook_2" (∀ i, (len ≤ i < cap)%nat → els !! i = Some (#None))%Z)%Z⌝ ∗ ⌜(name_hint "Hlen_eq" (len = length xs)%Z)%Z⌝ ∗ ⌜(name_hint "Hcap" (len ≤ cap)%Z)%Z⌝ ∗ ⌜(name_hint "Hbound" (len ≤ MaxInt usize)%Z)%Z⌝ ∗ ⌜(if decide (size_of_st (ty_syn_type T_ty MetaNone) = 0%nat) then cap = Z.to_nat (MaxInt USize) else (size_of_array_in_bytes (ty_syn_type T_ty MetaNone) cap ≤ MaxInt ISize)%Z)%Z⌝ ∗ True)%I
-    (false)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
 
-  Definition Vec_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : spec_with 0 [T_rt; A_rt] (type ((list (place_rfn (T_rt))))%type) :=
+  Next Obligation.
+    intros ?; ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Next Obligation.
+    intros ?; ex_plain_t_solve_ghost_drop.
+  Qed.
+
+  Definition Vec_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type (((list (place_rfn (T_rt))))%type)))) :=
     spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ex_plain_t _ _ (Vec_inv_t_inv_spec Allocator_A_spec_attrs -[] -[T_ty; A_ty]) (((Vec_ty (T_rt) (A_rt)) (Allocator_A_spec_attrs)) -[] -[T_ty; A_ty]).
-Global Arguments Vec_inv_t_inv_spec : simpl never.
-Global Arguments Vec_inv_t : simpl never.
-  Global Typeclasses Transparent Vec_inv_t.
-  Definition Vec_inv_t_rt : RT.
-  Proof using T_rt A_rt . let __a := normalized_rt_of_spec_ty Vec_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent Vec_inv_t_rt.
+  #[global] Arguments Vec_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments Vec_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent Vec_inv_t.
+  Definition Vec_inv_t_rt  : RT.
+  Proof using T_rt A_rt .
+    let __a := (normalized_rt_of_spec_ty (Vec_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent Vec_inv_t_rt.
 End Vec_inv_t.
-Global Arguments Vec_inv_t_rt : clear implicits.
+#[global] Arguments Vec_inv_t_rt : clear implicits.
+
+#[global] Arguments Vec_inv_t : clear implicits.
+
+#[global] Arguments Vec_inv_t {_ _} _ _  .
+
+#[global] Arguments Vec_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments Vec_inv_t_inv_spec {_ _} _ _  .
+
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
@@ -433,15 +603,79 @@ Context `{RRGS : !refinedrustGS Σ}.
 Section Vec_inv_t_ne.
   Context `{!refinedrustGS Σ}.
 
+  Global Instance RawVec_inv_t_contr {rt1 T_rt A_rt} Alloc (T : type rt1 → type T_rt) (A : type A_rt) :
+    TypeNonExpansive T →
+    TypeContractive (λ ty, RawVec_inv_t T_rt A_rt Alloc <TY> (T ty) <TY> A <INST!>).
+  Proof.
+    intros X.
+    apply ex_plain_t_contr.
+    - constructor.
+      + solve_type_proper.
+      + solve_type_proper.
+    - cbn; apply _.
+  Qed.
+  Global Instance RawVec_inv_t_ne {rt1 T_rt A_rt} Alloc (T : type rt1 → type T_rt) (A : type A_rt) :
+    TypeNonExpansive T →
+    TypeNonExpansive (λ ty, RawVec_inv_t T_rt A_rt Alloc <TY> (T ty) <TY> A <INST!>).
+  Proof. apply _. Qed.
+
+  Instance RawVec_inv_t_dep_lft_mor rts (T_rt A_rt : RT) (A_attrs : Allocator_spec_attrs A_rt) (A_ty : type A_rt) (T : mut_types rts → type T_rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, RawVec_inv_t_inv_spec T_rt A_rt A_attrs *[] *[(T x); A_ty]).
+  Proof.
+    simpl.
+    intros Hdep.
+    eapply (dep_lft_morph_make_id _ T); first done.
+    - simpl. done.
+    - done.
+  Defined.
+  Global Instance RawVec_inv_t_dep_lft_mor' rts (T_rt A_rt : RT) (A_attrs : Allocator_spec_attrs A_rt) (A_ty : type A_rt) (T : mut_types rts → type T_rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, RawVec_inv_t T_rt A_rt A_attrs *[] *[(T x); A_ty]).
+  Proof.
+    intros Ha.
+    eapply mk_ex_plain_t_dep_lft_morphism; [apply _.. | ].
+    abstract (set_solver).
+  Defined.
+
   Global Instance Vec_inv_t_contr {rt1 T_rt A_rt} Alloc (T : type rt1 → type T_rt) (A : type A_rt) :
     TypeNonExpansive T →
     TypeContractive (λ ty, Vec_inv_t T_rt A_rt Alloc <TY> (T ty) <TY> A <INST!>).
   Proof.
-  Admitted.
+    intros X.
+    apply ex_plain_t_contr.
+    - constructor.
+      + solve_type_proper_prepare; solve_proper_prepare.
+        repeat solve_proper_step.
+        rewrite type_dist2_st.
+        done.
+      + solve_type_proper_prepare; solve_proper_prepare.
+        repeat solve_proper_step.
+        erewrite type_ne_syn_type; first done.
+        apply type_dist_later2_st.
+    - cbn; apply _.
+  Qed.
   Global Instance Vec_inv_t_ne {rt1 T_rt A_rt} Alloc (T : type rt1 → type T_rt) (A : type A_rt) :
     TypeNonExpansive T →
     TypeNonExpansive (λ ty, Vec_inv_t T_rt A_rt Alloc <TY> (T ty) <TY> A <INST!>).
-  Proof. Admitted.
+  Proof. apply _. Qed.
+
+  Instance Vec_inv_t_dep_lft_mor rts (T_rt A_rt : RT) (A_attrs : Allocator_spec_attrs A_rt) (A_ty : type A_rt) (T : mut_types rts → type T_rt) :
+    DepLftMorphism ∅ (λ x : mut_types rts, Vec_inv_t_inv_spec T_rt A_rt A_attrs *[] *[(T x); A_ty]).
+  Proof.
+    simpl.
+    eapply (mk_dep_lft_morph_const).
+    - simpl. abstract (iIntros (?); iApply lft_equiv_refl).
+    - simpl. abstract (done).
+  Defined.
+  Global Instance Vec_inv_t_dep_lft_mor' rts (T_rt A_rt : RT) (A_attrs : Allocator_spec_attrs A_rt) (A_ty : type A_rt) (T : mut_types rts → type T_rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, Vec_inv_t T_rt A_rt A_attrs *[] *[(T x); A_ty]).
+  Proof.
+    intros Ha.
+    eapply mk_ex_plain_t_dep_lft_morphism; [apply _.. | ].
+    abstract (set_solver).
+  Defined.
 End Vec_inv_t_ne.
 
 

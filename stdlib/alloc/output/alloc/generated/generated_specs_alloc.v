@@ -19,42 +19,48 @@ Record Allocator_spec_attrs `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} : Typ
 
 
 Section Global_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition Global_ty  : (spec_with 0 [] ((type (plist place_rfnRT [])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (struct_t Global_sls +[])).
+  Defined.
 
+  Definition Global_rt  : RT.
+  Proof using  .
+    let __a := (normalized_rt_of_spec_ty (Global_ty)) in exact __a.
+  Defined.
 
-Definition Global_ty  : (spec_with 0 [] ((type (plist place_rfnRT [])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ((struct_t Global_sls +[]))).
-Defined.
-
-Definition Global_rt  : RT.
-Proof using  .
-  let __a := (normalized_rt_of_spec_ty (Global_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent Global_ty.
-#[global] Typeclasses Transparent Global_rt.
+  #[global] Typeclasses Transparent Global_rt.
+  #[global] Typeclasses Transparent Global_ty.
 End Global_ty.
-Global Arguments Global_rt : clear implicits.
+#[global] Arguments Global_rt : clear implicits.
+
+#[global] Arguments Global_ty : clear implicits.
+
+#[global] Arguments Global_ty {_ _}  .
+
 
 Section layout_LayoutError_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition layout_LayoutError_ty  : (spec_with 0 [] ((type (plist place_rfnRT [])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (struct_t layout_LayoutError_sls +[])).
+  Defined.
 
+  Definition layout_LayoutError_rt  : RT.
+  Proof using  .
+    let __a := (normalized_rt_of_spec_ty (layout_LayoutError_ty)) in exact __a.
+  Defined.
 
-Definition layout_LayoutError_ty  : (spec_with 0 [] ((type (plist place_rfnRT [])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ((struct_t layout_LayoutError_sls +[]))).
-Defined.
-
-Definition layout_LayoutError_rt  : RT.
-Proof using  .
-  let __a := (normalized_rt_of_spec_ty (layout_LayoutError_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent layout_LayoutError_ty.
-#[global] Typeclasses Transparent layout_LayoutError_rt.
+  #[global] Typeclasses Transparent layout_LayoutError_rt.
+  #[global] Typeclasses Transparent layout_LayoutError_ty.
 End layout_LayoutError_ty.
-Global Arguments layout_LayoutError_rt : clear implicits.
+#[global] Arguments layout_LayoutError_rt : clear implicits.
+
+#[global] Arguments layout_LayoutError_ty : clear implicits.
+
+#[global] Arguments layout_LayoutError_ty {_ _}  .
+
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
@@ -69,59 +75,119 @@ Program Definition GlobalasAllocator_spec_attrs `{RRGS : !(refinedrustGS Σ)} : 
 End attrs.
 
 Section layout_Layout_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition layout_Layout_ty  : (spec_with 0 [] ((type (plist place_rfnRT [Z : RT; (((alignment_Alignment_inv_t_rt))) : RT])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (struct_t layout_Layout_sls +[((int USize)); ((alignment_Alignment_inv_t  -[] -[]))])).
+  Defined.
 
+  Definition layout_Layout_rt  : RT.
+  Proof using  .
+    let __a := (normalized_rt_of_spec_ty (layout_Layout_ty)) in exact __a.
+  Defined.
 
-Definition layout_Layout_ty  : (spec_with 0 [] ((type (plist place_rfnRT [Z : RT; (((alignment_Alignment_inv_t_rt))) : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ((struct_t layout_Layout_sls +[((int USize)); ((alignment_Alignment_inv_t  -[] -[]))]))).
-Defined.
-
-Definition layout_Layout_rt  : RT.
-Proof using  .
-  let __a := (normalized_rt_of_spec_ty (layout_Layout_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent layout_Layout_ty.
-#[global] Typeclasses Transparent layout_Layout_rt.
+  #[global] Typeclasses Transparent layout_Layout_rt.
+  #[global] Typeclasses Transparent layout_Layout_ty.
 End layout_Layout_ty.
-Global Arguments layout_Layout_rt : clear implicits.
+#[global] Arguments layout_Layout_rt : clear implicits.
+
+#[global] Arguments layout_Layout_ty : clear implicits.
+
+#[global] Arguments layout_Layout_ty {_ _}  .
+
 Section layout_Layout_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Program Definition layout_Layout_inv_t_inv_spec  : (spec_with 0 [] ((ex_inv_def (layout_Layout_rt)%type ((rust_layout))%type))) :=
+    spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt ((rust_layout)%type : RT)),
+                  let 'l := _ty_rfn in ⌜inner_rfn = -[#(Z.of_nat l.(layout_sz)); #(l.(layout_alignment))]⌝ ∗ ⌜(layout_wf l)%Z⌝ ∗ ⌜(Z.of_nat l.(layout_sz) ∈ isize)%Z⌝ ∗ True)%I
+          (true)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition layout_Layout_inv_t_inv_spec  : spec_with 0 [] (ex_inv_def (layout_Layout_rt)%type ((rust_layout))%type) := spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt ((rust_layout)%type : RT)),
-            let 'l := _ty_rfn in ⌜inner_rfn = -[#(Z.of_nat l.(layout_sz)); #(l.(layout_alignment))]⌝ ∗ ⌜(layout_wf l)%Z⌝ ∗ ⌜(Z.of_nat l.(layout_sz) ∈ isize)%Z⌝ ∗ True)%I
-    (true)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition layout_Layout_inv_t  : spec_with 0 [] (type ((rust_layout))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition layout_Layout_inv_t  : (spec_with 0 [] ((type (((rust_layout))%type)))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ex_plain_t _ _ (layout_Layout_inv_t_inv_spec  -[] -[]) (layout_Layout_ty -[] -[]).
-Global Arguments layout_Layout_inv_t_inv_spec : simpl never.
-Global Arguments layout_Layout_inv_t : simpl never.
-  Global Typeclasses Transparent layout_Layout_inv_t.
-  Definition layout_Layout_inv_t_rt : RT.
-  Proof using  . let __a := normalized_rt_of_spec_ty layout_Layout_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent layout_Layout_inv_t_rt.
+  #[global] Arguments layout_Layout_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments layout_Layout_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent layout_Layout_inv_t.
+  Definition layout_Layout_inv_t_rt  : RT.
+  Proof using  .
+    let __a := (normalized_rt_of_spec_ty (layout_Layout_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent layout_Layout_inv_t_rt.
 End layout_Layout_inv_t.
-Global Arguments layout_Layout_inv_t_rt : clear implicits.
+#[global] Arguments layout_Layout_inv_t_rt : clear implicits.
+
+#[global] Arguments layout_Layout_inv_t : clear implicits.
+
+#[global] Arguments layout_Layout_inv_t {_ _}  .
+
+#[global] Arguments layout_Layout_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments layout_Layout_inv_t_inv_spec {_ _}  .
+
 
 Section closure_attrs.
 Context `{RRGS : !refinedrustGS Σ}.
 End closure_attrs.
 
 (* Included specifications from configured file extra_specs.v *)
-Global Instance shareable_discard_freeable `{!refinedrustGS Σ} {Self_rt : RT} (A : Allocator_spec_attrs Self_rt) π κ κs a l n :
+
+Section extra_specs.
+Context `{!refinedrustGS Σ}.
+
+Global Instance shareable_discard_freeable {Self_rt : RT} (A : Allocator_spec_attrs Self_rt) π κ κs a l n :
   Shareable π κ κs (A.(Allocator_FreeablePerm) a l n) := shareable_discard _ _ _ _.
-Global Instance ghost_droppable_discard_freeable `{!refinedrustGS Σ} {Self_rt : RT} (A : Allocator_spec_attrs Self_rt) a l n :
+Global Instance ghost_droppable_discard_freeable {Self_rt : RT} (A : Allocator_spec_attrs Self_rt) a l n :
   GhostDroppable (A.(Allocator_FreeablePerm) a l n) := ghost_droppable_discard _.
+
+Definition FindAllocatorFreeable {Self_rt : RT} (A_attr : Allocator_spec_attrs Self_rt) (x : RT_xt Self_rt) (l : loc) :=
+  {| fic_A := (nat); fic_Prop size := Allocator_FreeablePerm A_attr x l size |}.
+Global Typeclasses Opaque FindAllocatorFreeable.
+
+Global Instance related_to_allocator_freeable {Self_rt : RT} (A_attr : Allocator_spec_attrs Self_rt) x l n : RelatedTo (Allocator_FreeablePerm A_attr x l n) | 100 :=
+  {| rt_fic := FindAllocatorFreeable A_attr x l |}.
+
+Lemma subsume_allocator_freeable {Self_rt : RT} (A_attr : Allocator_spec_attrs Self_rt) x1 x2 l1 l2 n1 n2 T :
+  ⌜l1 = l2⌝ ∗ ⌜n1 = n2⌝ ∗ ⌜x1 = x2⌝ ∗ T
+  ⊢ subsume (Allocator_FreeablePerm A_attr x1 l1 n1) (Allocator_FreeablePerm A_attr x2 l2 n2) T.
+Proof.
+  iIntros "(-> & -> & -> & $)". eauto.
+Qed.
+Definition subsume_allocator_freeable_inst := [instance @subsume_allocator_freeable].
+Global Existing Instance subsume_allocator_freeable_inst.
+
+Lemma find_in_context_allocator_freeable {Self_rt : RT} (A_attr : Allocator_spec_attrs Self_rt) x l T :
+  (∃ n, Allocator_FreeablePerm A_attr x l n ∗ T n)
+  ⊢ find_in_context (FindAllocatorFreeable A_attr x l) T.
+Proof.
+  iDestruct 1 as (n) "(Ha & HT)".
+  iExists n. by iFrame.
+Qed.
+Definition find_in_context_allocator_freeable_inst := [instance @find_in_context_allocator_freeable with FICSyntactic].
+Global Existing Instance find_in_context_allocator_freeable_inst | 1.
+
+End extra_specs.
 Record Allocator_spec `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} : Type := mk_Allocator_spec {
 }.
 #[global] Arguments Allocator_spec : clear implicits.

@@ -5,51 +5,79 @@ From rrstd.option.option.generated Require Export generated_specs_option.
 From rrstd.range.range Require Export generated_code_range.
 
 Section Range_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (Idx_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {Idx_rt : RT}.
+  Definition Range_ty  : (spec_with 0 [(Idx_rt)] ((type (plist place_rfnRT [(Idx_rt) : RT; (Idx_rt) : RT])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[Idx_ty]) : ([Idx_rt] : list RT), (struct_t (Range_sls ((ty_syn_type Idx_ty MetaNone))) +[(Idx_ty); (Idx_ty)])).
+  Defined.
 
+  Definition Range_rt  : RT.
+  Proof using Idx_rt .
+    let __a := (normalized_rt_of_spec_ty (Range_ty)) in exact __a.
+  Defined.
 
-Definition Range_ty  : (spec_with 0 [(Idx_rt)] ((type (plist place_rfnRT [(Idx_rt) : RT; (Idx_rt) : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[Idx_ty]) : ([Idx_rt] : list RT), ((struct_t (Range_sls ((Idx_ty.(ty_syn_type) (MetaNone)))) +[(Idx_ty); (Idx_ty)]))).
-Defined.
-
-Definition Range_rt  : RT.
-Proof using Idx_rt .
-  let __a := (normalized_rt_of_spec_ty (Range_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent Range_ty.
-#[global] Typeclasses Transparent Range_rt.
+  #[global] Typeclasses Transparent Range_rt.
+  #[global] Typeclasses Transparent Range_ty.
 End Range_ty.
-Global Arguments Range_rt : clear implicits.
+#[global] Arguments Range_rt : clear implicits.
+
+#[global] Arguments Range_ty : clear implicits.
+
+#[global] Arguments Range_ty {_ _} _  .
+
 Section Range_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-  Context (Idx_rt : RT).
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {Idx_rt : RT}.
+  Program Definition Range_inv_t_inv_spec  : (spec_with 0 [(Idx_rt)] ((ex_inv_def ((Range_rt (Idx_rt)))%type (((Idx_rt) * (Idx_rt)))%type))) :=
+    spec! ( *[]) : 0 | ( *[Idx_ty]) : ([Idx_rt] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt (((Idx_rt) * (Idx_rt))%type : RT)),
+                  let '(rstart, rend) := _ty_rfn in ⌜inner_rfn = -[#(rstart); #(rend)]⌝ ∗ True)%I
+          (false)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition Range_inv_t_inv_spec  : spec_with 0 [Idx_rt] (ex_inv_def ((Range_rt (Idx_rt)))%type (((Idx_rt) * (Idx_rt)))%type) := spec! ( *[]) : 0 | ( *[Idx_ty]) : ([Idx_rt] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt (((Idx_rt) * (Idx_rt))%type : RT)),
-            let '(rstart, rend) := _ty_rfn in ⌜inner_rfn = -[#(rstart); #(rend)]⌝ ∗ True)%I
-    (false)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition Range_inv_t  : spec_with 0 [Idx_rt] (type (((Idx_rt) * (Idx_rt)))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition Range_inv_t  : (spec_with 0 [(Idx_rt)] ((type ((((Idx_rt) * (Idx_rt)))%type)))) :=
     spec! ( *[]) : 0 | ( *[Idx_ty]) : ([Idx_rt] : list RT), ex_plain_t _ _ (Range_inv_t_inv_spec  -[] -[Idx_ty]) ((Range_ty (Idx_rt)) -[] -[Idx_ty]).
-Global Arguments Range_inv_t_inv_spec : simpl never.
-Global Arguments Range_inv_t : simpl never.
-  Global Typeclasses Transparent Range_inv_t.
-  Definition Range_inv_t_rt : RT.
-  Proof using Idx_rt . let __a := normalized_rt_of_spec_ty Range_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent Range_inv_t_rt.
+  #[global] Arguments Range_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments Range_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent Range_inv_t.
+  Definition Range_inv_t_rt  : RT.
+  Proof using Idx_rt .
+    let __a := (normalized_rt_of_spec_ty (Range_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent Range_inv_t_rt.
 End Range_inv_t.
-Global Arguments Range_inv_t_rt : clear implicits.
+#[global] Arguments Range_inv_t_rt : clear implicits.
+
+#[global] Arguments Range_inv_t : clear implicits.
+
+#[global] Arguments Range_inv_t {_ _} _  .
+
+#[global] Arguments Range_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments Range_inv_t_inv_spec {_ _} _  .
+
 
 Section closure_attrs.
 Context `{RRGS : !refinedrustGS Σ}.

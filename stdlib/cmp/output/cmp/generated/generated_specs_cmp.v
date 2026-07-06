@@ -297,82 +297,103 @@ Program Definition usizeasPartialEq_spec_attrs `{RRGS : !(refinedrustGS Σ)} : (
 End attrs.
 
 Section Ordering_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
-
+  Context `{RRGS : !(refinedrustGS Σ)}.
   Section components.
-Definition Ordering_Less_ty  : (spec_with 0 [] ((type (plist place_rfnRT [])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ((struct_t Ordering_Less_sls +[]))).
-Defined.
+    Definition Ordering_Less_ty  : (spec_with 0 [] ((type (plist place_rfnRT [])))).
+    Proof.
+      exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (struct_t Ordering_Less_sls +[])).
+    Defined.
 
-Definition Ordering_Less_rt  : RT.
-Proof using  .
-  let __a := (normalized_rt_of_spec_ty (Ordering_Less_ty)) in exact __a.
-Defined.
+    Definition Ordering_Less_rt  : RT.
+    Proof using  .
+      let __a := (normalized_rt_of_spec_ty (Ordering_Less_ty)) in exact __a.
+    Defined.
 
-#[global] Typeclasses Transparent Ordering_Less_ty.
-#[global] Typeclasses Transparent Ordering_Less_rt.
+    #[global] Typeclasses Transparent Ordering_Less_rt.
+    #[global] Typeclasses Transparent Ordering_Less_ty.
+    Definition Ordering_Equal_ty  : (spec_with 0 [] ((type (plist place_rfnRT [])))).
+    Proof.
+      exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (struct_t Ordering_Equal_sls +[])).
+    Defined.
 
-Definition Ordering_Equal_ty  : (spec_with 0 [] ((type (plist place_rfnRT [])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ((struct_t Ordering_Equal_sls +[]))).
-Defined.
+    Definition Ordering_Equal_rt  : RT.
+    Proof using  .
+      let __a := (normalized_rt_of_spec_ty (Ordering_Equal_ty)) in exact __a.
+    Defined.
 
-Definition Ordering_Equal_rt  : RT.
-Proof using  .
-  let __a := (normalized_rt_of_spec_ty (Ordering_Equal_ty)) in exact __a.
-Defined.
+    #[global] Typeclasses Transparent Ordering_Equal_rt.
+    #[global] Typeclasses Transparent Ordering_Equal_ty.
+    Definition Ordering_Greater_ty  : (spec_with 0 [] ((type (plist place_rfnRT [])))).
+    Proof.
+      exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (struct_t Ordering_Greater_sls +[])).
+    Defined.
 
-#[global] Typeclasses Transparent Ordering_Equal_ty.
-#[global] Typeclasses Transparent Ordering_Equal_rt.
+    Definition Ordering_Greater_rt  : RT.
+    Proof using  .
+      let __a := (normalized_rt_of_spec_ty (Ordering_Greater_ty)) in exact __a.
+    Defined.
 
-Definition Ordering_Greater_ty  : (spec_with 0 [] ((type (plist place_rfnRT [])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ((struct_t Ordering_Greater_sls +[]))).
-Defined.
+    #[global] Typeclasses Transparent Ordering_Greater_rt.
+    #[global] Typeclasses Transparent Ordering_Greater_ty.
+    Definition Ordering_enum_rt  :=
+      λ rfn : (ordering), match rfn with | Less => Ordering_Less_rt| Equal => Ordering_Equal_rt| Greater => Ordering_Greater_rt end.
+    Definition Ordering_enum_ty  : (spec_with 0 [] (∀ (x: _), (type (Ordering_enum_rt (x))))) :=
+      spec! ( *[]) : 0 | ( *[]) : ([] : list RT), λ rfn, match rfn as x return type (Ordering_enum_rt x) with | Less => Ordering_Less_ty -[] -[]| Equal => Ordering_Equal_ty -[] -[]| Greater => Ordering_Greater_ty -[] -[] end.
+    Program Definition Ordering_enum  : (spec_with 0 [] ((enum ((ordering))))) :=
+      spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_enum
+        _
+        (Ordering_els)
+        (λ rfn, Some (match rfn with | Less => "Less" | Equal => "Equal" | Greater => "Greater" end))
+        (Ordering_enum_rt)
+        (Ordering_enum_ty -[] -[])
+        (λ rfn, match rfn with | Less => *[]| Equal => *[]| Greater => *[] end)
+        ([("Less", mk_enum_tag_sem _ (Ordering_Less_ty -[] -[]) (λ '( *[]), Less)); ("Equal", mk_enum_tag_sem _ (Ordering_Equal_ty -[] -[]) (λ '( *[]), Equal)); ("Greater", mk_enum_tag_sem _ (Ordering_Greater_ty -[] -[]) (λ '( *[]), Greater))])
+        _
+        _.
+    Next Obligation.
+      solve_inhabited.
+    Defined.
 
-Definition Ordering_Greater_rt  : RT.
-Proof using  .
-  let __a := (normalized_rt_of_spec_ty (Ordering_Greater_ty)) in exact __a.
-Defined.
+    Next Obligation.
+      done.
+    Qed.
 
-#[global] Typeclasses Transparent Ordering_Greater_ty.
-#[global] Typeclasses Transparent Ordering_Greater_rt.
+    Next Obligation.
+      solve_mk_enum_tag_consistent.
+    Defined.
 
-  Definition Ordering_enum_rt  :=
-  λ rfn : (ordering), match rfn with | Less => Ordering_Less_rt| Equal => Ordering_Equal_rt| Greater => Ordering_Greater_rt end.
-  Definition Ordering_enum_ty  : (spec_with 0 [] (∀ (x: _), (type (Ordering_enum_rt (x))))) :=
-  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), λ rfn, match rfn as x return type (Ordering_enum_rt x) with | Less => Ordering_Less_ty -[] -[]| Equal => Ordering_Equal_ty -[] -[]| Greater => Ordering_Greater_ty -[] -[] end.
-  Program Definition Ordering_enum : spec_with 0 [] (enum ((ordering))) := spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_enum
-    _
-    (Ordering_els)
-    (λ rfn, Some (match rfn with | Less => "Less" | Equal => "Equal" | Greater => "Greater" end))
-    (Ordering_enum_rt)
-    (Ordering_enum_ty -[] -[])
-    (λ rfn, match rfn with | Less => *[]| Equal => *[]| Greater => *[] end)
-    (λ variant, if (decide (variant = "Less")) then Some $ mk_enum_tag_sem _ (Ordering_Less_ty -[] -[]) (λ '( *[]), Less) else if (decide (variant = "Equal")) then Some $ mk_enum_tag_sem _ (Ordering_Equal_ty -[] -[]) (λ '( *[]), Equal) else if (decide (variant = "Greater")) then Some $ mk_enum_tag_sem _ (Ordering_Greater_ty -[] -[]) (λ '( *[]), Greater) else None)
-    ([])
-    ([])
-    _ _ _.
-  Next Obligation. solve_inhabited. Defined.
-  Next Obligation. solve_mk_enum_ty_lfts_incl. Qed.
-  Next Obligation. solve_mk_enum_ty_wf_E. Qed.
-  Next Obligation. solve_mk_enum_tag_consistent. Defined.
+    #[global] Arguments Ordering_enum : simpl never.
 
-  Global Arguments Ordering_enum : simpl never.
+    Definition Ordering_ty_pre  : (spec_with 0 [] ((type _))) :=
+      spec! ( *[]) : 0 | ( *[]) : ([] : list RT), enum_t (Ordering_enum -[] -[]).
+    Definition Ordering_rt_pre  : RT.
+    Proof using  .
+      let __a := (normalized_rt_of_spec_ty (Ordering_ty_pre)) in exact __a.
+    Defined.
 
+    #[global] Typeclasses Transparent Ordering_rt_pre.
   End components.
-  Definition Ordering_ty : spec_with 0 [] (type _) := spec! ( *[]) : 0 | ( *[]) : ([] : list RT), enum_t (Ordering_enum -[] -[]).
-  Definition Ordering_rt : RT.
-  Proof using . let __a := normalized_rt_of_spec_ty Ordering_ty in exact __a. Defined.
-  Global Typeclasses Transparent Ordering_ty.
-  Global Typeclasses Transparent Ordering_rt.
+  Arguments enum_ty : simpl never.
 
+  Definition Ordering_ty  : (spec_with 0 [] ((type _))) :=
+    spec! ( *[]) : 0 | ( *[]) : ([] : list RT), enum_t (Ordering_enum -[] -[]).
+  Definition Ordering_rt  : RT.
+  Proof using  .
+    let __a := (normalized_rt_of_spec_ty (Ordering_ty)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent Ordering_rt.
 End Ordering_ty.
-Global Arguments Ordering_enum : simpl never.
-Global Arguments Ordering_rt : clear implicits.
-Global Arguments Ordering_ty : clear implicits.
-Global Arguments Ordering_ty {_ _}.
+#[global] Typeclasses Transparent Ordering_ty.
+#[global] Typeclasses Transparent Ordering_rt.
+#[global] Arguments Ordering_enum : simpl never.
+
+#[global] Arguments Ordering_rt : clear implicits.
+
+#[global] Arguments Ordering_ty : clear implicits.
+
+#[global] Arguments Ordering_ty {_ _}  .
+
 Global Hint Unfold Ordering_ty : solve_protected_eq_db.
 
 Section attrs.

@@ -35,4 +35,54 @@ Proof.
 Qed.
 Definition Option_ty_weak_subtype_None_inst := [instance Option_ty_weak_subtype_None].
 #[export] Existing Instance Option_ty_weak_subtype_None_inst.
+
+Global Instance option_contr {rt1 T_rt} (T : type rt1 → type T_rt) : 
+  TypeContractive T → 
+  TypeContractive (λ ty, Option_ty T_rt *[] *[T ty]).
+Proof.
+  intros ?. 
+  apply enum_t_contr.
+  unshelve econstructor.
+  - enum_contractive_solve_eq.
+  - intros. simpl. by erewrite type_ctr_syn_type.
+  - enum_contractive_solve_eq.
+  - enum_contractive_solve_eq.
+  - intros. simpl. 
+    eapply (type_contractive_dist _ _ (λ ty, enum_ty (Option_enum -[] -[T ty]) r)); last done.
+    destruct r; simpl.
+    + apply struct_t_contr; last apply _.
+      intros. by erewrite type_ctr_syn_type.
+    + apply _.
+  - intros. simpl. 
+    eapply (type_contractive_dist2 _ _ (λ ty, enum_ty (Option_enum -[] -[T ty]) r)); last done.
+    destruct r; simpl.
+    + apply struct_t_contr; last apply _.
+      intros. by erewrite type_ctr_syn_type.
+    + apply _.
+Qed.
+Global Instance option_ne {rt1 T_rt} (T : type rt1 → type T_rt) : 
+  TypeNonExpansive T → 
+  TypeNonExpansive (λ ty, Option_ty T_rt *[] *[T ty]).
+Proof.
+  intros ?. 
+  apply enum_t_ne.
+  unshelve econstructor.
+  - enum_contractive_solve_eq.
+  - intros. simpl. by erewrite type_ne_syn_type.
+  - enum_contractive_solve_eq.
+  - enum_contractive_solve_eq.
+  - intros. simpl. 
+    eapply (type_dist_use_ne _ _ _ (λ ty, enum_ty (Option_enum -[] -[T ty]) r)); last done.
+    destruct r; simpl.
+    + apply struct_t_ne; last apply _.
+      intros. by erewrite type_ne_syn_type.
+    + apply _.
+  - intros. simpl. 
+    eapply (type_dist2_use_ne _ _ _ (λ ty, enum_ty (Option_enum -[] -[T ty]) r)); last done.
+    destruct r; simpl.
+    + apply struct_t_ne; last apply _.
+      intros. by erewrite type_ne_syn_type.
+    + apply _.
+Qed.
+
 End extra_specs.

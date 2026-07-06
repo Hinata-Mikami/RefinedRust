@@ -15,89 +15,114 @@ Record Debug_spec_attrs `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} : Type :=
 
 
 Section Error_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition Error_ty  : (spec_with 0 [] ((type (plist place_rfnRT [])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (struct_t Error_sls +[])).
+  Defined.
 
+  Definition Error_rt  : RT.
+  Proof using  .
+    let __a := (normalized_rt_of_spec_ty (Error_ty)) in exact __a.
+  Defined.
 
-Definition Error_ty  : (spec_with 0 [] ((type (plist place_rfnRT [])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ((struct_t Error_sls +[]))).
-Defined.
-
-Definition Error_rt  : RT.
-Proof using  .
-  let __a := (normalized_rt_of_spec_ty (Error_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent Error_ty.
-#[global] Typeclasses Transparent Error_rt.
+  #[global] Typeclasses Transparent Error_rt.
+  #[global] Typeclasses Transparent Error_ty.
 End Error_ty.
-Global Arguments Error_rt : clear implicits.
+#[global] Arguments Error_rt : clear implicits.
+
+#[global] Arguments Error_ty : clear implicits.
+
+#[global] Arguments Error_ty {_ _}  .
+
 
 Section Result_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
+  Context `{RRGS : !(refinedrustGS Σ)}.
   Context {T_rt : RT} {E_rt : RT}.
-
   Section components.
-Definition Result_Ok_ty  : (spec_with 0 [(T_rt); (E_rt)] ((type (plist place_rfnRT [(T_rt) : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((struct_t (Result_Ok_sls ((T_ty.(ty_syn_type) (MetaNone))) ((E_ty.(ty_syn_type) (MetaNone)))) +[(T_ty)]))).
-Defined.
+    Definition Result_Ok_ty  : (spec_with 0 [(T_rt); (E_rt)] ((type (plist place_rfnRT [(T_rt) : RT])))).
+    Proof.
+      exact (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (struct_t (Result_Ok_sls ((ty_syn_type T_ty MetaNone)) ((ty_syn_type E_ty MetaNone))) +[(T_ty)])).
+    Defined.
 
-Definition Result_Ok_rt  : RT.
-Proof using T_rt E_rt .
-  let __a := (normalized_rt_of_spec_ty (Result_Ok_ty)) in exact __a.
-Defined.
+    Definition Result_Ok_rt  : RT.
+    Proof using T_rt E_rt .
+      let __a := (normalized_rt_of_spec_ty (Result_Ok_ty)) in exact __a.
+    Defined.
 
-#[global] Typeclasses Transparent Result_Ok_ty.
-#[global] Typeclasses Transparent Result_Ok_rt.
+    #[global] Typeclasses Transparent Result_Ok_rt.
+    #[global] Typeclasses Transparent Result_Ok_ty.
+    Definition Result_Err_ty  : (spec_with 0 [(T_rt); (E_rt)] ((type (plist place_rfnRT [(E_rt) : RT])))).
+    Proof.
+      exact (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (struct_t (Result_Err_sls ((ty_syn_type T_ty MetaNone)) ((ty_syn_type E_ty MetaNone))) +[(E_ty)])).
+    Defined.
 
-Definition Result_Err_ty  : (spec_with 0 [(T_rt); (E_rt)] ((type (plist place_rfnRT [(E_rt) : RT])))).
-Proof.
-  exact (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((struct_t (Result_Err_sls ((T_ty.(ty_syn_type) (MetaNone))) ((E_ty.(ty_syn_type) (MetaNone)))) +[(E_ty)]))).
-Defined.
+    Definition Result_Err_rt  : RT.
+    Proof using T_rt E_rt .
+      let __a := (normalized_rt_of_spec_ty (Result_Err_ty)) in exact __a.
+    Defined.
 
-Definition Result_Err_rt  : RT.
-Proof using T_rt E_rt .
-  let __a := (normalized_rt_of_spec_ty (Result_Err_ty)) in exact __a.
-Defined.
+    #[global] Typeclasses Transparent Result_Err_rt.
+    #[global] Typeclasses Transparent Result_Err_ty.
+    Definition Result_enum_rt  :=
+      λ rfn : (result (place_rfn (T_rt)) (place_rfn (E_rt))), match rfn with | (Ok (x)) => Result_Ok_rt| (Err (x)) => Result_Err_rt end.
+    Definition Result_enum_ty  : (spec_with 0 [(T_rt); (E_rt)] (∀ (x: _), (type (Result_enum_rt (x))))) :=
+      spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), λ rfn, match rfn as x return type (Result_enum_rt x) with | (Ok (x)) => Result_Ok_ty -[] -[T_ty; E_ty]| (Err (x)) => Result_Err_ty -[] -[T_ty; E_ty] end.
+    Program Definition Result_enum  : (spec_with 0 [(T_rt); (E_rt)] ((enum ((result (place_rfn (T_rt)) (place_rfn (E_rt))))))) :=
+      spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), mk_enum
+        _
+        ((Result_els ((ty_syn_type T_ty MetaNone)) ((ty_syn_type E_ty MetaNone))))
+        (λ rfn, Some (match rfn with | (Ok (x)) => "Ok" | (Err (x)) => "Err" end))
+        (Result_enum_rt)
+        (Result_enum_ty -[] -[T_ty; E_ty])
+        (λ rfn, match rfn with | (Ok (x)) => *[x]| (Err (x)) => *[x] end)
+        ([("Ok", mk_enum_tag_sem _ (Result_Ok_ty -[] -[T_ty; E_ty]) (λ '( *[x]), (Ok (x)))); ("Err", mk_enum_tag_sem _ (Result_Err_ty -[] -[T_ty; E_ty]) (λ '( *[x]), (Err (x))))])
+        _
+        _.
+    Next Obligation.
+      solve_inhabited.
+    Defined.
 
-#[global] Typeclasses Transparent Result_Err_ty.
-#[global] Typeclasses Transparent Result_Err_rt.
+    Next Obligation.
+      done.
+    Qed.
 
-  Definition Result_enum_rt  :=
-  λ rfn : (result (place_rfn (T_rt)) (place_rfn (E_rt))), match rfn with | (Ok (x)) => Result_Ok_rt| (Err (x)) => Result_Err_rt end.
-  Definition Result_enum_ty  : (spec_with 0 [(T_rt); (E_rt)] (∀ (x: _), (type (Result_enum_rt (x))))) :=
-  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), λ rfn, match rfn as x return type (Result_enum_rt x) with | (Ok (x)) => Result_Ok_ty -[] -[T_ty; E_ty]| (Err (x)) => Result_Err_ty -[] -[T_ty; E_ty] end.
-  Program Definition Result_enum : spec_with 0 [T_rt; E_rt] (enum ((result (place_rfn (T_rt)) (place_rfn (E_rt))))) := spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), mk_enum
-    _
-    ((Result_els ((ty_syn_type T_ty MetaNone)) ((ty_syn_type E_ty MetaNone))))
-    (λ rfn, Some (match rfn with | (Ok (x)) => "Ok" | (Err (x)) => "Err" end))
-    (Result_enum_rt)
-    (Result_enum_ty -[] -[T_ty; E_ty])
-    (λ rfn, match rfn with | (Ok (x)) => *[x]| (Err (x)) => *[x] end)
-    (λ variant, if (decide (variant = "Ok")) then Some $ mk_enum_tag_sem _ (Result_Ok_ty -[] -[T_ty; E_ty]) (λ '( *[x]), (Ok (x))) else if (decide (variant = "Err")) then Some $ mk_enum_tag_sem _ (Result_Err_ty -[] -[T_ty; E_ty]) (λ '( *[x]), (Err (x))) else None)
-    ((ty_lfts T_ty) ++ (ty_lfts E_ty) ++ [])
-    ((ty_wf_E T_ty) ++ (ty_wf_E E_ty) ++ [])
-    _ _ _.
-  Next Obligation. solve_inhabited. Defined.
-  Next Obligation. solve_mk_enum_ty_lfts_incl. Qed.
-  Next Obligation. solve_mk_enum_ty_wf_E. Qed.
-  Next Obligation. solve_mk_enum_tag_consistent. Defined.
+    Next Obligation.
+      solve_mk_enum_tag_consistent.
+    Defined.
 
-  Global Arguments Result_enum : simpl never.
+    #[global] Arguments Result_enum : simpl never.
 
+    Definition Result_ty_pre  : (spec_with 0 [(T_rt); (E_rt)] ((type _))) :=
+      spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), enum_t (Result_enum -[] -[T_ty; E_ty]).
+    Definition Result_rt_pre  : RT.
+    Proof using T_rt E_rt .
+      let __a := (normalized_rt_of_spec_ty (Result_ty_pre)) in exact __a.
+    Defined.
+
+    #[global] Typeclasses Transparent Result_rt_pre.
   End components.
-  Definition Result_ty : spec_with 0 [T_rt; E_rt] (type _) := spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), enum_t (Result_enum -[] -[T_ty; E_ty]).
-  Definition Result_rt : RT.
-  Proof using T_rt E_rt. let __a := normalized_rt_of_spec_ty Result_ty in exact __a. Defined.
-  Global Typeclasses Transparent Result_ty.
-  Global Typeclasses Transparent Result_rt.
+  Arguments enum_ty : simpl never.
 
+  Definition Result_ty  : (spec_with 0 [(T_rt); (E_rt)] ((type _))) :=
+    spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), enum_t (Result_enum -[] -[T_ty; E_ty]).
+  Definition Result_rt  : RT.
+  Proof using T_rt E_rt .
+    let __a := (normalized_rt_of_spec_ty (Result_ty)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent Result_rt.
 End Result_ty.
-Global Arguments Result_enum : simpl never.
-Global Arguments Result_rt : clear implicits.
-Global Arguments Result_ty : clear implicits.
-Global Arguments Result_ty {_ _}.
+#[global] Typeclasses Transparent Result_ty.
+#[global] Typeclasses Transparent Result_rt.
+#[global] Arguments Result_enum : simpl never.
+
+#[global] Arguments Result_rt : clear implicits.
+
+#[global] Arguments Result_ty : clear implicits.
+
+#[global] Arguments Result_ty {_ _} _ _  .
+
 Global Hint Unfold Result_ty : solve_protected_eq_db.
 
 Section attrs.
@@ -109,49 +134,77 @@ Program Definition ResultTEasstd_clone_Clone_spec_attrs `{RRGS : !(refinedrustGS
 End attrs.
 
 Section Formatter_ty.
-  Context `{RRGS : !refinedrustGS Σ}.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition Formatter_ty  : (spec_with 1 [] ((type (plist place_rfnRT [(((core_marker_PhantomData_rt) (((place_rfnRT Z) * gname)%type))) : RT])))).
+  Proof.
+    exact (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (struct_t Formatter_sls +[((core_marker_PhantomData_ty (((place_rfnRT Z) * gname)%type) -[] -[(mut_ref ulft_a (int I32))]))])).
+  Defined.
 
+  Definition Formatter_rt  : RT.
+  Proof using  .
+    let __a := (normalized_rt_of_spec_ty (Formatter_ty)) in exact __a.
+  Defined.
 
-Definition Formatter_ty  : (spec_with 1 [] ((type (plist place_rfnRT [(((core_marker_PhantomData_rt) (((place_rfnRT Z) * gname)%type))) : RT])))).
-Proof.
-  exact (spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), ((struct_t Formatter_sls +[((core_marker_PhantomData_ty (((place_rfnRT Z) * gname)%type) -[] -[(mut_ref ulft_a (int I32))]))]))).
-Defined.
-
-Definition Formatter_rt  : RT.
-Proof using  .
-  let __a := (normalized_rt_of_spec_ty (Formatter_ty)) in exact __a.
-Defined.
-
-#[global] Typeclasses Transparent Formatter_ty.
-#[global] Typeclasses Transparent Formatter_rt.
+  #[global] Typeclasses Transparent Formatter_rt.
+  #[global] Typeclasses Transparent Formatter_ty.
 End Formatter_ty.
-Global Arguments Formatter_rt : clear implicits.
+#[global] Arguments Formatter_rt : clear implicits.
+
+#[global] Arguments Formatter_ty : clear implicits.
+
+#[global] Arguments Formatter_ty {_ _}  .
+
 Section Formatter_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Program Definition Formatter_inv_t_inv_spec  : (spec_with 1 [] ((ex_inv_def (Formatter_rt)%type ((unit))%type))) :=
+    spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt ((unit)%type : RT)),
+                  let '() := _ty_rfn in ⌜inner_rfn = -[#(tt)]⌝ ∗ True)%I
+          (true)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
 
-  Program Definition Formatter_inv_t_inv_spec  : spec_with 1 [] (ex_inv_def (Formatter_rt)%type ((unit))%type) := spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt ((unit)%type : RT)),
-            let '() := _ty_rfn in ⌜inner_rfn = -[#(tt)]⌝ ∗ True)%I
-    (true)
-    ([])
-    ([])
-    _ _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
 
-  Definition Formatter_inv_t  : spec_with 1 [] (type ((unit))%type) :=
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition Formatter_inv_t  : (spec_with 1 [] ((type (((unit))%type)))) :=
     spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), ex_plain_t _ _ (Formatter_inv_t_inv_spec  -[ulft_a] -[]) (Formatter_ty -[ulft_a] -[]).
-Global Arguments Formatter_inv_t_inv_spec : simpl never.
-Global Arguments Formatter_inv_t : simpl never.
-  Global Typeclasses Transparent Formatter_inv_t.
-  Definition Formatter_inv_t_rt : RT.
-  Proof using  . let __a := normalized_rt_of_spec_ty Formatter_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent Formatter_inv_t_rt.
+  #[global] Arguments Formatter_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments Formatter_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent Formatter_inv_t.
+  Definition Formatter_inv_t_rt  : RT.
+  Proof using  .
+    let __a := (normalized_rt_of_spec_ty (Formatter_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent Formatter_inv_t_rt.
 End Formatter_inv_t.
-Global Arguments Formatter_inv_t_rt : clear implicits.
+#[global] Arguments Formatter_inv_t_rt : clear implicits.
+
+#[global] Arguments Formatter_inv_t : clear implicits.
+
+#[global] Arguments Formatter_inv_t {_ _}  .
+
+#[global] Arguments Formatter_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments Formatter_inv_t_inv_spec {_ _}  .
+
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
