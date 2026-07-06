@@ -241,19 +241,20 @@ Section lft_morphism.
         * iIntros "(? & ? & #? & ? & ?)". iFrame. iFrame "#".
   Qed.
 
-  Global Program Instance ex_plain_t_dep_lft_morphism {rts : list RT} {X Y : RT}
-      depsP depsT (P : mut_types rts → ex_inv_def X Y) (T : mut_types rts → type X) :
+  Program Definition mk_ex_plain_t_dep_lft_morphism {rts : list RT} {X Y : RT}
+      depsP depsT (P : mut_types rts → ex_inv_def X Y) (T : mut_types rts → type X) deps :
     DepLftMorphism depsP P →
     DepLftMorphism depsT T →
-    DepLftMorphism (depsP ∪ depsT) (λ x, ex_plain_t X Y (P x) (T x)) :=
-    λ HP HT,
+    (deps = (depsP ∪ depsT)) →
+    DepLftMorphism deps (λ x, ex_plain_t X Y (P x) (T x)) :=
+    λ HP HT _,
       mk_dep_lft_morph
         (dep_lft_morph_α HP ⊓ dep_lft_morph_α HT)
         (dep_lft_morph_E HP ++ dep_lft_morph_E HT)
         (dep_lft_morph_βdeps HP ++ dep_lft_morph_βdeps HT)
         _ _.
   Next Obligation.
-    iIntros (rts X Y depsP depsT P T HP HT x).
+    iIntros (rts X Y depsP depsT P T deps HP HT -> x).
     change (lifecycle_lfts (ex_plain_t X Y (P x) (T x))) with (ty_lfts (ex_plain_t X Y (P x) (T x))).
     rewrite ty_lfts_unfold /= lft_intersect_list_app.
     iApply lft_equiv_trans.
@@ -283,9 +284,8 @@ Section lft_morphism.
       iApply lft_intersect_incl_r.
   Qed.
   Next Obligation.
-    intros rts X Y depsP depsT P T HP HT x.
-    change (lifecycle_wf_E ((λ x0 : mut_types rts, ex_plain_t X Y (P x0) (T x0)) x)) with
-      (ty_wf_E (ex_plain_t X Y (P x) (T x))).
+    intros rts X Y depsP depsT P T deps HP HT -> x.
+    unfold lifecycle_wf_E; simpl.
     rewrite ty_wf_E_unfold /= !elctx_interp_app.
     rewrite (dep_lft_morph_wf_E HP x) (dep_lft_morph_wf_E HT x).
     rewrite /dep_beta_interp big_sepL_app dep_wf_E_union.
@@ -294,6 +294,16 @@ Section lft_morphism.
     - iIntros "(HE & HW & Hβ & HEs & HWs & Hβs)". iFrame.
     - iIntros "(HE & HEs & HW & HWs & Hβ & Hβs)". iFrame.
   Qed.
+
+  Global Instance ex_plain_t_dep_lft_morphism' {rts : list RT} {X Y : RT}
+      depsP depsT (P : mut_types rts → ex_inv_def X Y) (T : mut_types rts → type X) :
+    DepLftMorphism depsP P →
+    DepLftMorphism depsT T →
+    DepLftMorphism (depsP ∪ depsT) (λ x, ex_plain_t X Y (P x) (T x)).
+  Proof.
+    intros Hdep1 Hdep2. eapply mk_ex_plain_t_dep_lft_morphism; [done.. | ].
+    done.
+  Defined.
 End lft_morphism.
 
 Section contr.
@@ -310,9 +320,6 @@ Section contr.
     constructor; simpl.
     - apply HF.
     - apply HF.
-    - eapply ex_plain_t_lft_morphism.
-      + apply ex_inv_def_lft_morphism_of_direct. apply ex_inv_def_contr_lft_mor.
-      + apply type_ctr_lft_mor.
     - rewrite ty_has_op_type_unfold. eapply HF.
     - simpl. eapply HF.
     - intros n ty ty' ?.
@@ -340,9 +347,6 @@ Section contr.
     constructor; simpl.
     - apply HF.
     - apply HF.
-    - eapply ex_plain_t_lft_morphism.
-      + apply ex_inv_def_lft_morphism_of_direct. apply ex_inv_def_ne_lft_mor.
-      + apply type_ne_lft_mor.
     - rewrite ty_has_op_type_unfold. intros.
       eapply HF; first done; first done.
       rewrite ty_has_op_type_unfold. done.

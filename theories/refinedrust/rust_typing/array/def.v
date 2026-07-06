@@ -361,7 +361,6 @@ Section ne.
     constructor; simpl.
     - done.
     - intros ?? ->. done.
-    - apply array_t_ty_lft_morphism.
     - rewrite ty_has_op_type_unfold/=.
       unfold is_array_ot.
       intros ?? Hst ? Hot.

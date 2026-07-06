@@ -600,30 +600,6 @@ Section structs.
       apply IH; done.
   Qed.
 
-  Lemma HTForall_type_ne_lft_morphism {rt rts}
-      (Ts : hlist (λ rt', type rt → type rt') rts) :
-    HTForall (λ _, TypeNonExpansive) Ts →
-    HTForall (λ _, TyLftMorphism) Ts.
-  Proof.
-    induction rts as [ | rt1 rts IH]; inv_hlist Ts.
-    - intros _. constructor.
-    - intros T1 Ts [Hne1 Hne]%HTForall_cons_inv. constructor.
-      + apply type_ne_lft_mor.
-      + by apply IH.
-  Qed.
-
-  Lemma HTForall_type_ctr_lft_morphism {rt rts}
-      (Ts : hlist (λ rt', type rt → type rt') rts) :
-    HTForall (λ _, TypeContractive) Ts →
-    HTForall (λ _, TyLftMorphism) Ts.
-  Proof.
-    induction rts as [ | rt1 rts IH]; inv_hlist Ts.
-    - intros _. constructor.
-    - intros T1 Ts [Hctr1 Hctr]%HTForall_cons_inv. constructor.
-      + apply type_ctr_lft_mor.
-      + by apply IH.
-  Qed.
-
   Lemma HTypeLftMorphism_happly {A rts} `{!Lifecycle A}
       (Ts : hlist (λ rt', A → type rt') rts) :
     HTForall (λ _, LftMorphism) Ts →
@@ -713,9 +689,6 @@ Section structs.
     intros HT. constructor.
     - simpl. done.
     - simpl. intros ?? Hst _. rewrite Hst. done.
-    - destruct HT as [HT' Hne ->].
-      eapply struct_t_lft_morphism_of_hlist.
-      by apply HTForall_type_ne_lft_morphism.
     - move => ty ty' Hst ? Hot ot /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
       rewrite Hst.
       destruct HT as [Ts' Hne ->].
@@ -803,9 +776,6 @@ Section structs.
     intros Hst HT. constructor.
     - done.
     - simpl. intros. erewrite Hst. done.
-    - destruct HT as [HT' Hctr ->].
-      eapply struct_t_lft_morphism_of_hlist.
-      by apply HTForall_type_ctr_lft_morphism.
     - move => ty ty' ot /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
       erewrite Hst.
       destruct HT as [Ts' Hne ->].

@@ -278,7 +278,6 @@ Section mut_ref.
     constructor; simpl.
     - done.
     - done.
-    - apply mut_ref_ty_lft_morphism.
     - rewrite ty_has_op_type_unfold/=. done.
     - done.
     - intros n ty ty' ?.

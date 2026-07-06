@@ -6,10 +6,8 @@ Section contractive.
     TypeContractive (λ ty, Box_inv_t T_rt A_rt A_attrs <TY> (T ty) <TY> A_ty <INST!>).
   Proof.
     intros X.
-    apply ex_inv_def_contractive.
+    apply ex_plain_t_contr.
     - constructor.
-      + simpl. apply ty_lft_morphism_to_direct.
-        apply X.
       + solve_proper_prepare.
         repeat solve_proper_step.
       + solve_proper_prepare.
@@ -20,6 +18,25 @@ Section contractive.
     TypeNonExpansive T →
     TypeNonExpansive (λ ty, Box_inv_t T_rt A_rt A_attrs <TY> (T ty) <TY> A_ty <INST!>).
   Proof. apply _. Qed.
+
+  Instance Box_inv_t_dep_lft_mor rts (T_rt A_rt : RT) (A_attrs : Allocator_spec_attrs A_rt) (A_ty : type A_rt) (T : mut_types rts → type T_rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, Box_inv_t_inv_spec T_rt A_rt A_attrs *[] *[(T x); A_ty]).
+  Proof.
+    simpl.
+    intros Hdep.
+    eapply (dep_lft_morph_make_id _ T); first done.
+    - done.
+    - done.
+  Defined.
+  Global Instance Box_inv_t_dep_lft_mor' rts (T_rt A_rt : RT) (A_attrs : Allocator_spec_attrs A_rt) (A_ty : type A_rt) (T : mut_types rts → type T_rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, Box_inv_t T_rt A_rt A_attrs *[] *[(T x); A_ty]).
+  Proof.
+    intros Ha.
+    eapply mk_ex_plain_t_dep_lft_morphism; [apply _.. | ].
+    abstract (set_solver).
+  Defined.
 
   (** Resolve ghost: Resolve observations on the contained value. *)
   Lemma resolve_ghost_box {T_rt A_rt} A_attrs (T_ty : type T_rt) (A_ty : type A_rt) π E L r rm T :

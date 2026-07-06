@@ -102,8 +102,6 @@ Program Definition na_mk_pers_ex_inv_def
     na_mk_ex_inv_def (λ _, P) inv_trivial_drop [] [] (* _ *).
 
 Class NaExInvDefNonExpansive `{!typeGS Σ} {rt X Y : RT} (F : type rt → na_ex_inv_def X Y) : Type := {
-  ex_inv_def_ne_lft_mor : DirectLftMorphism (λ ty, (F ty).(na_inv_P_lfts)) (λ ty, (F ty).(na_inv_P_wf_E));
-
   ex_inv_def_ne_val_own :
     ∀ (n : nat) (ty ty' : type rt),
       TypeDist n ty ty' →
@@ -112,8 +110,6 @@ Class NaExInvDefNonExpansive `{!typeGS Σ} {rt X Y : RT} (F : type rt → na_ex_
 }.
 
 Class NaExInvDefContractive `{!typeGS Σ} {rt X Y : RT} (F : type rt → na_ex_inv_def X Y) : Type := {
-  ex_inv_def_contr_lft_mor : DirectLftMorphism (λ ty, (F ty).(na_inv_P_lfts)) (λ ty, (F ty).(na_inv_P_wf_E));
-
   ex_inv_def_contr_val_own :
     ∀ (n : nat) (ty ty' : type rt),
       TypeDist2 n ty ty' →
@@ -128,7 +124,6 @@ Section insts.
     NaExInvDefContractive (λ _ : type rt, v).
   Proof.
     constructor.
-    - apply (direct_lft_morph_make_const _ _).
     - eauto.
   Qed.
 
@@ -136,7 +131,6 @@ Section insts.
     NaExInvDefNonExpansive (λ _ : type rt, v).
   Proof.
     constructor.
-  - apply (direct_lft_morph_make_const _ _).
     - eauto.
   Qed.
 
@@ -335,14 +329,6 @@ Section contr.
     constructor; simpl.
     - apply HF.
     - apply HF.
-    - destruct HP as [Hlft _].
-      destruct HF as [_ _ Hlft' _ _ _ _].
-      apply ty_lft_morphism_of_direct.
-      apply ty_lft_morphism_to_direct in Hlft'.
-      simpl in *.
-      rewrite ty_wf_E_unfold.
-      rewrite ty_lfts_unfold.
-      apply direct_lft_morphism_app; done.
     - rewrite ty_has_op_type_unfold. eapply HF.
     - simpl. eapply HF.
     - intros n ty ty' ?.
@@ -381,14 +367,6 @@ Section contr.
     constructor; simpl.
     - apply HF.
     - apply HF.
-    - destruct HP as [Hlft _].
-      destruct HF as [_ _ Hlft' _ _ _ _].
-      apply ty_lft_morphism_of_direct.
-      apply ty_lft_morphism_to_direct in Hlft'.
-      simpl in *.
-      rewrite ty_wf_E_unfold.
-      rewrite ty_lfts_unfold.
-      apply direct_lft_morphism_app; done.
     - rewrite ty_has_op_type_unfold. intros.
       eapply HF; first done; first done.
       rewrite ty_has_op_type_unfold. done.

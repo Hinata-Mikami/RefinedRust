@@ -208,7 +208,6 @@ Section props.
     constructor; simpl.
     - done.
     - done.
-    - apply shr_ref_ty_lft_morphism.
     - rewrite ty_has_op_type_unfold/=. done.
     - done.
     - rewrite /ty_own_val/= shr_ref_own_val_unfold. solve_type_proper.

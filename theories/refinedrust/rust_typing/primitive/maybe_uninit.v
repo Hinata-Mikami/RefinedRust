@@ -205,7 +205,6 @@ Section ne.
     constructor; simpl.
     - done.
     - intros ty ty' Heq m. rewrite Heq. done.
-    - apply maybe_uninit_ty_lft_morphism.
     - rewrite ty_has_op_type_unfold/=.
       intros ?? -> -> Hot.
       intros ot.

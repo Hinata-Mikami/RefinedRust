@@ -50,6 +50,12 @@ Ltac solve_type_proper_hook ::=
       apply guarded_dist; intros
   end.
 
+Ltac solve_type_proper_prepare ::=
+  intros;
+  simpl in *;
+  prepare_initial_coq_context;
+  simpl.
+
 (** Bundle for all ghost state we need *)
 Class refinedrustGS Σ := {
   refinedrust_typeGS :: typeGS Σ;

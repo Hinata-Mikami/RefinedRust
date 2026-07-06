@@ -4,15 +4,79 @@ Context `{RRGS : !refinedrustGS Σ}.
 Section Vec_inv_t_ne.
   Context `{!refinedrustGS Σ}.
 
+  Global Instance RawVec_inv_t_contr {rt1 T_rt A_rt} Alloc (T : type rt1 → type T_rt) (A : type A_rt) :
+    TypeNonExpansive T →
+    TypeContractive (λ ty, RawVec_inv_t T_rt A_rt Alloc <TY> (T ty) <TY> A <INST!>).
+  Proof.
+    intros X.
+    apply ex_plain_t_contr.
+    - constructor.
+      + solve_type_proper.
+      + solve_type_proper.
+    - cbn; apply _.
+  Qed.
+  Global Instance RawVec_inv_t_ne {rt1 T_rt A_rt} Alloc (T : type rt1 → type T_rt) (A : type A_rt) :
+    TypeNonExpansive T →
+    TypeNonExpansive (λ ty, RawVec_inv_t T_rt A_rt Alloc <TY> (T ty) <TY> A <INST!>).
+  Proof. apply _. Qed.
+
+  Instance RawVec_inv_t_dep_lft_mor rts (T_rt A_rt : RT) (A_attrs : Allocator_spec_attrs A_rt) (A_ty : type A_rt) (T : mut_types rts → type T_rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, RawVec_inv_t_inv_spec T_rt A_rt A_attrs *[] *[(T x); A_ty]).
+  Proof.
+    simpl.
+    intros Hdep.
+    eapply (dep_lft_morph_make_id _ T); first done.
+    - simpl. done.
+    - done.
+  Defined.
+  Global Instance RawVec_inv_t_dep_lft_mor' rts (T_rt A_rt : RT) (A_attrs : Allocator_spec_attrs A_rt) (A_ty : type A_rt) (T : mut_types rts → type T_rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, RawVec_inv_t T_rt A_rt A_attrs *[] *[(T x); A_ty]).
+  Proof.
+    intros Ha.
+    eapply mk_ex_plain_t_dep_lft_morphism; [apply _.. | ].
+    abstract (set_solver).
+  Defined.
+
   Global Instance Vec_inv_t_contr {rt1 T_rt A_rt} Alloc (T : type rt1 → type T_rt) (A : type A_rt) :
     TypeNonExpansive T →
     TypeContractive (λ ty, Vec_inv_t T_rt A_rt Alloc <TY> (T ty) <TY> A <INST!>).
   Proof.
-  Admitted.
+    intros X.
+    apply ex_plain_t_contr.
+    - constructor.
+      + solve_type_proper_prepare; solve_proper_prepare.
+        repeat solve_proper_step.
+        rewrite type_dist2_st.
+        done.
+      + solve_type_proper_prepare; solve_proper_prepare.
+        repeat solve_proper_step.
+        erewrite type_ne_syn_type; first done.
+        apply type_dist_later2_st.
+    - cbn; apply _.
+  Qed.
   Global Instance Vec_inv_t_ne {rt1 T_rt A_rt} Alloc (T : type rt1 → type T_rt) (A : type A_rt) :
     TypeNonExpansive T →
     TypeNonExpansive (λ ty, Vec_inv_t T_rt A_rt Alloc <TY> (T ty) <TY> A <INST!>).
-  Proof. Admitted.
+  Proof. apply _. Qed.
+
+  Instance Vec_inv_t_dep_lft_mor rts (T_rt A_rt : RT) (A_attrs : Allocator_spec_attrs A_rt) (A_ty : type A_rt) (T : mut_types rts → type T_rt) :
+    DepLftMorphism ∅ (λ x : mut_types rts, Vec_inv_t_inv_spec T_rt A_rt A_attrs *[] *[(T x); A_ty]).
+  Proof.
+    simpl.
+    eapply (mk_dep_lft_morph_const).
+    - simpl. abstract (iIntros (?); iApply lft_equiv_refl).
+    - simpl. abstract (done).
+  Defined.
+  Global Instance Vec_inv_t_dep_lft_mor' rts (T_rt A_rt : RT) (A_attrs : Allocator_spec_attrs A_rt) (A_ty : type A_rt) (T : mut_types rts → type T_rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, Vec_inv_t T_rt A_rt A_attrs *[] *[(T x); A_ty]).
+  Proof.
+    intros Ha.
+    eapply mk_ex_plain_t_dep_lft_morphism; [apply _.. | ].
+    abstract (set_solver).
+  Defined.
 End Vec_inv_t_ne.
 
 

@@ -516,8 +516,6 @@ Section test_box.
     intros X.
     apply ex_plain_t_contr.
     - constructor.
-      + simpl. apply ty_lft_morphism_to_direct.
-        apply X.
       + solve_proper_prepare.
         repeat solve_proper_step.
       + solve_proper_prepare.
@@ -529,16 +527,21 @@ Section test_box.
     TypeNonExpansive (λ ty, Box_inv_t T_rt <TY> (T ty) <INST!>).
   Proof. apply _. Qed.
 
-  Global Instance Box_inv_t_dep_lft_mor rts (rt : RT) (T : mut_types rts → type rt) deps :
+  Global Program Instance Box_inv_t_dep_lft_mor rts (rt : RT) (T : mut_types rts → type rt) deps :
     DepLftMorphism deps T →
-    DepLftMorphism deps (λ x : mut_types rts, Box_inv_t_inv_spec rt *[] *[(T x)]).
-  Proof.
-    simpl.
-    intros Hdep.
-    eapply (dep_lft_morph_make_id _ T); first done.
-    - done.
-    - done.
-  Defined.
+    DepLftMorphism deps (λ x : mut_types rts, Box_inv_t rt *[] *[(T x)]) :=
+    λ Ht,
+      dep_lft_morph_make_id _ _ _ Ht _ _.
+  Next Obligation.
+    intros. rewrite /lifecycle_lfts/=.
+    repeat rewrite !ty_lfts_unfold/=.
+    rewrite right_id//.
+  Qed.
+  Next Obligation.
+    intros. rewrite /lifecycle_wf_E/=.
+    repeat rewrite !ty_wf_E_unfold/=.
+    rewrite right_id//.
+  Qed.
 End test_box.
 
 Section test_rectypes.

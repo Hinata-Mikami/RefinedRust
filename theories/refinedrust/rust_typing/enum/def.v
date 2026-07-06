@@ -634,10 +634,10 @@ Section ne.
     intros Hen. constructor.
     - done.
     - simpl. intros. erewrite enum_ne_els; done.
-    - apply ty_lft_morphism_of_direct.
-      rewrite /=ty_lfts_unfold/=.
-      rewrite /=ty_wf_E_unfold.
-      apply enum_ne_lft_mor.
+    (*- apply ty_lft_morphism_of_direct.*)
+      (*rewrite /=ty_lfts_unfold/=.*)
+      (*rewrite /=ty_wf_E_unfold.*)
+      (*apply enum_ne_lft_mor.*)
     - rewrite !ty_has_op_type_unfold.
       intros ty ty' Hst ? Hot ot . simpl.
       unfold is_enum_ot.
@@ -720,10 +720,10 @@ Section ne.
     intros Hen. constructor.
     - done.
     - simpl. intros. erewrite enum_contr_els; done.
-    - apply ty_lft_morphism_of_direct.
-      rewrite /=ty_lfts_unfold/=.
-      rewrite /=ty_wf_E_unfold.
-      apply enum_contr_lft_mor.
+    (*- apply ty_lft_morphism_of_direct.*)
+      (*rewrite /=ty_lfts_unfold/=.*)
+      (*rewrite /=ty_wf_E_unfold.*)
+      (*apply enum_contr_lft_mor.*)
     - rewrite !ty_has_op_type_unfold.
       intros ty ty' ot . simpl.
       unfold is_enum_ot.

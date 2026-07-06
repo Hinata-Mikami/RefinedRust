@@ -1434,7 +1434,7 @@ Section hlist_mor.
     htype_lft_morphism_lft : LftMorphism F;
   }.
 
-  Lemma HTypeLftMorphism_cons {A rt rts} `{!Lifecycle A}
+  Global Instance HTypeLftMorphism_cons {A rt rts} `{!Lifecycle A}
       (G : A → type rt) (Gs : A → mut_types rts) :
     LftMorphism G →
     HTypeLftMorphism Gs →
@@ -1676,8 +1676,6 @@ Class TypeNonExpansive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Typ
       (∀ m, ty.(ty_syn_type) m = ty'.(ty_syn_type) m) →
       ∀ m, (F ty).(ty_syn_type) m = (F ty').(ty_syn_type) m;
 
-  type_ne_lft_mor :: TyLftMorphism F;
-
   (*type_ne_lfts :*)
     (*∀ ty ty', *)
       (*(⊢ lft_equiv (lft_intersect_list ty.(ty_lfts)) (lft_intersect_list ty'.(ty_lfts))) →*)
@@ -1724,8 +1722,6 @@ Class TypeContractive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Type
          hence their syn_type should be trivially equal *)
       (*ty.(ty_syn_type) = ty'.(ty_syn_type) →*)
       ∀ m, (F ty).(ty_syn_type) m = (F ty').(ty_syn_type) m;
-
-  type_ctr_lft_mor :: TyLftMorphism F;
 
   type_ctr_has_op_type :
     ∀ ty ty',
@@ -1800,8 +1796,7 @@ Section properties.
   Global Instance type_contractive_type_ne {rt1 rt2} (F : type rt1 → type rt2) :
     TypeContractive F → TypeNonExpansive F.
   Proof.
-    intros [Hm Hst Hlft Hot Hsc Hv Hshr ]. constructor.
-    - done.
+    intros [Hm Hst Hot Hsc Hv Hshr ]. constructor.
     - done.
     - done.
     - done.
@@ -1820,12 +1815,11 @@ Section properties.
     TypeNonExpansive F1 → TypeNonExpansive F2 → TypeNonExpansive (F2 ∘ F1).
   Proof.
     intros Hne1 Hne2.
-    pose proof Hne1 as [Hm1 Hst1 Hlft1 Hot1 Hsc1 Hv1 Hshr1 ].
-    pose proof Hne2 as [Hm2 Hst2 Hlft2 Hot2 Hsc2 Hv2 Hshr2 ].
+    pose proof Hne1 as [Hm1 Hst1 Hot1 Hsc1 Hv1 Hshr1 ].
+    pose proof Hne2 as [Hm2 Hst2 Hot2 Hsc2 Hv2 Hshr2 ].
     constructor; simpl in *.
     - intros ?? Heq. apply Hm2. apply Hm1. done.
     - naive_solver.
-    - apply _.
     - intros ?? ?? Ha. eapply Hot2.
       { by eapply Hst1. }
       { by eapply Hm1. }
@@ -1846,12 +1840,11 @@ Section properties.
     TypeContractive F1 → TypeNonExpansive F2 → TypeContractive (F2 ∘ F1).
   Proof.
     intros Hc1 Hne2.
-    pose proof Hc1 as [Hm1 Hst1 Hlft1 Hot1 Hsc1 Hv1 Hshr1 ].
-    pose proof Hne2 as [Hm2 Hst2 Hlft2 Hot2 Hsc2 Hv2 Hshr2 ].
+    pose proof Hc1 as [Hm1 Hst1 Hot1 Hsc1 Hv1 Hshr1 ].
+    pose proof Hne2 as [Hm2 Hst2 Hot2 Hsc2 Hv2 Hshr2 ].
     constructor; simpl in *.
     - intros ??. apply Hm2. apply Hm1.
     - naive_solver.
-    - apply _.
     - intros ?? Ha. by eapply Hot2, Hot1.
     - naive_solver.
     - intros n ?? Hd.
@@ -1877,12 +1870,11 @@ Section properties.
     TypeNonExpansive F1 → TypeContractive F2 → TypeContractive (F2 ∘ F1).
   Proof.
     intros Hne1 Hc2.
-    pose proof Hne1 as [Hm1 Hst1 Hlft1 Hot1 Hsc1 Hv1 Hshr1 ].
-    pose proof Hc2 as [Hm2 Hst2 Hlft2 Hot2 Hsc2 Hv2 Hshr2 ].
+    pose proof Hne1 as [Hm1 Hst1 Hot1 Hsc1 Hv1 Hshr1 ].
+    pose proof Hc2 as [Hm2 Hst2 Hot2 Hsc2 Hv2 Hshr2 ].
     constructor; simpl in *.
     - naive_solver.
     - naive_solver.
-    - apply _.
     - intros ?? Ha. eapply Hot2.
     - naive_solver.
     - intros n ?? Hd. eapply Hv2. apply _.
@@ -1906,7 +1898,6 @@ Section properties.
     constructor.
     - done.
     - done.
-    - eapply ty_lft_morph_make_const; done.
     - done.
     - done.
     - eauto.
@@ -1919,7 +1910,6 @@ Section properties.
     constructor.
     - done.
     - done.
-    - eapply ty_lft_morph_make_id; done.
     - done.
     - done.
     - intros ??? Ha. apply Ha.
@@ -1932,7 +1922,6 @@ Section properties.
     constructor.
     - done.
     - done.
-    - eapply ty_lft_morph_make_const; done.
     - done.
     - done.
     - eauto.
@@ -2067,8 +2056,9 @@ Ltac solve_type_proper_step :=
   | f_contractive | my_f_equiv
       ].
 Ltac solve_proper_step := first [eassumption | solve_type_proper_step].
+Ltac solve_type_proper_prepare := idtac.
 Ltac solve_type_proper :=
-  solve_proper_core ltac:(fun _ => solve_type_proper_step).
+  solve_type_proper_prepare; solve_proper_core ltac:(fun _ => solve_type_proper_step).
 
 
 (** Point-wise non-expansive type lists *)
@@ -2689,7 +2679,7 @@ Inductive DirectLftMorphism {rt1} (Flfts : type rt1 → list lft) (FE : type rt1
 .
 Existing Class DirectLftMorphism.
 
-Global Instance ty_lft_morphism_of_direct {rt1 rt2} (F : type rt1 → type rt2) :
+Lemma ty_lft_morphism_of_direct {rt1 rt2} (F : type rt1 → type rt2) :
   DirectLftMorphism (λ ty, ty_lfts (F ty)) (λ ty, (ty_wf_E (F ty))) →
   TyLftMorphism F.
 Proof.
@@ -2701,7 +2691,7 @@ Proof.
     apply lft_morph_add.
     refine (mk_lft_morph_add α E βs _ _); done.
 Qed.
-Global Instance ty_lft_morphism_to_direct {rt1 rt2} (F : type rt1 → type rt2) :
+Lemma ty_lft_morphism_to_direct {rt1 rt2} (F : type rt1 → type rt2) :
   TyLftMorphism F →
   DirectLftMorphism (λ ty, ty_lfts (F ty)) (λ ty, (ty_wf_E (F ty))).
 Proof.
@@ -3289,7 +3279,6 @@ Next Obligation.
 Qed.
 
 Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y : RT} (F : type rt → ex_inv_def X Y) : Type := {
-  ex_inv_def_ne_lft_mor : DirectLftMorphism (λ ty, (F ty).(inv_P_lfts)) (λ ty, (F ty).(inv_P_wf_E));
 
   ex_inv_def_ne_val_own :
     ∀ (n : nat) (ty ty' : type rt),
@@ -3305,7 +3294,6 @@ Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y : RT} (F : type rt → ex_inv_d
 }.
 
 Class ExInvDefContractive `{!typeGS Σ} {rt X Y : RT} (F : type rt → ex_inv_def X Y) : Type := {
-  ex_inv_def_contr_lft_mor : DirectLftMorphism (λ ty, (F ty).(inv_P_lfts)) (λ ty, (F ty).(inv_P_wf_E));
 
   ex_inv_def_contr_val_own :
     ∀ (n : nat) (ty ty' : type rt),
@@ -3327,7 +3315,6 @@ Section insts.
     ExInvDefContractive (λ _ : type rt, v).
   Proof.
     constructor.
-    - apply (direct_lft_morph_make_const _ _).
     - eauto.
     - eauto.
     (*- eauto.*)
@@ -3337,7 +3324,6 @@ Section insts.
     ExInvDefNonExpansive (λ _ : type rt, v).
   Proof.
     constructor.
-    - apply (direct_lft_morph_make_const _ _).
     - eauto.
     - eauto.
     (*- eauto.*)

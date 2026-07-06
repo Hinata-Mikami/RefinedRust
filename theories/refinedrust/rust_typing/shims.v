@@ -74,7 +74,6 @@ Section def.
     apply ex_plain_t_contr.
     - unfold core_marker_PhantomData_inv. simpl.
       constructor.
-      + simpl. apply _.
       + solve_type_proper.
       + solve_type_proper.
     - unfold core_marker_PhantomData_sls. apply _.
@@ -87,10 +86,25 @@ Section def.
     apply ex_plain_t_ne.
     - unfold core_marker_PhantomData_inv. simpl.
       constructor.
-      + simpl. apply _.
       + solve_type_proper.
       + solve_type_proper.
     - unfold core_marker_PhantomData_sls. apply _.
+  Qed.
+
+  Global Program Instance core_marker_PhantomData_ty_dep_lft_mor rts (rt : RT) (T : mut_types rts → type rt) deps :
+    DepLftMorphism deps T →
+    DepLftMorphism deps (λ x : mut_types rts, core_marker_PhantomData_ty rt *[] *[(T x)]) :=
+    λ Ht,
+      dep_lft_morph_make_id _ _ _ Ht _ _.
+  Next Obligation.
+    intros. rewrite /lifecycle_lfts/=.
+    repeat rewrite !ty_lfts_unfold/=.
+    rewrite !right_id//.
+  Qed.
+  Next Obligation.
+    intros. rewrite /lifecycle_wf_E/=.
+    repeat rewrite !ty_wf_E_unfold/=.
+    rewrite !right_id//.
   Qed.
 End def.
 

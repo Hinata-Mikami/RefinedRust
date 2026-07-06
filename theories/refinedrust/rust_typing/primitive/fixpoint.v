@@ -5,7 +5,7 @@ Section fixpoint_def.
   Context `{!typeGS Σ}.
 
   (* We assume a contractive functor *)
-  Context {rt : RT} (F : type rt → type rt) `{Hcr : !TypeContractive F}.
+  Context {rt : RT} (F : type rt → type rt) `{Hcr : !TypeContractive F} `{Hlft : !TyLftMorphism F}.
   (* [rt] needs to be inhabited *)
   Context `{!Inhabited (RT_xt rt)}.
 
@@ -36,7 +36,7 @@ Section fixpoint_def.
 
   Lemma Fn_lfts_const_0 n :
     ⊢ lft_equiv (lft_intersect_list (ty_lfts (Fn n))) (lft_intersect_list (ty_lfts (Fn 0))).
-  Proof using Hcr.
+  Proof using Hlft.
     induction n as [ n IH] using lt_wf_ind.
     destruct n as [ | [ | n]].
     - iApply lft_equiv_refl.
@@ -49,7 +49,7 @@ Section fixpoint_def.
   Lemma Fn_wf_E_const_1 n :
     n ≥ 1 →
     elctx_interp (ty_wf_E (Fn n)) ≡ elctx_interp (ty_wf_E (Fn 1)).
-  Proof using Hcr.
+  Proof using Hlft.
     intros ?.
     induction n as [ n IH] using lt_wf_ind.
     destruct n as [ | [ | [ | n]]].
@@ -324,7 +324,7 @@ End fixpoint_def.
 
 
 Lemma type_fixpoint_ne `{!typeGS Σ} {rt : RT} `{!Inhabited (RT_xt rt)} (T1 T2 : type rt → type rt)
-    `{!TypeContractive T1, !TypeContractive T2, !NonExpansive T2} n :
+    `{!TypeContractive T1, !TypeContractive T2, !NonExpansive T2} `{!TyLftMorphism T2} `{!TyLftMorphism T1} n :
   (∀ t, T1 t ≡{n}≡ T2 t) → type_fixpoint T1 ≡{n}≡ type_fixpoint T2.
 Proof.
   intros Heq.
@@ -381,7 +381,7 @@ Qed.
 
 Section fixpoint.
   Context `{!typeGS Σ}.
-  Context {rt : RT} `{!Inhabited (RT_xt rt)} (T : type rt → type rt) {HT: TypeContractive T}.
+  Context {rt : RT} `{!Inhabited (RT_xt rt)} (T : type rt → type rt) {HT: TypeContractive T} `{Hlft : !TyLftMorphism T}.
 
   (* prevent [simpl] from unfolding it too much here *)
   Opaque prod_cofe.
@@ -477,7 +477,7 @@ End fixpoint.
 Section rules.
   Context `{!typeGS Σ}.
   Context {rt : RT} `{!Inhabited (RT_xt rt)}.
-  Context (F : type rt → type rt) `{!TypeContractive F}.
+  Context (F : type rt → type rt) `{!TypeContractive F} `{!TyLftMorphism F}.
 
   (* on place access, unfold *)
   Lemma typed_place_fixpoint_unfold π E L l r k1 bmin P (T : place_cont_t rt bmin) :
@@ -615,7 +615,7 @@ Section fixpoint_uniqueness.
         rewrite Heq. done.
   Qed.
 
-  Context {rt : RT} `{!Inhabited (RT_xt rt)} (F : type rt → type rt) `{!TypeContractive F}.
+  Context {rt : RT} `{!Inhabited (RT_xt rt)} (F : type rt → type rt) `{!TypeContractive F} `{!TyLftMorphism F}.
 
   Lemma type_fixpoint_unique_dist (ty : type rt) :
     (∀ n, TypeDist n ty (F ty)) →

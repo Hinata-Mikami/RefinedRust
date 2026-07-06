@@ -451,6 +451,36 @@ Section dep_lft_mor.
     - intros tys. rewrite (dep_lft_morph_wf_E HA tys).
       rewrite (dep_wf_E_full deps tys Hfull) (Hβs tys). done.
   Qed.
+  Lemma DepLftMorphism_to_TyLftMorphism {rt1 rt2} `{!Inhabited (RT_xt rt1)} (T : type rt1 → type rt2) deps :
+    ∀ Hm : DepLftMorphism deps (λ tys : mut_types [rt1], T (mut_type_project tys 0%nat eq_refl)),
+    DepsFull [rt1] deps →
+    DepLftMorphismBetaFull Hm →
+    TyLftMorphism T.
+  Proof.
+    intros HA Hdep Hfull.
+    apply lft_morph_add.
+    destruct Hfull as [βs Hβs].
+    refine (mk_lft_morph_add (dep_lft_morph_α HA) (dep_lft_morph_E HA)
+      βs _ _).
+    - iIntros (ty).
+      iApply (lft_equiv_trans _ (dep_lft_morph_α HA ⊓ lft_intersect_list (dep_lfts deps (ty +:: +[]))) _).
+      { assert (Hty : mut_type_project (ty +:: +[]) 0 eq_refl = ty).
+        { rewrite mut_type_project_unfold /mut_type_project_def /mut_component /=. done. }
+        rewrite -{1}Hty. iApply (dep_lft_morph_lfts HA $! (ty +:: +[])). }
+      iApply lft_equiv_intersect; first iApply lft_equiv_refl.
+      rewrite (dep_lfts_full deps (ty +:: +[]) Hdep) /=.
+      rewrite /mut_lfts/= right_id.
+      iApply lft_equiv_refl.
+    - intros ty.
+      assert (Hty : mut_type_project (ty +:: +[]) 0 eq_refl = ty).
+      { rewrite mut_type_project_unfold /mut_type_project_def /mut_component /=. done. }
+      rewrite -{1}Hty.
+      etrans; first apply (dep_lft_morph_wf_E HA (ty +:: +[])).
+      rewrite (dep_wf_E_full deps (ty +:: +[]) Hdep) (Hβs (ty +:: +[])).
+      rewrite /mut_wf_E /mut_lfts /= !right_id.
+      done.
+  Qed.
+
 
   Global Program Instance DepLftMorphism_hcons {rts rt rts'} depsG depsGs
       (G : mut_types rts → type rt) (Gs : mut_types rts → mut_types rts') :
@@ -565,6 +595,7 @@ Global Hint Extern 3 (DepLftMorphismBetaFull _) =>
 
 (* needs [eapply], so declaring it an instance does not suffice *)
 Global Hint Extern 3 (LftMorphism _) => simple eapply DepLftMorphism_to_LftMorphism : typeclass_instances.
+Global Hint Extern 3 (TyLftMorphism _) => simple eapply DepLftMorphism_to_TyLftMorphism : typeclass_instances.
 
 Section projection.
   Context `{!typeGS Σ}.
