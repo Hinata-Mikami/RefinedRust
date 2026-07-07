@@ -145,7 +145,9 @@ Proof.
     iApply (lty_of_ty_mono with "[] Hpad2"). done.
   + rewrite !ltype_own_enum_unfold /enum_ltype_own.
     iDestruct "Hincl" as "(Hincl & ->)".
-    iIntros "(%el & %Halg & %Hly & Hlb & [])".
+    iIntros "(%el & %Halg & %Hly & Hlb & Hcred & Hrfn & Hb)".
+    iExists el. iR. iR. iFrame "Hlb Hcred Hrfn".
+    iMod "Hb". iModIntro. by iApply pinned_bor_shorten.
 Qed.
 
 
