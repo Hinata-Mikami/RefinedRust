@@ -10,7 +10,7 @@
     };
 
     SMTCoq = {
-      url = "github:SMTCoq/SMTCoq?ref=lafeychine/ci-tests";
+      url = "github:SMTCoq/SMTCoq";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-parts.follows = "flake-parts";
     };
@@ -65,8 +65,8 @@
       };
 
       sniper = {
-        version = "259bfbb7075a9a1605ef3e2c403f5a52bb2cfecb";
-        sha256 = "sha256-XE2fGL+DhhXctskTXUwSHY2DyyB71wDAeqXxmEl78VQ=";
+        version = "1d3e132cd18c45555c4751f1c5e5f84ad9cc7eaf";
+        sha256 = "sha256-mbRsj0TLKTeXdk7F4jK8lZMwApZ9q9TQKtprjQaoYKI=";
       };
     };
 

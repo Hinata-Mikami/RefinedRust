@@ -138,7 +138,7 @@ fmt:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.fmt
   script:
   - nix build --print-build-logs $(eval echo ${NIX_DERIVATION})
-  - nix fmt -- . --check
+  - nix fmt -- . --ci
 
 
 machete:
@@ -254,7 +254,7 @@ build-opam-iris.dev:
     IRIS_REPO: "iris/iris"
     OPAMIGNOREPINDEPENDS: "true" # so that the pins below don't get overridden
     # pin trakt, smtcoq, sniper to specific commits until things have stabilized
-    OPAM_PINS: "rocq-core version 9.1.1 rocq-stdlib version 9.0.0 git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV   git+https://gitlab.mpi-sws.org/$IRIS_REPO#$IRIS_REV  git+https://gitlab.mpi-sws.org/iris/iris-contrib  git+https://gitlab.mpi-sws.org/iris/lambda-rust  coq-smtcoq.dev git git+https://github.com/smtcoq/smtcoq#3df6204826a06f5025bc7408ab77855680c50367 coq-sniper.dev git git+https://github.com/smtcoq/sniper#c1ba4e90eea5af636de15c53a3e0a8ab29442a29  rocq-trakt.dev git git+https://github.com/rocq-trakt/trakt#c666cad53d794b0facecb7a87a6f74e6c89be088"
+    OPAM_PINS: "rocq-core version 9.1.1 rocq-stdlib version 9.0.0 git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV   git+https://gitlab.mpi-sws.org/$IRIS_REPO#$IRIS_REV  git+https://gitlab.mpi-sws.org/iris/iris-contrib  git+https://gitlab.mpi-sws.org/iris/lambda-rust  rocq-smtcoq.dev git git+https://github.com/smtcoq/smtcoq#53f7fca859b48cbe24973755b4c06762103da07d coq-sniper.dev git git+https://github.com/smtcoq/sniper#8771b62d63f5f8d98de745d0e5a4f7fea1322f31  rocq-trakt.dev git git+https://github.com/rocq-trakt/trakt#abc90bb42fdb6de022375187d8b0bacd63641c90"
   script:
    - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
    - make setup-dune-workspace

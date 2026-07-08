@@ -5,14 +5,14 @@ From refinedrust Require Import options.
 
 (** General infrastructure compatibility *)
 (*** EqbType *)
-Global Instance SMTCoq_EqbType_from_EqDecision `{EqDecision T} : SMT_classes.EqbType T :=
+Global Instance SMTCoq_EqbType_from_EqDecision `{EqDecision T} : CompDec.EqbType T :=
   {|
-    SMT_classes.eqb := λ x y : T, bool_decide (x = y);
-    SMT_classes.eqb_spec := λ x y : T, bool_decide_eq_true (x = y)
+    CompDec.eqb := λ x y : T, bool_decide (x = y);
+    CompDec.eqb_spec := λ x y : T, bool_decide_eq_true (x = y)
   |}.
 
 (*** Inhabitant *)
-Global Instance SMTCoq_Inhabited_from_stdpp_Inhabited `{Inhabited T} : SMT_classes.Inhabited T :=
+Global Instance SMTCoq_Inhabited_from_stdpp_Inhabited `{Inhabited T} : CompDec.Inhabited T :=
   {| default_value := inhabitant |}.
 
 

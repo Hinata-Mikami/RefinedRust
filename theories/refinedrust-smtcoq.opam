@@ -10,16 +10,16 @@ depends: [
   "refinedrust" {= version}
   # smtcoq and dependencies
   "rocq-metarocq-template" {(= "1.4.1+9.1")}
-	"rocq-metarocq-utils" {(= "1.4.1+9.1")}
+  "rocq-metarocq-utils" {(= "1.4.1+9.1")}
   "coq-sniper" {(= "dev")}
-	"rocq-trakt" {(= "dev")}
-	"coq-smtcoq" {(= "dev")}
+  "rocq-trakt" {(= "dev")}
+  "rocq-smtcoq" {(= "dev")}
 ]
 
 pin-depends: [
-	["coq-sniper.dev" "git+https://github.com/smtcoq/sniper.git#c1ba4e90eea5af636de15c53a3e0a8ab29442a29"]
-	["coq-smtcoq.dev" "git+https://github.com/smtcoq/smtcoq#3df6204826a06f5025bc7408ab77855680c50367"]
-	["rocq-trakt.dev" "git+https://github.com/rocq-trakt/trakt#c666cad53d794b0facecb7a87a6f74e6c89be088"]
+	["coq-sniper.dev" "git+https://github.com/smtcoq/sniper.git#8771b62d63f5f8d98de745d0e5a4f7fea1322f31"]
+	["rocq-smtcoq.dev" "git+https://github.com/smtcoq/smtcoq#53f7fca859b48cbe24973755b4c06762103da07d"]
+	["rocq-trakt.dev" "git+https://github.com/rocq-trakt/trakt#abc90bb42fdb6de022375187d8b0bacd63641c90"]
 ]
 
 build: [
