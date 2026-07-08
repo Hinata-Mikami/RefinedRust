@@ -5,8 +5,9 @@ From lithium Require Export all.
 From lithium Require Import hooks.
 From refinedrust.automation Require Import lookup_definition proof_state.
 From refinedrust.automation Require Export layout_ltac.
+From refinedrust Require Import lftmor.
 From refinedrust.base Require Import generics programs value.
-From refinedrust.primitive Require Import functions.
+From refinedrust.primitive Require Import functions mutual_fixpoint.
 
 Set Default Proof Using "Type".
 
@@ -1371,6 +1372,30 @@ Section tac.
     _ty_wf_E _ ty = E →
     ty_wf_E ty = E.
   Proof. rewrite ty_wf_E_unfold. done. Qed.
+  Lemma tac_unfold_mut_fixpoint_project_ty_wf_E {rts : list RT}
+      (F : mut_type_fun rts) `{!MutTypeNonExpansive F}
+      `{!MutTypeContractive (mut_iter F (length rts))}
+      `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
+      {rt : RT} `{!Inhabited (RT_xt rt)} i
+      (Hlook : rts !! i = Some rt) E :
+    mut_wf_E (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 1) = E →
+    ty_wf_E (mut_type_project (mut_fixpoint F) i Hlook) = E.
+  Proof. rewrite mut_fixpoint_project_ty_wf_E. done. Qed.
+  Lemma tac_unfold_mut_type_project_cons_head_ty_wf_E {rt rts}
+      `{!Inhabited (RT_xt rt)} (ty : type rt) (tys : mut_types rts)
+      (Hlook : (rt :: rts) !! 0 = Some rt) E :
+    ty_wf_E ty = E →
+    ty_wf_E (mut_type_project (ty +:: tys) 0 Hlook) = E.
+  Proof.
+    replace Hlook with (@eq_refl (option RT) (Some rt)) by apply proof_irrelevance.
+    rewrite mut_type_project_cons_head_eq. done.
+  Qed.
+  Lemma tac_unfold_mut_type_project_cons_tail_ty_wf_E {rt0 rt rts}
+      `{!Inhabited (RT_xt rt)} (ty : type rt0) (tys : mut_types rts)
+      i (Hlook : (rt0 :: rts) !! S i = Some rt) E :
+    ty_wf_E (mut_type_project tys i Hlook) = E →
+    ty_wf_E (mut_type_project (ty +:: tys) (S i) Hlook) = E.
+  Proof. rewrite -(mut_type_project_cons_tail_eq (ty +:: tys) i Hlook Hlook). done. Qed.
   Lemma tac_unfold_ty_outlives_E {rt} (ty : type rt) κ E :
     lfts_outlives_E (ty_lfts ty) κ = E →
     ty_outlives_E ty κ = E.
@@ -1379,6 +1404,31 @@ Section tac.
     lfts_outlives_E (_ty_lfts _ ty) κ = E →
     lfts_outlives_E (ty_lfts ty) κ = E.
   Proof. rewrite ty_lfts_unfold. done. Qed.
+  Lemma tac_lfts_outlives_E_mut_fixpoint_project {rts : list RT}
+      (F : mut_type_fun rts) `{!MutTypeNonExpansive F}
+      `{!MutTypeContractive (mut_iter F (length rts))}
+      `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
+      {rt : RT} `{!Inhabited (RT_xt rt)} i
+      (Hlook : rts !! i = Some rt) κ E :
+    lfts_outlives_E
+      (mut_lfts (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 0)) κ = E →
+    lfts_outlives_E (ty_lfts (mut_type_project (mut_fixpoint F) i Hlook)) κ = E.
+  Proof. rewrite mut_fixpoint_project_ty_lfts. done. Qed.
+  Lemma tac_lfts_outlives_E_mut_type_project_cons_head {rt rts}
+      `{!Inhabited (RT_xt rt)} (ty : type rt) (tys : mut_types rts)
+      (Hlook : (rt :: rts) !! 0 = Some rt) κ E :
+    lfts_outlives_E (ty_lfts ty) κ = E →
+    lfts_outlives_E (ty_lfts (mut_type_project (ty +:: tys) 0 Hlook)) κ = E.
+  Proof.
+    replace Hlook with (@eq_refl (option RT) (Some rt)) by apply proof_irrelevance.
+    rewrite mut_type_project_cons_head_eq. done.
+  Qed.
+  Lemma tac_lfts_outlives_E_mut_type_project_cons_tail {rt0 rt rts}
+      `{!Inhabited (RT_xt rt)} (ty : type rt0) (tys : mut_types rts)
+      i (Hlook : (rt0 :: rts) !! S i = Some rt) κ E :
+    lfts_outlives_E (ty_lfts (mut_type_project tys i Hlook)) κ = E →
+    lfts_outlives_E (ty_lfts (mut_type_project (ty +:: tys) (S i) Hlook)) κ = E.
+  Proof. rewrite -(mut_type_project_cons_tail_eq (ty +:: tys) i Hlook Hlook). done. Qed.
 
   Lemma tac_lfts_outlives_E_tyvar_fold {rt} (ty : type rt) κ E1 E2 :
     ty_outlives_E ty κ ++ E1 = E2 →
@@ -1414,12 +1464,34 @@ Ltac simplify_elctx_subterm :=
       notypeclasses refine (tac_unfold_ty_outlives_E ty _ _ _)
   end;
   match goal with
+  | |- ty_wf_E (mut_type_project (mut_fixpoint ?F) ?i ?Hlook) = _ =>
+      notypeclasses refine (tac_unfold_mut_fixpoint_project_ty_wf_E F i Hlook _ _);
+      unfold mut_wf_E;
+      simpl;
+      reflexivity
+  | |- ty_wf_E (mut_type_project (?ty +:: ?tys) 0 ?Hlook) = _ =>
+      notypeclasses refine (tac_unfold_mut_type_project_cons_head_ty_wf_E ty tys Hlook _ _);
+      first [simplify_elctx_subterm | reflexivity]
+  | |- ty_wf_E (mut_type_project (?ty +:: ?tys) (S ?i) ?Hlook) = _ =>
+      notypeclasses refine (tac_unfold_mut_type_project_cons_tail_ty_wf_E ty tys i Hlook _ _);
+      first [simplify_elctx_subterm | reflexivity]
   | |- ty_wf_E ?ty = _ =>
       ty_is_not_var ty;
       notypeclasses refine (tac_unfold_ty_wf_E ty _ _);
       rewrite [(_ty_wf_E _ ty)]/_ty_wf_E /=;
       simpl;
       reflexivity
+  | |- lfts_outlives_E (ty_lfts (mut_type_project (mut_fixpoint ?F) ?i ?Hlook)) _ = _ =>
+      notypeclasses refine (tac_lfts_outlives_E_mut_fixpoint_project F i Hlook _ _ _);
+      unfold mut_lfts;
+      simpl;
+      reflexivity
+  | |- lfts_outlives_E (ty_lfts (mut_type_project (?ty +:: ?tys) 0 ?Hlook)) _ = _ =>
+      notypeclasses refine (tac_lfts_outlives_E_mut_type_project_cons_head ty tys Hlook _ _ _);
+      first [simplify_elctx_subterm | reflexivity]
+  | |- lfts_outlives_E (ty_lfts (mut_type_project (?ty +:: ?tys) (S ?i) ?Hlook)) _ = _ =>
+      notypeclasses refine (tac_lfts_outlives_E_mut_type_project_cons_tail ty tys i Hlook _ _ _);
+      first [simplify_elctx_subterm | reflexivity]
   | |- lfts_outlives_E (ty_lfts ?ty) _ = _ =>
       first [ty_is_var ty |
           notypeclasses refine (tac_lfts_outlives_E_unfold_ty ty _ _ _);

@@ -227,7 +227,8 @@ Section call.
       ⌜take (min (length eκs) lfts) (tup_to_list _ κs) = take (min (length eκs) lfts) eκs⌝ ∗
       ∃ x,
       (*let κs := (rew <- Heq in eκs') in*)
-      let fps := (fp κs tys).(fn_p) x in
+      ∀ fps,
+      ⌜fast_subst_hint fps ((fp κs tys).(fn_p) x)⌝ -∗
       (* ensure that type variable evars have been instantiated now *)
       (* show typing for the function's actual arguments. *)
       prove_with_subtype E L' false ProveDirect
@@ -266,6 +267,7 @@ Section call.
     (*set (aκs := list_to_tup eκs).*)
     cbn.
     set (fps := (fp aκs stys).(fn_p) x).
+    iSpecialize ("HP" $! fps with "[//]").
     iApply fupd_wpe.
     iMod ("HP" $! _ True%I with "[] [] [] CTX HE HL []") as "(%L1 & % & %R2 & >(R2 & Hvl & _) & HL & HT)"; [done.. | ].
     iDestruct ("HT" with "R2") as "(-> & HT)".

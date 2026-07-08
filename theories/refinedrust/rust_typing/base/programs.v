@@ -78,6 +78,11 @@ Definition enter_cache_hint (P : Prop) := P.
 Global Arguments enter_cache_hint : simpl never.
 Global Typeclasses Opaque enter_cache_hint.
 
+(** Hint for introducing an equality and directly substing it *)
+Definition fast_subst_hint {A} (l r : A) := l = r.
+Global Arguments fast_subst_hint : simpl never.
+Global Typeclasses Opaque fast_subst_hint.
+
 (** Automation for finding the location for a local variable *)
 Class FindLocalLoc (f : frame_path) (v : var_name) (l : loc) := {}.
 Global Hint Mode FindLocalLoc + + - : typeclass_instances.

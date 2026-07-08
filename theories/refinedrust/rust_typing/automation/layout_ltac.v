@@ -3,6 +3,7 @@ From iris.proofmode Require Import coq_tactics reduction string_ident.
 From refinedrust.base Require Export type ltypes hlist.
 From refinedrust.automation Require Import lookup_definition proof_state.
 From refinedrust.base Require Import int programs.
+From refinedrust.primitive Require Import mutual_fixpoint.
 Set Default Proof Using "Type".
 
 
@@ -1130,7 +1131,10 @@ Ltac simplify_layout_alg_simpl_step H :=
   (* simplify head *)
   try lazymatch type of H with
   | use_layout_alg ?spec = Some _ =>
-      first [assert_is_atomic_st spec
+      first [
+        assert_is_atomic_st spec
+      (* we don't want to hnf this as it doesn't unfold well *)
+      | match spec with ltype_st (◁ mut_type_project _ _ _)%I  => simp_ltypes in H end
       | let spec_eval := eval hnf in spec in
         change_no_check spec with spec_eval in H ]
   end.
@@ -1150,6 +1154,18 @@ Ltac simplify_layout_alg_atomic H :=
       (* stop exploiting this further to prevent divergence *)
       rename_layouts in H with (fun H_n => enter_cache_unsafe H_n)
   end.
+
+Lemma tac_mut_fixpoint_project_ty_syn_type_inv `{!typeGS Σ} {rts : list RT}
+  (F : mut_type_fun rts) `{!MutTypeNonExpansive F}
+  `{!MutTypeContractive (mut_iter F (length rts))}
+  `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
+  {rt : RT} `{!Inhabited (RT_xt rt)} i
+  (Hlook : rts !! i = Some rt) m st :
+  use_layout_alg (ty_syn_type (mut_type_project (mut_fixpoint F) i Hlook) m) = Some st →
+  use_layout_alg (ty_syn_type (mut_type_project_simpl (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 0) i Hlook) m) = Some st.
+Proof.
+  rewrite mut_fixpoint_project_ty_syn_type//.
+Qed.
 
 Ltac simplify_layout_alg_nonatomic H :=
     (* Handle non-atomic alg applications *)
@@ -1249,6 +1265,11 @@ Ltac simplify_layout_alg_nonatomic H :=
         enter_cache Hwf;
         enter_cache Hsz;
         enter_cache Hib
+
+    | use_layout_alg (ty_syn_type (mut_type_project _ _ _) _) = Some _ =>
+      apply tac_mut_fixpoint_project_ty_syn_type_inv in H;
+      simplify_layout_alg H
+
     | use_layout_alg ?st = Some _ =>
         fail 1000 "Unimplemented case in simplify_layout_alg"
     end.

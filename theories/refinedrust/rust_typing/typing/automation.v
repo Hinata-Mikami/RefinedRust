@@ -5,7 +5,7 @@ From lithium Require Export all.
 From lithium Require Import hooks.
 From refinedrust.automation Require Import lookup_definition.
 From refinedrust.base Require Import int programs xmap value.
-From refinedrust.primitive Require Import functions unit alias_ptr.
+From refinedrust.primitive Require Import functions unit alias_ptr mutual_fixpoint.
 From refinedrust Require Import mut_ref.mut_ref shr_ref struct.struct array.array enum primitive.existentials.
 From refinedrust.typing Require Import program_rules.
 (* Important: import proof_state last as it overrides some Lithium tactics *)
@@ -1228,6 +1228,20 @@ Next Obligation.
   rewrite /ty_ghost_drop' Heq.
   done.
 Qed.
+Global Program Instance simplify_hyp_mut_fixpoint_project_ty_ghost_drop `{!typeGS Σ}
+    {rts : list RT} (F : mut_type_fun rts) {Hne : MutTypeNonExpansive F}
+    {Hctr : MutTypeContractive (mut_iter F (length rts))}
+    {Hrts : base.TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
+    {rt : RT} {Hinh : Inhabited (RT_xt rt)} i
+    (Hlook : rts !! i = Some rt) π r :
+  SimplifyHyp (_ty_ghost_drop
+    (@mut_type_project _ _ rts (@mut_fixpoint _ _ rts F Hne Hctr Hrts) rt Hinh i Hlook) π r) (Some 0%N) := {|
+  simplify_hyp_Q := True%I;
+|}.
+Next Obligation.
+  iIntros (?????????????). rewrite mut_fixpoint_project_ty_ghost_drop.
+  iIntros "?"; done.
+Qed.
 Lemma simplify_goal_ty_ghost_drop_concrete `{!typeGS Σ} {rt} (ty : type rt) π r `{!IsNotVar ty} T :
   (_ty_ghost_drop ty π r) ∗ T ⊢
   simplify_goal (ty_ghost_drop ty π r) T.
@@ -1237,17 +1251,37 @@ Qed.
 Definition simplify_goal_ty_ghost_drop_concrete_inst := [instance @simplify_goal_ty_ghost_drop_concrete with 10%N].
 Global Existing Instance simplify_goal_ty_ghost_drop_concrete_inst.
 
+Lemma simplify_goal_mut_fixpoint_project_ty_ghost_drop `{!typeGS Σ}
+    {rts : list RT} (F : mut_type_fun rts) {Hne : MutTypeNonExpansive F}
+    {Hctr : MutTypeContractive (mut_iter F (length rts))}
+    {Hrts : base.TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
+    {rt : RT} {Hinh : Inhabited (RT_xt rt)} i
+    (Hlook : rts !! i = Some rt) π r T :
+  T ⊢ simplify_goal (_ty_ghost_drop
+    (@mut_type_project _ _ rts (@mut_fixpoint _ _ rts F Hne Hctr Hrts) rt Hinh i Hlook) π r) T.
+Proof.
+  rewrite mut_fixpoint_project_ty_ghost_drop. iIntros "$".
+Qed.
+Definition simplify_goal_mut_fixpoint_project_ty_ghost_drop_inst := [instance @simplify_goal_mut_fixpoint_project_ty_ghost_drop with 5%N].
+Global Existing Instance simplify_goal_mut_fixpoint_project_ty_ghost_drop_inst.
+
 
 (* In my experience, this has led to more problems with [normalize_autorewrite] rewriting below definitions too eagerly. *)
 #[export] Unset Keyed Unification.
 
 (** Lithium hook *)
-Ltac normalize_hook ::=
+Ltac hooks.normalize_hook ::=
   (* also simpl *)
   rewrite /size_of_st/=;
   simplify_layout_normalize;
   autounfold with lithium_rewrite;
-  autorewrite with lithium_rewrite;
+  match goal with
+  | |- fast_subst_hint _ _ = _ =>
+    idtac
+  | |- (use_layout_alg (ltype_st _) = Some _) = _ =>
+    idtac
+  | |- _ => autorewrite with lithium_rewrite
+  end;
   exact: eq_refl
 .
 
@@ -1256,6 +1290,8 @@ Ltac after_intro_hook H ::=
   | enter_cache_hint ?P =>
       unfold enter_cache_hint in H;
       enter_cache H
+  | fast_subst_hint ?a ?b =>
+    unfold fast_subst_hint in H; subst a
   | ty_is_xrfn ?ty ?r =>
         first [
           is_var r;
