@@ -9,7 +9,6 @@
     nixpkgs.lib.listToAttrs (map f l);
 
   rocq = {
-    mkDepDerivation = import ./mkDepRocqDerivation.nix;
     mkRefinedRust = pkgs: frontend: stdlib:
       import ./mkRocqRefinedRust.nix {
         inherit pkgs stdlib;

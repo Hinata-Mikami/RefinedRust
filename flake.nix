@@ -1,13 +1,18 @@
 {
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-25.11";
+    nixpkgs.url = "nixpkgs/nixos-26.05";
     flake-parts.url = "github:hercules-ci/flake-parts";
 
     crane.url = "github:ipetkov/crane";
-
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    SMTCoq = {
+      url = "github:SMTCoq/SMTCoq?ref=lafeychine/ci-tests";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-parts.follows = "flake-parts";
     };
   };
 
@@ -17,6 +22,7 @@
     nixpkgs,
     rust-overlay,
     self,
+    SMTCoq,
     ...
   }: let
     name = "refinedrust";
@@ -28,6 +34,11 @@
     };
 
     pins = {
+      equations = {
+        version = "2137c8e7081f2d47ab903de0cc09fd6a05bfab01";
+        sha256 = "sha256-LtYbAR3jt+JbYcqP+m1n3AZhAWSMIeOZtmdSJwg7L1A=";
+      };
+
       stdpp = {
         version = "2301f95c0bf0c336b64d9f0d6cb26668ce35fd8c";
         sha256 = "sha256-xz0lYc+G0UGk9uSJNFvn04EylmloQE1uaQrmsVCq4Xo=";
@@ -49,13 +60,13 @@
       };
 
       smtcoq = {
-        version = "3df6204826a06f5025bc7408ab77855680c50367";
-        sha256 = "sha256-b1Me3obsZjPdBqTg6Si5Wz90eEIIrtI8O5Yxio9xPmI=";
+        version = "53f7fca859b48cbe24973755b4c06762103da07d";
+        sha256 = "sha256-mQxO/4DrR47pZrv5hJ5u2o0WHbBrn+awb5VlRfxF9Ks=";
       };
 
       sniper = {
-        version = "c1ba4e90eea5af636de15c53a3e0a8ab29442a29";
-        sha256 = "sha256-5vVbVU6qMHJd/mkS05VxKF204S3EqeVRmEUC/rYvjcQ=";
+        version = "259bfbb7075a9a1605ef3e2c403f5a52bb2cfecb";
+        sha256 = "sha256-XE2fGL+DhhXctskTXUwSHY2DyyB71wDAeqXxmEl78VQ=";
       };
     };
 
@@ -228,11 +239,15 @@
       flake = {
         lib = import ./nix {inherit crane nixpkgs rust-overlay;};
 
-        overlays.default = nixpkgs.lib.composeManyExtensions [
-          rust-overlay.overlays.default
-          (import ./nix/overlayOCamlFlambda.nix)
-          (import ./nix/overlaySMTCoq.nix)
-        ];
+        overlays = {
+          deps = import ./nix/deps pins;
+
+          default = nixpkgs.lib.composeManyExtensions [
+            rust-overlay.overlays.default
+            SMTCoq.overlays.default
+            self.overlays.deps
+          ];
+        };
       };
 
       perSystem = {
@@ -254,53 +269,6 @@
           };
 
           envBuilder = self.lib.rust.overrideToolchain pkgs toolchain.build;
-        };
-
-        dependencies = rec {
-          stdpp = self.lib.rocq.mkDepDerivation pkgs.rocqPackages pins.stdpp {
-            pname = "stdpp";
-          };
-
-          iris = self.lib.rocq.mkDepDerivation pkgs.rocqPackages pins.iris {
-            pname = "iris";
-            propagatedBuildInputs = [stdpp];
-          };
-
-          iris-contrib = self.lib.rocq.mkDepDerivation pkgs.rocqPackages pins.iris-contrib {
-            pname = "iris-contrib";
-            propagatedBuildInputs = [iris];
-          };
-
-          lambda-rust = self.lib.rocq.mkDepDerivation pkgs.rocqPackages pins.lambda-rust {
-            pname = "lambda-rust";
-            propagatedBuildInputs = [iris];
-          };
-
-          smtcoq = pkgs.rocqPackages.mkRocqDerivation rec {
-            inherit (pins.smtcoq) version;
-
-            pname = "smtcoq";
-            owner = "smtcoq";
-            repo = "smtcoq";
-
-            mlPlugin = true;
-            propagatedBuildInputs = with pkgs; [ocamlPackages.num rocqPackages.stdlib rocqPackages.trakt verit];
-
-            release.${version}.sha256 = "${pins.smtcoq.sha256}";
-          };
-
-          sniper = pkgs.rocqPackages.mkRocqDerivation rec {
-            inherit (pins.sniper) version;
-
-            pname = "sniper";
-            owner = "smtcoq";
-            repo = "sniper";
-
-            mlPlugin = true;
-            propagatedBuildInputs = [pkgs.rocqPackages.metarocq-template smtcoq];
-
-            release.${version}.sha256 = "${pins.sniper.sha256}";
-          };
         };
       in rec {
         _module.args.pkgs = import nixpkgs {
@@ -346,7 +314,7 @@
               opam-name = name;
               src = ./theories;
 
-              propagatedBuildInputs = [pkgs.rocqPackages.equations dependencies.iris-contrib dependencies.lambda-rust];
+              propagatedBuildInputs = [pkgs.rocqPackages.equations pkgs.rocqPackages.iris-contrib pkgs.rocqPackages.lambda-rust];
               useDune = true;
             };
 
@@ -357,7 +325,7 @@
               opam-name = name + "-smtcoq";
               src = ./theories;
 
-              propagatedBuildInputs = [packages.refinedrust dependencies.sniper];
+              propagatedBuildInputs = [packages.refinedrust pkgs.rocqPackages.sniper];
               useDune = true;
             };
 
@@ -479,7 +447,7 @@
 
         devShells.default = pkgs.mkShell {
           inputsFrom = with packages; [frontend refinedrust];
-          packages = with pkgs; [cargo-deny cargo-machete gnumake rust.toolchain.dev dependencies.sniper];
+          packages = with pkgs; [cargo-deny cargo-machete gnumake rust.toolchain.dev pkgs.rocqPackages.sniper];
 
           LD_LIBRARY_PATH = lib.makeLibraryPath [rust.toolchain.dev];
           DYLD_FALLBACK_LIBRARY_PATH = lib.makeLibraryPath [rust.toolchain.dev];
