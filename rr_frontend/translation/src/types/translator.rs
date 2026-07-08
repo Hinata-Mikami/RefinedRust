@@ -1108,7 +1108,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         };
 
         match translate_adt() {
-            Ok(mut struct_def) => {
+            Ok(struct_def) => {
                 let lit = self.intern_literal(struct_def.make_literal_type());
 
                 // check for extra annotated dependencies
@@ -1134,10 +1134,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                             error::Message::RecursiveTypeWithoutInvariant,
                         )));
                     }
-
-                    // remove it
-                    deps.remove(&OrderedDefId::new(self.tcx, adt.did()));
-                    struct_def.set_is_recursive();
                 }
 
                 // finalize the definition
@@ -1585,15 +1581,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 inductive_decl = Some(decl);
             }
 
-            // check the deps
-            let is_rec_type = deps.contains(&OrderedDefId::new(self.tcx, def.did()));
-            if is_rec_type {
-                // remove it
-                deps.remove(&OrderedDefId::new(self.tcx, def.did()));
-            }
-
-            let mut enum_builder =
-                specs::enums::Builder::new(enum_name, scope.into(), translated_it, repr, is_rec_type);
+            let mut enum_builder = specs::enums::Builder::new(enum_name, scope.into(), translated_it, repr);
 
             // now build the enum itself
             for v in def.variants() {

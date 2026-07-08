@@ -100,9 +100,6 @@ pub struct Abstract<'def> {
     /// type of the integer discriminant
     discriminant_type: lang::IntType,
 
-    /// whether this is a recursive type
-    is_recursive: bool,
-
     /// these should be the same also across all the variants
     scope: GenericScope<'def>,
 
@@ -224,15 +221,19 @@ impl<'def> BundleableType<'def> for Abstract<'def> {
         index: usize,
         projection_names: &[String],
     ) {
+        let attr_binders = self.scope.get_all_attr_trait_parameters(crate::specs::IncludeSelfReq::Dont);
+        let attr_uses = attr_binders.make_using_terms();
+        let bundle_tys = coq::term::App::new(bundle_tys_name.to_owned(), attr_uses.clone());
+        let scope_inst = self.scope.identity_instantiation_term();
         let type_type = self
             .scope
             .get_spec_all_type_term(Box::new(model::Type::Ttype(Box::new(coq::term::Type::Infer)).into()));
         doc.push(coq::command::Definition::new(
             self.plain_ty_name.clone(),
-            coq::binder::BinderList::empty(),
+            attr_binders.clone(),
             Some(type_type),
             coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
-                "{} mut_type_project {bundle_tys_name} {index} eq_refl",
+                "{} mut_type_project ({bundle_tys} {scope_inst}) {index} eq_refl",
                 self.scope,
             ))),
         ));
@@ -242,12 +243,12 @@ impl<'def> BundleableType<'def> for Abstract<'def> {
             self.spec.rfn_type
         ))));
         let pre_enum_def_name = format!("{}_pre", self.enum_def_name);
-        let scope_inst = self.scope.identity_instantiation().instantiation(true, true);
         let mut args = projection_names.to_owned();
+        args.extend(attr_uses.into_iter().map(|term| term.to_string()));
         args.push(scope_inst);
         doc.push(coq::command::Definition::new(
             self.enum_def_name.clone(),
-            coq::binder::BinderList::empty(),
+            attr_binders,
             Some(enum_type),
             coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
                 "{} {pre_enum_def_name} {}",
@@ -718,30 +719,16 @@ impl<'def> Abstract<'def> {
 
         let mut components = coq::Document::default();
 
-        let ty_context_names = if self.is_recursive {
-            let dummy_ty_name = format!("_{}", self.plain_ty_name);
-            self.generate_recursive_prelude_entry(&mut components);
-
-            vec![dummy_ty_name]
-        } else {
-            vec![]
-        };
-
-        let pre_enum_def_name = if self.is_recursive {
-            format!("{}_pre", self.enum_def_name)
-        } else {
-            self.enum_def_name.clone()
-        };
+        let pre_enum_def_name = self.enum_def_name.clone();
         let pre_enum_ty_name = format!("{}_pre", self.plain_ty_name);
         let pre_enum_rt_name = format!("{}_pre", self.plain_rt_name);
 
-        // TODO ty_context_names should first include the context_names
         self.generate_coq_type_def_in_context(
             &mut components,
             &pre_enum_def_name,
             &pre_enum_ty_name,
             &pre_enum_rt_name,
-            &ty_context_names,
+            &[],
             &context_names_without_sigma,
         );
 
@@ -761,44 +748,15 @@ impl<'def> Abstract<'def> {
         let scope_inst = self.scope.identity_instantiation().instantiation(true, true);
 
         // define the actual type
-        if self.is_recursive {
-            let rec_ty_name = &self.plain_ty_name;
-            section_context.push(coq::command::Definition::new(
-                self.plain_ty_name.clone(),
-                coq::binder::BinderList::empty(),
-                Some(type_type),
-                coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
-                    "{} type_fixpoint (λ {rec_ty_name}, enum_t ({pre_enum_def_name} {rec_ty_name} {scope_inst}))",
-                    self.scope,
-                ))),
-            ));
-
-            let enum_type = self.scope.get_spec_all_type_term(Box::new(coq::term::Type::Literal(format!(
-                "enum ({})",
-                self.spec.rfn_type
-            ))));
-
-            // generate the enum definition with recursive knots tied
-            section_context.push(coq::command::Definition::new(
-                self.enum_def_name.clone(),
-                coq::binder::BinderList::empty(),
-                Some(enum_type),
-                coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
-                    "{} {pre_enum_def_name} ({} {scope_inst}) {scope_inst}",
-                    self.scope, self.plain_ty_name,
-                ))),
-            ));
-        } else {
-            section_context.push(coq::command::Definition::new(
-                self.plain_ty_name.clone(),
-                coq::binder::BinderList::empty(),
-                Some(type_type),
-                coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
-                    "{} enum_t ({pre_enum_def_name} {scope_inst})",
-                    self.scope,
-                ))),
-            ));
-        }
+        section_context.push(coq::command::Definition::new(
+            self.plain_ty_name.clone(),
+            coq::binder::BinderList::empty(),
+            Some(type_type),
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
+                "{} enum_t ({pre_enum_def_name} {scope_inst})",
+                self.scope,
+            ))),
+        ));
 
         // generate the refinement type definition
         section_context.append_document(invariants::generate_normalized_rt_def(
@@ -849,8 +807,6 @@ pub struct Builder<'def> {
     discriminant_type: lang::IntType,
     /// representation options for the enum
     repr: Repr,
-    /// whether this is a recursive type
-    is_recursive: bool,
 }
 
 impl<'def> Builder<'def> {
@@ -862,7 +818,6 @@ impl<'def> Builder<'def> {
         scope: GenericScope<'def>,
         discriminant_type: lang::IntType,
         repr: Repr,
-        is_recursive: bool,
     ) -> Self {
         Self {
             variants: Vec::new(),
@@ -870,7 +825,6 @@ impl<'def> Builder<'def> {
             scope,
             discriminant_type,
             repr,
-            is_recursive,
         }
     }
 
@@ -900,7 +854,6 @@ impl<'def> Builder<'def> {
             scope: self.scope,
             discriminant_type: self.discriminant_type,
             repr: self.repr,
-            is_recursive: self.is_recursive,
             coq_params: Vec::new(),
         }
     }

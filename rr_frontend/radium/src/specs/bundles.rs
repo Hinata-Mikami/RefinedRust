@@ -69,16 +69,19 @@ pub trait BundleableType<'def> {
     ) {
         let scope = self.scope();
         let attr_binders = scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
+        let attr_uses = attr_binders.make_using_terms();
         let type_type = scope
             .get_spec_all_type_term(Box::new(model::Type::Ttype(Box::new(coq::term::Type::Infer)).into()));
+        let bundle_tys = coq::term::App::new(bundle_tys_name.to_owned(), attr_uses);
 
         doc.push(coq::command::Definition::new(
             self.ty_name(),
             attr_binders,
             Some(type_type),
             coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
-                "{} mut_type_project {bundle_tys_name} {index} eq_refl",
+                "{} mut_type_project ({bundle_tys} {}) {index} eq_refl",
                 scope,
+                scope.identity_instantiation_term(),
             ))),
         ));
     }
@@ -212,11 +215,11 @@ impl<'def> BundleableType<'def> for BundleType<'def> {
         match self {
             Self::Struct(s) => {
                 let s = s.borrow();
-                s.as_ref().unwrap().set_flags(doc, rt_context_names)
+                s.as_ref().unwrap().set_flags(doc, rt_context_names);
             },
             Self::Enum(s) => {
                 let s = s.borrow();
-                s.as_ref().unwrap().set_flags(doc, rt_context_names)
+                s.as_ref().unwrap().set_flags(doc, rt_context_names);
             },
         }
     }
@@ -280,7 +283,7 @@ pub struct Bundle<'def> {
 
 impl<'def> Bundle<'def> {
     #[must_use]
-    pub fn new(components: Vec<BundleType<'def>>) -> Self {
+    pub const fn new(components: Vec<BundleType<'def>>) -> Self {
         Self { components }
     }
 
@@ -360,12 +363,17 @@ impl<'def> Bundle<'def> {
         let rts_name = format!("{bundle_prefix}_rts");
         let functor_name = format!("{bundle_prefix}_F");
         let tys_name = format!("{bundle_prefix}_tys");
+        let attr_binders = scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
+        let attr_uses = attr_binders.make_using_terms();
+        let scope_inst = scope.identity_instantiation_term();
+        let bundle_tys_type =
+            scope.get_spec_all_type_term(Box::new(coq::term::Type::Literal(format!("mut_types {rts_name}"))));
 
         section_context.push(coq::command::Definition::new(
             rts_name.clone(),
             coq::binder::BinderList::empty(),
             Some(coq::term::Type::Literal("list RT".to_owned())),
-            coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!("[{}]", rts.join("; ")))),
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!("[({} : RT)]", rts.join("; ")))),
         ));
 
         let mut functor_body = String::new();
@@ -381,12 +389,16 @@ impl<'def> Bundle<'def> {
 
         section_context.push(coq::command::Definition::new(
             functor_name.clone(),
-            coq::binder::BinderList::new(vec![coq::binder::Binder::new(
-                Some("tys".to_owned()),
-                coq::term::Type::Literal(format!("mut_types {rts_name}")),
-            )]),
-            Some(coq::term::Type::Literal(format!("mut_types {rts_name}"))),
-            coq::command::DefinitionBody::Term(coq::term::Term::Literal(functor_body)),
+            {
+                let mut params = attr_binders.clone();
+                params.append(vec![coq::binder::Binder::new(
+                    Some("tys".to_owned()),
+                    coq::term::Type::Literal(format!("mut_types {rts_name}")),
+                )]);
+                params
+            },
+            Some(bundle_tys_type.clone()),
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!("{scope} {functor_body}"))),
         ));
 
         // take fixpoint of bundle
@@ -396,10 +408,11 @@ impl<'def> Bundle<'def> {
         }));
         section_context.push(coq::command::Definition::new(
             tys_name.clone(),
-            coq::binder::BinderList::empty(),
-            Some(coq::term::Type::Literal(format!("mut_types {rts_name}"))),
+            attr_binders,
+            Some(bundle_tys_type),
             coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
-                "mut_fixpoint {functor_name}"
+                "{scope} mut_fixpoint (λ tys, {functor_name} {} tys {scope_inst})",
+                attr_uses.iter().map(ToString::to_string).collect::<Vec<_>>().join(" "),
             ))),
         ));
 

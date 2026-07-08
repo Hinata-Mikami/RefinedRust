@@ -478,7 +478,16 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             info!("ordered ADT defn groups: {:?}", ordered);
 
             for group in &ordered {
-                if let [did] = group.as_slice() {
+                let is_recursive_singleton = if let [did] = group.as_slice() {
+                    let ordered_did = OrderedDefId::new(self.tcx, *did);
+                    adt_deps.get(&ordered_did).is_some_and(|deps| deps.contains(&ordered_did))
+                } else {
+                    false
+                };
+
+                if let [did] = group.as_slice()
+                    && !is_recursive_singleton
+                {
                     let ordered_did = OrderedDefId::new(self.tcx, *did);
                     if let Some(su_ref) = struct_defs.get(&ordered_did) {
                         let su_ref = su_ref.borrow();
