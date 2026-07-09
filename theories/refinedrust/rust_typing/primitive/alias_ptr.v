@@ -66,6 +66,8 @@ Global Hint Unfold alias_ptr_t : tyunfold.
 Section rules.
   Context `{!typeGS Σ}.
 
+  (* TODO: expensive instance since this will always trigger on a prove_with_subtype.
+    Consider using a weaker solver. *)
   Lemma alias_ptr_simplify_goal_fast π (l l2 : loc) m `{!CanSolve (l.(loc_a) ∈ USize)} T :
     (⌜l = l2⌝ ∗ ⌜m = MetaNone⌝ ∗ T)
     ⊢ simplify_goal (l ◁ᵥ{π, m} l2 @ alias_ptr_t) T.

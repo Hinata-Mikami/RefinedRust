@@ -573,6 +573,8 @@ Section test_rectypes.
 
   Program Definition Boo_tys : mut_types Boo_rts :=
     @mut_fixpoint _ _ _ Boo_F _ _ _.
+  Next Obligation. solve_fixpoint_ne. Qed.
+  Next Obligation. solve_fixpoint_contr. Qed.
 End test_rectypes.
 
 Section rectypes_List_ty.
@@ -743,6 +745,8 @@ Section test_mutual_rectypes.
 
   Program Definition FooBar_tys : mut_types FooBar_rts :=
     @mut_fixpoint _ _ _ FooBar_F _ _ _.
+  Next Obligation. solve_fixpoint_ne. Qed.
+  Next Obligation. solve_fixpoint_contr. Qed.
 
   Definition Foo_ty : type unitRT := mut_type_project FooBar_tys 0 eq_refl.
   Definition Bar_ty : type unitRT := mut_type_project FooBar_tys 1 eq_refl.

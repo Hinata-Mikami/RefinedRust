@@ -1156,12 +1156,13 @@ Ltac simplify_layout_alg_atomic H :=
   end.
 
 Lemma tac_mut_fixpoint_project_ty_syn_type_inv `{!typeGS Σ} {rts : list RT}
-  (F : mut_type_fun rts) `{!MutTypeNonExpansive F}
-  `{!MutTypeContractive (mut_iter F (length rts))}
+  (F : mut_type_fun rts)
+  `{Hne : !TCNoResolve (MutTypeNonExpansive F)}
+  `{Hcontr : !TCNoResolve (MutTypeContractive (mut_iter F (length rts)))}
   `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
   {rt : RT} `{!Inhabited (RT_xt rt)} i
   (Hlook : rts !! i = Some rt) m st :
-  use_layout_alg (ty_syn_type (mut_type_project (mut_fixpoint F) i Hlook) m) = Some st →
+  use_layout_alg (ty_syn_type (mut_type_project (mut_fixpoint F (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook) m) = Some st →
   use_layout_alg (ty_syn_type (mut_type_project_simpl (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 0) i Hlook) m) = Some st.
 Proof.
   rewrite mut_fixpoint_project_ty_syn_type//.

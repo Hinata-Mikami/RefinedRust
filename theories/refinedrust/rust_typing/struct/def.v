@@ -628,16 +628,18 @@ Section structs.
     DepLftMorphism deps (λ x, struct_t sls (Ts x)).
   Proof. apply struct_t_dep_lft_morphism. Defined.
 
-  Global Instance struct_t_ne {rt} {rts : list RT} sls (Ts : type rt → hlist type rts) :
+  Lemma struct_t_ne {rt rt1} {rts : list RT} sls (F : type rt → type rt1) (Ts : type rt → hlist type rts) :
+    (∀ ty1 ty2, (∀ m, st_of ty1 m = st_of ty2 m) → sls (st_of (F ty1) MetaNone) = sls (st_of (F ty2) MetaNone)) →
     HTypeNonExpansive Ts →
-    TypeNonExpansive (λ ty, struct_t (sls (st_of ty MetaNone)) (Ts ty)).
+    TypeNonExpansive (λ ty, struct_t (sls (st_of (F ty) MetaNone)) (Ts ty)).
   Proof.
-    intros HT. constructor.
+    intros Hst1 HT. constructor.
     - simpl. done.
-    - simpl. intros ?? Hst _. rewrite Hst. done.
+    - simpl. intros ?? Hst _. erewrite Hst1; done.
     - move => ty ty' Hst ? Hot ot /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
-      rewrite Hst.
+      erewrite Hst1; last done.
       destruct HT as [Ts' Hne ->].
+      repeat (erewrite (Hst1 ty ty'); last done).
       destruct ot as [ | | | sl ots | ly | ] => //=.
       apply and_proper => Hsl.
       apply and_proper => Halg. apply and_proper => Hots. rewrite -!Forall_fold_right.
@@ -648,20 +650,20 @@ Section structs.
       { intros ots rts Ts' Hne Heq Hlen. destruct rts; last done.
         inv_hlist Ts'. intros _. destruct ots; done. }
       move => [m ?] s IH ots rts Ts' Hne Hlen1 Hlen2.
-      destruct rts as [ | rt1 rts]; first done. destruct ots as [ | ot ots]; first done.
+      destruct rts as [ | rt1' rts]; first done. destruct ots as [ | ot ots]; first done.
       inv_hlist Ts' => T1 Ts'.
       intros Ha.
       apply HTForall_cons_inv in Ha as (Hne1 & Hne2).
       simplify_eq/=; rewrite !Forall_cons/=; f_equiv.
       { solve_type_proper. }
       eapply IH; done.
-    - simpl. intros ?? Hst. rewrite Hst. done.
+    - simpl. intros ?? Hst. erewrite Hst1; done.
     - intros n ty ty' Hd.
       destruct HT as [Ts' Hne ->].
       iIntros (π r m v). rewrite /ty_own_val/=.
       rewrite struct_t_own_val_unfold/struct_t_own_val_def.
       f_equiv => sl.
-      rewrite type_dist_st.
+      erewrite Hst1; last apply type_dist_st.
       rewrite /struct_own_el_val.
       apply sep_ne_proper => Hmeta. subst m.
       apply sep_ne_proper => Halg. apply sep_ne_proper => Hlen.
@@ -671,7 +673,7 @@ Section structs.
       elim: (sl_members sl) rts Ts' Hne r Hlen2 v => //.
       intros [m ?] s IH rts Ts' Hne r Hlen v; csimpl.
       destruct m; simpl in *.
-      + destruct rts as [ | rt1 rts]; first done.
+      + destruct rts as [ | rt1' rts]; first done.
         inv_hlist Ts' => T1 Ts'.
         intros [Hne1 Hne]%HTForall_cons_inv.
         simpl. f_equiv. { rewrite /struct_own_el_val. solve_type_proper. }
@@ -681,7 +683,7 @@ Section structs.
       destruct HT as [Ts' Hne ->].
       iIntros (κ π r m l). rewrite /ty_shr /= /struct_own_el_shr/=.
       rewrite struct_t_shr_unfold/struct_t_shr_def.
-      rewrite type_dist2_st.
+      erewrite Hst1; last apply type_dist2_st.
       f_equiv => sl.
       apply sep_ne_proper => Hmeta. subst m.
       apply sep_ne_proper => Halg. apply sep_ne_proper => Hlen.
@@ -692,7 +694,7 @@ Section structs.
       elim: (sl_members sl) rts Ts' Hne r Hlen2 l => //.
       intros [m ly] s IH rts Ts' Hne r Hlen l; csimpl.
       destruct m; simpl in *.
-      + destruct rts as [ | rt1 rts]; first done.
+      + destruct rts as [ | rt1' rts]; first done.
         inv_hlist Ts' => T1 Ts'.
         intros [Hne1 Hne]%HTForall_cons_inv.
         simpl. f_equiv. { solve_type_proper. }
@@ -702,6 +704,15 @@ Section structs.
       + f_equiv.
         rewrite /struct_own_el_shr.
         setoid_rewrite <-shift_loc_assoc_nat. apply IH; done.
+  Qed.
+
+  Global Instance struct_t_ne_1 {rt} {rts : list RT} sls (Ts : type rt → hlist type rts) :
+    HTypeNonExpansive Ts →
+    TypeNonExpansive (λ ty, struct_t (sls (st_of ty MetaNone)) (Ts ty)).
+  Proof.
+    intros Hne.
+    eapply struct_t_ne; last done.
+    intros ?? Hst. rewrite Hst//.
   Qed.
 
   (* variant with constant sls *)
@@ -714,10 +725,10 @@ Section structs.
 
   (* For this to be contractive, the [sls] must not depend on the recursive type *)
   (* TODO reduce duplication? *)
-  Global Instance struct_t_contr {rt} {rts : list RT} sls (Ts : type rt → hlist type rts) :
-    TCDone (∀ st1 st2, sls st1 = sls st2) →
+  Lemma struct_t_contr {rt rt1} {rts : list RT} sls (F : type rt → type rt1) (Ts : type rt → hlist type rts) :
+    (∀ ty1 ty2, sls (st_of (F ty1) MetaNone) = sls (st_of (F ty2) MetaNone)) →
     HTypeContractive Ts →
-    TypeContractive (λ ty, struct_t (sls (st_of ty MetaNone)) (Ts ty)).
+    TypeContractive (λ ty, struct_t (sls (st_of (F ty) MetaNone)) (Ts ty)).
   Proof.
     intros Hst HT. constructor.
     - done.
@@ -735,7 +746,7 @@ Section structs.
       { intros ots rts Ts' Hne Heq Hlen. destruct rts; last done.
         inv_hlist Ts'. intros _. destruct ots; done. }
       move => [m ?] s IH ots rts Ts' Hne Hlen1 Hlen2.
-      destruct rts as [ | rt1 rts]; first done. destruct ots as [ | ot ots]; first done.
+      destruct rts as [ | rt1' rts]; first done. destruct ots as [ | ot ots]; first done.
       inv_hlist Ts' => T1 Ts'.
       intros Ha.
       apply HTForall_cons_inv in Ha as (Hne1 & Hne2).
@@ -758,7 +769,7 @@ Section structs.
       elim: (sl_members sl) rts Ts' Hne r Hlen2 v => //.
       intros [m ?] s IH rts Ts' Hne r Hlen v; csimpl.
       destruct m; simpl in *.
-      + destruct rts as [ | rt1 rts]; first done.
+      + destruct rts as [ | rt1' rts]; first done.
         inv_hlist Ts' => T1 Ts'.
         intros [Hne1 Hne]%HTForall_cons_inv.
         simpl. f_equiv. { rewrite /struct_own_el_val. solve_type_proper. }
@@ -779,7 +790,7 @@ Section structs.
       elim: (sl_members sl) rts Ts' Hne r Hlen2 l => //.
       intros [m ly] s IH rts Ts' Hne r Hlen l; csimpl.
       destruct m; simpl in *.
-      + destruct rts as [ | rt1 rts]; first done.
+      + destruct rts as [ | rt1' rts]; first done.
         inv_hlist Ts' => T1 Ts'.
         intros [Hne1 Hne]%HTForall_cons_inv.
         simpl. f_equiv. { solve_type_proper. }
@@ -789,6 +800,16 @@ Section structs.
       + f_equiv.
         rewrite /struct_own_el_shr.
         setoid_rewrite <-shift_loc_assoc_nat. apply IH; done.
+  Qed.
+
+  Global Instance struct_t_contr_1 {rt} {rts : list RT} sls (Ts : type rt → hlist type rts) :
+    TCDone (∀ st1 st2, sls st1 = sls st2) →
+    HTypeContractive Ts →
+    TypeContractive (λ ty, struct_t (sls (st_of ty MetaNone)) (Ts ty)).
+  Proof.
+    intros Hst Hcontr.
+    eapply struct_t_contr; last done.
+    intros. by erewrite Hst.
   Qed.
 
   (* variant with constant sls *)

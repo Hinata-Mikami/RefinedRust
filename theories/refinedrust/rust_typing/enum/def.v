@@ -666,7 +666,7 @@ Section ne.
   Import EqNotations.
   Class EnumNonExpansive {rt1 rt2} (F : type rt1 → enum rt2) := {
     enum_ne_els :
-      ∀ ty ty' : type rt1, st_of ty MetaNone = st_of ty' MetaNone → enum_els (F ty) = enum_els (F ty');
+      ∀ ty ty' : type rt1, (∀ m, st_of ty m = st_of ty' m) → enum_els (F ty) = enum_els (F ty');
     (* the tag of the variant should not depend on the ty *)
     enum_ne_tag_consistent :
       ∀ ty ty', (F ty).(enum_tag) = (F ty').(enum_tag);
@@ -697,7 +697,7 @@ Section ne.
   }.
   Lemma enum_ne_lookup_tag_consistent {rt1 rt2} (F : type rt1 → enum rt2) ty ty' r :
     EnumNonExpansive F →
-    st_of ty MetaNone = st_of ty' MetaNone →
+    (∀ m, st_of ty m = st_of ty' m) →
     enum_lookup_tag (F ty) r = enum_lookup_tag (F ty') r.
   Proof.
     intros Hne Hd.

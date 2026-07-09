@@ -1636,10 +1636,13 @@ Arguments mut_component {_ _} _ _ _ _.
 
 Definition mut_fixpoint_def `{!typeGS Σ} {rts : list RT}
     (F : mut_type_fun rts)
-    `{!MutTypeNonExpansive F}
-    `{!MutTypeContractive (mut_iter F (length rts))}
-    `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts} : mut_types rts :=
-  mut_type_fixpoint_iter F (length rts).
+    `{Hne : !TCNoResolve(MutTypeNonExpansive F)}
+    `{Hcontr : !TCNoResolve (MutTypeContractive (mut_iter F (length rts)))}
+    `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts} : mut_types rts.
+Proof.
+  unfold TCNoResolve in *.
+  refine (mut_type_fixpoint_iter F (length rts)).
+Defined.
 Definition mut_fixpoint_aux : seal (@mut_fixpoint_def). Proof. by eexists. Qed.
 Definition mut_fixpoint := mut_fixpoint_aux.(unseal).
 Definition mut_fixpoint_unfold : @mut_fixpoint = @mut_fixpoint_def :=
@@ -1665,12 +1668,13 @@ Lemma ty_ghost_drop_rew `{!typeGS Σ} {rt rt'} (H : rt = rt')
 Proof. destruct H. done. Qed.
 
 Lemma mut_fixpoint_project_ty_lfts `{!typeGS Σ} {rts : list RT}
-    (F : mut_type_fun rts) `{!MutTypeNonExpansive F}
-    `{!MutTypeContractive (mut_iter F (length rts))}
+    (F : mut_type_fun rts)
+    `{Hne : !TCNoResolve (MutTypeNonExpansive F)}
+    `{Hcontr : !TCNoResolve (MutTypeContractive (mut_iter F (length rts)))}
     `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
     {rt : RT} `{!Inhabited (RT_xt rt)} i
     (Hlook : rts !! i = Some rt) :
-  ty_lfts (mut_type_project (mut_fixpoint F) i Hlook) =
+  ty_lfts (mut_type_project (mut_fixpoint F (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook) =
   mut_lfts (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 0).
 Proof.
   rewrite mut_fixpoint_unfold /mut_fixpoint_def.
@@ -1681,12 +1685,13 @@ Proof.
 Qed.
 
 Lemma mut_fixpoint_project_ty_wf_E `{!typeGS Σ} {rts : list RT}
-    (F : mut_type_fun rts) `{!MutTypeNonExpansive F}
-    `{!MutTypeContractive (mut_iter F (length rts))}
+    (F : mut_type_fun rts)
+    `{Hne : !MutTypeNonExpansive F}
+    `{Hcontr : !MutTypeContractive (mut_iter F (length rts))}
     `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
     {rt : RT} `{!Inhabited (RT_xt rt)} i
     (Hlook : rts !! i = Some rt) :
-  ty_wf_E (mut_type_project (mut_fixpoint F) i Hlook) =
+  ty_wf_E (mut_type_project (mut_fixpoint F (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook) =
   mut_wf_E (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 1).
 Proof.
   rewrite mut_fixpoint_unfold /mut_fixpoint_def.
@@ -1697,12 +1702,13 @@ Proof.
 Qed.
 
 Lemma mut_fixpoint_project_ty_ghost_drop `{!typeGS Σ} {rts : list RT}
-    (F : mut_type_fun rts) `{!MutTypeNonExpansive F}
-    `{!MutTypeContractive (mut_iter F (length rts))}
+    (F : mut_type_fun rts)
+    `{Hne : !MutTypeNonExpansive F}
+    `{Hcontr : !MutTypeContractive (mut_iter F (length rts))}
     `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
     {rt : RT} `{!Inhabited (RT_xt rt)} i
     (Hlook : rts !! i = Some rt) π r :
-  _ty_ghost_drop (mut_type_project (mut_fixpoint F) i Hlook) π r ≡ True%I.
+  _ty_ghost_drop (mut_type_project (mut_fixpoint F  (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook) π r ≡ True%I.
 Proof.
   rewrite mut_fixpoint_unfold /mut_fixpoint_def.
   rewrite mut_type_project_unfold /mut_type_project_def.
@@ -1761,13 +1767,118 @@ Proof.
       apply IH.
 Qed.
 
+Global Instance type_dist_mut_type_project_cons_head `{!typeGS Σ} {rt rts} n
+    `{!Inhabited (RT_xt rt)} (ty ty' : type rt) (tys tys' : mut_types rts)
+    (Hlook Hlook' : (rt :: rts) !! 0 = Some rt) :
+  TypeDist n ty ty' →
+  TypeDist n (mut_type_project (ty +:: tys) 0 Hlook)
+    (mut_type_project (ty' +:: tys') 0 Hlook').
+Proof.
+  intros Hdist.
+  replace Hlook with (@eq_refl (option RT) (Some rt)) by apply proof_irrelevance.
+  replace Hlook' with (@eq_refl (option RT) (Some rt)) by apply proof_irrelevance.
+  rewrite !mut_type_project_cons_head_eq. exact Hdist.
+Qed.
+
+Global Instance type_dist2_mut_type_project_cons_head `{!typeGS Σ} {rt rts} n
+    `{!Inhabited (RT_xt rt)} (ty ty' : type rt) (tys tys' : mut_types rts)
+    (Hlook Hlook' : (rt :: rts) !! 0 = Some rt) :
+  TypeDist2 n ty ty' →
+  TypeDist2 n (mut_type_project (ty +:: tys) 0 Hlook)
+    (mut_type_project (ty' +:: tys') 0 Hlook').
+Proof.
+  intros Hdist.
+  replace Hlook with (@eq_refl (option RT) (Some rt)) by apply proof_irrelevance.
+  replace Hlook' with (@eq_refl (option RT) (Some rt)) by apply proof_irrelevance.
+  rewrite !mut_type_project_cons_head_eq. exact Hdist.
+Qed.
+
+Global Instance type_dist_later_mut_type_project_cons_head `{!typeGS Σ} {rt rts} n
+    `{!Inhabited (RT_xt rt)} (ty ty' : type rt) (tys tys' : mut_types rts)
+    (Hlook Hlook' : (rt :: rts) !! 0 = Some rt) :
+  TypeDistLater n ty ty' →
+  TypeDistLater n (mut_type_project (ty +:: tys) 0 Hlook)
+    (mut_type_project (ty' +:: tys') 0 Hlook').
+Proof.
+  intros Hdist.
+  replace Hlook with (@eq_refl (option RT) (Some rt)) by apply proof_irrelevance.
+  replace Hlook' with (@eq_refl (option RT) (Some rt)) by apply proof_irrelevance.
+  rewrite !mut_type_project_cons_head_eq. exact Hdist.
+Qed.
+
+Global Instance type_dist_later2_mut_type_project_cons_head `{!typeGS Σ} {rt rts} n
+    `{!Inhabited (RT_xt rt)} (ty ty' : type rt) (tys tys' : mut_types rts)
+    (Hlook Hlook' : (rt :: rts) !! 0 = Some rt) :
+  TypeDistLater2 n ty ty' →
+  TypeDistLater2 n (mut_type_project (ty +:: tys) 0 Hlook)
+    (mut_type_project (ty' +:: tys') 0 Hlook').
+Proof.
+  intros Hdist.
+  replace Hlook with (@eq_refl (option RT) (Some rt)) by apply proof_irrelevance.
+  replace Hlook' with (@eq_refl (option RT) (Some rt)) by apply proof_irrelevance.
+  rewrite !mut_type_project_cons_head_eq. exact Hdist.
+Qed.
+
+Global Instance type_dist_mut_type_project_cons_tail `{!typeGS Σ} {rt0 rt rts} n
+    `{!Inhabited (RT_xt rt)} (ty ty' : type rt0) (tys tys' : mut_types rts)
+    i (Hlook Hlook' : (rt0 :: rts) !! S i = Some rt) :
+  TypeDist n (mut_type_project tys i Hlook) (mut_type_project tys' i Hlook') →
+  TypeDist n (mut_type_project (ty +:: tys) (S i) Hlook)
+    (mut_type_project (ty' +:: tys') (S i) Hlook').
+Proof.
+  intros Hdist.
+  rewrite -(mut_type_project_cons_tail_eq (ty +:: tys) i Hlook Hlook).
+  rewrite -(mut_type_project_cons_tail_eq (ty' +:: tys') i Hlook' Hlook').
+  exact Hdist.
+Qed.
+
+Global Instance type_dist2_mut_type_project_cons_tail `{!typeGS Σ} {rt0 rt rts} n
+    `{!Inhabited (RT_xt rt)} (ty ty' : type rt0) (tys tys' : mut_types rts)
+    i (Hlook Hlook' : (rt0 :: rts) !! S i = Some rt) :
+  TypeDist2 n (mut_type_project tys i Hlook) (mut_type_project tys' i Hlook') →
+  TypeDist2 n (mut_type_project (ty +:: tys) (S i) Hlook)
+    (mut_type_project (ty' +:: tys') (S i) Hlook').
+Proof.
+  intros Hdist.
+  rewrite -(mut_type_project_cons_tail_eq (ty +:: tys) i Hlook Hlook).
+  rewrite -(mut_type_project_cons_tail_eq (ty' +:: tys') i Hlook' Hlook').
+  exact Hdist.
+Qed.
+
+Global Instance type_dist_later_mut_type_project_cons_tail `{!typeGS Σ} {rt0 rt rts} n
+    `{!Inhabited (RT_xt rt)} (ty ty' : type rt0) (tys tys' : mut_types rts)
+    i (Hlook Hlook' : (rt0 :: rts) !! S i = Some rt) :
+  TypeDistLater n (mut_type_project tys i Hlook) (mut_type_project tys' i Hlook') →
+  TypeDistLater n (mut_type_project (ty +:: tys) (S i) Hlook)
+    (mut_type_project (ty' +:: tys') (S i) Hlook').
+Proof.
+  intros Hdist.
+  rewrite -(mut_type_project_cons_tail_eq (ty +:: tys) i Hlook Hlook).
+  rewrite -(mut_type_project_cons_tail_eq (ty' +:: tys') i Hlook' Hlook').
+  exact Hdist.
+Qed.
+
+Global Instance type_dist_later2_mut_type_project_cons_tail `{!typeGS Σ} {rt0 rt rts} n
+    `{!Inhabited (RT_xt rt)} (ty ty' : type rt0) (tys tys' : mut_types rts)
+    i (Hlook Hlook' : (rt0 :: rts) !! S i = Some rt) :
+  TypeDistLater2 n (mut_type_project tys i Hlook) (mut_type_project tys' i Hlook') →
+  TypeDistLater2 n (mut_type_project (ty +:: tys) (S i) Hlook)
+    (mut_type_project (ty' +:: tys') (S i) Hlook').
+Proof.
+  intros Hdist.
+  rewrite -(mut_type_project_cons_tail_eq (ty +:: tys) i Hlook Hlook).
+  rewrite -(mut_type_project_cons_tail_eq (ty' +:: tys') i Hlook' Hlook').
+  exact Hdist.
+Qed.
+
 Lemma mut_fixpoint_project_ty_syn_type `{!typeGS Σ} {rts : list RT}
-    (F : mut_type_fun rts) `{!MutTypeNonExpansive F}
-    `{!MutTypeContractive (mut_iter F (length rts))}
+    (F : mut_type_fun rts)
+    `{Hne : !MutTypeNonExpansive F}
+    `{Hcontr : !MutTypeContractive (mut_iter F (length rts))}
     `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
     {rt : RT} `{!Inhabited (RT_xt rt)} i
     (Hlook : rts !! i = Some rt) m :
-  ty_syn_type (mut_type_project (mut_fixpoint F) i Hlook) m =
+  ty_syn_type (mut_type_project (mut_fixpoint F  (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook) m =
   ty_syn_type
     (mut_type_project_simpl
       (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 0) i Hlook) m.
@@ -1786,17 +1897,18 @@ Qed.
 Section rules.
   Context `{!typeGS Σ}.
   Context {rts : list RT}.
-  Context (F : mut_type_fun rts) `{!MutTypeNonExpansive F}.
-  Context `{!MutTypeContractive (mut_iter F (length rts))}.
+  Context (F : mut_type_fun rts)
+  `{Hne : !TCNoResolve (MutTypeNonExpansive F)}.
+  Context `{Hcontr : !TCNoResolve (MutTypeContractive (mut_iter F (length rts)))}.
   Context `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}.
   Context {rt : RT} `{!Inhabited (RT_xt rt)}.
   Context (i : nat) (Hlook : rts !! i = Some rt).
 
   Local Definition mut_fixpoint_project : type rt :=
-    mut_type_project (mut_fixpoint F) i Hlook.
+    mut_type_project (mut_fixpoint F  (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook.
 
   Local Definition mut_fixpoint_project_unfolded : type rt :=
-    mut_type_project_simpl (F (mut_fixpoint F)) i Hlook.
+    mut_type_project_simpl (F (mut_fixpoint F  (Hne:=Hne) (Hcontr:=Hcontr))) i Hlook.
 
   Local Lemma subtype_rew_r {rt1 rt2 : RT} (Heq : rt1 = rt2) E L
       (r : rt2) (ty1 ty2 : type rt1) :
@@ -1813,6 +1925,7 @@ Section rules.
     rewrite mut_fixpoint_unfold /mut_fixpoint_def.
     simpl.
     eapply subtype_rew_r.
+    unfold TCNoResolve in *.
     apply (mut_type_fixpoint_subtype_1 F (length rts)).
   Qed.
 
@@ -1825,6 +1938,7 @@ Section rules.
     rewrite mut_fixpoint_unfold /mut_fixpoint_def.
     simpl.
     eapply subtype_rew_r.
+    unfold TCNoResolve in *.
     apply (mut_type_fixpoint_subtype_2 F (length rts)).
   Qed.
 

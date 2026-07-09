@@ -1252,8 +1252,9 @@ Definition simplify_goal_ty_ghost_drop_concrete_inst := [instance @simplify_goal
 Global Existing Instance simplify_goal_ty_ghost_drop_concrete_inst.
 
 Lemma simplify_goal_mut_fixpoint_project_ty_ghost_drop `{!typeGS Σ}
-    {rts : list RT} (F : mut_type_fun rts) {Hne : MutTypeNonExpansive F}
-    {Hctr : MutTypeContractive (mut_iter F (length rts))}
+    {rts : list RT} (F : mut_type_fun rts)
+    {Hne : TCNoResolve (MutTypeNonExpansive F)}
+    {Hctr : TCNoResolve (MutTypeContractive (mut_iter F (length rts)))}
     {Hrts : base.TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
     {rt : RT} {Hinh : Inhabited (RT_xt rt)} i
     (Hlook : rts !! i = Some rt) π r T :
@@ -1367,33 +1368,54 @@ Ltac enum_contractive_solve_dist :=
     unfold spec_instantiate_typaram_fst;
     unfold spec_instantiate_lft_fst;
     match goal with
-    | |- TypeDist _ (enum_ty (?Hx ?ty1 ?lfts ?tys) ?r) (enum_ty (?Hx ?ty2 ?lfts ?tys) ?r) =>
-        eapply (type_contractive_dist _ _ (λ ty, enum_ty (Hx ty lfts tys) r)); last done;
-        destruct r; simpl; apply _
-    | |- TypeDist2 _ (enum_ty (?Hx ?ty1 ?lfts ?tys) ?r) (enum_ty (?Hx ?ty2 ?lfts ?tys) ?r) =>
-        eapply (type_contractive_dist2 _ _ (λ ty, enum_ty (Hx ty lfts tys) r)); last done;
-        destruct r; simpl; apply _
+    | Hdist : TypeDist2 ?n ?ty ?ty' |-
+        TypeDist ?n (enum_ty ?E ?r) (enum_ty ?E' ?r) =>
+        let P := eval pattern ty in E in
+        lazymatch P with
+        | ?F _ =>
+            eapply (type_contractive_dist _ _ (λ ty, enum_ty (F ty) r));
+            [ destruct r; simpl; apply _
+            | first [apply _ | done ] ]
+        end
+    | Hdist : TypeDistLater2 ?n ?ty ?ty' |-
+        TypeDist2 ?n (enum_ty ?E ?r) (enum_ty ?E' ?r) =>
+        let P := eval pattern ty in E in
+        lazymatch P with
+        | ?F _ =>
+            eapply (type_contractive_dist2 _ _ (λ ty, enum_ty (F ty) r));
+            [ destruct r; simpl; apply _
+            | first [apply _ | done ] ]
+        end
     end.
 
-Global Hint Extern 100 (TypeContractive (λ x, enum_t _)) =>
-  apply enum_t_contr;
-  unshelve econstructor;
-  [ enum_contractive_solve_eq
-  | enum_contractive_solve_eq
-  | enum_contractive_solve_eq
-  | enum_contractive_solve_eq
-  | enum_contractive_solve_dist
-  | enum_contractive_solve_dist ] : typeclass_instances.
-Global Hint Extern 100 (TypeNonExpansive (λ x, enum_t _)) =>
-  apply enum_t_ne;
-  unshelve econstructor;
-  [ enum_contractive_solve_eq
-  | enum_contractive_solve_eq
-  | enum_contractive_solve_eq
-  | enum_contractive_solve_eq
-  | enum_contractive_solve_dist
-  | enum_contractive_solve_dist ] : typeclass_instances.
-
+Global Hint Extern 100 (TypeContractive _) =>
+  simpl;
+  match goal with
+  | |- TypeContractive (λ x, enum_t _) =>
+    apply enum_t_contr;
+    unshelve econstructor;
+    [ enum_contractive_solve_eq
+    | enum_contractive_solve_eq
+    | enum_contractive_solve_eq
+    | enum_contractive_solve_eq
+    | enum_contractive_solve_dist
+    | enum_contractive_solve_dist ]
+  end
+  : typeclass_instances.
+Global Hint Extern 100 (TypeNonExpansive _) =>
+  simpl;
+  match goal with
+  | |- TypeNonExpansive (λ x, enum_t _) =>
+    apply enum_t_ne;
+    unshelve econstructor;
+    [ enum_contractive_solve_eq
+    | enum_contractive_solve_eq
+    | enum_contractive_solve_eq
+    | enum_contractive_solve_eq
+    | enum_contractive_solve_dist
+    | enum_contractive_solve_dist ]
+  end
+  : typeclass_instances.
 
 Ltac els_not_elem_solver :=
     repeat (apply not_elem_of_cons; split; first discriminate);
@@ -1406,6 +1428,11 @@ Ltac solve_enum_layout_spec_discriminant_nodup :=
   simpl; repeat first [econstructor | els_not_elem_solver].
 Ltac solve_enum_layout_spec_discriminant_in_range :=
   init_cache; repeat first [econstructor | solve_goal ]; unsafe_unfold_common_radium_defs; simpl; lia.
+
+Ltac solve_fixpoint_ne :=
+  unfold TCNoResolve; apply _.
+Ltac solve_fixpoint_contr :=
+  unfold TCNoResolve; apply _.
 
 (* Fast function type equality *)
 Ltac solve_fast_function_spec_eq :=

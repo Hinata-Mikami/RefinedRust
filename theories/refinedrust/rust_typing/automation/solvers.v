@@ -1373,13 +1373,14 @@ Section tac.
     ty_wf_E ty = E.
   Proof. rewrite ty_wf_E_unfold. done. Qed.
   Lemma tac_unfold_mut_fixpoint_project_ty_wf_E {rts : list RT}
-      (F : mut_type_fun rts) `{!MutTypeNonExpansive F}
-      `{!MutTypeContractive (mut_iter F (length rts))}
+      (F : mut_type_fun rts)
+      `{Hne : !TCNoResolve (MutTypeNonExpansive F)}
+      `{Hcontr : !TCNoResolve (MutTypeContractive (mut_iter F (length rts)))}
       `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
       {rt : RT} `{!Inhabited (RT_xt rt)} i
       (Hlook : rts !! i = Some rt) E :
     mut_wf_E (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 1) = E →
-    ty_wf_E (mut_type_project (mut_fixpoint F) i Hlook) = E.
+    ty_wf_E (mut_type_project (mut_fixpoint F (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook) = E.
   Proof. rewrite mut_fixpoint_project_ty_wf_E. done. Qed.
   Lemma tac_unfold_mut_type_project_cons_head_ty_wf_E {rt rts}
       `{!Inhabited (RT_xt rt)} (ty : type rt) (tys : mut_types rts)
@@ -1405,14 +1406,15 @@ Section tac.
     lfts_outlives_E (ty_lfts ty) κ = E.
   Proof. rewrite ty_lfts_unfold. done. Qed.
   Lemma tac_lfts_outlives_E_mut_fixpoint_project {rts : list RT}
-      (F : mut_type_fun rts) `{!MutTypeNonExpansive F}
-      `{!MutTypeContractive (mut_iter F (length rts))}
+      (F : mut_type_fun rts)
+      `{Hne : !TCNoResolve (MutTypeNonExpansive F)}
+      `{Hcontr : !TCNoResolve (MutTypeContractive (mut_iter F (length rts)))}
       `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
       {rt : RT} `{!Inhabited (RT_xt rt)} i
       (Hlook : rts !! i = Some rt) κ E :
     lfts_outlives_E
       (mut_lfts (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 0)) κ = E →
-    lfts_outlives_E (ty_lfts (mut_type_project (mut_fixpoint F) i Hlook)) κ = E.
+    lfts_outlives_E (ty_lfts (mut_type_project (mut_fixpoint F (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook)) κ = E.
   Proof. rewrite mut_fixpoint_project_ty_lfts. done. Qed.
   Lemma tac_lfts_outlives_E_mut_type_project_cons_head {rt rts}
       `{!Inhabited (RT_xt rt)} (ty : type rt) (tys : mut_types rts)
