@@ -118,7 +118,7 @@ fn compute_def_sccs(deps: &BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>) -> Ve
     }
 
     fn strong_connect(
-        node: OrderedDefId,
+        node: &OrderedDefId,
         graph: &BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>,
         state: &mut TarjanState,
     ) {
@@ -129,25 +129,25 @@ fn compute_def_sccs(deps: &BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>) -> Ve
         state.stack.push(node.clone());
         state.on_stack.insert(node.clone());
 
-        if let Some(successors) = graph.get(&node) {
+        if let Some(successors) = graph.get(node) {
             for successor in successors {
                 if !state.indices.contains_key(successor) {
-                    strong_connect(successor.clone(), graph, state);
-                    let lowlink = state.lowlinks[&node].min(state.lowlinks[successor]);
+                    strong_connect(successor, graph, state);
+                    let lowlink = state.lowlinks[node].min(state.lowlinks[successor]);
                     state.lowlinks.insert(node.clone(), lowlink);
                 } else if state.on_stack.contains(successor) {
-                    let lowlink = state.lowlinks[&node].min(state.indices[successor]);
+                    let lowlink = state.lowlinks[node].min(state.indices[successor]);
                     state.lowlinks.insert(node.clone(), lowlink);
                 }
             }
         }
 
-        if state.lowlinks[&node] == state.indices[&node] {
+        if state.lowlinks[node] == state.indices[node] {
             let mut component = Vec::new();
             loop {
                 let component_node = state.stack.pop().unwrap();
                 state.on_stack.remove(&component_node);
-                let is_root = component_node == node;
+                let is_root = component_node == *node;
                 component.push(component_node);
                 if is_root {
                     break;
@@ -177,7 +177,7 @@ fn compute_def_sccs(deps: &BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>) -> Ve
 
     for node in graph.keys() {
         if !state.indices.contains_key(node) {
-            strong_connect(node.clone(), &graph, &mut state);
+            strong_connect(node, &graph, &mut state);
         }
     }
 

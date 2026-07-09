@@ -4,6 +4,8 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use crate::specs::{GenericScope, IncludeSelfReq, enums, invariants, structs};
 use crate::{coq, model};
 
@@ -13,6 +15,14 @@ pub trait BundleableType<'def> {
     fn rt_name(&self) -> String;
 
     fn bundle_rt_term(&self) -> String;
+
+    fn bundle_st_def_name(&self) -> String;
+
+    fn generate_bundle_layout_def(
+        &self,
+        typarams: &coq::binder::BinderList,
+        shadow_st_names: &[String],
+    ) -> String;
 
     fn scope(&self) -> GenericScope<'def>;
 
@@ -86,6 +96,8 @@ pub trait BundleableType<'def> {
         ));
     }
 
+    fn generate_bundle_post_projection(&self, _doc: &mut coq::Document, _projection_names: &[String]) {}
+
     fn set_flags(&self, doc: &mut coq::Document, rt_context_names: &[String]);
 }
 
@@ -130,6 +142,36 @@ impl<'def> BundleableType<'def> for BundleType<'def> {
             Self::Enum(s) => {
                 let s = s.borrow();
                 s.as_ref().unwrap().bundle_rt_term()
+            },
+        }
+    }
+
+    fn bundle_st_def_name(&self) -> String {
+        match self {
+            Self::Struct(s) => {
+                let s = s.borrow();
+                s.as_ref().unwrap().st_def_name().to_owned()
+            },
+            Self::Enum(s) => {
+                let s = s.borrow();
+                s.as_ref().unwrap().st_def_name().to_owned()
+            },
+        }
+    }
+
+    fn generate_bundle_layout_def(
+        &self,
+        typarams: &coq::binder::BinderList,
+        shadow_st_names: &[String],
+    ) -> String {
+        match self {
+            Self::Struct(s) => {
+                let s = s.borrow();
+                s.as_ref().unwrap().generate_bundle_layout_def(typarams, shadow_st_names)
+            },
+            Self::Enum(s) => {
+                let s = s.borrow();
+                s.as_ref().unwrap().generate_bundle_layout_def(typarams, shadow_st_names)
             },
         }
     }
@@ -275,16 +317,36 @@ impl<'def> BundleableType<'def> for BundleType<'def> {
             },
         }
     }
+
+    fn generate_bundle_post_projection(&self, doc: &mut coq::Document, projection_names: &[String]) {
+        match self {
+            Self::Struct(s) => {
+                let s = s.borrow();
+                s.as_ref().unwrap().generate_bundle_post_projection(doc, projection_names);
+            },
+            Self::Enum(s) => {
+                let s = s.borrow();
+                s.as_ref().unwrap().generate_bundle_post_projection(doc, projection_names);
+            },
+        }
+    }
 }
 
 pub struct Bundle<'def> {
     components: Vec<BundleType<'def>>,
+    layout_unshadowed_st_names: BTreeMap<String, BTreeSet<String>>,
 }
 
 impl<'def> Bundle<'def> {
     #[must_use]
-    pub const fn new(components: Vec<BundleType<'def>>) -> Self {
-        Self { components }
+    pub const fn new_with_layout_unshadowed(
+        components: Vec<BundleType<'def>>,
+        layout_unshadowed_st_names: BTreeMap<String, BTreeSet<String>>,
+    ) -> Self {
+        Self {
+            components,
+            layout_unshadowed_st_names,
+        }
     }
 
     fn common_scope(&self) -> GenericScope<'def> {
@@ -311,6 +373,37 @@ impl<'def> Bundle<'def> {
     }
 
     #[must_use]
+    pub fn generate_layout_defs(&self) -> coq::Document {
+        let scope = self.common_scope();
+        let typarams = scope.get_all_ty_params_with_assocs().get_coq_ty_st_params();
+        let shadow_st_names =
+            self.components.iter().map(BundleableType::bundle_st_def_name).collect::<Vec<_>>();
+        let section_name = format!("{}_layout", self.name_prefix());
+
+        let mut doc = coq::Document::default();
+        doc.push(coq::section::Section::new(section_name, |doc| {
+            doc.push(coq::command::Command::Literal("Context `{RRGS : !refinedrustGS Σ}.".to_owned()));
+            for component in &self.components {
+                let unshadowed_st_names = self
+                    .layout_unshadowed_st_names
+                    .get(&component.bundle_st_def_name())
+                    .cloned()
+                    .unwrap_or_default();
+                let component_shadow_st_names = shadow_st_names
+                    .iter()
+                    .filter(|name| !unshadowed_st_names.contains(*name))
+                    .cloned()
+                    .collect::<Vec<_>>();
+                doc.push(coq::command::Command::Literal(
+                    component.generate_bundle_layout_def(&typarams, &component_shadow_st_names),
+                ));
+            }
+        }));
+
+        doc
+    }
+
+    #[must_use]
     pub fn generate(&self) -> coq::Document {
         let scope = self.common_scope();
         let all_ty_params = scope.get_all_ty_params_with_assocs();
@@ -332,6 +425,9 @@ impl<'def> Bundle<'def> {
         }
 
         let projection_names = self.components.iter().map(BundleableType::ty_name).collect::<Vec<_>>();
+        let mut ty_context_names_with_recursive_assumptions = context_names;
+        ty_context_names_with_recursive_assumptions
+            .extend(projection_names.iter().map(|name| format!("_{name}")));
 
         // write all the components with generate_in_context, using _pre names derived from ty_name / rt_name
         for component in &self.components {
@@ -340,7 +436,7 @@ impl<'def> Bundle<'def> {
                 &mut components,
                 &raw_pre_ty_name,
                 &format!("{}_pre_raw", component.rt_name()),
-                &context_names,
+                &ty_context_names_with_recursive_assumptions,
                 &context_names_without_sigma,
             );
             component.generate_bundle_pre_wrapper(
@@ -358,7 +454,11 @@ impl<'def> Bundle<'def> {
 
         // define bundle functor using _pre names
         let rt_params = all_ty_params.get_coq_ty_rt_params().make_using_terms();
-        let rts = self.components.iter().map(BundleableType::bundle_rt_term).collect::<Vec<_>>();
+        let rts = self
+            .components
+            .iter()
+            .map(|x| format!("({} : RT)", x.bundle_rt_term()))
+            .collect::<Vec<_>>();
         let bundle_prefix = self.name_prefix();
         let rts_name = format!("{bundle_prefix}_rts");
         let functor_name = format!("{bundle_prefix}_F");
@@ -373,7 +473,7 @@ impl<'def> Bundle<'def> {
             rts_name.clone(),
             coq::binder::BinderList::empty(),
             Some(coq::term::Type::Literal("list RT".to_owned())),
-            coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!("[({} : RT)]", rts.join("; ")))),
+            coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!("[{}]", rts.join("; ")))),
         ));
 
         let mut functor_body = String::new();
@@ -406,20 +506,31 @@ impl<'def> Bundle<'def> {
             name: "enum_ty".to_owned(),
             arguments_string: ": simpl never".to_owned(),
         }));
-        section_context.push(coq::command::Definition::new(
+        section_context.push(coq::command::Definition::program(
             tys_name.clone(),
             attr_binders,
             Some(bundle_tys_type),
             coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
-                "{scope} mut_fixpoint (λ tys, {functor_name} {} tys {scope_inst})",
+                "{scope} mut_fixpoint (λ tys, {functor_name} {} tys {scope_inst}) (Hne := _) (Hcontr := _)",
                 attr_uses.iter().map(ToString::to_string).collect::<Vec<_>>().join(" "),
             ))),
         ));
+        section_context.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
+            coq::ltac::LTac::Literal("solve_fixpoint_ne".to_owned()),
+            coq::proof::Terminator::Qed,
+        )));
+        section_context.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
+            coq::ltac::LTac::Literal("solve_fixpoint_contr".to_owned()),
+            coq::proof::Terminator::Qed,
+        )));
 
         // define projections for the proper non _pre names; this should probably be a hook taking the type
         // term or so, so that we can also define the enum definition with recursive knots tied
         for (index, component) in self.components.iter().enumerate() {
             component.generate_bundle_projection(&mut section_context, &tys_name, index, &projection_names);
+        }
+        for component in &self.components {
+            component.generate_bundle_post_projection(&mut section_context, &projection_names);
         }
 
         // generate the normalized rt (mechanical, using generate_normalized_rt_def)

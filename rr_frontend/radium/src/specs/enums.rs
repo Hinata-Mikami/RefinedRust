@@ -5,15 +5,15 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use std::cell::RefCell;
-use std::fmt;
 use std::fmt::Write as _;
 use std::ops::Add;
+use std::{fmt, slice};
 
 use derive_more::{Constructor, Display};
 
 use crate::specs::bundles::BundleableType;
 use crate::specs::invariants::{generate_type_implicit_arg_flags, setup_type_section_context};
-use crate::specs::{GenericScope, GenericScopeInst, Type, invariants, structs, types};
+use crate::specs::{GenericScope, GenericScopeInst, IncludeSelfReq, Type, invariants, structs, types};
 use crate::{coq, fmt_list, lang, model, push_str_list};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -121,6 +121,18 @@ impl<'def> BundleableType<'def> for Abstract<'def> {
         self.spec.rfn_type.to_string()
     }
 
+    fn bundle_st_def_name(&self) -> String {
+        self.st_def_name.clone()
+    }
+
+    fn generate_bundle_layout_def(
+        &self,
+        _typarams: &coq::binder::BinderList,
+        shadow_st_names: &[String],
+    ) -> String {
+        self.generate_coq_els_def_core(shadow_st_names)
+    }
+
     fn scope(&self) -> GenericScope<'def> {
         self.scope.clone()
     }
@@ -219,31 +231,42 @@ impl<'def> BundleableType<'def> for Abstract<'def> {
         doc: &mut coq::Document,
         bundle_tys_name: &str,
         index: usize,
-        projection_names: &[String],
+        _projection_names: &[String],
     ) {
-        let attr_binders = self.scope.get_all_attr_trait_parameters(crate::specs::IncludeSelfReq::Dont);
+        let attr_binders = self.scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
         let attr_uses = attr_binders.make_using_terms();
-        let bundle_tys = coq::term::App::new(bundle_tys_name.to_owned(), attr_uses.clone());
+        let bundle_tys = coq::term::App::new(bundle_tys_name.to_owned(), attr_uses);
         let scope_inst = self.scope.identity_instantiation_term();
         let type_type = self
             .scope
             .get_spec_all_type_term(Box::new(model::Type::Ttype(Box::new(coq::term::Type::Infer)).into()));
         doc.push(coq::command::Definition::new(
             self.plain_ty_name.clone(),
-            attr_binders.clone(),
+            attr_binders,
             Some(type_type),
             coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!(
                 "{} mut_type_project ({bundle_tys} {scope_inst}) {index} eq_refl",
                 self.scope,
             ))),
         ));
+    }
 
+    fn generate_bundle_post_projection(&self, doc: &mut coq::Document, projection_names: &[String]) {
+        let attr_binders = self.scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
+        let attr_uses = attr_binders.make_using_terms();
+        let scope_inst = self.scope.identity_instantiation_term();
         let enum_type = self.scope.get_spec_all_type_term(Box::new(coq::term::Type::Literal(format!(
             "enum ({})",
             self.spec.rfn_type
         ))));
         let pre_enum_def_name = format!("{}_pre", self.enum_def_name);
-        let mut args = projection_names.to_owned();
+        let mut projection_inst = attr_uses.iter().map(ToString::to_string).collect::<Vec<_>>();
+        projection_inst.push(scope_inst.clone());
+        let projection_inst = projection_inst.join(" ");
+        let mut args = projection_names
+            .iter()
+            .map(|name| format!("({name} {projection_inst})"))
+            .collect::<Vec<_>>();
         args.extend(attr_uses.into_iter().map(|term| term.to_string()));
         args.push(scope_inst);
         doc.push(coq::command::Definition::new(
@@ -297,6 +320,11 @@ impl<'def> Abstract<'def> {
     }
 
     #[must_use]
+    pub(crate) fn st_def_name(&self) -> &str {
+        &self.st_def_name
+    }
+
+    #[must_use]
     pub(crate) fn public_type_name(&self) -> &str {
         &self.plain_ty_name
     }
@@ -321,12 +349,22 @@ impl<'def> Abstract<'def> {
     #[must_use]
     pub fn generate_coq_els_def(&self) -> String {
         let indent = "  ";
-
         let mut out = String::with_capacity(200);
 
         out.push_str(&format!("Section {}.\n", self.els_def_name));
         out.push_str(&format!("{indent}Context `{{RRGS : !refinedrustGS Σ}}.\n"));
         out.push('\n');
+        out.push_str(&self.generate_coq_els_def_core(slice::from_ref(&self.st_def_name)));
+        out.push_str(&format!("End {}.\n", self.els_def_name));
+
+        out
+    }
+
+    #[must_use]
+    pub(crate) fn generate_coq_els_def_core(&self, shadow_st_names: &[String]) -> String {
+        let indent = "  ";
+
+        let mut out = String::with_capacity(200);
 
         // add syntype parameters
         let all_ty_st_params = self.scope.get_all_ty_params_with_assocs().get_coq_ty_st_params();
@@ -337,8 +375,11 @@ impl<'def> Abstract<'def> {
             let vbor = v.borrow();
             let vbor = vbor.as_ref().unwrap();
 
+            let mut variant_shadow_st_names = vec![vbor.st_def_name().to_owned()];
+            variant_shadow_st_names
+                .extend(shadow_st_names.iter().filter(|name| *name != vbor.st_def_name()).cloned());
             out.push_str(
-                &vbor.variant_def.generate_coq_sls_def_core(&all_ty_st_params, Some(&self.st_def_name)),
+                &vbor.variant_def.generate_coq_sls_def_core(&all_ty_st_params, &variant_shadow_st_names),
             );
             out.push('\n');
         }
@@ -378,9 +419,6 @@ impl<'def> Abstract<'def> {
             self.els_def_name,
             fmt_list!(all_ty_st_params_uses, " ")
         ));
-
-        // finish
-        out.push_str(&format!("End {}.\n", self.els_def_name));
 
         out
     }

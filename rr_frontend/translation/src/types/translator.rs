@@ -1125,15 +1125,13 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
                 // check the deps
                 let is_rec_type = deps.contains(&OrderedDefId::new(self.tcx, adt.did()));
-                if is_rec_type {
-                    if !struct_def.has_invariant() {
-                        // this is an error, we need an invariant on recursive types
-                        self.variant_registry.borrow_mut().remove(&ordered_did);
-                        return Err(TranslationError::ErrorReported(self.tcx.dcx().span_err(
-                            self.tcx.def_span(ty.def_id),
-                            error::Message::RecursiveTypeWithoutInvariant,
-                        )));
-                    }
+                if is_rec_type && !struct_def.has_invariant() {
+                    // this is an error, we need an invariant on recursive types
+                    self.variant_registry.borrow_mut().remove(&ordered_did);
+                    return Err(TranslationError::ErrorReported(self.tcx.dcx().span_err(
+                        self.tcx.def_span(ty.def_id),
+                        error::Message::RecursiveTypeWithoutInvariant,
+                    )));
                 }
 
                 // finalize the definition

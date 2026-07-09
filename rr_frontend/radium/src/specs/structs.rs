@@ -5,8 +5,8 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use std::cell::RefCell;
-use std::fmt;
 use std::fmt::Write as _;
+use std::{fmt, slice};
 
 use crate::specs::bundles::BundleableType;
 use crate::specs::invariants::{
@@ -84,7 +84,7 @@ impl<'def> AbstractVariant<'def> {
     pub(crate) fn generate_coq_sls_def_core(
         &self,
         typarams: &coq::binder::BinderList,
-        opt_enum_name: Option<&str>,
+        shadow_st_names: &[String],
     ) -> String {
         let mut out = String::with_capacity(200);
         let indent = "  ";
@@ -93,9 +93,8 @@ impl<'def> AbstractVariant<'def> {
         write!(out, "{indent}Definition {} {typarams} : struct_layout_spec :=\n", self.sls_def_name).unwrap();
 
         // for recursive uses
-        write!(out, "{indent}{indent}let {} {typarams} := UnitSynType in\n", self.st_def_name).unwrap();
-        if let Some(enum_name) = opt_enum_name {
-            write!(out, "{indent}{indent}let {enum_name} {typarams} := UnitSynType in\n").unwrap();
+        for st_name in shadow_st_names {
+            write!(out, "{indent}{indent}let {st_name} {typarams} := UnitSynType in\n").unwrap();
         }
 
         write!(out, "{indent}{indent}mk_sls \"{}\" [", self.name).unwrap();
@@ -134,7 +133,8 @@ impl<'def> AbstractVariant<'def> {
         let typarams = scope.get_all_ty_params_with_assocs().get_coq_ty_st_params();
         out.push('\n');
 
-        write!(out, "{}", self.generate_coq_sls_def_core(&typarams, None)).unwrap();
+        write!(out, "{}", self.generate_coq_sls_def_core(&typarams, slice::from_ref(&self.st_def_name)))
+            .unwrap();
 
         // finish
         write!(out, "End {}.\n", self.sls_def_name).unwrap();
@@ -296,6 +296,18 @@ impl<'def> BundleableType<'def> for Abstract<'def> {
         inv.rfn_type.to_string()
     }
 
+    fn bundle_st_def_name(&self) -> String {
+        self.st_def_name().to_owned()
+    }
+
+    fn generate_bundle_layout_def(
+        &self,
+        typarams: &coq::binder::BinderList,
+        shadow_st_names: &[String],
+    ) -> String {
+        self.generate_coq_sls_def_core(typarams, shadow_st_names)
+    }
+
     fn scope(&self) -> GenericScope<'def> {
         self.scope.clone()
     }
@@ -383,7 +395,7 @@ impl<'def> BundleableType<'def> for Abstract<'def> {
 
         let all_ty_params = self.scope.get_all_ty_params_with_assocs();
 
-        generate_type_implicit_arg_flags(doc, &inv.rt_def_name(), &all_ty_params, &rt_context_names);
+        generate_type_implicit_arg_flags(doc, &inv.rt_def_name(), &all_ty_params, rt_context_names);
         invariants::generate_semtype_implicit_arg_flags(
             doc,
             &inv.type_name(),
@@ -448,6 +460,15 @@ impl<'def> Abstract<'def> {
     #[must_use]
     pub(crate) fn st_def_name(&self) -> &str {
         &self.variant_def.st_def_name
+    }
+
+    #[must_use]
+    pub(crate) fn generate_coq_sls_def_core(
+        &self,
+        typarams: &coq::binder::BinderList,
+        shadow_st_names: &[String],
+    ) -> String {
+        self.variant_def.generate_coq_sls_def_core(typarams, shadow_st_names)
     }
 
     #[must_use]

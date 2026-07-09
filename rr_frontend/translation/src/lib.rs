@@ -38,12 +38,14 @@ use std::io::{self, Read as _, Write as _};
 use std::path::{Path, PathBuf};
 
 use log::{error, info, trace, warn};
+use radium::specs::bundles::BundleableType as _;
 use radium::{code, coq, lang, specs};
 use rr_rustc_interface::errors::ErrorGuaranteed;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::{mir, queries, ty};
 use rr_rustc_interface::span::Span;
 use rr_rustc_interface::{hir, span};
+use topological_sort::TopologicalSort;
 use typed_arena::Arena;
 
 use crate::base::OrderedDefId;
@@ -517,29 +519,102 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                         writeln!(spec_file, "End attrs.\n").unwrap();
                     }
                 } else {
-                    let mut components = Vec::new();
+                    // assemble a recursive type bundle
+                    let group_members =
+                        group.iter().map(|did| OrderedDefId::new(self.tcx, *did)).collect::<BTreeSet<_>>();
+                    for ordered_did in &group_members {
+                        if struct_defs.contains_key(ordered_did) || enum_defs.contains_key(ordered_did) {
+                            continue;
+                        }
+                        if self.trait_impls.contains_key(&registry::ImplKey::Rust(ordered_did.clone())) {
+                            panic!(
+                                "RefinedRust does not currently support recursive type bundles involving trait impl attrs"
+                            );
+                        }
+                        panic!(
+                            "internal error: unknown definition in recursive type bundle: {:?}",
+                            ordered_did.def_id
+                        );
+                    }
+
+                    // compute layout dependencies/ determine which of the type actually have
+                    // a guard
+                    let mut layout_deps = BTreeMap::new();
                     for did in group {
                         let ordered_did = OrderedDefId::new(self.tcx, *did);
-                        if let Some(su_ref) = struct_defs.get(&ordered_did) {
+                        let relevant_deps = types::layout_deps::collect_adt_layout_deps(self.tcx, *did)
+                            .intersection(&group_members)
+                            .cloned()
+                            .collect::<BTreeSet<_>>();
+                        layout_deps.insert(ordered_did, relevant_deps);
+                    }
+
+                    // emit bundle components by layout dependency order
+                    let mut layout_topo: TopologicalSort<OrderedDefId> = TopologicalSort::new();
+                    for did in &group_members {
+                        layout_topo.insert(did.clone());
+                    }
+                    for (did, deps) in &layout_deps {
+                        for dep in deps {
+                            layout_topo.add_dependency(dep.clone(), did.clone());
+                        }
+                    }
+
+                    let mut ordered_group = Vec::new();
+                    while !layout_topo.is_empty() {
+                        let mut next = layout_topo.pop_all();
+                        if next.is_empty() {
+                            panic!(
+                                "RefinedRust does not currently support recursive type bundles with unguarded layout cycles: {group:?}"
+                            );
+                        }
+                        next.sort();
+                        ordered_group.extend(next);
+                    }
+
+                    let mut st_names = BTreeMap::new();
+                    let mut components = Vec::new();
+                    for ordered_did in &ordered_group {
+                        if let Some(su_ref) = struct_defs.get(ordered_did) {
                             let su = su_ref.borrow();
-                            info!("writing bundled struct {:?}, {:?}", did, su);
-                            writeln!(code_file, "{}", su.as_ref().unwrap().generate_coq_sls_def()).unwrap();
-                            components.push(specs::bundles::BundleType::Struct(*su_ref));
-                        } else if let Some(eu_ref) = enum_defs.get(&ordered_did) {
+                            info!("writing bundled struct {:?}, {:?}", ordered_did.def_id, su);
+                            let component = specs::bundles::BundleType::Struct(su_ref);
+                            st_names.insert(ordered_did.clone(), component.bundle_st_def_name());
+                            components.push(component);
+                        } else if let Some(eu_ref) = enum_defs.get(ordered_did) {
                             let eu = eu_ref.borrow();
-                            info!("writing bundled enum {:?}, {:?}", did, eu);
-                            writeln!(code_file, "{}", eu.as_ref().unwrap().generate_coq_els_def()).unwrap();
-                            components.push(specs::bundles::BundleType::Enum(*eu_ref));
-                        } else if self.trait_impls.contains_key(&registry::ImplKey::Rust(ordered_did)) {
+                            info!("writing bundled enum {:?}, {:?}", ordered_did.def_id, eu);
+                            let component = specs::bundles::BundleType::Enum(eu_ref);
+                            st_names.insert(ordered_did.clone(), component.bundle_st_def_name());
+                            components.push(component);
+                        } else if self.trait_impls.contains_key(&registry::ImplKey::Rust(ordered_did.clone()))
+                        {
                             panic!(
                                 "RefinedRust does not currently support recursive type bundles involving trait impl attrs"
                             );
                         } else {
-                            panic!("internal error: unknown definition in recursive type bundle: {did:?}");
+                            panic!(
+                                "internal error: unknown definition in recursive type bundle: {:?}",
+                                ordered_did.def_id
+                            );
                         }
                     }
 
-                    let bundle = specs::bundles::Bundle::new(components);
+                    let mut layout_unshadowed_st_names = BTreeMap::new();
+                    for ordered_did in &ordered_group {
+                        let st_name = st_names[ordered_did].clone();
+                        let unshadowed_st_names = layout_deps[ordered_did]
+                            .iter()
+                            .filter_map(|dep| st_names.get(dep).cloned())
+                            .collect::<BTreeSet<_>>();
+                        layout_unshadowed_st_names.insert(st_name, unshadowed_st_names);
+                    }
+
+                    let bundle = specs::bundles::Bundle::new_with_layout_unshadowed(
+                        components,
+                        layout_unshadowed_st_names,
+                    );
+                    writeln!(code_file, "{}", bundle.generate_layout_defs()).unwrap();
                     writeln!(spec_file, "{}", bundle.generate()).unwrap();
                 }
             }

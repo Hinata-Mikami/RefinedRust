@@ -6,6 +6,7 @@
 
 //! Utilities for translating Rust types into `RefinedRust` types.
 
+pub(crate) mod layout_deps;
 mod local;
 pub(crate) mod scope;
 mod translator;
