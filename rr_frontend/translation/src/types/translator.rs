@@ -626,6 +626,27 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         self.tcx
     }
 
+    pub(crate) fn is_registered(&self, did: DefId) -> bool {
+        let ordered_did = OrderedDefId::new(self.tcx, did);
+
+        let enum_reg = self.enum_registry.borrow();
+        if enum_reg.contains_key(&ordered_did) {
+            return true;
+        }
+
+        let variant_reg = self.variant_registry.borrow();
+        if variant_reg.contains_key(&ordered_did) {
+            return true;
+        }
+
+        let shim_reg = self.adt_shims.borrow();
+        if shim_reg.contains_key(&ordered_did) {
+            return true;
+        }
+
+        false
+    }
+
     /// Register a shim for an ADT.
     pub(crate) fn register_adt_shim(
         &self,

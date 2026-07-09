@@ -84,6 +84,7 @@ struct Config {
     extra_specs: Option<String>,
     trust_debug: bool,
     find_stdlib: bool,
+    register_all_adts: bool,
 }
 
 impl Default for Config {
@@ -112,6 +113,7 @@ impl Default for Config {
             extra_specs: None,
             trust_debug: false,
             find_stdlib: true,
+            register_all_adts: true,
         }
     }
 }
@@ -346,6 +348,12 @@ pub fn extra_specs_file() -> Option<PathBuf> {
 #[must_use]
 pub fn trust_debug() -> bool {
     access_config(|c| c.trust_debug)
+}
+
+/// Should we register all ADTs, even if they are not annotated?
+#[must_use]
+pub fn register_all_adts() -> bool {
+    access_config(|c| c.register_all_adts)
 }
 
 #[cfg(test)]

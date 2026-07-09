@@ -1572,6 +1572,10 @@ fn register_tuple_drop_glue_shims(vcx: &mut VerificationCtxt<'_, '_>) {
 
 /// Eagerly register all non-skipped ADTs in the current crate.
 fn register_adts(vcx: &VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
+    if !rrconfig::register_all_adts() {
+        return Ok(());
+    }
+
     for adt in vcx.adts {
         let did = adt.to_def_id();
         if environment::has_bare_tool_attribute(vcx.tcx, did, "skip") {
@@ -1743,6 +1747,13 @@ where
             procedures::DropGlueKey::Adt(did) => did,
             procedures::DropGlueKey::Tuple(_) => unreachable!(),
         };
+
+        if !vcx.type_translator.is_registered(did.def_id) {
+            // only actually translate drop glue for registered ADTs;
+            // we shouldn't register an ADT just for drop glue translation
+            continue;
+        }
+
         info!("\nTranslating drop glue for {:?}", did.def_id);
 
         let adt_ty: ty::Ty<'tcx> = vcx.tcx.type_of(did.def_id).instantiate_identity().skip_norm_wip();
