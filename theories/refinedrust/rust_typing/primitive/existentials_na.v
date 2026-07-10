@@ -168,97 +168,54 @@ Section na_ex.
 
   (* ty_has_layout *)
   Next Obligation.
-    iIntros (?????) "(% & _ & ?)".
-    by iApply ty_has_layout.
-  Qed.
+    intros. econstructor.
+    - iIntros (π r m v) "(% & _ & ?)".
+      by iApply ty_has_layout.
+    - iIntros (ot Hot).
+      by eapply ty_op_type_stable.
+    - intros ot Hot. by eapply ty_op_type_wf.
+    - iIntros (π r m v) "(% & _ & ?)".
+      by iApply ty_own_val_sidecond.
+    - iIntros (κ π r m v) "($ & _ & _)".
+    - unfold TCNoResolve. apply _.
+    - iIntros (κ π l r m) "(_ &  _ & (%ly & % & %))".
+      eauto.
+    - iIntros (E κ l ly π r m q ?) "#(LFT & LLCTX) #Hna Htok %Halg %Hly Hlb Hbor".
+      iEval (setoid_rewrite bi.sep_exist_l) in "Hbor".
+      iEval (setoid_rewrite bi_exist_comm) in "Hbor".
 
-  (* _ty_op_type_stable *)
-  Next Obligation.
-    iIntros (???).
-    by eapply ty_op_type_stable.
-  Qed.
+      rewrite lft_intersect_list_app -!lft_tok_sep.
+      iDestruct "Htok" as "(Htok & ? & ?)".
 
-  (* _ty_op_type_wf *)
-  Next Obligation.
-    intros ty ot Hot. by eapply ty_op_type_wf.
-  Qed.
+      iApply fupd_logical_step; iApply logical_step_intro.
 
-  (* ty_own_val_sidecond *)
-  Next Obligation.
-    iIntros (?????) "(% & _ & ?)".
-    by iApply ty_own_val_sidecond.
-Qed.
+      iPoseProof (bor_iff _ _ (∃ x: X, l ↦: ty_own_val ty π x m ∗ P.(na_inv_P) π x r) with "[] Hbor") as "Hbor".
+      { iNext. iModIntro. iSplit; [iIntros "(% & % & ? & ? & ?)" | iIntros "(% & (% & ? & ?) & ?)"]; eauto with iFrame. }
 
-  (* ty_shr_sidecond *)
-  Next Obligation.
-    iIntros (??????) "($ & _ & _)".
-  Qed.
+      iMod (bor_get_persistent _ (ty_sidecond ty) with "LFT [] Hbor Htok") as "(Hty & Hbor & Htok)"; first solve_ndisj.
+      { iIntros "Hinv".
+        iDestruct "Hinv" as (v) "((% & Hl & HP) & Hv)".
+        iPoseProof (ty_own_val_sidecond with "HP") as "#>Hsc".
+        iModIntro; iSplit; [iNext | done].
+        iExists v; iFrame. }
 
-  (* ty_shr_persistent *)
-  Next Obligation. unfold TCNoResolve. apply _. Qed.
+      iMod (bor_na with "Hna Hbor") as "Hbor"; first solve_ndisj.
 
-  (* ty_shr_aligned *)
-  Next Obligation.
-    iIntros (??????) "(_ &  _ & (%ly & % & %))".
-    eauto.
-  Qed.
-
-  (* ty_share *)
-  Next Obligation.
-    iIntros (ty E κ l ly π r m q ?) "#(LFT & LLCTX) #Hna Htok %Halg %Hly Hlb Hbor".
-    iEval (setoid_rewrite bi.sep_exist_l) in "Hbor".
-    iEval (setoid_rewrite bi_exist_comm) in "Hbor".
-
-    rewrite lft_intersect_list_app -!lft_tok_sep.
-    iDestruct "Htok" as "(Htok & ? & ?)".
-
-    iApply fupd_logical_step; iApply logical_step_intro.
-
-    iPoseProof (bor_iff _ _ (∃ x: X, l ↦: ty_own_val ty π x m ∗ P.(na_inv_P) π x r) with "[] Hbor") as "Hbor".
-    { iNext. iModIntro. iSplit; [iIntros "(% & % & ? & ? & ?)" | iIntros "(% & (% & ? & ?) & ?)"]; eauto with iFrame. }
-
-    iMod (bor_get_persistent _ (ty_sidecond ty) with "LFT [] Hbor Htok") as "(Hty & Hbor & Htok)"; first solve_ndisj.
-    { iIntros "Hinv".
-      iDestruct "Hinv" as (v) "((% & Hl & HP) & Hv)".
-      iPoseProof (ty_own_val_sidecond with "HP") as "#>Hsc".
-      iModIntro; iSplit; [iNext | done].
-      iExists v; iFrame. }
-
-    iMod (bor_na with "Hna Hbor") as "Hbor"; first solve_ndisj.
-
-    iModIntro; iFrame "∗ #".
-    iExists ly; eauto with iFrame.
-  Qed.
-
-  (* ty_shr_mono *)
-  Next Obligation.
-    iIntros (ty κ κ' π r ? l) "Hincl ($ & Hbor & %ly & ? & ?)".
-    iFrame. iApply (na_bor_shorten with "Hincl Hbor").
-  Qed.
-
-  (* ty_own_ghost_drop *)
-  Next Obligation.
-    iIntros (????????) "Hv".
-    by iApply logical_step_intro.
-  Qed.
-
-  (* _ty_memcast_compat *)
-  Next Obligation.
-    iIntros (ty ot st π r v Hot) "(%x & ? & Hv)".
-    iApply (ty_decodable X ty ot st π x v with "Hv"); done.
-  Qed.
-
-  (* _ty_decode_compat *)
-  Next Obligation.
-    iIntros (ty ot st π r v v' Hot Hsame) "(%x & HP & Hv)".
-    iExists x. iFrame "HP".
-    iApply (ty_decode_compat X ty ot st π x v v' with "Hv"); done.
-  Qed.
-
-  Next Obligation.
-    intros ty ly Heq Hst.
-    rewrite ty_has_op_type_unfold.
-    by apply _ty_has_op_type_untyped.
+      iModIntro; iFrame "∗ #".
+      iExists ly; eauto with iFrame.
+    - iIntros (κ κ' π r ? l) "Hincl ($ & Hbor & %ly & ? & ?)".
+      iFrame. iApply (na_bor_shorten with "Hincl Hbor").
+    - iIntros (π r m v F ? ?) "Hv".
+      by iApply logical_step_intro.
+    - iIntros (ot st π r v Hot) "(%x & ? & Hv)".
+      iApply (ty_decodable X ty ot st π x v with "Hv"); done.
+    - iIntros (ot st π r v v' Hot Hsame) "(%x & HP & Hv)".
+      iExists x. iFrame "HP".
+      iApply (ty_decode_compat X ty ot st π x v v' with "Hv"); done.
+    - intros ly Heq Hst.
+      by apply ty_has_op_type_untyped.
+    - apply _.
+    - apply _.
   Qed.
 
 End na_ex.

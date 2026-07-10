@@ -41,85 +41,64 @@ Section ex.
     intros. apply P.
   Defined.
   Next Obligation.
-    rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
-    iIntros (ty π r m v) "(%x & HP & Hv)".
-    by iApply ty_has_layout.
-  Qed.
-  Next Obligation.
-    iIntros (ty ot Hot). by eapply ty_op_type_stable.
-  Qed.
-  Next Obligation.
-    intros ty ot Hot. by eapply ty_op_type_wf.
-  Qed.
-  Next Obligation.
-    rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
-    iIntros (ty π r m v) "(%x & HP & Hv)". by iApply ty_own_val_sidecond.
-  Qed.
-  Next Obligation.
-    iIntros (ty ? π r m v) "(%x & HP & Hs)". by iApply ty_shr_sidecond.
-  Qed.
-  Next Obligation. unfold TCNoResolve. apply _. Qed.
-  Next Obligation.
-    iIntros (ty κ π l r m) "(%x & HP & Hv)". by iApply ty_shr_aligned.
-  Qed.
-  Next Obligation.
-    iIntros (ty E κ l ly π r m q ?) "#(LFT & LLCTX) #Hna Htok %Halg %Hly Hlb Hb".
-    iApply fupd_logical_step.
-    rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
-    setoid_rewrite bi.sep_exist_l. setoid_rewrite bi_exist_comm.
-    iDestruct "Htok" as "(Htok & Htok2)".
-    rewrite lft_intersect_list_app.
-    rewrite -{1}lft_tok_sep -{1}lft_tok_sep. iDestruct "Htok" as "(Htok & HtokP & Htoki)".
-    rewrite lft_intersect_assoc. rewrite -lft_tok_sep. iDestruct "Htok2" as "(Htok2 & Htoki2)".
-    iMod (bor_exists_tok with "LFT Hb Htok") as "(%x & Hb & Htok)"; first solve_ndisj.
-    iPoseProof (bor_iff _ _ (P.(inv_P) π x r ∗ (∃ a : val, l ↦ a ∗ a ◁ᵥ{ π, m} x @ ty)) with "[] Hb") as "Hb".
-    { iNext. iModIntro. iSplit; [iIntros "(% & ? & ? & ?)" | iIntros "(? & (% & ? & ?))"]; eauto with iFrame. }
-    iMod (bor_sep with "LFT Hb") as "(HP & Hb)"; first solve_ndisj.
-    iPoseProof (P.(inv_P_share) E with "[$LFT $LLCTX] Hna Htok2 HP") as "HP"; first done.
-    iCombine "Htok Htoki" as "Htok". rewrite lft_tok_sep.
-    rewrite ty_lfts_unfold.
-    iPoseProof (ty_share with "[$] Hna Htok [//] [//] Hlb Hb") as "Hb"; first solve_ndisj.
-    iModIntro. iApply (logical_step_compose with "HP"). iApply (logical_step_wand with "Hb").
-    iIntros "(Hshr & Htok) (HP & Htok2)".
-    iSplitL "HP Hshr". { eauto with iFrame. }
-    iCombine "Htok2 Htoki2" as "Htok2". rewrite lft_tok_sep -lft_intersect_assoc.
-    iCombine "Htok HtokP" as "Htok". rewrite lft_tok_sep -lft_intersect_assoc.
-    rewrite [lft_intersect_list (_ty_lfts _ ty) ⊓ lft_intersect_list P.(inv_P_lfts)]lft_intersect_comm.
-    iCombine "Htok Htok2" as "$".
-  Qed.
-  Next Obligation.
-    iIntros (ty κ κ' π r m l) "#Hincl (%x & HP & Hshr)".
-    iExists x. iSplitL "HP".
-    { by iApply P.(inv_P_shr_mono). }
-    iApply (ty_shr_mono with "Hincl Hshr").
-  Qed.
-  Next Obligation.
-    rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
-    iIntros (ty π r m v F ? Hdrop) "(%x & HP & Ha)".
-    apply andb_true_iff in Hdrop as [HPdrop Htydrop].
-    iPoseProof (ty_own_ghost_drop_trivial with "Ha") as "Ha"; [done | done | ].
-    iPoseProof (inv_P_drop_trivial with "HP") as "HP"; [done | done | ].
-    iApply (logical_step_compose with "Ha").
-    iApply (logical_step_compose with "HP").
-    iApply logical_step_intro.
-    iIntros "Hdrop ?".  iFrame.
-    destruct P.(inv_manual_ghost_drop); simpl; eauto with iFrame.
-  Qed.
-  Next Obligation.
-    rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
-    iIntros (ty ot st π r v Hot) "(%x & HP & Hv)".
-    iApply (ty_decodable X ty ot st π x v with "Hv"); done.
-  Qed.
-  Next Obligation.
-    rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
-    iIntros (ty ot st π r v v' Hot Hsame) "(%x & HP & Hv)".
-    iExists x. iFrame "HP".
-    iApply (ty_decode_compat X ty ot st π x v v' with "Hv"); done.
-  Qed.
-  Next Obligation.
-    intros ty ly Heq Hst. simpl.
-    rewrite ty_has_op_type_unfold.
-    by apply _ty_has_op_type_untyped.
+    intros. econstructor.
+    - rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
+      iIntros (π r m v) "(%x & HP & Hv)".
+      by iApply ty_has_layout.
+    - iIntros (ot Hot). by eapply ty_op_type_stable.
+    - intros ot Hot. by eapply ty_op_type_wf.
+    - rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
+      iIntros (π r m v) "(%x & HP & Hv)". by iApply ty_own_val_sidecond.
+    - iIntros (? π r m v) "(%x & HP & Hs)". by iApply ty_shr_sidecond.
+    - unfold TCNoResolve. apply _.
+    - iIntros (κ π l r m) "(%x & HP & Hv)". by iApply ty_shr_aligned.
+    - iIntros (E κ l ly π r m q ?) "#(LFT & LLCTX) #Hna Htok %Halg %Hly Hlb Hb".
+      iApply fupd_logical_step.
+      rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
+      setoid_rewrite bi.sep_exist_l. setoid_rewrite bi_exist_comm.
+      iDestruct "Htok" as "(Htok & Htok2)".
+      rewrite lft_intersect_list_app.
+      rewrite -{1}lft_tok_sep -{1}lft_tok_sep. iDestruct "Htok" as "(Htok & HtokP & Htoki)".
+      rewrite lft_intersect_assoc. rewrite -lft_tok_sep. iDestruct "Htok2" as "(Htok2 & Htoki2)".
+      iMod (bor_exists_tok with "LFT Hb Htok") as "(%x & Hb & Htok)"; first solve_ndisj.
+      iPoseProof (bor_iff _ _ (P.(inv_P) π x r ∗ (∃ a : val, l ↦ a ∗ a ◁ᵥ{ π, m} x @ ty)) with "[] Hb") as "Hb".
+      { iNext. iModIntro. iSplit; [iIntros "(% & ? & ? & ?)" | iIntros "(? & (% & ? & ?))"]; eauto with iFrame. }
+      iMod (bor_sep with "LFT Hb") as "(HP & Hb)"; first solve_ndisj.
+      iPoseProof (P.(inv_P_share) E with "[$LFT $LLCTX] Hna Htok2 HP") as "HP"; first done.
+      iCombine "Htok Htoki" as "Htok". rewrite lft_tok_sep.
+      iPoseProof (ty_share with "[$] Hna Htok [//] [//] Hlb Hb") as "Hb"; first solve_ndisj.
+      iModIntro. iApply (logical_step_compose with "HP"). iApply (logical_step_wand with "Hb").
+      iIntros "(Hshr & Htok) (HP & Htok2)".
+      iSplitL "HP Hshr". { eauto with iFrame. }
+      iCombine "Htok2 Htoki2" as "Htok2". rewrite lft_tok_sep -lft_intersect_assoc.
+      iCombine "Htok HtokP" as "Htok". rewrite lft_tok_sep -lft_intersect_assoc.
+      rewrite [lft_intersect_list (ty_lfts ty) ⊓ lft_intersect_list P.(inv_P_lfts)]lft_intersect_comm.
+      iCombine "Htok Htok2" as "$".
+    - iIntros (κ κ' π r m l) "#Hincl (%x & HP & Hshr)".
+      iExists x. iSplitL "HP".
+      { by iApply P.(inv_P_shr_mono). }
+      iApply (ty_shr_mono with "Hincl Hshr").
+    - rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
+      iIntros (π r m v F ? Hdrop) "(%x & HP & Ha)".
+      apply andb_true_iff in Hdrop as [HPdrop Htydrop].
+      iPoseProof (ty_own_ghost_drop_trivial with "Ha") as "Ha"; [done | done | ].
+      iPoseProof (inv_P_drop_trivial with "HP") as "HP"; [done | done | ].
+      iApply (logical_step_compose with "Ha").
+      iApply (logical_step_compose with "HP").
+      iApply logical_step_intro.
+      iIntros "Hdrop ?".  iFrame.
+      destruct P.(inv_manual_ghost_drop); simpl; eauto with iFrame.
+    - rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
+      iIntros (ot st π r v Hot) "(%x & HP & Hv)".
+      iApply (ty_decodable X ty ot st π x v with "Hv"); done.
+    - rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
+      iIntros (ot st π r v v' Hot Hsame) "(%x & HP & Hv)".
+      iExists x. iFrame "HP".
+      iApply (ty_decode_compat X ty ot st π x v v' with "Hv"); done.
+    - intros ly Heq Hst. simpl.
+      by apply ty_has_op_type_untyped.
+    - apply _.
+    - apply _.
   Qed.
 End ex.
 

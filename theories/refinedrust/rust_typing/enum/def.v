@@ -124,192 +124,173 @@ Section union.
     ty_sidecond := True;
   |}.
   Next Obligation.
-    iIntros (rt ty var uls π r m v) "(%ul & %ly & -> & %Halg & %Hly & %Hst & Hv & Hvr)".
-    iExists ul.
-    iSplitR. { iPureIntro. by apply use_union_layout_alg_Some_inv. }
-    iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv0"; first done.
-    rewrite uninit_own_spec. iDestruct "Hvr" as "(_ & % & %Halg1 & %Hv1)".
-    iPureIntro. apply syn_type_has_layout_literal_inv in Halg1 as (-> & _ & _).
-    move: Hv0 Hv1. apply ly_size_layout_of_union_member in Hly.
-    rewrite /has_layout_val/active_union_rest_ly.
-    rewrite length_take length_drop.
-    rewrite {4}/ly_size.
-    lia.
-  Qed.
-  Next Obligation.
-    intros ??? uls ot (ul & Hul & ->).
-    simpl. by eapply use_union_layout_alg_Some_inv.
-  Qed.
-  Next Obligation.
-    intros ??? uls ot (ul & Hul & ->). done.
-  Qed.
-  Next Obligation.
-    iIntros (rt ty variant uls π r m v) "_". done.
-  Qed.
-  Next Obligation.
-    iIntros (rt ty variant uls κ π r m l) "_". done.
-  Qed.
-  Next Obligation. unfold TCNoResolve. apply _. Qed.
-  Next Obligation.
-    iIntros (rt ty variant uls κ π l r m) "(%ul & %ly & -> & %Hul & % & %Hloc & _)".
-    iExists ul. iSplitR; first done. iPureIntro. by eapply use_union_layout_alg_Some_inv.
-  Qed.
-  Next Obligation.
-    iIntros (rt ty variant uls E κ l ly π r m q ?) "CTX #Hna Htok %Halg %Hly #Hlb Hb".
-    set (bor_contents :=
+    intros. econstructor.
+    - iIntros (π r m v) "(%ul & %ly & -> & %Halg & %Hly & %Hst & Hv & Hvr)".
+      iExists ul.
+      iSplitR. { iPureIntro. by apply use_union_layout_alg_Some_inv. }
+      iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv0"; first done.
+      rewrite uninit_own_spec. iDestruct "Hvr" as "(_ & % & %Halg1 & %Hv1)".
+      iPureIntro. apply syn_type_has_layout_literal_inv in Halg1 as (-> & _ & _).
+      move: Hv0 Hv1. apply ly_size_layout_of_union_member in Hly.
+      rewrite /has_layout_val/active_union_rest_ly.
+      rewrite length_take length_drop.
+      rewrite {4}/ly_size.
+      lia.
+    - intros ot (ul & Hul & ->).
+      simpl. by eapply use_union_layout_alg_Some_inv.
+    - intros ot (ul & Hul & ->). done.
+    - iIntros (π r m v) "_". done.
+    - iIntros (κ π r m l) "_". done.
+    - unfold TCNoResolve. apply _.
+    - iIntros (κ π l r m) "(%ul & %ly & -> & %Hul & % & %Hloc & _)".
+      iExists ul. iSplitR; first done. iPureIntro. by eapply use_union_layout_alg_Some_inv.
+    - iIntros (E κ l ly π r m q ?) "CTX #Hna Htok %Halg %Hly #Hlb Hb".
+      set (bor_contents :=
       (∃ (ul : union_layout) ly',
         ⌜m = MetaNone⌝ ∗
         ⌜use_union_layout_alg uls = Some ul⌝ ∗
         ⌜layout_of_union_member variant ul = Some ly'⌝ ∗
         ⌜syn_type_has_layout (ty_syn_type ty MetaNone) ly'⌝ ∗
         ∃ v : val, l ↦ v ∗ take (ly_size ly') v ◁ᵥ{ π, MetaNone} r @ ty ∗ drop (ly_size ly') v ◁ᵥ{ π, MetaNone} .@ uninit (LiteralSynType (active_union_rest_ly ul ly')))%I).
-    iPoseProof (bor_iff _ _ bor_contents with "[] Hb") as "Hb".
-    { iNext. iModIntro. rewrite /bor_contents. iSplit.
-      - iIntros "(%v & Hl & %ul & %ly' & ? & ? & ? & ? & ?)"; eauto with iFrame.
-      - iIntros "(%ul & %ly' & -> & ? & ? & ? & %v & ? & ? & ?)"; eauto with iFrame. }
-    rewrite /bor_contents.
-    iDestruct "CTX" as "#(LFT & LLCTX)".
-    rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htok1)".
-    iApply fupd_logical_step.
-    iMod (bor_exists with "LFT Hb") as "(%ul & Hb)"; first done.
-    iMod (bor_exists with "LFT Hb") as "(%ly' & Hb)"; first done.
-    iMod (bor_sep with "LFT Hb") as "(Hul & Hb)"; first done.
-    iMod (bor_persistent with "LFT Hul Htok") as "(>-> & Htok)"; first done.
-    iMod (bor_sep with "LFT Hb") as "(Hul & Hb)"; first done.
-    iMod (bor_persistent with "LFT Hul Htok") as "(>%Hul & Htok)"; first done.
-    iMod (bor_sep with "LFT Hb") as "(Hly & Hb)"; first done.
-    iMod (bor_persistent with "LFT Hly Htok") as "(>%Hul_ly & Htok)"; first done.
-    iMod (bor_sep with "LFT Hb") as "(Hst & Hb)"; first done.
-    iMod (bor_persistent with "LFT Hst Htok") as "(>%Hst & Htok)"; first done.
+      iPoseProof (bor_iff _ _ bor_contents with "[] Hb") as "Hb".
+      { iNext. iModIntro. rewrite /bor_contents. iSplit.
+        - iIntros "(%v & Hl & %ul & %ly' & ? & ? & ? & ? & ?)"; eauto with iFrame.
+        - iIntros "(%ul & %ly' & -> & ? & ? & ? & %v & ? & ? & ?)"; eauto with iFrame. }
+      rewrite /bor_contents.
+      iDestruct "CTX" as "#(LFT & LLCTX)".
+      rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htok1)".
+      iApply fupd_logical_step.
+      iMod (bor_exists with "LFT Hb") as "(%ul & Hb)"; first done.
+      iMod (bor_exists with "LFT Hb") as "(%ly' & Hb)"; first done.
+      iMod (bor_sep with "LFT Hb") as "(Hul & Hb)"; first done.
+      iMod (bor_persistent with "LFT Hul Htok") as "(>-> & Htok)"; first done.
+      iMod (bor_sep with "LFT Hb") as "(Hul & Hb)"; first done.
+      iMod (bor_persistent with "LFT Hul Htok") as "(>%Hul & Htok)"; first done.
+      iMod (bor_sep with "LFT Hb") as "(Hly & Hb)"; first done.
+      iMod (bor_persistent with "LFT Hly Htok") as "(>%Hul_ly & Htok)"; first done.
+      iMod (bor_sep with "LFT Hb") as "(Hst & Hb)"; first done.
+      iMod (bor_persistent with "LFT Hst Htok") as "(>%Hst & Htok)"; first done.
 
-    specialize (ly_size_layout_of_union_member _ _ _ Hul_ly) as ?.
-    apply use_layout_alg_union_Some_inv in Halg as (ul' & Halg & ->).
-    assert (ul' = ul) as -> by naive_solver.
+      specialize (ly_size_layout_of_union_member _ _ _ Hul_ly) as ?.
+      apply use_layout_alg_union_Some_inv in Halg as (ul' & Halg & ->).
+      assert (ul' = ul) as -> by naive_solver.
 
     (* now split the values in the borrow *)
-    iPoseProof (bor_iff _ _ ((∃ v1 : val, l ↦ v1 ∗ v1 ◁ᵥ{π, MetaNone} r @ ty) ∗ (∃ v2 : val, (l +ₗ ly_size ly') ↦ v2 ∗ v2 ◁ᵥ{ π, MetaNone} .@ uninit (LiteralSynType (active_union_rest_ly ul ly')))) with "[] Hb") as "Hb".
-    { iNext. iModIntro. iSplit.
-      - iIntros "(%v & Hl & Ha & Hb)".
-        rewrite -{1}(take_drop (ly_size ly') v).
-        rewrite heap_pointsto_app. iDestruct "Hl" as "(Hl1 & Hl2)".
-        iPoseProof (ty_own_val_has_layout with "Ha") as "%Hlyv"; first done.
-        rewrite /has_layout_val length_take in Hlyv.
-        iSplitL "Hl1 Ha". { iExists _. iFrame. }
-        iPoseProof (ty_has_layout with "Hb") as "(%ly2 & %Hst2 & %Hlyv2)".
-        apply syn_type_has_layout_untyped_inv in Hst2.
-        apply syn_type_has_layout_literal_inv in Hst2 as (-> & ? & ? & ?).
-        move: Hlyv2. rewrite /has_layout_val length_drop /active_union_rest_ly {2}/ly_size/= => Hlyv2.
-        rewrite length_take. rewrite Nat.min_l; last lia.
-        eauto with iFrame.
-      - iIntros "((%v1 & Hl1 & Hv1) & (%v2 & Hl2 & Hv2))".
-        iExists (v1 ++ v2).
-        iPoseProof (ty_own_val_has_layout with "Hv1") as "%Hlyv"; first done.
-        iPoseProof (ty_has_layout with "Hv2") as "(%ly2 & %Hst2 & %Hlyv2)".
-        apply syn_type_has_layout_untyped_inv in Hst2.
-        apply syn_type_has_layout_literal_inv in Hst2 as (-> & ? & ? & ?).
-        move: Hlyv2. rewrite /has_layout_val /active_union_rest_ly {1}/ly_size/= => Hlyv2.
-        rewrite /has_layout_val in Hlyv.
-        rewrite heap_pointsto_app. rewrite Hlyv. iFrame.
-        iSplitL "Hv1". { rewrite take_app_length'; first done. lia. }
-        rewrite drop_app_length'; last lia. done. }
-    iMod (bor_sep with "LFT Hb") as "(Hb1 & Hb2)"; first done.
+      iPoseProof (bor_iff _ _ ((∃ v1 : val, l ↦ v1 ∗ v1 ◁ᵥ{π, MetaNone} r @ ty) ∗ (∃ v2 : val, (l +ₗ ly_size ly') ↦ v2 ∗ v2 ◁ᵥ{ π, MetaNone} .@ uninit (LiteralSynType (active_union_rest_ly ul ly')))) with "[] Hb") as "Hb".
+      { iNext. iModIntro. iSplit.
+        - iIntros "(%v & Hl & Ha & Hb)".
+          rewrite -{1}(take_drop (ly_size ly') v).
+          rewrite heap_pointsto_app. iDestruct "Hl" as "(Hl1 & Hl2)".
+          iPoseProof (ty_own_val_has_layout with "Ha") as "%Hlyv"; first done.
+          rewrite /has_layout_val length_take in Hlyv.
+          iSplitL "Hl1 Ha". { iExists _. iFrame. }
+          iPoseProof (ty_has_layout with "Hb") as "(%ly2 & %Hst2 & %Hlyv2)".
+          apply syn_type_has_layout_untyped_inv in Hst2.
+          apply syn_type_has_layout_literal_inv in Hst2 as (-> & ? & ? & ?).
+          move: Hlyv2. rewrite /has_layout_val length_drop /active_union_rest_ly {2}/ly_size/= => Hlyv2.
+          rewrite length_take. rewrite Nat.min_l; last lia.
+          eauto with iFrame.
+        - iIntros "((%v1 & Hl1 & Hv1) & (%v2 & Hl2 & Hv2))".
+          iExists (v1 ++ v2).
+          iPoseProof (ty_own_val_has_layout with "Hv1") as "%Hlyv"; first done.
+          iPoseProof (ty_has_layout with "Hv2") as "(%ly2 & %Hst2 & %Hlyv2)".
+          apply syn_type_has_layout_untyped_inv in Hst2.
+          apply syn_type_has_layout_literal_inv in Hst2 as (-> & ? & ? & ?).
+          move: Hlyv2. rewrite /has_layout_val /active_union_rest_ly {1}/ly_size/= => Hlyv2.
+          rewrite /has_layout_val in Hlyv.
+          rewrite heap_pointsto_app. rewrite Hlyv. iFrame.
+          iSplitL "Hv1". { rewrite take_app_length'; first done. lia. }
+          rewrite drop_app_length'; last lia. done. }
+      iMod (bor_sep with "LFT Hb") as "(Hb1 & Hb2)"; first done.
 
     (* now share both parts *)
-    iDestruct "Htok" as "(Htok11 & Htok12)".
-    iDestruct "Htok1" as "(Htok21 & Htok22)".
+      iDestruct "Htok" as "(Htok11 & Htok12)".
+      iDestruct "Htok1" as "(Htok21 & Htok22)".
 
-    iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok11 Htok21] [] [] [] Hb1") as "Hb1"; first done.
-    { rewrite ty_lfts_unfold. rewrite -lft_tok_sep. iFrame. }
-    { done. }
-    { iPureIntro. by eapply has_layout_loc_layout_of_union_member. }
-    { iApply (loc_in_bounds_shorten_suf with "Hlb"). done. }
+      iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok11 Htok21] [] [] [] Hb1") as "Hb1"; first done.
+      { rewrite ty_lfts_unfold. rewrite -lft_tok_sep. iFrame. }
+      { done. }
+      { iPureIntro. by eapply has_layout_loc_layout_of_union_member. }
+      { iApply (loc_in_bounds_shorten_suf with "Hlb"). done. }
 
-    iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok12] [] [] [] Hb2") as "Hb2"; first done.
-    { simpl. rewrite right_id. iFrame. }
-    { simpl. iPureIntro.
-      apply syn_type_has_layout_untyped.
-      apply syn_type_has_layout_literal; first done.
-      - rewrite /active_union_rest_ly/layout_wf/ly_align/=. apply Z.divide_1_l.
-      - rewrite /active_union_rest_ly {1}/ly_size. apply use_union_layout_alg_size in Hul. lia.
-      - rewrite /ly_align_in_bounds/ly_align/active_union_rest_ly/ly_align_log/=.
-        unfold_common_radium_defs. simpl. nia.
-    }
-    { iPureIntro. apply has_layout_loc_active_union_rest_ly. }
-    { iApply (loc_in_bounds_offset with "Hlb").
-      - done.
-      - simpl. lia.
-      - simpl. rewrite ly_size_active_union_rest_ly. lia. }
+      iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok12] [] [] [] Hb2") as "Hb2"; first done.
+      { simpl. rewrite ty_lfts_unfold right_id. iFrame. }
+      { simpl. iPureIntro.
+        apply syn_type_has_layout_untyped.
+        apply syn_type_has_layout_literal; first done.
+        - rewrite /active_union_rest_ly/layout_wf/ly_align/=. apply Z.divide_1_l.
+        - rewrite /active_union_rest_ly {1}/ly_size. apply use_union_layout_alg_size in Hul. lia.
+        - rewrite /ly_align_in_bounds/ly_align/active_union_rest_ly/ly_align_log/=.
+          unfold_common_radium_defs. simpl. nia.
+      }
+      { iPureIntro. apply has_layout_loc_active_union_rest_ly. }
+      { iApply (loc_in_bounds_offset with "Hlb").
+        - done.
+        - simpl. lia.
+        - simpl. rewrite ly_size_active_union_rest_ly. lia. }
 
-    iApply (logical_step_compose with "Hb1").
-    iApply (logical_step_compose with "Hb2").
-    iApply logical_step_intro.
-    iModIntro.
-    iIntros "(Hun & Htok1) (Hty & Htok2)".
-    simpl. rewrite right_id.
-    rewrite -lft_tok_sep.
-    rewrite ty_lfts_unfold.
-    iDestruct "Htok2" as "(? & ?)". by iFrame.
-  Qed.
-  Next Obligation.
-    iIntros (rt ty variant uls κ κ' π r m l) "#Hincl Hb".
-    iDestruct "Hb" as "(%ul & %ly & -> & ? & ? & ? & Ha & Hb)".
-    iExists ul, ly. iFrame.
-    iR.
-    iSplitL "Ha". { iApply ty_shr_mono; done. }
-    iApply ty_shr_mono; done.
-  Qed.
-  Next Obligation.
-    iIntros (rt ty variant uls π r m v F ? Hdrop) "Hb".
-    iDestruct "Hb" as "(%ul & %ly & -> & %Halg & %Hly & ? & Hv & _)".
-    iPoseProof (ty_own_ghost_drop_trivial with "Hv") as "Ha"; [done | done | ].
-    iApply (logical_step_wand with "Ha"); eauto.
-  Qed.
-  Next Obligation.
-    intros rt ty variant uls ot st π r v (ul & Hul & ->).
-    iIntros "Hv".
-    iEval (rewrite /ty_own_val /=) in "Hv".
-    iDestruct "Hv" as "(%ul' & %ly & %Hmeta & %Halg & %Hly & %Hst & Hv & %Hmeta2 & %ly0 & %Halg1 & %Hv1)".
-    assert (ul' = ul) as -> by naive_solver.
-    iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv0"; first done.
-    pose proof Halg1 as Halg_tail.
-    apply syn_type_has_layout_literal_inv in Halg1 as (-> & _ & _).
-    iExists (OVUntyped ul v). iPureIntro.
-    simp decode_op_val.
-    rewrite bool_decide_true; first done.
-    move: Hv0 Hv1. apply ly_size_layout_of_union_member in Hly.
-    rewrite /has_layout_val/active_union_rest_ly.
-    rewrite length_take length_drop.
-    rewrite {4}/ly_size.
-    lia.
-  Qed.
-  Next Obligation.
-    intros rt ty variant uls ot st π r v v' (ul & Hul & ->) Hsame.
-    iIntros "Hv".
-    iEval (rewrite /ty_own_val /=) in "Hv".
-    iDestruct "Hv" as "(%ul' & %ly & %Hmeta & %Halg & %Hly & %Hst & Hv & %Hmeta2 & %ly0 & %Halg1 & %Hv1)".
-    assert (ul' = ul) as -> by naive_solver.
-    iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv0"; first done.
-    pose proof Halg1 as Halg_tail.
-    apply syn_type_has_layout_literal_inv in Halg1 as (-> & _ & _).
-    pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hlyv'.
-    rewrite /has_layout_val /= in Hlyv'.
-    pose proof (ly_size_layout_of_union_member _ _ _ Hly) as Hlyle.
-    assert (v `has_layout_val` ul) as Hlyv.
-    { move: Hv0 Hv1 Hlyle.
+      iApply (logical_step_compose with "Hb1").
+      iApply (logical_step_compose with "Hb2").
+      iApply logical_step_intro.
+      iModIntro.
+      iIntros "(Hun & Htok1) (Hty & Htok2)".
+      simpl. iEval (rewrite ty_lfts_unfold right_id) in "Htok1".
+      rewrite -lft_tok_sep.
+      rewrite ty_lfts_unfold.
+      iDestruct "Htok2" as "(? & ?)". by iFrame.
+    - iIntros (κ κ' π r m l) "#Hincl Hb".
+      iDestruct "Hb" as "(%ul & %ly & -> & ? & ? & ? & Ha & Hb)".
+      iExists ul, ly. iFrame.
+      iR.
+      iSplitL "Ha". { iApply ty_shr_mono; done. }
+      iApply ty_shr_mono; done.
+    - iIntros (π r m v F ? Hdrop) "Hb".
+      iDestruct "Hb" as "(%ul & %ly & -> & %Halg & %Hly & ? & Hv & _)".
+      iPoseProof (ty_own_ghost_drop_trivial with "Hv") as "Ha"; [done | done | ].
+      iApply (logical_step_wand with "Ha"); eauto.
+    - intros ot st π r v (ul & Hul & ->).
+      iIntros "Hv".
+      iEval (rewrite /ty_own_val /=) in "Hv".
+      iDestruct "Hv" as "(%ul' & %ly & %Hmeta & %Halg & %Hly & %Hst & Hv & %Hmeta2 & %ly0 & %Halg1 & %Hv1)".
+      assert (ul' = ul) as -> by naive_solver.
+      iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv0"; first done.
+      pose proof Halg1 as Halg_tail.
+      apply syn_type_has_layout_literal_inv in Halg1 as (-> & _ & _).
+      iExists (OVUntyped ul v). iPureIntro.
+      simp decode_op_val.
+      rewrite bool_decide_true; first done.
+      move: Hv0 Hv1. apply ly_size_layout_of_union_member in Hly.
       rewrite /has_layout_val/active_union_rest_ly.
       rewrite length_take length_drop.
       rewrite {4}/ly_size.
-      lia. }
-    pose proof (is_same_decoded_val_at_untyped_inv st v v' ul Hlyv Hlyv' Hsame) as ->.
-    iExists ul, ly. iFrame.
-    repeat iSplit; try done.
-    iExists (active_union_rest_ly ul ly). iSplit; done.
-  Qed.
-  Next Obligation.
-    intros ??? uls ly _ Hst.
-    apply syn_type_has_layout_union_inv in Hst as (variants & ul & -> & Hul & Hf).
-    exists ul. split; last done.
-    by eapply use_union_layout_alg_Some.
+      lia.
+    - intros ot st π r v v' (ul & Hul & ->) Hsame.
+      iIntros "Hv".
+      iEval (rewrite /ty_own_val /=) in "Hv".
+      iDestruct "Hv" as "(%ul' & %ly & %Hmeta & %Halg & %Hly & %Hst & Hv & %Hmeta2 & %ly0 & %Halg1 & %Hv1)".
+      assert (ul' = ul) as -> by naive_solver.
+      iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv0"; first done.
+      pose proof Halg1 as Halg_tail.
+      apply syn_type_has_layout_literal_inv in Halg1 as (-> & _ & _).
+      pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hlyv'.
+      rewrite /has_layout_val /= in Hlyv'.
+      pose proof (ly_size_layout_of_union_member _ _ _ Hly) as Hlyle.
+      assert (v `has_layout_val` ul) as Hlyv.
+      { move: Hv0 Hv1 Hlyle.
+        rewrite /has_layout_val/active_union_rest_ly.
+        rewrite length_take length_drop.
+        rewrite {4}/ly_size.
+        lia. }
+      pose proof (is_same_decoded_val_at_untyped_inv st v v' ul Hlyv Hlyv' Hsame) as ->.
+      iExists ul, ly. iFrame.
+      repeat iSplit; try done.
+      iExists (active_union_rest_ly ul ly). iSplit; done.
+    - intros ly _ Hst.
+      apply syn_type_has_layout_union_inv in Hst as (variants & ul & -> & Hul & Hf).
+      exists ul. split; last done.
+      by eapply use_union_layout_alg_Some.
+    - apply _.
+    - apply _.
   Qed.
 End union.
 
@@ -545,121 +526,102 @@ Section enum.
     _ty_wf_E := enum_tag_ty_wf_E e.(enum_tag_ty);
   |}.
   Next Obligation.
-    iIntros (rt e π r m v).
-    iIntros "(%el & %tag & -> & %Halg & %Htag & Hv)".
-    (*specialize (syn_type_has_layout_els_sls _ _ Halg) as (sl & Halg' & ->).*)
-    iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv".
-    { simpl. by apply use_struct_layout_alg_Some_inv. }
-    iExists el. iPureIntro; split; last done.
-    by eapply use_enum_layout_alg_Some_inv.
-  Qed.
-  Next Obligation.
-    rewrite /is_enum_ot. simpl.
-    intros rt en ot Hot.
-    destruct ot as [ | | | | ? ? | ? ? ? |ly| ]; try done.
-    destruct Hot as (el & Halg & ->).
-    simpl. by apply use_enum_layout_alg_Some_inv.
-  Qed.
-  Next Obligation.
-    intros rt en ot Hot.
-    destruct ot as [ | | | | ? ? | ? ? ? |ly| ]; try done.
-  Qed.
-  Next Obligation.
-    iIntros (rt e π r m v) "_". done.
-  Qed.
-  Next Obligation.
-    iIntros (rt e κ π r m l) "_". done.
-  Qed.
-  Next Obligation. unfold TCNoResolve. apply _. Qed.
-  Next Obligation.
-    iIntros (rt e κ π l m r) "(%ly & %tag & -> & %Halg & %Htag & Hl)".
-    iPoseProof (ty_shr_aligned with "Hl") as "(%ly' & %Hly & %Halg')". simpl in *.
-    specialize (syn_type_has_layout_els_sls _ _ Halg) as (sl & Halg'' & ->).
-    apply use_struct_layout_alg_Some_inv in Halg''.
-    assert (ly' =  sl) as -> by by eapply syn_type_has_layout_inj.
-    iExists sl. done.
-  Qed.
-  Next Obligation.
-    iIntros (rt e E κ l ly π r m q ?) "#CTX #Hna Htok %Halg %Hly Hlb Hb".
-    iAssert (&{κ} ((∃ (el : struct_layout) (tag : string), ⌜m = MetaNone⌝ ∗ ⌜use_enum_layout_alg (enum_els e) = Some el⌝ ∗ ⌜e.(enum_tag) r = Some tag⌝ ∗ ∃ v : val, l ↦ v ∗ v ◁ᵥ{π, MetaNone} -[# (els_lookup_tag e.(enum_els) tag); # (e.(enum_r) r)] @ struct_t (sls_of_els (enum_els e)) +[int (els_tag_it (enum_els e)); active_union_t (e.(enum_ty) r) tag (uls_of_els (enum_els e))])))%I with "[Hb]" as "Hb".
-    { iApply (bor_iff with "[] Hb"). iNext. iModIntro.
-      iSplit.
-      - iIntros "(%v & Hl & % & % & ? & ? & ?)". eauto 8 with iFrame.
-      - iIntros "(% & % & -> & ? & ? & % & ? & ?)". eauto 8 with iFrame. }
-    simpl. iEval (rewrite -lft_tok_sep) in "Htok". iDestruct "Htok" as "(Htok1 & Htok2)".
-    iApply fupd_logical_step.
-    iDestruct "CTX" as "(LFT & LLCTX)".
-    iMod (bor_exists_tok with "LFT Hb Htok1") as "(%ly' & Hb & Htok1)"; first done.
-    iMod (bor_exists_tok with "LFT Hb Htok1") as "(%tag & Hb & Htok1)"; first done.
-    iMod (bor_sep with "LFT Hb") as "(Halg & Hb)"; first done.
-    iMod (bor_persistent with "LFT Halg Htok1") as "(>-> & Htok1)"; first done.
-    iMod (bor_sep with "LFT Hb") as "(Halg & Hb)"; first done.
-    iMod (bor_persistent with "LFT Halg Htok1") as "(>%Halg' & Htok1)"; first done.
-    iMod (bor_sep with "LFT Hb") as "(Htag & Hb)"; first done.
-    iMod (bor_persistent with "LFT Htag Htok1") as "(>%Htag & Htok1)"; first done.
-    iPoseProof (list_incl_lft_incl_list (ty_lfts (e.(enum_ty) r)) (enum_tag_ty_lfts e.(enum_tag_ty))) as "Hincl".
-    { etrans; last by eapply (enum_ty_lfts_incl_tag_ty_lfts e r tag Htag). done. }
-    iMod (lft_incl_acc with "Hincl Htok2") as "(%q' & Htok2 & Htok2_cl)"; first done.
-    iPoseProof (lft_tok_lb with "Htok1 Htok2") as "(%q'' & Htok1 & Htok2 & Htok_cl)".
-    iCombine ("Htok1 Htok2") as "Htok".
-    rewrite !lft_tok_sep.
-    specialize (syn_type_has_layout_els_sls _ _ Halg) as (sl & Halg'' & ->).
-    iPoseProof (ty_share _ E _ _ _ _ _ _ q'' with "[$] Hna [Htok] [] [] Hlb Hb") as "Hstep"; first done.
-    { simpl. rewrite !ty_lfts_unfold/=ty_lfts_unfold/=. rewrite right_id. done. }
-    { simpl. iPureIntro. by apply use_struct_layout_alg_Some_inv. }
-    { done. }
-    simpl.
-    rewrite ty_lfts_unfold/=ty_lfts_unfold/=.
-    iApply logical_step_fupd.
-    iApply (logical_step_wand with "Hstep").
-    iModIntro. iIntros "(Hl & Htok)".
-    rewrite right_id -lft_tok_sep. iDestruct "Htok" as "(Htok1 & Htok2)".
-    iPoseProof ("Htok_cl" with "Htok1 Htok2") as "(Htok1 & Htok2)".
-    iMod ("Htok2_cl" with "Htok2") as "Htok2".
-    rewrite -lft_tok_sep. iFrame.
-    iExists _. by iFrame.
-  Qed.
-  Next Obligation.
-    iIntros (rt e κ κ' π r m l) "#Hincl (%ly & %tag & -> & ? & ? & Hl)".
-    iExists ly, tag. iFrame. iR.
-    iApply (ty_shr_mono with "Hincl Hl").
-  Qed.
-  Next Obligation.
-    intros. iIntros "_". by iApply logical_step_intro.
-  Qed.
-  Next Obligation.
-    intros rt en ot st π r v Hot.
-    rewrite /is_enum_ot in Hot.
-    destruct ot as [ | | | | ? ? | ? ? ? | el | ]; try done.
-    destruct Hot as (el' & Hel & ->).
-    iIntros "Hv".
-    iDestruct "Hv" as "(%el0 & %tag & %Hmeta & %Halg & %Htag & Ha)".
-    assert (el0 = el') as -> by naive_solver.
-    iPoseProof (ty_own_val_has_layout with "Ha") as "%Hlyv".
-    { simpl. by apply use_struct_layout_alg_Some_inv. }
-    iExists (OVUntyped el' v). iPureIntro.
-    simp decode_op_val. by rewrite bool_decide_true.
-  Qed.
-  Next Obligation.
-    intros rt en ot st π r v v' Hot Hsame.
-    rewrite /is_enum_ot in Hot.
-    destruct ot as [ | | | | ? ? | ? ? ? | el | ]; try done.
-    destruct Hot as (el' & Hel & ->).
-    iIntros "Hv".
-    iDestruct "Hv" as "(%el0 & %tag & %Hmeta & %Halg & %Htag & Ha)".
-    assert (el0 = el') as -> by naive_solver.
-    iPoseProof (ty_own_val_has_layout with "Ha") as "%Hlyv".
-    { simpl. by apply use_struct_layout_alg_Some_inv. }
-    pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hlyv'.
-    rewrite /has_layout_val /= in Hlyv'.
-    pose proof (is_same_decoded_val_at_untyped_inv st v v' el' Hlyv Hlyv' Hsame) as ->.
-    iExists el', tag. iFrame. done.
-  Qed.
-  Next Obligation.
-    intros ?? ly _ Hst.
-    apply syn_type_has_layout_enum_inv in Hst as (el & ul & variants & Hul & Hsl & -> & Hf).
-    simpl. exists el. split; last done.
-    by eapply use_enum_layout_alg_Some.
+    intros. econstructor.
+    - iIntros (π r m v).
+      iIntros "(%el & %tag & -> & %Halg & %Htag & Hv)".
+      iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv".
+      { simpl. by apply use_struct_layout_alg_Some_inv. }
+      iExists el. iPureIntro; split; last done.
+      by eapply use_enum_layout_alg_Some_inv.
+    - rewrite /is_enum_ot. simpl.
+      intros ot Hot.
+      destruct ot as [ | | | | ? ? | ? ? ? |ly| ]; try done.
+      destruct Hot as (el & Halg & ->).
+      simpl. by apply use_enum_layout_alg_Some_inv.
+    - intros ot Hot.
+      destruct ot as [ | | | | ? ? | ? ? ? |ly| ]; try done.
+    - iIntros (π r m v) "_". done.
+    - iIntros (κ π r m l) "_". done.
+    - unfold TCNoResolve. apply _.
+    - iIntros (κ π l m r) "(%ly & %tag & -> & %Halg & %Htag & Hl)".
+      iPoseProof (ty_shr_aligned with "Hl") as "(%ly' & %Hly & %Halg')". simpl in *.
+      specialize (syn_type_has_layout_els_sls _ _ Halg) as (sl & Halg'' & ->).
+      apply use_struct_layout_alg_Some_inv in Halg''.
+      assert (ly' =  sl) as -> by by eapply syn_type_has_layout_inj.
+      iExists sl. done.
+    - iIntros (E κ l ly π r m q ?) "#CTX #Hna Htok %Halg %Hly Hlb Hb".
+      iAssert (&{κ} ((∃ (el : struct_layout) (tag : string), ⌜m = MetaNone⌝ ∗ ⌜use_enum_layout_alg (enum_els e) = Some el⌝ ∗ ⌜e.(enum_tag) r = Some tag⌝ ∗ ∃ v : val, l ↦ v ∗ v ◁ᵥ{π, MetaNone} -[# (els_lookup_tag e.(enum_els) tag); # (e.(enum_r) r)] @ struct_t (sls_of_els (enum_els e)) +[int (els_tag_it (enum_els e)); active_union_t (e.(enum_ty) r) tag (uls_of_els (enum_els e))])))%I with "[Hb]" as "Hb".
+      { iApply (bor_iff with "[] Hb"). iNext. iModIntro.
+        iSplit.
+        - iIntros "(%v & Hl & % & % & ? & ? & ?)". eauto 8 with iFrame.
+        - iIntros "(% & % & -> & ? & ? & % & ? & ?)". eauto 8 with iFrame. }
+      simpl. iEval (rewrite -lft_tok_sep) in "Htok". iDestruct "Htok" as "(Htok1 & Htok2)".
+      iApply fupd_logical_step.
+      iDestruct "CTX" as "(LFT & LLCTX)".
+      iMod (bor_exists_tok with "LFT Hb Htok1") as "(%ly' & Hb & Htok1)"; first done.
+      iMod (bor_exists_tok with "LFT Hb Htok1") as "(%tag & Hb & Htok1)"; first done.
+      iMod (bor_sep with "LFT Hb") as "(Halg & Hb)"; first done.
+      iMod (bor_persistent with "LFT Halg Htok1") as "(>-> & Htok1)"; first done.
+      iMod (bor_sep with "LFT Hb") as "(Halg & Hb)"; first done.
+      iMod (bor_persistent with "LFT Halg Htok1") as "(>%Halg' & Htok1)"; first done.
+      iMod (bor_sep with "LFT Hb") as "(Htag & Hb)"; first done.
+      iMod (bor_persistent with "LFT Htag Htok1") as "(>%Htag & Htok1)"; first done.
+      iPoseProof (list_incl_lft_incl_list (ty_lfts (e.(enum_ty) r)) (enum_tag_ty_lfts e.(enum_tag_ty))) as "Hincl".
+      { etrans; last by eapply (enum_ty_lfts_incl_tag_ty_lfts e r tag Htag). done. }
+      iMod (lft_incl_acc with "Hincl Htok2") as "(%q' & Htok2 & Htok2_cl)"; first done.
+      iPoseProof (lft_tok_lb with "Htok1 Htok2") as "(%q'' & Htok1 & Htok2 & Htok_cl)".
+      iCombine ("Htok1 Htok2") as "Htok".
+      rewrite !lft_tok_sep.
+      specialize (syn_type_has_layout_els_sls _ _ Halg) as (sl & Halg'' & ->).
+      iPoseProof (ty_share _ E _ _ _ _ _ _ q'' with "[$] Hna [Htok] [] [] Hlb Hb") as "Hstep"; first done.
+      { simpl. rewrite !ty_lfts_unfold/=ty_lfts_unfold/=. rewrite right_id. rewrite ty_lfts_unfold. done. }
+      { simpl. iPureIntro. by apply use_struct_layout_alg_Some_inv. }
+      { done. }
+      simpl.
+      rewrite ty_lfts_unfold/=ty_lfts_unfold/=.
+      iApply logical_step_fupd.
+      iApply (logical_step_wand with "Hstep").
+      iModIntro. iIntros "(Hl & Htok)".
+      rewrite right_id -lft_tok_sep. iDestruct "Htok" as "(Htok1 & Htok2)".
+      iEval (rewrite ty_lfts_unfold) in "Htok2".
+      iPoseProof ("Htok_cl" with "Htok1 Htok2") as "(Htok1 & Htok2)".
+      iMod ("Htok2_cl" with "Htok2") as "Htok2".
+      rewrite -lft_tok_sep. iFrame.
+      iExists _. by iFrame.
+    - iIntros (κ κ' π r m l) "#Hincl (%ly & %tag & -> & ? & ? & Hl)".
+      iExists ly, tag. iFrame. iR.
+      iApply (ty_shr_mono with "Hincl Hl").
+    - intros. iIntros "_". by iApply logical_step_intro.
+    - intros ot st π r v Hot.
+      rewrite /is_enum_ot in Hot.
+      destruct ot as [ | | | | ? ? | ? ? ? | el | ]; try done.
+      destruct Hot as (el' & Hel & ->).
+      iIntros "Hv".
+      iDestruct "Hv" as "(%el0 & %tag & %Hmeta & %Halg & %Htag & Ha)".
+      assert (el0 = el') as -> by naive_solver.
+      iPoseProof (ty_own_val_has_layout with "Ha") as "%Hlyv".
+      { simpl. by apply use_struct_layout_alg_Some_inv. }
+      iExists (OVUntyped el' v). iPureIntro.
+      simp decode_op_val. by rewrite bool_decide_true.
+    - intros ot st π r v v' Hot Hsame.
+      rewrite /is_enum_ot in Hot.
+      destruct ot as [ | | | | ? ? | ? ? ? | el | ]; try done.
+      destruct Hot as (el' & Hel & ->).
+      iIntros "Hv".
+      iDestruct "Hv" as "(%el0 & %tag & %Hmeta & %Halg & %Htag & Ha)".
+      assert (el0 = el') as -> by naive_solver.
+      iPoseProof (ty_own_val_has_layout with "Ha") as "%Hlyv".
+      { simpl. by apply use_struct_layout_alg_Some_inv. }
+      pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hlyv'.
+      rewrite /has_layout_val /= in Hlyv'.
+      pose proof (is_same_decoded_val_at_untyped_inv st v v' el' Hlyv Hlyv' Hsame) as ->.
+      iExists el', tag. iFrame. done.
+    - intros ly _ Hst.
+      apply syn_type_has_layout_enum_inv in Hst as (el & ul & variants & Hul & Hsl & -> & Hf).
+      simpl. exists el. split; last done.
+      by eapply use_enum_layout_alg_Some.
+    - apply _.
+    - apply _.
   Qed.
 
   Lemma enum_t_copyable {rt} (e : enum rt):

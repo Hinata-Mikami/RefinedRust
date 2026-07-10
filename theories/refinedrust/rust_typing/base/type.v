@@ -232,48 +232,23 @@ Inductive metadata : Set :=
 
 Import EqNotations.
 
-(** Types are defined semantically by what it means for a value to have a particular type.
-    Types are indexed by their refinement type [rt].
-*)
-Record type `{!typeGS Σ} (rt : RT) := {
-  (* The xt type should be inhabited *)
-  ty_xt_inhabited : Inhabited (RT_xt rt);
-
-  (* What metadata does this type need? *)
-  ty_metadata_kind : metadata_kind;
-
-  (** Ownership of values, depending also on the metadata *)
-  ty_own_val :
-    thread_id → RT_rt rt → metadata → val → iProp Σ;
-
-  (** This type's syntactic type *)
-  ty_syn_type : metadata → syn_type;
-
-  (** Determines how values are altered when they are read and written *)
-  (** This is formulated as a property of the semantic type, because the memcast compatibility is a semantic property *)
-  _ty_has_op_type : op_type → Prop;
-
-  (** The sharing predicate: what does it mean to have a shared reference to this type at a particular lifetime? *)
-  ty_shr : lft → thread_id → RT_rt rt → metadata → loc → iProp Σ;
-
-  (** We have a separate well-formedness predicate to capture persistent + timeless information about
-    the type's structure. Needed to evade troubles with the ltype unfolding equations. *)
-  ty_sidecond : iProp Σ;
-
-  (* [ty_lfts] is the set of lifetimes that needs to be active for this type to make sense.*)
-  _ty_lfts : list lft;
-
-  (* [ty_wf_E] is a set of inclusion constraints on lifetimes that need to hold for the type to make sense. *)
-  _ty_wf_E : elctx;
-
+Record type_props `{!typeGS Σ} (rt : RT)
+  (ty_xt_inhabited : Inhabited (RT_xt rt))
+  (ty_metadata_kind : metadata_kind)
+  (ty_own_val : thread_id → RT_rt rt → metadata → val → iProp Σ)
+  (ty_syn_type : metadata → syn_type)
+  (_ty_has_op_type : op_type → Prop)
+  (ty_shr : lft → thread_id → RT_rt rt → metadata → loc → iProp Σ)
+  (ty_sidecond : iProp Σ)
+  (_ty_lfts : list lft)
+  (_ty_wf_E : elctx)
+  (_ty_ghost_drop : thread_id → rt → iProp Σ)
+  (ty_trivial_drop : bool)
+:= {
   (** Given the concrete layout algorithm at runtime, we can get a layout *)
-  ty_has_layout π r m v :
+  _ty_has_layout π r m v :
     ty_own_val π r m v -∗
     ∃ ly : layout, ⌜syn_type_has_layout (ty_syn_type m) ly⌝ ∗ ⌜v `has_layout_val` ly⌝;
-
-  _ty_ghost_drop : thread_id → rt → iProp Σ;
-
-  ty_trivial_drop : bool;
 
   (** If we specify a particular op_type, its layout needs to be compatible with the underlying syntactic type.
     In particular, this needs to be independent of the metadata -- forcing [ty_has_op_type] for unsized types to be [False].
@@ -287,20 +262,20 @@ Record type `{!typeGS Σ} (rt : RT) := {
     _ty_has_op_type ot → op_type_wf ot;
 
   (** We can get access to the sidecondition *)
-  ty_own_val_sidecond π r m v : ty_own_val π r m v -∗ ty_sidecond;
-  ty_shr_sidecond κ π r m l : ty_shr κ π r m l -∗ ty_sidecond;
+  _ty_own_val_sidecond π r m v : ty_own_val π r m v -∗ ty_sidecond;
+  _ty_shr_sidecond κ π r m l : ty_shr κ π r m l -∗ ty_sidecond;
 
   (** The sharing predicate is persistent *)
   (* Disabling TC resolution in order to make the proof opaque for type declarations *)
   _ty_shr_persistent κ π l r m : TCNoResolve (Persistent (ty_shr κ π r m l));
   (** The address at which a shared type is stored must be correctly aligned *)
-  ty_shr_aligned κ π l r m :
+  _ty_shr_aligned κ π l r m :
     ty_shr κ π r m l -∗
     ∃ (ly : layout),
       ⌜l `has_layout_loc` ly⌝ ∗ ⌜syn_type_has_layout (ty_syn_type m) ly⌝;
 
   (** We need to be able to initiate sharing *)
-  ty_share E κ l ly π r m q:
+  _ty_share E κ l ly π r m q:
     lftE ⊆ E →
     rrust_ctx -∗
     na_own π ∅ -∗
@@ -316,7 +291,7 @@ Record type `{!typeGS Σ} (rt : RT) := {
     logical_step E (ty_shr κ π r m l ∗ q.[κ ⊓ κ']);
 
   (** The sharing predicate is monotonic *)
-  ty_shr_mono κ κ' tid r m l :
+  _ty_shr_mono κ κ' tid r m l :
     κ' ⊑ κ -∗ ty_shr κ tid r m l -∗ ty_shr κ' tid r m l;
 
   _ty_own_ghost_drop π r m v F :
@@ -352,14 +327,53 @@ Record type `{!typeGS Σ} (rt : RT) := {
     syn_type_has_layout (ty_syn_type MetaNone) ly →
     _ty_has_op_type (UntypedOp ly);
 
-  ty_sidecond_timeless : Timeless ty_sidecond;
-  ty_sidecond_persistent : Persistent ty_sidecond;
+  _ty_sidecond_timeless : Timeless ty_sidecond;
+  _ty_sidecond_persistent : Persistent ty_sidecond;
+}.
+
+(** Types are defined semantically by what it means for a value to have a particular type.
+    Types are indexed by their refinement type [rt].
+*)
+Record type `{!typeGS Σ} (rt : RT) := {
+  (* The xt type should be inhabited *)
+  ty_xt_inhabited : Inhabited (RT_xt rt);
+
+  (* What metadata does this type need? *)
+  ty_metadata_kind : metadata_kind;
+
+  (** Ownership of values, depending also on the metadata *)
+  ty_own_val :
+    thread_id → RT_rt rt → metadata → val → iProp Σ;
+
+  (** This type's syntactic type *)
+  ty_syn_type : metadata → syn_type;
+
+  (** Determines how values are altered when they are read and written *)
+  (** This is formulated as a property of the semantic type, because the memcast compatibility is a semantic property *)
+  _ty_has_op_type : op_type → Prop;
+
+  (** The sharing predicate: what does it mean to have a shared reference to this type at a particular lifetime? *)
+  ty_shr : lft → thread_id → RT_rt rt → metadata → loc → iProp Σ;
+
+  (** We have a separate well-formedness predicate to capture persistent + timeless information about
+    the type's structure. Needed to evade troubles with the ltype unfolding equations. *)
+  ty_sidecond : iProp Σ;
+
+  (* [ty_lfts] is the set of lifetimes that needs to be active for this type to make sense.*)
+  _ty_lfts : list lft;
+
+  (* [ty_wf_E] is a set of inclusion constraints on lifetimes that need to hold for the type to make sense. *)
+  _ty_wf_E : elctx;
+
+  _ty_ghost_drop : thread_id → rt → iProp Σ;
+
+  ty_trivial_drop : bool;
+
+  ty_props : type_props rt ty_xt_inhabited ty_metadata_kind ty_own_val ty_syn_type _ty_has_op_type ty_shr ty_sidecond _ty_lfts _ty_wf_E _ty_ghost_drop ty_trivial_drop;
 }.
 Arguments ty_own_val : simpl never.
 Arguments ty_shr : simpl never.
 Arguments ty_trivial_drop {_ _ _}.
-#[export] Existing Instance ty_sidecond_timeless.
-#[export] Existing Instance ty_sidecond_persistent.
 #[export] Existing Instance ty_xt_inhabited.
 Global Instance ty_rt_inhabited `{!typeGS Σ} {rt} (ty : type rt) : Inhabited rt :=
   populate (RT_xrt rt (@inhabitant _ (ty_xt_inhabited _ ty))).
@@ -369,13 +383,86 @@ Arguments ty_own_val {_ _ _}.
 Arguments ty_sidecond {_ _ _}.
 Arguments ty_syn_type {_ _ _}.
 Arguments ty_shr {_ _ _}.
-Arguments ty_share {_ _ _}.
 Arguments ty_metadata_kind {_ _ _}.
 Arguments _ty_ghost_drop {_ _ _}.
 
+(** We seal [ty_lfts] in order to avoid performance issues with Qed time. *)
+Definition ty_lfts_aux `{!typeGS Σ} : seal (@_ty_lfts _ _). Proof. by eexists. Qed.
+Definition ty_lfts `{!typeGS Σ} := ty_lfts_aux.(unseal).
+Definition ty_lfts_unfold `{!typeGS Σ} : ty_lfts = _ty_lfts := ty_lfts_aux.(seal_eq).
+Global Arguments ty_lfts {_ _ _} _.
+
+(** We seal proof fields of [type_props] to avoid performance issues with automation accidentally unfolding them. *)
+Definition ty_has_layout_def `{!typeGS Σ} {rt} (ty : type rt) π r m v :
+  ty_own_val ty π r m v -∗
+  ∃ ly : layout, ⌜syn_type_has_layout (ty_syn_type ty m) ly⌝ ∗ ⌜v `has_layout_val` ly⌝.
+Proof. eapply _ty_has_layout. apply ty_props. Qed.
+Definition ty_has_layout_aux : seal (@ty_has_layout_def). Proof. by eexists. Qed.
+Definition ty_has_layout := ty_has_layout_aux.(unseal).
+Definition ty_has_layout_unfold : @ty_has_layout = @ty_has_layout_def := ty_has_layout_aux.(seal_eq).
+Arguments ty_has_layout {_ _ _}.
+
+Definition ty_own_val_sidecond_def `{!typeGS Σ} {rt} (ty : type rt) π r m v :
+  ty_own_val ty π r m v -∗ ty_sidecond ty.
+Proof. eapply _ty_own_val_sidecond. apply ty_props. Qed.
+Definition ty_own_val_sidecond_aux : seal (@ty_own_val_sidecond_def). Proof. by eexists. Qed.
+Definition ty_own_val_sidecond := ty_own_val_sidecond_aux.(unseal).
+Definition ty_own_val_sidecond_unfold : @ty_own_val_sidecond = @ty_own_val_sidecond_def := ty_own_val_sidecond_aux.(seal_eq).
+Arguments ty_own_val_sidecond {_ _ _}.
+
+Definition ty_shr_sidecond_def `{!typeGS Σ} {rt} (ty : type rt) κ π r m l :
+  ty_shr ty κ π r m l -∗ ty_sidecond ty.
+Proof. eapply _ty_shr_sidecond. apply ty_props. Qed.
+Definition ty_shr_sidecond_aux : seal (@ty_shr_sidecond_def). Proof. by eexists. Qed.
+Definition ty_shr_sidecond := ty_shr_sidecond_aux.(unseal).
+Definition ty_shr_sidecond_unfold : @ty_shr_sidecond = @ty_shr_sidecond_def := ty_shr_sidecond_aux.(seal_eq).
+Arguments ty_shr_sidecond {_ _ _}.
+
+Definition ty_shr_aligned_def `{!typeGS Σ} {rt} (ty : type rt) κ π l r m :
+  ty_shr ty κ π r m l -∗
+  ∃ (ly : layout), ⌜l `has_layout_loc` ly⌝ ∗ ⌜syn_type_has_layout (ty_syn_type ty m) ly⌝.
+Proof. eapply _ty_shr_aligned. apply ty_props. Qed.
+Definition ty_shr_aligned_aux : seal (@ty_shr_aligned_def). Proof. by eexists. Qed.
+Definition ty_shr_aligned := ty_shr_aligned_aux.(unseal).
+Definition ty_shr_aligned_unfold : @ty_shr_aligned = @ty_shr_aligned_def := ty_shr_aligned_aux.(seal_eq).
+Arguments ty_shr_aligned {_ _ _}.
+
+Definition ty_share_def `{!typeGS Σ} {rt} (ty : type rt) E κ l ly π r m q :
+  lftE ⊆ E →
+  rrust_ctx -∗
+  na_own π ∅ -∗
+  let κ' := lft_intersect_list (ty_lfts ty) in
+  q.[κ ⊓ κ'] -∗
+  ⌜syn_type_has_layout (ty_syn_type ty m) ly⌝ -∗
+  ⌜l `has_layout_loc` ly⌝ -∗
+  loc_in_bounds l 0 (ly_size ly) -∗
+  &{κ} (∃ v, l ↦ v ∗ ty_own_val ty π r m v) -∗
+  logical_step E (ty_shr ty κ π r m l ∗ q.[κ ⊓ κ']).
+Proof.
+  rewrite ty_lfts_unfold. eapply _ty_share. apply ty_props.
+Qed.
+Definition ty_share_aux : seal (@ty_share_def). Proof. by eexists. Qed.
+Definition ty_share := ty_share_aux.(unseal).
+Definition ty_share_unfold : @ty_share = @ty_share_def := ty_share_aux.(seal_eq).
+Arguments ty_share {_ _ _}.
+
+Definition ty_shr_mono_def `{!typeGS Σ} {rt} (ty : type rt) κ κ' tid r m l :
+  κ' ⊑ κ -∗ ty_shr ty κ tid r m l -∗ ty_shr ty κ' tid r m l.
+Proof. eapply _ty_shr_mono. apply ty_props. Qed.
+Definition ty_shr_mono_aux : seal (@ty_shr_mono_def). Proof. by eexists. Qed.
+Definition ty_shr_mono := ty_shr_mono_aux.(unseal).
+Definition ty_shr_mono_unfold : @ty_shr_mono = @ty_shr_mono_def := ty_shr_mono_aux.(seal_eq).
+Arguments ty_shr_mono {_ _ _}.
+
 #[export] Instance ty_shr_persistent `{!typeGS Σ} {rt : RT} (ty : type rt) κ π l r m :
   Persistent (ty_shr ty κ π r m l).
-Proof. apply _ty_shr_persistent. Qed.
+Proof. eapply _ty_shr_persistent. apply ty_props. Qed.
+#[export] Instance ty_sidecond_persistent `{!typeGS Σ} {rt : RT} (ty : type rt) :
+  Persistent (ty_sidecond ty).
+Proof. eapply _ty_sidecond_persistent. apply ty_props. Qed.
+#[export] Instance ty_sidecond_timeless `{!typeGS Σ} {rt : RT} (ty : type rt) :
+  Timeless (ty_sidecond ty).
+Proof. eapply _ty_sidecond_timeless. apply ty_props. Qed.
 
 Class TySized `{!typeGS Σ} {rt} (ty : type rt) := {
   ty_sized_metadata_none : ty.(ty_metadata_kind) = MetadataNone;
@@ -396,20 +483,27 @@ Arguments ty_has_op_type {_ _ _}.
 Lemma ty_op_type_stable `{!typeGS Σ} {rt} (ty : type rt) ot :
   ty_has_op_type ty ot →
   syn_type_has_layout (ty.(ty_syn_type) MetaNone) (ot_layout ot).
-Proof. rewrite ty_has_op_type_unfold. apply _ty_op_type_stable. Qed.
+Proof. rewrite ty_has_op_type_unfold. eapply _ty_op_type_stable. apply ty_props. Qed.
 Global Arguments ty_op_type_stable {_ _ _} _ _.
 
 Lemma ty_op_type_wf `{!typeGS Σ} {rt} (ty : type rt) ot :
   ty_has_op_type ty ot →
   op_type_wf ot.
-Proof. rewrite ty_has_op_type_unfold. apply _ty_op_type_wf. Qed.
+Proof. rewrite ty_has_op_type_unfold. eapply _ty_op_type_wf. apply ty_props. Qed.
 Global Arguments ty_op_type_wf {_ _ _}.
 
+Lemma ty_has_op_type_untyped `{!typeGS Σ} {rt} (ty : type rt) ly :
+  ty_metadata_kind ty = MetadataNone →
+  syn_type_has_layout (ty_syn_type ty MetaNone) ly →
+  ty_has_op_type ty (UntypedOp ly).
+Proof.
+  rewrite ty_has_op_type_unfold. eapply _ty_has_op_type_untyped; first apply ty_props.
+Qed.
 Lemma ty_sized_has_op_type_untyped `{!typeGS Σ} {rt} (ty : type rt) `{!TySized ty} ly :
   syn_type_has_layout (ty_sized_syn_type ty) ly →
   ty_has_op_type ty (UntypedOp ly).
 Proof.
-  rewrite ty_has_op_type_unfold. apply _ty_has_op_type_untyped.
+  eapply ty_has_op_type_untyped.
   apply ty_sized_metadata_none.
 Qed.
 Global Arguments ty_sized_has_op_type_untyped {_ _ _} _ _ _.
@@ -418,14 +512,14 @@ Lemma ty_decodable `{!typeGS Σ} rt (ty : type rt) ot st π r v :
   ty_has_op_type ty ot →
   ty.(ty_own_val) π r MetaNone v -∗
   ∃ ov, ⌜decode_op_val v ot st = Some ov⌝.
-Proof. rewrite ty_has_op_type_unfold. apply _ty_decodable. Qed.
+Proof. rewrite ty_has_op_type_unfold. eapply _ty_decodable. apply ty_props. Qed.
 
 Lemma ty_decode_compat `{!typeGS Σ} rt (ty : type rt) ot st π r v v' :
   ty_has_op_type ty ot →
   is_same_decoded_val_at st v ot v' →
   ty.(ty_own_val) π r MetaNone v -∗
   ty.(ty_own_val) π r MetaNone v'.
-Proof. rewrite ty_has_op_type_unfold. apply _ty_decode_compat. Qed.
+Proof. rewrite ty_has_op_type_unfold. eapply _ty_decode_compat. apply ty_props. Qed.
 
 Lemma ty_encode_compat `{!typeGS Σ} rt (ty : type rt) ot st π r v ov :
   ty_has_op_type ty ot →
@@ -470,7 +564,7 @@ Proof.
   rewrite /ty_ghost_drop'.
   rewrite ty_ghost_drop_unfold.
   destruct (ty_trivial_drop ty) eqn:Heq.
-  - intros. by apply _ty_own_ghost_drop.
+  - intros. eapply _ty_own_ghost_drop; first apply ty_props. all: done.
   - iIntros (?) "Hown". by iApply logical_step_intro.
 Qed.
 Lemma ty_own_ghost_drop_trivial `{!typeGS Σ} {rt} (ty : type rt) π r m v F :
@@ -479,7 +573,8 @@ Lemma ty_own_ghost_drop_trivial `{!typeGS Σ} {rt} (ty : type rt) π r m v F :
   ty_own_val ty π r m v -∗ logical_step F (ty_ghost_drop ty π r).
 Proof.
   rewrite ty_ghost_drop_unfold.
-  intros. by apply _ty_own_ghost_drop.
+  intros. eapply _ty_own_ghost_drop; first apply ty_props.
+  all: done.
 Qed.
 
 
@@ -488,12 +583,6 @@ Definition ty_wf_E_aux `{!typeGS Σ} : seal (@_ty_wf_E _ _). Proof. by eexists. 
 Definition ty_wf_E `{!typeGS Σ} := ty_wf_E_aux.(unseal).
 Definition ty_wf_E_unfold `{!typeGS Σ} : ty_wf_E = _ty_wf_E := ty_wf_E_aux.(seal_eq).
 Global Arguments ty_wf_E {_ _ _} _.
-
-(** We seal [ty_lfts] in order to avoid performance issues with Qed time. *)
-Definition ty_lfts_aux `{!typeGS Σ} : seal (@_ty_lfts _ _). Proof. by eexists. Qed.
-Definition ty_lfts `{!typeGS Σ} := ty_lfts_aux.(unseal).
-Definition ty_lfts_unfold `{!typeGS Σ} : ty_lfts = _ty_lfts := ty_lfts_aux.(seal_eq).
-Global Arguments ty_lfts {_ _ _} _.
 
 Global Hint Extern 3 (type ?rt) => lazymatch goal with H : type rt |- _ => apply H end : typeclass_instances.
 
@@ -654,59 +743,38 @@ Program Definition ty_of_st `{!typeGS Σ} rt (st : simple_type rt) : type rt :=
      _ty_wf_E := [];
   |}.
 Next Obligation.
-  iIntros (????????) "(-> & Hown)".
-  iApply (st_has_layout with "Hown").
-Qed.
-Next Obligation.
-  iIntros (??? st ot Hot). by eapply st_op_type_stable.
-Qed.
-Next Obligation.
-  iIntros (??? st ot Hot). by eapply st_op_type_wf.
-Qed.
-Next Obligation.
-  iIntros (????????) "Hown". done.
-Qed.
-Next Obligation.
-  iIntros (?????????) "Hown". done.
-Qed.
-Next Obligation.
-  unfold TCNoResolve. apply _.
-Qed.
-Next Obligation.
-  iIntros (??? st κ π l r m). simpl.
-  iIntros "(%vl & %ly & -> & _ & _ & %Hst & %Hly)".
-  iExists _.
-  eauto.
-Qed.
-Next Obligation.
-  iIntros (??? st E κ l ly π r m ? ?) "#(LFT & TIME) Hna Hκ Hst Hly Hlb Hmt".
-  simpl. rewrite right_id.
-  iApply fupd_logical_step.
-  iMod (bor_exists with "LFT Hmt") as (vl) "Hmt"; first solve_ndisj.
-  iMod (bor_sep with "LFT Hmt") as "[Hmt Hown]"; first solve_ndisj.
-  iMod (bor_persistent with "LFT Hown Hκ") as "[Hown Hκ]"; first solve_ndisj.
-  iDestruct "Hown" as "(>-> & Hown)".
-  iMod (bor_fracture (λ q, l ↦{q} vl)%I with "LFT Hmt") as "Hfrac"; [eauto with iFrame.. |].
-  iApply logical_step_intro. eauto 8 with iFrame.
-Qed.
-Next Obligation.
-  iIntros (??? st κ κ' π r m l) "#Hord H".
-  iDestruct "H" as (vl ly) "(-> & #Hf & #Hown)".
-  iExists vl, ly. iFrame "Hown". iR. by iApply (frac_bor_shorten with "Hord").
-Qed.
-Next Obligation.
-  intros. iIntros "_". by iApply logical_step_intro.
-Qed.
-Next Obligation.
-  iIntros (??? st ot st' π r v Hot) "(_ & Hown)".
-  by iApply (st_decodable with "Hown").
-Qed.
-Next Obligation.
-  iIntros (??? st ot st' π r v v' Hot Hsame) "(_ & Hown)".
-  iR. by iApply (st_decode_compat _ _ _ with "Hown").
-Qed.
-Next Obligation.
-  intros. by apply st_has_op_type_untyped.
+  intros. econstructor.
+  - iIntros (????) "(-> & Hown)".
+    iApply (st_has_layout with "Hown").
+  - iIntros (ot Hot). by eapply st_op_type_stable.
+  - iIntros (ot Hot). by eapply st_op_type_wf.
+  - iIntros (????) "Hown". done.
+  - iIntros (?????) "Hown". done.
+  - unfold TCNoResolve. apply _.
+  - iIntros (κ π l r m). simpl.
+    iIntros "(%vl & %ly & -> & _ & _ & %Hst & %Hly)".
+    iExists _.
+    eauto.
+  - iIntros (E κ l ly π r m ? ?) "#(LFT & TIME) Hna Hκ Hst Hly Hlb Hmt".
+    simpl. rewrite right_id.
+    iApply fupd_logical_step.
+    iMod (bor_exists with "LFT Hmt") as (vl) "Hmt"; first solve_ndisj.
+    iMod (bor_sep with "LFT Hmt") as "[Hmt Hown]"; first solve_ndisj.
+    iMod (bor_persistent with "LFT Hown Hκ") as "[Hown Hκ]"; first solve_ndisj.
+    iDestruct "Hown" as "(>-> & Hown)".
+    iMod (bor_fracture (λ q, l ↦{q} vl)%I with "LFT Hmt") as "Hfrac"; [eauto with iFrame.. |].
+    iApply logical_step_intro. eauto 8 with iFrame.
+  - iIntros (κ κ' π r m l) "#Hord H".
+    iDestruct "H" as (vl ly) "(-> & #Hf & #Hown)".
+    iExists vl, ly. iFrame "Hown". iR. by iApply (frac_bor_shorten with "Hord").
+  - intros. iIntros "_". by iApply logical_step_intro.
+  - iIntros (ot st' π r v Hot) "(_ & Hown)".
+    by iApply (st_decodable with "Hown").
+  - iIntros (ot st' π r v v' Hot Hsame) "(_ & Hown)".
+    iR. by iApply (st_decode_compat _ _ _ with "Hown").
+  - intros. by apply st_has_op_type_untyped.
+  - apply _.
+  - apply _.
 Qed.
 (*Next Obligation.*)
   (*intros. apply st_has_op_type_compat; done.*)

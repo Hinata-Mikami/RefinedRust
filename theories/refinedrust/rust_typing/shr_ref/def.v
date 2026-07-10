@@ -60,95 +60,78 @@ Section shr_ref.
     intros. simpl. apply _.
   Qed.
   Next Obligation.
-    rewrite shr_ref_own_val_unfold.
-    iIntros (???????) "(%l & %ly & %r' & -> & %Hdec & ? & ? & ?)".
-    iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
-    by apply val_decodes_to_loc_has_layout in Hdec.
-  Qed.
-  Next Obligation.
-    intros ??? ot Hot => /=. destruct ot => /=//.
-    - by apply syn_type_has_layout_ptr.
-    - simpl in Hot. subst ly; by apply syn_type_has_layout_ptr.
-  Qed.
-  Next Obligation.
-    intros ??? ot Hot. destruct ot; done.
-  Qed.
-  Next Obligation. iIntros (??? ????) "_". done. Qed.
-  Next Obligation. iIntros (??? ?????) "_". done. Qed.
-  Next Obligation.
-    unfold TCNoResolve.
-    rewrite shr_ref_shr_unfold.
-    apply _.
-  Qed.
-  Next Obligation.
-    iIntros (??? ?????). simpl.
-    rewrite shr_ref_shr_unfold.
-    iIntros "(%vi & %li & %ly & %r' & % & % & ? & ? & _)".
-    iPureIntro. eexists _. split; last by apply syn_type_has_layout_ptr.
-    done.
-  Qed.
-  Next Obligation.
-    iIntros (??? E κ' l ly π r m q ?) "#[LFT TIME] #Hna Htok %Halg %Hly _ Hb".
-    rewrite shr_ref_own_val_unfold shr_ref_shr_unfold.
-    simpl. rewrite -{1}lft_tok_sep -{1}lft_tok_sep.
-    iDestruct "Htok" as "(Htok_κ' & Htok_κ & Htok)".
-    iApply fupd_logical_step.
-    iMod (bor_exists with "LFT Hb") as "(%v & Hb)"; first solve_ndisj.
-    iMod (bor_sep with "LFT Hb") as "[Hl Hb]"; first solve_ndisj.
-    iMod (bor_exists with "LFT Hb") as "(%l' & Hb)"; first solve_ndisj.
-    iMod (bor_exists with "LFT Hb") as "(%ly' & Hb)"; first solve_ndisj.
-    iMod (bor_exists_tok with "LFT Hb Htok_κ'") as "(%r' & Hb & Htok_κ')"; first solve_ndisj.
-    iMod (bor_sep with "LFT Hb") as "(Heq & Hb)"; first solve_ndisj.
-    iMod (bor_persistent with "LFT Heq Htok_κ'") as "(>-> & Htok_κ')"; first solve_ndisj.
-    iMod (bor_sep with "LFT Hb") as "(Heq & Hb)"; first solve_ndisj.
-    iMod (bor_persistent with "LFT Heq Htok_κ'") as "(>%Hv & Htok_κ')"; first solve_ndisj.
-    iMod (bor_persistent with "LFT Hb Htok_κ'") as "(Ha & Htok_κ')"; first solve_ndisj.
-    iDestruct "Ha" as "(>%Halg' & >%Hly' & >#Hlb & >#Hsc & >Hrfn & Hshr)".
-    iMod (bor_fracture (λ q, l ↦{q} v)%I with "LFT Hl") as "Hl"; first solve_ndisj.
-    iModIntro.
-    iApply logical_step_intro.
-    rewrite -!lft_tok_sep. iFrame.
-    apply syn_type_has_layout_ptr_inv in Halg as ->.
-    iExists ly'.
-    iR.
-    do 4 iR.
-    iFrame. iFrame "Hsc". done.
-  Qed.
-  Next Obligation.
-    iIntros (??? κ' κ'' π r m l) "#Hord H".
-    rewrite shr_ref_shr_unfold.
-    iDestruct "H" as (vi li ly ri ->) "(? & ? & ? & Hlb & Hsc & Hr & #Hf & %Hdec & #Hown)".
-    iExists vi, li, ly, ri. iR. iFrame. iSplitL "Hf".
-    - by iApply (frac_bor_shorten with "Hord").
-    - iSplitR; first done. iNext. iDestruct "Hown" as "#Hown". iModIntro. iMod "Hown". iModIntro.
+    intros. econstructor.
+    - rewrite shr_ref_own_val_unfold.
+      iIntros (π r m v) "(%l & %ly & %r' & -> & %Hdec & ? & ? & ?)".
+      iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
+      by apply val_decodes_to_loc_has_layout in Hdec.
+    - intros ot Hot => /=. destruct ot => /=//.
+      + by apply syn_type_has_layout_ptr.
+      + simpl in Hot. subst ly; by apply syn_type_has_layout_ptr.
+    - intros ot Hot. destruct ot; done.
+    - iIntros (π r m v) "_". done.
+    - iIntros (κ' π r m v) "_". done.
+    - unfold TCNoResolve.
+      rewrite shr_ref_shr_unfold.
+      apply _.
+    - iIntros (κ' π l r m). simpl.
+      rewrite shr_ref_shr_unfold.
+      iIntros "(%vi & %li & %ly & %r' & % & % & ? & ? & _)".
+      iPureIntro. eexists _. split; last by apply syn_type_has_layout_ptr.
       done.
-  Qed.
-  Next Obligation.
-    intros. iIntros "_". by iApply logical_step_intro.
-  Qed.
-  Next Obligation.
-    iIntros (??? ot st π r v Hot).
-    rewrite shr_ref_own_val_unfold.
-    iIntros "Hown".
-    iDestruct "Hown" as (l ly ri) "(%Hmeta & %Hv & _)".
-    iPureIntro.
-    destruct ot; simpl in *; try done; subst.
-    - eexists (OVPtr _). apply Hv.
-    - eexists (OVUntyped void* v). simp decode_op_val.
-      rewrite bool_decide_true; last by eapply val_decodes_to_loc_length.
+    - iIntros (E κ' l ly π r m q ?) "#[LFT TIME] #Hna Htok %Halg %Hly _ Hb".
+      rewrite shr_ref_own_val_unfold shr_ref_shr_unfold.
+      simpl. rewrite -{1}lft_tok_sep -{1}lft_tok_sep.
+      iDestruct "Htok" as "(Htok_κ' & Htok_κ & Htok)".
+      iApply fupd_logical_step.
+      iMod (bor_exists with "LFT Hb") as "(%v & Hb)"; first solve_ndisj.
+      iMod (bor_sep with "LFT Hb") as "[Hl Hb]"; first solve_ndisj.
+      iMod (bor_exists with "LFT Hb") as "(%l' & Hb)"; first solve_ndisj.
+      iMod (bor_exists with "LFT Hb") as "(%ly' & Hb)"; first solve_ndisj.
+      iMod (bor_exists_tok with "LFT Hb Htok_κ'") as "(%r' & Hb & Htok_κ')"; first solve_ndisj.
+      iMod (bor_sep with "LFT Hb") as "(Heq & Hb)"; first solve_ndisj.
+      iMod (bor_persistent with "LFT Heq Htok_κ'") as "(>-> & Htok_κ')"; first solve_ndisj.
+      iMod (bor_sep with "LFT Hb") as "(Heq & Hb)"; first solve_ndisj.
+      iMod (bor_persistent with "LFT Heq Htok_κ'") as "(>%Hv & Htok_κ')"; first solve_ndisj.
+      iMod (bor_persistent with "LFT Hb Htok_κ'") as "(Ha & Htok_κ')"; first solve_ndisj.
+      iDestruct "Ha" as "(>%Halg' & >%Hly' & >#Hlb & >#Hsc & >Hrfn & Hshr)".
+      iMod (bor_fracture (λ q, l ↦{q} v)%I with "LFT Hl") as "Hl"; first solve_ndisj.
+      iModIntro.
+      iApply logical_step_intro.
+      rewrite -!lft_tok_sep. iFrame.
+      apply syn_type_has_layout_ptr_inv in Halg as ->.
+      iExists ly'.
+      iR.
+      do 4 iR.
+      iFrame. iFrame "Hsc". done.
+    - iIntros (κ' κ'' π r m l) "#Hord H".
+      rewrite shr_ref_shr_unfold.
+      iDestruct "H" as (vi li ly ri ->) "(? & ? & ? & Hlb & Hsc & Hr & #Hf & %Hdec & #Hown)".
+      iExists vi, li, ly, ri. iR. iFrame. iSplitL "Hf".
+      + by iApply (frac_bor_shorten with "Hord").
+      + iSplitR; first done. iNext. iDestruct "Hown" as "#Hown". iModIntro. iMod "Hown". iModIntro.
+        done.
+    - intros. iIntros "_". by iApply logical_step_intro.
+    - iIntros (ot st π r v Hot).
+      rewrite shr_ref_own_val_unfold.
+      iIntros "Hown".
+      iDestruct "Hown" as (l ly ri) "(%Hmeta & %Hv & _)".
+      iPureIntro.
+      destruct ot; simpl in *; try done; subst.
+      + eexists (OVPtr _). apply Hv.
+      + eexists (OVUntyped void* v). simp decode_op_val.
+        rewrite bool_decide_true; last by eapply val_decodes_to_loc_length.
+        done.
+    - iIntros (ot st π r v ov Hot Hdec).
+      rewrite shr_ref_own_val_unfold.
+      iIntros "Hown".
+      iDestruct "Hown" as (l ly ri) "(%Hmeta & %Hv & Halg & Hly & Hlb & Hsc & Hrfn & Hshr)".
+      iExists l, ly, ri. iFrame. iR.
+      iPureIntro. by eapply val_decodes_to_loc_same_decoded.
+    - intros ly _ Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
       done.
-  Qed.
-  Next Obligation.
-    iIntros (??? ot st π r v ov Hot Hdec).
-    rewrite shr_ref_own_val_unfold.
-    iIntros "Hown".
-    iDestruct "Hown" as (l ly ri) "(%Hmeta & %Hv & Halg & Hly & Hlb & Hsc & Hrfn & Hshr)".
-    iExists l, ly, ri. iFrame. iR.
-    iPureIntro. by eapply val_decodes_to_loc_same_decoded.
-  Qed.
-  Next Obligation.
-    intros ??? ly _ Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
-    done.
+    - apply _.
+    - apply _.
   Qed.
 End shr_ref.
 

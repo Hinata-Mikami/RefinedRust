@@ -513,50 +513,38 @@ Section structs.
       apply IH.
   Defined.
   Next Obligation.
-    rewrite struct_t_own_val_unfold.
-    iIntros (rts sls tys π r m v) "(%sl & -> & %Halg & %Hlen & %Hly & ?)".
-    iExists sl. iPureIntro. split; last done.
-    by apply use_struct_layout_alg_Some_inv.
-  Qed.
-  Next Obligation.
-    intros rts sls tys ot Hot.
-    destruct ot.
-    all: simpl in *.
-    all: try done.
-    - destruct Hot as (Hlen & Halg & Hlen' & Hmem).
-      simpl. by apply use_struct_layout_alg_Some_inv.
-    - destruct Hot as (sl & Halg & ->).
-      simpl. by apply use_struct_layout_alg_Some_inv.
-  Qed.
-  Next Obligation.
-    intros rts sls tys ot Hot.
-    destruct ot; simpl in Hot |- *; try done.
-    destruct Hot as (_ & _  & _ & Hwf & _).
-    exact Hwf.
-  Qed.
-  Next Obligation.
-    rewrite struct_t_own_val_unfold.
-    iIntros (rts sls tys π r m v) "(%sl & -> & ? & $ & _)".
-  Qed.
-  Next Obligation.
-    rewrite struct_t_shr_unfold.
-    iIntros (rts sls tys ? π r m v) "(%sl & -> & ? & $ & _)".
-  Qed.
-  Next Obligation.
-    unfold TCNoResolve.
-    rewrite struct_t_shr_unfold.
-    apply _.
-  Qed.
-  Next Obligation.
-    rewrite struct_t_shr_unfold.
-    iIntros (rts sls tys κ π l m r) "(%sl & -> & %Halg & %Hly & % & Hmem)".
-    iExists sl. iSplitR; first done. iPureIntro.
-    by apply use_struct_layout_alg_Some_inv.
-  Qed.
-  Next Obligation.
+    intros. econstructor.
+    - rewrite struct_t_own_val_unfold.
+      iIntros (π r m v) "(%sl & -> & %Halg & %Hlen & %Hly & ?)".
+      iExists sl. iPureIntro. split; last done.
+      by apply use_struct_layout_alg_Some_inv.
+    - intros ot Hot.
+      destruct ot.
+      all: simpl in *.
+      all: try done.
+      + destruct Hot as (Hlen & Halg & Hlen' & Hmem).
+        simpl. by apply use_struct_layout_alg_Some_inv.
+      + destruct Hot as (sl & Halg & ->).
+        simpl. by apply use_struct_layout_alg_Some_inv.
+    - intros ot Hot.
+      destruct ot; simpl in Hot |- *; try done.
+      destruct Hot as (_ & _  & _ & Hwf & _).
+      exact Hwf.
+    - rewrite struct_t_own_val_unfold.
+      iIntros (π r m v) "(%sl & -> & ? & $ & _)".
+    - rewrite struct_t_shr_unfold.
+      iIntros (κ π r m v) "(%sl & -> & ? & $ & _)".
+    - unfold TCNoResolve.
+      rewrite struct_t_shr_unfold.
+      apply _.
+    - rewrite struct_t_shr_unfold.
+      iIntros (κ π l m r) "(%sl & -> & %Halg & %Hly & % & Hmem)".
+      iExists sl. iSplitR; first done. iPureIntro.
+      by apply use_struct_layout_alg_Some_inv.
+    -
     (* sharing *)
     rewrite struct_t_shr_unfold struct_t_own_val_unfold.
-    iIntros (rts sls tys E κ l ly π r m q ?) "#(LFT & LLCTX) #Hna Htok %Hst %Hly #Hlb Hl".
+    iIntros (E κ l ly π r m q ?) "#(LFT & LLCTX) #Hna Htok %Hst %Hly #Hlb Hl".
     rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htok')".
     iApply fupd_logical_step.
 
@@ -655,7 +643,7 @@ Section structs.
           iFrame. done. }
 
       iCombine "Htok1 Htok2" as "Htok". rewrite lft_tok_sep. iModIntro.
-      subst κ''. rewrite ty_lfts_unfold.
+      subst κ''.
       iPoseProof (ty_share with "[$LFT $LLCTX] Hna Htok [] [] [] Hb") as "Hb"; first done.
       - done.
       - iPureIntro. by apply struct_layout_field_aligned.
@@ -672,21 +660,19 @@ Section structs.
     iPoseProof ("Hcl_toks" with "Htok") as "$".
     iPoseProof (big_sepL2_const_sepL_l with "Hb") as "(_ & Hb)".
     iExists _. do 5 iR. done.
-  Qed.
-  Next Obligation.
+    -
     (* monotonicity of sharing *)
     rewrite struct_t_shr_unfold.
-    iIntros (rts sls tys κ κ' π r m l) "#Hincl (%sl & -> & %Hsl & %Hlen & %Hly & Hlb & Hb)".
+    iIntros (κ κ' π r m l) "#Hincl (%sl & -> & %Hsl & %Hlen & %Hly & Hlb & Hb)".
     iExists sl. do 4 iR. iFrame.
     iApply (big_sepL_wand with "Hb"). iApply big_sepL_intro.
     iModIntro. iIntros (k [rt [ty r']] Hlook).
     iIntros "(%r'' & %ly & ? & ? & ? & ? & Hb)".
     iExists _, _. iFrame.
     iApply (ty_shr_mono with "Hincl Hb").
-  Qed.
-  Next Obligation.
+    -
     rewrite struct_t_own_val_unfold.
-    iIntros (rts sls tys π r m v F ? Hdrop). simpl.
+    iIntros (π r m v F ? Hdrop). simpl.
     iIntros "(%sl & -> & %Halg & %Hlen & %Hlyv & Hv)".
     iPoseProof (big_sepL_to_exists_l with "Hv") as "Hv".
     iPoseProof (pad_struct_focus_no_uninit with "Hv") as "(Hv & _)".
@@ -706,31 +692,28 @@ Section structs.
     simpl. iPoseProof (ty_own_ghost_drop_trivial _ _ _ _ _ F with "Hv") as "Hv"; [done | done | ].
     iApply (logical_step_wand with "Hv").
     iIntros "$". done.
-  Qed.
-  Next Obligation.
+    -
     rewrite struct_t_own_val_unfold.
-    iIntros (rts sls tys ot st π r v Hot) "Hv".
+    iIntros (ot st π r v Hot) "Hv".
     destruct ot as [ | | | | sl' ots | ? ? ? | | ]; try done.
-    - pose proof Hot as Hot_struct.
+      + pose proof Hot as Hot_struct.
       destruct Hot as (_ &  Halg & _ & _ & _).
       iDestruct "Hv" as "(%sl & %Hmeta & %Halg' & %Hlen & %Hly & Hmem)".
       assert (sl = sl') as -> by by eapply struct_layout_spec_has_layout_inj.
       iPoseProof (struct_own_val_decodable_fields π sls sl' tys ots st r v with "Hmem")
         as "(%fields & %Hdec)"; [exact Hot_struct | done |].
       iExists (OVStruct sl' fields). done.
-    - destruct Hot as (sl & Halg & ->).
+      + destruct Hot as (sl & Halg & ->).
       iDestruct "Hv" as "(%sl' & %Hmeta & %Halg' & %Hlen & %Hly & Hmem)".
       assert (sl' = sl) as -> by by eapply struct_layout_spec_has_layout_inj.
       iExists (OVUntyped sl v). iPureIntro.
       simp decode_op_val. rewrite bool_decide_true; done.
-  Qed.
-  Next Obligation.
-    iIntros (rts sls tys ot st π r v v' Hot Hsame) "Hv".
+    - iIntros (ot st π r v v' Hot Hsame) "Hv".
     destruct ot as [ | | | | sl ots | ? ? ? | ly | ]; try done.
-    - pose proof Hot as Hot_struct.
+      + pose proof Hot as Hot_struct.
       destruct Hot as (_ & _ & _ & _ & _).
       iApply (struct_t_decode_compat_copy π sls sl tys ots st r v v' with "Hv"); [exact Hot_struct | done].
-    - destruct Hot as (sl & Halg & ->).
+      + destruct Hot as (sl & Halg & ->).
       pose proof Hsame as Hsame_at.
       destruct Hsame as [_ [ov Hdec]].
       pose proof Hdec as Hdec'.
@@ -739,12 +722,12 @@ Section structs.
       apply is_same_decoded_val_at_untyped_inv in Hsame_at; [subst; done | done |].
       pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame_at) as Hly'.
       exact Hly'.
-  Qed.
-  Next Obligation.
-    intros ??? ly _ Hst.
+    - intros ly _ Hst.
     apply syn_type_has_layout_struct_inv in Hst as (fields & sl & -> & Halg & Hf).
     simpl. exists sl. split; last done.
     by eapply use_struct_layout_alg_Some.
+    - apply _.
+    - apply _.
   Qed.
 
 

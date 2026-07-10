@@ -71,38 +71,25 @@ Section mut_ref.
     simpl. apply _.
   Qed.
   Next Obligation.
-    rewrite mut_ref_own_val_unfold.
-    iIntros (? κ inner  π [r γ] m v) "(%l & %ly & -> & %Hv & _)".
-    iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
-    by apply val_decodes_to_loc_has_layout in Hv.
-  Qed.
-  Next Obligation.
-    intros ??? ot Hot => /=. destruct ot => /=//.
-    - by apply syn_type_has_layout_ptr.
-    - simpl in Hot. subst ly; by apply syn_type_has_layout_ptr.
-  Qed.
-  Next Obligation.
-    intros ??? ot Hot. destruct ot; done.
-  Qed.
-  Next Obligation.
-    iIntros (? κ ? π r m v) "_". done.
-  Qed.
-  Next Obligation.
-    iIntros (? κ ? ? π r m v) "_". done.
-  Qed.
-  Next Obligation.
-    unfold TCNoResolve.
-    rewrite mut_ref_shr_unfold.
-    iIntros (? κ ? κ' π l [r γ]). apply _.
-  Qed.
-  Next Obligation.
-    rewrite mut_ref_shr_unfold.
-    iIntros (??????[r γ] m) "(%vi & %li & %ly & %r' & -> & % & ? &  _)".
-    iPureIntro. eexists _. split; last by apply syn_type_has_layout_ptr.
-    done.
-  Qed.
-  Next Obligation.
-    (* initiate sharing *)
+    intros. econstructor.
+    - rewrite mut_ref_own_val_unfold.
+      iIntros (π [r γ] m v) "(%l & %ly & -> & %Hv & _)".
+      iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
+      by apply val_decodes_to_loc_has_layout in Hv.
+    - intros ot Hot => /=. destruct ot => /=//.
+      + by apply syn_type_has_layout_ptr.
+      + simpl in Hot. subst ly; by apply syn_type_has_layout_ptr.
+    - intros ot Hot. destruct ot; done.
+    - iIntros (π r m v) "_". done.
+    - iIntros (κ' π r m v) "_". done.
+    - unfold TCNoResolve.
+      rewrite mut_ref_shr_unfold.
+      iIntros (κ' π l [r γ]). apply _.
+    - rewrite mut_ref_shr_unfold.
+      iIntros (κ' π l [r γ] m) "(%vi & %li & %ly & %r' & -> & % & ? &  _)".
+      iPureIntro. eexists _. split; last by apply syn_type_has_layout_ptr.
+      done.
+    - (* initiate sharing *)
     (*
        Plan:
        - get the borrow containing the credit + atime.
@@ -121,7 +108,7 @@ Section mut_ref.
 
     *)
 
-    iIntros (? κ ? E κ' l ly π [r γ] m q ?) "#[LFT TIME] #Hna Htok %Hst %Hly _ Hb".
+    iIntros (E κ' l ly π [r γ] m q ?) "#[LFT TIME] #Hna Htok %Hst %Hly _ Hb".
     rewrite mut_ref_own_val_unfold mut_ref_shr_unfold.
     iApply fupd_logical_step.
     iMod (bor_exists with "LFT Hb") as (v) "Hb"; first solve_ndisj.
@@ -210,50 +197,42 @@ Section mut_ref.
       iFrame "Hlb'". }
     iSplitR; first done. iSplitR; first done.
     iNext. iModIntro. iModIntro. done.
-  Qed.
-  Next Obligation.
-    iIntros (? κ inner κ0 κ' π [r γ] m l) "#Hincl".
-    rewrite mut_ref_shr_unfold.
-    iIntros "(%vi & %li & %ly & %r' & -> & Hly & Hrfn & Hf & ? & ? & ? & ? & ? & ? & #Hb)".
-    iExists vi, li, ly, r'. iR. iFrame.
-    iSplitL "Hf". { iApply frac_bor_shorten; done. }
-    iNext. iDestruct "Hb" as "#Hb". iModIntro. iMod "Hb". iModIntro.
-    iApply ty_shr_mono; last done.
-    iApply lft_intersect_mono; last done. iApply lft_incl_refl.
-  Qed.
-  Next Obligation.
-    rewrite mut_ref_own_val_unfold.
-    iIntros (????[r γ]???? ?) "(%l & %ly & -> & %Hv & _ & _ & _ & _ & Hrfn & Hcred &  _)".
-    iApply fupd_logical_step. destruct r as [ r | γ'].
-    - iMod (gvar_obs_persist with "Hrfn") as "?".
-      iApply logical_step_intro. by iFrame.
-    - by iApply logical_step_intro.
-  Qed.
-  Next Obligation.
-    iIntros (??? ot st π [r γ] v Hot).
-    rewrite mut_ref_own_val_unfold.
-    rewrite /mut_ref_own_val_def /=.
-    iIntros "Hown".
-    iDestruct "Hown" as (l ly) "(%Hmeta & %Hv & _)".
-    iPureIntro.
-    destruct ot; simpl in *; try done; subst.
-    - eexists (OVPtr _). apply Hv.
-    - eexists (OVUntyped void* v). simp decode_op_val.
-      rewrite bool_decide_true; last by eapply val_decodes_to_loc_length.
+    - iIntros (κ0 κ' π [r γ] m l) "#Hincl".
+      rewrite mut_ref_shr_unfold.
+      iIntros "(%vi & %li & %ly & %r' & -> & Hly & Hrfn & Hf & ? & ? & ? & ? & ? & ? & #Hb)".
+      iExists vi, li, ly, r'. iR. iFrame.
+      iSplitL "Hf". { iApply frac_bor_shorten; done. }
+      iNext. iDestruct "Hb" as "#Hb". iModIntro. iMod "Hb". iModIntro.
+      iApply ty_shr_mono; last done.
+      iApply lft_intersect_mono; last done. iApply lft_incl_refl.
+    - rewrite mut_ref_own_val_unfold.
+      iIntros (π [r γ] m v F ? ?) "(%l & %ly & -> & %Hv & _ & _ & _ & _ & Hrfn & Hcred &  _)".
+      iApply fupd_logical_step. destruct r as [ r | γ'].
+      + iMod (gvar_obs_persist with "Hrfn") as "?".
+        iApply logical_step_intro. by iFrame.
+      + by iApply logical_step_intro.
+    - iIntros (ot st π [r γ] v Hot).
+      rewrite mut_ref_own_val_unfold.
+      rewrite /mut_ref_own_val_def /=.
+      iIntros "Hown".
+      iDestruct "Hown" as (l ly) "(%Hmeta & %Hv & _)".
+      iPureIntro.
+      destruct ot; simpl in *; try done; subst.
+      + eexists (OVPtr _). apply Hv.
+      + eexists (OVUntyped void* v). simp decode_op_val.
+        rewrite bool_decide_true; last by eapply val_decodes_to_loc_length.
+        done.
+    - iIntros (ot st π [r γ] v ov Hot Hdec).
+      rewrite mut_ref_own_val_unfold.
+      rewrite /mut_ref_own_val_def /=.
+      iIntros "Hown".
+      iDestruct "Hown" as (l ly) "(%Hmeta & %Hv & Halg & Hly & Hlb & Hsc & Hrfn & Hcred & Hbor)".
+      iExists l, ly. iFrame. iR.
+      iPureIntro. by eapply val_decodes_to_loc_same_decoded.
+    - intros ly _ Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
       done.
-  Qed.
-  Next Obligation.
-    iIntros (??? ot st π [r γ] v ov Hot Hdec).
-    rewrite mut_ref_own_val_unfold.
-    rewrite /mut_ref_own_val_def /=.
-    iIntros "Hown".
-    iDestruct "Hown" as (l ly) "(%Hmeta & %Hv & Halg & Hly & Hlb & Hsc & Hrfn & Hcred & Hbor)".
-    iExists l, ly. iFrame. iR.
-    iPureIntro. by eapply val_decodes_to_loc_same_decoded.
-  Qed.
-  Next Obligation.
-    intros ??? ly _ Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
-    done.
+    - apply _.
+    - apply _.
   Qed.
 
   Global Instance mut_ref_sized {rt} (ty : type rt) κ : TySized (mut_ref κ ty).

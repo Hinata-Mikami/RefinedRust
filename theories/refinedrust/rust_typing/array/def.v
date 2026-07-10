@@ -163,41 +163,31 @@ Section array.
     _ty_wf_E := ty_wf_E ty;
   |}%I.
   Next Obligation.
-    rewrite array_t_own_val_unfold.
-    iIntros (len ty π r m v) "(%ly & -> & %Hst & %Hsz & %Hlen & %Hly & Hv)".
-    iExists _.
-    iSplitR. { iPureIntro. eapply syn_type_has_layout_array; done. }
-    done.
-  Qed.
-  Next Obligation.
-    iIntros (len ty ot Hot).
-    destruct ot; try done.
-    (*destruct Hot as (ly' & -> & Hot & Hsz & Hwf).*)
-    (*eapply ty_op_type_stable in Hot.*)
-    (*eapply syn_type_has_layout_array.*)
-    (*- done.*)
-    (*- done.*)
-    (*- rewrite /ly_size /mk_array_layout in Hsz. simpl in Hsz. lia.*)
-  Qed.
-  Next Obligation.
-    intros len ty ot Hot.
-    destruct ot; simpl in *; done.
-  Qed.
-  Next Obligation.
-    iIntros (len ty π r m v) "_". done.
-  Qed.
-  Next Obligation.
-    iIntros (len ty ? π r m v) "_". done.
-  Qed.
-  Next Obligation. unfold TCNoResolve. rewrite array_t_shr_unfold. apply _. Qed.
-  Next Obligation.
-    rewrite array_t_shr_unfold.
-    iIntros (len ty κ π l m r) "(%ly & -> & %Hst & %Hsz & %Hlen & %Hly & Hv)".
-    iExists (mk_array_layout ly len). iSplitR; first done.
-    iPureIntro. by eapply syn_type_has_layout_array.
-  Qed.
-  Next Obligation.
-    iIntros (len ty E κ l ly π r m q ?).
+    intros. econstructor.
+    - rewrite array_t_own_val_unfold.
+      iIntros (π r m v) "(%ly & -> & %Hst & %Hsz & %Hlen & %Hly & Hv)".
+      iExists _.
+      iSplitR. { iPureIntro. eapply syn_type_has_layout_array; done. }
+      done.
+    - iIntros (ot Hot).
+      destruct ot; try done.
+      (*destruct Hot as (ly' & -> & Hot & Hsz & Hwf).*)
+      (*eapply ty_op_type_stable in Hot.*)
+      (*eapply syn_type_has_layout_array.*)
+      (*- done.*)
+      (*- done.*)
+      (*- rewrite /ly_size /mk_array_layout in Hsz. simpl in Hsz. lia.*)
+    - intros ot Hot.
+      destruct ot; simpl in *; done.
+    - iIntros (π r m v) "_". done.
+    - iIntros (κ π r m v) "_". done.
+    - unfold TCNoResolve. rewrite array_t_shr_unfold. apply _.
+    - rewrite array_t_shr_unfold.
+      iIntros (κ π l m r) "(%ly & -> & %Hst & %Hsz & %Hlen & %Hly & Hv)".
+      iExists (mk_array_layout ly len). iSplitR; first done.
+      iPureIntro. by eapply syn_type_has_layout_array.
+    -
+      iIntros (E κ l ly π r m q ?).
     iIntros "#(LFT & LCTX) #Hna Htok %Hst %Hly #Hlb Hb".
     rewrite array_t_own_val_unfold array_t_shr_unfold.
     rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htok')".
@@ -250,7 +240,6 @@ Section array.
       iMod (bor_sep with "LFT Ha") as "(Hrfn & Hb)"; first done.
       iMod (place_rfn_interp_owned_share with "LFT Hrfn Htok1") as "(Hrfn & Htok1)"; first done.
       iCombine "Htok1 Htok2" as "Htok". rewrite lft_tok_sep. iModIntro.
-      rewrite ty_lfts_unfold.
       iPoseProof (ty_share with "[$LFT $LCTX] Hna Htok [] [] [] Hb") as "Hb"; first done.
       - done.
       - iPureIntro.
@@ -272,19 +261,16 @@ Section array.
     iPoseProof ("Hcl_toks" with "Htok") as "$".
     iPoseProof (big_sepL2_const_sepL_l with "Hb") as "(_ & Hb)".
     iExists _. do 5 iR. done.
-  Qed.
-  Next Obligation.
-    iIntros (len ty κ κ' π r m l) "#Hincl Hb".
+    - iIntros (κ κ' π r m l) "#Hincl Hb".
     rewrite array_t_shr_unfold.
     iDestruct "Hb" as "(%ly & -> & Hst & Hsz & Hlen & Hly & Hb)".
     iExists ly. iFrame. iR.
     iApply (big_sepL_wand with "Hb"). iApply big_sepL_intro.
     iIntros "!>" (k x Hlook) "(% & ? & Hb)".
     iExists _; iFrame. iApply ty_shr_mono; done.
-  Qed.
-  Next Obligation.
+    -
     rewrite array_t_own_val_unfold.
-    iIntros (len ty π r m v F ? Hdrop) "(%ly & -> & ? & ? & ? & ? & Hb)".
+    iIntros (π r m v F ? Hdrop) "(%ly & -> & ? & ? & ? & ? & Hb)".
     iAssert (logical_step F $ [∗ list] r'; v' ∈ r; reshape (replicate len (ly_size ly)) v,
       ∃ r'', place_rfn_interp_owned r' r'' ∗ ty_ghost_drop ty π r'')%I with "[Hb]" as "Hb".
     { iApply logical_step_big_sepL2. iApply (big_sepL2_mono with "Hb"). iIntros (? r' ???).
@@ -294,9 +280,7 @@ Section array.
       iIntros "Hg". iExists _. iFrame. }
     iApply (logical_step_wand with "Hb").
     iIntros "Hb". iPoseProof (big_sepL2_const_sepL_l with "Hb") as "(_ & $)".
-  Qed.
-  Next Obligation.
-    intros len ty ot st π r v Hot.
+    - intros ot st π r v Hot.
     rewrite /array_t_own_val array_t_own_val_aux.(seal_eq) /array_t_own_val_def.
     iIntros "Hb".
     iDestruct "Hb" as "(%ly & _ & %Hst & %Hsz & %Hlen & %Hly & Hb)".
@@ -308,17 +292,13 @@ Section array.
     { by eapply syn_type_has_layout_inj. }
     simp decode_op_val. rewrite bool_decide_true; first done.
     exact Hly.
-  Qed.
-  Next Obligation.
-    iIntros (len ty ot st π r v v' Hot Hsame) "Hv".
+    - iIntros (ot st π r v v' Hot Hsame) "Hv".
     destruct ot as [ | | | | | ? ? ? | ly | ]; try done.
     pose proof (is_same_decoded_val_at_has_layout_l _ _ _ _ Hsame) as Hly.
     pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly'.
     pose proof (is_same_decoded_val_at_untyped_inv _ _ _ _ Hly Hly' Hsame) as ->.
     done.
-  Qed.
-  Next Obligation.
-    intros len ty ly _ Hst.
+    - intros ly _ Hst.
     done.
     (*
     apply syn_type_has_layout_array_inv in Hst as (ly' & Hst & -> & Hsz).
@@ -330,6 +310,8 @@ Section array.
       admit.
     - by eapply use_layout_alg_wf.
      *)
+    - apply _.
+    - apply _.
   Qed.
 
   (* TODO copy *)

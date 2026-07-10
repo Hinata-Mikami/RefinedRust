@@ -141,115 +141,89 @@ Section fixpoint_def.
     _ty_wf_E := ty_wf_E (Fn 1);
   |}.
   Next Obligation.
-    intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. f_equiv. eapply Heq.
-    - intros ?.
-      simpl. erewrite Fn_syn_type_const. eapply ty_has_layout.
-  Qed.
-  Next Obligation.
-    eapply _ty_op_type_stable.
-  Qed.
-  Next Obligation.
-    eapply _ty_op_type_wf.
-  Qed.
-  Next Obligation.
-    intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. f_equiv. eapply Heq.
-    - intros ?.
-      simpl. rewrite -(Fn_sidecond_const (3+n)); first eapply ty_own_val_sidecond.
-      lia.
-  Qed.
-  Next Obligation.
-    intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. f_equiv. eapply Heq.
-    - intros ?.
-      simpl. rewrite -(Fn_sidecond_const (3+n)); first eapply ty_shr_sidecond.
-      lia.
-  Qed.
-  Next Obligation.
-    unfold TCNoResolve.
-    intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_Persistent.
-      intros ? [] [] Heq. eapply Heq.
-    - intros ?.
-      simpl. eapply ty_shr_persistent.
-  Qed.
-  Next Obligation.
-    intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. f_equiv. eapply Heq.
-    - intros ?.
-      simpl. erewrite Fn_syn_type_const. eapply ty_shr_aligned.
-  Qed.
-  Next Obligation.
-    intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. do 9 f_equiv.
-      { do 2 f_equiv. apply Heq. }
-      apply Heq.
-    - intros ?. simpl.
-      iIntros "#RUST Hna Htok %% Hlb Hb".
-      iApply fupd_logical_step.
-      iPoseProof (Fn_lfts_const_0 (3+n)) as "[_ Hincl]".
-      iMod (lft_incl_acc with "[] Htok") as "(%q' & Htok & Hcl_tok)"; first done.
-      { iApply lft_intersect_mono; first iApply lft_incl_refl. iApply "Hincl". }
-      rewrite ty_lfts_unfold.
-      iPoseProof (ty_share with "RUST Hna Htok [] [//] Hlb Hb") as "Hlb"; first done.
-      { erewrite Fn_syn_type_const. done. }
-      iApply logical_step_fupd.
-      iApply (logical_step_compose with "Hlb").
-      iApply logical_step_intro.
-      iModIntro. iIntros "($ & Htok)".
-      iApply ("Hcl_tok" with "Htok").
-  Qed.
-  Next Obligation.
-    intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. do 2 f_equiv; eapply Heq.
-    - intros ?.
-      simpl. eapply ty_shr_mono.
-  Qed.
-  Next Obligation.
-    intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    iIntros "_". iApply logical_step_intro. done.
-  Qed.
-  Next Obligation.
-    intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. f_equiv. eapply Heq.
-    - intros ?.
-      simpl. eapply _ty_decodable.
-      + rewrite -ty_has_op_type_unfold in H.
-        rewrite <- (@ty_has_op_type_unfold Σ _).
-        eapply Fn_has_op_type_const. done.
-  Qed.
-  Next Obligation.
-    intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. f_equiv; first eapply Heq.
-      eapply Heq.
-    - intros ?.
-      simpl. eapply (_ty_decode_compat rt (Fn (S (S (S n)))) ot st π r v v').
-      + rewrite -ty_has_op_type_unfold in H.
-        rewrite <- (@ty_has_op_type_unfold Σ _).
-        eapply Fn_has_op_type_const. done.
-      + done.
-  Qed.
-  Next Obligation.
-    intros ly ? Hst.
-    by eapply _ty_has_op_type_untyped.
+    intros. econstructor.
+    - intros. unfold F_ty_own_val_ty_shr_fixpoint.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. f_equiv. eapply Heq.
+      + intros ?.
+        simpl. erewrite Fn_syn_type_const. eapply ty_has_layout.
+    - intros ot Hot. eapply ty_op_type_stable. rewrite ty_has_op_type_unfold. done.
+    - intros ot Hot. eapply ty_op_type_wf. rewrite ty_has_op_type_unfold. done.
+    - intros. unfold F_ty_own_val_ty_shr_fixpoint.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. f_equiv. eapply Heq.
+      + intros ?.
+        simpl. rewrite -(Fn_sidecond_const (3+n)); first eapply ty_own_val_sidecond.
+        lia.
+    - intros. unfold F_ty_own_val_ty_shr_fixpoint.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. f_equiv. eapply Heq.
+      + intros ?.
+        simpl. rewrite -(Fn_sidecond_const (3+n)); first eapply ty_shr_sidecond.
+        lia.
+    - unfold TCNoResolve.
+      intros. unfold F_ty_own_val_ty_shr_fixpoint.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_Persistent.
+        intros ? [] [] Heq. eapply Heq.
+      + intros ?.
+        simpl. eapply ty_shr_persistent.
+    - intros. unfold F_ty_own_val_ty_shr_fixpoint.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. f_equiv. eapply Heq.
+      + intros ?.
+        simpl. erewrite Fn_syn_type_const. eapply ty_shr_aligned.
+    - intros. unfold F_ty_own_val_ty_shr_fixpoint.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. do 9 f_equiv.
+        { do 2 f_equiv. apply Heq. }
+        apply Heq.
+      + intros ?. simpl.
+        iIntros "#RUST Hna Htok %% Hlb Hb".
+        iApply fupd_logical_step.
+        iPoseProof (Fn_lfts_const_0 (3+n)) as "[_ Hincl]".
+        iMod (lft_incl_acc with "[] Htok") as "(%q' & Htok & Hcl_tok)"; first done.
+        { iApply lft_intersect_mono; first iApply lft_incl_refl. iApply "Hincl". }
+        iPoseProof (ty_share with "RUST Hna Htok [] [//] Hlb Hb") as "Hlb"; first done.
+        { erewrite Fn_syn_type_const. done. }
+        iApply logical_step_fupd.
+        iApply (logical_step_compose with "Hlb").
+        iApply logical_step_intro.
+        iModIntro. iIntros "($ & Htok)".
+        iApply ("Hcl_tok" with "Htok").
+    - intros. unfold F_ty_own_val_ty_shr_fixpoint.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. do 2 f_equiv; eapply Heq.
+      + intros ?.
+        simpl. eapply ty_shr_mono.
+    - intros. unfold F_ty_own_val_ty_shr_fixpoint.
+      iIntros "_". iApply logical_step_intro. done.
+    - intros. unfold F_ty_own_val_ty_shr_fixpoint.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. f_equiv. eapply Heq.
+      + intros ?.
+        simpl. eapply (ty_decodable rt (Fn (S (S (S n)))) ot st π r v).
+        * rewrite -ty_has_op_type_unfold in H. eapply Fn_has_op_type_const. done.
+    - intros. unfold F_ty_own_val_ty_shr_fixpoint.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. f_equiv; first eapply Heq.
+        eapply Heq.
+      + intros ?.
+        simpl. eapply (ty_decode_compat rt (Fn (S (S (S n)))) ot st π r v v').
+        * rewrite -ty_has_op_type_unfold in H. eapply Fn_has_op_type_const. done.
+        * done.
+    - intros ly ? Hst.
+      rewrite -ty_has_op_type_unfold. by eapply ty_has_op_type_untyped.
+    - apply _.
+    - apply _.
   Qed.
 
   Lemma type_fixpoint_own_val_unfold_n n v π r m :

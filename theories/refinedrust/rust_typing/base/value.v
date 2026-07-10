@@ -1237,7 +1237,9 @@ Section typed_value.
   Qed.
   Next Obligation.
     intros st ly Hst. simpl.
-    by apply (_ty_has_op_type_untyped _ (value_t true st)).
+    opose proof* (ty_sized_has_op_type_untyped (value_t true st)) as Ha; first done.
+    move: Ha. rewrite ty_has_op_type_unfold. done.
+    Unshelve. apply _.
   Qed.
 
   Global Instance typed_value_copy st : Copyable (typed_value_t st).

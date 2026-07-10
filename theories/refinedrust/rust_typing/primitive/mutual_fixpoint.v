@@ -490,151 +490,124 @@ Section fixpoint.
         (λ n, HTypeHasOpTypeEq_tail _ _ (Hop n))
     end agg_lfts agg_wf_E tys0 tys1 tys approx_lfts approx_wf_E own_chain Hchain Hsyn Hside Hlfts Hlfts_incl Hwf Hop.
   Next Obligation.
-    intros.
-    unfold own_shr.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. f_equiv. eapply Heq.
-    - intros n. simpl.
-      rewrite Hchain.
-      simpl.
-      pose proof (Hsyn n) as Hsynn.
-      dependent destruction Hsynn.
-      rewrite -x. simpl. rewrite -(H m). eapply ty_has_layout.
-  Qed.
-  Next Obligation.
-    intros.
-    eapply _ty_op_type_stable. exact H.
-  Qed.
-  Next Obligation.
-    intros.
-    eapply _ty_op_type_wf. exact H.
-  Qed.
-  Next Obligation.
-    intros. unfold own_shr.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. f_equiv. eapply Heq.
-    - intros n. simpl.
-      rewrite Hchain. simpl.
-      pose proof (Hside n) as Hsiden.
-      dependent destruction Hsiden.
-      rewrite -x. simpl. rewrite -H. eapply ty_own_val_sidecond.
-  Qed.
-  Next Obligation.
-    intros. unfold own_shr.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. f_equiv. eapply Heq.
-    - intros n. simpl.
-      rewrite Hchain. simpl.
-      pose proof (Hside n) as Hsiden.
-      dependent destruction Hsiden.
-      rewrite -x. simpl. rewrite -H. eapply ty_shr_sidecond.
-  Qed.
-  Next Obligation.
-    unfold TCNoResolve.
-    intros.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_Persistent.
-      intros ? [] [] Heq. eapply Heq.
-    - intros n. simpl.
-      rewrite Hchain. simpl.
-      remember (tys n) as tyn.
-      dependent destruction tyn.
-      simpl.
-      eapply ty_shr_persistent.
-  Qed.
-  Next Obligation.
-    intros. unfold own_shr.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. f_equiv. eapply Heq.
-    - intros n. simpl.
-      rewrite Hchain. simpl.
-      pose proof (Hsyn n) as Hsynn.
-      dependent destruction Hsynn.
-      rewrite -x. simpl. rewrite -(H m). eapply ty_shr_aligned.
-  Qed.
-  Next Obligation.
-    intros. unfold own_shr.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. do 9 f_equiv.
-      { do 2 f_equiv. apply Heq. }
-      apply Heq.
-    - intros n. simpl.
-      rewrite Hchain. simpl.
-      pose proof (Hsyn n) as Hsynn.
-      dependent destruction Hsynn.
-      pose proof (Hlfts n) as Hlftsn.
-      pose proof (proj1 Hlfts_incl n) as Hlfts_incln.
-      rewrite -x in Hlfts_incln.
-      rewrite -x. simpl.
-      iIntros "#RUST Hna Htok %% Hlb Hb".
-      iApply fupd_logical_step.
-      iPoseProof Hlftsn as "[_ Hagg_incl]".
-      iMod (lft_incl_acc with "[] Htok") as "(%q' & Htok & Hcl_tok)"; first done.
-      { iApply lft_intersect_mono; first iApply lft_incl_refl.
-        iApply lft_incl_trans; first iApply "Hagg_incl". iApply Hlfts_incln. }
-      rewrite ty_lfts_unfold.
-      iPoseProof (ty_share with "RUST Hna Htok [] [//] Hlb Hb") as "Hlb"; first done.
-      { rewrite (H0 m). done. }
-      iApply logical_step_fupd.
-      iApply (logical_step_compose with "Hlb").
-      iApply logical_step_intro.
-      iModIntro. iIntros "($ & Htok)".
-      iApply ("Hcl_tok" with "Htok").
-  Qed.
-  Next Obligation.
-    intros. unfold own_shr.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. do 2 f_equiv; eapply Heq.
-    - intros n. simpl.
-      rewrite Hchain. simpl.
-      remember (tys n) as tyn.
-      dependent destruction tyn.
-      simpl. eapply ty_shr_mono.
-  Qed.
-  Next Obligation.
-    intros. unfold own_shr.
-    iIntros "_". iApply logical_step_intro. done.
-  Qed.
-  Next Obligation.
-    intros. unfold own_shr.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. f_equiv; first eapply Heq.
-    - intros n. simpl.
-      rewrite Hchain. simpl.
-      pose proof (Hop n) as Hopn.
-      dependent destruction Hopn.
-      rewrite -x. simpl.
-      eapply _ty_decodable.
-      rewrite -ty_has_op_type_unfold.
-      rewrite -ty_has_op_type_unfold in H.
-      eapply H0. exact H.
-  Qed.
-  Next Obligation.
-    intros. unfold own_shr.
-    eapply @limit_preserving_compl.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. f_equiv; first eapply Heq.
-      apply Heq.
-    - intros n. simpl.
-      rewrite Hchain. simpl.
-      pose proof (Hop n) as Hopn.
-      dependent destruction Hopn.
-      rewrite -x. simpl.
-      eapply _ty_decode_compat; last done.
-      rewrite -ty_has_op_type_unfold.
-      rewrite -ty_has_op_type_unfold in H.
-      eapply H1. exact H.
-  Qed.
-  Next Obligation.
-    intros.
-    by eapply _ty_has_op_type_untyped.
+    intros. econstructor.
+    - intros. unfold own_shr.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. f_equiv. eapply Heq.
+      + intros n. simpl.
+        rewrite Hchain.
+        simpl.
+        pose proof (Hsyn n) as Hsynn.
+        dependent destruction Hsynn.
+        rewrite -x. simpl. rewrite -(H m). eapply ty_has_layout.
+    - intros ot Hot. eapply ty_op_type_stable. rewrite ty_has_op_type_unfold. exact Hot.
+    - intros ot Hot. eapply ty_op_type_wf. rewrite ty_has_op_type_unfold. exact Hot.
+    - intros. unfold own_shr.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. f_equiv. eapply Heq.
+      + intros n. simpl.
+        rewrite Hchain. simpl.
+        pose proof (Hside n) as Hsiden.
+        dependent destruction Hsiden.
+        rewrite -x. simpl. rewrite -H. eapply ty_own_val_sidecond.
+    - intros. unfold own_shr.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. f_equiv. eapply Heq.
+      + intros n. simpl.
+        rewrite Hchain. simpl.
+        pose proof (Hside n) as Hsiden.
+        dependent destruction Hsiden.
+        rewrite -x. simpl. rewrite -H. eapply ty_shr_sidecond.
+    - unfold TCNoResolve.
+      intros. unfold own_shr.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_Persistent.
+        intros ? [] [] Heq. eapply Heq.
+      + intros n. simpl.
+        rewrite Hchain. simpl.
+        remember (tys n) as tyn.
+        dependent destruction tyn.
+        simpl.
+        eapply ty_shr_persistent.
+    - intros. unfold own_shr.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. f_equiv. eapply Heq.
+      + intros n. simpl.
+        rewrite Hchain. simpl.
+        pose proof (Hsyn n) as Hsynn.
+        dependent destruction Hsynn.
+        rewrite -x. simpl. rewrite -(H m). eapply ty_shr_aligned.
+    - intros. unfold own_shr.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. do 9 f_equiv.
+        { do 2 f_equiv. apply Heq. }
+        apply Heq.
+      + intros n. simpl.
+        rewrite Hchain. simpl.
+        pose proof (Hsyn n) as Hsynn.
+        dependent destruction Hsynn.
+        pose proof (Hlfts n) as Hlftsn.
+        pose proof (proj1 Hlfts_incl n) as Hlfts_incln.
+        rewrite -x in Hlfts_incln.
+        rewrite -x. simpl.
+        iIntros "#RUST Hna Htok %% Hlb Hb".
+        iApply fupd_logical_step.
+        iPoseProof Hlftsn as "[_ Hagg_incl]".
+        iMod (lft_incl_acc with "[] Htok") as "(%q' & Htok & Hcl_tok)"; first done.
+        { iApply lft_intersect_mono; first iApply lft_incl_refl.
+          iApply lft_incl_trans; first iApply "Hagg_incl". iApply Hlfts_incln. }
+        iPoseProof (ty_share with "RUST Hna Htok [] [//] Hlb Hb") as "Hlb"; first done.
+        { rewrite (H0 m). done. }
+        iApply logical_step_fupd.
+        iApply (logical_step_compose with "Hlb").
+        iApply logical_step_intro.
+        iModIntro. iIntros "($ & Htok)".
+        iApply ("Hcl_tok" with "Htok").
+    - intros. unfold own_shr.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. do 2 f_equiv; eapply Heq.
+      + intros n. simpl.
+        rewrite Hchain. simpl.
+        remember (tys n) as tyn.
+        dependent destruction tyn.
+        simpl. eapply ty_shr_mono.
+    - intros. unfold own_shr.
+      iIntros "_". iApply logical_step_intro. done.
+    - intros. unfold own_shr.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. f_equiv; first eapply Heq.
+      + intros n. simpl.
+        rewrite Hchain. simpl.
+        pose proof (Hop n) as Hopn.
+        dependent destruction Hopn.
+        rewrite -x. simpl.
+        eapply ty_decodable.
+        rewrite -ty_has_op_type_unfold in H.
+        eapply H0. exact H.
+    - intros. unfold own_shr.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. f_equiv; first eapply Heq.
+        apply Heq.
+      + intros n. simpl.
+        rewrite Hchain. simpl.
+        pose proof (Hop n) as Hopn.
+        dependent destruction Hopn.
+        rewrite -x. simpl.
+        eapply ty_decode_compat; last done.
+        rewrite -ty_has_op_type_unfold in H.
+        eapply H1. exact H.
+    - intros.
+      rewrite -ty_has_op_type_unfold. by eapply ty_has_op_type_untyped.
+    - apply _.
+    - apply _.
   Qed.
 
   Local Definition mut_type_fixpoint {rts : list RT} (F : mut_type_fun rts)

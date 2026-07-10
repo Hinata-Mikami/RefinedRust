@@ -51,43 +51,32 @@ Section type.
     _ty_wf_E := ty_wf_E T;
   |}.
   Next Obligation.
-    iIntros (rt T π r m v) "Hv". destruct r as [r | ].
-    - rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
-      iDestruct "Hv" as "(%r'' & Hrfn & Hv)".
-      iPoseProof (ty_has_layout with "Hv") as "(%ly & %Hst & %Hly)".
-      iExists ly. iPureIntro. split; last done.
+    intros. econstructor.
+    - iIntros (π r m v) "Hv". destruct r as [r | ].
+      + rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+        iDestruct "Hv" as "(%r'' & Hrfn & Hv)".
+        iPoseProof (ty_has_layout with "Hv") as "(%ly & %Hst & %Hly)".
+        iExists ly. iPureIntro. split; last done.
+        by apply syn_type_has_layout_untyped.
+      + rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+        iApply (ty_has_layout with "Hv").
+    - intros ot Hot.
+      destruct Hot as (ly & Hst & ? & Hly & ->).
+      rewrite Hly.
       by apply syn_type_has_layout_untyped.
-    - rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
-      iApply (ty_has_layout with "Hv").
-  Qed.
-  Next Obligation.
-    simpl; intros rt T ot Hot.
-    destruct Hot as (ly & Hst & ? & Hly & ->).
-    rewrite Hly.
-    by apply syn_type_has_layout_untyped.
-  Qed.
-  Next Obligation.
-    intros rt T ot (ly & Hst & ? & _ & ->). constructor.
-  Qed.
-  Next Obligation.
-    iIntros (rt T π r m v) "_". done.
-  Qed.
-  Next Obligation.
-    iIntros (rt T ? π r m v) "_". done.
-  Qed.
-  Next Obligation. unfold TCNoResolve. apply _. Qed.
-  Next Obligation.
-    iIntros (rt T κ π l r m) "Hl". destruct r as [r | ].
-    - iDestruct "Hl" as "(%r'' & Hrfn & Hl)". iPoseProof (ty_shr_aligned with "Hl") as "Ha".
-      iDestruct "Ha" as "(%ly & %Hly & %Hst)". iExists _. iR.
-      iPureIntro.
-      by apply syn_type_has_layout_untyped.
-    - iPoseProof (ty_shr_aligned with "Hl") as "Ha".
-      done.
-  Qed.
-  Next Obligation.
-    iIntros (rt T E κ l ly π [r | ] m ? ?) "#CTX #Hna Htok %Hst %Hly #Hlb Hb".
-    -
+    - intros ot (ly & Hst & ? & _ & ->). constructor.
+    - iIntros (π r m v) "_". done.
+    - iIntros (κ π r m v) "_". done.
+    - unfold TCNoResolve. apply _.
+    - iIntros (κ π l r m) "Hl". destruct r as [r | ].
+      + iDestruct "Hl" as "(%r'' & Hrfn & Hl)". iPoseProof (ty_shr_aligned with "Hl") as "Ha".
+        iDestruct "Ha" as "(%ly & %Hly & %Hst)". iExists _. iR.
+        iPureIntro.
+        by apply syn_type_has_layout_untyped.
+      + iPoseProof (ty_shr_aligned with "Hl") as "Ha".
+        done.
+    - iIntros (E κ l ly π [r | ] m ? ?) "#CTX #Hna Htok %Hst %Hly #Hlb Hb".
+      +
       iAssert (&{κ} (∃ r', place_rfn_interp_owned r r' ∗ ∃ v : val, l ↦ v ∗ v ◁ᵥ{π, m} r' @ T))%I with "[Hb]" as "Hb".
       { iApply (bor_iff with "[] Hb"). iNext. iModIntro. iSplit.
         - iIntros "(%v & Hl & Hown)".
@@ -103,12 +92,11 @@ Section type.
       iMod (bor_sep with "LFT Hb") as "(Hrfn & Hb)"; first done.
       iMod (place_rfn_interp_owned_share with "LFT Hrfn Htok1") as "(Hrfn & Htok1)"; first done.
       iCombine ("Htok1 Htok2") as "Htok". rewrite lft_tok_sep.
-      rewrite ty_lfts_unfold.
       apply syn_type_has_layout_untyped_inv in Hst.
       iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna Htok [//] [//] Hlb Hb") as "Hstep"; first done.
       iApply (logical_step_wand with "Hstep").
       iIntros "!> (Hl & $)". eauto with iFrame.
-    - rewrite -lft_tok_sep. iDestruct "Htok" as "[Htok1 Htok2]".
+      + rewrite -lft_tok_sep. iDestruct "Htok" as "[Htok1 Htok2]".
       (*iAssert (&{κ} (ty_sidecond T ∗ ∃ v : val, l ↦ v ∗ v ◁ᵥ{π} .@ uninit (ty_syn_type T)))%I with "[Hb]" as "Hb".*)
       (*{ iApply (bor_iff with "[] Hb"). iNext. iModIntro. iSplit.*)
         (*- iIntros "(%v & ? & ? & ?)". eauto with iFrame.*)
@@ -116,64 +104,56 @@ Section type.
       (*iDestruct "CTX" as "(LFT & TIME & LLCTX)".*)
       (*iApply fupd_logical_step. iMod (bor_sep with "LFT Hb") as "(_ & Hb)"; first done.*)
       iEval (rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def) in "Hb".
-      iPoseProof ((uninit _).(ty_share) with "CTX Hna [Htok1] [] [//] [//] Hb") as "Ha"; simpl; first done.
-      { rewrite right_id. done. }
+      iPoseProof (ty_share (uninit _) E κ l ly π () m q with "CTX Hna [Htok1] [] [//] [//] Hb") as "Ha"; simpl; first done.
+      { rewrite ty_lfts_unfold right_id. done. }
       { done. }
       iApply (logical_step_wand with "Ha"). iIntros "(? & Htok1)".
-      rewrite right_id. iFrame.
-  Qed.
-  Next Obligation.
-    iIntros (rt T κ κ' π r m l) "#Hincl Ha".
-    destruct r as [r | ]; last by iApply ty_shr_mono.
-    iDestruct "Ha" as "(%r'' & ? & Hv)".
-    iExists _. iFrame. by iApply ty_shr_mono.
-  Qed.
-  Next Obligation.
-    iIntros (rt ty π r m v F ? Ht) "Hv".
-    rewrite /ty_own_val/= maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
-    destruct r as [r' | ]; first last.
-    { by iApply logical_step_intro. }
-    iDestruct "Hv" as "(%r'' & Hinterp & Hv)".
-    iApply (logical_step_wand with "[Hv]").
-    { iApply (ty_own_ghost_drop_trivial with "Hv"); done. }
-    iIntros "Ha".
-    iExists _. iFrame.
-  Qed.
-  Next Obligation.
-    iIntros (rt T ot st π r v (ly & Hst & ? & <- & Hot)) "Ha".
-    subst.
-    destruct r as [r | ]; simpl; first last.
-    { rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
-      iApply (ty_decodable unitRT (uninit (ty_syn_type T MetaNone)) ot st π () v with "Ha").
-      rewrite ty_has_op_type_unfold/=. exists (ot_layout ot). done.
-    }
-    rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
-    iDestruct "Ha" as "(%r'' & Hrfn & Hv)".
-    iApply (ty_decodable rt T ot st π r'' v with "Hv").
-    rewrite Hot. rewrite ty_has_op_type_unfold. apply _ty_has_op_type_untyped; done.
-  Qed.
-  Next Obligation.
-    iIntros (rt T ot st π r v v' (ly & Hst & ? & <- & Hot) Hsame) "Ha".
-    subst.
-    destruct r as [r | ]; simpl; first last.
-    { rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
-      iApply (ty_decode_compat unitRT (uninit (ty_syn_type T MetaNone)) ot st π () v v' with "Ha").
-      - rewrite ty_has_op_type_unfold/=. exists (ot_layout ot). done.
-      - done.
-    }
-    rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
-    iDestruct "Ha" as "(%r'' & Hrfn & Hv)".
-    iExists r''. iFrame.
-    iApply (ty_decode_compat rt T ot st π r'' v v' with "Hv").
-    - rewrite Hot. rewrite ty_has_op_type_unfold.
-      apply _ty_has_op_type_untyped; done.
-    - done.
-  Qed.
-  Next Obligation.
-    intros ?? ly Heq Hst.
-    simpl. exists ly.
-    apply syn_type_has_layout_untyped_inv in Hst.
-    done.
+      iEval (rewrite ty_lfts_unfold right_id) in "Htok1". iFrame.
+    - iIntros (κ κ' π r m l) "#Hincl Ha".
+      destruct r as [r | ]; last by iApply ty_shr_mono.
+      iDestruct "Ha" as "(%r'' & ? & Hv)".
+      iExists _. iFrame. by iApply ty_shr_mono.
+    - iIntros (π r m v F ? Ht) "Hv".
+      rewrite /ty_own_val/= maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+      destruct r as [r' | ]; first last.
+      { by iApply logical_step_intro. }
+      iDestruct "Hv" as "(%r'' & Hinterp & Hv)".
+      iApply (logical_step_wand with "[Hv]").
+      { iApply (ty_own_ghost_drop_trivial with "Hv"); done. }
+      iIntros "Ha".
+      iExists _. iFrame.
+    - iIntros (ot st π r v (ly & Hst & ? & <- & Hot)) "Ha".
+      subst.
+      destruct r as [r | ]; simpl; first last.
+      { rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+        iApply (ty_decodable unitRT (uninit (ty_syn_type T MetaNone)) ot st π () v with "Ha").
+        rewrite ty_has_op_type_unfold/=. exists (ot_layout ot). done.
+      }
+      rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+      iDestruct "Ha" as "(%r'' & Hrfn & Hv)".
+      iApply (ty_decodable rt T ot st π r'' v with "Hv").
+      rewrite Hot.
+      eapply ty_has_op_type_untyped; done.
+    - iIntros (ot st π r v v' (ly & Hst & ? & <- & Hot) Hsame) "Ha".
+      subst.
+      destruct r as [r | ]; simpl; first last.
+      { rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+        iApply (ty_decode_compat unitRT (uninit (ty_syn_type T MetaNone)) ot st π () v v' with "Ha").
+        - rewrite ty_has_op_type_unfold/=. exists (ot_layout ot). done.
+        - done.
+      }
+      rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
+      iDestruct "Ha" as "(%r'' & Hrfn & Hv)".
+      iExists r''. iFrame.
+      iApply (ty_decode_compat rt T ot st π r'' v v' with "Hv").
+      + rewrite Hot. eapply ty_has_op_type_untyped; done.
+      + done.
+    - intros ly Heq Hst.
+      simpl. exists ly.
+      apply syn_type_has_layout_untyped_inv in Hst.
+      done.
+    - apply _.
+    - apply _.
   Qed.
 
   Global Instance maybe_uninit_sized {rt} (ty : type rt) :

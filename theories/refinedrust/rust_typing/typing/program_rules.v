@@ -4464,7 +4464,6 @@ Section subsume.
     { eauto with iFrame. }
     iMod "Hcl_F" as "_".
     (*iPoseProof (place_rfn_interp_owned_share' with "Hrfn") as "#Hrfn'".*)
-    rewrite ty_lfts_unfold.
     iPoseProof (ty_share _ F with "[$LFT $LLCTX] Hna' Htok [] [//] Hlb Hb") as "Hshr"; first done.
     { iPureIntro. by apply Hst_compat. }
     iApply logical_step_fupd.
