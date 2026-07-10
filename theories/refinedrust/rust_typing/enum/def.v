@@ -364,7 +364,7 @@ Section enum_computed_lfts.
   Proof.
     induction tag_tys as [|[tag' sem'] tag_tys IH]; first set_solver.
     intros [Heq | Hin]%elem_of_cons; simpl.
-    - simplify_eq. set_solver.
+    - simplify_eq/=. set_solver.
     - specialize (IH Hin). set_solver.
   Qed.
 
@@ -374,7 +374,7 @@ Section enum_computed_lfts.
   Proof.
     induction tag_tys as [|[tag' sem'] tag_tys IH]; first set_solver.
     intros [Heq | Hin]%elem_of_cons; simpl.
-    - simplify_eq. set_solver.
+    - simplify_eq/=. set_solver.
     - specialize (IH Hin). set_solver.
   Qed.
 

@@ -507,6 +507,10 @@ Section fixpoint.
     eapply _ty_op_type_stable. exact H.
   Qed.
   Next Obligation.
+    intros.
+    eapply _ty_op_type_wf. exact H.
+  Qed.
+  Next Obligation.
     intros. unfold own_shr.
     eapply @limit_preserving_compl.
     - eapply bi.limit_preserving_entails; first apply _.
@@ -602,16 +606,31 @@ Section fixpoint.
     eapply @limit_preserving_compl.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. f_equiv; first eapply Heq.
-      eapply Heq.
     - intros n. simpl.
       rewrite Hchain. simpl.
       pose proof (Hop n) as Hopn.
       dependent destruction Hopn.
       rewrite -x. simpl.
-      eapply _ty_memcast_compat.
+      eapply _ty_decodable.
       rewrite -ty_has_op_type_unfold.
       rewrite -ty_has_op_type_unfold in H.
       eapply H0. exact H.
+  Qed.
+  Next Obligation.
+    intros. unfold own_shr.
+    eapply @limit_preserving_compl.
+    - eapply bi.limit_preserving_entails; first apply _.
+      intros ? [] [] Heq. f_equiv; first eapply Heq.
+      apply Heq.
+    - intros n. simpl.
+      rewrite Hchain. simpl.
+      pose proof (Hop n) as Hopn.
+      dependent destruction Hopn.
+      rewrite -x. simpl.
+      eapply _ty_decode_compat; last done.
+      rewrite -ty_has_op_type_unfold.
+      rewrite -ty_has_op_type_unfold in H.
+      eapply H1. exact H.
   Qed.
   Next Obligation.
     intros.
