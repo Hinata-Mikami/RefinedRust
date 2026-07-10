@@ -339,9 +339,14 @@ Section simp_ltype.
   Proof.
     intros [<-]. econstructor. by rewrite ltype_core_array.
   Qed.
-  Global Instance simp_ltype_enum {rt rte} (en : enum rt) tag (lte lte' : ltype rte) re :
+  Global Instance simp_ltype_enum_none {rt} (en : enum rt) :
+    SimpLtype (ltype_core (EnumLtype en None)) (EnumLtype en None).
+  Proof.
+    econstructor. by rewrite ltype_core_enum.
+  Qed.
+  Global Instance simp_ltype_enum_some {rt rte} (en : enum rt) tag (lte lte' : ltype rte) re :
     SimpLtype (ltype_core lte) lte' →
-    SimpLtype (ltype_core (EnumLtype en tag lte re)) (EnumLtype en tag lte' re).
+    SimpLtype (ltype_core (EnumLtype en (Some (mk_enum_ltype_variant tag _ lte re)))) (EnumLtype en (Some $ mk_enum_ltype_variant tag _ lte' re)).
   Proof.
     intros [<-]. econstructor. by rewrite ltype_core_enum.
   Qed.

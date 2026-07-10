@@ -293,26 +293,6 @@ Section enum.
     by subst name'; f_equal.
   Qed.
 
-  Definition enum_tag_padding_ly (el : enum_layout) : layout :=
-    Layout (el.(el_data_offset) - ly_size (it_layout el.(el_tag_it))) 0.
-
-  Definition enum_tail_padding_ly (el : enum_layout) (variant_ly : layout) : layout :=
-    Layout (el.(el_size) - el.(el_data_offset) - ly_size variant_ly) 0.
-
-  Lemma enum_variant_layout_bounds el variant variant_ly :
-    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
-    let tag_size := ly_size (it_layout el.(el_tag_it)) in
-    let data_offset := el.(el_data_offset) in
-    let variant_size := ly_size variant_ly in
-    tag_size ≤ data_offset ∧ data_offset + variant_size ≤ el.(el_size).
-  Proof.
-    intros Hvariant.
-    split.
-    - apply Nat2Z.inj_le. apply el_tag_before_data.
-    - pose proof (enum_variant_lookup_in_bounds _ _ _ Hvariant) as Hvariant_bound.
-      apply Nat2Z.inj_le. rewrite Nat2Z.inj_add. exact Hvariant_bound.
-  Qed.
-
   Lemma enum_tag_padding_syn_type_has_layout el variant variant_ly :
     enum_variant_lookup el.(el_variants) variant = Some variant_ly →
     syn_type_has_layout (LiteralSynType (enum_tag_padding_ly el)) (enum_tag_padding_ly el).
@@ -367,106 +347,10 @@ Section enum.
     by apply enum_tail_padding_syn_type_has_layout with variant.
   Qed.
 
-  Lemma loc_in_bounds_enum_tag el variant variant_ly l :
-    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
-    loc_in_bounds l 0 (ly_size el) -∗
-    loc_in_bounds l 0 (ly_size (it_layout el.(el_tag_it))).
-  Proof.
-    intros Hvariant.
-    pose proof (enum_variant_layout_bounds _ _ _ Hvariant) as (Htag_data & Hvariant_bound).
-    iIntros "Hlb". iApply (loc_in_bounds_shorten_suf with "Hlb").
-    simpl. change (ly_size el) with (el_size el). lia.
-  Qed.
-
-  Lemma loc_in_bounds_enum_tag_padding el variant variant_ly l :
-    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
-    loc_in_bounds l 0 (ly_size el) -∗
-    loc_in_bounds (l +ₗ ly_size (it_layout el.(el_tag_it))) 0
-      (ly_size (enum_tag_padding_ly el)).
-  Proof.
-    intros Hvariant.
-    pose proof (enum_variant_layout_bounds _ _ _ Hvariant) as (Htag_data & Hvariant_bound).
-    iIntros "Hlb".
-    iApply (loc_in_bounds_offset with "Hlb").
-    - done.
-    - simpl. lia.
-    - simpl. rewrite /enum_tag_padding_ly /=.
-      change (ly_size {| ly_size := el_data_offset el - ly_size (el_tag_it el); ly_align_log := 0 |}) with
-        (el_data_offset el - ly_size (el_tag_it el))%nat.
-      change (ly_size el) with (el_size el).
-      rewrite Nat2Z.inj_sub; last done. lia.
-  Qed.
-
-  Lemma loc_in_bounds_enum_payload el variant variant_ly l :
-    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
-    loc_in_bounds l 0 (ly_size el) -∗
-    loc_in_bounds (l +ₗ el.(el_data_offset)) 0 (ly_size variant_ly).
-  Proof.
-    intros Hvariant.
-    pose proof (enum_variant_layout_bounds _ _ _ Hvariant) as (_ & Hvariant_bound).
-    iIntros "Hlb".
-    iApply (loc_in_bounds_offset with "Hlb").
-    - done.
-    - simpl. lia.
-    - simpl. change (ly_size el) with (el_size el). lia.
-  Qed.
-
-  Lemma loc_in_bounds_enum_tail_padding el variant variant_ly l :
-    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
-    loc_in_bounds l 0 (ly_size el) -∗
-    loc_in_bounds (l +ₗ el.(el_data_offset) +ₗ ly_size variant_ly) 0
-      (ly_size (enum_tail_padding_ly el variant_ly)).
-  Proof.
-    intros Hvariant.
-    pose proof (enum_variant_layout_bounds _ _ _ Hvariant) as (_ & Hvariant_bound).
-    iIntros "Hlb".
-    rewrite shift_loc_assoc_nat.
-    iApply (loc_in_bounds_offset with "Hlb").
-    - done.
-    - simpl. lia.
-    - simpl. rewrite /enum_tail_padding_ly /=.
-      change (ly_size {| ly_size := el_size el - el_data_offset el - ly_size variant_ly; ly_align_log := 0 |}) with
-        (el_size el - el_data_offset el - ly_size variant_ly)%nat.
-      change (ly_size el) with (el_size el).
-      replace (el_size el - el_data_offset el - ly_size variant_ly)%nat with
-        (el_size el - (el_data_offset el + ly_size variant_ly))%nat by lia.
-      rewrite Nat2Z.inj_sub; lia.
-  Qed.
-
   Lemma enum_tag'_Some {rt} (en : enum rt) r variant :
     enum_tag en r = Some variant →
     enum_tag' en r = variant.
   Proof. by rewrite /enum_tag' => ->. Qed.
-
-  Lemma enum_tag_has_layout_loc (el : enum_layout) l :
-    l `has_layout_loc` el →
-    l `has_layout_loc` it_layout el.(el_tag_it).
-  Proof.
-    intros Hly.
-    eapply has_layout_loc_trans; first exact Hly.
-    apply ly_align_log_ly_align_le_iff.
-    change (ly_align (it_layout el.(el_tag_it)) ≤ ly_align {| ly_size := el.(el_size); ly_align_log := el.(el_align_log) |})%nat.
-    apply Nat2Z.inj_le. apply el_tag_align.
-  Qed.
-
-  Lemma enum_payload_has_layout_loc (el : enum_layout) variant variant_ly l :
-    l `has_layout_loc` el →
-    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
-    (l +ₗ el.(el_data_offset)) `has_layout_loc` variant_ly.
-  Proof.
-    intros Hly Hvariant.
-    apply has_layout_loc_shift_loc_nat.
-    - eapply has_layout_loc_trans; first exact Hly.
-      apply ly_align_log_ly_align_le_iff.
-      pose proof (enum_variant_lookup_in _ _ _ Hvariant) as Hin.
-      change (ly_align variant_ly ≤ ly_align {| ly_size := el.(el_size); ly_align_log := el.(el_align_log) |})%nat.
-      apply Nat2Z.inj_le.
-      exact (proj1 (Forall_forall _ _) (el_variant_align el) (variant, variant_ly) Hin).
-    - apply enum_variant_lookup_wf in Hvariant as [_ Hmod].
-      apply Nat2Z.divide.
-      apply Z.mod_divide; last done.
-      rewrite /ly_align. lia.
-  Qed.
 
   Lemma enum_val_has_layout_from_parts el variant variant_ly v :
     enum_variant_lookup el.(el_variants) variant = Some variant_ly →

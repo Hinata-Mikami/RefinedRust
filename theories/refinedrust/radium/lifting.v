@@ -24,14 +24,14 @@ Program Definition refinedc_trgen : tr_generation :=
   TrGeneration num_laters_per_step _.
 Next Obligation.
   unfold num_laters_per_step.
-  intros; simpl. lia.
+intros; simpl. lia.
 Qed.
 
 Global Program Instance c_irisG `{!refinedcG Σ} : irisGS c_lang Σ := {
   iris_invGS := refinedcG_invG;
   state_interp σ n κs _ := state_ctx σ;
   fork_post _ := True%I;
-  iris_trGen := refinedc_trgen;
+iris_trGen := refinedc_trgen;
 }.
 Next Obligation.
   intros. simpl. by iIntros "$".
@@ -47,7 +47,7 @@ Section logical_steps.
     iApply logical_step_intro_tr.
   Qed.
 
-  Lemma logical_step_intro_later E P :
+Lemma logical_step_intro_later E P :
     ▷ P -∗ logical_step E P.
   Proof.
     iIntros "HP". unfold logical_step.
@@ -1102,6 +1102,72 @@ Proof.
   simplify_eq/=. done.
 Qed.
 
+Lemma loc_in_bounds_enum_tag el variant variant_ly l :
+  enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+  loc_in_bounds l 0 (ly_size el) -∗
+  loc_in_bounds l 0 (ly_size (it_layout el.(el_tag_it))).
+Proof.
+  intros Hvariant.
+  pose proof (enum_variant_layout_bounds _ _ _ Hvariant) as (Htag_data & Hvariant_bound).
+  iIntros "Hlb". iApply (loc_in_bounds_shorten_suf with "Hlb").
+  simpl. change (ly_size el) with (el_size el). lia.
+Qed.
+
+Lemma loc_in_bounds_enum_tag_padding el variant variant_ly l :
+  enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+  loc_in_bounds l 0 (ly_size el) -∗
+  loc_in_bounds (l +ₗ ly_size (it_layout el.(el_tag_it))) 0
+    (ly_size (enum_tag_padding_ly el)).
+Proof.
+  intros Hvariant.
+  pose proof (enum_variant_layout_bounds _ _ _ Hvariant) as (Htag_data & Hvariant_bound).
+  iIntros "Hlb".
+  iApply (loc_in_bounds_offset with "Hlb").
+  - done.
+  - simpl. lia.
+  - simpl. rewrite /enum_tag_padding_ly /=.
+    change (ly_size {| ly_size := el_data_offset el - ly_size (el_tag_it el); ly_align_log := 0 |}) with
+      (el_data_offset el - ly_size (el_tag_it el))%nat.
+    change (ly_size el) with (el_size el).
+    destruct l => /=; lia.
+Qed.
+
+Lemma loc_in_bounds_enum_payload el variant variant_ly l :
+  enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+  loc_in_bounds l 0 (ly_size el) -∗
+  loc_in_bounds (l +ₗ el.(el_data_offset)) 0 (ly_size variant_ly).
+Proof.
+  intros Hvariant.
+  pose proof (enum_variant_layout_bounds _ _ _ Hvariant) as (_ & Hvariant_bound).
+  iIntros "Hlb".
+  iApply (loc_in_bounds_offset with "Hlb").
+  - done.
+  - simpl. lia.
+  - simpl. change (ly_size el) with (el_size el). lia.
+Qed.
+
+Lemma loc_in_bounds_enum_tail_padding el variant variant_ly l :
+  enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+  loc_in_bounds l 0 (ly_size el) -∗
+  loc_in_bounds (l +ₗ el.(el_data_offset) +ₗ ly_size variant_ly) 0
+    (ly_size (enum_tail_padding_ly el variant_ly)).
+Proof.
+  intros Hvariant.
+  pose proof (enum_variant_layout_bounds _ _ _ Hvariant) as (_ & Hvariant_bound).
+  iIntros "Hlb".
+  rewrite shift_loc_assoc_nat.
+  iApply (loc_in_bounds_offset with "Hlb").
+  - done.
+  - simpl. lia.
+  - simpl. rewrite /enum_tail_padding_ly /=.
+    change (ly_size {| ly_size := el_size el - el_data_offset el - ly_size variant_ly; ly_align_log := 0 |}) with
+      (el_size el - el_data_offset el - ly_size variant_ly)%nat.
+    change (ly_size el) with (el_size el).
+    replace (el_size el - el_data_offset el - ly_size variant_ly)%nat with
+      (el_size el - (el_data_offset el + ly_size variant_ly))%nat by lia.
+    rewrite Nat2Z.inj_sub; lia.
+Qed.
+
 Lemma wp_ptr_offset Φ vl l π E it o ly vo:
   (∀ st, decode_op_val vl PtrOp st = Some $ OVPtr l) →
   val_to_Z vo it = Some o →
@@ -1132,6 +1198,38 @@ Proof.
   iFrame.
   iApply "HΦ". iPureIntro.
   by apply val_of_loc_Some_l2v.
+Qed.
+
+Lemma wp_enum_data `{!LayoutAlg} π E Φ (els : enum_layout_spec) el variant variant_ly l :
+  use_enum_layout_alg els = Some el →
+  enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+  loc_in_bounds l 0 el.(el_size) -∗
+  (|={E}⧗=> ∀ v, ⌜val_to_loc v = Some (GetEnumDataLocSt l els)⌝ -∗ Φ v) -∗
+  WPe{π} EnumData els variant (Val (l2v l)) @ E {{ Φ }}.
+Proof.
+  iIntros (Halg Hvariant) "#Hlb HΦ".
+  iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
+  rewrite /EnumData /use_enum_layout_alg' Halg /=.
+  iApply (wp_ptr_offset _ (l2v l) l _ _ ISize (Z.of_nat el.(el_data_offset)) U8 _).
+  { intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v. }
+  { destruct (val_of_Z_is_Some ISize (Z.of_nat el.(el_data_offset))) as (vo & Hvo).
+    { rewrite int_elem_of_it_iff. split; first by rewrite /min_int /int_half_modulus /=; lia.
+      pose proof (enum_variant_lookup_in_bounds el variant variant_ly Hvariant).
+      pose proof (el_size_bounded el). lia. }
+    rewrite Hvo /=. by apply val_to_of_Z. }
+  { simpl. rewrite Z.mul_1_l. rewrite int_elem_of_it_iff. split; first by rewrite /min_int /int_half_modulus /=; lia.
+    pose proof (enum_variant_lookup_in_bounds el variant variant_ly Hvariant).
+    pose proof (el_size_bounded el). lia. }
+  { rewrite offset_loc_sz1 //.
+    iPoseProof (loc_in_bounds_enum_payload with "Hlb") as "Hpayload_lb"; first done.
+    iApply loc_in_bounds_shorten_suf; last iExact "Hpayload_lb". lia. }
+  { iApply loc_in_bounds_shorten_suf; last done. lia. }
+  iApply (physical_step_wand with "HΦ").
+  iIntros "HΦ" (v Hv).
+  iApply "HΦ". iPureIntro.
+  rewrite /GetEnumDataLocSt /use_enum_layout_alg' Halg /=.
+  rewrite offset_loc_sz1 in Hv; last done.
+  by apply val_to_of_loc.
 Qed.
 
 Lemma wp_ptr_neg_offset Φ vl l π E it o ly vo:
@@ -1576,27 +1674,34 @@ Proof.
   f_equiv. f_equiv. f_equiv. f_equiv. lia.
 Qed.
 
-Lemma wp_enum_init `{!LayoutAlg} π E Φ (els : enum_layout_spec) el variant rsty e tag ly payload :
+Lemma wp_enum_init `{!LayoutAlg} π E Φ (els : enum_layout_spec) el variant rsty e tag st :
   use_enum_layout_alg els = Some el →
   (list_to_map els.(els_tag_int) : gmap _ _) !! variant = Some tag →
-  enum_variant_lookup el.(el_variants) variant = Some ly →
-  length (encode_op_val payload) = ly_size ly →
+  (list_to_map els.(els_variants) : gmap _ _) !! variant = Some st →
   WPe{π} e @ E {{ λ v,
-    ⌜v = encode_op_val payload⌝ ∗
-    (⌜v = encode_op_val payload⌝ -∗
-    |={E}⧗=> Φ (encode_op_val (OVEnum el variant tag payload))) }} -∗
+    |={E}=>
+    ∃ payload, ⌜∀ hst, decode_op_val v (use_op_alg' st) hst = Some payload⌝ ∗
+    (|={E}⧗=> (
+      Φ (i2v tag els.(els_tag_it) ++ replicate (el.(el_data_offset) - ly_size (it_layout els.(els_tag_it))) MPoison ++ v ++ replicate (el.(el_size) - el.(el_data_offset) - length v) MPoison))) }} -∗
   WPe{π} EnumInit els variant rsty e @ E {{ Φ }}.
 Proof.
   Local Arguments encode_op_val : simpl never.
-  iIntros (Halg Htag Hly Hpayload_len) "HT".
+  iIntros (Halg Htag Hst) "HT".
   pose proof Halg as Huse_alg.
-  apply use_enum_layout_alg_inv in Halg as (variant_lys & Halg & _).
+  apply use_enum_layout_alg_inv in Halg as (variant_lys & Halg & Hf).
   pose proof (enum_layout_alg_has_variants _ _ _ _ _ Halg) as Hel.
-  destruct Hel as (Hel_tag_it & _).
+  destruct Hel as (Hel_tag_it & ->).
   subst.
   rewrite /EnumInit.
   rewrite /use_enum_layout_alg' Huse_alg /=.
-  rewrite Htag Hly /=.
+  apply elem_of_list_to_map_2 in Hst.
+  apply list_elem_of_lookup_1 in Hst as (i & Hst).
+  opose proof* Forall2_lookup_l as Ha; [apply Hf | apply Hst | ].
+  destruct Ha as ([??] & Hvariant & [<- Hst_el]).
+  erewrite enum_variant_lookup_is_Some; first last.
+  { by eapply list_elem_of_lookup_2. }
+  simpl.
+  rewrite Htag /=.
   simpl.
   iApply wp_concat_bind. simpl.
   iEval (rewrite expr_wp_unfold).
@@ -1605,18 +1710,23 @@ Proof.
   iApply wp_value.
   iApply (wpe_wand with "HT").
   iIntros (v) "HP".
-  iDestruct "HP" as "(%Hv & HP)".
-  iSpecialize ("HP" with "[]").
-  { iPureIntro. done. }
+  iDestruct "HP" as ">(%payload & %Hv & HP)".
   rewrite expr_wp_unfold.
   iApply wp_value.
-  rewrite Hv.
+
+  opose proof* (decode_op_val_has_layout v) as Hvlen.
+  { apply (Hv inhabitant). }
+  rewrite Hvlen.
+  apply syn_type_has_layout_op_alg in Hst_el as (ot & Hot & <-).
+  move: Hv Hvlen. rewrite /use_op_alg' Hot/=.
+  intros Hv Hvlen.
   iApply (wp_concat _ _ _ [i2v tag els.(els_tag_it);
                             replicate (el.(el_data_offset) - ly_size (it_layout els.(els_tag_it))) MPoison;
-                            encode_op_val payload;
-                            replicate (el.(el_size) - el.(el_data_offset) - ly_size ly) MPoison]).
+                            v;
+                            replicate (el.(el_size) - el.(el_data_offset) - ly_size (ot_layout ot)) MPoison]).
   simpl. rewrite !app_nil_r -Hel_tag_it.
-  erewrite encode_OVEnum_unfold_init; [simpl; rewrite !app_nil_r; done | done | done].
+  iApply (physical_step_wand with "HP").
+  eauto.
 Qed.
 
 Lemma wp_alloc π E Φ (v_size v_align : val) (n_size n_align : nat) :

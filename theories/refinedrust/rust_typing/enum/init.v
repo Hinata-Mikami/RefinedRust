@@ -10,7 +10,10 @@ Section init.
   Import EqNotations.
 
   Lemma type_enum_init E L f (els : enum_layout_spec) (variant : string) (rsen : rust_enum_def) (e : expr) (T : typed_val_expr_cont_t) :
-    li_tactic (compute_enum_layout_goal els) (λ _,
+    li_tactic (compute_enum_layout_goal els) (λ el,
+    ∃ tag st,
+    ⌜(list_to_map els.(els_tag_int) : gmap _ _) !! variant = Some tag⌝ ∗
+    ⌜(list_to_map els.(els_variants) : gmap _ _) !! variant = Some st⌝ ∗
     typed_val_expr E L f e (λ L2 v m rti tyi ri,
       ∃ M, named_lfts M ∗ (named_lfts M -∗
       (* get the desired enum type *)
@@ -20,6 +23,7 @@ Section init.
         ∃ sem, ⌜enum_tag_ty_inj e variant = Some sem⌝ ∗
         ⌜(lookup_iml (els_variants els) variant) = Some (st_of sem.(enum_tag_sem_ty) MetaNone)⌝ ∗
           ∃ ri', owned_subtype f.1 E L2 false ri ri' tyi sem.(enum_tag_sem_ty) (λ L3,
+            ⌜ty_has_op_type sem.(enum_tag_sem_ty) (use_op_alg' (st_of (sem.(enum_tag_sem_ty)) MetaNone))⌝ ∗
             (* could try to remove this by strengthening enum *)
             ⌜e.(enum_tag) (sem.(enum_tag_rt_inj) ri') = Some variant⌝ ∗
             ∃ (Heq : enum_tag_sem_rt sem = enum_rt e (enum_tag_rt_inj sem ri')),
@@ -28,92 +32,89 @@ Section init.
     ⊢ typed_val_expr E L f (EnumInit els variant rsen e) T.
   Proof.
     rewrite /compute_enum_layout_goal.
-    iIntros "(%el & %Hly & HT)".
+    iIntros "(%el & %Hly & %tag & %st & %Htag_lookup & %Hvariant & HT)".
     iIntros (?) "#CTX #HE HL Hf Hc".
     iApply wpe_fupd.
-    iApply wp_enum_init; first done.
+    iApply wp_enum_init; [done | done | done |].
     iApply ("HT" with "CTX HE HL Hf [Hc]").
     iIntros (L2 v rt ty r m) "HL Hf Hv HT".
     iDestruct "HT" as "(%M & Hlfts & HT)".
     iPoseProof ("HT" with "Hlfts") as "HT".
     rewrite /interpret_rust_enum_def_goal.
     iDestruct "HT" as "(%rto &  %en & <- & -> & %sem & %Hinj & %Hlook_st & %ri' & Hsubt)".
+    apply lookup_iml_list_to_map in Hlook_st; last apply els_variants_nodup.
+    rewrite Hvariant in Hlook_st. injection Hlook_st as ->.
     iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L3 & Hincl & HL & HT)"; [done.. | ].
     iDestruct "Hincl" as "(%Hst_eq & Hsc & Hincl)".
     iPoseProof ("Hincl" with "Hv") as "Hv".
-    iDestruct "HT" as "(%Htagr & %Heq & %Htag_rfn & HT)".
+    iDestruct "HT" as "(%Hty_ot & %Htagr & %Heq & %Htag_rfn & HT)".
+
+    iPoseProof (ty_decodable _ _ _ inhabitant with "Hv") as "(%payload & %Hdecode)"; first done.
+    iModIntro. iExists payload. iSplitR.
+    { iPureIntro. intros hst.
+      rewrite (decode_op_val_stable v _ hst inhabitant). done. }
     iApply physical_step_intro; iNext.
     iApply ("Hc" with "HL Hf [Hv] HT").
 
-    iEval (rewrite /ty_own_val/=).
-    iExists _, variant.
-    iR. iR. iR.
-    iApply (struct_init_val _ _ _ _ +[_; _] -[_; _]).
-    { done. }
-    { done. }
-    simpl.
-
     set (ro := (enum_tag_rt_inj sem ri')).
-
-    apply lookup_iml_list_to_map in Hlook_st; first last.
-    { apply els_variants_nodup. }
-    assert (∃ tag : Z, list_to_map (M := gmap _ _) (els_tag_int (enum_els en)) !! variant = Some tag) as (tag & Htag_lookup).
-    { apply list_to_map_lookup_fst.
-      - rewrite els_tag_int_agree.
-        apply list_elem_of_fmap. exists (variant, ty_syn_type (enum_tag_sem_ty sem) MetaNone).
-        split; first done. apply elem_of_list_to_map; last done.
-        apply els_variants_nodup.
-      - rewrite els_tag_int_agree. apply els_variants_nodup. }
-    apply use_enum_layout_alg_inv in Hly as (ul & variant_lys & Hul & Hsl & Hf).
-
-    iSplitR.
-    { iExists _, _, (els_tag_it (enum_els en)). iR. simpl.
-      iSplitR. { iPureIntro. apply syn_type_has_layout_int; done. }
-      iSplitR. { iPureIntro. apply syn_type_has_layout_int; done. }
-      rewrite Htag_lookup/=.
-      rewrite /enum_lookup_tag.
-      rewrite /els_lookup_tag.
-      rewrite Htag_lookup /=.
-      iApply type_int_val.
-      specialize (els_tag_int_wf3 (enum_els en)) as Hels.
-      eapply Forall_forall in Hels.
-      2: { apply elem_of_list_to_map_2. done. }
-      done.
-    }
-    iSplitL; last done.
-    iExists _, _, ul. iR.
-    assert (use_union_layout_alg (uls_of_els (enum_els en)) = Some ul) as Hul'.
-    { eapply use_union_layout_alg_Some; first done. done. }
-    assert (syn_type_has_layout (uls_of_els (enum_els en)) ul).
-    { eapply syn_type_has_layout_union; first done. done. }
-    iR. iR.
-
-    iEval (rewrite /ty_own_val) => /=.
-    iExists ul.
-    specialize (elem_of_list_to_map_2 _ _ _ Hlook_st) as Hel.
+    pose proof Hly as Hly'.
+    apply use_enum_layout_alg_inv in Hly' as (variant_lys & Halg & Hf).
+    specialize (elem_of_list_to_map_2 _ _ _ Hvariant) as Hel.
     apply list_elem_of_lookup_1 in Hel as (i & Hlook).
-    specialize (Forall2_lookup_l _ _ _ _ _ Hf Hlook) as ([name2 ly] & Hlook_ly & <- & Halg).
-    iExists ly. iR. iR.
-    iSplitR. { iPureIntro.
-      rewrite /layout_of_union_member.
-      specialize (union_layout_alg_has_variants _ _ _ _ Hul) as Hul_variants.
-      rewrite (index_of_union_lookup _ i _ ly).
-      2: { rewrite -Hul_variants. done. }
-      simpl. rewrite -Hul_variants. rewrite Hlook_ly. done. }
+    specialize (Forall2_lookup_l _ _ _ _ _ Hf Hlook) as ([name2 ly] & Hlook_ly & <- & Hst_ly).
+    pose proof (enum_layout_alg_has_variants _ _ _ _ _ Halg) as (Hel_tag_it & Hel_variants).
+    assert (enum_variant_lookup (el_variants el) variant = Some ly) as Hvariant_ly.
+    { apply enum_variant_lookup_is_Some. rewrite -Hel_variants. by eapply list_elem_of_lookup_2. }
+    iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv_ly"; first done.
+    assert (length v = ly_size ly) as Hv_len.
+    { by rewrite /has_layout_val in Hv_ly. }
+    assert (length (i2v tag (el_tag_it el) ++
+      replicate (el_data_offset el - ly_size (el_tag_it el)) MPoison) =
+      el_data_offset el) as Htag_prefix_len.
+    { rewrite length_app i2v_length length_replicate /it_layout /ly_size /bytes_per_int /=.
+      pose proof (el_tag_before_data el). rewrite /it_layout /ly_size /bytes_per_int /= in H. lia. }
 
-    iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv"; first done.
-    iSplitR. {
-      iPureIntro.
+    iEval (rewrite /ty_own_val/= enum_own_val_unfold /enum_own_val_def).
+    iExists el, variant, ly.
+    iSplitR; first done.
+    iSplitR; first done.
+    iSplitR; first done.
+    iSplitR; first done.
+    iSplitR.
+    { iPureIntro.
       enough ((st_of (enum_ty en ro)) = (st_of (enum_tag_sem_ty sem))) as -> by done.
       subst ro.
       rewrite -(enum_tag_type_eq' _ _ variant _ Htagr Hinj).
       clear -Hinj.
-      (*unfold enum_tag_rt_eq.*)
       generalize ((enum_tag_rt_eq en _ variant sem Htagr Hinj)).
-      intros []. done.
-    }
+      intros []. done. }
+    iSplitR.
+    { rewrite -Hel_tag_it.
+      rewrite take_app_length'; last by rewrite i2v_length.
+      rewrite /enum_lookup_tag /els_lookup_tag Htag_lookup /=.
+      iApply type_int_val.
+      specialize (els_tag_int_wf3 (enum_els en)) as Hels.
+      eapply Forall_forall in Hels.
+      2: { apply elem_of_list_to_map_2. done. }
+      rewrite Hel_tag_it. done. }
+    iSplitR.
+    { rewrite -Hel_tag_it.
+      rewrite drop_app_length'; last by rewrite i2v_length.
+      rewrite take_app_length'; last by rewrite length_replicate.
+      iApply uninit_own_spec. iR.
+      iExists _. iSplitR.
+      { iPureIntro. by apply enum_tag_padding_syn_type_has_layout with variant ly. }
+      iPureIntro. rewrite /has_layout_val length_replicate /enum_tag_padding_ly /=. done. }
     iSplitL "Hv".
-    - rewrite take_app_length'; last done.
+    - rewrite -Hel_tag_it.
+      replace (take (ly_size ly)
+        (drop (el_data_offset el)
+          (i2v tag (el_tag_it el) ++
+           replicate (el_data_offset el - ly_size (el_tag_it el)) MPoison ++
+           v ++ replicate (el_size el - el_data_offset el - length v) MPoison))) with v.
+      2: { symmetry. rewrite app_assoc.
+        rewrite drop_app_length'; last by rewrite Htag_prefix_len.
+        rewrite take_app_length'; last done. done. }
       rewrite Htag_rfn.
       rewrite -(enum_tag_type_eq' _ _ variant _ Htagr Hinj).
       unfold ro.
@@ -123,19 +124,19 @@ Section init.
       intros <- Heq.
       rewrite (UIP_refl _ _ Heq).
       done.
-    - rewrite drop_app_length'; last done.
+    - rewrite -Hel_tag_it.
+      replace (drop (el_data_offset el + ly_size ly)
+        (i2v tag (el_tag_it el) ++
+         replicate (el_data_offset el - ly_size (el_tag_it el)) MPoison ++
+         v ++ replicate (el_size el - el_data_offset el - length v) MPoison)) with
+        (replicate (el_size el - el_data_offset el - length v) MPoison).
+      2: { symmetry. rewrite !app_assoc.
+        rewrite drop_app_length'; last by rewrite length_app Htag_prefix_len Hv_len.
+        done. }
+      rewrite Hv_len.
       iApply uninit_own_spec. iR.
-      iExists _. iSplitR. { iPureIntro. apply syn_type_has_layout_literal; first done.
-        - by apply layout_wf_align_log_0.
-        - rewrite ly_size_active_union_rest_ly. apply use_union_layout_alg_size in Hul'. lia.
-        - by apply ly_align_in_bounds_1. }
-      iPureIntro. rewrite /has_layout_val.
-      rewrite length_replicate. rewrite /use_layout_alg'.
-      erewrite elem_of_list_to_map_1; first last.
-      { eapply list_elem_of_lookup_2. done. }
-      { apply els_variants_nodup. }
-      simpl. rewrite Halg. simpl.
-      rewrite /use_union_layout_alg' Hul'/=.
-      done.
+      iExists _. iSplitR.
+      { iPureIntro. by apply enum_tail_padding_syn_type_has_layout with variant. }
+      iPureIntro. rewrite /has_layout_val length_replicate /enum_tail_padding_ly /=. done.
   Qed.
 End init.

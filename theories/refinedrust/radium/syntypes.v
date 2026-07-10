@@ -603,7 +603,22 @@ Section C_alg.
     generalize (sl_members sl).*2 => lys.
     clear sl. induction lys as [ | ly lys IH]; simpl; first done.
     rewrite Nat_pow_max; last lia. rewrite IH.
-    unfold fmap. lia.
+      unfold fmap. lia.
+  Qed.
+
+  Local Lemma struct_layout_named_field_align_le sl name ly :
+    (name, ly) ∈ named_fields sl.(sl_members) →
+    ly_align ly ≤ ly_align sl.
+  Proof.
+    rewrite sl_align_eq_local elem_of_named_fields.
+    intros Hin.
+    assert (ly_align ly ≤ max_list (ly_align <$> sl.(sl_members).*2))%nat as Hmax.
+    { eapply max_list_elem_of_le.
+      apply list_elem_of_fmap.
+      exists ly. split; first done.
+      apply list_elem_of_fmap.
+      exists (Some name, ly). done. }
+    destruct (Nat.max_spec 1 (max_list (ly_align <$> sl.(sl_members).*2))) as [[? ->] | [? ->]]; lia.
   Qed.
 
   Lemma C_struct_layout_alg_wf fields sl :
@@ -931,6 +946,26 @@ Section C_alg.
     apply C_struct_layout_alg_raw_enum_data_in_bounds.
   Qed.
 
+  Local Lemma C_struct_layout_alg_enum_tag_align_le tag_it ul sl :
+    C_struct_layout_alg [("discriminant", it_layout tag_it); ("data", ul_layout ul)] = Some sl →
+    ly_align (it_layout tag_it) ≤ ly_align sl.
+  Proof.
+    intros Halg.
+    pose proof (C_struct_layout_alg_has_fields _ _ Halg) as Hfields.
+    eapply struct_layout_named_field_align_le.
+    rewrite Hfields. simpl. by left.
+  Qed.
+
+  Local Lemma C_struct_layout_alg_enum_data_align_le tag_it ul sl :
+    C_struct_layout_alg [("discriminant", it_layout tag_it); ("data", ul_layout ul)] = Some sl →
+    ly_align ul ≤ ly_align sl.
+  Proof.
+    intros Halg.
+    pose proof (C_struct_layout_alg_has_fields _ _ Halg) as Hfields.
+    eapply struct_layout_named_field_align_le.
+    rewrite Hfields. simpl. by right; left.
+  Qed.
+
   Local Lemma pow_align_log_dvd a b :
     (a ≤ b)%nat →
     (2 ^ a | 2 ^ b)%nat.
@@ -976,6 +1011,23 @@ Section C_alg.
   Qed.
   Next Obligation.
     intros. eapply C_struct_layout_alg_wf. done.
+  Qed.
+  Next Obligation.
+    intros. subst data_offset. by eapply C_struct_layout_alg_enum_tag_align_le.
+  Qed.
+  Next Obligation.
+    intros tag_it variants ul sl Hul Hsl Hwf data_offset.
+    apply Forall_forall.
+    intros [name ly] Hel.
+    trans (ly_align ul).
+    - rewrite /ly_align.
+      pose proof (proj1 (Forall_forall _ _) (C_union_layout_alg_variant_align_log_le _ _ Hul) (name, ly) Hel) as Hle.
+      assert (Nat.le (2 ^ ly_align_log (name, ly).2) (2 ^ ly_align_log ul)) as Hpow.
+      { simpl in Hle. rewrite /ly_align_log/ul_layout /=.
+        change (Nat.le (2 ^ ly_align_log ly) (2 ^ max_list (ly_align_log <$> (ul_members ul).*2))).
+        apply Nat.pow_le_mono_r; lia. }
+      lia.
+    - subst data_offset. by eapply C_struct_layout_alg_enum_data_align_le.
   Qed.
   Next Obligation.
     intros.

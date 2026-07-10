@@ -304,8 +304,7 @@ Global Typeclasses Opaque EnumInit.
 Arguments EnumInit : simpl never.
 
 Definition EnumDiscriminant `{!LayoutAlg} (els : enum_layout_spec) (e : expr) : expr :=
-  (Deref Na1Ord (IntOp (els.(els_tag_it)))
-    (e at_offset{U8, PtrOp, IntOp ISize} Val (i2v 0 ISize)))%E.
+  (Use Na1Ord (IntOp (els.(els_tag_it))) e)%E.
 Global Typeclasses Opaque EnumDiscriminant.
 Arguments EnumDiscriminant : simpl never.
 

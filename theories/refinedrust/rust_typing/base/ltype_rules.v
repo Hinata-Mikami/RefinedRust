@@ -124,12 +124,19 @@ Proof.
     iExists ly. iFrame.
     iMod "Hb". iModIntro. iApply pinned_bor_shorten; done.
 Qed.
-Local Lemma enum_ltype_mono `{!typeGS Σ} {rt rte} (en : enum rt) (tag : string) (lte : ltype rte) (re : rte) π :
-  (∀ b1 b2 r l, bor_kind_direct_incl b2 b1 -∗ l ◁ₗ[π, b1] r @ lte -∗ l ◁ₗ[π, b2] r @ lte) →
+Local Lemma enum_ltype_mono `{!typeGS Σ} {rt} (en : enum rt)
+    (variant : option enum_ltype_variant) π :
+  (match variant with
+  | Some v => ∀ b1 b2 r l, bor_kind_direct_incl b2 b1 -∗
+      l ◁ₗ[π, b1] r @ v.(eltv_ltype) -∗ l ◁ₗ[π, b2] r @ v.(eltv_ltype)
+  | None => True
+  end) →
   ∀ b1 b2 r l, bor_kind_direct_incl b2 b1 -∗
-    l ◁ₗ[π, b1] r @ EnumLtype en tag lte re -∗ l ◁ₗ[π, b2] r @ EnumLtype en tag lte re.
+    l ◁ₗ[π, b1] r @ EnumLtype en variant -∗ l ◁ₗ[π, b2] r @ EnumLtype en variant.
 Proof.
   iIntros (IH b1 b2 r l) "#Hincl".
+  destruct variant as [variant | ].
+  - destruct variant as [tag rte lte re].
   destruct b1, b2; try done; unfold bor_kind_direct_incl.
   + eauto.
   + rewrite !ltype_own_enum_unfold /enum_ltype_own.
@@ -141,13 +148,45 @@ Proof.
     iSplitR. { done. }
     iSplitL "Hdisc". { iApply (lty_of_ty_mono with "[] Hdisc"). done. }
     iSplitL "Hpad1". { iApply (lty_of_ty_mono with "[] Hpad1"). done. }
-    iSplitL "Hdata". { iApply (IH with "[] Hdata"). done. }
+    iSplitL "Hdata".
+    { destruct (decide (enum_tag en r' = Some tag)) as [Htag_match | Htag_mismatch].
+      - iEval (rewrite /interp_enum_ltype_variant decide_True //) in "Hdata".
+        iEval (rewrite /interp_enum_ltype_variant decide_True //).
+        iApply (IH with "[] Hdata"). done.
+      - iEval (rewrite /interp_enum_ltype_variant decide_False //
+          /canonical_enum_ltype_variant /OfTy /=) in "Hdata".
+        iEval (rewrite /interp_enum_ltype_variant decide_False //
+          /canonical_enum_ltype_variant /OfTy /=).
+        rewrite !ltype_own_ofty_unfold.
+        iApply (lty_of_ty_mono with "[] Hdata"). done. }
     iApply (lty_of_ty_mono with "[] Hpad2"). done.
   + rewrite !ltype_own_enum_unfold /enum_ltype_own.
     iDestruct "Hincl" as "(Hincl & ->)".
     iIntros "(%el & %Halg & %Hly & Hlb & Hcred & Hrfn & Hb)".
     iExists el. iR. iR. iFrame "Hlb Hcred Hrfn".
     iMod "Hb". iModIntro. by iApply pinned_bor_shorten.
+  - destruct b1, b2; try done; unfold bor_kind_direct_incl.
+    + eauto.
+    + rewrite !ltype_own_enum_unfold /enum_ltype_own.
+      iIntros "(%el & %Halg & %Hly & Hlb & %r' & Hrfn & #Hown)".
+      iExists el. iR. iR. iFrame "Hlb".
+      iExists r'. iFrame "Hrfn".
+      iModIntro. iMod "Hown" as "(%variant_ly & %Hvariant & %Hst & %Htag & Hdisc & Hpad1 & Hdata & Hpad2)". iModIntro.
+      iExists variant_ly. iR. iR.
+      iSplitR; first done.
+      iSplitL "Hdisc". { iApply (lty_of_ty_mono with "[] Hdisc"). done. }
+      iSplitL "Hpad1". { iApply (lty_of_ty_mono with "[] Hpad1"). done. }
+      iSplitL "Hdata".
+      { iEval (rewrite /interp_enum_ltype_variant /OfTy /=) in "Hdata".
+        iEval (rewrite /interp_enum_ltype_variant /OfTy /=).
+        rewrite !ltype_own_ofty_unfold.
+        iApply (lty_of_ty_mono with "[] Hdata"). done. }
+      iApply (lty_of_ty_mono with "[] Hpad2"). done.
+    + rewrite !ltype_own_enum_unfold /enum_ltype_own.
+      iDestruct "Hincl" as "(Hincl & ->)".
+      iIntros "(%el & %Halg & %Hly & Hlb & Hcred & Hrfn & Hb)".
+      iExists el. iR. iR. iFrame "Hlb Hcred Hrfn".
+      iMod "Hb". iModIntro. by iApply pinned_bor_shorten.
 Qed.
 
 
@@ -220,10 +259,14 @@ Proof.
       apply elem_of_interpret_iml_inv in Hel as [ -> | []].
       { simp_ltypes. rewrite !ltype_own_ofty_unfold. by iApply lty_of_ty_mono. }
       by iDestruct (IH with "Hincl") as "(_ & $)".
-  - iIntros (rt rte en variant lte re IH r l b1 b2) "#Hincl".
+  - iIntros (rt en variant IH r l b1 b2) "#Hincl".
     simp_ltypes. iSplitL; (iApply enum_ltype_mono; [ | done]).
-    + iIntros (????) "Hincl". iPoseProof (IH with "Hincl") as "($ & _)".
-    + iIntros (????) "Hincl". iPoseProof (IH with "Hincl") as "(_ & $)".
+    + destruct variant as [v | ]; simpl in *.
+      * iIntros (????) "Hincl'". iPoseProof (IH with "Hincl'") as "($ & _)".
+      * done.
+    + destruct variant as [v | ]; simpl in *.
+      * iIntros (????) "Hincl'". iPoseProof (IH with "Hincl'") as "(_ & $)".
+      * done.
   - iIntros (rt_cur rt_inner rt_full lt_cur lt_inner lt_full Cpre Cpost IH1 IH2 IH3 r l b1 b2) "#Hincl".
     simp_ltypes.
     iAssert (□ (l ◁ₗ[ π, b1] r @ OpenedLtype lt_cur lt_inner lt_full Cpre Cpost -∗ l ◁ₗ[ π, b2] r @ OpenedLtype lt_cur lt_inner lt_full Cpre Cpost))%I as "#Ha"; first last.

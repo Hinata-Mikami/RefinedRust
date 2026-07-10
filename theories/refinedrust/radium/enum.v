@@ -42,6 +42,10 @@ Record enum_layout := {
 
   el_size_bounded : el_size < max_int ISize + 1;
   el_layout_wf : layout_wf {| ly_size := el_size; ly_align_log := el_align_log |};
+  el_tag_align : ly_align (it_layout el_tag_it) ≤ ly_align {| ly_size := el_size; ly_align_log := el_align_log |};
+  el_variant_align :
+    Forall (λ variant : var_name * layout,
+      ly_align variant.2 ≤ ly_align {| ly_size := el_size; ly_align_log := el_align_log |}) el_variants;
 
   el_tag_before_data : ly_size (it_layout el_tag_it) ≤ el_data_offset;
 
@@ -154,6 +158,55 @@ Proof.
   apply enum_variant_lookup_in in Hlook.
   pose proof (proj1 (Forall_forall _ _) (el_variants_in_bounds el) (n, sl) Hlook) as Hb.
   exact Hb.
+Qed.
+
+Definition enum_tag_padding_ly (el : enum_layout) : layout :=
+  Layout (el.(el_data_offset) - ly_size (it_layout el.(el_tag_it))) 0.
+
+Definition enum_tail_padding_ly (el : enum_layout) (variant_ly : layout) : layout :=
+  Layout (el.(el_size) - el.(el_data_offset) - ly_size variant_ly) 0.
+
+Lemma enum_variant_layout_bounds el variant variant_ly :
+  enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+  let tag_size := ly_size (it_layout el.(el_tag_it)) in
+  let data_offset := el.(el_data_offset) in
+  let variant_size := ly_size variant_ly in
+  tag_size ≤ data_offset ∧ data_offset + variant_size ≤ el.(el_size).
+Proof.
+  intros Hvariant.
+  split.
+  - apply el_tag_before_data.
+  - apply (enum_variant_lookup_in_bounds el variant variant_ly). done.
+Qed.
+
+Lemma enum_tag_has_layout_loc (el : enum_layout) l :
+  l `has_layout_loc` el →
+  l `has_layout_loc` it_layout el.(el_tag_it).
+Proof.
+  intros Hly.
+  eapply has_layout_loc_trans; first exact Hly.
+  apply ly_align_log_ly_align_le_iff.
+  change (ly_align (it_layout el.(el_tag_it)) ≤ ly_align {| ly_size := el.(el_size); ly_align_log := el.(el_align_log) |})%nat.
+  apply Nat2Z.inj_le. apply el_tag_align.
+Qed.
+
+Lemma enum_payload_has_layout_loc (el : enum_layout) variant variant_ly l :
+  l `has_layout_loc` el →
+  enum_variant_lookup el.(el_variants) variant = Some variant_ly →
+  (l +ₗ el.(el_data_offset)) `has_layout_loc` variant_ly.
+Proof.
+  intros Hly Hvariant.
+  apply has_layout_loc_shift_loc_nat.
+  - eapply has_layout_loc_trans; first exact Hly.
+    apply ly_align_log_ly_align_le_iff.
+    pose proof (enum_variant_lookup_in _ _ _ Hvariant) as Hin.
+    change (ly_align variant_ly ≤ ly_align {| ly_size := el.(el_size); ly_align_log := el.(el_align_log) |})%nat.
+    apply Nat2Z.inj_le.
+    exact (proj1 (Forall_forall _ _) (el_variant_align el) (variant, variant_ly) Hin).
+  - apply enum_variant_lookup_wf in Hvariant as [_ Hmod].
+    apply Nat2Z.divide.
+    apply Z.mod_divide; last done.
+    rewrite /ly_align. lia.
 Qed.
 
 Global Hint Resolve enum_layout_wf : core.

@@ -416,7 +416,7 @@ Proof.
     apply: [lang.SkipECtx; lang.SkipECtx]|
     apply: [lang.BinOpRCtx _ _ _ _]|
     apply: []|
-    apply: [lang.BinOpRCtx _ _ _ _; lang.DerefCtx _ _]|
+    apply: [lang.SkipECtx; lang.DerefCtx _ _]|
     apply: [lang.BinOpRCtx _ _ _ _]|..
   ]).
   move: K => [||||||||||||||||||||||n||||||] * //=.

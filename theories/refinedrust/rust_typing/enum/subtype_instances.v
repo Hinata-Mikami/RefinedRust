@@ -11,10 +11,10 @@ Section unfolding.
 
   (* For now, restrict to pretty conservative instances that only work if we can fold back to a type *)
 
-  Lemma weak_subltype_enum_ofty_1 E L {rt rt2} (en : enum rt) variant {rte} (lte : ltype rte) re k r1 r2 (ty2 : type rt2) T :
-    cast_ltype_to_type E L (EnumLtype en variant lte re) (λ ty1 ,
+  Lemma weak_subltype_enum_ofty_1 E L {rt rt2} (en : enum rt) variant k r1 r2 (ty2 : type rt2) T :
+    cast_ltype_to_type E L (EnumLtype en variant) (λ ty1 ,
       weak_subltype E L k r1 r2 (◁ ty1) (◁ ty2) T)
-    ⊢ weak_subltype E L k r1 r2 (EnumLtype en variant lte re) (◁ ty2) T.
+    ⊢ weak_subltype E L k r1 r2 (EnumLtype en variant) (◁ ty2) T.
   Proof.
     iIntros "(%ty1 & %Heqt & HT)".
     iIntros (??) "#CTX #HE HL".
@@ -28,10 +28,10 @@ Section unfolding.
   Definition weak_subltype_enum_ofty_1_inst := [instance @weak_subltype_enum_ofty_1].
   Global Existing Instance weak_subltype_enum_ofty_1_inst.
 
-  Lemma mut_eqltype_enum_ofty_1 E L {rt} (en : enum rt) variant {rte} (lte : ltype rte) re (ty2 : type rt) T :
-    cast_ltype_to_type E L (EnumLtype en variant lte re) (λ ty1 ,
+  Lemma mut_eqltype_enum_ofty_1 E L {rt} (en : enum rt) variant (ty2 : type rt) T :
+    cast_ltype_to_type E L (EnumLtype en variant) (λ ty1 ,
       mut_eqltype E L (◁ ty1) (◁ ty2) T)
-    ⊢ mut_eqltype E L (EnumLtype en variant lte re) (◁ ty2) T.
+    ⊢ mut_eqltype E L (EnumLtype en variant) (◁ ty2) T.
   Proof.
     iIntros "(%ty1 & %Heqt & %Hsubt & $)".
     iPureIntro.

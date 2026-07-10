@@ -1,6 +1,5 @@
 From refinedrust Require Export type ltypes.
 From refinedrust Require Import uninit int int_rules.
-From refinedrust Require Import struct.def struct.subtype.
 From refinedrust.enum Require Import def.
 From refinedrust Require Import options.
 
@@ -32,21 +31,15 @@ Section subtype.
   Proof.
     iIntros "(%Hels & %Htag & #Hincl)".
     iIntros (π v) "Hv".
-    rewrite /ty_own_val/=.
-    iDestruct "Hv" as "(%ly & %tag & -> & %Hst & %Htag' & Hv)".
+    rewrite /ty_own_val/= enum_own_val_unfold/enum_own_val_def.
+    iDestruct "Hv" as "(%el & %tag & %variant_ly & -> & %Hst & %Htag' & %Hlook & %Hst'  & Htag & Hpad1 & Hdata & Hpad2)".
     iDestruct ("Hincl" $! r) as "(%Heq & %Hst_eq & Hincl')".
-    iExists ly, tag.
-    rewrite -Hels. iR. rewrite -Htag. iR. iR.
-    simpl.
-    (* TODO: somehow specializing with Hv doesn't work *)
-    iApply (struct_t_own_val_mono with "[]"); last done.
-    iApply struct_t_incl_precond_from_strong.
-    rewrite /struct_t_incl_precond. simpl.
+    iDestruct "Hincl'" as "(_ & #Hvincl & _)".
+    rewrite -Hels. rewrite -Htag.
+    iExists _, _, _. iR. iR. iR. iR.
+    rewrite -Hst_eq. iR.
     iFrame.
-    iSplit. { rewrite Hels/=. iR. iApply type_incl_refl. }
-    iSplit; last done.
-    simpl. iR. iApply active_union_type_incl; first done.
-    { rewrite Hst_eq//. }
+    iApply "Hvincl".
     destruct Heq. done.
   Qed.
   Lemma enum_shr_mono {rt} (e1 e2 : enum rt) r m :
@@ -55,18 +48,16 @@ Section subtype.
   Proof.
     iIntros "(%Hels & %Htag & #Hincl)".
     iIntros (κ π l) "Hl".
-    rewrite /ty_shr/=.
-    iDestruct "Hl" as "(%ly & %tag & -> & %Hst & %Htag' & Hl)".
+    rewrite /ty_shr/= enum_shr_unfold/enum_shr_def.
+    iDestruct "Hl" as "(%el & %tag & %variant_ly & -> & %Hst & %Htag' & %Hlook & %Hst'  & %Hlyl & Htag & Hpad1 & Hdata & Hpad2)".
     iDestruct ("Hincl" $! r) as "(%Heq & %Hst_eq & Hincl')".
-    iExists ly, tag.
-    rewrite -Hels. rewrite -Htag. iR. iR. iR.
-    iApply (struct_t_shr_mono with "[] Hl").
-    rewrite /struct_t_incl_precond. simpl.
-    iSplit. { rewrite Hels/=. iR. iApply type_incl_refl. }
-    iSplit; last done.
-    simpl. iR.
-    iApply active_union_type_incl; first done.
-    { rewrite Hst_eq//. }
+    iDestruct "Hincl'" as "(_ & _ & #Hsincl)".
+    rewrite -Hels. rewrite -Htag.
+    iExists el, tag, variant_ly.
+    iR. iR. iR. iR.
+    rewrite -Hst_eq. iR.
+    iR. iFrame.
+    iApply "Hsincl".
     destruct Heq. done.
   Qed.
 

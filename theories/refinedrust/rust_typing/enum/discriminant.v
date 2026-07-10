@@ -1,7 +1,7 @@
 From refinedrust Require Export type ltypes.
 From refinedrust Require Import uninit int int_rules.
 From refinedrust Require Import struct.def struct.subtype programs.
-From refinedrust.enum Require Import def.
+From refinedrust.enum Require Import def subltype unfold.
 From refinedrust Require Import options.
 
 Section discriminant.
@@ -74,24 +74,192 @@ Section discriminant.
   Class TypedDiscriminantEnd (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (els : enum_layout_spec) : Type :=
     typed_discriminant_end_proof T : iProp_to_Prop (typed_discriminant_end π E L l lt r b2 els T).
 
-  Lemma typed_discriminant_end_enum_ltype π E L l {rt rte} (en : enum rt) tag (lte : ltype rte) (re : rte) r b2 els (T : typed_discriminant_end_cont_t) :
-    typed_discriminant_end π E L l (EnumLtype en tag lte re) (#r) b2 els T :-
+  Local Lemma enum_ltype_refinement_back_owned {rt} π (en : enum rt) variant r l v :
+    v = interp_enum_ltype_variant en variant r →
+    enum_ltype_variant_tag_compat en r v →
+    l ◁ₗ[π, Owned] #r @ EnumLtype en (Some v) -∗
+    l ◁ₗ[π, Owned] #r @ EnumLtype en variant.
+  Proof.
+    intros -> Htag.
+    rewrite !ltype_own_enum_unfold /enum_ltype_own.
+    iIntros "(%el & %Halg & %Hly & #Hlb & %r' & -> & Hb)".
+    iExists el. do 2 (iSplitR; first done). iSplitR; first iFrame "Hlb".
+    iExists r'. iSplitR; first done.
+    iEval (rewrite /interp_enum_ltype_variant decide_True //) in "Hb".
+    done.
+  Qed.
+
+  Local Lemma enum_ltype_refinement_back_shared {rt} π (en : enum rt) variant r l κ v :
+    v = interp_enum_ltype_variant en variant r →
+    enum_ltype_variant_tag_compat en r v →
+    l ◁ₗ[π, Shared κ] #r @ EnumLtype en (Some v) -∗
+    l ◁ₗ[π, Shared κ] #r @ EnumLtype en variant.
+  Proof.
+    intros -> Htag.
+    rewrite !ltype_own_enum_unfold /enum_ltype_own.
+    iIntros "(%el & %Halg & %Hly & #Hlb & %r' & -> & #Hb)".
+    iExists el. do 2 (iSplitR; first done). iSplitR; first iFrame "Hlb".
+    iExists r'. iSplitR; first done. iModIntro.
+    iEval (rewrite /interp_enum_ltype_variant decide_True //) in "Hb".
+    done.
+  Qed.
+
+  Lemma typed_discriminant_end_enum_ltype π E L l {rt} (en : enum rt)
+      (variant : option enum_ltype_variant) r b2 els (T : typed_discriminant_end_cont_t) :
+    typed_discriminant_end π E L l (EnumLtype en variant) (#r) b2 els T :-
     exhale (⌜en.(enum_els) = els⌝);
+    exhale (⌜lctx_bor_kind_alive E L b2⌝);
     ∀ v,
     return (T L v rt  (enum_discriminant_t en) (r)).
   Proof.
-  Admitted.
-  Global Instance typed_discriminant_end_enum_ltype_inst π E L l {rt rte} (en : enum rt) tag (lte : ltype rte) (re : rte) r b2 els:
-    TypedDiscriminantEnd π E L l (EnumLtype en tag lte re) (#r) b2 els :=
-    λ T, i2p (typed_discriminant_end_enum_ltype π E L l en tag lte re r b2 els T).
+    iIntros "(%Hels & %Hal & HT)" (F Hf1 Hf2 Hf3 Hf4) "#CTX #HE HL Hb".
+    subst els.
+    destruct b2 as [ | | ]; simpl.
+    - iPoseProof (enum_ltype_acc_owned F with "Hb") as
+        "(%el & %Halg & %Hly & #Hlb & >(%variant_ly & %Hcompat & %Hvariant & %Hst & Htag & Hpayload & Hclose))"; first done.
+      iEval (rewrite /lty_of_ty_own) in "Htag".
+      iDestruct "Htag" as "(%tag_ly & %Htag_st & %Htag_ly & #Htag_sc & #Htag_lb & %z & %Hz & Htag)".
+      subst z.
+      iMod (fupd_mask_mono with "Htag") as "(%v & Hl & Hv)"; first done.
+      apply syn_type_has_layout_int_inv in Htag_st as ->.
+      destruct (use_enum_layout_alg_inv _ _ Halg) as (variant_lys & Hel & _).
+      pose proof (enum_layout_alg_has_variants _ _ _ _ _ Hel) as (Hel_tag & _).
+      rewrite Hel_tag in Htag_ly |- *.
+      iPoseProof (ty_has_layout with "Hv") as "(%tag_ly' & %Htag_st' & %Hvly)".
+      apply syn_type_has_layout_int_inv in Htag_st' as ->.
+      iPoseProof "Hv" as "#Hv'".
+      iModIntro. iExists 1%Qp, v,
+        (els_lookup_tag en.(enum_els) (interp_enum_ltype_variant en variant r).(eltv_tag)).
+      rewrite /GetEnumDiscriminantLocSt.
+      do 2 (iSplitR; first done). iFrame "Hl".
+      iSplitR "Hclose Hpayload HL HT".
+      { iNext. iFrame "Hv'". }
+      iApply logical_step_intro.
+      iIntros "Hl".
+      iMod ("Hclose" $! _ _ _ r with "[] [] [Hl] Hpayload") as "Hb".
+      { done. }
+      { done. }
+      { rewrite /lty_of_ty_own. iExists (it_layout en.(enum_els).(els_tag_it)).
+        iSplitR; first by iPureIntro; apply syn_type_has_layout_int.
+        iSplitR; first done. iFrame "Htag_sc Htag_lb".
+        iExists (els_lookup_tag en.(enum_els) (interp_enum_ltype_variant en variant r).(eltv_tag)).
+        iSplitR; first done. iModIntro. iExists v. iFrame "Hl Hv'". }
+      iModIntro. iExists L, rt, (enum_discriminant_t en), r.
+      iSplitR "HL HT Hb".
+      { rewrite /ty_own_val /=. iR.
+        iExists (interp_enum_ltype_variant en variant r).(eltv_tag).
+        iSplitR; first done. iFrame "Hv'". }
+      iSpecialize ("HT" $! v). iFrame "HL HT".
+      destruct (interp_enum_ltype_variant en variant r) eqn:Hev; simpl in *.
+      iApply (enum_ltype_refinement_back_owned with "Hb").
+      { symmetry. exact Hev. }
+      exact Hcompat.
+    - iPoseProof (enum_ltype_acc_shared F with "Hb") as
+        "(%el & %Halg & %Hly & #Hlb & >(%variant_ly & %Hcompat & %Hvariant & %Hst & #Htag & #Hpayload & Hclose))"; first done.
+      iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
+      iMod (lctx_lft_alive_tok_noend κ with "HE HL") as (q) "(Htok & HL & Htok_cl)"; [solve_ndisj | done | ].
+      iPoseProof "Htag" as "#Htag_direct".
+      iEval (rewrite -ltype_own_ofty_unfold) in "Htag".
+      iPoseProof (ofty_ltype_acc_shared with "Htag") as
+        "(%tag_ly0 & %Htag_alg & %Htag_ly0 & #Htag_lb & >#Htag_shr)"; first done.
+      iMod (copy_shr_acc with "CTX Htag_shr Htok") as
+        "(%tag_ly & >%Htag_st & >%Htag_loc & %q' & %v & >(Hl & #Hv) & Htag_cl)"; [solve_ndisj.. | ].
+      apply syn_type_has_layout_int_inv in Htag_st as ->.
+      iDestruct (ty_has_layout with "Hv") as "(%tag_ly' & %Htag_st' & %Hvly)".
+      apply syn_type_has_layout_int_inv in Htag_st' as ->.
+      destruct (use_enum_layout_alg_inv _ _ Halg) as (variant_lys & Hel & _).
+      pose proof (enum_layout_alg_has_variants _ _ _ _ _ Hel) as (Hel_tag & _).
+      rewrite Hel_tag in Htag_loc, Hvly |- *.
+      iModIntro. iExists q', v,
+        (els_lookup_tag en.(enum_els) (interp_enum_ltype_variant en variant r).(eltv_tag)).
+      rewrite /GetEnumDiscriminantLocSt.
+      do 2 (iSplitR; first done). iFrame "Hl".
+      iSplitR "HL Htok_cl HL_cl Htag_cl Hclose HT".
+      { iNext. iFrame "Hv". }
+      iApply logical_step_intro. iIntros "Hl".
+      iMod ("Htag_cl" with "[Hl]") as "Htok".
+      { iNext. iFrame "Hl". }
+      iMod ("Htok_cl" with "Htok HL") as "HL".
+      iPoseProof ("HL_cl" with "HL") as "HL".
+      iMod ("Hclose" $! _ _ _ r with "[] [] Htag_direct Hpayload") as "Hb".
+      { done. }
+      { done. }
+      iModIntro. iExists L, rt, (enum_discriminant_t en), r.
+      iSplitR "HL Hb HT".
+      { rewrite /ty_own_val /=. iR.
+        iExists (interp_enum_ltype_variant en variant r).(eltv_tag).
+        iSplitR; first done. iFrame "Hv". }
+      iSpecialize ("HT" $! v). iFrame "HL HT".
+      destruct (interp_enum_ltype_variant en variant r) eqn:Hev; simpl in *.
+      iApply (enum_ltype_refinement_back_shared with "Hb").
+      { symmetry. exact Hev. }
+      exact Hcompat.
+    - iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
+      iMod (fupd_mask_subseteq lftE) as "HF_cl"; first done.
+      iMod (Hal with "HE HL") as (q) "(Htok & Htok_cl)"; [solve_ndisj | ].
+      iPoseProof (enum_ltype_acc_uniq lftE with "CTX Htok Htok_cl Hb") as
+        "(%el & %Halg & %Hly & #Hlb & >(%variant_ly & %Hcompat & %Hvariant & %Hst & Htag & Hpayload & Hclose))"; first done.
+      destruct Hcompat as (Hcompat & _).
+      iMod "HF_cl" as "_".
+      iEval (rewrite /lty_of_ty_own) in "Htag".
+      iDestruct "Htag" as "(%tag_ly & %Htag_st & %Htag_ly & #Htag_sc & #Htag_lb & %z & %Hz & Htag)".
+      subst z.
+      iMod (fupd_mask_mono with "Htag") as "(%v & Hl & Hv)"; first done.
+      apply syn_type_has_layout_int_inv in Htag_st as ->.
+      destruct (use_enum_layout_alg_inv _ _ Halg) as (variant_lys & Hel & _).
+      pose proof (enum_layout_alg_has_variants _ _ _ _ _ Hel) as (Hel_tag & _).
+      rewrite Hel_tag in Htag_ly |- *.
+      iPoseProof (ty_has_layout with "Hv") as "(%tag_ly' & %Htag_st' & %Hvly)".
+      apply syn_type_has_layout_int_inv in Htag_st' as ->.
+      iPoseProof "Hv" as "#Hv'".
+      iModIntro. iExists 1%Qp, v,
+        (els_lookup_tag en.(enum_els) (interp_enum_ltype_variant en variant r).(eltv_tag)).
+      rewrite /GetEnumDiscriminantLocSt.
+      do 2 (iSplitR; first done). iFrame "Hl".
+      iSplitR "Hclose Hpayload HL_cl HT".
+      { iNext. iFrame "Hv'". }
+      iApply (logical_step_mask_mono lftE); first done.
+      iApply (logical_step_wand with "Hclose").
+      iIntros "Hclose Hl".
+      iMod (fupd_mask_subseteq lftE) as "HF_cl"; first done.
+      iMod ("Hclose" with "[Hl] Hpayload") as "(Hb & HL)".
+      { rewrite /lty_of_ty_own. iExists (it_layout en.(enum_els).(els_tag_it)).
+        iSplitR; first by iPureIntro; apply syn_type_has_layout_int.
+        iSplitR; first done. iFrame "Htag_sc Htag_lb".
+        iExists (els_lookup_tag en.(enum_els) (interp_enum_ltype_variant en variant r).(eltv_tag)).
+        iSplitR; first done. iModIntro. iExists v. iFrame "Hl Hv'". }
+      iMod "HF_cl" as "_".
+      iPoseProof ("HL_cl" with "HL") as "HL".
+      iModIntro. iExists L, rt, (enum_discriminant_t en), r.
+      iSplitR "HL Hb HT".
+      { rewrite /ty_own_val /=. iR.
+        iExists (interp_enum_ltype_variant en variant r).(eltv_tag).
+        iSplitR; first done. iFrame "Hv'". }
+      iSpecialize ("HT" $! v). iFrame.
+  Qed.
+  Global Instance typed_discriminant_end_enum_ltype_inst π E L l {rt} (en : enum rt)
+      (variant : option enum_ltype_variant) r b2 els:
+    TypedDiscriminantEnd π E L l (EnumLtype en variant) (#r) b2 els :=
+    λ T, i2p (typed_discriminant_end_enum_ltype π E L l en variant r b2 els T).
 
   Lemma typed_discriminant_end_enum π E L l {rt} (en : enum rt) r b2 els (T : typed_discriminant_end_cont_t) :
     typed_discriminant_end π E L l (◁ enum_t en) (#r) b2 els T :-
-    exhale (⌜en.(enum_els) = els⌝);
-    ∀ v,
-    return (T L v rt (enum_discriminant_t en) (r)).
+    return typed_discriminant_end π E L l (EnumLtype en None) (#r) b2 els T.
   Proof.
-  Admitted.
+    iIntros "HT" (F Hf1 Hf2 Hf3 Hf4) "#CTX #HE HL Hl".
+    iPoseProof (enum_t_unfold en b2 (#r)) as "#Heq".
+    iDestruct "Heq" as "[Hto Hfrom]".
+    iMod (ltype_incl_use with "Hto Hl") as "Hl"; first done.
+    iMod ("HT" $! F with "[] [] [] [] CTX HE HL Hl") as
+      "(%q & %v & %discr & %Hloc & %Hval & Hl & Hv & Hclose)"; [done.. | ].
+    iModIntro. iExists q, v, discr. do 2 (iSplitR; first done). iFrame "Hl Hv".
+    iApply (logical_step_wand with "Hclose").
+    iIntros "Hclose Hl".
+    iMod ("Hclose" with "Hl") as
+      "(%L' & %rt3 & %ty3 & %r3 & Hv & HL & Hl & HT)".
+    iMod (ltype_incl_use with "Hfrom Hl") as "Hl"; first done.
+    iModIntro. iExists L', rt3, ty3, r3. iFrame.
+  Qed.
   Global Instance typed_discriminant_end_enum_inst π E L l {rt} (en : enum rt) r b2 els:
     TypedDiscriminantEnd π E L l (◁ enum_t en)%I (#r) b2 els :=
     λ T, i2p (typed_discriminant_end_enum π E L l en r b2 els T).
@@ -102,6 +270,7 @@ Section discriminant.
     T' L (λ L' K l,
       (** Find the type assignment *)
       find_in_context (FindLoc l) (λ '(existT rto (lt1, r1, b, π)),
+      ⌜π = f.1⌝ ∗
       (** Check the place access *)
       typed_place E L' f l lt1 r1 UpdStrong b K (λ (L1 : llctx) (κs : list lft) (l2 : loc) (b2 : bor_kind) bmin rti (lt2 : ltype rti) (ri2 : place_rfn rti) (updcx : place_update_ctx rti rto _ _),
         (** Stratify *)
@@ -110,32 +279,49 @@ Section discriminant.
         prove_place_cond E L2 bmin lt2 lt3 (λ upd,
         (** Finish reading *)
         typed_discriminant_end π E L2 l2 lt3 ri3 b2 els (λ L3 v rt3 ty3 r3,
-        typed_place_finish π E L3 updcx upd (llft_elt_toks κs) l b lt3 ri3 (λ L4, T L4 v MetaNone _ (ty3) r3))
+        typed_place_finish π E L3 updcx upd (R ∗ llft_elt_toks κs) l b lt3 ri3 (λ L4, T L4 v MetaNone _ (ty3) r3))
       )))))%I
     ⊢ typed_val_expr E L f (EnumDiscriminant els e)%E T.
   Proof.
-    (*iIntros "[% Hread]" (Φ) "#(LFT & TIME & LLCTX) #HE HL HΦ".*)
-    (*wp_bind.*)
-    (*iApply ("Hread" $! _ ⊤ with "[//] [//] [//] [//] [$TIME $LFT $LLCTX] HE HL").*)
-    (*iIntros (l) "Hl".*)
-    (*iApply ewp_fupd.*)
-    (*rewrite /Use. wp_bind.*)
-    (*iApply (wp_logical_step with "TIME Hl"); [solve_ndisj.. | ].*)
-    (*iMod (persistent_time_receipt_0) as "#Hp".*)
-    (*iMod (additive_time_receipt_0) as "Ha".*)
-    (*iApply (wp_skip_credits with "TIME Ha Hp"); first done.*)
-    (*iNext. iIntros "Hcred Hat".*)
-    (*iIntros "(%v & %q & %π & %rt & %ty & %r & %Hlyv & %Hv & Hl & Hv & Hcl)".*)
-    (*iModIntro. iApply (wp_logical_step with "TIME Hcl"); [solve_ndisj.. | ].*)
-    (*iApply (wp_deref_credits with "TIME Hat Hp Hl") => //; try by eauto using val_to_of_loc.*)
-    (*{ destruct o; naive_solver. }*)
-    (*iIntros "!> %st Hl Hcred2 Hat Hcl".*)
-    (*iMod ("Hcl" with "Hl Hv") as "(%L' & %rt' & %ty' & %r' & HL & Hv & HT)"; iModIntro.*)
-    (*iDestruct "Hcred2" as "(Hcred1' & Hcred2)".*)
-    (*iMod ("HT" with "[] HE HL [$Hat $Hcred2]") as "(%L3 & HL & HT)"; first done.*)
-    (*by iApply ("HΦ" with "HL Hv HT").*)
-  (*Qed.*)
-  Admitted.
+    iIntros (HT') "HT'". iIntros (Φ) "#CTX #HE HL Hf HΦ".
+    rewrite /EnumDiscriminant /Use. wpe_bind.
+    iApply (HT' with "CTX HE HL Hf HT'").
+    iIntros (L' K l) "HL Hf". iDestruct 1 as ([rt ([[lt r] π] & ?)]) "(Hl & -> & HP)".
+    iApply ("HP" $! _ ⊤ with "[//] [//] CTX HE HL Hf Hl").
+    iIntros (L1 κs l2 bmin b2 rti lt2 ri2 updcx) "Hl2 Hs HT HL Hf".
+    iPoseProof ("HT" $! ⊤ with "[//] [//] [//] CTX HE HL Hl2") as "Hb".
+    iApply wpe_fupd.
+    iMod "Hb" as "(%L2 & %R & %rt3 & %lt3 & %ri3 & HL & %Hst & Hl2 & HT)".
+    iMod ("HT" $! ⊤ with "[//] CTX HE HL") as "(HL & %upd & #Hincl & Hcond & %Hst' & HT)".
+    wpe_bind.
+    iApply (wpe_logical_step with "Hl2"); [solve_ndisj.. | ].
+    wpe_bind.
+    iApply wp_skip. iApply physical_step_intro. iNext.
+    iIntros "(Hl2 & HR)".
+    iMod ("HT" $! ⊤ with "[//] [//] [//] [//] CTX HE HL Hl2") as "Hdisc".
+    iDestruct "Hdisc" as (q v discr) "(%Hloc & %Hval & Hl2 & Hv & Hclose)".
+    rewrite /GetEnumDiscriminantLocSt in Hloc.
+    iEval (rewrite /GetEnumDiscriminantLocSt) in "Hl2 Hclose".
+    iPoseProof (heap_pointsto_loc_in_bounds with "Hl2") as "#Hlb".
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Haddr".
+    iApply (wpe_logical_step with "Hclose"); [solve_ndisj.. | ].
+    iApply (wp_deref with "Hl2") => //; try by eauto using val_to_of_loc.
+    { intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v. }
+    iApply physical_step_intro. iNext. iIntros (st) "Hl2 Hclose".
+    iMod ("Hclose" with "Hl2") as (L3 rt4 ty4 r4) "(Hv' & HL & Hl2 & HT)".
+
+    set (upd_inner := typed_place_finish_upd upd lt3 ri3).
+    iMod ("Hs" $! upd_inner with "[] Hl2 [] Hcond") as "Hs".
+    { simpl. done. }
+    { simpl. done. }
+    iMod ("Hs" with "HL Hf HT") as (upd') "(Hl & Hcond' & ? & HR' & ? & HL & Hf & Hfin)".
+    iPoseProof ("Hfin" with "Hl") as "Hfin".
+    iMod ("Hfin" with "[] [$] HE HL [$]") as "(%L4 & HL & HT)"; first done.
+    iEval (rewrite /ty_own_val /= int_own_val_unfold) in "Hv".
+    iDestruct "Hv" as "(_ & %Hv)".
+    rewrite (mem_cast_id_int _ _ _ Hv st).
+    iModIntro. by iApply ("HΦ" with "HL Hf Hv' HT").
+  Qed.
 
 End discriminant.
 
