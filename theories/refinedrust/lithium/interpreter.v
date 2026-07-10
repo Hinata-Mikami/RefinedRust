@@ -215,8 +215,8 @@ Ltac liForall :=
                 lazymatch goal with
                 | |- forall e : ?A, @?P e =>
                     let sn := open_constr:(_ : nat) in
-                    let p := constr:(_ : SimplForall A sn P _) in
-                    refine (@simpl_forall_proof _ _ _ _ p _);
+                    let p := constr:(_ : SimplForall A sn _) in
+                    refine (@simpl_forall_proof _ _ _ p P _);
                     do_intro sn name
                 end
               | liForall_hook
@@ -317,8 +317,8 @@ Ltac liExist protect :=
         | @plist _ _ [] => exists nil_tt
         | _ =>
             first [
-                let p := constr:(_ : SimplExist A P _) in
-                refine (@simpl_exist_proof A P _ p _)
+                let p := constr:(_ : SimplExist A _) in
+                refine (@simpl_exist_proof A _ p P _)
               |
                 lazymatch protect with
                 | true =>

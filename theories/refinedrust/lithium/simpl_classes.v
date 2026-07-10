@@ -4,10 +4,11 @@ From lithium Require Export base.
 infrastructure for pure sideconditions. *)
 
 (** * [SimplExist] and [SimplForall] *)
-Class SimplExist (T : Type) (e : T → Prop) (Q: Prop) := simpl_exist_proof : Q → ∃ x, e x.
-Global Hint Mode SimplExist ! + - : typeclass_instances.
-Class SimplForall (T : Type) (n : nat) (e : T → Prop) (Q: Prop) := simpl_forall_proof : Q → ∀ x, e x.
-Global Hint Mode SimplForall ! - + - : typeclass_instances.
+Class SimplExist (T : Type) (Q: (T → Prop) → Prop) :=
+  simpl_exist_proof : ∀ e, Q e → ∃ x, e x.
+Global Hint Mode SimplExist ! - : typeclass_instances.
+Class SimplForall (T : Type) (n : nat) (Q: (T → Prop) → Prop) := simpl_forall_proof : ∀ e, Q e → ∀ x, e x.
+Global Hint Mode SimplForall ! - - : typeclass_instances.
 
 
 (** * [SimplImpl] and [SimplAnd] *)

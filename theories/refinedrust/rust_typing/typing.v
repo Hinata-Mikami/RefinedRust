@@ -12,24 +12,24 @@ From refinedrust Require Export options.
 Global Open Scope rr_hidden.
 
 (* For some reason, we need to declare this instance here for stuff to work, despite exporting [simpl] as the last thing above! So weird! *)
-Global Instance simpl_exist_plist_cons' {X : Type} (F : X → Type) (x : X) xs (Q : plist F (x :: xs) → Prop) :
-SimplExist (plist F (x :: xs)) Q (∃ p : F x, ∃ ps : plist F xs, Q (p -:: ps)).
+Global Instance simpl_exist_plist_cons' {X : Type} (F : X → Type) (x : X) xs  :
+SimplExist (plist F (x :: xs)) (λ (Q : plist F (x :: xs) → Prop), ∃ p : F x, ∃ ps : plist F xs, Q (p -:: ps)).
 Proof.
   (*apply simpl_exist_plist_cons.*)
-  intros (p & ps & Hx). exists (p -:: ps). done.
+  intros ? (p & ps & Hx). exists (p -:: ps). done.
 Qed.
-Global Instance simpl_forall_plist_cons {X} (F : X → Type) x xs T :
-  SimplForall (plist F (x :: xs)) 1 T (∀ (a : F x) (s : plist F xs), T (a -:: s)).
-Proof. intros Q [? ?]. apply Q. Qed.
-Global Instance simpl_forall_plist_nil {X} (F : X → Type) T :
-  SimplForall (plist F []) 0 T (T -[]).
-Proof. intros Q []. apply Q. Qed.
-Global Instance simpl_forall_hlist_cons {X} (F : X → Type) x xs T :
-  SimplForall (hlist F (x :: xs)) 1 T (∀ (a : F x) (s : hlist F xs), T (a +:: s)).
-Proof. intros Q a. inv_hlist a. intros. apply Q. Qed.
-Global Instance simpl_forall_hlist_nil {X} (F : X → Type) T :
-  SimplForall (hlist F []) 0 T (T +[]).
-Proof. intros Q a. inv_hlist a. apply Q. Qed.
+Global Instance simpl_forall_plist_cons {X} (F : X → Type) x xs :
+  SimplForall (plist F (x :: xs)) 1 (λ T, ∀ (a : F x) (s : plist F xs), T (a -:: s)).
+Proof. intros ? Q [? ?]. apply Q. Qed.
+Global Instance simpl_forall_plist_nil {X} (F : X → Type) :
+  SimplForall (plist F []) 0 (λ T, T -[]).
+Proof. intros ? Q []. apply Q. Qed.
+Global Instance simpl_forall_hlist_cons {X} (F : X → Type) x xs :
+  SimplForall (hlist F (x :: xs)) 1 (λ T, ∀ (a : F x) (s : hlist F xs), T (a +:: s)).
+Proof. intros ? Q a. inv_hlist a. intros. apply Q. Qed.
+Global Instance simpl_forall_hlist_nil {X} (F : X → Type) :
+  SimplForall (hlist F []) 0 (λ T, T +[]).
+Proof. intros ? Q a. inv_hlist a. apply Q. Qed.
 
 Global Open Scope Z_scope.
 

@@ -17,16 +17,16 @@ Proof.
   intros Ha Hb. exact (populate (mk_map_x inhabitant inhabitant)).
 Qed.
 
-Global Instance MapX_simpl_exist I F H :
-  SimplExist (MapX I F) H (∃ (i : RT_xt I) (f : RT_xt F), H (mk_map_x i f)).
+Global Instance MapX_simpl_exist I F :
+  SimplExist (MapX I F) (λ H, ∃ (i : RT_xt I) (f : RT_xt F), H (mk_map_x i f)).
 Proof.
-  intros (i & f & Ha).
+  intros ? (i & f & Ha).
   eexists _. done.
 Qed.
-Global Instance MapX_simpl_forall I F H :
-  SimplForall (MapX I F) 2 H (∀ (i : RT_xt I) (f : RT_xt F), H (mk_map_x i f)).
+Global Instance MapX_simpl_forall I F :
+  SimplForall (MapX I F) 2 (λ H, ∀ (i : RT_xt I) (f : RT_xt F), H (mk_map_x i f)).
 Proof.
-  intros Ha (i & f). apply Ha.
+  intros ? Ha (i & f). apply Ha.
 Qed.
 
 Global Instance simpl_both_mapX {I F} (m1 m2 : MapX I F) :
@@ -49,32 +49,32 @@ Section map_inv_variants.
     (fnonce_attrs : FnOnce_spec_attrs Clos_rt (tuple1_rt Item_rt) Clos_out_rt).
 
   (* Default instantiation *)
-  Lemma simpl_exist_map_inv_trivial Q :
-    SimplExist (map_inv_ty _ _ _ _ fnonce_attrs) Q
-      (∃ (Inv : thread_id → RT_xt Self_rt → RT_xt Clos_rt → iProp Σ), Q Inv).
+  Lemma simpl_exist_map_inv_trivial :
+    SimplExist (map_inv_ty _ _ _ _ fnonce_attrs)
+      (λ Q, ∃ (Inv : thread_id → RT_xt Self_rt → RT_xt Clos_rt → iProp Σ), Q Inv).
   Proof. unfold SimplExist. done. Qed.
-  Lemma simpl_forall_map_inv Q :
-    SimplForall (map_inv_ty _ _ _ _ fnonce_attrs) 1 Q (∀ (Inv : thread_id → RT_xt Self_rt → RT_xt Clos_rt → iProp Σ), Q Inv).
+  Lemma simpl_forall_map_inv :
+    SimplForall (map_inv_ty _ _ _ _ fnonce_attrs) 1 (λ Q, ∀ (Inv : thread_id → RT_xt Self_rt → RT_xt Clos_rt → iProp Σ), Q Inv).
   Proof. unfold SimplForall. done. Qed.
 
   (* For a trivial pre, instantiate with a trivial invariant *)
-  Lemma simpl_exist_map_inv_pure_pre Q :
+  Lemma simpl_exist_map_inv_pure_pre :
     ClosureHasTrivialPre _ _ _ fnonce_attrs →
-    SimplExist (map_inv_ty Self_rt Item_rt Clos_rt Clos_out_rt fnonce_attrs) Q
-      (Q (λ _ _ _, True)%I).
+    SimplExist (map_inv_ty Self_rt Item_rt Clos_rt Clos_out_rt fnonce_attrs)
+      (λ Q, Q (λ _ _ _, True)%I).
   Proof.
     intros Hpre.
     unfold SimplExist.
     eauto with iFrame.
   Qed.
 End map_inv_variants.
-Global Hint Extern 1000 (SimplExist (map_inv_ty _ _ _ _ ?fnonce) _ _) =>
-  notypeclasses refine (simpl_exist_map_inv_trivial _ _ _ _ fnonce _) : typeclass_instances.
-Global Hint Extern 10 (SimplForall (map_inv_ty _ _ _ _ ?fnonce) _ _ _) =>
-  notypeclasses refine (simpl_forall_map_inv _ _ _ _ fnonce _) : typeclass_instances.
+Global Hint Extern 1000 (SimplExist (map_inv_ty _ _ _ _ ?fnonce) _) =>
+  notypeclasses refine (simpl_exist_map_inv_trivial _ _ _ _ fnonce) : typeclass_instances.
+Global Hint Extern 10 (SimplForall (map_inv_ty _ _ _ _ ?fnonce) _ _) =>
+  notypeclasses refine (simpl_forall_map_inv _ _ _ _ fnonce) : typeclass_instances.
 
-Global Hint Extern 100 (SimplExist (map_inv_ty _ _ _ _ ?fnonce) _ _) =>
-  notypeclasses refine (simpl_exist_map_inv_pure_pre _ _ _ _ fnonce _ _);
+Global Hint Extern 100 (SimplExist (map_inv_ty _ _ _ _ ?fnonce) _) =>
+  notypeclasses refine (simpl_exist_map_inv_pure_pre _ _ _ _ fnonce _);
   typeclasses eauto : typeclass_instances.
 
 (** Instantiation hints for iterator adapters which receive a closure param instantiation predicate *)
@@ -90,32 +90,32 @@ Section clos_param_variants.
     (fnonce_attrs : FnOnce_spec_attrs Clos_rt Args_rt Clos_out_rt).
 
   (* Default instantiation *)
-  Lemma simpl_exist_clos_param_pred_trivial Q :
-    SimplExist (clos_param_pred_ty _ _ _ fnonce_attrs) Q
-      (∃ (ParamPred : RT_xt Args_rt → fnonce_attrs.(FnOnce_Params) → Prop), Q ParamPred).
+  Lemma simpl_exist_clos_param_pred_trivial :
+    SimplExist (clos_param_pred_ty _ _ _ fnonce_attrs)
+      (λ Q, ∃ (ParamPred : RT_xt Args_rt → fnonce_attrs.(FnOnce_Params) → Prop), Q ParamPred).
   Proof. unfold SimplExist. done. Qed.
-  Lemma simpl_forall_clos_param_pred Q :
-    SimplForall (clos_param_pred_ty _ _ _ fnonce_attrs) 1 Q (∀ (ParamPred : RT_xt Args_rt → fnonce_attrs.(FnOnce_Params) → Prop), Q ParamPred).
+  Lemma simpl_forall_clos_param_pred :
+    SimplForall (clos_param_pred_ty _ _ _ fnonce_attrs) 1 (λ Q, ∀ (ParamPred : RT_xt Args_rt → fnonce_attrs.(FnOnce_Params) → Prop), Q ParamPred).
   Proof. unfold SimplForall. done. Qed.
 
   (* For trivial Params, instantiate with a trivial invariant *)
-  Lemma simpl_exist_clos_param_pred_empty Q :
+  Lemma simpl_exist_clos_param_pred_empty :
     TCDone (fnonce_attrs.(FnOnce_Params) = plist id []) →
-    SimplExist (clos_param_pred_ty Args_rt Clos_rt Clos_out_rt fnonce_attrs) Q
-      (Q (λ _ _, True)).
+    SimplExist (clos_param_pred_ty Args_rt Clos_rt Clos_out_rt fnonce_attrs)
+      (λ Q, Q (λ _ _, True)).
   Proof.
     intros Hpre.
     unfold SimplExist.
     eauto with iFrame.
   Qed.
 End clos_param_variants.
-Global Hint Extern 1000 (SimplExist (clos_param_pred_ty _ _ _ ?fnonce) _ _) =>
-  notypeclasses refine (simpl_exist_clos_param_pred_trivial _ _ _ fnonce _) : typeclass_instances.
-Global Hint Extern 10 (SimplForall (clos_param_pred_ty _ _ _ ?fnonce) _ _ _) =>
-  notypeclasses refine (simpl_forall_clos_param_pred _ _ _ fnonce _) : typeclass_instances.
+Global Hint Extern 1000 (SimplExist (clos_param_pred_ty _ _ _ ?fnonce) _) =>
+  notypeclasses refine (simpl_exist_clos_param_pred_trivial _ _ _ fnonce) : typeclass_instances.
+Global Hint Extern 10 (SimplForall (clos_param_pred_ty _ _ _ ?fnonce) _ _) =>
+  notypeclasses refine (simpl_forall_clos_param_pred _ _ _ fnonce) : typeclass_instances.
 
-Global Hint Extern 100 (SimplExist (clos_param_pred_ty _ _ _ ?fnonce) _ _) =>
-  notypeclasses refine (simpl_exist_clos_param_pred_empty _ _ _ fnonce _ _);
+Global Hint Extern 100 (SimplExist (clos_param_pred_ty _ _ _ ?fnonce) _) =>
+  notypeclasses refine (simpl_exist_clos_param_pred_empty _ _ _ fnonce _);
   typeclasses eauto : typeclass_instances.
 
 

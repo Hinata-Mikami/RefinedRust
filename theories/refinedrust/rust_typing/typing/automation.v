@@ -1191,10 +1191,10 @@ Hint Unfold els_lookup_tag : lithium_rewrite.
 
 #[global] Typeclasses Opaque layout_wf.
 
-Global Instance simpl_exist_tysized `{!typeGS Σ} {rt} (ty : type rt) `{!TySized ty} Q :
-  SimplExist (TySized ty) Q (Q _).
+Global Instance simpl_exist_tysized `{!typeGS Σ} {rt} (ty : type rt) `{!TySized ty} :
+  SimplExist (TySized ty) (λ Q, Q _).
 Proof.
-  intros ?. eauto.
+  intros ??. eauto.
 Qed.
 
 (** Unfold [ty_ghost_drop] if necessary *)

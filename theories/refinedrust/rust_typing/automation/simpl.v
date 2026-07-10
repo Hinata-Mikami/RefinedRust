@@ -83,42 +83,42 @@ Proof.
   intros T [Hlook HT]. split; last done. by apply list_lookup_total_correct.
 Qed.
 
-Global Instance simpl_exist_hlist_nil {X} (F : X → Type) Q :
-  SimplExist (hlist F []) Q (Q +[]).
+Global Instance simpl_exist_hlist_nil {X} (F : X → Type) :
+  SimplExist (hlist F []) (λ Q, Q +[]).
 Proof.
   rewrite /SimplExist. naive_solver.
 Qed.
-Global Instance simpl_exist_hlist_cons {X} (F : X → Type) (x : X) xs (Q : hlist F (x :: xs) → Prop) :
-  SimplExist (hlist F (x :: xs)) Q (∃ p : F x, ∃ ps : hlist F xs, Q (p +:: ps)).
+Global Instance simpl_exist_hlist_cons {X} (F : X → Type) (x : X) xs :
+  SimplExist (hlist F (x :: xs)) (λ (Q : hlist F (x :: xs) → Prop), ∃ p : F x, ∃ ps : hlist F xs, Q (p +:: ps)).
 Proof.
-  intros (p & ps & Hx). exists (p +:: ps). done.
+  intros ? (p & ps & Hx). exists (p +:: ps). done.
 Qed.
 (* The instance for plist _ [] is built into Lithium's liExist *)
-Global Instance simpl_exist_plist_cons {X} (F : X → Type) (x : X) xs (Q : plist F (x :: xs) → Prop) :
-  SimplExist (plist F (x :: xs)) Q (∃ p : F x, ∃ ps : plist F xs, Q (p -:: ps)).
+Global Instance simpl_exist_plist_cons {X} (F : X → Type) (x : X) xs :
+  SimplExist (plist F (x :: xs)) (λ (Q : plist F (x :: xs) → Prop), ∃ p : F x, ∃ ps : plist F xs, Q (p -:: ps)).
 Proof.
-  intros (p & ps & Hx). exists (p -:: ps). done.
+  intros ? (p & ps & Hx). exists (p -:: ps). done.
 Qed.
 
 (* Instance that fires in case the product is hidden behind a definition, which the built-in Lithium support for pairs cannot see through. *)
-Global Instance simpl_exist_prod {A B} (Q : A * B → Prop) :
-  SimplExist (A * B) Q (∃ (a : A) (b : B), Q (a, b)).
+Global Instance simpl_exist_prod {A B} :
+  SimplExist (A * B) (λ (Q : A * B → Prop), ∃ (a : A) (b : B), Q (a, b)).
 Proof.
-  intros (a & b & HQ). eauto.
+  intros ? (a & b & HQ). eauto.
 Qed.
 
-Global Instance simpl_forall_plist_cons {X} (F : X → Type) x xs T :
-  SimplForall (plist F (x :: xs)) 1 T (∀ (a : F x) (s : plist F xs), T (a -:: s)).
-Proof. intros Q [? ?]. apply Q. Qed.
-Global Instance simpl_forall_plist_nil {X} (F : X → Type) T :
-  SimplForall (plist F []) 0 T (T -[]).
-Proof. intros Q []. apply Q. Qed.
-Global Instance simpl_forall_hlist_cons {X} (F : X → Type) x xs T :
-  SimplForall (hlist F (x :: xs)) 1 T (∀ (a : F x) (s : hlist F xs), T (a +:: s)).
-Proof. intros Q a. inv_hlist a. intros. apply Q. Qed.
-Global Instance simpl_forall_hlist_nil {X} (F : X → Type) T :
-  SimplForall (hlist F []) 0 T (T +[]).
-Proof. intros Q a. inv_hlist a. apply Q. Qed.
+Global Instance simpl_forall_plist_cons {X} (F : X → Type) x xs :
+  SimplForall (plist F (x :: xs)) 1 (λ T, ∀ (a : F x) (s : plist F xs), T (a -:: s)).
+Proof. intros ? Q [? ?]. apply Q. Qed.
+Global Instance simpl_forall_plist_nil {X} (F : X → Type) :
+  SimplForall (plist F []) 0 (λ T, T -[]).
+Proof. intros ? Q []. apply Q. Qed.
+Global Instance simpl_forall_hlist_cons {X} (F : X → Type) x xs :
+  SimplForall (hlist F (x :: xs)) 1 (λ T, ∀ (a : F x) (s : hlist F xs), T (a +:: s)).
+Proof. intros ? Q a. inv_hlist a. intros. apply Q. Qed.
+Global Instance simpl_forall_hlist_nil {X} (F : X → Type) :
+  SimplForall (hlist F []) 0 (λ T, T +[]).
+Proof. intros ? Q a. inv_hlist a. apply Q. Qed.
 
 
 (** Try to find a lookup proof with some abstract condition [P] *)
@@ -250,10 +250,10 @@ Qed.
 
 
 (** miscellaneous *)
-Global Instance simplify_all_xtype `{!typeGS Σ} Q :
-  SimplForall xtype 4 Q (∀ (rt : RT) (ty : type rt) (Hsz : TySized ty) (r : RT_xt rt), Q (mk_xtype (xtype_rt:=rt) ty r Hsz)).
+Global Instance simplify_all_xtype `{!typeGS Σ} :
+  SimplForall xtype 4 (λ Q, ∀ (rt : RT) (ty : type rt) (Hsz : TySized ty) (r : RT_xt rt), Q (mk_xtype (xtype_rt:=rt) ty r Hsz)).
 Proof.
-  intros ? []. done.
+  intros ? ? []. done.
 Qed.
 
 (** More automation for sets *)
@@ -410,8 +410,8 @@ Proof.
   unfold SimplBothRel. naive_solver.
 Qed.
 
-Global Instance simpl_exist_ghost_drop `{!typeGS Σ} {rt} (ty : type rt) `{Hg : !TyGhostDrop ty} Q :
-  SimplExist (TyGhostDrop ty) Q (Q Hg).
+Global Instance simpl_exist_ghost_drop `{!typeGS Σ} {rt} (ty : type rt) `{Hg : !TyGhostDrop ty} :
+  SimplExist (TyGhostDrop ty) (λ Q, Q Hg).
 Proof.
   intros Ha. eauto.
 Qed.

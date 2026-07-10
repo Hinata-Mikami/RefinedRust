@@ -670,6 +670,30 @@ Ltac solve_compute_enum_layout ::=
 Section syntype_compat.
   Context `{!LayoutAlg}.
 
+  Lemma syn_type_compat_mut_type_project_l `{!typeGS Σ} {rts : list RT}
+    (F : mut_type_fun rts)
+    `{Hne : !TCNoResolve (MutTypeNonExpansive F)}
+    `{Hcontr : !TCNoResolve (MutTypeContractive (mut_iter F (length rts)))}
+    `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
+    {rt : RT} `{!Inhabited (RT_xt rt)} i
+    (Hlook : rts !! i = Some rt) m st :
+    syn_type_compat (ty_syn_type (mut_type_project_simpl (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 0) i Hlook) m) st →
+    syn_type_compat (ty_syn_type (mut_type_project (mut_fixpoint F (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook) m) st.
+  Proof.
+    rewrite mut_fixpoint_project_ty_syn_type//.
+  Qed.
+  Lemma syn_type_compat_mut_type_project_r `{!typeGS Σ} {rts : list RT}
+    (F : mut_type_fun rts)
+    `{Hne : !TCNoResolve (MutTypeNonExpansive F)}
+    `{Hcontr : !TCNoResolve (MutTypeContractive (mut_iter F (length rts)))}
+    `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
+    {rt : RT} `{!Inhabited (RT_xt rt)} i
+    (Hlook : rts !! i = Some rt) m st :
+    syn_type_compat st (ty_syn_type (mut_type_project_simpl (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 0) i Hlook) m) →
+    syn_type_compat st (ty_syn_type (mut_type_project (mut_fixpoint F (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook) m).
+  Proof.
+    rewrite mut_fixpoint_project_ty_syn_type//.
+  Qed.
 End syntype_compat.
 Global Arguments syn_type_compat : simpl never.
 
@@ -684,6 +708,10 @@ Ltac solve_syn_type_compat_step :=
   | |- syn_type_compat (ArraySynType ?st1 ?n1) (ArraySynType ?st2 ?n2) =>
       refine (syn_type_compat_array _ _ _ _ _ _);
       [lia | ]
+  | |- syn_type_compat (ty_syn_type (mut_type_project _ _ _) _) _  =>
+      apply (syn_type_compat_mut_type_project_l); simpl
+  | |- syn_type_compat _ (ty_syn_type (mut_type_project _ _ _) _)  =>
+      apply (syn_type_compat_mut_type_project_r); simpl
   | |- _ => reflexivity
   end.
 Ltac solve_syn_type_compat :=
