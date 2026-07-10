@@ -198,6 +198,7 @@ Proof.
       iIntros (??) "_ _ HL _". iModIntro. iFrame. iExists *[], -[].
       rewrite /li_tactic/ensure_evars_instantiated_goal.
       iR. iExists tt.
+      iIntros (? ->).
       iIntros (?????) "#CTX #HE HL (_ & >$)".
       iModIntro. iExists [], [], True%I.
       iFrame. iSplitR.
