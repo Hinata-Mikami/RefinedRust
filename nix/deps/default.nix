@@ -21,6 +21,7 @@
           final.lib.overrideRocqDerivation {
             defaultVersion = stdpp.version;
             release.${stdpp.version}.sha256 = stdpp.sha256;
+            releaseRev = v: v;
           }
           prev.stdpp;
 
@@ -28,6 +29,7 @@
           final.lib.overrideRocqDerivation {
             defaultVersion = iris.version;
             release.${iris.version}.sha256 = iris.sha256;
+            releaseRev = v: v;
           }
           prev.iris;
 
