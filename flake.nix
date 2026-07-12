@@ -446,6 +446,10 @@
             src = ./case_studies/knights_tour;
           }
           {
+            pname = "knights-tour-functional";
+            src = ./case_studies/knights_tour_functional;
+          }
+          {
             pname = "tests";
             src = ./case_studies/tests;
           }

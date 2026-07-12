@@ -160,7 +160,7 @@ case-studies:
   stage: tests
   needs: [ stdlib ]
   variables:
-    NIX_DERIVATION: .#checks.${NIX_PLATFORM}.{evenint,hillel,minivec,paper-examples,linkedlist,tests,iterators,knights-tour,smtcoq}
+    NIX_DERIVATION: .#checks.${NIX_PLATFORM}.{evenint,hillel,minivec,paper-examples,linkedlist,tests,iterators,knights-tour-functional,smtcoq}
 
 ace:
   <<: *main_only
