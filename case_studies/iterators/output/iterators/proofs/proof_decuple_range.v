@@ -13,8 +13,10 @@ Proof.
   decuple_range_prelude.
 
   repeat liRStep; liShow.
+  (* !start proof(decuple_range) *)
   liInst Hevar_Inv (λ _ '(a, b) _, ⌜b = 10⌝)%I.
   repeat liRStep.
+  (* !end proof *)
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

@@ -7,7 +7,7 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 
-(* !start proof(fulcrum) *)
+(* !start proof(hillel.fulcrum) *)
 Lemma take_S_r_total {A} `{!Inhabited A} (l : list A) (n : nat) :
   (n < length l)%nat →
   take (S n) l = take n l ++ [l !!! n].
@@ -29,7 +29,7 @@ Proof.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
 
-  (* !start proof(fulcrum) *)
+  (* !start proof(hillel.fulcrum) *)
   all: try rename x'0 into j.
   all: try specialize (sum_list_Z_with_split id (Z.to_nat j) _iter_hist_7) as ?.
   all: try (opose proof (Hbounded _iter_hist_7 _); first solve_goal).

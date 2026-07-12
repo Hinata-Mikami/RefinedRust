@@ -17,7 +17,7 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  (* !start proof(unique) *)
+  (* !start proof(hillel.unique) *)
   all: try set_solver.
   rewrite app_Permutation_comm. econstructor; done.
   (* !end proof *)

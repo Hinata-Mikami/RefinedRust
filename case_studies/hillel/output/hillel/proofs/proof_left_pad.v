@@ -12,7 +12,7 @@ Lemma left_pad_proof (π : thread_id) :
 Proof.
   left_pad_prelude.
 
-  (* !start proof(left_pad) *)
+  (* !start proof(hillel.left_pad) *)
   rep <-! liRStep; liShow.
   rep liRStep; liShow.
   liInst Hevar_num 0%nat.
@@ -25,7 +25,7 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  (* !start proof(left_pad) *)
+  (* !start proof(hillel.left_pad) *)
   - unfold size_of_array_in_bytes in *. nia.
   - rewrite list_fmap_compose. repeat f_equiv. lia.
   (* !end proof *)
