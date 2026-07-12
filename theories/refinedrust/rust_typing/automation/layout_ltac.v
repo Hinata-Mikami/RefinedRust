@@ -72,35 +72,30 @@ Section solve_layout_alg_tac.
   Proof. done. Qed.
 
   (* enums *)
-  Lemma syn_type_has_layout_enum_tac name variants variants' (it : int_type) ly ul sl repr struct_repr union_repr :
-    Forall2 syn_type_has_layout_multi_pred variants variants' →
-    union_repr = union_repr_of_enum_repr repr →
-    struct_repr = struct_repr_of_enum_repr repr →
-    union_layout_alg name variants' union_repr = Some ul →
-    struct_layout_alg name [("discriminant", it_layout it); ("data", ul : layout)] struct_repr = Some sl →
-    ly = layout_of sl →
-    syn_type_has_layout (EnumSynType name it variants repr) ly.
+  Lemma syn_type_has_layout_enum_tac els variants' el ly :
+    Forall2 syn_type_has_layout_multi_pred (raw_els_variants els) variants' →
+    enum_layout_alg (raw_els_name els) (raw_els_tag_it els) variants' (raw_els_repr els) = Some el →
+    enum_tag_int_wf (raw_els_tag_it els) (raw_els_variants els) (raw_els_tag_int els) →
+    ly = layout_of_enum el →
+    syn_type_has_layout (EnumSynType els) ly.
   Proof.
-    intros Ha -> -> Hb Hc ->.
+    intros Ha Hb Hc ->.
     eapply syn_type_has_layout_enum; [ | done..].
     eapply Forall2_impl; first apply Ha.
     intros [] [] (? & ? & ? & -> & [= -> ->]). eauto.
   Qed.
-  Lemma enum_layout_spec_has_layout_tac (els : enum_layout_spec) variants' (ul : union_layout) (sl sl' : struct_layout) struct_repr union_repr :
+  Lemma enum_layout_spec_has_layout_tac (els : enum_layout_spec) variants' el el' :
     Forall2 syn_type_has_layout_multi_pred els.(els_variants) variants' →
-    union_repr = union_repr_of_enum_repr els.(els_repr) →
-    struct_repr = struct_repr_of_enum_repr els.(els_repr) →
-    union_layout_alg els.(els_name) variants' union_repr = Some ul →
-    struct_layout_alg els.(els_name) [("discriminant", it_layout els.(els_tag_it)); ("data", ul : layout)] struct_repr = Some sl' →
-    sl = sl' →
-    enum_layout_spec_has_layout els sl.
+    enum_layout_alg (els_name els) (els_tag_it els) variants' (els_repr els) = Some el →
+    el = el' →
+    enum_layout_spec_has_layout els el'.
   Proof.
-    intros Ha -> -> Hb Hc ->.
+    intros Ha Hb ->.
     eapply use_enum_layout_alg_Some; [ | done..].
     eapply Forall2_impl; first apply Ha.
     intros [] [] (? & ? & ? & -> & [= -> ->]). eauto.
   Qed.
-  Lemma use_enum_layout_alg_layout_tac (els : enum_layout_spec) (el : struct_layout) :
+  Lemma use_enum_layout_alg_layout_tac (els : enum_layout_spec) (el : enum_layout) :
     enum_layout_spec_has_layout els el → use_enum_layout_alg els = Some el.
   Proof. done. Qed.
 
@@ -584,6 +579,12 @@ Ltac solve_layout_alg_core_step3 :=
   | |- struct_layout_spec_has_layout ?sls ?sl =>
       notypeclasses refine (struct_layout_spec_has_layout_tac sls _ sl _ _ _ _);
       [| | fast_solve_layout_eq]
+  | |- enum_layout_spec_has_layout ?els ?el =>
+      notypeclasses refine (enum_layout_spec_has_layout_tac els _ _ el _ _ _);
+      [| | fast_solve_layout_eq]
+  | |- union_layout_spec_has_layout ?uls ?ul =>
+      notypeclasses refine (union_layout_spec_has_layout_tac uls _ _ _ _ _ _);
+      [| | fast_solve_layout_eq]
   | |- syn_type_has_layout UnitSynType ?ly =>
       notypeclasses refine (syn_type_has_layout_unit _ _);
       [fast_solve_layout_eq ]
@@ -603,8 +604,8 @@ Ltac solve_layout_alg_core_step3 :=
       | use_struct_layout_alg' ?sls' =>
           notypeclasses refine (syn_type_has_layout_literal_struct_alg_tac sls' _ ly' _ _);
             [fast_solve_layout_eq | ]
-      | use_enum_layout_alg' ?sls' =>
-          notypeclasses refine (syn_type_has_layout_literal_enum_alg_tac sls' _ ly' _ _);
+      | use_enum_layout_alg' ?els' =>
+          notypeclasses refine (syn_type_has_layout_literal_enum_alg_tac els' _ ly' _ _);
             [fast_solve_layout_eq | ]
       | void* =>
           notypeclasses refine (syn_type_has_layout_literal_ptr_tac _ _);
@@ -622,12 +623,6 @@ Ltac solve_layout_alg_core_step3 :=
             | solve_layout_size; shelve
             | solve_ly_align_ib; shelve ]
       end
-  | |- enum_layout_spec_has_layout ?els ?el =>
-      notypeclasses refine (enum_layout_spec_has_layout_tac els _ _ _ _ _ _ _ _ _ _ _ _ );
-      [| refine eq_refl | refine eq_refl | | | fast_solve_layout_eq]
-  | |- union_layout_spec_has_layout ?uls ?ul =>
-      notypeclasses refine (union_layout_spec_has_layout_tac uls _ _ _ _ _ _);
-      [| | fast_solve_layout_eq]
   end.
 
 Ltac solve_layout_alg_core_step :=
@@ -825,13 +820,16 @@ Ltac solve_op_alg_core_step :=
       [solve_layout_alg | solve_ot_eq]
   end;
   (* For ADTs *)
-  first [notypeclasses refine (use_op_alg_els _ _ _ _ _); [solve_layout_alg | solve_ot_eq]
+  first [notypeclasses refine (use_op_alg_els _ _ _ _ _ _ _); [solve_layout_alg | | solve_ot_eq]
       | notypeclasses refine (use_op_alg_uls _ _ _ _ _); [solve_layout_alg | solve_ot_eq]
       | notypeclasses refine (use_op_alg_sls _ _ _ _ _ _ _); [ | solve_layout_alg | solve_ot_eq]
       | idtac];
   (* Unfold *)
   try lazymatch goal with
   | |- Forall2 use_op_alg_struct_pred ?fields ?fields' =>
+      let fields_eval := eval hnf in fields in
+      change_no_check fields with fields_eval
+  | |- Forall2 use_op_alg_enum_pred ?fields ?fields' =>
       let fields_eval := eval hnf in fields in
       change_no_check fields with fields_eval
   | |- use_op_alg ?st = Some ?op =>
@@ -844,6 +842,10 @@ Ltac solve_op_alg_core_step :=
       econstructor
   | |- Forall2 use_op_alg_struct_pred (?f :: ?fields) ?fields' =>
     econstructor; [ unfold use_op_alg_struct_pred | ]
+  | |- Forall2 use_op_alg_enum_pred [] ?fields' =>
+      econstructor
+  | |- Forall2 use_op_alg_enum_pred (?f :: ?fields) ?fields' =>
+    econstructor; [ unfold use_op_alg_enum_pred | ]
   | |- use_op_alg (IntSynType ?it) = Some ?ot =>
       notypeclasses refine (use_op_alg_int _ _ _);
       [ solve_ot_eq ]
@@ -895,6 +897,12 @@ Ltac solve_op_alg_forall ::=
   | |- Forall2 use_op_alg_struct_pred [] ?fields' =>
       econstructor
   | |- Forall2 use_op_alg_struct_pred (?f :: ?fields) ?fields' =>
+    econstructor;
+    [ simpl; solve_op_alg_core
+    | solve_op_alg_forall]
+  | |- Forall2 use_op_alg_enum_pred [] ?fields' =>
+      econstructor
+  | |- Forall2 use_op_alg_enum_pred (?f :: ?fields) ?fields' =>
     econstructor;
     [ simpl; solve_op_alg_core
     | solve_op_alg_forall]
@@ -1004,37 +1012,53 @@ From iris.proofmode Require Import string_ident.
 Ltac rename_layouts_core H cont :=
   lazymatch type of H with
   | struct_layout_alg ?name ?fields ?repr = Some ?sl =>
-      let Hfields := fresh in
-      apply struct_layout_alg_has_fields in H as Hfields;
-      clear Hfields;
+      (*let Hfields := fresh in*)
+      (*apply struct_layout_alg_has_fields in H as Hfields;*)
+      (*clear Hfields;*)
       (*enter_jcache Hfields;*)
 
       let sl_name := eval cbv in (append name "_sl") in
-      let fields_name := eval cbv in (append name "_fields") in
+      (*let fields_name := eval cbv in (append name "_fields") in*)
       let H_name := eval cbv in (append name "_salg") in
       string_to_ident_cps sl_name ltac:(fun sl_n =>
-      string_to_ident_cps fields_name ltac:(fun fields_n =>
+      (*string_to_ident_cps fields_name ltac:(fun fields_n =>*)
       string_to_ident_cps H_name ltac:(fun H_n =>
       try rename sl into sl_n;
-      try rename Hfields into fields_N;
+      (*try rename Hfields into fields_N;*)
       first [rename H into H_n; cont H_n | cont H]
-      )))
+      ))
   | union_layout_alg ?name ?variants ?repr = Some ?ul =>
-      let Hvariants := fresh in
-      apply union_layout_alg_has_variants in H as Hvariants;
-      clear Hvariants;
+      (*let Hvariants := fresh in*)
+      (*apply union_layout_alg_has_variants in H as Hvariants;*)
+      (*clear Hvariants;*)
       (*enter_jcache Hvariants;*)
 
       let ul_name := eval cbv in (append name "_ul") in
-      let variants_name := eval cbv in (append name "_variants") in
+      (*let variants_name := eval cbv in (append name "_variants") in*)
       let H_name := eval cbv in (append name "_ualg") in
       string_to_ident_cps ul_name ltac:(fun ul_n =>
-      string_to_ident_cps variants_name ltac:(fun variants_n =>
+      (*string_to_ident_cps variants_name ltac:(fun variants_n =>*)
       string_to_ident_cps H_name ltac:(fun H_n =>
       try rename ul into ul_n;
-      try rename Hvariants into variants_n;
+      (*try rename Hvariants into variants_n;*)
       first [rename H into H_n; cont H_n | cont H]
-      )))
+      ))
+  | enum_layout_alg ?name ?it ?variants ?repr = Some ?el =>
+      (*let Hvariants := fresh in*)
+      (*apply enum_layout_alg_has_variants in H as Hvariants;*)
+      (*clear Hvariants;*)
+      (*enter_jcache Hfields;*)
+
+      let el_name := eval cbv in (append name "_el") in
+      (*let variants_name := eval cbv in (append name "_variants") in*)
+      let H_name := eval cbv in (append name "_ealg") in
+      string_to_ident_cps el_name ltac:(fun el_n =>
+      (*string_to_ident_cps variants_name ltac:(fun variants_n =>*)
+      string_to_ident_cps H_name ltac:(fun H_n =>
+      try rename el into el_n;
+      (*try rename Hvariants into variants_n;*)
+      first [rename H into H_n; cont H_n | cont H]
+      ))
   | use_layout_alg ?T = Some ?ly =>
       assert_is_atomic_st T;
       is_var ly;
@@ -1084,6 +1108,14 @@ Section handle_duplicate.
     intros ??. by simplify_eq/=.
   Qed.
 
+  Lemma handle_duplicate_enum_layout_alg_tac name it variants repr el0 el1 :
+    enum_layout_alg name it variants repr = Some el0 →
+    CACHED (enum_layout_alg name it variants repr = Some el1) →
+    el0 = el1.
+  Proof.
+    rewrite /CACHED.
+    intros ??. by simplify_eq/=.
+  Qed.
 End handle_duplicate.
 
 Ltac postprocess_new_struct_assum H Halg :=
@@ -1094,6 +1126,11 @@ Ltac postprocess_new_struct_assum H Halg :=
 Ltac postprocess_new_union_assum H Halg :=
   lazymatch type of Halg with
   | union_layout_alg ?name ?variant_lys ?repr = Some _ =>
+    rename_layouts in Halg with (fun Halg => (* enter_cache_unsafe Halg *) clear Halg )
+  end.
+Ltac postprocess_new_enum_assum H Halg :=
+  lazymatch type of Halg with
+  | enum_layout_alg ?name ?it ?variants ?repr = Some _ =>
     rename_layouts in Halg with (fun Halg => (* enter_cache_unsafe Halg *) clear Halg )
   end.
 
@@ -1222,13 +1259,11 @@ Ltac simplify_layout_alg_nonatomic H :=
           rename_layouts in H with (fun H_n => enter_cache H_n)
         |
           let Hrec := fresh "_Hrec" in
-          let Halg_ul := fresh "_Halg" in
-          let Halg_sl := fresh "_Halg" in
-          specialize (use_enum_layout_alg_inv _ _ H) as (? & ? & Halg_ul & Halg_sl & Hrec);
-          simpl in Halg_ul, Halg_sl;
+          let Halg := fresh "_Halg" in
+          specialize (use_enum_layout_alg_inv _ _ H) as (? & Halg & Hrec);
+          simpl in Halg;
           inv_multi_fields Hrec;
-          postprocess_new_union_assum H Halg_ul;
-          postprocess_new_struct_assum H Halg_sl;
+          postprocess_new_enum_assum H Halg;
           enter_cache H
         ]
 

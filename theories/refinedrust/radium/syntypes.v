@@ -2406,6 +2406,7 @@ Proof.
   intros [] ?. done.
 Qed.
 
+Definition use_op_alg_enum_pred `{!LayoutAlg} : (string * syn_type) → (string * op_type) → Prop := (λ '(name, fst) '(name2, fop), name=name2 ∧ use_op_alg fst = Some fop).
 Lemma use_op_alg_enum `{!LayoutAlg} (els : enum_layout_spec_raw_gen syn_type) variant_lys el variant_ots ot :
   list_map_option (λ '(name, st), ly ← use_layout_alg st; Some (name, ly)) els.(raw_els_variants) = Some variant_lys →
   enum_layout_alg els.(raw_els_name) els.(raw_els_tag_it) variant_lys els.(raw_els_repr) = Some el →
@@ -2419,7 +2420,7 @@ Proof.
 Qed.
 Lemma use_op_alg_els `{!LayoutAlg} els sl ots ot :
   use_enum_layout_alg els = Some sl →
-  list_map_option (λ '(name, st), ot ← use_op_alg st; Some (name, ot)) els.(els_variants) = Some ots →
+  Forall2 use_op_alg_enum_pred (els.(els_variants)) ots →
   ot = EnumOp sl ots els.(els_tag_int) →
   use_op_alg (syn_type_of_els els) = Some ot.
 Proof.
@@ -2428,7 +2429,11 @@ Proof.
   assert (list_map_option (λ '(name, st), use_layout_alg st ≫= λ ly : layout, Some (name, ly)) (els_variants els) = Some variant_lys) as ->.
   { apply list_map_option_alt. eapply Forall2_impl; first done.
     intros [] [] [-> Hst]. rewrite /syn_type_has_layout in Hst. by rewrite Hst. }
-  rewrite /= Halg /= Hots /= decide_True //.
+  rewrite /= Halg /=.
+  assert (list_map_option (λ '(name, st), use_op_alg st ≫= λ ot : op_type, Some (name, ot)) (els_variants els) = Some ots) as ->.
+  { apply list_map_option_alt. eapply Forall2_impl; first done.
+    intros [] [] [-> Hst]. rewrite /syn_type_has_layout in Hst. by rewrite Hst. }
+  rewrite /= decide_True //.
   rewrite /enum_tag_int_wf /=. split_and!.
   - apply els_tag_int_agree.
   - rewrite (els_tag_int_agree els). apply els_variants_nodup.

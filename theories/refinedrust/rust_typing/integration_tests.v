@@ -347,10 +347,10 @@ Section std_option_Option_els.
   Program Definition std_option_Option_els (T_st : syn_type): enum_layout_spec := mk_els "std_option_Option" ISize [
     ("None", std_option_Option_None_sls  : syn_type);
     ("Some", std_option_Option_Some_sls T_st : syn_type)] EnumReprRust [("None", 0); ("Some", 1)] _ _ _ _.
-  Next Obligation. admit. Admitted.
-  Next Obligation. done. Qed.
-  Next Obligation. admit. Admitted.
-  Next Obligation. admit. Admitted.
+  Next Obligation.  solve_enum_layout_spec_variants_nodup. Qed.
+  Next Obligation.  solve_enum_layout_spec_variants_eq. Qed.
+  Next Obligation. solve_enum_layout_spec_discriminant_nodup. Qed.
+  Next Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.
 
 Global Typeclasses Opaque std_option_Option_els.
 End std_option_Option_els.

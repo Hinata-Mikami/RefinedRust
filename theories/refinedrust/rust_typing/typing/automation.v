@@ -687,7 +687,10 @@ Ltac gather_location_list_extract_filter_rec κ ltype ::=
     first [unify κ κ1 | gather_location_list_extract_filter_rec κ lt]
   | StructLtype ?ltys _ =>
     gather_location_list_extract_filter_hlist κ ltys
-  | EnumLtype _ _ ?lte _ =>
+  | EnumLtype _ None =>
+    (* overapproximate; it's unclear what the current variant is *)
+    idtac
+  | EnumLtype _ (Some (mk_enum_ltype_variant _ _ ?lte _)) =>
     gather_location_list_extract_filter_rec κ lte
   | ArrayLtype _ _ ?tys _ =>
     gather_location_list_extract_filter_array_list κ tys
@@ -740,7 +743,10 @@ Ltac gather_location_list_closeinv_filter_rec κs ltype ::=
     gather_location_list_closeinv_filter_rec κs lt
   | StructLtype ?ltys _ =>
     gather_location_list_closeinv_filter_hlist κs ltys
-  | EnumLtype _ _ ?lte _ =>
+  | EnumLtype _ None =>
+    (* overapproximate; it's unclear what the current variant is *)
+    idtac
+  | EnumLtype _ (Some (mk_enum_ltype_variant _ _ ?lte _)) =>
     gather_location_list_closeinv_filter_rec κs lte
   | ArrayLtype _ _ ?tys _ =>
     gather_location_list_closeinv_filter_array_list κs tys
@@ -846,7 +852,10 @@ Ltac gather_location_list_resolve_filter_rec ltype r ::=
     | 👻 _ =>
       idtac
     end
-  | EnumLtype _ _ ?lte ?re =>
+  | EnumLtype _ None =>
+    (* overapproximate; it's unclear what the current variant is *)
+    idtac
+  | EnumLtype _ (Some (mk_enum_ltype_variant _ _ ?lte ?re)) =>
     gather_location_list_resolve_filter_rec lte constr:(#re)
   | ArrayLtype _ _ ?tys _ =>
     (* hard to check precisely, therefore underapproximate *)
