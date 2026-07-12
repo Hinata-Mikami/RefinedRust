@@ -395,6 +395,50 @@ Section std_option_Option_ty.
   Definition std_option_Option_ty : type _ := enum_t std_option_Option_enum.
   Global Typeclasses Transparent std_option_Option_ty.
 End std_option_Option_ty.
+
+  Instance option_contr {rt1 T_rt} (T : type rt1 → type T_rt) :
+    TypeContractive T →
+    TypeContractive (λ ty, std_option_Option_ty (T ty)).
+  Proof.
+    intros ?.
+    apply enum_t_contr.
+    unshelve econstructor.
+    - enum_contractive_solve_eq.
+    - intros. simpl. by erewrite type_ctr_syn_type.
+    - enum_contractive_solve_eq.
+    - enum_contractive_solve_eq.
+    - intros. Arguments enum_ty : simpl never. simpl.
+      admit.
+    - admit.
+    - solve_enum_t_contr_op_type.
+  Abort.
+  Global Instance option_ne {rt1 T_rt} (T : type rt1 → type T_rt) :
+    TypeNonExpansive T →
+    TypeNonExpansive (λ ty, std_option_Option_ty (T ty)).
+  Proof.
+    intros ?.
+    apply enum_t_ne.
+    unshelve econstructor.
+    - enum_contractive_solve_eq.
+    - intros. simpl. by erewrite type_ne_syn_type.
+    - enum_contractive_solve_eq.
+    - enum_contractive_solve_eq.
+    - intros. simpl.
+      (*eapply (type_dist_use_ne _ _ _ (λ ty, enum_ty (Option_enum -[] -[T ty]) r)); last done.*)
+      (*destruct r; simpl.*)
+      (*+ apply struct_t_ne; last apply _.*)
+        (*intros. by erewrite type_ne_syn_type.*)
+      (*+ apply _.*)
+      admit.
+    - intros. simpl.
+      (*eapply (type_dist2_use_ne _ _ _ (λ ty, enum_ty (Option_enum -[] -[T ty]) r)); last done.*)
+      (*destruct r; simpl.*)
+      (*+ apply struct_t_ne; last apply _.*)
+        (*intros. by erewrite type_ne_syn_type.*)
+      (*+ apply _.*)
+      admit.
+    - solve_enum_t_ne_op_type.
+  Abort.
 End enum.
 End test.
 
@@ -707,6 +751,7 @@ Section rectypes_List_ty.
   End components.
 
   Arguments enum_ty : simpl never.
+
   Definition rectypes_List_ty  : (spec_with 0 [(T_rt)] ((type _))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), type_fixpoint (λ rectypes_List_ty, enum_t (rectypes_List_enum_pre rectypes_List_ty -[] -[T_ty])).
   Definition rectypes_List_rt  : RT.

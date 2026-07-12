@@ -1363,11 +1363,6 @@ Proof. rewrite ty_wf_E_unfold. done. Qed.
 Ltac solve_mk_enum_tag_consistent :=
   simpl; intro_adt_params;
   intros [] ? [=<-]; eexists _; done.
-Ltac solve_mk_enum_tag_ty_inj_consistent :=
-  simpl; intro_adt_params;
-  intros ? ? Hsem;
-  repeat case_decide; simplify_eq;
-  eexists _; eexists _; split; done.
 
 Ltac enum_contractive_solve_eq := intros; simpl; done.
 Ltac enum_contractive_solve_dist :=
@@ -1402,6 +1397,93 @@ Ltac enum_contractive_solve_dist :=
         end
     end.
 
+Ltac rewrite_type_ctr_syn_type_once ty ty' :=
+  lazymatch goal with
+  | |- context[ty_syn_type (?F ty) ?m] =>
+      rewrite (type_ctr_syn_type (F := F) ty ty' m)
+  | |- context[st_of (?F ty) ?m] =>
+      rewrite (type_ctr_syn_type (F := F) ty ty' m)
+  end.
+Ltac rewrite_type_ctr_syn_types ty ty' :=
+  repeat progress rewrite_type_ctr_syn_type_once ty ty'.
+Ltac solve_enum_t_contr_has_op_type ty ty':=
+  split; [done | ];
+  simpl;
+  intros ot;
+  first [done
+  | repeat rewrite ty_has_op_type_unfold/=;
+    rewrite_type_ctr_syn_types ty ty'
+  ];
+  match goal with
+  | |- is_struct_ot ?sls ?tys ?ot ↔ is_struct_ot ?sls' ?tys' ?ot =>
+      unify sls sls';
+      match goal with
+      | ty : type _ , ty' : type _ |- _ =>
+          let P := eval pattern ty in tys in
+          lazymatch P with
+          | ?Ts _ =>
+              change (is_struct_ot sls (Ts ty) ot ↔ is_struct_ot sls (Ts ty') ot);
+              eapply is_struct_ot_htype_proper_contr;
+              apply _
+          end
+      end
+  end.
+Ltac solve_enum_t_contr_op_type :=
+  intros ty ty';
+  unfold enum_tag_tys_has_op_type_rel;
+  simpl;
+  repeat match goal with
+  | |- Forall2 _ (_ :: _) (_ :: _) =>
+    econstructor
+  | |- Forall2 _ [] [] =>
+    econstructor
+  end;
+  solve_enum_t_contr_has_op_type ty ty'
+  .
+
+Ltac rewrite_type_ne_syn_type_once ty ty' :=
+  lazymatch goal with
+  | |- context[ty_syn_type (?F ty) ?m] =>
+      rewrite (type_ne_syn_type (F := F) ty ty' _ m); last done
+  | |- context[st_of (?F ty) ?m] =>
+      rewrite (type_ne_syn_type (F := F) ty ty' _ m); last done
+  end.
+Ltac rewrite_type_ne_syn_types ty ty' :=
+  repeat progress rewrite_type_ne_syn_type_once ty ty'.
+Ltac solve_enum_t_ne_has_op_type ty ty' :=
+  split; [done | ];
+  simpl;
+  intros ot;
+  first [done
+  | repeat rewrite ty_has_op_type_unfold/=;
+    rewrite_type_ne_syn_types ty ty'
+  ];
+  match goal with
+  | |- is_struct_ot ?sls ?tys ?ot ↔ is_struct_ot ?sls' ?tys' ?ot =>
+      unify sls sls';
+      match goal with
+      | ty : type _ , ty' : type _ |- _ =>
+          let P := eval pattern ty in tys in
+          lazymatch P with
+          | ?Ts _ =>
+              change (is_struct_ot sls (Ts ty) ot ↔ is_struct_ot sls (Ts ty') ot);
+              eapply is_struct_ot_htype_proper_ne; [apply _ | done | done | done]
+          end
+      end
+  end.
+Ltac solve_enum_t_ne_op_type :=
+  intros ty ty' Hmeta Hot Hst;
+  unfold enum_tag_tys_has_op_type_rel;
+  simpl;
+  repeat match goal with
+  | |- Forall2 _ (_ :: _) (_ :: _) =>
+    econstructor
+  | |- Forall2 _ [] [] =>
+    econstructor
+  end;
+  solve_enum_t_ne_has_op_type ty ty'.
+
+
 Global Hint Extern 100 (TypeContractive _) =>
   simpl;
   match goal with
@@ -1413,7 +1495,8 @@ Global Hint Extern 100 (TypeContractive _) =>
     | enum_contractive_solve_eq
     | enum_contractive_solve_eq
     | enum_contractive_solve_dist
-    | enum_contractive_solve_dist ]
+    | enum_contractive_solve_dist
+    | solve_enum_t_contr_op_type ]
   end
   : typeclass_instances.
 Global Hint Extern 100 (TypeNonExpansive _) =>
@@ -1427,7 +1510,8 @@ Global Hint Extern 100 (TypeNonExpansive _) =>
     | enum_contractive_solve_eq
     | enum_contractive_solve_eq
     | enum_contractive_solve_dist
-    | enum_contractive_solve_dist ]
+    | enum_contractive_solve_dist
+    | solve_enum_t_ne_op_type ]
   end
   : typeclass_instances.
 

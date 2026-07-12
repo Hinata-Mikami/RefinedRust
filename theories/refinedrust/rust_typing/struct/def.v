@@ -920,6 +920,27 @@ Section structs.
       + by apply IH.
   Qed.
 
+  Lemma is_struct_ot_htype_proper_contr {rt rts} sls
+      (Ts : type rt → hlist type rts) ty ty' ot :
+    HTypeContractive Ts →
+    is_struct_ot sls (Ts ty) ot ↔ is_struct_ot sls (Ts ty') ot.
+  Proof.
+    intros [Ts' Hcontr ->].
+    by eapply is_struct_ot_happly_proper_contr.
+  Qed.
+
+  Lemma is_struct_ot_htype_proper_ne {rt rts} sls
+      (Ts : type rt → hlist type rts) ty ty' ot :
+    HTypeNonExpansive Ts →
+    ty.(ty_metadata_kind) = ty'.(ty_metadata_kind) →
+    (∀ m, ty_syn_type ty m = ty_syn_type ty' m) →
+    (∀ ot, ty_has_op_type ty ot ↔ ty_has_op_type ty' ot) →
+    is_struct_ot sls (Ts ty) ot ↔ is_struct_ot sls (Ts ty') ot.
+  Proof.
+    intros [Ts' Hne ->].
+    by eapply is_struct_ot_happly_proper_ne.
+  Qed.
+
   Lemma struct_t_ne {rt rt1} {rts : list RT} sls (F : type rt → type rt1) (Ts : type rt → hlist type rts) :
     (∀ ty1 ty2, (∀ m, st_of ty1 m = st_of ty2 m) → sls (st_of (F ty1) MetaNone) = sls (st_of (F ty2) MetaNone)) →
     HTypeNonExpansive Ts →

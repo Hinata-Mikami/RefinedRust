@@ -160,16 +160,100 @@ Section enum.
 
   Import EqNotations.
 
+  Definition enum_tag_ty_has_op_types {rt} (tag_tys : list (var_name * enum_tag_sem rt))
+      (variant_ots : list (var_name * op_type)) : Prop :=
+    Forall2 (λ tag_ty variant_ot,
+      tag_ty.1 = variant_ot.1 ∧ ty_has_op_type tag_ty.2.(enum_tag_sem_ty) variant_ot.2)
+      tag_tys variant_ots.
+
+  Definition enum_tag_ty_has_op_type_rel {rt}
+      (tag_ty tag_ty' : var_name * enum_tag_sem rt) : Prop :=
+    tag_ty.1 = tag_ty'.1 ∧
+    ∀ ot, ty_has_op_type tag_ty.2.(enum_tag_sem_ty) ot ↔
+      ty_has_op_type tag_ty'.2.(enum_tag_sem_ty) ot.
+
+  Definition enum_tag_tys_has_op_type_rel {rt}
+      (tag_tys tag_tys' : list (var_name * enum_tag_sem rt)) : Prop :=
+    Forall2 enum_tag_ty_has_op_type_rel tag_tys tag_tys'.
+
+  Lemma enum_tag_ty_has_op_types_transfer_forall2 {rt}
+      (tag_tys tag_tys' : list (var_name * enum_tag_sem rt)) variant_ots :
+    enum_tag_tys_has_op_type_rel tag_tys tag_tys' →
+    enum_tag_ty_has_op_types tag_tys variant_ots →
+    enum_tag_ty_has_op_types tag_tys' variant_ots.
+  Proof.
+    intros Hrel Hot.
+    unfold enum_tag_tys_has_op_type_rel, enum_tag_ty_has_op_types in *.
+    apply Forall2_same_length_lookup. split.
+    { etrans; first symmetry; first by eapply Forall2_length.
+      by eapply Forall2_length. }
+    intros i [variant' sem'] [variant_ot variant_ot_ty] Hlookup' Hvariant_ot_lookup.
+    destruct (Forall2_lookup_r _ _ _ _ _ Hrel Hlookup') as ([variant sem] & Hlookup & [Hvariant_eq Hcompat]).
+    destruct (Forall2_lookup_l _ _ _ _ _ Hot Hlookup) as ([variant_ot' variant_ot_ty'] & Hvariant_ot_lookup' & [Hvariant_ot_eq Hot_payload]).
+    simpl in Hvariant_eq, Hvariant_ot_eq. subst variant_ot'.
+    rewrite Hvariant_ot_lookup in Hvariant_ot_lookup'. inversion Hvariant_ot_lookup'. subst variant_ot variant_ot_ty'.
+    split; first done.
+    by apply Hcompat.
+  Qed.
+
+  Lemma enum_tag_ty_find_lookup {rt} (tag_tys : list (var_name * enum_tag_sem rt)) i variant sem :
+    NoDup tag_tys.*1 →
+    tag_tys !! i = Some (variant, sem) →
+    enum_tag_ty_find tag_tys variant = Some sem.
+  Proof.
+    intros Hnodup Hlookup.
+    rewrite /enum_tag_ty_find.
+    assert (list_find (λ x : var_name * enum_tag_sem rt, x.1 = variant) tag_tys = Some (i, (variant, sem))) as ->; last done.
+    apply list_find_Some. split_and!; simpl; try done.
+    intros j [variant' sem'] Hlookup' Hlt Hvariant'. simpl in Hvariant'. subst variant'.
+    assert (tag_tys.*1 !! i = Some variant) as Hi.
+    { by rewrite list_lookup_fmap Hlookup. }
+    assert (tag_tys.*1 !! j = Some variant) as Hj.
+    { by rewrite list_lookup_fmap Hlookup'. }
+    pose proof (NoDup_lookup _ _ _ _ Hnodup Hi Hj). lia.
+  Qed.
+
+  Lemma enum_tag_ty_has_op_types_transfer {rt}
+      (tag_tys tag_tys' : list (var_name * enum_tag_sem rt)) variant_ots :
+    tag_tys.*1 = tag_tys'.*1 →
+    NoDup tag_tys.*1 →
+    enum_tag_ty_has_op_types tag_tys variant_ots →
+    (∀ variant sem sem' ot,
+      enum_tag_ty_find tag_tys variant = Some sem →
+      enum_tag_ty_find tag_tys' variant = Some sem' →
+      ty_has_op_type sem.(enum_tag_sem_ty) ot ↔ ty_has_op_type sem'.(enum_tag_sem_ty) ot) →
+    enum_tag_ty_has_op_types tag_tys' variant_ots.
+  Proof.
+    intros Hnames Hnodup Hot Hcompat.
+    unfold enum_tag_ty_has_op_types in *.
+    apply Forall2_same_length_lookup. split.
+    { pose proof (Forall2_length _ _ _ Hot) as Hlen.
+      rewrite -Hlen. rewrite -(length_fmap fst tag_tys') -Hnames length_fmap //. }
+    intros i [variant' sem'] [variant_ot variant_ot_ty] Hlookup' Hvariant_ot_lookup.
+    assert (∃ sem, tag_tys !! i = Some (variant', sem)) as (sem & Hlookup).
+    { assert (tag_tys'.*1 !! i = Some variant') as Hname'.
+      { by rewrite list_lookup_fmap Hlookup'. }
+      rewrite -Hnames in Hname'.
+      destruct (tag_tys !! i) as [[variant'' sem]|] eqn:Hlookup; rewrite list_lookup_fmap Hlookup in Hname'; simplify_eq/=.
+      eauto. }
+    destruct (Forall2_lookup_l _ _ _ _ _ Hot Hlookup) as ([variant_ot' variant_ot_ty'] & Hvariant_ot_lookup' & [Hvariant_eq Hot_payload]).
+    simpl in Hvariant_eq. subst variant_ot'.
+    rewrite Hvariant_ot_lookup in Hvariant_ot_lookup'. inversion Hvariant_ot_lookup'. subst variant_ot variant_ot_ty'.
+    split; first done.
+    assert (ty_has_op_type sem.(enum_tag_sem_ty) variant_ot_ty ↔ ty_has_op_type sem'.(enum_tag_sem_ty) variant_ot_ty) as Hiff.
+    { eapply Hcompat.
+      - by eapply enum_tag_ty_find_lookup.
+      - eapply enum_tag_ty_find_lookup; last done. by rewrite -Hnames. }
+    by apply Hiff.
+  Qed.
+
   Definition is_enum_ot {rt} (en : enum rt) (ot : op_type) :=
     match ot with
     | EnumOp el variant_ots tag_int =>
         use_enum_layout_alg en.(enum_els) = Some el ∧
         tag_int = en.(enum_els).(els_tag_int) ∧
         op_type_wf (EnumOp el variant_ots tag_int) ∧
-        ∀ variant sem variant_ot,
-          enum_tag_ty_inj en variant = Some sem →
-          enum_variant_ot_lookup variant_ots variant = Some variant_ot →
-          ty_has_op_type sem.(enum_tag_sem_ty) variant_ot
+        enum_tag_ty_has_op_types en.(enum_tag_ty) variant_ots
     | UntypedOp ly =>
         ∃ el : enum_layout, use_enum_layout_alg en.(enum_els) = Some el ∧
         ly = el
@@ -204,9 +288,29 @@ Section enum.
     ty_has_op_type (en.(enum_ty) r) variant_ot.
   Proof.
     rewrite /is_enum_ot.
-    intros (_ & _ & _ & Hot) Htag Hvariant_ot.
+    intros (Halg & _ & Hwf & Hot) Htag Hvariant_ot.
     destruct (enum_tag_compat _ en r variant Htag) as (vinj & Hsem).
-    exact (Hot variant (mk_enum_tag_sem (en.(enum_rt) r) (en.(enum_ty) r) vinj) variant_ot Hsem Hvariant_ot).
+    unfold enum_tag_ty_has_op_types in Hot.
+    apply enum_tag_ty_find_elem in Hsem as Hsem_elem.
+    apply list_elem_of_lookup_1 in Hsem_elem as (i & Hsem_lookup).
+    destruct (Forall2_lookup_l _ _ _ _ _ Hot Hsem_lookup) as ([variant' variant_ot'] & Hvariant_ot_lookup & [Hvariant_eq Hot_payload]).
+    simpl in Hvariant_eq. subst variant'.
+    rewrite /enum_variant_ot_lookup in Hvariant_ot.
+    apply fmap_Some in Hvariant_ot as ([j [variant'' variant_ot'']] & Hfind & Hvariant_ot_eq).
+    simpl in Hvariant_ot_eq. subst variant_ot''.
+    apply list_find_Some in Hfind as (Hvariant_ot_lookup' & Hvariant_eq' & _).
+    simpl in Hvariant_eq'. subst variant''.
+    assert (NoDup variant_ots.*1) as Hnodup.
+    { destruct Hwf as (Hvariant_names & _).
+      rewrite Hvariant_names.
+      apply enum_variant_names_NoDup. }
+    assert (variant_ots.*1 !! i = Some variant) as Hi.
+    { by rewrite list_lookup_fmap Hvariant_ot_lookup. }
+    assert (variant_ots.*1 !! j = Some variant) as Hj.
+    { by rewrite list_lookup_fmap Hvariant_ot_lookup'. }
+    pose proof (NoDup_lookup _ _ _ _ Hnodup Hi Hj) as ->.
+    rewrite Hvariant_ot_lookup in Hvariant_ot_lookup'. inversion Hvariant_ot_lookup'. subst.
+    done.
   Qed.
 
   Lemma is_enum_ot_enum_layout_agree {rt} (en : enum rt)
@@ -1118,14 +1222,12 @@ Section ne.
         n
         (rew [λ x, type x] (enum_ne_rt_consistent ty ty' r) in ((F ty).(enum_ty) r : type (enum_rt (F ty) r)))
         ((F ty').(enum_ty) r);
-    enum_ne_tag_ty_has_op_type :
-      ∀ ty ty' variant sem sem',
+    enum_ne_tag_tys_has_op_type_rel :
+      ∀ ty ty',
+      ty.(ty_metadata_kind) = ty'.(ty_metadata_kind) →
       (∀ ot, ty_has_op_type ty ot ↔ ty_has_op_type ty' ot) →
-      enum_tag_ty_inj (F ty) variant = Some sem →
-      enum_tag_ty_inj (F ty') variant = Some sem' →
-      ∀ ot,
-      ty_has_op_type sem.(enum_tag_sem_ty) ot ↔
-      ty_has_op_type sem'.(enum_tag_sem_ty) ot;
+      (∀ m : metadata, st_of ty m = st_of ty' m) →
+      enum_tag_tys_has_op_type_rel (F ty).(enum_tag_ty) (F ty').(enum_tag_ty);
   }.
   Lemma enum_ne_lookup_tag_consistent {rt1 rt2} (F : type rt1 → enum rt2) ty ty' r :
     EnumNonExpansive F →
@@ -1148,7 +1250,8 @@ Section ne.
     - done.
     - done.
     - done.
-    - intros ?????? Hsem Hsem' ?. rewrite Hsem in Hsem'. inversion Hsem'. done.
+    - intros ???. unfold enum_tag_tys_has_op_type_rel, enum_tag_ty_has_op_type_rel.
+      induction (enum_tag_ty en) as [|[variant sem] tag_tys IH]; constructor; done.
   Qed.
 
   Class EnumContractive {rt1 rt2} (F : type rt1 → enum rt2) := {
@@ -1180,13 +1283,9 @@ Section ne.
         n
         (rew [λ x, type x] (enum_contr_rt_consistent ty ty' r) in ((F ty).(enum_ty) r : type (enum_rt (F ty) r)))
         ((F ty').(enum_ty) r);
-    enum_contr_tag_ty_has_op_type :
-      ∀ ty ty' variant sem sem',
-      enum_tag_ty_inj (F ty) variant = Some sem →
-      enum_tag_ty_inj (F ty') variant = Some sem' →
-      ∀ ot,
-      ty_has_op_type sem.(enum_tag_sem_ty) ot ↔
-      ty_has_op_type sem'.(enum_tag_sem_ty) ot;
+    enum_contr_tag_tys_has_op_type_rel :
+      ∀ ty ty',
+      enum_tag_tys_has_op_type_rel (F ty).(enum_tag_ty) (F ty').(enum_tag_ty);
   }.
   Lemma enum_contractive_lookup_tag_consistent {rt1 rt2} (F : type rt1 → enum rt2) ty ty' r :
     EnumContractive F →
@@ -1220,26 +1319,17 @@ Section ne.
           -- erewrite <-enum_ne_els; done.
           -- rewrite Htag_int. erewrite <-enum_ne_els; done.
           -- done.
-          -- intros variant sem' variant_ot Hsem' Hvariant_ot.
-             destruct (enum_tag_ty_inj_compat (F ty') variant sem' Hsem') as (r & vinj' & Htag' & ->).
-             assert (enum_tag (F ty) r = Some variant) as Htag.
-             { rewrite (enum_ne_tag_consistent ty ty'). done. }
-             destruct (enum_tag_compat _ (F ty) r variant Htag) as (vinj & Hsem).
-             pose proof (Hvariant variant (mk_enum_tag_sem (enum_rt (F ty) r) (enum_ty (F ty) r) vinj) variant_ot Hsem Hvariant_ot) as Hpayload.
-             pose proof (enum_ne_tag_ty_has_op_type ty ty' variant _ _ Hot_ty Hsem Hsem' variant_ot) as Hot_payload.
-             by apply Hot_payload.
+          -- eapply enum_tag_ty_has_op_types_transfer_forall2; last exact Hvariant.
+             by apply enum_ne_tag_tys_has_op_type_rel.
         * intros (Halg & Htag_int & Hwf & Hvariant). split_and!.
           -- erewrite enum_ne_els; done.
           -- rewrite Htag_int. erewrite enum_ne_els; done.
           -- done.
-          -- intros variant sem variant_ot Hsem Hvariant_ot.
-             destruct (enum_tag_ty_inj_compat (F ty) variant sem Hsem) as (r & vinj & Htag & ->).
-             assert (enum_tag (F ty') r = Some variant) as Htag'.
-             { rewrite <- (enum_ne_tag_consistent ty ty'). done. }
-             destruct (enum_tag_compat _ (F ty') r variant Htag') as (vinj' & Hsem').
-             pose proof (Hvariant variant (mk_enum_tag_sem (enum_rt (F ty') r) (enum_ty (F ty') r) vinj') variant_ot Hsem' Hvariant_ot) as Hpayload.
-             pose proof (enum_ne_tag_ty_has_op_type ty' ty variant _ _ (λ ot, iff_sym (Hot_ty ot)) Hsem' Hsem variant_ot) as Hot_payload.
-             by apply Hot_payload.
+          -- eapply enum_tag_ty_has_op_types_transfer_forall2; last exact Hvariant.
+             apply enum_ne_tag_tys_has_op_type_rel.
+             { done. }
+             { intro; apply iff_sym, Hot_ty. }
+             { done. }
       + split; intros (el & Halg & ->); exists el; split; [erewrite <-enum_ne_els| |erewrite enum_ne_els|]; done.
     - simpl. eauto.
     - intros n ty ty' Hd.
@@ -1304,26 +1394,14 @@ Section ne.
           -- erewrite <-enum_contr_els; done.
           -- rewrite Htag_int. erewrite <-enum_contr_els; done.
           -- done.
-          -- intros variant sem' variant_ot Hsem' Hvariant_ot.
-             destruct (enum_tag_ty_inj_compat (F ty') variant sem' Hsem') as (r & vinj' & Htag' & ->).
-             assert (enum_tag (F ty) r = Some variant) as Htag.
-             { rewrite (enum_contr_tag_consistent ty ty'). done. }
-             destruct (enum_tag_compat _ (F ty) r variant Htag) as (vinj & Hsem).
-             pose proof (Hvariant variant (mk_enum_tag_sem (enum_rt (F ty) r) (enum_ty (F ty) r) vinj) variant_ot Hsem Hvariant_ot) as Hpayload.
-             pose proof (enum_contr_tag_ty_has_op_type ty ty' variant _ _ Hsem Hsem' variant_ot) as Hot_payload.
-             by apply Hot_payload.
+          -- eapply enum_tag_ty_has_op_types_transfer_forall2; last exact Hvariant.
+             by apply enum_contr_tag_tys_has_op_type_rel.
         * intros (Halg & Htag_int & Hwf & Hvariant). split_and!.
           -- erewrite enum_contr_els; done.
           -- rewrite Htag_int. erewrite enum_contr_els; done.
           -- done.
-          -- intros variant sem variant_ot Hsem Hvariant_ot.
-             destruct (enum_tag_ty_inj_compat (F ty) variant sem Hsem) as (r & vinj & Htag & ->).
-             assert (enum_tag (F ty') r = Some variant) as Htag'.
-             { rewrite <- (enum_contr_tag_consistent ty ty'). done. }
-             destruct (enum_tag_compat _ (F ty') r variant Htag') as (vinj' & Hsem').
-             pose proof (Hvariant variant (mk_enum_tag_sem (enum_rt (F ty') r) (enum_ty (F ty') r) vinj') variant_ot Hsem' Hvariant_ot) as Hpayload.
-             pose proof (enum_contr_tag_ty_has_op_type ty' ty variant _ _ Hsem' Hsem variant_ot) as Hot_payload.
-             by apply Hot_payload.
+          -- eapply enum_tag_ty_has_op_types_transfer_forall2; last exact Hvariant.
+             by apply enum_contr_tag_tys_has_op_type_rel.
       + split; intros (el & Halg & ->); exists el; split; [erewrite <-enum_contr_els| |erewrite enum_contr_els|]; done.
     - simpl. eauto.
     - intros n ty ty' Hd.
