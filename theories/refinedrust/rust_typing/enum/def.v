@@ -594,66 +594,51 @@ Section enum.
     _ty_wf_E := enum_tag_ty_wf_E e.(enum_tag_ty);
   |}.
   Next Obligation.
-    (*iPoseProof (list_incl_lft_incl_list (ty_lfts (e.(enum_ty) r)) (enum_tag_ty_lfts e.(enum_tag_ty))) as "Hincl".*)
-      (*{ etrans; last by eapply (enum_ty_lfts_incl_tag_ty_lfts e r tag Htag). done. }*)
-    iIntros (rt e π r m v).
-    rewrite enum_own_val_unfold.
-    iIntros "(%el & %variant & %variant_ly & -> & %Halg & %Htag & %Hvariant & %Hst & Htag & Htag_pad & Hvariant & Htail)".
-    iPoseProof (ty_own_val_has_layout with "Htag") as "%Htag_val".
-    { simpl. apply syn_type_has_layout_int. done. }
-    rewrite uninit_own_spec.
-    iDestruct "Htag_pad" as "(_ & %tag_pad_ly & %Htag_pad_ly & %Htag_pad_val)".
-    apply syn_type_has_layout_literal_inv in Htag_pad_ly as (-> & _ & _ & _).
-    iPoseProof (ty_own_val_has_layout with "Hvariant") as "%Hvariant_val"; first done.
-    rewrite uninit_own_spec.
-    iDestruct "Htail" as "(_ & %tail_ly & %Htail_ly & %Htail_val)".
-    apply syn_type_has_layout_literal_inv in Htail_ly as (-> & _ & _ & _).
-    iClear "Htag Hvariant".
-    iExists el. iPureIntro. split.
-    - by eapply use_enum_layout_alg_Some_inv.
-    - by eapply enum_val_has_layout_from_parts.
-  Qed.
-  Next Obligation.
-    intros rt en ot Hot.
-    by apply is_enum_ot_layout.
-  Qed.
-  Next Obligation.
-    intros rt en ot Hot.
-    by eapply is_enum_ot_wf.
-  Qed.
-  Next Obligation.
-    iIntros (rt e π r m v) "_". done.
-  Qed.
-  Next Obligation.
-    iIntros (rt e κ π r m l) "_". done.
-  Qed.
-  Next Obligation.
-    unfold TCNoResolve. rewrite enum_shr_unfold /enum_shr_def. apply _.
-  Qed.
-  Next Obligation.
-    iIntros (rt e κ π l r m) "Hshr".
-    rewrite enum_shr_unfold.
-    iDestruct "Hshr" as "(%el & %variant & %variant_ly & -> & %Halg & %Htag & %Hvariant & %Hst & %Hly & _)".
-    iExists el. iPureIntro. split; first done.
-    by eapply use_enum_layout_alg_Some_inv.
-  Qed.
-  Next Obligation.
-    iIntros (rt e E κ l ly π r m q ?) "#CTX #Hna Htok %Halg %Hly Hlb Hb".
+    intros rt en. econstructor.
+    - iIntros (π r m v).
+      rewrite enum_own_val_unfold.
+      iIntros "(%el & %variant & %variant_ly & -> & %Halg & %Htag & %Hvariant & %Hst & Htag & Htag_pad & Hvariant & Htail)".
+      iPoseProof (ty_own_val_has_layout with "Htag") as "%Htag_val".
+      { simpl. apply syn_type_has_layout_int. done. }
+      rewrite uninit_own_spec.
+      iDestruct "Htag_pad" as "(_ & %tag_pad_ly & %Htag_pad_ly & %Htag_pad_val)".
+      apply syn_type_has_layout_literal_inv in Htag_pad_ly as (-> & _ & _ & _).
+      iPoseProof (ty_own_val_has_layout with "Hvariant") as "%Hvariant_val"; first done.
+      rewrite uninit_own_spec.
+      iDestruct "Htail" as "(_ & %tail_ly & %Htail_ly & %Htail_val)".
+      apply syn_type_has_layout_literal_inv in Htail_ly as (-> & _ & _ & _).
+      iClear "Htag Hvariant".
+      iExists el. iPureIntro. split.
+      + by eapply use_enum_layout_alg_Some_inv.
+      + by eapply enum_val_has_layout_from_parts.
+    - intros ot Hot.
+      by apply is_enum_ot_layout.
+    - intros ot Hot.
+      by eapply is_enum_ot_wf.
+    - iIntros (π r m v) "_". done.
+    - iIntros (κ π r m l) "_". done.
+    - unfold TCNoResolve. rewrite enum_shr_unfold /enum_shr_def. apply _.
+    - iIntros (κ π l r m) "Hshr".
+      rewrite enum_shr_unfold.
+      iDestruct "Hshr" as "(%el & %variant & %variant_ly & -> & %Halg & %Htag & %Hvariant & %Hst & %Hly & _)".
+      iExists el. iPureIntro. split; first done.
+      by eapply use_enum_layout_alg_Some_inv.
+    - iIntros (E κ l ly π r m q ?) "#CTX #Hna Htok %Halg %Hly Hlb Hb".
     set (bor_contents :=
       (∃ el variant variant_ly,
         ⌜m = MetaNone⌝ ∗
-        ⌜use_enum_layout_alg e.(enum_els) = Some el⌝ ∗
-        ⌜e.(enum_tag) r = Some variant⌝ ∗
+        ⌜use_enum_layout_alg en.(enum_els) = Some el⌝ ∗
+        ⌜en.(enum_tag) r = Some variant⌝ ∗
         ⌜enum_variant_lookup el.(el_variants) variant = Some variant_ly⌝ ∗
-        ⌜syn_type_has_layout (ty_syn_type (e.(enum_ty) r) MetaNone) variant_ly⌝ ∗
+        ⌜syn_type_has_layout (ty_syn_type (en.(enum_ty) r) MetaNone) variant_ly⌝ ∗
         ∃ v : val, l ↦ v ∗
           take (ly_size (it_layout el.(el_tag_it))) v
-            ◁ᵥ{π, MetaNone} els_lookup_tag e.(enum_els) variant @ int el.(el_tag_it) ∗
+            ◁ᵥ{π, MetaNone} els_lookup_tag en.(enum_els) variant @ int el.(el_tag_it) ∗
           take (el.(el_data_offset) - ly_size (it_layout el.(el_tag_it)))
             (drop (ly_size (it_layout el.(el_tag_it))) v)
             ◁ᵥ{π, MetaNone} () @ uninit (LiteralSynType (enum_tag_padding_ly el)) ∗
           take (ly_size variant_ly) (drop el.(el_data_offset) v)
-            ◁ᵥ{π, MetaNone} e.(enum_r) r @ e.(enum_ty) r ∗
+            ◁ᵥ{π, MetaNone} en.(enum_r) r @ en.(enum_ty) r ∗
           drop (el.(el_data_offset) + ly_size variant_ly) v
             ◁ᵥ{π, MetaNone} () @ uninit (LiteralSynType (enum_tail_padding_ly el variant_ly)))%I).
     iPoseProof (bor_iff _ _ bor_contents with "[] Hb") as "Hb".
@@ -690,11 +675,11 @@ Section enum.
     set (variant_size := ly_size variant_ly).
     iPoseProof (bor_iff _ _
       ((∃ vtag : val, l ↦ vtag ∗
-          vtag ◁ᵥ{π, MetaNone} els_lookup_tag e.(enum_els) variant @ int el.(el_tag_it)) ∗
+          vtag ◁ᵥ{π, MetaNone} els_lookup_tag en.(enum_els) variant @ int el.(el_tag_it)) ∗
        (∃ vtag_pad : val, (l +ₗ tag_size) ↦ vtag_pad ∗
           vtag_pad ◁ᵥ{π, MetaNone} () @ uninit (LiteralSynType (enum_tag_padding_ly el))) ∗
        (∃ vvariant : val, (l +ₗ data_offset) ↦ vvariant ∗
-          vvariant ◁ᵥ{π, MetaNone} e.(enum_r) r @ e.(enum_ty) r) ∗
+          vvariant ◁ᵥ{π, MetaNone} en.(enum_r) r @ en.(enum_ty) r) ∗
        (∃ vtail : val, (l +ₗ (data_offset + variant_size)%nat) ↦ vtail ∗
           vtail ◁ᵥ{π, MetaNone} () @ uninit (LiteralSynType (enum_tail_padding_ly el variant_ly))))%I
       with "[] Hb") as "Hb".
@@ -712,23 +697,25 @@ Section enum.
     iDestruct "Htok1" as "(Htok_variant_κ & Htok_tail)".
 
     iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok_tag] [] [] [] Hb_tag") as "Htag_step"; first done.
-    { simpl. rewrite right_id. iFrame. }
+    { simpl. rewrite ty_lfts_unfold. rewrite right_id. iFrame. }
     { simpl. iPureIntro. apply syn_type_has_layout_int. done. }
     { iPureIntro. by apply enum_tag_has_layout_loc. }
     { iApply (loc_in_bounds_enum_tag with "Hlb"). done. }
 
     iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok_tag_pad] [] [] [] Hb_tag_pad") as "Htag_pad_step"; first done.
-    { simpl. rewrite right_id. iFrame. }
+    { simpl. rewrite ty_lfts_unfold/=. rewrite right_id. iFrame. }
     { iPureIntro. by apply enum_tag_padding_uninit_syn_type_has_layout with variant variant_ly. }
     { iPureIntro. apply has_layout_loc_1. rewrite /enum_tag_padding_ly /ly_align /=. done. }
     { iApply (loc_in_bounds_enum_tag_padding with "Hlb"). done. }
 
-    iMod (lft_incl_acc _ _ (lft_intersect_list (ty_lfts (e.(enum_ty) r))) with "[] Htok2") as "(%q' & Htok_variant_lfts & Hcl_variant_lfts)"; first done.
-    { iApply list_incl_lft_incl_list. apply (enum_lfts_complete _ e r). }
+    iPoseProof (list_incl_lft_incl_list (ty_lfts (en.(enum_ty) r)) (enum_tag_ty_lfts en.(enum_tag_ty))) as "Hincl".
+    { etrans; last by eapply (enum_ty_lfts_incl_tag_ty_lfts en r _ Htag). done. }
+    iMod (lft_incl_acc _ _ (lft_intersect_list (ty_lfts (en.(enum_ty) r))) with "[] Htok2") as "(%q' & Htok_variant_lfts & Hcl_variant_lfts)"; first done.
+    { iApply "Hincl". }
     set (q0 := Qp.min (q / 2 / 2 / 2)%Qp q').
     iPoseProof (Fractional_fractional_le (λ q, q.[κ])%I (q / 2 / 2 / 2)%Qp q0 with "Htok_variant_κ") as "(Htok_variant_κ & Hcl_variant_κ)".
     { apply Qp.le_min_l. }
-    iPoseProof (Fractional_fractional_le (λ q, q.[lft_intersect_list (ty_lfts (e.(enum_ty) r))])%I q' q0 with "Htok_variant_lfts") as "(Htok_variant_lfts & Hcl_variant_lfts')".
+    iPoseProof (Fractional_fractional_le (λ q, q.[lft_intersect_list (ty_lfts (en.(enum_ty) r))])%I q' q0 with "Htok_variant_lfts") as "(Htok_variant_lfts & Hcl_variant_lfts')".
     { apply Qp.le_min_r. }
     iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok_variant_κ Htok_variant_lfts] [] [] [] Hb_variant") as "Hvariant_step"; first done.
     { rewrite ty_lfts_unfold -lft_tok_sep. iFrame. }
@@ -737,7 +724,7 @@ Section enum.
     { iApply (loc_in_bounds_enum_payload with "Hlb"). done. }
 
     iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok_tail] [] [] [] Hb_tail") as "Htail_step"; first done.
-    { simpl. rewrite right_id. iFrame. }
+    { simpl. rewrite ty_lfts_unfold/=. rewrite right_id. iFrame. }
     { iPureIntro. by apply enum_tail_padding_uninit_syn_type_has_layout with variant. }
     { iPureIntro. apply has_layout_loc_1. rewrite /enum_tail_padding_ly /ly_align /=. done. }
     { rewrite -/data_offset -/variant_size -shift_loc_assoc_nat.
@@ -755,20 +742,18 @@ Section enum.
     iEval (rewrite -lft_tok_sep) in "Htok_tag_pad".
     iDestruct "Htok_tag_pad" as "(Htok_tag_pad_κ & Htok_tag_pad_lfts)".
     iPoseProof ("Hcl_variant_κ" with "[$]") as "Htok_variant_κ'".
-    iEval (rewrite -ty_lfts_unfold) in "Htok_tag_pad_lfts".
+    (*iEval (rewrite -ty_lfts_unfold) in "Htok_tag_pad_lfts".*)
     iPoseProof ("Hcl_variant_lfts'" with "[$]") as "Hvariant_lfts'".
     iMod ("Hcl_variant_lfts" with "[$]") as "Htok2".
     rewrite enum_shr_unfold.
     iSplitL "Htag Htag_pad Hvariant Htail".
     { iExists el, variant, variant_ly. iFrame. done. }
-    simpl. rewrite right_id.
+    simpl. rewrite ty_lfts_unfold/=. rewrite right_id.
     iCombine "Htok_tag Htok_variant_κ'" as "Htok1".
     iCombine "Htok1 Htok_variant_κ" as "Htok1".
     iCombine "Htok1 Htok_tail" as "Htok1". rewrite -lft_tok_sep.
     by iFrame.
-  Qed.
-  Next Obligation.
-    iIntros (rt e κ κ' π r m l) "#Hincl Hshr".
+  - iIntros (κ κ' π r m l) "#Hincl Hshr".
     rewrite enum_shr_unfold.
     iDestruct "Hshr" as "(%el & %variant & %variant_ly & -> & %Halg & %Htag & %Hvariant & %Hst & %Hly & Htag & Htag_pad & Hvariant & Htail)".
     iExists el, variant, variant_ly. do 6 (iSplit; first done).
@@ -776,15 +761,11 @@ Section enum.
     iSplitL "Htag_pad"; first by iApply (ty_shr_mono with "Hincl Htag_pad").
     iSplitL "Hvariant"; first by iApply (ty_shr_mono with "Hincl Hvariant").
     by iApply (ty_shr_mono with "Hincl Htail").
-  Qed.
-  Next Obligation.
-    intros. iIntros "_". by iApply logical_step_intro.
-  Qed.
-  Next Obligation.
-    intros rt en ot st π r v Hot.
+  - intros. iIntros "_". by iApply logical_step_intro.
+  - intros ot st π r v Hot.
     rewrite /is_enum_ot in Hot.
     destruct ot as [ | | | | ? ? | ? ? ? | el | ]; try done.
-    - destruct Hot as (Halg & Htag_int & Hwf & Hot).
+    + destruct Hot as (Halg & Htag_int & Hwf & Hot).
       iIntros "Hv".
       iPoseProof (enum_own_val_has_layout with "Hv") as "(%elv & %_ & %Halgv & %Hlyv)".
       assert (elv = el) as -> by congruence.
@@ -808,18 +789,16 @@ Section enum.
            apply list_elem_of_lookup_1 in Hvariant_in as (i & Hvariant_lookup).
            apply (list_elem_of_lookup_2 _ i). rewrite /enum_variant_names list_lookup_fmap Hvariant_lookup //. }
       rewrite Hvariant /lookup_enum_variant_ot Hvariant_ot /= Hpayload_dec //.
-    - destruct Hot as (el' & Hel & ->).
+    + destruct Hot as (el' & Hel & ->).
       iIntros "Hv".
       iPoseProof (enum_own_val_has_layout with "Hv") as "(%elv & %_ & %Halgv & %Hlyv)".
       assert (elv = el') as -> by congruence.
       iExists (OVUntyped el' v). iPureIntro.
       simp decode_op_val. by rewrite bool_decide_true.
-  Qed.
-  Next Obligation.
-    intros rt en ot st π r v v' Hot Hsame.
+  - intros ot st π r v v' Hot Hsame.
     rewrite /is_enum_ot in Hot.
     destruct ot as [ | | | | ? ? | ? ? ? | el | ]; try done.
-    - destruct Hot as (Halg & Htag_int & Hwf & Hot).
+    + destruct Hot as (Halg & Htag_int & Hwf & Hot).
       iIntros "Hv".
       iPoseProof (enum_own_val_has_layout with "Hv") as "(%elv & %_ & %Halgv & %Hlyv)".
       assert (elv = el) as -> by congruence.
@@ -887,7 +866,7 @@ Section enum.
       change (ly_size {| ly_size := el_size el - el_data_offset el - ly_size variant_ly; ly_align_log := 0 |}) with
         (el_size el - el_data_offset el - ly_size variant_ly)%nat.
       change (ly_size el) with el.(el_size) in Hlyv'. lia.
-    - destruct Hot as (el' & Hel & ->).
+    + destruct Hot as (el' & Hel & ->).
       iIntros "Hv".
       iPoseProof (enum_own_val_has_layout with "Hv") as "(%elv & %_ & %Halgv & %Hlyv)".
       assert (elv = el') as -> by congruence.
@@ -895,12 +874,12 @@ Section enum.
       rewrite /has_layout_val /= in Hlyv'.
       pose proof (is_same_decoded_val_at_untyped_inv st v v' el' Hlyv Hlyv' Hsame) as ->.
       done.
-  Qed.
-  Next Obligation.
-    intros ?? ly _ Hst.
+  - intros ly _ Hst.
     apply syn_type_has_layout_enum_inv in Hst as (el & ul & variants & Hul & Hsl & -> & Hf).
     simpl. exists el. split; last done.
     by eapply use_enum_layout_alg_Some.
+  - apply _.
+  - apply _.
   Qed.
 
   Local Instance enum_t_copy_pers {rt} (e : enum rt) m :

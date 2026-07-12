@@ -2586,7 +2586,7 @@ Section enum.
       enum_tag r = Some variant →
       sigT (λ vinj, enum_tag_ty_find enum_tag_ty variant = Some (mk_enum_tag_sem (enum_rt r) (enum_ty r) vinj));
     enum_tag_ty_inj_compat : ∀ (variant : var_name) (sem : enum_tag_sem rt),
-      enum_tag_ty_inj variant = Some sem →
+      enum_tag_ty_find enum_tag_ty variant = Some sem →
       sigT (λ r : rt,
         sigT (λ vinj : enum_rt r → rt,
           enum_tag r = Some variant ∧
