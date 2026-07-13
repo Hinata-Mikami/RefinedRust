@@ -368,7 +368,7 @@
                   nativeBuildInputs = [pkgs.makeWrapper];
                   postBuild = ''
                     wrapProgram $out/bin/dune \
-                      --set OCAMLPATH $out/lib/ocaml/${pkgs.ocaml.version}/site-lib \
+                      --set OCAMLPATH $out/lib/ocaml/${pkgs.rocqPackages.rocq-core.ocamlPackages.ocaml.version}/site-lib \
                       --set ROCQPATH $out/lib/coq/${pkgs.rocqPackages.rocq-core.rocq-version}/user-contrib
 
                     wrapProgram $out/bin/cargo-${name} \
