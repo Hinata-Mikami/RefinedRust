@@ -150,12 +150,16 @@ Proof.
   iSplitR. { iModIntro. 
     iIntros (???). simpl. 
     iIntros "Ha". unfold Option_ty.
-    rewrite /ty_own_val/=. simpl. 
+    rewrite /ty_own_val/=. 
+    rewrite enum_own_val_unfold/=/enum_own_val_def.
+    simpl. 
     rewrite Hst. done. }
   iModIntro. 
   iIntros (????). simpl. 
   iIntros "Ha". unfold Option_ty.
   rewrite /ty_shr/=. simpl. 
+  rewrite enum_shr_unfold/=/enum_shr_def.
+  simpl.
   rewrite Hst. done.
 Qed.
 Definition Option_ty_weak_subtype_None_inst := [instance Option_ty_weak_subtype_None].
@@ -184,6 +188,7 @@ Proof.
     + apply struct_t_contr; last apply _.
       intros. by erewrite type_ctr_syn_type.
     + apply _.
+  - solve_enum_t_contr_op_type.
 Qed.
 Global Instance option_ne {rt1 T_rt} (T : type rt1 → type T_rt) : 
   TypeNonExpansive T → 
@@ -208,6 +213,7 @@ Proof.
     + apply struct_t_ne; last apply _.
       intros. by erewrite type_ne_syn_type.
     + apply _.
+  - solve_enum_t_ne_op_type.
 Qed.
 
 End extra_specs.
