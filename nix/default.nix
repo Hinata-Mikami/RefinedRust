@@ -2,14 +2,18 @@
   crane,
   nixpkgs,
   rust-overlay,
-}: rec {
-  mapToAttrs = fValue: l: let
-    f = {pname, ...} @ args: nixpkgs.lib.nameValuePair pname (fValue args);
-  in
+}:
+rec {
+  mapToAttrs =
+    fValue: l:
+    let
+      f = { pname, ... }@args: nixpkgs.lib.nameValuePair pname (fValue args);
+    in
     nixpkgs.lib.listToAttrs (map f l);
 
   rocq = {
-    mkRefinedRust = pkgs: frontend: stdlib:
+    mkRefinedRust =
+      pkgs: frontend: stdlib:
       import ./mkRocqRefinedRust.nix {
         inherit pkgs stdlib;
         cargoRefinedRust = rust.cargoRefinedRust pkgs frontend stdlib;
@@ -18,8 +22,9 @@
 
   rust = {
     # Libraries
-    availableTargets = pkgs: import ./availableTargets.nix {inherit pkgs rust-overlay;};
-    mkToolchain = pkgs: channel: components:
+    availableTargets = pkgs: import ./availableTargets.nix { inherit pkgs rust-overlay; };
+    mkToolchain =
+      pkgs: channel: components:
       pkgs.rust-bin.fromRustupToolchain {
         inherit channel components;
         profile = "minimal";
@@ -27,23 +32,27 @@
     overrideToolchain = pkgs: (crane.mkLib pkgs).overrideToolchain;
 
     # Tools
-    cargoClippy = pkgs: devToolchain: (crane.mkLib pkgs).cargoClippy.override {clippy = devToolchain;};
+    cargoClippy =
+      pkgs: devToolchain: (crane.mkLib pkgs).cargoClippy.override { clippy = devToolchain; };
     cargoDeny = pkgs: (crane.mkLib pkgs).cargoDeny;
-    cargoFmt = pkgs: devToolchain: (crane.mkLib pkgs).cargoFmt.override {rustfmt = devToolchain;};
+    cargoFmt = pkgs: devToolchain: (crane.mkLib pkgs).cargoFmt.override { rustfmt = devToolchain; };
 
-    cargoMachete = pkgs:
+    cargoMachete =
+      pkgs:
       import ./cargoMachete.nix {
         inherit pkgs;
         craneLib = crane.mkLib pkgs;
       };
 
-    cargoRefinedRust = pkgs: frontend: stdlib:
+    cargoRefinedRust =
+      pkgs: frontend: stdlib:
       import ./cargoRefinedRust.nix {
         inherit frontend pkgs stdlib;
         craneLib = crane.mkLib pkgs;
       };
 
-    cargoWorkspaceUnused = pkgs:
+    cargoWorkspaceUnused =
+      pkgs:
       import ./cargoWorkspaceUnused.nix {
         inherit pkgs;
         craneLib = crane.mkLib pkgs;

@@ -1,10 +1,13 @@
 {
   craneLib,
   pkgs,
-}: devToolchain: {
+}:
+devToolchain:
+{
   pname,
   src,
-}: let
+}:
+let
   cargo-workspace-unused = (craneLib.overrideToolchain devToolchain).buildPackage {
     src = pkgs.fetchCrate {
       pname = "cargo-workspace-unused-pub";
@@ -13,16 +16,19 @@
     };
   };
 in
-  craneLib.mkCargoDerivation {
-    inherit pname src;
+craneLib.mkCargoDerivation {
+  inherit pname src;
 
-    buildPhaseCargoCommand = ''
-      rust-analyzer scip . --output index.scip
-      cargo workspace-unused-pub --extensions rs,unused
-    '';
-    nativeBuildInputs = [cargo-workspace-unused devToolchain];
+  buildPhaseCargoCommand = ''
+    rust-analyzer scip . --output index.scip
+    cargo workspace-unused-pub --extensions rs,unused
+  '';
+  nativeBuildInputs = [
+    cargo-workspace-unused
+    devToolchain
+  ];
 
-    cargoArtifacts = null;
-    doInstallCargoArtifacts = false;
-    pnameSuffix = "-workspace-unused";
-  }
+  cargoArtifacts = null;
+  doInstallCargoArtifacts = false;
+  pnameSuffix = "-workspace-unused";
+}

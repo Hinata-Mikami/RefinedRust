@@ -16,7 +16,11 @@ mkRocqDerivation {
   pname = "sniper";
 
   mlPlugin = true;
-  propagatedBuildInputs = [rocq-core.ocamlPackages.num metarocq-template smtcoq];
+  propagatedBuildInputs = [
+    rocq-core.ocamlPackages.num
+    metarocq-template
+    smtcoq
+  ];
 
   release.${version}.sha256 = sha256;
 }

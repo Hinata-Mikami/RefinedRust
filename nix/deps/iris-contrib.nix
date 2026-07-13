@@ -14,7 +14,7 @@ mkRocqDerivation {
   owner = "iris";
   pname = "iris-contrib";
 
-  propagatedBuildInputs = [iris];
+  propagatedBuildInputs = [ iris ];
 
   release.${version}.sha256 = sha256;
 }

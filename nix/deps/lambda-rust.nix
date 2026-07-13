@@ -14,7 +14,7 @@ mkRocqDerivation {
   owner = "iris";
   pname = "lambda-rust";
 
-  propagatedBuildInputs = [iris];
+  propagatedBuildInputs = [ iris ];
 
   release.${version}.sha256 = sha256;
 }

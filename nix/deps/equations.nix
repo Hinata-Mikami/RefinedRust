@@ -16,7 +16,10 @@ mkRocqDerivation {
   repo = "Coq-Equations";
   opam-name = "rocq-equations";
 
-  propagatedBuildInputs = [stdlib rocq-core.ocamlPackages.ppx_optcomp];
+  propagatedBuildInputs = [
+    stdlib
+    rocq-core.ocamlPackages.ppx_optcomp
+  ];
 
   mlPlugin = true;
   useDune = true;
