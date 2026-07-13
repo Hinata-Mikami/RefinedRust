@@ -1,0 +1,28 @@
+{
+    "name": "RefinedRust devcontainer",
+    "image": "<FILL HERE THE RESULT OF `nix build .#devcontainer && docker load < result`>",
+
+    "customizations": {
+        "vscode": {
+            "extensions": [ "rocq-prover.vsrocq" ],
+
+            "settings": {
+                "extensions": {
+                    "autoCheckUpdates": false,
+                    "ignoreRecommandations": true,
+                    "showRecommendationsOnlyOnDemand": true
+                },
+
+                "git": {
+                    "ignoreMissingGitWarning": true
+                },
+
+                "json": {
+                    "validate": {
+                        "enable": false
+                    }
+                }
+             }
+        }
+    }
+}

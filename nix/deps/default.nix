@@ -56,8 +56,4 @@ let
 in
 _: prev: {
   rocqPackages = mkRocqPackages prev.rocqPackages;
-
-  rocqPackages_9_0 = null;
-  rocqPackages_9_1 = null;
-  rocqPackages_9_2 = null;
 }

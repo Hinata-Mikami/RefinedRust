@@ -11,6 +11,8 @@ rec {
     in
     nixpkgs.lib.listToAttrs (map f l);
 
+  mkDevContainer = import ./mkDevContainer.nix;
+
   rocq = {
     mkRefinedRust =
       pkgs: frontend: stdlib:

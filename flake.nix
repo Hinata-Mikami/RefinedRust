@@ -503,6 +503,7 @@
 
               stdlib = packages.stdlib-stdlib;
 
+              devcontainer = self.lib.mkDevContainer pkgs packages.default;
             }
             // lib.fix (f: self.lib.mapToAttrs mkStdlib (stdlib f));
 
@@ -568,14 +569,14 @@
           devShells.default = pkgs.mkShell {
             inputsFrom = with packages; [
               frontend
-              refinedrust
+              refinedrust-smtcoq
             ];
+
             packages = with pkgs; [
               cargo-deny
               cargo-machete
               gnumake
               rust.toolchain.dev
-              pkgs.rocqPackages.sniper
             ];
 
             LD_LIBRARY_PATH = lib.makeLibraryPath [ rust.toolchain.dev ];
