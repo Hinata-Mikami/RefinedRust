@@ -1409,7 +1409,7 @@ Ltac rewrite_type_ctr_syn_types ty ty' :=
 Ltac solve_enum_t_contr_has_op_type ty ty':=
   split; [done | ];
   simpl;
-  intros ot;
+  intros ?;
   first [done
   | repeat rewrite ty_has_op_type_unfold/=;
     rewrite_type_ctr_syn_types ty ty'
@@ -1429,6 +1429,8 @@ Ltac solve_enum_t_contr_has_op_type ty ty':=
       end
   end.
 Ltac solve_enum_t_contr_op_type :=
+  let ty := fresh "ty" in
+  let ty' := fresh "ty" in
   intros ty ty';
   unfold enum_tag_tys_has_op_type_rel;
   simpl;
@@ -1453,7 +1455,7 @@ Ltac rewrite_type_ne_syn_types ty ty' :=
 Ltac solve_enum_t_ne_has_op_type ty ty' :=
   split; [done | ];
   simpl;
-  intros ot;
+  intros ?;
   first [done
   | repeat rewrite ty_has_op_type_unfold/=;
     rewrite_type_ne_syn_types ty ty'
@@ -1472,7 +1474,9 @@ Ltac solve_enum_t_ne_has_op_type ty ty' :=
       end
   end.
 Ltac solve_enum_t_ne_op_type :=
-  intros ty ty' Hmeta Hot Hst;
+  let ty := fresh "ty" in
+  let ty' := fresh "ty" in
+  intros ty ty' ? ? ?;
   unfold enum_tag_tys_has_op_type_rel;
   simpl;
   repeat match goal with
