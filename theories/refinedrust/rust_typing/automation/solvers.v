@@ -2469,6 +2469,8 @@ Ltac solve_llctx_remove_dead_aliases ::=
 (** solve_map_lookup *)
 (* this extends the Lithium solver with support for goals where the lookup is None *)
 Ltac compute_map_lookup_unchecked :=
+  (* for tag lookups *)
+  unfold enum_tag'; simpl;
   unfold_opaque @named_lft_delete;
   unfold_opaque @named_lft_update;
   lazymatch goal with
@@ -2487,6 +2489,8 @@ Ltac compute_map_lookup_unchecked :=
          change_no_check (None = res); reflexivity
       end ]).
 Ltac compute_map_lookup_checked :=
+  (* for tag lookups *)
+  unfold enum_tag'; simpl;
   unfold_opaque @named_lft_delete;
   unfold_opaque @named_lft_update;
   lazymatch goal with

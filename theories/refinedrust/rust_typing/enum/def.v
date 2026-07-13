@@ -1184,6 +1184,37 @@ Section enum.
     rewrite ty_wf_E_unfold/=.
     apply (dep_lft_morph_wf_E (dep_enum_tag_ty_lft_morphism_lft (DepEnumTagTyLftMorphism:=Htag_mor))).
   Qed.
+
+  Lemma ty_has_op_type_enum_canonical {rt} (en : enum rt) variant_ots ot el tag_int :
+    use_op_alg en.(enum_els) = Some (EnumOp el variant_ots tag_int) →
+    ot = EnumOp el variant_ots tag_int →
+    Forall2 (λ tag_ty variant_ot,
+      tag_ty.1 = variant_ot.1 ∧
+      ty_has_op_type tag_ty.2.(enum_tag_sem_ty) variant_ot.2)
+      en.(enum_tag_ty) variant_ots →
+    ty_has_op_type (enum_t en) ot.
+  Proof.
+    intros Hot -> Ha.
+    pose proof Hot as Hwf.
+    apply use_op_alg_wf in Hwf.
+    rewrite ty_has_op_type_unfold. simpl.
+    rewrite /is_enum_ot.
+    unfold use_op_alg in Hot.
+    simpl in Hot.
+    unfold syn_type_of_els in Hot.
+    simpl in Hot.
+    fold use_op_alg in Hot.
+    apply bind_Some in Hot as (variant_lys & Hlys & Hot).
+    apply bind_Some in Hot as (el' & Halg & Hot).
+    apply bind_Some in Hot as (variant_ots' & _ & Hot).
+    destruct (decide (enum_tag_int_wf (els_tag_it (enum_els en)) (els_variants (enum_els en)) (els_tag_int (enum_els en)))) as [_|Htag]; last done.
+    injection Hot as <- <- <-.
+    simpl in Hwf.
+    destruct Hwf as (Hnames1 & Hnames2 & Hnodup & Hrange & Hpayload).
+    rewrite /enum_tag_ty_has_op_types in Ha.
+    split_and!; try done.
+    - by rewrite /use_enum_layout_alg Hlys /= Halg.
+  Qed.
 End enum.
 
 Global Hint Extern 10 (Copyable _) => (refine (enum_t_copyable _ _); intros []; apply _) : typeclass_instances.

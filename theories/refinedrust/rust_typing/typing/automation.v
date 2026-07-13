@@ -1540,6 +1540,13 @@ Proof.
   rewrite ty_has_op_type_unfold.
   apply is_value_ot_typed_use_op_alg.
 Qed.
+Lemma ty_has_op_type_typed_value_canonical `{!typeGS Σ} st ly :
+  syn_type_has_layout st ly →
+  ty_has_op_type (typed_value_t st) (use_op_alg' st).
+Proof.
+  rewrite ty_has_op_type_unfold.
+  apply is_value_ot_typed_use_op_alg.
+Qed.
 Lemma ty_has_op_type_ex_plain_t_canonical `{!typeGS Σ} {X Y} P ty ot :
   ty_has_op_type ty ot →
   ty_has_op_type (ex_plain_t X Y P ty) ot.
@@ -1552,6 +1559,26 @@ Lemma ty_has_op_type_ex_na_t_canonical `{!typeGS Σ} {X Y} P ty ot :
 Proof.
   intros ?. rewrite ty_has_op_type_unfold. done.
 Qed.
+Lemma ty_has_op_type_struct_canonical' `{!typeGS Σ} {rts} (tys : hlist type rts) (sls : struct_layout_spec) ots sl :
+  use_op_alg sls = Some (StructOp sl ots) →
+  Forall2 (λ ty ot, ty_has_op_type (projT2 ty) ot) (hzipl _ tys) ots →
+  ty_has_op_type (struct_t sls tys) (use_op_alg' sls).
+Proof.
+  intros Hot ?. eapply ty_has_op_type_struct_canonical; [done | | done].
+  rewrite /use_op_alg' Hot//.
+Qed.
+Lemma ty_has_op_type_enum_canonical' `{!typeGS Σ} {rt} (en : enum rt) variant_ots el tag_int :
+  use_op_alg en.(enum_els) = Some (EnumOp el variant_ots tag_int) →
+  Forall2 (λ tag_ty variant_ot,
+    tag_ty.1 = variant_ot.1 ∧
+    ty_has_op_type tag_ty.2.(enum_tag_sem_ty) variant_ot.2)
+    en.(enum_tag_ty) variant_ots →
+  ty_has_op_type (enum_t en) (use_op_alg' en.(enum_els)).
+Proof.
+  intros Hot ?. eapply ty_has_op_type_enum_canonical; [done | | done].
+  rewrite /use_op_alg' Hot//.
+Qed.
+
 Ltac solve_ty_has_op_type_struct_fields :=
   simpl;
   match goal with
@@ -1562,21 +1589,44 @@ Ltac solve_ty_has_op_type_struct_fields :=
     by apply Forall2_nil
   end
 .
+Ltac solve_ty_has_op_type_enum_variants :=
+  simpl;
+  match goal with
+  | |- Forall2 _ (_ :: _)  (_ :: _) =>
+    apply Forall2_cons; split;
+    [simpl; split; first done | solve_ty_has_op_type_enum_variants]
+  | |- Forall2 _ [] [] =>
+    by apply Forall2_nil
+  end
+.
 Ltac solve_ty_has_op_type_cases ::=
   lazymatch goal with
   | |- ty_has_op_type (value_t true ?st) (use_op_alg' _) =>
         refine (ty_has_op_type_value_canonical st _ _);
         [ solve_layout_alg]
+  | |- ty_has_op_type (typed_value_t ?st) (use_op_alg' _) =>
+        refine (ty_has_op_type_typed_value_canonical st _ _);
+        [ solve_layout_alg]
   | |- ty_has_op_type (mut_type_project _ _ _) _ =>
         refine (mut_fixpoint_project_ty_has_op_type_1 _ _ _ _ _)
   | |- _ =>
     first [
-      refine (ty_has_op_type_struct_canonical _ _ _ _ _ _ _ _);
+      refine (ty_has_op_type_struct_canonical' _ _ _ _ _ _);
+      [ solve_op_alg
+      | solve_ty_has_op_type_struct_fields]
+    | refine (ty_has_op_type_enum_canonical' _ _ _ _ _ _);
+      [ solve_op_alg
+      | solve_ty_has_op_type_enum_variants]
+    | refine (ty_has_op_type_ex_plain_t_canonical _ _ _ _)
+    | refine (ty_has_op_type_ex_na_t_canonical _ _ _ _)
+    | refine (ty_has_op_type_struct_canonical _ _ _ _ _ _ _ _);
       [ solve_op_alg
       | solve_ot_eq
       | solve_ty_has_op_type_struct_fields]
-    | refine (ty_has_op_type_ex_plain_t_canonical _ _ _ _)
-    | refine (ty_has_op_type_ex_na_t_canonical _ _ _ _)
+    | refine (ty_has_op_type_enum_canonical _ _ _ _ _ _ _ _);
+      [ solve_op_alg
+      | solve_ot_eq
+      | solve_ty_has_op_type_enum_variants]
     ]
   end.
 
@@ -1835,7 +1885,9 @@ Ltac liSidecond_hook P ::=
             (*| shelve_sidecond*)
             ]
         | ])
-      else (split; first shelve_sidecond)
+      else
+        (* TODO: we should cache ty_has_op_type as it can be expensive *)
+        (split; first shelve_sidecond)
 end.
 (** If this is not a built-in sidecond, cache it so we don't have to solve it again in the future *)
 Ltac hooks.liAfterSidecond_hook P ::=

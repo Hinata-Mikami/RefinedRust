@@ -250,25 +250,25 @@ Ltac simplify_layout' H_ly :=
   repeat match type of H_ly with
   | _ = use_layout_alg' ?st =>
       erewrite (simplify_use_layout_alg' st) in H_ly;
-      [ | solve_layout_alg]
+      [ | solve[solve_layout_alg]]
   | _ = use_struct_layout_alg' ?sls =>
       erewrite (simplify_use_struct_layout_alg' sls) in H_ly;
-      [ | solve_layout_alg]
+      [ | solve[solve_layout_alg]]
   | _ = use_enum_layout_alg' ?els =>
       erewrite (simplify_use_enum_layout_alg' els) in H_ly;
-      [ | solve_layout_alg]
+      [ | solve[solve_layout_alg]]
   | _ = use_union_layout_alg' ?uls =>
       erewrite (simplify_use_union_layout_alg' uls) in H_ly;
-      [ | solve_layout_alg]
+      [ | solve[solve_layout_alg]]
   | _ = ot_layout (use_op_alg' ?st) =>
       match st with
       | ty_syn_type ?ty ?m =>
           is_var ty;
           erewrite (simplify_ot_layout_var st) in H_ly;
-          [ | solve_layout_alg ]
+          [ | solve[solve_layout_alg] ]
       | _ =>
           erewrite (simplify_ot_layout (use_op_alg' st)) in H_ly;
-          [ | solve_ot_eq ]
+          [ | solve[solve_ot_eq] ]
       end
   | _ => idtac
   end.
@@ -759,7 +759,7 @@ Ltac simplify_optype' H_ly :=
   repeat match type of H_ly with
   | _ = use_op_alg' ?st =>
       erewrite (simplify_use_op_alg' st) in H_ly;
-      [ | solve_op_alg]
+      [ | solve[solve_op_alg]]
   | _ => idtac
   end.
 (** Simplify a layout [ly] in the goal. *)
@@ -845,7 +845,7 @@ Ltac solve_op_alg_core_step :=
   | |- Forall2 use_op_alg_enum_pred [] ?fields' =>
       econstructor
   | |- Forall2 use_op_alg_enum_pred (?f :: ?fields) ?fields' =>
-    econstructor; [ unfold use_op_alg_enum_pred | ]
+      eapply (Forall2_cons  _ _ _ (_, _)); split; [ unfold use_op_alg_enum_pred; split; first done | ]
   | |- use_op_alg (IntSynType ?it) = Some ?ot =>
       notypeclasses refine (use_op_alg_int _ _ _);
       [ solve_ot_eq ]

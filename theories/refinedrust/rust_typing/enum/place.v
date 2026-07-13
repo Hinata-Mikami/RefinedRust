@@ -76,11 +76,10 @@ Section rules.
     (*| _ => def*)
     (*end.*)
 
-  Lemma typed_place_enum_data_field_owned {rt} E L f l (en : enum rt) (r : rt) bmin0 els tag tag'
+  Lemma typed_place_enum_data_field_owned {rt} E L f l (en : enum rt) (r : rt) bmin0 els tag'
       (variant : option enum_ltype_variant) P T :
     typed_place E L f l (EnumLtype en variant) (#r) bmin0 (Owned) (EnumDataPCtx els tag' :: P) T :-
       exhale (⌜en.(enum_els) = els⌝);
-      exhale (⌜tag = tag'⌝);
       exhale (⌜lctx_place_update_kind_incl E L UpdStrong bmin0⌝);
       return (let v := interp_enum_ltype_variant en variant r in
         typed_place E L f ((GetEnumDataLocSt l els)) v.(eltv_ltype) (PlaceIn v.(eltv_rfn)) bmin0 (Owned ) P (λ L2 κs l2 b2 bmin2 rti ltyi ri updcx,
@@ -100,9 +99,8 @@ Section rules.
               opt_place_update_eq_refl)))
       )).
   Proof.
-    iIntros "(%Hels & %Htag_eq & %Hstrong & Hp)".
+    iIntros "(%Hels & %Hstrong & Hp)".
     iIntros (Φ F ??) "#(LFT & LLCTX) #HE HL Hf Hl HΦ/=".
-    subst tag'.
     iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hstrong"; first apply Hstrong.
     iPoseProof (enum_ltype_acc_owned F with "Hl") as "(%el & %Halg & %Hly & #Hlb & Hb)"; first done.
     iApply fupd_wpe.
@@ -143,11 +141,10 @@ Section rules.
   Definition typed_place_enum_data_field_owned_inst := [instance @typed_place_enum_data_field_owned].
   Global Existing Instance typed_place_enum_data_field_owned_inst.
 
-  Lemma typed_place_enum_data_field_shared {rt} E L f l (en : enum rt) (r : rt) bmin0 els tag tag'
+  Lemma typed_place_enum_data_field_shared {rt} E L f l (en : enum rt) (r : rt) bmin0 els tag'
       (variant : option enum_ltype_variant) κ P T :
     typed_place E L f l (EnumLtype en variant) (#r) bmin0 (Shared κ) (EnumDataPCtx els tag' :: P) T :-
       exhale (⌜en.(enum_els) = els⌝);
-      exhale (⌜tag = tag'⌝);
       exhale (⌜lctx_place_update_kind_incl E L UpdWeak bmin0⌝);
       return (let v := interp_enum_ltype_variant en variant r in
         typed_place E L f ((GetEnumDataLocSt l els)) v.(eltv_ltype) (#v.(eltv_rfn)) bmin0 (Shared κ) P (λ L2 κs l2 b2 bmin2 rti ltyi ri updcx,
@@ -167,9 +164,8 @@ Section rules.
               opt_place_update_eq_refl)))
        )).
   Proof.
-    iIntros "(%Hels & %Htag_eq & %Hweak & Hp)".
+    iIntros "(%Hels & %Hweak & Hp)".
     iIntros (Φ F ??) "#(LFT & LLCTX) #HE HL Hf Hl HΦ/=".
-    subst tag'.
     iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hweak"; first apply Hweak.
     iPoseProof (enum_ltype_acc_shared F with "Hl") as "(%el & %Halg & %Hly & #Hlb & Hb)"; first done.
     iApply fupd_wpe.

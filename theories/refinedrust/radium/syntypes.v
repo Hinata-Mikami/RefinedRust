@@ -2406,7 +2406,8 @@ Proof.
   intros [] ?. done.
 Qed.
 
-Definition use_op_alg_enum_pred `{!LayoutAlg} : (string * syn_type) → (string * op_type) → Prop := (λ '(name, fst) '(name2, fop), name=name2 ∧ use_op_alg fst = Some fop).
+Definition use_op_alg_enum_pred `{!LayoutAlg} : (string * syn_type) → (string * op_type) → Prop :=
+  (λ '(name, fst) fop, name=fop.1 ∧ use_op_alg fst = Some fop.2).
 Lemma use_op_alg_enum `{!LayoutAlg} (els : enum_layout_spec_raw_gen syn_type) variant_lys el variant_ots ot :
   list_map_option (λ '(name, st), ly ← use_layout_alg st; Some (name, ly)) els.(raw_els_variants) = Some variant_lys →
   enum_layout_alg els.(raw_els_name) els.(raw_els_tag_it) variant_lys els.(raw_els_repr) = Some el →
