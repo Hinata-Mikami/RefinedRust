@@ -500,6 +500,13 @@ impl<'def> Bundle<'def> {
             Some(bundle_tys_type.clone()),
             coq::command::DefinitionBody::Term(coq::term::Term::Literal(format!("{scope} {functor_body}"))),
         ));
+        section_context.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: functor_name.clone(),
+                arguments_string: ": simpl never".to_owned(),
+            })
+            .attributes("global"),
+        );
 
         // take fixpoint of bundle
         section_context.push(coq::command::CommandAttrs::new(coq::command::Arguments {
