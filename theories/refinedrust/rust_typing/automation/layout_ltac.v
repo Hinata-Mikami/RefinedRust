@@ -707,7 +707,7 @@ Ltac solve_syn_type_compat_step :=
       refine (syn_type_compat_untyped_l _ _ _)
   | |- syn_type_compat (ArraySynType ?st1 ?n1) (ArraySynType ?st2 ?n2) =>
       refine (syn_type_compat_array _ _ _ _ _ _);
-      [lia | ]
+      [solve_goal | ]
   | |- syn_type_compat (ty_syn_type (mut_type_project _ _ _) _) _  =>
       apply (syn_type_compat_mut_type_project_l); simpl
   | |- syn_type_compat _ (ty_syn_type (mut_type_project _ _ _) _)  =>
