@@ -15,22 +15,22 @@ use std::ptr;
 /* 連結リストの各ノード */
 // n に関する　invariant (null or next node)   
 // rocq 側で n が 正しいノードであることを表す述語を書く(サイクルなら co-inductive)
-#[rr::refined_by("(v, n, m)" : "(Z * loc * bool)")]
-#[rr::invariant(#iris "
-  (
-    ⌜n = (Loc ProvNone 0)⌝
-    ∨
-    ∃ (v' : Z) (n' : loc) (m' : bool),
-        n ◁ₗ[ π, Owned] # -[# v'; # n'; # m'] @
-        StructLtype +[◁ int i32; ◁ alias_ptr_t; ◁ bool_t] Node_sls
-  )
-")]
+// #[rr::refined_by("(v, n, m)" : "(Z * loc * bool)")]
+// #[rr::invariant(#iris "
+//   (
+//     ⌜n = (Loc ProvNone 0)⌝
+//     ∨
+//     ∃ (v' : Z) (n' : loc) (m' : bool),
+//         n ◁ₗ[ π, Owned] # -[# v'; # n'; # m'] @
+//         StructLtype +[◁ int i32; ◁ alias_ptr_t; ◁ bool_t] Node_sls
+//   )
+// ")]
 struct Node {
-    #[rr::field("v")]
+    // #[rr::field("v")]
     value: i32,         // 値 (i32に固定)
-    #[rr::field("n")]
+    // #[rr::field("n")]
     next: *mut Node,    // 次のノードへの生ポインタ
-    #[rr::field("m")]
+    // #[rr::field("m")]
     marked: bool,       // GC用フラグ
 }
 
@@ -50,6 +50,8 @@ impl Node{
             (*node).next = next;
     }
 }
+
+
 
 /* 生成したすべてのNodeを管理するリスト */ // heap, memory, valid nodes
 // vecの各要素が有効なポインタであることを表す述語
