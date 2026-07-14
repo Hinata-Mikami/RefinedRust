@@ -11,14 +11,28 @@
 
     SMTCoq = {
       url = "github:SMTCoq/SMTCoq";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-parts.follows = "flake-parts";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        flake-parts.follows = "flake-parts";
+      };
+    };
+
+    # This one is only used for the devcontainer
+    creusot = {
+      url = "github:creusot-rs/creusot";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        flake-parts.follows = "flake-parts";
+        crane.follows = "crane";
+        rust-overlay.follows = "rust-overlay";
+      };
     };
   };
 
   outputs =
     inputs@{
       crane,
+      creusot,
       flake-parts,
       nixpkgs,
       rust-overlay,
@@ -316,6 +330,7 @@
 
           default = nixpkgs.lib.composeManyExtensions [
             rust-overlay.overlays.default
+            creusot.overlays.default
             SMTCoq.overlays.default
             self.overlays.deps
           ];
@@ -492,16 +507,14 @@
 
               stdlib = packages.stdlib-stdlib;
 
-              devcontainer = self.lib.mkDevContainer pkgs (
-                [
-                  pkgs.gcc
-                  rust.toolchain.dev
-                  packages.frontend.cargoVendorDir
-                  (self.lib.mkDuneWrapper pkgs packages.refinedrust-smtcoq)
-                ]
-                ++ packages.refinedrust-smtcoq.buildInputs
-                ++ packages.refinedrust-smtcoq.nativeBuildInputs
-              );
+              devcontainer = self.lib.mkDevContainer pkgs [
+                pkgs.gcc
+                pkgs.gnumake
+                rust.toolchain.dev
+                packages.frontend.cargoVendorDir
+                (self.lib.mkDuneWrapper pkgs packages.refinedrust-smtcoq)
+                (pkgs.creusot.mkWhy3Framework { isFree = false; })
+              ];
             }
             // lib.fix (f: self.lib.mapToAttrs mkStdlib (stdlib f));
 
