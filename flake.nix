@@ -503,7 +503,11 @@
 
               stdlib = packages.stdlib-stdlib;
 
-              devcontainer = self.lib.mkDevContainer pkgs packages.default;
+              devcontainer = self.lib.mkDevContainer pkgs [
+                pkgs.gcc
+                rust.toolchain.dev
+                packages.frontend.cargoVendorDir
+              ];
             }
             // lib.fix (f: self.lib.mapToAttrs mkStdlib (stdlib f));
 

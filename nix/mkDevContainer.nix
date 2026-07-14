@@ -1,4 +1,4 @@
-pkgs: refinedrust:
+pkgs: drvs:
 
 let
   os-release = pkgs.writeTextFile {
@@ -6,32 +6,29 @@ let
     name = "os-release";
     text = "ID=nixos";
   };
+
+  userContents = drvs ++ [
+    pkgs.python3
+    pkgs.rocqPackages.vsrocq-language-server
+    pkgs.tokei
+    pkgs.vscode-extensions.rocq-prover.vsrocq
+  ];
 in
 pkgs.dockerTools.buildLayeredImage {
   name = "refinedrust-devcontainer";
+
   contents = [
-    refinedrust
     os-release
+    pkgs.bash
+    pkgs.busybox
+    pkgs.patchelf
+    pkgs.dockerTools.caCertificates
+    pkgs.dockerTools.usrBinEnv
   ]
-  ++ (with pkgs; [
-    bash
-    busybox
-    gnumake
-    patchelf
-  ])
-  ++ (with pkgs.dockerTools; [
-    caCertificates
-    usrBinEnv
-  ])
-  ++ (with pkgs.rocqPackages; [
-    vsrocq-language-server
-  ])
-  ++ (with pkgs.vscode-extensions; [
-    rocq-prover.vsrocq
-  ]);
+  ++ userContents;
 
   config = {
-    Cmd = [ "/bin/sh" ];
+    Cmd = [ "/sbin/bash" ];
     Env = [
       "HOME=/root"
       "USER=root"
@@ -52,5 +49,8 @@ pkgs.dockerTools.buildLayeredImage {
 
     mkdir -p /root/.vscode-server/extensions
     cp -r ${pkgs.vscode-extensions.rocq-prover.vsrocq}/share/vscode/extensions/* /root/.vscode-server/extensions/
+
+    mkdir -p /root/.cargo
+    mv /config.toml /root/.cargo/config.toml
   '';
 }
