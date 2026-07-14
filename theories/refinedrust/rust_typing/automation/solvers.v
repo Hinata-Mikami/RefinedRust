@@ -1251,6 +1251,19 @@ Ltac solve_lft_alive_step :=
         end
       in
       list_find_tac_app find_outlives E
+  (* Unfold mutual type projections before the general type unfolding case. *)
+  | |- lctx_lft_alive_list ?E ?L (ty_lfts (mut_type_project (mut_fixpoint ?F) ?i ?Hlook) ++ _) ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_alive_list_simpl_head_app _ _ _ _ _ _ _ _);
+      [let x := fresh in intros x; rewrite mut_fixpoint_project_ty_lfts; unfold mut_lfts; simpl; subst x; reflexivity | ]
+  | |- lctx_lft_alive_list ?E ?L (ty_lfts (mut_type_project _ 0 ?Hlook) ++ _) ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_alive_list_simpl_head_app _ _ _ _ _ _ _ _);
+      [let x := fresh in intros x;
+       (*replace Hlook with (@eq_refl (option RT) (Some _)) by apply proof_irrelevance;*)
+       rewrite mut_type_project_cons_head_eq; simpl; subst x; reflexivity | ]
+  | |- lctx_lft_alive_list ?E ?L (ty_lfts (mut_type_project ?tys (S ?i) ?Hlook) ++ _) ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_alive_list_simpl_head_app _ _ _ _ _ _ _ _);
+      [let x := fresh in intros x;
+       rewrite -(mut_type_project_cons_tail_eq tys i Hlook Hlook); simpl; subst x; reflexivity | ]
   (* If it is not a var, unfold *)
   | |- lctx_lft_alive_list ?E ?L (ty_lfts ?ty ++ _) ∨ _ =>
       notypeclasses refine (tac_lctx_lft_alive_list_simpl_head_app _ _ _ _ _ _ _ _);
@@ -1471,11 +1484,11 @@ Ltac simplify_elctx_subterm :=
       unfold mut_wf_E;
       simpl;
       reflexivity
-  | |- ty_wf_E (mut_type_project (?ty +:: ?tys) 0 ?Hlook) = _ =>
-      notypeclasses refine (tac_unfold_mut_type_project_cons_head_ty_wf_E ty tys Hlook _ _);
+  | |- ty_wf_E (mut_type_project _ 0 ?Hlook) = _ =>
+      notypeclasses refine (tac_unfold_mut_type_project_cons_head_ty_wf_E _ _ Hlook _ _);
       first [simplify_elctx_subterm | reflexivity]
-  | |- ty_wf_E (mut_type_project (?ty +:: ?tys) (S ?i) ?Hlook) = _ =>
-      notypeclasses refine (tac_unfold_mut_type_project_cons_tail_ty_wf_E ty tys i Hlook _ _);
+  | |- ty_wf_E (mut_type_project _ (S ?i) ?Hlook) = _ =>
+      notypeclasses refine (tac_unfold_mut_type_project_cons_tail_ty_wf_E _ _ i Hlook _ _);
       first [simplify_elctx_subterm | reflexivity]
   | |- ty_wf_E ?ty = _ =>
       ty_is_not_var ty;
@@ -1488,11 +1501,11 @@ Ltac simplify_elctx_subterm :=
       unfold mut_lfts;
       simpl;
       reflexivity
-  | |- lfts_outlives_E (ty_lfts (mut_type_project (?ty +:: ?tys) 0 ?Hlook)) _ = _ =>
-      notypeclasses refine (tac_lfts_outlives_E_mut_type_project_cons_head ty tys Hlook _ _ _);
+  | |- lfts_outlives_E (ty_lfts (mut_type_project _ 0 ?Hlook)) _ = _ =>
+      notypeclasses refine (tac_lfts_outlives_E_mut_type_project_cons_head _ _ Hlook _ _ _);
       first [simplify_elctx_subterm | reflexivity]
-  | |- lfts_outlives_E (ty_lfts (mut_type_project (?ty +:: ?tys) (S ?i) ?Hlook)) _ = _ =>
-      notypeclasses refine (tac_lfts_outlives_E_mut_type_project_cons_tail ty tys i Hlook _ _ _);
+  | |- lfts_outlives_E (ty_lfts (mut_type_project _ (S ?i) ?Hlook)) _ = _ =>
+      notypeclasses refine (tac_lfts_outlives_E_mut_type_project_cons_tail _ _ i Hlook _ _ _);
       first [simplify_elctx_subterm | reflexivity]
   | |- lfts_outlives_E (ty_lfts ?ty) _ = _ =>
       first [ty_is_var ty |
@@ -2793,6 +2806,16 @@ Ltac solve_ty_allows :=
       unfold ty_allows_writes
   end;
   solve_ty_has_op_type.
+
+
+(** Solver for syn_type equalities *)
+Ltac solve_syn_type_eq_step :=
+  first [
+  f_equiv
+  | reflexivity
+  | rewrite mut_fixpoint_project_ty_syn_type/=
+  | lia].
+Ltac solve_syn_type_eq ::= intros; repeat solve_syn_type_eq_step.
 
 
 (** ** Augment the context with commonly needed facts. *)

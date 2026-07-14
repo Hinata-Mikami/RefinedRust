@@ -1,4 +1,4 @@
-From refinedrust Require Export type.
+From refinedrust Require Export type programs.
 From refinedrust.struct Require Import def.
 From refinedrust Require Import options.
 
@@ -14,10 +14,10 @@ Section subtype.
     ([∗ list] t1; t2 ∈ hpzipl _ tys1 rs1; hpzipl _ tys2 rs2,
       match (projT2 t1).2, (projT2 t2).2 with
       | #r1, #r2 =>
-            ⌜ty_syn_type (projT2 t1).1 MetaNone = ty_syn_type (projT2 t2).1 MetaNone⌝ ∗
+            ⌜fast_syntype_eq_hint (ty_syn_type (projT2 t1).1 MetaNone = ty_syn_type (projT2 t2).1 MetaNone)⌝ ∗
             □?pers owned_type_incl π r1 r2 (projT2 t1).1 (projT2 t2).1
       | _, _ => ∃ (Heq : projT1 t1 = projT1 t2),
-            ⌜ty_syn_type (projT2 t1).1 MetaNone = ty_syn_type (projT2 t2).1 MetaNone⌝ ∗
+            ⌜fast_syntype_eq_hint (ty_syn_type (projT2 t1).1 MetaNone = ty_syn_type (projT2 t2).1 MetaNone)⌝ ∗
             ⌜(projT2 t1).2 = rew <- [place_rfnRT] Heq in (projT2 t2).2⌝ ∗
             □?pers ∀ (r : (projT1 t1 : RT)), owned_type_incl π r (rew [RT_rt] Heq in r) (projT2 t1).1 (projT2 t2).1
       end)%I.
@@ -32,10 +32,10 @@ Section subtype.
     ([∗ list] t1; t2 ∈ hpzipl _ tys1 rs1; hpzipl _ tys2 rs2,
       match (projT2 t1).2, (projT2 t2).2 with
       | #r1, #r2 =>
-        ⌜∀ m, ty_syn_type (projT2 t1).1 m = ty_syn_type (projT2 t2).1 m⌝ ∗
+        ⌜fast_syntype_eq_hint (∀ m, ty_syn_type (projT2 t1).1 m = ty_syn_type (projT2 t2).1 m)⌝ ∗
         type_incl r1 r2 (projT2 t1).1 (projT2 t2).1
       | _, _ => ∃ (Heq : projT1 t1 = projT1 t2), ⌜(projT2 t1).2 = rew <- [place_rfnRT] Heq in (projT2 t2).2⌝ ∗
-        ⌜∀ m, ty_syn_type (projT2 t1).1 m = ty_syn_type (projT2 t2).1 m⌝ ∗
+        ⌜fast_syntype_eq_hint (∀ m, ty_syn_type (projT2 t1).1 m = ty_syn_type (projT2 t2).1 m)⌝ ∗
         ∀ (r : (projT1 t1 : RT)), type_incl r (rew [RT_rt] Heq in r) (projT2 t1).1 (projT2 t2).1
       end)%I.
   Global Instance struct_t_incl_precond_strong_pers {rts1 rts2} (tys1 : hlist type rts1) (tys2 : hlist type rts2) rs1 rs2 :
@@ -51,6 +51,7 @@ Section subtype.
     iIntros "Ha". iApply (big_sepL2_impl with "Ha").
     iModIntro. iIntros (? [rt1 [ty1 r1]] [rt2 [ty2 r2]] Hlook1 Hlook2).
     simpl.
+    unfold fast_syntype_eq_hint.
     destruct r1 as [r1 | ], r2 as [r2 | ].
     - iIntros "(%Hst & #Hincl)". iR. iApply (type_incl_owned_type_incl with "[] Hincl").
       iPureIntro. intros ?. rewrite Hst//.

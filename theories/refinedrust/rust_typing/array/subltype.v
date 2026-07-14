@@ -10,7 +10,7 @@ Section subltype.
   Local Lemma array_ltype_incl_big_wand_in {rt1 rt2} k π F (def1 : type rt1) (def2 : type rt2) len (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) rs1 rs2 l b ly :
     lftE ⊆ F →
     length rs1 = len → length rs2 = len →
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     ([∗ list] lt1;lt2 ∈ zip (interpret_iml (◁ def1) len lts1) rs1; zip (interpret_iml (◁ def2) len lts2) rs2, ⌜ltype_st lt1.1 = ltype_st lt2.1⌝ ∗ ltype_incl b lt1.2 lt2.2 lt1.1 lt2.1) -∗
     ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def1) len lts1;rs1, ⌜ltype_st lt = ty_syn_type def1 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ lt) ={F}=∗
     ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def2) len lts2;rs2, ⌜ltype_st lt = ty_syn_type def2 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ lt).
@@ -38,7 +38,7 @@ Section subltype.
   Local Lemma array_ltype_incl_big_wand {rt} k π F (def1 : type rt) (def2 : type rt) len (lts1 : list (nat * ltype rt)) (lts2 : list (nat * ltype rt)) rs l b ly :
     lftE ⊆ F →
     length rs = len →
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     ([∗ list] lt1;lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2,  ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_incl b r r lt1 lt2) -∗
     ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def1) len lts1;rs, ⌜ltype_st lt = ty_syn_type def1 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ lt) ={F}=∗
     ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def2) len lts2;rs, ⌜ltype_st lt = ty_syn_type def2 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ lt).
@@ -63,7 +63,7 @@ Section subltype.
   Local Lemma array_ltype_incl_big_wand_core {rt} k π F (def1 : type rt) (def2 : type rt) len (lts1 : list (nat * ltype rt)) (lts2 : list (nat * ltype rt)) rs l b ly :
     lftE ⊆ F →
     length rs = len →
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     ([∗ list] lt1;lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2, ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_incl b r r lt1 lt2) -∗
     ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def1) len lts1;rs, ⌜ltype_st lt = ty_syn_type def1 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ ltype_core lt) ={F}=∗
     ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def2) len lts2;rs, ⌜ltype_st lt = ty_syn_type def2 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ ltype_core lt).
@@ -86,7 +86,7 @@ Section subltype.
   Qed.
 
   Local Lemma array_ltype_incl'_shared_in {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) κ' rs1 rs2 :
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     (⌜length rs1 = len⌝ -∗ ⌜length rs2 = len⌝ ∗ ([∗ list] lt1; lt2 ∈ zip (interpret_iml (◁ def1) len lts1) rs1; zip (interpret_iml (◁ def2) len lts2) rs2,
       ⌜ltype_st lt1.1 = ltype_st lt2.1⌝ ∗ ltype_incl (Shared κ') (lt1).2 (lt2).2 (lt1).1 (lt2).1)) -∗
     ltype_incl' (Shared κ') #rs1 #rs2 (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
@@ -104,7 +104,7 @@ Section subltype.
     done.
   Qed.
   Lemma array_ltype_incl_shared_in {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) κ' rs1 rs2 :
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     (⌜length rs1 = len⌝ -∗ ⌜length rs2 = len⌝ ∗ [∗ list] lt1; lt2 ∈ zip (interpret_iml (◁ def1) len lts1) rs1; zip (interpret_iml (◁ def2) len lts2) rs2,
       ⌜ltype_st lt1.1 = ltype_st lt2.1⌝ ∗ ltype_incl (Shared κ') (lt1).2 (lt2).2 (lt1).1 (lt2).1) -∗
     ltype_incl (Shared κ') #rs1 #rs2 (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
@@ -127,7 +127,7 @@ Section subltype.
   Qed.
 
   Local Lemma array_ltype_incl'_shared {rt} (def1 : type rt) (def2 : type rt) len (lts1 : list (nat * ltype rt)) (lts2 : list (nat * ltype rt)) κ' rs :
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     ([∗ list] lt1; lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2,
       ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_incl (Shared κ') r r lt1 lt2) -∗
     ltype_incl' (Shared κ') rs rs (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
@@ -143,7 +143,7 @@ Section subltype.
     done.
   Qed.
   Lemma array_ltype_incl_shared {rt} (def1 : type rt) (def2 : type rt) len (lts1 : list (nat * ltype rt)) (lts2 : list (nat * ltype rt)) κ' rs :
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     ([∗ list] lt1; lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2,
       ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_incl (Shared κ') r r lt1 lt2) -∗
     ltype_incl (Shared κ') rs rs (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
@@ -162,7 +162,7 @@ Section subltype.
   Qed.
 
   Local Lemma array_ltype_incl'_owned_in {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) rs1 rs2 :
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     (⌜length rs1 = len⌝ -∗ ⌜length rs2 = len⌝ ∗ [∗ list] lt1; lt2 ∈ zip (interpret_iml (◁ def1) len lts1) rs1; zip (interpret_iml (◁ def2) len lts2) rs2,
       ⌜ltype_st lt1.1 = ltype_st lt2.1⌝ ∗ ltype_incl (Owned) (lt1).2 (lt2).2 (lt1).1 (lt2).1) -∗
     ltype_incl' (Owned) #rs1 #rs2 (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
@@ -180,7 +180,7 @@ Section subltype.
     done.
   Qed.
   Lemma array_ltype_incl_owned_in {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) rs1 rs2 :
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     (⌜length rs1 = len⌝ -∗ ⌜length rs2 = len⌝ ∗ [∗ list] lt1; lt2 ∈ zip (interpret_iml (◁ def1) len lts1) rs1; zip (interpret_iml (◁ def2) len lts2) rs2,
       ⌜ltype_st lt1.1 = ltype_st lt2.1⌝ ∗ ltype_incl (Owned) (lt1).2 (lt2).2 (lt1).1 (lt2).1) -∗
     ltype_incl (Owned) #rs1 #rs2 (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
@@ -201,7 +201,7 @@ Section subltype.
   Qed.
 
   Local Lemma array_ltype_incl'_owned {rt} (def1 : type rt) (def2 : type rt) len (lts1 : list (nat * ltype rt)) (lts2 : list (nat * ltype rt)) rs :
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     ([∗ list] lt1; lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2,
       ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_incl (Owned) r r lt1 lt2) -∗
     ltype_incl' (Owned) rs rs (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
@@ -218,7 +218,7 @@ Section subltype.
     done.
   Qed.
   Lemma array_ltype_incl_owned {rt} (def1 : type rt) (def2 : type rt) len (lts1 : list (nat * ltype rt)) (lts2 : list (nat * ltype rt)) rs :
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     ([∗ list] lt1; lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2,
       ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_incl (Owned) r r lt1 lt2) -∗
     ltype_incl (Owned) rs rs (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
@@ -237,7 +237,7 @@ Section subltype.
   Qed.
 
   Local Lemma array_ltype_incl'_uniq {rt} (def1 : type rt) (def2 : type rt) len (lts1 : list (nat * ltype rt)) (lts2 : list (nat * ltype rt)) κ' γ rs :
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     ([∗ list] lt1; lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2,
       ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_eq (Owned) r r lt1 lt2) -∗
     ltype_incl' (Uniq κ' γ) rs rs (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
@@ -268,7 +268,7 @@ Section subltype.
         iR. iIntros (?). iDestruct ("Ha" $! _) as "(_ & $)".
   Qed.
   Lemma array_ltype_incl_uniq {rt} (def1 : type rt) (def2 : type rt) len (lts1 : list (nat * ltype rt)) (lts2 : list (nat * ltype rt)) κ' γ rs :
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     ([∗ list] lt1; lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2,
       ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_eq (Owned) r r lt1 lt2) -∗
     ltype_incl (Uniq κ' γ) rs rs (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
@@ -287,7 +287,7 @@ Section subltype.
   Qed.
 
   Lemma array_ltype_incl {rt} (def1 def2 : type rt) len (lts1 lts2 : list (nat * ltype rt)) k rs :
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     (∀ k, [∗ list] lt1; lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2,
       ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_eq k r r lt1 lt2) -∗
     ltype_incl k rs rs (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
@@ -312,7 +312,7 @@ Section subltype.
   Qed.
 
   Lemma array_ltype_eq {rt} (def1 def2 : type rt) (lts1 lts2 : list (nat * ltype rt)) len rs k :
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     (∀ k, [∗ list] lt1; lt2 ∈ (interpret_iml (◁ def1) len lts1); (interpret_iml (◁ def2) len lts2),
       ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ ∀ r, ltype_eq k r r lt1 lt2) -∗
     ltype_eq k rs rs (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
@@ -330,7 +330,7 @@ Section subltype.
   Qed.
 
   Lemma array_full_subltype E L {rt} (def1 def2 : type rt) (lts1 lts2 : list (nat * ltype rt)) len :
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     Forall2 (λ lt1 lt2, full_eqltype E L lt1 lt2) (interpret_iml (◁ def1) len lts1)%I (interpret_iml (◁ def2)%I len lts2) →
     full_subltype E L (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
@@ -348,7 +348,7 @@ Section subltype.
     simp_ltypes. rewrite Hst. iR. iIntros (k r). iApply array_ltype_incl; done.
   Qed.
   Lemma array_full_eqltype E L {rt} (def1 def2 : type rt) len (lts1 lts2 : list (nat * ltype rt)) :
-    ty_syn_type def1 = ty_syn_type def2 →
+    ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     Forall2 (λ lt1 lt2, full_eqltype E L lt1 lt2) (interpret_iml (◁ def1) len lts1)%I (interpret_iml (◁ def2)%I len lts2) →
     full_eqltype E L (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
@@ -463,7 +463,7 @@ Section to_default.
 
   Lemma array_ltype_place_cond b {rt rt'} (def : type rt) (def' : type rt') (len : nat) (lts : list (nat * ltype rt)) (lts' : list (nat * ltype rt')) :
     place_access_rt_rel b rt rt' →
-    ty_syn_type def = ty_syn_type def' →
+    ty_syn_type def MetaNone = ty_syn_type def' MetaNone →
     ([∗ list] lt; lt' ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def') len lts',
       typed_place_cond b lt lt') -∗
     typed_place_cond b (ArrayLtype def len lts) (ArrayLtype def' len lts').
@@ -561,7 +561,7 @@ Section accessors.
 
   Local Lemma array_acc_uniq_elems_unblock π l {rt} len (def def' : type rt) ly lts lts' (rs : list (place_rfn rt)) κs :
     syn_type_has_layout (ty_syn_type def MetaNone) ly →
-    ty_syn_type def = ty_syn_type def' →
+    ty_syn_type def MetaNone = ty_syn_type def' MetaNone →
     ([∗ list] ty1;ty2 ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def')%I len lts', typed_place_cond (UpdUniq κs) ty1 ty2) -∗
     lft_dead_list κs -∗
     (|={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs, ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned] r0 @  lt) -∗
@@ -592,7 +592,7 @@ Section accessors.
   Qed.
   Local Lemma array_acc_uniq_elems_core_eq π l {rt} len (def def' : type rt) ly lts lts' (rs : list (place_rfn rt)) :
     syn_type_has_layout (ty_syn_type def MetaNone) ly →
-    ty_syn_type def = ty_syn_type def' →
+    ty_syn_type def MetaNone = ty_syn_type def' MetaNone →
     ([∗ list] ty1;ty2 ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def')%I len lts',
       ⌜ltype_st ty1 = ltype_st ty2⌝ ∗ ∀ b' r, ltype_eq b' r r (ltype_core ty1) (ltype_core ty2)) -∗
     (|={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs,
@@ -634,7 +634,7 @@ Section accessors.
         ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned] r0 @ lt) ∗
       logical_step F
       (∀ (def' : type rt) (lts' : list (nat * ltype rt)) (rs' : list (place_rfn rt)) bmin,
-        ⌜ty_syn_type def = ty_syn_type def'⌝ -∗
+        ⌜ty_syn_type def MetaNone = ty_syn_type def' MetaNone⌝ -∗
         ⌜len = length rs'⌝ -∗
         bmin ⪯ₚ UpdUniq [κ] -∗
         ([∗ list] ty1; ty2 ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def') len lts',
@@ -729,7 +729,7 @@ Section accessors.
       ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs,
         ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Shared κ] r0 @ lt) ∗
       (∀ (def' : type rt) (lts' : list (nat * ltype rt)) rs',
-        ⌜ty_syn_type def = ty_syn_type def'⌝ -∗
+        ⌜ty_syn_type def MetaNone = ty_syn_type def' MetaNone⌝ -∗
         ⌜length rs = length rs'⌝ -∗
         (* new ownership *)
         ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs',

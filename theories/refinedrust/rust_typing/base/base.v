@@ -67,6 +67,11 @@ Class LayoutSizeLe (ly1 ly2 : layout) := layout_size_le_proof : ly_size ly1 ≤ 
 Global Instance layout_size_le_refl ly : LayoutSizeLe ly ly.
 Proof. constructor. Qed.
 
+Class SynTypeEq (st1 st2 : syn_type) := syn_type_eq : st1 = st2.
+Ltac solve_syn_type_eq := fail.
+Global Hint Extern 3 (SynTypeEq _ _) =>
+  unfold syn_type_eq; solve_syn_type_eq : typeclass_instances.
+
 (** Block typeclass resolution for an argument *)
 Definition TCNoResolve (P : Type) := P.
 Global Typeclasses Opaque TCNoResolve.

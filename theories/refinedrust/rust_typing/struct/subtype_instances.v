@@ -14,11 +14,14 @@ Section subtype.
 
   (* TODO replace foldr with relate_hlist *)
   Lemma owned_subtype_struct π E L pers {rts1 rts2} (tys1 : hlist type rts1) (tys2 : hlist type rts2) (rs1 : plist place_rfnRT rts1) (rs2 : plist place_rfnRT rts2)  sls1 sls2 T :
-    ⌜sls1 = sls2⌝ ∗
+    ⌜fast_syntype_eq_hint (sls1 = sls2)⌝ ∗
     ⌜length rts1 = length rts2⌝ ∗
     foldr (λ '(existT rt1 (ty1, r1'), existT rt2 (ty2, r2')) T,
       match r1' with
-      | #r1 => λ L, ∃ r2, ⌜r2' = #r2⌝ ∗ ⌜ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone⌝ ∗ owned_subtype π E L pers r1 r2 ty1 ty2 T
+      | #r1 => λ L, ∃ r2,
+        ⌜r2' = #r2⌝ ∗
+        ⌜fast_syntype_eq_hint (ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone)⌝ ∗
+        owned_subtype π E L pers r1 r2 ty1 ty2 T
       | _ => λ L, ∃ (Heq : rt1 = rt2), ⌜r1' = rew <-[place_rfnRT] Heq in r2'⌝ ∗ mut_subtype E L ty1 (rew <- [type] Heq in ty2) (T L)
       end) T (zip (hpzipl rts1 tys1 rs1) (hpzipl rts2 tys2 rs2)) L
     ⊢ owned_subtype π E L pers rs1 rs2 (struct_t sls1 tys1) (struct_t sls2 tys2) T.
@@ -54,6 +57,7 @@ Section subtype.
       iPoseProof (full_subtype_acc with "HE HL") as "(%Hst & #Hsub)"; first apply Hb.
       iMod ("IH" with "[] HT HL") as "(%L2 & Hi2 & $ & $)". { iPureIntro; lia. }
       rewrite {3}/struct_t_incl_precond; simpl. iFrame.
+      unfold fast_syntype_eq_hint.
       iExists eq_refl. iR. iR.
       iModIntro.
       iApply bi.intuitionistically_intuitionistically_if.

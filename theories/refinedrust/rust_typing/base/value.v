@@ -1499,10 +1499,11 @@ Section stratify.
   Lemma stratify_ltype_ofty_untyped_value_owned π E L mdu ma {M} (m : M) l st v `{!StratifyLtypeShouldMoveValues m} (T : stratify_ltype_cont_t) :
     find_in_context (FindVal v) (λ '(existT rt (ty', r', π', m)),
       ⌜π' = π⌝ ∗ ⌜m = MetaNone⌝ ∗
-      ⌜ty'.(ty_syn_type) m = st⌝ ∗
+      ⌜fast_syntype_eq_hint (ty'.(ty_syn_type) m = st)⌝ ∗
       stratify_ltype π E L mdu ma m l (◁ ty') (#r') (Owned) T)
     ⊢ stratify_ltype π E L mdu ma m l (◁ value_t false st)%I (#v) (Owned) T.
   Proof.
+    unfold fast_syntype_eq_hint.
     iDestruct 1 as ([rt [[[ty' r'] π'] m']]) "(Hv & -> & -> & %Heq & HT)" => /=.
     iIntros (????) "#CTX #HE HL Hl".
     iPoseProof (ltype_own_has_layout with "Hl") as "#(%ly & %Hst &_)".
@@ -1663,13 +1664,13 @@ Section deinit.
   (** ** Instances for deinitializing a type *)
   (** Types have more specific instances that we generally prefer in [.../deinit.v] *)
 
-  Lemma owned_subltype_step_ofty_val_eq π E L {rt} (lt : ltype rt) r st l `{Hst : !TCDone (ltype_st lt = st)} T :
+  Lemma owned_subltype_step_ofty_val_eq π E L {rt} (lt : ltype rt) r st l `{Hst : !SynTypeEq (ltype_st lt) st} T :
     owned_subltype_step π E L true l #r #() lt (◁ typed_value_t st) T :-
     return cast_ltype_to_type E L lt (λ ty,
       ⌜ty_has_op_type ty (use_op_alg' (st_of ty MetaNone))⌝ ∗
       T L (ty_ghost_drop' ty π r)).
   Proof.
-    unfold TCDone in Hst. subst st.
+    unfold SynTypeEq in Hst. subst st.
     iDestruct 1 as "(%ty & %Heqt & %Hot & HT)".
     iIntros (????) "CTX HE HL Hl". simp_ltypes; simpl.
 

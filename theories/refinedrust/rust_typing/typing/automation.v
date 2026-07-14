@@ -1469,6 +1469,8 @@ Ltac solve_ty_has_op_type_cases ::=
   | |- ty_has_op_type (value_t true ?st) (use_op_alg' _) =>
         refine (ty_has_op_type_value_canonical st _ _);
         [ solve_layout_alg]
+  | |- ty_has_op_type (mut_type_project _ _ _) _ =>
+        refine (mut_fixpoint_project_ty_has_op_type_1 _ _ _ _ _)
   | |- _ =>
     first [
       refine (ty_has_op_type_struct_canonical _ _ _ _ _ _ _ _);
@@ -1720,6 +1722,7 @@ Ltac liSidecond_hook P ::=
       split; [
         first [unfold spec_instantiate_typaram_fst, spec_instantiate_lft_fst, spec_instantiated; simpl; reflexivity | fail 10] | ]
   | fast_sublist_hint _ => split; [clear; unfold fast_sublist_hint; simpl; solve_sublist | ]
+  | fast_syntype_eq_hint _ => split; [clear; unfold fast_syntype_eq_hint; simpl; solve_syn_type_eq | ]
   | _ =>
       is_builtin_sidecond P;
       tryif is_fast_builtin_sidecond P

@@ -73,6 +73,12 @@ Definition fast_sublist_hint (P : Prop) : Prop :=
 Global Typeclasses Opaque fast_sublist_hint.
 Global Arguments fast_sublist_hint : simpl never.
 
+(** Hint for solving syntype equalities *)
+Definition fast_syntype_eq_hint (P : Prop) : Prop :=
+  P.
+Global Typeclasses Opaque fast_syntype_eq_hint.
+Global Arguments fast_syntype_eq_hint : simpl never.
+
 (** Hint for entering a fact directly into the cache *)
 Definition enter_cache_hint (P : Prop) := P.
 Global Arguments enter_cache_hint : simpl never.

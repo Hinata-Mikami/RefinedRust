@@ -342,7 +342,7 @@ Section instances.
   Lemma weak_subltype_array_owned_in E L {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) rs1 rs2 T :
     (⌜len1 = len2⌝ ∗
     ∃ rs2', ⌜rs2 = #rs2'⌝ ∗
-    ⌜ty_syn_type def1 = ty_syn_type def2⌝ ∗
+    ⌜fast_syntype_eq_hint (ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone)⌝ ∗
     relate_list E L [] (interpret_iml (◁ def1) len1 lts1) (interpret_iml (◁ def2) len1 lts2) 0 (weak_subltype_list_interp (Owned) rs1 rs2') (
       ⌜length rs2' = len1⌝ ∗ T))
     ⊢ weak_subltype E L (Owned) #rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
@@ -360,7 +360,7 @@ Section instances.
   Global Existing Instance weak_subltype_array_owned_in_inst | 10.
 
   Lemma weak_subltype_array_owned E L {rt1 } (def1 : type rt1) (def2 : type rt1) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) rs1 rs2 T :
-    (⌜len1 = len2⌝ ∗ ⌜rs1 = rs2⌝ ∗ ⌜ty_syn_type def1 = ty_syn_type def2⌝ ∗
+    (⌜len1 = len2⌝ ∗ ⌜rs1 = rs2⌝ ∗ ⌜fast_syntype_eq_hint (ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone)⌝ ∗
       relate_list E L [] (interpret_iml (◁ def1) len1 lts1) (interpret_iml (◁ def2) len1 lts2) 0 (mut_eqltype_list_interp len1 true) T)
     ⊢ weak_subltype E L (Owned) rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
   Proof.
@@ -382,7 +382,7 @@ Section instances.
   Lemma weak_subltype_array_shared_in E L {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) rs1 rs2 κ T :
     (⌜len1 = len2⌝ ∗
     ∃ rs2', ⌜rs2 = #rs2'⌝ ∗
-    ⌜ty_syn_type def1 = ty_syn_type def2⌝ ∗
+    ⌜fast_syntype_eq_hint (ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone)⌝ ∗
     relate_list E L [] (interpret_iml (◁ def1) len1 lts1) (interpret_iml (◁ def2) len1 lts2) 0 (weak_subltype_list_interp (Shared κ) rs1 rs2') (
       ⌜length rs2' = len1⌝ ∗ T))
     ⊢ weak_subltype E L (Shared κ) #rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
@@ -401,7 +401,7 @@ Section instances.
   Global Existing Instance weak_subltype_array_shared_in_inst | 10.
 
   Lemma weak_subltype_array_shared E L {rt1 } (def1 : type rt1) (def2 : type rt1) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) rs1 rs2 κ T :
-    (⌜len1 = len2⌝ ∗ ⌜rs1 = rs2⌝ ∗ ⌜ty_syn_type def1 = ty_syn_type def2⌝ ∗
+    (⌜len1 = len2⌝ ∗ ⌜rs1 = rs2⌝ ∗ ⌜fast_syntype_eq_hint (ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone)⌝ ∗
     relate_list E L [] (interpret_iml (◁ def1) len1 lts1) (interpret_iml (◁ def2) len1 lts2) 0 (mut_eqltype_list_interp len1 true) T)
     ⊢ weak_subltype E L (Shared κ) rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
   Proof.
@@ -422,7 +422,7 @@ Section instances.
   Global Existing Instance weak_subltype_array_shared_inst | 11.
 
   Lemma weak_subltype_array_base E L {rt1 } (def1 : type rt1) (def2 : type rt1) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) rs1 rs2 κ γ T :
-    (⌜len1 = len2⌝ ∗ ⌜rs1 = rs2⌝ ∗ ⌜ty_syn_type def1 = ty_syn_type def2⌝ ∗
+    (⌜len1 = len2⌝ ∗ ⌜rs1 = rs2⌝ ∗ ⌜fast_syntype_eq_hint (ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone)⌝ ∗
     relate_list E L [] (interpret_iml (◁ def1) len1 lts1) (interpret_iml (◁ def2) len1 lts2) 0 (mut_eqltype_list_interp len1 true) T)
     ⊢ weak_subltype E L (Uniq κ γ) rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
   Proof.
@@ -448,7 +448,7 @@ Section instances.
       fp_inv := True;
       fp_elim_mode := req;
       fp_core_pred E L (i : nat) (lt : ltype rt) :=
-        if req then (⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ ∀ k r, ltype_incl k r r lt (◁ def))%I else ⌜full_eqltype E L lt (◁ def)⌝%I;
+        if req then (⌜fast_syntype_eq_hint (ltype_st lt = ty_syn_type def MetaNone)⌝ ∗ ∀ k r, ltype_incl k r r lt (◁ def))%I else ⌜full_eqltype E L lt (◁ def)⌝%I;
     |}.
   Next Obligation.
     iIntros (rt def ? req E L i lt). destruct req.
@@ -524,7 +524,7 @@ Section instances.
 
   (** eqltype *)
   Lemma mut_eqltype_array E L {rt} (def1 def2 : type rt) len1 len2 (lts1 lts2 : list (nat * ltype rt)) T:
-    ⌜len1 = len2⌝ ∗ ⌜ty_syn_type def1 = ty_syn_type def2⌝ ∗
+    ⌜len1 = len2⌝ ∗ ⌜fast_syntype_eq_hint (ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone)⌝ ∗
     relate_list E L [] (interpret_iml (◁ def1) len1 lts1) (interpret_iml (◁ def2) len2 lts2) 0 (mut_eqltype_list_interp len1 false) T
     ⊢ mut_eqltype E L (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
   Proof.
