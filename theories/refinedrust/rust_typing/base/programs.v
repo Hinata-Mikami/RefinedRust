@@ -373,7 +373,7 @@ Class LiAgree {Σ} {A} (P : iProp Σ) (P' : A → iProp Σ) := {
   li_agree_pers : ∀ a, Persistent (P' a);
   li_agree_agree : ⊢ ∀ a b, P' a -∗ P' b -∗ ⌜a = b⌝;
 }.
-Global Hint Mode LiAgree + + + - : typeclass_instances.
+Global Hint Mode LiAgree + - + - : typeclass_instances.
 
 (** find type of val in context *)
 Definition FindVal `{!typeGS Σ} (v : val) :=

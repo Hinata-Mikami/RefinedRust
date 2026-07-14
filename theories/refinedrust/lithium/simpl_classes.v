@@ -6,9 +6,9 @@ infrastructure for pure sideconditions. *)
 (** * [SimplExist] and [SimplForall] *)
 Class SimplExist (T : Type) (Q: (T → Prop) → Prop) :=
   simpl_exist_proof : ∀ e, Q e → ∃ x, e x.
-Global Hint Mode SimplExist ! - : typeclass_instances.
+Global Hint Mode SimplExist + - : typeclass_instances.
 Class SimplForall (T : Type) (n : nat) (Q: (T → Prop) → Prop) := simpl_forall_proof : ∀ e, Q e → ∀ x, e x.
-Global Hint Mode SimplForall ! - - : typeclass_instances.
+Global Hint Mode SimplForall + - - : typeclass_instances.
 
 
 (** * [SimplImpl] and [SimplAnd] *)
