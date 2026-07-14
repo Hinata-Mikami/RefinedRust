@@ -466,26 +466,15 @@
                     pkgs.symlinkJoin {
                       inherit meta name;
 
-                      paths =
-                        let
-                          fetchRocqDeps =
-                            drv: lib.lists.unique ([ drv ] ++ lib.flatten (map fetchRocqDeps drv.propagatedBuildInputs));
-                        in
-                        [
-                          pkgs.gcc
-                          pkgs.gnupatch
-                          packages.frontend
-                          toolchain
-                        ]
-                        ++ ([ pkgs.rocqPackages.rocq-core ] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs)
-                        ++ (fetchRocqDeps packages.stdlib);
+                      paths = [
+                        pkgs.gcc
+                        packages.frontend
+                        toolchain
+                        (self.lib.mkDuneWrapper pkgs packages.stdlib)
+                      ];
 
                       nativeBuildInputs = [ pkgs.makeWrapper ];
                       postBuild = ''
-                        wrapProgram $out/bin/dune \
-                          --set OCAMLPATH $out/lib/ocaml/${pkgs.rocqPackages.rocq-core.ocamlPackages.ocaml.version}/site-lib \
-                          --set ROCQPATH $out/lib/coq/${pkgs.rocqPackages.rocq-core.rocq-version}/user-contrib
-
                         wrapProgram $out/bin/cargo-${name} \
                           --set LD_LIBRARY_PATH ${toolchain}/lib \
                           --set DYLD_FALLBACK_LIBRARY_PATH ${toolchain}/lib \
@@ -503,11 +492,16 @@
 
               stdlib = packages.stdlib-stdlib;
 
-              devcontainer = self.lib.mkDevContainer pkgs [
-                pkgs.gcc
-                rust.toolchain.dev
-                packages.frontend.cargoVendorDir
-              ];
+              devcontainer = self.lib.mkDevContainer pkgs (
+                [
+                  pkgs.gcc
+                  rust.toolchain.dev
+                  packages.frontend.cargoVendorDir
+                  (self.lib.mkDuneWrapper pkgs packages.refinedrust-smtcoq)
+                ]
+                ++ packages.refinedrust-smtcoq.buildInputs
+                ++ packages.refinedrust-smtcoq.nativeBuildInputs
+              );
             }
             // lib.fix (f: self.lib.mapToAttrs mkStdlib (stdlib f));
 

@@ -3,15 +3,19 @@
   nixpkgs,
   rust-overlay,
 }:
+
+with nixpkgs.lib;
 rec {
   mapToAttrs =
     fValue: l:
     let
-      f = { pname, ... }@args: nixpkgs.lib.nameValuePair pname (fValue args);
+      f = { pname, ... }@args: nameValuePair pname (fValue args);
     in
-    nixpkgs.lib.listToAttrs (map f l);
+    listToAttrs (map f l);
 
   mkDevContainer = import ./mkDevContainer.nix;
+
+  mkDuneWrapper = import ./mkDuneWrapper.nix;
 
   rocq = {
     mkRefinedRust =
