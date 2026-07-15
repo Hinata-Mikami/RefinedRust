@@ -2813,7 +2813,7 @@ Ltac solve_syn_type_eq_step :=
   first [
   f_equiv
   | reflexivity
-  | simp_ltypes
+  | progress simp_ltypes
   | rewrite mut_fixpoint_project_ty_syn_type/=
   | lia].
 Ltac solve_syn_type_eq ::= intros; solve [repeat solve_syn_type_eq_step].
