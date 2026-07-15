@@ -1,3 +1,4 @@
 generate_dune_project = false
 lib_load_paths = ["../option", "../closures", "../arithops"]
 output_dir = "output"
+extra_specs="extra_specs.v"
