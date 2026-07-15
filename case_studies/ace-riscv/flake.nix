@@ -99,6 +99,13 @@
                 hash = "sha256-82DE+lLeaUdscl5sH/KZDr91s8rEsy+/WVsrr3vI+SM=";
               };
 
+              postPatch = (prev.postPatch or "") + ''
+                substituteInPlace Makefile \
+                  --replace-fail \
+                    "-g -Wall -Werror -ffreestanding" \
+                    "-std=gnu17 -g -Wall -Werror -ffreestanding"
+              '';
+
               makeFlags = [
                 "PLATFORM=generic"
                 "PLATFORM_RISCV_ABI=lp64d"
