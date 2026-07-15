@@ -58,6 +58,39 @@
         "type": "github"
       }
     },
+    "creusot": {
+      "inputs": {
+        "crane": [
+          "refinedrust",
+          "crane"
+        ],
+        "flake-parts": [
+          "refinedrust",
+          "flake-parts"
+        ],
+        "nixpkgs": [
+          "refinedrust",
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "refinedrust",
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1784038377,
+        "narHash": "sha256-jzNQ+tpb5GmLgAtA8+wi6hqXYk5uEEXvUiTweIzobiU=",
+        "owner": "creusot-rs",
+        "repo": "creusot",
+        "rev": "e4f47af8d3f98d1bbba04762d13e8f390cd8f67a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "creusot-rs",
+        "repo": "creusot",
+        "type": "github"
+      }
+    },
     "flake-parts": {
       "inputs": {
         "nixpkgs-lib": "nixpkgs-lib"
@@ -157,6 +190,7 @@
       "inputs": {
         "SMTCoq": "SMTCoq",
         "crane": "crane",
+        "creusot": "creusot",
         "flake-parts": "flake-parts_2",
         "nixpkgs": "nixpkgs_2",
         "rust-overlay": "rust-overlay"
