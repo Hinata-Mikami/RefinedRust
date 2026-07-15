@@ -1,6 +1,6 @@
 {
     "name": "RefinedRust devcontainer",
-    "image": "<FILL HERE THE RESULT OF `nix build .#devcontainer && docker load < result`>",
+    "image": "refinedrust-devcontainer:latest",
 
     "customizations": {
         "vscode": {

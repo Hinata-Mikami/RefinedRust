@@ -16,6 +16,7 @@ let
 in
 pkgs.dockerTools.buildLayeredImage {
   name = "refinedrust-devcontainer";
+  tag = "latest";
 
   contents = [
     os-release
