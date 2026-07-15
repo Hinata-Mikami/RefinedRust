@@ -163,7 +163,6 @@ case-studies:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.{evenint,hillel,minivec,paper-examples,linkedlist,tests,iterators,knights-tour-functional,smtcoq}
 
 ace:
-  <<: *main_only
   extends: [ .nix ]
   stage: tests
   needs: [ stdlib ]
