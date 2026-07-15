@@ -337,10 +337,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 );
                 let mut prim_stmts = annotation_plan.take_pre_stmts();
 
-                let ty = self.shape_type_of_place(place).ty;
+                let shape_ty = self.shape_type_of_place(place).ty;
                 let typing_env = ty::TypingEnv::post_analysis(self.tcx, self.proc.get_id());
-                if self.tcx.needs_drop_raw(typing_env.as_query_input(ty)) {
-                    let (func_expr, call_info) = self.register_use_drop_glue(ty)?;
+                if self.tcx.needs_drop_raw(typing_env.as_query_input(shape_ty)) {
+                    let dropped_ty = self.proc.region_type_of_place(place).ty;
+                    let (func_expr, call_info) = self.register_use_drop_glue(dropped_ty)?;
 
                     let place_translated = self.translate_place(place)?;
                     let raw_place = code::Expr::AddressOf {
