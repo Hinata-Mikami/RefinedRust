@@ -14,6 +14,17 @@
     },
     {
       "kind": "function",
+      "name": "drop",
+      "path": [
+        "core",
+        "mem",
+        "drop"
+      ],
+      "spec": "type_of_drop",
+      "trait_req_incl": "trait_incl_of_drop"
+    },
+    {
+      "kind": "function",
       "name": "mem_size_of",
       "path": [
         "core",

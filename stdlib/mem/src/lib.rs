@@ -30,3 +30,9 @@ const fn mem_align_log_of<T>() -> usize {
 }
 
 // mem::swap and mem::replace are in the ptr crate.
+
+#[rr::export_as(core::mem::drop)]
+#[rr::ensures(#iris "ty_ghost_drop {T} π ($# x)")]
+pub fn drop<T>(x: T)
+{
+}
