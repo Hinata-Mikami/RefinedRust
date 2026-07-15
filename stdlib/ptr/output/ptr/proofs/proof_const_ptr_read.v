@@ -19,6 +19,8 @@ Proof.
   rep liRStep.
   try rewrite -Hst_eq.
   rep liRStep.
+  try rewrite -Hst_eq.
+  rep liRStep.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

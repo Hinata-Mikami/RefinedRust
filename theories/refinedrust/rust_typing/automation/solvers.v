@@ -1480,15 +1480,15 @@ Ltac simplify_elctx_subterm :=
   end;
   match goal with
   | |- ty_wf_E (mut_type_project (mut_fixpoint ?F) ?i ?Hlook) = _ =>
-      notypeclasses refine (tac_unfold_mut_fixpoint_project_ty_wf_E F i Hlook _ _);
+      notypeclasses refine (tac_unfold_mut_fixpoint_project_ty_wf_E F i _ _ _);
       unfold mut_wf_E;
       simpl;
       reflexivity
   | |- ty_wf_E (mut_type_project _ 0 ?Hlook) = _ =>
-      notypeclasses refine (tac_unfold_mut_type_project_cons_head_ty_wf_E _ _ Hlook _ _);
+      notypeclasses refine (tac_unfold_mut_type_project_cons_head_ty_wf_E _ _ _ _ _);
       first [simplify_elctx_subterm | reflexivity]
   | |- ty_wf_E (mut_type_project _ (S ?i) ?Hlook) = _ =>
-      notypeclasses refine (tac_unfold_mut_type_project_cons_tail_ty_wf_E _ _ i Hlook _ _);
+      notypeclasses refine (tac_unfold_mut_type_project_cons_tail_ty_wf_E _ _ i _ _ _);
       first [simplify_elctx_subterm | reflexivity]
   | |- ty_wf_E ?ty = _ =>
       ty_is_not_var ty;
@@ -1497,15 +1497,15 @@ Ltac simplify_elctx_subterm :=
       simpl;
       reflexivity
   | |- lfts_outlives_E (ty_lfts (mut_type_project (mut_fixpoint ?F) ?i ?Hlook)) _ = _ =>
-      notypeclasses refine (tac_lfts_outlives_E_mut_fixpoint_project F i Hlook _ _ _);
+      notypeclasses refine (tac_lfts_outlives_E_mut_fixpoint_project F i _ _ _ _);
       unfold mut_lfts;
       simpl;
       reflexivity
   | |- lfts_outlives_E (ty_lfts (mut_type_project _ 0 ?Hlook)) _ = _ =>
-      notypeclasses refine (tac_lfts_outlives_E_mut_type_project_cons_head _ _ Hlook _ _ _);
+      notypeclasses refine (tac_lfts_outlives_E_mut_type_project_cons_head _ _ _ _ _ _);
       first [simplify_elctx_subterm | reflexivity]
   | |- lfts_outlives_E (ty_lfts (mut_type_project _ (S ?i) ?Hlook)) _ = _ =>
-      notypeclasses refine (tac_lfts_outlives_E_mut_type_project_cons_tail _ _ i Hlook _ _ _);
+      notypeclasses refine (tac_lfts_outlives_E_mut_type_project_cons_tail _ _ i _ _ _ _);
       first [simplify_elctx_subterm | reflexivity]
   | |- lfts_outlives_E (ty_lfts ?ty) _ = _ =>
       first [ty_is_var ty |
@@ -2813,9 +2813,10 @@ Ltac solve_syn_type_eq_step :=
   first [
   f_equiv
   | reflexivity
+  | simp_ltypes
   | rewrite mut_fixpoint_project_ty_syn_type/=
   | lia].
-Ltac solve_syn_type_eq ::= intros; repeat solve_syn_type_eq_step.
+Ltac solve_syn_type_eq ::= intros; solve [repeat solve_syn_type_eq_step].
 
 
 (** ** Augment the context with commonly needed facts. *)

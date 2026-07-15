@@ -964,6 +964,29 @@ Section judgments.
       iPoseProof (place_rfn_interp_mut_find_observation with "Hrfn Hobs") as "Hobs".
       iFrame.
   Qed.
+  (* We can always forget an observation *)
+  Lemma ltype_own_ofty_forget_obs {rt} (ty : type rt) π l b γ :
+    (l ◁ₗ[π, b] (PlaceGhost γ) @ ◁ ty) -∗
+    ∃ r,  (l ◁ₗ[π, b] (#r) @ ◁ ty).
+  Proof.
+    rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
+    iIntros "(%ly & % & % & ? & ? & Hb)".
+    destruct b.
+    - iDestruct "Hb" as "(%r' & Hrfn & Hb)".
+      iExists r'.
+      rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
+      iFrame. iR. iR. done.
+    - iDestruct "Hb" as "(%r' & Hrfn & Hb)".
+      iExists r'.
+      rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
+      iFrame. iR. iR. done.
+    - iDestruct "Hb" as "(? & Hrfn & Hb)".
+      simpl. rewrite /RelEq.
+      iDestruct "Hrfn" as "(%r1 & %r2 & ? & ? & ->)".
+      iExists r2.
+      rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
+      iFrame. iR. done.
+  Qed.
 
   Definition find_observation_cont_t (rt : RT) : Type := option (place_rfn rt) → iProp Σ.
   Definition find_observation (rt : RT) (γ : gname) (m : FindObsMode) (T : find_observation_cont_t rt) : iProp Σ :=

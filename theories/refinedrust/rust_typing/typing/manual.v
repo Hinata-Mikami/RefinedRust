@@ -178,6 +178,25 @@ Section updateable_rules.
     iModIntro. iExists _. iFrame.
   Qed.
 
+  (** Forget an observation *)
+  Lemma updateable_forget_observation l :
+    find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
+      ∃ ty γ, ⌜lt = ◁ty⌝ ∗ ⌜r = 👻 γ⌝ ∗
+      (∀ r, l ◁ₗ[π, bk] #r @ (◁ ty) -∗
+        updateable_core updateable_E updateable_L))
+    ⊢ P.
+  Proof.
+    iIntros "HT".
+    unshelve iApply add_updateable; first apply _.
+    iIntros "#CTX #HE HL".
+    rewrite /FindLoc /find_in_context.
+    iDestruct "HT" as ([rt [[[lt r] bk] π]]) "(Ha & Hb)"; simpl.
+    iDestruct "Hb" as "(%ty & %γ & -> & -> & HT)".
+    iPoseProof (ltype_own_ofty_forget_obs with "Ha") as "(% & Ha)".
+    iPoseProof ("HT" with "Ha") as "HT".
+    iModIntro. iExists _. iFrame.
+  Qed.
+
   (* Extract an untyped value *)
   Lemma updateable_extract_untyped_value l :
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
