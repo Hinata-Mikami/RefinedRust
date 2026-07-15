@@ -32,7 +32,9 @@ pkgs.dockerTools.buildLayeredImage {
     Env = [
       "HOME=/root"
       "USER=root"
-      "VSCODE_SERVER_CUSTOM_GLIBC_LINKER=${pkgs.glibc.outPath}/lib/ld-linux-x86-64.so.2"
+      "OCAMLPATH=/lib/ocaml/${pkgs.rocqPackages.rocq-core.ocamlPackages.ocaml.version}/site-lib"
+      "ROCQPATH=/lib/coq/${pkgs.rocqPackages.rocq-core.rocq-version}/user-contrib"
+      "VSCODE_SERVER_CUSTOM_GLIBC_LINKER=${pkgs.stdenv.cc.bintools.dynamicLinker}"
       "VSCODE_SERVER_CUSTOM_GLIBC_PATH=${pkgs.glibc.outPath}/lib:${pkgs.libgcc.lib.outPath}/lib"
       "VSCODE_SERVER_PATCHELF_PATH=${pkgs.patchelf.outPath}/bin/patchelf"
     ];
