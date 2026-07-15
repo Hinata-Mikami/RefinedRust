@@ -508,14 +508,25 @@
 
               stdlib = packages.stdlib-stdlib;
 
-              devcontainer = self.lib.mkDevContainer pkgs [
-                pkgs.gcc
-                pkgs.gnumake
-                rust.toolchain.dev
-                packages.frontend.cargoVendorDir
-                (self.lib.mkDuneWrapper pkgs packages.refinedrust-smtcoq)
-                (pkgs.creusot.mkWhy3Framework { isFree = false; })
-              ];
+              devcontainer =
+                let
+                  cargoVendorDir = rust.envBuilder.vendorMultipleCargoDeps {
+                    inherit (rust.envBuilder.findCargoFiles ./rr_frontend) cargoConfigs;
+
+                    cargoLockList = [
+                      ./rr_frontend/Cargo.lock
+                      "${rust.toolchain.dev.availableComponents.rust-src}/lib/rustlib/src/rust/library/Cargo.lock"
+                    ];
+                  };
+                in
+                self.lib.mkDevContainer pkgs [
+                  pkgs.gcc
+                  pkgs.gnumake
+                  rust.toolchain.dev
+                  cargoVendorDir
+                  (self.lib.mkDuneWrapper pkgs packages.refinedrust-smtcoq)
+                  (pkgs.creusot.mkWhy3Framework { isFree = false; })
+                ] rust.toolchain.dev;
             }
             // lib.fix (f: self.lib.mapToAttrs mkStdlib (stdlib f));
 

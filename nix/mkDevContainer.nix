@@ -1,6 +1,10 @@
-pkgs: drvs:
+pkgs: drvs: rustAnalyzer:
 
 let
+  rustAnalyzerExtension = pkgs.vscode-extensions.rust-lang.rust-analyzer.override {
+    rust-analyzer = rustAnalyzer;
+  };
+
   os-release = pkgs.writeTextFile {
     destination = "/etc/os-release";
     name = "os-release";
@@ -12,6 +16,7 @@ let
     pkgs.rocqPackages.vsrocq-language-server
     pkgs.tokei
     pkgs.vscode-extensions.rocq-prover.vsrocq
+    rustAnalyzerExtension
   ];
 in
 pkgs.dockerTools.buildLayeredImage {
@@ -52,6 +57,7 @@ pkgs.dockerTools.buildLayeredImage {
 
     mkdir -p /root/.vscode-server/extensions
     cp -r ${pkgs.vscode-extensions.rocq-prover.vsrocq}/share/vscode/extensions/* /root/.vscode-server/extensions/
+    cp -r ${rustAnalyzerExtension}/share/vscode/extensions/* /root/.vscode-server/extensions/
 
     mkdir -p /root/.cargo
     mv /config.toml /root/.cargo/config.toml
