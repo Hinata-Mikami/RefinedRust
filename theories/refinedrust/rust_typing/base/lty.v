@@ -84,6 +84,18 @@ Section array.
         + rewrite list_lookup_fmap Hlook//.
         + rewrite list_lookup_fmap Hlook'//.
     Qed.
+    Lemma lookup_iml_list_to_map_eq {X} `{!Countable K} (l : list (K * X)) x :
+      NoDup l.*1 →
+      lookup_iml l x = (list_to_map l : gmap _ _) !! x.
+    Proof.
+      intros Hnd. destruct (lookup_iml l x) eqn:Heq.
+      - apply lookup_iml_list_to_map in Heq; done.
+      - rewrite -lookup_iml_None in Heq.
+        symmetry. apply not_elem_of_list_to_map_1.
+        intros Hel. apply list_elem_of_fmap_1 in Hel as ([] & -> & Hel).
+        apply list_elem_of_lookup_1 in Hel as [i Hlook].
+        apply Heq in Hlook. done.
+    Qed.
   End list_map.
 
   (* Interpretation of an insertion list: from front to back. The same index may appear multiple times,

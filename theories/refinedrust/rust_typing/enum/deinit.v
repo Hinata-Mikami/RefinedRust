@@ -166,13 +166,13 @@ Section rules.
       (◁ typed_value_t st) T :-
     exhale (⌜st = en.(enum_els)⌝);
     exhale (⌜enum_tag en rs = Some tag⌝);
-    variant_st ← tactic (compute_map_lookup_nofail_goal
-      (list_to_map (en.(enum_els).(els_variants))) tag);
+    variant_st ← tactic (compute_list_map_lookup_nofail_goal
+      (en.(enum_els).(els_variants)) tag);
     exhale (⌜ltype_st lte = variant_st⌝);
     ∀ le,
       return owned_subltype_step π E L step le #re #() lte (◁ typed_value_t (ltype_st lte)) T.
   Proof.
-    rewrite /compute_map_lookup_nofail_goal.
+    rewrite /compute_list_map_lookup_nofail_goal.
     iIntros "(-> & %Htag & %variant_st & %Hlookup & %Hst_eq & Hsub)".
     subst variant_st.
     iIntros (????) "#CTX #HE HL Hl". simp_ltypes; simpl.
@@ -194,10 +194,11 @@ Section rules.
     iIntros "(Hpayload & HR)".
     iMod ("Hclose" $! unitRT (◁ typed_value_t (ltype_st lte))%I () rs with
       "[] [] Htag Hpayload") as "Hl"; [done.. | ].
+    rewrite lookup_iml_list_to_map_eq in Hlookup; first last.
+    { apply els_variants_nodup. }
     iMod (ltype_deinit_enum F π en rs tag (ltype_st lte) l with "Hl") as "Hl"; [done.. | ].
     iModIntro. iFrame.
   Qed.
   Definition owned_subltype_step_enum_uninit_inst := [instance owned_subltype_step_enum_uninit].
   Global Existing Instance owned_subltype_step_enum_uninit_inst | 20.
-
 End rules.

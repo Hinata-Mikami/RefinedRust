@@ -2491,6 +2491,42 @@ Ltac solve_compute_map_lookups_nofail := fail "implement solve_compute_map_looku
 #[global] Hint Extern 10 (LiTactic (compute_map_lookups_nofail_goal _ _)) =>
     refine (compute_map_lookups_nofail_hint _ _ _ _); solve_compute_map_lookups_nofail : typeclass_instances.
 
+(** Tactic hint to compute a list map lookup *)
+Definition compute_list_map_lookup_nofail_goal `{!typeGS Σ} `{EqDecision K} {V} (M : list (K * V)) (k : K) (T : V → iProp Σ) : iProp Σ :=
+  ∃ res, ⌜lookup_iml M k = Some res⌝ ∗ T res.
+#[global] Typeclasses Opaque compute_list_map_lookup_nofail_goal.
+Program Definition compute_list_map_lookup_nofail_hint `{!typeGS Σ} `{EqDecision K} {V} (M : list (K * V)) k res :
+  lookup_iml M k = Some res →
+  LiTactic (compute_list_map_lookup_nofail_goal M k) := λ a, {|
+    li_tactic_P T := T res;
+  |}.
+Next Obligation.
+  iIntros (?? K ? V M k res Hlook T) "HT". iExists res. iFrame. done.
+Qed.
+
+Global Typeclasses Opaque compute_list_map_lookup_nofail_goal.
+Ltac solve_compute_list_map_lookup_nofail := fail "implement solve_compute_list_map_lookup_nofail".
+#[global] Hint Extern 10 (LiTactic (compute_list_map_lookup_nofail_goal _ _)) =>
+    refine (compute_list_map_lookup_nofail_hint _ _ _ _); solve_compute_list_map_lookup_nofail : typeclass_instances.
+
+(** Tactic hint to compute a list map lookup (fallible) *)
+Definition compute_list_map_lookup_goal `{!typeGS Σ} `{EqDecision K} {V} (M : list (K * V)) (k : K) (T : option V → iProp Σ) : iProp Σ :=
+  ∃ res, ⌜lookup_iml M k = res⌝ ∗ T res.
+#[global] Typeclasses Opaque compute_list_map_lookup_goal.
+Program Definition compute_list_map_lookup_hint `{!typeGS Σ} `{EqDecision K} {V} (M : list (K * V)) k res :
+  lookup_iml M k = res →
+  LiTactic (compute_list_map_lookup_goal M k) := λ a, {|
+    li_tactic_P T := T res;
+  |}.
+Next Obligation.
+  iIntros (?? K ? V M k res Hlook T) "HT". iExists res. iFrame. done.
+Qed.
+
+Global Typeclasses Opaque compute_list_map_lookup_goal.
+Ltac solve_compute_list_map_lookup := fail "implement solve_compute_list_map_lookup".
+#[global] Hint Extern 10 (LiTactic (compute_list_map_lookup_goal _ _)) =>
+    refine (compute_list_map_lookup_hint _ _ _ _); solve_compute_list_map_lookup : typeclass_instances.
+
 (** Tactic hint to simplify a map, e.g. compute deletes *)
 Definition simplify_gmap_goal `{!typeGS Σ} `{Countable K} {V} (M : gmap K V) (T : gmap K V → iProp Σ) : iProp Σ :=
   ∃ M', ⌜M = M'⌝ ∗ T M'.

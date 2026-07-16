@@ -11,9 +11,8 @@ Section init.
 
   Lemma type_enum_init E L f (els : enum_layout_spec) (variant : string) (rsen : rust_enum_def) (e : expr) (T : typed_val_expr_cont_t) :
     li_tactic (compute_enum_layout_goal els) (λ el,
-    ∃ tag st,
-    ⌜(list_to_map els.(els_tag_int) : gmap _ _) !! variant = Some tag⌝ ∗
-    ⌜(list_to_map els.(els_variants) : gmap _ _) !! variant = Some st⌝ ∗
+    li_tactic (compute_list_map_lookup_nofail_goal (els.(els_tag_int)) variant) (λ tag,
+    li_tactic (compute_list_map_lookup_nofail_goal (els.(els_variants)) variant) (λ st,
     typed_val_expr E L f e (λ L2 v m rti tyi ri,
       ∃ M, named_lfts M ∗ (named_lfts M -∗
       (* get the desired enum type *)
@@ -28,14 +27,20 @@ Section init.
             ⌜e.(enum_tag) (sem.(enum_tag_rt_inj) ri') = Some variant⌝ ∗
             ∃ (Heq : enum_tag_sem_rt sem = enum_rt e (enum_tag_rt_inj sem ri')),
             ⌜e.(enum_r) (sem.(enum_tag_rt_inj) ri') = (rew [RT_rt] Heq in ri')⌝ ∗
-              ∀ v', T L3 v' MetaNone _ (enum_t e) (sem.(enum_tag_rt_inj) ri'))))))
+              ∀ v', T L3 v' MetaNone _ (enum_t e) (sem.(enum_tag_rt_inj) ri'))))))))
     ⊢ typed_val_expr E L f (EnumInit els variant rsen e) T.
   Proof.
     rewrite /compute_enum_layout_goal.
-    iIntros "(%el & %Hly & %tag & %st & %Htag_lookup & %Hvariant & HT)".
+    rewrite /compute_list_map_lookup_nofail_goal.
+    iIntros "(%el & %Hly & %tag & %Htag_lookup & %st & %Hvariant & HT)".
     iIntros (?) "#CTX #HE HL Hf Hc".
     iApply wpe_fupd.
+    apply lookup_iml_list_to_map in Htag_lookup; first last.
+    { rewrite els_tag_int_agree. apply els_variants_nodup. }
+    apply lookup_iml_list_to_map in Hvariant; first last.
+    { apply els_variants_nodup. }
     iApply wp_enum_init; [done | done | done |].
+
     iApply ("HT" with "CTX HE HL Hf [Hc]").
     iIntros (L2 v rt ty r m) "HL Hf Hv HT".
     iDestruct "HT" as "(%M & Hlfts & HT)".

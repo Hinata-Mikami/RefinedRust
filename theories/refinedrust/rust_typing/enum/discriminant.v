@@ -401,7 +401,7 @@ Section switch.
     case_destruct r (λ c b,
       ∃ tag, ⌜enum_tag en c = Some tag⌝ ∗
         li_trace (if b then DestructHintSwitchEnumCase c tag else DestructHintSwitchEnumKnown c tag) (
-        li_tactic (compute_map_lookup_goal (list_to_map (els_tag_int en.(enum_els))) tag false) (λ idx,
+        li_tactic (compute_list_map_lookup_goal ((els_tag_int en.(enum_els))) tag) (λ idx,
         li_tactic (compute_map_lookup_goal m (default 0%Z idx) false) (λ o,
         match o with
         | Some mi =>
@@ -419,8 +419,11 @@ Section switch.
     iDestruct "Hit" as "(_ & %tag & %Htag & _ & Hown)".
     iPoseProof (int_own_val_to_eq with "Hown") as "%Hv".
     iDestruct "HT" as "(-> & Hc)".
-    rewrite /compute_map_lookup_goal.
-    iDestruct "Hc" as "(%b & %tag' & %Htag' & %idx & <- & %res & <- & Ha)".
+    rewrite /compute_list_map_lookup_goal/compute_map_lookup_goal.
+    iDestruct "Hc" as "(%b & %tag' & %Htag' & %idx & %Hidx & %res & <- & Ha)".
+    rewrite lookup_iml_list_to_map_eq in Hidx; first last.
+    { rewrite els_tag_int_agree. apply els_variants_nodup. }
+    subst idx.
     assert (tag' = tag) as -> by congruence.
     iExists _. iFrame "HL". iR. iModIntro.
     unfold els_lookup_tag. case_match.

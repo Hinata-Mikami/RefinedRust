@@ -2537,6 +2537,14 @@ Ltac compute_map_lookups :=
 Ltac solve_compute_map_lookups_nofail ::=
   compute_map_lookups.
 
+(** solve_list_map_lookup *)
+Ltac solve_compute_list_map_lookup_nofail ::=
+  unfold enum_tag'; simpl; done
+.
+Ltac solve_compute_list_map_lookup ::=
+  unfold enum_tag'; simpl; done
+.
+
 (** local_fresh *)
 Section tac.
   Lemma tac_local_fresh_nil x :
