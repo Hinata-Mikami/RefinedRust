@@ -948,6 +948,28 @@ Section closure_attrs.
 Context `{RRGS : !refinedrustGS Σ}.
 End closure_attrs.
 
+(* Included specifications from configured file extra_specs.v *)
+From Ltac2 Require Import Notations.
+Ltac2 Set start_function_hook as old_start_function_hook :=
+  fun () =>
+    Control.plus (fun () =>
+    match! goal with
+    | [ _ : CACHED
+          (use_enum_layout_alg alignment_AlignmentEnum_els = Some _)
+        |- _ ] =>
+        let h := Fresh.in_goal @_Hop in
+        assert
+          (ty_has_op_type
+             (alignment_AlignmentEnum_ty -[] -[])
+             (use_op_alg' alignment_AlignmentEnum_els))
+          as $h
+        > [ ltac1:(solve_ty_has_op_type)
+          | let hop := Control.hyp h in
+            ltac1:(hop |- enter_cache hop) (Ltac1.of_constr hop)
+          ]
+    end) (fun _ => ());
+    old_start_function_hook ()
+  .
 Section specs.
 Context `{RRGS : !refinedrustGS Σ}.
 

@@ -12,9 +12,6 @@ Lemma alignment_Alignment_as_usize_proof (π : thread_id) :
 Proof.
   alignment_Alignment_as_usize_prelude.
 
-  assert (ty_has_op_type (enum_t (alignment_AlignmentEnum_enum -[] -[])) (use_op_alg' alignment_AlignmentEnum_els)).
-  { solve_ty_has_op_type. }
-
   (* opaque because we are working with big terms here *)
   Opaque alignment_AlignmentEnum_els.
 
