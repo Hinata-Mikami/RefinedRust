@@ -1099,6 +1099,10 @@ Ltac start_function_prepare :=
   repeat (liEnsureInvariant || liWand || liSimpl || liForall || liPersistent || liImpl || liUnfoldLetGoal);
   li_unfold_lets_in_context
 .
+
+(* An extensible hook for augmenting the context *)
+Ltac2 mutable start_function_hook () :=
+  ().
 Ltac start_function_finish lsa :=
   repeat liForall;
   iExists _; iSplitR;
@@ -1115,7 +1119,8 @@ Ltac start_function_finish lsa :=
   unfold function_body;
   simpl;
   unfold typaram_wf;
-  init_cache
+  init_cache;
+  ltac2:(start_function_hook ())
 .
 Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropattern(κs) ")" "(" simple_intropattern(tys) ")" "(" simple_intropattern(x) ")" "(" ident_list(params) ")" :=
   start_function_prepare;
