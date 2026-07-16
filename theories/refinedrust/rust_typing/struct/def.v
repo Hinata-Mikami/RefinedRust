@@ -1122,6 +1122,41 @@ Section structs.
     - by eapply use_struct_layout_alg_op_type_wf.
     - done.
   Qed.
+
+  Lemma ty_has_op_type_struct_canonical' {rts} (tys : hlist type rts) (sls : struct_layout_spec) ly :
+    syn_type_has_layout sls ly →
+    Forall2 (λ ty st, ty_has_op_type (projT2 ty) (use_op_alg' st)) (hzipl _ tys) sls.(sls_fields).*2 →
+    ty_has_op_type (struct_t sls tys) (use_op_alg' sls).
+  Proof.
+    intros Hly Htys.
+    apply syn_type_has_layout_op_alg in Hly as (ot & Hot & _).
+    pose proof Hot as Hot_struct.
+    apply use_op_alg_struct_inv in Hot_struct as
+      (sl & ots & Hsl & Hots & ->).
+
+    eapply ty_has_op_type_struct_canonical;
+      [exact Hot | rewrite /use_op_alg' Hot // |].
+
+    apply Forall2_same_length_lookup. split.
+    - apply Forall2_length in Htys.
+      apply Forall2_length in Hots.
+      rewrite length_fmap in Htys.
+      lia.
+    - intros i ty ot Hty Hot'.
+      eapply Forall2_lookup_l in Htys as
+        (st & Hst & Htyop); last exact Hty.
+      eapply Forall2_lookup_r in Hots as
+        ([name st'] & Hfield & Hst'op); last exact Hot'.
+
+      apply list_lookup_fmap_Some in Hst as
+        ([name' st''] & Heq & Hfield').
+      simpl in Heq. subst st''.
+      rewrite Hfield in Hfield'.
+      injection Hfield' as [= <- <-].
+
+      rewrite /use_op_alg' Hst'op in Htyop.
+      exact Htyop.
+  Qed.
 End structs.
 
 (** Hint Extern in case we cannot determine the constantness syntactically.

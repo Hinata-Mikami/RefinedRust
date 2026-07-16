@@ -1215,6 +1215,66 @@ Section enum.
     split_and!; try done.
     - by rewrite /use_enum_layout_alg Hlys /= Halg.
   Qed.
+
+  Lemma ty_has_op_type_enum_canonical' {rt} (en : enum rt) ly :
+    syn_type_has_layout en.(enum_els) ly →
+    Forall2 (λ tag_ty variant_st,
+      tag_ty.1 = variant_st.1 ∧
+      ty_has_op_type tag_ty.2.(enum_tag_sem_ty) (use_op_alg' variant_st.2))
+      en.(enum_tag_ty) en.(enum_els).(els_variants) →
+    ty_has_op_type (enum_t en) (use_op_alg' en.(enum_els)).
+  Proof.
+    intros Hly Htys.
+    apply syn_type_has_layout_op_alg in Hly as (ot & Hot & _).
+    pose proof Hot as Hot_enum.
+
+    unfold use_op_alg in Hot_enum. simpl in Hot_enum.
+    unfold syn_type_of_els in Hot_enum. simpl in Hot_enum.
+    fold use_op_alg in Hot_enum.
+    apply bind_Some in Hot_enum as
+      (variant_lys & Hlys & Hot_enum).
+    apply bind_Some in Hot_enum as
+      (el & Hel & Hot_enum).
+    apply bind_Some in Hot_enum as
+      (variant_ots & Hots & Hot_enum).
+
+    destruct (decide
+      (enum_tag_int_wf
+        (els_tag_it (enum_els en))
+        (els_variants (enum_els en))
+        (els_tag_int (enum_els en)))) as [_ | Htag];
+      last done.
+    injection Hot_enum as <-.
+    apply list_map_option_alt in Hots.
+
+    eapply ty_has_op_type_enum_canonical.
+    - exact Hot.
+    - rewrite /use_op_alg' Hot //.
+    - apply Forall2_same_length_lookup. split.
+      + apply Forall2_length in Htys.
+        apply Forall2_length in Hots.
+        lia.
+      + intros i tag_ty variant_ot Htag_ty Hvariant_ot.
+        eapply Forall2_lookup_l in Htys as
+          (variant_st & Hvariant_st & Hty);
+          last exact Htag_ty.
+        eapply Forall2_lookup_l in Hots as
+          (variant_ot' & Hvariant_ot' & Halg);
+          last exact Hvariant_st.
+
+        rewrite Hvariant_ot in Hvariant_ot'.
+        injection Hvariant_ot' as <-.
+        destruct variant_st as [name st].
+        destruct variant_ot as [name' variant_ot].
+        simpl in Halg, Hty |- *.
+
+        apply bind_Some in Halg as
+          (ot' & Hot' & [= <- <-]).
+        destruct Hty as [<- Hty].
+        split; first done.
+        rewrite /use_op_alg' Hot' in Hty.
+        exact Hty.
+  Qed.
 End enum.
 
 Global Hint Extern 10 (Copyable _) => (refine (enum_t_copyable _ _); intros []; apply _) : typeclass_instances.
