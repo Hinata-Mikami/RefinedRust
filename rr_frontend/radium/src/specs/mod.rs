@@ -375,6 +375,10 @@ pub struct TyOwnSpec {
 }
 
 impl TyOwnSpec {
+    pub const fn set_later(&mut self, with_later: bool) {
+        self.with_later = with_later;
+    }
+
     #[must_use]
     pub fn fmt_owned(&self, tid: &str) -> String {
         if self.with_later {

@@ -619,13 +619,23 @@ Proof.
   by iApply ty_own_ghost_drop.
 Qed.
 
+(*Global Program Instance ghost_droppable_ltype_own `{!typeGS Σ} π l {rt} (ty : type rt) r :*)
+  (*GhostDroppable (l ◁ₗ[π, Owned] r @ (◁ ty))%I := {|*)
+    (*ghost_droppable_prop :=*)
+      (*∃ r', place_rfn_interp_owned r r' ∗ ty_ghost_drop' ty π r';*)
+  (*|}.*)
+(*Next Obligation.*)
+  (*iIntros (??? l rt ty r ??) "Hl".*)
+  (*iPoseProof (ltype_own_ofty_ghost_drop with "Hl") as "(%r' & Hr & Hl)"; first done.*)
+  (*iApply (logical_step_wand with "Hl"). iIntros "$". done.*)
+(*Qed.*)
+
 Global Program Instance ghost_droppable_ltype_own `{!typeGS Σ} π l {rt} (ty : type rt) r :
   GhostDroppable (l ◁ₗ[π, Owned] r @ (◁ ty))%I := {|
     ghost_droppable_prop :=
-      ∃ r', place_rfn_interp_owned r r' ∗ ty_ghost_drop' ty π r';
+      l ◁ₗ[π, Owned] r @ (◁ ty)%I;
   |}.
 Next Obligation.
   iIntros (??? l rt ty r ??) "Hl".
-  iPoseProof (ltype_own_ofty_ghost_drop with "Hl") as "(%r' & Hr & Hl)"; first done.
-  iApply (logical_step_wand with "Hl"). iIntros "$". done.
+  iApply logical_step_intro. done.
 Qed.

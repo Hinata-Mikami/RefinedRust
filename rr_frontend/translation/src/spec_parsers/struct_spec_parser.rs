@@ -371,11 +371,10 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
                         MetaIProp::Iris(iprop) => {
                             ghost_drop.push(iprop);
                         },
-                        MetaIProp::Type(_) => {
-                            return Err(spanned_error(
-                                span,
-                                ParserError::InvalidGhostDropAttribute("type".to_owned()),
-                            ));
+                        MetaIProp::Type(mut p) => {
+                            p.set_later(false);
+                            let owned_ty = p.fmt_owned("π");
+                            ghost_drop.push(coq::iris::IProp::Atom(owned_ty));
                         },
                         MetaIProp::Pure(p, _) => {
                             ghost_drop.push(coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(p))));
