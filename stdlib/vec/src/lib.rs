@@ -133,9 +133,8 @@ impl<T, A: Allocator> Drop for RawVec<T, A> {
 // invariant due to GEP / ptr::offset limits: the total size of the allocation should not exceed isize::max bytes
 // we need the ZST case to know that we never call grow except when we have reached the capacity limit
 #[rr::invariant("if decide (size_of_st {st_of T} = 0%nat) then cap = Z.to_nat (MaxInt USize) else (size_of_array_in_bytes {st_of T} cap ≤ MaxInt ISize)%Z")]
-// TODO: elementwise ghost drop
-//#[rr::ghost_drop(#iris "∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop {T} π r")]
-#[rr::ghost_drop(#iris "True")]
+// elementwise ghost-drop
+#[rr::ghost_drop(#iris "[∗ list] x ∈ xs, ∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop {T} π r")]
 pub struct Vec<T, A: Allocator = Global> {
     #[rr::field("(l, cap, els)")]
     buf: RawVec<T, A>,
