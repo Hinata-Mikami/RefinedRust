@@ -3,7 +3,7 @@ From iris.algebra Require Import csum excl auth cmra_big_op gmap.
 From iris.base_logic.lib Require Import ghost_map.
 From radium Require Import ghost_state.
 From refinedrust Require Export type.
-From refinedrust Require Import programs functions struct.struct unit.
+From refinedrust Require Import programs functions struct.struct unit static automation.
 From refinedrust Require Import typing.
 From iris.program_logic Require Export language. (* must be last to get the correct nsteps *)
 Set Default Proof Using "Type".
@@ -90,14 +90,15 @@ Definition initial_heap_state :=
 
 Definition initial_thread_state : thread_state :=
   {| ts_frames := [empty_frame] |}.
-Definition initial_state (num_threads : nat) (fns : gmap addr function) :=
-  {| st_heap := initial_heap_state;
+
+Definition initial_state (hs : heap_state) (num_threads : nat) (fns : gmap addr function) :=
+  {| st_heap := hs;
      st_fntbl := fns;
      st_thread := list_to_map (zip (seq 0 num_threads) (replicate num_threads initial_thread_state));
   |}.
 
-Lemma initial_state_thread_empty num_threads fns ts π :
-  st_thread (initial_state num_threads fns) !! π = Some ts →
+Lemma initial_state_thread_empty hs num_threads fns ts π :
+  st_thread (initial_state hs num_threads fns) !! π = Some ts →
   ts = initial_thread_state.
 Proof.
   intros Hlook1.
@@ -109,16 +110,16 @@ Proof.
   done.
 Qed.
 
-Lemma initial_state_thread_invariant n fns :
-  thread_states_invariant (initial_state n fns).(st_thread).
+Lemma initial_state_thread_invariant hs n fns :
+  thread_states_invariant (initial_state hs n fns).(st_thread).
 Proof.
   intros ?? ->%initial_state_thread_empty.
   intros [|j] cf; simpl; last done.
   intros [= <-]. rewrite /call_frame_invariant/empty_frame. intros ???. done.
 Qed.
 
-Lemma initial_state_thread_lookup_lt n fns π ts :
-  (initial_state n fns).(st_thread) !! π = Some ts → π < n.
+Lemma initial_state_thread_lookup_lt hs n fns π ts :
+  (initial_state hs n fns).(st_thread) !! π = Some ts → π < n.
 Proof.
   intros Hlook. apply elem_of_list_to_map_2 in Hlook.
   apply list_elem_of_lookup_1 in Hlook as (j & Hlook).
@@ -147,11 +148,11 @@ Proof.
     + apply lookup_replicate_2. lia.
 Qed.
 
-Lemma initial_local_list_inv_1 n fns :
-  thread_local_vars_inv_1 (initial_state n fns).(st_thread) (initial_local_list_map n).
+Lemma initial_local_list_inv_1 hs n fns :
+  thread_local_vars_inv_1 (initial_state hs n fns).(st_thread) (initial_local_list_map n).
 Proof.
   intros π i ts cf Hi Hts Hcf.
-  have Hπ := initial_state_thread_lookup_lt _ _ _ _ Hts.
+  have Hπ := initial_state_thread_lookup_lt _ _ _ _ _ Hts.
   apply initial_state_thread_empty in Hts. subst ts.
   simpl in Hi, Hcf. assert (i = 1)%nat as -> by lia.
   simpl in Hcf. injection Hcf as <-.
@@ -160,8 +161,8 @@ Proof.
   - rewrite /call_frame_has_locals/empty_frame map_to_list_empty. done.
 Qed.
 
-Lemma initial_local_list_inv_2 n fns :
-  thread_local_vars_inv_2 (initial_state n fns).(st_thread) (initial_local_list_map n).
+Lemma initial_local_list_inv_2 hs n fns :
+  thread_local_vars_inv_2 (initial_state hs n fns).(st_thread) (initial_local_list_map n).
 Proof.
   intros π i names Hlook.
   apply elem_of_list_to_map_2 in Hlook.
@@ -197,7 +198,7 @@ Definition initial_prog_wp `{!refinedcG Σ} (policy : panic_policy)
 Definition initial_return_wp `{!refinedcG Σ} π (Φ : radium.val.val → iProp Σ) : iProp Σ :=
   WP to_rtstmt π initial_caller (Return (Val [])) {{ runtime_post Φ False }}.
 
-Lemma wp_initial_return `{!typeGS Σ} π locals :
+Lemma wp_initial_return `{!refinedrustGS Σ} π locals :
   current_frame π 1 -∗
   allocated_locals (π, 1) locals -∗
   ([∗ list] x ∈ locals,
@@ -318,7 +319,7 @@ Ltac solve_initial_return_value :=
   iIntros (F1 HF1) "#CTX1 #HE1 HL _"; iModIntro;
   iExists []; iFrame "HL"; done.
 
-Lemma wp_initial_prog `{!typeGS Σ} policy π main (P : iProp Σ) :
+Lemma wp_initial_prog `{!refinedrustGS Σ} policy π main (P : iProp Σ) :
   rrust_ctx -∗
   current_frame π 1 -∗
   allocated_locals (π, 1) [] -∗
@@ -327,9 +328,6 @@ Lemma wp_initial_prog `{!typeGS Σ} policy π main (P : iProp Σ) :
   P -∗
   initial_prog_wp policy (π, main) (λ v, ⌜v = []⌝)%I.
 Proof.
-  pose ({| static_locs := ∅; static_types := ∅ |} : staticGS Σ) as Hstatic.
-  pose ({| refinedrust_typeGS := typeGS0; refinedrust_staticGS := Hstatic |} :
-    refinedrustGS Σ) as Hrr.
   iIntros "#CTX Hframe Hlocals Hna Hmain HP".
   rewrite /initial_prog_wp /initial_prog /initial_stmt /initial_return_local.
   set (Ψ := (λ v : radium.val.val,
@@ -415,12 +413,19 @@ Qed.
       (*ghost_map_auth γ 1 M ∗ [∗ list] π ∈ seq 0 num_threads, ∃ γ' : na_inv_pool_name, ghost_map_elem γ π DfracDiscarded γ' ∗ na_invariants.na_own γ' ⊤))%I.*)
 
 (** * The main adequacy lemma *)
-Lemma refinedrust_adequacy (policy : panic_policy) Σ `{!typePreG Σ} `{ALG : LayoutAlg}
-    (thread_mains : list loc) (fns : gmap addr function) n t2 σ2 obs σ:
-  σ = initial_state (length thread_mains) fns →
+Lemma refinedrust_adequacy (policy : panic_policy) Σ `{!typePreG Σ} `{A : LayoutAlg}
+    (thread_mains : list loc) (fns : gmap addr function)
+    (static_ls : list loc) (static_vals : list val.val)
+    n t2 σ2 obs hs σ:
+  alloc_new_blocks initial_heap_state GlobalAlloc static_ls static_vals hs →
+  σ = initial_state hs (length thread_mains) fns →
   Forall (λ l, l.(loc_a) ∈ USize) thread_mains →
   (* show that the main functions for the individual threads are well-typed for a provable precondition [P] *)
   (∀ {HtypeG : typeGS Σ},
+    ALG = A →
+    ∃ static_locs static_tys,
+    let Hstatics : staticGS Σ := {| static_locs:=static_locs; static_types := static_tys |} in
+    ([∗ list] l; v ∈ static_ls; static_vals, l ↦ v) -∗
     ([∗ map] k↦qs∈fns, fntbl_entry (fn_loc k) qs) ={⊤}=∗
       [∗ list] π ↦ main ∈ thread_mains, ∃ P, (l2v main) ◁ᵥ{π, MetaNone} main @ function_ptr [] (@eq_refl _ [], main_type policy P) ∗ P) →
   (* if the whole thread pool steps for [n] steps *)
@@ -428,7 +433,7 @@ Lemma refinedrust_adequacy (policy : panic_policy) Σ `{!typePreG Σ} `{ALG : La
   (* then it has not gotten stuck *)
   ∀ e2, e2 ∈ t2 → not_stuck e2 σ2.
 Proof.
-  move => -> Hran Hwp. apply: (wp_strong_adequacy _ _ refinedc_trgen NotStuck) . move => ? ?.
+  move => Halloc -> Hran Hwp. apply: (wp_strong_adequacy _ _ refinedc_trgen NotStuck) . move => ? ?.
   (* heap/Caesium stuff *)
   set h := to_heapUR ∅.
   iMod (own_alloc (● h ⋅ ◯ h)) as (γh) "[Hh _]" => //.
@@ -445,7 +450,7 @@ Proof.
   iMod (ghost_map_alloc_empty (K:= nat * nat * string) (V:= loc * syn_type)) as (γloc) "Hlocals".
   set (HthreadG := ThreadG _ _ γcur _ γlocals _ γloc).
 
-  set (HrefinedCG := RefinedCG _ _ HheapG HthreadG _ ALG).
+  set (HrefinedCG := RefinedCG _ _ HheapG HthreadG _ A).
 
   (* lifetime logic stuff *)
   iMod (lft_init _ lft_userE) as "(%Hlft & #LFT)"; [solve_ndisj.. | ].
@@ -493,17 +498,26 @@ Proof.
     iApply (big_sepL_impl with "Ha"). iModIntro.
     iIntros (???). rewrite allocated_locals_unfold. eauto. }
 
-  move: (Hwp HtypeG) => {Hwp}.
+  move: (Hwp HtypeG eq_refl) => {Hwp} [static_locs [static_tys]].
+  set (Hstatics := {| static_locs := static_locs; static_types := static_tys |}).
+
   move => Hwp.
+  iMod (heap_alloc_new_blocks_upd with "[Hh Hr Hs]") as "[Hctx Hmt]" => //. {
+    rewrite /heap_state_ctx /alloc_meta_ctx /to_alloc_meta_map /alloc_alive_ctx /to_alloc_alive_map !fmap_empty.
+    iFrame. done.
+  }
+  rewrite big_sepL2_sep. iDestruct "Hmt" as "[Hmt Hfree]".
+
   iAssert (|==> [∗ map] k↦qs ∈ fns, fntbl_entry (fn_loc k) qs)%I with "[Hfm]" as ">Hfm". {
     iApply big_sepM_bupd. iApply (big_sepM_impl with "Hfm").
     iIntros "!>" (???) "Hm". rewrite fntbl_entry_eq.
     iExists _. iSplitR; [done|].
     iApply (ghost_map_elem_persist with "Hm"). }
-  iMod (Hwp with "Hfm") as "Hmains".
+  iMod (Hwp with "Hmt Hfm") as "Hmains".
 
   iModIntro. iExists c_irisG.(state_interp), (replicate (length thread_mains) (λ _, True%I)), c_irisG.(fork_post), c_irisG.(state_interp_mono).
-  iSplitL "Hh Hf Hr Hs Hcur Hall_locals Hlocals"; last first. 1: iSplitL "Hmains Hna Hframe Halloc".
+  iSplitL "Hf Hctx Hcur Hall_locals Hlocals"; last first. 1: iSplitL "Hmains Hna Hframe Halloc".
+  (*iSplitL "Hf Hctx Hcur Hall_locals Hlocals"; last first. 1: iSplitL "Hmains Hna Hframe".*)
   Unshelve.
   - rewrite big_sepL2_fmap_l. iApply big_sepL2_replicate_r.
     { rewrite length_zip length_seq. unfold num_threads. lia. }
@@ -523,6 +537,7 @@ Proof.
     iIntros "!#" (π ? main Hlook1 ?) "Halloc Hframe Hna Hfn".
     apply lookup_seq in Hlook1 as (-> & ?).
     iDestruct ("Hfn") as (P) "[Hmain HP]".
+    pose ({| refinedrust_typeGS := HtypeG; refinedrust_staticGS := Hstatics |} : refinedrustGS Σ) as Hrr.
     iPoseProof (wp_initial_prog policy (0 + π) main P
       with "[] Hframe Halloc Hna Hmain HP") as "Hprog".
     { rewrite /rrust_ctx. iFrame "#". }
@@ -530,7 +545,7 @@ Proof.
     iApply (wp_wand with "Hprog"). iIntros (v) "_". done.
   - iFrame. iIntros (?? _ _ ?) "_ _ _". iApply fupd_mask_intro_discard => //. iPureIntro. by eauto.
   - rewrite /state_ctx /heap_state_ctx /thread_ctx /alloc_meta_ctx /to_alloc_meta_map /alloc_alive_ctx /to_alloc_alive_map.
-    iFrame. iR.
+    iFrame.
     iSplitR.
     { iPureIntro. apply initial_state_thread_invariant. }
     iSplitL.
@@ -593,21 +608,30 @@ Ltac adequacy_intro_parameter :=
          | |- ∀ _ : _, _ => move => ?
          end.
 
-(*
-Ltac adequacy_unfold_equiv :=
-  lazymatch goal with
-  | |- type_fixpoint _ _ ≡ type_fixpoint _ _ => apply: type_fixpoint_proper; [|move => ??]
-  | |- ty_own_val _ _ ≡ ty_own_val _ _ => unfold ty_own_val => /=
-  | |-  _ =@{struct_layout} _ => apply: struct_layout_eq
+Ltac adequacy_invert_forall H :=
+  repeat match type of H with
+  | Forall _ [] =>
+    clear H
+  | Forall _ _ =>
+    apply Forall_cons in H;
+    destruct H as [? H]
   end.
+Ltac adequacy_split_forall :=
+  repeat first [apply Forall_cons; split | by apply Forall_nil].
 
-Ltac adequacy_solve_equiv unfold_tac :=
-  first [ eassumption | fast_reflexivity | unfold_type_equiv | adequacy_unfold_equiv | f_contractive | f_equiv' | reflexivity | progress unfold_tac ].
+Ltac adequacy_solve_typed_function lemma :=
+  iApply typed_function_equiv; iSplit;
+    [ iApply (lemma ) => //
+      (*; iExists _; repeat iSplit => //*)
+    | rep liRStep
+    ].
 
-Ltac adequacy_solve_typed_function lemma unfold_tac :=
-  iApply typed_function_equiv; [
-    done |
-    adequacy_intro_parameter => /=; repeat (constructor; [done|]); by constructor |
-    | iApply lemma => //; iExists _; repeat iSplit => //];
-    adequacy_intro_parameter => /=; eexists eq_refl => /=; split_and!; [..|adequacy_intro_parameter => /=; split_and!];  repeat adequacy_solve_equiv unfold_tac.
- *)
+Ltac adequacy_solve_function_ptr :=
+  rewrite /ty_own_val/=; iR;
+  iExists _;
+  iSplitR; [ iPureIntro; by apply val_to_loc_Some_l2v| ];
+  iSplitR; [ done | ];
+  iSplitR; [ iPureIntro; simpl; repeat first [by apply Forall2_nil | apply Forall2_cons; split; [shelve_sidecond | ]] | ];
+  iNext; simpl;
+  iApply typed_function_equiv; iSplit; first done;
+  rep liRStep.

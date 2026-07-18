@@ -682,7 +682,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         {
             // write translated source code of functions
             writeln!(code_file, "Section code.").unwrap();
-            writeln!(code_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
+            writeln!(code_file, "Context `{{!LayoutAlg}}.").unwrap();
             writeln!(code_file, "Open Scope printing_sugar.").unwrap();
             writeln!(code_file).unwrap();
 

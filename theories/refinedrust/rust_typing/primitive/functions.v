@@ -682,37 +682,34 @@ Section function_subsume.
      I don't think I can always just subtype that to use the lifetime of the closure. That would definitely break ghostcell etc. And also not everything might be covariant in the lifetime.
   *)
   (* This variant operates directly on our [typed_function] definition, used to statically prove subtyping. *)
-  Lemma subsume_typed_function π fn {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) T :
-    subsume (typed_function π fn (eqp1, F1)) (typed_function π fn (eqp2, F2)) T :-
-      and:
-      | drop_spatial;
-        ∀ (κs : prod_vec lft lfts) (tys : plist type rts),
-        exhale ⌜∀ a b ϝ, elctx_sat (((F2 κs tys).(fn_p) b).(fp_elctx) ϝ) [ϝ ⊑ₗ{ 0} []] (((F1 κs tys).(fn_p) a).(fp_elctx) ϝ)⌝;
-        ∀ (b : _),
-        inhale (fp_Pa ((F2 κs tys).(fn_p) b) π);
-        inhale (fp_Sc ((F2 κs tys).(fn_p) b) π);
-        ls ← iterate: fp_atys ((F2 κs tys).(fn_p) b) with [] {{ ty T ls,
-               ∀ l : loc,
-                inhale (l ◁ₗ[π, Owned] #(projT2 ty).2 @ ◁ (projT2 ty).1); return T (ls ++ [l]) }};
-        ∃ (a : _),
-        exhale (⌜Forall2 (λ '(existT _ (ty1, _)) '(existT _ (ty2, _)), ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone) (fp_atys ((F1 κs tys).(fn_p) a)) (fp_atys ((F2 κs tys).(fn_p) b))⌝);
-        iterate: zip ls (fp_atys ((F1 κs tys).(fn_p) a)) {{ e T, exhale (e.1 ◁ₗ[π, Owned] #(projT2 e.2).2 @ ◁ (projT2 e.2).1); return T }};
-        exhale (fp_Pa ((F1 κs tys).(fn_p) a) π);
-        exhale (fp_Sc ((F1 κs tys).(fn_p) a) π);
-        exhale ⌜fp_panic ((F1 κs tys).(fn_p) a) → fp_panic ((F2 κs tys).(fn_p) b)⌝;
-        (* show that F1.ret implies F2.ret *)
-        ∀ (vr : val) a2,
-        inhale (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_R) π;
-        inhale (vr ◁ᵥ{π, MetaNone} (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_ref) @ (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_ty));
-        ∃ b2,
-        exhale (vr ◁ᵥ{π, MetaNone} (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_ref) @ (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_ty));
-        exhale (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_R) π;
-        done
-      | return T
-    .
+  Lemma typed_function_equiv π fn {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) :
+    (typed_function π fn (eqp1, F1)) ∗
+      ([{ drop_spatial;
+      ∀ (κs : prod_vec lft lfts) (tys : plist type rts),
+      exhale ⌜∀ a b ϝ, elctx_sat (((F2 κs tys).(fn_p) b).(fp_elctx) ϝ) [ϝ ⊑ₗ{ 0} []] (((F1 κs tys).(fn_p) a).(fp_elctx) ϝ)⌝;
+      ∀ (b : _),
+      inhale (fp_Pa ((F2 κs tys).(fn_p) b) π);
+      inhale (fp_Sc ((F2 κs tys).(fn_p) b) π);
+      ls ← iterate: fp_atys ((F2 κs tys).(fn_p) b) with [] {{ ty T ls,
+             ∀ l : loc,
+              inhale (l ◁ₗ[π, Owned] #(projT2 ty).2 @ ◁ (projT2 ty).1); return T (ls ++ [l]) }};
+      ∃ (a : _),
+      exhale (⌜Forall2 (λ '(existT _ (ty1, _)) '(existT _ (ty2, _)), ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone) (fp_atys ((F1 κs tys).(fn_p) a)) (fp_atys ((F2 κs tys).(fn_p) b))⌝);
+      iterate: zip ls (fp_atys ((F1 κs tys).(fn_p) a)) {{ e T, exhale (e.1 ◁ₗ[π, Owned] #(projT2 e.2).2 @ ◁ (projT2 e.2).1); return T }};
+      exhale (fp_Pa ((F1 κs tys).(fn_p) a) π);
+      exhale (fp_Sc ((F1 κs tys).(fn_p) a) π);
+      exhale ⌜fp_panic ((F1 κs tys).(fn_p) a) → fp_panic ((F2 κs tys).(fn_p) b)⌝;
+      (* show that F1.ret implies F2.ret *)
+      ∀ (vr : val) a2,
+      inhale (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_R) π;
+      inhale (vr ◁ᵥ{π, MetaNone} (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_ref) @ (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_ty));
+      ∃ b2,
+      exhale (vr ◁ᵥ{π, MetaNone} (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_ref) @ (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_ty));
+      exhale (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_R) π;
+      done }])%LI
+    ⊢ (typed_function π fn (eqp2, F2)).
   Proof.
-    iIntros "[#Ha Hb] #Hf". iFrame "Hb".
-
+    iIntros "(#Hf & #Ha)".
     rewrite /typed_function.
     iIntros (κs tys b ϝ f) "!>".
     iIntros (Hargly lsa).
@@ -844,6 +841,41 @@ Section function_subsume.
       iApply (logical_step_wand with "Hs").
       iIntros "!> (HR & %HP & HAcc)". iFrame.
       iPureIntro. exact (Hpanic HP).
+  Qed.
+
+  Lemma subsume_typed_function π fn {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) T :
+    subsume (typed_function π fn (eqp1, F1)) (typed_function π fn (eqp2, F2)) T :-
+      and:
+      | drop_spatial;
+        ∀ (κs : prod_vec lft lfts) (tys : plist type rts),
+        exhale ⌜∀ a b ϝ, elctx_sat (((F2 κs tys).(fn_p) b).(fp_elctx) ϝ) [ϝ ⊑ₗ{ 0} []] (((F1 κs tys).(fn_p) a).(fp_elctx) ϝ)⌝;
+        ∀ (b : _),
+        inhale (fp_Pa ((F2 κs tys).(fn_p) b) π);
+        inhale (fp_Sc ((F2 κs tys).(fn_p) b) π);
+        ls ← iterate: fp_atys ((F2 κs tys).(fn_p) b) with [] {{ ty T ls,
+               ∀ l : loc,
+                inhale (l ◁ₗ[π, Owned] #(projT2 ty).2 @ ◁ (projT2 ty).1); return T (ls ++ [l]) }};
+        ∃ (a : _),
+        exhale (⌜Forall2 (λ '(existT _ (ty1, _)) '(existT _ (ty2, _)), ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone) (fp_atys ((F1 κs tys).(fn_p) a)) (fp_atys ((F2 κs tys).(fn_p) b))⌝);
+        iterate: zip ls (fp_atys ((F1 κs tys).(fn_p) a)) {{ e T, exhale (e.1 ◁ₗ[π, Owned] #(projT2 e.2).2 @ ◁ (projT2 e.2).1); return T }};
+        exhale (fp_Pa ((F1 κs tys).(fn_p) a) π);
+        exhale (fp_Sc ((F1 κs tys).(fn_p) a) π);
+        exhale ⌜fp_panic ((F1 κs tys).(fn_p) a) → fp_panic ((F2 κs tys).(fn_p) b)⌝;
+        (* show that F1.ret implies F2.ret *)
+        ∀ (vr : val) a2,
+        inhale (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_R) π;
+        inhale (vr ◁ᵥ{π, MetaNone} (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_ref) @ (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_ty));
+        ∃ b2,
+        exhale (vr ◁ᵥ{π, MetaNone} (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_ref) @ (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_ty));
+        exhale (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_R) π;
+        done
+      | return T
+    .
+  Proof.
+    iIntros "[#Ha Hb] #Hf". iFrame "Hb".
+    iApply typed_function_equiv. iSplit.
+    - iApply "Hf".
+    - done.
   Qed.
   (* NOTE: Don't use the instance generation, as it will instantiate the equalities with [eq_refl]. *)
   Global Instance subsume_typed_function_inst π fn {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) :
