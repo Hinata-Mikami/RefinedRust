@@ -39,36 +39,6 @@ Defined.
 #[global] Typeclasses Transparent Node_rt.
 End Node_ty.
 Global Arguments Node_rt : clear implicits.
-Section Node_inv_t.
-  Context `{RRGS : !refinedrustGS Σ}.
-
-  Program Definition Node_inv_t_inv_spec  : spec_with 0 [] (ex_inv_def (Node_rt)%type (((Z * loc * bool)))%type) := spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
-    (λ π inner_rfn (_ty_rfn : RT_rt (((Z * loc * bool))%type : RT)),
-            let '(v, n, m) := _ty_rfn in ⌜inner_rfn = -[#(v); #(n); #(m)]⌝ ∗ 
-  (
-    ⌜n = (Loc ProvNone 0)⌝
-    ∨
-    ∃ (v' : Z) (n' : loc) (m' : bool),
-        n ◁ₗ[ π, Owned] # -[# v'; # n'; # m'] @
-         (◁ (Node_ty <INST!>))
-  )
- ∗ True)%I
-    ([])
-    ([])
-    _ _ _
-  .
-  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
-
-  Definition Node_inv_t  : spec_with 0 [] (type (((Z * loc * bool)))%type) :=
-    spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ex_plain_t _ _ (Node_inv_t_inv_spec   <INST!>) (Node_ty  <INST!>).
-  Global Typeclasses Transparent Node_inv_t.
-  Definition Node_inv_t_rt : RT.
-  Proof using  . let __a := normalized_rt_of_spec_ty Node_inv_t in exact __a. Defined.
-  Global Typeclasses Transparent Node_inv_t_rt.
-End Node_inv_t.
-Global Arguments Node_inv_t_rt : clear implicits.
 
 Section Heap_ty.
   Context `{RRGS : !refinedrustGS Σ}.
@@ -141,13 +111,10 @@ Definition type_of_Node_set_next  :=
       (* params....... *) (node, next, v, old_next, m) : (((loc) * (loc) * (Z) * (loc) * (bool))),
       (* elctx........ *) (λ ϝ, []);
       (* args......... *) node :@: alias_ptr_t, next :@: alias_ptr_t;
-      (* precondition. *) (λ π : thread_id, (node ◁ₗ[π, Owned] #((v, old_next, m)) @ (◁ (Node_inv_t <INST!>)))) |
+      (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, () @ unit_t;
-      (* postcondition *) (λ π : thread_id, (
-            node ◁ₗ[π, Owned] # -[# v; # next; # m] @
-              (◁ struct_t Node_sls +[◁ int i32; alias_ptr_t; ◁ bool_t])
-          )).
+      (* postcondition *) (λ π : thread_id, True).
 
 Definition trait_incl_of_Heap_new  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).

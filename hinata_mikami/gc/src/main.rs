@@ -15,6 +15,9 @@
 
 use std::ptr;
 
+// 本質的には同じはずなのにNode側に書けないことは欠点
+// 記録しておくべき
+// 修論の一部にするくらいのつもりで 文章の形に
 struct Node {
     value: i32,
     next: *mut Node,
@@ -33,7 +36,10 @@ impl Node{
     }
 }
 
-
+// ここに inv を書かないほうがいい可能性も？関数側に書く方がいい傾向もあるか
+// next がない単なるノードのリストだと...?
+// Node の中のポインタが有効 * Node の next が有効 簡単な例で
+// Next が次を指している　を一旦抜きにして単純化
 #[rr::refined_by("(vals, locs, nexts, marks)" :
                  "(list Z * list loc * list loc * list bool)")]
 #[rr::depends_on(Node)]
@@ -49,7 +55,7 @@ impl Node{
       ⌜marks !! i = Some m⌝ ∗
       guarded true
         (l ◁ₗ[π, Owned]
-          # -[#v; #n; #m]
+          # -[#v; #n; #m] 
           @ ◁(Node_ty <INST!>)) ∗
       freeable_nz l
         (ly_size (use_layout_alg' Node_sls))
@@ -59,6 +65,9 @@ struct Heap {
     #[rr::field("<#> locs")]
     all_nodes: Vec<*mut Node>,
 }
+// #について
+// freeable について
+// もう少し単純なところから
 
 
 

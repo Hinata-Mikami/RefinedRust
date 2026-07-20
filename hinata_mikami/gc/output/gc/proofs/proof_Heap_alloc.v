@@ -7,7 +7,7 @@ Set Default Proof Using "Type".
 
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
-
+(* 
 
 (* Heap_alloc_prrof を解くための補題？ *)
 (* 自動証明 rep liRStep でどこかで使われた？ *)
@@ -23,11 +23,25 @@ Proof.
   iIntros "($ & $ & $)".
 Qed.
 
-Definition simplify_goal_big_sepL_app_inst :=
-  [instance @simplify_goal_big_sepL_app with 10%N].
-Global Existing Instance simplify_goal_big_sepL_app_inst.
+Lemma simplify_goal_big_sepL_cons_snoc {A} (a b : A) (xs : list A)
+  (Φ : nat → A → iProp Σ) T :
+  ([∗ list] i ↦ x ∈ a :: xs, Φ i x) ∗
+  Φ (length (a :: xs)) b ∗
+  T
+  ⊢ simplify_goal ([∗ list] i ↦ x ∈ a :: xs ++ [b], Φ i x) T.
+Proof.
+  rewrite /simplify_goal.
+  change (a :: xs ++ [b]) with ((a :: xs) ++ [b]).
+  rewrite big_sepL_app.
+  simpl.
+  rewrite Nat.add_0_r.
+  iIntros "(Hxs & Hb & HT)".
+  iFrame.
+Qed.
 
-
+Definition simplify_goal_big_sepL_cons_snoc_inst :=
+  [instance @simplify_goal_big_sepL_cons_snoc with 0%N].
+Global Existing Instance simplify_goal_big_sepL_cons_snoc_inst. *)
 
 Lemma Heap_alloc_proof (π : thread_id) :
   Heap_alloc_lemma π.
@@ -36,6 +50,7 @@ Proof.
 
   rep <-! liRStep; liShow.
 
+  (* 
   rep liRStep; liShow.
   liInst Hevar_x
   (match h with
@@ -92,14 +107,24 @@ Proof.
     inversion Hnext; subst n; clear Hnext.
     inversion Hmark; subst m; clear Hmark.
 
-    iRevert "Hown_old".
+    (* iRevert "Hown_old".
     rep liRStep; liShow.
     apply_update (updateable_strip_guards).
     rep liRStep; liShow.
-    rep liRStep; liShow.
+    rep liRStep; liShow. *)
 
-    rewrite updateable_eq.
-    rep liRStep; liShow.
+    (* iEval (rewrite /guarded /=) in "Hown_old".
+
+    iDestruct "Hown_old" as "(Hcred_old & Hown_old)".
+    iEval (rewrite /have_creds) in "Hcred_old".
+    iDestruct "Hcred_old" as "(Hlc_old & Hreceipt_old)".
+
+    iEval (rewrite /num_cred lc_succ) in "Hlc_old".
+    iDestruct "Hlc_old" as "(Hlc_one & Hlc_rest)".
+
+    iMod (lc_fupd_elim_later ⊤ with "Hlc_one Hown_old") as "Hown_old".
+
+    rep liRStep; liShow. *)
 
     assert (Hmap_h : list_fmap Z Z id h_tail = h_tail).
     {
@@ -180,20 +205,88 @@ Proof.
 
     iEval (rewrite Hmap_h) in "Htail_app".
 
-    iRevert "Htail_app".
+    iAssert (
+      [∗ list] i↦x ∈ old_v :: h_tail,
+        ∃ (l n : loc) (m : bool),
+          ⌜(old_l :: h0_tail ++ [x']) !! i = Some l⌝ ∗
+          ⌜(old_n :: h1_tail ++ [NULL_loc]) !! i = Some n⌝ ∗
+          ⌜(old_m :: h2_tail ++ [false]) !! i = Some m⌝ ∗
+          guarded true
+            (l ◁ₗ[π, Owned]
+              # -[#x; #n; #m]
+              @ (◁ (Node_ty <INST!>))) ∗
+          freeable_nz l
+            (ly_size (use_layout_alg' Node_sls))
+            1 HeapAlloc
+    )%I with "[Hown_old Hfree_old Htail_app]" as "Hnodes_old".
+    {
+      simpl.
+      iSplitL "Hown_old Hfree_old".
+      {
+        iExists old_l, old_n, old_m.
+        simpl.
+        iSplit; first done.
+        iSplit; first done.
+        iSplit; first done.
+        iFrame.
+      }
+
+      iApply (big_sepL_impl with "Htail_app").
+      iIntros "!>" (i x Hlookup) "Hnode".
+      iDestruct "Hnode" as (l n m) "(%Hloc & %Hnext & %Hmark & Hown & Hfree)".
+
+      iExists l, n, m.
+      simpl.
+      iSplit.
+      {
+        iPureIntro.
+        exact Hloc.
+      }
+      iSplit.
+      {
+        iPureIntro.
+        exact Hnext.
+      }
+      iSplit.
+      {
+        iPureIntro.
+        exact Hmark.
+      }
+      iFrame.
+    }
+
+    iRevert "Hnodes_old".
     rep liRStep; liShow.
 
     replace (length h_tail - length h0_tail)%nat with 0%nat by lia.
     simpl.
-    rep liRStep; liShow.
+
+    rep liRStep; liShow. *)
 
 
+    all: print_remaining_goal.
+    Unshelve. all: sidecond_solver.
+    Unshelve. all: sidecond_hammer.
 
-  all: print_remaining_goal.
-  Unshelve. all: sidecond_solver.
-  Unshelve. all: sidecond_hammer.
-  Unshelve. all: print_remaining_sidecond.
+    (* all: try solve [
+    apply Forall_app;
+    split;
+    [
+      eapply Forall_impl; [| exact Hnext_valid];
+      intros n Hn;
+      destruct Hn as [Hnull | Hin];
+      [ left; exact Hnull
+      | right; apply elem_of_app; left; exact Hin ]
+    |
+      constructor;
+      [ left; reflexivity
+      | constructor ]
+    ]
+    ]. *)
+
+    Unshelve. all: print_remaining_sidecond.
    
+
 
 Qed.
 End proof.

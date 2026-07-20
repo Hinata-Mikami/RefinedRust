@@ -32,14 +32,14 @@ Definition Heap_alloc_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((Vec_sls (PtrSynType) ((Global_sls : syn_type))) : syn_type)) →
   syn_type_is_layoutable ((Heap_sls : syn_type)) →
   syn_type_is_layoutable ((Node_sls : syn_type)) →
-  Box_T_into_raw_Node_loc ◁ᵥ{π, MetaNone} Box_T_into_raw_Node_loc @ function_ptr [((Box_sls (Node_st) ((Global_sls : syn_type))) : syn_type)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Box_T_into_raw (RRGS:=RRGS) ((Node_inv_t_rt)) (Node_st)  <TY> (Node_inv_t    <INST!>) <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_Box_T_into_raw ((Node_inv_t_rt)) (Node_st)  <TY> (Node_inv_t    <INST!>) <INST!>)%Z⌝))%I) -∗
-  Box_T_new_Node_loc ◁ᵥ{π, MetaNone} Box_T_new_Node_loc @ function_ptr [Node_st] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Box_T_new (RRGS:=RRGS) ((Node_inv_t_rt)) (Node_st)  <TY> (Node_inv_t    <INST!>) <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_Box_T_new ((Node_inv_t_rt)) (Node_st)  <TY> (Node_inv_t    <INST!>) <INST!>)%Z⌝))%I) -∗
+  Box_T_into_raw_Node_loc ◁ᵥ{π, MetaNone} Box_T_into_raw_Node_loc @ function_ptr [((Box_sls (Node_st) ((Global_sls : syn_type))) : syn_type)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Box_T_into_raw (RRGS:=RRGS) ((Node_rt)) (Node_st)  <TY> (Node_ty   <INST!>) <INST!>) (λ π, (True)
+  ∗ (⌜(trait_incl_of_Box_T_into_raw ((Node_rt)) (Node_st)  <TY> (Node_ty   <INST!>) <INST!>)%Z⌝))%I) -∗
+  Box_T_new_Node_loc ◁ᵥ{π, MetaNone} Box_T_new_Node_loc @ function_ptr [Node_st] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Box_T_new (RRGS:=RRGS) ((Node_rt)) (Node_st)  <TY> (Node_ty   <INST!>) <INST!>) (λ π, (True)
+  ∗ (⌜(trait_incl_of_Box_T_new ((Node_rt)) (Node_st)  <TY> (Node_ty   <INST!>) <INST!>)%Z⌝))%I) -∗
   Vec_TA_push_mutNode_std_alloc_Global_loc ◁ᵥ{π, MetaNone} Vec_TA_push_mutNode_std_alloc_Global_loc @ function_ptr [PtrSynType; PtrSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Vec_TA_push (RRGS:=RRGS) (loc) ((((Global_rt)))) (PtrSynType) ((Global_sls : syn_type)) GlobalasAllocator_spec_attrs  <TY> alias_ptr_t <TY> (Global_ty   <INST!>) <LFT> late_lft_0 <INST!>) (λ π, (True)
   ∗ (⌜(trait_incl_of_Vec_TA_push (loc) ((((Global_rt)))) (PtrSynType) ((Global_sls : syn_type)) GlobalasAllocator_spec_attrs (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), GlobalasAllocator_spec   <INST!>)  <TY> alias_ptr_t <TY> (Global_ty   <INST!>) <LFT> late_lft_0 <INST!>)%Z⌝))%I) -∗
-  ptr_null_mut_Node_loc ◁ᵥ{π, MetaNone} ptr_null_mut_Node_loc @ function_ptr [] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_ptr_null_mut (RRGS:=RRGS) ((Node_inv_t_rt)) (Node_st)  <TY> (Node_inv_t    <INST!>) <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_ptr_null_mut ((Node_inv_t_rt)) (Node_st)  <TY> (Node_inv_t    <INST!>) <INST!>)%Z⌝))%I) -∗
+  ptr_null_mut_Node_loc ◁ᵥ{π, MetaNone} ptr_null_mut_Node_loc @ function_ptr [] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_ptr_null_mut (RRGS:=RRGS) ((Node_rt)) (Node_st)  <TY> (Node_ty   <INST!>) <INST!>) (λ π, (True)
+  ∗ (⌜(trait_incl_of_ptr_null_mut ((Node_rt)) (Node_st)  <TY> (Node_ty   <INST!>) <INST!>)%Z⌝))%I) -∗
   typed_function π (Heap_alloc_def Box_T_into_raw_Node_loc  Box_T_new_Node_loc  Vec_TA_push_mutNode_std_alloc_Global_loc  ptr_null_mut_Node_loc  ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Heap_alloc  <LFT> ulft_1 <INST!>) (λ π, (True)
   ∗ (⌜(trait_incl_of_Heap_alloc <LFT> ulft_1 <INST!>)%Z⌝))).
 End proof.
