@@ -82,6 +82,7 @@ struct Config {
     output_dir: Option<String>,
     post_generation_hook: Option<String>,
     extra_specs: Option<String>,
+    extra_proofs: Vec<String>,
     trust_debug: bool,
     find_stdlib: bool,
     register_all_adts: bool,
@@ -111,6 +112,7 @@ impl Default for Config {
             output_dir: None,
             post_generation_hook: None,
             extra_specs: None,
+            extra_proofs: vec![],
             trust_debug: false,
             find_stdlib: true,
             register_all_adts: true,
@@ -342,6 +344,12 @@ pub fn post_generation_hook() -> Option<String> {
 #[must_use]
 pub fn extra_specs_file() -> Option<PathBuf> {
     access_config(|c| c.extra_specs.clone()).map(make_path_absolute).and_then(Result::ok)
+}
+
+/// Which extra proof modules should be build? (manually added files in proofs/)
+#[must_use]
+pub fn extra_proof_modules() -> Vec<String> {
+    access_config(|c| c.extra_proofs.clone())
 }
 
 /// Should we automatically trust `fmt::Debug` trait impls?

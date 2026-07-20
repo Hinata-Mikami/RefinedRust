@@ -892,7 +892,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             coq::module::Import::new(vec!["typing", "shims"]).from(vec!["refinedrust"]),
         ];
 
-        let mut proof_modules = Vec::new();
+        let mut proof_modules = rrconfig::extra_proof_modules();
 
         // write proofs
         // each function gets a separate file in order to parallelize
