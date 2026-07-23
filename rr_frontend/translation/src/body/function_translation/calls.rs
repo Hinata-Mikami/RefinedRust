@@ -498,6 +498,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let ty::TyKind::FnDef(defid, params) = ty.kind() else {
             return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::ExpectedFnDefType)));
         };
+        let params = params.no_bound_vars().expect("called FnDef arguments must not contain bound variables");
 
         let current_typing_env = ty::TypingEnv::post_analysis(self.tcx, self.proc.get_id());
 
@@ -584,6 +585,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::Const::Ty(ty, _) | mir::Const::Val(_, ty) => {
                 match ty.kind() {
                     ty::TyKind::FnDef(def, args) => {
+                        let args = args
+                            .no_bound_vars()
+                            .expect("call operand FnDef arguments must not contain bound variables");
                         let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = self.tcx.type_of(*def);
 
                         let ty_ident = ty.instantiate_identity().skip_norm_wip();

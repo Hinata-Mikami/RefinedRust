@@ -221,6 +221,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         let ty::TyKind::FnDef(defid, args) = ty.kind() else {
             return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::ExpectedFnDefType)));
         };
+        let args = args.no_bound_vars().expect("drop-call FnDef arguments must not contain bound variables");
 
         let Some(_) = self.tcx.trait_of_assoc(*defid) else {
             return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(

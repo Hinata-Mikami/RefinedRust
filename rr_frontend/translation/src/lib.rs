@@ -3006,6 +3006,9 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<()
                                 let ty::TyKind::FnDef(_, params) = ty.kind() else {
                                     unimplemented!();
                                 };
+                                let params = params
+                                    .no_bound_vars()
+                                    .expect("trait item FnDef arguments must not contain bound variables");
                                 let mut generics = scope::Params::new_from_generics(
                                     vcx.tcx,
                                     params,

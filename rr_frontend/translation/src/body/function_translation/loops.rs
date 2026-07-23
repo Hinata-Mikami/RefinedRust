@@ -129,6 +129,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let ty::TyKind::FnDef(_, params) = fn_ty.kind() else {
             return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::ExpectedFnDefType)));
         };
+        let params =
+            params.no_bound_vars().expect("iterator FnDef arguments must not contain bound variables");
 
         // exploiting that Iterator has the same args as Iterator::next
         let mut scope = self.ty_translator.scope.borrow_mut();

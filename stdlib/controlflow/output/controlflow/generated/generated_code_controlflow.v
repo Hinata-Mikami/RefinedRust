@@ -56,8 +56,6 @@ Program Definition ControlFlowBCasFromResidualControlFlowBconvert_Infallible_fro
      "_bb0" :=
       local_live{ (ControlFlow_st (B_st) (C_st)) } "__0";
       local_live{ (IntSynType ISize) } "__2";
-      local_live{ (IntSynType ISize) } "__7";
-      local_live{ (IntSynType ISize) } "__9";
       "__2" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (convert_Infallible_st))) ("residual");
       Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
      ]>%E $
@@ -81,7 +79,6 @@ Program Definition ControlFlowBCasFromResidualControlFlowBconvert_Infallible_fro
       "__0" <-{ (use_op_alg' (ControlFlow_st (B_st) (C_st))) } EnumInit (ControlFlow_els (B_st) (C_st)) "Break" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTTyVar "B"; RSTTyVar "C"] [])) (StructInit (ControlFlow_Break_sls (B_st) (C_st)) [("0", move{ (use_op_alg' B_st) } ("__4") : expr)]);
       local_dead "__4";
       local_dead "b";
-      "__7" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (convert_Infallible_st))) ("residual");
       return (move{ (use_op_alg' (ControlFlow_st (B_st) (C_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -106,7 +103,6 @@ Program Definition ControlFlowBCasTry_branch_def (B_st: syn_type) (C_st: syn_typ
       local_live{ (IntSynType ISize) } "__2";
       local_live{ BoolSynType } "__8";
       local_live{ BoolSynType } "__9";
-      local_live{ (IntSynType ISize) } "__10";
       "__9" <-{ BoolOp } val_of_bool false;
       "__8" <-{ BoolOp } val_of_bool false;
       "__8" <-{ BoolOp } val_of_bool true;
@@ -145,7 +141,6 @@ Program Definition ControlFlowBCasTry_branch_def (B_st: syn_type) (C_st: syn_typ
      ]>%E $
      <[
      "_bb4" :=
-      "__10" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) ("self");
       return (move{ (use_op_alg' (ControlFlow_st ((ControlFlow_st (B_st) (convert_Infallible_st))) (C_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -366,7 +361,6 @@ Program Definition std_option_OptionTasTry_branch_def (T_st: syn_type) : functio
       local_live{ (ControlFlow_st (((Option_els (convert_Infallible_st)) : syn_type)) (T_st)) } "__0";
       local_live{ (IntSynType ISize) } "__2";
       local_live{ BoolSynType } "__6";
-      local_live{ (IntSynType ISize) } "__7";
       "__6" <-{ BoolOp } val_of_bool false;
       "__6" <-{ BoolOp } val_of_bool true;
       "__2" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) ("self");
@@ -397,7 +391,6 @@ Program Definition std_option_OptionTasTry_branch_def (T_st: syn_type) : functio
      ]>%E $
      <[
      "_bb4" :=
-      "__7" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) ("self");
       return (move{ (use_op_alg' (ControlFlow_st (((Option_els (convert_Infallible_st)) : syn_type)) (T_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -447,7 +440,6 @@ Program Definition std_result_ResultTEasTry_branch_def (T_st: syn_type) (E_st: s
       local_live{ (IntSynType ISize) } "__2";
       local_live{ BoolSynType } "__8";
       local_live{ BoolSynType } "__9";
-      local_live{ (IntSynType ISize) } "__10";
       "__9" <-{ BoolOp } val_of_bool false;
       "__8" <-{ BoolOp } val_of_bool false;
       "__8" <-{ BoolOp } val_of_bool true;
@@ -486,7 +478,6 @@ Program Definition std_result_ResultTEasTry_branch_def (T_st: syn_type) (E_st: s
      ]>%E $
      <[
      "_bb4" :=
-      "__10" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) ("self");
       return (move{ (use_op_alg' (ControlFlow_st (((Result_els (convert_Infallible_st) (E_st)) : syn_type)) (T_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -535,8 +526,6 @@ Program Definition std_result_ResultTFasFromResidualstd_result_Resultconvert_Inf
       local_live{ ((Result_els (T_st) (F_st)) : syn_type) } "__0";
       local_live{ (IntSynType ISize) } "__2";
       local_live{ BoolSynType } "__7";
-      local_live{ (IntSynType ISize) } "__8";
-      local_live{ (IntSynType ISize) } "__10";
       "__7" <-{ BoolOp } val_of_bool false;
       "__7" <-{ BoolOp } val_of_bool true;
       "__2" <-{ IntOp ISize } EnumDiscriminant ((Result_els (convert_Infallible_st) (E_st))) ("residual");
@@ -567,7 +556,6 @@ Program Definition std_result_ResultTFasFromResidualstd_result_Resultconvert_Inf
       "__0" <-{ (use_op_alg' ((Result_els (T_st) (F_st)) : syn_type)) } EnumInit (Result_els (T_st) (F_st)) "Err" (RSTEnumDef ["Result_enum"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "F"] [])) (StructInit (Result_Err_sls (T_st) (F_st)) [("0", move{ (use_op_alg' F_st) } ("__4") : expr)]);
       local_dead "__4";
       local_dead "e";
-      "__8" <-{ IntOp ISize } EnumDiscriminant ((Result_els (convert_Infallible_st) (E_st))) ("residual");
       return (move{ (use_op_alg' ((Result_els (T_st) (F_st)) : syn_type)) } ("__0"))
      ]>%E $
       ∅;

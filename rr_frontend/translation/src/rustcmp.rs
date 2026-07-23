@@ -53,8 +53,29 @@ fn cmp_bound_var_index_kind(a: ty::BoundVarIndexKind, b: ty::BoundVarIndexKind) 
     }
 }
 
-fn cmp_const<'tcx>(_tcx: ty::TyCtxt<'tcx>, _a: ty::Const<'tcx>, _b: ty::Const<'tcx>) -> Ordering {
-    unimplemented!("compare Const");
+fn cmp_const<'tcx>(_tcx: ty::TyCtxt<'tcx>, a: ty::Const<'tcx>, b: ty::Const<'tcx>) -> Ordering {
+    match (a.kind(), b.kind()) {
+        (ty::ConstKind::Bound(a_d, a_c), ty::ConstKind::Bound(b_d, b_c)) => {
+            cmp_bound_var_index_kind(a_d, b_d).then_with(|| a_c.var.cmp(&b_c.var))
+        },
+        _ => unimplemented!("compare Const"),
+    }
+}
+
+const fn bound_variable_kind_discriminant(kind: ty::BoundVariableKind<'_>) -> u8 {
+    match kind {
+        ty::BoundVariableKind::Ty(_) => 0,
+        ty::BoundVariableKind::Region(_) => 1,
+        ty::BoundVariableKind::Const => 2,
+    }
+}
+
+fn cmp_bound_variable_kinds(a: &[ty::BoundVariableKind<'_>], b: &[ty::BoundVariableKind<'_>]) -> Ordering {
+    a.len().cmp(&b.len()).then_with(|| {
+        a.iter()
+            .map(|kind| bound_variable_kind_discriminant(*kind))
+            .cmp(b.iter().map(|kind| bound_variable_kind_discriminant(*kind)))
+    })
 }
 
 fn ty_discriminant(ty: ty::Ty<'_>) -> usize {
@@ -151,7 +172,7 @@ fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Orde
                 cmp_region(*a_r, *b_r).then_with(|| cmp_ty(tcx, *a_t, *b_t).then_with(|| a_m.cmp(b_m)))
             },
             (TyKind::FnDef(a_d, a_s), TyKind::FnDef(b_d, b_s)) => {
-                cmp_defid(tcx, *a_d, *b_d).then_with(|| cmp_arg_refs(tcx, a_s, b_s))
+                cmp_defid(tcx, *a_d, *b_d).then_with(|| cmp_bound_arg_refs(tcx, *a_s, *b_s))
             },
             (TyKind::FnPtr(..), TyKind::FnPtr(..)) => {
                 unimplemented!("compare FnPtr");
@@ -180,8 +201,8 @@ fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Orde
                 .then_with(|| cmp_defid(tcx, alias_kind_def_id(a.kind), alias_kind_def_id(b.kind)))
                 .then_with(|| cmp_arg_refs(tcx, a.args, b.args)),
             (TyKind::Param(a_p), TyKind::Param(b_p)) => a_p.cmp(b_p),
-            (TyKind::Bound(..), TyKind::Bound(..)) => {
-                unimplemented!("compare Bound");
+            (TyKind::Bound(a_d, a_t), TyKind::Bound(b_d, b_t)) => {
+                cmp_bound_var_index_kind(*a_d, *b_d).then_with(|| a_t.var.cmp(&b_t.var))
             },
             (TyKind::Placeholder(_), TyKind::Placeholder(_)) => {
                 unimplemented!("compare Placeholder");
@@ -264,6 +285,15 @@ pub(crate) fn cmp_arg_refs<'tcx>(
         },
         o => o,
     }
+}
+
+fn cmp_bound_arg_refs<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    a: ty::Binder<'tcx, ty::GenericArgsRef<'tcx>>,
+    b: ty::Binder<'tcx, ty::GenericArgsRef<'tcx>>,
+) -> Ordering {
+    cmp_bound_variable_kinds(a.bound_vars(), b.bound_vars())
+        .then_with(|| cmp_arg_refs(tcx, a.skip_binder(), b.skip_binder()))
 }
 
 /// Compare two `TraitRef`s deterministically, giving a

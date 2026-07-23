@@ -12,6 +12,7 @@ use log::{info, trace};
 use radium::{coq, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
+use rr_rustc_interface::middle::ty::RegionExt as _;
 
 use crate::base::*;
 use crate::environment::borrowck::facts;

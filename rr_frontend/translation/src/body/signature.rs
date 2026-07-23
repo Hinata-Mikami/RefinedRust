@@ -565,7 +565,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn get_proc_ty_params(tcx: ty::TyCtxt<'tcx>, did: DefId) -> ty::GenericArgsRef<'tcx> {
         let ty = tcx.type_of(did).instantiate_identity().skip_norm_wip();
         match ty.kind() {
-            ty::TyKind::FnDef(_, params) => params,
+            ty::TyKind::FnDef(_, params) => params
+                .no_bound_vars()
+                .expect("procedure FnDef arguments must not contain bound variables"),
             _ => panic!("Procedure::new called on a procedure whose type is not TyKind::FnDef!"),
         }
     }

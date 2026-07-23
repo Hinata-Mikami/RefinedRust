@@ -687,9 +687,6 @@ Program Definition traits_iterator_Iterator_fold_def (DropGlue_F_drop_glue_loc: 
       local_live{ UnitSynType } "__17";
       local_live{ UnitSynType } "__19";
       local_live{ BoolSynType } "__20";
-      local_live{ (IntSynType ISize) } "__21";
-      local_live{ (IntSynType ISize) } "__23";
-      local_live{ (IntSynType ISize) } "__25";
       "__20" <-{ BoolOp } val_of_bool false;
       local_live{ B_st } "accum";
       "__20" <-{ BoolOp } val_of_bool true;
@@ -715,7 +712,7 @@ Program Definition traits_iterator_Iterator_fold_def (DropGlue_F_drop_glue_loc: 
       annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
       local_dead "__8";
       "__9" <-{ IntOp ISize } EnumDiscriminant ((Option_els (Item_st))) ("__7");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__9")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb3"]) (Goto "_bb10")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__9")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb3"]) (Goto "_bb5")
      ]>%E $
      <[
      "_bb3" :=
@@ -750,23 +747,12 @@ Program Definition traits_iterator_Iterator_fold_def (DropGlue_F_drop_glue_loc: 
       local_dead "__12";
       "__6" <-{ StructOp unit_sl [] } zst_val;
       local_dead "x";
-      "__23" <-{ IntOp ISize } EnumDiscriminant ((Option_els (Item_st))) ("__7");
       local_dead "__7";
       annot{ 1 }: StratifyContextAnnot; (* goto to loop head *)
       Goto "_bb1"
      ]>%E $
      <[
      "_bb5" :=
-      expr: CallE DropGlue_Self_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("self")];
-      Goto "_bb6"
-     ]>%E $
-     <[
-     "_bb6" :=
-      return (move{ (use_op_alg' B_st) } ("__0"))
-     ]>%E $
-     <[
-     "_bb10" :=
-      "__21" <-{ IntOp ISize } EnumDiscriminant ((Option_els (Item_st))) ("__7");
       local_dead "__7";
       local_live{ UnitSynType } "__18";
       "__5" <-{ StructOp unit_sl [] } zst_val;
@@ -777,7 +763,16 @@ Program Definition traits_iterator_Iterator_fold_def (DropGlue_F_drop_glue_loc: 
       "__20" <-{ BoolOp } val_of_bool false;
       local_dead "accum";
       expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("f")];
-      Goto "_bb5"
+      Goto "_bb6"
+     ]>%E $
+     <[
+     "_bb6" :=
+      expr: CallE DropGlue_Self_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("self")];
+      Goto "_bb7"
+     ]>%E $
+     <[
+     "_bb7" :=
+      return (move{ (use_op_alg' B_st) } ("__0"))
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -1408,9 +1403,6 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
       local_live{ BoolSynType } "__16";
       local_live{ BoolSynType } "__17";
       local_live{ BoolSynType } "__18";
-      local_live{ (IntSynType ISize) } "__19";
-      local_live{ (IntSynType ISize) } "__21";
-      local_live{ (IntSynType ISize) } "__23";
       "__18" <-{ BoolOp } val_of_bool false;
       "__17" <-{ BoolOp } val_of_bool false;
       "__16" <-{ BoolOp } val_of_bool false;
@@ -1452,7 +1444,6 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
       "__16" <-{ BoolOp } val_of_bool true;
       "first" <-{ (use_op_alg' Item_st) } move{ (use_op_alg' Item_st) } ("val");
       local_dead "val";
-      "__21" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st))) ("__4");
       local_dead "__4";
       local_live{ Item_st } "__12";
       local_live{ Self_st } "__13";
@@ -1480,7 +1471,6 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
      "_bb6" :=
       local_dead "__10";
       local_dead "residual";
-      "__19" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st))) ("__4");
       local_dead "__4";
       "__16" <-{ BoolOp } val_of_bool false;
       local_dead "first";
@@ -1601,13 +1591,6 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_F_drop_glue_l
       local_live{ UnitSynType } "__24";
       local_live{ UnitSynType } "__26";
       local_live{ BoolSynType } "__28";
-      local_live{ (IntSynType ISize) } "__29";
-      local_live{ (IntSynType ISize) } "__31";
-      local_live{ (IntSynType ISize) } "__33";
-      local_live{ (IntSynType ISize) } "__35";
-      local_live{ (IntSynType ISize) } "__37";
-      local_live{ (IntSynType ISize) } "__39";
-      local_live{ (IntSynType ISize) } "__40";
       annot{ 1 }: CopyLftNameAnnot "plft5" "ulft_1"; (* initialization *)
       "__28" <-{ BoolOp } val_of_bool false;
       local_live{ B_st } "accum";
@@ -1634,7 +1617,7 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_F_drop_glue_l
       annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
       local_dead "__8";
       "__9" <-{ IntOp ISize } EnumDiscriminant ((Option_els (Item_st))) ("__7");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__9")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb3"]) (Goto "_bb14")
+      Switch (ISize: int_type) (move{ IntOp ISize } ("__9")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb3"]) (Goto "_bb10")
      ]>%E $
      <[
      "_bb3" :=
@@ -1688,11 +1671,9 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_F_drop_glue_l
       "__28" <-{ BoolOp } val_of_bool true;
       "accum" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("__12");
       local_dead "__12";
-      "__29" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (Try_R_Residual_st) (B_st))) ("__13");
       local_dead "__13";
       "__6" <-{ StructOp unit_sl [] } zst_val;
       local_dead "x";
-      "__33" <-{ IntOp ISize } EnumDiscriminant ((Option_els (Item_st))) ("__7");
       local_dead "__7";
       annot{ 1 }: StratifyContextAnnot; (* goto to loop head *)
       Goto "_bb1"
@@ -1711,32 +1692,17 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_F_drop_glue_l
       local_dead "__22";
       local_dead "residual";
       local_dead "__12";
-      "__35" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (Try_R_Residual_st) (B_st))) ("__13");
       local_dead "__13";
       local_dead "x";
-      "__37" <-{ IntOp ISize } EnumDiscriminant ((Option_els (Item_st))) ("__7");
       local_dead "__7";
       local_dead "__5";
       "__28" <-{ BoolOp } val_of_bool false;
       local_dead "accum";
       expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("f")];
-      Goto "_bb11"
+      Goto "_bb12"
      ]>%E $
      <[
      "_bb10" :=
-      local_dead "__27";
-      "__28" <-{ BoolOp } val_of_bool false;
-      local_dead "accum";
-      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("f")];
-      Goto "_bb11"
-     ]>%E $
-     <[
-     "_bb11" :=
-      return (move{ (use_op_alg' R_st) } ("__0"))
-     ]>%E $
-     <[
-     "_bb14" :=
-      "__31" <-{ IntOp ISize } EnumDiscriminant ((Option_els (Item_st))) ("__7");
       local_dead "__7";
       local_live{ UnitSynType } "__25";
       "__5" <-{ StructOp unit_sl [] } zst_val;
@@ -1746,7 +1712,19 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_F_drop_glue_l
       "__28" <-{ BoolOp } val_of_bool false;
       "__27" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("accum");
       "__0" <-{ (use_op_alg' R_st) } CallE Try_R_from_output_loc [] [RSTTyVar "R"; RSTTyVar "Try_R_Residual"] [@{expr} move{ (use_op_alg' B_st) } ("__27")];
-      Goto "_bb10"
+      Goto "_bb11"
+     ]>%E $
+     <[
+     "_bb11" :=
+      local_dead "__27";
+      "__28" <-{ BoolOp } val_of_bool false;
+      local_dead "accum";
+      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("f")];
+      Goto "_bb12"
+     ]>%E $
+     <[
+     "_bb12" :=
+      return (move{ (use_op_alg' R_st) } ("__0"))
      ]>%E $
       ∅;
      f_init := "_bb0";

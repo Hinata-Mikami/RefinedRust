@@ -5,6 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use rr_rustc_interface::middle::ty;
+use rr_rustc_interface::middle::ty::RegionExt as _;
 use rr_rustc_interface::type_ir::{TypeFoldable, TypeSuperFoldable as _, TypeVisitableExt as _};
 
 use crate::environment::polonius_info::{PoloniusInfo, RegionKind};

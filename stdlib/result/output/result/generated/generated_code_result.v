@@ -145,8 +145,6 @@ Program Definition Result_TE_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T
       local_live{ BoolSynType } "__11";
       local_live{ BoolSynType } "__12";
       local_live{ BoolSynType } "__13";
-      local_live{ (IntSynType ISize) } "__14";
-      local_live{ (IntSynType ISize) } "__16";
       "__11" <-{ BoolOp } val_of_bool false;
       "__13" <-{ BoolOp } val_of_bool false;
       "__12" <-{ BoolOp } val_of_bool false;
@@ -199,17 +197,16 @@ Program Definition Result_TE_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T
      <[
      "_bb5" :=
       if{ BoolOp }: copy{ BoolOp } ("__11") then
-       Goto "_bb7"
+       Goto "_bb8"
       else
        Goto "_bb6"
      ]>%E $
      <[
      "_bb6" :=
-      "__14" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) ("self");
       return (move{ (use_op_alg' (Result_st (U_st) (E_st))) } ("__0"))
      ]>%E $
      <[
-     "_bb7" :=
+     "_bb8" :=
       expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("op")];
       Goto "_bb6"
      ]>%E $
@@ -237,8 +234,6 @@ Program Definition Result_TE_map_err_def (DropGlue_O_drop_glue_loc: loc) (FnOnce
       local_live{ BoolSynType } "__11";
       local_live{ BoolSynType } "__12";
       local_live{ BoolSynType } "__13";
-      local_live{ (IntSynType ISize) } "__14";
-      local_live{ (IntSynType ISize) } "__16";
       "__11" <-{ BoolOp } val_of_bool false;
       "__13" <-{ BoolOp } val_of_bool false;
       "__12" <-{ BoolOp } val_of_bool false;
@@ -291,17 +286,16 @@ Program Definition Result_TE_map_err_def (DropGlue_O_drop_glue_loc: loc) (FnOnce
      <[
      "_bb5" :=
       if{ BoolOp }: copy{ BoolOp } ("__11") then
-       Goto "_bb7"
+       Goto "_bb8"
       else
        Goto "_bb6"
      ]>%E $
      <[
      "_bb6" :=
-      "__14" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) ("self");
       return (move{ (use_op_alg' (Result_st (T_st) (F_st))) } ("__0"))
      ]>%E $
      <[
-     "_bb7" :=
+     "_bb8" :=
       expr: CallE DropGlue_O_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("op")];
       Goto "_bb6"
      ]>%E $

@@ -12,7 +12,7 @@ use derive_more::{Constructor, Debug};
 use log::{info, trace, warn};
 use radium::{coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::ty::TypeFoldable as _;
+use rr_rustc_interface::middle::ty::{RegionUtilitiesExt as _, TypeFoldable as _};
 use rr_rustc_interface::middle::{span_bug, ty};
 use rr_rustc_interface::span::{DUMMY_SP, Symbol};
 

@@ -70,7 +70,7 @@ Ltac traits_iterator_Iterator_try_fold_prelude :=
   intros arg_self arg_init arg_f;
   let π := get_π in
   let Σ := get_Σ in
-  specialize (pose_bb_inv (PolyCons ("_bb1", (["self"; "f"; "accum"], ["init"; "x"; "residual"; "val"; "__28"], ["__0"; "__5"; "__6"; "__7"; "__8"; "__9"; "__12"; "__13"; "__14"; "__15"; "__16"; "__17"; "__18"; "__19"; "__21"; "__22"; "__24"; "__25"; "__26"; "__27"; "__29"; "__31"; "__33"; "__35"; "__37"; "__39"; "__40"], wrap_inv (λ (_params: ((_ * _))) (_var_self: (place_rfnRT ((place_rfnRT (Self_rt)) * gname)%type)) (_var_f: (place_rfnRT (F_rt))) (_var_accum: (place_rfnRT (B_rt))), let '(γ, init_state) := _params in ((∃ (seq: _) (self: _) (accum: _) (f: _), (⌜(_var_self = ($# self))%Z⌝)
+  specialize (pose_bb_inv (PolyCons ("_bb1", (["self"; "f"; "accum"], ["init"; "x"; "residual"; "val"; "__28"], ["__0"; "__5"; "__6"; "__7"; "__8"; "__9"; "__12"; "__13"; "__14"; "__15"; "__16"; "__17"; "__18"; "__19"; "__21"; "__22"; "__24"; "__25"; "__26"; "__27"], wrap_inv (λ (_params: ((_ * _))) (_var_self: (place_rfnRT ((place_rfnRT (Self_rt)) * gname)%type)) (_var_f: (place_rfnRT (F_rt))) (_var_accum: (place_rfnRT (B_rt))), let '(γ, init_state) := _params in ((∃ (seq: _) (self: _) (accum: _) (f: _), (⌜(_var_self = ($# self))%Z⌝)
   ∗ (⌜(_var_accum = ($# accum))%Z⌝)
   ∗ (⌜(_var_f = ($# f))%Z⌝)
   ∗ (⌜(self.ghost = γ)%Z⌝)

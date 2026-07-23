@@ -1419,6 +1419,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         let impl_ty = self.tcx.type_of(did).instantiate_identity().skip_norm_wip();
         let ty::TyKind::FnDef(_, impl_item_params) = impl_ty.kind() else { unreachable!() };
+        let impl_item_params = impl_item_params
+            .no_bound_vars()
+            .expect("impl item FnDef arguments must not contain bound variables");
 
         let item_ty = self.tcx.type_of(trait_item_did).instantiate_identity().skip_norm_wip();
         let ty::TyKind::FnDef(_, item_params) = item_ty.kind() else { unreachable!() };
@@ -1436,7 +1439,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let method_args = self.tcx.mk_args_from_iter(new_args);
         trace!("method args = {method_args:?}");
 
-        let subst_fn_ty = self.tcx.mk_ty_from_kind(ty::TyKind::FnDef(trait_item_did, method_args));
+        let subst_fn_ty = self
+            .tcx
+            .mk_ty_from_kind(ty::TyKind::FnDef(trait_item_did, ty::Binder::dummy(method_args)));
         subst_fn_ty.fn_sig(self.tcx)
     }
 

@@ -9,7 +9,7 @@
 use std::collections::{BTreeSet, HashSet};
 
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::TypeSuperFoldable as _;
+use rr_rustc_interface::middle::ty::{RegionExt as _, TypeSuperFoldable as _};
 
 use crate::rustcmp;
 

@@ -10,7 +10,7 @@ use std::collections::BTreeSet;
 
 use log::{info, trace, warn};
 use radium::{code, coq, specs};
-use rr_rustc_interface::middle::ty::TypeFoldable as _;
+use rr_rustc_interface::middle::ty::{RegionUtilitiesExt as _, TypeFoldable as _};
 use rr_rustc_interface::middle::{mir, ty};
 
 use crate::base::*;

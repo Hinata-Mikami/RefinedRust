@@ -105,7 +105,6 @@ Program Definition Option_OptionT_flatten_def (T_st: syn_type) : function :=
       local_live{ (Option_st (T_st)) } "__0";
       local_live{ (IntSynType ISize) } "__2";
       local_live{ BoolSynType } "__4";
-      local_live{ (IntSynType ISize) } "__5";
       "__4" <-{ BoolOp } val_of_bool false;
       "__4" <-{ BoolOp } val_of_bool true;
       "__2" <-{ IntOp ISize } EnumDiscriminant ((Option_els ((Option_st (T_st))))) ("self");
@@ -130,7 +129,6 @@ Program Definition Option_OptionT_flatten_def (T_st: syn_type) : function :=
      ]>%E $
      <[
      "_bb4" :=
-      "__5" <-{ IntOp ISize } EnumDiscriminant ((Option_els ((Option_st (T_st))))) ("self");
       return (move{ (use_op_alg' (Option_st (T_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -157,9 +155,6 @@ Program Definition Option_T_filter_def (DropGlue_P_drop_glue_loc: loc) (DropGlue
       local_live{ UnitSynType } "__11";
       local_live{ BoolSynType } "__13";
       local_live{ BoolSynType } "__14";
-      local_live{ (IntSynType ISize) } "__15";
-      local_live{ (IntSynType ISize) } "__17";
-      local_live{ (IntSynType ISize) } "__19";
       "__13" <-{ BoolOp } val_of_bool false;
       "__14" <-{ BoolOp } val_of_bool false;
       "__14" <-{ BoolOp } val_of_bool true;
@@ -212,8 +207,7 @@ Program Definition Option_T_filter_def (DropGlue_P_drop_glue_loc: loc) (DropGlue
       local_dead "__6";
       local_dead "x";
       local_dead "__3";
-      "__17" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) ("self");
-      Goto "_bb9"
+      Goto "_bb8"
      ]>%E $
      <[
      "_bb4" :=
@@ -247,11 +241,6 @@ Program Definition Option_T_filter_def (DropGlue_P_drop_glue_loc: loc) (DropGlue
      ]>%E $
      <[
      "_bb8" :=
-      "__15" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) ("self");
-      Goto "_bb9"
-     ]>%E $
-     <[
-     "_bb9" :=
       return (move{ (use_op_alg' (Option_st (T_st))) } ("__0"))
      ]>%E $
      <[
@@ -282,8 +271,6 @@ Program Definition Option_T_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T_
       local_live{ (IntSynType ISize) } "__3";
       local_live{ BoolSynType } "__9";
       local_live{ BoolSynType } "__10";
-      local_live{ (IntSynType ISize) } "__11";
-      local_live{ (IntSynType ISize) } "__13";
       "__9" <-{ BoolOp } val_of_bool false;
       "__10" <-{ BoolOp } val_of_bool false;
       "__10" <-{ BoolOp } val_of_bool true;
@@ -298,7 +285,7 @@ Program Definition Option_T_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T_
      <[
      "_bb2" :=
       "__0" <-{ (use_op_alg' (Option_st (U_st))) } EnumInit (Option_els (U_st)) "None" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTTyVar "U"] [])) (StructInit (Option_None_sls (U_st)) []);
-      Goto "_bb7"
+      Goto "_bb8"
      ]>%E $
      <[
      "_bb3" :=
@@ -323,22 +310,21 @@ Program Definition Option_T_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T_
       "__0" <-{ (use_op_alg' (Option_st (U_st))) } EnumInit (Option_els (U_st)) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTTyVar "U"] [])) (StructInit (Option_Some_sls (U_st)) [("0", move{ (use_op_alg' U_st) } ("__5") : expr)]);
       local_dead "__5";
       local_dead "x";
-      Goto "_bb7"
+      Goto "_bb8"
      ]>%E $
      <[
      "_bb5" :=
-      "__11" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) ("self");
       return (move{ (use_op_alg' (Option_st (U_st))) } ("__0"))
      ]>%E $
      <[
-     "_bb6" :=
+     "_bb7" :=
       expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("f")];
       Goto "_bb5"
      ]>%E $
      <[
-     "_bb7" :=
+     "_bb8" :=
       if{ BoolOp }: copy{ BoolOp } ("__9") then
-       Goto "_bb6"
+       Goto "_bb7"
       else
        Goto "_bb5"
      ]>%E $
@@ -362,8 +348,6 @@ Program Definition Option_T_unwrap_def (T_st: syn_type) : function :=
      "_bb0" :=
       local_live{ T_st } "__0";
       local_live{ (IntSynType ISize) } "__2";
-      local_live{ (IntSynType ISize) } "__5";
-      local_live{ (IntSynType ISize) } "__7";
       "__2" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) ("self");
       Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
      ]>%E $
@@ -382,7 +366,6 @@ Program Definition Option_T_unwrap_def (T_st: syn_type) : function :=
       "val" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ((EnumData ((Option_els (T_st))) "Some" ("self")) at{ (Option_Some_sls (T_st)) } "0");
       "__0" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("val");
       local_dead "val";
-      "__5" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) ("self");
       return (move{ (use_op_alg' T_st) } ("__0"))
      ]>%E $
       ∅;
@@ -408,8 +391,6 @@ Program Definition Option_T_unwrap_or_def (DropGlue_T_drop_glue_loc: loc) (T_st:
       local_live{ (IntSynType ISize) } "__3";
       local_live{ BoolSynType } "__5";
       local_live{ BoolSynType } "__6";
-      local_live{ (IntSynType ISize) } "__7";
-      local_live{ (IntSynType ISize) } "__9";
       "__5" <-{ BoolOp } val_of_bool false;
       "__6" <-{ BoolOp } val_of_bool false;
       "__6" <-{ BoolOp } val_of_bool true;
@@ -437,7 +418,6 @@ Program Definition Option_T_unwrap_or_def (DropGlue_T_drop_glue_loc: loc) (T_st:
      ]>%E $
      <[
      "_bb4" :=
-      "__7" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) ("self");
       return (move{ (use_op_alg' T_st) } ("__0"))
      ]>%E $
      <[

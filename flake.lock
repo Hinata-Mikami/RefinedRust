@@ -11,11 +11,11 @@
         "trakt": "trakt"
       },
       "locked": {
-        "lastModified": 1783673852,
-        "narHash": "sha256-apiuy62ZzYIskWEhvvljdGwzbHp+oVPUnTKfSN1Ahao=",
+        "lastModified": 1784799103,
+        "narHash": "sha256-adhKClONIp3tltToQcoDO1wfqGzBCe/UE/WyBIPYlis=",
         "owner": "SMTCoq",
         "repo": "SMTCoq",
-        "rev": "7889f2d6d819f7e99d18d97644d8938c9764c4e1",
+        "rev": "6de39db2a996cdc663634cb79193b9d75f95b48a",
         "type": "github"
       },
       "original": {
@@ -26,11 +26,11 @@
     },
     "crane": {
       "locked": {
-        "lastModified": 1783203018,
-        "narHash": "sha256-G6R9IT/xwFuu+CYBWDUAok6AdC4ERC4ZfPPFtEpxnZE=",
+        "lastModified": 1784564969,
+        "narHash": "sha256-TkTWNhJV/8Wk3czlbz4bwHZkFCaCHPsOy+oJe4PUiXg=",
         "owner": "ipetkov",
         "repo": "crane",
-        "rev": "80db5bdc391be8a1794f6d8a2d56e3a84ebcede2",
+        "rev": "7930f6c291de6f83c257839d434592aa085f290a",
         "type": "github"
       },
       "original": {
@@ -55,11 +55,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1784038377,
-        "narHash": "sha256-jzNQ+tpb5GmLgAtA8+wi6hqXYk5uEEXvUiTweIzobiU=",
+        "lastModified": 1784739198,
+        "narHash": "sha256-hQ+nR0rk/zGUSugWT4NHUNKPVxTotJ7IZ69nFCNPGJw=",
         "owner": "creusot-rs",
         "repo": "creusot",
-        "rev": "e4f47af8d3f98d1bbba04762d13e8f390cd8f67a",
+        "rev": "8d73ab6e92fd7c5385a3d921df244a440b39970a",
         "type": "github"
       },
       "original": {
@@ -151,11 +151,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1783148766,
-        "narHash": "sha256-H9+N+GFtsbVC8ZniHliChM7ndizxtqVZs6bnGOLM3WQ=",
-        "rev": "a50de1b7d8a586adc18d2395c19de7d6058e6030",
+        "lastModified": 1784707089,
+        "narHash": "sha256-DUedXhD2Rg8q4Xyd07Sb90eZGy4gg6W+Vl/WbLNwAZo=",
+        "rev": "b3fe9581c9061c749abef42b6d4ee7b7c05c33fa",
         "type": "tarball",
-        "url": "https://releases.nixos.org/nixos/26.05/nixos-26.05.4193.a50de1b7d8a5/nixexprs.tar.xz"
+        "url": "https://releases.nixos.org/nixos/26.05/nixos-26.05.5845.b3fe9581c906/nixexprs.tar.xz"
       },
       "original": {
         "id": "nixpkgs",
@@ -207,11 +207,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1783404876,
-        "narHash": "sha256-DAh1CfiRVwr8Szkj5PiHmsqh10NHPb8SKPx7w/B+l9E=",
+        "lastModified": 1784784641,
+        "narHash": "sha256-F8/6twaXdW5dOHgLt1sO62fygfA3aKiYlEmnnIxzpTU=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "3c161f20193bd91a73913b417e5b06d41860336d",
+        "rev": "19a19f3921ae195f2fbd85f5dc57e6d1df63aa0b",
         "type": "github"
       },
       "original": {

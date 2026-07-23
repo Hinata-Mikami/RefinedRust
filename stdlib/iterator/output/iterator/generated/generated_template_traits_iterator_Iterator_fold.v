@@ -57,7 +57,7 @@ Ltac traits_iterator_Iterator_fold_prelude :=
   intros arg_self arg_init arg_f;
   let π := get_π in
   let Σ := get_Σ in
-  specialize (pose_bb_inv (PolyCons ("_bb1", (["self"; "f"; "accum"], ["init"; "x"; "__20"], ["__0"; "__5"; "__6"; "__7"; "__8"; "__9"; "__12"; "__13"; "__14"; "__15"; "__16"; "__17"; "__18"; "__19"; "__21"; "__23"; "__25"], wrap_inv (λ (_params: ((_))) (_var_self: (place_rfnRT (Self_rt))) (_var_f: (place_rfnRT (F_rt))) (_var_accum: (place_rfnRT (B_rt))), let '(init_state) := _params in ((∃ (seq: _) (self: _) (accum: _) (f: _), (⌜(_var_self = ($# self))%Z⌝)
+  specialize (pose_bb_inv (PolyCons ("_bb1", (["self"; "f"; "accum"], ["init"; "x"; "__20"], ["__0"; "__5"; "__6"; "__7"; "__8"; "__9"; "__12"; "__13"; "__14"; "__15"; "__16"; "__17"; "__18"; "__19"], wrap_inv (λ (_params: ((_))) (_var_self: (place_rfnRT (Self_rt))) (_var_f: (place_rfnRT (F_rt))) (_var_accum: (place_rfnRT (B_rt))), let '(init_state) := _params in ((∃ (seq: _) (self: _) (accum: _) (f: _), (⌜(_var_self = ($# self))%Z⌝)
   ∗ (⌜(_var_accum = ($# accum))%Z⌝)
   ∗ (⌜(_var_f = ($# f))%Z⌝)
   ∗ (IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p init_state seq self)

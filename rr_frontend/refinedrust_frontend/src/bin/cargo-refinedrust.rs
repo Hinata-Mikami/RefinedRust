@@ -73,9 +73,8 @@ fn run(cmd: &mut Command, rr_env: HashMap<&str, &str>) -> ! {
 
     if exit_status.success() {
         process::exit(0);
-    } else {
-        process::exit(exit_status.code().unwrap_or(-1))
     }
+    process::exit(exit_status.code().unwrap_or(-1))
 }
 
 fn dump_version_info() {
