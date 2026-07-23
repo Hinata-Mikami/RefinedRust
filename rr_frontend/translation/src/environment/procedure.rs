@@ -29,6 +29,7 @@ pub(crate) struct Procedure<'tcx> {
     mapping: MappingResult,
     box_deref_aliases: FxHashMap<mir::Local, mir::Place<'tcx>>,
     copy_aliases: FxHashMap<mir::Local, mir::Place<'tcx>>,
+    box_materialization_aliases: FxHashMap<mir::Local, mir::Place<'tcx>>,
     real_edges: RealEdges,
     loop_info: loops::ProcedureLoops,
 }
@@ -67,6 +68,8 @@ impl<'tcx> Procedure<'tcx> {
         let box_deref_aliases =
             box_deref_alias::collect_box_deref_aliases(tcx, &dropck_mir).into_iter().collect();
         let copy_aliases = Self::collect_copy_aliases(tcx, borrowck_mir, &dropck_mir);
+        let box_materialization_aliases =
+            Self::collect_box_materialization_aliases(tcx, borrowck_mir, &dropck_mir);
         let real_edges = RealEdges::new(&dropck_mir);
         let loop_info = loops::ProcedureLoops::new(&dropck_mir, &real_edges);
 
@@ -78,6 +81,7 @@ impl<'tcx> Procedure<'tcx> {
             mapping,
             box_deref_aliases,
             copy_aliases,
+            box_materialization_aliases,
             real_edges,
             loop_info,
         }
@@ -118,6 +122,166 @@ impl<'tcx> Procedure<'tcx> {
         copy_aliases
     }
 
+    /// Recognize the exact rustc lowering used to expose the pointer of a projected shared `Box`:
+    ///
+    /// ```text
+    /// _box_tmp = no_retag copy (*_box_ref)
+    /// _raw_tmp = copy ((_box_tmp.0).0) as *const T (Transmute)
+    /// _borrow = &(*_raw_tmp)
+    /// ```
+    ///
+    /// Both temporaries must be target-only, the three assignments must be consecutive in one
+    /// block, `_box_ref` must be a shared reference to the same `Box<T, A>`, and neither temporary
+    /// may have uses outside this sequence (apart from storage markers). This deliberately narrow
+    /// recognition prevents an unrelated rustc administrative copy from being silently erased.
+    ///
+    /// Only `_box_tmp` is removed from executable translation. Its sole `_box_tmp.0.0` use is
+    /// normalized to `(*_box_ref).0.0`, allowing the existing transmute lowering to extract the raw
+    /// pointer explicitly. `_raw_tmp` remains a real pointer local, so code generation does not need
+    /// the removed `MagicBoxDeref` operation.
+    fn collect_box_materialization_aliases(
+        tcx: ty::TyCtxt<'tcx>,
+        borrowck_mir: &mir::Body<'tcx>,
+        dropck_mir: &mir::Body<'tcx>,
+    ) -> FxHashMap<mir::Local, mir::Place<'tcx>> {
+        let mut aliases = FxHashMap::default();
+
+        for (bb, data) in dropck_mir.basic_blocks.iter_enumerated() {
+            for (idx, statements) in data.statements.windows(3).enumerate() {
+                let [box_copy, raw_alias, borrow] = statements else {
+                    unreachable!();
+                };
+
+                let mir::StatementKind::Assign(box (box_lhs, box_rhs)) = &box_copy.kind else {
+                    continue;
+                };
+                let mir::Rvalue::Use(mir::Operand::Copy(box_source), retag) = box_rhs else {
+                    continue;
+                };
+                if !box_lhs.projection.is_empty()
+                    || !retag.no()
+                    || borrowck_mir.local_decls.get(box_lhs.local).is_some()
+                    || dropck_mir.local_kind(box_lhs.local) != mir::LocalKind::Temp
+                    || box_source.projection.as_ref() != [mir::ProjectionElem::Deref]
+                {
+                    continue;
+                }
+
+                let box_ty = dropck_mir.local_decls[box_lhs.local].ty;
+                let ty::TyKind::Adt(box_def, box_args) = box_ty.kind() else {
+                    continue;
+                };
+                if !box_def.is_box() || box_source.ty(&dropck_mir.local_decls, tcx).ty != box_ty {
+                    continue;
+                }
+                let ty::TyKind::Ref(_, source_inner, ty::Mutability::Not) =
+                    dropck_mir.local_decls[box_source.local].ty.kind()
+                else {
+                    continue;
+                };
+                if *source_inner != box_ty {
+                    continue;
+                }
+                let [box_element, _allocator] = box_args.as_slice() else {
+                    continue;
+                };
+                let Some(box_element) = box_element.as_type() else {
+                    continue;
+                };
+
+                let mir::StatementKind::Assign(box (raw_lhs, raw_rhs)) = &raw_alias.kind else {
+                    continue;
+                };
+                let mir::Rvalue::Cast(
+                    mir::CastKind::Transmute,
+                    mir::Operand::Copy(raw_source),
+                    raw_target_ty,
+                ) = raw_rhs
+                else {
+                    continue;
+                };
+                if !raw_lhs.projection.is_empty()
+                    || borrowck_mir.local_decls.get(raw_lhs.local).is_some()
+                    || dropck_mir.local_kind(raw_lhs.local) != mir::LocalKind::Temp
+                    || dropck_mir.local_decls[raw_lhs.local].ty != *raw_target_ty
+                    || raw_source.local != box_lhs.local
+                    || raw_source.projection.len() != 2
+                    || !raw_source.projection.iter().all(
+                        |elem| matches!(elem, mir::ProjectionElem::Field(field, _) if field.as_usize() == 0),
+                    )
+                    || !matches!(raw_target_ty.kind(), ty::TyKind::RawPtr(inner, ty::Mutability::Not) if *inner == box_element)
+                {
+                    continue;
+                }
+
+                let mir::StatementKind::Assign(box (
+                    borrow_lhs,
+                    mir::Rvalue::Ref(_, mir::BorrowKind::Shared, borrowed),
+                )) = &borrow.kind
+                else {
+                    continue;
+                };
+                if borrow_lhs.local == box_lhs.local
+                    || borrow_lhs.local == raw_lhs.local
+                    || borrowed.local != raw_lhs.local
+                    || borrowed.projection.as_ref() != [mir::ProjectionElem::Deref]
+                {
+                    continue;
+                }
+
+                let expected = [
+                    mir::Location {
+                        block: bb,
+                        statement_index: idx,
+                    },
+                    mir::Location {
+                        block: bb,
+                        statement_index: idx + 1,
+                    },
+                    mir::Location {
+                        block: bb,
+                        statement_index: idx + 2,
+                    },
+                ];
+                if !Self::local_has_only_expected_mentions(dropck_mir, box_lhs.local, &expected[..2])
+                    || !Self::local_has_only_expected_mentions(dropck_mir, raw_lhs.local, &expected[1..])
+                {
+                    continue;
+                }
+
+                aliases.insert(box_lhs.local, *box_source);
+            }
+        }
+
+        aliases
+    }
+
+    fn local_has_only_expected_mentions(
+        body: &mir::Body<'tcx>,
+        local: mir::Local,
+        expected: &[mir::Location],
+    ) -> bool {
+        for (bb, data) in body.basic_blocks.iter_enumerated() {
+            for (idx, stmt) in data.statements.iter().enumerate() {
+                if matches!(stmt.kind, mir::StatementKind::StorageLive(l) | mir::StatementKind::StorageDead(l) if l == local)
+                {
+                    continue;
+                }
+                let loc = mir::Location {
+                    block: bb,
+                    statement_index: idx,
+                };
+                if Self::statement_mentions_local(stmt, local) && !expected.contains(&loc) {
+                    return false;
+                }
+            }
+            if Self::terminator_mentions_local(data.terminator(), local) {
+                return false;
+            }
+        }
+        true
+    }
+
     #[must_use]
     pub(crate) const fn loop_info(&self) -> &loops::ProcedureLoops {
         &self.loop_info
@@ -152,12 +316,17 @@ impl<'tcx> Procedure<'tcx> {
     /// typing and location alignment; code generation keeps the raw-pointer
     /// alias explicit and translates its initializer directly.
     pub(crate) fn normalize_box_deref_alias_place(&self, pl: &mir::Place<'tcx>) -> mir::Place<'tcx> {
+        let materialized = self.normalize_box_materialization_place(pl);
+        if materialized != *pl {
+            return self.normalize_copy_alias_place(&materialized);
+        }
         let normalized = box_deref_alias::normalize_deref_alias_place(self.tcx, pl, |local| {
             self.box_deref_aliases.get(&local).copied()
         });
         if normalized == *pl {
             return self.normalize_copy_alias_place(pl);
         }
+        let normalized = self.normalize_box_materialization_place(&normalized);
         self.normalize_copy_alias_place(&normalized)
     }
 
@@ -182,9 +351,24 @@ impl<'tcx> Procedure<'tcx> {
         }
     }
 
+    /// Rewrite the sole pointer-field use of a validated synthetic `Box` materialization.
+    pub(crate) fn normalize_box_materialization_place(&self, pl: &mir::Place<'tcx>) -> mir::Place<'tcx> {
+        let Some(source) = self.box_materialization_aliases.get(&pl.local) else {
+            return *pl;
+        };
+
+        let mut projection = Vec::with_capacity(source.projection.len() + pl.projection.len());
+        projection.extend_from_slice(source.projection);
+        projection.extend_from_slice(pl.projection);
+        mir::Place {
+            local: source.local,
+            projection: self.tcx.mk_place_elems(&projection),
+        }
+    }
+
     #[must_use]
     pub(crate) fn is_administrative_alias(&self, local: mir::Local) -> bool {
-        self.copy_aliases.contains_key(&local)
+        self.copy_aliases.contains_key(&local) || self.box_materialization_aliases.contains_key(&local)
     }
 
     #[must_use]

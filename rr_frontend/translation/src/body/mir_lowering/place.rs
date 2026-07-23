@@ -19,8 +19,7 @@ pub(crate) trait MirPlaceTranslation<'def, 'tcx: 'def>:
 {
     /// Translate a place to a Caesium lvalue.
     fn translate_place(&self, pl: &mir::Place<'tcx>) -> Result<code::Expr, TranslationError> {
-        // Dropck introduces raw-pointer alias locals for some `Box` derefs. Translate all uses as
-        // if they referred to the original `Box` place so the generated place stays stable.
+        // Normalize only administrative aliases that the translation context has validated.
         let normalized = self.normalize_place(pl);
         let pl = &normalized;
 
@@ -40,35 +39,21 @@ pub(crate) trait MirPlaceTranslation<'def, 'tcx: 'def>:
         for it in pl.projection {
             match &it {
                 mir::ProjectionElem::Deref => {
-                    // handle the magic box deref
-                    if let ty::TyKind::Adt(def, args) = cur_ty.ty.kind()
-                        && def.is_box()
-                    {
-                        // extract the type parameters
-                        let [ty, alloc] = args.as_slice() else {
-                            return Err(TranslationError::ErrorReported(self.tcx().dcx().err(
-                                Message::UnsupportedFeature(format!(
-                                    "wrong arguments for Box ADT {:?}",
-                                    cur_ty.ty
-                                )),
-                            )));
-                        };
-
-                        let translated_ty = self.translate_type_to_syn_type(ty.expect_ty())?;
-                        let translated_alloc = self.translate_type_to_syn_type(alloc.expect_ty())?;
-                        acc_expr = code::Expr::MagicBoxDeref {
-                            tst: translated_ty,
-                            ast: translated_alloc,
-                            e: Box::new(acc_expr),
-                        };
-                    } else {
-                        // use the type of the dereferencee
-                        let st = self.translate_type_to_syn_type(cur_ty.ty)?;
-                        acc_expr = code::Expr::Deref {
-                            ot: st.into(),
-                            e: Box::new(acc_expr),
-                        };
+                    if matches!(cur_ty.ty.kind(), ty::TyKind::Adt(def, _) if def.is_box()) {
+                        return Err(TranslationError::ErrorReported(self.tcx().dcx().err(
+                            Message::UnsupportedFeature(format!(
+                                "direct Box dereference reached executable MIR translation for {:?}; expected rustc's validated raw-pointer lowering",
+                                cur_ty.ty
+                            )),
+                        )));
                     }
+
+                    // use the type of the dereferencee
+                    let st = self.translate_type_to_syn_type(cur_ty.ty)?;
+                    acc_expr = code::Expr::Deref {
+                        ot: st.into(),
+                        e: Box::new(acc_expr),
+                    };
                 },
                 mir::ProjectionElem::Field(f, _) => {
                     // `t` is the type of the field we are accessing!

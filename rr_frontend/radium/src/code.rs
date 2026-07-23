@@ -371,14 +371,6 @@ pub enum Expr {
     #[display("!{{ {} }} ( {} )", ot, &e)]
     Deref { ot: lang::OpType, e: Box<Self> },
 
-    /// dereference a box using the compiler magic
-    #[display("!box{{ {}, {} }} ( {} )", tst, ast, &e)]
-    MagicBoxDeref {
-        tst: lang::SynType,
-        ast: lang::SynType,
-        e: Box<Self>,
-    },
-
     /// lvalue to rvalue conversion (move)
     #[display("move{{ {} }} ({})", ot, &e)]
     Move { ot: lang::OpType, e: Box<Self> },
