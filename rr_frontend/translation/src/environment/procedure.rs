@@ -27,6 +27,7 @@ pub(crate) struct Procedure<'tcx> {
     borrowck_mir: &'tcx mir::Body<'tcx>,
     dropck_mir: mir::Body<'tcx>,
     mapping: MappingResult,
+    box_deref_aliases: FxHashMap<mir::Local, mir::Place<'tcx>>,
     copy_aliases: FxHashMap<mir::Local, mir::Place<'tcx>>,
     real_edges: RealEdges,
     loop_info: loops::ProcedureLoops,
@@ -63,6 +64,8 @@ impl<'tcx> Procedure<'tcx> {
         let dropck_mir = dropck_mir_ref.clone();
         drop(dropck_mir_ref);
 
+        let box_deref_aliases =
+            box_deref_alias::collect_box_deref_aliases(tcx, &dropck_mir).into_iter().collect();
         let copy_aliases = Self::collect_copy_aliases(tcx, borrowck_mir, &dropck_mir);
         let real_edges = RealEdges::new(&dropck_mir);
         let loop_info = loops::ProcedureLoops::new(&dropck_mir, &real_edges);
@@ -73,6 +76,7 @@ impl<'tcx> Procedure<'tcx> {
             borrowck_mir,
             dropck_mir,
             mapping,
+            box_deref_aliases,
             copy_aliases,
             real_edges,
             loop_info,
@@ -149,17 +153,12 @@ impl<'tcx> Procedure<'tcx> {
     /// alias explicit and translates its initializer directly.
     pub(crate) fn normalize_box_deref_alias_place(&self, pl: &mir::Place<'tcx>) -> mir::Place<'tcx> {
         let normalized = box_deref_alias::normalize_deref_alias_place(self.tcx, pl, |local| {
-            let alias = self.mapping.box_deref_alias_for(local)?;
-            let projection = self.tcx.mk_place_elems(&[]);
-            Some(mir::Place {
-                local: alias.box_local(),
-                projection,
-            })
+            self.box_deref_aliases.get(&local).copied()
         });
         if normalized == *pl {
             return self.normalize_copy_alias_place(pl);
         }
-        normalized
+        self.normalize_copy_alias_place(&normalized)
     }
 
     /// Rewrite dereference uses of synthetic `no_retag copy` locals back to the

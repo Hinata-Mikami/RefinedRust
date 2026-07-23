@@ -56,45 +56,27 @@ pub(crate) fn box_deref_alias_source_place<'tcx>(
     body: &mir::Body<'tcx>,
     rhs_place: mir::Place<'tcx>,
 ) -> Option<mir::Place<'tcx>> {
-    let root_ty = body.local_decls.get(rhs_place.local)?.ty;
-    let mut box_ty = root_ty;
-    // Accept both `_box.0.0` and `(*_ptr_to_box).0.0`.
-    // In the second case, the leading `Deref` is how we reach the semantic `Box` place;
-    // the two internal `Box` field projections only start after it.
-    let field_start = if matches!(rhs_place.projection.first(), Some(mir::ProjectionElem::Deref)) {
-        box_ty = match root_ty.kind() {
-            ty::TyKind::Ref(_, inner, _) | ty::TyKind::RawPtr(inner, _) => *inner,
-            _ => return None,
-        };
-        1
-    } else {
-        0
-    };
-
-    if !box_ty.is_box() {
-        return None;
-    }
-
     let projections = rhs_place.projection.as_ref();
-    let field0 = |idx: usize| {
-        matches!(
-            projections.get(idx),
-            Some(mir::ProjectionElem::Field(field, _)) if field.as_usize() == 0
-        )
-    };
+    let box_projection_len = projections.len().checked_sub(2)?;
+    let internal_fields = &projections[box_projection_len..];
+
     // rustc's raw-pointer alias initializer extracts the stored pointer as two field-0 projections from the
-    // semantic `Box`.
-    if !field0(field_start) || !field0(field_start + 1) {
+    // semantic `Box`. Locate those fields from the end so the Box itself may be an arbitrarily projected
+    // place.
+    if !internal_fields
+        .iter()
+        .all(|elem| matches!(elem, mir::ProjectionElem::Field(field, _) if field.as_usize() == 0))
+    {
         return None;
     }
 
     // Return only the semantic `Box` place, dropping the internal `.0.0` pointer extraction.
-    // For `_box.0.0` this is `_box`; for `(*_ptr_to_box).0.0` this is `*_ptr_to_box`.
-    let projection = tcx.mk_place_elems(&projections[..field_start]);
-    Some(mir::Place {
+    let projection = tcx.mk_place_elems(&projections[..box_projection_len]);
+    let box_place = mir::Place {
         local: rhs_place.local,
         projection,
-    })
+    };
+    box_place.ty(&body.local_decls, tcx).ty.is_box().then_some(box_place)
 }
 
 /// Normalize deref uses of an administrative alias local back to the aliased source place.

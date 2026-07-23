@@ -1,0 +1,16 @@
+Mapping for function read:
+summary: total=10 mapped=10 unmapped=0
+
+bb0[0] StorageLive(_2) -> FoldedFrom(bb0[1] StorageLive(_2))
+bb0[1] _2 = &(((*_1) as Data).0: std::boxed::Box<Payload>) -> FoldedFrom(bb0[2] _2 = &(((*_1) as Data).0: std::boxed::Box<Payload>))
+bb0[2] StorageLive(_3) -> FoldedFrom(bb0[3] StorageLive(_3))
+bb0[3] _4 = no_retag copy (*_2) -> Inserted
+bb0[4] _5 = copy ((_4.0: std::ptr::Unique<Payload>).0: std::ptr::NonNull<Payload>) as *const Payload (Transmute) -> Inserted
+bb0[5] _3 = &(*_5) -> FoldedFrom(bb0[4] _3 = &(*(*_2)))
+bb0[6] _0 = Payload::value(move _3) -> [return: bb1, unwind continue] -> Source(bb0[5] _0 = Payload::value(move _3) -> [return: bb1, unwind: bb2])
+bb1[0] StorageDead(_3) -> Source(bb1[0] StorageDead(_3))
+bb1[1] StorageDead(_2) -> Source(bb1[1] StorageDead(_2))
+bb1[2] return -> Source(bb1[2] return)
+
+Box deref aliases:
+_5 aliases *_2 (source: none)

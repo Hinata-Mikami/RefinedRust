@@ -4,6 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+use rr_rustc_interface::data_structures::fx::FxHashSet;
 use rr_rustc_interface::middle::mir::{self, Local};
 use rr_rustc_interface::span;
 
@@ -176,43 +177,65 @@ impl<'tcx> Mapper<'_, 'tcx> {
             return None;
         }
 
-        let mir::Rvalue::Cast(mir::CastKind::Transmute, mir::Operand::Copy(rhs_place), _) = rhs else {
+        let mir::Rvalue::Cast(
+            mir::CastKind::Transmute,
+            mir::Operand::Copy(rhs_place) | mir::Operand::Move(rhs_place),
+            _,
+        ) = rhs
+        else {
             return None;
         };
 
         let box_place = box_deref_alias::box_deref_alias_source_place(self.tcx, self.de, *rhs_place)?;
-        if !box_place.projection.is_empty() {
-            return None;
-        }
+        let box_place = self.normalize_target_box_place(box_place);
 
         let split_from = source_loc.filter(|(bb, idx)| {
-            self.source_stmt_uses_box_deref(&self.bc.basic_blocks[*bb].statements[*idx], rhs_place.local)
+            self.source_stmt_uses_box_deref(&self.bc.basic_blocks[*bb].statements[*idx], &box_place)
         });
 
         self.box_deref_aliases.insert(lhs.local, InternalBoxDerefAlias {
-            place: NormalizedPlace {
-                local: box_place.local,
-                projection: Vec::new(),
-            },
+            place: box_place,
             source_loc: split_from,
         });
 
         split_from.map(Origin::SplitFrom)
     }
 
-    /// Check whether a source statement uses a `Box` deref of the given local.
-    pub(super) fn source_stmt_uses_box_deref(&self, stmt: &mir::Statement<'tcx>, local: Local) -> bool {
+    /// Normalize a target Box place through administrative copy aliases, including a plain alias-local use.
+    fn normalize_target_box_place(&self, place: mir::Place<'tcx>) -> NormalizedPlace {
+        let mut normalized = self.normalize_place_for_flavor(place, MirFlavor::Target);
+        let mut visited = FxHashSet::default();
+
+        while visited.insert(normalized.local) {
+            let Some(alias) = self.copy_aliases.get(&normalized.local) else {
+                break;
+            };
+            let mut projection = alias.projection.clone();
+            projection.extend(normalized.projection);
+            normalized = NormalizedPlace {
+                local: alias.local,
+                projection,
+            };
+        }
+
+        normalized
+    }
+
+    /// Check whether a source statement dereferences the given semantic `Box` place.
+    pub(super) fn source_stmt_uses_box_deref(
+        &self,
+        stmt: &mir::Statement<'tcx>,
+        box_place: &NormalizedPlace,
+    ) -> bool {
         match &stmt.kind {
-            mir::StatementKind::Assign(box (_, rhs)) => {
-                self.rvalue_uses_box_deref_of_local(rhs, local, MirFlavor::Source)
-            },
+            mir::StatementKind::Assign(box (_, rhs)) => self.rvalue_uses_box_deref(rhs, box_place),
             mir::StatementKind::SetDiscriminant { place, .. }
             | mir::StatementKind::PlaceMention(place)
             | mir::StatementKind::BackwardIncompatibleDropHint { place, .. } => {
-                self.place_uses_box_deref_of_local(**place, local, MirFlavor::Source)
+                self.place_uses_box_deref(**place, box_place)
             },
             mir::StatementKind::AscribeUserType(place, _) => {
-                self.place_uses_box_deref_of_local(place.as_ref().0, local, MirFlavor::Source)
+                self.place_uses_box_deref(place.as_ref().0, box_place)
             },
             _ => false,
         }
@@ -241,14 +264,9 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
     }
 
-    /// Check whether an rvalue uses a `Box` deref of the given local.
-    fn rvalue_uses_box_deref_of_local(
-        &self,
-        rvalue: &mir::Rvalue<'tcx>,
-        local: Local,
-        flavor: MirFlavor,
-    ) -> bool {
-        Self::rvalue_uses_place(rvalue, |place| self.place_uses_box_deref_of_local(place, local, flavor))
+    /// Check whether an rvalue dereferences the given semantic `Box` place.
+    fn rvalue_uses_box_deref(&self, rvalue: &mir::Rvalue<'tcx>, box_place: &NormalizedPlace) -> bool {
+        Self::rvalue_uses_place(rvalue, |place| self.place_uses_box_deref(place, box_place))
     }
 
     /// Traverse places mentioned by an rvalue and test them with a predicate.
@@ -289,15 +307,15 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
     }
 
-    /// Check whether a place normalizes to a deref of the given local.
-    fn place_uses_box_deref_of_local(
-        &self,
-        place: mir::Place<'tcx>,
-        local: Local,
-        flavor: MirFlavor,
-    ) -> bool {
-        let normalized = self.normalize_place_for_flavor(place, flavor);
-        normalized.local == local && matches!(normalized.projection.first(), Some(NormalizedPlaceElem::Deref))
+    /// Check whether a source place dereferences the given semantic `Box` place.
+    fn place_uses_box_deref(&self, place: mir::Place<'tcx>, box_place: &NormalizedPlace) -> bool {
+        let normalized = self.normalize_place_for_flavor(place, MirFlavor::Source);
+        normalized.local == box_place.local
+            && normalized.projection.starts_with(&box_place.projection)
+            && matches!(
+                normalized.projection.get(box_place.projection.len()),
+                Some(NormalizedPlaceElem::Deref)
+            )
     }
 
     /// Check whether an rvalue uses an alias introduced at the given source location.
