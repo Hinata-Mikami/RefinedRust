@@ -1,7 +1,7 @@
 From radium Require Import lang notation.
 From refinedrust Require Import typing shims adequacy.
 From refinedrust.examples.adequacy.generated Require Import generated_code_adequacy generated_specs_adequacy.
-From refinedrust.examples.adequacy.proofs Require Import proof_main proof_callee.
+From refinedrust.examples.adequacy.proofs Require Import proof_main.
 
 
 Section adequate.

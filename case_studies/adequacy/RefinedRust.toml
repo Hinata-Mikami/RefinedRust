@@ -1,3 +1,4 @@
 output_dir = "output"
 #lib_load_paths = ["../../stdlib/"]
 #dump_borrowck_info = true
+extra_proofs=["proof_adequacy"]
