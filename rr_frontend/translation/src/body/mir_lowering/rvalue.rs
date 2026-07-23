@@ -349,7 +349,9 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
 
                 if is_copy {
                     let typing_env = ty::TypingEnv::post_analysis(self.tcx(), self.proc_def_id());
-                    if !self.tcx().type_is_copy_modulo_regions(typing_env, ty.ty) {
+                    if !self.tcx().type_is_copy_modulo_regions(typing_env, ty.ty)
+                        && !self.permits_non_copy_mir_copy(place)
+                    {
                         return Err(TranslationError::ErrorReported(self.tcx().dcx().err(
                             Message::UnsupportedFeature(format!(
                                 "MIR copies a non-Copy value of type {:?}; this is only valid for a rustc administrative lowering that RefinedRust recognizes explicitly",

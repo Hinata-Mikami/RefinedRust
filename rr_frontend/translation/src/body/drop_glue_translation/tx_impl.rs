@@ -64,6 +64,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirTranslationCtx<'def, 'tcx> for DropGlueTX<'a, 
     fn normalize_place(&self, place: &mir::Place<'tcx>) -> mir::Place<'tcx> {
         *place
     }
+
+    fn permits_non_copy_mir_copy(&self, place: &mir::Place<'tcx>) -> bool {
+        // Rustc drop-glue shims copy their `&mut Self` argument into branch-local temporaries before
+        // calling `Drop::drop`. These are compiler-generated control-flow aliases, not Rust copies.
+        place.projection.is_empty()
+            && matches!(self.shape_type_of_place(place).ty.kind(), ty::TyKind::Ref(_, _, ty::Mutability::Mut))
+    }
 }
 
 struct DropGlueGenericCollector<'tcx> {

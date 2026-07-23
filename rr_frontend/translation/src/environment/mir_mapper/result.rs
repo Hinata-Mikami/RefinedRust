@@ -119,16 +119,6 @@ impl MappingResult {
         self.target_to_source.get(&target).copied()
     }
 
-    /// Return the recorded `Box`-deref alias for a synthetic dropck local.
-    ///
-    /// The alias is only semantically meaningful when the local is used through
-    /// a dereference. A plain use of the alias local is the administrative raw
-    /// pointer value introduced by dropck.
-    #[must_use]
-    pub fn box_deref_alias_for(&self, local: Local) -> Option<BoxDerefAlias> {
-        self.box_deref_aliases.get(&local).copied()
-    }
-
     /// Iterate over all synthetic dropck locals that alias borrowck-level `Box`
     /// dereferences.
     pub fn box_deref_aliases(&self) -> impl Iterator<Item = BoxDerefAlias> + '_ {

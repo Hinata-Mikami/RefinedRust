@@ -65,6 +65,11 @@ pub(crate) trait MirTranslationCtx<'def, 'tcx: 'def> {
         *place
     }
 
+    /// Whether this translation context recognizes a rustc-generated non-`Copy` MIR copy.
+    fn permits_non_copy_mir_copy(&self, _place: &mir::Place<'tcx>) -> bool {
+        false
+    }
+
     /// Get the shape/layout type of a local in the translated MIR body.
     fn shape_type_of_local(&self, local: mir::Local) -> Result<ty::Ty<'tcx>, TranslationError> {
         self.body().local_decls.get(local).map(|decl| decl.ty).ok_or_else(|| {

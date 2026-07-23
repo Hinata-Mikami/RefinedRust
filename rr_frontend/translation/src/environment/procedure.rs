@@ -382,7 +382,7 @@ impl<'tcx> Procedure<'tcx> {
         while visited.insert(normalized.local) {
             let materialized = self.normalize_box_materialization_place(&normalized);
             let copied = self.normalize_copy_alias_place(&normalized);
-            let next = if materialized != normalized { materialized } else { copied };
+            let next = if materialized == normalized { copied } else { materialized };
             if next == normalized {
                 break;
             }
