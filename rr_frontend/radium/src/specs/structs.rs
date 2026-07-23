@@ -491,7 +491,7 @@ impl<'def> Abstract<'def> {
     }
 
     #[must_use]
-    pub(crate) fn public_rt_def_name(&self) -> String {
+    pub fn public_rt_def_name(&self) -> String {
         match &self.invariant {
             Some(inv) => inv.rt_def_name(),
             None => self.plain_rt_def_name().to_owned(),

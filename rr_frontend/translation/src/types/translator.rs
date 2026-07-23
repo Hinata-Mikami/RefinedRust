@@ -1400,7 +1400,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let (variant_name, coq_def, variant_def, _) = registry.get(&ordered_did).unwrap();
             let coq_def = coq_def.borrow();
             let coq_def = coq_def.as_ref().unwrap();
-            let refinement_type = coq_def.plain_rt_def_name().to_owned();
+            let refinement_type = coq_def.public_rt_def_name().to_owned();
 
             // simple optimization: if the variant has no fields, also this constructor gets no arguments
             let (variant_args, variant_arg_binders, variant_rfn) = if variant_def.fields.is_empty() {
