@@ -12,7 +12,7 @@ use rr_rustc_interface::{abi, index};
 use super::{MirConstantTranslation, MirPlaceTranslation};
 use crate::base::*;
 use crate::body::mir_lowering::{MirTranslationCtx, MirTypeTranslation};
-use crate::environment::mir_utils::box_deref_alias;
+use crate::environment::mir_utils::box_alias;
 use crate::error::Message;
 
 pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
@@ -305,7 +305,7 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
         let (mir::Operand::Copy(rhs_place) | mir::Operand::Move(rhs_place)) = op else {
             return Ok(None);
         };
-        if box_deref_alias::box_deref_alias_source_place(self.tcx(), self.body(), *rhs_place).is_none() {
+        if box_alias::box_deref_alias_source_place(self.tcx(), self.body(), *rhs_place).is_none() {
             return Ok(None);
         }
 

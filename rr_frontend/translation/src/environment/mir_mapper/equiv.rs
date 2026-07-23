@@ -11,7 +11,7 @@ use rr_rustc_interface::span;
 use super::types::*;
 use super::util::*;
 use super::{Mapper, Origin, SourceLoc};
-use crate::environment::mir_utils::box_deref_alias;
+use crate::environment::mir_utils::box_alias;
 
 impl<'tcx> Mapper<'_, 'tcx> {
     /// Check whether two statements have the same mapping-relevant shape.
@@ -186,7 +186,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
             return None;
         };
 
-        let box_place = box_deref_alias::box_deref_alias_source_place(self.tcx, self.de, *rhs_place)?;
+        let box_place = box_alias::box_deref_alias_source_place(self.tcx, self.de, *rhs_place)?;
         let box_place = self.normalize_target_box_place(box_place);
 
         let split_from = source_loc.filter(|(bb, idx)| {

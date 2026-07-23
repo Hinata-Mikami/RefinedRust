@@ -21,7 +21,7 @@ use typed_arena::Arena;
 
 use crate::base::*;
 use crate::body::mir_lowering::{MirTranslationCtx as _, MirTypeTranslation as _, TranslationKey};
-use crate::environment::mir_utils::box_deref_alias;
+use crate::environment::mir_utils::box_alias;
 use crate::error::Message;
 use crate::spec_parsers::parse_utils;
 use crate::traits::registry;
@@ -126,7 +126,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             &generic_scope,
             &translated_adt_ty,
         )?;
-        let box_deref_aliases = box_deref_alias::collect_box_deref_aliases(tcx, body);
+        let box_deref_aliases = box_alias::collect_box_deref_aliases(tcx, body);
         let (variable_map, always_live_locals) = Self::initialize_locals(tcx, body, &mut translated_fn)?;
 
         Ok(Self {
@@ -326,7 +326,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
     }
 
     pub(super) fn normalize_box_deref_alias_place(&self, place: &mir::Place<'tcx>) -> mir::Place<'tcx> {
-        box_deref_alias::normalize_deref_alias_place(self.tcx, place, |local| {
+        box_alias::normalize_deref_alias_place(self.tcx, place, |local| {
             self.box_deref_aliases.get(&local).copied()
         })
     }
