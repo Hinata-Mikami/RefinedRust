@@ -7,6 +7,7 @@ name = "analysis"
 version = "0.1.0"
 dependencies = [
  "rr_rustc_interface",
+ "rr_rustc_utils",
  "serde",
 ]
 
@@ -78,6 +79,13 @@ dependencies = [
 [[package]]
 name = "rr_rustc_interface"
 version = "0.1.0"
+
+[[package]]
+name = "rr_rustc_utils"
+version = "0.1.0"
+dependencies = [
+ "rr_rustc_interface",
+]
 
 [[package]]
 name = "serde"

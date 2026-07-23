@@ -11,6 +11,7 @@ use rr_rustc_interface::errors::ErrorGuaranteed;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::{borrowck, polonius_engine};
+use rr_rustc_utils::normalize_def_path_str;
 use topological_sort::TopologicalSort;
 
 use crate::shims;
@@ -31,16 +32,6 @@ pub(crate) type PointIndex = <borrowck::consumers::RustcFacts as polonius_engine
 
 fn normalize_logical_path_segment(seg: &str) -> String {
     if matches!(seg, "core" | "alloc" | "std") { "std".to_owned() } else { seg.to_owned() }
-}
-
-pub(crate) fn normalize_def_path_str(def_path: &str) -> String {
-    let mut segments = def_path.split("::");
-    if let Some(seg) = segments.next()
-        && matches!(seg, "core" | "alloc" | "std")
-    {
-        return format!("std::{}", segments.collect::<Vec<_>>().join("::"));
-    }
-    def_path.to_owned()
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]

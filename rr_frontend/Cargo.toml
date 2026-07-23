@@ -5,6 +5,7 @@ members = [
     "radium",
     "refinedrust_frontend",
     "rr_rustc_interface",
+    "rr_rustc_utils",
     "rrconfig",
     "translation",
     "translation/testbins/mir_mapper_driver",
@@ -17,6 +18,7 @@ analysis.path = "analysis"
 attribute_parse.path = "attribute_parse"
 radium.path = "radium"
 rr_rustc_interface.path = "rr_rustc_interface"
+rr_rustc_utils.path = "rr_rustc_utils"
 rrconfig.path = "rrconfig"
 translation.path = "translation"
 

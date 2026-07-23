@@ -33,6 +33,7 @@ dependencies = [
  "compiletest_rs",
  "glob",
  "rr_rustc_interface",
+ "rr_rustc_utils",
  "serde",
 ]
 
@@ -793,6 +794,13 @@ name = "rr_rustc_interface"
 version = "0.1.0"
 
 [[package]]
+name = "rr_rustc_utils"
+version = "0.1.0"
+dependencies = [
+ "rr_rustc_interface",
+]
+
+[[package]]
 name = "rrconfig"
 version = "0.1.0"
 dependencies = [
@@ -1118,6 +1126,7 @@ dependencies = [
  "radium",
  "regex",
  "rr_rustc_interface",
+ "rr_rustc_utils",
  "rrconfig",
  "serde",
  "serde_json",

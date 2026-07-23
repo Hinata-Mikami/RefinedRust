@@ -7,7 +7,6 @@
 #![feature(box_patterns)]
 #![feature(fn_traits)]
 #![feature(rustc_private)]
-#![feature(iter_order_by)]
 #![feature(stmt_expr_attributes)]
 #![feature(anonymous_lifetime_in_impl_trait)]
 // This is useful to clearly state lifetimes of the global interners.

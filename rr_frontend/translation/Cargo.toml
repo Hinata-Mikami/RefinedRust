@@ -12,6 +12,7 @@ analysis.workspace = true
 attribute_parse.workspace = true
 radium.workspace = true
 rr_rustc_interface.workspace = true
+rr_rustc_utils.workspace = true
 rrconfig.workspace = true
 
 datafrog.workspace = true
