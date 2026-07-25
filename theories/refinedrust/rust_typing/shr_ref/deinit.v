@@ -35,7 +35,7 @@ Section rule.
 
   (* Directly subsume ShrLtype, as there can not be any interesting borrow information to extract *)
   Lemma owned_subltype_step_shrltype_uninit π E L step {rt} (lt : ltype rt) r st κ l T  :
-    owned_subltype_step π E L step l r #() (ShrLtype lt κ) (◁ typed_value_t st) T :-
+    owned_subltype_step π E L step l r (#()) (ShrLtype lt κ) (◁ typed_value_t st) T :-
     exhale ⌜st = PtrSynType⌝;
     return T L True%I.
   Proof.

@@ -212,7 +212,7 @@ impl<T> RawVec<T> {
 
     #[rr::exists("l" : "loc", "cap" : "nat")]
     #[rr::ensures("cap = if decide (size_of_st {st_of T} = 0%nat) then Z.to_nat (MaxInt USize) else 0%nat")]
-    #[rr::ensures(#type "l" : "(replicate cap #None)" @ "array_t cap (maybe_uninit {T})")]
+    #[rr::ensures(#type "l" : "(replicate cap (#None))" @ "array_t cap (maybe_uninit {T})")]
     #[rr::returns("(l, cap)")]
     pub fn new() -> Self {
         // !0 is usize::MAX. This branch should be stripped at compile time.
@@ -233,7 +233,7 @@ impl<T> RawVec<T> {
     #[rr::requires(#type "l" : "xs" @ "array_t cap (maybe_uninit {T})")]
     #[rr::exists("new_cap" : "nat", "l'" : "loc")]
     #[rr::observe("γ": "(l', new_cap)")]
-    #[rr::ensures(#type "l'" : "(xs ++ replicate (new_cap - cap) #None)" @ "array_t new_cap (maybe_uninit {T})")]
+    #[rr::ensures(#type "l'" : "(xs ++ replicate (new_cap - cap) (#None))" @ "array_t new_cap (maybe_uninit {T})")]
     #[rr::ensures("new_cap > cap")]
     #[rr::ensures("(size_of_array_in_bytes {st_of T} new_cap ≤ MaxInt ISize)%Z")]
     pub fn grow(&mut self) {

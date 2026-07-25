@@ -313,7 +313,7 @@ Qed.
 Global Instance simpl_ig_nil_subequiv {A} (l1 l2 : list A) :
   SimplBothRel (list_subequiv []) l1 l2 (l1 = l2).
 Proof.
-  split; [|naive_solver] => Hl. apply: list_eq => i.
+  (split; [|naive_solver]) => Hl. apply: list_eq => i.
   move: (Hl i) => [? ?]. set_solver.
 Qed.
 

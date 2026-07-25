@@ -1,5 +1,5 @@
 Require Import Stdlib.Strings.String.
-From iris.proofmode Require Import coq_tactics reduction string_ident.
+From iris.proofmode Require Import rocq_tactics reduction string_ident.
 From refinedrust.base Require Export type.
 From lithium Require Export all.
 From lithium Require Import hooks.

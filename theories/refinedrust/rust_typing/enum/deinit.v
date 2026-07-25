@@ -8,7 +8,7 @@ Section deinit.
   Context `{!typeGS Σ}.
 
   Local Lemma ofty_owned_to_pointsto_val {rt} (ty : type rt) π r l :
-    lty_of_ty_own ty Owned π #r l ={lftE}=∗
+     lty_of_ty_own ty Owned π (#r) l ={lftE}=∗
     ∃ v, l ↦ v ∗ v ◁ᵥ{π, MetaNone} r @ ty.
   Proof.
     rewrite /lty_of_ty_own.
@@ -161,7 +161,7 @@ Section rules.
   Context `{!typeGS Σ}.
 
   Lemma owned_subltype_step_enum_uninit π E L step l {rt rte} (en : enum rt) (lte : ltype rte) rs tag re st T  :
-    owned_subltype_step π E L step l #rs #()
+     owned_subltype_step π E L step l (#rs) (#())
       (EnumLtype en (Some (mk_enum_ltype_variant tag rte lte re)))
       (◁ typed_value_t st) T :-
     exhale (⌜st = en.(enum_els)⌝);
@@ -170,7 +170,7 @@ Section rules.
       (en.(enum_els).(els_variants)) tag);
     exhale (⌜ltype_st lte = variant_st⌝);
     ∀ le,
-      return owned_subltype_step π E L step le #re #() lte (◁ typed_value_t (ltype_st lte)) T.
+       return owned_subltype_step π E L step le (#re) (#()) lte (◁ typed_value_t (ltype_st lte)) T.
   Proof.
     rewrite /compute_list_map_lookup_nofail_goal.
     iIntros "(-> & %Htag & %variant_st & %Hlookup & %Hst_eq & Hsub)".

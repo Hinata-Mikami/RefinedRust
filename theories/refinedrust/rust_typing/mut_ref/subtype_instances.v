@@ -89,7 +89,7 @@ Section subltype.
       ⌜r2 = #(r2', γ)⌝ ∗
       ⌜lctx_lft_incl E L κ2 κ1⌝ ∗
       weak_subltype E L (Uniq κ1 γ) r1 r2' lt1 lt2 T)
-    ⊢ weak_subltype E L (Owned) #(r1, γ) r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
+    ⊢ weak_subltype E L (Owned) (#(r1, γ)) r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof.
     iIntros "(%r2' & -> & %Hincl & HT)" (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(% & Hincl' & HL & $)".
@@ -105,8 +105,8 @@ Section subltype.
   Lemma weak_subltype_mut_owned_in' E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ1 κ2 r1 r2 T :
     (∀ r1' γ,
       ⌜r1 = (r1', γ)⌝ -∗
-      weak_subltype E L (Owned) #(r1', γ) r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T)
-    ⊢ weak_subltype E L (Owned) #r1 r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
+      weak_subltype E L (Owned) (#(r1', γ)) r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T)
+    ⊢ weak_subltype E L (Owned) (#r1) r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof.
     iIntros "Ha". destruct r1. by iApply "Ha".
   Qed.
@@ -136,7 +136,7 @@ Section subltype.
       ⌜r2 = #(r2', γ)⌝ ∗
       ⌜lctx_lft_incl E L κ2 κ1⌝ ∗
       weak_subltype E L (Shared (κ1 ⊓ κ)) r1 r2' lt1 lt2 T)
-    ⊢ weak_subltype E L (Shared κ) #(r1, γ) r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
+    ⊢ weak_subltype E L (Shared κ) (#(r1, γ)) r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof.
     iIntros "(%r2' & -> & %Hincl & HT)" (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(% & Hincl' & HL & $)".

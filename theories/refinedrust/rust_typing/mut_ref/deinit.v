@@ -97,7 +97,7 @@ Section rule.
   Context `{!typeGS Σ}.
 
   Lemma owned_subltype_step_mutltype_uninit π E L step {rt} (lt : ltype rt) r γ st κ l T :
-    owned_subltype_step π E L step l #(r, γ) #() (MutLtype lt κ) (◁ typed_value_t st) T :-
+    owned_subltype_step π E L step l (#(r, γ)) (#()) (MutLtype lt κ) (◁ typed_value_t st) T :-
     return match ltype_uniq_extractable lt with
     | None => False
     | Some κm =>

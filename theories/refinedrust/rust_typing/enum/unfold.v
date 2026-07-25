@@ -26,7 +26,7 @@ Section unfold.
     loc_in_bounds l 0 (ly_size ly) -∗
     v ◁ᵥ{π, MetaNone} r @ ty -∗
     l ↦ v -∗
-    lty_of_ty_own ty Owned π #r l.
+     lty_of_ty_own ty Owned π (#r) l.
   Proof.
     iIntros (??) "Hlb Hv Hl".
     iPoseProof (ty_own_val_sidecond with "Hv") as "#Hsc".
@@ -39,7 +39,7 @@ Section unfold.
     l `has_layout_loc` ly →
     loc_in_bounds l 0 (ly_size ly) -∗
     l ◁ₗ{π, MetaNone, κ} r @ ty -∗
-    lty_of_ty_own ty (Shared κ) π #r l.
+     lty_of_ty_own ty (Shared κ) π (#r) l.
   Proof.
     iIntros (??) "Hlb #Hshr".
     iPoseProof (ty_shr_sidecond with "Hshr") as "#Hsc".
@@ -60,7 +60,7 @@ Section unfold.
   Qed.
 
   Local Lemma ofty_owned_to_pointsto_val {rt} (ty : type rt) π r l :
-    lty_of_ty_own ty Owned π #r l ={lftE}=∗
+     lty_of_ty_own ty Owned π (#r) l ={lftE}=∗
     ∃ v, l ↦ v ∗ v ◁ᵥ{π, MetaNone} r @ ty.
   Proof.
     rewrite /lty_of_ty_own.
@@ -69,7 +69,7 @@ Section unfold.
   Qed.
 
   Local Lemma ofty_shared_to_ty_shr {rt} (ty : type rt) κ π r l :
-    lty_of_ty_own ty (Shared κ) π #r l ={lftE}=∗
+     lty_of_ty_own ty (Shared κ) π (#r) l ={lftE}=∗
     l ◁ₗ{π, MetaNone, κ} r @ ty.
   Proof.
     rewrite /lty_of_ty_own.

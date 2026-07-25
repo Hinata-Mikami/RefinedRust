@@ -2,6 +2,8 @@ From radium Require Export base byte layout int_type loc enum.
 Set Default Proof Using "Type".
 
 (** * op_type *)
+Scheme All for prod.
+Scheme All for list.
 Inductive op_type : Set :=
 | BoolOp
 | IntOp (i : int_type)
@@ -24,35 +26,6 @@ Definition ot_layout (ot : op_type) : layout :=
   | UntypedOp ly => ly
   | CharOp => char_layout
   end.
-
-Lemma op_type_recursor (P : op_type → Type) :
-  P BoolOp →
-  (∀ it, P (IntOp it)) →
-  P FnPtrOp →
-  P PtrOp →
-  (∀ sl ots, list_is_list _ P ots → P (StructOp sl ots)) →
-  (∀ el variant_ots tag_int,
-    list_is_list _ (λ variant_ot, P variant_ot.2) variant_ots →
-    P (EnumOp el variant_ots tag_int)) →
-  (∀ ly, P (UntypedOp ly)) →
-  P CharOp →
-  ∀ ot, P ot.
-Proof.
-  intros Hbool Hint Hfn Hptr Hstruct Henum Huntyped Hchar.
-  refine (fix IH ot {struct ot} := _ ).
-  destruct ot.
-  - apply Hbool.
-  - apply Hint.
-  - apply Hfn.
-  - apply Hptr.
-  - apply Hstruct.
-    by apply list_is_list_full.
-  - apply Henum.
-    apply list_is_list_full. intros [n ots].
-    apply IH.
-  - apply Huntyped.
-  - apply Hchar.
-Qed.
 
 (* Well-formedness of op_types requires that structured op_types have coherent
    component op_types. For enums, the discriminant is always validated as

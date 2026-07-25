@@ -594,7 +594,7 @@ Definition fn_spec_add_late_pre `{!typeGS Σ} (S : fn_spec) (pre : thread_id →
 (** Notation to bundle an [eq_refl] proof for [rts] that helps Coq's type inference around [plist] *)
 Notation "'<tag_type>' x" := (
   (eq_refl, x))
-   (left associativity, at level 82, only parsing) : stdpp_scope.
+   (left associativity, at level 101, only parsing) : stdpp_scope.
 
 (** ** Function subtyping *)
 Section function_subsume.

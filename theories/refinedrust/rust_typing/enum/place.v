@@ -92,7 +92,7 @@ Section rules.
               (EnumLtype en (Some (mk_enum_ltype_variant v.(eltv_tag)
                 upd'.(pupd_rt) upd'.(pupd_lt) r')))
               (* no update, as we are owned *)
-              #r
+               (#r)
               upd'.(pupd_R)
               UpdStrong
               opt_place_update_eq_refl
@@ -131,7 +131,7 @@ Section rules.
     iModIntro. iExists (mkPUpd _ bmin0 _
       (EnumLtype en (Some (mk_enum_ltype_variant
         (interp_enum_ltype_variant en variant r).(eltv_tag)
-        upd'.(pupd_rt) upd'.(pupd_lt) re'))) #r
+         upd'.(pupd_rt) upd'.(pupd_lt) re'))) (#r)
       upd'.(pupd_R) UpdStrong opt_place_update_eq_refl opt_place_update_eq_refl).
     simpl. iFrame "Hl HR Hupd HL Hf Hcont".
     iSplitR.
@@ -156,7 +156,7 @@ Section rules.
               (EnumLtype en (Some (mk_enum_ltype_variant v.(eltv_tag)
                 upd'.(pupd_rt) upd'.(pupd_lt) r')))
               (* no update, as we are shared *)
-              #r
+               (#r)
               upd'.(pupd_R)
               (*upd'.(pupd_performed)*)
               UpdWeak
@@ -195,7 +195,7 @@ Section rules.
     iModIntro. iExists (mkPUpd _ bmin0 _
       (EnumLtype en (Some (mk_enum_ltype_variant
         (interp_enum_ltype_variant en variant r).(eltv_tag)
-        upd'.(pupd_rt) upd'.(pupd_lt) re'))) #r
+         upd'.(pupd_rt) upd'.(pupd_lt) re'))) (#r)
       upd'.(pupd_R) UpdWeak opt_place_update_eq_refl opt_place_update_eq_refl).
      simpl. iFrame "Hl HR Hupd HL Hf Hcont".
      iSplitR; last done.

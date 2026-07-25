@@ -12,7 +12,7 @@
 mkRocqDerivation {
   inherit version;
 
-  owner = "lafeychine";
+  owner = "smtcoq";
   pname = "sniper";
 
   mlPlugin = true;

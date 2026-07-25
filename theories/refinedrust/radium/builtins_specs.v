@@ -88,7 +88,7 @@ Lemma Z_least_significant_one_is_least_significant_one n :
   0 < n →
   is_least_significant_one (Z_least_significant_one n) n.
 Proof.
-  destruct n as [|p|p]; [lia| |lia] => _.
+  (destruct n as [|p|p]; [lia| |lia]) => _.
   elim: p.
   - move => p IH. rewrite Z_least_significant_one_xI.
     split; [done|lia].

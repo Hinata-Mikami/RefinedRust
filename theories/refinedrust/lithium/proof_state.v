@@ -1,4 +1,4 @@
-From iris.proofmode Require Import coq_tactics reduction.
+From iris.proofmode Require Import rocq_tactics reduction.
 From lithium Require Export base.
 From lithium Require Import hooks definitions syntax.
 Set Default Proof Using "Type".

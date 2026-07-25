@@ -376,7 +376,7 @@ Section contr.
   Qed.
 End contr.
 
-Notation "'∃na;' P ',' τ" := (na_ex_plain_t _ _ P τ) (at level 40) : stdpp_scope.
+Notation "'∃na;' P ',' τ" := (na_ex_plain_t _ _ P τ) (at level 11) : stdpp_scope.
 
 Section na_subtype.
   Context `{!typeGS Σ}.
@@ -603,7 +603,7 @@ Section na_subtype.
             na_own f.1 (mask ∖ ↑shrN.@l))
             (λ L3,
               typed_place E L3 f l
-                (ShadowedLtype (AliasLtype _ (ty_syn_type ty MetaNone) l) #tt (◁ (∃na; P, ty))) (#x) (bmin) (Shared κ) K
+                 (ShadowedLtype (AliasLtype _ (ty_syn_type ty MetaNone) l) (#tt) (◁ (∃na; P, ty))) (#x) (bmin) (Shared κ) K
                 (λ L4 κs li b2 bmin' rti ltyi ri updcx,
                   T L4 κs li b2 bmin' rti ltyi ri
                   (λ L3 upd cont, updcx L3 upd (λ upd',

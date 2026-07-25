@@ -1,6 +1,6 @@
 From Equations Require Import Equations.
 From iris.bi Require Export fractional.
-From iris.proofmode Require Import coq_tactics.
+From iris.proofmode Require Import rocq_tactics.
 From iris.base_logic.lib Require Export invariants na_invariants.
 From radium Require Export proofmode notation.
 From radium Require Import derived.
@@ -307,6 +307,7 @@ Proof.
   - iApply lft_incl_refl.
   - iSplit; last done. iApply lft_incl_refl.
 Qed.
+Scheme Rewriting for True.
 Lemma bor_kind_direct_incl_trans b1 b2 b3 :
   ⊢ (b1 ⊑ₛₖ b2 -∗ b2 ⊑ₛₖ b3 -∗ b1 ⊑ₛₖ b3)%I.
 Proof.
@@ -361,6 +362,8 @@ Section ltype_def.
   Global Arguments elv_lty {_} _.
   Global Arguments elv_rfn {_} _.
 
+  Scheme All for enum_lty_variant_pre.
+  Scheme All for option.
   Inductive lty : Type :=
     | BlockedLty {rt} (t : type rt) (κ : lft)
     | ShrBlockedLty {rt} (t : type rt) (κ : lft)

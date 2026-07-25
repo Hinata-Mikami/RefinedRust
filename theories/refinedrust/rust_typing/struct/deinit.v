@@ -91,11 +91,11 @@ Context `{!typeGS Σ}.
 
   (* We iterate over all the fields to deinitialize them first, and then deinitialize the struct itself *)
   Lemma owned_subltype_step_struct_uninit π E L step l {rts} (lts : hlist ltype rts) rs (sls : struct_layout_spec) (st : syn_type) T :
-    owned_subltype_step π E L step l #rs #() (StructLtype lts sls) (◁ typed_value_t st) T :-
+     owned_subltype_step π E L step l (#rs) (#()) (StructLtype lts sls) (◁ typed_value_t st) T :-
     exhale (⌜st = sls⌝);
     L2, R2 ← iterate: zip (hpzipl rts lts rs) sls.(sls_fields) with L, True%I {{ '((existT rt (lt, r)), (field, stf)) T L2 R2,
       exhale (⌜(ltype_st lt) = stf⌝);
-      return owned_subltype_step π E L2 step (l atst{sls}ₗ field) r #() lt (◁ typed_value_t stf) (λ L3 R3,
+       return owned_subltype_step π E L2 step (l atst{sls}ₗ field) r (#()) lt (◁ typed_value_t stf) (λ L3 R3,
         T L3 (R2 ∗ R3))
       }};
     return T L2 R2.

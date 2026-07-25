@@ -13,8 +13,8 @@ Section deinit.
   (* First, if the syntype is equal, go to a show subsumption to a typed value.
      Then, instances for subsuming to a typed value will trigger. *)
   Lemma owned_subltype_step_ofty_uninit_eq π E L {rt} (lt : ltype rt) r st l `{Hst : !TCDone (ltype_st lt = st)} T :
-    owned_subltype_step π E L true l #r #() lt (◁ uninit st) T :-
-    return owned_subltype_step π E L true l #r #() lt (◁ typed_value_t st) T.
+    owned_subltype_step π E L true l (#r) (#()) lt (◁ uninit st) T :-
+    return owned_subltype_step π E L true l (#r) (#()) lt (◁ typed_value_t st) T.
   Proof.
     unfold TCDone in Hst. subst st.
     iIntros "HT".
@@ -35,7 +35,7 @@ Section deinit.
 
   (* Otherwise, more complicated: *)
   Lemma owned_subltype_step_ofty_uninit π E L {rt} (lt : ltype rt) r st l T :
-    owned_subltype_step π E L true l #r #() lt (◁ uninit st) T :-
+    owned_subltype_step π E L true l (#r) (#()) lt (◁ uninit st) T :-
     return
     cast_ltype_to_type E L lt (λ ty,
     li_tactic (compute_layout_goal (ty_syn_type ty MetaNone)) (λ ly1,
@@ -86,7 +86,7 @@ Section deinit_fallback.
 
   (* TODO: maybe restrict this instance more for earlier failure *)
   Lemma uninit_mono π E L step l {rt} (ty : type rt) r st T :
-    owned_subltype_step π E L step l #r #() (◁ ty) (◁ (uninit st)) T :-
+    owned_subltype_step π E L step l (#r) (#()) (◁ ty) (◁ (uninit st)) T :-
     ly ← tactic (compute_layout_goal st);
     exhale (⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝);
     ∀ v,
@@ -120,7 +120,7 @@ Section deinit_fallback.
 
   (** We have this instance because it even works when [r1 = PlaceGhost ..] *)
   Lemma weak_subltype_deinit E L {rt1 : RT} (r1 : place_rfn rt1) r2 (ty : type rt1) st T :
-    weak_subltype E L (Owned) r1 #r2 (◁ ty) (◁ uninit st) T :-
+    weak_subltype E L (Owned) r1 (#r2) (◁ ty) (◁ uninit st) T :-
     ly ← tactic (compute_layout_goal st);
     exhale (⌜fast_eq_hint (ty_syn_type ty MetaNone = UntypedSynType st)⌝);
     return T.
@@ -188,7 +188,7 @@ Section init.
 
   (** ** Subsumption with uninit on the LHS (for initializing) *)
   Lemma owned_subltype_step_ofty_owned_subtype π E L step l {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 T :
-    owned_subltype_step π E L step l #r1 #r2 (◁ ty1) (◁ ty2) T :-
+    owned_subltype_step π E L step l (#r1) (#r2) (◁ ty1) (◁ ty2) T :-
     ly1 ← tactic (compute_layout_goal (ty_syn_type ty1 MetaNone));
       (* augment context *)
     inhale (⌜enter_cache_hint(syn_type_has_layout (ty_syn_type ty1 MetaNone) ly1)⌝);

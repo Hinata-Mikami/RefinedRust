@@ -259,8 +259,10 @@ Notation "l ↦: P " := (∃ v, l ↦ v ∗ P v)%I
 
 Definition heap_pointsto_layout `{!heapG Σ} (l : loc) (q : Qp) (ly : layout) : iProp Σ :=
   (∃ v, ⌜v `has_layout_val` ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗ l ↦{q} v).
+#[warnings="-postfix-notation-not-level-1"]
 Notation "l ↦{ q }| ly |" := (heap_pointsto_layout l q ly)
   (at level 20, q at level 50, format "l  ↦{ q }| ly |") : bi_scope.
+#[warnings="-postfix-notation-not-level-1"]
 Notation "l ↦| ly | " := (heap_pointsto_layout l 1%Qp ly)
   (at level 20, format "l  ↦| ly |") : bi_scope.
 
@@ -1286,8 +1288,8 @@ Section free_blocks.
 End free_blocks.
 
 (** ** Thread-local state *)
-Notation frame_id := nat (only parsing).
-Notation frame_path := (thread_id * frame_id)%type (only parsing).
+Abbreviation frame_id := nat (only parsing).
+Abbreviation frame_path := (thread_id * frame_id)%type (only parsing).
 Class threadG Σ := ThreadG {
   (* ghost state tracking the current stack frame for every thread *)
   thread_current_frame_inG :: ghost_mapG Σ thread_id frame_id;

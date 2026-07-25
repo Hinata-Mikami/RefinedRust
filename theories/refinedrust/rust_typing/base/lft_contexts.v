@@ -115,7 +115,7 @@ Global Instance subG_lctxΣ Σ : subG (lctxΣ) Σ → lctxGPreS Σ.
 Proof. solve_inG. Qed.
 
 Definition elctx_elt : Type := lft * lft.
-Notation elctx := (list elctx_elt).
+Abbreviation elctx := (list elctx_elt).
 
 Section intersect.
   Context `{!invGS Σ, !lftGS Σ lft_userE, !lctxGS Σ}.
@@ -214,21 +214,21 @@ Delimit Scope rrust_elctx_scope with EL.
    notations, so we have to use [Arguments] everywhere. *)
 Bind Scope rrust_elctx_scope with elctx_elt.
 
-Notation "κ1 ⊑ₑ κ2" := (@pair lft lft κ1 κ2) (at level 70).
+Notation "κ1 ⊑ₑ κ2" := (@pair lft lft κ1 κ2) (at level 60).
 
 Inductive llctx_elt : Type :=
 | LLCtxEltAlias (κ : lft) (κs : list lft)
 | LLCtxEltOwned (n : nat) (κ : lft) (κs : list lft)
 | LLCtxEltDead (κ : lft)
 .
-Notation llctx := (list llctx_elt).
+Abbreviation llctx := (list llctx_elt).
 
 (* locally-owned lifetimes with a "borrow count" *)
-Notation "κ '⊑ₗ{' c '}' κl" := (LLCtxEltOwned c%nat κ κl) (at level 70).
+Notation "κ '⊑ₗ{' c '}' κl" := (LLCtxEltOwned c%nat κ κl) (at level 60).
 (* local aliases with no distinct ownership *)
-Notation "κ '≡ₗ' κl" := (LLCtxEltAlias κ κl) (at level 70).
+Notation "κ '≡ₗ' κl" := (LLCtxEltAlias κ κl) (at level 60).
 (* dead local lifetime *)
-Notation "'†ₗ'  κ" := (LLCtxEltDead κ) (at level 70).
+Notation "'†ₗ'  κ" := (LLCtxEltDead κ) (at level 60).
 
 Definition llctx_elt_alive_lft (elt : llctx_elt) : option lft :=
   match elt with

@@ -160,7 +160,9 @@ Definition spec_instantiated `{!typeGS Σ} {SPEC : Type} (F : spec_with 0 [] SPE
 Notation "x '<TY>' T" := (spec_instantiate_typaram_fst _ _ T x) (left associativity, at level 81, only printing) : stdpp_scope.
 Notation "x '<TY>@{' n '}' T" := (spec_instantiate_typaram _ n _ T x) (left associativity, at level 81, only printing) : stdpp_scope.
 Notation "x '<LFT>' T" := (spec_instantiate_lft_fst _ T x) (left associativity, at level 81, only printing) : stdpp_scope.
+#[warnings="-postfix-notation-not-level-1"]
 Notation "x '<INST!>'" := (spec_instantiated x) (left associativity, at level 81, only printing) : stdpp_scope.
+#[warnings="-postfix-notation-not-level-1"]
 Notation "x '<MERGE!>'" := (spec_collapse_params _ _ x) (left associativity, at level 181, only printing) : stdpp_scope.
 
 
@@ -205,6 +207,7 @@ Notation "x '<LFT>' T" := (
     end))
      (left associativity, at level 81, T constr at next level, only parsing) : stdpp_scope.
 
+#[warnings="-postfix-notation-not-level-1"]
 Notation "x '<MERGE!>'" := (
   ltac:(
     match type of x with
@@ -221,5 +224,7 @@ Notation "x '<MERGE!>'" := (
 
 Notation "<SIMPL> x" := (ltac:(let __x := eval simpl in (x) in refine __x)) (right associativity, at level 180, only parsing) : stdpp_scope.
 
+#[warnings="-postfix-notation-not-level-1"]
 Notation "x '<INST!>'" := (@spec_instantiated _ ltac:(apply _) _ x) (left associativity, at level 81, only parsing) : stdpp_scope.
+#[warnings="-postfix-notation-not-level-1"]
 Notation "x '<MERGE!>'" := (@spec_collapse_params _ ltac:(apply _) _ _ _ _ _ x) (left associativity, at level 181, only parsing) : stdpp_scope.

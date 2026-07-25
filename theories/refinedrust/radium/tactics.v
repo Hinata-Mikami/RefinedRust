@@ -5,7 +5,6 @@ Set Default Proof Using "Type".
 Module W.
 (*** Expressions *)
 Section expr.
-Local Unset Elimination Schemes.
 Inductive expr :=
 | Var (x : var_name)
 | Loc (l : loc)
@@ -44,55 +43,6 @@ Inductive expr :=
 | Expr (e : lang.expr)
 .
 End expr.
-
-Lemma expr_ind (P : expr → Prop) :
-  (∀ (x : var_name), P (Var x)) →
-  (∀ (l : loc), P (Loc l)) →
-  (∀ (v : val), P (Val v)) →
-  (∀ (op : un_op) (ot : op_type) (e : expr), P e → P (UnOp op ot e)) →
-  (∀ (op : bin_op) (ot1 ot2 : op_type) (e1 e2 : expr), P e1 → P e2 → P (BinOp op ot1 ot2 e1 e2)) →
-  (∀ (op : un_op) (ot : op_type) (e : expr), P e → P (CheckUnOp op ot e)) →
-  (∀ (op : bin_op) (ot1 ot2 : op_type) (e1 e2 : expr), P e1 → P e2 → P (CheckBinOp op ot1 ot2 e1 e2)) →
-  (∀ (ot1 : op_type) (e1 e2 : expr), P e1 → P e2 → P (CopyAllocId ot1 e1 e2)) →
-  (∀ (o : order) (ot : op_type) (e : expr), P e → P (Deref o ot e)) →
-  (∀ (ot : op_type) (e1 e2 e3 : expr), P e1 → P e2 → P e3 → P (CAS ot e1 e2 e3)) →
-  (∀ (f : expr) (eκs : list string) (etys : list rust_type) (args : list expr), P f → Forall P args → P (Call f eκs etys args)) →
-  (∀ (es : list expr), Forall P es → P (Concat es)) →
-  (∀ (ot : op_type) (e1 e2 e3 : expr), P e1 → P e2 → P e3 → P (IfE ot e1 e2 e3)) →
-  (∀ (e_size : expr) (e_align : expr), P e_size → P e_align → P (Alloc e_size e_align)) →
-  (∀ (e : expr), P e → P (SkipE e)) →
-  (P StuckE) →
-  (∀ (ot1 ot2 : op_type) (rit : int_type) (e1 e2 : expr), P e1 → P e2 → P (LogicalAnd ot1 ot2 rit e1 e2)) →
-  (∀ (ot1 ot2 : op_type) (rit : int_type) (e1 e2 : expr), P e1 → P e2 → P (LogicalOr ot1 ot2 rit e1 e2)) →
-  (∀ (o : order) (ot : op_type) (e : expr), P e → P (Move o ot e)) →
-  (∀ (o : order) (ot : op_type) (e : expr), P e → P (Copy o ot e)) →
-  (∀ (m : mutability) (e : expr), P e → P (Raw m e)) →
-  (∀ (e : expr) (s : struct_layout_spec) (m : var_name), P e → P (GetMember e s m)) →
-  (∀ (e : expr) (ul : union_layout_spec) (m : var_name), P e → P (GetMemberUnion e ul m)) →
-  (∀ (e : expr) (els : enum_layout_spec), P e → P (EnumDiscriminant els e)) →
-  (∀ (e : expr) (els : enum_layout_spec) (variant : var_name), P e → P (EnumData els variant e)) →
-  (∀ (s : struct_layout_spec) (m : var_name), P (OffsetOf s m)) →
-  (∀ (ul : union_layout_spec) (m : var_name), P (OffsetOfUnion ul m)) →
-  (∀ (n : nat) (A : Type) (a : A) (e : expr), P e → P (AnnotExpr n a e)) →
-  (∀ (a : location_info) (e : expr), P e → P (LocInfoE a e)) →
-  (∀ (ly : struct_layout_spec) (fs : list (string * expr)), Forall P fs.*2 → P (StructInit ly fs)) →
-  (∀ (els : enum_layout_spec) (variant : var_name) (ty : rust_enum_def) (e : expr), P e → P (EnumInit els variant ty e)) →
-  (∀ (m : mutability) (ty : option rust_type) (κn : string) (e : expr), P e → P (Borrow m κn ty e)) →
-  (∀ (e : lang.expr), P (Expr e)) → ∀ (e : expr), P e.
-Proof.
-  move => *. generalize dependent P => P. match goal with | e : expr |- _ => revert e end.
-  fix FIX 1. move => [ ^e] => ?????????? Hcall Hconcat ????????????????? Hstruct Henum Hbor ?.
-  11: {
-    apply Hcall; [ |apply Forall_true => ?]; by apply: FIX.
-  }
-  11: {
-    apply Hconcat. apply Forall_true => ?. by apply: FIX.
-  }
-  28: {
-    apply Hstruct. apply Forall_fmap. apply Forall_true => ?. by apply: FIX.
-  }
-  all: auto.
-Qed.
 
 Fixpoint to_expr `{!LayoutAlg} (e : expr) : lang.expr :=
   match e with
@@ -630,7 +580,7 @@ Qed.
 Lemma stmt_fill_correct `{!LayoutAlg} Ks π rf:
   ∃ Ks', ∀ e, to_rtstmt π rf (to_stmt (stmt_fill Ks e)) = ectxi_language.fill Ks' (to_rtexpr π (to_expr e)).
 Proof.
-  move: Ks => [] *; [
+  (move: Ks => [] *; [
   eexists ([StmtCtx (lang.AssignRCtx _ _ _ _) π rf])|
   eexists ([StmtCtx (lang.AssignLCtx _ _ _ _) π rf])|
   eexists ([StmtCtx (lang.AssignRCtx _ _ _ _) π rf])|
@@ -643,7 +593,7 @@ Proof.
   eexists ([StmtCtx (lang.FreeLCtx _ _ _) π rf])|
   eexists ([StmtCtx (lang.FreeMCtx _ _ _) π rf])|
   eexists ([StmtCtx (lang.FreeRCtx _ _ _) π rf])|
-..] => //=.
+  ..]) => //=.
 Qed.
 
 (*** Substitution *)

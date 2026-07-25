@@ -58,7 +58,7 @@ Notation "'HIDDEN'" := (FUNCTION_NAME _) (only printing) : rr_hidden.
 Notation "'HIDDEN_FUNCTION_PTR_T' v" := (ty_own_val (function_ptr _ _) _ _ _ v) (only printing, at level 100) : rr_hidden.
 
 Definition function_ty_wrapper {T : Type} (t : T) := t.
-Notation "'HIDDEN_FUNCTION_TY'" := (function_ty_wrapper _) (only printing, at level 100) : rr_hidden.
+Notation "'HIDDEN_FUNCTION_TY'" := (function_ty_wrapper _) (only printing, at level 0) : rr_hidden.
 
 Ltac set_function_types :=
   repeat match goal with
@@ -73,7 +73,7 @@ Ltac set_function_types :=
   end.
 
 (* Trait incl assumptions *)
-Notation "'HIDDEN_TRAIT_INCL'" := (trait_incl_marker _) (only printing, at level 100) : rr_hidden.
+Notation "'HIDDEN_TRAIT_INCL'" := (trait_incl_marker _) (only printing, at level 0) : rr_hidden.
 
 (** Sidecondition caching *)
 
@@ -251,7 +251,7 @@ Ltac print_case_distinction_info :=
     clear H
   end.
 
-Ltac print_coq_hyps :=
+Ltac print_rocq_hyps :=
   try match reverse goal with
   | H : ?X |- _ =>
     lazymatch X with
@@ -268,7 +268,7 @@ Ltac print_goal :=
   (*print_current_location;*)
   print_case_distinction_info;
   idtac "Goal:";
-  print_coq_hyps;
+  print_rocq_hyps;
   idtac "---------------------------------------";
   match goal with
   | |- ?G => idtac G
@@ -283,7 +283,7 @@ Ltac print_typesystem_goal fn :=
     (*print_current_location;*)
     (*print_case_distinction_info;*)
     idtac "Goal:";
-    print_coq_hyps;
+    print_rocq_hyps;
     idtac "---------------------------------------";
     idtac P;
     (* TODO: Should we print the continuation? It might confuse the user and

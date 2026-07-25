@@ -580,7 +580,7 @@ Section structs.
     (* fracture the tokens over the big_sep *)
     set (len := length (sl_members sl)).
     set (κ' := lft_intersect_list (mjoin ((λ ty, ty_lfts (projT2 ty)) <$> hzipl rts tys))).
-    iPoseProof (Fractional_split_big_sepL (λ q, q.[_]%I) len with "Htok") as "(%qs & %Hlen' & Htoks & Hcl_toks)".
+    iPoseProof (Fractional_split_big_sepL (λ q, (q.[_])%I) len with "Htok") as "(%qs & %Hlen' & Htoks & Hcl_toks)".
     iAssert ([∗ list] i ↦ ty; q' ∈ (pad_struct (sl_members sl) (hpzipl rts tys r) struct_make_uninit_type); qs,
       &{κ} ((∃ (r' : (projT1 ty : RT)) (ly : layout), place_rfn_interp_owned (projT2 ty).2 r' ∗ ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ty_syn_type (projT2 ty).1 MetaNone) ly⌝ ∗ ty_sidecond (projT2 ty).1 ∗ ∃ v, (l +ₗ offset_of_idx sl.(sl_members) i) ↦ v ∗ ⌜v `has_layout_val` ly⌝ ∗ v ◁ᵥ{ π, MetaNone} r' @ (projT2 ty).1)) ∗
       q'.[κ ⊓ κ'])%I with "[Htoks Hb]" as "Hb".

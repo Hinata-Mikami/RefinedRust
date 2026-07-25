@@ -163,7 +163,7 @@ Section place.
               (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_1))
               (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_2)))
             ))))))
-    ⊢ typed_place E L f l (ShrLtype lt2 κ) #r bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp :: P) T.
+    ⊢ typed_place E L f l (ShrLtype lt2 κ) (#r) bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%κs & %L2 & %Hal & HT)".

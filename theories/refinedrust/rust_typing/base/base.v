@@ -149,10 +149,10 @@ Proof.
 Qed.
 
 (** * Error handling *)
-Notation Ok x := (inl x) (only parsing).
-Notation Err x := (inr x) (only parsing).
+Abbreviation Ok x := (inl x) (only parsing).
+Abbreviation Err x := (inr x) (only parsing).
 
-Notation result A B := (sum A B) (only parsing).
+Abbreviation result A B := (sum A B) (only parsing).
 
 Definition if_Ok {A B} (x : result A B) (ϕ : A → Prop) : Prop :=
   match x with

@@ -67,7 +67,9 @@ Qed.
 
 Global Instance layout_wf_dec ly : Decision (layout_wf ly).
 Proof.
-  rewrite /layout_wf. apply Znumtheory.Zdivide_dec.
+  rewrite /layout_wf.
+  eapply BoolSpec_sumbool.
+  apply Z.BoolSpec_divide.
 Qed.
 
 Class LayoutWf (ly : layout) : Prop := layout_wf_wf : layout_wf ly.

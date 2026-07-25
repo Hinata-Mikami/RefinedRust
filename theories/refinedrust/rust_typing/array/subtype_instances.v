@@ -131,7 +131,7 @@ Section subtype.
   *)
 
   Lemma owned_subtype_array π E L pers {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) len r1 r2 T :
-    (∃ r1' r2', ⌜r1 = replicate len #r1'⌝ ∗ ⌜r2 = replicate len #r2'⌝ ∗
+    (∃ r1' r2', ⌜r1 = replicate len (#r1')⌝ ∗ ⌜r2 = replicate len (#r2')⌝ ∗
       li_tactic (compute_layout_goal (ty_syn_type ty2 MetaNone)) (λ _,
       owned_subtype π E L true r1' r2' ty1 ty2 T))
     ⊢ owned_subtype π E L pers r1 r2 (array_t len ty1) (array_t len ty2) T.
@@ -173,7 +173,7 @@ Section subtype.
     li_tactic (compute_layout_goal st) (λ ly1,
       li_tactic (compute_layout_goal (ty_syn_type ty MetaNone)) (λ ly2,
         ⌜(ly_size ly1 = ly_size ly2 * len)%nat⌝ ∗
-        owned_subtype π E L pers (replicate len #()) r2 (array_t len (uninit (ty_syn_type ty MetaNone))) (array_t len ty) T))
+        owned_subtype π E L pers (replicate len (#())) r2 (array_t len (uninit (ty_syn_type ty MetaNone))) (array_t len ty) T))
     ⊢ owned_subtype π E L pers () r2 (uninit st) (array_t len ty) T.
   Proof.
     rewrite /compute_layout_goal.
@@ -181,7 +181,7 @@ Section subtype.
     iIntros (????) "#CTX #HE HL".
     iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L' & Hincl & ? & ?)".
     iExists L'. iModIntro. iFrame.
-    iAssert (owned_type_incl π (replicate len # ()) r2 (array_t len (uninit (ty_syn_type ty MetaNone))) (array_t len ty) -∗ owned_type_incl π () r2 (uninit st) (array_t len ty))%I as "Hw"; first last.
+    iAssert (owned_type_incl π (replicate len (# ())) r2 (array_t len (uninit (ty_syn_type ty MetaNone))) (array_t len ty) -∗ owned_type_incl π () r2 (uninit st) (array_t len ty))%I as "Hw"; first last.
     { destruct pers.
       { simpl. iDestruct "Hincl" as "#Hincl". iModIntro. by iApply "Hw". }
       { simpl. by iApply "Hw". } }
@@ -345,7 +345,7 @@ Section instances.
     ⌜fast_syntype_eq_hint (ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone)⌝ ∗
     relate_list E L [] (interpret_iml (◁ def1) len1 lts1) (interpret_iml (◁ def2) len1 lts2) 0 (weak_subltype_list_interp (Owned) rs1 rs2') (
       ⌜length rs2' = len1⌝ ∗ T))
-    ⊢ weak_subltype E L (Owned) #rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
+    ⊢ weak_subltype E L (Owned) (#rs1) rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
   Proof.
     iIntros "(<- & %rs2' & -> & %Hst & HT)". iIntros (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(Ha & $ & (%Hlen' & $))".
@@ -385,7 +385,7 @@ Section instances.
     ⌜fast_syntype_eq_hint (ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone)⌝ ∗
     relate_list E L [] (interpret_iml (◁ def1) len1 lts1) (interpret_iml (◁ def2) len1 lts2) 0 (weak_subltype_list_interp (Shared κ) rs1 rs2') (
       ⌜length rs2' = len1⌝ ∗ T))
-    ⊢ weak_subltype E L (Shared κ) #rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
+    ⊢ weak_subltype E L (Shared κ) (#rs1) rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
   Proof.
     iIntros "(<- & %rs2' & -> & %Hst & HT)". iIntros (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(Ha & $ & (%Hlen' & $))".

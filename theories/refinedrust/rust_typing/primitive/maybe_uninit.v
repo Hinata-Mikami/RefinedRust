@@ -209,7 +209,7 @@ Section subtype.
     iIntros "(% & -> & ?)". done.
   Qed.
   Lemma ty_own_val_maybe_uninit_Some {rt} (ty : type rt) x π v m :
-    v ◁ᵥ{π, m} x @ ty -∗ v ◁ᵥ{π, m} (Some #x) @ maybe_uninit ty.
+     v ◁ᵥ{π, m} x @ ty -∗ v ◁ᵥ{π, m} (Some (#x)) @ maybe_uninit ty.
   Proof.
     rewrite {2}/ty_own_val/= maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
     iIntros "$". done.
@@ -347,7 +347,7 @@ Section rules.
   Global Existing Instance strong_subtype_Some_maybe_uninit_evar_inst.
 
   Lemma strong_subtype_maybe_uninit_Some E L {rt} (ty : type rt) (x : rt) r2 T :
-    ⌜r2 = Some #x⌝ ∗ T ⊢ strong_subtype E L x r2 ty (maybe_uninit ty) T.
+     ⌜r2 = Some (#x)⌝ ∗ T ⊢ strong_subtype E L x r2 ty (maybe_uninit ty) T.
   Proof.
     iIntros "(-> & HT)" (??) "#CTX #HE HL". iFrame.
     iSplitR; last by iApply type_incl_maybe_uninit_Some.

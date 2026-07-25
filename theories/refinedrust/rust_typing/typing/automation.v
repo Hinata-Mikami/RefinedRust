@@ -1,5 +1,5 @@
 Require Import Stdlib.Strings.String.
-From iris.proofmode Require Import coq_tactics reduction string_ident.
+From iris.proofmode Require Import rocq_tactics reduction string_ident.
 From refinedrust Require Export type.
 From lithium Require Export all.
 From lithium Require Import hooks.
@@ -1894,10 +1894,10 @@ Ltac sidecond_solver :=
 
 (** Lithium hooks for [solve_goal]: called for remaining sideconditions *)
 Lemma unfold_int_elem_of_it (z : Z) (it : int_type) :
-  z ∈ it = (MinInt it ≤ z ∧ z ≤ MaxInt it)%Z.
+  (z ∈ it) = (MinInt it ≤ z ∧ z ≤ MaxInt it)%Z.
 Proof. done. Qed.
 Lemma unfold_nat_elem_of_it (n : nat) (it : int_type) :
-  n ∈ it = (MinInt it ≤ n ∧ n ≤ MaxInt it)%Z.
+  (n ∈ it) = (MinInt it ≤ n ∧ n ≤ MaxInt it)%Z.
 Proof. done. Qed.
 
 (** Normalization that should be done to all goals -- even ones that will be presented to the user. *)

@@ -1,11 +1,11 @@
 Require Import Stdlib.Strings.String.
-From iris.proofmode Require Import coq_tactics reduction string_ident.
+From iris.proofmode Require Import rocq_tactics reduction string_ident.
 From refinedrust.base Require Export type ltypes hlist.
 From lithium Require Export all.
 From lithium Require Import hooks.
 From refinedrust.automation Require Import lookup_definition proof_state.
 From refinedrust.automation Require Export layout_ltac.
-From refinedrust Require Import lftmor.
+From refinedrust.base Require Import lftmor.
 From refinedrust.base Require Import generics programs value.
 From refinedrust.primitive Require Import functions mutual_fixpoint.
 

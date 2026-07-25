@@ -70,7 +70,7 @@ Section project_vec_els.
 
   Lemma project_vec_els_lookup (len i : nat) els x :
     (i < len)%nat →
-    els !! i = Some #(Some x) →
+    els !! i = Some (#(Some x)) →
     project_vec_els len els !! i = Some x.
   Proof.
     intros Hi Hlook. rewrite /project_vec_els.
@@ -81,7 +81,7 @@ Section project_vec_els.
   Qed.
 
   Lemma project_vec_els_length' xs x2 len :
-    <#> (<$#@{rt}> xs) = project_vec_els len x2 → length xs ≤ min len (length x2).
+    <#> <$#@{rt}> xs = project_vec_els len x2 → length xs ≤ min len (length x2).
   Proof.
     intros Ha.
     assert (length (<#> <$#> xs) = length (project_vec_els len x2)) as Hlen.

@@ -634,7 +634,7 @@ Section ofty.
     syn_type_has_layout (ty_syn_type ty2 MetaNone) ly2 →
     l `has_layout_loc` ly2 →
     owned_type_incl π r1 r2 ty1 ty2
-    ⊢ (l ◁ₗ[π, Owned] #r1 @ ◁ ty1) -∗ (l ◁ₗ[π, Owned] #r2 @ ◁ ty2).
+    ⊢ l ◁ₗ[π, Owned] #r1 @ ◁ ty1 -∗ l ◁ₗ[π, Owned] #r2 @ ◁ ty2.
   Proof.
     iIntros (Hst2 Hly2) "Hincl Hl".
     rewrite !ltype_own_ofty_unfold/lty_of_ty_own.

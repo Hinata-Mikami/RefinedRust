@@ -5,6 +5,16 @@ Global Unset Program Cases.
 Global Set Keyed Unification.
 Global Open Scope Z_scope.
 
+Lemma BoolSpec_sumbool P Q b :
+  BoolSpec P Q b →
+  { P } + { Q }.
+Proof.
+  intros Hspec.
+  destruct b eqn:Heq.
+  - left. by inversion Hspec.
+  - right. by inversion Hspec.
+Qed.
+
 Section induction.
   (* unary parametricity translation of lists to derive induction principles for rose-tree inductives *)
   Inductive list_is_list (A : Type) (PA : A → Type) : list A → Type :=

@@ -11,7 +11,7 @@ Section subtype.
   (** subtyping *)
   Lemma strong_subtype_shr_in E L {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) κ1 κ2 r1 r2 T :
     (⌜lctx_lft_incl E L κ2 κ1⌝ ∗ strong_subtype E L r1 r2 ty1 ty2 T)
-    ⊢ strong_subtype E L #r1 #r2 (shr_ref κ1 ty1) (shr_ref κ2 ty2) T.
+    ⊢ strong_subtype E L (#r1) (#r2) (shr_ref κ1 ty1) (shr_ref κ2 ty2) T.
   Proof.
     iIntros "(%Hincl & HT)". iIntros (??) "#CTX #HE HL".
     iPoseProof (lctx_lft_incl_incl with "HL") as "#Hincl"; first done.
@@ -48,7 +48,7 @@ Section subtype.
 
   Lemma weak_subtype_shr_in E L {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) κ1 κ2 r1 r2 T :
     (⌜lctx_lft_incl E L κ2 κ1⌝ ∗ weak_subtype E L r1 r2 ty1 ty2 T)
-    ⊢ weak_subtype E L #r1 #r2 (shr_ref κ1 ty1) (shr_ref κ2 ty2) T.
+    ⊢ weak_subtype E L (#r1) (#r2) (shr_ref κ1 ty1) (shr_ref κ2 ty2) T.
   Proof.
     iIntros "(%Hincl & HT)". iIntros (??) "#CTX #HE HL".
     iPoseProof (lctx_lft_incl_incl with "HL") as "#Hincl"; first done.
@@ -120,7 +120,7 @@ Section subtype.
   (** subltyping *)
   Lemma weak_subltype_shr_owned_in E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ1 κ2 r1 r2 T :
     (∃ r2', ⌜r2 = #r2'⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ weak_subltype E L (Shared κ1) r1 r2' lt1 lt2 T)
-    ⊢ weak_subltype E L (Owned) #r1 r2 (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) T.
+    ⊢ weak_subltype E L (Owned) (#r1) r2 (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) T.
   Proof.
     iIntros "(%r2' & -> & %Hincl & HT)" (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(% & Hincl' & HL & $)".
@@ -150,7 +150,7 @@ Section subtype.
 
   Lemma weak_subltype_shr_shared_in E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ κ1 κ2 r1 r2 T :
     (∃ r2', ⌜r2 = #r2'⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ weak_subltype E L (Shared (κ1)) r1 r2' lt1 lt2 T)
-    ⊢ weak_subltype E L (Shared κ) #r1 r2 (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) T.
+    ⊢ weak_subltype E L (Shared κ) (#r1) r2 (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) T.
   Proof.
     iIntros "(%r2' & -> & %Hincl & HT)" (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(% & Hincl' & HL & $)".

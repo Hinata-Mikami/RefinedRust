@@ -33,6 +33,7 @@ Definition enum_variant_ot_lookup
 Definition enum_tag_lookup (tag_int : list (var_name * Z)) (tag : Z) : option var_name :=
   (λ x, fst (snd x)) <$> list_find (λ x, snd x = tag) tag_int.
 
+Scheme All for Forall2.
 Inductive op_val_has_type : op_val → op_type → Prop :=
 | OVBool_has_type b : op_val_has_type (OVBool b) BoolOp
 | OVInt_has_type it z : z ∈ it → op_val_has_type (OVInt it z) (IntOp it)

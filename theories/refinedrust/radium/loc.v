@@ -10,10 +10,10 @@ Delimit Scope loc_scope with L.
 Global Open Scope loc_scope.
 
 (** Physical address. *)
-Notation addr := Z (only parsing).
+Abbreviation addr := Z (only parsing).
 
 (** Allocation identifier (unique to an allocation), see [heap.v]. *)
-Notation alloc_id := Z (only parsing).
+Abbreviation alloc_id := Z (only parsing).
 Definition dummy_alloc_id : alloc_id := 0.
 
 (** Provenances *)
@@ -312,4 +312,4 @@ Proof.
 Qed.
 
 #[export] Instance aligned_to_dec l n : Decision (l `aligned_to` n).
-Proof. rewrite /aligned_to. apply Znumtheory.Zdivide_dec. Qed.
+Proof. rewrite /aligned_to. eapply BoolSpec_sumbool. apply Z.BoolSpec_divide. Qed.

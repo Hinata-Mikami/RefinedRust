@@ -2446,7 +2446,7 @@ Section subsume.
         iMod (fupd_mask_mono with "(Hvs' [] Hl)") as "Ha"; first done.
         { by iApply lft_dead_list_nil. }
         rewrite ltype_own_core_equiv. by iFrame.
-      + iAssert (T L3 (Cpost ri rf ∗ R2 ∗ R) rt_full (CoreableLtype (κs' ++ κs) lt_full) #rf)%I with "[HT]" as "HT".
+      + iAssert (T L3 (Cpost ri rf ∗ R2 ∗ R) rt_full (CoreableLtype (κs' ++ κs) lt_full) (#rf))%I with "[HT]" as "HT".
         { destruct κs, κs'; naive_solver. }
         iExists L3, _, _, _, _. iFrame.
         iSplitR. { iPureIntro.
@@ -2644,7 +2644,7 @@ Section subsume.
             strong_subltype E L' (Owned) (r') (#ri) lt_cur' lt_inner (
               (* re-establish the invariant *)
               prove_with_subtype E L' true ProveDirect (Cpre ri) True%I
-                (λ L'' _ R2, T L'' (Cpost ri ∗ R2 ∗ R) unit (AliasLtype unit (ltype_st lt_inner) l) #tt)))
+                (λ L'' _ R2, T L'' (Cpost ri ∗ R2 ∗ R) unit (AliasLtype unit (ltype_st lt_inner) l) (#tt))))
     ⊢ stratify_ltype π E L mdu ma ml l (OpenedNaLtype lt_cur lt_inner Cpre Cpost) r (Owned) T.
   Proof.
     rewrite /stratify_ltype /strong_subltype /prove_with_subtype.
@@ -5682,20 +5682,20 @@ Global Typeclasses Opaque typed_array_access.
 
 
 
-Notation "'typed_value' π x 'HIDDEN_CONT'" := (typed_value π x _) (only printing): rr_hidden.
-Notation "'typed_place' E L f l lto ro b1 b2 K 'HIDDEN_CONT'" := (typed_place E L f l lto ro b1 b2 K _) (only printing): rr_hidden.
+Notation "'typed_value' π x 'HIDDEN_CONT'" := (typed_value π x _) (only printing, at level 0): rr_hidden.
+Notation "'typed_place' E L f l lto ro b1 b2 K 'HIDDEN_CONT'" := (typed_place E L f l lto ro b1 b2 K _) (only printing, at level 0): rr_hidden.
 
-Notation "'subsume_full' E L wl P1 P2 'HIDDEN_CONT'" := (subsume_full wl P1 P2 E L _) (only printing): rr_hidden.
-Notation "'resolve_ghost' π E L rm f l lt k r 'HIDDEN_CONT'" := (resolve_ghost π E L rm f l lt k r _) (only printing): rr_hidden.
-Notation "'prove_with_subtype' E L wl pm P 'HIDDEN_ACC' 'HIDDEN_CONT'" := (prove_with_subtype E L wl pm P _ _) (only printing): rr_hidden.
-Notation "'introduce_with_hooks' E L P 'HIDDEN_CONT'" := (introduce_with_hooks E L P _) (only printing): rr_hidden.
-Notation "'stratify_ltype' π E L mdu ma m l lt r b 'HIDDEN_CONT'" := (stratify_ltype π E L mdu ma m l lt r b _) (only printing): rr_hidden.
+Notation "'subsume_full' E L wl P1 P2 'HIDDEN_CONT'" := (subsume_full wl P1 P2 E L _) (only printing, at level 0): rr_hidden.
+Notation "'resolve_ghost' π E L rm f l lt k r 'HIDDEN_CONT'" := (resolve_ghost π E L rm f l lt k r _) (only printing, at level 0): rr_hidden.
+Notation "'prove_with_subtype' E L wl pm P 'HIDDEN_ACC' 'HIDDEN_CONT'" := (prove_with_subtype E L wl pm P _ _) (only printing, at level 0): rr_hidden.
+Notation "'introduce_with_hooks' E L P 'HIDDEN_CONT'" := (introduce_with_hooks E L P _) (only printing, at level 0): rr_hidden.
+Notation "'stratify_ltype' π E L mdu ma m l lt r b 'HIDDEN_CONT'" := (stratify_ltype π E L mdu ma m l lt r b _) (only printing, at level 0): rr_hidden.
 
 
-Notation "'typed_context_fold_step' step π E L m l lt r ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typed_context_fold_step step π E L m l lt r ls _ _) (only printing) : rr_hidden.
-Notation "'typed_context_fold' step E L m ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typed_context_fold step E L m ls _ _) (only printing) : rr_hidden.
-Notation "'weak_subltype' E L b r1 r2 lt1 lt2 'HIDDEN_CONT'" := (weak_subltype E L b r1 r2 lt1 lt2 _) (only printing) : rr_hidden.
-Notation "'strong_subltype' E L b r1 r2 lt1 lt2 'HIDDEN_CONT'" := (strong_subltype E L b r1 r2 lt1 lt2 _) (only printing) : rr_hidden.
+Notation "'typed_context_fold_step' step π E L m l lt r ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typed_context_fold_step step π E L m l lt r ls _ _) (only printing, at level 0) : rr_hidden.
+Notation "'typed_context_fold' step E L m ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typed_context_fold step E L m ls _ _) (only printing, at level 0) : rr_hidden.
+Notation "'weak_subltype' E L b r1 r2 lt1 lt2 'HIDDEN_CONT'" := (weak_subltype E L b r1 r2 lt1 lt2 _) (only printing, at level 0) : rr_hidden.
+Notation "'strong_subltype' E L b r1 r2 lt1 lt2 'HIDDEN_CONT'" := (strong_subltype E L b r1 r2 lt1 lt2 _) (only printing, at level 0) : rr_hidden.
 
 
 Notation "'typed_block' 'HIDDEN_INV' E L f l rf R ϝ" := (typed_block E L _ f l rf R ϝ) (only printing, at level 100) : rr_hidden.

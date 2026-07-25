@@ -28,7 +28,6 @@ Inductive order : Set :=
 | ScOrd | Na1Ord | Na2Ord.
 
 Section expr.
-Local Unset Elimination Schemes.
 Inductive expr :=
 | Var (x : var_name)
 | Val (v : val)
@@ -51,30 +50,6 @@ Inductive expr :=
 .
 End expr.
 Arguments Call _%_E _%_E.
-Lemma expr_ind (P : expr → Prop) :
-  (∀ (x : var_name), P (Var x)) →
-  (∀ (v : val), P (Val v)) →
-  (∀ (op : un_op) (ot : op_type) (e : expr), P e → P (UnOp op ot e)) →
-  (∀ (op : bin_op) (ot1 ot2 : op_type) (e1 e2 : expr), P e1 → P e2 → P (BinOp op ot1 ot2 e1 e2)) →
-  (∀ (op : un_op) (ot : op_type) (e : expr), P e → P (CheckUnOp op ot e)) →
-  (∀ (op : bin_op) (ot1 ot2 : op_type) (e1 e2 : expr), P e1 → P e2 → P (CheckBinOp op ot1 ot2 e1 e2)) →
-  (∀ (ot1 : op_type) (e1 e2 : expr), P e1 → P e2 → P (CopyAllocId ot1 e1 e2)) →
-  (∀ (o : order) (ot : op_type) (e : expr), P e → P (Deref o ot e)) →
-  (∀ (ot : op_type) (e1 e2 e3 : expr), P e1 → P e2 → P e3 → P (CAS ot e1 e2 e3)) →
-  (∀ (f : expr) (args : list expr), P f → Forall P args → P (Call f args)) →
-  (∀ (es : list expr), Forall P es → P (Concat es)) →
-  (∀ (ot : op_type) (e1 e2 e3 : expr), P e1 → P e2 → P e3 → P (IfE ot e1 e2 e3)) →
-  (∀ (e_size : expr) (e_align : expr), P e_size → P e_align → P (Alloc e_size e_align)) →
-  (∀ (e : expr), P e → P (SkipE e)) →
-  (P StuckE) →
-  ∀ (e : expr), P e.
-Proof.
-  move => *. generalize dependent P => P. match goal with | e : expr |- _ => revert e end.
-  fix FIX 1. move => [ ^e] => ????????? Hcall Hconcat *.
-  10: { apply Hcall; [ |apply Forall_true => ?]; by apply: FIX. }
-  10: { apply Hconcat. apply Forall_true => ?. by apply: FIX. }
-  all: auto.
-Qed.
 
 Global Instance val_inj : Inj (=) (=) Val.
 Proof. by move => ?? [->]. Qed.
@@ -241,10 +216,10 @@ Proof.
   all: try naive_solver.
   - f_equal; [naive_solver|].
     generalize dependent args0.
-    revert select (Forall _ _). elim; [by case|].
+    revert select (list_all _ _ _). elim; [by case|].
     move => ????? [|??]//. naive_solver.
   - generalize dependent es0.
-    revert select (Forall _ _). elim; [by case|].
+    revert select (list_all _ _ _). elim; [by case|].
     move => ????? [|??]//. naive_solver.
 Qed.
 Lemma to_rtexpr_inj_strong_1 π1 π2 e1 e2 :
@@ -1050,7 +1025,7 @@ Lemma fill_item_no_val_inj Ki1 Ki2 e1 e2 :
 Proof.
   move: Ki1 Ki2 => [ ^ Ki1] [ ^Ki2] He1 He2 ? //; simplify_eq; try done; f_equal.
   all: destruct Ki1E, Ki2E => //; simplify_eq => //.
-  all: opose proof* list_expr_val_eq_inv as HEQ; [| | done |] => //; naive_solver.
+  all: (opose proof* list_expr_val_eq_inv as HEQ; [| | done |]) => //; naive_solver.
 Qed.
 
 Lemma expr_ctx_step_val Ki e σ1 κ e2 σ2 ef :

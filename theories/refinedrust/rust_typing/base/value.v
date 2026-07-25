@@ -898,8 +898,8 @@ Section rules.
   Lemma owned_subltype_step_to_typed_value π E L step {rt} l v' st (ty : type rt) r T:
     (⌜ty_has_op_type ty (use_op_alg' (ty_syn_type ty MetaNone))⌝ ∗
     ∀ v, v ◁ᵥ{π, MetaNone} r @ ty -∗
-      owned_subltype_step π E L step l #v #v' (◁ value_t true (ty_syn_type ty MetaNone)) (◁ value_t true st) T)
-    ⊢ owned_subltype_step π E L step l #r #v' (◁ ty) (◁ value_t true st) T.
+      owned_subltype_step π E L step l (#v) (#v') (◁ value_t true (ty_syn_type ty MetaNone)) (◁ value_t true st) T)
+    ⊢ owned_subltype_step π E L step l (#r) (#v') (◁ ty) (◁ value_t true st) T.
   Proof.
     rewrite /compute_layout_goal.
     iIntros "(%Hot & HT)" (????) "#CTX #HE HL Hty".
@@ -909,8 +909,8 @@ Section rules.
   Qed.
   Lemma owned_subltype_step_to_untyped_value π E L step {rt} l v' st (ty : type rt) r T:
     (∀ v, v ◁ᵥ{π, MetaNone} r @ ty -∗
-      owned_subltype_step π E L step l #v #v' (◁ value_t false (ty_syn_type ty MetaNone)) (◁ value_t false st) T)
-    ⊢ owned_subltype_step π E L step l #r #v' (◁ ty) (◁ value_t false st) T.
+      owned_subltype_step π E L step l (#v) (#v') (◁ value_t false (ty_syn_type ty MetaNone)) (◁ value_t false st) T)
+    ⊢ owned_subltype_step π E L step l (#r) (#v') (◁ ty) (◁ value_t false st) T.
   Proof.
     rewrite /compute_layout_goal.
     iIntros "HT" (????) "#CTX #HE HL Hty".
@@ -980,7 +980,7 @@ Section unify_loc.
 
   Lemma owned_subltype_step_ofty_value_unify_vs π E L step l vs1 vs2 typed st T :
     ⌜vs1 = vs2⌝ ∗ T L True%I
-    ⊢ owned_subltype_step π E L step l #vs1 #vs2 (◁ value_t typed st) (◁ value_t typed st) T.
+    ⊢ owned_subltype_step π E L step l (#vs1) (#vs2) (◁ value_t typed st) (◁ value_t typed st) T.
   Proof.
     iIntros "(-> & HT)" (????) "#CTX #HE HL Hl".
     iExists L, True%I. iFrame.
@@ -992,8 +992,8 @@ Section unify_loc.
   (* instantiate in case [st2] is an evar *)
   Lemma owned_subltype_step_ofty_value_st_evar π E L step l typed1 typed2 st1 st2 vs1 vs2 `{!ContainsProtected st2} T :
     ⌜st1 = st2⌝ ∗
-    owned_subltype_step π E L step l #vs1 #vs2 (◁ value_t typed1 st1) (◁ value_t typed2 st1) T
-    ⊢ owned_subltype_step π E L step l #vs1 #vs2 (◁ value_t typed1 st1) (◁ value_t typed2 st2) T.
+    owned_subltype_step π E L step l (#vs1) (#vs2) (◁ value_t typed1 st1) (◁ value_t typed2 st1) T
+    ⊢ owned_subltype_step π E L step l (#vs1) (#vs2) (◁ value_t typed1 st1) (◁ value_t typed2 st2) T.
   Proof.
     iIntros "(-> & HT)". iApply "HT".
   Qed.
@@ -1003,8 +1003,8 @@ Section unify_loc.
   (* instantiate in case [typed2] is an evar *)
   Lemma owned_subltype_step_ofty_value_typed_evar π E L step l typed1 typed2 st1 st2 vs1 vs2 `{!IsProtected typed2} T :
     ⌜typed1 = typed2⌝ ∗
-    owned_subltype_step π E L step l #vs1 #vs2 (◁ value_t typed1 st1) (◁ value_t typed1 st2) T
-    ⊢ owned_subltype_step π E L step l #vs1 #vs2 (◁ value_t typed1 st1) (◁ value_t typed2 st2) T.
+    owned_subltype_step π E L step l (#vs1) (#vs2) (◁ value_t typed1 st1) (◁ value_t typed1 st2) T
+    ⊢ owned_subltype_step π E L step l (#vs1) (#vs2) (◁ value_t typed1 st1) (◁ value_t typed2 st2) T.
   Proof.
     iIntros "(-> & HT)". iApply "HT".
   Qed.
@@ -1665,7 +1665,7 @@ Section deinit.
   (** Types have more specific instances that we generally prefer in [.../deinit.v] *)
 
   Lemma owned_subltype_step_ofty_val_eq π E L {rt} (lt : ltype rt) r st l `{Hst : !SynTypeEq (ltype_st lt) st} T :
-    owned_subltype_step π E L true l #r #() lt (◁ typed_value_t st) T :-
+    owned_subltype_step π E L true l (#r) (#()) lt (◁ typed_value_t st) T :-
     return cast_ltype_to_type E L lt (λ ty,
       ⌜ty_has_op_type ty (use_op_alg' (st_of ty MetaNone))⌝ ∗
       T L (ty_ghost_drop' ty π r)).

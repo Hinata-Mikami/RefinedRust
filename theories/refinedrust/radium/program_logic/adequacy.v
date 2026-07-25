@@ -18,7 +18,7 @@ Implicit Types P Q : iProp Σ.
 Implicit Types Φ : val Λ → iProp Σ.
 Implicit Types Φs : list (val Λ → iProp Σ).
 
-Notation wptp s t Φs := ([∗ list] e;Φ ∈ t;Φs, WP e @ s; ⊤ {{ Φ }})%I.
+Abbreviation wptp s t Φs := ([∗ list] e;Φ ∈ t;Φs, WP e @ s; ⊤ {{ Φ }})%I.
 
 Local Lemma wp_step s e1 σ1 ns κ κs e2 σ2 efs nt Φ :
   prim_step e1 σ1 κ e2 σ2 efs →
@@ -322,7 +322,7 @@ Lemma wp_adequacy_gen (hlc : has_lc) Σ Λ `{!invGpreS Σ} `{!trGpreS Σ} `{tr_g
   adequate s e σ (λ v _, φ v).
 Proof.
   intros Hwp. apply adequate_alt; intros t2 σ2 [n [κs ?]]%erased_steps_nsteps.
-  eapply (wp_strong_adequacy_gen hlc Σ _); [ | done]=> ??.
+  (eapply (wp_strong_adequacy_gen hlc Σ _); [ | done]) => ??.
   iMod Hwp as (stateI fork_post) "[Hσ Hwp]".
   iExists (λ σ _ κs _, stateI σ κs), [(λ v, ⌜φ v⌝%I)], fork_post, _ => /=.
   iIntros "{$Hσ $Hwp} !>" (e2 t2' -> ? ?) "_ H _".
@@ -349,7 +349,7 @@ Lemma wp_invariance_gen (hlc : has_lc) Σ Λ `{!invGpreS Σ} `{!trGpreS Σ} `{tr
   φ.
 Proof.
   intros Hwp [n [κs ?]]%erased_steps_nsteps.
-  eapply (wp_strong_adequacy_gen hlc Σ); [done|done| |done]=> ??.
+  (eapply (wp_strong_adequacy_gen hlc Σ); [done|done| |done]) => ??.
   iMod (Hwp _ _ κs) as (stateI fork_post) "(Hσ & Hwp & Hφ)".
   iExists (λ σ _, stateI σ), [(λ _, True)%I], fork_post, _ => /=.
   iIntros "{$Hσ $Hwp} !>" (e2 t2' -> _ _) "Hσ H _ /=".

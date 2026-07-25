@@ -701,7 +701,7 @@ Definition sum_list_Z_with {A} (f : A → Z) : list A → Z :=
   | [] => 0
   | x :: l => f x + go l
   end.
-Notation sum_list_Z := (sum_list_Z_with id).
+Abbreviation sum_list_Z := (sum_list_Z_with id).
 
 
 (** ** Properties of the [sum_list_Z_with] function *)
@@ -739,7 +739,7 @@ Definition max_list_Z_with {A} (f : A → Z) (def : Z) : list A → Z :=
   | [] => def
   | x :: l => f x `max` go l
   end.
-Notation max_list_Z := (max_list_Z_with id).
+Abbreviation max_list_Z := (max_list_Z_with id).
 
 
 (** ** Properties of the [max_list_Z_with] function *)

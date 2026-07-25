@@ -91,7 +91,7 @@ Section def.
       iMod (bor_big_sepL with "LFT Hb") as "Hb"; first done.
       iCombine "Htok Htok'" as "Htok". rewrite lft_tok_sep.
       (* fracture the tokens over the big_sep *)
-      iPoseProof (Fractional_split_big_sepL (λ q, q.[_]%I) len with "Htok") as "(%qs & %Hlen' & Htoks & Hcl_toks)".
+      iPoseProof (Fractional_split_big_sepL (λ q, (q.[_])%I) len with "Htok") as "(%qs & %Hlen' & Htoks & Hcl_toks)".
       set (κ' := κ ⊓ foldr meet static (ty_lfts ty)).
       iAssert ([∗ list] i ↦ x; q' ∈ r; qs, &{κ} (∃ v r'', (l offset{ly'}ₗ i) ↦ v ∗ place_rfn_interp_owned x r'' ∗ v ◁ᵥ{π, MetaNone} r'' @ ty) ∗ q'.[κ'])%I with "[Htoks Hb]" as "Hb".
       { iApply big_sepL2_sep_sepL_r; iFrame. iApply big_sepL2_const_sepL_l. iSplitR; last done. rewrite Hlen Hlen' //. }

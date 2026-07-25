@@ -1,5 +1,5 @@
 Require Import Stdlib.Strings.String.
-From iris.proofmode Require Import coq_tactics reduction string_ident.
+From iris.proofmode Require Import rocq_tactics reduction string_ident.
 From refinedrust.base Require Export type ltypes hlist.
 From refinedrust.automation Require Import lookup_definition proof_state.
 From refinedrust.base Require Import int programs.

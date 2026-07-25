@@ -1440,8 +1440,8 @@ Section ne.
       eapply (enum_ne_ty_dist r) in Hd.
       destruct Hd as [_ _ Hv _].
       rewrite -Hv.
-      rewrite -(enum_ne_r_consistent ty ty' r).
-      generalize (enum_ne_rt_consistent ty ty' r); intros Heq.
+      rewrite -(@enum_ne_r_consistent rt1 rt2 F _ ty ty' r). simpl.
+      generalize (@enum_ne_rt_consistent rt1 rt2 F Hen ty ty' r). intros Heq.
       destruct Heq. done.
     - intros n ty ty' Hd.
       iIntros (κ π r m l). rewrite /ty_shr/=.
@@ -1460,7 +1460,7 @@ Section ne.
       eapply (enum_ne_ty_dist2 r) in Hd.
       destruct Hd as [_ _ _ Hshr].
       rewrite -Hshr.
-      rewrite -(enum_ne_r_consistent ty ty' r).
+      rewrite -(@enum_ne_r_consistent rt1 rt2 F _ ty ty' r).
       generalize (enum_ne_rt_consistent ty ty' r); intros Heq.
       destruct Heq. done.
   Qed.

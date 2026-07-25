@@ -89,7 +89,7 @@ Section subltype.
     ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     (⌜length rs1 = len⌝ -∗ ⌜length rs2 = len⌝ ∗ ([∗ list] lt1; lt2 ∈ zip (interpret_iml (◁ def1) len lts1) rs1; zip (interpret_iml (◁ def2) len lts2) rs2,
       ⌜ltype_st lt1.1 = ltype_st lt2.1⌝ ∗ ltype_incl (Shared κ') (lt1).2 (lt2).2 (lt1).1 (lt2).1)) -∗
-    ltype_incl' (Shared κ') #rs1 #rs2 (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
+    ltype_incl' (Shared κ') (#rs1) (#rs2) (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
     iIntros (Hst) "#Hel".
     iModIntro. iIntros (π l) "Ha".
@@ -107,7 +107,7 @@ Section subltype.
     ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     (⌜length rs1 = len⌝ -∗ ⌜length rs2 = len⌝ ∗ [∗ list] lt1; lt2 ∈ zip (interpret_iml (◁ def1) len lts1) rs1; zip (interpret_iml (◁ def2) len lts2) rs2,
       ⌜ltype_st lt1.1 = ltype_st lt2.1⌝ ∗ ltype_incl (Shared κ') (lt1).2 (lt2).2 (lt1).1 (lt2).1) -∗
-    ltype_incl (Shared κ') #rs1 #rs2 (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
+    ltype_incl (Shared κ') (#rs1) (#rs2) (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
     iIntros (Hst) "#Heq".
     (*iSplitR. { iPureIntro. simp_ltypes. rewrite Hst//. }*)
@@ -165,7 +165,7 @@ Section subltype.
     ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     (⌜length rs1 = len⌝ -∗ ⌜length rs2 = len⌝ ∗ [∗ list] lt1; lt2 ∈ zip (interpret_iml (◁ def1) len lts1) rs1; zip (interpret_iml (◁ def2) len lts2) rs2,
       ⌜ltype_st lt1.1 = ltype_st lt2.1⌝ ∗ ltype_incl (Owned) (lt1).2 (lt2).2 (lt1).1 (lt2).1) -∗
-    ltype_incl' (Owned) #rs1 #rs2 (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
+    ltype_incl' (Owned) (#rs1) (#rs2) (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
     iIntros (Hst) "#Hel".
     iModIntro. iIntros (π l) "Ha".
@@ -183,7 +183,7 @@ Section subltype.
     ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
     (⌜length rs1 = len⌝ -∗ ⌜length rs2 = len⌝ ∗ [∗ list] lt1; lt2 ∈ zip (interpret_iml (◁ def1) len lts1) rs1; zip (interpret_iml (◁ def2) len lts2) rs2,
       ⌜ltype_st lt1.1 = ltype_st lt2.1⌝ ∗ ltype_incl (Owned) (lt1).2 (lt2).2 (lt1).1 (lt2).1) -∗
-    ltype_incl (Owned) #rs1 #rs2 (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
+    ltype_incl (Owned) (#rs1) (#rs2) (ArrayLtype def1 len lts1) (ArrayLtype def2 len lts2).
   Proof.
     iIntros (Hst) "#Heq".
     iModIntro. simp_ltypes.

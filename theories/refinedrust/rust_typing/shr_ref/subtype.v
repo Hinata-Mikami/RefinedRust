@@ -91,7 +91,7 @@ Section subtype.
     ⌜syn_type_compat (ty2.(ty_syn_type) MetaNone) (ty1.(ty_syn_type) MetaNone)⌝ -∗
     κ1 ⊑ κ2 -∗
     type_incl r1 r2 ty2 ty1 -∗
-    type_incl #r1 #r2 (shr_ref κ2 ty2) (shr_ref κ1 ty1).
+    type_incl (#r1) (#r2) (shr_ref κ2 ty2) (shr_ref κ1 ty1).
   Proof.
     iIntros "%Hcomp #Hincl #Hsub".
     iSplitR; first done.

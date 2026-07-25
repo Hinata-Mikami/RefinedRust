@@ -24,6 +24,7 @@ Ltac normalize_goal_impl :=
   notypeclasses refine (tac_normalize_goal_impl _ _ _ _ _); [normalize_hook|].
 
 (** * First version of normalization based on [autorewrite] *)
+Create Rewrite HintDb lithium_rewrite.
 Create HintDb lithium_rewrite discriminated.
 
 #[export] Hint Rewrite @drop_0 @take_ge using can_solve : lithium_rewrite.

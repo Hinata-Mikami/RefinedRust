@@ -15,7 +15,7 @@ Fixpoint lnth {A} (d: A) (xl: list A) (i: nat) : A :=
   | [] => d
   | x :: xl' => match i with 0 => x | S j => lnth d xl' j end
   end.
-Notation lnthe := (lnth ∅).
+Abbreviation lnthe := (lnth ∅).
 
 Lemma lnth_default {A} D (xl : list A) i :
   length xl <= i → D = lnth D xl i.
@@ -51,14 +51,14 @@ Local Unset Universe Minimization ToSet.
 Inductive hlist {A} (F: A → Type) : list A → Type :=
 | hnil: hlist F []
 | hcons {X Xl} : F X → hlist F Xl → hlist F (X :: Xl).
-Notation "+[ ]" := (hnil _) (at level 1, format "+[ ]").
-Notation "+[ ]@{ F }" := (hnil F) (at level 1, only parsing).
+Notation "+[ ]" := (hnil _) (at level 0, format "+[ ]").
+Notation "+[ ]@{ F }" := (hnil F) (at level 0, only parsing).
 Infix "+::" := (hcons _) (at level 60, right associativity).
 Infix "+::@{ F }" := (hcons F) (at level 60, right associativity, only parsing).
 Notation "+[ x ; .. ; z ]" := (x +:: .. (z +:: +[]) ..)
-  (at level 1, format "+[ x ;  .. ;  z ]").
+  (at level 0, format "+[ x ;  .. ;  z ]").
 Notation "+[ x ; .. ; z ]@{ F }" := (x +:: .. (z +:: +[]@{F}) ..)
-  (at level 1, only parsing).
+  (at level 0, only parsing).
 
 Global Instance inhabited_hlist_nil {A} (F : A → Type) :
   Inhabited (hlist F []).
@@ -144,7 +144,7 @@ Section lemmas.
   Lemma hnth_apply {Xl Y D} (g: Y → F D)
     (fl: hlist (λ X, Y → F X) Xl) (x: Y) i :
     hnth (g x) (happly fl x) i = hnth g fl i x.
-  Proof. move: i. elim fl; [done|]=> > ?. by case. Qed.
+  Proof. move: i. (elim fl; [done|]) => > ?. by case. Qed.
 
 
   Lemma length_hcmap {Y} (f : ∀ X, F X → Y) {Xl} (xl : hlist F Xl) :
@@ -197,17 +197,17 @@ Definition pnil {A} {F : A → Type} : plist (F := F) [] := nil_tt.
 Definition phd {A : Type} {F : A → Type} {X Xs} (pl : plist (X :: Xs)) : F X := phd' pl.
 Definition ptl {A : Type} {F : A → Type} {X Xs} (pl : plist (X :: Xs)) : plist (F := F) Xs := ptl' pl.
 
-Notation "-[ ]" := pnil (at level 1, format "-[ ]").
+Notation "-[ ]" := pnil (at level 0, format "-[ ]").
 Infix "-::" := pcons (at level 60, right associativity).
 Notation "(-::)" := pcons (only parsing).
 Notation "-[ x ; .. ; z ]" := (x -:: .. (z -:: -[]) ..)
-  (at level 1, format "-[ x ;  .. ;  z ]").
+  (at level 0, format "-[ x ;  .. ;  z ]").
 
 (* Different notation for matching on it *)
-Notation "'*[' ']'" := nil_tt (at level 1, format "*[ ]").
+Notation "'*[' ']'" := nil_tt (at level 0, format "*[ ]").
 Infix "*::" := cons_pair (at level 60, right associativity).
 Notation "*[ x ; .. ; z ]" := (x *:: .. (z *:: *[]) ..)
-  (at level 1, format "*[ x ;  .. ;  z ]").
+  (at level 0, format "*[ x ;  .. ;  z ]").
 
 
 Inductive TCTForall {A} (P : A → Type) : list A → Type :=
@@ -235,7 +235,7 @@ Section plist.
 Context {A: Type} {F: A → Type}.
 Set Universe Polymorphism.
 
-Notation plist := (plist (F:=F)).
+Abbreviation plist := (plist (F:=F)).
 
 Fixpoint papp {Xl Yl} (xl: plist Xl) (yl: plist Yl) : plist (Xl ++ Yl) :=
   match Xl, xl with [], _ => yl | _::_, cons_pair x xl' => x -:: papp xl' yl end.
@@ -246,12 +246,12 @@ Fixpoint psepr {Xl Yl} (xl: plist (Xl ++ Yl)) : plist Yl :=
   match Xl, xl with [], _ => xl | _::_, cons_pair _ xl' => psepr xl' end.
 
 Lemma papp_sepl {Xl Yl} (xl: plist Xl) (yl: plist Yl) : psepl (papp xl yl) = xl.
-Proof. move: xl yl. elim Xl; [by case|]=>/= > IH [??]?. simpl. by rewrite IH. Qed.
+Proof. move: xl yl. (elim Xl; [by case|]) =>/= > IH [??]?. simpl. by rewrite IH. Qed.
 Lemma papp_sepr {Xl Yl} (xl: plist Xl) (yl: plist Yl) : psepr (papp xl yl) = yl.
-Proof. move: xl yl. elim Xl; [by case|]=>/= > IH [??]?. simpl. by rewrite IH. Qed.
+Proof. move: xl yl. (elim Xl; [by case|]) =>/= > IH [??]?. simpl. by rewrite IH. Qed.
 
 Lemma psep_app {Xl Yl} (xl: plist (Xl ++ Yl)) : papp (psepl xl) (psepr xl) = xl.
-Proof. move: xl. elim Xl; [done|]=>/= > IH [??]. simpl. by rewrite IH. Qed.
+Proof. move: xl. (elim Xl; [done|]) =>/= > IH [??]. simpl. by rewrite IH. Qed.
 Lemma papp_ex {Xl Yl} (xl: plist (Xl ++ Yl)) :
   ∃(yl: plist Xl) (zl: plist Yl), xl = papp yl zl.
 Proof. exists (psepl xl), (psepr xl). by rewrite psep_app. Qed.
@@ -297,7 +297,7 @@ End plist.
 Arguments plist {_} _ _.
 
 Infix "-++" := papp (at level 60, right associativity).
-Notation psep := (λ xl, (psepl xl, psepr xl)).
+Abbreviation psep := (λ xl, (psepl xl, psepr xl)).
 
 Lemma plist_nil_inv {A} {F : A → Type} (P: plist F [] → Type) (H: P -[]) (xl : plist F []) : P xl.
 Proof.
@@ -325,7 +325,7 @@ Fixpoint pcmap {A B} {F : A → Type} (f : ∀ X, F X → B) {Xl} : plist F Xl �
 Lemma pmap_app {A} {F G : A → Type} {Xl Yl} (f: ∀X, F X → G X)
       (xl: plist F Xl) (yl: plist F Yl) :
   f -<$> (xl -++ yl) = (f -<$> xl) -++ (f -<$> yl).
-Proof. move: xl. elim Xl; [done|]=>/= ?? IH [??]. simpl. by rewrite IH. Qed.
+Proof. move: xl. (elim Xl; [done|]) =>/= ?? IH [??]. simpl. by rewrite IH. Qed.
 
 Fixpoint papply {A} {F : A → Type} {B Xl}
          (fl: plist (λ X, B → F X) Xl) (x: B) : plist F Xl :=
@@ -334,12 +334,12 @@ Fixpoint papply {A} {F : A → Type} {B Xl}
   | _::_, cons_pair f fl' => f x -:: papply fl' x
   end.
 Infix "-$" := papply (at level 61, left associativity).
-Notation "( fl -$.)" := (papply fl) (only parsing).
+Notation "( fl -$.)" := (papply fl) (at level 0, only parsing).
 
 Lemma papply_app {A} {F: A → Type} {B Xl Yl}
   (fl: plist (λ X, B → F X) Xl) (gl: plist (λ X, B → F X) Yl) (x: B) :
   (fl -++ gl) -$ x = (fl -$ x) -++ (gl -$ x).
-Proof. move: fl. elim Xl; [done|]=>/= ?? IH [??]. simpl. by rewrite IH. Qed.
+Proof. move: fl. (elim Xl; [done|]) =>/= ?? IH [??]. simpl. by rewrite IH. Qed.
 
 Fixpoint hzip_with {A} {F G H: A → Type} {Xl} (f: ∀X, F X → G X → H X)
   (xl: hlist F Xl) (yl: plist G Xl) : hlist H Xl :=
@@ -347,7 +347,7 @@ Fixpoint hzip_with {A} {F G H: A → Type} {Xl} (f: ∀X, F X → G X → H X)
   | +[], _ => +[]
   | x +:: xl', cons_pair y yl' => f _ x y +:: hzip_with f xl' yl'
   end.
-Notation hzip := (hzip_with (λ _, pair)).
+Abbreviation hzip := (hzip_with (λ _, pair)).
 
 Fixpoint pzip_with {A} {F G H: A → Type} {Xl} (f: ∀X, F X → G X → H X)
   (xl: plist F Xl) (yl: plist G Xl) : plist H Xl :=
@@ -355,7 +355,7 @@ Fixpoint pzip_with {A} {F G H: A → Type} {Xl} (f: ∀X, F X → G X → H X)
   | [], _, _ => -[]
   | _::_, cons_pair x xl', cons_pair y yl' => f _ x y -:: pzip_with f xl' yl'
   end.
-Notation pzip := (pzip_with (λ _, pair)).
+Abbreviation pzip := (pzip_with (λ _, pair)).
 
 Lemma plist_fmap_shift {A B : Type} (F : B → Type) (f : A → B) (l : list A) :
   plist (F ∘ f) l = plist F (fmap f l).
@@ -478,7 +478,7 @@ Proof. move=> Imp. elim; constructor; by [apply Imp|]. Qed.
 
 Lemma TCHForall_nth {Xl D} (Φ : ∀ X, F X → Prop) (d : F D) (xl : hlist F Xl) i :
   Φ _ d → TCHForall Φ xl → Φ _ (hnth d xl i).
-Proof. move=> ? All. move: i. elim All; [done|]=> > ???. by case. Qed.
+Proof. move=> ? All. move: i. (elim All; [done|]) => > ???. by case. Qed.
 
 Lemma HTForall_cons_inv (x : A) (xl : list A) (X : F x) (Xs : hlist F xl) (P : ∀ X : A, F X → Type) :
   HTForall P (X +:: Xs) →
@@ -518,12 +518,12 @@ Proof. move=> Imp. elim; constructor; by [apply Imp|]. Qed.
 Lemma HForall_1_nth {Xl D} (Φ: ∀X, F X → G X → Prop)
   (d: _ D) d' (xl: _ Xl) yl i :
   Φ _ d d' → HForall_1 Φ xl yl → Φ _ (hnth d xl i) (pnth d' yl i).
-Proof. move=> ? All. move: i. elim All; [done|]=> > ???. by case. Qed.
+Proof. move=> ? All. move: i. (elim All; [done|]) => > ???. by case. Qed.
 
 Lemma HForallTwo_nth {Xl D}
   (Φ: ∀X, F X → G X → Prop) (d: _ D) d' (xl: _ Xl) yl i :
   Φ _ d d' → HForallTwo Φ xl yl → Φ _ (hnth d xl i) (hnth d' yl i).
-Proof. move=> ? All. move: i. elim All; [done|]=> > ???. by case. Qed.
+Proof. move=> ? All. move: i. (elim All; [done|]) => > ???. by case. Qed.
 
 Lemma HForallTwo_forall `{!Inhabited Y} {Xl}
   (Φ: ∀X, Y → F X → G X → Prop) (xl yl: _ Xl) :
@@ -552,14 +552,14 @@ Lemma HForallThree_nth {H} {Xl D} (Φ: ∀X, F X → G X → H X → Prop)
     (d: _ D) d' d'' (xl: _ Xl) yl zl i :
   Φ _ d d' d'' → HForallThree Φ xl yl zl →
   Φ _ (hnth d xl i) (hnth d' yl i) (hnth d'' zl i).
-Proof. move=> ? All. move: i. elim All; [done|]=> > ???. by case. Qed.
+Proof. move=> ? All. move: i. (elim All; [done|]) => > ???. by case. Qed.
 
 Lemma HForallThree_nth_len {H} {Xl D} (Φ: ∀X, F X → G X → H X → Prop)
     (d: _ D) d' d'' (xl: _ Xl) yl zl i :
   (i < length Xl)%nat → HForallThree Φ xl yl zl →
   Φ _ (hnth d xl i) (hnth d' yl i) (hnth d'' zl i).
 Proof.
-  move=> L All. move: i L. elim All; [simpl; lia|] => > ??? [|?] //=. auto with lia.
+  move=> L All. move: i L. (elim All; [simpl; lia|]) => > ??? [|?] //=. auto with lia.
 Qed.
 End fa.
 
@@ -577,7 +577,7 @@ Proof. move=> >. elim; by constructor. Qed.
 Instance HForallTwo_transitive :
   (∀X, Transitive (R X)) → Transitive (HForallTwo R (Xl:=Xl)).
 Proof.
-  move=> ??? zl All. move: zl. elim: All; [done|]=> > ?? IH ? All.
+  move=> ??? zl All. move: zl. (elim: All; [done|]) => > ?? IH ? All.
   dependent destruction All. constructor; by [etrans|apply IH].
 Qed.
 

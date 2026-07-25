@@ -588,7 +588,7 @@ Global Hint Extern 3 (type ?rt) => lazymatch goal with H : type rt |- _ => apply
 
 Definition RT_of `{!typeGS Σ} {rt} (ty : type rt) : RT := rt.
 Definition rt_of `{!typeGS Σ} {rt} (ty : type rt) : Type := rt.
-Notation st_of ty := (ty_syn_type ty).
+Abbreviation st_of ty := (ty_syn_type ty).
 Global Arguments RT_of _ _ _ _ /.
 Global Arguments rt_of _ _ _ _ /.
 
@@ -859,12 +859,12 @@ Notation "v ◁ᵥ{ π , m }  r @ ty" := (ty_own_val ty π r m v) (at level 15) 
 Notation "l ◁ₗ{ π , m , κ } .@ ty" := (ty_shr ty κ π () m l) (at level 15, format "l  ◁ₗ{ π , m , κ }  .@ ty") : bi_scope.
 Notation "v ◁ᵥ{ π , m }  .@ ty" := (ty_own_val ty π () m v) (at level 15) : bi_scope.
 
-Notation "'$#' x" := (RT_xrt _ x) (at level 9).
-Notation "'$#@{' A '}' x" := (RT_xrt A x) (at level 9).
-Notation "'<$#>' x" := (fmap (M := list) (RT_xrt _) x) (at level 30).
-Notation "'<$#@{' A '}>' x" := (fmap (M := list) (RT_xrt A) x) (at level 30).
-Notation "'<$#@{' A '}>@{' B '}' x" := (fmap (M := B) (RT_xrt A) x) (at level 30).
-Notation "'<$#>@{' B '}' x" := (fmap (M := B) (RT_xrt _) x) (at level 30).
+Notation "'$#' x" := (RT_xrt _ x) (at level 30, x at level 30).
+Notation "'$#@{' A '}' x" := (RT_xrt A x) (at level 30, x at level 30).
+Notation "'<$#>' x" := (fmap (M := list) (RT_xrt _) x) (at level 30, x at level 30).
+Notation "'<$#@{' A '}>' x" := (fmap (M := list) (RT_xrt A) x) (at level 30, x at level 30).
+Notation "'<$#@{' A '}>@{' B '}' x" := (fmap (M := B) (RT_xrt A) x) (at level 30, x at level 30).
+Notation "'<$#>@{' B '}' x" := (fmap (M := B) (RT_xrt _) x) (at level 30, x at level 30).
 
 
 Record xtype `{!typeGS Σ} := mk_xtype {
@@ -2549,10 +2549,10 @@ Section place_rfn.
   Qed.
 End place_rfn.
 
-Notation "# x" := (PlaceIn x) (at level 9) : stdpp_scope.
-Notation "'<#>' x" := (fmap (M := list) PlaceIn x) (at level 30).
-Notation "'<#>@{' A '}' x" := (fmap (M := A) PlaceIn x) (at level 30).
-Notation "👻 γ" := (PlaceGhost γ) (at level 9) : stdpp_scope.
+Notation "# x" := (PlaceIn x) (at level 30, x at level 30) : stdpp_scope.
+Notation "'<#>' x" := (fmap (M := list) PlaceIn x) (at level 30, x at level 30).
+Notation "'<#>@{' A '}' x" := (fmap (M := A) PlaceIn x) (at level 30, x at level 30).
+Notation "👻 γ" := (PlaceGhost γ) (at level 30) : stdpp_scope.
 
 (** ** Basic enum infrastructure *)
 Section enum.
@@ -2989,3 +2989,6 @@ Definition plistRT (l : list RT) : RT :=
       (λ (X : RT) (a : RT_xt (place_rfnRT X)), RT_xrt (place_rfnRT X) a))
 .
 Canonical Structure plistRT.
+
+
+Create HintDb ty_unfold.

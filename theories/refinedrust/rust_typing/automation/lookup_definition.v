@@ -46,7 +46,7 @@ Module StringConstr.
     match! s with
     | nil => []
     | cons ?str ?rest =>
-        let ident := StringToIdent.coq_string_to_ident str in
+        let ident := StringToIdent.rocq_string_to_ident str in
         let rest_ident := list_string_to_ident rest in
         ident :: rest_ident
     end.

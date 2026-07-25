@@ -1,4 +1,4 @@
-From iris.proofmode Require Import coq_tactics reduction.
+From iris.proofmode Require Import rocq_tactics reduction.
 From iris.proofmode Require Import string_ident.
 From lithium Require Export base.
 From lithium Require Import hooks definitions simpl_classes normalize proof_state solvers syntax boringly.

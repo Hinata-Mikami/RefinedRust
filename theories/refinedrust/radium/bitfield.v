@@ -257,7 +257,7 @@ Proof.
 Qed.
 
 (* rewrite & simpl rules *)
-Create HintDb bitfield_rewrite discriminated.
+Create Rewrite HintDb bitfield_rewrite.
 
 #[export] Hint Rewrite bf_land_nil : bitfield_rewrite.
 #[export] Hint Rewrite bf_land_mask_cons using can_solve : bitfield_rewrite.

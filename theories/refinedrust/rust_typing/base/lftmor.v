@@ -688,8 +688,8 @@ Section lft_morph.
   | lft_morph_add (_ : LftMorphismAdd F)
   .
   Definition TyLftMorphism {rt1 rt2} (F : type rt1 → type rt2) : Type := LftMorphism F.
-  Notation ty_lft_morph_const := lft_morph_const.
-  Notation ty_lft_morph_add := lft_morph_add.
+  Abbreviation ty_lft_morph_const := lft_morph_const.
+  Abbreviation ty_lft_morph_add := lft_morph_add.
   Existing Class TyLftMorphism.
   Existing Class LftMorphism.
 

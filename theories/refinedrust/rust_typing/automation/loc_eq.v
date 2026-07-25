@@ -11,6 +11,7 @@ extend with more rewriting rules. *)
 (** * Hint database *)
 
 Create HintDb refinedrust_loc_eq_rewrite discriminated.
+Create Rewrite HintDb refinedrust_loc_eq_rewrite.
 
 (** Rules to inject [nat] operations in to [Z]. *)
 #[export] Hint Rewrite Nat2Z.inj_mul : refinedrust_loc_eq_rewrite.

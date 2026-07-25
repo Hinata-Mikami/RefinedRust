@@ -70,7 +70,7 @@ Section subltype.
     ([∗ list] lt1; lt2 ∈ hpzipl _ lts1 rs1; hpzipl _ lts2 rs2,
       ⌜ltype_st (projT2 lt1).1 = ltype_st (projT2 lt2).1⌝ ∗
       ltype_incl (Shared κ') (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) -∗
-    ltype_incl' (Shared κ') #rs1 #rs2 (StructLtype lts1 sls) (StructLtype lts2 sls).
+    ltype_incl' (Shared κ') (#rs1) (#rs2) (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
     iPoseProof (big_sepL2_length with "Heq") as "%Hlen".
@@ -97,7 +97,7 @@ Section subltype.
     ([∗ list] lt1; lt2 ∈ hpzipl _ lts1 rs1; hpzipl _ lts2 rs2,
       ⌜ltype_st (projT2 lt1).1 = ltype_st (projT2 lt2).1⌝ ∗
       ltype_incl (Shared κ') (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) -∗
-    ltype_incl (Shared κ') #rs1 #rs2 (StructLtype lts1 sls) (StructLtype lts2 sls).
+    ltype_incl (Shared κ') (#rs1) (#rs2) (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
     iModIntro.
@@ -160,7 +160,7 @@ Section subltype.
     ([∗ list] lt1; lt2 ∈ (hpzipl _ lts1 rs1); hpzipl _ lts2 rs2,
       ⌜ltype_st (projT2 lt1).1 = ltype_st (projT2 lt2).1⌝ ∗
       ltype_incl (Owned) (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) -∗
-    ltype_incl' (Owned) #rs1 #rs2 (StructLtype lts1 sls) (StructLtype lts2 sls).
+    ltype_incl' (Owned) (#rs1) (#rs2) (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
     iPoseProof (big_sepL2_length with "Heq") as "%Hlen". rewrite !length_hpzipl in Hlen.
@@ -185,7 +185,7 @@ Section subltype.
     ([∗ list] lt1; lt2 ∈ hpzipl _ lts1 rs1; hpzipl _ lts2 rs2,
       ⌜ltype_st (projT2 lt1).1 = ltype_st (projT2 lt2).1⌝ ∗
       ltype_incl (Owned) (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) -∗
-    ltype_incl (Owned) #rs1 #rs2 (StructLtype lts1 sls) (StructLtype lts2 sls).
+    ltype_incl (Owned) (#rs1) (#rs2) (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
     iModIntro.

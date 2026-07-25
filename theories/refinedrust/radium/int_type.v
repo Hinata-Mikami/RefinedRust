@@ -2,7 +2,7 @@ From radium Require Import base byte layout.
 
 (** Representation of an integer type (size and signedness). *)
 
-Notation signed := bool (only parsing).
+Abbreviation signed := bool (only parsing).
 
 (* hardcoding 64bit pointers for now *)
 Definition bytes_per_addr_log : nat := 3%nat.

@@ -341,10 +341,10 @@ Definition stmt_wp `{!refinedcG Σ} (E : coPset) (π : thread_id) (Q : gmap labe
 Definition stmt_wp_eq `{!refinedcG Σ} (E : coPset) (π : thread_id) (Q : gmap label stmt) (Ψ : val → iProp Σ) : stmt_wp E π Q Ψ = @stmt_wp_def Σ _ E π Q Ψ := (stmt_wp_aux E π Q Ψ).(seal_eq).
 
 Notation "'WPs{' π '}' s @ E {{ Q , Ψ } }" := (stmt_wp E π Q Ψ s%E)
-  (at level 20, s, Q, Ψ at level 200, format "'[' 'WPs{' π '}' s  '/' '[       ' @  E  {{  Q ,  Ψ  } } ']' ']'" ) : bi_scope.
+  (at level 0, s, Q, Ψ at level 200, format "'[' 'WPs{' π '}' s  '/' '[       ' @  E  {{  Q ,  Ψ  } } ']' ']'" ) : bi_scope.
 
 Notation "'WPs{' π '}' s {{ Q , Ψ } }" := (stmt_wp ⊤ π Q Ψ s%E)
-  (at level 20, s, Q, Ψ at level 200, format "'[' 'WPs{' π '}'  s  '/' '[   ' {{  Q ,  Ψ  } } ']' ']'") : bi_scope.
+  (at level 0, s, Q, Ψ at level 200, format "'[' 'WPs{' π '}'  s  '/' '[   ' {{  Q ,  Ψ  } } ']' ']'") : bi_scope.
 
 Section stmt_wp.
 Context `{!refinedcG Σ}.
@@ -404,10 +404,10 @@ Definition expr_wp `{!refinedcG Σ} (E : coPset) (π : thread_id) (Ψ : val → 
 Definition expr_wp_eq `{!refinedcG Σ} (E : coPset) (π : thread_id) (Ψ : val → iProp Σ) : expr_wp E π Ψ = @expr_wp_def Σ _ E π Ψ := (expr_wp_aux E π Ψ).(seal_eq).
 
 Notation "'WPe{' π '}' e @ E {{ Ψ } }" := (expr_wp E π Ψ e%E)
-  (at level 20, e, Ψ at level 200, format "'[' 'WPe{' π '}' e  '/' '[       ' @  E  {{  Ψ  } } ']' ']'" ) : bi_scope.
+  (at level 0, e, Ψ at level 200, format "'[' 'WPe{' π '}' e  '/' '[       ' @  E  {{  Ψ  } } ']' ']'" ) : bi_scope.
 
 Notation "'WPe{' π '}' e {{ Ψ } }" := (expr_wp ⊤ π Ψ e%E)
-  (at level 20, e, Ψ at level 200, format "'[' 'WPe{' π '}'  e  '/' '[   ' {{  Ψ  } } ']' ']'") : bi_scope.
+  (at level 0, e, Ψ at level 200, format "'[' 'WPe{' π '}'  e  '/' '[   ' {{  Ψ  } } ']' ']'") : bi_scope.
 
 Section expr_wp.
 Context `{!refinedcG Σ}.

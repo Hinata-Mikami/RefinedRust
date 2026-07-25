@@ -1,5 +1,5 @@
 From iris.program_logic Require Export weakestpre.
-From iris.proofmode Require Import coq_tactics reduction.
+From iris.proofmode Require Import rocq_tactics reduction.
 From iris.proofmode Require Export proofmode.
 From iris.program_logic Require Import lifting.
 From radium Require Export tactics lifting.

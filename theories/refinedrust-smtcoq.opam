@@ -9,17 +9,18 @@ license: "BSD-3-Clause"
 depends: [
   "refinedrust" {= version}
   # smtcoq and dependencies
-  "rocq-metarocq-template" {(= "1.4.1+9.1")}
-  "rocq-metarocq-utils" {(= "1.4.1+9.1")}
-  "coq-sniper" {(= "dev")}
+  "rocq-metarocq-template" {(= "1.5.1+9.2")}
+  "rocq-metarocq-common" {(= "1.5.1+9.2")}
+  "rocq-metarocq-utils" {(= "1.5.1+9.2")}
+  "rocq-sniper" {(= "dev")}
   "rocq-trakt" {(= "dev")}
   "rocq-smtcoq" {(= "dev")}
 ]
 
 pin-depends: [
-	["coq-sniper.dev" "git+https://github.com/smtcoq/sniper.git#8771b62d63f5f8d98de745d0e5a4f7fea1322f31"]
-	["rocq-smtcoq.dev" "git+https://github.com/smtcoq/smtcoq#53f7fca859b48cbe24973755b4c06762103da07d"]
-	["rocq-trakt.dev" "git+https://github.com/rocq-trakt/trakt#abc90bb42fdb6de022375187d8b0bacd63641c90"]
+	["rocq-sniper.dev" "git+https://github.com/smtcoq/sniper.git#14fd1f02104f6e1214ad436d21eaacfb0d71db19"]
+	["rocq-smtcoq.dev" "git+https://github.com/smtcoq/smtcoq#6de39db2a996cdc663634cb79193b9d75f95b48a"]
+	["rocq-trakt.dev" "git+https://github.com/rocq-trakt/trakt#23f5fbd8cb710722509201e4fa40fc637c3800ee"]
 ]
 
 build: [

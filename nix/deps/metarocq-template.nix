@@ -3,13 +3,14 @@
   mkRocqDerivation,
   # Dependencies
   equations,
+  extlib,
   # Arguments
   sha256 ? null,
   version ? "main",
 }:
 let
-  version = "v1.4.1-9.1";
-  release.${version}.sha256 = "sha256-tzoAWX74lg7pArGVP11QBvDRKMvmGxXvrf3+1E3Y4DI=";
+  version = "v1.5.1-9.2";
+  release.${version}.sha256 = "sha256-sinpbes0dEg2dGueu90ckY+qoyzeUS0uG6RrozHN86E=";
 
   repo = "metarocq";
   owner = "MetaRocq";
@@ -27,7 +28,10 @@ let
 
     pname = "metarocq-utils";
     preBuild = "cd utils";
-    propagatedBuildInputs = [ equations ];
+    propagatedBuildInputs = [
+      equations
+      extlib
+    ];
   };
 
   common = mkRocqDerivation rec {
@@ -43,6 +47,7 @@ let
     preBuild = "cd common";
     propagatedBuildInputs = [
       equations
+      extlib
       utils
     ];
 

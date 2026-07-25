@@ -249,7 +249,7 @@ Definition killed (al : allocation) : allocation :=
 (** Smallest allocatable address (we reserve 0 for NULL). *)
 Definition min_alloc_start : Z := 1.
 
-Notation max_alloc_end_zero := (max_int USize) (only parsing).
+Abbreviation max_alloc_end_zero := (max_int USize) (only parsing).
 
 (** Largest allocatable address (we never allocate the last byte to always
 have valid one-past pointers. *)
@@ -522,7 +522,7 @@ Proof.
     + exists alloc. split => /=; first by rewrite lookup_insert_eq.
       destruct (decide (l.(loc_a) ≤ a < l.(loc_a) + length v)) as [|Hne] => //=.
       exfalso. rewrite heap_update_lookup_not_in_range in Ha; last first.
-      { destruct (decide (a < l.(loc_a))); [left | right] => //. lia. }
+      { (destruct (decide (a < l.(loc_a))); [left | right]) => //. lia. }
       apply Hi1 in Ha. destruct Ha as [? [Ha ?]].
       by rewrite /= Hfresh in Ha.
     + destruct (decide (a < l.(loc_a) ∨ l.(loc_a) + length v ≤ a)).

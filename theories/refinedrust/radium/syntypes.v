@@ -154,6 +154,7 @@ Global Arguments raw_els_tag_int {_} _.
 (** Syntactic types describe primitive types relevant to the operational semantics *before* layouting.
   They are not to be confused with proper semantic types.
  *)
+#[warnings="-register-all"]
 Inductive syn_type : Set :=
   (* integers *)
   | IntSynType (it : int_type)
@@ -982,9 +983,8 @@ Section C_alg.
     (n mod (2 ^ a))%nat = 0%nat.
   Proof.
     intros Hle Hmod.
-    apply Nat.mod_divide.
-    { apply Nat.pow_nonzero. lia. }
-    apply Nat.mod_divide in Hmod; last apply Nat.pow_nonzero; last lia.
+    apply Nat.Lcm0.mod_divide.
+    apply Nat.Lcm0.mod_divide in Hmod.
     destruct Hmod as [k ->].
     destruct (pow_align_log_dvd a b Hle) as [k' ->].
     exists (k' * k)%nat. lia.
@@ -2164,7 +2164,7 @@ Lemma use_layout_alg_align `{!LayoutAlg} st ly :
   ly_align_in_bounds ly.
 Proof.
   unfold_layout_alg.
-  induction st as [ it | | | | sn fields repr IH | | st IH len | st IH | st IH | ly' | en tag_it variant_list repr IH | un variant_list repr IH | ] using syn_type_strong_ind in ly |-*; move => ?; simplify_option_eq; fold use_layout_alg_def in *;
+  induction st as [ it | | | | sn fields repr IH | | st IH len | st IH | st IH | ly' | en tag_it | un variant_list repr IH | ] using syn_type_strong_ind in ly |-*; move => ?; simplify_option_eq; fold use_layout_alg_def in *;
       rewrite /ly_align_in_bounds.
   - rewrite /ly_align/it_layout/=.
     revert select (ly_size _ ≤ _). rewrite /ly_size/=/bytes_per_int => Ha.

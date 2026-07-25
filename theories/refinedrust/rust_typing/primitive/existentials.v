@@ -287,7 +287,7 @@ Section contr.
   Qed.
 End contr.
 
-Notation "'∃;' P ',' τ" := (ex_plain_t _ _ P τ) (at level 40) : stdpp_scope.
+Notation "'∃;' P ',' τ" := (ex_plain_t _ _ P τ) (at level 11) : stdpp_scope.
 
 Section open.
   Context `{!typeGS Σ}.
@@ -343,7 +343,7 @@ Section open.
     lftE ⊆ F →
     l ◁ₗ[π, Shared κ] #x @ (◁ (∃; P, ty)) ={F}=∗
     ∃ r : rt, P.(inv_P_shr) π κ r x ∗
-    l ◁ₗ[π, Shared κ] #x @ (ShadowedLtype (◁ ty) #r (◁ (∃; P, ty))).
+     l ◁ₗ[π, Shared κ] #x @ (ShadowedLtype (◁ ty) (#r) (◁ (∃; P, ty))).
   Proof.
     iIntros (?) "#Ha". iPoseProof "Ha" as "Hb".
     rewrite {2}ltype_own_ofty_unfold /lty_of_ty_own.
@@ -762,7 +762,7 @@ Section stratify.
   Lemma stratify_unfold_ex_plain_t_shared {M} π E L sa (sm : M) l (ty : type rt) x κ T :
     (∀ r, P.(inv_P_shr) π κ r x -∗ stratify_ltype π E L StratDoUnfold sa sm l (◁ ty) (PlaceIn r) (Shared κ)
       (λ L2 R' rt' lt' r',
-        ∃ r'', ⌜r' = PlaceIn r''⌝ ∗ T L2 R' _ (ShadowedLtype lt' #r'' (◁ (∃; P, ty))) (PlaceIn x)))
+         ∃ r'', ⌜r' = PlaceIn r''⌝ ∗ T L2 R' _ (ShadowedLtype lt' (#r'') (◁ (∃; P, ty))) (PlaceIn x)))
     ⊢ stratify_ltype π E L StratDoUnfold sa sm l (◁ (∃; P, ty)) (PlaceIn x) (Shared κ) T.
   Proof.
     iIntros "HT" (F ???) "#CTX #HE HL Hb".
@@ -848,7 +848,7 @@ Section stratify.
 
   Lemma typed_place_ex_plain_t_shared E L f l (ty : type rt) x κ K `{!TCDone (K ≠ [])} bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} T :
     (∀ r, introduce_with_hooks E L (P.(inv_P_shr) f.1 κ r x) (λ L2,
-      typed_place E L2 f l (ShadowedLtype (◁ ty) #r (◁ (∃; P, ty))) (#x) UpdStrong (Shared κ) K
+       typed_place E L2 f l (ShadowedLtype (◁ ty) (#r) (◁ (∃; P, ty))) (#x) UpdStrong (Shared κ) K
         (λ L3 κs li b2 bmin' rti ltyi ri updcx,
           T L3 κs li b2 bmin' rti ltyi ri
             (λ L3 upd cont, updcx L3 upd (λ upd',

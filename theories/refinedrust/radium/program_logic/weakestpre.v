@@ -11,6 +11,9 @@ From iris.bi Require Export weakestpre.
 From iris.prelude Require Import options.
 Import uPred.
 
+(* TODO: should move into stdpp eventually? *)
+Scheme Rewriting for TCEq.
+
 Class irisGS_gen (hlc : has_lc) (Λ : language) (Σ : gFunctors) := IrisG {
   #[global] iris_invGS :: invGS_gen hlc Σ;
   #[global] iris_trGS :: trGS Σ;
@@ -54,7 +57,7 @@ Class irisGS_gen (hlc : has_lc) (Λ : language) (Σ : gFunctors) := IrisG {
 Global Opaque iris_invGS.
 Global Arguments IrisG {hlc Λ Σ}.
 
-Notation irisGS := (irisGS_gen HasLc).
+Abbreviation irisGS := (irisGS_gen HasLc).
 
 (** The predicate we take the fixpoint of in order to define the WP. *)
 (** In the step case, we both provide [S (num_laters_per_step ns)]

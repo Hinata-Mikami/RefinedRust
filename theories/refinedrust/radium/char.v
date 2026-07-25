@@ -3,7 +3,7 @@ From stdpp Require Import gmap list.
 From radium Require Export base layout int_type.
 Set Default Proof Using "Type".
 
-Notation char_layout := (it_layout CharIt).
+Abbreviation char_layout := (it_layout CharIt).
 
 (* From https://doc.rust-lang.org/std/primitive.char.html:
 "A char is a ‘Unicode scalar value’, which is any ‘Unicode code point’ other than a surrogate code point. This has a fixed numerical definition: code points are in the range 0 to 0x10FFFF, inclusive. Surrogate code points, used by UTF-16, are in the range 0xD800 to 0xDFFF."

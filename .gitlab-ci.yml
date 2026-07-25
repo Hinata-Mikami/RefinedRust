@@ -230,19 +230,19 @@ check-generated-files:
    - git status --porcelain=v1 --untracked-files=all -- stdlib
    - test -z "$(git status --porcelain=v1 --untracked-files=all -- stdlib)"
 
-build-opam-rocq.9.1.1:
+build-opam-rocq.9.2.0:
   <<: *forks_only
   extends: .opam
   tags: [ fp ]
   variables:
-    OPAM_PINS: "rocq-core version 9.1.1 dune version 3.21.0"
+    OPAM_PINS: "rocq-core version 9.2.0 dune version 3.23.1"
 
-build-opam-rocq.9.1.1-timing:
+build-opam-rocq.9.2.0-timing:
   <<: *upstream_only
   extends: .opam
   tags: [ fp-timing ]
   variables:
-    OPAM_PINS: "rocq-core version 9.1.1 dune version 3.21.0"
+    OPAM_PINS: "rocq-core version 9.2.0 dune version 3.23.1"
 
 build-opam-iris.dev:
   <<: *nightly_only
@@ -252,8 +252,7 @@ build-opam-iris.dev:
     STDPP_REPO: "iris/stdpp"
     IRIS_REPO: "iris/iris"
     OPAMIGNOREPINDEPENDS: "true" # so that the pins below don't get overridden
-    # pin trakt, smtcoq, sniper to specific commits until things have stabilized
-    OPAM_PINS: "rocq-core version 9.1.1 rocq-stdlib version 9.0.0 git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV   git+https://gitlab.mpi-sws.org/$IRIS_REPO#$IRIS_REV  git+https://gitlab.mpi-sws.org/iris/iris-contrib  git+https://gitlab.mpi-sws.org/iris/lambda-rust  rocq-smtcoq.dev git git+https://github.com/smtcoq/smtcoq#53f7fca859b48cbe24973755b4c06762103da07d coq-sniper.dev git git+https://github.com/smtcoq/sniper#8771b62d63f5f8d98de745d0e5a4f7fea1322f31  rocq-trakt.dev git git+https://github.com/rocq-trakt/trakt#abc90bb42fdb6de022375187d8b0bacd63641c90"
+    OPAM_PINS: "rocq-core version 9.2.0 rocq-stdlib version 9.1.0 git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV   git+https://gitlab.mpi-sws.org/$IRIS_REPO#$IRIS_REV  git+https://gitlab.mpi-sws.org/iris/iris-contrib  git+https://gitlab.mpi-sws.org/iris/lambda-rust  rocq-smtcoq.dev git git+https://github.com/smtcoq/smtcoq rocq-sniper.dev git git+https://github.com/smtcoq/sniper  rocq-trakt.dev git git+https://github.com/rocq-trakt/trakt"
   script:
    - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
    - make setup-dune-workspace

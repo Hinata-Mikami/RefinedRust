@@ -1,6 +1,6 @@
 From Equations Require Import Equations.
 From iris.bi Require Export fractional.
-From iris.proofmode Require Import coq_tactics.
+From iris.proofmode Require Import rocq_tactics.
 From iris.base_logic.lib Require Export invariants na_invariants.
 From radium Require Export proofmode notation.
 From radium Require Import derived.
@@ -1859,10 +1859,10 @@ Section ltype_def.
   Qed.
 End ltype_def.
 
-Notation "◁ ty" := (OfTy ty) (at level 15) : bi_scope.
+Notation "◁ ty" := (OfTy ty) (at level 13) : bi_scope.
 
-Notation "l ◁ₗ[ π , k ]  r  @  ty" := (ltype_own ty k π r l) (at level 15) : bi_scope.
-Notation "l ◁ₗ[ π , k ]  .@  ty" := (ltype_own ty k π (PlaceIn ()) l) (at level 15) : bi_scope.
+Notation "l ◁ₗ[ π , k ]  r  @  ty" := (ltype_own ty k π r l) (at level 15, ty at level 14) : bi_scope.
+Notation "l ◁ₗ[ π , k ]  .@  ty" := (ltype_own ty k π (PlaceIn ()) l) (at level 15, ty at level 14) : bi_scope.
 
 (** Ltac for simplifying some of the Ltac functions that don't compute *)
 Ltac simp_ltype_core Heq :=
@@ -2443,7 +2443,7 @@ Section eqltype.
   Lemma type_ltype_incl_shared_in {rt1 rt2} r1 r2 κ (ty1 : type rt1) (ty2 : type rt2) :
     ⌜syn_type_compat (ty1.(ty_syn_type) MetaNone) (ty2.(ty_syn_type) MetaNone)⌝ -∗
     type_incl r1 r2 ty1 ty2 -∗
-    ltype_incl (Shared κ) #r1 #r2 (◁ ty1)%I (◁ ty2)%I.
+    ltype_incl (Shared κ) (#r1) (#r2) (◁ ty1)%I (◁ ty2)%I.
   Proof.
     iIntros "%Hcomp Hsub".
     iDestruct ("Hsub") as "(#Hsceq & #Hown & #Hshr)".
@@ -2519,7 +2519,7 @@ Section eqltype.
 
   Lemma type_ltype_incl_owned_in {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) :
     ⌜syn_type_compat (ty1.(ty_syn_type) MetaNone) (ty2.(ty_syn_type) MetaNone)⌝ -∗
-    type_incl r1 r2 ty1 ty2 -∗ ltype_incl Owned #r1 #r2 (◁ ty1)%I (◁ ty2)%I.
+    type_incl r1 r2 ty1 ty2 -∗ ltype_incl Owned (#r1) (#r2) (◁ ty1)%I (◁ ty2)%I.
   Proof.
     iIntros "%Hcomp Hsub".
     iDestruct ("Hsub") as "(#Hsceq & #Hown & #Hshr)".
@@ -2530,7 +2530,7 @@ Section eqltype.
     done.
   Qed.
   Lemma subtype_subltype_owned_in E L {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) :
-    subtype E L r1 r2 ty1 ty2 → subltype E L Owned #r1 #r2 (◁ ty1)%I (◁ ty2)%I.
+    subtype E L r1 r2 ty1 ty2 → subltype E L Owned (#r1) (#r2) (◁ ty1)%I (◁ ty2)%I.
   Proof.
     iIntros (Hsub qL) "HL #CTX #HE". iPoseProof (Hsub with "HL HE") as "(%Hst & #Hsub)".
     simp_ltypes. iR.

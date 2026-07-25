@@ -95,7 +95,7 @@ Section stratify.
       iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hincl2"; first apply Hb.
       iPoseProof (typed_place_cond_Uniq_rt_eq with "Hincl2 Hcond") as "%Heq".
       subst rt'.
-      iAssert (∃ lt2, ⌜full_eqltype E L2 (MutLtype lt' κ) lt2⌝ ∗ T L2 (llft_elt_toks κs ∗ R) _ lt2 # (r', γ))%I with "[Hs]" as "HT".
+      iAssert (∃ lt2, ⌜full_eqltype E L2 (MutLtype lt' κ) lt2⌝ ∗ T L2 (llft_elt_toks κs ∗ R) _ lt2 (#(r', γ)))%I with "[Hs]" as "HT".
       { destruct ma.
         - iDestruct "Hs" as "(%ty & %Heqty & $)".
           iPureIntro. apply mut_ref_unfold_full_eqltype. done.

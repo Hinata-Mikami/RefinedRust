@@ -230,7 +230,7 @@ Arguments LocInfo : simpl never.
 Global Typeclasses Opaque LocInfo.
 Notation "'locinfo:' a ; b" := (LocInfo (B:=stmt) a b%E)
   (at level 80, b at level 200, format "'[v' 'locinfo:'  a ';' '/' b ']'") : expr_scope.
-Notation LocInfoE := (LocInfo (B:=expr)).
+Abbreviation LocInfoE := (LocInfo (B:=expr)).
 
 Lemma annot_expr_S {A} n (a : A) e:
   AnnotExpr (S n) a e = SkipE (AnnotExpr n a e).
@@ -343,7 +343,7 @@ Arguments WrappingOffsetLocSt : simpl never.
 (*Global Typeclasses Opaque GetMemberUnionLocSt.*)
 (*Arguments GetMemberUnionLocSt : simpl never.*)
 
-Notation zst_val := ([] : val).
+Abbreviation zst_val := ([] : val).
 
 (*** Tests *)
 Example test1 (l : loc) ly ot :

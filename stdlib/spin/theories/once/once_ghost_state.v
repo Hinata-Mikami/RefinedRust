@@ -83,8 +83,8 @@ Section once.
   Proof. rewrite once_status_tok_eq; destruct a; apply _. Qed.
 End once.
 
-Notation once_uninit_tok γ := (once_status_tok γ None).
-Notation once_init_tok γ a := (once_status_tok γ (Some a)).
+Abbreviation once_uninit_tok γ := (once_status_tok γ None).
+Abbreviation once_init_tok γ a := (once_status_tok γ (Some a)).
 
 Section typing.
   Context {A} `{!typeGS Σ} `{!onceG Σ A}.

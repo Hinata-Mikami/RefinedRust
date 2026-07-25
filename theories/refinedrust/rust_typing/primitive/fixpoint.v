@@ -431,7 +431,8 @@ Section fixpoint.
   Lemma type_fixpoint_incl_1 r : ⊢ type_incl r r (type_fixpoint T) (T (type_fixpoint T)).
   Proof.
     iSplit; last iSplit.
-    - iModIntro. simpl. rewrite type_ctr_sidecond; eauto.
+    - iModIntro. simpl.
+      rewrite (type_ctr_sidecond (type_fixpoint T)); simpl; eauto.
     - iModIntro. iIntros (π ? v). rewrite type_fixpoint_own_val_unfold. eauto.
     - iModIntro. iIntros (????). rewrite type_fixpoint_shr_unfold. eauto.
   Qed.

@@ -1,10 +1,10 @@
 From refinedrust Require Import typing.
 From rrstd.cmp.theories Require Export zify.
 
-Notation ordering := comparison (only parsing).
-Notation Less := Lt (only parsing).
-Notation Greater := Gt (only parsing).
-Notation Equal := Eq (only parsing).
+Abbreviation ordering := comparison (only parsing).
+Abbreviation Less := Lt (only parsing).
+Abbreviation Greater := Gt (only parsing).
+Abbreviation Equal := Eq (only parsing).
 
 Canonical Structure comparisonRT := directRT comparison.
 

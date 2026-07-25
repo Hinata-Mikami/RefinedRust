@@ -1,7 +1,7 @@
 From radium Require Export tactics.
 From refinedrust Require Export static type program_rules int int_rules unit struct.struct mut_ref.mut_ref shr_ref.shr_ref functions uninit programs enum maybe_uninit alias_ptr fixpoint mutual_fixpoint primitive.existentials existentials_na array.array base.value generics xmap.
 From refinedrust Require Export automation.loc_eq manual automation.
-From iris.proofmode Require Import coq_tactics reduction string_ident.
+From iris.proofmode Require Import rocq_tactics reduction string_ident.
 From refinedrust Require Export automation.simpl.
 From refinedrust Require Export options.
 
@@ -33,7 +33,7 @@ Proof. intros ? Q a. inv_hlist a. apply Q. Qed.
 
 Global Open Scope Z_scope.
 
-Notation Obs := gvar_pobs.
+Abbreviation Obs := gvar_pobs.
 
 Hint Extern 10 (Inhabited (RT_xt _)) => simpl; apply ty_xt_inhabited; done : typeclass_instances.
 
@@ -77,22 +77,22 @@ Ltac instantiate_benign_universals term ::=
   end.
 
 
-Notation "x '.ghost'" := (x.2) (at level 8, only parsing).
-Notation "x '.cur'" := (x.1) (at level 8, only parsing).
+Notation "x '.ghost'" := (x.2) (at level 1, only parsing).
+Notation "x '.cur'" := (x.1) (at level 1, only parsing).
 
-Notation "'i8'" := I8.
-Notation "'i16'" := I16.
-Notation "'i32'" := I32.
-Notation "'i64'" := I64.
-Notation "'i128'" := I128.
-Notation "'isize'" := ISize.
+Abbreviation i8 := I8.
+Abbreviation i16 := I16.
+Abbreviation i32 := I32.
+Abbreviation i64 := I64.
+Abbreviation i128 := I128.
+Abbreviation isize := ISize.
 
-Notation "'u8'" := U8.
-Notation "'u16'" := U16.
-Notation "'u32'" := U32.
-Notation "'u64'" := U64.
-Notation "'u128'" := U128.
-Notation "'usize'" := USize.
+Abbreviation u8 := U8.
+Abbreviation u16 := U16.
+Abbreviation u32 := U32.
+Abbreviation u64 := U64.
+Abbreviation u128 := U128.
+Abbreviation usize := USize.
 
 (*Global Typeclasses Opaque enum_t.*)
 (*Global Typeclasses Opaque active_union_t.*)

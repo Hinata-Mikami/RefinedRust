@@ -3,7 +3,7 @@ From stdpp Require Import gmap list.
 From radium Require Export base layout int_type loc char.
 Set Default Proof Using "Type".
 
-Notation var_name := string (only parsing).
+Abbreviation var_name := string (only parsing).
 
 Definition field_list := list (option var_name * layout).
 

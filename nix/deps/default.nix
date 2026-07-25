@@ -6,6 +6,7 @@
   lambda-rust,
   smtcoq,
   sniper,
+  verit,
 }:
 let
   mkRocqPackages =
@@ -35,6 +36,9 @@ let
         # NOTE: Remove `equations` when available in Nix's `RocqPackages`
         equations = final.callPackage ./equations.nix equations;
 
+        # NOTE: Remove `extlib` when available in Nix's `RocqPackages`
+        extlib = final.callPackage ./extlib.nix { };
+
         # NOTE: Remove `iris-contrib` when available in Nix's `RocqPackages`
         iris-contrib = final.callPackage ./iris-contrib.nix iris-contrib;
 
@@ -54,6 +58,12 @@ let
       }
     );
 in
-_: prev: {
-  rocqPackages = mkRocqPackages prev.rocqPackages;
+final: prev: {
+  rocqPackages = mkRocqPackages prev.rocqPackages_9_2;
+
+  verit = prev.verit.overrideAttrs (old: {
+    inherit (verit) version src;
+    nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ final.pkg-config ];
+    patchPhase = "";
+  });
 }

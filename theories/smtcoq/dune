@@ -3,7 +3,7 @@
  (package refinedrust-smtcoq)
  (synopsis "RefinedRust SMTCoq integration")
  (generate_project_file)
- (theories Stdlib stdpp iris iris_contrib Ltac2 elpi elpi_elpi MetaRocq.Common MetaRocq.Utils MetaRocq.Template Trakt SMTCoq Sniper radium lithium refinedrust lrust Equations))
+ (theories Stdlib stdpp iris iris_contrib Ltac2 elpi elpi_elpi MetaRocq.Common MetaRocq.Utils MetaRocq.Template Trakt SMTCoq Sniper radium lithium refinedrust lrust Equations ExtLib))
 (env
  (_ (rocq (flags -w -notation-overridden -w -notation-incompatible-prefix -w -redundant-canonical-projection -w -ambiguous-paths)))
  )

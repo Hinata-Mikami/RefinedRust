@@ -17,27 +17,21 @@
       };
     };
 
-    # This one is only used for the devcontainer
-    creusot = {
-      url = "github:creusot-rs/creusot";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        flake-parts.follows = "flake-parts";
-        crane.follows = "crane";
-        rust-overlay.follows = "rust-overlay";
-      };
+    verit = {
+      url = "git+https://gitlab.mpi-sws.org/lgaeher/verit?rev=6348b82f16c7cd2eb2a0b8f2b48d3f35cbb62b90";
+      flake = false;
     };
   };
 
   outputs =
     inputs@{
       crane,
-      creusot,
       flake-parts,
       nixpkgs,
       rust-overlay,
       self,
       SMTCoq,
+      verit,
       ...
     }:
     let
@@ -51,38 +45,43 @@
 
       pins = {
         equations = {
-          version = "2137c8e7081f2d47ab903de0cc09fd6a05bfab01";
-          sha256 = "sha256-LtYbAR3jt+JbYcqP+m1n3AZhAWSMIeOZtmdSJwg7L1A=";
+          version = "c4e99d8953cee0396a391fe017204bbc2af1fb88";
+          sha256 = "sha256-4uhcYRwZxcSRDQgJ92D854djy76piuVhttDe6XEN0Rk=";
         };
 
         stdpp = {
-          version = "2301f95c0bf0c336b64d9f0d6cb26668ce35fd8c";
-          sha256 = "sha256-xz0lYc+G0UGk9uSJNFvn04EylmloQE1uaQrmsVCq4Xo=";
+          version = "729c671ed573749588f699138e306dbae880f3e1";
+          sha256 = "sha256-cFUimy54xl4zA9q7NadjReAspRZPrh0DSdEpTJFPidU=";
         };
 
         iris = {
-          version = "aa39151cf17dbfd53649a4466a6420c3dbb02a96";
-          sha256 = "sha256-3y4j0Pkg2jUxTJZcLoZTsnL1E2WCRq+f6aaJFD7TvSU=";
+          version = "4a6add171278417fec6da7c490fe487e502326f0";
+          sha256 = "sha256-4XY7u6KOMPENIiM/RlhOKKf06ABfnAVE8TJEeNHhn78=";
         };
 
         iris-contrib = {
-          version = "35ebb0772e832eb535b20c6195375ec593c9081b";
-          sha256 = "sha256-v/AS2WPpEVCTsY18QwFRPg+qhiGxkIHgy5qZK4vyZrk=";
+          version = "0ed8e45b554b2c7f7b9102818bc3ee27d8fa18b8";
+          sha256 = "sha256-Y9HyQvCnX9elwDSWK8o2Sh3E6nIRkaIxvD/zNo25Lxw=";
         };
 
         lambda-rust = {
-          version = "804c0168f773731b669110872bd72e6cce05e755";
-          sha256 = "sha256-lhyYAO4FybaqxbvyLUNkNTBqexLMkhPZ9fjX5wSck/g=";
+          version = "0a062fb1eb68f9a6ac38412347117b294fc7746b";
+          sha256 = "sha256-iQqxhPMSo/ktfhANwFlDV1Vpl4yWr9k0s/t2tFFAkpo=";
         };
 
         smtcoq = {
-          version = "53f7fca859b48cbe24973755b4c06762103da07d";
-          sha256 = "sha256-mQxO/4DrR47pZrv5hJ5u2o0WHbBrn+awb5VlRfxF9Ks=";
+          version = "6de39db2a996cdc663634cb79193b9d75f95b48a";
+          sha256 = "sha256-adhKClONIp3tltToQcoDO1wfqGzBCe/UE/WyBIPYlis=";
+        };
+
+        verit = {
+          version = "6348b82f16c7cd2eb2a0b8f2b48d3f35cbb62b90";
+          src = verit;
         };
 
         sniper = {
-          version = "1d3e132cd18c45555c4751f1c5e5f84ad9cc7eaf";
-          sha256 = "sha256-mbRsj0TLKTeXdk7F4jK8lZMwApZ9q9TQKtprjQaoYKI=";
+          version = "14fd1f02104f6e1214ad436d21eaacfb0d71db19";
+          sha256 = "sha256-bFjwYVVP2/SNixSrThp3c8RYrmSmLb7NdjzpNtcDyAk=";
         };
       };
 
@@ -331,7 +330,6 @@
 
           default = nixpkgs.lib.composeManyExtensions [
             rust-overlay.overlays.default
-            creusot.overlays.default
             SMTCoq.overlays.default
             self.overlays.deps
           ];
@@ -525,7 +523,6 @@
                   rust.toolchain.dev
                   cargoVendorDir
                   (self.lib.mkDuneWrapper pkgs packages.refinedrust-smtcoq)
-                  (pkgs.creusot.mkWhy3Framework { isFree = false; })
                 ] rust.toolchain.dev;
             }
             // lib.fix (f: self.lib.mapToAttrs mkStdlib (stdlib f));

@@ -1,4 +1,4 @@
-From iris.proofmode Require Import coq_tactics reduction string_ident.
+From iris.proofmode Require Import rocq_tactics reduction string_ident.
 From refinedrust.base Require Import programs value.
 From refinedrust Require Import program_rules array.array automation.
 From refinedrust Require Import options.
@@ -246,7 +246,7 @@ Section updateable_rules.
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
       ∃ v st,
         ⌜bk = Owned⌝ ∗
-        owned_subltype_step π updateable_E updateable_L false l r #v lt (◁ value_t true st)
+        owned_subltype_step π updateable_E updateable_L false l r (#v) lt (◁ value_t true st)
         (λ L2 R2,
         find_in_context (FindVal v) (λ '(existT rt (ty', r', π', m')),
         ⌜π' = π⌝ ∗ ⌜m' = MetaNone⌝ ∗
@@ -280,7 +280,7 @@ Section updateable_rules.
     ∃ rt', ⌜rt = listRT (place_rfnRT rt')⌝ ∗
       ∃ rs n (ty : type rt'),
         ⌜bk = Owned⌝ ∗
-        owned_subltype_step π updateable_E updateable_L false l r #rs lt (◁ array_t n ty) (λ L2 R2,
+        owned_subltype_step π updateable_E updateable_L false l r (#rs) lt (◁ array_t n ty) (λ L2 R2,
         ⌜k ≤ n⌝ ∗
         ((l ◁ₗ[π, Owned] #(take k rs) @ (◁ array_t k ty) -∗
          (l offsetst{st_of ty MetaNone}ₗ k) ◁ₗ[π, Owned] #(drop k rs) @ (◁ array_t (n - k) ty) -∗
@@ -308,7 +308,7 @@ Section updateable_rules.
       ∃ rt', ⌜rt = listRT (place_rfnRT rt')⌝ ∗
       ∃ rs n (ty : type rt'),
         ⌜bk = Owned⌝ ∗
-        owned_subltype_step π updateable_E updateable_L false l r #rs lt (◁ array_t n ty) (λ L2 R2,
+        owned_subltype_step π updateable_E updateable_L false l r (#rs) lt (◁ array_t n ty) (λ L2 R2,
         ⌜n = (num * size)%nat⌝ ∗
         ⌜num ≠ 0%nat⌝ ∗
         (l ◁ₗ[π, Owned] #(<#> reshape (replicate num size) rs) @ (◁ array_t num (array_t size ty)) -∗

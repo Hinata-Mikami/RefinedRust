@@ -11,7 +11,7 @@ Section subltype.
   Local Lemma mut_ltype_incl'_shared_in {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ' r1 r2 γ κ1 κ2 :
     ltype_incl (Shared (κ1 ⊓ κ')) r1 r2 lt1 lt2 -∗
     κ2 ⊑ κ1 -∗
-    ltype_incl' (Shared κ') #(r1, γ) #(r2, γ) (MutLtype lt1 κ1) (MutLtype lt2 κ2).
+    ltype_incl' (Shared κ') (#(r1, γ)) (#(r2, γ)) (MutLtype lt1 κ1) (MutLtype lt2 κ2).
   Proof.
     iIntros "#Heq #Hincl1".
     iModIntro.
@@ -28,7 +28,7 @@ Section subltype.
   Lemma mut_ltype_incl_shared_in {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ' γ r1 r2 κ1 κ2 :
     ltype_incl (Shared (κ1 ⊓ κ')) r1 r2 lt1 lt2 -∗
     κ2 ⊑ κ1 -∗
-    ltype_incl (Shared κ') #(r1, γ) #(r2, γ) (MutLtype lt1 κ1) (MutLtype lt2 κ2).
+    ltype_incl (Shared κ') (#(r1, γ)) (#(r2, γ)) (MutLtype lt1 κ1) (MutLtype lt2 κ2).
   Proof.
     iIntros "#Heq #Hincl1".
     iModIntro.
@@ -71,7 +71,7 @@ Section subltype.
   Local Lemma mut_ltype_incl'_owned_in {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ1 κ2 r1 r2 γ :
     ltype_incl (Uniq κ1 γ) r1 r2 lt1 lt2  -∗
     κ2 ⊑ κ1 -∗
-    ltype_incl' (Owned) #(r1, γ) #(r2, γ) (MutLtype lt1 κ1) (MutLtype lt2 κ2).
+    ltype_incl' (Owned) (#(r1, γ)) (#(r2, γ)) (MutLtype lt1 κ1) (MutLtype lt2 κ2).
   Proof.
     iIntros "#Heq #Hincl1". iModIntro.
     iIntros (π l). rewrite !ltype_own_mut_ref_unfold /mut_ltype_own /=.
@@ -86,7 +86,7 @@ Section subltype.
   Lemma mut_ltype_incl_owned_in {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ1 κ2 r1 r2 γ :
     ltype_incl (Uniq κ1 γ) r1 r2 lt1 lt2  -∗
     κ2 ⊑ κ1 -∗
-    ltype_incl (Owned) #(r1, γ) #(r2, γ) (MutLtype lt1 κ1) (MutLtype lt2 κ2).
+    ltype_incl (Owned) (#(r1, γ)) (#(r2, γ)) (MutLtype lt1 κ1) (MutLtype lt2 κ2).
   Proof.
     iIntros "#Heq #Hincl1".
     iModIntro.
