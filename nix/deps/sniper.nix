@@ -14,8 +14,10 @@ mkRocqDerivation {
 
   owner = "smtcoq";
   pname = "sniper";
+  opam-name = "rocq-sniper";
 
   mlPlugin = true;
+  useDune = true;
   propagatedBuildInputs = [
     rocq-core.ocamlPackages.num
     metarocq-template

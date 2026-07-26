@@ -26,7 +26,6 @@ mkRocqDerivation {
 
   release.${version}.sha256 = sha256;
 
-
   patchPhase = ''
     sed -i -e 's/(lang dune 3.13)/(lang dune 3.21)/g' dune-project
     sed -i -e 's/(using coq 0.8)/(using rocq 0.11)/g' dune-project
