@@ -124,6 +124,8 @@ impl Heap {
     }
 
     // hは4つ組。((v, l, n, m), v) と書くと5つ組と解釈される？
+    //x' @ StructLtype +[◁ int i32; ◁ alias_ptr_t; ◁ bool_t] Node_sls を 
+    //Node_ty に畳めないエラー -> 手動証明？ 
     #[rr::params("h", "v" : "Z")]
     #[rr::args("h", "v")]
     #[rr::requires("MinInt i32 ≤ v")]
@@ -143,8 +145,6 @@ impl Heap {
         (vals ++ [v], locs ++ [ptr], nexts ++ [NULL_loc], marks ++ [false])
     ")]
     #[rr::ensures("ptr.(loc_a) ≠ 0")]
-    //x' @ StructLtype +[◁ int i32; ◁ alias_ptr_t; ◁ bool_t] Node_sls を 
-    //Node_ty に畳めないエラー -> 手動証明？ 
     fn alloc(&mut self, value: i32) -> *mut Node {
         let ptr = make_node(value);
         self.all_nodes.push(ptr);
