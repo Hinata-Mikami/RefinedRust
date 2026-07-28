@@ -3,24 +3,54 @@
     "SMTCoq": {
       "inputs": {
         "flake-parts": [
+          "Sniper",
+          "SMTCoq",
+          "trakt",
           "flake-parts"
         ],
         "nixpkgs": [
+          "Sniper",
+          "SMTCoq",
+          "trakt",
           "nixpkgs"
         ],
         "trakt": "trakt"
       },
       "locked": {
-        "lastModified": 1784799103,
-        "narHash": "sha256-adhKClONIp3tltToQcoDO1wfqGzBCe/UE/WyBIPYlis=",
+        "lastModified": 1784280250,
+        "narHash": "sha256-RCzx9UuwLkkfu819x9VU6+OpmcxZxRsbs/GmJ79oqac=",
         "owner": "SMTCoq",
         "repo": "SMTCoq",
-        "rev": "6de39db2a996cdc663634cb79193b9d75f95b48a",
+        "rev": "cdddf26c36887d6a06080764187fb6b174b97c8c",
         "type": "github"
       },
       "original": {
         "owner": "SMTCoq",
         "repo": "SMTCoq",
+        "type": "github"
+      }
+    },
+    "Sniper": {
+      "inputs": {
+        "SMTCoq": "SMTCoq",
+        "flake-parts": [
+          "flake-parts"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1785181426,
+        "narHash": "sha256-CazBsE3jE+tcj6YVi8Lfh4fEdovNxVSKfDDAuZfXD0s=",
+        "owner": "SMTCoq",
+        "repo": "Sniper",
+        "rev": "e743fadcd9e6da909d3cb7161d612bdcaeb554fb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "SMTCoq",
+        "repo": "Sniper",
         "type": "github"
       }
     },
@@ -137,11 +167,13 @@
     "rocq-utils": {
       "inputs": {
         "flake-parts": [
+          "Sniper",
           "SMTCoq",
           "trakt",
           "flake-parts"
         ],
         "nixpkgs": [
+          "Sniper",
           "SMTCoq",
           "trakt",
           "nixpkgs"
@@ -163,7 +195,7 @@
     },
     "root": {
       "inputs": {
-        "SMTCoq": "SMTCoq",
+        "Sniper": "Sniper",
         "crane": "crane",
         "flake-parts": "flake-parts_2",
         "nixpkgs": "nixpkgs_2",

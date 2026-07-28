@@ -50,11 +50,10 @@ let
           release.${smtcoq.version}.sha256 = smtcoq.sha256;
         } prev.smtcoq;
 
-        # NOTE: Remove `metarocq-template-rocq` when available in `smtcoq/sniper` repository
-        metarocq-template = final.callPackage ./metarocq-template.nix { };
-
-        # NOTE: Remove `sniper` when available in `smtcoq/sniper` repository
-        sniper = final.callPackage ./sniper.nix sniper;
+        sniper = final.lib.overrideRocqDerivation {
+          defaultVersion = sniper.version;
+          release.${sniper.version}.sha256 = sniper.sha256;
+        } prev.sniper;
       }
     );
 in

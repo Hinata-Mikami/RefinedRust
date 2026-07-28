@@ -9,8 +9,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    SMTCoq = {
-      url = "github:SMTCoq/SMTCoq";
+    Sniper = {
+      url = "github:SMTCoq/Sniper";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         flake-parts.follows = "flake-parts";
@@ -30,7 +30,7 @@
       nixpkgs,
       rust-overlay,
       self,
-      SMTCoq,
+      Sniper,
       verit,
       ...
     }:
@@ -330,7 +330,7 @@
 
           default = nixpkgs.lib.composeManyExtensions [
             rust-overlay.overlays.default
-            SMTCoq.overlays.default
+            Sniper.overlays.default
             self.overlays.deps
           ];
         };
