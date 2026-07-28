@@ -3,11 +3,11 @@
     "ACE-RISCV": {
       "flake": false,
       "locked": {
-        "lastModified": 1784304845,
-        "narHash": "sha256-87M+VAXJxkXhyY0m8blg+oqhJ+9QG8WCOph8TsYEYz0=",
+        "lastModified": 1785165509,
+        "narHash": "sha256-EnGdmKV2g6pOo15GrI+RI/XaZg+swoyTw/CVug8kpEQ=",
         "owner": "IBM",
         "repo": "ACE-RISCV",
-        "rev": "7c0c480e94e9af62a0324001af77310e117a9816",
+        "rev": "fc2aedf98dcd42b1f7cee1f5942bb272073cd4a8",
         "type": "github"
       },
       "original": {
@@ -21,25 +21,57 @@
       "inputs": {
         "flake-parts": [
           "refinedrust",
+          "Sniper",
+          "SMTCoq",
+          "trakt",
           "flake-parts"
         ],
         "nixpkgs": [
           "refinedrust",
+          "Sniper",
+          "SMTCoq",
+          "trakt",
           "nixpkgs"
         ],
         "trakt": "trakt"
       },
       "locked": {
-        "lastModified": 1784799103,
-        "narHash": "sha256-adhKClONIp3tltToQcoDO1wfqGzBCe/UE/WyBIPYlis=",
+        "lastModified": 1784280250,
+        "narHash": "sha256-RCzx9UuwLkkfu819x9VU6+OpmcxZxRsbs/GmJ79oqac=",
         "owner": "SMTCoq",
         "repo": "SMTCoq",
-        "rev": "6de39db2a996cdc663634cb79193b9d75f95b48a",
+        "rev": "cdddf26c36887d6a06080764187fb6b174b97c8c",
         "type": "github"
       },
       "original": {
         "owner": "SMTCoq",
         "repo": "SMTCoq",
+        "type": "github"
+      }
+    },
+    "Sniper": {
+      "inputs": {
+        "SMTCoq": "SMTCoq",
+        "flake-parts": [
+          "refinedrust",
+          "flake-parts"
+        ],
+        "nixpkgs": [
+          "refinedrust",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1785181426,
+        "narHash": "sha256-CazBsE3jE+tcj6YVi8Lfh4fEdovNxVSKfDDAuZfXD0s=",
+        "owner": "SMTCoq",
+        "repo": "Sniper",
+        "rev": "e743fadcd9e6da909d3cb7161d612bdcaeb554fb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "SMTCoq",
+        "repo": "Sniper",
         "type": "github"
       }
     },
@@ -55,39 +87,6 @@
       "original": {
         "owner": "ipetkov",
         "repo": "crane",
-        "type": "github"
-      }
-    },
-    "creusot": {
-      "inputs": {
-        "crane": [
-          "refinedrust",
-          "crane"
-        ],
-        "flake-parts": [
-          "refinedrust",
-          "flake-parts"
-        ],
-        "nixpkgs": [
-          "refinedrust",
-          "nixpkgs"
-        ],
-        "rust-overlay": [
-          "refinedrust",
-          "rust-overlay"
-        ]
-      },
-      "locked": {
-        "lastModified": 1784739198,
-        "narHash": "sha256-hQ+nR0rk/zGUSugWT4NHUNKPVxTotJ7IZ69nFCNPGJw=",
-        "owner": "creusot-rs",
-        "repo": "creusot",
-        "rev": "8d73ab6e92fd7c5385a3d921df244a440b39970a",
-        "type": "github"
-      },
-      "original": {
-        "owner": "creusot-rs",
-        "repo": "creusot",
         "type": "github"
       }
     },
@@ -174,11 +173,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1784707089,
-        "narHash": "sha256-DUedXhD2Rg8q4Xyd07Sb90eZGy4gg6W+Vl/WbLNwAZo=",
-        "rev": "b3fe9581c9061c749abef42b6d4ee7b7c05c33fa",
+        "lastModified": 1784856561,
+        "narHash": "sha256-/HjbyQqfFs3cG7o/zJ25RPaLZqS9a88z6vOGhMoZwRs=",
+        "rev": "597283ad8aa0b331c788e97c4c262d58877074ef",
         "type": "tarball",
-        "url": "https://releases.nixos.org/nixos/26.05/nixos-26.05.5845.b3fe9581c906/nixexprs.tar.xz"
+        "url": "https://releases.nixos.org/nixos/26.05/nixos-26.05.5984.597283ad8aa0/nixexprs.tar.xz"
       },
       "original": {
         "id": "nixpkgs",
@@ -188,12 +187,12 @@
     },
     "refinedrust": {
       "inputs": {
-        "SMTCoq": "SMTCoq",
+        "Sniper": "Sniper",
         "crane": "crane",
-        "creusot": "creusot",
         "flake-parts": "flake-parts_2",
         "nixpkgs": "nixpkgs_2",
-        "rust-overlay": "rust-overlay"
+        "rust-overlay": "rust-overlay",
+        "verit": "verit"
       },
       "locked": {
         "path": "git+file://../../..",
@@ -209,12 +208,14 @@
       "inputs": {
         "flake-parts": [
           "refinedrust",
+          "Sniper",
           "SMTCoq",
           "trakt",
           "flake-parts"
         ],
         "nixpkgs": [
           "refinedrust",
+          "Sniper",
           "SMTCoq",
           "trakt",
           "nixpkgs"
@@ -256,11 +257,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1784784641,
-        "narHash": "sha256-F8/6twaXdW5dOHgLt1sO62fygfA3aKiYlEmnnIxzpTU=",
+        "lastModified": 1784956772,
+        "narHash": "sha256-5polVWDhgATIQj+RUV2ZlOd5nE6cGJo+C4tOEs5vp6U=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "19a19f3921ae195f2fbd85f5dc57e6d1df63aa0b",
+        "rev": "a163bd01a6e11ac58d4f8d11669da550b5afbbc6",
         "type": "github"
       },
       "original": {
@@ -287,6 +288,23 @@
         "owner": "rocq-trakt",
         "repo": "trakt",
         "type": "github"
+      }
+    },
+    "verit": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1775560399,
+        "narHash": "sha256-DMSVU39uNr8Bnx6TevODF27MecMCsoaTdoHu5mi1oZ0=",
+        "ref": "refs/heads/main",
+        "rev": "6348b82f16c7cd2eb2a0b8f2b48d3f35cbb62b90",
+        "revCount": 8,
+        "type": "git",
+        "url": "https://gitlab.mpi-sws.org/lgaeher/verit"
+      },
+      "original": {
+        "rev": "6348b82f16c7cd2eb2a0b8f2b48d3f35cbb62b90",
+        "type": "git",
+        "url": "https://gitlab.mpi-sws.org/lgaeher/verit"
       }
     }
   },
