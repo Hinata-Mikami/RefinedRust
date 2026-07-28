@@ -114,7 +114,8 @@ stdlib:
   variables:
     NIX_DERIVATION: .#stdlib
     NIX_PATH_INFO_FLAGS: -r
-    NIX_PATH_FILTER_REGEX: '-rocq-core9\.1-refinedrust-stdlib-.*-dev$'
+    # NOTE: Update this when updating Rocq!
+    NIX_PATH_FILTER_REGEX: '-rocq-core9\.2-refinedrust-stdlib-.*-dev$'
 
 clippy:
   extends: [ .nix, .build_to_nix ]
