@@ -33,12 +33,13 @@ Section place.
     iApply wpe_fupd.
     iApply (wp_deref with "Hl") => //; [solve_ndisj | | | ].
     { intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v. }
-    { by apply val_decodes_to_loc_has_layout in Hdec. }
+    { intros st. exists (OVPtr l'). apply Hdec. }
     iApply physical_step_intro_lc. iIntros "Hcred !> !>".
-    iIntros (st) "Hl". iMod (fupd_mask_subseteq F) as "HclF"; first done.
+    iIntros (st ov) "%Hdec' Hl". iMod (fupd_mask_subseteq F) as "HclF"; first done.
+    pose proof (Hdec st) as Hdec_st. rewrite Hdec_st in Hdec'. injection Hdec' as <-.
     iPoseProof (ltype_own_addr_in_usize with "Hb") as "%".
     iMod "HclF" as "_". iExists l'.
-    iSplitR. { iPureIntro. by apply val_decodes_to_loc_mem_cast. }
+    iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
     iMod ("HR" with "[] [$] HE HL [Hcred]") as "(%L1 & HL & HR)"; first done.
     { iApply lc_weaken; last done. unfold num_laters_per_step. lia. }
     iApply ("HR" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
@@ -105,12 +106,13 @@ Section place.
     iApply (wpe_logical_step with "Hcl"); [solve_ndisj.. | ].
     iApply (wp_deref with "Hl") => //; [solve_ndisj | | | ].
     { intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v. }
-    { by apply val_decodes_to_loc_has_layout in Hdec. }
+    { intros st. exists (OVPtr l'). apply Hdec. }
     iApply physical_step_intro_lc. iIntros "Hcred !> !>".
-    iIntros (st) "Hl Hc". iMod (fupd_mask_subseteq F) as "HclF"; first done.
+    iIntros (st ov) "%Hdec' Hl Hc". iMod (fupd_mask_subseteq F) as "HclF"; first done.
+    pose proof (Hdec st) as Hdec_st. rewrite Hdec_st in Hdec'. injection Hdec' as <-.
     iPoseProof (ltype_own_addr_in_usize with "Hb") as "%".
     iMod "HclF" as "_". iExists l'.
-    iSplitR. { iPureIntro. by apply val_decodes_to_loc_mem_cast. }
+    iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
     iMod ("HT" with "[] [$] HE HL [Hcred]") as "(%L1 & HL & HT)"; first done.
     { iApply lc_weaken; last done. unfold num_laters_per_step. lia. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
@@ -178,12 +180,13 @@ Section place.
     iModIntro. iApply wpe_fupd.
     iApply (wp_deref with "Hl") => //; [solve_ndisj | | | ].
     { intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v. }
-    { by apply val_decodes_to_loc_has_layout in Hdec. }
+    { intros st. exists (OVPtr li). apply Hdec. }
     iApply physical_step_intro_lc. iIntros "Hcred !>!>".
-    iIntros (st) "Hl". iMod (fupd_mask_mono with "Hb") as "#Hb"; first done.
+    iIntros (st ov) "%Hdec' Hl". iMod (fupd_mask_mono with "Hb") as "#Hb"; first done.
+    pose proof (Hdec st) as Hdec_st. rewrite Hdec_st in Hdec'. injection Hdec' as <-.
     iExists li.
     iPoseProof (ltype_own_addr_in_usize with "Hb") as "%".
-    iSplitR. { iPureIntro. by apply val_decodes_to_loc_mem_cast. }
+    iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
     iMod ("HT" with "[] [$] HE HL [Hcred]") as "(%L1 & HL &HT)"; first done.
     { iApply lc_weaken; last done. unfold num_laters_per_step. lia. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").

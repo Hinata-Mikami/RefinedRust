@@ -79,15 +79,6 @@ Proof.
   destruct ot => //=. by intros [-> ->].
 Qed.
 
-Lemma mem_cast_UntypedOp v ly st :
-  v `has_layout_val` ly →
-  mem_cast v (UntypedOp ly) st = v.
-Proof.
-  intros Hly. rewrite /mem_cast. simp decode_op_val.
-  rewrite bool_decide_true; last exact Hly.
-  simpl. by rewrite resize_all_alt.
-Qed.
-
 Lemma encode_decode_id_int v ov ot it z st :
   is_int_ot ot it →
   val_to_Z v it = Some z →
@@ -257,18 +248,6 @@ Lemma val_decodes_to_loc_length v l :
   length v = ly_size void*.
 Proof. apply val_decodes_to_loc_has_layout. Qed.
 
-Lemma val_decodes_to_loc_mem_cast v l st :
-  l.(loc_a) ∈ USize →
-  val_decodes_to_loc v l →
-  val_to_loc (mem_cast v PtrOp st) = Some l.
-Proof.
-  intros Hin Hdec. rewrite /mem_cast. pose proof (Hdec st) as Hdec_st.
-  rewrite Hdec_st /=.
-  rewrite (val_decodes_to_loc_length _ _ Hdec).
-  rewrite resize_all_alt; last by symmetry; apply l2v_has_layout_val.
-  apply val_to_of_loc. by apply val_of_loc_Some_l2v.
-Qed.
-
 Lemma encode_decode_id_unit v ov ot st :
   is_unit_ot ot →
   v = zst_val →
@@ -292,83 +271,6 @@ Proof.
   intros Hot Hv Hdec.
   by rewrite (encode_decode_id_unit _ _ _ _ Hot Hv Hdec).
 Qed.
-
-Section optypes.
-  Context `{refinedcG Σ}.
-  Lemma mem_cast_compat_id (P : val → iProp Σ) v ot st :
-    (P v ⊢ ⌜mem_cast_id v ot⌝) →
-    (P v ⊢ P (mem_cast v ot st)).
-  Proof. iIntros (HP) "HP". iDestruct (HP with "HP") as %Hm. rewrite Hm. done. Qed.
-
-  Lemma mem_cast_compat_Untyped (P : val → iProp Σ) v ot st :
-    (∀ ly, ot = UntypedOp ly → P v ⊢ ⌜v `has_layout_val` ly⌝) →
-    ((if ot is UntypedOp _ then False else True) →
-      ⊢ P v -∗ P (mem_cast v ot st)) →
-    ⊢ P v -∗ P (mem_cast v ot st).
-  Proof.
-    move => Hly Hot. destruct ot; try by apply: Hot.
-    iIntros "HP". iDestruct (Hly _ eq_refl with "HP") as %Hvly.
-    by rewrite mem_cast_UntypedOp.
-  Qed.
-
-  Lemma mem_cast_compat_int (P : val → iProp Σ) v ot it:
-    is_int_ot ot it →
-    (P v ⊢ ⌜∃ z, val_to_Z v it = Some z⌝) →
-    (P v ⊢ ⌜mem_cast_id v ot⌝).
-  Proof.
-    destruct ot => //; simplify_eq/=.
-    - intros <-.  etrans; [done|]. iPureIntro => -[??]. by apply: mem_cast_id_int.
-    - intros ->. etrans; [done|]. iPureIntro => -[? Hz] st'.
-      apply mem_cast_UntypedOp. by apply val_to_Z_length in Hz.
-  Qed.
-
-  Lemma mem_cast_compat_bool (P : val → iProp Σ) v ot :
-    is_bool_ot ot →
-    (P v ⊢ ⌜∃ b, val_to_bool v = Some b⌝) →
-    (P v ⊢ ⌜mem_cast_id v ot⌝).
-  Proof.
-    destruct ot => //; simplify_eq/=.
-    - intros _.  etrans; [done|]. iPureIntro => -[??]. by apply: mem_cast_id_bool.
-    - intros ->. etrans; [done|]. iPureIntro => -[? Hb] st'.
-      apply mem_cast_UntypedOp. by apply val_to_bool_length in Hb.
-  Qed.
-
-  Lemma mem_cast_compat_char (P : val → iProp Σ) v ot :
-    is_char_ot ot →
-    (P v ⊢ ⌜∃ b, val_to_char v = Some b⌝) →
-    (P v ⊢ ⌜mem_cast_id v ot⌝).
-  Proof.
-    destruct ot => //; simplify_eq/=.
-    - intros ->. etrans; [done|]. iPureIntro => -[? Hz] st'.
-      apply mem_cast_UntypedOp. by apply val_to_char_length in Hz.
-    - intros _.  etrans; [done|]. iPureIntro => -[??]. by apply: mem_cast_id_char.
-  Qed.
-
-  Lemma mem_cast_compat_loc (P : val → iProp Σ) v ot :
-    is_ptr_ot ot →
-    (P v ⊢ ⌜∃ l, val_to_loc v = Some l⌝) →
-    (P v ⊢ ⌜mem_cast_id v ot⌝).
-  Proof.
-    destruct ot => //; simplify_eq/=.
-    - intros _. etrans; [done|].
-      iPureIntro => -[??]. simpl. by eapply mem_cast_id_loc.
-    - intros ->. etrans; [done|]. iPureIntro => -[? Hl] st'.
-      apply mem_cast_UntypedOp. by apply val_to_loc_length; eexists.
-  Qed.
-
-  Lemma mem_cast_compat_unit (P : val → iProp Σ) v ot :
-    is_unit_ot ot →
-    (P v ⊢ ⌜v = zst_val⌝) →
-    (P v ⊢ ⌜mem_cast_id v ot⌝).
-  Proof.
-    destruct ot => //; simplify_eq/=.
-    - intros [-> ->]. etrans; first done. iPureIntro => -> st'.
-      rewrite /mem_cast /=.
-      simp decode_op_val. done.
-    - intros ->. etrans; first done. iPureIntro => -> st'.
-      apply mem_cast_UntypedOp. done.
-  Qed.
-End optypes.
 
 Definition is_same_decoded_val_at (st : heap_state) (v1 : val) (ot : op_type) (v2 : val) : Prop :=
   decode_op_val v1 ot st = decode_op_val v2 ot st ∧
@@ -537,11 +439,4 @@ Proof.
     rewrite /has_layout_val /= in Hly'.
     pose proof (is_same_decoded_val_at_untyped_inv st v v' void* Hly Hly' Hsame) as ->.
     apply Hv.
-Qed.
-
-Lemma mem_cast_l2v_id l st :
-  l.(loc_a) ∈ USize →
-  mem_cast (l2v l) PtrOp st = l2v l.
-Proof.
-  intros Hl. exact (mem_cast_id_loc _ _ (val_to_loc_Some_l2v _ Hl) st).
 Qed.

@@ -300,6 +300,10 @@ Section discriminant.
     iIntros "(Hl2 & HR)".
     iMod ("HT" $! ⊤ with "[//] [//] [//] [//] CTX HE HL Hl2") as "Hdisc".
     iDestruct "Hdisc" as (q v discr) "(%Hloc & %Hval & Hl2 & Hv & Hclose)".
+    iEval (rewrite /ty_own_val /= int_own_val_unfold) in "Hv".
+    iDestruct "Hv" as "#>(_ & %Hv)".
+    have Hdecode : ∀ st, ∃ ov, decode_op_val v (IntOp (els_tag_it els)) st = Some ov.
+    { intros st. simp decode_op_val. rewrite Hv. eauto. }
     rewrite /GetEnumDiscriminantLocSt in Hloc.
     iEval (rewrite /GetEnumDiscriminantLocSt) in "Hl2 Hclose".
     iPoseProof (heap_pointsto_loc_in_bounds with "Hl2") as "#Hlb".
@@ -307,7 +311,7 @@ Section discriminant.
     iApply (wpe_logical_step with "Hclose"); [solve_ndisj.. | ].
     iApply (wp_deref with "Hl2") => //; try by eauto using val_to_of_loc.
     { intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v. }
-    iApply physical_step_intro. iNext. iIntros (st) "Hl2 Hclose".
+    iApply physical_step_intro. iNext. iIntros (st ov) "%Hdecode' Hl2 Hclose".
     iMod ("Hclose" with "Hl2") as (L3 rt4 ty4 r4) "(Hv' & HL & Hl2 & HT)".
 
     set (upd_inner := typed_place_finish_upd upd lt3 ri3).
@@ -317,9 +321,7 @@ Section discriminant.
     iMod ("Hs" with "HL Hf HT") as (upd') "(Hl & Hcond' & ? & HR' & ? & HL & Hf & Hfin)".
     iPoseProof ("Hfin" with "Hl") as "Hfin".
     iMod ("Hfin" with "[] [$] HE HL [$]") as "(%L4 & HL & HT)"; first done.
-    iEval (rewrite /ty_own_val /= int_own_val_unfold) in "Hv".
-    iDestruct "Hv" as "(_ & %Hv)".
-    rewrite (mem_cast_id_int _ _ _ Hv st).
+    rewrite (encode_decode_id_int v ov (IntOp (els_tag_it els)) (els_tag_it els) discr st) => //.
     iModIntro. by iApply ("HΦ" with "HL Hf Hv' HT").
   Qed.
 

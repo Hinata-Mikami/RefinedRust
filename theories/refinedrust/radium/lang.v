@@ -527,7 +527,7 @@ Inductive expr_step : expr → thread_id → state → list Empty_set → runtim
     cf.(cf_locals) !! x = Some (l, ly) →
     val_of_loc l = Some v' →
     expr_step (Var x) π σ [] (RTVal v') σ []
-| DerefS o v l ot v' σ π :
+| DerefS o v l ot v' ov σ π :
     let start_st st := ∃ n, st = if o is Na2Ord then RSt (S n) else RSt n in
     let end_st st :=
       match o, st with
@@ -541,9 +541,10 @@ Inductive expr_step : expr → thread_id → state → list Empty_set → runtim
       if o is Na1Ord then
         Deref Na2Ord ot (Val v)
       else
-        Val (mem_cast v' ot (σ.(st_heap))) in
+        Val (encode_op_val ov) in
     decode_op_val v PtrOp σ.(st_heap) = Some (OVPtr l) →
     heap_at l (ot_layout ot) v' start_st σ.(st_heap).(hs_heap) →
+    decode_op_val v' ot (σ.(st_heap)) = Some ov →
     expr_step (Deref o ot (Val v)) π σ [] (to_rtexpr π end_expr) (heap_fmap (heap_upd l v' end_st) σ) []
 (* TODO: look at CAS and see whether it makes sense. Also allow
 comparing pointers? (see lambda rust) *)

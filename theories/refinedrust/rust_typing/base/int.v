@@ -137,7 +137,7 @@ Section boolean.
     rewrite bool_own_val_unfold.
     simpl.
     destruct ot; simpl in *; try done.
-    - iPureIntro. intros Hv. unfold mem_cast.
+    - iPureIntro. intros Hv.
       eexists (OVBool _). simpl.
       simp decode_op_val.
       rewrite Hv. done.
@@ -219,7 +219,7 @@ Section char.
       subst.
       rewrite bool_decide_true; last by eapply val_to_char_length.
       done.
-    - iPureIntro. intros Hv. unfold mem_cast.
+    - iPureIntro. intros Hv.
       eexists (OVChar _). simpl.
       simp decode_op_val.
       rewrite Hv. done.

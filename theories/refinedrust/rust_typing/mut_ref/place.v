@@ -38,12 +38,13 @@ Section place.
     - solve_ndisj.
     - intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v.
     - exact Hly.
-    - by apply val_decodes_to_loc_has_layout in Hdec.
+    - intros st. exists (OVPtr l'). apply Hdec.
     - iApply physical_step_intro_lc. iIntros "Hcred !>!>".
-      iIntros (st) "Hl Hc". iMod (fupd_mask_subseteq F) as "HclF"; first done.
+      iIntros (st ov) "%Hdec' Hl Hc". iMod (fupd_mask_subseteq F) as "HclF"; first done.
+    pose proof (Hdec st) as Hdec_st. rewrite Hdec_st in Hdec'. injection Hdec' as <-.
     iMod "HclF" as "_". iExists l'.
     iSplitR.
-    { iPureIntro. by apply val_decodes_to_loc_mem_cast. }
+    { iPureIntro. by apply val_to_loc_Some_l2v. }
     iApply ("HR" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
     iModIntro. iIntros (L' κs l2 bmin b2 rti tyli ri updcx) "Hb Hs".
     iApply ("HΦ" $! _ _ _ bmin with "Hb").
@@ -108,12 +109,13 @@ Section place.
     - solve_ndisj.
     - intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v.
     - exact Hly.
-    - by apply val_decodes_to_loc_has_layout in Hdec.
+    - intros st. exists (OVPtr l'). apply Hdec.
     - iApply physical_step_intro_lc. iIntros "Hcred !>!>".
-      iIntros (st) "Hl Hcl".
+      iIntros (st ov) "%Hdec' Hl Hcl".
+      pose proof (Hdec st) as Hdec_st. rewrite Hdec_st in Hdec'. injection Hdec' as <-.
       iExists l'.
       iSplitR.
-      { iPureIntro. by apply val_decodes_to_loc_mem_cast. }
+      { iPureIntro. by apply val_to_loc_Some_l2v. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
     iIntros (L'' κs' l2 bmin b2 rti tyli ri updcx) "Hb Hs".
     iApply ("HΦ" $! _ _ _ bmin with "Hb").
@@ -180,13 +182,14 @@ Section place.
     - solve_ndisj.
     - intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v.
     - exact Hly.
-    - change (vi `has_layout_val` void*). by apply val_decodes_to_loc_has_layout in Hdec.
+    - intros st. exists (OVPtr li). apply Hdec.
     - iApply physical_step_intro; iNext.
-      iIntros (st) "Hl". iMod (fupd_mask_mono with "Hb") as "#Hb"; first done.
+      iIntros (st ov) "%Hdec' Hl". iMod (fupd_mask_mono with "Hb") as "#Hb"; first done.
+    pose proof (Hdec st) as Hdec_st. rewrite Hdec_st in Hdec'. injection Hdec' as <-.
     iExists li.
       iPoseProof (ltype_own_addr_in_usize with "Hb") as "%Haddr";
     iSplitR.
-    { iPureIntro. by apply val_decodes_to_loc_mem_cast. }
+    { iPureIntro. by apply val_to_loc_Some_l2v. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
     iModIntro. iIntros (L'' κs' l2 bmin b2 rti tyli ri updcx) "Hb' Hs".
     iApply ("HΦ" $! _ _ _ bmin with "Hb'").

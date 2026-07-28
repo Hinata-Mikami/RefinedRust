@@ -1493,16 +1493,17 @@ Section judgments.
           TODO we may want to move this into a separate thing, together with moving the skip in Use to a separate annotation *)
         logical_step F (∃ v q rt (ty : type rt) r,
           ⌜l `has_layout_loc` ot_layout ot⌝ ∗ ⌜v `has_layout_val` ot_layout ot⌝ ∗ l ↦{q} v ∗
-            ▷ v ◁ᵥ{f.1, MetaNone} r @ ty ∗
+            ⌜∀ st, ∃ ov, decode_op_val v ot st = Some ov⌝ ∗ ▷ v ◁ᵥ{f.1, MetaNone} r @ ty ∗
           (* additionally, the client can assume that it can transform this to the ownership required by the continuation T *)
-          logical_step F (∀ st,
+          logical_step F (∀ st ov,
+              ⌜decode_op_val v ot st = Some ov⌝ -∗
               l ↦{q} v -∗
               v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
               ∃ L' rt' (ty' : type rt') r',
                 llctx_interp L' ∗
                 current_frame f.1 f.2 ∗
-                mem_cast v ot st ◁ᵥ{f.1, MetaNone} r' @ ty' ∗
-                T L' (mem_cast v ot st) rt' ty' r')) -∗
+                encode_op_val ov ◁ᵥ{f.1, MetaNone} r' @ ty' ∗
+                T L' (encode_op_val ov) rt' ty' r')) -∗
         (* under this knowledge, the client has to prove the postcondition *)
         Φ (l2v l)) -∗
       (* TODO: maybe different mask F *)
@@ -1530,15 +1531,17 @@ Section judgments.
         rt2 (ty2 : type rt2) r2,
         (* we can provide fractional permission ownership of the stored value [v] to the client,
           typed at an actual type [ty2] (that we can extract from [lt]) *)
-        ⌜l `has_layout_loc` ot_layout ot⌝ ∗ ⌜v `has_layout_val` ot_layout ot⌝ ∗ l ↦{q} v ∗ ▷ v ◁ᵥ{π, MetaNone} r2 @ ty2 ∗
+        ⌜l `has_layout_loc` ot_layout ot⌝ ∗ ⌜v `has_layout_val` ot_layout ot⌝ ∗
+        ⌜∀ st, ∃ ov, decode_op_val v ot st = Some ov⌝ ∗ l ↦{q} v ∗ ▷ v ◁ᵥ{π, MetaNone} r2 @ ty2 ∗
         (* prove the continuation after the client is done *)
-        logical_step F (∀ st,
+        logical_step F (∀ st ov,
+          ⌜decode_op_val v ot st = Some ov⌝ -∗
           (* assuming that the client provides the ownership back... *)
           l ↦{q} v -∗
           v ◁ᵥ{π, MetaNone} r2 @ ty2 ={F}=∗
           (* ... we transform to some new ownership [ty3] that the client "can keep" (imagine we move out of [l]) *)
           ∃ (L' : llctx) (rt3 : RT) (ty3 : type rt3) r3,
-            (mem_cast v ot st) ◁ᵥ{π, MetaNone} r3 @ ty3 ∗
+            (encode_op_val ov) ◁ᵥ{π, MetaNone} r3 @ ty3 ∗
             (* and the lifetime context *)
             llctx_interp L' ∗
             (∃ rt' (lt' : ltype rt') (r' : place_rfn rt') (res : place_update_kind_res _ _ _),
@@ -1547,7 +1550,7 @@ Section judgments.
               ⌜ltype_st lt' = ltype_st lt⌝ ∗
               res ⪯ₚ bmin ∗
               typed_place_cond res lt lt' ∗
-              T L' (mem_cast v ot st) rt3 ty3 r3 rt' lt' r' res))).
+              T L' (encode_op_val ov) rt3 ty3 r3 rt' lt' r' res))).
   Class TypedReadEnd (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (ot : op_type) (m : ReadMode) : Type :=
     typed_read_end_proof T : iProp_to_Prop (typed_read_end π E L l lt r b2 bmin ot m T).
 
@@ -2205,17 +2208,21 @@ Section laws.
     opose proof (ty_op_type_stable ty _ Hot) as Halg'.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+    iAssert (⌜∀ st, ∃ ov, decode_op_val v PtrOp st = Some ov⌝)%I as %Hdecode.
+    { iIntros (st). iPoseProof (ty_decodable _ ty PtrOp st with "Hv") as (ov) "%Hdec"; first done.
+      iPureIntro. eauto. }
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
-    iApply (wp_deref with "Hl"); [by right | | done | done | ].
+    iApply (wp_deref with "Hl"); [by right | | done | exact Hdecode | ].
     { intros. apply val_to_loc_decode. apply val_to_of_loc. by apply val_of_loc_Some_l2v. }
     iApply physical_step_intro. iNext.
-    iIntros (st) "Hl Ha".
+    iIntros (st ov) "%Hdecode' Hl Ha".
     iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & %Hdec & Hv & Hl2 & HT)"; first done.
+    specialize (Hdec st). rewrite Hdec in Hdecode'. injection Hdecode' as <-.
     iMod ("Ha" with "Hl [//] Hsc Hv") as "Hl".
     iModIntro.
     iPoseProof (ltype_own_addr_in_usize with "Hl2") as "%".
     iExists l2.
-    iSplitR. { iPureIntro. by apply val_decodes_to_loc_mem_cast. }
+    iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
     iApply ("Hcont" with "Hl3 [Hcl Hl] HT HL Hf"). simpl.
@@ -2259,18 +2266,22 @@ Section laws.
     opose proof (ty_op_type_stable ty _ Hot) as Halg'.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+    iAssert (⌜∀ st, ∃ ov, decode_op_val v PtrOp st = Some ov⌝)%I as %Hdecode.
+    { iIntros (st). iPoseProof (ty_decodable _ ty PtrOp st with "Hv") as (ov) "%Hdec"; first done.
+      iPureIntro. eauto. }
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
-    iApply (wp_deref with "Hl"); [by right | | done | done | ].
+    iApply (wp_deref with "Hl"); [by right | | done | exact Hdecode | ].
     { intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v. }
     iApply physical_step_intro. iNext.
-    iIntros (st) "Hl [Ha _]".
+    iIntros (st ov) "%Hdecode' Hl [Ha _]".
     iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & %Hdec & Hv & Hl2 & HT)"; first done.
+    specialize (Hdec st). rewrite Hdec in Hdecode'. injection Hdecode' as <-.
     iMod (fupd_mask_mono with "(Ha Hl Hv)") as "(Hl & HL)"; first done.
     iPoseProof ("HL_cl" with "HL") as "HL".
     iModIntro.
     iPoseProof (ltype_own_addr_in_usize with "Hl2") as "%".
     iExists l2.
-    iSplitR. { iPureIntro. by apply val_decodes_to_loc_mem_cast. }
+    iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
     iApply ("Hcont" with "Hl3 [Hcl Hl] HT HL Hf"). simpl.
@@ -2313,19 +2324,23 @@ Section laws.
     opose proof (ty_op_type_stable ty _ Hot) as Halg'.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "#>%Hlyv"; first done.
+    iPoseProof (ty_decodable _ ty PtrOp inhabitant with "Hv") as "#>(%ov & %Hdecode0)"; first done.
+    have Hdecode : ∀ st, ∃ ov, decode_op_val v PtrOp st = Some ov.
+    { intros st. exists ov. rewrite -(decode_op_val_stable v PtrOp inhabitant st). done. }
     iApply wpe_fupd.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
-    iApply (wp_deref with "Hloc"); [by right | | done | done | ].
+    iApply (wp_deref with "Hloc"); [by right | | done | exact Hdecode | ].
     { intros. apply val_to_loc_decode. by rewrite val_to_loc_Some_l2v. }
     iApply physical_step_intro. iNext.
-    iIntros (st) "Hloc".
+    iIntros (st ov') "%Hdecode' Hloc".
     iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & %Hdec & Hv & Hl2 & HT)"; first done.
+    specialize (Hdec st). rewrite Hdec in Hdecode'. injection Hdecode' as <-.
     iMod ("Hl_cl" with "Hloc") as "Htok".
     iMod ("HL_cl2" with "Htok") as "HL". iPoseProof ("HL_cl" with "HL") as "HL".
     iModIntro.
     iPoseProof (ltype_own_addr_in_usize with "Hl2") as "%".
     iExists l2.
-    iSplitR. { iPureIntro. by apply val_decodes_to_loc_mem_cast. }
+    iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
     iApply ("Hcont" with "Hl3 [Hcl Hv] HT HL Hf"). simpl.

@@ -27,6 +27,8 @@ Inductive op_val : Set :=
 | OVUntyped (ly : layout) (v : val)
 | OVChar (z : Z).
 
+Global Instance op_val_inhabited : Inhabited op_val := populate (OVBool false).
+
 Definition enum_variant_ot_lookup
     (variant_ots : list (var_name * op_type)) (variant : var_name) : option op_type :=
   (λ x, snd (snd x)) <$> list_find (λ x, x.1 = variant) variant_ots.
@@ -1054,109 +1056,3 @@ Proof.
   destruct ov1, ov2; try done.
   injection Hdec as <-. eauto.
 Qed.
-
-
-(** ** MemCast: Transforming bytes read from memory.
-  [mem_cast] should only be called with length of [v] matching [ot]
-  The dependence on [st] is not necessary right now, but should one day make it easier to support exposed provenance casts. *)
-Definition mem_cast (v : val) (ot : op_type) (st : (heap_state)) : val :=
-  resize (length v) MPoison $
-    default (replicate (length v) MPoison) $
-      encode_op_val <$> decode_op_val v ot st.
-
-Definition mem_cast_id (v : val) (ot : op_type) : Prop :=
-  ∀ st, mem_cast v ot st = v.
-
-Lemma mem_cast_length v ot st:
-  length (mem_cast v ot st) = length v.
-Proof.
-  rewrite /mem_cast length_resize. lia.
-Qed.
-
-
-Lemma mem_cast_id_loc' l v :
-  val_of_loc l = Some v →
-  mem_cast_id v PtrOp.
-Proof.
-  move => Hv st. rewrite /mem_cast. simp decode_op_val.
-  rewrite (val_to_of_loc _ _ Hv) /=.
-  rewrite (l2v_correct _ _ Hv). by rewrite resize_all.
-Qed.
-Lemma mem_cast_id_loc l v :
-  val_to_loc v = Some l →
-  mem_cast_id v PtrOp.
-Proof.
-  move => Hl st. rewrite /mem_cast. simp decode_op_val.
-  rewrite Hl /= (l2v_correct' _ _ Hl). by rewrite resize_all.
-Qed.
-Lemma mem_cast_id_fn_loc l v :
-  val_to_loc v = Some l →
-  mem_cast_id v FnPtrOp.
-Proof.
-  move => Hl st. rewrite /mem_cast. simp decode_op_val.
-  rewrite Hl /= (l2v_correct' _ _ Hl). by rewrite resize_all.
-Qed.
-Lemma mem_cast_id_ref_loc l v ly :
-  val_to_loc v = Some l →
-  l `has_layout_loc` ly →
-  mem_cast_id v (RefOp ly).
-Proof.
-  move => Hl Hly st. rewrite /mem_cast. simp decode_op_val.
-  rewrite Hl /= decide_True //= (l2v_correct' _ _ Hl). by rewrite resize_all.
-Qed.
-Lemma mem_cast_id_int it v n :
-  val_to_Z v it = Some n →
-  mem_cast_id v (IntOp it).
-Proof.
-  move => Hi st. rewrite /mem_cast. simp decode_op_val.
-  rewrite Hi /= (i2v_of_val_to_Z _ _ _ Hi). by rewrite resize_all.
-Qed.
-
-Lemma mem_cast_id_bool v b :
-  val_to_bool v = Some b →
-  mem_cast_id v BoolOp.
-Proof.
-  move => Hb st. rewrite /mem_cast. simp decode_op_val.
-  rewrite Hb /= (val_of_to_bool _ _ Hb). by rewrite resize_all.
-Qed.
-
-Lemma mem_cast_id_char v z :
-  val_to_char v = Some z →
-  mem_cast_id v CharOp.
-Proof.
-  move => Hz st. rewrite /mem_cast. simp decode_op_val.
-  rewrite Hz /= (val_of_to_char _ _ Hz). by rewrite resize_all.
-Qed.
-
-Lemma mem_cast_struct_reshape sl v st ots fields:
-  decode_op_val v (StructOp sl ots) st = Some (OVStruct sl fields) →
-  reshape (ly_size <$> (sl_members sl).*2) (mem_cast v (StructOp sl ots) st) =
-  reshape (ly_size <$> (sl_members sl).*2)
-    (resize (length v) MPoison (encode_op_val (OVStruct sl fields))).
-Proof.
-  intros Hdec. rewrite /mem_cast Hdec /=. done.
-Qed.
-
-Lemma mem_cast_idemp v ot st st' :
-  v `has_layout_val` (ot_layout ot) →
-  op_type_wf ot →
-  mem_cast (mem_cast v ot st) ot st' = mem_cast v ot st.
-Proof.
-  intros Hly Hwf.
-  rewrite /mem_cast.
-  destruct (decode_op_val v ot st) as [ov|] eqn:Hdec; simpl.
-  - have Hty : op_val_has_type ov ot by eapply decode_op_val_has_type.
-    have Hlen : length (encode_op_val ov) = length v.
-    { rewrite (encode_op_val_length _ _ Hwf Hty). symmetry. exact Hly. }
-    replace (resize (length v) MPoison (encode_op_val ov)) with (encode_op_val ov).
-    2: { rewrite resize_all_alt; last by symmetry. done. }
-    rewrite Hlen (decode_encode_op_val _ _ _ Hwf Hty) /=.
-    by rewrite resize_all_alt.
-  - rewrite !resize_replicate !length_replicate Hly.
-    destruct (decode_op_val (replicate (ly_size (ot_layout ot)) MPoison) ot st') as [ov|] eqn:Hpoison; simpl.
-    + rewrite (decode_poison_encode_op_val _ _ _ Hwf Hpoison). by rewrite resize_replicate.
-    + by rewrite resize_replicate.
-Qed.
-
-Global Typeclasses Opaque mem_cast_id.
-Arguments mem_cast : simpl never.

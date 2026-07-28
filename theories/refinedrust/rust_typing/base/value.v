@@ -1387,14 +1387,17 @@ Section move_value.
     iIntros "(%Hotalg & %Hot & Hs)" (F ????) "#CTX #HE HL Hb".
     iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+    iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as (ov0) "%Hdec0"; first done.
+    have Hdecode : ∀ st, ∃ ov, decode_op_val v ot st = Some ov.
+    { intros st. exists ov0. rewrite -(decode_op_val_stable v ot inhabitant st). done. }
     specialize (@ty_op_type_stable _ _ _ ty ot Hot) as Halg''.
     rewrite /use_op_alg' in Halg''.
     assert (ly = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
     iModIntro. iExists _, _, rt, _, _.
     iFrame "Hl Hv".
-    iSplitR; first done. iSplitR; first done.
+    iSplitR; first done. iSplitR; first done. iSplitR; first by iPureIntro.
     iApply (logical_step_wand with "Hcl").
-    iIntros "Hcl %st Hl Hv".
+    iIntros "Hcl %st %ov %Hdec Hl Hv".
     iPoseProof (own_val_split_value with "Hv") as "(#Hv1 & Hv)".
     { done. }
     { rewrite /use_op_alg' Hotalg /=. done. }
@@ -1409,8 +1412,9 @@ Section move_value.
       From the fact that [ty] is compatible with an optype, it doesn't follow that the corresponding value is compatible.
       Maybe this is somethign we can fix?
     *)
-    iPoseProof (ty_memcast_compat valRT (value_t true (ty.(ty_syn_type) MetaNone)) ot st with "Hv1") as "Hv2".
+    iPoseProof (ty_encode_compat valRT (value_t true (ty.(ty_syn_type) MetaNone)) ot st with "Hv1") as "Hv2".
     { rewrite ty_has_op_type_unfold. exists ot. split_and!; first done; last done. by apply is_value_ot_core_refl. }
+    { done. }
     iR. iR. iL. destruct bmin; done.
   Qed.
   (*Definition type_read_ofty_move_owned_value_inst := [instance @type_read_ofty_move_owned_value].*)
@@ -1430,11 +1434,14 @@ Section move_value.
     iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly' & %Halg' & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
     assert (ly' = ly) as ->. { by eapply syn_type_has_layout_inj. }
+    have Hdecode : ∀ st, ∃ ov, decode_op_val v (UntypedOp ly) st = Some ov.
+    { intros st. exists (OVUntyped ly v). simp decode_op_val.
+      rewrite bool_decide_true; first done. exact Hlyv. }
     iModIntro. iExists _, _, rt, _, _.
     iFrame "Hl Hv".
-    iR. iR.
+    iR. iR. iSplitR; first by iPureIntro.
     iApply (logical_step_wand with "Hcl").
-    iIntros "Hcl %st Hl Hv".
+    iIntros "Hcl %st %ov %Hdec Hl Hv".
 
     eapply syn_type_has_layout_op_alg in Halg as (ot & Hot & <-).
     iPoseProof (own_val_split_value with "Hv") as "(Hv' & Hv)".
@@ -1447,7 +1454,9 @@ Section move_value.
     { simpl. done. }
     iModIntro.
     iSpecialize ("Hs" with "Hv").
-    rewrite mem_cast_UntypedOp; last done.
+    simp decode_op_val in Hdec.
+    rewrite bool_decide_true in Hdec; last done.
+    injection Hdec as <-. simpl.
     iFrame.
     iR. iL.
     destruct bmin; done.
@@ -1475,14 +1484,17 @@ Section move_uninit.
     iIntros "(%Hotalg & %Hot & Hs)" (F ????) "#CTX #HE HL Hb".
     iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+    iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as (ov0) "%Hdec0"; first done.
+    have Hdecode : ∀ st, ∃ ov, decode_op_val v ot st = Some ov.
+    { intros st. exists ov0. rewrite -(decode_op_val_stable v ot inhabitant st). done. }
     specialize (@ty_op_type_stable _ _ _ ty ot Hot) as Halg''.
     rewrite /use_op_alg' in Halg''.
     assert (ly = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
     iModIntro. iExists _, _, rt, _, _.
     iFrame "Hl Hv".
-    iSplitR; first done. iSplitR; first done.
+    iSplitR; first done. iSplitR; first done. iSplitR; first by iPureIntro.
     iApply (logical_step_wand with "Hcl").
-    iIntros "Hcl %st Hl Hv".
+    iIntros "Hcl %st %ov %Hdec Hl Hv".
     iPoseProof (own_val_split_value with "Hv") as "(#Hv1 & Hv)".
     { done. }
     { rewrite /use_op_alg' Hotalg /=. done. }
@@ -1500,8 +1512,9 @@ Section move_uninit.
       From the fact that [ty] is compatible with an optype, it doesn't follow that the corresponding value is compatible.
       Maybe this is somethign we can fix?
     *)
-    iPoseProof (ty_memcast_compat valRT (value_t true (ty.(ty_syn_type) MetaNone)) ot st with "Hv1") as "Hv2".
+    iPoseProof (ty_encode_compat valRT (value_t true (ty.(ty_syn_type) MetaNone)) ot st with "Hv1") as "Hv2".
     { rewrite ty_has_op_type_unfold. exists ot. split_and!; first done; last done. by apply is_value_ot_core_refl. }
+    { done. }
     iPoseProof (own_val_merge_value_typed with "Hv2 Hv") as "$".
     { rewrite /use_op_alg' Hotalg//. }
     iR. iL. destruct bmin; done.
@@ -1531,17 +1544,20 @@ Section move_uninit.
     iPoseProof (ofty_ltype_acc_uniq with "CTX Htok Hcl_tok Hb") as "(%ly & %Halg & %Hly & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
 
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+    iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as (ov0) "%Hdec0"; first done.
+    have Hdecode : ∀ st, ∃ ov, decode_op_val v ot st = Some ov.
+    { intros st. exists ov0. rewrite -(decode_op_val_stable v ot inhabitant st). done. }
     specialize (@ty_op_type_stable _ _ _ ty ot Hot) as Halg''.
     rewrite /use_op_alg' in Halg''.
     assert (ly = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
     iMod "Hcl_F" as "_".
     iModIntro. iExists _, _, rt, _, _.
     iFrame "Hl Hv".
-    iR. iR.
+    iR. iR. iSplitR; first by iPureIntro.
 
     iApply (logical_step_mask_mono lftE); first done.
     iApply (logical_step_wand with "Hcl").
-    iIntros "[_ Hcl] %st Hl Hv".
+    iIntros "[_ Hcl] %st %ov %Hdec Hl Hv".
     iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
 
     iPoseProof (own_val_split_value with "Hv") as "(#Hv1 & Hv)".
@@ -1561,8 +1577,9 @@ Section move_uninit.
       From the fact that [ty] is compatible with an optype, it doesn't follow that the corresponding value is compatible.
       Maybe this is somethign we can fix?
     *)
-    iPoseProof (ty_memcast_compat valRT (value_t true (ty.(ty_syn_type) MetaNone)) ot st with "Hv1") as "Hv2".
+    iPoseProof (ty_encode_compat valRT (value_t true (ty.(ty_syn_type) MetaNone)) ot st with "Hv1") as "Hv2".
     { rewrite ty_has_op_type_unfold. exists ot. split_and!; first done; last done. by apply is_value_ot_core_refl. }
+    { done. }
     iPoseProof (own_val_merge_value_typed with "Hv2 Hv") as "$".
     { rewrite /use_op_alg' Hotalg//. }
     iFrame.

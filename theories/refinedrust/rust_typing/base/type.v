@@ -532,23 +532,6 @@ Proof.
   by eapply is_same_decoded_val_at_encode; [eapply ty_op_type_wf |].
 Qed.
 
-Lemma ty_memcast_compat `{!typeGS Σ} rt (ty : type rt) ot st π r v :
-  ty_has_op_type ty ot →
-  ty.(ty_own_val) π r MetaNone v -∗
-  ty.(ty_own_val) π r MetaNone (mem_cast v ot st).
-Proof.
-  intros Hot.
-  iIntros "Hv".
-  iPoseProof (ty_decodable rt ty ot st π r v with "Hv") as (ov) "%Hdec"; [done | ].
-  iPoseProof (ty_encode_compat rt ty ot st π r v ov with "Hv") as "Hv"; [done | done | ].
-  rewrite /mem_cast Hdec /=.
-  replace (resize (length v) MPoison (encode_op_val ov)) with (encode_op_val ov); first done.
-  rewrite resize_all_alt; last first.
-  { rewrite (encode_op_val_length _ _ (@ty_op_type_wf Σ _ rt ty ot Hot) (decode_op_val_has_type _ _ _ _ Hdec)).
-    by eapply decode_op_val_has_layout. }
-  done.
-Qed.
-
 (** We seal [ty_ghost_drop] in order to avoid performance issues with Qed times. *)
 Definition ty_ghost_drop_aux `{!typeGS Σ} : seal (@_ty_ghost_drop _ _). Proof. by eexists. Qed.
 Definition ty_ghost_drop `{!typeGS Σ} := ty_ghost_drop_aux.(unseal).

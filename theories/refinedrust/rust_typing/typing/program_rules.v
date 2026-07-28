@@ -3427,23 +3427,25 @@ Section subsume.
     iApply wp_skip.
     iApply (physical_step_intro_tr with "Ha").
     iNext. iIntros "Hat Hcred!>".
-    iIntros "(%v & %q & %rt & %ty & %r & %Hlyv & %Hv & Hl & Hv & Hcl)".
+    iIntros "(%v & %q & %rt & %ty & %r & %Hlyv & %Hv & Hl & %Hdec & Hv & Hcl)".
     iModIntro. iApply (wpe_logical_step with "Hcl"); [solve_ndisj.. | ].
     iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
-    iApply (wp_deref with "Hl") => //; try by eauto using val_to_of_loc.
-    { destruct o; naive_solver. }
-    { intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v. }
-    iApply (physical_step_intro_tr with "Hat").
-    iIntros "!> Hat Hcred2 !> %st Hl Hcl".
-    iMod ("Hcl" with "Hl Hv") as "(%L' & %rt' & %ty' & %r' & HL & Hf & Hv & HT)".
-    iMod ("HT" with "[] [$] HE HL [Hat Hcred2]") as "(%L3 & HL & HT)"; first done.
-    { iSplitL "Hat".
-      - iApply tr_weaken; last done.
-        simpl. unfold num_laters_per_step; lia.
-      - iApply lc_weaken; last done.
-        simpl. unfold num_laters_per_step, num_cred; lia. }
-    by iApply ("HΦ" with "HL Hf Hv HT").
+    iApply (wp_deref with "Hl").
+    - destruct o; naive_solver.
+    - intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v.
+    - done.
+    - exact Hdec.
+    - iApply (physical_step_intro_tr with "Hat").
+      iIntros "!> Hat Hcred2 !> %st %ov %Hdec' Hl Hcl".
+      iMod ("Hcl" $! st ov with "[//] Hl Hv") as "(%L' & %rt' & %ty' & %r' & HL & Hf & Hv & HT)".
+      iMod ("HT" with "[] [$] HE HL [Hat Hcred2]") as "(%L3 & HL & HT)"; first done.
+      { iSplitL "Hat".
+        - iApply tr_weaken; last done.
+          simpl. unfold num_laters_per_step; lia.
+        - iApply lc_weaken; last done.
+          simpl. unfold num_laters_per_step, num_cred; lia. }
+      by iApply ("HΦ" with "HL Hf Hv HT").
   Qed.
   Lemma type_copy E L f ot e o (T : typed_val_expr_cont_t) :
     ⌜if o is Na2Ord then False else True⌝ ∗
@@ -3584,12 +3586,12 @@ Section subsume.
     iPoseProof (full_eqltype_use F with "CTX HE HL") as "(Hincl' & HL)"; first done; first apply Heqt.
     iMod  ("Hincl'" with "Hl2") as "Hl2".
     iMod ("HT" with "[//] [//] [//] [//] CTX HE HL Hl2") as "Hread".
-    iDestruct "Hread" as (q v rt2 ty2' r2) "(% & % & Hl2 & Hv & Hcl)".
-    iModIntro. iExists v, q, _, _, _. iR. iR.
-    iFrame "Hl2 Hv".
+    iDestruct "Hread" as (q v rt2 ty2' r2) "(% & % & % & Hl2 & Hv & Hcl)".
+    iModIntro. iExists v, q, rt2, ty2', r2. iR. iR. iFrame "Hl2".
+    iSplitR; first done. iFrame "Hv".
     iApply (logical_step_wand with "Hcl").
-    iIntros "Hcl" (st) "Hl2 Hv".
-    iMod ("Hcl" $! st with "Hl2 Hv") as (L3 rt4 ty4 r4) "(Hmv & HL & Hcl)".
+    iIntros "Hcl" (st ov) "%Hdec Hl2 Hv".
+    iMod ("Hcl" $! st ov with "[//] Hl2 Hv") as (L3 rt4 ty4 r4) "(Hmv & HL & Hcl)".
     iDestruct "Hcl" as "(%rt' & %lt' & %r' & %res & Hl2 & %Hsteq & #Hincl2 & Hcond2 & Hfin)" => /=.
 
     set (upd_inner := typed_place_finish_upd (place_update_kind_res_trans upd res) lt' r').
@@ -3629,16 +3631,18 @@ Section subsume.
     - iIntros "Hb".
       iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & #Hv & Hcl))"; first done.
       iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+      iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as (ov0) "%Hdec0"; first done.
+      have Hdecode : ∀ st, ∃ ov, decode_op_val v ot st = Some ov.
+      { intros st. exists ov0. rewrite -(decode_op_val_stable v ot inhabitant st). done. }
       opose proof (ty_op_type_stable ty _ Hot) as Halg''.
       assert (ly = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
       iModIntro. iExists _, _, rt, _, _.
       iFrame "Hl Hv".
-      iSplitR; first done. iSplitR; first done.
+      iSplitR; first done. iSplitR; first done. iSplitR; first by iPureIntro.
       iApply (logical_step_wand with "Hcl").
-      iIntros "Hcl %st Hl _". iMod ("Hcl" with "Hl [//] Hsc Hv") as "Hl".
+      iIntros "Hcl %st %ov %Hdec Hl _". iMod ("Hcl" with "Hl [//] Hsc Hv") as "Hl".
       iModIntro. iExists L, rt, ty, r.
-      iPoseProof (ty_memcast_compat with "Hv") as "Ha".
-      { done. }
+      iPoseProof (ty_encode_compat with "Hv") as "Ha"; [done | done |].
       iFrame "Ha HL".
       iExists _, _, _, weak_upd. iFrame.
       iR. iSplitR. { iApply upd_bot_min. }
@@ -3658,16 +3662,18 @@ Section subsume.
       assert (ly = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
 
       iDestruct (ty_own_val_has_layout with "Hv") as "#>%Hlyv"; first done.
+      iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as "#>(%ov0 & %Hdec0)"; first done.
+      have Hdecode : ∀ st, ∃ ov, decode_op_val v ot st = Some ov.
+      { intros st. exists ov0. rewrite -(decode_op_val_stable v ot inhabitant st). done. }
       iModIntro. iExists _, _, rt, _, _. iFrame "Hll Hv".
-      iSplitR; first done. iSplitR; first done.
-      iApply logical_step_intro. iIntros (st) "Hll Hv'".
+      iSplitR; first done. iSplitR; first done. iSplitR; first by iPureIntro.
+      iApply logical_step_intro. iIntros (st ov) "%Hdec Hll Hv'".
       iMod ("Hclose_l" with "[Hv Hll]") as "Htok".
       { eauto with iFrame. }
       iMod ("Hclose" with "Htok HL") as "HL".
       iPoseProof ("HL_cl" with "HL") as "HL".
       iModIntro. iExists L, rt, ty, r.
-      iPoseProof (ty_memcast_compat with "Hv'") as "Hid".
-      { done. }
+      iPoseProof (ty_encode_compat with "Hv'") as "Hid"; [done | done |].
       simpl. iFrame.
 
       iExists _, _, _, weak_upd.
@@ -3686,15 +3692,17 @@ Section subsume.
       { opose proof (ty_op_type_stable ty _ Hot) as ?.
         eapply syn_type_has_layout_inj; done. }
       iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+      iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as (ov0) "%Hdec0"; first done.
+      have Hdecode : ∀ st, ∃ ov, decode_op_val v ot st = Some ov.
+      { intros st. exists ov0. rewrite -(decode_op_val_stable v ot inhabitant st). done. }
       iModIntro. iExists _, _, _, _, _. iFrame.
-      iSplitR; first done. iSplitR; first done.
+      iSplitR; first done. iSplitR; first done. iSplitR; first by iPureIntro.
       iApply logical_step_mask_mono; last iApply (logical_step_wand with "Hcl"); first done.
       iIntros "[Hcl _]".
-      iIntros (st) "Hl #Hv".
+      iIntros (st ov) "%Hdec Hl #Hv".
       iMod (fupd_mask_mono with "(Hcl Hl Hv)") as "(Hl & HL)"; first done.
       iPoseProof ("HL_cl" with "HL") as "HL".
-      iPoseProof (ty_memcast_compat with "Hv") as "Hid".
-      { done. }
+      iPoseProof (ty_encode_compat with "Hv") as "Hid"; [done | done |].
       simpl.
       iModIntro. iExists L, rt, ty, r. iFrame "Hid HL".
 
