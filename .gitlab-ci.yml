@@ -253,7 +253,7 @@ build-opam-iris.dev:
     STDPP_REPO: "iris/stdpp"
     IRIS_REPO: "iris/iris"
     OPAMIGNOREPINDEPENDS: "true" # so that the pins below don't get overridden
-    OPAM_PINS: "rocq-core version 9.2.0 rocq-stdlib version 9.1.0 git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV   git+https://gitlab.mpi-sws.org/$IRIS_REPO#$IRIS_REV  git+https://gitlab.mpi-sws.org/iris/iris-contrib  git+https://gitlab.mpi-sws.org/iris/lambda-rust  rocq-smtcoq.dev git git+https://github.com/smtcoq/smtcoq rocq-sniper.dev git git+https://github.com/smtcoq/sniper  rocq-trakt.dev git git+https://github.com/rocq-trakt/trakt"
+    OPAM_PINS: "dune version 3.23.1 rocq-core version 9.2.0 rocq-stdlib version 9.1.0 git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV   git+https://gitlab.mpi-sws.org/$IRIS_REPO#$IRIS_REV  git+https://gitlab.mpi-sws.org/iris/iris-contrib  git+https://gitlab.mpi-sws.org/iris/lambda-rust  rocq-smtcoq.dev git git+https://github.com/smtcoq/smtcoq rocq-sniper.dev git git+https://github.com/smtcoq/sniper  rocq-trakt.dev git git+https://github.com/rocq-trakt/trakt"
   script:
    - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
    - make setup-dune-workspace
