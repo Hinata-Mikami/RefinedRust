@@ -4,9 +4,6 @@ From refinedrust.examples.evenint.generated Require Import generated_code_evenin
 
 Set Default Proof Using "Type".
 
-
-From iris.proofmode Require Import coq_tactics reduction string_ident.
-
 Section proof.
 Context `{!refinedrustGS Σ}.
 

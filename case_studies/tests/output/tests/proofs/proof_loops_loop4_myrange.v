@@ -4,9 +4,6 @@ From refinedrust.examples.tests.generated Require Import generated_code_tests ge
 
 Set Default Proof Using "Type".
 
-From iris.proofmode Require Import coq_tactics reduction string_ident.
-
-
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 
