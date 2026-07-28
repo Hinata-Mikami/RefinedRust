@@ -1035,6 +1035,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             "MetaRocq.Common",
             "MetaRocq.Utils",
             "MetaRocq.Template",
+            "ExtLib",
             "Trakt",
             "SMTCoq",
             "Sniper",
