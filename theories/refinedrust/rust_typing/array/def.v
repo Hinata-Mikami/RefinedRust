@@ -13,22 +13,40 @@ Local Open Scope nat_scope.
 *)
 
 
-(* TODO: should we also have an ArrayOp that reads the array elements at an op that is valid for the element types? *)
 Definition is_array_ot `{!typeGS Σ} {rt} (ty : type rt) (len : nat) (ot : op_type) : Prop :=
   match ot with
+  | ArrayOp element_ot len' =>
+      len' = len ∧
+      ty_has_op_type ty element_ot ∧
+      (ly_size (ot_layout element_ot) * len ≤ MaxInt ISize)%Z
   | UntypedOp ly =>
       syn_type_has_layout (ArraySynType (ty.(ty_syn_type) MetaNone) len) ly
-      (*
-      ∃ ly', ly = mk_array_layout ly' len ∧
-        (*ty_has_op_type ty (UntypedOp ly') mt ∧*)
-        (* required for offsetting with LLVM's GEP *)
-        (ly_size ly ≤ MaxInt ISize)%Z ∧
-        (* enforced by Rust *)
-        layout_wf ly'
-       *)
   | _ => False
   end.
 Global Typeclasses Opaque is_array_ot.
+
+Lemma is_same_decoded_val_at_array_inv st v ot len v' :
+  is_same_decoded_val_at st v (ArrayOp ot len) v' →
+  Forall2 (λ v1 v2, is_same_decoded_val_at st v1 ot v2)
+    (reshape (replicate len (ly_size (ot_layout ot))) v)
+    (reshape (replicate len (ly_size (ot_layout ot))) v').
+Proof.
+  intros [Heq [ov Hdec]].
+  pose proof (decode_op_val_has_layout _ _ _ _ Hdec) as Hly.
+  assert (Hdec' : decode_op_val v' (ArrayOp ot len) st = Some ov) by congruence.
+  pose proof (decode_op_val_has_layout _ _ _ _ Hdec') as Hly'.
+  simp decode_op_val in Hdec, Hdec'.
+  rewrite /has_layout_val in Hly, Hly'.
+  rewrite bool_decide_true in Hdec; last done.
+  rewrite bool_decide_true in Hdec'; last done.
+  apply bind_Some in Hdec as (elements & Helements & Hov).
+  apply bind_Some in Hdec' as (elements' & Helements' & Hov').
+  injection Hov as <-. injection Hov' as <-.
+  apply list_map_option_alt in Helements, Helements'.
+  pose proof (Forall2_common_r _ _ _ _ Helements Helements') as Hsame.
+  eapply Forall2_impl; first exact Hsame.
+  intros x y (element & Hx & Hy). split; first congruence. eauto.
+Qed.
 
 Section array.
   Context `{!typeGS Σ}.
@@ -36,6 +54,26 @@ Section array.
 
   Definition array_own_el_val (π : thread_id) (ty : type rt) (r : place_rfn rt) (v : val) : iProp Σ :=
     ∃ r', place_rfn_interp_owned r r' ∗ ty.(ty_own_val) π r' MetaNone v.
+
+  Lemma array_own_el_val_decode_compat_list π (ty : type rt) ot st rs vs vs' :
+    ty_has_op_type ty ot →
+    length rs = length vs →
+    Forall2 (λ v1 v2, is_same_decoded_val_at st v1 ot v2) vs vs' →
+    ([∗ list] r;v ∈ rs;vs, array_own_el_val π ty r v) -∗
+    [∗ list] r;v ∈ rs;vs', array_own_el_val π ty r v.
+  Proof.
+    intros Hot Hlen Hsame. induction Hsame as [|v1 v2 vs vs' Hsame Hrest IH]
+      in rs, Hlen |-*.
+    - destruct rs as [|r rs].
+      + simpl. iIntros "_". done.
+      + simpl in Hlen. lia.
+    - destruct rs as [|r rs]; simpl in Hlen; first lia.
+      simpl. iIntros "(Hv & Hvs)". iSplitL "Hv".
+      + iDestruct "Hv" as "(%r' & Hrfn & Hv)". iExists r'. iFrame.
+        by iApply (ty_decode_compat with "Hv").
+      + iApply IH; first lia. done.
+  Qed.
+
   Definition array_own_el_loc (π : thread_id) (q : Qp) (v : val) (i : nat) (ly : layout) (ty : type rt) (r : place_rfn rt) (l : loc) : iProp Σ :=
     ∃ r', (l offset{ly}ₗ i) ↦{q} v ∗ place_rfn_interp_owned r r' ∗ ty.(ty_own_val) π r' MetaNone v.
   Definition array_own_el_shr (π : thread_id) (κ : lft) (i : nat) (ly : layout) (ty : type rt) (r : place_rfn rt) (l : loc) : iProp Σ :=
@@ -171,14 +209,12 @@ Section array.
       done.
     - iIntros (ot Hot).
       destruct ot; try done.
-      (*destruct Hot as (ly' & -> & Hot & Hsz & Hwf).*)
-      (*eapply ty_op_type_stable in Hot.*)
-      (*eapply syn_type_has_layout_array.*)
-      (*- done.*)
-      (*- done.*)
-      (*- rewrite /ly_size /mk_array_layout in Hsz. simpl in Hsz. lia.*)
+      destruct Hot as (-> & Hot & Hsz). simpl.
+      eapply syn_type_has_layout_array; [done | | done].
+      by eapply ty_op_type_stable.
     - intros ot Hot.
-      destruct ot; simpl in *; done.
+      destruct ot; simpl in *; try done.
+      destruct Hot as (_ & Hot & _). by eapply ty_op_type_wf.
     - iIntros (π r m v) "_". done.
     - iIntros (κ π r m v) "_". done.
     - unfold TCNoResolve. rewrite array_t_shr_unfold. apply _.
@@ -284,20 +320,53 @@ Section array.
     rewrite /array_t_own_val array_t_own_val_aux.(seal_eq) /array_t_own_val_def.
     iIntros "Hb".
     iDestruct "Hb" as "(%ly & _ & %Hst & %Hsz & %Hlen & %Hly & Hb)".
-    destruct ot as [ | | | | | ? ? ? | ly' | ]; try done.
-    iExists (OVUntyped ly' v).
-    iPureIntro.
-    pose proof (syn_type_has_layout_array (ty_syn_type ty MetaNone) len ly (mk_array_layout ly len) eq_refl Hst Hsz) as Hst_array.
-    assert (ly' = mk_array_layout ly len) as ->.
-    { by eapply syn_type_has_layout_inj. }
-    simp decode_op_val. rewrite bool_decide_true; first done.
-    exact Hly.
+    rewrite /is_array_ot in Hot.
+    destruct ot as [ | | | | | ot n | ? ? ? | ly' | | ]; try done.
+    + destruct Hot as (-> & Hot & _).
+      pose proof (ty_op_type_stable _ _ Hot) as Hot_layout.
+      assert (ot_layout ot = ly) as Hotly by by eapply syn_type_has_layout_inj.
+      iAssert ([∗ list] r';v' ∈ r;reshape (replicate len (ly_size ly)) v,
+          ∃ ov, ⌜decode_op_val v' ot st = Some ov⌝)%I with "[Hb]" as "Hb".
+      { iApply (big_sepL2_mono with "Hb").
+        iIntros (k r' v' Hr' Hv') "(%r'' & Hrfn & Hv)".
+        iPoseProof (ty_decodable _ ty ot st π r'' v' with "Hv") as (ov) "%Hdec"; first done.
+        iExists ov. done. }
+      iPoseProof (big_sepL2_exists_r with "Hb") as "(%elements & %Helements_len & Hb)".
+      iPoseProof (big_sepL2_elim_l with "Hb") as "Hb".
+      iPoseProof (big_sepL2_from_zip _ _ (λ _ v' ov, ⌜decode_op_val v' ot st = Some ov⌝)%I
+        with "Hb") as "Hb"; first done.
+      iPoseProof (big_sepL2_Forall2 with "Hb") as "%Helements".
+      iExists (OVArray elements). iPureIntro. simp decode_op_val.
+      rewrite Hotly.
+      rewrite bool_decide_true; last exact Hly.
+      apply bind_Some. exists elements. split; last done.
+      by apply list_map_option_alt.
+    + iExists (OVUntyped ly' v).
+      iPureIntro.
+      pose proof (syn_type_has_layout_array (ty_syn_type ty MetaNone) len ly (mk_array_layout ly len) eq_refl Hst Hsz) as Hst_array.
+      assert (ly' = mk_array_layout ly len) as ->.
+      { by eapply syn_type_has_layout_inj. }
+      simp decode_op_val. rewrite bool_decide_true; first done.
+      exact Hly.
     - iIntros (ot st π r v v' Hot Hsame) "Hv".
-    destruct ot as [ | | | | | ? ? ? | ly | ]; try done.
-    pose proof (is_same_decoded_val_at_has_layout_l _ _ _ _ Hsame) as Hly.
-    pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly'.
-    pose proof (is_same_decoded_val_at_untyped_inv _ _ _ _ Hly Hly' Hsame) as ->.
-    done.
+    rewrite /is_array_ot in Hot.
+    destruct ot as [ | | | | | ot n | ? ? ? | ly | | ]; try done.
+    + destruct Hot as (-> & Hot & _).
+      rewrite /array_t_own_val array_t_own_val_aux.(seal_eq) /array_t_own_val_def.
+      iDestruct "Hv" as "(%ly & _ & %Hst & %Hsz & %Hlen & %Hly & Hv)".
+      pose proof (ty_op_type_stable _ _ Hot) as Hot_layout.
+      assert (ot_layout ot = ly) as Hotly by by eapply syn_type_has_layout_inj.
+      pose proof (is_same_decoded_val_at_array_inv st v ot len v' Hsame) as Hsame_elements.
+      rewrite Hotly in Hsame_elements.
+      pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly'.
+      iExists ly. do 4 iR. iSplitR.
+      { iPureIntro. simpl in Hly'. rewrite Hotly in Hly'. exact Hly'. }
+      iApply (array_own_el_val_decode_compat_list with "Hv"); [done | | done].
+      rewrite length_reshape length_replicate. done.
+    + pose proof (is_same_decoded_val_at_has_layout_l _ _ _ _ Hsame) as Hly.
+      pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly'.
+      pose proof (is_same_decoded_val_at_untyped_inv _ _ _ _ Hly Hly' Hsame) as ->.
+      done.
     - intros ly _ Hst.
     done.
     (*
@@ -349,7 +418,9 @@ Section ne.
       intros ?? _ Hst Hot.
       intros ot .
       destruct ot; try done.
-      rewrite Hst. done.
+      + split; intros (-> & Hot' & Hsize); split_and!; try done;
+          rewrite ty_has_op_type_unfold in Hot' |- *; by apply Hot.
+      + rewrite Hst. done.
     - done.
     - intros.
       rewrite /ty_own_val/= array_t_own_val_unfold.

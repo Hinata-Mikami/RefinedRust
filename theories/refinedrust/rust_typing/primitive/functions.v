@@ -196,7 +196,7 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
     simpl. iIntros (lfts lya rts fp ot st π r v Hot).
     iIntros "(%fn & %Hv & Hfntbl & %Halg & Hfn)".
     iPureIntro.
-    destruct ot as [| | | | | |ly| ]; simpl in Hot; try done.
+    destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
     - exists (OVFnPtr r).
       simp decode_op_val. rewrite Hv//.
     - subst ly. eexists. simp decode_op_val.
@@ -207,7 +207,7 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
     simpl. iIntros (lfts lya rts fp ot st π r v v' Hot Hsame).
     iIntros "(%fn & %Hv & Hfntbl & %Halg & Hfn)".
     iExists fn. iFrame. iPureIntro. split; last done.
-    destruct ot as [| | | | | |ly| ]; simpl in Hot; try done.
+    destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
     - destruct Hsame as [Heq _].
       simp decode_op_val in Heq.
       destruct (val_to_loc v), (val_to_loc v'); try done.

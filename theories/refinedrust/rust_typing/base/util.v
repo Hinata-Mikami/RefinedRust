@@ -128,6 +128,18 @@ Proof.
   rewrite take_0 drop_0. f_equiv. apply IH.
 Qed.
 
+
+Lemma Forall2_common_r {A B} (R : A → B → Prop) xs ys zs :
+  Forall2 R xs zs →
+  Forall2 R ys zs →
+  Forall2 (λ x y, ∃ z, R x z ∧ R y z) xs ys.
+Proof.
+  intros Hxs. induction Hxs as [|x z xs zs Hxz Hxs IH] in ys |-*.
+  - intros Hys. apply Forall2_nil_inv_r in Hys as ->. constructor.
+  - intros Hys. apply Forall2_cons_inv_r in Hys as (y & ys' & Hyz & Hys & ->).
+    constructor; first eauto. by apply IH.
+Qed.
+
 Lemma Forall_Forall_join {A} (l : list (list A)) P :
   Forall (Forall P) l ↔ Forall P (mjoin l).
 Proof.

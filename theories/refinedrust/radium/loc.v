@@ -313,3 +313,6 @@ Qed.
 
 #[export] Instance aligned_to_dec l n : Decision (l `aligned_to` n).
 Proof. rewrite /aligned_to. eapply BoolSpec_sumbool. apply Z.BoolSpec_divide. Qed.
+
+#[export] Instance has_layout_loc_dec l ly : Decision (l `has_layout_loc` ly).
+Proof. rewrite /has_layout_loc. apply _. Defined.

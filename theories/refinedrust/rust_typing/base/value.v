@@ -33,25 +33,67 @@ Proof.
   by eapply use_op_alg_layout_alg.
 Qed.
 
-(* TODO: will change once we have [ArrayOp] *)
-Lemma use_op_alg_typed_array `{!LayoutAlg} typed st n ly :
+Lemma use_op_alg_typed_array `{!LayoutAlg} typed st n ly ot :
   syn_type_has_layout (ArraySynType st n) (mk_array_layout ly n) →
-  use_op_alg_typed typed (ArraySynType st n) = Some (UntypedOp (mk_array_layout ly n)).
+  use_op_alg st = Some ot →
+  use_op_alg_typed typed (ArraySynType st n) =
+    Some (if typed then ArrayOp ot n else UntypedOp (mk_array_layout ly n)).
 Proof.
-  intros Hst. rewrite /syn_type_has_layout in Hst.
-  destruct typed; rewrite /use_op_alg_typed /use_op_alg /=.
-  - rewrite Hst. done.
+  intros Hst Hot. rewrite /syn_type_has_layout in Hst.
+  destruct typed; rewrite /use_op_alg_typed /=.
+  - by eapply use_op_alg_array.
   - apply bind_Some. eexists. split; last done.
     by apply syn_type_has_layout_untyped.
 Qed.
 Lemma use_op_alg_typed_array_inv `{!LayoutAlg} typed st n ly ot :
   syn_type_has_layout (ArraySynType st n) (mk_array_layout ly n) →
   use_op_alg_typed typed (ArraySynType st n) = Some ot →
-  ot = UntypedOp (mk_array_layout ly n).
+  ∃ element_ot,
+    use_op_alg st = Some element_ot ∧
+    ot = if typed then ArrayOp element_ot n else UntypedOp (mk_array_layout ly n).
 Proof.
   intros Hst Hot.
-  rewrite (use_op_alg_typed_array typed st n ly Hst) in Hot.
-  injection Hot as ->. done.
+  apply syn_type_has_layout_array_inv in Hst as (ly' & Hst' & Heq & Hsize).
+  pose proof Hst' as Hst_layout.
+  apply syn_type_has_layout_op_alg in Hst' as (element_ot & Helement & Hlayout).
+  exists element_ot. split; first done.
+  assert (Harray : syn_type_has_layout (ArraySynType st n) (mk_array_layout ly' n)).
+  { apply syn_type_has_layout_array with (ly := ly'); [reflexivity | exact Hst_layout |].
+    apply (f_equal ly_size) in Heq.
+    rewrite !ly_size_mk_array_layout in Heq, Hsize |- *. lia. }
+  rewrite (use_op_alg_typed_array typed st n ly' element_ot Harray Helement) in Hot.
+  destruct typed; simpl in *; congruence.
+Qed.
+
+Lemma is_same_decoded_val_array_app_inv r1 r2 v1 v2 ot n1 n2 :
+  length r1 = (n1 * ly_size (ot_layout ot))%nat →
+  length r2 = (n2 * ly_size (ot_layout ot))%nat →
+  length v1 = (n1 * ly_size (ot_layout ot))%nat →
+  length v2 = (n2 * ly_size (ot_layout ot))%nat →
+  is_same_decoded_val (r1 ++ r2) (ArrayOp ot (n1 + n2)) (v1 ++ v2) →
+  is_same_decoded_val r1 (ArrayOp ot n1) v1 ∧
+  is_same_decoded_val r2 (ArrayOp ot n2) v2.
+Proof.
+  intros Hr1_len Hr2_len Hv1_len Hv2_len Hsame.
+  assert (Hparts : ∀ hst,
+      is_same_decoded_val_at hst r1 (ArrayOp ot n1) v1 ∧
+      is_same_decoded_val_at hst r2 (ArrayOp ot n2) v2).
+  { intros hst. destruct (Hsame hst) as [Heq [ov Hr]].
+    assert (Hv : decode_op_val (v1 ++ v2) (ArrayOp ot (n1 + n2)) hst = Some ov)
+      by congruence.
+    pose proof (decode_op_val_has_type _ _ _ _ Hr) as Hty.
+    inversion Hty; subst ov.
+    destruct (decode_op_val_array_app_inv r1 r2 ot n1 n2 hst elements
+      Hr1_len Hr2_len Hr) as (elements1 & elements2 & Hr1 & Hr2 & Helements).
+    destruct (decode_op_val_array_app_inv v1 v2 ot n1 n2 hst elements
+      Hv1_len Hv2_len Hv) as (elements1' & elements2' & Hv1 & Hv2 & Helements').
+    pose proof (decode_op_val_has_type _ _ _ _ Hr1) as Hty1.
+    pose proof (decode_op_val_has_type _ _ _ _ Hv1) as Hty1'.
+    inversion Hty1; inversion Hty1'; subst.
+    destruct (app_inj_1 elements1 elements1' elements2 elements2' ltac:(lia)
+      ltac:(congruence)) as [-> ->].
+    split; split; try congruence; eauto. }
+  split; intros hst; [exact (proj1 (Hparts hst)) | exact (proj2 (Hparts hst))].
 Qed.
 
 (** [ot] is the optype of the value, [ot'] is the optype we are accessing it at *)
@@ -371,25 +413,63 @@ Section lemmas.
     assert (ly_size ly_st * n2 ≤ MaxInt ISize)%Z as Hsz2' by lia.
     pose proof (syn_type_has_layout_array st n1 ly_st (mk_array_layout ly_st n1) eq_refl Hst Hsz1') as Halg1.
     pose proof (syn_type_has_layout_array st n2 ly_st (mk_array_layout ly_st n2) eq_refl Hst Hsz2') as Halg2.
-    pose proof (use_op_alg_typed_array_inv typed st n1 ly_st ot1 Halg1 Heq1) as ->.
-    pose proof (use_op_alg_typed_array_inv typed st n2 ly_st ot2 Halg2 Heq2) as ->.
-    iR. iExists (UntypedOp (mk_array_layout ly_st (n1 + n2))).
-    iSplitR. { iPureIntro. apply use_op_alg_typed_array.
-      eapply syn_type_has_layout_array; [done | done |].
+    destruct (use_op_alg_typed_array_inv typed st n1 ly_st ot1 Halg1 Heq1)
+      as (element_ot1 & Helement1 & Hot1').
+    destruct (use_op_alg_typed_array_inv typed st n2 ly_st ot2 Halg2 Heq2)
+      as (element_ot2 & Helement2 & Hot2').
+    assert (element_ot2 = element_ot1) as -> by by eapply use_op_alg_inj.
+    assert (Helement_layout : ot_layout element_ot1 = ly_st).
+    { pose proof (use_op_alg_layout_alg _ _ Helement1) as Hlayout.
+      rewrite /syn_type_has_layout in Hst. congruence. }
+    assert (Halg : syn_type_has_layout (ArraySynType st (n1 + n2))
+        (mk_array_layout ly_st (n1 + n2))).
+    { eapply syn_type_has_layout_array; [done | done |].
       rewrite ly_size_mk_array_layout in Hsz. lia. }
-    iSplitR. {
-      iPureIntro.
-      pose proof (is_same_decoded_val_has_layout_l _ _ _ Hmc1) as Hrly1.
+    destruct typed; simpl in Hot1', Hot2'; subst ot1 ot2.
+    - pose proof (is_same_decoded_val_has_layout_l _ _ _ Hmc1) as Hrly1.
       pose proof (is_same_decoded_val_has_layout_l _ _ _ Hmc2) as Hrly2.
-      pose proof (is_same_decoded_val_untyped_inv _ _ _ Hrly1 Hly1 Hmc1) as ->.
-      pose proof (is_same_decoded_val_untyped_inv _ _ _ Hrly2 Hly2 Hmc2) as ->.
-      apply is_same_decoded_val_refl. intros hst.
-      exists (OVUntyped (mk_array_layout ly_st (n1 + n2)) (v1 ++ v2)). simp decode_op_val.
-      rewrite /has_layout_val length_app.
-      rewrite /has_layout_val in Hly1, Hly2.
-      rewrite !ly_size_mk_array_layout in Hly1, Hly2.
-      rewrite ly_size_mk_array_layout.
-      case_bool_decide; done || lia. }
+      rewrite /has_layout_val /= !ly_size_mk_array_layout Helement_layout in Hrly1, Hrly2, Hly1, Hly2.
+      assert (Hrly1' : length r1 = n1 * ly_size (ot_layout element_ot1)).
+      { rewrite Helement_layout. lia. }
+      assert (Hrly2' : length r2 = n2 * ly_size (ot_layout element_ot1)).
+      { rewrite Helement_layout. lia. }
+      assert (Hly1' : length v1 = n1 * ly_size (ot_layout element_ot1)).
+      { rewrite Helement_layout. lia. }
+      assert (Hly2' : length v2 = n2 * ly_size (ot_layout element_ot1)).
+      { rewrite Helement_layout. lia. }
+      iR. iExists (ArrayOp element_ot1 (n1 + n2)).
+      iSplitR. { iPureIntro.
+        exact (use_op_alg_typed_array true st (n1 + n2) ly_st element_ot1 Halg Helement1). }
+      iSplitR. { iPureIntro. intros hst. split.
+        + rewrite (decode_op_val_array_app r1 r2 element_ot1 n1 n2 hst Hrly1' Hrly2').
+          rewrite (decode_op_val_array_app v1 v2 element_ot1 n1 n2 hst Hly1' Hly2').
+          by rewrite (proj1 (Hmc1 hst)) (proj1 (Hmc2 hst)).
+        + destruct (Hmc1 hst) as [_ [ov1 Hdec1]].
+          destruct (Hmc2 hst) as [_ [ov2 Hdec2]].
+          rewrite (decode_op_val_array_app r1 r2 element_ot1 n1 n2 hst Hrly1' Hrly2').
+          rewrite Hdec1 Hdec2 /=.
+          pose proof (decode_op_val_has_type _ _ _ _ Hdec1) as Hty1.
+          pose proof (decode_op_val_has_type _ _ _ _ Hdec2) as Hty2.
+          inversion Hty1; inversion Hty2; subst. eauto. }
+      iSplitR. { iPureIntro. rewrite /has_layout_val /= length_app ly_size_mk_array_layout
+          Helement_layout. lia. }
+      iPureIntro. simpl. rewrite Helement_layout. exact Halg.
+    - iR. iExists (UntypedOp (mk_array_layout ly_st (n1 + n2))).
+      iSplitR. { iPureIntro.
+        exact (use_op_alg_typed_array false st (n1 + n2) ly_st element_ot1 Halg Helement1). }
+      iSplitR. {
+        iPureIntro.
+        pose proof (is_same_decoded_val_has_layout_l _ _ _ Hmc1) as Hrly1.
+        pose proof (is_same_decoded_val_has_layout_l _ _ _ Hmc2) as Hrly2.
+        pose proof (is_same_decoded_val_untyped_inv _ _ _ Hrly1 Hly1 Hmc1) as ->.
+        pose proof (is_same_decoded_val_untyped_inv _ _ _ Hrly2 Hly2 Hmc2) as ->.
+        apply is_same_decoded_val_refl. intros hst.
+        exists (OVUntyped (mk_array_layout ly_st (n1 + n2)) (v1 ++ v2)). simp decode_op_val.
+        rewrite /has_layout_val length_app.
+        rewrite /has_layout_val in Hly1, Hly2.
+        rewrite !ly_size_mk_array_layout in Hly1, Hly2.
+        rewrite ly_size_mk_array_layout.
+        case_bool_decide; done || lia. }
     iSplitR. {
       iPureIntro. rewrite /has_layout_val length_app.
       rewrite /has_layout_val in Hly1, Hly2.
@@ -420,33 +500,54 @@ Section lemmas.
     rewrite ly_size_mk_array_layout in Hsz.
     assert (ly_size ly * (n1 + n2)%nat ≤ MaxInt ISize)%Z as Hsz' by lia.
     pose proof (syn_type_has_layout_array st (n1 + n2) ly (mk_array_layout ly (n1 + n2)) eq_refl Hst1 Hsz') as Halg.
-    pose proof (use_op_alg_typed_array_inv typed st (n1 + n2) ly ot Halg Hot) as ->.
-    pose proof (is_same_decoded_val_has_layout_l _ _ _ Hmc) as Hrly.
-    pose proof (is_same_decoded_val_untyped_inv _ _ _ Hrly Hly Hmc) as Happ.
-    destruct (app_inj_1 r1 v1 r2 v2 ltac:(lia) Happ) as [-> ->].
-    iSplit.
-    - iR. iExists (UntypedOp (mk_array_layout ly n1)).
-      iSplitR. { iPureIntro. apply use_op_alg_typed_array.
-        eapply syn_type_has_layout_array; [done | done |].
-        lia. }
-      iSplitR. { iPureIntro. apply is_same_decoded_val_refl. intros hst.
-        exists (OVUntyped (mk_array_layout ly n1) v1). simp decode_op_val.
-        rewrite /has_layout_val ly_size_mk_array_layout.
-        case_bool_decide; done || lia. }
-      iSplitR. { iPureIntro. rewrite /has_layout_val ly_size_mk_array_layout. lia. }
-      iPureIntro. eapply syn_type_has_layout_array; [done | done |].
-      lia.
-    - iR. iExists (UntypedOp (mk_array_layout ly n2)).
-      iSplitR. { iPureIntro. apply use_op_alg_typed_array.
-        eapply syn_type_has_layout_array; [done | done |].
-        lia. }
-      iSplitR. { iPureIntro. apply is_same_decoded_val_refl. intros hst.
-        exists (OVUntyped (mk_array_layout ly n2) v2). simp decode_op_val.
-        rewrite /has_layout_val ly_size_mk_array_layout.
-        case_bool_decide; done || lia. }
-      iSplitR. { iPureIntro. rewrite /has_layout_val ly_size_mk_array_layout. lia. }
-      iPureIntro. eapply syn_type_has_layout_array; [done | done |].
-      lia.
+    destruct (use_op_alg_typed_array_inv typed st (n1 + n2) ly ot Halg Hot)
+      as (element_ot & Helement & Hot').
+    assert (Helement_layout : ot_layout element_ot = ly).
+    { pose proof (use_op_alg_layout_alg _ _ Helement) as Hlayout.
+      rewrite /syn_type_has_layout in Hst1. congruence. }
+    assert (Halg1 : syn_type_has_layout (ArraySynType st n1) (mk_array_layout ly n1)).
+    { eapply syn_type_has_layout_array; [done | done |]. lia. }
+    assert (Halg2 : syn_type_has_layout (ArraySynType st n2) (mk_array_layout ly n2)).
+    { eapply syn_type_has_layout_array; [done | done |]. lia. }
+    destruct typed; simpl in Hot'; subst ot.
+    - pose proof (is_same_decoded_val_array_app_inv r1 r2 v1 v2 element_ot n1 n2
+        ltac:(rewrite Helement_layout; lia) ltac:(rewrite Helement_layout; lia)
+        ltac:(rewrite Helement_layout; lia) ltac:(rewrite Helement_layout; lia) Hmc) as Hsame.
+      destruct Hsame as [Hsame1 Hsame2]. iSplit.
+      + iR. iExists (ArrayOp element_ot n1).
+        iSplitR. { iPureIntro.
+          exact (use_op_alg_typed_array true st n1 ly element_ot Halg1 Helement). }
+        iSplitR; first done.
+        iSplitR. { iPureIntro. rewrite /has_layout_val /= ly_size_mk_array_layout Helement_layout. lia. }
+        iPureIntro. simpl. rewrite Helement_layout. exact Halg1.
+      + iR. iExists (ArrayOp element_ot n2).
+        iSplitR. { iPureIntro.
+          exact (use_op_alg_typed_array true st n2 ly element_ot Halg2 Helement). }
+        iSplitR; first done.
+        iSplitR. { iPureIntro. rewrite /has_layout_val /= ly_size_mk_array_layout Helement_layout. lia. }
+        iPureIntro. simpl. rewrite Helement_layout. exact Halg2.
+    - pose proof (is_same_decoded_val_has_layout_l _ _ _ Hmc) as Hrly.
+      pose proof (is_same_decoded_val_untyped_inv _ _ _ Hrly Hly Hmc) as Happ.
+      destruct (app_inj_1 r1 v1 r2 v2 ltac:(lia) Happ) as [-> ->].
+      iSplit.
+      + iR. iExists (UntypedOp (mk_array_layout ly n1)).
+        iSplitR. { iPureIntro.
+          exact (use_op_alg_typed_array false st n1 ly element_ot Halg1 Helement). }
+        iSplitR. { iPureIntro. apply is_same_decoded_val_refl. intros hst.
+          exists (OVUntyped (mk_array_layout ly n1) v1). simp decode_op_val.
+          rewrite /has_layout_val ly_size_mk_array_layout.
+          case_bool_decide; done || lia. }
+        iSplitR. { iPureIntro. rewrite /has_layout_val ly_size_mk_array_layout. lia. }
+        done.
+      + iR. iExists (UntypedOp (mk_array_layout ly n2)).
+        iSplitR. { iPureIntro.
+          exact (use_op_alg_typed_array false st n2 ly element_ot Halg2 Helement). }
+        iSplitR. { iPureIntro. apply is_same_decoded_val_refl. intros hst.
+          exists (OVUntyped (mk_array_layout ly n2) v2). simp decode_op_val.
+          rewrite /has_layout_val ly_size_mk_array_layout.
+          case_bool_decide; done || lia. }
+        iSplitR. { iPureIntro. rewrite /has_layout_val ly_size_mk_array_layout. lia. }
+        done.
   Qed.
 
   Lemma value_t_splittable_type_app π typed st n1 n2 (vs1 vs2 : val) :

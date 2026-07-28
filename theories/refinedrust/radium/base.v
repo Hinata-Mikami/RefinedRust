@@ -190,6 +190,24 @@ Proof.
   simpl. destruct (f x) eqn:Heq2; last done.
   simpl. intros [= <-]. eauto.
 Qed.
+Lemma list_map_option_app {A B} (f : A → option B) xs ys :
+  list_map_option f (xs ++ ys) =
+    (xs' ← list_map_option f xs;
+     ys' ← list_map_option f ys;
+     Some (xs' ++ ys')).
+Proof.
+  induction xs as [|x xs IH].
+  - change (list_map_option f ys =
+      (xs' ← Some []; ys' ← list_map_option f ys; Some (xs' ++ ys'))).
+    destruct (list_map_option f ys); done.
+  - change ((xs' ← list_map_option f (xs ++ ys); x' ← f x; Some (x' :: xs')) =
+      (xs' ← (xs' ← list_map_option f xs; x' ← f x; Some (x' :: xs'));
+       ys' ← list_map_option f ys; Some (xs' ++ ys'))).
+    rewrite IH.
+    destruct (list_map_option f xs), (list_map_option f ys), (f x); done.
+Qed.
+
+
 
 (* TODO: move *)
 Lemma list_difference_nil_r {A} `{!EqDecision A} (x : list A) :

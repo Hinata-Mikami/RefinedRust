@@ -29,7 +29,7 @@ Section discriminant.
   Qed.
   Next Obligation.
     simpl. intros rt en ot Hot.
-    destruct ot as [ | | | | ? ? | ? ? ? | ? | ]; done.
+    destruct ot; done.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.

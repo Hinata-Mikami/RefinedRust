@@ -10,21 +10,25 @@ Inductive op_type : Set :=
 | FnPtrOp
 | PtrOp
 | StructOp (sl : struct_layout) (ots : list op_type)
+| ArrayOp (ot : op_type) (len : nat)
 | EnumOp (el : enum_layout) (variant_ots : list (var_name * op_type))
     (tag_int : list (var_name * Z))
 | UntypedOp (ly : layout)
-| CharOp.
+| CharOp
+| RefOp (ly : layout).
 
-Definition ot_layout (ot : op_type) : layout :=
+Fixpoint ot_layout (ot : op_type) : layout :=
   match ot with
   | BoolOp => bool_layout
   | FnPtrOp => void*
   | PtrOp => void*
   | IntOp it => it_layout it
   | StructOp sl ots => sl
+  | ArrayOp ot len => mk_array_layout (ot_layout ot) len
   | EnumOp el _ _ => el
   | UntypedOp ly => ly
   | CharOp => char_layout
+  | RefOp _ => void*
   end.
 
 (* Well-formedness of op_types requires that structured op_types have coherent
@@ -34,6 +38,7 @@ Fixpoint op_type_wf (ot : op_type) : Prop :=
   match ot with
   | StructOp sl ots =>
       Forall2_cb (λ ot '(n, ly), op_type_wf ot ∧ ot_layout ot = ly) ots (named_fields sl.(sl_members))
+  | ArrayOp ot _ => op_type_wf ot
   | EnumOp el variant_ots tag_int =>
       variant_ots.*1 = enum_variant_names el.(el_variants) ∧
       tag_int.*1 = enum_variant_names el.(el_variants) ∧
@@ -44,6 +49,7 @@ Fixpoint op_type_wf (ot : op_type) : Prop :=
               enum_variant_lookup el.(el_variants) name = Some ly ∧
               op_type_wf ot ∧
               ot_layout ot = ly) variant_ots
+  | RefOp ly => layout_wf ly
   | _ => True
   end.
 

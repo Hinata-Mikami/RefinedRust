@@ -266,7 +266,7 @@ Section enum.
     syn_type_has_layout en.(enum_els) (ot_layout ot).
   Proof.
     rewrite /is_enum_ot.
-    destruct ot as [|it| | |sl ots|el variant_ots tag_int|ly|]; simpl; try done.
+    destruct ot as [|it| | |sl ots| |el variant_ots tag_int|ly| |]; simpl; try done.
     - intros (Halg & _). by eapply use_enum_layout_alg_Some_inv.
     - intros (el & Halg & ->). by eapply use_enum_layout_alg_Some_inv.
   Qed.
@@ -276,7 +276,7 @@ Section enum.
     op_type_wf ot.
   Proof.
     rewrite /is_enum_ot.
-    destruct ot as [|it| | |sl ots|el variant_ots tag_int|ly|]; simpl; try done.
+    destruct ot as [|it| | |sl ots| |el variant_ots tag_int|ly| |]; simpl; try done.
     intros (_ & _ & Hwf & _). done.
   Qed.
 
@@ -327,17 +327,6 @@ Section enum.
     is_enum_ot en (EnumOp el variant_ots tag_int) →
     tag_int = en.(enum_els).(els_tag_int).
   Proof. rewrite /is_enum_ot. intros (_ & Htag_int & _). done. Qed.
-
-  Lemma is_enum_ot_variant_payload_wf {rt} (en : enum rt)
-      el variant_ots tag_int variant variant_ly variant_ot :
-    is_enum_ot en (EnumOp el variant_ots tag_int) →
-    enum_variant_lookup el.(el_variants) variant = Some variant_ly →
-    enum_variant_ot_lookup variant_ots variant = Some variant_ot →
-    op_type_wf variant_ot ∧ ot_layout variant_ot = variant_ly.
-  Proof.
-    intros Hot Hvariant Hvariant_ot.
-    eapply enum_variant_payload_wf; [by eapply is_enum_ot_wf|done|done].
-  Qed.
 
   Lemma enum_tag_lookup_els_lookup_tag (els : enum_layout_spec) variant :
     variant ∈ els.(els_variants).*1 →
@@ -868,7 +857,7 @@ Section enum.
   - intros. iIntros "_". by iApply logical_step_intro.
   - intros ot st π r v Hot.
     rewrite /is_enum_ot in Hot.
-    destruct ot as [ | | | | ? ? | ? ? ? | el | ]; try done.
+    destruct ot as [ | | | | ? ? | | ? ? ? | el | | ]; try done.
     + destruct Hot as (Halg & Htag_int & Hwf & Hot).
       iIntros "Hv".
       iPoseProof (enum_own_val_has_layout with "Hv") as "(%elv & %_ & %Halgv & %Hlyv)".
@@ -901,7 +890,7 @@ Section enum.
       simp decode_op_val. by rewrite bool_decide_true.
   - intros ot st π r v v' Hot Hsame.
     rewrite /is_enum_ot in Hot.
-    destruct ot as [ | | | | ? ? | ? ? ? | el | ]; try done.
+    destruct ot as [ | | | | ? ? | | ? ? ? | el | | ]; try done.
     + destruct Hot as (Halg & Htag_int & Hwf & Hot).
       iIntros "Hv".
       iPoseProof (enum_own_val_has_layout with "Hv") as "(%elv & %_ & %Halgv & %Hlyv)".
@@ -1404,7 +1393,7 @@ Section ne.
       assert (∀ ot, ty_has_op_type ty ot ↔ ty_has_op_type ty' ot) as Hot_ty.
       { intros ot'. rewrite !ty_has_op_type_unfold. apply Hot. }
       unfold is_enum_ot.
-      destruct ot as [ | | | | ? ? | ? ? ? | ly | ]; try done.
+      destruct ot as [ | | | | ? ? | | ? ? ? | ly | | ]; try done.
       + split.
         * intros (Halg & Htag_int & Hwf & Hvariant). split_and!.
           -- erewrite <-enum_ne_els; done.
@@ -1479,7 +1468,7 @@ Section ne.
     - rewrite !ty_has_op_type_unfold.
       intros ty ty' ot . simpl.
       unfold is_enum_ot.
-      destruct ot as [ | | | | ? ? | ? ? ? | ly | ]; try done.
+      destruct ot as [ | | | | ? ? | | ? ? ? | ly | | ]; try done.
       + split.
         * intros (Halg & Htag_int & Hwf & Hvariant). split_and!.
           -- erewrite <-enum_contr_els; done.

@@ -103,9 +103,11 @@ pub enum OpType {
     #[display("PtrOp")]
     Ptr,
 
-    // a term for the struct_layout, and optypes for the individual fields
     #[display("StructOp unit_sl []")]
-    Struct,
+    Unit,
+
+    #[display("ArrayOp {} {}", _0, _1)]
+    Array(Box<Self>, u128),
 
     #[display("UntypedOp ({})", _0)]
     Untyped(Layout),
@@ -194,10 +196,10 @@ impl From<&SynType> for OpType {
             SynType::Ptr | SynType::FnPtr => Self::Ptr,
 
             SynType::Untyped(ly) => Self::Untyped(ly.clone()),
-            SynType::Unit => Self::Struct,
+            SynType::Unit => Self::Unit,
             SynType::Never => Self::Untyped(Layout::Unit),
 
-            SynType::Array(_, _) => Self::Untyped(x.to_owned().into()),
+            SynType::Array(st, len) => Self::Array(Box::new((&**st).into()), *len),
 
             SynType::Literal(rhs) => Self::UseOpAlg(coq::term::Term::Literal(rhs.clone())),
         }

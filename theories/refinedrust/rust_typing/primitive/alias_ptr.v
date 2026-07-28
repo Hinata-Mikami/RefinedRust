@@ -58,7 +58,7 @@ Section alias.
     rewrite alias_ptr_own_val_unfold.
     iIntros (ot st π l v Hot) "%Hv".
     iPureIntro.
-    destruct ot as [| | | | | |ly| ]; simpl in Hot; try done.
+    destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
     - exists (OVPtr l). apply Hv.
     - subst ly. exists (OVUntyped void* v). simp decode_op_val.
       rewrite bool_decide_true; first done.

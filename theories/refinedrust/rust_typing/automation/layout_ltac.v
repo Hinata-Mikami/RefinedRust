@@ -576,6 +576,9 @@ Ltac solve_layout_alg_core_step3 :=
   | |- syn_type_has_layout FnPtrSynType ?ly =>
       notypeclasses refine (syn_type_has_layout_fnptr _ _);
       [fast_solve_layout_eq ]
+  | |- syn_type_has_layout (RefSynType ?st) ?ly =>
+      notypeclasses refine (syn_type_has_layout_ref st _ _);
+      [solve_layout_alg]
   | |- struct_layout_spec_has_layout ?sls ?sl =>
       notypeclasses refine (struct_layout_spec_has_layout_tac sls _ sl _ _ _ _);
       [| | fast_solve_layout_eq]
@@ -861,11 +864,15 @@ Ltac solve_op_alg_core_step :=
   | |- use_op_alg FnPtrSynType = Some ?ot =>
       notypeclasses refine (use_op_alg_fnptr _ _);
       [solve_ot_eq ]
+  | |- use_op_alg (RefSynType ?st) = Some ?ot =>
+      notypeclasses refine (use_op_alg_ref st _ _);
+      [solve_layout_alg]
   | |- use_op_alg UnitSynType = Some ?ot =>
       notypeclasses refine (use_op_alg_unit _ _);
       [solve_ot_eq ]
   | |- use_op_alg (ArraySynType ?st ?len) = Some ?ot =>
-      fail 1000 "implement solve_op_alg for ArraySynType"
+      notypeclasses refine (use_op_alg_array st len _ _ _);
+      [solve_layout_alg | solve_op_alg]
   | |- use_op_alg (UnsafeCell ?st) = Some ?ot =>
       notypeclasses refine (use_op_alg_unsafecell st _ _);
       [ ]
@@ -1297,6 +1304,12 @@ Ltac simplify_layout_alg_nonatomic H :=
     | use_layout_alg FnPtrSynType = Some _ =>
         apply syn_type_has_layout_fnptr_inv in H;
         subst_with H
+    | use_layout_alg (RefSynType ?st) = Some _ =>
+        let ly' := fresh "ly" in let H' := fresh "H" in
+        let Heq := fresh "_Heq" in
+        apply syn_type_has_layout_ref_inv in H as (Heq & ly' & H');
+        subst_with Heq;
+        simplify_layout_alg H'
 
     | use_layout_alg UnitSynType = Some _ =>
         apply syn_type_has_layout_unit_inv in H;

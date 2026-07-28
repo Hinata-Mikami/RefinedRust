@@ -695,7 +695,7 @@ Section structs.
     -
     rewrite struct_t_own_val_unfold.
     iIntros (ot st π r v Hot) "Hv".
-    destruct ot as [ | | | | sl' ots | ? ? ? | | ]; try done.
+    destruct ot as [ | | | | sl' ots | | ? ? ? | | | ]; try done.
       + pose proof Hot as Hot_struct.
       destruct Hot as (_ &  Halg & _ & _ & _).
       iDestruct "Hv" as "(%sl & %Hmeta & %Halg' & %Hlen & %Hly & Hmem)".
@@ -709,7 +709,7 @@ Section structs.
       iExists (OVUntyped sl v). iPureIntro.
       simp decode_op_val. rewrite bool_decide_true; done.
     - iIntros (ot st π r v v' Hot Hsame) "Hv".
-    destruct ot as [ | | | | sl ots | ? ? ? | ly | ]; try done.
+    destruct ot as [ | | | | sl ots | | ? ? ? | ly | | ]; try done.
       + pose proof Hot as Hot_struct.
       destruct Hot as (_ & _ & _ & _ & _).
       iApply (struct_t_decode_compat_copy π sls sl tys ots st r v v' with "Hv"); [exact Hot_struct | done].
@@ -853,7 +853,7 @@ Section structs.
     is_struct_ot sls (happly Ts ty') ot .
   Proof.
     intros Hproper.
-    destruct ot as [ | | | | sl ots | ? ? ? | ly | ] => //=.
+    destruct ot as [ | | | | sl ots | | ? ? ? | ly | | ] => //=.
     apply and_proper => Hlen.
     (*apply and_proper => Hmt.*)
     apply and_proper => Halg.
