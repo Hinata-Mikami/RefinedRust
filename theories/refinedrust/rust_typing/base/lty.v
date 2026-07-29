@@ -526,7 +526,7 @@ Section ltype_def.
     | OfTyLty ty => ty.(ty_syn_type) MetaNone
     | AliasLty _ st l => st
     | MutLty _ _ => PtrSynType
-    | ShrLty _ _ => PtrSynType
+    | ShrLty _ _ => RefSynType
     | StructLty _ sls => sls
     | ArrayLty def len lts => ArraySynType (ty_syn_type def MetaNone) len
     | EnumLty en variant => en.(enum_els)
@@ -1089,6 +1089,9 @@ Section ltype_def.
   Definition ptr_loc_own_frac (l : loc) (q : Qp) (li : loc) : iProp Σ :=
     (∃ vi : val, l ↦{q} vi ∗ ⌜val_decodes_to_loc vi li⌝)%I.
 
+  Definition ref_loc_own (l li : loc) : iProp Σ :=
+    (∃ vi : val, l ↦ vi ∗ ⌜val_decodes_to_ref vi li⌝)%I.
+
   Equations lty_own_pre (core : bool) (ltp : lty) (k : bor_kind) (π : thread_id) (r : place_rfn (lty_rt ltp)) (l : loc) : iProp Σ by wf ltp lty_size_rel :=
     lty_own_pre core (OfTyLty ty) k π r l :=
       (* OfTy *)
@@ -1144,28 +1147,28 @@ Section ltype_def.
 
     lty_own_pre core (ShrLty lt κ) k π r l :=
       (** Shr *)
-      (∃ ly : layout, ⌜syn_type_has_layout PtrSynType ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
+      (∃ ly : layout, ⌜syn_type_has_layout RefSynType ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
          loc_in_bounds l 0 ly.(ly_size) ∗
         match k with
         | Owned =>
             ∃ (r' : place_rfn (lty_rt lt)), place_rfn_interp_owned r r' ∗
-            |={lftE}=> ∃ (l' : loc), ptr_loc_own l l' ∗
+            |={lftE}=> ∃ (l' : loc), ref_loc_own l l' ∗
             lty_own_pre core lt (Shared κ) π r' l'
         | Uniq κ' γ' =>
             have_creds ∗
             place_rfn_interp_mut r γ' ∗
             |={lftE}=> &pin{κ'}
               [∃ (r' : place_rfn (lty_rt lt)), gvar_auth γ' r' ∗
-                |={lftE}=> ∃ (l' : loc), ptr_loc_own l l' ∗ lty_own_pre true lt (Shared κ) π r' l']
+                |={lftE}=> ∃ (l' : loc), ref_loc_own l l' ∗ lty_own_pre true lt (Shared κ) π r' l']
               (∃ (r' : place_rfn (lty_rt lt)), gvar_auth γ' r' ∗
-                |={lftE}=> ∃ (l' : loc), ptr_loc_own l l' ∗ lty_own_pre core lt (Shared κ) π r' l')
+                |={lftE}=> ∃ (l' : loc), ref_loc_own l l' ∗ lty_own_pre core lt (Shared κ) π r' l')
         | Shared κ' =>
             ∃ (r' : place_rfn (lty_rt lt)),
             place_rfn_interp_shared r r' ∗
             (* the update is also over the fractional borrow to deal with timelessness *)
             □ |={lftE}=> ∃ (vi : val) (li : loc),
             &frac{κ'} (λ q, l ↦{q} vi) ∗
-            ⌜val_decodes_to_loc vi li⌝ ∗
+            ⌜val_decodes_to_ref vi li⌝ ∗
             (* no intersection here, as we also don't do that for the type interpretation *)
             ▷ lty_own_pre core lt (Shared κ) π r' li
         end)%I;

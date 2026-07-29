@@ -9,7 +9,7 @@ Section shr_ref.
   Definition shr_ref_own_val_def {rt : RT} κ (inner : type rt) π r m v : iProp Σ :=
     (∃ (l : loc) (ly : layout) (r' : rt),
       ⌜m = MetaNone⌝ ∗
-      ⌜val_decodes_to_loc v l⌝ ∗
+      ⌜val_decodes_to_ref v l⌝ ∗
       ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
       loc_in_bounds l 0 ly.(ly_size) ∗
       inner.(ty_sidecond) ∗
@@ -31,7 +31,7 @@ Section shr_ref.
       loc_in_bounds li 0 ly.(ly_size) ∗
       inner.(ty_sidecond) ∗
       place_rfn_interp_shared r ri ∗
-      &frac{κ'} (λ q, l ↦{q} vi) ∗ ⌜val_decodes_to_loc vi li⌝ ∗
+      &frac{κ'} (λ q, l ↦{q} vi) ∗ ⌜val_decodes_to_ref vi li⌝ ∗
       ▷ □ |={lftE}=> inner.(ty_shr) (κ) π ri MetaNone li)%I.
   Definition shr_ref_shr_aux : seal (@shr_ref_shr_def).
   Proof. by eexists. Qed.
@@ -48,8 +48,8 @@ Section shr_ref.
     ty_trivial_drop := true;
     ty_own_val := shr_ref_own_val _ κ inner;
 
-    _ty_has_op_type ot := is_ptr_ot ot;
-    ty_syn_type m := PtrSynType;
+    _ty_has_op_type ot := is_ref_ot ot;
+    ty_syn_type m := RefSynType;
 
     ty_shr := shr_ref_shr _ κ inner;
     _ty_ghost_drop _ _ := True%I;
@@ -63,12 +63,12 @@ Section shr_ref.
     intros. econstructor.
     - rewrite shr_ref_own_val_unfold.
       iIntros (π r m v) "(%l & %ly & %r' & -> & %Hdec & ? & ? & ?)".
-      iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
-      by apply val_decodes_to_loc_has_layout in Hdec.
+      iPureIntro. eexists. split; first apply syn_type_has_layout_ref.
+      by apply val_decodes_to_ref_has_layout in Hdec.
     - intros ot Hot => /=. destruct ot => /=//.
-      + by apply syn_type_has_layout_ptr.
-      + simpl in Hot. subst ly; by apply syn_type_has_layout_ptr.
-    - intros ot Hot. destruct ot; done.
+      + simpl in Hot. subst ly; apply syn_type_has_layout_ref.
+      + apply syn_type_has_layout_ref.
+    - intros ot Hot. by apply is_ref_ot_wf.
     - iIntros (π r m v) "_". done.
     - iIntros (κ' π r m v) "_". done.
     - unfold TCNoResolve.
@@ -77,7 +77,7 @@ Section shr_ref.
     - iIntros (κ' π l r m). simpl.
       rewrite shr_ref_shr_unfold.
       iIntros "(%vi & %li & %ly & %r' & % & % & ? & ? & _)".
-      iPureIntro. eexists _. split; last by apply syn_type_has_layout_ptr.
+      iPureIntro. eexists _. split; last apply syn_type_has_layout_ref.
       done.
     - iIntros (E κ' l ly π r m q ?) "#[LFT TIME] #Hna Htok %Halg %Hly _ Hb".
       rewrite shr_ref_own_val_unfold shr_ref_shr_unfold.
@@ -99,7 +99,7 @@ Section shr_ref.
       iModIntro.
       iApply logical_step_intro.
       rewrite -!lft_tok_sep. iFrame.
-      apply syn_type_has_layout_ptr_inv in Halg as ->.
+      apply syn_type_has_layout_ref_inv in Halg as ->.
       iExists ly'.
       iR.
       do 4 iR.
@@ -118,17 +118,17 @@ Section shr_ref.
       iDestruct "Hown" as (l ly ri) "(%Hmeta & %Hv & _)".
       iPureIntro.
       destruct ot; simpl in *; try done; subst.
-      + eexists (OVPtr _). apply Hv.
       + eexists (OVUntyped void* v). simp decode_op_val.
-        rewrite bool_decide_true; last by eapply val_decodes_to_loc_length.
+        rewrite bool_decide_true; last by eapply val_decodes_to_ref_length.
         done.
+      + eexists (OVPtr _). apply Hv.
     - iIntros (ot st π r v ov Hot Hdec).
       rewrite shr_ref_own_val_unfold.
       iIntros "Hown".
       iDestruct "Hown" as (l ly ri) "(%Hmeta & %Hv & Halg & Hly & Hlb & Hsc & Hrfn & Hshr)".
       iExists l, ly, ri. iFrame. iR.
-      iPureIntro. by eapply val_decodes_to_loc_same_decoded.
-    - intros ly _ Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
+      iPureIntro. by eapply val_decodes_to_ref_same_decoded.
+    - intros ly _ Hst. apply syn_type_has_layout_ref_inv in Hst as ->.
       done.
     - apply _.
     - apply _.
@@ -151,10 +151,8 @@ Section props.
     iIntros (κ' π E l r ? ? ?) "[LFT TIME] (%vi & %li & %ly' & %r' & -> & %Hly' & % & % & #Hlb & #Hsc & #Hr & Hf & %Hdec & #Hown) Hlft".
     iMod (frac_bor_acc with "LFT Hf Hlft") as (q') "[Hmt Hclose]"; first solve_ndisj.
     iModIntro.
-    (*apply syn_type_has_layout_ptr_inv in Ha as ->.*)
-    (*iSplitR; first done.*)
     iExists _.
-    iSplitR. { simpl. iPureIntro. by apply syn_type_has_layout_ptr. }
+    iSplitR. { simpl. iPureIntro. apply syn_type_has_layout_ref. }
     iR.
     iExists _, vi. iDestruct "Hmt" as "[Hmt1 Hmt2]".
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".

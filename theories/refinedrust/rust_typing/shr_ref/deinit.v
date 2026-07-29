@@ -11,7 +11,7 @@ Section deinit.
   Lemma ltype_deinit_shr F π l {rt} (lt : ltype rt) r κ :
     lftE ⊆ F →
     (l ◁ₗ[π, Owned] r @ (ShrLtype lt κ)) ={F}=∗
-    l ◁ₗ[π, Owned] .@ (◁ typed_value_t PtrSynType).
+    l ◁ₗ[π, Owned] .@ (◁ typed_value_t RefSynType).
   Proof.
     iIntros (?) "Hl".
     rewrite ltype_own_shr_ref_unfold /shr_ltype_own.
@@ -26,7 +26,7 @@ Section deinit.
     iModIntro. iExists vi. iFrame.
     rewrite /ty_own_val/=. iR.
     iExists _.
-    by iApply type_loc_value.
+    by iApply type_ref_value.
   Qed.
 End deinit.
 
@@ -36,7 +36,7 @@ Section rule.
   (* Directly subsume ShrLtype, as there can not be any interesting borrow information to extract *)
   Lemma owned_subltype_step_shrltype_uninit π E L step {rt} (lt : ltype rt) r st κ l T  :
     owned_subltype_step π E L step l r (#()) (ShrLtype lt κ) (◁ typed_value_t st) T :-
-    exhale ⌜st = PtrSynType⌝;
+    exhale ⌜st = RefSynType⌝;
     return T L True%I.
   Proof.
     iIntros "(-> & HT)".
@@ -54,7 +54,7 @@ Section rule.
 
   (** Extraction *)
   Lemma stratify_ltype_extract_shrltype π E L {rt} (lt : ltype rt) r κ l (T : stratify_ltype_post_hook_cont_t) :
-    (T L (True) _ (◁ typed_value_t PtrSynType)%I (#()))
+    (T L (True) _ (◁ typed_value_t RefSynType)%I (#()))
     ⊢ stratify_ltype_post_hook π E L (StratifyExtractOp κ) l (ShrLtype lt κ) r (Owned) T.
   Proof.
     iIntros "HT".

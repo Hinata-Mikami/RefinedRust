@@ -70,12 +70,12 @@ Definition type_of_ptr_write_shrref `{!typeGS Σ} (U_rt : RT) (U_st : syn_type) 
   (* First add a new type parameter and a new lifetime *)
   spec! ( *[κ]) : 1 | ( *[U_ty]) : [U_rt],
     (* Then instantiate the existing type parameter with shr_ref U_ty κ *)
-    fn_spec_add_late_pre ((type_of_ptr_write (place_rfnRT U_rt) (PtrSynType) <TY> shr_ref κ U_ty) <INST!>)
+    fn_spec_add_late_pre ((type_of_ptr_write (place_rfnRT U_rt) (RefSynType) <TY> shr_ref κ U_ty) <INST!>)
     (λ π, typaram_wf U_rt U_st U_ty)%I
 .
 
 Lemma ptr_write_typed_shrref `{!typeGS Σ} π U_rt U_st :
-  ⊢ typed_function π (ptr_write (PtrSynType)) (<tag_type> type_of_ptr_write_shrref U_rt U_st).
+  ⊢ typed_function π (ptr_write RefSynType) (<tag_type> type_of_ptr_write_shrref U_rt U_st).
 Proof.
   start_function "ptr_write" ϝ ( [ulft_a []]  ) ( [U_ty []] ) ( [l r] ) ( ).
 

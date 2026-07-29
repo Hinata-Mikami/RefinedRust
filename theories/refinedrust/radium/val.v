@@ -15,7 +15,7 @@ Inductive op_type : Set :=
     (tag_int : list (var_name * Z))
 | UntypedOp (ly : layout)
 | CharOp
-| RefOp (ly : layout).
+| RefOp.
 
 Fixpoint ot_layout (ot : op_type) : layout :=
   match ot with
@@ -28,7 +28,7 @@ Fixpoint ot_layout (ot : op_type) : layout :=
   | EnumOp el _ _ => el
   | UntypedOp ly => ly
   | CharOp => char_layout
-  | RefOp _ => void*
+  | RefOp => void*
   end.
 
 (* Well-formedness of op_types requires that structured op_types have coherent
@@ -49,7 +49,6 @@ Fixpoint op_type_wf (ot : op_type) : Prop :=
               enum_variant_lookup el.(el_variants) name = Some ly ∧
               op_type_wf ot ∧
               ot_layout ot = ly) variant_ots
-  | RefOp ly => layout_wf ly
   | _ => True
   end.
 

@@ -17,10 +17,10 @@ Definition is_char_ot (ot : op_type) : Prop :=
   match ot with | CharOp => True | UntypedOp ly => ly = it_layout U32 | _ => False end.
 Definition is_ptr_ot (ot : op_type) : Prop :=
   match ot with | PtrOp => True | UntypedOp ly => ly = void* | _ => False end.
-Definition is_ref_ot `{!LayoutAlg} (st : syn_type) (ot : op_type) : Prop :=
+Definition is_ref_ot (ot : op_type) : Prop :=
   match ot with
-  | RefOp ly => syn_type_has_layout st ly
-  | UntypedOp ly => ly = void* ∧ ∃ st_ly, syn_type_has_layout st st_ly
+  | RefOp => True
+  | UntypedOp ly => ly = void*
   | _ => False
   end.
 Definition is_fnptr_ot (ot : op_type) : Prop :=
@@ -30,6 +30,8 @@ Definition is_unit_ot (ot : op_type) : Prop :=
 
 Definition val_decodes_to_loc (v : val) (l : loc) : Prop :=
   ∀ st, decode_op_val v PtrOp st = Some (OVPtr l).
+Definition val_decodes_to_ref (v : val) (l : loc) : Prop :=
+  ∀ st, decode_op_val v RefOp st = Some (OVPtr l).
 
 Lemma is_int_ot_layout it ot:
   is_int_ot ot it → ot_layout ot = it_layout it.
@@ -54,19 +56,14 @@ Lemma is_ptr_ot_layout ot:
   is_ptr_ot ot → ot_layout ot = void*.
 Proof. by destruct ot => //= ->. Qed.
 
-Lemma is_ref_ot_layout `{!LayoutAlg} st ot:
-  is_ref_ot st ot → ot_layout ot = void*.
+Lemma is_ref_ot_layout ot:
+  is_ref_ot ot → ot_layout ot = void*.
 Proof. by destruct ot => //=; naive_solver. Qed.
 
-Lemma is_ref_ot_inner_layout `{!LayoutAlg} st ot :
-  is_ref_ot st ot → ∃ ly, syn_type_has_layout st ly.
-Proof. destruct ot => //=; naive_solver. Qed.
-
-Lemma is_ref_ot_wf `{!LayoutAlg} st ot :
-  is_ref_ot st ot → op_type_wf ot.
+Lemma is_ref_ot_wf ot :
+  is_ref_ot ot → op_type_wf ot.
 Proof.
   destruct ot => //=.
-  intros Hly. by eapply use_layout_alg_wf.
 Qed.
 
 Lemma is_fnptr_ot_layout ot:
@@ -214,11 +211,41 @@ Proof.
   intros Hv st. simp decode_op_val. by rewrite Hv.
 Qed.
 
+Lemma val_to_loc_decodes_to_ref v l :
+  val_to_loc v = Some l →
+  l.(loc_a) ≠ 0 →
+  val_decodes_to_ref v l.
+Proof. intros Hv Hnonnull st. by apply val_to_loc_decode_ref. Qed.
+
+Lemma val_decodes_to_ref_to_loc v l :
+  val_decodes_to_ref v l →
+  val_decodes_to_loc v l.
+Proof.
+  intros Hdec. apply val_to_loc_decodes_to_loc.
+  specialize (Hdec inhabitant). apply decode_ref_inv in Hdec as [Hloc _]. exact Hloc.
+Qed.
+
+Lemma val_decodes_to_ref_nonnull v l :
+  val_decodes_to_ref v l →
+  l.(loc_a) ≠ 0.
+Proof.
+  intros Hdec. specialize (Hdec inhabitant). by apply decode_ref_inv in Hdec as [_ ?].
+Qed.
+
 Lemma l2v_decodes_to_loc l :
   l.(loc_a) ∈ USize →
   val_decodes_to_loc (l2v l) l.
 Proof.
   intros Hin. apply val_to_loc_decodes_to_loc.
+  by apply val_to_loc_Some_l2v.
+Qed.
+
+Lemma l2v_decodes_to_ref l :
+  l.(loc_a) ∈ USize →
+  l.(loc_a) ≠ 0 →
+  val_decodes_to_ref (l2v l) l.
+Proof.
+  intros Hin Hnonnull. apply val_to_loc_decodes_to_ref; last done.
   by apply val_to_loc_Some_l2v.
 Qed.
 
@@ -235,6 +262,11 @@ Proof.
     simpl in Hdec. simp decode_op_val in Hdec. simpl in Hdec. done.
 Qed.
 
+Lemma val_decodes_to_ref_l2v_inv l l' :
+  val_decodes_to_ref (l2v l) l' →
+  l = l'.
+Proof. intros Hdec. apply val_decodes_to_loc_l2v_inv. by apply val_decodes_to_ref_to_loc. Qed.
+
 Lemma val_decodes_to_loc_has_layout v l :
   val_decodes_to_loc v l →
   v `has_layout_val` void*.
@@ -247,6 +279,16 @@ Lemma val_decodes_to_loc_length v l :
   val_decodes_to_loc v l →
   length v = ly_size void*.
 Proof. apply val_decodes_to_loc_has_layout. Qed.
+
+Lemma val_decodes_to_ref_has_layout v l :
+  val_decodes_to_ref v l →
+  v `has_layout_val` void*.
+Proof. intros Hdec. apply val_decodes_to_loc_has_layout with l. by apply val_decodes_to_ref_to_loc. Qed.
+
+Lemma val_decodes_to_ref_length v l :
+  val_decodes_to_ref v l →
+  length v = ly_size void*.
+Proof. apply val_decodes_to_ref_has_layout. Qed.
 
 Lemma encode_decode_id_unit v ov ot st :
   is_unit_ot ot →
@@ -439,4 +481,22 @@ Proof.
     rewrite /has_layout_val /= in Hly'.
     pose proof (is_same_decoded_val_at_untyped_inv st v v' void* Hly Hly' Hsame) as ->.
     apply Hv.
+Qed.
+
+Lemma val_decodes_to_ref_same_decoded v ot v' l st :
+  is_ref_ot ot →
+  val_decodes_to_ref v l →
+  is_same_decoded_val_at st v ot v' →
+  val_decodes_to_ref v' l.
+Proof.
+  intros Hot Hv Hsame.
+  destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
+  - subst ly.
+    pose proof (val_decodes_to_ref_has_layout _ _ Hv) as Hly.
+    pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly'.
+    rewrite /has_layout_val /= in Hly'.
+    pose proof (is_same_decoded_val_at_untyped_inv st v v' void* Hly Hly' Hsame) as ->.
+    apply Hv.
+  - intros st'. destruct Hsame as [Heq _]. specialize (Hv st).
+    rewrite Hv in Heq. rewrite -(decode_op_val_stable v' RefOp st st'). by symmetry.
 Qed.

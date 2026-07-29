@@ -1700,6 +1700,7 @@ Section judgments.
         (* one credit for the inheritance VS *)
         £1 ={F}=∗
         ∃ (L' : llctx) (rt : RT) (ty : type rt) (r : place_rfn rt) (r' : rt) (ly : layout),
+          ⌜l.(loc_a) ≠ 0⌝ ∗
           place_rfn_interp_shared r r' ∗ ty.(ty_shr) κ f.1 r' MetaNone l ∗
           ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗
           ⌜l `has_layout_loc` ly⌝ ∗

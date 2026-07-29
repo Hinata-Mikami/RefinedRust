@@ -487,26 +487,26 @@ Section ltype_def.
     (rec : ltype_own_type)
     (rec_core : ltype_own_type)
     {rt} (lt : ltype rt) κ k π (r : place_rfn (place_rfn rt)) l :=
-        (∃ ly : layout, ⌜syn_type_has_layout PtrSynType ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
+        (∃ ly : layout, ⌜syn_type_has_layout RefSynType ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
          loc_in_bounds l 0 ly.(ly_size) ∗
         match k with
         | Owned =>
             ∃ (r' : place_rfn rt), place_rfn_interp_owned r r' ∗
-            |={lftE}=>  ∃ (l' : loc), ptr_loc_own l l' ∗
+            |={lftE}=>  ∃ (l' : loc), ref_loc_own l l' ∗
             rec _ lt (Shared κ) π r' l'
         | Uniq κ' γ' =>
             have_creds ∗
             place_rfn_interp_mut r γ' ∗
             |={lftE}=> &pin{κ'}
-              [∃ (r' : place_rfn rt), gvar_auth γ' r' ∗ |={lftE}=>  ∃ (l' : loc), ptr_loc_own l l' ∗ rec_core _ lt (Shared κ) π r' l']
-              (∃ (r' : place_rfn rt), gvar_auth γ' r' ∗ |={lftE}=>  ∃ (l' : loc), ptr_loc_own l l' ∗ rec _ lt (Shared κ) π r' l')
+              [∃ (r' : place_rfn rt), gvar_auth γ' r' ∗ |={lftE}=>  ∃ (l' : loc), ref_loc_own l l' ∗ rec_core _ lt (Shared κ) π r' l']
+              (∃ (r' : place_rfn rt), gvar_auth γ' r' ∗ |={lftE}=>  ∃ (l' : loc), ref_loc_own l l' ∗ rec _ lt (Shared κ) π r' l')
         | Shared κ' =>
             ∃ (r' : place_rfn rt),
             place_rfn_interp_shared r r' ∗
             (* the update is also over the fractional borrow to deal with timelessness *)
             □ |={lftE}=> ∃ (vi : val) (li : loc),
             &frac{κ'} (λ q, l ↦{q} vi) ∗
-            ⌜val_decodes_to_loc vi li⌝ ∗
+            ⌜val_decodes_to_ref vi li⌝ ∗
             (* no intersection here, as we also don't do that for the type interpretation *)
             ▷ rec _ lt (Shared κ) π r' li
         end)%I.
@@ -1641,7 +1641,7 @@ Section ltype_def.
     ltype_st (MutLtype lt κ) = PtrSynType.
   Proof. done. Qed.
   Lemma ltype_st_shr_ref {rt} (lt : ltype rt) (κ : lft) :
-    ltype_st (ShrLtype lt κ) = PtrSynType.
+    ltype_st (ShrLtype lt κ) = RefSynType.
   Proof. done. Qed.
   Lemma ltype_st_struct {rts} (lts : hlist ltype rts) (sls : struct_layout_spec) :
     ltype_st (StructLtype lts sls) = sls.

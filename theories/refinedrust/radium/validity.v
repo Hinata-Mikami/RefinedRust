@@ -57,10 +57,10 @@ Inductive op_val_has_type : op_val → op_type → Prop :=
     op_val_has_type (OVEnum el variant tag payload) (EnumOp el variant_ots tag_int)
 | OVUntyped_has_type ly v : v `has_layout_val` ly → op_val_has_type (OVUntyped ly v) (UntypedOp ly)
 | OVChar_has_type z : is_valid_char z → op_val_has_type (OVChar z) CharOp
-| OVRef_has_type l ly :
+| OVRef_has_type l :
     l.(loc_a) ∈ USize →
-    l `has_layout_loc` ly →
-    op_val_has_type (OVPtr l) (RefOp ly).
+    l.(loc_a) ≠ 0 →
+    op_val_has_type (OVPtr l) RefOp.
 
 Definition overwrite_val (off : nat) (w v : val) : val :=
   take off v ++ w ++ drop (off + length w) v.
@@ -334,9 +334,9 @@ Equations decode_op_val (v : val) (ot : op_type) (st : (heap_state)) : option op
   decode_op_val v (UntypedOp ly) st :=
       if bool_decide (length v = ly_size ly) then Some (OVUntyped ly v) else None;
   decode_op_val v CharOp st := OVChar <$> val_to_char v;
-  decode_op_val v (RefOp ly) st :=
+  decode_op_val v RefOp st :=
       match val_to_loc v with
-      | Some l => if decide (l `has_layout_loc` ly) then Some (OVPtr l) else None
+      | Some l => if decide (l.(loc_a) ≠ 0) then Some (OVPtr l) else None
       | None => None
       end.
 Next Obligation.
@@ -459,7 +459,7 @@ Proof.
     move: Hz => /bind_Some[z'[Hz Hvalid]].
     case_decide; simplify_eq; done.
   - destruct (val_to_loc v) as [l|] eqn:Hl; last done.
-    case_decide as Hly; last done.
+    case_decide as Hnonnull; last done.
     injection Hdec as <-. constructor; last done.
     by apply val_to_loc_Some_inv in Hl as [_ ?].
 Qed.
@@ -985,34 +985,34 @@ Proof.
   rewrite Hv//.
 Qed.
 
-Lemma val_to_loc_decode_ref v st l ly :
+Lemma val_to_loc_decode_ref v st l :
   val_to_loc v = Some l →
-  l `has_layout_loc` ly →
-  decode_op_val v (RefOp ly) st = Some (OVPtr l).
+  l.(loc_a) ≠ 0 →
+  decode_op_val v RefOp st = Some (OVPtr l).
 Proof.
-  intros Hv Hly. simp decode_op_val. rewrite Hv /= decide_True //.
+  intros Hv Hnonnull. simp decode_op_val. rewrite Hv /= decide_True //.
 Qed.
 
-Lemma decode_ref_inv v st l ly :
-  decode_op_val v (RefOp ly) st = Some (OVPtr l) →
-  val_to_loc v = Some l ∧ l `has_layout_loc` ly.
+Lemma decode_ref_inv v st l :
+  decode_op_val v RefOp st = Some (OVPtr l) →
+  val_to_loc v = Some l ∧ l.(loc_a) ≠ 0.
 Proof.
   simp decode_op_val.
   destruct (val_to_loc v) as [l'|] eqn:Hv; last done.
-  case_decide as Hly; last done. intros [= <-]. done.
+  case_decide as Hnonnull; last done. intros [= <-]. done.
 Qed.
 
-Lemma decode_ref_no_loc v st ly :
+Lemma decode_ref_no_loc v st :
   val_to_loc v = None →
-  decode_op_val v (RefOp ly) st = None.
+  decode_op_val v RefOp st = None.
 Proof. intros Hv. simp decode_op_val. by rewrite Hv. Qed.
 
-Lemma decode_ref_misaligned v st l ly :
+Lemma decode_ref_null v st l :
   val_to_loc v = Some l →
-  ¬l `has_layout_loc` ly →
-  decode_op_val v (RefOp ly) st = None.
+  l.(loc_a) = 0 →
+  decode_op_val v RefOp st = None.
 Proof.
-  intros Hv Hly. simp decode_op_val. rewrite Hv /= decide_False //.
+  intros Hv Hnull. simp decode_op_val. rewrite Hv /= decide_False; congruence.
 Qed.
 
 Lemma decode_op_val_array_app v1 v2 ot n1 n2 st :

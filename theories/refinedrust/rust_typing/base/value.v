@@ -618,6 +618,24 @@ Section types.
       erewrite val_decodes_to_loc_length; done.
     - by apply syn_type_has_layout_ptr.
   Qed.
+
+  Lemma type_ref_value π v (l : loc) :
+    val_decodes_to_ref v l →
+    loc_a l ∈ USize →
+    ⊢ v ◁ᵥ{ π, MetaNone} (l2v l) @ value_t true RefSynType.
+  Proof.
+    iIntros (Hv Hin).
+    pose proof (val_decodes_to_ref_nonnull _ _ Hv) as Hnonnull.
+    rewrite /ty_own_val/=.
+    iR. iExists RefOp.
+    iR. iPureIntro. split_and!.
+    - intros hst. split.
+      + rewrite Hv. by apply l2v_decodes_to_ref.
+      + exists (OVPtr l). by apply l2v_decodes_to_ref.
+    - rewrite /has_layout_val.
+      erewrite val_decodes_to_ref_length; done.
+    - apply syn_type_has_layout_ref.
+  Qed.
 End types.
 
 Section ofty_lemmas.

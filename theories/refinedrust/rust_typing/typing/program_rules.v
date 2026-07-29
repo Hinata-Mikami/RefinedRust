@@ -4387,7 +4387,7 @@ Section subsume.
       (* finish borrow *)
       typed_borrow_shr_end f.1 E L3 κ l2 orty lt2' ri2' b2 bmin (λ L4 rt3 (lt3 : ltype rt3) (r3 : place_rfn rt3) rt3' (ty4 : type rt3') r4 upd',
       (* return toks *)
-      typed_place_finish f.1 E L4 updcx (place_update_kind_res_trans upd upd') (R ∗ llft_elt_toks κs) l b lt3 r3
+      ⌜l2.(loc_a) ≠ 0⌝ ∗ typed_place_finish f.1 E L4 updcx (place_update_kind_res_trans upd upd') (R ∗ llft_elt_toks κs) l b lt3 r3
         (λ L5, T L5 (l2v l2) rt3' ty4 (#r4))))))))
     ⊢ typed_borrow_shr E L f e κ orty T.
   Proof.
@@ -4415,6 +4415,7 @@ Section subsume.
     iIntros "Ha !> Hcred".
     iMod ("Ha" with "Hcred") as "(%L4 & %ly' & %rt2 & %lt2 & %r2 & %rt3 & %ty3 & %r3 & %upd' & HT)".
     iDestruct "HT" as "(Hshr & %Halg' & Hlb & Hsc & Hblocked & Hcond' & %Hsteq2 & #Hincl & HL & HT)".
+    iDestruct "HT" as "(%Hnonnull & HT)".
     iPoseProof (typed_place_cond_syn_type_compat with "Hcond'") as "%Hst_compat".
     assert (ly = ly') as <-. {
       move: Halg Halg'.
@@ -4436,7 +4437,7 @@ Section subsume.
     iMod ("Hs" with "HL Hf HT") as (?) "(Hl & Hcond'' & ? & HR' & ? & HL & Hf & HT)".
     iPoseProof ("HT" with "Hl") as "Hfin".
     iMod ("Hfin" with "[] [$] HE HL [$]") as "(%L5 & HL & HT)"; first done.
-    iModIntro. iExists _. iFrame.
+    iModIntro. iExists _, _, _, _, _, _. iR. iFrame.
     iL. done.
   Qed.
 

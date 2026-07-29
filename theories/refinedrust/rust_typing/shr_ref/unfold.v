@@ -9,18 +9,21 @@ Section ofty.
 
   (** A very fundamental equivalence that should hold *)
   Lemma shr_ref_ofty_shared_equiv {rt} (ty : type rt) π κ l r :
-    l ◁ₗ[π, Shared κ] #r @ (◁ ty) ⊣⊢ l ◁ᵥ{π, MetaNone} #r @ shr_ref κ ty.
+    ⌜l.(loc_a) ≠ 0⌝ ∗ l ◁ₗ[π, Shared κ] #r @ (◁ ty) ⊣⊢
+      l ◁ᵥ{π, MetaNone} #r @ shr_ref κ ty.
   Proof.
     rewrite ltype_own_ofty_unfold/lty_of_ty_own /ty_own_val/= shr_ref_own_val_unfold.
     iSplit.
-    - iIntros "(%ly & %Hst & %Hly & #Hsc & #Hlb & %r' & <- & #Ha)".
+    - iIntros "(%Hnonnull & %ly & %Hst & %Hly & #Hsc & #Hlb & %r' & <- & #Ha)".
       iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
       iExists _, _, _. iR.
-      iSplitR. { iPureIntro. by apply l2v_decodes_to_loc. }
+      iSplitR. { iPureIntro. by apply l2v_decodes_to_ref. }
       iR. iR. iR. iFrame "#". done.
     - iIntros "(%l' & %ly & %r' & _ & %Hl & % & % & #Hlb & #Hsc & <- & #Ha)".
       iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
-      apply val_decodes_to_loc_l2v_inv in Hl. subst.
+      pose proof (val_decodes_to_ref_nonnull _ _ Hl) as Hnonnull.
+      apply val_decodes_to_ref_l2v_inv in Hl. subst.
+      iSplitR; first done.
       iExists _. iR. iR. iFrame "#". done.
   Qed.
 End ofty.
@@ -61,7 +64,7 @@ Section ltype_agree.
     iDestruct "Hb" as "(%ly' & >? & >? & >Hsc & >Hlb' & %r' & >Hrfn & Hb)".
     iModIntro.
     iExists vi, li, ly', r'. iFrame. iR.
-    iSplitR. { apply syn_type_has_layout_ptr_inv in Ha as ?. subst. done. }
+    iSplitR. { apply syn_type_has_layout_ref_inv in Ha as ?. subst. done. }
     iFrame "Hs". done.
   Qed.
 
