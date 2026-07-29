@@ -1571,14 +1571,14 @@ Section judgments.
           the postcondition holds. *)
         (* if the client provides ownership of v... *)
         (v ◁ᵥ{f.1, MetaNone} r @ ty -∗ logical_step F (
-          (* This is something the client learns (in order to prove its wp), rather than something that is provided.
-            That the type is compatible with the ot is something that actually needs to be proven as part of [typed_write_end],
-            and so we provide it here to the client. *)
-          ⌜v `has_layout_val` ot_layout ot⌝ ∗
+          (* [typed_write_end] proves the operational compatibility needed for the write. *)
+          ⌜op_type_wf ot⌝ ∗
+          ⌜∀ st, ∃ ov, decode_op_val v ot st = Some ov⌝ ∗
           (* then it gets access to l *)
           l ↦|ot_layout ot| ∗
-          (* and after having written v to it, it gets access to T *)
-          logical_step F (l ↦ v ={F}=∗ ∃ L', llctx_interp L' ∗ current_frame f.1 f.2 ∗ T L'))) -∗
+          (* and after having written the canonical encoding, it gets access to T *)
+          logical_step F (∀ st ov, ⌜decode_op_val v ot st = Some ov⌝ -∗
+            l ↦ encode_op_val ov ={F}=∗ ∃ L', llctx_interp L' ∗ current_frame f.1 f.2 ∗ T L'))) -∗
         Φ (l2v l)) -∗
       (* TODO: maybe different mask F *)
       WPe{f.1} e {{ Φ }})%I.
@@ -1597,13 +1597,15 @@ Section judgments.
       l2 ◁ₗ[π, b2] r2 @ lt2 -∗
       (* assuming that the client provides ownership of [v1] *)
       v1 ◁ᵥ{π, MetaNone} r1 @ ty1 ={F}=∗
-      (* we need to prove that [v1]'s layout is compatible with [ot], and provide it to the client *)
-      ⌜v1 `has_layout_val` ot_layout ot⌝ ∗
+      (* we provide the operational compatibility needed for the write *)
+      ⌜op_type_wf ot⌝ ∗
+      ⌜∀ st, ∃ ov, decode_op_val v1 ot st = Some ov⌝ ∗
       (* we provide [l2] *)
       l2 ↦|ot_layout ot| ∗
 
       (* and after the client has written to [l2] ... *)
-      logical_step F (l2 ↦ v1 ={F}=∗
+      logical_step F (∀ st ov, ⌜decode_op_val v1 ot st = Some ov⌝ -∗
+        l2 ↦ encode_op_val ov ={F}=∗
         ((∃ L' (rt3 : RT) (ty3 : type rt3) (r3 : rt3) (res : place_update_kind_res _ _ _),
         llctx_interp L' ∗
         (* [l2] is typed at a new type [ty3] satisfying the postcondition *)

@@ -631,13 +631,14 @@ comparing pointers? (see lambda rust) *)
 
 (*** Evaluation of statements *)
 Inductive stmt_step : stmt → thread_id → function → state → list Empty_set → runtime_expr → state → list runtime_expr → Prop :=
-| AssignS (o : order) π rf σ s v1 v2 l v' ot:
+| AssignS (o : order) π rf σ s v1 v2 l v' ot ov:
     let start_st st := st = if o is Na2Ord then WSt else RSt 0%nat in
     let end_st _ := if o is Na1Ord then WSt else RSt 0%nat in
-    let end_val  := if o is Na1Ord then v' else v2 in
+    let end_val  := if o is Na1Ord then v' else encode_op_val ov in
     let end_stmt := if o is Na1Ord then Assign Na2Ord ot (Val v1) (Val v2) s else s in
     decode_op_val v1 PtrOp σ.(st_heap) = Some (OVPtr l) →
-    v2 `has_layout_val` (ot_layout ot) →
+    op_type_wf ot →
+    decode_op_val v2 ot σ.(st_heap) = Some ov →
     heap_at l (ot_layout ot) v' start_st σ.(st_heap).(hs_heap) →
     stmt_step (Assign o ot (Val v1) (Val v2) s) π rf σ [] (to_rtstmt π rf end_stmt) (heap_fmap (heap_upd l end_val end_st) σ) []
 | IfSS ot v s1 s2 π rf σ b:
@@ -738,8 +739,18 @@ Proof.
   - move => o *.
     revert select (heap_at _ _ _ _ _) => -[?[?[??]]].
     rewrite /heap_fmap/=. eapply heap_update_heap_state_invariant => //.
-    match goal with H : _ `has_layout_val` _ |- _ => rewrite H end.
-    by destruct o.
+    destruct o => //=.
+    all: let ov := match goal with _ := encode_op_val ?ov |- _ => ov end in
+      let ot := match goal with H : decode_op_val _ ?ot _ = Some ov |- _ => ot end in
+      let Hdec := match goal with H : decode_op_val _ ot _ = Some ov |- _ => H end in
+      let Hwf := match goal with H : op_type_wf ot |- _ => H end in
+      let vold := match goal with H : ?v `has_layout_val` ot_layout ot |- _ => v end in
+      let Hold := match goal with H : vold `has_layout_val` ot_layout ot |- _ => H end in
+      have Henc : encode_op_val ov `has_layout_val` ot_layout ot;
+      [ rewrite /has_layout_val; eapply encode_op_val_length;
+        [ exact Hwf | by eapply decode_op_val_has_type ] | ];
+      change (length vold = length (encode_op_val ov));
+      rewrite /has_layout_val in Hold, Henc; congruence.
   - intros. by eapply free_blocks_invariant.
   - intros. by eapply free_block_invariant.
   - intros. eapply alloc_new_block_invariant => //.
