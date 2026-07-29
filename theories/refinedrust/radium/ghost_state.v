@@ -78,7 +78,7 @@ Section definitions.
     (∃ (id : alloc_id) (al : allocation),
     ⌜l.(loc_p) = ProvAlloc id⌝ ∗ ⌜al.(al_start) + pre ≤ l.(loc_a)⌝ ∗ ⌜l.(loc_a) + suf ≤ al_end al⌝ ∗
       ⌜allocation_in_range al⌝ ∗ alloc_meta id al) ∨
-    (⌜l.(loc_p) = ProvNone⌝ ∗ ⌜0 ≤ l.(loc_a)⌝ ∗ ⌜l.(loc_a) ≤ max_alloc_end_zero⌝ ∗ ⌜pre = 0%nat⌝ ∗ ⌜suf = 0%nat⌝).
+    (⌜l.(loc_p) = ProvNone⌝ ∗ ⌜min_alloc_start ≤ l.(loc_a)⌝ ∗ ⌜l.(loc_a) ≤ max_alloc_end_zero⌝ ∗ ⌜pre = 0%nat⌝ ∗ ⌜suf = 0%nat⌝).
   Definition loc_in_bounds_aux : seal (@loc_in_bounds_def). by eexists. Qed.
   Definition loc_in_bounds := unseal loc_in_bounds_aux.
   Definition loc_in_bounds_eq : @loc_in_bounds = @loc_in_bounds_def :=
@@ -593,7 +593,8 @@ Section loc_in_bounds.
     - iDestruct "Hlib" as (?????[??]) "?". iPureIntro.
       unfold max_alloc_end, min_alloc_start in *.
       lia.
-    - iDestruct "Hlib" as "(% & % & % & -> & ->)". iPureIntro. lia.
+    - iDestruct "Hlib" as "(% & % & % & -> & ->)". iPureIntro.
+      unfold min_alloc_start in *. lia.
   Qed.
   Lemma loc_in_bounds_ptr_in_range_alloc l pre suf :
     l.(loc_p) ≠ ProvNone →
@@ -617,6 +618,16 @@ Section loc_in_bounds.
     lia.
   Qed.
 
+  Lemma loc_in_bounds_nonnull l pre suf :
+    loc_in_bounds l pre suf -∗ ⌜l.(loc_a) ≠ 0⌝.
+  Proof.
+    rewrite loc_in_bounds_eq. iIntros "[Hlib | Hlib]".
+    - iDestruct "Hlib" as (id al ????) "_". iPureIntro.
+      unfold allocation_in_range, min_alloc_start in *. lia.
+    - iDestruct "Hlib" as "(_ & %Hstart & _)". iPureIntro.
+      unfold min_alloc_start in Hstart. lia.
+  Qed.
+
   Lemma loc_in_bounds_is_alloc l pre suf :
     loc_in_bounds l pre suf -∗
     ⌜(∃ aid, l.(loc_p) = ProvAlloc aid) ∨ (l.(loc_p) = ProvNone ∧ pre = 0%nat ∧ suf = 0%nat)⌝.
@@ -628,7 +639,7 @@ Section loc_in_bounds.
 
   Lemma loc_in_bounds_prov_none l :
     l.(loc_p) = ProvNone →
-    0 ≤ l.(loc_a) →
+    min_alloc_start ≤ l.(loc_a) →
     l.(loc_a) ≤ max_alloc_end_zero →
     ⊢ loc_in_bounds l 0 0.
   Proof.
@@ -798,9 +809,16 @@ Section heap.
     rewrite Nat2Z.inj_0 Z.sub_0_r in Ha. done.
   Qed.
 
+  Lemma heap_pointsto_nonnull l q v :
+    l ↦{q} v -∗ ⌜l.(loc_a) ≠ 0⌝.
+  Proof.
+    iIntros "Hl". iApply loc_in_bounds_nonnull.
+    by iApply heap_pointsto_loc_in_bounds.
+  Qed.
+
   Lemma heap_pointsto_prov_none_nil l q :
     l.(loc_p) = ProvNone →
-    0 ≤ l.(loc_a) →
+    min_alloc_start ≤ l.(loc_a) →
     l.(loc_a) ≤ max_alloc_end_zero →
     ⊢ l ↦{q} [].
   Proof.

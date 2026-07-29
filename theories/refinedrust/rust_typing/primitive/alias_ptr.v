@@ -215,18 +215,18 @@ Section cast.
   Global Existing Instance type_cast_ptr_int_inst.
 
   Lemma type_cast_int_ptr π E L f (l : Z) v (T : typed_val_expr_cont_t) :
-    (⌜π = f.1⌝ ∗ ((Loc ProvNone l ◁ₗ[π, Owned] .@ ◁ unit_t) -∗
+    (⌜π = f.1⌝ ∗ ⌜l ≠ 0⌝ ∗ ((Loc ProvNone l ◁ₗ[π, Owned] .@ ◁ unit_t) -∗
       T L (l2v (Loc ProvNone l)) MetaNone _ alias_ptr_t (Loc ProvNone l)))
     ⊢ typed_un_op E L f v (v ◁ᵥ{π, MetaNone} l @ int USize)%I (CastOp PtrOp) (IntOp USize) T.
   Proof.
     rewrite /ty_own_val/= int_own_val_unfold.
-    iIntros "(-> & HT) (_ & %Husize) %Φ #CTX #HE HL Hf HΦ".
+    iIntros "(-> & %Hnonnull & HT) (_ & %Husize) %Φ #CTX #HE HL Hf HΦ".
     pose proof (val_to_Z_in_range _ _ _ Husize) as [Hmin Hmax].
     rewrite MinInt_unsigned_0 in Hmin; last done.
     (*odestruct (val_of_Z_is_Some _ _ _) as (? & ?); first apply Husize.*)
     iApply wp_cast_int_ptr_prov_none.
     { done. }
-    { done. }
+    { unfold min_alloc_start. lia. }
     { move: Hmax. rewrite MaxInt_eq. done. }
     { done. }
     iApply physical_step_intro. iNext. iIntros (v1) "%Hv Hl".
@@ -246,7 +246,6 @@ Section cast.
 
     rewrite (l2v_correct _ v1); last done.
     iApply ("HΦ" with "HL Hf [] (HT Hl2)") => //.
-
     rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR.
     iPureIntro. apply val_to_loc_decodes_to_loc. by apply val_to_of_loc.
   Qed.

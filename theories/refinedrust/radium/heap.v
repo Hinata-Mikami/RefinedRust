@@ -278,7 +278,7 @@ Definition block_alive (l : loc) (st : heap_state) : Prop :=
   (∃ aid, l.(loc_p) = ProvAlloc aid ∧ alloc_id_alive aid st) ∨
   (* Rust: have a virtual allocation of size zero at every non-null address,
      see the comment on [heap_state_loc_in_bounds] below *)
-  (l.(loc_p) = ProvNone ∧ 0 ≤ l.(loc_a) ∧ l.(loc_a) ≤ max_alloc_end_zero).
+  (l.(loc_p) = ProvNone ∧ min_alloc_start ≤ l.(loc_a) ∧ l.(loc_a) ≤ max_alloc_end_zero).
 
 (** The address range between [l] and [l +ₗ n] (included) is in range of the
     allocation that contains [l]. Note that we consider the 1-past-the-end
@@ -299,11 +299,11 @@ Definition heap_state_loc_in_bounds (l : loc) (n : nat) (st : heap_state) : Prop
     al.(al_start) ≤ l.(loc_a) ∧
     l.(loc_a) + n ≤ al_end al) ∨
   (* NOTE: new for Rust: zero-sized accesses are also allowed with an invalid provenance *)
-  (l.(loc_p) = ProvNone ∧ 0 ≤ l.(loc_a) ∧ l.(loc_a) ≤ max_alloc_end_zero ∧ n = 0%nat).
+  (l.(loc_p) = ProvNone ∧ min_alloc_start ≤ l.(loc_a) ∧ l.(loc_a) ≤ max_alloc_end_zero ∧ n = 0%nat).
 
 Lemma heap_state_loc_in_bounds_zero_or_has_alloc_id l n σ:
   heap_state_loc_in_bounds l n σ →
-  (l.(loc_p) = ProvNone ∧ 0 ≤ l.(loc_a) ∧ l.(loc_a) ≤ max_alloc_end_zero ∧ n = 0%nat) ∨
+  (l.(loc_p) = ProvNone ∧ min_alloc_start ≤ l.(loc_a) ∧ l.(loc_a) ≤ max_alloc_end_zero ∧ n = 0%nat) ∨
   (∃ aid, l.(loc_p) = ProvAlloc aid).
 Proof. rewrite /heap_state_loc_in_bounds. naive_solver. Qed.
 
@@ -319,7 +319,14 @@ Proof.
   - move : Ha => [?] [] ? [] ? [_ [[? ?] [? ?]]].
     unfold max_alloc_end, min_alloc_start in *.
     lia.
-  - move : Ha => [? [?[??]]]. lia.
+  - move : Ha => [? [?[??]]]. unfold min_alloc_start in *. lia.
+Qed.
+Lemma valid_ptr_nonnull l σ :
+  valid_ptr l σ → l.(loc_a) ≠ 0.
+Proof.
+  rewrite /valid_ptr /heap_state_loc_in_bounds.
+  intros [_ [(aid & al & _ & _ & Hrange & Hstart & _) | (_ & Hstart & _ & _)]];
+    unfold allocation_in_range, min_alloc_start in *; lia.
 Qed.
 Lemma valid_ptr_in_allocation_range_alloc l σ:
   l.(loc_p) ≠ ProvNone → valid_ptr l σ → min_alloc_start ≤ l.(loc_a) ≤ max_alloc_end.

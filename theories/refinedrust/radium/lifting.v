@@ -926,7 +926,7 @@ Qed.
 
 Lemma wp_cast_int_ptr_prov_none Φ v a l it π E :
   val_to_Z v it = Some a →
-  0 ≤ a →
+  min_alloc_start ≤ a →
   a ≤ max_alloc_end_zero →
   l = Loc ProvNone a →
   (|={E}⧗=> ∀ v, ⌜val_of_loc l = Some v⌝ -∗ l ↦ [] -∗ Φ v) -∗
@@ -938,13 +938,36 @@ Proof.
   iSplit.
   { iPureIntro; eexists _. econstructor; [done.. | ].
     subst. apply val_of_loc_Some. simpl.
-    rewrite int_elem_of_it_iff. done. }
+    rewrite int_elem_of_it_iff. split; last done.
+    change (0 ≤ a). unfold min_alloc_start in Hs. lia. }
   iMod "HE" as "_". iApply (physical_step_wand with "HΦ"); iIntros "HΦ".
   iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
   iIntros (v' Hv'). iMod "HE" as "_". iModIntro. iFrame.
   inversion Hv'; simplify_eq.
   iApply ("HΦ" with "[//] []").
   iApply heap_pointsto_prov_none_nil; done.
+Qed.
+
+Lemma wp_cast_int_null_ptr Φ v it π E :
+  val_to_Z v it = Some 0 →
+  (|={E}⧗=> Φ NULL) -∗
+  WPe{π} UnOp (CastOp PtrOp) (IntOp it) (Val v) @ E {{ Φ }}.
+Proof.
+  iIntros (Hv) "HΦ".
+  iApply wp_unop.
+  iIntros (σ) "Hctx". iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
+  iSplit.
+  { iPureIntro; eexists NULL. econstructor; [done.. | ].
+    apply val_of_loc_Some. simpl.
+    rewrite int_elem_of_it_iff. done. }
+  iMod "HE" as "_". iApply (physical_step_wand with "HΦ"); iIntros "HΦ".
+  iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
+  iIntros (v' Hv'). iMod "HE" as "_". iModIntro.
+  inversion Hv'; simplify_eq.
+  assert (val_of_loc NULL_loc = Some NULL) as Hnull.
+  { apply val_of_loc_Some. simpl. rewrite int_elem_of_it_iff. done. }
+  change (val_of_loc (Loc ProvNone 0) = Some NULL) in Hnull.
+  injection (eq_trans (eq_sym H2) Hnull) as ->. iFrame.
 Qed.
 
 Lemma wp_cast_int_bool Φ v n E π it:

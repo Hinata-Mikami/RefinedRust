@@ -27,11 +27,12 @@ Section rule.
     iApply (wpe_logical_step with "HT"); [solve_ndisj.. | ].
     iApply wp_skip.
     iApply physical_step_intro_lc. iIntros "(Hcred & Hcred1) !> !> HT".
-    iMod ("HT" with "Hcred1") as (L' rt ty r r' ly) "(%Hnonnull & #Hrfn & #Hshr & %Halg & %Hly & #Hlb & #Hsc & HL & Hf & HT)".
+    iMod ("HT" with "Hcred1") as (L' rt ty r r' ly) "(#Hrfn & #Hshr & %Halg & %Hly & #Hlb & #Hsc & HL & Hf & HT)".
     iModIntro. iApply ("HΦ" with "HL Hf [Hshr] HT").
     rewrite /ty_own_val/= shr_ref_own_val_unfold.
     iExists l, ly, r'. iR.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
+    iPoseProof (loc_in_bounds_nonnull with "Hlb") as "%Hnonnull".
     iSplitR. { iPureIntro. by apply l2v_decodes_to_ref. }
     iR. iFrame "Hlb Hrfn Hsc %".
     iModIntro. iModIntro. done.
