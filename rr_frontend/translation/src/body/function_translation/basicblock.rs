@@ -50,6 +50,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     };
                     let borrowed_place = self.translate_place(borrowed_place)?;
                     let raw_ptr = code::Expr::AddressOf {
+                        pk: code::PtrKind::Ref,
                         mt: code::Mutability::Mut,
                         e: Box::new(borrowed_place),
                     };

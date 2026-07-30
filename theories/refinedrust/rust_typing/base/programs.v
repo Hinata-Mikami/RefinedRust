@@ -1742,7 +1742,7 @@ Section judgments.
   (** ** Address-of judgments *)
   (** [*mut] address of *)
   Definition typed_addr_of_mut_cont_t := llctx → val → ∀ (rt : RT), type rt → rt → iProp Σ.
-  Definition typed_addr_of_mut (E : elctx) (L : llctx) (f : frame_path) (e : expr) (T : typed_addr_of_mut_cont_t) : iProp Σ :=
+  Definition typed_addr_of_mut (pk : ptr_kind) (E : elctx) (L : llctx) (f : frame_path) (e : expr) (T : typed_addr_of_mut_cont_t) : iProp Σ :=
     (∀ Φ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗ current_frame f.1 f.2 -∗
     (* for any location provided to the client *)
@@ -1760,7 +1760,7 @@ Section judgments.
      This does not seem that terrible, because we should not take *mut references from shared borrows anyways.
      (Note: we are really using here that the difference between *mut and *const have the role of providing some intent by the programmer.) *)
   Definition typed_addr_of_mut_end_cont_t := llctx → ∀ rt0, type rt0 → rt0 → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ.
-  Definition typed_addr_of_mut_end (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (T : typed_addr_of_mut_end_cont_t) : iProp Σ :=
+  Definition typed_addr_of_mut_end (pk : ptr_kind) (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (T : typed_addr_of_mut_end_cont_t) : iProp Σ :=
     (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
     (*bmin ⪯ₚ b2 -∗*)
@@ -1782,8 +1782,8 @@ Section judgments.
     (* and the context and postco *)
     llctx_interp L' ∗
     T L' rt0 ty0 r0 rt' lt' r')).
-  Class TypedAddrOfMutEnd (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) : Type :=
-    typed_addr_of_mut_end_proof T : iProp_to_Prop (typed_addr_of_mut_end π E L l lt r b2 bmin T).
+  Class TypedAddrOfMutEnd (pk : ptr_kind) (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) : Type :=
+    typed_addr_of_mut_end_proof T : iProp_to_Prop (typed_addr_of_mut_end pk π E L l lt r b2 bmin T).
 
   (* TODO addr_of_const
       This should give us some kind of shared ownership.
@@ -2455,7 +2455,7 @@ Global Hint Mode TypedReadEnd + + + + + + + + + + + + + : typeclass_instances.
 Global Hint Mode TypedWriteEnd + + + + + + + + + + + + + + + + : typeclass_instances.
 Global Hint Mode TypedBorrowMutEnd + + + + + + + + + + + + + : typeclass_instances.
 Global Hint Mode TypedBorrowShrEnd + + + + + + + + + + + + + : typeclass_instances.
-Global Hint Mode TypedAddrOfMutEnd + + + + + + + + + + + : typeclass_instances.
+Global Hint Mode TypedAddrOfMutEnd + + + + + + + + + + + + : typeclass_instances.
 Global Hint Mode TypedArrayAccess + + + + + + + + + + + + : typeclass_instances.
 
 (* HintDb for unfolding place expressions. Currently used to unfold the box magic deref *)
@@ -3907,7 +3907,7 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
     constr:(TypedBorrowMutEnd π E L κ l orty lt r b1 b2)
   | typed_borrow_shr_end ?π ?E ?L ?κ ?l ?orty ?lt ?r ?b1 ?b2 =>
     constr:(TypedBorrowShrEnd π E L κ l orty lt r b1 b2)
-  | typed_addr_of_mut_end ?π ?E ?L ?l ?lt ?r ?b1 ?b2 => constr:(TypedAddrOfMutEnd π E L l lt r b1 b2)
+  | typed_addr_of_mut_end ?pk ?π ?E ?L ?l ?lt ?r ?b1 ?b2 => constr:(TypedAddrOfMutEnd pk π E L l lt r b1 b2)
   | typed_annot_expr ?E ?L ?f ?n ?a ?v ?P => constr:(TypedAnnotExpr E L f n a v P)
   | typed_if ?E ?L ?π ?v ?P => constr:(TypedIf E L π v P)
   | typed_assert ?E ?L ?f ?v ?ty ?r  => constr:(TypedAssert E L f v ty r)

@@ -197,6 +197,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
 
                     let place_translated = self.translate_place(place)?;
                     let raw_place = code::Expr::AddressOf {
+                        pk: code::PtrKind::Ref,
                         mt: code::Mutability::Mut,
                         e: Box::new(place_translated),
                     };

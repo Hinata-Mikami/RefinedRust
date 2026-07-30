@@ -694,9 +694,9 @@ Section alias_ltype.
   Global Existing Instance owned_subltype_alias_typed_value_inst.
 
   (** Addr-Of Instance for &raw mut, in the case that the place type is AliasLtype. This case is fairly trivial. *)
-  Lemma typed_addr_of_mut_end_alias π E L l l2 st rt r b2 bmin (T : typed_addr_of_mut_end_cont_t) :
-    (⌜l2 = l⌝ -∗ T L _ (alias_ptr_t) l2 _ (AliasLtype rt st l2) r)
-    ⊢ typed_addr_of_mut_end π E L l (AliasLtype rt st l2) r b2 bmin T.
+  Lemma typed_addr_of_mut_end_alias pk π E L l l2 st rt r b2 bmin (T : typed_addr_of_mut_end_cont_t) :
+    (⌜l2 = l⌝ -∗ T L _ (alias_ptr_kind_t pk) l2 _ (AliasLtype rt st l2) r)
+    ⊢ typed_addr_of_mut_end pk π E L l (AliasLtype rt st l2) r b2 bmin T.
   Proof.
     iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
     rewrite ltype_own_alias_unfold /alias_lty_own. destruct b2 as [| | ]; [| | done].
@@ -704,8 +704,10 @@ Section alias_ltype.
       iSpecialize ("HT" with "[//]").
       iApply logical_step_intro. iExists _, _, _, _, _, _, _. iFrame.
       iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Husize".
+      iPoseProof (loc_in_bounds_nonnull with "Hlb") as "%Hnonnull".
       rewrite !ltype_own_alias_unfold /alias_lty_own.
-      iSplitL. { rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro. by apply l2v_decodes_to_loc. }
+      iSplitL. { rewrite /ty_own_val/=. iR. iApply l2v_alias_ptr_kind_own_val.
+        iPureIntro. destruct pk; simpl; done. }
       iSplitL. { eauto 8 with iFrame. }
       iSplitR. { eauto 8 with iFrame. }
       done.
@@ -713,7 +715,9 @@ Section alias_ltype.
       iSpecialize ("HT" with "[//]").
       iApply logical_step_intro. iExists _, _, _, _, _, _, _. iFrame.
       iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Husize".
-      iSplitL. { rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro. by apply l2v_decodes_to_loc. }
+      iPoseProof (loc_in_bounds_nonnull with "Hlb") as "%Hnonnull".
+      iSplitL. { rewrite /ty_own_val/=. iR. iApply l2v_alias_ptr_kind_own_val.
+        iPureIntro. destruct pk; simpl; done. }
       rewrite !ltype_own_alias_unfold /alias_lty_own.
       iSplitL. { eauto 8 with iFrame. }
       iSplitR. { eauto 8 with iFrame. }
@@ -727,9 +731,9 @@ Section alias_ltype.
       AliasLtype does now support that case. *)
 
   (** Cases for other ltypes *)
-  Lemma typed_addr_of_mut_end_owned π E L l {rt} (lt : ltype rt) r bmin (T : typed_addr_of_mut_end_cont_t) :
-    T L _ (alias_ptr_t) l _ (AliasLtype rt (ltype_st lt) l) r
-    ⊢ typed_addr_of_mut_end π E L l lt r (Owned) bmin T.
+  Lemma typed_addr_of_mut_end_owned pk π E L l {rt} (lt : ltype rt) r bmin (T : typed_addr_of_mut_end_cont_t) :
+    T L _ (alias_ptr_kind_t pk) l _ (AliasLtype rt (ltype_st lt) l) r
+    ⊢ typed_addr_of_mut_end pk π E L l lt r (Owned) bmin T.
   Proof.
     iIntros "Hvs".
     iIntros (????) "#CTX #HE HL Hl".
@@ -737,22 +741,24 @@ Section alias_ltype.
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & % & %)".
     iPoseProof (ltype_own_loc_in_bounds with "Hl") as "#Hlb"; first done.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Husize".
+    iPoseProof (loc_in_bounds_nonnull with "Hlb") as "%Hnonnull".
     iApply logical_step_fupd.
     iApply logical_step_intro.
     iIntros "!>!> ".
     iPoseProof (ltype_own_make_alias with "Hl") as "(Hl & Halias)".
     iExists _, _, _, _, _, _, _. iFrame. simp_ltypes.
     iL.
-    rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro. by apply l2v_decodes_to_loc.
+    rewrite /ty_own_val/=. iR. iApply l2v_alias_ptr_kind_own_val.
+    iPureIntro. destruct pk; simpl; done.
   Qed.
   Definition typed_addr_of_mut_end_owned_inst := [instance @typed_addr_of_mut_end_owned].
   Global Existing Instance typed_addr_of_mut_end_owned_inst.
 
-  Lemma typed_addr_of_mut_end_uniq π E L l {rt} (lt : ltype rt) r κ γ bmin (T : typed_addr_of_mut_end_cont_t) :
+  Lemma typed_addr_of_mut_end_uniq pk π E L l {rt} (lt : ltype rt) r κ γ bmin (T : typed_addr_of_mut_end_cont_t) :
     ltype_uniq_openable lt →
     li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
-    T L2 _ (alias_ptr_t) l _ (OpenedLtype (AliasLtype rt (ltype_st lt) l) lt lt (λ ri ri', ⌜ri = ri'⌝) (λ ri ri', llft_elt_toks κs)) r)
-    ⊢ typed_addr_of_mut_end π E L l lt r (Uniq κ γ) bmin T.
+    T L2 _ (alias_ptr_kind_t pk) l _ (OpenedLtype (AliasLtype rt (ltype_st lt) l) lt lt (λ ri ri', ⌜ri = ri'⌝) (λ ri ri', llft_elt_toks κs)) r)
+    ⊢ typed_addr_of_mut_end pk π E L l lt r (Uniq κ γ) bmin T.
   Proof.
     iIntros (Hopen). rewrite /lctx_lft_alive_count_goal.
     iDestruct 1 as (κs L2) "(%Hcount & HT)".
@@ -773,14 +779,16 @@ Section alias_ltype.
     { simp_ltypes. done. }
     iExists _, _, _, _, _, _, _. iFrame. simp_ltypes.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Husize".
+    iPoseProof (loc_in_bounds_nonnull with "Hlb") as "%Hnonnull".
     iL.
-    rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR. iPureIntro. by apply l2v_decodes_to_loc.
+    rewrite /ty_own_val/=. iR. iApply l2v_alias_ptr_kind_own_val.
+    iPureIntro. destruct pk; simpl; done.
   Qed.
 
-  Lemma typed_addr_of_mut_end_uniq_ofty π E L l {rt} (ty : type rt) r κ γ bmin (T : typed_addr_of_mut_end_cont_t) :
+  Lemma typed_addr_of_mut_end_uniq_ofty pk π E L l {rt} (ty : type rt) r κ γ bmin (T : typed_addr_of_mut_end_cont_t) :
     li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
-    T L2 _ (alias_ptr_t) l _ (OpenedLtype (AliasLtype rt (st_of ty MetaNone) l) (◁ ty) (◁ ty) (λ ri ri', ⌜ri = ri'⌝) (λ ri ri', llft_elt_toks κs)) r)
-    ⊢ typed_addr_of_mut_end π E L l (◁ ty) r (Uniq κ γ) bmin T.
+    T L2 _ (alias_ptr_kind_t pk) l _ (OpenedLtype (AliasLtype rt (st_of ty MetaNone) l) (◁ ty) (◁ ty) (λ ri ri', ⌜ri = ri'⌝) (λ ri ri', llft_elt_toks κs)) r)
+    ⊢ typed_addr_of_mut_end pk π E L l (◁ ty) r (Uniq κ γ) bmin T.
   Proof.
     iApply typed_addr_of_mut_end_uniq.
     apply ltype_uniq_openable_ofty.

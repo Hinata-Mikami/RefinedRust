@@ -145,7 +145,7 @@ Definition scope_bindable_DropGlue_spec `{T_rt : !RT} : (ScopeBindable ((DropGlu
 #[global] Existing Instance scope_bindable_DropGlue_spec.
 
 Definition DropGlue_drop_glue_base_spec `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) :=
-  fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (x, l) : (RT_xt T_rt * loc), (λ ϝ, []); l :@: alias_ptr_t; λ π,
+  fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (x, l) : (RT_xt T_rt * loc), (λ ϝ, []); l :@: alias_ref_t; λ π,
     (l ◁ₗ[π, Owned] #($# x) @ ◁ T_ty)%I) →
   ∃ () : (), () @ unit_t; λ π,
     ty_ghost_drop T_ty π ($# x) ∗
@@ -203,7 +203,7 @@ Program Definition drop_glue_tuple1_def (DropGlue_T0_drop_glue_loc: loc) (T0_st:
       <[
      "_bb0" :=
       local_live{ UnitSynType } "ret";
-      expr: CallE DropGlue_T0_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple1_sls (T0_st)) } "0")];
+      expr: CallE DropGlue_T0_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple1_sls (T0_st)) } "0")];
       Goto "_bb2"
      ]>%E $
      <[
@@ -226,7 +226,7 @@ Program Definition drop_glue_tuple2_def (DropGlue_T0_drop_glue_loc: loc) (DropGl
       <[
      "_bb0" :=
       local_live{ UnitSynType } "ret";
-      expr: CallE DropGlue_T0_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple2_sls (T0_st) (T1_st)) } "0")];
+      expr: CallE DropGlue_T0_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple2_sls (T0_st) (T1_st)) } "0")];
       Goto "_bb4"
      ]>%E $
      <[
@@ -235,7 +235,7 @@ Program Definition drop_glue_tuple2_def (DropGlue_T0_drop_glue_loc: loc) (DropGl
      ]>%E $
      <[
      "_bb4" :=
-      expr: CallE DropGlue_T1_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple2_sls (T0_st) (T1_st)) } "1")];
+      expr: CallE DropGlue_T1_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple2_sls (T0_st) (T1_st)) } "1")];
       Goto "_bb2"
      ]>%E $
       ∅;
@@ -254,7 +254,7 @@ Program Definition drop_glue_tuple3_def (DropGlue_T0_drop_glue_loc: loc) (DropGl
       <[
      "_bb0" :=
       local_live{ UnitSynType } "ret";
-      expr: CallE DropGlue_T0_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple3_sls (T0_st) (T1_st) (T2_st)) } "0")];
+      expr: CallE DropGlue_T0_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple3_sls (T0_st) (T1_st) (T2_st)) } "0")];
       Goto "_bb4"
      ]>%E $
      <[
@@ -263,12 +263,12 @@ Program Definition drop_glue_tuple3_def (DropGlue_T0_drop_glue_loc: loc) (DropGl
      ]>%E $
      <[
      "_bb4" :=
-      expr: CallE DropGlue_T1_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple3_sls (T0_st) (T1_st) (T2_st)) } "1")];
+      expr: CallE DropGlue_T1_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple3_sls (T0_st) (T1_st) (T2_st)) } "1")];
       Goto "_bb5"
      ]>%E $
      <[
      "_bb5" :=
-      expr: CallE DropGlue_T2_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple3_sls (T0_st) (T1_st) (T2_st)) } "2")];
+      expr: CallE DropGlue_T2_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple3_sls (T0_st) (T1_st) (T2_st)) } "2")];
       Goto "_bb2"
      ]>%E $
       ∅;
@@ -287,7 +287,7 @@ Program Definition drop_glue_tuple4_def (DropGlue_T0_drop_glue_loc: loc) (DropGl
       <[
      "_bb0" :=
       local_live{ UnitSynType } "ret";
-      expr: CallE DropGlue_T0_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple4_sls (T0_st) (T1_st) (T2_st) (T3_st)) } "0")];
+      expr: CallE DropGlue_T0_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple4_sls (T0_st) (T1_st) (T2_st) (T3_st)) } "0")];
       Goto "_bb4"
      ]>%E $
      <[
@@ -296,17 +296,17 @@ Program Definition drop_glue_tuple4_def (DropGlue_T0_drop_glue_loc: loc) (DropGl
      ]>%E $
      <[
      "_bb4" :=
-      expr: CallE DropGlue_T1_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple4_sls (T0_st) (T1_st) (T2_st) (T3_st)) } "1")];
+      expr: CallE DropGlue_T1_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple4_sls (T0_st) (T1_st) (T2_st) (T3_st)) } "1")];
       Goto "_bb5"
      ]>%E $
      <[
      "_bb5" :=
-      expr: CallE DropGlue_T2_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple4_sls (T0_st) (T1_st) (T2_st) (T3_st)) } "2")];
+      expr: CallE DropGlue_T2_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple4_sls (T0_st) (T1_st) (T2_st) (T3_st)) } "2")];
       Goto "_bb6"
      ]>%E $
      <[
      "_bb6" :=
-      expr: CallE DropGlue_T3_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple4_sls (T0_st) (T1_st) (T2_st) (T3_st)) } "3")];
+      expr: CallE DropGlue_T3_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple4_sls (T0_st) (T1_st) (T2_st) (T3_st)) } "3")];
       Goto "_bb2"
      ]>%E $
       ∅;
@@ -325,7 +325,7 @@ Program Definition drop_glue_tuple5_def (DropGlue_T0_drop_glue_loc: loc) (DropGl
       <[
      "_bb0" :=
       local_live{ UnitSynType } "ret";
-      expr: CallE DropGlue_T0_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "0")];
+      expr: CallE DropGlue_T0_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "0")];
       Goto "_bb4"
      ]>%E $
      <[
@@ -334,22 +334,22 @@ Program Definition drop_glue_tuple5_def (DropGlue_T0_drop_glue_loc: loc) (DropGl
      ]>%E $
      <[
      "_bb4" :=
-      expr: CallE DropGlue_T1_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "1")];
+      expr: CallE DropGlue_T1_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "1")];
       Goto "_bb5"
      ]>%E $
      <[
      "_bb5" :=
-      expr: CallE DropGlue_T2_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "2")];
+      expr: CallE DropGlue_T2_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "2")];
       Goto "_bb6"
      ]>%E $
      <[
      "_bb6" :=
-      expr: CallE DropGlue_T3_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "3")];
+      expr: CallE DropGlue_T3_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "3")];
       Goto "_bb7"
      ]>%E $
      <[
      "_bb7" :=
-      expr: CallE DropGlue_T4_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "4")];
+      expr: CallE DropGlue_T4_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "4")];
       Goto "_bb2"
      ]>%E $
       ∅;
@@ -450,7 +450,7 @@ Section proof.
   Definition drop_glue_tuple1_lemma (π : thread_id) : Prop :=
     ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_T_drop_glue_loc : loc),
     syn_type_is_layoutable (((tuple1_sls (T_st)) : syn_type)) →
-    DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+    DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
     typed_function π (drop_glue_tuple1_def DropGlue_T_drop_glue_loc T_st) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_drop_glue_tuple1 T_rt T_st -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
     ∗ (⌜((trait_incl_of_drop_glue_tuple1 (T_rt) (T_st) (DropGlue_T_spec))-[] -[T_ty])%Z⌝))).
 
@@ -490,8 +490,8 @@ Section proof.
   Definition drop_glue_tuple2_lemma (π : thread_id) : Prop :=
     ∀ `(T_rt : !RT) `(U_rt : !RT) `(T_st : !syn_type) `(U_st : !syn_type) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) `(DropGlue_U_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (U_rt)))) (DropGlue_T_drop_glue_loc : loc) (DropGlue_U_drop_glue_loc : loc) ,
     syn_type_is_layoutable (((tuple2_sls (T_st) (U_st)) : syn_type)) →
-    DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-    DropGlue_U_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_U_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_U_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+    DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+    DropGlue_U_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_U_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_U_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
     typed_function π (drop_glue_tuple2_def DropGlue_T_drop_glue_loc  DropGlue_U_drop_glue_loc  T_st  U_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; U_ty]) : ([T_rt; U_rt] : list RT), fn_spec_add_late_pre (type_of_drop_glue_tuple2 T_rt U_rt T_st U_st -[] -[T_ty; U_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
     ∗ (typaram_wf U_rt U_st U_ty))
     ∗ (⌜((trait_incl_of_drop_glue_tuple2 (T_rt) (U_rt) (T_st) (U_st) (DropGlue_T_spec) (DropGlue_U_spec))-[] -[T_ty; U_ty])%Z⌝))).
@@ -536,9 +536,9 @@ Section proof.
   Definition drop_glue_tuple3_lemma (π : thread_id) : Prop :=
     ∀ `(T_rt : !RT) `(U_rt : !RT) `(V_rt : !RT) `(T_st : !syn_type) `(U_st : !syn_type) `(V_st : !syn_type) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) `(DropGlue_U_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (U_rt)))) `(DropGlue_V_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (V_rt)))) (DropGlue_T_drop_glue_loc : loc) (DropGlue_U_drop_glue_loc : loc) (DropGlue_V_drop_glue_loc : loc),
     syn_type_is_layoutable (((tuple3_sls (T_st) (U_st) (V_st)) : syn_type)) →
-    DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-    DropGlue_U_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_U_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_U_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-    DropGlue_V_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_V_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_V_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+    DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+    DropGlue_U_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_U_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_U_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+    DropGlue_V_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_V_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_V_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
     typed_function π (drop_glue_tuple3_def DropGlue_T_drop_glue_loc DropGlue_U_drop_glue_loc DropGlue_V_drop_glue_loc T_st U_st V_st) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; U_ty; V_ty]) : ([T_rt; U_rt; V_rt] : list RT), fn_spec_add_late_pre (type_of_drop_glue_tuple3 T_rt U_rt V_rt T_st U_st V_st -[] -[T_ty; U_ty; V_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
     ∗ (typaram_wf U_rt U_st U_ty)
     ∗ (typaram_wf V_rt V_st V_ty))
@@ -588,10 +588,10 @@ Section proof.
   Definition drop_glue_tuple4_lemma (π : thread_id) : Prop :=
     ∀ `(T_rt : !RT) `(U_rt : !RT) `(V_rt : !RT) `(W_rt : !RT) `(T_st : !syn_type) `(U_st : !syn_type) `(V_st : !syn_type) `(W_st : !syn_type) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) `(DropGlue_U_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (U_rt)))) `(DropGlue_V_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (V_rt)))) `(DropGlue_W_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (W_rt)))) (DropGlue_T_drop_glue_loc : loc) (DropGlue_U_drop_glue_loc : loc) (DropGlue_V_drop_glue_loc : loc) (DropGlue_W_drop_glue_loc : loc),
     syn_type_is_layoutable (((tuple4_sls (T_st) (U_st) (V_st) (W_st)) : syn_type)) →
-    DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-    DropGlue_U_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_U_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_U_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-    DropGlue_V_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_V_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_V_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-    DropGlue_W_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_W_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_W_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+    DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+    DropGlue_U_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_U_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_U_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+    DropGlue_V_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_V_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_V_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+    DropGlue_W_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_W_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_W_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
     typed_function π (drop_glue_tuple4_def DropGlue_T_drop_glue_loc DropGlue_U_drop_glue_loc DropGlue_V_drop_glue_loc DropGlue_W_drop_glue_loc T_st U_st V_st W_st) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; U_ty; V_ty; W_ty]) : ([T_rt; U_rt; V_rt; W_rt] : list RT), fn_spec_add_late_pre (type_of_drop_glue_tuple4 T_rt U_rt V_rt W_rt T_st U_st V_st W_st -[] -[T_ty; U_ty; V_ty; W_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
     ∗ (typaram_wf U_rt U_st U_ty)
     ∗ (typaram_wf V_rt V_st V_ty)
@@ -646,11 +646,11 @@ Section proof.
   Definition drop_glue_tuple5_lemma (π : thread_id) : Prop :=
     ∀ `(T_rt : !RT) `(U_rt : !RT) `(V_rt : !RT) `(W_rt : !RT) `(X_rt : !RT) `(T_st : !syn_type) `(U_st : !syn_type) `(V_st : !syn_type) `(W_st : !syn_type) `(X_st : !syn_type) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) `(DropGlue_U_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (U_rt)))) `(DropGlue_V_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (V_rt)))) `(DropGlue_W_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (W_rt)))) `(DropGlue_X_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (X_rt)))) (DropGlue_T_drop_glue_loc : loc) (DropGlue_U_drop_glue_loc : loc) (DropGlue_V_drop_glue_loc : loc) (DropGlue_W_drop_glue_loc : loc) (DropGlue_X_drop_glue_loc : loc),
     syn_type_is_layoutable (((tuple5_sls (T_st) (U_st) (V_st) (W_st) (X_st)) : syn_type)) →
-    DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-    DropGlue_U_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_U_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_U_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-    DropGlue_V_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_V_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_V_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-    DropGlue_W_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_W_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_W_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-    DropGlue_X_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_X_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_X_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+    DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+    DropGlue_U_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_U_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_U_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+    DropGlue_V_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_V_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_V_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+    DropGlue_W_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_W_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_W_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+    DropGlue_X_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_X_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_X_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
     typed_function π (drop_glue_tuple5_def DropGlue_T_drop_glue_loc DropGlue_U_drop_glue_loc DropGlue_V_drop_glue_loc DropGlue_W_drop_glue_loc DropGlue_X_drop_glue_loc T_st U_st V_st W_st X_st) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; U_ty; V_ty; W_ty; X_ty]) : ([T_rt; U_rt; V_rt; W_rt; X_rt] : list RT), fn_spec_add_late_pre (type_of_drop_glue_tuple5 T_rt U_rt V_rt W_rt X_rt T_st U_st V_st W_st X_st -[] -[T_ty; U_ty; V_ty; W_ty; X_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
     ∗ (typaram_wf U_rt U_st U_ty)
     ∗ (typaram_wf V_rt V_st V_ty)

@@ -3528,9 +3528,9 @@ Section subsume.
     by iApply ("HT" with "[$LFT $LLCTX] HE HL Hf").
   Qed.
 
-  Lemma type_mut_addr_of E L f e (T : typed_val_expr_cont_t) :
-    typed_addr_of_mut E L f e (λ L v rt ty r, T L v MetaNone rt ty r)
-    ⊢ typed_val_expr E L f (&raw{Mut} e)%E T.
+  Lemma type_mut_addr_of pk E L f e (T : typed_val_expr_cont_t) :
+    typed_addr_of_mut pk E L f e (λ L v rt ty r, T L v MetaNone rt ty r)
+    ⊢ typed_val_expr E L f (&raw{pk, Mut} e)%E T.
   Proof.
     iIntros "HT" (?) "#CTX #HE HL Hf Hcont".
     rewrite /Raw. wpe_bind.
@@ -4092,7 +4092,7 @@ Section subsume.
     Of course, with nested products, this gets more complicated...
    *)
 
-  Lemma type_addr_of_mut E L f (e : expr) (T : typed_addr_of_mut_cont_t) T' :
+  Lemma type_addr_of_mut pk E L f (e : expr) (T : typed_addr_of_mut_cont_t) T' :
     IntoPlaceCtx E f e T' →
     T' L (λ L1 K l, find_in_context (FindLoc l) (λ '(existT rto (lt1, r1, b, π)),
       ⌜π = f.1⌝ ∗
@@ -4100,12 +4100,12 @@ Section subsume.
       typed_place E L1 f l lt1 r1 UpdStrong b K (λ L2 κs (l2 : loc) (b2 : bor_kind) (bmin : place_update_kind) rti (lt2 : ltype rti) (ri2 : place_rfn rti) updcx,
         (* We need to be able to do a strong update *)
         ∃ (Heqmin : place_update_kind_allows_strong_updates bmin),
-        typed_addr_of_mut_end f.1 E L2 l2 lt2 ri2 b2 bmin (λ L3 rtb tyb rb rt' lt' r',
+        typed_addr_of_mut_end pk f.1 E L2 l2 lt2 ri2 b2 bmin (λ L3 rtb tyb rb rt' lt' r',
           typed_place_finish f.1 E L3 updcx (mkPUKRes UpdStrong I (opt_place_update_eq_strong bmin Heqmin)) (llft_elt_toks κs) l b lt' r' (λ L4,
             (* in case lt2 is already an AliasLtype, the simplify_hyp instance for it will make sure that we don't actually introduce that assignment into the context *)
             l2 ◁ₗ[π, Owned] ri2 @ lt2 -∗
             T L4 l2 rtb tyb rb)))))
-    ⊢ typed_addr_of_mut E L f e T.
+    ⊢ typed_addr_of_mut pk E L f e T.
   Proof.
     iIntros (HT') "HT'". iIntros (Φ F ???) "#CTX #HE HL Hf HΦ".
     iApply (HT' with "CTX HE HL Hf HT'").

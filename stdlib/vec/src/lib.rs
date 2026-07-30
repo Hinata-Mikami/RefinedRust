@@ -109,7 +109,7 @@ pub(crate) struct RawVec<T, A: Allocator = Global> {
 impl<T, A: Allocator> Drop for RawVec<T, A> {
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
     #[rr::params("l", "lmem", "cap", "els")] 
-    #[rr::args("l" @ "alias_ptr_t")]
+    #[rr::args("l" @ "alias_ref_t")]
     #[rr::requires(#type "l" : "(lmem, cap, els)" @ "RawVec_inv_t T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
     #[rr::exists("a")]
     #[rr::ensures(#type "l" : "-[ #(l, cap, a); #tt]" @ "RawVec_ty T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
@@ -164,7 +164,7 @@ impl<T> Vec<T> {
 #[rr::only_spec]
 impl<T, A: Allocator> Drop for Vec<T, A> {
     #[rr::params("l", "xs")]
-    #[rr::args("l" @ "alias_ptr_t")]
+    #[rr::args("l" @ "alias_ref_t")]
     #[rr::requires(#type "l" : "$# xs" @ "Vec_inv_t T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
     #[rr::exists("lmem", "cap")]
     // Postcondition: ghost drop for all the elements

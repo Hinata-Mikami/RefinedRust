@@ -180,6 +180,9 @@ pub enum RustType {
     #[display("RSTAliasPtr")]
     AliasPtr,
 
+    #[display("RSTAliasRef")]
+    AliasRef,
+
     #[display("RSTRef Mut \"{}\" ({})", _1, &_0)]
     MutRef(Box<Self>, Lft),
 
@@ -264,6 +267,7 @@ impl RustType {
             },
 
             Type::RawPtr => Self::AliasPtr,
+            Type::AliasRef => Self::AliasRef,
         }
     }
 }
@@ -388,9 +392,13 @@ pub enum Expr {
         e: Box<Self>,
     },
 
-    /// the address-of operator to get a raw pointer
-    #[display("&raw{{ {} }} ({})", mt, &e)]
-    AddressOf { mt: Mutability, e: Box<Self> },
+    /// the address-of operator to get a pointer or reference
+    #[display("&raw{{ {}, {} }} ({})", pk, mt, &e)]
+    AddressOf {
+        pk: PtrKind,
+        mt: Mutability,
+        e: Box<Self>,
+    },
 
     #[display("CallE {} [{}] [{}] [@{{expr}} {}]", &f, fmt_list!(lfts, "; ", "\"{}\""), fmt_list!(tys, "; ", "{}"), fmt_list!(args, "; "))]
     Call {
@@ -479,6 +487,15 @@ pub enum Mutability {
 
     #[display("Shr")]
     Shared,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Display)]
+pub enum PtrKind {
+    #[display("PRaw")]
+    Raw,
+
+    #[display("PRef")]
+    Ref,
 }
 
 /**

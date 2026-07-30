@@ -417,6 +417,7 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
 
                 Ok((
                     code::Expr::AddressOf {
+                        pk: code::PtrKind::Raw,
                         mt: translated_mt,
                         e: Box::new(translated_pl),
                     },

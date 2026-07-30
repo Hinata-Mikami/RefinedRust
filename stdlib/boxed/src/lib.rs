@@ -110,7 +110,7 @@ impl<T, A: Allocator> Drop for Box<T, A> {
     // the T in the Box is dropped by the compiler before the destructor is run
 
     #[rr::params("l", "lmem", "a")]
-    #[rr::args("l" @ "alias_ptr_t")]
+    #[rr::args("l" @ "alias_ref_t")]
     #[rr::requires(#type "l" : "-[#lmem; #($# a)]" @ "Box_ty T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
     #[rr::requires(#type "lmem" : "()" @ "uninit {st_of T}")]
     #[rr::requires(#iris "{A::FreeablePerm} a lmem (ly_size {ly_of T})")]

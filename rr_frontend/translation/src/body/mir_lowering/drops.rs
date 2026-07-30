@@ -133,7 +133,7 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
             let spec_term = code::UsedProcedureSpec::Literal(meta.get_spec_name().to_owned());
             let loc_name =
                 format!("{}_loc", types::mangle_name_with_tys(meta.get_name(), generics_key.as_slice()));
-            let syntypes = vec![lang::SynType::Ptr];
+            let syntypes = vec![lang::SynType::Ref];
             let fn_inst = quantified_args.fn_scope_inst;
 
             info!(
@@ -171,7 +171,7 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
             res = proc_use.loc_name.clone();
         } else {
             let method_use = self.make_virtual_drop_glue_method_for_param(dropped_ty);
-            let syntypes = vec![lang::SynType::Ptr];
+            let syntypes = vec![lang::SynType::Ref];
             let scope = method_use.spec_scope.into();
             let mut fn_inst = specs::GenericScopeInst::empty();
             for lft in method_use.spec_inst.lft_insts {

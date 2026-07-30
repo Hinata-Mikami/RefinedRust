@@ -126,8 +126,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedBorrowMutEnd π E L κ l orty lt r b2 bmin) T))
   | typed_borrow_shr_end ?π ?E ?L ?κ ?l ?orty ?lt ?r ?b2 ?bmin ?T =>
       cont uconstr:(((_ : TypedBorrowShrEnd π E L κ l orty lt r b2 bmin) T))
-  | typed_addr_of_mut_end ?π ?E ?L ?l ?lt ?r ?b2 ?bmin ?T =>
-      cont uconstr:(((_ : TypedAddrOfMutEnd π E L l lt r b2 bmin) T))
+  | typed_addr_of_mut_end ?pk ?π ?E ?L ?l ?lt ?r ?b2 ?bmin ?T =>
+      cont uconstr:(((_ : TypedAddrOfMutEnd pk π E L l lt r b2 bmin) T))
   | cast_ltype_to_type ?E ?L ?lt ?T =>
       cont uconstr:(((_ : CastLtypeToType E L lt) T))
   | typed_pre_context_fold ?π ?E ?L ?m ?T =>
@@ -236,6 +236,8 @@ Ltac interpret_rust_type_core lfts env ty ::=
       exact bool_t
   | RSTAliasPtr =>
       exact alias_ptr_t
+  | RSTAliasRef =>
+      exact alias_ref_t
   | RSTUnit =>
       exact unit_t
   | RSTStruct ?sls ?tys =>
@@ -504,7 +506,7 @@ Ltac liRExpr :=
     | W.EnumDiscriminant _ _ => notypeclasses refine (tac_fast_apply (type_discriminant E L f _ _ _ T _) _); [apply _ | ]
     | W.Borrow Mut _ _ _ => notypeclasses refine (tac_fast_apply (type_mut_bor E L f T _ _ _) _)
     | W.Borrow Shr _ _ _ => notypeclasses refine (tac_fast_apply (type_shr_bor E L f T _ _ _) _)
-    | W.Raw _ _ => notypeclasses refine (tac_fast_apply (type_mut_addr_of E L f _ T) _)
+    | W.Raw ?pk _ _ => notypeclasses refine (tac_fast_apply (type_mut_addr_of pk E L f _ T) _)
     | W.BinOp _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_bin_op E L f _ _ _ _ _ T) _)
     | W.UnOp _ _ _ => notypeclasses refine (tac_fast_apply (type_un_op E L f _ _ _ T) _)
     | W.CheckBinOp _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_check_bin_op E L f _ _ _ _ _ T) _)
@@ -542,8 +544,8 @@ Ltac liRJudgement :=
     | |- envs_entails _ (typed_borrow_shr ?E ?L ?f _ _ _ ?T) =>
         notypeclasses refine (tac_fast_apply (type_borrow_shr E L f T _ _ _ _ _) _); [solve [refine _] |]
     (* addr_of mut *)
-    | |- envs_entails _ (typed_addr_of_mut ?E ?L ?f _ ?T) =>
-        notypeclasses refine (tac_fast_apply (type_addr_of_mut E L f _ T _ _) _); [solve [refine _] |]
+    | |- envs_entails _ (typed_addr_of_mut ?pk ?E ?L ?f _ ?T) =>
+        notypeclasses refine (tac_fast_apply (type_addr_of_mut pk E L f _ T _ _) _); [solve [refine _] |]
     (* end context folding *)
     | |- envs_entails _ (typed_context_fold_end ?AI ?E ?L ?acc ?T) =>
         notypeclasses refine (tac_fast_apply (type_context_fold_end AI E L acc T) _)

@@ -431,7 +431,8 @@ pub fn mut_ptr_with_addr<T>(x: *mut T, addr: usize) -> *mut T {
 #[rr::returns("l")]
 #[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
 #[rr::ensures("l.(loc_a) = addr")]
-#[rr::ensures(#type "l" : "()" @ "unit_t")]
+// NULL is never valid for reads/writes, not even of size 0
+#[rr::ensures(#iris "if decide (addr ≠ 0) then (l ◁ₗ[π, Owned] .@ ◁ unit_t) else True")]
 pub const fn without_provenance<T>(addr: usize) -> *const T {
     unimplemented!();
 }
@@ -441,7 +442,8 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 #[rr::returns("l")]
 #[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
 #[rr::ensures("l.(loc_a) = addr")]
-#[rr::ensures(#type "l" : "()" @ "unit_t")]
+// NULL is never valid for reads/writes, not even of size 0
+#[rr::ensures(#iris "if decide (addr ≠ 0) then (l ◁ₗ[π, Owned] .@ ◁ unit_t) else True")]
 pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     unimplemented!();
 }

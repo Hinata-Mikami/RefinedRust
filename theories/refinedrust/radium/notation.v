@@ -173,6 +173,7 @@ Inductive rust_type : Type :=
   | RSTInt (it : int_type)
   | RSTBool
   | RSTAliasPtr
+  | RSTAliasRef
   | RSTUnit
   | RSTStruct (sls : struct_layout_spec) (components : list rust_type)
   | RSTArray (len : nat) (el : rust_type)
@@ -194,9 +195,10 @@ Inductive rust_enum_def : Type :=
   There's no inherent other step we could use, except for possibly the step for the assignment to the LHS
     (but that would kill modularity). *)
 Definition Ref (m : mutability) (κ : string) (ty : option rust_type) (e : expr) := SkipE (SkipE e).
-Definition Raw (m : mutability) (e : expr) := SkipE e.
+Definition Raw (pk : ptr_kind) (m : mutability) (e : expr) := SkipE e.
 Notation "'&ref{' mut , ty , κ '}' e" := (Ref mut κ ty e) (at level 9, format "&ref{ mut , ty , κ }  e") : expr_scope.
-Notation "'&raw{' mut '}' e" := (Raw mut e) (at level 9, format "&raw{ mut }  e") : expr_scope.
+Notation "'&raw{' pk , mut '}' e" := (Raw pk mut e) (at level 9, format "&raw{ pk , mut }  e") : expr_scope.
+Notation "'&raw{' mut '}' e" := (Raw PRaw mut e) (at level 9, format "&raw{ mut }  e") : expr_scope.
 Arguments Ref : simpl never.
 Global Typeclasses Opaque Ref.
 Arguments Raw : simpl never.
@@ -348,7 +350,7 @@ Abbreviation zst_val := ([] : val).
 (*** Tests *)
 Example test1 (l : loc) ly ot :
   (l <-{ly} copy{ot}(&raw{Mut} l +{PtrOp, IntOp USize} (l ={PtrOp, PtrOp, I32} l)); ExprS (Call l [ (l : expr); (l : expr)]) (l <-{ly, ScOrd} l; Goto "a"))%E =
-  (AssignSE Na1Ord ly l (Copy Na1Ord ot (BinOp AddOp PtrOp (IntOp USize) (Raw Mut l) (BinOp (EqOp I32) PtrOp PtrOp l l))))
+  (AssignSE Na1Ord ly l (Copy Na1Ord ot (BinOp AddOp PtrOp (IntOp USize) (Raw PRaw Mut l) (BinOp (EqOp I32) PtrOp PtrOp l l))))
       (ExprS (Call l [ Val (l2v l); Val (l2v l)]) ((AssignSE ScOrd ly l l) (Goto "a"))).
 Proof. simpl. reflexivity. Abort.
 

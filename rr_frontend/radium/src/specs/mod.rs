@@ -77,6 +77,10 @@ pub enum Type<'def> {
     /// dummy type that should be overridden by an annotation
     #[display("alias_ptr_t")]
     RawPtr,
+
+    /// non-null pointer used for compiler-generated references without a lifetime
+    #[display("alias_ref_t")]
+    AliasRef,
 }
 
 impl<'def> From<Type<'def>> for lang::SynType {
@@ -93,7 +97,7 @@ impl<'def> From<&Type<'def>> for lang::SynType {
             Type::Char => Self::Char,
             Type::Int(it) => Self::Int(*it),
 
-            Type::MutRef(..) | Type::ShrRef(..) => Self::Ref,
+            Type::MutRef(..) | Type::ShrRef(..) | Type::AliasRef => Self::Ref,
 
             Type::RawPtr => Self::Ptr,
 
@@ -138,7 +142,7 @@ impl Type<'_> {
 
             Self::ShrRef(box ty, _) => model::Type::PlaceRfn(Box::new(ty.get_rfn_type())).into(),
 
-            Self::RawPtr => model::Type::Loc.into(),
+            Self::RawPtr | Self::AliasRef => model::Type::Loc.into(),
 
             Self::LiteralParam(lit) => coq::term::Type::Literal(lit.refinement_type()),
             Self::Literal(lit) => coq::term::Type::Literal(lit.get_rfn_type()),
