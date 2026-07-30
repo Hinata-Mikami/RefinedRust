@@ -18,7 +18,7 @@ Section rwlock_RwLockReadGuard_sls.
   Definition rwlock_RwLockReadGuard_sls (T_st: syn_type) : struct_layout_spec :=
     let rwlock_RwLockReadGuard_st (T_st: syn_type) := UnitSynType in
     mk_sls "rwlock_RwLockReadGuard" [
-    ("_t", PtrSynType)] StructReprRust.
+    ("_t", RefSynType)] StructReprRust.
   Definition rwlock_RwLockReadGuard_st (T_st: syn_type) : syn_type := rwlock_RwLockReadGuard_sls T_st.
 End rwlock_RwLockReadGuard_sls.
 
@@ -50,7 +50,7 @@ Section rwlock_RwLockWriteGuard_sls.
   Definition rwlock_RwLockWriteGuard_sls (T_st: syn_type) (R_st: syn_type) : struct_layout_spec :=
     let rwlock_RwLockWriteGuard_st (T_st: syn_type) (R_st: syn_type) := UnitSynType in
     mk_sls "rwlock_RwLockWriteGuard" [
-    ("_l", PtrSynType);
+    ("_l", RefSynType);
     ("_r", R_st)] StructReprRust.
   Definition rwlock_RwLockWriteGuard_st (T_st: syn_type) (R_st: syn_type) : syn_type := rwlock_RwLockWriteGuard_sls T_st R_st.
 End rwlock_RwLockWriteGuard_sls.
@@ -68,7 +68,7 @@ Program Definition drop_glue_rwlock_RwLockWriteGuard_def (DropGlue_R_drop_glue_l
       <[
      "_bb0" :=
       local_live{ UnitSynType } "ret";
-      expr: CallE DropGlue_R_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (rwlock_RwLockWriteGuard_sls (T_st) (R_st)) } "_r")];
+      expr: CallE DropGlue_R_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (rwlock_RwLockWriteGuard_sls (T_st) (R_st)) } "_r")];
       Goto "_bb1"
      ]>%E $
      <[

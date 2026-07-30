@@ -39,7 +39,7 @@ Program Definition nonnull_NonNullTasstd_clone_Clone_clone_def (T_st: syn_type) 
      "_bb0" :=
       local_live{ (nonnull_NonNull_st (T_st)) } "__0";
       annot{ 1 }: CopyLftNameAnnot "plft3" "ulft_1"; (* initialization *)
-      "__0" <-{ (use_op_alg' (nonnull_NonNull_st (T_st))) } copy{ (use_op_alg' (nonnull_NonNull_st (T_st))) } (!{ PtrOp } ( "self" ));
+      "__0" <-{ (use_op_alg' (nonnull_NonNull_st (T_st))) } copy{ (use_op_alg' (nonnull_NonNull_st (T_st))) } (!{ RefOp } ( "self" ));
       return (move{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("__0"))
      ]>%E $
       ∅;
@@ -466,7 +466,7 @@ Program Definition unique_UniqueTasstd_clone_Clone_clone_def (T_st: syn_type) : 
      "_bb0" :=
       local_live{ (unique_Unique_st (T_st)) } "__0";
       annot{ 1 }: CopyLftNameAnnot "plft3" "ulft_1"; (* initialization *)
-      "__0" <-{ (use_op_alg' (unique_Unique_st (T_st))) } copy{ (use_op_alg' (unique_Unique_st (T_st))) } (!{ PtrOp } ( "self" ));
+      "__0" <-{ (use_op_alg' (unique_Unique_st (T_st))) } copy{ (use_op_alg' (unique_Unique_st (T_st))) } (!{ RefOp } ( "self" ));
       return (move{ (use_op_alg' (unique_Unique_st (T_st))) } ("__0"))
      ]>%E $
       ∅;

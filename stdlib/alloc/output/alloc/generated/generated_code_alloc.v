@@ -47,7 +47,7 @@ Program Definition layout_Layout_align_def (alignment_Alignment_as_usize_loc: lo
       local_live{ (IntSynType USize) } "__0";
       annot{ 1 }: CopyLftNameAnnot "plft3" "ulft_1"; (* initialization *)
       local_live{ (alignment_Alignment_sls : syn_type) } "__2";
-      "__2" <-{ (use_op_alg' (alignment_Alignment_sls : syn_type)) } copy{ (use_op_alg' (alignment_Alignment_sls : syn_type)) } ((!{ PtrOp } ( "self" )) at{ layout_Layout_sls } "align");
+      "__2" <-{ (use_op_alg' (alignment_Alignment_sls : syn_type)) } copy{ (use_op_alg' (alignment_Alignment_sls : syn_type)) } ((!{ RefOp } ( "self" )) at{ layout_Layout_sls } "align");
       "__0" <-{ IntOp USize } CallE alignment_Alignment_as_usize_loc [] [] [@{expr} move{ (use_op_alg' (alignment_Alignment_sls : syn_type)) } ("__2")];
       Goto "_bb1"
      ]>%E $
@@ -188,7 +188,7 @@ Program Definition layout_Layout_size_def  : function :=
      "_bb0" :=
       local_live{ (IntSynType USize) } "__0";
       annot{ 1 }: CopyLftNameAnnot "plft3" "ulft_1"; (* initialization *)
-      "__0" <-{ IntOp USize } copy{ IntOp USize } ((!{ PtrOp } ( "self" )) at{ layout_Layout_sls } "size");
+      "__0" <-{ IntOp USize } copy{ IntOp USize } ((!{ RefOp } ( "self" )) at{ layout_Layout_sls } "size");
       return (move{ IntOp USize } ("__0"))
      ]>%E $
       ∅;

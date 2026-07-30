@@ -19,8 +19,8 @@ Definition drop_glue_adapters_map_Map_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (I_st) →
   syn_type_is_layoutable (F_st) →
   syn_type_is_layoutable (((adapters_map_Map_sls (I_st) (F_st)) : syn_type)) →
-  DropGlue_F_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_F_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_F_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-  DropGlue_I_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_I_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_I_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+  DropGlue_F_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_F_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_F_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+  DropGlue_I_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_I_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_I_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
   typed_function π (drop_glue_adapters_map_Map_def DropGlue_F_drop_glue_loc  DropGlue_I_drop_glue_loc  I_st  F_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[I_ty; F_ty]) : ([I_rt; F_rt] : list RT), fn_spec_add_late_pre (type_of_drop_glue_adapters_map_Map I_rt F_rt I_st F_st -[] -[I_ty; F_ty]) (λ π, ((typaram_wf I_rt I_st I_ty)
   ∗ (typaram_wf F_rt F_st F_ty))
   ∗ (⌜((trait_incl_of_drop_glue_adapters_map_Map (I_rt) (F_rt) (I_st) (F_st) (DropGlue_I_spec) (DropGlue_F_spec))-[] -[I_ty; F_ty])%Z⌝))).

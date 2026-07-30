@@ -8,7 +8,7 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition isizeasAddAssignREFisize_add_assign_lemma (π : thread_id) : Prop :=
   ∀ (isizeasAddAssign_add_assign_loc : loc) , 
-  isizeasAddAssign_add_assign_loc ◁ᵥ{π, MetaNone} isizeasAddAssign_add_assign_loc @ function_ptr [PtrSynType; (IntSynType ISize)] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_isizeasAddAssign_add_assign (RRGS:=RRGS)  -[late_lft_0] -[]) (λ π, (True))%I) -∗
+  isizeasAddAssign_add_assign_loc ◁ᵥ{π, MetaNone} isizeasAddAssign_add_assign_loc @ function_ptr [RefSynType; (IntSynType ISize)] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_isizeasAddAssign_add_assign (RRGS:=RRGS)  -[late_lft_0] -[]) (λ π, (True))%I) -∗
   typed_function π (isizeasAddAssignREFisize_add_assign_def isizeasAddAssign_add_assign_loc  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_isizeasAddAssignREFisize_add_assign -[ulft_1; ulft_2] -[]) (λ π, (True)
   ∗ (⌜(trait_incl_of_isizeasAddAssignREFisize_add_assign-[ulft_1; ulft_2] -[])%Z⌝))).
 End proof.

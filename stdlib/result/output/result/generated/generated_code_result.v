@@ -45,7 +45,7 @@ Section Formatter_sls.
   Definition Formatter_sls  : struct_layout_spec :=
     let Formatter_st  := UnitSynType in
     mk_sls "Formatter" [
-    ("_marker", ((core_marker_PhantomData_sls (PtrSynType)) : syn_type))] StructReprRust.
+    ("_marker", ((core_marker_PhantomData_sls (RefSynType)) : syn_type))] StructReprRust.
   Definition Formatter_st  : syn_type := Formatter_sls .
 End Formatter_sls.
 
@@ -64,7 +64,7 @@ Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) 
       local_live{ (Result_st (T_st) (E_st)) } "__0";
       local_live{ (IntSynType ISize) } "__2";
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* initialization *)
-      "__2" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) (!{ PtrOp } ( "self" ));
+      "__2" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) (!{ RefOp } ( "self" ));
       Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
@@ -73,32 +73,32 @@ Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) 
      ]>%E $
      <[
      "_bb2" :=
-      local_live{ PtrSynType } "__6";
+      local_live{ RefSynType } "__6";
       annot{ 1 }: CopyLftNameAnnot "vlft3" "plft7"; (* composite *)
-      "__6" <-{ PtrOp } &ref{ Shr, Some (RSTTyVar "E"), "vlft3" } ((EnumData ((Result_els (T_st) (E_st))) "Err" (!{ PtrOp } ( "self" ))) at{ (Result_Err_sls (T_st) (E_st)) } "0");
+      "__6" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "E"), "vlft3" } ((EnumData ((Result_els (T_st) (E_st))) "Err" (!{ RefOp } ( "self" ))) at{ (Result_Err_sls (T_st) (E_st)) } "0");
       annot{ 1 }: CopyLftNameAnnot "plft10" "vlft3"; (* post-assignment *)
       local_live{ E_st } "__7";
-      local_live{ PtrSynType } "__8";
+      local_live{ RefSynType } "__8";
       annot{ 1 }: CopyLftNameAnnot "vlft4" "plft10"; (* composite *)
-      "__8" <-{ PtrOp } &ref{ Shr, Some (RSTTyVar "E"), "vlft4" } (!{ PtrOp } ( "__6" ));
+      "__8" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "E"), "vlft4" } (!{ RefOp } ( "__6" ));
       annot{ 1 }: CopyLftNameAnnot "plft11" "vlft4"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft12" "plft11"; (* function_call *)
-      "__7" <-{ (use_op_alg' E_st) } CallE Clone_E_clone_loc ["vlft12"] [] [@{expr} move{ PtrOp } ("__8")];
+      "__7" <-{ (use_op_alg' E_st) } CallE Clone_E_clone_loc ["vlft12"] [] [@{expr} move{ RefOp } ("__8")];
       Goto "_bb5"
      ]>%E $
      <[
      "_bb3" :=
-      local_live{ PtrSynType } "__self_0";
+      local_live{ RefSynType } "__self_0";
       annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
-      "__self_0" <-{ PtrOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft5" } ((EnumData ((Result_els (T_st) (E_st))) "Ok" (!{ PtrOp } ( "self" ))) at{ (Result_Ok_sls (T_st) (E_st)) } "0");
+      "__self_0" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft5" } ((EnumData ((Result_els (T_st) (E_st))) "Ok" (!{ RefOp } ( "self" ))) at{ (Result_Ok_sls (T_st) (E_st)) } "0");
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft5"; (* post-assignment *)
       local_live{ T_st } "__4";
-      local_live{ PtrSynType } "__5";
+      local_live{ RefSynType } "__5";
       annot{ 1 }: CopyLftNameAnnot "vlft6" "plft8"; (* composite *)
-      "__5" <-{ PtrOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft6" } (!{ PtrOp } ( "__self_0" ));
+      "__5" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft6" } (!{ RefOp } ( "__self_0" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft6"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft13" "plft9"; (* function_call *)
-      "__4" <-{ (use_op_alg' T_st) } CallE Clone_T_clone_loc ["vlft13"] [] [@{expr} move{ PtrOp } ("__5")];
+      "__4" <-{ (use_op_alg' T_st) } CallE Clone_T_clone_loc ["vlft13"] [] [@{expr} move{ RefOp } ("__5")];
       Goto "_bb4"
      ]>%E $
      <[
@@ -207,7 +207,7 @@ Program Definition Result_TE_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T
      ]>%E $
      <[
      "_bb8" :=
-      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("op")];
+      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("op")];
       Goto "_bb6"
      ]>%E $
       ∅;
@@ -296,7 +296,7 @@ Program Definition Result_TE_map_err_def (DropGlue_O_drop_glue_loc: loc) (FnOnce
      ]>%E $
      <[
      "_bb8" :=
-      expr: CallE DropGlue_O_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("op")];
+      expr: CallE DropGlue_O_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("op")];
       Goto "_bb6"
      ]>%E $
       ∅;
@@ -320,7 +320,7 @@ Program Definition drop_glue_Result_def (DropGlue_E_drop_glue_loc: loc) (DropGlu
       local_live{ UnitSynType } "ret";
       local_live{ (IntSynType ISize) } "__2";
       local_live{ (IntSynType ISize) } "__3";
-      "__2" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) (!{ PtrOp } ( "ptr" ));
+      "__2" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) (!{ RefOp } ( "ptr" ));
       Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ ∅) ([Goto "_bb2"]) (Goto "_bb3")
      ]>%E $
      <[
@@ -329,12 +329,12 @@ Program Definition drop_glue_Result_def (DropGlue_E_drop_glue_loc: loc) (DropGlu
      ]>%E $
      <[
      "_bb2" :=
-      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((EnumData ((Result_els (T_st) (E_st))) "Ok" (!{ PtrOp } ( "ptr" ))) at{ (Result_Ok_sls (T_st) (E_st)) } "0")];
+      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((Result_els (T_st) (E_st))) "Ok" (!{ RefOp } ( "ptr" ))) at{ (Result_Ok_sls (T_st) (E_st)) } "0")];
       Goto "_bb1"
      ]>%E $
      <[
      "_bb3" :=
-      expr: CallE DropGlue_E_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((EnumData ((Result_els (T_st) (E_st))) "Err" (!{ PtrOp } ( "ptr" ))) at{ (Result_Err_sls (T_st) (E_st)) } "0")];
+      expr: CallE DropGlue_E_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((Result_els (T_st) (E_st))) "Err" (!{ RefOp } ( "ptr" ))) at{ (Result_Err_sls (T_st) (E_st)) } "0")];
       Goto "_bb1"
      ]>%E $
       ∅;

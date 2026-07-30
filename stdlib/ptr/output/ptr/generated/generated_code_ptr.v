@@ -488,7 +488,7 @@ Program Definition alignment_AlignmentEnumasstd_clone_Clone_clone_def  : functio
      "_bb0" :=
       local_live{ alignment_AlignmentEnum_st } "__0";
       annot{ 1 }: CopyLftNameAnnot "plft3" "ulft_1"; (* initialization *)
-      "__0" <-{ (use_op_alg' alignment_AlignmentEnum_st) } copy{ (use_op_alg' alignment_AlignmentEnum_st) } (!{ PtrOp } ( "self" ));
+      "__0" <-{ (use_op_alg' alignment_AlignmentEnum_st) } copy{ (use_op_alg' alignment_AlignmentEnum_st) } (!{ RefOp } ( "self" ));
       return (move{ (use_op_alg' alignment_AlignmentEnum_st) } ("__0"))
      ]>%E $
       ∅;
@@ -637,7 +637,7 @@ Program Definition alignment_Alignmentasstd_clone_Clone_clone_def  : function :=
      "_bb0" :=
       local_live{ alignment_Alignment_st } "__0";
       annot{ 1 }: CopyLftNameAnnot "plft3" "ulft_1"; (* initialization *)
-      "__0" <-{ (use_op_alg' alignment_Alignment_st) } copy{ (use_op_alg' alignment_Alignment_st) } (!{ PtrOp } ( "self" ));
+      "__0" <-{ (use_op_alg' alignment_Alignment_st) } copy{ (use_op_alg' alignment_Alignment_st) } (!{ RefOp } ( "self" ));
       return (move{ (use_op_alg' alignment_Alignment_st) } ("__0"))
      ]>%E $
       ∅;

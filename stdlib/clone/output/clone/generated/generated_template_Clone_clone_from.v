@@ -10,8 +10,8 @@ Context `{RRGS : !refinedrustGS Σ}.
 Definition Clone_clone_from_lemma (π : thread_id) : Prop :=
   ∀ `(Self_rt : !RT) `(Self_st : !syn_type) `(Clone_Self_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (Self_rt) )) `(Clone_Self_spec : !(spec_with 0 [] (Clone_spec (RRGS:=RRGS) (Self_rt)))) `(DropGlue_Self_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) (Clone_Self_clone_loc : loc) (DropGlue_Self_drop_glue_loc : loc) , 
   syn_type_is_layoutable (Self_st) →
-  Clone_Self_clone_loc ◁ᵥ{π, MetaNone} Clone_Self_clone_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((Clone_clone_spec (RRGS:=RRGS) (Clone_Self_spec-[] -[]))  -[late_lft_0] -[]) (λ π, (True))%I) -∗
-  DropGlue_Self_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_Self_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_Self_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+  Clone_Self_clone_loc ◁ᵥ{π, MetaNone} Clone_Self_clone_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((Clone_clone_spec (RRGS:=RRGS) (Clone_Self_spec-[] -[]))  -[late_lft_0] -[]) (λ π, (True))%I) -∗
+  DropGlue_Self_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_Self_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_Self_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
   typed_function π (Clone_clone_from_def Clone_Self_clone_loc  DropGlue_Self_drop_glue_loc  Self_st  ) (<tag_type> spec! ( *[ulft_1; ulft_2]) : 2 | ( *[Self_ty]) : ([Self_rt] : list RT), fn_spec_add_late_pre (Clone_clone_from_base_spec Self_rt Self_st Clone_Self_spec_attrs -[ulft_1; ulft_2] -[Self_ty]) (λ π, ((typaram_wf Self_rt Self_st Self_ty))
   ∗ (⌜((trait_incl_of_Clone_clone_from (Self_rt) (Self_st) (Clone_Self_spec_attrs) (Clone_Self_spec) (DropGlue_Self_spec))-[ulft_1; ulft_2] -[Self_ty])%Z⌝))).
 End proof.

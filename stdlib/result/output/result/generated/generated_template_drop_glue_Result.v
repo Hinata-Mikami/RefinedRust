@@ -16,8 +16,8 @@ Definition drop_glue_Result_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((Result_els (T_st) (E_st)) : syn_type)) →
   syn_type_is_layoutable (((Result_Err_sls (T_st) (E_st)) : syn_type)) →
   syn_type_is_layoutable (((Result_Ok_sls (T_st) (E_st)) : syn_type)) →
-  DropGlue_E_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_E_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_E_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-  DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+  DropGlue_E_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_E_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_E_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+  DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
   typed_function π (drop_glue_Result_def DropGlue_E_drop_glue_loc  DropGlue_T_drop_glue_loc  T_st  E_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), fn_spec_add_late_pre (type_of_drop_glue_Result T_rt E_rt T_st E_st -[] -[T_ty; E_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
   ∗ (typaram_wf E_rt E_st E_ty))
   ∗ (⌜((trait_incl_of_drop_glue_Result (T_rt) (E_rt) (T_st) (E_st) (DropGlue_T_spec) (DropGlue_E_spec))-[] -[T_ty; E_ty])%Z⌝))).

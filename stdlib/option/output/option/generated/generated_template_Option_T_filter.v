@@ -16,10 +16,10 @@ Definition Option_T_filter_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((Option_els (T_st)) : syn_type)) →
   syn_type_is_layoutable (((Option_None_sls (T_st)) : syn_type)) →
   syn_type_is_layoutable (((Option_Some_sls (T_st)) : syn_type)) →
-  syn_type_is_layoutable (((tuple1_sls (PtrSynType)) : syn_type)) →
-  DropGlue_P_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_P_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_P_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-  DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-  FnOnce_P_REFT_call_once_loc ◁ᵥ{π, MetaNone} FnOnce_P_REFT_call_once_loc @ function_ptr [P_st; ((tuple1_sls (PtrSynType)) : syn_type)] (<tag_type> spec! ( *[_lft_for_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((FnOnce_call_once_spec (RRGS:=RRGS) (FnOnce_P_REFT_spec-[_lft_for_0] -[]))  -[] -[]) (λ π, (True))%I) -∗
+  syn_type_is_layoutable (((tuple1_sls (RefSynType)) : syn_type)) →
+  DropGlue_P_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_P_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_P_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+  DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+  FnOnce_P_REFT_call_once_loc ◁ᵥ{π, MetaNone} FnOnce_P_REFT_call_once_loc @ function_ptr [P_st; ((tuple1_sls (RefSynType)) : syn_type)] (<tag_type> spec! ( *[_lft_for_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((FnOnce_call_once_spec (RRGS:=RRGS) (FnOnce_P_REFT_spec-[_lft_for_0] -[]))  -[] -[]) (λ π, (True))%I) -∗
   typed_function π (Option_T_filter_def DropGlue_P_drop_glue_loc  DropGlue_T_drop_glue_loc  FnOnce_P_REFT_call_once_loc  T_st  P_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; P_ty]) : ([T_rt; P_rt] : list RT), fn_spec_add_late_pre (type_of_Option_T_filter T_rt P_rt T_st P_st FnOnce_P_REFT_spec_attrs -[] -[T_ty; P_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
   ∗ (typaram_wf P_rt P_st P_ty))
   ∗ (⌜((trait_incl_of_Option_T_filter (T_rt) (P_rt) (T_st) (P_st) (DropGlue_T_spec) (FnOnce_P_REFT_spec_attrs) (FnOnce_P_REFT_spec) (DropGlue_P_spec))-[] -[T_ty; P_ty])%Z⌝))).

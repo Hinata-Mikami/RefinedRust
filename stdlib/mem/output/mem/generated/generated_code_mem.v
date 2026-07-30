@@ -14,7 +14,7 @@ Program Definition drop_def (DropGlue_T_drop_glue_loc: loc) (T_st: syn_type) : f
      "_bb0" :=
       local_live{ UnitSynType } "__0";
       "__0" <-{ StructOp unit_sl [] } zst_val;
-      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("x")];
+      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("x")];
       Goto "_bb1"
      ]>%E $
      <[

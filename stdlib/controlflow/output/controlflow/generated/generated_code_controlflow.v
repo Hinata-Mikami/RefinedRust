@@ -221,7 +221,7 @@ Program Definition ControlFlow_BC_break_value_def (drop_glue_ControlFlow_B_C_loc
      ]>%E $
      <[
      "_bb6" :=
-      expr: CallE drop_glue_ControlFlow_B_C_loc [] [RSTTyVar "B"; RSTTyVar "C"] [@{expr} &raw{ Mut } ("self")];
+      expr: CallE drop_glue_ControlFlow_B_C_loc [] [RSTTyVar "B"; RSTTyVar "C"] [@{expr} &raw{ PRef, Mut } ("self")];
       Goto "_bb5"
      ]>%E $
      <[
@@ -301,7 +301,7 @@ Program Definition drop_glue_ControlFlow_def (DropGlue_B_drop_glue_loc: loc) (Dr
       local_live{ UnitSynType } "ret";
       local_live{ (IntSynType ISize) } "__2";
       local_live{ (IntSynType ISize) } "__3";
-      "__2" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) (!{ PtrOp } ( "ptr" ));
+      "__2" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) (!{ RefOp } ( "ptr" ));
       Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ ∅) ([Goto "_bb2"]) (Goto "_bb3")
      ]>%E $
      <[
@@ -310,12 +310,12 @@ Program Definition drop_glue_ControlFlow_def (DropGlue_B_drop_glue_loc: loc) (Dr
      ]>%E $
      <[
      "_bb2" :=
-      expr: CallE DropGlue_C_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((EnumData ((ControlFlow_els (B_st) (C_st))) "Continue" (!{ PtrOp } ( "ptr" ))) at{ (ControlFlow_Continue_sls (B_st) (C_st)) } "0")];
+      expr: CallE DropGlue_C_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((ControlFlow_els (B_st) (C_st))) "Continue" (!{ RefOp } ( "ptr" ))) at{ (ControlFlow_Continue_sls (B_st) (C_st)) } "0")];
       Goto "_bb1"
      ]>%E $
      <[
      "_bb3" :=
-      expr: CallE DropGlue_B_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((EnumData ((ControlFlow_els (B_st) (C_st))) "Break" (!{ PtrOp } ( "ptr" ))) at{ (ControlFlow_Break_sls (B_st) (C_st)) } "0")];
+      expr: CallE DropGlue_B_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((ControlFlow_els (B_st) (C_st))) "Break" (!{ RefOp } ( "ptr" ))) at{ (ControlFlow_Break_sls (B_st) (C_st)) } "0")];
       Goto "_bb1"
      ]>%E $
       ∅;

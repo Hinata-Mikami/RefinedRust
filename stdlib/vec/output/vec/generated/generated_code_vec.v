@@ -18,7 +18,7 @@ Section Iter_sls.
     let Iter_st (T_st: syn_type) := UnitSynType in
     mk_sls "Iter" [
     ("end_or_len", PtrSynType);
-    ("_marker", ((core_marker_PhantomData_sls (PtrSynType)) : syn_type))] StructReprRust.
+    ("_marker", ((core_marker_PhantomData_sls (RefSynType)) : syn_type))] StructReprRust.
   Definition Iter_st (T_st: syn_type) : syn_type := Iter_sls T_st.
 End Iter_sls.
 
@@ -30,7 +30,7 @@ Section IterMut_sls.
     mk_sls "IterMut" [
     ("ptr", ((nonnull_NonNull_sls (T_st)) : syn_type));
     ("end_or_len", PtrSynType);
-    ("_marker", ((core_marker_PhantomData_sls (PtrSynType)) : syn_type))] StructReprRust.
+    ("_marker", ((core_marker_PhantomData_sls (RefSynType)) : syn_type))] StructReprRust.
   Definition IterMut_st (T_st: syn_type) : syn_type := IterMut_sls T_st.
 End IterMut_sls.
 
@@ -94,12 +94,12 @@ Program Definition Vec_TA_is_empty_def (Vec_TA_len_T_A_loc: loc) (T_st: syn_type
       local_live{ BoolSynType } "__0";
       annot{ 1 }: CopyLftNameAnnot "plft4" "ulft_1"; (* initialization *)
       local_live{ (IntSynType USize) } "__2";
-      local_live{ PtrSynType } "__3";
+      local_live{ RefSynType } "__3";
       annot{ 1 }: CopyLftNameAnnot "vlft3" "plft4"; (* composite *)
-      "__3" <-{ PtrOp } &ref{ Shr, Some (RSTLitType ["Vec_inv_t"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "A"] [AppDef ["Allocator_A_spec_attrs"] []])), "vlft3" } (!{ PtrOp } ( "self" ));
+      "__3" <-{ RefOp } &ref{ Shr, Some (RSTLitType ["Vec_inv_t"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "A"] [AppDef ["Allocator_A_spec_attrs"] []])), "vlft3" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft5" "vlft3"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft6" "plft5"; (* function_call *)
-      "__2" <-{ IntOp USize } CallE Vec_TA_len_T_A_loc ["vlft6"] [RSTTyVar "T"; RSTTyVar "A"] [@{expr} move{ PtrOp } ("__3")];
+      "__2" <-{ IntOp USize } CallE Vec_TA_len_T_A_loc ["vlft6"] [RSTTyVar "T"; RSTTyVar "A"] [@{expr} move{ RefOp } ("__3")];
       Goto "_bb1"
      ]>%E $
      <[
@@ -128,7 +128,7 @@ Program Definition drop_glue_IntoIter_def (DropGlue_A_drop_glue_loc: loc) (T_st:
       <[
      "_bb0" :=
       local_live{ UnitSynType } "ret";
-      expr: CallE DropGlue_A_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (IntoIter_sls (T_st) (A_st)) } "_y")];
+      expr: CallE DropGlue_A_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (IntoIter_sls (T_st) (A_st)) } "_y")];
       Goto "_bb1"
      ]>%E $
      <[
@@ -154,7 +154,7 @@ Program Definition drop_glue_RawVecInner_def (DropGlue_A_drop_glue_loc: loc) (A_
       <[
      "_bb0" :=
       local_live{ UnitSynType } "ret";
-      expr: CallE DropGlue_A_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((!{ PtrOp } ( "ptr" )) at{ (RawVecInner_sls (A_st)) } "alloc")];
+      expr: CallE DropGlue_A_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (RawVecInner_sls (A_st)) } "alloc")];
       Goto "_bb1"
      ]>%E $
      <[

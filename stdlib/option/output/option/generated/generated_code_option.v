@@ -45,7 +45,7 @@ Program Definition OptionTasstd_clone_Clone_clone_def (Clone_T_clone_loc: loc) (
       local_live{ (Option_st (T_st)) } "__0";
       local_live{ (IntSynType ISize) } "__2";
       annot{ 1 }: CopyLftNameAnnot "plft5" "ulft_1"; (* initialization *)
-      "__2" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ PtrOp } ( "self" ));
+      "__2" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ RefOp } ( "self" ));
       Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
@@ -54,17 +54,17 @@ Program Definition OptionTasstd_clone_Clone_clone_def (Clone_T_clone_loc: loc) (
      ]>%E $
      <[
      "_bb2" :=
-      local_live{ PtrSynType } "__self_0";
+      local_live{ RefSynType } "__self_0";
       annot{ 1 }: CopyLftNameAnnot "vlft3" "plft5"; (* composite *)
-      "__self_0" <-{ PtrOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft3" } ((EnumData ((Option_els (T_st))) "Some" (!{ PtrOp } ( "self" ))) at{ (Option_Some_sls (T_st)) } "0");
+      "__self_0" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft3" } ((EnumData ((Option_els (T_st))) "Some" (!{ RefOp } ( "self" ))) at{ (Option_Some_sls (T_st)) } "0");
       annot{ 1 }: CopyLftNameAnnot "plft6" "vlft3"; (* post-assignment *)
       local_live{ T_st } "__4";
-      local_live{ PtrSynType } "__5";
+      local_live{ RefSynType } "__5";
       annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
-      "__5" <-{ PtrOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft4" } (!{ PtrOp } ( "__self_0" ));
+      "__5" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft4" } (!{ RefOp } ( "__self_0" ));
       annot{ 1 }: CopyLftNameAnnot "plft7" "vlft4"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft7"; (* function_call *)
-      "__4" <-{ (use_op_alg' T_st) } CallE Clone_T_clone_loc ["vlft8"] [] [@{expr} move{ PtrOp } ("__5")];
+      "__4" <-{ (use_op_alg' T_st) } CallE Clone_T_clone_loc ["vlft8"] [] [@{expr} move{ RefOp } ("__5")];
       Goto "_bb4"
      ]>%E $
      <[
@@ -171,19 +171,19 @@ Program Definition Option_T_filter_def (DropGlue_P_drop_glue_loc: loc) (DropGlue
       local_live{ P_st } "__7";
       "__13" <-{ BoolOp } val_of_bool false;
       "__7" <-{ (use_op_alg' P_st) } move{ (use_op_alg' P_st) } ("predicate");
-      local_live{ ((tuple1_sls (PtrSynType)) : syn_type) } "__8";
-      local_live{ PtrSynType } "__9";
-      local_live{ PtrSynType } "__10";
+      local_live{ ((tuple1_sls (RefSynType)) : syn_type) } "__8";
+      local_live{ RefSynType } "__9";
+      local_live{ RefSynType } "__10";
       annot{ 1 }: StartLftAnnot "llft2" ["_flft"]; (* borrow *)
-      "__10" <-{ PtrOp } &ref{ Shr, Some (RSTTyVar "T"), "llft2" } ("x");
+      "__10" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "llft2" } ("x");
       annot{ 1 }: CopyLftNameAnnot "plft7" "llft2"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft3" "plft7"; (* composite *)
-      "__9" <-{ PtrOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft3" } (!{ PtrOp } ( "__10" ));
+      "__9" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft3" } (!{ RefOp } ( "__10" ));
       annot{ 1 }: CopyLftNameAnnot "plft6" "vlft3"; (* post-assignment *)
-      "__8" <-{ (use_op_alg' ((tuple1_sls (PtrSynType)) : syn_type)) } StructInit (tuple1_sls (PtrSynType)) [("0", move{ PtrOp } ("__9") : expr)];
+      "__8" <-{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } StructInit (tuple1_sls (RefSynType)) [("0", move{ RefOp } ("__9") : expr)];
       annot{ 1 }: CopyLftNameAnnot "plft5" "plft6"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft4" "plft5"; (* function_call *)
-      "__6" <-{ BoolOp } CallE FnOnce_P_REFT_call_once_loc ["vlft4"] [] [@{expr} move{ (use_op_alg' P_st) } ("__7"); move{ (use_op_alg' ((tuple1_sls (PtrSynType)) : syn_type)) } ("__8")];
+      "__6" <-{ BoolOp } CallE FnOnce_P_REFT_call_once_loc ["vlft4"] [] [@{expr} move{ (use_op_alg' P_st) } ("__7"); move{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } ("__8")];
       annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
       Goto "_bb2"
      ]>%E $
@@ -217,7 +217,7 @@ Program Definition Option_T_filter_def (DropGlue_P_drop_glue_loc: loc) (DropGlue
       local_dead "__7";
       "__3" <-{ StructOp unit_sl [] } zst_val;
       local_dead "__6";
-      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("x")];
+      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("x")];
       Goto "_bb6"
      ]>%E $
      <[
@@ -245,7 +245,7 @@ Program Definition Option_T_filter_def (DropGlue_P_drop_glue_loc: loc) (DropGlue
      ]>%E $
      <[
      "_bb11" :=
-      expr: CallE DropGlue_P_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("predicate")];
+      expr: CallE DropGlue_P_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("predicate")];
       Goto "_bb8"
      ]>%E $
       ∅;
@@ -318,7 +318,7 @@ Program Definition Option_T_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T_
      ]>%E $
      <[
      "_bb7" :=
-      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("f")];
+      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("f")];
       Goto "_bb5"
      ]>%E $
      <[
@@ -422,7 +422,7 @@ Program Definition Option_T_unwrap_or_def (DropGlue_T_drop_glue_loc: loc) (T_st:
      ]>%E $
      <[
      "_bb6" :=
-      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ Mut } ("def")];
+      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("def")];
       Goto "_bb4"
      ]>%E $
      <[
@@ -453,7 +453,7 @@ Program Definition drop_glue_Option_def (DropGlue_T_drop_glue_loc: loc) (T_st: s
       local_live{ UnitSynType } "ret";
       local_live{ (IntSynType ISize) } "__2";
       local_live{ (IntSynType ISize) } "__3";
-      "__2" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ PtrOp } ( "ptr" ));
+      "__2" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) (!{ RefOp } ( "ptr" ));
       Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ ∅) ([Goto "_bb1"]) (Goto "_bb2")
      ]>%E $
      <[
@@ -462,7 +462,7 @@ Program Definition drop_glue_Option_def (DropGlue_T_drop_glue_loc: loc) (T_st: s
      ]>%E $
      <[
      "_bb2" :=
-      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ Mut } ((EnumData ((Option_els (T_st))) "Some" (!{ PtrOp } ( "ptr" ))) at{ (Option_Some_sls (T_st)) } "0")];
+      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((Option_els (T_st))) "Some" (!{ RefOp } ( "ptr" ))) at{ (Option_Some_sls (T_st)) } "0")];
       Goto "_bb1"
      ]>%E $
       ∅;

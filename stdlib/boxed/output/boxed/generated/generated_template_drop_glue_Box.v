@@ -21,10 +21,10 @@ Definition drop_glue_Box_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((Box_sls (T_st) (A_st)) : syn_type)) →
   syn_type_is_layoutable (((nonnull_NonNull_sls (T_st)) : syn_type)) →
   syn_type_is_layoutable (((unique_Unique_sls (T_st)) : syn_type)) →
-  BoxTAasstd_ops_Drop_drop_T_A_loc ◁ᵥ{π, MetaNone} BoxTAasstd_ops_Drop_drop_T_A_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), fn_spec_add_late_pre (type_of_BoxTAasstd_ops_Drop_drop (RRGS:=RRGS) ((T_rt)) ((A_rt)) (T_st) (A_st) Allocator_A_spec_attrs -[late_lft_0] -[T_ty; A_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
+  BoxTAasstd_ops_Drop_drop_T_A_loc ◁ᵥ{π, MetaNone} BoxTAasstd_ops_Drop_drop_T_A_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), fn_spec_add_late_pre (type_of_BoxTAasstd_ops_Drop_drop (RRGS:=RRGS) ((T_rt)) ((A_rt)) (T_st) (A_st) Allocator_A_spec_attrs -[late_lft_0] -[T_ty; A_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
   ∗ (typaram_wf A_rt A_st A_ty)))%I) -∗
-  DropGlue_A_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_A_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_A_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-  DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+  DropGlue_A_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_A_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_A_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+  DropGlue_T_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_T_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_T_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
   typed_function π (drop_glue_Box_def BoxTAasstd_ops_Drop_drop_T_A_loc  DropGlue_A_drop_glue_loc  DropGlue_T_drop_glue_loc  T_st  A_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), fn_spec_add_late_pre (type_of_drop_glue_Box T_rt A_rt T_st A_st Allocator_A_spec_attrs -[] -[T_ty; A_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
   ∗ (typaram_wf A_rt A_st A_ty))
   ∗ (⌜((trait_incl_of_drop_glue_Box (T_rt) (A_rt) (T_st) (A_st) (Allocator_A_spec_attrs) (Allocator_A_spec) (DropGlue_T_spec) (DropGlue_A_spec))-[] -[T_ty; A_ty])%Z⌝))).

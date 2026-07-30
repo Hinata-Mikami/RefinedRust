@@ -1592,7 +1592,7 @@ Definition type_of_without_provenance (T_rt: RT) (T_st: syn_type) :=
       (* existential.. *) ∃ (l) : ((_)), l @ alias_ptr_t;
       (* postcondition *) (λ π : thread_id, (⌜(l `aligned_to` (Z.to_nat addr))%Z⌝)
       ∗ (⌜(l.(loc_a) = addr)%Z⌝)
-      ∗ (l ◁ₗ[π, Owned] #(()) @ (◁ unit_t))).
+      ∗ (if decide (addr ≠ 0) then (l ◁ₗ[π, Owned] .@ ◁ unit_t) else True)).
 
 Definition trait_incl_of_without_provenance_mut (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
@@ -1607,7 +1607,7 @@ Definition type_of_without_provenance_mut (T_rt: RT) (T_st: syn_type) :=
       (* existential.. *) ∃ (l) : ((_)), l @ alias_ptr_t;
       (* postcondition *) (λ π : thread_id, (⌜(l `aligned_to` (Z.to_nat addr))%Z⌝)
       ∗ (⌜(l.(loc_a) = addr)%Z⌝)
-      ∗ (l ◁ₗ[π, Owned] #(()) @ (◁ unit_t))).
+      ∗ (if decide (addr ≠ 0) then (l ◁ₗ[π, Owned] .@ ◁ unit_t) else True)).
 
 Definition trait_incl_of_write (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).

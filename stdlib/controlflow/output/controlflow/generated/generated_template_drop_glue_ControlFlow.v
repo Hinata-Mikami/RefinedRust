@@ -15,8 +15,8 @@ Definition drop_glue_ControlFlow_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((ControlFlow_els (B_st) (C_st)) : syn_type)) →
   syn_type_is_layoutable (((ControlFlow_Break_sls (B_st) (C_st)) : syn_type)) →
   syn_type_is_layoutable (((ControlFlow_Continue_sls (B_st) (C_st)) : syn_type)) →
-  DropGlue_B_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_B_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_B_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-  DropGlue_C_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_C_drop_glue_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_C_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+  DropGlue_B_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_B_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_B_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
+  DropGlue_C_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_C_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_C_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
   typed_function π (drop_glue_ControlFlow_def DropGlue_B_drop_glue_loc  DropGlue_C_drop_glue_loc  B_st  C_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), fn_spec_add_late_pre (type_of_drop_glue_ControlFlow B_rt C_rt B_st C_st -[] -[B_ty; C_ty]) (λ π, ((typaram_wf B_rt B_st B_ty)
   ∗ (typaram_wf C_rt C_st C_ty))
   ∗ (⌜((trait_incl_of_drop_glue_ControlFlow (B_rt) (C_rt) (B_st) (C_st) (DropGlue_B_spec) (DropGlue_C_spec))-[] -[B_ty; C_ty])%Z⌝))).

@@ -266,7 +266,7 @@ Definition type_of_BoxTAasstd_ops_Drop_drop (T_rt: RT) (A_rt: RT) (T_st: syn_typ
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([(T_rt, T_st); (A_rt, A_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (l, lmem, a) : ((_ * _ * _)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) l :@: alias_ptr_t;
+      (* args......... *) l :@: alias_ref_t;
       (* precondition. *) (λ π : thread_id, (l ◁ₗ[π, Owned] #(-[#lmem; #($# a)]) @ (◁ Box_ty T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]))
         ∗ (lmem ◁ₗ[π, Owned] #(()) @ (◁ uninit (ty_syn_type T_ty MetaNone)))
         ∗ (Allocator_A_spec_attrs.(Allocator_FreeablePerm) a lmem (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))))) |

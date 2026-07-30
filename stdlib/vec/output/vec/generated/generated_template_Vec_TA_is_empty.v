@@ -23,7 +23,7 @@ Definition Vec_TA_is_empty_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (T_st) →
   syn_type_is_layoutable (A_st) →
   syn_type_is_layoutable (((Vec_sls (T_st) (A_st)) : syn_type)) →
-  Vec_TA_len_T_A_loc ◁ᵥ{π, MetaNone} Vec_TA_len_T_A_loc @ function_ptr [PtrSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), fn_spec_add_late_pre (type_of_Vec_TA_len (RRGS:=RRGS) ((T_rt)) ((A_rt)) (T_st) (A_st) Allocator_A_spec_attrs -[late_lft_0] -[T_ty; A_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
+  Vec_TA_len_T_A_loc ◁ᵥ{π, MetaNone} Vec_TA_len_T_A_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), fn_spec_add_late_pre (type_of_Vec_TA_len (RRGS:=RRGS) ((T_rt)) ((A_rt)) (T_st) (A_st) Allocator_A_spec_attrs -[late_lft_0] -[T_ty; A_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
   ∗ (typaram_wf A_rt A_st A_ty)))%I) -∗
   typed_function π (Vec_TA_is_empty_def Vec_TA_len_T_A_loc  T_st  A_st  ) (<tag_type> spec! ( *[ulft_1]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), fn_spec_add_late_pre (type_of_Vec_TA_is_empty T_rt A_rt T_st A_st Allocator_A_spec_attrs -[ulft_1] -[T_ty; A_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
   ∗ (typaram_wf A_rt A_st A_ty))

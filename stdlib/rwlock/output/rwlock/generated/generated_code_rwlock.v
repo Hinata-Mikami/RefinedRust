@@ -16,7 +16,7 @@ Section RwLockReadGuard_sls.
   Definition RwLockReadGuard_sls (T_st: syn_type) : struct_layout_spec :=
     let RwLockReadGuard_st (T_st: syn_type) := UnitSynType in
     mk_sls "RwLockReadGuard" [
-    ("_t", ((core_marker_PhantomData_sls (PtrSynType)) : syn_type))] StructReprRust.
+    ("_t", ((core_marker_PhantomData_sls (RefSynType)) : syn_type))] StructReprRust.
   Definition RwLockReadGuard_st (T_st: syn_type) : syn_type := RwLockReadGuard_sls T_st.
 End RwLockReadGuard_sls.
 
@@ -36,7 +36,7 @@ Section RwLockWriteGuard_sls.
   Definition RwLockWriteGuard_sls (T_st: syn_type) : struct_layout_spec :=
     let RwLockWriteGuard_st (T_st: syn_type) := UnitSynType in
     mk_sls "RwLockWriteGuard" [
-    ("_l", PtrSynType)] StructReprRust.
+    ("_l", RefSynType)] StructReprRust.
   Definition RwLockWriteGuard_st (T_st: syn_type) : syn_type := RwLockWriteGuard_sls T_st.
 End RwLockWriteGuard_sls.
 
