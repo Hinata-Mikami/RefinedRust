@@ -46,6 +46,8 @@ pub struct Spec {
     pub variant_patterns: Vec<(String, Vec<String>, String)>,
     /// true if the map from refinement to variants is partial
     pub is_partial: bool,
+    /// additional Coq context required by the enum definition
+    pub coq_params: Vec<coq::binder::Binder>,
 }
 
 /// Enum to represent large discriminants
@@ -750,7 +752,7 @@ impl<'def> Abstract<'def> {
         let all_ty_params = self.scope.get_all_ty_params_with_assocs();
 
         let mut section_context = setup_type_section_context(&all_ty_params);
-        let (_context_names, context_names_without_sigma) =
+        let (context_names, context_names_without_sigma) =
             invariants::format_extra_context_items(&self.coq_params, &mut section_context);
 
         let rt_param_uses = all_ty_params.get_coq_ty_rt_params().make_using_terms();
@@ -766,7 +768,7 @@ impl<'def> Abstract<'def> {
             &pre_enum_def_name,
             &pre_enum_ty_name,
             &pre_enum_rt_name,
-            &[],
+            &context_names,
             &context_names_without_sigma,
         );
 
@@ -879,6 +881,8 @@ impl<'def> Builder<'def> {
         let plain_rt_name: String = format!("{}_rt", self.name);
         let enum_def_name: String = format!("{}_enum", self.name);
 
+        let coq_params = spec.coq_params.clone();
+
         Abstract {
             variants: self.variants,
             name: self.name,
@@ -892,7 +896,7 @@ impl<'def> Builder<'def> {
             scope: self.scope,
             discriminant_type: self.discriminant_type,
             repr: self.repr,
-            coq_params: Vec::new(),
+            coq_params,
         }
     }
 

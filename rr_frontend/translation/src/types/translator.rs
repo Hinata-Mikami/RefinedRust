@@ -1426,6 +1426,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             rfn_type: coq::term::Type::Literal(inductive_name),
             variant_patterns,
             is_partial: false,
+            coq_params: Vec::new(),
         };
 
         info!("Generated inductive for {:?}: {:?}", def, inductive);

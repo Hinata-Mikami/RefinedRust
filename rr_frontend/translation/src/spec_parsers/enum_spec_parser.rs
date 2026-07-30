@@ -11,10 +11,21 @@ use rr_rustc_interface::hir;
 use rr_rustc_interface::span::{DUMMY_SP, Span};
 
 use crate::spec_parsers::SpannedError;
-use crate::spec_parsers::parse_utils::{CoqLiteralError, ParamLookup, attr_args_tokens, str_err};
+use crate::spec_parsers::parse_utils::{
+    CoqLiteralError, ParamLookup, attr_args_tokens, parse_context_item, str_err,
+};
 
-pub(crate) const ENUM_SPEC_ATTRS: &[&str] =
-    &["refined_by", "partial", "export_as", "derive_instantiate", "verify", "skip", "trust_me", "only_spec"];
+pub(crate) const ENUM_SPEC_ATTRS: &[&str] = &[
+    "refined_by",
+    "partial",
+    "context",
+    "export_as",
+    "derive_instantiate",
+    "verify",
+    "skip",
+    "trust_me",
+    "only_spec",
+];
 
 pub(crate) const ENUM_VARIANT_SPEC_ATTRS: &[&str] = &["pattern", "refinement"];
 
@@ -45,6 +56,7 @@ fn first_span(attrs: &[&hir::AttrItem]) -> Span {
 ///
 /// Supported attributes for the whole enum:
 /// - `rr::refined_by`: specifies the refinement type
+/// - `rr::context`: specifies context items required by the enum definition
 ///
 /// Supported attributes for the enum variants:
 /// - `rr::pattern`: specifies the Coq pattern of the refinement type that matches this variant
@@ -119,6 +131,7 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
         let mut variant_patterns: Vec<(String, Vec<String>, String)> = Vec::new();
         let mut rfn_type = None;
         let mut is_partial = false;
+        let mut coq_params = Vec::new();
 
         for &it in attrs {
             let path_segs = &it.path.segments;
@@ -140,6 +153,10 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
                 },
                 "partial" => {
                     is_partial = true;
+                },
+                "context" => {
+                    coq_params
+                        .push(parse_context_item(&buffer, self.scope).map_err(|err| parse_err(span, err))?);
                 },
                 _ => {},
             }
@@ -196,6 +213,7 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
             rfn_type,
             variant_patterns,
             is_partial,
+            coq_params,
         })
     }
 }

@@ -9,6 +9,25 @@ enum Option<T> {
     Some(T)
 }
 
+#[rr::refined_by("option (place_rfn {rt_of T})")]
+#[rr::context("EqDecision {xt_of T}")]
+#[rr::skip(drop_glue)]
+enum Contextual<T> {
+    #[rr::pattern("None")]
+    None,
+    #[rr::pattern("Some" $ "x")]
+    #[rr::refinement("*[x]")]
+    Some(T),
+}
+
+#[rr::context("EqDecision {xt_of T}")]
+impl<T> Contextual<T> {
+    #[rr::returns("None")]
+    fn new() -> Self {
+        Self::None
+    }
+}
+
 impl<T> Option<T> {
     #[rr::returns("None")]
     pub fn none() -> Self {
@@ -89,4 +108,3 @@ impl<T> Anon2<T> {
         Self::ABitAnon(x)
     }
 }
-
