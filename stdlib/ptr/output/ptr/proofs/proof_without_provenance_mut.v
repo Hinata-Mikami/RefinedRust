@@ -12,7 +12,7 @@ Lemma without_provenance_mut_proof (π : thread_id) :
 Proof.
   without_provenance_mut_prelude.
 
-  repeat liRStep.
+  repeat liRStep. destruct addr; rep liRStep.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

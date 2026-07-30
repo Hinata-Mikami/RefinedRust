@@ -48,7 +48,8 @@ Section rules.
     rewrite /ty_own_val/= mut_ref_own_val_unfold.
     iExists l, ly. iSplitR; first done. iFrame "# ∗".
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
-    iSplitR. { iPureIntro. by apply l2v_decodes_to_loc. }
+    iPoseProof (loc_in_bounds_nonnull with "Hlb") as "%Hnonnull".
+    iSplitR. { iPureIntro. by apply l2v_decodes_to_ref. }
     iR. iR.
     iSplitL "Hat". { iApply tr_weaken; last done. lia. }
     iApply (pinned_bor_unfold with "LFT [Hcred2] Hbor"); first done.

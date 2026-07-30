@@ -22,7 +22,7 @@ Section place.
               (opt_place_update_eq_lift (λ rt, place_rfnRT rt * gname)%type (upd').(pupd_eq_1))
               (opt_place_update_eq_lift (λ rt, place_rfnRT rt * gname)%type (upd').(pupd_eq_2)))))
           ))
-    ⊢ typed_place E L f l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Owned) (DerefPCtx Na1Ord PtrOp :: P) T.
+    ⊢ typed_place E L f l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Owned) (DerefPCtx Na1Ord RefOp :: P) T.
   Proof.
     iIntros "HR" (Φ F ??).
     rewrite /li_tactic /lctx_lft_alive_count_goal.
@@ -91,7 +91,7 @@ Section place.
                   (opt_place_update_eq_lift (λ rt, place_rfnRT rt * gname)%type (upd').(pupd_eq_2)))
               )))
             )))
-    ⊢ typed_place E L f l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Uniq κ' γ') (DerefPCtx Na1Ord PtrOp :: P) T.
+    ⊢ typed_place E L f l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Uniq κ' γ') (DerefPCtx Na1Ord RefOp :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%κs & %L2 & %Hal & HT)".
@@ -112,7 +112,7 @@ Section place.
     - intros st. exists (OVPtr l'). apply Hdec.
     - iApply physical_step_intro_lc. iIntros "Hcred !>!>".
       iIntros (st ov) "%Hdec' Hl Hcl".
-      pose proof (Hdec st) as Hdec_st. rewrite Hdec_st in Hdec'. injection Hdec' as <-.
+       pose proof (Hdec st) as Hdec_st. rewrite Hdec_st in Hdec'. injection Hdec' as <-.
       iExists l'.
       iSplitR.
       { iPureIntro. by apply val_to_loc_Some_l2v. }
@@ -165,7 +165,7 @@ Section place.
               (opt_place_update_eq_lift (λ rt, place_rfnRT rt * gname)%type (upd').(pupd_eq_1))
               (opt_place_update_eq_lift (λ rt, place_rfnRT rt * gname)%type (upd').(pupd_eq_2)))))
             )))
-    ⊢ typed_place E L f l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp :: P) T.
+    ⊢ typed_place E L f l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Shared κ') (DerefPCtx Na1Ord RefOp :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%κs & %L2 & %Hal & HT)".

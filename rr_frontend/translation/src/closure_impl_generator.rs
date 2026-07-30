@@ -92,7 +92,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         //let self_var_st: lang::SynType = info.self_ty.clone().into();
         let self_var_st: lang::SynType = match ref_self {
             ShimRefSelf::NoRef => info.tl_self_var_ty.clone().into(),
-            ShimRefSelf::RefMutToShr => lang::SynType::Ptr,
+            ShimRefSelf::RefMutToShr => lang::SynType::Ref,
             _ => self_st.clone(),
         };
 
@@ -100,7 +100,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
 
         // the syn type that the closure to call expects
         let self_call_st =
-            if matches!(ref_self, ShimRefSelf::NoRef) { self_var_st.clone() } else { lang::SynType::Ptr };
+            if matches!(ref_self, ShimRefSelf::NoRef) { self_var_st.clone() } else { lang::SynType::Ref };
 
         // add arguments: self, args
         builder.code.add_argument("self", self_var_st.clone());
@@ -164,7 +164,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
                     why: None,
                 });
                 statements.push(code::PrimStmt::Assign {
-                    ot: lang::OpType::Ptr,
+                    ot: lang::OpType::Ref,
                     e1: Box::new(code::Expr::Var("__1".to_owned())),
                     e2: Box::new(code::Expr::Borrow {
                         lft: coq::Ident::new(ref_lft),
@@ -182,7 +182,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
                     why: None,
                 });
                 statements.push(code::PrimStmt::Assign {
-                    ot: lang::OpType::Ptr,
+                    ot: lang::OpType::Ref,
                     e1: Box::new(code::Expr::Var("__1".to_owned())),
                     e2: Box::new(code::Expr::Borrow {
                         lft: coq::Ident::new(ref_lft),
@@ -207,14 +207,14 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
                     why: None,
                 });
                 statements.push(code::PrimStmt::Assign {
-                    ot: lang::OpType::Ptr,
+                    ot: lang::OpType::Ref,
                     e1: Box::new(code::Expr::Var("__1".to_owned())),
                     e2: Box::new(code::Expr::Borrow {
                         lft: coq::Ident::new(ref_lft),
                         bk: code::BorKind::Shared,
                         ty: None,
                         e: Box::new(code::Expr::Deref {
-                            ot: lang::OpType::Ptr,
+                            ot: lang::OpType::Ref,
                             e: Box::new(code::Expr::Var("self".to_owned())),
                         }),
                     }),

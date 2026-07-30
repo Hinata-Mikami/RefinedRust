@@ -65,6 +65,9 @@ pub enum SynType {
     #[display("PtrSynType")]
     Ptr,
 
+    #[display("RefSynType")]
+    Ref,
+
     #[display("FnPtrSynType")]
     FnPtr,
 
@@ -102,6 +105,9 @@ pub enum OpType {
 
     #[display("PtrOp")]
     Ptr,
+
+    #[display("RefOp")]
+    Ref,
 
     #[display("StructOp unit_sl []")]
     Unit,
@@ -166,7 +172,7 @@ impl From<&SynType> for Layout {
             SynType::Char => Self::Char,
             SynType::Int(it) => Self::Int(*it),
 
-            SynType::Ptr | SynType::FnPtr => Self::Ptr,
+            SynType::Ref | SynType::Ptr | SynType::FnPtr => Self::Ptr,
 
             SynType::Array(st, len) => Self::Array(Box::new(st.as_ref().to_owned().into()), *len),
             SynType::Untyped(ly) => ly.clone(),
@@ -194,6 +200,7 @@ impl From<&SynType> for OpType {
             SynType::Int(it) => Self::Int(*it),
 
             SynType::Ptr | SynType::FnPtr => Self::Ptr,
+            SynType::Ref => Self::Ref,
 
             SynType::Untyped(ly) => Self::Untyped(ly.clone()),
             SynType::Unit => Self::Unit,

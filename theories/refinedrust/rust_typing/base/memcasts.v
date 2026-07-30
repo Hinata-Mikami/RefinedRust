@@ -60,6 +60,12 @@ Lemma is_ref_ot_layout ot:
   is_ref_ot ot → ot_layout ot = void*.
 Proof. by destruct ot => //=; naive_solver. Qed.
 
+Lemma ptr_ref_op_layout ot `{Hor : !TCOr (TCDone (ot = PtrOp)) (TCDone (ot = RefOp))} :
+  ot_layout ot = void*.
+Proof.
+  destruct Hor as [Hot | Hot]; unfold TCDone in Hot; by subst ot.
+Qed.
+
 Lemma is_ref_ot_wf ot :
   is_ref_ot ot → op_type_wf ot.
 Proof.
@@ -221,8 +227,7 @@ Lemma val_decodes_to_ref_to_loc v l :
   val_decodes_to_ref v l →
   val_decodes_to_loc v l.
 Proof.
-  intros Hdec. apply val_to_loc_decodes_to_loc.
-  specialize (Hdec inhabitant). apply decode_ref_inv in Hdec as [Hloc _]. exact Hloc.
+  intros Hdec st. specialize (Hdec st). by apply decode_ref_inv in Hdec as [Hdec _].
 Qed.
 
 Lemma val_decodes_to_ref_nonnull v l :
@@ -230,6 +235,18 @@ Lemma val_decodes_to_ref_nonnull v l :
   l.(loc_a) ≠ 0.
 Proof.
   intros Hdec. specialize (Hdec inhabitant). by apply decode_ref_inv in Hdec as [_ ?].
+Qed.
+
+Lemma val_decodes_to_loc_ptr_ref v l ot
+    `{Hor : !TCOr (TCDone (ot = PtrOp)) (TCDone (ot = RefOp))} :
+  val_decodes_to_loc v l →
+  l.(loc_a) ≠ 0 →
+  ∀ st, decode_op_val v ot st = Some (OVPtr l).
+Proof.
+  intros Hdec Hnonnull.
+  destruct Hor as [Hot | Hot]; unfold TCDone in Hot; subst ot.
+  - apply Hdec.
+  - intros st. by apply decode_ptr_nonnull_ref.
 Qed.
 
 Lemma l2v_decodes_to_loc l :

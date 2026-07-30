@@ -10,7 +10,7 @@ Section mut_ref.
     let '(r, γ) := rγ in
     (∃ (l : loc) (ly : layout),
       ⌜m = MetaNone⌝ ∗
-      ⌜val_decodes_to_loc v l⌝ ∗
+      ⌜val_decodes_to_ref v l⌝ ∗
       ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
       ⌜l `has_layout_loc` ly⌝ ∗
       loc_in_bounds l 0 ly.(ly_size) ∗
@@ -32,7 +32,7 @@ Section mut_ref.
         &frac{κ'}(λ q', l ↦{q'} vi) ∗
         (* needed explicity because there is a later + fupd over the sharing predicate *)
         ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
-        ⌜val_decodes_to_loc vi li⌝ ∗
+        ⌜val_decodes_to_ref vi li⌝ ∗
         ⌜li `has_layout_loc` ly⌝ ∗
         loc_in_bounds l 0 void*.(ly_size) ∗
         loc_in_bounds li 0 ly.(ly_size) ∗
@@ -50,8 +50,8 @@ Section mut_ref.
     ty_trivial_drop := true;
     ty_own_val := mut_ref_own_val _ κ inner;
 
-    _ty_has_op_type ot := is_ptr_ot ot;
-    ty_syn_type _ := PtrSynType;
+    _ty_has_op_type ot := is_ref_ot ot;
+    ty_syn_type _ := RefSynType;
 
     ty_shr := mut_ref_shr _ κ inner;
     (* NOTE: we cannot descend below the borrow here to get more information recursively.
@@ -74,12 +74,12 @@ Section mut_ref.
     intros. econstructor.
     - rewrite mut_ref_own_val_unfold.
       iIntros (π [r γ] m v) "(%l & %ly & -> & %Hv & _)".
-      iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
-      by apply val_decodes_to_loc_has_layout in Hv.
+      iPureIntro. eexists. split; first by apply syn_type_has_layout_ref.
+      by apply val_decodes_to_ref_has_layout in Hv.
     - intros ot Hot => /=. destruct ot => /=//.
-      + by apply syn_type_has_layout_ptr.
-      + simpl in Hot. subst ly; by apply syn_type_has_layout_ptr.
-    - intros ot Hot. destruct ot; done.
+      + simpl in Hot. subst ly; by apply syn_type_has_layout_ref.
+      + by apply syn_type_has_layout_ref.
+    - intros ot Hot. by apply is_ref_ot_wf.
     - iIntros (π r m v) "_". done.
     - iIntros (κ' π r m v) "_". done.
     - unfold TCNoResolve.
@@ -87,7 +87,7 @@ Section mut_ref.
       iIntros (κ' π l [r γ]). apply _.
     - rewrite mut_ref_shr_unfold.
       iIntros (κ' π l [r γ] m) "(%vi & %li & %ly & %r' & -> & % & ? &  _)".
-      iPureIntro. eexists _. split; last by apply syn_type_has_layout_ptr.
+      iPureIntro. eexists _. split; last by apply syn_type_has_layout_ref.
       done.
     - (* initiate sharing *)
     (*
@@ -190,10 +190,10 @@ Section mut_ref.
     iFrame "Htok".
     iExists _, l0, ly0, r'. iR.
     iFrame "Hl".
-    apply syn_type_has_layout_ptr_inv in Hst as ->.
+    apply syn_type_has_layout_ref_inv in Hst as ->.
     iR. iSplitR. { destruct r; simpl; eauto. }
     iSplitR; first done. iSplitR; first done. iSplitR; first done.
-    iSplitR. { replace (ly_size void*) with (length v); last by eapply val_decodes_to_loc_length.
+    iSplitR. { replace (ly_size void*) with (length v); last by eapply val_decodes_to_ref_length.
       iFrame "Hlb'". }
     iSplitR; first done. iSplitR; first done.
     iNext. iModIntro. iModIntro. done.
@@ -218,18 +218,18 @@ Section mut_ref.
       iDestruct "Hown" as (l ly) "(%Hmeta & %Hv & _)".
       iPureIntro.
       destruct ot; simpl in *; try done; subst.
-      + eexists (OVPtr _). apply Hv.
       + eexists (OVUntyped void* v). simp decode_op_val.
-        rewrite bool_decide_true; last by eapply val_decodes_to_loc_length.
+        rewrite bool_decide_true; last by eapply val_decodes_to_ref_length.
         done.
+      + eexists (OVPtr _). apply Hv.
     - iIntros (ot st π [r γ] v ov Hot Hdec).
       rewrite mut_ref_own_val_unfold.
       rewrite /mut_ref_own_val_def /=.
       iIntros "Hown".
       iDestruct "Hown" as (l ly) "(%Hmeta & %Hv & Halg & Hly & Hlb & Hsc & Hrfn & Hcred & Hbor)".
       iExists l, ly. iFrame. iR.
-      iPureIntro. by eapply val_decodes_to_loc_same_decoded.
-    - intros ly _ Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
+      iPureIntro. by eapply val_decodes_to_ref_same_decoded.
+    - intros ly _ Hst. apply syn_type_has_layout_ref_inv in Hst as ->.
       done.
     - apply _.
     - apply _.

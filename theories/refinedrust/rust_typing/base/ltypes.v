@@ -515,7 +515,7 @@ Section ltype_def.
     (rec : ltype_own_type)
     (rec_core : ltype_own_type)
     {rt} (lt : ltype rt) (κ : lft) (k : bor_kind) (π : thread_id) (r : place_rfn (place_rfn rt * gname)%type) (l : loc) : iProp Σ :=
-    (∃ ly : layout, ⌜syn_type_has_layout PtrSynType ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
+    (∃ ly : layout, ⌜syn_type_has_layout RefSynType ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
        loc_in_bounds l 0 ly.(ly_size) ∗
       match k with
       | Owned =>
@@ -525,7 +525,7 @@ Section ltype_def.
           ∃ (γ : gname) (r' : place_rfn rt) ,
           place_rfn_interp_owned r (r', γ) ∗
           (* TODO layout requirements on l' here? *)
-          |={lftE}=>  ∃ l' : loc, ptr_loc_own l l' ∗ (rec _ lt (Uniq κ γ) π r' l')
+          |={lftE}=>  ∃ l' : loc, ref_loc_own l l' ∗ (rec _ lt (Uniq κ γ) π r' l')
       | Uniq κ' γ' =>
           have_creds ∗
           place_rfn_interp_mut r γ' ∗
@@ -534,21 +534,21 @@ Section ltype_def.
               gvar_auth γ' r' ∗
               (* update here to be compatible with ofty *)
               |={lftE}=>
-              ∃ (l' : loc), ptr_loc_own l l' ∗
+              ∃ (l' : loc), ref_loc_own l l' ∗
               rec_core _ lt (Uniq κ r'.2) π r'.1 l'
             ]
             (∃ (r' : (place_rfn rt) * gname),
               gvar_auth γ' r' ∗
               (* update here to be compatible with ofty *)
               |={lftE}=>
-              ∃ (l' : loc), ptr_loc_own l l' ∗
+              ∃ (l' : loc), ref_loc_own l l' ∗
               rec _ lt (Uniq κ r'.2) π r'.1 l')
       | Shared κ' =>
         (∃ r' γ, place_rfn_interp_shared r (r', γ) ∗
         (* the update is also over the fractional borrow to deal with timelessness *)
         □ |={lftE}=> ∃ (vi : val) (li : loc),
           &frac{κ'}(λ q', l ↦{q'} vi) ∗
-          ⌜val_decodes_to_loc vi li⌝ ∗
+          ⌜val_decodes_to_ref vi li⌝ ∗
           (* later is for contractiveness, the update for timelessness *)
           ▷ rec _ lt (Shared (κ⊓κ')) π r' li)%I
       end)%I.
@@ -1638,7 +1638,7 @@ Section ltype_def.
     ltype_st (ShrBlockedLtype ty κ) = ty.(ty_syn_type) MetaNone.
   Proof. done. Qed.
   Lemma ltype_st_mut_ref {rt} (lt : ltype rt) (κ : lft) :
-    ltype_st (MutLtype lt κ) = PtrSynType.
+    ltype_st (MutLtype lt κ) = RefSynType.
   Proof. done. Qed.
   Lemma ltype_st_shr_ref {rt} (lt : ltype rt) (κ : lft) :
     ltype_st (ShrLtype lt κ) = RefSynType.

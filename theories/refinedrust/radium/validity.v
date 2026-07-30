@@ -334,8 +334,15 @@ Equations decode_op_val (v : val) (ot : op_type) (st : (heap_state)) : option op
   decode_op_val v (UntypedOp ly) st :=
       if bool_decide (length v = ly_size ly) then Some (OVUntyped ly v) else None;
   decode_op_val v CharOp st := OVChar <$> val_to_char v;
+  (* References use raw-pointer decoding, but additionally reject null. *)
   decode_op_val v RefOp st :=
-      match val_to_loc v with
+      match (match val_to_loc v with
+             | Some l => Some l
+             | None =>
+                 v' ← val_to_bytes v;
+                 a ← val_to_Z v' USize;
+                 Some (Loc ProvNone a)
+             end) with
       | Some l => if decide (l.(loc_a) ≠ 0) then Some (OVPtr l) else None
       | None => None
       end.
@@ -401,9 +408,13 @@ Proof.
   - case_bool_decide as Hly; last done.
     by rewrite /has_layout_val.
   - move: Hdec => /fmap_Some[z[Hz Hov]]. by apply val_to_char_length in Hz.
-  - destruct (val_to_loc v) as [l|] eqn:Hl; last done.
-    case_decide; last done.
-    apply val_to_loc_length. eexists. done.
+  - destruct (val_to_loc v) as [l|] eqn:Hl.
+    + case_decide; last done. apply val_to_loc_length. eexists. done.
+    + destruct (val_to_bytes v) as [v'|] eqn:Hv; simpl in Hdec; last done.
+      destruct (val_to_Z v' USize) as [a|] eqn:Ha; simpl in Hdec; last done.
+      case_decide; last done.
+      apply val_to_Z_length in Ha. apply val_to_bytes_length in Hv.
+      rewrite /has_layout_val /= -Hv Ha. done.
 Qed.
 
 Lemma decode_op_val_has_type v ot st ov :
@@ -458,10 +469,14 @@ Proof.
     rewrite /val_to_char in Hz.
     move: Hz => /bind_Some[z'[Hz Hvalid]].
     case_decide; simplify_eq; done.
-  - destruct (val_to_loc v) as [l|] eqn:Hl; last done.
-    case_decide as Hnonnull; last done.
-    injection Hdec as <-. constructor; last done.
-    by apply val_to_loc_Some_inv in Hl as [_ ?].
+  - destruct (val_to_loc v) as [l|] eqn:Hl.
+    + case_decide as Hnonnull; last done.
+      injection Hdec as <-. constructor; last done.
+      by apply val_to_loc_Some_inv in Hl as [_ ?].
+    + destruct (val_to_bytes v) as [v'|] eqn:Hv; simpl in Hdec; last done.
+      destruct (val_to_Z v' USize) as [a|] eqn:Ha; simpl in Hdec; last done.
+      case_decide as Hnonnull; last done.
+      injection Hdec as <-. constructor; last done. by eapply val_to_Z_in_range.
 Qed.
 
 Lemma encode_op_val_length ov ot :
@@ -993,26 +1008,51 @@ Proof.
   intros Hv Hnonnull. simp decode_op_val. rewrite Hv /= decide_True //.
 Qed.
 
-Lemma decode_ref_inv v st l :
-  decode_op_val v RefOp st = Some (OVPtr l) →
-  val_to_loc v = Some l ∧ l.(loc_a) ≠ 0.
+Lemma decode_ptr_nonnull_ref v st l :
+  decode_op_val v PtrOp st = Some (OVPtr l) →
+  l.(loc_a) ≠ 0 →
+  decode_op_val v RefOp st = Some (OVPtr l).
 Proof.
-  simp decode_op_val.
-  destruct (val_to_loc v) as [l'|] eqn:Hv; last done.
-  case_decide as Hnonnull; last done. intros [= <-]. done.
+  intros Hdec Hnonnull. simp decode_op_val in Hdec |- *.
+  destruct (val_to_loc v) as [l'|] eqn:Hv.
+  - injection Hdec as <-. by rewrite decide_True.
+  - destruct (val_to_bytes v) as [v'|] eqn:Hbytes; simpl in Hdec |-*; last done.
+    destruct (val_to_Z v' USize) as [a|] eqn:Ha; simpl in Hdec |-*; last done.
+    injection Hdec as <-. by rewrite decide_True.
 Qed.
 
-Lemma decode_ref_no_loc v st :
-  val_to_loc v = None →
+Lemma decode_ref_inv v st l :
+  decode_op_val v RefOp st = Some (OVPtr l) →
+  decode_op_val v PtrOp st = Some (OVPtr l) ∧ l.(loc_a) ≠ 0.
+Proof.
+  simp decode_op_val.
+  destruct (val_to_loc v) as [l'|] eqn:Hv.
+  - case_decide as Hnonnull; last done. intros [= <-]. split; done.
+  - destruct (val_to_bytes v) as [v'|] eqn:Hbytes; simpl; last done.
+    destruct (val_to_Z v' USize) as [a|] eqn:Ha; simpl; last done.
+    case_decide as Hnonnull; last done. intros [= <-]. split; done.
+Qed.
+
+Lemma decode_ref_no_ptr v st :
+  decode_op_val v PtrOp st = None →
   decode_op_val v RefOp st = None.
-Proof. intros Hv. simp decode_op_val. by rewrite Hv. Qed.
+Proof.
+  simp decode_op_val.
+  destruct (val_to_loc v); first done.
+  by destruct (val_to_bytes v) as [v'|]; simpl; last done; destruct (val_to_Z v' USize).
+Qed.
 
 Lemma decode_ref_null v st l :
-  val_to_loc v = Some l →
+  decode_op_val v PtrOp st = Some (OVPtr l) →
   l.(loc_a) = 0 →
   decode_op_val v RefOp st = None.
 Proof.
-  intros Hv Hnull. simp decode_op_val. rewrite Hv /= decide_False; congruence.
+  intros Hdec Hnull. simp decode_op_val in Hdec |- *.
+  destruct (val_to_loc v) as [l'|] eqn:Hv.
+  - injection Hdec as <-. rewrite decide_False; congruence.
+  - destruct (val_to_bytes v) as [v'|] eqn:Hbytes; simpl in Hdec |-*; last done.
+    destruct (val_to_Z v' USize) as [a|] eqn:Ha; simpl in Hdec |-*; last done.
+    injection Hdec as <-. rewrite decide_False; first done. simpl in Hnull. congruence.
 Qed.
 
 Lemma decode_op_val_array_app v1 v2 ot n1 n2 st :

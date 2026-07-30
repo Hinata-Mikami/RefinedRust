@@ -66,7 +66,7 @@ pub(crate) fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
             let tuple_ty = clos_args.tupled_upvars_ty();
             match clos_args.kind() {
                 ty::ClosureKind::Fn | ty::ClosureKind::FnMut => {
-                    syntypes.push(lang::SynType::Ptr);
+                    syntypes.push(lang::SynType::Ref);
                 },
                 ty::ClosureKind::FnOnce => {
                     let st = ty_translator.translate_type_to_syn_type(tuple_ty, &mut dummy_state)?;

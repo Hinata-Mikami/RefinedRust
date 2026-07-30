@@ -525,7 +525,7 @@ Section ltype_def.
     | ShrBlockedLty ty _ => ty.(ty_syn_type) MetaNone
     | OfTyLty ty => ty.(ty_syn_type) MetaNone
     | AliasLty _ st l => st
-    | MutLty _ _ => PtrSynType
+    | MutLty _ _ => RefSynType
     | ShrLty _ _ => RefSynType
     | StructLty _ sls => sls
     | ArrayLty def len lts => ArraySynType (ty_syn_type def MetaNone) len
@@ -1107,7 +1107,7 @@ Section ltype_def.
 
     lty_own_pre core (MutLty lt κ) k π r l :=
       (** Mut *)
-      (∃ ly : layout, ⌜syn_type_has_layout PtrSynType ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
+      (∃ ly : layout, ⌜syn_type_has_layout RefSynType ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
        loc_in_bounds l 0 ly.(ly_size) ∗
       match k with
       | Owned =>
@@ -1117,7 +1117,7 @@ Section ltype_def.
           ∃ (γ : gname) (r' : place_rfn (lty_rt lt)) ,
           place_rfn_interp_owned r (r', γ) ∗
           (* TODO layout requirements on l' here? *)
-          |={lftE}=> ∃ l' : loc, ptr_loc_own l l' ∗ (lty_own_pre core lt (Uniq κ γ) π r' l')
+          |={lftE}=> ∃ l' : loc, ref_loc_own l l' ∗ (lty_own_pre core lt (Uniq κ γ) π r' l')
       | Uniq κ' γ' =>
             have_creds ∗
             place_rfn_interp_mut r γ' ∗
@@ -1126,21 +1126,21 @@ Section ltype_def.
                 gvar_auth γ' r' ∗
                 (* update here to be compatible with ofty *)
                 |={lftE}=>
-                ∃ (l' : loc), ptr_loc_own l l' ∗
+                ∃ (l' : loc), ref_loc_own l l' ∗
                 lty_own_pre true lt (Uniq κ r'.2) π r'.1 l'
               ]
               (∃ (r' : (place_rfn (lty_rt lt)) * gname),
                 gvar_auth γ' r' ∗
                 (* update here to be compatible with ofty *)
                 |={lftE}=>
-                ∃ (l' : loc), ptr_loc_own l l' ∗
+                ∃ (l' : loc), ref_loc_own l l' ∗
                 lty_own_pre core lt (Uniq κ r'.2) π r'.1 l')
       | Shared κ' =>
         (∃ r' γ, place_rfn_interp_shared r (r', γ) ∗
         (* the update is also over the fractional borrow to deal with timelessness *)
         □ |={lftE}=> ∃ (vi : val) (li : loc),
           &frac{κ'}(λ q', l ↦{q'} vi) ∗
-          ⌜val_decodes_to_loc vi li⌝ ∗
+          ⌜val_decodes_to_ref vi li⌝ ∗
           (* later is for contractiveness, the update for timelessness *)
           ▷ lty_own_pre core lt (Shared (κ⊓κ')) π r' li)%I
       end)%I;

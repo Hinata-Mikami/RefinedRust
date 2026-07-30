@@ -15,12 +15,13 @@ Section ofty.
     iSplit.
     - iIntros "(%ly & %Hst & %Hly & #Hsc & #Hlb & Hc & Hobs & Hb)".
       iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
+      iPoseProof (loc_in_bounds_nonnull with "Hlb") as "%Hnonnull".
       iExists l, ly. iR.
-      iSplitR. { iPureIntro. apply l2v_decodes_to_loc. done. }
+      iSplitR. { iPureIntro. apply l2v_decodes_to_ref; done. }
       iR. iR. iFrame "# ∗".
     - iIntros "(%l' & %ly & % & %Hl & % & % & #Hlb & #Hsc & Hobs & Hc & Hb)".
       iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
-      apply val_decodes_to_loc_l2v_inv in Hl. subst.
+      apply val_decodes_to_ref_l2v_inv in Hl. subst.
       iExists _. iR. iR. iFrame "# ∗".
   Qed.
 End ofty.
@@ -77,7 +78,7 @@ Section ltype_agree.
     iModIntro. iIntros (π l).
     rewrite ltype_own_mut_ref_unfold /mut_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & %Hst & % & #Hlb & %ri & %γ & Hrfn & #Hb)".
-    apply syn_type_has_layout_ptr_inv in Hst as ?. subst.
+    apply syn_type_has_layout_ref_inv in Hst as ?. subst.
     iExists _. iFrame "# ∗". iSplitR; first done. iSplitR; first done.
     iModIntro. iMod "Hb" as "(%vi & %li & Hs & %Hvi & Hb)".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.

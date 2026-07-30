@@ -13,7 +13,7 @@ Section deinit.
     lftE ⊆ F →
     ltype_uniq_extractable lt = Some κm →
     (l ◁ₗ[π, Owned] #(r, γ) @ (MutLtype lt κ)) ={F}=∗
-    l ◁ₗ[π, Owned] .@ (◁ typed_value_t PtrSynType) ∗ MaybeInherit κm (place_rfn_interp_mut r γ).
+    l ◁ₗ[π, Owned] .@ (◁ typed_value_t RefSynType) ∗ MaybeInherit κm (place_rfn_interp_mut r γ).
   Proof.
     iIntros (? Hdeinit).
     iIntros "Hl".
@@ -32,7 +32,7 @@ Section deinit.
     rewrite /ty_own_val/=.
     iDestruct "Hl" as "(%vi & Hl & %Hdec)".
     iExists _. iFrame. iR.
-    iExists _. iApply type_loc_value; done.
+    iExists _. iApply type_ref_value; done.
   Qed.
 End deinit.
 
@@ -41,7 +41,7 @@ Section extract.
 
   (* Extract an observation  *)
   Lemma stratify_ltype_extract_ofty_mut π E L {rt} (ty : type rt) r κ γ l (T : stratify_ltype_post_hook_cont_t) :
-    (T L (place_rfn_interp_mut r γ) _ (◁ typed_value_t PtrSynType)%I (#()))
+    (T L (place_rfn_interp_mut r γ) _ (◁ typed_value_t RefSynType)%I (#()))
     ⊢ stratify_ltype_post_hook π E L (StratifyExtractOp κ) l (◁ (mut_ref κ ty)) (#(r, γ)) (Owned) T.
   Proof.
     iIntros "HT".
@@ -54,9 +54,9 @@ Section extract.
     iDestruct "Hb" as "(%l' & %ly' & _ & %Hv & ? & ? & Hlb' & ? & Hb & Hcred' & ?)".
     iExists _, _, _, _, _. iFrame. iFrame.
     iR.
-    apply syn_type_has_layout_ptr_inv in Hst as ->.
+    apply syn_type_has_layout_ref_inv in Hst as ->.
     iModIntro. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iExists void*. simpl. iSplitR; first by iPureIntro; apply syn_type_has_layout_ptr.
+    iExists void*. simpl. iSplitR; first by iPureIntro; apply syn_type_has_layout_ref.
     iSplitR; first done.
     iSplitR; first done. iSplitL "Hlb"; first done.
     iExists _. iR. iModIntro.
@@ -64,7 +64,7 @@ Section extract.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb'") as "%".
     rewrite /ty_own_val/=.
     iR. iExists _.
-    by iApply type_loc_value.
+    by iApply type_ref_value.
   Qed.
   Definition stratify_ltype_extract_ofty_mut_inst := [instance @stratify_ltype_extract_ofty_mut].
   Global Existing Instance stratify_ltype_extract_ofty_mut_inst | 20.
@@ -75,7 +75,7 @@ Section extract.
     | None =>
         T L True%I _ (MutLtype lt κ) (#(r, γ))
     | Some κm =>
-        T L (MaybeInherit κm (place_rfn_interp_mut_extracted r γ)) _ (◁ typed_value_t PtrSynType)%I (#())
+        T L (MaybeInherit κm (place_rfn_interp_mut_extracted r γ)) _ (◁ typed_value_t RefSynType)%I (#())
     end
     ⊢ stratify_ltype_post_hook π E L (StratifyExtractOp κ) l (MutLtype lt κ) (#(r, γ)) (Owned) T.
   Proof.
@@ -101,7 +101,7 @@ Section rule.
     return match ltype_uniq_extractable lt with
     | None => False
     | Some κm =>
-        [{ exhale (⌜st = PtrSynType⌝);
+        [{ exhale (⌜st = RefSynType⌝);
         return T L (MaybeInherit κm (place_rfn_interp_mut_extracted r γ)) }]
     end.
   Proof.

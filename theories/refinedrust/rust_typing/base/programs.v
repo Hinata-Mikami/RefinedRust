@@ -2182,8 +2182,11 @@ Section laws.
   (* intentionally not an instance -- since [eqltype] is transitive, that would not be a good idea. *)
 
   (* generic instance constructors for descending below ofty *)
-  Lemma typed_place_ofty_access_val_owned E L (f : frame_path) {rt} l (ty : type rt) (r : rt) bmin0 P T :
+  Lemma typed_place_ofty_access_val_owned E L (f : frame_path) {rt} l (ty : type rt) (r : rt) bmin0 ot
+      `{Hop : !TCOr (TCDone (ot = PtrOp)) (TCDone (ot = RefOp))} P T :
     ty_has_op_type ty PtrOp →
+    (∀ v, v ◁ᵥ{f.1, MetaNone} r @ ty -∗
+      ⌜∃ l2, val_decodes_to_loc v l2 ∧ l2.(loc_a) ≠ 0⌝) ∗
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
       v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
       ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜val_decodes_to_loc v l2⌝ ∗
@@ -2198,9 +2201,9 @@ Section laws.
               UpdBot opt_place_update_eq_refl opt_place_update_eq_refl)))
         ))
       ⊢
-    typed_place E L f l (◁ ty) (#r) bmin0 (Owned) (DerefPCtx Na1Ord PtrOp :: P) T.
+    typed_place E L f l (◁ ty) (#r) bmin0 (Owned) (DerefPCtx Na1Ord ot :: P) T.
   Proof.
-    iIntros (Hot) "HT".
+    iIntros (Hot) "(Hnonnull & HT)".
     iIntros (????) "#CTX #HE HL Hf Hl Hcont". iApply fupd_place_to_wp.
     iPoseProof (ofty_ltype_acc_owned ⊤ with "Hl") as "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     simpl. iModIntro.
@@ -2208,22 +2211,26 @@ Section laws.
     iApply wpe_fupd.
     iApply (wpe_logical_step with "Hcl"); [done.. | ].
     opose proof (ty_op_type_stable ty _ Hot) as Halg'.
-    assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
+    assert (ly = ot_layout ot) as ->.
+    { rewrite ptr_ref_op_layout. by eapply syn_type_has_layout_inj. }
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
-    iAssert (⌜∀ st, ∃ ov, decode_op_val v PtrOp st = Some ov⌝)%I as %Hdecode.
-    { iIntros (st). iPoseProof (ty_decodable _ ty PtrOp st with "Hv") as (ov) "%Hdec"; first done.
-      iPureIntro. eauto. }
+    iAssert (⌜∃ li, val_decodes_to_loc v li ∧ li.(loc_a) ≠ 0⌝)%I as %(li & Hdec_ptr & Hnonnull_li).
+    { iApply ("Hnonnull" with "Hv"). }
+    pose proof (val_decodes_to_loc_ptr_ref _ _ ot Hdec_ptr Hnonnull_li) as Hdecode.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
-    iApply (wp_deref with "Hl"); [by right | | done | exact Hdecode | ].
+    iApply (wp_deref with "Hl"); [by right | | done | | ].
     { intros. apply val_to_loc_decode. apply val_to_of_loc. by apply val_of_loc_Some_l2v. }
+    { intros st. exists (OVPtr li). apply Hdecode. }
     iApply physical_step_intro. iNext.
     iIntros (st ov) "%Hdecode' Hl Ha".
+    specialize (Hdecode st). rewrite Hdecode in Hdecode'. injection Hdecode' as <-.
     iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & %Hdec & Hv & Hl2 & HT)"; first done.
-    specialize (Hdec st). rewrite Hdec in Hdecode'. injection Hdecode' as <-.
+    pose proof (Hdec_ptr st) as Hdec_ptr_st. specialize (Hdec st).
+    rewrite Hdec_ptr_st in Hdec. injection Hdec as <-.
     iMod ("Ha" with "Hl [//] Hsc Hv") as "Hl".
     iModIntro.
     iPoseProof (ltype_own_addr_in_usize with "Hl2") as "%".
-    iExists l2.
+    iExists li.
     iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
@@ -2238,9 +2245,12 @@ Section laws.
   Qed.
 
   (* TODO generalize this similarly as the one above? *)
-  Lemma typed_place_ofty_access_val_uniq E L f {rt} l (ty : type rt) (r : rt) bmin0 κ γ P T :
+  Lemma typed_place_ofty_access_val_uniq E L f {rt} l (ty : type rt) (r : rt) bmin0 κ γ ot
+      `{Hop : !TCOr (TCDone (ot = PtrOp)) (TCDone (ot = RefOp))} P T :
     ty_has_op_type ty PtrOp →
     ⌜lctx_lft_alive E L κ⌝ ∗
+    (∀ v, v ◁ᵥ{f.1, MetaNone} r @ ty -∗
+      ⌜∃ l2, val_decodes_to_loc v l2 ∧ l2.(loc_a) ≠ 0⌝) ∗
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
       v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
       ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜val_decodes_to_loc v l2⌝ ∗
@@ -2252,9 +2262,9 @@ Section laws.
               (l2 ◁ₗ[f.1, b2] upd'.(pupd_rfn) @ upd'.(pupd_lt) ∗ upd'.(pupd_R))
               UpdBot opt_place_update_eq_refl opt_place_update_eq_refl)))
         ))
-    ⊢ typed_place E L f l (◁ ty) (#r) bmin0 (Uniq κ γ) (DerefPCtx Na1Ord PtrOp :: P) T.
+    ⊢ typed_place E L f l (◁ ty) (#r) bmin0 (Uniq κ γ) (DerefPCtx Na1Ord ot :: P) T.
   Proof.
-    iIntros (Hot) "(%Hal & HT)".
+    iIntros (Hot) "(%Hal & Hnonnull & HT)".
     iIntros (????) "#CTX #HE HL Hf Hl Hcont". iApply fupd_place_to_wp.
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
     iMod (fupd_mask_subseteq lftE) as "HF_cl"; first done.
@@ -2266,23 +2276,27 @@ Section laws.
     iApply wpe_fupd.
     iApply (wpe_logical_step with "Hcl"); [done.. | ].
     opose proof (ty_op_type_stable ty _ Hot) as Halg'.
-    assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
+    assert (ly = ot_layout ot) as ->.
+    { rewrite ptr_ref_op_layout. by eapply syn_type_has_layout_inj. }
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
-    iAssert (⌜∀ st, ∃ ov, decode_op_val v PtrOp st = Some ov⌝)%I as %Hdecode.
-    { iIntros (st). iPoseProof (ty_decodable _ ty PtrOp st with "Hv") as (ov) "%Hdec"; first done.
-      iPureIntro. eauto. }
+    iAssert (⌜∃ li, val_decodes_to_loc v li ∧ li.(loc_a) ≠ 0⌝)%I as %(li & Hdec_ptr & Hnonnull_li).
+    { iApply ("Hnonnull" with "Hv"). }
+    pose proof (val_decodes_to_loc_ptr_ref _ _ ot Hdec_ptr Hnonnull_li) as Hdecode.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
-    iApply (wp_deref with "Hl"); [by right | | done | exact Hdecode | ].
+    iApply (wp_deref with "Hl"); [by right | | done | | ].
     { intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v. }
+    { intros st. exists (OVPtr li). apply Hdecode. }
     iApply physical_step_intro. iNext.
     iIntros (st ov) "%Hdecode' Hl [Ha _]".
+    specialize (Hdecode st). rewrite Hdecode in Hdecode'. injection Hdecode' as <-.
     iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & %Hdec & Hv & Hl2 & HT)"; first done.
-    specialize (Hdec st). rewrite Hdec in Hdecode'. injection Hdecode' as <-.
+    pose proof (Hdec_ptr st) as Hdec_ptr_st. specialize (Hdec st).
+    rewrite Hdec_ptr_st in Hdec. injection Hdec as <-.
     iMod (fupd_mask_mono with "(Ha Hl Hv)") as "(Hl & HL)"; first done.
     iPoseProof ("HL_cl" with "HL") as "HL".
     iModIntro.
     iPoseProof (ltype_own_addr_in_usize with "Hl2") as "%".
-    iExists l2.
+    iExists li.
     iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
@@ -2297,9 +2311,12 @@ Section laws.
   Qed.
 
   (* NOTE: we need to require it to be a simple type to get this generic lemma *)
-  Lemma typed_place_ofty_access_val_shared E L f {rt} l (ty : simple_type rt) (r : rt) bmin0 κ P T :
+  Lemma typed_place_ofty_access_val_shared E L f {rt} l (ty : simple_type rt) (r : rt) bmin0 κ ot
+      `{Hop : !TCOr (TCDone (ot = PtrOp)) (TCDone (ot = RefOp))} P T :
     ty_has_op_type ty PtrOp →
     ⌜lctx_lft_alive E L κ⌝ ∗
+    (∀ v, v ◁ᵥ{f.1, MetaNone} r @ ty -∗
+      ⌜∃ l2, val_decodes_to_loc v l2 ∧ l2.(loc_a) ≠ 0⌝) ∗
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
       v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
       ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜val_decodes_to_loc v l2⌝ ∗
@@ -2310,9 +2327,9 @@ Section laws.
             cont (mkPUpd _ _ _ (◁ ty) (# r)
               (l2 ◁ₗ[f.1, b2] (upd').(pupd_rfn) @ (upd').(pupd_lt) ∗ (upd').(pupd_R))
               UpdBot opt_place_update_eq_refl opt_place_update_eq_refl)))))
-    ⊢ typed_place E L f l (◁ ty) (# r) bmin0 (Shared κ) (DerefPCtx Na1Ord PtrOp :: P) T.
+    ⊢ typed_place E L f l (◁ ty) (# r) bmin0 (Shared κ) (DerefPCtx Na1Ord ot :: P) T.
   Proof.
-    iIntros (Hot) "(%Hal & HT)".
+    iIntros (Hot) "(%Hal & Hnonnull & HT)".
     iIntros (????) "#CTX #HE HL Hf #Hl Hcont". iApply fupd_place_to_wp.
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
     iMod (Hal with "HE HL") as "(%q' & Htok & HL_cl2)"; first done.
@@ -2324,24 +2341,27 @@ Section laws.
     iMod (frac_bor_acc with "LFT Hloc Htok") as "(%q0 & >Hloc & Hl_cl)"; first done.
     simpl. iModIntro.
     opose proof (ty_op_type_stable ty _ Hot) as Halg'.
-    assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
+    assert (ly = ot_layout ot) as ->.
+    { rewrite ptr_ref_op_layout. by eapply syn_type_has_layout_inj. }
     iPoseProof (ty_own_val_has_layout with "Hv") as "#>%Hlyv"; first done.
-    iPoseProof (ty_decodable _ ty PtrOp inhabitant with "Hv") as "#>(%ov & %Hdecode0)"; first done.
-    have Hdecode : ∀ st, ∃ ov, decode_op_val v PtrOp st = Some ov.
-    { intros st. exists ov. rewrite -(decode_op_val_stable v PtrOp inhabitant st). done. }
+    iPoseProof ("Hnonnull" with "Hv") as "#>(%li & %Hdec_ptr & %Hnonnull_li)".
+    pose proof (val_decodes_to_loc_ptr_ref _ _ ot Hdec_ptr Hnonnull_li) as Hdecode.
     iApply wpe_fupd.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
-    iApply (wp_deref with "Hloc"); [by right | | done | exact Hdecode | ].
+    iApply (wp_deref with "Hloc"); [by right | | done | | ].
     { intros. apply val_to_loc_decode. by rewrite val_to_loc_Some_l2v. }
+    { intros st. exists (OVPtr li). apply Hdecode. }
     iApply physical_step_intro. iNext.
     iIntros (st ov') "%Hdecode' Hloc".
+    specialize (Hdecode st). rewrite Hdecode in Hdecode'. injection Hdecode' as <-.
     iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & %Hdec & Hv & Hl2 & HT)"; first done.
-    specialize (Hdec st). rewrite Hdec in Hdecode'. injection Hdecode' as <-.
+    pose proof (Hdec_ptr st) as Hdec_ptr_st. specialize (Hdec st).
+    rewrite Hdec_ptr_st in Hdec. injection Hdec as <-.
     iMod ("Hl_cl" with "Hloc") as "Htok".
     iMod ("HL_cl2" with "Htok") as "HL". iPoseProof ("HL_cl" with "HL") as "HL".
     iModIntro.
     iPoseProof (ltype_own_addr_in_usize with "Hl2") as "%".
-    iExists l2.
+    iExists li.
     iSplitR. { iPureIntro. by apply val_to_loc_Some_l2v. }
     iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".

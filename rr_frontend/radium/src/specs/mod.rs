@@ -93,7 +93,9 @@ impl<'def> From<&Type<'def>> for lang::SynType {
             Type::Char => Self::Char,
             Type::Int(it) => Self::Int(*it),
 
-            Type::MutRef(..) | Type::ShrRef(..) | Type::RawPtr => Self::Ptr,
+            Type::MutRef(..) | Type::ShrRef(..) => Self::Ref,
+
+            Type::RawPtr => Self::Ptr,
 
             Type::Struct(s) => s.generate_syn_type_term(),
             Type::Enum(s) => s.generate_syn_type_term(),

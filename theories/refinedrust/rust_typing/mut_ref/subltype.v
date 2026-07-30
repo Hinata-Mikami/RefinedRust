@@ -248,17 +248,17 @@ Section access.
     rrust_ctx -∗
     l ◁ₗ[π, Owned] #(r, γ') @ MutLtype lt κ' -∗
     ⌜l `has_layout_loc` void*⌝ ∗ loc_in_bounds l 0 (ly_size void*) ∗ |={F}=>
-      ∃ l' : loc, ptr_loc_own l l' ∗ l' ◁ₗ[π, Uniq κ' γ'] r @ lt ∗
+      ∃ l' : loc, ref_loc_own l l' ∗ l' ◁ₗ[π, Uniq κ' γ'] r @ lt ∗
       logical_step F
       (∀ rt' (lt2 : ltype rt') r2,
-        ptr_loc_own l l' -∗
+        ref_loc_own l l' -∗
         l' ◁ₗ[π, Uniq κ' γ'] r2 @ lt2 ={F}=∗
         l ◁ₗ[π, Owned] #(r2, γ') @ MutLtype lt2 κ').
   Proof.
     iIntros (?) "#[LFT TIME] HP".
     rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
     iDestruct "HP" as "(%ly & %Halg & %Hly & #Hlb & %γ & %r' & %Heq & Hb)".
-    apply syn_type_has_layout_ptr_inv in Halg as ?. subst.
+    apply syn_type_has_layout_ref_inv in Halg as ?. subst.
     injection Heq as <- <-.
     iFrame "Hlb %".
     iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
@@ -278,11 +278,11 @@ Section access.
     (q.[κ] ={lftE}=∗ R) -∗
     l ◁ₗ[π, Uniq κ γ] #(r, γ') @ MutLtype lt κ' -∗
     ⌜l `has_layout_loc` void*⌝ ∗ loc_in_bounds l 0 (ly_size void*) ∗ |={F}=>
-      ∃ l' : loc, ptr_loc_own l l' ∗ (l' ◁ₗ[π, Uniq κ' γ'] r @ lt) ∗
+      ∃ l' : loc, ref_loc_own l l' ∗ (l' ◁ₗ[π, Uniq κ' γ'] r @ lt) ∗
       logical_step F
       ( (* weak update *)
        (∀ bmin (lt2 : ltype rt) r2,
-        ptr_loc_own l l' -∗
+        ref_loc_own l l' -∗
         l' ◁ₗ[π, Uniq κ' γ'] r2 @ lt2  -∗
         bmin ⪯ₚ UpdUniq [κ] -∗
         typed_place_cond bmin lt lt2 ={F}=∗
@@ -291,7 +291,7 @@ Section access.
         typed_place_cond bmin (MutLtype lt κ') (MutLtype lt2 κ')) ∧
       (* strong update, go to Opened *)
       (∀ rt2 (lt2 : ltype rt2) r2,
-        ptr_loc_own l l' -∗
+        ref_loc_own l l' -∗
         ⌜ltype_st lt2 = ltype_st lt⌝ -∗
         l' ◁ₗ[π, Uniq κ' γ'] r2 @ lt2 ={F}=∗
         l ◁ₗ[π, Uniq κ γ] PlaceIn (r2, γ') @ OpenedLtype (MutLtype lt2 κ') (MutLtype lt κ') (MutLtype lt κ')
@@ -300,7 +300,7 @@ Section access.
     iIntros (?) "#[LFT TIME] Hκ HR HP".
     rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
     iDestruct "HP" as "(%ly & %Halg & %Hly & #Hlb & (Hcred & Hat) & Hrfn & Hb)".
-    apply syn_type_has_layout_ptr_inv in Halg as ?. subst.
+    apply syn_type_has_layout_ref_inv in Halg as ?. subst.
     iFrame "Hlb". iSplitR; first done.
 
     iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
@@ -326,7 +326,7 @@ Section access.
       rewrite (UIP_refl _ _ Heq). cbn.
       (* close the borrow *)
       iMod (gvar_update (r2, γ') with "Hauth Hrfn") as "(Hauth & Hrfn)".
-      set (V := (∃ r', gvar_auth γ r' ∗ (|={lftE}=> ∃ (l' : loc), ptr_loc_own l l' ∗ ltype_own lt2 (Uniq κ' r'.2) π r'.1 l'))%I).
+      set (V := (∃ r', gvar_auth γ r' ∗ (|={lftE}=> ∃ (l' : loc), ref_loc_own l l' ∗ ltype_own lt2 (Uniq κ' r'.2) π r'.1 l'))%I).
       iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
       iDestruct "Hcred" as "(Hcred1 & Hcred)".
       iMod ("Hb_cl" $! V with "[] Hcred1 [Hauth Hl Hb]") as "(Hb & Htok)".
@@ -394,7 +394,7 @@ Section access.
     q.[κ] -∗
     l ◁ₗ[π, Shared κ] #(r, γ) @ MutLtype lt κ' -∗
     ⌜l `has_layout_loc` void*⌝ ∗ loc_in_bounds l 0 (ly_size void*) ∗ |={F}=>
-      ∃ (vi : val) (li : loc) q', l ↦{q'} vi ∗ ⌜val_decodes_to_loc vi li⌝ ∗
+      ∃ (vi : val) (li : loc) q', l ↦{q'} vi ∗ ⌜val_decodes_to_ref vi li⌝ ∗
         (|={F}▷=> li ◁ₗ[π, Shared (κ' ⊓ κ)] r @ lt) ∗
     (∀ rt' (lt' : ltype rt') r',
       l ↦{q'} vi -∗
@@ -405,7 +405,7 @@ Section access.
     iIntros (?) "#(LFT & CTX) Hκ Hb". rewrite {1}ltype_own_mut_ref_unfold /mut_ltype_own.
     iDestruct "Hb" as "(%ly & %Hst & %Hly & #Hlb & %r' & %γ' & %Ha & #Hb)".
     injection Ha as <- <-.
-    apply syn_type_has_layout_ptr_inv in Hst as ?. subst ly.
+    apply syn_type_has_layout_ref_inv in Hst as ?. subst ly.
     iR. iR.
     iMod (fupd_mask_mono with "Hb") as "(%vi & %li & #Hf & %Hdec & #Hl)"; first done.
     iMod (frac_bor_acc with "LFT Hf Hκ") as "(%q' & >Hpts & Hclf)"; first done.
