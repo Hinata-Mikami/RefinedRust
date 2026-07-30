@@ -175,7 +175,6 @@ Inductive rust_type : Type :=
   | RSTAliasPtr
   | RSTAliasRef
   | RSTUnit
-  | RSTStruct (sls : struct_layout_spec) (components : list rust_type)
   | RSTArray (len : nat) (el : rust_type)
   | RSTRef (m : mutability) (lft : string) (ty : rust_type)
 with scope_inst :=

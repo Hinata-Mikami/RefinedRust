@@ -768,13 +768,6 @@ Section test.
     solve_interpret_rust_type; solve[fail].
   Abort.
 
-  Lemma interpret_rust_type_test3 {rt} (T_ty : type rt) sls :
-    interpret_rust_type_pure_goal (∅) (RSTStruct sls [RSTInt I32]) (struct_t sls +[int I32]).
-  Proof.
-    init_tyvars (<["T" := (existT _ T_ty)]> ∅).
-    solve_interpret_rust_type; solve[fail].
-  Abort.
-
   Lemma interpret_rust_type_test4 {rt} (T_ty : type rt) κ :
     ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTRef Mut "κ" (RSTInt I32)) ty ∧ ty = (mut_ref κ (int I32)).
   Proof.

@@ -192,9 +192,6 @@ pub enum RustType {
     #[display("RSTBox ({})", &_0)]
     PrimBox(Box<Self>),
 
-    #[display("RSTStruct ({}) [{}]", _0, fmt_list!(_1, "; "))]
-    Struct(String, Vec<Self>),
-
     #[display("RSTArray {} ({})", _0, &_1)]
     Array(u128, Box<Self>),
 }

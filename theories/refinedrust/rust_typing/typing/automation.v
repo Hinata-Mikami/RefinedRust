@@ -240,8 +240,6 @@ Ltac interpret_rust_type_core lfts env ty ::=
       exact alias_ref_t
   | RSTUnit =>
       exact unit_t
-  | RSTStruct ?sls ?tys =>
-      refine (struct_t sls ltac:(interpret_rust_type_list lfts env tys))
   | RSTArray ?len ?ty =>
       refine (array_t len _); interpret_rust_type_core lfts env ty
   | RSTRef ?mut ?κ ?ty =>
