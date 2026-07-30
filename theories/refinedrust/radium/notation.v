@@ -261,8 +261,6 @@ Definition StructInit `{!LayoutAlg} (sls : struct_layout_spec) (fs : list (strin
 Global Typeclasses Opaque StructInit.
 Arguments StructInit : simpl never.
 
-(* NOTE: in contrast to Caesium, this uses ISize, because LLVMs GEP uses signed integer offsets
-      https://llvm.org/docs/LangRef.html#getelementptr-instruction *)
 Definition GetMember `{!LayoutAlg} (e : expr) (sls : struct_layout_spec) (m : var_name) : expr :=
   let sl := use_struct_layout_alg' sls in
   (e at_offset{U8, PtrOp, IntOp ISize} Val (default [MPoison] (offset_of sl.(sl_members) m ≫= (λ m, val_of_Z (Z.of_nat m) ISize))))%E.
@@ -288,10 +286,15 @@ Notation "e 'at_union{' uls } m" := (GetMemberUnion e%E uls m) (at level 10, for
 Global Typeclasses Opaque GetMemberUnion.
 Arguments GetMemberUnion : simpl never.
 
-(* NOTE: this uses ISize instead of USize (in RefinedC) *)
 Definition OffsetOfUnion (ul : union_layout_spec) (m : var_name) : expr := (i2v 0 ISize).
 Global Typeclasses Opaque OffsetOfUnion.
 Arguments OffsetOfUnion : simpl never.
+
+Definition UnionInit `{!LayoutAlg} (uls : union_layout_spec) (variant : string) (e : expr) : expr :=
+  let ul := use_union_layout_alg' uls in
+  let variant_ly : layout := default (layout_of unit_sl) (enum_variant_lookup ul.(ul_members) variant) in
+  let padding := Val (replicate (ul.(ul_size) - ly_size variant_ly) MPoison) in
+  Concat [e; padding].
 
 (** ** Enums *)
 Definition EnumInit `{!LayoutAlg} (els : enum_layout_spec) (variant : string) (ty : rust_enum_def) (e : expr) : expr :=
