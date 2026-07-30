@@ -255,7 +255,7 @@ Qed.
 Implicit Type (π : thread_id) (l : loc) (re : rtexpr) (v : val) (h : heap) (σ : state) (ly : layout) (rs : rtstmt) (s : stmt) (sgn : signed) (rf : function).
 
 (*** Evaluation of operations *)
-Definition compute_arith_bin_op (n1 n2 : Z) (it : _) (op : _) : option Z :=
+Definition compute_arith_bin_op (n1 n2 : Z) (it : int_type) (op : _) : option Z :=
   match op with
   | AddOp => Some (n1 + n2)
   | SubOp => Some (n1 - n2)
@@ -268,17 +268,13 @@ Definition compute_arith_bin_op (n1 n2 : Z) (it : _) (op : _) : option Z :=
   | AndOp => Some (Z.land n1 n2)
   | OrOp => Some (Z.lor n1 n2)
   | XorOp => Some (Z.lxor n1 n2)
-  (* For shift operators (`ShlOp` and `ShrOp`), behaviors are defined if:
-     - lhs is nonnegative, and
-     - rhs (also nonnegative) is less than the number of bits in lhs.
-     See: https://en.cppreference.com/w/c/language/operator_arithmetic, "Shift operators". *)
-  (* TODO: this does not match the Rust semantics *)
-  | ShlOp => if bool_decide (0 ≤ n1 ∧ 0 ≤ n2 < bits_per_int it) then Some (n1 ≪ n2) else None
-  (* NOTE: when lhs is negative, Coq's `≫` is not semantically equivalent to C's `>>`.
-     Counterexample: Coq `-1000 ≫ 10 = 0`; C `-1000 >> 10 == -1`.
-     This is because `≫` is implemented by `Z.div`. *)
-  (* TODO: this does not match the Rust semantics *)
-  | ShrOp => if bool_decide (0 ≤ n1 ∧ 0 ≤ n2 < bits_per_int it) then Some (n1 ≫ n2) else None
+  (* Ordinary shifts compute the mathematical result and [ArithOpII] wraps it.
+     Negative rhs values are undefined because Rocq interprets them as
+     opposite-direction shifts. Rust's [overflowing_shl] instead truncates its
+     rhs to an unsigned integer and reduces it modulo the lhs width; it needs a
+     separate standard-library model. *)
+  | ShlOp => if bool_decide (0 ≤ n2) then Some (n1 ≪ n2) else None
+  | ShrOp => if bool_decide (0 ≤ n2) then Some (n1 ≫ n2) else None
   (* unchecked ops get stuck if the result does not fit in the target integer type *)
   | UncheckedAddOp =>
       if bool_decide (n1 + n2 ∈ it) then Some (n1 + n2) else None
@@ -412,10 +408,33 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
     eval_bin_op Comma ot1 ot2 σ v1 v2 v2
 .
 
+Definition shift_amount_in_range (it : int_type) (n : Z) : Prop :=
+  0 ≤ n < bits_per_int it.
+
+(** Whether the debug overflow check for an arithmetic operation fires in Rust. *)
+Definition arith_bin_op_overflows (op : bin_op) (it : int_type) (n1 n2 n : Z) : Prop :=
+  match op with
+  (* Shift checks are determined by the RHS. They must remain separate from
+     normal shift evaluation, which is undefined for an invalid amount. *)
+  | ShlOp | ShrOp => ¬ shift_amount_in_range it n2
+  | _ => n ∉ it
+  end.
+
+Global Instance arith_bin_op_overflows_dec op it n1 n2 n :
+  Decision (arith_bin_op_overflows op it n1 n2 n).
+Proof.
+  destruct op; solve_decision.
+Defined.
+
 (** Check if the result of an arithmetic operator is representable in the target integer type. *)
 (* Note: this still requires the computation itself to succeed/ be mathematically defined. *)
 Definition check_arith_bin_op (op : bin_op) (it : int_type) (n1 n2 : Z) : option bool :=
-  option_map (λ n, bool_decide (n ∉ it)) (compute_arith_bin_op n1 n2 it op)
+  match op with
+  (* Unlike the normal operation, the debug check is defined on an invalid
+     shift amount and reports overflow. *)
+  | ShlOp | ShrOp => Some (bool_decide (¬ shift_amount_in_range it n2))
+  | _ => option_map (λ n, bool_decide (n ∉ it)) (compute_arith_bin_op n1 n2 it op)
+  end
 .
 
 Inductive check_bin_op : bin_op → op_type → op_type → val → val → bool → Prop :=

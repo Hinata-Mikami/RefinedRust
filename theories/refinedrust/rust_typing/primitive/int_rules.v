@@ -140,9 +140,7 @@ Section arithop.
     | AndOp => True
     | OrOp  => True
     | XorOp => True
-    (* TODO: check accuracy of shifting semantics *)
-    | ShlOp =>
-        n ∈ it
+    | ShlOp => n ∈ it
     | ShrOp => True
     | DivOp => n ∈ it
     | ModOp => n ∈ it
@@ -178,6 +176,44 @@ Section arithop.
       by rewrite Htestbit HN1 ?HN2.
   Qed.
 
+  Lemma shiftr_in_range (it : int_type) (n1 n2 : Z) :
+    n1 ∈ it →
+    0 ≤ n2 →
+    n1 ≫ n2 ∈ it.
+  Proof.
+    intros Hn1 Hn2.
+    rewrite int_elem_of_it_iff in Hn1.
+    rewrite int_elem_of_it_iff.
+    unfold min_int, max_int in Hn1.
+    unfold min_int, max_int.
+    destruct (it_signed it) eqn:Hs; simpl in Hn1 |- *.
+    - destruct Hn1 as [Hlo Hhi]. split.
+      + rewrite Z.shiftr_div_pow2; last done.
+        apply Zdiv_le_lower_bound; [by apply Z.pow_pos_nonneg |].
+        have Hhalf := int_half_modulus_ge_1 it.
+        have Hpow : 1 ≤ 2 ^ n2.
+        { rewrite -(Z.pow_0_r 2). apply Z.pow_le_mono_r; lia. }
+        have Hmul : 2 ^ n2 * - int_half_modulus it ≤ 1 * - int_half_modulus it.
+        { apply Z.mul_le_mono_nonpos_r; [lia | done]. }
+        rewrite Z.mul_1_l in Hmul.
+        rewrite Z.mul_comm.
+        exact (Z.le_trans _ _ _ Hmul Hlo).
+      + rewrite Z.shiftr_div_pow2; last done.
+        apply Zdiv_le_upper_bound; [by apply Z.pow_pos_nonneg |].
+        have Hhalf := int_half_modulus_ge_1 it.
+        have Hpow : 1 ≤ 2 ^ n2.
+        { rewrite -(Z.pow_0_r 2). apply Z.pow_le_mono_r; lia. }
+        nia.
+    - destruct Hn1 as [Hlo Hhi]. split.
+      + by apply Z.shiftr_nonneg.
+      + rewrite Z.shiftr_div_pow2; last done.
+        apply Zdiv_le_upper_bound; [by apply Z.pow_pos_nonneg |].
+        have Hmodulus := int_modulus_ge_1 it.
+        have Hpow : 1 ≤ 2 ^ n2.
+        { rewrite -(Z.pow_0_r 2). apply Z.pow_le_mono_r; lia. }
+        nia.
+  Qed.
+
   Lemma int_arithop_result_in_range (it : int_type) (n1 n2 n : Z) op :
     n1 ∈ it → n2 ∈ it →
     int_arithop_result it n1 n2 op = Some n →
@@ -203,17 +239,7 @@ Section arithop.
         rewrite !Hn.
         repeat case_bool_decide; try rewrite -> Z.lxor_nonneg in *; naive_solver.
       + by apply Z.lxor_spec.
-    (*- rewrite !int_elem_of_it_iff.*)
-      (*split.*)
-      (*+ trans 0; [ apply min_int_le_0 | by apply Z.shiftl_nonneg ].*)
-      (*+ rewrite -MaxInt_eq.  done.*)
-    - split.
-      + trans 0; [ apply MinInt_le_0 | by apply Z.shiftr_nonneg ].
-      + destruct Hn1.
-        trans n1; last done. rewrite Z.shiftr_div_pow2; last by lia.
-        apply Z.div_le_upper_bound. { apply Z.pow_pos_nonneg => //. }
-        rewrite -{1}(Z.mul_1_l n1). apply Z.mul_le_mono_nonneg_r => //.
-        rewrite -(Z.pow_0_r 2). apply Z.pow_le_mono_r; lia.
+    - by apply shiftr_in_range.
   Qed.
 
   Lemma type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 (T : typed_val_expr_cont_t) n op m1 m2 :
@@ -269,7 +295,7 @@ Section arithop.
     TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 XorOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (Z.lxor n1 n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
   Global Program Instance type_shl_int_int_inst E L f it v1 n1 v2 n2:
-    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 ShlOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (n1 ≪ n2) _ MetaNone MetaNone _).
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 ShlOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int E L f it v1 n1 v2 n2 T (n1 ≪ n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
   Global Program Instance type_shr_int_int_inst E L f it v1 n1 v2 n2:
     TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 ShrOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (n1 ≫ n2) _ MetaNone MetaNone _).
@@ -307,36 +333,32 @@ Section check_arithop.
   Lemma check_arith_bin_op_evaluates it n1 n2 n op :
     int_arithop_sidecond it n1 n2 n op →
     int_arithop_result it n1 n2 op = Some n →
-    check_arith_bin_op op it n1 n2 = Some (bool_decide (n ∉ it)).
+    check_arith_bin_op op it n1 n2 = Some (bool_decide (arith_bin_op_overflows op it n1 n2 n)).
   Proof.
     intros Hsc Hres.
-    eapply int_arithop_result_sidecond_correct in Hsc; last done.
-    rewrite /check_arith_bin_op.
-    rewrite Hsc/=//.
+    assert (compute_arith_bin_op n1 n2 it op = Some n) as Hcompute.
+    { eapply int_arithop_result_sidecond_correct; done. }
+    destruct op; simpl in Hsc, Hres, Hcompute |- *;
+      try (rewrite Hcompute; done);
+      try done.
+    all: inversion Hcompute; subst; done.
   Qed.
 
 
   Lemma type_check_arithop_int_int E L π f it v1 n1 v2 n2 (T : typed_val_expr_cont_t) n op m1 m2 :
     int_arithop_result it n1 n2 op = Some n →
-    ⌜π = f.1⌝ ∗ ⌜int_arithop_sidecond it n1 n2 n op⌝ ∗ T L (val_of_bool (negb $ bool_decide (int_arithop_in_range it n op))) MetaNone bool (bool_t) (negb $ bool_decide (int_arithop_in_range it n op)) ⊢
+    ⌜π = f.1⌝ ∗ ⌜int_arithop_sidecond it n1 n2 n op⌝ ∗ T L (val_of_bool (bool_decide (arith_bin_op_overflows op it n1 n2 n))) MetaNone bool (bool_t) (bool_decide (arith_bin_op_overflows op it n1 n2 n)) ⊢
     typed_check_bin_op E L f v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) op (IntOp it) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/= int_own_val_unfold.
     iIntros "%Hop (-> & %Hsc & HT) (-> & %Hv1) (-> & %Hv2) %Φ #CTX #HE HL Hf HΦ".
-    set (b := (negb $ bool_decide (int_arithop_in_range it n op))).
+    set (b := bool_decide (arith_bin_op_overflows op it n1 n2 n)).
 
     iApply wp_check_binop.
     assert (check_arith_bin_op op it n1 n2 = Some b).
     { subst.
       erewrite check_arith_bin_op_evaluates; [ | done..].
-      f_equiv. subst b.
-      rewrite bool_decide_not. f_equiv.
-      apply bool_decide_ext.
-      split; first by destruct op.
-      intros Hran.
-      eapply int_arithop_result_in_range;
-        [ | | done | | done ];
-        [eapply val_to_Z_in_range; done.. | done ].
+      done.
     }
     iSplitR.
     { iPureIntro. exists b. econstructor; done. }

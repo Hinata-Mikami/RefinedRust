@@ -1009,9 +1009,8 @@ Definition int_arithop_sidecond (it : int_type) (n1 n2 n : Z) op : Prop :=
   | AndOp => True
   | OrOp  => True
   | XorOp => True
-  (* TODO check semantics of shifting operators *)
-  | ShlOp => 0 ≤ n2 < bits_per_int it ∧ 0 ≤ n1
-  | ShrOp => 0 ≤ n2 < bits_per_int it ∧ 0 ≤ n1 (* Result of shifting negative numbers is implementation defined. *)
+  | ShlOp => 0 ≤ n2
+  | ShrOp => 0 ≤ n2
   | DivOp => n2 ≠ 0
   | ModOp => n2 ≠ 0
   | _     => True (* Relational operators. *)
