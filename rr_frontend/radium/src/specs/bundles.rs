@@ -98,7 +98,12 @@ pub trait BundleableType<'def> {
 
     fn generate_bundle_post_projection(&self, _doc: &mut coq::Document, _projection_names: &[String]) {}
 
-    fn set_flags(&self, doc: &mut coq::Document, rt_context_names: &[String]);
+    fn set_flags(
+        &self,
+        doc: &mut coq::Document,
+        rt_context_names: &[String],
+        context_items: &[coq::binder::Binder],
+    );
 }
 
 pub enum BundleType<'def> {
@@ -253,15 +258,20 @@ impl<'def> BundleableType<'def> for BundleType<'def> {
         }
     }
 
-    fn set_flags(&self, doc: &mut coq::Document, rt_context_names: &[String]) {
+    fn set_flags(
+        &self,
+        doc: &mut coq::Document,
+        rt_context_names: &[String],
+        context_items: &[coq::binder::Binder],
+    ) {
         match self {
             Self::Struct(s) => {
                 let s = s.borrow();
-                s.as_ref().unwrap().set_flags(doc, rt_context_names);
+                s.as_ref().unwrap().set_flags(doc, rt_context_names, context_items);
             },
             Self::Enum(s) => {
                 let s = s.borrow();
-                s.as_ref().unwrap().set_flags(doc, rt_context_names);
+                s.as_ref().unwrap().set_flags(doc, rt_context_names, context_items);
             },
         }
     }
@@ -409,8 +419,13 @@ impl<'def> Bundle<'def> {
         let all_ty_params = scope.get_all_ty_params_with_assocs();
 
         let mut section_context = invariants::setup_type_section_context(&all_ty_params);
-        let extra_coq_params =
-            self.components.iter().flat_map(BundleableType::extra_coq_params).collect::<Vec<_>>();
+        let mut seen_extra_coq_params = BTreeSet::new();
+        let extra_coq_params = self
+            .components
+            .iter()
+            .flat_map(BundleableType::extra_coq_params)
+            .filter(|param| seen_extra_coq_params.insert(param.clone()))
+            .collect::<Vec<_>>();
         let (context_names, context_names_without_sigma) =
             invariants::format_extra_context_items(&extra_coq_params, &mut section_context);
 
@@ -560,7 +575,7 @@ impl<'def> Bundle<'def> {
             doc.append_document(section_context);
         }));
         for component in &self.components {
-            component.set_flags(&mut doc, &context_names_without_sigma);
+            component.set_flags(&mut doc, &context_names_without_sigma, &extra_coq_params);
         }
 
         doc

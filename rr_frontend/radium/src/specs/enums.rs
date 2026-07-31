@@ -189,7 +189,12 @@ impl<'def> BundleableType<'def> for Abstract<'def> {
         );
     }
 
-    fn set_flags(&self, doc: &mut coq::Document, rt_context_names: &[String]) {
+    fn set_flags(
+        &self,
+        doc: &mut coq::Document,
+        rt_context_names: &[String],
+        context_items: &[coq::binder::Binder],
+    ) {
         let all_ty_params = self.scope.get_all_ty_params_with_assocs();
 
         // make it Typeclasses Transparent
@@ -219,7 +224,7 @@ impl<'def> BundleableType<'def> for Abstract<'def> {
             doc,
             &self.plain_ty_name,
             &all_ty_params,
-            &self.coq_params,
+            context_items,
         );
 
         doc.push(coq::command::Command::Literal(format!(
@@ -811,7 +816,7 @@ impl<'def> Abstract<'def> {
             doc.append_document(section_context);
         }));
 
-        self.set_flags(&mut out, &context_names_without_sigma);
+        self.set_flags(&mut out, &context_names_without_sigma, &self.coq_params);
 
         out.to_string()
     }

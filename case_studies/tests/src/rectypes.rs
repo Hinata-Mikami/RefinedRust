@@ -54,6 +54,7 @@ enum List<T> {
 
 
 #[rr::refined_by("option unit")]
+#[rr::context("EqDecision Z")]
 #[rr::only_spec(drop_glue)]
 enum Bla {
     #[rr::pattern("None")]
@@ -65,8 +66,17 @@ enum Bla {
 }
 
 #[rr::refined_by("()" : "unitRT")]
+#[rr::context("EqDecision Z")]
 #[rr::exists("x")]
 struct Blub {
     #[rr::field("x")]
     x : Bla, 
+}
+
+#[rr::context("EqDecision Z")]
+impl Blub {
+    #[rr::verify]
+    fn get(&self) -> &Bla {
+        &self.x
+    }
 }

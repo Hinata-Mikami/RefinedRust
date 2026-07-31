@@ -388,7 +388,12 @@ impl<'def> BundleableType<'def> for Abstract<'def> {
         ));
     }
 
-    fn set_flags(&self, doc: &mut coq::Document, rt_context_names: &[String]) {
+    fn set_flags(
+        &self,
+        doc: &mut coq::Document,
+        rt_context_names: &[String],
+        context_items: &[coq::binder::Binder],
+    ) {
         let Some(inv) = self.invariant.as_ref() else {
             panic!("Recursive types need an invariant");
         };
@@ -396,18 +401,8 @@ impl<'def> BundleableType<'def> for Abstract<'def> {
         let all_ty_params = self.scope.get_all_ty_params_with_assocs();
 
         generate_type_implicit_arg_flags(doc, &inv.rt_def_name(), &all_ty_params, rt_context_names);
-        invariants::generate_semtype_implicit_arg_flags(
-            doc,
-            &inv.type_name(),
-            &all_ty_params,
-            &inv.coq_params,
-        );
-        invariants::generate_semtype_implicit_arg_flags(
-            doc,
-            &inv.spec_name(),
-            &all_ty_params,
-            &inv.coq_params,
-        );
+        invariants::generate_semtype_implicit_arg_flags(doc, &inv.type_name(), &all_ty_params, context_items);
+        invariants::generate_semtype_implicit_arg_flags(doc, &inv.spec_name(), &all_ty_params, context_items);
     }
 }
 
