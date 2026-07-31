@@ -47,7 +47,7 @@ Section logical_steps.
     iApply logical_step_intro_tr.
   Qed.
 
-Lemma logical_step_intro_later E P :
+  Lemma logical_step_intro_later E P :
     ▷ P -∗ logical_step E P.
   Proof.
     iIntros "HP". unfold logical_step.
