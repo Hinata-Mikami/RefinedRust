@@ -454,6 +454,9 @@ Inductive eval_un_op : un_op → op_type → state → val → val → Prop :=
 | CastOpPP σ vs l:
     decode_op_val vs PtrOp σ.(st_heap) = Some (OVPtr l) →
     eval_un_op (CastOp PtrOp) PtrOp σ vs vs
+| CastOpRP σ vs l:
+    decode_op_val vs RefOp σ.(st_heap) = Some (OVPtr l) →
+    eval_un_op (CastOp RefOp) PtrOp σ vs (encode_op_val (OVPtr l))
 | CastOpPI it σ vs vt l:
     (* This is always possible.
        We do not require a valid provenance.

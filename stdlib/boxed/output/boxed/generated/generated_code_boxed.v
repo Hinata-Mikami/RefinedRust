@@ -284,7 +284,7 @@ Program Definition drop_glue_Box_def (BoxTAasstd_ops_Drop_drop_T_A_loc: loc) (Dr
       local_live{ RefSynType } "__4";
       local_live{ UnitSynType } "__5";
       local_live{ PtrSynType } "__6";
-      "__6" <-{ PtrOp } copy{ PtrOp } ((((!{ RefOp } ( "ptr" )) at{ (Box_sls (T_st) (A_st)) } "0") at{ (unique_Unique_sls (T_st)) } "pointer") at{ (nonnull_NonNull_sls (T_st)) } "pointer");
+      "__6" <-{ PtrOp } UnOp (CastOp (RefOp)) (PtrOp) (copy{ PtrOp } ((((!{ RefOp } ( "ptr" )) at{ (Box_sls (T_st) (A_st)) } "0") at{ (unique_Unique_sls (T_st)) } "pointer") at{ (nonnull_NonNull_sls (T_st)) } "pointer"));
       expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } (!{ PtrOp } ( "__6" ))];
       Goto "_bb5"
      ]>%E $

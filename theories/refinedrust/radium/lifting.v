@@ -872,6 +872,20 @@ Proof.
   - move => ->. by econstructor.
 Qed.
 
+Lemma wp_cast_ptr_ref Φ v l π E:
+  (∀ st, decode_op_val v RefOp st = Some $ OVPtr l) →
+  (|={E}⧗=> Φ (encode_op_val (OVPtr l))) -∗
+  WPe{π} UnOp (CastOp RefOp) PtrOp (Val v) @ E {{ Φ }}.
+Proof.
+  iIntros (Hv) "HΦ".
+  iApply wp_unop_det_pure; [|done].
+  move => ??. split.
+  - inversion 1; simplify_eq/=.
+    rename select (decode_op_val _ RefOp _ = Some _) into Hdec.
+    rewrite Hv in Hdec. by simplify_eq/=.
+  - move => ->. by econstructor.
+Qed.
+
 Lemma wp_cast_bool_int Φ b v v' π E it:
   val_to_bool v = Some b →
   val_of_Z (bool_to_Z b) it = Some v' →

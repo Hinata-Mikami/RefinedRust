@@ -328,8 +328,14 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
         };
         let target_st = self.translate_type_to_syn_type(to_ty)?;
 
-        Ok(Some(code::Expr::Copy {
+        let pointer_expr = code::Expr::Copy {
             ot: target_st.into(),
+            e: Box::new(pointer_expr),
+        };
+
+        Ok(Some(code::Expr::UnOp {
+            o: code::Unop::Cast(lang::OpType::Ref),
+            ot: lang::OpType::Ptr,
             e: Box::new(pointer_expr),
         }))
     }

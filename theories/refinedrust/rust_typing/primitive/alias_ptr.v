@@ -329,6 +329,25 @@ Section cast.
   Definition type_cast_ptr_ptr_inst := [instance @type_cast_ptr_ptr].
   Global Existing Instance type_cast_ptr_ptr_inst.
 
+  Lemma type_cast_ptr_ref pk E L f π (l : loc) v (T : typed_val_expr_cont_t) :
+    (⌜π = f.1⌝ ∗ ⌜l.(loc_a) ≠ 0⌝ ∗
+      ∀ v, T L v MetaNone _ alias_ptr_t l)
+    ⊢ typed_un_op E L f v (v ◁ᵥ{π, MetaNone} l @ alias_ptr_kind_t pk)%I
+        (CastOp RefOp) PtrOp T.
+  Proof.
+    rewrite /ty_own_val/=.
+    iIntros "(-> & %Hnonnull & HT) (_ & Hv) %Φ #CTX #HE HL Hf HΦ".
+    iPoseProof (alias_ptr_kind_own_val_to_decodes with "Hv") as "%Hdec".
+    iApply wp_cast_ptr_ref.
+    { intros st. by apply decode_ptr_nonnull_ref. }
+    iApply physical_step_intro. iNext. iApply ("HΦ" with "HL Hf [] HT").
+    rewrite /ty_own_val/= alias_ptr_own_val_unfold. iR.
+    iPureIntro. apply l2v_decodes_to_loc.
+    by apply val_decodes_to_loc_in_usize in Hdec.
+  Qed.
+  Definition type_cast_ptr_ref_inst := [instance @type_cast_ptr_ref].
+  Global Existing Instance type_cast_ptr_ref_inst.
+
   Lemma type_cast_ptr_int pk π E L f (l : loc) v (T : typed_val_expr_cont_t) :
     (⌜π = f.1⌝ ∗ ∀ v, T L v MetaNone _ (int USize) (l.(loc_a)))
     ⊢ typed_un_op E L f v (v ◁ᵥ{π, MetaNone} l @ alias_ptr_kind_t pk)%I (CastOp (IntOp USize)) PtrOp T.
