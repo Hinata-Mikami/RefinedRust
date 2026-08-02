@@ -57,7 +57,7 @@ impl<'tcx> mir::visit::Visitor<'tcx> for BoxMaterializationUseValidator<'tcx> {
 ///
 /// ```text
 /// _box_tmp = no_retag copy BOX_PLACE
-/// _raw_tmp = copy ((_box_tmp.0).0) as *const T (Transmute)
+/// _raw_tmp = copy ((_box_tmp.0).0) as *const T (BoxDerefTransmute)
 /// ```
 ///
 /// Both temporaries must be target-only, the assignments must be consecutive in one block,
@@ -114,8 +114,11 @@ pub(crate) fn collect_box_materialization_aliases<'tcx>(
             let mir::StatementKind::Assign(box (raw_lhs, raw_rhs)) = &raw_alias.kind else {
                 continue;
             };
-            let mir::Rvalue::Cast(mir::CastKind::Transmute, mir::Operand::Copy(raw_source), raw_target_ty) =
-                raw_rhs
+            let mir::Rvalue::Cast(
+                mir::CastKind::BoxDerefTransmute,
+                mir::Operand::Copy(raw_source),
+                raw_target_ty,
+            ) = raw_rhs
             else {
                 continue;
             };
@@ -165,10 +168,11 @@ pub(crate) fn collect_box_materialization_aliases<'tcx>(
 
 /// Collect synthetic raw-pointer aliases introduced for lowered `Box` derefs.
 ///
-/// rustc may lower a semantic `*box_place` into an administrative raw pointer local:
+/// rustc may lower a semantic `*box_place` into an administrative raw pointer local. The stdlib
+/// Box shim uses the same shape with an ordinary `Transmute` because it is not the lang-item type:
 ///
 /// ```text
-/// _alias = copy ((box_place.0).0) as *const T (Transmute)
+/// _alias = copy ((box_place.0).0) as *const T (BoxDerefTransmute)
 /// *_alias
 /// ```
 ///
@@ -188,7 +192,7 @@ pub(crate) fn collect_box_deref_aliases<'tcx>(
                 continue;
             }
             let mir::Rvalue::Cast(
-                mir::CastKind::Transmute,
+                mir::CastKind::Transmute | mir::CastKind::BoxDerefTransmute,
                 mir::Operand::Copy(rhs_place) | mir::Operand::Move(rhs_place),
                 _,
             ) = rhs

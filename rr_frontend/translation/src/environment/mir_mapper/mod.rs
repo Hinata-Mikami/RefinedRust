@@ -25,7 +25,7 @@
 //! _dst = copy (*_box)
 //!
 //! // dropck MIR
-//! _alias = copy ((_box.0).0) as *const T (Transmute)
+//! _alias = copy ((_box.0).0) as *const T (BoxDerefTransmute)
 //! _dst = copy (*_alias)
 //! ```
 //!
@@ -33,7 +33,7 @@
 //! records a [`BoxDerefAlias`]. The mapper then normalizes later `*_alias` uses
 //! when comparing target statements/terminators with borrowck MIR. Code
 //! generation keeps the alias local explicit and translates the initializer's
-//! transmute as a field projection.
+//! Box-deref transmute as a field projection.
 //!
 //! Alias initializer statements may also be basic-block entry points. Since
 //! annotation generation queries start points for successor blocks, `finish`

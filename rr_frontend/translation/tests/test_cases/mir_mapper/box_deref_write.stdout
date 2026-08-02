@@ -1,9 +1,9 @@
 Mapping for function box_deref_write:
 summary: total=7 mapped=7 unmapped=0
 
-bb0[0] _2 = copy ((_1.0: std::ptr::Unique<u32>).0: std::ptr::NonNull<u32>) as *const u32 (Transmute) -> Inserted
+bb0[0] _2 = copy ((_1.0: std::ptr::Unique<u32>).0: std::ptr::NonNull<u32>) as *const u32 (BoxDerefTransmute) -> Inserted
 bb0[1] (*_2) = const 7_u32 -> Source(bb0[0] (*_1) = const 7_u32)
-bb0[2] _3 = copy ((_1.0: std::ptr::Unique<u32>).0: std::ptr::NonNull<u32>) as *const u32 (Transmute) -> SplitFrom(bb0[1] _0 = copy (*_1))
+bb0[2] _3 = copy ((_1.0: std::ptr::Unique<u32>).0: std::ptr::NonNull<u32>) as *const u32 (BoxDerefTransmute) -> SplitFrom(bb0[1] _0 = copy (*_1))
 bb0[3] _0 = copy (*_3) -> SplitFrom(bb0[1] _0 = copy (*_1))
 bb0[4] drop(_1) -> [return: bb1, unwind: bb2] -> Source(bb0[2] drop(_1) -> [return: bb1, unwind: bb2])
 bb1[0] return -> Source(bb1[0] return)

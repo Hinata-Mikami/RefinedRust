@@ -9,7 +9,7 @@
 use log::info;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::{RegionUtilitiesExt as _, TypeFoldable};
+use rr_rustc_interface::middle::ty::TypeFoldable;
 
 use super::{
     AnnotationGenerator, EarlyLateRegionMap, RegionBiFolder as _, RegionVarResolver, arg_folder, init,

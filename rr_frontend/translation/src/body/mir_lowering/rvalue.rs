@@ -184,7 +184,9 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
         op: &mir::Operand<'tcx>,
         to_ty: ty::Ty<'tcx>,
     ) -> Result<code::Expr, TranslationError> {
-        if matches!(kind, mir::CastKind::Transmute)
+        // The stdlib Box shim is not rustc's lang-item Box, so its equivalent pointer extraction
+        // remains an ordinary transmute. Keep the structural check for that compatibility path.
+        if matches!(kind, mir::CastKind::Transmute | mir::CastKind::BoxDerefTransmute)
             && let Some(translated) = self.translate_box_deref_transmute(op, to_ty)?
         {
             return Ok(translated);
@@ -267,6 +269,12 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
             mir::CastKind::Transmute => Err(TranslationError::ErrorReported(self.tcx().dcx().err(
                 Message::UnsupportedFeature(format!(
                     "RefinedRust does currently not support transmute cast (got: {kind:?}, {op:?}, {to_ty:?})"
+                )),
+            ))),
+
+            mir::CastKind::BoxDerefTransmute => Err(TranslationError::ErrorReported(self.tcx().dcx().err(
+                Message::UnsupportedFeature(format!(
+                    "RefinedRust encountered an unexpected Box dereference transmute (got: {op:?}, {to_ty:?})"
                 )),
             ))),
 

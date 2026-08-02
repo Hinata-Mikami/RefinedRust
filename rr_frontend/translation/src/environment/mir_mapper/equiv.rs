@@ -178,7 +178,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
 
         let mir::Rvalue::Cast(
-            mir::CastKind::Transmute,
+            mir::CastKind::BoxDerefTransmute,
             mir::Operand::Copy(rhs_place) | mir::Operand::Move(rhs_place),
             _,
         ) = rhs

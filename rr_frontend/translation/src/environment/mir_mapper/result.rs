@@ -27,7 +27,7 @@ pub enum Origin {
 /// Drop elaboration can lower `*_box` to a raw-pointer alias, e.g.:
 ///
 /// ```text
-/// _alias = copy ((_box.0).0) as *mut T (Transmute)
+/// _alias = copy ((_box.0).0) as *mut T (BoxDerefTransmute)
 /// *_alias
 /// ```
 ///
