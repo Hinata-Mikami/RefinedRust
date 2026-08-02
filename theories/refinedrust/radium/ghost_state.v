@@ -21,7 +21,7 @@ Definition heapUR : ucmra :=
   gmapUR addr heap_cellR.
 
 Class heapG Σ := HeapG {
-heap_heap_inG              :: inG Σ (authR heapUR);
+  heap_heap_inG              :: inG Σ (authR heapUR);
   heap_heap_name             : gname;
   heap_alloc_meta_map_inG   :: ghost_mapG Σ alloc_id (Z * nat * alloc_kind);
   heap_alloc_meta_map_name  : gname;
@@ -35,7 +35,7 @@ Definition to_lock_stateR (lk : lock_state) : lock_stateR :=
   match lk with RSt n => Cinr n | WSt => Cinl (Excl ()) end.
 
 Definition to_heap_cellR (hc : heap_cell) : heap_cellR :=
-(1%Qp, to_lock_stateR hc.(hc_lock_state), to_agree (hc.(hc_alloc_id), hc.(hc_value))).
+  (1%Qp, to_lock_stateR hc.(hc_lock_state), to_agree (hc.(hc_alloc_id), hc.(hc_value))).
 
 Definition to_heapUR : heap → heapUR :=
   fmap to_heap_cellR.
@@ -44,7 +44,7 @@ Definition to_alloc_metaR (al : allocation) : (Z * nat * alloc_kind) :=
   (al.(al_start), al.(al_len), al.(al_kind)).
 
 Definition to_alloc_meta_map : allocs → gmap alloc_id (Z * nat * alloc_kind) :=
-fmap to_alloc_metaR.
+  fmap to_alloc_metaR.
 
 Definition to_alloc_alive_map : allocs → gmap alloc_id bool :=
   fmap al_alive.
@@ -587,7 +587,7 @@ Section loc_in_bounds.
 
   Lemma loc_in_bounds_ptr_in_range l pre suf :
     loc_in_bounds l pre suf -∗
-    ⌜0 ≤ l.(loc_a) - pre ∧ l.(loc_a) + suf ≤ max_alloc_end_zero⌝.
+    ⌜min_alloc_start ≤ l.(loc_a) - pre ∧ l.(loc_a) + suf ≤ max_alloc_end_zero⌝.
   Proof.
     rewrite loc_in_bounds_eq. iIntros "[Hlib | Hlib]".
     - iDestruct "Hlib" as (?????[??]) "?". iPureIntro.
@@ -802,7 +802,7 @@ Section heap.
   Proof. iIntros "(% & % & % & ?)". done. Qed.
 
   Lemma heap_pointsto_ptr_in_range l q v :
-    l ↦{q} v -∗ ⌜0 ≤ l.(loc_a) ∧ l.(loc_a) + length v ≤ max_alloc_end_zero⌝.
+    l ↦{q} v -∗ ⌜min_alloc_start ≤ l.(loc_a) ∧ l.(loc_a) + length v ≤ max_alloc_end_zero⌝.
   Proof.
     iIntros "Hl". iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "Hlb".
     iPoseProof (loc_in_bounds_ptr_in_range with "Hlb") as "%Ha".
