@@ -589,7 +589,7 @@
           devShells.default = pkgs.mkShell {
             inputsFrom = with packages; [
               frontend
-              refinedrust-smtcoq
+              refinedrust
             ];
 
             packages = with pkgs; [
@@ -597,6 +597,7 @@
               cargo-machete
               gnumake
               rust.toolchain.dev
+              pkgs.rocqPackages.sniper
             ];
 
             LD_LIBRARY_PATH = lib.makeLibraryPath [ rust.toolchain.dev ];
