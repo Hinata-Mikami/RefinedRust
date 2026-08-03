@@ -2,46 +2,31 @@ From caesium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.gc.generated Require Import generated_code_gc generated_specs_gc generated_template_Heap_alloc.
 
-
 Set Default Proof Using "Type".
 
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
-(* 
 
-(* Heap_alloc_prrof を解くための補題？ *)
-(* 自動証明 rep liRStep でどこかで使われた？ *)
-Lemma simplify_goal_big_sepL_app {A} (xs1 xs2 : list A)
-  (Φ : nat → A → iProp Σ) T :
+Lemma simplify_goal_big_sepL_app {A}
+    (xs1 xs2 : list A)
+    (Φ : nat → A → iProp Σ) T :
   ([∗ list] i ↦ x ∈ xs1, Φ i x) ∗
-  ([∗ list] i ↦ x ∈ xs2, Φ (length xs1 + i)%nat x) ∗
-  T
-  ⊢ simplify_goal ([∗ list] i ↦ x ∈ xs1 ++ xs2, Φ i x) T.
+  ([∗ list] i ↦ x ∈ xs2,
+      Φ (length xs1 + i)%nat x) ∗ T
+  ⊢
+  simplify_goal
+    ([∗ list] i ↦ x ∈ xs1 ++ xs2, Φ i x) T.
 Proof.
   rewrite /simplify_goal.
   rewrite big_sepL_app.
   iIntros "($ & $ & $)".
 Qed.
 
-Lemma simplify_goal_big_sepL_cons_snoc {A} (a b : A) (xs : list A)
-  (Φ : nat → A → iProp Σ) T :
-  ([∗ list] i ↦ x ∈ a :: xs, Φ i x) ∗
-  Φ (length (a :: xs)) b ∗
-  T
-  ⊢ simplify_goal ([∗ list] i ↦ x ∈ a :: xs ++ [b], Φ i x) T.
-Proof.
-  rewrite /simplify_goal.
-  change (a :: xs ++ [b]) with ((a :: xs) ++ [b]).
-  rewrite big_sepL_app.
-  simpl.
-  rewrite Nat.add_0_r.
-  iIntros "(Hxs & Hb & HT)".
-  iFrame.
-Qed.
+Definition simplify_goal_big_sepL_app_inst :=
+  [instance @simplify_goal_big_sepL_app with 10%N].
 
-Definition simplify_goal_big_sepL_cons_snoc_inst :=
-  [instance @simplify_goal_big_sepL_cons_snoc with 0%N].
-Global Existing Instance simplify_goal_big_sepL_cons_snoc_inst. *)
+Global Existing Instance simplify_goal_big_sepL_app_inst.
+
 
 Lemma Heap_alloc_proof (π : thread_id) :
   Heap_alloc_lemma π.
@@ -50,13 +35,25 @@ Proof.
 
   rep <-! liRStep; liShow.
 
-  (* 
+  (* ptr を返す move "__0" まで進める *)
   rep liRStep; liShow.
+
+  (*
+    更新後の vals は、
+
+      空の場合     : [v]
+      非空の場合   : old_v :: vals_tail ++ [v]
+
+    となる。
+
+    Heap invariant が vals を先頭と tail に分解する際の
+    existential variable を具体化する。
+  *)
   liInst Hevar_x
-  (match h with
-   | [] => v
-   | x :: _ => x
-   end).
+    (match h with
+    | [] => v
+    | x :: _ => x
+    end).
 
   liInst Hevar_x2
     (match h with
@@ -64,229 +61,334 @@ Proof.
     | _ :: xs => xs ++ [v]
     end).
 
-  liInst Hevar_x0 (h1 ++ [NULL_loc]).
-  liInst Hevar_x3 (h2 ++ [false]).
-  rep liRStep; liShow.
+  liInst Hevar_x0
+    (h1 ++ [NULL_loc]).
 
-  liInst Hevar_l
-    (match h0 with
-    | [] => x'
-    | l :: _ => l
-    end).
+  liInst Hevar_x3
+    (h2 ++ [false]).
 
-  liInst Hevar_n
-    (match h1 with
-    | [] => NULL_loc
-    | n :: _ => n
-    end).
+  liShow.
 
-  liInst Hevar_m
-    (match h2 with
-    | [] => false
-    | m :: _ => m
-    end).
+  destruct h as [| old_v vals_tail].
 
-  rep liRStep; liShow.
+  - destruct h0 as [| old_l locs_tail];
+      simpl in *; try lia.
 
-  destruct h0 as [| old_l h0_tail]; simpl in *.
+    destruct h1 as [| old_next nexts_tail];
+      simpl in *; try lia.
 
-  - destruct h as [| old_v h_tail]; simpl in *; try lia.
-    destruct h1 as [| old_n h1_tail]; simpl in *; try lia.
-    destruct h2 as [| old_m h2_tail]; simpl in *; try lia.
+    destruct h2 as [| old_mark marks_tail];
+      simpl in *; try lia.
+
+    split; first done.
 
     rep liRStep; liShow.
-  
-  - destruct h as [| old_v h_tail]; simpl in *; try lia.
-    destruct h1 as [| old_n h1_tail]; simpl in *; try lia.
-    destruct h2 as [| old_m h2_tail]; simpl in *; try lia.
 
-    iRename select ((∃ (l n : loc) (m : bool), _) ∗ _)%I into "Hnodes".
-    iDestruct "Hnodes" as "(Hfirst & Htail)".
-    iDestruct "Hfirst" as (l n m) "(%Hloc & %Hnext & %Hmark & Hown_old & Hfree_old)".
-    inversion Hloc; subst l; clear Hloc.
-    inversion Hnext; subst n; clear Hnext.
-    inversion Hmark; subst m; clear Hmark.
+  - destruct h0 as [| old_l locs_tail];
+      simpl in *; try lia.
 
-    (* iRevert "Hown_old".
-    rep liRStep; liShow.
-    apply_update (updateable_strip_guards).
-    rep liRStep; liShow.
-    rep liRStep; liShow. *)
+    destruct h1 as [| old_next nexts_tail];
+      simpl in *; try lia.
 
-    (* iEval (rewrite /guarded /=) in "Hown_old".
-
-    iDestruct "Hown_old" as "(Hcred_old & Hown_old)".
-    iEval (rewrite /have_creds) in "Hcred_old".
-    iDestruct "Hcred_old" as "(Hlc_old & Hreceipt_old)".
-
-    iEval (rewrite /num_cred lc_succ) in "Hlc_old".
-    iDestruct "Hlc_old" as "(Hlc_one & Hlc_rest)".
-
-    iMod (lc_fupd_elim_later ⊤ with "Hlc_one Hown_old") as "Hown_old".
-
-    rep liRStep; liShow. *)
-
-    assert (Hmap_h : list_fmap Z Z id h_tail = h_tail).
-    {
-      autorewrite with lithium_rewrite.
-      done.
-    }
-    assert (Hmap_l : list_fmap loc loc id h0_tail = h0_tail).
-    {
-      autorewrite with lithium_rewrite.
-      done.
-    }
-    assert (Hmap_n : list_fmap loc loc id h1_tail = h1_tail).
-    {
-      autorewrite with lithium_rewrite.
-      done.
-    }
-    assert (Hmap_m : list_fmap bool bool id h2_tail = h2_tail).
-    {
-      autorewrite with lithium_rewrite.
-      done.
-    }
+    destruct h2 as [| old_mark marks_tail];
+      simpl in *; try lia.
 
     injection Hlen_locs as Hlen_locs_tail.
     injection Hlen_nexts as Hlen_nexts_tail.
     injection Hlen_marks as Hlen_marks_tail.
 
+    split.
+    {
+      rewrite length_app /=.
+      lia.
+    }
+
+    iRename select
+      ((∃ (l n : loc) (m : bool), _) ∗ _)%I
+      into "Hnodes".
+
+    iDestruct "Hnodes" as "(Hfirst & Htail)".
+
+    assert (Hmap_vals :
+      list_fmap Z Z id vals_tail = vals_tail).
+    {
+      autorewrite with lithium_rewrite.
+      done.
+    }
+
+    assert (Hmap_locs :
+      list_fmap loc loc id locs_tail = locs_tail).
+    {
+      autorewrite with lithium_rewrite.
+      done.
+    }
+
+    assert (Hmap_nexts :
+      list_fmap loc loc id nexts_tail = nexts_tail).
+    {
+      autorewrite with lithium_rewrite.
+      done.
+    }
+
+    assert (Hmap_marks :
+      list_fmap bool bool id marks_tail = marks_tail).
+    {
+      autorewrite with lithium_rewrite.
+      done.
+    }
+
+    iEval (
+      rewrite
+        Hmap_vals
+        Hmap_locs
+        Hmap_nexts
+        Hmap_marks
+    ) in "Htail".
+
     iAssert (
-      [∗ list] i↦x ∈ list_fmap Z Z id h_tail,
+      [∗ list] k ↦ v6 ∈ vals_tail,
         ∃ (l n : loc) (m : bool),
-          ⌜(h0_tail ++ [x']) !! i = Some l⌝ ∗
-          ⌜(h1_tail ++ [NULL_loc]) !! i = Some n⌝ ∗
-          ⌜(h2_tail ++ [false]) !! i = Some m⌝ ∗
+          ⌜(locs_tail ++ [x']) !! k = Some l⌝ ∗
+          ⌜(nexts_tail ++ [NULL_loc]) !! k = Some n⌝ ∗
+          ⌜(marks_tail ++ [false]) !! k = Some m⌝ ∗
           guarded true
             (l ◁ₗ[π, Owned]
-              # -[#x; #n; #m]
+              # -[#v6; #n; #m]
               @ (◁ (Node_ty <INST!>))) ∗
           freeable_nz l
             (ly_size (use_layout_alg' Node_sls))
             1 HeapAlloc
-    )%I with "[Htail]" as "Htail_app".
+    )%I with "[Htail]" as "Htail_ext".
     {
       iApply (big_sepL_impl with "Htail").
-      iIntros "!>" (i x Hlookup) "Hnode".
 
-      iDestruct "Hnode" as (l n m) "(%Hloc & %Hnext & %Hmark & Hown & Hfree)".
+      iIntros "!>" (k v6 Hlookup) "Hnode_old".
 
-      rewrite Hmap_h in Hlookup.
-      rewrite Hmap_l in Hloc.
-      rewrite Hmap_n in Hnext.
-      rewrite Hmap_m in Hmark.
-
-      pose proof (lookup_lt_Some _ _ _ Hlookup) as Hlt.
+      iDestruct "Hnode_old" as
+        (l n m)
+        "(%Hloc & %Hnext & %Hmark &
+          Hguard_old & Hfree_old)".
 
       iExists l, n, m.
+
       iSplit.
       {
         iPureIntro.
+
+        pose proof
+          (lookup_lt_Some _ _ _ Hlookup)
+          as Hlt.
+
         rewrite lookup_app_l.
         - exact Hloc.
-        - rewrite Hlen_locs_tail. exact Hlt.
+        - rewrite Hlen_locs_tail.
+          exact Hlt.
       }
+
       iSplit.
       {
         iPureIntro.
+
+        pose proof
+          (lookup_lt_Some _ _ _ Hlookup)
+          as Hlt.
+
         rewrite lookup_app_l.
         - exact Hnext.
-        - rewrite Hlen_nexts_tail. exact Hlt.
+        - rewrite Hlen_nexts_tail.
+          exact Hlt.
       }
+
       iSplit.
       {
         iPureIntro.
+
+        pose proof
+          (lookup_lt_Some _ _ _ Hlookup)
+          as Hlt.
+
         rewrite lookup_app_l.
         - exact Hmark.
-        - rewrite Hlen_marks_tail. exact Hlt.
+        - rewrite Hlen_marks_tail.
+          exact Hlt.
       }
+
       iFrame.
     }
 
-    iEval (rewrite Hmap_h) in "Htail_app".
+    iAcquireCredits as "Hcred_new".
 
-    iAssert (
-      [∗ list] i↦x ∈ old_v :: h_tail,
-        ∃ (l n : loc) (m : bool),
-          ⌜(old_l :: h0_tail ++ [x']) !! i = Some l⌝ ∗
-          ⌜(old_n :: h1_tail ++ [NULL_loc]) !! i = Some n⌝ ∗
-          ⌜(old_m :: h2_tail ++ [false]) !! i = Some m⌝ ∗
-          guarded true
-            (l ◁ₗ[π, Owned]
-              # -[#x; #n; #m]
-              @ (◁ (Node_ty <INST!>))) ∗
-          freeable_nz l
-            (ly_size (use_layout_alg' Node_sls))
-            1 HeapAlloc
-    )%I with "[Hown_old Hfree_old Htail_app]" as "Hnodes_old".
-    {
-      simpl.
-      iSplitL "Hown_old Hfree_old".
-      {
-        iExists old_l, old_n, old_m.
-        simpl.
-        iSplit; first done.
-        iSplit; first done.
-        iSplit; first done.
-        iFrame.
-      }
-
-      iApply (big_sepL_impl with "Htail_app").
-      iIntros "!>" (i x Hlookup) "Hnode".
-      iDestruct "Hnode" as (l n m) "(%Hloc & %Hnext & %Hmark & Hown & Hfree)".
-
-      iExists l, n, m.
-      simpl.
-      iSplit.
-      {
-        iPureIntro.
-        exact Hloc.
-      }
-      iSplit.
-      {
-        iPureIntro.
-        exact Hnext.
-      }
-      iSplit.
-      {
-        iPureIntro.
-        exact Hmark.
-      }
-      iFrame.
-    }
-
-    iRevert "Hnodes_old".
+    iApply (prove_with_subtype_stratify x').
     rep liRStep; liShow.
 
-    replace (length h_tail - length h0_tail)%nat with 0%nat by lia.
-    simpl.
+    iApply prove_with_subtype_default.
 
-    rep liRStep; liShow. *)
+    iRename select
+      (freeable_nz x' _ _ _)
+      into "Hfree_new".
+      
+    assert (Hlen_nexts_new :
+      S (length (nexts_tail ++ [NULL_loc])) =
+      S (length (vals_tail ++ [v]))).
+    {
+      rewrite !length_app /=.
+      lia.
+    }
 
+    assert (Hlen_marks_new :
+      S (length (marks_tail ++ [false])) =
+      S (length (vals_tail ++ [v]))).
+    {
+      rewrite !length_app /=.
+      lia.
+    }
 
-    all: print_remaining_goal.
-    Unshelve. all: sidecond_solver.
-    Unshelve. all: sidecond_hammer.
+    assert (Hnext_valid_new :
+      Forall
+        (λ n : loc,
+          n = NULL_loc ∨
+          n ∈ ((old_l :: locs_tail) ++ [x']))
+        ((old_next :: nexts_tail) ++ [NULL_loc])).
+    {
+      apply Forall_app.
+      split.
+      {
+        eapply Forall_impl.
+        - exact Hnext_valid.
+        - intros n Hn.
+          destruct Hn as [Hnull | Hin].
+          + left.
+            exact Hnull.
+          + right.
+            apply elem_of_app.
+            left.
+            exact Hin.
+      }
 
-    (* all: try solve [
-    apply Forall_app;
-    split;
-    [
-      eapply Forall_impl; [| exact Hnext_valid];
-      intros n Hn;
-      destruct Hn as [Hnull | Hin];
-      [ left; exact Hnull
-      | right; apply elem_of_app; left; exact Hin ]
-    |
-      constructor;
-      [ left; reflexivity
-      | constructor ]
-    ]
-    ]. *)
+      constructor.
+      - left.
+        done.
+      - constructor.
+    }
 
-    Unshelve. all: print_remaining_sidecond.
-   
+    iSplitL
+      "Hfirst Htail_ext Hcred_new Hfree_new".
+    {
+      liRStep; liShow.
 
+      iRename select
+        (_ ◁ₗ[_, Owned] _ @ _)%I
+        into "Hnew".
 
+      iAssert (
+        [∗ list] k ↦ v6 ∈ vals_tail ++ [v],
+          ∃ (l n : loc) (m : bool),
+            ⌜(locs_tail ++ [x']) !! k = Some l⌝ ∗
+            ⌜(nexts_tail ++ [NULL_loc]) !! k = Some n⌝ ∗
+            ⌜(marks_tail ++ [false]) !! k = Some m⌝ ∗
+            guarded true
+              (l ◁ₗ[π, Owned]
+                # -[#v6; #n; #m]
+                @ (◁ (Node_ty <INST!>))) ∗
+            freeable_nz l
+              (ly_size (use_layout_alg' Node_sls))
+              1 HeapAlloc
+      )%I with
+        "[Htail_ext Hcred_new Hnew Hfree_new]"
+        as "Htail_new".
+      {
+        rewrite big_sepL_app.
+
+        iSplitL "Htail_ext".
+        {
+          iExact "Htail_ext".
+        }
+
+        simpl.
+
+        iSplitL "Hcred_new Hnew Hfree_new".
+        {
+          iExists x', NULL_loc, false.
+
+          iSplitR "Hcred_new Hnew Hfree_new".
+          {
+            iPureIntro.
+
+            rewrite Nat.add_0_r.
+            rewrite -Hlen_locs_tail.
+            rewrite lookup_app_r; last lia.
+            rewrite Nat.sub_diag /=.
+            done.
+          }
+
+          iSplitR "Hcred_new Hnew Hfree_new".
+          {
+            iPureIntro.
+
+            rewrite Nat.add_0_r.
+            rewrite -Hlen_nexts_tail.
+            rewrite lookup_app_r; last lia.
+            rewrite Nat.sub_diag /=.
+            done.
+          }
+
+          iSplitR "Hcred_new Hnew Hfree_new".
+          {
+            iPureIntro.
+
+            rewrite Nat.add_0_r.
+            rewrite -Hlen_marks_tail.
+            rewrite lookup_app_r; last lia.
+            rewrite Nat.sub_diag /=.
+            done.
+          }
+
+          iSplitL "Hcred_new Hnew".
+          {
+            rewrite /guarded /=.
+            iFrame.
+          }
+
+          iExact "Hfree_new".
+        }
+
+        done.
+      }
+
+      iDestruct "Hfirst" as
+        (l n m)
+        "(%Heq_l & %Heq_n & %Heq_m &
+          Hguard_first & Hfree_first)".
+
+      injection Heq_l as Heq_l.
+      subst l.
+
+      injection Heq_n as Heq_n.
+      subst n.
+
+      injection Heq_m as Heq_m.
+      subst m.
+
+      iRevert
+        "Hguard_first Hfree_first Htail_new".
+
+      rep liRStep; liShow.
+
+    }
+
+    rep liRStep; liShow.
+    
+
+  all: print_remaining_goal.
+
+  Unshelve.
+  all: sidecond_solver.
+
+  Unshelve.
+  all: sidecond_hammer.
+
+  Unshelve.
+  all: print_remaining_sidecond.
 Qed.
+
 End proof.

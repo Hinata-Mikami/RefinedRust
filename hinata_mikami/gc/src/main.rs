@@ -37,9 +37,6 @@ impl Node{
 }
 
 // ここに inv を書かないほうがいい可能性も？関数側に書く方がいい傾向もあるか
-// next がない単なるノードのリストだと...?
-// Node の中のポインタが有効 * Node の next が有効 簡単な例で
-// Next が次を指している　を一旦抜きにして単純化
 #[rr::refined_by("(vals, locs, nexts, marks)" :
                  "(list Z * list loc * list loc * list bool)")]
 #[rr::depends_on(Node)]
@@ -65,11 +62,6 @@ struct Heap {
     #[rr::field("<#> locs")]
     all_nodes: Vec<*mut Node>,
 }
-// #について
-// freeable について
-// もう少し単純なところから
-
-
 
 // ヘルパー
 #[rr::params("v" : "Z")]
@@ -123,9 +115,8 @@ impl Heap {
         }
     }
 
-    // hは4つ組。((v, l, n, m), v) と書くと5つ組と解釈される？
     //x' @ StructLtype +[◁ int i32; ◁ alias_ptr_t; ◁ bool_t] Node_sls を 
-    //Node_ty に畳めないエラー -> 手動証明？ 
+    //Node_ty に畳めないエラー? -> 手動証明でOK 
     #[rr::params("h", "v" : "Z")]
     #[rr::args("h", "v")]
     #[rr::requires("MinInt i32 ≤ v")]

@@ -1,5 +1,5 @@
-   0.019374922s  INFO prepare_target{force=false package_id=gc v0.1.0 (/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc) target="gc"}: cargo::core::compiler::fingerprint: fingerprint error for gc v0.1.0 (/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc)/Check { test: false }/TargetInner { name: "gc", doc: true, ..: with_path("/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc/src/main.rs", Edition2024) }
-   0.019450377s  INFO prepare_target{force=false package_id=gc v0.1.0 (/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc) target="gc"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc/target/debug/.fingerprint/gc-cb7c4c3ea6107c52/bin-gc`
+   0.064193191s  INFO prepare_target{force=false package_id=gc v0.1.0 (/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc) target="gc"}: cargo::core::compiler::fingerprint: fingerprint error for gc v0.1.0 (/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc)/Check { test: false }/TargetInner { name: "gc", doc: true, ..: with_path("/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc/src/main.rs", Edition2024) }
+   0.064298587s  INFO prepare_target{force=false package_id=gc v0.1.0 (/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc) target="gc"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc/target/debug/.fingerprint/gc-cb7c4c3ea6107c52/bin-gc`
 
 Caused by:
     No such file or directory (os error 2)
@@ -41,8 +41,8 @@ Stack backtrace:
   24: <unknown>
   25: __libc_start_main
   26: <unknown>
-   0.038340165s  INFO prepare_target{force=false package_id=gc v0.1.0 (/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc) target="gc"}: cargo::core::compiler::fingerprint: fingerprint error for gc v0.1.0 (/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc)/Check { test: true }/TargetInner { name: "gc", doc: true, ..: with_path("/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc/src/main.rs", Edition2024) }
-   0.038380878s  INFO prepare_target{force=false package_id=gc v0.1.0 (/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc) target="gc"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc/target/debug/.fingerprint/gc-c1114a895a3dc294/test-bin-gc`
+   0.127794646s  INFO prepare_target{force=false package_id=gc v0.1.0 (/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc) target="gc"}: cargo::core::compiler::fingerprint: fingerprint error for gc v0.1.0 (/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc)/Check { test: true }/TargetInner { name: "gc", doc: true, ..: with_path("/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc/src/main.rs", Edition2024) }
+   0.127871234s  INFO prepare_target{force=false package_id=gc v0.1.0 (/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc) target="gc"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc/target/debug/.fingerprint/gc-c1114a895a3dc294/test-bin-gc`
 
 Caused by:
     No such file or directory (os error 2)
@@ -85,6 +85,6 @@ Stack backtrace:
   25: __libc_start_main
   26: <unknown>
     Checking gc v0.1.0 (/home/hinata/code/RefinedRust/MyRefinedrust/hinata_mikami/gc)
-error: could not compile `gc` (bin "gc") due to 2 previous errors
-warning: build failed, waiting for other jobs to finish...
 error: could not compile `gc` (bin "gc" test) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `gc` (bin "gc") due to 2 previous errors

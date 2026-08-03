@@ -33,7 +33,7 @@ struct Node {
       (ly_size (use_layout_alg' Node_sls))
       1 HeapAlloc
 ")]
-pub fn make_node(value: i32) -> *mut Node {
+fn make_node(value: i32) -> *mut Node {
     let b = Box::new(Node { value });
     Box::into_raw(b)
 }
@@ -58,6 +58,10 @@ struct Heap {
     #[rr::field("(<#> locs)")]
     all_nodes: Vec<*mut Node>,
 }
+
+// 1つだけのポインタでもだめ？自動でやってくれない境界線はどこか
+// Heap_alloc_lemma の定義
+// Codex，前方の内容を記憶できているか
 
 
 impl Heap {
