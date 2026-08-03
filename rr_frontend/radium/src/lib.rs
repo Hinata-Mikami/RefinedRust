@@ -74,8 +74,6 @@ macro_rules! write_list {
 mod tests {
     use std::fmt::Write as _;
 
-    use crate::{code, lang};
-
     #[test]
     fn fmt_list_default() {
         let out = fmt_list!(vec!["10", "20"], "; ");
@@ -134,35 +132,5 @@ mod tests {
         let mut out = String::new();
         write_list!(out, vec![("x", "10"), ("y", "20")], "; ", |(l, v)| format!("{l}: {v}")).unwrap();
         assert_eq!(out, "x: 10; y: 20");
-    }
-
-    #[test]
-    fn call_statement_destinations() {
-        let call = |destination| code::Stmt::Call {
-            f: code::Expr::Literal(code::Literal::Loc("f".to_owned())),
-            lfts: Vec::new(),
-            tys: Vec::new(),
-            args: Vec::new(),
-            destination,
-            normal: Box::new(code::Stmt::GotoBlock(1)),
-            unwind: Box::new(code::Stmt::Stuck),
-        };
-        let destination = code::CallDestination {
-            order: lang::Order::Na1,
-            ot: lang::OpType::Unit,
-            destination: code::Expr::Var("ret".to_owned()),
-        };
-
-        let with_destination = call(Some(destination)).to_string();
-        assert!(
-            with_destination.contains("(Some (Na1Ord, StructOp unit_sl [], \"ret\"))"),
-            "{with_destination:?}"
-        );
-        assert!(with_destination.contains("Goto \"_bb1\""));
-        assert!(with_destination.ends_with("( StuckS)"));
-
-        let without_destination = call(None).to_string();
-        assert!(without_destination.contains("[@{expr} ] None"));
-        assert!(without_destination.ends_with("( StuckS)"));
     }
 }

@@ -208,7 +208,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
                         lfts: call_info.lft_hint,
                         tys: ty_hint,
                         args: vec![raw_place],
-                        destination: None,
+                        destination: Box::new(None),
                         normal: Box::new(stmt),
                         unwind: Box::new(code::Stmt::Stuck),
                     };
@@ -263,7 +263,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
                     lfts: call_info.lft_hint,
                     tys: ty_hint,
                     args: translated_args,
-                    destination: Some(destination),
+                    destination: Box::new(Some(destination)),
                     normal: Box::new(normal),
                     unwind: Box::new(code::Stmt::Stuck),
                 })

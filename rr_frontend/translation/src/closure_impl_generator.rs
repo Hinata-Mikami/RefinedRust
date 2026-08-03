@@ -286,7 +286,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             lfts: lft_hints,
             tys: ty_hints,
             args: closure_args,
-            destination: Some(destination),
+            destination: Box::new(Some(destination)),
             normal: Box::new(normal),
             unwind: Box::new(code::Stmt::Stuck),
         };

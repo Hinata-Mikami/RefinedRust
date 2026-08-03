@@ -749,7 +749,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             lfts: call_info.lft_hint,
             tys: ty_hint,
             args: translated_args,
-            destination: Some(destination),
+            destination: Box::new(Some(destination)),
             normal: Box::new(normal),
             unwind: Box::new(code::Stmt::Stuck),
         };

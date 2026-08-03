@@ -630,7 +630,7 @@ pub enum Stmt {
         fmt_list!(lfts, "; ", "\"{}\""),
         fmt_list!(tys, "; ", "{}"),
         fmt_list!(args, "; "),
-        fmt_call_destination(destination.as_ref()),
+        fmt_call_destination(destination.as_ref().as_ref()),
         &normal.indented(&make_indent(1)),
         &unwind.indented(&make_indent(1))
     )]
@@ -639,7 +639,7 @@ pub enum Stmt {
         lfts: Vec<Lft>,
         tys: Vec<RustType>,
         args: Vec<Expr>,
-        destination: Option<CallDestination>,
+        destination: Box<Option<CallDestination>>,
         normal: Box<Self>,
         unwind: Box<Self>,
     },
