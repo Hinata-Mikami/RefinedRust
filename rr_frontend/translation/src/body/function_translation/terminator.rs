@@ -174,7 +174,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         &self.ty_translator,
                         dying_loans.into_iter(),
                     );
-                    let mut prim_stmts = annotation_plan.take_pre_stmts();
+                    let prim_stmts = annotation_plan.take_pre_stmts();
 
                     let (func_expr, info) = self.translate_operand(func, false)?;
                     let Some(ExprInfo::Call(mut call_info)) = info else {
@@ -188,16 +188,23 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         .extend(repeat_n(specs::Lft::new("_flft"), call_info.num_of_latebounds));
                     let translated_arg = self.translate_operand(&arg.node, true)?.0;
                     let ty_hint = call_info.type_hint.into_iter().map(|x| code::RustType::of_type(&x)).collect();
-                    let call_expr = code::Expr::Call {
-                        f: Box::new(func_expr),
+                    let destination_st = self.translate_type_to_syn_type(self.shape_type_of_place(destination).ty)?;
+                    let destination = code::CallDestination {
+                        order: lang::Order::Na1,
+                        ot: destination_st.into(),
+                        destination: self.translate_place(destination)?,
+                    };
+                    let normal = self.translate_goto_like(&loc, *target)?;
+                    let call = code::Stmt::Call {
+                        f: func_expr,
                         lfts: call_info.lft_hint,
                         tys: ty_hint,
                         args: vec![translated_arg],
+                        destination: Some(destination),
+                        normal: Box::new(normal),
+                        unwind: Box::new(code::Stmt::Stuck),
                     };
-                    prim_stmts.push(code::PrimStmt::ExprS(Box::new(call_expr)));
-
-                    let stmt = self.translate_goto_like(&loc, *target)?;
-                    return Ok(code::Stmt::Prim(prim_stmts, Box::new(stmt)));
+                    return Ok(code::Stmt::Prim(prim_stmts, Box::new(call)));
                 }
 
                 if self.is_call_destination_panic(func) {
@@ -330,12 +337,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
 
             mir::TerminatorKind::Drop { place, target, .. } => {
-                let stmt = self.translate_goto_like(&loc, *target)?;
+                let mut stmt = self.translate_goto_like(&loc, *target)?;
                 let mut annotation_plan = self.annotations.prepare_terminator_annotation_plan(
                     &self.ty_translator,
                     dying_loans.into_iter(),
                 );
-                let mut prim_stmts = annotation_plan.take_pre_stmts();
+                let prim_stmts = annotation_plan.take_pre_stmts();
 
                 let shape_ty = self.shape_type_of_place(place).ty;
                 let typing_env = ty::TypingEnv::post_analysis(self.tcx, self.proc.get_id());
@@ -351,13 +358,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     };
 
                     let ty_hint = call_info.type_hint.into_iter().map(|x| code::RustType::of_type(&x)).collect();
-                    let call_expr = code::Expr::Call {
-                        f: Box::new(func_expr),
+                    stmt = code::Stmt::Call {
+                        f: func_expr,
                         lfts: call_info.lft_hint,
                         tys: ty_hint,
                         args: vec![raw_place],
+                        destination: None,
+                        normal: Box::new(stmt),
+                        unwind: Box::new(code::Stmt::Stuck),
                     };
-                    prim_stmts.push(code::PrimStmt::ExprS(Box::new(call_expr)));
                 }
 
                 Ok(code::Stmt::Prim(prim_stmts, Box::new(stmt)))

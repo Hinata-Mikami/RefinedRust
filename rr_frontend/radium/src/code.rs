@@ -38,6 +38,13 @@ where
     }
 }
 
+fn fmt_call_destination(o: Option<&CallDestination>) -> String {
+    match o {
+        None => "None".to_owned(),
+        Some(destination) => format!("(Some ({destination}))"),
+    }
+}
+
 fn make_map_string(sep: &str, els: &Vec<(String, String)>) -> String {
     let mut out = String::with_capacity(100);
     for (key, value) in els {
@@ -397,14 +404,6 @@ pub enum Expr {
         e: Box<Self>,
     },
 
-    #[display("CallE {} [{}] [{}] [@{{expr}} {}]", &f, fmt_list!(lfts, "; ", "\"{}\""), fmt_list!(tys, "; ", "{}"), fmt_list!(args, "; "))]
-    Call {
-        f: Box<Self>,
-        lfts: Vec<Lft>,
-        tys: Vec<RustType>,
-        args: Vec<Self>,
-    },
-
     #[display("IfE ({}) ({}) ({}) ({})", ot, &e1, &e2, &e3)]
     If {
         ot: lang::OpType,
@@ -579,6 +578,14 @@ pub enum PrimStmt {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
+#[display("{}, {}, {}", order, ot, destination)]
+pub struct CallDestination {
+    pub order: lang::Order,
+    pub ot: lang::OpType,
+    pub destination: Expr,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum Stmt {
     #[display("Goto \"_bb{}\"", _0)]
     GotoBlock(BlockLabel),
@@ -615,6 +622,26 @@ pub enum Stmt {
         index_map: BTreeMap<u128, usize>,
         bs: Vec<Self>,
         def: Box<Self>,
+    },
+
+    #[display(
+        "CallE {} [{}] [{}] [@{{expr}} {}] {}\n({})\n({})",
+        &f,
+        fmt_list!(lfts, "; ", "\"{}\""),
+        fmt_list!(tys, "; ", "{}"),
+        fmt_list!(args, "; "),
+        fmt_call_destination(destination.as_ref()),
+        &normal.indented(&make_indent(1)),
+        &unwind.indented(&make_indent(1))
+    )]
+    Call {
+        f: Expr,
+        lfts: Vec<Lft>,
+        tys: Vec<RustType>,
+        args: Vec<Expr>,
+        destination: Option<CallDestination>,
+        normal: Box<Self>,
+        unwind: Box<Self>,
     },
 
     #[display("{}{}", fmt_list!(_0, ""), *_1)]

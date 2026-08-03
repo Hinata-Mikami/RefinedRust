@@ -256,22 +256,17 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             closure_args.push(expr);
         }
 
-        let call_expr = code::Expr::Call {
-            f: Box::new(code::Expr::Literal(code::Literal::Loc(proc_use.loc_name.clone()))),
-            lfts: lft_hints,
-            tys: ty_hints,
-            args: closure_args,
-        };
-        statements.push(code::PrimStmt::Assign {
+        let destination = code::CallDestination {
+            order: lang::Order::Na1,
             ot: output_st.clone().into(),
-            e1: Box::new(code::Expr::Var("__0".to_owned())),
-            e2: Box::new(call_expr),
-        });
+            destination: code::Expr::Var("__0".to_owned()),
+        };
 
+        let mut normal_stmts = Vec::new();
         if *ref_self != ShimRefSelf::NoRef {
             // end the lifetime of the created reference
             let annot = code::Annotation::EndLft(coq::Ident::new(ref_lft));
-            statements.push(code::PrimStmt::Annot {
+            normal_stmts.push(code::PrimStmt::Annot {
                 a: vec![annot],
                 why: None,
             });
@@ -281,12 +276,21 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         // TODO: insert drop call
         //}
 
-        // return
         let ret_expr = code::Expr::Move {
             ot: output_st.clone().into(),
             e: Box::new(code::Expr::Var("__0".to_owned())),
         };
-        let stmt = code::Stmt::Prim(statements, Box::new(code::Stmt::Return(ret_expr)));
+        let normal = code::Stmt::Prim(normal_stmts, Box::new(code::Stmt::Return(ret_expr)));
+        let call = code::Stmt::Call {
+            f: code::Expr::Literal(code::Literal::Loc(proc_use.loc_name.clone())),
+            lfts: lft_hints,
+            tys: ty_hints,
+            args: closure_args,
+            destination: Some(destination),
+            normal: Box::new(normal),
+            unwind: Box::new(code::Stmt::Stuck),
+        };
+        let stmt = code::Stmt::Prim(statements, Box::new(call));
 
         builder.code.add_basic_block(0, stmt);
 

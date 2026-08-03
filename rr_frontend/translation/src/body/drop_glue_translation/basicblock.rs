@@ -187,8 +187,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             },
 
             mir::TerminatorKind::Drop { place, target, .. } => {
-                let stmt = self.translate_goto_like(loc, *target);
-                let mut prim_stmts = Vec::new();
+                let mut stmt = self.translate_goto_like(loc, *target);
 
                 let ty = self.semantic_type_of_place(place)?;
                 let typing_env = ty::TypingEnv::post_analysis(self.tcx, self.adt_did);
@@ -204,20 +203,26 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
 
                     let ty_hint =
                         call_info.type_hint.into_iter().map(|x| code::RustType::of_type(&x)).collect();
-                    let call_expr = code::Expr::Call {
-                        f: Box::new(func_expr),
+                    stmt = code::Stmt::Call {
+                        f: func_expr,
                         lfts: call_info.lft_hint,
                         tys: ty_hint,
                         args: vec![raw_place],
+                        destination: None,
+                        normal: Box::new(stmt),
+                        unwind: Box::new(code::Stmt::Stuck),
                     };
-                    prim_stmts.push(code::PrimStmt::ExprS(Box::new(call_expr)));
                 }
 
-                Ok(code::Stmt::Prim(prim_stmts, Box::new(stmt)))
+                Ok(stmt)
             },
 
             mir::TerminatorKind::Call {
-                func, args, target, ..
+                func,
+                args,
+                destination,
+                target,
+                ..
             } => {
                 let Some(target) = target else {
                     return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
@@ -245,15 +250,23 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
                 // lifetime for destructor-call late bounds, matching synthetic `Drop::drop` calls.
                 call_info.lft_hint.extend(repeat_n(specs::Lft::new("_flft"), call_info.num_of_latebounds));
                 let ty_hint = call_info.type_hint.into_iter().map(|x| code::RustType::of_type(&x)).collect();
-                let call_expr = code::Expr::Call {
-                    f: Box::new(func_expr),
+                let destination_st =
+                    self.translate_type_to_syn_type(self.shape_type_of_place(destination).ty)?;
+                let destination = code::CallDestination {
+                    order: lang::Order::Na1,
+                    ot: destination_st.into(),
+                    destination: self.translate_place(destination)?,
+                };
+                let normal = self.translate_goto_like(loc, *target);
+                Ok(code::Stmt::Call {
+                    f: func_expr,
                     lfts: call_info.lft_hint,
                     tys: ty_hint,
                     args: translated_args,
-                };
-
-                let stmt = self.translate_goto_like(loc, *target);
-                Ok(code::Stmt::Prim(vec![code::PrimStmt::ExprS(Box::new(call_expr))], Box::new(stmt)))
+                    destination: Some(destination),
+                    normal: Box::new(normal),
+                    unwind: Box::new(code::Stmt::Stuck),
+                })
             },
 
             mir::TerminatorKind::TailCall { .. }

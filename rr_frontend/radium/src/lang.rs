@@ -3,6 +3,18 @@ use derive_more::Display;
 use crate::coq;
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Display)]
+pub enum Order {
+    #[display("ScOrd")]
+    Sc,
+
+    #[display("Na1Ord")]
+    Na1,
+
+    #[display("Na2Ord")]
+    Na2,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Display)]
 pub enum IntType {
     #[display("I8")]
     I8,

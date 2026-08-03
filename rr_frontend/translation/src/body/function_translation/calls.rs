@@ -715,50 +715,45 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let mut prim_stmts = Vec::new();
         annotation_plan.push_pre_call_stmts(&mut prim_stmts);
+        annotation_plan.push_pre_assign_stmts(&mut prim_stmts);
 
-        // add annotations for the assignment
         let ty_hint = call_info.type_hint.into_iter().map(|x| code::RustType::of_type(&x)).collect();
-        let call_expr = code::Expr::Call {
-            f: Box::new(func_expr),
-            lfts: call_info.lft_hint,
-            tys: ty_hint,
-            args: translated_args,
+        assert!(
+            annotation_plan.assign_expr.is_none(),
+            "call assignment unexpectedly requires an expression annotation at {loc:?}"
+        );
+
+        let place_st = self.translate_type_to_syn_type(lhs_shape_ty.ty)?;
+        let destination = code::CallDestination {
+            order: lang::Order::Na1,
+            ot: place_st.into(),
+            destination: self.translate_place(destination)?,
         };
-        let stmt = if let Some(target) = target {
-            annotation_plan.push_pre_assign_stmts(&mut prim_stmts);
 
-            // assign stmt with call; then jump to bb
-            let place_st = self.translate_type_to_syn_type(lhs_shape_ty.ty)?;
-            let place_expr = self.translate_place(destination)?;
-            let ot = place_st.into();
-
-            let annotated_rhs = code::Expr::with_optional_annotation(
-                call_expr,
-                annotation_plan.assign_expr.take(),
-                Some("function_call (assign)".to_owned()),
-            );
-            let assign_stmt = code::PrimStmt::Assign {
-                ot,
-                e1: Box::new(place_expr),
-                e2: Box::new(annotated_rhs),
-            };
-            prim_stmts.push(assign_stmt);
-
-            annotation_plan.push_post_assign_stmts(&mut prim_stmts);
+        let normal = if let Some(target) = target {
+            let mut normal_stmts = Vec::new();
+            annotation_plan.push_post_assign_stmts(&mut normal_stmts);
 
             // end loans before the goto, but after the call.
             // TODO: may cause duplications?
-            annotation_plan.push_post_call_before_goto_stmts(&mut prim_stmts);
+            annotation_plan.push_post_call_before_goto_stmts(&mut normal_stmts);
 
             let cont_stmt = self.translate_goto_like(&loc, target)?;
-
-            code::Stmt::Prim(prim_stmts, Box::new(cont_stmt))
+            code::Stmt::Prim(normal_stmts, Box::new(cont_stmt))
         } else {
-            // expr stmt with call; then stuck (we have not provided a continuation, after all)
-            let exprs = code::PrimStmt::ExprS(Box::new(call_expr));
-            code::Stmt::Prim(vec![exprs], Box::new(code::Stmt::Stuck))
+            code::Stmt::Stuck
         };
 
-        Ok(stmt)
+        let call = code::Stmt::Call {
+            f: func_expr,
+            lfts: call_info.lft_hint,
+            tys: ty_hint,
+            args: translated_args,
+            destination: Some(destination),
+            normal: Box::new(normal),
+            unwind: Box::new(code::Stmt::Stuck),
+        };
+
+        Ok(code::Stmt::Prim(prim_stmts, Box::new(call)))
     }
 }
