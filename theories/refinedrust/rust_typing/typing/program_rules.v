@@ -3225,7 +3225,7 @@ Section subsume.
       eauto.
   Qed.
 
-  Lemma type_call E L f ef eκs etys es o ret_ot destination normal unwind fn R ϝ :
+  Lemma type_call E L f ef eκs etys es destination normal unwind fn R ϝ :
     (∃ M, named_lfts M ∗
     li_tactic (compute_map_lookups_nofail_goal M eκs) (λ eκs',
     interpret_rust_types M etys (λ atys,
@@ -3235,10 +3235,14 @@ Section subsume.
           ⌜m = MetaNone⌝ ∗
           T L''' (vl ++ [v]) (tys ++ [existT rt (ty, r)])))
             (λ L'' vl tys, typed_call E L'' f eκs' atys vf (vf ◁ᵥ{f.1, m} rf @ tyf) vl tys
-              o ret_ot destination normal unwind (λ L v rt ty r,
-                typed_stmt E L f (AssignSE o ret_ot destination (Val v) normal) fn R ϝ))
+              destination normal unwind (λ L v rt ty r,
+                match destination with
+                | Some (o, ret_ot, destination) =>
+                    typed_stmt E L f (AssignSE o ret_ot destination (Val v) normal) fn R ϝ
+                | None => typed_stmt E L f normal fn R ϝ
+                end))
               es L' [] []))))
-    ⊢ typed_stmt E L f (CallE ef eκs etys es o ret_ot destination normal unwind) fn R ϝ.
+    ⊢ typed_stmt E L f (CallE ef eκs etys es destination normal unwind) fn R ϝ.
   Proof.
     rewrite /compute_map_lookups_nofail_goal.
     iIntros "(%M & Hnamed & %eκs' & _ & He)".
@@ -3258,7 +3262,10 @@ Section subsume.
     iApply ("HT" with "Hvf Htys CTX HE HL Hf [-]").
     iIntros (?????) "HL Hf".
     iIntros "HT".
-    iApply ("HT" with "CTX HE HL Hf Hcont").
+    destruct destination as [destination|] => /=.
+    - destruct destination as [[o ret_ot] destination] => /=.
+      iApply ("HT" with "CTX HE HL Hf Hcont").
+    - iApply ("HT" with "CTX HE HL Hf Hcont").
   Qed.
 
   Lemma type_bin_op E L f o e1 e2 ot1 ot2 T :

@@ -60,8 +60,8 @@ Inductive stmt :=
 | IfS (ot : op_type) (e : expr) (s1 s2 : stmt)
 (* m: map from values of e to indices into bs, def: default *)
 | Switch (it : int_type) (e : expr) (m : gmap Z nat) (bs : list stmt) (def : stmt)
-| Call (f : expr) (args : list expr) (o : order) (ret_ot : op_type)
-    (destination : expr) (normal unwind : stmt)
+| Call (f : expr) (args : list expr) (destination : option (order * op_type * expr))
+    (normal unwind : stmt)
 | Assign (o : order) (ot : op_type) (e1 e2 : expr) (s : stmt)
 (* [e_align] is the 2-logarithm of the allocation's alignment *)
 | Free (e_size : expr) (e_align : expr) (e : expr) (s : stmt)
@@ -73,7 +73,14 @@ Inductive stmt :=
 .
 
 Arguments Switch _%_E _%_E _%_E.
-Arguments Call _%_E _%_E _ _ _%_E _%_E _%_E.
+Arguments Call _%_E _%_E _ _%_E _%_E.
+
+Definition call_return (destination : option (order * op_type * expr))
+    (v : val) (normal : stmt) : stmt :=
+  match destination with
+  | Some (o, ret_ot, destination) => Assign o ret_ot (SkipE destination) (Val v) normal
+  | None => normal
+  end.
 
 Record function := {
   f_args : list (var_name * layout);
@@ -138,8 +145,8 @@ Inductive runtime_expr :=
 | RTVal (v : val)
 | Expr (π : thread_id) (e : rtexpr)
 | Stmt (π : thread_id) (rf : function) (s : rtstmt)
-| CallFrame (π : thread_id) (caller : function) (o : order) (ret_ot : op_type)
-    (destination : expr) (normal unwind : stmt) (body : runtime_expr)
+| CallFrame (π : thread_id) (caller : function) (destination : option (order * op_type * expr))
+    (normal unwind : stmt) (body : runtime_expr)
 | AllocFailed
 with rtexpr :=
 | RTVar (x : var_name)
@@ -160,8 +167,8 @@ with rtstmt :=
 | RTReturn (e : runtime_expr)
 | RTIfS (ot : op_type) (e : runtime_expr) (s1 s2 : stmt)
 | RTSwitch (it : int_type) (e : runtime_expr) (m : gmap Z nat) (bs : list stmt) (def : stmt)
-| RTCall (f : runtime_expr) (args : list runtime_expr) (o : order) (ret_ot : op_type)
-    (destination : expr) (normal unwind : stmt)
+| RTCall (f : runtime_expr) (args : list runtime_expr) (destination : option (order * op_type * expr))
+    (normal unwind : stmt)
 | RTAssign (o : order) (ot : op_type) (e1 e2 : runtime_expr) (s : stmt)
 | RTFree (e_size : runtime_expr) (e_align : runtime_expr) (e : runtime_expr) (s : stmt)
 | RTSkipS (s : stmt)
@@ -201,8 +208,8 @@ Definition to_rtstmt (π : thread_id) (f : function) (s : stmt) : runtime_expr :
   | Return e => RTReturn (to_rtexpr π e)
   | IfS ot e s1 s2 => RTIfS ot (to_rtexpr π e) s1 s2
   | Switch it e m bs def => RTSwitch it (to_rtexpr π e) m bs def
-  | Call f args o ret_ot destination normal unwind =>
-      RTCall (to_rtexpr π f) (to_rtexpr π <$> args) o ret_ot destination normal unwind
+  | Call f args destination normal unwind =>
+      RTCall (to_rtexpr π f) (to_rtexpr π <$> args) destination normal unwind
   | Assign o ot e1 e2 s => RTAssign o ot (to_rtexpr π e1) (to_rtexpr π e2) s
   | Free e_size e_align e s => RTFree (to_rtexpr π e_size) (to_rtexpr π e_align) (to_rtexpr π e) s
   | SkipS s => RTSkipS s
@@ -607,7 +614,7 @@ comparing pointers? (see lambda rust) *)
 
 (*** Evaluation of statements *)
 Inductive stmt_step : stmt → thread_id → function → state → list Empty_set → runtime_expr → state → list runtime_expr → Prop :=
-| CallS π caller lsa σ hs' ts ts' vf vs f fn a o ret_ot destination normal unwind:
+| CallS π caller lsa σ hs' ts ts' vf vs f fn a destination normal unwind:
     val_to_loc vf = Some f →
     f = fn_loc a →
     σ.(st_fntbl) !! a = Some fn →
@@ -625,16 +632,16 @@ Inductive stmt_step : stmt → thread_id → function → state → list Empty_s
     state_get_thread σ π = Some ts →
     ts' = thread_push_frame ts (initialize_new_frame fn.(f_args) lsa) →
 
-    stmt_step (Call (Val vf) (Val <$> vs) o ret_ot destination normal unwind) π caller σ []
-      (CallFrame π caller o ret_ot destination normal unwind
+    stmt_step (Call (Val vf) (Val <$> vs) destination normal unwind) π caller σ []
+      (CallFrame π caller destination normal unwind
         (to_rtstmt π fn (Goto fn.(f_init))))
       {| st_heap := hs'; st_fntbl := σ.(st_fntbl); st_thread := <[π := ts']> σ.(st_thread) |} []
-| CallFailS π caller σ vf vs f fn a o ret_ot destination normal unwind:
+| CallFailS π caller σ vf vs f fn a destination normal unwind:
     val_to_loc vf = Some f →
     f = fn_loc a →
     σ.(st_fntbl) !! a = Some fn →
     Forall2 has_layout_val vs fn.(f_args).*2 →
-    stmt_step (Call (Val vf) (Val <$> vs) o ret_ot destination normal unwind)
+    stmt_step (Call (Val vf) (Val <$> vs) destination normal unwind)
       π caller σ [] AllocFailed σ []
 | AssignS (o : order) π rf σ s v1 v2 l v' ot ov:
     let start_st st := st = if o is Na2Ord then WSt else RSt 0%nat in
@@ -718,9 +725,9 @@ Inductive runtime_step : runtime_expr → state → list Empty_set → runtime_e
 | StmtStep s π rf σ κs e' σ' efs:
     stmt_step s π rf σ κs e' σ' efs →
     runtime_step (to_rtstmt π rf s) σ κs e' σ' efs
-| CallFrameReturnStep π caller o ret_ot destination normal unwind v σ :
-    runtime_step (CallFrame π caller o ret_ot destination normal unwind (RTVal v)) σ []
-      (to_rtstmt π caller (Assign o ret_ot (SkipE destination) (Val v) normal)) σ []
+| CallFrameReturnStep π caller destination normal unwind v σ :
+    runtime_step (CallFrame π caller destination normal unwind (RTVal v)) σ []
+      (to_rtstmt π caller (call_return destination v normal)) σ []
 | AllocFailedStep σ :
     (* Alloc failure is nb, not ub so we go into an infinite loop*)
     runtime_step AllocFailed σ [] AllocFailed σ [].
@@ -997,10 +1004,10 @@ Inductive stmt_ectx :=
 | FreeRCtx (v_size : val) (v_align : val) (s : stmt)
 | IfSCtx (ot : op_type) (s1 s2 : stmt)
 | SwitchCtx (it : int_type) (m: gmap Z nat) (bs : list stmt) (def : stmt)
-| CallLCtx (args : list runtime_expr) (o : order) (ret_ot : op_type)
-    (destination : expr) (normal unwind : stmt)
-| CallRCtx (f : val) (vl : list val) (el : list runtime_expr) (o : order)
-    (ret_ot : op_type) (destination : expr) (normal unwind : stmt)
+| CallLCtx (args : list runtime_expr) (destination : option (order * op_type * expr))
+    (normal unwind : stmt)
+| CallRCtx (f : val) (vl : list val) (el : list runtime_expr)
+    (destination : option (order * op_type * expr)) (normal unwind : stmt)
 | ExprSCtx (s : stmt)
 .
 
@@ -1014,25 +1021,25 @@ Definition stmt_fill_item (π : thread_id) (Ki : stmt_ectx) (e : runtime_expr) :
   | FreeRCtx v_size v_align s => RTFree (RTVal v_size) (RTVal v_align) e s
   | IfSCtx ot s1 s2 => RTIfS ot e s1 s2
   | SwitchCtx it m bs def => RTSwitch it e m bs def
-  | CallLCtx args o ret_ot destination normal unwind =>
-      RTCall e args o ret_ot destination normal unwind
-  | CallRCtx f vl el o ret_ot destination normal unwind =>
-      RTCall (RTVal f) ((RTVal <$> vl) ++ e :: el) o ret_ot destination normal unwind
+  | CallLCtx args destination normal unwind =>
+      RTCall e args destination normal unwind
+  | CallRCtx f vl el destination normal unwind =>
+      RTCall (RTVal f) ((RTVal <$> vl) ++ e :: el) destination normal unwind
   | ExprSCtx s => RTExprS e s
   end.
 
 Inductive lang_ectx :=
 | ExprCtx (E : expr_ectx) (π : thread_id)
 | StmtCtx (E : stmt_ectx) (π : thread_id) (rf : function)
-| CallFrameCtx (π : thread_id) (caller : function) (o : order) (ret_ot : op_type)
-    (destination : expr) (normal unwind : stmt).
+| CallFrameCtx (π : thread_id) (caller : function) (destination : option (order * op_type * expr))
+    (normal unwind : stmt).
 
 Definition lang_fill_item (Ki : lang_ectx) (e : runtime_expr) : runtime_expr :=
   match Ki with
   | ExprCtx E π => Expr π (expr_fill_item E e)
   | StmtCtx E π rf => Stmt π rf (stmt_fill_item π E e)
-  | CallFrameCtx π caller o ret_ot destination normal unwind =>
-      CallFrame π caller o ret_ot destination normal unwind e
+  | CallFrameCtx π caller destination normal unwind =>
+      CallFrame π caller destination normal unwind e
   end.
 
 Lemma list_expr_val_eq_inv vl1 vl2 e1 e2 el1 el2 :
@@ -1083,10 +1090,10 @@ Proof.
   all: try (revert select (expr_step _ _ _ _ _ _ _)).
   all: try (revert select (stmt_step _ _ _ _ _ _ _ _)).
   all: try (inversion 1; simplify_eq/=; eauto).
-  all: try match goal with H : to_rtexpr _ ?e = CallFrame _ _ _ _ _ _ _ _ |- _ =>
+  all: try match goal with H : to_rtexpr _ ?e = CallFrame _ _ _ _ _ _ |- _ =>
     destruct e; discriminate H
   end.
-  all: repeat match goal with H : RTCall _ _ _ _ _ _ _ = RTCall _ _ _ _ _ _ _ |- _ =>
+  all: repeat match goal with H : RTCall _ _ _ _ _ = RTCall _ _ _ _ _ |- _ =>
     injection H; clear H; intros; subst
   end.
   all: simplify_eq/=; eauto.

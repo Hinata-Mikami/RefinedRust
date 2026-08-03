@@ -237,7 +237,7 @@ Section call.
   Context `{!typeGS Σ}.
   Import EqNotations.
 
-  Lemma type_call_fnptr E L f π (lfts : nat) (rts : list (RT)) eκs etys l v vl tys eqp m (fp : spec_with lfts rts fn_spec) (sta : list syn_type) o ret_ot destination normal unwind (T : typed_call_cont_t) :
+  Lemma type_call_fnptr E L f π (lfts : nat) (rts : list (RT)) eκs etys l v vl tys eqp m (fp : spec_with lfts rts fn_spec) (sta : list syn_type) destination normal unwind (T : typed_call_cont_t) :
     let eκs' := list_to_tup eκs in
     find_in_context (FindNaOwn π) (λ mask : coPset,
       ⌜π = f.1⌝ ∗
@@ -281,7 +281,7 @@ Section call.
       (* also donate some credits we are generating here *)
       introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ (fps.(fp_fr) x').(fr_R) π ∗ v ◁ᵥ{π, MetaNone} (fps.(fp_fr) x').(fr_ref) @ (fps.(fp_fr) x').(fr_ty)) (λ L3,
       T L3 v _ (fps.(fp_fr) x').(fr_ty) (fps.(fp_fr) x').(fr_ref)))))))
-    ⊢ typed_call E L f eκs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, fp)) vl tys o ret_ot destination normal unwind T.
+    ⊢ typed_call E L f eκs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, fp)) vl tys destination normal unwind T.
   Proof.
     simpl. iIntros "HT (-> & %fn & %Hv & He & %Halg & Hfn) Htys" (Q Ψ) "#CTX #HE HL Hf Hcont".
     rewrite /li_tactic/ensure_evars_instantiated_goal.
@@ -1135,9 +1135,9 @@ Section function_subsume.
   Class FunctionSubtype {lfts : nat} {rts : list RT} (a : spec_with lfts rts fn_spec) (b : spec_with lfts rts fn_spec) : Prop := make_function_subtype : function_subtype a b.
 
   (** Alternative lemma for calling function pointers that simplifies first *)
-  Lemma type_call_fnptr_simplify E L π f κs etys v l sta {lfts : nat} {rts : list RT} eqp (S1 : spec_with lfts rts fn_spec) (S2 : spec_with lfts rts fn_spec) vs args m {SH : FunctionSubtype S1 S2} o ret_ot destination normal unwind T :
-    typed_call E L f κs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, S2)) vs args o ret_ot destination normal unwind T
-    ⊢ typed_call E L f κs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, S1)) vs args o ret_ot destination normal unwind T.
+  Lemma type_call_fnptr_simplify E L π f κs etys v l sta {lfts : nat} {rts : list RT} eqp (S1 : spec_with lfts rts fn_spec) (S2 : spec_with lfts rts fn_spec) vs args m {SH : FunctionSubtype S1 S2} destination normal unwind T :
+    typed_call E L f κs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, S2)) vs args destination normal unwind T
+    ⊢ typed_call E L f κs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, S1)) vs args destination normal unwind T.
   Proof.
     iIntros "Ha". rewrite /typed_call.
     iIntros "Hs".

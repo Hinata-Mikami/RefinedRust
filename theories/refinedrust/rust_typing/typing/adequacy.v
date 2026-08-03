@@ -60,8 +60,8 @@ Next Obligation. constructor. Qed.
 
 Definition initial_stmt `{!LayoutAlg} (main : loc) : stmt :=
   LocalLiveSt initial_return_local UnitSynType
-    (CallE (Val (l2v main)) [] [] [] Na1Ord (UntypedOp unit_sl)
-      (Var initial_return_local)
+    (CallE (Val (l2v main)) [] [] []
+      (Some (Na1Ord, UntypedOp unit_sl, Var initial_return_local))
       (LocalDeadSt initial_return_local (return (Val []))%E) StuckS).
 
 Definition initial_prog `{!LayoutAlg} (main : thread_id * loc) : runtime_expr :=
@@ -309,8 +309,8 @@ Proof.
   have Hfresh : "__refinedrust_main_return" ∉ ([] : list var_name).
   { apply not_elem_of_nil. }
   iPoseProof (wps_local_live π UnitSynType "__refinedrust_main_return"
-    (CallE (Val (l2v main)) [] [] [] Na1Ord (UntypedOp unit_sl)
-      (Var "__refinedrust_main_return")
+    (CallE (Val (l2v main)) [] [] []
+      (Some (Na1Ord, UntypedOp unit_sl, Var "__refinedrust_main_return"))
       (LocalDeadSt "__refinedrust_main_return" (return (Val []))%E) StuckS)
     unit_sl [] 1 ∅ Ψ Hunit Hfresh with "Hframe Hlocals") as "Hlive".
   iMod (tr_zero) as "Htr".
@@ -333,8 +333,8 @@ Proof.
       iExists _. iR. rewrite /has_layout_val length_replicate. done. }
     iPoseProof (named_lfts_init ∅) as "Hnamed".
     iAssert (typed_stmt [] [] (π, 1)
-      (CallE (Val (l2v main)) [] [] [] Na1Ord (UntypedOp unit_sl)
-        (Var "__refinedrust_main_return")
+      (CallE (Val (l2v main)) [] [] []
+        (Some (Na1Ord, UntypedOp unit_sl, Var "__refinedrust_main_return"))
         (LocalDeadSt "__refinedrust_main_return" (return (Val []))%E) StuckS)
       initial_caller (λ v _, ⌜v = []⌝)%I static)
       with "[Hstore Hna Hmain HP Hlocals Hlive Hl Hnamed]" as "Hs".

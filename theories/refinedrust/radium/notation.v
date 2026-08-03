@@ -248,8 +248,8 @@ Proof. by rewrite /AnnotStmt Nat.iter_succ_r. Qed.
 
 (** Call notation including lifetime instantiation *)
 Definition CallE (ef : expr) (eκs : list string) (etys : list rust_type) (es : list expr)
-    (o : order) (ret_ot : op_type) (destination : expr) (normal unwind : stmt) : stmt :=
-  Call ef es o ret_ot destination normal unwind.
+    (destination : option (order * op_type * expr)) (normal unwind : stmt) : stmt :=
+  Call ef es destination normal unwind.
 Arguments CallE : simpl  never.
 Global Typeclasses Opaque CallE.
 

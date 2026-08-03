@@ -67,14 +67,14 @@ Section updateable.
     simpl. eauto.
   Qed.
 
-  Global Program Instance updateable_typed_call E L f κs etys v (P : iProp Σ) vl tys o ret_ot destination normal unwind T :
-    Updateable (typed_call E L f κs etys v P vl tys o ret_ot destination normal unwind T) := {|
+  Global Program Instance updateable_typed_call E L f κs etys v (P : iProp Σ) vl tys destination normal unwind T :
+    Updateable (typed_call E L f κs etys v P vl tys destination normal unwind T) := {|
       updateable_E := E;
       updateable_L := L;
-      updateable_core E L := typed_call E L f κs etys v P vl tys o ret_ot destination normal unwind T;
+      updateable_core E L := typed_call E L f κs etys v P vl tys destination normal unwind T;
   |}.
   Next Obligation.
-    iIntros (? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?).
+    iIntros (? ? ? ? ? ? ? ? ? ? ? ? ? ? ?).
     rewrite /typed_call.
     iIntros "HT HP Ha".
     iIntros (Q Ψ) "#CTX #HE HL Hf Hc".
@@ -127,9 +127,9 @@ Section updateable.
     iIntros "HT" (?) "CTX HE HL Hf Hc".
     iApply fupd_wpe. iMod ("HT") as "HT". iApply ("HT" with "CTX HE HL Hf Hc").
   Qed.
-  Lemma fupd_typed_call `{!typeGS Σ} E L f κs etys v (P : iProp Σ) vl tys o ret_ot destination normal unwind T :
-    (|={⊤}=> typed_call E L f κs etys v P vl tys o ret_ot destination normal unwind T) -∗
-    typed_call E L f κs etys v P vl tys o ret_ot destination normal unwind T.
+  Lemma fupd_typed_call `{!typeGS Σ} E L f κs etys v (P : iProp Σ) vl tys destination normal unwind T :
+    (|={⊤}=> typed_call E L f κs etys v P vl tys destination normal unwind T) -∗
+    typed_call E L f κs etys v P vl tys destination normal unwind T.
   Proof.
     rewrite /typed_call.
     iIntros "HT HP Ha".

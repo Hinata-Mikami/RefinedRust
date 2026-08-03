@@ -1804,11 +1804,11 @@ Lemma to_rtexpr_vals π (vs : list val) :
   to_rtexpr π <$> (Val <$> vs) = RTVal <$> vs.
 Proof. by rewrite -list_fmap_compose. Qed.
 
-Lemma wps_call_bind_ind vs π E Q Ψ vf el o ret_ot destination normal unwind:
+Lemma wps_call_bind_ind vs π E Q Ψ vf el destination normal unwind:
   foldr (λ e f, (λ vl, WPe{π} e @ E {{ λ v, f (vl ++ [v]) }}))
-        (λ vl, WPs{π} Call (Val vf) (Val <$> (vs ++ vl)) o ret_ot destination normal unwind
+        (λ vl, WPs{π} Call (Val vf) (Val <$> (vs ++ vl)) destination normal unwind
           @ E {{ Q, Ψ }}) el [] -∗
-  WPs{π} (Call (Val vf) ((Val <$> vs) ++ el) o ret_ot destination normal unwind)
+  WPs{π} (Call (Val vf) ((Val <$> vs) ++ el) destination normal unwind)
     @ E {{ Q, Ψ }}.
 Proof.
   rewrite -{2}(app_nil_r vs).
@@ -1818,18 +1818,18 @@ Proof.
   - iIntros (e el IH vs vl2) "Hf".
     rewrite stmt_wp_unfold. iIntros (Φ rf HQ) "HΨ".
     have ->: (to_rtstmt π rf (Call (Val vf) ((Val <$> vs ++ vl2) ++ e :: el)
-        o ret_ot destination normal unwind)%E =
+        destination normal unwind)%E =
       fill [StmtCtx (CallRCtx vf (vs ++ vl2) (to_rtexpr π <$> el)
-        o ret_ot destination normal unwind) π rf] (to_rtexpr π e)).
+        destination normal unwind) π rf] (to_rtexpr π e)).
     { by rewrite /to_rtstmt /= fmap_app fmap_cons -!list_fmap_compose. }
     iApply wp_bind.
     rewrite expr_wp_unfold.
     iApply (wp_wand with "Hf").
     iIntros (v) "Hf" => /=.
     have -> : Stmt π rf (RTCall (RTVal vf) (((RTVal <$> vs ++ vl2)) ++ of_val v :: (to_rtexpr π <$> el))
-        o ret_ot destination normal unwind) =
+        destination normal unwind) =
       to_rtstmt π rf (Call vf ((Val <$> vs ++ (vl2 ++ [v])) ++ el)
-        o ret_ot destination normal unwind).
+        destination normal unwind).
     { rewrite /to_rtstmt /= !fmap_app /= !to_rtexpr_vals.
       by rewrite (cons_middle (of_val v)) !app_assoc. }
     iPoseProof (IH with "Hf") as "IH".
@@ -1837,16 +1837,16 @@ Proof.
     by iApply ("IH" $! Φ rf with "[] HΨ").
 Qed.
 
-Lemma wps_call_bind π E Q Ψ el ef o ret_ot destination normal unwind:
+Lemma wps_call_bind π E Q Ψ el ef destination normal unwind:
   WPe{π} ef @ E {{ λ vf, foldr (λ e f, (λ vl, WPe{π} e @ E {{ λ v, f (vl ++ [v]) }}))
-        (λ vl, WPs{π} Call (Val vf) (Val <$> vl) o ret_ot destination normal unwind
+        (λ vl, WPs{π} Call (Val vf) (Val <$> vl) destination normal unwind
           @ E {{ Q, Ψ }}) el [] }} -∗
-  WPs{π} (Call ef el o ret_ot destination normal unwind) @ E {{ Q, Ψ }}.
+  WPs{π} (Call ef el destination normal unwind) @ E {{ Q, Ψ }}.
 Proof.
   iIntros "HWP".
   rewrite stmt_wp_unfold. iIntros (Φ rf HQ) "HΨ".
-  have -> : to_rtstmt π rf (Call ef el o ret_ot destination normal unwind) =
-    fill [StmtCtx (CallLCtx (to_rtexpr π <$> el) o ret_ot destination normal unwind) π rf]
+  have -> : to_rtstmt π rf (Call ef el destination normal unwind) =
+    fill [StmtCtx (CallLCtx (to_rtexpr π <$> el) destination normal unwind) π rf]
       (to_rtexpr π ef) by [].
   iApply wp_bind.
   rewrite expr_wp_unfold.
@@ -1856,7 +1856,7 @@ Proof.
   by iApply ("Ha" $! Φ rf with "[] HΨ").
 Qed.
 
-Lemma wps_call π i (sta : list syn_type) vf vl f fn Q Ψ o ret_ot destination normal unwind:
+Lemma wps_call π i (sta : list syn_type) vf vl f fn Q Ψ destination normal unwind:
   val_to_loc vf = Some f →
   Forall2 has_layout_val vl (f_args fn).*2 →
   Forall2 syn_type_has_layout sta fn.(f_args).*2 →
@@ -1883,9 +1883,9 @@ Lemma wps_call π i (sta : list syn_type) vf vl f fn Q Ψ o ret_ot destination n
         ([∗ list] x ∈ locals,
           ∃ ly l st, ⌜syn_type_has_layout st ly⌝ ∗ x is_live{(π, S i), st} l ∗ l ↦|ly|) ∗
         (|={⊤}⧗=> current_frame π i -∗
-          WPs{π} AssignSE o ret_ot destination (Val v) normal {{ Q, Ψ }}))
+          WPs{π} call_return destination v normal {{ Q, Ψ }}))
     ) -∗
-    WPs{π} (Call (Val vf) (Val <$> vl) o ret_ot destination normal unwind) {{ Q, Ψ }}.
+    WPs{π} (Call (Val vf) (Val <$> vl) destination normal unwind) {{ Q, Ψ }}.
 Proof.
   move => Hf Hly Hsta. move: (Hly) => /Forall2_length. rewrite length_fmap => Hlen_vs.
   iIntros "Hf Hframe HWP".
@@ -1939,9 +1939,9 @@ Proof.
   iEval (rewrite right_id) in "Hlocals".
   iDestruct ("HWP" $! lsa with "[//] Hla Hxs Hframe Hlocals") as (Ψ') "(HQinit & HΨ')".
   iFrame.
-  have -> : CallFrame π caller o ret_ot destination normal unwind
+  have -> : CallFrame π caller destination normal unwind
       (to_rtstmt π fn (Goto fn.(f_init))) =
-    fill [CallFrameCtx π caller o ret_ot destination normal unwind]
+    fill [CallFrameCtx π caller destination normal unwind]
       (to_rtstmt π fn (Goto fn.(f_init))) by done.
   iApply wp_bind.
   rewrite stmt_wp_eq. iApply "HQinit" => //.
@@ -2052,7 +2052,7 @@ Proof.
   - done.
   - by eauto using CallFrameReturnStep.
   - move => ?????. inversion 1; simplify_eq => //.
-    match goal with H : to_rtexpr _ ?e = CallFrame _ _ _ _ _ _ _ _ |- _ =>
+    match goal with H : to_rtexpr _ ?e = CallFrame _ _ _ _ _ _ |- _ =>
       destruct e; discriminate H
     end.
   - iNext. iIntros "_".
