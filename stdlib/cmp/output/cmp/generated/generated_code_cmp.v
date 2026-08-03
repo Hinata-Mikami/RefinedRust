@@ -103,8 +103,9 @@ Program Definition Ord_max_def (max_by_Self_closuresrclibrs1488014886_loc: loc) 
       "__4" <-{ (use_op_alg' Self_st) } move{ (use_op_alg' Self_st) } ("other");
       local_live{ UnitSynType } "__5";
       "__5" <-{ StructOp unit_sl [] } zst_val;
-      "__0" <-{ (use_op_alg' Self_st) } CallE max_by_Self_closuresrclibrs1488014886_loc [] [RSTTyVar "Self"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ (use_op_alg' Self_st) } ("__4"); move{ StructOp unit_sl [] } ("__5")];
-      Goto "_bb1"
+      CallS max_by_Self_closuresrclibrs1488014886_loc [] [RSTTyVar "Self"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ (use_op_alg' Self_st) } ("__4"); move{ StructOp unit_sl [] } ("__5")] (Some (Na1Ord, (use_op_alg' Self_st), "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -139,8 +140,9 @@ Program Definition Ord_min_def (min_by_Self_closuresrclibrs1558015586_loc: loc) 
       "__4" <-{ (use_op_alg' Self_st) } move{ (use_op_alg' Self_st) } ("other");
       local_live{ UnitSynType } "__5";
       "__5" <-{ StructOp unit_sl [] } zst_val;
-      "__0" <-{ (use_op_alg' Self_st) } CallE min_by_Self_closuresrclibrs1558015586_loc [] [RSTTyVar "Self"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ (use_op_alg' Self_st) } ("__4"); move{ StructOp unit_sl [] } ("__5")];
-      Goto "_bb1"
+      CallS min_by_Self_closuresrclibrs1558015586_loc [] [RSTTyVar "Self"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ (use_op_alg' Self_st) } ("__4"); move{ StructOp unit_sl [] } ("__5")] (Some (Na1Ord, (use_op_alg' Self_st), "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -204,8 +206,9 @@ Program Definition Ordering_is_eq_def (Ordering_as_raw_loc: loc) : function :=
       local_live{ (IntSynType I8) } "__2";
       local_live{ Ordering_st } "__3";
       "__3" <-{ (use_op_alg' Ordering_st) } move{ (use_op_alg' Ordering_st) } ("self");
-      "__2" <-{ IntOp I8 } CallE Ordering_as_raw_loc [] [] [@{expr} move{ (use_op_alg' Ordering_st) } ("__3")];
-      Goto "_bb1"
+      CallS Ordering_as_raw_loc [] [] [@{expr} move{ (use_op_alg' Ordering_st) } ("__3")] (Some (Na1Ord, IntOp I8, "__2"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -236,8 +239,9 @@ Program Definition Ordering_is_ge_def (Ordering_as_raw_loc: loc) : function :=
       local_live{ (IntSynType I8) } "__2";
       local_live{ Ordering_st } "__3";
       "__3" <-{ (use_op_alg' Ordering_st) } move{ (use_op_alg' Ordering_st) } ("self");
-      "__2" <-{ IntOp I8 } CallE Ordering_as_raw_loc [] [] [@{expr} move{ (use_op_alg' Ordering_st) } ("__3")];
-      Goto "_bb1"
+      CallS Ordering_as_raw_loc [] [] [@{expr} move{ (use_op_alg' Ordering_st) } ("__3")] (Some (Na1Ord, IntOp I8, "__2"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -268,8 +272,9 @@ Program Definition Ordering_is_gt_def (Ordering_as_raw_loc: loc) : function :=
       local_live{ (IntSynType I8) } "__2";
       local_live{ Ordering_st } "__3";
       "__3" <-{ (use_op_alg' Ordering_st) } move{ (use_op_alg' Ordering_st) } ("self");
-      "__2" <-{ IntOp I8 } CallE Ordering_as_raw_loc [] [] [@{expr} move{ (use_op_alg' Ordering_st) } ("__3")];
-      Goto "_bb1"
+      CallS Ordering_as_raw_loc [] [] [@{expr} move{ (use_op_alg' Ordering_st) } ("__3")] (Some (Na1Ord, IntOp I8, "__2"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -300,8 +305,9 @@ Program Definition Ordering_is_le_def (Ordering_as_raw_loc: loc) : function :=
       local_live{ (IntSynType I8) } "__2";
       local_live{ Ordering_st } "__3";
       "__3" <-{ (use_op_alg' Ordering_st) } move{ (use_op_alg' Ordering_st) } ("self");
-      "__2" <-{ IntOp I8 } CallE Ordering_as_raw_loc [] [] [@{expr} move{ (use_op_alg' Ordering_st) } ("__3")];
-      Goto "_bb1"
+      CallS Ordering_as_raw_loc [] [] [@{expr} move{ (use_op_alg' Ordering_st) } ("__3")] (Some (Na1Ord, IntOp I8, "__2"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -332,8 +338,9 @@ Program Definition Ordering_is_lt_def (Ordering_as_raw_loc: loc) : function :=
       local_live{ (IntSynType I8) } "__2";
       local_live{ Ordering_st } "__3";
       "__3" <-{ (use_op_alg' Ordering_st) } move{ (use_op_alg' Ordering_st) } ("self");
-      "__2" <-{ IntOp I8 } CallE Ordering_as_raw_loc [] [] [@{expr} move{ (use_op_alg' Ordering_st) } ("__3")];
-      Goto "_bb1"
+      CallS Ordering_as_raw_loc [] [] [@{expr} move{ (use_op_alg' Ordering_st) } ("__3")] (Some (Na1Ord, IntOp I8, "__2"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -364,8 +371,9 @@ Program Definition Ordering_is_ne_def (Ordering_as_raw_loc: loc) : function :=
       local_live{ (IntSynType I8) } "__2";
       local_live{ Ordering_st } "__3";
       "__3" <-{ (use_op_alg' Ordering_st) } move{ (use_op_alg' Ordering_st) } ("self");
-      "__2" <-{ IntOp I8 } CallE Ordering_as_raw_loc [] [] [@{expr} move{ (use_op_alg' Ordering_st) } ("__3")];
-      Goto "_bb1"
+      CallS Ordering_as_raw_loc [] [] [@{expr} move{ (use_op_alg' Ordering_st) } ("__3")] (Some (Na1Ord, IntOp I8, "__2"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -407,8 +415,9 @@ Program Definition PartialEq_ne_def (PartialEq_Self_Rhs_eq_loc: loc) (Self_st: s
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ BoolOp } CallE PartialEq_Self_Rhs_eq_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS PartialEq_Self_Rhs_eq_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, BoolOp, "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -453,8 +462,9 @@ Program Definition PartialOrd_ge_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ (use_op_alg' ((Option_els (Ordering_st)) : syn_type)) } CallE PartialOrd_Self_Rhs_partial_cmp_loc ["vlft10"; "vlft11"] [RSTTyVar "Self"; RSTTyVar "Rhs"] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS PartialOrd_Self_Rhs_partial_cmp_loc ["vlft10"; "vlft11"] [RSTTyVar "Self"; RSTTyVar "Rhs"] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' ((Option_els (Ordering_st)) : syn_type)), "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -518,8 +528,9 @@ Program Definition PartialOrd_gt_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ (use_op_alg' ((Option_els (Ordering_st)) : syn_type)) } CallE PartialOrd_Self_Rhs_partial_cmp_loc ["vlft10"; "vlft11"] [RSTTyVar "Self"; RSTTyVar "Rhs"] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS PartialOrd_Self_Rhs_partial_cmp_loc ["vlft10"; "vlft11"] [RSTTyVar "Self"; RSTTyVar "Rhs"] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' ((Option_els (Ordering_st)) : syn_type)), "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -583,8 +594,9 @@ Program Definition PartialOrd_le_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ (use_op_alg' ((Option_els (Ordering_st)) : syn_type)) } CallE PartialOrd_Self_Rhs_partial_cmp_loc ["vlft10"; "vlft11"] [RSTTyVar "Self"; RSTTyVar "Rhs"] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS PartialOrd_Self_Rhs_partial_cmp_loc ["vlft10"; "vlft11"] [RSTTyVar "Self"; RSTTyVar "Rhs"] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' ((Option_els (Ordering_st)) : syn_type)), "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -648,8 +660,9 @@ Program Definition PartialOrd_lt_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ (use_op_alg' ((Option_els (Ordering_st)) : syn_type)) } CallE PartialOrd_Self_Rhs_partial_cmp_loc ["vlft10"; "vlft11"] [RSTTyVar "Self"; RSTTyVar "Rhs"] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS PartialOrd_Self_Rhs_partial_cmp_loc ["vlft10"; "vlft11"] [RSTTyVar "Self"; RSTTyVar "Rhs"] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' ((Option_els (Ordering_st)) : syn_type)), "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -712,8 +725,9 @@ Program Definition REFAasOrd_cmp_def (Ord_A_cmp_loc: loc) (A_st: syn_type) : fun
       annot{ 1 }: CopyLftNameAnnot "plft12" "vlft6"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft13" "plft11"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft14" "plft12"; (* function_call *)
-      "__0" <-{ (use_op_alg' Ordering_st) } CallE Ord_A_cmp_loc ["vlft13"; "vlft14"] [RSTTyVar "A"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")];
-      Goto "_bb1"
+      CallS Ord_A_cmp_loc ["vlft13"; "vlft14"] [RSTTyVar "A"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -756,8 +770,9 @@ Program Definition REFAasPartialEqREFB_eq_def (PartialEq_A_B_eq_loc: loc) (A_st:
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      "__0" <-{ BoolOp } CallE PartialEq_A_B_eq_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")];
-      Goto "_bb1"
+      CallS PartialEq_A_B_eq_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -800,8 +815,9 @@ Program Definition REFAasPartialEqREFB_ne_def (PartialEq_A_B_ne_loc: loc) (A_st:
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      "__0" <-{ BoolOp } CallE PartialEq_A_B_ne_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")];
-      Goto "_bb1"
+      CallS PartialEq_A_B_ne_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -845,8 +861,9 @@ Program Definition REFAasPartialEqREFmutB_eq_def (PartialEq_A_B_eq_loc: loc) (A_
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      "__0" <-{ BoolOp } CallE PartialEq_A_B_eq_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")];
-      Goto "_bb1"
+      CallS PartialEq_A_B_eq_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -890,8 +907,9 @@ Program Definition REFAasPartialEqREFmutB_ne_def (PartialEq_A_B_ne_loc: loc) (A_
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      "__0" <-{ BoolOp } CallE PartialEq_A_B_ne_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")];
-      Goto "_bb1"
+      CallS PartialEq_A_B_ne_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -934,8 +952,9 @@ Program Definition REFAasPartialOrdREFB_ge_def (PartialOrd_A_B_ge_loc: loc) (A_s
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      "__0" <-{ BoolOp } CallE PartialOrd_A_B_ge_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")];
-      Goto "_bb1"
+      CallS PartialOrd_A_B_ge_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -978,8 +997,9 @@ Program Definition REFAasPartialOrdREFB_gt_def (PartialOrd_A_B_gt_loc: loc) (A_s
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      "__0" <-{ BoolOp } CallE PartialOrd_A_B_gt_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")];
-      Goto "_bb1"
+      CallS PartialOrd_A_B_gt_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -1022,8 +1042,9 @@ Program Definition REFAasPartialOrdREFB_le_def (PartialOrd_A_B_le_loc: loc) (A_s
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      "__0" <-{ BoolOp } CallE PartialOrd_A_B_le_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")];
-      Goto "_bb1"
+      CallS PartialOrd_A_B_le_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -1066,8 +1087,9 @@ Program Definition REFAasPartialOrdREFB_lt_def (PartialOrd_A_B_lt_loc: loc) (A_s
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      "__0" <-{ BoolOp } CallE PartialOrd_A_B_lt_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")];
-      Goto "_bb1"
+      CallS PartialOrd_A_B_lt_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -1110,8 +1132,9 @@ Program Definition REFAasPartialOrdREFB_partial_cmp_def (PartialOrd_A_B_partial_
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      "__0" <-{ (use_op_alg' ((Option_els (Ordering_st)) : syn_type)) } CallE PartialOrd_A_B_partial_cmp_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")];
-      Goto "_bb1"
+      CallS PartialOrd_A_B_partial_cmp_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, (use_op_alg' ((Option_els (Ordering_st)) : syn_type)), "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -1155,8 +1178,9 @@ Program Definition REFmutAasPartialEqREFB_eq_def (PartialEq_A_B_eq_loc: loc) (A_
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      "__0" <-{ BoolOp } CallE PartialEq_A_B_eq_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")];
-      Goto "_bb1"
+      CallS PartialEq_A_B_eq_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -1200,8 +1224,9 @@ Program Definition REFmutAasPartialEqREFB_ne_def (PartialEq_A_B_ne_loc: loc) (A_
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      "__0" <-{ BoolOp } CallE PartialEq_A_B_ne_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")];
-      Goto "_bb1"
+      CallS PartialEq_A_B_ne_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -1246,8 +1271,9 @@ Program Definition REFmutAasPartialEqREFmutB_eq_def (PartialEq_A_B_eq_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      "__0" <-{ BoolOp } CallE PartialEq_A_B_eq_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")];
-      Goto "_bb1"
+      CallS PartialEq_A_B_eq_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -1292,8 +1318,9 @@ Program Definition REFmutAasPartialEqREFmutB_ne_def (PartialEq_A_B_ne_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      "__0" <-{ BoolOp } CallE PartialEq_A_B_ne_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")];
-      Goto "_bb1"
+      CallS PartialEq_A_B_ne_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -1661,8 +1688,9 @@ Program Definition i128asPartialOrd_partial_cmp_def (i128asOrd_cmp_loc: loc) : f
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ (use_op_alg' Ordering_st) } CallE i128asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS i128asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -1970,8 +1998,9 @@ Program Definition i16asPartialOrd_partial_cmp_def (i16asOrd_cmp_loc: loc) : fun
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ (use_op_alg' Ordering_st) } CallE i16asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS i16asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -2279,8 +2308,9 @@ Program Definition i32asPartialOrd_partial_cmp_def (i32asOrd_cmp_loc: loc) : fun
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ (use_op_alg' Ordering_st) } CallE i32asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS i32asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -2588,8 +2618,9 @@ Program Definition i64asPartialOrd_partial_cmp_def (i64asOrd_cmp_loc: loc) : fun
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ (use_op_alg' Ordering_st) } CallE i64asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS i64asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -2897,8 +2928,9 @@ Program Definition i8asPartialOrd_partial_cmp_def (i8asOrd_cmp_loc: loc) : funct
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ (use_op_alg' Ordering_st) } CallE i8asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS i8asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -3206,8 +3238,9 @@ Program Definition isizeasPartialOrd_partial_cmp_def (isizeasOrd_cmp_loc: loc) :
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ (use_op_alg' Ordering_st) } CallE isizeasOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS isizeasOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -3241,8 +3274,9 @@ Program Definition max_def (Ord_T_max_loc: loc) (T_st: syn_type) : function :=
       "__3" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("v1");
       local_live{ T_st } "__4";
       "__4" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("v2");
-      "__0" <-{ (use_op_alg' T_st) } CallE Ord_T_max_loc [] [RSTTyVar "T"] [@{expr} move{ (use_op_alg' T_st) } ("__3"); move{ (use_op_alg' T_st) } ("__4")];
-      Goto "_bb1"
+      CallS Ord_T_max_loc [] [RSTTyVar "T"] [@{expr} move{ (use_op_alg' T_st) } ("__3"); move{ (use_op_alg' T_st) } ("__4")] (Some (Na1Ord, (use_op_alg' T_st), "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -3303,10 +3337,11 @@ Program Definition max_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT
       annot{ 1 }: CopyLftNameAnnot "plft9" "plft12"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft6" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* function_call *)
-      "__5" <-{ (use_op_alg' Ordering_st) } CallE FnOnce_F_REFTREFT_call_once_loc ["vlft6"; "vlft7"] [] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } ("__7")];
-      annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
-      annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
-      Goto "_bb1"
+      CallS FnOnce_F_REFTREFT_call_once_loc ["vlft6"; "vlft7"] [] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } ("__7")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__5"))
+      ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
+       annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -3316,8 +3351,9 @@ Program Definition max_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT
       local_dead "__8";
       local_dead "__7";
       local_dead "__6";
-      "__4" <-{ BoolOp } CallE Ordering_is_lt_loc [] [] [@{expr} move{ (use_op_alg' Ordering_st) } ("__5")];
-      Goto "_bb2"
+      CallS Ordering_is_lt_loc [] [] [@{expr} move{ (use_op_alg' Ordering_st) } ("__5")] (Some (Na1Ord, BoolOp, "__4"))
+      ( Goto "_bb2")
+      ( StuckS)
      ]>%E $
      <[
      "_bb2" :=
@@ -3365,13 +3401,15 @@ Program Definition max_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT
      ]>%E $
      <[
      "_bb10" :=
-      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("v2")];
-      Goto "_bb6"
+      CallS DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("v2")] None
+      ( Goto "_bb6")
+      ( StuckS)
      ]>%E $
      <[
      "_bb11" :=
-      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("v1")];
-      Goto "_bb7"
+      CallS DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("v1")] None
+      ( Goto "_bb7")
+      ( StuckS)
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -3397,8 +3435,9 @@ Program Definition min_def (Ord_T_min_loc: loc) (T_st: syn_type) : function :=
       "__3" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("v1");
       local_live{ T_st } "__4";
       "__4" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("v2");
-      "__0" <-{ (use_op_alg' T_st) } CallE Ord_T_min_loc [] [RSTTyVar "T"] [@{expr} move{ (use_op_alg' T_st) } ("__3"); move{ (use_op_alg' T_st) } ("__4")];
-      Goto "_bb1"
+      CallS Ord_T_min_loc [] [RSTTyVar "T"] [@{expr} move{ (use_op_alg' T_st) } ("__3"); move{ (use_op_alg' T_st) } ("__4")] (Some (Na1Ord, (use_op_alg' T_st), "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -3459,10 +3498,11 @@ Program Definition min_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT
       annot{ 1 }: CopyLftNameAnnot "plft9" "plft12"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft6" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* function_call *)
-      "__5" <-{ (use_op_alg' Ordering_st) } CallE FnOnce_F_REFTREFT_call_once_loc ["vlft6"; "vlft7"] [] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } ("__7")];
-      annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
-      annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
-      Goto "_bb1"
+      CallS FnOnce_F_REFTREFT_call_once_loc ["vlft6"; "vlft7"] [] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } ("__7")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__5"))
+      ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
+       annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -3472,8 +3512,9 @@ Program Definition min_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT
       local_dead "__8";
       local_dead "__7";
       local_dead "__6";
-      "__4" <-{ BoolOp } CallE Ordering_is_lt_loc [] [] [@{expr} move{ (use_op_alg' Ordering_st) } ("__5")];
-      Goto "_bb2"
+      CallS Ordering_is_lt_loc [] [] [@{expr} move{ (use_op_alg' Ordering_st) } ("__5")] (Some (Na1Ord, BoolOp, "__4"))
+      ( Goto "_bb2")
+      ( StuckS)
      ]>%E $
      <[
      "_bb2" :=
@@ -3521,13 +3562,15 @@ Program Definition min_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT
      ]>%E $
      <[
      "_bb10" :=
-      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("v2")];
-      Goto "_bb6"
+      CallS DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("v2")] None
+      ( Goto "_bb6")
+      ( StuckS)
      ]>%E $
      <[
      "_bb11" :=
-      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("v1")];
-      Goto "_bb7"
+      CallS DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("v1")] None
+      ( Goto "_bb7")
+      ( StuckS)
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -3614,8 +3657,9 @@ Program Definition std_option_OptionTasOrd_cmp_def (Ord_T_cmp_loc: loc) (T_st: s
       annot{ 1 }: CopyLftNameAnnot "plft22" "vlft12"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft23" "plft21"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft24" "plft22"; (* function_call *)
-      "__0" <-{ (use_op_alg' Ordering_st) } CallE Ord_T_cmp_loc ["vlft23"; "vlft24"] [RSTTyVar "T"] [@{expr} move{ RefOp } ("__11"); move{ RefOp } ("__12")];
-      Goto "_bb8"
+      CallS Ord_T_cmp_loc ["vlft23"; "vlft24"] [RSTTyVar "T"] [@{expr} move{ RefOp } ("__11"); move{ RefOp } ("__12")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__0"))
+      ( Goto "_bb8")
+      ( StuckS)
      ]>%E $
      <[
      "_bb8" :=
@@ -3715,8 +3759,9 @@ Program Definition std_option_OptionTasPartialEq_eq_def (PartialEq_T_T_eq_loc: l
       annot{ 1 }: CopyLftNameAnnot "plft22" "vlft12"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft23" "plft21"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft24" "plft22"; (* function_call *)
-      "__0" <-{ BoolOp } CallE PartialEq_T_T_eq_loc ["vlft23"; "vlft24"] [] [@{expr} move{ RefOp } ("__11"); move{ RefOp } ("__12")];
-      Goto "_bb8"
+      CallS PartialEq_T_T_eq_loc ["vlft23"; "vlft24"] [] [@{expr} move{ RefOp } ("__11"); move{ RefOp } ("__12")] (Some (Na1Ord, BoolOp, "__0"))
+      ( Goto "_bb8")
+      ( StuckS)
      ]>%E $
      <[
      "_bb8" :=
@@ -3825,8 +3870,9 @@ Program Definition std_option_OptionTasPartialOrd_partial_cmp_def (PartialOrd_T_
       annot{ 1 }: CopyLftNameAnnot "plft22" "vlft12"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft23" "plft21"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft24" "plft22"; (* function_call *)
-      "__0" <-{ (use_op_alg' ((Option_els (Ordering_st)) : syn_type)) } CallE PartialOrd_T_T_partial_cmp_loc ["vlft23"; "vlft24"] [RSTTyVar "T"] [@{expr} move{ RefOp } ("__11"); move{ RefOp } ("__12")];
-      Goto "_bb8"
+      CallS PartialOrd_T_T_partial_cmp_loc ["vlft23"; "vlft24"] [RSTTyVar "T"] [@{expr} move{ RefOp } ("__11"); move{ RefOp } ("__12")] (Some (Na1Ord, (use_op_alg' ((Option_els (Ordering_st)) : syn_type)), "__0"))
+      ( Goto "_bb8")
+      ( StuckS)
      ]>%E $
      <[
      "_bb8" :=
@@ -4139,8 +4185,9 @@ Program Definition u128asPartialOrd_partial_cmp_def (u128asOrd_cmp_loc: loc) : f
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ (use_op_alg' Ordering_st) } CallE u128asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS u128asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -4448,8 +4495,9 @@ Program Definition u16asPartialOrd_partial_cmp_def (u16asOrd_cmp_loc: loc) : fun
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ (use_op_alg' Ordering_st) } CallE u16asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS u16asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -4757,8 +4805,9 @@ Program Definition u32asPartialOrd_partial_cmp_def (u32asOrd_cmp_loc: loc) : fun
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ (use_op_alg' Ordering_st) } CallE u32asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS u32asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -5066,8 +5115,9 @@ Program Definition u64asPartialOrd_partial_cmp_def (u64asOrd_cmp_loc: loc) : fun
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ (use_op_alg' Ordering_st) } CallE u64asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS u64asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -5375,8 +5425,9 @@ Program Definition u8asPartialOrd_partial_cmp_def (u8asOrd_cmp_loc: loc) : funct
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ (use_op_alg' Ordering_st) } CallE u8asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS u8asOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -5787,8 +5838,9 @@ Program Definition usizeasPartialOrd_partial_cmp_def (usizeasOrd_cmp_loc: loc) :
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      "__3" <-{ (use_op_alg' Ordering_st) } CallE usizeasOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")];
-      Goto "_bb1"
+      CallS usizeasOrd_cmp_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__3"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=

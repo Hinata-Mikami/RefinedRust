@@ -99,8 +99,9 @@ Program Definition Vec_TA_is_empty_def (Vec_TA_len_T_A_loc: loc) (T_st: syn_type
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTLitType ["Vec_inv_t"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "A"] [AppDef ["Allocator_A_spec_attrs"] []])), "vlft3" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft5" "vlft3"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft6" "plft5"; (* function_call *)
-      "__2" <-{ IntOp USize } CallE Vec_TA_len_T_A_loc ["vlft6"] [RSTTyVar "T"; RSTTyVar "A"] [@{expr} move{ RefOp } ("__3")];
-      Goto "_bb1"
+      CallS Vec_TA_len_T_A_loc ["vlft6"] [RSTTyVar "T"; RSTTyVar "A"] [@{expr} move{ RefOp } ("__3")] (Some (Na1Ord, IntOp USize, "__2"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -128,8 +129,9 @@ Program Definition drop_glue_IntoIter_def (DropGlue_A_drop_glue_loc: loc) (T_st:
       <[
      "_bb0" :=
       local_live{ UnitSynType } "ret";
-      expr: CallE DropGlue_A_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (IntoIter_sls (T_st) (A_st)) } "_y")];
-      Goto "_bb1"
+      CallS DropGlue_A_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (IntoIter_sls (T_st) (A_st)) } "_y")] None
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -154,8 +156,9 @@ Program Definition drop_glue_RawVecInner_def (DropGlue_A_drop_glue_loc: loc) (A_
       <[
      "_bb0" :=
       local_live{ UnitSynType } "ret";
-      expr: CallE DropGlue_A_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (RawVecInner_sls (A_st)) } "alloc")];
-      Goto "_bb1"
+      CallS DropGlue_A_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (RawVecInner_sls (A_st)) } "alloc")] None
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=

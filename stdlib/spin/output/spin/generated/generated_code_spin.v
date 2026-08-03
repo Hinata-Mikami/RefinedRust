@@ -68,8 +68,9 @@ Program Definition drop_glue_rwlock_RwLockWriteGuard_def (DropGlue_R_drop_glue_l
       <[
      "_bb0" :=
       local_live{ UnitSynType } "ret";
-      expr: CallE DropGlue_R_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (rwlock_RwLockWriteGuard_sls (T_st) (R_st)) } "_r")];
-      Goto "_bb1"
+      CallS DropGlue_R_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (rwlock_RwLockWriteGuard_sls (T_st) (R_st)) } "_r")] None
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=

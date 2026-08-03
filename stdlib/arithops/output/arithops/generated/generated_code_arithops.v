@@ -2782,9 +2782,10 @@ Program Definition i128asAddAssignREFi128_add_assign_def (i128asAddAssign_add_as
       local_live{ (IntSynType I128) } "__5";
       "__5" <-{ IntOp I128 } copy{ IntOp I128 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE i128asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I128 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS i128asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I128 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -2934,9 +2935,10 @@ Program Definition i128asMulAssignREFi128_mul_assign_def (i128asMulAssign_mul_as
       local_live{ (IntSynType I128) } "__5";
       "__5" <-{ IntOp I128 } copy{ IntOp I128 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE i128asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I128 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS i128asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I128 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -3086,9 +3088,10 @@ Program Definition i128asSubAssignREFi128_sub_assign_def (i128asSubAssign_sub_as
       local_live{ (IntSynType I128) } "__5";
       "__5" <-{ IntOp I128 } copy{ IntOp I128 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE i128asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I128 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS i128asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I128 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -3238,9 +3241,10 @@ Program Definition i16asAddAssignREFi16_add_assign_def (i16asAddAssign_add_assig
       local_live{ (IntSynType I16) } "__5";
       "__5" <-{ IntOp I16 } copy{ IntOp I16 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE i16asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I16 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS i16asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I16 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -3390,9 +3394,10 @@ Program Definition i16asMulAssignREFi16_mul_assign_def (i16asMulAssign_mul_assig
       local_live{ (IntSynType I16) } "__5";
       "__5" <-{ IntOp I16 } copy{ IntOp I16 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE i16asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I16 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS i16asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I16 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -3542,9 +3547,10 @@ Program Definition i16asSubAssignREFi16_sub_assign_def (i16asSubAssign_sub_assig
       local_live{ (IntSynType I16) } "__5";
       "__5" <-{ IntOp I16 } copy{ IntOp I16 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE i16asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I16 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS i16asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I16 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -3694,9 +3700,10 @@ Program Definition i32asAddAssignREFi32_add_assign_def (i32asAddAssign_add_assig
       local_live{ (IntSynType I32) } "__5";
       "__5" <-{ IntOp I32 } copy{ IntOp I32 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE i32asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I32 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS i32asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I32 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -3846,9 +3853,10 @@ Program Definition i32asMulAssignREFi32_mul_assign_def (i32asMulAssign_mul_assig
       local_live{ (IntSynType I32) } "__5";
       "__5" <-{ IntOp I32 } copy{ IntOp I32 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE i32asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I32 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS i32asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I32 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -3998,9 +4006,10 @@ Program Definition i32asSubAssignREFi32_sub_assign_def (i32asSubAssign_sub_assig
       local_live{ (IntSynType I32) } "__5";
       "__5" <-{ IntOp I32 } copy{ IntOp I32 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE i32asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I32 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS i32asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I32 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -4150,9 +4159,10 @@ Program Definition i64asAddAssignREFi64_add_assign_def (i64asAddAssign_add_assig
       local_live{ (IntSynType I64) } "__5";
       "__5" <-{ IntOp I64 } copy{ IntOp I64 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE i64asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I64 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS i64asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I64 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -4302,9 +4312,10 @@ Program Definition i64asMulAssignREFi64_mul_assign_def (i64asMulAssign_mul_assig
       local_live{ (IntSynType I64) } "__5";
       "__5" <-{ IntOp I64 } copy{ IntOp I64 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE i64asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I64 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS i64asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I64 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -4454,9 +4465,10 @@ Program Definition i64asSubAssignREFi64_sub_assign_def (i64asSubAssign_sub_assig
       local_live{ (IntSynType I64) } "__5";
       "__5" <-{ IntOp I64 } copy{ IntOp I64 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE i64asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I64 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS i64asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I64 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -4606,9 +4618,10 @@ Program Definition i8asAddAssignREFi8_add_assign_def (i8asAddAssign_add_assign_l
       local_live{ (IntSynType I8) } "__5";
       "__5" <-{ IntOp I8 } copy{ IntOp I8 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE i8asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I8 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS i8asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I8 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -4758,9 +4771,10 @@ Program Definition i8asMulAssignREFi8_mul_assign_def (i8asMulAssign_mul_assign_l
       local_live{ (IntSynType I8) } "__5";
       "__5" <-{ IntOp I8 } copy{ IntOp I8 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE i8asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I8 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS i8asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I8 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -4910,9 +4924,10 @@ Program Definition i8asSubAssignREFi8_sub_assign_def (i8asSubAssign_sub_assign_l
       local_live{ (IntSynType I8) } "__5";
       "__5" <-{ IntOp I8 } copy{ IntOp I8 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE i8asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I8 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS i8asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp I8 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -5062,9 +5077,10 @@ Program Definition isizeasAddAssignREFisize_add_assign_def (isizeasAddAssign_add
       local_live{ (IntSynType ISize) } "__5";
       "__5" <-{ IntOp ISize } copy{ IntOp ISize } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE isizeasAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp ISize } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS isizeasAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp ISize } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -5214,9 +5230,10 @@ Program Definition isizeasMulAssignREFisize_mul_assign_def (isizeasMulAssign_mul
       local_live{ (IntSynType ISize) } "__5";
       "__5" <-{ IntOp ISize } copy{ IntOp ISize } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE isizeasMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp ISize } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS isizeasMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp ISize } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -5366,9 +5383,10 @@ Program Definition isizeasSubAssignREFisize_sub_assign_def (isizeasSubAssign_sub
       local_live{ (IntSynType ISize) } "__5";
       "__5" <-{ IntOp ISize } copy{ IntOp ISize } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE isizeasSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp ISize } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS isizeasSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp ISize } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -5518,9 +5536,10 @@ Program Definition u128asAddAssignREFu128_add_assign_def (u128asAddAssign_add_as
       local_live{ (IntSynType U128) } "__5";
       "__5" <-{ IntOp U128 } copy{ IntOp U128 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE u128asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U128 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS u128asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U128 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -5670,9 +5689,10 @@ Program Definition u128asMulAssignREFu128_mul_assign_def (u128asMulAssign_mul_as
       local_live{ (IntSynType U128) } "__5";
       "__5" <-{ IntOp U128 } copy{ IntOp U128 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE u128asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U128 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS u128asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U128 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -5822,9 +5842,10 @@ Program Definition u128asSubAssignREFu128_sub_assign_def (u128asSubAssign_sub_as
       local_live{ (IntSynType U128) } "__5";
       "__5" <-{ IntOp U128 } copy{ IntOp U128 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE u128asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U128 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS u128asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U128 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -5974,9 +5995,10 @@ Program Definition u16asAddAssignREFu16_add_assign_def (u16asAddAssign_add_assig
       local_live{ (IntSynType U16) } "__5";
       "__5" <-{ IntOp U16 } copy{ IntOp U16 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE u16asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U16 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS u16asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U16 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -6126,9 +6148,10 @@ Program Definition u16asMulAssignREFu16_mul_assign_def (u16asMulAssign_mul_assig
       local_live{ (IntSynType U16) } "__5";
       "__5" <-{ IntOp U16 } copy{ IntOp U16 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE u16asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U16 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS u16asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U16 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -6278,9 +6301,10 @@ Program Definition u16asSubAssignREFu16_sub_assign_def (u16asSubAssign_sub_assig
       local_live{ (IntSynType U16) } "__5";
       "__5" <-{ IntOp U16 } copy{ IntOp U16 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE u16asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U16 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS u16asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U16 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -6430,9 +6454,10 @@ Program Definition u32asAddAssignREFu32_add_assign_def (u32asAddAssign_add_assig
       local_live{ (IntSynType U32) } "__5";
       "__5" <-{ IntOp U32 } copy{ IntOp U32 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE u32asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U32 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS u32asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U32 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -6582,9 +6607,10 @@ Program Definition u32asMulAssignREFu32_mul_assign_def (u32asMulAssign_mul_assig
       local_live{ (IntSynType U32) } "__5";
       "__5" <-{ IntOp U32 } copy{ IntOp U32 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE u32asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U32 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS u32asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U32 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -6734,9 +6760,10 @@ Program Definition u32asSubAssignREFu32_sub_assign_def (u32asSubAssign_sub_assig
       local_live{ (IntSynType U32) } "__5";
       "__5" <-{ IntOp U32 } copy{ IntOp U32 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE u32asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U32 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS u32asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U32 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -6886,9 +6913,10 @@ Program Definition u64asAddAssignREFu64_add_assign_def (u64asAddAssign_add_assig
       local_live{ (IntSynType U64) } "__5";
       "__5" <-{ IntOp U64 } copy{ IntOp U64 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE u64asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U64 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS u64asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U64 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -7038,9 +7066,10 @@ Program Definition u64asMulAssignREFu64_mul_assign_def (u64asMulAssign_mul_assig
       local_live{ (IntSynType U64) } "__5";
       "__5" <-{ IntOp U64 } copy{ IntOp U64 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE u64asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U64 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS u64asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U64 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -7190,9 +7219,10 @@ Program Definition u64asSubAssignREFu64_sub_assign_def (u64asSubAssign_sub_assig
       local_live{ (IntSynType U64) } "__5";
       "__5" <-{ IntOp U64 } copy{ IntOp U64 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE u64asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U64 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS u64asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U64 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -7342,9 +7372,10 @@ Program Definition u8asAddAssignREFu8_add_assign_def (u8asAddAssign_add_assign_l
       local_live{ (IntSynType U8) } "__5";
       "__5" <-{ IntOp U8 } copy{ IntOp U8 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE u8asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U8 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS u8asAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U8 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -7494,9 +7525,10 @@ Program Definition u8asMulAssignREFu8_mul_assign_def (u8asMulAssign_mul_assign_l
       local_live{ (IntSynType U8) } "__5";
       "__5" <-{ IntOp U8 } copy{ IntOp U8 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE u8asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U8 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS u8asMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U8 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -7646,9 +7678,10 @@ Program Definition u8asSubAssignREFu8_sub_assign_def (u8asSubAssign_sub_assign_l
       local_live{ (IntSynType U8) } "__5";
       "__5" <-{ IntOp U8 } copy{ IntOp U8 } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE u8asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U8 } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS u8asSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp U8 } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -7798,9 +7831,10 @@ Program Definition usizeasAddAssignREFusize_add_assign_def (usizeasAddAssign_add
       local_live{ (IntSynType USize) } "__5";
       "__5" <-{ IntOp USize } copy{ IntOp USize } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE usizeasAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp USize } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS usizeasAddAssign_add_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp USize } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -7950,9 +7984,10 @@ Program Definition usizeasMulAssignREFusize_mul_assign_def (usizeasMulAssign_mul
       local_live{ (IntSynType USize) } "__5";
       "__5" <-{ IntOp USize } copy{ IntOp USize } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE usizeasMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp USize } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS usizeasMulAssign_mul_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp USize } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -8102,9 +8137,10 @@ Program Definition usizeasSubAssignREFusize_sub_assign_def (usizeasSubAssign_sub
       local_live{ (IntSynType USize) } "__5";
       "__5" <-{ IntOp USize } copy{ IntOp USize } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft8"; (* function_call *)
-      "__3" <-{ StructOp unit_sl [] } CallE usizeasSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp USize } ("__5")];
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
-      Goto "_bb1"
+      CallS usizeasSubAssign_sub_assign_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ IntOp USize } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+       Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=

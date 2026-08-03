@@ -38,8 +38,9 @@ Program Definition Range_Idx_is_empty_def (PartialOrd_Idx_Idx_lt_loc: loc) (Idx_
       annot{ 1 }: CopyLftNameAnnot "plft7" "vlft4"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft6"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft7"; (* function_call *)
-      "__2" <-{ BoolOp } CallE PartialOrd_Idx_Idx_lt_loc ["vlft8"; "vlft9"] [RSTTyVar "Idx"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")];
-      Goto "_bb1"
+      CallS PartialOrd_Idx_Idx_lt_loc ["vlft8"; "vlft9"] [RSTTyVar "Idx"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__2"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -68,8 +69,9 @@ Program Definition drop_glue_Range_def (DropGlue_Idx_drop_glue_loc: loc) (Idx_st
       <[
      "_bb0" :=
       local_live{ UnitSynType } "ret";
-      expr: CallE DropGlue_Idx_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (Range_sls (Idx_st)) } "start")];
-      Goto "_bb4"
+      CallS DropGlue_Idx_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (Range_sls (Idx_st)) } "start")] None
+      ( Goto "_bb4")
+      ( StuckS)
      ]>%E $
      <[
      "_bb2" :=
@@ -77,8 +79,9 @@ Program Definition drop_glue_Range_def (DropGlue_Idx_drop_glue_loc: loc) (Idx_st
      ]>%E $
      <[
      "_bb4" :=
-      expr: CallE DropGlue_Idx_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (Range_sls (Idx_st)) } "end")];
-      Goto "_bb2"
+      CallS DropGlue_Idx_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (Range_sls (Idx_st)) } "end")] None
+      ( Goto "_bb2")
+      ( StuckS)
      ]>%E $
       ∅;
      f_init := "_bb0";

@@ -83,8 +83,9 @@ Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) 
       "__8" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "E"), "vlft4" } (!{ RefOp } ( "__6" ));
       annot{ 1 }: CopyLftNameAnnot "plft11" "vlft4"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft12" "plft11"; (* function_call *)
-      "__7" <-{ (use_op_alg' E_st) } CallE Clone_E_clone_loc ["vlft12"] [] [@{expr} move{ RefOp } ("__8")];
-      Goto "_bb5"
+      CallS Clone_E_clone_loc ["vlft12"] [] [@{expr} move{ RefOp } ("__8")] (Some (Na1Ord, (use_op_alg' E_st), "__7"))
+      ( Goto "_bb5")
+      ( StuckS)
      ]>%E $
      <[
      "_bb3" :=
@@ -98,8 +99,9 @@ Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) 
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft6" } (!{ RefOp } ( "__self_0" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft6"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft13" "plft9"; (* function_call *)
-      "__4" <-{ (use_op_alg' T_st) } CallE Clone_T_clone_loc ["vlft13"] [] [@{expr} move{ RefOp } ("__5")];
-      Goto "_bb4"
+      CallS Clone_T_clone_loc ["vlft13"] [] [@{expr} move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' T_st), "__4"))
+      ( Goto "_bb4")
+      ( StuckS)
      ]>%E $
      <[
      "_bb4" :=
@@ -181,8 +183,9 @@ Program Definition Result_TE_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T
       local_live{ T_st } "__8";
       "__8" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("t");
       "__7" <-{ (use_op_alg' ((tuple1_sls (T_st)) : syn_type)) } StructInit (tuple1_sls (T_st)) [("0", move{ (use_op_alg' T_st) } ("__8") : expr)];
-      "__5" <-{ (use_op_alg' U_st) } CallE FnOnce_F_T_call_once_loc [] [] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple1_sls (T_st)) : syn_type)) } ("__7")];
-      Goto "_bb4"
+      CallS FnOnce_F_T_call_once_loc [] [] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple1_sls (T_st)) : syn_type)) } ("__7")] (Some (Na1Ord, (use_op_alg' U_st), "__5"))
+      ( Goto "_bb4")
+      ( StuckS)
      ]>%E $
      <[
      "_bb4" :=
@@ -207,8 +210,9 @@ Program Definition Result_TE_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T
      ]>%E $
      <[
      "_bb8" :=
-      expr: CallE DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("op")];
-      Goto "_bb6"
+      CallS DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("op")] None
+      ( Goto "_bb6")
+      ( StuckS)
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -259,8 +263,9 @@ Program Definition Result_TE_map_err_def (DropGlue_O_drop_glue_loc: loc) (FnOnce
       local_live{ E_st } "__10";
       "__10" <-{ (use_op_alg' E_st) } move{ (use_op_alg' E_st) } ("e");
       "__9" <-{ (use_op_alg' ((tuple1_sls (E_st)) : syn_type)) } StructInit (tuple1_sls (E_st)) [("0", move{ (use_op_alg' E_st) } ("__10") : expr)];
-      "__7" <-{ (use_op_alg' F_st) } CallE FnOnce_O_E_call_once_loc [] [] [@{expr} move{ (use_op_alg' O_st) } ("__8"); move{ (use_op_alg' ((tuple1_sls (E_st)) : syn_type)) } ("__9")];
-      Goto "_bb4"
+      CallS FnOnce_O_E_call_once_loc [] [] [@{expr} move{ (use_op_alg' O_st) } ("__8"); move{ (use_op_alg' ((tuple1_sls (E_st)) : syn_type)) } ("__9")] (Some (Na1Ord, (use_op_alg' F_st), "__7"))
+      ( Goto "_bb4")
+      ( StuckS)
      ]>%E $
      <[
      "_bb3" :=
@@ -296,8 +301,9 @@ Program Definition Result_TE_map_err_def (DropGlue_O_drop_glue_loc: loc) (FnOnce
      ]>%E $
      <[
      "_bb8" :=
-      expr: CallE DropGlue_O_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("op")];
-      Goto "_bb6"
+      CallS DropGlue_O_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("op")] None
+      ( Goto "_bb6")
+      ( StuckS)
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -329,13 +335,15 @@ Program Definition drop_glue_Result_def (DropGlue_E_drop_glue_loc: loc) (DropGlu
      ]>%E $
      <[
      "_bb2" :=
-      expr: CallE DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((Result_els (T_st) (E_st))) "Ok" (!{ RefOp } ( "ptr" ))) at{ (Result_Ok_sls (T_st) (E_st)) } "0")];
-      Goto "_bb1"
+      CallS DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((Result_els (T_st) (E_st))) "Ok" (!{ RefOp } ( "ptr" ))) at{ (Result_Ok_sls (T_st) (E_st)) } "0")] None
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb3" :=
-      expr: CallE DropGlue_E_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((Result_els (T_st) (E_st))) "Err" (!{ RefOp } ( "ptr" ))) at{ (Result_Err_sls (T_st) (E_st)) } "0")];
-      Goto "_bb1"
+      CallS DropGlue_E_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((Result_els (T_st) (E_st))) "Err" (!{ RefOp } ( "ptr" ))) at{ (Result_Err_sls (T_st) (E_st)) } "0")] None
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
       ∅;
      f_init := "_bb0";

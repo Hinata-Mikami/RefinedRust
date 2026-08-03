@@ -221,8 +221,9 @@ Program Definition ControlFlow_BC_break_value_def (drop_glue_ControlFlow_B_C_loc
      ]>%E $
      <[
      "_bb6" :=
-      expr: CallE drop_glue_ControlFlow_B_C_loc [] [RSTTyVar "B"; RSTTyVar "C"] [@{expr} &raw{ PRef, Mut } ("self")];
-      Goto "_bb5"
+      CallS drop_glue_ControlFlow_B_C_loc [] [RSTTyVar "B"; RSTTyVar "C"] [@{expr} &raw{ PRef, Mut } ("self")] None
+      ( Goto "_bb5")
+      ( StuckS)
      ]>%E $
      <[
      "_bb7" :=
@@ -272,8 +273,9 @@ Program Definition Tasconvert_IntoU_into_def (convert_From_U_T_from_loc: loc) (T
       local_live{ U_st } "__0";
       local_live{ T_st } "__2";
       "__2" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("self");
-      "__0" <-{ (use_op_alg' U_st) } CallE convert_From_U_T_from_loc [] [] [@{expr} move{ (use_op_alg' T_st) } ("__2")];
-      Goto "_bb1"
+      CallS convert_From_U_T_from_loc [] [] [@{expr} move{ (use_op_alg' T_st) } ("__2")] (Some (Na1Ord, (use_op_alg' U_st), "__0"))
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
@@ -310,13 +312,15 @@ Program Definition drop_glue_ControlFlow_def (DropGlue_B_drop_glue_loc: loc) (Dr
      ]>%E $
      <[
      "_bb2" :=
-      expr: CallE DropGlue_C_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((ControlFlow_els (B_st) (C_st))) "Continue" (!{ RefOp } ( "ptr" ))) at{ (ControlFlow_Continue_sls (B_st) (C_st)) } "0")];
-      Goto "_bb1"
+      CallS DropGlue_C_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((ControlFlow_els (B_st) (C_st))) "Continue" (!{ RefOp } ( "ptr" ))) at{ (ControlFlow_Continue_sls (B_st) (C_st)) } "0")] None
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
      <[
      "_bb3" :=
-      expr: CallE DropGlue_B_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((ControlFlow_els (B_st) (C_st))) "Break" (!{ RefOp } ( "ptr" ))) at{ (ControlFlow_Break_sls (B_st) (C_st)) } "0")];
-      Goto "_bb1"
+      CallS DropGlue_B_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((ControlFlow_els (B_st) (C_st))) "Break" (!{ RefOp } ( "ptr" ))) at{ (ControlFlow_Break_sls (B_st) (C_st)) } "0")] None
+      ( Goto "_bb1")
+      ( StuckS)
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -547,8 +551,9 @@ Program Definition std_result_ResultTFasFromResidualstd_result_Resultconvert_Inf
       local_live{ F_st } "__4";
       local_live{ E_st } "__5";
       "__5" <-{ (use_op_alg' E_st) } move{ (use_op_alg' E_st) } ("e");
-      "__4" <-{ (use_op_alg' F_st) } CallE convert_From_F_E_from_loc [] [] [@{expr} move{ (use_op_alg' E_st) } ("__5")];
-      Goto "_bb4"
+      CallS convert_From_F_E_from_loc [] [] [@{expr} move{ (use_op_alg' E_st) } ("__5")] (Some (Na1Ord, (use_op_alg' F_st), "__4"))
+      ( Goto "_bb4")
+      ( StuckS)
      ]>%E $
      <[
      "_bb4" :=
