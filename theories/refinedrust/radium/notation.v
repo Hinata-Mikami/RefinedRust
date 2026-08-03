@@ -247,7 +247,9 @@ Lemma annot_stmt_S_r {A} n (a : A) s:
 Proof. by rewrite /AnnotStmt Nat.iter_succ_r. Qed.
 
 (** Call notation including lifetime instantiation *)
-Definition CallE (ef : expr) (eκs : list string) (etys : list rust_type) (es : list expr) := Call ef es.
+Definition CallE (ef : expr) (eκs : list string) (etys : list rust_type) (es : list expr)
+    (o : order) (ret_ot : op_type) (destination : expr) (normal unwind : stmt) : stmt :=
+  Call ef es o ret_ot destination normal unwind.
 Arguments CallE : simpl  never.
 Global Typeclasses Opaque CallE.
 
@@ -351,9 +353,9 @@ Abbreviation zst_val := ([] : val).
 
 (*** Tests *)
 Example test1 (l : loc) ly ot :
-  (l <-{ly} copy{ot}(&raw{Mut} l +{PtrOp, IntOp USize} (l ={PtrOp, PtrOp, I32} l)); ExprS (Call l [ (l : expr); (l : expr)]) (l <-{ly, ScOrd} l; Goto "a"))%E =
+  (l <-{ly} copy{ot}(&raw{Mut} l +{PtrOp, IntOp USize} (l ={PtrOp, PtrOp, I32} l)); l <-{ly, ScOrd} l; Goto "a")%E =
   (AssignSE Na1Ord ly l (Copy Na1Ord ot (BinOp AddOp PtrOp (IntOp USize) (Raw PRaw Mut l) (BinOp (EqOp I32) PtrOp PtrOp l l))))
-      (ExprS (Call l [ Val (l2v l); Val (l2v l)]) ((AssignSE ScOrd ly l l) (Goto "a"))).
+      ((AssignSE ScOrd ly l l) (Goto "a")).
 Proof. simpl. reflexivity. Abort.
 
 Example test_get_member `{!LayoutAlg} (l : loc) (sls : struct_layout_spec) ot :

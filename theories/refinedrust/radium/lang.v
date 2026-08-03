@@ -40,7 +40,6 @@ Inductive expr :=
 | CopyAllocId (ot1 : op_type) (e1 : expr) (e2 : expr)
 | Deref (o : order) (ot : op_type) (e : expr)
 | CAS (ot : op_type) (e1 e2 e3 : expr)
-| Call (f : expr) (args : list expr)
 | Concat (es : list expr)
 | IfE (ot : op_type) (e1 e2 e3 : expr)
 (* [e_align] is the 2-logarithm of the desired alignment *)
@@ -49,8 +48,6 @@ Inductive expr :=
 | StuckE (* stuck expression *)
 .
 End expr.
-Arguments Call _%_E _%_E.
-
 Global Instance val_inj : Inj (=) (=) Val.
 Proof. by move => ?? [->]. Qed.
 
@@ -63,6 +60,8 @@ Inductive stmt :=
 | IfS (ot : op_type) (e : expr) (s1 s2 : stmt)
 (* m: map from values of e to indices into bs, def: default *)
 | Switch (it : int_type) (e : expr) (m : gmap Z nat) (bs : list stmt) (def : stmt)
+| Call (f : expr) (args : list expr) (o : order) (ret_ot : op_type)
+    (destination : expr) (normal unwind : stmt)
 | Assign (o : order) (ot : op_type) (e1 e2 : expr) (s : stmt)
 (* [e_align] is the 2-logarithm of the allocation's alignment *)
 | Free (e_size : expr) (e_align : expr) (e : expr) (s : stmt)
@@ -74,6 +73,7 @@ Inductive stmt :=
 .
 
 Arguments Switch _%_E _%_E _%_E.
+Arguments Call _%_E _%_E _ _ _%_E _%_E _%_E.
 
 Record function := {
   f_args : list (var_name * layout);
@@ -138,6 +138,8 @@ Inductive runtime_expr :=
 | RTVal (v : val)
 | Expr (π : thread_id) (e : rtexpr)
 | Stmt (π : thread_id) (rf : function) (s : rtstmt)
+| CallFrame (π : thread_id) (caller : function) (o : order) (ret_ot : op_type)
+    (destination : expr) (normal unwind : stmt) (body : runtime_expr)
 | AllocFailed
 with rtexpr :=
 | RTVar (x : var_name)
@@ -147,7 +149,6 @@ with rtexpr :=
 | RTCheckBinOp (op : bin_op) (ot1 ot2 : op_type) (e1 e2 : runtime_expr)
 | RTCopyAllocId (ot1 : op_type) (e1 : runtime_expr) (e2 : runtime_expr)
 | RTDeref (o : order) (ot : op_type) (e : runtime_expr)
-| RTCall (f : runtime_expr) (args : list runtime_expr)
 | RTCAS (ot : op_type) (e1 e2 e3 : runtime_expr)
 | RTConcat (es : list runtime_expr)
 | RTAlloc (e_size : runtime_expr) (e_align : runtime_expr)
@@ -159,6 +160,8 @@ with rtstmt :=
 | RTReturn (e : runtime_expr)
 | RTIfS (ot : op_type) (e : runtime_expr) (s1 s2 : stmt)
 | RTSwitch (it : int_type) (e : runtime_expr) (m : gmap Z nat) (bs : list stmt) (def : stmt)
+| RTCall (f : runtime_expr) (args : list runtime_expr) (o : order) (ret_ot : op_type)
+    (destination : expr) (normal unwind : stmt)
 | RTAssign (o : order) (ot : op_type) (e1 e2 : runtime_expr) (s : stmt)
 | RTFree (e_size : runtime_expr) (e_align : runtime_expr) (e : runtime_expr) (s : stmt)
 | RTSkipS (s : stmt)
@@ -185,7 +188,6 @@ Fixpoint to_rtexpr (π : thread_id) (e : expr) : runtime_expr :=
   | CheckBinOp op ot1 ot2 e1 e2 => Expr π $ RTCheckBinOp op ot1 ot2 (to_rtexpr π e1) (to_rtexpr π e2)
   | CopyAllocId ot1 e1 e2 => Expr π $ RTCopyAllocId ot1 (to_rtexpr π e1) (to_rtexpr π e2)
   | Deref o ot e => Expr π $ RTDeref o ot (to_rtexpr π e)
-  | Call f args => Expr π $ RTCall (to_rtexpr π f) (to_rtexpr π <$> args)
   | CAS ot e1 e2 e3 => Expr π $ RTCAS ot (to_rtexpr π e1) (to_rtexpr π e2) (to_rtexpr π e3)
   | Concat es => Expr π $ RTConcat (to_rtexpr π <$> es)
   | IfE ot e1 e2 e3 => Expr π $ RTIfE ot (to_rtexpr π e1) (to_rtexpr π e2) (to_rtexpr π e3)
@@ -199,6 +201,8 @@ Definition to_rtstmt (π : thread_id) (f : function) (s : stmt) : runtime_expr :
   | Return e => RTReturn (to_rtexpr π e)
   | IfS ot e s1 s2 => RTIfS ot (to_rtexpr π e) s1 s2
   | Switch it e m bs def => RTSwitch it (to_rtexpr π e) m bs def
+  | Call f args o ret_ot destination normal unwind =>
+      RTCall (to_rtexpr π f) (to_rtexpr π <$> args) o ret_ot destination normal unwind
   | Assign o ot e1 e2 s => RTAssign o ot (to_rtexpr π e1) (to_rtexpr π e2) s
   | Free e_size e_align e s => RTFree (to_rtexpr π e_size) (to_rtexpr π e_align) (to_rtexpr π e) s
   | SkipS s => RTSkipS s
@@ -214,10 +218,6 @@ Proof.
   induction e1 in e2 |-*; destruct e2; try done.
   all: simpl; intros ?; simplify_eq.
   all: try naive_solver.
-  - f_equal; [naive_solver|].
-    generalize dependent args0.
-    revert select (list_all _ _ _). elim; [by case|].
-    move => ????? [|??]//. naive_solver.
   - generalize dependent es0.
     revert select (list_all _ _ _). elim; [by case|].
     move => ????? [|??]//. naive_solver.
@@ -576,33 +576,6 @@ comparing pointers? (see lambda rust) *)
     z1 = z2 →
     expr_step (CAS ot (Val v1) (Val v2) (Val v3)) π σ []
               (RTVal (val_of_bool true)) (heap_fmap (heap_upd l1 v3 (λ _, RSt 0%nat)) σ) []
-| CallS π lsa σ hs' ts ts' vf vs f fn a:
-    val_to_loc vf = Some f →
-    f = fn_loc a →
-    σ.(st_fntbl) !! a = Some fn →
-    length lsa = length fn.(f_args) →
-
-    (* check the layout of the arguments *)
-    Forall2 has_layout_val vs fn.(f_args).*2 →
-    (* ensure that locations are aligned *)
-    Forall2 has_layout_loc lsa fn.(f_args).*2 →
-
-    (* initialize the arguments with the supplied values *)
-    alloc_new_blocks σ.(st_heap) StackAlloc lsa vs hs' →
-
-    (* push new frame *)
-    state_get_thread σ π = Some ts →
-    ts' = thread_push_frame ts (initialize_new_frame fn.(f_args) lsa) →
-
-    expr_step (Call (Val vf) (Val <$> vs)) π σ []
-      (to_rtstmt π fn (Goto fn.(f_init)))
-      {| st_heap := hs'; st_fntbl := σ.(st_fntbl); st_thread := <[π := ts']> σ.(st_thread) |} []
-| CallFailS π σ vf vs f fn a:
-    val_to_loc vf = Some f →
-    f = fn_loc a →
-    σ.(st_fntbl) !! a = Some fn →
-    Forall2 has_layout_val vs fn.(f_args).*2 →
-    expr_step (Call (Val vf) (Val <$> vs)) π σ [] AllocFailed σ []
 | ConcatS vs π σ :
     expr_step (Concat (Val <$> vs)) π σ [] (RTVal (mjoin vs)) σ []
 (* for ptr::with_addr *)
@@ -634,6 +607,35 @@ comparing pointers? (see lambda rust) *)
 
 (*** Evaluation of statements *)
 Inductive stmt_step : stmt → thread_id → function → state → list Empty_set → runtime_expr → state → list runtime_expr → Prop :=
+| CallS π caller lsa σ hs' ts ts' vf vs f fn a o ret_ot destination normal unwind:
+    val_to_loc vf = Some f →
+    f = fn_loc a →
+    σ.(st_fntbl) !! a = Some fn →
+    length lsa = length fn.(f_args) →
+
+    (* check the layout of the arguments *)
+    Forall2 has_layout_val vs fn.(f_args).*2 →
+    (* ensure that locations are aligned *)
+    Forall2 has_layout_loc lsa fn.(f_args).*2 →
+
+    (* initialize the arguments with the supplied values *)
+    alloc_new_blocks σ.(st_heap) StackAlloc lsa vs hs' →
+
+    (* push new frame *)
+    state_get_thread σ π = Some ts →
+    ts' = thread_push_frame ts (initialize_new_frame fn.(f_args) lsa) →
+
+    stmt_step (Call (Val vf) (Val <$> vs) o ret_ot destination normal unwind) π caller σ []
+      (CallFrame π caller o ret_ot destination normal unwind
+        (to_rtstmt π fn (Goto fn.(f_init))))
+      {| st_heap := hs'; st_fntbl := σ.(st_fntbl); st_thread := <[π := ts']> σ.(st_thread) |} []
+| CallFailS π caller σ vf vs f fn a o ret_ot destination normal unwind:
+    val_to_loc vf = Some f →
+    f = fn_loc a →
+    σ.(st_fntbl) !! a = Some fn →
+    Forall2 has_layout_val vs fn.(f_args).*2 →
+    stmt_step (Call (Val vf) (Val <$> vs) o ret_ot destination normal unwind)
+      π caller σ [] AllocFailed σ []
 | AssignS (o : order) π rf σ s v1 v2 l v' ot ov:
     let start_st st := st = if o is Na2Ord then WSt else RSt 0%nat in
     let end_st _ := if o is Na1Ord then WSt else RSt 0%nat in
@@ -716,6 +718,9 @@ Inductive runtime_step : runtime_expr → state → list Empty_set → runtime_e
 | StmtStep s π rf σ κs e' σ' efs:
     stmt_step s π rf σ κs e' σ' efs →
     runtime_step (to_rtstmt π rf s) σ κs e' σ' efs
+| CallFrameReturnStep π caller o ret_ot destination normal unwind v σ :
+    runtime_step (CallFrame π caller o ret_ot destination normal unwind (RTVal v)) σ []
+      (to_rtstmt π caller (Assign o ret_ot destination (Val v) normal)) σ []
 | AllocFailedStep σ :
     (* Alloc failure is nb, not ub so we go into an infinite loop*)
     runtime_step AllocFailed σ [] AllocFailed σ [].
@@ -729,7 +734,6 @@ Proof.
   all: repeat select (heap_at _ _ _ _ _) ltac:(fun H => destruct H as [?[?[??]]]).
   all: try (rewrite /heap_fmap/=; eapply heap_update_heap_state_invariant => //).
   all: try (unfold has_layout_val in *; by etransitivity).
-  - repeat eapply alloc_new_blocks_invariant => //.
   - eapply alloc_new_block_invariant => //.
 Qed.
 
@@ -739,6 +743,7 @@ Lemma stmt_step_preserves_heap_invariant s π rf e σ1 σ2 κs efs:
   heap_state_invariant σ2.(st_heap).
 Proof.
   move => [] //; clear.
+  - intros. repeat eapply alloc_new_blocks_invariant => //.
   - move => o *.
     revert select (heap_at _ _ _ _ _) => -[?[?[??]]].
     rewrite /heap_fmap/=. eapply heap_update_heap_state_invariant => //.
@@ -894,12 +899,6 @@ Lemma expr_step_preserves_thread_invariant π e1 e2 σ1 σ2 κs efs:
   thread_states_invariant σ2.(st_thread).
 Proof.
   move => [] // *.
-  - apply thread_states_invariant_update_thread; first done.
-    subst. apply thread_state_invariant_push_frame; last naive_solver.
-    apply call_frame_invariant_new_frame.
-    rename select (list loc) into lsa.
-    rename select (alloc_new_blocks _ _ _ _ _) into Hnew.
-    by eapply alloc_new_blocks_start_in_usize.
 Qed.
 Lemma stmt_step_preserves_thread_invariant s π rf e σ1 σ2 κs efs:
   stmt_step s π rf σ1 κs e σ2 efs →
@@ -907,6 +906,13 @@ Lemma stmt_step_preserves_thread_invariant s π rf e σ1 σ2 κs efs:
   thread_states_invariant σ2.(st_thread).
 Proof.
   move => [] //; clear.
+  - move => *.
+    apply thread_states_invariant_update_thread; first done.
+    subst. apply thread_state_invariant_push_frame; last naive_solver.
+    apply call_frame_invariant_new_frame.
+    rename select (list loc) into lsa.
+    rename select (alloc_new_blocks _ _ _ _ _) into Hnew.
+    by eapply alloc_new_blocks_start_in_usize.
   - move => *.
     apply thread_states_invariant_update_thread; first done.
     apply thread_state_invariant_pop_frame.
@@ -949,8 +955,6 @@ Inductive expr_ectx :=
 | CopyAllocIdLCtx (ot1 : op_type) (e2 : runtime_expr)
 | CopyAllocIdRCtx (ot1 : op_type) (v1 : val)
 | DerefCtx (o : order) (ot : op_type)
-| CallLCtx (args : list runtime_expr)
-| CallRCtx (f : val) (vl : list val) (el : list runtime_expr)
 | CASLCtx (ot : op_type) (e2 e3 : runtime_expr)
 | CASMCtx (ot : op_type) (v1 : val) (e3 : runtime_expr)
 | CASRCtx (ot : op_type) (v1 v2 : val)
@@ -972,8 +976,6 @@ Definition expr_fill_item (Ki : expr_ectx) (e : runtime_expr) : rtexpr :=
   | CopyAllocIdLCtx ot1 e2 => RTCopyAllocId ot1 e e2
   | CopyAllocIdRCtx ot1 v1 => RTCopyAllocId ot1 (RTVal v1) e
   | DerefCtx o l => RTDeref o l e
-  | CallLCtx args => RTCall e args
-  | CallRCtx f vl el => RTCall (RTVal f) (((RTVal <$> vl)) ++ e :: el)
   | CASLCtx ot e2 e3 => RTCAS ot e e2 e3
   | CASMCtx ot v1 e3 => RTCAS ot (RTVal v1) e e3
   | CASRCtx ot v1 v2 => RTCAS ot (RTVal v1) (RTVal v2) e
@@ -995,6 +997,10 @@ Inductive stmt_ectx :=
 | FreeRCtx (v_size : val) (v_align : val) (s : stmt)
 | IfSCtx (ot : op_type) (s1 s2 : stmt)
 | SwitchCtx (it : int_type) (m: gmap Z nat) (bs : list stmt) (def : stmt)
+| CallLCtx (args : list runtime_expr) (o : order) (ret_ot : op_type)
+    (destination : expr) (normal unwind : stmt)
+| CallRCtx (f : val) (vl : list val) (el : list runtime_expr) (o : order)
+    (ret_ot : op_type) (destination : expr) (normal unwind : stmt)
 | ExprSCtx (s : stmt)
 .
 
@@ -1008,17 +1014,25 @@ Definition stmt_fill_item (π : thread_id) (Ki : stmt_ectx) (e : runtime_expr) :
   | FreeRCtx v_size v_align s => RTFree (RTVal v_size) (RTVal v_align) e s
   | IfSCtx ot s1 s2 => RTIfS ot e s1 s2
   | SwitchCtx it m bs def => RTSwitch it e m bs def
+  | CallLCtx args o ret_ot destination normal unwind =>
+      RTCall e args o ret_ot destination normal unwind
+  | CallRCtx f vl el o ret_ot destination normal unwind =>
+      RTCall (RTVal f) ((RTVal <$> vl) ++ e :: el) o ret_ot destination normal unwind
   | ExprSCtx s => RTExprS e s
   end.
 
 Inductive lang_ectx :=
 | ExprCtx (E : expr_ectx) (π : thread_id)
-| StmtCtx (E : stmt_ectx) (π : thread_id) (rf : function).
+| StmtCtx (E : stmt_ectx) (π : thread_id) (rf : function)
+| CallFrameCtx (π : thread_id) (caller : function) (o : order) (ret_ot : op_type)
+    (destination : expr) (normal unwind : stmt).
 
 Definition lang_fill_item (Ki : lang_ectx) (e : runtime_expr) : runtime_expr :=
   match Ki with
   | ExprCtx E π => Expr π (expr_fill_item E e)
   | StmtCtx E π rf => Stmt π rf (stmt_fill_item π E e)
+  | CallFrameCtx π caller o ret_ot destination normal unwind =>
+      CallFrame π caller o ret_ot destination normal unwind e
   end.
 
 Lemma list_expr_val_eq_inv vl1 vl2 e1 e2 el1 el2 :
@@ -1047,11 +1061,11 @@ Lemma val_stuck e1 σ1 κ e2 σ2 ef :
 Proof. destruct 1 => //. revert select (expr_step _ _ _ _ _ _ _). by destruct 1. Qed.
 
 Global Instance fill_item_inj Ki : Inj (=) (=) (lang_fill_item Ki).
-Proof. destruct Ki as [E|E ?]; destruct E; intros ???; simplify_eq/=; auto with f_equal. Qed.
+Proof. destruct Ki as [E|E ?|]; try destruct E; intros ???; simplify_eq/=; auto with f_equal. Qed.
 
 Lemma fill_item_val Ki e :
   is_Some (to_val (lang_fill_item Ki e)) → is_Some (to_val e).
-Proof. intros [v ?]. destruct Ki as [[]|[] ?]; simplify_option_eq; eauto. Qed.
+Proof. intros [v ?]. destruct Ki as [[]|[] ?|]; simplify_option_eq; eauto. Qed.
 
 Lemma fill_item_no_val_inj Ki1 Ki2 e1 e2 :
   to_val e1 = None → to_val e2 = None →
@@ -1065,10 +1079,17 @@ Qed.
 Lemma expr_ctx_step_val Ki e σ1 κ e2 σ2 ef :
   runtime_step (lang_fill_item Ki e) σ1 κ e2 σ2 ef → is_Some (to_val e).
 Proof.
-  destruct Ki as [[]|[]?]; inversion 1; simplify_eq.
+  destruct Ki as [[]|[]?|]; inversion 1; simplify_eq.
   all: try (revert select (expr_step _ _ _ _ _ _ _)).
   all: try (revert select (stmt_step _ _ _ _ _ _ _ _)).
-  all: inversion 1; simplify_eq/=; eauto.
+  all: try (inversion 1; simplify_eq/=; eauto).
+  all: try match goal with H : to_rtexpr _ ?e = CallFrame _ _ _ _ _ _ _ _ |- _ =>
+    destruct e; discriminate H
+  end.
+  all: repeat match goal with H : RTCall _ _ _ _ _ _ _ = RTCall _ _ _ _ _ _ _ |- _ =>
+    injection H; clear H; intros; subst
+  end.
+  all: simplify_eq/=; eauto.
   all: apply not_eq_None_Some; intros ?; by eapply list_expr_val_eq_false.
 Qed.
 

@@ -16,7 +16,6 @@ Inductive expr :=
 | CopyAllocId (ot1 : op_type) (e1 e2 : expr)
 | Deref (o : order) (ot : op_type) (e : expr)
 | CAS (ot : op_type) (e1 e2 e3 : expr)
-| Call (f : expr) (eκs : list string) (etys : list rust_type) (args : list expr)
 | Concat (es : list expr)
 | IfE (op : op_type) (e1 e2 e3 : expr)
 | Alloc (e_size : expr) (e_align : expr)
@@ -56,7 +55,6 @@ Fixpoint to_expr `{!LayoutAlg} (e : expr) : lang.expr :=
   | CopyAllocId ot1 e1 e2 => lang.CopyAllocId ot1 (to_expr e1) (to_expr e2)
   | Deref o ot e => lang.Deref o ot (to_expr e)
   | CAS ot e1 e2 e3 => lang.CAS ot (to_expr e1) (to_expr e2) (to_expr e3)
-  | Call f eκs etys args => notation.CallE (to_expr f) eκs etys (to_expr <$> args)
   | Concat es => lang.Concat (to_expr <$> es)
   | IfE ot e1 e2 e3 => lang.IfE ot (to_expr e1) (to_expr e2) (to_expr e3)
   | Alloc e_size e_align => lang.Alloc (to_expr e_size) (to_expr e_align)
@@ -140,9 +138,6 @@ Ltac of_expr e :=
     let e := of_expr e in constr:(Deref o ot e)
   | lang.CAS ?ot ?e1 ?e2 ?e3 =>
     let e1 := of_expr e1 in let e2 := of_expr e2 in let e3 := of_expr e3 in constr:(CAS ot e1 e2 e3)
-  | notation.CallE ?f ?eκs ?etys ?args =>
-    let f := of_expr f in
-    let args := of_expr args in constr:(Call f eκs etys args)
   | lang.Concat ?es =>
     let es := of_expr es in constr:(Concat es)
   | lang.IfE ?ot ?e1 ?e2 ?e3 =>
@@ -181,8 +176,6 @@ Inductive ectx_item :=
 | CASLCtx (ot : op_type) (e2 e3 : expr)
 | CASMCtx (ot : op_type) (v1 : val) (e3 : expr)
 | CASRCtx (ot : op_type) (v1 v2 : val)
-| CallLCtx (eκs : list string) (etys : list rust_type) (args : list expr)
-| CallRCtx (f : val) (eκs : list string) (etys : list rust_type) (vl : list val) (el : list expr)
 | ConcatCtx (vs : list val) (es : list expr)
 | IfECtx (ot : op_type) (e2 e3 : expr)
 | AllocLCtx (e_align : expr)
@@ -218,8 +211,6 @@ Definition fill_item (Ki : ectx_item) (e : expr) : expr :=
   | CASLCtx ot e2 e3 => CAS ot e e2 e3
   | CASMCtx ot v1 e3 => CAS ot (Val v1) e e3
   | CASRCtx ot v1 v2 => CAS ot (Val v1) (Val v2) e
-  | CallLCtx eκs etys args => Call e eκs etys args
-  | CallRCtx f eκs etys vl el => Call (Val f) eκs etys ((Val <$> vl) ++ e :: el)
   | ConcatCtx vs es => Concat ((Val <$> vs) ++ e :: es)
   | IfECtx ot e2 e3 => IfE ot e e2 e3
   | AllocLCtx e_align => Alloc e e_align
@@ -280,10 +271,6 @@ Fixpoint find_expr_fill (e : expr) (bind_val : bool) : option (list ectx_item * 
     else if find_expr_fill e3 bind_val is Some (Ks, e') then
       if e1 is Val v1 then if e2 is Val v2 then Some (Ks ++ [CASRCtx ot v1 v2], e') else None else None
     else Some ([], e)
-  | Call f eκs etys args =>
-    if find_expr_fill f bind_val is Some (Ks, e') then
-      Some (Ks ++ [CallLCtx eκs etys args], e') else
-      (* TODO: handle arguments? *) None
   | Concat _ | OffsetOf _ _ | OffsetOfUnion _ _ | LogicalAnd _ _ _ _ _ | LogicalOr _ _ _ _ _ => None
   | IfE ot e1 e2 e3 =>
     if find_expr_fill e1 bind_val is Some (Ks, e') then
@@ -351,8 +338,6 @@ Proof.
     apply: [lang.CASLCtx _ _ _]|
     apply: [lang.CASMCtx _ _ _]|
     apply: [lang.CASRCtx _ _ _]|
-    apply: [lang.CallLCtx _]|
-    apply: [lang.CallRCtx _ _ _]|
     apply: [lang.ConcatCtx _ _]|
     apply: [lang.IfECtx _ _ _]|
     apply: [lang.AllocLCtx _]|
@@ -369,11 +354,7 @@ Proof.
     apply: [lang.SkipECtx; lang.DerefCtx _ _]|
     apply: [lang.BinOpRCtx _ _ _ _]|..
   ]).
-  move: K => [||||||||||||||||||||||n||||||] * //=.
-  - (** Call *)
-    do 2 f_equal.
-    rewrite !fmap_app !fmap_cons. repeat f_equal; eauto.
-    rewrite -!list_fmap_compose. by apply: list_fmap_ext.
+  move: K => [||||||||||||||||||||n||||||] * //=.
   - (** Concat *)
     do 2 f_equal.
     rewrite !fmap_app !fmap_cons. repeat f_equal; eauto.
@@ -396,6 +377,8 @@ Inductive stmt :=
 | Return (e : expr)
 | IfS (ot : op_type) (e : expr) (s1 s2 : stmt)
 | Switch (it : int_type) (e : expr) (m : gmap Z nat) (bs : list stmt) (def : stmt)
+| Call (f : expr) (eκs : list string) (etys : list rust_type) (args : list expr)
+    (o : order) (ret_ot : op_type) (destination : expr) (normal unwind : stmt)
 | Assign (o : order) (ot : op_type) (e1 e2 : expr) (s : stmt)
 | AssignSE (o : order) (ot : op_type) (e1 e2 : expr) (s : stmt)
 | Free (e_size : expr) (e_align : expr) (e : expr) (s : stmt)
@@ -416,6 +399,9 @@ Lemma stmt_ind (P : stmt → Prop):
   (∀ e : expr, P (Return e)) →
   (∀ (ot : op_type) (e : expr) (s1 : stmt), P s1 → ∀ s2 : stmt, P s2 → P (IfS ot e s1 s2)) →
   (∀ (it : int_type) (e : expr) (m : gmap Z nat) (bs : list stmt) (def : stmt), P def → Forall P bs → P (Switch it e m bs def)) →
+  (∀ (f : expr) (eκs : list string) (etys : list rust_type) (args : list expr)
+      (o : order) (ret_ot : op_type) (destination : expr) (normal : stmt), P normal →
+      ∀ unwind : stmt, P unwind → P (Call f eκs etys args o ret_ot destination normal unwind)) →
   (∀ (o : order) (ot : op_type) (e1 e2 : expr) (s : stmt), P s → P (Assign o ot e1 e2 s)) →
   (∀ (o : order) (ot : op_type) (e1 e2 : expr) (s : stmt), P s → P (AssignSE o ot e1 e2 s)) →
   (∀ (e_size : expr) (e_align : expr) (e : expr) (s : stmt), P s → P (Free e_size e_align e s)) →
@@ -443,6 +429,9 @@ Fixpoint to_stmt `{LayoutAlg} (s : stmt) : lang.stmt :=
   | Return e => lang.Return (to_expr e)
   | IfS ot e s1 s2 => (if{ot}: to_expr e then to_stmt s1 else to_stmt s2)%E
   | Switch it e m bs def => lang.Switch it (to_expr e) m (to_stmt <$> bs) (to_stmt def)
+  | Call f eκs etys args o ret_ot destination normal unwind =>
+      notation.CallE (to_expr f) eκs etys (to_expr <$> args) o ret_ot
+        (to_expr destination) (to_stmt normal) (to_stmt unwind)
   | Assign o ot e1 e2 s => lang.Assign o ot (to_expr e1) (to_expr e2) (to_stmt s)
   | AssignSE o ot e1 e2 s => notation.AssignSE o ot (to_expr e1) (to_expr e2) (to_stmt s)
   | Free e_size e_align e s => lang.Free (to_expr e_size) (to_expr e_align) (to_expr e) (to_stmt s)
@@ -494,6 +483,13 @@ Ltac of_stmt s :=
     let bs := of_stmt bs in
     let def := of_stmt def in
     constr:(Switch it e m bs def)
+  | notation.CallE ?f ?eκs ?etys ?args ?o ?ret_ot ?destination ?normal ?unwind =>
+    let f := of_expr f in
+    let args := of_expr args in
+    let destination := of_expr destination in
+    let normal := of_stmt normal in
+    let unwind := of_stmt unwind in
+    constr:(Call f eκs etys args o ret_ot destination normal unwind)
   | lang.Assign ?o ?ot ?e1 ?e2 ?s =>
     let e1 := of_expr e1 in
     let e2 := of_expr e2 in
@@ -529,6 +525,10 @@ Inductive stmt_ectx :=
 | ReturnCtx
 | IfSCtx (ot : op_type) (s1 s2 : stmt)
 | SwitchCtx (it : int_type) (m: gmap Z nat) (bs : list stmt) (def : stmt)
+| CallLCtx (eκs : list string) (etys : list rust_type) (args : list expr)
+    (o : order) (ret_ot : op_type) (destination : expr) (normal unwind : stmt)
+| CallRCtx (f : val) (eκs : list string) (etys : list rust_type) (vl : list val)
+    (el : list expr) (o : order) (ret_ot : op_type) (destination : expr) (normal unwind : stmt)
 | ExprSCtx (s : stmt)
 | AssertCtx (ot : op_type) (s : stmt)
 | FreeLCtx (e_align : expr) (e : expr) (s : stmt)
@@ -546,6 +546,10 @@ Definition stmt_fill (Ki : stmt_ectx) (e : expr) : stmt :=
   | ExprSCtx s => ExprS e s
   | IfSCtx ot s1 s2 => IfS ot e s1 s2
   | SwitchCtx it m bs def => Switch it e m bs def
+  | CallLCtx eκs etys args o ret_ot destination normal unwind =>
+      Call e eκs etys args o ret_ot destination normal unwind
+  | CallRCtx f eκs etys vl el o ret_ot destination normal unwind =>
+      Call (Val f) eκs etys ((Val <$> vl) ++ e :: el) o ret_ot destination normal unwind
   | AssertCtx ot s => Assert ot e s
   | FreeLCtx e_align e' s => Free e e_align e' s
   | FreeMCtx v_size e' s => Free (Val v_size) e e' s
@@ -559,6 +563,9 @@ Definition find_stmt_fill (s : stmt) : option (stmt_ectx * expr) :=
   | ExprS e s => if e is (Val v) then None else Some (ExprSCtx s, e)
   | IfS ot e s1 s2 => if e is (Val v) then None else Some (IfSCtx ot s1 s2, e)
   | Switch it e m bs def => if e is (Val v) then None else Some (SwitchCtx it m bs def, e)
+  | Call f eκs etys args o ret_ot destination normal unwind =>
+      if f is Val _ then None
+      else Some (CallLCtx eκs etys args o ret_ot destination normal unwind, f)
   | Assign o ot e1 e2 s => if e2 is (Val v) then if e1 is (Val v) then None else Some (AssignLCtx o ot v s, e1) else Some (AssignRCtx o ot e1 s, e2)
   | AssignSE o ot e1 e2 s => if e2 is (Val v) then if e1 is (Val v) then None else Some (AssignSELCtx o ot v s, e1) else Some (AssignSERCtx o ot e1 s, e2)
   | Assert ot e s => if e is (Val v) then None else Some (AssertCtx ot s, e)
@@ -588,12 +595,17 @@ Proof.
   eexists ([StmtCtx (lang.ReturnCtx) π rf])|
   eexists ([StmtCtx (lang.IfSCtx _ _ _) π rf])|
   eexists ([StmtCtx (lang.SwitchCtx _ _ _ _) π rf])|
+  eexists ([StmtCtx (lang.CallLCtx _ _ _ _ _ _) π rf])|
+  eexists ([StmtCtx (lang.CallRCtx _ _ _ _ _ _ _ _) π rf])|
   eexists ([StmtCtx (lang.ExprSCtx _) π rf])|
   eexists ([StmtCtx (lang.IfSCtx _ _ _) π rf])|
   eexists ([StmtCtx (lang.FreeLCtx _ _ _) π rf])|
   eexists ([StmtCtx (lang.FreeMCtx _ _ _) π rf])|
   eexists ([StmtCtx (lang.FreeRCtx _ _ _) π rf])|
   ..]) => //=.
+  intros. rewrite /notation.CallE /to_rtstmt /=.
+  rewrite fmap_app fmap_cons /= to_expr_val_list fmap_app fmap_cons /=
+    -!list_fmap_compose /= //.
 Qed.
 
 (*** Substitution *)
