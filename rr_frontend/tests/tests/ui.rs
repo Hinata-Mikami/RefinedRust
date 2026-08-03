@@ -5,11 +5,14 @@ use ui_test::color_eyre;
 use ui_test::spanned::Spanned;
 
 fn rustc_path() -> PathBuf {
-    let mut path = env::current_exe().unwrap();
-    path.pop();
-    path.pop();
+    let target_dir = env::var_os("CARGO_TARGET_DIR").map_or_else(
+        || PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join("target"),
+        PathBuf::from,
+    );
 
-    path.join("refinedrust-rustc")
+    target_dir
+        .join(if cfg!(debug_assertions) { "debug" } else { "release" })
+        .join("refinedrust-rustc")
 }
 
 fn main() -> color_eyre::Result<()> {
