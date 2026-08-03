@@ -3242,13 +3242,13 @@ Section subsume.
                 | None => typed_stmt E L f normal fn R ϝ
                 end))
               es L' [] []))))
-    ⊢ typed_stmt E L f (CallE ef eκs etys es destination normal unwind) fn R ϝ.
+    ⊢ typed_stmt E L f (CallS ef eκs etys es destination normal unwind) fn R ϝ.
   Proof.
     rewrite /compute_map_lookups_nofail_goal.
     iIntros "(%M & Hnamed & %eκs' & _ & He)".
     iPoseProof (interpret_rust_types_elim with "He") as "(%tys & He)".
     iIntros (Φ) "#CTX #HE HL Hf Hcont".
-    rewrite /CallE.
+    rewrite /CallS.
     iApply wps_call_bind. iApply ("He" with "Hnamed CTX HE HL Hf"). iIntros (L' vf mf rtf tyf rf) "HL Hf Hvf HT".
     iAssert ([∗ list] v;rty∈[];([] : list $ @sigT RT (λ rt, (type rt * rt)%type)), let '(existT rt (ty, r)) := rty in v ◁ᵥ{f.1, MetaNone} r @ ty)%I as "-#Htys". { done. }
     move: {2 3 5} ([] : list val) => vl.

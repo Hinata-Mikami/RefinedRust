@@ -247,11 +247,11 @@ Lemma annot_stmt_S_r {A} n (a : A) s:
 Proof. by rewrite /AnnotStmt Nat.iter_succ_r. Qed.
 
 (** Call notation including lifetime instantiation *)
-Definition CallE (ef : expr) (eκs : list string) (etys : list rust_type) (es : list expr)
+Definition CallS (ef : expr) (eκs : list string) (etys : list rust_type) (es : list expr)
     (destination : option (order * op_type * expr)) (normal unwind : stmt) : stmt :=
   Call ef es destination normal unwind.
-Arguments CallE : simpl  never.
-Global Typeclasses Opaque CallE.
+Arguments CallS : simpl  never.
+Global Typeclasses Opaque CallS.
 
 (** ** Structs *)
 Definition StructInit `{!LayoutAlg} (sls : struct_layout_spec) (fs : list (string * expr)) : expr :=

@@ -625,7 +625,7 @@ pub enum Stmt {
     },
 
     #[display(
-        "CallE {} [{}] [{}] [@{{expr}} {}] {}\n({})\n({})",
+        "CallS {} [{}] [{}] [@{{expr}} {}] {}\n({})\n({})",
         &f,
         fmt_list!(lfts, "; ", "\"{}\""),
         fmt_list!(tys, "; ", "{}"),

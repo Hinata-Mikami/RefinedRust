@@ -437,7 +437,7 @@ Fixpoint to_stmt `{LayoutAlg} (s : stmt) : lang.stmt :=
   | IfS ot e s1 s2 => (if{ot}: to_expr e then to_stmt s1 else to_stmt s2)%E
   | Switch it e m bs def => lang.Switch it (to_expr e) m (to_stmt <$> bs) (to_stmt def)
   | Call f eκs etys args destination normal unwind =>
-      notation.CallE (to_expr f) eκs etys (to_expr <$> args)
+      notation.CallS (to_expr f) eκs etys (to_expr <$> args)
         (to_call_destination destination) (to_stmt normal) (to_stmt unwind)
   | Assign o ot e1 e2 s => lang.Assign o ot (to_expr e1) (to_expr e2) (to_stmt s)
   | AssignSE o ot e1 e2 s => notation.AssignSE o ot (to_expr e1) (to_expr e2) (to_stmt s)
@@ -490,7 +490,7 @@ Ltac of_stmt s :=
     let bs := of_stmt bs in
     let def := of_stmt def in
     constr:(Switch it e m bs def)
-  | notation.CallE ?f ?eκs ?etys ?args ?destination ?normal ?unwind =>
+  | notation.CallS ?f ?eκs ?etys ?args ?destination ?normal ?unwind =>
     let f := of_expr f in
     let args := of_expr args in
     let destination :=
@@ -616,7 +616,7 @@ Proof.
   eexists ([StmtCtx (lang.FreeMCtx _ _ _) π rf])|
   eexists ([StmtCtx (lang.FreeRCtx _ _ _) π rf])|
   ..]) => //=.
-  intros. rewrite /notation.CallE /to_rtstmt /=.
+  intros. rewrite /notation.CallS /to_rtstmt /=.
   rewrite fmap_app fmap_cons /= to_expr_val_list fmap_app fmap_cons /=
     -!list_fmap_compose /= //.
 Qed.
