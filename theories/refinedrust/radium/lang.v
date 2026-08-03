@@ -720,7 +720,7 @@ Inductive runtime_step : runtime_expr → state → list Empty_set → runtime_e
     runtime_step (to_rtstmt π rf s) σ κs e' σ' efs
 | CallFrameReturnStep π caller o ret_ot destination normal unwind v σ :
     runtime_step (CallFrame π caller o ret_ot destination normal unwind (RTVal v)) σ []
-      (to_rtstmt π caller (Assign o ret_ot destination (Val v) normal)) σ []
+      (to_rtstmt π caller (Assign o ret_ot (SkipE destination) (Val v) normal)) σ []
 | AllocFailedStep σ :
     (* Alloc failure is nb, not ub so we go into an infinite loop*)
     runtime_step AllocFailed σ [] AllocFailed σ [].

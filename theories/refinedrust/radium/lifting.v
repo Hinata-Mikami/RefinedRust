@@ -1883,7 +1883,7 @@ Lemma wps_call π i (sta : list syn_type) vf vl f fn Q Ψ o ret_ot destination n
         ([∗ list] x ∈ locals,
           ∃ ly l st, ⌜syn_type_has_layout st ly⌝ ∗ x is_live{(π, S i), st} l ∗ l ↦|ly|) ∗
         (|={⊤}⧗=> current_frame π i -∗
-          WPs{π} Assign o ret_ot destination (Val v) normal {{ Q, Ψ }}))
+          WPs{π} AssignSE o ret_ot destination (Val v) normal {{ Q, Ψ }}))
     ) -∗
     WPs{π} (Call (Val vf) (Val <$> vl) o ret_ot destination normal unwind) {{ Q, Ψ }}.
 Proof.

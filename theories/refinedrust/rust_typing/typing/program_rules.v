@@ -3225,7 +3225,7 @@ Section subsume.
       eauto.
   Qed.
 
-  Lemma type_call E L f T ef eκs etys es :
+  Lemma type_call E L f ef eκs etys es o ret_ot destination normal unwind fn R ϝ :
     (∃ M, named_lfts M ∗
     li_tactic (compute_map_lookups_nofail_goal M eκs) (λ eκs',
     interpret_rust_types M etys (λ atys,
@@ -3234,30 +3234,31 @@ Section subsume.
         foldr (λ e T L'' vl tys, typed_val_expr E L'' f e (λ L''' v m rt ty r,
           ⌜m = MetaNone⌝ ∗
           T L''' (vl ++ [v]) (tys ++ [existT rt (ty, r)])))
-            (λ L'' vl tys, typed_call E L'' f eκs' atys vf (vf ◁ᵥ{f.1, m} rf @ tyf) vl tys (λ L v rt ty r,
-              v ◁ᵥ{f.1, MetaNone} r @ ty ∗ T L v MetaNone _ ty r))
+            (λ L'' vl tys, typed_call E L'' f eκs' atys vf (vf ◁ᵥ{f.1, m} rf @ tyf) vl tys
+              o ret_ot destination normal unwind (λ L v rt ty r,
+                typed_stmt E L f (AssignSE o ret_ot destination (Val v) normal) fn R ϝ))
               es L' [] []))))
-    ⊢ typed_val_expr E L f (CallE ef eκs etys es) T.
+    ⊢ typed_stmt E L f (CallE ef eκs etys es o ret_ot destination normal unwind) fn R ϝ.
   Proof.
     rewrite /compute_map_lookups_nofail_goal.
     iIntros "(%M & Hnamed & %eκs' & _ & He)".
     iPoseProof (interpret_rust_types_elim with "He") as "(%tys & He)".
-    iIntros (Φ) "#CTX #HE HL Hf HΦ".
+    iIntros (Φ) "#CTX #HE HL Hf Hcont".
     rewrite /CallE.
-    iApply wp_call_bind. iApply ("He" with "Hnamed CTX HE HL Hf"). iIntros (L' vf mf rtf tyf rf) "HL Hf Hvf HT".
+    iApply wps_call_bind. iApply ("He" with "Hnamed CTX HE HL Hf"). iIntros (L' vf mf rtf tyf rf) "HL Hf Hvf HT".
     iAssert ([∗ list] v;rty∈[];([] : list $ @sigT RT (λ rt, (type rt * rt)%type)), let '(existT rt (ty, r)) := rty in v ◁ᵥ{f.1, MetaNone} r @ ty)%I as "-#Htys". { done. }
     move: {2 3 5} ([] : list val) => vl.
     generalize (@nil (@sigT RT (fun rt : RT => prod (@type Σ _ rt) rt))) at 2 3 as tys'; intros tys'.
     iInduction es as [|e es] "IH" forall (L' vl tys') => /=. 2: {
       iApply ("HT" with "CTX HE HL Hf"). iIntros (L'' v m rt ty r) "HL Hf Hv (-> & Hnext)".
-      iApply ("IH" with "HΦ HL Hf Hvf Hnext").
+      iApply ("IH" with "Hcont HL Hf Hvf Hnext").
       iFrame. by iApply big_sepL2_nil.
     }
     unfold typed_call.
     iApply ("HT" with "Hvf Htys CTX HE HL Hf [-]").
     iIntros (?????) "HL Hf".
-    iIntros "(Hv & HT)".
-    iApply ("HΦ" with "HL Hf Hv HT").
+    iIntros "HT".
+    iApply ("HT" with "CTX HE HL Hf Hcont").
   Qed.
 
   Lemma type_bin_op E L f o e1 e2 ot1 ot2 T :

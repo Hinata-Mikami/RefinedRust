@@ -57,7 +57,7 @@ Ltac rep_check_backtrack_point_hook ::=
       lazymatch P with
       | typed_stmt _ _ _ _ _ _ _ => idtac
       | typed_val_expr _ _ _ _ _ => idtac
-      | typed_call _ _ _ _ _ _ _ _ _ _  => idtac
+      | typed_call _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ => idtac
       (* TODO maybe also typed_assert etc *)
       end
   end.
@@ -106,8 +106,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedCheckBinOp E L f v1 ty1 v2 ty2 o ot1 ot2) T))
   | typed_check_un_op ?E ?L ?f ?v ?ty ?o ?ot ?T =>
       cont uconstr:(((_ : TypedCheckUnOp E L f v ty o ot) T))
-  | typed_call ?E ?L ?f ?eκs ?etys ?v ?P ?vl ?tys ?T =>
-      cont uconstr:(((_ : TypedCall E L f eκs etys v P vl tys) T))
+  | typed_call ?E ?L ?f ?eκs ?etys ?v ?P ?vl ?tys ?o ?ret_ot ?destination ?normal ?unwind ?T =>
+      cont uconstr:(((_ : TypedCall E L f eκs etys v P vl tys o ret_ot destination normal unwind) T))
   | typed_place ?E ?L ?f ?l ?lt ?r ?bmin0 ?b ?P ?T =>
       cont uconstr:(((_ : TypedPlace E L f l lt r bmin0 b P) T))
   | typed_if ?E ?L ?π ?v ?P ?T1 ?T2 =>
@@ -462,6 +462,7 @@ Ltac liRStmt :=
     let s' := W.of_stmt s in
     lazymatch s' with
     | W.AssignSE _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_assign E L f _ _ _ _ fn R _ ϝ) _)
+    | W.Call _ _ _ _ _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_call E L f _ _ _ _ _ _ _ _ _ fn R ϝ) _)
     | W.Return _ => notypeclasses refine (tac_fast_apply (type_return E L f _ fn R ϝ) _)
     | W.IfS _ _ _ _ => notypeclasses refine (tac_fast_apply (type_if E L f _ _ _ fn R ϝ) _)
     | W.Switch _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_switch E L f _ _ _ _ _ fn R ϝ) _)
@@ -509,7 +510,6 @@ Ltac liRExpr :=
     | W.UnOp _ _ _ => notypeclasses refine (tac_fast_apply (type_un_op E L f _ _ _ T) _)
     | W.CheckBinOp _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_check_bin_op E L f _ _ _ _ _ T) _)
     | W.CheckUnOp _ _ _ => notypeclasses refine (tac_fast_apply (type_check_un_op E L f _ _ _ T) _)
-    | W.Call _ _ _ _ => notypeclasses refine (tac_fast_apply (type_call E L f T _ _ _ _) _)
     | W.AnnotExpr _ ?a _ => notypeclasses refine (tac_fast_apply (type_annot_expr E L f _ a _ T) _)
     | W.StructInit ?sls ?init => notypeclasses refine (tac_fast_apply (type_struct_init E L f sls _ T) _)
     | W.EnumInit ?els ?variant ?rsty ?init => notypeclasses refine (tac_fast_apply (type_enum_init E L f els variant rsty _ T) _)

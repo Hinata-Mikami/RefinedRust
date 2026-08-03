@@ -643,22 +643,23 @@ Section judgments.
     typed_check_un_op_proof T : iProp_to_Prop (typed_check_un_op E L f v P o ot T).
 
 
-  (** Typed call expressions, assuming a list of argument values with given types and refinements.
+  (** Typed call statements, assuming a list of argument values with given types and refinements.
     [P] may state additional preconditions on the function. *)
   Definition typed_call_cont_t := llctx → val → ∀ rt : RT, type rt → rt → iProp Σ.
-  Definition typed_call E L (f : frame_path) (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt : RT, type rt * rt)%type)) (T : typed_call_cont_t) : iProp Σ :=
+  Definition typed_call E L (f : frame_path) (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt : RT, type rt * rt)%type)) o ret_ot destination normal unwind (T : typed_call_cont_t) : iProp Σ :=
     (P -∗
      ([∗ list] v;ty∈vl;tys, let '(existT rt (ty, r)) := ty in v ◁ᵥ{f.1, MetaNone} r @ ty) -∗
-     ∀ Φ,
+     ∀ Q Ψ,
       rrust_ctx -∗
       elctx_interp E -∗
       llctx_interp L -∗
       current_frame f.1 f.2 -∗
       (∀ (L' : llctx) (v : val) (rt : RT) (ty : type rt) r,
-        llctx_interp L' -∗ current_frame f.1 f.2 -∗ T L' v rt ty r -∗ Φ v) -∗
-      WPe{f.1} (Call v (Val <$> vl)) {{ λ v, Φ v }})%I.
-  Class TypedCall (E : elctx) (L : llctx) (f : frame_path) (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt, type rt * rt)%type)) : Type :=
-    typed_call_proof T : iProp_to_Prop (typed_call E L f eκs etys v P vl tys T).
+        llctx_interp L' -∗ current_frame f.1 f.2 -∗ T L' v rt ty r -∗
+        WPs{f.1} (AssignSE o ret_ot destination (Val v) normal) {{ Q, Ψ }}) -∗
+       WPs{f.1} (Call (Val v) (Val <$> vl) o ret_ot destination normal unwind) {{ Q, Ψ }})%I.
+  Class TypedCall (E : elctx) (L : llctx) (f : frame_path) (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt, type rt * rt)%type)) o ret_ot destination normal unwind : Type :=
+    typed_call_proof T : iProp_to_Prop (typed_call E L f eκs etys v P vl tys o ret_ot destination normal unwind T).
 
   Definition typed_if (E : elctx) (L : llctx) (π : thread_id) (v : val) (P : iProp Σ) (T1 T2 : llctx → iProp Σ) : iProp Σ :=
     (∀ F,
@@ -2425,7 +2426,7 @@ Global Hint Mode CastLtypeToType + + + + + + : typeclass_instances.
 Global Hint Mode TypedPlace + + + + + + + + + + + + : typeclass_instances.
 Global Hint Mode ProvePlaceCond + + + + + + + + + :  typeclass_instances.
 
-Global Hint Mode TypedCall + + + + + + + + + + + : typeclass_instances.
+Global Hint Mode TypedCall + + + + + + + + + + + + + + + + : typeclass_instances.
 Global Hint Mode TypedIf + + + + + + + : typeclass_instances.
 Global Hint Mode TypedAnnotExpr + + + + + + + + + + : typeclass_instances.
 
@@ -3899,7 +3900,8 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | typed_check_bin_op ?E ?L ?f ?v1 ?P1 ?v2 ?P2 ?o ?ot1 ?ot2 => constr:(TypedCheckBinOp E L f v1 P1 v2 P2 o ot1 ot2)
   | typed_check_un_op ?E ?L ?f ?v ?P ?o ?ot => constr:(TypedCheckUnOp E L f v P o ot)
   | typed_switch ?E ?L ?f ?v ?ty ?r ?it => constr:(TypedSwitch E L f v ty r it)
-  | typed_call ?E ?L ?f ?κs ?etys ?v ?P ?vs ?tys => constr:(TypedCall E L f κs etys v P vs tys)
+  | typed_call ?E ?L ?f ?κs ?etys ?v ?P ?vs ?tys ?o ?ret_ot ?destination ?normal ?unwind =>
+      constr:(TypedCall E L f κs etys v P vs tys o ret_ot destination normal unwind)
   | typed_place ?E ?L ?f ?l ?lto ?ro ?b1 ?b2 ?K => constr:(TypedPlace E L f l lto ro b1 b2 K)
   | typed_read_end ?π ?E ?L ?l ?lt ?r ?b1 ?b2 ?ot ?m => constr:(TypedReadEnd π E L l lt r b1 b2 ot m)
   | typed_write_end ?π ?E ?L ?ot ?v ?ty1 ?r1 ?b1 ?b2 ?l ?lt2 ?r2 => constr:(TypedWriteEnd π E L ot v ty1 r1 b1 b2 l lt2 r2)

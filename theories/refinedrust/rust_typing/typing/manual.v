@@ -67,18 +67,18 @@ Section updateable.
     simpl. eauto.
   Qed.
 
-  Global Program Instance updateable_typed_call E L f κs etys v (P : iProp Σ) vl tys T :
-    Updateable (typed_call E L f κs etys v P vl tys T) := {|
+  Global Program Instance updateable_typed_call E L f κs etys v (P : iProp Σ) vl tys o ret_ot destination normal unwind T :
+    Updateable (typed_call E L f κs etys v P vl tys o ret_ot destination normal unwind T) := {|
       updateable_E := E;
       updateable_L := L;
-      updateable_core E L := typed_call E L f κs etys v P vl tys T;
+      updateable_core E L := typed_call E L f κs etys v P vl tys o ret_ot destination normal unwind T;
   |}.
   Next Obligation.
-    iIntros (? ? ? ? ? ? ? ? ? ? ? ?).
+    iIntros (? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?).
     rewrite /typed_call.
     iIntros "HT HP Ha".
-    iIntros (?) "#CTX #HE HL Hf Hc".
-    iApply fupd_wpe. iMod ("HT" with "CTX HE HL") as "(%L2 & HL & HT)".
+    iIntros (Q Ψ) "#CTX #HE HL Hf Hc".
+    iApply fupd_wps. iMod ("HT" with "CTX HE HL") as "(%L2 & HL & HT)".
     iApply ("HT" with "HP Ha CTX HE HL Hf Hc").
   Qed.
   Next Obligation.
@@ -127,13 +127,14 @@ Section updateable.
     iIntros "HT" (?) "CTX HE HL Hf Hc".
     iApply fupd_wpe. iMod ("HT") as "HT". iApply ("HT" with "CTX HE HL Hf Hc").
   Qed.
-  Lemma fupd_typed_call `{!typeGS Σ} E L f κs etys v (P : iProp Σ) vl tys T :
-    (|={⊤}=> typed_call E L f κs etys v P vl tys T) -∗ typed_call E L f κs etys v P vl tys T.
+  Lemma fupd_typed_call `{!typeGS Σ} E L f κs etys v (P : iProp Σ) vl tys o ret_ot destination normal unwind T :
+    (|={⊤}=> typed_call E L f κs etys v P vl tys o ret_ot destination normal unwind T) -∗
+    typed_call E L f κs etys v P vl tys o ret_ot destination normal unwind T.
   Proof.
     rewrite /typed_call.
     iIntros "HT HP Ha".
-    iIntros (?) "CTX HE HL Hf Hc".
-    iApply fupd_wpe. iMod ("HT") as "HT". iApply ("HT" with "HP Ha CTX HE HL Hf Hc").
+    iIntros (Q Ψ) "CTX HE HL Hf Hc".
+    iApply fupd_wps. iMod ("HT") as "HT". iApply ("HT" with "HP Ha CTX HE HL Hf Hc").
   Qed.
 
   Lemma fupd_typed_stmt `{!typeGS Σ} E L f s rf R ϝ :
