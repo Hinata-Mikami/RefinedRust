@@ -35,20 +35,8 @@ Proof.
 
   rep <-! liRStep; liShow.
 
-  (* ptr を返す move "__0" まで進める *)
   rep liRStep; liShow.
 
-  (*
-    更新後の vals は、
-
-      空の場合     : [v]
-      非空の場合   : old_v :: vals_tail ++ [v]
-
-    となる。
-
-    Heap invariant が vals を先頭と tail に分解する際の
-    existential variable を具体化する。
-  *)
   liInst Hevar_x
     (match h with
     | [] => v
@@ -69,8 +57,9 @@ Proof.
 
   liShow.
 
-  destruct h as [| old_v vals_tail].
 
+  destruct h as [| old_v vals_tail].
+  (* Heap が 空の場合 *)
   - destruct h0 as [| old_l locs_tail];
       simpl in *; try lia.
 
@@ -84,6 +73,15 @@ Proof.
 
     rep liRStep; liShow.
 
+  (* Heap が 非空の場合 *)
+  (* big_sepL は"先頭の資源*残りの資源"のように定義されているので
+     Hfirst :: Htail になるように分解し 
+     - Hfirst は変更されないのでそのまま，
+     - Htail は新規ノードの Node_ty と freeable_nz を証明したうえで
+       Htail と新規ノードを big_sepL_app で結合し Htail_new を作る
+    -> Hfirst ∗ Htail_new により invariant を再構成
+       合わせて長さやすべての next が NULL か locs に含まれることを示す
+  *)
   - destruct h0 as [| old_l locs_tail];
       simpl in *; try lia.
 
