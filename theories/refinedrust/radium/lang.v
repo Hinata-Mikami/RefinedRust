@@ -41,6 +41,7 @@ Inductive expr :=
 | Deref (o : order) (ot : op_type) (e : expr)
 | CAS (ot : op_type) (e1 e2 e3 : expr)
 | Concat (es : list expr)
+| RepeatE (ly : layout) (e : expr) (n : nat)
 | IfE (ot : op_type) (e1 e2 e3 : expr)
 (* [e_align] is the 2-logarithm of the desired alignment *)
 | Alloc (e_size : expr) (e_align : expr)
@@ -158,6 +159,7 @@ with rtexpr :=
 | RTDeref (o : order) (ot : op_type) (e : runtime_expr)
 | RTCAS (ot : op_type) (e1 e2 e3 : runtime_expr)
 | RTConcat (es : list runtime_expr)
+| RTRepeatE (ly : layout) (e : runtime_expr) (n : nat)
 | RTAlloc (e_size : runtime_expr) (e_align : runtime_expr)
 | RTIfE (ot : op_type) (e1 e2 e3 : runtime_expr)
 | RTSkipE (e : runtime_expr)
@@ -197,6 +199,7 @@ Fixpoint to_rtexpr (π : thread_id) (e : expr) : runtime_expr :=
   | Deref o ot e => Expr π $ RTDeref o ot (to_rtexpr π e)
   | CAS ot e1 e2 e3 => Expr π $ RTCAS ot (to_rtexpr π e1) (to_rtexpr π e2) (to_rtexpr π e3)
   | Concat es => Expr π $ RTConcat (to_rtexpr π <$> es)
+  | RepeatE ly e n => Expr π $ RTRepeatE ly (to_rtexpr π e) n
   | IfE ot e1 e2 e3 => Expr π $ RTIfE ot (to_rtexpr π e1) (to_rtexpr π e2) (to_rtexpr π e3)
   | Alloc e_size e_align => Expr π $ RTAlloc (to_rtexpr π e_size) (to_rtexpr π e_align)
   | SkipE e => Expr π $ RTSkipE (to_rtexpr π e)
@@ -585,6 +588,10 @@ comparing pointers? (see lambda rust) *)
               (RTVal (val_of_bool true)) (heap_fmap (heap_upd l1 v3 (λ _, RSt 0%nat)) σ) []
 | ConcatS vs π σ :
     expr_step (Concat (Val <$> vs)) π σ [] (RTVal (mjoin vs)) σ []
+| RepeatES ly v n π σ :
+    layout_wf ly →
+    v `has_layout_val` ly →
+    expr_step (RepeatE ly (Val v) n) π σ [] (RTVal (mjoin (replicate n v))) σ []
 (* for ptr::with_addr *)
 | CopyAllocIdS π σ v1 v2 a it l v' :
     val_to_Z v1 it = Some a →
@@ -966,6 +973,7 @@ Inductive expr_ectx :=
 | CASMCtx (ot : op_type) (v1 : val) (e3 : runtime_expr)
 | CASRCtx (ot : op_type) (v1 v2 : val)
 | ConcatCtx (vs : list val) (es : list runtime_expr)
+| RepeatECtx (ly : layout) (n : nat)
 | IfECtx (ot : op_type) (e2 e3 : runtime_expr)
 | AllocLCtx (e_align : runtime_expr)
 | AllocRCtx (v_size : val)
@@ -987,6 +995,7 @@ Definition expr_fill_item (Ki : expr_ectx) (e : runtime_expr) : rtexpr :=
   | CASMCtx ot v1 e3 => RTCAS ot (RTVal v1) e e3
   | CASRCtx ot v1 v2 => RTCAS ot (RTVal v1) (RTVal v2) e
   | ConcatCtx vs es => RTConcat (((RTVal <$> vs)) ++ e :: es)
+  | RepeatECtx ly n => RTRepeatE ly e n
   | IfECtx ot e2 e3 => RTIfE ot e e2 e3
   | AllocLCtx e_align => RTAlloc e e_align
   | AllocRCtx v_size => RTAlloc (RTVal v_size) e

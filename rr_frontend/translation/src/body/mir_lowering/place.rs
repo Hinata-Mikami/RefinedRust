@@ -5,7 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use log::info;
-use radium::code;
+use radium::{code, lang};
 use rr_rustc_interface::abi;
 use rr_rustc_interface::middle::{mir, ty};
 
@@ -72,19 +72,66 @@ pub(crate) trait MirPlaceTranslation<'def, 'tcx: 'def>:
                         sls: struct_sls.to_string(),
                     };
                 },
-                mir::ProjectionElem::Index(_v) => {
-                    //TODO
-                    return Err(TranslationError::ErrorReported(
-                        self.tcx()
-                            .dcx()
-                            .err(Message::UnsupportedFeature("places: implement index access".to_owned())),
-                    ));
+                mir::ProjectionElem::Index(v) => {
+                    let ty::TyKind::Array(element_ty, _) = cur_ty.ty.kind() else {
+                        return Err(TranslationError::ErrorReported(self.tcx().dcx().err(
+                            Message::UnsupportedFeature(format!(
+                                "RefinedRust only supports indexing fixed arrays, got {:?}",
+                                cur_ty.ty
+                            )),
+                        )));
+                    };
+
+                    let element_layout = self.translate_type_to_syn_type(*element_ty)?.into();
+                    let index_ty = self.shape_type_of_local(*v)?;
+                    let index_ot: lang::OpType = self.translate_type_to_syn_type(index_ty)?.into();
+                    let index_name = self.variable_map().get(v).ok_or_else(|| {
+                        TranslationError::ErrorReported(
+                            self.tcx().dcx().err(Message::UnknownVar(format!("{v:?}"))),
+                        )
+                    })?;
+                    let index = code::Expr::Copy {
+                        ot: index_ot.clone(),
+                        e: Box::new(code::Expr::Var(index_name.to_owned())),
+                    };
+
+                    acc_expr = code::Expr::BinOp {
+                        o: code::Binop::PtrOffset(element_layout),
+                        ot1: lang::OpType::Ptr,
+                        ot2: index_ot,
+                        e1: Box::new(acc_expr),
+                        e2: Box::new(index),
+                    };
                 },
-                mir::ProjectionElem::ConstantIndex { .. } => {
-                    //TODO
-                    return Err(TranslationError::ErrorReported(self.tcx().dcx().err(
-                        Message::UnsupportedFeature("places: implement const index access".to_owned()),
-                    )));
+                mir::ProjectionElem::ConstantIndex {
+                    offset, from_end, ..
+                } => {
+                    let ty::TyKind::Array(element_ty, len) = cur_ty.ty.kind() else {
+                        return Err(TranslationError::ErrorReported(self.tcx().dcx().err(
+                            Message::UnsupportedFeature(format!(
+                                "RefinedRust only supports constant indexing of fixed arrays, got {:?}",
+                                cur_ty.ty
+                            )),
+                        )));
+                    };
+                    let Some(len) = len.try_to_target_usize(self.tcx()) else {
+                        return Err(TranslationError::ErrorReported(self.tcx().dcx().err(
+                            Message::UnsupportedFeature(format!(
+                                "RefinedRust cannot evaluate the length of indexed array {:?}",
+                                cur_ty.ty
+                            )),
+                        )));
+                    };
+                    let offset = if *from_end { len - *offset } else { *offset };
+
+                    let element_layout = self.translate_type_to_syn_type(*element_ty)?.into();
+                    acc_expr = code::Expr::BinOp {
+                        o: code::Binop::PtrOffset(element_layout),
+                        ot1: lang::OpType::Ptr,
+                        ot2: lang::OpType::Int(lang::IntType::USize),
+                        e1: Box::new(acc_expr),
+                        e2: Box::new(code::Expr::Literal(code::Literal::USize(offset))),
+                    };
                 },
                 mir::ProjectionElem::Subslice { .. } => {
                     return Err(TranslationError::ErrorReported(

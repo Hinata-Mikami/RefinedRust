@@ -2,6 +2,7 @@ From refinedrust Require Export type.
 From refinedrust.primitive Require Import alias_ptr existentials.
 From refinedrust Require Import int programs program_rules functions uninit shr_ref mut_ref struct unit automation.
 From refinedrust Require Import enum.
+From refinedrust Require Import array.array.
 From refinedrust Require Import options.
 
 (** * Test cases for sidecondition solvers declared in [automation/solvers.v] *)
@@ -696,7 +697,35 @@ Section test.
 End test.
 
 (** ty_has_op_type *)
-(* TODO: we should have some regression tests here *)
+Section test.
+  Context `{!typeGS Σ}.
+
+  Lemma solve_ty_has_op_type_array_canonical_test :
+    ty_has_op_type (array_t 3 (int I32))
+      (use_op_alg' (ArraySynType (IntSynType I32) 3)).
+  Proof.
+    solve_ty_has_op_type; solve [fail].
+  Abort.
+
+  Lemma solve_ty_has_op_type_array_direct_test :
+    ty_has_op_type (array_t 3 (int I32)) (ArrayOp (IntOp I32) 3).
+  Proof.
+    solve_ty_has_op_type; solve [fail].
+  Abort.
+End test.
+
+(** Copyable *)
+Section test.
+  Context `{!typeGS Σ}.
+
+  Lemma copyable_array_test :
+    Copyable (array_t 3 (int I32)).
+  Proof. apply _. Abort.
+
+  Lemma copyable_empty_array_test :
+    Copyable (array_t 0 (int I32)).
+  Proof. apply _. Abort.
+End test.
 
 (** ty_allows_reads / ty_allows_writes *)
 Section test.

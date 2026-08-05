@@ -92,6 +92,8 @@ pub(crate) trait MirTranslationCtx<'def, 'tcx: 'def> {
 pub(crate) trait MirTypeTranslation<'def, 'tcx: 'def>: MirTranslationCtx<'def, 'tcx> {
     fn translate_type_to_syn_type(&self, ty: ty::Ty<'tcx>) -> Result<lang::SynType, TranslationError>;
 
+    fn translate_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError>;
+
     fn generate_structlike_use(
         &self,
         ty: ty::Ty<'tcx>,

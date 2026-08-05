@@ -161,6 +161,41 @@ Section array.
     by iApply array_own_val_extract_pointsto.
   Qed.
 
+  Lemma array_own_val_extract_pointsto_list π q ly ty rs vs l :
+    syn_type_has_layout (ty_syn_type ty MetaNone) ly →
+    length rs = length vs →
+    loc_in_bounds l 0 0 -∗
+    ([∗ list] i↦r;v ∈ rs;vs, array_own_el_loc π q v i ly ty r l) -∗
+    l ↦{q} mjoin vs ∗ ⌜mjoin vs `has_layout_val` (mk_array_layout ly (length rs))⌝ ∗
+      ⌜Forall (λ v, v `has_layout_val` ly) vs⌝ ∗
+      ([∗ list] r;v ∈ rs;vs, array_own_el_val π ty r v).
+  Proof.
+    iIntros (Hst Hlen) "#Hlb Hloc".
+    iAssert ([∗ list] i↦r;v ∈ rs;vs,
+      (l offset{ly}ₗ i) ↦{q} v ∗ array_own_el_val π ty r v)%I with "[Hloc]" as "Hloc".
+    { iApply (big_sepL2_wand with "Hloc"). iApply big_sepL2_intro; first done.
+      iModIntro. iIntros (i r v Hlook1 Hlook2) "(%r' & Hl & Hrfn & Hv)".
+      iFrame "Hl". iExists r'. iFrame. }
+    rewrite big_sepL2_sep. iDestruct "Hloc" as "(Hpts & Hvals)".
+    iPoseProof (big_sepL2_elim_l with "Hpts") as "Hpts".
+    iAssert (∀ v, ⌜v ∈ vs⌝ -∗ ⌜v `has_layout_val` ly⌝)%I with "[Hvals]" as "%Hvalsly".
+    { iIntros (v (i & Hlook)%list_elem_of_lookup_1).
+      have [r Hlookr] : is_Some (rs !! i).
+      { apply lookup_lt_is_Some_2. apply lookup_lt_Some in Hlook. lia. }
+      iPoseProof (big_sepL2_lookup _ _ _ i with "Hvals") as "(%r' & _ & Hv)"; [done.. |].
+      by iApply (ty_own_val_has_layout with "Hv"). }
+    iSplitL "Hpts".
+    { rewrite heap_pointsto_mjoin_uniform; last done.
+      iSplit; first iExact "Hlb". done. }
+    iSplitR.
+    { iPureIntro. rewrite /has_layout_val length_join.
+      rewrite (sum_list_fmap_same (ly_size ly)); first last.
+      { apply Forall_elem_of_iff. done. }
+      rewrite ly_size_mk_array_layout Hlen Nat.mul_comm. done. }
+    iSplitR "Hvals"; last done.
+    iPureIntro. apply Forall_elem_of_iff. done.
+  Qed.
+
   Definition array_t_own_val_def (len : nat) (ty : type rt) π r m v : iProp Σ :=
       ∃ ly,
         ⌜m = MetaNone⌝ ∗
@@ -182,6 +217,7 @@ Section array.
         ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
         ⌜length r = len⌝ ∗
         ⌜l `has_layout_loc` ly⌝ ∗
+        loc_in_bounds l 0 (ly_size (mk_array_layout ly len)) ∗
         [∗ list] i ↦ r' ∈ r, array_own_el_shr π κ i ly ty r' l.
   Definition array_t_shr_aux : seal (@array_t_shr_def).
   Proof. by eexists. Qed.
@@ -219,7 +255,7 @@ Section array.
     - iIntros (κ π r m v) "_". done.
     - unfold TCNoResolve. rewrite array_t_shr_unfold. apply _.
     - rewrite array_t_shr_unfold.
-      iIntros (κ π l m r) "(%ly & -> & %Hst & %Hsz & %Hlen & %Hly & Hv)".
+      iIntros (κ π l m r) "(%ly & -> & %Hst & %Hsz & %Hlen & %Hly & _ & Hv)".
       iExists (mk_array_layout ly len). iSplitR; first done.
       iPureIntro. by eapply syn_type_has_layout_array.
     -
@@ -296,10 +332,10 @@ Section array.
     iPoseProof (big_sepL2_sep_sepL_r with "Hb") as "(Hb & Htok)".
     iPoseProof ("Hcl_toks" with "Htok") as "$".
     iPoseProof (big_sepL2_const_sepL_l with "Hb") as "(_ & Hb)".
-    iExists _. do 5 iR. done.
+    iExists _. do 5 iR. iFrame "#". done.
     - iIntros (κ κ' π r m l) "#Hincl Hb".
     rewrite array_t_shr_unfold.
-    iDestruct "Hb" as "(%ly & -> & Hst & Hsz & Hlen & Hly & Hb)".
+    iDestruct "Hb" as "(%ly & -> & Hst & Hsz & Hlen & Hly & Hlb & Hb)".
     iExists ly. iFrame. iR.
     iApply (big_sepL_wand with "Hb"). iApply big_sepL_intro.
     iIntros "!>" (k x Hlook) "(% & ? & Hb)".
@@ -383,7 +419,192 @@ Section array.
     - apply _.
   Qed.
 
-  (* TODO copy *)
+  Local Instance array_t_copy_pers (ty : type rt) len `{!Copyable ty} m π v r :
+    Persistent (v ◁ᵥ{π, m} r @ array_t len ty).
+  Proof.
+    rewrite /ty_own_val /= array_t_own_val_unfold /array_t_own_val_def.
+    apply bi.exist_persistent => ly.
+    repeat (apply bi_sep_persistent_pure_l => ?).
+    apply big_sepL2_persistent_strong => _ i r' v' Hlook1 Hlook2.
+    rewrite /array_own_el_val.
+    apply bi.exist_persistent => r''.
+    apply bi.sep_persistent; apply _.
+  Qed.
+
+  Lemma array_t_copy_ind (ty : type rt) `{!Copyable ty} π ly rs qs i0 κ l E :
+    lftE ∪ ↑shrN ⊆ E →
+    syn_type_has_layout (ty_syn_type ty MetaNone) ly →
+    length rs = length qs →
+    rrust_ctx -∗
+    ([∗ list] i↦r;q ∈ rs;qs,
+      array_own_el_shr π κ (i0 + i) ly ty r l ∗ q.[κ]) -∗
+    |={E}=> ∃ qs' vs,
+      ⌜length qs' = length qs⌝ ∗
+      ⌜length vs = length qs⌝ ∗
+      ⌜Forall (λ v, v `has_layout_val` ly) vs⌝ ∗
+      (▷ [∗ list] i↦r;vq ∈ rs;zip vs qs',
+        array_own_el_loc π vq.2 vq.1 (i0 + i) ly ty r l) ∗
+      ([∗ list] i↦v;qq ∈ vs;zip qs qs',
+        (▷ (l offset{ly}ₗ ((i0 + i)%nat)) ↦{qq.2} v) ={E}=∗ qq.1.[κ]).
+  Proof.
+    iIntros (HE Hst Hlen) "#CTX Hshr".
+    iInduction rs as [|r rs] "IH" forall (qs i0 Hlen); destruct qs as [|q qs]; simpl in Hlen; try lia.
+    - iModIntro. iExists [], []. simpl. repeat iSplit; done.
+    - simpl. iDestruct "Hshr" as "((Hshr & Htok) & Htail)".
+      rewrite /array_own_el_shr.
+      iDestruct "Hshr" as "(%r' & #Hrfn & Hshr)".
+      iMod (copy_shr_acc with "CTX Hshr Htok") as
+        "(%ly' & >%Hst' & >%Hloc & %q' & %v & (Hl & #Hv) & Hcl)"; first done.
+      assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
+      iPoseProof (ty_own_val_has_layout with "Hv") as "#Hlyv"; first done.
+      iDestruct "Hlyv" as ">%Hlyv".
+      iPoseProof (place_rfn_interp_shared_owned with "Hrfn") as "#Hrfn'".
+      iMod ("IH" $! qs (S i0) with "[] [Htail]") as
+        "(%qs' & %vs & %Hqs' & %Hvs & %Hlys & Hlocs & Hcls)".
+      { iPureIntro. lia. }
+      { iApply (big_sepL2_wand with "Htail"). iApply big_sepL2_intro; first lia.
+        iModIntro. iIntros (i r0 q0 Hlook1 Hlook2) "Htail".
+        replace (i0 + S i)%nat with (S i0 + i)%nat by lia. done. }
+      iModIntro. iExists (q' :: qs'), (v :: vs). simpl.
+      iSplitR; first by iPureIntro; lia.
+      iSplitR; first by iPureIntro; lia.
+      iSplitR; first by iPureIntro; constructor.
+      iSplitL "Hl Hlocs".
+      { iNext. iSplitL "Hl".
+        - rewrite /array_own_el_loc. iExists r'. iFrame "Hl Hv Hrfn'".
+        - iApply (big_sepL2_wand with "Hlocs"). iApply big_sepL2_intro.
+          { rewrite length_zip. lia. }
+          iModIntro. iIntros (i r0 [v0 q0] Hlook1 Hlook2) "Hloc".
+          replace (i0 + S i)%nat with (S i0 + i)%nat by lia. done. }
+      iSplitL "Hcl".
+      { iIntros "Hl". iApply ("Hcl" with "Hl"). }
+      iApply (big_sepL2_wand with "Hcls"). iApply big_sepL2_intro.
+      { rewrite length_zip. lia. }
+      iModIntro. iIntros (i v0 [q0 q0'] Hlook1 Hlook2) "Hcl0".
+      replace (i0 + S i)%nat with (S i0 + i)%nat by lia. done.
+  Qed.
+
+  Lemma array_t_copy_acc (ty : type rt) `{!Copyable ty} π ly rs q κ l E :
+    lftE ∪ ↑shrN ⊆ E →
+    syn_type_has_layout (ty_syn_type ty MetaNone) ly →
+    rrust_ctx -∗
+    q.[κ] -∗
+    ([∗ list] i↦r ∈ rs, array_own_el_shr π κ i ly ty r l) -∗
+    |={E}=> ∃ q' vs,
+      ⌜length vs = length rs⌝ ∗
+      ⌜Forall (λ v, v `has_layout_val` ly) vs⌝ ∗
+      (▷ [∗ list] i↦r;v ∈ rs;vs, array_own_el_loc π q' v i ly ty r l) ∗
+      (([∗ list] i↦v ∈ vs, ▷ (l offset{ly}ₗ i) ↦{q'} v) ={E}=∗ q.[κ]).
+  Proof.
+    iIntros (HE Hst) "#CTX Htok Hshr".
+    iPoseProof (Fractional_split_big_sepL (λ q, q.[κ])%I (length rs) with "Htok")
+      as "(%qs & %Hqs & Htoks & Htoks_cl)".
+    iMod (array_t_copy_ind ty π ly rs qs 0 κ l E HE Hst (eq_sym Hqs)
+      with "CTX [Hshr Htoks]") as "(%qs' & %vs & %Hqs' & %Hvs & %Hlys & Hloc & Hcl)".
+    { iApply big_sepL2_sep. iSplitL "Hshr".
+      - iApply big_sepL_extend_r; last done. lia.
+      - iApply big_sepL_extend_l; last done. lia. }
+
+    set (q' := foldr Qp.min 1%Qp qs').
+    assert (∀ i q0, qs' !! i = Some q0 → (q' ≤ q0)%Qp) as Hmin.
+    { intros i q0 Hlook. induction qs' as [|q1 qs' IH] in i, Hlook, q' |-*; first done.
+      subst q'. destruct i as [|i]; simpl in *.
+      - injection Hlook as ->. apply Qp.le_min_l.
+      - etrans; first apply Qp.le_min_r. by eapply IH. }
+
+    iAssert ([∗ list] i↦r;vq ∈ rs;zip vs qs',
+        ▷ array_own_el_loc π q' vq.1 i ly ty r l ∗
+        (▷ (l offset{ly}ₗ i) ↦{q'} vq.1 -∗ ▷ (l offset{ly}ₗ i) ↦{vq.2} vq.1))%I
+      with "[Hloc]" as "Hloc".
+    { rewrite big_sepL2_later; first last. { rewrite length_zip. lia. }
+      iApply (big_sepL2_wand with "Hloc"). iApply big_sepL2_intro.
+      { rewrite length_zip. lia. }
+      iModIntro. iIntros (i r0 [v q0] Hlook1 Hlook2) "Hloc".
+      rewrite /array_own_el_loc.
+      iDestruct "Hloc" as "(%r' & Hl & Hrfn & Hv)".
+      iPoseProof (Fractional_fractional_le (λ q, (l offset{ly}ₗ i) ↦{q} v)%I q0 q'
+        with "Hl") as "(Hl & Hfrac)".
+      { eapply (Hmin i). apply lookup_zip in Hlook2. apply Hlook2. }
+      iFrame "Hl Hrfn Hv". iIntros "Hl". iNext. iApply ("Hfrac" with "Hl"). }
+
+    rewrite big_sepL2_sep. iDestruct "Hloc" as "(Hloc & Hfrac)".
+    iPoseProof (big_sepL2_elim_l with "Hfrac") as "Hfrac".
+    rewrite -big_sepL2_later; first last. { rewrite length_zip. lia. }
+    rewrite -(big_sepL2_fmap_r (λ x, x.1) (λ i r0 v, array_own_el_loc π q' v i ly ty r0 l)).
+    rewrite fst_zip; last lia.
+    iModIntro. iExists q', vs.
+    iSplitR; first by iPureIntro; lia.
+    iSplitR; first done. iFrame.
+
+    iIntros "Hpts".
+    iPoseProof (big_sepL2_length with "Hcl") as "%Hcllen".
+    rewrite length_zip in Hcllen.
+    iPoseProof (big_sepL2_to_zip with "Hcl") as "Hcl".
+    rewrite [zip qs qs']zip_flip zip_fmap_r zip_assoc_r -list_fmap_compose big_sepL_fmap.
+
+    iPoseProof (big_sepL_extend_r qs with "Hfrac") as "Hfrac".
+    { rewrite length_zip. lia. }
+    iPoseProof (big_sepL2_to_zip with "Hfrac") as "Hfrac".
+    iPoseProof (big_sepL_sep_2 with "Hcl Hfrac") as "Hcl".
+
+    iPoseProof (big_sepL_extend_r qs' with "Hpts") as "Hpts"; first lia.
+    iPoseProof (big_sepL2_to_zip with "Hpts") as "Hpts".
+    iPoseProof (big_sepL_extend_r qs with "Hpts") as "Hpts".
+    { rewrite length_zip. lia. }
+    iPoseProof (big_sepL2_to_zip with "Hpts") as "Hpts".
+    iPoseProof (big_sepL_sep_2 with "Hcl Hpts") as "Hcl".
+    rewrite zip_assoc_l big_sepL_fmap.
+
+    iAssert ([∗ list] i↦q0 ∈ qs, True ={E}=∗ q0.[κ])%I with "[Hcl]" as "Hcl".
+    { iApply big_sepL2_elim_l. iApply big_sepL2_from_zip; first last.
+      { iApply big_sepL2_elim_l. iApply big_sepL2_from_zip; first last.
+        { iApply (big_sepL_wand with "Hcl"). iApply big_sepL_intro.
+          iModIntro. iIntros (i [v [q0' q0]] Hlook) "((Hcl & Hfrac) & Hpt)"; simpl.
+          iIntros "_". iApply "Hcl". by iApply "Hfrac". }
+        rewrite length_zip. lia. }
+      lia. }
+    set (P i := (|={E}=> [∗ list] q0 ∈ drop i qs, q0.[κ])%I).
+    iPoseProof (big_sepL_eliminate_sequence_rev P with "Hcl [] []") as "Htoks".
+    { iModIntro. rewrite drop_all. done. }
+    { rewrite /P. iModIntro. iIntros (i q0 Hlook) ">Htoks Hcl".
+      erewrite (drop_S _ _ i); last done. simpl. iFrame. by iApply "Hcl". }
+    iMod "Htoks" as "Htoks". by iApply "Htoks_cl".
+  Qed.
+
+  Global Instance array_t_copy (ty : type rt) len `{!Copyable ty} :
+    Copyable (array_t len ty).
+  Proof.
+    split; first apply _.
+    iIntros (κ π E l r m q HE) "#CTX Hshr Htok".
+    rewrite /ty_shr /= array_t_shr_unfold /array_t_shr_def.
+    iDestruct "Hshr" as "(%ly & -> & %Hst & %Hsz & %Hlen & %Hloc & #Hlb & #Hshr)".
+    iMod (array_t_copy_acc ty π ly r q κ l E with "CTX Htok Hshr") as
+      "(%q' & %vs & %Hvs & %Hlys & Hlocs & Hcl)"; [done.. |].
+    iModIntro.
+    iExists (mk_array_layout ly len).
+    iSplitR. { iNext. iPureIntro. by eapply syn_type_has_layout_array. }
+    iSplitR. { iNext. iPureIntro. done. }
+    iExists q', (mjoin vs). iSplitL "Hlocs".
+    { iNext.
+      iAssert (loc_in_bounds l 0 0)%I with "[Hlb]" as "#Hlb0".
+      { iApply loc_in_bounds_shorten_suf; last done. lia. }
+      iPoseProof (array_own_val_extract_pointsto_list with "Hlb0 Hlocs") as
+        "(Hl & %Hlyv & _ & Hvals)"; [done.. |].
+      iFrame "Hl". rewrite /ty_own_val /= array_t_own_val_unfold /array_t_own_val_def.
+      iExists ly. iR. iR.
+      iSplitR. { iPureIntro. exact Hsz. }
+      iSplitR. { iPureIntro. exact Hlen. }
+      iSplitR. { iPureIntro. by rewrite -Hlen. }
+      rewrite reshape_join; first done.
+      apply Forall2_replicate_r.
+      { by rewrite Hvs Hlen. }
+      done. }
+    iIntros "Hpts". iApply "Hcl".
+    iApply big_sepL_later. iNext.
+    iDestruct (heap_pointsto_mjoin_uniform l vs (ly_size ly) q' with "Hpts") as "(_ & Hpts)".
+    { intros v Hv. rewrite Forall_forall in Hlys. exact (Hlys v Hv). }
+    rewrite /offset_loc. done.
+  Qed.
 
 
   Global Instance array_sized ty n : TySized (array_t n ty).
@@ -437,6 +658,40 @@ End ne.
 
 Section lemmas.
   Context `{!typeGS Σ}.
+
+  Lemma ty_has_op_type_array_canonical {rt} (ty : type rt) len element_ot ot :
+    use_op_alg (ArraySynType (ty_syn_type ty MetaNone) len) = Some (ArrayOp element_ot len) →
+    ot = ArrayOp element_ot len →
+    ty_has_op_type ty element_ot →
+    ty_has_op_type (array_t len ty) ot.
+  Proof.
+    intros Hop -> Hty.
+    apply use_op_alg_array_inv in Hop as (array_ly & element_ot' & Harray & _ & Hot).
+    injection Hot as <-.
+    rewrite ty_has_op_type_unfold /= /is_array_ot.
+    split_and!; try done.
+    apply syn_type_has_layout_array_inv in Harray as (element_ly & Hly & -> & Hsize).
+    pose proof (ty_op_type_stable _ _ Hty) as Htyly.
+    assert (element_ly = ot_layout element_ot) as -> by by eapply syn_type_has_layout_inj.
+    by rewrite ly_size_mk_array_layout Nat2Z.inj_mul in Hsize.
+  Qed.
+
+  Lemma ty_has_op_type_array_canonical' {rt} (ty : type rt) len ly :
+    syn_type_has_layout (ArraySynType (ty_syn_type ty MetaNone) len) ly →
+    ty_has_op_type ty (use_op_alg' (ty_syn_type ty MetaNone)) →
+    ty_has_op_type (array_t len ty)
+      (use_op_alg' (ArraySynType (ty_syn_type ty MetaNone) len)).
+  Proof.
+    intros Hly Hty.
+    apply syn_type_has_layout_op_alg in Hly as (ot & Hop & _).
+    apply use_op_alg_array_inv in Hop as (array_ly & element_ot & Harray & Helement & ->).
+    assert (use_op_alg (ArraySynType (ty_syn_type ty MetaNone) len) =
+      Some (ArrayOp element_ot len)) as Hop by by eapply use_op_alg_array.
+    eapply ty_has_op_type_array_canonical.
+    - exact Hop.
+    - rewrite /use_op_alg' Hop //.
+    - rewrite /use_op_alg' Helement in Hty. exact Hty.
+  Qed.
 
   Lemma array_t_rfn_length_eq π {rt} (ty : type rt) len r v m :
     v ◁ᵥ{π, m} r @ array_t len ty -∗ ⌜length r = len⌝.
@@ -531,18 +786,25 @@ Section lemmas.
     l ◁ₗ{π, m, κ} rs1 @ array_t n1 ty ∗ (l offsetst{ty.(ty_syn_type) m}ₗ n1) ◁ₗ{π, m, κ} rs2 @ array_t n2 ty.
   Proof.
     rewrite /ty_shr/= array_t_shr_unfold. iIntros (Hlen1 Hlen2).
-    iIntros "(%ly & -> & %Halg & %Hsz & %Hlen & %Hly & Hb)".
+    iIntros "(%ly & -> & %Halg & %Hsz & %Hlen & %Hly & #Hlb & Hb)".
+    iAssert (loc_in_bounds l 0 (ly_size (mk_array_layout ly n1)) ∗
+      loc_in_bounds (l offsetst{ty.(ty_syn_type) MetaNone}ₗ n1) 0 (ly_size (mk_array_layout ly n2)))%I
+      with "[Hlb]" as "(#Hlb1 & #Hlb2)".
+    { rewrite !ly_size_mk_array_layout Nat.mul_add_distr_l.
+      rewrite /OffsetLocSt /use_layout_alg' Halg /offset_loc /= -loc_in_bounds_split_suf.
+      setoid_rewrite Nat2Z.inj_mul. done. }
     rewrite big_sepL_app. iDestruct "Hb" as "(Hb1 & Hb2)".
     rewrite length_app in Hlen.
     iSplitL "Hb1".
     - iExists _. do 2 iR. iSplitR. { iPureIntro. lia. }
       iSplitR. { iPureIntro. lia. }
-      iR. done.
+      iR. iFrame "#". done.
     - iExists _. do 2 iR. iSplitR. { iPureIntro. lia. }
       iSplitR. { iPureIntro. lia. }
       rewrite /OffsetLocSt /use_layout_alg' Halg/=.
       iSplitR. { iPureIntro. eapply has_layout_loc_offset_loc; last done.
         by eapply use_layout_alg_wf. }
+      iFrame "#".
       rewrite /array_own_el_shr. setoid_rewrite offset_loc_offset_loc. rewrite Hlen1.
       setoid_rewrite Nat2Z.inj_add. done.
   Qed.
@@ -554,12 +816,18 @@ Section lemmas.
     l ◁ₗ{π, m, κ} (rs1 ++ rs2) @ array_t (n1 + n2) ty.
   Proof.
     rewrite /ty_shr/= array_t_shr_unfold. iIntros (Hsz).
-    iIntros "(%ly1 & -> & %Halg1 & %Hsz1 & %Hlen1 & %Hly1 & Hb1) (%ly2 & _ & %Halg2 & %Hsz2 & %Hlen2 & %Hly2 & Hb2)".
+    iIntros "(%ly1 & -> & %Halg1 & %Hsz1 & %Hlen1 & %Hly1 & #Hlb1 & Hb1) (%ly2 & _ & %Halg2 & %Hsz2 & %Hlen2 & %Hly2 & #Hlb2 & Hb2)".
     assert (ly2 = ly1) as -> by by eapply syn_type_has_layout_inj. clear Halg2.
     rewrite /size_of_st /use_layout_alg' Halg1 /= in Hsz.
     iExists _. do 2 iR. iSplitR. { iPureIntro. lia. }
     rewrite length_app. iSplitR. { iPureIntro. lia. }
-    iR. iApply (big_sepL_app).
+    iR.
+    iAssert (loc_in_bounds l 0 (ly_size (mk_array_layout ly1 (n1 + n2))))%I
+      with "[Hlb1 Hlb2]" as "#Hlb".
+    { rewrite !ly_size_mk_array_layout Nat.mul_add_distr_l.
+      rewrite /OffsetLocSt /use_layout_alg' Halg1 /offset_loc /= -loc_in_bounds_split_suf.
+      setoid_rewrite Nat2Z.inj_mul. iSplit; [iExact "Hlb1" | iExact "Hlb2"]. }
+    iFrame "#". iApply (big_sepL_app).
     iFrame.
     rewrite /OffsetLocSt /use_layout_alg' Halg1 /=.
     rewrite /array_own_el_shr. setoid_rewrite offset_loc_offset_loc. rewrite -Hlen1.

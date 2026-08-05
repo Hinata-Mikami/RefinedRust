@@ -17,6 +17,7 @@ Inductive expr :=
 | Deref (o : order) (ot : op_type) (e : expr)
 | CAS (ot : op_type) (e1 e2 e3 : expr)
 | Concat (es : list expr)
+| Repeat (st : syn_type) (e : expr) (n : nat)
 | IfE (op : op_type) (e1 e2 e3 : expr)
 | Alloc (e_size : expr) (e_align : expr)
 | SkipE (e : expr)
@@ -37,6 +38,7 @@ Inductive expr :=
 | LocInfoE (a : location_info) (e : expr)
 | StructInit (sls : struct_layout_spec) (fs : list (string * expr))
 | EnumInit (els : enum_layout_spec) (variant : var_name) (ty : rust_enum_def) (e : expr)
+| ArrayInit (ty : rust_type) (es : list expr)
 | Borrow (m : mutability) (κn : string) (ty : option rust_type) (e : expr)
 (* for opaque expressions*)
 | Expr (e : lang.expr)
@@ -56,6 +58,7 @@ Fixpoint to_expr `{!LayoutAlg} (e : expr) : lang.expr :=
   | Deref o ot e => lang.Deref o ot (to_expr e)
   | CAS ot e1 e2 e3 => lang.CAS ot (to_expr e1) (to_expr e2) (to_expr e3)
   | Concat es => lang.Concat (to_expr <$> es)
+  | Repeat st e n => notation.RepeatSt st (to_expr e) n
   | IfE ot e1 e2 e3 => lang.IfE ot (to_expr e1) (to_expr e2) (to_expr e3)
   | Alloc e_size e_align => lang.Alloc (to_expr e_size) (to_expr e_align)
   | SkipE e => lang.SkipE (to_expr e)
@@ -69,6 +72,7 @@ Fixpoint to_expr `{!LayoutAlg} (e : expr) : lang.expr :=
   | LocInfoE a e => notation.LocInfo a (to_expr e)
   | StructInit ly fs => notation.StructInit ly (prod_map id to_expr <$> fs)
   | EnumInit en variant ty e => notation.EnumInit en variant ty (to_expr e)
+  | ArrayInit ty es => notation.ArrayInit ty (to_expr <$> es)
   | GetMember e s m => notation.GetMember (to_expr e) s m
   | GetMemberUnion e ul m => notation.GetMemberUnion (to_expr e) ul m
   | EnumDiscriminant els e => notation.EnumDiscriminant els (to_expr e)
@@ -100,6 +104,8 @@ Ltac of_expr e :=
     let fs := of_field_expr fs in constr:(StructInit ly fs)
   | notation.EnumInit ?en ?variant ?ty ?e =>
     let e := of_expr e in constr:(EnumInit en variant ty e)
+  | notation.ArrayInit ?ty ?es =>
+    let es := of_expr es in constr:(ArrayInit ty es)
   | notation.GetMember ?e ?s ?m =>
     let e := of_expr e in constr:(GetMember e s m)
   | notation.GetMemberUnion ?e ?ul ?m =>
@@ -140,6 +146,8 @@ Ltac of_expr e :=
     let e1 := of_expr e1 in let e2 := of_expr e2 in let e3 := of_expr e3 in constr:(CAS ot e1 e2 e3)
   | lang.Concat ?es =>
     let es := of_expr es in constr:(Concat es)
+  | notation.RepeatSt ?st ?e ?n =>
+    let e := of_expr e in constr:(Repeat st e n)
   | lang.IfE ?ot ?e1 ?e2 ?e3 =>
     let e1 := of_expr e1 in
     let e2 := of_expr e2 in
@@ -177,6 +185,7 @@ Inductive ectx_item :=
 | CASMCtx (ot : op_type) (v1 : val) (e3 : expr)
 | CASRCtx (ot : op_type) (v1 v2 : val)
 | ConcatCtx (vs : list val) (es : list expr)
+| RepeatCtx (st : syn_type) (n : nat)
 | IfECtx (ot : op_type) (e2 e3 : expr)
 | AllocLCtx (e_align : expr)
 | AllocRCtx (v_size : val)
@@ -212,6 +221,7 @@ Definition fill_item (Ki : ectx_item) (e : expr) : expr :=
   | CASMCtx ot v1 e3 => CAS ot (Val v1) e e3
   | CASRCtx ot v1 v2 => CAS ot (Val v1) (Val v2) e
   | ConcatCtx vs es => Concat ((Val <$> vs) ++ e :: es)
+  | RepeatCtx st n => Repeat st e n
   | IfECtx ot e2 e3 => IfE ot e e2 e3
   | AllocLCtx e_align => Alloc e e_align
   | AllocRCtx v_size => Alloc (Val v_size) e
@@ -272,6 +282,8 @@ Fixpoint find_expr_fill (e : expr) (bind_val : bool) : option (list ectx_item * 
       if e1 is Val v1 then if e2 is Val v2 then Some (Ks ++ [CASRCtx ot v1 v2], e') else None else None
     else Some ([], e)
   | Concat _ | OffsetOf _ _ | OffsetOfUnion _ _ | LogicalAnd _ _ _ _ _ | LogicalOr _ _ _ _ _ => None
+  | Repeat st e1 n => if find_expr_fill e1 bind_val is Some (Ks, e') then
+      Some (Ks ++ [RepeatCtx st n], e') else Some ([], e)
   | IfE ot e1 e2 e3 =>
     if find_expr_fill e1 bind_val is Some (Ks, e') then
       Some (Ks ++ [IfECtx ot e2 e3], e') else Some ([], e)
@@ -300,6 +312,7 @@ Fixpoint find_expr_fill (e : expr) (bind_val : bool) : option (list ectx_item * 
       Some (Ks ++ [BorrowCtx m κn ty], e') else Some ([], e)
   | StructInit _ _ => None
   | EnumInit _ _ _ _ => None
+  | ArrayInit _ _ => None
   | GetMember e1 s m => if find_expr_fill e1 bind_val is Some (Ks, e') then
       Some (Ks ++ [GetMemberCtx s m], e') else Some ([], e)
   | GetMemberUnion e1 ul m => if find_expr_fill e1 bind_val is Some (Ks, e') then
@@ -339,6 +352,7 @@ Proof.
     apply: [lang.CASMCtx _ _ _]|
     apply: [lang.CASRCtx _ _ _]|
     apply: [lang.ConcatCtx _ _]|
+    apply: [lang.RepeatECtx _ _]|
     apply: [lang.IfECtx _ _ _]|
     apply: [lang.AllocLCtx _]|
     apply: [lang.AllocRCtx _]|
@@ -354,7 +368,7 @@ Proof.
     apply: [lang.SkipECtx; lang.DerefCtx _ _]|
     apply: [lang.BinOpRCtx _ _ _ _]|..
   ]).
-  move: K => [||||||||||||||||||||n||||||] * //=.
+  destruct K => //=.
   - (** Concat *)
     do 2 f_equal.
     rewrite !fmap_app !fmap_cons. repeat f_equal; eauto.

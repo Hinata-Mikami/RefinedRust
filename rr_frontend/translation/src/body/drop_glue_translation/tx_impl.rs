@@ -478,6 +478,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirTypeTranslation<'def, 'tcx> for DropGlueTX<'a,
         self.ty_translator.translate_type_to_syn_type(ty, &mut self.shim_state())
     }
 
+    fn translate_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError> {
+        self.ty_translator.translate_type_in_state(ty, &mut self.shim_state())
+    }
+
     fn generate_structlike_use(
         &self,
         ty: ty::Ty<'tcx>,

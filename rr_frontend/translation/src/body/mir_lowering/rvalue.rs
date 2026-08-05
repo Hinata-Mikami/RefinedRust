@@ -146,6 +146,13 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
                     ),
                 ))))
             },
+            mir::AggregateKind::Array(element_ty) => {
+                let element_ty = self.translate_type(element_ty)?;
+                Ok(code::Expr::ArrayInitE {
+                    ty: code::RustType::of_type(&element_ty),
+                    elements: translated_ops,
+                })
+            },
             mir::AggregateKind::Closure(def, _args) => {
                 trace!("Translating Closure aggregate value for {:?}", def);
 
@@ -490,6 +497,28 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
                 Ok((e, None))
             },
 
+            mir::Rvalue::Repeat(op, len) => {
+                let op_ty = self.shape_type_of_operand(op);
+                let st = self.translate_type_to_syn_type(op_ty)?;
+                let (e, _) = self.translate_operand(op, true)?;
+                let Some(len) = len.try_to_target_usize(self.tcx()) else {
+                    return Err(TranslationError::ErrorReported(self.tcx().dcx().err(
+                        Message::UnsupportedFeature(format!(
+                            "RefinedRust cannot evaluate the length of repeat rvalue {rval:?}"
+                        )),
+                    )));
+                };
+
+                Ok((
+                    code::Expr::RepeatE {
+                        st,
+                        e: Box::new(e),
+                        len,
+                    },
+                    None,
+                ))
+            },
+
             mir::Rvalue::Cast(kind, op, to_ty) => {
                 let e = self.translate_cast(*kind, op, *to_ty)?;
                 Ok((e, None))
@@ -497,7 +526,6 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
 
             mir::Rvalue::CopyForDeref(_)
             | mir::Rvalue::Reborrow(..)
-            | mir::Rvalue::Repeat(..)
             | mir::Rvalue::WrapUnsafeBinder(..)
             | mir::Rvalue::ThreadLocalRef(..) => {
                 Err(TranslationError::ErrorReported(self.tcx().dcx().err(Message::UnsupportedFeature(

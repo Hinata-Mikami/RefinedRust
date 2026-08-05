@@ -327,6 +327,19 @@ Definition GetEnumDiscriminantLocSt `{!LayoutAlg} (l : loc) (els : enum_layout_s
   l.
 
 (** ** Arrays *)
+Definition ArrayInit (ty : rust_type) (es : list expr) : expr := Concat es.
+Notation "'ArrayInit{' ty '}' es" := (ArrayInit ty es)
+  (at level 10, es at level 9, format "'ArrayInit{' ty '}'  es") : expr_scope.
+Global Typeclasses Opaque ArrayInit.
+Arguments ArrayInit : simpl never.
+
+Definition RepeatSt `{!LayoutAlg} (st : syn_type) (e : expr) (n : nat) : expr :=
+  RepeatE (use_layout_alg' st) e n.
+Notation "'Repeat{' st '}' e n" := (RepeatSt st e%E n%nat)
+  (at level 10, e at level 9, n at level 9, format "'Repeat{' st '}'  e  n") : expr_scope.
+Global Typeclasses Opaque RepeatSt.
+Arguments RepeatSt : simpl never.
+
 (** Shift a location by [z] times the size of [ly]. *)
 Definition OffsetLocSt `{!LayoutAlg} (l : loc) (st : syn_type) (z : Z) : loc :=
   (l offset{(use_layout_alg' st)}ₗ z).

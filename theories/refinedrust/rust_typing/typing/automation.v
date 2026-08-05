@@ -513,6 +513,8 @@ Ltac liRExpr :=
     | W.AnnotExpr _ ?a _ => notypeclasses refine (tac_fast_apply (type_annot_expr E L f _ a _ T) _)
     | W.StructInit ?sls ?init => notypeclasses refine (tac_fast_apply (type_struct_init E L f sls _ T) _)
     | W.EnumInit ?els ?variant ?rsty ?init => notypeclasses refine (tac_fast_apply (type_enum_init E L f els variant rsty _ T) _)
+    | W.ArrayInit ?rty ?es => notypeclasses refine (tac_fast_apply (type_array_init E L f rty _ T) _)
+    | W.Repeat ?st _ ?n => notypeclasses refine (tac_fast_apply (type_array_repeat E L f st n _ T) _)
     | W.IfE _ _ _ _ => notypeclasses refine (tac_fast_apply (type_ife E L f _ _ _ T) _)
     | W.LogicalAnd _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_logical_and E L f _ _ _ _ T) _)
     | W.LogicalOr _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_logical_or E L f _ _ _ _ T) _)
@@ -1173,6 +1175,8 @@ Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropatter
 Global Hint Extern 0 (LayoutSizeEq _ _) => rewrite /LayoutSizeEq; solve_layout_size : typeclass_instances.
 Global Hint Extern 0 (LayoutSizeLe _ _) => rewrite /LayoutSizeLe; solve_layout_size : typeclass_instances.
 
+Global Hint Unfold size_of_array_in_bytes : solve_goal_unfold.
+
 (* This should instead be solved by [solve_ty_has_op_type]. *)
 Global Arguments ty_has_op_type : simpl never.
 Global Typeclasses Opaque ty_has_op_type.
@@ -1604,6 +1608,12 @@ Ltac solve_ty_has_op_type_cases ::=
   | |- ty_has_op_type (typed_value_t ?st) (use_op_alg' _) =>
         refine (ty_has_op_type_typed_value_canonical st _ _);
         [ solve_layout_alg]
+  | |- ty_has_op_type (array_t ?len ?ty) (use_op_alg' _) =>
+        refine (ty_has_op_type_array_canonical' ty len _ _ _);
+        [ solve_layout_alg |]
+  | |- ty_has_op_type (array_t ?len ?ty) (ArrayOp ?element_ot _) =>
+        refine (ty_has_op_type_array_canonical ty len element_ot _ _ _ _);
+        [ solve_op_alg | solve_ot_eq |]
   | |- ty_has_op_type (mut_type_project _ _ _) _ =>
         refine (mut_fixpoint_project_ty_has_op_type_1 _ _ _ _ _)
   | |- ty_has_op_type _ (use_op_alg' (st_of (mut_type_project (mut_fixpoint _) _ _) _)) =>

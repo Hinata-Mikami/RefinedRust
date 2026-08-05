@@ -9,6 +9,7 @@
 
 mod enums;
 mod structs;
+mod array;
 mod char;
 mod traits;
 mod trait_deps;

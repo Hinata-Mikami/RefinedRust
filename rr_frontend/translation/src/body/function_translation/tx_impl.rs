@@ -104,6 +104,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirTypeTranslation<'def, 'tcx> for TX<'a, 'def, '
         self.ty_translator.translate_type_to_syn_type(ty)
     }
 
+    fn translate_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError> {
+        self.ty_translator.translate_type(ty)
+    }
+
     fn generate_structlike_use(
         &self,
         ty: ty::Ty<'tcx>,

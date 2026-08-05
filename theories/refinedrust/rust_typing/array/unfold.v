@@ -384,7 +384,7 @@ Section unfold.
     iModIntro. iMod "Hb" as "(%Hlen & Hb)".
     rewrite big_sepL2_replicate_l; last done.
     rewrite /ty_shr/= array_t_shr_unfold.
-    iExists ly. iR. iR. iR. iR. iR.
+    iExists ly. iR. iR. iR. iR. iR. iFrame "#".
     iApply big_sepL_fupd.
     iApply (big_sepL_impl with "Hb").
     iModIntro. iIntros (k r'' Hlook) "(_ & Hl)".
@@ -510,7 +510,7 @@ Section unfold.
     iExists _. iFrame.
     iModIntro. iMod "Hb" as "Hb". iModIntro.
     rewrite /ty_shr/= array_t_shr_unfold.
-    iDestruct "Hb" as "(%ly & _ & %Hst' & % & % & % & Hb)".
+    iDestruct "Hb" as "(%ly & _ & %Hst' & % & % & % & _ & Hb)".
     iR.
     rewrite big_sepL2_replicate_l; last done.
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.

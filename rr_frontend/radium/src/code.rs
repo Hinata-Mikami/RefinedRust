@@ -441,6 +441,16 @@ pub enum Expr {
         initializer: Box<Self>,
     },
 
+    #[display("ArrayInit{{{}}} [{}]", ty, fmt_list!(elements, "; ", |e| format!("({e} : expr)")))]
+    ArrayInitE { ty: RustType, elements: Vec<Self> },
+
+    #[display("Repeat{{{}}} ({}) {}", st, &e, len)]
+    RepeatE {
+        st: lang::SynType,
+        e: Box<Self>,
+        len: u64,
+    },
+
     #[display("AnnotExpr 0 DropAnnot ({})", &_0)]
     DropE(Box<Self>),
 

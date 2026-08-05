@@ -106,7 +106,7 @@ pub enum SynType {
 /// Representation of Caesium's optypes.
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum OpType {
-    #[display("IntOp {}", _0)]
+    #[display("(IntOp {})", _0)]
     Int(IntType),
 
     #[display("BoolOp")]
@@ -121,13 +121,13 @@ pub enum OpType {
     #[display("RefOp")]
     Ref,
 
-    #[display("StructOp unit_sl []")]
+    #[display("(StructOp unit_sl [])")]
     Unit,
 
-    #[display("ArrayOp {} {}", _0, _1)]
+    #[display("(ArrayOp {} {})", _0, _1)]
     Array(Box<Self>, u128),
 
-    #[display("UntypedOp ({})", _0)]
+    #[display("(UntypedOp {})", _0)]
     Untyped(Layout),
 
     #[display("(use_op_alg' {})", _0)]

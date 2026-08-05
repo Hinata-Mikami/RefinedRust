@@ -1637,21 +1637,13 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         v: ty::Const<'tcx>,
     ) -> Result<u128, TranslationError> {
+        if let Some(value) = v.try_to_target_usize(tcx) {
+            return Ok(value.into());
+        }
+
         match v.kind() {
-            ty::ConstKind::Value(v) => {
-                // this doesn't contain the necessary structure anymore. Need to reconstruct using the
-                // type.
-                match v.valtree.try_to_leaf() {
-                    Some(sc) => match v.ty.kind() {
-                        ty::TyKind::Uint(_) => Ok(sc.to_u128()),
-                        _ => {
-                            Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::InvalidLayout)))
-                        },
-                    },
-                    _ => Err(TranslationError::ErrorReported(tcx.dcx().err(
-                        error::Message::UnsupportedFeature(format!("const value not supported: {:?}", v)),
-                    ))),
-                }
+            ty::ConstKind::Value(_) => {
+                Err(TranslationError::ErrorReported(tcx.dcx().err(error::Message::InvalidLayout)))
             },
             _ => Err(TranslationError::ErrorReported(
                 tcx.dcx().err(error::Message::UnsupportedFeature(format!("Unsupported ConstKind: {v:?}"))),

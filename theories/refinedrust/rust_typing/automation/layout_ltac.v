@@ -925,7 +925,7 @@ Ltac solve_op_alg_core_step :=
       notypeclasses refine (use_op_alg_unit _ _);
       [solve_ot_eq ]
   | |- use_op_alg (ArraySynType ?st ?len) = Some ?ot =>
-      notypeclasses refine (use_op_alg_array st len _ _ _);
+      notypeclasses refine (use_op_alg_array st len _ _ _ _);
       [solve_layout_alg | solve_op_alg]
   | |- use_op_alg (UnsafeCell ?st) = Some ?ot =>
       notypeclasses refine (use_op_alg_unsafecell st _ _);

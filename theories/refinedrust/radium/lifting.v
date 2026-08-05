@@ -1525,6 +1525,27 @@ Proof.
   iApply "HΦ".
 Qed.
 
+Lemma wp_repeat `{!LayoutAlg} π E Φ st ly v n:
+  syn_type_has_layout st ly →
+  v `has_layout_val` ly →
+  (|={E}⧗=> Φ (mjoin (replicate n v))) -∗
+  WPe{π} (Repeat{st} (Val v) n) @ E {{ Φ }}.
+Proof.
+  intros Hst Hv. rewrite /RepeatSt (use_layout_alg_eq' _ _ Hst).
+  iIntros "HΦ".
+  rewrite expr_wp_unfold.
+  iApply wp_lift_expr_step; auto.
+  iIntros (σ1) "?".
+  iModIntro. iSplit.
+  - iPureIntro. eexists [], _, σ1, []. apply RepeatES.
+    + exact (use_layout_alg_wf st ly Hst).
+    + exact Hv.
+  - iIntros (? e2 σ2 efs Hstep ?). inv_expr_step.
+    iApply (physical_step_wand with "HΦ"). iIntros "HΦ".
+    iSplit => //. iFrame. iApply wp_value.
+    iApply "HΦ".
+Qed.
+
 Lemma wps_concat_bind_ind vs π E Φ es:
   foldr (λ e f, (λ vl, WPe{π} e @ E {{ λ v, f (vl ++ [v]) }}))
         (λ vl, WPe{π} (Concat (Val <$> (vs ++ vl))) @ E {{ Φ }}) es [] -∗

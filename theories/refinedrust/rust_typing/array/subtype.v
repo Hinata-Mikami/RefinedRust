@@ -96,11 +96,11 @@ Section subtype.
   Proof.
     iIntros (Heqst) "Hincl Ha".
     rewrite /ty_shr/= array_t_shr_unfold.
-    iDestruct "Ha" as "(%ly & -> & %Hst & % & % & %Hly & Ha)".
+    iDestruct "Ha" as "(%ly & -> & %Hst & % & % & %Hly & #Hlb & Ha)".
     rewrite array_t_shr_unfold.
     iExists ly. rewrite -Heqst. iR. iR. iR.
     iPoseProof (big_sepL2_length with "Hincl") as "%Hleneq".
-    rewrite -Hleneq. iR. iR.
+    rewrite -Hleneq. iR. iR. iFrame "#".
     iPoseProof (big_sepL_extend_r rs2 with "Ha") as "Ha"; first done.
     iApply big_sepL2_elim_l.
     iPoseProof (big_sepL2_sep_1 with "Ha Hincl") as "Ha".
