@@ -56,8 +56,8 @@ Program Definition ControlFlowBCasFromResidualControlFlowBconvert_Infallible_fro
      "_bb0" :=
       local_live{ (ControlFlow_st (B_st) (C_st)) } "__0";
       local_live{ (IntSynType ISize) } "__2";
-      "__2" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (convert_Infallible_st))) ("residual");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
+      "__2" <-{ (IntOp ISize) } EnumDiscriminant ((ControlFlow_els (B_st) (convert_Infallible_st))) ("residual");
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -107,8 +107,8 @@ Program Definition ControlFlowBCasTry_branch_def (B_st: syn_type) (C_st: syn_typ
       "__8" <-{ BoolOp } val_of_bool false;
       "__8" <-{ BoolOp } val_of_bool true;
       "__9" <-{ BoolOp } val_of_bool true;
-      "__2" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) ("self");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
+      "__2" <-{ (IntOp ISize) } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) ("self");
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -192,8 +192,8 @@ Program Definition ControlFlow_BC_break_value_def (drop_glue_ControlFlow_B_C_loc
       local_live{ (IntSynType ISize) } "__6";
       "__5" <-{ BoolOp } val_of_bool false;
       "__5" <-{ BoolOp } val_of_bool true;
-      "__2" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) ("self");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
+      "__2" <-{ (IntOp ISize) } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) ("self");
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -227,8 +227,8 @@ Program Definition ControlFlow_BC_break_value_def (drop_glue_ControlFlow_B_C_loc
      ]>%E $
      <[
      "_bb7" :=
-      "__6" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) ("self");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__6")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb5"]) (Goto "_bb6")
+      "__6" <-{ (IntOp ISize) } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) ("self");
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__6")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb5"]) (Goto "_bb6")
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -303,8 +303,8 @@ Program Definition drop_glue_ControlFlow_def (DropGlue_B_drop_glue_loc: loc) (Dr
       local_live{ UnitSynType } "ret";
       local_live{ (IntSynType ISize) } "__2";
       local_live{ (IntSynType ISize) } "__3";
-      "__2" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) (!{ RefOp } ( "ptr" ));
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ ∅) ([Goto "_bb2"]) (Goto "_bb3")
+      "__2" <-{ (IntOp ISize) } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) (!{ RefOp } ( "ptr" ));
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__2")) (<[ 0%Z := 0%nat ]> $ ∅) ([Goto "_bb2"]) (Goto "_bb3")
      ]>%E $
      <[
      "_bb1" :=
@@ -367,8 +367,8 @@ Program Definition std_option_OptionTasTry_branch_def (T_st: syn_type) : functio
       local_live{ BoolSynType } "__6";
       "__6" <-{ BoolOp } val_of_bool false;
       "__6" <-{ BoolOp } val_of_bool true;
-      "__2" <-{ IntOp ISize } EnumDiscriminant ((Option_els (T_st))) ("self");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
+      "__2" <-{ (IntOp ISize) } EnumDiscriminant ((Option_els (T_st))) ("self");
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -448,8 +448,8 @@ Program Definition std_result_ResultTEasTry_branch_def (T_st: syn_type) (E_st: s
       "__8" <-{ BoolOp } val_of_bool false;
       "__8" <-{ BoolOp } val_of_bool true;
       "__9" <-{ BoolOp } val_of_bool true;
-      "__2" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) ("self");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
+      "__2" <-{ (IntOp ISize) } EnumDiscriminant ((Result_els (T_st) (E_st))) ("self");
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -532,8 +532,8 @@ Program Definition std_result_ResultTFasFromResidualstd_result_Resultconvert_Inf
       local_live{ BoolSynType } "__7";
       "__7" <-{ BoolOp } val_of_bool false;
       "__7" <-{ BoolOp } val_of_bool true;
-      "__2" <-{ IntOp ISize } EnumDiscriminant ((Result_els (convert_Infallible_st) (E_st))) ("residual");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
+      "__2" <-{ (IntOp ISize) } EnumDiscriminant ((Result_els (convert_Infallible_st) (E_st))) ("residual");
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=

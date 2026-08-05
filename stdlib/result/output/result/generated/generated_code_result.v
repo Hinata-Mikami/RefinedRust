@@ -64,8 +64,8 @@ Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) 
       local_live{ (Result_st (T_st) (E_st)) } "__0";
       local_live{ (IntSynType ISize) } "__2";
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* initialization *)
-      "__2" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) (!{ RefOp } ( "self" ));
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
+      "__2" <-{ (IntOp ISize) } EnumDiscriminant ((Result_els (T_st) (E_st))) (!{ RefOp } ( "self" ));
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -153,8 +153,8 @@ Program Definition Result_TE_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T
       "__12" <-{ BoolOp } val_of_bool true;
       "__13" <-{ BoolOp } val_of_bool true;
       "__11" <-{ BoolOp } val_of_bool true;
-      "__3" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) ("self");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__3")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
+      "__3" <-{ (IntOp ISize) } EnumDiscriminant ((Result_els (T_st) (E_st))) ("self");
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__3")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -244,8 +244,8 @@ Program Definition Result_TE_map_err_def (DropGlue_O_drop_glue_loc: loc) (FnOnce
       "__12" <-{ BoolOp } val_of_bool true;
       "__13" <-{ BoolOp } val_of_bool true;
       "__11" <-{ BoolOp } val_of_bool true;
-      "__3" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) ("self");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__3")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
+      "__3" <-{ (IntOp ISize) } EnumDiscriminant ((Result_els (T_st) (E_st))) ("self");
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__3")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb3"; Goto "_bb2"]) (Goto "_bb1")
      ]>%E $
      <[
      "_bb1" :=
@@ -326,8 +326,8 @@ Program Definition drop_glue_Result_def (DropGlue_E_drop_glue_loc: loc) (DropGlu
       local_live{ UnitSynType } "ret";
       local_live{ (IntSynType ISize) } "__2";
       local_live{ (IntSynType ISize) } "__3";
-      "__2" <-{ IntOp ISize } EnumDiscriminant ((Result_els (T_st) (E_st))) (!{ RefOp } ( "ptr" ));
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__2")) (<[ 0%Z := 0%nat ]> $ ∅) ([Goto "_bb2"]) (Goto "_bb3")
+      "__2" <-{ (IntOp ISize) } EnumDiscriminant ((Result_els (T_st) (E_st))) (!{ RefOp } ( "ptr" ));
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__2")) (<[ 0%Z := 0%nat ]> $ ∅) ([Goto "_bb2"]) (Goto "_bb3")
      ]>%E $
      <[
      "_bb1" :=

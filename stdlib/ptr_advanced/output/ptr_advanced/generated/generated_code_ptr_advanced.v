@@ -181,8 +181,8 @@ Program Definition nonnull_NonNull_T_is_aligned_to_def (mut_ptr_is_aligned_to_T_
      "_bb1" :=
       local_dead "__4";
       local_live{ (IntSynType USize) } "__5";
-      "__5" <-{ IntOp USize } copy{ IntOp USize } ("align");
-      CallS mut_ptr_is_aligned_to_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3"); move{ IntOp USize } ("__5")] (Some (Na1Ord, BoolOp, "__0"))
+      "__5" <-{ (IntOp USize) } copy{ (IntOp USize) } ("align");
+      CallS mut_ptr_is_aligned_to_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3"); move{ (IntOp USize) } ("__5")] (Some (Na1Ord, BoolOp, "__0"))
       ( Goto "_bb2")
       ( StuckS)
      ]>%E $
@@ -405,7 +405,7 @@ Program Definition nonnull_NonNull_T_write_def (nonnull_NonNull_T_as_ptr_T_loc: 
       local_live{ T_st } "__5";
       "__6" <-{ BoolOp } val_of_bool false;
       "__5" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("val");
-      CallS write_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3"); move{ (use_op_alg' T_st) } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__0"))
+      CallS write_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3"); move{ (use_op_alg' T_st) } ("__5")] (Some (Na1Ord, (StructOp unit_sl []), "__0"))
       ( Goto "_bb2")
       ( StuckS)
      ]>%E $
@@ -413,7 +413,7 @@ Program Definition nonnull_NonNull_T_write_def (nonnull_NonNull_T_as_ptr_T_loc: 
      "_bb2" :=
       local_dead "__5";
       local_dead "__3";
-      return (move{ StructOp unit_sl [] } ("__0"))
+      return (move{ (StructOp unit_sl []) } ("__0"))
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -451,7 +451,7 @@ Program Definition nonnull_NonNull_T_write_volatile_def (nonnull_NonNull_T_as_pt
       local_live{ T_st } "__5";
       "__6" <-{ BoolOp } val_of_bool false;
       "__5" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("val");
-      CallS write_volatile_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3"); move{ (use_op_alg' T_st) } ("__5")] (Some (Na1Ord, StructOp unit_sl [], "__0"))
+      CallS write_volatile_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3"); move{ (use_op_alg' T_st) } ("__5")] (Some (Na1Ord, (StructOp unit_sl []), "__0"))
       ( Goto "_bb2")
       ( StuckS)
      ]>%E $
@@ -459,7 +459,7 @@ Program Definition nonnull_NonNull_T_write_volatile_def (nonnull_NonNull_T_as_pt
      "_bb2" :=
       local_dead "__5";
       local_dead "__3";
-      return (move{ StructOp unit_sl [] } ("__0"))
+      return (move{ (StructOp unit_sl []) } ("__0"))
      ]>%E $
       ∅;
      f_init := "_bb0";

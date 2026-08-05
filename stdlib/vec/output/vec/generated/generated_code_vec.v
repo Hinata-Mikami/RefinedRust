@@ -99,14 +99,14 @@ Program Definition Vec_TA_is_empty_def (Vec_TA_len_T_A_loc: loc) (T_st: syn_type
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTLitType ["Vec_inv_t"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "A"] [AppDef ["Allocator_A_spec_attrs"] []])), "vlft3" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft5" "vlft3"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft6" "plft5"; (* function_call *)
-      CallS Vec_TA_len_T_A_loc ["vlft6"] [RSTTyVar "T"; RSTTyVar "A"] [@{expr} move{ RefOp } ("__3")] (Some (Na1Ord, IntOp USize, "__2"))
+      CallS Vec_TA_len_T_A_loc ["vlft6"] [RSTTyVar "T"; RSTTyVar "A"] [@{expr} move{ RefOp } ("__3")] (Some (Na1Ord, (IntOp USize), "__2"))
       ( Goto "_bb1")
       ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
       local_dead "__3";
-      "__0" <-{ BoolOp } (move{ IntOp USize } ("__2")) = { IntOp USize , IntOp USize , U8 } (i2v (0) USize);
+      "__0" <-{ BoolOp } (move{ (IntOp USize) } ("__2")) = { (IntOp USize) , (IntOp USize) , U8 } (i2v (0) USize);
       local_dead "__2";
       return (move{ BoolOp } ("__0"))
      ]>%E $

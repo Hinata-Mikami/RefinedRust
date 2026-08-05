@@ -13,14 +13,14 @@ Program Definition drop_def (DropGlue_T_drop_glue_loc: loc) (T_st: syn_type) : f
       <[
      "_bb0" :=
       local_live{ UnitSynType } "__0";
-      "__0" <-{ StructOp unit_sl [] } zst_val;
+      "__0" <-{ (StructOp unit_sl []) } zst_val;
       CallS DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("x")] None
       ( Goto "_bb1")
       ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
-      return (move{ StructOp unit_sl [] } ("__0"))
+      return (move{ (StructOp unit_sl []) } ("__0"))
      ]>%E $
       ∅;
      f_init := "_bb0";

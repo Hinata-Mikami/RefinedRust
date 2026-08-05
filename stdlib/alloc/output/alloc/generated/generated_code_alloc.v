@@ -48,14 +48,14 @@ Program Definition layout_Layout_align_def (alignment_Alignment_as_usize_loc: lo
       annot{ 1 }: CopyLftNameAnnot "plft3" "ulft_1"; (* initialization *)
       local_live{ (alignment_Alignment_sls : syn_type) } "__2";
       "__2" <-{ (use_op_alg' (alignment_Alignment_sls : syn_type)) } copy{ (use_op_alg' (alignment_Alignment_sls : syn_type)) } ((!{ RefOp } ( "self" )) at{ layout_Layout_sls } "align");
-      CallS alignment_Alignment_as_usize_loc [] [] [@{expr} move{ (use_op_alg' (alignment_Alignment_sls : syn_type)) } ("__2")] (Some (Na1Ord, IntOp USize, "__0"))
+      CallS alignment_Alignment_as_usize_loc [] [] [@{expr} move{ (use_op_alg' (alignment_Alignment_sls : syn_type)) } ("__2")] (Some (Na1Ord, (IntOp USize), "__0"))
       ( Goto "_bb1")
       ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
       local_dead "__2";
-      return (move{ IntOp USize } ("__0"))
+      return (move{ (IntOp USize) } ("__0"))
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -79,10 +79,10 @@ Program Definition layout_Layout_from_size_align_def (layout_Layout_from_size_al
       local_live{ ((Result_els (layout_Layout_st) (layout_LayoutError_st)) : syn_type) } "__0";
       local_live{ layout_Layout_st } "__3";
       local_live{ (IntSynType USize) } "__4";
-      "__4" <-{ IntOp USize } copy{ IntOp USize } ("size");
+      "__4" <-{ (IntOp USize) } copy{ (IntOp USize) } ("size");
       local_live{ (IntSynType USize) } "__5";
-      "__5" <-{ IntOp USize } copy{ IntOp USize } ("align");
-      CallS layout_Layout_from_size_align_unchecked_loc [] [] [@{expr} move{ IntOp USize } ("__4"); move{ IntOp USize } ("__5")] (Some (Na1Ord, (use_op_alg' layout_Layout_st), "__3"))
+      "__5" <-{ (IntOp USize) } copy{ (IntOp USize) } ("align");
+      CallS layout_Layout_from_size_align_unchecked_loc [] [] [@{expr} move{ (IntOp USize) } ("__4"); move{ (IntOp USize) } ("__5")] (Some (Na1Ord, (use_op_alg' layout_Layout_st), "__3"))
       ( Goto "_bb1")
       ( StuckS)
      ]>%E $
@@ -115,18 +115,18 @@ Program Definition layout_Layout_from_size_align_unchecked_def (alignment_Alignm
      "_bb0" :=
       local_live{ layout_Layout_st } "__0";
       local_live{ (IntSynType USize) } "__3";
-      "__3" <-{ IntOp USize } copy{ IntOp USize } ("size");
+      "__3" <-{ (IntOp USize) } copy{ (IntOp USize) } ("size");
       local_live{ (alignment_Alignment_sls : syn_type) } "__4";
       local_live{ (IntSynType USize) } "__5";
-      "__5" <-{ IntOp USize } copy{ IntOp USize } ("align");
-      CallS alignment_Alignment_new_unchecked_loc [] [] [@{expr} move{ IntOp USize } ("__5")] (Some (Na1Ord, (use_op_alg' (alignment_Alignment_sls : syn_type)), "__4"))
+      "__5" <-{ (IntOp USize) } copy{ (IntOp USize) } ("align");
+      CallS alignment_Alignment_new_unchecked_loc [] [] [@{expr} move{ (IntOp USize) } ("__5")] (Some (Na1Ord, (use_op_alg' (alignment_Alignment_sls : syn_type)), "__4"))
       ( Goto "_bb1")
       ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
       local_dead "__5";
-      "__0" <-{ (use_op_alg' layout_Layout_st) } StructInit layout_Layout_sls [("size", move{ IntOp USize } ("__3") : expr); ("align", move{ (use_op_alg' (alignment_Alignment_sls : syn_type)) } ("__4") : expr)];
+      "__0" <-{ (use_op_alg' layout_Layout_st) } StructInit layout_Layout_sls [("size", move{ (IntOp USize) } ("__3") : expr); ("align", move{ (use_op_alg' (alignment_Alignment_sls : syn_type)) } ("__4") : expr)];
       local_dead "__4";
       local_dead "__3";
       return (move{ (use_op_alg' layout_Layout_st) } ("__0"))
@@ -151,20 +151,20 @@ Program Definition layout_Layout_new_def (layout_Layout_from_size_align_unchecke
      "_bb0" :=
       local_live{ layout_Layout_st } "__0";
       local_live{ (IntSynType USize) } "__1";
-      CallS mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ] (Some (Na1Ord, IntOp USize, "__1"))
+      CallS mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ] (Some (Na1Ord, (IntOp USize), "__1"))
       ( Goto "_bb1")
       ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
       local_live{ (IntSynType USize) } "__2";
-      CallS mem_align_of_T_loc [] [RSTTyVar "T"] [@{expr} ] (Some (Na1Ord, IntOp USize, "__2"))
+      CallS mem_align_of_T_loc [] [RSTTyVar "T"] [@{expr} ] (Some (Na1Ord, (IntOp USize), "__2"))
       ( Goto "_bb2")
       ( StuckS)
      ]>%E $
      <[
      "_bb2" :=
-      CallS layout_Layout_from_size_align_unchecked_loc [] [] [@{expr} move{ IntOp USize } ("__1"); move{ IntOp USize } ("__2")] (Some (Na1Ord, (use_op_alg' layout_Layout_st), "__0"))
+      CallS layout_Layout_from_size_align_unchecked_loc [] [] [@{expr} move{ (IntOp USize) } ("__1"); move{ (IntOp USize) } ("__2")] (Some (Na1Ord, (use_op_alg' layout_Layout_st), "__0"))
       ( Goto "_bb3")
       ( StuckS)
      ]>%E $
@@ -194,8 +194,8 @@ Program Definition layout_Layout_size_def  : function :=
      "_bb0" :=
       local_live{ (IntSynType USize) } "__0";
       annot{ 1 }: CopyLftNameAnnot "plft3" "ulft_1"; (* initialization *)
-      "__0" <-{ IntOp USize } copy{ IntOp USize } ((!{ RefOp } ( "self" )) at{ layout_Layout_sls } "size");
-      return (move{ IntOp USize } ("__0"))
+      "__0" <-{ (IntOp USize) } copy{ (IntOp USize) } ((!{ RefOp } ( "self" )) at{ layout_Layout_sls } "size");
+      return (move{ (IntOp USize) } ("__0"))
      ]>%E $
       ∅;
      f_init := "_bb0";

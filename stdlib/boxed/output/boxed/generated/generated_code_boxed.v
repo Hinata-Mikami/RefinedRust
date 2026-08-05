@@ -136,13 +136,13 @@ Program Definition box_new_def (alloc_alloc_loc: loc) (dangling_T_loc: loc) (lay
       "__27" <-{ BoolOp } val_of_bool true;
       local_live{ BoolSynType } "__2";
       local_live{ (IntSynType USize) } "__3";
-      CallS mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ] (Some (Na1Ord, IntOp USize, "__3"))
+      CallS mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ] (Some (Na1Ord, (IntOp USize), "__3"))
       ( Goto "_bb1")
       ( StuckS)
      ]>%E $
      <[
      "_bb1" :=
-      "__2" <-{ BoolOp } (move{ IntOp USize } ("__3")) = { IntOp USize , IntOp USize , U8 } (i2v (0) USize);
+      "__2" <-{ BoolOp } (move{ (IntOp USize) } ("__3")) = { (IntOp USize) , (IntOp USize) , U8 } (i2v (0) USize);
       if{ BoolOp }: move{ BoolOp } ("__2") then
        Goto "_bb2"
       else
@@ -171,7 +171,7 @@ Program Definition box_new_def (alloc_alloc_loc: loc) (dangling_T_loc: loc) (lay
       local_live{ T_st } "__10";
       "__27" <-{ BoolOp } val_of_bool false;
       "__10" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("x");
-      CallS mut_ptr_write_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__9"); move{ (use_op_alg' T_st) } ("__10")] (Some (Na1Ord, StructOp unit_sl [], "__8"))
+      CallS mut_ptr_write_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__9"); move{ (use_op_alg' T_st) } ("__10")] (Some (Na1Ord, (StructOp unit_sl []), "__8"))
       ( Goto "_bb4")
       ( StuckS)
      ]>%E $
@@ -180,7 +180,7 @@ Program Definition box_new_def (alloc_alloc_loc: loc) (dangling_T_loc: loc) (lay
       local_dead "__10";
       local_dead "__9";
       local_dead "__8";
-      "__7" <-{ StructOp unit_sl [] } zst_val;
+      "__7" <-{ (StructOp unit_sl []) } zst_val;
       local_dead "__7";
       local_live{ ((unique_Unique_sls (T_st)) : syn_type) } "__11";
       local_live{ PtrSynType } "__12";
@@ -235,7 +235,7 @@ Program Definition box_new_def (alloc_alloc_loc: loc) (dangling_T_loc: loc) (lay
       local_live{ T_st } "__23";
       "__27" <-{ BoolOp } val_of_bool false;
       "__23" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("x");
-      CallS mut_ptr_write_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__22"); move{ (use_op_alg' T_st) } ("__23")] (Some (Na1Ord, StructOp unit_sl [], "__21"))
+      CallS mut_ptr_write_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__22"); move{ (use_op_alg' T_st) } ("__23")] (Some (Na1Ord, (StructOp unit_sl []), "__21"))
       ( Goto "_bb9")
       ( StuckS)
      ]>%E $
@@ -244,7 +244,7 @@ Program Definition box_new_def (alloc_alloc_loc: loc) (dangling_T_loc: loc) (lay
       local_dead "__23";
       local_dead "__22";
       local_dead "__21";
-      "__20" <-{ StructOp unit_sl [] } zst_val;
+      "__20" <-{ (StructOp unit_sl []) } zst_val;
       local_dead "__20";
       local_live{ ((unique_Unique_sls (T_st)) : syn_type) } "__24";
       local_live{ PtrSynType } "__25";
@@ -313,7 +313,7 @@ Program Definition drop_glue_Box_def (BoxTAasstd_ops_Drop_drop_T_A_loc: loc) (Dr
      <[
      "_bb5" :=
       "__2" <-{ RefOp } copy{ RefOp } ("ptr");
-      CallS BoxTAasstd_ops_Drop_drop_T_A_loc ["_flft"] [RSTTyVar "T"; RSTTyVar "A"] [@{expr} move{ RefOp } ("__2")] (Some (Na1Ord, StructOp unit_sl [], "__3"))
+      CallS BoxTAasstd_ops_Drop_drop_T_A_loc ["_flft"] [RSTTyVar "T"; RSTTyVar "A"] [@{expr} move{ RefOp } ("__2")] (Some (Na1Ord, (StructOp unit_sl []), "__3"))
       ( Goto "_bb4")
       ( StuckS)
      ]>%E $

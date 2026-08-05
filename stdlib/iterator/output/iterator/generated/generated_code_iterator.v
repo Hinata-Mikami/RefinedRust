@@ -170,8 +170,8 @@ Program Definition adapters_skip_SkipMIastraits_iterator_Iterator_next_def (trai
       annot{ 1 }: CopyLftNameAnnot "plft5" "ulft_1"; (* initialization *)
       local_live{ BoolSynType } "__2";
       local_live{ (IntSynType USize) } "__3";
-      "__3" <-{ IntOp USize } copy{ IntOp USize } ((!{ RefOp } ( "self" )) at{ (adapters_skip_Skip_sls (MI_st)) } "n");
-      "__2" <-{ BoolOp } (move{ IntOp USize } ("__3")) >{ IntOp USize , IntOp USize , U8 } (i2v (0) USize);
+      "__3" <-{ (IntOp USize) } copy{ (IntOp USize) } ((!{ RefOp } ( "self" )) at{ (adapters_skip_Skip_sls (MI_st)) } "n");
+      "__2" <-{ BoolOp } (move{ (IntOp USize) } ("__3")) >{ (IntOp USize) , (IntOp USize) , U8 } (i2v (0) USize);
       if{ BoolOp }: move{ BoolOp } ("__2") then
        Goto "_bb1"
       else
@@ -181,16 +181,16 @@ Program Definition adapters_skip_SkipMIastraits_iterator_Iterator_next_def (trai
      "_bb1" :=
       local_dead "__3";
       local_live{ (IntSynType USize) } "n";
-      "n" <-{ IntOp USize } copy{ IntOp USize } ((!{ RefOp } ( "self" )) at{ (adapters_skip_Skip_sls (MI_st)) } "n");
-      (!{ RefOp } ( "self" )) at{ (adapters_skip_Skip_sls (MI_st)) } "n" <-{ IntOp USize } i2v (0) USize;
+      "n" <-{ (IntOp USize) } copy{ (IntOp USize) } ((!{ RefOp } ( "self" )) at{ (adapters_skip_Skip_sls (MI_st)) } "n");
+      (!{ RefOp } ( "self" )) at{ (adapters_skip_Skip_sls (MI_st)) } "n" <-{ (IntOp USize) } i2v (0) USize;
       local_live{ RefSynType } "__5";
       annot{ 1 }: StartLftAnnot "llft3" ["plft5"]; (* borrow *)
       "__5" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "MI"), "llft3" } ((!{ RefOp } ( "self" )) at{ (adapters_skip_Skip_sls (MI_st)) } "iter");
       annot{ 1 }: CopyLftNameAnnot "plft6" "llft3"; (* post-assignment *)
       local_live{ (IntSynType USize) } "__6";
-      "__6" <-{ IntOp USize } copy{ IntOp USize } ("n");
+      "__6" <-{ (IntOp USize) } copy{ (IntOp USize) } ("n");
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft6"; (* function_call *)
-      CallS traits_iterator_Iterator_MI_nth_loc ["vlft8"] [] [@{expr} move{ RefOp } ("__5"); move{ IntOp USize } ("__6")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__0"))
+      CallS traits_iterator_Iterator_MI_nth_loc ["vlft8"] [] [@{expr} move{ RefOp } ("__5"); move{ (IntOp USize) } ("__6")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__0"))
       ( annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb2")
       ( StuckS)
@@ -250,8 +250,8 @@ Program Definition adapters_skip_Skip_I_new_def (I_st: syn_type) : function :=
       local_live{ I_st } "__3";
       "__3" <-{ (use_op_alg' I_st) } move{ (use_op_alg' I_st) } ("iter");
       local_live{ (IntSynType USize) } "__4";
-      "__4" <-{ IntOp USize } copy{ IntOp USize } ("n");
-      "__0" <-{ (use_op_alg' (adapters_skip_Skip_st (I_st))) } StructInit (adapters_skip_Skip_sls (I_st)) [("iter", move{ (use_op_alg' I_st) } ("__3") : expr); ("n", move{ IntOp USize } ("__4") : expr)];
+      "__4" <-{ (IntOp USize) } copy{ (IntOp USize) } ("n");
+      "__0" <-{ (use_op_alg' (adapters_skip_Skip_st (I_st))) } StructInit (adapters_skip_Skip_sls (I_st)) [("iter", move{ (use_op_alg' I_st) } ("__3") : expr); ("n", move{ (IntOp USize) } ("__4") : expr)];
       local_dead "__4";
       local_dead "__3";
       return (move{ (use_op_alg' (adapters_skip_Skip_st (I_st))) } ("__0"))
@@ -279,8 +279,8 @@ Program Definition adapters_take_TakeMIastraits_iterator_Iterator_next_def (trai
       annot{ 1 }: CopyLftNameAnnot "plft4" "ulft_1"; (* initialization *)
       local_live{ BoolSynType } "__2";
       local_live{ (IntSynType USize) } "__3";
-      "__3" <-{ IntOp USize } copy{ IntOp USize } ((!{ RefOp } ( "self" )) at{ (adapters_take_Take_sls (MI_st)) } "n");
-      "__2" <-{ BoolOp } (move{ IntOp USize } ("__3")) != { IntOp USize , IntOp USize , U8 } (i2v (0) USize);
+      "__3" <-{ (IntOp USize) } copy{ (IntOp USize) } ((!{ RefOp } ( "self" )) at{ (adapters_take_Take_sls (MI_st)) } "n");
+      "__2" <-{ BoolOp } (move{ (IntOp USize) } ("__3")) != { (IntOp USize) , (IntOp USize) , U8 } (i2v (0) USize);
       if{ BoolOp }: move{ BoolOp } ("__2") then
        Goto "_bb1"
       else
@@ -289,13 +289,13 @@ Program Definition adapters_take_TakeMIastraits_iterator_Iterator_next_def (trai
      <[
      "_bb1" :=
       local_dead "__3";
-      "__4" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) BoolSynType) [("0", (copy{ IntOp USize } ((!{ RefOp } ( "self" )) at{ (adapters_take_Take_sls (MI_st)) } "n")) -{ IntOp USize , IntOp USize } (i2v (1) USize) : expr); ("1", (copy{ IntOp USize } ((!{ RefOp } ( "self" )) at{ (adapters_take_Take_sls (MI_st)) } "n")) -c{ IntOp USize , IntOp USize } (i2v (1) USize) : expr)];
+      "__4" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) BoolSynType) [("0", (copy{ (IntOp USize) } ((!{ RefOp } ( "self" )) at{ (adapters_take_Take_sls (MI_st)) } "n")) -{ (IntOp USize) , (IntOp USize) } (i2v (1) USize) : expr); ("1", (copy{ (IntOp USize) } ((!{ RefOp } ( "self" )) at{ (adapters_take_Take_sls (MI_st)) } "n")) -c{ (IntOp USize) , (IntOp USize) } (i2v (1) USize) : expr)];
       assert{ BoolOp }: (move{ BoolOp } (("__4") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
       Goto "_bb2"
      ]>%E $
      <[
      "_bb2" :=
-      (!{ RefOp } ( "self" )) at{ (adapters_take_Take_sls (MI_st)) } "n" <-{ IntOp USize } move{ IntOp USize } (("__4") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "0");
+      (!{ RefOp } ( "self" )) at{ (adapters_take_Take_sls (MI_st)) } "n" <-{ (IntOp USize) } move{ (IntOp USize) } (("__4") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "0");
       local_live{ RefSynType } "__5";
       annot{ 1 }: StartLftAnnot "llft3" ["plft4"]; (* borrow *)
       "__5" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "MI"), "llft3" } ((!{ RefOp } ( "self" )) at{ (adapters_take_Take_sls (MI_st)) } "iter");
@@ -346,8 +346,8 @@ Program Definition adapters_take_Take_I_new_def (I_st: syn_type) : function :=
       local_live{ I_st } "__3";
       "__3" <-{ (use_op_alg' I_st) } move{ (use_op_alg' I_st) } ("iter");
       local_live{ (IntSynType USize) } "__4";
-      "__4" <-{ IntOp USize } copy{ IntOp USize } ("n");
-      "__0" <-{ (use_op_alg' (adapters_take_Take_st (I_st))) } StructInit (adapters_take_Take_sls (I_st)) [("iter", move{ (use_op_alg' I_st) } ("__3") : expr); ("n", move{ IntOp USize } ("__4") : expr)];
+      "__4" <-{ (IntOp USize) } copy{ (IntOp USize) } ("n");
+      "__0" <-{ (use_op_alg' (adapters_take_Take_st (I_st))) } StructInit (adapters_take_Take_sls (I_st)) [("iter", move{ (use_op_alg' I_st) } ("__3") : expr); ("n", move{ (IntOp USize) } ("__4") : expr)];
       local_dead "__4";
       local_dead "__3";
       return (move{ (use_op_alg' (adapters_take_Take_st (I_st))) } ("__0"))
@@ -524,7 +524,7 @@ Program Definition traits_iterator_Iterator_all_def (DropGlue_F_drop_glue_loc: l
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "Self"), "llft3" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft3"; (* post-assignment *)
       local_live{ UnitSynType } "__5";
-      "__5" <-{ StructOp unit_sl [] } zst_val;
+      "__5" <-{ (StructOp unit_sl []) } zst_val;
       local_live{ ((tuple1_sls (RefSynType)) : syn_type) } "__6";
       local_live{ RefSynType } "__7";
       annot{ 1 }: StartLftAnnot "llft4" ["_flft"]; (* borrow *)
@@ -536,7 +536,7 @@ Program Definition traits_iterator_Iterator_all_def (DropGlue_F_drop_glue_loc: l
       local_dead "__7";
       annot{ 1 }: CopyLftNameAnnot "vlft6" "plft9"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft8"; (* function_call *)
-      CallS traits_iterator_Iterator_Self_try_fold_unit_closuresrctraitsiteratorrs1401314019_std_ops_ControlFlowunit_loc ["vlft6"; "vlft11"] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__4"); move{ StructOp unit_sl [] } ("__5"); move{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } ("__6")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)), "__3"))
+      CallS traits_iterator_Iterator_Self_try_fold_unit_closuresrctraitsiteratorrs1401314019_std_ops_ControlFlowunit_loc ["vlft6"; "vlft11"] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__4"); move{ (StructOp unit_sl []) } ("__5"); move{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } ("__6")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)), "__3"))
       ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb1")
@@ -549,8 +549,8 @@ Program Definition traits_iterator_Iterator_all_def (DropGlue_F_drop_glue_loc: l
       local_dead "__6";
       local_dead "__5";
       local_dead "__4";
-      "__8" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (UnitSynType) (UnitSynType))) ("__3");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__8")) (<[ 0%Z := 0%nat ]> $ ∅) ([Goto "_bb3"]) (Goto "_bb2")
+      "__8" <-{ (IntOp ISize) } EnumDiscriminant ((ControlFlow_els (UnitSynType) (UnitSynType))) ("__3");
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__8")) (<[ 0%Z := 0%nat ]> $ ∅) ([Goto "_bb3"]) (Goto "_bb2")
      ]>%E $
      <[
      "_bb2" :=
@@ -625,8 +625,8 @@ Program Definition traits_iterator_Iterator_all_closure0_def (FnMut_F_Selfastrai
       local_dead "__6";
       local_dead "__5";
       local_live{ UnitSynType } "__8";
-      "__8" <-{ StructOp unit_sl [] } zst_val;
-      "__0" <-{ (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)) } EnumInit (ControlFlow_els (UnitSynType) (UnitSynType)) "Continue" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTUnit; RSTUnit] [])) (StructInit (ControlFlow_Continue_sls (UnitSynType) (UnitSynType)) [("0", move{ StructOp unit_sl [] } ("__8") : expr)]);
+      "__8" <-{ (StructOp unit_sl []) } zst_val;
+      "__0" <-{ (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)) } EnumInit (ControlFlow_els (UnitSynType) (UnitSynType)) "Continue" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTUnit; RSTUnit] [])) (StructInit (ControlFlow_Continue_sls (UnitSynType) (UnitSynType)) [("0", move{ (StructOp unit_sl []) } ("__8") : expr)]);
       local_dead "__8";
       Goto "_bb4"
      ]>%E $
@@ -636,8 +636,8 @@ Program Definition traits_iterator_Iterator_all_closure0_def (FnMut_F_Selfastrai
       local_dead "__6";
       local_dead "__5";
       local_live{ UnitSynType } "__9";
-      "__9" <-{ StructOp unit_sl [] } zst_val;
-      "__0" <-{ (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)) } EnumInit (ControlFlow_els (UnitSynType) (UnitSynType)) "Break" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTUnit; RSTUnit] [])) (StructInit (ControlFlow_Break_sls (UnitSynType) (UnitSynType)) [("0", move{ StructOp unit_sl [] } ("__9") : expr)]);
+      "__9" <-{ (StructOp unit_sl []) } zst_val;
+      "__0" <-{ (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)) } EnumInit (ControlFlow_els (UnitSynType) (UnitSynType)) "Break" (RSTEnumDef ["ControlFlow_enum"] (RSTScopeInst [] [RSTUnit; RSTUnit] [])) (StructInit (ControlFlow_Break_sls (UnitSynType) (UnitSynType)) [("0", move{ (StructOp unit_sl []) } ("__9") : expr)]);
       local_dead "__9";
       Goto "_bb4"
      ]>%E $
@@ -727,8 +727,8 @@ Program Definition traits_iterator_Iterator_fold_def (DropGlue_F_drop_glue_loc: 
      "_bb2" :=
       annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
       local_dead "__8";
-      "__9" <-{ IntOp ISize } EnumDiscriminant ((Option_els (Item_st))) ("__7");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__9")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb3"]) (Goto "_bb5")
+      "__9" <-{ (IntOp ISize) } EnumDiscriminant ((Option_els (Item_st))) ("__7");
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__9")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb3"]) (Goto "_bb5")
      ]>%E $
      <[
      "_bb3" :=
@@ -762,7 +762,7 @@ Program Definition traits_iterator_Iterator_fold_def (DropGlue_F_drop_glue_loc: 
       "__20" <-{ BoolOp } val_of_bool true;
       "accum" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("__12");
       local_dead "__12";
-      "__6" <-{ StructOp unit_sl [] } zst_val;
+      "__6" <-{ (StructOp unit_sl []) } zst_val;
       local_dead "x";
       local_dead "__7";
       annot{ 1 }: StratifyContextAnnot; (* goto to loop head *)
@@ -772,7 +772,7 @@ Program Definition traits_iterator_Iterator_fold_def (DropGlue_F_drop_glue_loc: 
      "_bb5" :=
       local_dead "__7";
       local_live{ UnitSynType } "__18";
-      "__5" <-{ StructOp unit_sl [] } zst_val;
+      "__5" <-{ (StructOp unit_sl []) } zst_val;
       local_dead "__18";
       local_dead "__5";
       "__20" <-{ BoolOp } val_of_bool false;
@@ -849,8 +849,8 @@ Program Definition traits_iterator_Iterator_max_def (traits_iterator_Iterator_Se
       local_live{ Self_st } "__2";
       "__2" <-{ (use_op_alg' Self_st) } move{ (use_op_alg' Self_st) } ("self");
       local_live{ UnitSynType } "__3";
-      "__3" <-{ StructOp unit_sl [] } zst_val;
-      CallS traits_iterator_Iterator_Self_max_by_closuresrctraitsiteratorrs2091320919_loc [] [RSTTyVar "Self"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__2"); move{ StructOp unit_sl [] } ("__3")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
+      "__3" <-{ (StructOp unit_sl []) } zst_val;
+      CallS traits_iterator_Iterator_Self_max_by_closuresrctraitsiteratorrs2091320919_loc [] [RSTTyVar "Self"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__2"); move{ (StructOp unit_sl []) } ("__3")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
       ( Goto "_bb1")
       ( StuckS)
      ]>%E $
@@ -1022,8 +1022,8 @@ Program Definition traits_iterator_Iterator_min_def (traits_iterator_Iterator_Se
       local_live{ Self_st } "__2";
       "__2" <-{ (use_op_alg' Self_st) } move{ (use_op_alg' Self_st) } ("self");
       local_live{ UnitSynType } "__3";
-      "__3" <-{ StructOp unit_sl [] } zst_val;
-      CallS traits_iterator_Iterator_Self_min_by_closuresrctraitsiteratorrs2651326519_loc [] [RSTTyVar "Self"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__2"); move{ StructOp unit_sl [] } ("__3")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
+      "__3" <-{ (StructOp unit_sl []) } zst_val;
+      CallS traits_iterator_Iterator_Self_min_by_closuresrctraitsiteratorrs2651326519_loc [] [RSTTyVar "Self"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__2"); move{ (StructOp unit_sl []) } ("__3")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
       ( Goto "_bb1")
       ( StuckS)
      ]>%E $
@@ -1200,7 +1200,7 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
       local_live{ UnitSynType } "__19";
       annot{ 1 }: CopyLftNameAnnot "plft6" "ulft_1"; (* initialization *)
       local_live{ (IntSynType USize) } "i";
-      "i" <-{ IntOp USize } i2v (0) USize;
+      "i" <-{ (IntOp USize) } i2v (0) USize;
       local_live{ UnitSynType } "__4";
       annot{ 1 }: StratifyContextAnnot; (* goto to loop head *)
       Goto "_bb1"
@@ -1209,10 +1209,10 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
      "_bb1" :=
       local_live{ BoolSynType } "__6";
       local_live{ (IntSynType USize) } "__7";
-      "__7" <-{ IntOp USize } copy{ IntOp USize } ("i");
+      "__7" <-{ (IntOp USize) } copy{ (IntOp USize) } ("i");
       local_live{ (IntSynType USize) } "__8";
-      "__8" <-{ IntOp USize } copy{ IntOp USize } ("n");
-      "__6" <-{ BoolOp } (move{ IntOp USize } ("__7")) <{ IntOp USize , IntOp USize , U8 } (move{ IntOp USize } ("__8"));
+      "__8" <-{ (IntOp USize) } copy{ (IntOp USize) } ("n");
+      "__6" <-{ BoolOp } (move{ (IntOp USize) } ("__7")) <{ (IntOp USize) , (IntOp USize) , U8 } (move{ (IntOp USize) } ("__8"));
       if{ BoolOp }: move{ BoolOp } ("__6") then
        Goto "_bb2"
       else
@@ -1284,17 +1284,17 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
      "_bb8" :=
       local_dead "__13";
       local_dead "__12";
-      "__10" <-{ StructOp unit_sl [] } zst_val;
+      "__10" <-{ (StructOp unit_sl []) } zst_val;
       local_dead "__11";
       local_dead "__10";
-      "__16" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) BoolSynType) [("0", (copy{ IntOp USize } ("i")) +{ IntOp USize , IntOp USize } (i2v (1) USize) : expr); ("1", (copy{ IntOp USize } ("i")) +c{ IntOp USize , IntOp USize } (i2v (1) USize) : expr)];
+      "__16" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) BoolSynType) [("0", (copy{ (IntOp USize) } ("i")) +{ (IntOp USize) , (IntOp USize) } (i2v (1) USize) : expr); ("1", (copy{ (IntOp USize) } ("i")) +c{ (IntOp USize) , (IntOp USize) } (i2v (1) USize) : expr)];
       assert{ BoolOp }: (move{ BoolOp } (("__16") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
       Goto "_bb9"
      ]>%E $
      <[
      "_bb9" :=
-      "i" <-{ IntOp USize } move{ IntOp USize } (("__16") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "0");
-      "__5" <-{ StructOp unit_sl [] } zst_val;
+      "i" <-{ (IntOp USize) } move{ (IntOp USize) } (("__16") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "0");
+      "__5" <-{ (StructOp unit_sl []) } zst_val;
       local_dead "__6";
       annot{ 1 }: StratifyContextAnnot; (* goto to loop head *)
       Goto "_bb1"
@@ -1304,7 +1304,7 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
       local_dead "__8";
       local_dead "__7";
       local_live{ UnitSynType } "__18";
-      "__4" <-{ StructOp unit_sl [] } zst_val;
+      "__4" <-{ (StructOp unit_sl []) } zst_val;
       local_dead "__18";
       local_dead "__6";
       local_dead "__4";
@@ -1351,7 +1351,7 @@ Program Definition traits_iterator_Iterator_position_def (ControlFlow_BC_break_v
       local_live{ ((Option_els ((IntSynType USize))) : syn_type) } "__0";
       annot{ 1 }: CopyLftNameAnnot "plft10" "ulft_1"; (* initialization *)
       local_live{ (IntSynType USize) } "acc";
-      "acc" <-{ IntOp USize } i2v (0) USize;
+      "acc" <-{ (IntOp USize) } i2v (0) USize;
       local_live{ ((tuple2_sls (RefSynType) (RefSynType)) : syn_type) } "clos";
       local_live{ RefSynType } "__5";
       annot{ 1 }: StartLftAnnot "llft3" ["_flft"]; (* borrow *)
@@ -1374,7 +1374,7 @@ Program Definition traits_iterator_Iterator_position_def (ControlFlow_BC_break_v
       "__8" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "Self"), "llft7" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft15" "llft7"; (* post-assignment *)
       local_live{ UnitSynType } "__9";
-      "__9" <-{ StructOp unit_sl [] } zst_val;
+      "__9" <-{ (StructOp unit_sl []) } zst_val;
       local_live{ ((tuple2_sls (RefSynType) (RefSynType)) : syn_type) } "__10";
       "__10" <-{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } move{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } ("clos");
       annot{ 1 }: CopyLftNameAnnot "plft16" "plft11"; (* post-assignment *)
@@ -1384,7 +1384,7 @@ Program Definition traits_iterator_Iterator_position_def (ControlFlow_BC_break_v
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft16"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft17"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft18" "plft15"; (* function_call *)
-      CallS traits_iterator_Iterator_Self_try_fold_unit_closuresrctraitsiteratorrs1811318119_std_ops_ControlFlowusize_loc ["vlft8"; "vlft9"; "vlft18"] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__8"); move{ StructOp unit_sl [] } ("__9"); move{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } ("__10")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els ((IntSynType USize)) (UnitSynType)) : syn_type)), "__7"))
+      CallS traits_iterator_Iterator_Self_try_fold_unit_closuresrctraitsiteratorrs1811318119_std_ops_ControlFlowusize_loc ["vlft8"; "vlft9"; "vlft18"] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__8"); move{ (StructOp unit_sl []) } ("__9"); move{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } ("__10")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els ((IntSynType USize)) (UnitSynType)) : syn_type)), "__7"))
       ( annot{ 2 }: EndLftAnnot "llft7"; (* endlft *)
        annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
@@ -1470,8 +1470,8 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
      <[
      "_bb2" :=
       local_dead "__5";
-      "__7" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st))) ("__4");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__7")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb4"; Goto "_bb5"]) (Goto "_bb3")
+      "__7" <-{ (IntOp ISize) } EnumDiscriminant ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st))) ("__4");
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__7")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb4"; Goto "_bb5"]) (Goto "_bb3")
      ]>%E $
      <[
      "_bb3" :=
@@ -1564,8 +1564,8 @@ Program Definition traits_iterator_Iterator_skip_def (adapters_skip_Skip_I_new_S
       local_live{ Self_st } "__3";
       "__3" <-{ (use_op_alg' Self_st) } move{ (use_op_alg' Self_st) } ("self");
       local_live{ (IntSynType USize) } "__4";
-      "__4" <-{ IntOp USize } copy{ IntOp USize } ("n");
-      CallS adapters_skip_Skip_I_new_Self_loc [] [RSTTyVar "Self"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ IntOp USize } ("__4")] (Some (Na1Ord, (use_op_alg' (adapters_skip_Skip_st (Self_st))), "__0"))
+      "__4" <-{ (IntOp USize) } copy{ (IntOp USize) } ("n");
+      CallS adapters_skip_Skip_I_new_Self_loc [] [RSTTyVar "Self"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ (IntOp USize) } ("__4")] (Some (Na1Ord, (use_op_alg' (adapters_skip_Skip_st (Self_st))), "__0"))
       ( Goto "_bb1")
       ( StuckS)
      ]>%E $
@@ -1598,8 +1598,8 @@ Program Definition traits_iterator_Iterator_take_def (adapters_take_Take_I_new_S
       local_live{ Self_st } "__3";
       "__3" <-{ (use_op_alg' Self_st) } move{ (use_op_alg' Self_st) } ("self");
       local_live{ (IntSynType USize) } "__4";
-      "__4" <-{ IntOp USize } copy{ IntOp USize } ("n");
-      CallS adapters_take_Take_I_new_Self_loc [] [RSTTyVar "Self"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ IntOp USize } ("__4")] (Some (Na1Ord, (use_op_alg' (adapters_take_Take_st (Self_st))), "__0"))
+      "__4" <-{ (IntOp USize) } copy{ (IntOp USize) } ("n");
+      CallS adapters_take_Take_I_new_Self_loc [] [RSTTyVar "Self"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ (IntOp USize) } ("__4")] (Some (Na1Ord, (use_op_alg' (adapters_take_Take_st (Self_st))), "__0"))
       ( Goto "_bb1")
       ( StuckS)
      ]>%E $
@@ -1663,8 +1663,8 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_F_drop_glue_l
      "_bb2" :=
       annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
       local_dead "__8";
-      "__9" <-{ IntOp ISize } EnumDiscriminant ((Option_els (Item_st))) ("__7");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__9")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb3"]) (Goto "_bb10")
+      "__9" <-{ (IntOp ISize) } EnumDiscriminant ((Option_els (Item_st))) ("__7");
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__9")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb3"]) (Goto "_bb10")
      ]>%E $
      <[
      "_bb3" :=
@@ -1704,8 +1704,8 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_F_drop_glue_l
      <[
      "_bb5" :=
       local_dead "__14";
-      "__19" <-{ IntOp ISize } EnumDiscriminant ((ControlFlow_els (Try_R_Residual_st) (B_st))) ("__13");
-      Switch (ISize: int_type) (move{ IntOp ISize } ("__19")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb7"; Goto "_bb8"]) (Goto "_bb6")
+      "__19" <-{ (IntOp ISize) } EnumDiscriminant ((ControlFlow_els (Try_R_Residual_st) (B_st))) ("__13");
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__19")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb7"; Goto "_bb8"]) (Goto "_bb6")
      ]>%E $
      <[
      "_bb6" :=
@@ -1721,7 +1721,7 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_F_drop_glue_l
       "accum" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("__12");
       local_dead "__12";
       local_dead "__13";
-      "__6" <-{ StructOp unit_sl [] } zst_val;
+      "__6" <-{ (StructOp unit_sl []) } zst_val;
       local_dead "x";
       local_dead "__7";
       annot{ 1 }: StratifyContextAnnot; (* goto to loop head *)
@@ -1756,7 +1756,7 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_F_drop_glue_l
      "_bb10" :=
       local_dead "__7";
       local_live{ UnitSynType } "__25";
-      "__5" <-{ StructOp unit_sl [] } zst_val;
+      "__5" <-{ (StructOp unit_sl []) } zst_val;
       local_dead "__25";
       local_dead "__5";
       local_live{ B_st } "__27";
@@ -1804,10 +1804,10 @@ Program Definition u16asstep_Step_steps_between_def  : function :=
       annot{ 1 }: CopyLftNameAnnot "plft5" "ulft_2"; (* initialization *)
       local_live{ BoolSynType } "__3";
       local_live{ (IntSynType U16) } "__4";
-      "__4" <-{ IntOp U16 } copy{ IntOp U16 } (!{ RefOp } ( "start" ));
+      "__4" <-{ (IntOp U16) } copy{ (IntOp U16) } (!{ RefOp } ( "start" ));
       local_live{ (IntSynType U16) } "__5";
-      "__5" <-{ IntOp U16 } copy{ IntOp U16 } (!{ RefOp } ( "end" ));
-      "__3" <-{ BoolOp } (move{ IntOp U16 } ("__4")) ≤{ IntOp U16 , IntOp U16 , U8 } (move{ IntOp U16 } ("__5"));
+      "__5" <-{ (IntOp U16) } copy{ (IntOp U16) } (!{ RefOp } ( "end" ));
+      "__3" <-{ BoolOp } (move{ (IntOp U16) } ("__4")) ≤{ (IntOp U16) , (IntOp U16) , U8 } (move{ (IntOp U16) } ("__5"));
       if{ BoolOp }: move{ BoolOp } ("__3") then
        Goto "_bb1"
       else
@@ -1820,28 +1820,28 @@ Program Definition u16asstep_Step_steps_between_def  : function :=
       local_live{ (IntSynType USize) } "steps";
       local_live{ (IntSynType U16) } "__7";
       local_live{ (IntSynType U16) } "__8";
-      "__8" <-{ IntOp U16 } copy{ IntOp U16 } (!{ RefOp } ( "end" ));
+      "__8" <-{ (IntOp U16) } copy{ (IntOp U16) } (!{ RefOp } ( "end" ));
       local_live{ (IntSynType U16) } "__9";
-      "__9" <-{ IntOp U16 } copy{ IntOp U16 } (!{ RefOp } ( "start" ));
-      "__10" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U16)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U16)) BoolSynType) [("0", (copy{ IntOp U16 } ("__8")) -{ IntOp U16 , IntOp U16 } (copy{ IntOp U16 } ("__9")) : expr); ("1", (copy{ IntOp U16 } ("__8")) -c{ IntOp U16 , IntOp U16 } (copy{ IntOp U16 } ("__9")) : expr)];
+      "__9" <-{ (IntOp U16) } copy{ (IntOp U16) } (!{ RefOp } ( "start" ));
+      "__10" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U16)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U16)) BoolSynType) [("0", (copy{ (IntOp U16) } ("__8")) -{ (IntOp U16) , (IntOp U16) } (copy{ (IntOp U16) } ("__9")) : expr); ("1", (copy{ (IntOp U16) } ("__8")) -c{ (IntOp U16) , (IntOp U16) } (copy{ (IntOp U16) } ("__9")) : expr)];
       assert{ BoolOp }: (move{ BoolOp } (("__10") at{ (tuple2_sls ((IntSynType U16)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
       Goto "_bb2"
      ]>%E $
      <[
      "_bb2" :=
-      "__7" <-{ IntOp U16 } move{ IntOp U16 } (("__10") at{ (tuple2_sls ((IntSynType U16)) (BoolSynType)) } "0");
+      "__7" <-{ (IntOp U16) } move{ (IntOp U16) } (("__10") at{ (tuple2_sls ((IntSynType U16)) (BoolSynType)) } "0");
       local_dead "__9";
       local_dead "__8";
-      "steps" <-{ IntOp USize } UnOp (CastOp (IntOp USize)) (IntOp U16) (move{ IntOp U16 } ("__7"));
+      "steps" <-{ (IntOp USize) } UnOp (CastOp ((IntOp USize))) ((IntOp U16)) (move{ (IntOp U16) } ("__7"));
       local_dead "__7";
       local_live{ (IntSynType USize) } "__11";
-      "__11" <-{ IntOp USize } copy{ IntOp USize } ("steps");
+      "__11" <-{ (IntOp USize) } copy{ (IntOp USize) } ("steps");
       local_live{ ((Option_els ((IntSynType USize))) : syn_type) } "__12";
       local_live{ (IntSynType USize) } "__13";
-      "__13" <-{ IntOp USize } copy{ IntOp USize } ("steps");
-      "__12" <-{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } EnumInit (Option_els ((IntSynType USize))) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTInt USize] [])) (StructInit (Option_Some_sls ((IntSynType USize))) [("0", move{ IntOp USize } ("__13") : expr)]);
+      "__13" <-{ (IntOp USize) } copy{ (IntOp USize) } ("steps");
+      "__12" <-{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } EnumInit (Option_els ((IntSynType USize))) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTInt USize] [])) (StructInit (Option_Some_sls ((IntSynType USize))) [("0", move{ (IntOp USize) } ("__13") : expr)]);
       local_dead "__13";
-      "__0" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) [("0", move{ IntOp USize } ("__11") : expr); ("1", move{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } ("__12") : expr)];
+      "__0" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) [("0", move{ (IntOp USize) } ("__11") : expr); ("1", move{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } ("__12") : expr)];
       local_dead "__12";
       local_dead "__11";
       local_dead "steps";
@@ -1887,10 +1887,10 @@ Program Definition u32asstep_Step_steps_between_def  : function :=
       annot{ 1 }: CopyLftNameAnnot "plft5" "ulft_2"; (* initialization *)
       local_live{ BoolSynType } "__3";
       local_live{ (IntSynType U32) } "__4";
-      "__4" <-{ IntOp U32 } copy{ IntOp U32 } (!{ RefOp } ( "start" ));
+      "__4" <-{ (IntOp U32) } copy{ (IntOp U32) } (!{ RefOp } ( "start" ));
       local_live{ (IntSynType U32) } "__5";
-      "__5" <-{ IntOp U32 } copy{ IntOp U32 } (!{ RefOp } ( "end" ));
-      "__3" <-{ BoolOp } (move{ IntOp U32 } ("__4")) ≤{ IntOp U32 , IntOp U32 , U8 } (move{ IntOp U32 } ("__5"));
+      "__5" <-{ (IntOp U32) } copy{ (IntOp U32) } (!{ RefOp } ( "end" ));
+      "__3" <-{ BoolOp } (move{ (IntOp U32) } ("__4")) ≤{ (IntOp U32) , (IntOp U32) , U8 } (move{ (IntOp U32) } ("__5"));
       if{ BoolOp }: move{ BoolOp } ("__3") then
        Goto "_bb1"
       else
@@ -1903,28 +1903,28 @@ Program Definition u32asstep_Step_steps_between_def  : function :=
       local_live{ (IntSynType USize) } "steps";
       local_live{ (IntSynType U32) } "__7";
       local_live{ (IntSynType U32) } "__8";
-      "__8" <-{ IntOp U32 } copy{ IntOp U32 } (!{ RefOp } ( "end" ));
+      "__8" <-{ (IntOp U32) } copy{ (IntOp U32) } (!{ RefOp } ( "end" ));
       local_live{ (IntSynType U32) } "__9";
-      "__9" <-{ IntOp U32 } copy{ IntOp U32 } (!{ RefOp } ( "start" ));
-      "__10" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U32)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U32)) BoolSynType) [("0", (copy{ IntOp U32 } ("__8")) -{ IntOp U32 , IntOp U32 } (copy{ IntOp U32 } ("__9")) : expr); ("1", (copy{ IntOp U32 } ("__8")) -c{ IntOp U32 , IntOp U32 } (copy{ IntOp U32 } ("__9")) : expr)];
+      "__9" <-{ (IntOp U32) } copy{ (IntOp U32) } (!{ RefOp } ( "start" ));
+      "__10" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U32)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U32)) BoolSynType) [("0", (copy{ (IntOp U32) } ("__8")) -{ (IntOp U32) , (IntOp U32) } (copy{ (IntOp U32) } ("__9")) : expr); ("1", (copy{ (IntOp U32) } ("__8")) -c{ (IntOp U32) , (IntOp U32) } (copy{ (IntOp U32) } ("__9")) : expr)];
       assert{ BoolOp }: (move{ BoolOp } (("__10") at{ (tuple2_sls ((IntSynType U32)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
       Goto "_bb2"
      ]>%E $
      <[
      "_bb2" :=
-      "__7" <-{ IntOp U32 } move{ IntOp U32 } (("__10") at{ (tuple2_sls ((IntSynType U32)) (BoolSynType)) } "0");
+      "__7" <-{ (IntOp U32) } move{ (IntOp U32) } (("__10") at{ (tuple2_sls ((IntSynType U32)) (BoolSynType)) } "0");
       local_dead "__9";
       local_dead "__8";
-      "steps" <-{ IntOp USize } UnOp (CastOp (IntOp USize)) (IntOp U32) (move{ IntOp U32 } ("__7"));
+      "steps" <-{ (IntOp USize) } UnOp (CastOp ((IntOp USize))) ((IntOp U32)) (move{ (IntOp U32) } ("__7"));
       local_dead "__7";
       local_live{ (IntSynType USize) } "__11";
-      "__11" <-{ IntOp USize } copy{ IntOp USize } ("steps");
+      "__11" <-{ (IntOp USize) } copy{ (IntOp USize) } ("steps");
       local_live{ ((Option_els ((IntSynType USize))) : syn_type) } "__12";
       local_live{ (IntSynType USize) } "__13";
-      "__13" <-{ IntOp USize } copy{ IntOp USize } ("steps");
-      "__12" <-{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } EnumInit (Option_els ((IntSynType USize))) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTInt USize] [])) (StructInit (Option_Some_sls ((IntSynType USize))) [("0", move{ IntOp USize } ("__13") : expr)]);
+      "__13" <-{ (IntOp USize) } copy{ (IntOp USize) } ("steps");
+      "__12" <-{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } EnumInit (Option_els ((IntSynType USize))) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTInt USize] [])) (StructInit (Option_Some_sls ((IntSynType USize))) [("0", move{ (IntOp USize) } ("__13") : expr)]);
       local_dead "__13";
-      "__0" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) [("0", move{ IntOp USize } ("__11") : expr); ("1", move{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } ("__12") : expr)];
+      "__0" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) [("0", move{ (IntOp USize) } ("__11") : expr); ("1", move{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } ("__12") : expr)];
       local_dead "__12";
       local_dead "__11";
       local_dead "steps";
@@ -1970,10 +1970,10 @@ Program Definition u64asstep_Step_steps_between_def  : function :=
       annot{ 1 }: CopyLftNameAnnot "plft5" "ulft_2"; (* initialization *)
       local_live{ BoolSynType } "__3";
       local_live{ (IntSynType U64) } "__4";
-      "__4" <-{ IntOp U64 } copy{ IntOp U64 } (!{ RefOp } ( "start" ));
+      "__4" <-{ (IntOp U64) } copy{ (IntOp U64) } (!{ RefOp } ( "start" ));
       local_live{ (IntSynType U64) } "__5";
-      "__5" <-{ IntOp U64 } copy{ IntOp U64 } (!{ RefOp } ( "end" ));
-      "__3" <-{ BoolOp } (move{ IntOp U64 } ("__4")) ≤{ IntOp U64 , IntOp U64 , U8 } (move{ IntOp U64 } ("__5"));
+      "__5" <-{ (IntOp U64) } copy{ (IntOp U64) } (!{ RefOp } ( "end" ));
+      "__3" <-{ BoolOp } (move{ (IntOp U64) } ("__4")) ≤{ (IntOp U64) , (IntOp U64) , U8 } (move{ (IntOp U64) } ("__5"));
       if{ BoolOp }: move{ BoolOp } ("__3") then
        Goto "_bb1"
       else
@@ -1986,28 +1986,28 @@ Program Definition u64asstep_Step_steps_between_def  : function :=
       local_live{ (IntSynType USize) } "steps";
       local_live{ (IntSynType U64) } "__7";
       local_live{ (IntSynType U64) } "__8";
-      "__8" <-{ IntOp U64 } copy{ IntOp U64 } (!{ RefOp } ( "end" ));
+      "__8" <-{ (IntOp U64) } copy{ (IntOp U64) } (!{ RefOp } ( "end" ));
       local_live{ (IntSynType U64) } "__9";
-      "__9" <-{ IntOp U64 } copy{ IntOp U64 } (!{ RefOp } ( "start" ));
-      "__10" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U64)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U64)) BoolSynType) [("0", (copy{ IntOp U64 } ("__8")) -{ IntOp U64 , IntOp U64 } (copy{ IntOp U64 } ("__9")) : expr); ("1", (copy{ IntOp U64 } ("__8")) -c{ IntOp U64 , IntOp U64 } (copy{ IntOp U64 } ("__9")) : expr)];
+      "__9" <-{ (IntOp U64) } copy{ (IntOp U64) } (!{ RefOp } ( "start" ));
+      "__10" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U64)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U64)) BoolSynType) [("0", (copy{ (IntOp U64) } ("__8")) -{ (IntOp U64) , (IntOp U64) } (copy{ (IntOp U64) } ("__9")) : expr); ("1", (copy{ (IntOp U64) } ("__8")) -c{ (IntOp U64) , (IntOp U64) } (copy{ (IntOp U64) } ("__9")) : expr)];
       assert{ BoolOp }: (move{ BoolOp } (("__10") at{ (tuple2_sls ((IntSynType U64)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
       Goto "_bb2"
      ]>%E $
      <[
      "_bb2" :=
-      "__7" <-{ IntOp U64 } move{ IntOp U64 } (("__10") at{ (tuple2_sls ((IntSynType U64)) (BoolSynType)) } "0");
+      "__7" <-{ (IntOp U64) } move{ (IntOp U64) } (("__10") at{ (tuple2_sls ((IntSynType U64)) (BoolSynType)) } "0");
       local_dead "__9";
       local_dead "__8";
-      "steps" <-{ IntOp USize } UnOp (CastOp (IntOp USize)) (IntOp U64) (move{ IntOp U64 } ("__7"));
+      "steps" <-{ (IntOp USize) } UnOp (CastOp ((IntOp USize))) ((IntOp U64)) (move{ (IntOp U64) } ("__7"));
       local_dead "__7";
       local_live{ (IntSynType USize) } "__11";
-      "__11" <-{ IntOp USize } copy{ IntOp USize } ("steps");
+      "__11" <-{ (IntOp USize) } copy{ (IntOp USize) } ("steps");
       local_live{ ((Option_els ((IntSynType USize))) : syn_type) } "__12";
       local_live{ (IntSynType USize) } "__13";
-      "__13" <-{ IntOp USize } copy{ IntOp USize } ("steps");
-      "__12" <-{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } EnumInit (Option_els ((IntSynType USize))) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTInt USize] [])) (StructInit (Option_Some_sls ((IntSynType USize))) [("0", move{ IntOp USize } ("__13") : expr)]);
+      "__13" <-{ (IntOp USize) } copy{ (IntOp USize) } ("steps");
+      "__12" <-{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } EnumInit (Option_els ((IntSynType USize))) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTInt USize] [])) (StructInit (Option_Some_sls ((IntSynType USize))) [("0", move{ (IntOp USize) } ("__13") : expr)]);
       local_dead "__13";
-      "__0" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) [("0", move{ IntOp USize } ("__11") : expr); ("1", move{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } ("__12") : expr)];
+      "__0" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) [("0", move{ (IntOp USize) } ("__11") : expr); ("1", move{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } ("__12") : expr)];
       local_dead "__12";
       local_dead "__11";
       local_dead "steps";
@@ -2053,10 +2053,10 @@ Program Definition u8asstep_Step_steps_between_def  : function :=
       annot{ 1 }: CopyLftNameAnnot "plft5" "ulft_2"; (* initialization *)
       local_live{ BoolSynType } "__3";
       local_live{ (IntSynType U8) } "__4";
-      "__4" <-{ IntOp U8 } copy{ IntOp U8 } (!{ RefOp } ( "start" ));
+      "__4" <-{ (IntOp U8) } copy{ (IntOp U8) } (!{ RefOp } ( "start" ));
       local_live{ (IntSynType U8) } "__5";
-      "__5" <-{ IntOp U8 } copy{ IntOp U8 } (!{ RefOp } ( "end" ));
-      "__3" <-{ BoolOp } (move{ IntOp U8 } ("__4")) ≤{ IntOp U8 , IntOp U8 , U8 } (move{ IntOp U8 } ("__5"));
+      "__5" <-{ (IntOp U8) } copy{ (IntOp U8) } (!{ RefOp } ( "end" ));
+      "__3" <-{ BoolOp } (move{ (IntOp U8) } ("__4")) ≤{ (IntOp U8) , (IntOp U8) , U8 } (move{ (IntOp U8) } ("__5"));
       if{ BoolOp }: move{ BoolOp } ("__3") then
        Goto "_bb1"
       else
@@ -2069,28 +2069,28 @@ Program Definition u8asstep_Step_steps_between_def  : function :=
       local_live{ (IntSynType USize) } "steps";
       local_live{ (IntSynType U8) } "__7";
       local_live{ (IntSynType U8) } "__8";
-      "__8" <-{ IntOp U8 } copy{ IntOp U8 } (!{ RefOp } ( "end" ));
+      "__8" <-{ (IntOp U8) } copy{ (IntOp U8) } (!{ RefOp } ( "end" ));
       local_live{ (IntSynType U8) } "__9";
-      "__9" <-{ IntOp U8 } copy{ IntOp U8 } (!{ RefOp } ( "start" ));
-      "__10" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U8)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U8)) BoolSynType) [("0", (copy{ IntOp U8 } ("__8")) -{ IntOp U8 , IntOp U8 } (copy{ IntOp U8 } ("__9")) : expr); ("1", (copy{ IntOp U8 } ("__8")) -c{ IntOp U8 , IntOp U8 } (copy{ IntOp U8 } ("__9")) : expr)];
+      "__9" <-{ (IntOp U8) } copy{ (IntOp U8) } (!{ RefOp } ( "start" ));
+      "__10" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U8)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U8)) BoolSynType) [("0", (copy{ (IntOp U8) } ("__8")) -{ (IntOp U8) , (IntOp U8) } (copy{ (IntOp U8) } ("__9")) : expr); ("1", (copy{ (IntOp U8) } ("__8")) -c{ (IntOp U8) , (IntOp U8) } (copy{ (IntOp U8) } ("__9")) : expr)];
       assert{ BoolOp }: (move{ BoolOp } (("__10") at{ (tuple2_sls ((IntSynType U8)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
       Goto "_bb2"
      ]>%E $
      <[
      "_bb2" :=
-      "__7" <-{ IntOp U8 } move{ IntOp U8 } (("__10") at{ (tuple2_sls ((IntSynType U8)) (BoolSynType)) } "0");
+      "__7" <-{ (IntOp U8) } move{ (IntOp U8) } (("__10") at{ (tuple2_sls ((IntSynType U8)) (BoolSynType)) } "0");
       local_dead "__9";
       local_dead "__8";
-      "steps" <-{ IntOp USize } UnOp (CastOp (IntOp USize)) (IntOp U8) (move{ IntOp U8 } ("__7"));
+      "steps" <-{ (IntOp USize) } UnOp (CastOp ((IntOp USize))) ((IntOp U8)) (move{ (IntOp U8) } ("__7"));
       local_dead "__7";
       local_live{ (IntSynType USize) } "__11";
-      "__11" <-{ IntOp USize } copy{ IntOp USize } ("steps");
+      "__11" <-{ (IntOp USize) } copy{ (IntOp USize) } ("steps");
       local_live{ ((Option_els ((IntSynType USize))) : syn_type) } "__12";
       local_live{ (IntSynType USize) } "__13";
-      "__13" <-{ IntOp USize } copy{ IntOp USize } ("steps");
-      "__12" <-{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } EnumInit (Option_els ((IntSynType USize))) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTInt USize] [])) (StructInit (Option_Some_sls ((IntSynType USize))) [("0", move{ IntOp USize } ("__13") : expr)]);
+      "__13" <-{ (IntOp USize) } copy{ (IntOp USize) } ("steps");
+      "__12" <-{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } EnumInit (Option_els ((IntSynType USize))) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTInt USize] [])) (StructInit (Option_Some_sls ((IntSynType USize))) [("0", move{ (IntOp USize) } ("__13") : expr)]);
       local_dead "__13";
-      "__0" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) [("0", move{ IntOp USize } ("__11") : expr); ("1", move{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } ("__12") : expr)];
+      "__0" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) [("0", move{ (IntOp USize) } ("__11") : expr); ("1", move{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } ("__12") : expr)];
       local_dead "__12";
       local_dead "__11";
       local_dead "steps";
@@ -2136,10 +2136,10 @@ Program Definition usizeasstep_Step_steps_between_def  : function :=
       annot{ 1 }: CopyLftNameAnnot "plft5" "ulft_2"; (* initialization *)
       local_live{ BoolSynType } "__3";
       local_live{ (IntSynType USize) } "__4";
-      "__4" <-{ IntOp USize } copy{ IntOp USize } (!{ RefOp } ( "start" ));
+      "__4" <-{ (IntOp USize) } copy{ (IntOp USize) } (!{ RefOp } ( "start" ));
       local_live{ (IntSynType USize) } "__5";
-      "__5" <-{ IntOp USize } copy{ IntOp USize } (!{ RefOp } ( "end" ));
-      "__3" <-{ BoolOp } (move{ IntOp USize } ("__4")) ≤{ IntOp USize , IntOp USize , U8 } (move{ IntOp USize } ("__5"));
+      "__5" <-{ (IntOp USize) } copy{ (IntOp USize) } (!{ RefOp } ( "end" ));
+      "__3" <-{ BoolOp } (move{ (IntOp USize) } ("__4")) ≤{ (IntOp USize) , (IntOp USize) , U8 } (move{ (IntOp USize) } ("__5"));
       if{ BoolOp }: move{ BoolOp } ("__3") then
        Goto "_bb1"
       else
@@ -2151,26 +2151,26 @@ Program Definition usizeasstep_Step_steps_between_def  : function :=
       local_dead "__4";
       local_live{ (IntSynType USize) } "steps";
       local_live{ (IntSynType USize) } "__7";
-      "__7" <-{ IntOp USize } copy{ IntOp USize } (!{ RefOp } ( "end" ));
+      "__7" <-{ (IntOp USize) } copy{ (IntOp USize) } (!{ RefOp } ( "end" ));
       local_live{ (IntSynType USize) } "__8";
-      "__8" <-{ IntOp USize } copy{ IntOp USize } (!{ RefOp } ( "start" ));
-      "__9" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) BoolSynType) [("0", (copy{ IntOp USize } ("__7")) -{ IntOp USize , IntOp USize } (copy{ IntOp USize } ("__8")) : expr); ("1", (copy{ IntOp USize } ("__7")) -c{ IntOp USize , IntOp USize } (copy{ IntOp USize } ("__8")) : expr)];
+      "__8" <-{ (IntOp USize) } copy{ (IntOp USize) } (!{ RefOp } ( "start" ));
+      "__9" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) BoolSynType) [("0", (copy{ (IntOp USize) } ("__7")) -{ (IntOp USize) , (IntOp USize) } (copy{ (IntOp USize) } ("__8")) : expr); ("1", (copy{ (IntOp USize) } ("__7")) -c{ (IntOp USize) , (IntOp USize) } (copy{ (IntOp USize) } ("__8")) : expr)];
       assert{ BoolOp }: (move{ BoolOp } (("__9") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
       Goto "_bb2"
      ]>%E $
      <[
      "_bb2" :=
-      "steps" <-{ IntOp USize } move{ IntOp USize } (("__9") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "0");
+      "steps" <-{ (IntOp USize) } move{ (IntOp USize) } (("__9") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "0");
       local_dead "__8";
       local_dead "__7";
       local_live{ (IntSynType USize) } "__10";
-      "__10" <-{ IntOp USize } copy{ IntOp USize } ("steps");
+      "__10" <-{ (IntOp USize) } copy{ (IntOp USize) } ("steps");
       local_live{ ((Option_els ((IntSynType USize))) : syn_type) } "__11";
       local_live{ (IntSynType USize) } "__12";
-      "__12" <-{ IntOp USize } copy{ IntOp USize } ("steps");
-      "__11" <-{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } EnumInit (Option_els ((IntSynType USize))) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTInt USize] [])) (StructInit (Option_Some_sls ((IntSynType USize))) [("0", move{ IntOp USize } ("__12") : expr)]);
+      "__12" <-{ (IntOp USize) } copy{ (IntOp USize) } ("steps");
+      "__11" <-{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } EnumInit (Option_els ((IntSynType USize))) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTInt USize] [])) (StructInit (Option_Some_sls ((IntSynType USize))) [("0", move{ (IntOp USize) } ("__12") : expr)]);
       local_dead "__12";
-      "__0" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) [("0", move{ IntOp USize } ("__10") : expr); ("1", move{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } ("__11") : expr)];
+      "__0" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) (((Option_els ((IntSynType USize))) : syn_type))) [("0", move{ (IntOp USize) } ("__10") : expr); ("1", move{ (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)) } ("__11") : expr)];
       local_dead "__11";
       local_dead "__10";
       local_dead "steps";
@@ -2215,7 +2215,7 @@ Program Definition traits_iterator_Iterator_all_closure0_call_once_code (traits_
       local_live{ RefSynType } "__1";
       annot{ 1 }: StartLftAnnot "_mk_ref_lft" ["_flft"];
       "__1" <-{ RefOp } &ref{ Mut, None, "_mk_ref_lft" } ("self");
-      CallS traits_iterator_Iterator_all_closure0_loc ["ulft1"; "_mk_ref_lft"] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "traits_iterator_Iterator_Self_Item"] [@{expr} move{ RefOp } ("__1"); move{ StructOp unit_sl [] } (("args") at{ (tuple2_sls (UnitSynType) (traits_iterator_Iterator_Self_Item_st)) } "0"); move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } (("args") at{ (tuple2_sls (UnitSynType) (traits_iterator_Iterator_Self_Item_st)) } "1")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)), "__0"))
+      CallS traits_iterator_Iterator_all_closure0_loc ["ulft1"; "_mk_ref_lft"] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "traits_iterator_Iterator_Self_Item"] [@{expr} move{ RefOp } ("__1"); move{ (StructOp unit_sl []) } (("args") at{ (tuple2_sls (UnitSynType) (traits_iterator_Iterator_Self_Item_st)) } "0"); move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } (("args") at{ (tuple2_sls (UnitSynType) (traits_iterator_Iterator_Self_Item_st)) } "1")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)), "__0"))
       ( annot{ 2 }: EndLftAnnot "_mk_ref_lft";
        return (move{ (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)) } ("__0")))
       ( StuckS)
@@ -2242,7 +2242,7 @@ Program Definition traits_iterator_Iterator_all_closure0_call_mut_code (traits_i
       local_live{ ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type) } "__0";
       local_live{ RefSynType } "__1";
       "__1" <-{ RefOp } move{ RefOp } ("self");
-      CallS traits_iterator_Iterator_all_closure0_loc ["ulft1"; "_ref_lft"] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "traits_iterator_Iterator_Self_Item"] [@{expr} move{ RefOp } ("__1"); move{ StructOp unit_sl [] } (("args") at{ (tuple2_sls (UnitSynType) (traits_iterator_Iterator_Self_Item_st)) } "0"); move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } (("args") at{ (tuple2_sls (UnitSynType) (traits_iterator_Iterator_Self_Item_st)) } "1")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)), "__0"))
+      CallS traits_iterator_Iterator_all_closure0_loc ["ulft1"; "_ref_lft"] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "traits_iterator_Iterator_Self_Item"] [@{expr} move{ RefOp } ("__1"); move{ (StructOp unit_sl []) } (("args") at{ (tuple2_sls (UnitSynType) (traits_iterator_Iterator_Self_Item_st)) } "0"); move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } (("args") at{ (tuple2_sls (UnitSynType) (traits_iterator_Iterator_Self_Item_st)) } "1")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)), "__0"))
       ( return (move{ (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)) } ("__0")))
       ( StuckS)
      ]>%E $
