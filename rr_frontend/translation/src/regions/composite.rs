@@ -22,7 +22,8 @@ pub(crate) fn get_composite_rvalue_creation_annots<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
-    midpoint: facts::PointIndex,
+    constraint_point: facts::PointIndex,
+    effect_point: facts::PointIndex,
     rhs_ty: ty::Ty<'tcx>,
 ) -> Vec<code::Annotation> {
     let info = inclusion_tracker.info();
@@ -30,17 +31,17 @@ pub(crate) fn get_composite_rvalue_creation_annots<'tcx>(
 
     let mut annots = Vec::new();
 
-    for (s1, s2) in info.subset_base_at(midpoint) {
+    for (s1, s2) in info.subset_base_at(constraint_point) {
         let lft1 = info.mk_atomic_region(s1);
         let lft2 = info.mk_atomic_region(s2);
 
         // a place lifetime is included in a value lifetime
         if lft2.is_value() && lft1.is_place() {
             // make sure it's not due to an assignment constraint
-            if regions_of_ty.contains(&s2) && !info.has_subset_base_at(s2, s1, midpoint) {
+            if regions_of_ty.contains(&s2) && !info.has_subset_base_at(s2, s1, constraint_point) {
                 // we enforce this inclusion by setting the lifetimes to be equal
-                inclusion_tracker.add_static_inclusion(s1, s2, midpoint);
-                inclusion_tracker.add_static_inclusion(s2, s1, midpoint);
+                inclusion_tracker.add_static_inclusion(s1, s2, effect_point);
+                inclusion_tracker.add_static_inclusion(s2, s1, effect_point);
 
                 let annot = code::Annotation::CopyLftName(
                     ty_translator.format_atomic_region(lft1),

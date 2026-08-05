@@ -396,7 +396,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         for (pl, _) in place.iter_projections() {
             // check if the current ty is a reference that we then descend under with proj
             let cur_ty_kind = pl.ty(&self.proc.dropck_mir().local_decls, self.tcx).ty.kind();
-            if let ty::TyKind::Ref(_, _, _) = cur_ty_kind {
+            if matches!(cur_ty_kind, ty::TyKind::Ref(_, _, _) | ty::TyKind::RawPtr(_, _)) {
                 return true;
             }
         }

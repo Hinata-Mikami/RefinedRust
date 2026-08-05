@@ -23,7 +23,7 @@ pub(crate) trait RegionBiFolder<'tcx> {
         sig2: &ty::Binder<'tcx, ty::FnSig<'tcx>>,
     ) {
         let inputs1 = sig1.skip_binder().inputs();
-        let inputs2 = sig1.skip_binder().inputs();
+        let inputs2 = sig2.skip_binder().inputs();
         self.map_ty_slices(inputs1, inputs2);
 
         let output1 = sig1.skip_binder().output();

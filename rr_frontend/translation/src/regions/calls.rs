@@ -42,7 +42,7 @@ pub(crate) struct CallRegions {
 /// `substs` are the substitutions for the early-bound regions
 pub(crate) fn compute_call_regions<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
-    incl_tracker: &InclusionTracker<'_, '_>,
+    incl_tracker: &mut InclusionTracker<'_, '_>,
     substs: &[ty::GenericArg<'tcx>],
     midpoint: facts::PointIndex,
     num_expected_late_bounds: usize,

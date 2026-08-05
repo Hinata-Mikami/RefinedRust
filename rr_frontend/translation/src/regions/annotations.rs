@@ -285,6 +285,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             ty_translator,
             loc,
             midpoint,
+            startpoint,
             rhs,
         );
 
@@ -293,6 +294,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             &mut self.inclusion_tracker,
             ty_translator,
             midpoint,
+            startpoint,
             rhs_ty,
         );
 
@@ -302,6 +304,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             ty_translator,
             startpoint,
             midpoint,
+            startpoint,
             lhs_strongly_writeable,
             lhs_ty,
             rhs_ty,
@@ -312,6 +315,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             ty_translator,
             assignment_annots.unconstrained_regions,
             midpoint,
+            startpoint,
             Some(rhs),
         );
         for hint in unconstrained_hints {
@@ -372,7 +376,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
 
         let classification = calls::compute_call_regions(
             self.tcx,
-            &self.inclusion_tracker,
+            &mut self.inclusion_tracker,
             call_regions.method_params,
             midpoint,
             call_regions.num_late_bounds,
@@ -406,6 +410,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             ty_translator,
             startpoint,
             midpoint,
+            midpoint,
             assignment.lhs_strongly_writeable,
             assignment.lhs_ty,
             assignment.output_ty,
@@ -426,6 +431,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
                 ty_translator,
                 unconstrained_regions,
                 midpoint,
+                startpoint,
                 None,
             );
         let mut call_region_annots = Vec::new();
