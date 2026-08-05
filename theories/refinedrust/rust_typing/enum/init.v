@@ -17,10 +17,11 @@ Section init.
       ∃ M, named_lfts M ∗ (named_lfts M -∗
       (* get the desired enum type *)
       li_tactic (interpret_rust_enum_def_goal M rsen) (λ '(existT rto e),
-        ⌜e.(enum_els) = els⌝ ∗
+        ⌜fast_syntype_eq_hint (e.(enum_els) = els)⌝ ∗
         ⌜m = MetaNone⌝ ∗
         ∃ sem, ⌜enum_tag_ty_inj e variant = Some sem⌝ ∗
-        ⌜(lookup_iml (els_variants els) variant) = Some (st_of sem.(enum_tag_sem_ty) MetaNone)⌝ ∗
+        (* could try to remove this *)
+        ⌜fast_syntype_eq_hint ((lookup_iml (els_variants els) variant) = Some (st_of sem.(enum_tag_sem_ty) MetaNone))⌝ ∗
           ∃ ri', owned_subtype f.1 E L2 false ri ri' tyi sem.(enum_tag_sem_ty) (λ L3,
             ⌜ty_has_op_type sem.(enum_tag_sem_ty) (use_op_alg' (st_of (sem.(enum_tag_sem_ty)) MetaNone))⌝ ∗
             (* could try to remove this by strengthening enum *)

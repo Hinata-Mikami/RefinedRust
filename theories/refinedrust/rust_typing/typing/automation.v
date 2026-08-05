@@ -1568,6 +1568,15 @@ Lemma ty_has_op_type_ex_na_t_canonical `{!typeGS Σ} {X Y} P ty ot :
 Proof.
   intros ?. rewrite ty_has_op_type_unfold. done.
 Qed.
+Lemma mut_fixpoint_project_ty_has_op_type' `{!typeGS Σ} {rts : list RT} (F : mut_type_fun rts) `{Hne : !MutTypeNonExpansive F} `{Hcontr : !MutTypeContractive (mut_iter F (length rts))} `{Hinh : !base.TCTForall (λ rt, Inhabited (RT_xt rt)) rts} {rt : RT} `{!Inhabited (RT_xt rt)} i (Hlook : rts !! i = Some rt) m :
+  ty_has_op_type (mut_type_project_simpl (mut_Fn_canon (mut_iter F (length rts)) Hinh 0) i Hlook)
+    (use_op_alg' (st_of (mut_type_project_simpl (mut_Fn_canon (mut_iter F (length rts)) Hinh 0) i Hlook) m)) →
+  ty_has_op_type (mut_type_project (mut_fixpoint (Hne:=Hne) (Hcontr:=Hcontr) F) i Hlook) (use_op_alg' (st_of (mut_type_project (mut_fixpoint (Hne:=Hne) (Hcontr:=Hcontr) F) i Hlook) m)).
+Proof.
+  intros Ha.
+  apply mut_fixpoint_project_ty_has_op_type_1.
+  rewrite mut_fixpoint_project_ty_syn_type//.
+Qed.
 
 Ltac solve_ty_has_op_type_struct_fields :=
   simpl;
@@ -1598,6 +1607,8 @@ Ltac solve_ty_has_op_type_cases ::=
         refine (ty_has_op_type_typed_value_canonical st _ _);
         [ solve_layout_alg]
   | |- ty_has_op_type (mut_type_project _ _ _) _ =>
+        refine (mut_fixpoint_project_ty_has_op_type' _ _ _ _ _)
+  | |- ty_has_op_type (mut_type_project _ _ _) _ =>
         refine (mut_fixpoint_project_ty_has_op_type_1 _ _ _ _ _)
   | |- _ =>
     first [
@@ -1605,19 +1616,20 @@ Ltac solve_ty_has_op_type_cases ::=
     | refine (ty_has_op_type_struct_canonical' _ _ _ _ _ );
       [ solve_layout_alg
       | solve_ty_has_op_type_struct_fields]
-    | refine (ty_has_op_type_enum_canonical' _ _ _ _);
-      [ solve_layout_alg
+    | refine (ty_has_op_type_enum_canonical' _ _ _ _ _ _ );
+      [ simpl; solve_layout_alg
+      | simpl; solve_syn_type_eq
       | solve_ty_has_op_type_enum_variants]
     | refine (ty_has_op_type_ex_plain_t_canonical _ _ _ _)
     | refine (ty_has_op_type_ex_na_t_canonical _ _ _ _)
-    (*| refine (ty_has_op_type_struct_canonical _ _ _ _ _ _ _ _);*)
-      (*[ solve_op_alg*)
-      (*| solve_ot_eq*)
-      (*| solve_ty_has_op_type_struct_fields]*)
-    (*| refine (ty_has_op_type_enum_canonical _ _ _ _ _ _ _ _);*)
-      (*[ solve_op_alg*)
-      (*| solve_ot_eq*)
-      (*| solve_ty_has_op_type_enum_variants]*)
+    | refine (ty_has_op_type_struct_canonical _ _ _ _ _ _ _ _);
+      [ solve_op_alg
+      | solve_ot_eq
+      | solve_ty_has_op_type_struct_fields]
+    | refine (ty_has_op_type_enum_canonical _ _ _ _ _ _ _ _);
+      [ solve_op_alg
+      | solve_ot_eq
+      | solve_ty_has_op_type_enum_variants]
     ]
   end.
 

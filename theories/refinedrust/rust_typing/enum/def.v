@@ -1205,15 +1205,16 @@ Section enum.
     - by rewrite /use_enum_layout_alg Hlys /= Halg.
   Qed.
 
-  Lemma ty_has_op_type_enum_canonical' {rt} (en : enum rt) ly :
+  Lemma ty_has_op_type_enum_canonical' {rt} (en : enum rt) st ly :
     syn_type_has_layout en.(enum_els) ly →
+    st = en.(enum_els) →
     Forall2 (λ tag_ty variant_st,
       tag_ty.1 = variant_st.1 ∧
       ty_has_op_type tag_ty.2.(enum_tag_sem_ty) (use_op_alg' variant_st.2))
       en.(enum_tag_ty) en.(enum_els).(els_variants) →
-    ty_has_op_type (enum_t en) (use_op_alg' en.(enum_els)).
+    ty_has_op_type (enum_t en) (use_op_alg' st).
   Proof.
-    intros Hly Htys.
+    intros Hly -> Htys.
     apply syn_type_has_layout_op_alg in Hly as (ot & Hot & _).
     pose proof Hot as Hot_enum.
 

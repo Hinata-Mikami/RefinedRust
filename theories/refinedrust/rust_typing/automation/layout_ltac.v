@@ -506,7 +506,18 @@ Ltac solve_layout_eq :=
   try reflexivity.
 
 Section tac.
-
+  Lemma syn_type_has_layout_mut_fixpoint_project_fixpoint `{!typeGS Σ} {rts : list RT}
+      (F : mut_type_fun rts)
+      `{Hne : !MutTypeNonExpansive F}
+      `{Hcontr : !MutTypeContractive (mut_iter F (length rts))}
+      `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
+      {rt : RT} `{!Inhabited (RT_xt rt)} i
+      (Hlook : rts !! i = Some rt) m ly :
+    syn_type_has_layout (st_of (mut_type_project_simpl (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 0) i Hlook) m) ly →
+    syn_type_has_layout (st_of (mut_type_project (mut_fixpoint F  (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook) m) ly.
+  Proof.
+    rewrite mut_fixpoint_project_ty_syn_type//.
+  Qed.
 End tac.
 
 Ltac solve_layout_alg_prepare :=
@@ -538,13 +549,25 @@ Ltac solve_layout_alg_prepare :=
 
 Ltac solve_layout_alg_core_step1 :=
   (* For primitive goals for which we have an assumption in the context *)
+  repeat match goal with
+  | |- context[mut_type_project _ _ _] => rewrite mut_fixpoint_project_ty_syn_type; simpl
+  end;
   try eassumption.
 Ltac solve_layout_alg_core_step2 :=
   (* Simplify *)
   try match goal with
   | |- syn_type_has_layout ?st ?ly =>
-      let st_eval := eval hnf in st in
-      change_no_check st with st_eval
+      match st with
+      | ltype_st (◁ mut_type_project _ _ _)%I =>
+        simp_ltypes
+        (*rewrite mut_fixpoint_project_ty_syn_type; simpl*)
+      | st_of (mut_type_project _ _ _) _  =>
+        idtac
+        (*rewrite mut_fixpoint_project_ty_syn_type; simpl*)
+      | _ =>
+        let st_eval := eval hnf in st in
+        change_no_check st with st_eval
+      end
   | |- Forall2 syn_type_has_layout_multi_pred ?fields ?fields' =>
       let fields_eval := eval hnf in fields in
       change_no_check fields with fields_eval
@@ -625,6 +648,8 @@ Ltac solve_layout_alg_core_step3 :=
             | solve_layout_size; shelve
             | solve_ly_align_ib; shelve ]
       end
+  | |- syn_type_has_layout (st_of (mut_type_project _ _ _) _) _ =>
+        refine (syn_type_has_layout_mut_fixpoint_project_fixpoint _ _ _ _ _ _)
   end.
 
 Ltac solve_layout_alg_core_step :=
@@ -709,7 +734,10 @@ Ltac solve_syn_type_compat_step :=
       apply (syn_type_compat_mut_type_project_l); simpl
   | |- syn_type_compat _ (ty_syn_type (mut_type_project _ _ _) _)  =>
       apply (syn_type_compat_mut_type_project_r); simpl
-  | |- _ => reflexivity
+  | |- context[(ty_syn_type (mut_type_project _ _ _) _)] =>
+      rewrite mut_fixpoint_project_ty_syn_type
+  | |- _ =>
+    reflexivity
   end.
 Ltac solve_syn_type_compat :=
   repeat solve_syn_type_compat_step.
@@ -753,6 +781,18 @@ Section opalg.
     by apply syn_type_has_layout_untyped.
   Qed.
 End opalg.
+Lemma use_op_alg_mut_fixpoint_project `{!typeGS Σ} {rts : list RT}
+    (F : mut_type_fun rts)
+    `{Hne : !MutTypeNonExpansive F}
+    `{Hcontr : !MutTypeContractive (mut_iter F (length rts))}
+    `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
+    {rt : RT} `{!Inhabited (RT_xt rt)} i
+    (Hlook : rts !! i = Some rt) m ot :
+  use_op_alg (st_of (mut_type_project_simpl (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 0) i Hlook) m) = Some ot →
+  use_op_alg (st_of (mut_type_project (mut_fixpoint F  (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook) m) = Some ot.
+Proof.
+  rewrite mut_fixpoint_project_ty_syn_type//.
+Qed.
 
 Ltac solve_op_alg := idtac.
 
@@ -804,12 +844,28 @@ Ltac assert_is_atomic_uls uls :=
 Ltac solve_op_alg_forall :=
   idtac.
 
+Lemma tac_use_op_alg_use_op_alg' `{!LayoutAlg} st st' ly :
+  syn_type_has_layout st' ly →
+  st = st' →
+  use_op_alg st = Some (use_op_alg' st').
+Proof.
+  intros (ot & Hot & <-)%syn_type_has_layout_op_alg ->.
+  rewrite /use_op_alg'.
+  rewrite !Hot//.
+Qed.
+
 Ltac solve_op_alg_prepare :=
   (* normalize goal *)
   lazymatch goal with
   | |- use_op_alg ?st = Some ?ot => idtac
   | |- use_op_alg' ?st = ?ot => refine (use_op_alg'_ot_tac st ot _)
-  end.
+  end;
+  try match goal with
+  | |- use_op_alg _ = Some (use_op_alg' _) =>
+    refine (tac_use_op_alg_use_op_alg' _ _ _ _ _);
+    [solve_layout_alg | solve_syn_type_eq]
+  end
+  .
 
 Ltac solve_op_alg_core_step :=
   (* TODO: needed? *)
@@ -881,6 +937,8 @@ Ltac solve_op_alg_core_step :=
       simplify_layout ly;
       notypeclasses refine (use_op_alg_literal _ ot _);
       [solve_ot_eq | solve_layout_alg]
+  | |- use_op_alg (ty_syn_type (mut_type_project _ _ _) _) = Some _ =>
+      notypeclasses refine (use_op_alg_mut_fixpoint_project _ _ _ _ _ _)
   | |- use_op_alg (ty_syn_type _ _) = Some ?ot =>
       notypeclasses refine (use_op_alg_tyvar_tac (ty_syn_type _ _) _ ot _ _);
       [solve_layout_alg | solve_ot_eq]
