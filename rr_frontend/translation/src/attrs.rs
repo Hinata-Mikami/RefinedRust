@@ -127,7 +127,6 @@ fn check_tool_attr_names<'a>(
 }
 
 #[cfg(test)]
-#[expect(clippy::inline_modules)]
 mod tests {
     use rr_rustc_interface::span::{BytePos, SyntaxContext};
 

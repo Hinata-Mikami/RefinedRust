@@ -34,6 +34,8 @@ pub(crate) struct CallRegions {
     pub classification: BTreeMap<Region, CallRegionKind>,
 }
 
+#[derive(Default)]
+#[expect(clippy::partial_pub_fields)]
 pub(crate) struct CallRegionDiscovery {
     pub early_regions: Vec<Region>,
     pub late_regions: Vec<Region>,
@@ -176,7 +178,7 @@ pub(crate) fn classify_call_regions(
                 continue;
             }
             // r1 should be known or a new region
-            if !incl_tracker.is_region_known(*r1, midpoint) && !new_regions.contains(r1) {
+            if !incl_tracker.is_region_known_before_dynamic(*r1, midpoint) && !new_regions.contains(r1) {
                 // this is a constraint that won't help us
                 continue;
             }

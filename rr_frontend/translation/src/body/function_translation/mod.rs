@@ -25,7 +25,7 @@ use crate::base::*;
 use crate::body::mir_lowering::{MirTranslationCtx as _, ProcedureInst, TranslationKey};
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
-use crate::regions::{AnnotationGenerator, CallAnnotationPlan};
+use crate::regions::{AnnotationGenerator, CallAnnotationPlan, LocationAnnotationPlan};
 use crate::traits::registry;
 use crate::{consts, procedures, types};
 
@@ -39,6 +39,16 @@ struct PreparedFunctionCall<'tcx, 'def> {
     func_expr: code::Expr,
     call_info: ProcedureInst<'tcx, 'def>,
     annotation_plan: CallAnnotationPlan,
+}
+
+struct PendingAssignment<'tcx> {
+    loc: mir::Location,
+    rhs: mir::Rvalue<'tcx>,
+    lhs_ty: mir::PlaceTy<'tcx>,
+    rhs_ty: ty::Ty<'tcx>,
+    rvalue_operand_tys: Vec<ty::Ty<'tcx>>,
+    lhs_strongly_writeable: bool,
+    shared_borrow_access_region: Option<ty::Region<'tcx>>,
 }
 
 /// Struct that keeps track of all information necessary to translate a MIR Body to a `code::Function`.
@@ -75,7 +85,8 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     annotations: AnnotationGenerator<'a, 'tcx>,
     /// initial Polonius annotations that hold at the start of the function
     initial_annotation_stmts: Vec<code::PrimStmt>,
-    prepared_calls: HashMap<mir::Location, PreparedFunctionCall<'tcx, 'def>>,
+    prepared_calls: BTreeMap<mir::Location, PreparedFunctionCall<'tcx, 'def>>,
+    prepared_assignments: BTreeMap<mir::Location, LocationAnnotationPlan>,
 
     /// data structures for tracking which basic blocks still need to be translated
     /// (we only translate the basic blocks which are actually reachable, in particular when
@@ -96,6 +107,25 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
 
 #[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
+    fn reachable_basic_blocks(&self) -> BTreeSet<mir::BasicBlock> {
+        let mut pending = vec![mir::START_BLOCK];
+        let mut reachable = BTreeSet::new();
+        while let Some(bb) = pending.pop() {
+            if !reachable.insert(bb) {
+                continue;
+            }
+            let terminator = self.proc.dropck_mir().basic_blocks[bb].terminator();
+            let terminates_control_flow = match &terminator.kind {
+                mir::TerminatorKind::Call { func, .. } => self.is_call_destination_panic(func),
+                _ => false,
+            };
+            if !terminates_control_flow {
+                pending.extend(self.proc.successors(bb));
+            }
+        }
+        reachable
+    }
+
     pub(crate) fn new(
         tcx: ty::TyCtxt<'tcx>,
         procedure_registry: &'a procedures::Scope<'tcx, 'def>,
@@ -229,11 +259,124 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             loop_specs: BTreeMap::new(),
             fn_locals,
             initial_annotation_stmts,
-            prepared_calls: HashMap::new(),
+            prepared_calls: BTreeMap::new(),
+            prepared_assignments: BTreeMap::new(),
             const_registry,
             trait_registry,
             collected_statics: BTreeSet::new(),
         })
+    }
+
+    /// Prepares all borrow annotations.
+    fn prepare_annotations(&mut self) -> Result<(), TranslationError> {
+        // Collect every assignment and register all tracker-independent effects before resolving
+        // any annotation plan. Rendering order must not affect must-information.
+        let reachable_blocks = self.reachable_basic_blocks();
+        let mut pending_assignments = Vec::new();
+        for bb in &reachable_blocks {
+            let data = &self.proc.dropck_mir().basic_blocks[*bb];
+            for (statement_index, statement) in data.statements.iter().enumerate() {
+                let loc = mir::Location {
+                    block: *bb,
+                    statement_index,
+                };
+                self.annotations.preregister_assignment_loan(loc);
+                if self.is_administrative_alias_stmt(statement)
+                    || self.proc.synthetic_drop_borrow_for_assignment(loc).is_some()
+                {
+                    continue;
+                }
+                let mir::StatementKind::Assign(assignment) = &statement.kind else {
+                    continue;
+                };
+                let (place, rvalue) = assignment.as_ref();
+                if self.is_spec_closure_local(place.local)?.is_some() {
+                    continue;
+                }
+                let lhs_ty = self.proc.region_type_of_place(place);
+                let rhs_ty = self.proc.region_type_of_rvalue(loc, rvalue);
+                let annotation_rhs = self.proc.source_rvalue_for_target(loc).unwrap_or(rvalue).clone();
+                let rvalue_operand_tys = self.proc.region_types_of_rvalue_operands_for_target(loc, rvalue);
+                let shared_borrow_access_region =
+                    self.proc.shared_borrow_access_region_for_target(loc, rvalue);
+                let lhs_strongly_writeable = !self.check_place_below_reference(place);
+                pending_assignments.push(PendingAssignment {
+                    loc,
+                    rhs: annotation_rhs,
+                    lhs_ty,
+                    rhs_ty,
+                    rvalue_operand_tys,
+                    lhs_strongly_writeable,
+                    shared_borrow_access_region,
+                });
+            }
+        }
+
+        let did = self.proc.get_id();
+        for assignment in &pending_assignments {
+            self.annotations.preregister_assignment_effects(
+                did,
+                assignment.loc,
+                &assignment.rhs,
+                assignment.rhs_ty,
+                &assignment.rvalue_operand_tys,
+                assignment.shared_borrow_access_region,
+                assignment.lhs_ty,
+                assignment.lhs_strongly_writeable,
+            )?;
+            if assignment.lhs_strongly_writeable {
+                self.annotations.preregister_strong_assignment(
+                    did,
+                    assignment.loc,
+                    assignment.lhs_ty.ty,
+                    assignment.rhs_ty,
+                )?;
+            }
+        }
+
+        // Calls add their unconditional effects for all sites before classifying any call.
+        self.prepare_function_calls(&reachable_blocks)?;
+
+        let mut static_effects = Vec::new();
+        let mut shared_reborrows = BTreeMap::new();
+        for assignment in &pending_assignments {
+            if let Some(effect) = self.annotations.resolve_assignment_static_effect(
+                assignment.loc,
+                &assignment.rhs,
+                assignment.shared_borrow_access_region,
+            )? {
+                let (source, target, _) = effect;
+                assert!(shared_reborrows.insert(assignment.loc, (source, target)).is_none());
+                static_effects.push(effect);
+            }
+        }
+        self.annotations.register_assignment_static_effects(static_effects);
+
+        // Resolve ordinary assignments only after all assignment and call declarations are known.
+        for assignment in pending_assignments {
+            let plan = self.annotations.prepare_assignment_annotation_plan(
+                &self.ty_translator,
+                &mut self.translated_fn,
+                assignment.loc,
+                &assignment.rhs,
+                assignment.lhs_ty,
+                assignment.rhs_ty,
+                &assignment.rvalue_operand_tys,
+                assignment.lhs_strongly_writeable,
+                shared_reborrows.remove(&assignment.loc),
+            )?;
+            assert!(self.prepared_assignments.insert(assignment.loc, plan).is_none());
+        }
+
+        for plan in self.prepared_assignments.values_mut() {
+            self.annotations.finalize_assignment_annotation_plan(&self.ty_translator, plan)?;
+        }
+        for call in self.prepared_calls.values_mut() {
+            self.annotations
+                .finalize_call_annotation_plan(&self.ty_translator, &mut call.annotation_plan)?;
+        }
+
+        Ok(())
     }
 
     /// Main translation function that actually does the translation and returns a `code::Function`
@@ -248,44 +391,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let closure_annotation_stmts =
             self.annotations.prepare_initial_closure_annotation_stmts(&self.ty_translator);
-
-        // Register flow-sensitive strong-update effects for the whole body before any block asks
-        // the inclusion tracker for must-information. Annotation validity must not depend on the
-        // order in which the translation queue happens to visit predecessor blocks.
-        let mut strong_assignments = Vec::new();
-        for (bb, data) in self.proc.dropck_mir().basic_blocks.iter_enumerated() {
-            for (statement_index, statement) in data.statements.iter().enumerate() {
-                let loc = mir::Location {
-                    block: bb,
-                    statement_index,
-                };
-                self.annotations.preregister_assignment_loan(loc);
-                if self.is_administrative_alias_stmt(statement)
-                    || self.proc.synthetic_drop_borrow_for_assignment(loc).is_some()
-                {
-                    continue;
-                }
-                let mir::StatementKind::Assign(assignment) = &statement.kind else {
-                    continue;
-                };
-                let (place, rvalue) = assignment.as_ref();
-                if self.is_spec_closure_local(place.local)?.is_some()
-                    || self.check_place_below_reference(place)
-                {
-                    continue;
-                }
-                strong_assignments.push((
-                    loc,
-                    self.proc.region_type_of_place(place).ty,
-                    self.proc.region_type_of_rvalue(loc, rvalue),
-                ));
-            }
-        }
-        let did = self.proc.get_id();
-        for (loc, lhs_ty, rhs_ty) in strong_assignments {
-            self.annotations.preregister_strong_assignment(did, loc, lhs_ty, rhs_ty)?;
-        }
-        self.prepare_function_calls()?;
+        self.prepare_annotations()?;
 
         // translate the function's basic blocks
         let basic_blocks = &self.proc.dropck_mir().basic_blocks;
@@ -293,6 +399,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // first translate the initial basic block; we add some additional annotations to the front
         let initial_bb_idx = mir::BasicBlock::from_u32(0);
         if let Some(bb) = basic_blocks.get(initial_bb_idx) {
+            self.processed_bbs.insert(initial_bb_idx);
             let mut translated_bb = self.translate_basic_block(initial_bb_idx, bb)?;
 
             // push annotations for initial closure constraints

@@ -7,9 +7,11 @@
 //! Provides functionality for generating lifetime annotations for assignments.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::mem;
 
 use log::{info, trace, warn};
 use radium::{code, coq, specs};
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::type_ir::TypeFoldable as _;
 
@@ -34,7 +36,7 @@ struct AssignmentRegionMapper<'tcx> {
 }
 
 impl<'tcx> AssignmentRegionMapper<'tcx> {
-    fn new(tcx: ty::TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Self {
+    const fn new(tcx: ty::TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Self {
         Self {
             tcx,
             typing_env,
@@ -57,7 +59,7 @@ impl<'tcx> AssignmentRegionMapper<'tcx> {
 
 pub(crate) fn map_regions_between_types<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
-    did: rr_rustc_interface::hir::def_id::DefId,
+    did: DefId,
     source_ty: ty::Ty<'tcx>,
     destination_ty: ty::Ty<'tcx>,
 ) -> Result<BTreeMap<Region, Vec<AssignmentRegionSource<'tcx>>>, TranslationError> {
@@ -74,7 +76,7 @@ pub(crate) fn map_regions_between_types<'tcx>(
 
 fn get_strong_assignment_mappings<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
-    did: rr_rustc_interface::hir::def_id::DefId,
+    did: DefId,
     rhs_ty: ty::Ty<'tcx>,
     lhs_ty: ty::Ty<'tcx>,
 ) -> Result<BTreeMap<Region, AssignmentRegionSource<'tcx>>, TranslationError> {
@@ -146,7 +148,7 @@ fn register_strong_assignment_edge_effects(
 pub(crate) fn preregister_strong_assignment<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
-    did: rr_rustc_interface::hir::def_id::DefId,
+    did: DefId,
     midpoint: facts::PointIndex,
     lhs_ty: ty::Ty<'tcx>,
     rhs_ty: ty::Ty<'tcx>,
@@ -162,7 +164,7 @@ pub(crate) fn preregister_strong_assignment<'tcx>(
 pub(crate) fn preregister_strong_assignment_on_edge<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
-    did: rr_rustc_interface::hir::def_id::DefId,
+    did: DefId,
     from: facts::PointIndex,
     to: facts::PointIndex,
     lhs_ty: ty::Ty<'tcx>,
@@ -191,15 +193,15 @@ impl<'tcx> regions::RegionBiFolder<'tcx> for AssignmentRegionMapper<'tcx> {
             ty::TyKind::Closure(destination_def, destination_args),
         ) = (source.kind(), destination.kind())
         {
-            if source_def != destination_def {
-                self.error = Some(format!(
-                    "strong assignment maps different closure types: {source:?} and {destination:?}"
-                ));
-            } else {
+            if source_def == destination_def {
                 self.map_ty_slices(
                     source_args.as_closure().upvar_tys(),
                     destination_args.as_closure().upvar_tys(),
                 );
+            } else {
+                self.error = Some(format!(
+                    "strong assignment maps different closure types: {source:?} and {destination:?}"
+                ));
             }
             return false;
         }
@@ -210,7 +212,7 @@ impl<'tcx> regions::RegionBiFolder<'tcx> for AssignmentRegionMapper<'tcx> {
             return false;
         }
 
-        if std::mem::discriminant(source.kind()) == std::mem::discriminant(destination.kind()) {
+        if mem::discriminant(source.kind()) == mem::discriminant(destination.kind()) {
             return true;
         }
 
@@ -220,7 +222,8 @@ impl<'tcx> regions::RegionBiFolder<'tcx> for AssignmentRegionMapper<'tcx> {
         false
     }
 
-    fn map_regions(&mut self, source: ty::Region<'tcx>, destination: ty::Region<'tcx>) {
+    fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
+        let (source, destination) = (r1, r2);
         let ty::RegionKind::ReVar(destination) = destination.kind() else {
             if source != destination {
                 self.error = Some(format!(
@@ -265,7 +268,7 @@ fn order_strong_updates(
 
 /// Generate inclusions for a weak update assignment.
 fn get_assignment_weak_update_constraints(
-    inclusion_tracker: &mut InclusionTracker<'_, '_>,
+    inclusion_tracker: &InclusionTracker<'_, '_>,
     constraint_point: facts::PointIndex,
     effect_point: facts::PointIndex,
     lhs_regions: &BTreeSet<Region>,
@@ -277,13 +280,26 @@ fn get_assignment_weak_update_constraints(
     // place. Only inclusions into lifetime positions actually stored in the LHS are relevant to
     // the weak update.
     for (s1, s2) in info.subset_base_at(constraint_point) {
-        if lhs_regions.contains(&s2) && !inclusion_tracker.check_inclusion(s1, s2, effect_point) {
-            // only add it if it does not hold already, since we will enforce this
-            // constraint dynamically.
+        if lhs_regions.contains(&s2) {
             constraints.insert((s1, s2, effect_point));
         }
     }
     constraints
+}
+
+pub(crate) fn get_assignment_dynamic_requirements<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    inclusion_tracker: &InclusionTracker<'_, 'tcx>,
+    constraint_point: facts::PointIndex,
+    effect_point: facts::PointIndex,
+    lhs_strongly_writeable: bool,
+    lhs_ty: mir::PlaceTy<'tcx>,
+) -> BTreeSet<(Region, Region, PointIndex)> {
+    if lhs_strongly_writeable {
+        return BTreeSet::new();
+    }
+    let lhs_regions = find_region_variables_of_place_type(tcx, lhs_ty);
+    get_assignment_weak_update_constraints(inclusion_tracker, constraint_point, effect_point, &lhs_regions)
 }
 
 /// Get all region variables mentioned in a place type.
@@ -321,7 +337,7 @@ pub(crate) fn get_new_unconstrained_regions(
 #[derive(Debug, Default)]
 pub(crate) struct RegionInfo {
     pub expr_annot: Option<code::Annotation>,
-    pub new_dyn_inclusions: Vec<code::Annotation>,
+    pub required_dyn_inclusions: BTreeSet<(Region, Region, PointIndex)>,
     pub stmt_annot: Vec<code::Annotation>,
     pub unconstrained_regions: BTreeSet<Region>,
 }
@@ -347,7 +363,6 @@ pub(crate) fn get_assignment_annots<'tcx>(
 
     let unconstrained_regions = get_new_unconstrained_regions(inclusion_tracker, midpoint);
 
-    let regions = find_region_variables_of_place_type(tcx, lhs_ty);
     if lhs_strongly_writeable {
         let did = ty_translator.scope.borrow().did;
         let mappings = get_strong_assignment_mappings(tcx, did, rhs_ty, lhs_ty.ty)?;
@@ -362,7 +377,7 @@ pub(crate) fn get_assignment_annots<'tcx>(
                 continue;
             };
             let atomic = inclusion_tracker.info().mk_atomic_region(*source);
-            if !inclusion_tracker.is_region_known(*source, startpoint)
+            if !inclusion_tracker.is_region_known_before_dynamic(*source, startpoint)
                 && !atomic.is_loan()
                 && !atomic.is_unconstrained()
             {
@@ -405,22 +420,20 @@ pub(crate) fn get_assignment_annots<'tcx>(
 
         new_dyn_inclusions = BTreeSet::new();
     } else {
-        new_dyn_inclusions = get_assignment_weak_update_constraints(
+        new_dyn_inclusions = get_assignment_dynamic_requirements(
+            tcx,
             inclusion_tracker,
             midpoint,
             pre_assignment_effect_point,
-            &regions,
+            false,
+            lhs_ty,
         );
         expr_annot = None;
     }
 
-    // First enforce the new inclusions, then do the other annotations
-    let new_dyn_inclusions =
-        generate_dyn_inclusion_annots(tcx, inclusion_tracker, ty_translator, &new_dyn_inclusions)?;
-
     Ok(RegionInfo {
         expr_annot,
-        new_dyn_inclusions,
+        required_dyn_inclusions: new_dyn_inclusions,
         stmt_annot,
         unconstrained_regions,
     })
@@ -428,7 +441,7 @@ pub(crate) fn get_assignment_annots<'tcx>(
 
 /// Generates dynamic inclusions for the set of inclusions in `incls`.
 /// These inclusions should not hold yet.
-fn generate_dyn_inclusion_annots<'tcx>(
+pub(crate) fn generate_dyn_inclusion_annots<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
@@ -456,6 +469,245 @@ fn generate_dyn_inclusion_annots<'tcx>(
             ),
         })
         .collect())
+}
+
+/// Find all regions that need to outlive a loan region at its point of creation.
+fn get_outliving_regions_on_loan(
+    inclusion_tracker: &InclusionTracker<'_, '_>,
+    r: Region,
+    constraint_point: PointIndex,
+) -> Vec<Region> {
+    // get all base subset constraints r' ⊆ r
+    let info = inclusion_tracker.info();
+    let mut outliving = Vec::new();
+
+    for (r1, r2) in info.subset_base_at(constraint_point) {
+        if r2 == r {
+            outliving.push(r1);
+        }
+        // other subset constraints at this point are due to (for instance) the assignment of
+        // the loan to a place and are handled there.
+    }
+    outliving
+}
+
+/// Get the annotations due to borrows appearing on the RHS of an assignment.
+pub(crate) fn get_assignment_loan_annots<'tcx>(
+    inclusion_tracker: &InclusionTracker<'_, 'tcx>,
+    ty_translator: &types::LocalTX<'_, 'tcx>,
+    loc: mir::Location,
+    constraint_point: facts::PointIndex,
+    _effect_point: facts::PointIndex,
+    _rhs: &mir::Rvalue<'tcx>,
+) -> Vec<code::Annotation> {
+    let info = inclusion_tracker.info();
+    let mut stmt_annots = Vec::new();
+
+    // if we create a new loan here, start a new lifetime for it
+    if let Some(loan) = info.get_optional_loan_at_point(constraint_point) {
+        // TODO: is this fine for aggregates? I suppose, if I create a loan for an
+        // aggregate, I want to use the same atomic region for all of its components
+        // anyways.
+
+        let lft = info.atomic_region_of_loan(loan);
+        let r = lft.get_region();
+        // The corresponding tracker effects were registered function-wide.
+        let outliving = get_outliving_regions_on_loan(inclusion_tracker, r, constraint_point);
+
+        let mut outliving_lfts: Vec<_> = outliving
+            .iter()
+            .map(|r| ty_translator.format_atomic_region(info.mk_atomic_region(*r)))
+            .collect();
+        // If there are no constraints, at least constrain the lifetime by the lifetime of the
+        // current function
+        if outliving_lfts.is_empty() {
+            outliving_lfts.push(coq::Ident::new("_flft"));
+        }
+
+        // add statement for issuing the loan
+        stmt_annots
+            .insert(0, code::Annotation::StartLft(ty_translator.format_atomic_region(lft), outliving_lfts));
+
+        let a = info.get_region_kind(r);
+        info!("Issuing loan at {:?} with kind {:?}: {:?}; outliving: {:?}", loc, a, loan, outliving);
+    }
+
+    stmt_annots
+}
+
+/// Initialize the result region of a shared reborrow from the lifetime governing access to the
+/// borrowed place. Shared reborrows do not issue a loan.
+pub(crate) fn get_shared_reborrow_annots<'tcx>(
+    inclusion_tracker: &InclusionTracker<'_, 'tcx>,
+    ty_translator: &types::LocalTX<'_, 'tcx>,
+    resolved: Option<(Region, Region)>,
+) -> Vec<code::Annotation> {
+    let Some((source, target)) = resolved else {
+        return Vec::new();
+    };
+    vec![code::Annotation::CopyLftName(
+        ty_translator.format_atomic_region(inclusion_tracker.info().mk_atomic_region(source)),
+        ty_translator.translate_region_var(target),
+    )]
+}
+
+pub(crate) fn resolve_shared_reborrow<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
+    rhs: &mir::Rvalue<'tcx>,
+    constraint_point: facts::PointIndex,
+    effect_point: facts::PointIndex,
+    access_region: Option<ty::Region<'tcx>>,
+) -> Result<Option<(Region, Region)>, TranslationError> {
+    let mir::Rvalue::Ref(region, mir::BorrowKind::Shared, _) = rhs else {
+        return Ok(None);
+    };
+    let ty::RegionKind::ReVar(target) = region.kind() else {
+        return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
+            "shared reborrow has non-variable result region {region:?}"
+        )))));
+    };
+    let target = target.into();
+    // Borrowck deliberately leaves raw-pointer-derived borrow lifetimes unconstrained. Their
+    // semantic lifetime must remain user-instantiable rather than being inferred from place access.
+    if inclusion_tracker.info().mk_atomic_region(target).is_unconstrained() {
+        return Ok(None);
+    }
+    let Some(access_region) = access_region else {
+        return Ok(None);
+    };
+    let ty::RegionKind::ReVar(source) = access_region.kind() else {
+        return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
+            "shared reborrow dereferences non-variable access region {access_region:?}"
+        )))));
+    };
+    let access_region = source.into();
+
+    if inclusion_tracker.is_region_known_before_shared_reborrow(target, effect_point) {
+        return Ok(None);
+    }
+
+    // Borrowck may introduce intermediate origins for the place access. Follow only the
+    // structurally selected access origin back to its unique known semantic lifetime.
+    let mut pending = vec![access_region];
+    let mut visited = BTreeSet::new();
+    let mut known_sources = BTreeSet::new();
+    while let Some(region) = pending.pop() {
+        if !visited.insert(region) {
+            continue;
+        }
+        if inclusion_tracker.is_region_known_before_shared_reborrow(region, effect_point) {
+            known_sources.insert(region);
+            continue;
+        }
+        pending.extend(
+            inclusion_tracker
+                .info()
+                .subset_base_at(constraint_point)
+                .filter_map(|(source, destination)| (destination == region).then_some(source)),
+        );
+        pending.extend(inclusion_tracker.regions_included_in_before_dynamic(region, effect_point));
+    }
+
+    let Some(source) = known_sources.first().copied() else {
+        return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
+            "shared reborrow access region {access_region:?} resolves to no known source"
+        )))));
+    };
+    let all_equivalent = known_sources.iter().copied().all(|other| {
+        inclusion_tracker.check_inclusion_before_shared_reborrow(source, other, effect_point)
+            && inclusion_tracker.check_inclusion_before_shared_reborrow(other, source, effect_point)
+    });
+    if !all_equivalent {
+        return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
+            "shared reborrow access region {access_region:?} resolves to distinct known sources {known_sources:?}"
+        )))));
+    }
+
+    Ok(Some((source, target)))
+}
+
+/// Register that a constrained shared reborrow initializes its result region. Source selection is
+/// deferred until every function-wide known-region effect has been registered.
+pub(crate) fn preregister_shared_reborrow<'tcx>(
+    inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
+    rhs: &mir::Rvalue<'tcx>,
+    effect_point: facts::PointIndex,
+    access_region: Option<ty::Region<'tcx>>,
+) {
+    let mir::Rvalue::Ref(region, mir::BorrowKind::Shared, _) = rhs else {
+        return;
+    };
+    let target = region.as_var();
+    let target: Region = target.into();
+    let Some(ty::RegionKind::ReVar(source)) = access_region.map(ty::Region::kind) else {
+        return;
+    };
+    if inclusion_tracker.info().mk_atomic_region(target).is_unconstrained() {
+        return;
+    }
+
+    let source = source.into();
+    inclusion_tracker.add_shared_reborrow_static_inclusion(source, target, effect_point);
+    inclusion_tracker.add_shared_reborrow_static_inclusion(target, source, effect_point);
+    inclusion_tracker.add_shared_reborrow_known_region(target, effect_point);
+}
+
+pub(crate) fn preregister_unconstrained_regions(
+    inclusion_tracker: &mut InclusionTracker<'_, '_>,
+    regions: &BTreeSet<Region>,
+    effect_point: facts::PointIndex,
+) {
+    for region in regions {
+        inclusion_tracker.add_known_region(*region, effect_point);
+    }
+}
+
+/// Make annotations for unconstrained regions introduced by the current assignment.
+pub(crate) fn make_unconstrained_region_annotations<'tcx>(
+    inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
+    ty_translator: &types::LocalTX<'_, 'tcx>,
+    unconstrained_regions: BTreeSet<Region>,
+    effect_point: facts::PointIndex,
+    rhs: Option<&mir::Rvalue<'tcx>>,
+) -> (Vec<code::Annotation>, Vec<specs::Lft>) {
+    let mut annotations = Vec::new();
+
+    let mut unconstrained_hints = Vec::new();
+    for r in unconstrained_regions {
+        if inclusion_tracker.is_region_known_before_effects(r, effect_point) {
+            continue;
+        }
+        if let Some(rhs) = rhs {
+            // Detect uses of static variables
+            if let mir::Rvalue::Use(mir::Operand::Constant(_), _) = rhs {
+                // we are probably using a static variable here
+                let lft = ty_translator.translate_region_var(r);
+                annotations.push(code::Annotation::CopyLftName(coq::Ident::new("static"), lft));
+                continue;
+            }
+
+            // If we do a borrow, probably this is a borrow from below a raw pointer.
+            // In this case, ask the user to provide the constraints for this borrow.
+            if let mir::Rvalue::Ref(region, _, _) = rhs
+                && region.as_var() == r.into()
+            {
+                let lft = ty_translator.translate_region_var(r);
+                annotations.push(code::Annotation::UnconstrainedLft(lft.clone()));
+                unconstrained_hints.push(lft);
+                continue;
+            }
+
+            // other cases?
+            warn!("Encountered unconstrained region {r:?}, proof will likely fail");
+
+            // in case we initialize enums where the lifetime is unconstrained (e.g. `None` in `Option<&T>`)
+            let lft = ty_translator.translate_region_var(r);
+            annotations.push(code::Annotation::CopyLftName(coq::Ident::new("static"), lft));
+        }
+    }
+
+    (annotations, unconstrained_hints)
 }
 
 #[cfg(test)]
@@ -488,199 +740,4 @@ mod tests {
 
         assert_eq!(order_strong_updates(&mappings), Err(vec![region(0), region(1)]));
     }
-}
-
-/// Find all regions that need to outlive a loan region at its point of creation, and
-/// add the corresponding constraints to the inclusion tracker.
-fn get_outliving_regions_on_loan(
-    inclusion_tracker: &mut InclusionTracker<'_, '_>,
-    r: Region,
-    constraint_point: PointIndex,
-    effect_point: PointIndex,
-) -> Vec<Region> {
-    // get all base subset constraints r' ⊆ r
-    let info = inclusion_tracker.info();
-    let mut outliving = Vec::new();
-
-    for (r1, r2) in info.subset_base_at(constraint_point) {
-        if r2 == r {
-            inclusion_tracker.add_static_inclusion(r1, r2, effect_point);
-            outliving.push(r1);
-        }
-        // other subset constraints at this point are due to (for instance) the assignment of
-        // the loan to a place and are handled there.
-    }
-    outliving
-}
-
-/// Get the annotations due to borrows appearing on the RHS of an assignment.
-pub(crate) fn get_assignment_loan_annots<'tcx>(
-    inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
-    ty_translator: &types::LocalTX<'_, 'tcx>,
-    loc: mir::Location,
-    constraint_point: facts::PointIndex,
-    effect_point: facts::PointIndex,
-    _rhs: &mir::Rvalue<'tcx>,
-) -> Vec<code::Annotation> {
-    let info = inclusion_tracker.info();
-    let mut stmt_annots = Vec::new();
-
-    // if we create a new loan here, start a new lifetime for it
-    if let Some(loan) = info.get_optional_loan_at_point(constraint_point) {
-        // TODO: is this fine for aggregates? I suppose, if I create a loan for an
-        // aggregate, I want to use the same atomic region for all of its components
-        // anyways.
-
-        let lft = info.atomic_region_of_loan(loan);
-        let r = lft.get_region();
-        inclusion_tracker.add_known_region(r, effect_point);
-
-        // get the static inclusions we need to generate here and add them to the
-        // inclusion tracker
-        let outliving = get_outliving_regions_on_loan(inclusion_tracker, r, constraint_point, effect_point);
-
-        let mut outliving_lfts: Vec<_> = outliving
-            .iter()
-            .map(|r| ty_translator.format_atomic_region(info.mk_atomic_region(*r)))
-            .collect();
-        // If there are no constraints, at least constrain the lifetime by the lifetime of the
-        // current function
-        if outliving_lfts.is_empty() {
-            outliving_lfts.push(coq::Ident::new("_flft"));
-        }
-
-        // add statement for issuing the loan
-        stmt_annots
-            .insert(0, code::Annotation::StartLft(ty_translator.format_atomic_region(lft), outliving_lfts));
-
-        let a = info.get_region_kind(r);
-        info!("Issuing loan at {:?} with kind {:?}: {:?}; outliving: {:?}", loc, a, loan, outliving);
-    }
-
-    stmt_annots
-}
-
-/// Initialize the result region of a shared reborrow from the lifetime governing access to the
-/// borrowed place. Shared reborrows do not issue a loan.
-pub(crate) fn get_shared_reborrow_annots<'tcx>(
-    tcx: ty::TyCtxt<'tcx>,
-    inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
-    ty_translator: &types::LocalTX<'_, 'tcx>,
-    rhs: &mir::Rvalue<'tcx>,
-    constraint_point: facts::PointIndex,
-    effect_point: facts::PointIndex,
-    access_region: Option<ty::Region<'tcx>>,
-) -> Result<Vec<code::Annotation>, TranslationError> {
-    let mir::Rvalue::Ref(region, mir::BorrowKind::Shared, _) = rhs else {
-        return Ok(Vec::new());
-    };
-    let ty::RegionKind::ReVar(target) = region.kind() else {
-        return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
-            "shared reborrow has non-variable result region {region:?}"
-        )))));
-    };
-    let target = target.into();
-    // Borrowck deliberately leaves raw-pointer-derived borrow lifetimes unconstrained. Their
-    // semantic lifetime must remain user-instantiable rather than being inferred from place access.
-    if inclusion_tracker.info().mk_atomic_region(target).is_unconstrained() {
-        return Ok(Vec::new());
-    }
-    if inclusion_tracker.is_region_known(target, effect_point) {
-        return Ok(Vec::new());
-    }
-
-    let Some(access_region) = access_region else {
-        return Ok(Vec::new());
-    };
-    let ty::RegionKind::ReVar(source) = access_region.kind() else {
-        return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
-            "shared reborrow dereferences non-variable access region {access_region:?}"
-        )))));
-    };
-    let access_region = source.into();
-
-    // Borrowck may introduce intermediate origins for the place access. Follow only the
-    // structurally selected access origin back to its unique known semantic lifetime.
-    let mut pending = vec![access_region];
-    let mut visited = BTreeSet::new();
-    let mut known_sources = BTreeSet::new();
-    while let Some(region) = pending.pop() {
-        if !visited.insert(region) {
-            continue;
-        }
-        if inclusion_tracker.is_region_known(region, effect_point) {
-            known_sources.insert(region);
-            continue;
-        }
-        pending.extend(
-            inclusion_tracker
-                .info()
-                .subset_base_at(constraint_point)
-                .filter_map(|(source, destination)| (destination == region).then_some(source)),
-        );
-    }
-
-    let [source] = known_sources.iter().copied().collect::<Vec<_>>()[..] else {
-        return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
-            "shared reborrow access region {access_region:?} resolves to {known_sources:?}, expected one known source"
-        )))));
-    };
-
-    inclusion_tracker.add_known_region(target, effect_point);
-    inclusion_tracker.add_static_inclusion(source, target, effect_point);
-    inclusion_tracker.add_static_inclusion(target, source, effect_point);
-    Ok(vec![code::Annotation::CopyLftName(
-        ty_translator.format_atomic_region(inclusion_tracker.info().mk_atomic_region(source)),
-        ty_translator.translate_region_var(target),
-    )])
-}
-
-/// Make annotations for unconstrained regions introduced by the current assignment.
-pub(crate) fn make_unconstrained_region_annotations<'tcx>(
-    inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
-    ty_translator: &types::LocalTX<'_, 'tcx>,
-    unconstrained_regions: BTreeSet<Region>,
-    effect_point: facts::PointIndex,
-    rhs: Option<&mir::Rvalue<'tcx>>,
-) -> (Vec<code::Annotation>, Vec<specs::Lft>) {
-    let mut annotations = Vec::new();
-
-    let mut unconstrained_hints = Vec::new();
-    for r in unconstrained_regions {
-        if inclusion_tracker.is_region_known(r, effect_point) {
-            continue;
-        }
-        if let Some(rhs) = rhs {
-            // Detect uses of static variables
-            if let mir::Rvalue::Use(mir::Operand::Constant(_), _) = rhs {
-                // we are probably using a static variable here
-                let lft = ty_translator.translate_region_var(r);
-                annotations.push(code::Annotation::CopyLftName(coq::Ident::new("static"), lft));
-                inclusion_tracker.add_known_region(r, effect_point);
-                continue;
-            }
-
-            // If we do a borrow, probably this is a borrow from below a raw pointer.
-            // In this case, ask the user to provide the constraints for this borrow.
-            if let mir::Rvalue::Ref(region, _, _) = rhs
-                && region.as_var() == r.into()
-            {
-                let lft = ty_translator.translate_region_var(r);
-                annotations.push(code::Annotation::UnconstrainedLft(lft.clone()));
-                unconstrained_hints.push(lft);
-                inclusion_tracker.add_known_region(r, effect_point);
-                continue;
-            }
-
-            // other cases?
-            warn!("Encountered unconstrained region {r:?}, proof will likely fail");
-
-            // in case we initialize enums where the lifetime is unconstrained (e.g. `None` in `Option<&T>`)
-            let lft = ty_translator.translate_region_var(r);
-            annotations.push(code::Annotation::CopyLftName(coq::Ident::new("static"), lft));
-            inclusion_tracker.add_known_region(r, effect_point);
-        }
-    }
-
-    (annotations, unconstrained_hints)
 }

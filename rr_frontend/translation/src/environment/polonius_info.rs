@@ -143,6 +143,16 @@ pub(crate) struct PoloniusInfo<'a, 'tcx> {
 }
 
 impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
+    pub(crate) fn entry_point(&self) -> facts::PointIndex {
+        self.interner.get_point_index(&facts::Point {
+            location: mir::Location {
+                block: mir::START_BLOCK,
+                statement_index: 0,
+            },
+            typ: facts::PointType::Start,
+        })
+    }
+
     /// Get Polonius facts of a local procedure.
     fn local_mir_borrowck_facts(tcx: ty::TyCtxt<'tcx>, def_id: LocalDefId) -> facts::Borrowck<'tcx> {
         let body_with_facts = mir_storage::retrieve_mir_body(tcx, def_id);
@@ -440,20 +450,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::semantic_loans_dying;
-
-    #[test]
-    fn semantic_liveness_spans_ordinary_to_zombie_transitions() {
-        let dying = semantic_loans_dying([1, 2, 3], [], [4], [2], [1, 4], []);
-        assert_eq!(dying, [3]);
-
-        let dying = semantic_loans_dying([], [5], [], [], [], []);
-        assert_eq!(dying, [5]);
-    }
-}
-
 /// Additional facts derived from the borrow checker facts.
 pub(crate) struct AdditionalFacts {
     /// The ``zombie_borrow_live_at`` facts are ``loan_live_at`` facts
@@ -574,5 +570,19 @@ impl AdditionalFacts {
         Self {
             zombie_borrow_live_at,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::semantic_loans_dying;
+
+    #[test]
+    fn semantic_liveness_spans_ordinary_to_zombie_transitions() {
+        let dying = semantic_loans_dying([1, 2, 3], [], [4], [2], [1, 4], []);
+        assert_eq!(dying, [3]);
+
+        let dying = semantic_loans_dying([], [5], [], [], [], []);
+        assert_eq!(dying, [5]);
     }
 }

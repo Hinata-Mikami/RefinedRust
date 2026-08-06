@@ -29,7 +29,8 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for HideNormalizationRegions<'_, 'tc
         self.tcx
     }
 
-    fn fold_region(&mut self, region: ty::Region<'tcx>) -> ty::Region<'tcx> {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        let region = r;
         if !matches!(region.kind(), ty::RegionKind::ReVar(_) | ty::RegionKind::ReBound(..)) {
             return region;
         }
@@ -56,7 +57,8 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RestoreNormalizationRegions<'_, 
         self.tcx
     }
 
-    fn fold_region(&mut self, region: ty::Region<'tcx>) -> ty::Region<'tcx> {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        let region = r;
         let ty::RegionKind::ReEarlyParam(region) = region.kind() else {
             return region;
         };

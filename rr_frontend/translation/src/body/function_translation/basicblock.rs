@@ -6,7 +6,7 @@
 
 use log::info;
 use radium::code;
-use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::middle::{bug, mir, ty};
 
 use super::TX;
 use crate::base::*;
@@ -82,27 +82,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         info!("skipping assignment to spec closure local: {:?}", plc);
                     } else {
                         let plc_ty = self.shape_type_of_place(plc);
-                        let plc_region_ty = self.proc.region_type_of_place(plc);
-                        let rhs_region_ty = self.proc.region_type_of_rvalue(loc, val);
-                        // Assignment annotations depend on regionful borrowck types, but the
-                        // executable statement is the dropck statement we are translating.
-                        let annotation_val = self.proc.source_rvalue_for_target(loc).unwrap_or(val);
-                        let rvalue_operand_tys =
-                            self.proc.region_types_of_rvalue_operands_for_target(loc, val);
-                        let shared_borrow_access_region =
-                            self.proc.shared_borrow_access_region_for_target(loc, val);
-                        let plc_strongly_writeable = !self.check_place_below_reference(plc);
-                        let mut annotation_plan = self.annotations.prepare_assignment_annotation_plan(
-                            &self.ty_translator,
-                            &mut self.translated_fn,
-                            loc,
-                            annotation_val,
-                            plc_region_ty,
-                            rhs_region_ty,
-                            &rvalue_operand_tys,
-                            plc_strongly_writeable,
-                            shared_borrow_access_region,
-                        )?;
+                        let mut annotation_plan = self
+                            .prepared_assignments
+                            .remove(&loc)
+                            .unwrap_or_else(|| bug!("missing prepared assignment at {loc:?}: {stmt:?}"));
                         annotation_plan.push_pre_stmts(&mut prim_stmts);
 
                         let (e, _) = self.translate_rvalue(loc, val)?;

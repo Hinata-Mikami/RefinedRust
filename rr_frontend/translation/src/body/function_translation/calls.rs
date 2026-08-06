@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 
 use log::{info, trace};
 use radium::specs::traits::ReqInfo as _;
@@ -626,7 +626,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         Some(&func_constant.const_)
     }
 
-    pub(crate) fn prepare_function_calls(&mut self) -> Result<(), TranslationError> {
+    pub(crate) fn prepare_function_calls(
+        &mut self,
+        reachable_blocks: &BTreeSet<mir::BasicBlock>,
+    ) -> Result<(), TranslationError> {
         struct PendingCall<'tcx, 'def> {
             loc: mir::Location,
             func_expr: code::Expr,
@@ -638,30 +641,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             discovery: CallEffectDiscovery<'tcx>,
         }
 
-        let mut reachable = vec![mir::BasicBlock::from_u32(0)];
-        let mut visited = HashSet::new();
         let mut call_locations = Vec::new();
-        while let Some(bb) = reachable.pop() {
-            if !visited.insert(bb) {
-                continue;
-            }
-            let data = &self.proc.dropck_mir().basic_blocks[bb];
+        for bb in reachable_blocks {
+            let data = &self.proc.dropck_mir().basic_blocks[*bb];
             let loc = mir::Location {
-                block: bb,
+                block: *bb,
                 statement_index: data.statements.len(),
             };
-            let mut terminates_control_flow = false;
-            if let mir::TerminatorKind::Call { func, .. } = &data.terminator().kind {
-                terminates_control_flow = self.is_call_destination_panic(func);
-                if !terminates_control_flow
-                    && self.proc.synthetic_drop_borrow_for_drop_call(loc).is_none()
-                    && !self.is_call_destination_discriminant(func)
-                {
-                    call_locations.push(loc);
-                }
-            }
-            if !terminates_control_flow {
-                reachable.extend(self.proc.successors(bb));
+            if let mir::TerminatorKind::Call { func, .. } = &data.terminator().kind
+                && !self.is_call_destination_panic(func)
+                && self.proc.synthetic_drop_borrow_for_drop_call(loc).is_none()
+                && !self.is_call_destination_discriminant(func)
+            {
+                call_locations.push(loc);
             }
         }
 
@@ -756,6 +748,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 normal_target,
                 discovery,
             });
+        }
+
+        for call in &mut pending {
+            self.annotations.classify_call_effects(call.loc, &mut call.discovery);
+        }
+        for call in &pending {
+            self.annotations.register_call_classification_effects(call.loc, &call.discovery);
         }
 
         for call in pending {

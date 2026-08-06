@@ -7,8 +7,10 @@
 //! Initializes semantic lifetime names introduced by MIR rvalues.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::iter;
 
 use radium::{code, coq};
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 
 use crate::base::*;
@@ -50,7 +52,7 @@ fn aggregate_field_types<'tcx>(
 
 fn add_type_transfer<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
-    did: rr_rustc_interface::hir::def_id::DefId,
+    did: DefId,
     mappings: &mut BTreeMap<Region, Vec<AssignmentRegionSource<'tcx>>>,
     source: ty::Ty<'tcx>,
     destination: ty::Ty<'tcx>,
@@ -102,17 +104,13 @@ fn format_source<'tcx>(
     }
 }
 
-/// Initialize region names belonging to an rvalue from its structural MIR operands.
-pub(crate) fn get_rvalue_creation_annots<'tcx>(
+fn get_rvalue_transfers<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
-    inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
-    ty_translator: &types::LocalTX<'_, 'tcx>,
-    effect_point: PointIndex,
+    did: DefId,
     rhs: &mir::Rvalue<'tcx>,
     rhs_ty: ty::Ty<'tcx>,
     operand_tys: &[ty::Ty<'tcx>],
-) -> Result<Vec<code::Annotation>, TranslationError> {
-    let did = ty_translator.scope.borrow().did;
+) -> Result<(BTreeMap<Region, Vec<AssignmentRegionSource<'tcx>>>, Vec<Region>), TranslationError> {
     let mut mappings = BTreeMap::new();
     match rhs {
         mir::Rvalue::Use(_, _) => {
@@ -139,7 +137,7 @@ pub(crate) fn get_rvalue_creation_annots<'tcx>(
         mir::Rvalue::Aggregate(kind, _) => {
             let field_tys = aggregate_field_types(tcx, kind, rhs_ty)?;
             let field_tys: Vec<_> = if matches!(kind.as_ref(), mir::AggregateKind::Array(_)) {
-                std::iter::repeat_n(field_tys[0], operand_tys.len()).collect()
+                iter::repeat_n(field_tys[0], operand_tys.len()).collect()
             } else {
                 field_tys
             };
@@ -156,7 +154,7 @@ pub(crate) fn get_rvalue_creation_annots<'tcx>(
                 add_type_transfer(tcx, did, &mut mappings, source, destination)?;
             }
         },
-        _ => return Ok(Vec::new()),
+        _ => return Ok((BTreeMap::new(), Vec::new())),
     }
 
     for (destination, sources) in &mut mappings {
@@ -169,11 +167,58 @@ pub(crate) fn get_rvalue_creation_annots<'tcx>(
         ))))
     })?;
 
+    Ok((mappings, ordered))
+}
+
+/// Register structural rvalue effects before any annotation decisions query the tracker.
+pub(crate) fn preregister_rvalue_creation<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
+    did: DefId,
+    effect_point: PointIndex,
+    rhs: &mir::Rvalue<'tcx>,
+    rhs_ty: ty::Ty<'tcx>,
+    operand_tys: &[ty::Ty<'tcx>],
+) -> Result<(), TranslationError> {
+    let (mappings, ordered) = get_rvalue_transfers(tcx, did, rhs, rhs_ty, operand_tys)?;
+    for destination in ordered {
+        let sources = &mappings[&destination];
+        inclusion_tracker.add_barrier(destination, effect_point);
+        inclusion_tracker.add_known_region(destination, effect_point);
+        if sources.len() == 1 {
+            if let AssignmentRegionSource::Var(source) = sources[0] {
+                inclusion_tracker.add_static_inclusion(source, destination, effect_point);
+                inclusion_tracker.add_static_inclusion(destination, source, effect_point);
+            }
+        } else {
+            for source in sources {
+                if let AssignmentRegionSource::Var(source) = source {
+                    inclusion_tracker.add_static_inclusion(*source, destination, effect_point);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Initialize region names belonging to an rvalue from its structural MIR operands.
+pub(crate) fn get_rvalue_creation_annots<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
+    ty_translator: &types::LocalTX<'_, 'tcx>,
+    effect_point: PointIndex,
+    rhs: &mir::Rvalue<'tcx>,
+    rhs_ty: ty::Ty<'tcx>,
+    operand_tys: &[ty::Ty<'tcx>],
+) -> Result<Vec<code::Annotation>, TranslationError> {
+    let did = ty_translator.scope.borrow().did;
+    let (mappings, ordered) = get_rvalue_transfers(tcx, did, rhs, rhs_ty, operand_tys)?;
+
     for sources in mappings.values() {
         for source in sources {
             if let AssignmentRegionSource::Var(source) = source {
                 let atomic = inclusion_tracker.info().mk_atomic_region(*source);
-                if !inclusion_tracker.is_region_known(*source, effect_point)
+                if !inclusion_tracker.is_region_known_before_effects(*source, effect_point)
                     && !atomic.is_loan()
                     && !atomic.is_unconstrained()
                 {
@@ -188,25 +233,14 @@ pub(crate) fn get_rvalue_creation_annots<'tcx>(
     let mut annotations = Vec::new();
     for destination in ordered {
         let sources = &mappings[&destination];
-        inclusion_tracker.add_barrier(destination, effect_point);
-        inclusion_tracker.add_known_region(destination, effect_point);
         let destination_lft = ty_translator.translate_region_var(destination);
         if sources.len() == 1 {
             let source = *sources.iter().next().unwrap();
-            if let AssignmentRegionSource::Var(source) = source {
-                inclusion_tracker.add_static_inclusion(source, destination, effect_point);
-                inclusion_tracker.add_static_inclusion(destination, source, effect_point);
-            }
             annotations.push(code::Annotation::CopyLftName(
                 format_source(ty_translator, inclusion_tracker, source),
                 destination_lft,
             ));
         } else {
-            for source in sources {
-                if let AssignmentRegionSource::Var(source) = source {
-                    inclusion_tracker.add_static_inclusion(*source, destination, effect_point);
-                }
-            }
             annotations.push(code::Annotation::AliasLftIntersection(
                 destination_lft,
                 sources

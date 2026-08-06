@@ -244,18 +244,17 @@ pub(crate) fn initialize_inclusion_tracker<'a, 'tcx>(
 ) -> InclusionTracker<'a, 'tcx> {
     let mut inclusion_tracker = InclusionTracker::new(info);
 
-    let root_point = info.root_point(facts::PointType::Start);
     for (cstr, _) in &lifetime_scope.constraints {
         match cstr {
             LftConstr::RegionOutlives(r1, r2) => {
-                inclusion_tracker.add_static_inclusion(*r1, *r2, root_point);
+                inclusion_tracker.add_entry_static_inclusion(*r1, *r2);
             },
             LftConstr::TypeOutlives(_, _) => (),
         }
     }
 
     for (r1, r2) in info.known_placeholder_subsets() {
-        inclusion_tracker.add_static_inclusion(r1, r2, root_point);
+        inclusion_tracker.add_entry_static_inclusion(r1, r2);
     }
 
     inclusion_tracker
@@ -316,15 +315,13 @@ pub(crate) fn get_initial_universal_arg_constraints<'a, 'tcx>(
 
     // add the inclusions to the inclusion tracker
 
-    let root_point = info.root_point(facts::PointType::Start);
-
     let mut initial_arg_mapping = Vec::new();
     for (l, s) in unifier.get_result() {
         if l == s {
             continue;
         }
-        inclusion_tracker.add_static_inclusion(s, l, root_point);
-        inclusion_tracker.add_static_inclusion(l, s, root_point);
+        inclusion_tracker.add_entry_static_inclusion(s, l);
+        inclusion_tracker.add_entry_static_inclusion(l, s);
 
         let lft1 = info.mk_atomic_region(l);
         let lft2 = info.mk_atomic_region(s);

@@ -710,7 +710,6 @@ mod place_parser {
 }
 
 #[cfg(test)]
-#[expect(clippy::inline_modules)]
 mod tests {
     use std::collections::{BTreeMap, HashMap};
 
