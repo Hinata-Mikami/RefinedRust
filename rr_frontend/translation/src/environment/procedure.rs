@@ -468,15 +468,44 @@ impl<'tcx> Procedure<'tcx> {
         self.ensure_region_type(ty, || format!("synthetic dropck local {local:?}"))
     }
 
-    /// Get the region-sensitive borrowck type of a target/dropck place.
-    pub(crate) fn region_type_of_place(&self, pl: &mir::Place<'tcx>) -> mir::PlaceTy<'tcx> {
-        let normalized = self.normalize_box_deref_alias_place(pl);
-        let pl = &normalized;
-        let mut cur_ty = mir::PlaceTy::from_ty(self.region_type_of_local(pl.local));
+    fn region_type_of_place_with_access_region(
+        &self,
+        pl: &mir::Place<'tcx>,
+        normalize_aliases: bool,
+    ) -> (mir::PlaceTy<'tcx>, Option<ty::Region<'tcx>>) {
+        let normalized;
+        let pl = if normalize_aliases {
+            normalized = self.normalize_box_deref_alias_place(pl);
+            &normalized
+        } else {
+            pl
+        };
+        let base_ty = if normalize_aliases {
+            self.region_type_of_local(pl.local)
+        } else {
+            let ty = self
+                .borrowck_mir
+                .local_decls
+                .get(pl.local)
+                .unwrap_or_else(|| bug!("region-sensitive source place has unknown local {:?}", pl.local))
+                .ty;
+            self.ensure_region_type(ty, || format!("source place {pl:?}"))
+        };
+        let mut cur_ty = mir::PlaceTy::from_ty(base_ty);
+        let mut access_region = None;
 
         for elem in pl.projection {
             cur_ty = match elem {
                 mir::ProjectionElem::Deref => {
+                    match cur_ty.ty.kind() {
+                        ty::TyKind::Ref(region, _, _) if access_region.is_none() => {
+                            access_region = Some(*region);
+                        },
+                        // Access through a raw pointer is not governed by an earlier safe-reference
+                        // lifetime. A later reference dereference may establish a new one.
+                        ty::TyKind::RawPtr(..) => access_region = None,
+                        _ => {},
+                    }
                     let ty = cur_ty.ty.builtin_deref(true).unwrap_or_else(|| {
                         bug!("deref projection on non-dereferenceable region-sensitive place type {cur_ty:?}")
                     });
@@ -522,7 +551,29 @@ impl<'tcx> Procedure<'tcx> {
             self.ensure_region_type(cur_ty.ty, || format!("place {pl:?}"));
         }
 
-        cur_ty
+        (cur_ty, access_region)
+    }
+
+    /// Get the region-sensitive borrowck type of a target/dropck place.
+    pub(crate) fn region_type_of_place(&self, pl: &mir::Place<'tcx>) -> mir::PlaceTy<'tcx> {
+        self.region_type_of_place_with_access_region(pl, true).0
+    }
+
+    /// Get the lifetime governing access to the place borrowed by a shared-reference rvalue.
+    ///
+    /// This is the lifetime of the first semantic reference dereferenced by the place. Inner
+    /// references only constrain validity of the referent and do not govern the reborrow itself.
+    pub(crate) fn shared_borrow_access_region_for_target(
+        &self,
+        loc: mir::Location,
+        fallback: &mir::Rvalue<'tcx>,
+    ) -> Option<ty::Region<'tcx>> {
+        let (rvalue, normalize_aliases) =
+            self.source_rvalue_for_target(loc).map_or((fallback, true), |source| (source, false));
+        let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, place) = rvalue else {
+            return None;
+        };
+        self.region_type_of_place_with_access_region(place, normalize_aliases).1
     }
 
     /// Get the region-sensitive borrowck type of a target/dropck operand.
@@ -536,6 +587,49 @@ impl<'tcx> Procedure<'tcx> {
             mir::Operand::RuntimeChecks(_) => {
                 bug!("region-sensitive type requested for runtime-check operand {op:?}");
             },
+        }
+    }
+
+    fn source_region_type_of_operand(&self, op: &mir::Operand<'tcx>) -> ty::Ty<'tcx> {
+        match op {
+            mir::Operand::Copy(place) | mir::Operand::Move(place) => {
+                self.region_type_of_place_with_access_region(place, false).0.ty
+            },
+            mir::Operand::Constant(constant) => {
+                let ty = constant.const_.ty();
+                self.ensure_region_type(ty, || format!("source constant operand {op:?}"))
+            },
+            mir::Operand::RuntimeChecks(_) => {
+                bug!("region-sensitive type requested for source runtime-check operand {op:?}");
+            },
+        }
+    }
+
+    /// Get the region-sensitive operand types which semantically form a target rvalue.
+    pub(crate) fn region_types_of_rvalue_operands_for_target(
+        &self,
+        loc: mir::Location,
+        fallback: &mir::Rvalue<'tcx>,
+    ) -> Vec<ty::Ty<'tcx>> {
+        let (rvalue, source) =
+            self.source_rvalue_for_target(loc).map_or((fallback, false), |rvalue| (rvalue, true));
+        let operand_ty = |operand| {
+            if source {
+                self.source_region_type_of_operand(operand)
+            } else {
+                self.region_type_of_operand(operand)
+            }
+        };
+
+        match rvalue {
+            mir::Rvalue::Use(operand, _) => vec![operand_ty(operand)],
+            mir::Rvalue::Aggregate(_, operands) => operands.iter().map(operand_ty).collect(),
+            mir::Rvalue::Ref(_, _, place) => vec![if source {
+                self.region_type_of_place_with_access_region(place, false).0.ty
+            } else {
+                self.region_type_of_place(place).ty
+            }],
+            _ => Vec::new(),
         }
     }
 

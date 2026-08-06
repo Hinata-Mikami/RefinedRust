@@ -241,6 +241,42 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let closure_annotation_stmts =
             self.annotations.prepare_initial_closure_annotation_stmts(&self.ty_translator);
 
+        // Register flow-sensitive strong-update effects for the whole body before any block asks
+        // the inclusion tracker for must-information. Annotation validity must not depend on the
+        // order in which the translation queue happens to visit predecessor blocks.
+        let mut strong_assignments = Vec::new();
+        for (bb, data) in self.proc.dropck_mir().basic_blocks.iter_enumerated() {
+            for (statement_index, statement) in data.statements.iter().enumerate() {
+                let loc = mir::Location {
+                    block: bb,
+                    statement_index,
+                };
+                if self.is_administrative_alias_stmt(statement)
+                    || self.proc.synthetic_drop_borrow_for_assignment(loc).is_some()
+                {
+                    continue;
+                }
+                let mir::StatementKind::Assign(assignment) = &statement.kind else {
+                    continue;
+                };
+                let (place, rvalue) = assignment.as_ref();
+                if self.is_spec_closure_local(place.local)?.is_some()
+                    || self.check_place_below_reference(place)
+                {
+                    continue;
+                }
+                strong_assignments.push((
+                    loc,
+                    self.proc.region_type_of_place(place).ty,
+                    self.proc.region_type_of_rvalue(loc, rvalue),
+                ));
+            }
+        }
+        let did = self.proc.get_id();
+        for (loc, lhs_ty, rhs_ty) in strong_assignments {
+            self.annotations.preregister_strong_assignment(did, loc, lhs_ty, rhs_ty)?;
+        }
+
         // translate the function's basic blocks
         let basic_blocks = &self.proc.dropck_mir().basic_blocks;
 

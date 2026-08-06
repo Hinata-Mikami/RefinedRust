@@ -9,11 +9,12 @@ use std::mem;
 
 use log::info;
 use radium::{code, coq, specs};
+use rr_rustc_interface::middle::ty::RegionExt as _;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::type_ir::TypeFolder as _;
 
 use super::inclusion_tracker::InclusionTracker;
-use super::{assignment, calls, composite, init};
+use super::{assignment, calls, init, rvalue};
 use crate::base::TranslationError;
 use crate::environment::borrowck::facts;
 use crate::environment::mir_mapper::MappingResult;
@@ -174,7 +175,7 @@ pub(crate) struct CallRegionInputs<'a, 'tcx> {
 pub(crate) struct CallAssignmentInputs<'tcx> {
     pub(crate) lhs_ty: mir::PlaceTy<'tcx>,
     pub(crate) lhs_strongly_writeable: bool,
-    pub(crate) output_ty: ty::Ty<'tcx>,
+    pub(crate) output_ty: ty::Binder<'tcx, ty::Ty<'tcx>>,
 }
 
 #[derive(Debug)]
@@ -232,6 +233,24 @@ fn groups_to_stmts(groups: Vec<AnnotationGroup>) -> Vec<code::PrimStmt> {
 }
 
 impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
+    pub(crate) fn preregister_strong_assignment(
+        &mut self,
+        did: rr_rustc_interface::hir::def_id::DefId,
+        loc: mir::Location,
+        lhs_ty: ty::Ty<'tcx>,
+        rhs_ty: ty::Ty<'tcx>,
+    ) -> Result<(), TranslationError> {
+        let midpoint = self.mid_point_for_target(loc);
+        assignment::preregister_strong_assignment(
+            self.tcx,
+            &mut self.inclusion_tracker,
+            did,
+            midpoint,
+            lhs_ty,
+            rhs_ty,
+        )
+    }
+
     pub(crate) fn prepare_statement_annotation_plan(
         &self,
         ty_translator: &types::LocalTX<'_, 'tcx>,
@@ -270,11 +289,13 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         rhs: &mir::Rvalue<'tcx>,
         lhs_ty: mir::PlaceTy<'tcx>,
         rhs_ty: ty::Ty<'tcx>,
+        rvalue_operand_tys: &[ty::Ty<'tcx>],
         lhs_strongly_writeable: bool,
+        shared_borrow_access_region: Option<ty::Region<'tcx>>,
     ) -> Result<LocationAnnotationPlan, TranslationError> {
         let startpoint = self.start_point_for_target(loc);
         let midpoint = self.mid_point_for_target(loc);
-        let borrow_annots = assignment::get_assignment_loan_annots(
+        let mut borrow_annots = assignment::get_assignment_loan_annots(
             &mut self.inclusion_tracker,
             ty_translator,
             loc,
@@ -282,15 +303,25 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             startpoint,
             rhs,
         );
-
-        let composite_annots = composite::get_composite_rvalue_creation_annots(
+        borrow_annots.extend(assignment::get_shared_reborrow_annots(
             self.tcx,
             &mut self.inclusion_tracker,
             ty_translator,
+            rhs,
             midpoint,
             startpoint,
+            shared_borrow_access_region,
+        )?);
+
+        let rvalue_annots = rvalue::get_rvalue_creation_annots(
+            self.tcx,
+            &mut self.inclusion_tracker,
+            ty_translator,
+            startpoint,
+            rhs,
             rhs_ty,
-        );
+            rvalue_operand_tys,
+        )?;
 
         let assignment_annots = assignment::get_assignment_annots(
             self.tcx,
@@ -308,7 +339,6 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             &mut self.inclusion_tracker,
             ty_translator,
             assignment_annots.unconstrained_regions,
-            midpoint,
             startpoint,
             Some(rhs),
         );
@@ -318,7 +348,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
 
         let mut plan = LocationAnnotationPlan::default();
         plan.pre.push(AnnotationGroup::new(unconstrained_annots, "assignment (unconstrained)"));
-        plan.pre.push(AnnotationGroup::new(composite_annots, "composite"));
+        plan.pre.push(AnnotationGroup::new(rvalue_annots, "rvalue"));
         plan.pre.push(AnnotationGroup::new(borrow_annots, "borrow"));
         plan.pre.push(AnnotationGroup::new(assignment_annots.new_dyn_inclusions, "assignment"));
         plan.expr = assignment_annots.expr_annot;
@@ -364,6 +394,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         );
 
         for (r, c) in &classification.classification {
+            self.inclusion_tracker.add_known_region(*r, startpoint);
             match c {
                 calls::CallRegionKind::EqR(r2) => {
                     self.inclusion_tracker.add_static_inclusion(*r, *r2, startpoint);
@@ -385,6 +416,31 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         info!("Call lifetime instantiation (early): {:?}", classification.early_regions);
         info!("Call lifetime instantiation (late): {:?}", classification.late_regions);
 
+        let bound_regions: Vec<_> = assignment
+            .output_ty
+            .bound_vars()
+            .iter()
+            .enumerate()
+            .filter_map(|(index, kind)| matches!(kind, ty::BoundVariableKind::Region(_)).then_some(index))
+            .collect();
+        if bound_regions.len() != classification.late_regions.len() {
+            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                format!(
+                    "call output has {} late-bound regions but Polonius classified {} call regions",
+                    bound_regions.len(),
+                    classification.late_regions.len()
+                ),
+            ))));
+        }
+        let late_regions: BTreeMap<_, _> =
+            bound_regions.into_iter().zip(classification.late_regions.iter().copied()).collect();
+        let (output_ty, _) =
+            self.tcx
+                .instantiate_bound_regions(assignment.output_ty, &mut |bound: ty::BoundRegion<'tcx>| {
+                    let region = late_regions[&bound.var.index()];
+                    ty::Region::new_var(self.tcx, region.into())
+                });
+
         let assignment_annots = assignment::get_assignment_annots(
             self.tcx,
             &mut self.inclusion_tracker,
@@ -394,7 +450,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             midpoint,
             assignment.lhs_strongly_writeable,
             assignment.lhs_ty,
-            assignment.output_ty,
+            output_ty,
         )?;
         info!("assignment annots after call: {assignment_annots:?}");
 
@@ -411,7 +467,6 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
                 &mut self.inclusion_tracker,
                 ty_translator,
                 unconstrained_regions,
-                midpoint,
                 startpoint,
                 None,
             );

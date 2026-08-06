@@ -87,6 +87,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         // Assignment annotations depend on regionful borrowck types, but the
                         // executable statement is the dropck statement we are translating.
                         let annotation_val = self.proc.source_rvalue_for_target(loc).unwrap_or(val);
+                        let rvalue_operand_tys =
+                            self.proc.region_types_of_rvalue_operands_for_target(loc, val);
+                        let shared_borrow_access_region =
+                            self.proc.shared_borrow_access_region_for_target(loc, val);
                         let plc_strongly_writeable = !self.check_place_below_reference(plc);
                         let mut annotation_plan = self.annotations.prepare_assignment_annotation_plan(
                             &self.ty_translator,
@@ -95,7 +99,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             annotation_val,
                             plc_region_ty,
                             rhs_region_ty,
+                            &rvalue_operand_tys,
                             plc_strongly_writeable,
+                            shared_borrow_access_region,
                         )?;
                         annotation_plan.push_pre_stmts(&mut prim_stmts);
 

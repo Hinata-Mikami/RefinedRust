@@ -11,10 +11,10 @@ mod arg_folder;
 mod assignment;
 mod body_context;
 mod calls;
-mod composite;
 mod inclusion_tracker;
 mod init;
 mod region_bi_folder;
+mod rvalue;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, btree_map};
 

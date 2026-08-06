@@ -684,9 +684,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             translated_args.push(translated_arg);
         }
 
-        let output_ty = self
-            .proc
-            .ensure_region_type(inst_sig.output().skip_binder(), || format!("call output type at {loc:?}"));
+        let output_ty = inst_sig.output();
+        self.proc
+            .ensure_region_type(output_ty.skip_binder(), || format!("call output type at {loc:?}"));
         info!("call has instantiated type {:?}", inst_sig);
         let lhs_shape_ty = self.shape_type_of_place(destination);
         let lhs_region_ty = self.proc.region_type_of_place(destination);
