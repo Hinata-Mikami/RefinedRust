@@ -20,7 +20,6 @@ use crate::body::mir_lowering::{
     MirConstantTranslation as _, MirPlaceTranslation as _, MirRvalueTranslation as _, MirTranslationCtx as _,
     MirTypeTranslation as _, ProcedureInst, TranslationKey,
 };
-use crate::environment::borrowck::facts;
 use crate::error::Message;
 use crate::regions::{CallAssignmentInputs, CallRegionInputs};
 use crate::traits::registry::ResolvedTraitReq;
@@ -633,7 +632,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         destination: &mir::Place<'tcx>,
         target: Option<mir::BasicBlock>,
         loc: mir::Location,
-        dying_loans: impl ExactSizeIterator<Item = facts::Loan>,
     ) -> Result<code::Stmt, TranslationError> {
         let mir::Operand::Constant(box func_constant) = func else {
             return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
@@ -706,7 +704,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 lhs_strongly_writeable,
                 output_ty,
             },
-            dying_loans,
         )?;
         call_info.lft_hint.append(&mut annotation_plan.late_lft_hints);
         for hint in annotation_plan.unconstrained_lft_hints.drain(..) {
@@ -733,10 +730,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let normal = if let Some(target) = target {
             let mut normal_stmts = Vec::new();
             annotation_plan.push_post_assign_stmts(&mut normal_stmts);
-
-            // end loans before the goto, but after the call.
-            // TODO: may cause duplications?
-            annotation_plan.push_post_call_before_goto_stmts(&mut normal_stmts);
 
             let cont_stmt = self.translate_goto_like(&loc, target)?;
             code::Stmt::Prim(normal_stmts, Box::new(cont_stmt))

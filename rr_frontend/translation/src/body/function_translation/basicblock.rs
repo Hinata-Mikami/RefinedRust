@@ -31,6 +31,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 block: bb_idx,
                 statement_index: idx,
             };
+            let mut statement_annotation_plan = self.annotations.prepare_statement_annotation_plan(
+                &self.ty_translator,
+                loc,
+                idx.checked_sub(1).map(|statement_index| mir::Location {
+                    block: bb_idx,
+                    statement_index,
+                }),
+            );
+            statement_annotation_plan.push_pre_stmts(&mut prim_stmts);
 
             if self.is_administrative_alias_stmt(stmt) {
                 info!("skipping synthetic administrative alias statement: {stmt:?}");
@@ -65,13 +74,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 }
             }
 
-            let mut statement_annotation_plan = self.annotations.prepare_statement_annotation_plan(
-                &self.ty_translator,
-                loc,
-                self.get_loc_predecessors(loc),
-            );
-            statement_annotation_plan.push_pre_stmts(&mut prim_stmts);
-
             match &stmt.kind {
                 mir::StatementKind::Assign(b) => {
                     let (plc, val) = b.as_ref();
@@ -94,7 +96,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             plc_region_ty,
                             rhs_region_ty,
                             plc_strongly_writeable,
-                        );
+                        )?;
                         annotation_plan.push_pre_stmts(&mut prim_stmts);
 
                         let (e, _) = self.translate_rvalue(loc, val)?;
@@ -207,48 +209,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             block: bb_idx,
             statement_index: idx,
         };
-        let terminator = bb.terminator();
-        let successor_locations = terminator
-            .successors()
-            .map(|block| mir::Location {
-                block,
-                statement_index: 0,
-            })
-            .collect::<Vec<_>>();
-        let dying_loans = self.annotations.collect_terminator_dying_loans_with_successors(
+        let mut terminator_entry_plan = self.annotations.prepare_statement_annotation_plan(
+            &self.ty_translator,
             loc,
-            successor_locations,
-            matches!(terminator.kind, mir::TerminatorKind::Return),
+            idx.checked_sub(1).map(|statement_index| mir::Location {
+                block: bb_idx,
+                statement_index,
+            }),
         );
-        let cont_stmt: code::Stmt = self.translate_terminator(terminator, loc, dying_loans)?;
+        terminator_entry_plan.push_pre_stmts(&mut prim_stmts);
+        let terminator = bb.terminator();
+        let cont_stmt: code::Stmt = self.translate_terminator(terminator, loc)?;
 
         let cont_stmt = code::Stmt::Prim(prim_stmts, Box::new(cont_stmt));
 
         Ok(cont_stmt)
-    }
-
-    /// Get predecessors in the CFG.
-    fn get_loc_predecessors(&self, loc: mir::Location) -> Vec<mir::Location> {
-        if loc.statement_index > 0 {
-            let pred = mir::Location {
-                block: loc.block,
-                statement_index: loc.statement_index - 1,
-            };
-            vec![pred]
-        } else {
-            // check for gotos that go to this basic block
-            let pred_bbs = self.proc.predecessors(loc.block);
-            let basic_blocks = &self.proc.dropck_mir().basic_blocks;
-            pred_bbs
-                .iter()
-                .map(|bb| {
-                    let data = &basic_blocks[*bb];
-                    mir::Location {
-                        block: *bb,
-                        statement_index: data.statements.len(),
-                    }
-                })
-                .collect()
-        }
     }
 }

@@ -18,7 +18,6 @@ use crate::body::mir_lowering::{
     MirDropTranslation as _, MirPlaceTranslation as _, MirRvalueTranslation as _, MirTranslationCtx as _,
     MirTypeTranslation as _,
 };
-use crate::environment::borrowck::facts;
 use crate::error::Message;
 use crate::{search, types};
 
@@ -122,13 +121,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Translate a terminator.
-    /// We pass the dying loans during this terminator. They need to be added at the right
-    /// intermediate point.
     pub(crate) fn translate_terminator(
         &mut self,
         term: &mir::Terminator<'tcx>,
         loc: mir::Location,
-        dying_loans: Vec<facts::Loan>,
     ) -> Result<code::Stmt, TranslationError> {
         match &term.kind {
             mir::TerminatorKind::Goto { target } => self.translate_goto_like(&loc, *target),
@@ -170,12 +166,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         )));
                     }
 
-                    let mut annotation_plan = self.annotations.prepare_terminator_annotation_plan(
-                        &self.ty_translator,
-                        dying_loans.into_iter(),
-                    );
-                    let prim_stmts = annotation_plan.take_pre_stmts();
-
                     let (func_expr, info) = self.translate_operand(func, false)?;
                     let Some(ExprInfo::Call(mut call_info)) = info else {
                         unreachable!("Logic error in drop call target translation");
@@ -204,7 +194,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         normal: Box::new(normal),
                         unwind: Box::new(code::Stmt::Stuck),
                     };
-                    return Ok(code::Stmt::Prim(prim_stmts, Box::new(call)));
+                    return Ok(call);
                 }
 
                 if self.is_call_destination_panic(func) {
@@ -219,7 +209,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     return Ok(code::Stmt::Prim(stmt, Box::new(goto)));
                 }
 
-                self.translate_function_call(func, args, destination, *target, loc, dying_loans.into_iter())
+                self.translate_function_call(func, args, destination, *target, loc)
             },
 
             mir::TerminatorKind::Return => {
@@ -227,7 +217,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let mut annotation_plan = self.annotations.prepare_return_annotation_plan(
                     &self.ty_translator,
                     self.return_ty,
-                    dying_loans.into_iter(),
                 );
                 let annots = annotation_plan.take_pre_stmts();
 
@@ -267,11 +256,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         s2: Box::new(false_branch),
                     };
 
-                    let mut annotation_plan = self.annotations.prepare_terminator_annotation_plan(
-                        &self.ty_translator,
-                        dying_loans.into_iter(),
-                    );
-                    return Ok(code::Stmt::Prim(annotation_plan.take_pre_stmts(), Box::new(stmt)));
+                    return Ok(stmt);
                 }
 
                 //info!("switchint: {:?}", term.kind);
@@ -290,8 +275,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 }
 
                 let translated_default = self.translate_goto_like(&loc, targets.otherwise())?;
-                // TODO: need to put endlfts infront of gotos?
-
                 let translated_ty = self.ty_translator.translate_type(ty)?;
                 let specs::Type::Int(it) = translated_ty else {
                     return Err(TranslationError::ErrorReported(
@@ -325,11 +308,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 };
 
                 let stmt = self.translate_goto_like(&loc, *target)?;
-                let mut annotation_plan = self.annotations.prepare_terminator_annotation_plan(
-                    &self.ty_translator,
-                    dying_loans.into_iter(),
-                );
-                let mut annots = annotation_plan.take_pre_stmts();
+                let mut annots = Vec::new();
 
                 // TODO: should we really have this?
                 annots.insert(0, code::PrimStmt::AssertS(Box::new(comp)));
@@ -338,11 +317,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             mir::TerminatorKind::Drop { place, target, .. } => {
                 let mut stmt = self.translate_goto_like(&loc, *target)?;
-                let mut annotation_plan = self.annotations.prepare_terminator_annotation_plan(
-                    &self.ty_translator,
-                    dying_loans.into_iter(),
-                );
-                let prim_stmts = annotation_plan.take_pre_stmts();
 
                 let shape_ty = self.shape_type_of_place(place).ty;
                 let typing_env = ty::TypingEnv::post_analysis(self.tcx, self.proc.get_id());
@@ -369,7 +343,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     };
                 }
 
-                Ok(code::Stmt::Prim(prim_stmts, Box::new(stmt)))
+                Ok(stmt)
             },
 
             // just a goto for our purposes

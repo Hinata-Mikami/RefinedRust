@@ -408,7 +408,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a goto-like jump to `target`.
     fn translate_goto_like(
         &mut self,
-        _loc: &mir::Location,
+        loc: &mir::Location,
         target: mir::BasicBlock,
     ) -> Result<code::Stmt, TranslationError> {
         self.enqueue_basic_block(target);
@@ -426,6 +426,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 why: Some("goto to loop head".to_owned()),
             };
             res_stmt = code::Stmt::Prim(vec![annot_stmt], Box::new(res_stmt));
+        }
+
+        let mut edge_plan =
+            self.annotations.prepare_cfg_edge_annotation_plan(&self.ty_translator, *loc, target);
+        let edge_stmts = edge_plan.take_pre_stmts();
+        if !edge_stmts.is_empty() {
+            res_stmt = code::Stmt::Prim(edge_stmts, Box::new(res_stmt));
         }
 
         Ok(res_stmt)

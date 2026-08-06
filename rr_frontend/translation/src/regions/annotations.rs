@@ -36,11 +36,18 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         info: &'a PoloniusInfo<'a, 'tcx>,
         mapping: &'a MappingResult,
     ) -> Self {
+        let mut inclusion_tracker = init::initialize_inclusion_tracker(lifetime_scope, info);
+        for (from, to) in info.cfg_edges() {
+            for loan in info.get_semantic_loans_dying_between_points(from, to) {
+                let region = info.atomic_region_of_loan(loan).get_region();
+                inclusion_tracker.add_edge_barrier(region, from, to);
+            }
+        }
         Self {
             tcx,
             info,
             mapping,
-            inclusion_tracker: init::initialize_inclusion_tracker(lifetime_scope, info),
+            inclusion_tracker,
         }
     }
 
@@ -156,7 +163,6 @@ pub(crate) struct CallAnnotationPlan {
     pub pre_assign: Vec<AnnotationGroup>,
     pub assign_expr: Option<code::Annotation>,
     pub post_assign: Vec<AnnotationGroup>,
-    pub post_call_before_goto: Vec<AnnotationGroup>,
 }
 
 pub(crate) struct CallRegionInputs<'a, 'tcx> {
@@ -187,10 +193,6 @@ impl CallAnnotationPlan {
 
     pub(crate) fn push_post_assign_stmts(&mut self, prim_stmts: &mut Vec<code::PrimStmt>) {
         push_groups(prim_stmts, mem::take(&mut self.post_assign));
-    }
-
-    pub(crate) fn push_post_call_before_goto_stmts(&mut self, prim_stmts: &mut Vec<code::PrimStmt>) {
-        push_groups(prim_stmts, mem::take(&mut self.post_call_before_goto));
     }
 }
 
@@ -242,30 +244,22 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         plan
     }
 
-    pub(crate) fn collect_terminator_dying_loans_with_successors(
+    pub(crate) fn prepare_cfg_edge_annotation_plan(
         &self,
+        ty_translator: &types::LocalTX<'_, 'tcx>,
         loc: mir::Location,
-        successors: impl IntoIterator<Item = mir::Location>,
-        is_return: bool,
-    ) -> Vec<facts::Loan> {
-        let startpoint = self.start_point_for_target(loc);
-        let midpoint = self.mid_point_for_target(loc);
-        let successor_startpoints = successors
-            .into_iter()
-            .map(|successor| self.start_point_for_target(successor))
-            .collect::<Vec<_>>();
-        let dying = self.info.get_loans_dying_at_points(
-            startpoint,
-            midpoint,
-            successor_startpoints.clone(),
-            is_return,
-            false,
-        );
-        // Preserve the existing behavior: query zombie loans here, but do not emit EndLft for them.
-        let _dying_zombie =
-            self.info
-                .get_loans_dying_at_points(startpoint, midpoint, successor_startpoints, is_return, true);
-        BTreeSet::from_iter(dying).into_iter().rev().collect()
+        target: mir::BasicBlock,
+    ) -> LocationAnnotationPlan {
+        let from = self.mid_point_for_target(loc);
+        let target_loc = mir::Location {
+            block: target,
+            statement_index: 0,
+        };
+        let to = self.start_point_for_target(target_loc);
+        let dying = self.info.get_semantic_loans_dying_between_points(from, to);
+        let mut plan = LocationAnnotationPlan::default();
+        plan.pre.extend(self.generate_endlft_groups(ty_translator, dying.into_iter().rev()));
+        plan
     }
 
     pub(crate) fn prepare_assignment_annotation_plan(
@@ -277,7 +271,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         lhs_ty: mir::PlaceTy<'tcx>,
         rhs_ty: ty::Ty<'tcx>,
         lhs_strongly_writeable: bool,
-    ) -> LocationAnnotationPlan {
+    ) -> Result<LocationAnnotationPlan, TranslationError> {
         let startpoint = self.start_point_for_target(loc);
         let midpoint = self.mid_point_for_target(loc);
         let borrow_annots = assignment::get_assignment_loan_annots(
@@ -308,7 +302,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             lhs_strongly_writeable,
             lhs_ty,
             rhs_ty,
-        );
+        )?;
 
         let (unconstrained_annots, unconstrained_hints) = assignment::make_unconstrained_region_annotations(
             &mut self.inclusion_tracker,
@@ -329,24 +323,13 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         plan.pre.push(AnnotationGroup::new(assignment_annots.new_dyn_inclusions, "assignment"));
         plan.expr = assignment_annots.expr_annot;
         plan.post.push(AnnotationGroup::new(assignment_annots.stmt_annot, "post-assignment"));
-        plan
-    }
-
-    pub(crate) fn prepare_terminator_annotation_plan(
-        &self,
-        ty_translator: &types::LocalTX<'_, 'tcx>,
-        dying_loans: impl ExactSizeIterator<Item = facts::Loan>,
-    ) -> LocationAnnotationPlan {
-        let mut plan = LocationAnnotationPlan::default();
-        plan.pre.extend(self.generate_endlft_groups(ty_translator, dying_loans));
-        plan
+        Ok(plan)
     }
 
     pub(crate) fn prepare_return_annotation_plan(
         &self,
         ty_translator: &types::LocalTX<'_, 'tcx>,
         return_ty: ty::Ty<'tcx>,
-        dying_loans: impl ExactSizeIterator<Item = facts::Loan>,
     ) -> LocationAnnotationPlan {
         let mut plan = LocationAnnotationPlan::default();
 
@@ -359,7 +342,6 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             .collect();
 
         plan.pre.push(AnnotationGroup::new(stmt_annots, "return"));
-        plan.pre.extend(self.generate_endlft_groups(ty_translator, dying_loans));
         plan
     }
 
@@ -369,7 +351,6 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         loc: mir::Location,
         call_regions: &CallRegionInputs<'_, 'tcx>,
         assignment: &CallAssignmentInputs<'tcx>,
-        dying_loans: impl ExactSizeIterator<Item = facts::Loan>,
     ) -> Result<CallAnnotationPlan, TranslationError> {
         let startpoint = self.start_point_for_target(loc);
         let midpoint = self.mid_point_for_target(loc);
@@ -414,7 +395,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             assignment.lhs_strongly_writeable,
             assignment.lhs_ty,
             assignment.output_ty,
-        );
+        )?;
         info!("assignment annots after call: {assignment_annots:?}");
 
         let (unconstrained_early_annots, unconstrained_regions) = calls::compute_unconstrained_region_annots(
@@ -480,7 +461,6 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
                 AnnotationGroup::new(unconstrained_early_annots, "post_function_call (assign, early)"),
                 AnnotationGroup::new(assignment_annots.stmt_annot, "post_function_call (assign)"),
             ],
-            post_call_before_goto: self.generate_endlft_groups(ty_translator, dying_loans),
         })
     }
 
@@ -531,27 +511,9 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         let mut dying_loans = BTreeSet::new();
         let loc_startpoint = self.start_point_for_target(loc);
         for predecessor in predecessors {
-            let pred_startpoint = self.start_point_for_target(predecessor);
             let pred_midpoint = self.mid_point_for_target(predecessor);
-            let dying_between = self.info.get_loans_dying_between_points(
-                pred_startpoint,
-                pred_midpoint,
-                loc_startpoint,
-                false,
-            );
-            for loan in &dying_between {
-                dying_loans.insert(*loan);
-            }
-
-            let dying_between = self.info.get_loans_dying_between_points(
-                pred_startpoint,
-                pred_midpoint,
-                loc_startpoint,
-                true,
-            );
-            for loan in &dying_between {
-                dying_loans.insert(*loan);
-            }
+            dying_loans
+                .extend(self.info.get_semantic_loans_dying_between_points(pred_midpoint, loc_startpoint));
         }
         dying_loans
     }

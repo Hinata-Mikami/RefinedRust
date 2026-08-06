@@ -5,9 +5,9 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
 use std::marker::PhantomData;
 
-use log::{debug, trace};
 use rr_rustc_interface::hir::def_id::LocalDefId;
 use rr_rustc_interface::middle::ty::TypeFolder as _;
 use rr_rustc_interface::middle::{mir, ty};
@@ -18,6 +18,24 @@ use crate::environment::mir_storage;
 use crate::environment::procedure::Procedure;
 use crate::environment::region_folder::*;
 use crate::regions::RegionVarResolver;
+
+fn semantic_loans_dying<L>(
+    ordinary_from: impl IntoIterator<Item = L>,
+    zombie_from: impl IntoIterator<Item = L>,
+    issued_from: impl IntoIterator<Item = L>,
+    ordinary_to: impl IntoIterator<Item = L>,
+    zombie_to: impl IntoIterator<Item = L>,
+    issued_to: impl IntoIterator<Item = L>,
+) -> Vec<L>
+where
+    L: Copy + Eq + Hash + Ord,
+{
+    let live_from = ordinary_from.into_iter().chain(zombie_from).chain(issued_from).collect::<HashSet<_>>();
+    let live_to = ordinary_to.into_iter().chain(zombie_to).chain(issued_to).collect::<HashSet<_>>();
+    let mut dying = live_from.into_iter().filter(|loan| !live_to.contains(loan)).collect::<Vec<_>>();
+    dying.sort();
+    dying
+}
 
 /// This represents "rich" regions that are directly annotated with their `RegionKind`.
 ///
@@ -355,118 +373,26 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         AtomicRegion::Loan(r)
     }
 
-    fn get_borrow_live_at(
+    /// Get semantic loan lifetimes that cease to be live along one source Polonius CFG edge.
+    /// This combines ordinary Polonius liveness with the post-kill liveness represented by
+    /// zombie loans, so an ordinary-to-zombie transition does not end the `RefinedRust` lifetime.
+    #[must_use]
+    pub(crate) fn get_semantic_loans_dying_between_points(
         &self,
-        zombie: bool,
-    ) -> data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>> {
-        if zombie {
-            self.additional_facts.zombie_borrow_live_at.clone()
-        } else {
-            self.borrowck_out_facts
-                .loan_live_at
+        from: facts::PointIndex,
+        to: facts::PointIndex,
+    ) -> Vec<facts::Loan> {
+        let ordinary =
+            |point| self.borrowck_out_facts.loan_live_at.get(&point).into_iter().flatten().copied();
+        let zombie =
+            |point| self.additional_facts.zombie_borrow_live_at.get(&point).into_iter().flatten().copied();
+        let issued = |point| {
+            self.borrowck_in_facts
+                .loan_issued_at
                 .iter()
-                .map(|(a, b)| (a.to_owned(), b.to_owned()))
-                .collect()
-        }
-    }
-
-    /// Get loans that are active (including those that are about to die) at the given pair of
-    /// Polonius points for one MIR location.
-    #[must_use]
-    pub(crate) fn get_active_loans_at_points(
-        &self,
-        start_point: facts::PointIndex,
-        mid_point: facts::PointIndex,
-        zombie: bool,
-    ) -> Vec<facts::Loan> {
-        let loan_live_at = self.get_borrow_live_at(zombie);
-
-        let mut loans = if let Some(mid_loans) = loan_live_at.get(&mid_point) {
-            let mut mid_loans = mid_loans.clone();
-            mid_loans.sort();
-            let default_vec = vec![];
-            let start_loans = loan_live_at.get(&start_point).unwrap_or(&default_vec);
-            let mut start_loans = start_loans.clone();
-            start_loans.sort();
-            debug!("start_loans = {:?}", start_loans);
-            debug!("mid_loans = {:?}", mid_loans);
-            // Loans are created in mid point, so mid_point may contain more loans than the start
-            // point.
-            assert!(start_loans.iter().all(|loan| mid_loans.contains(loan)));
-
-            mid_loans
-        } else {
-            assert!(!loan_live_at.contains_key(&start_point));
-            vec![]
+                .filter_map(move |&(_, loan, issued_at)| (issued_at == point).then_some(loan))
         };
-        if !zombie {
-            for (_, loan, point) in &self.borrowck_in_facts.loan_issued_at {
-                if point == &mid_point && !loans.contains(loan) {
-                    loans.push(*loan);
-                }
-            }
-        }
-        loans
-    }
-
-    /// Get loans that die after a point, using already mapped successor start points.
-    #[must_use]
-    pub(crate) fn get_loans_dying_at_points(
-        &self,
-        start_point: facts::PointIndex,
-        mid_point: facts::PointIndex,
-        successor_start_points: impl IntoIterator<Item = facts::PointIndex>,
-        is_return: bool,
-        zombie: bool,
-    ) -> Vec<facts::Loan> {
-        let loan_live_at = self.get_borrow_live_at(zombie);
-        let successor_start_points = successor_start_points.into_iter().collect::<Vec<_>>();
-        let becoming_zombie_loans =
-            self.additional_facts.borrow_become_zombie_at.get(&mid_point).cloned().unwrap_or_default();
-        self.get_active_loans_at_points(start_point, mid_point, zombie)
-            .into_iter()
-            // active loans which are neither alive in the successor nor returned
-            .filter(|loan| {
-                // check if it is alive in successor
-                let alive_in_successor = successor_start_points.iter().any(|successor_point| {
-                    loan_live_at
-                        .get(successor_point)
-                        .is_some_and(|successor_loans| successor_loans.contains(loan))
-                });
-                // alive in successor or returned
-                !(alive_in_successor || (successor_start_points.is_empty() && is_return))
-            })
-            // filter out zombies (that are killed but where the loan is still ongoing)
-            .filter(|loan| !becoming_zombie_loans.contains(loan))
-            .collect()
-    }
-
-    /// Get loans that die between two consecutive source-level Polonius points.
-    #[must_use]
-    pub(crate) fn get_loans_dying_between_points(
-        &self,
-        initial_start_point: facts::PointIndex,
-        initial_mid_point: facts::PointIndex,
-        final_start_point: facts::PointIndex,
-        zombie: bool,
-    ) -> Vec<facts::Loan> {
-        let becoming_zombie_loans = self
-            .additional_facts
-            .borrow_become_zombie_at
-            .get(&initial_mid_point)
-            .cloned()
-            .unwrap_or_default();
-        trace!("becoming_zombie_loans={:?}", becoming_zombie_loans);
-        trace!("loan_live_at final {:?}", self.borrowck_out_facts.loan_live_at.get(&final_start_point));
-        self.get_active_loans_at_points(initial_start_point, initial_mid_point, zombie)
-            .into_iter()
-            .filter(|loan| {
-                self.get_borrow_live_at(zombie)
-                    .get(&final_start_point)
-                    .is_none_or(|successor_loans| !successor_loans.contains(loan))
-            })
-            .filter(|loan| !becoming_zombie_loans.contains(loan))
-            .collect()
+        semantic_loans_dying(ordinary(from), zombie(from), issued(from), ordinary(to), zombie(to), issued(to))
     }
 
     /// Get the location at which a loan is created, if possible
@@ -514,6 +440,20 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::semantic_loans_dying;
+
+    #[test]
+    fn semantic_liveness_spans_ordinary_to_zombie_transitions() {
+        let dying = semantic_loans_dying([1, 2, 3], [], [4], [2], [1, 4], []);
+        assert_eq!(dying, [3]);
+
+        let dying = semantic_loans_dying([], [5], [], [], [], []);
+        assert_eq!(dying, [5]);
+    }
+}
+
 /// Additional facts derived from the borrow checker facts.
 pub(crate) struct AdditionalFacts {
     /// The ``zombie_borrow_live_at`` facts are ``loan_live_at`` facts
@@ -525,9 +465,6 @@ pub(crate) struct AdditionalFacts {
     ///     origin_live_on_entry(R, P).
     /// ```
     pub(crate) zombie_borrow_live_at: data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
-
-    /// Which loans were `loan_killed_at` (become zombies) at a given point.
-    pub(crate) borrow_become_zombie_at: data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
 }
 
 impl AdditionalFacts {
@@ -535,10 +472,7 @@ impl AdditionalFacts {
     fn derive_zombie_requires(
         all_facts: &facts::AllInput,
         output: &facts::AllOutput,
-    ) -> (
-        data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
-        data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
-    ) {
+    ) -> data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>> {
         use datafrog::{Iteration, Relation};
         use facts::{Loan, PointIndex, Region};
 
@@ -547,7 +481,6 @@ impl AdditionalFacts {
         // Variables that are outputs of our computation.
         let zombie_requires = iteration.variable::<(Region, Loan, PointIndex)>("zombie_requires");
         let zombie_borrow_live_at = iteration.variable::<(Loan, PointIndex)>("zombie_borrow_live_at");
-        let borrow_become_zombie_at = iteration.variable::<(Loan, PointIndex)>("borrow_become_zombie_at");
 
         // Variables for initial data.
         let requires_lp = iteration.variable::<((Loan, PointIndex), Region)>("requires_lp");
@@ -562,7 +495,6 @@ impl AdditionalFacts {
         let zombie_requires_1 = iteration.variable_indistinct("zombie_requires_1");
         let zombie_requires_2 = iteration.variable_indistinct("zombie_requires_2");
         let zombie_requires_3 = iteration.variable_indistinct("zombie_requires_3");
-        let zombie_requires_4 = iteration.variable_indistinct("zombie_requires_4");
 
         // Load initial facts.
         requires_lp.insert(Relation::from_iter(output.origin_contains_loan_at.iter().flat_map(
@@ -602,13 +534,6 @@ impl AdditionalFacts {
             zombie_requires_2.from_join(&zombie_requires_1, &cfg_edge_p, |&_p, &(l, r), &q| ((r, q), l));
             zombie_requires
                 .from_join(&zombie_requires_2, &origin_live_on_entry, |&(r, q), &l, &()| (r, l, q));
-            zombie_requires_4.from_join(&zombie_requires_1, &cfg_edge_p, |&p, &(l, r), &q| ((r, q), (p, l)));
-            borrow_become_zombie_at.from_join(
-                &zombie_requires_4,
-                &origin_live_on_entry,
-                |_, &(p, l), &()| (l, p),
-            );
-
             // zombie_requires(R2, L, P) :-
             //     zombie_requires(R1, L, P),
             //     subset(R1, R2, P).
@@ -638,24 +563,16 @@ impl AdditionalFacts {
             zombie_borrow_live_at_map.entry(*point).or_insert_with(Vec::new).push(*loan);
         }
 
-        let borrow_become_zombie_at = borrow_become_zombie_at.complete();
-        let mut borrow_become_zombie_at_map = data_structures::fx::FxHashMap::default();
-        for (loan, point) in &borrow_become_zombie_at.elements {
-            borrow_become_zombie_at_map.entry(*point).or_insert_with(Vec::new).push(*loan);
-        }
-
-        (zombie_borrow_live_at_map, borrow_become_zombie_at_map)
+        zombie_borrow_live_at_map
     }
 
     /// Derive additional facts from the borrow checker facts.
     #[must_use]
     pub(crate) fn new(all_facts: &facts::AllInput, output: &facts::AllOutput) -> Self {
-        let (zombie_borrow_live_at, borrow_become_zombie_at) =
-            Self::derive_zombie_requires(all_facts, output);
+        let zombie_borrow_live_at = Self::derive_zombie_requires(all_facts, output);
 
         Self {
             zombie_borrow_live_at,
-            borrow_become_zombie_at,
         }
     }
 }

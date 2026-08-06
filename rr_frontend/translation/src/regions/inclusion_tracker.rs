@@ -16,6 +16,13 @@ pub(crate) enum DynamicInclusion {
     IncludeLft(polonius_info::AtomicRegion, polonius_info::AtomicRegion),
 }
 
+#[derive(Debug)]
+pub(crate) struct MutualDynamicInclusion {
+    pub r1: Region,
+    pub r2: Region,
+    pub point: PointIndex,
+}
+
 type Inclusion<R> = (R, R);
 
 struct GuaranteedStates<R, P> {
@@ -43,6 +50,7 @@ fn compute_guaranteed_states<R, P>(
     inclusions: impl IntoIterator<Item = (R, R, P)>,
     known_regions: impl IntoIterator<Item = (R, P)>,
     barriers: impl IntoIterator<Item = (R, P)>,
+    edge_barriers: impl IntoIterator<Item = (R, P, P)>,
 ) -> GuaranteedStates<R, P>
 where
     R: Copy + Ord,
@@ -52,6 +60,7 @@ where
     let mut local_inclusions: BTreeMap<P, BTreeSet<Inclusion<R>>> = BTreeMap::new();
     let mut local_known: BTreeMap<P, BTreeSet<R>> = BTreeMap::new();
     let mut barriers_by_point: BTreeMap<P, BTreeSet<R>> = BTreeMap::new();
+    let mut barriers_by_edge: BTreeMap<(P, P), BTreeSet<R>> = BTreeMap::new();
     let mut predecessors: BTreeMap<P, BTreeSet<P>> = BTreeMap::new();
     let mut points = BTreeSet::new();
 
@@ -73,6 +82,10 @@ where
     for (region, point) in barriers {
         points.insert(point);
         barriers_by_point.entry(point).or_default().insert(region);
+    }
+    for (region, from, to) in edge_barriers {
+        points.extend([from, to]);
+        barriers_by_edge.entry((from, to)).or_default().insert(region);
     }
 
     let mut possible_inclusions =
@@ -96,8 +109,20 @@ where
         let mut changed = false;
         for point in &points {
             let preds = predecessors.get(point).into_iter().flatten().copied();
-            let mut point_inclusions = intersect_predecessors(preds.clone(), &states.inclusions);
-            let mut point_known = intersect_predecessors(preds, &states.known_regions);
+            let mut point_inclusions = intersect_predecessors(
+                preds.clone(),
+                *point,
+                &states.inclusions,
+                &barriers_by_edge,
+                |(r1, r2), killed| !killed.contains(r1) && !killed.contains(r2),
+            );
+            let mut point_known = intersect_predecessors(
+                preds,
+                *point,
+                &states.known_regions,
+                &barriers_by_edge,
+                |region, killed| !killed.contains(region),
+            );
 
             if let Some(killed) = barriers_by_point.get(point) {
                 point_inclusions.retain(|(r1, r2)| !killed.contains(r1) && !killed.contains(r2));
@@ -126,12 +151,16 @@ where
     }
 }
 
-fn intersect_predecessors<T, P>(
+fn intersect_predecessors<T, R, P>(
     predecessors: impl IntoIterator<Item = P>,
+    point: P,
     states: &BTreeMap<P, BTreeSet<T>>,
+    barriers: &BTreeMap<(P, P), BTreeSet<R>>,
+    retain: impl Fn(&T, &BTreeSet<R>) -> bool,
 ) -> BTreeSet<T>
 where
     T: Copy + Ord,
+    R: Ord,
     P: Copy + Ord,
 {
     let mut predecessors = predecessors.into_iter();
@@ -139,14 +168,23 @@ where
         return BTreeSet::new();
     };
     let mut intersection = states.get(&first).cloned().unwrap_or_default();
+    if let Some(killed) = barriers.get(&(first, point)) {
+        intersection.retain(|fact| retain(fact, killed));
+    }
     for predecessor in predecessors {
-        let state = states.get(&predecessor);
-        intersection.retain(|fact| state.is_some_and(|state| state.contains(fact)));
+        let mut state = states.get(&predecessor).cloned().unwrap_or_default();
+        if let Some(killed) = barriers.get(&(predecessor, point)) {
+            state.retain(|fact| retain(fact, killed));
+        }
+        intersection.retain(|fact| state.contains(fact));
     }
     intersection
 }
 
-fn close_transitively<R: Copy + Ord>(inclusions: &mut BTreeSet<Inclusion<R>>) {
+fn close_transitively<R>(inclusions: &mut BTreeSet<Inclusion<R>>)
+where
+    R: Copy + Ord,
+{
     loop {
         let current: Vec<_> = inclusions.iter().copied().collect();
         let mut changed = false;
@@ -163,7 +201,7 @@ fn close_transitively<R: Copy + Ord>(inclusions: &mut BTreeSet<Inclusion<R>>) {
     }
 }
 
-/// Tracks inclusions guaranteed to hold in the flow-sensitive RefinedRust context at each point.
+/// Tracks inclusions guaranteed to hold in the flow-sensitive `RefinedRust` context at each point.
 /// Static and dynamically established inclusions are kept separate because they require different
 /// annotations, but both use the same must-dataflow semantics.
 pub(crate) struct InclusionTracker<'a, 'tcx> {
@@ -172,6 +210,7 @@ pub(crate) struct InclusionTracker<'a, 'tcx> {
     dynamic_incl_base: Vec<(Region, Region, PointIndex)>,
     known_region_base: Vec<(Region, PointIndex)>,
     barriers: Vec<(Region, PointIndex)>,
+    edge_barriers: Vec<(Region, PointIndex, PointIndex)>,
     static_states: Option<GuaranteedStates<Region, PointIndex>>,
     full_states: Option<GuaranteedStates<Region, PointIndex>>,
 }
@@ -184,6 +223,7 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
             dynamic_incl_base: Vec::new(),
             known_region_base: Vec::new(),
             barriers: Vec::new(),
+            edge_barriers: Vec::new(),
             static_states: None,
             full_states: None,
         }
@@ -217,12 +257,20 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
         self.full_states = None;
     }
 
+    /// Kill all knowledge involving `region` while transferring state along `from -> to`.
+    pub(crate) fn add_edge_barrier(&mut self, region: Region, from: PointIndex, to: PointIndex) {
+        self.edge_barriers.push((region, from, to));
+        self.static_states = None;
+        self.full_states = None;
+    }
+
     fn recompute_static(&mut self) {
         self.static_states = Some(compute_guaranteed_states(
             self.info.cfg_edges(),
             self.static_incl_base.iter().copied(),
             self.known_region_base.iter().copied(),
             self.barriers.iter().copied(),
+            self.edge_barriers.iter().copied(),
         ));
     }
 
@@ -233,6 +281,7 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
             inclusions,
             self.known_region_base.iter().copied(),
             self.barriers.iter().copied(),
+            self.edge_barriers.iter().copied(),
         ));
     }
 
@@ -278,9 +327,9 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
         r1: Region,
         r2: Region,
         point: PointIndex,
-    ) {
+    ) -> Result<(), MutualDynamicInclusion> {
         if self.check_inclusion(r1, r2, point) {
-            return;
+            return Ok(());
         }
 
         if self.check_static_inclusion(r2, r1, point) {
@@ -288,10 +337,9 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
             // TODO: recover the syntactic inclusion path instead of assuming r1 ⊑ₗ [r2].
             stmt_annots.push(DynamicInclusion::ExtendLft(self.info.mk_atomic_region(r1)));
         } else {
-            assert!(
-                !self.check_inclusion(r2, r1, point),
-                "cannot establish mutual dynamic inclusions between {r1:?} and {r2:?} at {point:?}"
-            );
+            if self.check_inclusion(r2, r1, point) {
+                return Err(MutualDynamicInclusion { r1, r2, point });
+            }
             self.add_dynamic_inclusion(r1, r2, point);
             // Lifetime annotations use the opposite orientation from Polonius origins.
             stmt_annots.push(DynamicInclusion::IncludeLft(
@@ -299,12 +347,13 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
                 self.info.mk_atomic_region(r1),
             ));
         }
+        Ok(())
     }
 
     pub(crate) fn generate_dyn_inclusions(
         &mut self,
         incls: &BTreeSet<(Region, Region, PointIndex)>,
-    ) -> Vec<DynamicInclusion> {
+    ) -> Result<Vec<DynamicInclusion>, MutualDynamicInclusion> {
         info!("Generating dynamic inclusions {:?}", incls);
         let mut stmt_annots = Vec::new();
 
@@ -317,15 +366,19 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
                 && !self.check_inclusion(*r1, *r2, *point)
                 && !self.check_inclusion(*r2, *r1, *point)
             {
-                panic!("cannot establish mutual dynamic inclusions between {r1:?} and {r2:?} at {point:?}");
+                return Err(MutualDynamicInclusion {
+                    r1: *r1,
+                    r2: *r2,
+                    point: *point,
+                });
             }
         }
 
         for (r1, r2, point) in incls {
-            self.generate_dyn_inclusion(&mut stmt_annots, *r1, *r2, *point);
+            self.generate_dyn_inclusion(&mut stmt_annots, *r1, *r2, *point)?;
         }
 
-        stmt_annots
+        Ok(stmt_annots)
     }
 }
 
@@ -335,13 +388,14 @@ mod tests {
 
     #[test]
     fn joins_keep_only_inclusions_guaranteed_by_every_predecessor() {
-        let states = compute_guaranteed_states([(0, 1), (0, 2), (1, 3), (2, 3)], [('a', 'b', 1)], [], []);
+        let states = compute_guaranteed_states([(0, 1), (0, 2), (1, 3), (2, 3)], [('a', 'b', 1)], [], [], []);
         assert!(states.inclusions[&1].contains(&('a', 'b')));
         assert!(!states.inclusions[&3].contains(&('a', 'b')));
 
         let states = compute_guaranteed_states(
             [(0, 1), (0, 2), (1, 3), (2, 3)],
             [('a', 'b', 1), ('a', 'b', 2)],
+            [],
             [],
             [],
         );
@@ -355,6 +409,7 @@ mod tests {
             [('a', 'b', 1), ('b', 'c', 1), ('a', 'c', 2)],
             [],
             [],
+            [],
         );
         assert!(states.inclusions[&3].contains(&('a', 'c')));
         assert!(!states.inclusions[&3].contains(&('a', 'b')));
@@ -362,7 +417,7 @@ mod tests {
 
     #[test]
     fn backedge_facts_do_not_leak_to_the_first_loop_iteration() {
-        let states = compute_guaranteed_states([(0, 1), (1, 2), (2, 1), (1, 3)], [('a', 'b', 2)], [], []);
+        let states = compute_guaranteed_states([(0, 1), (1, 2), (2, 1), (1, 3)], [('a', 'b', 2)], [], [], []);
         assert!(!states.inclusions[&1].contains(&('a', 'b')));
         assert!(states.inclusions[&2].contains(&('a', 'b')));
         assert!(!states.inclusions[&3].contains(&('a', 'b')));
@@ -375,6 +430,7 @@ mod tests {
             [('a', 'b', 0), ('c', 'a', 0), ('d', 'a', 2)],
             [],
             [('a', 2)],
+            [],
         );
         assert!(!states.inclusions[&2].contains(&('a', 'b')));
         assert!(!states.inclusions[&2].contains(&('c', 'a')));
@@ -385,8 +441,19 @@ mod tests {
 
     #[test]
     fn known_regions_are_flow_sensitive() {
-        let states = compute_guaranteed_states([(0, 1), (0, 2), (1, 3), (2, 3)], [], [('a', 1)], []);
+        let states = compute_guaranteed_states([(0, 1), (0, 2), (1, 3), (2, 3)], [], [('a', 1)], [], []);
         assert!(states.known_regions[&1].contains(&'a'));
+        assert!(!states.known_regions[&3].contains(&'a'));
+    }
+
+    #[test]
+    fn edge_barriers_kill_only_the_affected_predecessor_state() {
+        let states =
+            compute_guaranteed_states([(0, 1), (0, 2), (1, 3), (2, 3)], [('a', 'b', 0)], [('a', 0)], [], [(
+                'a', 1, 3,
+            )]);
+        assert!(states.inclusions[&2].contains(&('a', 'b')));
+        assert!(!states.inclusions[&3].contains(&('a', 'b')));
         assert!(!states.known_regions[&3].contains(&'a'));
     }
 }

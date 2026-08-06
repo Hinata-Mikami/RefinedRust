@@ -15,6 +15,7 @@ use rr_rustc_interface::middle::{mir, ty};
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
+use crate::error::Message;
 use crate::regions::inclusion_tracker::{self, InclusionTracker};
 use crate::{regions, types};
 
@@ -125,13 +126,14 @@ pub(crate) fn get_assignment_annots<'tcx>(
     lhs_strongly_writeable: bool,
     lhs_ty: mir::PlaceTy<'tcx>,
     _rhs_ty: ty::Ty<'tcx>,
-) -> RegionInfo {
+) -> Result<RegionInfo, TranslationError> {
     let new_dyn_inclusions;
     let expr_annot;
     let mut stmt_annot = Vec::new();
 
     let unconstrained_regions = get_new_unconstrained_regions(inclusion_tracker, midpoint);
 
+    let regions = find_region_variables_of_place_type(tcx, lhs_ty);
     if lhs_strongly_writeable {
         // we are going to update the region mapping through annotations,
         // and hence put up a barrier for propagation of region constraints
@@ -140,7 +142,6 @@ pub(crate) fn get_assignment_annots<'tcx>(
         // for each of the variables, issue a barrier.
         // also track them together with the PlaceItems needed to reach them.
         // from the latter, we can generate the necessary annotations
-        let regions = find_region_variables_of_place_type(tcx, lhs_ty);
 
         // put up a barrier at the Mid point
         trace!("strong update barriers: {regions:?}");
@@ -176,7 +177,6 @@ pub(crate) fn get_assignment_annots<'tcx>(
 
         new_dyn_inclusions = BTreeSet::new();
     } else {
-        let regions = find_region_variables_of_place_type(tcx, lhs_ty);
         new_dyn_inclusions = get_assignment_weak_update_constraints(
             inclusion_tracker,
             midpoint,
@@ -188,29 +188,35 @@ pub(crate) fn get_assignment_annots<'tcx>(
 
     // First enforce the new inclusions, then do the other annotations
     let new_dyn_inclusions =
-        generate_dyn_inclusion_annots(inclusion_tracker, ty_translator, &new_dyn_inclusions);
+        generate_dyn_inclusion_annots(tcx, inclusion_tracker, ty_translator, &new_dyn_inclusions)?;
 
-    RegionInfo {
+    Ok(RegionInfo {
         expr_annot,
         new_dyn_inclusions,
         stmt_annot,
         unconstrained_regions,
-    }
+    })
 }
 
 /// Generates dynamic inclusions for the set of inclusions in `incls`.
 /// These inclusions should not hold yet.
 fn generate_dyn_inclusion_annots<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
     incls: &BTreeSet<(Region, Region, PointIndex)>,
-) -> Vec<code::Annotation> {
+) -> Result<Vec<code::Annotation>, TranslationError> {
     // before executing the assignment, first enforce dynamic inclusions
     info!("Generating dynamic inclusions {:?}", incls);
 
-    let inclusions = inclusion_tracker.generate_dyn_inclusions(incls);
+    let inclusions = inclusion_tracker.generate_dyn_inclusions(incls).map_err(|err| {
+        TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
+            "cannot establish mutual dynamic lifetime inclusions between {:?} and {:?} at {:?}",
+            err.r1, err.r2, err.point
+        ))))
+    })?;
 
-    inclusions
+    Ok(inclusions
         .into_iter()
         .map(|incl| match incl {
             inclusion_tracker::DynamicInclusion::ExtendLft(l) => {
@@ -221,7 +227,7 @@ fn generate_dyn_inclusion_annots<'tcx>(
                 ty_translator.format_atomic_region(l2),
             ),
         })
-        .collect()
+        .collect())
 }
 
 /// Find all regions that need to outlive a loan region at its point of creation, and

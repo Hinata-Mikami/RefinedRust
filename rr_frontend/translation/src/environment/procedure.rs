@@ -407,12 +407,6 @@ impl<'tcx> Procedure<'tcx> {
         self.tcx
     }
 
-    /// Get the predecessors of a basic block.
-    #[must_use]
-    pub(crate) fn predecessors(&self, bbi: mir::BasicBlock) -> &[mir::BasicBlock] {
-        self.real_edges.predecessors(bbi)
-    }
-
     /// Get the successors of a basic block.
     #[must_use]
     pub(crate) fn successors(&self, bbi: mir::BasicBlock) -> &[mir::BasicBlock] {
