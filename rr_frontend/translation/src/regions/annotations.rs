@@ -63,7 +63,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         self.info.get_point(source_point.location, source_point.typ)
     }
 
-    fn start_point_for_target(&self, loc: mir::Location) -> facts::PointIndex {
+    pub(crate) fn start_point_for_target(&self, loc: mir::Location) -> facts::PointIndex {
         self.point_index_for_target(loc, facts::PointType::Start)
     }
 
@@ -176,6 +176,15 @@ pub(crate) struct CallAssignmentInputs<'tcx> {
     pub(crate) lhs_ty: mir::PlaceTy<'tcx>,
     pub(crate) lhs_strongly_writeable: bool,
     pub(crate) output_ty: ty::Binder<'tcx, ty::Ty<'tcx>>,
+    pub(crate) normal_target: Option<facts::PointIndex>,
+}
+
+pub(crate) struct CallEffectDiscovery<'tcx> {
+    regions: calls::CallRegionDiscovery,
+    output_ty: ty::Ty<'tcx>,
+    unconstrained_annots: Vec<code::Annotation>,
+    unconstrained_hints: Vec<specs::Lft>,
+    early_region_annots: Vec<code::Annotation>,
 }
 
 #[derive(Debug)]
@@ -233,6 +242,10 @@ fn groups_to_stmts(groups: Vec<AnnotationGroup>) -> Vec<code::PrimStmt> {
 }
 
 impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
+    pub(crate) fn start_point_for_source(&self, loc: mir::Location) -> facts::PointIndex {
+        self.info.get_point(loc, facts::PointType::Start)
+    }
+
     pub(crate) fn preregister_strong_assignment(
         &mut self,
         did: rr_rustc_interface::hir::def_id::DefId,
@@ -249,6 +262,134 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             lhs_ty,
             rhs_ty,
         )
+    }
+
+    pub(crate) fn preregister_assignment_loan(&mut self, loc: mir::Location) {
+        let startpoint = self.start_point_for_target(loc);
+        let midpoint = self.mid_point_for_target(loc);
+        let Some(loan) = self.info.get_optional_loan_at_point(midpoint) else {
+            return;
+        };
+        let region = self.info.atomic_region_of_loan(loan).get_region();
+        self.inclusion_tracker.add_known_region(region, startpoint);
+        for (source, destination) in self.info.subset_base_at(midpoint) {
+            if destination == region {
+                self.inclusion_tracker.add_static_inclusion(source, destination, startpoint);
+            }
+        }
+    }
+
+    pub(crate) fn preregister_call_effects(
+        &mut self,
+        ty_translator: &types::LocalTX<'_, 'tcx>,
+        did: rr_rustc_interface::hir::def_id::DefId,
+        loc: mir::Location,
+        call_regions: &CallRegionInputs<'_, 'tcx>,
+        assignment: &CallAssignmentInputs<'tcx>,
+    ) -> Result<CallEffectDiscovery<'tcx>, TranslationError> {
+        let startpoint = self.start_point_for_target(loc);
+        let midpoint = self.mid_point_for_target(loc);
+        let discovery = calls::discover_call_regions(
+            self.tcx,
+            self.info,
+            call_regions.method_params,
+            midpoint,
+            call_regions.num_late_bounds,
+        );
+        for region in &discovery.new_regions {
+            self.inclusion_tracker.add_known_region(*region, startpoint);
+        }
+
+        let bound_regions: Vec<_> = assignment
+            .output_ty
+            .bound_vars()
+            .iter()
+            .enumerate()
+            .filter_map(|(index, kind)| matches!(kind, ty::BoundVariableKind::Region(_)).then_some(index))
+            .collect();
+        if bound_regions.len() != discovery.late_regions.len() {
+            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                format!(
+                    "call output has {} late-bound regions but Polonius discovered {} call regions",
+                    bound_regions.len(),
+                    discovery.late_regions.len()
+                ),
+            ))));
+        }
+        let late_regions: BTreeMap<_, _> =
+            bound_regions.into_iter().zip(discovery.late_regions.iter().copied()).collect();
+        let (output_ty, _) =
+            self.tcx
+                .instantiate_bound_regions(assignment.output_ty, &mut |bound: ty::BoundRegion<'tcx>| {
+                    let region = late_regions[&bound.var.index()];
+                    ty::Region::new_var(self.tcx, region.into())
+                });
+
+        let unconstrained_regions = if assignment.normal_target.is_some() {
+            assignment::get_new_unconstrained_regions(&mut self.inclusion_tracker, midpoint)
+        } else {
+            BTreeSet::new()
+        };
+        let mut remaining_unconstrained = BTreeSet::new();
+        let mut recovered_early = Vec::new();
+        for region in unconstrained_regions {
+            let translated = ty_translator.translate_region_var(region);
+            if let Some(index) = call_regions.mapped_early_regions.get(&translated) {
+                let scope = ty_translator.scope.borrow();
+                let early_region = scope.lifetime_scope.early_regions[*index].unwrap();
+                let early_name = scope.lifetime_scope.region_names[&early_region].lft().to_owned();
+                recovered_early.push((region, early_region, early_name, translated));
+            } else {
+                remaining_unconstrained.insert(region);
+            }
+        }
+        let (unconstrained_annots, unconstrained_hints) = assignment::make_unconstrained_region_annotations(
+            &mut self.inclusion_tracker,
+            ty_translator,
+            remaining_unconstrained,
+            startpoint,
+            None,
+        );
+
+        let mut early_region_annots = Vec::new();
+        if let Some(target_start) = assignment.normal_target {
+            if assignment.lhs_strongly_writeable {
+                assignment::preregister_strong_assignment_on_edge(
+                    self.tcx,
+                    &mut self.inclusion_tracker,
+                    did,
+                    midpoint,
+                    target_start,
+                    assignment.lhs_ty.ty,
+                    output_ty,
+                )?;
+            }
+            for (region, early_region, early_name, translated) in recovered_early {
+                self.inclusion_tracker.add_edge_pre_barrier(region, midpoint, target_start);
+                self.inclusion_tracker.add_edge_known_region(region, midpoint, target_start);
+                self.inclusion_tracker.add_edge_static_inclusion(
+                    region,
+                    early_region,
+                    midpoint,
+                    target_start,
+                );
+                self.inclusion_tracker.add_edge_static_inclusion(
+                    early_region,
+                    region,
+                    midpoint,
+                    target_start,
+                );
+                early_region_annots.push(code::Annotation::CopyLftName(early_name, translated));
+            }
+        }
+
+        Ok(CallEffectDiscovery {
+            regions: discovery,
+            output_ty,
+            unconstrained_annots,
+            unconstrained_hints,
+            early_region_annots,
+        })
     }
 
     pub(crate) fn prepare_statement_annotation_plan(
@@ -333,6 +474,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             lhs_strongly_writeable,
             lhs_ty,
             rhs_ty,
+            lhs_strongly_writeable,
         )?;
 
         let (unconstrained_annots, unconstrained_hints) = assignment::make_unconstrained_region_annotations(
@@ -379,19 +521,14 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         &mut self,
         ty_translator: &types::LocalTX<'_, 'tcx>,
         loc: mir::Location,
-        call_regions: &CallRegionInputs<'_, 'tcx>,
         assignment: &CallAssignmentInputs<'tcx>,
+        discovery: CallEffectDiscovery<'tcx>,
     ) -> Result<CallAnnotationPlan, TranslationError> {
         let startpoint = self.start_point_for_target(loc);
         let midpoint = self.mid_point_for_target(loc);
 
-        let classification = calls::compute_call_regions(
-            self.tcx,
-            &mut self.inclusion_tracker,
-            call_regions.method_params,
-            midpoint,
-            call_regions.num_late_bounds,
-        );
+        let classification =
+            calls::classify_call_regions(&mut self.inclusion_tracker, midpoint, discovery.regions);
 
         for (r, c) in &classification.classification {
             self.inclusion_tracker.add_known_region(*r, startpoint);
@@ -416,60 +553,24 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         info!("Call lifetime instantiation (early): {:?}", classification.early_regions);
         info!("Call lifetime instantiation (late): {:?}", classification.late_regions);
 
-        let bound_regions: Vec<_> = assignment
-            .output_ty
-            .bound_vars()
-            .iter()
-            .enumerate()
-            .filter_map(|(index, kind)| matches!(kind, ty::BoundVariableKind::Region(_)).then_some(index))
-            .collect();
-        if bound_regions.len() != classification.late_regions.len() {
-            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
-                format!(
-                    "call output has {} late-bound regions but Polonius classified {} call regions",
-                    bound_regions.len(),
-                    classification.late_regions.len()
-                ),
-            ))));
-        }
-        let late_regions: BTreeMap<_, _> =
-            bound_regions.into_iter().zip(classification.late_regions.iter().copied()).collect();
-        let (output_ty, _) =
-            self.tcx
-                .instantiate_bound_regions(assignment.output_ty, &mut |bound: ty::BoundRegion<'tcx>| {
-                    let region = late_regions[&bound.var.index()];
-                    ty::Region::new_var(self.tcx, region.into())
-                });
-
-        let assignment_annots = assignment::get_assignment_annots(
-            self.tcx,
-            &mut self.inclusion_tracker,
-            ty_translator,
-            startpoint,
-            midpoint,
-            midpoint,
-            assignment.lhs_strongly_writeable,
-            assignment.lhs_ty,
-            output_ty,
-        )?;
-        info!("assignment annots after call: {assignment_annots:?}");
-
-        let (unconstrained_early_annots, unconstrained_regions) = calls::compute_unconstrained_region_annots(
-            &mut self.inclusion_tracker,
-            ty_translator,
-            midpoint,
-            assignment_annots.unconstrained_regions,
-            call_regions.mapped_early_regions,
-        );
-
-        let (remaining_unconstrained_annots, unconstrained_hints) =
-            assignment::make_unconstrained_region_annotations(
+        let assignment_annots = if assignment.normal_target.is_some() {
+            assignment::get_assignment_annots(
+                self.tcx,
                 &mut self.inclusion_tracker,
                 ty_translator,
-                unconstrained_regions,
                 startpoint,
-                None,
-            );
+                midpoint,
+                midpoint,
+                assignment.lhs_strongly_writeable,
+                assignment.lhs_ty,
+                discovery.output_ty,
+                assignment.lhs_strongly_writeable,
+            )?
+        } else {
+            assignment::RegionInfo::default()
+        };
+        info!("assignment annots after call: {assignment_annots:?}");
+
         let mut call_region_annots = Vec::new();
         for (r, class) in &classification.classification {
             let lft = self.format_region(ty_translator, *r);
@@ -502,10 +603,10 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
 
         Ok(CallAnnotationPlan {
             late_lft_hints,
-            unconstrained_lft_hints: unconstrained_hints,
+            unconstrained_lft_hints: discovery.unconstrained_hints,
             pre_call: vec![
                 AnnotationGroup::new(call_region_annots, "function_call"),
-                AnnotationGroup::new(remaining_unconstrained_annots, "function_call (unconstrained)"),
+                AnnotationGroup::new(discovery.unconstrained_annots, "function_call (unconstrained)"),
             ],
             pre_assign: vec![AnnotationGroup::new(
                 assignment_annots.new_dyn_inclusions,
@@ -513,7 +614,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             )],
             assign_expr: assignment_annots.expr_annot,
             post_assign: vec![
-                AnnotationGroup::new(unconstrained_early_annots, "post_function_call (assign, early)"),
+                AnnotationGroup::new(discovery.early_region_annots, "post_function_call (assign, early)"),
                 AnnotationGroup::new(assignment_annots.stmt_annot, "post_function_call (assign)"),
             ],
         })

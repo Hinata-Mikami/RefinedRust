@@ -120,6 +120,28 @@ fn register_strong_assignment_effects(
     Ok(())
 }
 
+fn register_strong_assignment_edge_effects(
+    inclusion_tracker: &mut InclusionTracker<'_, '_>,
+    from: facts::PointIndex,
+    to: facts::PointIndex,
+    mappings: &BTreeMap<Region, AssignmentRegionSource<'_>>,
+) -> Result<(), Vec<Region>> {
+    order_strong_updates(mappings)?;
+    for destination in mappings.keys() {
+        inclusion_tracker.add_edge_pre_barrier(*destination, from, to);
+        inclusion_tracker.add_edge_known_region(*destination, from, to);
+    }
+    for (destination, source) in mappings {
+        if let AssignmentRegionSource::Var(source) = source
+            && !mappings.contains_key(source)
+        {
+            inclusion_tracker.add_edge_static_inclusion(*source, *destination, from, to);
+            inclusion_tracker.add_edge_static_inclusion(*destination, *source, from, to);
+        }
+    }
+    Ok(())
+}
+
 /// Register strong-update effects before block-local annotation decisions are made.
 pub(crate) fn preregister_strong_assignment<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
@@ -131,6 +153,23 @@ pub(crate) fn preregister_strong_assignment<'tcx>(
 ) -> Result<(), TranslationError> {
     let mappings = get_strong_assignment_mappings(tcx, did, rhs_ty, lhs_ty)?;
     register_strong_assignment_effects(inclusion_tracker, midpoint, &mappings).map_err(|cycle| {
+        TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
+            "cyclic strong lifetime update involving regions {cycle:?}"
+        ))))
+    })
+}
+
+pub(crate) fn preregister_strong_assignment_on_edge<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
+    did: rr_rustc_interface::hir::def_id::DefId,
+    from: facts::PointIndex,
+    to: facts::PointIndex,
+    lhs_ty: ty::Ty<'tcx>,
+    rhs_ty: ty::Ty<'tcx>,
+) -> Result<(), TranslationError> {
+    let mappings = get_strong_assignment_mappings(tcx, did, rhs_ty, lhs_ty)?;
+    register_strong_assignment_edge_effects(inclusion_tracker, from, to, &mappings).map_err(|cycle| {
         TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
             "cyclic strong lifetime update involving regions {cycle:?}"
         ))))
@@ -258,7 +297,7 @@ fn find_region_variables_of_place_type<'tcx>(
 }
 
 /// Get newly introduced regions at this point which are unconstrained.
-fn get_new_unconstrained_regions(
+pub(crate) fn get_new_unconstrained_regions(
     inclusion_tracker: &InclusionTracker<'_, '_>,
     midpoint: facts::PointIndex,
 ) -> BTreeSet<Region> {
@@ -279,7 +318,7 @@ fn get_new_unconstrained_regions(
     unconstrained_regions
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct RegionInfo {
     pub expr_annot: Option<code::Annotation>,
     pub new_dyn_inclusions: Vec<code::Annotation>,
@@ -300,6 +339,7 @@ pub(crate) fn get_assignment_annots<'tcx>(
     lhs_strongly_writeable: bool,
     lhs_ty: mir::PlaceTy<'tcx>,
     rhs_ty: ty::Ty<'tcx>,
+    effects_preregistered: bool,
 ) -> Result<RegionInfo, TranslationError> {
     let new_dyn_inclusions;
     let expr_annot;
@@ -337,11 +377,13 @@ pub(crate) fn get_assignment_annots<'tcx>(
                 "cyclic strong lifetime update involving regions {cycle:?}"
             ))))
         })?;
-        register_strong_assignment_effects(inclusion_tracker, midpoint, &mappings).map_err(|cycle| {
-            TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
-                "cyclic strong lifetime update involving regions {cycle:?}"
-            ))))
-        })?;
+        if !effects_preregistered {
+            register_strong_assignment_effects(inclusion_tracker, midpoint, &mappings).map_err(|cycle| {
+                TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
+                    "cyclic strong lifetime update involving regions {cycle:?}"
+                ))))
+            })?;
+        }
         for destination in ordered {
             let source = mappings[&destination];
             let source_lft = match source {

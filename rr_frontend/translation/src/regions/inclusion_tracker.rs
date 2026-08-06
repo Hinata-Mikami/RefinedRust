@@ -50,7 +50,10 @@ fn compute_guaranteed_states<R, P>(
     inclusions: impl IntoIterator<Item = (R, R, P)>,
     known_regions: impl IntoIterator<Item = (R, P)>,
     barriers: impl IntoIterator<Item = (R, P)>,
+    edge_pre_barriers: impl IntoIterator<Item = (R, P, P)>,
     edge_barriers: impl IntoIterator<Item = (R, P, P)>,
+    edge_inclusions: impl IntoIterator<Item = (R, R, P, P)>,
+    edge_known_regions: impl IntoIterator<Item = (R, P, P)>,
 ) -> GuaranteedStates<R, P>
 where
     R: Copy + Ord,
@@ -60,7 +63,10 @@ where
     let mut local_inclusions: BTreeMap<P, BTreeSet<Inclusion<R>>> = BTreeMap::new();
     let mut local_known: BTreeMap<P, BTreeSet<R>> = BTreeMap::new();
     let mut barriers_by_point: BTreeMap<P, BTreeSet<R>> = BTreeMap::new();
+    let mut pre_barriers_by_edge: BTreeMap<(P, P), BTreeSet<R>> = BTreeMap::new();
     let mut barriers_by_edge: BTreeMap<(P, P), BTreeSet<R>> = BTreeMap::new();
+    let mut inclusions_by_edge: BTreeMap<(P, P), BTreeSet<Inclusion<R>>> = BTreeMap::new();
+    let mut known_by_edge: BTreeMap<(P, P), BTreeSet<R>> = BTreeMap::new();
     let mut predecessors: BTreeMap<P, BTreeSet<P>> = BTreeMap::new();
     let mut points = BTreeSet::new();
 
@@ -87,12 +93,31 @@ where
         points.extend([from, to]);
         barriers_by_edge.entry((from, to)).or_default().insert(region);
     }
+    for (region, from, to) in edge_pre_barriers {
+        points.extend([from, to]);
+        pre_barriers_by_edge.entry((from, to)).or_default().insert(region);
+    }
+    for (r1, r2, from, to) in edge_inclusions {
+        points.extend([from, to]);
+        inclusions_by_edge.entry((from, to)).or_default().insert((r1, r2));
+        known_by_edge.entry((from, to)).or_default().extend([r1, r2]);
+    }
+    for (region, from, to) in edge_known_regions {
+        points.extend([from, to]);
+        known_by_edge.entry((from, to)).or_default().insert(region);
+    }
 
-    let mut possible_inclusions =
-        local_inclusions.values().flat_map(|inclusions| inclusions.iter().copied()).collect();
+    let mut possible_inclusions = local_inclusions
+        .values()
+        .chain(inclusions_by_edge.values())
+        .flat_map(|inclusions| inclusions.iter().copied())
+        .collect();
     close_transitively(&mut possible_inclusions);
-    let possible_known =
-        local_known.values().flat_map(|regions| regions.iter().copied()).collect::<BTreeSet<_>>();
+    let possible_known = local_known
+        .values()
+        .chain(known_by_edge.values())
+        .flat_map(|regions| regions.iter().copied())
+        .collect::<BTreeSet<_>>();
 
     let mut states = GuaranteedStates::default();
     for point in &points {
@@ -113,15 +138,21 @@ where
                 preds.clone(),
                 *point,
                 &states.inclusions,
+                &inclusions_by_edge,
+                &pre_barriers_by_edge,
                 &barriers_by_edge,
                 |(r1, r2), killed| !killed.contains(r1) && !killed.contains(r2),
+                close_transitively,
             );
             let mut point_known = intersect_predecessors(
                 preds,
                 *point,
                 &states.known_regions,
+                &known_by_edge,
+                &pre_barriers_by_edge,
                 &barriers_by_edge,
                 |region, killed| !killed.contains(region),
+                |_| {},
             );
 
             if let Some(killed) = barriers_by_point.get(point) {
@@ -155,8 +186,11 @@ fn intersect_predecessors<T, R, P>(
     predecessors: impl IntoIterator<Item = P>,
     point: P,
     states: &BTreeMap<P, BTreeSet<T>>,
+    additions: &BTreeMap<(P, P), BTreeSet<T>>,
+    pre_barriers: &BTreeMap<(P, P), BTreeSet<R>>,
     barriers: &BTreeMap<(P, P), BTreeSet<R>>,
     retain: impl Fn(&T, &BTreeSet<R>) -> bool,
+    finalize: impl Fn(&mut BTreeSet<T>),
 ) -> BTreeSet<T>
 where
     T: Copy + Ord,
@@ -167,15 +201,23 @@ where
     let Some(first) = predecessors.next() else {
         return BTreeSet::new();
     };
-    let mut intersection = states.get(&first).cloned().unwrap_or_default();
-    if let Some(killed) = barriers.get(&(first, point)) {
-        intersection.retain(|fact| retain(fact, killed));
-    }
-    for predecessor in predecessors {
+    let edge_state = |predecessor| {
         let mut state = states.get(&predecessor).cloned().unwrap_or_default();
+        if let Some(killed) = pre_barriers.get(&(predecessor, point)) {
+            state.retain(|fact| retain(fact, killed));
+        }
+        if let Some(added) = additions.get(&(predecessor, point)) {
+            state.extend(added);
+            finalize(&mut state);
+        }
         if let Some(killed) = barriers.get(&(predecessor, point)) {
             state.retain(|fact| retain(fact, killed));
         }
+        state
+    };
+    let mut intersection = edge_state(first);
+    for predecessor in predecessors {
+        let state = edge_state(predecessor);
         intersection.retain(|fact| state.contains(fact));
     }
     intersection
@@ -210,7 +252,10 @@ pub(crate) struct InclusionTracker<'a, 'tcx> {
     dynamic_incl_base: Vec<(Region, Region, PointIndex)>,
     known_region_base: Vec<(Region, PointIndex)>,
     barriers: Vec<(Region, PointIndex)>,
+    edge_pre_barriers: Vec<(Region, PointIndex, PointIndex)>,
     edge_barriers: Vec<(Region, PointIndex, PointIndex)>,
+    edge_static_incl_base: Vec<(Region, Region, PointIndex, PointIndex)>,
+    edge_known_region_base: Vec<(Region, PointIndex, PointIndex)>,
     static_states: Option<GuaranteedStates<Region, PointIndex>>,
     full_states: Option<GuaranteedStates<Region, PointIndex>>,
 }
@@ -223,7 +268,10 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
             dynamic_incl_base: Vec::new(),
             known_region_base: Vec::new(),
             barriers: Vec::new(),
+            edge_pre_barriers: Vec::new(),
             edge_barriers: Vec::new(),
+            edge_static_incl_base: Vec::new(),
+            edge_known_region_base: Vec::new(),
             static_states: None,
             full_states: None,
         }
@@ -264,13 +312,40 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
         self.full_states = None;
     }
 
+    pub(crate) fn add_edge_pre_barrier(&mut self, region: Region, from: PointIndex, to: PointIndex) {
+        self.edge_pre_barriers.push((region, from, to));
+        self.static_states = None;
+        self.full_states = None;
+    }
+
+    pub(crate) fn add_edge_static_inclusion(
+        &mut self,
+        r1: Region,
+        r2: Region,
+        from: PointIndex,
+        to: PointIndex,
+    ) {
+        self.edge_static_incl_base.push((r1, r2, from, to));
+        self.static_states = None;
+        self.full_states = None;
+    }
+
+    pub(crate) fn add_edge_known_region(&mut self, region: Region, from: PointIndex, to: PointIndex) {
+        self.edge_known_region_base.push((region, from, to));
+        self.static_states = None;
+        self.full_states = None;
+    }
+
     fn recompute_static(&mut self) {
         self.static_states = Some(compute_guaranteed_states(
             self.info.cfg_edges(),
             self.static_incl_base.iter().copied(),
             self.known_region_base.iter().copied(),
             self.barriers.iter().copied(),
+            self.edge_pre_barriers.iter().copied(),
             self.edge_barriers.iter().copied(),
+            self.edge_static_incl_base.iter().copied(),
+            self.edge_known_region_base.iter().copied(),
         ));
     }
 
@@ -281,7 +356,10 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
             inclusions,
             self.known_region_base.iter().copied(),
             self.barriers.iter().copied(),
+            self.edge_pre_barriers.iter().copied(),
             self.edge_barriers.iter().copied(),
+            self.edge_static_incl_base.iter().copied(),
+            self.edge_known_region_base.iter().copied(),
         ));
     }
 
@@ -388,13 +466,25 @@ mod tests {
 
     #[test]
     fn joins_keep_only_inclusions_guaranteed_by_every_predecessor() {
-        let states = compute_guaranteed_states([(0, 1), (0, 2), (1, 3), (2, 3)], [('a', 'b', 1)], [], [], []);
+        let states = compute_guaranteed_states(
+            [(0, 1), (0, 2), (1, 3), (2, 3)],
+            [('a', 'b', 1)],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+        );
         assert!(states.inclusions[&1].contains(&('a', 'b')));
         assert!(!states.inclusions[&3].contains(&('a', 'b')));
 
         let states = compute_guaranteed_states(
             [(0, 1), (0, 2), (1, 3), (2, 3)],
             [('a', 'b', 1), ('a', 'b', 2)],
+            [],
+            [],
+            [],
             [],
             [],
             [],
@@ -410,6 +500,9 @@ mod tests {
             [],
             [],
             [],
+            [],
+            [],
+            [],
         );
         assert!(states.inclusions[&3].contains(&('a', 'c')));
         assert!(!states.inclusions[&3].contains(&('a', 'b')));
@@ -417,7 +510,16 @@ mod tests {
 
     #[test]
     fn backedge_facts_do_not_leak_to_the_first_loop_iteration() {
-        let states = compute_guaranteed_states([(0, 1), (1, 2), (2, 1), (1, 3)], [('a', 'b', 2)], [], [], []);
+        let states = compute_guaranteed_states(
+            [(0, 1), (1, 2), (2, 1), (1, 3)],
+            [('a', 'b', 2)],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+        );
         assert!(!states.inclusions[&1].contains(&('a', 'b')));
         assert!(states.inclusions[&2].contains(&('a', 'b')));
         assert!(!states.inclusions[&3].contains(&('a', 'b')));
@@ -431,6 +533,9 @@ mod tests {
             [],
             [('a', 2)],
             [],
+            [],
+            [],
+            [],
         );
         assert!(!states.inclusions[&2].contains(&('a', 'b')));
         assert!(!states.inclusions[&2].contains(&('c', 'a')));
@@ -441,19 +546,73 @@ mod tests {
 
     #[test]
     fn known_regions_are_flow_sensitive() {
-        let states = compute_guaranteed_states([(0, 1), (0, 2), (1, 3), (2, 3)], [], [('a', 1)], [], []);
+        let states =
+            compute_guaranteed_states([(0, 1), (0, 2), (1, 3), (2, 3)], [], [('a', 1)], [], [], [], [], []);
         assert!(states.known_regions[&1].contains(&'a'));
         assert!(!states.known_regions[&3].contains(&'a'));
     }
 
     #[test]
     fn edge_barriers_kill_only_the_affected_predecessor_state() {
-        let states =
-            compute_guaranteed_states([(0, 1), (0, 2), (1, 3), (2, 3)], [('a', 'b', 0)], [('a', 0)], [], [(
-                'a', 1, 3,
-            )]);
+        let states = compute_guaranteed_states(
+            [(0, 1), (0, 2), (1, 3), (2, 3)],
+            [('a', 'b', 0)],
+            [('a', 0)],
+            [],
+            [],
+            [('a', 1, 3)],
+            [],
+            [],
+        );
         assert!(states.inclusions[&2].contains(&('a', 'b')));
         assert!(!states.inclusions[&3].contains(&('a', 'b')));
         assert!(!states.known_regions[&3].contains(&'a'));
+    }
+
+    #[test]
+    fn edge_additions_apply_only_to_the_selected_successor() {
+        let states = compute_guaranteed_states([(0, 1), (0, 2)], [], [], [], [], [], [('a', 'b', 0, 1)], [(
+            'c', 0, 1,
+        )]);
+        assert!(states.inclusions[&1].contains(&('a', 'b')));
+        assert!(states.known_regions[&1].contains(&'c'));
+        assert!(!states.inclusions[&2].contains(&('a', 'b')));
+        assert!(!states.known_regions[&2].contains(&'c'));
+    }
+
+    #[test]
+    fn edge_additions_are_not_promoted_to_shared_successor_facts() {
+        let states = compute_guaranteed_states([(0, 2), (1, 2)], [], [], [], [], [], [('a', 'b', 0, 2)], [(
+            'c', 0, 2,
+        )]);
+        assert!(!states.inclusions[&2].contains(&('a', 'b')));
+        assert!(!states.known_regions[&2].contains(&'c'));
+    }
+
+    #[test]
+    fn edge_barriers_apply_after_edge_additions() {
+        let states =
+            compute_guaranteed_states([(0, 1)], [], [], [], [], [('a', 0, 1)], [('a', 'b', 0, 1)], [(
+                'a', 0, 1,
+            )]);
+        assert!(!states.inclusions[&1].contains(&('a', 'b')));
+        assert!(!states.known_regions[&1].contains(&'a'));
+    }
+
+    #[test]
+    fn edge_pre_barriers_apply_before_edge_additions() {
+        let states = compute_guaranteed_states(
+            [(0, 1)],
+            [('c', 'a', 0)],
+            [('a', 0)],
+            [],
+            [('a', 0, 1)],
+            [],
+            [('a', 'b', 0, 1)],
+            [('a', 0, 1)],
+        );
+        assert!(!states.inclusions[&1].contains(&('c', 'a')));
+        assert!(states.inclusions[&1].contains(&('a', 'b')));
+        assert!(states.known_regions[&1].contains(&'a'));
     }
 }

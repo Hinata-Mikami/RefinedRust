@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use log::{info, trace};
 use radium::specs::traits::ReqInfo as _;
@@ -13,15 +13,16 @@ use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::span;
 
-use super::TX;
+use super::{PreparedFunctionCall, TX};
 use crate::base::*;
 use crate::body::function_translation::{ExprInfo, ExprWithInfo};
 use crate::body::mir_lowering::{
     MirConstantTranslation as _, MirPlaceTranslation as _, MirRvalueTranslation as _, MirTranslationCtx as _,
     MirTypeTranslation as _, ProcedureInst, TranslationKey,
 };
+use crate::environment::borrowck::facts;
 use crate::error::Message;
-use crate::regions::{CallAssignmentInputs, CallRegionInputs};
+use crate::regions::{CallAssignmentInputs, CallEffectDiscovery, CallRegionInputs};
 use crate::traits::registry::ResolvedTraitReq;
 use crate::traits::resolution;
 use crate::types::STInner;
@@ -625,6 +626,159 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         Some(&func_constant.const_)
     }
 
+    pub(crate) fn prepare_function_calls(&mut self) -> Result<(), TranslationError> {
+        struct PendingCall<'tcx, 'def> {
+            loc: mir::Location,
+            func_expr: code::Expr,
+            call_info: ProcedureInst<'tcx, 'def>,
+            lhs_ty: mir::PlaceTy<'tcx>,
+            lhs_strongly_writeable: bool,
+            output_ty: ty::Binder<'tcx, ty::Ty<'tcx>>,
+            normal_target: Option<facts::PointIndex>,
+            discovery: CallEffectDiscovery<'tcx>,
+        }
+
+        let mut reachable = vec![mir::BasicBlock::from_u32(0)];
+        let mut visited = HashSet::new();
+        let mut call_locations = Vec::new();
+        while let Some(bb) = reachable.pop() {
+            if !visited.insert(bb) {
+                continue;
+            }
+            let data = &self.proc.dropck_mir().basic_blocks[bb];
+            let loc = mir::Location {
+                block: bb,
+                statement_index: data.statements.len(),
+            };
+            let mut terminates_control_flow = false;
+            if let mir::TerminatorKind::Call { func, .. } = &data.terminator().kind {
+                terminates_control_flow = self.is_call_destination_panic(func);
+                if !terminates_control_flow
+                    && self.proc.synthetic_drop_borrow_for_drop_call(loc).is_none()
+                    && !self.is_call_destination_discriminant(func)
+                {
+                    call_locations.push(loc);
+                }
+            }
+            if !terminates_control_flow {
+                reachable.extend(self.proc.successors(bb));
+            }
+        }
+
+        let mut pending = Vec::new();
+        for loc in call_locations {
+            let mir::TerminatorKind::Call {
+                func,
+                destination,
+                target,
+                ..
+            } = &self.proc.dropck_mir().basic_blocks[loc.block].terminator().kind
+            else {
+                unreachable!();
+            };
+            let func = func.clone();
+            let destination = *destination;
+            let target = *target;
+            let mir::Operand::Constant(box func_constant) = &func else {
+                return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                    Message::UnsupportedFeature(format!(
+                        "RefinedRust does currently not support this kind of call operand (got: {func:?})"
+                    )),
+                )));
+            };
+            let source_call = self.proc.source_call_for_target(loc);
+            let source_func_constant = source_call.and_then(Self::call_func_const_from_terminator).copied();
+            let normal_target = source_call
+                .and_then(|terminator| {
+                    let mir::TerminatorKind::Call { target, .. } = &terminator.kind else {
+                        return None;
+                    };
+                    *target
+                })
+                .map(|block| {
+                    self.annotations.start_point_for_source(mir::Location {
+                        block,
+                        statement_index: 0,
+                    })
+                })
+                .or_else(|| {
+                    target.map(|block| {
+                        self.annotations.start_point_for_target(mir::Location {
+                            block,
+                            statement_index: 0,
+                        })
+                    })
+                });
+            let call_func_constant = source_func_constant.as_ref().unwrap_or(&func_constant.const_);
+            if source_func_constant.is_none() {
+                self.proc.ensure_region_type(call_func_constant.ty(), || {
+                    format!("target call function type at {loc:?} without mapped borrowck source call")
+                });
+            }
+
+            let (_, _, _, inst_sig) = self.call_expr_op_split_inst(call_func_constant)?;
+            let (func_expr, info) = if let Some(source_func_constant) = &source_func_constant {
+                self.translate_constant(source_func_constant)?
+            } else {
+                self.translate_operand(&func, false)?
+            };
+            let Some(ExprInfo::Call(call_info)) = info else {
+                unreachable!("Logic error in call target translation");
+            };
+            let output_ty = inst_sig.output();
+            self.proc
+                .ensure_region_type(output_ty.skip_binder(), || format!("call output type at {loc:?}"));
+            let lhs_ty = self.proc.region_type_of_place(&destination);
+            let lhs_strongly_writeable = !self.check_place_below_reference(&destination);
+            let discovery = self.annotations.preregister_call_effects(
+                &self.ty_translator,
+                self.proc.get_id(),
+                loc,
+                &CallRegionInputs {
+                    method_params: call_info.method_params,
+                    num_late_bounds: call_info.num_of_latebounds,
+                    mapped_early_regions: &call_info.mapped_early_regions,
+                },
+                &CallAssignmentInputs {
+                    lhs_ty,
+                    lhs_strongly_writeable,
+                    output_ty,
+                    normal_target,
+                },
+            )?;
+            pending.push(PendingCall {
+                loc,
+                func_expr,
+                call_info,
+                lhs_ty,
+                lhs_strongly_writeable,
+                output_ty,
+                normal_target,
+                discovery,
+            });
+        }
+
+        for call in pending {
+            let annotation_plan = self.annotations.prepare_call_annotation_plan(
+                &self.ty_translator,
+                call.loc,
+                &CallAssignmentInputs {
+                    lhs_ty: call.lhs_ty,
+                    lhs_strongly_writeable: call.lhs_strongly_writeable,
+                    output_ty: call.output_ty,
+                    normal_target: call.normal_target,
+                },
+                call.discovery,
+            )?;
+            self.prepared_calls.insert(call.loc, PreparedFunctionCall {
+                func_expr: call.func_expr,
+                call_info: call.call_info,
+                annotation_plan,
+            });
+        }
+        Ok(())
+    }
+
     pub(crate) fn translate_function_call(
         &mut self,
         func: &mir::Operand<'tcx>,
@@ -633,46 +787,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         target: Option<mir::BasicBlock>,
         loc: mir::Location,
     ) -> Result<code::Stmt, TranslationError> {
-        let mir::Operand::Constant(box func_constant) = func else {
-            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
-                format!("RefinedRust does currently not support this kind of call operand (got: {:?})", func),
-            ))));
-        };
-
-        let source_func_constant = self
-            .proc
-            .source_call_for_target(loc)
-            .and_then(Self::call_func_const_from_terminator)
-            .copied();
-        // Dropck may have rewritten the call terminator enough to erase regions from the callee
-        // type. Prefer the mapped borrowck call when available and fall back only for synthetic calls.
-        let call_func_constant = source_func_constant.as_ref().unwrap_or(&func_constant.const_);
-        if source_func_constant.is_none() {
-            self.proc.ensure_region_type(call_func_constant.ty(), || {
-                format!("target call function type at {loc:?} without mapped borrowck source call")
-            });
-        }
-
-        // Get the region-sensitive type of the return value from the source/borrowck function.
-        let (target_did, sig, generic_args, inst_sig) = self.call_expr_op_split_inst(call_func_constant)?;
-        info!("calling function {:?}", target_did);
-        for arg in args {
-            let arg = &arg.node;
-            info!("arg ty: {:?}", self.shape_type_of_operand(arg));
-        }
-        info!("call substs: {:?} = {:?}, {:?}", func, sig, generic_args);
-
-        // Translate the call target using borrowck/source type information when available.
-        let (func_expr, info) = if let Some(source_func_constant) = &source_func_constant {
-            self.translate_constant(source_func_constant)?
-        } else {
-            self.translate_operand(func, false)?
-        };
-        // We expect this to be an Expr::CallTarget, being annotated with the type parameters we
-        // instantiate it with.
-        let Some(ExprInfo::Call(mut call_info)) = info else {
-            unreachable!("Logic error in call target translation");
-        };
+        let PreparedFunctionCall {
+            func_expr,
+            mut call_info,
+            mut annotation_plan,
+        } = self
+            .prepared_calls
+            .remove(&loc)
+            .unwrap_or_else(|| panic!("missing prepared ordinary call at {loc:?}: {func:?}"));
 
         // translate the arguments
         let mut translated_args = Vec::new();
@@ -684,27 +806,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             translated_args.push(translated_arg);
         }
 
-        let output_ty = inst_sig.output();
-        self.proc
-            .ensure_region_type(output_ty.skip_binder(), || format!("call output type at {loc:?}"));
-        info!("call has instantiated type {:?}", inst_sig);
         let lhs_shape_ty = self.shape_type_of_place(destination);
-        let lhs_region_ty = self.proc.region_type_of_place(destination);
-        let lhs_strongly_writeable = !self.check_place_below_reference(destination);
-        let mut annotation_plan = self.annotations.prepare_call_annotation_plan(
-            &self.ty_translator,
-            loc,
-            &CallRegionInputs {
-                method_params: call_info.method_params,
-                num_late_bounds: call_info.num_of_latebounds,
-                mapped_early_regions: &call_info.mapped_early_regions,
-            },
-            &CallAssignmentInputs {
-                lhs_ty: lhs_region_ty,
-                lhs_strongly_writeable,
-                output_ty,
-            },
-        )?;
         call_info.lft_hint.append(&mut annotation_plan.late_lft_hints);
         for hint in annotation_plan.unconstrained_lft_hints.drain(..) {
             self.translated_fn.add_unconstrained_lft_hint(hint);

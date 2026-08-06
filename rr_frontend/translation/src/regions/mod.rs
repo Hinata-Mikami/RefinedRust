@@ -18,7 +18,9 @@ mod rvalue;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, btree_map};
 
-pub(crate) use annotations::{AnnotationGenerator, CallAssignmentInputs, CallRegionInputs};
+pub(crate) use annotations::{
+    AnnotationGenerator, CallAnnotationPlan, CallAssignmentInputs, CallEffectDiscovery, CallRegionInputs,
+};
 pub(crate) use arg_folder::{
     instantiate_open, relabel_erased_regions, relabel_late_bounds, rename_region_vids,
 };

@@ -10,7 +10,6 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use derive_more::Debug;
 use log::info;
-use radium::{code, coq};
 use rr_rustc_interface::middle::ty;
 
 use crate::base::*;
@@ -18,7 +17,6 @@ use crate::environment::borrowck::facts;
 use crate::environment::polonius_info;
 use crate::environment::region_folder::*;
 use crate::regions::inclusion_tracker::InclusionTracker;
-use crate::types;
 
 // solve the constraints for the new_regions
 // we first identify what kinds of constraints these new regions are subject to
@@ -36,19 +34,24 @@ pub(crate) struct CallRegions {
     pub classification: BTreeMap<Region, CallRegionKind>,
 }
 
+pub(crate) struct CallRegionDiscovery {
+    pub early_regions: Vec<Region>,
+    pub late_regions: Vec<Region>,
+    pub new_regions: BTreeSet<Region>,
+    relevant_constraints: Vec<(Region, Region)>,
+}
+
 /// Compute instantiations for the lifetime parameters of a function.
 /// Each of the lifetimes in the function's signature has one Polonius inference variable at the
 /// call site, and we need to find an instantiation for these.
 /// `substs` are the substitutions for the early-bound regions
-pub(crate) fn compute_call_regions<'tcx>(
+pub(crate) fn discover_call_regions<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
-    incl_tracker: &mut InclusionTracker<'_, '_>,
+    info: &polonius_info::PoloniusInfo<'_, 'tcx>,
     substs: &[ty::GenericArg<'tcx>],
     midpoint: facts::PointIndex,
     num_expected_late_bounds: usize,
-) -> CallRegions {
-    let info = incl_tracker.info();
-
+) -> CallRegionDiscovery {
     let mut early_regions = Vec::new();
     for a in substs {
         if let ty::GenericArgKind::Lifetime(r) = a.kind()
@@ -130,6 +133,28 @@ pub(crate) fn compute_call_regions<'tcx>(
     }
     info!("call region instantiations (late): {:?}", late_regions);
 
+    CallRegionDiscovery {
+        early_regions,
+        late_regions,
+        new_regions,
+        relevant_constraints,
+    }
+}
+
+pub(crate) fn classify_call_regions(
+    incl_tracker: &mut InclusionTracker<'_, '_>,
+    midpoint: facts::PointIndex,
+    discovery: CallRegionDiscovery,
+) -> CallRegions {
+    let CallRegionDiscovery {
+        early_regions,
+        late_regions,
+        new_regions,
+        relevant_constraints,
+    } = discovery;
+    let mut new_regions_sorted: Vec<_> = new_regions.iter().copied().collect();
+    new_regions_sorted.sort();
+
     // Notes:
     // - if two of the call regions need to be equal due to constraints on the function, we define the one
     //   with the larger id in terms of the other one
@@ -196,39 +221,4 @@ pub(crate) fn compute_call_regions<'tcx>(
         late_regions,
         classification: new_regions_classification,
     }
-}
-
-/// Compute annotations for recovering unconstrained regions that we have recovered by analyzing
-/// the function's signature.\
-/// Returns:
-/// - the vector of annotations to emit
-/// - the set of remaining unconstrained regions for which we have not figured out a mapping
-pub(crate) fn compute_unconstrained_region_annots<'tcx>(
-    inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
-    ty_translator: &types::LocalTX<'_, 'tcx>,
-    midpoint: facts::PointIndex,
-    unconstrained_regions: BTreeSet<facts::Region>,
-    early_region_map: &BTreeMap<coq::Ident, usize>,
-) -> (Vec<code::Annotation>, BTreeSet<facts::Region>) {
-    let mut remaining_regions = BTreeSet::new();
-
-    let mut unconstrained_annotations = Vec::new();
-    for r in unconstrained_regions {
-        let translated_region = ty_translator.translate_region_var(r);
-        // check if we have recovered a mapping
-        if let Some(early_region_idx) = early_region_map.get(&translated_region) {
-            let scope = ty_translator.scope.borrow();
-
-            let early_lft_vid = scope.lifetime_scope.early_regions[*early_region_idx].unwrap();
-            let early_lft_name = &scope.lifetime_scope.region_names[&early_lft_vid];
-            unconstrained_annotations
-                .push(code::Annotation::CopyLftName(early_lft_name.lft().to_owned(), translated_region));
-
-            inclusion_tracker.add_static_inclusion(r, early_lft_vid, midpoint);
-            inclusion_tracker.add_static_inclusion(early_lft_vid, r, midpoint);
-        } else {
-            remaining_regions.insert(r);
-        }
-    }
-    (unconstrained_annotations, remaining_regions)
 }

@@ -25,7 +25,7 @@ use crate::base::*;
 use crate::body::mir_lowering::{MirTranslationCtx as _, ProcedureInst, TranslationKey};
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
-use crate::regions::AnnotationGenerator;
+use crate::regions::{AnnotationGenerator, CallAnnotationPlan};
 use crate::traits::registry;
 use crate::{consts, procedures, types};
 
@@ -34,6 +34,12 @@ pub(crate) enum ExprInfo<'tcx, 'def> {
 }
 
 pub(crate) type ExprWithInfo<'tcx, 'def> = (code::Expr, Option<ExprInfo<'tcx, 'def>>);
+
+struct PreparedFunctionCall<'tcx, 'def> {
+    func_expr: code::Expr,
+    call_info: ProcedureInst<'tcx, 'def>,
+    annotation_plan: CallAnnotationPlan,
+}
 
 /// Struct that keeps track of all information necessary to translate a MIR Body to a `code::Function`.
 /// `'a` is the lifetime of the translator and ends after translation has finished.
@@ -69,6 +75,7 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     annotations: AnnotationGenerator<'a, 'tcx>,
     /// initial Polonius annotations that hold at the start of the function
     initial_annotation_stmts: Vec<code::PrimStmt>,
+    prepared_calls: HashMap<mir::Location, PreparedFunctionCall<'tcx, 'def>>,
 
     /// data structures for tracking which basic blocks still need to be translated
     /// (we only translate the basic blocks which are actually reachable, in particular when
@@ -222,6 +229,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             loop_specs: BTreeMap::new(),
             fn_locals,
             initial_annotation_stmts,
+            prepared_calls: HashMap::new(),
             const_registry,
             trait_registry,
             collected_statics: BTreeSet::new(),
@@ -251,6 +259,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     block: bb,
                     statement_index,
                 };
+                self.annotations.preregister_assignment_loan(loc);
                 if self.is_administrative_alias_stmt(statement)
                     || self.proc.synthetic_drop_borrow_for_assignment(loc).is_some()
                 {
@@ -276,6 +285,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         for (loc, lhs_ty, rhs_ty) in strong_assignments {
             self.annotations.preregister_strong_assignment(did, loc, lhs_ty, rhs_ty)?;
         }
+        self.prepare_function_calls()?;
 
         // translate the function's basic blocks
         let basic_blocks = &self.proc.dropck_mir().basic_blocks;

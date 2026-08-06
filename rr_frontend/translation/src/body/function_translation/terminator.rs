@@ -40,7 +40,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Check if a call goes to `std::rt::begin_panic`
-    fn is_call_destination_panic(&self, func: &mir::Operand<'_>) -> bool {
+    pub(super) fn is_call_destination_panic(&self, func: &mir::Operand<'_>) -> bool {
         if let Some(panic_id_std) = search::try_resolve_did(self.tcx, &["std", "panicking", "begin_panic"]) {
             if Self::check_call_destination(func, panic_id_std) {
                 return true;
@@ -61,7 +61,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     // Check if the destination of this call is `core::intrinsics::discriminant_value`.
-    fn is_call_destination_discriminant(&self, func: &mir::Operand<'_>) -> bool {
+    pub(super) fn is_call_destination_discriminant(&self, func: &mir::Operand<'_>) -> bool {
         if let Some(discriminant_did) =
             search::try_resolve_did(self.tcx, &["core", "intrinsics", "discriminant_value"])
         {
