@@ -635,7 +635,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             func_expr: code::Expr,
             call_info: ProcedureInst<'tcx, 'def>,
             lhs_ty: mir::PlaceTy<'tcx>,
-            lhs_strongly_writeable: bool,
+            is_strong_update: bool,
             output_ty: ty::Binder<'tcx, ty::Ty<'tcx>>,
             normal_target: Option<facts::PointIndex>,
             discovery: CallEffectDiscovery<'tcx>,
@@ -721,7 +721,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             self.proc
                 .ensure_region_type(output_ty.skip_binder(), || format!("call output type at {loc:?}"));
             let lhs_ty = self.proc.region_type_of_place(&destination);
-            let lhs_strongly_writeable = !self.check_place_below_reference(&destination);
+            let is_strong_update = !self.check_place_below_reference(&destination);
             let discovery = self.annotations.preregister_call_effects(
                 &self.ty_translator,
                 self.proc.get_id(),
@@ -733,7 +733,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 },
                 &CallAssignmentInputs {
                     lhs_ty,
-                    lhs_strongly_writeable,
+                    is_strong_update,
                     output_ty,
                     normal_target,
                 },
@@ -743,7 +743,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 func_expr,
                 call_info,
                 lhs_ty,
-                lhs_strongly_writeable,
+                is_strong_update,
                 output_ty,
                 normal_target,
                 discovery,
@@ -763,7 +763,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 call.loc,
                 &CallAssignmentInputs {
                     lhs_ty: call.lhs_ty,
-                    lhs_strongly_writeable: call.lhs_strongly_writeable,
+                    is_strong_update: call.is_strong_update,
                     output_ty: call.output_ty,
                     normal_target: call.normal_target,
                 },

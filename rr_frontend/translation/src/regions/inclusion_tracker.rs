@@ -4,6 +4,79 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+//! Flow-sensitive must-analysis for semantic lifetime names and inclusions.
+//!
+//! The analysis has two kinds of lattice facts:
+//!
+//! - `Known(r)` means that every path reaching the current phase has a usable semantic lifetime name for
+//!   Polonius region `r`.
+//! - `Incl(r1, r2)` means that every path reaching the current phase guarantees the semantic lifetime
+//!   inclusion `r1 ⊑ r2`.
+//!
+//! Annotation decisions at one MIR point observe intermediate states of its transfer function. The
+//! tracker stores these states as snapshots so an effect cannot be used to justify the annotation
+//! that establishes it:
+//!
+//! - The **incoming state** contains facts guaranteed after all predecessor-edge transfers, before any effect
+//!   at the current point.
+//! - The **pre-shared-reborrow state** is the incoming state after the point barrier and ordinary static and
+//!   known-region effects, but before shared-reborrow effects. Shared-reborrow source and initialization
+//!   decisions query this state.
+//! - The **pre-dynamic state** additionally contains shared-reborrow effects, but not dynamic ensure-actions.
+//!   Dynamic annotation minimality is decided from this state.
+//! - The **final state** contains all point-local effects and is propagated to successor edges.
+//!
+//! Shared reborrows need a separate phase because their result lifetime does not always correspond to a new
+//! Polonius loan. The target region may already have a semantic lifetime name established by an ordinary
+//! effect at the same MIR point, such as `StartLft`; otherwise the reborrow must emit an alias from a
+//! previously known access-region lifetime. Its structural access-to-target inclusions and target
+//! initialization are preregistered so later CFG points can rely on them, but the reborrow's own decision
+//! must not observe those effects: doing so would make the target appear initialized and suppress the alias
+//! that initializes it. The pre-shared-reborrow state therefore includes ordinary same-point effects while
+//! excluding effects of the shared reborrow itself.
+//!
+//! The tracker registers the following transfer effects rather than additional kinds of facts:
+//!
+//! - **Entry effects** seed universal and argument-region `Incl` facts in the implicit function-entry
+//!   predecessor state. Their endpoints become `Known`, so they are visible before the first MIR effect.
+//!   Keeping this state separate prevents facts from a backedge to the entry block from holding on the first
+//!   execution.
+//! - **Ordinary static effects** add point-local `Incl` facts after the point barrier and make both endpoints
+//!   `Known`. Ordinary known-region effects can also add `Known` independently, for example when `StartLft`
+//!   creates a lifetime without establishing an equality.
+//! - **Shared-reborrow effects** run after the pre-shared-reborrow snapshot. Their static component records
+//!   structural access-to-result `Incl` facts without making the endpoints known; their known-region
+//!   component separately marks the reborrow result as initialized. This separation prevents the structural
+//!   relation from justifying its own lifetime-name annotation.
+//! - **Dynamic effects** are point-local ensure-actions applied after the pre-dynamic snapshot. They emit an
+//!   annotation only if the requested `Incl` is not already guaranteed, but establish that inclusion and make
+//!   its endpoints `Known` afterward.
+//! - **Edge effects** add `Incl` and `Known` only while transferring one predecessor state to one successor.
+//!   They represent successor-dependent effects such as a call result that exists only on the normal-return
+//!   edge, and are applied before predecessor states are intersected at a join.
+//! - **Barriers** are kill effects rather than negative lattice facts. A barrier for `r` removes `Known(r)`
+//!   and every `Incl` involving `r`. Point barriers run before point-local additions; edge pre-barriers run
+//!   before edge additions to model overwriting an old value, while edge barriers run afterward to model
+//!   effects such as a loan dying on that edge.
+//!
+//! Transfer effects are applied in this order:
+//!
+//! 1. edge pre-barriers,
+//! 2. edge additions,
+//! 3. edge barriers,
+//! 4. point-local barriers,
+//! 5. ordinary static and known-region effects,
+//! 6. structural shared-reborrow effects, and
+//! 7. dynamic inclusion ensure-actions.
+//!
+//! At CFG joins, the states produced by the incoming edge transfers are intersected, retaining only
+//! facts guaranteed by every predecessor. Edge effects are necessary for terminators whose effects
+//! depend on the selected successor. For example, a call result initializes its destination only on
+//! the normal-return edge, and a loan may die on one switch edge but remain live on another. Putting
+//! such an effect at the source would apply it to every successor, while putting it at the target
+//! would apply it to every predecessor. Splitting affected edges into synthetic blocks would be an
+//! equivalent alternative representation.
+
 use std::collections::{BTreeMap, BTreeSet};
 #[cfg(test)]
 use std::iter;
@@ -167,7 +240,7 @@ where
         .collect();
     possible_inclusions.extend(&entry_inclusions);
     close_transitively(&mut possible_inclusions);
-    let possible_known = local_known
+    let mut possible_known = local_known
         .values()
         .chain(local_shared_reborrow_known.values())
         .chain(known_by_edge.values())
@@ -178,6 +251,7 @@ where
                 .flat_map(|inclusions| inclusions.iter().flat_map(|(r1, r2)| [*r1, *r2])),
         )
         .collect::<BTreeSet<_>>();
+    possible_known.extend(&entry_known);
 
     let mut states = GuaranteedStates::default();
     for point in &points {
@@ -251,7 +325,6 @@ where
             if let Some(local) = local_shared_reborrow_static_inclusions.get(point) {
                 point_inclusions.extend(local);
                 close_transitively(&mut point_inclusions);
-                point_known.extend(local.iter().flat_map(|(r1, r2)| [*r1, *r2]));
             }
             if let Some(local) = local_shared_reborrow_known.get(point) {
                 point_known.extend(local);
@@ -398,23 +471,34 @@ where
 pub(crate) struct InclusionTracker<'a, 'tcx> {
     /// Polonius facts and CFG used to solve the registered effects.
     info: &'a PoloniusInfo<'a, 'tcx>,
+
     /// Static inclusions supplied by the implicit function-entry predecessor. These include
     /// universal and argument-region relationships and are visible before the first MIR effect.
     entry_static_incl_base: Vec<(Region, Region)>,
+
     /// Unconditional point-local static inclusions. They are applied after the point barrier and
     /// make both endpoint lifetime names known.
     static_incl_base: Vec<(Region, Region, PointIndex)>,
+    /// Static inclusions established only while traversing a particular CFG edge. Their endpoints
+    /// also become known on that edge.
+    edge_static_incl_base: Vec<(Region, Region, PointIndex, PointIndex)>,
+
     /// Structural access-to-target inclusions established by shared reborrows. They are applied
     /// only after shared-reborrow decisions so they cannot define their own source or target.
     shared_reborrow_static_incl_base: Vec<(Region, Region, PointIndex)>,
+
     /// Dynamic inclusion requirements. Each acts as an order-independent ensure-action: it emits
     /// an annotation only if absent before this phase, but guarantees the inclusion afterward.
     dynamic_incl_base: Vec<(Region, Region, PointIndex)>,
+
     /// Point-local definitions of semantic lifetime names established before shared reborrows.
     known_region_base: Vec<(Region, PointIndex)>,
+    /// Semantic lifetime names initialized only while traversing a particular CFG edge.
+    edge_known_region_base: Vec<(Region, PointIndex, PointIndex)>,
     /// Lifetime names initialized by shared-reborrow annotations. They become known after the
     /// shared-reborrow decision and are visible to later effects and CFG points.
     shared_reborrow_known_region_base: Vec<(Region, PointIndex)>,
+
     /// Point-local strong-update kills, applied before all point-local additions.
     barriers: Vec<(Region, PointIndex)>,
     /// Edge-local kills applied before edge additions. These model overwriting the old edge state
@@ -422,11 +506,7 @@ pub(crate) struct InclusionTracker<'a, 'tcx> {
     edge_pre_barriers: Vec<(Region, PointIndex, PointIndex)>,
     /// Edge-local kills applied after edge additions, notably lifetime deaths on that edge.
     edge_barriers: Vec<(Region, PointIndex, PointIndex)>,
-    /// Static inclusions established only while traversing a particular CFG edge. Their endpoints
-    /// also become known on that edge.
-    edge_static_incl_base: Vec<(Region, Region, PointIndex, PointIndex)>,
-    /// Semantic lifetime names initialized only while traversing a particular CFG edge.
-    edge_known_region_base: Vec<(Region, PointIndex, PointIndex)>,
+
     /// Cached must-states excluding dynamic ensure-actions.
     static_states: Option<GuaranteedStates<Region, PointIndex>>,
     /// Cached must-states including every registered effect.
@@ -894,16 +974,40 @@ mod tests {
     }
 
     #[test]
+    fn entry_known_regions_are_preserved_through_loops() {
+        let states = compute_guaranteed_states_with_dynamic(
+            [(0, 1), (1, 2), (2, 1)],
+            [0],
+            [('u', 'p')],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+        );
+
+        assert!(states.incoming_known_regions[&1].contains(&'u'));
+        assert!(states.incoming_known_regions[&1].contains(&'p'));
+        assert!(states.incoming_known_regions[&2].contains(&'u'));
+        assert!(states.incoming_known_regions[&2].contains(&'p'));
+    }
+
+    #[test]
     fn shared_reborrow_initialization_does_not_justify_itself() {
         let states = compute_guaranteed_states_with_dynamic(
             [(0, 1)],
             [0],
             [],
             [],
-            [('l', 'r', 0), ('r', 'l', 0)],
+            [('l', 'r', 0), ('r', 'l', 0), ('x', 's', 0), ('s', 'x', 0)],
             [],
             [('l', 0)],
-            [('r', 0)],
+            [('r', 0), ('s', 0)],
             [],
             [],
             [],
@@ -916,6 +1020,10 @@ mod tests {
         assert!(states.known_regions[&0].contains(&'r'));
         assert!(states.inclusions[&0].contains(&('l', 'r')));
         assert!(states.incoming_known_regions[&1].contains(&'r'));
+        assert!(states.inclusions[&0].contains(&('x', 's')));
+        assert!(states.known_regions[&0].contains(&'s'));
+        assert!(!states.known_regions[&0].contains(&'x'));
+        assert!(!states.incoming_known_regions[&1].contains(&'x'));
     }
 
     #[test]

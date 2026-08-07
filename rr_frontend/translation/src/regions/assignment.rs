@@ -4,7 +4,62 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-//! Provides functionality for generating lifetime annotations for assignments.
+//! Lifetime effects associated with writing a MIR value into a place.
+//!
+//! This module provides five related pieces of assignment planning:
+//!
+//! - structural mapping between lifetime positions in source and destination types;
+//! - strong destination updates, which replace semantic lifetime names;
+//! - weak destination updates, which preserve names and establish required inclusions;
+//! - initialization of loans and shared-reborrow lifetime names; and
+//! - initialization of unconstrained region names.
+//!
+//! `rvalue` handles the structural creation of the RHS value. This module handles the borrow effects
+//! surrounding that creation and the subsequent write into the LHS. Call results reuse the same
+//! destination-write machinery, with effects restricted to the normal-return edge where necessary.
+//! The function-wide preregistration and plan-construction pipeline is documented in `annotations`.
+//!
+//! # Planning Points
+//!
+//! For an ordinary assignment, the **startpoint** is where annotations that must run before evaluating
+//! and writing the RHS are placed. The **midpoint** is where Polonius exposes assignment constraints and
+//! where the tracker records effects that hold after the write. A call destination instead records
+//! strong-update effects on the normal-return edge, because the destination is not initialized on unwind.
+//!
+//! Tracker effects are preregistered for every reachable assignment before concrete plans are prepared.
+//! Preregistration does not emit code: it lets the must-analysis account for effects at their original
+//! points without making results depend on block traversal or assignment planning order.
+//!
+//! # Strong And Weak Updates
+//!
+//! A strong update is permitted when the destination is not reached through a reference or raw pointer.
+//! It kills the old destination lifetime names at the midpoint, marks the replacements known, and emits
+//! ordered `CopyLftName` annotations after the memory write. Copies are ordered so every old source name
+//! is read before that name is overwritten; cycles are rejected because no temporary name is available.
+//!
+//! A weak update writes through a potentially aliased place and therefore cannot replace its semantic
+//! lifetime names. It extracts Polonius inclusions targeting lifetime positions stored in the LHS and
+//! establishes the missing inclusions before the memory write. Dynamic requirements are preregistered as
+//! ensure-actions and finalized only after all assignments and calls are known, preserving minimality.
+//!
+//! # Borrow Initialization
+//!
+//! An assignment midpoint carrying a Polonius loan emits `StartLft`. A shared reborrow does not
+//! necessarily issue a loan; when its result region is not already initialized, it aliases that result
+//! from the known lifetime governing access to the borrowed place. Shared-reborrow source resolution is
+//! a separate function-wide batch so one assignment cannot observe another merely due to planning order.
+//!
+//! # Runtime Order
+//!
+//! The complete ordinary-assignment plan is assembled by `annotations` and rendered in this order:
+//!
+//! 1. statement-entry loan deaths;
+//! 2. unconstrained lifetime initialization;
+//! 3. structural rvalue lifetime transfers;
+//! 4. loan creation or shared-reborrow aliases;
+//! 5. dynamic inclusions required by a weak update;
+//! 6. evaluation of the RHS and the memory write; and
+//! 7. semantic lifetime-name copies required by a strong update.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
@@ -22,6 +77,9 @@ use crate::regions::RegionBiFolder as _;
 use crate::regions::inclusion_tracker::{self, InclusionTracker};
 use crate::{regions, types};
 
+// Structural region mapping between source and destination types.
+
+/// A structural source for one variable lifetime position in a destination type.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum AssignmentRegionSource<'tcx> {
     Var(Region),
@@ -73,6 +131,72 @@ pub(crate) fn map_regions_between_types<'tcx>(
     }
     Ok(mapper.mappings)
 }
+
+impl<'tcx> regions::RegionBiFolder<'tcx> for AssignmentRegionMapper<'tcx> {
+    fn tcx(&self) -> ty::TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn typing_env(&self) -> &ty::TypingEnv<'tcx> {
+        &self.typing_env
+    }
+
+    fn examine_ty(&mut self, source: ty::Ty<'tcx>, destination: ty::Ty<'tcx>) -> bool {
+        if let (
+            ty::TyKind::Closure(source_def, source_args),
+            ty::TyKind::Closure(destination_def, destination_args),
+        ) = (source.kind(), destination.kind())
+        {
+            if source_def == destination_def {
+                self.map_ty_slices(
+                    source_args.as_closure().upvar_tys(),
+                    destination_args.as_closure().upvar_tys(),
+                );
+            } else {
+                self.error = Some(format!(
+                    "strong assignment maps different closure types: {source:?} and {destination:?}"
+                ));
+            }
+            return false;
+        }
+
+        let mut collector = regions::TyRegionCollectFolder::new(self.tcx);
+        destination.fold_with(&mut collector);
+        if collector.get_regions().is_empty() {
+            return false;
+        }
+
+        if mem::discriminant(source.kind()) == mem::discriminant(destination.kind()) {
+            return true;
+        }
+
+        self.error = Some(format!(
+            "strong-assignment types have different shapes at a lifetime-bearing position: {source:?} and {destination:?}"
+        ));
+        false
+    }
+
+    fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
+        let (source, destination) = (r1, r2);
+        let ty::RegionKind::ReVar(destination) = destination.kind() else {
+            if source != destination {
+                self.error = Some(format!(
+                    "strong assignment maps non-variable destination region {destination:?} from {source:?}"
+                ));
+            }
+            return;
+        };
+
+        let destination = destination.into();
+        let source = match source.kind() {
+            ty::RegionKind::ReVar(source) => AssignmentRegionSource::Var(source.into()),
+            _ => AssignmentRegionSource::Named(source),
+        };
+        self.record(destination, source);
+    }
+}
+
+// Strong writes replace destination semantic lifetime names.
 
 fn get_strong_assignment_mappings<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
@@ -178,70 +302,6 @@ pub(crate) fn preregister_strong_assignment_on_edge<'tcx>(
     })
 }
 
-impl<'tcx> regions::RegionBiFolder<'tcx> for AssignmentRegionMapper<'tcx> {
-    fn tcx(&self) -> ty::TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn typing_env(&self) -> &ty::TypingEnv<'tcx> {
-        &self.typing_env
-    }
-
-    fn examine_ty(&mut self, source: ty::Ty<'tcx>, destination: ty::Ty<'tcx>) -> bool {
-        if let (
-            ty::TyKind::Closure(source_def, source_args),
-            ty::TyKind::Closure(destination_def, destination_args),
-        ) = (source.kind(), destination.kind())
-        {
-            if source_def == destination_def {
-                self.map_ty_slices(
-                    source_args.as_closure().upvar_tys(),
-                    destination_args.as_closure().upvar_tys(),
-                );
-            } else {
-                self.error = Some(format!(
-                    "strong assignment maps different closure types: {source:?} and {destination:?}"
-                ));
-            }
-            return false;
-        }
-
-        let mut collector = regions::TyRegionCollectFolder::new(self.tcx);
-        destination.fold_with(&mut collector);
-        if collector.get_regions().is_empty() {
-            return false;
-        }
-
-        if mem::discriminant(source.kind()) == mem::discriminant(destination.kind()) {
-            return true;
-        }
-
-        self.error = Some(format!(
-            "strong-assignment types have different shapes at a lifetime-bearing position: {source:?} and {destination:?}"
-        ));
-        false
-    }
-
-    fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
-        let (source, destination) = (r1, r2);
-        let ty::RegionKind::ReVar(destination) = destination.kind() else {
-            if source != destination {
-                self.error = Some(format!(
-                    "strong assignment maps non-variable destination region {destination:?} from {source:?}"
-                ));
-            }
-            return;
-        };
-
-        let destination = destination.into();
-        let source = match source.kind() {
-            ty::RegionKind::ReVar(source) => AssignmentRegionSource::Var(source.into()),
-            _ => AssignmentRegionSource::Named(source),
-        };
-        self.record(destination, source);
-    }
-}
-
 fn order_strong_updates(
     mappings: &BTreeMap<Region, AssignmentRegionSource<'_>>,
 ) -> Result<Vec<Region>, Vec<Region>> {
@@ -266,7 +326,9 @@ fn order_strong_updates(
     Ok(ordered)
 }
 
-/// Generate inclusions for a weak update assignment.
+// Weak writes preserve destination names and establish required inclusions.
+
+/// Collect Polonius inclusions required before a weak destination write.
 fn get_assignment_weak_update_constraints(
     inclusion_tracker: &InclusionTracker<'_, '_>,
     constraint_point: facts::PointIndex,
@@ -292,10 +354,10 @@ pub(crate) fn get_assignment_dynamic_requirements<'tcx>(
     inclusion_tracker: &InclusionTracker<'_, 'tcx>,
     constraint_point: facts::PointIndex,
     effect_point: facts::PointIndex,
-    lhs_strongly_writeable: bool,
+    is_strong_update: bool,
     lhs_ty: mir::PlaceTy<'tcx>,
 ) -> BTreeSet<(Region, Region, PointIndex)> {
-    if lhs_strongly_writeable {
+    if is_strong_update {
         return BTreeSet::new();
     }
     let lhs_regions = find_region_variables_of_place_type(tcx, lhs_ty);
@@ -312,39 +374,29 @@ fn find_region_variables_of_place_type<'tcx>(
     collector.get_regions()
 }
 
-/// Get newly introduced regions at this point which are unconstrained.
-pub(crate) fn get_new_unconstrained_regions(
-    inclusion_tracker: &InclusionTracker<'_, '_>,
-    midpoint: facts::PointIndex,
-) -> BTreeSet<Region> {
-    let info = inclusion_tracker.info();
+// Destination-write plan components.
 
-    let mut unconstrained_regions = BTreeSet::new();
-
-    // for weak updates: should mirror the constraints generated by Polonius
-    for (s1, _) in info.subset_base_at(midpoint) {
-        // take this constraint
-        // TODO should there be exceptions to this?
-        let lft1 = info.mk_atomic_region(s1);
-
-        if lft1.is_unconstrained() {
-            unconstrained_regions.insert(s1);
-        }
-    }
-    unconstrained_regions
-}
-
+/// Parts of a destination-write plan assembled with rvalue and borrow annotations by `annotations`.
 #[derive(Debug, Default)]
-pub(crate) struct RegionInfo {
+pub(crate) struct WriteInfo {
+    /// Reserved for an update-specific annotation around the translated RHS expression.
+    ///
+    /// Current strong and weak writes do not require one.
     pub expr_annot: Option<code::Annotation>,
+    /// Dynamic inclusions that must hold before a weak write.
     pub required_dyn_inclusions: BTreeSet<(Region, Region, PointIndex)>,
-    pub stmt_annot: Vec<code::Annotation>,
+    /// Semantic lifetime-name updates emitted after the memory write.
+    pub post_write_annots: Vec<code::Annotation>,
+    /// Unconstrained region candidates whose names may need initialization before the write.
     pub unconstrained_regions: BTreeSet<Region>,
 }
 
-/// Compute the annotations for an assignment: an annotation for the rhs value, and a list of
-/// annotations to prepend to the statement, and a list of annotations to put after the
-/// statement.
+/// Prepare the destination-write portion of an assignment or normal call result.
+///
+/// Rvalue creation, loan issuance, shared reborrows, and unconstrained initializers are assembled by
+/// `annotations`. Strong-update tracker effects must already be preregistered function-wide. This
+/// function validates their sources and renders the ordered post-write name copies; weak updates
+/// instead return dynamic inclusion requirements that are finalized function-wide.
 pub(crate) fn get_assignment_annots<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
@@ -352,18 +404,17 @@ pub(crate) fn get_assignment_annots<'tcx>(
     startpoint: facts::PointIndex,
     midpoint: facts::PointIndex,
     pre_assignment_effect_point: facts::PointIndex,
-    lhs_strongly_writeable: bool,
+    is_strong_update: bool,
     lhs_ty: mir::PlaceTy<'tcx>,
     rhs_ty: ty::Ty<'tcx>,
-    effects_preregistered: bool,
-) -> Result<RegionInfo, TranslationError> {
-    let new_dyn_inclusions;
+) -> Result<WriteInfo, TranslationError> {
+    let required_dyn_inclusions;
     let expr_annot;
-    let mut stmt_annot = Vec::new();
+    let mut post_write_annots = Vec::new();
 
     let unconstrained_regions = get_new_unconstrained_regions(inclusion_tracker, midpoint);
 
-    if lhs_strongly_writeable {
+    if is_strong_update {
         let did = ty_translator.scope.borrow().did;
         let mappings = get_strong_assignment_mappings(tcx, did, rhs_ty, lhs_ty.ty)?;
         trace!(
@@ -392,13 +443,6 @@ pub(crate) fn get_assignment_annots<'tcx>(
                 "cyclic strong lifetime update involving regions {cycle:?}"
             ))))
         })?;
-        if !effects_preregistered {
-            register_strong_assignment_effects(inclusion_tracker, midpoint, &mappings).map_err(|cycle| {
-                TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
-                    "cyclic strong lifetime update involving regions {cycle:?}"
-                ))))
-            })?;
-        }
         for destination in ordered {
             let source = mappings[&destination];
             let source_lft = match source {
@@ -410,7 +454,7 @@ pub(crate) fn get_assignment_annots<'tcx>(
                 },
                 AssignmentRegionSource::Named(source) => ty_translator.translate_region(source),
             };
-            stmt_annot.push(code::Annotation::CopyLftName(
+            post_write_annots.push(code::Annotation::CopyLftName(
                 source_lft,
                 ty_translator.translate_region_var(destination),
             ));
@@ -418,9 +462,9 @@ pub(crate) fn get_assignment_annots<'tcx>(
 
         expr_annot = None;
 
-        new_dyn_inclusions = BTreeSet::new();
+        required_dyn_inclusions = BTreeSet::new();
     } else {
-        new_dyn_inclusions = get_assignment_dynamic_requirements(
+        required_dyn_inclusions = get_assignment_dynamic_requirements(
             tcx,
             inclusion_tracker,
             midpoint,
@@ -431,13 +475,15 @@ pub(crate) fn get_assignment_annots<'tcx>(
         expr_annot = None;
     }
 
-    Ok(RegionInfo {
+    Ok(WriteInfo {
         expr_annot,
-        required_dyn_inclusions: new_dyn_inclusions,
-        stmt_annot,
+        required_dyn_inclusions,
+        post_write_annots,
         unconstrained_regions,
     })
 }
+
+// Dynamic inclusion finalization.
 
 /// Generates dynamic inclusions for the set of inclusions in `incls`.
 /// These inclusions should not hold yet.
@@ -471,6 +517,8 @@ pub(crate) fn generate_dyn_inclusion_annots<'tcx>(
         .collect())
 }
 
+// Loan and shared-reborrow lifetime initialization.
+
 /// Find all regions that need to outlive a loan region at its point of creation.
 fn get_outliving_regions_on_loan(
     inclusion_tracker: &InclusionTracker<'_, '_>,
@@ -491,14 +539,16 @@ fn get_outliving_regions_on_loan(
     outliving
 }
 
-/// Get the annotations due to borrows appearing on the RHS of an assignment.
+/// Emit `StartLft` for the Polonius loan issued at an assignment midpoint, if any.
+///
+/// Not every borrow-looking rvalue issues a loan. In particular, shared reborrows may instead be
+/// initialized by [`get_shared_reborrow_annots`]. The corresponding tracker effects were registered
+/// function-wide before this rendering step.
 pub(crate) fn get_assignment_loan_annots<'tcx>(
     inclusion_tracker: &InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
     loc: mir::Location,
     constraint_point: facts::PointIndex,
-    _effect_point: facts::PointIndex,
-    _rhs: &mir::Rvalue<'tcx>,
 ) -> Vec<code::Annotation> {
     let info = inclusion_tracker.info();
     let mut stmt_annots = Vec::new();
@@ -651,6 +701,28 @@ pub(crate) fn preregister_shared_reborrow<'tcx>(
     inclusion_tracker.add_shared_reborrow_static_inclusion(source, target, effect_point);
     inclusion_tracker.add_shared_reborrow_static_inclusion(target, source, effect_point);
     inclusion_tracker.add_shared_reborrow_known_region(target, effect_point);
+}
+
+// Unconstrained region-name initialization.
+
+/// Collect unconstrained source-region candidates introduced by subset constraints at this midpoint.
+///
+/// A candidate is not necessarily new: annotation rendering filters regions whose semantic names are
+/// already guaranteed before the effect point.
+pub(crate) fn get_new_unconstrained_regions(
+    inclusion_tracker: &InclusionTracker<'_, '_>,
+    midpoint: facts::PointIndex,
+) -> BTreeSet<Region> {
+    let info = inclusion_tracker.info();
+    let mut unconstrained_regions = BTreeSet::new();
+
+    // For weak updates, mirror the constraints generated by Polonius.
+    for (source, _) in info.subset_base_at(midpoint) {
+        if info.mk_atomic_region(source).is_unconstrained() {
+            unconstrained_regions.insert(source);
+        }
+    }
+    unconstrained_regions
 }
 
 pub(crate) fn preregister_unconstrained_regions(

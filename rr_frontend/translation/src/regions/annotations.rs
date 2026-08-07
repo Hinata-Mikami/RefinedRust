@@ -4,6 +4,118 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+//! Function-wide planning of the lifetime annotations inserted into translated MIR.
+//!
+//! [`AnnotationGenerator`] coordinates Polonius facts, the flow-sensitive [`InclusionTracker`], and
+//! the concrete `RefinedRust` annotations needed to replay the borrow checker's safety proof. The
+//! analysis is planned before MIR blocks are translated so annotation decisions do not depend on the
+//! order in which the translator visits the CFG.
+//!
+//! # Terminology
+//!
+//! - A **site** is a MIR point or CFG edge at which a tracker effect occurs or an annotation may be emitted.
+//!   Every registered effect retains its site throughout the analysis.
+//! - A **planning phase** is a compiler-side stage in which decisions query one fixed set of registered
+//!   tracker effects. The first query lazily computes a must-analysis fixed point, called the phase's
+//!   **stable state**. No query in that phase may register facts observed by another query in the same phase.
+//! - A **batch query** applies one decision procedure to every relevant reachable site using the same stable
+//!   state. A subsequent **batch registration** adds all results without querying the tracker; the next query
+//!   then computes a new stable state.
+//! - A **plan** stores concrete annotations or rendering metadata for later consumption. Preparing a plan
+//!   does not mean that its annotations execute during planning.
+//!
+//! Batching affects only compiler-side analysis order. The registered effects still occur at their
+//! original MIR points and edges. For example, call classification is performed for every call before
+//! any classification result is registered. Otherwise a later-classified call could observe an
+//! earlier-classified call solely because of iteration order.
+//!
+//! A stable state is distinct from the per-point snapshots documented by `inclusion_tracker`. A
+//! stable state is the function-wide fixed point for one set of registered effects. Incoming,
+//! pre-shared-reborrow, and pre-dynamic snapshots are intermediate states within the transfer function
+//! of each individual MIR point.
+//!
+//! # Operation Classes
+//!
+//! Methods are named according to their role in function-wide planning:
+//!
+//! - `preregister_*` records effects that can be determined without a tracker-dependent annotation decision.
+//!   Assignments and calls preregister loans, structural transfers, strong updates, unconstrained-region
+//!   definitions, shared-reborrow structure, and dynamic inclusion requirements.
+//! - `discover_*` collects structural Polonius information for a later decision. Call discovery, for example,
+//!   identifies early, late, new, and output regions without yet choosing their semantic lifetime
+//!   definitions.
+//! - `classify_*` and `resolve_*` query a stable state. Calls are classified function-wide, and shared
+//!   reborrows resolve a known source lifetime without modifying the tracker during the query batch.
+//! - `register_*` batch-registers the results of a completed query phase. Registration invalidates the
+//!   previous stable state; the next query recomputes it from all effects registered so far.
+//! - `prepare_*` constructs concrete plans and rendering metadata from the completed declarations and
+//!   resolved results. The `prepare_initial_*` methods are the exception: they both seed initial tracker
+//!   relationships and render the corresponding function-entry annotations.
+//! - `finalize_*` generates minimal dynamic inclusion annotations. Every dynamic ensure-action has already
+//!   been registered function-wide, so finalization can omit an annotation exactly when the inclusion is
+//!   guaranteed before that action.
+//! - `push_*` and `take_*` consume prepared annotation groups while rendering. These operations do not query
+//!   or mutate the inclusion tracker.
+//!
+//! # Planning Pipeline
+//!
+//! Annotation planning proceeds as follows:
+//!
+//! 1. Constructing [`AnnotationGenerator`] seeds function-entry relationships and preregisters
+//!    successor-specific loan deaths as edge barriers.
+//! 2. Collect every reachable ordinary assignment and preregister all of its tracker-independent effects,
+//!    including dynamic inclusion requirements.
+//! 3. Discover every reachable ordinary call and preregister its unconditional point and normal-edge effects.
+//! 4. Classify every call using one stable state, batch-register all classifications, and prepare the call
+//!    plans.
+//! 5. Resolve every assignment shared reborrow using one stable state, then batch-register all resolved
+//!    source-to-target equalities.
+//! 6. Prepare and cache every ordinary assignment plan.
+//! 7. Finalize the dynamic annotations in all cached assignment and call plans.
+//! 8. Render MIR blocks by consuming cached plans. Block traversal performs no tracker-dependent annotation
+//!    planning.
+//!
+//! The helper modules divide the lower-level work: `init` handles function-entry relationships,
+//! `rvalue` handles structural lifetime transfers through rvalues, `assignment` handles writes, loans,
+//! shared reborrows, unconstrained regions, and dynamic requirements, and `calls` discovers and
+//! classifies call-region instantiations.
+//!
+//! # Annotation Sites
+//!
+//! Annotations and related lifetime metadata are needed at these positions:
+//!
+//! - **Function entry:** universal-to-argument and closure-capture lifetime aliases initialize the named
+//!   lifetime map before the body executes.
+//! - **Statement and terminator entry:** [`AnnotationGroup`]s end loans that die between predecessor points
+//!   and the current statement or terminator.
+//! - **Before an ordinary assignment:** [`LocationAnnotationPlan::pre`] initializes unconstrained lifetimes,
+//!   performs structural rvalue transfers, starts loans or aliases shared reborrows, and establishes dynamic
+//!   inclusions required by a weak update.
+//! - **On an assignment expression:** [`LocationAnnotationPlan::expr`] optionally wraps the translated rvalue
+//!   with an expression-level annotation required by the update.
+//! - **After an ordinary assignment:** [`LocationAnnotationPlan::post`] performs effects such as semantic
+//!   lifetime-name copies for strong updates.
+//! - **Before a call:** [`CallAnnotationPlan::pre_call`] defines call-instantiation regions and unconstrained
+//!   call lifetimes. [`CallAnnotationPlan::pre_assign`] establishes dynamic inclusions needed to write the
+//!   call destination.
+//! - **On the normal call continuation:** [`CallAnnotationPlan::post_assign`] defines recovered early output
+//!   regions and performs the call-result assignment effects. These annotations are not emitted on unwind
+//!   paths. `assign_expr` reserves the expression-annotation position for the destination update; ordinary
+//!   calls currently require it to be empty.
+//! - **On CFG edges:** edge plans end loans only on successors where they die. This covers goto-like
+//!   continuations of calls, switches, assertions, drops, false edges, and ordinary gotos.
+//! - **Before return:** plans from [`AnnotationGenerator::prepare_return_annotation_plan`] extend the
+//!   semantic lifetimes occurring in the returned type.
+//! - **Inside borrow expressions:** [`BorrowLifetimePlan`] selects the semantic lifetime name passed to the
+//!   translated borrow expression. It is expression metadata rather than an annotation statement.
+//! - **In lifetime hints:** call plans carry late-bound lifetime instantiations and unconstrained lifetime
+//!   hints for the generated function metadata rather than emitting them as annotation groups.
+//!
+//! [`LocationAnnotationPlan`] is consumed in `pre`, `expr`, `post` order around one translated MIR
+//! assignment. [`CallAnnotationPlan`] separates annotations before the call from effects on its normal
+//! continuation. An [`AnnotationGroup`] is rendered as one annotated primitive statement, preserving
+//! the required ordering between groups.
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
 
@@ -189,7 +301,7 @@ pub(crate) struct CallRegionInputs<'a, 'tcx> {
 /// Information about the destination write performed on a call's normal return edge.
 pub(crate) struct CallAssignmentInputs<'tcx> {
     pub(crate) lhs_ty: mir::PlaceTy<'tcx>,
-    pub(crate) lhs_strongly_writeable: bool,
+    pub(crate) is_strong_update: bool,
     pub(crate) output_ty: ty::Binder<'tcx, ty::Ty<'tcx>>,
     pub(crate) normal_target: Option<facts::PointIndex>,
 }
@@ -315,7 +427,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         rvalue_operand_tys: &[ty::Ty<'tcx>],
         shared_borrow_access_region: Option<ty::Region<'tcx>>,
         lhs_ty: mir::PlaceTy<'tcx>,
-        lhs_strongly_writeable: bool,
+        is_strong_update: bool,
     ) -> Result<(), TranslationError> {
         let startpoint = self.start_point_for_target(loc);
         let midpoint = self.mid_point_for_target(loc);
@@ -345,7 +457,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             &self.inclusion_tracker,
             midpoint,
             startpoint,
-            lhs_strongly_writeable,
+            is_strong_update,
             lhs_ty,
         );
         self.inclusion_tracker.register_dynamic_inclusions(&requirements);
@@ -427,7 +539,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
                 &self.inclusion_tracker,
                 midpoint,
                 midpoint,
-                assignment.lhs_strongly_writeable,
+                assignment.is_strong_update,
                 assignment.lhs_ty,
             );
             self.inclusion_tracker.register_dynamic_inclusions(&requirements);
@@ -435,7 +547,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
 
         let mut early_region_annots = Vec::new();
         if let Some(target_start) = assignment.normal_target {
-            if assignment.lhs_strongly_writeable {
+            if assignment.is_strong_update {
                 assignment::preregister_strong_assignment_on_edge(
                     self.tcx,
                     &mut self.inclusion_tracker,
@@ -487,7 +599,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         ));
     }
 
-    pub(crate) fn resolve_assignment_static_effect(
+    pub(crate) fn resolve_assignment_shared_reborrow(
         &mut self,
         loc: mir::Location,
         rhs: &mir::Rvalue<'tcx>,
@@ -505,7 +617,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         .map(|(source, target)| (source, target, startpoint)))
     }
 
-    pub(crate) fn register_assignment_static_effects(
+    pub(crate) fn register_assignment_shared_reborrows(
         &mut self,
         effects: impl IntoIterator<Item = (Region, Region, PointIndex)>,
     ) {
@@ -577,19 +689,13 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         lhs_ty: mir::PlaceTy<'tcx>,
         rhs_ty: ty::Ty<'tcx>,
         rvalue_operand_tys: &[ty::Ty<'tcx>],
-        lhs_strongly_writeable: bool,
+        is_strong_update: bool,
         shared_reborrow: Option<(Region, Region)>,
     ) -> Result<LocationAnnotationPlan, TranslationError> {
         let startpoint = self.start_point_for_target(loc);
         let midpoint = self.mid_point_for_target(loc);
-        let mut borrow_annots = assignment::get_assignment_loan_annots(
-            &self.inclusion_tracker,
-            ty_translator,
-            loc,
-            midpoint,
-            startpoint,
-            rhs,
-        );
+        let mut borrow_annots =
+            assignment::get_assignment_loan_annots(&self.inclusion_tracker, ty_translator, loc, midpoint);
         borrow_annots.extend(assignment::get_shared_reborrow_annots(
             &self.inclusion_tracker,
             ty_translator,
@@ -606,23 +712,22 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             rvalue_operand_tys,
         )?;
 
-        let assignment_annots = assignment::get_assignment_annots(
+        let write_info = assignment::get_assignment_annots(
             self.tcx,
             &mut self.inclusion_tracker,
             ty_translator,
             startpoint,
             midpoint,
             startpoint,
-            lhs_strongly_writeable,
+            is_strong_update,
             lhs_ty,
             rhs_ty,
-            lhs_strongly_writeable,
         )?;
 
         let (unconstrained_annots, unconstrained_hints) = assignment::make_unconstrained_region_annotations(
             &mut self.inclusion_tracker,
             ty_translator,
-            assignment_annots.unconstrained_regions,
+            write_info.unconstrained_regions,
             startpoint,
             Some(rhs),
         );
@@ -634,9 +739,9 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         plan.pre.push(AnnotationGroup::new(unconstrained_annots, "assignment (unconstrained)"));
         plan.pre.push(AnnotationGroup::new(rvalue_annots, "rvalue"));
         plan.pre.push(AnnotationGroup::new(borrow_annots, "borrow"));
-        plan.required_dyn_inclusions = assignment_annots.required_dyn_inclusions;
-        plan.expr = assignment_annots.expr_annot;
-        plan.post.push(AnnotationGroup::new(assignment_annots.stmt_annot, "post-assignment"));
+        plan.required_dyn_inclusions = write_info.required_dyn_inclusions;
+        plan.expr = write_info.expr_annot;
+        plan.post.push(AnnotationGroup::new(write_info.post_write_annots, "post-assignment"));
         Ok(plan)
     }
 
@@ -688,7 +793,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         info!("Call lifetime instantiation (early): {:?}", classification.early_regions);
         info!("Call lifetime instantiation (late): {:?}", classification.late_regions);
 
-        let assignment_annots = if assignment.normal_target.is_some() {
+        let write_info = if assignment.normal_target.is_some() {
             assignment::get_assignment_annots(
                 self.tcx,
                 &mut self.inclusion_tracker,
@@ -696,15 +801,14 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
                 startpoint,
                 midpoint,
                 midpoint,
-                assignment.lhs_strongly_writeable,
+                assignment.is_strong_update,
                 assignment.lhs_ty,
                 discovery.output_ty,
-                assignment.lhs_strongly_writeable,
             )?
         } else {
-            assignment::RegionInfo::default()
+            assignment::WriteInfo::default()
         };
-        info!("assignment annots after call: {assignment_annots:?}");
+        info!("write info after call: {write_info:?}");
 
         let mut call_region_annots = Vec::new();
         for (r, class) in &classification.classification {
@@ -744,12 +848,12 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
                 AnnotationGroup::new(unconstrained_annots, "function_call (unconstrained)"),
             ],
             pre_assign: Vec::new(),
-            assign_expr: assignment_annots.expr_annot,
+            assign_expr: write_info.expr_annot,
             post_assign: vec![
                 AnnotationGroup::new(discovery.early_region_annots, "post_function_call (assign, early)"),
-                AnnotationGroup::new(assignment_annots.stmt_annot, "post_function_call (assign)"),
+                AnnotationGroup::new(write_info.post_write_annots, "post_function_call (assign)"),
             ],
-            required_dyn_inclusions: assignment_annots.required_dyn_inclusions,
+            required_dyn_inclusions: write_info.required_dyn_inclusions,
         })
     }
 
