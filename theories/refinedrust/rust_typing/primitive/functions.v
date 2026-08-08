@@ -40,11 +40,15 @@ Section function.
     fp_extype : Type;
     (* return type *)
     fp_fr: fp_extype → fn_ret;
+    (* pure condition under which the function may unwind *)
+    fp_panic : Prop;
   }.
   Definition fn_params_add_pre (pre : iProp Σ) (F : fn_params) : fn_params :=
-    FP F.(fp_atys) (λ π, pre ∗ F.(fp_Pa) π)%I F.(fp_Sc) F.(fp_elctx) F.(fp_extype) F.(fp_fr).
+    FP F.(fp_atys) (λ π, pre ∗ F.(fp_Pa) π)%I F.(fp_Sc) F.(fp_elctx) F.(fp_extype) F.(fp_fr) F.(fp_panic).
   Definition fn_params_add_elctx (E : lft → elctx) (F : fn_params) : fn_params :=
-    FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) (λ ϝ, E ϝ ++ F.(fp_elctx) ϝ) F.(fp_extype) F.(fp_fr).
+    FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) (λ ϝ, E ϝ ++ F.(fp_elctx) ϝ) F.(fp_extype) F.(fp_fr) F.(fp_panic).
+  Definition fn_params_set_panic (panic : Prop) (F : fn_params) : fn_params :=
+    FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) F.(fp_elctx) F.(fp_extype) F.(fp_fr) panic.
 
  (**
      Compute a [fn_params] definition that includes the required lifetime constraints for the
@@ -64,7 +68,8 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
       (retrt : RT)
       (retty : type retrt)
       (fr_ref : exty → retrt)
-      (fr_R : exty → thread_id → iProp Σ) :=
+      (fr_R : exty → thread_id → iProp Σ)
+      (panic : Prop) :=
     FP
       atys
       pa
@@ -75,7 +80,8 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
           ty_wf_E retty ++
           ty_outlives_E retty ϝ)
       exty
-      (λ e, mk_FR retrt retty (fr_ref e) (fr_R e)).
+      (λ e, mk_FR retrt retty (fr_ref e) (fr_R e))
+      panic.
 
 (* TODO: move elctx into this? *)
   Record fn_spec := mk_fn_spec {
@@ -86,8 +92,6 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
     mk_fn_spec F.(fn_A) (λ x, fn_params_add_pre pre (F.(fn_p) x)).
   Definition fn_spec_add_elctx (E : lft → elctx) (F : fn_spec) : fn_spec :=
     mk_fn_spec F.(fn_A) (λ x, fn_params_add_elctx E (F.(fn_p) x)).
-
-
   (* the return continuation for type-checking the body.
     We need to be able to transform ownership of the return type given by [typed_stmt]
       to the type + ensures condition that the function really needs to return *)
@@ -493,7 +497,7 @@ Definition arg_ty_is_xrfn `{!typeGS Σ} (ty : sigT (λ rt : RT, type rt * rt)%ty
   let '(existT _ (ty, r)) := ty in
   ty_is_xrfn ty r.
 
-Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr" :=
+Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr '|' Pp" :=
   ((fun κs tys =>
     mk_fn_spec (A : Type) (fun x =>
     FP_wf
@@ -502,11 +506,11 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa ')' '→' 
     Pa%I
     (λ π, (* typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys*) True)%I
     B _
-    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I)))
+    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I) Pp))
     : spec_with n (fmap (A := RT * syn_type) fst rts) fn_spec)
-  (at level 99, Pr at level 200, tys pattern, κs pattern, x pattern, y pattern) : stdpp_scope.
+  (at level 99, Pr at level 200, Pp at level 200, tys pattern, κs pattern, x pattern, y pattern) : stdpp_scope.
 
-Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ',' xn ';' Pa ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr" :=
+Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ',' xn ';' Pa ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr '|' Pp" :=
   ((fun κs tys =>
     (mk_fn_spec (A : Type) ((fun x =>
     FP_wf
@@ -515,11 +519,11 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ','
     Pa%I
     (λ π, (* typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys *) True)%I
     B _
-    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I)) : A → fn_params)))
+    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I) Pp) : A → fn_params)))
     : spec_with n (fmap (A := RT * syn_type) fst rts) fn_spec)
-  (at level 99, Pr at level 200, κs pattern, tys pattern, x pattern, y pattern) : stdpp_scope.
+  (at level 99, Pr at level 200, Pp at level 200, κs pattern, tys pattern, x pattern, y pattern) : stdpp_scope.
 (** With a late precondition Pb *)
-Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa '|' Pb ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr" :=
+Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa '|' Pb ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr '|' Pp" :=
   ((fun κs tys =>
     mk_fn_spec (A : Type) ((fun x =>
     FP_wf
@@ -528,10 +532,10 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa '|' Pb ')'
     Pa%I
     (λ π, (*typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys ∗ *) Pb%I π)%I
     B _
-    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I)) : A → fn_params))
+    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I) Pp) : A → fn_params))
     : spec_with n (fmap (A := RT * syn_type) fst rts) fn_spec)
-  (at level 99, Pr at level 200, tys pattern, κs pattern, x pattern, y pattern) : stdpp_scope.
-Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ',' xn ';' Pa '|' Pb ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr" :=
+  (at level 99, Pr at level 200, Pp at level 200, tys pattern, κs pattern, x pattern, y pattern) : stdpp_scope.
+Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ',' xn ';' Pa '|' Pb ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr '|' Pp" :=
   ((fun κs tys =>
     mk_fn_spec (A : Type) ((fun x =>
     FP_wf
@@ -540,9 +544,9 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ','
     Pa%I
     (λ π, (* typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys ∗ *) Pb%I π)%I
     B _
-    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I)) : A → fn_params))
+    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I) Pp) : A → fn_params))
     : spec_with n (fmap (A := RT * syn_type) fst rts) fn_spec)
-  (at level 99, Pr at level 200, κs pattern, tys pattern, x pattern, y pattern) : stdpp_scope.
+  (at level 99, Pr at level 200, Pp at level 200, κs pattern, tys pattern, x pattern, y pattern) : stdpp_scope.
 
 (** Add a new type parameter *)
 (*
@@ -585,7 +589,7 @@ Global Instance fn_spec_scope_bindable `{!typeGS Σ} :
 
 (** Add a new late precondition to a fn specification *)
 Definition fn_params_add_late_pre `{!typeGS Σ} (S : fn_params) (pre : thread_id → iProp Σ) : fn_params :=
-  FP S.(fp_atys) S.(fp_Pa) (λ π, S.(fp_Sc) π ∗ pre π)%I S.(fp_elctx) S.(fp_extype) S.(fp_fr).
+  FP S.(fp_atys) S.(fp_Pa) (λ π, S.(fp_Sc) π ∗ pre π)%I S.(fp_elctx) S.(fp_extype) S.(fp_fr) S.(fp_panic).
 Definition fn_spec_add_late_pre `{!typeGS Σ} (S : fn_spec) (pre : thread_id → iProp Σ) : fn_spec :=
   mk_fn_spec S.(fn_A) (λ a, fn_params_add_late_pre (S.(fn_p) a) pre).
 
@@ -646,6 +650,7 @@ Section function_subsume.
         iterate: zip ls (fp_atys ((F1 κs tys).(fn_p) a)) {{ e T, exhale (e.1 ◁ₗ[π, Owned] #(projT2 e.2).2 @ ◁ (projT2 e.2).1); return T }};
         exhale (fp_Pa ((F1 κs tys).(fn_p) a) π);
         exhale (fp_Sc ((F1 κs tys).(fn_p) a) π);
+        exhale ⌜fp_panic ((F1 κs tys).(fn_p) a) → fp_panic ((F2 κs tys).(fn_p) b)⌝;
         (* show that F1.ret implies F2.ret *)
         ∀ (vr : val) a2,
         inhale (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_R) π;
@@ -726,7 +731,7 @@ Section function_subsume.
       { rewrite decide_False; first done. lia. }
     }
     subst INV. simpl.
-    iDestruct "Hb" as "(Hargs & Hpre & Hsc & HT)".
+    iDestruct "Hb" as "(Hargs & Hpre & Hsc & %Hpanic & HT)".
 
     assert ((fn_arg_syntys (fp_atys (fn_p (F1 κs tys) a))) = (fn_arg_syntys (fp_atys (fn_p (F2 κs tys) b)))) as Heq_st.
     { apply Forall2_eq. apply Forall2_fmap_2. eapply Forall2_impl; first apply Hsts.
@@ -793,6 +798,7 @@ Section function_subsume.
       F1.(fp_atys) = F2.(fp_atys) ∧
       F1.(fp_Pa) = F2.(fp_Pa) ∧
       F1.(fp_Sc) = F2.(fp_Sc) ∧
+      F1.(fp_panic) = F2.(fp_panic) ∧
       ∃ (Heq2 : F1.(fp_extype) = F2.(fp_extype)),
       ∀ (r : F1.(fp_extype)),
       F1.(fp_fr) r = F2.(fp_fr) (rew [id] Heq2 in r)
@@ -814,7 +820,7 @@ Section function_subsume.
     iIntros (? lsa) "Hinit".
 
     destruct (Heq tys κs) as (Heq1 & Heq').
-    destruct (Heq' p) as (Heq2 & Heq3  & Heq4 & Heq5 & Heq6).
+    destruct (Heq' p) as (Heq2 & Heq3 & Heq4 & Heq5 & Heq6 & Heq7).
     iDestruct ("Hf" $! κs tys (rew [id] Heq1 in p) ϝ f) as "#Hf'".
     iClear "Hf".
     iSpecialize ("Hf'" with "[]").
@@ -842,7 +848,7 @@ Section function_subsume.
       by iApply ("HT" with "[] CTX HE2 HL HP"). }
     iModIntro. iApply (logical_step_wand with "Hstep").
     iIntros "(? & (%x & ? & ? & _) & ?)".
-    rewrite Heq6.
+    rewrite Heq7.
     iFrame.
   Qed.
   (* NOTE: Don't use the instance generation, as it will instantiate the equalities with [eq_refl]. *)

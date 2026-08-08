@@ -169,7 +169,7 @@ Proof.
 Qed.
 
 Definition main_type `{!typeGS Σ} (P : iProp Σ) :=
-  fn(∀ ( *[]) : 0 | ( *[]) : [] | () : (), λ ϝ, []; λ π, P) → ∃ () : (), () @ unit_t; λ π, True.
+  fn(∀ ( *[]) : 0 | ( *[]) : [] | () : (), λ ϝ, []; λ π, P) → ∃ () : (), () @ unit_t; λ π, True | False.
 
 Definition initial_prog_wp `{!refinedcG Σ} (main : thread_id * loc)
     (Φ : radium.val.val → iProp Σ) : iProp Σ :=

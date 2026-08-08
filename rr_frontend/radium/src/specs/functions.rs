@@ -360,7 +360,8 @@ impl<'def> LiteralSpec<'def> {
             "(* existential.. *) ∃ {} : {}, {} @ {};\n",
             existential.0, existential.1, self.ret.1, self.ret.0
         )?;
-        write!(f2, "(* postcondition *) (λ π : thread_id, {})", self.post)?;
+        write!(f2, "(* postcondition *) (λ π : thread_id, {}) |\n", self.post)?;
+        write!(f2, "(* panic post... *) False")?;
 
         Ok(())
     }

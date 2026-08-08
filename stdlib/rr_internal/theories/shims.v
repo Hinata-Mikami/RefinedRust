@@ -63,7 +63,8 @@ Definition type_of_alloc_realloc `{RRGS : !refinedrustGS Σ} :=
   ∃ (ptr_new, v') : (loc * val), ptr_new @ alias_ptr_t; λ π,
     freeable_nz ptr_new (Z.to_nat new_size) 1 HeapAlloc ∗
     ptr_new ◁ₗ[π, Owned] #(v ++ v' : val) @ (◁ value_t false (LiteralSynType (Layout (Z.to_nat new_size) (Z.to_nat align_log2)))) ∗
-    ⌜v' `has_layout_val` (Layout (Z.to_nat (new_size - old_size)) (Z.to_nat align_log2))⌝
+    ⌜v' `has_layout_val` (Layout (Z.to_nat (new_size - old_size)) (Z.to_nat align_log2))⌝ |
+  False
 .
 #[global] Typeclasses Opaque Z.divide.
 Lemma alloc_realloc_typed `{RRGS : !refinedrustGS Σ} π (alloc_alloc_loc copy_nonoverlapping_loc alloc_dealloc_loc : loc) :
@@ -168,7 +169,7 @@ Definition type_of_alloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : s
     ⌜(size_of_st T_st > 0)%Z⌝) →
   ∃ l : loc, l @ alias_ptr_t; λ π,
       l ◁ₗ[π, Owned ] .@ (◁ (uninit (ArraySynType T_st (Z.to_nat size)))) ∗
-      freeable_nz l ((size_of_array_in_bytes T_st (Z.to_nat size))) 1 HeapAlloc.
+      freeable_nz l ((size_of_array_in_bytes T_st (Z.to_nat size))) 1 HeapAlloc | False.
 
 Lemma alloc_array_layout_wf T_st_ly size :
   layout_wf T_st_ly →
@@ -262,7 +263,7 @@ Definition type_of_realloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st :
   ∃ (l', v') : (loc * val), l' @ alias_ptr_t; λ π,
     l' ◁ₗ[π, Owned ] #(v ++ v' : val) @ (◁ (value_t false (ArraySynType T_st (Z.to_nat new_size)))) ∗
     v' ◁ᵥ{π, MetaNone} .@ uninit (ArraySynType T_st (Z.to_nat (new_size - old_size))) ∗
-      freeable_nz l' ((size_of_array_in_bytes T_st (Z.to_nat new_size))) 1 HeapAlloc.
+      freeable_nz l' ((size_of_array_in_bytes T_st (Z.to_nat new_size))) 1 HeapAlloc | False.
 
 Lemma realloc_array_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) (mem_align_log_of_T_loc mem_size_of_T_loc alloc_realloc_loc : loc) :
   syn_type_is_layoutable T_st →
@@ -355,7 +356,7 @@ Definition type_of_dealloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st :
     ⌜(size > 0)%Z⌝ ∗
     ⌜Z.of_nat (size_of_array_in_bytes T_st (Z.to_nat size)) ∈ ISize⌝ ∗
     ⌜(size_of_st T_st > 0)%Z⌝) →
-  ∃ () : unit, () @ unit_t; λ π, True.
+  ∃ () : unit, () @ unit_t; λ π, True | False.
 
 
 Lemma dealloc_array_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) (mem_align_log_of_T_loc mem_size_of_T_loc alloc_dealloc_loc : loc) :
@@ -428,7 +429,7 @@ Definition trait_incl_of_check_array_layoutable `{RRGS : !refinedrustGS Σ} (T_r
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (True).
 Definition type_of_check_array_layoutable `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (size) : (Z), (λ ϝ, []); size :@: int USize; λ π, True) →
-  ∃ () : unit, (bool_decide (size_of_array_in_bytes T_st (Z.to_nat size) ≤ MaxInt ISize)%Z) @ bool_t; λ π, True.
+  ∃ () : unit, (bool_decide (size_of_array_in_bytes T_st (Z.to_nat size) ≤ MaxInt ISize)%Z) @ bool_t; λ π, True | False.
 
 Lemma check_array_layoutable_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) (mem_align_log_of_T_loc mem_size_of_T_loc : loc) :
   syn_type_is_layoutable T_st →
