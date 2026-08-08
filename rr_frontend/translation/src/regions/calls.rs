@@ -33,6 +33,7 @@ pub(crate) struct CallRegions {
     pub early_regions: Vec<Region>,
     pub late_regions: Vec<Region>,
     pub classification: BTreeMap<Region, CallRegionKind>,
+    pub new_regions: BTreeSet<Region>,
 }
 
 #[derive(Default)]
@@ -69,6 +70,25 @@ fn late_region_allocation_order<'tcx>(tcx: ty::TyCtxt<'tcx>, sig: ty::PolyFnSig<
 
 fn is_contiguous(regions: &[Region]) -> bool {
     regions.windows(2).all(|pair| pair[0].as_u32() + 1 == pair[1].as_u32())
+}
+
+fn map_allocated_regions_to_binders(
+    binder_order: &[usize],
+    allocation_order: &[usize],
+    regions: &[Region],
+) -> Option<(Vec<Region>, BTreeMap<usize, Region>)> {
+    if allocation_order.len() != regions.len() || binder_order.len() != regions.len() {
+        return None;
+    }
+
+    let allocated: BTreeMap<_, _> = allocation_order.iter().copied().zip(regions.iter().copied()).collect();
+    let by_bound_var: BTreeMap<_, _> = binder_order
+        .iter()
+        .copied()
+        .map(|bound_var| allocated.get(&bound_var).copied().map(|region| (bound_var, region)))
+        .collect::<Option<_>>()?;
+    let ordered = binder_order.iter().map(|bound_var| by_bound_var[bound_var]).collect();
+    Some((ordered, by_bound_var))
 }
 
 /// Compute instantiations for the lifetime parameters of a function.
@@ -167,19 +187,19 @@ pub(crate) fn discover_call_regions<'tcx>(
             && is_contiguous(regions)
     });
     let (late_regions, late_regions_by_bound_var) = if let Some(regions) = strict_regions {
-        let allocated: BTreeMap<_, _> =
-            allocation_order.iter().copied().zip(regions.iter().copied()).collect();
-        let by_bound_var: BTreeMap<_, _> =
-            binder_order.iter().copied().map(|bound_var| (bound_var, allocated[&bound_var])).collect();
-        let ordered = binder_order.iter().map(|bound_var| by_bound_var[bound_var]).collect();
+        let (ordered, by_bound_var) =
+            map_allocated_regions_to_binders(&binder_order, &allocation_order, regions)
+                .expect("strict call-region reconstruction has matching binder and allocation counts");
         info!(
             "reconstructed call late regions from rustc allocation order: {allocation_order:?} -> {ordered:?}"
         );
         (ordered, by_bound_var)
     } else {
         let mut late_regions = candidates;
-        // Preserve the old best-effort behavior: extra variables equal to an early-bound region
-        // are commonly normalization variables rather than call-bound variables.
+        // Elided lifetimes in trait impl arguments can appear as extra late-bound regions on the
+        // impl method even though they behave like early-bound regions. Preserve the best-effort
+        // workaround of removing such regions when they equal an early-bound region.
+        // See https://gitlab.mpi-sws.org/lgaeher/refinedrust-dev/-/work_items/25.
         if late_regions.len() > num_source_late_bounds {
             late_regions.retain(|x| {
                 !early_regions.iter().any(|y| {
@@ -188,7 +208,14 @@ pub(crate) fn discover_call_regions<'tcx>(
             });
         }
         late_regions.truncate(num_source_late_bounds);
-        let by_bound_var = binder_order.iter().copied().zip(late_regions.iter().copied()).collect();
+        let (late_regions, by_bound_var) =
+            map_allocated_regions_to_binders(&binder_order, &allocation_order, &late_regions).unwrap_or_else(
+                || {
+                    let by_bound_var =
+                        binder_order.iter().copied().zip(late_regions.iter().copied()).collect();
+                    (late_regions, by_bound_var)
+                },
+            );
         warn!(
             "falling back to heuristic call-region instantiation: expected={num_expected_late_bounds}, \
              binders={binder_order:?}, allocation_order={allocation_order:?}, candidates={late_regions:?}"
@@ -215,9 +242,9 @@ pub(crate) fn classify_call_regions(
     let CallRegionDiscovery {
         early_regions,
         late_regions,
-        late_regions_by_bound_var: _,
         new_regions,
         relevant_constraints,
+        ..
     } = discovery;
     let mut new_regions_sorted: Vec<_> = new_regions.iter().copied().collect();
     new_regions_sorted.sort();
@@ -287,5 +314,63 @@ pub(crate) fn classify_call_regions(
         early_regions,
         late_regions,
         classification: new_regions_classification,
+        new_regions,
+    }
+}
+
+impl CallRegions {
+    fn has_definition(&self, region: Region, visiting: &mut BTreeSet<Region>) -> bool {
+        if !self.new_regions.contains(&region) {
+            return true;
+        }
+        if !visiting.insert(region) {
+            return false;
+        }
+
+        let defined = match self.classification.get(&region) {
+            Some(CallRegionKind::EqR(source)) => self.has_definition(*source, visiting),
+            Some(CallRegionKind::Intersection(sources)) => {
+                !sources.is_empty() && sources.iter().all(|source| self.has_definition(*source, visiting))
+            },
+            None => false,
+        };
+        visiting.remove(&region);
+        defined
+    }
+
+    pub(crate) fn undefined_late_regions(&self) -> Vec<Region> {
+        self.late_regions
+            .iter()
+            .copied()
+            .filter(|region| !self.has_definition(*region, &mut BTreeSet::new()))
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maps_allocation_order_to_binder_order() {
+        let allocated = [Region::from_usize(30), Region::from_usize(31)];
+        let (ordered, by_bound_var) = map_allocated_regions_to_binders(&[0, 1], &[1, 0], &allocated).unwrap();
+
+        assert_eq!(ordered, [Region::from_usize(31), Region::from_usize(30)]);
+        assert_eq!(by_bound_var[&0], Region::from_usize(31));
+        assert_eq!(by_bound_var[&1], Region::from_usize(30));
+    }
+
+    #[test]
+    fn detects_undefined_late_region() {
+        let late = Region::from_usize(1);
+        let regions = CallRegions {
+            early_regions: Vec::new(),
+            late_regions: vec![late],
+            classification: BTreeMap::new(),
+            new_regions: BTreeSet::from([late]),
+        };
+
+        assert_eq!(regions.undefined_late_regions(), [late]);
     }
 }

@@ -47,5 +47,6 @@ pub(crate) struct ProcedureInst<'tcx, 'def> {
     pub type_hint: Vec<specs::Type<'def>>,
     pub lft_hint: Vec<specs::Lft>,
     pub num_of_latebounds: usize,
+    pub expected_num_lft_hints: Option<usize>,
     pub mapped_early_regions: BTreeMap<specs::Lft, usize>,
 }

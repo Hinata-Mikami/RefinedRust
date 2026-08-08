@@ -784,6 +784,15 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         let midpoint = self.mid_point_for_target(loc);
 
         let classification = discovery.classification.take().expect("call effects not classified");
+        let undefined_late_regions = classification.undefined_late_regions();
+        if !undefined_late_regions.is_empty() {
+            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                format!(
+                    "call at {loc:?} uses late-bound regions without a semantic lifetime definition: \
+                     {undefined_late_regions:?}"
+                ),
+            ))));
+        }
 
         let (unconstrained_annots, unconstrained_lft_hints) =
             assignment::make_unconstrained_region_annotations(

@@ -140,6 +140,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             trait_specs,
             true,
         )?;
+        let expected_num_lft_hints = quantified_args.scope.get_lfts().len();
 
         let loc_key = key.clone();
         let tup = TranslationKey::Function(OrderedDefId::new(tcx, callee_did), key);
@@ -191,6 +192,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             type_hint: quantified_args.callee_ty_param_inst,
             lft_hint: quantified_args.callee_lft_param_inst,
             num_of_latebounds: quantified_args.num_of_latebounds,
+            expected_num_lft_hints: Some(expected_num_lft_hints),
             mapped_early_regions: BTreeMap::new(),
         };
         Ok((code::Expr::MetaParam(res), Some(ExprInfo::Call(inst))))
@@ -229,6 +231,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // we add spec_scope and spec_inst as the first lifetimes to quantify in the new scope
         let mut function_spec_scope: specs::GenericScope<'_, _> = spec_scope.into();
         function_spec_scope.append(&quantified_args.scope);
+        let expected_num_lft_hints = function_spec_scope.get_lfts().len();
 
         let ty_param_hint = quantified_args.callee_ty_param_inst;
         let mut lft_param_hint = spec_inst.lft_insts;
@@ -280,6 +283,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             type_hint: ty_param_hint,
             lft_hint: lft_param_hint,
             num_of_latebounds: quantified_args.num_of_latebounds,
+            expected_num_lft_hints: Some(expected_num_lft_hints),
             mapped_early_regions,
         };
         Ok((code::Expr::MetaParam(res), Some(ExprInfo::Call(inst))))
@@ -411,6 +415,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let quantified_scope =
             self.create_closure_impl_abstraction(info, closure_did, closure_args, closure_kind, ty_params);
+        let expected_num_lft_hints = quantified_scope.scope.get_lfts().len();
 
         let loc_key = key.clone();
         let tup = TranslationKey::Function(OrderedDefId::new(self.tcx, call_fn_did), key);
@@ -468,6 +473,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             type_hint: quantified_scope.callee_ty_param_inst,
             lft_hint: quantified_scope.callee_lft_param_inst,
             num_of_latebounds: quantified_scope.num_of_latebounds,
+            expected_num_lft_hints: Some(expected_num_lft_hints),
             mapped_early_regions: BTreeMap::new(),
         };
         Ok((code::Expr::MetaParam(res), Some(ExprInfo::Call(inst))))
@@ -809,6 +815,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let lhs_shape_ty = self.shape_type_of_place(destination);
         call_info.lft_hint.append(&mut annotation_plan.late_lft_hints);
+        if let Some(expected) = call_info.expected_num_lft_hints
+            && call_info.lft_hint.len() != expected
+        {
+            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
+                format!(
+                    "function call at {loc:?} has {} lifetime hints, but its specialized specification expects {expected}",
+                    call_info.lft_hint.len()
+                ),
+            ))));
+        }
         for hint in annotation_plan.unconstrained_lft_hints.drain(..) {
             self.translated_fn.add_unconstrained_lft_hint(hint);
         }

@@ -695,6 +695,10 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
         r2: Region,
         point: PointIndex,
     ) -> bool {
+        // Inclusion is reflexive, but tracker states do not materialize reflexive edges.
+        if r1 == r2 {
+            return true;
+        }
         if self.full_states.is_none() {
             self.recompute();
         }

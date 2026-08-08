@@ -208,6 +208,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             type_hint: quantified_args.callee_ty_param_inst,
             lft_hint: quantified_args.callee_lft_param_inst,
             num_of_latebounds: quantified_args.num_of_latebounds,
+            expected_num_lft_hints: None,
             mapped_early_regions: BTreeMap::new(),
         };
         trace!("leave register_use_drop_call_procedure");

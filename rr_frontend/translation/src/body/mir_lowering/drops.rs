@@ -154,6 +154,7 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
             type_hint: quantified_args.callee_ty_param_inst,
             lft_hint: quantified_args.callee_lft_param_inst,
             num_of_latebounds: quantified_args.num_of_latebounds,
+            expected_num_lft_hints: None,
             mapped_early_regions: BTreeMap::new(),
         };
 
@@ -197,6 +198,7 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
             type_hint: Vec::new(),
             lft_hint: Vec::new(),
             num_of_latebounds: 0,
+            expected_num_lft_hints: None,
             mapped_early_regions: BTreeMap::new(),
         };
 
