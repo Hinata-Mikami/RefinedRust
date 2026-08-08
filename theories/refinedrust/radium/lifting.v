@@ -360,8 +360,10 @@ Definition runtime_result_stmt (r : runtime_result) : stmt :=
 Definition stmt_wp_def `{!refinedcG Σ} (E : coPset) (π : thread_id) (Q : gmap label stmt)
     (Ψ : val → iProp Σ) (Ψunwind : iProp Σ) (s : stmt) : iProp Σ :=
   (∀ Φ Φunwind rf, ⌜Q = rf.(f_code)⌝ -∗
-    (∀ r, runtime_post Ψ Ψunwind r -∗
-      WP to_rtstmt π rf (runtime_result_stmt r) {{ runtime_post Φ Φunwind }}) -∗
+    ((∀ v, Ψ v -∗
+      WP to_rtstmt π rf (Return v) {{ runtime_post Φ Φunwind }}) ∧
+    (Ψunwind -∗
+      WP to_rtstmt π rf Unwind {{ runtime_post Φ Φunwind }})) -∗
     WP to_rtstmt π rf s @ E {{ runtime_post Φ Φunwind }}).
 Definition stmt_wp_aux `{!refinedcG Σ} (E : coPset) (π : thread_id) (Q : gmap label stmt)
     (Ψ : val → iProp Σ) (Ψunwind : iProp Σ) : seal (@stmt_wp_def Σ _ E π Q Ψ Ψunwind).
@@ -399,14 +401,18 @@ Proof.
   iSplit.
   - iIntros "Hs" (Φ Φunwind rf HQ) "Hresult".
     iApply ("Hs" $! Φ Φunwind rf with "[] [Hresult]"); first done.
-    iIntros ([v|]) "Hr" => /=.
-    + iApply ("Hresult" $! (NormalResult v)) => /=. iApply (Ha v). done.
-    + iApply ("Hresult" $! UnwindResult) => /=. iApply Hu. done.
+    iSplit.
+    + iIntros (v) "Hr". iDestruct "Hresult" as "[Hnormal _]".
+      iApply ("Hnormal" $! v). iApply (Ha v). done.
+    + iIntros "Hr". iDestruct "Hresult" as "[_ Hunwind]".
+      iApply "Hunwind". iApply Hu. done.
   - iIntros "Hs" (Φ Φunwind rf HQ) "Hresult".
     iApply ("Hs" $! Φ Φunwind rf with "[] [Hresult]"); first done.
-    iIntros ([v|]) "Hr" => /=.
-    + iApply ("Hresult" $! (NormalResult v)) => /=. iApply (Ha v). done.
-    + iApply ("Hresult" $! UnwindResult) => /=. iApply Hu. done.
+    iSplit.
+    + iIntros (v) "Hr". iDestruct "Hresult" as "[Hnormal _]".
+      iApply ("Hnormal" $! v). iApply (Ha v). done.
+    + iIntros "Hr". iDestruct "Hresult" as "[_ Hunwind]".
+      iApply "Hunwind". iApply Hu. done.
 Qed.
 
 Lemma stmt_wp_unfold s E π Q Ψ Ψunwind :
@@ -427,10 +433,12 @@ Lemma wps_fupd s E π Q Ψ Ψunwind :
 Proof.
   rewrite !stmt_wp_unfold. iIntros "Hs" (? ? rf HQ) "Hresult".
   iApply ("Hs" $! Φ Φunwind rf with "[] [Hresult]"); first done.
-  iIntros ([v|]) "Hr" => /=.
-  - iApply fupd_wp. iMod (fupd_mask_mono with "Hr") as "Hr"; first done.
-    iModIntro. by iApply ("Hresult" $! (NormalResult v) with "Hr").
-  - by iApply ("Hresult" $! UnwindResult with "Hr").
+  iSplit.
+  - iIntros (v) "Hr". iDestruct "Hresult" as "[Hnormal _]".
+    iApply fupd_wp. iMod (fupd_mask_mono with "Hr") as "Hr"; first done.
+    iModIntro. by iApply ("Hnormal" $! v with "Hr").
+  - iIntros "Hr". iDestruct "Hresult" as "[_ Hunwind]".
+    by iApply ("Hunwind" with "Hr").
 Qed.
 
 Lemma wps_fupd_unwind s E π Q Ψ Ψunwind :
@@ -439,10 +447,12 @@ Lemma wps_fupd_unwind s E π Q Ψ Ψunwind :
 Proof.
   rewrite !stmt_wp_unfold. iIntros "Hs" (? ? rf HQ) "Hresult".
   iApply ("Hs" $! Φ Φunwind rf with "[] [Hresult]"); first done.
-  iIntros ([v|]) "Hr" => /=.
-  - by iApply ("Hresult" $! (NormalResult v) with "Hr").
-  - iApply fupd_wp. iMod (fupd_mask_mono with "Hr") as "Hr"; first done.
-    iModIntro. by iApply ("Hresult" $! UnwindResult with "Hr").
+  iSplit.
+  - iIntros (v) "Hr". iDestruct "Hresult" as "[Hnormal _]".
+    by iApply ("Hnormal" $! v with "Hr").
+  - iIntros "Hr". iDestruct "Hresult" as "[_ Hunwind]".
+    iApply fupd_wp. iMod (fupd_mask_mono with "Hr") as "Hr"; first done.
+    iModIntro. by iApply ("Hunwind" with "Hr").
 Qed.
 
 Global Instance elim_modal_bupd_wps π p s Q Ψ Ψunwind P E :
@@ -462,9 +472,11 @@ Lemma wps_wand s E π Q Φ Φunwind Ψ Ψunwind:
 Proof.
   rewrite !stmt_wp_unfold. iIntros "HΦ Hn Hu" (????) "Hresult".
   iApply ("HΦ" $! Φ0 Φunwind0 rf with "[] [Hresult Hn Hu]"); first done.
-  iIntros ([v|]) "Hr" => /=.
-  - iApply ("Hresult" $! (NormalResult v)). by iApply "Hn".
-  - iApply ("Hresult" $! UnwindResult). by iApply "Hu".
+  iSplit.
+  - iIntros (v) "Hr". iDestruct "Hresult" as "[Hnormal _]".
+    iApply ("Hnormal" $! v). by iApply "Hn".
+  - iIntros "Hr". iDestruct "Hresult" as "[_ Hunwind]".
+    iApply "Hunwind". by iApply "Hu".
 Qed.
 End stmt_wp.
 
@@ -1978,8 +1990,10 @@ Lemma wp_call_frame_exit π i (sta : list syn_type) fn caller Q
     destination normal unwind Φ Φunwind r :
   Forall2 syn_type_has_layout sta fn.(f_args).*2 →
   ⌜Q = caller.(f_code)⌝ -∗
-  (∀ r, runtime_post Ψ Ψunwind r -∗
-    WP to_rtstmt π caller (runtime_result_stmt r) {{ runtime_post Φ Φunwind }}) -∗
+  ((∀ v, Ψ v -∗
+    WP to_rtstmt π caller (Return v) {{ runtime_post Φ Φunwind }}) ∧
+  (Ψunwind -∗
+    WP to_rtstmt π caller Unwind {{ runtime_post Φ Φunwind }})) -∗
   (∃ locals,
     current_frame π (S i) ∗
     allocated_locals (π, S i) locals ∗
@@ -2125,14 +2139,22 @@ Lemma wps_call π i (sta : list syn_type) vf vl f fn Q Ψ Ψunwind destination n
     ∃ Ψ' Ψunwind',
       WPs{π} Goto fn.(f_init) {{ fn.(f_code), Ψ' | Ψunwind' }} ∗
       (* using either outcome, recover the local variables *)
-      (∀ r, runtime_post Ψ' Ψunwind' r -∗
+      ((∀ v, Ψ' v -∗
         ∃ locals,
         current_frame π (S i) ∗
         allocated_locals (π, S i) locals ∗
         ([∗ list] x ∈ locals,
           ∃ ly l st, ⌜syn_type_has_layout st ly⌝ ∗ x is_live{(π, S i), st} l ∗ l ↦|ly|) ∗
         (|={⊤}⧗=> current_frame π i -∗
-          WPs{π} call_exit_cont destination normal unwind r {{ Q, Ψ | Ψunwind }}))
+          WPs{π} call_return destination v normal {{ Q, Ψ | Ψunwind }})) ∧
+      (Ψunwind' -∗
+        ∃ locals,
+        current_frame π (S i) ∗
+        allocated_locals (π, S i) locals ∗
+        ([∗ list] x ∈ locals,
+          ∃ ly l st, ⌜syn_type_has_layout st ly⌝ ∗ x is_live{(π, S i), st} l ∗ l ↦|ly|) ∗
+        (|={⊤}⧗=> current_frame π i -∗
+          WPs{π} unwind {{ Q, Ψ | Ψunwind }})))
     ) -∗
     WPs{π} (Call (Val vf) (Val <$> vl) destination normal unwind) {{ Q, Ψ | Ψunwind }}.
 Proof.
@@ -2199,11 +2221,13 @@ Proof.
       (λ v, (WP CallFrame π caller destination normal unwind (RTVal v) {{ runtime_post Φ Φunwind }})%I)
       (WP CallFrame π caller destination normal unwind RTUnwind {{ runtime_post Φ Φunwind }})%I
       fn with "[//]").
-    iIntros ([v|]) "Hr" => /=.
-    + iDestruct ("Hrecover" $! (NormalResult v) with "Hr") as "Hcleanup".
+    iSplit.
+    + iIntros (v) "Hr". iDestruct "Hrecover" as "[Hnormal _]".
+      iDestruct ("Hnormal" $! v with "Hr") as "Hcleanup".
       iApply (wp_call_frame_exit π i sta fn caller caller.(f_code) Ψ Ψunwind destination normal
         unwind Φ Φunwind (NormalResult v) Hsta with "[//] Hresult Hcleanup").
-    + iDestruct ("Hrecover" $! UnwindResult with "Hr") as "Hcleanup".
+    + iIntros "Hr". iDestruct "Hrecover" as "[_ Hunwind]".
+      iDestruct ("Hunwind" with "Hr") as "Hcleanup".
       iApply (wp_call_frame_exit π i sta fn caller caller.(f_code) Ψ Ψunwind destination normal
         unwind Φ Φunwind UnwindResult Hsta with "[//] Hresult Hcleanup").
   - iIntros ([v|]) "Hframe" => /=; by iApply "Hframe".
@@ -2218,14 +2242,16 @@ Lemma wps_return π Q Ψ Ψunwind v:
   Ψ v -∗ WPs{π} (Return (Val v)) {{ Q , Ψ | Ψunwind }}.
 Proof.
   rewrite stmt_wp_unfold. iIntros "Hb" (?? rf ?) "Hresult".
-  by iApply ("Hresult" $! (NormalResult v) with "Hb").
+  iDestruct "Hresult" as "[Hnormal _]".
+  by iApply ("Hnormal" $! v with "Hb").
 Qed.
 
 Lemma wps_unwind π Q Ψ Ψunwind:
   Ψunwind -∗ WPs{π} Unwind {{ Q , Ψ | Ψunwind }}.
 Proof.
   rewrite stmt_wp_unfold. iIntros "Hu" (?? rf ?) "Hresult".
-  by iApply ("Hresult" $! UnwindResult with "Hu").
+  iDestruct "Hresult" as "[_ Hunwind]".
+  by iApply ("Hunwind" with "Hu").
 Qed.
 
 Lemma wps_unwind_terminate π Q Ψ Ψunwind:

@@ -439,7 +439,8 @@ Section call.
       iExists _. iFrame.
       iApply (credit_store_mono with "Hstore"); lia.
     - (* handle the postcondition at return; unwinding is still ruled out *)
-      iIntros ([v'|]) => /=; last by iIntros "[]".
+      iSplit; last by iIntros "[]".
+      iIntros (v').
       iDestruct 1 as (κs' locals) "(Hϝ & Hstore & Hf & Hlocals & Hna & Hls & HPr)".
       iFrame.
       simpl.

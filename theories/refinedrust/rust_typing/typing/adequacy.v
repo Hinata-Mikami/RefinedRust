@@ -372,7 +372,8 @@ Proof.
   iEval (rewrite stmt_wp_unfold /stmt_wp_def) in "Hlive".
   iApply ("Hlive" $! (λ v, ⌜v = []⌝)%I False%I initial_caller with "[]").
   { done. }
-  iIntros ([v|]) "Hr" => /=; last done.
+  iSplit; last by iIntros "[]".
+  iIntros (v) "Hr".
   iDestruct "Hr" as "(%locals & -> & Hframe & Hlocals & Hlive)".
   iApply (wp_initial_return with "Hframe Hlocals Hlive").
 Qed.
