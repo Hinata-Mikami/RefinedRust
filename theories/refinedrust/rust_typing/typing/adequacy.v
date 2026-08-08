@@ -173,10 +173,10 @@ Definition main_type `{!typeGS Σ} (P : iProp Σ) :=
 
 Definition initial_prog_wp `{!refinedcG Σ} (main : thread_id * loc)
     (Φ : radium.val.val → iProp Σ) : iProp Σ :=
-  WP initial_prog main {{ Φ }}.
+  WP initial_prog main {{ runtime_post Φ False }}.
 
 Definition initial_return_wp `{!refinedcG Σ} π (Φ : radium.val.val → iProp Σ) : iProp Σ :=
-  WP to_rtstmt π initial_caller (Return (Val [])) {{ Φ }}.
+  WP to_rtstmt π initial_caller (Return (Val [])) {{ runtime_post Φ False }}.
 
 Lemma wp_initial_return `{!typeGS Σ} π locals :
   current_frame π 1 -∗
@@ -370,7 +370,7 @@ Proof.
     iApply "Hs". iIntros (L v locals) "_ Hframe Hlocals Hlive ->".
     iApply logical_step_intro. unfold Ψ. iExists locals. iFrame. done. }
   iEval (rewrite stmt_wp_unfold /stmt_wp_def) in "Hlive".
-  iApply ("Hlive" $! (λ v, ⌜v = []⌝)%I initial_caller with "[]").
+  iApply ("Hlive" $! (runtime_post (λ v, ⌜v = []⌝)%I False) initial_caller with "[]").
   { done. }
   iIntros (v) "(%locals & -> & Hframe & Hlocals & Hlive)".
   iApply (wp_initial_return with "Hframe Hlocals Hlive").

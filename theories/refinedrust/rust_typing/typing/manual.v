@@ -602,20 +602,24 @@ Proof.
   rewrite stmt_wp_eq. iIntros (? rf ?) "Hret".
   have [Ks' HKs']:= W.stmt_fill_correct Ks f.1 rf. rewrite HKs'.
   iApply wp_bind.
-  iApply (wp_wand _ _ _ _  with "[He HL Hf]").
-  { rewrite /typed_val_expr.
-    iApply wp_fupd.
-    iSpecialize ("He" with "CTX HE HL Hf").
-    rewrite expr_wp_unfold. iApply "He".
-    iIntros (L' v m rt ty r) "HL Hf Hv Hcont".
+  rewrite /typed_val_expr.
+  iApply wp_fupd.
+  iAssert (WPe{f.1} W.to_expr e {{ λ v,
+      |={⊤}=> WP fill Ks' (RTVal v) {{ Φ0 }} }})%I
+      with "[He HL Hf Hcont Hret]" as "He".
+  { iApply ("He" with "CTX HE HL Hf").
+    iIntros (L' v m rt ty r) "HL Hf Hv Htyped".
     rewrite /introduce_with_hooks.
-    iMod ("Hcont" with "[] CTX HE HL Hv") as "(%L2 & HL & Hcont)"; first done.
-    iApply ("Hcont" with "CTX HE HL Hf"). }
-  iIntros (v) "HWP".
-  rewrite -(HKs' (W.Val _)) /W.to_expr.
-  iSpecialize ("HWP" with "Hcont").
-  rewrite stmt_wp_eq/stmt_wp_def/=.
-  iApply "HWP"; done.
+    iMod ("Htyped" with "[] CTX HE HL Hv") as "(%L2 & HL & Htyped)"; first done.
+    iModIntro.
+    rewrite -(HKs' (W.Val _)) /W.to_expr.
+    iSpecialize ("Htyped" with "CTX HE HL Hf Hcont").
+    rewrite stmt_wp_eq/stmt_wp_def/=.
+    iApply ("Htyped" $! Φ0 rf with "[] Hret"). done. }
+  rewrite expr_wp_unfold.
+  iApply (wp_wand with "He").
+  iIntros ([v|]) "HWP" => /=; last done.
+  iApply "HWP".
 Qed.
 
 Tactic Notation "typed_stmt_bind" :=

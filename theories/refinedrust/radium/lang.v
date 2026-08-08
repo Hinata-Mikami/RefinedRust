@@ -58,6 +58,8 @@ hardware threads). *)
 Inductive stmt :=
 | Goto (b : label)
 | Return (e : expr)
+| Unwind
+| UnwindTerminate
 | IfS (ot : op_type) (e : expr) (s1 s2 : stmt)
 (* m: map from values of e to indices into bs, def: default *)
 | Switch (it : int_type) (e : expr) (m : gmap Z nat) (bs : list stmt) (def : stmt)
@@ -141,14 +143,22 @@ Definition heap_fmap (f : heap → heap) (σ : state) := {|
   st_thread := σ.(st_thread);
 |}.
 
+(* This is the result type exposed to Iris. [UnwindResult] is control flow,
+   not a Rust value, and therefore does not occur in [val] or memory. *)
+Inductive runtime_result :=
+| NormalResult (v : val)
+| UnwindResult.
+
 Inductive runtime_expr :=
 (* separate from [Expr], as we need to define [of_val] *)
 | RTVal (v : val)
+| RTUnwind
 | Expr (π : thread_id) (e : rtexpr)
 | Stmt (π : thread_id) (rf : function) (s : rtstmt)
 | CallFrame (π : thread_id) (caller : function) (destination : option (order * op_type * expr))
     (normal unwind : stmt) (body : runtime_expr)
 | AllocFailed
+| RTUnwindTerminate
 with rtexpr :=
 | RTVar (x : var_name)
 | RTUnOp (op : un_op) (ot : op_type) (e : runtime_expr)
@@ -167,6 +177,8 @@ with rtexpr :=
 with rtstmt :=
 | RTGoto (b : label)
 | RTReturn (e : runtime_expr)
+| RTUnwindStmt
+| RTUnwindTerminateStmt
 | RTIfS (ot : op_type) (e : runtime_expr) (s1 s2 : stmt)
 | RTSwitch (it : int_type) (e : runtime_expr) (m : gmap Z nat) (bs : list stmt) (def : stmt)
 | RTCall (f : runtime_expr) (args : list runtime_expr) (destination : option (order * op_type * expr))
@@ -180,12 +192,17 @@ with rtstmt :=
 | RTLocalDead (x : var_name) (s : stmt)
 .
 
-Definition to_val (e : runtime_expr) : option val :=
+Definition to_val (e : runtime_expr) : option runtime_result :=
   match e with
-  | RTVal v => Some v
+  | RTVal v => Some (NormalResult v)
+  | RTUnwind => Some UnwindResult
   | _ => None
   end.
-Definition of_val (v : val) : runtime_expr := RTVal v.
+Definition of_val (v : runtime_result) : runtime_expr :=
+  match v with
+  | NormalResult v => RTVal v
+  | UnwindResult => RTUnwind
+  end.
 
 Fixpoint to_rtexpr (π : thread_id) (e : expr) : runtime_expr :=
   match e with
@@ -209,6 +226,8 @@ Definition to_rtstmt (π : thread_id) (f : function) (s : stmt) : runtime_expr :
   Stmt π f $ match s with
   | Goto b => RTGoto b
   | Return e => RTReturn (to_rtexpr π e)
+  | Unwind => RTUnwindStmt
+  | UnwindTerminate => RTUnwindTerminateStmt
   | IfS ot e s1 s2 => RTIfS ot (to_rtexpr π e) s1 s2
   | Switch it e m bs def => RTSwitch it (to_rtexpr π e) m bs def
   | Call f args destination normal unwind =>
@@ -676,6 +695,14 @@ Inductive stmt_step : stmt → thread_id → function → state → list Empty_s
     (* Deallocate the stack. *)
     free_blocks σ.(st_heap) StackAlloc (map_to_list cf.(cf_locals)).*2 hs →
     stmt_step (Return (Val v)) π rf σ [] (RTVal v) {| st_fntbl := σ.(st_fntbl); st_heap := hs; st_thread := <[π := thread_pop_frame ts]> σ.(st_thread) |} []
+| UnwindS π rf σ hs ts cf :
+    state_get_thread σ π = Some ts →
+    thread_get_frame ts = Some cf →
+    (* Deallocate the stack just like on normal return. *)
+    free_blocks σ.(st_heap) StackAlloc (map_to_list cf.(cf_locals)).*2 hs →
+    stmt_step Unwind π rf σ [] RTUnwind {| st_fntbl := σ.(st_fntbl); st_heap := hs; st_thread := <[π := thread_pop_frame ts]> σ.(st_thread) |} []
+| UnwindTerminateS π rf σ :
+    stmt_step UnwindTerminate π rf σ [] RTUnwindTerminate σ []
 | FreeS v_size v_align (n_size n_align : nat) v l s π rf σ hs' :
     val_to_Z v_size USize = Some (Z.of_nat n_size) →
     val_to_Z v_align USize = Some (Z.of_nat n_align) →
@@ -735,9 +762,15 @@ Inductive runtime_step : runtime_expr → state → list Empty_set → runtime_e
 | CallFrameReturnStep π caller destination normal unwind v σ :
     runtime_step (CallFrame π caller destination normal unwind (RTVal v)) σ []
       (to_rtstmt π caller (call_return destination v normal)) σ []
+| CallFrameUnwindStep π caller destination normal unwind σ :
+    runtime_step (CallFrame π caller destination normal unwind RTUnwind) σ []
+      (to_rtstmt π caller unwind) σ []
 | AllocFailedStep σ :
     (* Alloc failure is nb, not ub so we go into an infinite loop*)
-    runtime_step AllocFailed σ [] AllocFailed σ [].
+    runtime_step AllocFailed σ [] AllocFailed σ []
+| UnwindTerminateStep σ :
+    (* Termination while unwinding is no behavior, represented by divergence. *)
+    runtime_step RTUnwindTerminate σ [] RTUnwindTerminate σ [].
 
 Lemma expr_step_preserves_heap_invariant π e1 e2 σ1 σ2 κs efs:
   expr_step e1 π σ1 κs e2 σ2 efs →
@@ -773,6 +806,7 @@ Proof.
         [ exact Hwf | by eapply decode_op_val_has_type ] | ];
       change (length vold = length (encode_op_val ov));
       rewrite /has_layout_val in Hold, Henc; congruence.
+  - intros. by eapply free_blocks_invariant.
   - intros. by eapply free_blocks_invariant.
   - intros. by eapply free_block_invariant.
   - intros. eapply alloc_new_block_invariant => //.
@@ -931,6 +965,10 @@ Proof.
     apply thread_states_invariant_update_thread; first done.
     apply thread_state_invariant_pop_frame.
     naive_solver.
+  - move => *.
+    apply thread_states_invariant_update_thread; first done.
+    apply thread_state_invariant_pop_frame.
+    naive_solver.
   - move => ???????????? Halloc Hlook1 Hlook2 Hlook3 -> Hinv .
     apply thread_states_invariant_update_thread; first done.
     apply thread_state_invariant_update_frame; last naive_solver.
@@ -1069,8 +1107,8 @@ Proof.
   move => He. elim: vl2 vl1 => [[]//=*|v vl2 IH [|??]?]; csimpl in *; simplify_eq; eauto.
 Qed.
 
-Lemma of_to_val (e : runtime_expr) v : to_val e = Some v → RTVal v = e.
-Proof. case: e => //. naive_solver. Qed.
+Lemma of_to_val (e : runtime_expr) (v : runtime_result) : to_val e = Some v → of_val v = e.
+Proof. case: e => //; naive_solver. Qed.
 
 Lemma val_stuck e1 σ1 κ e2 σ2 ef :
   runtime_step e1 σ1 κ e2 σ2 ef → to_val e1 = None.
@@ -1111,7 +1149,8 @@ Qed.
 
 Lemma c_lang_mixin : EctxiLanguageMixin of_val to_val lang_fill_item runtime_step.
 Proof.
-  split => //; eauto using of_to_val, val_stuck, fill_item_inj, fill_item_val, fill_item_no_val_inj, expr_ctx_step_val.
+  split; try (intros []; done);
+    eauto using of_to_val, val_stuck, fill_item_inj, fill_item_val, fill_item_no_val_inj, expr_ctx_step_val.
 Qed.
 Canonical Structure c_ectxi_lang := EctxiLanguage c_lang_mixin.
 Canonical Structure c_ectx_lang := EctxLanguageOfEctxi c_ectxi_lang.

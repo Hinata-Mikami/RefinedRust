@@ -169,9 +169,11 @@ Section physical_step.
   Qed.
 End physical_step.
 
-Global Instance into_val_val π v : IntoVal (to_rtexpr π (Val v)) v.
+Global Instance into_val_val π v : IntoVal (to_rtexpr π (Val v)) (NormalResult v).
 Proof. done. Qed.
-Global Instance into_val_val' v : IntoVal (RTVal v) v.
+Global Instance into_val_val' v : IntoVal (RTVal v) (NormalResult v).
+Proof. done. Qed.
+Global Instance into_val_unwind : IntoVal RTUnwind UnwindResult.
 Proof. done. Qed.
 
 Local Hint Extern 0 (reducible _ _) => eexists _, _, _, _; simpl : core.
@@ -329,6 +331,15 @@ Section lifting.
     move => ????? . inversion 1; simplify_eq => //.
     match goal with | H: to_rtexpr _ ?e = AllocFailed |- _ => destruct e; discriminate end.
   Qed.
+
+  Lemma wp_unwind_terminate E Φ:
+    ⊢ WP RTUnwindTerminate @ E {{ Φ }}.
+  Proof.
+    iLöb as "IH".
+    iApply wp_lift_pure_det_base_step_no_fork'; [done|by eauto using UnwindTerminateStep| | by iIntros "!> _"].
+    move => ????? . inversion 1; simplify_eq => //.
+    match goal with | H: to_rtexpr _ ?e = RTUnwindTerminate |- _ => destruct e; discriminate end.
+  Qed.
 End lifting.
 
 (** Stmt WP *)
@@ -396,8 +407,15 @@ Qed.
 End stmt_wp.
 
 (** Expr WP *)
+Definition runtime_post `{!refinedcG Σ} (Φ : val → iProp Σ) (Φunwind : iProp Σ)
+    (r : runtime_result) : iProp Σ :=
+  match r with
+  | NormalResult v => Φ v
+  | UnwindResult => Φunwind
+  end.
+
 Definition expr_wp_def `{!refinedcG Σ} (E : coPset) (π : thread_id) (Φ : val → iProp Σ) (e : expr) : iProp Σ :=
-  WP to_rtexpr π e @ E {{ Φ }}.
+  WP to_rtexpr π e @ E {{ runtime_post Φ False }}.
 Definition expr_wp_aux `{!refinedcG Σ} (E : coPset) (π : thread_id) (Ψ : val → iProp Σ) : seal (@expr_wp_def Σ _ E π Ψ). Proof. by eexists. Qed.
 Definition expr_wp `{!refinedcG Σ} (E : coPset) (π : thread_id) (Ψ : val → iProp Σ) :
   expr → iProp Σ := (expr_wp_aux E π Ψ).(unseal).
@@ -417,11 +435,11 @@ Global Instance wpe_proper E π :
 Proof.
   intros ? ? Ha ?? <-.
   rewrite !expr_wp_eq.
-  apply wp_proper. done.
+  apply wp_proper. intros []; simpl; first apply Ha; done.
 Qed.
 
 Lemma wpe_value π e v Φ  :
-  IntoVal (to_rtexpr π e) v →
+  IntoVal (to_rtexpr π e) (NormalResult v) →
   Φ v -∗ WPe{π} e {{ Φ }}.
 Proof.
   rewrite expr_wp_eq.
@@ -444,7 +462,8 @@ Lemma wpe_fupd e E π Ψ :
   WPe{π} e @ E {{ λ v, |={E}=> Ψ v }} ⊢ WPe{π} e @ E {{ Ψ }}.
 Proof.
   rewrite !expr_wp_unfold.
-  iApply wp_fupd.
+  iIntros "H". iApply wp_fupd.
+  iApply (wp_wand with "H"). iIntros ([v|]) "H" => /=; done.
 Qed.
 
 Global Instance elim_modal_bupd_wpe π p e Ψ P E :
@@ -459,7 +478,8 @@ Lemma wpe_wand e E π Φ Ψ:
   WPe{π} e @ E {{ Φ }} -∗ (∀ v, Φ v -∗ Ψ v) -∗ WPe{π} e @ E {{ Ψ }}.
 Proof.
   rewrite !expr_wp_unfold. iIntros "HΦ H".
-  by iApply (wp_wand with "HΦ").
+  iApply (wp_wand with "HΦ"). iIntros ([v|]) "HΦ" => /=; last done.
+  by iApply "H".
 Qed.
 
 Lemma wpe_logical_step (e : expr) π E1 E2 P Φ :
@@ -469,7 +489,10 @@ Lemma wpe_logical_step (e : expr) π E1 E2 P Φ :
   WPe{π} e @ E2 {{ Φ }}.
 Proof.
   rewrite !expr_wp_unfold.
-  eapply wp_logical_step.
+  intros ??; iIntros "HP HWP".
+  iApply (wp_logical_step with "HP"); [done.. |].
+  iApply (wp_wand with "HWP"). iIntros ([v|]) "HWP" => /=; last done.
+  iIntros "HP". by iApply "HWP".
 Qed.
 Lemma wpe_maybe_logical_step π e E1 E2 P b Φ :
   TCEq (to_val (to_rtexpr π e)) None →
@@ -479,7 +502,11 @@ Lemma wpe_maybe_logical_step π e E1 E2 P b Φ :
 Proof.
   rewrite !expr_wp_eq.
   iIntros (??) "Hstep".
-  iApply wp_maybe_logical_step; done.
+  iIntros "HWP".
+  iApply (wp_maybe_logical_step with "Hstep"); [done.. |].
+  iApply (wp_wand with "HWP").
+  iIntros ([v|]) "HWP" => /=; last done.
+  iIntros "HP". by iApply "HWP".
 Qed.
 
 
@@ -487,7 +514,10 @@ Global Instance frame_wpe π p e E R Φ Ψ :
   (FrameInstantiateExistDisabled → ∀ v, Frame p R (Φ v) (Ψ v)) →
   Frame p R (WPe{π} e @ E {{ Φ }}) (WPe{π} e @ E {{ Ψ }}) | 2.
 Proof.
-  rewrite !expr_wp_eq. apply _.
+  rewrite !expr_wp_eq. intros Hframe.
+  apply frame_wp. intros Hdisabled [v|]; simpl.
+  - by apply Hframe.
+  - rewrite /Frame. iIntros "(_ & H)". done.
 Qed.
 
 Global Instance is_except_0_wp π e E Φ : IsExcept0 (WPe{π} e @ E {{ Φ }}).
@@ -1465,7 +1495,11 @@ Qed.
 
 Lemma wp_offset_of_union Φ uls m π E:
   Φ (i2v 0 ISize) -∗ WPe{π} OffsetOfUnion uls m @ E {{ Φ }}.
-Proof. rewrite expr_wp_unfold. by iApply wp_value. Qed.
+Proof.
+  rewrite expr_wp_unfold. iIntros "HΦ".
+  iApply (wp_value _ _ _ _ (NormalResult (i2v 0 ISize))); first done.
+  simpl. done.
+Qed.
 
 Lemma wp_if_int Φ it v e1 e2 n π E:
   val_to_Z v it = Some n →
@@ -1561,10 +1595,10 @@ Proof.
         by rewrite /= fmap_app fmap_cons -!list_fmap_compose.
     }
     iApply wp_bind. iApply (wp_wand with "Hf").
-    iIntros (v) "Hf" => /=.
-    have -> : Expr π (RTConcat (((RTVal <$> vs ++ vl2)) ++ of_val v :: (to_rtexpr π <$> el)))
+    iIntros ([v|]) "Hf" => /=; last done.
+    have -> : Expr π (RTConcat (((RTVal <$> vs ++ vl2)) ++ RTVal v :: (to_rtexpr π <$> el)))
              = to_rtexpr π $ Concat ((Val <$> vs ++ (vl2 ++ [v])) ++ el).
-    { by rewrite /= !fmap_app /= (cons_middle (of_val v)) !app_assoc -!list_fmap_compose. }
+    { by rewrite /= !fmap_app /= (cons_middle (RTVal v)) !app_assoc -!list_fmap_compose. }
     iPoseProof (IH with "Hf") as "IH". by rewrite expr_wp_unfold.
 Qed.
 
@@ -1660,7 +1694,7 @@ Proof.
   { by iApply Heq. }
   do 3 f_equiv.
   rewrite !expr_wp_unfold.
-  apply wp_proper. intros ?. apply IH.
+  apply wp_proper. intros [v|]; simpl; last done. apply IH.
   intros ? ? ->. apply Heq. done.
 Qed.
 Lemma wp_struct_init2 `{!LayoutAlg} π E (Φ : val → iProp Σ) (sls : struct_layout_spec) (sl : struct_layout) (fs : list (string * expr)) :
@@ -1765,9 +1799,9 @@ Proof.
   simpl.
   iApply wp_concat_bind. simpl.
   iEval (rewrite expr_wp_unfold).
-  iApply wp_value.
+  iApply wp_value. simpl.
   iEval (rewrite expr_wp_unfold).
-  iApply wp_value.
+  iApply wp_value. simpl.
   iApply (wpe_wand with "HT").
   iIntros (v) "HP".
   iDestruct "HP" as ">(%payload & %Hv & HP)".
@@ -1846,13 +1880,13 @@ Proof.
     iApply wp_bind.
     rewrite expr_wp_unfold.
     iApply (wp_wand with "Hf").
-    iIntros (v) "Hf" => /=.
-    have -> : Stmt π rf (RTCall (RTVal vf) (((RTVal <$> vs ++ vl2)) ++ of_val v :: (to_rtexpr π <$> el))
+    iIntros ([v|]) "Hf" => /=; last done.
+    have -> : Stmt π rf (RTCall (RTVal vf) (((RTVal <$> vs ++ vl2)) ++ RTVal v :: (to_rtexpr π <$> el))
         destination normal unwind) =
       to_rtstmt π rf (Call vf ((Val <$> vs ++ (vl2 ++ [v])) ++ el)
         destination normal unwind).
     { rewrite /to_rtstmt /= !fmap_app /= !to_rtexpr_vals.
-      by rewrite (cons_middle (of_val v)) !app_assoc. }
+      by rewrite (cons_middle (RTVal v)) !app_assoc. }
     iPoseProof (IH with "Hf") as "IH".
     iEval (rewrite stmt_wp_unfold) in "IH".
     by iApply ("IH" $! Φ rf with "[] HΨ").
@@ -1871,7 +1905,7 @@ Proof.
       (to_rtexpr π ef) by [].
   iApply wp_bind.
   rewrite expr_wp_unfold.
-  iApply (wp_wand with "HWP"). iIntros (vf) "HWP".
+  iApply (wp_wand with "HWP"). iIntros ([vf|]) "HWP" => /=; last done.
   iPoseProof (wps_call_bind_ind [] with "HWP") as "Ha".
   iEval (rewrite stmt_wp_unfold) in "Ha".
   by iApply ("Ha" $! Φ rf with "[] HΨ").
@@ -1968,7 +2002,8 @@ Proof.
   rewrite stmt_wp_eq. iApply "HQinit" => //.
 
   (** prove Return *)
-  iIntros (v) "Hv". iDestruct ("HΨ'" with "Hv") as "(%rem_locals & Hframe & Hlocals & Hxs & Hs)".
+  iIntros (v) "Hv".
+  iDestruct ("HΨ'" with "Hv") as "(%rem_locals & Hframe & Hlocals & Hxs & Hs)".
   iApply wp_lift_stmt_step => //.
   iIntros (σ3) "((% & Hctx) & ? & Htctx)".
 

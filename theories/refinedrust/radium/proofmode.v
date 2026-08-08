@@ -16,7 +16,7 @@ Proof.
   have [Ks' HKs']:= W.stmt_fill_correct Ks π rf. rewrite HKs'.
   iApply wp_bind.
   rewrite expr_wp_unfold.
-  iApply (wp_wand with "He"). iIntros (v) "HWP".
+  iApply (wp_wand with "He"). iIntros ([v|]) "HWP" => /=; last done.
   rewrite -(HKs' (W.Val _)) /W.to_expr. by iApply "HWP".
 Qed.
 
@@ -38,7 +38,7 @@ Proof.
   have [Ks' HKs']:= W.ectx_item_correct π Ks.
   rewrite !expr_wp_unfold/expr_wp_def.
   rewrite HKs'. iApply wp_bind.
-  iApply (wp_wand with "HWP"). iIntros (v) "HWP".
+  iApply (wp_wand with "HWP"). iIntros ([v|]) "HWP" => /=; last done.
   rewrite expr_wp_unfold /expr_wp_def.
   by rewrite HKs'.
 Qed.
@@ -61,4 +61,3 @@ Tactic Notation "wpe_bind" :=
     unfold W.to_expr; simpl
   | _ => fail "wp_bind: not a 'wp'"
   end.
-
