@@ -373,12 +373,6 @@ impl Ident {
         Self(normalised)
     }
 
-    /// Add a prefix to the identifier.
-    #[must_use]
-    pub fn prepend(self, prefix: &str) -> Self {
-        Self::new(&format!("{}{}", prefix, self))
-    }
-
     /// Add a suffix to the identifier.
     #[must_use]
     pub fn append(self, suffix: &str) -> Self {
