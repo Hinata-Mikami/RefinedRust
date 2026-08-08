@@ -6,25 +6,26 @@ From radium Require Export tactics lifting.
 Set Default Proof Using "Type".
 Import uPred.
 
-Lemma tac_wps_bind `{refinedcG Σ} `{!LayoutAlg} e Ks π Q Ψ E s:
+Lemma tac_wps_bind `{refinedcG Σ} `{!LayoutAlg} e Ks π Q Ψ Ψunwind E s:
   W.find_stmt_fill s = Some (Ks, e) →
-  WPe{π} (W.to_expr e) @ E {{ λ v, WPs{π} W.to_stmt (W.stmt_fill Ks (W.Val v)) @ E {{ Q, Ψ }} }} ⊢
-  WPs{π} (W.to_stmt s) @ E {{ Q, Ψ }}.
+  WPe{π} (W.to_expr e) @ E {{ λ v, WPs{π} W.to_stmt (W.stmt_fill Ks (W.Val v)) @ E {{ Q, Ψ | Ψunwind }} }} ⊢
+  WPs{π} (W.to_stmt s) @ E {{ Q, Ψ | Ψunwind }}.
 Proof.
   move => /W.find_stmt_fill_correct ->. iIntros "He".
-  rewrite stmt_wp_eq. iIntros (? rf ->) "?".
+  rewrite stmt_wp_eq. iIntros (Φ Φunwind rf ->) "Hresult".
   have [Ks' HKs']:= W.stmt_fill_correct Ks π rf. rewrite HKs'.
   iApply wp_bind.
   rewrite expr_wp_unfold.
   iApply (wp_wand with "He"). iIntros ([v|]) "HWP" => /=; last done.
-  rewrite -(HKs' (W.Val _)) /W.to_expr. by iApply "HWP".
+  rewrite -(HKs' (W.Val _)) /W.to_expr.
+  by iApply ("HWP" $! Φ Φunwind rf with "[//] Hresult").
 Qed.
 
 Tactic Notation "wps_bind" :=
   iStartProof;
   lazymatch goal with
-  | |- envs_entails _ (stmt_wp ?E ?π ?Q ?Ψ ?s) =>
-    let s' := W.of_stmt s in change (stmt_wp E π Q Ψ s) with (stmt_wp E π Q Ψ (W.to_stmt s'));
+  | |- envs_entails _ (stmt_wp ?E ?π ?Q ?Ψ ?Ψunwind ?s) =>
+    let s' := W.of_stmt s in change (stmt_wp E π Q Ψ Ψunwind s) with (stmt_wp E π Q Ψ Ψunwind (W.to_stmt s'));
     iApply tac_wps_bind; [done |];
     unfold W.to_expr, W.to_stmt; simpl; unfold W.to_expr; simpl
   | _ => fail "wps_bind: not a 'wp'"

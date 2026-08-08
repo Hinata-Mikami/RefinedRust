@@ -43,7 +43,7 @@ Proof.
   iPoseProof (alias_ptr_own_val_to_decodes with "Hal'") as "%".
 
 
-  iApply (wps_free _ _ _ _ ptr _ _ _ (Z.to_nat size) (Z.to_nat align_log2) with "[Hptr] [Hfree]").
+  iApply (wps_free _ _ _ _ _ ptr _ _ _ (Z.to_nat size) (Z.to_nat align_log2) with "[Hptr] [Hfree]").
   { rewrite Hsize. f_equiv.
     apply val_to_Z_unsigned_nonneg in Hsize; last done. lia. }
   { rewrite Halign_log2. f_equiv.

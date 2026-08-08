@@ -599,14 +599,14 @@ Proof.
   move => /W.find_stmt_fill_correct ->. iIntros "He".
   rewrite /typed_stmt.
   iIntros (?) "#CTX #HE HL Hf Hcont".
-  rewrite stmt_wp_eq. iIntros (? rf ?) "Hret".
+  rewrite stmt_wp_eq. iIntros (Φ0 Φunwind rf ?) "Hresult".
   have [Ks' HKs']:= W.stmt_fill_correct Ks f.1 rf. rewrite HKs'.
   iApply wp_bind.
   rewrite /typed_val_expr.
   iApply wp_fupd.
   iAssert (WPe{f.1} W.to_expr e {{ λ v,
-      |={⊤}=> WP fill Ks' (RTVal v) {{ Φ0 }} }})%I
-      with "[He HL Hf Hcont Hret]" as "He".
+      |={⊤}=> WP fill Ks' (RTVal v) {{ runtime_post Φ0 Φunwind }} }})%I
+      with "[He HL Hf Hcont Hresult]" as "He".
   { iApply ("He" with "CTX HE HL Hf").
     iIntros (L' v m rt ty r) "HL Hf Hv Htyped".
     rewrite /introduce_with_hooks.
@@ -615,7 +615,7 @@ Proof.
     rewrite -(HKs' (W.Val _)) /W.to_expr.
     iSpecialize ("Htyped" with "CTX HE HL Hf Hcont").
     rewrite stmt_wp_eq/stmt_wp_def/=.
-    iApply ("Htyped" $! Φ0 rf with "[] Hret"). done. }
+    iApply ("Htyped" $! Φ0 Φunwind rf with "[] Hresult"). done. }
   rewrite expr_wp_unfold.
   iApply (wp_wand with "He").
   iIntros ([v|]) "HWP" => /=; last done.

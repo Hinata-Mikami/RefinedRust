@@ -4,8 +4,9 @@ Set Default Proof Using "Type".
 Section derived.
   Context `{refinedcG Σ} `{ALG : LayoutAlg}.
 
-  Lemma wps_annot A (a : A) n π Q Ψ s:
-    (|={⊤}⧗=>^n WPs{π} s {{ Q, Ψ }}) -∗ WPs{π} (annot{ n }: a; s)%E {{ Q , Ψ }}.
+  Lemma wps_annot A (a : A) n π Q Ψ Ψunwind s:
+    (|={⊤}⧗=>^n WPs{π} s {{ Q, Ψ | Ψunwind }}) -∗
+    WPs{π} (annot{ n}: a; s)%E {{ Q , Ψ | Ψunwind }}.
   Proof using ALG.
     iIntros "Hs".
     rewrite /AnnotStmt /SkipES /=.

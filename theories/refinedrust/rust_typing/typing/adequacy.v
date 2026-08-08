@@ -312,7 +312,7 @@ Proof.
     (CallS (Val (l2v main)) [] [] []
       (Some (Na1Ord, UntypedOp unit_sl, Var "__refinedrust_main_return"))
       (LocalDeadSt "__refinedrust_main_return" (return (Val []))%E) StuckS)
-    unit_sl [] 1 ∅ Ψ Hunit Hfresh with "Hframe Hlocals") as "Hlive".
+    unit_sl [] 1 ∅ Ψ False%I Hunit Hfresh with "Hframe Hlocals") as "Hlive".
   iMod (tr_zero) as "Htr".
   iSpecialize ("Hlive" with "[-]").
   { iApply (physical_step_intro_tr with "Htr").
@@ -370,9 +370,10 @@ Proof.
     iApply "Hs". iIntros (L v locals) "_ Hframe Hlocals Hlive ->".
     iApply logical_step_intro. unfold Ψ. iExists locals. iFrame. done. }
   iEval (rewrite stmt_wp_unfold /stmt_wp_def) in "Hlive".
-  iApply ("Hlive" $! (runtime_post (λ v, ⌜v = []⌝)%I False) initial_caller with "[]").
+  iApply ("Hlive" $! (λ v, ⌜v = []⌝)%I False%I initial_caller with "[]").
   { done. }
-  iIntros (v) "(%locals & -> & Hframe & Hlocals & Hlive)".
+  iIntros ([v|]) "Hr" => /=; last done.
+  iDestruct "Hr" as "(%locals & -> & Hframe & Hlocals & Hlive)".
   iApply (wp_initial_return with "Hframe Hlocals Hlive").
 Qed.
 

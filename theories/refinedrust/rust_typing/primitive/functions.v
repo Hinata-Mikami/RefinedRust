@@ -415,7 +415,7 @@ Section call.
       iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
       rewrite Hlyv. iR. iExists _. iR. eauto with iFrame. }
 
-    iExists RET_PROP. iSplitL "Hf Hm Hϝ" => /=.
+    iExists RET_PROP, False%I. iSplitL "Hf Hm Hϝ" => /=.
     - iApply ("Hm" with "[$LFT $LCTX] HE' [$Hϝ//] Hf []").
       iIntros (L5 v' locals) "HL Hf Hlocals Hloc HT". simpl.
       iApply fupd_logical_step.
@@ -438,8 +438,9 @@ Section call.
       subst RET_PROP; simpl.
       iExists _. iFrame.
       iApply (credit_store_mono with "Hstore"); lia.
-    - (* handle the postcondition at return *)
-      iIntros (v'). iDestruct 1 as (κs' locals) "(Hϝ & Hstore & Hf & Hlocals & Hna & Hls & HPr)".
+    - (* handle the postcondition at return; unwinding is still ruled out *)
+      iIntros ([v'|]) => /=; last by iIntros "[]".
+      iDestruct 1 as (κs' locals) "(Hϝ & Hstore & Hf & Hlocals & Hna & Hls & HPr)".
       iFrame.
       simpl.
       iPoseProof (credit_store_borrow with "Hstore") as "(Hcred1 & Hat & _)".
