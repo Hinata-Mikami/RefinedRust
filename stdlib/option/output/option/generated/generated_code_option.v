@@ -55,12 +55,12 @@ Program Definition OptionTasstd_clone_Clone_clone_def (Clone_T_clone_loc: loc) (
      <[
      "_bb2" :=
       local_live{ RefSynType } "__self_0";
-      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft5"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft5"; (* borrow *)
       "__self_0" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft3" } ((EnumData ((Option_els (T_st))) "Some" (!{ RefOp } ( "self" ))) at{ (Option_Some_sls (T_st)) } "0");
       annot{ 1 }: CopyLftNameAnnot "plft6" "vlft3"; (* post-assignment *)
       local_live{ T_st } "__4";
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft4" } (!{ RefOp } ( "__self_0" ));
       annot{ 1 }: CopyLftNameAnnot "plft7" "vlft4"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft7"; (* function_call *)
@@ -178,7 +178,7 @@ Program Definition Option_T_filter_def (DropGlue_P_drop_glue_loc: loc) (DropGlue
       annot{ 1 }: StartLftAnnot "llft2" ["_flft"]; (* borrow *)
       "__10" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "llft2" } ("x");
       annot{ 1 }: CopyLftNameAnnot "plft7" "llft2"; (* post-assignment *)
-      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft7"; (* borrow *)
       "__9" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft3" } (!{ RefOp } ( "__10" ));
       annot{ 1 }: CopyLftNameAnnot "plft6" "vlft3"; (* post-assignment *)
       "__8" <-{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } StructInit (tuple1_sls (RefSynType)) [("0", move{ RefOp } ("__9") : expr)];

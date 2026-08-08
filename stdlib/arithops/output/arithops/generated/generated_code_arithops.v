@@ -15,9 +15,8 @@ Program Definition REFTasDeref_deref_def (T_st: syn_type) : function :=
       local_live{ RefSynType } "__0";
       annot{ 1 }: CopyLftNameAnnot "plft6" "ulft_2"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* initialization *)
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__0" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft4" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
-      annot{ 1 }: CopyLftNameAnnot "plft5" "ulft_2"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft5" "vlft4"; (* post-assignment *)
       annot{ 1 }: ExtendLftAnnot "plft5"; (* return *)
       return (move{ RefOp } ("__0"))
@@ -1393,10 +1392,8 @@ Program Definition REFmutTasDeref_deref_def (T_st: syn_type) : function :=
       local_live{ RefSynType } "__0";
       annot{ 1 }: CopyLftNameAnnot "plft6" "ulft_2"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* initialization *)
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft7"; (* composite *)
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__0" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft4" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
-      annot{ 1 }: CopyLftNameAnnot "plft5" "ulft_2"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft5" "vlft4"; (* post-assignment *)
       annot{ 1 }: ExtendLftAnnot "plft5"; (* return *)
       return (move{ RefOp } ("__0"))
@@ -2777,7 +2774,6 @@ Program Definition i128asAddAssignREFi128_add_assign_def (i128asAddAssign_add_as
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt I128), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType I128) } "__5";
       "__5" <-{ (IntOp I128) } copy{ (IntOp I128) } (!{ RefOp } ( "other" ));
@@ -2789,7 +2785,6 @@ Program Definition i128asAddAssignREFi128_add_assign_def (i128asAddAssign_add_as
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -2930,7 +2925,6 @@ Program Definition i128asMulAssignREFi128_mul_assign_def (i128asMulAssign_mul_as
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt I128), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType I128) } "__5";
       "__5" <-{ (IntOp I128) } copy{ (IntOp I128) } (!{ RefOp } ( "other" ));
@@ -2942,7 +2936,6 @@ Program Definition i128asMulAssignREFi128_mul_assign_def (i128asMulAssign_mul_as
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -3083,7 +3076,6 @@ Program Definition i128asSubAssignREFi128_sub_assign_def (i128asSubAssign_sub_as
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt I128), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType I128) } "__5";
       "__5" <-{ (IntOp I128) } copy{ (IntOp I128) } (!{ RefOp } ( "other" ));
@@ -3095,7 +3087,6 @@ Program Definition i128asSubAssignREFi128_sub_assign_def (i128asSubAssign_sub_as
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -3236,7 +3227,6 @@ Program Definition i16asAddAssignREFi16_add_assign_def (i16asAddAssign_add_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt I16), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType I16) } "__5";
       "__5" <-{ (IntOp I16) } copy{ (IntOp I16) } (!{ RefOp } ( "other" ));
@@ -3248,7 +3238,6 @@ Program Definition i16asAddAssignREFi16_add_assign_def (i16asAddAssign_add_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -3389,7 +3378,6 @@ Program Definition i16asMulAssignREFi16_mul_assign_def (i16asMulAssign_mul_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt I16), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType I16) } "__5";
       "__5" <-{ (IntOp I16) } copy{ (IntOp I16) } (!{ RefOp } ( "other" ));
@@ -3401,7 +3389,6 @@ Program Definition i16asMulAssignREFi16_mul_assign_def (i16asMulAssign_mul_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -3542,7 +3529,6 @@ Program Definition i16asSubAssignREFi16_sub_assign_def (i16asSubAssign_sub_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt I16), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType I16) } "__5";
       "__5" <-{ (IntOp I16) } copy{ (IntOp I16) } (!{ RefOp } ( "other" ));
@@ -3554,7 +3540,6 @@ Program Definition i16asSubAssignREFi16_sub_assign_def (i16asSubAssign_sub_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -3695,7 +3680,6 @@ Program Definition i32asAddAssignREFi32_add_assign_def (i32asAddAssign_add_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt I32), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType I32) } "__5";
       "__5" <-{ (IntOp I32) } copy{ (IntOp I32) } (!{ RefOp } ( "other" ));
@@ -3707,7 +3691,6 @@ Program Definition i32asAddAssignREFi32_add_assign_def (i32asAddAssign_add_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -3848,7 +3831,6 @@ Program Definition i32asMulAssignREFi32_mul_assign_def (i32asMulAssign_mul_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt I32), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType I32) } "__5";
       "__5" <-{ (IntOp I32) } copy{ (IntOp I32) } (!{ RefOp } ( "other" ));
@@ -3860,7 +3842,6 @@ Program Definition i32asMulAssignREFi32_mul_assign_def (i32asMulAssign_mul_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -4001,7 +3982,6 @@ Program Definition i32asSubAssignREFi32_sub_assign_def (i32asSubAssign_sub_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt I32), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType I32) } "__5";
       "__5" <-{ (IntOp I32) } copy{ (IntOp I32) } (!{ RefOp } ( "other" ));
@@ -4013,7 +3993,6 @@ Program Definition i32asSubAssignREFi32_sub_assign_def (i32asSubAssign_sub_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -4154,7 +4133,6 @@ Program Definition i64asAddAssignREFi64_add_assign_def (i64asAddAssign_add_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt I64), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType I64) } "__5";
       "__5" <-{ (IntOp I64) } copy{ (IntOp I64) } (!{ RefOp } ( "other" ));
@@ -4166,7 +4144,6 @@ Program Definition i64asAddAssignREFi64_add_assign_def (i64asAddAssign_add_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -4307,7 +4284,6 @@ Program Definition i64asMulAssignREFi64_mul_assign_def (i64asMulAssign_mul_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt I64), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType I64) } "__5";
       "__5" <-{ (IntOp I64) } copy{ (IntOp I64) } (!{ RefOp } ( "other" ));
@@ -4319,7 +4295,6 @@ Program Definition i64asMulAssignREFi64_mul_assign_def (i64asMulAssign_mul_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -4460,7 +4435,6 @@ Program Definition i64asSubAssignREFi64_sub_assign_def (i64asSubAssign_sub_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt I64), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType I64) } "__5";
       "__5" <-{ (IntOp I64) } copy{ (IntOp I64) } (!{ RefOp } ( "other" ));
@@ -4472,7 +4446,6 @@ Program Definition i64asSubAssignREFi64_sub_assign_def (i64asSubAssign_sub_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -4613,7 +4586,6 @@ Program Definition i8asAddAssignREFi8_add_assign_def (i8asAddAssign_add_assign_l
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt I8), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType I8) } "__5";
       "__5" <-{ (IntOp I8) } copy{ (IntOp I8) } (!{ RefOp } ( "other" ));
@@ -4625,7 +4597,6 @@ Program Definition i8asAddAssignREFi8_add_assign_def (i8asAddAssign_add_assign_l
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -4766,7 +4737,6 @@ Program Definition i8asMulAssignREFi8_mul_assign_def (i8asMulAssign_mul_assign_l
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt I8), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType I8) } "__5";
       "__5" <-{ (IntOp I8) } copy{ (IntOp I8) } (!{ RefOp } ( "other" ));
@@ -4778,7 +4748,6 @@ Program Definition i8asMulAssignREFi8_mul_assign_def (i8asMulAssign_mul_assign_l
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -4919,7 +4888,6 @@ Program Definition i8asSubAssignREFi8_sub_assign_def (i8asSubAssign_sub_assign_l
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt I8), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType I8) } "__5";
       "__5" <-{ (IntOp I8) } copy{ (IntOp I8) } (!{ RefOp } ( "other" ));
@@ -4931,7 +4899,6 @@ Program Definition i8asSubAssignREFi8_sub_assign_def (i8asSubAssign_sub_assign_l
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -5072,7 +5039,6 @@ Program Definition isizeasAddAssignREFisize_add_assign_def (isizeasAddAssign_add
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt ISize), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType ISize) } "__5";
       "__5" <-{ (IntOp ISize) } copy{ (IntOp ISize) } (!{ RefOp } ( "other" ));
@@ -5084,7 +5050,6 @@ Program Definition isizeasAddAssignREFisize_add_assign_def (isizeasAddAssign_add
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -5225,7 +5190,6 @@ Program Definition isizeasMulAssignREFisize_mul_assign_def (isizeasMulAssign_mul
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt ISize), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType ISize) } "__5";
       "__5" <-{ (IntOp ISize) } copy{ (IntOp ISize) } (!{ RefOp } ( "other" ));
@@ -5237,7 +5201,6 @@ Program Definition isizeasMulAssignREFisize_mul_assign_def (isizeasMulAssign_mul
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -5378,7 +5341,6 @@ Program Definition isizeasSubAssignREFisize_sub_assign_def (isizeasSubAssign_sub
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt ISize), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType ISize) } "__5";
       "__5" <-{ (IntOp ISize) } copy{ (IntOp ISize) } (!{ RefOp } ( "other" ));
@@ -5390,7 +5352,6 @@ Program Definition isizeasSubAssignREFisize_sub_assign_def (isizeasSubAssign_sub
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -5531,7 +5492,6 @@ Program Definition u128asAddAssignREFu128_add_assign_def (u128asAddAssign_add_as
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt U128), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType U128) } "__5";
       "__5" <-{ (IntOp U128) } copy{ (IntOp U128) } (!{ RefOp } ( "other" ));
@@ -5543,7 +5503,6 @@ Program Definition u128asAddAssignREFu128_add_assign_def (u128asAddAssign_add_as
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -5684,7 +5643,6 @@ Program Definition u128asMulAssignREFu128_mul_assign_def (u128asMulAssign_mul_as
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt U128), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType U128) } "__5";
       "__5" <-{ (IntOp U128) } copy{ (IntOp U128) } (!{ RefOp } ( "other" ));
@@ -5696,7 +5654,6 @@ Program Definition u128asMulAssignREFu128_mul_assign_def (u128asMulAssign_mul_as
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -5837,7 +5794,6 @@ Program Definition u128asSubAssignREFu128_sub_assign_def (u128asSubAssign_sub_as
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt U128), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType U128) } "__5";
       "__5" <-{ (IntOp U128) } copy{ (IntOp U128) } (!{ RefOp } ( "other" ));
@@ -5849,7 +5805,6 @@ Program Definition u128asSubAssignREFu128_sub_assign_def (u128asSubAssign_sub_as
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -5990,7 +5945,6 @@ Program Definition u16asAddAssignREFu16_add_assign_def (u16asAddAssign_add_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt U16), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType U16) } "__5";
       "__5" <-{ (IntOp U16) } copy{ (IntOp U16) } (!{ RefOp } ( "other" ));
@@ -6002,7 +5956,6 @@ Program Definition u16asAddAssignREFu16_add_assign_def (u16asAddAssign_add_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -6143,7 +6096,6 @@ Program Definition u16asMulAssignREFu16_mul_assign_def (u16asMulAssign_mul_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt U16), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType U16) } "__5";
       "__5" <-{ (IntOp U16) } copy{ (IntOp U16) } (!{ RefOp } ( "other" ));
@@ -6155,7 +6107,6 @@ Program Definition u16asMulAssignREFu16_mul_assign_def (u16asMulAssign_mul_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -6296,7 +6247,6 @@ Program Definition u16asSubAssignREFu16_sub_assign_def (u16asSubAssign_sub_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt U16), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType U16) } "__5";
       "__5" <-{ (IntOp U16) } copy{ (IntOp U16) } (!{ RefOp } ( "other" ));
@@ -6308,7 +6258,6 @@ Program Definition u16asSubAssignREFu16_sub_assign_def (u16asSubAssign_sub_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -6449,7 +6398,6 @@ Program Definition u32asAddAssignREFu32_add_assign_def (u32asAddAssign_add_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt U32), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType U32) } "__5";
       "__5" <-{ (IntOp U32) } copy{ (IntOp U32) } (!{ RefOp } ( "other" ));
@@ -6461,7 +6409,6 @@ Program Definition u32asAddAssignREFu32_add_assign_def (u32asAddAssign_add_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -6602,7 +6549,6 @@ Program Definition u32asMulAssignREFu32_mul_assign_def (u32asMulAssign_mul_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt U32), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType U32) } "__5";
       "__5" <-{ (IntOp U32) } copy{ (IntOp U32) } (!{ RefOp } ( "other" ));
@@ -6614,7 +6560,6 @@ Program Definition u32asMulAssignREFu32_mul_assign_def (u32asMulAssign_mul_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -6755,7 +6700,6 @@ Program Definition u32asSubAssignREFu32_sub_assign_def (u32asSubAssign_sub_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt U32), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType U32) } "__5";
       "__5" <-{ (IntOp U32) } copy{ (IntOp U32) } (!{ RefOp } ( "other" ));
@@ -6767,7 +6711,6 @@ Program Definition u32asSubAssignREFu32_sub_assign_def (u32asSubAssign_sub_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -6908,7 +6851,6 @@ Program Definition u64asAddAssignREFu64_add_assign_def (u64asAddAssign_add_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt U64), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType U64) } "__5";
       "__5" <-{ (IntOp U64) } copy{ (IntOp U64) } (!{ RefOp } ( "other" ));
@@ -6920,7 +6862,6 @@ Program Definition u64asAddAssignREFu64_add_assign_def (u64asAddAssign_add_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -7061,7 +7002,6 @@ Program Definition u64asMulAssignREFu64_mul_assign_def (u64asMulAssign_mul_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt U64), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType U64) } "__5";
       "__5" <-{ (IntOp U64) } copy{ (IntOp U64) } (!{ RefOp } ( "other" ));
@@ -7073,7 +7013,6 @@ Program Definition u64asMulAssignREFu64_mul_assign_def (u64asMulAssign_mul_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -7214,7 +7153,6 @@ Program Definition u64asSubAssignREFu64_sub_assign_def (u64asSubAssign_sub_assig
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt U64), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType U64) } "__5";
       "__5" <-{ (IntOp U64) } copy{ (IntOp U64) } (!{ RefOp } ( "other" ));
@@ -7226,7 +7164,6 @@ Program Definition u64asSubAssignREFu64_sub_assign_def (u64asSubAssign_sub_assig
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -7367,7 +7304,6 @@ Program Definition u8asAddAssignREFu8_add_assign_def (u8asAddAssign_add_assign_l
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt U8), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType U8) } "__5";
       "__5" <-{ (IntOp U8) } copy{ (IntOp U8) } (!{ RefOp } ( "other" ));
@@ -7379,7 +7315,6 @@ Program Definition u8asAddAssignREFu8_add_assign_def (u8asAddAssign_add_assign_l
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -7520,7 +7455,6 @@ Program Definition u8asMulAssignREFu8_mul_assign_def (u8asMulAssign_mul_assign_l
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt U8), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType U8) } "__5";
       "__5" <-{ (IntOp U8) } copy{ (IntOp U8) } (!{ RefOp } ( "other" ));
@@ -7532,7 +7466,6 @@ Program Definition u8asMulAssignREFu8_mul_assign_def (u8asMulAssign_mul_assign_l
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -7673,7 +7606,6 @@ Program Definition u8asSubAssignREFu8_sub_assign_def (u8asSubAssign_sub_assign_l
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt U8), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType U8) } "__5";
       "__5" <-{ (IntOp U8) } copy{ (IntOp U8) } (!{ RefOp } ( "other" ));
@@ -7685,7 +7617,6 @@ Program Definition u8asSubAssignREFu8_sub_assign_def (u8asSubAssign_sub_assign_l
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -7826,7 +7757,6 @@ Program Definition usizeasAddAssignREFusize_add_assign_def (usizeasAddAssign_add
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt USize), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType USize) } "__5";
       "__5" <-{ (IntOp USize) } copy{ (IntOp USize) } (!{ RefOp } ( "other" ));
@@ -7838,7 +7768,6 @@ Program Definition usizeasAddAssignREFusize_add_assign_def (usizeasAddAssign_add
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -7979,7 +7908,6 @@ Program Definition usizeasMulAssignREFusize_mul_assign_def (usizeasMulAssign_mul
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt USize), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType USize) } "__5";
       "__5" <-{ (IntOp USize) } copy{ (IntOp USize) } (!{ RefOp } ( "other" ));
@@ -7991,7 +7919,6 @@ Program Definition usizeasMulAssignREFusize_mul_assign_def (usizeasMulAssign_mul
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";
@@ -8132,7 +8059,6 @@ Program Definition usizeasSubAssignREFusize_sub_assign_def (usizeasSubAssign_sub
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft5" ["plft6"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Mut, Some (RSTInt USize), "llft5" } (!{ RefOp } ( "self" ));
-      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft5"; (* post-assignment *)
       local_live{ (IntSynType USize) } "__5";
       "__5" <-{ (IntOp USize) } copy{ (IntOp USize) } (!{ RefOp } ( "other" ));
@@ -8144,7 +8070,6 @@ Program Definition usizeasSubAssignREFusize_sub_assign_def (usizeasSubAssign_sub
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__5";
       local_dead "__4";
       local_dead "__3";

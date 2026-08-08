@@ -74,12 +74,12 @@ Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) 
      <[
      "_bb2" :=
       local_live{ RefSynType } "__6";
-      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft7"; (* borrow *)
       "__6" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "E"), "vlft3" } ((EnumData ((Result_els (T_st) (E_st))) "Err" (!{ RefOp } ( "self" ))) at{ (Result_Err_sls (T_st) (E_st)) } "0");
       annot{ 1 }: CopyLftNameAnnot "plft10" "vlft3"; (* post-assignment *)
       local_live{ E_st } "__7";
       local_live{ RefSynType } "__8";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft10"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft10"; (* borrow *)
       "__8" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "E"), "vlft4" } (!{ RefOp } ( "__6" ));
       annot{ 1 }: CopyLftNameAnnot "plft11" "vlft4"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft12" "plft11"; (* function_call *)
@@ -90,12 +90,12 @@ Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) 
      <[
      "_bb3" :=
       local_live{ RefSynType } "__self_0";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__self_0" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft5" } ((EnumData ((Result_els (T_st) (E_st))) "Ok" (!{ RefOp } ( "self" ))) at{ (Result_Ok_sls (T_st) (E_st)) } "0");
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft5"; (* post-assignment *)
       local_live{ T_st } "__4";
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft6" "plft8"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft6" "plft8"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft6" } (!{ RefOp } ( "__self_0" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft6"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft13" "plft9"; (* function_call *)

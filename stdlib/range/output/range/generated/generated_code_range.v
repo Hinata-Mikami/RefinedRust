@@ -29,11 +29,11 @@ Program Definition Range_Idx_is_empty_def (PartialOrd_Idx_Idx_lt_loc: loc) (Idx_
       annot{ 1 }: CopyLftNameAnnot "plft5" "ulft_1"; (* initialization *)
       local_live{ BoolSynType } "__2";
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft5"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft5"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "Idx"), "vlft3" } ((!{ RefOp } ( "self" )) at{ (Range_sls (Idx_st)) } "start");
       annot{ 1 }: CopyLftNameAnnot "plft6" "vlft3"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft5"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft5"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "Idx"), "vlft4" } ((!{ RefOp } ( "self" )) at{ (Range_sls (Idx_st)) } "end");
       annot{ 1 }: CopyLftNameAnnot "plft7" "vlft4"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft6"; (* function_call *)

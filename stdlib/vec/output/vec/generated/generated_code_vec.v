@@ -95,7 +95,7 @@ Program Definition Vec_TA_is_empty_def (Vec_TA_len_T_A_loc: loc) (T_st: syn_type
       annot{ 1 }: CopyLftNameAnnot "plft4" "ulft_1"; (* initialization *)
       local_live{ (IntSynType USize) } "__2";
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft4"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft4"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTLitType ["Vec_inv_t"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "A"] [AppDef ["Allocator_A_spec_attrs"] []])), "vlft3" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft5" "vlft3"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft6" "plft5"; (* function_call *)

@@ -100,7 +100,6 @@ Program Definition adapters_map_MapMIMFastraits_iterator_Iterator_next_def (Opti
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
       local_dead "__3";
       local_live{ RefSynType } "__4";
       annot{ 1 }: StartLftAnnot "llft4" ["plft6"]; (* borrow *)
@@ -114,7 +113,6 @@ Program Definition adapters_map_MapMIMFastraits_iterator_Iterator_next_def (Opti
      ]>%E $
      <[
      "_bb2" :=
-      annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
       local_dead "__4";
       local_dead "__2";
       return (move{ (use_op_alg' ((Option_els (MB_st)) : syn_type)) } ("__0"))
@@ -197,7 +195,6 @@ Program Definition adapters_skip_SkipMIastraits_iterator_Iterator_next_def (trai
      ]>%E $
      <[
      "_bb2" :=
-      annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
       local_dead "__6";
       local_dead "__5";
       local_dead "n";
@@ -218,7 +215,6 @@ Program Definition adapters_skip_SkipMIastraits_iterator_Iterator_next_def (trai
      ]>%E $
      <[
      "_bb4" :=
-      annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
       local_dead "__7";
       Goto "_bb5"
      ]>%E $
@@ -308,7 +304,6 @@ Program Definition adapters_take_TakeMIastraits_iterator_Iterator_next_def (trai
      ]>%E $
      <[
      "_bb3" :=
-      annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
       local_dead "__5";
       Goto "_bb5"
      ]>%E $
@@ -530,7 +525,7 @@ Program Definition traits_iterator_Iterator_all_def (DropGlue_F_drop_glue_loc: l
       annot{ 1 }: StartLftAnnot "llft4" ["_flft"]; (* borrow *)
       "__7" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "F"), "llft4" } ("f");
       annot{ 1 }: CopyLftNameAnnot "plft10" "llft4"; (* post-assignment *)
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft10"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft10"; (* rvalue *)
       "__6" <-{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } StructInit (tuple1_sls (RefSynType)) [("0", move{ RefOp } ("__7") : expr)];
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       local_dead "__7";
@@ -544,8 +539,6 @@ Program Definition traits_iterator_Iterator_all_def (DropGlue_F_drop_glue_loc: l
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
-      annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
       local_dead "__6";
       local_dead "__5";
       local_dead "__4";
@@ -601,7 +594,6 @@ Program Definition traits_iterator_Iterator_all_closure0_def (FnMut_F_Selfastrai
       annot{ 1 }: StartLftAnnot "llft6" ["vlft7"; "plft8"]; (* borrow *)
       "__5" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "F"), "llft6" } (!{ RefOp } ( (!{ RefOp } ( "__1" )) at{ (tuple1_sls (RefSynType)) } "0" ));
       annot{ 1 }: CopyLftNameAnnot "plft10" "llft6"; (* post-assignment *)
-      annot{ 1 }: CopyLftNameAnnot "plft9" "vlft7"; (* post-assignment *)
       local_live{ ((tuple1_sls (traits_iterator_Iterator_Self_Item_st)) : syn_type) } "__6";
       local_live{ traits_iterator_Iterator_Self_Item_st } "__7";
       "__7" <-{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } ("b");
@@ -725,7 +717,6 @@ Program Definition traits_iterator_Iterator_fold_def (DropGlue_F_drop_glue_loc: 
      ]>%E $
      <[
      "_bb2" :=
-      annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
       local_dead "__8";
       "__9" <-{ (IntOp ISize) } EnumDiscriminant ((Option_els (Item_st))) ("__7");
       Switch (ISize: int_type) (move{ (IntOp ISize) } ("__9")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb3"]) (Goto "_bb5")
@@ -754,7 +745,6 @@ Program Definition traits_iterator_Iterator_fold_def (DropGlue_F_drop_glue_loc: 
      ]>%E $
      <[
      "_bb4" :=
-      annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
       local_dead "__16";
       local_dead "__15";
       local_dead "__14";
@@ -887,7 +877,7 @@ Program Definition traits_iterator_Iterator_max_by_def (DropGlue_F_drop_glue_loc
       annot{ 1 }: StartLftAnnot "llft2" ["_flft"]; (* borrow *)
       "__5" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "F"), "llft2" } ("compare");
       annot{ 1 }: CopyLftNameAnnot "plft6" "llft2"; (* post-assignment *)
-      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft6"; (* rvalue *)
       "__4" <-{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } StructInit (tuple1_sls (RefSynType)) [("0", move{ RefOp } ("__5") : expr)];
       annot{ 1 }: CopyLftNameAnnot "plft5" "vlft3"; (* post-assignment *)
       local_dead "__5";
@@ -899,7 +889,6 @@ Program Definition traits_iterator_Iterator_max_by_def (DropGlue_F_drop_glue_loc
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
       local_dead "__4";
       local_dead "__3";
       CallS DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("compare")] None
@@ -941,7 +930,6 @@ Program Definition traits_iterator_Iterator_max_by_closure0_def (max_by_Selfastr
       annot{ 1 }: StartLftAnnot "llft5" ["vlft6"; "plft8"]; (* borrow *)
       "__6" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "F"), "llft5" } (!{ RefOp } ( (!{ RefOp } ( "__1" )) at{ (tuple1_sls (RefSynType)) } "0" ));
       annot{ 1 }: CopyLftNameAnnot "plft10" "llft5"; (* post-assignment *)
-      annot{ 1 }: CopyLftNameAnnot "plft9" "vlft6"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* function_call *)
       CallS max_by_Selfastraits_iterator_Iterator_Item_REFmutF_loc ["vlft7"] [RSTTyVar "F"; RSTTyVar "traits_iterator_Iterator_Self_Item"] [@{expr} move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } ("__4"); move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } ("__5"); move{ RefOp } ("__6")] (Some (Na1Ord, (use_op_alg' traits_iterator_Iterator_Self_Item_st), "__0"))
       ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
@@ -950,7 +938,6 @@ Program Definition traits_iterator_Iterator_max_by_closure0_def (max_by_Selfastr
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__6";
       local_dead "__5";
       local_dead "__4";
@@ -981,11 +968,11 @@ Program Definition traits_iterator_Iterator_max_closure0_def (Ord_Selfastraits_i
       annot{ 1 }: CopyLftNameAnnot "plft8" "ulft_1"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft9" "ulft_2"; (* initialization *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft8"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft8"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "traits_iterator_Iterator_Self_Item"), "vlft5" } (!{ RefOp } ( "a" ));
       annot{ 1 }: CopyLftNameAnnot "plft10" "vlft5"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft6" "plft9"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft6" "plft9"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "traits_iterator_Iterator_Self_Item"), "vlft6" } (!{ RefOp } ( "b" ));
       annot{ 1 }: CopyLftNameAnnot "plft11" "vlft6"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft12" "plft10"; (* function_call *)
@@ -1060,7 +1047,7 @@ Program Definition traits_iterator_Iterator_min_by_def (DropGlue_F_drop_glue_loc
       annot{ 1 }: StartLftAnnot "llft2" ["_flft"]; (* borrow *)
       "__5" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "F"), "llft2" } ("compare");
       annot{ 1 }: CopyLftNameAnnot "plft6" "llft2"; (* post-assignment *)
-      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft6"; (* rvalue *)
       "__4" <-{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } StructInit (tuple1_sls (RefSynType)) [("0", move{ RefOp } ("__5") : expr)];
       annot{ 1 }: CopyLftNameAnnot "plft5" "vlft3"; (* post-assignment *)
       local_dead "__5";
@@ -1072,7 +1059,6 @@ Program Definition traits_iterator_Iterator_min_by_def (DropGlue_F_drop_glue_loc
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
       local_dead "__4";
       local_dead "__3";
       CallS DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("compare")] None
@@ -1114,7 +1100,6 @@ Program Definition traits_iterator_Iterator_min_by_closure0_def (min_by_Selfastr
       annot{ 1 }: StartLftAnnot "llft5" ["vlft6"; "plft8"]; (* borrow *)
       "__6" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "F"), "llft5" } (!{ RefOp } ( (!{ RefOp } ( "__1" )) at{ (tuple1_sls (RefSynType)) } "0" ));
       annot{ 1 }: CopyLftNameAnnot "plft10" "llft5"; (* post-assignment *)
-      annot{ 1 }: CopyLftNameAnnot "plft9" "vlft6"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* function_call *)
       CallS min_by_Selfastraits_iterator_Iterator_Item_REFmutF_loc ["vlft7"] [RSTTyVar "F"; RSTTyVar "traits_iterator_Iterator_Self_Item"] [@{expr} move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } ("__4"); move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } ("__5"); move{ RefOp } ("__6")] (Some (Na1Ord, (use_op_alg' traits_iterator_Iterator_Self_Item_st), "__0"))
       ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
@@ -1123,7 +1108,6 @@ Program Definition traits_iterator_Iterator_min_by_closure0_def (min_by_Selfastr
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__6";
       local_dead "__5";
       local_dead "__4";
@@ -1154,11 +1138,11 @@ Program Definition traits_iterator_Iterator_min_closure0_def (Ord_Selfastraits_i
       annot{ 1 }: CopyLftNameAnnot "plft8" "ulft_1"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft9" "ulft_2"; (* initialization *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft8"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft8"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "traits_iterator_Iterator_Self_Item"), "vlft5" } (!{ RefOp } ( "a" ));
       annot{ 1 }: CopyLftNameAnnot "plft10" "vlft5"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft6" "plft9"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft6" "plft9"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "traits_iterator_Iterator_Self_Item"), "vlft6" } (!{ RefOp } ( "b" ));
       annot{ 1 }: CopyLftNameAnnot "plft11" "vlft6"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft12" "plft10"; (* function_call *)
@@ -1238,7 +1222,6 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
      ]>%E $
      <[
      "_bb3" :=
-      annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
       annot{ 1 }: StartLftAnnot "llft4" ["_flft"]; (* borrow *)
       "__12" <-{ RefOp } &ref{ Shr, Some (RSTLitType ["Option_ty"] (RSTScopeInst [] [RSTTyVar "Item"] [])), "llft4" } ("__13");
       annot{ 1 }: CopyLftNameAnnot "plft7" "llft4"; (* post-assignment *)
@@ -1320,7 +1303,6 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
      ]>%E $
      <[
      "_bb11" :=
-      annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
       local_dead "__20";
       local_dead "i";
       Goto "_bb12"
@@ -1361,8 +1343,8 @@ Program Definition traits_iterator_Iterator_position_def (ControlFlow_BC_break_v
       annot{ 1 }: StartLftAnnot "llft4" ["_flft"]; (* borrow *)
       "__6" <-{ RefOp } &ref{ Mut, Some (RSTInt USize), "llft4" } ("acc");
       annot{ 1 }: CopyLftNameAnnot "plft14" "llft4"; (* post-assignment *)
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft13"; (* composite *)
-      annot{ 1 }: CopyLftNameAnnot "vlft6" "plft14"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft13"; (* rvalue *)
+      annot{ 1 }: CopyLftNameAnnot "vlft6" "plft14"; (* rvalue *)
       "clos" <-{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } StructInit (tuple2_sls (RefSynType) (RefSynType)) [("0", move{ RefOp } ("__5") : expr); ("1", move{ RefOp } ("__6") : expr)];
       annot{ 1 }: CopyLftNameAnnot "plft11" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "vlft6"; (* post-assignment *)
@@ -1379,8 +1361,6 @@ Program Definition traits_iterator_Iterator_position_def (ControlFlow_BC_break_v
       "__10" <-{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } move{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } ("clos");
       annot{ 1 }: CopyLftNameAnnot "plft16" "plft11"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft17" "plft12"; (* post-assignment *)
-      annot{ 1 }: CopyLftNameAnnot "plft11" "plft16"; (* post-assignment *)
-      annot{ 1 }: CopyLftNameAnnot "plft12" "plft17"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft16"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft17"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft18" "plft15"; (* function_call *)
@@ -1393,9 +1373,6 @@ Program Definition traits_iterator_Iterator_position_def (ControlFlow_BC_break_v
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft7"; (* endlft *)
-      annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
-      annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
       local_dead "__10";
       local_dead "__9";
       local_dead "__8";
@@ -1461,7 +1438,6 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
       local_dead "__6";
       CallS std_option_OptionTasTry_branch_Selfastraits_iterator_Iterator_Item_loc [] [RSTTyVar "Item"] [@{expr} move{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } ("__5")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st)) : syn_type)), "__4"))
       ( Goto "_bb2")
@@ -1661,7 +1637,6 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_F_drop_glue_l
      ]>%E $
      <[
      "_bb2" :=
-      annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
       local_dead "__8";
       "__9" <-{ (IntOp ISize) } EnumDiscriminant ((Option_els (Item_st))) ("__7");
       Switch (ISize: int_type) (move{ (IntOp ISize) } ("__9")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb3"]) (Goto "_bb10")
@@ -1692,7 +1667,6 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_F_drop_glue_l
      ]>%E $
      <[
      "_bb4" :=
-      annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
       local_dead "__18";
       local_dead "__17";
       local_dead "__16";

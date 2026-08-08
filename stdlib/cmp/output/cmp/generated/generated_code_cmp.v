@@ -175,7 +175,7 @@ Program Definition Ordering_as_raw_def  : function :=
       annot{ 1 }: StartLftAnnot "llft2" ["_flft"]; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTLitType ["Ordering_ty"] (RSTScopeInst [] [] [])), "llft2" } ("self");
       annot{ 1 }: CopyLftNameAnnot "plft5" "llft2"; (* post-assignment *)
-      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft5"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft5"; (* borrow *)
       "__2" <-{ RefOp } &ref{ Shr, Some (RSTLitType ["Ordering_ty"] (RSTScopeInst [] [] [])), "vlft3" } (!{ RefOp } ( "__3" ));
       annot{ 1 }: CopyLftNameAnnot "plft4" "vlft3"; (* post-assignment *)
       "__0" <-{ (IntOp I8) } EnumDiscriminant (Ordering_els) (!{ RefOp } ( "__2" ));
@@ -406,11 +406,11 @@ Program Definition PartialEq_ne_def (PartialEq_Self_Rhs_eq_loc: loc) (Self_st: s
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ BoolSynType } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "Self"), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "Rhs"), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
@@ -453,11 +453,11 @@ Program Definition PartialOrd_ge_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ ((Option_els (Ordering_st)) : syn_type) } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "Self"), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "Rhs"), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
@@ -519,11 +519,11 @@ Program Definition PartialOrd_gt_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ ((Option_els (Ordering_st)) : syn_type) } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "Self"), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "Rhs"), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
@@ -585,11 +585,11 @@ Program Definition PartialOrd_le_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ ((Option_els (Ordering_st)) : syn_type) } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "Self"), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "Rhs"), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
@@ -651,11 +651,11 @@ Program Definition PartialOrd_lt_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ ((Option_els (Ordering_st)) : syn_type) } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "Self"), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "Rhs"), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
@@ -716,11 +716,11 @@ Program Definition REFAasOrd_cmp_def (Ord_A_cmp_loc: loc) (A_st: syn_type) : fun
       annot{ 1 }: CopyLftNameAnnot "plft9" "ulft_3"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft10" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft8"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft5" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft11" "vlft5"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft6" "plft10"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft6" "plft9"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft6" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft12" "vlft6"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft13" "plft11"; (* function_call *)
@@ -760,12 +760,11 @@ Program Definition REFAasPartialEqREFB_eq_def (PartialEq_A_B_eq_loc: loc) (A_st:
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
-      annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -805,12 +804,11 @@ Program Definition REFAasPartialEqREFB_ne_def (PartialEq_A_B_ne_loc: loc) (A_st:
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
-      annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -850,13 +848,11 @@ Program Definition REFAasPartialEqREFmutB_eq_def (PartialEq_A_B_eq_loc: loc) (A_
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
-      annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* composite *)
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -896,13 +892,11 @@ Program Definition REFAasPartialEqREFmutB_ne_def (PartialEq_A_B_ne_loc: loc) (A_
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
-      annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* composite *)
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -942,12 +936,11 @@ Program Definition REFAasPartialOrdREFB_ge_def (PartialOrd_A_B_ge_loc: loc) (A_s
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
-      annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -987,12 +980,11 @@ Program Definition REFAasPartialOrdREFB_gt_def (PartialOrd_A_B_gt_loc: loc) (A_s
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
-      annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1032,12 +1024,11 @@ Program Definition REFAasPartialOrdREFB_le_def (PartialOrd_A_B_le_loc: loc) (A_s
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
-      annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1077,12 +1068,11 @@ Program Definition REFAasPartialOrdREFB_lt_def (PartialOrd_A_B_lt_loc: loc) (A_s
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
-      annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1122,12 +1112,11 @@ Program Definition REFAasPartialOrdREFB_partial_cmp_def (PartialOrd_A_B_partial_
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
-      annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1167,13 +1156,11 @@ Program Definition REFmutAasPartialEqREFB_eq_def (PartialEq_A_B_eq_loc: loc) (A_
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* composite *)
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
-      annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1213,13 +1200,11 @@ Program Definition REFmutAasPartialEqREFB_ne_def (PartialEq_A_B_ne_loc: loc) (A_
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* composite *)
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
-      annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1259,14 +1244,11 @@ Program Definition REFmutAasPartialEqREFmutB_eq_def (PartialEq_A_B_eq_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* composite *)
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
-      annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* composite *)
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1306,14 +1288,11 @@ Program Definition REFmutAasPartialEqREFmutB_ne_def (PartialEq_A_B_ne_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* composite *)
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
-      annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* composite *)
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1679,11 +1658,11 @@ Program Definition i128asPartialOrd_partial_cmp_def (i128asOrd_cmp_loc: loc) : f
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ Ordering_st } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTInt I128), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTInt I128), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
@@ -1989,11 +1968,11 @@ Program Definition i16asPartialOrd_partial_cmp_def (i16asOrd_cmp_loc: loc) : fun
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ Ordering_st } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTInt I16), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTInt I16), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
@@ -2299,11 +2278,11 @@ Program Definition i32asPartialOrd_partial_cmp_def (i32asOrd_cmp_loc: loc) : fun
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ Ordering_st } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTInt I32), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTInt I32), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
@@ -2609,11 +2588,11 @@ Program Definition i64asPartialOrd_partial_cmp_def (i64asOrd_cmp_loc: loc) : fun
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ Ordering_st } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTInt I64), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTInt I64), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
@@ -2919,11 +2898,11 @@ Program Definition i8asPartialOrd_partial_cmp_def (i8asOrd_cmp_loc: loc) : funct
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ Ordering_st } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTInt I8), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTInt I8), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
@@ -3229,11 +3208,11 @@ Program Definition isizeasPartialOrd_partial_cmp_def (isizeasOrd_cmp_loc: loc) :
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ Ordering_st } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTInt ISize), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTInt ISize), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
@@ -3321,7 +3300,7 @@ Program Definition max_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT
       annot{ 1 }: StartLftAnnot "llft2" ["_flft"]; (* borrow *)
       "__9" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "llft2" } ("v2");
       annot{ 1 }: CopyLftNameAnnot "plft11" "llft2"; (* post-assignment *)
-      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft11"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft11"; (* borrow *)
       "__8" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft3" } (!{ RefOp } ( "__9" ));
       annot{ 1 }: CopyLftNameAnnot "plft10" "vlft3"; (* post-assignment *)
       local_live{ RefSynType } "__10";
@@ -3329,7 +3308,7 @@ Program Definition max_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT
       annot{ 1 }: StartLftAnnot "llft4" ["_flft"]; (* borrow *)
       "__11" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "llft4" } ("v1");
       annot{ 1 }: CopyLftNameAnnot "plft13" "llft4"; (* post-assignment *)
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft13"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft13"; (* borrow *)
       "__10" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft5" } (!{ RefOp } ( "__11" ));
       annot{ 1 }: CopyLftNameAnnot "plft12" "vlft5"; (* post-assignment *)
       "__7" <-{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } StructInit (tuple2_sls (RefSynType) (RefSynType)) [("0", move{ RefOp } ("__8") : expr); ("1", move{ RefOp } ("__10") : expr)];
@@ -3345,8 +3324,6 @@ Program Definition max_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
-      annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
       local_dead "__10";
       local_dead "__8";
       local_dead "__7";
@@ -3482,7 +3459,7 @@ Program Definition min_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT
       annot{ 1 }: StartLftAnnot "llft2" ["_flft"]; (* borrow *)
       "__9" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "llft2" } ("v2");
       annot{ 1 }: CopyLftNameAnnot "plft11" "llft2"; (* post-assignment *)
-      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft11"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft11"; (* borrow *)
       "__8" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft3" } (!{ RefOp } ( "__9" ));
       annot{ 1 }: CopyLftNameAnnot "plft10" "vlft3"; (* post-assignment *)
       local_live{ RefSynType } "__10";
@@ -3490,7 +3467,7 @@ Program Definition min_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT
       annot{ 1 }: StartLftAnnot "llft4" ["_flft"]; (* borrow *)
       "__11" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "llft4" } ("v1");
       annot{ 1 }: CopyLftNameAnnot "plft13" "llft4"; (* post-assignment *)
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft13"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft13"; (* borrow *)
       "__10" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft5" } (!{ RefOp } ( "__11" ));
       annot{ 1 }: CopyLftNameAnnot "plft12" "vlft5"; (* post-assignment *)
       "__7" <-{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } StructInit (tuple2_sls (RefSynType) (RefSynType)) [("0", move{ RefOp } ("__8") : expr); ("1", move{ RefOp } ("__10") : expr)];
@@ -3506,8 +3483,6 @@ Program Definition min_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT
      ]>%E $
      <[
      "_bb1" :=
-      annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
-      annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
       local_dead "__10";
       local_dead "__8";
       local_dead "__7";
@@ -3644,15 +3619,19 @@ Program Definition std_option_OptionTasOrd_cmp_def (Ord_T_cmp_loc: loc) (T_st: s
      <[
      "_bb7" :=
       local_live{ RefSynType } "l";
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft15"; (* borrow *)
       "l" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft7" } ((EnumData ((Option_els (T_st))) "Some" (!{ RefOp } ( ("__3") at{ (tuple2_sls (RefSynType) (RefSynType)) } "0" ))) at{ (Option_Some_sls (T_st)) } "0");
+      annot{ 1 }: CopyLftNameAnnot "plft19" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "r";
+      annot{ 1 }: CopyLftNameAnnot "vlft9" "plft16"; (* borrow *)
       "r" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft9" } ((EnumData ((Option_els (T_st))) "Some" (!{ RefOp } ( ("__3") at{ (tuple2_sls (RefSynType) (RefSynType)) } "1" ))) at{ (Option_Some_sls (T_st)) } "0");
+      annot{ 1 }: CopyLftNameAnnot "plft20" "vlft9"; (* post-assignment *)
       local_live{ RefSynType } "__11";
-      annot{ 1 }: CopyLftNameAnnot "vlft11" "plft19"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft11" "plft19"; (* borrow *)
       "__11" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft11" } (!{ RefOp } ( "l" ));
       annot{ 1 }: CopyLftNameAnnot "plft21" "vlft11"; (* post-assignment *)
       local_live{ RefSynType } "__12";
-      annot{ 1 }: CopyLftNameAnnot "vlft12" "plft20"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft12" "plft20"; (* borrow *)
       "__12" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft12" } (!{ RefOp } ( "r" ));
       annot{ 1 }: CopyLftNameAnnot "plft22" "vlft12"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft23" "plft21"; (* function_call *)
@@ -3746,15 +3725,19 @@ Program Definition std_option_OptionTasPartialEq_eq_def (PartialEq_T_T_eq_loc: l
      <[
      "_bb7" :=
       local_live{ RefSynType } "l";
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft15"; (* borrow *)
       "l" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft7" } ((EnumData ((Option_els (T_st))) "Some" (!{ RefOp } ( ("__3") at{ (tuple2_sls (RefSynType) (RefSynType)) } "0" ))) at{ (Option_Some_sls (T_st)) } "0");
+      annot{ 1 }: CopyLftNameAnnot "plft19" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "r";
+      annot{ 1 }: CopyLftNameAnnot "vlft9" "plft16"; (* borrow *)
       "r" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft9" } ((EnumData ((Option_els (T_st))) "Some" (!{ RefOp } ( ("__3") at{ (tuple2_sls (RefSynType) (RefSynType)) } "1" ))) at{ (Option_Some_sls (T_st)) } "0");
+      annot{ 1 }: CopyLftNameAnnot "plft20" "vlft9"; (* post-assignment *)
       local_live{ RefSynType } "__11";
-      annot{ 1 }: CopyLftNameAnnot "vlft11" "plft19"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft11" "plft19"; (* borrow *)
       "__11" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft11" } (!{ RefOp } ( "l" ));
       annot{ 1 }: CopyLftNameAnnot "plft21" "vlft11"; (* post-assignment *)
       local_live{ RefSynType } "__12";
-      annot{ 1 }: CopyLftNameAnnot "vlft12" "plft20"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft12" "plft20"; (* borrow *)
       "__12" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft12" } (!{ RefOp } ( "r" ));
       annot{ 1 }: CopyLftNameAnnot "plft22" "vlft12"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft23" "plft21"; (* function_call *)
@@ -3857,15 +3840,19 @@ Program Definition std_option_OptionTasPartialOrd_partial_cmp_def (PartialOrd_T_
      <[
      "_bb7" :=
       local_live{ RefSynType } "l";
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft15"; (* borrow *)
       "l" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft7" } ((EnumData ((Option_els (T_st))) "Some" (!{ RefOp } ( ("__3") at{ (tuple2_sls (RefSynType) (RefSynType)) } "0" ))) at{ (Option_Some_sls (T_st)) } "0");
+      annot{ 1 }: CopyLftNameAnnot "plft19" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "r";
+      annot{ 1 }: CopyLftNameAnnot "vlft9" "plft16"; (* borrow *)
       "r" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft9" } ((EnumData ((Option_els (T_st))) "Some" (!{ RefOp } ( ("__3") at{ (tuple2_sls (RefSynType) (RefSynType)) } "1" ))) at{ (Option_Some_sls (T_st)) } "0");
+      annot{ 1 }: CopyLftNameAnnot "plft20" "vlft9"; (* post-assignment *)
       local_live{ RefSynType } "__11";
-      annot{ 1 }: CopyLftNameAnnot "vlft11" "plft19"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft11" "plft19"; (* borrow *)
       "__11" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft11" } (!{ RefOp } ( "l" ));
       annot{ 1 }: CopyLftNameAnnot "plft21" "vlft11"; (* post-assignment *)
       local_live{ RefSynType } "__12";
-      annot{ 1 }: CopyLftNameAnnot "vlft12" "plft20"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft12" "plft20"; (* borrow *)
       "__12" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft12" } (!{ RefOp } ( "r" ));
       annot{ 1 }: CopyLftNameAnnot "plft22" "vlft12"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft23" "plft21"; (* function_call *)
@@ -4176,11 +4163,11 @@ Program Definition u128asPartialOrd_partial_cmp_def (u128asOrd_cmp_loc: loc) : f
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ Ordering_st } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTInt U128), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTInt U128), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
@@ -4486,11 +4473,11 @@ Program Definition u16asPartialOrd_partial_cmp_def (u16asOrd_cmp_loc: loc) : fun
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ Ordering_st } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTInt U16), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTInt U16), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
@@ -4796,11 +4783,11 @@ Program Definition u32asPartialOrd_partial_cmp_def (u32asOrd_cmp_loc: loc) : fun
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ Ordering_st } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTInt U32), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTInt U32), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
@@ -5106,11 +5093,11 @@ Program Definition u64asPartialOrd_partial_cmp_def (u64asOrd_cmp_loc: loc) : fun
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ Ordering_st } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTInt U64), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTInt U64), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
@@ -5416,11 +5403,11 @@ Program Definition u8asPartialOrd_partial_cmp_def (u8asOrd_cmp_loc: loc) : funct
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ Ordering_st } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTInt U8), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTInt U8), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
@@ -5829,11 +5816,11 @@ Program Definition usizeasPartialOrd_partial_cmp_def (usizeasOrd_cmp_loc: loc) :
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
       local_live{ Ordering_st } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTInt USize), "vlft4" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "vlft4"; (* post-assignment *)
       local_live{ RefSynType } "__5";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTInt USize), "vlft5" } (!{ RefOp } ( "other" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)

@@ -19,7 +19,7 @@ Program Definition Clone_clone_from_def (Clone_Self_clone_loc: loc) (DropGlue_Se
       annot{ 1 }: CopyLftNameAnnot "plft6" "ulft_2"; (* initialization *)
       local_live{ Self_st } "__3";
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* composite *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "Self"), "vlft4" } (!{ RefOp } ( "source" ));
       annot{ 1 }: CopyLftNameAnnot "plft7" "vlft4"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft7"; (* function_call *)
