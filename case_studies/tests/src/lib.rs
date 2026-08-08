@@ -25,6 +25,8 @@ mod generics;
 mod rectypes;
 mod loops;
 
+mod panic;
+
 mod lft_constr;
 
 mod latebounds;
