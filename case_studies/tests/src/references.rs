@@ -88,6 +88,18 @@ fn call_shr_ref_id3(x: &mut i32) {
     shr_ref_id(&*x);
 }
 
+struct SharedReborrowReceiver;
+
+impl SharedReborrowReceiver {
+    #[rr::verify]
+    fn inspect(&self) {}
+}
+
+#[rr::verify]
+fn call_method_through_known_shared_ref(receiver: &SharedReborrowReceiver) {
+    receiver.inspect();
+}
+
 
 // TODO
 #[rr::skip]
