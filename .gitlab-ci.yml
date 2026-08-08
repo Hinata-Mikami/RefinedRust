@@ -45,10 +45,11 @@ workflow:
    - echo "trusted-public-keys = ${NIX_CI_CACHE_PUB_KEY} cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" >> /etc/nix/nix.conf
 
    # Since the cache is not guaranteed to be available, it is preferable to build the dependencies for each job (which is no-op if the cache is available)
-   - nix build --print-build-logs ${DEPENDENCIES}
+   - nix build ${NIX_OPTIONS} --print-build-logs ${DEPENDENCIES}
 
   variables:
     DEPENDENCIES: ".#devShells.x86_64-linux.default .#frontend.cargoArtifacts"
+    NIX_OPTIONS: "--override-input rocq-utils gitlab:lgaeher/rocq-utils?host=gitlab.mpi-sws.org"
     NIX_PATH_INFO_FLAGS: ""
     NIX_PATH_FILTER_REGEX: ""
     NIX_PLATFORM: "$(eval nix-instantiate --eval --expr 'builtins.currentSystem')"
@@ -63,7 +64,7 @@ workflow:
 
 .build_to_nix:
   script:
-  - nix build --print-build-logs $(eval echo ${NIX_DERIVATION})
+  - nix build ${NIX_OPTIONS} --print-build-logs $(eval echo ${NIX_DERIVATION})
 
 .build_to_nix_cache:
   cache:
@@ -71,7 +72,7 @@ workflow:
     policy: pull-push
 
   script: &build_drv
-   - nix build --print-build-logs $(eval echo ${NIX_DERIVATION})
+   - nix build ${NIX_OPTIONS} --print-build-logs $(eval echo ${NIX_DERIVATION})
    - nix store sign --key-file <(echo "${NIX_CI_CACHE_PRIV_KEY}") --recursive $(eval echo ${NIX_DERIVATION})
    - nix copy --to "file://$(pwd)/${NIX_STORE_CACHE_PATH}" $(eval echo ${NIX_DERIVATION})
 
@@ -152,8 +153,8 @@ fmt:
   variables:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.fmt
   script:
-  - nix build --print-build-logs $(eval echo ${NIX_DERIVATION})
-  - nix fmt -- . --ci
+  - nix build ${NIX_OPTIONS} --print-build-logs $(eval echo ${NIX_DERIVATION})
+  - nix fmt ${NIX_OPTIONS} -- . --ci
 
 
 machete:
@@ -183,7 +184,7 @@ ace:
   needs: [ stdlib ]
   allow_failure: true
   script:
-  - nix build --impure --print-build-logs $(eval echo ${NIX_DERIVATION})
+  - nix build ${NIX_OPTIONS} --impure --print-build-logs $(eval echo ${NIX_DERIVATION})
   variables:
     NIX_DERIVATION: ./case_studies/ace-riscv#ace-ci
     ACE_PRUNED_MODULES: >-
@@ -202,10 +203,10 @@ nix-shell:
   stage: tests
   needs: [ stdlib ]
   script:
-   - nix shell -c cargo refinedrust -V
+   - nix shell ${NIX_OPTIONS} -c cargo refinedrust -V
    - cd case_studies/evenint
-   - nix shell -c cargo refinedrust
-   - nix shell -c dune build --display=short -p evenint
+   - nix shell ${NIX_OPTIONS} -c cargo refinedrust
+   - nix shell ${NIX_OPTIONS} -c dune build --display=short -p evenint
 
 
 .opam:
