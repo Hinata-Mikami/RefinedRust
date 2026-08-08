@@ -293,7 +293,9 @@ pub(crate) struct CallAnnotationPlan {
 
 /// Callee-generic region information needed to discover and classify a call's Polonius regions.
 pub(crate) struct CallRegionInputs<'a, 'tcx> {
-    pub(crate) method_params: ty::GenericArgsRef<'tcx>,
+    pub(crate) source_params: ty::GenericArgsRef<'tcx>,
+    pub(crate) resolved_params: ty::GenericArgsRef<'tcx>,
+    pub(crate) source_sig: ty::PolyFnSig<'tcx>,
     pub(crate) num_late_bounds: usize,
     pub(crate) mapped_early_regions: &'a BTreeMap<coq::Ident, usize>,
 }
@@ -477,7 +479,9 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         let discovery = calls::discover_call_regions(
             self.tcx,
             self.info,
-            call_regions.method_params,
+            call_regions.source_params,
+            call_regions.resolved_params,
+            call_regions.source_sig,
             midpoint,
             call_regions.num_late_bounds,
         );
@@ -492,21 +496,26 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             .enumerate()
             .filter_map(|(index, kind)| matches!(kind, ty::BoundVariableKind::Region(_)).then_some(index))
             .collect();
-        if bound_regions.len() != discovery.late_regions.len() {
+        if bound_regions.len() != discovery.late_regions_by_bound_var.len()
+            || bound_regions
+                .iter()
+                .any(|bound_var| !discovery.late_regions_by_bound_var.contains_key(bound_var))
+        {
             return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
                 format!(
-                    "call output has {} late-bound regions but Polonius discovered {} call regions",
+                    "could not recover a complete late-bound call instantiation: call specification expects {}, \
+                     output has {}, Polonius discovered {} call regions, mapped binders are {:?}",
+                    call_regions.num_late_bounds,
                     bound_regions.len(),
-                    discovery.late_regions.len()
+                    discovery.late_regions.len(),
+                    discovery.late_regions_by_bound_var.keys().collect::<Vec<_>>()
                 ),
             ))));
         }
-        let late_regions: BTreeMap<_, _> =
-            bound_regions.into_iter().zip(discovery.late_regions.iter().copied()).collect();
         let (output_ty, _) =
             self.tcx
                 .instantiate_bound_regions(assignment.output_ty, &mut |bound: ty::BoundRegion<'tcx>| {
-                    let region = late_regions[&bound.var.index()];
+                    let region = discovery.late_regions_by_bound_var[&bound.var.index()];
                     ty::Region::new_var(self.tcx, region.into())
                 });
 

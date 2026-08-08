@@ -99,15 +99,27 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
 
     trace!("Computed early region map {region_substitution_early:?}");
 
-    // add names for late bound region variables
-    let mut late_count = 0;
-    let mut region_substitution_late = Vec::new();
-    for b in sig.bound_vars() {
-        let next_id = facts::Region::from_usize(first_late_bound + late_count);
+    // Replace late-bound region variables by re-enumerating them in the same way as the MIR type
+    // checker does. Record which inference variable was allocated for each bound variable: the
+    // allocation order follows occurrences in the signature and can differ from binder order.
+    let mut next_index = first_late_bound;
+    let mut late_regions_by_bound_var = BTreeMap::new();
+    let mut folder = |bound: ty::BoundRegion<'tcx>| {
+        let cur_index = next_index;
+        next_index += 1;
+        let region = facts::Region::from_usize(cur_index);
+        late_regions_by_bound_var.insert(bound.var.index(), region);
+        ty::Region::new_var(tcx, ty::RegionVid::from_usize(cur_index))
+    };
+    let (late_sig, _) = tcx.instantiate_bound_regions(sig, &mut folder);
 
+    // Add names for late-bound region variables.
+    let mut region_substitution_late = Vec::new();
+    for (bound_var, b) in sig.bound_vars().iter().enumerate() {
         let ty::BoundVariableKind::Region(r) = b else {
             continue;
         };
+        let next_id = late_regions_by_bound_var[&bound_var];
 
         region_substitution_late.push(next_id);
 
@@ -155,20 +167,7 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
             },
             _ => (),
         }
-
-        late_count += 1;
     }
-
-    // replace late-bound region variables by re-enumerating them in the same way as the MIR
-    // type checker does (that this happens in the same way is important to make the names
-    // line up!)
-    let mut next_index = first_late_bound;
-    let mut folder = |_| {
-        let cur_index = next_index;
-        next_index += 1;
-        ty::Region::new_var(tcx, ty::RegionVid::from_usize(cur_index))
-    };
-    let (late_sig, _late_region_map) = tcx.instantiate_bound_regions(sig, &mut folder);
 
     // replace early bound variables
     let inputs: Vec<_> = late_sig

@@ -9,8 +9,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use derive_more::Debug;
-use log::info;
+use log::{info, warn};
 use rr_rustc_interface::middle::ty;
+use rr_rustc_interface::middle::ty::RegionExt as _;
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
@@ -39,8 +40,35 @@ pub(crate) struct CallRegions {
 pub(crate) struct CallRegionDiscovery {
     pub early_regions: Vec<Region>,
     pub late_regions: Vec<Region>,
+    pub late_regions_by_bound_var: BTreeMap<usize, Region>,
     pub new_regions: BTreeSet<Region>,
     relevant_constraints: Vec<(Region, Region)>,
+}
+
+fn late_region_binder_order(sig: ty::PolyFnSig<'_>) -> Vec<usize> {
+    sig.bound_vars()
+        .iter()
+        .enumerate()
+        .filter_map(|(index, kind)| matches!(kind, ty::BoundVariableKind::Region(_)).then_some(index))
+        .collect()
+}
+
+/// Reproduce the order in which rustc allocates inference variables while instantiating the
+/// signature. This need not be the order of entries in `bound_vars`.
+fn late_region_allocation_order<'tcx>(tcx: ty::TyCtxt<'tcx>, sig: ty::PolyFnSig<'tcx>) -> Vec<usize> {
+    let mut allocation_order = Vec::new();
+    let mut next_region = 0;
+    let (_, _) = tcx.instantiate_bound_regions(sig, &mut |bound: ty::BoundRegion<'tcx>| {
+        allocation_order.push(bound.var.index());
+        let region = ty::Region::new_var(tcx, ty::RegionVid::from_usize(next_region));
+        next_region += 1;
+        region
+    });
+    allocation_order
+}
+
+fn is_contiguous(regions: &[Region]) -> bool {
+    regions.windows(2).all(|pair| pair[0].as_u32() + 1 == pair[1].as_u32())
 }
 
 /// Compute instantiations for the lifetime parameters of a function.
@@ -51,13 +79,16 @@ pub(crate) fn discover_call_regions<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     info: &polonius_info::PoloniusInfo<'_, 'tcx>,
     substs: &[ty::GenericArg<'tcx>],
+    resolved_substs: &[ty::GenericArg<'tcx>],
+    sig: ty::PolyFnSig<'tcx>,
     midpoint: facts::PointIndex,
     num_expected_late_bounds: usize,
 ) -> CallRegionDiscovery {
     let mut early_regions = Vec::new();
-    for a in substs {
+    for a in substs.iter().chain(resolved_substs) {
         if let ty::GenericArgKind::Lifetime(r) = a.kind()
             && let ty::RegionKind::ReVar(r) = r.kind()
+            && !early_regions.contains(&r.into())
         {
             early_regions.push(r.into());
         }
@@ -83,7 +114,7 @@ pub(crate) fn discover_call_regions<'tcx>(
         _ => r,
     };
 
-    for a in substs {
+    for a in substs.iter().chain(resolved_substs) {
         if let ty::GenericArgKind::Type(c) = a.kind() {
             let mut folder = RegionFolder::new(tcx, &mut clos);
             folder.fold_ty(c);
@@ -112,32 +143,65 @@ pub(crate) fn discover_call_regions<'tcx>(
     info!("new regions: {new_regions_sorted:?}");
     info!("relevant constraints: {relevant_constraints:?}");
 
-    // identify the late-bound regions
-    let mut late_regions = Vec::new();
-    for r in &new_regions_sorted {
-        // only take the ones which are not early bound and
-        // which are not due to a generic (the callee doesn't care about generic regions)
-        if !early_regions.contains(r) && !generic_regions.contains(r) {
-            late_regions.push(*r);
-        }
+    let candidates: Vec<_> = new_regions_sorted
+        .iter()
+        .copied()
+        .filter(|region| !early_regions.contains(region) && !generic_regions.contains(region))
+        .collect();
+    let binder_order = late_region_binder_order(sig);
+    let allocation_order = late_region_allocation_order(tcx, sig);
+    let num_source_late_bounds = binder_order.len();
+    if num_source_late_bounds != num_expected_late_bounds {
+        warn!(
+            "call signature and specification disagree on late-bound region count: \
+             signature={num_source_late_bounds}, specification={num_expected_late_bounds}"
+        );
     }
-    info!("computed late regions: {:?}, expected: {num_expected_late_bounds:?}", late_regions.len());
 
-    // Heuristic: if we have too many late bounds here, try to filter spurious extra late bounds.
-    // If a late bound is equal to an early bound, it is likely to be spurious.
-    // Ideally, we'd have a more reliable way of computing an instantiation for late-bounds.
-    if late_regions.len() > num_expected_late_bounds {
-        late_regions.retain(|x| {
-            !early_regions
-                .iter()
-                .any(|y| relevant_constraints.contains(&(*x, *y)) && relevant_constraints.contains(&(*y, *x)))
-        });
-    }
+    // rustc allocates the late-bound inference variables as one run before creating the other
+    // inference variables used to normalize and check the call. Prefer reconstructing that run,
+    // but retain the previous heuristic for calls where the Polonius constraints do not expose it.
+    let strict_regions = candidates.get(..num_source_late_bounds).filter(|regions| {
+        candidates.len() == num_source_late_bounds
+            && allocation_order.len() == num_source_late_bounds
+            && is_contiguous(regions)
+    });
+    let (late_regions, late_regions_by_bound_var) = if let Some(regions) = strict_regions {
+        let allocated: BTreeMap<_, _> =
+            allocation_order.iter().copied().zip(regions.iter().copied()).collect();
+        let by_bound_var: BTreeMap<_, _> =
+            binder_order.iter().copied().map(|bound_var| (bound_var, allocated[&bound_var])).collect();
+        let ordered = binder_order.iter().map(|bound_var| by_bound_var[bound_var]).collect();
+        info!(
+            "reconstructed call late regions from rustc allocation order: {allocation_order:?} -> {ordered:?}"
+        );
+        (ordered, by_bound_var)
+    } else {
+        let mut late_regions = candidates;
+        // Preserve the old best-effort behavior: extra variables equal to an early-bound region
+        // are commonly normalization variables rather than call-bound variables.
+        if late_regions.len() > num_source_late_bounds {
+            late_regions.retain(|x| {
+                !early_regions.iter().any(|y| {
+                    relevant_constraints.contains(&(*x, *y)) && relevant_constraints.contains(&(*y, *x))
+                })
+            });
+        }
+        late_regions.truncate(num_source_late_bounds);
+        let by_bound_var = binder_order.iter().copied().zip(late_regions.iter().copied()).collect();
+        warn!(
+            "falling back to heuristic call-region instantiation: expected={num_expected_late_bounds}, \
+             binders={binder_order:?}, allocation_order={allocation_order:?}, candidates={late_regions:?}"
+        );
+        (late_regions, by_bound_var)
+    };
+    info!("computed late regions: {:?}, expected: {num_expected_late_bounds:?}", late_regions.len());
     info!("call region instantiations (late): {:?}", late_regions);
 
     CallRegionDiscovery {
         early_regions,
         late_regions,
+        late_regions_by_bound_var,
         new_regions,
         relevant_constraints,
     }
@@ -151,6 +215,7 @@ pub(crate) fn classify_call_regions(
     let CallRegionDiscovery {
         early_regions,
         late_regions,
+        late_regions_by_bound_var: _,
         new_regions,
         relevant_constraints,
     } = discovery;

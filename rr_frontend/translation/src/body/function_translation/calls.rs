@@ -708,7 +708,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 });
             }
 
-            let (_, _, _, inst_sig) = self.call_expr_op_split_inst(call_func_constant)?;
+            let (_, _, source_params, inst_sig) = self.call_expr_op_split_inst(call_func_constant)?;
             let (func_expr, info) = if let Some(source_func_constant) = &source_func_constant {
                 self.translate_constant(source_func_constant)?
             } else {
@@ -727,7 +727,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 self.proc.get_id(),
                 loc,
                 &CallRegionInputs {
-                    method_params: call_info.method_params,
+                    source_params,
+                    resolved_params: call_info.method_params,
+                    source_sig: inst_sig,
                     num_late_bounds: call_info.num_of_latebounds,
                     mapped_early_regions: &call_info.mapped_early_regions,
                 },
