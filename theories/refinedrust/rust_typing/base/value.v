@@ -1757,11 +1757,11 @@ Section op_rules.
   Definition typed_if_simplify_hyp_value_value_t_inst := [instance @typed_if_simplify_hyp_value_value_t].
   Global Existing Instance typed_if_simplify_hyp_value_value_t_inst | 1001.
 
-  Lemma typed_switch_simplify_hyp_value_value_t E L f v typed st vs it M s def fn R ϝ :
+  Lemma typed_switch_simplify_hyp_value_value_t E L f v typed st vs it M s def fn R U ϝ :
     simplify_hyp_value E L f.1 (v ◁ᵥ{f.1, MetaNone} vs @ value_t typed st) (λ v' rt' r' ty',
       ⌜v = v'⌝ ∗
-      typed_switch E L f v ty' r' it M s def fn R ϝ)
-    ⊢ typed_switch E L f v (value_t typed st) vs it M s def fn R ϝ.
+      typed_switch E L f v ty' r' it M s def fn R U ϝ)
+    ⊢ typed_switch E L f v (value_t typed st) vs it M s def fn R U ϝ.
   Proof.
     iIntros "HT".
     iIntros (??) "#CTX #HE HL HP".
@@ -1771,11 +1771,11 @@ Section op_rules.
   Definition typed_switch_simplify_hyp_value_value_t_inst := [instance @typed_switch_simplify_hyp_value_value_t].
   Global Existing Instance typed_switch_simplify_hyp_value_value_t_inst.
 
-  Lemma typed_assert_simplify_hyp_value_value_t E L f v typed st vs s fn R ϝ :
+  Lemma typed_assert_simplify_hyp_value_value_t E L f v typed st vs s fn R U ϝ :
     simplify_hyp_value E L f.1 (v ◁ᵥ{f.1, MetaNone} vs @ value_t typed st) (λ v' rt' r' ty',
       ⌜v = v'⌝ ∗
-      typed_assert E L f v ty' r' s fn R ϝ)
-    ⊢ typed_assert E L f v (value_t typed st) vs s fn R ϝ.
+      typed_assert E L f v ty' r' s fn R U ϝ)
+    ⊢ typed_assert E L f v (value_t typed st) vs s fn R U ϝ.
   Proof.
     iIntros "HT".
     iIntros (??) "#CTX #HE HL Hf HP".

@@ -49,6 +49,10 @@ Notation "'HIDDEN'" := (RETURN_MARKER _) (only printing).
 (* simplify RETURN_MARKER as soon as it is applied enough in the goal *)
 Arguments RETURN_MARKER _ _ /.
 
+Definition UNWIND_MARKER `{!typeGS Σ} (U : @typed_stmt_U_t Σ) : @typed_stmt_U_t Σ := U.
+Notation "'HIDDEN_UNWIND'" := (UNWIND_MARKER _) (only printing).
+Arguments UNWIND_MARKER _ /.
+
 (* Function name marker *)
 Definition FUNCTION_NAME (s : string) := s.
 Arguments FUNCTION_NAME : simpl never.
@@ -306,4 +310,3 @@ Ltac print_sidecondition_goal fn :=
 Ltac print_remaining_shelved_goal fn :=
   idtac "Shelved goal remaining in " fn "!";
   print_goal; admit.
-

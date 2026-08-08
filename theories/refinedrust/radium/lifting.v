@@ -353,7 +353,7 @@ Definition runtime_post `{!refinedcG Σ} (Φ : val → iProp Σ) (Φunwind : iPr
 Definition runtime_result_stmt (r : runtime_result) : stmt :=
   match r with
   | NormalResult v => Return v
-  | UnwindResult => Unwind
+  | UnwindResult => UnwindCleanup
   end.
 
 (** Stmt WP *)
@@ -363,7 +363,7 @@ Definition stmt_wp_def `{!refinedcG Σ} (E : coPset) (π : thread_id) (Q : gmap 
     ((∀ v, Ψ v -∗
       WP to_rtstmt π rf (Return v) {{ runtime_post Φ Φunwind }}) ∧
     (Ψunwind -∗
-      WP to_rtstmt π rf Unwind {{ runtime_post Φ Φunwind }})) -∗
+      WP to_rtstmt π rf UnwindCleanup {{ runtime_post Φ Φunwind }})) -∗
     WP to_rtstmt π rf s @ E {{ runtime_post Φ Φunwind }}).
 Definition stmt_wp_aux `{!refinedcG Σ} (E : coPset) (π : thread_id) (Q : gmap label stmt)
     (Ψ : val → iProp Σ) (Ψunwind : iProp Σ) : seal (@stmt_wp_def Σ _ E π Q Ψ Ψunwind).
@@ -1993,7 +1993,7 @@ Lemma wp_call_frame_exit π i (sta : list syn_type) fn caller Q
   ((∀ v, Ψ v -∗
     WP to_rtstmt π caller (Return v) {{ runtime_post Φ Φunwind }}) ∧
   (Ψunwind -∗
-    WP to_rtstmt π caller Unwind {{ runtime_post Φ Φunwind }})) -∗
+    WP to_rtstmt π caller UnwindCleanup {{ runtime_post Φ Φunwind }})) -∗
   (∃ locals,
     current_frame π (S i) ∗
     allocated_locals (π, S i) locals ∗
@@ -2246,14 +2246,6 @@ Proof.
   by iApply ("Hnormal" $! v with "Hb").
 Qed.
 
-Lemma wps_unwind π Q Ψ Ψunwind:
-  Ψunwind -∗ WPs{π} Unwind {{ Q , Ψ | Ψunwind }}.
-Proof.
-  rewrite stmt_wp_unfold. iIntros "Hu" (?? rf ?) "Hresult".
-  iDestruct "Hresult" as "[_ Hunwind]".
-  by iApply ("Hunwind" with "Hu").
-Qed.
-
 Lemma wps_unwind_terminate π Q Ψ Ψunwind:
   ⊢ WPs{π} UnwindTerminate {{ Q , Ψ | Ψunwind }}.
 Proof.
@@ -2313,6 +2305,19 @@ Proof.
   iApply (physical_step_wand with "HWP"). iIntros "HWP".
   iSplit; first done. iFrame.
   by iApply ("HWP" with "[//] Hresult").
+Qed.
+
+Lemma wps_unwind π Q Ψ Ψunwind:
+  (|={⊤}⧗=>^3 Ψunwind) -∗
+  WPs{π} Unwind {{ Q, Ψ | Ψunwind }}.
+Proof.
+  iIntros "Hu". rewrite /Unwind.
+  iApply wps_skip. iApply (physical_step_wand with "Hu"). iIntros "Hu".
+  iApply wps_skip. iApply (physical_step_wand with "Hu"). iIntros "Hu".
+  iApply wps_skip. iApply (physical_step_wand with "Hu"). iIntros "Hu".
+  rewrite stmt_wp_unfold. iIntros (?? rf ->) "Hresult".
+  iDestruct "Hresult" as "[_ Hunwind]".
+  by iApply ("Hunwind" with "Hu").
 Qed.
 
 Lemma wps_exprs π Q Ψ Ψunwind s v:

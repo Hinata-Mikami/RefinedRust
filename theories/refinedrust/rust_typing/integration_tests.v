@@ -10,6 +10,45 @@ Definition bla2 `{typeGS Σ} :=
 Definition bla3 `{typeGS Σ} T_st T_rt :=
   (fn(∀ ( *[]) : 0 | ( *[ T_ty]) : [ (T_rt, T_st) ] | (x) : _, (λ _, []); x :@: T_ty, () :@: (uninit PtrSynType) ; (λ π, True)) → ∃ y : Z, () @ (uninit PtrSynType) ; (λ π, ⌜ (4 > y)%Z⌝) | False).
 
+(** Testing exceptional function exits. *)
+Program Definition always_unwind : function := {|
+  f_args := [("arg", unit_sl)];
+  f_code := <["_bb0" := Unwind]>%E $ ∅;
+  f_init := "_bb0";
+|}.
+Next Obligation. solve_fn_vars_nodup. Qed.
+
+Definition always_unwind_type `{typeGS Σ} :=
+  fn(∀ ( *[]) : 0 | ( *[]) : [] | () : unit, (λ _, []);
+      () :@: unit_t; (λ _, True)) → ∃ () : unit, () @ unit_t; (λ _, True) | True.
+
+Lemma always_unwind_typed `{!typeGS Σ} π :
+  ⊢ typed_function π always_unwind (<tag_type> always_unwind_type).
+Proof.
+  start_function "always_unwind" ϝ ( [] ) ( [] ) ( [] ) ( ).
+  repeat liRStep; liShow.
+  Unshelve. all: sidecond_solver.
+Qed.
+
+Program Definition always_terminate : function := {|
+  f_args := [("arg", unit_sl)];
+  f_code := <["_bb0" := UnwindTerminate]>%E $ ∅;
+  f_init := "_bb0";
+|}.
+Next Obligation. solve_fn_vars_nodup. Qed.
+
+Definition always_terminate_type `{typeGS Σ} :=
+  fn(∀ ( *[]) : 0 | ( *[]) : [] | () : unit, (λ _, []);
+      () :@: unit_t; (λ _, True)) → ∃ () : unit, () @ unit_t; (λ _, True) | False.
+
+Lemma always_terminate_typed `{!typeGS Σ} π :
+  ⊢ typed_function π always_terminate (<tag_type> always_terminate_type).
+Proof.
+  start_function "always_terminate" ϝ ( [] ) ( [] ) ( [] ) ( ).
+  repeat liRStep; liShow.
+  Unshelve. all: try iFrame. all: sidecond_solver.
+Qed.
+
 (** Testing type parameter instantiation *)
 Program Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("dst", void* ); ("src", use_layout_alg' T_st)];

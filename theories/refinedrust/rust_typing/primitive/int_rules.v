@@ -409,13 +409,13 @@ Section switch.
   | DestructHintSwitchIntCase (n : Z)
   | DestructHintSwitchIntDefault.
 
-  Lemma type_switch_int E L f n it v m ss def fn R ϝ:
+  Lemma type_switch_int E L f n it v m ss def fn R U ϝ:
     ([∧ map] i↦mi ∈ m,
       li_trace (DestructHintSwitchIntCase i) (
-             ⌜discriminate_hint (n = i)⌝ -∗ ∃ s, ⌜ss !! mi = Some s⌝ ∗ typed_stmt E L f s fn R ϝ)) ∧
+             ⌜discriminate_hint (n = i)⌝ -∗ ∃ s, ⌜ss !! mi = Some s⌝ ∗ typed_stmt E L f s fn R U ϝ)) ∧
     (li_trace (DestructHintSwitchIntDefault) (
-                     ⌜discriminate_hint (n ∉ (map_to_list m).*1)⌝ -∗ typed_stmt E L f def fn R ϝ))
-    ⊢ typed_switch E L f v (int it) n it m ss def fn R ϝ.
+                     ⌜discriminate_hint (n ∉ (map_to_list m).*1)⌝ -∗ typed_stmt E L f def fn R U ϝ))
+    ⊢ typed_switch E L f v (int it) n it m ss def fn R U ϝ.
   Proof.
     unfold li_trace, discriminate_hint.
     iIntros "HT".
@@ -652,15 +652,15 @@ Section bool.
   Definition type_if_bool_inst := [instance @type_if_bool].
   Global Existing Instance type_if_bool_inst.
 
-  Lemma type_assert_bool E L f b s fn R v ϝ :
-    (⌜b = true⌝ ∗ typed_stmt E L f s fn R ϝ)
-    ⊢ typed_assert E L f v (bool_t) b s fn R ϝ.
+  Lemma type_assert_bool E L f b s fn R U v ϝ :
+    (⌜b = true⌝ ∗ typed_stmt E L f s fn R U ϝ)
+    ⊢ typed_assert E L f v (bool_t) b s fn R U ϝ.
   Proof.
     iIntros "[-> Hs]" (??) "#CTX #HE HL Hf (_ & Hb)".
     iPoseProof (bool_own_val_to_eq with "Hb") as "%". by iFrame.
   Qed.
   Global Instance type_assert_bool_inst E L f b v : TypedAssert E L f v (bool_t) b :=
-    λ s fn R ϝ, i2p (type_assert_bool E L f b s fn R v ϝ).
+    λ s fn R U ϝ, i2p (type_assert_bool E L f b s fn R U v ϝ).
 End bool.
 
 Section char.

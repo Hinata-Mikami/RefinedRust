@@ -55,9 +55,9 @@ Ltac rep_check_backtrack_point_hook ::=
   | |- BACKTRACK_POINT ?P => idtac
   | |- envs_entails _ ?P =>
       lazymatch P with
-      | typed_stmt _ _ _ _ _ _ _ => idtac
+       | typed_stmt _ _ _ _ _ _ _ _ => idtac
       | typed_val_expr _ _ _ _ _ => idtac
-      | typed_call _ _ _ _ _ _ _ _ _ _ _ _ _ => idtac
+       | typed_call _ _ _ _ _ _ _ _ _ _ _ _ _ _ => idtac
       (* TODO maybe also typed_assert etc *)
       end
   end.
@@ -106,18 +106,18 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedCheckBinOp E L f v1 ty1 v2 ty2 o ot1 ot2) T))
   | typed_check_un_op ?E ?L ?f ?v ?ty ?o ?ot ?T =>
       cont uconstr:(((_ : TypedCheckUnOp E L f v ty o ot) T))
-  | typed_call ?E ?L ?f ?eκs ?etys ?v ?P ?vl ?tys ?destination ?normal ?unwind ?T =>
-      cont uconstr:(((_ : TypedCall E L f eκs etys v P vl tys destination normal unwind) T))
+  | typed_call ?E ?L ?f ?eκs ?etys ?v ?P ?vl ?tys ?destination ?normal ?unwind ?T ?U =>
+      cont uconstr:(((_ : TypedCall E L f eκs etys v P vl tys destination normal unwind) T U))
   | typed_place ?E ?L ?f ?l ?lt ?r ?bmin0 ?b ?P ?T =>
       cont uconstr:(((_ : TypedPlace E L f l lt r bmin0 b P) T))
   | typed_if ?E ?L ?π ?v ?P ?T1 ?T2 =>
       cont uconstr:(((_ : TypedIf E L π v P) T1 T2))
   | typed_annot_stmt ?π ?n ?a ?E ?L ?T =>
       cont uconstr:(((_ : TypedAnnotStmt π n a) E L T))
-  | typed_switch ?E ?L ?f ?v ?ty ?r ?it ?m ?ss ?def ?fn ?R ?ϝ =>
-      cont uconstr:(((_ : TypedSwitch E L f v ty r it) m ss def fn R ϝ))
-  | typed_assert ?E ?L ?f ?v ?ty ?r ?s ?fn ?R ?ϝ =>
-      cont uconstr:(((_ : TypedAssert E L f v ty r) s fn R ϝ))
+  | typed_switch ?E ?L ?f ?v ?ty ?r ?it ?m ?ss ?def ?fn ?R ?U ?ϝ =>
+      cont uconstr:(((_ : TypedSwitch E L f v ty r it) m ss def fn R U ϝ))
+  | typed_assert ?E ?L ?f ?v ?ty ?r ?s ?fn ?R ?U ?ϝ =>
+      cont uconstr:(((_ : TypedAssert E L f v ty r) s fn R U ϝ))
   | typed_read_end ?π ?E ?L ?l ?ty ?r ?b2 ?bmin ?ot ?m ?T =>
       cont uconstr:(((_ : TypedReadEnd π E L l ty r b2 bmin ot m) T))
   | typed_write_end ?π ?E ?L ?ot ?v1 ?ty1 ?r1 ?b2 ?bmin ?l2 ?lt2 ?r2 ?T =>
@@ -421,10 +421,10 @@ Ltac liRInstantiateEvars :=
 (** Goto [goto_bb] *)
 Ltac liRGoto goto_bb :=
   lazymatch goal with
-  | |- envs_entails ?Δ (typed_stmt ?E ?L ?f (Goto _) ?fn ?R ?ϝ) =>
+  | |- envs_entails ?Δ (typed_stmt ?E ?L ?f (Goto _) ?fn ?R ?U ?ϝ) =>
       first [
         (* try to find an inductive hypothesis we obtained previously *)
-        notypeclasses refine (tac_fast_apply (type_goto_precond E _ L f  _ _ fn R ϝ) _);
+        notypeclasses refine (tac_fast_apply (type_goto_precond E _ L f _ _ fn R U ϝ) _);
         progress liFindHyp FICSyntactic
       | (* if we jump to a loop head, initiate Löb induction *)
         lazymatch goal with
@@ -443,52 +443,56 @@ Ltac liRGoto goto_bb :=
               (* finally initiate Löb *)
               match IterVar with
               | None =>
-                notypeclasses refine (tac_fast_apply (typed_goto_acc E L f fn R Inv goto_bb ϝ _ _) _);
+                notypeclasses refine (tac_fast_apply (typed_goto_acc E L f fn R U Inv goto_bb ϝ _ _) _);
                   [unfold_code_marker_and_compute_map_lookup|  ]
               | Some ?var =>
-                notypeclasses refine (tac_fast_apply (typed_goto_acc' E L f fn R goto_bb ϝ _ var Inv _) _);
+                notypeclasses refine (tac_fast_apply (typed_goto_acc' E L f fn R U goto_bb ϝ _ var Inv _) _);
                   [unfold_code_marker_and_compute_map_lookup|  ]
               end)
         end
       | (* do a direct jump *)
-        notypeclasses refine (tac_fast_apply (type_goto E L f _ fn R _ ϝ _) _);
+        notypeclasses refine (tac_fast_apply (type_goto E L f _ fn R U _ ϝ _) _);
           [unfold_code_marker_and_compute_map_lookup|]
       ]
   end.
 
 Ltac liRStmt :=
   lazymatch goal with
-  | |- envs_entails ?Δ (typed_stmt ?E ?L ?f ?s ?fn ?R ?ϝ) =>
+  | |- envs_entails ?Δ (typed_stmt ?E ?L ?f ?s ?fn ?R ?U ?ϝ) =>
     let s' := W.of_stmt s in
     lazymatch s' with
-    | W.AssignSE _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_assign E L f _ _ _ _ fn R _ ϝ) _)
-    | W.Call _ _ _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_call E L f _ _ _ _ _ _ _ fn R ϝ) _)
-    | W.Return _ => notypeclasses refine (tac_fast_apply (type_return E L f _ fn R ϝ) _)
-    | W.IfS _ _ _ _ => notypeclasses refine (tac_fast_apply (type_if E L f _ _ _ fn R ϝ) _)
-    | W.Switch _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_switch E L f _ _ _ _ _ fn R ϝ) _)
-    | W.Assert _ _ _ => notypeclasses refine (tac_fast_apply (type_assert E L f _ _ fn R ϝ) _)
+    | W.AssignSE _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_assign E L f _ _ _ _ fn R U _ ϝ) _)
+    | W.Call _ _ _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_call E L f _ _ _ _ _ _ _ fn R U ϝ) _)
+    | W.Return _ => notypeclasses refine (tac_fast_apply (type_return E L f _ fn R U ϝ) _)
+    | W.Unwind => notypeclasses refine (tac_fast_apply (type_unwind E L f fn R U ϝ) _)
+    | W.UnwindTerminate => notypeclasses refine (tac_fast_apply (type_unwind_terminate E L f fn R U ϝ) _)
+    | W.IfS _ _ _ _ => notypeclasses refine (tac_fast_apply (type_if E L f _ _ _ fn R U ϝ) _)
+    | W.Switch _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_switch E L f _ _ _ _ _ fn R U ϝ) _)
+    | W.Assert _ _ _ => notypeclasses refine (tac_fast_apply (type_assert E L f _ _ fn R U ϝ) _)
     | W.Goto ?bid => liRGoto bid
-    | W.ExprS _ _ => notypeclasses refine (tac_fast_apply (type_exprs E L f _ _ fn R ϝ) _)
-    | W.LocalLive ?x ?st _ => notypeclasses refine (tac_fast_apply (type_local_live E L f st x _ fn R ϝ) _)
-    | W.LocalDead ?x _ => notypeclasses refine (tac_fast_apply (type_local_dead E L f x _ fn R ϝ) _)
-    | W.SkipS _ => notypeclasses refine (tac_fast_apply (type_skips' E L f _ fn R ϝ) _)
+    | W.ExprS _ _ => notypeclasses refine (tac_fast_apply (type_exprs E L f _ _ fn R U ϝ) _)
+    | W.LocalLive ?x ?st _ => notypeclasses refine (tac_fast_apply (type_local_live E L f st x _ fn R U ϝ) _)
+    | W.LocalDead ?x _ => notypeclasses refine (tac_fast_apply (type_local_dead E L f x _ fn R U ϝ) _)
+    | W.SkipS _ => notypeclasses refine (tac_fast_apply (type_skips' E L f _ fn R U ϝ) _)
     | W.StuckS => exfalso
-    | W.AnnotStmt _ _ _ => notypeclasses refine (tac_fast_apply (type_annot_stmt E L f _ _ _ fn R ϝ) _)
+    | W.AnnotStmt _ _ _ => notypeclasses refine (tac_fast_apply (type_annot_stmt E L f _ _ _ fn R U ϝ) _)
     | _ => fail "do_stmt: unknown stmt" s
     end
   end.
 
 Ltac liRIntroduceTypedStmt :=
   lazymatch goal with
-  | |- @envs_entails ?PROP ?Δ (introduce_typed_stmt ?E ?L ?f ?ϝ ?fn ?R) =>
+  | |- @envs_entails ?PROP ?Δ (introduce_typed_stmt ?E ?L ?f ?ϝ ?fn ?R ?U) =>
     iEval (rewrite /introduce_typed_stmt);
       lazymatch goal with
-      | |- @envs_entails ?PROP ?Δ (@typed_stmt ?Σ ?tG ?E ?L ?f ?s ?fn ?R ?ϝ) =>
+      | |- @envs_entails ?PROP ?Δ (@typed_stmt ?Σ ?tG ?E ?L ?f ?s ?fn ?R ?U ?ϝ) =>
         let Hfn := fresh "FN" in
         let HR := fresh "R" in
+        let HU := fresh "U" in
         pose (Hfn := (CODE_MARKER fn));
         pose (HR := (RETURN_MARKER R));
-        change_no_check (@envs_entails PROP Δ (@typed_stmt Σ tG E L f s Hfn HR ϝ));
+        pose (HU := (UNWIND_MARKER U));
+        change_no_check (@envs_entails PROP Δ (@typed_stmt Σ tG E L f s Hfn HR HU ϝ));
         iEval (simpl) (* To simplify f_init *)
       end
   end.
@@ -957,6 +961,9 @@ Ltac liRStepCore :=
   | liRIntroduceTypedStmt
   | liRExpr
   | liRBinder
+  | lazymatch goal with
+    | |- envs_entails _ (fn_body_end_prop _ _ _ _ _) => unfold fn_body_end_prop
+    end
   | liRJudgement
   | liFastStep
   | lazymatch goal with | |- BACKTRACK_POINT ?P => change_no_check P end
@@ -1020,16 +1027,11 @@ Section tac.
         ([∗ list] l;'(existT rt (ty, r)) ∈ lsa;fp_atys fps, l ◁ₗ[ π, Owned] # r @ (◁ ty)) ∗
         ([∗ list] xl;synty ∈ zip (f_args fn).*1 lsa;sta, xl.1 is_live{ (π, f), synty} xl.2))%I in
         (credit_store 0 0 -∗ na_own π ⊤ -∗ allocated_locals (π, f) (f_args fn).*1 -∗ introduce_with_hooks E L (Qinit) (λ L2,
-        introduce_typed_stmt E L2 (π, f) ϝ fn (
-        λ v L2,
-            prove_with_subtype E L2 true ProveDirect (fn_ret_prop π ((fp.2 κs tys).(fn_p) x).(fp_fr) v) True (λ L3 _ R3,
-            introduce_with_hooks E L3 R3 (λ L4,
-            (* we don't really kill it here, but just need to find it in the context *)
-            li_tactic (llctx_find_llft_goal L4 ϝ LlctxFindLftFull) (λ _,
-            find_in_context FindCreditStore (λ _,
-              find_in_context (FindNaOwn π) (λ mask : coPset, ⌜mask = ⊤⌝ ∗ True)%I)
-          )))
-        ))).
+        introduce_typed_stmt E L2 (π, f) ϝ fn
+          (λ v L3, fn_body_end_prop E L3 ϝ π
+            (fn_ret_prop π ((fp.2 κs tys).(fn_p) x).(fp_fr) v))
+          (λ L3, fn_body_end_prop E L3 ϝ π
+            (⌜((fp.2 κs tys).(fn_p) x).(fp_panic)⌝)%I))).
 
   Lemma intro_typed_function {rts : list RT} (n : nat) π (fn : function) (fp : (eq rts rts) * (prod_vec lft n → plist type rts → fn_spec)) :
     (∀ κs tys x (ϝ : lft) (f : frame_id),
@@ -1051,7 +1053,7 @@ Section tac.
     iIntros (?????) "!# Hx1".
     iIntros (lsa) "(Hstore & Hna & Halloc & Hinit)".
     rewrite /introduce_typed_stmt /typed_stmt.
-    iIntros (?) "#CTX #HE HL Hf Hcont".
+    iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont".
     iApply fupd_wps.
     iPoseProof ("Ha" with "Hx1") as "HT".
     iDestruct ("HT" $! lsa) as "(%E' & %Hsub & HT)".
@@ -1060,17 +1062,35 @@ Section tac.
     iMod ("HT" with "Hstore Hna Halloc [] CTX HE' HL [Hinit]") as "(%L2 & HL & HT)"; first done.
     { iDestruct "Hinit" as "($ & $ & $)". }
     iApply ("HT" with "CTX HE' HL Hf").
-    iModIntro. unfold typed_stmt_post_cond.
-    iIntros (???) "HL Hf Halloc Hb".
-    iSpecialize ("Hcont" with "HL Hf Halloc Hb").
-    unfold prove_with_subtype.
-    iIntros "Hcont2".
-    iApply "Hcont".
-    iIntros (?????) "_ _ HL HA".
-    iMod ("Hcont2" with "[] [] [] [//] [//] HL HA") as "Hx"; [done.. | ].
-    iDestruct "Hx" as "(% &  % & % & ? & ? & HT)". iFrame.
-    iExists []. iModIntro. iIntros (??) "_ _ HL".
-    iApply ("HT" with "[] CTX [] HL"); done.
+    iModIntro. iSplit.
+    - unfold typed_stmt_post_cond.
+      iIntros (???) "HL Hf Halloc Hb".
+      iDestruct "Hcont" as "[Hcont _]".
+      iSpecialize ("Hcont" with "HL Hf Halloc Hb").
+      unfold fn_body_end_prop, prove_with_subtype.
+      iIntros "Hcont2".
+      iApply "Hcont".
+      iIntros (?????) "_ _ HL HA".
+      iMod ("Hcont2" with "[] [] [] [//] [//] HL HA") as "Hx"; [done.. | ].
+      iDestruct "Hx" as "(% & % & % & ? & ? & HT)". iFrame.
+      iExists []. iModIntro. unfold introduce_with_hooks.
+      iIntros (F0 Hmask) "CTX0 HE0 HL0 HR".
+      iPoseProof (elctx_interp_submseteq _ _ Hsub with "HE0") as "HE0'".
+      iApply ("HT" with "[] CTX0 HE0' HL0 HR"); done.
+    - unfold typed_stmt_unwind_post_cond.
+      iIntros (??) "HL Hf Halloc Hb".
+      iDestruct "Hcont" as "[_ Hcont]".
+      iSpecialize ("Hcont" with "HL Hf Halloc Hb").
+      unfold fn_body_end_prop, prove_with_subtype.
+      iIntros "Hcont2".
+      iApply "Hcont".
+      iIntros (?????) "_ _ HL HA".
+      iMod ("Hcont2" with "[] [] [] [//] [//] HL HA") as "Hx"; [done.. | ].
+      iDestruct "Hx" as "(% & % & % & ? & ? & HT)". iFrame.
+      iExists []. iModIntro. unfold introduce_with_hooks.
+      iIntros (F0 Hmask) "CTX0 HE0 HL0 HR".
+      iPoseProof (elctx_interp_submseteq _ _ Hsub with "HE0") as "HE0'".
+      iApply ("HT" with "[] CTX0 HE0' HL0 HR"); done.
   Qed.
 End tac.
 
@@ -1859,7 +1879,8 @@ Ltac prepare_sideconditions_fast :=
   repeat match goal with | H : BLOCK_PRECOND _ _ |- _ => clear H end;
   (* get rid of Q *)
   repeat match goal with | H := CODE_MARKER _ |- _ => clear H end;
-  repeat match goal with | H := RETURN_MARKER _ |- _ => clear H end
+  repeat match goal with | H := RETURN_MARKER _ |- _ => clear H end;
+  repeat match goal with | H := UNWIND_MARKER _ |- _ => clear H end
 .
 Ltac prepare_sideconditions :=
   prepare_sideconditions_fast;

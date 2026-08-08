@@ -5,8 +5,9 @@ From refinedrust Require Import options.
 (** * Function types *)
 
 (* "entry-point" statement *)
-Definition introduce_typed_stmt {Σ} `{!typeGS Σ} (E : elctx) (L : llctx) (f : frame_path) (ϝ : lft) (fn : function) (R : typed_stmt_R_t) : iProp Σ :=
-  typed_stmt E L f (Goto fn.(f_init)) fn R ϝ.
+Definition introduce_typed_stmt {Σ} `{!typeGS Σ} (E : elctx) (L : llctx) (f : frame_path) (ϝ : lft)
+    (fn : function) (R : typed_stmt_R_t) (U : typed_stmt_U_t) : iProp Σ :=
+  typed_stmt E L f (Goto fn.(f_init)) fn R U ϝ.
 Global Typeclasses Opaque introduce_typed_stmt.
 Global Arguments introduce_typed_stmt : simpl never.
 
@@ -135,37 +136,30 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
     (* precondition *)
     fps.(fp_Pa) π.
 
+  Definition fn_body_end_prop E L ϝ π (P : iProp Σ) : iProp Σ :=
+    (prove_with_subtype E L true ProveDirect P True%I (λ L2 _ R2,
+      introduce_with_hooks E L2 R2 (λ L3,
+        li_tactic (llctx_find_llft_goal L3 ϝ LlctxFindLftFull) (λ _,
+          find_in_context FindCreditStore (λ _,
+            find_in_context (FindNaOwn π) (λ mask : coPset, ⌜mask = ⊤⌝ ∗ True))))))%I.
+  Arguments fn_body_end_prop _ _ _ _ _ /.
+
   (** This definition is not yet contractive, and also not a full type.
     We do this below in a separate definition. *)
-  Definition typed_function {lfts : nat} {rts : list RT} (π : thread_id) (fn : function) (fp : eq rts rts * (spec_with lfts rts fn_spec)) : iProp Σ :=
-    ( (* for any Coq-level parameters *)
-      ∀ κs tys x,
-      (* and any duration of the function call *)
-      ∀ (ϝ : lft),
-      (* for any stack frame *)
-      ∀ (f : frame_id),
-      □ (
-      let lya := fn.(f_args).*2 in
-      let fps := (fp.2 κs tys).(fn_p) x in
-      let sta := fn_arg_syntys fps.(fp_atys) in
-      (* the function arg type layouts match what is given in the function [fn]: this is something we assume here *)
-      ⌜Forall2 syn_type_has_layout sta lya⌝ -∗
-      ∀ (* for any stack locations that get picked nondeterministically... *)
-          (lsa : vec loc (length fps.(fp_atys))),
-          (* external lifetime context: can require external lifetimes syntactically outlive the function lifetime, as well as syntactic constraints between universal lifetimes *)
-          let E := (fps.(fp_elctx) ϝ) in
-          (* local lifetime context: the function needs to be alive *)
-          let L := [ϝ ⊑ₗ{0} []] in
-          fn_init_context fn fps π f lsa sta -∗ introduce_typed_stmt E L (π, f) ϝ fn (
-            λ v L2,
-            prove_with_subtype E L2 true ProveDirect (fn_ret_prop π fps.(fp_fr) v) True%I (λ L3 _ R3,
-            introduce_with_hooks E L3 R3 (λ L4,
-            (* we don't really kill it here, but just need to find it in the context *)
-            li_tactic (llctx_find_llft_goal L4 ϝ LlctxFindLftFull) (λ _,
-            find_in_context FindCreditStore (λ _,
-              find_in_context (FindNaOwn π) (λ mask : coPset, ⌜mask = ⊤⌝ ∗ True))
-          )))))
-    )%I.
+  Definition typed_function {lfts : nat} {rts : list RT} (π : thread_id) (fn : function)
+      (fp : eq rts rts * spec_with lfts rts fn_spec) : iProp Σ :=
+    (∀ κs tys x (ϝ : lft) (f : frame_id),
+      □ (let lya := fn.(f_args).*2 in
+         let fps := (fp.2 κs tys).(fn_p) x in
+         let sta := fn_arg_syntys fps.(fp_atys) in
+         ⌜Forall2 syn_type_has_layout sta lya⌝ -∗
+         ∀ lsa : vec loc (length fps.(fp_atys)),
+           let E := fps.(fp_elctx) ϝ in
+           let L := [ϝ ⊑ₗ{0} []] in
+           fn_init_context fn fps π f lsa sta -∗
+           introduce_typed_stmt E L (π, f) ϝ fn
+             (λ v L2, fn_body_end_prop E L2 ϝ π (fn_ret_prop π fps.(fp_fr) v))
+             (λ L2, fn_body_end_prop E L2 ϝ π ⌜fps.(fp_panic)⌝)))%I.
 
   Global Instance typed_function_persistent {lfts : nat} {rts : list (RT)} π fn fp : Persistent (typed_function (lfts:=lfts) (rts := rts) π fn fp) := _.
 
@@ -241,7 +235,7 @@ Section call.
   Context `{!typeGS Σ}.
   Import EqNotations.
 
-  Lemma type_call_fnptr E L f π (lfts : nat) (rts : list (RT)) eκs etys l v vl tys eqp m (fp : spec_with lfts rts fn_spec) (sta : list syn_type) destination normal unwind (T : typed_call_cont_t) :
+  Lemma type_call_fnptr E L f π (lfts : nat) (rts : list (RT)) eκs etys l v vl tys eqp m (fp : spec_with lfts rts fn_spec) (sta : list syn_type) destination normal unwind (T : typed_call_cont_t) (U : typed_call_unwind_cont_t) :
     let eκs' := list_to_tup eκs in
     find_in_context (FindNaOwn π) (λ mask : coPset,
       ⌜π = f.1⌝ ∗
@@ -280,14 +274,17 @@ Section call.
       (* don't normalize this sidecondition, directly shelve it: term is huge and expensive *)
       ⌜shelve_hint (∀ ϝ, elctx_sat (((λ κ, ϝ ⊑ₑ κ) <$> (llctx_alive_lfts L2)) ++ E) L2 (fps.(fp_elctx) ϝ))⌝ ∗
 
-      (* postcondition *)
-      ∀ v x', (* v = retval, x' = post existential *)
-      (* also donate some credits we are generating here *)
-      introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ (fps.(fp_fr) x').(fr_R) π ∗ v ◁ᵥ{π, MetaNone} (fps.(fp_fr) x').(fr_ref) @ (fps.(fp_fr) x').(fr_ty)) (λ L3,
-      T L3 v _ (fps.(fp_fr) x').(fr_ty) (fps.(fp_fr) x').(fr_ref)))))))
-    ⊢ typed_call E L f eκs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, fp)) vl tys destination normal unwind T.
+      (* postconditions *)
+      (
+       introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ ⌜fps.(fp_panic)⌝) U ∧
+       (∀ v x', (* v = retval, x' = post existential *)
+        (* also donate some credits we are generating here *)
+        introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ (fps.(fp_fr) x').(fr_R) π ∗ v ◁ᵥ{π, MetaNone} (fps.(fp_fr) x').(fr_ref) @ (fps.(fp_fr) x').(fr_ty)) (λ L3,
+        T L3 v _ (fps.(fp_fr) x').(fr_ty) (fps.(fp_fr) x').(fr_ref)))
+       ))))))
+    ⊢ typed_call E L f eκs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, fp)) vl tys destination normal unwind T U.
   Proof.
-    simpl. iIntros "HT (-> & %fn & %Hv & He & %Halg & Hfn) Htys" (Q Ψ) "#CTX #HE HL Hf Hcont".
+    simpl. iIntros "HT (-> & %fn & %Hv & He & %Halg & Hfn) Htys" (Q Ψ Ψunwind) "#CTX #HE HL Hf Hcont".
     rewrite /li_tactic/ensure_evars_instantiated_goal.
     iDestruct "HT" as (mask) "(Hna & -> & -> & HT) /=".
     iMod ("HT" with "[] CTX HE HL Htys") as "(%L' & HL & HT)"; first done.
@@ -372,6 +369,15 @@ Section call.
         ([∗ list] x0 ∈ locals,
           ∃ (ly : layout) (l : loc) (st : syn_type), ⌜syn_type_has_layout st ly⌝ ∗ x0 is_live{ (f.1, S f.2), st} l ∗ l ↦|ly|) ∗
         fn_ret_prop f.1 (fp_fr fps) v)%I).
+    set (UNWIND_PROP := (∃ κs' locals,
+        llctx_elt_interp (ϝ ⊑ₗ{ 0} κs') ∗
+        credit_store 0 0 ∗
+        current_frame f.1 (S f.2) ∗
+        allocated_locals (f.1, S f.2) locals ∗
+        na_own f.1 ⊤ ∗
+        ([∗ list] x0 ∈ locals,
+          ∃ (ly : layout) (l : loc) (st : syn_type), ⌜syn_type_has_layout st ly⌝ ∗ x0 is_live{ (f.1, S f.2), st} l ∗ l ↦|ly|) ∗
+        ⌜fp_panic fps⌝)%I).
     unfold fn_init_context.
     (* prove the initial context *)
     iSpecialize ("Hm" with "[Hcred Hc $Hna $Halloc $Hsc $HP Ha Hvl $Hx]").
@@ -415,8 +421,10 @@ Section call.
       iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
       rewrite Hlyv. iR. iExists _. iR. eauto with iFrame. }
 
-    iExists RET_PROP, False%I. iSplitL "Hf Hm Hϝ" => /=.
+    iExists RET_PROP, UNWIND_PROP. iSplitL "Hf Hm Hϝ" => /=.
     - iApply ("Hm" with "[$LFT $LCTX] HE' [$Hϝ//] Hf []").
+      iSplit.
+      +
       iIntros (L5 v' locals) "HL Hf Hlocals Hloc HT". simpl.
       iApply fupd_logical_step.
       iMod ("HT" $! _ True%I with "[] [] [] [] HE' HL []") as "(%L3 & %κs1 & %R4 & Hp & HL & HT)"; [done.. |  | | ].
@@ -438,28 +446,67 @@ Section call.
       subst RET_PROP; simpl.
       iExists _. iFrame.
       iApply (credit_store_mono with "Hstore"); lia.
-    - (* handle the postcondition at return; unwinding is still ruled out *)
-      iSplit; last by iIntros "[]".
-      iIntros (v').
-      iDestruct 1 as (κs' locals) "(Hϝ & Hstore & Hf & Hlocals & Hna & Hls & HPr)".
-      iFrame.
-      simpl.
-      iPoseProof (credit_store_borrow with "Hstore") as "(Hcred1 & Hat & _)".
-      iApply (physical_step_intro_tr with "Hat").
-      iNext. iIntros "Hat Hcred".
+      + iIntros (L5 locals) "HL Hf Hlocals Hloc HT". simpl.
+        iApply fupd_logical_step.
+        iMod ("HT" $! _ True%I with "[] [] [] [] HE' HL []") as "(%L3 & %κs1 & %R4 & Hp & HL & HT)"; [done.. |  | | ].
+        { rewrite /rrust_ctx. iFrame "#". }
+        { iApply maybe_logical_step_intro. done. }
+        iModIntro.
+        iApply logical_step_fupd.
+        iApply (logical_step_wand with "Hp").
+        iIntros "(HR & %Hpanic & _)".
+        iMod ("HT" with "[] [$] HE' HL HR") as "(%L6 & HL & HT)"; first done.
+        rewrite /llctx_find_llft_goal.
+        iDestruct "HT" as "(%HL6 & %κs' & %Hfind & HT)".
+        destruct Hfind as (L9 & L10 & elt & -> & -> & Helt & Hoc).
+        destruct elt; try done. simpl in Helt. destruct Helt as [<- <-].
+        unfold llctx_find_lft_key_interp in Hoc. subst.
+        iDestruct "HL" as "(_ & Hϝ & _)".
+        iDestruct "HT" as ([n' m']) "(Hstore & HT)"; simpl.
+        iDestruct "HT" as (mask) "(Hna & -> & _)"; simpl.
+        subst UNWIND_PROP; simpl.
+        iModIntro. iExists κs', locals. iFrame.
+        iSplitL "Hstore"; last done.
+        iApply (credit_store_mono with "Hstore"); lia.
+    - (* recover the caller after either result *)
+      iSplit.
+      + iDestruct "Hr" as "[_ Hr]". iDestruct "Hcont" as "[Hcont _]".
+        iIntros (v').
+        iDestruct 1 as (κs' locals) "(Hϝ & Hstore & Hf & Hlocals & Hna & Hls & HPr)".
+        iFrame.
+        simpl.
+        iPoseProof (credit_store_borrow with "Hstore") as "(Hcred1 & Hat & _)".
+        iApply (physical_step_intro_tr with "Hat").
+        iNext. iIntros "Hat Hcred".
 
-      iPoseProof ("Hkill" with "Hϝ") as "(Htok & Hkill)".
-      iMod ("HL_cl'" with "Htok HL") as "HL".
-      iPoseProof ("HL_cl" with "HL") as "HL".
-       (*we currently don't actually kill the lifetime, as we don't conceptually need that. *)
-      iDestruct ("HPr") as (?) "(Hty & HR2 & _)".
-      iMod ("Hr" with "[] [$] HE HL [Hat Hcred Hna HR2 Hty HR]") as "(%L3 & HL & Hr)"; first done.
-      { iFrame. simpl. unfold num_laters_per_step.
-        iSplitL "Hcred".
-        - iApply lc_weaken; last done. unfold num_cred. lia.
-        - iApply tr_weaken; last done. lia. }
-      iModIntro. iIntros "Hf".
-      iApply ("Hcont" with "HL Hf Hr").
+        iPoseProof ("Hkill" with "Hϝ") as "(Htok & Hkill)".
+        iMod ("HL_cl'" with "Htok HL") as "HL".
+        iPoseProof ("HL_cl" with "HL") as "HL".
+         (*we currently don't actually kill the lifetime, as we don't conceptually need that. *)
+        iDestruct ("HPr") as (?) "(Hty & HR2 & _)".
+        iMod ("Hr" with "[] [$] HE HL [Hat Hcred Hna HR2 Hty HR]") as "(%L3 & HL & Hr)"; first done.
+        { iFrame. simpl. unfold num_laters_per_step.
+          iSplitL "Hcred".
+          - iApply lc_weaken; last done. unfold num_cred. lia.
+          - iApply tr_weaken; last done. lia. }
+        iModIntro. iIntros "Hf".
+        iApply ("Hcont" with "HL Hf Hr").
+      + iDestruct "Hr" as "[Hr _]". iDestruct "Hcont" as "[_ Hcont]".
+        iDestruct 1 as (κs' locals) "(Hϝ & Hstore & Hf & Hlocals & Hna & Hls & %Hpanic)".
+        iFrame.
+        iPoseProof (credit_store_borrow with "Hstore") as "(Hcred1 & Hat & _)".
+        iApply (physical_step_intro_tr with "Hat").
+        iNext. iIntros "Hat Hcred".
+        iPoseProof ("Hkill" with "Hϝ") as "(Htok & Hkill)".
+        iMod ("HL_cl'" with "Htok HL") as "HL".
+        iPoseProof ("HL_cl" with "HL") as "HL".
+        iMod ("Hr" with "[] [$] HE HL [Hat Hcred Hna HR]") as "(%L3 & HL & Hr)"; first done.
+        { iFrame "%". simpl. unfold num_laters_per_step.
+          iSplitL "Hcred".
+          - iApply lc_weaken; last done. unfold num_cred. lia.
+          - iFrame. iApply tr_weaken; last done. lia. }
+        iModIntro. iIntros "Hf".
+        iApply ("Hcont" with "HL Hf Hr").
   Qed.
   Definition type_call_fnptr_inst := [instance type_call_fnptr].
   Global Existing Instance type_call_fnptr_inst | 10.
@@ -757,13 +804,14 @@ Section function_subsume.
       lia.
     }
     rewrite /introduce_typed_stmt.
-    iIntros (?) "#CTX HE HL Hfr Hrt".
+    iIntros (Φ Φunwind) "#CTX HE HL Hfr Hrt".
     iPoseProof (elctx_sat_use with "HL HE") as "#HE2".
     { apply Helctx. }
     iSpecialize ("Hf" with "CTX HE2 HL Hfr").
-    simpl. iApply "Hf".
-    iIntros (L' v locals) "HL Hfr Hlocals Hlocs Hpost". simpl.
-    iApply ("Hrt" with "HL Hfr Hlocals Hlocs").
+    simpl. iApply "Hf". iSplit.
+    - iDestruct "Hrt" as "[Hrt _]".
+      iIntros (L' v locals) "HL Hfr Hlocals Hlocs Hpost". simpl.
+      iApply ("Hrt" with "HL Hfr Hlocals Hlocs").
     iIntros (?????) "_ _ HL HA".
     iMod ("Hpost" with "[//] [//] [//] CTX HE2 HL HA") as "(%L2 & %κs2 & %R & Hs & HL & Hintro)".
     iExists L2, [], R.
@@ -778,10 +826,24 @@ Section function_subsume.
       simpl.
       iModIntro. iExists L3. iFrame.
       by iExists _, _. }
-    iApply (logical_step_wand with "Hs").
-    iIntros "!> (HR & (%x & Hrt & Hpost & _) & ?)".
-    iDestruct ("HT" with "Hpost Hrt") as "(%y & Hpost & Hrt & _)".
-    iFrame.
+      iApply (logical_step_wand with "Hs").
+      iIntros "!> (HR & (%x & Hrt & Hpost & _) & ?)".
+      iDestruct ("HT" with "Hpost Hrt") as "(%y & Hpost & Hrt & _)".
+      iFrame.
+    - iDestruct "Hrt" as "[_ Hrt]".
+      iIntros (L' locals) "HL Hfr Hlocals Hlocs Hpost". simpl.
+      iApply ("Hrt" with "HL Hfr Hlocals Hlocs").
+      iIntros (?????) "_ _ HL HA".
+      iMod ("Hpost" with "[//] [//] [//] CTX HE2 HL HA") as "(%L2 & %κs2 & %R & Hs & HL & Hintro)".
+      iExists L2, [], R. iFrame.
+      iSplitR "Hintro"; first last.
+      { iModIntro. simpl. iIntros (??) "_ _ HL HP".
+        rewrite /llctx_find_llft_goal /FindCreditStore.
+        iMod ("Hintro" with "[//] CTX HE2 HL HP") as "(%L3 & HL & %L4 & %κs3 & % & % & Hc & HT)".
+        simpl. iModIntro. iExists L3. iFrame. by iExists _, _. }
+      iApply (logical_step_wand with "Hs").
+      iIntros "!> (HR & %HP & HAcc)". iFrame.
+      iPureIntro. exact (Hpanic HP).
   Qed.
   (* NOTE: Don't use the instance generation, as it will instantiate the equalities with [eq_refl]. *)
   Global Instance subsume_typed_function_inst π fn {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) :
@@ -834,11 +896,12 @@ Section function_subsume.
       iDestruct "Hinit" as "($ & $ & $ & ? & ? & $ & $)".
       rewrite Heq2. iFrame. }
     rewrite /introduce_typed_stmt.
-    iIntros (?) "#CTX #HE HL Hf Hpost".
+    iIntros (Φ Φunwind) "#CTX #HE HL Hf Hpost".
     iPoseProof (elctx_sat_use with "HL HE") as "#HE2". { done. }
-    iApply ("Hf'" with "CTX HE2 HL Hf [Hpost]").
-    iIntros (???) "HL Hf Halloc Hx HR".
-    iApply ("Hpost" with "HL Hf Halloc Hx").
+    iApply ("Hf'" with "CTX HE2 HL Hf [Hpost]"). iSplit.
+    - iDestruct "Hpost" as "[Hpost _]".
+      iIntros (???) "HL Hf Halloc Hx HR".
+      iApply ("Hpost" with "HL Hf Halloc Hx").
     iIntros (?????) "_ _ HL HA".
     iMod ("HR" with "[//] [//] [//] CTX HE2 HL HA") as "(%L2 & %κs2 & %R2 & Hstep & $ & HT)".
     simpl.
@@ -848,10 +911,19 @@ Section function_subsume.
     { iModIntro.
       iIntros (??) "_ _ HL HP".
       by iApply ("HT" with "[] CTX HE2 HL HP"). }
-    iModIntro. iApply (logical_step_wand with "Hstep").
-    iIntros "(? & (%x & ? & ? & _) & ?)".
-    rewrite Heq7.
-    iFrame.
+      iModIntro. iApply (logical_step_wand with "Hstep").
+      iIntros "(? & (%x & ? & ? & _) & ?)".
+      rewrite Heq7. iFrame.
+    - iDestruct "Hpost" as "[_ Hpost]".
+      iIntros (??) "HL Hf Halloc Hx HR".
+      iApply ("Hpost" with "HL Hf Halloc Hx").
+      iIntros (?????) "_ _ HL HA".
+      iMod ("HR" with "[//] [//] [//] CTX HE2 HL HA") as "(%L2 & %κs2 & %R2 & Hstep & $ & HT)".
+      simpl. iExists κs2, R2.
+      iSplitL "Hstep"; first last.
+      { iModIntro. iIntros (??) "_ _ HL HP".
+        by iApply ("HT" with "[] CTX HE2 HL HP"). }
+      rewrite Heq5. done.
   Qed.
   (* NOTE: Don't use the instance generation, as it will instantiate the equalities with [eq_refl]. *)
   Global Instance subsume_typed_function_fast_inst π fn {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) `{Heq : !FastFunctionSpecEq F1 F2} :
@@ -984,7 +1056,7 @@ Section function_subsume.
     iIntros ([] [] x ϝ f); simpl.
     iModIntro. iIntros (??) "(Hs & Hna & Hlocals & Ha & Hl & [Hsc #HP] & Hpre)".
     rewrite /introduce_typed_stmt.
-    iIntros (?) "#CTX HE HL Hf HPost".
+    iIntros (??) "#CTX HE HL Hf HPost".
     rewrite elctx_interp_app.
     iDestruct "HE" as "(#HE1 & HE2)".
 
@@ -995,7 +1067,7 @@ Section function_subsume.
       (*iIntros "Hinit".*)
       iIntros "(? & ? & ? & ? & ? & ? & ?)".
       rewrite /introduce_typed_stmt.
-      iIntros (?) "_ HE2 HL Hf HPost".
+      iIntros (??) "_ HE2 HL Hf HPost".
       iEval (rewrite /typed_function) in "HT".
       iDestruct ("HT" $! *[] *[] x ϝ' _) as "#HT'".
       iClear "HT".
@@ -1143,9 +1215,9 @@ Section function_subsume.
   Class FunctionSubtype {lfts : nat} {rts : list RT} (a : spec_with lfts rts fn_spec) (b : spec_with lfts rts fn_spec) : Prop := make_function_subtype : function_subtype a b.
 
   (** Alternative lemma for calling function pointers that simplifies first *)
-  Lemma type_call_fnptr_simplify E L π f κs etys v l sta {lfts : nat} {rts : list RT} eqp (S1 : spec_with lfts rts fn_spec) (S2 : spec_with lfts rts fn_spec) vs args m {SH : FunctionSubtype S1 S2} destination normal unwind T :
-    typed_call E L f κs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, S2)) vs args destination normal unwind T
-    ⊢ typed_call E L f κs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, S1)) vs args destination normal unwind T.
+  Lemma type_call_fnptr_simplify E L π f κs etys v l sta {lfts : nat} {rts : list RT} eqp (S1 : spec_with lfts rts fn_spec) (S2 : spec_with lfts rts fn_spec) vs args m {SH : FunctionSubtype S1 S2} destination normal unwind T U :
+    typed_call E L f κs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, S2)) vs args destination normal unwind T U
+    ⊢ typed_call E L f κs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, S1)) vs args destination normal unwind T U.
   Proof.
     iIntros "Ha". rewrite /typed_call.
     iIntros "Hs".

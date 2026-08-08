@@ -675,6 +675,14 @@ Section introduce.
   Definition introduce_with_hooks_simplify_hyp_inst := [instance @introduce_with_hooks_simplify_hyp].
   Global Existing Instance introduce_with_hooks_simplify_hyp_inst | 99.
 
+  Lemma introduce_with_hooks_false E L T :
+    True ⊢ introduce_with_hooks E L False T.
+  Proof.
+    iIntros "_" (??) "_ _ _ []".
+  Qed.
+  Definition introduce_with_hooks_false_inst := [instance @introduce_with_hooks_false].
+  Global Existing Instance introduce_with_hooks_false_inst | 0.
+
   (* low priority base instances so that other more specialized instances trigger first *)
   Lemma introduce_with_hooks_base_learnable E L P `{HP : !LearnFromHyp P} T :
     (P -∗ introduce_with_hooks E L (HP.(learn_from_hyp_Q)) T) ⊢
@@ -3225,7 +3233,7 @@ Section subsume.
       eauto.
   Qed.
 
-  Lemma type_call E L f ef eκs etys es destination normal unwind fn R ϝ :
+  Lemma type_call E L f ef eκs etys es destination normal unwind fn R U ϝ :
     (∃ M, named_lfts M ∗
     li_tactic (compute_map_lookups_nofail_goal M eκs) (λ eκs',
     interpret_rust_types M etys (λ atys,
@@ -3238,16 +3246,17 @@ Section subsume.
               destination normal unwind (λ L v rt ty r,
                 match destination with
                 | Some (o, ret_ot, destination) =>
-                    typed_stmt E L f (AssignSE o ret_ot destination (Val v) normal) fn R ϝ
-                | None => typed_stmt E L f normal fn R ϝ
-                end))
+                    typed_stmt E L f (AssignSE o ret_ot destination (Val v) normal) fn R U ϝ
+                | None => typed_stmt E L f normal fn R U ϝ
+                end)
+              (λ L, typed_stmt E L f unwind fn R U ϝ))
               es L' [] []))))
-    ⊢ typed_stmt E L f (CallS ef eκs etys es destination normal unwind) fn R ϝ.
+    ⊢ typed_stmt E L f (CallS ef eκs etys es destination normal unwind) fn R U ϝ.
   Proof.
     rewrite /compute_map_lookups_nofail_goal.
     iIntros "(%M & Hnamed & %eκs' & _ & He)".
     iPoseProof (interpret_rust_types_elim with "He") as "(%tys & He)".
-    iIntros (Φ) "#CTX #HE HL Hf Hcont".
+    iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont".
     rewrite /CallS.
     iApply wps_call_bind. iApply ("He" with "Hnamed CTX HE HL Hf"). iIntros (L' vf mf rtf tyf rf) "HL Hf Hvf HT".
     iAssert ([∗ list] v;rty∈[];([] : list $ @sigT RT (λ rt, (type rt * rt)%type)), let '(existT rt (ty, r)) := rty in v ◁ᵥ{f.1, MetaNone} r @ ty)%I as "-#Htys". { done. }
@@ -3260,12 +3269,14 @@ Section subsume.
     }
     unfold typed_call.
     iApply ("HT" with "Hvf Htys CTX HE HL Hf [-]").
-    iIntros (?????) "HL Hf".
-    iIntros "HT".
-    destruct destination as [destination|] => /=.
-    - destruct destination as [[o ret_ot] destination] => /=.
+    iSplit.
+    - iIntros (L'' v rt ty r) "HL Hf HT".
+      destruct destination as [destination|] => /=.
+      + destruct destination as [[o ret_ot] destination] => /=.
+        iApply ("HT" with "CTX HE HL Hf Hcont").
+      + iApply ("HT" with "CTX HE HL Hf Hcont").
+    - iIntros (L'') "HL Hf HT".
       iApply ("HT" with "CTX HE HL Hf Hcont").
-    - iApply ("HT" with "CTX HE HL Hf Hcont").
   Qed.
 
   Lemma type_bin_op E L f o e1 e2 ot1 ot2 T :
@@ -3360,11 +3371,11 @@ Section subsume.
     iApply physical_stepN_intro.
     iFrame.
   Qed.
-  Lemma type_annot_stmt E L f n {A} (a : A) s fn R ϝ :
-    typed_annot_stmt f.1  n a E L (λ L', typed_stmt E L' f s fn R ϝ)
-    ⊢ typed_stmt E L f (annot{n} : a; s) fn R ϝ.
+  Lemma type_annot_stmt E L f n {A} (a : A) s fn R U ϝ :
+    typed_annot_stmt f.1  n a E L (λ L', typed_stmt E L' f s fn R U ϝ)
+    ⊢ typed_stmt E L f (annot{n} : a; s) fn R U ϝ.
   Proof.
-    iIntros "Hs". iIntros (?) "#CTX #HE HL Hf Hcont".
+    iIntros "Hs". iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont".
     iApply wps_annot.
     iPoseProof ("Hs" with "CTX HE HL") as "Hstep".
     iApply (physical_stepN_wand with "Hstep").
@@ -3488,16 +3499,16 @@ Section subsume.
       - so we can't just use the actual write step,
       - and we also cannot use the place access on the LHS itself, because that might not even take a step (if it's just a location).
      *)
-  Lemma type_assign E L f ot e1 e2 s fn R o ϝ :
+  Lemma type_assign E L f ot e1 e2 s fn R U o ϝ :
     typed_val_expr E L f e2 (λ L' v m rt ty r,
       ⌜m = MetaNone⌝ ∗
       ⌜if o is Na2Ord then False else True⌝ ∗
       typed_write E L' f e1 ot v ty r (λ L2,
         introduce_with_hooks E L2 (tr 2 ∗ £ num_cred) (λ L3,
-        typed_stmt E L3 f s fn R ϝ)))
-    ⊢ typed_stmt E L f (e1 <-{ot, o} e2; s) fn R ϝ.
+        typed_stmt E L3 f s fn R U ϝ)))
+    ⊢ typed_stmt E L f (e1 <-{ot, o} e2; s) fn R U ϝ.
   Proof.
-    iIntros "He". iIntros (?) "#(LFT & LLCTX) #HE HL Hf Hcont".
+    iIntros "He". iIntros (Φ Φunwind) "#(LFT & LLCTX) #HE HL Hf Hcont".
     wps_bind. iApply ("He" with "[$LFT $LLCTX] HE HL Hf").
     iIntros (L' v rt ty r m) "HL Hf Hv (-> & % & He1)".
     wps_bind. iApply ("He1" $! _ ⊤ with "[//] [//] [//] [//] [$LFT $LLCTX] HE HL Hf"). iIntros (l) "HT".
@@ -4682,13 +4693,13 @@ Section subsume.
     | CtxFoldCloseInvAllInit (κs : list lft)
     | CtxFoldCloseInvAll (κs : list lft).
 
-  Lemma type_goto E L f b fn R s ϝ :
+  Lemma type_goto E L f b fn R U s ϝ :
     fn.(f_code) !! b = Some s →
     introduce_with_hooks E L (£ num_cred) (λ L2,
-      typed_stmt E L2 f s fn R ϝ)
-    ⊢ typed_stmt E L f (Goto b) fn R ϝ.
+      typed_stmt E L2 f s fn R U ϝ)
+    ⊢ typed_stmt E L f (Goto b) fn R U ϝ.
   Proof.
-    iIntros (HQ) "Hs". iIntros (?) "#CTX #HE HL Hf Hcont".
+    iIntros (HQ) "Hs". iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont".
     iApply wps_goto => //.
     iApply physical_step_intro_lc. iIntros "Hcred". iIntros "!> !>".
     iMod ("Hs" with "[] CTX HE HL Hcred") as "(%L2 & HL & HT)"; first done.
@@ -4699,16 +4710,16 @@ Section subsume.
   (* This is not in Lithium goal shape, but that's fine since it is only manually applied by automation. *)
   (* We might also want to stratify here -- but this is difficult, because we'd need a second logical step.
      Instead, we currently insert an annotation for that in the frontend. *)
-  Lemma type_goto_precond E L' L f P b fn R ϝ :
-    typed_block E L' P f b fn R ϝ ∗
+  Lemma type_goto_precond E L' L f P b fn R U ϝ :
+    typed_block E L' P f b fn R U ϝ ∗
     ⌜fast_sublist_hint (sublist L' L)⌝ ∗
     (* [true] so that we can deinitialize with [owned_subltype_step] *)
     prove_with_subtype E L true ProveDirect P True%I (λ L'' _ R,
       ⌜fast_eq_hint (L'' = L)⌝ ∗ True (* TODO maybe relax and require inclusion of contexts or so. *))
-    ⊢ typed_stmt E L f (Goto b) fn R ϝ.
+    ⊢ typed_stmt E L f (Goto b) fn R U ϝ.
   Proof.
     rewrite /fast_set_hint.
-    iIntros "(Hblock & %Hincl & Hsubt)". iIntros (Φ) "#CTX #HE HL Hf Hcont".
+    iIntros "(Hblock & %Hincl & Hsubt)". iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont".
     iSpecialize ("Hsubt" $! ⊤ True%I).
     iMod ("Hsubt" with "[] [] [] CTX HE HL []") as "(%L'' & % & %R2 & HP & HL & HT)";
       [set_solver.. | iApply maybe_logical_step_intro; iSplit; done | ].
@@ -4721,15 +4732,15 @@ Section subsume.
     by iApply "Hblock".
   Qed.
 
-  Lemma typed_block_rec E L f fn R P b ϝ s :
+  Lemma typed_block_rec E L f fn R U P b ϝ s :
     fn.(f_code) !! b = Some s →
-    (□ ((□ typed_block E L P f b fn R ϝ) -∗
+    (□ ((□ typed_block E L P f b fn R U ϝ) -∗
       introduce_with_hooks E L P (λ L2,
-        typed_stmt E L2 f s fn R ϝ)))
-    ⊢ typed_block E L P f b fn R ϝ.
+        typed_stmt E L2 f s fn R U ϝ)))
+    ⊢ typed_block E L P f b fn R U ϝ.
   Proof.
     iIntros (Hs) "#Hb". iLöb as "IH".
-    iIntros (?) "#CTX #HE HL Hf HP Hcont".
+    iIntros (Φ Φunwind) "#CTX #HE HL Hf HP Hcont".
     iApply wps_goto; first done.
     iApply (physical_step_step_upd with "HP").
     iApply physical_step_intro. iNext.
@@ -4742,19 +4753,19 @@ Section subsume.
      Instead of just jumping there, we can setup an invariant [P] on ownership.
      Then instead prove: wp of the block, but in the context we can persistently assume the WP of the goto with the same invariant already. *)
   (* Note: these need to be manually applied. *)
-  Lemma typed_goto_acc E L f fn R {A} (P : A → iProp Σ) b ϝ s :
+  Lemma typed_goto_acc E L f fn R U {A} (P : A → iProp Σ) b ϝ s :
     fn.(f_code) !! b = Some s →
     (* TODO maybe also stratify? *)
     (∃ params,
     prove_with_subtype E L true ProveDirect (P params) True%I (λ L' _ R2,
       (* gather up the remaining ownership *)
       accu (λ Q,
-      ((□ typed_block E L' (P params ∗ Q) f b fn R ϝ) -∗
+      ((□ typed_block E L' (P params ∗ Q) f b fn R U ϝ) -∗
           introduce_with_hooks E L' (P params ∗ Q) (λ L2,
-          typed_stmt E L2 f s fn R ϝ)))))
-    ⊢ typed_stmt E L f (Goto b) fn R ϝ.
+          typed_stmt E L2 f s fn R U ϝ)))))
+    ⊢ typed_stmt E L f (Goto b) fn R U ϝ.
   Proof.
-    iIntros (Hlook) "(%params & Hsubt)". iIntros (Φ) "#CTX #HE HL Hf Hcont".
+    iIntros (Hlook) "(%params & Hsubt)". iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont".
     iSpecialize ("Hsubt" $! ⊤ True%I).
     iMod ("Hsubt" with "[] [] [] CTX HE HL []") as "(%L' & % & %R2 & Hinv & HL & HT)";
       [set_solver.. | iApply maybe_logical_step_intro; iSplit; done | ].
@@ -4769,7 +4780,7 @@ Section subsume.
   Qed.
 
   (* A variant where [P] is first instantiated with the refinement of some local variable *)
-  Lemma typed_goto_acc' E L f fn R b ϝ s {rt : RT} (l : loc) {A} (P : RT_xt rt → A → iProp Σ) :
+  Lemma typed_goto_acc' E L f fn R U b ϝ s {rt : RT} (l : loc) {A} (P : RT_xt rt → A → iProp Σ) :
     fn.(f_code) !! b = Some s →
     find_in_context (FindLoc l) (λ '(existT rt' (lt, r, bk, π)),
     l ◁ₗ[π, bk] r @ lt -∗
@@ -4780,12 +4791,12 @@ Section subsume.
     prove_with_subtype E L true ProveDirect (P r' a) True%I (λ L' _ R2,
       (* gather up the remaining ownership *)
       accu (λ Q,
-      ((□ typed_block E L' (P r' a ∗ Q) f b fn R ϝ) -∗
+      ((□ typed_block E L' (P r' a ∗ Q) f b fn R U ϝ) -∗
           introduce_with_hooks E L' (P r' a ∗ Q) (λ L2,
-          typed_stmt E L2 f s fn R ϝ)))))
-    ⊢ typed_stmt E L f (Goto b) fn R ϝ.
+          typed_stmt E L2 f s fn R U ϝ)))))
+    ⊢ typed_stmt E L f (Goto b) fn R U ϝ.
   Proof.
-    iIntros (Hlook) "Hsubt". iIntros (Φ) "#CTX #HE HL Hf Hcont".
+    iIntros (Hlook) "Hsubt". iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont".
     unfold FindLoc.
     iDestruct "Hsubt" as "(%x & Hlt & HT)". simpl in *.
     destruct x as [rt' (((lt & r) & ?) & ?)].
@@ -4803,13 +4814,13 @@ Section subsume.
     - done.
   Qed.
 
-  Lemma type_assert E L f e s fn R ϝ :
+  Lemma type_assert E L f e s fn R U ϝ :
     typed_val_expr E L f e (λ L' v m rt ty r,
       ⌜m = MetaNone⌝ ∗
-      typed_assert E L' f v ty r s fn R ϝ)
-    ⊢ typed_stmt E L f (assert{BoolOp}: e; s) fn R ϝ.
+      typed_assert E L' f v ty r s fn R U ϝ)
+    ⊢ typed_stmt E L f (assert{BoolOp}: e; s) fn R U ϝ.
   Proof.
-    iIntros "He". iIntros (?) "#CTX #HE HL Hf Hcont". wps_bind.
+    iIntros "He". iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont". wps_bind.
     iApply ("He" with "CTX HE HL Hf"). iIntros (L' v rt ty r m) "HL Hf Hv (-> & Hs)".
     iMod ("Hs" with "[] CTX HE HL Hf Hv") as (?) "(HL & Hf & Hs)"; first done.
     iApply wps_assert_bool; [done.. | ].
@@ -4817,13 +4828,13 @@ Section subsume.
     by iApply ("Hs" with "CTX HE HL Hf").
   Qed.
 
-  Lemma type_if E L f e s1 s2 fn R ϝ :
+  Lemma type_if E L f e s1 s2 fn R U ϝ :
     typed_val_expr E L f e (λ L' v m rt ty r,
       typed_if E L' f.1 v (v ◁ᵥ{f.1, m} r @ ty)
-          (λ L2, typed_stmt E L2 f s1 fn R ϝ) (λ L2, typed_stmt E L2 f s2 fn R ϝ))
-    ⊢ typed_stmt E L f (if{BoolOp}: e then s1 else s2) fn R ϝ.
+          (λ L2, typed_stmt E L2 f s1 fn R U ϝ) (λ L2, typed_stmt E L2 f s2 fn R U ϝ))
+    ⊢ typed_stmt E L f (if{BoolOp}: e then s1 else s2) fn R U ϝ.
   Proof.
-    iIntros "He". iIntros (?) "#CTX #HE HL Hf Hcont". wps_bind.
+    iIntros "He". iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont". wps_bind.
     iApply ("He" with "CTX HE HL Hf"). iIntros (L' v m rt ty r) "HL Hf Hv Hs".
     iMod ("Hs" with "[] CTX HE HL Hv") as "(%b & %L2 & % & HL & Hs)"; first done.
     iApply wps_if_bool; [done|..].
@@ -4831,13 +4842,13 @@ Section subsume.
     by destruct b; iApply ("Hs" with "CTX HE HL Hf").
   Qed.
 
-  Lemma type_switch E L f it e m ss def fn R ϝ:
+  Lemma type_switch E L f it e m ss def fn R U ϝ:
     typed_val_expr E L f e (λ L' v ma rt ty r,
       ⌜ma = MetaNone⌝ ∗
-      typed_switch E L' f v ty r it m ss def fn R ϝ)
-    ⊢ typed_stmt E L f (Switch it e m ss def) fn R ϝ.
+      typed_switch E L' f v ty r it m ss def fn R U ϝ)
+    ⊢ typed_stmt E L f (Switch it e m ss def) fn R U ϝ.
   Proof.
-    iIntros "He" (?) "#CTX #HE HL Hf Hcont".
+    iIntros "He" (Φ Φunwind) "#CTX #HE HL Hf Hcont".
     have -> : (Switch it e m ss def) = (W.to_stmt (W.Switch it (W.Expr e) m (W.Stmt <$> ss) (W.Stmt def)))
       by rewrite /W.to_stmt/= -!list_fmap_compose list_fmap_id.
     iApply tac_wps_bind; first done.
@@ -4855,13 +4866,13 @@ Section subsume.
     - by iApply ("Hs" with "CTX HE HL Hf").
   Qed.
 
-  Lemma type_exprs E L f s e fn R ϝ :
+  Lemma type_exprs E L f s e fn R U ϝ :
     (typed_val_expr E L f e (λ L2 v m rt ty r,
       introduce_with_hooks E L2 (v ◁ᵥ{f.1, m} r @ ty) (λ L3,
-        typed_stmt E L3 f s fn R ϝ)))
-    ⊢ typed_stmt E L f (ExprS e s) fn R ϝ.
+        typed_stmt E L3 f s fn R U ϝ)))
+    ⊢ typed_stmt E L f (ExprS e s) fn R U ϝ.
   Proof.
-    iIntros "Hs". iIntros (?) "#CTX #HE HL Hf Hcont". wps_bind.
+    iIntros "Hs". iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont". wps_bind.
     iApply ("Hs" with "CTX HE HL Hf").
     iIntros (L' v m rt ty r) "HL Hf Hv Hs".
     iApply wps_exprs.
@@ -4870,19 +4881,19 @@ Section subsume.
     by iApply ("HT" with "CTX HE HL Hf").
   Qed.
 
-  Lemma type_local_live E L f st x s fn R ϝ :
+  Lemma type_local_live E L f st x s fn R U ϝ :
     li_tactic (compute_layout_goal st) (λ ly,
       find_in_context (FindFrameLocals f) (λ locals : list var_name,
         ⌜local_fresh x locals⌝ ∗
         (∀ l : name_hint_ty (String.append "local_" x) loc, allocated_locals f (x :: locals) -∗
               x is_live{f, st} l -∗
               l ◁ₗ[f.1, Owned] .@ (◁ uninit st) -∗
-              typed_stmt E L f s fn R ϝ)))
-    ⊢ typed_stmt E L f (local_live{st} x; s) fn R ϝ.
+              typed_stmt E L f s fn R U ϝ)))
+    ⊢ typed_stmt E L f (local_live{st} x; s) fn R U ϝ.
   Proof.
     unfold compute_layout_goal. destruct f as [π f].
     iIntros "(%ly & %Hst & %locals & Hlocals & %Hfresh & HT)".
-    iIntros (?) "#CTX HE HL Hf Hpost". simpl.
+    iIntros (Φ Φunwind) "#CTX HE HL Hf Hpost". simpl.
     iApply (wps_local_live with "Hf Hlocals"); [done.. | ].
     iApply physical_step_intro. iNext.
     iIntros (l) "Hx Hframe Hlocals Hl %Hly".
@@ -4899,16 +4910,16 @@ Section subsume.
     iApply ("Hs" with "CTX HE HL Hframe Hpost").
   Qed.
 
-  Lemma type_local_dead E L f x s fn R ϝ :
+  Lemma type_local_dead E L f x s fn R U ϝ :
     find_in_context (FindFrameLocals f) (λ locals : list var_name,
     if decide (x ∈ locals) then
       find_in_context (FindLocal f x) (λ '(st, l),
       li_tactic (simplify_local_list_goal (remove_local locals x)) (λ locals',
         prove_with_subtype E L true ProveDirect (l ◁ₗ[f.1, Owned] .@ ◁ uninit st) True%I (λ L2 κs R2,
           introduce_with_hooks E L2 R2 (λ L3,
-          li_clear l ((allocated_locals f locals' -∗ typed_stmt E L3 f s fn R ϝ))))))
-    else (allocated_locals f locals -∗ typed_stmt E L f s fn R ϝ))
-    ⊢ typed_stmt E L f (local_dead x; s) fn R ϝ.
+          li_clear l ((allocated_locals f locals' -∗ typed_stmt E L3 f s fn R U ϝ))))))
+    else (allocated_locals f locals -∗ typed_stmt E L f s fn R U ϝ))
+    ⊢ typed_stmt E L f (local_dead x; s) fn R U ϝ.
   Proof.
     destruct f as [π f].
     iIntros "(%locals & Hlocals & HT)".
@@ -4916,7 +4927,7 @@ Section subsume.
     - iDestruct "HT" as "(%stl & Hx & HT)".
       destruct stl as [st l]. simpl in *.
       unfold LocalDeadSt.
-      iIntros (Φ) "#CTX #HE HL Hf Hpost".
+      iIntros (Φ Φunwind) "#CTX #HE HL Hf Hpost".
       unfold simplify_local_list_goal.
       iDestruct "HT" as "(%locals' & <- & HT)".
       iSpecialize ("HT" $! ⊤ True%I).
@@ -4941,7 +4952,7 @@ Section subsume.
       iMod ("HT" with "[] CTX HE HL HR") as "(%L3 & HL & HT)"; first done.
       iApply ("HT" with "Hlocals CTX HE HL Hf Hpost").
     - unfold LocalDeadSt.
-      iIntros (?) "#CTX #HE HL Hf Hpost".
+      iIntros (Φ Φunwind) "#CTX #HE HL Hf Hpost".
       simpl.
       iApply wps_skip. iApply physical_step_intro. iNext.
       iApply (wps_local_dead_nop with "Hf Hlocals").
@@ -4952,17 +4963,17 @@ Section subsume.
   Qed.
 
 
-  Lemma type_skips E L f s fn R ϝ :
-    ((£num_cred -∗ typed_stmt E L f s fn R ϝ)) ⊢ typed_stmt E L f (SkipS s) fn R ϝ.
+  Lemma type_skips E L f s fn R U ϝ :
+    ((£num_cred -∗ typed_stmt E L f s fn R U ϝ)) ⊢ typed_stmt E L f (SkipS s) fn R U ϝ.
   Proof.
-    iIntros "Hs". iIntros (?) "#CTX #HE HL Hf Hcont".
+    iIntros "Hs". iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont".
     iApply wps_skip.
     iApply physical_step_intro_lc; iIntros "Hcred !>!>".
     by iApply ("Hs" with "Hcred CTX HE HL Hf").
   Qed.
 
-  Lemma type_skips' E L f s fn R ϝ :
-    typed_stmt E L f s fn R ϝ ⊢ typed_stmt E L f (SkipS s) fn R ϝ.
+  Lemma type_skips' E L f s fn R U ϝ :
+    typed_stmt E L f s fn R U ϝ ⊢ typed_stmt E L f (SkipS s) fn R U ϝ.
   Proof.
     iIntros "Hs". iApply type_skips. iIntros "Hcred".
     done.
@@ -5542,7 +5553,7 @@ Section subsume.
   Global Existing Instance typed_context_fold_close_inv_init_inst.
 
   (* Typing rule for [Return] *)
-  Lemma type_return E L f e fn (R : typed_stmt_R_t) ϝ :
+  Lemma type_return E L f e fn (R : typed_stmt_R_t) (U : typed_stmt_U_t) ϝ :
     typed_val_expr E L f e (λ L' v m rt ty r,
       introduce_with_hooks E L' (v ◁ᵥ{f.1, m} r @ ty) (λ L2,
       find_in_context (FindFrameLocals f) (λ locals : list var_name,
@@ -5559,9 +5570,9 @@ Section subsume.
             (* important: when proving the postcondition [R v], we already have the ownership obtained by deinitializing the local variables [R2] available. *)
             R v L4
             ))))))))
-    ⊢ typed_stmt E L f (return e) fn R ϝ.
+    ⊢ typed_stmt E L f (return e) fn R U ϝ.
   Proof.
-    iIntros "He". iIntros (Φ) "#CTX #HE HL Hf Hcont". wps_bind.
+    iIntros "He". iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont". wps_bind.
     wpe_bind.
     iApply ("He" with "CTX HE HL Hf").
     iIntros (L' v m rt ty r) "HL Hf Hv HR".
@@ -5594,6 +5605,7 @@ Section subsume.
     iMod ("HT" with "[] [$] HE HL HR2") as "(%L6 & HL & HT)"; first done.
 
     unfold typed_stmt_post_cond.
+    iDestruct "Hcont" as "[Hcont _]".
     iSpecialize ("Hcont" $! _ v with "HL Hf Hlocals").
     clear.
     iAssert (|={⊤}=> ([∗ list] x ∈ locals, ∃ (ly : layout) (l : loc) (st : syn_type), ⌜syn_type_has_layout st ly⌝ ∗ x is_live{ f, st} l ∗ l ↦|ly|))%I with "[Ha]" as ">Ha".
@@ -5618,6 +5630,71 @@ Section subsume.
     iApply wps_return.
     done.
   Qed.
+
+  (* Typing rule for [Unwind] *)
+  Lemma type_unwind E L f fn (R : typed_stmt_R_t) (U : typed_stmt_U_t) ϝ :
+    find_in_context (FindFrameLocals f) (λ locals : list var_name,
+    trigger_tc (FindLocalLocs f locals) (λ locs,
+    typed_context_fold (typed_context_fold_stratify_interp f.1) E L (CtxFoldStratifyAll StratRefoldOpened) locs ([], True%I) (λ L2 m' acc,
+      introduce_with_hooks E L2 (type_ctx_interp f.1 acc.1 ∗ acc.2) (λ L3,
+        prove_with_subtype E L3 true ProveDirect (
+          foldr (λ (e : var_name) T,
+            ∃ st l,
+            e is_live{f, st} l ∗
+            l ◁ₗ[f.1, Owned] (#()) @ (◁ (uninit st)) ∗ T)
+          True%I
+          locals) True%I (λ L3 _ R2, introduce_with_hooks E L3 R2 (λ L4,
+          U L4))))))
+    ⊢ typed_stmt E L f Unwind fn R U ϝ.
+  Proof.
+    iIntros "HT". iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont".
+    iDestruct "HT" as "(%locals & Hlocals & %locs & % & HT)".
+    iMod ("HT" with "[] [] [] CTX HE HL []") as "(%L2 & %acc & %m' & HL & Hstep & HT)"; [done.. | | ].
+    { simpl. iApply logical_step_intro. iSplitR; last done. rewrite /type_ctx_interp. done. }
+    iDestruct "CTX" as "(LFT & LLCTX)".
+    iApply wps_unwind.
+    iApply (physical_step_logical_step with "Hstep").
+    iApply physical_step_intro. iNext.
+    iIntros "Hacc".
+      rewrite /typed_context_fold_stratify_interp.
+      destruct acc as (ctx & R2).
+      iMod ("HT" with "[] [$] HE HL Hacc") as "(%L3 & HL & HT)"; first done.
+      iSpecialize ("HT" $! ⊤ True%I).
+      iMod ("HT" with "[] [] [] [$] HE HL []") as "(%L4 & % & %R3 & HP & HL & HT)";
+        [set_solver.. | iApply maybe_logical_step_intro; iSplit; done | ].
+      iApply (physical_step_logical_step with "HP").
+      iApply physical_step_intro. iNext.
+      iIntros "(HR2 & Ha & _)".
+      unfold li_tactic, llctx_find_llft_goal.
+      iMod ("HT" with "[] [$] HE HL HR2") as "(%L5 & HL & HT)"; first done.
+      unfold typed_stmt_unwind_post_cond.
+      iDestruct "Hcont" as "[_ Hcont]".
+      iSpecialize ("Hcont" $! _ with "HL Hf Hlocals").
+      clear.
+      iAssert (|={⊤}=> ([∗ list] x ∈ locals, ∃ (ly : layout) (l : loc) (st : syn_type), ⌜syn_type_has_layout st ly⌝ ∗ x is_live{ f, st} l ∗ l ↦|ly|))%I with "[Ha]" as ">Ha".
+      { iInduction locals as [|x locals] "IH"; csimpl in*; simplify_eq/=.
+        { done. }
+        iDestruct "Ha" as "(%st & %l & Hx & Hl & HR)".
+        iMod ("IH" with "HR") as "$".
+        rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+        iDestruct "Hl" as "(%ly' & %Halg & % & _ & _ & % & <- & Hv)".
+        simpl in Halg.
+        iMod (fupd_mask_mono with "Hv") as "(%v0 & Hl & Hv)"; first done.
+        iFrame.
+        iPoseProof (ty_own_val_has_layout with "Hv") as "%"; first done.
+        apply syn_type_has_layout_untyped_inv in Halg.
+        iExists _. done. }
+      iPoseProof ("Hcont" with "Ha HT") as "Hpost".
+      iApply (physical_step_logical_step with "Hpost").
+      iApply physical_step_intro. iNext. iIntros "$".
+  Qed.
+
+  Lemma type_unwind_terminate E L f fn (R : typed_stmt_R_t) (U : typed_stmt_U_t) ϝ :
+    ⊢ typed_stmt E L f UnwindTerminate fn R U ϝ.
+  Proof.
+    iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont".
+    iApply (wps_unwind_terminate f.1 fn.(f_code) Φ Φunwind).
+  Qed.
 End subsume.
 
 
@@ -5633,6 +5710,7 @@ Global Typeclasses Opaque typed_value.
 Global Typeclasses Opaque typed_val_expr.
 Global Typeclasses Opaque typed_stmt.
 Global Typeclasses Opaque typed_stmt_post_cond.
+Global Typeclasses Opaque typed_stmt_unwind_post_cond.
 Global Typeclasses Opaque typed_annot_expr.
 Global Typeclasses Opaque typed_block.
 
@@ -5729,4 +5807,4 @@ Notation "'weak_subltype' E L b r1 r2 lt1 lt2 'HIDDEN_CONT'" := (weak_subltype E
 Notation "'strong_subltype' E L b r1 r2 lt1 lt2 'HIDDEN_CONT'" := (strong_subltype E L b r1 r2 lt1 lt2 _) (only printing, at level 0) : rr_hidden.
 
 
-Notation "'typed_block' 'HIDDEN_INV' E L f l rf R ϝ" := (typed_block E L _ f l rf R ϝ) (only printing, at level 100) : rr_hidden.
+Notation "'typed_block' 'HIDDEN_INV' E L f l rf R U ϝ" := (typed_block E L _ f l rf R U ϝ) (only printing, at level 100) : rr_hidden.

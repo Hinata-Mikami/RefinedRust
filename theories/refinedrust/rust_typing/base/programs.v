@@ -646,20 +646,24 @@ Section judgments.
   (** Typed call statements, assuming a list of argument values with given types and refinements.
     [P] may state additional preconditions on the function. *)
   Definition typed_call_cont_t := llctx → val → ∀ rt : RT, type rt → rt → iProp Σ.
-  Definition typed_call E L (f : frame_path) (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt : RT, type rt * rt)%type)) destination normal unwind (T : typed_call_cont_t) : iProp Σ :=
+  Definition typed_call_unwind_cont_t := llctx → iProp Σ.
+  Definition typed_call E L (f : frame_path) (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt : RT, type rt * rt)%type)) destination normal unwind (T : typed_call_cont_t) (U : typed_call_unwind_cont_t) : iProp Σ :=
     (P -∗
      ([∗ list] v;ty∈vl;tys, let '(existT rt (ty, r)) := ty in v ◁ᵥ{f.1, MetaNone} r @ ty) -∗
-     ∀ Q Ψ,
-      rrust_ctx -∗
-      elctx_interp E -∗
-      llctx_interp L -∗
-      current_frame f.1 f.2 -∗
-      (∀ (L' : llctx) (v : val) (rt : RT) (ty : type rt) r,
-        llctx_interp L' -∗ current_frame f.1 f.2 -∗ T L' v rt ty r -∗
-        WPs{f.1} call_return destination v normal {{ Q, Ψ }}) -∗
-       WPs{f.1} (Call (Val v) (Val <$> vl) destination normal unwind) {{ Q, Ψ }})%I.
+      ∀ Q Ψ Ψunwind,
+       rrust_ctx -∗
+       elctx_interp E -∗
+       llctx_interp L -∗
+       current_frame f.1 f.2 -∗
+       ((∀ (L' : llctx) (v : val) (rt : RT) (ty : type rt) r,
+           llctx_interp L' -∗ current_frame f.1 f.2 -∗ T L' v rt ty r -∗
+           WPs{f.1} call_return destination v normal {{ Q, Ψ | Ψunwind }}) ∧
+        (∀ (L' : llctx),
+           llctx_interp L' -∗ current_frame f.1 f.2 -∗ U L' -∗
+           WPs{f.1} unwind {{ Q, Ψ | Ψunwind }})) -∗
+        WPs{f.1} (Call (Val v) (Val <$> vl) destination normal unwind) {{ Q, Ψ | Ψunwind }})%I.
   Class TypedCall (E : elctx) (L : llctx) (f : frame_path) (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt, type rt * rt)%type)) destination normal unwind : Type :=
-    typed_call_proof T : iProp_to_Prop (typed_call E L f eκs etys v P vl tys destination normal unwind T).
+    typed_call_proof T U : iProp_to_Prop (typed_call E L f eκs etys v P vl tys destination normal unwind T U).
 
   Definition typed_if (E : elctx) (L : llctx) (π : thread_id) (v : val) (P : iProp Σ) (T1 T2 : llctx → iProp Σ) : iProp Σ :=
     (∀ F,
@@ -765,6 +769,7 @@ Section judgments.
 
   (** *** Statements *)
   Definition typed_stmt_R_t := val → llctx → iProp Σ.
+  Definition typed_stmt_U_t := llctx → iProp Σ.
 
   Definition typed_stmt_post_cond (f : frame_path) (rf : function) (R : typed_stmt_R_t) (Φ : val → iProp Σ) : iProp Σ :=
     (∀ L' (v : val) locals,
@@ -776,29 +781,43 @@ Section judgments.
       R v L' -∗
       logical_step ⊤ (Φ v)).
 
+  Definition typed_stmt_unwind_post_cond (f : frame_path) (rf : function)
+      (U : typed_stmt_U_t) (Φunwind : iProp Σ) : iProp Σ :=
+    (∀ L' locals,
+      llctx_interp L' -∗
+      current_frame f.1 f.2 -∗
+      allocated_locals f locals -∗
+      ([∗ list] x ∈ locals, ∃ ly l st, ⌜syn_type_has_layout st ly⌝ ∗ x is_live{f, st} l ∗ l ↦|ly|) -∗
+      U L' -∗
+      logical_step ⊤ Φunwind).
+
   (* [Q]: the current function body,
      [ϝ]: the function lifetime
      [R] is a relation on the result value of this statement and its type: we require that the result value is a well-typed [R]-value at this type.
   *)
-  Definition typed_stmt (E : elctx) (L : llctx) (f : frame_path) (s : stmt) (rf : function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
-    (∀ (Φ : val → iProp Σ),
+  Definition typed_stmt (E : elctx) (L : llctx) (f : frame_path) (s : stmt) (rf : function)
+      (R : typed_stmt_R_t) (U : typed_stmt_U_t) (ϝ : lft) : iProp Σ :=
+    (∀ (Φ : val → iProp Σ) (Φunwind : iProp Σ),
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
       current_frame f.1 f.2 -∗
-      typed_stmt_post_cond f rf R Φ -∗
-      WPs{f.1} s {{rf.(f_code), Φ}})%I.
-  Global Arguments typed_stmt _ _ _ _%_E _ _%_I _.
+      (typed_stmt_post_cond f rf R Φ ∧
+       typed_stmt_unwind_post_cond f rf U Φunwind) -∗
+      WPs{f.1} s {{rf.(f_code), Φ | Φunwind}})%I.
+  Global Arguments typed_stmt _ _ _ _%_E _ _%_I _%_I _.
 
   (* [P] is an invariant on the context. *)
-  Definition typed_block (E : elctx) (L : llctx) (P : iProp Σ) (f : frame_path) (b : label) (fn : function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
-    (∀ Φ,
+  Definition typed_block (E : elctx) (L : llctx) (P : iProp Σ) (f : frame_path) (b : label) (fn : function)
+      (R : typed_stmt_R_t) (U : typed_stmt_U_t) (ϝ : lft) : iProp Σ :=
+    (∀ Φ Φunwind,
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
       current_frame f.1 f.2 -∗
       logical_step ⊤ P -∗
-      typed_stmt_post_cond f fn R Φ -∗
-      WPs{f.1} (Goto b) {{ fn.(f_code), Φ}}).
+      (typed_stmt_post_cond f fn R Φ ∧
+       typed_stmt_unwind_post_cond f fn U Φunwind) -∗
+      WPs{f.1} (Goto b) {{ fn.(f_code), Φ | Φunwind}}).
 
   (** for all succeeding statements [s], assuming that [v] has type [ty], it can be converted to a non-zero integer *)
-  Definition typed_assert (E : elctx) (L : llctx) (f : frame_path) (v : val) {rt} (ty : type rt) (r : rt) (s : stmt) (fn : function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
+  Definition typed_assert (E : elctx) (L : llctx) (f : frame_path) (v : val) {rt} (ty : type rt) (r : rt) (s : stmt) (fn : function) (R : typed_stmt_R_t) (U : typed_stmt_U_t) (ϝ : lft) : iProp Σ :=
     (∀ F,
       ⌜lftE ⊆ F⌝ -∗
       rrust_ctx -∗
@@ -809,9 +828,9 @@ Section judgments.
       ⌜val_to_bool v = Some true⌝ ∗
       llctx_interp L ∗
       current_frame f.1 f.2 ∗
-      typed_stmt E L f s fn R ϝ)%I.
+       typed_stmt E L f s fn R U ϝ)%I.
   Class TypedAssert (E : elctx) (L : llctx) (f : frame_path) (v : val) {rt} (ty : type rt) (r : rt) : Type :=
-    typed_assert_proof s fn R ϝ : iProp_to_Prop (typed_assert E L f v ty r s fn R ϝ).
+    typed_assert_proof s fn R U ϝ : iProp_to_Prop (typed_assert E L f v ty r s fn R U ϝ).
 
   (** annotated statements are allowed to execute an update and take a step *)
   Definition typed_annot_stmt (π : thread_id) (n : nat) {A} (a : A) (E : elctx) (L : llctx) (T : llctx → iProp Σ) : iProp Σ :=
@@ -822,7 +841,7 @@ Section judgments.
   Class TypedAnnotStmt (π : thread_id) (n : nat) {A} (a : A) : Type :=
     typed_annot_stmt_proof E L T : iProp_to_Prop (typed_annot_stmt π n a E L T).
 
-  Definition typed_switch (E : elctx) (L : llctx) (f : frame_path) (v : val) {rt} (ty : type rt) (r : rt) (it : int_type) (m : gmap Z nat) (ss : list stmt) (def : stmt) (fn : function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
+  Definition typed_switch (E : elctx) (L : llctx) (f : frame_path) (v : val) {rt} (ty : type rt) (r : rt) (it : int_type) (m : gmap Z nat) (ss : list stmt) (def : stmt) (fn : function) (R : typed_stmt_R_t) (U : typed_stmt_U_t) (ϝ : lft) : iProp Σ :=
     ∀ F,
     ⌜lftE ⊆ F⌝ -∗
     rrust_ctx -∗
@@ -831,11 +850,11 @@ Section judgments.
     v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
       ∃ z, llctx_interp L ∗ ⌜val_to_Z v it = Some z⌝ ∗
       match m !! z with
-      | Some i => ∃ s, ⌜ss !! i = Some s⌝ ∗ typed_stmt E L f s fn R ϝ
-      | None   => typed_stmt E L f def fn R ϝ
+       | Some i => ∃ s, ⌜ss !! i = Some s⌝ ∗ typed_stmt E L f s fn R U ϝ
+       | None   => typed_stmt E L f def fn R U ϝ
       end.
   Class TypedSwitch (E : elctx) (L : llctx) (f : frame_path) (v : val) {rt} (ty : type rt) (r : rt) (it : int_type) : Type :=
-    typed_switch_proof m ss def fn R ϝ : iProp_to_Prop (typed_switch E L f v ty r it m ss def fn R ϝ).
+    typed_switch_proof m ss def fn R U ϝ : iProp_to_Prop (typed_switch E L f v ty r it m ss def fn R U ϝ).
 
   (** Fold an [lty] to a [type].
     This is usually used after accessing a place, to push the ◁ to the outside again.

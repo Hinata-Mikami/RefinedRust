@@ -396,6 +396,8 @@ Local Unset Elimination Schemes.
 Inductive stmt :=
 | Goto (b : label)
 | Return (e : expr)
+| Unwind
+| UnwindTerminate
 | IfS (ot : op_type) (e : expr) (s1 s2 : stmt)
 | Switch (it : int_type) (e : expr) (m : gmap Z nat) (bs : list stmt) (def : stmt)
 | Call (f : expr) (eκs : list string) (etys : list rust_type) (args : list expr)
@@ -418,6 +420,8 @@ End stmt.
 Lemma stmt_ind (P : stmt → Prop):
   (∀ b : label, P (Goto b)) →
   (∀ e : expr, P (Return e)) →
+  P Unwind →
+  P UnwindTerminate →
   (∀ (ot : op_type) (e : expr) (s1 : stmt), P s1 → ∀ s2 : stmt, P s2 → P (IfS ot e s1 s2)) →
   (∀ (it : int_type) (e : expr) (m : gmap Z nat) (bs : list stmt) (def : stmt), P def → Forall P bs → P (Switch it e m bs def)) →
   (∀ (f : expr) (eκs : list string) (etys : list rust_type) (args : list expr)
@@ -437,7 +441,7 @@ Lemma stmt_ind (P : stmt → Prop):
   (∀ s : lang.stmt, P (Stmt s)) → ∀ s : stmt, P s.
 Proof.
   move => *. generalize dependent P => P. match goal with | s : stmt |- _ => revert s end.
-  fix FIX 1. move => [ ^s] ??? Hswitch *. 4: {
+  fix FIX 1. move => [ ^s] ????? Hswitch *. 6: {
     apply Hswitch; first by apply: FIX. elim: sbs; auto.
   }
   all: auto.
@@ -448,6 +452,8 @@ Fixpoint to_stmt `{LayoutAlg} (s : stmt) : lang.stmt :=
   match s with
   | Goto b => lang.Goto b
   | Return e => lang.Return (to_expr e)
+  | Unwind => notation.Unwind
+  | UnwindTerminate => lang.UnwindTerminate
   | IfS ot e s1 s2 => (if{ot}: to_expr e then to_stmt s1 else to_stmt s2)%E
   | Switch it e m bs def => lang.Switch it (to_expr e) m (to_stmt <$> bs) (to_stmt def)
   | Call f eκs etys args destination normal unwind =>
@@ -499,6 +505,8 @@ Ltac of_stmt s :=
   | lang.Goto ?b => constr:(Goto b)
   | lang.Return ?e =>
     let e := of_expr e in constr:(Return e)
+  | notation.Unwind => constr:(Unwind)
+  | lang.UnwindTerminate => constr:(UnwindTerminate)
   | lang.Switch ?it ?e ?m ?bs ?def =>
     let e := of_expr e in
     let bs := of_stmt bs in
@@ -585,7 +593,7 @@ Definition stmt_fill (Ki : stmt_ectx) (e : expr) : stmt :=
 
 Definition find_stmt_fill (s : stmt) : option (stmt_ectx * expr) :=
   match s with
-  | Goto _ | Stmt _ | AnnotStmt _ _ _ | LocInfoS _ _ | SkipS _ | StuckS | LocalLive _ _ _ | LocalDead _ _ => None
+  | Goto _ | Unwind | UnwindTerminate | Stmt _ | AnnotStmt _ _ _ | LocInfoS _ _ | SkipS _ | StuckS | LocalLive _ _ _ | LocalDead _ _ => None
   | Return e => if e is (Val v) then None else Some (ReturnCtx, e)
   | ExprS e s => if e is (Val v) then None else Some (ExprSCtx s, e)
   | IfS ot e s1 s2 => if e is (Val v) then None else Some (IfSCtx ot s1 s2, e)

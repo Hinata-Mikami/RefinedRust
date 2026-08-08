@@ -209,6 +209,13 @@ Global Typeclasses Opaque AnnotExpr.
 
 Notation "'return' e" := (Return (SkipE (SkipE (SkipE e%E)))) (at level 80, format "'return'  e") : expr_scope.
 
+(* Each skip discharges one logical step accumulated by the function boundary
+   cleanup before the frame is unwound. *)
+Definition Unwind : stmt :=
+  SkipS (SkipS (SkipS UnwindCleanup)).
+Arguments Unwind : simpl never.
+Global Typeclasses Opaque Unwind.
+
 (* We define this in terms of expressions in order to be able to `bind` the skips.
   This is what enables us to use [wp_step_fupdN] in a sensible way that allows
   us to regain the right masks. Formulating with [SkipS] would require us to

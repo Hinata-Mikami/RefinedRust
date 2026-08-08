@@ -336,7 +336,7 @@ Proof.
       (CallS (Val (l2v main)) [] [] []
         (Some (Na1Ord, UntypedOp unit_sl, Var "__refinedrust_main_return"))
         (LocalDeadSt "__refinedrust_main_return" (return (Val []))%E) StuckS)
-      initial_caller (λ v _, ⌜v = []⌝)%I static)
+      initial_caller (λ v _, ⌜v = []⌝)%I (λ _, False%I) static)
       with "[Hstore Hna Hmain HP Hlocals Hlive Hl Hnamed]" as "Hs".
     { rep <-! liRStep; liShow.
       all: try iFrame. all: try done.
@@ -363,12 +363,14 @@ Proof.
       iApply prove_with_subtype_pure. iSplit; first done.
       iIntros (F1 HF1) "#CTX1 #HE1 HL _". iModIntro.
       iExists []. iFrame "HL". done. }
-    iEval (rewrite /typed_stmt /typed_stmt_post_cond) in "Hs".
-    iSpecialize ("Hs" $! Ψ with "CTX [] [] Hframe").
+    iEval (rewrite /typed_stmt /typed_stmt_post_cond /typed_stmt_unwind_post_cond) in "Hs".
+    iSpecialize ("Hs" $! Ψ False%I with "CTX [] [] Hframe").
     { rewrite elctx_interp_nil. done. }
     { rewrite /llctx_interp /llctx_interp_noend. done. }
-    iApply "Hs". iIntros (L v locals) "_ Hframe Hlocals Hlive ->".
-    iApply logical_step_intro. unfold Ψ. iExists locals. iFrame. done. }
+    iApply "Hs". iSplit.
+    - iIntros (L v locals) "_ Hframe Hlocals Hlive ->".
+      iApply logical_step_intro. unfold Ψ. iExists locals. iFrame. done.
+    - iIntros (L locals) "_ _ _ _ []". }
   iEval (rewrite stmt_wp_unfold /stmt_wp_def) in "Hlive".
   iApply ("Hlive" $! (λ v, ⌜v = []⌝)%I False%I initial_caller with "[]").
   { done. }

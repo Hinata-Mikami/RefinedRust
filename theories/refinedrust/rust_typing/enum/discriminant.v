@@ -398,7 +398,7 @@ Section switch.
   | DestructHintSwitchEnumKnown {rt} (r : rt) (n : string)
   .
 
-  Lemma type_switch_enum E L f {rt} (en : enum rt) r (it : int_type) v m ss def fn R ϝ :
+  Lemma type_switch_enum E L f {rt} (en : enum rt) r (it : int_type) v m ss def fn R U ϝ :
     ⌜it = en.(enum_els).(els_tag_it)⌝ ∗
     case_destruct r (λ c b,
       ∃ tag, ⌜enum_tag en c = Some tag⌝ ∗
@@ -408,11 +408,11 @@ Section switch.
         match o with
         | Some mi =>
            ∃ s, ⌜ss !! mi = Some s⌝ ∗
-           normalize_spatial_context E L True (λ L2, typed_stmt E L2 f s fn R ϝ)
+           normalize_spatial_context E L True (λ L2, typed_stmt E L2 f s fn R U ϝ)
         | None =>
-          normalize_spatial_context E L True (λ L2, typed_stmt E L2 f def fn R ϝ)
+          normalize_spatial_context E L True (λ L2, typed_stmt E L2 f def fn R U ϝ)
         end))))
-    ⊢ typed_switch E L f v (enum_discriminant_t en) r it m ss def fn R ϝ.
+    ⊢ typed_switch E L f v (enum_discriminant_t en) r it m ss def fn R U ϝ.
   Proof.
     unfold li_trace.
     iIntros "HT".
@@ -431,10 +431,10 @@ Section switch.
     unfold els_lookup_tag. case_match.
     - iDestruct "Ha" as "(%s & % & HT)".
       iExists _. iR.
-      iIntros (?) "_ _ HL Hf Hpost".
+      iIntros (Φ Φunwind) "_ _ HL Hf Hpost".
       iMod ("HT" with "[] CTX HE HL [//]") as "(%L2 & HL & HT)"; first done.
       iApply ("HT" with "CTX HE HL Hf Hpost").
-    - iIntros (?) "_ _ HL Hf Hpost".
+    - iIntros (Φ Φunwind) "_ _ HL Hf Hpost".
       iMod ("Ha" with "[] CTX HE HL [//]") as "(%L2 & HL & HT)"; first done.
       iApply ("HT" with "CTX HE HL Hf Hpost").
   Qed.

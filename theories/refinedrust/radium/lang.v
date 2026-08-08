@@ -58,7 +58,8 @@ hardware threads). *)
 Inductive stmt :=
 | Goto (b : label)
 | Return (e : expr)
-| Unwind
+(* Internal continuation after the preparation step of an unwind. *)
+| UnwindCleanup
 | UnwindTerminate
 | IfS (ot : op_type) (e : expr) (s1 s2 : stmt)
 (* m: map from values of e to indices into bs, def: default *)
@@ -226,7 +227,7 @@ Definition to_rtstmt (π : thread_id) (f : function) (s : stmt) : runtime_expr :
   Stmt π f $ match s with
   | Goto b => RTGoto b
   | Return e => RTReturn (to_rtexpr π e)
-  | Unwind => RTUnwindStmt
+  | UnwindCleanup => RTUnwindStmt
   | UnwindTerminate => RTUnwindTerminateStmt
   | IfS ot e s1 s2 => RTIfS ot (to_rtexpr π e) s1 s2
   | Switch it e m bs def => RTSwitch it (to_rtexpr π e) m bs def
@@ -700,7 +701,7 @@ Inductive stmt_step : stmt → thread_id → function → state → list Empty_s
     thread_get_frame ts = Some cf →
     (* Deallocate the stack just like on normal return. *)
     free_blocks σ.(st_heap) StackAlloc (map_to_list cf.(cf_locals)).*2 hs →
-    stmt_step Unwind π rf σ [] RTUnwind {| st_fntbl := σ.(st_fntbl); st_heap := hs; st_thread := <[π := thread_pop_frame ts]> σ.(st_thread) |} []
+    stmt_step UnwindCleanup π rf σ [] RTUnwind {| st_fntbl := σ.(st_fntbl); st_heap := hs; st_thread := <[π := thread_pop_frame ts]> σ.(st_thread) |} []
 | UnwindTerminateS π rf σ :
     stmt_step UnwindTerminate π rf σ [] RTUnwindTerminate σ []
 | FreeS v_size v_align (n_size n_align : nat) v l s π rf σ hs' :
