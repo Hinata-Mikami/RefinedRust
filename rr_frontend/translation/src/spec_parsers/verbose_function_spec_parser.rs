@@ -37,10 +37,11 @@ pub(crate) const COMMON_FUNCTION_SPEC_ATTRS: &[&str] = &[
     "verify",
     "ok",
     "instantiate",
+    "may_panic_if",
 ];
 
 pub(crate) const FUNCTION_SPEC_ATTRS: &[&str] =
-    &["code_shim", "export_as", "may_panic_if", "only_spec", "verify", "trust_me"];
+    &["code_shim", "export_as", "only_spec", "verify", "trust_me"];
 
 pub(crate) const CLOSURE_SPEC_ATTRS: &[&str] = &["capture", "only_spec", "verify", "trust_me"];
 
@@ -101,6 +102,7 @@ pub(crate) struct ClosureSpecInfo {
     pub pre_encoded: coq::term::Term,
     pub post_encoded: coq::term::Term,
     pub post_mut_encoded: coq::term::Term,
+    pub panic_condition_encoded: coq::term::Term,
 }
 impl ClosureSpecInfo {
     fn new_from_parsed_spec<'def>(
@@ -205,6 +207,40 @@ impl ClosureSpecInfo {
             coq::term::RocqType::UserDefined(model::Type::ThreadId),
         );
 
+        let panic_condition_encoded = if parsed_spec.panic_conditions.is_empty() {
+            coq::term::Term::Lambda(
+                coq::binder::BinderList::new(vec![
+                    self_binder.clone(),
+                    params_binder.clone(),
+                    args_binder.clone(),
+                ]),
+                Box::new(coq::term::Term::Literal("False".to_owned())),
+            )
+        } else {
+            let panic_condition = if parsed_spec.panic_conditions.len() == 1 {
+                parsed_spec.panic_conditions[0].clone()
+            } else {
+                coq::term::Term::Infix("∨".to_owned(), parsed_spec.panic_conditions.clone())
+            };
+            let panic_condition = coq::term::Term::Exists(
+                all_params.clone(),
+                Box::new(coq::term::Term::Infix("∧".to_owned(), vec![
+                    coq::term::Term::Literal(ext_params_rfn_clause.clone()),
+                    coq::term::Term::Literal(pre_self_rfn_clause.clone()),
+                    coq::term::Term::Literal(pre_args_rfn_clause.clone()),
+                    panic_condition,
+                ])),
+            );
+            coq::term::Term::Lambda(
+                coq::binder::BinderList::new(vec![
+                    self_binder.clone(),
+                    params_binder.clone(),
+                    args_binder.clone(),
+                ]),
+                Box::new(panic_condition),
+            )
+        };
+
         // assemble precondition
         let mut pre_clauses: Vec<coq::iris::IProp> =
             parsed_spec.preconditions.iter().map(|x| x.clone().into()).collect();
@@ -294,6 +330,7 @@ impl ClosureSpecInfo {
             pre_encoded,
             post_encoded,
             post_mut_encoded,
+            panic_condition_encoded,
         }
     }
 }
@@ -1015,6 +1052,19 @@ where
             "verify" => {
                 // accept the attribute, but do not adjust the spec
             },
+            "may_panic_if" => {
+                let condition = parse::LitStr::parse(buffer, scope).map_err(|e| spanned_error(span, ParserError::Parse(format!("{e:?}"))))?;
+                if buffer.pos().is_some() {
+                    return Err(spanned_error(
+                        span,
+                        ParserError::Parse("may_panic_if expects exactly one string literal".to_owned()),
+                    ));
+                }
+                let (condition, _) = scope
+                    .process_coq_literal(span, &condition.value())
+                    .map_err(|err| spanned_error(span, ParserError::AntiQuotation(err)))?;
+                builder.panic_conditions.push(coq::term::Term::Literal(condition));
+            },
             _ => {
                 return Ok(false);
             },
@@ -1498,22 +1548,6 @@ where
 
             let buffer = parse::Buffer::new(&attr_args_tokens(args));
             let name = seg.as_str();
-            if name == "may_panic_if" {
-                let condition = parse::LitStr::parse(&buffer, self.scope)
-                    .map_err(|e| spanned_error(it.span, ParserError::Parse(format!("{e:?}"))))?;
-                if buffer.pos().is_some() {
-                    return Err(spanned_error(
-                        it.span,
-                        ParserError::Parse("may_panic_if expects exactly one string literal".to_owned()),
-                    ));
-                }
-                let (condition, _) = self
-                    .scope
-                    .process_coq_literal(it.span, &condition.value())
-                    .map_err(|err| spanned_error(it.span, ParserError::AntiQuotation(err)))?;
-                spec.panic_conditions.push(coq::term::Term::Literal(condition));
-                continue;
-            }
             match self.handle_common_attributes(it.span, name, &buffer, &mut spec, self.scope, false) {
                 Ok(b) => {
                     if !b

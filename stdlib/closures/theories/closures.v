@@ -10,17 +10,26 @@ Definition FnOnce_Post_sig `{RRGS : !(refinedrustGS Σ)} (Self_rt: RT) (Args_rt:
 (thread_id → FnOnce_Params → (RT_xt (Self_rt)) → (RT_xt (Args_rt)) → (RT_xt (Output_rt)) → iProp Σ).
 Definition FnOnce_PostMut_sig `{RRGS : !(refinedrustGS Σ)} (Self_rt: RT) (Args_rt: RT) (Output_rt: RT) (FnOnce_Params: (FnOnce_Params_sig (Self_rt) (Args_rt) (Output_rt))) (FnOnce_Pre: (FnOnce_Pre_sig (Self_rt) (Args_rt) (Output_rt) (FnOnce_Params))) (FnOnce_Post: (FnOnce_Post_sig (Self_rt) (Args_rt) (Output_rt) (FnOnce_Params) (FnOnce_Pre))) :=
   (thread_id → FnOnce_Params → (RT_xt (Self_rt)) → (RT_xt (Args_rt)) → (RT_xt (Self_rt)) → (RT_xt (Output_rt)) → iProp Σ).
+Definition FnOnce_PanicCondition_sig `{RRGS : !(refinedrustGS Σ)} (Self_rt: RT) (Args_rt: RT) (Output_rt: RT) (FnOnce_Params: (FnOnce_Params_sig (Self_rt) (Args_rt) (Output_rt))) (FnOnce_Pre: (FnOnce_Pre_sig (Self_rt) (Args_rt) (Output_rt) (FnOnce_Params))) (FnOnce_Post: (FnOnce_Post_sig (Self_rt) (Args_rt) (Output_rt) (FnOnce_Params) (FnOnce_Pre))) (FnOnce_PostMut: (FnOnce_PostMut_sig (Self_rt) (Args_rt) (Output_rt) (FnOnce_Params) (FnOnce_Pre) (FnOnce_Post))) :=
+  ((RT_xt (Self_rt)) → FnOnce_Params → (RT_xt (Args_rt)) → Prop).
 Record FnOnce_spec_attrs `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} `{Args_rt : !RT} `{Output_rt : !RT} : Type := mk_FnOnce_spec_attrs {
   FnOnce_Params  : (FnOnce_Params_sig (Self_rt) (Args_rt) (Output_rt));
   FnOnce_Pre  : (FnOnce_Pre_sig (Self_rt) (Args_rt) (Output_rt) (FnOnce_Params));
   FnOnce_Post  : (FnOnce_Post_sig (Self_rt) (Args_rt) (Output_rt) (FnOnce_Params) (FnOnce_Pre));
   FnOnce_PostMut  : (FnOnce_PostMut_sig (Self_rt) (Args_rt) (Output_rt) (FnOnce_Params) (FnOnce_Pre) (FnOnce_Post));
+  FnOnce_PanicCondition : (FnOnce_PanicCondition_sig (Self_rt) (Args_rt) (Output_rt) (FnOnce_Params) (FnOnce_Pre) (FnOnce_Post) (FnOnce_PostMut));
 }.
 
 #[global] Arguments FnOnce_spec_attrs : clear implicits.
 #[global] Arguments FnOnce_spec_attrs {_ _}.
 #[global] Arguments mk_FnOnce_spec_attrs  {_} {_} {_} {_} {_}.
 
+Definition closure_may_panic {Self Params Args : Type}
+    (PanicCondition : Self → Params → Args → Prop) : Prop :=
+  ∃ self params args, PanicCondition self params args.
+
+(* Unfold this in solve_goal *)
+Global Hint Unfold closure_may_panic : solve_goal_unfold.
 
 Section automation.
   Context `{RRGS : !refinedrustGS Σ}.

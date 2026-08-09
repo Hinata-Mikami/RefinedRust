@@ -262,14 +262,19 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             destination: code::Expr::Var("__0".to_owned()),
         };
 
-        let mut normal_stmts = Vec::new();
-        if *ref_self != ShimRefSelf::NoRef {
-            // end the lifetime of the created reference
+        let end_ref_lft = if *ref_self != ShimRefSelf::NoRef {
             let annot = code::Annotation::EndLft(coq::Ident::new(ref_lft));
-            normal_stmts.push(code::PrimStmt::Annot {
+            Some(code::PrimStmt::Annot {
                 a: vec![annot],
                 why: None,
-            });
+            })
+        } else {
+            None
+        };
+
+        let mut normal_stmts = Vec::new();
+        if let Some(stmt) = &end_ref_lft {
+            normal_stmts.push(stmt.clone());
         }
 
         //if !self_is_ref {
@@ -281,6 +286,11 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             e: Box::new(code::Expr::Var("__0".to_owned())),
         };
         let normal = code::Stmt::Prim(normal_stmts, Box::new(code::Stmt::Return(ret_expr)));
+        let unwind = if let Some(stmt) = end_ref_lft {
+            code::Stmt::Prim(vec![stmt], Box::new(code::Stmt::Unwind))
+        } else {
+            code::Stmt::Unwind
+        };
         let call = code::Stmt::Call {
             f: code::Expr::Literal(code::Literal::Loc(proc_use.loc_name.clone())),
             lfts: lft_hints,
@@ -288,7 +298,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             args: closure_args,
             destination: Box::new(Some(destination)),
             normal: Box::new(normal),
-            unwind: Box::new(code::Stmt::Unwind),
+            unwind: Box::new(unwind),
         };
         let stmt = code::Stmt::Prim(statements, Box::new(call));
 

@@ -50,14 +50,41 @@ fn panic_with_cleanup<T>(_x: T) {
     panic!();
 }
 
-// Closure panic conditions and their projection syntax are introduced in Stage 6.
-#[cfg(any())]
-#[rr::may_panic_if("{F::PanicCondition} x -[] ()")]
+#[rr::params("p" : "{F::Params}")]
+#[rr::requires(#iris "{F::Pre} π p x tt")]
+#[rr::may_panic_if("{F::PanicCondition} x p tt")]
 fn call_clos<F>(x: F)
 where
     F: Fn(),
 {
     x();
+}
+
+#[rr::params("x")]
+#[rr::args("x")]
+#[rr::may_panic_if("x = 0")]
+fn call_conditional_closure(x: i32) {
+    let clos = #[rr::may_panic_if("x = 0")]
+    |x: i32| {
+        if x == 0 {
+            panic!();
+        }
+    };
+    clos(x);
+}
+
+#[rr::params("x")]
+#[rr::args("x")]
+#[rr::may_panic_if("x = 0 ∨ x = 1")]
+fn call_captured_closure(x: i32) {
+    let clos = #[rr::may_panic_if("{x} = 0")]
+    #[rr::may_panic_if("{x} = 1")]
+    || {
+        if x == 0 || x == 1 {
+            panic!();
+        }
+    };
+    clos();
 }
 
 // No annotation is the way to require panic freedom; a separate

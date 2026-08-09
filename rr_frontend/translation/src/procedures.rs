@@ -154,6 +154,7 @@ pub(crate) struct ClosureImplInfo<'tcx, 'def> {
     pub(crate) pre_encoded: coq::term::Term,
     pub(crate) post_encoded: coq::term::Term,
     pub(crate) post_mut_encoded: coq::term::Term,
+    pub(crate) panic_condition_encoded: coq::term::Term,
 }
 
 pub(crate) struct ClosureInfo<'tcx, 'rcx> {

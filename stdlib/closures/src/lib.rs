@@ -11,7 +11,7 @@
 pub trait Tuple { }
 
 #[rr::export_as(core::ops::FnOnce)]
-#[rr::external_attrs("Params", "Pre", "Post", "PostMut")]
+#[rr::external_attrs("Params", "Pre", "Post", "PostMut", "PanicCondition")]
 pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
     type Output;
@@ -20,6 +20,7 @@ pub trait FnOnce<Args> {
     #[rr::params("p")]
     #[rr::requires(#iris "{Pre} π p self args")]
     #[rr::ensures(#iris "{Post} π p self args ret")]
+    #[rr::may_panic_if("{PanicCondition} self p args")]
     fn call_once(self, args: Args) -> Self::Output;
 }
 
@@ -32,6 +33,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
     #[rr::exists("m'")]
     #[rr::ensures(#iris "{Self::PostMut} π p self.cur args m' ret")]
     #[rr::observe("self.ghost": "$# m'")]
+    #[rr::may_panic_if("{Self::PanicCondition} self.cur p args")]
     fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
@@ -42,6 +44,7 @@ pub trait Fn<Args>: FnMut<Args> {
     #[rr::params("p")]
     #[rr::requires(#iris "{Self::Pre} π p self args")]
     #[rr::ensures(#iris "{Self::Post} π p self args ret")]
+    #[rr::may_panic_if("{Self::PanicCondition} self p args")]
     fn call(&self, args: Args) -> Self::Output;
 }
 
@@ -72,6 +75,7 @@ where
 #[rr::instantiate("Pre" := "{F::Pre}")]
 #[rr::instantiate("Post" := "{F::Post}")]
 #[rr::instantiate("PostMut" := "λ π p s args s2 ret, (⌜s2 = s⌝ ∗ {F::Post} π p s args ret)%I")]
+#[rr::instantiate("PanicCondition" := "{F::PanicCondition}")]
 impl<A, F: ?Sized> FnOnce<A> for &F
 where
     F: Fn<A>,
@@ -100,6 +104,7 @@ where
 #[rr::instantiate("Pre" := "λ π p s args, {F::Pre} π p s.cur args")]
 #[rr::instantiate("Post" := "λ π p s args ret, (∃ s2, {F::PostMut} π p s.cur args s2 ret ∗ gvar_pobs s.ghost ($# s2))%I")]
 #[rr::instantiate("PostMut" := "λ π p s args s2 ret, ({F::PostMut} π p s.cur args s2.cur ret ∗ ⌜s.ghost = s2.ghost⌝)%I")]
+#[rr::instantiate("PanicCondition" := "λ s p args, {F::PanicCondition} s.cur p args")]
 impl<A, F: ?Sized> FnOnce<A> for &mut F
 where
     F: FnMut<A>,

@@ -379,6 +379,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             spec_info.pre_encoded,
             spec_info.post_encoded,
             spec_info.post_mut_encoded,
+            spec_info.panic_condition_encoded,
         );
 
         Ok((t, info))

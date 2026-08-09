@@ -1331,6 +1331,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 "PostMut".to_owned(),
                 specs::traits::SpecAttrInst::Term(info.post_mut_encoded.clone()),
             );
+            attrs.insert(
+                "PanicCondition".to_owned(),
+                specs::traits::SpecAttrInst::Term(info.panic_condition_encoded.clone()),
+            );
         }
 
         trace!("leave get_closure_trait_impl_info for closure_did={closure_did:?} and kind={kind:?}");
