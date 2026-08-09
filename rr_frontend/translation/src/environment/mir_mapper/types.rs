@@ -75,7 +75,7 @@ pub(super) enum OpenDropNode {
     Unsupported,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum PointPhase {
     Direct(SourceLoc),
     PreEffect(SourceLoc),

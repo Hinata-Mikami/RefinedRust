@@ -14,6 +14,7 @@ Proof.
 
   (* !start proof(knights_tour_functional.knights_tour) *)
   rep liRStep.
+  2: rep liRStep.
   split.
   { liInst Hevar_x1 r'. liInst Hevar_x2 r'0.
     rewrite Z2Nat.inj_succ in Hkpath; last lia.
@@ -68,6 +69,7 @@ Proof.
       eapply kpath_extension_is0; [exact Hincand | done].
     + rename select (_ ∈ candidates) into Hincand.
       eapply kpath_extension_kmove; [exact Hincand | done].
+  - rename select (_ ∉ usize) into Hfalse. apply Hfalse. done.
   Unshelve. all: apply inhabitant.
   (* !end proof *)
 Qed.

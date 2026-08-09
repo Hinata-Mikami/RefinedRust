@@ -47,6 +47,7 @@ Proof.
     unfold in_bounds in Hincands. cbn in Hincands.
     unfold name_hint in Hincands.
     unfold in_bounds. unfold name_hint. solve_goal.
+  - rename select (_ ∉ usize) into Hfalse. apply Hfalse. done.
   (* !end proof *)
   Unshelve. all: apply inhabitant.
 Qed.

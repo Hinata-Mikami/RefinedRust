@@ -18,7 +18,7 @@ use crate::base::*;
 use crate::body::function_translation::{ExprInfo, ExprWithInfo};
 use crate::body::mir_lowering::{
     MirConstantTranslation as _, MirPlaceTranslation as _, MirRvalueTranslation as _, MirTranslationCtx as _,
-    MirTypeTranslation as _, ProcedureInst, TranslationKey,
+    MirTypeTranslation as _, ProcedureInst, TranslationKey, translate_unwind_action,
 };
 use crate::environment::borrowck::facts;
 use crate::error::Message;
@@ -792,6 +792,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         args: &[span::Spanned<mir::Operand<'tcx>>],
         destination: &mir::Place<'tcx>,
         target: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
         loc: mir::Location,
     ) -> Result<code::Stmt, TranslationError> {
         let PreparedFunctionCall {
@@ -856,6 +857,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             code::Stmt::Stuck
         };
 
+        let unwind = translate_unwind_action(unwind, |target| self.translate_goto_like(&loc, target))?;
+
         let call = code::Stmt::Call {
             f: func_expr,
             lfts: call_info.lft_hint,
@@ -863,7 +866,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             args: translated_args,
             destination: Box::new(Some(destination)),
             normal: Box::new(normal),
-            unwind: Box::new(code::Stmt::Stuck),
+            unwind: Box::new(unwind),
         };
 
         Ok(code::Stmt::Prim(prim_stmts, Box::new(call)))

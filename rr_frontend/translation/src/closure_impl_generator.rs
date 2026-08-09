@@ -288,7 +288,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             args: closure_args,
             destination: Box::new(Some(destination)),
             normal: Box::new(normal),
-            unwind: Box::new(code::Stmt::Stuck),
+            unwind: Box::new(code::Stmt::Unwind),
         };
         let stmt = code::Stmt::Prim(statements, Box::new(call));
 

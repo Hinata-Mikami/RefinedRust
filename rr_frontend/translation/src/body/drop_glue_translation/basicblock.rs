@@ -15,7 +15,7 @@ use super::DropGlueTX;
 use crate::base::*;
 use crate::body::mir_lowering::{
     MirDropTranslation as _, MirPlaceTranslation as _, MirRvalueTranslation as _, MirTranslationCtx as _,
-    MirTypeTranslation as _,
+    MirTypeTranslation as _, translate_unwind_action,
 };
 use crate::error::Message;
 
@@ -129,6 +129,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         code::Stmt::GotoBlock(target.as_usize())
     }
 
+    fn translate_unwind_action(
+        &mut self,
+        loc: mir::Location,
+        action: mir::UnwindAction,
+    ) -> Result<code::Stmt, TranslationError> {
+        translate_unwind_action(action, |target| Ok(self.translate_goto_like(loc, target)))
+    }
+
     /// Translate a drop-glue terminator conservatively.
     pub(crate) fn translate_terminator(
         &mut self,
@@ -139,6 +147,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             mir::TerminatorKind::Goto { target } => Ok(self.translate_goto_like(loc, *target)),
             mir::TerminatorKind::Return => Ok(code::Stmt::Return(code::Expr::Literal(code::Literal::ZST))),
             mir::TerminatorKind::Unreachable => Ok(code::Stmt::Stuck),
+            mir::TerminatorKind::UnwindResume => Ok(code::Stmt::Unwind),
+            mir::TerminatorKind::UnwindTerminate(_) => Ok(code::Stmt::UnwindTerminate),
 
             mir::TerminatorKind::SwitchInt { discr, targets } => {
                 let (operand, _) = self.translate_operand(discr, true)?;
@@ -186,7 +196,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
                 })
             },
 
-            mir::TerminatorKind::Drop { place, target, .. } => {
+            mir::TerminatorKind::Drop {
+                place,
+                target,
+                unwind,
+                ..
+            } => {
                 let mut stmt = self.translate_goto_like(loc, *target);
 
                 let ty = self.semantic_type_of_place(place)?;
@@ -203,6 +218,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
 
                     let ty_hint =
                         call_info.type_hint.into_iter().map(|x| code::RustType::of_type(&x)).collect();
+                    let unwind = self.translate_unwind_action(loc, *unwind)?;
                     stmt = code::Stmt::Call {
                         f: func_expr,
                         lfts: call_info.lft_hint,
@@ -210,7 +226,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
                         args: vec![raw_place],
                         destination: Box::new(None),
                         normal: Box::new(stmt),
-                        unwind: Box::new(code::Stmt::Stuck),
+                        unwind: Box::new(unwind),
                     };
                 }
 
@@ -222,16 +238,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
                 args,
                 destination,
                 target,
+                unwind,
                 ..
             } => {
-                let Some(target) = target else {
-                    return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
-                        Message::UnsupportedFeature(format!(
-                            "drop-glue destructor call at {loc:?} does not have a normal target: {term:?}"
-                        )),
-                    )));
-                };
-
                 let (func_expr, call_info) = self.translate_operand(func, false)?;
                 let Some(mut call_info) = call_info else {
                     return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
@@ -257,7 +266,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
                     ot: destination_st.into(),
                     destination: self.translate_place(destination)?,
                 };
-                let normal = self.translate_goto_like(loc, *target);
+                let normal = target.map_or(code::Stmt::Stuck, |target| self.translate_goto_like(loc, target));
+                let unwind = self.translate_unwind_action(loc, *unwind)?;
                 Ok(code::Stmt::Call {
                     f: func_expr,
                     lfts: call_info.lft_hint,
@@ -265,19 +275,44 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
                     args: translated_args,
                     destination: Box::new(Some(destination)),
                     normal: Box::new(normal),
-                    unwind: Box::new(code::Stmt::Stuck),
+                    unwind: Box::new(unwind),
                 })
             },
 
+            mir::TerminatorKind::Assert {
+                cond,
+                expected,
+                target,
+                unwind,
+                ..
+            } => {
+                let (cond, _) = self.translate_operand(cond, true)?;
+                let condition = code::Expr::BinOp {
+                    o: code::Binop::Eq,
+                    ot1: lang::OpType::Bool,
+                    ot2: lang::OpType::Bool,
+                    e1: Box::new(cond),
+                    e2: Box::new(code::Expr::Literal(code::Literal::Bool(*expected))),
+                };
+                let normal = self.translate_goto_like(loc, *target);
+                let unwind = self.translate_unwind_action(loc, *unwind)?;
+                Ok(code::Stmt::If {
+                    e: condition,
+                    ot: lang::OpType::Bool,
+                    s1: Box::new(normal),
+                    s2: Box::new(unwind),
+                })
+            },
+
+            mir::TerminatorKind::FalseEdge { real_target, .. }
+            | mir::TerminatorKind::FalseUnwind { real_target, .. } => {
+                Ok(self.translate_goto_like(loc, *real_target))
+            },
+
             mir::TerminatorKind::TailCall { .. }
-            | mir::TerminatorKind::UnwindResume
-            | mir::TerminatorKind::UnwindTerminate(_)
             | mir::TerminatorKind::CoroutineDrop
             | mir::TerminatorKind::InlineAsm { .. }
-            | mir::TerminatorKind::Yield { .. }
-            | mir::TerminatorKind::Assert { .. }
-            | mir::TerminatorKind::FalseEdge { .. }
-            | mir::TerminatorKind::FalseUnwind { .. } => {
+            | mir::TerminatorKind::Yield { .. } => {
                 Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(
                     format!("drop-glue translation does not support MIR terminator at {loc:?}: {term:?}"),
                 ))))

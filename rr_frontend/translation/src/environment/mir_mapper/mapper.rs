@@ -78,6 +78,8 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
     /// Finalize collected mappings into the public mapping result.
     pub(super) fn finish(mut self) -> MappingResult {
         self.collect_synthetic_drop_borrows_from_mapping();
+        self.infer_inserted_point_phases();
+        self.map_unvisited_cleanup_blocks();
 
         let mut unmapped_targets = Vec::new();
         for (bb, data) in self.de.basic_blocks.iter_enumerated() {
@@ -85,31 +87,6 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 if !self.target_to_source.contains_key(&(bb, idx)) {
                     unmapped_targets.push((bb, idx));
                 }
-            }
-        }
-
-        // Inserted target locations may still be translated directly or used
-        // as successor starts by annotation generation. They have no source
-        // statement, but Polonius facts are indexed by borrowck source points,
-        // so give them a conservative source phase when it is structurally
-        // clear where they sit relative to source MIR.
-        let mut target_point_phases = self.target_point_phases.clone();
-        let mut target_to_source_entries: Vec<_> = self.target_to_source.iter().collect();
-        target_to_source_entries.sort_by_key(|((bb, idx), _)| (bb.as_u32(), *idx));
-        for ((bb, idx), origin) in target_to_source_entries {
-            if target_point_phases.contains_key(&(*bb, *idx)) {
-                continue;
-            }
-
-            if *origin == Origin::Inserted
-                && let Some(source) = self.next_mapped_source_after(*bb, *idx)
-            {
-                target_point_phases.insert((*bb, *idx), PointPhase::PreEffect(source));
-            } else if *origin == Origin::Inserted
-                && *idx == 0
-                && let Some(source) = self.source_successor_for_inserted_block_start(*bb)
-            {
-                target_point_phases.insert((*bb, *idx), PointPhase::PreEffect(source));
             }
         }
 
@@ -122,7 +99,7 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             };
             insert_point_mapping(&mut target_points_to_source, *target, phase);
         }
-        let mut target_point_phases: Vec<_> = target_point_phases.iter().collect();
+        let mut target_point_phases: Vec<_> = self.target_point_phases.iter().collect();
         target_point_phases.sort_by_key(|((bb, idx), _)| (bb.as_u32(), *idx));
         for (target, phase) in target_point_phases {
             insert_point_mapping(&mut target_points_to_source, *target, *phase);
@@ -156,6 +133,51 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
                 .values()
                 .map(|borrow| (borrow.drop_call_loc(), *borrow))
                 .collect(),
+        }
+    }
+
+    /// Assign source phases to already-classified inserted locations.
+    fn infer_inserted_point_phases(&mut self) {
+        let entries: Vec<_> =
+            self.target_to_source.iter().map(|(target, origin)| (*target, *origin)).collect();
+        for ((bb, idx), origin) in entries {
+            if origin != Origin::Inserted || self.target_point_phases.contains_key(&(bb, idx)) {
+                continue;
+            }
+
+            let phase = self
+                .next_mapped_source_after(bb, idx)
+                .map(PointPhase::PreEffect)
+                .or_else(|| (idx == 0).then(|| self.point_phase_for_inserted_block_start(bb)).flatten());
+            if let Some(phase) = phase {
+                self.target_point_phases.insert((bb, idx), phase);
+            }
+        }
+    }
+
+    /// Map target-only cleanup chains once their incoming source effect is known.
+    fn map_unvisited_cleanup_blocks(&mut self) {
+        loop {
+            let inferred: Vec<_> = self
+                .de
+                .basic_blocks
+                .iter_enumerated()
+                .filter_map(|(bb, data)| {
+                    (data.is_cleanup && !self.target_to_source.contains_key(&(bb, 0)))
+                        .then(|| self.point_phase_for_inserted_block_start(bb).map(|phase| (bb, phase)))?
+                })
+                .collect();
+
+            if inferred.is_empty() {
+                break;
+            }
+
+            for (bb, phase) in inferred {
+                for idx in 0..=self.de.basic_blocks[bb].statements.len() {
+                    self.target_to_source.entry((bb, idx)).or_insert(Origin::Inserted);
+                    self.target_point_phases.entry((bb, idx)).or_insert(phase);
+                }
+            }
         }
     }
 
@@ -329,8 +351,8 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
     ///
     /// All predecessor edges must agree on the same source location. If they do
     /// not, we return `None` and leave the mapping boundary to fail loudly.
-    fn source_successor_for_inserted_block_start(&self, bb_t: BasicBlock) -> Option<SourceLoc> {
-        let mut source = None;
+    fn point_phase_for_inserted_block_start(&self, bb_t: BasicBlock) -> Option<PointPhase> {
+        let mut phase = None;
         let target_term = self.de.basic_blocks[bb_t].terminator();
 
         for (pred_t, data_t) in self.de.basic_blocks.iter_enumerated() {
@@ -339,27 +361,48 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             }
 
             let pred_loc_t = (pred_t, data_t.statements.len());
-            let pred_loc_s = origin_source_loc(self.target_to_source.get(&pred_loc_t).copied()?)?;
-            let succ_source = matching_source_successor(
-                data_t.terminator(),
-                bb_t,
-                self.bc.basic_blocks[pred_loc_s.0].terminator(),
-            )?;
-            let succ_source =
-                if let Some(matched) = self.find_matching_source_terminator_from(succ_source, target_term) {
+            let source_origin = self.target_to_source.get(&pred_loc_t).copied().and_then(origin_source_loc);
+            let inherited_phase = source_origin
+                .is_none()
+                .then(|| self.target_point_phases.get(&pred_loc_t).copied())
+                .flatten();
+            let pred_loc_s = source_origin.or_else(|| {
+                inherited_phase.map(|phase| match phase {
+                    PointPhase::Direct(source)
+                    | PointPhase::PreEffect(source)
+                    | PointPhase::PostEffect(source) => source,
+                })
+            })?;
+            let source_term = self.bc.basic_blocks[pred_loc_s.0].terminator();
+            let candidate = if let Some(phase @ PointPhase::PostEffect(_)) = inherited_phase {
+                phase
+            } else if let Some(succ_source) =
+                matching_source_successor(data_t.terminator(), bb_t, source_term)
+            {
+                let source = if let Some(matched) =
+                    self.find_matching_source_terminator_from(succ_source, target_term)
+                {
                     let source_data = &self.bc.basic_blocks[matched];
                     (matched, source_data.statements.len())
                 } else {
                     (succ_source, 0)
                 };
+                PointPhase::PreEffect(source)
+            } else if data_t.terminator().unwind().copied().and_then(unwind_target) == Some(bb_t)
+                && source_term.unwind().copied().and_then(unwind_target).is_none()
+            {
+                PointPhase::PostEffect(pred_loc_s)
+            } else {
+                return None;
+            };
 
-            if source.is_some_and(|existing| existing != succ_source) {
+            if phase.is_some_and(|existing| existing != candidate) {
                 return None;
             }
-            source = Some(succ_source);
+            phase = Some(candidate);
         }
 
-        source
+        phase
     }
 
     /// Find a later source terminator whose shape matches the target terminator.

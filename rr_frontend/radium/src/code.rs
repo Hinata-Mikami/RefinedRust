@@ -603,6 +603,12 @@ pub enum Stmt {
     #[display("return ({})", _0)]
     Return(Expr),
 
+    #[display("Unwind")]
+    Unwind,
+
+    #[display("UnwindTerminate")]
+    UnwindTerminate,
+
     #[display(
         "if{{ {} }}: {} then\n{}\nelse\n{}",
         ot,

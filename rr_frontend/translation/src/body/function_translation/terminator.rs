@@ -16,7 +16,7 @@ use super::{ExprInfo, TX};
 use crate::base::*;
 use crate::body::mir_lowering::{
     MirDropTranslation as _, MirPlaceTranslation as _, MirRvalueTranslation as _, MirTranslationCtx as _,
-    MirTypeTranslation as _,
+    MirTypeTranslation as _, translate_unwind_action,
 };
 use crate::error::Message;
 use crate::{search, types};
@@ -55,6 +55,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             }
         } else {
             warn!("Failed to determine DefId of core::panicking::panic");
+        }
+
+        if let Some(panic_fmt_id) = search::try_resolve_did(self.tcx, &["core", "panicking", "panic_fmt"])
+            && Self::check_call_destination(func, panic_fmt_id)
+        {
+            return true;
         }
 
         false
@@ -120,6 +126,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         Ok(vec![assign])
     }
 
+    fn translate_unwind_action(
+        &mut self,
+        loc: &mir::Location,
+        action: mir::UnwindAction,
+    ) -> Result<code::Stmt, TranslationError> {
+        translate_unwind_action(action, |target| self.translate_goto_like(loc, target))
+    }
+
     /// Translate a terminator.
     pub(crate) fn translate_terminator(
         &mut self,
@@ -134,6 +148,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 args,
                 destination,
                 target,
+                unwind,
                 ..
             } => {
                 trace!("translating Call {:?}", term);
@@ -185,6 +200,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         destination: self.translate_place(destination)?,
                     };
                     let normal = self.translate_goto_like(&loc, *target)?;
+                    let unwind = self.translate_unwind_action(&loc, *unwind)?;
                     let call = code::Stmt::Call {
                         f: func_expr,
                         lfts: call_info.lft_hint,
@@ -192,14 +208,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         args: vec![translated_arg],
                         destination: Box::new(Some(destination)),
                         normal: Box::new(normal),
-                        unwind: Box::new(code::Stmt::Stuck),
+                        unwind: Box::new(unwind),
                     };
                     return Ok(call);
                 }
 
                 if self.is_call_destination_panic(func) {
-                    info!("Replacing call to std::panicking::begin_panic with Stuck");
-                    return Ok(code::Stmt::Stuck);
+                    info!("Replacing direct panic call with its MIR unwind action");
+                    return self.translate_unwind_action(&loc, *unwind);
                 }
                 if self.is_call_destination_discriminant(func) {
                     let op = &args[0].node;
@@ -209,7 +225,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     return Ok(code::Stmt::Prim(stmt, Box::new(goto)));
                 }
 
-                self.translate_function_call(func, args, destination, *target, loc)
+                self.translate_function_call(func, args, destination, *target, *unwind, loc)
             },
 
             mir::TerminatorKind::Return => {
@@ -295,9 +311,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 cond,
                 expected,
                 target,
+                unwind,
                 ..
             } => {
-                // this translation gets stuck on failure
                 let (cond_translated, _) = self.translate_operand(cond, true)?;
                 let comp = code::Expr::BinOp {
                     o: code::Binop::Eq,
@@ -307,15 +323,23 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     e2: Box::new(code::Expr::Literal(code::Literal::Bool(*expected))),
                 };
 
-                let stmt = self.translate_goto_like(&loc, *target)?;
-                let mut annots = Vec::new();
-
-                // TODO: should we really have this?
-                annots.insert(0, code::PrimStmt::AssertS(Box::new(comp)));
-                Ok(code::Stmt::Prim(annots, Box::new(stmt)))
+                let normal = self.translate_goto_like(&loc, *target)?;
+                let unwind = self.translate_unwind_action(&loc, *unwind)?;
+                let stmt = code::Stmt::If {
+                    e: comp,
+                    ot: lang::OpType::Bool,
+                    s1: Box::new(normal),
+                    s2: Box::new(unwind),
+                };
+                Ok(stmt)
             },
 
-            mir::TerminatorKind::Drop { place, target, .. } => {
+            mir::TerminatorKind::Drop {
+                place,
+                target,
+                unwind,
+                ..
+            } => {
                 let mut stmt = self.translate_goto_like(&loc, *target)?;
 
                 let shape_ty = self.shape_type_of_place(place).ty;
@@ -332,6 +356,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     };
 
                     let ty_hint = call_info.type_hint.into_iter().map(|x| code::RustType::of_type(&x)).collect();
+                    let unwind = self.translate_unwind_action(&loc, *unwind)?;
                     stmt = code::Stmt::Call {
                         f: func_expr,
                         lfts: call_info.lft_hint,
@@ -339,7 +364,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         args: vec![raw_place],
                         destination: Box::new(None),
                         normal: Box::new(stmt),
-                        unwind: Box::new(code::Stmt::Stuck),
+                        unwind: Box::new(unwind),
                     };
                 }
 
@@ -361,17 +386,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             mir::TerminatorKind::Unreachable => Ok(code::Stmt::Stuck),
 
-            mir::TerminatorKind::UnwindResume => {
-                Err(TranslationError::ErrorReported(
-                    self.tcx.dcx().err(Message::Unimplemented("implement UnwindResume".to_owned())),
-                ))
-            },
+            mir::TerminatorKind::UnwindResume => Ok(code::Stmt::Unwind),
 
-            mir::TerminatorKind::UnwindTerminate(_) => {
-                Err(TranslationError::ErrorReported(
-                    self.tcx.dcx().err(Message::Unimplemented("implement UnwindTerminate".to_owned())),
-                ))
-            },
+            mir::TerminatorKind::UnwindTerminate(_) => Ok(code::Stmt::UnwindTerminate),
 
             mir::TerminatorKind::CoroutineDrop
             | mir::TerminatorKind::InlineAsm { .. }

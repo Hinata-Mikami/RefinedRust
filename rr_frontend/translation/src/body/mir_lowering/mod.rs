@@ -24,6 +24,7 @@ mod ctx;
 mod drops;
 mod place;
 mod rvalue;
+mod unwind;
 
 pub(crate) use call::{ProcedureInst, TraitMethodUseData, make_trait_method_use_data};
 pub(crate) use constants::MirConstantTranslation;
@@ -31,3 +32,4 @@ pub(crate) use ctx::{MirTranslationCtx, MirTypeTranslation, TranslationKey};
 pub(crate) use drops::{MirDropTranslation, make_virtual_drop_glue_method_for_param_from_scope};
 pub(crate) use place::MirPlaceTranslation;
 pub(crate) use rvalue::MirRvalueTranslation;
+pub(crate) use unwind::translate_unwind_action;
