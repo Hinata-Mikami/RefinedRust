@@ -752,7 +752,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
         let mut assoc_tys = Vec::new();
         for req in requirements {
-            if req.is_self_in_trait_decl {
+            if req.is_used_in_self_trait {
                 continue;
             }
 
@@ -785,7 +785,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
         let mut self_trait_assoc_tys = Vec::new();
         for req in requirements {
-            if !req.is_self_in_trait_decl {
+            if !req.is_used_in_self_trait {
                 continue;
             }
 

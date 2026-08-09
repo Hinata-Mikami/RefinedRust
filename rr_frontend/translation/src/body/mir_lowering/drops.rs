@@ -211,6 +211,14 @@ pub(crate) fn make_virtual_drop_glue_method_for_param_from_scope<'tcx, 'def>(
     scope: &types::scope::Params<'tcx, 'def>,
     dropped_ty: ty::Ty<'tcx>,
 ) -> TraitMethodUseData<'def> {
+    // Scope assumptions use flexible projection aliases, while MIR normalization may mark the
+    // same unresolved projection rigid.
+    let dropped_ty = match dropped_ty.kind() {
+        ty::TyKind::Alias(_, alias) if matches!(alias.kind, ty::AliasTyKind::Projection { .. }) => {
+            ty::Ty::new_alias(tcx, ty::IsRigid::No, *alias)
+        },
+        _ => dropped_ty,
+    };
     let arg = ty::GenericArg::from(dropped_ty);
     let trait_use = scope
         .trait_scope()
