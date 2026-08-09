@@ -18,7 +18,7 @@ Proof.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   (* !start proof(decuple_range) *)
-  unsafe_unfold_common_radium_defs. simpl. lia.
+  unsafe_unfold_common_radium_defs. simpl in *. lia.
   (* !end proof *)
   Unshelve. all: print_remaining_sidecond.
 Qed.

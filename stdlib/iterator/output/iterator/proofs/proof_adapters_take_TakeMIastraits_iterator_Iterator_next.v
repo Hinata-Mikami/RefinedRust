@@ -23,6 +23,7 @@ Proof.
     { iEval (rewrite /traits_iterator_Iterator_Inv/=).
       rep liRStep; liShow. } }
   { rep <-! liRStep; liShow. }
+  { rep liRStep. } 
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

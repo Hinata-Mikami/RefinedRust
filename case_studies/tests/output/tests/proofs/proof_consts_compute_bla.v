@@ -17,7 +17,7 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  all: unsafe_unfold_common_radium_defs; simpl; lia.
+  all: unsafe_unfold_common_radium_defs; simpl; solve_goal.
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

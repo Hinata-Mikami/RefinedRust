@@ -14,6 +14,7 @@ Proof.
   RawVec_T_grow_prelude.
 
   rep <-! liRStep.
+  2: rep liRStep.
   (* Manual step to extract the array value before the call to realloc *)
   apply_update (updateable_extract_untyped_value l).
   repeat liRStep.

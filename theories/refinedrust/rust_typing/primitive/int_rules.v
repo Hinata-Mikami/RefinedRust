@@ -130,7 +130,7 @@ Section arithop.
   (** Now we derive a version that gets rid of the wrapping at the cost of additional sideconditions *)
   Definition int_arithop_in_range (it : int_type) (n : Z) op : Prop :=
     match op with
-    (* these sideconditions are stronger than necessary and do not support the wrapping for unsigned unchecked ops that is allowed by the opsem *)
+    (* these sideconditions are stronger than necessary and do not support the wrapping for unchecked ops that is allowed by the opsem *)
     | AddOp => n ∈ it
     | SubOp => n ∈ it
     | MulOp => n ∈ it
@@ -271,13 +271,13 @@ Section arithop.
     iPureIntro. by apply: val_to_of_Z.
   Qed.
   Global Program Instance type_add_int_int_inst E L f it v1 n1 v2 n2:
-    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 AddOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (n1 + n2) _ MetaNone MetaNone _).
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 AddOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int E L f it v1 n1 v2 n2 T (n1 + n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
   Global Program Instance type_sub_int_int_inst E L f it v1 n1 v2 n2:
-    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 SubOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (n1 - n2) _ MetaNone MetaNone _).
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 SubOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int E L f it v1 n1 v2 n2 T (n1 - n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
   Global Program Instance type_mul_int_int_inst E L f it v1 n1 v2 n2:
-    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 MulOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (n1 * n2) _ MetaNone MetaNone _).
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 MulOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int E L f it v1 n1 v2 n2 T (n1 * n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
   Global Program Instance type_div_int_int_inst E L f it v1 n1 v2 n2:
     TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 DivOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (n1 `quot` n2) _ MetaNone MetaNone _).

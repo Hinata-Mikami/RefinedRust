@@ -16,6 +16,7 @@ Proof.
   Vec_T_pop_prelude.
 
   rep <-! liRStep; liShow.
+  2: rep liRStep.
   apply_update (updateable_typed_array_access l (length xs - 1) (UntypedSynType $ st_of T_ty MetaNone)).
   liRStepUntil typed_call.
   (* We need to manually extract it now *)

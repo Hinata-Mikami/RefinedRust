@@ -20,6 +20,7 @@ Proof.
     liInst Hevar_x2 x'.
     rep liRStep; liShow. }
   { rep liRStep; liShow.
+    2: rep liRStep; liShow.
     liInst Hevar_seq (seq ++ [y]).
     rep liRStep; liShow. }
   { rep liRStep; liShow.
