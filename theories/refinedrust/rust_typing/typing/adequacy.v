@@ -51,6 +51,22 @@ Proof. solve_inG. Qed.
 
 Definition initial_return_local : var_name := "__refinedrust_main_return".
 
+Inductive panic_policy :=
+  | AllowPanic
+  | ForbidPanic.
+
+Definition policy_panic_condition (policy : panic_policy) : Prop :=
+  match policy with
+  | AllowPanic => True
+  | ForbidPanic => False
+  end.
+
+Definition initial_unwind_handler (policy : panic_policy) : stmt :=
+  match policy with
+  | AllowPanic => UnwindTerminate
+  | ForbidPanic => StuckS
+  end.
+
 Program Definition initial_caller : function :=
   {| f_args := [];
      f_code := ∅;
@@ -58,14 +74,16 @@ Program Definition initial_caller : function :=
   |}.
 Next Obligation. constructor. Qed.
 
-Definition initial_stmt `{!LayoutAlg} (main : loc) : stmt :=
+Definition initial_stmt `{!LayoutAlg} (policy : panic_policy) (main : loc) : stmt :=
   LocalLiveSt initial_return_local UnitSynType
     (CallS (Val (l2v main)) [] [] []
       (Some (Na1Ord, UntypedOp unit_sl, Var initial_return_local))
-      (LocalDeadSt initial_return_local (return (Val []))%E) StuckS).
+      (LocalDeadSt initial_return_local (return (Val []))%E)
+      (initial_unwind_handler policy)).
 
-Definition initial_prog `{!LayoutAlg} (main : thread_id * loc) : runtime_expr :=
-  to_rtstmt main.1 initial_caller (initial_stmt main.2).
+Definition initial_prog `{!LayoutAlg} (policy : panic_policy)
+    (main : thread_id * loc) : runtime_expr :=
+  to_rtstmt main.1 initial_caller (initial_stmt policy main.2).
 
 Definition initial_heap_state :=
   {| hs_heap := ∅; hs_allocs := ∅; |}.
@@ -168,12 +186,13 @@ Proof.
   - rewrite /call_frame_has_locals/empty_frame map_to_list_empty. done.
 Qed.
 
-Definition main_type `{!typeGS Σ} (P : iProp Σ) :=
-  fn(∀ ( *[]) : 0 | ( *[]) : [] | () : (), λ ϝ, []; λ π, P) → ∃ () : (), () @ unit_t; λ π, True | False.
+Definition main_type `{!typeGS Σ} (policy : panic_policy) (P : iProp Σ) :=
+  fn(∀ ( *[]) : 0 | ( *[]) : [] | () : (), λ ϝ, []; λ π, P) → ∃ () : (), () @ unit_t; λ π, True | policy_panic_condition policy.
 
-Definition initial_prog_wp `{!refinedcG Σ} (main : thread_id * loc)
+Definition initial_prog_wp `{!refinedcG Σ} (policy : panic_policy)
+    (main : thread_id * loc)
     (Φ : radium.val.val → iProp Σ) : iProp Σ :=
-  WP initial_prog main {{ runtime_post Φ False }}.
+  WP initial_prog policy main {{ runtime_post Φ False }}.
 
 Definition initial_return_wp `{!refinedcG Σ} π (Φ : radium.val.val → iProp Σ) : iProp Σ :=
   WP to_rtstmt π initial_caller (Return (Val [])) {{ runtime_post Φ False }}.
@@ -285,14 +304,28 @@ Proof.
   iApply wp_value. done.
 Qed.
 
-Lemma wp_initial_prog `{!typeGS Σ} π main (P : iProp Σ) :
+Ltac solve_initial_return_value :=
+  iApply type_val; iApply type_val_unit;
+  rewrite /introduce_with_hooks;
+  iIntros (F HF) "#CTX' #HE HL Hv"; iModIntro;
+  iExists []; iFrame "HL";
+  iApply find_in_context_frame_locals; iExists []; iFrame;
+  rewrite /trigger_tc; iExists [], _;
+  iApply typed_context_fold_nil;
+  iIntros (F0 HF0) "#CTX0 #HE0 HL Hacc"; iModIntro;
+  iExists []; iFrame "HL";
+  iApply prove_with_subtype_pure; iSplit; first done;
+  iIntros (F1 HF1) "#CTX1 #HE1 HL _"; iModIntro;
+  iExists []; iFrame "HL"; done.
+
+Lemma wp_initial_prog `{!typeGS Σ} policy π main (P : iProp Σ) :
   rrust_ctx -∗
   current_frame π 1 -∗
   allocated_locals (π, 1) [] -∗
   na_own π ⊤ -∗
-  (l2v main) ◁ᵥ{π, MetaNone} main @ function_ptr [] (@eq_refl _ [], main_type P) -∗
+  (l2v main) ◁ᵥ{π, MetaNone} main @ function_ptr [] (@eq_refl _ [], main_type policy P) -∗
   P -∗
-  initial_prog_wp (π, main) (λ v, ⌜v = []⌝)%I.
+  initial_prog_wp policy (π, main) (λ v, ⌜v = []⌝)%I.
 Proof.
   pose ({| static_locs := ∅; static_types := ∅ |} : staticGS Σ) as Hstatic.
   pose ({| refinedrust_typeGS := typeGS0; refinedrust_staticGS := Hstatic |} :
@@ -311,7 +344,8 @@ Proof.
   iPoseProof (wps_local_live π UnitSynType "__refinedrust_main_return"
     (CallS (Val (l2v main)) [] [] []
       (Some (Na1Ord, UntypedOp unit_sl, Var "__refinedrust_main_return"))
-      (LocalDeadSt "__refinedrust_main_return" (return (Val []))%E) StuckS)
+      (LocalDeadSt "__refinedrust_main_return" (return (Val []))%E)
+      (initial_unwind_handler policy))
     unit_sl [] 1 ∅ Ψ False%I Hunit Hfresh with "Hframe Hlocals") as "Hlive".
   iMod (tr_zero) as "Htr".
   iSpecialize ("Hlive" with "[-]").
@@ -335,34 +369,30 @@ Proof.
     iAssert (typed_stmt [] [] (π, 1)
       (CallS (Val (l2v main)) [] [] []
         (Some (Na1Ord, UntypedOp unit_sl, Var "__refinedrust_main_return"))
-        (LocalDeadSt "__refinedrust_main_return" (return (Val []))%E) StuckS)
-      initial_caller (λ v _, ⌜v = []⌝)%I (λ _, False%I) static)
+        (LocalDeadSt "__refinedrust_main_return" (return (Val []))%E)
+        (initial_unwind_handler policy))
+       initial_caller (λ v _, ⌜v = []⌝)%I (λ _, False%I) static)
       with "[Hstore Hna Hmain HP Hlocals Hlive Hl Hnamed]" as "Hs".
-    { rep <-! liRStep; liShow.
+    { destruct policy; simpl.
+      all: rep <-! liRStep; liShow.
       all: try iFrame. all: try done.
       Unshelve. all: rep <-! liRStep.
       all: try iFrame. all: try done.
-      Unshelve.
-      2: { iIntros (κ q) "HL"; iModIntro; iIntros "#HE".
-        have Hwf : ty_wf_E unit_t = [].
-        { rewrite ty_wf_E_unfold /unit_t /=. done. }
-        have Hout : ty_outlives_E unit_t κ = [].
-        { apply tac_unfold_ty_outlives_E.
-          rewrite ty_lfts_unfold /unit_t /=.
-          apply tac_lfts_outlives_E_nil. }
+      all: try (rep <-! liRStep; liShow).
+      all: try iFrame. all: try done.
+      1: iApply type_unwind_terminate.
+      1: solve_initial_return_value.
+      1: solve_initial_return_value.
+      1: {
+        iIntros (κ q) "HL"; iModIntro; iIntros "#HE".
+        have Hwf : ty_wf_E unit_t = [] by
+          (rewrite ty_wf_E_unfold /unit_t /=; done).
+        have Hout : ty_outlives_E unit_t κ = [] by
+          (apply tac_unfold_ty_outlives_E;
+           rewrite ty_lfts_unfold /unit_t /=;
+           apply tac_lfts_outlives_E_nil).
         rewrite Hwf Hout /elctx_interp /=. done. }
-      iApply type_val. iApply type_val_unit.
-      rewrite /introduce_with_hooks.
-      iIntros (F HF) "#CTX' #HE HL Hv". iModIntro.
-      iExists []. iFrame "HL".
-      iApply find_in_context_frame_locals. iExists []. iFrame.
-      rewrite /trigger_tc. iExists [], _.
-      iApply typed_context_fold_nil.
-      iIntros (F0 HF0) "#CTX0 #HE0 HL Hacc". iModIntro.
-      iExists []. iFrame "HL".
-      iApply prove_with_subtype_pure. iSplit; first done.
-      iIntros (F1 HF1) "#CTX1 #HE1 HL _". iModIntro.
-      iExists []. iFrame "HL". done. }
+      Unshelve. all: sidecond_solver. }
     iEval (rewrite /typed_stmt /typed_stmt_post_cond /typed_stmt_unwind_post_cond) in "Hs".
     iSpecialize ("Hs" $! Ψ False%I with "CTX [] [] Hframe").
     { rewrite elctx_interp_nil. done. }
@@ -385,15 +415,16 @@ Qed.
       (*ghost_map_auth γ 1 M ∗ [∗ list] π ∈ seq 0 num_threads, ∃ γ' : na_inv_pool_name, ghost_map_elem γ π DfracDiscarded γ' ∗ na_invariants.na_own γ' ⊤))%I.*)
 
 (** * The main adequacy lemma *)
-Lemma refinedrust_adequacy Σ `{!typePreG Σ} `{ALG : LayoutAlg} (thread_mains : list loc) (fns : gmap addr function) n t2 σ2 obs σ:
+Lemma refinedrust_adequacy (policy : panic_policy) Σ `{!typePreG Σ} `{ALG : LayoutAlg}
+    (thread_mains : list loc) (fns : gmap addr function) n t2 σ2 obs σ:
   σ = initial_state (length thread_mains) fns →
   Forall (λ l, l.(loc_a) ∈ USize) thread_mains →
   (* show that the main functions for the individual threads are well-typed for a provable precondition [P] *)
   (∀ {HtypeG : typeGS Σ},
     ([∗ map] k↦qs∈fns, fntbl_entry (fn_loc k) qs) ={⊤}=∗
-      [∗ list] π ↦ main ∈ thread_mains, ∃ P, (l2v main) ◁ᵥ{π, MetaNone} main @ function_ptr [] (@eq_refl _ [], main_type P) ∗ P) →
+      [∗ list] π ↦ main ∈ thread_mains, ∃ P, (l2v main) ◁ᵥ{π, MetaNone} main @ function_ptr [] (@eq_refl _ [], main_type policy P) ∗ P) →
   (* if the whole thread pool steps for [n] steps *)
-  nsteps (Λ := c_lang) n (initial_prog <$> (zip (seq 0 (length thread_mains)) thread_mains), σ) obs (t2, σ2) →
+  nsteps (Λ := c_lang) n (initial_prog policy <$> (zip (seq 0 (length thread_mains)) thread_mains), σ) obs (t2, σ2) →
   (* then it has not gotten stuck *)
   ∀ e2, e2 ∈ t2 → not_stuck e2 σ2.
 Proof.
@@ -476,9 +507,9 @@ Proof.
   Unshelve.
   - rewrite big_sepL2_fmap_l. iApply big_sepL2_replicate_r.
     { rewrite length_zip length_seq. unfold num_threads. lia. }
-    iApply (big_sepL2_to_zip _ _ (λ _ a b, WP initial_prog (a, b) {{ _, True }})%I).
-    rewrite -(big_sepL_zip_seq (λ (imain : nat * loc), ∃ P : iProp Σ, (imain.2 ◁ᵥ{imain.1, MetaNone} imain.2 @ function_ptr [] (eq_refl, main_type P)) ∗ P)%I 0%nat num_threads); last lia.
-    iPoseProof (big_sepL2_from_zip _ _ (λ _ a (b : loc), ∃ P : iProp Σ, (b ◁ᵥ{a, MetaNone} b @ function_ptr [] (eq_refl, main_type P)) ∗ P)%I with "Hmains") as "Hmains".
+    iApply (big_sepL2_to_zip _ _ (λ _ a b, WP initial_prog policy (a, b) {{ _, True }})%I).
+    rewrite -(big_sepL_zip_seq (λ (imain : nat * loc), ∃ P : iProp Σ, (imain.2 ◁ᵥ{imain.1, MetaNone} imain.2 @ function_ptr [] (eq_refl, main_type policy P)) ∗ P)%I 0%nat num_threads); last lia.
+    iPoseProof (big_sepL2_from_zip _ _ (λ _ a (b : loc), ∃ P : iProp Σ, (b ◁ᵥ{a, MetaNone} b @ function_ptr [] (eq_refl, main_type policy P)) ∗ P)%I with "Hmains") as "Hmains".
     { rewrite length_seq. lia. }
     iApply (big_sepL2_wand with "Hmains").
     iPoseProof (big_sepL_extend_r with "Hna") as "Hna"; last iApply (big_sepL2_wand with "Hna").
@@ -492,7 +523,7 @@ Proof.
     iIntros "!#" (π ? main Hlook1 ?) "Halloc Hframe Hna Hfn".
     apply lookup_seq in Hlook1 as (-> & ?).
     iDestruct ("Hfn") as (P) "[Hmain HP]".
-    iPoseProof (wp_initial_prog (0 + π) main P
+    iPoseProof (wp_initial_prog policy (0 + π) main P
       with "[] Hframe Halloc Hna Hmain HP") as "Hprog".
     { rewrite /rrust_ctx. iFrame "#". }
     iEval (rewrite /initial_prog_wp) in "Hprog".
@@ -519,6 +550,9 @@ Proof.
       simpl in H0. injection H0 as <-. done.
     + done.
 Qed.
+
+Definition refinedrust_adequacy_allow_panic := refinedrust_adequacy AllowPanic.
+Definition refinedrust_adequacy_panic_free := refinedrust_adequacy ForbidPanic.
 
 (*Print Assumptions refinedrust_adequacy.*)
 
