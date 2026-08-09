@@ -405,6 +405,19 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         semantic_loans_dying(ordinary(from), zombie(from), issued(from), ordinary(to), zombie(to), issued(to))
     }
 
+    /// Get semantic loan lifetimes that cease to be live when control leaves the function by unwinding.
+    #[must_use]
+    pub(crate) fn get_semantic_loans_dying_on_unwind(&self, from: facts::PointIndex) -> Vec<facts::Loan> {
+        let ordinary = self.borrowck_out_facts.loan_live_at.get(&from).into_iter().flatten().copied();
+        let zombie = self.additional_facts.zombie_borrow_live_at.get(&from).into_iter().flatten().copied();
+        let issued = self
+            .borrowck_in_facts
+            .loan_issued_at
+            .iter()
+            .filter_map(|&(_, loan, issued_at)| (issued_at == from).then_some(loan));
+        semantic_loans_dying(ordinary, zombie, issued, [], [], [])
+    }
+
     /// Get the location at which a loan is created, if possible
     #[must_use]
     pub(crate) fn get_loan_location(&self, loan: facts::Loan) -> Option<mir::Location> {

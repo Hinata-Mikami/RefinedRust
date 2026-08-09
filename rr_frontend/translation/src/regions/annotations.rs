@@ -104,6 +104,7 @@
 //!   calls currently require it to be empty.
 //! - **On CFG edges:** edge plans end loans only on successors where they die. This covers goto-like
 //!   continuations of calls, switches, assertions, drops, false edges, and ordinary gotos.
+//! - **On terminal unwind:** unwind plans end loans that remain live when unwinding leaves the function.
 //! - **Before return:** plans from [`AnnotationGenerator::prepare_return_annotation_plan`] extend the
 //!   semantic lifetimes occurring in the returned type.
 //! - **Inside borrow expressions:** [`BorrowLifetimePlan`] selects the semantic lifetime name passed to the
@@ -684,6 +685,18 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         };
         let to = self.start_point_for_target(target_loc);
         let dying = self.info.get_semantic_loans_dying_between_points(from, to);
+        let mut plan = LocationAnnotationPlan::default();
+        plan.pre.extend(self.generate_endlft_groups(ty_translator, dying.into_iter().rev()));
+        plan
+    }
+
+    pub(crate) fn prepare_unwind_annotation_plan(
+        &self,
+        ty_translator: &types::LocalTX<'_, 'tcx>,
+        loc: mir::Location,
+    ) -> LocationAnnotationPlan {
+        let from = self.mid_point_for_target(loc);
+        let dying = self.info.get_semantic_loans_dying_on_unwind(from);
         let mut plan = LocationAnnotationPlan::default();
         plan.pre.extend(self.generate_endlft_groups(ty_translator, dying.into_iter().rev()));
         plan

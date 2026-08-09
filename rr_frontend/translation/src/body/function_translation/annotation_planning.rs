@@ -37,9 +37,9 @@ struct PendingAssignment<'tcx> {
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Computes the blocks whose statements and calls will later consume prepared plans.
     ///
-    /// Calls known to terminate in panic are treated as CFG leaves because translation does not emit
-    /// their nominal successors. Planning must use the same reachability policy as rendering so dead
-    /// MIR cannot introduce unsupported annotation requirements.
+    /// Calls known to terminate in panic do not reach their nominal successors, but can still reach an
+    /// unwind cleanup block. Planning must use the same reachability policy as rendering so dead MIR
+    /// cannot introduce unsupported annotation requirements.
     fn reachable_basic_blocks(&self) -> BTreeSet<mir::BasicBlock> {
         let mut pending = vec![mir::START_BLOCK];
         let mut reachable = BTreeSet::new();
@@ -54,6 +54,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             };
             if !terminates_control_flow {
                 pending.extend(self.proc.successors(bb));
+            }
+            let unwind = match &terminator.kind {
+                mir::TerminatorKind::Call { unwind, .. }
+                | mir::TerminatorKind::Assert { unwind, .. }
+                | mir::TerminatorKind::Drop { unwind, .. } => Some(unwind),
+                _ => None,
+            };
+            if let Some(mir::UnwindAction::Cleanup(target)) = unwind {
+                pending.push(*target);
             }
         }
         reachable

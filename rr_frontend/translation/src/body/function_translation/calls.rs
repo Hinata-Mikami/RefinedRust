@@ -18,7 +18,7 @@ use crate::base::*;
 use crate::body::function_translation::{ExprInfo, ExprWithInfo};
 use crate::body::mir_lowering::{
     MirConstantTranslation as _, MirPlaceTranslation as _, MirRvalueTranslation as _, MirTranslationCtx as _,
-    MirTypeTranslation as _, ProcedureInst, TranslationKey, translate_unwind_action,
+    MirTypeTranslation as _, ProcedureInst, TranslationKey,
 };
 use crate::environment::borrowck::facts;
 use crate::error::Message;
@@ -857,7 +857,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             code::Stmt::Stuck
         };
 
-        let unwind = translate_unwind_action(unwind, |target| self.translate_goto_like(&loc, target))?;
+        let unwind = self.translate_unwind_action(&loc, unwind)?;
 
         let call = code::Stmt::Call {
             f: func_expr,

@@ -126,12 +126,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         Ok(vec![assign])
     }
 
-    fn translate_unwind_action(
+    pub(super) fn translate_unwind_action(
         &mut self,
         loc: &mir::Location,
         action: mir::UnwindAction,
     ) -> Result<code::Stmt, TranslationError> {
-        translate_unwind_action(action, |target| self.translate_goto_like(loc, target))
+        let translated = translate_unwind_action(action, |target| self.translate_goto_like(loc, target))?;
+        if matches!(action, mir::UnwindAction::Continue) {
+            let mut plan = self.annotations.prepare_unwind_annotation_plan(&self.ty_translator, *loc);
+            return Ok(code::Stmt::Prim(plan.take_pre_stmts(), Box::new(translated)));
+        }
+        Ok(translated)
     }
 
     /// Translate a terminator.
@@ -386,7 +391,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             mir::TerminatorKind::Unreachable => Ok(code::Stmt::Stuck),
 
-            mir::TerminatorKind::UnwindResume => Ok(code::Stmt::Unwind),
+            mir::TerminatorKind::UnwindResume => {
+                let mut plan = self.annotations.prepare_unwind_annotation_plan(&self.ty_translator, loc);
+                Ok(code::Stmt::Prim(plan.take_pre_stmts(), Box::new(code::Stmt::Unwind)))
+            },
 
             mir::TerminatorKind::UnwindTerminate(_) => Ok(code::Stmt::UnwindTerminate),
 

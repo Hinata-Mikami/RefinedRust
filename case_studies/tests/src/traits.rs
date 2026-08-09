@@ -516,3 +516,18 @@ mod rec {
     // TODO test this
 
 }
+
+mod associated_type_cleanup_drop {
+    trait Iter {
+        type Item;
+
+        #[rr::verify]
+        fn next(&mut self) -> Option<Self::Item>;
+
+        #[rr::verify]
+        fn after_next(&mut self, item: Self::Item) -> Self::Item {
+            let _ = self.next();
+            item
+        }
+    }
+}
