@@ -531,3 +531,18 @@ mod associated_type_cleanup_drop {
         }
     }
 }
+
+mod panic_spec_override {
+    trait MaybePanic {
+        #[rr::may_panic_if("True")]
+        fn run();
+    }
+
+    struct NeverPanics;
+
+    impl MaybePanic for NeverPanics {
+        // This must override the trait spec even though it is the only local spec annotation.
+        #[rr::may_panic_if("False")]
+        fn run() {}
+    }
+}

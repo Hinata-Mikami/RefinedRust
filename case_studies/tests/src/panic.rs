@@ -21,7 +21,9 @@ fn add_42(x: i32) -> i32 {
 // An imprecise specification still has to opt in explicitly.
 #[rr::may_panic_if("True")]
 #[rr::verify]
-fn xyz() {}
+fn xyz() {
+    panic!();
+}
 
 // Calling a potentially panicking function requires the caller to expose a panic condition
 // covering the callee's panic condition. Normal postconditions remain independent of it.
@@ -42,8 +44,14 @@ fn either_zero(x: i32, y: i32) {
     }
 }
 
-// Closures also need a pure panic condition so higher-order calls can propagate it. The exact
-// projection syntax is still provisional, but it should be part of the Fn/FnMut/FnOnce spec.
+// Unwinding drops `x`; if that drop panics, the generated cleanup terminates.
+#[rr::may_panic_if("True")]
+fn panic_with_cleanup<T>(_x: T) {
+    panic!();
+}
+
+// Closure panic conditions and their projection syntax are introduced in Stage 6.
+#[cfg(any())]
 #[rr::may_panic_if("{F::PanicCondition} x -[] ()")]
 fn call_clos<F>(x: F)
 where
@@ -54,4 +62,5 @@ where
 
 // No annotation is the way to require panic freedom; a separate
 // `panic_ensures("False")` annotation is unnecessary.
+#[rr::verify]
 fn does_not_panic() {}

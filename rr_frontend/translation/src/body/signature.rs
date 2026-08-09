@@ -391,6 +391,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             || environment::has_tool_attribute(tcx, did, "returns")
             || environment::has_tool_attribute(tcx, did, "observe")
             || environment::has_tool_attribute(tcx, did, "args")
+            || environment::has_tool_attribute(tcx, did, "may_panic_if")
     }
 
     /// Translate the body of a function.

@@ -1,0 +1,14 @@
+error: [RefinedRust] Attribute is ill-formed: unexpected rr attribute: may_panic_if
+ --> fail/may-panic-if-on-closure.rs:8:14
+  |
+8 |     let _f = #[rr::may_panic_if("True")] || {};
+  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: [RefinedRust] Skipping function due to previous failure
+ --> fail/may-panic-if-on-closure.rs:8:42
+  |
+8 |     let _f = #[rr::may_panic_if("True")] || {};
+  |                                          ^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+
