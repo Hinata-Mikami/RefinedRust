@@ -1,7 +1,7 @@
 From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 Section code.
-Context `{RRGS : !refinedrustGS Σ}.
+Context `{!LayoutAlg}.
 Open Scope printing_sugar.
 
 Program Definition drop_def (DropGlue_T_drop_glue_loc: loc) (T_st: syn_type) : function :=
@@ -16,11 +16,16 @@ Program Definition drop_def (DropGlue_T_drop_glue_loc: loc) (T_st: syn_type) : f
       "__0" <-{ (StructOp unit_sl []) } zst_val;
       CallS DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("x")] None
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb2")
      ]>%E $
      <[
      "_bb1" :=
       return (move{ (StructOp unit_sl []) } ("__0"))
+     ]>%E $
+     <[
+     "_bb2" :=
+      Unwind
      ]>%E $
       ∅;
      f_init := "_bb0";

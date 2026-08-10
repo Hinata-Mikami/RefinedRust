@@ -1876,6 +1876,8 @@ Program Definition Ord_max_closure0_FnOnce_spec_attrs `{RRGS : !(refinedrustGS �
       ∗ ((⌜(_ret = (Ord_Self_spec_attrs.(Ord_Ord) a b))%Z⌝)
       ∗ (⌜(_self_post = (tt))%Z⌝))
       ∗ (True))%I) : ((FnOnce_PostMut_sig (unit) ((((tuple2_rt) ((place_rfnRT (Self_rt))) ((place_rfnRT (Self_rt)))))) ((Ordering_rt)) (_) (_) (_)));
+    FnOnce_UnwindCondition  :=
+      (λ (_self: _) (_params: (plist id [])) (_args: _), False) : ((FnOnce_UnwindCondition_sig (unit) ((((tuple2_rt) ((place_rfnRT (Self_rt))) ((place_rfnRT (Self_rt)))))) ((Ordering_rt)) (_) (_) (_) (_)));
   |}
 .
 
@@ -1902,6 +1904,8 @@ Program Definition Ord_min_closure0_FnOnce_spec_attrs `{RRGS : !(refinedrustGS �
       ∗ ((⌜(_ret = (Ord_Self_spec_attrs.(Ord_Ord) a b))%Z⌝)
       ∗ (⌜(_self_post = (tt))%Z⌝))
       ∗ (True))%I) : ((FnOnce_PostMut_sig (unit) ((((tuple2_rt) ((place_rfnRT (Self_rt))) ((place_rfnRT (Self_rt)))))) ((Ordering_rt)) (_) (_) (_)));
+    FnOnce_UnwindCondition  :=
+      (λ (_self: _) (_params: (plist id [])) (_args: _), False) : ((FnOnce_UnwindCondition_sig (unit) ((((tuple2_rt) ((place_rfnRT (Self_rt))) ((place_rfnRT (Self_rt)))))) ((Ordering_rt)) (_) (_) (_) (_)));
   |}
 .
 
@@ -2030,7 +2034,8 @@ Definition PartialEq_eq_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type)
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, PartialEq_Self_Rhs_spec_attrs.(PartialEq_PEq) self other @ bool_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition PartialEq_ne_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (PartialEq_Self_Rhs_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) )) :=
   fn(∀ ( *[ulft_1; ulft_2]) : 2 | ( *[Self_ty; Rhs_ty]) : ([(Self_rt, Self_st); (Rhs_rt, Rhs_st)] : list (RT * syn_type)%type) | 
@@ -2040,7 +2045,8 @@ Definition PartialEq_ne_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type)
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, negb (PartialEq_Self_Rhs_spec_attrs.(PartialEq_PEq) self other) @ bool_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition PartialEq_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (_ATTRS: ((PartialEq_spec_attrs ((Self_rt)) ((Rhs_rt))))) : (spec_with _ _ (PartialEq_spec ((Self_rt)) ((Rhs_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), {|
@@ -2091,7 +2097,8 @@ Definition Eq_assert_fields_are_eq_base_spec (Self_rt: RT) (Self_st: syn_type) (
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition Eq_base_spec (Self_rt: RT) (Self_st: syn_type) (PartialEq_Self_Self_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Self_rt) )) (_ATTRS: ((Eq_spec_attrs ((Self_rt)) (PartialEq_Self_Self_spec_attrs)))) : (spec_with _ _ (Eq_spec ((Self_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), {|
@@ -2155,7 +2162,8 @@ Definition PartialOrd_ge_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (PartialOrd_Self_Rhs_spec_attrs.(PartialOrd_POrd) self other = Some Greater) || bool_decide (PartialOrd_Self_Rhs_spec_attrs.(PartialOrd_POrd) self other = Some Equal) @ bool_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition PartialOrd_gt_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (PartialEq_Self_Rhs_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) )) (PartialOrd_Self_Rhs_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) PartialEq_Self_Rhs_spec_attrs)) :=
   fn(∀ ( *[ulft_1; ulft_2]) : 2 | ( *[Self_ty; Rhs_ty]) : ([(Self_rt, Self_st); (Rhs_rt, Rhs_st)] : list (RT * syn_type)%type) | 
@@ -2165,7 +2173,8 @@ Definition PartialOrd_gt_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (PartialOrd_Self_Rhs_spec_attrs.(PartialOrd_POrd) self other = Some Greater) @ bool_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition PartialOrd_le_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (PartialEq_Self_Rhs_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) )) (PartialOrd_Self_Rhs_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) PartialEq_Self_Rhs_spec_attrs)) :=
   fn(∀ ( *[ulft_1; ulft_2]) : 2 | ( *[Self_ty; Rhs_ty]) : ([(Self_rt, Self_st); (Rhs_rt, Rhs_st)] : list (RT * syn_type)%type) | 
@@ -2175,7 +2184,8 @@ Definition PartialOrd_le_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (PartialOrd_Self_Rhs_spec_attrs.(PartialOrd_POrd) self other = Some Less) || bool_decide (PartialOrd_Self_Rhs_spec_attrs.(PartialOrd_POrd) self other = Some Equal) @ bool_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition PartialOrd_lt_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (PartialEq_Self_Rhs_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) )) (PartialOrd_Self_Rhs_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) PartialEq_Self_Rhs_spec_attrs)) :=
   fn(∀ ( *[ulft_1; ulft_2]) : 2 | ( *[Self_ty; Rhs_ty]) : ([(Self_rt, Self_st); (Rhs_rt, Rhs_st)] : list (RT * syn_type)%type) | 
@@ -2185,7 +2195,8 @@ Definition PartialOrd_lt_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (PartialOrd_Self_Rhs_spec_attrs.(PartialOrd_POrd) self other = Some Less) @ bool_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition PartialOrd_partial_cmp_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (PartialEq_Self_Rhs_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) )) (PartialOrd_Self_Rhs_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) PartialEq_Self_Rhs_spec_attrs)) :=
   fn(∀ ( *[ulft_1; ulft_2]) : 2 | ( *[Self_ty; Rhs_ty]) : ([(Self_rt, Self_st); (Rhs_rt, Rhs_st)] : list (RT * syn_type)%type) | 
@@ -2195,7 +2206,8 @@ Definition PartialOrd_partial_cmp_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st:
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, PartialOrd_Self_Rhs_spec_attrs.(PartialOrd_POrd) self other @ (Option_ty ((Ordering_rt)) -[] -[(Ordering_ty  -[] -[])]);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition PartialOrd_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (PartialEq_Self_Rhs_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Rhs_rt) )) (_ATTRS: ((PartialOrd_spec_attrs ((Self_rt)) ((Rhs_rt)) (PartialEq_Self_Rhs_spec_attrs)))) : (spec_with _ _ (PartialOrd_spec ((Self_rt)) ((Rhs_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), {|
@@ -2267,7 +2279,8 @@ Definition Ord_clamp_base_spec (Self_rt: RT) (Self_st: syn_type) (PartialEq_Self
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ Self_ty;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition Ord_cmp_base_spec (Self_rt: RT) (Self_st: syn_type) (PartialEq_Self_Self_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Self_rt) )) (Eq_Self_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (Self_rt) PartialEq_Self_Self_spec_attrs)) (PartialOrd_Self_Self_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Self_rt) (Self_rt) PartialEq_Self_Self_spec_attrs)) (Ord_Self_spec_attrs: (Ord_spec_attrs (RRGS:=RRGS) (Self_rt) PartialEq_Self_Self_spec_attrs Eq_Self_spec_attrs PartialOrd_Self_Self_spec_attrs)) :=
   fn(∀ ( *[ulft_1; ulft_2]) : 2 | ( *[Self_ty]) : ([(Self_rt, Self_st)] : list (RT * syn_type)%type) | 
@@ -2277,7 +2290,8 @@ Definition Ord_cmp_base_spec (Self_rt: RT) (Self_st: syn_type) (PartialEq_Self_S
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Ord_Self_spec_attrs.(Ord_Ord) self other @ (Ordering_ty  -[] -[]);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition Ord_max_base_spec (Self_rt: RT) (Self_st: syn_type) (PartialEq_Self_Self_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Self_rt) )) (Eq_Self_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (Self_rt) PartialEq_Self_Self_spec_attrs)) (PartialOrd_Self_Self_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Self_rt) (Self_rt) PartialEq_Self_Self_spec_attrs)) (Ord_Self_spec_attrs: (Ord_spec_attrs (RRGS:=RRGS) (Self_rt) PartialEq_Self_Self_spec_attrs Eq_Self_spec_attrs PartialOrd_Self_Self_spec_attrs)) :=
   fn(∀ ( *[]) : 0 | ( *[Self_ty]) : ([(Self_rt, Self_st)] : list (RT * syn_type)%type) | 
@@ -2287,7 +2301,8 @@ Definition Ord_max_base_spec (Self_rt: RT) (Self_st: syn_type) (PartialEq_Self_S
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, if bool_decide (Ord_Self_spec_attrs.(Ord_Ord) self other = Less) then other else self @ Self_ty;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition Ord_min_base_spec (Self_rt: RT) (Self_st: syn_type) (PartialEq_Self_Self_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Self_rt) )) (Eq_Self_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (Self_rt) PartialEq_Self_Self_spec_attrs)) (PartialOrd_Self_Self_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Self_rt) (Self_rt) PartialEq_Self_Self_spec_attrs)) (Ord_Self_spec_attrs: (Ord_spec_attrs (RRGS:=RRGS) (Self_rt) PartialEq_Self_Self_spec_attrs Eq_Self_spec_attrs PartialOrd_Self_Self_spec_attrs)) :=
   fn(∀ ( *[]) : 0 | ( *[Self_ty]) : ([(Self_rt, Self_st)] : list (RT * syn_type)%type) | 
@@ -2297,7 +2312,8 @@ Definition Ord_min_base_spec (Self_rt: RT) (Self_st: syn_type) (PartialEq_Self_S
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, if bool_decide (Ord_Self_spec_attrs.(Ord_Ord) self other = Less) then self else other @ Self_ty;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition Ord_base_spec (Self_rt: RT) (Self_st: syn_type) (PartialEq_Self_Self_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Self_rt) )) (Eq_Self_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (Self_rt) PartialEq_Self_Self_spec_attrs)) (PartialOrd_Self_Self_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Self_rt) (Self_rt) PartialEq_Self_Self_spec_attrs)) (_ATTRS: ((Ord_spec_attrs ((Self_rt)) (PartialEq_Self_Self_spec_attrs) (Eq_Self_spec_attrs) (PartialOrd_Self_Self_spec_attrs)))) : (spec_with _ _ (Ord_spec ((Self_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), {|
@@ -3205,7 +3221,8 @@ Definition type_of_Ordering_as_raw  :=
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, match self with | Less => -1 | Equal => 0 | Greater => 1 end @ (int I8);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_Ordering_is_eq  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -3218,7 +3235,8 @@ Definition type_of_Ordering_is_eq  :=
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide(self = Equal) @ bool_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_Ordering_is_ge  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -3231,7 +3249,8 @@ Definition type_of_Ordering_is_ge  :=
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide(self ≠ Less) @ bool_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_Ordering_is_gt  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -3244,7 +3263,8 @@ Definition type_of_Ordering_is_gt  :=
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide(self = Greater) @ bool_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_Ordering_is_le  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -3257,7 +3277,8 @@ Definition type_of_Ordering_is_le  :=
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide(self ≠ Greater) @ bool_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_Ordering_is_lt  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -3270,7 +3291,8 @@ Definition type_of_Ordering_is_lt  :=
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide(self = Less) @ bool_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_Ordering_is_ne  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -3283,7 +3305,8 @@ Definition type_of_Ordering_is_ne  :=
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide(self ≠ Equal) @ bool_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_max (T_rt: RT) (T_st: syn_type) (PartialEq_T_T_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (T_rt) (T_rt) )) (PartialEq_T_T_spec: (spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (T_rt) (T_rt)))) (Eq_T_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (T_rt) PartialEq_T_T_spec_attrs)) (Eq_T_spec: (spec_with 0 [] (Eq_spec (RRGS:=RRGS) (T_rt)))) (PartialOrd_T_T_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (T_rt) (T_rt) PartialEq_T_T_spec_attrs)) (PartialOrd_T_T_spec: (spec_with 0 [] (PartialOrd_spec (RRGS:=RRGS) (T_rt) (T_rt)))) (Ord_T_spec_attrs: (Ord_spec_attrs (RRGS:=RRGS) (T_rt) PartialEq_T_T_spec_attrs Eq_T_spec_attrs PartialOrd_T_T_spec_attrs)) (Ord_T_spec: (spec_with 0 [] (Ord_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl PartialEq_spec_incl PartialEq_T_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), PartialEq_base_spec (T_rt) (T_rt) T_st T_st PartialEq_T_T_spec_attrs-[] -[T_ty; T_ty]))) ∧ (trait_incl_marker (lift_trait_incl Eq_spec_incl Eq_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Eq_base_spec (T_rt) T_st PartialEq_T_T_spec_attrs Eq_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl PartialOrd_spec_incl PartialOrd_T_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), PartialOrd_base_spec (T_rt) (T_rt) T_st T_st PartialEq_T_T_spec_attrs PartialOrd_T_T_spec_attrs-[] -[T_ty; T_ty]))) ∧ (trait_incl_marker (lift_trait_incl Ord_spec_incl Ord_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Ord_base_spec (T_rt) T_st PartialEq_T_T_spec_attrs Eq_T_spec_attrs PartialOrd_T_T_spec_attrs Ord_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
@@ -3296,7 +3319,8 @@ Definition type_of_max (T_rt: RT) (T_st: syn_type) (PartialEq_T_T_spec_attrs: (P
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, if bool_decide (Ord_T_spec_attrs.(Ord_Ord) v1 v2 = Less) then v2 else v1 @ T_ty;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_max_by (T_rt: RT) (F_rt: RT) (T_st: syn_type) (F_st: syn_type) (FnOnce_F_REFTREFT_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (T_rt))) ((place_rfnRT (T_rt))))) (Ordering_rt) )) (FnOnce_F_REFTREFT_spec: (spec_with 2 [] (FnOnce_spec (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (T_rt))) ((place_rfnRT (T_rt))))) (Ordering_rt)))) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_F_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (F_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty; F_ty]) : ([T_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_REFTREFT_spec (spec! ( *[_lft_for_1; _lft_for_0]) : 2 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (((tuple2_rt) ((place_rfnRT (T_rt))) ((place_rfnRT (T_rt))))) (Ordering_rt) F_st ((tuple2_sls (RefSynType) (RefSynType)) : syn_type) Ordering_st FnOnce_F_REFTREFT_spec_attrs-[] -[F_ty; (tuple2_ty ((place_rfnRT (T_rt))) ((place_rfnRT (T_rt))) -[] -[(shr_ref _lft_for_1 T_ty); (shr_ref _lft_for_0 T_ty)]); (Ordering_ty  -[] -[])]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_F_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (F_rt) F_st-[] -[F_ty])))).
@@ -3310,7 +3334,8 @@ Definition type_of_max_by (T_rt: RT) (F_rt: RT) (T_st: syn_type) (F_st: syn_type
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ord, ret) : ((_ * _)), ret @ T_ty;
       (* postcondition *) (λ π : thread_id, (FnOnce_F_REFTREFT_spec_attrs.(FnOnce_Post) π p compare *[v2; v1] ord)
-      ∗ (⌜(ret = if bool_decide(ord = Less) then v1 else v2)%Z⌝)).
+      ∗ (⌜(ret = if bool_decide(ord = Less) then v1 else v2)%Z⌝)) |
+      (* unwind post... *) FnOnce_F_REFTREFT_spec_attrs.(FnOnce_UnwindCondition) compare p *[v2; v1].
 
 Definition trait_incl_of_min (T_rt: RT) (T_st: syn_type) (PartialEq_T_T_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (T_rt) (T_rt) )) (PartialEq_T_T_spec: (spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (T_rt) (T_rt)))) (Eq_T_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (T_rt) PartialEq_T_T_spec_attrs)) (Eq_T_spec: (spec_with 0 [] (Eq_spec (RRGS:=RRGS) (T_rt)))) (PartialOrd_T_T_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (T_rt) (T_rt) PartialEq_T_T_spec_attrs)) (PartialOrd_T_T_spec: (spec_with 0 [] (PartialOrd_spec (RRGS:=RRGS) (T_rt) (T_rt)))) (Ord_T_spec_attrs: (Ord_spec_attrs (RRGS:=RRGS) (T_rt) PartialEq_T_T_spec_attrs Eq_T_spec_attrs PartialOrd_T_T_spec_attrs)) (Ord_T_spec: (spec_with 0 [] (Ord_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl PartialEq_spec_incl PartialEq_T_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), PartialEq_base_spec (T_rt) (T_rt) T_st T_st PartialEq_T_T_spec_attrs-[] -[T_ty; T_ty]))) ∧ (trait_incl_marker (lift_trait_incl Eq_spec_incl Eq_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Eq_base_spec (T_rt) T_st PartialEq_T_T_spec_attrs Eq_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl PartialOrd_spec_incl PartialOrd_T_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), PartialOrd_base_spec (T_rt) (T_rt) T_st T_st PartialEq_T_T_spec_attrs PartialOrd_T_T_spec_attrs-[] -[T_ty; T_ty]))) ∧ (trait_incl_marker (lift_trait_incl Ord_spec_incl Ord_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Ord_base_spec (T_rt) T_st PartialEq_T_T_spec_attrs Eq_T_spec_attrs PartialOrd_T_T_spec_attrs Ord_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
@@ -3323,7 +3348,8 @@ Definition type_of_min (T_rt: RT) (T_st: syn_type) (PartialEq_T_T_spec_attrs: (P
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, if bool_decide (Ord_T_spec_attrs.(Ord_Ord) v1 v2 = Less) then v1 else v2 @ T_ty;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_min_by (T_rt: RT) (F_rt: RT) (T_st: syn_type) (F_st: syn_type) (FnOnce_F_REFTREFT_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (T_rt))) ((place_rfnRT (T_rt))))) (Ordering_rt) )) (FnOnce_F_REFTREFT_spec: (spec_with 2 [] (FnOnce_spec (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (T_rt))) ((place_rfnRT (T_rt))))) (Ordering_rt)))) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_F_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (F_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty; F_ty]) : ([T_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_REFTREFT_spec (spec! ( *[_lft_for_1; _lft_for_0]) : 2 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (((tuple2_rt) ((place_rfnRT (T_rt))) ((place_rfnRT (T_rt))))) (Ordering_rt) F_st ((tuple2_sls (RefSynType) (RefSynType)) : syn_type) Ordering_st FnOnce_F_REFTREFT_spec_attrs-[] -[F_ty; (tuple2_ty ((place_rfnRT (T_rt))) ((place_rfnRT (T_rt))) -[] -[(shr_ref _lft_for_1 T_ty); (shr_ref _lft_for_0 T_ty)]); (Ordering_ty  -[] -[])]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_F_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (F_rt) F_st-[] -[F_ty])))).
@@ -3336,7 +3362,8 @@ Definition type_of_min_by (T_rt: RT) (F_rt: RT) (T_st: syn_type) (F_st: syn_type
       (* precondition. *) (λ π : thread_id, (FnOnce_F_REFTREFT_spec_attrs.(FnOnce_Pre) π p compare *[v2; v1])) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ord) : ((_)), if bool_decide(ord = Less) then v2 else v1 @ T_ty;
-      (* postcondition *) (λ π : thread_id, (FnOnce_F_REFTREFT_spec_attrs.(FnOnce_Post) π p compare *[v2; v1] ord)).
+      (* postcondition *) (λ π : thread_id, (FnOnce_F_REFTREFT_spec_attrs.(FnOnce_Post) π p compare *[v2; v1] ord)) |
+      (* unwind post... *) FnOnce_F_REFTREFT_spec_attrs.(FnOnce_UnwindCondition) compare p *[v2; v1].
 
 
 Definition trait_incl_of_Ord_max_closure0 (Self_rt: RT) (Self_st: syn_type) (PartialEq_Self_Self_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Self_rt) )) (PartialEq_Self_Self_spec: (spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (Self_rt) (Self_rt)))) (Eq_Self_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (Self_rt) PartialEq_Self_Self_spec_attrs)) (Eq_Self_spec: (spec_with 0 [] (Eq_spec (RRGS:=RRGS) (Self_rt)))) (PartialOrd_Self_Self_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Self_rt) (Self_rt) PartialEq_Self_Self_spec_attrs)) (PartialOrd_Self_Self_spec: (spec_with 0 [] (PartialOrd_spec (RRGS:=RRGS) (Self_rt) (Self_rt)))) (Ord_Self_spec_attrs: (Ord_spec_attrs (RRGS:=RRGS) (Self_rt) PartialEq_Self_Self_spec_attrs Eq_Self_spec_attrs PartialOrd_Self_Self_spec_attrs)) (Ord_Self_spec: (spec_with 0 [] (Ord_spec (RRGS:=RRGS) (Self_rt)))) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) : (spec_with _ _ Prop) :=
@@ -3350,7 +3377,8 @@ Definition type_of_Ord_max_closure0 (Self_rt: RT) (Self_st: syn_type) (PartialEq
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Ord_Self_spec_attrs.(Ord_Ord) a b @ (Ordering_ty  -[] -[]);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_Ord_min_closure0 (Self_rt: RT) (Self_st: syn_type) (PartialEq_Self_Self_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Self_rt) )) (PartialEq_Self_Self_spec: (spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (Self_rt) (Self_rt)))) (Eq_Self_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (Self_rt) PartialEq_Self_Self_spec_attrs)) (Eq_Self_spec: (spec_with 0 [] (Eq_spec (RRGS:=RRGS) (Self_rt)))) (PartialOrd_Self_Self_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Self_rt) (Self_rt) PartialEq_Self_Self_spec_attrs)) (PartialOrd_Self_Self_spec: (spec_with 0 [] (PartialOrd_spec (RRGS:=RRGS) (Self_rt) (Self_rt)))) (Ord_Self_spec_attrs: (Ord_spec_attrs (RRGS:=RRGS) (Self_rt) PartialEq_Self_Self_spec_attrs Eq_Self_spec_attrs PartialOrd_Self_Self_spec_attrs)) (Ord_Self_spec: (spec_with 0 [] (Ord_spec (RRGS:=RRGS) (Self_rt)))) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_2; ulft_3]) : 2 | ( *[Self_ty]) : ([Self_rt] : list RT), ((trait_incl_marker (lift_trait_incl PartialEq_spec_incl PartialEq_Self_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), PartialEq_base_spec (Self_rt) (Self_rt) Self_st Self_st PartialEq_Self_Self_spec_attrs-[] -[Self_ty; Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl Eq_spec_incl Eq_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Eq_base_spec (Self_rt) Self_st PartialEq_Self_Self_spec_attrs Eq_Self_spec_attrs-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl PartialOrd_spec_incl PartialOrd_Self_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), PartialOrd_base_spec (Self_rt) (Self_rt) Self_st Self_st PartialEq_Self_Self_spec_attrs PartialOrd_Self_Self_spec_attrs-[] -[Self_ty; Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl Ord_spec_incl Ord_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Ord_base_spec (Self_rt) Self_st PartialEq_Self_Self_spec_attrs Eq_Self_spec_attrs PartialOrd_Self_Self_spec_attrs Ord_Self_spec_attrs-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st-[] -[Self_ty])))).
@@ -3363,7 +3391,8 @@ Definition type_of_Ord_min_closure0 (Self_rt: RT) (Self_st: syn_type) (PartialEq
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Ord_Self_spec_attrs.(Ord_Ord) a b @ (Ordering_ty  -[] -[]);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 
 Definition Ord_max_closure0_call_once_trait_req_incl (Self_rt: RT) (Self_st: syn_type) (PartialEq_Self_Self_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Self_rt) (Self_rt) )) (PartialEq_Self_Self_spec: (spec_with 0 [] (PartialEq_spec (RRGS:=RRGS) (Self_rt) (Self_rt)))) (Eq_Self_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (Self_rt) PartialEq_Self_Self_spec_attrs)) (Eq_Self_spec: (spec_with 0 [] (Eq_spec (RRGS:=RRGS) (Self_rt)))) (PartialOrd_Self_Self_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Self_rt) (Self_rt) PartialEq_Self_Self_spec_attrs)) (PartialOrd_Self_Self_spec: (spec_with 0 [] (PartialOrd_spec (RRGS:=RRGS) (Self_rt) (Self_rt)))) (Ord_Self_spec_attrs: (Ord_spec_attrs (RRGS:=RRGS) (Self_rt) PartialEq_Self_Self_spec_attrs Eq_Self_spec_attrs PartialOrd_Self_Self_spec_attrs)) (Ord_Self_spec: (spec_with 0 [] (Ord_spec (RRGS:=RRGS) (Self_rt)))) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) : (spec_with _ _ Prop) :=

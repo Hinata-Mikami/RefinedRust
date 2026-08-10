@@ -76,7 +76,7 @@ impl<T, E> Result<T, E> {
     #[rr::ensures(#iris "if_iOk self (λ self, ⌜ret = Ok self⌝ ∗ ty_ghost_drop {O} π ($# op))")]
     #[rr::requires(#iris "if_iErr self (λ self, ∃ p, ⌜oparam = Some p⌝ ∗ {O::Pre} π p op *[self])")]
     #[rr::ensures(#iris "if_iErr self (λ self, ∃ p x, ⌜oparam = Some p⌝ ∗ ⌜ret = Err x⌝ ∗ {O::Post} π p op *[self] x)")]
-    #[rr::may_panic_if("if_Ok self (λ _, False) ∧ if_Err self (λ x, ∃ p, oparam = Some p ∧ {O::PanicCondition} op p *[x])")]
+    #[rr::may_unwind_if("if_Ok self (λ _, False) ∧ if_Err self (λ x, ∃ p, oparam = Some p ∧ {O::UnwindCondition} op p *[x])")]
     pub fn map_err<F, O>(self, op: O) -> Result<T, F>
     where
         O: FnOnce(E) -> F,
@@ -91,7 +91,7 @@ impl<T, E> Result<T, E> {
     #[rr::ensures(#iris "if_iErr self (λ self, ⌜ret = Err self⌝ ∗ ty_ghost_drop {F} π ($# op))")]
     #[rr::requires(#iris "if_iOk self (λ self, ∃ p, ⌜oparam = Some p⌝ ∗ {F::Pre} π p op *[self])")]
     #[rr::ensures(#iris "if_iOk self (λ self, ∃ p x, ⌜oparam = Some p⌝ ∗ ⌜ret = Ok x⌝ ∗ {F::Post} π p op *[self] x)")]
-    #[rr::may_panic_if("if_Err self (λ _, False) ∧ if_Ok self (λ x, ∃ p, oparam = Some p ∧ {F::PanicCondition} op p *[x])")]
+    #[rr::may_unwind_if("if_Err self (λ _, False) ∧ if_Ok self (λ x, ∃ p, oparam = Some p ∧ {F::UnwindCondition} op p *[x])")]
     pub fn map<U, F>(self, op: F) -> Result<U, E>
     where
         F: FnOnce(T) -> U,

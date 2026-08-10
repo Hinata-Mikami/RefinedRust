@@ -20,7 +20,8 @@ Definition type_of_mem_align_log_of (T_rt: RT) (T_st: syn_type) :=
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, ly_align_log (use_layout_alg' (ty_syn_type T_ty MetaNone)) @ (int USize);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_mem_align_of (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
@@ -32,7 +33,8 @@ Definition type_of_mem_align_of (T_rt: RT) (T_st: syn_type) :=
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, ly_align (use_layout_alg' (ty_syn_type T_ty MetaNone)) @ (int USize);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_drop (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
@@ -45,7 +47,8 @@ Definition type_of_drop (T_rt: RT) (T_st: syn_type) :=
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
-      (* postcondition *) (λ π : thread_id, (ty_ghost_drop T_ty π ($# x))).
+      (* postcondition *) (λ π : thread_id, (ty_ghost_drop T_ty π ($# x))) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_mem_size_of (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
@@ -57,7 +60,8 @@ Definition type_of_mem_size_of (T_rt: RT) (T_st: syn_type) :=
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone)) @ (int USize);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 
 

@@ -43,10 +43,10 @@ Section ControlFlow_els.
 End ControlFlow_els.
 
 Section code.
-Context `{RRGS : !refinedrustGS Σ}.
+Context `{!LayoutAlg}.
 Open Scope printing_sugar.
 
-Program Definition ControlFlowBCasFromResidualControlFlowBconvert_Infallible_from_residual_def (B_st: syn_type) (C_st: syn_type) : function :=
+Program Definition ControlFlowBCasFromResidualControlFlowBconvert_Infallible_from_residual_def (panic_shim_loc: loc) (B_st: syn_type) (C_st: syn_type) : function :=
   {|
      f_args := [
       ("residual", (use_layout_alg' (ControlFlow_st (B_st) (convert_Infallible_st))) : layout)
@@ -68,7 +68,10 @@ Program Definition ControlFlowBCasFromResidualControlFlowBconvert_Infallible_fro
       local_live{ convert_Infallible_st } "i";
       "i" <-{ (use_op_alg' convert_Infallible_st) } move{ (use_op_alg' convert_Infallible_st) } ((EnumData ((ControlFlow_els (B_st) (convert_Infallible_st))) "Continue" ("residual")) at{ (ControlFlow_Continue_sls (B_st) (convert_Infallible_st)) } "0");
       local_live{ UnitSynType } "__6";
-      StuckS
+      CallS panic_shim_loc [] [] [@{expr} ] None
+      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb4")
      ]>%E $
      <[
      "_bb3" :=
@@ -80,6 +83,10 @@ Program Definition ControlFlowBCasFromResidualControlFlowBconvert_Infallible_fro
       local_dead "__4";
       local_dead "b";
       return (move{ (use_op_alg' (ControlFlow_st (B_st) (C_st))) } ("__0"))
+     ]>%E $
+     <[
+     "_bb4" :=
+      Unwind
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -216,6 +223,10 @@ Program Definition ControlFlow_BC_break_value_def (drop_glue_ControlFlow_B_C_loc
       Goto "_bb7"
      ]>%E $
      <[
+     "_bb4" :=
+      Unwind
+     ]>%E $
+     <[
      "_bb5" :=
       return (move{ (use_op_alg' ((Option_els (B_st)) : syn_type)) } ("__0"))
      ]>%E $
@@ -223,7 +234,8 @@ Program Definition ControlFlow_BC_break_value_def (drop_glue_ControlFlow_B_C_loc
      "_bb6" :=
       CallS drop_glue_ControlFlow_B_C_loc [] [RSTTyVar "B"; RSTTyVar "C"] [@{expr} &raw{ PRef, Mut } ("self")] None
       ( Goto "_bb5")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb4")
      ]>%E $
      <[
      "_bb7" :=
@@ -275,12 +287,17 @@ Program Definition Tasconvert_IntoU_into_def (convert_From_U_T_from_loc: loc) (T
       "__2" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("self");
       CallS convert_From_U_T_from_loc [] [] [@{expr} move{ (use_op_alg' T_st) } ("__2")] (Some (Na1Ord, (use_op_alg' U_st), "__0"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb2")
      ]>%E $
      <[
      "_bb1" :=
       local_dead "__2";
       return (move{ (use_op_alg' U_st) } ("__0"))
+     ]>%E $
+     <[
+     "_bb2" :=
+      Unwind
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -314,13 +331,13 @@ Program Definition drop_glue_ControlFlow_def (DropGlue_B_drop_glue_loc: loc) (Dr
      "_bb2" :=
       CallS DropGlue_C_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((ControlFlow_els (B_st) (C_st))) "Continue" (!{ RefOp } ( "ptr" ))) at{ (ControlFlow_Continue_sls (B_st) (C_st)) } "0")] None
       ( Goto "_bb1")
-      ( StuckS)
+      ( Unwind)
      ]>%E $
      <[
      "_bb3" :=
       CallS DropGlue_B_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((ControlFlow_els (B_st) (C_st))) "Break" (!{ RefOp } ( "ptr" ))) at{ (ControlFlow_Break_sls (B_st) (C_st)) } "0")] None
       ( Goto "_bb1")
-      ( StuckS)
+      ( Unwind)
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -519,7 +536,7 @@ Qed.
 
 
 
-Program Definition std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_from_residual_def (convert_From_F_E_from_loc: loc) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) : function :=
+Program Definition std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_from_residual_def (convert_From_F_E_from_loc: loc) (panic_shim_loc: loc) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) : function :=
   {|
      f_args := [
       ("residual", (use_layout_alg' ((Result_els (convert_Infallible_st) (E_st)) : syn_type)) : layout)
@@ -542,7 +559,10 @@ Program Definition std_result_ResultTFasFromResidualstd_result_Resultconvert_Inf
      <[
      "_bb2" :=
       local_live{ UnitSynType } "__6";
-      StuckS
+      CallS panic_shim_loc [] [] [@{expr} ] None
+      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb5")
      ]>%E $
      <[
      "_bb3" :=
@@ -553,7 +573,8 @@ Program Definition std_result_ResultTFasFromResidualstd_result_Resultconvert_Inf
       "__5" <-{ (use_op_alg' E_st) } move{ (use_op_alg' E_st) } ("e");
       CallS convert_From_F_E_from_loc [] [] [@{expr} move{ (use_op_alg' E_st) } ("__5")] (Some (Na1Ord, (use_op_alg' F_st), "__4"))
       ( Goto "_bb4")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb5")
      ]>%E $
      <[
      "_bb4" :=
@@ -562,6 +583,10 @@ Program Definition std_result_ResultTFasFromResidualstd_result_Resultconvert_Inf
       local_dead "__4";
       local_dead "e";
       return (move{ (use_op_alg' ((Result_els (T_st) (F_st)) : syn_type)) } ("__0"))
+     ]>%E $
+     <[
+     "_bb5" :=
+      Unwind
      ]>%E $
       ∅;
      f_init := "_bb0";

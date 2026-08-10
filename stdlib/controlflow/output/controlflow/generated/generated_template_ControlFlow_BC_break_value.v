@@ -47,4 +47,5 @@ Ltac ControlFlow_BC_break_value_prelude :=
       "C" :=
   existT _ (C_ty)
       ]>%E $ ∅ );
-  unfold_generic_inst; simpl.
+  unfold_generic_inst; simpl;
+  generalize RR_CONFIG_DO_STRICT_RESOLUTION; intros ?.

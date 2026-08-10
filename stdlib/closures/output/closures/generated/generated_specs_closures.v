@@ -44,6 +44,8 @@ Program Definition REFFasFnOnceA_spec_attrs `{RRGS : !(refinedrustGS Σ)} (A_rt:
       (FnOnce_F_A_spec_attrs.(FnOnce_Post)) : ((FnOnce_Post_sig ((place_rfnRT (F_rt))) ((A_rt)) ((FnOnce_F_A_Output_rt)) (_) (_)));
     FnOnce_PostMut  :=
       (λ π p s args s2 ret, (⌜s2 = s⌝ ∗ FnOnce_F_A_spec_attrs.(FnOnce_Post) π p s args ret)%I) : ((FnOnce_PostMut_sig ((place_rfnRT (F_rt))) ((A_rt)) ((FnOnce_F_A_Output_rt)) (_) (_) (_)));
+    FnOnce_UnwindCondition  :=
+      (FnOnce_F_A_spec_attrs.(FnOnce_UnwindCondition)) : ((FnOnce_UnwindCondition_sig ((place_rfnRT (F_rt))) ((A_rt)) ((FnOnce_F_A_Output_rt)) (_) (_) (_) (_)));
   |}
 .
 
@@ -62,6 +64,8 @@ Program Definition REFmutFasFnOnceA_spec_attrs `{RRGS : !(refinedrustGS Σ)} (A_
       (λ π p s args ret, (∃ s2, FnOnce_F_A_spec_attrs.(FnOnce_PostMut) π p s.cur args s2 ret ∗ gvar_pobs s.ghost ($# s2))%I) : ((FnOnce_Post_sig (((place_rfnRT (F_rt)) * gname)%type) ((A_rt)) ((FnOnce_F_A_Output_rt)) (_) (_)));
     FnOnce_PostMut  :=
       (λ π p s args s2 ret, (FnOnce_F_A_spec_attrs.(FnOnce_PostMut) π p s.cur args s2.cur ret ∗ ⌜s.ghost = s2.ghost⌝)%I) : ((FnOnce_PostMut_sig (((place_rfnRT (F_rt)) * gname)%type) ((A_rt)) ((FnOnce_F_A_Output_rt)) (_) (_) (_)));
+    FnOnce_UnwindCondition  :=
+      (λ s p args, FnOnce_F_A_spec_attrs.(FnOnce_UnwindCondition) s.cur p args) : ((FnOnce_UnwindCondition_sig (((place_rfnRT (F_rt)) * gname)%type) ((A_rt)) ((FnOnce_F_A_Output_rt)) (_) (_) (_) (_)));
   |}
 .
 
@@ -101,7 +105,7 @@ End closure_attrs.
 Section extra_specs.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition FnOnce_default_attrs {Self_rt Args_rt Output_rt : RT} : FnOnce_spec_attrs (RRGS:=RRGS) Self_rt Args_rt Output_rt :=
-  mk_FnOnce_spec_attrs unit%type (λ _ _ _ _, True%I) (λ _ _ _ _ _, True%I) (λ _ _ _ _ _ _, True%I).
+  mk_FnOnce_spec_attrs unit%type (λ _ _ _ _, True%I) (λ _ _ _ _ _, True%I) (λ _ _ _ _ _ _, True%I) (λ _ _ _, False).
 Definition FnMut_default_attrs {Self_rt Args_rt Output_rt : RT} :
   FnMut_spec_attrs (RRGS:=RRGS) Self_rt Args_rt Output_rt :=
   mk_FnMut_spec_attrs.
@@ -201,7 +205,8 @@ Definition FnOnce_call_once_base_spec (Self_rt: RT) (Args_rt: RT) (Output_rt: RT
       (* precondition. *) (λ π : thread_id, (FnOnce_Self_Args_spec_attrs.(FnOnce_Pre) π p self args)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ Output_ty;
-      (* postcondition *) (λ π : thread_id, (FnOnce_Self_Args_spec_attrs.(FnOnce_Post) π p self args ret)).
+      (* postcondition *) (λ π : thread_id, (FnOnce_Self_Args_spec_attrs.(FnOnce_Post) π p self args ret)) |
+      (* unwind post... *) FnOnce_Self_Args_spec_attrs.(FnOnce_UnwindCondition) self p args.
 
 Definition FnOnce_base_spec (Self_rt: RT) (Args_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Args_st: syn_type) (Output_st: syn_type) (_ATTRS: ((FnOnce_spec_attrs ((Self_rt)) ((Args_rt)) ((Output_rt))))) : (spec_with _ _ (FnOnce_spec ((Self_rt)) ((Args_rt)) ((Output_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Args_ty; Output_ty]) : ([Self_rt; Args_rt; Output_rt] : list RT), {|
@@ -250,7 +255,8 @@ Definition FnMut_call_mut_base_spec (Self_rt: RT) (Args_rt: RT) (FnOnce_Self_Arg
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (m', ret) : ((_ * _)), ret @ FnOnce_Self_Args_Output_ty;
       (* postcondition *) (λ π : thread_id, (FnOnce_Self_Args_spec_attrs.(FnOnce_PostMut) π p self.cur args m' ret)
-      ∗ (gvar_pobs self.ghost ($# m'))).
+      ∗ (gvar_pobs self.ghost ($# m'))) |
+      (* unwind post... *) FnOnce_Self_Args_spec_attrs.(FnOnce_UnwindCondition) self.cur p args.
 
 Definition FnMut_base_spec (Self_rt: RT) (Args_rt: RT) (FnOnce_Self_Args_Output_rt: RT) (Self_st: syn_type) (Args_st: syn_type) (FnOnce_Self_Args_Output_st: syn_type) (FnOnce_Self_Args_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) )) (_ATTRS: ((FnMut_spec_attrs ((Self_rt)) ((Args_rt)) ((FnOnce_Self_Args_Output_rt))))) : (spec_with _ _ (FnMut_spec ((Self_rt)) ((Args_rt)) ((FnOnce_Self_Args_Output_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Args_ty; FnOnce_Self_Args_Output_ty]) : ([Self_rt; Args_rt; FnOnce_Self_Args_Output_rt] : list RT), {|
@@ -298,7 +304,8 @@ Definition Fn_call_base_spec (Self_rt: RT) (Args_rt: RT) (FnOnce_Self_Args_Outpu
       (* precondition. *) (λ π : thread_id, (FnOnce_Self_Args_spec_attrs.(FnOnce_Pre) π p self args)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ FnOnce_Self_Args_Output_ty;
-      (* postcondition *) (λ π : thread_id, (FnOnce_Self_Args_spec_attrs.(FnOnce_Post) π p self args ret)).
+      (* postcondition *) (λ π : thread_id, (FnOnce_Self_Args_spec_attrs.(FnOnce_Post) π p self args ret)) |
+      (* unwind post... *) FnOnce_Self_Args_spec_attrs.(FnOnce_UnwindCondition) self p args.
 
 Definition Fn_base_spec (Self_rt: RT) (Args_rt: RT) (FnOnce_Self_Args_Output_rt: RT) (Self_st: syn_type) (Args_st: syn_type) (FnOnce_Self_Args_Output_st: syn_type) (FnOnce_Self_Args_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) )) (FnMut_Self_Args_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (Self_rt) (Args_rt) (FnOnce_Self_Args_Output_rt) )) (_ATTRS: ((Fn_spec_attrs ((Self_rt)) ((Args_rt)) ((FnOnce_Self_Args_Output_rt))))) : (spec_with _ _ (Fn_spec ((Self_rt)) ((Args_rt)) ((FnOnce_Self_Args_Output_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Args_ty; FnOnce_Self_Args_Output_ty]) : ([Self_rt; Args_rt; FnOnce_Self_Args_Output_rt] : list RT), {|

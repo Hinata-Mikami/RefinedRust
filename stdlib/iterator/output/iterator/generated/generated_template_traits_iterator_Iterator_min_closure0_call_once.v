@@ -50,4 +50,5 @@ Ltac traits_iterator_Iterator_min_closure0_call_once_prelude :=
       "traits_iterator_Iterator_Self_Item" :=
   existT _ (traits_iterator_Iterator_Self_Item_ty)
       ]>%E $ ∅ );
-  unfold_generic_inst; simpl.
+  unfold_generic_inst; simpl;
+  generalize RR_CONFIG_DO_STRICT_RESOLUTION; intros ?.

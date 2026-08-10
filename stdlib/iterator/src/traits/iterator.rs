@@ -35,7 +35,7 @@ pub trait Iterator {
     #[rr::params("p_inner", "Inv" : "map_inv_ty _ _ _ _ FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs")]
     #[rr::params("ParamPred" : "clos_param_pred_ty _ _ _ FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs")]
     #[rr::requires(#iris "{Inv} π p_inner self")]
-    #[rr::requires("closure_may_panic {F::PanicCondition} → False")]
+    #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
     /// Precondition: The picked invariant should hold initially.
     #[rr::requires(#iris "Inv π self f")]
     /// Precondition: persistently, each iteration preserves the invariant.
@@ -117,7 +117,7 @@ pub trait Iterator {
         ∃ pclos, {F::Pre} π pclos clos_state *[e] ∗
         {Self::Next} π p it_state (Some e) it_state' ∗ 
         (∀ b clos_state', {F::PostMut} π pclos clos_state *[e] clos_state' b -∗ ⌜b = true ↔ P e⌝ ∗ ClosInv π it_state' clos_state'))")]
-    #[rr::requires("closure_may_panic {F::PanicCondition} → False")]
+    #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
     #[rr::exists("seq", "s2", "s2'")]
     // Postcondition: We consume a sequence of elements from the iterator
     #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self.cur seq s2")]
@@ -136,7 +136,7 @@ pub trait Iterator {
         matches!(self.try_fold((), 
             #[rr::params("pclos")]
             #[rr::requires(#iris "{F::Pre} π pclos {f} *[b]")] 
-            #[rr::requires("closure_may_panic {F::PanicCondition} → False")]
+            #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
             #[rr::exists("res" : "bool")]
             #[rr::ensures(#iris "{F::PostMut} π pclos {f} *[b] {f.*new} res")]
             #[rr::returns("if res then Ok tt else Err tt")]
@@ -153,7 +153,7 @@ pub trait Iterator {
         ∃ pclos, {F::Pre} π pclos clos_state *[e] ∗
         {Self::Next} π p it_state (Some e) it_state' ∗ 
         (∀ b clos_state', {F::PostMut} π pclos clos_state *[e] clos_state' b -∗ ⌜b = true ↔ P e⌝ ∗ ClosInv π it_state' clos_state'))")]
-    #[rr::requires("closure_may_panic {F::PanicCondition} → False")]
+    #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
     #[rr::exists("seq", "s2", "s2'", "clos_state'")]
     // Postcondition: We consume a sequence of elements from the iterator
     #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self.cur seq s2")]
@@ -178,7 +178,7 @@ pub trait Iterator {
             #[rr::only_spec]
             #[rr::params("pclos")]
             #[rr::requires(#iris "{F::Pre} π pclos {f} *[x]")]
-            #[rr::requires("closure_may_panic {F::PanicCondition} → False")]
+            #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
             #[rr::exists("res")]
             #[rr::ensures(#iris "{F::PostMut} π pclos {f} *[x] {f.*new} res")]
             #[rr::ensures("if_Ok ret (λ ret, res = false ∧ {acc.*new} = 1+{acc})")]
@@ -231,7 +231,7 @@ pub trait Iterator {
             ClosInv π (Some (if bool_decide (ord = Less) then acc else e)) (seq ++ [e]) it_state' clos_state' ∗ 
             True)
         ))")]
-    #[rr::requires("closure_may_panic {F::PanicCondition} → False")]
+    #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
     #[rr::exists("seq", "s2", "s2'", "clos_state'")]
     #[rr::ensures(#iris "{Next} π p s2 None s2'")]
     #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq s2")]
@@ -247,7 +247,7 @@ pub trait Iterator {
         self.reduce(
             #[rr::params("pclos")]
             #[rr::requires(#iris "{F::Pre} π pclos {compare} *[b; a]")]
-            #[rr::requires("closure_may_panic {F::PanicCondition} → False")]
+            #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
             #[rr::exists("ord")]
             #[rr::ensures(#iris "{F::PostMut} π pclos {compare} *[b; a] {compare.*new} ord")]
             #[rr::returns("if bool_decide(ord = Less) then a else b")]
@@ -289,7 +289,7 @@ pub trait Iterator {
             ClosInv π (Some (if bool_decide (ord = Less) then e else acc)) (seq ++ [e]) it_state' clos_state' ∗ 
             True)
         ))")]
-    #[rr::requires("closure_may_panic {F::PanicCondition} → False")]
+    #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
     #[rr::exists("seq", "s2", "s2'", "clos_state'")]
     #[rr::ensures(#iris "{Next} π p s2 None s2'")]
     #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq s2")]
@@ -305,7 +305,7 @@ pub trait Iterator {
         self.reduce(
             #[rr::params("pclos")]
             #[rr::requires(#iris "{F::Pre} π pclos {compare} *[b; a]")]
-            #[rr::requires("closure_may_panic {F::PanicCondition} → False")]
+            #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
             #[rr::exists("ord")]
             #[rr::ensures(#iris "{F::PostMut} π pclos {compare} *[b; a] {compare.*new} ord")]
             #[rr::returns("if bool_decide(ord = Less) then b else a")]
@@ -326,7 +326,7 @@ pub trait Iterator {
         (∀ b clos_state', {F::PostMut} π pclos clos_state *[acc; e] clos_state' b -∗ 
             ClosInv π ({R::BranchFn} b) (seq ++ [e]) it_state' clos_state' ∗ True)
             )")]
-    #[rr::requires("closure_may_panic {F::PanicCondition} → False")]
+    #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
     #[rr::exists("seq", "s2", "s2'", "clos_state'")]
     // We observe a sequence of elements emitted from the iterator.
     #[rr::observe("self.ghost": "$# s2'")]
@@ -371,7 +371,7 @@ pub trait Iterator {
             {F::PostMut} π pclos clos_state *[acc; e] clos_state' acc' -∗ 
             ClosInv π acc' (seq ++ [e]) it_state' clos_state' ∗ True)
         )")]
-    #[rr::requires("closure_may_panic {F::PanicCondition} → False")]
+    #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
     #[rr::exists("seq", "s2", "s2'", "clos_state'")]
     // We observe a sequence of elements emitted from the iterator.
     #[rr::ensures(#iris "{Next} π p s2 None s2'")]
@@ -419,7 +419,7 @@ pub trait Iterator {
             {F::PostMut} π pclos clos_state *[acc; e] clos_state' acc' -∗ 
             ClosInv π (Some acc') (seq ++ [e]) it_state' clos_state' ∗ True)
         ))")]
-    #[rr::requires("closure_may_panic {F::PanicCondition} → False")]
+    #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
     #[rr::exists("seq", "s2", "s2'", "clos_state'")]
     // We observe a sequence of elements emitted from the iterator.
     #[rr::ensures(#iris "{Next} π p s2 None s2'")]

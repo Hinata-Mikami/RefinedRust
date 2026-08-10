@@ -183,7 +183,7 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 #[rr::exists("ord")]
 #[rr::ensures(#iris "{F::Post} π p compare *[v2; v1] ord")]
 #[rr::ensures("ret = if bool_decide(ord = Less) then v1 else v2")]
-#[rr::may_panic_if("{F::PanicCondition} compare p *[v2; v1]")]
+#[rr::may_unwind_if("{F::UnwindCondition} compare p *[v2; v1]")]
 pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     if compare(&v2, &v1).is_lt() { v1 } else { v2 }
 }
@@ -200,7 +200,7 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 #[rr::exists("ord")]
 #[rr::ensures(#iris "{F::Post} π p compare *[v2; v1] ord")]
 #[rr::returns("if bool_decide(ord = Less) then v2 else v1")]
-#[rr::may_panic_if("{F::PanicCondition} compare p *[v2; v1]")]
+#[rr::may_unwind_if("{F::UnwindCondition} compare p *[v2; v1]")]
 pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     if compare(&v2, &v1).is_lt() { v2 } else { v1 }
 }

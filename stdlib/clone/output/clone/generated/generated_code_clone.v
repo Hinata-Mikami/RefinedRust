@@ -2,7 +2,7 @@ From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.sized.sized.generated Require Export generated_specs_sized.
 Section code.
-Context `{RRGS : !refinedrustGS Σ}.
+Context `{!LayoutAlg}.
 Open Scope printing_sugar.
 
 Program Definition Clone_clone_from_def (Clone_Self_clone_loc: loc) (DropGlue_Self_drop_glue_loc: loc) (Self_st: syn_type) : function :=
@@ -25,14 +25,16 @@ Program Definition Clone_clone_from_def (Clone_Self_clone_loc: loc) (DropGlue_Se
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft7"; (* function_call *)
       CallS Clone_Self_clone_loc ["vlft8"] [] [@{expr} move{ RefOp } ("__4")] (Some (Na1Ord, (use_op_alg' Self_st), "__3"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
       local_dead "__4";
       CallS DropGlue_Self_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } (!{ RefOp } ( "self" ))] None
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb3")
      ]>%E $
      <[
      "_bb2" :=
@@ -40,6 +42,11 @@ Program Definition Clone_clone_from_def (Clone_Self_clone_loc: loc) (DropGlue_Se
       local_dead "__3";
       "__0" <-{ (StructOp unit_sl []) } zst_val;
       return (move{ (StructOp unit_sl []) } ("__0"))
+     ]>%E $
+     <[
+     "_bb3" :=
+      !{ RefOp } ( "self" ) <-{ (use_op_alg' Self_st) } move{ (use_op_alg' Self_st) } ("__3");
+      Unwind
      ]>%E $
       ∅;
      f_init := "_bb0";

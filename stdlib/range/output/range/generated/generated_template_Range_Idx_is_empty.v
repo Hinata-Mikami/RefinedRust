@@ -37,4 +37,5 @@ Ltac Range_Idx_is_empty_prelude :=
       "Idx" :=
   existT _ (Idx_ty)
       ]>%E $ ∅ );
-  unfold_generic_inst; simpl.
+  unfold_generic_inst; simpl;
+  generalize RR_CONFIG_DO_STRICT_RESOLUTION; intros ?.

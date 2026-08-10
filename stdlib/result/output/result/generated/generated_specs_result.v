@@ -285,7 +285,8 @@ Definition Debug_fmt_base_spec (Self_rt: RT) (Self_st: syn_type) (Debug_Self_spe
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ (Result_ty (unit) ((Error_rt)) -[] -[unit_t; (Error_ty  -[] -[])]);
-      (* postcondition *) (λ π : thread_id, (gvar_pobs f.ghost (tt))).
+      (* postcondition *) (λ π : thread_id, (gvar_pobs f.ghost (tt))) |
+      (* unwind post... *) False.
 
 Definition Debug_base_spec (Self_rt: RT) (Self_st: syn_type) (_ATTRS: ((Debug_spec_attrs ((Self_rt))))) : (spec_with _ _ (Debug_spec ((Self_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), {|
@@ -325,7 +326,8 @@ Definition type_of_Result_TE_map (T_rt: RT) (E_rt: RT) (U_rt: RT) (F_rt: RT) (T_
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ (Result_ty ((U_rt)) ((E_rt)) -[] -[U_ty; E_ty]);
       (* postcondition *) (λ π : thread_id, (if_iErr self (λ self, ⌜ret = Err self⌝ ∗ ty_ghost_drop F_ty π ($# op)))
-      ∗ (if_iOk self (λ self, ∃ p x, ⌜oparam = Some p⌝ ∗ ⌜ret = Ok x⌝ ∗ FnOnce_F_T_spec_attrs.(FnOnce_Post) π p op *[self] x))).
+      ∗ (if_iOk self (λ self, ∃ p x, ⌜oparam = Some p⌝ ∗ ⌜ret = Ok x⌝ ∗ FnOnce_F_T_spec_attrs.(FnOnce_Post) π p op *[self] x))) |
+      (* unwind post... *) if_Err self (λ _, False) ∧ if_Ok self (λ x, ∃ p, oparam = Some p ∧ FnOnce_F_T_spec_attrs.(FnOnce_UnwindCondition) op p *[x]).
 
 Definition trait_incl_of_Result_TE_map_err (T_rt: RT) (E_rt: RT) (F_rt: RT) (O_rt: RT) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) (O_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) (FnOnce_O_E_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt) )) (FnOnce_O_E_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt)))) (DropGlue_F_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (F_rt)))) (DropGlue_O_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (O_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty; O_ty]) : ([T_rt; E_rt; F_rt; O_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty]))) ∧ (trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_O_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt) O_st ((tuple1_sls (E_st)) : syn_type) F_st FnOnce_O_E_spec_attrs-[] -[O_ty; (tuple1_ty ((E_rt)) -[] -[E_ty]); F_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_F_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (F_rt) F_st-[] -[F_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_O_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (O_rt) O_st-[] -[O_ty])))).
@@ -339,7 +341,8 @@ Definition type_of_Result_TE_map_err (T_rt: RT) (E_rt: RT) (F_rt: RT) (O_rt: RT)
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ (Result_ty ((T_rt)) ((F_rt)) -[] -[T_ty; F_ty]);
       (* postcondition *) (λ π : thread_id, (if_iOk self (λ self, ⌜ret = Ok self⌝ ∗ ty_ghost_drop O_ty π ($# op)))
-      ∗ (if_iErr self (λ self, ∃ p x, ⌜oparam = Some p⌝ ∗ ⌜ret = Err x⌝ ∗ FnOnce_O_E_spec_attrs.(FnOnce_Post) π p op *[self] x))).
+      ∗ (if_iErr self (λ self, ∃ p x, ⌜oparam = Some p⌝ ∗ ⌜ret = Err x⌝ ∗ FnOnce_O_E_spec_attrs.(FnOnce_Post) π p op *[self] x))) |
+      (* unwind post... *) if_Ok self (λ _, False) ∧ if_Err self (λ x, ∃ p, oparam = Some p ∧ FnOnce_O_E_spec_attrs.(FnOnce_UnwindCondition) op p *[x]).
 
 Definition trait_incl_of_drop_glue_Result (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty])))).
@@ -360,7 +363,8 @@ Definition type_of_Result_TE_is_err (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (is_Err x) @ bool_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_Result_TE_is_ok (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty])))).
@@ -373,7 +377,8 @@ Definition type_of_Result_TE_is_ok (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st:
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (is_Ok x) @ bool_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_Result_TE_unwrap (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) (Debug_E_spec_attrs: (Debug_spec_attrs (RRGS:=RRGS) (E_rt) )) (Debug_E_spec: (spec_with 0 [] (Debug_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty]))) ∧ (trait_incl_marker (lift_trait_incl Debug_spec_incl Debug_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Debug_base_spec (E_rt) E_st Debug_E_spec_attrs-[] -[E_ty])))).
@@ -386,7 +391,8 @@ Definition type_of_Result_TE_unwrap (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st
       (* precondition. *) (λ π : thread_id, (⌜(destruct_hint self is_Ok)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ T_ty;
-      (* postcondition *) (λ π : thread_id, (⌜(match self with | Ok x => ret = x | Err _ => False end)%Z⌝)).
+      (* postcondition *) (λ π : thread_id, (⌜(match self with | Ok x => ret = x | Err _ => False end)%Z⌝)) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_Result_TE_unwrap_unchecked (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty])))).
@@ -399,7 +405,8 @@ Definition type_of_Result_TE_unwrap_unchecked (T_rt: RT) (E_rt: RT) (T_st: syn_t
       (* precondition. *) (λ π : thread_id, (⌜(destruct_hint self is_Ok)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ T_ty;
-      (* postcondition *) (λ π : thread_id, (⌜(match self with | Ok x => ret = x | Err _ => False end)%Z⌝)).
+      (* postcondition *) (λ π : thread_id, (⌜(match self with | Ok x => ret = x | Err _ => False end)%Z⌝)) |
+      (* unwind post... *) False.
 
 
 

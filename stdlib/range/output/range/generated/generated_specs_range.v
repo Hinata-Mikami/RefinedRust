@@ -97,7 +97,8 @@ Definition type_of_Range_Idx_is_empty (Idx_rt: RT) (Idx_st: syn_type) (PartialEq
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (¬ PartialOrd_Idx_Idx_spec_attrs.(PartialOrd_POrd) self.1 self.2 = Some Less) @ bool_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_drop_glue_Range (Idx_rt: RT) (Idx_st: syn_type) (DropGlue_Idx_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Idx_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[Idx_ty]) : ([Idx_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Idx_rt) Idx_st-[] -[Idx_ty])))).

@@ -238,7 +238,8 @@ Definition type_of_layout_Layout_align  :=
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Z.of_nat (layout_alignment_nat self) @ (int USize);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_layout_Layout_from_size_align  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -253,7 +254,8 @@ Definition type_of_layout_Layout_from_size_align  :=
         ∗ (⌜(Z.divide align size)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Ok (mk_rust_layout (Z.to_nat size) (alignment_of_align align)) @ (Result_ty ((layout_Layout_inv_t_rt)) ((layout_LayoutError_rt)) -[] -[(layout_Layout_inv_t   -[] -[]); (layout_LayoutError_ty  -[] -[])]);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_layout_Layout_from_size_align_unchecked  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -268,7 +270,8 @@ Definition type_of_layout_Layout_from_size_align_unchecked  :=
         ∗ (⌜(Z.divide align size)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, mk_rust_layout (Z.to_nat size) (alignment_of_align align) @ (layout_Layout_inv_t   -[] -[]);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_layout_Layout_new (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
@@ -280,7 +283,8 @@ Definition type_of_layout_Layout_new (T_rt: RT) (T_st: syn_type) :=
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, mk_rust_layout (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))) (alignment_of_align (ly_align (use_layout_alg' (ty_syn_type T_ty MetaNone)))) @ (layout_Layout_inv_t   -[] -[]);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_layout_Layout_size  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
@@ -293,7 +297,8 @@ Definition type_of_layout_Layout_size  :=
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Z.of_nat self.(layout_sz) @ (int USize);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_alloc_alloc_internal  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -311,7 +316,8 @@ Definition type_of_alloc_alloc_internal  :=
       (* existential.. *) ∃ (l) : ((_)), l @ alias_ptr_t;
       (* postcondition *) (λ π : thread_id, (freeable_nz l (Z.to_nat size) 1 HeapAlloc)
       ∗ (l ◁ₗ[π, Owned] #(()) @ (◁ uninit (LiteralSynType (Layout (Z.to_nat size) (Z.to_nat align_log2)))))
-      ∗ (⌜(min_alloc_start ≤ l.(loc_a) ≤ max_alloc_end)%Z⌝)).
+      ∗ (⌜(min_alloc_start ≤ l.(loc_a) ≤ max_alloc_end)%Z⌝)) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_alloc_dealloc_internal  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -326,7 +332,8 @@ Definition type_of_alloc_dealloc_internal  :=
         ∗ (ptr ◁ₗ[π, Owned] #(()) @ (◁ uninit (LiteralSynType (Layout (Z.to_nat size) (Z.to_nat align_log2)))))) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 
 Definition trait_incl_of_alloc_alloc  : (spec_with _ _ Prop) :=
@@ -342,7 +349,8 @@ Definition type_of_alloc_alloc  :=
       (* existential.. *) ∃ (l) : ((_)), l @ alias_ptr_t;
       (* postcondition *) (λ π : thread_id, (freeable_nz l ly.(layout_sz) 1 HeapAlloc)
       ∗ (l ◁ₗ[π, Owned] #(()) @ (◁ uninit (LiteralSynType ly)))
-      ∗ (⌜(min_alloc_start ≤ l.(loc_a) ≤ max_alloc_end)%Z⌝)).
+      ∗ (⌜(min_alloc_start ≤ l.(loc_a) ≤ max_alloc_end)%Z⌝)) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_alloc_dealloc  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -357,7 +365,8 @@ Definition type_of_alloc_dealloc  :=
         ∗ (ptr ◁ₗ[π, Owned] #(()) @ (◁ uninit (LiteralSynType ly)))) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_realloc  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -378,7 +387,8 @@ Definition type_of_realloc  :=
       (* postcondition *) (λ π : thread_id, (freeable_nz ptr_new (Z.to_nat new_size) 1 HeapAlloc)
       ∗ (ptr_new ◁ₗ[π, Owned] #(v ++ v' : val) @ (◁ value_t false (LiteralSynType (Layout (Z.to_nat new_size) (layout_alignment_log2_nat ly)))))
       ∗ (⌜(v' `has_layout_val` (Layout (Z.to_nat new_size - ly.(layout_sz)) (layout_alignment_log2_nat ly)))%Z⌝)
-      ∗ (⌜(min_alloc_start ≤ ptr_new.(loc_a) ≤ max_alloc_end)%Z⌝)).
+      ∗ (⌜(min_alloc_start ≤ ptr_new.(loc_a) ≤ max_alloc_end)%Z⌝)) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_alloc_realloc_internal  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -399,7 +409,8 @@ Definition type_of_alloc_realloc_internal  :=
       (* postcondition *) (λ π : thread_id, (freeable_nz ptr_new (Z.to_nat new_size) 1 HeapAlloc)
       ∗ (ptr_new ◁ₗ[π, Owned] #(v ++ v' : val) @ (◁ value_t false (LiteralSynType (Layout (Z.to_nat new_size) (Z.to_nat align_log2)))))
       ∗ (⌜(v' `has_layout_val` (Layout (Z.to_nat (new_size - old_size)) (Z.to_nat align_log2)))%Z⌝)
-      ∗ (⌜(min_alloc_start ≤ ptr_new.(loc_a) ≤ max_alloc_end)%Z⌝)).
+      ∗ (⌜(min_alloc_start ≤ ptr_new.(loc_a) ≤ max_alloc_end)%Z⌝)) |
+      (* unwind post... *) False.
 
 
 

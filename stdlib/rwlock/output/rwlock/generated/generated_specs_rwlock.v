@@ -321,7 +321,8 @@ Definition type_of_RwLock_T_new (T_rt: RT) (T_st: syn_type) :=
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, () @ (RwLock_inv_t ((T_rt))  -[] -[T_ty]);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 
 

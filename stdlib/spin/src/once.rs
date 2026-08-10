@@ -36,7 +36,7 @@ impl<T, R: RelaxStrategy> Once<T, R> {
     #[rr::ensures(#iris "{F::Post} π p f () x")]
     #[rr::ensures(#iris "once_status_tok self (Some x)")]
     #[rr::returns("x")]
-    #[rr::may_panic_if("{F::PanicCondition} f p tt")]
+    #[rr::may_unwind_if("{F::UnwindCondition} f p tt")]
     pub fn call_once<F: FnOnce() -> T>(&self, f: F) -> &T {
         unimplemented!();
     }

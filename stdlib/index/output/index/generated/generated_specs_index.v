@@ -83,7 +83,8 @@ Definition Index_index_base_spec (Self_rt: RT) (Idx_rt: RT) (Output_rt: RT) (Sel
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ (shr_ref ulft_1 Output_ty);
-      (* postcondition *) (λ π : thread_id, (⌜(Index_Self_Idx_spec_attrs.(Index_IndexProj) self index ret)%Z⌝)).
+      (* postcondition *) (λ π : thread_id, (⌜(Index_Self_Idx_spec_attrs.(Index_IndexProj) self index ret)%Z⌝)) |
+      (* unwind post... *) False.
 
 Definition Index_base_spec (Self_rt: RT) (Idx_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Output_st: syn_type) (_ATTRS: ((Index_spec_attrs ((Self_rt)) ((Idx_rt)) ((Output_rt))))) : (spec_with _ _ (Index_spec ((Self_rt)) ((Idx_rt)) ((Output_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Idx_ty; Output_ty]) : ([Self_rt; Idx_rt; Output_rt] : list RT), {|
@@ -132,7 +133,8 @@ Definition IndexMut_index_mut_base_spec (Self_rt: RT) (Idx_rt: RT) (Index_Self_I
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (γi, ret) : ((_ * _)), (ret, γi) @ (mut_ref ulft_1 Index_Self_Idx_Output_ty);
       (* postcondition *) (λ π : thread_id, (⌜(Index_Self_Idx_spec_attrs.(Index_IndexProj) self.cur index ret)%Z⌝)
-      ∗ (gvar_pobs self.ghost (#(IndexMut_Self_Idx_spec_attrs.(IndexMut_IndexMutInj) self.cur index γi)))).
+      ∗ (gvar_pobs self.ghost (#(IndexMut_Self_Idx_spec_attrs.(IndexMut_IndexMutInj) self.cur index γi)))) |
+      (* unwind post... *) False.
 
 Definition IndexMut_base_spec (Self_rt: RT) (Idx_rt: RT) (Index_Self_Idx_Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Index_Self_Idx_Output_st: syn_type) (Index_Self_Idx_spec_attrs: (Index_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) )) (_ATTRS: ((IndexMut_spec_attrs ((Self_rt)) ((Idx_rt)) ((Index_Self_Idx_Output_rt)) (Index_Self_Idx_spec_attrs)))) : (spec_with _ _ (IndexMut_spec ((Self_rt)) ((Idx_rt)) ((Index_Self_Idx_Output_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Idx_ty; Index_Self_Idx_Output_ty]) : ([Self_rt; Idx_rt; Index_Self_Idx_Output_rt] : list RT), {|

@@ -14,7 +14,7 @@ Section Range_sls.
 End Range_sls.
 
 Section code.
-Context `{RRGS : !refinedrustGS Σ}.
+Context `{!LayoutAlg}.
 Open Scope printing_sugar.
 
 Program Definition Range_Idx_is_empty_def (PartialOrd_Idx_Idx_lt_loc: loc) (Idx_st: syn_type) : function :=
@@ -40,7 +40,8 @@ Program Definition Range_Idx_is_empty_def (PartialOrd_Idx_Idx_lt_loc: loc) (Idx_
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft7"; (* function_call *)
       CallS PartialOrd_Idx_Idx_lt_loc ["vlft8"; "vlft9"] [RSTTyVar "Idx"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__2"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -71,17 +72,27 @@ Program Definition drop_glue_Range_def (DropGlue_Idx_drop_glue_loc: loc) (Idx_st
       local_live{ UnitSynType } "ret";
       CallS DropGlue_Idx_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (Range_sls (Idx_st)) } "start")] None
       ( Goto "_bb4")
-      ( StuckS)
+      ( Goto "_bb3")
+     ]>%E $
+     <[
+     "_bb1" :=
+      Unwind
      ]>%E $
      <[
      "_bb2" :=
       return (zst_val)
      ]>%E $
      <[
+     "_bb3" :=
+      CallS DropGlue_Idx_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (Range_sls (Idx_st)) } "end")] None
+      ( Goto "_bb1")
+      ( UnwindTerminate)
+     ]>%E $
+     <[
      "_bb4" :=
       CallS DropGlue_Idx_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (Range_sls (Idx_st)) } "end")] None
       ( Goto "_bb2")
-      ( StuckS)
+      ( Unwind)
      ]>%E $
       ∅;
      f_init := "_bb0";

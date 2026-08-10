@@ -37,4 +37,5 @@ Ltac Ord_min_prelude :=
       "Self" :=
   existT _ (Self_ty)
       ]>%E $ ∅ );
-  unfold_generic_inst; simpl.
+  unfold_generic_inst; simpl;
+  generalize RR_CONFIG_DO_STRICT_RESOLUTION; intros ?.

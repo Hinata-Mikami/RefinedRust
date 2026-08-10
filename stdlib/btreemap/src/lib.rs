@@ -22,6 +22,7 @@ use std::cmp::Ord;
 #[rr::context("Countable {xt_of K}")]
 #[rr::refined_by("M" : "directRT (gmap {xt_of K} ({xt_of V}))")]
 #[rr::exists("k", "v", "a")]
+#[rr::skip(drop_glue)]
 pub struct BTreeMap<
     K,
     V,

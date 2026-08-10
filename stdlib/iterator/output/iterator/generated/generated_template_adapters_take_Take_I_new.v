@@ -42,4 +42,5 @@ Ltac adapters_take_Take_I_new_prelude :=
       "I" :=
   existT _ (I_ty)
       ]>%E $ ∅ );
-  unfold_generic_inst; simpl.
+  unfold_generic_inst; simpl;
+  generalize RR_CONFIG_DO_STRICT_RESOLUTION; intros ?.

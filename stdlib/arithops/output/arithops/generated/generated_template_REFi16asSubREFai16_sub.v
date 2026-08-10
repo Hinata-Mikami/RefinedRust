@@ -7,8 +7,10 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition REFi16asSubREFai16_sub_lemma (π : thread_id) : Prop :=
+  ∀ (panic_shim_loc : loc) , 
   syn_type_is_layoutable (((tuple2_sls ((IntSynType I16)) (BoolSynType)) : syn_type)) →
-  ⊢ typed_function π (REFi16asSubREFai16_sub_def ) (<tag_type> spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_REFi16asSubREFai16_sub -[ulft_a; ulft_2] -[]) (λ π, (True)
+  panic_shim_loc ◁ᵥ{π, MetaNone} panic_shim_loc @ function_ptr [] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_panic_shim (RRGS:=RRGS)  -[] -[]) (λ π, (True))%I) -∗
+  typed_function π (REFi16asSubREFai16_sub_def panic_shim_loc  ) (<tag_type> spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_REFi16asSubREFai16_sub -[ulft_a; ulft_2] -[]) (λ π, (True)
   ∗ (⌜(trait_incl_of_REFi16asSubREFai16_sub-[ulft_a; ulft_2] -[])%Z⌝))).
 End proof.
 

@@ -111,7 +111,8 @@ Definition Drop_drop_base_spec (Self_rt: RT) (Self_st: syn_type) (Drop_Self_spec
       (* precondition. *) (λ π : thread_id, (⌜(False)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition Drop_base_spec (Self_rt: RT) (Self_st: syn_type) (_ATTRS: ((Drop_spec_attrs ((Self_rt))))) : (spec_with _ _ (Drop_spec ((Self_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), {|

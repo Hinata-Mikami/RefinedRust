@@ -80,7 +80,7 @@ Section Vec_sls.
 End Vec_sls.
 
 Section code.
-Context `{RRGS : !refinedrustGS Σ}.
+Context `{!LayoutAlg}.
 Open Scope printing_sugar.
 
 Program Definition Vec_TA_is_empty_def (Vec_TA_len_T_A_loc: loc) (T_st: syn_type) (A_st: syn_type) : function :=
@@ -101,7 +101,8 @@ Program Definition Vec_TA_is_empty_def (Vec_TA_len_T_A_loc: loc) (T_st: syn_type
       annot{ 1 }: CopyLftNameAnnot "vlft6" "plft5"; (* function_call *)
       CallS Vec_TA_len_T_A_loc ["vlft6"] [RSTTyVar "T"; RSTTyVar "A"] [@{expr} move{ RefOp } ("__3")] (Some (Na1Ord, (IntOp USize), "__2"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -131,7 +132,7 @@ Program Definition drop_glue_IntoIter_def (DropGlue_A_drop_glue_loc: loc) (T_st:
       local_live{ UnitSynType } "ret";
       CallS DropGlue_A_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (IntoIter_sls (T_st) (A_st)) } "_y")] None
       ( Goto "_bb1")
-      ( StuckS)
+      ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -158,7 +159,7 @@ Program Definition drop_glue_RawVecInner_def (DropGlue_A_drop_glue_loc: loc) (A_
       local_live{ UnitSynType } "ret";
       CallS DropGlue_A_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (RawVecInner_sls (A_st)) } "alloc")] None
       ( Goto "_bb1")
-      ( StuckS)
+      ( Unwind)
      ]>%E $
      <[
      "_bb1" :=

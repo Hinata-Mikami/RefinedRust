@@ -3280,7 +3280,8 @@ Definition Add_add_base_spec (Self_rt: RT) (Rhs_rt: RT) (Output_rt: RT) (Self_st
       (* precondition. *) (λ π : thread_id, (⌜(Add_Self_Rhs_spec_attrs.(Add_AddOpDefined) self rhs)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Add_Self_Rhs_spec_attrs.(Add_AddOp) self rhs @ Output_ty;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition Add_base_spec (Self_rt: RT) (Rhs_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (Output_st: syn_type) (_ATTRS: ((Add_spec_attrs ((Self_rt)) ((Rhs_rt)) ((Output_rt))))) : (spec_with _ _ (Add_spec ((Self_rt)) ((Rhs_rt)) ((Output_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Rhs_ty; Output_ty]) : ([Self_rt; Rhs_rt; Output_rt] : list RT), {|
@@ -3328,7 +3329,8 @@ Definition AddAssign_add_assign_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: s
       (* precondition. *) (λ π : thread_id, (⌜(AddAssign_Self_Rhs_spec_attrs.(AddAssign_AddAssignOpDefined) self.cur rhs)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
-      (* postcondition *) (λ π : thread_id, (gvar_pobs self.ghost (AddAssign_Self_Rhs_spec_attrs.(AddAssign_AddAssignOp) self.cur rhs))).
+      (* postcondition *) (λ π : thread_id, (gvar_pobs self.ghost (AddAssign_Self_Rhs_spec_attrs.(AddAssign_AddAssignOp) self.cur rhs))) |
+      (* unwind post... *) False.
 
 Definition AddAssign_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (_ATTRS: ((AddAssign_spec_attrs ((Self_rt)) ((Rhs_rt))))) : (spec_with _ _ (AddAssign_spec ((Self_rt)) ((Rhs_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), {|
@@ -3376,7 +3378,8 @@ Definition Deref_deref_base_spec (Self_rt: RT) (Target_rt: RT) (Self_st: syn_typ
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Deref_Self_spec_attrs.(Deref_DerefInto) self @ (shr_ref ulft_1 Target_ty);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition Deref_base_spec (Self_rt: RT) (Target_rt: RT) (Self_st: syn_type) (Target_st: syn_type) (_ATTRS: ((Deref_spec_attrs ((Self_rt)) ((Target_rt))))) : (spec_with _ _ (Deref_spec ((Self_rt)) ((Target_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Target_ty]) : ([Self_rt; Target_rt] : list RT), {|
@@ -3424,7 +3427,8 @@ Definition Mul_mul_base_spec (Self_rt: RT) (Rhs_rt: RT) (Output_rt: RT) (Self_st
       (* precondition. *) (λ π : thread_id, (⌜(Mul_Self_Rhs_spec_attrs.(Mul_MulOpDefined) self rhs)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Mul_Self_Rhs_spec_attrs.(Mul_MulOp) self rhs @ Output_ty;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition Mul_base_spec (Self_rt: RT) (Rhs_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (Output_st: syn_type) (_ATTRS: ((Mul_spec_attrs ((Self_rt)) ((Rhs_rt)) ((Output_rt))))) : (spec_with _ _ (Mul_spec ((Self_rt)) ((Rhs_rt)) ((Output_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Rhs_ty; Output_ty]) : ([Self_rt; Rhs_rt; Output_rt] : list RT), {|
@@ -3472,7 +3476,8 @@ Definition MulAssign_mul_assign_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: s
       (* precondition. *) (λ π : thread_id, (⌜(MulAssign_Self_Rhs_spec_attrs.(MulAssign_MulAssignOpDefined) self.cur rhs)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
-      (* postcondition *) (λ π : thread_id, (gvar_pobs self.ghost (MulAssign_Self_Rhs_spec_attrs.(MulAssign_MulAssignOp) self.cur rhs))).
+      (* postcondition *) (λ π : thread_id, (gvar_pobs self.ghost (MulAssign_Self_Rhs_spec_attrs.(MulAssign_MulAssignOp) self.cur rhs))) |
+      (* unwind post... *) False.
 
 Definition MulAssign_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (_ATTRS: ((MulAssign_spec_attrs ((Self_rt)) ((Rhs_rt))))) : (spec_with _ _ (MulAssign_spec ((Self_rt)) ((Rhs_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), {|
@@ -3520,7 +3525,8 @@ Definition Sub_sub_base_spec (Self_rt: RT) (Rhs_rt: RT) (Output_rt: RT) (Self_st
       (* precondition. *) (λ π : thread_id, (⌜(Sub_Self_Rhs_spec_attrs.(Sub_SubOpDefined) self rhs)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Sub_Self_Rhs_spec_attrs.(Sub_SubOp) self rhs @ Output_ty;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition Sub_base_spec (Self_rt: RT) (Rhs_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (Output_st: syn_type) (_ATTRS: ((Sub_spec_attrs ((Self_rt)) ((Rhs_rt)) ((Output_rt))))) : (spec_with _ _ (Sub_spec ((Self_rt)) ((Rhs_rt)) ((Output_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Rhs_ty; Output_ty]) : ([Self_rt; Rhs_rt; Output_rt] : list RT), {|
@@ -3568,7 +3574,8 @@ Definition SubAssign_sub_assign_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: s
       (* precondition. *) (λ π : thread_id, (⌜(SubAssign_Self_Rhs_spec_attrs.(SubAssign_SubAssignOpDefined) self.cur rhs)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
-      (* postcondition *) (λ π : thread_id, (gvar_pobs self.ghost (SubAssign_Self_Rhs_spec_attrs.(SubAssign_SubAssignOp) self.cur rhs))).
+      (* postcondition *) (λ π : thread_id, (gvar_pobs self.ghost (SubAssign_Self_Rhs_spec_attrs.(SubAssign_SubAssignOp) self.cur rhs))) |
+      (* unwind post... *) False.
 
 Definition SubAssign_base_spec (Self_rt: RT) (Rhs_rt: RT) (Self_st: syn_type) (Rhs_st: syn_type) (_ATTRS: ((SubAssign_spec_attrs ((Self_rt)) ((Rhs_rt))))) : (spec_with _ _ (SubAssign_spec ((Self_rt)) ((Rhs_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Rhs_ty]) : ([Self_rt; Rhs_rt] : list RT), {|
@@ -3616,7 +3623,8 @@ Definition DerefMut_deref_mut_base_spec (Self_rt: RT) (Deref_Self_Target_rt: RT)
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (γi) : ((_)), (Deref_Self_spec_attrs.(Deref_DerefInto) self.cur, γi) @ (mut_ref ulft_a Deref_Self_Target_ty);
-      (* postcondition *) (λ π : thread_id, (gvar_pobs self.ghost (DerefMut_Self_spec_attrs.(DerefMut_DerefMutInject) self.cur γi))).
+      (* postcondition *) (λ π : thread_id, (gvar_pobs self.ghost (DerefMut_Self_spec_attrs.(DerefMut_DerefMutInject) self.cur γi))) |
+      (* unwind post... *) False.
 
 Definition DerefMut_base_spec (Self_rt: RT) (Deref_Self_Target_rt: RT) (Self_st: syn_type) (Deref_Self_Target_st: syn_type) (Deref_Self_spec_attrs: (Deref_spec_attrs (RRGS:=RRGS) (Self_rt) (Deref_Self_Target_rt) )) (_ATTRS: ((DerefMut_spec_attrs ((Self_rt)) ((Deref_Self_Target_rt)) (Deref_Self_spec_attrs)))) : (spec_with _ _ (DerefMut_spec ((Self_rt)) ((Deref_Self_Target_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Deref_Self_Target_ty]) : ([Self_rt; Deref_Self_Target_rt] : list RT), {|

@@ -48,4 +48,5 @@ Ltac adapters_map_Map_IF_new_prelude :=
       "F" :=
   existT _ (F_ty)
       ]>%E $ ∅ );
-  unfold_generic_inst; simpl.
+  unfold_generic_inst; simpl;
+  generalize RR_CONFIG_DO_STRICT_RESOLUTION; intros ?.

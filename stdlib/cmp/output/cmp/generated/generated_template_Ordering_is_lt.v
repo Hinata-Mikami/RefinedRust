@@ -31,4 +31,5 @@ Ltac Ordering_is_lt_prelude :=
   specialize (pose_bb_inv (PolyNil)) as loop_map;
   init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
   init_tyvars ( ∅ );
-  unfold_generic_inst; simpl.
+  unfold_generic_inst; simpl;
+  generalize RR_CONFIG_DO_STRICT_RESOLUTION; intros ?.

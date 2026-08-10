@@ -364,7 +364,8 @@ Definition Clone_clone_base_spec (Self_rt: RT) (Self_st: syn_type) (Clone_Self_s
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, self @ Self_ty;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition Clone_clone_from_base_spec (Self_rt: RT) (Self_st: syn_type) (Clone_Self_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (Self_rt) )) :=
   fn(∀ ( *[ulft_1; ulft_2]) : 2 | ( *[Self_ty]) : ([(Self_rt, Self_st)] : list (RT * syn_type)%type) | 
@@ -374,7 +375,8 @@ Definition Clone_clone_from_base_spec (Self_rt: RT) (Self_st: syn_type) (Clone_S
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
-      (* postcondition *) (λ π : thread_id, (gvar_pobs self.ghost (($#@{ (Self_rt) } source)))).
+      (* postcondition *) (λ π : thread_id, (gvar_pobs self.ghost (($#@{ (Self_rt) } source)))) |
+      (* unwind post... *) False.
 
 Definition Clone_base_spec (Self_rt: RT) (Self_st: syn_type) (_ATTRS: ((Clone_spec_attrs ((Self_rt))))) : (spec_with _ _ (Clone_spec ((Self_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), {|

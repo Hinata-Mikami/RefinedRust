@@ -33,7 +33,7 @@ Section layout_Layout_sls.
 End layout_Layout_sls.
 
 Section code.
-Context `{RRGS : !refinedrustGS Σ}.
+Context `{!LayoutAlg}.
 Open Scope printing_sugar.
 
 Program Definition layout_Layout_align_def (alignment_Alignment_as_usize_loc: loc) : function :=
@@ -50,7 +50,8 @@ Program Definition layout_Layout_align_def (alignment_Alignment_as_usize_loc: lo
       "__2" <-{ (use_op_alg' (alignment_Alignment_sls : syn_type)) } copy{ (use_op_alg' (alignment_Alignment_sls : syn_type)) } ((!{ RefOp } ( "self" )) at{ layout_Layout_sls } "align");
       CallS alignment_Alignment_as_usize_loc [] [] [@{expr} move{ (use_op_alg' (alignment_Alignment_sls : syn_type)) } ("__2")] (Some (Na1Ord, (IntOp USize), "__0"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -84,7 +85,8 @@ Program Definition layout_Layout_from_size_align_def (layout_Layout_from_size_al
       "__5" <-{ (IntOp USize) } copy{ (IntOp USize) } ("align");
       CallS layout_Layout_from_size_align_unchecked_loc [] [] [@{expr} move{ (IntOp USize) } ("__4"); move{ (IntOp USize) } ("__5")] (Some (Na1Ord, (use_op_alg' layout_Layout_st), "__3"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -121,7 +123,8 @@ Program Definition layout_Layout_from_size_align_unchecked_def (alignment_Alignm
       "__5" <-{ (IntOp USize) } copy{ (IntOp USize) } ("align");
       CallS alignment_Alignment_new_unchecked_loc [] [] [@{expr} move{ (IntOp USize) } ("__5")] (Some (Na1Ord, (use_op_alg' (alignment_Alignment_sls : syn_type)), "__4"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -153,20 +156,23 @@ Program Definition layout_Layout_new_def (layout_Layout_from_size_align_unchecke
       local_live{ (IntSynType USize) } "__1";
       CallS mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ] (Some (Na1Ord, (IntOp USize), "__1"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
       local_live{ (IntSynType USize) } "__2";
       CallS mem_align_of_T_loc [] [RSTTyVar "T"] [@{expr} ] (Some (Na1Ord, (IntOp USize), "__2"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb2" :=
       CallS layout_Layout_from_size_align_unchecked_loc [] [] [@{expr} move{ (IntOp USize) } ("__1"); move{ (IntOp USize) } ("__2")] (Some (Na1Ord, (use_op_alg' layout_Layout_st), "__0"))
       ( Goto "_bb3")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb3" :=

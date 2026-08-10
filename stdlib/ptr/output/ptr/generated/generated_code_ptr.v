@@ -475,7 +475,7 @@ Section alignment_Alignment_sls.
 End alignment_Alignment_sls.
 
 Section code.
-Context `{RRGS : !refinedrustGS Σ}.
+Context `{!LayoutAlg}.
 Open Scope printing_sugar.
 
 Program Definition alignment_AlignmentEnumasstd_clone_Clone_clone_def  : function :=
@@ -542,7 +542,8 @@ Program Definition alignment_Alignment_new_def (alignment_Alignment_new_unchecke
       "__3" <-{ (IntOp USize) } copy{ (IntOp USize) } ("align");
       CallS usize_is_power_of_two_loc [] [] [@{expr} move{ (IntOp USize) } ("__3")] (Some (Na1Ord, BoolOp, "__2"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -559,7 +560,8 @@ Program Definition alignment_Alignment_new_def (alignment_Alignment_new_unchecke
       "__5" <-{ (IntOp USize) } copy{ (IntOp USize) } ("align");
       CallS alignment_Alignment_new_unchecked_loc [] [] [@{expr} move{ (IntOp USize) } ("__5")] (Some (Na1Ord, (use_op_alg' alignment_Alignment_st), "__4"))
       ( Goto "_bb3")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb3" :=
@@ -602,20 +604,23 @@ Program Definition alignment_Alignment_of_def (Option_T_unwrap_alignment_Alignme
       local_live{ (IntSynType USize) } "__2";
       CallS mem_align_of_T_loc [] [RSTTyVar "T"] [@{expr} ] (Some (Na1Ord, (IntOp USize), "__2"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
       CallS alignment_Alignment_new_loc [] [] [@{expr} move{ (IntOp USize) } ("__2")] (Some (Na1Ord, (use_op_alg' ((Option_els (alignment_Alignment_st)) : syn_type)), "__1"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb2" :=
       local_dead "__2";
       CallS Option_T_unwrap_alignment_Alignment_loc [] [] [@{expr} move{ (use_op_alg' ((Option_els (alignment_Alignment_st)) : syn_type)) } ("__1")] (Some (Na1Ord, (use_op_alg' alignment_Alignment_st), "__0"))
       ( Goto "_bb3")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb3" :=
@@ -674,7 +679,8 @@ Program Definition const_ptr_add_def (const_ptr_offset_T_loc: loc) (T_st: syn_ty
       local_dead "__5";
       CallS const_ptr_offset_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3"); move{ (IntOp ISize) } ("__4")] (Some (Na1Ord, PtrOp, "__0"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -787,7 +793,8 @@ Program Definition const_ptr_is_null_def (const_ptr_addr_T_loc: loc) (T_st: syn_
       "__3" <-{ PtrOp } copy{ PtrOp } ("x");
       CallS const_ptr_addr_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3")] (Some (Na1Ord, (IntOp USize), "__2"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -819,7 +826,8 @@ Program Definition const_ptr_read_def (read_T_loc: loc) (T_st: syn_type) : funct
       "__2" <-{ PtrOp } copy{ PtrOp } ("src");
       CallS read_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__2")] (Some (Na1Ord, (use_op_alg' T_st), "__0"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -849,7 +857,8 @@ Program Definition const_ptr_read_volatile_def (read_volatile_T_loc: loc) (T_st:
       "__2" <-{ PtrOp } copy{ PtrOp } ("src");
       CallS read_volatile_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__2")] (Some (Na1Ord, (use_op_alg' T_st), "__0"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -882,7 +891,8 @@ Program Definition const_ptr_wrapping_byte_add_def (const_ptr_cast_T_u8_loc: loc
       "__5" <-{ PtrOp } copy{ PtrOp } ("l");
       CallS const_ptr_cast_T_u8_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__5")] (Some (Na1Ord, PtrOp, "__4"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -891,7 +901,8 @@ Program Definition const_ptr_wrapping_byte_add_def (const_ptr_cast_T_u8_loc: loc
       "__6" <-{ (IntOp USize) } copy{ (IntOp USize) } ("count");
       CallS const_ptr_wrapping_add_u8_loc [] [] [@{expr} move{ PtrOp } ("__4"); move{ (IntOp USize) } ("__6")] (Some (Na1Ord, PtrOp, "__3"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -899,7 +910,8 @@ Program Definition const_ptr_wrapping_byte_add_def (const_ptr_cast_T_u8_loc: loc
       local_dead "__4";
       CallS const_ptr_cast_u8_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3")] (Some (Na1Ord, PtrOp, "__0"))
       ( Goto "_bb3")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb3" :=
@@ -932,7 +944,8 @@ Program Definition const_ptr_wrapping_byte_offset_def (const_ptr_cast_T_u8_loc: 
       "__5" <-{ PtrOp } copy{ PtrOp } ("l");
       CallS const_ptr_cast_T_u8_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__5")] (Some (Na1Ord, PtrOp, "__4"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -941,7 +954,8 @@ Program Definition const_ptr_wrapping_byte_offset_def (const_ptr_cast_T_u8_loc: 
       "__6" <-{ (IntOp ISize) } copy{ (IntOp ISize) } ("count");
       CallS const_ptr_wrapping_offset_u8_loc [] [] [@{expr} move{ PtrOp } ("__4"); move{ (IntOp ISize) } ("__6")] (Some (Na1Ord, PtrOp, "__3"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -949,7 +963,8 @@ Program Definition const_ptr_wrapping_byte_offset_def (const_ptr_cast_T_u8_loc: 
       local_dead "__4";
       CallS const_ptr_cast_u8_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3")] (Some (Na1Ord, PtrOp, "__0"))
       ( Goto "_bb3")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb3" :=
@@ -982,7 +997,8 @@ Program Definition const_ptr_wrapping_byte_sub_def (const_ptr_cast_T_u8_loc: loc
       "__5" <-{ PtrOp } copy{ PtrOp } ("l");
       CallS const_ptr_cast_T_u8_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__5")] (Some (Na1Ord, PtrOp, "__4"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -991,7 +1007,8 @@ Program Definition const_ptr_wrapping_byte_sub_def (const_ptr_cast_T_u8_loc: loc
       "__6" <-{ (IntOp USize) } copy{ (IntOp USize) } ("count");
       CallS const_ptr_wrapping_sub_u8_loc [] [] [@{expr} move{ PtrOp } ("__4"); move{ (IntOp USize) } ("__6")] (Some (Na1Ord, PtrOp, "__3"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -999,7 +1016,8 @@ Program Definition const_ptr_wrapping_byte_sub_def (const_ptr_cast_T_u8_loc: loc
       local_dead "__4";
       CallS const_ptr_cast_u8_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3")] (Some (Na1Ord, PtrOp, "__0"))
       ( Goto "_bb3")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb3" :=
@@ -1028,13 +1046,15 @@ Program Definition dangling_def (mem_align_of_T_loc: loc) (without_provenance_T_
       local_live{ (IntSynType USize) } "__1";
       CallS mem_align_of_T_loc [] [RSTTyVar "T"] [@{expr} ] (Some (Na1Ord, (IntOp USize), "__1"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
       CallS without_provenance_T_loc [] [RSTTyVar "T"] [@{expr} move{ (IntOp USize) } ("__1")] (Some (Na1Ord, PtrOp, "__0"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -1063,13 +1083,15 @@ Program Definition dangling_mut_def (mem_align_of_T_loc: loc) (without_provenanc
       local_live{ (IntSynType USize) } "__1";
       CallS mem_align_of_T_loc [] [RSTTyVar "T"] [@{expr} ] (Some (Na1Ord, (IntOp USize), "__1"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
       CallS without_provenance_mut_T_loc [] [RSTTyVar "T"] [@{expr} move{ (IntOp USize) } ("__1")] (Some (Na1Ord, PtrOp, "__0"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -1105,7 +1127,8 @@ Program Definition mut_ptr_add_def (mut_ptr_offset_T_loc: loc) (T_st: syn_type) 
       local_dead "__5";
       CallS mut_ptr_offset_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3"); move{ (IntOp ISize) } ("__4")] (Some (Na1Ord, PtrOp, "__0"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1224,7 +1247,8 @@ Program Definition mut_ptr_is_null_def (mut_ptr_addr_T_loc: loc) (T_st: syn_type
       local_dead "__4";
       CallS mut_ptr_addr_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3")] (Some (Na1Ord, (IntOp USize), "__2"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1259,7 +1283,8 @@ Program Definition mut_ptr_read_def (read_T_loc: loc) (T_st: syn_type) : functio
       local_dead "__3";
       CallS read_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__2")] (Some (Na1Ord, (use_op_alg' T_st), "__0"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1292,7 +1317,8 @@ Program Definition mut_ptr_read_volatile_def (read_volatile_T_loc: loc) (T_st: s
       local_dead "__3";
       CallS read_volatile_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__2")] (Some (Na1Ord, (use_op_alg' T_st), "__0"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1325,7 +1351,8 @@ Program Definition mut_ptr_wrapping_byte_add_def (mut_ptr_cast_T_u8_loc: loc) (m
       "__5" <-{ PtrOp } copy{ PtrOp } ("l");
       CallS mut_ptr_cast_T_u8_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__5")] (Some (Na1Ord, PtrOp, "__4"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1334,7 +1361,8 @@ Program Definition mut_ptr_wrapping_byte_add_def (mut_ptr_cast_T_u8_loc: loc) (m
       "__6" <-{ (IntOp USize) } copy{ (IntOp USize) } ("count");
       CallS mut_ptr_wrapping_add_u8_loc [] [] [@{expr} move{ PtrOp } ("__4"); move{ (IntOp USize) } ("__6")] (Some (Na1Ord, PtrOp, "__3"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -1342,7 +1370,8 @@ Program Definition mut_ptr_wrapping_byte_add_def (mut_ptr_cast_T_u8_loc: loc) (m
       local_dead "__4";
       CallS mut_ptr_cast_u8_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3")] (Some (Na1Ord, PtrOp, "__0"))
       ( Goto "_bb3")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb3" :=
@@ -1375,7 +1404,8 @@ Program Definition mut_ptr_wrapping_byte_offset_def (mut_ptr_cast_T_u8_loc: loc)
       "__5" <-{ PtrOp } copy{ PtrOp } ("l");
       CallS mut_ptr_cast_T_u8_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__5")] (Some (Na1Ord, PtrOp, "__4"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1384,7 +1414,8 @@ Program Definition mut_ptr_wrapping_byte_offset_def (mut_ptr_cast_T_u8_loc: loc)
       "__6" <-{ (IntOp ISize) } copy{ (IntOp ISize) } ("count");
       CallS mut_ptr_wrapping_offset_u8_loc [] [] [@{expr} move{ PtrOp } ("__4"); move{ (IntOp ISize) } ("__6")] (Some (Na1Ord, PtrOp, "__3"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -1392,7 +1423,8 @@ Program Definition mut_ptr_wrapping_byte_offset_def (mut_ptr_cast_T_u8_loc: loc)
       local_dead "__4";
       CallS mut_ptr_cast_u8_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3")] (Some (Na1Ord, PtrOp, "__0"))
       ( Goto "_bb3")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb3" :=
@@ -1425,7 +1457,8 @@ Program Definition mut_ptr_wrapping_byte_sub_def (mut_ptr_cast_T_u8_loc: loc) (m
       "__5" <-{ PtrOp } copy{ PtrOp } ("l");
       CallS mut_ptr_cast_T_u8_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__5")] (Some (Na1Ord, PtrOp, "__4"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1434,7 +1467,8 @@ Program Definition mut_ptr_wrapping_byte_sub_def (mut_ptr_cast_T_u8_loc: loc) (m
       "__6" <-{ (IntOp USize) } copy{ (IntOp USize) } ("count");
       CallS mut_ptr_wrapping_sub_u8_loc [] [] [@{expr} move{ PtrOp } ("__4"); move{ (IntOp USize) } ("__6")] (Some (Na1Ord, PtrOp, "__3"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -1442,7 +1476,8 @@ Program Definition mut_ptr_wrapping_byte_sub_def (mut_ptr_cast_T_u8_loc: loc) (m
       local_dead "__4";
       CallS mut_ptr_cast_u8_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3")] (Some (Na1Ord, PtrOp, "__0"))
       ( Goto "_bb3")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb3" :=
@@ -1475,13 +1510,18 @@ Program Definition mut_ptr_write_def (write_T_loc: loc) (T_st: syn_type) : funct
       "__4" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("src");
       CallS write_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3"); move{ (use_op_alg' T_st) } ("__4")] (Some (Na1Ord, (StructOp unit_sl []), "__0"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb2")
      ]>%E $
      <[
      "_bb1" :=
       local_dead "__4";
       local_dead "__3";
       return (move{ (StructOp unit_sl []) } ("__0"))
+     ]>%E $
+     <[
+     "_bb2" :=
+      Unwind
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -1509,13 +1549,18 @@ Program Definition mut_ptr_write_volatile_def (write_volatile_T_loc: loc) (T_st:
       "__4" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("src");
       CallS write_volatile_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3"); move{ (use_op_alg' T_st) } ("__4")] (Some (Na1Ord, (StructOp unit_sl []), "__0"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb2")
      ]>%E $
      <[
      "_bb1" :=
       local_dead "__4";
       local_dead "__3";
       return (move{ (StructOp unit_sl []) } ("__0"))
+     ]>%E $
+     <[
+     "_bb2" :=
+      Unwind
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -1540,7 +1585,8 @@ Program Definition read_volatile_def (read_T_loc: loc) (T_st: syn_type) : functi
       "__2" <-{ PtrOp } copy{ PtrOp } ("src");
       CallS read_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__2")] (Some (Na1Ord, (use_op_alg' T_st), "__0"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -1573,13 +1619,18 @@ Program Definition write_volatile_def (write_T_loc: loc) (T_st: syn_type) : func
       "__4" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("src");
       CallS write_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3"); move{ (use_op_alg' T_st) } ("__4")] (Some (Na1Ord, (StructOp unit_sl []), "__0"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb2")
      ]>%E $
      <[
      "_bb1" :=
       local_dead "__4";
       local_dead "__3";
       return (move{ (StructOp unit_sl []) } ("__0"))
+     ]>%E $
+     <[
+     "_bb2" :=
+      Unwind
      ]>%E $
       ∅;
      f_init := "_bb0";

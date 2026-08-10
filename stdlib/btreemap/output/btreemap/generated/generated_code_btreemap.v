@@ -17,7 +17,7 @@ Section BTreeMap_sls.
 End BTreeMap_sls.
 
 Section code.
-Context `{RRGS : !refinedrustGS Σ}.
+Context `{!LayoutAlg}.
 Open Scope printing_sugar.
 
 (* closure shims *)

@@ -41,4 +41,5 @@ Ltac alignment_Alignment_of_prelude :=
       "T" :=
   existT _ (T_ty)
       ]>%E $ ∅ );
-  unfold_generic_inst; simpl.
+  unfold_generic_inst; simpl;
+  generalize RR_CONFIG_DO_STRICT_RESOLUTION; intros ?.

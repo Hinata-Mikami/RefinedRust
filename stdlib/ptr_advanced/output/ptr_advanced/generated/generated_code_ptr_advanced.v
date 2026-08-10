@@ -26,7 +26,7 @@ Section unique_Unique_sls.
 End unique_Unique_sls.
 
 Section code.
-Context `{RRGS : !refinedrustGS Σ}.
+Context `{!LayoutAlg}.
 Open Scope printing_sugar.
 
 Program Definition nonnull_NonNullTasstd_clone_Clone_clone_def (T_st: syn_type) : function :=
@@ -97,7 +97,8 @@ Program Definition nonnull_NonNull_T_cast_def (nonnull_NonNull_T_as_ptr_T_loc: l
       "__6" <-{ (use_op_alg' (nonnull_NonNull_st (T_st))) } copy{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("self");
       CallS nonnull_NonNull_T_as_ptr_T_loc [] [RSTTyVar "T"] [@{expr} move{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("__6")] (Some (Na1Ord, PtrOp, "__5"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -136,14 +137,16 @@ Program Definition nonnull_NonNull_T_is_aligned_def (mut_ptr_is_aligned_T_loc: l
       "__3" <-{ (use_op_alg' (nonnull_NonNull_st (T_st))) } copy{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("self");
       CallS nonnull_NonNull_T_as_ptr_T_loc [] [RSTTyVar "T"] [@{expr} move{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("__3")] (Some (Na1Ord, PtrOp, "__2"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
       local_dead "__3";
       CallS mut_ptr_is_aligned_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__2")] (Some (Na1Ord, BoolOp, "__0"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -175,7 +178,8 @@ Program Definition nonnull_NonNull_T_is_aligned_to_def (mut_ptr_is_aligned_to_T_
       "__4" <-{ (use_op_alg' (nonnull_NonNull_st (T_st))) } copy{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("self");
       CallS nonnull_NonNull_T_as_ptr_T_loc [] [RSTTyVar "T"] [@{expr} move{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("__4")] (Some (Na1Ord, PtrOp, "__3"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -184,7 +188,8 @@ Program Definition nonnull_NonNull_T_is_aligned_to_def (mut_ptr_is_aligned_to_T_
       "__5" <-{ (IntOp USize) } copy{ (IntOp USize) } ("align");
       CallS mut_ptr_is_aligned_to_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3"); move{ (IntOp USize) } ("__5")] (Some (Na1Ord, BoolOp, "__0"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -216,7 +221,8 @@ Program Definition nonnull_NonNull_T_new_def (mut_ptr_is_null_T_loc: loc) (nonnu
       "__3" <-{ PtrOp } copy{ PtrOp } ("ptr");
       CallS mut_ptr_is_null_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3")] (Some (Na1Ord, BoolOp, "__2"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -239,7 +245,8 @@ Program Definition nonnull_NonNull_T_new_def (mut_ptr_is_null_T_loc: loc) (nonnu
       "__5" <-{ PtrOp } copy{ PtrOp } ("ptr");
       CallS nonnull_NonNull_T_new_unchecked_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__5")] (Some (Na1Ord, (use_op_alg' (nonnull_NonNull_st (T_st))), "__4"))
       ( Goto "_bb4")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb4" :=
@@ -312,7 +319,8 @@ Program Definition nonnull_NonNull_T_read_def (nonnull_NonNull_T_as_ptr_T_loc: l
       "__4" <-{ (use_op_alg' (nonnull_NonNull_st (T_st))) } copy{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("self");
       CallS nonnull_NonNull_T_as_ptr_T_loc [] [RSTTyVar "T"] [@{expr} move{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("__4")] (Some (Na1Ord, PtrOp, "__3"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -321,7 +329,8 @@ Program Definition nonnull_NonNull_T_read_def (nonnull_NonNull_T_as_ptr_T_loc: l
       local_dead "__3";
       CallS read_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__2")] (Some (Na1Ord, (use_op_alg' T_st), "__0"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -353,7 +362,8 @@ Program Definition nonnull_NonNull_T_read_volatile_def (nonnull_NonNull_T_as_ptr
       "__4" <-{ (use_op_alg' (nonnull_NonNull_st (T_st))) } copy{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("self");
       CallS nonnull_NonNull_T_as_ptr_T_loc [] [RSTTyVar "T"] [@{expr} move{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("__4")] (Some (Na1Ord, PtrOp, "__3"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
@@ -362,7 +372,8 @@ Program Definition nonnull_NonNull_T_read_volatile_def (nonnull_NonNull_T_as_ptr
       local_dead "__3";
       CallS read_volatile_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__2")] (Some (Na1Ord, (use_op_alg' T_st), "__0"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -379,7 +390,7 @@ Qed.
 
 
 
-Program Definition nonnull_NonNull_T_write_def (nonnull_NonNull_T_as_ptr_T_loc: loc) (write_T_loc: loc) (T_st: syn_type) : function :=
+Program Definition nonnull_NonNull_T_write_def (DropGlue_T_drop_glue_loc: loc) (nonnull_NonNull_T_as_ptr_T_loc: loc) (write_T_loc: loc) (T_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' (nonnull_NonNull_st (T_st))) : layout);
@@ -397,7 +408,8 @@ Program Definition nonnull_NonNull_T_write_def (nonnull_NonNull_T_as_ptr_T_loc: 
       "__4" <-{ (use_op_alg' (nonnull_NonNull_st (T_st))) } copy{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("self");
       CallS nonnull_NonNull_T_as_ptr_T_loc [] [RSTTyVar "T"] [@{expr} move{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("__4")] (Some (Na1Ord, PtrOp, "__3"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb5")
      ]>%E $
      <[
      "_bb1" :=
@@ -407,13 +419,31 @@ Program Definition nonnull_NonNull_T_write_def (nonnull_NonNull_T_as_ptr_T_loc: 
       "__5" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("val");
       CallS write_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3"); move{ (use_op_alg' T_st) } ("__5")] (Some (Na1Ord, (StructOp unit_sl []), "__0"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb5")
      ]>%E $
      <[
      "_bb2" :=
       local_dead "__5";
       local_dead "__3";
       return (move{ (StructOp unit_sl []) } ("__0"))
+     ]>%E $
+     <[
+     "_bb3" :=
+      Unwind
+     ]>%E $
+     <[
+     "_bb4" :=
+      CallS DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("val")] None
+      ( Goto "_bb3")
+      ( UnwindTerminate)
+     ]>%E $
+     <[
+     "_bb5" :=
+      if{ BoolOp }: copy{ BoolOp } ("__6") then
+       Goto "_bb4"
+      else
+       Goto "_bb3"
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -425,7 +455,7 @@ Qed.
 
 
 
-Program Definition nonnull_NonNull_T_write_volatile_def (nonnull_NonNull_T_as_ptr_T_loc: loc) (write_volatile_T_loc: loc) (T_st: syn_type) : function :=
+Program Definition nonnull_NonNull_T_write_volatile_def (DropGlue_T_drop_glue_loc: loc) (nonnull_NonNull_T_as_ptr_T_loc: loc) (write_volatile_T_loc: loc) (T_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' (nonnull_NonNull_st (T_st))) : layout);
@@ -443,7 +473,8 @@ Program Definition nonnull_NonNull_T_write_volatile_def (nonnull_NonNull_T_as_pt
       "__4" <-{ (use_op_alg' (nonnull_NonNull_st (T_st))) } copy{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("self");
       CallS nonnull_NonNull_T_as_ptr_T_loc [] [RSTTyVar "T"] [@{expr} move{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("__4")] (Some (Na1Ord, PtrOp, "__3"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb5")
      ]>%E $
      <[
      "_bb1" :=
@@ -453,13 +484,31 @@ Program Definition nonnull_NonNull_T_write_volatile_def (nonnull_NonNull_T_as_pt
       "__5" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("val");
       CallS write_volatile_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3"); move{ (use_op_alg' T_st) } ("__5")] (Some (Na1Ord, (StructOp unit_sl []), "__0"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb5")
      ]>%E $
      <[
      "_bb2" :=
       local_dead "__5";
       local_dead "__3";
       return (move{ (StructOp unit_sl []) } ("__0"))
+     ]>%E $
+     <[
+     "_bb3" :=
+      Unwind
+     ]>%E $
+     <[
+     "_bb4" :=
+      CallS DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("val")] None
+      ( Goto "_bb3")
+      ( UnwindTerminate)
+     ]>%E $
+     <[
+     "_bb5" :=
+      if{ BoolOp }: copy{ BoolOp } ("__6") then
+       Goto "_bb4"
+      else
+       Goto "_bb3"
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -528,13 +577,15 @@ Program Definition unique_Unique_T_dangling_def (dangling_mut_T_loc: loc) (uniqu
       local_live{ PtrSynType } "__1";
       CallS dangling_mut_T_loc [] [RSTTyVar "T"] [@{expr} ] (Some (Na1Ord, PtrOp, "__1"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=
       CallS unique_Unique_T_new_unchecked_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__1")] (Some (Na1Ord, (use_op_alg' (unique_Unique_st (T_st))), "__0"))
       ( Goto "_bb2")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -565,7 +616,8 @@ Program Definition unique_Unique_T_new_unchecked_def (nonnull_NonNull_T_new_unch
       "__3" <-{ PtrOp } copy{ PtrOp } ("ptr");
       CallS nonnull_NonNull_T_new_unchecked_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__3")] (Some (Na1Ord, (use_op_alg' (nonnull_NonNull_st (T_st))), "__2"))
       ( Goto "_bb1")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb1" :=

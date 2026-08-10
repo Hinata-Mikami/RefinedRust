@@ -43,4 +43,5 @@ Ltac const_ptr_cast_prelude :=
       "U" :=
   existT _ (U_ty)
       ]>%E $ ∅ );
-  unfold_generic_inst; simpl.
+  unfold_generic_inst; simpl;
+  generalize RR_CONFIG_DO_STRICT_RESOLUTION; intros ?.

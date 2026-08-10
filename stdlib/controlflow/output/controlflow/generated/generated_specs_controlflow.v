@@ -531,7 +531,8 @@ Definition convert_AsMut_as_mut_base_spec (Self_rt: RT) (T_rt: RT) (Self_st: syn
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (γ, y) : ((_ * _)), (y, γ) @ (mut_ref ulft_1 T_ty);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition convert_AsMut_base_spec (Self_rt: RT) (T_rt: RT) (Self_st: syn_type) (T_st: syn_type) (_ATTRS: ((convert_AsMut_spec_attrs ((Self_rt)) ((T_rt))))) : (spec_with _ _ (convert_AsMut_spec ((Self_rt)) ((T_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; T_ty]) : ([Self_rt; T_rt] : list RT), {|
@@ -579,7 +580,8 @@ Definition convert_AsRef_as_ref_base_spec (Self_rt: RT) (T_rt: RT) (Self_st: syn
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, convert_AsRef_Self_T_spec_attrs.(convert_AsRef_AsRefFn) self @ (shr_ref ulft_1 T_ty);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition convert_AsRef_base_spec (Self_rt: RT) (T_rt: RT) (Self_st: syn_type) (T_st: syn_type) (_ATTRS: ((convert_AsRef_spec_attrs ((Self_rt)) ((T_rt))))) : (spec_with _ _ (convert_AsRef_spec ((Self_rt)) ((T_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; T_ty]) : ([Self_rt; T_rt] : list RT), {|
@@ -627,7 +629,8 @@ Definition convert_From_from_base_spec (Self_rt: RT) (T_rt: RT) (Self_st: syn_ty
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, convert_From_Self_T_spec_attrs.(convert_From_FromFn) value @ Self_ty;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition convert_From_base_spec (Self_rt: RT) (T_rt: RT) (Self_st: syn_type) (T_st: syn_type) (_ATTRS: ((convert_From_spec_attrs ((Self_rt)) ((T_rt))))) : (spec_with _ _ (convert_From_spec ((Self_rt)) ((T_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; T_ty]) : ([Self_rt; T_rt] : list RT), {|
@@ -675,7 +678,8 @@ Definition convert_Into_into_base_spec (Self_rt: RT) (T_rt: RT) (Self_st: syn_ty
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, convert_Into_Self_T_spec_attrs.(convert_Into_IntoFn) self @ T_ty;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition convert_Into_base_spec (Self_rt: RT) (T_rt: RT) (Self_st: syn_type) (T_st: syn_type) (_ATTRS: ((convert_Into_spec_attrs ((Self_rt)) ((T_rt))))) : (spec_with _ _ (convert_Into_spec ((Self_rt)) ((T_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; T_ty]) : ([Self_rt; T_rt] : list RT), {|
@@ -723,7 +727,8 @@ Definition FromResidual_from_residual_base_spec (Self_rt: RT) (R_rt: RT) (Self_s
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (y) : ((_)), y @ Self_ty;
-      (* postcondition *) (λ π : thread_id, (⌜(Some y = FromResidual_Self_R_spec_attrs.(FromResidual_FromResidualFn) residual)%Z⌝)).
+      (* postcondition *) (λ π : thread_id, (⌜(Some y = FromResidual_Self_R_spec_attrs.(FromResidual_FromResidualFn) residual)%Z⌝)) |
+      (* unwind post... *) False.
 
 Definition FromResidual_base_spec (Self_rt: RT) (R_rt: RT) (Self_st: syn_type) (R_st: syn_type) (_ATTRS: ((FromResidual_spec_attrs ((Self_rt)) ((R_rt))))) : (spec_with _ _ (FromResidual_spec ((Self_rt)) ((R_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; R_ty]) : ([Self_rt; R_rt] : list RT), {|
@@ -775,7 +780,8 @@ Definition Try_branch_base_spec (Self_rt: RT) (Output_rt: RT) (Residual_rt: RT) 
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Try_Self_spec_attrs.(Try_BranchFn) (self) @ (ControlFlow_ty ((Residual_rt)) ((Output_rt)) -[] -[Residual_ty; Output_ty]);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition Try_from_output_base_spec (Self_rt: RT) (Output_rt: RT) (Residual_rt: RT) (Self_st: syn_type) (Output_st: syn_type) (Residual_st: syn_type) (FromResidual_Self_SelfasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Self_rt) (Residual_rt) )) (Try_Self_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (Self_rt) (Output_rt) (Residual_rt) FromResidual_Self_SelfasTry_Residual_spec_attrs)) :=
   fn(∀ ( *[]) : 0 | ( *[Self_ty; Output_ty; Residual_ty]) : ([(Self_rt, Self_st); (Output_rt, Output_st); (Residual_rt, Residual_st)] : list (RT * syn_type)%type) | 
@@ -785,7 +791,8 @@ Definition Try_from_output_base_spec (Self_rt: RT) (Output_rt: RT) (Residual_rt:
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Try_Self_spec_attrs.(Try_FromOutputFn) (output) @ Self_ty;
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition Try_base_spec (Self_rt: RT) (Output_rt: RT) (Residual_rt: RT) (Self_st: syn_type) (Output_st: syn_type) (Residual_st: syn_type) (FromResidual_Self_SelfasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Self_rt) (Residual_rt) )) (_ATTRS: ((Try_spec_attrs ((Self_rt)) ((Output_rt)) ((Residual_rt)) (FromResidual_Self_SelfasTry_Residual_spec_attrs)))) : (spec_with _ _ (Try_spec ((Self_rt)) ((Output_rt)) ((Residual_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Output_ty; Residual_ty]) : ([Self_rt; Output_rt; Residual_rt] : list RT), {|
@@ -929,7 +936,8 @@ Definition type_of_ControlFlow_BC_break_value (B_rt: RT) (C_rt: RT) (B_st: syn_t
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, match self with | Ok _ => None | Err x => Some x end @ (Option_ty ((B_rt)) -[] -[B_ty]);
-      (* postcondition *) (λ π : thread_id, True).
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
 
 Definition trait_incl_of_drop_glue_ControlFlow (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) (DropGlue_B_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (B_rt)))) (DropGlue_C_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (C_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_B_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (B_rt) B_st-[] -[B_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_C_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (C_rt) C_st-[] -[C_ty])))).

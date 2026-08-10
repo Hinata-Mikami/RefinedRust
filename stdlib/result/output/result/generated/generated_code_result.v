@@ -50,7 +50,7 @@ Section Formatter_sls.
 End Formatter_sls.
 
 Section code.
-Context `{RRGS : !refinedrustGS Σ}.
+Context `{!LayoutAlg}.
 Open Scope printing_sugar.
 
 Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) (Clone_T_clone_loc: loc) (T_st: syn_type) (E_st: syn_type) : function :=
@@ -85,7 +85,8 @@ Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "vlft12" "plft11"; (* function_call *)
       CallS Clone_E_clone_loc ["vlft12"] [] [@{expr} move{ RefOp } ("__8")] (Some (Na1Ord, (use_op_alg' E_st), "__7"))
       ( Goto "_bb5")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb3" :=
@@ -101,7 +102,8 @@ Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "vlft13" "plft9"; (* function_call *)
       CallS Clone_T_clone_loc ["vlft13"] [] [@{expr} move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' T_st), "__4"))
       ( Goto "_bb4")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb4" :=
@@ -185,7 +187,7 @@ Program Definition Result_TE_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T
       "__7" <-{ (use_op_alg' ((tuple1_sls (T_st)) : syn_type)) } StructInit (tuple1_sls (T_st)) [("0", move{ (use_op_alg' T_st) } ("__8") : expr)];
       CallS FnOnce_F_T_call_once_loc [] [] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple1_sls (T_st)) : syn_type)) } ("__7")] (Some (Na1Ord, (use_op_alg' U_st), "__5"))
       ( Goto "_bb4")
-      ( StuckS)
+      ( Goto "_bb7")
      ]>%E $
      <[
      "_bb4" :=
@@ -209,10 +211,14 @@ Program Definition Result_TE_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T
       return (move{ (use_op_alg' (Result_st (U_st) (E_st))) } ("__0"))
      ]>%E $
      <[
+     "_bb7" :=
+      Unwind
+     ]>%E $
+     <[
      "_bb8" :=
       CallS DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("op")] None
       ( Goto "_bb6")
-      ( StuckS)
+      ( Goto "_bb7")
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -265,7 +271,7 @@ Program Definition Result_TE_map_err_def (DropGlue_O_drop_glue_loc: loc) (FnOnce
       "__9" <-{ (use_op_alg' ((tuple1_sls (E_st)) : syn_type)) } StructInit (tuple1_sls (E_st)) [("0", move{ (use_op_alg' E_st) } ("__10") : expr)];
       CallS FnOnce_O_E_call_once_loc [] [] [@{expr} move{ (use_op_alg' O_st) } ("__8"); move{ (use_op_alg' ((tuple1_sls (E_st)) : syn_type)) } ("__9")] (Some (Na1Ord, (use_op_alg' F_st), "__7"))
       ( Goto "_bb4")
-      ( StuckS)
+      ( Goto "_bb7")
      ]>%E $
      <[
      "_bb3" :=
@@ -300,10 +306,14 @@ Program Definition Result_TE_map_err_def (DropGlue_O_drop_glue_loc: loc) (FnOnce
       return (move{ (use_op_alg' (Result_st (T_st) (F_st))) } ("__0"))
      ]>%E $
      <[
+     "_bb7" :=
+      Unwind
+     ]>%E $
+     <[
      "_bb8" :=
       CallS DropGlue_O_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("op")] None
       ( Goto "_bb6")
-      ( StuckS)
+      ( Goto "_bb7")
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -337,13 +347,13 @@ Program Definition drop_glue_Result_def (DropGlue_E_drop_glue_loc: loc) (DropGlu
      "_bb2" :=
       CallS DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((Result_els (T_st) (E_st))) "Ok" (!{ RefOp } ( "ptr" ))) at{ (Result_Ok_sls (T_st) (E_st)) } "0")] None
       ( Goto "_bb1")
-      ( StuckS)
+      ( Unwind)
      ]>%E $
      <[
      "_bb3" :=
       CallS DropGlue_E_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((Result_els (T_st) (E_st))) "Err" (!{ RefOp } ( "ptr" ))) at{ (Result_Err_sls (T_st) (E_st)) } "0")] None
       ( Goto "_bb1")
-      ( StuckS)
+      ( Unwind)
      ]>%E $
       ∅;
      f_init := "_bb0";

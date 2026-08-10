@@ -1,7 +1,7 @@
 From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 Section code.
-Context `{RRGS : !refinedrustGS Σ}.
+Context `{!LayoutAlg}.
 Open Scope printing_sugar.
 
 Program Definition i128_is_negative_def  : function :=
@@ -304,7 +304,7 @@ Qed.
 
 
 
-Program Definition u128_abs_diff_def  : function :=
+Program Definition u128_abs_diff_def (panic_shim_loc: loc) : function :=
   {|
      f_args := [
       ("x", (it_layout U128) : layout);
@@ -336,8 +336,13 @@ Program Definition u128_abs_diff_def  : function :=
       local_live{ (IntSynType U128) } "__7";
       "__7" <-{ (IntOp U128) } copy{ (IntOp U128) } ("x");
       "__8" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U128)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U128)) BoolSynType) [("0", (copy{ (IntOp U128) } ("__6")) -{ (IntOp U128) , (IntOp U128) } (copy{ (IntOp U128) } ("__7")) : expr); ("1", (copy{ (IntOp U128) } ("__6")) -c{ (IntOp U128) , (IntOp U128) } (copy{ (IntOp U128) } ("__7")) : expr)];
-      assert{ BoolOp }: (move{ BoolOp } (("__8") at{ (tuple2_sls ((IntSynType U128)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
-      Goto "_bb2"
+      if{ BoolOp }: (move{ BoolOp } (("__8") at{ (tuple2_sls ((IntSynType U128)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false) then
+       Goto "_bb2"
+      else
+       CallS panic_shim_loc [] [] [@{expr} ] None
+       ( StuckS)
+       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+        Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -355,8 +360,13 @@ Program Definition u128_abs_diff_def  : function :=
       local_live{ (IntSynType U128) } "__10";
       "__10" <-{ (IntOp U128) } copy{ (IntOp U128) } ("other");
       "__11" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U128)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U128)) BoolSynType) [("0", (copy{ (IntOp U128) } ("__9")) -{ (IntOp U128) , (IntOp U128) } (copy{ (IntOp U128) } ("__10")) : expr); ("1", (copy{ (IntOp U128) } ("__9")) -c{ (IntOp U128) , (IntOp U128) } (copy{ (IntOp U128) } ("__10")) : expr)];
-      assert{ BoolOp }: (move{ BoolOp } (("__11") at{ (tuple2_sls ((IntSynType U128)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
-      Goto "_bb4"
+      if{ BoolOp }: (move{ BoolOp } (("__11") at{ (tuple2_sls ((IntSynType U128)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false) then
+       Goto "_bb4"
+      else
+       CallS panic_shim_loc [] [] [@{expr} ] None
+       ( StuckS)
+       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+        Unwind)
      ]>%E $
      <[
      "_bb4" :=
@@ -380,7 +390,7 @@ Qed.
 
 
 
-Program Definition u16_abs_diff_def  : function :=
+Program Definition u16_abs_diff_def (panic_shim_loc: loc) : function :=
   {|
      f_args := [
       ("x", (it_layout U16) : layout);
@@ -412,8 +422,13 @@ Program Definition u16_abs_diff_def  : function :=
       local_live{ (IntSynType U16) } "__7";
       "__7" <-{ (IntOp U16) } copy{ (IntOp U16) } ("x");
       "__8" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U16)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U16)) BoolSynType) [("0", (copy{ (IntOp U16) } ("__6")) -{ (IntOp U16) , (IntOp U16) } (copy{ (IntOp U16) } ("__7")) : expr); ("1", (copy{ (IntOp U16) } ("__6")) -c{ (IntOp U16) , (IntOp U16) } (copy{ (IntOp U16) } ("__7")) : expr)];
-      assert{ BoolOp }: (move{ BoolOp } (("__8") at{ (tuple2_sls ((IntSynType U16)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
-      Goto "_bb2"
+      if{ BoolOp }: (move{ BoolOp } (("__8") at{ (tuple2_sls ((IntSynType U16)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false) then
+       Goto "_bb2"
+      else
+       CallS panic_shim_loc [] [] [@{expr} ] None
+       ( StuckS)
+       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+        Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -431,8 +446,13 @@ Program Definition u16_abs_diff_def  : function :=
       local_live{ (IntSynType U16) } "__10";
       "__10" <-{ (IntOp U16) } copy{ (IntOp U16) } ("other");
       "__11" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U16)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U16)) BoolSynType) [("0", (copy{ (IntOp U16) } ("__9")) -{ (IntOp U16) , (IntOp U16) } (copy{ (IntOp U16) } ("__10")) : expr); ("1", (copy{ (IntOp U16) } ("__9")) -c{ (IntOp U16) , (IntOp U16) } (copy{ (IntOp U16) } ("__10")) : expr)];
-      assert{ BoolOp }: (move{ BoolOp } (("__11") at{ (tuple2_sls ((IntSynType U16)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
-      Goto "_bb4"
+      if{ BoolOp }: (move{ BoolOp } (("__11") at{ (tuple2_sls ((IntSynType U16)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false) then
+       Goto "_bb4"
+      else
+       CallS panic_shim_loc [] [] [@{expr} ] None
+       ( StuckS)
+       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+        Unwind)
      ]>%E $
      <[
      "_bb4" :=
@@ -456,7 +476,7 @@ Qed.
 
 
 
-Program Definition u32_abs_diff_def  : function :=
+Program Definition u32_abs_diff_def (panic_shim_loc: loc) : function :=
   {|
      f_args := [
       ("x", (it_layout U32) : layout);
@@ -488,8 +508,13 @@ Program Definition u32_abs_diff_def  : function :=
       local_live{ (IntSynType U32) } "__7";
       "__7" <-{ (IntOp U32) } copy{ (IntOp U32) } ("x");
       "__8" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U32)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U32)) BoolSynType) [("0", (copy{ (IntOp U32) } ("__6")) -{ (IntOp U32) , (IntOp U32) } (copy{ (IntOp U32) } ("__7")) : expr); ("1", (copy{ (IntOp U32) } ("__6")) -c{ (IntOp U32) , (IntOp U32) } (copy{ (IntOp U32) } ("__7")) : expr)];
-      assert{ BoolOp }: (move{ BoolOp } (("__8") at{ (tuple2_sls ((IntSynType U32)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
-      Goto "_bb2"
+      if{ BoolOp }: (move{ BoolOp } (("__8") at{ (tuple2_sls ((IntSynType U32)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false) then
+       Goto "_bb2"
+      else
+       CallS panic_shim_loc [] [] [@{expr} ] None
+       ( StuckS)
+       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+        Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -507,8 +532,13 @@ Program Definition u32_abs_diff_def  : function :=
       local_live{ (IntSynType U32) } "__10";
       "__10" <-{ (IntOp U32) } copy{ (IntOp U32) } ("other");
       "__11" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U32)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U32)) BoolSynType) [("0", (copy{ (IntOp U32) } ("__9")) -{ (IntOp U32) , (IntOp U32) } (copy{ (IntOp U32) } ("__10")) : expr); ("1", (copy{ (IntOp U32) } ("__9")) -c{ (IntOp U32) , (IntOp U32) } (copy{ (IntOp U32) } ("__10")) : expr)];
-      assert{ BoolOp }: (move{ BoolOp } (("__11") at{ (tuple2_sls ((IntSynType U32)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
-      Goto "_bb4"
+      if{ BoolOp }: (move{ BoolOp } (("__11") at{ (tuple2_sls ((IntSynType U32)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false) then
+       Goto "_bb4"
+      else
+       CallS panic_shim_loc [] [] [@{expr} ] None
+       ( StuckS)
+       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+        Unwind)
      ]>%E $
      <[
      "_bb4" :=
@@ -532,7 +562,7 @@ Qed.
 
 
 
-Program Definition u64_abs_diff_def  : function :=
+Program Definition u64_abs_diff_def (panic_shim_loc: loc) : function :=
   {|
      f_args := [
       ("x", (it_layout U64) : layout);
@@ -564,8 +594,13 @@ Program Definition u64_abs_diff_def  : function :=
       local_live{ (IntSynType U64) } "__7";
       "__7" <-{ (IntOp U64) } copy{ (IntOp U64) } ("x");
       "__8" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U64)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U64)) BoolSynType) [("0", (copy{ (IntOp U64) } ("__6")) -{ (IntOp U64) , (IntOp U64) } (copy{ (IntOp U64) } ("__7")) : expr); ("1", (copy{ (IntOp U64) } ("__6")) -c{ (IntOp U64) , (IntOp U64) } (copy{ (IntOp U64) } ("__7")) : expr)];
-      assert{ BoolOp }: (move{ BoolOp } (("__8") at{ (tuple2_sls ((IntSynType U64)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
-      Goto "_bb2"
+      if{ BoolOp }: (move{ BoolOp } (("__8") at{ (tuple2_sls ((IntSynType U64)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false) then
+       Goto "_bb2"
+      else
+       CallS panic_shim_loc [] [] [@{expr} ] None
+       ( StuckS)
+       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+        Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -583,8 +618,13 @@ Program Definition u64_abs_diff_def  : function :=
       local_live{ (IntSynType U64) } "__10";
       "__10" <-{ (IntOp U64) } copy{ (IntOp U64) } ("other");
       "__11" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U64)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U64)) BoolSynType) [("0", (copy{ (IntOp U64) } ("__9")) -{ (IntOp U64) , (IntOp U64) } (copy{ (IntOp U64) } ("__10")) : expr); ("1", (copy{ (IntOp U64) } ("__9")) -c{ (IntOp U64) , (IntOp U64) } (copy{ (IntOp U64) } ("__10")) : expr)];
-      assert{ BoolOp }: (move{ BoolOp } (("__11") at{ (tuple2_sls ((IntSynType U64)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
-      Goto "_bb4"
+      if{ BoolOp }: (move{ BoolOp } (("__11") at{ (tuple2_sls ((IntSynType U64)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false) then
+       Goto "_bb4"
+      else
+       CallS panic_shim_loc [] [] [@{expr} ] None
+       ( StuckS)
+       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+        Unwind)
      ]>%E $
      <[
      "_bb4" :=
@@ -608,7 +648,7 @@ Qed.
 
 
 
-Program Definition u8_abs_diff_def  : function :=
+Program Definition u8_abs_diff_def (panic_shim_loc: loc) : function :=
   {|
      f_args := [
       ("x", (it_layout U8) : layout);
@@ -640,8 +680,13 @@ Program Definition u8_abs_diff_def  : function :=
       local_live{ (IntSynType U8) } "__7";
       "__7" <-{ (IntOp U8) } copy{ (IntOp U8) } ("x");
       "__8" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U8)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U8)) BoolSynType) [("0", (copy{ (IntOp U8) } ("__6")) -{ (IntOp U8) , (IntOp U8) } (copy{ (IntOp U8) } ("__7")) : expr); ("1", (copy{ (IntOp U8) } ("__6")) -c{ (IntOp U8) , (IntOp U8) } (copy{ (IntOp U8) } ("__7")) : expr)];
-      assert{ BoolOp }: (move{ BoolOp } (("__8") at{ (tuple2_sls ((IntSynType U8)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
-      Goto "_bb2"
+      if{ BoolOp }: (move{ BoolOp } (("__8") at{ (tuple2_sls ((IntSynType U8)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false) then
+       Goto "_bb2"
+      else
+       CallS panic_shim_loc [] [] [@{expr} ] None
+       ( StuckS)
+       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+        Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -659,8 +704,13 @@ Program Definition u8_abs_diff_def  : function :=
       local_live{ (IntSynType U8) } "__10";
       "__10" <-{ (IntOp U8) } copy{ (IntOp U8) } ("other");
       "__11" <-{ (use_op_alg' ((tuple2_sls ((IntSynType U8)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType U8)) BoolSynType) [("0", (copy{ (IntOp U8) } ("__9")) -{ (IntOp U8) , (IntOp U8) } (copy{ (IntOp U8) } ("__10")) : expr); ("1", (copy{ (IntOp U8) } ("__9")) -c{ (IntOp U8) , (IntOp U8) } (copy{ (IntOp U8) } ("__10")) : expr)];
-      assert{ BoolOp }: (move{ BoolOp } (("__11") at{ (tuple2_sls ((IntSynType U8)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
-      Goto "_bb4"
+      if{ BoolOp }: (move{ BoolOp } (("__11") at{ (tuple2_sls ((IntSynType U8)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false) then
+       Goto "_bb4"
+      else
+       CallS panic_shim_loc [] [] [@{expr} ] None
+       ( StuckS)
+       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+        Unwind)
      ]>%E $
      <[
      "_bb4" :=
@@ -684,7 +734,7 @@ Qed.
 
 
 
-Program Definition usize_abs_diff_def  : function :=
+Program Definition usize_abs_diff_def (panic_shim_loc: loc) : function :=
   {|
      f_args := [
       ("x", (it_layout USize) : layout);
@@ -716,8 +766,13 @@ Program Definition usize_abs_diff_def  : function :=
       local_live{ (IntSynType USize) } "__7";
       "__7" <-{ (IntOp USize) } copy{ (IntOp USize) } ("x");
       "__8" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) BoolSynType) [("0", (copy{ (IntOp USize) } ("__6")) -{ (IntOp USize) , (IntOp USize) } (copy{ (IntOp USize) } ("__7")) : expr); ("1", (copy{ (IntOp USize) } ("__6")) -c{ (IntOp USize) , (IntOp USize) } (copy{ (IntOp USize) } ("__7")) : expr)];
-      assert{ BoolOp }: (move{ BoolOp } (("__8") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
-      Goto "_bb2"
+      if{ BoolOp }: (move{ BoolOp } (("__8") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false) then
+       Goto "_bb2"
+      else
+       CallS panic_shim_loc [] [] [@{expr} ] None
+       ( StuckS)
+       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+        Unwind)
      ]>%E $
      <[
      "_bb2" :=
@@ -735,8 +790,13 @@ Program Definition usize_abs_diff_def  : function :=
       local_live{ (IntSynType USize) } "__10";
       "__10" <-{ (IntOp USize) } copy{ (IntOp USize) } ("other");
       "__11" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) BoolSynType) [("0", (copy{ (IntOp USize) } ("__9")) -{ (IntOp USize) , (IntOp USize) } (copy{ (IntOp USize) } ("__10")) : expr); ("1", (copy{ (IntOp USize) } ("__9")) -c{ (IntOp USize) , (IntOp USize) } (copy{ (IntOp USize) } ("__10")) : expr)];
-      assert{ BoolOp }: (move{ BoolOp } (("__11") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false);
-      Goto "_bb4"
+      if{ BoolOp }: (move{ BoolOp } (("__11") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false) then
+       Goto "_bb4"
+      else
+       CallS panic_shim_loc [] [] [@{expr} ] None
+       ( StuckS)
+       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+        Unwind)
      ]>%E $
      <[
      "_bb4" :=

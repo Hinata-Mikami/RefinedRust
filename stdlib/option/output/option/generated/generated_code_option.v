@@ -31,7 +31,7 @@ Section Option_els.
 End Option_els.
 
 Section code.
-Context `{RRGS : !refinedrustGS Σ}.
+Context `{!LayoutAlg}.
 Open Scope printing_sugar.
 
 Program Definition OptionTasstd_clone_Clone_clone_def (Clone_T_clone_loc: loc) (T_st: syn_type) : function :=
@@ -66,7 +66,8 @@ Program Definition OptionTasstd_clone_Clone_clone_def (Clone_T_clone_loc: loc) (
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft7"; (* function_call *)
       CallS Clone_T_clone_loc ["vlft8"] [] [@{expr} move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' T_st), "__4"))
       ( Goto "_bb4")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
      ]>%E $
      <[
      "_bb3" :=
@@ -187,7 +188,8 @@ Program Definition Option_T_filter_def (DropGlue_P_drop_glue_loc: loc) (DropGlue
       CallS FnOnce_P_REFT_call_once_loc ["vlft4"] [] [@{expr} move{ (use_op_alg' P_st) } ("__7"); move{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } ("__8")] (Some (Na1Ord, BoolOp, "__6"))
       ( annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
        Goto "_bb2")
-      ( StuckS)
+      ( annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
+       Goto "_bb9")
      ]>%E $
      <[
      "_bb2" :=
@@ -221,7 +223,7 @@ Program Definition Option_T_filter_def (DropGlue_P_drop_glue_loc: loc) (DropGlue
       local_dead "__6";
       CallS DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("x")] None
       ( Goto "_bb6")
-      ( StuckS)
+      ( Goto "_bb10")
      ]>%E $
      <[
      "_bb5" :=
@@ -247,10 +249,20 @@ Program Definition Option_T_filter_def (DropGlue_P_drop_glue_loc: loc) (DropGlue
       return (move{ (use_op_alg' (Option_st (T_st))) } ("__0"))
      ]>%E $
      <[
+     "_bb9" :=
+      CallS DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("x")] None
+      ( Goto "_bb10")
+      ( UnwindTerminate)
+     ]>%E $
+     <[
+     "_bb10" :=
+      Unwind
+     ]>%E $
+     <[
      "_bb11" :=
       CallS DropGlue_P_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("predicate")] None
       ( Goto "_bb8")
-      ( StuckS)
+      ( Goto "_bb10")
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -305,7 +317,7 @@ Program Definition Option_T_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T_
       "__7" <-{ (use_op_alg' ((tuple1_sls (T_st)) : syn_type)) } StructInit (tuple1_sls (T_st)) [("0", move{ (use_op_alg' T_st) } ("__8") : expr)];
       CallS FnOnce_F_T_call_once_loc [] [] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple1_sls (T_st)) : syn_type)) } ("__7")] (Some (Na1Ord, (use_op_alg' U_st), "__5"))
       ( Goto "_bb4")
-      ( StuckS)
+      ( Goto "_bb6")
      ]>%E $
      <[
      "_bb4" :=
@@ -322,10 +334,14 @@ Program Definition Option_T_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T_
       return (move{ (use_op_alg' (Option_st (U_st))) } ("__0"))
      ]>%E $
      <[
+     "_bb6" :=
+      Unwind
+     ]>%E $
+     <[
      "_bb7" :=
       CallS DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("f")] None
       ( Goto "_bb5")
-      ( StuckS)
+      ( Goto "_bb6")
      ]>%E $
      <[
      "_bb8" :=
@@ -344,7 +360,7 @@ Qed.
 
 
 
-Program Definition Option_T_unwrap_def (T_st: syn_type) : function :=
+Program Definition Option_T_unwrap_def (panic_shim_loc: loc) (T_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' (Option_st (T_st))) : layout)
@@ -364,7 +380,10 @@ Program Definition Option_T_unwrap_def (T_st: syn_type) : function :=
      <[
      "_bb2" :=
       local_live{ UnitSynType } "__4";
-      StuckS
+      CallS panic_shim_loc [] [] [@{expr} ] None
+      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb4")
      ]>%E $
      <[
      "_bb3" :=
@@ -373,6 +392,10 @@ Program Definition Option_T_unwrap_def (T_st: syn_type) : function :=
       "__0" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("val");
       local_dead "val";
       return (move{ (use_op_alg' T_st) } ("__0"))
+     ]>%E $
+     <[
+     "_bb4" :=
+      Unwind
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -427,10 +450,15 @@ Program Definition Option_T_unwrap_or_def (DropGlue_T_drop_glue_loc: loc) (T_st:
       return (move{ (use_op_alg' T_st) } ("__0"))
      ]>%E $
      <[
+     "_bb5" :=
+      Unwind
+     ]>%E $
+     <[
      "_bb6" :=
       CallS DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("def")] None
       ( Goto "_bb4")
-      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb5")
      ]>%E $
      <[
      "_bb7" :=
@@ -471,7 +499,7 @@ Program Definition drop_glue_Option_def (DropGlue_T_drop_glue_loc: loc) (T_st: s
      "_bb2" :=
       CallS DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((EnumData ((Option_els (T_st))) "Some" (!{ RefOp } ( "ptr" ))) at{ (Option_Some_sls (T_st)) } "0")] None
       ( Goto "_bb1")
-      ( StuckS)
+      ( Unwind)
      ]>%E $
       ∅;
      f_init := "_bb0";

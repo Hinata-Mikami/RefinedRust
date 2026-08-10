@@ -1,7 +1,7 @@
 From radium Require Import lang notation.
 From refinedrust Require Import typing.
 
-Program Definition ptr_write `{!LayoutAlg} (DropGlue_T_loc : loc) (T_st : syn_type) : function := {|
+Program Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("dst", void* ); ("src", use_layout_alg' T_st)];
   f_code :=
     <["_bb0" :=

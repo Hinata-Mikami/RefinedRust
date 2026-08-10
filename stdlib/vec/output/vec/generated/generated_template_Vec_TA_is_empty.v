@@ -54,4 +54,5 @@ Ltac Vec_TA_is_empty_prelude :=
       "A" :=
   existT _ (A_ty)
       ]>%E $ ∅ );
-  unfold_generic_inst; simpl.
+  unfold_generic_inst; simpl;
+  generalize RR_CONFIG_DO_STRICT_RESOLUTION; intros ?.

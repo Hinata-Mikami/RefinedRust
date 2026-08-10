@@ -30,7 +30,7 @@ Proof.
     iPoseProof (boringly_intro with "Hpre") as "#Hpre_x".
 
     rep <-! liRStep. liShow.
-    all: try solve [apply Hpanic; unfold closure_may_panic; eauto].
+    all: try solve [apply Hpanic; unfold closure_may_unwind; eauto].
     iRename select (FnOnce_PostMut _ _ _ _ _ _ _) into "Hpost".
     iPoseProof (boringly_intro with "Hpost") as "#Hpost_x".
     iPoseProof ("Hinv_clos" with "Hpost_x") as "Hinv".
