@@ -38,7 +38,7 @@ Program Definition alloc_realloc_def `{!LayoutAlg} (alloc_alloc_loc : loc) (copy
          annot{0}: StopAnnot;
          CallS copy_nonoverlapping_loc [] [RSTInt U8] [@{expr} copy{PtrOp} "ptr"; copy{PtrOp} "new_ptr"; copy{IntOp USize} "min_size"] None
            (CallS alloc_dealloc_loc [] [] [@{expr} copy{IntOp USize} "old_size"; copy{IntOp USize} "align"; copy{PtrOp} "ptr"] None
-             (return (move{PtrOp} "new_ptr")) StuckS) StuckS) StuckS
+              (return (move{PtrOp} "new_ptr")) Unwind) Unwind) Unwind
     ]>%E $
     ∅;
   f_init := "_bb0";
@@ -152,7 +152,7 @@ Program Definition alloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_of
           ("bytes" <-{ IntOp USize } ((copy{IntOp USize} "len") ×{IntOp USize, IntOp USize} (copy{IntOp USize} "size_of_T"));
            CallS alloc_alloc_loc [] [] [@{expr} copy{IntOp USize} "bytes"; copy{IntOp USize} "align_log2"]
              (Some (Na1Ord, PtrOp, "__0"))
-             (return (move{PtrOp} "__0")) StuckS) StuckS) StuckS
+              (return (move{PtrOp} "__0")) Unwind) Unwind) Unwind
     ]>%E $
     ∅;
   f_init := "bb0";
@@ -240,7 +240,7 @@ Program Definition realloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_
            "new_bytes" <-{ IntOp USize } ((copy{IntOp USize} "new_len") ×{IntOp USize, IntOp USize} (copy{IntOp USize} "size_of_T"));
            CallS alloc_realloc_loc [] [] [@{expr} copy{IntOp USize} "old_bytes"; copy{IntOp USize} "align_log2"; copy{IntOp USize} "new_bytes"; copy{PtrOp} "ptr"]
              (Some (Na1Ord, PtrOp, "__0"))
-             (return (move{PtrOp} "__0")) StuckS) StuckS) StuckS
+              (return (move{PtrOp} "__0")) Unwind) Unwind) Unwind
     ]>%E $
     ∅;
   f_init := "bb0";
@@ -340,7 +340,7 @@ Program Definition dealloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_
           ("bytes" <-{ IntOp USize } ((copy{IntOp USize} "len") ×{IntOp USize, IntOp USize} (copy{IntOp USize} "size_of_T"));
            CallS alloc_dealloc_loc [] [] [@{expr} copy{IntOp USize} "bytes"; copy{IntOp USize} "align_log2"; copy{PtrOp} "ptr"] None
              ("__0" <-{use_op_alg' UnitSynType} zst_val;
-              return (move{use_op_alg' UnitSynType} "__0")) StuckS) StuckS) StuckS
+               return (move{use_op_alg' UnitSynType} "__0")) Unwind) Unwind) Unwind
     ]>%E $
     ∅;
   f_init := "bb0";
@@ -410,7 +410,7 @@ Program Definition check_array_layoutable `{!LayoutAlg} (T_st : syn_type) (mem_a
         (CallS mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ]
           (Some (Na1Ord, IntOp USize, "size_of_T"))
           ("check" <-{ BoolOp } ((copy{IntOp USize} "len") ×c{IntOp USize, IntOp USize} (copy{IntOp USize} "size_of_T"));
-           if{BoolOp}: (copy{BoolOp} "check") then Goto "bb2" else Goto "bb1") StuckS) StuckS ]>%E $
+           if{BoolOp}: (copy{BoolOp} "check") then Goto "bb2" else Goto "bb1") Unwind) Unwind ]>%E $
     <["bb1" :=
       (* result fits into usize *)
       "bytes" <-{ IntOp USize } ((copy{IntOp USize} "len") ×{IntOp USize, IntOp USize} (copy{IntOp USize} "size_of_T"));

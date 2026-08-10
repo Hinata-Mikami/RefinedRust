@@ -205,7 +205,11 @@ Program Definition drop_glue_tuple1_def (DropGlue_T0_drop_glue_loc: loc) (T0_st:
      "_bb0" :=
       local_live{ UnitSynType } "ret";
        CallS DropGlue_T0_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple1_sls (T0_st)) } "0")]
-         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb2") StuckS
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb2") (Goto "_bb1")
+     ]>%E $
+     <[
+     "_bb1" :=
+       Unwind
      ]>%E $
      <[
      "_bb2" :=
@@ -228,16 +232,25 @@ Program Definition drop_glue_tuple2_def (DropGlue_T0_drop_glue_loc: loc) (DropGl
      "_bb0" :=
       local_live{ UnitSynType } "ret";
        CallS DropGlue_T0_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple2_sls (T0_st) (T1_st)) } "0")]
-         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb4") StuckS
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb4") (Goto "_bb3")
+     ]>%E $
+     <[
+     "_bb1" :=
+       Unwind
      ]>%E $
      <[
      "_bb2" :=
-      return (zst_val)
+       return (zst_val)
+     ]>%E $
+     <[
+     "_bb3" :=
+       CallS DropGlue_T1_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple2_sls (T0_st) (T1_st)) } "1")]
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb1") UnwindTerminate
      ]>%E $
      <[
      "_bb4" :=
        CallS DropGlue_T1_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple2_sls (T0_st) (T1_st)) } "1")]
-         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb2") StuckS
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb2") (Goto "_bb1")
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -256,7 +269,11 @@ Program Definition drop_glue_tuple3_def (DropGlue_T0_drop_glue_loc: loc) (DropGl
      "_bb0" :=
       local_live{ UnitSynType } "ret";
        CallS DropGlue_T0_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple3_sls (T0_st) (T1_st) (T2_st)) } "0")]
-         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb4") StuckS
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb4") (Goto "_bb7")
+     ]>%E $
+     <[
+     "_bb1" :=
+       Unwind
      ]>%E $
      <[
      "_bb2" :=
@@ -265,12 +282,22 @@ Program Definition drop_glue_tuple3_def (DropGlue_T0_drop_glue_loc: loc) (DropGl
      <[
      "_bb4" :=
        CallS DropGlue_T1_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple3_sls (T0_st) (T1_st) (T2_st)) } "1")]
-         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb5") StuckS
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb5") (Goto "_bb6")
      ]>%E $
      <[
      "_bb5" :=
        CallS DropGlue_T2_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple3_sls (T0_st) (T1_st) (T2_st)) } "2")]
-         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb2") StuckS
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb2") (Goto "_bb1")
+     ]>%E $
+     <[
+     "_bb6" :=
+       CallS DropGlue_T2_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple3_sls (T0_st) (T1_st) (T2_st)) } "2")]
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb1") UnwindTerminate
+     ]>%E $
+     <[
+     "_bb7" :=
+       CallS DropGlue_T1_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple3_sls (T0_st) (T1_st) (T2_st)) } "1")]
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb6") UnwindTerminate
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -289,7 +316,11 @@ Program Definition drop_glue_tuple4_def (DropGlue_T0_drop_glue_loc: loc) (DropGl
      "_bb0" :=
       local_live{ UnitSynType } "ret";
        CallS DropGlue_T0_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple4_sls (T0_st) (T1_st) (T2_st) (T3_st)) } "0")]
-         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb4") StuckS
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb4") (Goto "_bb9")
+     ]>%E $
+     <[
+     "_bb1" :=
+       Unwind
      ]>%E $
      <[
      "_bb2" :=
@@ -298,17 +329,32 @@ Program Definition drop_glue_tuple4_def (DropGlue_T0_drop_glue_loc: loc) (DropGl
      <[
      "_bb4" :=
        CallS DropGlue_T1_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple4_sls (T0_st) (T1_st) (T2_st) (T3_st)) } "1")]
-         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb5") StuckS
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb5") (Goto "_bb8")
      ]>%E $
      <[
      "_bb5" :=
        CallS DropGlue_T2_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple4_sls (T0_st) (T1_st) (T2_st) (T3_st)) } "2")]
-         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb6") StuckS
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb6") (Goto "_bb7")
      ]>%E $
      <[
      "_bb6" :=
        CallS DropGlue_T3_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple4_sls (T0_st) (T1_st) (T2_st) (T3_st)) } "3")]
-         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb2") StuckS
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb2") (Goto "_bb1")
+     ]>%E $
+     <[
+     "_bb7" :=
+       CallS DropGlue_T3_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple4_sls (T0_st) (T1_st) (T2_st) (T3_st)) } "3")]
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb1") UnwindTerminate
+     ]>%E $
+     <[
+     "_bb8" :=
+       CallS DropGlue_T2_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple4_sls (T0_st) (T1_st) (T2_st) (T3_st)) } "2")]
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb7") UnwindTerminate
+     ]>%E $
+     <[
+     "_bb9" :=
+       CallS DropGlue_T1_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple4_sls (T0_st) (T1_st) (T2_st) (T3_st)) } "1")]
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb8") UnwindTerminate
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -327,7 +373,11 @@ Program Definition drop_glue_tuple5_def (DropGlue_T0_drop_glue_loc: loc) (DropGl
      "_bb0" :=
       local_live{ UnitSynType } "ret";
        CallS DropGlue_T0_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "0")]
-         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb4") StuckS
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb4") (Goto "_bb11")
+     ]>%E $
+     <[
+     "_bb1" :=
+       Unwind
      ]>%E $
      <[
      "_bb2" :=
@@ -336,22 +386,42 @@ Program Definition drop_glue_tuple5_def (DropGlue_T0_drop_glue_loc: loc) (DropGl
      <[
      "_bb4" :=
        CallS DropGlue_T1_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "1")]
-         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb5") StuckS
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb5") (Goto "_bb10")
      ]>%E $
      <[
      "_bb5" :=
        CallS DropGlue_T2_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "2")]
-         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb6") StuckS
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb6") (Goto "_bb9")
      ]>%E $
      <[
      "_bb6" :=
        CallS DropGlue_T3_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "3")]
-         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb7") StuckS
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb7") (Goto "_bb8")
      ]>%E $
      <[
      "_bb7" :=
        CallS DropGlue_T4_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "4")]
-         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb2") StuckS
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb2") (Goto "_bb1")
+     ]>%E $
+     <[
+     "_bb8" :=
+       CallS DropGlue_T4_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "4")]
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb1") UnwindTerminate
+     ]>%E $
+     <[
+     "_bb9" :=
+       CallS DropGlue_T3_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "3")]
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb8") UnwindTerminate
+     ]>%E $
+     <[
+     "_bb10" :=
+       CallS DropGlue_T2_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "2")]
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb9") UnwindTerminate
+     ]>%E $
+     <[
+     "_bb11" :=
+       CallS DropGlue_T1_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ PtrOp } ( "ptr" )) at{ (tuple5_sls (T0_st) (T1_st) (T2_st) (T3_st) (T4_st)) } "1")]
+         (Some (Na1Ord, UntypedOp unit_sl, "ret")) (Goto "_bb10") UnwindTerminate
      ]>%E $
       ∅;
      f_init := "_bb0";
