@@ -6,6 +6,9 @@ From refinedrust Require Import options.
 
 (** * Core rules of the type system *)
 
+(** Marker we emit if the program is unwinding. *)
+Inductive UnwindTrace := ProgramIsUnwinding.
+
 Section find.
   Context `{typeGS Σ}.
 
@@ -2143,7 +2146,20 @@ Section subsume.
     find_observation rt γ FindObsModeDirect (λ or,
       match or with
       | None =>
-          ⌜fast_eq_hint (rm = ResolveTry)⌝ ∗ T L (PlaceGhost γ) True false
+          match rm with
+          | ResolveAll =>
+            (* If we are unwinding or strict resolution is disabled... *)
+            find_tc_inst (TCOrT (TCOrT (CheckConfig UnwindTrace) (TCUnless (CheckConfig rr_config_strict_resolution))) TCTrue) (λ x,
+            match x with
+            | TCOrT_l _ _ _ =>
+              ∀ r, T L (#r) True true
+            | _ =>
+              ⌜fast_eq_hint (rm = ResolveTry)⌝ ∗
+              T L (PlaceGhost γ) True false
+            end)
+          | ResolveTry =>
+              T L (PlaceGhost γ) True false
+          end
       | Some r =>
           (* try again in case we should descend into the type or we have still got a PlaceGhost *)
           resolve_ghost π E L rm lb l (◁ ty)%I b r T
@@ -2151,11 +2167,19 @@ Section subsume.
     ⊢ resolve_ghost π E L rm lb l (◁ ty)%I b (PlaceGhost γ) T.
   Proof.
     iIntros "HT". iIntros (F ??) "#CTX #HE HL Hl".
-    iMod ("HT" with "[//]") as "HT". iDestruct "HT" as "[(%r & Hobs & HT) | (-> & HT)]".
+    iMod ("HT" with "[//]") as "HT". iDestruct "HT" as "[(%r & Hobs & HT) | HT]".
     - iPoseProof (ltype_own_ofty_use_obs with "Hl Hobs") as "Hl".
       iMod ("HT" with "[] [] CTX HE HL [$]") as "Ha"; [done.. | ].
       done.
-    - iExists L, _, True%I, _. iFrame. iApply maybe_logical_step_intro. eauto with iFrame.
+    - destruct rm.
+      { iDestruct "HT" as "(%x & HT)".
+        destruct x.
+        + iPoseProof (ltype_own_ofty_forget_obs with "Hl") as "(% & Hl)".
+          iSpecialize ("HT" $! _).
+          iExists L, _, True%I, _. iFrame. iApply maybe_logical_step_intro. eauto with iFrame.
+        + iDestruct "HT" as "(% & HT)".
+          iExists L, _, True%I, _. iFrame. iApply maybe_logical_step_intro. eauto with iFrame. }
+      iExists L, _, True%I, _. iFrame. iApply maybe_logical_step_intro. eauto with iFrame.
   Qed.
   Definition resolve_ghost_ofty_inst := [instance @resolve_ghost_ofty].
   Global Existing Instance resolve_ghost_ofty_inst | 7.
@@ -3249,7 +3273,8 @@ Section subsume.
                     typed_stmt E L f (AssignSE o ret_ot destination (Val v) normal) fn R U ϝ
                 | None => typed_stmt E L f normal fn R U ϝ
                 end)
-              (λ L, typed_stmt E L f unwind fn R U ϝ))
+              (λ L,
+                li_trace ProgramIsUnwinding (typed_stmt E L f unwind fn R U ϝ)))
               es L' [] []))))
     ⊢ typed_stmt E L f (CallS ef eκs etys es destination normal unwind) fn R U ϝ.
   Proof.

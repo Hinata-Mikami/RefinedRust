@@ -12,6 +12,11 @@ Inductive rr_config_dont_interpret_typing_hints : Prop :=
 Inductive rr_config_dont_interpret_shrref_typing_hints : Prop :=
 | RR_CONFIG_DONT_INTERPRET_SHR_REF_TYPING_HINTS.
 
+(* If resolution is not possible as there is no observation, the type system by default will universally quantify it.
+  Set this flag to instead make it a hard failure (useful to debug incomplete specs). *)
+Inductive rr_config_strict_resolution : Prop :=
+| RR_CONFIG_DO_STRICT_RESOLUTION.
+
 Class CheckConfig (C : Prop) : Prop := mk_check_config { check_config_witness : C }.
 Global Hint Extern 10 (CheckConfig ?C) =>
   match goal with

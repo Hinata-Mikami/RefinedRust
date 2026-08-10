@@ -262,15 +262,13 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             destination: code::Expr::Var("__0".to_owned()),
         };
 
-        let end_ref_lft = if *ref_self != ShimRefSelf::NoRef {
+        let end_ref_lft = (*ref_self != ShimRefSelf::NoRef).then(|| {
             let annot = code::Annotation::EndLft(coq::Ident::new(ref_lft));
-            Some(code::PrimStmt::Annot {
+            code::PrimStmt::Annot {
                 a: vec![annot],
                 why: None,
-            })
-        } else {
-            None
-        };
+            }
+        });
 
         let mut normal_stmts = Vec::new();
         if let Some(stmt) = &end_ref_lft {

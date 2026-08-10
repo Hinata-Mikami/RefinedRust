@@ -69,6 +69,7 @@ impl<T> Option<T> {
     #[rr::ensures(#iris "if_iNone self (⌜ret = None⌝ ∗ ty_ghost_drop {F} π ($# f))")]
     #[rr::requires(#iris "if_iSome self (λ self, ∃ p, ⌜op = Some p⌝ ∗ {F::Pre} π p f *[self])")]
     #[rr::ensures(#iris "if_iSome self (λ self, ∃ p x, ⌜op = Some p⌝ ∗ ⌜ret = Some x⌝ ∗ {F::Post} π p f *[self] x)")]
+    #[rr::may_panic_if("if_None self False ∧ if_Some self (λ x, ∃ p, op = Some p ∧ {F::PanicCondition} f p *[x])")]
     pub fn map<U, F>(self, f: F) -> Option<U>
     where
         F: FnOnce(T) -> U,
@@ -93,6 +94,7 @@ impl<T> Option<T> {
     #[rr::ensures(#iris "if_iSome ret (λ ret, ⌜self = Some ret⌝ ∗ ∃ p, ⌜op = Some p⌝ ∗ {P::Post} π p predicate *[ret] true)")]
     #[rr::ensures(#iris "if_iNone ret (if_iNone self (ty_ghost_drop {P} π ($# predicate)) ∗ 
                             if_iSome self (λ x, ∃ p, ⌜op = Some p⌝ ∗ {P::Post} π p predicate *[x] false))")]
+    #[rr::may_panic_if("if_None self False ∧ if_Some self (λ x, ∃ p, op = Some p ∧ {P::PanicCondition} predicate p *[x])")]
     pub fn filter<P>(self, predicate: P) -> Self
     where
         P: FnOnce(&T) -> bool,

@@ -12,7 +12,7 @@ Section resolve_ghost.
   Lemma resolve_ghost_struct_Owned {rts} π E L l (lts : hlist ltype rts) sls γ rm lb T :
     find_observation ((plist place_rfnRT rts)) γ FindObsModeDirect (λ or,
         match or with
-        | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
+        | None => ⌜fast_eq_hint (rm = ResolveTry)⌝ ∗ T L (PlaceGhost γ) True false
         | Some r => T L r True true
         end)
     ⊢ resolve_ghost π E L rm lb l (StructLtype lts sls) (Owned) (PlaceGhost γ) T.
@@ -33,7 +33,7 @@ Section resolve_ghost.
   Lemma resolve_ghost_struct_Uniq {rts} π E L l (lts : hlist ltype rts) sls γ rm lb κ γ' T :
     find_observation ((plist place_rfnRT rts)) γ FindObsModeDirect (λ or,
         match or with
-        | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
+        | None => ⌜fast_eq_hint (rm = ResolveTry)⌝ ∗ T L (PlaceGhost γ) True false
         | Some r => T L r True true
         end)
     ⊢ resolve_ghost π E L rm lb l (StructLtype lts sls) (Uniq κ γ') (PlaceGhost γ) T.
@@ -54,7 +54,7 @@ Section resolve_ghost.
   Lemma resolve_ghost_struct_Shared {rts} π E L l (lts : hlist ltype rts) sls γ rm lb κ T :
     find_observation (plist place_rfnRT rts) γ FindObsModeDirect (λ or,
         match or with
-        | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
+        | None => ⌜fast_eq_hint (rm = ResolveTry)⌝ ∗ T L (PlaceGhost γ) True false
         | Some r => T L r True true
         end)
     ⊢ resolve_ghost π E L rm lb l (StructLtype lts sls) (Shared κ) (PlaceGhost γ) T.

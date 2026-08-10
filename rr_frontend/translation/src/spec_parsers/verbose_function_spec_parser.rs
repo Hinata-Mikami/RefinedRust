@@ -1053,7 +1053,8 @@ where
                 // accept the attribute, but do not adjust the spec
             },
             "may_panic_if" => {
-                let condition = parse::LitStr::parse(buffer, scope).map_err(|e| spanned_error(span, ParserError::Parse(format!("{e:?}"))))?;
+                let condition = parse::LitStr::parse(buffer, scope)
+                    .map_err(|e| spanned_error(span, ParserError::Parse(format!("{e:?}"))))?;
                 if buffer.pos().is_some() {
                     return Err(spanned_error(
                         span,

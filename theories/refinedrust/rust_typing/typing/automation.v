@@ -42,8 +42,13 @@ Ltac solve_protected_eq_hook ::=
       unfold reverse_coercion
   end.
 
-Ltac liTrace_hook info ::=
-  add_case_distinction_info info.
+Ltac liTrace_hook inf ::=
+  match inf with
+  | ProgramIsUnwinding =>
+    generalize inf
+  | _ =>
+    add_case_distinction_info inf
+  end.
 
 Ltac liExist_hook A protect ::=
   lazymatch A with

@@ -125,10 +125,12 @@ Section map.
     (iter_attrs : traits_iterator_Iterator_spec_attrs Self_rt Item_rt)
     (Pre : thread_id → ClosParams → RT_xt Clos_rt → RT_xt (tuple1_rt Item_rt) → iProp Σ)
     (PostMut : thread_id → ClosParams → RT_xt Clos_rt → RT_xt (tuple1_rt Item_rt) → RT_xt Clos_rt → RT_xt Clos_out_rt → iProp Σ)
+    (PanicCondition : RT_xt Clos_rt → ClosParams → RT_xt (tuple1_rt Item_rt) → Prop)
     : _ → _ → _ → iProp Σ :=
     λ (π : thread_id) (p : _ * (RT_xt (tuple1_rt Item_rt) → ClosParams → Prop)) (s : MapX Self_rt Clos_rt),
     let '(inner_p, ParamPred) := p in
-    (∃ (Inv : thread_id → RT_xt Self_rt → RT_xt Clos_rt → iProp Σ),
+    (⌜closure_may_panic PanicCondition → False⌝ ∗
+     ∃ (Inv : thread_id → RT_xt Self_rt → RT_xt Clos_rt → iProp Σ),
       (* user-picked invariant *)
       Inv π s.(map_it) s.(map_clos) ∗
       (* nested iterator invariant *)

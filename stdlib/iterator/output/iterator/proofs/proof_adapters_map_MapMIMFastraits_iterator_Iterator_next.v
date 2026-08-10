@@ -16,8 +16,8 @@ Proof.
 
   iRename select (traits_iterator_Iterator_Inv _ _ _ _) into "Hinv".
   iEval (rewrite /traits_iterator_Iterator_Inv/=) in "Hinv".
-  unfold MapInv. iDestruct "Hinv" as "(%Inv & Hinv & Hinv_nested & Hsome & Hnone)".
-  rep <-! liRStep; liShow. 
+  unfold MapInv. iDestruct "Hinv" as "(%Hpanic & %Inv & Hinv & Hinv_nested & Hsome & Hnone)".
+  rep <-! liRStep; liShow.
   rename x'0 into inner_el.
 
   destruct inner_el as [inner_el | ].
@@ -30,13 +30,14 @@ Proof.
     iPoseProof (boringly_intro with "Hpre") as "#Hpre_x".
 
     rep <-! liRStep. liShow.
+    all: try solve [apply Hpanic; unfold closure_may_panic; eauto].
     iRename select (FnOnce_PostMut _ _ _ _ _ _ _) into "Hpost".
     iPoseProof (boringly_intro with "Hpost") as "#Hpost_x".
     iPoseProof ("Hinv_clos" with "Hpost_x") as "Hinv".
     match goal with | H : FnOnce_Params _ |- _ => rename H into p end.
     rep liRStep. liShow.
     liInst Hevar_e_inner inner_el.
-    rep liRStep. 
+    rep liRStep.
     liInst Hevar_x p.
     rep <- 1 liRStep.
     iEval (rewrite /traits_iterator_Iterator_Inv/=).
@@ -50,8 +51,8 @@ Proof.
     iPoseProof (li_sealed_use_pers with "Hnone") as "#Hnone'".
     iPoseProof (boringly_intro with "Hnext") as "#Hnext_x".
     iPoseProof ("Hnone'" with "Hnext_x Hinv") as "Hinv".
-    rep <-! liRStep. liShow. 
-    rep <- 1 liRStep. 
+    rep <-! liRStep. liShow.
+    rep <- 1 liRStep.
     iEval (rewrite /traits_iterator_Iterator_Inv/=).
     rewrite /MapInv.
     rep liRStep; liShow.

@@ -50,6 +50,16 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     inputs: Vec<ty::Ty<'tcx>>,
 }
 
+pub(crate) fn function_has_nontrivial_annotations(tcx: ty::TyCtxt<'_>, did: DefId) -> bool {
+    environment::has_tool_attribute(tcx, did, "params")
+        || environment::has_tool_attribute(tcx, did, "ensures")
+        || environment::has_tool_attribute(tcx, did, "requires")
+        || environment::has_tool_attribute(tcx, did, "returns")
+        || environment::has_tool_attribute(tcx, did, "observe")
+        || environment::has_tool_attribute(tcx, did, "args")
+        || environment::has_tool_attribute(tcx, did, "may_panic_if")
+}
+
 #[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Generate a spec for a trait method.
@@ -385,16 +395,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         Ok((t, info))
     }
 
-    fn function_has_nontrivial_annotations(tcx: ty::TyCtxt<'tcx>, did: DefId) -> bool {
-        environment::has_tool_attribute(tcx, did, "params")
-            || environment::has_tool_attribute(tcx, did, "ensures")
-            || environment::has_tool_attribute(tcx, did, "requires")
-            || environment::has_tool_attribute(tcx, did, "returns")
-            || environment::has_tool_attribute(tcx, did, "observe")
-            || environment::has_tool_attribute(tcx, did, "args")
-            || environment::has_tool_attribute(tcx, did, "may_panic_if")
-    }
-
     /// Translate the body of a function.
     pub(crate) fn new(
         tcx: ty::TyCtxt<'tcx>,
@@ -496,7 +496,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // If this is an impl of a trait, and there are no explicit annotations, use the default specification
         // of the trait (instead of the Rust implied safety contract)
         if environment::trait_impl_of_method(tcx, proc.get_id()).is_some()
-            && !Self::function_has_nontrivial_annotations(tcx, proc.get_id())
+            && !function_has_nontrivial_annotations(tcx, proc.get_id())
         {
             // Use the default spec annotated on the trait
             let spec = t.make_trait_instance_spec()?;

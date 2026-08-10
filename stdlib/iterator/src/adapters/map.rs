@@ -43,7 +43,7 @@ impl<I, F> Map<I, F>
             ∃ p_clos, ⌜ParamPred *[e_inner] p_clos⌝ ∗ boringly ({MF::Pre} π p_clos s1.(map_clos) *[e_inner]) ∗
             ({MF::PostMut} π p_clos s1.(map_clos) *[e_inner] s2.(map_clos) e)
             ))%I")]
-#[rr::instantiate("Inv" := "MapInv traits_iterator_Iterator_MI_spec_attrs {MF::Pre} {MF::PostMut}")]
+#[rr::instantiate("Inv" := "MapInv traits_iterator_Iterator_MI_spec_attrs {MF::Pre} {MF::PostMut} {MF::PanicCondition}")]
 impl<MB, MI: Iterator, MF> Iterator for Map<MI, MF>
 where
     MF: FnMut(MI::Item) -> MB,

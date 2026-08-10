@@ -1152,7 +1152,12 @@ impl Function<'_> {
         write!(f, ").\n")
     }
 
-    pub fn generate_proof_prelude<F>(&self, f: &mut F, is_default_trait_impl: bool) -> Result<(), io::Error>
+    pub fn generate_proof_prelude<F>(
+        &self,
+        f: &mut F,
+        is_default_trait_impl: bool,
+        do_strict_resolution: bool,
+    ) -> Result<(), io::Error>
     where
         F: io::Write,
     {
@@ -1306,7 +1311,11 @@ impl Function<'_> {
         for lft in &self.unconstrained_lfts {
             write!(f, "check_unconstrained_lft \"{lft}\";\n")?;
         }
-        write!(f, "unfold_generic_inst; simpl.\n")
+        if do_strict_resolution {
+            write!(f, "unfold_generic_inst; simpl;\ngeneralize RR_CONFIG_DO_STRICT_RESOLUTION; intros ?.\n")
+        } else {
+            write!(f, "unfold_generic_inst; simpl.\n")
+        }
     }
 
     pub fn generate_proof<F>(&self, f: &mut F, admit_proofs: bool) -> Result<(), io::Error>

@@ -12,7 +12,7 @@ Section resolve_ghost.
   Lemma resolve_ghost_mut_Owned {rt} π E L l (lt : ltype rt) γ rm lb κ T :
     find_observation (place_rfn rt * gname)%type γ FindObsModeDirect (λ or,
         match or with
-        | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
+        | None => ⌜fast_eq_hint (rm = ResolveTry)⌝ ∗ T L (PlaceGhost γ) True false
         | Some r => T L r True true
         end)
     ⊢ resolve_ghost π E L rm lb l (MutLtype lt κ) (Owned) (PlaceGhost γ) T.
@@ -34,7 +34,7 @@ Section resolve_ghost.
   Lemma resolve_ghost_mut_Uniq {rt} π E L l (lt : ltype rt) γ rm lb κ κ' γ' T :
     find_observation (place_rfn rt * gname)%type γ FindObsModeDirect (λ or,
         match or with
-        | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
+        | None => ⌜fast_eq_hint (rm = ResolveTry)⌝ ∗ T L (PlaceGhost γ) True false
         | Some r => T L r True true
         end)
     ⊢ resolve_ghost π E L rm lb l (MutLtype lt κ) (Uniq κ' γ') (PlaceGhost γ) T.
@@ -56,7 +56,7 @@ Section resolve_ghost.
   Lemma resolve_ghost_mut_shared {rt} π E L l (lt : ltype rt) γ rm lb κ κ' T :
     find_observation (place_rfn rt * gname)%type γ FindObsModeDirect (λ or,
         match or with
-        | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
+        | None => ⌜fast_eq_hint (rm = ResolveTry)⌝ ∗ T L (PlaceGhost γ) True false
         | Some r => T L r True true
         end)
     ⊢ resolve_ghost π E L rm lb l (MutLtype lt κ) (Shared κ') (PlaceGhost γ) T.

@@ -806,7 +806,8 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         // This closure does the core part of writing the template
         let write_template = |file: &mut io::BufWriter<File>,
                               fun: &code::Function<'_>,
-                              is_trait_default: bool| {
+                              is_trait_default: bool,
+                              do_strict_resolution: bool| {
             let imports = common_imports.clone();
 
             let mut exports: Vec<_> = self.extra_exports.iter().map(|(export, _)| export.clone()).collect();
@@ -835,7 +836,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
             write!(file, "End proof.\n\n").unwrap();
 
-            fun.generate_proof_prelude(file, is_trait_default).unwrap();
+            fun.generate_proof_prelude(file, is_trait_default, do_strict_resolution).unwrap();
         };
 
         // write templates
@@ -846,9 +847,15 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
             let meta = self.procedure_registry.lookup_procedure(key).unwrap();
             let mode = meta.get_mode();
+            let do_strict_resolution = match key {
+                procedures::ProcedureKey::Function(did) => {
+                    signature::function_has_nontrivial_annotations(self.tcx, did.def_id)
+                },
+                procedures::ProcedureKey::DropGlue(_) => false,
+            };
 
             if fun.spec.is_complete() && mode.needs_proof() {
-                write_template(&mut template_file, fun, meta.is_trait_default());
+                write_template(&mut template_file, fun, meta.is_trait_default(), do_strict_resolution);
             } else if !fun.spec.is_complete() {
                 write!(template_file, "(* No specification provided *)").unwrap();
             } else {
@@ -860,10 +867,12 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         {
             for (did, info) in &self.procedure_registry.closure_info {
                 if self.procedure_registry.lookup_function_mode(did.def_id).unwrap().needs_proof() {
+                    let do_strict_resolution =
+                        signature::function_has_nontrivial_annotations(self.tcx, did.def_id);
                     for fun in &info.generated_functions {
                         let path = file_path(fun.name());
                         let mut template_file = io::BufWriter::new(File::create(path.as_path()).unwrap());
-                        write_template(&mut template_file, fun, false);
+                        write_template(&mut template_file, fun, false, do_strict_resolution);
                     }
                 }
             }

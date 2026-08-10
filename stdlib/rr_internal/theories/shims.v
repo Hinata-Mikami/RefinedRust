@@ -303,8 +303,8 @@ Proof.
       { iPureIntro. solve_layout_alg. }
       iPureIntro. rewrite /has_layout_val.
       match goal with | H : x'0 `has_layout_val` _ |- _ => rename H into Hlen end.
-      rewrite Hlen.
-      solve_goal.
+      rewrite Hlen. simpl.
+      shelve_sidecond.
    }
   }
   iRename select (x' ◁ₗ[_, _] _ @ _)%I into "Hnew".
@@ -315,6 +315,8 @@ Proof.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   all: unfold size_of_array_in_bytes in *; simplify_layout_assum.
+  all: try (rewrite wrap_to_it_id; last solve_goal).
+  all: normalize_goal.
   all: rewrite Nat.mul_comm; (try done); apply array_layout_wf; sidecond_hook.
 Qed.
 
