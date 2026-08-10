@@ -1053,13 +1053,15 @@ where
                 // accept the attribute, but do not adjust the spec
             },
             "may_panic_if" => {
-                let condition = parse::LitStr::parse(buffer, scope)
-                    .map_err(|e| spanned_error(span, ParserError::Parse(format!("{e:?}"))))?;
-                if buffer.pos().is_some() {
-                    return Err(spanned_error(
+                let invalid_argument = || {
+                    spanned_error(
                         span,
                         ParserError::Parse("may_panic_if expects exactly one string literal".to_owned()),
-                    ));
+                    )
+                };
+                let condition = parse::LitStr::parse(buffer, scope).map_err(|_err| invalid_argument())?;
+                if buffer.pos().is_some() {
+                    return Err(invalid_argument());
                 }
                 let (condition, _) = scope
                     .process_coq_literal(span, &condition.value())

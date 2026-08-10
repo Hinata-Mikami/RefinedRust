@@ -69,8 +69,11 @@ Proof.
     | H : JCACHED _ |- _ => clear H
     | H : CACHED _ |- _ => clear H
     | H : bb_inv_map_marker _ |- _ => clear H
+    | H : rr_config_strict_resolution |- _ => clear H
     end.
-    all: snipe.
+    1: snipe.
+    (* TODO: hmm, the negated elem_of seems to be a problem for the current normalization of snipe *)
+    1: sidecond_hammer.
 
   Unshelve. all: print_remaining_sidecond.
 Qed.
