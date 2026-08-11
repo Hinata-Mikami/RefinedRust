@@ -13,8 +13,6 @@ Proof.
   closures_closure_test_arg_fnmut_1_prelude.
 
   rep liRStep; liShow.
-  { done. }
-  rep liRStep.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

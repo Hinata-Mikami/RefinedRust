@@ -5439,6 +5439,15 @@ Section subsume.
   Definition type_stratify_context_annot_inst := [instance @type_stratify_context_annot].
   Global Existing Instance type_stratify_context_annot_inst.
 
+  Lemma type_panic_free_unwind_annot π E L T :
+    ⌜False⌝
+    ⊢ typed_annot_stmt π 1 PanicFreeUnwindAnnot E L T.
+  Proof.
+    iIntros "%Hfalse". destruct Hfalse.
+  Qed.
+  Definition type_panic_free_unwind_annot_inst := [instance @type_panic_free_unwind_annot].
+  Global Existing Instance type_panic_free_unwind_annot_inst.
+
   (** We instantiate the context folding mechanism for extraction of observations. *)
   Definition typed_context_fold_extract_interp (π : thread_id) := λ '(ctx, R), (type_ctx_interp π ctx ∗ R)%I.
   Global Typeclasses Opaque typed_context_fold_extract_interp.

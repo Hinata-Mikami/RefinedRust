@@ -549,6 +549,10 @@ pub enum Annotation {
     /// Stratify the context
     #[display("StratifyContextAnnot")]
     StratifyContext,
+
+    /// Stop an unwind branch of a function whose panic condition is false
+    #[display("PanicFreeUnwindAnnot")]
+    PanicFreeUnwind,
 }
 
 impl Annotation {

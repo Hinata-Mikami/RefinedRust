@@ -29,6 +29,10 @@ Global Hint Extern 10 (CheckConfig ?C) =>
 Inductive stop_annot : Prop :=
   StopAnnot.
 
+(** Annotation for closing an unwind branch when the function's panic condition is [False]. *)
+Inductive panic_free_unwind_annot : Set :=
+  PanicFreeUnwindAnnot.
+
 (** Annotation for starting a local lifetime [n ⊑ ⨅ sup].
   [n] will contain a fresh atomic lifetime, which is the handle to end [n]. *)
 Inductive startlft_annot : Set :=
@@ -92,5 +96,4 @@ Ltac check_unconstrained_lft n :=
   | |- _ =>
     idtac "Lifetime " n " is unconstrained, pose a hint using 'pose_unconstrained_lft_hint' "
   end.
-
 

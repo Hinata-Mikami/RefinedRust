@@ -91,3 +91,11 @@ fn call_captured_closure(x: i32) {
 // `panic_ensures("False")` annotation is unnecessary.
 #[rr::verify]
 fn does_not_panic() {}
+
+// The original panic path resumes unwinding after dropping `x`. A panic from that drop would
+// terminate, but must not let this panic-free function avoid proving the assertion cannot fail.
+#[rr::verify]
+fn panic_free_with_cleanup<T>(x: T, b: bool) {
+    assert!(b || !b);
+    drop(x);
+}

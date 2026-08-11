@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::iter::repeat_n;
 
 use log::{info, trace, warn};
@@ -18,11 +18,60 @@ use crate::body::mir_lowering::{
     MirDropTranslation as _, MirPlaceTranslation as _, MirRvalueTranslation as _, MirTranslationCtx as _,
     MirTypeTranslation as _, translate_unwind_action,
 };
+use crate::environment::procedure::Procedure;
 use crate::error::Message;
-use crate::{search, types};
+use crate::{environment, search, types};
 
 #[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
+    /// Whether every normal path through this cleanup reaches `UnwindResume`.
+    /// Unwind edges from cleanup operations are intentionally ignored: a secondary panic must not
+    /// let a panic-free function avoid proving that its original unwind path is impossible.
+    fn cleanup_path_resumes_unwind(&self, target: mir::BasicBlock) -> bool {
+        fn visit(
+            proc: &Procedure<'_>,
+            bb: mir::BasicBlock,
+            visiting: &mut HashSet<mir::BasicBlock>,
+            cache: &mut BTreeMap<mir::BasicBlock, bool>,
+        ) -> bool {
+            if let Some(result) = cache.get(&bb) {
+                return *result;
+            }
+            if !visiting.insert(bb) {
+                return false;
+            }
+
+            let data = &proc.dropck_mir().basic_blocks[bb];
+            let result = if !data.is_cleanup {
+                false
+            } else if matches!(data.terminator().kind, mir::TerminatorKind::UnwindResume) {
+                true
+            } else {
+                let successors = proc.successors(bb);
+                !successors.is_empty()
+                    && successors.iter().all(|successor| visit(proc, *successor, visiting, cache))
+            };
+
+            visiting.remove(&bb);
+            cache.insert(bb, result);
+            result
+        }
+
+        visit(self.proc, target, &mut HashSet::new(), &mut BTreeMap::new())
+    }
+
+    fn should_close_unwind_early(&self, action: mir::UnwindAction) -> bool {
+        if environment::has_tool_attribute(self.tcx, self.proc.get_id(), "may_panic_if") {
+            return false;
+        }
+
+        match action {
+            mir::UnwindAction::Continue => true,
+            mir::UnwindAction::Cleanup(target) => self.cleanup_path_resumes_unwind(target),
+            mir::UnwindAction::Unreachable | mir::UnwindAction::Terminate(_) => false,
+        }
+    }
+
     fn check_call_destination(func: &mir::Operand<'_>, target_did: DefId) -> bool {
         let mir::Operand::Constant(box c) = func else {
             return false;
@@ -131,10 +180,18 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         loc: &mir::Location,
         action: mir::UnwindAction,
     ) -> Result<code::Stmt, TranslationError> {
-        let translated = translate_unwind_action(action, |target| self.translate_goto_like(loc, target))?;
+        let close_early = self.should_close_unwind_early(action);
+        let mut translated = translate_unwind_action(action, |target| self.translate_goto_like(loc, target))?;
         if matches!(action, mir::UnwindAction::Continue) {
             let mut plan = self.annotations.prepare_unwind_annotation_plan(&self.ty_translator, *loc);
-            return Ok(code::Stmt::Prim(plan.take_pre_stmts(), Box::new(translated)));
+            translated = code::Stmt::Prim(plan.take_pre_stmts(), Box::new(translated));
+        }
+        if close_early {
+            let annotation = code::PrimStmt::Annot {
+                a: vec![code::Annotation::PanicFreeUnwind],
+                why: Some("panic condition is False".to_owned()),
+            };
+            translated = code::Stmt::Prim(vec![annotation], Box::new(translated));
         }
         Ok(translated)
     }
