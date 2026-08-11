@@ -390,7 +390,7 @@ Proof.
            rewrite ty_lfts_unfold /unit_t /=;
            apply tac_lfts_outlives_E_nil).
         rewrite Hwf Hout /elctx_interp /=. done. }
-      Unshelve. all: sidecond_solver. }
+       Unshelve. all: sidecond_solver. }
     iEval (rewrite /typed_stmt /typed_stmt_post_cond /typed_stmt_unwind_post_cond) in "Hs".
     iSpecialize ("Hs" $! Ψ False%I with "CTX [] [] Hframe").
     { rewrite elctx_interp_nil. done. }
@@ -413,7 +413,11 @@ Qed.
       (*ghost_map_auth γ 1 M ∗ [∗ list] π ∈ seq 0 num_threads, ∃ γ' : na_inv_pool_name, ghost_map_elem γ π DfracDiscarded γ' ∗ na_invariants.na_own γ' ⊤))%I.*)
 
 (** * The main adequacy lemma *)
-Lemma refinedrust_adequacy (policy : panic_policy) Σ `{!typePreG Σ} `{A : LayoutAlg}
+(** [config] fixes link-time abstract-machine behavior. In particular, abort is
+    trusted as terminal divergence; this theorem does not execute or verify the
+    platform's panic handler or abort runtime. [policy] separately controls
+    whether an unwind that escapes the initial function is accepted. *)
+Lemma refinedrust_adequacy (config : RadiumConfig) (policy : panic_policy) Σ `{!typePreG Σ} `{A : LayoutAlg}
     (thread_mains : list loc) (fns : gmap addr function)
     (static_ls : list loc) (static_vals : list val.val)
     n t2 σ2 obs hs σ:
@@ -429,7 +433,7 @@ Lemma refinedrust_adequacy (policy : panic_policy) Σ `{!typePreG Σ} `{A : Layo
     ([∗ map] k↦qs∈fns, fntbl_entry (fn_loc k) qs) ={⊤}=∗
       [∗ list] π ↦ main ∈ thread_mains, ∃ P, (l2v main) ◁ᵥ{π, MetaNone} main @ function_ptr [] (@eq_refl _ [], main_type policy P) ∗ P) →
   (* if the whole thread pool steps for [n] steps *)
-  nsteps (Λ := c_lang) n (initial_prog policy <$> (zip (seq 0 (length thread_mains)) thread_mains), σ) obs (t2, σ2) →
+  nsteps (Λ := @c_lang config) n (initial_prog policy <$> (zip (seq 0 (length thread_mains)) thread_mains), σ) obs (t2, σ2) →
   (* then it has not gotten stuck *)
   ∀ e2, e2 ∈ t2 → not_stuck e2 σ2.
 Proof.
@@ -450,7 +454,7 @@ Proof.
   iMod (ghost_map_alloc_empty (K:= nat * nat * string) (V:= loc * syn_type)) as (γloc) "Hlocals".
   set (HthreadG := ThreadG _ _ γcur _ γlocals _ γloc).
 
-  set (HrefinedCG := RefinedCG _ _ HheapG HthreadG _ A).
+  set (HrefinedCG := RefinedCG _ config _ HheapG HthreadG _ A).
 
   (* lifetime logic stuff *)
   iMod (lft_init _ lft_userE) as "(%Hlft & #LFT)"; [solve_ndisj.. | ].
@@ -566,8 +570,8 @@ Proof.
     + done.
 Qed.
 
-Definition refinedrust_adequacy_allow_panic := refinedrust_adequacy AllowPanic.
-Definition refinedrust_adequacy_panic_free := refinedrust_adequacy ForbidPanic.
+Definition refinedrust_adequacy_allow_panic config := refinedrust_adequacy config AllowPanic.
+Definition refinedrust_adequacy_panic_free config := refinedrust_adequacy config ForbidPanic.
 
 (*Print Assumptions refinedrust_adequacy.*)
 

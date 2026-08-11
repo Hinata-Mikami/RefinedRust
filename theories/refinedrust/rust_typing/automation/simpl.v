@@ -501,4 +501,3 @@ Proof.
   apply const_fmap. done.
 Qed.
 Hint Rewrite -> @list_fmap_const' : lithium_rewrite.
-

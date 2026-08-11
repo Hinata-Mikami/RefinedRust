@@ -1,6 +1,25 @@
 From refinedrust Require Import typing.
 
 Module test.
+
+Lemma effective_panic_condition_unwind (P : Prop) :
+  @effective_panic_condition panic_unwind_config P ↔ P.
+Proof. done. Qed.
+
+Lemma effective_panic_condition_abort (P : Prop) :
+  @effective_panic_condition panic_abort_config P ↔ False.
+Proof. done. Qed.
+
+Lemma effective_panic_condition_known_abort `{!RadiumConfig} (P : Prop) :
+  radium_panic_strategy_of = PanicAbort →
+  effective_panic_condition P → False.
+Proof. sidecond_hammer. Qed.
+
+Lemma effective_panic_condition_generic `{!RadiumConfig} (P : Prop) :
+  effective_panic_condition P →
+  P ∧ radium_panic_strategy_of = PanicUnwind.
+Proof. sidecond_hammer. Qed.
+
 Definition bla0 `{typeGS Σ} :=
   (fn(∀ ( *[κ'; κ]) : 2 | ( *[]) : [] | (x) : unit, (λ f, [(κ', κ)]); (λ π, True)) → ∃ y : Z, () @ (uninit PtrSynType) ; λ π, ⌜ (4 > y)%Z⌝ | False).
 Definition bla1 `{typeGS Σ} :=
@@ -23,11 +42,14 @@ Definition always_unwind_type `{typeGS Σ} :=
       () :@: unit_t; (λ _, True)) → ∃ () : unit, () @ unit_t; (λ _, True) | True.
 
 Lemma always_unwind_typed `{!typeGS Σ} π :
+  radium_panic_strategy_of = PanicUnwind →
   ⊢ typed_function π always_unwind (<tag_type> always_unwind_type).
 Proof.
+  intros Hstrategy.
   start_function "always_unwind" ϝ ( [] ) ( [] ) ( [] ) ( ).
   repeat liRStep; liShow.
   Unshelve. all: sidecond_solver.
+  Unshelve. all: sidecond_hammer.
 Qed.
 
 Program Definition always_terminate : function := {|
@@ -45,6 +67,25 @@ Lemma always_terminate_typed `{!typeGS Σ} π :
   ⊢ typed_function π always_terminate (<tag_type> always_terminate_type).
 Proof.
   start_function "always_terminate" ϝ ( [] ) ( [] ) ( [] ) ( ).
+  repeat liRStep; liShow.
+  Unshelve. all: try iFrame. all: sidecond_solver.
+Qed.
+
+Program Definition always_abort : function := {|
+  f_args := [("arg", unit_sl)];
+  f_code := <["_bb0" := AbortS]>%E $ ∅;
+  f_init := "_bb0";
+|}.
+Next Obligation. solve_fn_vars_nodup. Qed.
+
+Definition always_abort_type `{typeGS Σ} :=
+  fn(∀ ( *[]) : 0 | ( *[]) : [] | () : unit, (λ _, []);
+      () :@: unit_t; (λ _, True)) → ∃ () : unit, () @ unit_t; (λ _, True) | False.
+
+Lemma always_abort_typed `{!typeGS Σ} π :
+  ⊢ typed_function π always_abort (<tag_type> always_abort_type).
+Proof.
+  start_function "always_abort" ϝ ( [] ) ( [] ) ( [] ) ( ).
   repeat liRStep; liShow.
   Unshelve. all: try iFrame. all: sidecond_solver.
 Qed.

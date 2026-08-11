@@ -471,6 +471,7 @@ Ltac liRStmt :=
     | W.Return _ => notypeclasses refine (tac_fast_apply (type_return E L f _ fn R U ϝ) _)
     | W.Unwind => notypeclasses refine (tac_fast_apply (type_unwind E L f fn R U ϝ) _)
     | W.UnwindTerminate => notypeclasses refine (tac_fast_apply (type_unwind_terminate E L f fn R U ϝ) _)
+    | W.Abort => notypeclasses refine (tac_fast_apply (type_abort E L f fn R U ϝ) _)
     | W.IfS _ _ _ _ => notypeclasses refine (tac_fast_apply (type_if E L f _ _ _ fn R U ϝ) _)
     | W.Switch _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_switch E L f _ _ _ _ _ fn R U ϝ) _)
     | W.Assert _ _ _ => notypeclasses refine (tac_fast_apply (type_assert E L f _ _ fn R U ϝ) _)
@@ -1036,7 +1037,7 @@ Section tac.
           (λ v L3, fn_body_end_prop E L3 ϝ π
             (fn_ret_prop π ((fp.2 κs tys).(fn_p) x).(fp_fr) v))
           (λ L3, fn_body_end_prop E L3 ϝ π
-            (⌜((fp.2 κs tys).(fn_p) x).(fp_panic)⌝)%I))).
+            (⌜effective_panic_condition ((fp.2 κs tys).(fn_p) x).(fp_panic)⌝)%I))).
 
   Lemma intro_typed_function {rts : list RT} (n : nat) π (fn : function) (fp : (eq rts rts) * (prod_vec lft n → plist type rts → fn_spec)) :
     (∀ κs tys x (ϝ : lft) (f : frame_id),

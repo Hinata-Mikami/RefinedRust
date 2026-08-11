@@ -331,7 +331,7 @@ Proof.
      rewrite ?fill_app /=; f_equal; eauto.
 Qed.
 
-Lemma ectx_item_correct `{!LayoutAlg} π Ks:
+Lemma ectx_item_correct `{!LayoutAlg} `{!RadiumConfig} π Ks:
   ∃ Ks', ∀ e, to_rtexpr π (to_expr (fill Ks e)) = ectxi_language.fill Ks' (to_rtexpr π (to_expr e)).
 Proof.
   elim/rev_ind: Ks; [by exists []|].
@@ -398,6 +398,7 @@ Inductive stmt :=
 | Return (e : expr)
 | Unwind
 | UnwindTerminate
+| Abort
 | IfS (ot : op_type) (e : expr) (s1 s2 : stmt)
 | Switch (it : int_type) (e : expr) (m : gmap Z nat) (bs : list stmt) (def : stmt)
 | Call (f : expr) (eκs : list string) (etys : list rust_type) (args : list expr)
@@ -422,6 +423,7 @@ Lemma stmt_ind (P : stmt → Prop):
   (∀ e : expr, P (Return e)) →
   P Unwind →
   P UnwindTerminate →
+  P Abort →
   (∀ (ot : op_type) (e : expr) (s1 : stmt), P s1 → ∀ s2 : stmt, P s2 → P (IfS ot e s1 s2)) →
   (∀ (it : int_type) (e : expr) (m : gmap Z nat) (bs : list stmt) (def : stmt), P def → Forall P bs → P (Switch it e m bs def)) →
   (∀ (f : expr) (eκs : list string) (etys : list rust_type) (args : list expr)
@@ -441,7 +443,7 @@ Lemma stmt_ind (P : stmt → Prop):
   (∀ s : lang.stmt, P (Stmt s)) → ∀ s : stmt, P s.
 Proof.
   move => *. generalize dependent P => P. match goal with | s : stmt |- _ => revert s end.
-  fix FIX 1. move => [ ^s] ????? Hswitch *. 6: {
+  fix FIX 1. move => [ ^s] ?????? Hswitch *. 7: {
     apply Hswitch; first by apply: FIX. elim: sbs; auto.
   }
   all: auto.
@@ -454,6 +456,7 @@ Fixpoint to_stmt `{LayoutAlg} (s : stmt) : lang.stmt :=
   | Return e => lang.Return (to_expr e)
   | Unwind => notation.Unwind
   | UnwindTerminate => lang.UnwindTerminate
+  | Abort => lang.AbortS
   | IfS ot e s1 s2 => (if{ot}: to_expr e then to_stmt s1 else to_stmt s2)%E
   | Switch it e m bs def => lang.Switch it (to_expr e) m (to_stmt <$> bs) (to_stmt def)
   | Call f eκs etys args destination normal unwind =>
@@ -507,6 +510,7 @@ Ltac of_stmt s :=
     let e := of_expr e in constr:(Return e)
   | notation.Unwind => constr:(Unwind)
   | lang.UnwindTerminate => constr:(UnwindTerminate)
+  | lang.AbortS => constr:(Abort)
   | lang.Switch ?it ?e ?m ?bs ?def =>
     let e := of_expr e in
     let bs := of_stmt bs in
@@ -593,7 +597,7 @@ Definition stmt_fill (Ki : stmt_ectx) (e : expr) : stmt :=
 
 Definition find_stmt_fill (s : stmt) : option (stmt_ectx * expr) :=
   match s with
-  | Goto _ | Unwind | UnwindTerminate | Stmt _ | AnnotStmt _ _ _ | LocInfoS _ _ | SkipS _ | StuckS | LocalLive _ _ _ | LocalDead _ _ => None
+  | Goto _ | Unwind | UnwindTerminate | Abort | Stmt _ | AnnotStmt _ _ _ | LocInfoS _ _ | SkipS _ | StuckS | LocalLive _ _ _ | LocalDead _ _ => None
   | Return e => if e is (Val v) then None else Some (ReturnCtx, e)
   | ExprS e s => if e is (Val v) then None else Some (ExprSCtx s, e)
   | IfS ot e s1 s2 => if e is (Val v) then None else Some (IfSCtx ot s1 s2, e)
@@ -619,7 +623,7 @@ Proof.
   destruct s => *; repeat (try case_match; simpl in *; simplify_eq => //).
 Qed.
 
-Lemma stmt_fill_correct `{!LayoutAlg} Ks π rf:
+Lemma stmt_fill_correct `{!LayoutAlg} `{!RadiumConfig} Ks π rf:
   ∃ Ks', ∀ e, to_rtstmt π rf (to_stmt (stmt_fill Ks e)) = ectxi_language.fill Ks' (to_rtexpr π (to_expr e)).
 Proof.
   (move: Ks => [] *; [

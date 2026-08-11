@@ -6,6 +6,20 @@ Set Default Proof Using "Type".
 
 (** * Definition of the language *)
 
+Inductive radium_panic_strategy :=
+| PanicUnwind
+| PanicAbort.
+
+(** Immutable link-time choices that affect the Rust abstract machine. *)
+Class RadiumConfig := {
+  radium_panic_strategy_of : radium_panic_strategy;
+}.
+
+Definition panic_unwind_config : RadiumConfig :=
+  {| radium_panic_strategy_of := PanicUnwind |}.
+Definition panic_abort_config : RadiumConfig :=
+  {| radium_panic_strategy_of := PanicAbort |}.
+
 Definition label := string.
 
 (* see http://compcert.inria.fr/doc/html/compcert.cfrontend.Cop.html#binary_operation *)
@@ -61,6 +75,7 @@ Inductive stmt :=
 (* Internal continuation after the preparation step of an unwind. *)
 | UnwindCleanup
 | UnwindTerminate
+| AbortS
 | IfS (ot : op_type) (e : expr) (s1 s2 : stmt)
 (* m: map from values of e to indices into bs, def: default *)
 | Switch (it : int_type) (e : expr) (m : gmap Z nat) (bs : list stmt) (def : stmt)
@@ -158,8 +173,8 @@ Inductive runtime_expr :=
 | Stmt (π : thread_id) (rf : function) (s : rtstmt)
 | CallFrame (π : thread_id) (caller : function) (destination : option (order * op_type * expr))
     (normal unwind : stmt) (body : runtime_expr)
-| AllocFailed
 | RTUnwindTerminate
+| RTAbort
 with rtexpr :=
 | RTVar (x : var_name)
 | RTUnOp (op : un_op) (ot : op_type) (e : runtime_expr)
@@ -180,6 +195,7 @@ with rtstmt :=
 | RTReturn (e : runtime_expr)
 | RTUnwindStmt
 | RTUnwindTerminateStmt
+| RTAbortStmt
 | RTIfS (ot : op_type) (e : runtime_expr) (s1 s2 : stmt)
 | RTSwitch (it : int_type) (e : runtime_expr) (m : gmap Z nat) (bs : list stmt) (def : stmt)
 | RTCall (f : runtime_expr) (args : list runtime_expr) (destination : option (order * op_type * expr))
@@ -229,6 +245,7 @@ Definition to_rtstmt (π : thread_id) (f : function) (s : stmt) : runtime_expr :
   | Return e => RTReturn (to_rtexpr π e)
   | UnwindCleanup => RTUnwindStmt
   | UnwindTerminate => RTUnwindTerminateStmt
+  | AbortS => RTAbortStmt
   | IfS ot e s1 s2 => RTIfS ot (to_rtexpr π e) s1 s2
   | Switch it e m bs def => RTSwitch it (to_rtexpr π e) m bs def
   | Call f args destination normal unwind =>
@@ -635,11 +652,14 @@ comparing pointers? (see lambda rust) *)
     val_to_Z v_size USize = Some (Z.of_nat n_size) →
     val_to_Z v_align USize = Some (Z.of_nat n_align) →
     n_size > 0 →
-    expr_step (Alloc (Val v_size) (Val v_align)) π σ [] AllocFailed σ []
+    expr_step (Alloc (Val v_size) (Val v_align)) π σ [] RTAbort σ []
 (* no rule for StuckE *)
 .
 
 (*** Evaluation of statements *)
+Section configured_language.
+Context `{RC : RadiumConfig}.
+
 Inductive stmt_step : stmt → thread_id → function → state → list Empty_set → runtime_expr → state → list runtime_expr → Prop :=
 | CallS π caller lsa σ hs' ts ts' vf vs f fn a destination normal unwind:
     val_to_loc vf = Some f →
@@ -669,7 +689,7 @@ Inductive stmt_step : stmt → thread_id → function → state → list Empty_s
     σ.(st_fntbl) !! a = Some fn →
     Forall2 has_layout_val vs fn.(f_args).*2 →
     stmt_step (Call (Val vf) (Val <$> vs) destination normal unwind)
-      π caller σ [] AllocFailed σ []
+      π caller σ [] RTAbort σ []
 | AssignS (o : order) π rf σ s v1 v2 l v' ot ov:
     let start_st st := st = if o is Na2Ord then WSt else RSt 0%nat in
     let end_st _ := if o is Na1Ord then WSt else RSt 0%nat in
@@ -704,6 +724,8 @@ Inductive stmt_step : stmt → thread_id → function → state → list Empty_s
     stmt_step UnwindCleanup π rf σ [] RTUnwind {| st_fntbl := σ.(st_fntbl); st_heap := hs; st_thread := <[π := thread_pop_frame ts]> σ.(st_thread) |} []
 | UnwindTerminateS π rf σ :
     stmt_step UnwindTerminate π rf σ [] RTUnwindTerminate σ []
+| AbortStepS π rf σ :
+    stmt_step AbortS π rf σ [] RTAbort σ []
 | FreeS v_size v_align (n_size n_align : nat) v l s π rf σ hs' :
     val_to_Z v_size USize = Some (Z.of_nat n_size) →
     val_to_Z v_align USize = Some (Z.of_nat n_align) →
@@ -730,7 +752,7 @@ Inductive stmt_step : stmt → thread_id → function → state → list Empty_s
     state_get_thread σ π = Some ts →
     thread_get_frame ts = Some cf →
     cf.(cf_locals) !! x = None →
-    stmt_step (LocalLive x ly s) π  rf σ [] AllocFailed σ []
+    stmt_step (LocalLive x ly s) π  rf σ [] RTAbort σ []
 | LocalDeadDeallocS π rf σ x s hs' ts cf cf' l ly :
     state_get_thread σ π = Some ts →
     thread_get_frame ts = Some cf →
@@ -753,25 +775,25 @@ Inductive stmt_step : stmt → thread_id → function → state → list Empty_s
 .
 
 (*** Evaluation of runtime_expr *)
-Inductive runtime_step : runtime_expr → state → list Empty_set → runtime_expr → state → list runtime_expr → Prop :=
+Inductive runtime_step (config : RadiumConfig) : runtime_expr → state → list Empty_set → runtime_expr → state → list runtime_expr → Prop :=
 | ExprStep e π σ κs e' σ' efs:
     expr_step e π σ κs e' σ' efs →
-    runtime_step (to_rtexpr π e) σ κs e' σ' efs
+    runtime_step config (to_rtexpr π e) σ κs e' σ' efs
 | StmtStep s π rf σ κs e' σ' efs:
     stmt_step s π rf σ κs e' σ' efs →
-    runtime_step (to_rtstmt π rf s) σ κs e' σ' efs
+    runtime_step config (to_rtstmt π rf s) σ κs e' σ' efs
 | CallFrameReturnStep π caller destination normal unwind v σ :
-    runtime_step (CallFrame π caller destination normal unwind (RTVal v)) σ []
+    runtime_step config (CallFrame π caller destination normal unwind (RTVal v)) σ []
       (to_rtstmt π caller (call_return destination v normal)) σ []
 | CallFrameUnwindStep π caller destination normal unwind σ :
-    runtime_step (CallFrame π caller destination normal unwind RTUnwind) σ []
+    runtime_step config (CallFrame π caller destination normal unwind RTUnwind) σ []
       (to_rtstmt π caller unwind) σ []
-| AllocFailedStep σ :
-    (* Alloc failure is nb, not ub so we go into an infinite loop*)
-    runtime_step AllocFailed σ [] AllocFailed σ []
 | UnwindTerminateStep σ :
     (* Termination while unwinding is no behavior, represented by divergence. *)
-    runtime_step RTUnwindTerminate σ [] RTUnwindTerminate σ [].
+    runtime_step config RTUnwindTerminate σ [] RTUnwindTerminate σ []
+| AbortStep σ :
+    (* Abort is trusted to terminate execution without producing more behavior. *)
+    runtime_step config RTAbort σ [] RTAbort σ [].
 
 Lemma expr_step_preserves_heap_invariant π e1 e2 σ1 σ2 κs efs:
   expr_step e1 π σ1 κs e2 σ2 efs →
@@ -815,7 +837,7 @@ Proof.
 Qed.
 
 Lemma runtime_step_preserves_heap_invariant e1 e2 σ1 σ2 κs efs:
-  runtime_step e1 σ1 κs e2 σ2 efs →
+  runtime_step RC e1 σ1 κs e2 σ2 efs →
   heap_state_invariant σ1.(st_heap) →
   heap_state_invariant σ2.(st_heap).
 Proof.
@@ -987,7 +1009,7 @@ Proof.
     by apply Hlook1 in Hlook2.
 Qed.
 Lemma runtime_step_preserves_thread_invariant e1 e2 σ1 σ2 κs efs:
-  runtime_step e1 σ1 κs e2 σ2 efs →
+  runtime_step RC e1 σ1 κs e2 σ2 efs →
   thread_states_invariant σ1.(st_thread) →
   thread_states_invariant σ2.(st_thread).
 Proof.
@@ -1112,7 +1134,7 @@ Lemma of_to_val (e : runtime_expr) (v : runtime_result) : to_val e = Some v → 
 Proof. case: e => //; naive_solver. Qed.
 
 Lemma val_stuck e1 σ1 κ e2 σ2 ef :
-  runtime_step e1 σ1 κ e2 σ2 ef → to_val e1 = None.
+  runtime_step RC e1 σ1 κ e2 σ2 ef → to_val e1 = None.
 Proof. destruct 1 => //. revert select (expr_step _ _ _ _ _ _ _). by destruct 1. Qed.
 
 Global Instance fill_item_inj Ki : Inj (=) (=) (lang_fill_item Ki).
@@ -1132,7 +1154,7 @@ Proof.
 Qed.
 
 Lemma expr_ctx_step_val Ki e σ1 κ e2 σ2 ef :
-  runtime_step (lang_fill_item Ki e) σ1 κ e2 σ2 ef → is_Some (to_val e).
+  runtime_step RC (lang_fill_item Ki e) σ1 κ e2 σ2 ef → is_Some (to_val e).
 Proof.
   destruct Ki as [[]|[]?|]; inversion 1; simplify_eq.
   all: try (revert select (expr_step _ _ _ _ _ _ _)).
@@ -1148,14 +1170,20 @@ Proof.
   all: apply not_eq_None_Some; intros ?; by eapply list_expr_val_eq_false.
 Qed.
 
-Lemma c_lang_mixin : EctxiLanguageMixin of_val to_val lang_fill_item runtime_step.
+Lemma c_lang_mixin : EctxiLanguageMixin of_val to_val lang_fill_item (runtime_step RC).
 Proof.
   split; try (intros []; done);
     eauto using of_to_val, val_stuck, fill_item_inj, fill_item_val, fill_item_no_val_inj, expr_ctx_step_val.
 Qed.
 Canonical Structure c_ectxi_lang := EctxiLanguage c_lang_mixin.
 Canonical Structure c_ectx_lang := EctxLanguageOfEctxi c_ectxi_lang.
-Canonical Structure c_lang := LanguageOfEctx c_ectx_lang.
+Canonical Structure c_lang_base := LanguageOfEctx c_ectx_lang.
+End configured_language.
+
+(** The language is indexed by the immutable machine configuration even when a
+    particular primitive does not inspect it. Configuration-dependent shims are
+    thereby linked and verified in one fixed semantic world. *)
+Canonical Structure c_lang (config : RadiumConfig) : language := @c_lang_base config.
 
 (** * Useful instances and canonical structures *)
 

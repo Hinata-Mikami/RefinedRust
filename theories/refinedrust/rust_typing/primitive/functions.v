@@ -13,6 +13,19 @@ Global Arguments introduce_typed_stmt : simpl never.
 
 (*TODO: equip function types with namespace parameters for atomic and non-atomic invariants that need to be active when calling it. *)
 
+Definition effective_panic_condition `{!RadiumConfig} (P : Prop) : Prop :=
+  match radium_panic_strategy_of with
+  | PanicUnwind => P
+  | PanicAbort => False
+  end.
+
+Lemma effective_panic_condition_false `{!RadiumConfig} :
+  effective_panic_condition False → False.
+Proof.
+  unfold effective_panic_condition.
+  destruct radium_panic_strategy_of; done.
+Qed.
+
 Section function.
   Context `{!typeGS Σ}.
   (* function return type and condition *)
@@ -159,7 +172,7 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
            fn_init_context fn fps π f lsa sta -∗
            introduce_typed_stmt E L (π, f) ϝ fn
              (λ v L2, fn_body_end_prop E L2 ϝ π (fn_ret_prop π fps.(fp_fr) v))
-             (λ L2, fn_body_end_prop E L2 ϝ π ⌜fps.(fp_panic)⌝)))%I.
+              (λ L2, fn_body_end_prop E L2 ϝ π ⌜effective_panic_condition fps.(fp_panic)⌝)))%I.
 
   Global Instance typed_function_persistent {lfts : nat} {rts : list (RT)} π fn fp : Persistent (typed_function (lfts:=lfts) (rts := rts) π fn fp) := _.
 
@@ -276,7 +289,7 @@ Section call.
 
       (* postconditions *)
       (
-       introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ ⌜fps.(fp_panic)⌝) U ∧
+       introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ ⌜effective_panic_condition fps.(fp_panic)⌝) U ∧
        (∀ v x', (* v = retval, x' = post existential *)
         (* also donate some credits we are generating here *)
         introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ (fps.(fp_fr) x').(fr_R) π ∗ v ◁ᵥ{π, MetaNone} (fps.(fp_fr) x').(fr_ref) @ (fps.(fp_fr) x').(fr_ty)) (λ L3,
@@ -377,7 +390,7 @@ Section call.
         na_own f.1 ⊤ ∗
         ([∗ list] x0 ∈ locals,
           ∃ (ly : layout) (l : loc) (st : syn_type), ⌜syn_type_has_layout st ly⌝ ∗ x0 is_live{ (f.1, S f.2), st} l ∗ l ↦|ly|) ∗
-        ⌜fp_panic fps⌝)%I).
+        ⌜effective_panic_condition (fp_panic fps)⌝)%I).
     unfold fn_init_context.
     (* prove the initial context *)
     iSpecialize ("Hm" with "[Hcred Hc $Hna $Halloc $Hsc $HP Ha Hvl $Hx]").
@@ -840,7 +853,9 @@ Section function_subsume.
         simpl. iModIntro. iExists L3. iFrame. by iExists _, _. }
       iApply (logical_step_wand with "Hs").
       iIntros "!> (HR & %HP & HAcc)". iFrame.
-      iPureIntro. exact (Hpanic HP).
+       iPureIntro.
+       unfold effective_panic_condition in *.
+       destruct radium_panic_strategy_of; simpl in *; [exact (Hpanic HP) | contradiction].
   Qed.
 
   Lemma subsume_typed_function π fn {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) T :
@@ -1277,3 +1292,27 @@ Global Arguments function_subtype : simpl never.
 
 
 Global Hint Mode FastFunctionSpecEq + + + + + + : typeclass_instances.
+
+Global Instance simpl_both_effective_panic_condition_unwind `{!RadiumConfig}
+    (P : Prop) `{Hunwind : !TCDone (radium_panic_strategy_of = PanicUnwind)} :
+  SimplBoth (effective_panic_condition P) P.
+Proof.
+  rewrite /SimplBoth/effective_panic_condition.
+  rewrite Hunwind. done.
+Qed.
+
+Global Instance simpl_both_effective_panic_condition_abort `{!RadiumConfig}
+    (P : Prop) `{Habort : !TCDone (radium_panic_strategy_of = PanicAbort)} :
+  SimplBoth (effective_panic_condition P) False.
+Proof.
+  rewrite /SimplBoth/effective_panic_condition.
+  rewrite Habort. done.
+Qed.
+
+Global Instance simpl_both_effective_panic_condition `{!RadiumConfig} (P : Prop) :
+  SimplBoth (effective_panic_condition P)
+    (P ∧ radium_panic_strategy_of = PanicUnwind) | 100.
+Proof.
+  rewrite /SimplBoth/effective_panic_condition.
+  destruct radium_panic_strategy_of; naive_solver.
+Qed.

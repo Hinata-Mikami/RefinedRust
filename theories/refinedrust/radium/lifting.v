@@ -9,6 +9,7 @@ Set Default Proof Using "Type".
 Import uPred.
 
 Class refinedcG Σ := RefinedCG {
+  refinedcG_config :: RadiumConfig;
   refinedcG_invG :: invGS Σ;
   refinedcG_gen_heapG :: heapG Σ;
   refinedcG_threadG :: threadG Σ;
@@ -27,7 +28,7 @@ Next Obligation.
 intros; simpl. lia.
 Qed.
 
-Global Program Instance c_irisG `{!refinedcG Σ} : irisGS c_lang Σ := {
+Global Program Instance c_irisG `{!refinedcG Σ} : irisGS (c_lang refinedcG_config) Σ := {
   iris_invGS := refinedcG_invG;
   state_interp σ n κs _ := state_ctx σ;
   fork_post _ := True%I;
@@ -169,11 +170,11 @@ Section physical_step.
   Qed.
 End physical_step.
 
-Global Instance into_val_val π v : IntoVal (to_rtexpr π (Val v)) (NormalResult v).
+Global Instance into_val_val `{!RadiumConfig} π v : IntoVal (to_rtexpr π (Val v)) (NormalResult v).
 Proof. done. Qed.
-Global Instance into_val_val' v : IntoVal (RTVal v) (NormalResult v).
+Global Instance into_val_val' `{!RadiumConfig} v : IntoVal (RTVal v) (NormalResult v).
 Proof. done. Qed.
-Global Instance into_val_unwind : IntoVal RTUnwind UnwindResult.
+Global Instance into_val_unwind `{!RadiumConfig} : IntoVal RTUnwind UnwindResult.
 Proof. done. Qed.
 
 Local Hint Extern 0 (reducible _ _) => eexists _, _, _, _; simpl : core.
@@ -195,11 +196,11 @@ Local Ltac solve_atomic :=
     |apply ectxi_language_sub_redexes_are_values; intros [[]|[]|[]] **; naive_solver]
   end.
 
-Global Instance cas_atomic π s ot (v1 v2 v3 : val) : Atomic s (to_rtexpr π (CAS ot v1 v2 v3)).
+Global Instance cas_atomic `{!RadiumConfig} π s ot (v1 v2 v3 : val) : Atomic s (to_rtexpr π (CAS ot v1 v2 v3)).
 Proof. solve_atomic. Qed.
-Global Instance skipe_atomic π s (v : val) : Atomic s (to_rtexpr π (SkipE v)).
+Global Instance skipe_atomic `{!RadiumConfig} π s (v : val) : Atomic s (to_rtexpr π (SkipE v)).
 Proof. solve_atomic. Qed.
-Global Instance deref_atomic π s (l : loc) ly : Atomic s (to_rtexpr π (Deref ScOrd ly l)).
+Global Instance deref_atomic `{!RadiumConfig} π s (l : loc) ly : Atomic s (to_rtexpr π (Deref ScOrd ly l)).
 Proof. solve_atomic. Qed.
 (*Global Instance use_atomic s (l : loc) ly : Atomic s (coerce_rtexpr (Use ScOrd ly l)).*)
 (*Proof. solve_atomic. Qed.*)
@@ -323,15 +324,6 @@ Section lifting.
       -∗ WP to_rtstmt π rf s @ E {{ Φ }}.
   Proof. iIntros "HWP". iApply (wp_c_lift_step) =>//. naive_solver. Qed.
 
-  Lemma wp_alloc_failed E Φ:
-    ⊢ WP AllocFailed @ E {{ Φ }}.
-  Proof.
-    iLöb as "IH".
-    iApply wp_lift_pure_det_base_step_no_fork'; [done|by eauto using AllocFailedStep| | by iIntros "!> _"].
-    move => ????? . inversion 1; simplify_eq => //.
-    match goal with | H: to_rtexpr _ ?e = AllocFailed |- _ => destruct e; discriminate end.
-  Qed.
-
   Lemma wp_unwind_terminate E Φ:
     ⊢ WP RTUnwindTerminate @ E {{ Φ }}.
   Proof.
@@ -339,6 +331,15 @@ Section lifting.
     iApply wp_lift_pure_det_base_step_no_fork'; [done|by eauto using UnwindTerminateStep| | by iIntros "!> _"].
     move => ????? . inversion 1; simplify_eq => //.
     match goal with | H: to_rtexpr _ ?e = RTUnwindTerminate |- _ => destruct e; discriminate end.
+  Qed.
+
+  Lemma wp_abort E Φ:
+    ⊢ WP RTAbort @ E {{ Φ }}.
+  Proof.
+    iLöb as "IH".
+    iApply wp_lift_pure_det_base_step_no_fork'; [done|by eauto using AbortStep| | by iIntros "!> _"].
+    move => ????? . inversion 1; simplify_eq => //.
+    match goal with | H: to_rtexpr _ ?e = RTAbort |- _ => destruct e; discriminate end.
   Qed.
 End lifting.
 
@@ -1912,7 +1913,7 @@ Proof.
     (* Alloc failure case. *)
     iApply physical_step_intro.
     iModIntro. iSplit; first done. rewrite /state_ctx. iFrame. iSplit; first done.
-    iApply wp_alloc_failed.
+    iApply wp_abort.
   }
   iMod (heap_alloc_new_block_upd with "[$Hhctx $Hactx]") as "(Hctx & Hlv & Hlf)" => //.
   rewrite length_replicate.
@@ -2169,7 +2170,7 @@ Proof.
     (* Alloc failure case. *)
     iApply physical_step_intro. iNext.
     iSplit; first done. rewrite /state_ctx. iFrame. iSplit; first done.
-    iApply wp_alloc_failed.
+    iApply wp_abort.
   }
   rename select (Forall2 has_layout_val vl _) into Hlyv.
   (* alloc blocks for args *)
@@ -2255,6 +2256,17 @@ Proof.
   iIntros (???? Hstep ?). inv_stmt_step.
   iApply physical_step_intro. iNext. iSplit; first done.
   iFrame. iApply wp_unwind_terminate.
+Qed.
+
+Lemma wps_abort π Q Ψ Ψunwind:
+  ⊢ WPs{π} AbortS {{ Q , Ψ | Ψunwind }}.
+Proof.
+  rewrite stmt_wp_unfold. iIntros (????) "_".
+  iApply wp_lift_stmt_step. iIntros (?) "Hσ !>".
+  iSplit; first by eauto 10 using AbortStepS.
+  iIntros (???? Hstep ?). inv_stmt_step.
+  iApply physical_step_intro. iNext. iSplit; first done.
+  iFrame. iApply wp_abort.
 Qed.
 
 Lemma wps_goto π Q Ψ Ψunwind b s:
@@ -2539,7 +2551,7 @@ Proof.
     (* Alloc failure case. *)
     iApply physical_step_intro.
     iModIntro. iSplit; first done. rewrite /state_ctx. iFrame. iSplit; first done.
-    iApply wp_alloc_failed.
+    iApply wp_abort.
   }
   unfold state_get_thread, thread_get_frame in *.
   simpl in *. simplify_eq.
