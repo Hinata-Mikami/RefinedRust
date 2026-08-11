@@ -43,6 +43,7 @@ pub(crate) struct DropGlueTX<'a, 'def, 'tcx> {
     box_deref_aliases: HashMap<mir::Local, mir::Place<'tcx>>,
     always_live_locals: Vec<mir::Local>,
     collected_procedures: HashMap<TranslationKey<'tcx>, code::UsedProcedure<'def>>,
+    panic_shim_used: bool,
     used_literals: RefCell<BTreeMap<types::scope::AdtUseKey, specs::types::LiteralUse<'def>>>,
     used_tuples: RefCell<BTreeMap<Vec<lang::SynType>, specs::types::LiteralUse<'def>>>,
     drop_glue_trait_ref: specs::traits::RefInst<'def>,
@@ -141,6 +142,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             box_deref_aliases,
             always_live_locals,
             collected_procedures: HashMap::new(),
+            panic_shim_used: false,
             used_literals,
             used_tuples,
             drop_glue_trait_ref,
@@ -391,6 +393,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         for (_, used_proc) in used_procs {
             self.translated_fn.require_function(used_proc.clone());
         }
+        if self.panic_shim_used {
+            self.translated_fn.require_function(crate::body::panic::used_procedure());
+        }
+        crate::body::panic::add_strategy_link_assumption(self.tcx, &mut self.translated_fn);
 
         let trait_ref = self.drop_glue_trait_ref.clone();
         let extra_context_items = self.extra_context_items.clone();
@@ -400,6 +406,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             trait_ref,
             extra_context_items,
         })
+    }
+
+    fn call_panic_shim(&mut self, unwind: code::Stmt) -> code::Stmt {
+        self.panic_shim_used = true;
+        crate::body::panic::call(unwind)
     }
 
     /// Finalize only the drop-glue function spec, without translating MIR/code.

@@ -7,6 +7,7 @@
 pub(crate) mod drop_glue_translation;
 pub(crate) mod function_translation;
 pub(crate) mod mir_lowering;
+pub(crate) mod panic;
 pub(crate) mod signature;
 
 pub(crate) use function_translation::get_arg_syntypes_for_procedure_call;

@@ -69,6 +69,8 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     /// all the other procedures used by this function, and:
     /// `(code_loc_parameter_name, spec_name, type_inst, syntype_of_all_args)`
     collected_procedures: HashMap<TranslationKey<'tcx>, code::UsedProcedure<'def>>,
+    /// Whether this function calls the built-in, argument-erasing panic shim.
+    panic_shim_used: bool,
     /// used statics
     collected_statics: BTreeSet<OrderedDefId>,
 
@@ -224,6 +226,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             return_ty,
             annotations,
             collected_procedures: HashMap::new(),
+            panic_shim_used: false,
             procedure_registry,
             bb_queue: Vec::new(),
             processed_bbs: HashSet::new(),
@@ -326,6 +329,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         for (_, used_proc) in used_procs {
             self.translated_fn.require_function(used_proc.clone());
         }
+        if self.panic_shim_used {
+            self.translated_fn.require_function(crate::body::panic::used_procedure());
+        }
+        crate::body::panic::add_strategy_link_assumption(self.tcx, &mut self.translated_fn);
 
         // generate dependencies on statics
         for did in &self.collected_statics {
@@ -334,6 +341,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
 
         Ok(self.translated_fn.into_function(spec_arena))
+    }
+
+    fn call_panic_shim(&mut self, unwind: code::Stmt) -> code::Stmt {
+        self.panic_shim_used = true;
+        crate::body::panic::call(unwind)
     }
 
     /// Generate a string identifier for a Local.

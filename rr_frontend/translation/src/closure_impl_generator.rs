@@ -284,10 +284,11 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             e: Box::new(code::Expr::Var("__0".to_owned())),
         };
         let normal = code::Stmt::Prim(normal_stmts, Box::new(code::Stmt::Return(ret_expr)));
+        let closure_unwind = body::panic::closure_unwind(self.tcx);
         let unwind = if let Some(stmt) = end_ref_lft {
-            code::Stmt::Prim(vec![stmt], Box::new(code::Stmt::Unwind))
+            code::Stmt::Prim(vec![stmt], Box::new(closure_unwind))
         } else {
-            code::Stmt::Unwind
+            closure_unwind
         };
         let call = code::Stmt::Call {
             f: code::Expr::Literal(code::Literal::Loc(proc_use.loc_name.clone())),
@@ -510,6 +511,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             },
         }
 
+        body::panic::add_strategy_link_assumption(self.tcx, &mut builder);
         let function = builder.into_function(self.fn_arena);
 
         Ok(function)

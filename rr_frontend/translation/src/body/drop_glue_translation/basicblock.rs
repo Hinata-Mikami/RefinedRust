@@ -296,11 +296,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
                 };
                 let normal = self.translate_goto_like(loc, *target);
                 let unwind = self.translate_unwind_action(loc, *unwind)?;
+                let panic = self.call_panic_shim(unwind);
                 Ok(code::Stmt::If {
                     e: condition,
                     ot: lang::OpType::Bool,
                     s1: Box::new(normal),
-                    s2: Box::new(unwind),
+                    s2: Box::new(panic),
                 })
             },
 

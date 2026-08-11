@@ -1,6 +1,44 @@
 From refinedrust Require Import typing.
 
 
+(** * Panic shim *)
+
+(** The frontend erases panic formatting arguments when calling this shim. Until
+    panic-handler linkage is modeled explicitly, the abort branch is trusted to
+    represent terminal execution of the configured panic runtime. *)
+Program Definition panic_shim_def `{!RadiumConfig} : function :=
+  {|
+     f_args := [];
+     f_code :=
+       <[
+     "_bb0" :=
+       match radium_panic_strategy_of with
+       | PanicUnwind => Unwind
+       | PanicAbort => AbortS
+       end
+     ]>%E $
+       ∅;
+     f_init := "_bb0";
+  |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
+
+Definition type_of_panic_shim `{RRGS : !refinedrustGS Σ} :=
+  fn(∀ ( *[]) : 0 | ( *[]) : [] | () : (), (λ _, []); (λ _, True)) →
+    ∃ () : (), () @ unit_t; (λ _, False) | True.
+
+Lemma panic_shim_typed `{RRGS : !refinedrustGS Σ} π :
+  ⊢ typed_function π panic_shim_def (<tag_type> type_of_panic_shim).
+Proof.
+  start_function "panic_shim" ϝ ( [] ) ( [] ) ( [] ) ( ).
+  repeat liRStep; liShow.
+  destruct radium_panic_strategy_of eqn:Hstrategy.
+  all: rep liRStep; liShow. done.
+
+  Unshelve. all: sidecond_solver.
+  Unshelve. all: sidecond_hammer.
+Qed.
+
+
 (** * Built-in shims for low-level pointer operations *)
 
 (** Tuple defs *)

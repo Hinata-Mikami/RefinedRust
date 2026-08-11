@@ -88,7 +88,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         target_did == *did
     }
 
-    /// Check if a call goes to `std::rt::begin_panic`
+    /// Check if a call goes to one of the panic entry points modeled by the built-in panic shim.
     pub(super) fn is_call_destination_panic(&self, func: &mir::Operand<'_>) -> bool {
         if let Some(panic_id_std) = search::try_resolve_did(self.tcx, &["std", "panicking", "begin_panic"]) {
             if Self::check_call_destination(func, panic_id_std) {
@@ -276,8 +276,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 }
 
                 if self.is_call_destination_panic(func) {
-                    info!("Replacing direct panic call with its MIR unwind action");
-                    return self.translate_unwind_action(&loc, *unwind);
+                    info!("Replacing direct panic call with a call to the built-in panic shim");
+                    let unwind = self.translate_unwind_action(&loc, *unwind)?;
+                    return Ok(self.call_panic_shim(unwind));
                 }
                 if self.is_call_destination_discriminant(func) {
                     let op = &args[0].node;
@@ -387,11 +388,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                 let normal = self.translate_goto_like(&loc, *target)?;
                 let unwind = self.translate_unwind_action(&loc, *unwind)?;
+                let panic = self.call_panic_shim(unwind);
                 let stmt = code::Stmt::If {
                     e: comp,
                     ot: lang::OpType::Bool,
                     s1: Box::new(normal),
-                    s2: Box::new(unwind),
+                    s2: Box::new(panic),
                 };
                 Ok(stmt)
             },

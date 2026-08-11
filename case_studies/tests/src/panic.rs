@@ -25,6 +25,13 @@ fn xyz() {
     panic!();
 }
 
+// A failing MIR assertion calls the same panic shim as an explicit panic.
+#[rr::may_panic_if("True")]
+#[rr::verify]
+fn assert_may_panic(b: bool) {
+    assert!(b);
+}
+
 // Calling a potentially panicking function requires the caller to expose a panic condition
 // covering the callee's panic condition. Normal postconditions remain independent of it.
 #[rr::may_panic_if("True")]
@@ -48,6 +55,14 @@ fn either_zero(x: i32, y: i32) {
 #[rr::may_panic_if("True")]
 fn panic_with_cleanup<T>(_x: T) {
     panic!();
+}
+
+// Assertion failure unwinds through the cleanup that drops `x`.
+#[rr::may_panic_if("True")]
+#[rr::verify]
+fn assert_with_cleanup<T>(x: T, b: bool) {
+    assert!(b);
+    drop(x);
 }
 
 #[rr::params("p" : "{F::Params}")]
