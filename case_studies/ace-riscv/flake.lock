@@ -3,11 +3,11 @@
     "ACE-RISCV": {
       "flake": false,
       "locked": {
-        "lastModified": 1786196622,
-        "narHash": "sha256-PrNLpX+7LrbhYLATPr9GhUmt9M6maW4F4oWN+j2MHC8=",
+        "lastModified": 1786540929,
+        "narHash": "sha256-+cNIc4HEygLKgLTjW51/WwSqBQKWvjuLn6iaICGyaYw=",
         "owner": "IBM",
         "repo": "ACE-RISCV",
-        "rev": "b463d20b2f7ccc9d128194218f9c869fcc808743",
+        "rev": "2aa9672ddb564adb08ce58fde0047f261d0c8c58",
         "type": "github"
       },
       "original": {
