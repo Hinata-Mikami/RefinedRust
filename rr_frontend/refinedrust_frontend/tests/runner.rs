@@ -1,6 +1,6 @@
 #![feature(rustc_private)]
 
-use std::{env, path, process};
+use std::{env, io, path, process};
 
 const TARGET_DIR: &str = if cfg!(debug_assertions) { "debug" } else { "release" };
 
@@ -63,7 +63,7 @@ mod tests {
             self.remove().expect("failed to remove generated test output");
         }
 
-        fn remove(&mut self) -> std::io::Result<()> {
+        fn remove(&mut self) -> io::Result<()> {
             let Some(path) = self.path.as_deref() else {
                 return Ok(());
             };
@@ -72,10 +72,10 @@ mod tests {
             Ok(())
         }
 
-        fn remove_path(path: &path::Path) -> std::io::Result<()> {
+        fn remove_path(path: &path::Path) -> io::Result<()> {
             match fs::remove_dir_all(path) {
                 Ok(()) => Ok(()),
-                Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
+                Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(()),
                 Err(err) => Err(err),
             }
         }
