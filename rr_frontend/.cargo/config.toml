@@ -57,14 +57,18 @@ rustflags = [
     "-Aclippy::panic_in_result_fn",
     "-Aclippy::unwrap_in_result",
     "-Aclippy::pub_use",
+    "-Aclippy::rest_pattern_accessible_field",
+    "-Aclippy::definition_in_module_root",
 
     # clippy::style
     "-Aclippy::new_without_default",
+    "-Aclippy::redundant_field_names",
     "-Aclippy::write_with_newline",
 
     # === POTENTIAL LINTS (See: #7) ===
 
     # clippy::pedantic
+    "-Aclippy::assert_is_empty",
     "-Aclippy::manual_assert",
     "-Aclippy::missing_errors_doc",
     "-Aclippy::missing_panics_doc",

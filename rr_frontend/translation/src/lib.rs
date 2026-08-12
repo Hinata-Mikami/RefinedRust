@@ -40,6 +40,7 @@ use log::{error, info, trace, warn};
 use radium::specs::bundles::BundleableType as _;
 use radium::{code, coq, lang, specs};
 use rr_rustc_interface::errors::ErrorGuaranteed;
+use rr_rustc_interface::hir::attrs::lang_items::LangItem;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::{mir, queries, ty};
 use rr_rustc_interface::span::Span;
@@ -1815,7 +1816,7 @@ fn get_drop_glue_mir_source_ty<'tcx>(
         )));
     }
 
-    let real_box_did = vcx.tcx.require_lang_item(hir::LangItem::OwnedBox, vcx.tcx.def_span(logical_did));
+    let real_box_did = vcx.tcx.require_lang_item(LangItem::OwnedBox, vcx.tcx.def_span(logical_did));
     let real_box_ty = vcx.tcx.type_of(real_box_did).instantiate(vcx.tcx, logical_args).skip_norm_wip();
     info!("Using rustc Box drop-glue MIR source {real_box_ty:?} for exported Box {:?}", logical_did);
     Ok(real_box_ty)

@@ -13,6 +13,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use attribute_parse::parse;
 use log::{info, trace};
 use radium::{code, coq, lang, specs};
+use rr_rustc_interface::hir::attrs::lang_items::LangItem;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::mir_dataflow::impls::always_storage_live_locals;
@@ -91,7 +92,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         }
 
         let span = tcx.def_span(adt_did);
-        let drop_glue_did = tcx.require_lang_item(hir::LangItem::DropGlue, span);
+        let drop_glue_did = tcx.require_lang_item(LangItem::DropGlue, span);
         let shim = ty::ShimKind::DropGlue(drop_glue_did, Some(mir_source_ty));
         let body = tcx.mir_shims(shim);
         Self::log_mir(tcx, adt_did, adt_ty, mir_source_ty, body);

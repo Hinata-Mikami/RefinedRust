@@ -10,6 +10,7 @@ use rr_rustc_interface::middle::ty::{
     RegionExt as _, TypeVisitableExt as _, {self},
 };
 use rr_rustc_interface::span::Symbol;
+use rr_rustc_interface::thin_vec::ThinVec;
 use rr_rustc_interface::{middle, trait_selection};
 use trait_selection::{infer, solve};
 
@@ -80,7 +81,7 @@ pub(crate) fn normalize_type<'tcx, T>(
     tcx: ty::TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     ty: T,
-) -> Result<T, Vec<trait_selection::traits::FulfillmentError<'tcx>>>
+) -> Result<T, ThinVec<trait_selection::traits::FulfillmentError<'tcx>>>
 where
     T: ty::TypeFoldable<ty::TyCtxt<'tcx>>,
 {
