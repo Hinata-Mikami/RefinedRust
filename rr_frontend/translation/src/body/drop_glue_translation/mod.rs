@@ -21,6 +21,7 @@ use typed_arena::Arena;
 
 use crate::base::*;
 use crate::body::mir_lowering::{MirTranslationCtx as _, MirTypeTranslation as _, TranslationKey};
+use crate::body::panic;
 use crate::environment::mir_utils::box_alias;
 use crate::error::Message;
 use crate::spec_parsers::parse_utils;
@@ -394,9 +395,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             self.translated_fn.require_function(used_proc.clone());
         }
         if self.panic_shim_used {
-            self.translated_fn.require_function(crate::body::panic::used_procedure());
+            self.translated_fn.require_function(panic::used_procedure());
         }
-        crate::body::panic::add_strategy_link_assumption(self.tcx, &mut self.translated_fn);
+        panic::add_strategy_link_assumption(self.tcx, &mut self.translated_fn);
 
         let trait_ref = self.drop_glue_trait_ref.clone();
         let extra_context_items = self.extra_context_items.clone();
@@ -410,7 +411,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
 
     fn call_panic_shim(&mut self, unwind: code::Stmt) -> code::Stmt {
         self.panic_shim_used = true;
-        crate::body::panic::call(unwind)
+        panic::call(unwind)
     }
 
     /// Finalize only the drop-glue function spec, without translating MIR/code.

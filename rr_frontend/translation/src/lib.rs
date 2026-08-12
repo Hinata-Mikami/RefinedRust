@@ -2045,6 +2045,29 @@ fn translate_function<'tcx>(
             },
             Err(base::TranslationError::Tainted(err)) => Err(PipelineError::Reported(err)),
         }
+    } else if mode.is_code_shim() {
+        // Generate the proof obligation for handwritten Rocq code without deriving dependencies
+        // or behavior from the placeholder Rust body.
+        match translator.and_then(|(tx, info)| tx.translate_code_shim(vcx.fn_arena).map(|x| (x, info))) {
+            Ok((fun, info)) => {
+                info!("Successfully translated code shim {}", fname);
+                vcx.procedure_registry.provide_translated_function(f.to_def_id(), fun);
+
+                if let Some(info) = info {
+                    let ordered_did = OrderedDefId::new(vcx.tcx, f.to_def_id());
+                    vcx.procedure_registry.closure_info.insert(ordered_did, info);
+                }
+                Ok(())
+            },
+            Err(base::TranslationError::ErrorReported(err)) => {
+                vcx.tcx.dcx().span_warn(
+                    vcx.tcx.def_span(f.to_def_id()),
+                    error::Message::SkippedFunctionDueToPreviousFailure,
+                );
+                recover_or_fail(err)
+            },
+            Err(base::TranslationError::Tainted(err)) => Err(PipelineError::Reported(err)),
+        }
     } else {
         // Fully translate the function
         match translator.and_then(|(tx, info)| tx.translate(vcx.fn_arena).map(|x| (x, info))) {

@@ -9,7 +9,7 @@
 use std::collections::HashMap;
 
 use log::{info, trace};
-use radium::{code, coq, specs};
+use radium::{code, coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{hir, span};
@@ -58,6 +58,14 @@ pub(crate) fn function_has_nontrivial_annotations(tcx: ty::TyCtxt<'_>, did: DefI
         || environment::has_tool_attribute(tcx, did, "observe")
         || environment::has_tool_attribute(tcx, did, "args")
         || environment::has_tool_attribute(tcx, did, "may_panic_if")
+}
+
+fn get_function_arg_names(tcx: ty::TyCtxt<'_>, did: DefId) -> Vec<String> {
+    tcx.fn_arg_idents(did)
+        .iter()
+        .enumerate()
+        .map(|(i, maybe_name)| maybe_name.map_or_else(|| format!("_arg_{i}"), |x| x.as_str().to_owned()))
+        .collect()
 }
 
 #[expect(clippy::multiple_inherent_impl)]
@@ -120,13 +128,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         )?;
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
-        // get argument names
-        let arg_names: &'tcx [Option<span::symbol::Ident>] = tcx.fn_arg_idents(proc_did);
-        let arg_names: Vec<_> = arg_names
-            .iter()
-            .enumerate()
-            .map(|(i, maybe_name)| maybe_name.map_or_else(|| format!("_arg_{i}"), |x| x.as_str().to_owned()))
-            .collect();
+        let arg_names = get_function_arg_names(tcx, proc_did);
         info!("arg names: {arg_names:?}");
 
         let spec_builder = Self::process_attrs(
@@ -471,13 +473,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
-        // get argument names
-        let arg_names: &'tcx [Option<span::symbol::Ident>] = tcx.fn_arg_idents(proc.get_id());
-        let arg_names: Vec<_> = arg_names
-            .iter()
-            .enumerate()
-            .map(|(i, maybe_name)| maybe_name.map_or_else(|| format!("_arg_{i}"), |x| x.as_str().to_owned()))
-            .collect();
+        let arg_names = get_function_arg_names(tcx, proc.get_id());
         info!("arg names: {arg_names:?}");
 
         let mut t = Self {
@@ -550,6 +546,26 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             self.translated_fn,
         )?;
         translator.translate(spec_arena)
+    }
+
+    /// Finalize a function backed by handwritten Rocq code without inspecting its Rust body.
+    pub(crate) fn translate_code_shim(
+        mut self,
+        spec_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
+    ) -> Result<code::Function<'def>, TranslationError> {
+        let arg_names = get_function_arg_names(self.tcx, self.proc.get_id());
+        for (name, ty) in arg_names.iter().zip(self.inputs.iter().copied()) {
+            let translated_ty = self.ty_translator.translate_type(ty)?;
+            self.translated_fn.code.add_argument(name, (&translated_ty).into());
+        }
+
+        // Handwritten shim code may inspect the layout of any generic type parameter. Ordinary
+        // body translation adds these assumptions during finalization; code shims have no body.
+        for ty in self.ty_translator.scope.borrow().generic_scope.tyvars() {
+            self.translated_fn.assume_synty_layoutable(lang::SynType::Literal(ty.syn_type()));
+        }
+
+        Ok(self.translated_fn.into_function(spec_arena))
     }
 
     /// Translation that only generates a specification.

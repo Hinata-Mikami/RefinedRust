@@ -24,6 +24,7 @@ use typed_arena::Arena;
 
 use crate::base::*;
 use crate::body::mir_lowering::{MirTranslationCtx as _, ProcedureInst, TranslationKey};
+use crate::body::panic;
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
 use crate::regions::{AnnotationGenerator, CallAnnotationPlan, LocationAnnotationPlan};
@@ -330,9 +331,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             self.translated_fn.require_function(used_proc.clone());
         }
         if self.panic_shim_used {
-            self.translated_fn.require_function(crate::body::panic::used_procedure());
+            self.translated_fn.require_function(panic::used_procedure());
         }
-        crate::body::panic::add_strategy_link_assumption(self.tcx, &mut self.translated_fn);
+        panic::add_strategy_link_assumption(self.tcx, &mut self.translated_fn);
 
         // generate dependencies on statics
         for did in &self.collected_statics {
@@ -345,7 +346,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     fn call_panic_shim(&mut self, unwind: code::Stmt) -> code::Stmt {
         self.panic_shim_used = true;
-        crate::body::panic::call(unwind)
+        panic::call(unwind)
     }
 
     /// Generate a string identifier for a Local.
