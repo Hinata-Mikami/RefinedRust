@@ -273,6 +273,20 @@ Definition type_of_Option_T_map (T_rt: RT) (U_rt: RT) (F_rt: RT) (T_st: syn_type
       ∗ (if_iSome self (λ self, ∃ p x, ⌜op = Some p⌝ ∗ ⌜ret = Some x⌝ ∗ FnOnce_F_T_spec_attrs.(FnOnce_Post) π p f *[self] x))) |
       (* unwind post... *) if_None self False ∧ if_Some self (λ x, ∃ p, op = Some p ∧ FnOnce_F_T_spec_attrs.(FnOnce_UnwindCondition) f p *[x]).
 
+Definition trait_incl_of_Option_T_ok_or (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty])))).
+
+Definition type_of_Option_T_ok_or (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) :=
+  fn(∀ ( *[]) : 0 | ( *[T_ty; E_ty]) : ([(T_rt, T_st); (E_rt, E_st)] : list (RT * syn_type)%type) | 
+      (* params....... *) (self, err) : ((_ * _)),
+      (* elctx........ *) (λ ϝ, []);
+      (* args......... *) self :@: (Option_ty ((T_rt)) -[] -[T_ty]), err :@: E_ty;
+      (* precondition. *) (λ π : thread_id, True) |
+      (* trait reqs... *) (λ π : thread_id, True)) →
+      (* existential.. *) ∃ _ : unit, match self with | Some x => Ok x | None => Err err end @ (Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]);
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
+
 Definition trait_incl_of_Option_T_unwrap (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
 

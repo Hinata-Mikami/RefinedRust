@@ -360,6 +360,82 @@ Qed.
 
 
 
+Program Definition Option_T_ok_or_def (DropGlue_E_drop_glue_loc: loc) (T_st: syn_type) (E_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("self", (use_layout_alg' (Option_st (T_st))) : layout);
+     ("err", (use_layout_alg' E_st) : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ ((Result_els (T_st) (E_st)) : syn_type) } "__0";
+      local_live{ (IntSynType ISize) } "__3";
+      local_live{ BoolSynType } "__7";
+      local_live{ BoolSynType } "__8";
+      "__7" <-{ BoolOp } val_of_bool false;
+      "__8" <-{ BoolOp } val_of_bool false;
+      "__8" <-{ BoolOp } val_of_bool true;
+      "__7" <-{ BoolOp } val_of_bool true;
+      "__3" <-{ (IntOp ISize) } EnumDiscriminant ((Option_els (T_st))) ("self");
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__3")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
+     ]>%E $
+     <[
+     "_bb1" :=
+      StuckS
+     ]>%E $
+     <[
+     "_bb2" :=
+      local_live{ E_st } "__6";
+      "__7" <-{ BoolOp } val_of_bool false;
+      "__6" <-{ (use_op_alg' E_st) } move{ (use_op_alg' E_st) } ("err");
+      "__0" <-{ (use_op_alg' ((Result_els (T_st) (E_st)) : syn_type)) } EnumInit (Result_els (T_st) (E_st)) "Err" (RSTEnumDef ["Result_enum"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "E"] [])) (StructInit (Result_Err_sls (T_st) (E_st)) [("0", move{ (use_op_alg' E_st) } ("__6") : expr)]);
+      local_dead "__6";
+      Goto "_bb4"
+     ]>%E $
+     <[
+     "_bb3" :=
+      local_live{ T_st } "x";
+      "x" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ((EnumData ((Option_els (T_st))) "Some" ("self")) at{ (Option_Some_sls (T_st)) } "0");
+      local_live{ T_st } "__5";
+      "__5" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("x");
+      "__0" <-{ (use_op_alg' ((Result_els (T_st) (E_st)) : syn_type)) } EnumInit (Result_els (T_st) (E_st)) "Ok" (RSTEnumDef ["Result_enum"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "E"] [])) (StructInit (Result_Ok_sls (T_st) (E_st)) [("0", move{ (use_op_alg' T_st) } ("__5") : expr)]);
+      local_dead "__5";
+      local_dead "x";
+      Goto "_bb4"
+     ]>%E $
+     <[
+     "_bb4" :=
+      if{ BoolOp }: copy{ BoolOp } ("__7") then
+       Goto "_bb7"
+      else
+       Goto "_bb5"
+     ]>%E $
+     <[
+     "_bb5" :=
+      return (move{ (use_op_alg' ((Result_els (T_st) (E_st)) : syn_type)) } ("__0"))
+     ]>%E $
+     <[
+     "_bb6" :=
+      Unwind
+     ]>%E $
+     <[
+     "_bb7" :=
+      CallS DropGlue_E_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("err")] None
+      ( Goto "_bb5")
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb6")
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
 Program Definition Option_T_unwrap_def (panic_shim_loc: loc) (T_st: syn_type) : function :=
   {|
      f_args := [

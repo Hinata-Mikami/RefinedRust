@@ -122,6 +122,18 @@
     },
     {
       "kind": "method",
+      "name": "Option_T_ok_or",
+      "path": [
+        "core",
+        "option",
+        "Option",
+        "ok_or"
+      ],
+      "spec": "type_of_Option_T_ok_or",
+      "trait_req_incl": "trait_incl_of_Option_T_ok_or"
+    },
+    {
+      "kind": "method",
       "name": "Option_T_take",
       "path": [
         "core",

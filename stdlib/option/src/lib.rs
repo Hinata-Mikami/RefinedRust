@@ -64,6 +64,14 @@ impl<T> Option<T> {
         }
     }
 
+    #[rr::returns("match self with | Some x => Ok x | None => Err err end")]
+    pub fn ok_or<E>(self, err: E) -> Result<T, E> {
+        match self {
+            Some(x) => Ok(x),
+            None => Err(err),
+        }
+    }
+
     #[rr::params("op")]
     #[rr::requires(#iris "if_iNone self (⌜op = None⌝)")]
     #[rr::ensures(#iris "if_iNone self (⌜ret = None⌝ ∗ ty_ghost_drop {F} π ($# f))")]
