@@ -154,7 +154,7 @@ pub(crate) struct ClosureImplInfo<'tcx, 'def> {
     pub(crate) pre_encoded: coq::term::Term,
     pub(crate) post_encoded: coq::term::Term,
     pub(crate) post_mut_encoded: coq::term::Term,
-    pub(crate) panic_condition_encoded: coq::term::Term,
+    pub(crate) unwind_condition_encoded: coq::term::Term,
     /// Whether this closure explicitly permits exploiting an aborting panic runtime.
     pub(crate) use_panic_abort: bool,
 }

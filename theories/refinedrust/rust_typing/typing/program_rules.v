@@ -5441,7 +5441,7 @@ Section subsume.
 
   Lemma type_panic_free_unwind_annot π E L T :
     ⌜False⌝
-    ⊢ typed_annot_stmt π 1 PanicFreeUnwindAnnot E L T.
+    ⊢ typed_annot_stmt π 1 UnwindFreeAnnot E L T.
   Proof.
     iIntros "%Hfalse". destruct Hfalse.
   Qed.

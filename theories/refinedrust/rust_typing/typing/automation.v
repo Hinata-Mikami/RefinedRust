@@ -1037,7 +1037,7 @@ Section tac.
           (λ v L3, fn_body_end_prop E L3 ϝ π
             (fn_ret_prop π ((fp.2 κs tys).(fn_p) x).(fp_fr) v))
           (λ L3, fn_body_end_prop E L3 ϝ π
-            (⌜effective_panic_condition ((fp.2 κs tys).(fn_p) x).(fp_panic)⌝)%I))).
+            (⌜effective_unwind_condition ((fp.2 κs tys).(fn_p) x).(fp_unwind)⌝)%I))).
 
   Lemma intro_typed_function {rts : list RT} (n : nat) π (fn : function) (fp : (eq rts rts) * (prod_vec lft n → plist type rts → fn_spec)) :
     (∀ κs tys x (ϝ : lft) (f : frame_id),

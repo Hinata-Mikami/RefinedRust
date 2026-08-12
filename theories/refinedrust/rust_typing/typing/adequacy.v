@@ -51,20 +51,20 @@ Proof. solve_inG. Qed.
 
 Definition initial_return_local : var_name := "__refinedrust_main_return".
 
-Inductive panic_policy :=
-  | AllowPanic
-  | ForbidPanic.
+Inductive unwind_policy :=
+  | AllowUnwind
+  | ForbidUnwind.
 
-Definition policy_panic_condition (policy : panic_policy) : Prop :=
+Definition policy_unwind_condition (policy : unwind_policy) : Prop :=
   match policy with
-  | AllowPanic => True
-  | ForbidPanic => False
+  | AllowUnwind => True
+  | ForbidUnwind => False
   end.
 
-Definition initial_unwind_handler (policy : panic_policy) : stmt :=
+Definition initial_unwind_handler (policy : unwind_policy) : stmt :=
   match policy with
-  | AllowPanic => UnwindTerminate
-  | ForbidPanic => StuckS
+  | AllowUnwind => UnwindTerminate
+  | ForbidUnwind => StuckS
   end.
 
 Program Definition initial_caller : function :=
@@ -74,14 +74,14 @@ Program Definition initial_caller : function :=
   |}.
 Next Obligation. constructor. Qed.
 
-Definition initial_stmt `{!LayoutAlg} (policy : panic_policy) (main : loc) : stmt :=
+Definition initial_stmt `{!LayoutAlg} (policy : unwind_policy) (main : loc) : stmt :=
   LocalLiveSt initial_return_local UnitSynType
     (CallS (Val (l2v main)) [] [] []
       (Some (Na1Ord, UntypedOp unit_sl, Var initial_return_local))
       (LocalDeadSt initial_return_local (return (Val []))%E)
       (initial_unwind_handler policy)).
 
-Definition initial_prog `{!LayoutAlg} (policy : panic_policy)
+Definition initial_prog `{!LayoutAlg} (policy : unwind_policy)
     (main : thread_id * loc) : runtime_expr :=
   to_rtstmt main.1 initial_caller (initial_stmt policy main.2).
 
@@ -187,10 +187,10 @@ Proof.
   - rewrite /call_frame_has_locals/empty_frame map_to_list_empty. done.
 Qed.
 
-Definition main_type `{!typeGS Σ} (policy : panic_policy) (P : iProp Σ) :=
-  fn(∀ ( *[]) : 0 | ( *[]) : [] | () : (), λ ϝ, []; λ π, P) → ∃ () : (), () @ unit_t; λ π, True | policy_panic_condition policy.
+Definition main_type `{!typeGS Σ} (policy : unwind_policy) (P : iProp Σ) :=
+  fn(∀ ( *[]) : 0 | ( *[]) : [] | () : (), λ ϝ, []; λ π, P) → ∃ () : (), () @ unit_t; λ π, True | policy_unwind_condition policy.
 
-Definition initial_prog_wp `{!refinedcG Σ} (policy : panic_policy)
+Definition initial_prog_wp `{!refinedcG Σ} (policy : unwind_policy)
     (main : thread_id * loc)
     (Φ : radium.val.val → iProp Σ) : iProp Σ :=
   WP initial_prog policy main {{ runtime_post Φ False }}.
@@ -417,7 +417,7 @@ Qed.
     trusted as terminal divergence; this theorem does not execute or verify the
     platform's panic handler or abort runtime. [policy] separately controls
     whether an unwind that escapes the initial function is accepted. *)
-Lemma refinedrust_adequacy (config : RadiumConfig) (policy : panic_policy) Σ `{!typePreG Σ} `{A : LayoutAlg}
+Lemma refinedrust_adequacy (config : RadiumConfig) (policy : unwind_policy) Σ `{!typePreG Σ} `{A : LayoutAlg}
     (thread_mains : list loc) (fns : gmap addr function)
     (static_ls : list loc) (static_vals : list val.val)
     n t2 σ2 obs hs σ:
@@ -570,8 +570,8 @@ Proof.
     + done.
 Qed.
 
-Definition refinedrust_adequacy_allow_panic config := refinedrust_adequacy config AllowPanic.
-Definition refinedrust_adequacy_panic_free config := refinedrust_adequacy config ForbidPanic.
+Definition refinedrust_adequacy_allow_unwind config := refinedrust_adequacy config AllowUnwind.
+Definition refinedrust_adequacy_unwind_free config := refinedrust_adequacy config ForbidUnwind.
 
 (*Print Assumptions refinedrust_adequacy.*)
 

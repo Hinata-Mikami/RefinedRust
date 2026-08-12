@@ -4,7 +4,7 @@
 #[rr::verify]
 #[rr::params("p")]
 #[rr::requires(#iris "{T::Pre} π p x ()")]
-#[rr::may_panic_if("closure_may_panic {T::PanicCondition}")]
+#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition}")]
 fn closure_test_arg_fnonce_1<T>(x: T)
     where T: FnOnce() -> i32
 {
@@ -14,7 +14,7 @@ fn closure_test_arg_fnonce_1<T>(x: T)
 #[rr::verify]
 #[rr::params("p")]
 #[rr::requires(#iris "{T::Pre} π p x *[42]")]
-#[rr::may_panic_if("closure_may_panic {T::PanicCondition}")]
+#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition}")]
 fn closure_test_arg_fnonce_2<T>(x: T)
     where T: FnOnce(i32) -> i32
 {
@@ -24,7 +24,7 @@ fn closure_test_arg_fnonce_2<T>(x: T)
 #[rr::verify]
 #[rr::params("p")]
 #[rr::requires(#iris "{T::Pre} π p x ()")]
-#[rr::may_panic_if("closure_may_panic {T::PanicCondition}")]
+#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition}")]
 fn closure_test_arg_fnonce_3<T, W>(x: T)
     where T: FnOnce() -> W
 {
@@ -34,7 +34,7 @@ fn closure_test_arg_fnonce_3<T, W>(x: T)
 #[rr::verify]
 #[rr::params("p")]
 #[rr::requires(#iris "{T::Pre} π p x ()")]
-#[rr::may_panic_if("closure_may_panic {T::PanicCondition}")]
+#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition}")]
 fn closure_test_arg_fn_1<T>(x: T)
     where T: Fn()
 {
@@ -44,7 +44,7 @@ fn closure_test_arg_fn_1<T>(x: T)
 #[rr::verify]
 #[rr::params("p")]
 #[rr::requires(#iris "{T::Pre} π p x ()")]
-#[rr::may_panic_if("closure_may_panic {T::PanicCondition}")]
+#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition}")]
 fn closure_test_arg_fn_2<T>(x: T)
     where T: Fn() -> i32
 {
@@ -54,8 +54,8 @@ fn closure_test_arg_fn_2<T>(x: T)
 #[rr::verify]
 #[rr::params("p")]
 #[rr::requires(#iris "{T::Pre} π p x ()")]
-#[rr::requires("{T::PanicCondition} x p tt → False")]
-//#[rr::may_panic_if("closure_may_panic {T::PanicCondition}")]
+#[rr::requires("{T::UnwindCondition} x p tt → False")]
+//#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition}")]
 fn closure_test_arg_fnmut_1<T>(mut x: T)
     where T: FnMut()
 {
@@ -66,7 +66,7 @@ fn closure_test_arg_fnmut_1<T>(mut x: T)
 #[rr::verify]
 #[rr::params("p")]
 #[rr::requires(#iris "{T::Pre} π p x ()")]
-#[rr::may_panic_if("closure_may_panic {T::PanicCondition}")]
+#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition}")]
 fn closure_test_call_fnonce_0<T>(x: T)
     where T: FnOnce() -> i32
 {
@@ -363,7 +363,7 @@ fn closure_test10() {
 #[rr::verify]
 #[rr::params("p")]
 #[rr::requires(#iris "□ ∀ a, {T::Pre} π p x *[a]")]
-#[rr::may_panic_if("closure_may_panic {T::PanicCondition}")]
+#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition}")]
 fn closure_test_call_hrtb_1<T>(x: T)
     where T: for<'a> Fn(&'a i32) -> i32
 {

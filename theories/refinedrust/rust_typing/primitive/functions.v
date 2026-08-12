@@ -13,16 +13,16 @@ Global Arguments introduce_typed_stmt : simpl never.
 
 (*TODO: equip function types with namespace parameters for atomic and non-atomic invariants that need to be active when calling it. *)
 
-Definition effective_panic_condition `{!RadiumConfig} (P : Prop) : Prop :=
+Definition effective_unwind_condition `{!RadiumConfig} (P : Prop) : Prop :=
   match radium_panic_strategy_of with
   | PanicUnwind => P
   | PanicAbort => False
   end.
 
-Lemma effective_panic_condition_false `{!RadiumConfig} :
-  effective_panic_condition False → False.
+Lemma effective_unwind_condition_false `{!RadiumConfig} :
+  effective_unwind_condition False → False.
 Proof.
-  unfold effective_panic_condition.
+  unfold effective_unwind_condition.
   destruct radium_panic_strategy_of; done.
 Qed.
 
@@ -55,14 +55,14 @@ Section function.
     (* return type *)
     fp_fr: fp_extype → fn_ret;
     (* pure condition under which the function may unwind *)
-    fp_panic : Prop;
+    fp_unwind : Prop;
   }.
   Definition fn_params_add_pre (pre : iProp Σ) (F : fn_params) : fn_params :=
-    FP F.(fp_atys) (λ π, pre ∗ F.(fp_Pa) π)%I F.(fp_Sc) F.(fp_elctx) F.(fp_extype) F.(fp_fr) F.(fp_panic).
+    FP F.(fp_atys) (λ π, pre ∗ F.(fp_Pa) π)%I F.(fp_Sc) F.(fp_elctx) F.(fp_extype) F.(fp_fr) F.(fp_unwind).
   Definition fn_params_add_elctx (E : lft → elctx) (F : fn_params) : fn_params :=
-    FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) (λ ϝ, E ϝ ++ F.(fp_elctx) ϝ) F.(fp_extype) F.(fp_fr) F.(fp_panic).
-  Definition fn_params_set_panic (panic : Prop) (F : fn_params) : fn_params :=
-    FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) F.(fp_elctx) F.(fp_extype) F.(fp_fr) panic.
+    FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) (λ ϝ, E ϝ ++ F.(fp_elctx) ϝ) F.(fp_extype) F.(fp_fr) F.(fp_unwind).
+  Definition fn_params_set_unwind (unwind : Prop) (F : fn_params) : fn_params :=
+    FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) F.(fp_elctx) F.(fp_extype) F.(fp_fr) unwind.
 
  (**
      Compute a [fn_params] definition that includes the required lifetime constraints for the
@@ -172,7 +172,7 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
            fn_init_context fn fps π f lsa sta -∗
            introduce_typed_stmt E L (π, f) ϝ fn
              (λ v L2, fn_body_end_prop E L2 ϝ π (fn_ret_prop π fps.(fp_fr) v))
-              (λ L2, fn_body_end_prop E L2 ϝ π ⌜effective_panic_condition fps.(fp_panic)⌝)))%I.
+              (λ L2, fn_body_end_prop E L2 ϝ π ⌜effective_unwind_condition fps.(fp_unwind)⌝)))%I.
 
   Global Instance typed_function_persistent {lfts : nat} {rts : list (RT)} π fn fp : Persistent (typed_function (lfts:=lfts) (rts := rts) π fn fp) := _.
 
@@ -289,7 +289,7 @@ Section call.
 
       (* postconditions *)
       (
-       introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ ⌜effective_panic_condition fps.(fp_panic)⌝) U ∧
+       introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ ⌜effective_unwind_condition fps.(fp_unwind)⌝) U ∧
        (∀ v x', (* v = retval, x' = post existential *)
         (* also donate some credits we are generating here *)
         introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ (fps.(fp_fr) x').(fr_R) π ∗ v ◁ᵥ{π, MetaNone} (fps.(fp_fr) x').(fr_ref) @ (fps.(fp_fr) x').(fr_ty)) (λ L3,
@@ -390,7 +390,7 @@ Section call.
         na_own f.1 ⊤ ∗
         ([∗ list] x0 ∈ locals,
           ∃ (ly : layout) (l : loc) (st : syn_type), ⌜syn_type_has_layout st ly⌝ ∗ x0 is_live{ (f.1, S f.2), st} l ∗ l ↦|ly|) ∗
-        ⌜effective_panic_condition (fp_panic fps)⌝)%I).
+        ⌜effective_unwind_condition (fp_unwind fps)⌝)%I).
     unfold fn_init_context.
     (* prove the initial context *)
     iSpecialize ("Hm" with "[Hcred Hc $Hna $Halloc $Hsc $HP Ha Hvl $Hx]").
@@ -651,7 +651,7 @@ Global Instance fn_spec_scope_bindable `{!typeGS Σ} :
 
 (** Add a new late precondition to a fn specification *)
 Definition fn_params_add_late_pre `{!typeGS Σ} (S : fn_params) (pre : thread_id → iProp Σ) : fn_params :=
-  FP S.(fp_atys) S.(fp_Pa) (λ π, S.(fp_Sc) π ∗ pre π)%I S.(fp_elctx) S.(fp_extype) S.(fp_fr) S.(fp_panic).
+  FP S.(fp_atys) S.(fp_Pa) (λ π, S.(fp_Sc) π ∗ pre π)%I S.(fp_elctx) S.(fp_extype) S.(fp_fr) S.(fp_unwind).
 Definition fn_spec_add_late_pre `{!typeGS Σ} (S : fn_spec) (pre : thread_id → iProp Σ) : fn_spec :=
   mk_fn_spec S.(fn_A) (λ a, fn_params_add_late_pre (S.(fn_p) a) pre).
 
@@ -711,7 +711,7 @@ Section function_subsume.
       iterate: zip ls (fp_atys ((F1 κs tys).(fn_p) a)) {{ e T, exhale (e.1 ◁ₗ[π, Owned] #(projT2 e.2).2 @ ◁ (projT2 e.2).1); return T }};
       exhale (fp_Pa ((F1 κs tys).(fn_p) a) π);
       exhale (fp_Sc ((F1 κs tys).(fn_p) a) π);
-      exhale ⌜fp_panic ((F1 κs tys).(fn_p) a) → fp_panic ((F2 κs tys).(fn_p) b)⌝;
+      exhale ⌜fp_unwind ((F1 κs tys).(fn_p) a) → fp_unwind ((F2 κs tys).(fn_p) b)⌝;
       (* show that F1.ret implies F2.ret *)
       ∀ (vr : val) a2,
       inhale (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_R) π;
@@ -854,7 +854,7 @@ Section function_subsume.
       iApply (logical_step_wand with "Hs").
       iIntros "!> (HR & %HP & HAcc)". iFrame.
        iPureIntro.
-       unfold effective_panic_condition in *.
+       unfold effective_unwind_condition in *.
        destruct radium_panic_strategy_of; simpl in *; [exact (Hpanic HP) | contradiction].
   Qed.
 
@@ -875,7 +875,7 @@ Section function_subsume.
         iterate: zip ls (fp_atys ((F1 κs tys).(fn_p) a)) {{ e T, exhale (e.1 ◁ₗ[π, Owned] #(projT2 e.2).2 @ ◁ (projT2 e.2).1); return T }};
         exhale (fp_Pa ((F1 κs tys).(fn_p) a) π);
         exhale (fp_Sc ((F1 κs tys).(fn_p) a) π);
-        exhale ⌜fp_panic ((F1 κs tys).(fn_p) a) → fp_panic ((F2 κs tys).(fn_p) b)⌝;
+        exhale ⌜fp_unwind ((F1 κs tys).(fn_p) a) → fp_unwind ((F2 κs tys).(fn_p) b)⌝;
         (* show that F1.ret implies F2.ret *)
         ∀ (vr : val) a2,
         inhale (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_R) π;
@@ -909,7 +909,7 @@ Section function_subsume.
       F1.(fp_atys) = F2.(fp_atys) ∧
       F1.(fp_Pa) = F2.(fp_Pa) ∧
       F1.(fp_Sc) = F2.(fp_Sc) ∧
-      F1.(fp_panic) = F2.(fp_panic) ∧
+      F1.(fp_unwind) = F2.(fp_unwind) ∧
       ∃ (Heq2 : F1.(fp_extype) = F2.(fp_extype)),
       ∀ (r : F1.(fp_extype)),
       F1.(fp_fr) r = F2.(fp_fr) (rew [id] Heq2 in r)
@@ -1293,26 +1293,26 @@ Global Arguments function_subtype : simpl never.
 
 Global Hint Mode FastFunctionSpecEq + + + + + + : typeclass_instances.
 
-Global Instance simpl_both_effective_panic_condition_unwind `{!RadiumConfig}
+Global Instance simpl_both_effective_unwind_condition_unwind `{!RadiumConfig}
     (P : Prop) `{Hunwind : !TCDone (radium_panic_strategy_of = PanicUnwind)} :
-  SimplBoth (effective_panic_condition P) P.
+  SimplBoth (effective_unwind_condition P) P.
 Proof.
-  rewrite /SimplBoth/effective_panic_condition.
+  rewrite /SimplBoth/effective_unwind_condition.
   rewrite Hunwind. done.
 Qed.
 
-Global Instance simpl_both_effective_panic_condition_abort `{!RadiumConfig}
+Global Instance simpl_both_effective_unwind_condition_abort `{!RadiumConfig}
     (P : Prop) `{Habort : !TCDone (radium_panic_strategy_of = PanicAbort)} :
-  SimplBoth (effective_panic_condition P) False.
+  SimplBoth (effective_unwind_condition P) False.
 Proof.
-  rewrite /SimplBoth/effective_panic_condition.
+  rewrite /SimplBoth/effective_unwind_condition.
   rewrite Habort. done.
 Qed.
 
-Global Instance simpl_both_effective_panic_condition `{!RadiumConfig} (P : Prop) :
-  SimplBoth (effective_panic_condition P)
+Global Instance simpl_both_effective_unwind_condition `{!RadiumConfig} (P : Prop) :
+  SimplBoth (effective_unwind_condition P)
     (P ∧ radium_panic_strategy_of = PanicUnwind) | 100.
 Proof.
-  rewrite /SimplBoth/effective_panic_condition.
+  rewrite /SimplBoth/effective_unwind_condition.
   destruct radium_panic_strategy_of; naive_solver.
 Qed.

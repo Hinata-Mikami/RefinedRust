@@ -3,5 +3,5 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 
-#[rr::may_panic_if("True", "False")]
+#[rr::may_unwind_if(true)]
 fn main() {}

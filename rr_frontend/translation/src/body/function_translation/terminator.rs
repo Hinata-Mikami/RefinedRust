@@ -61,7 +61,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     fn should_close_unwind_early(&self, action: mir::UnwindAction) -> bool {
-        if environment::has_tool_attribute(self.tcx, self.proc.get_id(), "may_panic_if") {
+        if environment::has_tool_attribute(self.tcx, self.proc.get_id(), "may_unwind_if") {
             return false;
         }
 
@@ -189,7 +189,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         if close_early {
             let annotation = code::PrimStmt::Annot {
                 a: vec![code::Annotation::PanicFreeUnwind],
-                why: Some("panic condition is False".to_owned()),
+                why: Some("unwind condition is False".to_owned()),
             };
             translated = code::Stmt::Prim(vec![annotation], Box::new(translated));
         }

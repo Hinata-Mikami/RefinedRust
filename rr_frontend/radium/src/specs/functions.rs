@@ -272,7 +272,7 @@ pub struct LiteralSpec<'def> {
     /// postcondition as a separating conjunction
     post: coq::iris::IProp,
     /// pure condition under which the function may unwind
-    panic_post: coq::term::Term,
+    unwind_post: coq::term::Term,
 
     // TODO remove
     has_spec: bool,
@@ -363,7 +363,7 @@ impl<'def> LiteralSpec<'def> {
             existential.0, existential.1, self.ret.1, self.ret.0
         )?;
         write!(f2, "(* postcondition *) (λ π : thread_id, {}) |\n", self.post)?;
-        write!(f2, "(* panic post... *) {}", self.panic_post)?;
+        write!(f2, "(* unwind post... *) {}", self.unwind_post)?;
 
         Ok(())
     }
@@ -380,7 +380,7 @@ pub struct LiteralSpecBuilder<'def> {
     existential: Vec<coq::binder::Binder>,
     ret: Option<TypeWithRef<'def>>,
     post: coq::iris::IProp,
-    panic_conditions: Vec<coq::term::Term>,
+    unwind_conditions: Vec<coq::term::Term>,
 
     coq_names: HashSet<String>,
 
@@ -399,7 +399,7 @@ impl<'def> LiteralSpecBuilder<'def> {
             existential: Vec::new(),
             ret: None,
             post: coq::iris::IProp::Sep(Vec::new()),
-            panic_conditions: Vec::new(),
+            unwind_conditions: Vec::new(),
             coq_names: HashSet::new(),
             has_spec: false,
         }
@@ -464,8 +464,8 @@ impl<'def> LiteralSpecBuilder<'def> {
     }
 
     /// Add a pure condition under which the function may unwind.
-    pub fn add_panic_condition(&mut self, condition: coq::term::Term) {
-        self.panic_conditions.push(condition);
+    pub fn add_unwind_condition(&mut self, condition: coq::term::Term) {
+        self.unwind_conditions.push(condition);
     }
 
     /// Set the return type of the function
@@ -499,10 +499,10 @@ impl<'def> LiteralSpecBuilder<'def> {
 
     /// Generate an actual function spec.
     pub(crate) fn into_function_spec(self) -> LiteralSpec<'def> {
-        let panic_post = match self.panic_conditions.as_slice() {
+        let unwind_post = match self.unwind_conditions.as_slice() {
             [] => coq::term::Term::Literal("False".to_owned()),
             [condition] => condition.to_owned(),
-            _ => coq::term::Term::Infix("∨".to_owned(), self.panic_conditions),
+            _ => coq::term::Term::Infix("∨".to_owned(), self.unwind_conditions),
         };
         LiteralSpec {
             params: coq::binder::BinderList::new(self.params),
@@ -512,7 +512,7 @@ impl<'def> LiteralSpecBuilder<'def> {
             existentials: coq::binder::BinderList::new(self.existential),
             ret: self.ret.unwrap_or_else(TypeWithRef::make_unit),
             post: self.post,
-            panic_post,
+            unwind_post,
             has_spec: self.has_spec,
         }
     }
@@ -524,26 +524,26 @@ mod tests {
     use crate::coq;
 
     #[test]
-    fn panic_post_defaults_to_false() {
+    fn unwind_post_defaults_to_false() {
         let spec = LiteralSpecBuilder::new().into_function_spec();
 
-        assert_eq!("False", spec.panic_post.to_string());
+        assert_eq!("False", spec.unwind_post.to_string());
     }
 
     #[test]
-    fn panic_post_preserves_one_condition() {
+    fn unwind_post_preserves_one_condition() {
         let mut builder = LiteralSpecBuilder::new();
-        builder.add_panic_condition(coq::term::Term::Literal("x = 0".to_owned()));
+        builder.add_unwind_condition(coq::term::Term::Literal("x = 0".to_owned()));
 
-        assert_eq!("x = 0", builder.into_function_spec().panic_post.to_string());
+        assert_eq!("x = 0", builder.into_function_spec().unwind_post.to_string());
     }
 
     #[test]
-    fn panic_post_disjoins_repeated_conditions() {
+    fn unwind_post_disjoins_repeated_conditions() {
         let mut builder = LiteralSpecBuilder::new();
-        builder.add_panic_condition(coq::term::Term::Literal("x = 0".to_owned()));
-        builder.add_panic_condition(coq::term::Term::Literal("y = 0".to_owned()));
+        builder.add_unwind_condition(coq::term::Term::Literal("x = 0".to_owned()));
+        builder.add_unwind_condition(coq::term::Term::Literal("y = 0".to_owned()));
 
-        assert_eq!("(x = 0) ∨ (y = 0)", builder.into_function_spec().panic_post.to_string());
+        assert_eq!("(x = 0) ∨ (y = 0)", builder.into_function_spec().unwind_post.to_string());
     }
 }

@@ -1332,8 +1332,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 specs::traits::SpecAttrInst::Term(info.post_mut_encoded.clone()),
             );
             attrs.insert(
-                "PanicCondition".to_owned(),
-                specs::traits::SpecAttrInst::Term(info.panic_condition_encoded.clone()),
+                "UnwindCondition".to_owned(),
+                specs::traits::SpecAttrInst::Term(info.unwind_condition_encoded.clone()),
             );
         }
 

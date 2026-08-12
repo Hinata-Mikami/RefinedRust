@@ -2,21 +2,21 @@ From refinedrust Require Import typing.
 
 Module test.
 
-Lemma effective_panic_condition_unwind (P : Prop) :
-  @effective_panic_condition panic_unwind_config P ↔ P.
+Lemma effective_unwind_condition_unwind (P : Prop) :
+  @effective_unwind_condition panic_unwind_config P ↔ P.
 Proof. done. Qed.
 
-Lemma effective_panic_condition_abort (P : Prop) :
-  @effective_panic_condition panic_abort_config P ↔ False.
+Lemma effective_unwind_condition_abort (P : Prop) :
+  @effective_unwind_condition panic_abort_config P ↔ False.
 Proof. done. Qed.
 
-Lemma effective_panic_condition_known_abort `{!RadiumConfig} (P : Prop) :
+Lemma effective_unwind_condition_known_abort `{!RadiumConfig} (P : Prop) :
   radium_panic_strategy_of = PanicAbort →
-  effective_panic_condition P → False.
+  effective_unwind_condition P → False.
 Proof. sidecond_hammer. Qed.
 
-Lemma effective_panic_condition_generic `{!RadiumConfig} (P : Prop) :
-  effective_panic_condition P →
+Lemma effective_unwind_condition_generic `{!RadiumConfig} (P : Prop) :
+  effective_unwind_condition P →
   P ∧ radium_panic_strategy_of = PanicUnwind.
 Proof. sidecond_hammer. Qed.
 
@@ -193,7 +193,7 @@ Definition type_of_ptr_read `{!typeGS Σ} (T_rt: RT) (T_st: syn_type) :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, r @ T_ty;
       (* postcondition *) (λ π : thread_id, (src ◁ₗ[π, Owned] # ($# r) @ ◁ T_ty)) |
-      (* panic post... *) False.
+      (* unwind post... *) False.
 
 Lemma ptr_read_typed `{!typeGS Σ} π T_rt T_st T_ly :
   syn_type_has_layout T_st T_ly →

@@ -1,40 +1,38 @@
-// Panic specifications describe a second, exceptional outcome of a function call.
-// `returns` and `ensures` apply only to the regular return branch. On the panic branch,
-// the caller learns the function's panic condition and continues at the MIR unwind target.
+// Unwind specifications describe the exceptional outcome of a function call.
+// `returns` and `ensures` apply only to the regular return branch. On the unwind branch,
+// the caller learns the function's unwind condition and continues at the MIR unwind target.
 //
-// Panics are opt-in per function: without a `may_panic_if` annotation, the panic condition
-// is False, preserving RefinedRust's current panic-free behavior. `may_panic_if("True")` is
-// the explicit escape hatch for a function that may panic without a more precise condition.
-// There is no separate allow-panics mode that implicitly weakens panic conditions to True.
+// Unwinding is opt-in per function: without a `may_unwind_if` annotation, the unwind condition
+// is False. `may_unwind_if("True")` permits an unwind without a more precise condition.
 //
-// `may_panic_if("P")` means that a panic is permitted only if P holds; it does not guarantee
-// that the function panics when P holds. In particular, the regular return branch does not
-// receive the negation of P. Multiple annotations describe alternative panic causes and are
+// `may_unwind_if("P")` means that an unwind is permitted only if P holds; it does not guarantee
+// that the function unwinds when P holds. In particular, the regular return branch does not
+// receive the negation of P. Multiple annotations describe alternative unwind causes and are
 // combined by disjunction.
 
-#[rr::may_panic_if("x + 42 ∉ i32")]
+#[rr::may_unwind_if("x + 42 ∉ i32")]
 #[rr::returns("x + 42")]
 fn add_42(x: i32) -> i32 {
     x + 42
 }
 
 // An imprecise specification still has to opt in explicitly.
-#[rr::may_panic_if("True")]
+#[rr::may_unwind_if("True")]
 #[rr::verify]
 fn xyz() {
     panic!();
 }
 
 // A failing MIR assertion calls the same panic shim as an explicit panic.
-#[rr::may_panic_if("True")]
+#[rr::may_unwind_if("True")]
 #[rr::verify]
 fn assert_may_panic(b: bool) {
     assert!(b);
 }
 
-// Calling a potentially panicking function requires the caller to expose a panic condition
-// covering the callee's panic condition. Normal postconditions remain independent of it.
-#[rr::may_panic_if("True")]
+// Calling a potentially unwinding function requires the caller to expose an unwind condition
+// covering the callee's unwind condition. Normal postconditions remain independent of it.
+#[rr::may_unwind_if("True")]
 #[rr::returns("5")]
 fn call_xyz() -> i32 {
     xyz();
@@ -43,8 +41,8 @@ fn call_xyz() -> i32 {
 
 // Multiple possible causes form a disjunction: this function may panic only if
 // `x == 0 ∨ y == 0`.
-#[rr::may_panic_if("x = 0")]
-#[rr::may_panic_if("y = 0")]
+#[rr::may_unwind_if("x = 0")]
+#[rr::may_unwind_if("y = 0")]
 fn either_zero(x: i32, y: i32) {
     if x == 0 || y == 0 {
         panic!();
@@ -52,13 +50,13 @@ fn either_zero(x: i32, y: i32) {
 }
 
 // Unwinding drops `x`; if that drop panics, the generated cleanup terminates.
-#[rr::may_panic_if("True")]
+#[rr::may_unwind_if("True")]
 fn panic_with_cleanup<T>(_x: T) {
     panic!();
 }
 
 // Assertion failure unwinds through the cleanup that drops `x`.
-#[rr::may_panic_if("True")]
+#[rr::may_unwind_if("True")]
 #[rr::verify]
 fn assert_with_cleanup<T>(x: T, b: bool) {
     assert!(b);
@@ -67,7 +65,7 @@ fn assert_with_cleanup<T>(x: T, b: bool) {
 
 #[rr::params("p" : "{F::Params}")]
 #[rr::requires(#iris "{F::Pre} π p x tt")]
-#[rr::may_panic_if("{F::PanicCondition} x p tt")]
+#[rr::may_unwind_if("{F::UnwindCondition} x p tt")]
 fn call_clos<F>(x: F)
 where
     F: Fn(),
@@ -77,9 +75,9 @@ where
 
 #[rr::params("x")]
 #[rr::args("x")]
-#[rr::may_panic_if("x = 0")]
+#[rr::may_unwind_if("x = 0")]
 fn call_conditional_closure(x: i32) {
-    let clos = #[rr::may_panic_if("x = 0")]
+    let clos = #[rr::may_unwind_if("x = 0")]
     |x: i32| {
         if x == 0 {
             panic!();
@@ -90,10 +88,10 @@ fn call_conditional_closure(x: i32) {
 
 #[rr::params("x")]
 #[rr::args("x")]
-#[rr::may_panic_if("x = 0 ∨ x = 1")]
+#[rr::may_unwind_if("x = 0 ∨ x = 1")]
 fn call_captured_closure(x: i32) {
-    let clos = #[rr::may_panic_if("{x} = 0")]
-    #[rr::may_panic_if("{x} = 1")]
+    let clos = #[rr::may_unwind_if("{x} = 0")]
+    #[rr::may_unwind_if("{x} = 1")]
     || {
         if x == 0 || x == 1 {
             panic!();

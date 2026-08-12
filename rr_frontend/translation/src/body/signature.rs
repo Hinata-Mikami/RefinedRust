@@ -58,7 +58,7 @@ pub(crate) fn function_has_nontrivial_annotations(tcx: ty::TyCtxt<'_>, did: DefI
         || environment::has_tool_attribute(tcx, did, "returns")
         || environment::has_tool_attribute(tcx, did, "observe")
         || environment::has_tool_attribute(tcx, did, "args")
-        || environment::has_tool_attribute(tcx, did, "may_panic_if")
+        || environment::has_tool_attribute(tcx, did, "may_unwind_if")
         || environment::has_tool_attribute(tcx, did, "use_panic_abort")
 }
 
@@ -415,7 +415,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             spec_info.pre_encoded,
             spec_info.post_encoded,
             spec_info.post_mut_encoded,
-            spec_info.panic_condition_encoded,
+            spec_info.unwind_condition_encoded,
             use_panic_abort,
         );
 

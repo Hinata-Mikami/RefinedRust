@@ -72,7 +72,7 @@ Section adequate.
     iApply typed_function_equiv; iSplit; first done;
     rep liRStep.
 
-  Lemma main_adequate (config : RadiumConfig) panic_policy hs σ n κs t2 σ2 :
+  Lemma main_adequate (config : RadiumConfig) unwind_policy hs σ n κs t2 σ2 :
     alloc_new_blocks initial_heap_state GlobalAlloc initial_heap_locs initial_heap_values hs →
     σ = initial_state hs 1 (fn_lists_to_fns function_addrs functions) →
 
@@ -81,14 +81,14 @@ Section adequate.
     (** the function addresses have to be in USize *)
     Forall (λ a, a ∈ USize) function_addrs →
 
-    nsteps (Λ := c_lang config) n (initial_prog panic_policy <$> [(0, fn_loc addr_main)], σ) κs (t2, σ2) →
+    nsteps (Λ := c_lang config) n (initial_prog unwind_policy <$> [(0, fn_loc addr_main)], σ) κs (t2, σ2) →
     (∀ e2, e2 ∈ t2 → not_stuck e2 σ2).
   Proof.
     move => ? -> HNDfns HRANfns.
     adequacy_invert_forall HRANfns.
 
     set Σ : gFunctors := #[typeΣ].
-    eapply (refinedrust_adequacy config panic_policy Σ thread_mains) => //.
+    eapply (refinedrust_adequacy config unwind_policy Σ thread_mains) => //.
     { adequacy_split_forall; done. }
     move => ? ?.
     exists static_locs, static_types => Hstatics.

@@ -37,7 +37,7 @@ pub(crate) const COMMON_FUNCTION_SPEC_ATTRS: &[&str] = &[
     "verify",
     "ok",
     "instantiate",
-    "may_panic_if",
+    "may_unwind_if",
 ];
 
 pub(crate) const FUNCTION_SPEC_ATTRS: &[&str] =
@@ -103,7 +103,7 @@ pub(crate) struct ClosureSpecInfo {
     pub pre_encoded: coq::term::Term,
     pub post_encoded: coq::term::Term,
     pub post_mut_encoded: coq::term::Term,
-    pub panic_condition_encoded: coq::term::Term,
+    pub unwind_condition_encoded: coq::term::Term,
 }
 impl ClosureSpecInfo {
     fn new_from_parsed_spec<'def>(
@@ -208,7 +208,7 @@ impl ClosureSpecInfo {
             coq::term::RocqType::UserDefined(model::Type::ThreadId),
         );
 
-        let panic_condition_encoded = if parsed_spec.panic_conditions.is_empty() {
+        let unwind_condition_encoded = if parsed_spec.unwind_conditions.is_empty() {
             coq::term::Term::Lambda(
                 coq::binder::BinderList::new(vec![
                     self_binder.clone(),
@@ -218,18 +218,18 @@ impl ClosureSpecInfo {
                 Box::new(coq::term::Term::Literal("False".to_owned())),
             )
         } else {
-            let panic_condition = if parsed_spec.panic_conditions.len() == 1 {
-                parsed_spec.panic_conditions[0].clone()
+            let unwind_condition = if parsed_spec.unwind_conditions.len() == 1 {
+                parsed_spec.unwind_conditions[0].clone()
             } else {
-                coq::term::Term::Infix("∨".to_owned(), parsed_spec.panic_conditions.clone())
+                coq::term::Term::Infix("∨".to_owned(), parsed_spec.unwind_conditions.clone())
             };
-            let panic_condition = coq::term::Term::Exists(
+            let unwind_condition = coq::term::Term::Exists(
                 all_params.clone(),
                 Box::new(coq::term::Term::Infix("∧".to_owned(), vec![
                     coq::term::Term::Literal(ext_params_rfn_clause.clone()),
                     coq::term::Term::Literal(pre_self_rfn_clause.clone()),
                     coq::term::Term::Literal(pre_args_rfn_clause.clone()),
-                    panic_condition,
+                    unwind_condition,
                 ])),
             );
             coq::term::Term::Lambda(
@@ -238,7 +238,7 @@ impl ClosureSpecInfo {
                     params_binder.clone(),
                     args_binder.clone(),
                 ]),
-                Box::new(panic_condition),
+                Box::new(unwind_condition),
             )
         };
 
@@ -331,7 +331,7 @@ impl ClosureSpecInfo {
             pre_encoded,
             post_encoded,
             post_mut_encoded,
-            panic_condition_encoded,
+            unwind_condition_encoded,
         }
     }
 }
@@ -696,7 +696,7 @@ struct ParsedSpecInfo<'def> {
     args: Vec<specs::TypeWithRef<'def>>,
     preconditions: Vec<MetaIProp>,
     postconditions: Vec<MetaIProp>,
-    panic_conditions: Vec<coq::term::Term>,
+    unwind_conditions: Vec<coq::term::Term>,
     existentials: Vec<RRParam>,
     ret: Option<specs::TypeWithRef<'def>>,
     unsafe_lifetime_constraints: Vec<String>,
@@ -713,7 +713,7 @@ impl<'def> ParsedSpecInfo<'def> {
             args: Vec::new(),
             preconditions: Vec::new(),
             postconditions: Vec::new(),
-            panic_conditions: Vec::new(),
+            unwind_conditions: Vec::new(),
             existentials: Vec::new(),
             ret: None,
             unsafe_lifetime_constraints: Vec::new(),
@@ -744,8 +744,8 @@ impl<'def> ParsedSpecInfo<'def> {
             builder.add_postcondition(post.into());
         }
 
-        for condition in &self.panic_conditions {
-            builder.add_panic_condition(condition.to_owned());
+        for condition in &self.unwind_conditions {
+            builder.add_unwind_condition(condition.to_owned());
         }
 
         for ex in &self.existentials {
@@ -1053,11 +1053,11 @@ where
             "verify" => {
                 // accept the attribute, but do not adjust the spec
             },
-            "may_panic_if" => {
+            "may_unwind_if" => {
                 let invalid_argument = || {
                     spanned_error(
                         span,
-                        ParserError::Parse("may_panic_if expects exactly one string literal".to_owned()),
+                        ParserError::Parse("may_unwind_if expects exactly one string literal".to_owned()),
                     )
                 };
                 let condition = parse::LitStr::parse(buffer, scope).map_err(|_err| invalid_argument())?;
@@ -1067,7 +1067,7 @@ where
                 let (condition, _) = scope
                     .process_coq_literal(span, &condition.value())
                     .map_err(|err| spanned_error(span, ParserError::AntiQuotation(err)))?;
-                builder.panic_conditions.push(coq::term::Term::Literal(condition));
+                builder.unwind_conditions.push(coq::term::Term::Literal(condition));
             },
             _ => {
                 return Ok(false);

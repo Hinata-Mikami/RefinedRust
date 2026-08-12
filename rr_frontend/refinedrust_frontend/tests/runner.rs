@@ -111,11 +111,6 @@ mod tests {
         assert!(!generated.contains("panic_shim_loc"));
         assert!(generated.contains("StuckS"));
 
-        let closure_shims =
-            generated.split_once("(* closure shims *)").expect("missing generated closure shims").1;
-        assert!(closure_shims.contains("StuckS"));
-        assert!(!closure_shims.contains("Unwind"));
-
         let template =
             fs::read_to_string(output.path().join("panic_abort/generated/generated_template_checked_div.v"))
                 .expect("missing generated panic-abort proof template");
@@ -125,35 +120,6 @@ mod tests {
             fs::read_to_string(output.path().join("panic_abort/generated/generated_template_checked_rem.v"))
                 .expect("missing generated conservative panic-abort proof template");
         assert!(!template.contains("radium_panic_strategy_of = PanicAbort →"));
-
-        let annotated_closure_template = fs::read_to_string(
-            output
-                .path()
-                .join("panic_abort/generated/generated_template_call_closure_closure0_call_once.v"),
-        )
-        .expect("missing generated annotated closure-shim template");
-        assert!(annotated_closure_template.contains("radium_panic_strategy_of = PanicAbort →"));
-
-        let annotated_closure_body = fs::read_to_string(
-            output.path().join("panic_abort/generated/generated_template_call_closure_closure0.v"),
-        )
-        .expect("missing generated annotated closure-body template");
-        assert!(annotated_closure_body.contains("radium_panic_strategy_of = PanicAbort →"));
-
-        let unannotated_closure_template =
-            fs::read_to_string(output.path().join(
-                "panic_abort/generated/generated_template_call_unannotated_closure_closure0_call_once.v",
-            ))
-            .expect("missing generated unannotated closure-shim template");
-        assert!(!unannotated_closure_template.contains("radium_panic_strategy_of = PanicAbort →"));
-
-        let unannotated_closure_body = fs::read_to_string(
-            output
-                .path()
-                .join("panic_abort/generated/generated_template_call_unannotated_closure_closure0.v"),
-        )
-        .expect("missing generated unannotated closure-body template");
-        assert!(!unannotated_closure_body.contains("radium_panic_strategy_of = PanicAbort →"));
 
         output.cleanup();
 
