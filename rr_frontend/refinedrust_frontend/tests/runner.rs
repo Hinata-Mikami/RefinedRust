@@ -108,8 +108,8 @@ mod tests {
         let generated =
             fs::read_to_string(output.path().join("panic_abort/generated/generated_code_panic_abort.v"))
                 .expect("missing generated panic-abort code");
-        assert!(generated.contains("CallS panic_shim_loc"));
-        assert!(generated.contains("( StuckS)"));
+        assert!(!generated.contains("panic_shim_loc"));
+        assert!(generated.contains("StuckS"));
 
         let closure_shims =
             generated.split_once("(* closure shims *)").expect("missing generated closure shims").1;
@@ -119,6 +119,59 @@ mod tests {
         let template =
             fs::read_to_string(output.path().join("panic_abort/generated/generated_template_checked_div.v"))
                 .expect("missing generated panic-abort proof template");
+        assert!(template.contains("radium_panic_strategy_of = PanicAbort →"));
+
+        let template =
+            fs::read_to_string(output.path().join("panic_abort/generated/generated_template_checked_rem.v"))
+                .expect("missing generated conservative panic-abort proof template");
+        assert!(!template.contains("radium_panic_strategy_of = PanicAbort →"));
+
+        let annotated_closure_template = fs::read_to_string(
+            output
+                .path()
+                .join("panic_abort/generated/generated_template_call_closure_closure0_call_once.v"),
+        )
+        .expect("missing generated annotated closure-shim template");
+        assert!(annotated_closure_template.contains("radium_panic_strategy_of = PanicAbort →"));
+
+        let annotated_closure_body = fs::read_to_string(
+            output.path().join("panic_abort/generated/generated_template_call_closure_closure0.v"),
+        )
+        .expect("missing generated annotated closure-body template");
+        assert!(annotated_closure_body.contains("radium_panic_strategy_of = PanicAbort →"));
+
+        let unannotated_closure_template =
+            fs::read_to_string(output.path().join(
+                "panic_abort/generated/generated_template_call_unannotated_closure_closure0_call_once.v",
+            ))
+            .expect("missing generated unannotated closure-shim template");
+        assert!(!unannotated_closure_template.contains("radium_panic_strategy_of = PanicAbort →"));
+
+        let unannotated_closure_body = fs::read_to_string(
+            output
+                .path()
+                .join("panic_abort/generated/generated_template_call_unannotated_closure_closure0.v"),
+        )
+        .expect("missing generated unannotated closure-body template");
+        assert!(!unannotated_closure_body.contains("radium_panic_strategy_of = PanicAbort →"));
+
+        output.cleanup();
+
+        let output = GeneratedOutput::new(project.join("target/verify"));
+        let config = project.join("RefinedRustPermissive.toml");
+        build_subproject_with_env("./tests/panic_abort/", &[
+            ("RUSTFLAGS", "-Cpanic=abort"),
+            ("RR_CONFIG", config.to_str().expect("permissive panic-abort config path is not UTF-8")),
+        ]);
+
+        let generated =
+            fs::read_to_string(output.path().join("panic_abort/generated/generated_code_panic_abort.v"))
+                .expect("missing permissive panic-abort code");
+        assert!(generated.contains("CallS panic_shim_loc"));
+
+        let template =
+            fs::read_to_string(output.path().join("panic_abort/generated/generated_template_checked_rem.v"))
+                .expect("missing permissive panic-abort proof template");
         assert!(template.contains("radium_panic_strategy_of = PanicAbort →"));
 
         output.cleanup();

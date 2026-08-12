@@ -1,0 +1,2 @@
+lib_load_paths = ["../../../../stdlib/"]
+panic_abort_mode = "permissive"

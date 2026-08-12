@@ -333,7 +333,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         if self.panic_shim_used {
             self.translated_fn.require_function(panic::used_procedure());
         }
-        panic::add_strategy_link_assumption(self.tcx, &mut self.translated_fn);
 
         // generate dependencies on statics
         for did in &self.collected_statics {
@@ -345,6 +344,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     fn call_panic_shim(&mut self, unwind: code::Stmt) -> code::Stmt {
+        if !panic::local_panic_uses_shim(self.tcx) {
+            return code::Stmt::Stuck;
+        }
         self.panic_shim_used = true;
         panic::call(unwind)
     }

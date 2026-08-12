@@ -12,11 +12,12 @@ use log::{info, trace};
 use radium::{code, coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::target::spec::PanicStrategy;
 use rr_rustc_interface::{hir, span};
 use typed_arena::Arena;
 
 use crate::base::*;
-use crate::body::function_translation;
+use crate::body::{function_translation, panic};
 use crate::environment::mir_mapper;
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
@@ -58,6 +59,27 @@ pub(crate) fn function_has_nontrivial_annotations(tcx: ty::TyCtxt<'_>, did: DefI
         || environment::has_tool_attribute(tcx, did, "observe")
         || environment::has_tool_attribute(tcx, did, "args")
         || environment::has_tool_attribute(tcx, did, "may_panic_if")
+        || environment::has_tool_attribute(tcx, did, "use_panic_abort")
+}
+
+fn use_panic_abort(tcx: ty::TyCtxt<'_>, attrs: &[&hir::AttrItem]) -> Result<bool, TranslationError> {
+    let Some(attr) = attrs.iter().find(|attr| attrs::get_tool_attr_name(attr) == Some("use_panic_abort"))
+    else {
+        return Ok(false);
+    };
+    if !matches!(attr.args, hir::AttrArgs::Empty) {
+        return Err(TranslationError::ErrorReported(tcx.dcx().span_err(
+            attr.span,
+            Message::AttributeError("rr::use_panic_abort does not accept arguments".to_owned()),
+        )));
+    }
+    if tcx.sess.panic_strategy() != PanicStrategy::Abort {
+        return Err(TranslationError::ErrorReported(tcx.dcx().span_err(
+            attr.span,
+            Message::AttributeError("rr::use_panic_abort requires compiling with panic=abort".to_owned()),
+        )));
+    }
+    Ok(true)
 }
 
 fn get_function_arg_names(tcx: ty::TyCtxt<'_>, did: DefId) -> Vec<String> {
@@ -358,6 +380,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // process attributes
         let spec_info = t.process_closure_attrs(&inputs, output, &arg_names, meta)?;
+        let use_panic_abort = use_panic_abort(tcx, attrs)?;
+        panic::add_strategy_link_assumption(tcx, &mut t.translated_fn, use_panic_abort);
 
         // compute the info needed to assemble the trait impls for this closure
         let self_var_ty = t.ty_translator.translate_type(fixed_closure_arg_ty)?;
@@ -392,6 +416,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             spec_info.post_encoded,
             spec_info.post_mut_encoded,
             spec_info.panic_condition_encoded,
+            use_panic_abort,
         );
 
         Ok((t, info))
@@ -524,6 +549,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     tcx.dcx().err(Message::AttributeError("No valid specification provided".to_owned())),
                 ));
             }
+        }
+
+        let use_panic_abort = use_panic_abort(tcx, attrs)?;
+        if meta.get_mode().needs_def() {
+            panic::add_strategy_link_assumption(tcx, &mut t.translated_fn, use_panic_abort);
         }
 
         Ok(t)

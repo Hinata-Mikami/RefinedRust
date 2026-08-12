@@ -41,9 +41,10 @@ pub(crate) const COMMON_FUNCTION_SPEC_ATTRS: &[&str] = &[
 ];
 
 pub(crate) const FUNCTION_SPEC_ATTRS: &[&str] =
-    &["code_shim", "export_as", "only_spec", "verify", "trust_me"];
+    &["code_shim", "export_as", "only_spec", "verify", "trust_me", "use_panic_abort"];
 
-pub(crate) const CLOSURE_SPEC_ATTRS: &[&str] = &["capture", "only_spec", "verify", "trust_me"];
+pub(crate) const CLOSURE_SPEC_ATTRS: &[&str] =
+    &["capture", "only_spec", "verify", "trust_me", "use_panic_abort"];
 
 pub(crate) struct ClosureMetaInfo<'a, 'tcx, 'def> {
     /// the closure kind
@@ -1511,6 +1512,7 @@ where
                     && name != "only_spec"
                     && name != "verify"
                     && name != "trust_me"
+                    && name != "use_panic_abort"
                 {
                     return Err(spanned_error(
                         it.span,
@@ -1559,6 +1561,7 @@ where
                         && name != "only_spec"
                         && name != "verify"
                         && name != "trust_me"
+                        && name != "use_panic_abort"
                     {
                         return Err(spanned_error(
                             it.span,

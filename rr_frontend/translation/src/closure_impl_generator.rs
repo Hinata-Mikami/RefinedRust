@@ -511,7 +511,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             },
         }
 
-        body::panic::add_strategy_link_assumption(self.tcx, &mut builder);
+        body::panic::add_strategy_link_assumption(self.tcx, &mut builder, info.use_panic_abort);
         let function = builder.into_function(self.fn_arena);
 
         Ok(function)

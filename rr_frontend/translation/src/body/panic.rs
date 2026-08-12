@@ -12,11 +12,24 @@ const PANIC_SHIM_LOC: &str = "panic_shim_loc";
 const PANIC_SHIM_SPEC: &str = "type_of_panic_shim";
 const PANIC_ABORT_LINK_ASSUMPTION: &str = "radium_panic_strategy_of = PanicAbort";
 
-/// Require the linked Radium machine to match MIR compiled with aborting panics.
-pub(crate) fn add_strategy_link_assumption(tcx: ty::TyCtxt<'_>, builder: &mut code::FunctionBuilder<'_>) {
-    if tcx.sess.panic_strategy() == PanicStrategy::Abort {
+/// Require the linked Radium machine to match MIR compiled with aborting panics when permitted by
+/// the frontend policy or an explicit local opt-in.
+pub(crate) fn add_strategy_link_assumption(
+    tcx: ty::TyCtxt<'_>,
+    builder: &mut code::FunctionBuilder<'_>,
+    opted_in: bool,
+) {
+    if tcx.sess.panic_strategy() == PanicStrategy::Abort
+        && (rrconfig::panic_abort_mode() == rrconfig::PanicAbortMode::Permissive || opted_in)
+    {
         builder.add_linktime_assumption(PANIC_ABORT_LINK_ASSUMPTION.to_owned());
     }
+}
+
+/// Local panic sites remain proof obligations in conservative mode.
+pub(crate) fn local_panic_uses_shim(tcx: ty::TyCtxt<'_>) -> bool {
+    tcx.sess.panic_strategy() != PanicStrategy::Abort
+        || rrconfig::panic_abort_mode() == rrconfig::PanicAbortMode::Permissive
 }
 
 /// Translate the synthetic unwind edge used by closure call shims.

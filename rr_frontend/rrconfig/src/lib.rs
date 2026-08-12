@@ -13,6 +13,16 @@ use std::{env, fmt, path};
 
 use serde::{Deserialize, Serialize, de};
 
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PanicAbortMode {
+    /// Require an explicit per-function or per-closure opt-in to exploit aborting panics.
+    #[default]
+    Conservative,
+    /// Allow every function translated with aborting panic MIR to exploit terminal abort.
+    Permissive,
+}
+
 fn vec_or_split_colon<'de, D>(d: D) -> Result<Vec<String>, D::Error>
 where
     D: de::Deserializer<'de>,
@@ -86,6 +96,7 @@ struct Config {
     trust_debug: bool,
     find_stdlib: bool,
     register_all_adts: bool,
+    panic_abort_mode: PanicAbortMode,
 }
 
 impl Default for Config {
@@ -116,6 +127,7 @@ impl Default for Config {
             trust_debug: false,
             find_stdlib: true,
             register_all_adts: true,
+            panic_abort_mode: PanicAbortMode::Conservative,
         }
     }
 }
@@ -225,6 +237,12 @@ pub fn log_dir() -> Result<PathBuf, NormalizeError> {
 #[must_use]
 pub fn check_overflows() -> bool {
     access_config(|c| c.check_overflows)
+}
+
+/// Where proofs may exploit an aborting Rust panic runtime.
+#[must_use]
+pub fn panic_abort_mode() -> PanicAbortMode {
+    access_config(|c| c.panic_abort_mode)
 }
 
 /// Should we dump debug files?

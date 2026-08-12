@@ -397,7 +397,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         if self.panic_shim_used {
             self.translated_fn.require_function(panic::used_procedure());
         }
-        panic::add_strategy_link_assumption(self.tcx, &mut self.translated_fn);
+        panic::add_strategy_link_assumption(self.tcx, &mut self.translated_fn, false);
 
         let trait_ref = self.drop_glue_trait_ref.clone();
         let extra_context_items = self.extra_context_items.clone();
@@ -410,6 +410,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
     }
 
     fn call_panic_shim(&mut self, unwind: code::Stmt) -> code::Stmt {
+        if !panic::local_panic_uses_shim(self.tcx) {
+            return code::Stmt::Stuck;
+        }
         self.panic_shim_used = true;
         panic::call(unwind)
     }
