@@ -224,23 +224,23 @@ Program Definition ControlFlow_BC_break_value_def (drop_glue_ControlFlow_B_C_loc
      ]>%E $
      <[
      "_bb4" :=
-      Unwind
+      return (move{ (use_op_alg' ((Option_els (B_st)) : syn_type)) } ("__0"))
      ]>%E $
      <[
      "_bb5" :=
-      return (move{ (use_op_alg' ((Option_els (B_st)) : syn_type)) } ("__0"))
+      Unwind
      ]>%E $
      <[
      "_bb6" :=
       CallS drop_glue_ControlFlow_B_C_loc [] [RSTTyVar "B"; RSTTyVar "C"] [@{expr} &raw{ PRef, Mut } ("self")] None
-      ( Goto "_bb5")
+      ( Goto "_bb4")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb4")
+       Goto "_bb5")
      ]>%E $
      <[
      "_bb7" :=
       "__6" <-{ (IntOp ISize) } EnumDiscriminant ((ControlFlow_els (B_st) (C_st))) ("self");
-      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__6")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb5"]) (Goto "_bb6")
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__6")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb4"]) (Goto "_bb6")
      ]>%E $
       ∅;
      f_init := "_bb0";

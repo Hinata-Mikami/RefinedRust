@@ -76,22 +76,22 @@ Program Definition drop_glue_Range_def (DropGlue_Idx_drop_glue_loc: loc) (Idx_st
      ]>%E $
      <[
      "_bb1" :=
-      Unwind
+      return (zst_val)
      ]>%E $
      <[
      "_bb2" :=
-      return (zst_val)
+      Unwind
      ]>%E $
      <[
      "_bb3" :=
       CallS DropGlue_Idx_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (Range_sls (Idx_st)) } "end")] None
-      ( Goto "_bb1")
+      ( Goto "_bb2")
       ( UnwindTerminate)
      ]>%E $
      <[
      "_bb4" :=
       CallS DropGlue_Idx_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (Range_sls (Idx_st)) } "end")] None
-      ( Goto "_bb2")
+      ( Goto "_bb1")
       ( Unwind)
      ]>%E $
       ∅;

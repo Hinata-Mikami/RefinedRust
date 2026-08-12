@@ -344,22 +344,22 @@ Program Definition drop_glue_Box_def (BoxTAasstd_ops_Drop_drop_T_A_loc: loc) (Dr
      ]>%E $
      <[
      "_bb1" :=
-      Unwind
+      return (zst_val)
      ]>%E $
      <[
      "_bb2" :=
-      return (zst_val)
+      Unwind
      ]>%E $
      <[
      "_bb3" :=
       CallS DropGlue_A_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (Box_sls (T_st) (A_st)) } "1")] None
-      ( Goto "_bb1")
+      ( Goto "_bb2")
       ( UnwindTerminate)
      ]>%E $
      <[
      "_bb4" :=
       CallS DropGlue_A_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (Box_sls (T_st) (A_st)) } "1")] None
-      ( Goto "_bb2")
+      ( Goto "_bb1")
       ( Unwind)
      ]>%E $
      <[
