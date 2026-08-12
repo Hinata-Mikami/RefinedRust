@@ -194,7 +194,7 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
         // The stdlib Box shim is not rustc's lang-item Box, so its equivalent pointer extraction
         // remains an ordinary transmute. Keep the structural check for that compatibility path.
         if matches!(kind, mir::CastKind::Transmute | mir::CastKind::BoxDerefTransmute)
-            && let Some(translated) = self.translate_box_deref_transmute(op, to_ty)?
+            && let Some(translated) = self.translate_box_deref_transmute(kind, op, to_ty)?
         {
             return Ok(translated);
         }
@@ -310,6 +310,7 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
 
     fn translate_box_deref_transmute(
         &mut self,
+        kind: mir::CastKind,
         op: &mir::Operand<'tcx>,
         to_ty: ty::Ty<'tcx>,
     ) -> Result<Option<code::Expr>, TranslationError> {
@@ -320,14 +321,22 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
         let (mir::Operand::Copy(rhs_place) | mir::Operand::Move(rhs_place)) = op else {
             return Ok(None);
         };
-        if box_alias::box_deref_alias_source_place(self.tcx(), self.body(), *rhs_place).is_none() {
+        if box_alias::box_deref_alias_source_place(self.tcx(), self.body(), kind, *rhs_place).is_none() {
             return Ok(None);
         }
 
-        let nonnull_ty = rhs_place.ty(&self.body().local_decls, self.tcx()).ty;
+        let mut nonnull_ty = rhs_place.ty(&self.body().local_decls, self.tcx()).ty;
+        let mut nonnull_expr = self.translate_place(rhs_place)?;
+        if matches!(kind, mir::CastKind::BoxDerefTransmute) {
+            let unique_sls = self.generate_structlike_use(nonnull_ty, None)?.generate_raw_syn_type_term();
+            nonnull_ty = mir::PlaceTy::field_ty(self.tcx(), nonnull_ty, None, abi::FieldIdx::ZERO).skip_norm_wip();
+            nonnull_expr = code::Expr::FieldOf {
+                e: Box::new(nonnull_expr),
+                name: "pointer".to_owned(),
+                sls: unique_sls.to_string(),
+            };
+        }
         let nonnull_sls = self.generate_structlike_use(nonnull_ty, None)?.generate_raw_syn_type_term();
-
-        let nonnull_expr = self.translate_place(rhs_place)?;
         let pointer_expr = code::Expr::FieldOf {
             e: Box::new(nonnull_expr),
             name: "pointer".to_owned(),

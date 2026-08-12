@@ -57,7 +57,7 @@ impl<'tcx> mir::visit::Visitor<'tcx> for BoxMaterializationUseValidator<'tcx> {
 ///
 /// ```text
 /// _box_tmp = no_retag copy BOX_PLACE
-/// _raw_tmp = copy ((_box_tmp.0).0) as *const T (BoxDerefTransmute)
+/// _raw_tmp = copy (_box_tmp.0) as *const T (BoxDerefTransmute)
 /// ```
 ///
 /// Both temporaries must be target-only, the assignments must be consecutive in one block,
@@ -66,8 +66,8 @@ impl<'tcx> mir::visit::Visitor<'tcx> for BoxMaterializationUseValidator<'tcx> {
 /// but it may not be redefined. This deliberately narrow recognition prevents an unrelated rustc
 /// administrative copy from being silently erased.
 ///
-/// Only `_box_tmp` is removed from executable translation. Its sole `_box_tmp.0.0` use is
-/// normalized to `BOX_PLACE.0.0`, allowing the existing transmute lowering to extract the raw
+/// Only `_box_tmp` is removed from executable translation. Its sole `_box_tmp.0` use is
+/// normalized to `BOX_PLACE.0`, allowing the existing transmute lowering to extract the raw
 /// pointer explicitly. `_raw_tmp` remains a real pointer local.
 pub(crate) fn collect_box_materialization_aliases<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
@@ -128,7 +128,7 @@ pub(crate) fn collect_box_materialization_aliases<'tcx>(
                 || dropck_mir.local_kind(raw_lhs.local) != mir::LocalKind::Temp
                 || dropck_mir.local_decls[raw_lhs.local].ty != *raw_target_ty
                 || raw_source.local != box_lhs.local
-                || raw_source.projection.len() != 2
+                || raw_source.projection.len() != 1
                 || !raw_source
                     .projection
                     .iter()
@@ -168,11 +168,13 @@ pub(crate) fn collect_box_materialization_aliases<'tcx>(
 
 /// Collect synthetic raw-pointer aliases introduced for lowered `Box` derefs.
 ///
-/// rustc may lower a semantic `*box_place` into an administrative raw pointer local. The stdlib
-/// Box shim uses the same shape with an ordinary `Transmute` because it is not the lang-item type:
+/// rustc may lower a semantic `*box_place` into an administrative raw pointer local. The lang-item
+/// `Box` uses `BoxDerefTransmute` from its `Unique` field, while the stdlib Box shim uses an ordinary
+/// `Transmute` from the nested `NonNull` field:
 ///
 /// ```text
-/// _alias = copy ((box_place.0).0) as *const T (BoxDerefTransmute)
+/// _alias = copy (box_place.0) as *const T (BoxDerefTransmute)
+/// _alias = copy ((box_place.0).0) as *const T (Transmute)
 /// *_alias
 /// ```
 ///
@@ -191,16 +193,12 @@ pub(crate) fn collect_box_deref_aliases<'tcx>(
             if !lhs.projection.is_empty() {
                 continue;
             }
-            let mir::Rvalue::Cast(
-                mir::CastKind::Transmute | mir::CastKind::BoxDerefTransmute,
-                mir::Operand::Copy(rhs_place) | mir::Operand::Move(rhs_place),
-                _,
-            ) = rhs
+            let mir::Rvalue::Cast(kind, mir::Operand::Copy(rhs_place) | mir::Operand::Move(rhs_place), _) = rhs
             else {
                 continue;
             };
 
-            let Some(box_place) = box_deref_alias_source_place(tcx, body, *rhs_place) else {
+            let Some(box_place) = box_deref_alias_source_place(tcx, body, *kind, *rhs_place) else {
                 continue;
             };
             aliases.insert(lhs.local, box_place);
@@ -213,15 +211,19 @@ pub(crate) fn collect_box_deref_aliases<'tcx>(
 pub(crate) fn box_deref_alias_source_place<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     body: &mir::Body<'tcx>,
+    kind: mir::CastKind,
     rhs_place: mir::Place<'tcx>,
 ) -> Option<mir::Place<'tcx>> {
     let projections = rhs_place.projection.as_ref();
-    let box_projection_len = projections.len().checked_sub(2)?;
+    let internal_field_count = match kind {
+        mir::CastKind::BoxDerefTransmute => 1,
+        mir::CastKind::Transmute => 2,
+        _ => return None,
+    };
+    let box_projection_len = projections.len().checked_sub(internal_field_count)?;
     let internal_fields = &projections[box_projection_len..];
 
-    // rustc's raw-pointer alias initializer extracts the stored pointer as two field-0 projections from the
-    // semantic `Box`. Locate those fields from the end so the Box itself may be an arbitrarily projected
-    // place.
+    // Locate the internal fields from the end so the Box itself may be an arbitrarily projected place.
     if !internal_fields
         .iter()
         .all(|elem| matches!(elem, mir::ProjectionElem::Field(field, _) if field.as_usize() == 0))
@@ -229,7 +231,7 @@ pub(crate) fn box_deref_alias_source_place<'tcx>(
         return None;
     }
 
-    // Return only the semantic `Box` place, dropping the internal `.0.0` pointer extraction.
+    // Return only the semantic `Box` place, dropping the internal pointer extraction.
     let projection = tcx.mk_place_elems(&projections[..box_projection_len]);
     let box_place = mir::Place {
         local: rhs_place.local,

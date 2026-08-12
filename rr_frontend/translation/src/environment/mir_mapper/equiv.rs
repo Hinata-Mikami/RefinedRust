@@ -178,7 +178,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         }
 
         let mir::Rvalue::Cast(
-            mir::CastKind::BoxDerefTransmute,
+            kind @ (mir::CastKind::Transmute | mir::CastKind::BoxDerefTransmute),
             mir::Operand::Copy(rhs_place) | mir::Operand::Move(rhs_place),
             _,
         ) = rhs
@@ -186,7 +186,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
             return None;
         };
 
-        let box_place = box_alias::box_deref_alias_source_place(self.tcx, self.de, *rhs_place)?;
+        let box_place = box_alias::box_deref_alias_source_place(self.tcx, self.de, *kind, *rhs_place)?;
         let box_place = self.normalize_target_box_place(box_place);
 
         let split_from = source_loc.filter(|(bb, idx)| {
