@@ -248,7 +248,7 @@ Section call.
   Context `{!typeGS Σ}.
   Import EqNotations.
 
-  Lemma type_call_fnptr E L f π (lfts : nat) (rts : list (RT)) eκs etys l v vl tys eqp m (fp : spec_with lfts rts fn_spec) (sta : list syn_type) destination normal unwind (T : typed_call_cont_t) (U : typed_call_unwind_cont_t) :
+  Lemma type_call_fnptr E L f π (lfts : nat) (rts : list (RT)) eκs etys l v vl tys eqp m (fp : spec_with lfts rts fn_spec) (sta : list syn_type) destination normal unwind (Tnormal : typed_call_cont_t) (Tunwind : typed_call_unwind_cont_t) :
     let eκs' := list_to_tup eκs in
     find_in_context (FindNaOwn π) (λ mask : coPset,
       ⌜π = f.1⌝ ∗
@@ -289,13 +289,13 @@ Section call.
 
       (* postconditions *)
       (
-       introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ ⌜effective_unwind_condition fps.(fp_unwind)⌝) U ∧
+       introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ ⌜effective_unwind_condition fps.(fp_unwind)⌝) Tunwind ∧
        (∀ v x', (* v = retval, x' = post existential *)
         (* also donate some credits we are generating here *)
         introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ (fps.(fp_fr) x').(fr_R) π ∗ v ◁ᵥ{π, MetaNone} (fps.(fp_fr) x').(fr_ref) @ (fps.(fp_fr) x').(fr_ty)) (λ L3,
-        T L3 v _ (fps.(fp_fr) x').(fr_ty) (fps.(fp_fr) x').(fr_ref)))
+        Tnormal L3 v _ (fps.(fp_fr) x').(fr_ty) (fps.(fp_fr) x').(fr_ref)))
        ))))))
-    ⊢ typed_call E L f eκs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, fp)) vl tys destination normal unwind T U.
+    ⊢ typed_call E L f eκs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, fp)) vl tys destination normal unwind Tnormal Tunwind.
   Proof.
     simpl. iIntros "HT (-> & %fn & %Hv & He & %Halg & Hfn) Htys" (Q Ψ Ψunwind) "#CTX #HE HL Hf Hcont".
     rewrite /li_tactic/ensure_evars_instantiated_goal.
@@ -1300,47 +1300,79 @@ Section inline.
   (* The [inline_function_ptr] is similar to the [function_ptr],
      except that [st_own] does not have the [typed_function] predicate. *)
   Program Definition inline_function_ptr (arg_types : list (syn_type)) (fn: function) : type loc := {|
-    st_own π f v := (∃ local_sts, ⌜v = val_of_loc f⌝ ∗ fntbl_entry f fn ∗
-      ⌜list_map_option use_layout_alg arg_types = Some fn.(f_args).*2⌝ ∗
-      ⌜list_map_option use_layout_alg local_sts = Some fn.(f_local_vars).*2⌝)%I;
-    st_has_op_type ot mt := is_ptr_ot ot;
+    st_own π f v := (⌜val_to_loc v = Some f⌝ ∗ fntbl_entry f fn ∗
+      ⌜Forall2 syn_type_has_layout arg_types fn.(f_args).*2⌝)%I;
+    st_has_op_type ot := is_fnptr_ot ot;
     st_syn_type := FnPtrSynType;
   |}.
   Next Obligation.
-    simpl. iIntros (fal fn π r v) "(%local_sts & -> & _)". eauto.
+    simpl. iIntros (fal fn π r v) "(% & _)".
+    iExists void*. iPureIntro. split.
+    - by apply syn_type_has_layout_fnptr.
+    - rewrite /has_layout_val val_to_loc_length//.
   Qed.
   Next Obligation.
-    intros ? ? ot mt Hot. apply is_ptr_ot_layout in Hot. rewrite Hot. done.
+    intros ? ? ot Hot. apply is_fnptr_ot_layout in Hot. rewrite Hot.
+    by apply syn_type_has_layout_fnptr.
   Qed.
   Next Obligation.
-    simpl. iIntros (lya fn ot mt st π r v Hot).
-    destruct mt.
-    - eauto.
-    - iIntros "(%local_sts & -> & Hfntbl & %Halg & Hfn)".
-      iExists _. iFrame. iPureIntro. split; last done.
-      destruct ot; try done. unfold mem_cast. rewrite val_to_of_loc. done.
-    - iApply (mem_cast_compat_loc (λ v, _)); first done.
-      iIntros "(% & -> & _)". eauto.
+    unfold is_fnptr_ot.
+    intros ?? ot Hot. destruct ot; done.
+  Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
+  Next Obligation.
+    simpl. iIntros (lya fn ot st π r v Hot).
+    iIntros "(%Hv & Hfntbl & %Halg)".
+    iPureIntro.
+    destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
+    - exists (OVFnPtr r).
+      simp decode_op_val. rewrite Hv//.
+    - subst ly. eexists. simp decode_op_val.
+      rewrite bool_decide_true; first done.
+      by eapply val_to_loc_length.
+  Qed.
+  Next Obligation.
+    simpl. iIntros (lya fn ot st π r v v' Hot Hsame).
+    iIntros "(%Hv & Hfntbl & %Halg)".
+    iFrame. iPureIntro. split; last done.
+    destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
+    - destruct Hsame as [Heq _].
+      simp decode_op_val in Heq.
+      destruct (val_to_loc v), (val_to_loc v'); try done.
+      injection Heq. intros <-. done.
+    - subst ly.
+      pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly'.
+      pose proof (is_same_decoded_val_at_untyped_inv st v v' void*
+        ltac:(by eapply val_to_loc_length) Hly' Hsame) as ->.
+      done.
+  Qed.
+  Next Obligation.
+    intros ?? ly Hst.
+    apply syn_type_has_layout_fnptr_inv in Hst as ->.
+    done.
   Qed.
   Global Instance copyable_inline_function_ptr fal fn : Copyable (inline_function_ptr fal fn) := _.
+  Global Instance inline_function_ptr_sized fal fn :
+    TySized (inline_function_ptr fal fn) := _.
 
   Fixpoint introduce_arguments π E L (tys : list (sigT (λ rt, (type rt * rt)%type))) (ls : list loc) (cont : llctx → list loc → iProp Σ) : iProp Σ :=
     match tys with
     | [] => cont L ls
     | (existT _ (ty, r)) :: tys' =>
-        ∀ l, introduce_with_hooks E L (l ◁ₗ[π, Owned false] PlaceIn r @ (◁ ty))
+        ∀ l, introduce_with_hooks E L (l ◁ₗ[π, Owned] #r @ (◁ ty))
           (λ L', introduce_arguments π E L' tys' (ls ++ [l]) cont)
     end.
 
   Lemma introduce_arguments_elim' π E L F tys ls lsa cont :
     ⌜lftE ⊆ F⌝ -∗
+    rrust_ctx -∗
     elctx_interp E -∗
     llctx_interp L -∗
     introduce_arguments π E L tys ls cont -∗
-    ([∗ list] l; x ∈ lsa; tys, let '(existT _ (ty, r)) := x in l ◁ₗ[ π, Owned false] # r @ (◁ ty)) -∗
+    ([∗ list] l; x ∈ lsa; tys, let '(existT _ (ty, r)) := x in l ◁ₗ[ π, Owned] # r @ (◁ ty)) -∗
     |={F}=> ∃ L', llctx_interp L' ∗ cont L' (ls ++ lsa).
   Proof.
-    iIntros "#Hlft #HE HL".
+    iIntros "% #CTX #HE HL".
 
     iInduction tys as [| [rt [ty r]] tys] "IH" forall (L ls lsa).
     { iIntros. iExists L. destruct lsa => //. rewrite right_id. by iFrame. }
@@ -1350,186 +1382,149 @@ Section inline.
     simpl; iDestruct "Hls" as "(Hl & Hls)".
 
     rewrite /introduce_with_hooks.
-    iPoseProof ("Hs" with "Hlft HE HL Hl") as "Hs".
+    iMod ("Hs" with "[//] CTX HE HL Hl") as "(% & HL & Hs)".
 
-    iMod "Hs" as (L') "(HL' & Hs)".
-    iPoseProof ("IH" with "HL' Hs Hls") as "Ha".
-
+    iPoseProof ("IH" with "HL Hs Hls") as "Ha".
     rewrite -app_assoc //.
   Qed.
-
   Lemma introduce_arguments_elim π E L F tys lsa cont :
     ⌜lftE ⊆ F⌝ -∗
+    rrust_ctx -∗
     elctx_interp E -∗
     llctx_interp L -∗
     introduce_arguments π E L tys [] cont -∗
-    ([∗ list] l; x ∈ lsa; tys, let '(existT _ (ty, r)) := x in l ◁ₗ[ π, Owned false] # r @ (◁ ty)) -∗
+    ([∗ list] l; x ∈ lsa; tys, let '(existT _ (ty, r)) := x in l ◁ₗ[ π, Owned] # r @ (◁ ty)) -∗
     |={F}=> ∃ L', llctx_interp L' ∗ cont L' lsa.
   Proof.
     iApply introduce_arguments_elim'.
   Qed.
 
-  Lemma type_call_inline_fnptr π E L eκs sta l v vl tys fn T:
+  (* TODO: allow lifetime parameters, make named_lfts indexed by the frame path, and push a named_lfts for the new call frame with the lifetime variables into the context. *)
+  Lemma type_call_inline_fnptr E L π fp eκs etys sta l v vl tys fn destination snormal sunwind (Tnormal : typed_call_cont_t) (Tunwind : typed_call_unwind_cont_t) :
     let lya := fn.(f_args).*2 in
-    let lyv := fn.(f_local_vars).*2 in
-    let ϝ := lft_intersect_list (L.*1.*2) in
-
-    ⌜eκs = []⌝ ∗
-    ⌜fn_arg_layout_assumptions tys lya⌝ ∗
-    ⌜fn_local_layout_assumptions (UntypedSynType <$> lyv) lyv⌝ ∗
-    introduce_arguments π E L tys []
-      (λ L lsa,
-        let tys' := (λ ly, existT _ (uninit (UntypedSynType ly), ())) <$> lyv in
-        introduce_arguments π E L tys' []
-        (λ L lsv,
-          ∀ (ϝ': lft),
-            introduce_typed_stmt π E ((ϝ' ⊑ₗ{ 0} [ϝ]) :: L) ϝ fn lsa lsv lya lyv
-              (λ v L,
-                find_in_context (FindVal v π)
-                  (λ '(existT rt (ty, r)),
-                    (T L v rt ty r)))))
-    ⊢ typed_call π E L eκs v (v ◁ᵥ{π} l @ inline_function_ptr sta fn) vl tys T.
+    let R ϝ' L0 v L' :=
+      li_tactic (llctx_find_llft_goal L' ϝ' LlctxFindLftAlias) (λ '(κs, L''),
+        ⌜κs = llctx_alive_lfts L0⌝ ∗
+        find_in_context (FindNaOwn π) (λ mask : coPset,
+          ⌜mask = ⊤⌝ ∗
+          find_in_context (FindVal v) (λ '(existT rt (ty, r, π, m)),
+            Tnormal L'' v rt ty r)))%I in
+    let U ϝ' L0 L' :=
+      li_tactic (llctx_find_llft_goal L' ϝ' LlctxFindLftAlias) (λ '(κs, L''),
+        ⌜κs = llctx_alive_lfts L0⌝ ∗
+        find_in_context (FindNaOwn π) (λ mask : coPset,
+          ⌜mask = ⊤⌝ ∗ Tunwind L''))%I in
+    find_in_context (FindNaOwn π) (λ mask : coPset,
+      ⌜mask = ⊤⌝ ∗
+      ⌜eκs = []⌝ ∗
+      ⌜π = fp.1⌝ ∗
+      ⌜sta = fmap (λ '(existT rt (ty, _)), ty.(ty_syn_type) MetaNone) tys⌝ ∗
+      introduce_arguments π E L tys [] (λ L lsa,
+        ∀ (ϝ': lft),
+        na_own π ⊤ -∗
+        allocated_locals (π, S fp.2) fn.(f_args).*1 -∗
+        ([∗ list] xl; synty ∈ zip fn.(f_args).*1 lsa; sta,
+          xl.1 is_live{(π, S fp.2), synty} xl.2) -∗
+        introduce_typed_stmt E ((ϝ' ≡ₗ llctx_alive_lfts L) :: L) (π, S fp.2) ϝ' fn
+          (R ϝ' L) (U ϝ' L)))
+    ⊢ typed_call E L fp eκs etys v (v ◁ᵥ{π, MetaNone} l @ inline_function_ptr sta fn) vl tys destination snormal sunwind Tnormal Tunwind.
   Proof.
-    intros; iIntros "(%Heκs & %Hops & %Hlops & Hcont) Hv Htys" (Φ) "#CTX #HE HL Hna HΦ".
-    iDestruct "Hv" as (local_sts) "(-> & Hfn & %Halg & %Halgl)".
-
-    iAssert ⌜Forall2 has_layout_val vl (f_args fn).*2⌝%I with "[Htys]" as %Hall.
-    { clear -Halg Hops.
-
-      iInduction (fn.(f_args)) as [|[? ly]] "IH" forall (vl tys Hops sta Halg).
-      { apply Forall2_nil_inv_r in Hops as ->. destruct vl => //=. }
-
-      simplify_eq /=.
-
-      apply Forall2_cons_inv_r in Hops as (? & ? & Hty & ? & ->).
-      apply list_map_option_cons_inv_r in Halg as (st & ? & ? & ? & ?).
-
-      destruct vl => //=.
-      iDestruct "Htys" as "[Hv Hvl]".
-      destruct x as (rt & (ty & r)).
-
-      iDestruct (ty_has_layout with "Hv") as "(%ly' & %Hty' & %)".
-      iDestruct ("IH" with "[//] [//] Hvl") as %?.
-
-      assert (ly = ly') as ->.
-      { by apply (syn_type_has_layout_inj (ty_syn_type ty)). }
-
-      iPureIntro. constructor => //=. }
-
-    (* NOTE: wp_call_credits *)
-    iApply (wp_call with "Hfn") => //.
-    { apply val_to_of_loc. }
-
-    iIntros "!>" (lsa lsv Hlya) "Hlsa Hlsv Hcred".
-
-    iAssert ⌜length lsa = length (f_args fn)⌝%I with "[Hlsa]" as %Hlen1.
-    { clear -Hall.
-
-      iDestruct (big_sepL2_length with "Hlsa") as %->; iPureIntro.
-      apply Forall2_length in Hall.
-      by rewrite fmap_length in Hall. }
-
-    iDestruct (big_sepL2_length with "Hlsv") as %Hlen2.
-
-    set Φ' := λ v, (Φ v ∗ [∗ list] l ∈ rf_locs (to_runtime_function fn lsa lsv lya lyv), l.1 ↦|l.2|)%I.
-    iExists Φ'; iSplitL; first last.
-    { iIntros (v) "(? & Hl)" => /=.
-      iDestruct (big_sepL_app with "Hl") as "(? & ?)".
-      rewrite !big_sepL2_alt !zip_fmap_r !big_sepL_fmap; iFrame.
-      repeat iR; by iIntros. }
-
-    iApply fupd_wps.
-
-    iPoseProof (introduce_arguments_elim _ _ _ ⊤ _ lsa with "[//] HE HL Hcont [Hlsa Htys]") as "Hcont".
-    { clear -Halg Hall Hlya Hops.
-
-      subst lya.
-      move: Halg Hall Hlya Hops.
-      move: {1 2 3 4}(fn.(f_args).*2) => alys Halg Hall Hlya Hops.
-
-      iInduction lsa as [| l xl] "IH" forall (alys sta vl tys Halg Hall Hlya Hops).
-      { destruct vl => //. }
-
-      iDestruct (big_sepL2_cons_inv_l with "Hlsa") as (v xv ->) "[Hl Hlsa]".
-      iDestruct (big_sepL2_cons_inv_l with "Htys") as ([? [ty r]] tys' ->) "[Hty Htys]".
-
-      unfold fn_arg_layout_assumptions in Hops.
-      apply Forall2_cons_inv_l in Hops as (ly & ? & Hop & Hops & Heq).
-      rewrite Heq in Halg Hall Hlya; simplify_eq /=.
-
-      rewrite list_map_option_alt in Halg.
-      apply Forall2_cons_inv_r in Halg as (? & ? & _ & Halg & _).
-      rewrite <- list_map_option_alt in Halg.
-
-      apply Forall2_cons in Hall as [Hval Hall].
-      apply Forall2_cons in Hlya as [Hloc Hlya].
-
-      iSplitL "Hl Hty"; last iApply ("IH" with "[//] [//] [//] [//] Hlsa Htys"); first last.
-      rewrite ltype_own_ofty_unfold /lty_of_ty_own => /=.
-      iExists ly.
-
-      iDestruct (ty_own_val_sidecond with "Hty") as "#$".
-      iDestruct (heap_mapsto_loc_in_bounds with "Hl") as "#?"; rewrite Hval.
-      repeat iR.
-
-      iExists r; iR.
-      by iExists v; iFrame. }
-
-    iMod "Hcont" as (?) "(HL & Hcont)".
-
-    iPoseProof (introduce_arguments_elim _ _ _ ⊤ _ lsv with "[//] HE HL Hcont [Hlsv]") as "Hcont".
-    { clear -Halgl Hlops.
-
-      subst lyv.
-      move: Halgl Hlops.
-      move: {1 2 3 4 5}(fn.(f_local_vars)) => alys Halgl Hlops.
-
-      iInduction lsv as [| l xl] "IH" forall (alys local_sts Halgl Hlops).
-      { destruct alys => //. }
-
-      iDestruct (big_sepL2_cons_inv_l with "Hlsv") as (v xv ->) "[Hl Hlsv]"; simplify_eq /=.
-
-      apply Forall2_cons in Hlops as [Hlop Hlops].
-
-      rewrite list_map_option_alt in Halgl.
-      apply Forall2_cons_inv_r in Halgl as (? & ? & _ & Halgl & _).
-      rewrite <- list_map_option_alt in Halgl.
-
-      destruct v as (? & ly); simplify_eq /=.
-
-      iSplitL "Hl"; last iApply ("IH" with "[//] [//] Hlsv").
-
-      rewrite ltype_own_ofty_unfold /lty_of_ty_own => /=.
-      iExists ly.
-
-      iEval (rewrite /heap_mapsto_layout) in "Hl".
-      iDestruct "Hl" as (v) "(%Hval & % & Hl)".
-
-      iDestruct (heap_mapsto_loc_in_bounds with "Hl") as "#?"; rewrite Hval.
-
-      repeat iR.
-
-      iExists tt; iR.
-      iExists v; iFrame.
-      iExists ly; iPureIntro.
-      split_and ! => //.
-      by apply Forall_true. }
-
-    iMod "Hcont" as (?) "(HL & Hcont)".
-    rewrite /introduce_typed_stmt /typed_stmt.
-
-    iDestruct "CTX" as "#(LFT & TIME & LCTX)".
-    iMod (llctx_startlft with "LFT LCTX HL") as (ϝ') "Hϝ'"; [ set_solver.. |].
-    iSpecialize ("Hcont" $! ϝ' Φ' with "[$] HE Hϝ' Hna").
-
-    rewrite /rf_locs {1}/to_runtime_function; simplify_eq /=.
-    iApply "Hcont".
-
-    iModIntro; iIntros (??) "HL' Hna HΦ' Hctx".
-    rewrite /find_in_context /Φ'.
-
-    iDestruct "Hctx" as ([x [rt ty]]) "(Hv' & HT)" => /=; iFrame.
-    iApply ("HΦ" with "HL' Hna Hv' HT").
+    cbn. iIntros "HT Hv Htys" (Q Ψ Ψunwind) "#CTX #HE HL Hf Hcall".
+    iDestruct "Hv" as "(%Hv & He & Halg)".
+    iDestruct "He" as %He.
+    iDestruct "Halg" as "(Hfn & Halg)".
+    iDestruct "Halg" as %Halg.
+    iDestruct "HT" as (mask) "(Hna & -> & -> & -> & HT)".
+    iDestruct "HT" as "(-> & HT)".
+    iAssert ⌜Forall2 has_layout_val vl fn.(f_args).*2⌝%I as %Hall.
+    { iClear "HT Hna Hfn HL Hf Hcall".
+      move: Halg. move: tys => atys Hl.
+      iInduction (fn.(f_args)) as [|[? ly]] "IH" forall (vl atys Hl).
+      { move: Hl => /=. intros ->%Forall2_nil_inv_r%map_eq_nil. destruct vl => //=. }
+      move: Hl. simpl. intros (st & atys' & Hst & ? & Ha)%Forall2_cons_inv_r.
+      apply map_eq_cons in Ha as (xa & ? & -> & <- & <-).
+      destruct vl => //=. iDestruct "Htys" as "[Hv Htys]".
+      destruct xa as (rt & (ty & r)).
+      iDestruct ("IH" with "[//] Htys") as %?.
+      iDestruct (ty_has_layout with "Hv") as "(%ly' & % & %)".
+      assert (ly = ly') as ->. { by eapply syn_type_has_layout_inj. }
+      iPureIntro. constructor => //. }
+    iApply (wps_call fp.1 fp.2 _ v vl l fn with "Hfn Hf"); [done|done|done|].
+    iApply physical_step_intro. iNext.
+    iIntros (lsa Hlya) "Hlsa Hlive Hf Halloc".
+    set (R0 ϝ' L0 v' L' :=
+      li_tactic (llctx_find_llft_goal L' ϝ' LlctxFindLftAlias) (λ '(κs, L''),
+        ⌜κs = llctx_alive_lfts L0⌝ ∗
+        find_in_context (FindNaOwn fp.1) (λ mask : coPset,
+          ⌜mask = ⊤⌝ ∗ find_in_context (FindVal v') (λ '(existT rt (ty, r, _, _)),
+            Tnormal L'' v' rt ty r)))%I).
+    set (U0 ϝ' L0 L' :=
+      li_tactic (llctx_find_llft_goal L' ϝ' LlctxFindLftAlias) (λ '(κs, L''),
+        ⌜κs = llctx_alive_lfts L0⌝ ∗
+        find_in_context (FindNaOwn fp.1) (λ mask : coPset,
+          ⌜mask = ⊤⌝ ∗ Tunwind L''))%I).
+    set (RET_PROP v' := (∃ L0 L' locals, current_frame fp.1 (S fp.2) ∗
+      allocated_locals (fp.1, S fp.2) locals ∗
+      ([∗ list] x ∈ locals, ∃ (ly : layout) (l : loc) (st : syn_type),
+        ⌜syn_type_has_layout st ly⌝ ∗ x is_live{(fp.1, S fp.2), st} l ∗ l ↦|ly|) ∗
+      llctx_interp L' ∗ R0 (lft_intersect_list (llctx_alive_lfts L0)) L0 v' L')%I).
+    set (UNWIND_PROP := (∃ L0 L' locals, current_frame fp.1 (S fp.2) ∗
+      allocated_locals (fp.1, S fp.2) locals ∗
+      ([∗ list] x ∈ locals, ∃ (ly : layout) (l : loc) (st : syn_type),
+        ⌜syn_type_has_layout st ly⌝ ∗ x is_live{(fp.1, S fp.2), st} l ∗ l ↦|ly|) ∗
+      llctx_interp L' ∗ U0 (lft_intersect_list (llctx_alive_lfts L0)) L0 L')%I).
+    iExists RET_PROP, UNWIND_PROP. iSplitL "Hlsa Htys HL HT Hna Halloc Hlive Hf".
+    - iApply fupd_wps.
+      iPoseProof (introduce_arguments_elim _ _ _ ⊤ _ lsa with "[//] CTX HE HL HT [Hlsa Htys]") as "HT".
+      { move: Halg Hall Hlya. move: (fn.(f_args).*2) => alys Halg Hall Hlya.
+        move: lsa vl alys Halg Hall Hlya.
+        induction tys as [|x tys IH]; intros lsa vl alys Halg Hall Hlya; simpl.
+        { apply Forall2_nil_inv_l in Halg as ->.
+          apply Forall2_nil_inv_r in Hall as ->. destruct lsa => //=. }
+        destruct x as [rt [ty r]].
+        destruct alys as [|ly alys]; first inversion Halg.
+        destruct lsa as [|la lsa]; first inversion Hlya.
+        destruct vl as [|va vl]; first inversion Hall.
+        inversion Halg; inversion Hall; inversion Hlya; subst.
+        iDestruct "Hlsa" as "[Hla Hlsa]".
+        rewrite big_sepL2_cons. iDestruct "Htys" as "[Hva Htys]".
+        rewrite big_sepL2_cons.
+        iSplitL "Hla Hva"; last first.
+        { exact (IH lsa vl alys H4 H10 H16). }
+        rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+        iExists ly. iR. iR. iDestruct (ty_own_val_sidecond with "Hva") as "#$".
+        iPoseProof (heap_pointsto_loc_in_bounds with "Hla") as "#Hlb".
+        rewrite H8. iR. iExists r. iR. iExists va. eauto with iFrame. }
+      iMod "HT" as (L0) "(HL & HT)".
+      set (ϝ' := lft_intersect_list (llctx_alive_lfts L0)).
+      iSpecialize ("HT" $! ϝ' with "Hna Halloc Hlive").
+      iAssert (llctx_interp ((ϝ' ≡ₗ llctx_alive_lfts L0) :: L0))%I with "[HL]" as "HL".
+      { iFrame. iSplit; iApply lft_incl_refl. }
+      rewrite /introduce_typed_stmt /typed_stmt.
+      iDestruct ("HT" with "CTX HE HL Hf") as "HT".
+      iModIntro. iApply "HT". iSplit.
+      + unfold typed_stmt_post_cond. iIntros (L' v' locals) "HL Hf Halloc Hlive HR".
+        iApply logical_step_intro. rewrite /RET_PROP. iExists L0, L', locals. iFrame.
+      + unfold typed_stmt_unwind_post_cond. iIntros (L' locals) "HL Hf Halloc Hlive HU".
+        iApply logical_step_intro. rewrite /UNWIND_PROP. iExists L0, L', locals. iFrame.
+    - iSplit.
+      + iIntros (v') "H". iDestruct "H" as (L0 L' locals) "(Hf & Halloc & Hlive & HL & HR)".
+        iExists locals. iFrame. iApply physical_step_intro. iNext. iIntros "Hf".
+        iEval (rewrite /R0 /li_tactic /llctx_find_llft_goal /find_in_context) in "HR".
+        iDestruct "HR" as (L'' κs Hfind -> mask') "(Hna & -> & %x & Hv & HT)".
+        destruct x as [rt (((ty & r) & π') & m)].
+        iPoseProof (llctx_interp_sublist L' L'' with "HL") as "HL".
+        { destruct Hfind as (A & B & elt & -> & -> & _).
+          apply sublist_app; [done | by apply sublist_cons]. }
+        iDestruct "Hcall" as "[Hcall _]". iApply ("Hcall" $! L'' v' rt ty r with "HL Hf HT").
+      + iIntros "H". iDestruct "H" as (L0 L' locals) "(Hf & Halloc & Hlive & HL & HU)".
+        iExists locals. iFrame. iApply physical_step_intro. iNext. iIntros "Hf".
+        iEval (rewrite /U0 /li_tactic /llctx_find_llft_goal /find_in_context) in "HU".
+        iDestruct "HU" as (L'' κs Hfind -> mask') "(Hna & -> & HT)".
+        iPoseProof (llctx_interp_sublist L' L'' with "HL") as "HL".
+        { destruct Hfind as (A & B & elt & -> & -> & _).
+          apply sublist_app; [done | by apply sublist_cons]. }
+        iDestruct "Hcall" as "[_ Hcall]". iApply ("Hcall" with "HL Hf HT").
   Qed.
 
   Definition type_call_inline_fnptr_inst := [instance type_call_inline_fnptr].
