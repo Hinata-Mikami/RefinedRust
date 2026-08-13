@@ -1,0 +1,40 @@
+warning: static `VALUE` is never used
+ --> fail/inline-with-dependencies.rs:7:8
+  |
+7 | static VALUE: i32 = 42;
+  |        ^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `dependency` is never used
+  --> fail/inline-with-dependencies.rs:10:4
+   |
+10 | fn dependency(x: i32) -> i32 {
+   |    ^^^^^^^^^^
+
+warning: function `inline_calls_function` is never used
+  --> fail/inline-with-dependencies.rs:15:4
+   |
+15 | fn inline_calls_function(x: i32) -> i32 {
+   |    ^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `inline_uses_static` is never used
+  --> fail/inline-with-dependencies.rs:20:4
+   |
+20 | fn inline_uses_static() -> i32 {
+   |    ^^^^^^^^^^^^^^^^^^
+
+error: [RefinedRust] Unsupported feature: rr::inline functions that call other functions or use statics are not supported yet
+  --> fail/inline-with-dependencies.rs:15:1
+   |
+15 | fn inline_calls_function(x: i32) -> i32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [RefinedRust] Unsupported feature: rr::inline functions that call other functions or use statics are not supported yet
+  --> fail/inline-with-dependencies.rs:20:1
+   |
+20 | fn inline_uses_static() -> i32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors; 4 warnings emitted
+

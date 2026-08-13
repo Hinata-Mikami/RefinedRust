@@ -154,7 +154,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 )
             })?;
             // explicit instantiation is needed sometimes
-            let spec_term = code::UsedProcedureSpec::Literal(meta.get_spec_name().to_owned());
+            let spec_term = if meta.get_mode().is_inline() {
+                code::UsedProcedureSpec::InlineCode(meta.get_code_name().to_owned())
+            } else {
+                code::UsedProcedureSpec::Literal(meta.get_spec_name().to_owned())
+            };
 
             let code_name = meta.get_name();
             let loc_name = format!("{}_loc", types::mangle_name_with_tys(code_name, loc_key.as_slice()));

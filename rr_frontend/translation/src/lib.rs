@@ -719,7 +719,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
             for (key, fun) in self.procedure_registry.iter_procedure_code() {
                 let meta = self.procedure_registry.lookup_procedure(key).unwrap();
-                if !meta.is_trait_default() {
+                if meta.get_mode().needs_spec() && !meta.is_trait_default() {
                     if fun.spec.is_complete() {
                         //if fun.spec.spec.args.len() != fun.code.get_argument_count() {
                         //warn!("Function specification for {} is missing arguments", fun.name());
@@ -843,11 +843,14 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         // write templates
         // each function gets a separate file in order to parallelize
         for (key, fun) in self.procedure_registry.iter_procedure_code() {
-            let path = file_path(fun.name());
-            let mut template_file = io::BufWriter::new(File::create(path.as_path()).unwrap());
-
             let meta = self.procedure_registry.lookup_procedure(key).unwrap();
             let mode = meta.get_mode();
+            if mode.is_inline() {
+                continue;
+            }
+
+            let path = file_path(fun.name());
+            let mut template_file = io::BufWriter::new(File::create(path.as_path()).unwrap());
             let do_strict_resolution = match key {
                 procedures::ProcedureKey::Function(did) => {
                     signature::function_has_nontrivial_annotations(self.tcx, did.def_id)
@@ -1519,6 +1522,10 @@ fn get_most_restrictive_function_mode(vcx: &VerificationCtxt<'_, '_>, did: DefId
         return procedures::Mode::TrustMe;
     }
 
+    if attrs::has_tool_attr_filtered(attrs.as_slice(), "inline") {
+        return procedures::Mode::Inline;
+    }
+
     if attrs::has_tool_attr_filtered(attrs.as_slice(), "code_shim") {
         return procedures::Mode::CodeShim;
     }
@@ -1553,6 +1560,37 @@ fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipeline
         }
 
         let mut mode = get_most_restrictive_function_mode(vcx, f.to_def_id());
+        let did = f.to_def_id();
+        let item_attrs = environment::get_attributes(vcx.tcx, did);
+
+        if attrs::has_tool_attr(item_attrs, "inline") {
+            let inline_span =
+                find_tool_attr_span(vcx.tcx, did, "inline").unwrap_or_else(|| vcx.tcx.def_span(did));
+            let is_trait_method = vcx.tcx.trait_of_assoc(did).is_some()
+                || vcx.tcx.impl_of_assoc(did).is_some_and(|impl_did| vcx.tcx.impl_is_of_trait(impl_did));
+            let conflicting_mode = ["shim", "trust_me", "code_shim", "only_spec", "ignore"]
+                .iter()
+                .any(|name| attrs::has_tool_attr(item_attrs, name));
+
+            let error = if !attrs::has_bare_tool_attr(item_attrs, "inline") {
+                Some("rr::inline does not accept arguments")
+            } else if is_closure {
+                Some("rr::inline is not allowed on closures")
+            } else if is_trait_method {
+                Some("rr::inline is not allowed on trait methods")
+            } else if conflicting_mode {
+                Some("rr::inline cannot be combined with another function mode")
+            } else {
+                None
+            };
+
+            if let Some(error) = error {
+                vcx.tcx.dcx().span_err(inline_span, error::Message::AttributeError(error.to_owned()));
+                mode = procedures::Mode::Ignore;
+            } else {
+                mode = procedures::Mode::Inline;
+            }
+        }
 
         let fname = base::strip_coq_ident(&environment::get_item_name(vcx.tcx, f.to_def_id()));
         //let fname = format!("{stem}_{fname}");
@@ -2073,6 +2111,16 @@ fn translate_function<'tcx>(
         // Fully translate the function
         match translator.and_then(|(tx, info)| tx.translate(vcx.fn_arena).map(|x| (x, info))) {
             Ok((fun, info)) => {
+                if mode.is_inline() && (fun.has_function_dependencies() || fun.has_static_dependencies()) {
+                    let err = vcx.tcx.dcx().span_err(
+                        vcx.tcx.def_span(f.to_def_id()),
+                        error::Message::UnsupportedFeature(
+                            "rr::inline functions that call other functions or use statics are not supported yet"
+                                .to_owned(),
+                        ),
+                    );
+                    return recover_or_fail(err);
+                }
                 info!("Successfully translated {}", fname);
                 vcx.procedure_registry.provide_translated_function(f.to_def_id(), fun);
 

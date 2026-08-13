@@ -1009,6 +1009,16 @@ impl Function<'_> {
         &self.code.name
     }
 
+    #[must_use]
+    pub const fn has_function_dependencies(&self) -> bool {
+        !self.other_functions.is_empty()
+    }
+
+    #[must_use]
+    pub const fn has_static_dependencies(&self) -> bool {
+        !self.used_statics.is_empty()
+    }
+
     pub fn generate_lemma_statement<F>(&self, f: &mut F, is_default_trait_impl: bool) -> Result<(), io::Error>
     where
         F: io::Write,
@@ -1079,14 +1089,19 @@ impl Function<'_> {
                 let arg_syntys: Vec<String> =
                     proc_use.syntype_of_all_args.iter().map(ToString::to_string).collect();
 
-                write!(
-                    f,
-                    "{} ◁ᵥ{{π, MetaNone}} {} @ function_ptr [{}] {} -∗\n",
-                    proc_use.loc_name,
-                    proc_use.loc_name,
-                    arg_syntys.join("; "),
-                    proc_use,
-                )?;
+                write!(f, "{} ◁ᵥ{{π, MetaNone}} {} @ ", proc_use.loc_name, proc_use.loc_name)?;
+                match &proc_use.spec_term {
+                    UsedProcedureSpec::InlineCode(code_name) => {
+                        write!(f, "inline_function_ptr [{}] ({}", arg_syntys.join("; "), code_name)?;
+                        for ty in proc_use.scope_inst.get_all_ty_params_with_assocs() {
+                            write!(f, " {}", lang::SynType::from(ty))?;
+                        }
+                        writeln!(f, ") -∗")?;
+                    },
+                    UsedProcedureSpec::Literal(_) | UsedProcedureSpec::TraitMethod(_, _) => {
+                        writeln!(f, "function_ptr [{}] {} -∗", arg_syntys.join("; "), proc_use)?;
+                    },
+                }
             }
         }
 
@@ -1383,6 +1398,8 @@ pub struct StaticMeta<'def> {
 pub enum UsedProcedureSpec<'def> {
     /// A direct specification term, the string is the spec definition.
     Literal(String),
+    /// The definition of an inline function's code.
+    InlineCode(String),
     /// A method of a trait impl we quantify over, the string is the method name.
     TraitMethod(traits::QuantifiedImpl<'def>, String),
 }
@@ -1392,7 +1409,7 @@ impl UsedProcedureSpec<'_> {
         match *self {
             Self::Literal(_) => true,
             // symbolic trait method uses don't need the surrounding trait requirements
-            Self::TraitMethod(_, _) => false,
+            Self::InlineCode(_) | Self::TraitMethod(_, _) => false,
         }
     }
 }
@@ -1403,6 +1420,7 @@ impl fmt::Display for UsedProcedureSpec<'_> {
             Self::Literal(lit) => {
                 write!(f, "{lit} (RRGS:=RRGS)")
             },
+            Self::InlineCode(code_name) => write!(f, "{code_name}"),
             Self::TraitMethod(spec_use, method_name) => {
                 let spec = spec_use.trait_ref.borrow();
                 let spec = spec.as_ref().unwrap();

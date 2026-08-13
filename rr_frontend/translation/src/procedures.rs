@@ -27,6 +27,9 @@ pub(crate) enum Mode {
     #[display("trust_me")]
     TrustMe,
 
+    #[display("inline")]
+    Inline,
+
     #[display("shim")]
     Shim,
 
@@ -51,6 +54,10 @@ impl Mode {
         self == Self::TrustMe
     }
 
+    pub(crate) fn is_inline(self) -> bool {
+        self == Self::Inline
+    }
+
     pub(crate) fn is_shim(self) -> bool {
         self == Self::Shim
     }
@@ -72,7 +79,7 @@ impl Mode {
     }
 
     pub(crate) fn needs_def(self) -> bool {
-        self.is_prove() || self.is_trust_me()
+        self.is_prove() || self.is_trust_me() || self.is_inline()
     }
 
     pub(crate) fn needs_spec(self) -> bool {

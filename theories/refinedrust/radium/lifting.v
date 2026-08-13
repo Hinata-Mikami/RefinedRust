@@ -2136,6 +2136,7 @@ Lemma wps_call π i (sta : list syn_type) vf vl f fn Q Ψ Ψunwind destination n
     (* new stack frame *)
     current_frame π (S i) -∗
     allocated_locals (π, S i) (fn.(f_args).*1) -∗
+    |={⊤}=>
     (* pick a postcondition *)
     ∃ Ψ' Ψunwind',
       WPs{π} Goto fn.(f_init) {{ fn.(f_code), Ψ' | Ψunwind' }} ∗
@@ -2205,11 +2206,14 @@ Proof.
     opose proof (Forall2_lookup_lr _ _ _ _ _ _ Hlyv _ _) as Ha; [done.. | ].
     rewrite /use_layout_alg' Ha/=. eauto. }
 
+  iApply physical_step_fupd.
   iApply (physical_step_wand with "HWP"). iIntros "HWP".
+  iEval (rewrite right_id) in "Hlocals".
+  iDestruct ("HWP" $! lsa with "[//] Hla Hxs Hframe Hlocals") as ">Ha".
+  iDestruct "Ha" as (Ψ' Ψunwind') "(HQinit & Hrecover)".
+  iModIntro.
   iSplit => //.
 
-  iEval (rewrite right_id) in "Hlocals".
-  iDestruct ("HWP" $! lsa with "[//] Hla Hxs Hframe Hlocals") as (Ψ' Ψunwind') "(HQinit & Hrecover)".
   iFrame.
   have -> : CallFrame π caller destination normal unwind
       (to_rtstmt π fn (Goto fn.(f_init))) =

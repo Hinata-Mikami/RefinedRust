@@ -41,7 +41,7 @@ pub(crate) const COMMON_FUNCTION_SPEC_ATTRS: &[&str] = &[
 ];
 
 pub(crate) const FUNCTION_SPEC_ATTRS: &[&str] =
-    &["code_shim", "export_as", "only_spec", "verify", "trust_me", "use_panic_abort"];
+    &["code_shim", "export_as", "inline", "only_spec", "verify", "trust_me", "use_panic_abort"];
 
 pub(crate) const CLOSURE_SPEC_ATTRS: &[&str] =
     &["capture", "only_spec", "verify", "trust_me", "use_panic_abort"];
@@ -1558,6 +1558,7 @@ where
                     if !b
                         && name != "code_shim"
                         && name != "export_as"
+                        && name != "inline"
                         && name != "only_spec"
                         && name != "verify"
                         && name != "trust_me"

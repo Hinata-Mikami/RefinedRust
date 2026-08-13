@@ -1110,6 +1110,11 @@ Global Instance intro_pers_fn `{!typeGS Σ} {rts : list RT} v π l sts lfts (fns
 Proof.
   constructor. iIntros "#HA". done.
 Qed.
+Global Instance intro_pers_inline_fn `{!typeGS Σ} v π l sts fn m :
+  IntroPersistent (v ◁ᵥ{π, m} l @ inline_function_ptr sts fn) (v ◁ᵥ{π, m} l @ inline_function_ptr sts fn).
+Proof.
+  constructor. iIntros "#HA". done.
+Qed.
 
 (* IMPORTANT: We need to make sure to never call simpl while the code
 (fn) is part of the goal, because simpl seems to take exponential time
