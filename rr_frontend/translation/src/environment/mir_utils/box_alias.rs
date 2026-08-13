@@ -193,7 +193,8 @@ pub(crate) fn collect_box_deref_aliases<'tcx>(
             if !lhs.projection.is_empty() {
                 continue;
             }
-            let mir::Rvalue::Cast(kind, mir::Operand::Copy(rhs_place) | mir::Operand::Move(rhs_place), _) = rhs
+            let mir::Rvalue::Cast(kind, mir::Operand::Copy(rhs_place) | mir::Operand::Move(rhs_place), _) =
+                rhs
             else {
                 continue;
             };

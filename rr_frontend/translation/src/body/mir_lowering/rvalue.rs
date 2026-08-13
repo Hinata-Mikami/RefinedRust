@@ -329,7 +329,8 @@ pub(crate) trait MirRvalueTranslation<'def, 'tcx: 'def>:
         let mut nonnull_expr = self.translate_place(rhs_place)?;
         if matches!(kind, mir::CastKind::BoxDerefTransmute) {
             let unique_sls = self.generate_structlike_use(nonnull_ty, None)?.generate_raw_syn_type_term();
-            nonnull_ty = mir::PlaceTy::field_ty(self.tcx(), nonnull_ty, None, abi::FieldIdx::ZERO).skip_norm_wip();
+            nonnull_ty =
+                mir::PlaceTy::field_ty(self.tcx(), nonnull_ty, None, abi::FieldIdx::ZERO).skip_norm_wip();
             nonnull_expr = code::Expr::FieldOf {
                 e: Box::new(nonnull_expr),
                 name: "pointer".to_owned(),
