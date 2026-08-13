@@ -14,7 +14,7 @@ Section init.
     li_tactic (compute_list_map_lookup_nofail_goal (els.(els_tag_int)) variant) (λ tag,
     li_tactic (compute_list_map_lookup_nofail_goal (els.(els_variants)) variant) (λ st,
     typed_val_expr E L f e (λ L2 v m rti tyi ri,
-      ∃ M, named_lfts M ∗ (named_lfts M -∗
+      ∃ M, named_lfts f M ∗ (named_lfts f M -∗
       (* get the desired enum type *)
       li_tactic (interpret_rust_enum_def_goal M rsen) (λ '(existT rto e),
         ⌜fast_syntype_eq_hint (e.(enum_els) = els)⌝ ∗

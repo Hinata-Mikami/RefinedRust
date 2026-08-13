@@ -10,8 +10,8 @@ Section rule.
 
   (** Typing rule for shared borrowing, manually applied by the tactics *)
   Lemma type_shr_bor E L f (T : typed_val_expr_cont_t) e κ_name ty_annot :
-    (∃ M, named_lfts M ∗ li_tactic (compute_map_lookup_nofail_goal M κ_name) (λ κ,
-    (named_lfts M -∗ typed_borrow_shr E L f e κ ty_annot (λ L' v rt ty r,
+    (∃ M, named_lfts f M ∗ li_tactic (compute_map_lookup_nofail_goal M κ_name) (λ κ,
+    (named_lfts f M -∗ typed_borrow_shr E L f e κ ty_annot (λ L' v rt ty r,
       T L' v MetaNone (place_rfn rt) (shr_ref κ ty) (r)))))
     ⊢ typed_val_expr E L f (&ref{Shr, ty_annot, κ_name} e)%E T.
   Proof.

@@ -10,13 +10,13 @@ Section named_lfts.
     Invariant: there is a global singleton around.
    *)
   (* TODO: find a better way to seal this off and hide it from basic automation. *)
-  Definition named_lfts (M : gmap string lft) : iProp Σ := True -∗ True.
-  Lemma named_lfts_update M M' : named_lfts M -∗ named_lfts M'.
+  Definition named_lfts (f : frame_path) (M : gmap string lft) : iProp Σ := True -∗ True.
+  Lemma named_lfts_update f M M' : named_lfts f M -∗ named_lfts f M'.
   Proof. auto. Qed.
   Definition lookup_named_lfts (M : gmap string lft) (lfts : list string) :=
     foldr (λ s oacc, acc ← oacc; κ ← M !! s; Some (κ :: acc)) (Some []) lfts.
 
-  Lemma named_lfts_init (M : gmap string lft) : ⊢ named_lfts M.
+  Lemma named_lfts_init f (M : gmap string lft) : ⊢ named_lfts f M.
   Proof. unfold named_lfts. iIntros "_". done. Qed.
 
   (* Making it opaque so that simplification doesn't get stuck with it *)
@@ -449,8 +449,8 @@ Definition FindLocInBounds `{!typeGS Σ} (l : loc) :=
 Global Typeclasses Opaque FindLocInBounds.
 
 (** find the named lifetime judgment *)
-Definition FindNamedLfts `{!typeGS Σ} :=
-  {| fic_A := gmap string lft; fic_Prop M := (named_lfts (Σ := Σ) M)%I; |}.
+Definition FindNamedLfts `{!typeGS Σ} (f : frame_path) :=
+  {| fic_A := gmap string lft; fic_Prop M := (named_lfts (Σ := Σ) f M)%I; |}.
 Global Typeclasses Opaque FindNamedLfts.
 
 (** find the credit store *)
@@ -677,14 +677,14 @@ Section judgments.
 
   (** Typing of annotated expressions -- annotation determined by the [A]*)
   (* A is the annotation from the code *)
-  Definition typed_annot_expr (E : elctx) (L : llctx) π (n : nat) {A} (a : A) (v : val) (P : iProp Σ) (T : typed_val_expr_cont_t) : iProp Σ :=
+  Definition typed_annot_expr (E : elctx) (L : llctx) (f : frame_path) (n : nat) {A} (a : A) (v : val) (P : iProp Σ) (T : typed_val_expr_cont_t) : iProp Σ :=
     (rrust_ctx -∗
       elctx_interp E -∗
       llctx_interp L -∗
       P ={⊤}[∅]▷=∗^n |={⊤}=>
-      ∃ L2 m rt (ty : type rt) r, llctx_interp L2 ∗ v ◁ᵥ{π, m} r @ ty ∗ T L2 v m rt ty r).
-  Class TypedAnnotExpr (E : elctx) (L : llctx) (π : thread_id) (n : nat) {A} (a : A) (v : val) (P : iProp Σ) : Type :=
-    typed_annot_expr_proof T : iProp_to_Prop (typed_annot_expr E L π n a v P T).
+      ∃ L2 m rt (ty : type rt) r, llctx_interp L2 ∗ v ◁ᵥ{f.1, m} r @ ty ∗ T L2 v m rt ty r).
+  Class TypedAnnotExpr (E : elctx) (L : llctx) (f : frame_path) (n : nat) {A} (a : A) (v : val) (P : iProp Σ) : Type :=
+    typed_annot_expr_proof T : iProp_to_Prop (typed_annot_expr E L f n a v P T).
 
 
   (** Learn from a hypothesis on introduction with [introduce_with_hooks], defined below *)
@@ -833,13 +833,13 @@ Section judgments.
     typed_assert_proof s fn R U ϝ : iProp_to_Prop (typed_assert E L f v ty r s fn R U ϝ).
 
   (** annotated statements are allowed to execute an update and take a step *)
-  Definition typed_annot_stmt (π : thread_id) (n : nat) {A} (a : A) (E : elctx) (L : llctx) (T : llctx → iProp Σ) : iProp Σ :=
+  Definition typed_annot_stmt (f : frame_path) (n : nat) {A} (a : A) (E : elctx) (L : llctx) (T : llctx → iProp Σ) : iProp Σ :=
     (rrust_ctx -∗
      elctx_interp E -∗
      llctx_interp L -∗
      |={⊤}⧗=>^n (∃ L', llctx_interp L' ∗  T L')%I).
-  Class TypedAnnotStmt (π : thread_id) (n : nat) {A} (a : A) : Type :=
-    typed_annot_stmt_proof E L T : iProp_to_Prop (typed_annot_stmt π n a E L T).
+  Class TypedAnnotStmt (f : frame_path) (n : nat) {A} (a : A) : Type :=
+    typed_annot_stmt_proof E L T : iProp_to_Prop (typed_annot_stmt f n a E L T).
 
   Definition typed_switch (E : elctx) (L : llctx) (f : frame_path) (v : val) {rt} (ty : type rt) (r : rt) (it : int_type) (m : gmap Z nat) (ss : list stmt) (def : stmt) (fn : function) (R : typed_stmt_R_t) (U : typed_stmt_U_t) (ϝ : lft) : iProp Σ :=
     ∀ F,
@@ -1458,7 +1458,7 @@ Section judgments.
   (** Interpreting typing hints *)
   Definition interpret_typing_hint_cont_t (bmin : place_update_kind) (rt : RT) :=
     llctx → ∀ (rt' : RT), type rt' → rt' → place_update_kind_res bmin rt rt' → iProp Σ.
-  Definition interpret_typing_hint (E : elctx) (L : llctx) (π : thread_id) (orty : option rust_type) (bmin : place_update_kind) {rt} (ty : type rt) (r : rt) (T : interpret_typing_hint_cont_t bmin rt) : iProp Σ :=
+  Definition interpret_typing_hint (E : elctx) (L : llctx) (f : frame_path) (orty : option rust_type) (bmin : place_update_kind) {rt} (ty : type rt) (r : rt) (T : interpret_typing_hint_cont_t bmin rt) : iProp Σ :=
     ∀ F,
       ⌜lftE ⊆ F⌝ →
       ⌜↑rrustN ⊆ F⌝ →
@@ -1470,16 +1470,16 @@ Section judgments.
         llctx_interp L2 ∗
         (* either owned inclusion or weak inclusion, depending on the allowed permissions *)
         (match bmin with
-         | UpdInit => owned_type_incl π r r2 ty ty2
-         | UpdStrong => owned_type_incl π r r2 ty ty2
+         | UpdInit => owned_type_incl f.1 r r2 ty ty2
+         | UpdStrong => owned_type_incl f.1 r r2 ty ty2
          | _ => ⌜∀ m, syn_type_size_eq (st_of ty m) (st_of ty2 m)⌝ ∗ type_incl r r2 ty ty2
          end) ∗
         typed_place_cond upd (◁ ty) (◁ ty2) ∗
         upd ⪯ₚ bmin ∗
         T L2 rt2 ty2 r2 upd
     .
-  Class InterpretTypingHint (E : elctx) (L : llctx) (π : thread_id) (orty : option rust_type) (bmin : place_update_kind) {rt} (ty : type rt) (r : rt) : Type :=
-    interpret_typing_hint_proof T : iProp_to_Prop (interpret_typing_hint E L π orty bmin ty r T).
+  Class InterpretTypingHint (E : elctx) (L : llctx) (f : frame_path) (orty : option rust_type) (bmin : place_update_kind) {rt} (ty : type rt) (r : rt) : Type :=
+    interpret_typing_hint_proof T : iProp_to_Prop (interpret_typing_hint E L f orty bmin ty r T).
 
 
   (** ** Read judgments *)
@@ -1676,29 +1676,29 @@ Section judgments.
       WPe{f.1} e {{ Φ }})%I.
 
   Definition typed_borrow_mut_end_cont_t bmin rt := llctx → gname → ∀ rt', ltype rt' → place_rfn rt' → type rt' → rt' → place_update_kind_res bmin rt rt' → iProp Σ.
-  Definition typed_borrow_mut_end (π : thread_id) (E : elctx) (L : llctx) (κ : lft) (l : loc) (ty_hint : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (T : typed_borrow_mut_end_cont_t bmin rt) : iProp Σ :=
+  Definition typed_borrow_mut_end (f : frame_path) (E : elctx) (L : llctx) (κ : lft) (l : loc) (ty_hint : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (T : typed_borrow_mut_end_cont_t bmin rt) : iProp Σ :=
     (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
     (*bmin ⪯ₚ b2 -∗*)
     (* given ownership of the location we borrow from *)
-    l ◁ₗ[π, b2] r @ lt -∗ £(num_cred) ={F}=∗
+    l ◁ₗ[f.1, b2] r @ lt -∗ £(num_cred) ={F}=∗
     ∃ (L' : llctx) (γ : gname) (ly : layout) (rt2 : RT) (ty2 : type rt2) (r2 : rt2) (res : place_update_kind_res bmin rt rt2),
     (* we provide a borrow of ty *)
     place_rfn_interp_mut (#r2) γ ∗
-    &{κ}(∃ (r': rt2), gvar_auth γ r' ∗ |={lftE}=> l ↦: ty2.(ty_own_val) π r' MetaNone)  ∗
+    &{κ}(∃ (r': rt2), gvar_auth γ r' ∗ |={lftE}=> l ↦: ty2.(ty_own_val) f.1 r' MetaNone)  ∗
     ty_sidecond ty2 ∗
     ⌜syn_type_has_layout (ty2.(ty_syn_type) MetaNone) ly⌝ ∗
     loc_in_bounds l 0 (ly.(ly_size)) ∗
     (* and a blocked ownership of the borrowed location *)
-    l ◁ₗ[π, b2] (PlaceGhost γ: place_rfn rt2) @ (BlockedLtype ty2 κ) ∗
+    l ◁ₗ[f.1, b2] (PlaceGhost γ: place_rfn rt2) @ (BlockedLtype ty2 κ) ∗
     res ⪯ₚ bmin ∗
     (* and a proof that we can unblock again *)
     typed_place_cond res lt (BlockedLtype ty2 κ) ∗
     (* and the context and postco *)
     llctx_interp L' ∗
     T L' γ rt2 (BlockedLtype ty2 κ) (PlaceGhost γ) ty2 r2 res).
-  Class TypedBorrowMutEnd π (E : elctx) (L : llctx) (κ : lft) (l : loc) (orty : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) : Type :=
-    typed_borrow_mut_end_proof T : iProp_to_Prop (typed_borrow_mut_end π E L κ l orty lt r b2 bmin T).
+  Class TypedBorrowMutEnd f (E : elctx) (L : llctx) (κ : lft) (l : loc) (orty : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) : Type :=
+    typed_borrow_mut_end_proof T : iProp_to_Prop (typed_borrow_mut_end f E L κ l orty lt r b2 bmin T).
 
   (** [typed_borrow_shr] gets triggered when we do a shared borrow at lifetime [κ] from a place [e].
 
@@ -1732,23 +1732,23 @@ Section judgments.
       WPe{f.1} e {{ Φ }})%I.
 
   Definition typed_borrow_shr_end_cont_t bmin rt := llctx → ∀ rt', ltype rt' → place_rfn rt' → ∀ rt2, type rt2 → rt2 → place_update_kind_res bmin rt rt' → iProp Σ.
-  Definition typed_borrow_shr_end π (E : elctx) (L : llctx) (κ : lft) (l : loc) (orty : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (T : typed_borrow_shr_end_cont_t bmin rt) : iProp Σ :=
+  Definition typed_borrow_shr_end (f : frame_path) (E : elctx) (L : llctx) (κ : lft) (l : loc) (orty : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (T : typed_borrow_shr_end_cont_t bmin rt) : iProp Σ :=
     (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
     (*bmin ⪯ₚ b2 -∗*)
     (* given ownership of the location we borrow from *)
-    l ◁ₗ[π, b2] r @ lt ={F}=∗
+    l ◁ₗ[f.1, b2] r @ lt ={F}=∗
     (* we provide a borrow of ty *)
     logical_step F (
     (* one credit for the inheritance VS *)
     £1 ={F}=∗
     ∃ L2 ly rt2 (lt2 : ltype rt2) (r2 : rt2) rt2' (ty2 : type rt2') (r2' : rt2') (res : place_update_kind_res bmin rt rt2),
     (*place_rfn_interp_shared r r2 ∗*)
-    ty2.(ty_shr) κ π r2' MetaNone l ∗
+    ty2.(ty_shr) κ f.1 r2' MetaNone l ∗
     ⌜syn_type_has_layout (ty2.(ty_syn_type) MetaNone) ly⌝ ∗
     loc_in_bounds l 0 (ly.(ly_size)) ∗ ty2.(ty_sidecond) ∗
     (* and a blocked ownership of the borrowed location *)
-    l ◁ₗ[π, b2] #r2 @ lt2  ∗
+    l ◁ₗ[f.1, b2] #r2 @ lt2  ∗
     (* and a proof that we can unblock again *)
     typed_place_cond res lt lt2 ∗
     ⌜ltype_st lt2 = ty_syn_type ty2 MetaNone⌝ ∗
@@ -1756,8 +1756,8 @@ Section judgments.
     (* and the context and postco *)
     llctx_interp L2 ∗
     T L2 rt2 lt2 (#r2) rt2' ty2 r2' res)).
-  Class TypedBorrowShrEnd π (E : elctx) (L : llctx) (κ : lft) (l : loc) (orty : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) : Type :=
-    typed_borrow_shr_end_proof T : iProp_to_Prop (typed_borrow_shr_end π E L κ l orty lt r b2 bmin T).
+  Class TypedBorrowShrEnd f (E : elctx) (L : llctx) (κ : lft) (l : loc) (orty : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) : Type :=
+    typed_borrow_shr_end_proof T : iProp_to_Prop (typed_borrow_shr_end f E L κ l orty lt r b2 bmin T).
 
   (** ** Address-of judgments *)
   (** [*mut] address of *)

@@ -81,7 +81,7 @@ Section init.
   Qed.
 
   Lemma type_array_init E L f (rty : rust_type) (es : list expr) (T : typed_val_expr_cont_t) :
-    (∃ M, named_lfts M ∗ (named_lfts M -∗
+    (∃ M, named_lfts f M ∗ (named_lfts f M -∗
       li_tactic (interpret_rust_type_goal M rty) (λ '(existT rt ty),
       li_tactic (compute_layout_goal (ty_syn_type ty MetaNone)) (λ ly,
         ⌜(size_of_array_in_bytes (ty_syn_type ty MetaNone) (length es) ≤ MaxInt ISize)%Z⌝ ∗

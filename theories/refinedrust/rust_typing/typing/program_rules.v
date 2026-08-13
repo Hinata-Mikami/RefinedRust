@@ -25,8 +25,8 @@ Section find.
   Global Instance related_to_val v m π {rt} (ty : type rt) (r : rt) : RelatedTo (v ◁ᵥ{π, m} r @ ty)  | 100 :=
     {| rt_fic := FindValP v |}.
 
-  Global Instance related_to_named_lfts M : RelatedTo (named_lfts M) | 100 :=
-    {| rt_fic:= FindNamedLfts |}.
+  Global Instance related_to_named_lfts f M : RelatedTo (named_lfts f M) | 100 :=
+    {| rt_fic:= FindNamedLfts f |}.
 
   Global Instance related_to_gvar_pobs {rt} γ (r : rt) : RelatedTo (gvar_pobs γ r) | 100 :=
     {| rt_fic := FindGvarPobs γ |}.
@@ -183,26 +183,26 @@ Section find.
     λ T, i2p (find_in_context_frame_locals f T).
 
   (** NamedLfts *)
-  Lemma subsume_named_lfts M M' `{!ContainsProtected M'} T:
-    ⌜M = M'⌝ ∗ T ⊢ subsume (Σ := Σ) (named_lfts M) (named_lfts M') T.
+  Lemma subsume_named_lfts f M M' `{!ContainsProtected M'} T:
+    ⌜M = M'⌝ ∗ T ⊢ subsume (Σ := Σ) (named_lfts f M) (named_lfts f M') T.
   Proof. iIntros "(-> & $) $". Qed.
   Definition subsume_named_lfts_inst := [instance subsume_named_lfts].
   Global Existing Instance subsume_named_lfts_inst.
 
   (* Low priority instance for strong updates, in particular when doing loop proofs *)
-  Lemma subsume_named_lfts_trivial M M' T:
-    T ⊢ subsume (Σ := Σ) (named_lfts M) (named_lfts M') T.
+  Lemma subsume_named_lfts_trivial f M M' T:
+    T ⊢ subsume (Σ := Σ) (named_lfts f M) (named_lfts f M') T.
   Proof. iIntros "$ Hb". iApply "Hb". Qed.
   Definition subsume_named_lfts_trivial_inst := [instance subsume_named_lfts_trivial].
   Global Existing Instance subsume_named_lfts_trivial_inst | 100.
 
-  Lemma find_in_context_named_lfts T:
-    (∃ M, named_lfts M ∗ T M) ⊢
-    find_in_context FindNamedLfts T.
+  Lemma find_in_context_named_lfts f T:
+    (∃ M, named_lfts f M ∗ T M) ⊢
+    find_in_context (FindNamedLfts f) T.
   Proof. iDestruct 1 as (M) "[Hn HT]". iExists _ => /=. iFrame. Qed.
-  Global Instance find_in_context_named_lfts_inst :
-    FindInContext FindNamedLfts FICSyntactic | 1 :=
-    λ T, i2p (find_in_context_named_lfts T).
+  Global Instance find_in_context_named_lfts_inst f :
+    FindInContext (FindNamedLfts f) FICSyntactic | 1 :=
+    λ T, i2p (find_in_context_named_lfts f T).
 
   (** CreditStore *)
   Lemma subsume_credit_store_evar n m n' m' T `{!ContainsProtected (credit_store n' m')}:
@@ -3028,9 +3028,9 @@ Section subsume.
   (* TODO: OpenedNaType *)
 
   (** Typing hints *)
-  Lemma interpret_typing_hint_ignore orty E L π bmin {rt} (ty : type rt) r (T : interpret_typing_hint_cont_t bmin rt) :
+  Lemma interpret_typing_hint_ignore orty E L f bmin {rt} (ty : type rt) r (T : interpret_typing_hint_cont_t bmin rt) :
     T L rt ty r (mkPUKRes UpdBot eq_refl opt_place_update_eq_refl)
-    ⊢ interpret_typing_hint E L π orty bmin ty r T.
+    ⊢ interpret_typing_hint E L f orty bmin ty r T.
   Proof.
     iIntros "HT".
     iIntros (????) "#CTX #HE HL".
@@ -3048,26 +3048,26 @@ Section subsume.
   Definition interpret_typing_hint_none_inst := [instance @interpret_typing_hint_none].
   Global Existing Instance interpret_typing_hint_none_inst | 10.
 
-  Lemma interpret_typing_hint_ignore_disabled orty E L π bmin {rt} (ty : type rt) r
+  Lemma interpret_typing_hint_ignore_disabled orty E L f bmin {rt} (ty : type rt) r
     `{!CheckConfig rr_config_dont_interpret_typing_hints}
     (T : interpret_typing_hint_cont_t bmin rt) :
     T L rt ty r (mkPUKRes UpdBot eq_refl opt_place_update_eq_refl)
-    ⊢ interpret_typing_hint E L π orty bmin ty r T.
+    ⊢ interpret_typing_hint E L f orty bmin ty r T.
   Proof.
     iApply interpret_typing_hint_ignore.
   Qed.
   Definition interpret_typing_hint_ignore_disabled_inst := [instance @interpret_typing_hint_ignore_disabled].
   Global Existing Instance interpret_typing_hint_ignore_disabled_inst | 15.
 
-  Lemma interpret_typing_hint_some_init E L π rty {rt} (ty : type rt) r (T : interpret_typing_hint_cont_t UpdInit rt) :
-    find_in_context (FindNamedLfts) (λ M, named_lfts M -∗
+  Lemma interpret_typing_hint_some_init E L f rty {rt} (ty : type rt) r (T : interpret_typing_hint_cont_t UpdInit rt) :
+    find_in_context (FindNamedLfts f) (λ M, named_lfts f M -∗
       (** Interpret the type annotation *)
       li_tactic (interpret_rust_type_goal M rty) (λ '(existT rt2 ty2),
       ∃ r2,
         ⌜syn_type_compat (st_of ty MetaNone) (st_of ty2 MetaNone)⌝ ∗
-        owned_subtype π E L false r r2 ty ty2 (λ L2,
+        owned_subtype f.1 E L false r r2 ty ty2 (λ L2,
         T L2 rt2 ty2 r2 (mkPUKRes (allowed:=UpdInit) UpdInit I I))))
-    ⊢ interpret_typing_hint E L π (Some rty) UpdInit ty r T.
+    ⊢ interpret_typing_hint E L f (Some rty) UpdInit ty r T.
   Proof.
     iIntros "HT".
     rewrite /FindNamedLfts.
@@ -3086,15 +3086,15 @@ Section subsume.
   Definition interpret_typing_hint_some_init_inst := [instance @interpret_typing_hint_some_init].
   Global Existing Instance interpret_typing_hint_some_init_inst | 20.
 
-  Lemma interpret_typing_hint_some_strong E L π rty {rt} (ty : type rt) r (T : interpret_typing_hint_cont_t UpdStrong rt) :
-    find_in_context (FindNamedLfts) (λ M, named_lfts M -∗
+  Lemma interpret_typing_hint_some_strong E L f rty {rt} (ty : type rt) r (T : interpret_typing_hint_cont_t UpdStrong rt) :
+    find_in_context (FindNamedLfts f) (λ M, named_lfts f M -∗
       (** Interpret the type annotation *)
       li_tactic (interpret_rust_type_goal M rty) (λ '(existT rt2 ty2),
       ∃ r2,
         ⌜fast_syntype_eq_hint (st_of ty MetaNone = st_of ty2 MetaNone)⌝ ∗
-        owned_subtype π E L false r r2 ty ty2 (λ L2,
+        owned_subtype f.1 E L false r r2 ty ty2 (λ L2,
         T L2 rt2 ty2 r2 (mkPUKRes (allowed:=UpdStrong) UpdStrong I I))))
-    ⊢ interpret_typing_hint E L π (Some rty) UpdStrong ty r T.
+    ⊢ interpret_typing_hint E L f (Some rty) UpdStrong ty r T.
   Proof.
     iIntros "HT".
     rewrite /FindNamedLfts.
@@ -3111,14 +3111,14 @@ Section subsume.
   Definition interpret_typing_hint_some_strong_inst := [instance @interpret_typing_hint_some_strong].
   Global Existing Instance interpret_typing_hint_some_strong_inst | 20.
 
-  Lemma interpret_typing_hint_some_weak E L π rty {rt} (ty : type rt) r (T : interpret_typing_hint_cont_t UpdWeak rt) :
-    find_in_context (FindNamedLfts) (λ M, named_lfts M -∗
+  Lemma interpret_typing_hint_some_weak E L f rty {rt} (ty : type rt) r (T : interpret_typing_hint_cont_t UpdWeak rt) :
+    find_in_context (FindNamedLfts f) (λ M, named_lfts f M -∗
       (** Interpret the type annotation *)
       li_tactic (interpret_rust_type_goal M rty) (λ '(existT rt2 ty2),
       ∃ (Heq : rt = rt2),
       ∃ r2, weak_subtype E L r r2 ty ty2 (
         T L rt2 ty2 r2 (mkPUKRes (allowed:=UpdWeak) UpdWeak Heq Heq))))
-    ⊢ interpret_typing_hint E L π (Some rty) UpdWeak ty r T.
+    ⊢ interpret_typing_hint E L f (Some rty) UpdWeak ty r T.
   Proof.
     iIntros "HT".
     rewrite /FindNamedLfts.
@@ -3258,10 +3258,10 @@ Section subsume.
   Qed.
 
   Lemma type_call E L f ef eκs etys es destination normal unwind fn R U ϝ :
-    (∃ M, named_lfts M ∗
+    (∃ M, named_lfts f M ∗
     li_tactic (compute_map_lookups_nofail_goal M eκs) (λ eκs',
     interpret_rust_types M etys (λ atys,
-    named_lfts M -∗
+    named_lfts f M -∗
     typed_val_expr E L f ef (λ L' vf m rtf tyf rf,
         foldr (λ e T L'' vl tys, typed_val_expr E L'' f e (λ L''' v m rt ty r,
           ⌜m = MetaNone⌝ ∗
@@ -3364,7 +3364,7 @@ Section subsume.
 
   Lemma type_annot_expr E L f n {A} (a : A) e T:
     typed_val_expr E L f e (λ L' v m rt ty r,
-      typed_annot_expr E L' f.1 n a v (v ◁ᵥ{f.1, m} r @ ty) T)
+      typed_annot_expr E L' f n a v (v ◁ᵥ{f.1, m} r @ ty) T)
     ⊢ typed_val_expr E L f (AnnotExpr n a e) T.
   Proof.
     iIntros "He" (Φ) "#LFT #HE HL Hf HΦ".
@@ -3388,16 +3388,16 @@ Section subsume.
     iApply ("IH" with "HΦ Hf HT").
   Qed.
 
-  Lemma typed_annot_stmt_skip π {A} (a : A) n E L T :
+  Lemma typed_annot_stmt_skip f {A} (a : A) n E L T :
     T L
-    ⊢ typed_annot_stmt π n a E L T.
+    ⊢ typed_annot_stmt f n a E L T.
   Proof.
     iIntros "Hs". iIntros "#CTX #HE HL".
     iApply physical_stepN_intro.
     iFrame.
   Qed.
   Lemma type_annot_stmt E L f n {A} (a : A) s fn R U ϝ :
-    typed_annot_stmt f.1  n a E L (λ L', typed_stmt E L' f s fn R U ϝ)
+    typed_annot_stmt f n a E L (λ L', typed_stmt E L' f s fn R U ϝ)
     ⊢ typed_stmt E L f (annot{n} : a; s) fn R U ϝ.
   Proof.
     iIntros "Hs". iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont".
@@ -4199,7 +4199,7 @@ Section subsume.
         (** Omitted from paper: Certify that this stratification is allowed *)
         prove_place_cond E L3 bmin lt2 lt2' (λ upd,
         (** finish borrow *)
-        typed_borrow_mut_end f.1 E L3 κ l2 orty lt2' ri2' b2 bmin (λ L4 (γ : gname) rt3 (lt3 : ltype rt3) (r3 : place_rfn rt3) ty4 r4 upd',
+        typed_borrow_mut_end f E L3 κ l2 orty lt2' ri2' b2 bmin (λ L4 (γ : gname) rt3 (lt3 : ltype rt3) (r3 : place_rfn rt3) ty4 r4 upd',
 
         typed_place_finish f.1 E L4 updcx (place_update_kind_res_trans upd upd') (R ∗ llft_elt_toks κs) l b
           lt3 r3 (λ L5, T L5 (l2v l2) γ rt3 ty4 r4))))))))
@@ -4288,14 +4288,14 @@ Section subsume.
     iMod (fupd_mask_subseteq lftE) as "Hcl_m"; first done.
     iMod "Hb" as "(%v & Hl & Hv)".
 
-    iAssert (owned_type_incl π r r2 ty ty2)%I with "[Hincl]" as "Hincl".
+    iAssert (owned_type_incl π.1 r r2 ty ty2)%I with "[Hincl]" as "Hincl".
     { destruct bmin; simpl; [done | done |  | ].
       all: iDestruct "Hincl" as "(%Hsteq & Hincl)"; iPoseProof (type_incl_owned_type_incl with "[] Hincl")as "?"; done. }
     iDestruct "Hincl" as "(_ & Hscincl & Hincl)". iPoseProof ("Hincl" with "Hv") as "Hv2".
 
     iDestruct "CTX" as "(LFT & LLFT)".
     iMod (gvar_alloc r2) as (γ) "[Hauth Hobs]".
-    iMod (bor_create lftE κ (∃ r' : rt2, gvar_auth γ r' ∗ |={lftE}=> l ↦: ty2.(ty_own_val) π r' MetaNone) with "LFT [Hauth Hl Hv2]") as "[Hb Hinh]"; first solve_ndisj.
+    iMod (bor_create lftE κ (∃ r' : rt2, gvar_auth γ r' ∗ |={lftE}=> l ↦: ty2.(ty_own_val) π.1 r' MetaNone) with "LFT [Hauth Hl Hv2]") as "[Hb Hinh]"; first solve_ndisj.
     { iNext. eauto with iFrame. }
     iMod "Hcl_m" as "_".
     iModIntro. iExists _, γ, ly, rt2, ty2, r2, _.
@@ -4368,7 +4368,7 @@ Section subsume.
     iDestruct "Hb" as "((%r1 & >Hauth1 & Hb1) & (%r2 & >Hobs1 & >Hauth2))".
     iPoseProof (gvar_agree with "Hauth2 Hobs'") as "->".
     iPoseProof (gvar_agree with "Hauth1 Hobs1") as "->".
-    set (bor' := ((∃ r' : rt, gvar_auth γ' r' ∗ (|={lftE}=> l ↦: ty_own_val ty π r' MetaNone)))%I).
+    set (bor' := ((∃ r' : rt, gvar_auth γ' r' ∗ (|={lftE}=> l ↦: ty_own_val ty π.1 r' MetaNone)))%I).
     iMod ("Hcl_b'" $! bor' with "[Hobs1 Hauth1] [Hauth2 Hb1]") as "(Ha & Htok)".
     { iNext. iIntros "Ha".
       iDestruct "Ha" as "(%r'' & Hauth & Ha)".
@@ -4429,7 +4429,7 @@ Section subsume.
       (* certify that this stratification is allowed, or otherwise commit to a strong update *)
       prove_place_cond E L3 bmin lt2 lt2' (λ upd,
       (* finish borrow *)
-      typed_borrow_shr_end f.1 E L3 κ l2 orty lt2' ri2' b2 bmin (λ L4 rt3 (lt3 : ltype rt3) (r3 : place_rfn rt3) rt3' (ty4 : type rt3') r4 upd',
+      typed_borrow_shr_end f E L3 κ l2 orty lt2' ri2' b2 bmin (λ L4 rt3 (lt3 : ltype rt3) (r3 : place_rfn rt3) rt3' (ty4 : type rt3') r4 upd',
       (* return toks *)
       typed_place_finish f.1 E L4 updcx (place_update_kind_res_trans upd upd') (R ∗ llft_elt_toks κs) l b lt3 r3
         (λ L5, T L5 (l2v l2) rt3' ty4 (#r4))))))))
@@ -4491,8 +4491,8 @@ Section subsume.
       ⌜lctx_place_update_kind_incl E L2 (UpdUniq [κ]) bmin⌝ ∗
       ⌜lctx_lft_alive E L2 κ⌝ ∗
       ⌜Forall (lctx_lft_alive E L2) (ty_lfts ty2)⌝ ∗
-      find_in_context (FindNaOwn π) (λ E,
-      na_own π E -∗
+      find_in_context (FindNaOwn π.1) (λ E,
+      na_own π.1 E -∗
       (T L2 rt2 (ShrBlockedLtype ty2 κ) (#r2) _ ty2 r2
         (place_update_kind_res_trans upd (mkPUKRes (UpdUniq [κ]) eq_refl opt_place_update_eq_refl))
       )))
@@ -4504,7 +4504,7 @@ Section subsume.
     iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & %rt2 & %ty2 & %r2 & %upd & HL & Hincl2 & #Hcond1 & #Hincl3 & HT)".
     iPoseProof (typed_place_cond_syn_type_compat with "Hcond1") as "%Hst_compat".
 
-    iAssert (owned_type_incl π r r2 ty ty2)%I with "[Hincl2]" as "Hincl".
+    iAssert (owned_type_incl π.1 r r2 ty ty2)%I with "[Hincl2]" as "Hincl".
     { destruct bmin; simpl; [done | done |  | ].
       all: iDestruct "Hincl2" as "(%Hsteq & Hincl)"; iPoseProof (type_incl_owned_type_incl with "[] Hincl")as "?"; done. }
 
@@ -4528,7 +4528,7 @@ Section subsume.
 
     iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
     iDestruct "CTX" as "[LFT LLCTX]".
-    iMod (bor_create lftE κ (∃ v, l ↦ v ∗ v ◁ᵥ{π, MetaNone} r2 @ ty2)%I with "LFT [Hv2 Hl]") as "(Hb & Hinh)"; first done.
+    iMod (bor_create lftE κ (∃ v, l ↦ v ∗ v ◁ᵥ{π.1, MetaNone} r2 @ ty2)%I with "LFT [Hv2 Hl]") as "(Hb & Hinh)"; first done.
     { eauto with iFrame. }
     iMod "Hcl_F" as "_".
     (*iPoseProof (place_rfn_interp_owned_share' with "Hrfn") as "#Hrfn'".*)
@@ -4574,7 +4574,7 @@ Section subsume.
     ⌜lctx_lft_incl E L κ κ'⌝ ∗
     ⌜lctx_lft_alive E L κ⌝ ∗
     ⌜Forall (lctx_lft_alive E L) (ty_lfts ty)⌝ ∗
-    find_in_context (FindNaOwn π) (λ E, na_own π E -∗
+    find_in_context (FindNaOwn π.1) (λ E, na_own π.1 E -∗
     (T L rt (ShrBlockedLtype ty κ) (#r) rt ty r (mkPUKRes (UpdUniq [κ]) eq_refl opt_place_update_eq_refl)))
     ⊢ typed_borrow_shr_end π E L κ l orty (◁ ty) (#r) (Uniq κ' γ) bmin T.
   Proof.
@@ -5004,11 +5004,11 @@ Section subsume.
     done.
   Qed.
 
-  Lemma typed_expr_assert_type π E L n sty v {rt} (ty : type rt) r T :
-    (∃ lfts, named_lfts lfts ∗
-      (named_lfts lfts -∗ li_tactic (interpret_rust_type_goal lfts sty) (λ '(existT _ ty2),
-        ∃ r2, owned_subtype π E L false r r2 ty ty2 (λ L2, T L2 v MetaNone _ ty2 r2))))%I
-    ⊢ typed_annot_expr E L π n (AssertTypeAnnot sty) v (v ◁ᵥ{π, MetaNone} r @ ty) T.
+  Lemma typed_expr_assert_type f E L n sty v {rt} (ty : type rt) r T :
+    (∃ lfts, named_lfts f lfts ∗
+      (named_lfts f lfts -∗ li_tactic (interpret_rust_type_goal lfts sty) (λ '(existT _ ty2),
+        ∃ r2, owned_subtype f.1 E L false r r2 ty ty2 (λ L2, T L2 v MetaNone _ ty2 r2))))%I
+    ⊢ typed_annot_expr E L f n (AssertTypeAnnot sty) v (v ◁ᵥ{f.1, MetaNone} r @ ty) T.
   Proof.
     iIntros "(%lfts & Hnamed & HT)". iPoseProof ("HT" with "Hnamed") as "HT".
     rewrite /interpret_rust_type_goal. iDestruct "HT" as "(%rt2 & %ty2 & %r2 & HT)".
@@ -5108,12 +5108,12 @@ Section subsume.
 
 
   (** StartLft *)
-  Lemma type_startlft π (n : string) sup_lfts E L T :
-    (∃ M, named_lfts M ∗ li_tactic (compute_map_lookups_nofail_goal M sup_lfts) (λ κs,
-      ∀ κ, named_lfts (named_lft_update n κ M) -∗
+  Lemma type_startlft f (n : string) sup_lfts E L T :
+    (∃ M, named_lfts f M ∗ li_tactic (compute_map_lookups_nofail_goal M sup_lfts) (λ κs,
+      ∀ κ, named_lfts f (named_lft_update n κ M) -∗
       (* add a credit -- will be used by endlft *)
       introduce_with_hooks E ((κ ⊑ₗ{0%nat} κs) :: L) (£ num_cred) T))
-    ⊢ typed_annot_stmt π 1 (StartLftAnnot n sup_lfts) E L T.
+    ⊢ typed_annot_stmt f 1 (StartLftAnnot n sup_lfts) E L T.
   Proof.
     rewrite /compute_map_lookups_nofail_goal.
     iIntros "(%M & Hnamed & %κs & %Hlook & Hcont)".
@@ -5129,10 +5129,10 @@ Section subsume.
   Global Existing Instance type_startlft_inst.
 
   (** Alias lifetimes: like startlft but without the atomic part *)
-  Lemma type_alias_lft π (n : string) sup_lfts E L T :
-    (∃ M, named_lfts M ∗ li_tactic (compute_map_lookups_nofail_goal M sup_lfts) (λ κs,
-      ∀ κ, named_lfts (named_lft_update n κ M) -∗ T ((κ ≡ₗ κs) :: L)))
-    ⊢ typed_annot_stmt π 1 (AliasLftAnnot n sup_lfts) E L T.
+  Lemma type_alias_lft f (n : string) sup_lfts E L T :
+    (∃ M, named_lfts f M ∗ li_tactic (compute_map_lookups_nofail_goal M sup_lfts) (λ κs,
+      ∀ κ, named_lfts f (named_lft_update n κ M) -∗ T ((κ ≡ₗ κs) :: L)))
+    ⊢ typed_annot_stmt f 1 (AliasLftAnnot n sup_lfts) E L T.
   Proof.
     rewrite /compute_map_lookups_nofail_goal.
     iIntros "(%M & Hnamed & %κs & %Hlook & Hcont)".
@@ -5191,8 +5191,8 @@ Section subsume.
   Definition iterate_with_hooks_endlft_inheritance_cons_inst := [instance @iterate_with_hooks_endlft_inheritance_cons].
   Global Existing Instance iterate_with_hooks_endlft_inheritance_cons_inst.
 
-  Lemma type_endlft π (n : string) E L T :
-    (∃ M, named_lfts M ∗
+  Lemma type_endlft f (n : string) E L T :
+    (∃ M, named_lfts f M ∗
       (* if this lifetime does not exist anymore, this is a nop *)
       li_tactic (compute_map_lookup_goal M n true) (λ o,
       match o with
@@ -5201,23 +5201,23 @@ Section subsume.
         prove_with_subtype E L false ProveDirect (£1) True%I (λ L1 _ R2,
         (* We need to make sure there are no open borrows using tokens of this lifetime, inclusing aliases, so find the lifetimes which will be dying here *)
         li_tactic (find_implied_dying_lifetimes_goal L1 κ) (λ implied_dying,
-        typed_pre_context_fold π E L1 (CtxFoldCloseInvAllInit (κ :: implied_dying)) (λ L1',
+        typed_pre_context_fold f.1 E L1 (CtxFoldCloseInvAllInit (κ :: implied_dying)) (λ L1',
         (* find the new llft context *)
         li_tactic (llctx_find_llft_goal L1' κ LlctxFindLftFull) (λ '(_, L1''),
         li_tactic (llctx_remove_dead_aliases_goal L1'' κ) (λ L2,
         (* simplify the name map *)
         li_tactic (simplify_lft_map_goal (named_lft_delete n M)) (λ M',
-        named_lfts M' -∗
+        named_lfts f M' -∗
         (* extract observations from now-dead mutable references *)
-        typed_pre_context_fold π E ((†ₗ κ) :: L2) (CtxFoldExtractAllInit κ) (λ L3,
+        typed_pre_context_fold f.1 E ((†ₗ κ) :: L2) (CtxFoldExtractAllInit κ) (λ L3,
         (* give back credits *)
         introduce_with_hooks E L3 (R2 ∗ £num_cred ∗ tr 1) (λ L4,
         (* resolve inheritances *)
         li_tactic (find_inheritances_goal) (λ ks,
         iterate_with_hooks E L4 (IterateEndlftInheritances κ ks) (λ L5 _, T L5))))))))))
-      | None => named_lfts M -∗ T L
+      | None => named_lfts f M -∗ T L
       end))
-    ⊢ typed_annot_stmt π 2 (EndLftAnnot n) E L T.
+    ⊢ typed_annot_stmt f 2 (EndLftAnnot n) E L T.
   Proof.
     iIntros "(%M & Hnamed & Hlook)".
     unfold compute_map_lookup_goal.
@@ -5269,17 +5269,17 @@ Section subsume.
   Global Existing Instance type_endlft_inst.
 
   (** Dynamic inclusion *)
-  Lemma type_dyn_include_lft π n1 n2 E L T :
-    (∃ M, named_lfts M ∗
+  Lemma type_dyn_include_lft f n1 n2 E L T :
+    (∃ M, named_lfts f M ∗
       li_tactic (compute_map_lookup_nofail_goal M n1) (λ κ1,
       li_tactic (compute_map_lookup_nofail_goal M n2) (λ κ2,
       li_tactic (lctx_lft_alive_count_goal E L κ2) (λ '(κs, L'),
       Inherit [κ1] (llft_elt_toks κs) -∗
-      named_lfts M -∗
+      named_lfts f M -∗
       (* TODO: update E *)
       (*(κ1 ⊑ₑ κ2) :: E)*)
       T L'))))
-    ⊢ typed_annot_stmt π 1 (DynIncludeLftAnnot n1 n2) E L T.
+    ⊢ typed_annot_stmt f 1 (DynIncludeLftAnnot n1 n2) E L T.
   Proof.
     rewrite /compute_map_lookup_nofail_goal.
     iIntros "(%M & Hnamed & %κ1 & %Hlook1 & %κ2 & %Hlook2 & Hs)".
@@ -5330,12 +5330,12 @@ Section subsume.
   Definition iterate_with_hooks_extend_lft_cons_inst := [instance @iterate_with_hooks_extend_lft_cons].
   Global Existing Instance iterate_with_hooks_extend_lft_cons_inst.
 
-  Lemma type_extendlft π (n : string) E L T :
-    (∃ M, named_lfts M ∗
+  Lemma type_extendlft f (n : string) E L T :
+    (∃ M, named_lfts f M ∗
       li_tactic (compute_map_lookup_nofail_goal M n) (λ κ,
       iterate_with_hooks E L (IterateExtendLft [κ]) (λ L' _,
-      (named_lfts M -∗ T L'))))
-    ⊢ typed_annot_stmt π 1 (ExtendLftAnnot n) E L T.
+      (named_lfts f M -∗ T L'))))
+    ⊢ typed_annot_stmt f 1 (ExtendLftAnnot n) E L T.
   Proof.
     rewrite /compute_map_lookup_nofail_goal.
     iIntros "(%M & Hnamed & %κ & _ & Hs)".
@@ -5348,9 +5348,9 @@ Section subsume.
   Global Existing Instance type_extendlft_inst.
 
   (** UnconstrainedLftAnnot *)
-  Lemma type_unconstrained_lft π (n : string) sup `{!TCFastDone (UnconstrainedLftHint n sup)} E L T :
-    typed_annot_stmt π 1 (StartLftAnnot n sup) E L T
-    ⊢ typed_annot_stmt π 1 (UnconstrainedLftAnnot n) E L T.
+  Lemma type_unconstrained_lft f (n : string) sup `{!TCFastDone (UnconstrainedLftHint n sup)} E L T :
+    typed_annot_stmt f 1 (StartLftAnnot n sup) E L T
+    ⊢ typed_annot_stmt f 1 (UnconstrainedLftAnnot n) E L T.
   Proof.
     done.
   Qed.
@@ -5358,12 +5358,12 @@ Section subsume.
   Global Existing Instance type_unconstrained_lft_inst.
 
   (** CopyLftNameAnnot *)
-  Lemma type_copy_lft_name π n1 n2 E L T :
-    (∃ M, named_lfts M ∗
+  Lemma type_copy_lft_name f n1 n2 E L T :
+    (∃ M, named_lfts f M ∗
       li_tactic (compute_map_lookup_nofail_goal M n2) (λ κ2,
       li_tactic (simplify_lft_map_goal (named_lft_update n1 κ2 (named_lft_delete n1 M))) (λ M',
-        named_lfts M' -∗ T L)))
-    ⊢ typed_annot_stmt π 1 (CopyLftNameAnnot n1 n2) E L T.
+        named_lfts f M' -∗ T L)))
+    ⊢ typed_annot_stmt f 1 (CopyLftNameAnnot n1 n2) E L T.
   Proof.
     rewrite /compute_map_lookup_nofail_goal.
     iIntros "(%M & Hnamed & %κ2 & _ & Hs)".
@@ -5424,9 +5424,9 @@ Section subsume.
   Definition typed_context_fold_stratify_init_inst := [instance @typed_context_fold_stratify_init].
   Global Existing Instance typed_context_fold_stratify_init_inst.
 
-  Lemma type_stratify_context_annot π E L T :
-    typed_pre_context_fold π E L (CtxFoldStratifyAllInit StratNoRefold) T
-    ⊢ typed_annot_stmt π 1 (StratifyContextAnnot) E L T.
+  Lemma type_stratify_context_annot f E L T :
+    typed_pre_context_fold f.1 E L (CtxFoldStratifyAllInit StratNoRefold) T
+    ⊢ typed_annot_stmt f 1 (StratifyContextAnnot) E L T.
   Proof.
     iIntros "HT".
     iIntros "#CTX #HE HL".
@@ -5439,9 +5439,9 @@ Section subsume.
   Definition type_stratify_context_annot_inst := [instance @type_stratify_context_annot].
   Global Existing Instance type_stratify_context_annot_inst.
 
-  Lemma type_panic_free_unwind_annot π E L T :
+  Lemma type_panic_free_unwind_annot f E L T :
     ⌜False⌝
-    ⊢ typed_annot_stmt π 1 UnwindFreeAnnot E L T.
+    ⊢ typed_annot_stmt f 1 UnwindFreeAnnot E L T.
   Proof.
     iIntros "%Hfalse". destruct Hfalse.
   Qed.

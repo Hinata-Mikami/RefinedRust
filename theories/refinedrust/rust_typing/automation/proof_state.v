@@ -6,7 +6,10 @@ From lithium Require Import hooks all.
    Usually called after [start_function].
  *)
 Tactic Notation "init_lfts" uconstr(map) :=
-  unshelve iPoseProof (named_lfts_init (map : gmap string lft)) as "-#?"; [apply _ .. |].
+  lazymatch goal with
+  | [ π : thread_id, fid : frame_id |- _ ] =>
+      unshelve iPoseProof (named_lfts_init (π, fid) (map : gmap string lft)) as "-#?"; [apply _ .. |]
+  end.
   (*specialize (tt : LFT_MAP map) as lfts.*)
 
 Tactic Notation "init_tyvars" uconstr(M) :=

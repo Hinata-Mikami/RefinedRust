@@ -2471,8 +2471,10 @@ Ltac solve_llctx_remove_dead_aliases ::=
 Ltac compute_map_lookup_unchecked :=
   (* for tag lookups *)
   unfold enum_tag'; simpl;
+  unfold_opaque @inline_function_lft_map;
   unfold_opaque @named_lft_delete;
   unfold_opaque @named_lft_update;
+  simpl;
   lazymatch goal with
   | |- ?Q !! _ = Some _ => try (is_var Q; unfold Q)
   | |- ?Q !! _ = ?e => idtac
@@ -2491,8 +2493,10 @@ Ltac compute_map_lookup_unchecked :=
 Ltac compute_map_lookup_checked :=
   (* for tag lookups *)
   unfold enum_tag'; simpl;
+  unfold_opaque @inline_function_lft_map;
   unfold_opaque @named_lft_delete;
   unfold_opaque @named_lft_update;
+  simpl;
   lazymatch goal with
   | |- ?Q !! _ = Some _ => try (is_var Q; unfold Q)
   | |- ?Q !! _ = ?e => idtac

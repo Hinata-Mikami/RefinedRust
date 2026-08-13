@@ -1299,29 +1299,29 @@ Section inline.
 
   (* The [inline_function_ptr] is similar to the [function_ptr],
      except that [st_own] does not have the [typed_function] predicate. *)
-  Program Definition inline_function_ptr (arg_types : list (syn_type)) (fn: function) : type loc := {|
+  Program Definition inline_function_ptr (arg_types : list syn_type) (lft_names : list string) (fn: function) : type loc := {|
     st_own π f v := (⌜val_to_loc v = Some f⌝ ∗ fntbl_entry f fn ∗
       ⌜Forall2 syn_type_has_layout arg_types fn.(f_args).*2⌝)%I;
     st_has_op_type ot := is_fnptr_ot ot;
     st_syn_type := FnPtrSynType;
   |}.
   Next Obligation.
-    simpl. iIntros (fal fn π r v) "(% & _)".
+    simpl. iIntros (fal lft_names fn π r v) "(% & _)".
     iExists void*. iPureIntro. split.
     - by apply syn_type_has_layout_fnptr.
     - rewrite /has_layout_val val_to_loc_length//.
   Qed.
   Next Obligation.
-    intros ? ? ot Hot. apply is_fnptr_ot_layout in Hot. rewrite Hot.
+    intros ? ? ? ot Hot. apply is_fnptr_ot_layout in Hot. rewrite Hot.
     by apply syn_type_has_layout_fnptr.
   Qed.
   Next Obligation.
     unfold is_fnptr_ot.
-    intros ?? ot Hot. destruct ot; done.
+    intros ??? ot Hot. destruct ot; done.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
-    simpl. iIntros (lya fn ot st π r v Hot).
+    simpl. iIntros (lya lft_names fn ot st π r v Hot).
     iIntros "(%Hv & Hfntbl & %Halg)".
     iPureIntro.
     destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
@@ -1332,7 +1332,7 @@ Section inline.
       by eapply val_to_loc_length.
   Qed.
   Next Obligation.
-    simpl. iIntros (lya fn ot st π r v v' Hot Hsame).
+    simpl. iIntros (lya lft_names fn ot st π r v v' Hot Hsame).
     iIntros "(%Hv & Hfntbl & %Halg)".
     iFrame. iPureIntro. split; last done.
     destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
@@ -1347,13 +1347,18 @@ Section inline.
       done.
   Qed.
   Next Obligation.
-    intros ?? ly Hst.
+    intros ??? ly Hst.
     apply syn_type_has_layout_fnptr_inv in Hst as ->.
     done.
   Qed.
-  Global Instance copyable_inline_function_ptr fal fn : Copyable (inline_function_ptr fal fn) := _.
-  Global Instance inline_function_ptr_sized fal fn :
-    TySized (inline_function_ptr fal fn) := _.
+  Global Instance copyable_inline_function_ptr fal lft_names fn : Copyable (inline_function_ptr fal lft_names fn) := _.
+  Global Instance inline_function_ptr_sized fal lft_names fn :
+    TySized (inline_function_ptr fal lft_names fn) := _.
+
+  Definition inline_function_lft_map (lft_names : list string) (κs : list lft) (ϝ : lft) : gmap string lft :=
+    named_lft_update "_flft" ϝ $
+      named_lft_update "static" static $
+        list_to_map (zip lft_names κs).
 
   Fixpoint introduce_arguments π E L (tys : list (sigT (λ rt, (type rt * rt)%type))) (ls : list loc) (cont : llctx → list loc → iProp Σ) : iProp Σ :=
     match tys with
@@ -1399,18 +1404,19 @@ Section inline.
     iApply introduce_arguments_elim'.
   Qed.
 
-  (* TODO: allow lifetime parameters, make named_lfts indexed by the frame path, and push a named_lfts for the new call frame with the lifetime variables into the context. *)
-  Lemma type_call_inline_fnptr E L π fp eκs etys sta l v vl tys fn destination snormal sunwind (Tnormal : typed_call_cont_t) (Tunwind : typed_call_unwind_cont_t) :
+  Lemma type_call_inline_fnptr E L π fp eκs etys sta lft_names l v vl tys fn destination snormal sunwind (Tnormal : typed_call_cont_t) (Tunwind : typed_call_unwind_cont_t) :
     let lya := fn.(f_args).*2 in
     let R ϝ' L0 v L' :=
+      find_in_context (FindNamedLfts (fp.1, S fp.2)) (λ M, named_lfts (fp.1, S fp.2) M -∗
       li_tactic (llctx_find_llft_goal L' ϝ' LlctxFindLftAlias) (λ '(κs, L''),
           find_in_context (FindVal v) (λ '(existT rt (ty, r, π, m)),
             v ◁ᵥ{π, m} r @ ty -∗
-            Tnormal L'' v rt ty r))%I in
+            Tnormal L'' v rt ty r)))%I in
     let U ϝ' L0 L' :=
+      find_in_context (FindNamedLfts (fp.1, S fp.2)) (λ M, named_lfts (fp.1, S fp.2) M -∗
       li_tactic (llctx_find_llft_goal L' ϝ' LlctxFindLftAlias) (λ '(κs, L''),
-           Tunwind L'')%I in
-      ⌜eκs = []⌝ ∗
+           Tunwind L''))%I in
+      ⌜length lft_names = length eκs⌝ ∗
       ⌜π = fp.1⌝ ∗
       ⌜sta = fmap (λ '(existT rt (ty, _)), ty.(ty_syn_type) MetaNone) tys⌝ ∗
       introduce_arguments π E L tys [] (λ L lsa,
@@ -1418,16 +1424,17 @@ Section inline.
         allocated_locals (π, S fp.2) fn.(f_args).*1 -∗
         ([∗ list] xl; synty ∈ zip fn.(f_args).*1 lsa; sta,
           xl.1 is_live{(π, S fp.2), synty} xl.2) -∗
+        named_lfts (π, S fp.2) (inline_function_lft_map lft_names eκs ϝ') -∗
         introduce_typed_stmt E ((ϝ' ≡ₗ llctx_alive_lfts L) :: L) (π, S fp.2) ϝ' fn
           (R ϝ' L) (U ϝ' L))
-    ⊢ typed_call E L fp eκs etys v (v ◁ᵥ{π, MetaNone} l @ inline_function_ptr sta fn) vl tys destination snormal sunwind Tnormal Tunwind.
+    ⊢ typed_call E L fp eκs etys v (v ◁ᵥ{π, MetaNone} l @ inline_function_ptr sta lft_names fn) vl tys destination snormal sunwind Tnormal Tunwind.
   Proof.
     cbn. iIntros "HT Hv Htys" (Q Ψ Ψunwind) "#CTX #HE HL Hf Hcall".
     iDestruct "Hv" as "(%Hv & He & Halg)".
     iDestruct "He" as %He.
     iDestruct "Halg" as "(Hfn & Halg)".
     iDestruct "Halg" as %Halg.
-    iDestruct "HT" as "(-> & -> & HT)".
+    iDestruct "HT" as "(%Hlfts & -> & HT)".
     iDestruct "HT" as "(-> & HT)".
     iAssert ⌜Forall2 has_layout_val vl fn.(f_args).*2⌝%I as %Hall.
     { iClear "HT Hfn HL Hf Hcall".
@@ -1470,17 +1477,21 @@ Section inline.
     iMod "HT" as (L0) "(HL & HT)".
     set (ϝ' := lft_intersect_list (llctx_alive_lfts L0)).
     iSpecialize ("HT" $! ϝ' with "Halloc Hlive").
+    iPoseProof (named_lfts_init (fp.1, S fp.2) (inline_function_lft_map lft_names eκs ϝ')) as "Hnamed".
+    iSpecialize ("HT" with "Hnamed").
     iAssert (llctx_interp ((ϝ' ≡ₗ llctx_alive_lfts L0) :: L0))%I with "[HL]" as "HL".
     { iFrame. iSplit; iApply lft_incl_refl. }
 
     set (R0 v' L' :=
+      find_in_context (FindNamedLfts (fp.1, S fp.2)) (λ M, named_lfts (fp.1, S fp.2) M -∗
       li_tactic (llctx_find_llft_goal L' ϝ' LlctxFindLftAlias) (λ '(κs, L''),
           find_in_context (FindVal v') (λ '(existT rt (ty, r, π, m)),
             v' ◁ᵥ{π, m} r @ ty -∗
-            Tnormal L'' v' rt ty r))%I).
+            Tnormal L'' v' rt ty r)))%I).
     set (U0 L' :=
+      find_in_context (FindNamedLfts (fp.1, S fp.2)) (λ M, named_lfts (fp.1, S fp.2) M -∗
       li_tactic (llctx_find_llft_goal L' ϝ' LlctxFindLftAlias) (λ '(κs, L''),
-          Tunwind L'')%I).
+          Tunwind L''))%I).
     set (RET_PROP v' := (∃ L' locals, current_frame fp.1 (S fp.2) ∗
       allocated_locals (fp.1, S fp.2) locals ∗
       ([∗ list] x ∈ locals, ∃ (ly : layout) (l : loc) (st : syn_type),
@@ -1505,7 +1516,8 @@ Section inline.
       + iIntros (v') "H". iDestruct "H" as (L' locals) "(Hf & Halloc & Hlive & HL & HR)".
         iExists locals. iFrame. iApply physical_step_intro. iNext. iIntros "Hf".
         iEval (rewrite /R0 /li_tactic /llctx_find_llft_goal /find_in_context) in "HR".
-        iDestruct "HR" as (L'' κs Hfind) "(%x & Hv & HT)".
+        iDestruct "HR" as (M) "(Hcallee_named & HR)".
+        iDestruct ("HR" with "Hcallee_named") as (L'' κs Hfind) "(%x & Hv & HT)".
         destruct x as [rt (((ty & r) & π') & m)].
         iPoseProof (llctx_interp_sublist L' L'' with "HL") as "HL".
         { destruct Hfind as (A & B & elt & -> & -> & _).
@@ -1514,7 +1526,8 @@ Section inline.
       + iIntros "H". iDestruct "H" as (L' locals) "(Hf & Halloc & Hlive & HL & HU)".
         iExists locals. iFrame. iApply physical_step_intro. iNext. iIntros "Hf".
         iEval (rewrite /U0 /li_tactic /llctx_find_llft_goal /find_in_context) in "HU".
-        iDestruct "HU" as (L'' κs Hfind) "HT".
+        iDestruct "HU" as (M) "(Hcallee_named & HU)".
+        iDestruct ("HU" with "Hcallee_named") as (L'' κs Hfind) "HT".
         iPoseProof (llctx_interp_sublist L' L'' with "HL") as "HL".
         { destruct Hfind as (A & B & elt & -> & -> & _).
           apply sublist_app; [done | by apply sublist_cons]. }

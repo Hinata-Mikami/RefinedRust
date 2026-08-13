@@ -368,11 +368,11 @@ Section updateable_rules.
   (* TODO: add lemma for unfolding / subtyping? *)
 
 
-  Lemma updateable_copy_lft n1 n2 :
-    (∃ M, named_lfts M ∗
+  Lemma updateable_copy_lft f n1 n2 :
+    (∃ M, named_lfts f M ∗
       li_tactic (compute_map_lookup_nofail_goal M n2) (λ κ2,
       li_tactic (simplify_lft_map_goal (named_lft_update n1 κ2 (named_lft_delete n1 M))) (λ M',
-        named_lfts M' -∗ updateable_core updateable_E updateable_L)))
+        named_lfts f M' -∗ updateable_core updateable_E updateable_L)))
     ⊢ P.
   Proof.
     rewrite /compute_map_lookup_nofail_goal.

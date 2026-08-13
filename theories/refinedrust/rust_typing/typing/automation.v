@@ -1110,8 +1110,8 @@ Global Instance intro_pers_fn `{!typeGS Σ} {rts : list RT} v π l sts lfts (fns
 Proof.
   constructor. iIntros "#HA". done.
 Qed.
-Global Instance intro_pers_inline_fn `{!typeGS Σ} v π l sts fn m :
-  IntroPersistent (v ◁ᵥ{π, m} l @ inline_function_ptr sts fn) (v ◁ᵥ{π, m} l @ inline_function_ptr sts fn).
+Global Instance intro_pers_inline_fn `{!typeGS Σ} v π l sts lft_names fn m :
+  IntroPersistent (v ◁ᵥ{π, m} l @ inline_function_ptr sts lft_names fn) (v ◁ᵥ{π, m} l @ inline_function_ptr sts lft_names fn).
 Proof.
   constructor. iIntros "#HA". done.
 Qed.
