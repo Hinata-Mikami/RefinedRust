@@ -29,14 +29,15 @@ Ltac drop_glue_ControlFlow_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let B_ty := fresh "B_ty" in
   let C_ty := fresh "C_ty" in
-  start_function "drop_glue_ControlFlow" ϝ ( [] ) ( [B_ty [C_ty [] ] ] ) ( ? );
+  start_function "drop_glue_ControlFlow" ϝ fid ( [] ) ( [B_ty [C_ty [] ] ] ) ( ? );
   intros arg_ptr;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "B" :=
   existT _ (B_ty)

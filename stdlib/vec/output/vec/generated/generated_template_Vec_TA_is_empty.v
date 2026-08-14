@@ -37,16 +37,17 @@ Ltac Vec_TA_is_empty_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let ulft_1 := fresh "ulft_1" in
   let T_ty := fresh "T_ty" in
   let A_ty := fresh "A_ty" in
   let self := fresh "self" in
-  start_function "Vec_TA_is_empty" ϝ ( [ulft_1 [] ] ) ( [T_ty [A_ty [] ] ] ) (  self ) ( self );
+  start_function "Vec_TA_is_empty" ϝ fid ( [ulft_1 [] ] ) ( [T_ty [A_ty [] ] ] ) (  self ) ( self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "ulft_1" ulft_1 $ named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("ulft_1", ulft_1) :: ("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "T" :=
   existT _ (T_ty)

@@ -39,6 +39,7 @@ Ltac traits_iterator_Iterator_all_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let ulft_1 := fresh "ulft_1" in
   let Self_ty := fresh "Self_ty" in
   let Item_ty := fresh "Item_ty" in
@@ -48,12 +49,12 @@ Ltac traits_iterator_Iterator_all_prelude :=
   let ClosInv := fresh "ClosInv" in
   let self := fresh "self" in
   let f := fresh "f" in
-  start_function "traits_iterator_Iterator_all" ϝ ( [ulft_1 [] ] ) ( [Self_ty [Item_ty [F_ty [] ] ] ] ) ( [ [ [ [  p P ] ClosInv ] self ] f ] ) ( p P ClosInv self f );
+  start_function "traits_iterator_Iterator_all" ϝ fid ( [ulft_1 [] ] ) ( [Self_ty [Item_ty [F_ty [] ] ] ] ) ( [ [ [ [  p P ] ClosInv ] self ] f ] ) ( p P ClosInv self f );
   intros arg_self arg_f;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "ulft_1" ulft_1 $ named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("ulft_1", ulft_1) :: ("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "Self" :=
   existT _ (Self_ty)

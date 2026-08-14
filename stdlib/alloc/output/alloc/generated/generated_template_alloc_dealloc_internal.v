@@ -21,15 +21,16 @@ Ltac alloc_dealloc_internal_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let size := fresh "size" in
   let align_log2 := fresh "align_log2" in
   let ptr := fresh "ptr" in
-  start_function "alloc_dealloc_internal" ϝ ( [] ) ( [] ) ( [ [  size align_log2 ] ptr ] ) ( size align_log2 ptr );
+  start_function "alloc_dealloc_internal" ϝ fid ( [] ) ( [] ) ( [ [  size align_log2 ] ptr ] ) ( size align_log2 ptr );
   intros arg_size arg_align_log2 arg_ptr;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( ∅ );
   unfold_generic_inst; simpl;
   generalize RR_CONFIG_DO_STRICT_RESOLUTION; intros ?.

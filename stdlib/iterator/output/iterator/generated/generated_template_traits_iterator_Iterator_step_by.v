@@ -31,17 +31,18 @@ Ltac traits_iterator_Iterator_step_by_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let Self_ty := fresh "Self_ty" in
   let Item_ty := fresh "Item_ty" in
   let p := fresh "p" in
   let self := fresh "self" in
   let step := fresh "step" in
-  start_function "traits_iterator_Iterator_step_by" ϝ ( [] ) ( [Self_ty [Item_ty [] ] ] ) ( [ [  p self ] step ] ) ( p self step );
+  start_function "traits_iterator_Iterator_step_by" ϝ fid ( [] ) ( [Self_ty [Item_ty [] ] ] ) ( [ [  p self ] step ] ) ( p self step );
   intros arg_self arg_step;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "Self" :=
   existT _ (Self_ty)

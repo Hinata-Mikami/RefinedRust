@@ -23,17 +23,18 @@ Ltac Clone_clone_from_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let ulft_1 := fresh "ulft_1" in
   let ulft_2 := fresh "ulft_2" in
   let Self_ty := fresh "Self_ty" in
   let self := fresh "self" in
   let source := fresh "source" in
-  start_function "Clone_clone_from" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [Self_ty [] ] ) ( [  self source ] ) ( self source );
+  start_function "Clone_clone_from" ϝ fid ( [ulft_1 [ulft_2 [] ] ] ) ( [Self_ty [] ] ) ( [  self source ] ) ( self source );
   intros arg_self arg_source;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "ulft_1" ulft_1 $ named_lft_update "ulft_2" ulft_2 $ named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("ulft_1", ulft_1) :: ("ulft_2", ulft_2) :: ("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "Self" :=
   existT _ (Self_ty)

@@ -30,18 +30,19 @@ Ltac PartialOrd_gt_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let ulft_1 := fresh "ulft_1" in
   let ulft_2 := fresh "ulft_2" in
   let Self_ty := fresh "Self_ty" in
   let Rhs_ty := fresh "Rhs_ty" in
   let self := fresh "self" in
   let other := fresh "other" in
-  start_function "PartialOrd_gt" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [Self_ty [Rhs_ty [] ] ] ) ( [  self other ] ) ( self other );
+  start_function "PartialOrd_gt" ϝ fid ( [ulft_1 [ulft_2 [] ] ] ) ( [Self_ty [Rhs_ty [] ] ] ) ( [  self other ] ) ( self other );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "ulft_1" ulft_1 $ named_lft_update "ulft_2" ulft_2 $ named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("ulft_1", ulft_1) :: ("ulft_2", ulft_2) :: ("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "Self" :=
   existT _ (Self_ty)

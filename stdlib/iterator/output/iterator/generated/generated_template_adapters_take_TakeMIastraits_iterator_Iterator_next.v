@@ -35,15 +35,16 @@ Ltac adapters_take_TakeMIastraits_iterator_Iterator_next_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let ulft_1 := fresh "ulft_1" in
   let MI_ty := fresh "MI_ty" in
   let traits_iterator_Iterator_MI_Item_ty := fresh "traits_iterator_Iterator_MI_Item_ty" in
-  start_function "adapters_take_TakeMIastraits_iterator_Iterator_next" ϝ ( [ulft_1 [] ] ) ( [MI_ty [traits_iterator_Iterator_MI_Item_ty [] ] ] ) ( ? );
+  start_function "adapters_take_TakeMIastraits_iterator_Iterator_next" ϝ fid ( [ulft_1 [] ] ) ( [MI_ty [traits_iterator_Iterator_MI_Item_ty [] ] ] ) ( ? );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "ulft_1" ulft_1 $ named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("ulft_1", ulft_1) :: ("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "MI" :=
   existT _ (MI_ty)

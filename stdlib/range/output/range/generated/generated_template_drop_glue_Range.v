@@ -24,13 +24,14 @@ Ltac drop_glue_Range_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let Idx_ty := fresh "Idx_ty" in
-  start_function "drop_glue_Range" ϝ ( [] ) ( [Idx_ty [] ] ) ( ? );
+  start_function "drop_glue_Range" ϝ fid ( [] ) ( [Idx_ty [] ] ) ( ? );
   intros arg_ptr;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "Idx" :=
   existT _ (Idx_ty)

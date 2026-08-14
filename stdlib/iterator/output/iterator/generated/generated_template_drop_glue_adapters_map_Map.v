@@ -33,14 +33,15 @@ Ltac drop_glue_adapters_map_Map_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let I_ty := fresh "I_ty" in
   let F_ty := fresh "F_ty" in
-  start_function "drop_glue_adapters_map_Map" ϝ ( [] ) ( [I_ty [F_ty [] ] ] ) ( ? );
+  start_function "drop_glue_adapters_map_Map" ϝ fid ( [] ) ( [I_ty [F_ty [] ] ] ) ( ? );
   intros arg_ptr;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "I" :=
   existT _ (I_ty)

@@ -44,6 +44,7 @@ Ltac traits_iterator_Iterator_fold_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let Self_ty := fresh "Self_ty" in
   let Item_ty := fresh "Item_ty" in
   let B_ty := fresh "B_ty" in
@@ -53,7 +54,7 @@ Ltac traits_iterator_Iterator_fold_prelude :=
   let self := fresh "self" in
   let init := fresh "init" in
   let f := fresh "f" in
-  start_function "traits_iterator_Iterator_fold" ϝ ( [] ) ( [Self_ty [Item_ty [B_ty [F_ty [] ] ] ] ] ) ( [ [ [ [  p ClosInv ] self ] init ] f ] ) ( p ClosInv self init f );
+  start_function "traits_iterator_Iterator_fold" ϝ fid ( [] ) ( [Self_ty [Item_ty [B_ty [F_ty [] ] ] ] ] ) ( [ [ [ [  p ClosInv ] self ] init ] f ] ) ( p ClosInv self init f );
   intros arg_self arg_init arg_f;
   let π := get_π in
   let Σ := get_Σ in
@@ -63,7 +64,7 @@ Ltac traits_iterator_Iterator_fold_prelude :=
   ∗ (IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p init_state seq self)
   ∗ (traits_iterator_Iterator_Self_spec_attrs.(traits_iterator_Iterator_Inv) π p self)
   ∗ (ClosInv π accum seq self f))%I) : (iProp Σ)), wrap_inv (λ (L : llctx), True%I : iProp Σ), None)) $ PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "Self" :=
   existT _ (Self_ty)

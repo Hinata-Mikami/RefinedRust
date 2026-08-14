@@ -23,13 +23,14 @@ Ltac Ordering_is_eq_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let self := fresh "self" in
-  start_function "Ordering_is_eq" ϝ ( [] ) ( [] ) (  self ) ( self );
+  start_function "Ordering_is_eq" ϝ fid ( [] ) ( [] ) (  self ) ( self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( ∅ );
   unfold_generic_inst; simpl;
   generalize RR_CONFIG_DO_STRICT_RESOLUTION; intros ?.

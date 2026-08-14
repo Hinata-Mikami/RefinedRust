@@ -29,14 +29,15 @@ Ltac Iastraits_iterator_IntoIterator_into_iter_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let I_ty := fresh "I_ty" in
   let traits_iterator_Iterator_I_Item_ty := fresh "traits_iterator_Iterator_I_Item_ty" in
-  start_function "Iastraits_iterator_IntoIterator_into_iter" ϝ ( [] ) ( [I_ty [traits_iterator_Iterator_I_Item_ty [] ] ] ) ( ? );
+  start_function "Iastraits_iterator_IntoIterator_into_iter" ϝ fid ( [] ) ( [I_ty [traits_iterator_Iterator_I_Item_ty [] ] ] ) ( ? );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "I" :=
   existT _ (I_ty)

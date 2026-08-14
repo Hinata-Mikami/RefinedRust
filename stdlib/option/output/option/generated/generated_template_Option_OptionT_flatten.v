@@ -27,14 +27,15 @@ Ltac Option_OptionT_flatten_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let T_ty := fresh "T_ty" in
   let self := fresh "self" in
-  start_function "Option_OptionT_flatten" ϝ ( [] ) ( [T_ty [] ] ) (  self ) ( self );
+  start_function "Option_OptionT_flatten" ϝ fid ( [] ) ( [T_ty [] ] ) (  self ) ( self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "T" :=
   existT _ (T_ty)

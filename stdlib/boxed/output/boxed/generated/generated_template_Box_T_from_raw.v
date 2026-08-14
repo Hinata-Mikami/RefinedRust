@@ -30,15 +30,16 @@ Ltac Box_T_from_raw_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let T_ty := fresh "T_ty" in
   let b := fresh "b" in
   let raw := fresh "raw" in
-  start_function "Box_T_from_raw" ϝ ( [] ) ( [T_ty [] ] ) ( [  b raw ] ) ( b raw );
+  start_function "Box_T_from_raw" ϝ fid ( [] ) ( [T_ty [] ] ) ( [  b raw ] ) ( b raw );
   intros arg_raw;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "T" :=
   existT _ (T_ty)

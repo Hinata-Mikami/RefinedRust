@@ -20,15 +20,16 @@ Ltac REFmutTasDeref_deref_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let ulft_1 := fresh "ulft_1" in
   let ulft_2 := fresh "ulft_2" in
   let T_ty := fresh "T_ty" in
-  start_function "REFmutTasDeref_deref" ϝ ( [ulft_1 [ulft_2 [] ] ] ) ( [T_ty [] ] ) ( ? );
+  start_function "REFmutTasDeref_deref" ϝ fid ( [ulft_1 [ulft_2 [] ] ] ) ( [T_ty [] ] ) ( ? );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "ulft_1" ulft_1 $ named_lft_update "ulft_2" ulft_2 $ named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("ulft_1", ulft_1) :: ("ulft_2", ulft_2) :: ("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "T" :=
   existT _ (T_ty)

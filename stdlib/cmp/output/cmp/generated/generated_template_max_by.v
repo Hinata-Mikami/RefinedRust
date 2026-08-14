@@ -30,18 +30,19 @@ Ltac max_by_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let T_ty := fresh "T_ty" in
   let F_ty := fresh "F_ty" in
   let p := fresh "p" in
   let v1 := fresh "v1" in
   let v2 := fresh "v2" in
   let compare := fresh "compare" in
-  start_function "max_by" ϝ ( [] ) ( [T_ty [F_ty [] ] ] ) ( [ [ [  p v1 ] v2 ] compare ] ) ( p v1 v2 compare );
+  start_function "max_by" ϝ fid ( [] ) ( [T_ty [F_ty [] ] ] ) ( [ [ [  p v1 ] v2 ] compare ] ) ( p v1 v2 compare );
   intros arg_v1 arg_v2 arg_compare;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "T" :=
   existT _ (T_ty)

@@ -25,16 +25,17 @@ Ltac REFAasOrd_cmp_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let ulft_1 := fresh "ulft_1" in
   let ulft_2 := fresh "ulft_2" in
   let ulft_3 := fresh "ulft_3" in
   let A_ty := fresh "A_ty" in
-  start_function "REFAasOrd_cmp" ϝ ( [ulft_1 [ulft_2 [ulft_3 [] ] ] ] ) ( [A_ty [] ] ) ( ? );
+  start_function "REFAasOrd_cmp" ϝ fid ( [ulft_1 [ulft_2 [ulft_3 [] ] ] ] ) ( [A_ty [] ] ) ( ? );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "ulft_1" ulft_1 $ named_lft_update "ulft_2" ulft_2 $ named_lft_update "ulft_3" ulft_3 $ named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("ulft_1", ulft_1) :: ("ulft_2", ulft_2) :: ("ulft_3", ulft_3) :: ("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "A" :=
   existT _ (A_ty)

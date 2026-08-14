@@ -25,15 +25,16 @@ Ltac write_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let T_ty := fresh "T_ty" in
   let dst := fresh "dst" in
   let src := fresh "src" in
-  start_function "write" ϝ ( [] ) ( [T_ty [] ] ) ( [  dst src ] ) ( dst src );
+  start_function "write" ϝ fid ( [] ) ( [T_ty [] ] ) ( [  dst src ] ) ( dst src );
   intros arg_dst arg_src;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "T" :=
   existT _ (T_ty)

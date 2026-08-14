@@ -25,17 +25,18 @@ Ltac copy_nonoverlapping_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let T_ty := fresh "T_ty" in
   let vs := fresh "vs" in
   let src := fresh "src" in
   let dst := fresh "dst" in
   let size := fresh "size" in
-  start_function "copy_nonoverlapping" ϝ ( [] ) ( [T_ty [] ] ) ( [ [ [  vs src ] dst ] size ] ) ( vs src dst size );
+  start_function "copy_nonoverlapping" ϝ fid ( [] ) ( [T_ty [] ] ) ( [ [ [  vs src ] dst ] size ] ) ( vs src dst size );
   intros arg_src arg_dst arg_size;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "T" :=
   existT _ (T_ty)

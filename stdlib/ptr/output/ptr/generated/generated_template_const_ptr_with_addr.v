@@ -25,15 +25,16 @@ Ltac const_ptr_with_addr_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let T_ty := fresh "T_ty" in
   let x := fresh "x" in
   let addr := fresh "addr" in
-  start_function "const_ptr_with_addr" ϝ ( [] ) ( [T_ty [] ] ) ( [  x addr ] ) ( x addr );
+  start_function "const_ptr_with_addr" ϝ fid ( [] ) ( [T_ty [] ] ) ( [  x addr ] ) ( x addr );
   intros arg_x arg_addr;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "T" :=
   existT _ (T_ty)

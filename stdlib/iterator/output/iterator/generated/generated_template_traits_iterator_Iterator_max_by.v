@@ -37,6 +37,7 @@ Ltac traits_iterator_Iterator_max_by_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let Self_ty := fresh "Self_ty" in
   let Item_ty := fresh "Item_ty" in
   let F_ty := fresh "F_ty" in
@@ -44,12 +45,12 @@ Ltac traits_iterator_Iterator_max_by_prelude :=
   let ClosInv := fresh "ClosInv" in
   let self := fresh "self" in
   let compare := fresh "compare" in
-  start_function "traits_iterator_Iterator_max_by" ϝ ( [] ) ( [Self_ty [Item_ty [F_ty [] ] ] ] ) ( [ [ [  p ClosInv ] self ] compare ] ) ( p ClosInv self compare );
+  start_function "traits_iterator_Iterator_max_by" ϝ fid ( [] ) ( [Self_ty [Item_ty [F_ty [] ] ] ] ) ( [ [ [  p ClosInv ] self ] compare ] ) ( p ClosInv self compare );
   intros arg_self arg_compare;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "Self" :=
   existT _ (Self_ty)

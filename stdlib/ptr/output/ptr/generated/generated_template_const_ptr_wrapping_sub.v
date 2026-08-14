@@ -25,15 +25,16 @@ Ltac const_ptr_wrapping_sub_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let T_ty := fresh "T_ty" in
   let l := fresh "l" in
   let count := fresh "count" in
-  start_function "const_ptr_wrapping_sub" ϝ ( [] ) ( [T_ty [] ] ) ( [  l count ] ) ( l count );
+  start_function "const_ptr_wrapping_sub" ϝ fid ( [] ) ( [T_ty [] ] ) ( [  l count ] ) ( l count );
   intros arg_l arg_count;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "T" :=
   existT _ (T_ty)

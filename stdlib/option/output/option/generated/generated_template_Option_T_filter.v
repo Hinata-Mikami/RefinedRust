@@ -32,17 +32,18 @@ Ltac Option_T_filter_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let T_ty := fresh "T_ty" in
   let P_ty := fresh "P_ty" in
   let op := fresh "op" in
   let self := fresh "self" in
   let predicate := fresh "predicate" in
-  start_function "Option_T_filter" ϝ ( [] ) ( [T_ty [P_ty [] ] ] ) ( [ [  op self ] predicate ] ) ( op self predicate );
+  start_function "Option_T_filter" ϝ fid ( [] ) ( [T_ty [P_ty [] ] ] ) ( [ [  op self ] predicate ] ) ( op self predicate );
   intros arg_self arg_predicate;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "T" :=
   existT _ (T_ty)

@@ -25,14 +25,15 @@ Ltac without_provenance_mut_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let T_ty := fresh "T_ty" in
   let addr := fresh "addr" in
-  start_function "without_provenance_mut" ϝ ( [] ) ( [T_ty [] ] ) (  addr ) ( addr );
+  start_function "without_provenance_mut" ϝ fid ( [] ) ( [T_ty [] ] ) (  addr ) ( addr );
   intros arg_addr;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "T" :=
   existT _ (T_ty)

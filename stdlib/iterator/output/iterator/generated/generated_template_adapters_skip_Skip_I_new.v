@@ -29,15 +29,16 @@ Ltac adapters_skip_Skip_I_new_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let I_ty := fresh "I_ty" in
   let iter := fresh "iter" in
   let n := fresh "n" in
-  start_function "adapters_skip_Skip_I_new" ϝ ( [] ) ( [I_ty [] ] ) ( [  iter n ] ) ( iter n );
+  start_function "adapters_skip_Skip_I_new" ϝ fid ( [] ) ( [I_ty [] ] ) ( [  iter n ] ) ( iter n );
   intros arg_iter arg_n;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "I" :=
   existT _ (I_ty)

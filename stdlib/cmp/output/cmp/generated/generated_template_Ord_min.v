@@ -24,15 +24,16 @@ Ltac Ord_min_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let Self_ty := fresh "Self_ty" in
   let self := fresh "self" in
   let other := fresh "other" in
-  start_function "Ord_min" ϝ ( [] ) ( [Self_ty [] ] ) ( [  self other ] ) ( self other );
+  start_function "Ord_min" ϝ fid ( [] ) ( [Self_ty [] ] ) ( [  self other ] ) ( self other );
   intros arg_self arg_other;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "Self" :=
   existT _ (Self_ty)

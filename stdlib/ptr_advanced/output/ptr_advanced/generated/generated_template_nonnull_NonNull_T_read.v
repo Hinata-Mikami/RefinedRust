@@ -27,16 +27,17 @@ Ltac nonnull_NonNull_T_read_prelude :=
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
+  let fid := fresh "fid" in
   let T_ty := fresh "T_ty" in
   let k := fresh "k" in
   let ty := fresh "ty" in
   let self := fresh "self" in
-  start_function "nonnull_NonNull_T_read" ϝ ( [] ) ( [T_ty [] ] ) ( [ [  k ty ] self ] ) ( k ty self );
+  start_function "nonnull_NonNull_T_read" ϝ fid ( [] ) ( [T_ty [] ] ) ( [ [  k ty ] self ] ) ( k ty self );
   intros arg_self;
   let π := get_π in
   let Σ := get_Σ in
   specialize (pose_bb_inv (PolyNil)) as loop_map;
-  init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+  init_lfts π fid (("_flft", ϝ) :: ("static", static) :: [] );
   init_tyvars ( <[
       "T" :=
   existT _ (T_ty)
