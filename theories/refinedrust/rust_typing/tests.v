@@ -19,25 +19,25 @@ Section test.
     solve_compute_map_lookup true; solve[fail].
   Abort.
 
-  Lemma test_compute_map_lookup_1 (M : gmap string lft) (κ : lft) :
-    M = (named_lft_update "lft1" κ) ∅ →
-    M !! "lft1" = Some κ.
+  Lemma test_compute_map_lookup_1 (M : list (string * lft)) (κ : lft) :
+    M = [("lft1", κ)] →
+    lookup_iml M "lft1" = Some κ.
   Proof.
     intros ->.
-    solve_compute_map_lookup true; solve[fail].
+    solve_compute_list_map_lookup; solve[fail].
   Abort.
 
-  Lemma test_compute_map_lookup_2 (M : gmap string lft) (κ : lft) :
-    M = <[ "lft1" := κ]> $ ∅ →
-    ∃ κ', M !! "lft1" = Some κ'.
+  Lemma test_compute_map_lookup_2 (M : list (string * lft)) (κ : lft) :
+    M = [("lft1", κ)] →
+    ∃ κ', lookup_iml M "lft1" = Some κ'.
   Proof.
     intros ->. eexists _.
-    solve_compute_map_lookup true; solve[fail].
+    solve_compute_list_map_lookup ; solve[fail].
   Abort.
 
   Lemma test_compute_map_lookup_3 M (κ : lft) :
-    M = <[ "lft1" := κ]> $ ∅ →
-    ⊢@{iPropI Σ} li_tactic (compute_map_lookup_goal M "lft1" true) (λ v,
+    M = [("lft1", κ)] →
+    ⊢@{iPropI Σ} li_tactic (compute_list_map_lookup_goal M "lft1") (λ v,
       ⌜v = Some κ⌝ ∗ True).
   Proof.
     intros ->.
@@ -45,8 +45,8 @@ Section test.
   Abort.
 
   Lemma test_compute_map_lookup_3 M (κ : lft) :
-    M = named_lft_update "lft1" κ ∅ →
-    ⊢@{iPropI Σ} li_tactic (compute_map_lookup_goal M "lft1" true) (λ v,
+    M = [("lft1", κ)] →
+    ⊢@{iPropI Σ} li_tactic (compute_list_map_lookup_goal M "lft1") (λ v,
       ⌜v = Some κ⌝ ∗ True).
   Proof.
     intros ->.
@@ -54,8 +54,8 @@ Section test.
   Abort.
 
   Lemma test_compute_map_lookup_4 M (κ κ' : lft) :
-    M = <["lft2" := κ']> $ <[ "lft1" := κ]> $ ∅ →
-    ⊢@{iPropI Σ} li_tactic (compute_map_lookup_nofail_goal M "lft1") (λ v,
+    M = ("lft2", κ') :: ("lft1", κ) :: []  →
+    ⊢@{iPropI Σ} li_tactic (compute_list_map_lookup_nofail_goal M "lft1") (λ v,
       ⌜v = κ⌝ ∗ True).
   Proof.
     liStep.
@@ -64,23 +64,23 @@ Section test.
   Abort.
 
   Lemma test_compute_map_lookup_5 M (κ : lft) :
-    M = <[ "lft1" := κ]> $ ∅ →
-    ⊢@{iPropI Σ} li_tactic (compute_map_lookup_goal M "lft2" true) (λ v,
+    M = [("lft1", κ)] →
+    ⊢@{iPropI Σ} li_tactic (compute_list_map_lookup_goal M "lft2") (λ v,
       ⌜v = None⌝ ∗ True).
   Proof.
     liRStep.
     iStartProof. unshelve (repeat liRStep); solve[fail].
   Abort.
 
-  Lemma test (M : gmap string lft) (κ1 κ2 : lft) :
-    M = (<["κ1" := κ1]> $ <["κ2" := κ2]> $ ∅) →
-    ∃ ls, Forall2 (λ k v, M !! k = Some v) ["κ1"; "κ2"] ls ∧ ls = [κ1; κ2].
+  Lemma test (M : list (string * lft)) (κ1 κ2 : lft) :
+    M = [("κ1", κ1); ("κ2", κ2)] →
+    ∃ ls, Forall2 (λ k v, lookup_iml M k = Some v) ["κ1"; "κ2"] ls ∧ ls = [κ1; κ2].
   Proof.
-    intros ->. eexists. split; first compute_map_lookups. done.
+    intros ->. eexists. split; first compute_list_map_lookups. done.
   Abort.
 
-  Lemma test κ ulft__ :
-    ⊢@{iPropI Σ} li_tactic (compute_map_lookup_goal (named_lft_update "plft17" κ (named_lft_update "plft12" κ (named_lft_update "llft6" κ (named_lft_update "plft11" ulft__ (named_lft_update "ulft__" ulft__ ∅))))) "llft6" true) (λ v,
+  Lemma test (κ ulft__ : lft) :
+    ⊢@{iPropI Σ} li_tactic (compute_list_map_lookup_goal (("plft17", κ) :: ("plft12", κ) :: ("llft6", κ) :: ("plft11", ulft__) :: ("ulft__", ulft__) :: [] ) "llft6") (λ v,
       ⌜v = Some κ⌝ ∗ True).
   Proof.
     iStartProof.
@@ -92,44 +92,17 @@ End test.
 Section test.
   Context `{!typeGS Σ}.
 
-  Lemma test_simplify_gmap_1 (M : gmap string lft) (κ : lft) :
-    M = <[ "lft1" := κ]> $ ∅ →
-    ∃ M', M' = delete "lft1" M.
-  Proof.
-    intros ->.
-    eexists _.
-    unshelve solve_simplify_gmap; solve[fail].
-  Qed.
-
-  Lemma test_simplify_lft_map_1 (M : gmap string lft) (κ : lft) :
-    M = named_lft_update "lft1" κ $ ∅ →
-    ∃ M', opaque_eq M' (named_lft_delete "lft1" M).
+  Lemma test_simplify_lft_map_1 (M : list (string * lft)) (κ : lft) :
+    M = ("lft1", κ) :: [] →
+    ∃ M', opaque_eq M' (map_list_delete M "lft1").
   Proof.
     intros ->.
     eexists _.
     unshelve solve_simplify_lft_map; solve[fail].
   Qed.
 
-  Lemma test_simplify_gmap_2 (M : gmap string lft) (κ κ' : lft) :
-    M = <["lft2" := κ']> $ <[ "lft1" := κ]> $ ∅ →
-    ∃ M', delete "lft1" M = M'.
-  Proof.
-    intros ->.
-    eexists _.
-    unshelve solve_simplify_gmap; solve[fail].
-  Qed.
-
-  Lemma test_simplify_gmap_3 M (κ κ' : lft) :
-    M = <["lft2" := κ']> $ <[ "lft1" := κ]> $ ∅ →
-    ⊢@{iPropI Σ} li_tactic (simplify_gmap_goal M) (λ M',
-      ⌜M' = M⌝ ∗ True).
-  Proof.
-    liRStep.
-    iStartProof. unshelve (repeat liRStep); solve[fail].
-  Qed.
-
   Lemma test_simplify_lft_map_3 M (κ κ' : lft) :
-    M = (named_lft_update "lft2" κ' (named_lft_update "lft1" κ ∅)) →
+    M = ("lft2", κ') :: [("lft1", κ)] →
     ⊢@{iPropI Σ} li_tactic (simplify_lft_map_goal M) (λ M',
       ⌜M' = M⌝ ∗ True).
   Proof.
@@ -137,45 +110,10 @@ Section test.
     iStartProof. unshelve (repeat liRStep); solve[fail].
   Qed.
 
-  Lemma test_simplify_gmap_4 M (κ κ' : lft) :
-    M = <["lft2" := κ']> $ <[ "lft1" := κ]> $ ∅ →
-    ⊢@{iPropI Σ} li_tactic (simplify_gmap_goal (delete "lft1" M)) (λ M',
-      ⌜M' = <["lft2" := κ']> $ ∅⌝ ∗ True).
-  Proof.
-    liRStep.
-    iStartProof. unshelve (repeat liRStep); solve[fail].
-  Qed.
-
-  (* for overwriting, we should first explicitly delete the old entry *)
-  Lemma test_simplify_gmap_5 M (κ κ' : lft) :
-    M = <["lft2" := κ']> $ <[ "lft1" := κ]> $ ∅ →
-    ⊢@{iPropI Σ} li_tactic (simplify_gmap_goal (<["lft1" := κ']> $ delete "lft1" M)) (λ M',
-      ⌜M' = <["lft1" := κ']> $ <["lft2" := κ']> $ ∅⌝ ∗ True).
-  Proof.
-    liRStep.
-    iStartProof. unshelve (repeat liRStep); solve[fail].
-  Qed.
-
-  Lemma test_simplify_gmap_6 M (κ κ' : lft) :
-    M = <["lft2" := κ']> $ <[ "lft1" := κ]> $ ∅ →
-    ⊢@{iPropI Σ} li_tactic (simplify_gmap_goal (delete "lft3" M)) (λ M',
-      ⌜M' = <["lft2" := κ']> $ <["lft1" := κ]> $  ∅⌝ ∗ True).
-  Proof.
-    liRStep.
-    iStartProof. unshelve (repeat liRStep); solve[fail].
-  Qed.
-
-  Lemma test_simplify_gmap_7 (ulft__ : lft) :
-    ⊢@{iPropI Σ} li_tactic (simplify_gmap_goal (<["plft4":=ulft__]> (delete "plft4" (<["ulft__":=ulft__]> ∅)))) (λ M',
-      ⌜M' = <["plft4":=ulft__]> (<["ulft__":=ulft__]> ∅)⌝ ∗ True).
-  Proof.
-    iStartProof. unshelve (repeat liRStep); solve[fail].
-  Qed.
-
-  Lemma test_simplify_lft_names1 ulft__ κ :
-    ⊢@{iPropI Σ} li_tactic (simplify_lft_map_goal (named_lft_update "plft17" κ (named_lft_delete "plft17" (named_lft_update "plft12" κ (named_lft_update "llft6" κ (named_lft_update "plft11" ulft__ ((named_lft_update "ulft__" ulft__ ∅))))))))
+  Lemma test_simplify_lft_names1 (ulft__ κ : lft) :
+    ⊢@{iPropI Σ} li_tactic (simplify_lft_map_goal (("plft17", κ) :: (map_list_delete (("plft12", κ) :: ("llft6", κ) :: ("plft11", ulft__) :: [("ulft__", ulft__)]) "plft17" )))
     (λ M',
-      ⌜M' = (named_lft_update "plft17" κ ((named_lft_update "plft12" κ (named_lft_update "llft6" κ (named_lft_update "plft11" ulft__ ((named_lft_update "ulft__" ulft__ ∅)))))))⌝ ∗ True).
+      ⌜M' = [("plft17", κ); ("plft12", κ); ("llft6", κ); ("plft11", ulft__); ("ulft__", ulft__)]⌝ ∗ True).
   Proof.
     iStartProof. unshelve (repeat liRStep); solve[fail].
   Qed.
@@ -770,42 +708,42 @@ Section test.
   (* TODO: better error handling in the tactic above.
       Somehow the Ltac2 exceptions get gobbled up and just a no match error is raised... *)
   Lemma interpret_rust_type_test0 {rt} (T_ty : type rt) κ :
-    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTLitType ["testX"] (RSTScopeInst [] [RSTInt I32] [])) ty ∧ ty = testX _ _ *[] *[(int I32)].
+    ∃ ty, interpret_rust_type_pure_goal ([("κ", κ)]) (RSTLitType ["testX"] (RSTScopeInst [] [RSTInt I32] [])) ty ∧ ty = testX _ _ *[] *[(int I32)].
   Proof.
     init_tyvars (<["T" := (existT _ T_ty)]> ∅).
     eexists _; split; [ solve_interpret_rust_type | ]. done.
   Abort.
 
   Lemma interpret_rust_type_test1 {rt} (T_ty : type rt) :
-    ∃ rt2 (ty2 : type rt2), interpret_rust_type_pure_goal (∅) (RSTInt I32) ty2.
+    ∃ rt2 (ty2 : type rt2), interpret_rust_type_pure_goal [] (RSTInt I32) ty2.
   Proof.
     init_tyvars (<["T" := (existT _ T_ty)]> ∅).
     eexists _, _. solve_interpret_rust_type; solve[fail].
   Abort.
 
   Lemma interpret_rust_type_test1 {rt} (T_ty : type rt) :
-    interpret_rust_type_pure_goal (∅) (RSTTyVar "T") T_ty.
+    interpret_rust_type_pure_goal [] (RSTTyVar "T") T_ty.
   Proof.
     init_tyvars (<["T" := (existT _ T_ty)]> ∅).
     solve_interpret_rust_type; solve[fail].
   Abort.
 
   Lemma interpret_rust_type_test2 {rt} (T_ty : type rt) :
-    interpret_rust_type_pure_goal (∅) (RSTInt I32) (int I32).
+    interpret_rust_type_pure_goal [] (RSTInt I32) (int I32).
   Proof.
     init_tyvars (<["T" := (existT _ T_ty)]> ∅).
     solve_interpret_rust_type; solve[fail].
   Abort.
 
   Lemma interpret_rust_type_test4 {rt} (T_ty : type rt) κ :
-    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTRef Mut "κ" (RSTInt I32)) ty ∧ ty = (mut_ref κ (int I32)).
+    ∃ ty, interpret_rust_type_pure_goal [("κ", κ)] (RSTRef Mut "κ" (RSTInt I32)) ty ∧ ty = (mut_ref κ (int I32)).
   Proof.
     init_tyvars (<["T" := (existT _ T_ty)]> ∅).
     eexists _; split; [solve_interpret_rust_type | ]. done.
   Abort.
 
   Lemma interpret_rust_type_test5 :
-    interpret_rust_type_pure_goal (∅) (RSTInt U8) (int U8).
+    interpret_rust_type_pure_goal [] (RSTInt U8) (int U8).
   Proof.
     init_tyvars (∅).
     solve_interpret_rust_type; solve[fail].
@@ -816,7 +754,7 @@ Section test.
   (* TODO: better error handling in the tactic above.
       Somehow the Ltac2 exceptions get gobbled up and just a no match error is raised... *)
   Lemma interpret_rust_type_test6 {rt} (T_ty : type rt) κ :
-    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTLitType ["testY"] (RSTScopeInst ["κ"] [RSTInt I32] [])) ty ∧ ty = testY _ _ ( *[κ] : prod_vec lft 1)  *[(int I32)].
+    ∃ ty, interpret_rust_type_pure_goal [("κ", κ)] (RSTLitType ["testY"] (RSTScopeInst ["κ"] [RSTInt I32] [])) ty ∧ ty = testY _ _ ( *[κ] : prod_vec lft 1)  *[(int I32)].
   Proof.
     init_tyvars (<["T" := (existT _ T_ty)]> ∅).
     eexists _; split; [ solve_interpret_rust_type | ]. done.
@@ -860,7 +798,7 @@ Section test.
   Context `{!typeGS Σ}.
 
   Lemma interpret_rust_type_test7 {T_rt A_rt} κ (T_ty : type T_rt) (A_ty : type A_rt) :
-    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅)
+    ∃ ty, interpret_rust_type_pure_goal [("κ", κ)]
       (RSTLitType ["Vec_t"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "A"] [AppDef ["attrs_inst"] [TypeRt (RSTTyVar "T")]])) ty ∧ ty = Vec_t (attrs_inst T_rt) ( *[] : prod_vec lft 0)  *[T_ty; A_ty].
   Proof.
     init_tyvars (<["T" := (existT _ T_ty)]> $ <["A" := (existT _ A_ty)]> ∅).

@@ -46,7 +46,7 @@ Lemma always_unwind_typed `{!typeGS Σ} π :
   ⊢ typed_function π always_unwind (<tag_type> always_unwind_type).
 Proof.
   intros Hstrategy.
-  start_function "always_unwind" ϝ ( [] ) ( [] ) ( [] ) ( ).
+  start_function "always_unwind" ϝ fid ( [] ) ( [] ) ( [] ) ( ).
   repeat liRStep; liShow.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
@@ -66,7 +66,7 @@ Definition always_terminate_type `{typeGS Σ} :=
 Lemma always_terminate_typed `{!typeGS Σ} π :
   ⊢ typed_function π always_terminate (<tag_type> always_terminate_type).
 Proof.
-  start_function "always_terminate" ϝ ( [] ) ( [] ) ( [] ) ( ).
+  start_function "always_terminate" ϝ fid ( [] ) ( [] ) ( [] ) ( ).
   repeat liRStep; liShow.
   Unshelve. all: try iFrame. all: sidecond_solver.
 Qed.
@@ -85,7 +85,7 @@ Definition always_abort_type `{typeGS Σ} :=
 Lemma always_abort_typed `{!typeGS Σ} π :
   ⊢ typed_function π always_abort (<tag_type> always_abort_type).
 Proof.
-  start_function "always_abort" ϝ ( [] ) ( [] ) ( [] ) ( ).
+  start_function "always_abort" ϝ fid ( [] ) ( [] ) ( [] ) ( ).
   repeat liRStep; liShow.
   Unshelve. all: try iFrame. all: sidecond_solver.
 Qed.
@@ -118,7 +118,7 @@ Lemma ptr_write_typed `{!typeGS Σ} π T_rt T_st T_ly :
       spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
     (fn_spec_add_late_pre (type_of_ptr_write T_rt T_st <TY> T_ty <INST!>) (λ π, typaram_wf T_rt T_st T_ty))).
 Proof.
-  start_function "ptr_write" ϝ ( [] ) ( [T_ty []] ) ( [l r] ) ( ).
+  start_function "ptr_write" ϝ fid ( [] ) ( [T_ty []] ) ( [l r] ) ( ).
 
   match goal with
   | |- ∀ x : loc, ?P =>
@@ -137,7 +137,7 @@ Definition type_of_ptr_write_int `{!typeGS Σ} :=
 Lemma ptr_write_typed_int `{!typeGS Σ} π :
   ⊢ typed_function π (ptr_write (IntSynType I32)) (<tag_type> type_of_ptr_write_int).
 Proof.
-  start_function "ptr_write" ϝ ( [] ) ( [] ) ( [l r] ) ( ).
+  start_function "ptr_write" ϝ fid ( [] ) ( [] ) ( [l r] ) ( ).
   intros ls_dst ls_src.
   repeat liRStep; liShow.
 
@@ -157,7 +157,7 @@ Definition type_of_ptr_write_shrref `{!typeGS Σ} (U_rt : RT) (U_st : syn_type) 
 Lemma ptr_write_typed_shrref `{!typeGS Σ} π U_rt U_st :
   ⊢ typed_function π (ptr_write RefSynType) (<tag_type> type_of_ptr_write_shrref U_rt U_st).
 Proof.
-  start_function "ptr_write" ϝ ( [ulft_a []]  ) ( [U_ty []] ) ( [l r] ) ( ).
+  start_function "ptr_write" ϝ fid ( [ulft_a []]  ) ( [U_ty []] ) ( [l r] ) ( ).
 
   intros ls_dst ls_src.
   repeat liRStep; liShow.
@@ -201,7 +201,7 @@ Lemma ptr_read_typed `{!typeGS Σ} π T_rt T_st T_ly :
       spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
     (fn_spec_add_late_pre (type_of_ptr_read T_rt T_st <TY> T_ty <INST!>) (λ π, typaram_wf T_rt T_st T_ty))).
 Proof.
-  start_function "ptr_read" ϝ ( [] ) ( [T_ty []] ) ( [src r] ) ( ).
+  start_function "ptr_read" ϝ fid ( [] ) ( [T_ty []] ) ( [src r] ) ( ).
 
   repeat liRStep; liShow.
 

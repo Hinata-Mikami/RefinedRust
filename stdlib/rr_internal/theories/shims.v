@@ -73,8 +73,8 @@ Lemma alloc_realloc_typed `{RRGS : !refinedrustGS Σ} π (alloc_alloc_loc copy_n
   alloc_dealloc_loc ◁ᵥ{π, MetaNone} alloc_dealloc_loc @ function_ptr [IntSynType USize; IntSynType USize; PtrSynType] (<tag_type> type_of_alloc_dealloc_internal) -∗
   typed_function π (alloc_realloc_def alloc_alloc_loc copy_nonoverlapping_loc alloc_dealloc_loc) (<tag_type> type_of_alloc_realloc).
 Proof.
-  start_function "alloc_realloc" ϝ ( () ) ( () ) ( [[[[old_size align_log2] new_size] ptr_old] v_old] ) ( ) => l_old_size l_align_log2 l_new_size l_ptr_old.
-  init_lfts ∅.
+  start_function "alloc_realloc" ϝ fid ( () ) ( () ) ( [[[[old_size align_log2] new_size] ptr_old] v_old] ) ( ) => l_old_size l_align_log2 l_new_size l_ptr_old.
+  init_lfts π fid [].
   init_tyvars ∅.
   set (old_ly := Layout (Z.to_nat old_size) (Z.to_nat align_log2)).
   set (new_ly := Layout (Z.to_nat new_size) (Z.to_nat align_log2)).
@@ -206,9 +206,9 @@ Lemma alloc_array_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) (m
         (type_of_alloc_array T_rt T_st <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)).
 Proof.
-  start_function "alloc_array" ϝ ( () ) ( [T_ty []] ) ( size ) ( ) => arg_len.
+  start_function "alloc_array" ϝ fid ( () ) ( [T_ty []] ) ( size ) ( ) => arg_len.
   init_tyvars (<["T" := existT _ T_ty]> ∅).
-  init_lfts ∅.
+  init_lfts π fid [].
   repeat liRStep; liShow.
 
   Unshelve. all: sidecond_solver.
@@ -286,9 +286,9 @@ Lemma realloc_array_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) 
         (type_of_realloc_array T_rt T_st <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)).
 Proof.
-  start_function "realloc_array" ϝ ( () ) ( [T_ty []] ) ( [[[old_size new_size] l] v] ) ( ) => arg_old_len arg_ptr arg_new_len.
+  start_function "realloc_array" ϝ fid ( () ) ( [T_ty []] ) ( [[[old_size new_size] l] v] ) ( ) => arg_old_len arg_ptr arg_new_len.
   init_tyvars (<["T" := existT _ T_ty]> ∅).
-  init_lfts ∅.
+  init_lfts π fid [].
 
   rep <-! liRStep; liShow.
   iRename select (l ◁ₗ[_, _] #v @ _)%I into "Hold".
@@ -383,9 +383,9 @@ Lemma dealloc_array_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) 
         (type_of_dealloc_array T_rt T_st <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)).
 Proof.
-  start_function "dealloc_array" ϝ ( () ) ( [T_ty []] ) ( [size l] ) ( ) => arg_len arg_ptr.
+  start_function "dealloc_array" ϝ fid ( () ) ( [T_ty []] ) ( [size l] ) ( ) => arg_len arg_ptr.
   init_tyvars (<["T" := existT _ T_ty]> ∅).
-  init_lfts ∅.
+  init_lfts π fid [].
   repeat liRStep; liShow.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
@@ -451,9 +451,9 @@ Lemma check_array_layoutable_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : s
         (type_of_check_array_layoutable T_rt T_st <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)).
 Proof.
-  start_function "check_array_layoutable" ϝ ( () ) ( [T_ty []] ) ( size ) ( ) => arg_len.
+  start_function "check_array_layoutable" ϝ fid ( () ) ( [T_ty []] ) ( size ) ( ) => arg_len.
   init_tyvars (<["T" := existT _ T_ty]> ∅).
-  init_lfts ∅.
+  init_lfts π fid [].
   repeat liRStep; liShow.
 
   Unshelve. all: sidecond_solver.

@@ -174,7 +174,7 @@ Ltac interpret_rust_type_list lfts env tys :=
   end.
 Ltac interpret_rust_lft lfts env lft :=
   (* TODO not great *)
-  let κ := eval vm_compute in (lfts !! lft) in
+  let κ := eval vm_compute in (lookup_iml lfts lft) in
   match κ with
   | Some ?κ =>
     refine κ
@@ -2471,9 +2471,6 @@ Ltac solve_llctx_remove_dead_aliases ::=
 Ltac compute_map_lookup_unchecked :=
   (* for tag lookups *)
   unfold enum_tag'; simpl;
-  unfold_opaque @inline_function_lft_map;
-  unfold_opaque @named_lft_delete;
-  unfold_opaque @named_lft_update;
   simpl;
   lazymatch goal with
   | |- ?Q !! _ = Some _ => try (is_var Q; unfold Q)
@@ -2493,9 +2490,6 @@ Ltac compute_map_lookup_unchecked :=
 Ltac compute_map_lookup_checked :=
   (* for tag lookups *)
   unfold enum_tag'; simpl;
-  unfold_opaque @inline_function_lft_map;
-  unfold_opaque @named_lft_delete;
-  unfold_opaque @named_lft_update;
   simpl;
   lazymatch goal with
   | |- ?Q !! _ = Some _ => try (is_var Q; unfold Q)
@@ -2520,26 +2514,6 @@ Ltac solve_compute_map_lookup unchecked ::=
 Ltac solve_compute_map_lookup_nofail ::=
   compute_map_lookup_unchecked.
 
-Lemma compute_map_lookups_cons_tac (M : gmap string lft) (ns : list string) (n : string) (κs κs' : list lft) κ :
-  M !! n = Some κ →
-  Forall2 (λ x y, M !! x = Some y) ns κs' →
-  κs = κ :: κs' →
-  Forall2 (λ x y, M !! x = Some y) (n :: ns) κs.
-Proof.
-  intros Hlook Hall ->.
-  econstructor; done.
-Qed.
-
-Ltac compute_map_lookups :=
-  lazymatch goal with
-  | |- Forall2 _ [] ?out =>
-        unify out (@nil lft); by apply (Forall2_nil)
-  | |- Forall2 _ (?x :: ?xs) ?out =>
-      refine (compute_map_lookups_cons_tac _ xs x _ _ _ _ _ _);
-      [ compute_map_lookup_unchecked | compute_map_lookups | reflexivity]
-  end.
-Ltac solve_compute_map_lookups_nofail ::=
-  compute_map_lookups.
 
 (** solve_list_map_lookup *)
 Ltac solve_compute_list_map_lookup_nofail ::=
@@ -2548,6 +2522,27 @@ Ltac solve_compute_list_map_lookup_nofail ::=
 Ltac solve_compute_list_map_lookup ::=
   unfold enum_tag'; simpl; done
 .
+
+Lemma compute_list_map_lookups_cons_tac (M : list (string * lft)) (ns : list string) (n : string) (κs κs' : list lft) κ :
+  lookup_iml M n = Some κ →
+  Forall2 (λ x y, lookup_iml M x = Some y) ns κs' →
+  κs = κ :: κs' →
+  Forall2 (λ x y, lookup_iml M  x = Some y) (n :: ns) κs.
+Proof.
+  intros Hlook Hall ->.
+  econstructor; done.
+Qed.
+
+Ltac compute_list_map_lookups :=
+  lazymatch goal with
+  | |- Forall2 _ [] ?out =>
+        unify out (@nil lft); by apply (Forall2_nil)
+  | |- Forall2 _ (?x :: ?xs) ?out =>
+      refine (compute_list_map_lookups_cons_tac _ xs x _ _ _ _ _ _);
+      [ solve_compute_list_map_lookup | compute_list_map_lookups | reflexivity]
+  end.
+Ltac solve_compute_list_map_lookups_nofail ::=
+  compute_list_map_lookups.
 
 (** local_fresh *)
 Section tac.
@@ -2575,82 +2570,31 @@ Ltac solve_local_fresh :=
   end.
 
 (** solve_simplify_map *)
-
-Section simplify_gmap.
-  Context `{!typeGS Σ}.
-
-  Lemma simplify_gmap_tac `{Countable K} {V} (M M' E : gmap K V) :
-    map_to_list M' = map_to_list M →
-    M' = E →
-    M = E.
-  Proof.
-    intros Heq <-.
-    eapply map_to_list_inj. rewrite Heq. done.
-  Qed.
-
-  Lemma simplify_lft_map_tac `{Countable K} {V} (M M' E : gmap K V) :
-    E = M' →
-    opaque_eq M E.
-  Proof.
-    Local Transparent opaque_eq.
-    rewrite /opaque_eq. done.
-  Qed.
-End simplify_gmap.
-
-(* keeps the invariant that the term contains no deletes *)
-Ltac simplify_gmap M :=
-  lazymatch M with
-  (* push down deletes *)
-  | delete ?x (<[?y := ?s]> ?Q) =>
-      lazymatch x with
-      | y =>
-          simplify_gmap constr:(Q)
-      | _ =>
-          let M' := simplify_gmap constr:(delete x Q) in
-          uconstr:(<[y := s]> M')
-      end
-  (* skip over inserts without deletes *)
-  | <[?y := ?s]> ?Q =>
-      let M' := simplify_gmap constr:(Q) in
-      uconstr:(<[y := s]> M')
-  (* remove a delete from an empty map *)
-  | delete _ ∅ =>
-      uconstr:(∅)
-  | _ =>
-      constr:(M)
-  end.
-Ltac solve_simplify_gmap ::=
-  match goal with
-  | |- ?Q = ?e => try (is_var Q; unfold Q); is_evar e
-  | |- ?e = ?Q => try (is_var Q; unfold Q); is_evar e; symmetry
-  | _ => fail "unknown goal for simplify_gmap"
-  end;
-  lazymatch goal with
-  | |- ?Q = ?e =>
-      let Q' := simplify_gmap constr:(Q) in
-      (* NOTE: this relies on the simplification being order-preserving *)
-      refine (simplify_gmap_tac Q Q' e _ _);
-      [abstract (vm_compute; reflexivity) | reflexivity ]
-  end.
-
+Lemma simplify_lft_map_tac `{EqDecision K} {V} (M M' E : list (K * V)) :
+  E = M' →
+  opaque_eq M E.
+Proof.
+  Local Transparent opaque_eq.
+  rewrite /opaque_eq. done.
+Qed.
 Ltac simplify_lft_map M :=
   lazymatch M with
   (* push down deletes *)
-  | named_lft_delete ?x (named_lft_update ?y ?s ?Q) =>
+  | map_list_delete ((?y, ?s) :: ?Q) ?x =>
       lazymatch x with
       | y =>
           simplify_lft_map constr:(Q)
       | _ =>
-          let M' := simplify_lft_map constr:(named_lft_delete x Q) in
-          uconstr:(named_lft_update y s M')
+          let M' := simplify_lft_map constr:(map_list_delete Q x) in
+          uconstr:((y, s) :: M')
       end
   (* skip over inserts without deletes *)
-  | named_lft_update ?y ?s ?Q =>
+  | (?y, ?s) :: ?Q =>
       let M' := simplify_lft_map constr:(Q) in
-      uconstr:(named_lft_update y s M')
+      uconstr:((y, s) :: M')
   (* remove a delete from an empty map *)
-  | named_lft_delete _ ∅ =>
-      uconstr:(∅)
+  | map_list_delete [] _ =>
+      uconstr:([])
   | _ =>
       constr:(M)
   end.

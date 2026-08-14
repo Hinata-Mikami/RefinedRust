@@ -60,9 +60,9 @@ fn make_map_string(sep: &str, els: &Vec<(String, String)>) -> String {
 fn make_lft_map_string(els: &Vec<(coq::Ident, coq::Ident)>) -> String {
     let mut out = String::with_capacity(100);
     for (key, value) in els {
-        out.push_str(format!("named_lft_update \"{}\" {} $ ", key, value).as_str());
+        out.push_str(format!("(\"{}\", {}) :: ", key, value).as_str());
     }
-    out.push('∅');
+    out.push_str("[]");
     out
 }
 
@@ -1222,6 +1222,8 @@ impl Function<'_> {
 
         // intro pattern for the function lifetime
         write!(f, "let ϝ := fresh \"ϝ\" in\n")?;
+        // intro pattern for the frame id
+        write!(f, "let fid := fresh \"fid\" in\n")?;
 
         // generate intro pattern for lifetimes
         let mut lft_pattern = String::with_capacity(100);
@@ -1288,7 +1290,7 @@ impl Function<'_> {
 
         write!(
             f,
-            "start_function \"{}\" ϝ ( {lft_pattern} ) ( {typaram_pattern} ) ( {ip_params} )",
+            "start_function \"{}\" ϝ fid ( {lft_pattern} ) ( {typaram_pattern} ) ( {ip_params} )",
             self.name(),
         )?;
 
@@ -1325,7 +1327,7 @@ impl Function<'_> {
         lfts.push((coq::Ident::new("_flft"), coq::Ident::new("ϝ")));
         lfts.push((coq::Ident::new("static"), coq::Ident::new("static")));
         let formatted_lifetimes = make_lft_map_string(&lfts);
-        write!(f, "init_lfts ({} );\n", formatted_lifetimes.as_str())?;
+        write!(f, "init_lfts π fid ({} );\n", formatted_lifetimes.as_str())?;
 
         // initialize tyvars
         let formatted_tyvars = make_map_string(

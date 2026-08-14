@@ -10,28 +10,26 @@ Section named_lfts.
     Invariant: there is a global singleton around.
    *)
   (* TODO: find a better way to seal this off and hide it from basic automation. *)
-  Definition named_lfts (f : frame_path) (M : gmap string lft) : iProp Σ := True -∗ True.
+  Definition named_lfts (f : frame_path) (M : list (string * lft)) : iProp Σ := True -∗ True.
   Lemma named_lfts_update f M M' : named_lfts f M -∗ named_lfts f M'.
   Proof. auto. Qed.
-  Definition lookup_named_lfts (M : gmap string lft) (lfts : list string) :=
-    foldr (λ s oacc, acc ← oacc; κ ← M !! s; Some (κ :: acc)) (Some []) lfts.
 
-  Lemma named_lfts_init f (M : gmap string lft) : ⊢ named_lfts f M.
+  Lemma named_lfts_init f (M : list (string * lft)) : ⊢ named_lfts f M.
   Proof. unfold named_lfts. iIntros "_". done. Qed.
 
-  (* Making it opaque so that simplification doesn't get stuck with it *)
-  Definition named_lft_update (name : string) (κ : lft) (M : gmap string lft) :=
-    <[name := κ]> (M).
-
-  Definition named_lft_delete (name : string) (M : gmap string lft) :=
-    delete name M.
+  Fixpoint map_list_delete {K V} `{!EqDecision K} (l : list (K * V)) (k : K) : list (K * V) :=
+    match l with
+    | [] => []
+    | (k2, v) :: l =>
+      if decide (k = k2)
+      then map_list_delete l k
+      else (k2, v) :: map_list_delete l k
+    end.
 End named_lfts.
 (* make opaque so that automation does not do weird things (this should not be persistent, etc.) *)
 Global Typeclasses Opaque named_lfts.
 Global Opaque named_lfts.
 Global Arguments named_lfts : simpl never.
-Global Opaque named_lft_update.
-Global Opaque named_lft_delete.
 
 Definition local_fresh (x : var_name) (locals : list var_name) := x ∉ locals.
 Global Typeclasses Opaque local_fresh.
@@ -448,9 +446,9 @@ Definition FindLocInBounds `{!typeGS Σ} (l : loc) :=
   {| fic_A := iProp Σ; fic_Prop P := P |}.
 Global Typeclasses Opaque FindLocInBounds.
 
-(** find the named lifetime judgment *)
+(** find the named lifetime map *)
 Definition FindNamedLfts `{!typeGS Σ} (f : frame_path) :=
-  {| fic_A := gmap string lft; fic_Prop M := (named_lfts (Σ := Σ) f M)%I; |}.
+  {| fic_A := list (string * lft); fic_Prop M := (named_lfts (Σ := Σ) f M)%I; |}.
 Global Typeclasses Opaque FindNamedLfts.
 
 (** find the credit store *)
@@ -2530,24 +2528,6 @@ Ltac solve_compute_map_lookup_nofail := fail "implement solve_compute_map_lookup
 #[global] Hint Extern 10 (LiTactic (compute_map_lookup_nofail_goal _ _)) =>
     refine (compute_map_lookup_nofail_hint _ _ _ _); solve_compute_map_lookup_nofail : typeclass_instances.
 
-(** Tactic hint to compute an iterated map lookup *)
-Definition compute_map_lookups_nofail_goal `{!typeGS Σ} `{Countable K} {V} (M : gmap K V) (ks : list K) (T : (list V) → iProp Σ) : iProp Σ :=
-  ∃ res, ⌜Forall2 (λ k v, M !! k = Some v) ks res⌝ ∗ T (res).
-#[global] Typeclasses Opaque compute_map_lookups_nofail_goal.
-Program Definition compute_map_lookups_nofail_hint `{!typeGS Σ} `{Countable K} {V} (M : gmap K V) ks res :
-  Forall2 (λ k v, M !! k = Some v) ks res →
-  LiTactic (compute_map_lookups_nofail_goal M ks) := λ a, {|
-    li_tactic_P T := T res;
-  |}.
-Next Obligation.
-  iIntros (?? K ?? V M ks res Hlook T) "HT". iExists res. iFrame. done.
-Qed.
-
-Global Typeclasses Opaque compute_map_lookups_nofail_goal.
-Ltac solve_compute_map_lookups_nofail := fail "implement solve_compute_map_lookups_nofail".
-#[global] Hint Extern 10 (LiTactic (compute_map_lookups_nofail_goal _ _)) =>
-    refine (compute_map_lookups_nofail_hint _ _ _ _); solve_compute_map_lookups_nofail : typeclass_instances.
-
 (** Tactic hint to compute a list map lookup *)
 Definition compute_list_map_lookup_nofail_goal `{!typeGS Σ} `{EqDecision K} {V} (M : list (K * V)) (k : K) (T : V → iProp Σ) : iProp Σ :=
   ∃ res, ⌜lookup_iml M k = Some res⌝ ∗ T res.
@@ -2565,6 +2545,24 @@ Global Typeclasses Opaque compute_list_map_lookup_nofail_goal.
 Ltac solve_compute_list_map_lookup_nofail := fail "implement solve_compute_list_map_lookup_nofail".
 #[global] Hint Extern 10 (LiTactic (compute_list_map_lookup_nofail_goal _ _)) =>
     refine (compute_list_map_lookup_nofail_hint _ _ _ _); solve_compute_list_map_lookup_nofail : typeclass_instances.
+
+(** Tactic hint to compute an iterated list lookup *)
+Definition compute_list_map_lookups_nofail_goal `{!typeGS Σ} `{!EqDecision K} {V} (M : list (K * V)) (ks : list K) (T : (list V) → iProp Σ) : iProp Σ :=
+  ∃ res, ⌜Forall2 (λ k v, lookup_iml M k = Some v) ks res⌝ ∗ T (res).
+#[global] Typeclasses Opaque compute_list_map_lookups_nofail_goal.
+Program Definition compute_list_map_lookups_nofail_hint `{!typeGS Σ} `{EqDecision K} {V} (M : list (K * V)) ks res :
+  Forall2 (λ k v, lookup_iml M k = Some v) ks res →
+  LiTactic (compute_list_map_lookups_nofail_goal M ks) := λ a, {|
+    li_tactic_P T := T res;
+  |}.
+Next Obligation.
+  iIntros (? K ?? V M ks res Hlook T) "HT". iExists res. iFrame. done.
+Qed.
+
+Global Typeclasses Opaque compute_list_map_lookups_nofail_goal.
+Ltac solve_compute_list_map_lookups_nofail := fail "implement solve_compute_list_map_lookups_nofail".
+#[global] Hint Extern 10 (LiTactic (compute_list_map_lookups_nofail_goal _ _)) =>
+    refine (compute_list_map_lookups_nofail_hint _ _ _ _); solve_compute_list_map_lookups_nofail : typeclass_instances.
 
 (** Tactic hint to compute a list map lookup (fallible) *)
 Definition compute_list_map_lookup_goal `{!typeGS Σ} `{EqDecision K} {V} (M : list (K * V)) (k : K) (T : option V → iProp Σ) : iProp Σ :=
@@ -2584,38 +2582,20 @@ Ltac solve_compute_list_map_lookup := fail "implement solve_compute_list_map_loo
 #[global] Hint Extern 10 (LiTactic (compute_list_map_lookup_goal _ _)) =>
     refine (compute_list_map_lookup_hint _ _ _ _); solve_compute_list_map_lookup : typeclass_instances.
 
-(** Tactic hint to simplify a map, e.g. compute deletes *)
-Definition simplify_gmap_goal `{!typeGS Σ} `{Countable K} {V} (M : gmap K V) (T : gmap K V → iProp Σ) : iProp Σ :=
-  ∃ M', ⌜M = M'⌝ ∗ T M'.
-#[global] Typeclasses Opaque simplify_gmap_goal.
-Program Definition simplify_gmap_hint `{!typeGS Σ} `{Countable K} {V} (M M' : gmap K V) :
-  M = M' →
-  LiTactic (simplify_gmap_goal M) := λ a, {|
-    li_tactic_P T := T M';
-  |}.
-Next Obligation.
-  iIntros (?? K ?? V M M' -> T) "HT". iExists M'. iFrame. done.
-Qed.
-
-Global Typeclasses Opaque simplify_gmap_goal.
-Ltac solve_simplify_gmap := fail "implement solve_simplify_gmap".
-#[global] Hint Extern 10 (LiTactic (simplify_gmap_goal _)) =>
-    refine (simplify_gmap_hint _ _ _); solve_simplify_gmap : typeclass_instances.
-
 (** Tactic hint to simplify a lft map, e.g. compute deletes *)
 (* We don't actually require an equality here, since the map doesn't have any semantic meaning *)
 Definition opaque_eq {A} (a b : A) := True.
 Global Opaque opaque_eq.
-Definition simplify_lft_map_goal `{!typeGS Σ} `{Countable K} {V} (M : gmap K V) (T : gmap K V → iProp Σ) : iProp Σ :=
+Definition simplify_lft_map_goal `{!typeGS Σ} `{EqDecision K} {V} (M : list (K * V)) (T : list (K * V) → iProp Σ) : iProp Σ :=
   ∃ M', ⌜opaque_eq M M'⌝ ∗ T M'.
 #[global] Typeclasses Opaque simplify_lft_map_goal.
-Program Definition simplify_lft_map_hint `{!typeGS Σ} `{Countable K} {V} (M M' : gmap K V) :
+Program Definition simplify_lft_map_hint `{!typeGS Σ} `{EqDecision K} {V} (M M' : list (K * V)) :
   opaque_eq M M' →
   LiTactic (simplify_lft_map_goal M) := λ a, {|
     li_tactic_P T := T M';
   |}.
 Next Obligation.
-  iIntros (?? K ?? V M M' ? T) "HT". iExists M'. iFrame. done.
+  iIntros (? K ?? V M M' ? T) "HT". iExists M'. iFrame. done.
 Qed.
 
 Global Typeclasses Opaque simplify_lft_map_goal.
@@ -2735,13 +2715,13 @@ Ltac solve_compute_enum_layout := fail "implement solve_compute_enum_layout".
     refine (compute_enum_layout_hint _ _ _); solve_compute_enum_layout : typeclass_instances.
 
 (** Tactic hint to compute a semantic Rust type for a given syntactic [rust_type] *)
-Definition interpret_rust_type_goal `{!typeGS Σ} (lfts : gmap string lft) (sty : rust_type) (T : sigT type → iProp Σ) : iProp Σ :=
+Definition interpret_rust_type_goal `{!typeGS Σ} (lfts : list (string * lft)) (sty : rust_type) (T : sigT type → iProp Σ) : iProp Σ :=
   ∃ (rt : RT) (ty : type rt), T (existT _ ty).
 #[global] Typeclasses Opaque interpret_rust_type_goal.
-Definition interpret_rust_type_pure_goal `{!typeGS Σ} (lfts : gmap string lft) (sty : rust_type) {rt} (ty : type rt) := True.
+Definition interpret_rust_type_pure_goal `{!typeGS Σ} (lfts : list (string * lft)) (sty : rust_type) {rt} (ty : type rt) := True.
 Global Typeclasses Opaque interpret_rust_type_pure_goal.
 Arguments interpret_rust_type_pure_goal : simpl never.
-Program Definition interpret_rust_type_hint `{!typeGS Σ} (lfts : gmap string lft) (sty : rust_type) {rt} (ty : type rt) :
+Program Definition interpret_rust_type_hint `{!typeGS Σ} (lfts : list (string * lft)) (sty : rust_type) {rt} (ty : type rt) :
   interpret_rust_type_pure_goal lfts sty ty →
   LiTactic (interpret_rust_type_goal lfts sty) := λ a, {|
     li_tactic_P T := T (existT _ ty);
@@ -2757,13 +2737,13 @@ Ltac solve_interpret_rust_type := fail "implement solve_interpret_rust_type".
     refine (interpret_rust_type_hint _ _ _ _); solve_interpret_rust_type : typeclass_instances.
 
 (** Tactic hint to compute an [enum] for a given path *)
-Definition interpret_rust_enum_def_goal `{!typeGS Σ} (lfts : gmap string lft) (sty : rust_enum_def) (T : sigT enum → iProp Σ) : iProp Σ :=
+Definition interpret_rust_enum_def_goal `{!typeGS Σ} (lfts : list (string * lft)) (sty : rust_enum_def) (T : sigT enum → iProp Σ) : iProp Σ :=
   ∃ (rt : RT) (en : enum rt), T (existT _ en).
 #[global] Typeclasses Opaque interpret_rust_enum_def_goal.
-Definition interpret_rust_enum_def_pure_goal `{!typeGS Σ} (lfts : gmap string lft) (sty : rust_enum_def) {rt} (en : enum rt) := True.
+Definition interpret_rust_enum_def_pure_goal `{!typeGS Σ} (lfts : list (string * lft)) (sty : rust_enum_def) {rt} (en : enum rt) := True.
 Global Typeclasses Opaque interpret_rust_enum_def_pure_goal.
 Arguments interpret_rust_enum_def_pure_goal : simpl never.
-Program Definition interpret_rust_enum_def_hint `{!typeGS Σ} (lfts : gmap string lft) (sty : rust_enum_def) {rt} (en : enum rt) :
+Program Definition interpret_rust_enum_def_hint `{!typeGS Σ} (lfts : list (string * lft)) (sty : rust_enum_def) {rt} (en : enum rt) :
   interpret_rust_enum_def_pure_goal lfts sty en →
   LiTactic (interpret_rust_enum_def_goal lfts sty) := λ a, {|
     li_tactic_P T := T (existT _ en);

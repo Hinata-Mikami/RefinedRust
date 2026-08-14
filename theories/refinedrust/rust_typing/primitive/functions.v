@@ -1355,10 +1355,8 @@ Section inline.
   Global Instance inline_function_ptr_sized fal lft_names fn :
     TySized (inline_function_ptr fal lft_names fn) := _.
 
-  Definition inline_function_lft_map (lft_names : list string) (κs : list lft) (ϝ : lft) : gmap string lft :=
-    named_lft_update "_flft" ϝ $
-      named_lft_update "static" static $
-        list_to_map (zip lft_names κs).
+  Definition inline_function_lft_map (lft_names : list string) (κs : list lft) (ϝ : lft) : list (string * lft) :=
+    ("_flft", ϝ) :: ("static", static) :: (zip lft_names κs).
 
   Fixpoint introduce_arguments π E L (tys : list (sigT (λ rt, (type rt * rt)%type))) (ls : list loc) (cont : llctx → list loc → iProp Σ) : iProp Σ :=
     match tys with

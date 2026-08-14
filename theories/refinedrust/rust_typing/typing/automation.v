@@ -1155,7 +1155,7 @@ Ltac start_function_finish lsa :=
   init_cache;
   ltac2:(start_function_hook ())
 .
-Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropattern(κs) ")" "(" simple_intropattern(tys) ")" "(" simple_intropattern(x) ")" "(" ident_list(params) ")" :=
+Tactic Notation "start_function" constr(fnname) ident(ϝ) ident(fid) "(" simple_intropattern(κs) ")" "(" simple_intropattern(tys) ")" "(" simple_intropattern(x) ")" "(" ident_list(params) ")" :=
   start_function_prepare;
   lazymatch goal with
   | |- envs_entails _ (typed_function _ _ _) =>
@@ -1164,7 +1164,7 @@ Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropatter
        T_ty : type (T_rt, T_st).1
        otherwise we can't substitute equalities on the T_st later. *)
     simpl;
-    iIntros ( κs tys x ϝ _fid) "!#";
+    iIntros ( κs tys x ϝ fid) "!#";
 
     iIntros (_);
     let lsa := fresh "lsa" in
@@ -1178,7 +1178,7 @@ Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropatter
     start_function_finish lsa
   end
 .
-Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropattern(κs) ")" "(" simple_intropattern(tys) ")" "(" simple_intropattern(x) ")" :=
+Tactic Notation "start_function" constr(fnname) ident(ϝ) ident(fid) "(" simple_intropattern(κs) ")" "(" simple_intropattern(tys) ")" "(" simple_intropattern(x) ")" :=
   start_function_prepare;
   lazymatch goal with
   | |- envs_entails _ (typed_function _ _ _) =>
@@ -1187,7 +1187,7 @@ Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropatter
        T_ty : type (T_rt, T_st).1
        otherwise we can't substitute equalities on the T_st later. *)
     simpl;
-    iIntros ( κs tys x ϝ _fid) "!#";
+    iIntros ( κs tys x ϝ fid) "!#";
 
     (* important: to destruct [x] *)
     prepare_initial_coq_context;

@@ -3238,7 +3238,7 @@ Section subsume.
     iApply wpe_value. iApply ("HΦ" with "HL Hf Hty HT").
   Qed.
 
-  Fixpoint interpret_rust_types (M : gmap string lft) (tys : list rust_type) (T : list (sigT type) → iProp Σ) :  iProp Σ :=
+  Fixpoint interpret_rust_types (M : list (string * lft)) (tys : list rust_type) (T : list (sigT type) → iProp Σ) :  iProp Σ :=
     match tys with
     | [] => T []
     | ty :: tys =>
@@ -3259,7 +3259,7 @@ Section subsume.
 
   Lemma type_call E L f ef eκs etys es destination normal unwind fn R U ϝ :
     (∃ M, named_lfts f M ∗
-    li_tactic (compute_map_lookups_nofail_goal M eκs) (λ eκs',
+    li_tactic (compute_list_map_lookups_nofail_goal M eκs) (λ eκs',
     interpret_rust_types M etys (λ atys,
     named_lfts f M -∗
     typed_val_expr E L f ef (λ L' vf m rtf tyf rf,
@@ -3278,7 +3278,7 @@ Section subsume.
               es L' [] []))))
     ⊢ typed_stmt E L f (CallS ef eκs etys es destination normal unwind) fn R U ϝ.
   Proof.
-    rewrite /compute_map_lookups_nofail_goal.
+    rewrite /compute_list_map_lookups_nofail_goal.
     iIntros "(%M & Hnamed & %eκs' & _ & He)".
     iPoseProof (interpret_rust_types_elim with "He") as "(%tys & He)".
     iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont".
@@ -5109,13 +5109,13 @@ Section subsume.
 
   (** StartLft *)
   Lemma type_startlft f (n : string) sup_lfts E L T :
-    (∃ M, named_lfts f M ∗ li_tactic (compute_map_lookups_nofail_goal M sup_lfts) (λ κs,
-      ∀ κ, named_lfts f (named_lft_update n κ M) -∗
+    (∃ M, named_lfts f M ∗ li_tactic (compute_list_map_lookups_nofail_goal M sup_lfts) (λ κs,
+      ∀ κ, named_lfts f ((n, κ) :: M) -∗
       (* add a credit -- will be used by endlft *)
       introduce_with_hooks E ((κ ⊑ₗ{0%nat} κs) :: L) (£ num_cred) T))
     ⊢ typed_annot_stmt f 1 (StartLftAnnot n sup_lfts) E L T.
   Proof.
-    rewrite /compute_map_lookups_nofail_goal.
+    rewrite /compute_list_map_lookups_nofail_goal.
     iIntros "(%M & Hnamed & %κs & %Hlook & Hcont)".
     iIntros "#(LFT & LLCTX) #HE HL".
     iMod (llctx_startlft _ _ κs with "LFT LLCTX HL") as (κ) "HL"; [solve_ndisj.. | ].
@@ -5130,11 +5130,11 @@ Section subsume.
 
   (** Alias lifetimes: like startlft but without the atomic part *)
   Lemma type_alias_lft f (n : string) sup_lfts E L T :
-    (∃ M, named_lfts f M ∗ li_tactic (compute_map_lookups_nofail_goal M sup_lfts) (λ κs,
-      ∀ κ, named_lfts f (named_lft_update n κ M) -∗ T ((κ ≡ₗ κs) :: L)))
+    (∃ M, named_lfts f M ∗ li_tactic (compute_list_map_lookups_nofail_goal M sup_lfts) (λ κs,
+      ∀ κ, named_lfts f ((n, κ) :: M) -∗ T ((κ ≡ₗ κs) :: L)))
     ⊢ typed_annot_stmt f 1 (AliasLftAnnot n sup_lfts) E L T.
   Proof.
-    rewrite /compute_map_lookups_nofail_goal.
+    rewrite /compute_list_map_lookups_nofail_goal.
     iIntros "(%M & Hnamed & %κs & %Hlook & Hcont)".
     iIntros "#(LFT & LLCTX) #HE HL".
     set (κ := lft_intersect_list κs).
@@ -5194,7 +5194,7 @@ Section subsume.
   Lemma type_endlft f (n : string) E L T :
     (∃ M, named_lfts f M ∗
       (* if this lifetime does not exist anymore, this is a nop *)
-      li_tactic (compute_map_lookup_goal M n true) (λ o,
+      li_tactic (compute_list_map_lookup_goal M n) (λ o,
       match o with
       | Some κ =>
         (* find some credits *)
@@ -5206,7 +5206,7 @@ Section subsume.
         li_tactic (llctx_find_llft_goal L1' κ LlctxFindLftFull) (λ '(_, L1''),
         li_tactic (llctx_remove_dead_aliases_goal L1'' κ) (λ L2,
         (* simplify the name map *)
-        li_tactic (simplify_lft_map_goal (named_lft_delete n M)) (λ M',
+        li_tactic (simplify_lft_map_goal (map_list_delete M n)) (λ M',
         named_lfts f M' -∗
         (* extract observations from now-dead mutable references *)
         typed_pre_context_fold f.1 E ((†ₗ κ) :: L2) (CtxFoldExtractAllInit κ) (λ L3,
@@ -5220,9 +5220,9 @@ Section subsume.
     ⊢ typed_annot_stmt f 2 (EndLftAnnot n) E L T.
   Proof.
     iIntros "(%M & Hnamed & Hlook)".
-    unfold compute_map_lookup_goal.
+    unfold compute_list_map_lookup_goal.
     iDestruct "Hlook" as (o) "(<- & HT)".
-    destruct (M !! n) as [κ | ]; first last.
+    destruct (lookup_iml M n) as [κ | ]; first last.
     { iIntros "#CTX #HE HL".
       iApply physical_step_intro; iNext.
       iApply physical_step_intro; iNext.
@@ -5271,8 +5271,8 @@ Section subsume.
   (** Dynamic inclusion *)
   Lemma type_dyn_include_lft f n1 n2 E L T :
     (∃ M, named_lfts f M ∗
-      li_tactic (compute_map_lookup_nofail_goal M n1) (λ κ1,
-      li_tactic (compute_map_lookup_nofail_goal M n2) (λ κ2,
+      li_tactic (compute_list_map_lookup_nofail_goal M n1) (λ κ1,
+      li_tactic (compute_list_map_lookup_nofail_goal M n2) (λ κ2,
       li_tactic (lctx_lft_alive_count_goal E L κ2) (λ '(κs, L'),
       Inherit [κ1] (llft_elt_toks κs) -∗
       named_lfts f M -∗
@@ -5281,7 +5281,7 @@ Section subsume.
       T L'))))
     ⊢ typed_annot_stmt f 1 (DynIncludeLftAnnot n1 n2) E L T.
   Proof.
-    rewrite /compute_map_lookup_nofail_goal.
+    rewrite /compute_list_map_lookup_nofail_goal.
     iIntros "(%M & Hnamed & %κ1 & %Hlook1 & %κ2 & %Hlook2 & Hs)".
     unfold lctx_lft_alive_count_goal.
     iDestruct "Hs" as "(%κs & %L' & %Hal & Hs)".
@@ -5332,12 +5332,12 @@ Section subsume.
 
   Lemma type_extendlft f (n : string) E L T :
     (∃ M, named_lfts f M ∗
-      li_tactic (compute_map_lookup_nofail_goal M n) (λ κ,
+      li_tactic (compute_list_map_lookup_nofail_goal M n) (λ κ,
       iterate_with_hooks E L (IterateExtendLft [κ]) (λ L' _,
       (named_lfts f M -∗ T L'))))
     ⊢ typed_annot_stmt f 1 (ExtendLftAnnot n) E L T.
   Proof.
-    rewrite /compute_map_lookup_nofail_goal.
+    rewrite /compute_list_map_lookup_nofail_goal.
     iIntros "(%M & Hnamed & %κ & _ & Hs)".
     iIntros "#CTX #HE HL".
     iMod ("Hs" with "[] CTX HE HL") as "(%L2 & % & HL & HT)"; first done.
@@ -5360,12 +5360,12 @@ Section subsume.
   (** CopyLftNameAnnot *)
   Lemma type_copy_lft_name f n1 n2 E L T :
     (∃ M, named_lfts f M ∗
-      li_tactic (compute_map_lookup_nofail_goal M n2) (λ κ2,
-      li_tactic (simplify_lft_map_goal (named_lft_update n1 κ2 (named_lft_delete n1 M))) (λ M',
+      li_tactic (compute_list_map_lookup_nofail_goal M n2) (λ κ2,
+      li_tactic (simplify_lft_map_goal ((n1, κ2) :: map_list_delete M n1)) (λ M',
         named_lfts f M' -∗ T L)))
     ⊢ typed_annot_stmt f 1 (CopyLftNameAnnot n1 n2) E L T.
   Proof.
-    rewrite /compute_map_lookup_nofail_goal.
+    rewrite /compute_list_map_lookup_nofail_goal.
     iIntros "(%M & Hnamed & %κ2 & _ & Hs)".
     iIntros "#CTX #HE HL".
     unfold simplify_lft_map_goal. iDestruct "Hs" as "(%M' & _ & Hs)".

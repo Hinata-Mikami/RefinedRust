@@ -363,7 +363,7 @@ Proof.
       rewrite length_replicate. iExists (). iR. iModIntro.
       iExists _. iFrame. rewrite uninit_own_spec. iR.
       iExists _. iR. rewrite /has_layout_val length_replicate. done. }
-    iPoseProof (named_lfts_init (π, 1) ∅) as "Hnamed".
+    iPoseProof (named_lfts_init (π, 1) []) as "Hnamed".
     iAssert (typed_stmt [] [] (π, 1)
       (CallS (Val (l2v main)) [] [] []
         (Some (Na1Ord, UntypedOp unit_sl, Var "__refinedrust_main_return"))

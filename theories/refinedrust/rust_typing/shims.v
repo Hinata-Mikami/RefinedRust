@@ -29,7 +29,7 @@ Definition type_of_panic_shim `{RRGS : !refinedrustGS Σ} :=
 Lemma panic_shim_typed `{RRGS : !refinedrustGS Σ} π :
   ⊢ typed_function π panic_shim_def (<tag_type> type_of_panic_shim).
 Proof.
-  start_function "panic_shim" ϝ ( [] ) ( [] ) ( [] ) ( ).
+  start_function "panic_shim" ϝ fid ( [] ) ( [] ) ( [] ) ( ).
   repeat liRStep; liShow.
   destruct radium_panic_strategy_of eqn:Hstrategy.
   all: rep liRStep; liShow. done.
@@ -570,13 +570,14 @@ Section proof.
     intros;
     iStartProof;
     let ϝ := fresh "ϝ" in
+    let fid := fresh "fid" in
     let T_ty := fresh "T_ty" in
-    start_function "drop_glue_tuple1" ϝ ( [] ) ( [T_ty [] ] ) ( ? );
+    start_function "drop_glue_tuple1" ϝ fid ( [] ) ( [T_ty [] ] ) ( ? );
     intros arg_ptr;
     let π := get_π in
     let Σ := get_Σ in
     specialize (pose_bb_inv (PolyNil)) as loop_map;
-    init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+    init_lfts π fid ([("_flft", ϝ); ("static", static)] );
     init_tyvars ( <[
         "T" :=
     existT _ (T_ty)
@@ -612,14 +613,15 @@ Section proof.
     intros;
     iStartProof;
     let ϝ := fresh "ϝ" in
+    let fid := fresh "fid" in
     let T_ty := fresh "T_ty" in
     let U_ty := fresh "U_ty" in
-    start_function "drop_glue_tuple2" ϝ ( [] ) ( [T_ty [U_ty [] ] ] ) ( ? );
+    start_function "drop_glue_tuple2" ϝ fid ( [] ) ( [T_ty [U_ty [] ] ] ) ( ? );
     intros arg_ptr;
     let π := get_π in
     let Σ := get_Σ in
     specialize (pose_bb_inv (PolyNil)) as loop_map;
-    init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+    init_lfts π fid ([("_flft", ϝ); ("static", static)] );
     init_tyvars ( <[
         "T" :=
     existT _ (T_ty)
@@ -660,15 +662,16 @@ Section proof.
     intros;
     iStartProof;
     let ϝ := fresh "ϝ" in
+    let fid := fresh "fid" in
     let T_ty := fresh "T_ty" in
     let U_ty := fresh "U_ty" in
     let V_ty := fresh "V_ty" in
-    start_function "drop_glue_tuple3" ϝ ( [] ) ( [T_ty [U_ty [V_ty [] ] ] ] ) ( ? );
+    start_function "drop_glue_tuple3" ϝ fid ( [] ) ( [T_ty [U_ty [V_ty [] ] ] ] ) ( ? );
     intros arg_ptr;
     let π := get_π in
     let Σ := get_Σ in
     specialize (pose_bb_inv (PolyNil)) as loop_map;
-    init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+    init_lfts π fid ([("_flft", ϝ); ("static", static)] );
     init_tyvars ( <[
         "T" :=
     existT _ (T_ty)
@@ -714,16 +717,17 @@ Section proof.
     intros;
     iStartProof;
     let ϝ := fresh "ϝ" in
+    let fid := fresh "fid" in
     let T_ty := fresh "T_ty" in
     let U_ty := fresh "U_ty" in
     let V_ty := fresh "V_ty" in
     let W_ty := fresh "W_ty" in
-    start_function "drop_glue_tuple4" ϝ ( [] ) ( [T_ty [U_ty [V_ty [W_ty [] ] ] ] ] ) ( ? );
+    start_function "drop_glue_tuple4" ϝ fid ( [] ) ( [T_ty [U_ty [V_ty [W_ty [] ] ] ] ] ) ( ? );
     intros arg_ptr;
     let π := get_π in
     let Σ := get_Σ in
     specialize (pose_bb_inv (PolyNil)) as loop_map;
-    init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+    init_lfts π fid ([("_flft", ϝ); ("static", static)] );
     init_tyvars ( <[
         "T" :=
     existT _ (T_ty)
@@ -774,17 +778,18 @@ Section proof.
     intros;
     iStartProof;
     let ϝ := fresh "ϝ" in
+    let fid := fresh "fid" in
     let T_ty := fresh "T_ty" in
     let U_ty := fresh "U_ty" in
     let V_ty := fresh "V_ty" in
     let W_ty := fresh "W_ty" in
     let X_ty := fresh "X_ty" in
-    start_function "drop_glue_tuple5" ϝ ( [] ) ( [T_ty [U_ty [V_ty [W_ty [X_ty [] ] ] ] ] ] ) ( ? );
+    start_function "drop_glue_tuple5" ϝ fid ( [] ) ( [T_ty [U_ty [V_ty [W_ty [X_ty [] ] ] ] ] ] ) ( ? );
     intros arg_ptr;
     let π := get_π in
     let Σ := get_Σ in
     specialize (pose_bb_inv (PolyNil)) as loop_map;
-    init_lfts (named_lft_update "_flft" ϝ $ named_lft_update "static" static $ ∅ );
+    init_lfts π fid ([("_flft", ϝ); ("static", static)] );
     init_tyvars ( <[
         "T" :=
     existT _ (T_ty)

@@ -5,10 +5,11 @@ From lithium Require Import hooks all.
 (* Initialize the [named_lfts] assertion with external lifetimes.
    Usually called after [start_function].
  *)
-Tactic Notation "init_lfts" uconstr(map) :=
+Tactic Notation "init_lfts" constr(π) constr(fid) uconstr(map) :=
   lazymatch goal with
-  | [ π : thread_id, fid : frame_id |- _ ] =>
-      unshelve iPoseProof (named_lfts_init (π, fid) (map : gmap string lft)) as "-#?"; [apply _ .. |]
+  | |- _ =>
+      unshelve iPoseProof (named_lfts_init (π, fid) (map : list (string * lft))) as "-#?";
+      [apply _ .. | ]
   end.
   (*specialize (tt : LFT_MAP map) as lfts.*)
 
