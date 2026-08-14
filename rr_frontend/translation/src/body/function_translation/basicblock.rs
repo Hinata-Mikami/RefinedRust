@@ -48,6 +48,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             if let mir::StatementKind::Assign(b) = &stmt.kind {
                 let (plc, val) = b.as_ref();
+
+                // Adjust mutable borrows that are passed to drop to not enforce the reference contract;
+                // instead do a raw borrow
                 if self.proc.synthetic_drop_borrow_for_assignment(loc).is_some() {
                     let plc_ty = self.shape_type_of_place(plc);
                     let mir::Rvalue::Ref(_, mir::BorrowKind::Mut { .. }, borrowed_place) = val else {
@@ -70,6 +73,56 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         e1: Box::new(translated_place),
                         e2: Box::new(raw_ptr),
                     });
+                    continue;
+                }
+
+                // Adjust borrows that are passed to rr::inline functions to not enforce the type's
+                // safety invariant
+                if let Some(mt) = self.inline_call_reborrows.get(&loc).copied() {
+                    let plc_ty = self.shape_type_of_place(plc);
+                    let mir::Rvalue::Ref(region, borrow_kind, borrowed_place) = val else {
+                        bug!("inline call reborrow is not a reference at {loc:?}: {stmt:?}");
+                    };
+                    let borrowed_place = self.translate_place(borrowed_place)?;
+                    let adjusted_reborrow = match (mt, borrow_kind) {
+                        (code::Mutability::Mut, mir::BorrowKind::Mut { .. }) => code::Expr::AddressOf {
+                            pk: code::PtrKind::Ref,
+                            mt,
+                            e: Box::new(borrowed_place),
+                        },
+                        (code::Mutability::Shared, mir::BorrowKind::Shared) => {
+                            let region = self.proc.source_borrow_region_for_target(loc).unwrap_or(*region);
+                            let lft = self
+                                .annotations
+                                .prepare_borrow_lifetime_plan(&self.ty_translator, loc, region)
+                                .lft;
+                            code::Expr::Borrow {
+                                lft,
+                                bk: code::BorKind::Shared,
+                                ty: None,
+                                e: Box::new(borrowed_place),
+                            }
+                        },
+                        _ => bug!("inline call reborrow has unexpected kind at {loc:?}: {stmt:?}"),
+                    };
+                    let mut annotation_plan = self
+                        .prepared_assignments
+                        .remove(&loc)
+                        .unwrap_or_else(|| bug!("missing prepared inline reborrow at {loc:?}: {stmt:?}"));
+                    annotation_plan.push_pre_stmts(&mut prim_stmts);
+                    let adjusted_reborrow = code::Expr::with_optional_annotation(
+                        adjusted_reborrow,
+                        annotation_plan.expr.take(),
+                        Some("inline call reborrow".to_owned()),
+                    );
+                    let translated_place = self.translate_place(plc)?;
+                    let synty = self.translate_type_to_syn_type(plc_ty.ty)?;
+                    prim_stmts.push(code::PrimStmt::Assign {
+                        ot: synty.into(),
+                        e1: Box::new(translated_place),
+                        e2: Box::new(adjusted_reborrow),
+                    });
+                    annotation_plan.push_post_stmts(&mut prim_stmts);
                     continue;
                 }
             }

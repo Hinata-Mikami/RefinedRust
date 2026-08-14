@@ -90,6 +90,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// annotation decisions.
     pub(super) fn prepare_annotations(&mut self) -> Result<(), TranslationError> {
         let reachable_blocks = self.reachable_basic_blocks();
+        self.prepare_inline_call_reborrows(&reachable_blocks)?;
         let mut pending_assignments = Vec::new();
         for bb in &reachable_blocks {
             let data = &self.proc.dropck_mir().basic_blocks[*bb];

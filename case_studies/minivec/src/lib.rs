@@ -286,21 +286,18 @@ impl<T> Vec<T> {
     #[rr::params("l" : "loc", "cap" : "nat", "len" : "Z")]
     #[rr::args(#raw "( *[(l, cap); len])")]
     #[rr::returns("l")]
+    //#[rr::inline]
     fn ptr<'a>(&'a self) -> *mut T {
         self.buf.ptr() as *mut T
     }
 
     // private function, take an unfolded type
-    #[rr::params("l" : "loc", "cap" : "nat", "len" : "Z")]
-    #[rr::args(#raw "( *[(l, cap); len])")]
-    #[rr::returns("cap")]
-    fn cap<'a>(&'a self) -> usize {
+    #[rr::inline]
+    fn cap(&self) -> usize {
         self.buf.cap
     }
 
-    #[rr::params("xs")]
-    #[rr::args("xs")]
-    #[rr::returns("length xs")]
+    #[rr::returns("length self")]
     pub fn len(&self) -> usize {
         self.len
     }

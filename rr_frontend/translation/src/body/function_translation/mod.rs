@@ -81,6 +81,8 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     initial_annotation_stmts: Vec<code::PrimStmt>,
     prepared_calls: BTreeMap<mir::Location, PreparedFunctionCall<'tcx, 'def>>,
     prepared_assignments: BTreeMap<mir::Location, LocationAnnotationPlan>,
+    /// Reborrows immediately passed to inline functions receive permissive lowering.
+    inline_call_reborrows: BTreeMap<mir::Location, code::Mutability>,
 
     /// data structures for tracking which basic blocks still need to be translated
     /// (we only translate the basic blocks which are actually reachable, in particular when
@@ -237,6 +239,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             initial_annotation_stmts,
             prepared_calls: BTreeMap::new(),
             prepared_assignments: BTreeMap::new(),
+            inline_call_reborrows: BTreeMap::new(),
             const_registry,
             trait_registry,
             collected_statics: BTreeSet::new(),

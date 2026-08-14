@@ -651,6 +651,61 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         Some(&func_constant.const_)
     }
 
+    pub(super) fn prepare_inline_call_reborrows(
+        &mut self,
+        reachable_blocks: &BTreeSet<mir::BasicBlock>,
+    ) -> Result<(), TranslationError> {
+        for bb in reachable_blocks {
+            let data = &self.proc.dropck_mir().basic_blocks[*bb];
+            let mir::TerminatorKind::Call { func, args, .. } = &data.terminator().kind else {
+                continue;
+            };
+            let mir::Operand::Constant(func_constant) = func else {
+                continue;
+            };
+            let (did, ..) = self.call_expr_op_split_inst(&func_constant.const_)?;
+            if !self.procedure_registry.lookup_function_mode(did).is_some_and(procedures::Mode::is_inline) {
+                continue;
+            }
+
+            for arg in args {
+                let (mir::Operand::Move(arg_place) | mir::Operand::Copy(arg_place)) = &arg.node else {
+                    continue;
+                };
+                if !arg_place.projection.is_empty() {
+                    continue;
+                }
+
+                let assignment = data.statements.iter().enumerate().rev().find_map(|(idx, stmt)| {
+                    let mir::StatementKind::Assign(box (lhs, rvalue)) = &stmt.kind else {
+                        return None;
+                    };
+                    if !lhs.projection.is_empty() || lhs.local != arg_place.local {
+                        return None;
+                    }
+                    Some((idx, rvalue))
+                });
+                let Some((statement_index, rvalue)) = assignment else {
+                    continue;
+                };
+                let mir::Rvalue::Ref(_, borrow_kind, _) = rvalue else {
+                    continue;
+                };
+                let mt = match borrow_kind {
+                    mir::BorrowKind::Shared => code::Mutability::Shared,
+                    mir::BorrowKind::Mut { .. } => code::Mutability::Mut,
+                    mir::BorrowKind::Fake(_) => continue,
+                };
+                let loc = mir::Location {
+                    block: *bb,
+                    statement_index,
+                };
+                self.inline_call_reborrows.insert(loc, mt);
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn prepare_function_calls(
         &mut self,
         reachable_blocks: &BTreeSet<mir::BasicBlock>,
