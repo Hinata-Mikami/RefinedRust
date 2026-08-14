@@ -1862,9 +1862,53 @@ fn get_drop_glue_mir_source_ty<'tcx>(
 
 /// Translate functions of the crate, assuming they were previously registered.
 fn translate_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), PipelineError> {
-    // First translate closures, then functions: the function translation assumes that closures
-    // they contain have been translated already.
-    for &f in vcx.closures.iter().chain(vcx.functions.iter()) {
+    let mut inline_functions_with_closures = BTreeSet::new();
+    let mut closures_in_inline_functions = BTreeSet::new();
+    for &closure in vcx.closures {
+        let mut ancestor = vcx.tcx.opt_parent(closure.to_def_id());
+        while let Some(did) = ancestor {
+            if vcx.procedure_registry.lookup_function_mode(did).is_some_and(procedures::Mode::is_inline) {
+                inline_functions_with_closures.insert(OrderedDefId::new(vcx.tcx, did));
+                closures_in_inline_functions.insert(OrderedDefId::new(vcx.tcx, closure.to_def_id()));
+                let err = vcx.tcx.dcx().span_err(
+                    vcx.tcx.def_span(closure.to_def_id()),
+                    error::Message::UnsupportedFeature(
+                        "closures inside rr::inline functions are not supported yet".to_owned(),
+                    ),
+                );
+                recover_or_fail(err)?;
+                break;
+            }
+            ancestor = vcx.tcx.opt_parent(did);
+        }
+    }
+
+    // Inline callees must be complete before their callers so that calls can use the callee's
+    // internal lifetime names. Closures follow, then all remaining functions.
+    let functions: Vec<_> = vcx
+        .functions
+        .iter()
+        .filter(|did| {
+            vcx.procedure_registry
+                .lookup_function_mode(did.to_def_id())
+                .is_some_and(procedures::Mode::is_inline)
+        })
+        .chain(vcx.closures.iter())
+        .chain(vcx.functions.iter().filter(|did| {
+            !vcx.procedure_registry
+                .lookup_function_mode(did.to_def_id())
+                .is_some_and(procedures::Mode::is_inline)
+        }))
+        .copied()
+        .collect();
+
+    for f in functions {
+        let ordered_f = OrderedDefId::new(vcx.tcx, f.to_def_id());
+        if inline_functions_with_closures.contains(&ordered_f)
+            || closures_in_inline_functions.contains(&ordered_f)
+        {
+            continue;
+        }
         if vcx.procedure_registry.lookup_function(f.to_def_id()).is_some() {
             translate_function(vcx, f)?;
         }

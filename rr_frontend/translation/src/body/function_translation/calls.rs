@@ -155,7 +155,22 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             })?;
             // explicit instantiation is needed sometimes
             let spec_term = if meta.get_mode().is_inline() {
-                code::UsedProcedureSpec::InlineCode(meta.get_code_name().to_owned())
+                let callee_spec =
+                    self.procedure_registry().lookup_function_spec(callee_did).ok_or_else(|| {
+                        TranslationError::ErrorReported(
+                            self.tcx.dcx().err(Message::UnknownProcedure(format!("{:?}", callee_did))),
+                        )
+                    })?;
+                let lifetime_names = callee_spec
+                    .get_generics()
+                    .get_lfts()
+                    .iter()
+                    .map(|param| param.lft().to_string())
+                    .collect();
+                code::UsedProcedureSpec::InlineCode {
+                    code_name: meta.get_code_name().to_owned(),
+                    lifetime_names,
+                }
             } else {
                 code::UsedProcedureSpec::Literal(meta.get_spec_name().to_owned())
             };

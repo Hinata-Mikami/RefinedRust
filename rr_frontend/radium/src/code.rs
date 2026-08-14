@@ -1091,8 +1091,19 @@ impl Function<'_> {
 
                 write!(f, "{} ◁ᵥ{{π, MetaNone}} {} @ ", proc_use.loc_name, proc_use.loc_name)?;
                 match &proc_use.spec_term {
-                    UsedProcedureSpec::InlineCode(code_name) => {
-                        write!(f, "inline_function_ptr [{}] ({}", arg_syntys.join("; "), code_name)?;
+                    UsedProcedureSpec::InlineCode {
+                        code_name,
+                        lifetime_names,
+                    } => {
+                        let lifetime_names: Vec<_> =
+                            lifetime_names.iter().map(|name| format!("\"{name}\"")).collect();
+                        write!(
+                            f,
+                            "inline_function_ptr [{}] [{}] ({}",
+                            arg_syntys.join("; "),
+                            lifetime_names.join("; "),
+                            code_name
+                        )?;
                         for ty in proc_use.scope_inst.get_all_ty_params_with_assocs() {
                             write!(f, " {}", lang::SynType::from(ty))?;
                         }
@@ -1398,8 +1409,11 @@ pub struct StaticMeta<'def> {
 pub enum UsedProcedureSpec<'def> {
     /// A direct specification term, the string is the spec definition.
     Literal(String),
-    /// The definition of an inline function's code.
-    InlineCode(String),
+    /// The definition of an inline function's code and its internal lifetime parameter names.
+    InlineCode {
+        code_name: String,
+        lifetime_names: Vec<String>,
+    },
     /// A method of a trait impl we quantify over, the string is the method name.
     TraitMethod(traits::QuantifiedImpl<'def>, String),
 }
@@ -1409,7 +1423,7 @@ impl UsedProcedureSpec<'_> {
         match *self {
             Self::Literal(_) => true,
             // symbolic trait method uses don't need the surrounding trait requirements
-            Self::InlineCode(_) | Self::TraitMethod(_, _) => false,
+            Self::InlineCode { .. } | Self::TraitMethod(_, _) => false,
         }
     }
 }
@@ -1420,7 +1434,7 @@ impl fmt::Display for UsedProcedureSpec<'_> {
             Self::Literal(lit) => {
                 write!(f, "{lit} (RRGS:=RRGS)")
             },
-            Self::InlineCode(code_name) => write!(f, "{code_name}"),
+            Self::InlineCode { code_name, .. } => write!(f, "{code_name}"),
             Self::TraitMethod(spec_use, method_name) => {
                 let spec = spec_use.trait_ref.borrow();
                 let spec = spec.as_ref().unwrap();
