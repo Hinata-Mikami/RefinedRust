@@ -25,3 +25,13 @@ impl InlineMethods {
 fn fct_inlined_inherent_id_i32(x: i32) -> i32 {
     InlineMethods::id(x)
 }
+
+#[rr::verify]
+fn fct_inlined_ref_id_i32<'a>(x: &'a i32) -> &'a i32 {
+    fct_inlined_ref_id(x)
+}
+
+#[rr::inline]
+fn fct_inlined_ref_id<'a, T>(x: &'a T) -> &'a T {
+    x
+}
