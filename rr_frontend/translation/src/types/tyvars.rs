@@ -10,20 +10,24 @@ use std::collections::{BTreeSet, HashSet};
 
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::{RegionExt as _, TypeSuperFoldable as _};
+use rr_rustc_interface::type_ir::TypeFoldable as _;
 
 use crate::rustcmp;
 
 /// A `TypeFolder` that gathers all the type variables.
 pub(crate) struct TyVarFolder<'tcx> {
     tcx: ty::TyCtxt<'tcx>,
+    /// The caller's environment, used to resolve concrete associated types before collecting dependencies.
+    typing_env: ty::TypingEnv<'tcx>,
     tyvars: BTreeSet<ty::ParamTy>,
     projections: HashSet<ty::AliasTy<'tcx>>,
 }
 
 impl<'tcx> TyVarFolder<'tcx> {
-    pub(crate) fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
+    pub(crate) fn new(tcx: ty::TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Self {
         TyVarFolder {
             tcx,
+            typing_env,
             tyvars: BTreeSet::new(),
             projections: HashSet::new(),
         }
@@ -58,8 +62,16 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyVarFolder<'tcx> {
                 self.tyvars.insert(*param);
                 t
             },
-            ty::TyKind::Alias(_, alias_ty) => {
-                if matches!(alias_ty.kind, ty::AliasTyKind::Projection { .. }) {
+            ty::TyKind::Alias(_, alias_ty) if matches!(alias_ty.kind, ty::AliasTyKind::Projection { .. }) => {
+                // A concrete projection may normalize to a type containing parameters that do not occur in
+                // the projection's arguments. Collect from that type; only genuinely symbolic projections
+                // need to be represented through a local trait assumption.
+                if let Ok(normalized_ty) =
+                    self.tcx.try_normalize_erasing_regions(self.typing_env, ty::Unnormalized::dummy(t))
+                    && normalized_ty != t
+                {
+                    normalized_ty.fold_with(self);
+                } else {
                     self.projections.insert(*alias_ty);
                 }
 

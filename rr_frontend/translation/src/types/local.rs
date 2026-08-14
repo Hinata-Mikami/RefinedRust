@@ -358,7 +358,9 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         trace!("enter get_generic_abstraction with mode={mode:?} and args={args:?}");
 
         // STEP 1: get all the regions and type variables appearing in the instantiation of generics
-        let mut tyvar_folder = TyVarFolder::new(self.translator.tcx());
+        let tcx = self.translator.tcx();
+        let typing_env = ty::TypingEnv::post_analysis(tcx, self.scope.borrow().did);
+        let mut tyvar_folder = TyVarFolder::new(tcx, typing_env);
         let mut lft_folder = TyRegionCollectFolder::new(self.translator.tcx());
         // HACK(see #32): We typically don't want lifetimes which just appear in the closure input/output
         // signature, but not in the closure upvars, since these lifetimes often are locally

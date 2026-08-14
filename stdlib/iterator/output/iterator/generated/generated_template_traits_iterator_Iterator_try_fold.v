@@ -28,11 +28,11 @@ Definition traits_iterator_Iterator_try_fold_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((tuple2_sls (B_st) (Item_st)) : syn_type)) →
   DropGlue_B_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_B_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_B_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
   DropGlue_F_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_F_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_F_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-  FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc ◁ᵥ{π, MetaNone} FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc @ function_ptr [RefSynType; ((tuple2_sls (B_st) (Item_st)) : syn_type)] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[B_ty; F_ty; R_ty; Item_ty; R_ty]) : ([B_rt; F_rt; R_rt; Item_rt; R_rt] : list RT), fn_spec_add_late_pre ((FnMut_call_mut_spec (RRGS:=RRGS) (FnMut_F_BSelfastraits_iterator_Iterator_Item_spec-[] -[]))  -[late_lft_0] -[]) (λ π, ((typaram_wf B_rt B_st B_ty)
+  FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc ◁ᵥ{π, MetaNone} FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc @ function_ptr [RefSynType; ((tuple2_sls (B_st) (Item_st)) : syn_type)] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[B_ty; F_ty; R_ty; R_ty; Item_ty]) : ([B_rt; F_rt; R_rt; R_rt; Item_rt] : list RT), fn_spec_add_late_pre ((FnMut_call_mut_spec (RRGS:=RRGS) (FnMut_F_BSelfastraits_iterator_Iterator_Item_spec-[] -[]))  -[late_lft_0] -[]) (λ π, ((typaram_wf B_rt B_st B_ty)
   ∗ (typaram_wf F_rt F_st F_ty)
   ∗ (typaram_wf R_rt R_st R_ty)
-  ∗ (typaram_wf Item_rt Item_st Item_ty)
-  ∗ (typaram_wf R_rt R_st R_ty)))%I) -∗
+  ∗ (typaram_wf R_rt R_st R_ty)
+  ∗ (typaram_wf Item_rt Item_st Item_ty)))%I) -∗
   FromResidual_R_Rasstd_ops_Try_Residual_from_residual_loc ◁ᵥ{π, MetaNone} FromResidual_R_Rasstd_ops_Try_Residual_from_residual_loc @ function_ptr [Try_R_Residual_st] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((FromResidual_from_residual_spec (RRGS:=RRGS) (FromResidual_R_Rasstd_ops_Try_Residual_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
   Try_R_branch_loc ◁ᵥ{π, MetaNone} Try_R_branch_loc @ function_ptr [R_st] (<tag_type> spec! ( *[]) : 0 | ( *[R_ty; Try_R_Residual_ty]) : ([R_rt; Try_R_Residual_rt] : list RT), fn_spec_add_late_pre ((Try_branch_spec (RRGS:=RRGS) (Try_R_spec-[] -[]))  -[] -[]) (λ π, ((typaram_wf R_rt R_st R_ty)
   ∗ (typaram_wf Try_R_Residual_rt Try_R_Residual_st Try_R_Residual_ty)))%I) -∗

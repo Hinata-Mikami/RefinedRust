@@ -142,4 +142,34 @@ mod tests {
 
         output.cleanup();
     }
+
+    #[test]
+    fn concrete_projection_preserves_type_dependencies() {
+        let project = path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/projection_deps");
+        let output = GeneratedOutput::new(project.join("target/verify"));
+
+        build_refinedrust();
+        build_subproject("./tests/projection_deps/");
+
+        let template =
+            fs::read_to_string(output.path().join("projection_deps/generated/generated_template_call.v"))
+                .expect("missing concrete-projection proof template");
+        let specialized_call = template
+            .lines()
+            .find(|line| line.contains("consume_std_option_OptionT_loc ◁"))
+            .expect("missing specialized consume call");
+        assert!(
+            specialized_call.contains("( *[T_ty])"),
+            "normalized Option<T> call did not retain its T dependency: {specialized_call}"
+        );
+
+        let symbolic_template = fs::read_to_string(
+            output.path().join("projection_deps/generated/generated_template_call_symbolic.v"),
+        )
+        .expect("missing symbolic-projection proof template");
+        assert!(symbolic_template.contains("Assoc_T_spec :"));
+        assert!(symbolic_template.contains("( *[Assoc_T_Output_ty])"));
+
+        output.cleanup();
+    }
 }

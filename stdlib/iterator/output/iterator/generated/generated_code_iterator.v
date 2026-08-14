@@ -807,7 +807,7 @@ Program Definition traits_iterator_Iterator_fold_def (DropGlue_B_drop_glue_loc: 
       "__16" <-{ (use_op_alg' Item_st) } move{ (use_op_alg' Item_st) } ("x");
       "__14" <-{ (use_op_alg' ((tuple2_sls (B_st) (Item_st)) : syn_type)) } StructInit (tuple2_sls (B_st) (Item_st)) [("0", move{ (use_op_alg' B_st) } ("__15") : expr); ("1", move{ (use_op_alg' Item_st) } ("__16") : expr)];
       annot{ 1 }: CopyLftNameAnnot "vlft7" "plft5"; (* function_call *)
-      CallS FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc ["vlft7"] [RSTTyVar "B"; RSTTyVar "F"; RSTTyVar "B"; RSTTyVar "Item"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__13"); move{ (use_op_alg' ((tuple2_sls (B_st) (Item_st)) : syn_type)) } ("__14")] (Some (Na1Ord, (use_op_alg' B_st), "__12"))
+      CallS FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc ["vlft7"] [RSTTyVar "B"; RSTTyVar "F"; RSTTyVar "B"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__13"); move{ (use_op_alg' ((tuple2_sls (B_st) (Item_st)) : syn_type)) } ("__14")] (Some (Na1Ord, (use_op_alg' B_st), "__12"))
       ( annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb4")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
@@ -1918,7 +1918,7 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_B_drop_glue_l
       "__18" <-{ (use_op_alg' Item_st) } move{ (use_op_alg' Item_st) } ("x");
       "__16" <-{ (use_op_alg' ((tuple2_sls (B_st) (Item_st)) : syn_type)) } StructInit (tuple2_sls (B_st) (Item_st)) [("0", move{ (use_op_alg' B_st) } ("__17") : expr); ("1", move{ (use_op_alg' Item_st) } ("__18") : expr)];
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft7"; (* function_call *)
-      CallS FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc ["vlft9"] [RSTTyVar "B"; RSTTyVar "F"; RSTTyVar "R"; RSTTyVar "Item"; RSTTyVar "R"] [@{expr} move{ RefOp } ("__15"); move{ (use_op_alg' ((tuple2_sls (B_st) (Item_st)) : syn_type)) } ("__16")] (Some (Na1Ord, (use_op_alg' R_st), "__14"))
+      CallS FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc ["vlft9"] [RSTTyVar "B"; RSTTyVar "F"; RSTTyVar "R"; RSTTyVar "R"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__15"); move{ (use_op_alg' ((tuple2_sls (B_st) (Item_st)) : syn_type)) } ("__16")] (Some (Na1Ord, (use_op_alg' R_st), "__14"))
       ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        Goto "_bb4")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
