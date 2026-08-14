@@ -4,7 +4,7 @@ From rrstd.clone.clone.generated Require Export generated_specs_clone.
 From rrstd.closures.closures.generated Require Export generated_specs_closures.
 From rrstd.cmp.cmp.generated Require Export generated_specs_cmp.
 From rrstd.controlflow.controlflow.generated Require Export generated_specs_controlflow.
-From rrstd.iterator.theories Require Export iterator map step.
+From rrstd.iterator.theories Require Export iterator map step step_by.
 From rrstd.option.option.generated Require Export generated_specs_option.
 From rrstd.range.range.generated Require Export generated_specs_range.
 From rrstd.result.result.generated Require Export generated_specs_result.
@@ -248,6 +248,81 @@ End adapters_skip_Skip_inv_t.
 #[global] Arguments adapters_skip_Skip_inv_t_inv_spec {_ _} _  .
 
 
+Section adapters_step_by_StepBy_ty.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {I_rt : RT}.
+  Definition adapters_step_by_StepBy_ty  : (spec_with 0 [(I_rt)] ((type (plist place_rfnRT [(I_rt) : RT; Z : RT; bool : RT])))).
+  Proof.
+    exact (spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), (struct_t (adapters_step_by_StepBy_sls ((ty_syn_type I_ty MetaNone))) +[(I_ty); ((int USize)); (bool_t)])).
+  Defined.
+
+  Definition adapters_step_by_StepBy_rt  : RT.
+  Proof using I_rt .
+    let __a := (normalized_rt_of_spec_ty (adapters_step_by_StepBy_ty)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent adapters_step_by_StepBy_rt.
+  #[global] Typeclasses Transparent adapters_step_by_StepBy_ty.
+End adapters_step_by_StepBy_ty.
+#[global] Arguments adapters_step_by_StepBy_rt : clear implicits.
+
+#[global] Arguments adapters_step_by_StepBy_ty : clear implicits.
+
+#[global] Arguments adapters_step_by_StepBy_ty {_ _} _  .
+
+Section adapters_step_by_StepBy_inv_t.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Context {I_rt : RT}.
+  Program Definition adapters_step_by_StepBy_inv_t_inv_spec  : (spec_with 0 [(I_rt)] ((ex_inv_def ((adapters_step_by_StepBy_rt (I_rt)))%type ((StepByXRT (I_rt)))%type))) :=
+    spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt ((StepByXRT (I_rt))%type : RT)),
+                  let 'x := _ty_rfn in ⌜inner_rfn = -[#($# x.(step_by_it)); #(Z.of_nat x.(step_by_n)); #(x.(step_by_first))]⌝ ∗ True)%I
+          (false)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
+
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
+
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition adapters_step_by_StepBy_inv_t  : (spec_with 0 [(I_rt)] ((type (((StepByXRT (I_rt)))%type)))) :=
+    spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), ex_plain_t _ _ (adapters_step_by_StepBy_inv_t_inv_spec  -[] -[I_ty]) ((adapters_step_by_StepBy_ty (I_rt)) -[] -[I_ty]).
+  #[global] Arguments adapters_step_by_StepBy_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments adapters_step_by_StepBy_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent adapters_step_by_StepBy_inv_t.
+  Definition adapters_step_by_StepBy_inv_t_rt  : RT.
+  Proof using I_rt .
+    let __a := (normalized_rt_of_spec_ty (adapters_step_by_StepBy_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent adapters_step_by_StepBy_inv_t_rt.
+End adapters_step_by_StepBy_inv_t.
+#[global] Arguments adapters_step_by_StepBy_inv_t_rt : clear implicits.
+
+#[global] Arguments adapters_step_by_StepBy_inv_t : clear implicits.
+
+#[global] Arguments adapters_step_by_StepBy_inv_t {_ _} _  .
+
+#[global] Arguments adapters_step_by_StepBy_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments adapters_step_by_StepBy_inv_t_inv_spec {_ _} _  .
+
+
 Section adapters_take_Take_ty.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Context {I_rt : RT}.
@@ -365,6 +440,37 @@ Program Definition adapters_skip_SkipMIastraits_iterator_Iterator_spec_attrs `{R
                         ⌜length seq = s1.2⌝ ∗ ⌜s2.2 = 0%nat⌝∗ 
                         IteratorNextFusedTrans traits_iterator_Iterator_MI_spec_attrs π p_inner s1.1 seq s2_inner ∗
                         traits_iterator_Iterator_MI_spec_attrs.(traits_iterator_Iterator_Next) π p_inner s2_inner (Some e) s2.1))%I) : ((traits_iterator_Iterator_Next_sig (((adapters_skip_Skip_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) (_) (_)));
+  |}
+.
+
+
+End attrs.
+
+Section attrs.
+Context `{RRGS : !refinedrustGS Σ}.
+Program Definition adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs `{RRGS : !(refinedrustGS Σ)} (MI_rt: RT) (traits_iterator_Iterator_MI_Item_rt: RT) (traits_iterator_Iterator_MI_spec_attrs: (traits_iterator_Iterator_spec_attrs (RRGS:=RRGS) (MI_rt) (traits_iterator_Iterator_MI_Item_rt) )) : ((traits_iterator_Iterator_spec_attrs (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)))) :=
+  {|
+    traits_iterator_Iterator_Params  :=
+      (traits_iterator_Iterator_MI_spec_attrs.(traits_iterator_Iterator_Params)) : ((traits_iterator_Iterator_Params_sig (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt))));
+    traits_iterator_Iterator_Inv  :=
+      (λ π p s, traits_iterator_Iterator_MI_spec_attrs.(traits_iterator_Iterator_Inv) π p s.(step_by_it)) : ((traits_iterator_Iterator_Inv_sig (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) (_)));
+    traits_iterator_Iterator_Next  :=
+      ((λ π p_inner s1 e s2,
+                ⌜s2.(step_by_n) = s1.(step_by_n)⌝ ∗
+                ⌜s2.(step_by_first) = false⌝ ∗
+                if s1.(step_by_first) then
+                  traits_iterator_Iterator_MI_spec_attrs.(traits_iterator_Iterator_Next) π p_inner s1.(step_by_it) e s2.(step_by_it)
+                else
+                  if_iNone e (
+                    ∃ seq s2_inner,
+                      ⌜length seq ≤ s1.(step_by_n)⌝ ∗
+                      IteratorNextFusedTrans traits_iterator_Iterator_MI_spec_attrs π p_inner s1.(step_by_it) seq s2_inner ∗
+                      traits_iterator_Iterator_MI_spec_attrs.(traits_iterator_Iterator_Next) π p_inner s2_inner None s2.(step_by_it)) ∗
+                  if_iSome e (λ e,
+                    ∃ seq s2_inner,
+                      ⌜length seq = s1.(step_by_n)⌝ ∗
+                      IteratorNextFusedTrans traits_iterator_Iterator_MI_spec_attrs π p_inner s1.(step_by_it) seq s2_inner ∗
+                      traits_iterator_Iterator_MI_spec_attrs.(traits_iterator_Iterator_Next) π p_inner s2_inner (Some e) s2.(step_by_it)))%I) : ((traits_iterator_Iterator_Next_sig (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) (_) (_)));
   |}
 .
 
@@ -2202,6 +2308,13 @@ Definition type_of_adapters_skip_SkipMIastraits_iterator_Iterator_next (MI_rt: R
   spec! ( *[]) : 0 | ( *[MI_ty; traits_iterator_Iterator_MI_Item_ty]) : ([MI_rt; traits_iterator_Iterator_MI_Item_rt] : list RT),(λ a b, scope_add_typarams _ -[MI_ty; traits_iterator_Iterator_MI_Item_ty] (scope_add_elctx (λ ϝ, []) (((traits_iterator_Iterator_base_spec (((adapters_skip_Skip_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) ((adapters_skip_Skip_st (MI_st))) (traits_iterator_Iterator_MI_Item_st) ((adapters_skip_SkipMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs))))
     -[] -[(adapters_skip_Skip_inv_t ((MI_rt))  -[] -[MI_ty]); traits_iterator_Iterator_MI_Item_ty]).(traits_iterator_Iterator_next_spec)   a b))) <MERGE!>.
 
+Definition trait_incl_of_adapters_step_by_StepByMIastraits_iterator_Iterator_next (MI_rt: RT) (traits_iterator_Iterator_MI_Item_rt: RT) (MI_st: syn_type) (traits_iterator_Iterator_MI_Item_st: syn_type) (traits_iterator_Iterator_MI_spec_attrs: (traits_iterator_Iterator_spec_attrs (RRGS:=RRGS) (MI_rt) (traits_iterator_Iterator_MI_Item_rt) )) (traits_iterator_Iterator_MI_spec: (spec_with 0 [] (traits_iterator_Iterator_spec (RRGS:=RRGS) (MI_rt) (traits_iterator_Iterator_MI_Item_rt)))) (DropGlue_MI_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (MI_rt)))) (DropGlue_MIastraits_iterator_Iterator_Item_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (traits_iterator_Iterator_MI_Item_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[MI_ty; traits_iterator_Iterator_MI_Item_ty]) : ([MI_rt; traits_iterator_Iterator_MI_Item_rt] : list RT), ((trait_incl_marker (lift_trait_incl traits_iterator_Iterator_spec_incl traits_iterator_Iterator_MI_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), traits_iterator_Iterator_base_spec (MI_rt) (traits_iterator_Iterator_MI_Item_rt) MI_st traits_iterator_Iterator_MI_Item_st traits_iterator_Iterator_MI_spec_attrs-[] -[MI_ty; traits_iterator_Iterator_MI_Item_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_MI_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (MI_rt) MI_st-[] -[MI_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_MIastraits_iterator_Iterator_Item_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (traits_iterator_Iterator_MI_Item_rt) traits_iterator_Iterator_MI_Item_st-[] -[traits_iterator_Iterator_MI_Item_ty])))).
+
+Definition type_of_adapters_step_by_StepByMIastraits_iterator_Iterator_next (MI_rt: RT) (traits_iterator_Iterator_MI_Item_rt: RT) (MI_st: syn_type) (traits_iterator_Iterator_MI_Item_st: syn_type) (traits_iterator_Iterator_MI_spec_attrs: (traits_iterator_Iterator_spec_attrs (RRGS:=RRGS) (MI_rt) (traits_iterator_Iterator_MI_Item_rt) )) :=
+  spec! ( *[]) : 0 | ( *[MI_ty; traits_iterator_Iterator_MI_Item_ty]) : ([MI_rt; traits_iterator_Iterator_MI_Item_rt] : list RT),(λ a b, scope_add_typarams _ -[MI_ty; traits_iterator_Iterator_MI_Item_ty] (scope_add_elctx (λ ϝ, []) (((traits_iterator_Iterator_base_spec (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) ((adapters_step_by_StepBy_st (MI_st))) (traits_iterator_Iterator_MI_Item_st) ((adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs))))
+    -[] -[(adapters_step_by_StepBy_inv_t ((MI_rt))  -[] -[MI_ty]); traits_iterator_Iterator_MI_Item_ty]).(traits_iterator_Iterator_next_spec)   a b))) <MERGE!>.
+
 Definition trait_incl_of_adapters_take_TakeMIastraits_iterator_Iterator_next (MI_rt: RT) (traits_iterator_Iterator_MI_Item_rt: RT) (MI_st: syn_type) (traits_iterator_Iterator_MI_Item_st: syn_type) (traits_iterator_Iterator_MI_spec_attrs: (traits_iterator_Iterator_spec_attrs (RRGS:=RRGS) (MI_rt) (traits_iterator_Iterator_MI_Item_rt) )) (traits_iterator_Iterator_MI_spec: (spec_with 0 [] (traits_iterator_Iterator_spec (RRGS:=RRGS) (MI_rt) (traits_iterator_Iterator_MI_Item_rt)))) (DropGlue_MI_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (MI_rt)))) (DropGlue_MIastraits_iterator_Iterator_Item_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (traits_iterator_Iterator_MI_Item_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[MI_ty; traits_iterator_Iterator_MI_Item_ty]) : ([MI_rt; traits_iterator_Iterator_MI_Item_rt] : list RT), ((trait_incl_marker (lift_trait_incl traits_iterator_Iterator_spec_incl traits_iterator_Iterator_MI_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), traits_iterator_Iterator_base_spec (MI_rt) (traits_iterator_Iterator_MI_Item_rt) MI_st traits_iterator_Iterator_MI_Item_st traits_iterator_Iterator_MI_spec_attrs-[] -[MI_ty; traits_iterator_Iterator_MI_Item_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_MI_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (MI_rt) MI_st-[] -[MI_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_MIastraits_iterator_Iterator_Item_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (traits_iterator_Iterator_MI_Item_rt) traits_iterator_Iterator_MI_Item_st-[] -[traits_iterator_Iterator_MI_Item_ty])))).
 
@@ -2355,6 +2468,20 @@ Definition type_of_adapters_skip_Skip_I_new (I_rt: RT) (I_st: syn_type) :=
       (* postcondition *) (λ π : thread_id, True) |
       (* unwind post... *) False.
 
+Definition trait_incl_of_adapters_step_by_StepBy_I_new (I_rt: RT) (I_st: syn_type) (DropGlue_I_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (I_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_I_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (I_rt) I_st-[] -[I_ty])))).
+
+Definition type_of_adapters_step_by_StepBy_I_new (I_rt: RT) (I_st: syn_type) :=
+  fn(∀ ( *[]) : 0 | ( *[I_ty]) : ([(I_rt, I_st)] : list (RT * syn_type)%type) | 
+      (* params....... *) (iter, step) : ((_ * _)),
+      (* elctx........ *) (λ ϝ, []);
+      (* args......... *) iter :@: I_ty, step :@: (int USize);
+      (* precondition. *) (λ π : thread_id, (⌜((0 < step)%Z)%Z⌝)) |
+      (* trait reqs... *) (λ π : thread_id, True)) →
+      (* existential.. *) ∃ _ : unit, mk_step_by_x iter (Z.to_nat (step - 1)) true @ (adapters_step_by_StepBy_inv_t ((I_rt))  -[] -[I_ty]);
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
+
 Definition trait_incl_of_adapters_take_Take_I_new (I_rt: RT) (I_st: syn_type) (DropGlue_I_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (I_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_I_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (I_rt) I_st-[] -[I_ty])))).
 
@@ -2389,6 +2516,13 @@ Definition trait_incl_of_drop_glue_adapters_skip_Skip (I_rt: RT) (I_st: syn_type
 Definition type_of_drop_glue_adapters_skip_Skip (I_rt: RT) (I_st: syn_type) :=
   spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT),(λ a b, scope_add_typarams _ -[I_ty] (scope_add_elctx (λ ϝ, []) (((DropGlue_base_spec (((adapters_skip_Skip_inv_t_rt ((I_rt))))) ((adapters_skip_Skip_st (I_st))))
     -[] -[(adapters_skip_Skip_inv_t ((I_rt))  -[] -[I_ty])]).(DropGlue_drop_glue_spec)   a b))) <MERGE!>.
+
+Definition trait_incl_of_drop_glue_adapters_step_by_StepBy (I_rt: RT) (I_st: syn_type) (DropGlue_I_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (I_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_I_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (I_rt) I_st-[] -[I_ty])))).
+
+Definition type_of_drop_glue_adapters_step_by_StepBy (I_rt: RT) (I_st: syn_type) :=
+  spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT),(λ a b, scope_add_typarams _ -[I_ty] (scope_add_elctx (λ ϝ, []) (((DropGlue_base_spec (((adapters_step_by_StepBy_inv_t_rt ((I_rt))))) ((adapters_step_by_StepBy_st (I_st))))
+    -[] -[(adapters_step_by_StepBy_inv_t ((I_rt))  -[] -[I_ty])]).(DropGlue_drop_glue_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_drop_glue_adapters_take_Take (I_rt: RT) (I_st: syn_type) (DropGlue_I_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (I_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_I_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (I_rt) I_st-[] -[I_ty])))).
@@ -2842,6 +2976,61 @@ Section adapters_skip_SkipMIastraits_iterator_Iterator_spec.
   Definition adapters_skip_SkipMIastraits_iterator_Iterator_spec_subsumption  :=
     ∀ `(MI_rt : !RT) `(traits_iterator_Iterator_MI_Item_rt : !RT) `(MI_st : !syn_type) `(traits_iterator_Iterator_MI_Item_st : !syn_type) `(traits_iterator_Iterator_MI_spec_attrs : !(traits_iterator_Iterator_spec_attrs (RRGS:=RRGS) (MI_rt) (traits_iterator_Iterator_MI_Item_rt) )), trait_incl_marker (lift_trait_incl traits_iterator_Iterator_spec_incl (spec! ( *[]) : 0 | ( *[MI_ty; traits_iterator_Iterator_MI_Item_ty]) : ([MI_rt; traits_iterator_Iterator_MI_Item_rt] : list RT), (adapters_skip_SkipMIastraits_iterator_Iterator_spec (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (MI_st) (traits_iterator_Iterator_MI_Item_st) (traits_iterator_Iterator_MI_spec_attrs))-[] -[MI_ty; traits_iterator_Iterator_MI_Item_ty]) (spec! ( *[]) : 0 | ( *[MI_ty; traits_iterator_Iterator_MI_Item_ty]) : ([MI_rt; traits_iterator_Iterator_MI_Item_rt] : list RT), scope_add_typarams _ -[MI_ty; traits_iterator_Iterator_MI_Item_ty] ((traits_iterator_Iterator_base_spec ((adapters_skip_Skip_inv_t_rt ((MI_rt)))) (traits_iterator_Iterator_MI_Item_rt) (adapters_skip_Skip_st (MI_st)) traits_iterator_Iterator_MI_Item_st (adapters_skip_SkipMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs))-[] -[(adapters_skip_Skip_inv_t ((MI_rt))  -[] -[MI_ty]); traits_iterator_Iterator_MI_Item_ty])))).
 End adapters_skip_SkipMIastraits_iterator_Iterator_spec.
+
+Section adapters_step_by_StepByMIastraits_iterator_Iterator_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition adapters_step_by_StepByMIastraits_iterator_Iterator_spec (MI_rt: RT) (traits_iterator_Iterator_MI_Item_rt: RT) (MI_st: syn_type) (traits_iterator_Iterator_MI_Item_st: syn_type) (traits_iterator_Iterator_MI_spec_attrs: (traits_iterator_Iterator_spec_attrs (RRGS:=RRGS) (MI_rt) (traits_iterator_Iterator_MI_Item_rt) )) : (spec_with _ _ (traits_iterator_Iterator_spec (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)))) :=
+    spec! ( *[]) : 0 | ( *[MI_ty; traits_iterator_Iterator_MI_Item_ty]) : ([MI_rt; traits_iterator_Iterator_MI_Item_rt] : list RT), let Item_rt := (traits_iterator_Iterator_MI_Item_rt) in {|
+        traits_iterator_Iterator_all_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((Item_rt)))) bool )) (FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((Item_rt)))) bool )) :=
+          (traits_iterator_Iterator_all_base_spec (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) ((F_rt)) ((adapters_step_by_StepBy_st (MI_st))) (traits_iterator_Iterator_MI_Item_st) (F_st)) (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs)) FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs
+             <TY> (adapters_step_by_StepBy_inv_t ((MI_rt))  -[] -[MI_ty]) <TY> traits_iterator_Iterator_MI_Item_ty : (spec_with 1 [F_rt] fn_spec);
+        traits_iterator_Iterator_collect_spec (B_rt: RT) (B_st: syn_type) (traits_iterator_FromIterator_B_Selfastraits_iterator_Iterator_Item_spec_attrs: (traits_iterator_FromIterator_spec_attrs (RRGS:=RRGS) (B_rt) (Item_rt) )) :=
+          (traits_iterator_Iterator_collect_base_spec (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) ((B_rt)) ((adapters_step_by_StepBy_st (MI_st))) (traits_iterator_Iterator_MI_Item_st) (B_st)) (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs)) traits_iterator_FromIterator_B_Selfastraits_iterator_Iterator_Item_spec_attrs
+             <TY> (adapters_step_by_StepBy_inv_t ((MI_rt))  -[] -[MI_ty]) <TY> traits_iterator_Iterator_MI_Item_ty : (spec_with 0 [B_rt] fn_spec);
+        traits_iterator_Iterator_fold_spec (B_rt: RT) (F_rt: RT) (B_st: syn_type) (F_st: syn_type) (FnOnce_F_BSelfastraits_iterator_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((B_rt)) ((Item_rt)))) (B_rt) )) (FnMut_F_BSelfastraits_iterator_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((B_rt)) ((Item_rt)))) (B_rt) )) :=
+          (traits_iterator_Iterator_fold_base_spec (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) ((B_rt)) ((F_rt)) ((adapters_step_by_StepBy_st (MI_st))) (traits_iterator_Iterator_MI_Item_st) (B_st) (F_st)) (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs)) FnOnce_F_BSelfastraits_iterator_Iterator_Item_spec_attrs FnMut_F_BSelfastraits_iterator_Iterator_Item_spec_attrs
+             <TY> (adapters_step_by_StepBy_inv_t ((MI_rt))  -[] -[MI_ty]) <TY> traits_iterator_Iterator_MI_Item_ty : (spec_with 0 [B_rt; F_rt] fn_spec);
+        traits_iterator_Iterator_map_spec (B_rt: RT) (F_rt: RT) (B_st: syn_type) (F_st: syn_type) (FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((Item_rt)))) (B_rt) )) (FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((Item_rt)))) (B_rt) )) :=
+          (traits_iterator_Iterator_map_base_spec (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) ((B_rt)) ((F_rt)) ((adapters_step_by_StepBy_st (MI_st))) (traits_iterator_Iterator_MI_Item_st) (B_st) (F_st)) (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs)) FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs
+             <TY> (adapters_step_by_StepBy_inv_t ((MI_rt))  -[] -[MI_ty]) <TY> traits_iterator_Iterator_MI_Item_ty : (spec_with 0 [B_rt; F_rt] fn_spec);
+        traits_iterator_Iterator_max_spec (PartialEq_Selfastraits_iterator_Iterator_Item_Selfastraits_iterator_Iterator_Item_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Item_rt) (Item_rt) )) (Eq_Selfastraits_iterator_Iterator_Item_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (Item_rt) PartialEq_Selfastraits_iterator_Iterator_Item_Selfastraits_iterator_Iterator_Item_spec_attrs)) (PartialOrd_Selfastraits_iterator_Iterator_Item_Selfastraits_iterator_Iterator_Item_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Item_rt) (Item_rt) PartialEq_Selfastraits_iterator_Iterator_Item_Selfastraits_iterator_Iterator_Item_spec_attrs)) (Ord_Selfastraits_iterator_Iterator_Item_spec_attrs: (Ord_spec_attrs (RRGS:=RRGS) (Item_rt) PartialEq_Selfastraits_iterator_Iterator_Item_Selfastraits_iterator_Iterator_Item_spec_attrs Eq_Selfastraits_iterator_Iterator_Item_spec_attrs PartialOrd_Selfastraits_iterator_Iterator_Item_Selfastraits_iterator_Iterator_Item_spec_attrs)) :=
+          (traits_iterator_Iterator_max_base_spec (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) ((adapters_step_by_StepBy_st (MI_st))) (traits_iterator_Iterator_MI_Item_st)) (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs)) PartialEq_Selfastraits_iterator_Iterator_Item_Selfastraits_iterator_Iterator_Item_spec_attrs Eq_Selfastraits_iterator_Iterator_Item_spec_attrs PartialOrd_Selfastraits_iterator_Iterator_Item_Selfastraits_iterator_Iterator_Item_spec_attrs Ord_Selfastraits_iterator_Iterator_Item_spec_attrs
+             <TY> (adapters_step_by_StepBy_inv_t ((MI_rt))  -[] -[MI_ty]) <TY> traits_iterator_Iterator_MI_Item_ty : (spec_with 0 [] fn_spec);
+        traits_iterator_Iterator_max_by_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_REFSelfastraits_iterator_Iterator_ItemREFSelfastraits_iterator_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (Item_rt))) ((place_rfnRT (Item_rt))))) (((Ordering_rt))) )) (FnMut_F_REFSelfastraits_iterator_Iterator_ItemREFSelfastraits_iterator_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (Item_rt))) ((place_rfnRT (Item_rt))))) (((Ordering_rt))) )) :=
+          (traits_iterator_Iterator_max_by_base_spec (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) ((F_rt)) ((adapters_step_by_StepBy_st (MI_st))) (traits_iterator_Iterator_MI_Item_st) (F_st)) (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs)) FnOnce_F_REFSelfastraits_iterator_Iterator_ItemREFSelfastraits_iterator_Iterator_Item_spec_attrs FnMut_F_REFSelfastraits_iterator_Iterator_ItemREFSelfastraits_iterator_Iterator_Item_spec_attrs
+             <TY> (adapters_step_by_StepBy_inv_t ((MI_rt))  -[] -[MI_ty]) <TY> traits_iterator_Iterator_MI_Item_ty : (spec_with 0 [F_rt] fn_spec);
+        traits_iterator_Iterator_min_spec (PartialEq_Selfastraits_iterator_Iterator_Item_Selfastraits_iterator_Iterator_Item_spec_attrs: (PartialEq_spec_attrs (RRGS:=RRGS) (Item_rt) (Item_rt) )) (Eq_Selfastraits_iterator_Iterator_Item_spec_attrs: (Eq_spec_attrs (RRGS:=RRGS) (Item_rt) PartialEq_Selfastraits_iterator_Iterator_Item_Selfastraits_iterator_Iterator_Item_spec_attrs)) (PartialOrd_Selfastraits_iterator_Iterator_Item_Selfastraits_iterator_Iterator_Item_spec_attrs: (PartialOrd_spec_attrs (RRGS:=RRGS) (Item_rt) (Item_rt) PartialEq_Selfastraits_iterator_Iterator_Item_Selfastraits_iterator_Iterator_Item_spec_attrs)) (Ord_Selfastraits_iterator_Iterator_Item_spec_attrs: (Ord_spec_attrs (RRGS:=RRGS) (Item_rt) PartialEq_Selfastraits_iterator_Iterator_Item_Selfastraits_iterator_Iterator_Item_spec_attrs Eq_Selfastraits_iterator_Iterator_Item_spec_attrs PartialOrd_Selfastraits_iterator_Iterator_Item_Selfastraits_iterator_Iterator_Item_spec_attrs)) :=
+          (traits_iterator_Iterator_min_base_spec (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) ((adapters_step_by_StepBy_st (MI_st))) (traits_iterator_Iterator_MI_Item_st)) (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs)) PartialEq_Selfastraits_iterator_Iterator_Item_Selfastraits_iterator_Iterator_Item_spec_attrs Eq_Selfastraits_iterator_Iterator_Item_spec_attrs PartialOrd_Selfastraits_iterator_Iterator_Item_Selfastraits_iterator_Iterator_Item_spec_attrs Ord_Selfastraits_iterator_Iterator_Item_spec_attrs
+             <TY> (adapters_step_by_StepBy_inv_t ((MI_rt))  -[] -[MI_ty]) <TY> traits_iterator_Iterator_MI_Item_ty : (spec_with 0 [] fn_spec);
+        traits_iterator_Iterator_min_by_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_REFSelfastraits_iterator_Iterator_ItemREFSelfastraits_iterator_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (Item_rt))) ((place_rfnRT (Item_rt))))) (((Ordering_rt))) )) (FnMut_F_REFSelfastraits_iterator_Iterator_ItemREFSelfastraits_iterator_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((place_rfnRT (Item_rt))) ((place_rfnRT (Item_rt))))) (((Ordering_rt))) )) :=
+          (traits_iterator_Iterator_min_by_base_spec (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) ((F_rt)) ((adapters_step_by_StepBy_st (MI_st))) (traits_iterator_Iterator_MI_Item_st) (F_st)) (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs)) FnOnce_F_REFSelfastraits_iterator_Iterator_ItemREFSelfastraits_iterator_Iterator_Item_spec_attrs FnMut_F_REFSelfastraits_iterator_Iterator_ItemREFSelfastraits_iterator_Iterator_Item_spec_attrs
+             <TY> (adapters_step_by_StepBy_inv_t ((MI_rt))  -[] -[MI_ty]) <TY> traits_iterator_Iterator_MI_Item_ty : (spec_with 0 [F_rt] fn_spec);
+        traits_iterator_Iterator_next_spec  :=
+          (type_of_adapters_step_by_StepByMIastraits_iterator_Iterator_next ((MI_rt)) ((traits_iterator_Iterator_MI_Item_rt)) (MI_st) (traits_iterator_Iterator_MI_Item_st)) traits_iterator_Iterator_MI_spec_attrs 
+             <TY> MI_ty <TY> traits_iterator_Iterator_MI_Item_ty : (spec_with 1 [] fn_spec);
+        traits_iterator_Iterator_nth_spec  :=
+          (traits_iterator_Iterator_nth_base_spec (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) ((adapters_step_by_StepBy_st (MI_st))) (traits_iterator_Iterator_MI_Item_st)) (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs)) 
+             <TY> (adapters_step_by_StepBy_inv_t ((MI_rt))  -[] -[MI_ty]) <TY> traits_iterator_Iterator_MI_Item_ty : (spec_with 1 [] fn_spec);
+        traits_iterator_Iterator_position_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((Item_rt)))) bool )) (FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((Item_rt)))) bool )) :=
+          (traits_iterator_Iterator_position_base_spec (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) ((F_rt)) ((adapters_step_by_StepBy_st (MI_st))) (traits_iterator_Iterator_MI_Item_st) (F_st)) (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs)) FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs
+             <TY> (adapters_step_by_StepBy_inv_t ((MI_rt))  -[] -[MI_ty]) <TY> traits_iterator_Iterator_MI_Item_ty : (spec_with 1 [F_rt] fn_spec);
+        traits_iterator_Iterator_reduce_spec (F_rt: RT) (F_st: syn_type) (FnOnce_F_Selfastraits_iterator_Iterator_ItemSelfastraits_iterator_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((Item_rt)) ((Item_rt)))) (Item_rt) )) (FnMut_F_Selfastraits_iterator_Iterator_ItemSelfastraits_iterator_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((Item_rt)) ((Item_rt)))) (Item_rt) )) :=
+          (traits_iterator_Iterator_reduce_base_spec (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) ((F_rt)) ((adapters_step_by_StepBy_st (MI_st))) (traits_iterator_Iterator_MI_Item_st) (F_st)) (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs)) FnOnce_F_Selfastraits_iterator_Iterator_ItemSelfastraits_iterator_Iterator_Item_spec_attrs FnMut_F_Selfastraits_iterator_Iterator_ItemSelfastraits_iterator_Iterator_Item_spec_attrs
+             <TY> (adapters_step_by_StepBy_inv_t ((MI_rt))  -[] -[MI_ty]) <TY> traits_iterator_Iterator_MI_Item_ty : (spec_with 0 [F_rt] fn_spec);
+        traits_iterator_Iterator_skip_spec  :=
+          (traits_iterator_Iterator_skip_base_spec (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) ((adapters_step_by_StepBy_st (MI_st))) (traits_iterator_Iterator_MI_Item_st)) (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs)) 
+             <TY> (adapters_step_by_StepBy_inv_t ((MI_rt))  -[] -[MI_ty]) <TY> traits_iterator_Iterator_MI_Item_ty : (spec_with 0 [] fn_spec);
+        traits_iterator_Iterator_take_spec  :=
+          (traits_iterator_Iterator_take_base_spec (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) ((adapters_step_by_StepBy_st (MI_st))) (traits_iterator_Iterator_MI_Item_st)) (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs)) 
+             <TY> (adapters_step_by_StepBy_inv_t ((MI_rt))  -[] -[MI_ty]) <TY> traits_iterator_Iterator_MI_Item_ty : (spec_with 0 [] fn_spec);
+        traits_iterator_Iterator_try_fold_spec (B_rt: RT) (F_rt: RT) (R_rt: RT) (Try_R_Residual_rt: RT) (B_st: syn_type) (F_st: syn_type) (R_st: syn_type) (Try_R_Residual_st: syn_type) (FnOnce_F_BSelfastraits_iterator_Iterator_Item_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((B_rt)) ((Item_rt)))) (R_rt) )) (FromResidual_R_Rasstd_ops_Try_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (R_rt) (Try_R_Residual_rt) )) (FnMut_F_BSelfastraits_iterator_Iterator_Item_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple2_rt) ((B_rt)) ((Item_rt)))) (R_rt) )) (Try_R_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (R_rt) (B_rt) (Try_R_Residual_rt) FromResidual_R_Rasstd_ops_Try_Residual_spec_attrs)) :=
+          (traits_iterator_Iterator_try_fold_base_spec (((adapters_step_by_StepBy_inv_t_rt ((MI_rt))))) ((traits_iterator_Iterator_MI_Item_rt)) ((B_rt)) ((F_rt)) ((R_rt)) ((Try_R_Residual_rt)) ((adapters_step_by_StepBy_st (MI_st))) (traits_iterator_Iterator_MI_Item_st) (B_st) (F_st) (R_st) (Try_R_Residual_st)) (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs)) FnOnce_F_BSelfastraits_iterator_Iterator_Item_spec_attrs FromResidual_R_Rasstd_ops_Try_Residual_spec_attrs FnMut_F_BSelfastraits_iterator_Iterator_Item_spec_attrs Try_R_spec_attrs
+             <TY> (adapters_step_by_StepBy_inv_t ((MI_rt))  -[] -[MI_ty]) <TY> traits_iterator_Iterator_MI_Item_ty : (spec_with 1 [B_rt; F_rt; R_rt; Try_R_Residual_rt] fn_spec);
+      |}
+  .
+  Definition adapters_step_by_StepByMIastraits_iterator_Iterator_spec_subsumption  :=
+    ∀ `(MI_rt : !RT) `(traits_iterator_Iterator_MI_Item_rt : !RT) `(MI_st : !syn_type) `(traits_iterator_Iterator_MI_Item_st : !syn_type) `(traits_iterator_Iterator_MI_spec_attrs : !(traits_iterator_Iterator_spec_attrs (RRGS:=RRGS) (MI_rt) (traits_iterator_Iterator_MI_Item_rt) )), trait_incl_marker (lift_trait_incl traits_iterator_Iterator_spec_incl (spec! ( *[]) : 0 | ( *[MI_ty; traits_iterator_Iterator_MI_Item_ty]) : ([MI_rt; traits_iterator_Iterator_MI_Item_rt] : list RT), (adapters_step_by_StepByMIastraits_iterator_Iterator_spec (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (MI_st) (traits_iterator_Iterator_MI_Item_st) (traits_iterator_Iterator_MI_spec_attrs))-[] -[MI_ty; traits_iterator_Iterator_MI_Item_ty]) (spec! ( *[]) : 0 | ( *[MI_ty; traits_iterator_Iterator_MI_Item_ty]) : ([MI_rt; traits_iterator_Iterator_MI_Item_rt] : list RT), scope_add_typarams _ -[MI_ty; traits_iterator_Iterator_MI_Item_ty] ((traits_iterator_Iterator_base_spec ((adapters_step_by_StepBy_inv_t_rt ((MI_rt)))) (traits_iterator_Iterator_MI_Item_rt) (adapters_step_by_StepBy_st (MI_st)) traits_iterator_Iterator_MI_Item_st (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs (MI_rt) (traits_iterator_Iterator_MI_Item_rt) (traits_iterator_Iterator_MI_spec_attrs))-[] -[(adapters_step_by_StepBy_inv_t ((MI_rt))  -[] -[MI_ty]); traits_iterator_Iterator_MI_Item_ty])))).
+End adapters_step_by_StepByMIastraits_iterator_Iterator_spec.
 
 Section adapters_take_TakeMIastraits_iterator_Iterator_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
@@ -3459,6 +3648,19 @@ Section drop_glue_adapters_skip_Skip_spec.
   Definition drop_glue_adapters_skip_Skip_spec_subsumption  :=
     ∀ `(I_rt : !RT) `(I_st : !syn_type), trait_incl_marker (lift_trait_incl DropGlue_spec_incl (spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), (drop_glue_adapters_skip_Skip_spec (I_rt) (I_st))-[] -[I_ty]) (spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), scope_add_typarams _ -[I_ty] ((DropGlue_base_spec ((adapters_skip_Skip_inv_t_rt ((I_rt)))) (adapters_skip_Skip_st (I_st))-[] -[(adapters_skip_Skip_inv_t ((I_rt))  -[] -[I_ty])])))).
 End drop_glue_adapters_skip_Skip_spec.
+
+Section drop_glue_adapters_step_by_StepBy_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition drop_glue_adapters_step_by_StepBy_spec (I_rt: RT) (I_st: syn_type) : (spec_with _ _ (DropGlue_spec (((adapters_step_by_StepBy_inv_t_rt ((I_rt))))))) :=
+    spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), {|
+        DropGlue_drop_glue_spec  :=
+          (type_of_drop_glue_adapters_step_by_StepBy ((I_rt)) (I_st)) 
+             <TY> I_ty : (spec_with 0 [] fn_spec);
+      |}
+  .
+  Definition drop_glue_adapters_step_by_StepBy_spec_subsumption  :=
+    ∀ `(I_rt : !RT) `(I_st : !syn_type), trait_incl_marker (lift_trait_incl DropGlue_spec_incl (spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), (drop_glue_adapters_step_by_StepBy_spec (I_rt) (I_st))-[] -[I_ty]) (spec! ( *[]) : 0 | ( *[I_ty]) : ([I_rt] : list RT), scope_add_typarams _ -[I_ty] ((DropGlue_base_spec ((adapters_step_by_StepBy_inv_t_rt ((I_rt)))) (adapters_step_by_StepBy_st (I_st))-[] -[(adapters_step_by_StepBy_inv_t ((I_rt))  -[] -[I_ty])])))).
+End drop_glue_adapters_step_by_StepBy_spec.
 
 Section drop_glue_adapters_take_Take_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.

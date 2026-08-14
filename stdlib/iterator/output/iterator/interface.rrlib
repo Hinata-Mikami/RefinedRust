@@ -71,6 +71,26 @@
         "core",
         "iter",
         "adapters",
+        "StepBy"
+      ],
+      "raw_type": {
+        "rtype": "(adapters_step_by_StepBy_rt)",
+        "semtype": "adapters_step_by_StepBy_ty"
+      },
+      "rtype": "(adapters_step_by_StepBy_inv_t_rt)",
+      "semtype": "adapters_step_by_StepBy_inv_t",
+      "syntype": "adapters_step_by_StepBy_sls"
+    },
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "iter",
+        "adapters",
         "Take"
       ],
       "raw_type": {
@@ -528,6 +548,42 @@
         }
       },
       "name": "adapters_skip_SkipMIastraits_iterator_Iterator",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "iter",
+          "Iterator"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            }
+          ],
+          "path": [
+            "core",
+            "iter",
+            "adapters",
+            "StepBy"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "next": {
+          "name": "adapters_step_by_StepByMIastraits_iterator_Iterator_next",
+          "spec": "type_of_adapters_step_by_StepByMIastraits_iterator_Iterator_next",
+          "trait_req_incl": "trait_incl_of_adapters_step_by_StepByMIastraits_iterator_Iterator_next"
+        }
+      },
+      "name": "adapters_step_by_StepByMIastraits_iterator_Iterator",
       "trait_path": {
         "args": [],
         "path": [
@@ -1287,6 +1343,25 @@
         "iter",
         "adapters",
         "Skip"
+      ]
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_adapters_step_by_StepBy",
+          "spec": "type_of_drop_glue_adapters_step_by_StepBy",
+          "trait_req_incl": "trait_incl_of_drop_glue_adapters_step_by_StepBy"
+        }
+      },
+      "name": "drop_glue_adapters_step_by_StepBy",
+      "path": [
+        "core",
+        "iter",
+        "adapters",
+        "StepBy"
       ]
     },
     {

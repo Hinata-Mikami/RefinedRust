@@ -40,6 +40,18 @@ Section adapters_skip_Skip_sls.
   Definition adapters_skip_Skip_st (I_st: syn_type) : syn_type := adapters_skip_Skip_sls I_st.
 End adapters_skip_Skip_sls.
 
+Section adapters_step_by_StepBy_sls.
+  Context `{RRGS : !refinedrustGS Σ}.
+
+  Definition adapters_step_by_StepBy_sls (I_st: syn_type) : struct_layout_spec :=
+    let adapters_step_by_StepBy_st (I_st: syn_type) := UnitSynType in
+    mk_sls "adapters_step_by_StepBy" [
+    ("iter", I_st);
+    ("step_minus_one", (IntSynType USize));
+    ("first_take", BoolSynType)] StructReprRust.
+  Definition adapters_step_by_StepBy_st (I_st: syn_type) : syn_type := adapters_step_by_StepBy_sls I_st.
+End adapters_step_by_StepBy_sls.
+
 Section adapters_take_Take_sls.
   Context `{RRGS : !refinedrustGS Σ}.
 
@@ -274,6 +286,176 @@ Qed.
 
 
 
+Program Definition adapters_step_by_StepByMIastraits_iterator_Iterator_next_def (traits_iterator_Iterator_MI_next_loc: loc) (traits_iterator_Iterator_MI_nth_loc: loc) (MI_st: syn_type) (traits_iterator_Iterator_MI_Item_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("self", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type) } "__0";
+      annot{ 1 }: CopyLftNameAnnot "plft5" "ulft_1"; (* initialization *)
+      local_live{ BoolSynType } "__2";
+      "__2" <-{ BoolOp } copy{ BoolOp } ((!{ RefOp } ( "self" )) at{ (adapters_step_by_StepBy_sls (MI_st)) } "first_take");
+      if{ BoolOp }: move{ BoolOp } ("__2") then
+       Goto "_bb1"
+      else
+       Goto "_bb3"
+     ]>%E $
+     <[
+     "_bb1" :=
+      (!{ RefOp } ( "self" )) at{ (adapters_step_by_StepBy_sls (MI_st)) } "first_take" <-{ BoolOp } val_of_bool false;
+      local_live{ RefSynType } "__3";
+      annot{ 1 }: StartLftAnnot "llft3" ["plft5"]; (* borrow *)
+      "__3" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "MI"), "llft3" } ((!{ RefOp } ( "self" )) at{ (adapters_step_by_StepBy_sls (MI_st)) } "iter");
+      annot{ 1 }: CopyLftNameAnnot "plft6" "llft3"; (* post-assignment *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft6"; (* function_call *)
+      CallS traits_iterator_Iterator_MI_next_loc ["vlft8"] [] [@{expr} move{ RefOp } ("__3")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__0"))
+      ( annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
+       Goto "_bb2")
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
+       Unwind)
+     ]>%E $
+     <[
+     "_bb2" :=
+      local_dead "__3";
+      Goto "_bb5"
+     ]>%E $
+     <[
+     "_bb3" :=
+      local_live{ RefSynType } "__4";
+      annot{ 1 }: StartLftAnnot "llft4" ["plft5"]; (* borrow *)
+      "__4" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "MI"), "llft4" } ((!{ RefOp } ( "self" )) at{ (adapters_step_by_StepBy_sls (MI_st)) } "iter");
+      annot{ 1 }: CopyLftNameAnnot "plft7" "llft4"; (* post-assignment *)
+      local_live{ (IntSynType USize) } "__5";
+      "__5" <-{ (IntOp USize) } copy{ (IntOp USize) } ((!{ RefOp } ( "self" )) at{ (adapters_step_by_StepBy_sls (MI_st)) } "step_minus_one");
+      annot{ 1 }: CopyLftNameAnnot "vlft9" "plft7"; (* function_call *)
+      CallS traits_iterator_Iterator_MI_nth_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ (IntOp USize) } ("__5")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__0"))
+      ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
+       Goto "_bb4")
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
+       Unwind)
+     ]>%E $
+     <[
+     "_bb4" :=
+      local_dead "__5";
+      local_dead "__4";
+      Goto "_bb5"
+     ]>%E $
+     <[
+     "_bb5" :=
+      local_dead "__2";
+      return (move{ (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)) } ("__0"))
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition adapters_step_by_StepBy_I_new_def (DropGlue_I_drop_glue_loc: loc) (panic_shim_loc: loc) (I_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("iter", (use_layout_alg' I_st) : layout);
+     ("step", (it_layout USize) : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ (adapters_step_by_StepBy_st (I_st)) } "__0";
+      local_live{ ((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type) } "__10";
+      local_live{ BoolSynType } "__11";
+      "__11" <-{ BoolOp } val_of_bool false;
+      "__11" <-{ BoolOp } val_of_bool true;
+      local_live{ UnitSynType } "__3";
+      local_live{ BoolSynType } "__4";
+      local_live{ (IntSynType USize) } "__5";
+      "__5" <-{ (IntOp USize) } copy{ (IntOp USize) } ("step");
+      "__4" <-{ BoolOp } (move{ (IntOp USize) } ("__5")) != { (IntOp USize) , (IntOp USize) , U8 } (i2v (0) USize);
+      if{ BoolOp }: move{ BoolOp } ("__4") then
+       Goto "_bb1"
+      else
+       Goto "_bb2"
+     ]>%E $
+     <[
+     "_bb1" :=
+      local_dead "__5";
+      "__3" <-{ (StructOp unit_sl []) } zst_val;
+      local_dead "__4";
+      local_dead "__3";
+      local_live{ I_st } "__7";
+      "__11" <-{ BoolOp } val_of_bool false;
+      "__7" <-{ (use_op_alg' I_st) } move{ (use_op_alg' I_st) } ("iter");
+      local_live{ (IntSynType USize) } "__8";
+      local_live{ (IntSynType USize) } "__9";
+      "__9" <-{ (IntOp USize) } copy{ (IntOp USize) } ("step");
+      "__10" <-{ (use_op_alg' ((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type)) } StructInit (tuple2_sls ((IntSynType USize)) BoolSynType) [("0", (copy{ (IntOp USize) } ("__9")) -{ (IntOp USize) , (IntOp USize) } (i2v (1) USize) : expr); ("1", (copy{ (IntOp USize) } ("__9")) -c{ (IntOp USize) , (IntOp USize) } (i2v (1) USize) : expr)];
+      if{ BoolOp }: (move{ BoolOp } (("__10") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "1")) = { BoolOp , BoolOp , U8 } (val_of_bool false) then
+       Goto "_bb3"
+      else
+       CallS panic_shim_loc [] [] [@{expr} ] None
+       ( StuckS)
+       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+        Goto "_bb4")
+     ]>%E $
+     <[
+     "_bb2" :=
+      local_dead "__5";
+      local_live{ UnitSynType } "__6";
+      CallS panic_shim_loc [] [] [@{expr} ] None
+      ( StuckS)
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb7")
+     ]>%E $
+     <[
+     "_bb3" :=
+      "__8" <-{ (IntOp USize) } move{ (IntOp USize) } (("__10") at{ (tuple2_sls ((IntSynType USize)) (BoolSynType)) } "0");
+      local_dead "__9";
+      "__0" <-{ (use_op_alg' (adapters_step_by_StepBy_st (I_st))) } StructInit (adapters_step_by_StepBy_sls (I_st)) [("iter", move{ (use_op_alg' I_st) } ("__7") : expr); ("step_minus_one", move{ (IntOp USize) } ("__8") : expr); ("first_take", val_of_bool true : expr)];
+      local_dead "__8";
+      local_dead "__7";
+      return (move{ (use_op_alg' (adapters_step_by_StepBy_st (I_st))) } ("__0"))
+     ]>%E $
+     <[
+     "_bb4" :=
+      CallS DropGlue_I_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("__7")] None
+      ( Goto "_bb7")
+      ( UnwindTerminate)
+     ]>%E $
+     <[
+     "_bb5" :=
+      Unwind
+     ]>%E $
+     <[
+     "_bb6" :=
+      CallS DropGlue_I_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("iter")] None
+      ( Goto "_bb5")
+      ( UnwindTerminate)
+     ]>%E $
+     <[
+     "_bb7" :=
+      if{ BoolOp }: copy{ BoolOp } ("__11") then
+       Goto "_bb6"
+      else
+       Goto "_bb5"
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
 Program Definition adapters_take_TakeMIastraits_iterator_Iterator_next_def (panic_shim_loc: loc) (traits_iterator_Iterator_MI_next_loc: loc) (MI_st: syn_type) (traits_iterator_Iterator_MI_Item_st: syn_type) : function :=
   {|
      f_args := [
@@ -429,6 +611,33 @@ Program Definition drop_glue_adapters_skip_Skip_def (DropGlue_I_drop_glue_loc: l
      "_bb0" :=
       local_live{ UnitSynType } "ret";
       CallS DropGlue_I_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (adapters_skip_Skip_sls (I_st)) } "iter")] None
+      ( Goto "_bb1")
+      ( Unwind)
+     ]>%E $
+     <[
+     "_bb1" :=
+      return (zst_val)
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition drop_glue_adapters_step_by_StepBy_def (DropGlue_I_drop_glue_loc: loc) (I_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("ptr", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ UnitSynType } "ret";
+      CallS DropGlue_I_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (adapters_step_by_StepBy_sls (I_st)) } "iter")] None
       ( Goto "_bb1")
       ( Unwind)
      ]>%E $

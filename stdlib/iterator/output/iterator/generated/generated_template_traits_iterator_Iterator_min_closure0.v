@@ -4,7 +4,7 @@ From rrstd.clone.clone.generated Require Export generated_specs_clone.
 From rrstd.closures.closures.generated Require Export generated_specs_closures.
 From rrstd.cmp.cmp.generated Require Export generated_specs_cmp.
 From rrstd.controlflow.controlflow.generated Require Export generated_specs_controlflow.
-From rrstd.iterator.theories Require Export iterator map step.
+From rrstd.iterator.theories Require Export iterator map step step_by.
 From rrstd.option.option.generated Require Export generated_specs_option.
 From rrstd.range.range.generated Require Export generated_specs_range.
 From rrstd.result.result.generated Require Export generated_specs_result.
