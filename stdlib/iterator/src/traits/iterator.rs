@@ -1,8 +1,8 @@
 
 #![rr::import("rrstd.iterator.theories", "iterator")]
-
 use crate::adapters::map::Map;
 use crate::adapters::skip::Skip;
+use crate::adapters::step_by::StepBy;
 use crate::adapters::take::Take;
 use std::ops::{ControlFlow, Try};
 use std::cmp::{self, Ordering};
@@ -480,6 +480,18 @@ pub trait Iterator {
         where Self: Sized,
     {
         Skip::new(self, n)
+    }
+
+    #[rr::params("p")]
+    #[rr::requires(#iris "{Inv} π p self")]
+    #[rr::may_unwind_if("step = 0%Z")]
+    #[rr::ensures("ret = mk_step_by_x self (Z.to_nat (step - 1)) true")]
+    #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs _ _ traits_iterator_Iterator_Self_spec_attrs) π p ret")]
+    fn step_by(self, step: usize) -> StepBy<Self>
+    where
+        Self: Sized,
+    {
+        StepBy::new(self, step)
     }
 
     #[rr::params("p")]

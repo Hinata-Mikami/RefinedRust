@@ -18,15 +18,17 @@ Proof.
     iEval (rewrite /traits_iterator_Iterator_Inv/=) in "Hinv".
     rep <- 1 liRStep; liShow.
     { liRStep; liShow.
-      rewrite H11.
+      rename select (step_by_first _ = true) into Hfirst.
+      rewrite Hfirst.
       iEval (rewrite /traits_iterator_Iterator_Inv/=).
       rep liRStep; liShow. } }
   { (* subsequent elements: skip step_minus_one elements *)
     iRename select (traits_iterator_Iterator_Inv _ _ _ _) into "Hinv".
     iEval (rewrite /traits_iterator_Iterator_Inv/=) in "Hinv".
     rep <- 20 liRStep; liShow.
-    { liInst Hevar_it x'0. liInst Hevar_n (step_by_n x0). liInst Hevar_first false.
-      rewrite H11.
+    { rename select (step_by_first _ = false) into Hsubsequent.
+      liInst Hevar_it x'0. liInst Hevar_n (step_by_n x0). liInst Hevar_first false.
+      rewrite Hsubsequent.
       rep liRStep; liShow.
       { liInst Hevar_seq x'1. liInst Hevar_s2_inner x'.
         rep liRStep; liShow.

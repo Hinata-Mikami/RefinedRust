@@ -402,8 +402,7 @@ Program Definition adapters_step_by_StepBy_I_new_def (DropGlue_I_drop_glue_loc: 
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Goto "_bb4")
+       ( Goto "_bb4")
      ]>%E $
      <[
      "_bb2" :=
@@ -411,8 +410,7 @@ Program Definition adapters_step_by_StepBy_I_new_def (DropGlue_I_drop_glue_loc: 
       local_live{ UnitSynType } "__6";
       CallS panic_shim_loc [] [] [@{expr} ] None
       ( StuckS)
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb7")
+      ( Goto "_bb7")
      ]>%E $
      <[
      "_bb3" :=
@@ -2006,6 +2004,44 @@ Program Definition traits_iterator_Iterator_skip_def (adapters_skip_Skip_I_new_S
       local_dead "__4";
       local_dead "__3";
       return (move{ (use_op_alg' (adapters_skip_Skip_st (Self_st))) } ("__0"))
+     ]>%E $
+     <[
+     "_bb2" :=
+      Unwind
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition traits_iterator_Iterator_step_by_def (adapters_step_by_StepBy_I_new_Self_loc: loc) (Self_st: syn_type) (Item_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("self", (use_layout_alg' Self_st) : layout);
+     ("step", (it_layout USize) : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ (adapters_step_by_StepBy_st (Self_st)) } "__0";
+      local_live{ Self_st } "__3";
+      "__3" <-{ (use_op_alg' Self_st) } move{ (use_op_alg' Self_st) } ("self");
+      local_live{ (IntSynType USize) } "__4";
+      "__4" <-{ (IntOp USize) } copy{ (IntOp USize) } ("step");
+      CallS adapters_step_by_StepBy_I_new_Self_loc [] [RSTTyVar "Self"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ (IntOp USize) } ("__4")] (Some (Na1Ord, (use_op_alg' (adapters_step_by_StepBy_st (Self_st))), "__0"))
+      ( Goto "_bb1")
+      ( Goto "_bb2")
+     ]>%E $
+     <[
+     "_bb1" :=
+      local_dead "__4";
+      local_dead "__3";
+      return (move{ (use_op_alg' (adapters_step_by_StepBy_st (Self_st))) } ("__0"))
      ]>%E $
      <[
      "_bb2" :=

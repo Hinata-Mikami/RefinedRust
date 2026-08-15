@@ -15,7 +15,7 @@ pub struct StepBy<I> {
 
 #[rr::export_as(core::iter::adapters::StepBy)]
 impl<I> StepBy<I> {
-    #[rr::requires("(0 < step)%Z")]
+    #[rr::may_unwind_if("step = 0%Z")]
     #[rr::returns("mk_step_by_x iter (Z.to_nat (step - 1)) true")]
     pub(crate) fn new(iter: I, step: usize) -> StepBy<I> {
         assert!(step != 0);

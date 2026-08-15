@@ -1483,6 +1483,9 @@ Section IntoIterTAasstd_iter_Iterator_spec.
         traits_iterator_Iterator_skip_spec  :=
           (traits_iterator_Iterator_skip_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((IntoIter_st (T_st) (A_st))) (T_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) 
              <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 0 [] fn_spec);
+        traits_iterator_Iterator_step_by_spec  :=
+          (traits_iterator_Iterator_step_by_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((IntoIter_st (T_st) (A_st))) (T_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) 
+             <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 0 [] fn_spec);
         traits_iterator_Iterator_take_spec  :=
           (traits_iterator_Iterator_take_base_spec (((IntoIter_inv_t_rt ((T_rt)) ((A_rt))))) ((T_rt)) ((IntoIter_st (T_st) (A_st))) (T_st)) (IntoIterTAasstd_iter_Iterator_spec_attrs (T_rt) (A_rt) (Allocator_A_spec_attrs)) 
              <TY> (IntoIter_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]) <TY> T_ty : (spec_with 0 [] fn_spec);
@@ -1538,6 +1541,9 @@ Section IteraTasstd_iter_Iterator_spec.
         traits_iterator_Iterator_skip_spec  :=
           (traits_iterator_Iterator_skip_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (RefSynType)) (IteraTasstd_iter_Iterator_spec_attrs (T_rt)) 
              <TY> (Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
+        traits_iterator_Iterator_step_by_spec  :=
+          (traits_iterator_Iterator_step_by_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (RefSynType)) (IteraTasstd_iter_Iterator_spec_attrs (T_rt)) 
+             <TY> (Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
         traits_iterator_Iterator_take_spec  :=
           (traits_iterator_Iterator_take_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (RefSynType)) (IteraTasstd_iter_Iterator_spec_attrs (T_rt)) 
              <TY> (Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (shr_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
@@ -1592,6 +1598,9 @@ Section IterMutaTasstd_iter_Iterator_spec.
              <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [F_rt] fn_spec);
         traits_iterator_Iterator_skip_spec  :=
           (traits_iterator_Iterator_skip_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((IterMut_st (T_st))) (RefSynType)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) 
+             <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
+        traits_iterator_Iterator_step_by_spec  :=
+          (traits_iterator_Iterator_step_by_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((IterMut_st (T_st))) (RefSynType)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) 
              <TY> (IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]) <TY> (mut_ref ulft_a T_ty) : (spec_with 0 [] fn_spec);
         traits_iterator_Iterator_take_spec  :=
           (traits_iterator_Iterator_take_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((IterMut_st (T_st))) (RefSynType)) (IterMutaTasstd_iter_Iterator_spec_attrs (T_rt)) 

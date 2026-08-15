@@ -247,6 +247,18 @@
     },
     {
       "kind": "function",
+      "name": "traits_iterator_Iterator_step_by",
+      "path": [
+        "core",
+        "iter",
+        "Iterator",
+        "step_by"
+      ],
+      "spec": "traits_iterator_Iterator_step_by_base_spec",
+      "trait_req_incl": "trait_incl_of_traits_iterator_Iterator_step_by"
+    },
+    {
+      "kind": "function",
       "name": "traits_iterator_Iterator_take",
       "path": [
         "core",
@@ -408,6 +420,7 @@
         "position": "trait_incl_of_traits_iterator_Iterator_position",
         "reduce": "trait_incl_of_traits_iterator_Iterator_reduce",
         "skip": "trait_incl_of_traits_iterator_Iterator_skip",
+        "step_by": "trait_incl_of_traits_iterator_Iterator_step_by",
         "take": "trait_incl_of_traits_iterator_Iterator_take",
         "try_fold": "trait_incl_of_traits_iterator_Iterator_try_fold"
       },

@@ -111,6 +111,12 @@ fn test_iterator_3() -> Vec<i32> {
     res
 }
 
+#[rr::returns("Some 0")]
+fn test_step_by() -> Option<i32> {
+    let mut iter = (0..10).step_by(2);
+    iter.next()
+}
+
 // !start spec(all_zero)
 #[rr::observe("v.ghost" : "<#> replicate (length v.cur) 0")]
 // !end spec
