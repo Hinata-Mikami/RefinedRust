@@ -185,6 +185,33 @@ pub(crate) enum ProcedureKey {
     DropGlue(DropGlueKey),
 }
 
+#[derive(Clone, Debug)]
+pub(crate) enum InlineProcedureDependency<'tcx> {
+    Function {
+        did: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+        loc_name: String,
+    },
+    PanicShim {
+        loc_name: String,
+    },
+}
+
+impl InlineProcedureDependency<'_> {
+    pub(crate) fn loc_name(&self) -> &str {
+        match self {
+            Self::Function { loc_name, .. } | Self::PanicShim { loc_name } => loc_name,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub(crate) struct InlineFunctionDependencies<'tcx> {
+    pub(crate) procedures: Vec<InlineProcedureDependency<'tcx>>,
+    pub(crate) statics: Vec<OrderedDefId>,
+    pub(crate) layout_types: Vec<ty::Ty<'tcx>>,
+}
+
 impl Ord for ProcedureKey {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
@@ -230,6 +257,8 @@ pub(crate) struct Scope<'tcx, 'def> {
     procedure_meta: BTreeMap<ProcedureKey, Meta>,
     /// track the actually translated procedures
     translated_procedures: BTreeMap<ProcedureKey, code::Function<'def>>,
+    /// Dependencies that need to be forwarded when an inline function is called.
+    inline_function_dependencies: BTreeMap<OrderedDefId, InlineFunctionDependencies<'tcx>>,
     /// track procedures with just a specification (`rr::only_spec`)
     specced_procedures:
         BTreeMap<ProcedureKey, &'def specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
@@ -244,6 +273,7 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
             tcx,
             procedure_meta: BTreeMap::new(),
             translated_procedures: BTreeMap::new(),
+            inline_function_dependencies: BTreeMap::new(),
             specced_procedures: BTreeMap::new(),
             closure_info: BTreeMap::new(),
         }
@@ -278,6 +308,13 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
         did: DefId,
     ) -> Option<&'def specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>> {
         self.lookup_procedure_spec(&ProcedureKey::Function(self.get_ordered_did(did)))
+    }
+
+    pub(crate) fn lookup_inline_function_dependencies(
+        &self,
+        did: DefId,
+    ) -> Option<&InlineFunctionDependencies<'tcx>> {
+        self.inline_function_dependencies.get(&self.get_ordered_did(did))
     }
 
     /// Lookup a translated procedure spec.
@@ -346,6 +383,18 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     /// Provide the code for a translated function.
     pub(crate) fn provide_translated_function(&mut self, did: DefId, trf: code::Function<'def>) {
         self.provide_translated_procedure(ProcedureKey::Function(self.get_ordered_did(did)), trf);
+    }
+
+    pub(crate) fn provide_inline_function_dependencies(
+        &mut self,
+        did: DefId,
+        dependencies: InlineFunctionDependencies<'tcx>,
+    ) {
+        assert!(
+            self.inline_function_dependencies
+                .insert(self.get_ordered_did(did), dependencies)
+                .is_none()
+        );
     }
 
     /// Provide the code for translated drop glue.

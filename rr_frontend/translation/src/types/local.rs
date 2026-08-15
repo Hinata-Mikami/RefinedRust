@@ -75,6 +75,9 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         ty: ty::Ty<'tcx>,
     ) -> Result<lang::SynType, TranslationError> {
         let mut scope = self.scope.borrow_mut();
+        if !scope.layout_types.contains(&ty) {
+            scope.layout_types.push(ty);
+        }
         let mut state = self.syntype_state(&mut scope);
         self.translator.translate_type_to_syn_type(ty, &mut state)
     }
@@ -104,6 +107,9 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     /// Translate type.
     pub(crate) fn translate_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError> {
         let mut scope = self.scope.borrow_mut();
+        if !scope.layout_types.contains(&ty) {
+            scope.layout_types.push(ty);
+        }
         self.translator.translate_type(ty, &mut scope)
     }
 

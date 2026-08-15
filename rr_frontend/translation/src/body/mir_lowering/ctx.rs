@@ -16,7 +16,7 @@ use crate::base::*;
 use crate::error::Message;
 use crate::{procedures, rustcmp, types};
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) enum TranslationKey<'tcx> {
     Function(OrderedDefId, types::GenericsKey<'tcx>),
     DropGlue(procedures::DropGlueKey, types::GenericsKey<'tcx>),

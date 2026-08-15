@@ -70,6 +70,8 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     /// all the other procedures used by this function, and:
     /// `(code_loc_parameter_name, spec_name, type_inst, syntype_of_all_args)`
     collected_procedures: HashMap<TranslationKey<'tcx>, code::UsedProcedure<'def>>,
+    /// Rust-level descriptions of direct calls, retained so inline callers can replay them.
+    direct_call_dependencies: HashMap<TranslationKey<'tcx>, (DefId, ty::GenericArgsRef<'tcx>)>,
     /// Whether this function calls the built-in, argument-erasing panic shim.
     panic_shim_used: bool,
     /// used statics
@@ -229,6 +231,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             return_ty,
             annotations,
             collected_procedures: HashMap::new(),
+            direct_call_dependencies: HashMap::new(),
             panic_shim_used: false,
             procedure_registry,
             bb_queue: Vec::new(),
@@ -251,7 +254,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(crate) fn translate(
         mut self,
         spec_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
-    ) -> Result<code::Function<'def>, TranslationError> {
+    ) -> Result<(code::Function<'def>, procedures::InlineFunctionDependencies<'tcx>), TranslationError> {
         // add loop info
         let loop_info = self.proc.loop_info();
         loop_info.dump_body_head();
@@ -327,23 +330,62 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             self.translated_fn.register_loop_invariant(head.as_usize(), spec);
         }
 
-        // generate dependencies on other procedures.
+        let is_inline = self
+            .procedure_registry
+            .lookup_function_mode(self.proc.get_id())
+            .is_some_and(procedures::Mode::is_inline);
+
+        // Generate dependencies on other procedures. Inline functions retain the source calls in
+        // finalized code-parameter order so their callers can replay the instantiations.
         let mut used_procs: Vec<_> = self.collected_procedures.iter().collect();
-        used_procs.sort_by(|a, b| a.0.cmp(self.tcx, b.0));
-        for (_, used_proc) in used_procs {
+        used_procs.sort_by(|a, b| a.1.loc_name.cmp(&b.1.loc_name));
+        let mut inline_dependencies = procedures::InlineFunctionDependencies::default();
+        for (key, used_proc) in used_procs {
+            if is_inline {
+                let Some((did, args)) = self.direct_call_dependencies.get(key) else {
+                    return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                        Message::UnsupportedFeature(
+                            "rr::inline functions with trait-method or drop-glue dependencies are not supported yet"
+                                .to_owned(),
+                        ),
+                    )));
+                };
+                inline_dependencies.procedures.push(procedures::InlineProcedureDependency::Function {
+                    did: *did,
+                    args,
+                    loc_name: used_proc.loc_name.clone(),
+                });
+            }
             self.translated_fn.require_function(used_proc.clone());
         }
         if self.panic_shim_used {
-            self.translated_fn.require_function(panic::used_procedure());
+            let panic = panic::used_procedure();
+            if is_inline {
+                inline_dependencies.procedures.push(procedures::InlineProcedureDependency::PanicShim {
+                    loc_name: panic.loc_name.clone(),
+                });
+            }
+            self.translated_fn.require_function(panic);
         }
+        inline_dependencies.procedures.sort_by(|a, b| a.loc_name().cmp(b.loc_name()));
 
         // generate dependencies on statics
+        let mut inline_statics = Vec::new();
         for did in &self.collected_statics {
             let s = self.const_registry.get_static(self.tcx, did)?;
             self.translated_fn.require_static(s.to_owned());
+            inline_statics.push((s.ident.clone(), did.clone()));
+        }
+        inline_statics.sort_by(|a, b| a.0.cmp(&b.0));
+        inline_dependencies.statics = inline_statics.into_iter().map(|(_, did)| did).collect();
+
+        if is_inline {
+            inline_dependencies
+                .layout_types
+                .clone_from(&self.ty_translator.scope.borrow().layout_types);
         }
 
-        Ok(self.translated_fn.into_function(spec_arena))
+        Ok((self.translated_fn.into_function(spec_arena), inline_dependencies))
     }
 
     fn call_panic_shim(&mut self, unwind: code::Stmt) -> code::Stmt {

@@ -563,7 +563,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(crate) fn translate(
         self,
         spec_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
-    ) -> Result<code::Function<'def>, TranslationError> {
+    ) -> Result<(code::Function<'def>, procedures::InlineFunctionDependencies<'tcx>), TranslationError> {
         let translator = function_translation::TX::new(
             self.tcx,
             self.procedure_registry,

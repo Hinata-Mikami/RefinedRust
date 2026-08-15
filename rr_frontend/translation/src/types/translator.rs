@@ -52,6 +52,10 @@ pub(crate) struct FunctionState<'tcx, 'def> {
     /// Shim uses for the current function
     pub shim_uses: BTreeMap<scope::AdtUseKey, specs::types::LiteralUse<'def>>,
 
+    /// Rust types translated in this function. Inline callers replay these to register any layout
+    /// assumptions required only by the inlined body.
+    pub layout_types: Vec<ty::Ty<'tcx>>,
+
     /// optional resolver for Polonius region variables in the current function
     #[debug(ignore)]
     region_resolver: Option<RegionVarResolver>,
@@ -94,6 +98,7 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
             tuple_uses: BTreeMap::new(),
             generic_scope: generics,
             shim_uses: BTreeMap::new(),
+            layout_types: Vec::new(),
             region_resolver,
             lifetime_scope: lifetimes,
         };

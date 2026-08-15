@@ -31,6 +31,10 @@ use crate::{environment, regions};
 /// TODO: handle early-bound lifetimes?
 pub(crate) type GenericsKey<'tcx> = Vec<ty::Ty<'tcx>>;
 
+pub(crate) fn erase_regions<'tcx>(tcx: ty::TyCtxt<'tcx>, ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
+    ty.fold_with(&mut TyRegionEraseFolder::new(tcx))
+}
+
 /// Generate a key for indexing into structures indexed by `GenericArg`s.
 pub(crate) fn generate_args_inst_key<'tcx>(
     tcx: ty::TyCtxt<'tcx>,

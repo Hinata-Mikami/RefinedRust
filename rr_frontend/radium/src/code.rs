@@ -1009,16 +1009,6 @@ impl Function<'_> {
         &self.code.name
     }
 
-    #[must_use]
-    pub const fn has_function_dependencies(&self) -> bool {
-        !self.other_functions.is_empty()
-    }
-
-    #[must_use]
-    pub const fn has_static_dependencies(&self) -> bool {
-        !self.used_statics.is_empty()
-    }
-
     pub fn generate_lemma_statement<F>(&self, f: &mut F, is_default_trait_impl: bool) -> Result<(), io::Error>
     where
         F: io::Write,
@@ -1094,6 +1084,8 @@ impl Function<'_> {
                     UsedProcedureSpec::InlineCode {
                         code_name,
                         lifetime_names,
+                        dependency_locations,
+                        static_locations,
                     } => {
                         let lifetime_names: Vec<_> =
                             lifetime_names.iter().map(|name| format!("\"{name}\"")).collect();
@@ -1104,6 +1096,12 @@ impl Function<'_> {
                             lifetime_names.join("; "),
                             code_name
                         )?;
+                        for loc in dependency_locations {
+                            write!(f, " {loc}")?;
+                        }
+                        for loc in static_locations {
+                            write!(f, " {loc}")?;
+                        }
                         for ty in proc_use.scope_inst.get_all_ty_params_with_assocs() {
                             write!(f, " {}", lang::SynType::from(ty))?;
                         }
@@ -1415,6 +1413,8 @@ pub enum UsedProcedureSpec<'def> {
     InlineCode {
         code_name: String,
         lifetime_names: Vec<String>,
+        dependency_locations: Vec<String>,
+        static_locations: Vec<String>,
     },
     /// A method of a trait impl we quantify over, the string is the method name.
     TraitMethod(traits::QuantifiedImpl<'def>, String),

@@ -2154,19 +2154,13 @@ fn translate_function<'tcx>(
     } else {
         // Fully translate the function
         match translator.and_then(|(tx, info)| tx.translate(vcx.fn_arena).map(|x| (x, info))) {
-            Ok((fun, info)) => {
-                if mode.is_inline() && (fun.has_function_dependencies() || fun.has_static_dependencies()) {
-                    let err = vcx.tcx.dcx().span_err(
-                        vcx.tcx.def_span(f.to_def_id()),
-                        error::Message::UnsupportedFeature(
-                            "rr::inline functions that call other functions or use statics are not supported yet"
-                                .to_owned(),
-                        ),
-                    );
-                    return recover_or_fail(err);
-                }
+            Ok(((fun, inline_dependencies), info)) => {
                 info!("Successfully translated {}", fname);
                 vcx.procedure_registry.provide_translated_function(f.to_def_id(), fun);
+                if mode.is_inline() {
+                    vcx.procedure_registry
+                        .provide_inline_function_dependencies(f.to_def_id(), inline_dependencies);
+                }
 
                 if let Some(info) = info {
                     let ordered_did = OrderedDefId::new(vcx.tcx, f.to_def_id());

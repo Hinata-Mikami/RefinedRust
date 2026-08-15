@@ -94,6 +94,135 @@ pub(crate) fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
 }
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
+    fn caller_has_type_param(&self, index: u32) -> bool {
+        let mut did = Some(self.proc.get_id());
+        while let Some(current_did) = did {
+            let generics = self.tcx.generics_of(current_did);
+            if generics.own_params.iter().any(|param| {
+                param.index == index && matches!(param.kind, ty::GenericParamDefKind::Type { .. })
+            }) {
+                return true;
+            }
+            did = generics.parent;
+        }
+        false
+    }
+
+    fn validate_inline_type_instantiation(
+        &self,
+        ty_params: ty::GenericArgsRef<'tcx>,
+    ) -> Result<(), TranslationError> {
+        for arg in ty_params {
+            let ty::GenericArgKind::Type(arg_ty) = arg.kind() else {
+                continue;
+            };
+            let ty::TyKind::Param(param) = arg_ty.kind() else {
+                return Err(TranslationError::ErrorReported(
+                    self.tcx.dcx().span_err(
+                        self.tcx.def_span(self.proc.get_id()),
+                        Message::UnsupportedFeature(
+                            "rr::inline function type arguments must be direct type parameters of the caller"
+                                .to_owned(),
+                        ),
+                    ),
+                ));
+            };
+            if !self.caller_has_type_param(param.index) {
+                return Err(TranslationError::ErrorReported(self.tcx.dcx().span_err(
+                    self.tcx.def_span(self.proc.get_id()),
+                    Message::UnsupportedFeature(
+                        "rr::inline function type arguments must come from the caller's generic parameters"
+                            .to_owned(),
+                    ),
+                )));
+            }
+        }
+        Ok(())
+    }
+
+    fn register_inline_callee_dependencies(
+        &mut self,
+        callee_did: DefId,
+        ty_params: ty::GenericArgsRef<'tcx>,
+    ) -> Result<(Vec<String>, Vec<String>), TranslationError> {
+        let dependencies = self
+            .procedure_registry()
+            .lookup_inline_function_dependencies(callee_did)
+            .cloned()
+            .ok_or_else(|| {
+                TranslationError::ErrorReported(
+                    self.tcx.dcx().err(Message::UnknownProcedure(format!("{callee_did:?}"))),
+                )
+            })?;
+
+        if dependencies
+            .procedures
+            .iter()
+            .any(|dependency| matches!(dependency, procedures::InlineProcedureDependency::Function { .. }))
+        {
+            self.validate_inline_type_instantiation(ty_params)?;
+        }
+
+        let mut procedure_locations = Vec::with_capacity(dependencies.procedures.len());
+        for dependency in dependencies.procedures {
+            match dependency {
+                procedures::InlineProcedureDependency::Function {
+                    did,
+                    args,
+                    loc_name,
+                } => {
+                    let meta = self.procedure_registry().lookup_function(did).ok_or_else(|| {
+                        TranslationError::ErrorReported(
+                            self.tcx.dcx().err(Message::UnknownProcedure(format!("{did:?}"))),
+                        )
+                    })?;
+                    if meta.get_mode().is_inline() {
+                        return Err(TranslationError::ErrorReported(self.tcx.dcx().span_err(
+                            self.tcx.def_span(self.proc.get_id()),
+                            Message::UnsupportedFeature(
+                                "rr::inline functions cannot depend on other rr::inline functions".to_owned(),
+                            ),
+                        )));
+                    }
+
+                    let instantiated_args = self.tcx.mk_args_from_iter(args.iter().map(|arg| {
+                        ty::EarlyBinder::bind(self.tcx, arg).instantiate(self.tcx, ty_params).skip_norm_wip()
+                    }));
+                    let trait_specs =
+                        self.resolve_trait_requirements_of_call(did, instantiated_args, true)?;
+                    let (expr, _) = self.register_use_procedure(did, instantiated_args, trait_specs)?;
+                    let code::Expr::MetaParam(caller_loc_name) = expr else {
+                        unreachable!("register_use_procedure always returns a location parameter")
+                    };
+                    info!("Forwarded inline dependency {loc_name} as caller dependency {caller_loc_name}");
+                    procedure_locations.push(caller_loc_name);
+                },
+                procedures::InlineProcedureDependency::PanicShim { loc_name } => {
+                    self.panic_shim_used = true;
+                    procedure_locations.push(loc_name);
+                },
+            }
+        }
+
+        let mut static_locations = Vec::with_capacity(dependencies.statics.len());
+        for did in dependencies.statics {
+            let static_meta = self.const_registry.get_static(self.tcx, &did)?;
+            static_locations.push(static_meta.loc_name.clone());
+            self.collected_statics.insert(did);
+        }
+
+        for layout_ty in dependencies.layout_types {
+            let layout_ty = types::scope::erase_regions(self.tcx, layout_ty);
+            let instantiated_ty = ty::EarlyBinder::bind(self.tcx, layout_ty)
+                .instantiate(self.tcx, ty_params)
+                .skip_norm_wip();
+            let instantiated_ty = types::scope::erase_regions(self.tcx, instantiated_ty);
+            self.ty_translator.translate_type_to_syn_type(instantiated_ty)?;
+        }
+
+        Ok((procedure_locations, static_locations))
+    }
+
     /// Internally register that we have used a procedure with a particular instantiation of generics, and
     /// return the code parameter name.
     /// Arguments:
@@ -155,6 +284,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             })?;
             // explicit instantiation is needed sometimes
             let spec_term = if meta.get_mode().is_inline() {
+                if self
+                    .procedure_registry()
+                    .lookup_function_mode(self.proc.get_id())
+                    .is_some_and(procedures::Mode::is_inline)
+                {
+                    return Err(TranslationError::ErrorReported(self.tcx.dcx().span_err(
+                        self.tcx.def_span(self.proc.get_id()),
+                        Message::UnsupportedFeature(
+                            "rr::inline functions cannot depend on other rr::inline functions".to_owned(),
+                        ),
+                    )));
+                }
+                let (dependency_locations, static_locations) =
+                    self.register_inline_callee_dependencies(callee_did, ty_params)?;
                 let callee_spec =
                     self.procedure_registry().lookup_function_spec(callee_did).ok_or_else(|| {
                         TranslationError::ErrorReported(
@@ -170,6 +313,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 code::UsedProcedureSpec::InlineCode {
                     code_name: meta.get_code_name().to_owned(),
                     lifetime_names,
+                    dependency_locations,
+                    static_locations,
                 }
             } else {
                 code::UsedProcedureSpec::Literal(meta.get_spec_name().to_owned())
@@ -203,6 +348,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 code::UsedProcedure::new(loc_name, spec_term, quantified_args.scope, fn_inst, syntypes);
 
             res = proc_use.loc_name.clone();
+            if self
+                .procedure_registry()
+                .lookup_function_mode(self.proc.get_id())
+                .is_some_and(procedures::Mode::is_inline)
+            {
+                self.direct_call_dependencies.insert(tup.clone(), (callee_did, ty_params));
+            }
             self.collected_procedures_mut().insert(tup, proc_use);
         }
         trace!("leave register_use_procedure");
