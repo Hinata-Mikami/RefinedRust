@@ -12,7 +12,6 @@ Lemma Vec_T_push_proof (π : thread_id) :
   Vec_T_push_lemma π.
 Proof.
   generalize RR_CONFIG_DONT_FOLD_PLACES; intros ?.
-  generalize RR_CONFIG_DONT_INTERPRET_SHR_REF_TYPING_HINTS; intros ?.
   Vec_T_push_prelude.
 
   rep <-! liRStep; liShow.

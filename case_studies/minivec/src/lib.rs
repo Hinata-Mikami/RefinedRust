@@ -281,17 +281,11 @@ impl<T> RawVec<T> {
 
 impl<T> Vec<T> {
 
-    // private function, take an unfolded type
-    // we do not move ownership out, but return an alias to the ptr
-    #[rr::params("l" : "loc", "cap" : "nat", "len" : "Z")]
-    #[rr::args(#raw "( *[(l, cap); len])")]
-    #[rr::returns("l")]
-    //#[rr::inline]
-    fn ptr<'a>(&'a self) -> *mut T {
+    #[rr::inline]
+    fn ptr(&self) -> *mut T {
         self.buf.ptr() as *mut T
     }
 
-    // private function, take an unfolded type
     #[rr::inline]
     fn cap(&self) -> usize {
         self.buf.cap

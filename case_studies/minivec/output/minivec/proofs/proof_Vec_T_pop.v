@@ -12,7 +12,6 @@ Lemma Vec_T_pop_proof (π : thread_id) :
   Vec_T_pop_lemma π.
 Proof.
   generalize RR_CONFIG_DONT_FOLD_PLACES; intros ?.
-  generalize RR_CONFIG_DONT_INTERPRET_SHR_REF_TYPING_HINTS; intros ?.
   Vec_T_pop_prelude.
 
   rep <-! liRStep; liShow.
