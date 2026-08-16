@@ -9,7 +9,7 @@ From refinedrust Require Import options.
 Section updateable.
   Context `{!typeGS Σ}.
 
-  Definition updateable (E : elctx) (L : llctx) (T : llctx → iProp Σ) : iProp Σ :=
+  Definition updateable (E : elctx) (L : llctx) (f : frame_path) (T : llctx → iProp Σ) : iProp Σ :=
     rrust_ctx -∗
     elctx_interp E -∗
     llctx_interp L ={⊤}=∗
@@ -17,15 +17,16 @@ Section updateable.
   Class Updateable (P : iProp Σ) := {
     updateable_E : elctx;
     updateable_L : llctx;
+    updateable_f : frame_path;
     updateable_core : elctx → llctx → iProp Σ;
-    updateable_prove E L : updateable E L (λ L2, updateable_core E L2) -∗ updateable_core E L;
+    updateable_prove E L : updateable E L updateable_f (λ L2, updateable_core E L2) -∗ updateable_core E L;
     updateable_eq : updateable_core updateable_E updateable_L ⊣⊢ P
   }.
 
-  Lemma updateable_mono E L T1 T2 :
-    updateable E L T1 -∗
+  Lemma updateable_mono E L f T1 T2 :
+    updateable E L f T1 -∗
     (∀ L, T1 L -∗ T2 L) -∗
-    updateable E L T2.
+    updateable E L f T2.
   Proof.
     iIntros "HT Hw".
     iIntros "#CTX #HE HL".
@@ -33,15 +34,15 @@ Section updateable.
     iSpecialize ("Hw" with "HT").
     iExists L2. by iFrame.
   Qed.
-  Lemma updateable_intro E L T :
-    T L ⊢ updateable E L T.
+  Lemma updateable_intro E L f T :
+    T L ⊢ updateable E L f T.
   Proof.
     iIntros "HT #CTX HE HL".
     iExists L. by iFrame.
   Qed.
 
   Lemma add_updateable P `{!Updateable P} :
-    updateable updateable_E updateable_L (λ L2, updateable_core updateable_E L2) ⊢ P.
+    updateable updateable_E updateable_L updateable_f (λ L2, updateable_core updateable_E L2) ⊢ P.
   Proof.
     iIntros "HT".
     iApply updateable_eq.
@@ -54,6 +55,7 @@ Section updateable.
     Updateable (typed_val_expr E L f e T) := {|
       updateable_E := E;
       updateable_L := L;
+      updateable_f := f;
       updateable_core E L := typed_val_expr E L f e T;
   |}.
   Next Obligation.
@@ -71,6 +73,7 @@ Section updateable.
     Updateable (typed_call E L f κs etys v P vl tys destination normal unwind T U) := {|
       updateable_E := E;
       updateable_L := L;
+      updateable_f := f;
       updateable_core E L := typed_call E L f κs etys v P vl tys destination normal unwind T U;
   |}.
   Next Obligation.
@@ -90,6 +93,7 @@ Section updateable.
     Updateable (typed_stmt E L f s rf R U ϝ) := {|
       updateable_E := E;
       updateable_L := L;
+      updateable_f := f;
       updateable_core E L := typed_stmt E L f s rf R U ϝ;
   |}.
   Next Obligation.
@@ -103,14 +107,15 @@ Section updateable.
     simpl. eauto.
   Qed.
 
-  Global Program Instance updateable_updateable E L T :
-    Updateable (updateable E L T) := {|
+  Global Program Instance updateable_updateable E L f T :
+    Updateable (updateable E L f T) := {|
       updateable_E := E;
       updateable_L := L;
-      updateable_core E L := updateable E L T;
+      updateable_f := f;
+      updateable_core E L := updateable E L f T;
     |}.
   Next Obligation.
-    iIntros (_ _ ? ? ?) "HT".
+    iIntros (_ _ ? ? ? ?) "HT".
     rewrite /updateable.
     iIntros "#CTX #HE HL".
     iMod ("HT" with "CTX HE HL") as "(%L2 & HL & HT)".
@@ -368,11 +373,11 @@ Section updateable_rules.
   (* TODO: add lemma for unfolding / subtyping? *)
 
 
-  Lemma updateable_copy_lft f n1 n2 :
-    (∃ M, named_lfts f M ∗
+  Lemma updateable_copy_lft n1 n2 :
+    (∃ M, named_lfts updateable_f M ∗
       li_tactic (compute_list_map_lookup_nofail_goal M n2) (λ κ2,
       li_tactic (simplify_lft_map_goal ((n1, κ2) :: (map_list_delete M n1))) (λ M',
-        named_lfts f M' -∗ updateable_core updateable_E updateable_L)))
+        named_lfts updateable_f M' -∗ updateable_core updateable_E updateable_L)))
     ⊢ P.
   Proof.
     rewrite /compute_list_map_lookup_nofail_goal.
@@ -420,8 +425,8 @@ Tactic Notation "apply_update" uconstr(H) :=
 Section test.
   Context `{!typeGS Σ}.
 
-  Lemma updateable_updateable_b E L (l : loc) (off : Z) (st : syn_type) :
-    ⊢ updateable E L (λ _, True).
+  Lemma updateable_updateable_b E L f (l : loc) (off : Z) (st : syn_type) :
+    ⊢ updateable E L f (λ _, True).
   Proof.
     iStartProof.
     add_updateable.
