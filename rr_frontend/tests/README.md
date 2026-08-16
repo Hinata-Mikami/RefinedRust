@@ -5,7 +5,8 @@ This directory contains the `tests` crate UI regression tests.
 ## Harness
 
 - The test entrypoint is `tests/tests/ui.rs`.
-- It uses `ui_test::Config::rustc("fail")`, so test cases live under `tests/fail/`.
+- It uses separate `ui_test` suites for failures and successful verification cases.
+- Failure cases live under `tests/fail/`; successful cases live under `tests/success/`.
 - The compiler under test is `target/debug/refinedrust-rustc`.
 - The harness sets `RR_VERIFY_DEPS=true` for all UI tests.
 
@@ -14,6 +15,8 @@ This directory contains the `tests` crate UI regression tests.
 - The harness is annotation-first by default.
 - That means failing tests normally use inline `//~` annotations instead of relying only on `.stderr` files.
 - `ui_test` in this repo does not provide a built-in per-test directive to disable annotation requirements.
+
+Successful tests should start with `//@check-pass`.
 
 ## `//@stderr-only`
 

@@ -12,7 +12,7 @@ use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::{RegionExt as _, TypeSuperFoldable as _};
 use rr_rustc_interface::type_ir::TypeFoldable as _;
 
-use crate::rustcmp;
+use crate::{rustcmp, traits};
 
 /// A `TypeFolder` that gathers all the type variables.
 pub(crate) struct TyVarFolder<'tcx> {
@@ -63,11 +63,10 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyVarFolder<'tcx> {
                 t
             },
             ty::TyKind::Alias(_, alias_ty) if matches!(alias_ty.kind, ty::AliasTyKind::Projection { .. }) => {
-                // A concrete projection may normalize to a type containing parameters that do not occur in
-                // the projection's arguments. Collect from that type; only genuinely symbolic projections
-                // need to be represented through a local trait assumption.
-                if let Ok(normalized_ty) =
-                    self.tcx.try_normalize_erasing_regions(self.typing_env, ty::Unnormalized::dummy(t))
+                // Try to normalize aliases first; if we can normalize, fold the normalized type.
+                // As a guard to avoid infinite recursion, only recurse if the normalize type is
+                // different.
+                if let Ok(normalized_ty) = traits::resolution::normalize_type(self.tcx, self.typing_env, t)
                     && normalized_ty != t
                 {
                     normalized_ty.fold_with(self);
