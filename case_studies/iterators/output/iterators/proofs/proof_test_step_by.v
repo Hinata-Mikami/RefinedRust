@@ -30,6 +30,14 @@ Proof.
   all: sidecond_solver.
   Unshelve.
   all: sidecond_hammer.
+  all: rename select (Some _ = (if bool_decide (Z.succ 0 ∈ i32) then _ else _)) into Hfirst.
+  all: have Hrange : Z.succ 0 ∈ i32 by solve_goal.
+  all: rewrite bool_decide_true in Hfirst; last done.
+  all: simplify_eq.
+  - rename select (Z.to_nat (_ - _) = 1%nat) into Hskip.
+    apply (f_equal Z.of_nat) in Hskip.
+    rewrite Z2Nat.id in Hskip; lia.
+  - lia.
   all: print_remaining_sidecond.
 Qed.
 End proof.

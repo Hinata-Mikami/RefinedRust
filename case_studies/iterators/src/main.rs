@@ -111,10 +111,16 @@ fn test_iterator_3() -> Vec<i32> {
     res
 }
 
-#[rr::returns("Some 0")]
+#[rr::returns("Some 2")]
 fn test_step_by() -> Option<i32> {
     let mut iter = (0..10).step_by(2);
-    iter.next()
+    match iter.next() {
+        Some(_) => match iter.next() {
+            Some(value) => Some(value),
+            None => None,
+        },
+        None => None,
+    }
 }
 
 // !start spec(all_zero)
