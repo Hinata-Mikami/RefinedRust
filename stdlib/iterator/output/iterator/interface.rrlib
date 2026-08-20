@@ -957,6 +957,62 @@
     },
     {
       "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 2
+            },
+            {
+              "Param": 1
+            }
+          ],
+          "path": [
+            "std",
+            "result",
+            "Result"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "from_iter": {
+          "name": "std_result_ResultVEastraits_iterator_FromIteratorstd_result_ResultAE_from_iter",
+          "spec": "type_of_std_result_ResultVEastraits_iterator_FromIteratorstd_result_ResultAE_from_iter",
+          "trait_req_incl": "trait_incl_of_std_result_ResultVEastraits_iterator_FromIteratorstd_result_ResultAE_from_iter"
+        }
+      },
+      "name": "std_result_ResultVEastraits_iterator_FromIteratorstd_result_ResultAE",
+      "trait_path": {
+        "args": [
+          {
+            "Adt": {
+              "args": [
+                {
+                  "Param": 0
+                },
+                {
+                  "Param": 1
+                }
+              ],
+              "path": [
+                "std",
+                "result",
+                "Result"
+              ]
+            }
+          }
+        ],
+        "path": [
+          "core",
+          "iter",
+          "FromIterator"
+        ]
+      }
+    },
+    {
+      "for_type": {
         "Uint": "U128"
       },
       "has_semantic_interp": false,

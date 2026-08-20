@@ -552,3 +552,13 @@ pub trait FromIterator<A> {
     #[rr::returns("{FromSequence} seq")]
     fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
 }
+
+#[rr::instantiate("FromSequence" := "result_from_sequence {V::FromSequence}")]
+#[rr::instantiate("FromSequenceStatus" := "result_from_sequence_status {V::FromSequenceStatus}")]
+impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
+    #[rr::only_spec]
+    #[rr::default_spec]
+    fn from_iter<I: IntoIterator<Item = Result<A, E>>>(iter: I) -> Self {
+        unimplemented!()
+    }
+}

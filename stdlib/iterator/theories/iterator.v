@@ -49,6 +49,37 @@ Definition IteratorCollectEnd `{RRGS : !refinedrustGS Σ} {Self_rt Item_rt : RT}
       attrs.(traits_iterator_Iterator_Next) π p s2 None s3
   end%I.
 
+Fixpoint result_sequence {A E} (xs : list (result A E)) : result (list A) E :=
+  match xs with
+  | [] => Ok []
+  | Ok x :: xs =>
+      match result_sequence xs with
+      | Ok ys => Ok (x :: ys)
+      | Err e => Err e
+      end
+  | Err e :: _ => Err e
+  end.
+
+Definition result_from_sequence {A E V} (from_sequence : list A → V)
+    (xs : list (result A E)) : result V E :=
+  match result_sequence xs with
+  | Ok ys => Ok (from_sequence ys)
+  | Err e => Err e
+  end.
+
+Definition result_from_sequence_status {A E}
+    (from_sequence_status : list A → IteratorCollectStatus → Prop)
+    (xs : list (result A E)) (status : IteratorCollectStatus) : Prop :=
+  if_Ok (result_sequence xs) (λ ys, from_sequence_status ys status) ∧
+  if_Err (result_sequence xs) (λ e,
+    ∃ ys, xs = ((λ x, Ok x) <$> ys) ++ [Err e] ∧
+      from_sequence_status ys IteratorCollectFinished ∧
+      status = IteratorCollectStopped).
+
+Lemma result_sequence_ok {A E} (xs : list A) :
+  result_sequence (E := E) ((λ x, Ok x) <$> xs) = Ok xs.
+Proof. induction xs as [|x xs IH]; simpl; by rewrite ?IH. Qed.
+
 Section trans.
   Context `{RRGS : !refinedrustGS Σ}.
 

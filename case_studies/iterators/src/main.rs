@@ -111,6 +111,17 @@ fn test_iterator_3() -> Vec<i32> {
     res
 }
 
+#[rr::exists("xs" : "list Z")]
+#[rr::returns("Ok xs")]
+fn test_collect_result_ok() -> Result<Vec<i32>, i32> {
+    (0..10).map(#[rr::returns("Ok x")] |x| Ok(x)).collect()
+}
+
+#[rr::returns("Err 0")]
+fn test_collect_result_err() -> Result<Vec<i32>, i32> {
+    (0..10).map(#[rr::returns("Err x")] |x| Err(x)).collect()
+}
+
 #[rr::returns("Some 2")]
 fn test_step_by() -> Option<i32> {
     let mut iter = (0..10).step_by(2);
