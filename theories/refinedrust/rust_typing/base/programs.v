@@ -3102,14 +3102,14 @@ Section folding.
       order to register the folding action.
     Every such rule should make progress, so that the whole thing is terminating.
    *)
-  Definition typed_context_fold_step {M} (π : thread_id) (E : elctx) (L : llctx) (m : M) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) (acc : Acc) (T : llctx → M → Acc → iProp Σ) : iProp Σ :=
+  Definition typed_context_fold_step {M} (π : thread_id) (E : elctx) (L : llctx) (m : M) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (acc : Acc) (T : llctx → M → Acc → iProp Σ) : iProp Σ :=
     (∀ F, ⌜lftE ⊆ F⌝ -∗ ⌜lft_userE ⊆ F⌝ -∗ ⌜shrE ⊆ F⌝ -∗
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
       logical_step F (Acc_interp acc) -∗
       l ◁ₗ[ π, Owned] r @ lt -∗ |={F}=>
       (∃ L' acc' m', llctx_interp L' ∗ logical_step F (Acc_interp acc') ∗ T L' m' acc')).
-  Class TypedContextFoldStep {M} (π : thread_id) (E : elctx) (L : llctx) (m : M) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) (acc : Acc) :=
-    typed_context_fold_step_proof T : iProp_to_Prop (typed_context_fold_step π E L m l lt r tctx acc T).
+  Class TypedContextFoldStep {M} (π : thread_id) (E : elctx) (L : llctx) (m : M) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (acc : Acc) :=
+    typed_context_fold_step_proof T : iProp_to_Prop (typed_context_fold_step π E L m l lt r acc T).
 
   (** Terminator for the context folding typing process.
     It gathers up the folding result and takes a program step to strip the accumulated laters.
@@ -3143,7 +3143,8 @@ Section folding.
       match res with
       | None => typed_context_fold E L m tctx acc T
       | Some (existT rt' (lt', r', bk', π)) =>
-          ⌜bk' = Owned⌝ ∗ (typed_context_fold_step π E L m l lt' r' tctx acc T)
+          ⌜bk' = Owned⌝ ∗ (typed_context_fold_step π E L m l lt' r' acc (λ L2 m2 acc2, 
+            typed_context_fold E L2 m2 tctx acc2 T))
       end)
     ⊢ typed_context_fold E L m (l :: tctx) acc T.
   Proof.
@@ -3152,7 +3153,8 @@ Section folding.
     - iDestruct "HT" as "(Hl & HT)". iPoseProof ("HT") as "(-> & HT)".
       iIntros (????) "#CTX #HE HL Hdel".
       iDestruct ("HT" with "[//] [//] [//] CTX HE HL Hdel Hl") as ">Hs".
-      done.
+      iDestruct "Hs" as "(%L2 & %acc2 & %m2 & HL & Hstep & HT)".
+      by iApply ("HT" with "[//] [//] [//] CTX HE HL").
     - iDestruct "HT" as "(_ & HT)". iApply "HT".
   Qed.
   Global Instance typed_context_fold_cons_inst {M} E L (m : M) l (tctx : list loc) acc :
@@ -3948,8 +3950,8 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
       constr:(TypedContextFold P E L m tctx acc)
   | typed_pre_context_fold ?π ?E ?L ?m =>
       constr:(TypedPreContextFold π E L m)
-  | typed_context_fold_step ?P ?π ?E ?L ?m ?l ?lt ?r ?ls ?acc =>
-      constr:(TypedContextFoldStep P π E L m l lt r ls acc)
+  | typed_context_fold_step ?P ?π ?E ?L ?m ?l ?lt ?r ?acc =>
+      constr:(TypedContextFoldStep P π E L m l lt r acc)
   | relate_list ?E ?L ?idx ?a ?b ?n ?R =>
       constr:(RelateList E L idx a b n R)
   | fold_list ?E ?L ?idx ?a ?n ?R =>

@@ -66,10 +66,6 @@ Inductive copylftname_annot : Set :=
 Inductive assert_type_annot : Set :=
   | AssertTypeAnnot (ty : rust_type).
 
-(** TODO: just a place holder until we handle drops properly. *)
-Inductive drop_annot : Set :=
-  | DropAnnot.
-
 (** Annotation for manual unconstrained lft annotations *)
 Inductive unconstrained_lft_annot : Set :=
   UnconstrainedLftAnnot (n1 : string).

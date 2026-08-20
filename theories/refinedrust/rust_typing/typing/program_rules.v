@@ -5388,20 +5388,21 @@ Section subsume.
     iIntros (? []) "Ha". done.
   Qed.
 
-  Lemma typed_context_fold_step_stratify π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) ma acc R T :
+  Lemma typed_context_fold_step_stratify π E L l {rt} (lt : ltype rt) (r : place_rfn rt) ma acc R T :
     (* TODO: this needs a different stratification strategy *)
     stratify_ltype_unblock π E L ma l lt r (Owned)
-      (λ L' R' rt' lt' r', typed_context_fold (typed_context_fold_stratify_interp π) E L' (CtxFoldStratifyAll ma) tctx ((l, mk_bltype _ r' lt') :: acc, R' ∗ R) T)
-    ⊢ typed_context_fold_step (typed_context_fold_stratify_interp π) π E L (CtxFoldStratifyAll ma) l lt r tctx (acc, R) T.
+      (λ L' R' rt' lt' r', T L' (CtxFoldStratifyAll ma) ((l, mk_bltype _ r' lt') :: acc, R' ∗ R))
+    ⊢ typed_context_fold_step (typed_context_fold_stratify_interp π) π E L (CtxFoldStratifyAll ma) l lt r (acc, R) T.
   Proof.
     iIntros "Hstrat". iIntros (????) "#CTX #HE HL Hdel Hl".
     iPoseProof ("Hstrat" $! F with "[//] [//] [//] CTX HE HL Hl") as ">Hc".
     iDestruct "Hc" as "(%L' & %R' & %rt' & %lt' & %r' & HL & %Hst & Hstep & Hcont)".
-    iApply ("Hcont" $! F with "[//] [//] [//] CTX HE HL [Hstep Hdel]").
+    iFrame.
     iApply (logical_step_compose with "Hstep").
     iApply (logical_step_compose with "Hdel").
     iApply logical_step_intro.
     rewrite /typed_context_fold_stratify_interp.
+    iModIntro.
     iIntros "(Hctx & HR) (Hl & HR')".
     iFrame.
     rewrite /type_ctx_interp.
@@ -5461,18 +5462,19 @@ Section subsume.
     iIntros (? []) "Ha". done.
   Qed.
 
-  Lemma typed_context_fold_step_extract π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) acc R κ T :
+  Lemma typed_context_fold_step_extract π E L l {rt} (lt : ltype rt) (r : place_rfn rt) acc R κ T :
     stratify_ltype_extract π E L StratNoRefold l lt r (Owned) κ
-      (λ L' R' rt' lt' r', typed_context_fold (typed_context_fold_extract_interp π) E L' (CtxFoldExtractAll κ) tctx ((l, mk_bltype _ r' lt') :: acc, R' ∗ R) T)
-    ⊢ typed_context_fold_step (typed_context_fold_extract_interp π) π E L (CtxFoldExtractAll κ) l lt r tctx (acc, R) T.
+      (λ L' R' rt' lt' r', T L' (CtxFoldExtractAll κ) ((l, mk_bltype _ r' lt') :: acc, R' ∗ R))
+    ⊢ typed_context_fold_step (typed_context_fold_extract_interp π) π E L (CtxFoldExtractAll κ) l lt r (acc, R) T.
   Proof.
     iIntros "Hstrat". iIntros (????) "#CTX #HE HL Hdel Hl".
     iPoseProof ("Hstrat" $! F with "[//] [//] [//] CTX HE HL Hl") as ">Hc".
     iDestruct "Hc" as "(%L' & %R' & %rt' & %lt' & %r' & HL & %Hst & Hstep & Hcont)".
-    iApply ("Hcont" $! F with "[//] [//] [//] CTX HE HL [Hstep Hdel]").
+    iFrame.
     iApply (logical_step_compose with "Hstep").
     iApply (logical_step_compose with "Hdel").
     iApply logical_step_intro.
+    iModIntro.
     rewrite /typed_context_fold_extract_interp.
     iIntros "(Hctx & HR) (Hl & HR')".
     iFrame. rewrite /type_ctx_interp. iFrame.
@@ -5507,18 +5509,19 @@ Section subsume.
     iIntros (? []) "Ha". done.
   Qed.
 
-  Lemma typed_context_fold_step_resolve π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) acc R T :
+  Lemma typed_context_fold_step_resolve π E L l {rt} (lt : ltype rt) (r : place_rfn rt) acc R T :
     stratify_ltype_resolve π E L StratNoRefold l lt r (Owned)
-      (λ L' R' rt' lt' r', typed_context_fold (typed_context_fold_resolve_interp π) E L' (CtxFoldResolveAll) tctx ((l, mk_bltype _ r' lt') :: acc, R' ∗ R) T)
-    ⊢ typed_context_fold_step (typed_context_fold_resolve_interp π) π E L (CtxFoldResolveAll) l lt r tctx (acc, R) T.
+      (λ L' R' rt' lt' r', T L' (CtxFoldResolveAll) ((l, mk_bltype _ r' lt') :: acc, R' ∗ R))
+    ⊢ typed_context_fold_step (typed_context_fold_resolve_interp π) π E L (CtxFoldResolveAll) l lt r (acc, R) T.
   Proof.
     iIntros "Hstrat". iIntros (????) "#CTX #HE HL Hdel Hl".
     iPoseProof ("Hstrat" $! F with "[//] [//] [//] CTX HE HL Hl") as ">Hc".
     iDestruct "Hc" as "(%L' & %R' & %rt' & %lt' & %r' & HL & %Hst & Hstep & Hcont)".
-    iApply ("Hcont" $! F with "[//] [//] [//] CTX HE HL [Hstep Hdel]").
+    iFrame.
     iApply (logical_step_compose with "Hstep").
     iApply (logical_step_compose with "Hdel").
     iApply logical_step_intro.
+    iModIntro.
     rewrite /typed_context_fold_resolve_interp.
     iIntros "(Hctx & HR) (Hl & HR')".
     iFrame. rewrite /type_ctx_interp. iFrame.
@@ -5553,18 +5556,19 @@ Section subsume.
     iIntros (? []) "Ha". done.
   Qed.
 
-  Lemma typed_context_fold_step_close_inv π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) acc R κs T :
+  Lemma typed_context_fold_step_close_inv π E L l {rt} (lt : ltype rt) (r : place_rfn rt) acc R κs T :
     stratify_ltype_close_inv κs π E L l lt r (Owned)
-      (λ L' R' rt' lt' r', typed_context_fold (typed_context_fold_close_inv_interp π) E L' (CtxFoldCloseInvAll κs) tctx ((l, mk_bltype _ r' lt') :: acc, R' ∗ R) T)
-    ⊢ typed_context_fold_step (typed_context_fold_close_inv_interp π) π E L (CtxFoldCloseInvAll κs) l lt r tctx (acc, R) T.
+      (λ L' R' rt' lt' r', T L' (CtxFoldCloseInvAll κs) ((l, mk_bltype _ r' lt') :: acc, R' ∗ R))
+    ⊢ typed_context_fold_step (typed_context_fold_close_inv_interp π) π E L (CtxFoldCloseInvAll κs) l lt r (acc, R) T.
   Proof.
     iIntros "Hstrat". iIntros (????) "#CTX #HE HL Hdel Hl".
     iPoseProof ("Hstrat" $! F with "[//] [//] [//] CTX HE HL Hl") as ">Hc".
     iDestruct "Hc" as "(%L' & %R' & %rt' & %lt' & %r' & HL & %Hst & Hstep & Hcont)".
-    iApply ("Hcont" $! F with "[//] [//] [//] CTX HE HL [Hstep Hdel]").
+    iFrame.
     iApply (logical_step_compose with "Hstep").
     iApply (logical_step_compose with "Hdel").
     iApply logical_step_intro.
+    iModIntro.
     rewrite /typed_context_fold_close_inv_interp.
     iIntros "(Hctx & HR) (Hl & HR')".
     iFrame. rewrite /type_ctx_interp. iFrame.
@@ -5842,7 +5846,7 @@ Notation "'introduce_with_hooks' E L P 'HIDDEN_CONT'" := (introduce_with_hooks E
 Notation "'stratify_ltype' π E L mdu ma m l lt r b 'HIDDEN_CONT'" := (stratify_ltype π E L mdu ma m l lt r b _) (only printing, at level 0): rr_hidden.
 
 
-Notation "'typed_context_fold_step' step π E L m l lt r ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typed_context_fold_step step π E L m l lt r ls _ _) (only printing, at level 0) : rr_hidden.
+Notation "'typed_context_fold_step' step π E L m l lt r 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typed_context_fold_step step π E L m l lt r _ _) (only printing, at level 0) : rr_hidden.
 Notation "'typed_context_fold' step E L m ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typed_context_fold step E L m ls _ _) (only printing, at level 0) : rr_hidden.
 Notation "'weak_subltype' E L b r1 r2 lt1 lt2 'HIDDEN_CONT'" := (weak_subltype E L b r1 r2 lt1 lt2 _) (only printing, at level 0) : rr_hidden.
 Notation "'strong_subltype' E L b r1 r2 lt1 lt2 'HIDDEN_CONT'" := (strong_subltype E L b r1 r2 lt1 lt2 _) (only printing, at level 0) : rr_hidden.

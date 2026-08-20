@@ -139,8 +139,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedPreContextFold π E L m) T))
   | typed_context_fold ?AI ?E ?L ?m ?tctx ?acc ?T =>
       cont uconstr:(((_ : TypedContextFold AI E L m tctx acc) T))
-  | typed_context_fold_step ?AI ?π ?E ?L ?m ?l ?lt ?r ?tctx ?acc ?T =>
-      cont uconstr:(((_ : TypedContextFoldStep AI π E L m l lt r tctx acc) T))
+  | typed_context_fold_step ?AI ?π ?E ?L ?m ?l ?lt ?r ?acc ?T =>
+      cont uconstr:(((_ : TypedContextFoldStep AI π E L m l lt r acc) T))
   | typed_annot_expr ?E ?L ?n ?a ?v ?P ?T =>
       cont uconstr:(((_ : TypedAnnotExpr E L n a v P) T))
   | prove_with_subtype ?E ?L ?step ?pm ?P ?A ?T =>
