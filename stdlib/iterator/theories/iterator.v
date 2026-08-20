@@ -33,6 +33,22 @@ Fixpoint IteratorNextFusedTrans `{RRGS : !refinedrustGS Σ} {Self_rt Item_rt : R
 Global Notation "it '-[[' A ',' π ',' p ']]->[' els ']' itn" := 
   (IteratorNextFusedTrans A π p it els itn)%I (at level 20) : stdpp_scope.
 
+Inductive IteratorCollectStatus :=
+  (* The collector returned without requesting another item. *)
+  | IteratorCollectStopped
+  (* The collector reached a terminal endpoint. *)
+  | IteratorCollectFinished.
+
+Definition IteratorCollectEnd `{RRGS : !refinedrustGS Σ} {Self_rt Item_rt : RT}
+    (attrs : traits_iterator_Iterator_spec_attrs Self_rt Item_rt)
+    (π : thread_id) p
+    (status : IteratorCollectStatus) (s2 s3 : RT_xt Self_rt) : iProp Σ :=
+  match status with
+  | IteratorCollectStopped => ⌜s2 = s3⌝
+  | IteratorCollectFinished =>
+      attrs.(traits_iterator_Iterator_Next) π p s2 None s3
+  end%I.
+
 Section trans.
   Context `{RRGS : !refinedrustGS Σ}.
 

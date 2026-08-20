@@ -537,12 +537,19 @@ impl<I> IntoIterator for I where I: Iterator {
 
 #[rr::export_as(core::iter::FromIterator)]
 #[rr::exists("FromSequence" : "list ({xt_of A}) → {xt_of Self}")]
+#[rr::exists("FromSequenceStatus" : "list ({xt_of A}) → IteratorCollectStatus → Prop")]
 //#[rr::exists("FromIteratorPre" : "list ({xt_of A}) → Prop")]
 pub trait FromIterator<A> {
+    // The trace records consumed `Some` items. The status and endpoint account for either an
+    // early return or the terminal `None` transition.
     #[rr::verify]
-    //#[rr::exists("seq", "s2", "s2'")]
-    //#[rr::ensures(#iris "IteratorNextFusedTrans {attrs_of T::IntoIter} ({T::IntoIter} iter) seq s2")]
-    //#[rr::ensures(#iris "{T::Next} s2 None s2'")]
-    //#[rr::returns("{FromSequence} seq")]
+    #[rr::params("p")]
+    #[rr::requires(#iris "traits_iterator_Iterator_Tastraits_iterator_IntoIterator_IntoIter_spec_attrs.(traits_iterator_Iterator_Inv) π p ({T::IntoIter} iter)")]
+    #[rr::exists("seq", "s2", "s2'", "status" : "IteratorCollectStatus")]
+    #[rr::ensures("{FromSequenceStatus} seq status")]
+    #[rr::ensures(#iris "IteratorCollectEnd traits_iterator_Iterator_Tastraits_iterator_IntoIterator_IntoIter_spec_attrs π p status s2 s2'")]
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Tastraits_iterator_IntoIterator_IntoIter_spec_attrs π p ({T::IntoIter} iter) seq s2")]
+    #[rr::ensures(#iris "ty_ghost_drop {ty_of T::IntoIter} π ($# s2')")]
+    #[rr::returns("{FromSequence} seq")]
     fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
 }

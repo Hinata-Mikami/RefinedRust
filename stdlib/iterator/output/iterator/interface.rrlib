@@ -357,7 +357,8 @@
     },
     {
       "allowed_attrs": [
-        "FromSequence"
+        "FromSequence",
+        "FromSequenceStatus"
       ],
       "assoc_tys": [],
       "attrs_dependent": true,

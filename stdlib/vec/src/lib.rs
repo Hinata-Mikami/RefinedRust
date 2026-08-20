@@ -268,6 +268,7 @@ impl<T, A: Allocator> Vec<T, A> {
 
 
 #[rr::instantiate("FromSequence" := "λ x, x")]
+#[rr::instantiate("FromSequenceStatus" := "λ _ status, status = IteratorCollectFinished")]
 impl<T> FromIterator<T> for Vec<T> {
     #[rr::only_spec]
     #[rr::default_spec]

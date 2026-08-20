@@ -12,8 +12,11 @@ From rrstd.iterator.iterator Require Export generated_code_iterator.
 
 Definition traits_iterator_FromIterator_FromSequence_sig `{RRGS : !(refinedrustGS Σ)} (Self_rt: RT) (A_rt: RT) :=
   (list ((RT_xt (A_rt))) → (RT_xt (Self_rt))).
+Definition traits_iterator_FromIterator_FromSequenceStatus_sig `{RRGS : !(refinedrustGS Σ)} (Self_rt: RT) (A_rt: RT) (traits_iterator_FromIterator_FromSequence: (traits_iterator_FromIterator_FromSequence_sig (Self_rt) (A_rt))) :=
+  (list ((RT_xt (A_rt))) → IteratorCollectStatus → Prop).
 Record traits_iterator_FromIterator_spec_attrs `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} `{A_rt : !RT} : Type := mk_traits_iterator_FromIterator_spec_attrs {
   traits_iterator_FromIterator_FromSequence  : (traits_iterator_FromIterator_FromSequence_sig (Self_rt) (A_rt));
+  traits_iterator_FromIterator_FromSequenceStatus  : (traits_iterator_FromIterator_FromSequenceStatus_sig (Self_rt) (A_rt) (traits_iterator_FromIterator_FromSequence));
 }.
 #[global] Arguments traits_iterator_FromIterator_spec_attrs : clear implicits.
 
@@ -1517,13 +1520,16 @@ Definition scope_bindable_traits_iterator_FromIterator_spec `{Self_rt : !RT} `{A
 
 Definition traits_iterator_FromIterator_from_iter_base_spec (Self_rt: RT) (A_rt: RT) (T_rt: RT) (traits_iterator_IntoIterator_T_IntoIter_rt: RT) (Self_st: syn_type) (A_st: syn_type) (T_st: syn_type) (traits_iterator_IntoIterator_T_IntoIter_st: syn_type) (traits_iterator_FromIterator_Self_A_spec_attrs: (traits_iterator_FromIterator_spec_attrs (RRGS:=RRGS) (Self_rt) (A_rt) )) (traits_iterator_Iterator_Tastraits_iterator_IntoIterator_IntoIter_spec_attrs: (traits_iterator_Iterator_spec_attrs (RRGS:=RRGS) (traits_iterator_IntoIterator_T_IntoIter_rt) (A_rt) )) (traits_iterator_IntoIterator_T_spec_attrs: (traits_iterator_IntoIterator_spec_attrs (RRGS:=RRGS) (T_rt) (traits_iterator_IntoIterator_T_IntoIter_rt) (A_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[Self_ty; A_ty; T_ty; traits_iterator_IntoIterator_T_IntoIter_ty]) : ([(Self_rt, Self_st); (A_rt, A_st); (T_rt, T_st); (traits_iterator_IntoIterator_T_IntoIter_rt, traits_iterator_IntoIterator_T_IntoIter_st)] : list (RT * syn_type)%type) | 
-      (* params....... *) (iter) : ((_)),
+      (* params....... *) (p, iter) : ((_ * _)),
       (* elctx........ *) (λ ϝ, []);
       (* args......... *) iter :@: T_ty;
-      (* precondition. *) (λ π : thread_id, True) |
+      (* precondition. *) (λ π : thread_id, (traits_iterator_Iterator_Tastraits_iterator_IntoIterator_IntoIter_spec_attrs.(traits_iterator_Iterator_Inv) π p (traits_iterator_IntoIterator_T_spec_attrs.(traits_iterator_IntoIterator_IntoIter) iter))) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ (ret) : ((_)), ret @ Self_ty;
-      (* postcondition *) (λ π : thread_id, True) |
+      (* existential.. *) ∃ (seq, s2, s2', status) : ((_ * _ * _ * (IteratorCollectStatus))), traits_iterator_FromIterator_Self_A_spec_attrs.(traits_iterator_FromIterator_FromSequence) seq @ Self_ty;
+      (* postcondition *) (λ π : thread_id, (⌜(traits_iterator_FromIterator_Self_A_spec_attrs.(traits_iterator_FromIterator_FromSequenceStatus) seq status)%Z⌝)
+      ∗ (IteratorCollectEnd traits_iterator_Iterator_Tastraits_iterator_IntoIterator_IntoIter_spec_attrs π p status s2 s2')
+      ∗ (IteratorNextFusedTrans traits_iterator_Iterator_Tastraits_iterator_IntoIterator_IntoIter_spec_attrs π p (traits_iterator_IntoIterator_T_spec_attrs.(traits_iterator_IntoIterator_IntoIter) iter) seq s2)
+      ∗ (ty_ghost_drop traits_iterator_IntoIterator_T_IntoIter_ty π ($# s2'))) |
       (* unwind post... *) False.
 
 Definition traits_iterator_FromIterator_base_spec (Self_rt: RT) (A_rt: RT) (Self_st: syn_type) (A_st: syn_type) (_ATTRS: ((traits_iterator_FromIterator_spec_attrs ((Self_rt)) ((A_rt))))) : (spec_with _ _ (traits_iterator_FromIterator_spec ((Self_rt)) ((A_rt)))) :=
@@ -3867,4 +3873,3 @@ Section traits_iterator_Iterator_position_closure0_FnMut_spec.
   Definition traits_iterator_Iterator_position_closure0_FnMut_spec_subsumption  :=
     ∀ `(Self_rt : !RT) `(F_rt : !RT) `(traits_iterator_Iterator_Self_Item_rt : !RT) `(Self_st : !syn_type) `(F_st : !syn_type) `(traits_iterator_Iterator_Self_Item_st : !syn_type) `(traits_iterator_Iterator_Self_spec_attrs : !(traits_iterator_Iterator_spec_attrs (RRGS:=RRGS) (Self_rt) (traits_iterator_Iterator_Self_Item_rt) )) `(FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs : !(FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((traits_iterator_Iterator_Self_Item_rt)))) bool )) `(FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs : !(FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((traits_iterator_Iterator_Self_Item_rt)))) bool )), trait_incl_marker (lift_trait_incl FnMut_spec_incl (spec! ( *[ulft1; ulft2]) : 2 | ( *[Self_ty; F_ty; traits_iterator_Iterator_Self_Item_ty]) : ([Self_rt; F_rt; traits_iterator_Iterator_Self_Item_rt] : list RT), (traits_iterator_Iterator_position_closure0_FnMut_spec (Self_rt) (F_rt) (traits_iterator_Iterator_Self_Item_rt) (Self_st) (F_st) (traits_iterator_Iterator_Self_Item_st) (traits_iterator_Iterator_Self_spec_attrs) (FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs) (FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs))-[ulft1; ulft2] -[Self_ty; F_ty; traits_iterator_Iterator_Self_Item_ty]) (spec! ( *[ulft1; ulft2]) : 2 | ( *[Self_ty; F_ty; traits_iterator_Iterator_Self_Item_ty]) : ([Self_rt; F_rt; traits_iterator_Iterator_Self_Item_rt] : list RT), scope_add_typarams _ -[Self_ty; F_ty; traits_iterator_Iterator_Self_Item_ty] ((FnMut_base_spec (((tuple2_rt) (((place_rfnRT (F_rt)) * gname)%type) (((place_rfnRT Z) * gname)%type))) (((tuple2_rt) (unit) ((traits_iterator_Iterator_Self_Item_rt)))) ((((ControlFlow_rt)) (Z) (unit))) ((tuple2_sls (RefSynType) (RefSynType)) : syn_type) ((tuple2_sls (UnitSynType) (traits_iterator_Iterator_Self_Item_st)) : syn_type) ((ControlFlow_els ((IntSynType USize)) (UnitSynType)) : syn_type) (traits_iterator_Iterator_position_closure0_FnOnce_spec_attrs ((Self_rt)) ((F_rt)) ((traits_iterator_Iterator_Self_Item_rt)) (traits_iterator_Iterator_Self_spec_attrs) (FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs) (FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs)) (traits_iterator_Iterator_position_closure0_FnMut_spec_attrs (Self_rt) (F_rt) (traits_iterator_Iterator_Self_Item_rt) (traits_iterator_Iterator_Self_spec_attrs) (FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs) (FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs))-[] -[(tuple2_ty (((place_rfnRT (F_rt)) * gname)%type) (((place_rfnRT Z) * gname)%type) -[] -[(mut_ref ulft1 F_ty); (mut_ref ulft2 (int USize))]); (tuple2_ty (unit) ((traits_iterator_Iterator_Self_Item_rt)) -[] -[unit_t; traits_iterator_Iterator_Self_Item_ty]); (ControlFlow_ty (Z) (unit) -[] -[(int USize); unit_t])])))).
 End traits_iterator_Iterator_position_closure0_FnMut_spec.
-

@@ -586,6 +586,8 @@ Program Definition VecTasstd_iter_FromIteratorT_spec_attrs `{RRGS : !(refinedrus
   {|
     traits_iterator_FromIterator_FromSequence  :=
       (λ x, x) : ((traits_iterator_FromIterator_FromSequence_sig (((Vec_inv_t_rt ((T_rt)) ((((Global_rt))))))) ((T_rt))));
+    traits_iterator_FromIterator_FromSequenceStatus  :=
+      (λ _ status, status = IteratorCollectFinished) : ((traits_iterator_FromIterator_FromSequenceStatus_sig (((Vec_inv_t_rt ((T_rt)) ((((Global_rt))))))) ((T_rt)) (_)));
   |}
 .
 
