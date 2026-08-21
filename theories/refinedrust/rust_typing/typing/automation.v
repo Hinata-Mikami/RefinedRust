@@ -123,6 +123,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedSwitch E L f v ty r it) m ss def fn R U ϝ))
   | typed_assert ?E ?L ?f ?v ?ty ?r ?s ?fn ?R ?U ?ϝ =>
       cont uconstr:(((_ : TypedAssert E L f v ty r) s fn R U ϝ))
+  | ltype_read_as ?π ?E ?L ?l ?lt ?r ?b ?bmin ?ot ?T =>
+      cont uconstr:(((_ : LtypeReadAs π E L l lt r b bmin ot) T))
   | typed_read_end ?π ?E ?L ?l ?ty ?r ?b2 ?bmin ?ot ?m ?T =>
       cont uconstr:(((_ : TypedReadEnd π E L l ty r b2 bmin ot m) T))
   | typed_write_end ?π ?E ?L ?ot ?v1 ?ty1 ?r1 ?b2 ?bmin ?l2 ?lt2 ?r2 ?T =>

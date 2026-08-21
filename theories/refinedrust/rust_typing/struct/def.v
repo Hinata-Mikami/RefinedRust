@@ -191,6 +191,14 @@ Section structs.
       (l +ₗ offset_of_idx fields i) ↦{q} v ∗
       ⌜v `has_layout_val` ly ⌝ ∗
       v ◁ᵥ{ π, MetaNone} r' @ ty.
+  Definition struct_own_el_loc_later (π : thread_id) (q : Qp) (v : val) (i : nat) (fields : field_list) (l : loc) {rt} (r : place_rfn rt) (ty : type rt) : iProp Σ :=
+    ∃ (r' : rt) (ly : layout), place_rfn_interp_owned r r' ∗
+      ⌜snd <$> fields !! i = Some ly⌝ ∗
+      ⌜syn_type_has_layout (ty_syn_type ty MetaNone) ly⌝ ∗
+      ty_sidecond ty ∗
+      (l +ₗ offset_of_idx fields i) ↦{q} v ∗
+      ⌜v `has_layout_val` ly ⌝ ∗
+      ▷ v ◁ᵥ{ π, MetaNone} r' @ ty.
   Definition struct_own_el_loc' (π : thread_id) (q : Qp) (v : val) (i : nat) (fields : field_list) (l : loc) {rt} (r : place_rfn rt) (ty : type rt) (ly : layout) : iProp Σ :=
     ⌜v `has_layout_val` ly⌝ ∗
     ⌜snd <$> fields !! i = Some ly⌝ ∗
@@ -347,6 +355,91 @@ Section structs.
     iExists (mjoin ys.*1).
     iPoseProof (struct_own_val_extract_pointsto' with "Hlb Hl") as "(Hl & %Ha & Hs)"; [done.. | ].
     iFrame. iPureIntro. by apply mjoin_has_struct_layout.
+  Qed.
+
+  Lemma struct_own_val_extract_pointsto_later π q sls sl l (tys : list (sigT (λ rt, type rt * place_rfn rt)%type)) :
+    use_struct_layout_alg sls = Some sl →
+    length tys = length (sls_fields sls) →
+    loc_in_bounds l 0 (ly_size sl) -∗
+    ([∗ list] i↦ty ∈ pad_struct (sl_members sl) tys struct_make_uninit_type,
+      ∃ v, struct_own_el_loc_later π q v i sl.(sl_members) l (projT2 ty).2 (projT2 ty).1) -∗
+    ∃ v : val, l ↦{q} v ∗ ⌜v `has_layout_val` sl⌝ ∗
+      ▷ ([∗ list] i↦v';ty ∈ reshape (ly_size <$> (sl_members sl).*2) v; pad_struct (sl_members sl) tys struct_make_uninit_type,
+        struct_own_el_val π i sl.(sl_members) v' (projT2 ty).2 (projT2 ty).1).
+  Proof.
+    iIntros (??) "#Hlb Hl".
+    iAssert (
+      [∗ list] i↦ty ∈ pad_struct (sl_members sl) tys struct_make_uninit_type,
+      ∃ (y : val * layout),
+        ⌜y.1 `has_layout_val` y.2⌝ ∗
+        ⌜snd <$> sl_members sl !! i = Some y.2⌝ ∗
+        (l +ₗ offset_of_idx (sl_members sl) i) ↦{q} y.1 ∗
+        let 'existT rt (ty0, r0) := ty in ∃ (r' : (rt : RT)), place_rfn_interp_owned r0 r' ∗
+          ⌜syn_type_has_layout (ty_syn_type ty0 MetaNone) y.2⌝ ∗
+          ty_sidecond ty0 ∗
+          ▷ y.1 ◁ᵥ{ π, MetaNone} r' @ ty0)%I with "[Hl]" as "Hl".
+    { iApply (big_sepL_wand with "Hl"). iApply big_sepL_intro.
+      iModIntro. iIntros (k [? []] Hlook) "(%v & %r' & %ly & Hrfn & %Hfield & %Hst & Hsc & Hpt & %Hlyv & Hv)".
+      simpl in Hst.
+      iExists (v, ly). simpl. do 2 (iSplitR; first done). iFrame "Hpt".
+      iExists r'. iFrame. iPureIntro. exact Hst. }
+    rewrite big_sepL_exists. iDestruct "Hl" as "(%ys & Hl)".
+
+    do 3 rewrite big_sepL2_sep. iDestruct "Hl" as "(Hlyv & Hsl & Hl & Hb)".
+    rewrite !big_sepL2_elim_l.
+    iDestruct "Hlyv" as "%Hlyv". iDestruct "Hsl" as "%Hsl".
+    iPoseProof (big_sepL2_length with "Hb") as "%Hlen_eq".
+    rewrite pad_struct_length in Hlen_eq.
+
+    set (vs := ys.*1). set (lys := ys.*2).
+
+    assert (Forall2 (λ (v : val) (ly : layout), v `has_layout_val` ly) vs ((sl_members sl).*2)).
+    { rewrite Forall2_fmap_r.
+      apply Forall2_same_length_lookup.
+      split. { rewrite Hlen_eq /vs length_fmap//. }
+      intros i v' [n ly'] Hlook1 Hlook2.
+      apply list_lookup_fmap_Some in Hlook1 as ([v1 ly1] & -> & Hlook1).
+      simpl. specialize (Hsl _ _ Hlook1). move: Hsl.
+      rewrite Hlook2 /= => [= ->]. apply (Hlyv _ _ Hlook1). }
+
+    iExists (mjoin ys.*1). iSplitL "Hl".
+    { iApply heap_pointsto_reshape_sl. { apply mjoin_has_struct_layout. done. }
+      rewrite reshape_join. { iFrame "Hlb". by iApply big_sepL_fmap. }
+      apply Forall2_same_length_lookup.
+      split. { rewrite !length_fmap//. }
+      intros i v' sz Hlook1 Hlook2.
+      apply list_lookup_fmap_Some in Hlook1 as ([v1 ly1] & -> & Hlook1).
+      simpl. specialize (Hsl _ _ Hlook1). move: Hsl.
+      apply list_lookup_fmap_Some in Hlook2 as (ly' & -> & Hlook).
+      rewrite list_lookup_fmap in Hlook. rewrite Hlook => [=->].
+      apply (Hlyv _ _ Hlook1). }
+
+    iSplitR. { iPureIntro. by apply mjoin_has_struct_layout. }
+    iAssert (
+      [∗ list] i ↦ y2; y1 ∈ vs; pad_struct (sl_members sl) tys struct_make_uninit_type,
+        let 'existT rt (ty, r0) := y1 in ∃ (r' : (rt : RT)) (ly : layout), place_rfn_interp_owned r0 r' ∗
+          ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗
+          ⌜syn_type_has_layout (ty_syn_type ty MetaNone) ly⌝ ∗ ty_sidecond ty ∗
+          ▷ y2 ◁ᵥ{ π, MetaNone} r' @ ty)%I with "[Hb]" as "Hb".
+    { iApply big_sepL2_flip. rewrite big_sepL2_fmap_r. iApply (big_sepL2_wand with "Hb").
+      iApply big_sepL2_intro. { rewrite pad_struct_length Hlen_eq //. }
+      iModIntro. iIntros (k [? []] [v1 ly1] ? Hlook2) "(%r' & ? & ? & ? & ?)".
+      iExists _, _. iFrame. iPureIntro. apply (Hsl _ _ Hlook2). }
+    rewrite reshape_join; first last.
+    { apply Forall2_same_length_lookup. rewrite !length_fmap Hlen_eq. split; first done.
+      intros ??? Hlook1 Hlook2.
+      apply list_lookup_fmap_Some in Hlook1 as ([v1 ly1] & -> & Hlook1).
+      specialize (Hlyv _ _ Hlook1). rewrite Hlyv.
+      specialize (Hsl _ _ Hlook1). simpl in *.
+      apply list_lookup_fmap_Some in Hlook2 as (ly2 & -> & Hlook2).
+      rewrite list_lookup_fmap in Hlook2. f_equiv.
+      rewrite Hsl in Hlook2. injection Hlook2 as [= ->]; done. }
+    rewrite big_sepL2_later; first last.
+    { rewrite pad_struct_length Hlen_eq length_fmap //. }
+    iApply (big_sepL2_wand with "Hb").
+    iApply big_sepL2_intro. { rewrite pad_struct_length Hlen_eq length_fmap //. }
+    iModIntro. iIntros (?? [? []] ? ?) "(% & % & ? & ? & ? & ? & ?)".
+    iNext. rewrite /struct_own_el_val. eauto with iFrame.
   Qed.
 
   Lemma struct_own_val_join_pointsto π q sls sl l v (tys : list (sigT (λ rt, type rt * place_rfn rt)%type)) :

@@ -3604,14 +3604,11 @@ Section subsume.
         stratify_ltype_unblock f.1 E L1 StratRefoldOpened l2 lt2 ri2 b2 (λ L2 R rt3 lt3 ri3,
         (** Omitted from the paper: Certify that this stratification is allowed, or otherwise commit to a strong update *)
         prove_place_cond E L2 bmin lt2 lt3 (λ upd,
-        (** Require the stratified place to be a value type *)
-        (* TODO remove this and instead have a [ltype_read_as] TC or so. Currently this will prevent us from reading from ShrBlocked*)
-        cast_ltype_to_type E L2 lt3 (λ ty3,
         (** Finish reading *)
-        typed_read_end f.1 E L2 l2 (◁ ty3) ri3 b2 bmin ot m (λ L3 v rt3 ty3 r3 rt2' lt2' ri2' upd2,
+        typed_read_end f.1 E L2 l2 lt3 ri3 b2 bmin ot m (λ L3 v rt3 ty3 r3 rt2' lt2' ri2' upd2,
         typed_place_finish f.1 E L3 updcx (place_update_kind_res_trans upd upd2) (R ∗ llft_elt_toks κs) l b lt2' ri2' (λ L4,
           T L4 v _ ty3 r3))
-      ))))))%I
+      )))))%I
     ⊢ typed_read E L f e ot m T.
   Proof.
     iIntros (HT') "HT'". iIntros (Φ F ????) "#CTX #HE HL Hf HΦ".
@@ -3626,10 +3623,6 @@ Section subsume.
     iMod ("HT" with "[//] CTX HE HL") as "(HL & %upd & #Hincl & Hcond & %Hst' & HT)".
     iApply (logical_step_wand with "Hl2").
     iIntros "!> (Hl2 & HR)".
-    iDestruct "HT" as "(%ty3 & %Heqt & HT)".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(% & #Heq)"; first apply Heqt.
-    iPoseProof (full_eqltype_use F with "CTX HE HL") as "(Hincl' & HL)"; first done; first apply Heqt.
-    iMod  ("Hincl'" with "Hl2") as "Hl2".
     iMod ("HT" with "[//] [//] [//] [//] CTX HE HL Hl2") as "Hread".
     iDestruct "Hread" as (q v rt2 ty2' r2) "(% & % & % & Hl2 & Hv & Hcl)".
     iModIntro. iExists v, q, rt2, ty2', r2. iR. iR. iFrame "Hl2".
@@ -3648,9 +3641,6 @@ Section subsume.
       iApply (typed_place_cond_trans with "[Hcond]").
       { iApply typed_place_cond_incl; last done.
         iApply place_update_kind_max_incl_l. }
-      iApply ltype_eq_place_cond_trans.
-      { done. }
-      { iApply "Heq". }
       iApply typed_place_cond_incl; last done.
       iApply place_update_kind_max_incl_r. }
     iMod ("Hs" with "HL Hf Hfin") as (upd') "(Hl & Hcond'' & ? & HR' & ? & HL & Hf & HT)".
@@ -3659,106 +3649,226 @@ Section subsume.
     iModIntro. iExists _, _, _, _. iFrame.
   Qed.
 
-  (** [type_read_end] instance that does a copy *)
-  Lemma type_read_ofty_copy E L {rt} π b2 bmin l (ty : type rt) r ot `{!Copyable ty} (T : typed_read_end_cont_t bmin rt) :
-    (** We have to show that the type allows reads *)
-    (⌜ty_has_op_type ty ot⌝ ∗ ⌜lctx_bor_kind_alive E L b2⌝ ∗
-      (** The place is left as-is *)
-      ∀ v, T L v rt ty r rt (◁ ty) (#r) (mkPUKRes UpdBot opt_place_update_eq_refl opt_place_update_eq_refl))
-    ⊢ typed_read_end π E L l (◁ ty) (#r) b2 bmin ot ReadDoCopy T.
+  (** Copy access for owned values. *)
+  Lemma ltype_read_as_ofty_owned E L {rt} π bmin l (ty : type rt) r ot `{!Copyable ty}
+      (T : ltype_read_as_cont_t bmin rt) :
+    (⌜ty_has_op_type ty ot⌝ ∗ ∀ v, T L True v rt ty r
+      (mkPUKRes UpdBot opt_place_update_eq_refl opt_place_update_eq_refl))
+    ⊢ ltype_read_as π E L l (◁ ty) (#r) Owned bmin ot T.
   Proof.
-    iIntros "(%Hot & %Hal & Hs)".
-    iIntros (F ????) "#CTX #HE HL".
-
-    set (weak_upd := (mkPUKRes UpdBot opt_place_update_eq_refl opt_place_update_eq_refl)).
-
-    destruct b2 as [ | | ]; simpl.
-    - iIntros "Hb".
-      iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & #Hv & Hcl))"; first done.
-      iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
-      iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as (ov0) "%Hdec0"; first done.
-      have Hdecode : ∀ st, ∃ ov, decode_op_val v ot st = Some ov.
-      { intros st. exists ov0. rewrite -(decode_op_val_stable v ot inhabitant st). done. }
-      opose proof (ty_op_type_stable ty _ Hot) as Halg''.
-      assert (ly = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
-      iModIntro. iExists _, _, rt, _, _.
-      iFrame "Hl Hv".
-      iSplitR; first done. iSplitR; first done. iSplitR; first by iPureIntro.
-      iApply (logical_step_wand with "Hcl").
-      iIntros "Hcl %st %ov %Hdec Hl _". iMod ("Hcl" with "Hl [//] Hsc Hv") as "Hl".
-      iModIntro. iExists L, rt, ty, r.
+    iIntros "(%Hot & HT)" (F ????) "#CTX #HE HL Hb".
+    iPoseProof (ofty_ltype_acc_owned with "Hb") as
+      "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v & Hpt & #Hv & Hcl))"; first done.
+    iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+    iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as (ov0) "%Hdec0"; first done.
+    have Hdecode : ∀ st, ∃ ov, decode_op_val v ot st = Some ov.
+    { intros st. exists ov0. rewrite -(decode_op_val_stable v ot inhabitant st). done. }
+    opose proof (ty_op_type_stable ty _ Hot) as Halg''.
+    assert (ly = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
+    set (res := mkPUKRes (allowed:=bmin) (rt1:=rt) (rt2:=rt)
+      UpdBot opt_place_update_eq_refl opt_place_update_eq_refl).
+    iModIntro. iExists L, True%I, _, v, rt, ty, r, res. iFrame "HL Hpt Hv".
+    do 5 iR. iSplitR; first iApply upd_bot_min.
+    iSplitR; first iApply typed_place_cond_refl_ofty.
+    iSplitL "Hcl Hsc".
+    { iApply (logical_step_wand with "Hcl").
+      iIntros "Hcl" (st ov) "%Hdec Hpt _".
+      iMod ("Hcl" with "Hpt [//] Hsc Hv") as "Hl".
       iPoseProof (ty_encode_compat with "Hv") as "Ha"; [done | done |].
-      iFrame "Ha HL".
-      iExists _, _, _, weak_upd. iFrame.
-      iR. iSplitR. { iApply upd_bot_min. }
-      iSplitR. { iApply typed_place_cond_refl_ofty. }
-      by iApply "Hs".
-    - iIntros "#Hl".
-      simpl in Hal.
-      iPoseProof (ofty_ltype_acc_shared with "Hl") as "(%ly & %Halg & %Hly & Hlb & >Hl')"; first done.
-      assert (ly = ot_layout ot) as ->.
-      { opose proof (ty_op_type_stable ty _ Hot) as ?.
-        eapply syn_type_has_layout_inj; done. }
-
-      iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
-      iMod (lctx_lft_alive_tok_noend κ with "HE HL") as (q') "(Htok & HL & Hclose)"; [solve_ndisj | done | ].
-      iMod (copy_shr_acc with "CTX Hl' Htok") as "(%ly & >%Hst & >%Hly' & (%q'' & %v & (>Hll & #Hv) & Hclose_l))";
-        [solve_ndisj.. | ].
-      assert (ly = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
-
-      iDestruct (ty_own_val_has_layout with "Hv") as "#>%Hlyv"; first done.
-      iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as "#>(%ov0 & %Hdec0)"; first done.
-      have Hdecode : ∀ st, ∃ ov, decode_op_val v ot st = Some ov.
-      { intros st. exists ov0. rewrite -(decode_op_val_stable v ot inhabitant st). done. }
-      iModIntro. iExists _, _, rt, _, _. iFrame "Hll Hv".
-      iSplitR; first done. iSplitR; first done. iSplitR; first by iPureIntro.
-      iApply logical_step_intro. iIntros (st ov) "%Hdec Hll Hv'".
-      iMod ("Hclose_l" with "[Hv Hll]") as "Htok".
-      { eauto with iFrame. }
-      iMod ("Hclose" with "Htok HL") as "HL".
-      iPoseProof ("HL_cl" with "HL") as "HL".
-      iModIntro. iExists L, rt, ty, r.
-      iPoseProof (ty_encode_compat with "Hv'") as "Hid"; [done | done |].
-      simpl. iFrame.
-
-      iExists _, _, _, weak_upd.
-      iFrame "Hl".
-      iR. iSplitR. { iApply upd_bot_min. }
-      iSplitR. { iApply typed_place_cond_refl_ofty. }
-      by iApply "Hs".
-    - iIntros "Hl".
-      simpl in Hal.
-      iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
-      iMod (fupd_mask_subseteq lftE) as "HF_cl"; first done.
-      iMod (Hal with "HE HL") as (q') "(Htok & HL_cl2)"; [solve_ndisj | ].
-      iPoseProof (ofty_ltype_acc_uniq with "CTX Htok HL_cl2 Hl") as "(%ly & %Halg & %Hly & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
-      iMod "HF_cl" as "_".
-      assert (ly = ot_layout ot) as ->.
-      { opose proof (ty_op_type_stable ty _ Hot) as ?.
-        eapply syn_type_has_layout_inj; done. }
-      iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
-      iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as (ov0) "%Hdec0"; first done.
-      have Hdecode : ∀ st, ∃ ov, decode_op_val v ot st = Some ov.
-      { intros st. exists ov0. rewrite -(decode_op_val_stable v ot inhabitant st). done. }
-      iModIntro. iExists _, _, _, _, _. iFrame.
-      iSplitR; first done. iSplitR; first done. iSplitR; first by iPureIntro.
-      iApply logical_step_mask_mono; last iApply (logical_step_wand with "Hcl"); first done.
-      iIntros "[Hcl _]".
-      iIntros (st ov) "%Hdec Hl #Hv".
-      iMod (fupd_mask_mono with "(Hcl Hl Hv)") as "(Hl & HL)"; first done.
-      iPoseProof ("HL_cl" with "HL") as "HL".
-      iPoseProof (ty_encode_compat with "Hv") as "Hid"; [done | done |].
-      simpl.
-      iModIntro. iExists L, rt, ty, r. iFrame "Hid HL".
-
-      iExists _, _, _, weak_upd.
-      iFrame "Hl".
-      iR. iSplitR. { iApply upd_bot_min. }
-      iSplitR. { iApply typed_place_cond_refl_ofty. }
-      by iApply "Hs".
+      by iFrame. }
+    by iApply "HT".
   Qed.
-  Definition type_read_ofty_copy_inst := [instance @type_read_ofty_copy].
-  Global Existing Instance type_read_ofty_copy_inst | 10.
+  Definition ltype_read_as_ofty_owned_inst := [instance @ltype_read_as_ofty_owned].
+  Global Existing Instance ltype_read_as_ofty_owned_inst | 10.
+
+  (** Shared copy access keeps the shortened lifetime context available while
+      the physical read is open, and returns its lifetime tokens afterwards. *)
+  Lemma ltype_read_as_ofty_shared E L {rt} π bmin l (ty : type rt) r κ ot `{!Copyable ty}
+      (T : ltype_read_as_cont_t bmin rt) :
+    li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
+      ⌜ty_has_op_type ty ot⌝ ∗ ∀ v, T L2 (llft_elt_toks κs) v rt ty r
+        (mkPUKRes UpdBot opt_place_update_eq_refl opt_place_update_eq_refl))
+    ⊢ ltype_read_as π E L l (◁ ty) (#r) (Shared κ) bmin ot T.
+  Proof.
+    rewrite /lctx_lft_alive_count_goal.
+    iIntros "(%κs & %L2 & %Hal & %Hot & HT)" (F ????) "#CTX #HE HL #Hb".
+    iMod (lctx_lft_alive_count_tok with "HE HL") as (q') "(Htok & Hcltok & HL)"; [done.. |].
+    iPoseProof (ofty_ltype_acc_shared with "Hb") as "(%ly & %Halg & %Hly & Hlb & >Hl')"; first done.
+    iMod (copy_shr_acc with "CTX Hl' Htok") as
+      "(%ly' & >%Hst & >%Hly' & (%q & %v & (>Hpt & #Hv) & Hclose))"; [solve_ndisj.. |].
+    opose proof (ty_op_type_stable ty _ Hot) as Halg''.
+    assert (ly' = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
+    iDestruct (ty_own_val_has_layout with "Hv") as "#>%Hlyv"; first done.
+    iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as "#>(%ov0 & %Hdec0)"; first done.
+    have Hdecode : ∀ st, ∃ ov, decode_op_val v ot st = Some ov.
+    { intros st. exists ov0. rewrite -(decode_op_val_stable v ot inhabitant st). done. }
+    set (res := mkPUKRes (allowed:=bmin) (rt1:=rt) (rt2:=rt)
+      UpdBot opt_place_update_eq_refl opt_place_update_eq_refl).
+    iModIntro. iExists L2, (llft_elt_toks κs), q, v, rt, ty, r, res. iFrame "HL Hpt Hv".
+    do 5 iR. iSplitR; first iApply upd_bot_min.
+    iSplitR; first iApply typed_place_cond_refl_ofty.
+    iSplitL "Hclose Hcltok".
+    { iApply logical_step_intro. iIntros (st ov) "%Hdec Hpt Hv'".
+      iMod ("Hclose" with "[Hv Hpt]") as "Htok"; first eauto with iFrame.
+      iMod (fupd_mask_mono with "(Hcltok Htok)") as "$"; first done.
+      iPoseProof (ty_encode_compat with "Hv'") as "Hid"; [done | done |].
+      by iFrame "Hid". }
+    by iApply "HT".
+  Qed.
+  Definition ltype_read_as_ofty_shared_inst := [instance @ltype_read_as_ofty_shared].
+  Global Existing Instance ltype_read_as_ofty_shared_inst | 10.
+
+  Lemma ltype_read_as_ofty_uniq E L {rt} π bmin l (ty : type rt) r κ γ ot `{!Copyable ty}
+      (T : ltype_read_as_cont_t bmin rt) :
+    li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
+      ⌜ty_has_op_type ty ot⌝ ∗ ∀ v, T L2 (llft_elt_toks κs) v rt ty r
+        (mkPUKRes UpdBot opt_place_update_eq_refl opt_place_update_eq_refl))
+    ⊢ ltype_read_as π E L l (◁ ty) (#r) (Uniq κ γ) bmin ot T.
+  Proof.
+    rewrite /lctx_lft_alive_count_goal.
+    iIntros "(%κs & %L2 & %Hal & %Hot & HT)" (F ????) "#CTX #HE HL Hb".
+    iMod (fupd_mask_subseteq lftE) as "HF"; first done.
+    iMod (lctx_lft_alive_count_tok with "HE HL") as (q') "(Htok & Hcltok & HL)"; [done.. |].
+    iPoseProof (ofty_ltype_acc_uniq with "CTX Htok Hcltok Hb") as
+      "(%ly & %Halg & %Hly & Hlb & >(%v & Hpt & Hv & Hcl))"; first done.
+    iMod "HF" as "_".
+    opose proof (ty_op_type_stable ty _ Hot) as Halg''.
+    assert (ly = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
+    iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+    iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as (ov0) "%Hdec0"; first done.
+    have Hdecode : ∀ st, ∃ ov, decode_op_val v ot st = Some ov.
+    { intros st. exists ov0. rewrite -(decode_op_val_stable v ot inhabitant st). done. }
+    set (res := mkPUKRes (allowed:=bmin) (rt1:=rt) (rt2:=rt)
+      UpdBot opt_place_update_eq_refl opt_place_update_eq_refl).
+    iModIntro. iExists L2, (llft_elt_toks κs), _, v, rt, ty, r, res. iFrame "HL Hpt Hv".
+    do 5 iR. iSplitR; first iApply upd_bot_min.
+    iSplitR; first iApply typed_place_cond_refl_ofty.
+    iSplitL "Hcl".
+    { iApply (logical_step_mask_mono lftE F); first done.
+      iApply (logical_step_wand with "Hcl").
+      iIntros "[Hcl _]" (st ov) "%Hdec Hpt #Hv'".
+      iMod (fupd_mask_mono with "(Hcl Hpt Hv')") as "(Hl & HR)"; first done.
+      iPoseProof (ty_encode_compat with "Hv'") as "Hid"; [done | done |].
+      iModIntro. iFrame "Hid Hl HR". }
+    by iApply "HT".
+  Qed.
+  Definition ltype_read_as_ofty_uniq_inst := [instance @ltype_read_as_ofty_uniq].
+  Global Existing Instance ltype_read_as_ofty_uniq_inst | 10.
+
+  (** A shared-blocked place can be read through the shared ownership it
+      exposes.  The update records that [κ] has to be dead before the place may
+      be unblocked, just like [typed_place_shrblocked_unblock]. *)
+  Lemma ltype_read_as_shrblocked E L {rt} π b bmin l (ty : type rt) r κ ot
+      (T : ltype_read_as_cont_t bmin rt) :
+    (⌜lctx_place_update_kind_incl E L (UpdUniq [κ]) bmin⌝ ∗
+      ltype_read_as π E L l (◁ ty) (#r) (Shared κ) bmin ot
+        (λ L' R v rt' ty' r' _,
+          T L' R v rt' ty' r'
+            (mkPUKRes (UpdUniq [κ]) opt_place_update_eq_refl opt_place_update_eq_refl)))
+    ⊢ ltype_read_as π E L l (ShrBlockedLtype ty κ) (#r) b bmin ot T.
+  Proof.
+    iIntros "(%Hincl & HT)" (F ????) "#CTX #HE HL Hl".
+    iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hincl"; first done.
+    iPoseProof (ltype_own_shrblocked_as_shared with "Hl") as "#Hlshared".
+    iMod ("HT" with "[//] [//] [//] [//] CTX HE HL Hlshared") as
+      (L' R q v rt' ty' r' res) "(%Hlyl & %Hlyv & %Hdec & %Hot & %Hcopy & HL & Hpt & Hv & _ & _ & Hcl & HT)".
+    iModIntro. iExists L', R, q, v, rt', ty', r',
+      (mkPUKRes (UpdUniq [κ]) opt_place_update_eq_refl opt_place_update_eq_refl).
+    iFrame "HL Hpt Hv Hincl HT". do 5 iR. iSplitR.
+    { iApply typed_place_cond_refl. unfold place_kind_outlives_unblock_lt.
+      simp_ltypes. iApply lft_list_incl_refl. }
+    iApply (logical_step_wand with "Hcl").
+    iIntros "Hcl" (st ov) "%Hdecode Hpt Hv".
+    iMod ("Hcl" $! st ov with "[//] Hpt Hv") as "(Hv & _ & HR)".
+    by iFrame "Hv Hl HR".
+  Qed.
+  Definition ltype_read_as_shrblocked_inst := [instance @ltype_read_as_shrblocked].
+  Global Existing Instance ltype_read_as_shrblocked_inst | 10.
+
+  (** Low-priority fallback for ltypes that can be folded to an [OfTy]. *)
+  Lemma ltype_read_as_fold_to_ofty E L {rt} π b bmin l (lt : ltype rt) r ot
+      (T : ltype_read_as_cont_t bmin rt) :
+    cast_ltype_to_type E L lt (λ ty,
+      ltype_read_as π E L l (◁ ty) r b bmin ot T)
+    ⊢ ltype_read_as π E L l lt r b bmin ot T.
+  Proof.
+    iIntros "(%ty & %Heqt & HT)" (F ????) "#CTX #HE HL Hl".
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Heq)";
+      first apply Heqt.
+    iDestruct ("Heq" $! b r) as "(#Hto & #Hfrom)".
+    iMod (ltype_incl_use with "Hto Hl") as "Hl"; first done.
+    iMod ("HT" with "[//] [//] [//] [//] CTX HE HL Hl") as
+      (L' R q v rt' ty' r' res)
+      "(%Hlyl & %Hlyv & %Hdec & %Hot & %Hcopy & HL & Hpt & Hv & Hincl & Hcond & Hcl & HT)".
+    iModIntro. iExists L', R, q, v, rt', ty', r', res.
+    iFrame "HL Hpt Hv Hincl HT". do 5 iR.
+    iSplitR "Hcl".
+    { iPoseProof (ltype_eq_place_cond_trans with "[] [] Hcond") as "Hcond".
+      - iPureIntro. exact Hst.
+      - iApply "Heq".
+      - iApply (place_cond_ltype_eq_trans with "[] Hcond").
+        + iPureIntro. symmetry. exact Hst.
+        + iIntros (b' r0). iApply ltype_eq_sym. iApply "Heq". }
+    iApply (logical_step_wand with "Hcl").
+    iIntros "Hcl" (st ov) "%Hdecode Hpt Hv".
+    iMod ("Hcl" $! st ov with "[//] Hpt Hv") as "(Hv & Hl & HR)".
+    iMod (ltype_incl_use with "Hfrom Hl") as "Hl"; first done.
+    iModIntro. iFrame.
+  Qed.
+  Definition ltype_read_as_fold_to_ofty_inst :=
+    [instance @ltype_read_as_fold_to_ofty].
+  Global Existing Instance ltype_read_as_fold_to_ofty_inst | 100.
+
+  (** A successful copy access leaves the source place unchanged. *)
+  Lemma type_read_copy E L {rt} π b bmin l (lt : ltype rt) r ot
+      (T : typed_read_end_cont_t bmin rt) :
+    ltype_read_as π E L l lt r b bmin ot (λ L' R v rt' ty' r' res,
+      ∀ v', introduce_with_hooks E L' R (λ L'', T L'' v' rt' ty' r' rt lt r res))
+    ⊢ typed_read_end π E L l lt r b bmin ot ReadDoCopy T.
+  Proof.
+    iIntros "HT" (F ????) "#CTX #HE HL Hl".
+    iMod ("HT" with "[//] [//] [//] [//] CTX HE HL Hl") as
+      (L' R q v rt' ty' r' res) "(%Hlyl & %Hlyv & %Hdec & %Hot & %Hcopy & HL & Hpt & Hv & Hincl & Hcond & Hcl & HT)".
+    iModIntro. iExists q, v, rt', ty', r'. iFrame "Hpt Hv". do 3 iR.
+    iPoseProof (logical_step_frame_r with "Hcl HL") as "Hcl".
+    iApply (logical_step_wand with "Hcl").
+    iIntros "(Hcl & HL)" (st ov) "%Hdecode Hpt Hv".
+    iMod ("Hcl" $! st ov with "[//] Hpt Hv") as "(Hv & Hl & HR)".
+    iSpecialize ("HT" $! (encode_op_val ov)).
+    iMod ("HT" with "[//] CTX HE HL HR") as (L'') "(HL & HT)".
+    iModIntro. iExists L'', rt', ty', r'. iFrame.
+    done.
+  Qed.
+  Definition type_read_copy_inst := [instance @type_read_copy].
+  Global Existing Instance type_read_copy_inst | 10.
+
+  (** Moving remains restricted to value ltypes.  This low-priority rule keeps
+      the previous behavior for ltypes that can be folded to an [OfTy]. *)
+  Lemma type_read_move_fold_to_ofty E L {rt} π b bmin l (lt : ltype rt) r ot
+      (T : typed_read_end_cont_t bmin rt) :
+    cast_ltype_to_type E L lt (λ ty,
+      typed_read_end π E L l (◁ ty) r b bmin ot ReadDoMove T)
+    ⊢ typed_read_end π E L l lt r b bmin ot ReadDoMove T.
+  Proof.
+    iIntros "(%ty & %Heqt & HT)" (F ????) "#CTX #HE HL Hl".
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Heq)"; first apply Heqt.
+    iDestruct ("Heq" $! b r) as "(#Hincl & _)".
+    iMod (ltype_incl_use with "Hincl Hl") as "Hl"; first done.
+    iMod ("HT" with "[//] [//] [//] [//] CTX HE HL Hl") as
+      (q v rt' ty' r') "(%Hlyl & %Hlyv & %Hdec & Hpt & Hv & Hcl)".
+    iModIntro. iExists q, v, rt', ty', r'. iR. iR. iR. iFrame "Hpt Hv".
+    iApply (logical_step_wand with "Hcl").
+    iIntros "Hcl" (st ov) "%Hdecode Hpt Hv".
+    iMod ("Hcl" $! st ov with "[//] Hpt Hv") as
+      (L' rt3 ty3 r3) "(Hv & HL & %rt2 & %lt2 & %r2 & %res & Hl & %Hst2 & Hincl2 & Hcond & HT)".
+    iModIntro. iExists L', rt3, ty3, r3. iFrame "Hv HL".
+    iExists rt2, lt2, r2, res. iFrame.
+    iSplitR. { simpl in Hst. by rewrite Hst Hst2. }
+    iApply ltype_eq_place_cond_trans; [done | iApply "Heq" | done].
+  Qed.
+  Definition type_read_move_fold_to_ofty_inst :=
+    [instance @type_read_move_fold_to_ofty].
+  Global Existing Instance type_read_move_fold_to_ofty_inst | 100.
 
   (*
   For more generality, maybe have LtypeReadAs lty (λ ty r, ...)

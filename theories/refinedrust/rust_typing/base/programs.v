@@ -1528,6 +1528,38 @@ Section judgments.
       WPe{f.1} e {{ Φ }})%I.
 
 
+  (** [ltype_read_as] provides non-destructive access to the value stored in an
+      ltype.  The client temporarily gets the points-to and value ownership and
+      has to return both; the closer then restores the original ltype exactly. *)
+  Definition ltype_read_as_cont_t (allowed : place_update_kind) (rt : RT) : Type :=
+    llctx → iProp Σ → val → ∀ rt', type rt' → rt' → place_update_kind_res allowed rt rt → iProp Σ.
+  Definition ltype_read_as (π : thread_id) (E : elctx) (L : llctx) (l : loc)
+      {rt} (lt : ltype rt) (r : place_rfn rt) (b : bor_kind)
+      (bmin : place_update_kind) (ot : op_type)
+      (T : ltype_read_as_cont_t bmin rt) : iProp Σ :=
+    (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
+      rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
+      l ◁ₗ[π, b] r @ lt ={F}=∗
+      ∃ L' (R : iProp Σ) q v rt' (ty : type rt') r'
+          (res : place_update_kind_res bmin rt rt),
+        ⌜l `has_layout_loc` ot_layout ot⌝ ∗
+        ⌜v `has_layout_val` ot_layout ot⌝ ∗
+        ⌜∀ st, ∃ ov, decode_op_val v ot st = Some ov⌝ ∗
+        ⌜ty_has_op_type ty ot⌝ ∗ ⌜Copyable ty⌝ ∗
+        llctx_interp L' ∗
+        l ↦{q} v ∗ ▷ v ◁ᵥ{π, MetaNone} r' @ ty ∗
+        res ⪯ₚ bmin ∗ typed_place_cond res lt lt ∗
+        logical_step F (∀ st ov,
+          ⌜decode_op_val v ot st = Some ov⌝ -∗
+          l ↦{q} v -∗ v ◁ᵥ{π, MetaNone} r' @ ty ={F}=∗
+          encode_op_val ov ◁ᵥ{π, MetaNone} r' @ ty ∗
+          l ◁ₗ[π, b] r @ lt ∗ R) ∗
+        T L' R v rt' ty r' res)%I.
+  Class LtypeReadAs (π : thread_id) (E : elctx) (L : llctx) (l : loc)
+      {rt} (lt : ltype rt) (r : place_rfn rt) (b : bor_kind)
+      (bmin : place_update_kind) (ot : op_type) : Type :=
+    ltype_read_as_proof T : iProp_to_Prop (ltype_read_as π E L l lt r b bmin ot T).
+
   (* The core of reading from a location [l] with [ot] that is typed at [lt] and immediately owned at [b2] below a path with intersected [bor_kind] [bmin].
 
     This is called [typed_read_end] because it ends the chain of typing rules applied to do the read, after typing all the places that are accessed to get to [l].
@@ -2469,6 +2501,7 @@ Global Hint Mode SubtypeADT + + + + + + + ! : typeclass_instances.
 
 Global Hint Mode InterpretTypingHint + + + + + + + + + + : typeclass_instances.
 
+Global Hint Mode LtypeReadAs + + + + + + + + + + + + : typeclass_instances.
 Global Hint Mode TypedReadEnd + + + + + + + + + + + + + : typeclass_instances.
 Global Hint Mode TypedWriteEnd + + + + + + + + + + + + + + + + : typeclass_instances.
 Global Hint Mode TypedBorrowMutEnd + + + + + + + + + + + + + : typeclass_instances.
@@ -3904,6 +3937,7 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | typed_call ?E ?L ?f ?κs ?etys ?v ?P ?vs ?tys ?destination ?normal ?unwind =>
       constr:(TypedCall E L f κs etys v P vs tys destination normal unwind)
   | typed_place ?E ?L ?f ?l ?lto ?ro ?b1 ?b2 ?K => constr:(TypedPlace E L f l lto ro b1 b2 K)
+  | ltype_read_as ?π ?E ?L ?l ?lt ?r ?b ?bmin ?ot => constr:(LtypeReadAs π E L l lt r b bmin ot)
   | typed_read_end ?π ?E ?L ?l ?lt ?r ?b1 ?b2 ?ot ?m => constr:(TypedReadEnd π E L l lt r b1 b2 ot m)
   | typed_write_end ?π ?E ?L ?ot ?v ?ty1 ?r1 ?b1 ?b2 ?l ?lt2 ?r2 => constr:(TypedWriteEnd π E L ot v ty1 r1 b1 b2 l lt2 r2)
   | typed_borrow_mut_end ?π ?E ?L ?κ ?l ?orty ?lt ?r ?b1 ?b2 =>

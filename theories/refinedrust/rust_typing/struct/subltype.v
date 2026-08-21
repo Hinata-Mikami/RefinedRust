@@ -528,7 +528,104 @@ Section lemmas.
    rewrite /GetMemberLocSt /use_struct_layout_alg' Halg /=.
    rewrite /offset_of. erewrite sl_index_of_lookup_2; done.
   Qed.
-End lemmas.
+
+  Definition struct_ltype_named_own π k l sls i0
+      (src : list (sigT (λ rt, (ltype rt * place_rfn rt)%type))) : iProp Σ :=
+    [∗ list] i↦p ∈ src,
+      let 'existT rt (lt, r) := p in
+      ∃ name st, ⌜sls_fields sls !! (i0 + i)%nat = Some (name, st)⌝ ∗
+        l atst{sls}ₗ name ◁ₗ[π, k] r @ lt.
+
+  Definition struct_ltype_padding_own π k l (fields : field_list) n : iProp Σ :=
+    [∗ list] i↦pad ∈ pad_struct fields (replicate n None) Some,
+      from_option (λ ly,
+        ∃ ly', ⌜snd <$> fields !! i = Some ly'⌝ ∗
+          ⌜syn_type_has_layout
+            (ltype_st (projT2 (struct_make_uninit_ltype ly)).1) ly'⌝ ∗
+          (l +ₗ offset_of_idx fields i) ◁ₗ[π, k]
+            (projT2 (struct_make_uninit_ltype ly)).2 @
+            (projT2 (struct_make_uninit_ltype ly)).1) True pad.
+
+  (** Focus all named fields while keeping padding available separately.  In
+      contrast to [struct_ltype_focus_components], this accessor performs an
+      exact update: the closer restores the same component ltypes. *)
+  Lemma struct_ltype_focus_components_with_padding π {rts : list RT}
+      (lts : hlist ltype rts) (rs : plist place_rfnRT rts) sls sl k l :
+    length rts = length (sls_fields sls) →
+    struct_layout_spec_has_layout sls sl →
+    ([∗ list] i↦ty ∈ pad_struct (sl_members sl)
+        (hpzipl rts lts rs) struct_make_uninit_ltype,
+      ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗
+        ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
+        (l +ₗ offset_of_idx (sl_members sl) i) ◁ₗ[π, k]
+          (projT2 ty).2 @ (projT2 ty).1) -∗
+    struct_ltype_named_own π k l sls 0 (hpzipl rts lts rs) ∗
+    struct_ltype_padding_own π k l (sl_members sl) (length rts) ∗
+    (struct_ltype_named_own π k l sls 0 (hpzipl rts lts rs) -∗
+      struct_ltype_padding_own π k l (sl_members sl) (length rts) -∗
+      [∗ list] i↦ty ∈ pad_struct (sl_members sl)
+          (hpzipl rts lts rs) struct_make_uninit_ltype,
+        ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗
+          ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
+          (l +ₗ offset_of_idx (sl_members sl) i) ◁ₗ[π, k]
+            (projT2 ty).2 @ (projT2 ty).1).
+  Proof.
+    iIntros (Hlen Halg) "Hl".
+    iPoseProof (pad_struct_focus with "Hl") as "(Hnamed & Hpad)".
+    { rewrite length_hpzipl. rewrite named_fields_field_names_length
+        (struct_layout_spec_has_layout_fields_length sls); done. }
+    { specialize (sl_nodup sl). by rewrite bool_decide_spec. }
+    iAssert ([∗ list] i↦x ∈ hpzipl rts lts rs,
+      ∃ ly n, ⌜named_fields (sl_members sl) !! i = Some (n, ly)⌝ ∗
+        ⌜syn_type_has_layout (ltype_st (projT2 x).1) ly⌝)%I
+      with "[Hnamed]" as "%Hlayouts".
+    { iApply (big_sepL_impl with "Hnamed").
+      iModIntro. iIntros (i [rt [lt r]] Hlook)
+        "(%j & %ly & %name & %Hmem & %Hnamed & %ly' & %Hmem' & %Hst & Hl)".
+      rewrite Hmem in Hmem'. simpl in Hmem'. injection Hmem' as <-.
+      iExists ly, name. done. }
+    iSplitL "Hnamed".
+    { rewrite /struct_ltype_named_own. iApply (big_sepL_impl with "Hnamed").
+      iModIntro. iIntros (i [rt [lt r]] Hlook)
+        "(%j & %ly & %name & %Hmem & %Hnamed & %ly' & %Hmem' & %Hst & Hl)".
+      rewrite Hmem in Hmem'. simpl in Hmem'. injection Hmem' as <-.
+      specialize (struct_layout_spec_has_layout_alt_2 _ _ Halg) as Hfields.
+      eapply Forall2_lookup_r in Hfields as ([name' st] & Hfield & Hrel);
+        last done.
+      simpl in Hrel. destruct Hrel as (_ & <-).
+      iExists name, st. rewrite Nat.add_0_l. iSplit; first done.
+      rewrite /GetMemberLocSt /use_struct_layout_alg' Halg /= /offset_of.
+      erewrite sl_index_of_lookup_2; done. }
+    iSplitL "Hpad".
+    { rewrite /struct_ltype_padding_own.
+      iEval (rewrite length_hpzipl) in "Hpad". done. }
+    iIntros "Hnamed Hpad".
+    iApply (pad_struct_unfocus with "[Hnamed] [Hpad]").
+    { rewrite length_hpzipl. rewrite named_fields_field_names_length
+        (struct_layout_spec_has_layout_fields_length sls); done. }
+    { specialize (sl_nodup sl). by rewrite bool_decide_spec. }
+    - rewrite /struct_ltype_named_own.
+      iApply (big_sepL_impl with "Hnamed").
+      iModIntro. iIntros (i [rt [lt r]] Hlook)
+        "(%name & %st & %Hfield & Hl)".
+      rewrite Nat.add_0_l in Hfield.
+      specialize (struct_layout_spec_has_layout_lookup sls sl name _ _ Halg Hfield)
+        as Hidx.
+      specialize (struct_layout_spec_has_layout_alt_2 _ _ Halg) as Hfields.
+      eapply Forall2_lookup_l in Hfields as ([name' ly] & Hmember & Hrel);
+        last done.
+      simpl in Hrel. destruct Hrel as (Hst & ->).
+      specialize (named_fields_lookup_1 _ _ _ _ Hmember) as (j & Hmem).
+      eapply Hlayouts in Hlook as (ly' & name'' & Hnamed & Hst').
+      rewrite Hmember in Hnamed. injection Hnamed as [= <- <-].
+      iExists j, ly, name. do 2 (iSplit; first done).
+      iExists ly. iSplit; first by rewrite Hmem.
+      iSplit; first by iPureIntro.
+      rewrite /GetMemberLocSt /use_struct_layout_alg' Halg /= /offset_of.
+      erewrite sl_index_of_lookup_2; done.
+    - rewrite /struct_ltype_padding_own length_hpzipl. done.
+  Qed.
+  End lemmas.
 
 Section accessors.
   Context `{!typeGS Σ}.
