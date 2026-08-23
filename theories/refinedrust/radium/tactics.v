@@ -630,7 +630,7 @@ Proof.
   eexists ([StmtCtx (lang.AssignRCtx _ _ _ _) π rf])|
   eexists ([StmtCtx (lang.AssignLCtx _ _ _ _) π rf])|
   eexists ([StmtCtx (lang.AssignRCtx _ _ _ _) π rf])|
-  eexists ([ExprCtx lang.SkipECtx π; StmtCtx (lang.AssignLCtx _ _ _ _) π rf])|
+  eexists ([ExprCtx lang.SkipECtx π; ExprCtx lang.SkipECtx π; StmtCtx (lang.AssignLCtx _ _ _ _) π rf])|
   eexists ([StmtCtx (lang.ReturnCtx) π rf])|
   eexists ([StmtCtx (lang.IfSCtx _ _ _) π rf])|
   eexists ([StmtCtx (lang.SwitchCtx _ _ _ _) π rf])|

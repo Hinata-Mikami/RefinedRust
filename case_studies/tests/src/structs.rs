@@ -25,6 +25,46 @@ fn tuple_shrblocked_read() {
     assert!(*xr == 1);
 }
 
+#[rr::verify]
+fn tuple_shrblocked_read_shared(x: &(i32, i32)) {
+    let xb = x.0;
+    let xr = &x.0;
+
+    // can be copied even while the first field is share-borrowed.
+    let y = x;
+
+    assert!(*xr == xb);
+}
+
+#[rr::verify]
+fn tuple_owned_overwrite_after_read() {
+    let mut x = (1i32, 2i32);
+    let first = x.0;
+
+    x = (3, 4);
+
+    assert!(first == 1);
+    assert!(x.0 == 3);
+}
+
+
+#[rr::verify]
+fn mutref_reborrow_overwrite() {
+    let mut x = 34;
+    let mut xr = &mut x;
+    let mut xrr = &mut (*xr);
+
+    let mut y = 42;
+    // xr gets killed here
+    xr = &mut y;
+
+
+    assert!(*xrr == 34);
+    assert!(*xr == 42);
+
+}
+
+
 #[rr::refined_by("x" : "Z")]
 #[rr::invariant("Zeven x")]
 struct EvenInt {

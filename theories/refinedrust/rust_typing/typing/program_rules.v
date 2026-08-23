@@ -3519,11 +3519,11 @@ Section subsume.
     rewrite /num_laters_per_step/=. lia.
   Qed.
 
-  (* This lemma is about AssignSE, which adds a skip around the LHS expression.
-     The reason is that we might need to unblock e1 first and only after that get access to the location we need for justifying the actual write
-      - so we can't just use the actual write step,
-      - and we also cannot use the place access on the LHS itself, because that might not even take a step (if it's just a location).
-     *)
+  (* This lemma is about AssignSE, which adds two skips around the LHS expression.
+     We might need to unblock e1 and then prepare it for writing before getting
+     access to the location that justifies the actual write. Neither can use the
+     actual write step or the place access itself, which might not take a step.
+      *)
   Lemma type_assign E L f ot e1 e2 s fn R U o ϝ :
     typed_val_expr E L f e2 (λ L' v m rt ty r,
       ⌜m = MetaNone⌝ ∗
@@ -3537,13 +3537,18 @@ Section subsume.
     wps_bind. iApply ("He" with "[$LFT $LLCTX] HE HL Hf").
     iIntros (L' v rt ty r m) "HL Hf Hv (-> & % & He1)".
     wps_bind. iApply ("He1" $! _ ⊤ with "[//] [//] [//] [//] [$LFT $LLCTX] HE HL Hf"). iIntros (l) "HT".
-    unfold AssignSE. wps_bind.
+    unfold AssignSE. wps_bind. wpe_bind.
     iSpecialize ("HT" with "Hv").
     iApply (wpe_logical_step with "HT"); [solve_ndisj.. | ].
     iMod (tr_zero) as "Ha".
     iApply wp_skip.
     iApply (physical_step_intro_tr with "Ha").
-    iNext. iIntros "Ha Hcred !> (%Hwf & %Hdecv & Hl & Hcl)".
+    iNext. iIntros "Ha Hcred !> HT".
+    iApply wpe_fupd.
+    iApply (wpe_logical_step with "HT"); [solve_ndisj.. | ].
+    iApply wp_skip.
+    iApply (physical_step_intro_tr with "Ha").
+    iNext. iIntros "Ha Hcred2 !> (%Hwf & %Hdecv & Hl & Hcl)".
     iDestruct "Hl" as "(%v' & % & % & Hl)".
     iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
@@ -3551,15 +3556,18 @@ Section subsume.
     { destruct o; naive_solver. }
     { intros. apply val_to_loc_decode. by apply val_to_loc_Some_l2v. }
     { done. }
-    iMod (fupd_mask_subseteq) as "Hcl_m"; last iApply fupd_intro.
-    { destruct o; solve_ndisj. }
+    iApply (fupd_mask_intro ⊤ (match o with ScOrd => ∅ | _ => ⊤ end));
+      first by destruct o; solve_ndisj.
+    iModIntro.
+    iIntros "Hcl_m".
     iSplitR; first done. iFrame "Hl". iR.
     iMod "Hcl_m" as "_".
     iApply (physical_step_step_upd with "Hcl").
     iApply (physical_step_intro_tr with "Ha").
     iNext. iIntros "Ha Hcred' !> Hcl".
-    iMod (fupd_mask_subseteq) as "Hcl_m"; last iApply fupd_intro.
+    iMod (fupd_mask_subseteq) as "Hcl_m".
     { destruct o; solve_ndisj. }
+    iModIntro.
     iIntros (st ov) "%Hdec Hl".
     (*rewrite num_laters_per_step_linear.*)
     (*iDestruct "Hcred'" as "(Hcred2 & Hcred')".*)
@@ -3948,8 +3956,9 @@ Section subsume.
     iIntros "(Hl2 & HR)".
     iMod ("HT" with "[//] CTX HE HL") as "(HL & %upd & #Hincl2 & Hcond & %Hst_eq & HT)".
     iMod ("HT" with "[//] [//] [//] [//] CTX HE HL Hl2 Hv") as "Hwrite".
-    iDestruct "Hwrite" as "(%Hwf & %Hdecode & Hl2 & Hcl)".
-    iModIntro. iFrame "Hl2". iSplitR; first done. iSplitR; first done.
+    iModIntro. iApply (logical_step_wand with "Hwrite").
+    iIntros "(%Hwf & %Hdecode & Hl2 & Hcl)".
+    iFrame "Hl2". iSplitR; first done. iSplitR; first done.
     iApply (logical_step_wand with "Hcl").
     iIntros "Hcl" (st ov) "%Hdec Hl2".
     iMod ("Hcl" $! st ov with "[//] Hl2") as "Hcl".
@@ -3993,7 +4002,8 @@ Section subsume.
     iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as (ov0) "%Hdec0"; first done.
     have Hdecode : ∀ st, ∃ ov, decode_op_val v ot st = Some ov.
     { intros st. exists ov0. rewrite -(decode_op_val_stable v ot inhabitant st). done. }
-    iModIntro. iSplitR; first by iPureIntro; eapply ty_op_type_wf.
+    iModIntro. iApply logical_step_intro.
+    iSplitR; first by iPureIntro; eapply ty_op_type_wf.
     iSplitR; first by iPureIntro.
     iSplitL "Hl0".
     { iExists v0. iFrame. iSplitR; first done. done. }
@@ -4037,7 +4047,8 @@ Section subsume.
     iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as (ov0) "%Hdec0"; first done.
     have Hdecode : ∀ st, ∃ ov, decode_op_val v ot st = Some ov.
     { intros st. exists ov0. rewrite -(decode_op_val_stable v ot inhabitant st). done. }
-    iModIntro. iSplitR; first by iPureIntro; eapply ty_op_type_wf.
+    iModIntro. iApply logical_step_intro.
+    iSplitR; first by iPureIntro; eapply ty_op_type_wf.
     iSplitR; first by iPureIntro.
     iSplitL "Hl0".
     { iExists v0. iFrame. iSplitR; first done. done. }
@@ -4089,7 +4100,8 @@ Section subsume.
       iDestruct (ty_own_val_has_layout with "Hv0") as "%"; first done.
       opose proof (ty_op_type_stable ty _ Hot) as ?.
       assert (ly = ot_layout ot) as ->. { eapply syn_type_has_layout_inj; first done. by rewrite -Hst_eq. }
-      iModIntro. iSplitR; first by iPureIntro; eapply ty_op_type_wf.
+      iModIntro. iApply logical_step_intro.
+      iSplitR; first by iPureIntro; eapply ty_op_type_wf.
       iSplitR; first by iPureIntro. iSplitL "Hl".
       { iExists v0. iFrame. done. }
       iPoseProof (ty_own_ghost_drop _ _ _ _ _ F with "Hv0") as "Hgdrop"; first done.
@@ -4118,7 +4130,8 @@ Section subsume.
       iDestruct (ty_own_val_has_layout with "Hv0") as "%"; first done.
       opose proof (ty_op_type_stable ty _ Hot) as ?.
       assert (ly = ot_layout ot) as ->. { eapply syn_type_has_layout_inj; first done. by rewrite -Hst_eq. }
-      iModIntro. iSplitR; first by iPureIntro; eapply ty_op_type_wf.
+      iModIntro. iApply logical_step_intro.
+      iSplitR; first by iPureIntro; eapply ty_op_type_wf.
       iSplitR; first by iPureIntro. iSplitL "Hl".
       { iExists v0. iFrame. done. }
       iPoseProof (ty_own_ghost_drop _ _ _ _ _ F with "Hv0") as "Hgdrop"; first done.
@@ -4139,6 +4152,65 @@ Section subsume.
   Definition type_write_ofty_weak_inst := [instance @type_write_ofty_weak].
   Global Existing Instance type_write_ofty_weak_inst | 20.
 
+  (** Deinitialize an owned place before overwriting it. *)
+  Lemma type_write_owned_deinit E L {rt rt2} π bmin l (ty : type rt) (lt : ltype rt2)
+      r1 r2 v ot `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)}
+      (T : typed_write_end_cont_t bmin rt2) :
+    (⌜ty_has_op_type ty ot⌝ ∗
+      ⌜ltype_st lt = ty_syn_type ty MetaNone⌝ ∗
+      owned_subltype_step π E L true l (#r2) (#()) lt
+        (◁ uninit (ty_syn_type ty MetaNone)) (λ L2 R,
+          introduce_with_hooks E L2 R (λ L3,
+            T L3 rt ty r1
+              (mkPUKRes (allowed:=bmin) UpdStrong I
+                (opt_place_update_eq_strong bmin Hstrong)))))
+    ⊢ typed_write_end π E L ot v ty r1 Owned bmin l lt (#r2) T.
+  Proof.
+    iIntros "(%Hot & %Hst & HT)".
+    iIntros (F qL ???) "#CTX #HE HL Hl Hv".
+    iMod ("HT" with "[] [] [] CTX HE HL Hl") as
+      "(%L2 & %R & Hstep & HL & HT)"; [done.. | ].
+
+    iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as (ov0) "%Hdec0"; first done.
+    have Hdecode : ∀ st, ∃ ov, decode_op_val v ot st = Some ov.
+    { intros st. exists ov0. rewrite -(decode_op_val_stable v ot inhabitant st). done. }
+
+    iModIntro. iApply logical_step_fupd.
+    iApply (logical_step_wand with "Hstep").
+    iIntros "(Hl & HR)".
+    iPoseProof (ofty_ltype_acc_owned with "Hl") as
+      "(%ly & %Halg & %Hly & #Hsc & Hlb & Hacc)"; first done.
+    iMod "Hacc" as "(%v0 & Hl & Hv0 & Hcl)".
+    rewrite uninit_own_spec.
+    iDestruct "Hv0" as "(_ & %ly0 & %Halg0 & %Hly0)".
+    apply syn_type_has_layout_untyped_inv in Halg.
+    opose proof (ty_op_type_stable ty _ Hot) as Hop.
+    assert (ly = ot_layout ot) as -> by by eapply syn_type_has_layout_inj.
+    assert (ly0 = ot_layout ot) as -> by by eapply syn_type_has_layout_inj.
+
+    iModIntro. iSplitR; first by iPureIntro; eapply ty_op_type_wf.
+    iSplitR; first done.
+    iSplitL "Hl".
+    { iExists v0. iFrame. done. }
+    iApply (logical_step_wand with "Hcl").
+    iIntros "Hcl" (st ov) "%Hdec Hl".
+    iPoseProof (ty_own_val_sidecond with "Hv") as "#Hsc'".
+    iPoseProof (ty_encode_compat with "Hv") as "Hv"; [done | done |].
+    iMod ("Hcl" with "Hl [] [] Hv") as "Hl".
+    { iPureIntro. by apply syn_type_compat_untyped_l. }
+    { done. }
+    iMod ("HT" with "[//] CTX HE HL HR") as "(%L3 & HL & HT)".
+    iModIntro.
+    iExists L3, rt, ty, r1,
+      (mkPUKRes (allowed:=bmin) UpdStrong I
+        (opt_place_update_eq_strong bmin Hstrong)).
+    iFrame.
+    iSplitR. { destruct bmin; done. }
+    rewrite /typed_place_cond/=. done.
+  Qed.
+  Definition type_write_owned_deinit_inst := [instance @type_write_owned_deinit].
+  Global Existing Instance type_write_owned_deinit_inst | 90.
+
   (** For now, cast other ltypes to [OfTy]. Longer term, we should have specialized rules for them. *)
   Definition type_write_end_fold_to_ofty E L {rt} π ot v (ty : type rt) r1 b2 bmin l (lt : ltype rt) r T :
     cast_ltype_to_type E L lt (λ ty',
@@ -4150,9 +4222,11 @@ Section subsume.
     iPoseProof (full_eqltype_acc with "CTX HE HL") as "(% & #Heq)"; first apply Heqt.
     iDestruct ("Heq" $! _ _) as "(#Hincl & _)".
     iMod (ltype_incl_use with "Hincl Hl") as "Hl"; first done.
-    iMod ("HT" with "[] [] [] [] CTX HE HL Hl Hv") as "(% & % & $ & Hstep)"; [done.. | ].
-    iR. iR. iApply (logical_step_wand with "Hstep").
-    iModIntro. iIntros "HT" (st ov) "%Hdec Hl".
+    iMod ("HT" with "[] [] [] [] CTX HE HL Hl Hv") as "Hwrite"; [done.. | ].
+    iModIntro. iApply (logical_step_wand with "Hwrite").
+    iIntros "(% & % & Hl & Hstep)". iR. iR. iFrame "Hl".
+    iApply (logical_step_wand with "Hstep").
+    iIntros "HT" (st ov) "%Hdec Hl".
     iMod ("HT" $! st ov with "[//] Hl") as "(%L2 & % & % & % & % & HL & Hl & ? & Hcond & ?)".
     iFrame.
     iApply ltype_eq_place_cond_trans; last done.

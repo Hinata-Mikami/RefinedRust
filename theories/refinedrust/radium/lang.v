@@ -97,7 +97,7 @@ Arguments Call _%_E _%_E _ _%_E _%_E.
 Definition call_return (destination : option (order * op_type * expr))
     (v : val) (normal : stmt) : stmt :=
   match destination with
-  | Some (o, ret_ot, destination) => Assign o ret_ot (SkipE destination) (Val v) normal
+  | Some (o, ret_ot, destination) => Assign o ret_ot (SkipE (SkipE destination)) (Val v) normal
   | None => normal
   end.
 

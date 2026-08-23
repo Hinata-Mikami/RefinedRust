@@ -152,8 +152,8 @@ Notation "'move{' ot } e" := (Move Na1Ord ot e%E) (at level 9, format "'move{' o
 Arguments Move : simpl never.
 Global Typeclasses Opaque Move.
 
-(* This has a skip in order to facilitate unblocking. *)
-Definition AssignSE o ot e1 e2 s := Assign o ot (SkipE e1) e2 s.
+(* These skips provide logical steps for unblocking and preparing the write. *)
+Definition AssignSE o ot e1 e2 s := Assign o ot (SkipE (SkipE e1)) e2 s.
 (* The unicode ← is already part of the notation "_ ← _; _" for bind. *)
 Notation "e1 <-{ ot , o } e2 ; s" := (AssignSE o ot e1%E e2%E s%E)
   (at level 80, s at level 200, format "'[v' e1  '<-{' ot ',' o '}'  e2 ';' '/' s ']'") : expr_scope.

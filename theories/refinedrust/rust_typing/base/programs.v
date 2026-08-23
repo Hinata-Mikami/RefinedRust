@@ -1620,7 +1620,7 @@ Section judgments.
         (* we can hand out ownership to [l], and when the client has written [v] to it,
           the postcondition holds. *)
         (* if the client provides ownership of v... *)
-        (v ◁ᵥ{f.1, MetaNone} r @ ty -∗ logical_step F (
+        (v ◁ᵥ{f.1, MetaNone} r @ ty -∗ logical_step F (logical_step F (
           (* [typed_write_end] proves the operational compatibility needed for the write. *)
           ⌜op_type_wf ot⌝ ∗
           ⌜∀ st, ∃ ov, decode_op_val v ot st = Some ov⌝ ∗
@@ -1628,7 +1628,7 @@ Section judgments.
           l ↦|ot_layout ot| ∗
           (* and after having written the canonical encoding, it gets access to T *)
           logical_step F (∀ st ov, ⌜decode_op_val v ot st = Some ov⌝ -∗
-            l ↦ encode_op_val ov ={F}=∗ ∃ L', llctx_interp L' ∗ current_frame f.1 f.2 ∗ T L'))) -∗
+            l ↦ encode_op_val ov ={F}=∗ ∃ L', llctx_interp L' ∗ current_frame f.1 f.2 ∗ T L')))) -∗
         Φ (l2v l)) -∗
       (* TODO: maybe different mask F *)
       WPe{f.1} e {{ Φ }})%I.
@@ -1646,7 +1646,7 @@ Section judgments.
       (* given ownership of the written-to location *)
       l2 ◁ₗ[π, b2] r2 @ lt2 -∗
       (* assuming that the client provides ownership of [v1] *)
-      v1 ◁ᵥ{π, MetaNone} r1 @ ty1 ={F}=∗
+      v1 ◁ᵥ{π, MetaNone} r1 @ ty1 ={F}=∗ logical_step F (
       (* we provide the operational compatibility needed for the write *)
       ⌜op_type_wf ot⌝ ∗
       ⌜∀ st, ∃ ov, decode_op_val v1 ot st = Some ov⌝ ∗
@@ -1662,7 +1662,7 @@ Section judgments.
         l2 ◁ₗ[π, b2] #r3 @ (◁ ty3) ∗
         res ⪯ₚ bmin ∗
         typed_place_cond res lt2 (◁ ty3) ∗
-        T L' rt3 ty3 r3 res)))).
+        T L' rt3 ty3 r3 res))))).
   Class TypedWriteEnd (π : thread_id) (E : elctx) (L : llctx) (ot : op_type) (v1 : val) {rt1} (ty1 : type rt1) (r1 : rt1) (b2 : bor_kind) (bmin : place_update_kind) (l2 : loc) {rt2} (lt2 : ltype rt2) (r2 : place_rfn rt2) : Type :=
     typed_write_end_proof T : iProp_to_Prop (typed_write_end π E L ot v1 ty1 r1 b2 bmin l2 lt2 r2 T).
 
