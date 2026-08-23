@@ -1016,6 +1016,68 @@ Section accessors.
         iExists sl. iFrame "% ∗". rewrite Hlen'. by do 3 iR. }
   Qed.
 
+  Lemma ltype_uniq_openable_struct {rts} (lts : hlist ltype rts) sls :
+    ltype_uniq_openable (StructLtype lts sls).
+  Proof.
+    iIntros (F κ γ π r l q κs ?) "#(LFT & LLCTX) Hκ HR Hb".
+    rewrite ltype_own_struct_unfold /struct_ltype_own.
+    iDestruct "Hb" as
+      "(%sl & %Halg & %Hlen & %Hly & #Hlb & (Hcred & Hat) & Hrfn & Hb)".
+    iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
+    iMod "Hb".
+    iMod (pinned_bor_acc_strong lftE with "LFT Hb Hκ") as
+      "(%κ' & #Hincl & Hb & _ & Hb_cl)"; first done.
+    iMod "Hcl_F" as "_".
+    iDestruct "Hcred" as "(Hcred1 & Hcred)".
+    iApply (lc_fupd_add_later with "Hcred1"). iNext.
+    iDestruct "Hb" as "(%r' & Hauth & Hb)".
+    iMod (place_rfn_interp_mut_owned with "Hrfn Hauth") as
+      "(Hrfn & Hobs & Hauth)".
+    iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
+    iModIntro.
+    rewrite -opened_ltype_core_contract.
+    iDestruct "Hcred" as "(Hcred1 & Hcred)".
+    iApply (opened_ltype_create_uniq_simple with
+      "Hobs Hauth Hcred1 Hat Hincl HR Hb_cl [] [Hcred]").
+    - done.
+    - iModIntro. iIntros (?) "Hauth Hc". simp_ltypes.
+      rewrite ltype_own_struct_unfold /struct_ltype_own.
+      iExists _. iFrame.
+      iDestruct "Hc" as
+        ">(%sl' & %Hsl' & _ & _ & _ & %r'' & -> & >Hb)".
+      assert (sl' = sl) as ->.
+      { rewrite Halg in Hsl'. injection Hsl' as ->. done. }
+      iModIntro. setoid_rewrite ltype_own_core_equiv.
+      rewrite pad_struct_pull_core. iApply (big_sepL_impl with "Hb").
+      iModIntro. iIntros (? [? []] ?). simpl.
+      rewrite ltype_core_syn_type_eq. eauto.
+    - iIntros (?) "Hobs Hat Hcred_cb Hp". simp_ltypes.
+      rewrite ltype_own_struct_unfold /struct_ltype_own.
+      setoid_rewrite ltype_own_core_equiv.
+      iModIntro. iExists sl. iFrame "% ∗". iR.
+      iModIntro.
+      setoid_rewrite pad_struct_pull_core.
+      setoid_rewrite ltype_core_sigT_ltype_core_idemp.
+      setoid_rewrite ltype_st_sigT_ltype_core.
+      iApply (pinned_bor_iff with "[] [] Hp").
+      + iNext. iModIntro. iSplit.
+        all: iIntros "(%r'' & ? & Hb)"; iExists r''; iFrame;
+          iMod "Hb"; iModIntro; iApply (big_sepL_impl with "Hb");
+          iIntros "!>" (? [? []] ?); eauto.
+      + iNext. iModIntro. iSplit.
+        all: iIntros "(%r'' & ? & Hb)"; iExists r''; iFrame;
+          iMod "Hb"; iModIntro; iApply (big_sepL_impl with "Hb");
+          iIntros "!>" (? [? []] ?); eauto.
+    - rewrite ltype_own_struct_unfold /struct_ltype_own.
+      iExists sl. iFrame "% #". iExists r'. iFrame "Hrfn".
+      iModIntro. iExact "Hb".
+  Qed.
+
+  Global Instance ltype_uniq_openable_struct_done {rts}
+      (lts : hlist ltype rts) sls :
+    TCDone (ltype_uniq_openable (StructLtype lts sls)) :=
+    ltype_uniq_openable_struct lts sls.
+
   Lemma struct_ltype_acc_shared {rts} F π (lts : hlist ltype rts) (r : plist place_rfnRT rts) l sls κ :
     lftE ⊆ F →
     l ◁ₗ[π, Shared κ] #r @ StructLtype lts sls -∗

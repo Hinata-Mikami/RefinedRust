@@ -4152,6 +4152,107 @@ Section subsume.
   Definition type_write_ofty_weak_inst := [instance @type_write_ofty_weak].
   Global Existing Instance type_write_ofty_weak_inst | 20.
 
+  (** Deinitialize and overwrite a unique place while preserving its contract. *)
+  Lemma type_write_uniq_deinit E L {rt} π bmin l (ty : type rt) (lt : ltype rt)
+      r1 r2 v ot κ γ `{Hopen : !TCDone (ltype_uniq_openable lt)}
+      (T : typed_write_end_cont_t bmin rt) :
+    (⌜ty_has_op_type ty ot⌝ ∗
+      li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
+        prove_place_cond E L2 (UpdUniq [κ]) lt (◁ ty) (λ _,
+          owned_subltype_step π E L2 true l (#r2) (#()) lt
+            (◁ uninit (ty_syn_type ty MetaNone)) (λ L3 R,
+              introduce_with_hooks E L3 (R ∗ llft_elt_toks κs) (λ L4,
+                T L4 rt ty r1
+                  (mkPUKRes (allowed:=bmin) UpdBot
+                    opt_place_update_eq_refl opt_place_update_eq_refl))))))
+    ⊢ typed_write_end π E L ot v ty r1 (Uniq κ γ) bmin l lt (#r2) T.
+  Proof.
+    iIntros "(%Hot & HT)".
+    rewrite /lctx_lft_alive_count_goal.
+    iDestruct "HT" as (κs L2) "(%Hcount & HT)".
+    iIntros (F qL ???) "#CTX #HE HL Hl Hv".
+
+    iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
+    iMod (lctx_lft_alive_count_tok lftE with "HE HL") as
+      "(%q & Htok & Hcl_tok & HL)"; [done.. | ].
+    iMod "Hcl_F" as "_".
+    iMod ("HT" $! F with "[//] CTX HE HL") as
+      "(HL & %upd & #Hupd & #Hcond & %Hst & HT)".
+    iPoseProof (typed_place_cond_incl with "Hupd Hcond") as "#Hcond_uniq".
+    iPoseProof (typed_place_cond_uniq_core_eq with "Hcond_uniq") as "#Heq".
+    iAssert (typed_place_cond UpdBot lt (◁ ty))%I as "#Hcond_bot".
+    { simpl. iSplitR; first done. iExists eq_refl. simpl.
+      iSplitR; first done. iApply ofty_imp_unblockable. }
+    iPoseProof (Hopen with "CTX Htok Hcl_tok Hl") as "Hopened"; first done.
+    iMod "Hopened" as "Hopened".
+    iEval (rewrite ltype_own_opened_unfold /opened_ltype_own) in "Hopened".
+    iDestruct "Hopened" as
+      "(%ly_open & %Halg_open & %Hly_open & #Hlb_open & %Hst_open1 & %Hst_open2 & Hl & Hcl_open)".
+
+    iMod ("HT" with "[] [] [] CTX HE HL Hl") as
+      "(%L3 & %R & Hstep & HL & HT)"; [done.. | ].
+    iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as (ov0) "%Hdec0"; first done.
+    have Hdecode : ∀ st, ∃ ov, decode_op_val v ot st = Some ov.
+    { intros st. exists ov0. rewrite -(decode_op_val_stable v ot inhabitant st). done. }
+
+    iModIntro. iApply logical_step_fupd.
+    iApply (logical_step_wand with "Hstep").
+    iIntros "(Hl & HR)".
+    iPoseProof (ofty_ltype_acc_owned with "Hl") as
+      "(%ly & %Halg & %Hly & #Hsc & Hlb & Hacc)"; first done.
+    iMod "Hacc" as "(%v0 & Hl & Hv0 & Hcl)".
+    rewrite uninit_own_spec.
+    iDestruct "Hv0" as "(_ & %ly0 & %Halg0 & %Hly0)".
+    apply syn_type_has_layout_untyped_inv in Halg.
+    opose proof (ty_op_type_stable ty _ Hot) as Hop.
+    assert (ly = ot_layout ot) as -> by by eapply syn_type_has_layout_inj.
+    assert (ly0 = ot_layout ot) as -> by by eapply syn_type_has_layout_inj.
+
+    iModIntro. iSplitR; first by iPureIntro; eapply ty_op_type_wf.
+    iSplitR; first done.
+    iSplitL "Hl".
+    { iExists v0. iFrame. done. }
+    iApply (logical_step_compose with "Hcl").
+    iPoseProof (logical_step_mask_mono lftE F with "Hcl_open") as "Hcl_open"; first done.
+    iApply (logical_step_compose with "Hcl_open").
+    iApply logical_step_intro.
+    iIntros "Hcl_open Hcl" (st ov) "%Hdec Hl".
+    iPoseProof (ty_own_val_sidecond with "Hv") as "#Hsc'".
+    iPoseProof (ty_encode_compat with "Hv") as "Hv"; [done | done |].
+    iMod ("Hcl" with "Hl [] [] Hv") as "Hl".
+    { iPureIntro. by apply syn_type_compat_untyped_l. }
+    { done. }
+
+    iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
+    iMod ("Hcl_open" $! (λ π r l, l ◁ₗ[π, Owned] #r @ (◁ ty))%I [] r1 r1
+      with "[] [] Hl []") as "(Htoks & Hobs & Hclose)".
+    { iIntros "_". done. }
+    { by iApply big_sepL_nil. }
+    { iModIntro. iIntros "_ Hl".
+      rewrite ltype_own_core_equiv ltype_core_idemp.
+      iDestruct ("Heq" $! Owned (#r1)) as "(_ & Hincl)".
+      iApply (ltype_incl_use with "Hincl"); first done. simp_ltypes. done. }
+    iMod ("Hclose" with "[] Hobs") as "Hl".
+    { by iApply lft_dead_list_nil. }
+    iEval (rewrite ltype_own_core_equiv ltype_core_idemp) in "Hl".
+    iDestruct ("Heq" $! (Uniq κ γ) (#r1)) as "(Hincl & _)".
+    iMod (ltype_incl_use with "Hincl Hl") as "Hl"; first done.
+    iEval (rewrite ltype_core_ofty) in "Hl".
+    iMod "Hcl_F" as "_".
+
+    iMod ("HT" with "[//] CTX HE HL [HR Htoks]") as "(%L4 & HL & HT)".
+    { iFrame. }
+    iModIntro.
+    iExists L4, rt, ty, r1,
+      (mkPUKRes (allowed:=bmin) UpdBot
+        opt_place_update_eq_refl opt_place_update_eq_refl).
+    iFrame.
+    iSplitR. { iApply upd_bot_min. }
+    done.
+  Qed.
+  Definition type_write_uniq_deinit_inst := [instance @type_write_uniq_deinit].
+  Global Existing Instance type_write_uniq_deinit_inst | 90.
+
   (** Deinitialize an owned place before overwriting it. *)
   Lemma type_write_owned_deinit E L {rt rt2} π bmin l (ty : type rt) (lt : ltype rt2)
       r1 r2 v ot `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)}

@@ -773,14 +773,17 @@ Section alias_ltype.
   Definition typed_addr_of_mut_end_owned_inst := [instance @typed_addr_of_mut_end_owned].
   Global Existing Instance typed_addr_of_mut_end_owned_inst.
 
-  Lemma typed_addr_of_mut_end_uniq pk π E L l {rt} (lt : ltype rt) r κ γ bmin (T : typed_addr_of_mut_end_cont_t) :
+  Lemma typed_addr_of_mut_end_uniq pk π E L l {rt} (lt lt_core : ltype rt) r κ γ bmin (T : typed_addr_of_mut_end_cont_t) :
     ltype_uniq_openable lt →
+    find_tc_inst (SimpLtype (ltype_core lt) lt_core) (λ _,
     li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
-    T L2 _ (alias_ptr_kind_t pk) l _ (OpenedLtype (AliasLtype rt (ltype_st lt) l) lt lt (λ ri ri', ⌜ri = ri'⌝) (λ ri ri', llft_elt_toks κs)) r)
+    T L2 _ (alias_ptr_kind_t pk) l _ (OpenedLtype (AliasLtype rt (ltype_st lt) l) lt_core lt_core (λ ri ri', ⌜ri = ri'⌝) (λ ri ri', llft_elt_toks κs)) r))
     ⊢ typed_addr_of_mut_end pk π E L l lt r (Uniq κ γ) bmin T.
   Proof.
-    iIntros (Hopen). rewrite /lctx_lft_alive_count_goal.
-    iDestruct 1 as (κs L2) "(%Hcount & HT)".
+    iIntros (Hopen). iDestruct 1 as (Hsimp) "HT".
+    destruct Hsimp as [Heq]. subst lt_core.
+    rewrite /lctx_lft_alive_count_goal.
+    iDestruct "HT" as (κs L2) "(%Hcount & HT)".
     iIntros (????) "#CTX #HE HL Hl".
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Halg & %Hly)".
     iPoseProof (ltype_own_loc_in_bounds with "Hl") as "#Hlb"; first done.
@@ -809,8 +812,11 @@ Section alias_ltype.
     T L2 _ (alias_ptr_kind_t pk) l _ (OpenedLtype (AliasLtype rt (st_of ty MetaNone) l) (◁ ty) (◁ ty) (λ ri ri', ⌜ri = ri'⌝) (λ ri ri', llft_elt_toks κs)) r)
     ⊢ typed_addr_of_mut_end pk π E L l (◁ ty) r (Uniq κ γ) bmin T.
   Proof.
-    iApply typed_addr_of_mut_end_uniq.
-    apply ltype_uniq_openable_ofty.
+    simp_ltypes.
+    iIntros "HT".
+    iApply (typed_addr_of_mut_end_uniq pk π E L l (◁ ty)%I (◁ ty)%I r κ γ bmin T
+      (ltype_uniq_openable_ofty ty)).
+    iExists _. iExact "HT".
   Qed.
   Definition typed_addr_of_mut_end_uniq_ofty_inst := [instance @typed_addr_of_mut_end_uniq_ofty].
   Global Existing Instance typed_addr_of_mut_end_uniq_ofty_inst.

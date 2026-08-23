@@ -388,6 +388,55 @@ Section access.
         iExists _, r2. iR. iModIntro. eauto with iFrame. }
   Qed.
 
+  Lemma ltype_uniq_openable_mut {rt} (lt : ltype rt) κ' :
+    ltype_uniq_openable (MutLtype lt κ').
+  Proof.
+    iIntros (F κ γ π r l q κs ?) "#(LFT & LLCTX) Hκ HR Hb".
+    rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
+    iDestruct "Hb" as
+      "(%ly & %Halg & %Hly & #Hlb & (Hcred & Hat) & Hrfn & Hb)".
+    apply syn_type_has_layout_ref_inv in Halg as ?. subst ly.
+    iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
+    iMod "Hb".
+    iMod (pinned_bor_acc_strong lftE with "LFT Hb Hκ") as
+      "(%κ'' & #Hincl & Hb & _ & Hb_cl)"; first done.
+    iMod "Hcl_F" as "_".
+    iDestruct "Hcred" as "(Hcred1 & Hcred)".
+    iApply (lc_fupd_add_later with "Hcred1"). iNext.
+    iDestruct "Hb" as "(%r' & Hauth & Hb)".
+    iMod (place_rfn_interp_mut_owned with "Hrfn Hauth") as
+      "(Hrfn & Hobs & Hauth)".
+    iMod (fupd_mask_mono with "Hb") as "(%l' & Hl & Hb)"; first done.
+    iModIntro.
+    rewrite -opened_ltype_core_contract.
+    iDestruct "Hcred" as "(Hcred1 & Hcred)".
+    iApply (opened_ltype_create_uniq_simple with
+      "Hobs Hauth Hcred1 Hat Hincl HR Hb_cl [] [Hcred]").
+    - done.
+    - iModIntro. iIntros (?) "Hauth Hc". simp_ltypes.
+      rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
+      iExists _. iFrame.
+      iDestruct "Hc" as
+        ">(% & _ & _ & _ & %r'' & % & -> & >(%l0 & Hl0 & Hb0))".
+      iModIntro. setoid_rewrite ltype_own_core_equiv.
+      iExists _. eauto with iFrame.
+    - iIntros (?) "Hobs Hat Hcred_cb Hp". simp_ltypes.
+      rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
+      setoid_rewrite ltype_own_core_equiv. rewrite ltype_core_idemp.
+      iModIntro.
+      iAssert (have_creds) with "[Hat Hcred_cb]" as "?".
+      { iFrame. }
+      eauto 8 with iFrame.
+    - rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
+      iExists void*. iFrame "% #". iExists r'.2, r'.1.
+      rewrite (surjective_pairing r'). iFrame "Hrfn".
+      iModIntro. iExists l'. iFrame.
+  Qed.
+
+  Global Instance ltype_uniq_openable_mut_done {rt} (lt : ltype rt) κ :
+    TCDone (ltype_uniq_openable (MutLtype lt κ)) :=
+    ltype_uniq_openable_mut lt κ.
+
   Lemma mut_ltype_acc_shared {rt} F π (lt : ltype rt) r l q κ κ' γ :
     lftE ⊆ F →
     rrust_ctx -∗

@@ -496,6 +496,19 @@ End unfold.
 Section place.
   Context `{!typeGS Σ}.
 
+  Lemma prove_place_cond_struct_l E L bmin {rts rt2}
+      (lts : hlist ltype rts) sls (lt2 : ltype rt2) T :
+    cast_ltype_to_type E L (StructLtype lts sls) (λ ty,
+      prove_place_cond E L bmin (◁ ty) lt2 T)
+    ⊢ prove_place_cond E L bmin (StructLtype lts sls) lt2 T.
+  Proof.
+    iIntros "(%ty & %Heqt & HT)".
+    iApply prove_place_cond_eqltype_l; done.
+  Qed.
+  Definition prove_place_cond_struct_l_inst :=
+    [instance @prove_place_cond_struct_l].
+  Global Existing Instance prove_place_cond_struct_l_inst | 30.
+
   (* needs to have lower priority than the id instance *)
   Lemma typed_place_ofty_struct {rts} π E L l (tys : hlist type rts) (r : place_rfnRT (plistRT rts)) sls bmin0 b P T :
     typed_place π E L l (StructLtype (hmap (λ _, OfTy) tys) sls) r bmin0 b P T

@@ -354,6 +354,18 @@ Qed.
 Section accessors.
   Context `{typeGS Σ}.
 
+  Lemma opened_ltype_core_contract {rt_cur rt_inner rt_full}
+      (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full)
+      Cpre Cpost κ γ π r l :
+    l ◁ₗ[π, Uniq κ γ] r @ OpenedLtype lt_cur lt_inner lt_full Cpre Cpost ⊣⊢
+    l ◁ₗ[π, Uniq κ γ] r @ OpenedLtype lt_cur (ltype_core lt_inner) (ltype_core lt_full) Cpre Cpost.
+  Proof.
+    rewrite !ltype_own_opened_unfold /opened_ltype_own.
+    rewrite !ltype_core_syn_type_eq.
+    setoid_rewrite ltype_own_core_core.
+    done.
+  Qed.
+
   Lemma shadowed_ltype_acc_cur {rt_cur rt_full} (lt_cur : ltype rt_cur) (lt_full : ltype rt_full) (r_cur : place_rfn rt_cur) l π b r :
     l ◁ₗ[π, b] r @ ShadowedLtype lt_cur r_cur lt_full -∗
     l ◁ₗ[π, b] r_cur @ lt_cur ∗
@@ -707,7 +719,7 @@ Section open.
       q.[κ] -∗
       (q.[κ] ={lftE}=∗ llft_elt_toks κs) -∗
       l ◁ₗ[π, Uniq κ γ] r @ lt -∗ |={F}=>
-      (l ◁ₗ[π, Uniq κ γ] r @ OpenedLtype lt lt lt (λ ri ri', ⌜ri = ri'⌝) (λ ri ri', llft_elt_toks κs)).
+      (l ◁ₗ[π, Uniq κ γ] r @ OpenedLtype lt (ltype_core lt) (ltype_core lt) (λ ri ri', ⌜ri = ri'⌝) (λ ri ri', llft_elt_toks κs)).
 
   (** Lemmas for ofty *)
   Lemma ltype_uniq_openable_ofty {rt} (ty : type rt) :
@@ -727,6 +739,7 @@ Section open.
 
     iMod (place_rfn_interp_mut_owned with "Hrfn Hauth") as "(Hrfn & Hobs & Hauth)".
     iModIntro.
+    rewrite !ltype_core_ofty.
     iDestruct "Hcred" as "(Hcred1 & Hcred)".
     iApply (opened_ltype_create_uniq_simple with "Hobs Hauth Hcred1 Hat Hincl Hcl_tok Hcl_b [] []").
     - done.
@@ -742,6 +755,10 @@ Section open.
       iExists ly. iR. iR. iR. iR. iExists _. iFrame.
       iModIntro. eauto with iFrame.
   Qed.
+
+  Global Instance ltype_uniq_openable_ofty_done {rt} (ty : type rt) :
+    TCDone (ltype_uniq_openable (◁ ty)%I) :=
+    ltype_uniq_openable_ofty ty.
 End open.
 
 Section array.
