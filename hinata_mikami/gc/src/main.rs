@@ -15,6 +15,19 @@
 
 use std::ptr;
 
+
+use wrappers::vec_index;
+
+mod wrappers {
+    #[rr::only_spec]
+    #[rr::requires("index < length x")]
+    #[rr::returns("x !!! Z.to_nat index")]
+    pub fn vec_index<T>(x: &Vec<T>, index: usize) -> &T {
+        &x[index]
+    }
+}
+
+
 // 本質的には同じはずなのにNode側に書けないことは欠点
 // 記録しておくべき
 // 修論の一部にするくらいのつもりで 文章の形に
@@ -141,6 +154,25 @@ impl Heap {
         self.all_nodes.push(ptr);
         ptr
     }
+
+
+    #[rr::params("h")]
+    #[rr::args("h")]
+    #[rr::requires("
+        let '(vals, locs, nexts, marks) := h.cur in
+        0 < length locs
+    ")]
+    #[rr::observe("h.ghost" : "
+        let '(vals, locs, nexts, marks) := h.cur in
+        (vals, locs, nexts, <[0%nat := true]> marks)
+    ")]
+    #[rr::returns("()")]
+    unsafe fn mark_one(&mut self) {
+        let node = *vec_index(&self.all_nodes, 0);
+        (*node).marked = true;
+    }
+
+
 
     /* マークフェーズ */
     unsafe fn mark(&self, start_node: *mut Node) {
