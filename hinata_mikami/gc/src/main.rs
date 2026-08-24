@@ -13,6 +13,9 @@
 #![rr::include("mem")]
 #![rr::include("rr_internal")]
 
+#![rr::import("hinata_mikami.extra_proofs.gc", "heap_lemmas")]
+
+
 use std::ptr;
 
 

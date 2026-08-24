@@ -2,11 +2,15 @@ From caesium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.gc.generated Require Import generated_code_gc generated_specs_gc generated_template_Heap_alloc.
 
+(* 不要 *)
+(* From hinata_mikami.extra_proofs.gc Require Import heap_lemmas. *)
+
 Set Default Proof Using "Type".
 
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 
+(* 
 Lemma simplify_goal_big_sepL_app {A}
     (xs1 xs2 : list A)
     (Φ : nat → A → iProp Σ) T :
@@ -25,12 +29,16 @@ Qed.
 Definition simplify_goal_big_sepL_app_inst :=
   [instance @simplify_goal_big_sepL_app with 10%N].
 
-Global Existing Instance simplify_goal_big_sepL_app_inst.
+Global Existing Instance simplify_goal_big_sepL_app_inst. *)
 
+(* hinata_mikami.extra_proofs.gc で定義したものが認識されているか確認 *)
+(* Check simplify_goal_big_sepL_app.
+Check simplify_goal_big_sepL_app_inst. *)
 
 Lemma Heap_alloc_proof (π : thread_id) :
   Heap_alloc_lemma π.
 Proof.
+
   Heap_alloc_prelude.
 
   rep <-! liRStep; liShow.

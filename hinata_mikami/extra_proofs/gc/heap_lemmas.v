@@ -1,7 +1,9 @@
 From caesium Require Import lang notation.
-From refinedrust Require Import typing shims.
+From refinedrust Require Import typing.
 
+Section heap_lemmas.
 
+Context `{RRGS : !refinedrustGS Σ}.
 
 Lemma simplify_goal_big_sepL_app {A}
     (xs1 xs2 : list A)
@@ -22,3 +24,5 @@ Definition simplify_goal_big_sepL_app_inst :=
   [instance @simplify_goal_big_sepL_app with 10%N].
 
 Global Existing Instance simplify_goal_big_sepL_app_inst.
+
+End heap_lemmas.

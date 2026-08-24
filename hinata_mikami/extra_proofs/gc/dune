@@ -1,0 +1,22 @@
+(rocq.theory
+ (flags
+  -w -notation-overridden
+  -w -redundant-canonical-projection)
+
+ (package hinata-mikami-extra-proofs)
+
+ (name hinata_mikami.extra_proofs.gc)
+
+ (generate_project_file)
+
+ (theories
+  stdpp
+  iris
+  iris_contrib
+  Ltac2
+  Equations
+  lrust
+  caesium
+  lithium
+  refinedrust
+  Stdlib))
