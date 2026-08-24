@@ -569,11 +569,11 @@ Section incl_tac.
     by eapply lctx_lft_incl_local_incl.
   Qed.
 
-  (* For direct equivalences in the local context, just also rewrite on the RHS. *)
-  Lemma tac_lctx_lft_incl_list_augment_local_alias_rhs E L κs1 κs2 κ κ' i j P :
-    L !! j = Some (κ ≡ₗ [κ']) →
+  (* For direct equivalences in the local context, also rewrite on the RHS. *)
+  Lemma tac_lctx_lft_incl_list_augment_local_alias_rhs E L κs1 κs2 κ κs i j P :
+    L !! j = Some (κ ≡ₗ κs) →
     κs2 !! i = Some κ →
-    lctx_lft_incl_list E L (κs1) (κ' :: delete i κs2) ∨ P →
+    lctx_lft_incl_list E L κs1 (κs ++ delete i κs2) ∨ P →
     lctx_lft_incl_list E L κs1 κs2 ∨ P.
   Proof.
     rewrite /lctx_lft_incl_list /=.
@@ -585,8 +585,8 @@ Section incl_tac.
     destruct Ha as [ Ha | ?]; last by right. left.
     etrans; first apply Ha.
     eapply lctx_lft_incl_intersect; last done.
-    eapply lctx_lft_incl_local_alias_reverse; [done.. | ].
-    simpl. rewrite right_id. done.
+    eapply lctx_lft_incl_local_alias_reverse; [done | apply lctx_lft_incl_refl | ].
+    apply lctx_lft_incl_refl.
   Qed.
 
   (* WIP: better approach to handling symbolic lfts *)
@@ -791,22 +791,6 @@ Ltac solve_lft_incl_list_step cont :=
   (*| |- lctx_lft_incl_list ?E ?L ?κs1 (lft_intersect_list ?κs :: ?κs2) ∨ _ =>*)
       (*notypeclasses refine *)
 
-  (* Normalize a direct local equivalence [κ ≡ₗ [κ']] on the RHS *)
-  (* TODO this is a hack and doesn't work in all cases, because we don't use any other (external) inclusions on the RHS.
-      Really, the proper way to do this would be to eliminate all such equivalences before starting the solver on a normalized goal + lifetime context. *)
-  | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 ∨ _ =>
-      let find_in_llctx := fun j κ =>
-        list_find_tac ltac:(fun i el =>
-          match el with
-          | κ ≡ₗ [?κ'] =>
-              notypeclasses refine (tac_lctx_lft_incl_list_augment_local_alias_rhs E L κs1 κs2 κ κ' j i _ _ _ _);
-              [ reflexivity | reflexivity | simpl; cont ]
-          | _ => fail
-          end
-        ) L
-      in
-      list_find_tac find_in_llctx κs2
-
   (* eliminate a lifetime on the RHS that also occurs on the LHS *)
   | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 ∨ _ =>
       let check_equality j κ2 := ltac:(fun i κ1 =>
@@ -817,6 +801,21 @@ Ltac solve_lft_incl_list_step cont :=
       ) in
       let check_rhs := ltac:(fun j κ2 => list_find_tac ltac:(check_equality j κ2) κs1) in
       list_find_tac check_rhs κs2
+
+  (* Normalize a local alias on the RHS. Alias dependencies in generated contexts
+     are acyclic: supports exist before an alias is introduced. *)
+  | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 ∨ _ =>
+      let find_in_llctx := fun j κ =>
+        list_find_tac ltac:(fun i el =>
+          match el with
+          | κ ≡ₗ ?κs =>
+              notypeclasses refine (tac_lctx_lft_incl_list_augment_local_alias_rhs E L κs1 κs2 κ κs j i _ _ _ _);
+              [ reflexivity | reflexivity | simpl; cont ]
+          | _ => fail
+          end
+        ) L
+      in
+      list_find_tac find_in_llctx κs2
 
   (* Expand a local lifetime on the LHS *)
   | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 ∨ _ =>

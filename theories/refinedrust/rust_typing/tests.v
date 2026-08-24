@@ -872,8 +872,8 @@ Section test.
     solve_lft_incl; solve[fail].
   Abort.
 
-  Lemma test4 E κ κ' κ'' c2 :
-    lctx_lft_incl E [κ ≡ₗ [κ'; κ]; κ' ⊑ₗ{c2} [κ'']] (κ) (κ'').
+  Lemma test4 E κ κ' κ'' κother c2 :
+    lctx_lft_incl E [κ ≡ₗ [κ'; κother]; κ' ⊑ₗ{c2} [κ'']] (κ) (κ'').
   Proof.
     solve_lft_incl; solve[fail].
   Abort.
@@ -892,6 +892,18 @@ Section test.
 
   Lemma test6 E κ κ' κ'' c2 :
     lctx_lft_incl E [κ ≡ₗ [κ']; κ' ⊑ₗ{c2} [κ'']] (κ') (κ).
+  Proof.
+    solve_lft_incl; solve[fail].
+  Abort.
+
+  Lemma test6_multi_rhs E κ κ2 κ3 ϝ :
+    lctx_lft_incl E [κ2 ≡ₗ [ϝ]; κ ≡ₗ [ϝ]; κ3 ≡ₗ [κ; κ2]] κ κ3.
+  Proof.
+    solve_lft_incl; solve[fail].
+  Abort.
+
+  Lemma test6_multi_rhs_reverse E κ κ2 κ3 ϝ :
+    lctx_lft_incl E [κ2 ≡ₗ [ϝ]; κ ≡ₗ [ϝ]; κ3 ≡ₗ [κ; κ2]] κ3 κ.
   Proof.
     solve_lft_incl; solve[fail].
   Abort.
