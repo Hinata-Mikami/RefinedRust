@@ -47,6 +47,31 @@ impl Node{
     unsafe fn set_next(node: *mut Node, next: *mut Node) {
             (*node).next = next;
     }
+
+
+    // Heap::mark_one用ヘルパー
+    #[rr::params(
+        "node" : "loc",
+        "v" : "Z",
+        "next" : "loc",
+        "old_m" : "bool",
+        "new_m" : "bool"
+    )]
+    #[rr::args("node", "new_m")]
+    #[rr::requires(
+        #type "node" :
+        "-[#v; #next; #old_m]" @ "(Node_ty <INST!>)"
+    )]
+    #[rr::ensures(
+        #type "node" :
+        "-[#v; #next; #new_m]" @ "(Node_ty <INST!>)"
+    )]
+    #[rr::returns("()")]
+    unsafe fn set_marked(node: *mut Node, new_m: bool) {
+        (*node).marked = new_m;
+    }
+
+
 }
 
 // ここに inv を書かないほうがいい可能性も？関数側に書く方がいい傾向もあるか
@@ -169,7 +194,7 @@ impl Heap {
     #[rr::returns("()")]
     unsafe fn mark_one(&mut self) {
         let node = *vec_index(&self.all_nodes, 0);
-        (*node).marked = true;
+        Node::set_marked(node, true);
     }
 
 
