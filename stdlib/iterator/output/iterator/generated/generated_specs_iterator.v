@@ -411,7 +411,7 @@ Program Definition adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs `{R
       (MapInv traits_iterator_Iterator_MI_spec_attrs FnOnce_MF_MIastraits_iterator_Iterator_Item_spec_attrs.(FnOnce_Pre) FnOnce_MF_MIastraits_iterator_Iterator_Item_spec_attrs.(FnOnce_PostMut) FnOnce_MF_MIastraits_iterator_Iterator_Item_spec_attrs.(FnOnce_UnwindCondition)) : ((traits_iterator_Iterator_Inv_sig (((adapters_map_Map_inv_t_rt ((MI_rt)) ((MF_rt))))) ((MB_rt)) (_)));
     traits_iterator_Iterator_Next  :=
       ((λ π '(p_inner, ParamPred) s1 e s2, 
-                if_iNone e (traits_iterator_Iterator_MI_spec_attrs.(traits_iterator_Iterator_Next) π p_inner s1.(map_it) None s2.(map_it)) ∗
+                if_iNone e ((traits_iterator_Iterator_MI_spec_attrs.(traits_iterator_Iterator_Next) π p_inner s1.(map_it) None s2.(map_it)) ∗ ⌜s1.(map_clos) = s2.(map_clos)⌝) ∗
                 if_iSome e (λ e, ∃ e_inner,
                     (traits_iterator_Iterator_MI_spec_attrs.(traits_iterator_Iterator_Next) π p_inner s1.(map_it) (Some e_inner) s2.(map_it)) ∗
                     ∃ p_clos, ⌜ParamPred *[e_inner] p_clos⌝ ∗ boringly (FnOnce_MF_MIastraits_iterator_Iterator_Item_spec_attrs.(FnOnce_Pre) π p_clos s1.(map_clos) *[e_inner]) ∗
