@@ -922,6 +922,12 @@ Section test.
   Proof.
     solve_lft_incl; solve[fail].
   Abort.
+
+  Lemma test10 E κ κ' κ'' :
+    lctx_lft_incl E [κ ⊑ₗ κ'; κ' ⊑ₗ κ''] κ κ''.
+  Proof.
+    solve_lft_incl; solve[fail].
+  Abort.
 End test.
 
 (** solve_lft_alive *)
@@ -930,6 +936,12 @@ Section test.
 
   Lemma test1 κ κ' c1 c2 :
     lctx_lft_alive [] [κ ⊑ₗ{c1} [κ']; κ' ⊑ₗ{c2} []] κ.
+  Proof.
+    solve_lft_alive; solve[fail].
+  Abort.
+
+  Lemma test_dyn_incl κ κ' ϝ c :
+    lctx_lft_alive [] [κ ⊑ₗ κ'; ϝ ⊑ₗ{c} []; ϝ ⊑ₗ κ] κ'.
   Proof.
     solve_lft_alive; solve[fail].
   Abort.
@@ -1342,6 +1354,13 @@ Section test.
 
   Lemma test5 {rt} (T_ty : type rt) ulft__ ϝ :
     lctx_lft_alive_count ((ϝ ⊑ₑ ulft__) :: ty_outlives_E T_ty ϝ ++ ty_outlives_E T_ty ϝ ++ ty_outlives_E T_ty ulft__ ++ ty_wf_E T_ty) [ϝ ⊑ₗ{ 0} []] ulft__ [ϝ] [ϝ ⊑ₗ{ 1} []].
+  Proof.
+    solve_lft_alive_count; solve[fail].
+  Abort.
+
+  Lemma test6 κ κ' ϝ c :
+    lctx_lft_alive_count [] [κ ⊑ₗ κ'; ϝ ⊑ₗ{c} []; ϝ ⊑ₗ κ] κ' [ϝ]
+      [κ ⊑ₗ κ'; ϝ ⊑ₗ{S c} []; ϝ ⊑ₗ κ].
   Proof.
     solve_lft_alive_count; solve[fail].
   Abort.

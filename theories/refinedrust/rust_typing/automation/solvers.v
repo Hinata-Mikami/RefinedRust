@@ -551,6 +551,24 @@ Section incl_tac.
     eapply lctx_lft_incl_local_alias_full; done.
   Qed.
 
+  Lemma tac_lctx_lft_incl_list_augment_local_incl E L κs1 κs2 κ κ' i j P :
+    L !! j = Some (κ ⊑ₗ κ') →
+    κs1 !! i = Some κ →
+    lctx_lft_incl_list E L (κ' :: delete i κs1) κs2 ∨ P →
+    lctx_lft_incl_list E L κs1 κs2 ∨ P.
+  Proof.
+    rewrite /lctx_lft_incl_list /=.
+    rewrite !delete_take_drop.
+    intros HL%list_elem_of_lookup_2 H1. rewrite -{3}(take_drop_middle κs1 _ _ H1).
+    rewrite !lft_intersect_list_app. simpl. intros Ha.
+    rewrite lft_intersect_assoc. rewrite [lft_intersect_list _ ⊓ κ]lft_intersect_comm.
+    rewrite -lft_intersect_assoc.
+    destruct Ha as [Ha | ?]; last by right. left.
+    etrans; last done.
+    eapply lctx_lft_incl_intersect; last apply lctx_lft_incl_refl.
+    by eapply lctx_lft_incl_local_incl.
+  Qed.
+
   (* For direct equivalences in the local context, just also rewrite on the RHS. *)
   Lemma tac_lctx_lft_incl_list_augment_local_alias_rhs E L κs1 κs2 κ κ' i j P :
     L !! j = Some (κ ≡ₗ [κ']) →
@@ -815,6 +833,9 @@ Ltac solve_lft_incl_list_step cont :=
               assert_fails (unify κs (@nil lft));
               notypeclasses refine (tac_lctx_lft_incl_list_augment_local_alias E L κs1 κs2 κ κs j i _ _ _ _);
               [ reflexivity | reflexivity | simpl; cont ]
+          | κ ⊑ₗ ?κ' =>
+              notypeclasses refine (tac_lctx_lft_incl_list_augment_local_incl E L κs1 κs2 κ κ' j i _ _ _ _);
+              [ reflexivity | reflexivity | simpl; cont ]
           | _ => fail
           end
         ) L
@@ -1062,6 +1083,19 @@ Section alive_tac.
     by apply lctx_lft_alive_intersect_list.
   Qed.
 
+  Lemma tac_lctx_lft_alive_local_incl E L κ κ' κs i P :
+    L !! i = Some (κ ⊑ₗ κ') →
+    lctx_lft_alive_list E L (κ :: κs) ∨ P →
+    lctx_lft_alive_list E L (κ' :: κs) ∨ P.
+  Proof.
+    intros ?%list_elem_of_lookup_2.
+    rewrite /lctx_lft_alive_list /=.
+    intros [Ha | ?]; last by eauto. left.
+    apply lctx_lft_alive_intersect_2 in Ha as [Ha Hb].
+    apply lctx_lft_alive_intersect; last done.
+    by eapply lctx_lft_alive_local_incl.
+  Qed.
+
   Lemma tac_lctx_lft_alive_list_ty_lfts {rt} (ty : type rt) E L i κ1 n1 κs P :
     ty_outlives_E ty κ1 ⊆ E →
     L !! i = Some (κ1 ⊑ₗ{n1} []) →
@@ -1279,6 +1313,9 @@ Ltac solve_lft_alive_step :=
               [ reflexivity | ]
         | κ ≡ₗ ?κs' =>
             notypeclasses refine (tac_lctx_lft_alive_local_alias E L κ κs _ i _ _ _);
+              [ reflexivity | ]
+        | ?κ' ⊑ₗ κ =>
+            notypeclasses refine (tac_lctx_lft_alive_local_incl E L κ' κ κs i _ _ _);
               [ reflexivity | ]
         | _ => fail
         end) L
@@ -2278,6 +2315,15 @@ Section alive_tac.
     by eapply list_elem_of_lookup_2.
   Qed.
 
+  Lemma tac_lctx_lft_alive_count_local_incl i E L κ κ' κs L' :
+    L !! i = Some (κ ⊑ₗ κ') →
+    lctx_lft_alive_count E L κ κs L' →
+    lctx_lft_alive_count E L κ' κs L'.
+  Proof.
+    intros ?%list_elem_of_lookup_2 Hal.
+    by eapply lctx_lft_alive_count_local_incl.
+  Qed.
+
   Lemma tac_lctx_lft_alive_count_iter_cons E L κ κs κs1 κs2 κs3 L1 L2 :
     lctx_lft_alive_count E L κ κs1 L1 →
     lctx_lft_alive_count_iter E L1 κs κs2 L2 →
@@ -2343,6 +2389,9 @@ Ltac solve_lft_alive_count_step :=
             notypeclasses refine (tac_lctx_lft_alive_count_local_alias i κs E L κ _ _ _ _);
               [ solve_lft_alive_count_iter
               | simpl; reflexivity ]
+        | ?κ' ⊑ₗ κ =>
+            notypeclasses refine (tac_lctx_lft_alive_count_local_incl i E L κ' κ _ _ _ _);
+              [ reflexivity | solve_lft_alive_count ]
         | _ => fail
         end) L
   (* external inclusion *)

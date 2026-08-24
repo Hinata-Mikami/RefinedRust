@@ -5561,9 +5561,7 @@ Section subsume.
       li_tactic (lctx_lft_alive_count_goal E L κ2) (λ '(κs, L'),
       Inherit [κ1] (llft_elt_toks κs) -∗
       named_lfts f M -∗
-      (* TODO: update E *)
-      (*(κ1 ⊑ₑ κ2) :: E)*)
-      T L'))))
+      T ((κ1 ⊑ₗ κ2) :: L')))))
     ⊢ typed_annot_stmt f 1 (DynIncludeLftAnnot n1 n2) E L T.
   Proof.
     rewrite /compute_list_map_lookup_nofail_goal.
@@ -5573,6 +5571,8 @@ Section subsume.
     iIntros "#(LFT & LCTX) #HE HL".
     iMod (lctx_include_lft_sem with "LFT HE HL") as "(HL & #Hincl & Hinh)"; [done.. | ].
     iSpecialize ("Hs" with "Hinh").
+    iAssert (llctx_interp ((κ1 ⊑ₗ κ2) :: L'))%I with "[HL]" as "HL".
+    { rewrite /llctx_interp /=. iFrame "#∗". }
     iApply physical_step_intro; iNext.
     iFrame.
     by iApply "Hs".

@@ -220,6 +220,7 @@ Inductive llctx_elt : Type :=
 | LLCtxEltAlias (κ : lft) (κs : list lft)
 | LLCtxEltOwned (n : nat) (κ : lft) (κs : list lft)
 | LLCtxEltDead (κ : lft)
+| LLCtxEltIncl (κ1 κ2 : lft)
 .
 Abbreviation llctx := (list llctx_elt).
 
@@ -229,6 +230,8 @@ Notation "κ '⊑ₗ{' c '}' κl" := (LLCtxEltOwned c%nat κ κl) (at level 60).
 Notation "κ '≡ₗ' κl" := (LLCtxEltAlias κ κl) (at level 60).
 (* dead local lifetime *)
 Notation "'†ₗ'  κ" := (LLCtxEltDead κ) (at level 60).
+(* dynamically established local lifetime inclusion *)
+Notation "κ1 '⊑ₗ' κ2" := (LLCtxEltIncl κ1 κ2) (at level 60).
 
 Definition llctx_elt_alive_lft (elt : llctx_elt) : option lft :=
   match elt with
@@ -425,20 +428,24 @@ Section lft_contexts.
     | LLCtxEltOwned c κ κs => llctx_owned_elt_interp c κ κs
     | LLCtxEltAlias κ κs => llctx_alias_elt_interp κ κs
     | LLCtxEltDead κ => [† κ]
+    | LLCtxEltIncl κ1 κ2 => κ1 ⊑ κ2
     end.
   Definition llctx_elt_interp_noend (x : llctx_elt) (q : Qp) : iProp Σ :=
     match x with
     | LLCtxEltOwned c κ κs => llctx_owned_elt_interp_noend c κ κs q
     | LLCtxEltAlias κ κs => llctx_alias_elt_interp κ κs
     | LLCtxEltDead κ => [† κ]
+    | LLCtxEltIncl κ1 κ2 => κ1 ⊑ κ2
     end.
 
   Global Instance llctx_elt_interp_noend_fractional x :
     Fractional (llctx_elt_interp_noend x).
   Proof.
-    destruct x; try apply _.
-    unfold llctx_elt_interp_noend.
-    apply persistent_fractional; apply _.
+    destruct x; simpl.
+    - apply _.
+    - apply _.
+    - apply persistent_fractional; apply _.
+    - apply persistent_fractional; apply _.
   Qed.
 
   Lemma llctx_elt_interp_acc_noend x :
@@ -448,6 +455,7 @@ Section lft_contexts.
     iIntros "H". destruct x.
     - iFrame. iIntros "$".
     - by iApply llctx_owned_elt_interp_acc_noend.
+    - simpl. iFrame. iIntros "$".
     - simpl. iFrame. iIntros "$".
   Qed.
 
@@ -668,6 +676,16 @@ Section lft_contexts.
   Lemma lctx_lft_incl_local_alias' κ κ' κ'' κs :
     κ ≡ₗ κs ∈ L → κ' ∈ κs → lctx_lft_incl κ' κ'' → lctx_lft_incl κ κ''.
   Proof. intros. etrans; last done. by eapply lctx_lft_incl_local_alias. Qed.
+
+  Lemma lctx_lft_incl_local_incl κ κ' :
+    κ ⊑ₗ κ' ∈ L → lctx_lft_incl κ κ'.
+  Proof.
+    intros [i Hin]%list_elem_of_lookup_1. iIntros (qL) "HL".
+    iPoseProof (big_sepL_lookup with "HL") as "Hincl"; first done.
+    iDestruct "Hincl" as "#Hincl".
+    iIntros "!> _".
+    iExact "Hincl".
+  Qed.
 
   Lemma lctx_lft_incl_external_full κ1 κ2 κ κ' :
     κ1 ⊑ₑ κ2 ∈ E → lctx_lft_incl (κ2 ⊓ κ) κ' → lctx_lft_incl (κ1 ⊓ κ) κ'.
@@ -972,6 +990,13 @@ Section lft_contexts.
     eauto.
   Qed.
 
+  Lemma lctx_lft_alive_local_incl E L κ κ' :
+    κ ⊑ₗ κ' ∈ L → lctx_lft_alive E L κ → lctx_lft_alive E L κ'.
+  Proof.
+    intros Hin Hal. eapply lctx_lft_alive_incl; first done.
+    by eapply lctx_lft_incl_local_incl.
+  Qed.
+
   Lemma lctx_lft_alive_external E L κ κ':
     κ ⊑ₑ κ' ∈ E → lctx_lft_alive E L κ → lctx_lft_alive E L κ'.
   Proof.
@@ -1245,6 +1270,14 @@ Section lft_contexts.
     κ ⊑ₑ κ' ∈ E → lctx_lft_alive_count E L κ κs L' → lctx_lft_alive_count E L κ' κs L'.
   Proof.
     intros. by eapply lctx_lft_alive_count_incl, lctx_lft_incl_external.
+  Qed.
+
+  Lemma lctx_lft_alive_count_local_incl E L κ κ' κs L' :
+    κ ⊑ₗ κ' ∈ L →
+    lctx_lft_alive_count E L κ κs L' →
+    lctx_lft_alive_count E L κ' κs L'.
+  Proof.
+    intros. by eapply lctx_lft_alive_count_incl, lctx_lft_incl_local_incl.
   Qed.
 
   (* Once we are done, we can decrease the count again. *)
