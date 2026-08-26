@@ -1664,8 +1664,8 @@ Ltac reorder_elctx_step :=
           notypeclasses refine (reorder_elctx_shuffle_left_tac E E' _ E'' _ _ _ _);
           [reflexivity | ]
       (* this should simplify later, so also put it left *)
-      | bor_kind_outlives_elctx _ _ ++ _ =>
-          notypeclasses refine (reorder_elctx_shuffle_left_app_tac E E' _ E'' (bor_kind_outlives_elctx _ _) _ _);
+      | bor_kind_outlives_elctx ?k ?κ ++ ?E =>
+          notypeclasses refine (reorder_elctx_shuffle_left_app_tac E E' _ E'' (bor_kind_outlives_elctx k κ) _ _);
           [reflexivity | ]
 
       | ?E0 ++ ?E =>
@@ -2404,7 +2404,7 @@ Ltac solve_lft_alive_count_step :=
         end) E
   end.
 Ltac solve_lft_alive_count ::=
-  unfold_elctx;
+  unfold_elctx; simpl;
   repeat solve_lft_alive_count_step;
   fast_done.
 

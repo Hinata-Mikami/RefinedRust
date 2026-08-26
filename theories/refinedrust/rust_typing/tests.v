@@ -1191,6 +1191,18 @@ Section test.
     { reorder_elctx. }
     done.
   Abort.
+
+  Lemma test_bor_kind_outlives_symbolic {rt rt0} (T_ty : type rt)
+      (ty0 : type rt0) ϝ k :
+    ∃ E',
+      ty_outlives_E T_ty ϝ ++ ty_wf_E T_ty ++
+        bor_kind_outlives_elctx k ϝ ++ ty_wf_E ty0 ++ ty_outlives_E ty0 ϝ ≡ₚ E' ∧
+      E' = bor_kind_outlives_elctx k ϝ ++
+        ty_outlives_E T_ty ϝ ++ ty_wf_E T_ty ++
+        ty_wf_E ty0 ++ ty_outlives_E ty0 ϝ.
+  Proof.
+    eexists. split; first reorder_elctx. done.
+  Abort.
 End test.
 
 (** optimize_elctx *)
@@ -1373,6 +1385,17 @@ Section test.
   Lemma test6 κ κ' ϝ c :
     lctx_lft_alive_count [] [κ ⊑ₗ κ'; ϝ ⊑ₗ{c} []; ϝ ⊑ₗ κ] κ' [ϝ]
       [κ ⊑ₗ κ'; ϝ ⊑ₗ{S c} []; ϝ ⊑ₗ κ].
+  Proof.
+    solve_lft_alive_count; solve[fail].
+  Abort.
+
+  Lemma test_bor_kind_outlives {rt rt0} (T_ty : type rt) (ty0 : type rt0)
+      κ ϝ :
+    lctx_lft_alive_count
+      (bor_kind_outlives_elctx (Shared κ) ϝ ++
+        ty_outlives_E T_ty ϝ ++ ty_wf_E T_ty ++
+        ty_wf_E ty0 ++ ty_outlives_E ty0 ϝ)
+      [ϝ ⊑ₗ{0} []] κ [ϝ] [ϝ ⊑ₗ{1} []].
   Proof.
     solve_lft_alive_count; solve[fail].
   Abort.
