@@ -2672,12 +2672,12 @@ Ltac solve_llctx_find_llft := fail "implement llctx_find_llft_solve".
 Global Hint Extern 10 (LiTactic (llctx_find_llft_goal _ _ _)) =>
     eapply llctx_find_llft_hint; solve_llctx_find_llft : typeclass_instances.
 
-(** Tactic hint to remove dead local lifetime aliases after a local lifetime has been ended *)
+(** Replace aliases depending on an ended lifetime with explicit dead entries. *)
 Definition llctx_remove_dead_aliases_goal `{!typeGS Σ} (L : llctx) (κ : lft) (T : llctx → iProp Σ) : iProp Σ :=
-    ∃ L', ⌜sublist L' L⌝ ∗ T L'.
+    ∃ L', ⌜llctx_replace_dead_aliases κ L L'⌝ ∗ T L'.
 #[global] Typeclasses Opaque llctx_remove_dead_aliases_goal.
 Definition llctx_remove_dead_aliases (L1 L2 : llctx) (κ : lft) :=
-  sublist L2 L1.
+  llctx_replace_dead_aliases κ L1 L2.
 Program Definition llctx_remove_dead_aliases_hint `{!typeGS Σ} (L : llctx) (κ : lft) (L' : llctx) :
   llctx_remove_dead_aliases L L' κ →
   LiTactic (llctx_remove_dead_aliases_goal L κ) := λ H, {|

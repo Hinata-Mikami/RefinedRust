@@ -10,6 +10,38 @@ Section deinit.
 
   (** ** Instances for deinitializing a type *)
 
+  Lemma owned_subltype_step_blocked_uninit π E L step l {rt} (ty : type rt)
+      κ (r : place_rfn rt) st T :
+    ⌜lctx_lft_dead E L κ⌝ ∗
+    owned_subltype_step π E L step l r (#()) (◁ ty) (◁ uninit st) T
+    ⊢ owned_subltype_step π E L step l r (#())
+        (BlockedLtype ty κ) (◁ uninit st) T.
+  Proof.
+    iIntros "(%Hdead & HT)" (F HF Huser Hshr) "#CTX #HE HL Hl".
+    iPoseProof (lctx_lft_dead_tok with "HE HL") as "#Hdead"; first apply Hdead.
+    iMod (unblock_blocked with "Hdead Hl") as "Hl"; first done.
+    iApply ("HT" with "[//] [//] [//] CTX HE HL Hl").
+  Qed.
+  Definition owned_subltype_step_blocked_uninit_inst :=
+    [instance @owned_subltype_step_blocked_uninit].
+  Global Existing Instance owned_subltype_step_blocked_uninit_inst | 20.
+
+  Lemma owned_subltype_step_shrblocked_uninit π E L step l {rt} (ty : type rt)
+      κ (r : place_rfn rt) st T :
+    ⌜lctx_lft_dead E L κ⌝ ∗
+    owned_subltype_step π E L step l r (#()) (◁ ty) (◁ uninit st) T
+    ⊢ owned_subltype_step π E L step l r (#())
+        (ShrBlockedLtype ty κ) (◁ uninit st) T.
+  Proof.
+    iIntros "(%Hdead & HT)" (F HF Huser Hshr) "#CTX #HE HL Hl".
+    iPoseProof (lctx_lft_dead_tok with "HE HL") as "#Hdead"; first apply Hdead.
+    iMod (unblock_shrblocked with "Hdead Hl") as "Hl"; first done.
+    iApply ("HT" with "[//] [//] [//] CTX HE HL Hl").
+  Qed.
+  Definition owned_subltype_step_shrblocked_uninit_inst :=
+    [instance @owned_subltype_step_shrblocked_uninit].
+  Global Existing Instance owned_subltype_step_shrblocked_uninit_inst | 20.
+
   (* First, if the syntype is equal, go to a show subsumption to a typed value.
      Then, instances for subsuming to a typed value will trigger. *)
   Lemma owned_subltype_step_ofty_uninit_eq π E L {rt} (lt : ltype rt) r st l `{Hst : !TCDone (ltype_st lt = st)} T :

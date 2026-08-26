@@ -1047,7 +1047,6 @@ Section lft_contexts.
     simpl. iExact "Hdead".
   Qed.
 
-
   (* External lifetime context satisfiability *)
   Definition elctx_sat E L E' : Prop :=
     ∀ qL, llctx_interp_noend L qL -∗ □ (elctx_interp E -∗ elctx_interp E').
@@ -1407,6 +1406,51 @@ Section lft_contexts.
       L' = A ++ B ∧
       llctx_elt_is_alive elt κ κs ∧
       llctx_find_lft_key_interp key elt.
+
+  Lemma llctx_find_llft_sublist L L' κ key κs :
+    llctx_find_llft L κ key κs L' →
+    sublist L' L.
+  Proof.
+    intros (A & B & elt & -> & -> & _).
+    apply sublist_app; first done. by apply sublist_cons.
+  Qed.
+
+  Inductive llctx_replace_dead_aliases (κ : lft) : llctx → llctx → Prop :=
+    | llctx_replace_dead_aliases_nil : llctx_replace_dead_aliases κ [] []
+    | llctx_replace_dead_aliases_owned c κ' κs L L' :
+        llctx_replace_dead_aliases κ L L' →
+        llctx_replace_dead_aliases κ ((κ' ⊑ₗ{c} κs) :: L) ((κ' ⊑ₗ{c} κs) :: L')
+    | llctx_replace_dead_aliases_alias_dead κ' κs L L' :
+        κ ∈ κs →
+        llctx_replace_dead_aliases κ L L' →
+        llctx_replace_dead_aliases κ ((κ' ≡ₗ κs) :: L) ((†ₗ κ') :: L')
+    | llctx_replace_dead_aliases_alias_alive κ' κs L L' :
+        llctx_replace_dead_aliases κ L L' →
+        llctx_replace_dead_aliases κ ((κ' ≡ₗ κs) :: L) ((κ' ≡ₗ κs) :: L')
+    | llctx_replace_dead_aliases_dead κ' L L' :
+        llctx_replace_dead_aliases κ L L' →
+        llctx_replace_dead_aliases κ ((†ₗ κ') :: L) ((†ₗ κ') :: L')
+    | llctx_replace_dead_aliases_incl κ1 κ2 L L' :
+        llctx_replace_dead_aliases κ L L' →
+        llctx_replace_dead_aliases κ ((κ1 ⊑ₗ κ2) :: L) ((κ1 ⊑ₗ κ2) :: L').
+
+  Lemma llctx_replace_dead_aliases_interp `{!frac_borG Σ} F κ L L' :
+    lftE ⊆ F →
+    llctx_replace_dead_aliases κ L L' →
+    [† κ] -∗ llctx_interp L ={F}=∗ llctx_interp L'.
+  Proof.
+    iIntros (HF Hreplace) "#Hdead". iInduction Hreplace as [| | | | |] "IH".
+    - rewrite /llctx_interp !big_sepL_nil. iIntros "_". done.
+    - iIntros "(Hel & HL)". iMod ("IH" with "HL") as "HL". by iFrame.
+    - iIntros "(Hel & HL)". iDestruct "Hel" as "(#Hincl & _)".
+      iAssert ([† lft_intersect_list κs])%I with "[Hdead]" as "#Hsupports_dead".
+      { iApply lft_dead_lft_intersect_list. iExists κ. iSplit; first done. iExact "Hdead". }
+      iMod (lft_incl_dead with "Hincl Hsupports_dead") as "#Halias_dead"; first done.
+      iMod ("IH" with "HL") as "HL". by iFrame.
+    - iIntros "(Hel & HL)". iMod ("IH" with "HL") as "HL". by iFrame.
+    - iIntros "(Hel & HL)". iMod ("IH" with "HL") as "HL". by iFrame.
+    - iIntros "(Hel & HL)". iMod ("IH" with "HL") as "HL". by iFrame.
+  Qed.
 
   Lemma llctx_end_llft F L L' κ κs :
     lftE ⊆ F →

@@ -5434,7 +5434,8 @@ Section subsume.
   Global Existing Instance type_alias_lft_inst.
 
   (** EndLft *)
-  (* TODO: also make endlft apply to local aliases, endlft should just remove them, without triggering anything. *)
+  (* Ending an alias only forgets its annotation name. It remains in the context
+     so its death can later be derived when one of its supports dies. *)
 
   Variant iterate_endlft_inheritances :=
   | IterateEndlftInheritances (κ : lft) (ks : list (list lft * iProp Σ)).
@@ -5482,24 +5483,29 @@ Section subsume.
       li_tactic (compute_list_map_lookup_goal M n) (λ o,
       match o with
       | Some κ =>
-        (* find some credits *)
-        prove_with_subtype E L false ProveDirect (£1) True%I (λ L1 _ R2,
-        (* We need to make sure there are no open borrows using tokens of this lifetime, inclusing aliases, so find the lifetimes which will be dying here *)
-        li_tactic (find_implied_dying_lifetimes_goal L1 κ) (λ implied_dying,
-        typed_pre_context_fold f.1 E L1 (CtxFoldCloseInvAllInit (κ :: implied_dying)) (λ L1',
-        (* find the new llft context *)
-        li_tactic (llctx_find_llft_goal L1' κ LlctxFindLftFull) (λ '(_, L1''),
-        li_tactic (llctx_remove_dead_aliases_goal L1'' κ) (λ L2,
-        (* simplify the name map *)
-        li_tactic (simplify_lft_map_goal (map_list_delete M n)) (λ M',
-        named_lfts f M' -∗
-        (* extract observations from now-dead mutable references *)
-        typed_pre_context_fold f.1 E ((†ₗ κ) :: L2) (CtxFoldExtractAllInit κ) (λ L3,
-        (* give back credits *)
-        introduce_with_hooks E L3 (R2 ∗ £num_cred ∗ tr 1) (λ L4,
-        (* resolve inheritances *)
-        li_tactic (find_inheritances_goal) (λ ks,
-        iterate_with_hooks E L4 (IterateEndlftInheritances κ ks) (λ L5 _, T L5))))))))))
+        li_tactic (check_lft_is_local_goal E L κ) (λ b,
+        if b then
+          (* find some credits *)
+          prove_with_subtype E L false ProveDirect (£1) True%I (λ L1 _ R2,
+          (* We need to make sure there are no open borrows using tokens of this lifetime, inclusing aliases, so find the lifetimes which will be dying here *)
+          li_tactic (find_implied_dying_lifetimes_goal L1 κ) (λ implied_dying,
+          typed_pre_context_fold f.1 E L1 (CtxFoldCloseInvAllInit (κ :: implied_dying)) (λ L1',
+          (* find the new llft context *)
+          li_tactic (llctx_find_llft_goal L1' κ LlctxFindLftFull) (λ '(_, L1''),
+          li_tactic (llctx_remove_dead_aliases_goal L1'' κ) (λ L2,
+          (* simplify the name map *)
+          li_tactic (simplify_lft_map_goal (map_list_delete M n)) (λ M',
+          named_lfts f M' -∗
+          (* extract observations from now-dead mutable references *)
+          typed_pre_context_fold f.1 E ((†ₗ κ) :: L2) (CtxFoldExtractAllInit κ) (λ L3,
+          (* give back credits *)
+          introduce_with_hooks E L3 (R2 ∗ £num_cred ∗ tr 1) (λ L4,
+          (* resolve inheritances *)
+          li_tactic (find_inheritances_goal) (λ ks,
+          iterate_with_hooks E L4 (IterateEndlftInheritances κ ks) (λ L5 _, T L5))))))))))
+        else
+          li_tactic (simplify_lft_map_goal (map_list_delete M n)) (λ M',
+          named_lfts f M' -∗ T L))
       | None => named_lfts f M -∗ T L
       end))
     ⊢ typed_annot_stmt f 2 (EndLftAnnot n) E L T.
@@ -5512,6 +5518,14 @@ Section subsume.
       iApply physical_step_intro; iNext.
       iApply physical_step_intro; iNext.
       iFrame. by iApply "HT". }
+    unfold check_lft_is_local_goal. iDestruct "HT" as "(%b & HT)".
+    destruct b; first last.
+    { unfold simplify_lft_map_goal.
+      iDestruct "HT" as "(%M' & _ & HT)".
+      iIntros "#CTX #HE HL".
+      iApply physical_step_intro; iNext.
+      iApply physical_step_intro; iNext.
+      iFrame. iApply "HT". by iApply named_lfts_update. }
     unfold llctx_find_llft_goal, llctx_remove_dead_aliases_goal, li_tactic.
     iIntros "#CTX #HE HL".
     iSpecialize ("HT" $! ⊤ True%I).
@@ -5524,14 +5538,11 @@ Section subsume.
     iIntros "(%L3 & HL & HT)".
 
     iDestruct "HT" as "(%L' & % & %Hkill & Hs)".
-    unfold simplify_lft_map_goal. iDestruct "Hs" as "(%L'' & %Hsub & Hs)".
-    iDestruct "Hs" as "(%M' & _ & Hs)".
+    unfold simplify_lft_map_goal. iDestruct "Hs" as "(%L'' & %Hreplace & %M' & _ & Hs)".
     iPoseProof (llctx_end_llft ⊤ with "HL") as "Ha"; [done | done | apply Hkill | ].
     iApply physical_step_fupd_l.
     iMod ("Ha"). iApply (lc_fupd_add_later with "Hc"). iNext. iMod ("Ha") as "(#Hdead & HL)".
-    iPoseProof (llctx_interp_sublist with "HL") as "HL".
-    { apply Hsub. }
-
+    iMod (llctx_replace_dead_aliases_interp with "Hdead HL") as "HL"; [done | exact Hreplace | ].
     iPoseProof ("Hs" with "[Hnamed]") as "HT".
     { by iApply named_lfts_update. }
     iPoseProof ("HT" $! ⊤ with "[] [] [] CTX HE [HL]") as "Hstep"; [done.. | | ].
@@ -5583,6 +5594,7 @@ Section subsume.
   (** ExtendLft *)
   Variant iterate_extend_lft :=
     | IterateExtendLft (κs : list lft)
+    | IterateExtendLftTo (source : lft) (κs : list lft)
   .
   Lemma iterate_with_hooks_extend_lft_nil E L T :
     T L (IterateExtendLft [])
@@ -5615,6 +5627,43 @@ Section subsume.
   Definition iterate_with_hooks_extend_lft_cons_inst := [instance @iterate_with_hooks_extend_lft_cons].
   Global Existing Instance iterate_with_hooks_extend_lft_cons_inst.
 
+  Lemma iterate_with_hooks_extend_lft_to_nil E L source T :
+    T L (IterateExtendLftTo source [])
+    ⊢ iterate_with_hooks E L (IterateExtendLftTo source []) T.
+  Proof.
+    iIntros "HT". iIntros (??) "CTX HE HL".
+    iModIntro. iFrame.
+  Qed.
+  Definition iterate_with_hooks_extend_lft_to_nil_inst := [instance @iterate_with_hooks_extend_lft_to_nil].
+  Global Existing Instance iterate_with_hooks_extend_lft_to_nil_inst.
+
+  Lemma iterate_with_hooks_extend_lft_to_cons E L source κ κs T :
+    li_tactic (check_lctx_lft_incl_goal E L source κ) (λ included,
+    if included then
+      iterate_with_hooks E L (IterateExtendLftTo source κs) T
+    else
+      li_tactic (check_lft_is_local_goal E L κ) (λ local,
+      if local then
+        li_tactic (llctx_find_llft_goal L κ LlctxFindLftOwned) (λ '(κs', L'),
+          iterate_with_hooks E ((κ ≡ₗ κs') :: L') (IterateExtendLftTo source (κs' ++ κs)) T)
+      else iterate_with_hooks E L (IterateExtendLftTo source κs) T))
+    ⊢ iterate_with_hooks E L (IterateExtendLftTo source (κ :: κs)) T.
+  Proof.
+    iIntros "HT". iIntros (??) "(#LFT & #LCTX) HE HL".
+    rewrite /check_lctx_lft_incl_goal. iDestruct "HT" as "(%included & %Hincl & HT)".
+    destruct included.
+    - by iApply ("HT" with "[] [$] HE HL").
+    - rewrite /check_lft_is_local_goal. iDestruct "HT" as "(%local & HT)".
+      destruct local.
+      + rewrite /llctx_find_llft_goal. iDestruct "HT" as "(%L' & %κs' & %Hfind & HT)".
+        iMod (llctx_extendlft_local_owned with "LFT HL") as "HL"; [done.. | ].
+        iMod ("HT" with "[] [$] HE HL") as "(%L2 & %m & HL & HT)"; first done.
+        by iFrame.
+      + by iApply ("HT" with "[] [$] HE HL").
+  Qed.
+  Definition iterate_with_hooks_extend_lft_to_cons_inst := [instance @iterate_with_hooks_extend_lft_to_cons].
+  Global Existing Instance iterate_with_hooks_extend_lft_to_cons_inst.
+
   Lemma type_extendlft f (n : string) E L T :
     (∃ M, named_lfts f M ∗
       li_tactic (compute_list_map_lookup_nofail_goal M n) (λ κ,
@@ -5631,6 +5680,25 @@ Section subsume.
   Qed.
   Definition type_extendlft_inst := [instance @type_extendlft].
   Global Existing Instance type_extendlft_inst.
+
+  (** Selectively extend [target] and its supports until [source] is included. *)
+  Lemma type_extendlft_to f (target source : string) E L T :
+    (∃ M, named_lfts f M ∗
+      li_tactic (compute_list_map_lookup_nofail_goal M target) (λ targetκ,
+      li_tactic (compute_list_map_lookup_nofail_goal M source) (λ sourceκ,
+      iterate_with_hooks E L (IterateExtendLftTo sourceκ [targetκ]) (λ L' _,
+      named_lfts f M -∗ T L'))))
+    ⊢ typed_annot_stmt f 1 (ExtendLftToAnnot target source) E L T.
+  Proof.
+    rewrite /compute_list_map_lookup_nofail_goal.
+    iIntros "(%M & Hnamed & %targetκ & _ & %sourceκ & _ & HT)".
+    iIntros "#CTX #HE HL".
+    iMod ("HT" with "[] CTX HE HL") as "(%L2 & % & HL & HT)"; first done.
+    iApply physical_step_intro; iNext.
+    iFrame. by iApply "HT".
+  Qed.
+  Definition type_extendlft_to_inst := [instance @type_extendlft_to].
+  Global Existing Instance type_extendlft_to_inst.
 
   (** UnconstrainedLftAnnot *)
   Lemma type_unconstrained_lft f (n : string) sup `{!TCFastDone (UnconstrainedLftHint n sup)} E L T :

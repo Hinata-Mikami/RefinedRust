@@ -50,6 +50,10 @@ Inductive endlft_annot : Set :=
 Inductive extend_annot : Set :=
   ExtendLftAnnot (n : string).
 
+(** Extend a lifetime and only those supports needed to include another lifetime. *)
+Inductive extend_to_annot : Set :=
+  ExtendLftToAnnot (target source : string).
+
 (** Annotation for stratifying the context at this point. *)
 Inductive stratify_context_annot : Set :=
   StratifyContextAnnot.
@@ -92,4 +96,3 @@ Ltac check_unconstrained_lft n :=
   | |- _ =>
     idtac "Lifetime " n " is unconstrained, pose a hint using 'pose_unconstrained_lft_hint' "
   end.
-

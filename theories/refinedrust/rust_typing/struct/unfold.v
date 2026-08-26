@@ -507,7 +507,7 @@ Section place.
   Qed.
   Definition prove_place_cond_struct_l_inst :=
     [instance @prove_place_cond_struct_l].
-  Global Existing Instance prove_place_cond_struct_l_inst | 30.
+  Global Existing Instance prove_place_cond_struct_l_inst | 1020.
 
   (* needs to have lower priority than the id instance *)
   Lemma typed_place_ofty_struct {rts} π E L l (tys : hlist type rts) (r : place_rfnRT (plistRT rts)) sls bmin0 b P T :

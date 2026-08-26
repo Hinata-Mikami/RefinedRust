@@ -39,10 +39,7 @@ Section function.
   }.
 
   Record fn_params := FP {
-    (** Argument types with refinement.
-     We also directly require an inG proof for ghost variables to that type.
-      Maybe there is a nicer way to bundle that up?
-    *)
+    (** Argument types with refinement. *)
     fp_atys : list (@sigT RT (λ rt, type rt * rt)%type);
     (* bundled assume condition *)
     fp_Pa : thread_id → iProp Σ;
@@ -68,9 +65,9 @@ Section function.
      Compute a [fn_params] definition that includes the required lifetime constraints for the
      used argument and return types (according to their typeclass instances).
      This is currently a bit more restrictive than it needs to be:
-We don't allow [retty] to depend on [exty], since [exty] should not quantify over any lifetimes for this computation to work.
+     We don't allow [retty] to depend on [exty], since [exty] should not quantify over any lifetimes for this computation to work.
      FIXME Maybe we can generalize this with some more typeclass magic.
-*)
+  *)
   Definition map_rtype : (@sigT RT (λ rt, type rt * rt)%type) → rtype :=
     (λ '(existT rt (ty, _)), {| rt_rty := rt; rt_ty := ty|}).
   Definition FP_wf
@@ -97,7 +94,7 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
       (λ e, mk_FR retrt retty (fr_ref e) (fr_R e))
       panic.
 
-(* TODO: move elctx into this? *)
+  (* TODO: move elctx into this? *)
   Record fn_spec := mk_fn_spec {
     fn_A : Type;
     fn_p : fn_A → fn_params;
@@ -110,7 +107,7 @@ We don't allow [retty] to depend on [exty], since [exty] should not quantify ove
     We need to be able to transform ownership of the return type given by [typed_stmt]
       to the type + ensures condition that the function really needs to return *)
   Definition fn_ret_prop {B} π (fr : B → fn_ret) : val → iProp Σ :=
-(λ v,
+    (λ v,
     (* there exists an inhabitant of the spec-level existential *)
       ∃ x,
       (* st. the return type is satisfied *)

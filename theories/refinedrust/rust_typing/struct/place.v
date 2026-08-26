@@ -446,7 +446,88 @@ Section place.
   Definition typed_place_struct_shared_inst := [instance @typed_place_struct_shared].
   Global Existing Instance typed_place_struct_shared_inst | 30.
 
-  (* TODO prove_place_cond *)
+  (** [UpdStrong], [UpdInit], and [UpdWeak] have generic fallback instances.
+    [UpdUniq] instead needs to establish the condition field by field, without
+    casting blocked fields to value types. *)
+  Fixpoint prove_place_cond_struct_uniq_iter E L κs
+      (lts1 lts2 : list (sigT ltype)) (T : iProp Σ) : iProp Σ :=
+    match lts1, lts2 with
+    | [], [] => T
+    | existT _ lt1 :: lts1, existT _ lt2 :: lts2 =>
+        prove_place_cond E L (UpdUniq κs) lt1 lt2 (λ _,
+          prove_place_cond_struct_uniq_iter E L κs lts1 lts2 T)
+    | _, _ => False
+    end.
+
+  Local Lemma prove_place_cond_struct_uniq_iter_elim E L κs
+      (lts1 lts2 : list (sigT ltype)) T F :
+    lftE ⊆ F →
+    rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
+    prove_place_cond_struct_uniq_iter E L κs lts1 lts2 T ={F}=∗
+      llctx_interp L ∗
+      ([∗ list] lt1; lt2 ∈ lts1; lts2,
+        typed_place_cond (UpdUniq κs) (projT2 lt1) (projT2 lt2)) ∗ T.
+  Proof.
+    iIntros (HF) "#CTX #HE HL HT".
+    iInduction lts1 as [|[rt1 lt1] lts1] "IH" forall (lts2); destruct lts2 as [|[rt2 lt2] lts2]; simpl.
+    { iModIntro. iFrame. }
+    { iDestruct "HT" as %[]. }
+    { iDestruct "HT" as %[]. }
+    iMod ("HT" with "[//] CTX HE HL") as
+      "(HL & %upd & #Hincl & Hcond & %Hst & HT)".
+    iMod ("IH" with "HL HT") as "(HL & Hconds & HT)".
+    iModIntro. iFrame.
+    iApply (typed_place_cond_incl with "Hincl Hcond").
+  Qed.
+
+  Lemma prove_place_cond_struct_uniq E L κs {rts}
+      (lts1 lts2 : hlist ltype rts) sls T :
+    prove_place_cond_struct_uniq_iter E L κs (hzipl rts lts1) (hzipl rts lts2)
+      (T (mkPUKRes (UpdUniq κs) opt_place_update_eq_refl opt_place_update_eq_refl))
+    ⊢ prove_place_cond E L (UpdUniq κs)
+        (StructLtype lts1 sls) (StructLtype lts2 sls) T.
+  Proof.
+    iIntros "HT" (F HF) "#CTX #HE HL".
+    iMod (prove_place_cond_struct_uniq_iter_elim with "CTX HE HL HT") as
+      "(HL & Hconds & HT)"; first done.
+    iAssert (typed_place_cond (UpdUniq κs)
+      (StructLtype lts1 sls) (StructLtype lts2 sls)) with "[Hconds]" as "#Hcond".
+    { iApply struct_ltype_place_cond. done. }
+    iPoseProof (typed_place_cond_syn_type_eq with "[] Hcond") as "%Hst"; first done.
+    iModIntro. iFrame "HL HT Hcond". iSplitR; first iApply place_update_kind_incl_refl.
+    done.
+  Qed.
+  Definition prove_place_cond_struct_uniq_inst :=
+    [instance @prove_place_cond_struct_uniq].
+  Global Existing Instance prove_place_cond_struct_uniq_inst | 20.
+
+  Lemma prove_place_cond_struct_ofty_r_uniq E L κs {rts}
+      (lts : hlist ltype rts) (tys : hlist type rts) sls T :
+    prove_place_cond E L (UpdUniq κs)
+      (StructLtype lts sls) (StructLtype (hmap (λ _, OfTy) tys) sls) T
+    ⊢ prove_place_cond E L (UpdUniq κs)
+      (StructLtype lts sls) (◁ struct_t sls tys) T.
+  Proof.
+    iApply prove_place_cond_eqltype_r.
+    apply symmetry. apply struct_t_unfold_full_eqltype.
+  Qed.
+  Definition prove_place_cond_struct_ofty_r_uniq_inst :=
+    [instance @prove_place_cond_struct_ofty_r_uniq].
+  Global Existing Instance prove_place_cond_struct_ofty_r_uniq_inst | 15.
+
+  Lemma prove_place_cond_struct_ofty_l_uniq E L κs {rts}
+      (tys : hlist type rts) (lts : hlist ltype rts) sls T :
+    prove_place_cond E L (UpdUniq κs)
+      (StructLtype (hmap (λ _, OfTy) tys) sls) (StructLtype lts sls) T
+    ⊢ prove_place_cond E L (UpdUniq κs)
+      (◁ struct_t sls tys) (StructLtype lts sls) T.
+  Proof.
+    iApply prove_place_cond_eqltype_l.
+    apply symmetry. apply struct_t_unfold_full_eqltype.
+  Qed.
+  Definition prove_place_cond_struct_ofty_l_uniq_inst :=
+    [instance @prove_place_cond_struct_ofty_l_uniq].
+  Global Existing Instance prove_place_cond_struct_ofty_l_uniq_inst | 15.
 End place.
 
 

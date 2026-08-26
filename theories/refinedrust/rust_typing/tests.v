@@ -1448,7 +1448,7 @@ Section test.
   Abort.
 
   Lemma llctx_remove_dead_aliases_test_2 κ1 κ2 κ3  :
-    ∃ L2, llctx_remove_dead_aliases [κ1 ⊑ₗ{0} []; κ2 ≡ₗ [κ3]] L2 κ3 ∧ L2 = [κ1 ⊑ₗ{0} []].
+    ∃ L2, llctx_remove_dead_aliases [κ1 ⊑ₗ{0} []; κ2 ≡ₗ [κ3]] L2 κ3 ∧ L2 = [κ1 ⊑ₗ{0} []; †ₗ κ2].
   Proof.
     eexists; split; first solve_llctx_remove_dead_aliases; last done; solve [fail].
   Abort.

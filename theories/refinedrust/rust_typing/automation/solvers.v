@@ -397,6 +397,8 @@ Ltac solve_find_implied_dying_lifetimes ::=
 (** [check_lft_is_local_pure_goal] *)
 Ltac check_lft_is_local L κ cont :=
   match L with
+  | [] =>
+    cont constr:(false)
   (* bottom out if we reach the function lifetime *)
   | [?ϝ ⊑ₗ{_} []] =>
     cont constr:(false)
@@ -404,9 +406,7 @@ Ltac check_lft_is_local L κ cont :=
     first [
       unify κ κ'; cont constr:(true)
     | check_lft_is_local L' κ cont]
-  | (?κ' ≡ₗ ?κs') :: ?L' =>
-      check_lft_is_local L' κ cont
-  | (†ₗ _) :: ?L' =>
+  | _ :: ?L' =>
       check_lft_is_local L' κ cont
   end.
 
@@ -2496,16 +2496,21 @@ Ltac solve_llctx_find_llft ::=
 (** llctx_remove_dead_aliases *)
 Ltac solve_llctx_remove_dead_aliases_step κ :=
   lazymatch goal with
-  | |- sublist _ ((?κ' ≡ₗ ?κs) :: ?L) =>
+  | |- llctx_replace_dead_aliases κ ((?κ' ≡ₗ ?κs) :: ?L) _ =>
       first [
-        (* discard *)
         list_find_tac_noindex ltac:(fun κ2 => unify κ κ2) κs;
-        notypeclasses refine (sublist_cons _ _ _ _)
-      | notypeclasses refine (sublist_skip _ _ _ _) ]
-  | |- sublist _ (_ :: ?L) =>
-      notypeclasses refine (sublist_skip _ _ _ _)
-  | |- sublist _ [] =>
-      notypeclasses refine (sublist_nil)
+        notypeclasses refine (llctx_replace_dead_aliases_alias_dead κ κ' κs L _ _ _);
+        [set_solver | ]
+      | notypeclasses refine (llctx_replace_dead_aliases_alias_alive κ κ' κs L _ _);
+        idtac ]
+  | |- llctx_replace_dead_aliases κ ((?κ' ⊑ₗ{?c} ?κs) :: ?L) _ =>
+      notypeclasses refine (llctx_replace_dead_aliases_owned κ c κ' κs L _ _)
+  | |- llctx_replace_dead_aliases κ ((†ₗ ?κ') :: ?L) _ =>
+      notypeclasses refine (llctx_replace_dead_aliases_dead κ κ' L _ _)
+  | |- llctx_replace_dead_aliases κ ((?κ1 ⊑ₗ ?κ2) :: ?L) _ =>
+      notypeclasses refine (llctx_replace_dead_aliases_incl κ κ1 κ2 L _ _)
+  | |- llctx_replace_dead_aliases κ [] _ =>
+      notypeclasses refine (llctx_replace_dead_aliases_nil κ)
   end.
 Ltac solve_llctx_remove_dead_aliases ::=
   lazymatch goal with
