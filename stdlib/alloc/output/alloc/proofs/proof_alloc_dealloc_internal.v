@@ -32,8 +32,8 @@ Proof.
   specialize (syn_type_has_layout_untyped_inv _ _ Hst) as Hst'.
   specialize (syn_type_has_layout_literal_inv _ _ Hst') as (-> & ? & ?).
   iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
-  iDestruct "Hb" as "(%v' & Hptr & Hv')".
-  iPoseProof (ty_own_val_has_layout with "Hv'") as "%Hlyv'"; first done.
+  iDestruct "Hb" as "(%v2 & Hptr & Hv2)".
+  iPoseProof (ty_own_val_has_layout with "Hv2") as "%Hlyv2"; first done.
   iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%".
 
   iRename select (_ ◁ᵥ{_, _} ptr @ alias_ptr_t)%I into "Hal".

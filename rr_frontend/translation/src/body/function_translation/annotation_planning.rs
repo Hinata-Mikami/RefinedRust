@@ -80,9 +80,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     ///    tracker state, batch-register the classifications, and cache the call plans.
     /// 4. Resolve every shared reborrow against one stable state, then batch-register the resolved aliases so
     ///    no resolution can observe another merely because of iteration order.
-    /// 5. Construct and cache every ordinary assignment plan after all assignment and call declarations are
+    /// 5. Resolve loan supports from immediate and barrier-safe future requirements, filtering against the
+    ///    stable set of names available when each loan is initialized.
+    /// 6. Construct and cache every ordinary assignment plan after all assignment and call declarations are
     ///    available.
-    /// 6. Finalize minimal dynamic inclusion annotations for all cached assignment and call plans.
+    /// 7. Finalize minimal dynamic inclusion annotations for all cached assignment and call plans.
     ///
     /// Batching changes only compiler-side analysis order: every effect remains attached to its
     /// original MIR point or CFG edge. After this method returns, basic-block translation must only
@@ -169,6 +171,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             }
         }
         self.annotations.register_assignment_shared_reborrows(shared_reborrow_effects);
+        self.annotations.resolve_assignment_loan_supports();
 
         for assignment in pending_assignments {
             let plan = self.annotations.prepare_assignment_annotation_plan(

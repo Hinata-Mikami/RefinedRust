@@ -36,9 +36,9 @@ Proof.
     simpl. iPureIntro.
     apply l2v_decodes_to_loc.
     by eapply val_to_Z_in_range. }
-  iIntros (v') "%Hv".
+  iIntros (v2) "%Hv".
   iApply ("HCont" $! _ _ _ (alias_ptr_t) l2 with "HL Hf []").
-  { rewrite (l2v_correct _ v'); done. }
+  { rewrite (l2v_correct _ v2); done. }
   repeat liRStep; liShow.
 
   all: print_remaining_goal.

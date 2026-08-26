@@ -13,8 +13,6 @@ Proof.
   traits_iterator_Iterator_min_by_closure0_prelude.
 
   rep <-! liRStep; liShow.
-  apply_update (updateable_copy_lft "vlft6" "plft8").
-  rep liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

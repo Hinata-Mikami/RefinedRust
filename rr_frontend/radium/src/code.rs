@@ -530,6 +530,10 @@ pub enum Annotation {
     #[display("ExtendLftAnnot \"{}\"", _0)]
     ExtendLft(Lft),
 
+    /// Extend the target and only those supports needed to include the source
+    #[display("ExtendLftToAnnot \"{}\" \"{}\"", _0, _1)]
+    ExtendLftTo(Lft, Lft),
+
     /// Dynamically include a lifetime in another lifetime
     #[display("DynIncludeLftAnnot \"{}\" \"{}\"", _0, _1)]
     DynIncludeLft(Lft, Lft),

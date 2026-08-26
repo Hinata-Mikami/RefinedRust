@@ -506,8 +506,11 @@ pub(crate) fn generate_dyn_inclusion_annots<'tcx>(
     Ok(inclusions
         .into_iter()
         .map(|incl| match incl {
-            inclusion_tracker::DynamicInclusion::ExtendLft(l) => {
-                code::Annotation::ExtendLft(ty_translator.format_atomic_region(l))
+            inclusion_tracker::DynamicInclusion::ExtendLftTo { target, source } => {
+                code::Annotation::ExtendLftTo(
+                    ty_translator.format_atomic_region(target),
+                    ty_translator.format_atomic_region(source),
+                )
             },
             inclusion_tracker::DynamicInclusion::IncludeLft(l1, l2) => code::Annotation::DynIncludeLft(
                 ty_translator.format_atomic_region(l1),
@@ -519,26 +522,6 @@ pub(crate) fn generate_dyn_inclusion_annots<'tcx>(
 
 // Loan and shared-reborrow lifetime initialization.
 
-/// Find all regions that need to outlive a loan region at its point of creation.
-fn get_outliving_regions_on_loan(
-    inclusion_tracker: &InclusionTracker<'_, '_>,
-    r: Region,
-    constraint_point: PointIndex,
-) -> Vec<Region> {
-    // get all base subset constraints r' ⊆ r
-    let info = inclusion_tracker.info();
-    let mut outliving = Vec::new();
-
-    for (r1, r2) in info.subset_base_at(constraint_point) {
-        if r2 == r {
-            outliving.push(r1);
-        }
-        // other subset constraints at this point are due to (for instance) the assignment of
-        // the loan to a place and are handled there.
-    }
-    outliving
-}
-
 /// Emit `StartLft` for the Polonius loan issued at an assignment midpoint, if any.
 ///
 /// Not every borrow-looking rvalue issues a loan. In particular, shared reborrows may instead be
@@ -549,6 +532,7 @@ pub(crate) fn get_assignment_loan_annots<'tcx>(
     ty_translator: &types::LocalTX<'_, 'tcx>,
     loc: mir::Location,
     constraint_point: facts::PointIndex,
+    outliving: &[Region],
 ) -> Vec<code::Annotation> {
     let info = inclusion_tracker.info();
     let mut stmt_annots = Vec::new();
@@ -561,8 +545,6 @@ pub(crate) fn get_assignment_loan_annots<'tcx>(
 
         let lft = info.atomic_region_of_loan(loan);
         let r = lft.get_region();
-        // The corresponding tracker effects were registered function-wide.
-        let outliving = get_outliving_regions_on_loan(inclusion_tracker, r, constraint_point);
 
         let mut outliving_lfts: Vec<_> = outliving
             .iter()

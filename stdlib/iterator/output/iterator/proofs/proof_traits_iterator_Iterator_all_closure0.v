@@ -13,8 +13,6 @@ Proof.
   traits_iterator_Iterator_all_closure0_prelude.
 
   rep <-! liRStep; liShow.
-  apply_update (updateable_copy_lft "vlft7" "ulft1").
-  rep liRStep; liShow.
   { rep liRStep; liShow.
     liInst Hevar_x2 true.
     rep liRStep; liShow. }

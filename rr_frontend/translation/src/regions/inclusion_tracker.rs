@@ -88,8 +88,11 @@ use crate::environment::polonius_info::{self, PoloniusInfo};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum DynamicInclusion {
-    /// Emit `ExtendLft` for the contained region when the reverse inclusion is static.
-    ExtendLft(polonius_info::AtomicRegion),
+    /// Selectively extend the target until it contains the source.
+    ExtendLftTo {
+        target: polonius_info::AtomicRegion,
+        source: polonius_info::AtomicRegion,
+    },
     /// Emit `DynIncludeLft` for the two contained semantic lifetime names.
     IncludeLft(polonius_info::AtomicRegion, polonius_info::AtomicRegion),
 }
@@ -370,6 +373,46 @@ where
             return states;
         }
     }
+}
+
+/// Check whether an inclusion established at `source` is guaranteed to survive until `target`.
+///
+/// Only barriers participate in this query. In particular, an inclusion killed by a strong update
+/// is not allowed to reappear through an unrelated later effect. The ordinary must-analysis also
+/// ensures that every path reaching `target` passes through `source`.
+fn inclusion_reaches_with_barriers<R, P>(
+    cfg_edges: impl IntoIterator<Item = (P, P)>,
+    entry_points: impl IntoIterator<Item = P>,
+    inclusion: (R, R),
+    source: P,
+    target: P,
+    barriers: impl IntoIterator<Item = (R, P)>,
+    edge_pre_barriers: impl IntoIterator<Item = (R, P, P)>,
+    edge_barriers: impl IntoIterator<Item = (R, P, P)>,
+) -> bool
+where
+    R: Copy + Ord,
+    P: Copy + Ord,
+{
+    let states = compute_guaranteed_states_with_dynamic(
+        cfg_edges,
+        entry_points,
+        [],
+        [(inclusion.0, inclusion.1, source)],
+        [],
+        [],
+        [],
+        [],
+        barriers,
+        edge_pre_barriers,
+        edge_barriers,
+        [],
+        [],
+    );
+    states
+        .pre_dynamic_inclusions
+        .get(&target)
+        .is_some_and(|inclusions| inclusions.contains(&inclusion))
 }
 
 #[cfg(test)]
@@ -689,6 +732,31 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
             .is_some_and(|regions| regions.contains(&region))
     }
 
+    /// Whether an issuance-time inclusion would still be guaranteed at a later requirement point
+    /// without crossing a redefinition of either endpoint.
+    pub(crate) fn can_hoist_static_inclusion(
+        &self,
+        r1: Region,
+        r2: Region,
+        source: PointIndex,
+        target: PointIndex,
+    ) -> bool {
+        inclusion_reaches_with_barriers(
+            self.info.cfg_edges(),
+            [self.info.entry_point()],
+            (r1, r2),
+            source,
+            target,
+            self.barriers.iter().copied(),
+            self.edge_pre_barriers.iter().copied(),
+            self.edge_barriers.iter().copied(),
+        )
+    }
+
+    pub(crate) fn dynamic_inclusions(&self) -> impl Iterator<Item = (Region, Region, PointIndex)> + '_ {
+        self.dynamic_incl_base.iter().copied()
+    }
+
     pub(crate) fn check_inclusion_before_shared_reborrow(
         &mut self,
         r1: Region,
@@ -752,7 +820,10 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
 
         if self.check_static_inclusion(r2, r1, point) {
             // TODO: recover the syntactic inclusion path instead of assuming r1 ⊑ₗ [r2].
-            stmt_annots.push(DynamicInclusion::ExtendLft(self.info.mk_atomic_region(r1)));
+            stmt_annots.push(DynamicInclusion::ExtendLftTo {
+                target: self.info.mk_atomic_region(r1),
+                source: self.info.mk_atomic_region(r2),
+            });
         } else {
             if inclusions.contains(&(r2, r1)) {
                 return Err(MutualDynamicInclusion { r1, r2, point });
@@ -829,7 +900,9 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
 
 #[cfg(test)]
 mod tests {
-    use super::{compute_guaranteed_states, compute_guaranteed_states_with_dynamic};
+    use super::{
+        compute_guaranteed_states, compute_guaranteed_states_with_dynamic, inclusion_reaches_with_barriers,
+    };
 
     #[test]
     fn dynamic_requirements_do_not_justify_themselves() {
@@ -1208,5 +1281,44 @@ mod tests {
         assert!(!states.inclusions[&1].contains(&('c', 'a')));
         assert!(states.inclusions[&1].contains(&('a', 'b')));
         assert!(states.known_regions[&1].contains(&'a'));
+    }
+
+    #[test]
+    fn future_inclusion_can_be_hoisted_before_an_unrelated_branch() {
+        assert!(inclusion_reaches_with_barriers([(0, 1), (0, 2)], [0], ('a', 'b'), 0, 1, [], [], [],));
+        assert!(
+            inclusion_reaches_with_barriers([(0, 1), (0, 2)], [0], ('a', 'b'), 0, 1, [('a', 2)], [], [],)
+        );
+    }
+
+    #[test]
+    fn future_inclusion_is_not_hoisted_across_a_barrier() {
+        assert!(
+            !inclusion_reaches_with_barriers([(0, 1), (1, 2)], [0], ('a', 'b'), 0, 2, [('a', 1)], [], [],)
+        );
+        assert!(!inclusion_reaches_with_barriers(
+            [(0, 1), (1, 2)],
+            [0],
+            ('a', 'b'),
+            0,
+            2,
+            [],
+            [('b', 1, 2)],
+            [],
+        ));
+    }
+
+    #[test]
+    fn future_inclusion_requires_every_path_to_pass_the_issuance() {
+        assert!(!inclusion_reaches_with_barriers(
+            [(0, 1), (0, 2), (1, 3), (2, 3)],
+            [0],
+            ('a', 'b'),
+            1,
+            3,
+            [],
+            [],
+            [],
+        ));
     }
 }

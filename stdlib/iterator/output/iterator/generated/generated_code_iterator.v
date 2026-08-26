@@ -854,7 +854,7 @@ Program Definition traits_iterator_Iterator_all_closure0_def (FnMut_F_Selfastrai
       annot{ 1 }: CopyLftNameAnnot "plft9" "ulft1"; (* initialization *)
       local_live{ BoolSynType } "__4";
       local_live{ RefSynType } "__5";
-      annot{ 1 }: StartLftAnnot "llft6" ["vlft7"; "plft8"]; (* borrow *)
+      annot{ 1 }: StartLftAnnot "llft6" ["plft8"]; (* borrow *)
       "__5" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "F"), "llft6" } (!{ RefOp } ( (!{ RefOp } ( "__1" )) at{ (tuple1_sls (RefSynType)) } "0" ));
       annot{ 1 }: CopyLftNameAnnot "plft10" "llft6"; (* post-assignment *)
       local_live{ ((tuple1_sls (traits_iterator_Iterator_Self_Item_st)) : syn_type) } "__6";
@@ -1259,7 +1259,7 @@ Program Definition traits_iterator_Iterator_max_by_closure0_def (max_by_Selfastr
       local_live{ traits_iterator_Iterator_Self_Item_st } "__5";
       "__5" <-{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } ("b");
       local_live{ RefSynType } "__6";
-      annot{ 1 }: StartLftAnnot "llft5" ["vlft6"; "plft8"]; (* borrow *)
+      annot{ 1 }: StartLftAnnot "llft5" ["plft8"]; (* borrow *)
       "__6" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "F"), "llft5" } (!{ RefOp } ( (!{ RefOp } ( "__1" )) at{ (tuple1_sls (RefSynType)) } "0" ));
       annot{ 1 }: CopyLftNameAnnot "plft10" "llft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* function_call *)
@@ -1454,7 +1454,7 @@ Program Definition traits_iterator_Iterator_min_by_closure0_def (min_by_Selfastr
       local_live{ traits_iterator_Iterator_Self_Item_st } "__5";
       "__5" <-{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } ("b");
       local_live{ RefSynType } "__6";
-      annot{ 1 }: StartLftAnnot "llft5" ["vlft6"; "plft8"]; (* borrow *)
+      annot{ 1 }: StartLftAnnot "llft5" ["plft8"]; (* borrow *)
       "__6" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "F"), "llft5" } (!{ RefOp } ( (!{ RefOp } ( "__1" )) at{ (tuple1_sls (RefSynType)) } "0" ));
       annot{ 1 }: CopyLftNameAnnot "plft10" "llft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* function_call *)

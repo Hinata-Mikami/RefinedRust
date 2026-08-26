@@ -136,6 +136,13 @@ use crate::environment::polonius_info::{self, PoloniusInfo};
 use crate::error::Message;
 use crate::types;
 
+#[derive(Clone, Debug)]
+struct PendingLoan {
+    region: Region,
+    startpoint: PointIndex,
+    immediate_supports: BTreeSet<Region>,
+}
+
 /// Plans the lifetime annotations for one MIR body and owns its flow-sensitive inclusion analysis.
 ///
 /// Tracker-independent effects are registered function-wide before tracker-dependent decisions are
@@ -146,6 +153,8 @@ pub(crate) struct AnnotationGenerator<'a, 'tcx> {
     info: &'a PoloniusInfo<'a, 'tcx>,
     mapping: &'a MappingResult,
     inclusion_tracker: InclusionTracker<'a, 'tcx>,
+    pending_loans: BTreeMap<mir::Location, PendingLoan>,
+    assignment_loan_supports: BTreeMap<mir::Location, Vec<Region>>,
 }
 
 #[expect(clippy::multiple_inherent_impl)]
@@ -168,6 +177,8 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             info,
             mapping,
             inclusion_tracker,
+            pending_loans: BTreeMap::new(),
+            assignment_loan_supports: BTreeMap::new(),
         }
     }
 
@@ -414,11 +425,107 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         };
         let region = self.info.atomic_region_of_loan(loan).get_region();
         self.inclusion_tracker.add_known_region(region, startpoint);
+        let mut immediate_supports = BTreeSet::new();
         for (source, destination) in self.info.subset_base_at(midpoint) {
             if destination == region {
-                self.inclusion_tracker.add_static_inclusion(source, destination, startpoint);
+                immediate_supports.insert(source);
             }
         }
+        assert!(
+            self.pending_loans
+                .insert(loc, PendingLoan {
+                    region,
+                    startpoint,
+                    immediate_supports,
+                },)
+                .is_none()
+        );
+    }
+
+    /// Resolve loan supports after all name definitions, barriers, and future weak-write
+    /// requirements have been registered.
+    pub(crate) fn resolve_assignment_loan_supports(&mut self) {
+        let pending: Vec<_> = self.pending_loans.iter().map(|(loc, loan)| (*loc, loan.clone())).collect();
+        let dynamic_requirements: Vec<_> = self.inclusion_tracker.dynamic_inclusions().collect();
+        let mut future_requirements = Vec::new();
+
+        for (required, destination, requirement_point) in dynamic_requirements {
+            let mut relevant_loans = BTreeSet::new();
+            for (_, loan) in &pending {
+                if self.inclusion_tracker.check_static_inclusion(required, loan.region, requirement_point)
+                    && self.inclusion_tracker.check_static_inclusion(loan.region, required, requirement_point)
+                {
+                    relevant_loans.insert(loan.region);
+                }
+            }
+
+            // Place-region equalities may be killed before the future requirement. Follow
+            // them at each child loan's initialization point to find containing loans.
+            loop {
+                let mut added = false;
+                for (_, ancestor) in &pending {
+                    if relevant_loans.contains(&ancestor.region) {
+                        continue;
+                    }
+                    let is_ancestor = pending.iter().any(|(_, child)| {
+                        relevant_loans.contains(&child.region)
+                            && child.immediate_supports.iter().any(|support| {
+                                self.inclusion_tracker.check_static_inclusion(
+                                    ancestor.region,
+                                    *support,
+                                    child.startpoint,
+                                ) && self.inclusion_tracker.check_static_inclusion(
+                                    *support,
+                                    ancestor.region,
+                                    child.startpoint,
+                                )
+                            })
+                    });
+                    if is_ancestor {
+                        relevant_loans.insert(ancestor.region);
+                        added = true;
+                    }
+                }
+                if !added {
+                    break;
+                }
+            }
+            future_requirements.push((destination, requirement_point, relevant_loans));
+        }
+
+        let mut resolved = BTreeMap::new();
+
+        for (loc, loan) in pending {
+            let mut candidates = loan.immediate_supports;
+            for (destination, requirement_point, relevant_loans) in &future_requirements {
+                // Also constrain loans containing the required reborrow. Selective extension
+                // may need to extend these ancestors to establish the reverse inclusion.
+                if relevant_loans.contains(&loan.region)
+                    && self.inclusion_tracker.can_hoist_static_inclusion(
+                        *destination,
+                        loan.region,
+                        loan.startpoint,
+                        *requirement_point,
+                    )
+                {
+                    candidates.insert(*destination);
+                }
+            }
+
+            candidates.retain(|source| {
+                *source != loan.region
+                    && self.inclusion_tracker.is_region_known_before_shared_reborrow(*source, loan.startpoint)
+            });
+            resolved.insert(loc, candidates.into_iter().collect::<Vec<_>>());
+        }
+
+        for (loc, supports) in &resolved {
+            let loan = &self.pending_loans[loc];
+            for source in supports {
+                self.inclusion_tracker.add_static_inclusion(*source, loan.region, loan.startpoint);
+            }
+        }
+        self.assignment_loan_supports = resolved;
     }
 
     pub(crate) fn preregister_assignment_effects(
@@ -716,8 +823,14 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
     ) -> Result<LocationAnnotationPlan, TranslationError> {
         let startpoint = self.start_point_for_target(loc);
         let midpoint = self.mid_point_for_target(loc);
-        let mut borrow_annots =
-            assignment::get_assignment_loan_annots(&self.inclusion_tracker, ty_translator, loc, midpoint);
+        let loan_supports = self.assignment_loan_supports.get(&loc).map(Vec::as_slice).unwrap_or_default();
+        let mut borrow_annots = assignment::get_assignment_loan_annots(
+            &self.inclusion_tracker,
+            ty_translator,
+            loc,
+            midpoint,
+            loan_supports,
+        );
         borrow_annots.extend(assignment::get_shared_reborrow_annots(
             &self.inclusion_tracker,
             ty_translator,
