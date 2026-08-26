@@ -5,6 +5,20 @@ fn mut_ref_test1(x: &mut &mut i32) -> i32 {
     **x
 }
 
+#[rr::verify]
+fn mut_ref_uniq_overwrite<'a>(x: &mut &'a mut i32, y: &'a mut i32) {
+    let old = **x;
+    *x = y;
+    assert!(old == old);
+}
+
+#[rr::verify]
+fn shr_ref_uniq_overwrite<'a>(x: &mut &'a i32, y: &'a i32) {
+    let old = **x;
+    *x = y;
+    assert!(old == old);
+}
+
 #[rr::params("γ1", "γ2", "i", "j")]
 #[rr::args("((-[(i, γ1); j]), γ2)")]
 #[rr::observe("γ2": "(-[#(#i, γ1); #j] : plist place_rfn _)")]

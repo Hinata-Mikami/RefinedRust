@@ -47,6 +47,16 @@ fn tuple_owned_overwrite_after_read() {
     assert!(x.0 == 3);
 }
 
+#[rr::verify]
+fn tuple_uniq_overwrite_after_read(x: &mut (i32, i32)) {
+    let first = x.0;
+
+    *x = (3, 4);
+
+    assert!(x.0 == 3);
+    assert!(first == first);
+}
+
 
 #[rr::verify]
 fn mutref_reborrow_overwrite() {
@@ -61,6 +71,33 @@ fn mutref_reborrow_overwrite() {
 
     assert!(*xrr == 34);
     assert!(*xr == 42);
+
+}
+
+#[rr::verify]
+fn mutref_reborrow_overwrite_nested(b : bool) {
+    let mut x = 34;
+    let mut xr = &mut x;
+    let mut xrr = &mut xr;
+
+    let zr = &mut (**xrr);
+
+    let mut y = 42;
+    let yr = &mut y;
+
+    if b {
+        // *xrr gets killed here
+        *xrr = yr;
+
+        assert!(**xrr == 42);
+    }
+    else {
+        // NB: this is illegal in Rust, even though it could conceivably be allowed
+        //y = 2;
+    }
+
+
+    assert!(*zr == 34);
 
 }
 
