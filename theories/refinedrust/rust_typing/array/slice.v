@@ -22,7 +22,7 @@ Section def.
         [∗ list] r'; v' ∈ r; reshape (replicate len (ly_size ly)) v,
           array_own_el_val π ty r' v')%I;
     ty_shr κ π r m l :=
-      (∃ len ly,
+      (⌜is_xrfn r⌝ ∗ ∃ len ly,
         ⌜m = MetaSize len⌝ ∗
         ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗
         ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
@@ -57,10 +57,12 @@ Section def.
     - iIntros (π r m v) "_". done.
     - iIntros (? π r m v) "_". done.
     - unfold TCNoResolve. apply _.
-    - iIntros (κ π l m r) "(%len & %ly & -> & %Hst & %Hsz & %Hlen & %Hly & Hv)".
+    - iIntros (κ π l m r) "(_ & %len & %ly & -> & %Hst & %Hsz & %Hlen & %Hly & Hv)".
       iExists (mk_array_layout ly len). iSplitR; first done.
       iPureIntro. by eapply syn_type_has_layout_array.
-    - iIntros (E κ l ly π r m q ?).
+    - iIntros (κ π r m l) "($ & _)".
+    - iIntros (E κ l ly π r m q ? Hxr).
+      destruct Hxr as [xr Hxr].
       iIntros "#(LFT & LCTX) #Hna Htok %Hst %Hly #Hlb Hb".
       rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htok')".
       iApply fupd_logical_step.
@@ -101,6 +103,9 @@ Section def.
       iAssert ([∗ list] i ↦ x; q' ∈ r; qs, logical_step E (array_own_el_shr π κ i ly' ty x l ∗ q'.[κ']))%I with "[Hb]" as "Hb".
       { iApply (big_sepL2_wand with "Hb"). iApply big_sepL2_intro. { simpl in *. lia. }
         iModIntro. iIntros (k x q0 Hlook1 Hlook2) "(Hb & Htok)".
+        pose proof Hlook1 as Hlook_r.
+        rewrite -> Hxr in Hlook1.
+        apply list_lookup_fmap_Some in Hlook1 as (xr' & Hxeq & Hlook1).
         rewrite bi_exist_comm.
         iApply fupd_logical_step.
         subst κ'.
@@ -112,30 +117,35 @@ Section def.
           - iIntros "(? & %a & ? & ?)". eauto with iFrame. }
         iMod (bor_sep with "LFT Ha") as "(Hrfn & Hb)"; first done.
         iMod (place_rfn_interp_owned_share with "LFT Hrfn Htok1") as "(Hrfn & Htok1)"; first done.
+        iEval (rewrite Hxeq) in "Hrfn".
+        iDestruct "Hrfn" as "<-".
         iCombine "Htok1 Htok2" as "Htok". rewrite lft_tok_sep. iModIntro.
         iPoseProof (ty_share with "[$LFT $LCTX] Hna Htok [] [] [] Hb") as "Hb"; first done.
+        - by eexists xr'.
         - done.
         - iPureIntro.
           apply has_layout_loc_offset_loc.
           { eapply use_layout_alg_wf. done. }
           {  done. }
         - assert (1 + k ≤ len)%nat as ?.
-          { eapply lookup_lt_Some in Hlook1. simpl in *. lia. }
+          { eapply lookup_lt_Some in Hlook_r. simpl in *. lia. }
           iApply loc_in_bounds_offset; last done.
           { done. }
           { rewrite /offset_loc. simpl. lia. }
           { rewrite /mk_array_layout /ly_mult {2}/ly_size. rewrite /offset_loc /=. nia. }
         - iApply (logical_step_wand with "Hb"). iIntros "(? & ?)".
-          rewrite /array_own_el_shr. eauto with iFrame.
+          rewrite /array_own_el_shr. iFrame.
+          rewrite Hxeq. done.
       }
       iPoseProof (logical_step_big_sepL2 with "Hb") as "Hb".
       iModIntro. iApply (logical_step_wand with "Hb"). iIntros "Hb".
       iPoseProof (big_sepL2_sep_sepL_r with "Hb") as "(Hb & Htok)".
       iPoseProof ("Hcl_toks" with "Htok") as "$".
       iPoseProof (big_sepL2_const_sepL_l with "Hb") as "(_ & Hb)".
+      iSplitR. { iPureIntro. by eexists xr. }
       iExists _, _. do 5 iR. done.
     - iIntros (κ κ' π r m l) "#Hincl Hb".
-      iDestruct "Hb" as "(%len & %ly & -> & Hst & Hsz & Hlen & Hly & Hb)".
+      iDestruct "Hb" as "($ & %len & %ly & -> & Hst & Hsz & Hlen & Hly & Hb)".
       iExists len, ly. iFrame. iR.
       iApply (big_sepL_wand with "Hb"). iApply big_sepL_intro.
       iIntros "!>" (k x Hlook) "(% & ? & Hb)".

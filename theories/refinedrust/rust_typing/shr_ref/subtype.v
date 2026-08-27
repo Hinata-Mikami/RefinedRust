@@ -22,9 +22,15 @@ Section subtype.
     iFrame.
     iR.
     iSplitL "Hsc". { by iApply "Hsc_eq". }
-    iR. iModIntro. iMod "Hl". iModIntro.
-    iApply ty_shr_mono; first iApply "Hincl".
-    by iApply "Hincl_shr".
+    iR. iModIntro.
+    iMod "Hl" as "(_ & _ & Hl)".
+    iAssert (l ◁ₗ{π, MetaNone, κ1} r2 @ ty2)%I with "[Hl]" as "#Hl2".
+    { iApply ty_shr_mono; first iApply "Hincl".
+      by iApply "Hincl_shr". }
+    iPoseProof (ty_shr_is_xrfn with "Hl2") as "%Hxr2".
+    iModIntro. iSplitR.
+    { iPureIntro. by apply is_xrfn_place_in. }
+    iFrame "% #".
   Qed.
   Lemma shr_ref_own_val_mono {rt} (ty1 ty2 : type rt) v π r κ1 κ2 m :
     ⌜syn_type_compat (ty1.(ty_syn_type) MetaNone) (ty2.(ty_syn_type) MetaNone)⌝ -∗
@@ -42,7 +48,7 @@ Section subtype.
     iFrame.
     iR.
     iSplitL "Hsc". { by iApply "Hsc_eq". }
-    iModIntro. iMod "Hl". iModIntro.
+    iModIntro. iMod "Hl" as "(%Hxr & %Hxr' & Hl)". iModIntro. iFrame "%".
     iPoseProof ("Hsub" $! r') as "(_ & _ & #Hincl_shr)".
     iApply ty_shr_mono; first iApply "Hincl".
     by iApply "Hincl_shr".
@@ -52,17 +58,20 @@ Section subtype.
     ⌜syn_type_compat (ty1.(ty_syn_type) MetaNone) (ty2.(ty_syn_type) MetaNone)⌝ -∗
     κ1 ⊑ κ2 -∗
     type_incl r1 r2 ty1 ty2 -∗
+    ⌜is_xrfn (#r2)⌝ -∗
     l ◁ₗ{π, m, κ} #r1 @ shr_ref κ2 ty1 -∗
     l ◁ₗ{π, m, κ} #r2 @ shr_ref κ1 ty2.
   Proof.
-    iIntros "%Hcomp #Hincl (#Hsc_eq & _ & #Hincl_shr)".
+    iIntros "%Hcomp #Hincl (#Hsc_eq & _ & #Hincl_shr) %Hxr2".
     rewrite /ty_shr/= shr_ref_shr_unfold.
-    iIntros "(%vi & %li & %ly & %r' & -> & %Hlyl & %Halg & %Hliy & Hlb & Hsc & -> & Hli & %Hdec & #Hb)".
-    iExists vi, li, ly, r2. iFrame. iR. iR.
+    iIntros "(%vi & %li & %ly & %r' & %Hxr & -> & %Hlyl & %Halg & %Hliy & Hlb & Hsc & -> & Hli & %Hdec & #Hb)".
+    iExists vi, li, ly, r2. iSplitR; first done. iFrame. iR. iR.
     iSplitR. { iPureIntro. change (syn_type_has_layout (st_of ty2 MetaNone) ly). by apply Hcomp. }
     iFrame. iR.
     iSplitL "Hsc". { by iApply "Hsc_eq". }
-    iR. iR. iModIntro. iDestruct "Hb" as "#Hb". iModIntro. iMod "Hb". iModIntro.
+    iR. iR. iModIntro. iDestruct "Hb" as "#Hb". iModIntro. iSplitR.
+    { iPureIntro. by apply is_xrfn_place_in_inv. }
+    iMod "Hb" as "(_ & Hb)". iModIntro.
     iApply ty_shr_mono; first iApply "Hincl".
     by iApply "Hincl_shr".
   Qed.
@@ -76,12 +85,13 @@ Section subtype.
     iIntros "%Hcomp #Hincl #Hsub".
     rewrite /ty_shr/= shr_ref_shr_unfold.
     iPoseProof ("Hsub" $! inhabitant) as "(#Hsc_eq & _)".
-    iIntros "(%vi & %li & %ly & %r' & -> & %Hlyl & %Halg & %Hliy & Hlb & Hsc & Hr & Hli & %Hdec & #Hb)".
-    iExists vi, li, ly, r'. iFrame. iR. iR.
+    iIntros "(%vi & %li & %ly & %r' & %Hxr & -> & %Hlyl & %Halg & %Hliy & Hlb & Hsc & Hr & Hli & %Hdec & #Hb)".
+    iExists vi, li, ly, r'. iSplitR; first done. iFrame. iR. iR.
     iSplitR. { iPureIntro. change (syn_type_has_layout (st_of ty2 MetaNone) ly). by apply Hcomp. }
     iFrame. iR.
     iSplitL "Hsc". { by iApply "Hsc_eq". }
-    iR. iModIntro. iDestruct "Hb" as "#Hb". iModIntro. iMod "Hb". iModIntro.
+    iR. iModIntro. iDestruct "Hb" as "#Hb". iModIntro.
+    iMod "Hb" as "(%Hxr' & Hb)". iModIntro. iFrame "%".
     iPoseProof ("Hsub" $! r') as "(_ & _ & #Hincl_shr)".
     iApply ty_shr_mono; first iApply "Hincl".
     by iApply "Hincl_shr".
@@ -91,13 +101,14 @@ Section subtype.
     ⌜syn_type_compat (ty2.(ty_syn_type) MetaNone) (ty1.(ty_syn_type) MetaNone)⌝ -∗
     κ1 ⊑ κ2 -∗
     type_incl r1 r2 ty2 ty1 -∗
+    ⌜is_xrfn (#r2)⌝ -∗
     type_incl (#r1) (#r2) (shr_ref κ2 ty2) (shr_ref κ1 ty1).
   Proof.
-    iIntros "%Hcomp #Hincl #Hsub".
+    iIntros "%Hcomp #Hincl #Hsub %Hxr2".
     iSplitR; first done.
     iSplit; iIntros "!#".
-    - iIntros (???). iApply (shr_ref_own_val_mono_in with "[] Hincl Hsub"). done.
-    - iIntros (????). iApply (shr_ref_shr_mono_in with "[] Hincl Hsub"). done.
+    - iIntros (???). iApply (shr_ref_own_val_mono_in with "[] Hincl Hsub"); done.
+    - iIntros (????). iApply (shr_ref_shr_mono_in with "[] Hincl Hsub []"); done.
   Qed.
   Lemma shr_ref_type_incl {rt} κ2 κ1 (ty1 ty2 : type rt) r :
     ⌜syn_type_compat (ty2.(ty_syn_type) MetaNone) (ty1.(ty_syn_type) MetaNone)⌝ -∗

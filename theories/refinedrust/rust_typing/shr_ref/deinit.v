@@ -16,7 +16,7 @@ Section deinit.
     iIntros (?) "Hl".
     rewrite ltype_own_shr_ref_unfold /shr_ltype_own.
     iDestruct "Hl" as "(%ly & %Halg & % & Hlb & %r' & ? & Hb)".
-    iMod (fupd_mask_mono with "Hb") as "(%l' & (%vi & Hl & %Hdec) & Hb)"; first done.
+    iMod (fupd_mask_mono with "Hb") as "(%Hxr & %l' & (%vi & Hl & %Hdec) & Hb)"; first done.
     iPoseProof (ltype_own_addr_in_usize with "Hb") as "%".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iModIntro. iExists ly. simpl. iR.

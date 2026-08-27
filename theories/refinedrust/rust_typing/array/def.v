@@ -211,7 +211,7 @@ Section array.
   Definition array_t_own_val_unfold : @array_t_own_val = @array_t_own_val_def := array_t_own_val_aux.(seal_eq).
 
   Definition array_t_shr_def (len : nat) (ty : type rt) κ π r m l : iProp Σ :=
-      ∃ ly,
+      ⌜is_xrfn r⌝ ∗ ∃ ly,
         ⌜m = MetaNone⌝ ∗
         ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗
         ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
@@ -255,11 +255,13 @@ Section array.
     - iIntros (κ π r m v) "_". done.
     - unfold TCNoResolve. rewrite array_t_shr_unfold. apply _.
     - rewrite array_t_shr_unfold.
-      iIntros (κ π l m r) "(%ly & -> & %Hst & %Hsz & %Hlen & %Hly & _ & Hv)".
+      iIntros (κ π l m r) "(_ & %ly & -> & %Hst & %Hsz & %Hlen & %Hly & _ & Hv)".
       iExists (mk_array_layout ly len). iSplitR; first done.
       iPureIntro. by eapply syn_type_has_layout_array.
+    - rewrite array_t_shr_unfold. iIntros (κ π r m l) "($ & _)".
     -
-      iIntros (E κ l ly π r m q ?).
+      iIntros (E κ l ly π r m q ? Hxr).
+    destruct Hxr as [xr Hxr].
     iIntros "#(LFT & LCTX) #Hna Htok %Hst %Hly #Hlb Hb".
     rewrite array_t_own_val_unfold array_t_shr_unfold.
     rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htok')".
@@ -300,6 +302,9 @@ Section array.
     iAssert ([∗ list] i ↦ x; q' ∈ r; qs, logical_step E (array_own_el_shr π κ i ly' ty x l ∗ q'.[κ']))%I with "[Hb]" as "Hb".
     { iApply (big_sepL2_wand with "Hb"). iApply big_sepL2_intro. { simpl in *. lia. }
       iModIntro. iIntros (k x q0 Hlook1 Hlook2) "(Hb & Htok)".
+      pose proof Hlook1 as Hlook_r.
+      rewrite -> Hxr in Hlook1.
+      apply list_lookup_fmap_Some in Hlook1 as (xr' & Hxeq & Hlook1).
       rewrite bi_exist_comm.
       iApply fupd_logical_step.
       subst κ'.
@@ -311,31 +316,36 @@ Section array.
         - iIntros "(? & %a & ? & ?)". eauto with iFrame. }
       iMod (bor_sep with "LFT Ha") as "(Hrfn & Hb)"; first done.
       iMod (place_rfn_interp_owned_share with "LFT Hrfn Htok1") as "(Hrfn & Htok1)"; first done.
+      iEval (rewrite Hxeq) in "Hrfn".
+      iDestruct "Hrfn" as "<-".
       iCombine "Htok1 Htok2" as "Htok". rewrite lft_tok_sep. iModIntro.
       iPoseProof (ty_share with "[$LFT $LCTX] Hna Htok [] [] [] Hb") as "Hb"; first done.
+      - by eexists xr'.
       - done.
       - iPureIntro.
         apply has_layout_loc_offset_loc.
         { eapply use_layout_alg_wf. done. }
         {  done. }
       - assert (1 + k ≤ len)%nat as ?.
-        { eapply lookup_lt_Some in Hlook1. simpl in *. lia. }
+        { eapply lookup_lt_Some in Hlook_r. simpl in *. lia. }
         iApply loc_in_bounds_offset; last done.
         { done. }
         { rewrite /offset_loc. simpl. lia. }
         { rewrite /mk_array_layout /ly_mult {2}/ly_size. rewrite /offset_loc /=. nia. }
       - iApply (logical_step_wand with "Hb"). iIntros "(? & ?)".
-        rewrite /array_own_el_shr. eauto with iFrame.
+        rewrite /array_own_el_shr. iFrame.
+        rewrite Hxeq. done.
     }
     iPoseProof (logical_step_big_sepL2 with "Hb") as "Hb".
     iModIntro. iApply (logical_step_wand with "Hb"). iIntros "Hb".
     iPoseProof (big_sepL2_sep_sepL_r with "Hb") as "(Hb & Htok)".
     iPoseProof ("Hcl_toks" with "Htok") as "$".
     iPoseProof (big_sepL2_const_sepL_l with "Hb") as "(_ & Hb)".
+    iSplitR. { iPureIntro. by eexists xr. }
     iExists _. do 5 iR. iFrame "#". done.
     - iIntros (κ κ' π r m l) "#Hincl Hb".
     rewrite array_t_shr_unfold.
-    iDestruct "Hb" as "(%ly & -> & Hst & Hsz & Hlen & Hly & Hlb & Hb)".
+    iDestruct "Hb" as "($ & %ly & -> & Hst & Hsz & Hlen & Hly & Hlb & Hb)".
     iExists ly. iFrame. iR.
     iApply (big_sepL_wand with "Hb"). iApply big_sepL_intro.
     iIntros "!>" (k x Hlook) "(% & ? & Hb)".
@@ -577,7 +587,7 @@ Section array.
     split; first apply _.
     iIntros (κ π E l r m q HE) "#CTX Hshr Htok".
     rewrite /ty_shr /= array_t_shr_unfold /array_t_shr_def.
-    iDestruct "Hshr" as "(%ly & -> & %Hst & %Hsz & %Hlen & %Hloc & #Hlb & #Hshr)".
+    iDestruct "Hshr" as "(_ & %ly & -> & %Hst & %Hsz & %Hlen & %Hloc & #Hlb & #Hshr)".
     iMod (array_t_copy_acc ty π ly r q κ l E with "CTX Htok Hshr") as
       "(%q' & %vs & %Hvs & %Hlys & Hlocs & Hcl)"; [done.. |].
     iModIntro.
@@ -785,8 +795,10 @@ Section lemmas.
     l ◁ₗ{π, m, κ} (rs1 ++ rs2) @ array_t (n1 + n2) ty -∗
     l ◁ₗ{π, m, κ} rs1 @ array_t n1 ty ∗ (l offsetst{ty.(ty_syn_type) m}ₗ n1) ◁ₗ{π, m, κ} rs2 @ array_t n2 ty.
   Proof.
-    rewrite /ty_shr/= array_t_shr_unfold. iIntros (Hlen1 Hlen2).
-    iIntros "(%ly & -> & %Halg & %Hsz & %Hlen & %Hly & #Hlb & Hb)".
+    rewrite /ty_shr/= array_t_shr_unfold/array_t_shr_def. iIntros (Hlen1 Hlen2).
+    iIntros "(%Hxr & %ly & -> & %Halg & %Hsz & %Hlen & %Hly & #Hlb & Hb)".
+    destruct Hxr as [xr Hxr]. symmetry in Hxr.
+    apply fmap_app_inv in Hxr as (xr1 & xr2 & -> & -> & _).
     iAssert (loc_in_bounds l 0 (ly_size (mk_array_layout ly n1)) ∗
       loc_in_bounds (l offsetst{ty.(ty_syn_type) MetaNone}ₗ n1) 0 (ly_size (mk_array_layout ly n2)))%I
       with "[Hlb]" as "(#Hlb1 & #Hlb2)".
@@ -795,12 +807,15 @@ Section lemmas.
       setoid_rewrite Nat2Z.inj_mul. done. }
     rewrite big_sepL_app. iDestruct "Hb" as "(Hb1 & Hb2)".
     rewrite length_app in Hlen.
+    rewrite /array_t_shr_def.
     iSplitL "Hb1".
-    - iExists _. do 2 iR. iSplitR. { iPureIntro. lia. }
-      iSplitR. { iPureIntro. lia. }
+    - iSplitR. { iPureIntro. by eexists xr1. }
+      iExists _. do 2 iR. iSplitR. { iPureIntro. lia. }
+      iSplitR. { iPureIntro. exact Hlen1. }
       iR. iFrame "#". done.
-    - iExists _. do 2 iR. iSplitR. { iPureIntro. lia. }
-      iSplitR. { iPureIntro. lia. }
+    - iSplitR. { iPureIntro. by eexists xr2. }
+      iExists _. do 2 iR. iSplitR. { iPureIntro. lia. }
+      iSplitR. { iPureIntro. exact Hlen2. }
       rewrite /OffsetLocSt /use_layout_alg' Halg/=.
       iSplitR. { iPureIntro. eapply has_layout_loc_offset_loc; last done.
         by eapply use_layout_alg_wf. }
@@ -815,10 +830,13 @@ Section lemmas.
     (l offsetst{ty.(ty_syn_type) m}ₗ n1) ◁ₗ{π, m, κ} rs2 @ array_t n2 ty -∗
     l ◁ₗ{π, m, κ} (rs1 ++ rs2) @ array_t (n1 + n2) ty.
   Proof.
-    rewrite /ty_shr/= array_t_shr_unfold. iIntros (Hsz).
-    iIntros "(%ly1 & -> & %Halg1 & %Hsz1 & %Hlen1 & %Hly1 & #Hlb1 & Hb1) (%ly2 & _ & %Halg2 & %Hsz2 & %Hlen2 & %Hly2 & #Hlb2 & Hb2)".
+    rewrite /ty_shr/= array_t_shr_unfold/array_t_shr_def. iIntros (Hsz).
+    iIntros "(%Hxr1 & %ly1 & -> & %Halg1 & %Hsz1 & %Hlen1 & %Hly1 & #Hlb1 & Hb1) (%Hxr2 & %ly2 & _ & %Halg2 & %Hsz2 & %Hlen2 & %Hly2 & #Hlb2 & Hb2)".
+    destruct Hxr1 as [xr1 ->]. destruct Hxr2 as [xr2 ->].
     assert (ly2 = ly1) as -> by by eapply syn_type_has_layout_inj. clear Halg2.
     rewrite /size_of_st /use_layout_alg' Halg1 /= in Hsz.
+    rewrite /array_t_shr_def.
+    iSplitR. { iPureIntro. eexists (xr1 ++ xr2). by simpl; rewrite fmap_app. }
     iExists _. do 2 iR. iSplitR. { iPureIntro. lia. }
     rewrite length_app. iSplitR. { iPureIntro. lia. }
     iR.

@@ -84,7 +84,7 @@ Section subtype.
     iIntros "(-> & %Hlen & Hb)". iIntros (??) "#CTX #HE HL".
     match goal with |- context[foldr ?P _ _] => set (Q := P) end.
     iAssert (|={F}=> struct_t_incl_precond_strong tys1 tys2 rs1 rs2 ∗ llctx_interp L ∗ T)%I with "[Hb HL]" as ">(Hp & $ & $)"; first last.
-    { iR. by iApply struct_t_type_incl. }
+    { iR. iModIntro. iApply (struct_t_type_incl with "Hp"). }
     iInduction rts1 as [ | rt1 rts1] "IH" forall (rts2 tys1 tys2 rs1 rs2 Hlen); destruct rts2 as [ | rt2 rts2]; simpl in Hlen; try done;
       inv_hlist tys2; inv_hlist tys1.
     { simpl. iFrame. by iApply big_sepL2_nil. }
@@ -205,7 +205,8 @@ Section subtype.
     iAssert (|={F}=> ([∗ list] lt1; lt2 ∈ hpzipl _ lts1 rs1; hpzipl _ lts2 rs2,
       ⌜ltype_st (projT2 lt1).1 = ltype_st (projT2 lt2).1⌝ ∗
       ltype_incl (Shared κ) (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) ∗ llctx_interp L ∗ T)%I with "[Ha HL]" as ">(Ha & $ & $)"; first last.
-    { iSplitR; first done. iApply (struct_ltype_incl_shared_in lts1 lts2). done. }
+    { iSplitR; first done. iModIntro.
+      iApply (struct_ltype_incl_shared_in lts1 lts2 with "Ha"). }
     (* TODO duplicated *)
     iInduction rts1 as [ | rt1 rts1] "IH" forall (rts2 lts1 lts2 rs1 rs2 Hlen); destruct rts2 as [ | rt2 rts2]; try done;
       inv_hlist lts2; inv_hlist lts1.

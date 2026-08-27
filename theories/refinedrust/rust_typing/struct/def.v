@@ -567,7 +567,7 @@ Section structs.
   Qed.
 
   Definition struct_t_shr_def {rts : list RT} (sls : struct_layout_spec) (tys : hlist type rts) κ π (r : plistRT rts) m l : iProp Σ :=
-    (∃ sl,
+    (⌜is_xrfn r⌝ ∗ ∃ sl,
       ⌜m = MetaNone⌝ ∗
       ⌜use_struct_layout_alg sls = Some sl⌝ ∗
       ⌜length rts = length sls.(sls_fields)⌝ ∗
@@ -626,18 +626,20 @@ Section structs.
     - rewrite struct_t_own_val_unfold.
       iIntros (π r m v) "(%sl & -> & ? & $ & _)".
     - rewrite struct_t_shr_unfold.
-      iIntros (κ π r m v) "(%sl & -> & ? & $ & _)".
+      iIntros (κ π r m v) "(_ & %sl & -> & ? & $ & _)".
     - unfold TCNoResolve.
       rewrite struct_t_shr_unfold.
       apply _.
     - rewrite struct_t_shr_unfold.
-      iIntros (κ π l m r) "(%sl & -> & %Halg & %Hly & % & Hmem)".
+      iIntros (κ π l m r) "(_ & %sl & -> & %Halg & %Hly & % & Hmem)".
       iExists sl. iSplitR; first done. iPureIntro.
       by apply use_struct_layout_alg_Some_inv.
+    - rewrite struct_t_shr_unfold. iIntros (κ π r m l) "($ & _)".
     -
     (* sharing *)
     rewrite struct_t_shr_unfold struct_t_own_val_unfold.
-    iIntros (E κ l ly π r m q ?) "#(LFT & LLCTX) #Hna Htok %Hst %Hly #Hlb Hl".
+    iIntros (E κ l ly π r m q ? Hxr) "#(LFT & LLCTX) #Hna Htok %Hst %Hly #Hlb Hl".
+    destruct Hxr as [xr Hxr].
     rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htok')".
     iApply fupd_logical_step.
 
@@ -698,6 +700,17 @@ Section structs.
       iModIntro. iIntros (k x q0 Hlook1 Hlook2) "(Hb & Htok)".
       iApply fupd_logical_step.
       destruct x as [rt [ty r']]. set (κ'' := lft_intersect_list (ty_lfts ty)).
+      assert (is_xrfn r') as Hxr'.
+      { apply pad_struct_lookup_Some in Hlook1 as (n & ly0 & Hmember & Hlook1); first last.
+        { rewrite length_hpzipl Hlen. symmetry. by apply struct_layout_spec_has_layout_fields_length. }
+        destruct Hlook1 as [[_ Hlook1] | (-> & Heq)].
+        - rewrite -> Hxr in Hlook1.
+          apply (hpzipl_lookup_inv_hzipl_pzipl _ _ ($# xr)) in Hlook1 as (_ & Hlook1).
+          eapply pzipl_pmap_lookup_inv in Hlook1 as (xr' & _ & ->).
+          by eexists xr'.
+        - injection Heq => Heq1 Heq2 ?. subst.
+          apply existT_inj in Heq1 as ->. apply existT_inj in Heq2 as ->.
+          by eexists (). }
       iMod (lft_incl_acc _ _ (κ ⊓ κ'') with "[] Htok") as "(%q' & Htok & Hvs)"; first done.
       { iApply lft_intersect_mono; first iApply lft_incl_refl.
         rewrite /κ' /κ''.
@@ -721,6 +734,9 @@ Section structs.
       iMod (bor_exists_tok with "LFT Hb Htok1") as "(%ly' & Hb & Htok1)"; first done.
       iMod (bor_sep with "LFT Hb") as "(Hrfn & Hb)"; first done.
       iMod (place_rfn_interp_owned_share with "LFT Hrfn Htok1") as "(Ha & Htok1)"; first done.
+      destruct Hxr' as [xr' Hxr']. iEval (rewrite Hxr') in "Ha".
+      iDestruct "Ha" as "%Heq".
+      assert (is_xrfn r'') as Hxr'' by (eexists xr'; naive_solver).
       iMod (bor_sep with "LFT Hb") as "(Hly & Hb)"; first done.
       iMod (bor_persistent with "LFT Hly Htok1") as "(>%Hly' & Htok1)"; first done.
       iMod (bor_sep with "LFT Hb") as "(Hst & Hb)"; first done.
@@ -738,6 +754,7 @@ Section structs.
       iCombine "Htok1 Htok2" as "Htok". rewrite lft_tok_sep. iModIntro.
       subst κ''.
       iPoseProof (ty_share with "[$LFT $LLCTX] Hna Htok [] [] [] Hb") as "Hb"; first done.
+      - exact Hxr''.
       - done.
       - iPureIntro. by apply struct_layout_field_aligned.
       - iApply loc_in_bounds_sl_offset; done.
@@ -745,18 +762,21 @@ Section structs.
         iApply (logical_step_wand with "Hb"). iIntros "(? & Htok)".
         iMod ("Hvs" with "Htok").
         iFrame. iModIntro. simpl.
-        by iExists _.
+        iExists ly'. rewrite Hxr'. simpl.
+        iSplitR. { iPureIntro. exact Heq. }
+        iSplit; done.
     }
     iPoseProof (logical_step_big_sepL2 with "Hb") as "Hb".
     iModIntro. iApply (logical_step_wand with "Hb"). iIntros "Hb".
     iPoseProof (big_sepL2_sep_sepL_r with "Hb") as "(Hb & Htok)".
     iPoseProof ("Hcl_toks" with "Htok") as "$".
     iPoseProof (big_sepL2_const_sepL_l with "Hb") as "(_ & Hb)".
+    iSplitR. { iPureIntro. by eexists xr. }
     iExists _. do 5 iR. done.
     -
     (* monotonicity of sharing *)
     rewrite struct_t_shr_unfold.
-    iIntros (κ κ' π r m l) "#Hincl (%sl & -> & %Hsl & %Hlen & %Hly & Hlb & Hb)".
+    iIntros (κ κ' π r m l) "#Hincl ($ & %sl & -> & %Hsl & %Hlen & %Hly & Hlb & Hb)".
     iExists sl. do 4 iR. iFrame.
     iApply (big_sepL_wand with "Hb"). iApply big_sepL_intro.
     iModIntro. iIntros (k [rt [ty r']] Hlook).
@@ -864,17 +884,20 @@ Section structs.
     + f_equiv. eapply IH; done.
   Qed.
   Lemma struct_t_shr_dist {rts1 rts2} sls (Ts1 : hlist type rts1) (Ts2 : hlist type rts2) r1 r2 l π κ m n :
+    (is_xrfn r1 ↔ is_xrfn r2) →
     Forall2 (λ '(existT _ (T1, r1)) '(existT _ (T2, r2)),
         ∀ i fields l,
           struct_own_el_shr π κ i fields l r1 T1 ≡{n}≡ struct_own_el_shr π κ i fields l r2 T2
     ) (hpzipl _ Ts1 r1) (hpzipl _ Ts2 r2) →
     (l ◁ₗ{π, m, κ} r1 @ struct_t sls Ts1)%I ≡{n}≡ (l ◁ₗ{π, m, κ} r2 @ struct_t sls Ts2)%I.
   Proof.
-    intros Hel.
+    intros Hxr Hel.
     specialize (Forall2_length  _ _ _ Hel) as Hlen.
     rewrite !length_hpzipl in Hlen.
     rewrite /ty_shr/=.
     rewrite struct_t_shr_unfold/struct_t_shr_def.
+    f_equiv. { f_equiv. exact Hxr. }
+    clear Hxr.
     f_equiv => sl.
     apply sep_ne_proper => Hmeta.
     apply sep_ne_proper => Halg.
@@ -1073,6 +1096,7 @@ Section structs.
       iIntros (κ π r m l). rewrite /ty_shr /= /struct_own_el_shr/=.
       rewrite struct_t_shr_unfold/struct_t_shr_def.
       erewrite Hst1; last apply type_dist2_st.
+      f_equiv.
       f_equiv => sl.
       apply sep_ne_proper => Hmeta. subst m.
       apply sep_ne_proper => Halg. apply sep_ne_proper => Hlen.
@@ -1153,6 +1177,7 @@ Section structs.
       iIntros (κ π r m l). rewrite /ty_shr /= /struct_own_el_shr/=.
       rewrite struct_t_shr_unfold/struct_t_shr_def.
       erewrite Hst.
+      f_equiv.
       f_equiv => sl.
       apply sep_ne_proper => Hmeta. subst m.
       apply sep_ne_proper => Halg. apply sep_ne_proper => Hlen.
@@ -1738,7 +1763,7 @@ Section copy.
     iIntros (κ π E l r m q ?) "#CTX Hshr Htok".
     rewrite /ty_shr /=.
     rewrite struct_t_shr_unfold.
-    iDestruct "Hshr" as (sl) "(-> & %Halg' & %Hlen & %Hly & #Hlb & #Hb)".
+    iDestruct "Hshr" as "(_ & %sl & -> & %Halg' & %Hlen & %Hly & #Hlb & #Hb)".
     (*simpl in Halg.*)
     specialize (use_struct_layout_alg_Some_inv _ _ Halg') as Halg2.
     (*assert (ly = sl) as -> by by eapply syn_type_has_layout_inj.*)

@@ -25,6 +25,43 @@ Section subtype.
     Persistent (array_t_incl_precond ty1 ty2 rs1 rs2).
   Proof. apply big_sepL2_persistent. intros ? [] []; simpl; apply _. Qed.
 
+  Local Lemma array_t_shr_mono_core {rt1 rt2} π (ty1 : type rt1) (ty2 : type rt2)
+      rs1 rs2 κ l ly k :
+    is_xrfn (rt := listRT (place_rfnRT rt1)) rs1 →
+    array_t_incl_precond ty1 ty2 rs1 rs2 -∗
+    ([∗ list] i ↦ r ∈ rs1, array_own_el_shr π κ (k + i) ly ty1 r l) -∗
+    ⌜is_xrfn (rt := listRT (place_rfnRT rt2)) rs2⌝ ∗
+    [∗ list] i ↦ r ∈ rs2, array_own_el_shr π κ (k + i) ly ty2 r l.
+  Proof.
+    iIntros (Hxr) "#Hincl #Ha".
+    apply is_xrfn_list_iff in Hxr.
+    iInduction rs1 as [|r1 rs1] "IH" forall (rs2 k Hxr).
+    - destruct rs2 as [|r2 rs2]; simpl; last done.
+      iSplit; last done. iPureIntro. by exists [].
+    - destruct rs2 as [|r2 rs2]; simpl; first done.
+    inversion Hxr as [|? ? Hxr1 Hxrs]; subst.
+    iEval (rewrite /array_t_incl_precond /=) in "Hincl".
+    iDestruct "Hincl" as "(Hincl1 & Hincl)".
+    iDestruct "Ha" as "(Ha1 & Ha)".
+    iSpecialize ("IH" $! rs2 (S k) Hxrs with "Hincl [Ha]").
+    { setoid_rewrite Nat.add_succ_r. done. }
+    iDestruct "IH" as "(%Hxrs2 & Ha2)".
+    iEval (setoid_rewrite <- Nat.add_succ_r) in "Ha2".
+    apply is_xrfn_list_iff in Hxrs2.
+    destruct r1 as [r1|γ1].
+    + destruct r2 as [r2|γ2]; simpl in *.
+      * iDestruct "Ha1" as "(%r' & -> & #Ha1)".
+        iDestruct "Hincl1" as "#(_ & _ & Hincl1)".
+        iPoseProof ("Hincl1" with "Ha1") as "#Ha1'".
+        iPoseProof (ty_shr_is_xrfn with "Ha1'") as "%Hxr2".
+        iSplitR.
+        { iPureIntro. apply is_xrfn_list_iff. constructor; last done.
+          destruct Hxr2 as [xr ->]. by exists xr. }
+        iSplitL "Ha1'"; last done. iExists r2. iR. done.
+      * iDestruct "Hincl1" as "(%Heq & %Heq' & _)". subst. discriminate Heq'.
+    + destruct Hxr1 as [xr Hxr1]. discriminate Hxr1.
+  Qed.
+
   (* TODO move *)
   Lemma type_incl_use_val π {rt1 rt2} (r1 : rt1) (r2 : rt2) ty1 ty2 v m :
     type_incl r1 r2 ty1 ty2 -∗ v ◁ᵥ{π, m} r1 @ ty1 -∗ v ◁ᵥ{π, m} r2 @ ty2.
@@ -96,22 +133,15 @@ Section subtype.
   Proof.
     iIntros (Heqst) "Hincl Ha".
     rewrite /ty_shr/= array_t_shr_unfold.
-    iDestruct "Ha" as "(%ly & -> & %Hst & % & % & %Hly & #Hlb & Ha)".
-    rewrite array_t_shr_unfold.
-    iExists ly. rewrite -Heqst. iR. iR. iR.
+    iDestruct "Ha" as "(%Hxr & %ly & -> & %Hst & % & % & %Hly & #Hlb & #Ha)".
     iPoseProof (big_sepL2_length with "Hincl") as "%Hleneq".
+    iPoseProof (array_t_shr_mono_core π ty1 ty2 rs1 rs2 κ v ly 0 Hxr
+      with "Hincl [Ha]") as "(%Hxr2 & Ha2)".
+    { iExact "Ha". }
+    rewrite array_t_shr_unfold.
+    iSplitR; first done. iExists ly. rewrite -Heqst. iR. iR. iR.
     rewrite -Hleneq. iR. iR. iFrame "#".
-    iPoseProof (big_sepL_extend_r rs2 with "Ha") as "Ha"; first done.
-    iApply big_sepL2_elim_l.
-    iPoseProof (big_sepL2_sep_1 with "Ha Hincl") as "Ha".
-    iApply (big_sepL2_impl with "Ha"). iModIntro.
-    iIntros (k r1 r2 Hlook1 Hlook2) "((%r'' & Hrfn & Hown) & Hincl)"=>/=.
-    rewrite /array_own_el_shr. destruct r1, r2; simpl.
-    - iDestruct "Hrfn" as "->". iPoseProof (type_incl_use_shr with "Hincl Hown") as "?". eauto with iFrame.
-    - iDestruct "Hrfn" as "->". iDestruct "Hincl" as "(%Heq & %Heq' & Hincl)". subst. done.
-    - iDestruct "Hincl" as "(%Heq & %Heq' & Hincl)". subst. done.
-    - iDestruct "Hincl" as "(%Heq & %Heq' & Hincl)". subst. injection Heq' as <-.
-      iPoseProof (type_incl_use_shr with "Hincl Hown") as "?". eauto with iFrame.
+    iFrame "Ha2".
   Qed.
   Lemma array_t_shr_mono {rt} π (ty1 ty2 : type rt) len v rs κ m :
     (ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone) →

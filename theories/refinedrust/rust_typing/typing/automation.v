@@ -1712,6 +1712,25 @@ Ltac solve_enum_layout_spec_discriminant_nodup :=
   simpl; repeat first [econstructor | els_not_elem_solver].
 Ltac solve_enum_layout_spec_discriminant_in_range :=
   init_cache; repeat first [econstructor | solve_goal ]; unsafe_unfold_common_radium_defs; simpl; lia.
+(** Solver for [is_xrfn] equivalence *)
+Ltac solve_enum_is_xrfn_case :=
+  intros (x & ?);
+  prepare_initial_coq_context;
+  (try destruct x; simpl in *; try done);
+  simplify_eq/=;
+  repeat match goal with
+  | H : _ = _ |- _ =>
+    injection H; clear H; intros; subst
+  end;
+  apply is_xrfn_proof
+  .
+Ltac solve_enum_is_xrfn_congr :=
+  intro_adt_params;
+  simpl;
+  intros r;
+  try done;
+  split; destruct r; solve_enum_is_xrfn_case
+.
 
 Ltac solve_fixpoint_ne :=
   unfold TCNoResolve; apply _.
@@ -1853,6 +1872,8 @@ Ltac sidecond_hook_init :=
 .
 Ltac sidecond_hook_core :=
   lazymatch goal with
+  | |- is_xrfn _ =>
+      apply is_xrfn_proof
   | |- lctx_lft_alive ?E ?L ?κ =>
       solve_lft_alive
   | |- Forall (lctx_lft_alive ?E ?L) ?κs =>
@@ -1924,6 +1945,8 @@ Ltac sidecond_hook :=
 
 Ltac is_builtin_sidecond P :=
   lazymatch P with
+  | is_xrfn _ =>
+      idtac
   | lctx_lft_alive ?E ?L ?κ =>
       idtac
   | Forall (lctx_lft_alive ?E ?L) ?κs =>
@@ -1981,6 +2004,8 @@ Ltac is_builtin_sidecond P :=
 
 Ltac is_fast_builtin_sidecond P :=
   lazymatch P with
+  | is_xrfn _ =>
+      idtac
   | lctx_lft_alive ?E ?L ?κ =>
       idtac
   | Forall (lctx_lft_alive ?E ?L) ?κs =>

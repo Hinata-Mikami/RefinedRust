@@ -328,6 +328,38 @@ Section ltype_def.
   Global Arguments ltype_own {_}.
   Global Typeclasses Opaque ltype_own.
 
+  Lemma ltype_own_pre_shared_is_concrete core {rt} (lt : ltype rt) κ π r l :
+    ltype_own_pre core lt (Shared κ) π r l -∗ ⌜place_rfn_is_concrete r⌝.
+  Proof.
+    destruct lt as [lt Heq Hwf]. simpl in *.
+    destruct Heq. simpl.
+    apply lty_own_pre_shared_is_concrete.
+  Qed.
+
+  Lemma ltype_own_pre_shared_is_xrfn core {rt} (lt : ltype rt) κ π r l :
+    ltype_own_pre core lt (Shared κ) π (#r) l -∗ |={lftE}=> ⌜is_xrfn r⌝.
+  Proof.
+    destruct lt as [lt Heq Hwf]. simpl in *.
+    destruct Heq. simpl.
+    apply lty_own_pre_shared_is_xrfn.
+  Qed.
+
+  Lemma ltype_own_pre_shared_canonical core {rt} (lt : ltype rt) κ π r l :
+    ltype_own_pre core lt (Shared κ) π r l -∗
+      |={lftE}=> ∃ r', ⌜r = PlaceIn r'⌝ ∗ ⌜is_xrfn r'⌝.
+  Proof.
+    destruct lt as [lt Heq Hwf]. simpl in *.
+    destruct Heq. simpl.
+    apply lty_own_pre_shared_canonical.
+  Qed.
+
+  Lemma ltype_own_shared_is_xrfn {rt} (lt : ltype rt) κ π r l :
+    ltype_own lt (Shared κ) π (#r) l -∗ |={lftE}=> ⌜is_xrfn r⌝.
+  Proof.
+    rewrite ltype_own_unseal.
+    apply ltype_own_pre_shared_is_xrfn.
+  Qed.
+
   Definition ltype_st {rt} (lt : ltype rt) : syn_type := lty_st lt.(ltype_lty).
   Global Arguments ltype_st : simpl never.
 
@@ -513,19 +545,19 @@ Section ltype_def.
         match k with
         | Owned =>
             ∃ (r' : place_rfn rt), place_rfn_interp_owned r r' ∗
-            |={lftE}=>  ∃ (l' : loc), ref_loc_own l l' ∗
+            |={lftE}=> ⌜is_xrfn r'⌝ ∗ ∃ (l' : loc), ref_loc_own l l' ∗
             rec _ lt (Shared κ) π r' l'
         | Uniq κ' γ' =>
             have_creds ∗
             place_rfn_interp_mut r γ' ∗
             |={lftE}=> &pin{κ'}
-              [∃ (r' : place_rfn rt), gvar_auth γ' r' ∗ |={lftE}=>  ∃ (l' : loc), ref_loc_own l l' ∗ rec_core _ lt (Shared κ) π r' l']
-              (∃ (r' : place_rfn rt), gvar_auth γ' r' ∗ |={lftE}=>  ∃ (l' : loc), ref_loc_own l l' ∗ rec _ lt (Shared κ) π r' l')
+              [∃ (r' : place_rfn rt), gvar_auth γ' r' ∗ |={lftE}=> ⌜is_xrfn r'⌝ ∗ ∃ (l' : loc), ref_loc_own l l' ∗ rec_core _ lt (Shared κ) π r' l']
+              (∃ (r' : place_rfn rt), gvar_auth γ' r' ∗ |={lftE}=> ⌜is_xrfn r'⌝ ∗ ∃ (l' : loc), ref_loc_own l l' ∗ rec _ lt (Shared κ) π r' l')
         | Shared κ' =>
-            ∃ (r' : place_rfn rt),
+            ⌜place_rfn_is_concrete r⌝ ∗ ∃ (r' : place_rfn rt),
             place_rfn_interp_shared r r' ∗
             (* the update is also over the fractional borrow to deal with timelessness *)
-            □ |={lftE}=> ∃ (vi : val) (li : loc),
+            □ |={lftE}=> ⌜is_xrfn r'⌝ ∗ ∃ (vi : val) (li : loc),
             &frac{κ'} (λ q, l ↦{q} vi) ∗
             ⌜val_decodes_to_ref vi li⌝ ∗
             (* no intersection here, as we also don't do that for the type interpretation *)
@@ -565,9 +597,9 @@ Section ltype_def.
               ∃ (l' : loc), ref_loc_own l l' ∗
               rec _ lt (Uniq κ r'.2) π r'.1 l')
       | Shared κ' =>
-        (∃ r' γ, place_rfn_interp_shared r (r', γ) ∗
+        (⌜place_rfn_is_concrete r⌝ ∗ ∃ r' γ, place_rfn_interp_shared r (r', γ) ∗
         (* the update is also over the fractional borrow to deal with timelessness *)
-        □ |={lftE}=> ∃ (vi : val) (li : loc),
+        □ |={lftE}=> ⌜is_xrfn (r', γ)⌝ ∗ ∃ (vi : val) (li : loc),
           &frac{κ'}(λ q', l ↦{q'} vi) ∗
           ⌜val_decodes_to_ref vi li⌝ ∗
           (* later is for contractiveness, the update for timelessness *)
@@ -614,9 +646,9 @@ Section ltype_def.
               rec _ (projT2 ty).1 Owned π (projT2 ty).2 (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i))
           )
     | Shared κ =>
-        (∃ r', place_rfn_interp_shared r r' ∗
+        (⌜place_rfn_is_concrete r⌝ ∗ ∃ r', place_rfn_interp_shared r r' ∗
           (* update needed to make the unfolding equation work *)
-          □ |={lftE}=>
+          □ |={lftE}=> ⌜is_xrfn (rt := plistRT rts) r'⌝ ∗
             [∗ list] i ↦ ty ∈ pad_struct sl.(sl_members) (hpzipl rts lts r') struct_make_uninit_ltype,
               ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
               rec _ (projT2 ty).1 (Shared κ) π (projT2 ty).2 (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i)))%I
@@ -651,8 +683,8 @@ Section ltype_def.
               [∗ list] i ↦ lt; r0 ∈ interpret_iml (OfTy def) len lts; r',
                 ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ rec _ lt Owned π r0 (offset_loc l ly i)))
       | Shared κ =>
-          ∃ r', place_rfn_interp_shared r r' ∗
-            □ |={lftE}=> (⌜length r' = len⌝ ∗ [∗ list] i ↦ lt; r0 ∈ interpret_iml (OfTy def) len lts; r',
+          ⌜place_rfn_is_concrete r⌝ ∗ ∃ r', place_rfn_interp_shared r r' ∗
+            □ |={lftE}=> (⌜is_xrfn r'⌝ ∗ ⌜length r' = len⌝ ∗ [∗ list] i ↦ lt; r0 ∈ interpret_iml (OfTy def) len lts; r',
                   ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ rec _ lt (Shared κ) π r0 (offset_loc l ly i))
       end.
 
@@ -686,9 +718,9 @@ Section ltype_def.
           lty_of_ty_own (uninit (LiteralSynType (Layout (el.(el_size) - data_offset - ly_size variant_ly) 0))) Owned π
             (PlaceIn ()) (l +ₗ data_offset +ₗ ly_size variant_ly)
       | Shared κ =>
-        ∃ r' : rt, place_rfn_interp_shared r r' ∗
+        ⌜place_rfn_is_concrete r⌝ ∗ ∃ r' : rt, place_rfn_interp_shared r r' ∗
         let v := interp_enum_ltype_variant en variant r' in
-        □ |={lftE}=> ∃ variant_ly,
+        □ |={lftE}=> ⌜is_xrfn r'⌝ ∗ ∃ variant_ly,
           ⌜enum_ltype_variant_tag_compat en r' v⌝ ∗
           ⌜enum_variant_lookup el.(el_variants) v.(eltv_tag) = Some variant_ly⌝ ∗
           ⌜syn_type_has_layout (ltype_st v.(eltv_ltype)) variant_ly⌝ ∗
@@ -830,8 +862,8 @@ Section ltype_def.
     ltype_own_pre core (AliasLtype rt st p) k π r l ≡ alias_lty_own rt st p k π r l.
   Proof.
     rewrite /ltype_own_pre. simp lty_own_pre. rewrite /alias_lty_own.
-    destruct k; [ | done..].
-    done.
+    destruct k; try done.
+    normalize_dep_rt_goal.
   Qed.
   Lemma ltype_own_alias_unfold (rt : RT) (st : syn_type) (p : loc) k π r l :
     ltype_own (AliasLtype rt st p) k π r l ≡ alias_lty_own rt st p k π r l.
@@ -1052,20 +1084,37 @@ Section ltype_def.
           clear. iIntros (? (rt & lt & r'') ?). simpl. done. }
         normalize_dep_rt_goal.
     }
+    { normalize_dep_rt_goal. }
     { setoid_rewrite big_sepL_P_eq.
       iSplit.
       - iIntros "(%r' & Hrfn & #Hb)".
         iExists (rew [id]Heq3 in r').
-        iSplitL "Hrfn". { normalize_dep_rt_goal. }
-        iModIntro. iMod "Hb" as "Hb". iModIntro.
+        iSplitL "Hrfn". { iClear "Hb". normalize_dep_rt_goal. }
+        iModIntro. iMod "Hb" as "(%Hxrfn & Hb)". iModIntro.
+        iSplitR.
+        { iPureIntro.
+          pose (HeqRT := ltype_rt_agree (StructLtype lts sls)).
+          pose proof (proj1 (is_xrfn_transport_iff HeqRT (f_equal RT_rt HeqRT)
+            (rew [id] (struct_rfn_eq (@ltype_lty +c<$> lts)) in r')) Hxrfn) as Hxrfn'.
+          replace (rew [id] Heq3 in r') with
+            (rew [id] (f_equal RT_rt HeqRT) in
+              rew [id] (struct_rfn_eq (@ltype_lty +c<$> lts)) in r') by normalize_dep_rt_goal.
+          exact Hxrfn'. }
         unshelve rewrite StructLtype_big_sepL_fmap'; [ | done | |]. 2: {
           iApply (big_sepL_mono with "Hb").
           clear. iIntros (? (rt & lt & r'') ?). simpl. done. }
         normalize_dep_rt_goal.
       - iIntros "(%r' & Hrfn & #Hb)".
         iExists (rew <-[id]Heq3 in r').
-        iSplitL "Hrfn". { normalize_dep_rt_goal. }
-        iModIntro. iMod "Hb" as "Hb". iModIntro.
+        iSplitL "Hrfn". { iClear "Hb". normalize_dep_rt_goal. }
+        iModIntro. iMod "Hb" as "(%Hxrfn & Hb)". iModIntro.
+        iSplitR.
+        { iPureIntro.
+          pose (HeqRT := eq_sym (ltype_rt_agree (StructLtype lts sls))).
+          pose proof (proj1 (is_xrfn_transport_iff HeqRT (f_equal RT_rt HeqRT) r') Hxrfn) as Hxrfn'.
+          replace (rew [id] (struct_rfn_eq (@ltype_lty +c<$> lts)) in rew <-[id] Heq3 in r') with
+            (rew [id] (f_equal RT_rt HeqRT) in r') by normalize_dep_rt_goal.
+          exact Hxrfn'. }
         unshelve rewrite StructLtype_big_sepL_fmap'; [ | done | | ]. 2: {
           iApply (big_sepL_mono with "Hb").
           clear. iIntros (? (rt & lt & r'') ?). simpl. done. }
@@ -1183,9 +1232,12 @@ Section ltype_def.
       Set Printing Coercions.
       rewrite interpret_iml_fmap ArrayLtype_big_sepL_fmap //.
       rewrite length_interpret_iml //.
-    - do 3 f_equiv.
+    - do 4 f_equiv.
       { done. }
       do 2 f_equiv.
+      all: try done.
+      f_equiv.
+      all: try done.
       apply sep_equiv_proper => Hlen.
       rewrite big_sepL_P_eq.
       rewrite -OfTy_ltype_lty interpret_iml_fmap ArrayLtype_big_sepL_fmap //.
@@ -1844,7 +1896,7 @@ Section ltype_def.
       iMod (fupd_mask_mono with "(Hinh Ha)") as "($ & _)"; first done.
       done.
     - rewrite /lty_own. simp lty_own_pre.
-      iIntros "(%ly & %Halg & %Hly & ? & Hlb & (%r' & Hrfn & Hobs & Hb))". injection Hdeinit as <-.
+      iIntros "(%ly & %Halg & %Hly & ? & Hlb & %Hconc & (%r' & Hrfn & Hobs & Hb))". injection Hdeinit as <-.
       iModIntro. iIntros (??). simpl.
       done.
     - rewrite /lty_own. simp lty_own_pre. injection Hdeinit as <-.
@@ -2453,12 +2505,13 @@ Section eqltype.
   Proof.
     iIntros "%Hcomp #Hincl" (r) "Hl".
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hl" as "(%ly & %Hst & ? & Hsc & ? & %r' & Hrfn & #Hb)".
+    iDestruct "Hl" as "(%ly & %Hst & ? & Hsc & ? & %Hconc & %r' & Hrfn & #Hb)".
     iExists ly.
     iPoseProof ("Hincl" $! inhabitant) as "(Hsceq & _)".
     apply Hcomp in Hst. iR.
     iFrame.
     iSplitL "Hsceq Hsc". { by iApply "Hsceq". }
+    iSplitR; first (iPureIntro; done).
     iModIntro. iMod "Hb" as "Hshr".
     iDestruct ("Hincl" $! r') as "(_ & _ & #Hincl')".
     by iApply "Hincl'".
@@ -2475,12 +2528,14 @@ Section eqltype.
     rewrite /ltype_incl.
     simpl. simp_ltypes. rewrite -bi.persistent_sep_dup.
     iModIntro. iModIntro. iIntros (π l) "Hb". rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & %Hst & ? & Hsc & ? & %r' & -> & #Hb)".
+    iDestruct "Hb" as "(%ly & %Hst & ? & Hsc & ? & %Hconc & %r' & -> & #Hb)".
     iExists ly.
     apply Hcomp in Hst. iR.
     iFrame.
     iSplitL "Hsc"; first by iApply "Hsceq".
-    iExists r2. iSplitR; first done. iModIntro. iMod "Hb". iModIntro. by iApply "Hshr".
+    iSplitR; first (iPureIntro; apply place_rfn_is_concrete_in).
+    iExists r2. iR. iModIntro. iMod "Hb" as "Hty1". iModIntro.
+    by iApply "Hshr".
   Qed.
   Lemma subtype_subltype_shared_in E L {rt1 rt2} r1 r2 κ (ty1 : type rt1) (ty2 : type rt2) :
     subtype E L r1 r2 ty1 ty2 →
@@ -2502,11 +2557,12 @@ Section eqltype.
     iModIntro.
     simp_ltypes. rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (π l) "Hb". rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & %Hst & ? & Hsc & ? & %r' & Hrfn & #Hb)".
+    iDestruct "Hb" as "(%ly & %Hst & ? & Hsc & ? & %Hconc & %r' & Hrfn & #Hb)".
     iExists ly.
     apply Hcomp in Hst. iR.
     iFrame.
     iSplitL "Hsc"; first by iApply "Hsceq".
+    iSplitR; first done.
     iFrame. iModIntro. iMod "Hb". iModIntro.
     iDestruct ("Hsub" $! r') as "(_ & _ & Hshr)".
     by iApply "Hshr".
@@ -2780,13 +2836,13 @@ Section blocked.
     - iIntros (κ' γ' π r l) "(#Hdead & _) Hb".
       rewrite ltype_own_core_equiv /=. simp_ltypes.
       rewrite ltype_own_shrblocked_unfold ltype_own_ofty_unfold.
-      iDestruct "Hb" as "(%ly & ? & ? & ? & ? & %r' & Hrfn & Hobs & Hshr & Hinh & Hcred & Hat)".
+      iDestruct "Hb" as "(%ly & ? & ? & ? & ? & %Hconc & %r' & Hrfn & Hobs & Hshr & Hinh & Hcred & Hat)".
       iExists ly. iFrame.
       iMod ("Hinh" with "Hdead") as "$". done.
     - iIntros (π r l) "(#Hdead & _) Hblocked".
       rewrite ltype_own_core_equiv /=. simp_ltypes.
       rewrite ltype_own_shrblocked_unfold ltype_own_ofty_unfold.
-      iDestruct "Hblocked" as "(%ly & ? & ? & ? & ? & %r' & Hrfn & Hshr & Hunblock)".
+      iDestruct "Hblocked" as "(%ly & ? & ? & ? & ? & %Hconc & %r' & Hrfn & Hshr & Hunblock)".
       iMod ("Hunblock" with "Hdead") as "Hl".
       iDestruct "Hl" as "(%v & Hl & Hv)".
       iModIntro. iExists ly. iFrame.
@@ -2840,7 +2896,8 @@ Section blocked.
       iNext. iModIntro. iSplit; first last.
       { setoid_rewrite ltype_own_core_equiv. eauto. }
       iIntros "(%r' & Hauth & Hb)". iExists _. iFrame "Hauth".
-      iMod "Hb". iDestruct "Hb" as "(%l' & Hl & Hb)".
+      iMod "Hb" as "(%Hxrfn & %l' & Hl & Hb)". iModIntro.
+      iSplitR; first done.
       iExists _. iFrame.
       iApply (ltype_own_shared_to_core with "Hb").
     - iIntros (π r l) "#Hdead Hb".
@@ -2848,8 +2905,8 @@ Section blocked.
       rewrite !ltype_own_shr_ref_unfold /shr_ltype_own.
       iDestruct "Hb" as "(%ly & ? & ? & ? & %r' & Hrfn & Hb)".
       iExists ly. iFrame.
-      iModIntro.
-      iMod "Hb" as "(%l' & Hl & Hb)".
+      iMod "Hb" as "(%Hxrfn & %l' & Hl & Hb)". iModIntro.
+      iSplitR; first done.
       iExists _. iFrame.
       by iApply ltype_own_shared_to_core.
   Qed.

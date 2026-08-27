@@ -50,19 +50,19 @@ Section unfold.
   Proof.
     iModIntro. iIntros (π l).
     rewrite ltype_own_struct_unfold ltype_own_ofty_unfold /lty_of_ty_own /struct_ltype_own.
-    iIntros "(%ly & %Halg & %Hly & %Hsc & #Hlb & %r' & Hrfn & #Hb)".
+    iIntros "(%ly & %Halg & %Hly & %Hsc & #Hlb & %Hconc & %r' & Hrfn & #Hb)".
     apply use_layout_alg_struct_Some_inv in Halg as (sl & Halg & ->).
-    iExists sl. do 4 iR.
+    iExists sl. do 4 iR. iSplitR; first done.
     iExists r'. iFrame "Hrfn". iModIntro. iMod "Hb".
     rewrite /ty_shr/= struct_t_shr_unfold.
-    iDestruct "Hb" as "(%sl' & _ & %Halg' & _ & %Hly' & Hlb' & Hb)".
+    iDestruct "Hb" as "(%Hxr & %sl' & _ & %Halg' & _ & %Hly' & Hlb' & Hb)".
     assert (sl' = sl) as ->. { by eapply struct_layout_spec_has_layout_inj. }
 
     rewrite hpzipl_hmap.
     set (f := (λ '(existT x (a, b)), existT x (◁ a, b))%I).
     rewrite (pad_struct_ext _ _ _ (λ ly, f $ struct_make_uninit_type ly)); last done.
     rewrite pad_struct_fmap big_sepL_fmap.
-    iModIntro. iApply (big_sepL_wand with "Hb").
+    iModIntro. iSplit; first done. iApply (big_sepL_wand with "Hb").
     iApply big_sepL_intro. iIntros "!>" (k [rt0 [ty0 r0]] Hlook).
     iIntros "(%r0' & %ly & Hrfn & %Hmem & %Hst & #Hsc & #Hb)".
     iExists ly. iSplitR; first done. iSplitR; first done.
@@ -72,6 +72,22 @@ Section unfold.
     { iPureIntro. eapply struct_layout_field_aligned; done. }
     iSplitR; first done.
     iSplitR. { iApply loc_in_bounds_sl_offset; done. }
+    iSplitR.
+    { iPureIntro.
+      assert (is_xrfn r0) as Hxr0.
+      { destruct Hxr as [xr Hxr].
+        apply pad_struct_lookup_Some in Hlook as (n & ly0 & Hmember & Hlook); first last.
+        { rewrite length_hpzipl Hsc. symmetry.
+          by apply struct_layout_spec_has_layout_fields_length. }
+        destruct Hlook as [[_ Hlook] | (-> & Heq)].
+        - rewrite Hxr in Hlook.
+          apply (hpzipl_lookup_inv_hzipl_pzipl _ _ ($# xr)) in Hlook as (_ & Hlook).
+          eapply pzipl_pmap_lookup_inv in Hlook as (xr0 & _ & ->).
+          by eexists xr0.
+        - injection Heq => Heq1 Heq2 ?. subst.
+          apply existT_inj in Heq1 as ->. apply existT_inj in Heq2 as ->.
+          by eexists (). }
+      destruct Hxr0 as [xr0 ->]. apply place_rfn_is_concrete_in. }
     iExists r0'. iFrame "Hrfn". iModIntro. iModIntro. done.
   Qed.
 
@@ -393,25 +409,30 @@ Section unfold.
   Proof.
     iModIntro. iIntros (π l).
     rewrite ltype_own_struct_unfold ltype_own_ofty_unfold /lty_of_ty_own /struct_ltype_own.
-    iIntros "(%sl & %Halg & %Hlen & %Hly & #Hlb & %r' & Hrfn & #Hb)".
+    iIntros "(%sl & %Halg & %Hlen & %Hly & #Hlb & %Hconc & %r' & Hrfn & #Hb)".
     iExists sl. iSplitR. { iPureIntro. by eapply use_struct_layout_alg_Some_inv. }
     iSplitR; first done. iSplitR; first done. iFrame "Hlb".
-    iExists r'. iFrame "Hrfn". iModIntro. iMod "Hb".
+    iSplitR; first done.
+    iExists r'. iFrame "Hrfn". iModIntro. iMod "Hb" as "(%Hxr & Hb)".
 
-    rewrite /ty_shr /= struct_t_shr_unfold. iExists sl. do 5 iR.
-    rewrite -big_sepL_fupd.
     rewrite hpzipl_hmap.
     set (f := (λ '(existT x (a, b)), existT x (◁ a, b))%I).
     rewrite (pad_struct_ext _ _ _ (λ ly, f $ struct_make_uninit_type ly)); last done.
     rewrite pad_struct_fmap big_sepL_fmap.
-    iApply (big_sepL_wand with "Hb").
-    iApply big_sepL_intro. iIntros "!>" (k [rt0 [ty0 r0]] Hlook).
-    iIntros "(%ly & %Hmem & %Hst & Hb)". simpl in *.
-    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly0 & %Hst0 & %Hly0 & Hsc0 & Hlb0 & %r0' & Hrfn0 & #>#Hb)".
-    iModIntro. iExists r0', ly0.
-    move: Hst. simp_ltypes => Hst. assert (ly0 = ly) as ->. { by eapply syn_type_has_layout_inj. }
-    iFrame "# ∗". iSplit; done.
+    iMod (big_sepL_fupd lftE
+      (λ i ty, struct_own_el_shr π κ i (sl_members sl) l (projT2 ty).2 (projT2 ty).1)
+      (pad_struct (sl_members sl) (hpzipl rts tys r') struct_make_uninit_type)
+      with "[Hb]") as "Hb".
+    { iApply (big_sepL_wand with "Hb").
+      iApply big_sepL_intro. iIntros "!>" (k [rt0 [ty0 r0]] Hlook).
+      iIntros "(%ly & %Hmem & %Hst & Hb)". simpl in *.
+      rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+      iDestruct "Hb" as "(%ly0 & %Hst0 & %Hly0 & Hsc0 & Hlb0 & %Hconc0 & %r0' & Hrfn0 & #>#Hb)".
+      iModIntro. iExists r0', ly0.
+      move: Hst. simp_ltypes => Hst. assert (ly0 = ly) as ->. { by eapply syn_type_has_layout_inj. }
+      iFrame "# ∗". iSplit; done. }
+    iModIntro. rewrite /ty_shr /= struct_t_shr_unfold. iSplit; first done.
+    iExists sl. do 5 iR. iFrame.
   Qed.
 
   Lemma struct_t_unfold_2_uniq {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) κ γ r :

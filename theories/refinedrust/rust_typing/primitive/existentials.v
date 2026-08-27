@@ -27,7 +27,7 @@ Section ex.
     ty_trivial_drop := P.(inv_trivial_drop) && ty.(ty_trivial_drop);
     ty_own_val := ex_plain_own_val ty;
     ty_shr κ π r m l :=
-      (∃ x : X, P.(inv_P_shr) π κ x r ∗ ty.(ty_shr) κ π x m l)%I;
+      (⌜is_xrfn r⌝ ∗ ∃ x : X, P.(inv_P_shr) π κ x r ∗ ty.(ty_shr) κ π x m l)%I;
     ty_syn_type := ty.(ty_syn_type);
     _ty_has_op_type ot := ty_has_op_type ty ot;
     ty_sidecond :=
@@ -49,10 +49,11 @@ Section ex.
     - intros ot Hot. by eapply ty_op_type_wf.
     - rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
       iIntros (π r m v) "(%x & HP & Hv)". by iApply ty_own_val_sidecond.
-    - iIntros (? π r m v) "(%x & HP & Hs)". by iApply ty_shr_sidecond.
+    - iIntros (? π r m v) "(_ & %x & HP & Hs)". by iApply ty_shr_sidecond.
     - unfold TCNoResolve. apply _.
-    - iIntros (κ π l r m) "(%x & HP & Hv)". by iApply ty_shr_aligned.
-    - iIntros (E κ l ly π r m q ?) "#(LFT & LLCTX) #Hna Htok %Halg %Hly Hlb Hb".
+    - iIntros (κ π l r m) "(_ & %x & HP & Hv)". by iApply ty_shr_aligned.
+    - iIntros (κ π r m l) "($ & _)".
+    - iIntros (E κ l ly π r m q ? Hyr) "#(LFT & LLCTX) #Hna Htok %Halg %Hly Hlb Hb".
       iApply fupd_logical_step.
       rewrite ex_plain_own_val_unfold /ex_plain_own_val_def.
       setoid_rewrite bi.sep_exist_l. setoid_rewrite bi_exist_comm.
@@ -61,20 +62,31 @@ Section ex.
       rewrite -{1}lft_tok_sep -{1}lft_tok_sep. iDestruct "Htok" as "(Htok & HtokP & Htoki)".
       rewrite lft_intersect_assoc. rewrite -lft_tok_sep. iDestruct "Htok2" as "(Htok2 & Htoki2)".
       iMod (bor_exists_tok with "LFT Hb Htok") as "(%x & Hb & Htok)"; first solve_ndisj.
-      iPoseProof (bor_iff _ _ (P.(inv_P) π x r ∗ (∃ a : val, l ↦ a ∗ a ◁ᵥ{ π, m} x @ ty)) with "[] Hb") as "Hb".
-      { iNext. iModIntro. iSplit; [iIntros "(% & ? & ? & ?)" | iIntros "(? & (% & ? & ?))"]; eauto with iFrame. }
+      iPoseProof (bor_iff _ _
+        ((P.(inv_P) π x r ∗ ⌜is_xrfn r → is_xrfn x⌝) ∗
+          (∃ a : val, l ↦ a ∗ a ◁ᵥ{ π, m} x @ ty)) with "[] Hb") as "Hb".
+      { iNext. iModIntro. iSplit.
+        - iIntros "(%a & Hl & HP & Hv)".
+          iDestruct (P.(inv_P_xrfn) with "HP") as "(HP & %Hxr)".
+          iSplitL "HP".
+          { iSplitL "HP"; first done. iPureIntro. exact Hxr. }
+          iExists a. iFrame.
+        - iIntros "((HP & _) & %a & Hl & Hv)". iExists a. iFrame. }
       iMod (bor_sep with "LFT Hb") as "(HP & Hb)"; first solve_ndisj.
-      iPoseProof (P.(inv_P_share) E with "[$LFT $LLCTX] Hna Htok2 HP") as "HP"; first done.
+      iMod (bor_sep with "LFT HP") as "(HP & Hxr)"; first solve_ndisj.
+      iMod (bor_persistent with "LFT Hxr Htok") as "(>%Hxr & Htok)"; first solve_ndisj.
+      iPoseProof (P.(inv_P_share) E with "[$LFT $LLCTX] Hna Htok2 HP") as "HP"; [done | exact Hyr |].
       iCombine "Htok Htoki" as "Htok". rewrite lft_tok_sep.
-      iPoseProof (ty_share with "[$] Hna Htok [//] [//] Hlb Hb") as "Hb"; first solve_ndisj.
+      iPoseProof (ty_share with "[$] Hna Htok [//] [//] Hlb Hb") as "Hb";
+        first solve_ndisj; first (apply Hxr; done).
       iModIntro. iApply (logical_step_compose with "HP"). iApply (logical_step_wand with "Hb").
       iIntros "(Hshr & Htok) (HP & Htok2)".
-      iSplitL "HP Hshr". { eauto with iFrame. }
+      iSplitL "HP Hshr". { iExists x. eauto with iFrame. }
       iCombine "Htok2 Htoki2" as "Htok2". rewrite lft_tok_sep -lft_intersect_assoc.
       iCombine "Htok HtokP" as "Htok". rewrite lft_tok_sep -lft_intersect_assoc.
       rewrite [lft_intersect_list (ty_lfts ty) ⊓ lft_intersect_list P.(inv_P_lfts)]lft_intersect_comm.
       iCombine "Htok Htok2" as "$".
-    - iIntros (κ κ' π r m l) "#Hincl (%x & HP & Hshr)".
+    - iIntros (κ κ' π r m l) "#Hincl ($ & %x & HP & Hshr)".
       iExists x. iSplitL "HP".
       { by iApply P.(inv_P_shr_mono). }
       iApply (ty_shr_mono with "Hincl Hshr").
@@ -133,7 +145,7 @@ Section copy.
       unfold ExInvPersistent in *. apply _. }
     iIntros (???? r m q ?).
     iIntros "CTX Hs Htok".
-    iDestruct "Hs" as "(%x & Hshr & Hl)".
+    iDestruct "Hs" as "(_ & %x & Hshr & Hl)".
     unfold ExInvShrEq in Heq. rewrite -Heq.
     iMod (copy_shr_acc with "CTX Hl Htok") as "(%ly & >%Hst & >%Hly & %q' & %v & Ha & Hcl)"; first done.
     iExists ly. iR. iR. iFrame.
@@ -252,6 +264,7 @@ Section contr.
       apply HF; done.
     - intros n ty ty' ?.
       intros ?????. rewrite /ty_shr/=.
+      f_equiv.
       do 3 f_equiv.
       { apply HP. done. }
       apply HF; done.
@@ -281,6 +294,7 @@ Section contr.
       apply HF; done.
     - intros n ty ty' ?.
       intros ?????. rewrite /ty_shr/=.
+      f_equiv.
       do 3 f_equiv.
       { apply HP; done. }
       apply HF; done.
@@ -347,14 +361,15 @@ Section open.
   Proof.
     iIntros (?) "#Ha". iPoseProof "Ha" as "Hb".
     rewrite {2}ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & %Halg & %Hly & Hsc & Hlb & %r' & -> & #Hb)".
+    iDestruct "Hb" as "(%ly & %Halg & %Hly & Hsc & Hlb & %Hconc & %r' & -> & #Hb)".
     iMod (fupd_mask_mono with "Hb") as "#Hb'"; first done. iClear "Hb".
-    iDestruct "Hb'" as "(%r & HP & Hb)".
+    iDestruct "Hb'" as "(_ & %r & HP & Hb)".
     iModIntro. iExists r. iFrame "#".
     rewrite ltype_own_shadowed_unfold /shadowed_ltype_own.
     simp_ltypes. iSplitL; last done.
     iApply ltype_own_ofty_unfold. rewrite /lty_of_ty_own.
     iExists ly. iSplitR; first done. do 3 iR.
+    iSplitR; first (iPureIntro; apply place_rfn_is_concrete_in).
     iExists r. iSplitR; first done. iModIntro. done.
   Qed.
 
@@ -500,7 +515,7 @@ Section subtype.
       + by iApply "HinclP".
       + iDestruct ("Hincl" $! x) as "(_  & Hv & _)". by iApply "Hv".
     - iEval (rewrite /ty_shr/=).
-      iIntros (????) "(%x & Hinv & Hv1)".
+       iIntros (????) "($ & %x & Hinv & Hv1)".
       iExists x. iSplitL "Hinv".
       + by iApply "HinclPshr".
       + iDestruct ("Hincl" $! x) as "(_  & _ & Hshr)". by iApply "Hshr".

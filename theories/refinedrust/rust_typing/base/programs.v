@@ -997,9 +997,8 @@ Section judgments.
     - iDestruct "Hb" as "(%r' & Hrfn & Hb)".
       iPoseProof (place_rfn_interp_owned_find_observation with "Hrfn Hobs") as "Hobs".
       iFrame.
-    - iDestruct "Hb" as "(%r' & Hrfn & Hb)".
-      iPoseProof (place_rfn_interp_shared_find_observation with "Hrfn Hobs") as "Hobs".
-      iFrame.
+    - iDestruct "Hb" as "(%Hconc & _)".
+      exfalso. exact (place_rfn_is_concrete_ghost γ Hconc).
     - iDestruct "Hb" as "(? & Hrfn & Hb)".
       iPoseProof (place_rfn_interp_mut_find_observation with "Hrfn Hobs") as "Hobs".
       iFrame.
@@ -1016,10 +1015,8 @@ Section judgments.
       iExists r'.
       rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
       iFrame. iR. iR. done.
-    - iDestruct "Hb" as "(%r' & Hrfn & Hb)".
-      iExists r'.
-      rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-      iFrame. iR. iR. done.
+    - iDestruct "Hb" as "(%Hconc & _)".
+      exfalso. exact (place_rfn_is_concrete_ghost γ Hconc).
     - iDestruct "Hb" as "(? & Hrfn & Hb)".
       simpl. rewrite /RelEq.
       iDestruct "Hrfn" as "(%r1 & %r2 & ? & ? & ->)".
@@ -1833,8 +1830,9 @@ Section judgments.
         (* one credit for the inheritance VS *)
         £1 ={F}=∗
         ∃ (L' : llctx) (rt : RT) (ty : type rt) (r : place_rfn rt) (r' : rt) (ly : layout),
-          place_rfn_interp_shared r r' ∗ ty.(ty_shr) κ f.1 r' MetaNone l ∗
-          ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗
+           place_rfn_interp_shared r r' ∗ ⌜is_xrfn (rt:=place_rfnRT rt) r⌝ ∗
+           ty.(ty_shr) κ f.1 r' MetaNone l ∗
+           ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗
           ⌜l `has_layout_loc` ly⌝ ∗
           loc_in_bounds l 0 (ly.(ly_size)) ∗ ty.(ty_sidecond) ∗
           (* as well as the condition T *)
@@ -2492,7 +2490,7 @@ Section laws.
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
     iMod (Hal with "HE HL") as "(%q' & Htok & HL_cl2)"; first done.
     iPoseProof (ofty_ltype_acc_shared ⊤ with "Hl") as "(%ly & %Halg & %Hly & Hlb & >Hb)"; first done.
-    rewrite simple_type_shr_equiv. iDestruct "Hb" as "(%v & %ly' & _ & % & %Hly' & Hloc & Hv)".
+    rewrite simple_type_shr_equiv. iDestruct "Hb" as "(_ & %v & %ly' & _ & % & %Hly' & Hloc & Hv)".
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
 
     iDestruct "CTX" as "(LFT & LLCTX)".

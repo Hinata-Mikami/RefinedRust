@@ -100,7 +100,7 @@ Section subtype.
     iIntros "(%Hels & %Htag & #Hincl)".
     iIntros (κ π l) "Hl".
     rewrite /ty_shr/= enum_shr_unfold/enum_shr_def.
-    iDestruct "Hl" as "(%el & %tag & %variant_ly & -> & %Hst & %Htag' & %Hlook & %Hst'  & %Hlyl & Htag & Hpad1 & Hdata & Hpad2)".
+    iDestruct "Hl" as "($ & %el & %tag & %variant_ly & -> & %Hst & %Htag' & %Hlook & %Hst'  & %Hlyl & Htag & Hpad1 & Hdata & Hpad2)".
     iDestruct ("Hincl" $! r) as "(%Heq & %Hst_eq & Hincl')".
     iDestruct "Hincl'" as "(_ & _ & #Hsincl)".
     rewrite -Hels. rewrite -Htag.

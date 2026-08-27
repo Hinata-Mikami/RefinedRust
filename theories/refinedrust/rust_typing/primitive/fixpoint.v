@@ -180,6 +180,11 @@ Section fixpoint_def.
     - intros. unfold F_ty_own_val_ty_shr_fixpoint.
       eapply @limit_preserving_compl.
       + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. f_equiv. eapply Heq.
+      + intros ?. simpl. eapply ty_shr_is_xrfn.
+    - intros E κ l ly π r m q HE Hxr. unfold F_ty_own_val_ty_shr_fixpoint.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
         intros ? [] [] Heq. do 9 f_equiv.
         { do 2 f_equiv. apply Heq. }
         apply Heq.
@@ -189,7 +194,7 @@ Section fixpoint_def.
         iPoseProof (Fn_lfts_const_0 (3+n)) as "[_ Hincl]".
         iMod (lft_incl_acc with "[] Htok") as "(%q' & Htok & Hcl_tok)"; first done.
         { iApply lft_intersect_mono; first iApply lft_incl_refl. iApply "Hincl". }
-        iPoseProof (ty_share with "RUST Hna Htok [] [//] Hlb Hb") as "Hlb"; first done.
+        iPoseProof (ty_share with "RUST Hna Htok [] [//] Hlb Hb") as "Hlb"; first done; first done.
         { erewrite Fn_syn_type_const. done. }
         iApply logical_step_fupd.
         iApply (logical_step_compose with "Hlb").

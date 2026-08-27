@@ -46,6 +46,13 @@ Ltac ex_t_solve_timeless :=
   intro_adt_params;
   rewrite /TCNoResolve; intros; prepare_initial_coq_context; apply _.
 
+Ltac ex_t_solve_auto_shr_persistent :=
+  unfold inv_P;
+  simpl;
+  intro_adt_params;
+  rewrite /TCNoResolve; intros; prepare_initial_coq_context;
+  apply bi.exist_persistent => Hyr; apply _.
+
 Ltac ex_t_solve_shr_eq ::=
   simpl;
   intro_adt_params;
@@ -83,6 +90,29 @@ Ltac ex_plain_t_solve_shr_mono :=
   | |- context[((?P ∗ ?Q) ∗ ?R)%I] =>
     rewrite -(bi.sep_assoc P Q R)
   end;
+  let ty := iTypeOf' "Ha" in
+  lazymatch ty with
+  | ?P =>
+      let as_shr := constr:(_ : AsShared κ P) in
+      iApply (share_mono (Φ := as_shr.(as_shared_pred)) with "[]");
+      [ | iApply "Ha"];
+      done
+  end
+.
+
+Ltac ex_plain_t_solve_auto_shr_mono :=
+  simpl;
+  intro_adt_params;
+  let κ := fresh "κ" in
+  let κ' := fresh "κ'" in
+  iIntros (? κ κ' ??);
+  prepare_initial_coq_context;
+  simpl;
+  iIntros "#Hincl"; iIntros "Ha";
+  let Hyr := fresh "Hyr" in
+  iDestruct "Ha" as (Hyr) "Ha";
+  iExists Hyr;
+  rewrite -?bi.sep_assoc;
   let ty := iTypeOf' "Ha" in
   lazymatch ty with
   | ?P =>
@@ -149,7 +179,7 @@ Ltac ex_plain_t_solve_shr :=
   intro_adt_params;
   let π := fresh "π" in
   let κ := fresh "κ" in
-  iIntros (? π κ ????);
+  iIntros (? π κ ?????);
   simpl in *;
   prepare_initial_coq_context;
   iIntros "#(LFT & LLCTX) #Hna Htok Hb";
@@ -228,6 +258,27 @@ Ltac ex_plain_t_solve_ghost_drop :=
   simpl;
   iIntros "Ha"; ex_t_destruct_hyp "Ha"; eauto with iFrame
 .
+
+Ltac ex_plain_t_solve_is_xrfn :=
+  simpl;
+  intro_adt_params;
+  iIntros (? x y);
+  simpl in *;
+  prepare_initial_coq_context;
+  iIntros "Ha";
+  ex_t_destruct_hyp "Ha";
+  iFrame "%∗#";
+  repeat iR;
+  iPureIntro;
+  intros [??];
+  simpl in *;
+  prepare_initial_coq_context;
+  simplify_eq/=;
+  repeat match goal with
+  | H : _ = _ |- _ =>
+    injection H; clear H; intros; subst
+  end;
+  apply is_xrfn_proof.
 
 Ltac ex_plain_t_solve_ghost_drop_auto :=
   simpl; intro_adt_params;
@@ -499,6 +550,7 @@ Qed.
 
 Lemma ltype_own_ofty_share `{!typeGS Σ} π F κ q l {rt} (ty : type rt) r :
   lftE ⊆ F →
+  is_xrfn (rt := place_rfnRT rt) r →
   rrust_ctx -∗
   na_own π ∅ -∗
   let κ' := lft_intersect_list (ty_lfts ty) in
@@ -506,7 +558,7 @@ Lemma ltype_own_ofty_share `{!typeGS Σ} π F κ q l {rt} (ty : type rt) r :
   (&{κ} (guarded true (l ◁ₗ[π, Owned] r @ ◁ ty))) -∗
   logical_step F (guarded false (l ◁ₗ[π, Shared κ] r @ ◁ ty) ∗ q.[κ ⊓ κ']).
 Proof.
-  iIntros (?) "#(LFT & LLCTX) #Hna Htok Hl".
+  iIntros (? Hxr) "#(LFT & LLCTX) #Hna Htok Hl".
   iApply fupd_logical_step.
 
   unfold guarded.
@@ -534,11 +586,14 @@ Proof.
   iMod (bor_sep with "LFT Hl") as "(Hrfn & Hl)"; first done.
 
   iMod (place_rfn_interp_owned_share with "LFT Hrfn Htok") as "(Hrfn & Htok)"; first done.
+  destruct Hxr as [xr Hr]. simpl in Hr. subst r.
+  iDestruct "Hrfn" as %<-.
   iMod (bor_fupd_later with "LFT Hl Htok") as "Ha"; [done.. | ].
   iDestruct "Hcred" as "(Hcred1 & Hcred)".
   iApply (lc_fupd_add_later with "Hcred1"). iNext. iMod "Ha" as "(Hl & Htok)".
   iDestruct "Htok2" as "(Htok2 & Htok2')".
   iPoseProof (ty_share _ F with "[$LFT $LLCTX] Hna [Htok Htok2] [//] [//] Hlb Hl") as "Hstep"; [done | ..].
+  { by exists xr. }
   { rewrite ty_lfts_unfold. rewrite -lft_tok_sep. iFrame. }
   iApply logical_step_fupd.
   iApply (logical_step_compose with "Hstep").
@@ -553,12 +608,15 @@ Proof.
   rewrite !lft_tok_sep. iFrame "Htok Htok1".
   iModIntro. rewrite ltype_own_ofty_unfold /lty_of_ty_own/=.
   iR. iNext. iExists _. iR. iR. iR. iR.
-  iExists _. iFrame. iModIntro. iModIntro. done.
+  iSplitR; first by iPureIntro; apply place_rfn_is_concrete_in.
+  iExists _. iR.
+  iFrame. iModIntro. iModIntro. done.
 Qed.
 
 (* TODO : make lft_intersect_list simpl never in the lemmas using this. *)
 Lemma ltype_own_ofty_share' `{!typeGS Σ} π F κ κ' q l {rt} (ty : type rt) r :
   lftE ⊆ F →
+  is_xrfn (rt := place_rfnRT rt) r →
   (ty_lfts ty) ⊆ κ' →
   rrust_ctx -∗
   na_own π ∅ -∗
@@ -567,7 +625,7 @@ Lemma ltype_own_ofty_share' `{!typeGS Σ} π F κ κ' q l {rt} (ty : type rt) r 
   (&{κ} (guarded true (l ◁ₗ[π, Owned] r @ ◁ ty))) -∗
   logical_step F (guarded false (l ◁ₗ[π, Shared κ] r @ ◁ ty) ∗ q.[κ] ∗ q.[lft_intersect_list κ']).
 Proof.
-  iIntros (? Hsub) "#CTX #Hna Htok1 Htok2 Hl".
+  iIntros (? Hxr Hsub) "#CTX #Hna Htok1 Htok2 Hl".
   iApply fupd_logical_step.
   iMod (lft_incl_acc _ _ (lft_intersect_list (ty_lfts ty)) with "[] Htok2") as "(%q' & Htok2 & Hcltok2)"; first done.
   { iApply list_incl_lft_incl_list. done. }
@@ -577,6 +635,7 @@ Proof.
   iPoseProof (Fractional_fractional_le (λ q, q.[lft_intersect_list (ty_lfts ty)])%I q' q0 with "Htok2") as "[Htok2 Hcltok2']".
   { apply Qp.le_min_r. }
   iPoseProof (ltype_own_ofty_share with "CTX Hna [Htok1 Htok2] Hl") as "Hstep"; first done.
+  { exact Hxr. }
   { rewrite -lft_tok_sep. iFrame. }
   iApply logical_step_fupd.
   iApply (logical_step_wand with "Hstep").
@@ -604,14 +663,18 @@ Hint Extern 1 (SolveTyLftIncl ?ty ?κs) =>
 .
 Global Hint Mode SolveTyLftIncl + + + + + : typeclass_instances.
 
-Global Program Instance shareable_ltype_own `{!typeGS Σ} π κ κs l {rt} (ty : type rt) r `{!SolveTyLftIncl ty κs} :
+Global Program Instance shareable_ltype_own `{!typeGS Σ} π κ κs l {rt} (ty : type rt) r
+    `{!SolveTyLftIncl ty κs} `{!IsXrfn r} :
   Shareable π κ κs (guarded true (l ◁ₗ[π, Owned] r @ (◁ ty)))%I := {|
     shareable_prop := guarded false (l ◁ₗ[π, Shared κ] r @ (◁ ty))%I
   |}.
 Next Obligation.
-  iIntros (?? π κ κs l ? ty r Hincl F G q ?) "#CTX Hna Htok1 Htok2 Hl HT".
+  iIntros (?? π κ κs l ? ty r Hincl Hxr F G q ?) "#CTX Hna Htok1 Htok2 Hl HT".
   unfold SolveTyLftIncl in Hincl.
-  iPoseProof (ltype_own_ofty_share' with "CTX Hna Htok1 Htok2 Hl") as "Hstep'"; [done.. | ].
+  iPoseProof (ltype_own_ofty_share' with "CTX Hna Htok1 Htok2 Hl") as "Hstep'".
+  { done. }
+  { exact (is_xrfn_proof (r := r)). }
+  { done. }
   iApply (logical_step_compose with "HT").
   iApply (logical_step_wand with "Hstep'").
   iIntros "(Ha & ? & ?) Hb". iApply "Hb".

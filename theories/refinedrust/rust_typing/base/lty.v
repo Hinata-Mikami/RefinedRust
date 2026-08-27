@@ -885,6 +885,13 @@ Section ltype_def.
     done.
   Qed.
 
+  Lemma is_xrfn_transport_iff {rt1 rt2 : RT} (HeqRT : rt1 = rt2)
+      (Heq : RT_rt rt1 = RT_rt rt2) (r : RT_rt rt1) :
+      is_xrfn r ↔ is_xrfn (rew [id] Heq in r).
+  Proof.
+    destruct HeqRT. rewrite (UIP_refl _ _ Heq). done.
+  Qed.
+
   (* We cannot get the other direction because of CoreableLty *)
   Lemma lty_core_wf lt :
     lty_wf lt → lty_wf (lty_core lt).
@@ -980,7 +987,8 @@ Section ltype_def.
         |={lftE}=> &pin{κ} (∃ r', gvar_auth γ r' ∗ |={lftE}=> l ↦: ty.(ty_own_val) π r' MetaNone)
     | Shared κ =>
         (* we need an update for timelessness in the unfolding equations (eg for mut_ref) *)
-        ∃ r' : rt, place_rfn_interp_shared r r' ∗ □ |={lftE}=> ty.(ty_shr) κ π r' MetaNone l
+        ⌜place_rfn_is_concrete r⌝ ∗ ∃ r' : rt, place_rfn_interp_shared r r' ∗
+          □ |={lftE}=> ty.(ty_shr) κ π r' MetaNone l
     end)%I.
 
   Definition alias_lty_own (rt : RT) (st : syn_type) (p : loc) k π (r : place_rfn rt) l :=
@@ -989,8 +997,9 @@ Section ltype_def.
       ∃ ly, ⌜syn_type_has_layout st ly⌝ ∗ ⌜p = l⌝ ∗
         ⌜l `has_layout_loc` ly⌝ ∗ loc_in_bounds l 0 (ly_size ly)
     | Shared _ =>
-      ∃ ly, ⌜syn_type_has_layout st ly⌝ ∗ ⌜p = l⌝ ∗
-        ⌜l `has_layout_loc` ly⌝ ∗ loc_in_bounds l 0 (ly_size ly)
+      ⌜place_rfn_is_concrete r⌝ ∗ ∃ r', place_rfn_interp_shared r r' ∗ ⌜is_xrfn r'⌝ ∗
+        ∃ ly, ⌜syn_type_has_layout st ly⌝ ∗ ⌜p = l⌝ ∗
+          ⌜l `has_layout_loc` ly⌝ ∗ loc_in_bounds l 0 (ly_size ly)
     | _ => False
     end%I.
 
@@ -1017,7 +1026,7 @@ Section ltype_def.
 
   Definition shr_blocked_lty_own {rt} (ty : type rt) κ k π (r : place_rfn rt) l :=
     (∃ ly : layout, ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗ ty.(ty_sidecond) ∗
-      loc_in_bounds l 0 ly.(ly_size) ∗
+      loc_in_bounds l 0 ly.(ly_size) ∗ ⌜place_rfn_is_concrete r⌝ ∗
     ∃ r': rt, place_rfn_interp_shared r r' ∗
     match k with
     | Owned =>
@@ -1145,9 +1154,9 @@ Section ltype_def.
                 ∃ (l' : loc), ref_loc_own l l' ∗
                 lty_own_pre core lt (Uniq κ r'.2) π r'.1 l')
       | Shared κ' =>
-        (∃ r' γ, place_rfn_interp_shared r (r', γ) ∗
+        (⌜place_rfn_is_concrete r⌝ ∗ ∃ r' γ, place_rfn_interp_shared r (r', γ) ∗
         (* the update is also over the fractional borrow to deal with timelessness *)
-        □ |={lftE}=> ∃ (vi : val) (li : loc),
+        □ |={lftE}=> ⌜is_xrfn (r', γ)⌝ ∗ ∃ (vi : val) (li : loc),
           &frac{κ'}(λ q', l ↦{q'} vi) ∗
           ⌜val_decodes_to_ref vi li⌝ ∗
           (* later is for contractiveness, the update for timelessness *)
@@ -1161,21 +1170,21 @@ Section ltype_def.
         match k with
         | Owned =>
             ∃ (r' : place_rfn (lty_rt lt)), place_rfn_interp_owned r r' ∗
-            |={lftE}=> ∃ (l' : loc), ref_loc_own l l' ∗
+            |={lftE}=> ⌜is_xrfn r'⌝ ∗ ∃ (l' : loc), ref_loc_own l l' ∗
             lty_own_pre core lt (Shared κ) π r' l'
         | Uniq κ' γ' =>
             have_creds ∗
             place_rfn_interp_mut r γ' ∗
             |={lftE}=> &pin{κ'}
               [∃ (r' : place_rfn (lty_rt lt)), gvar_auth γ' r' ∗
-                |={lftE}=> ∃ (l' : loc), ref_loc_own l l' ∗ lty_own_pre true lt (Shared κ) π r' l']
+                |={lftE}=> ⌜is_xrfn r'⌝ ∗ ∃ (l' : loc), ref_loc_own l l' ∗ lty_own_pre true lt (Shared κ) π r' l']
               (∃ (r' : place_rfn (lty_rt lt)), gvar_auth γ' r' ∗
-                |={lftE}=> ∃ (l' : loc), ref_loc_own l l' ∗ lty_own_pre core lt (Shared κ) π r' l')
+                |={lftE}=> ⌜is_xrfn r'⌝ ∗ ∃ (l' : loc), ref_loc_own l l' ∗ lty_own_pre core lt (Shared κ) π r' l')
         | Shared κ' =>
-            ∃ (r' : place_rfn (lty_rt lt)),
+            ⌜place_rfn_is_concrete r⌝ ∗ ∃ (r' : place_rfn (lty_rt lt)),
             place_rfn_interp_shared r r' ∗
             (* the update is also over the fractional borrow to deal with timelessness *)
-            □ |={lftE}=> ∃ (vi : val) (li : loc),
+            □ |={lftE}=> ⌜is_xrfn r'⌝ ∗ ∃ (vi : val) (li : loc),
             &frac{κ'} (λ q, l ↦{q} vi) ∗
             ⌜val_decodes_to_ref vi li⌝ ∗
             (* no intersection here, as we also don't do that for the type interpretation *)
@@ -1221,10 +1230,11 @@ Section ltype_def.
                 lty_own_pre core (projT1 ty) Owned π (projT2 ty) (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i)))
           )
       | Shared κ =>
-          (∃ r' : plist (place_rfn ∘ lty_rt) lts,
+          (⌜place_rfn_is_concrete r⌝ ∗ ∃ r' : plist (place_rfn ∘ lty_rt) lts,
             place_rfn_interp_shared r (rew [id] (struct_rfn_eq lts) in r') ∗
             (* update needed to make the unfolding equation work *)
             □ |={lftE}=>
+              ⌜is_xrfn (rew [id] (struct_rfn_eq lts) in r')⌝ ∗
               big_sepL_P (pad_struct sl.(sl_members) (pzipl lts r') (λ ly, existT (UninitLty (LiteralSynType ly)) (PlaceIn ())))
                 (λ i ty HP,
                   ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (lty_st (projT1 ty)) ly⌝ ∗
@@ -1268,8 +1278,8 @@ Section ltype_def.
                   lty_own_pre core ty.1 Owned π (rew <- [place_rfn] Heq in ty.2) (offset_loc l ly i))))
 
       | Shared κ =>
-          ∃ r', place_rfn_interp_shared r r' ∗
-            □ |={lftE}=> ⌜length r' = len⌝ ∗
+          ⌜place_rfn_is_concrete r⌝ ∗ ∃ r', place_rfn_interp_shared r r' ∗
+            □ |={lftE}=> ⌜is_xrfn r'⌝ ∗ ⌜length r' = len⌝ ∗
             big_sepL_P (zip (interpret_iml (OfTyLty def) len lts) r')
               (λ i ty HP,
                 ∃ (Heq : RT_rt (lty_rt ty.1) = RT_rt rt),
@@ -1307,9 +1317,9 @@ Section ltype_def.
           lty_of_ty_own (uninit (LiteralSynType (Layout (el.(el_size) - data_offset - ly_size variant_ly) 0))) Owned π (PlaceIn ())
             (l +ₗ data_offset +ₗ ly_size variant_ly)
       | Shared κ =>
-        ∃ r' : rt, place_rfn_interp_shared r r' ∗
+        ⌜place_rfn_is_concrete r⌝ ∗ ∃ r' : rt, place_rfn_interp_shared r r' ∗
         let v := interp_enum_lty_variant en variant r' in
-        □ |={lftE}=> ∃ variant_ly,
+        □ |={lftE}=> ⌜is_xrfn r'⌝ ∗ ∃ variant_ly,
           ⌜enum_lty_variant_tag_compat en r' v⌝ ∗
           ⌜enum_variant_lookup el.(el_variants) v.(elv_tag) = Some variant_ly⌝ ∗
           ⌜syn_type_has_layout (lty_st v.(elv_lty)) variant_ly⌝ ∗
@@ -1498,7 +1508,7 @@ Section ltype_def.
     - iDestruct "Hown" as "(%ly & ? & ? & _)"; eauto.
     - destruct k; last done.
       + iDestruct "Hown" as "(%ly & ? & ? & ? & ?)"; eauto.
-      + iDestruct "Hown" as "(%ly & ? & ? & ? & ?)"; eauto.
+      + iDestruct "Hown" as "(_ & %r' & Hrfn & %Hxr & %ly & ? & ? & ? & ?)"; eauto.
     - iDestruct "Hown" as "(%ly & ? & ? & _)"; eauto.
     - iDestruct "Hown" as "(%ly & ? & ? & _)"; eauto.
     - iDestruct "Hown" as "(%sl & % & % & % & _)".
@@ -1536,7 +1546,7 @@ Section ltype_def.
     - destruct k; last done.
       { iDestruct "Hown" as "(%ly' & % & ? & ? & ?)".
         have ?: ly' = ly by eapply syn_type_has_layout_inj. by subst. }
-      { iDestruct "Hown" as "(%ly' & % & ? & ? & ?)".
+      { iDestruct "Hown" as "(_ & %r' & Hrfn & %Hxr & %ly' & % & ? & ? & ?)".
         have ?: ly' = ly by eapply syn_type_has_layout_inj. by subst. }
     - iDestruct "Hown" as "(%ly' & % & _ & ? & _)".
       have ?: ly' = ly by eapply syn_type_has_layout_inj. by subst.
@@ -1572,6 +1582,11 @@ Section ltype_def.
   Definition transport_rfn {rt1 rt2 : Type} (Heq : rt1 = rt2) (r1 : place_rfn rt1) : place_rfn rt2 :=
     rew [place_rfn] Heq in r1.
   Arguments transport_rfn : simpl never.
+
+  Lemma place_rfn_is_concrete_transport {rt1 rt2 : Type} (Heq : rt1 = rt2)
+      (r : place_rfn rt1) :
+    place_rfn_is_concrete (transport_rfn Heq r) ↔ place_rfn_is_concrete r.
+  Proof. destruct Heq. done. Qed.
 
   Lemma lty_own_pre_rfn_eq (lt : lty) π (r1 r2 : place_rfn (lty_rt lt)) core (b : bor_kind) (l : loc) :
     r1 = r2 → lty_own_pre core lt b π r1 l -∗ lty_own_pre core lt b π r2 l.
@@ -1738,28 +1753,30 @@ Section ltype_def.
     - normalize_dep_rt_goal.
     - normalize_dep_rt_goal.
     - simp lty_own_pre. fold lty_rt.
+      pose proof (lty_core_rt_eq lt) as HeqRT.
       specialize (lty_core_rt_eq' lt) as Heq2.
       do 5 f_equiv.
-      simpl. clear -IH Heq2.
-      move: r Heq Heq2 IH.
+      simpl. clear -IH Heq2 HeqRT.
+      move: r Heq Heq2 HeqRT IH.
       generalize (lty_core lt) as lt' => lt'.
-      intros r Heq Heq2 IH.
+      intros r Heq Heq2 HeqRT IH.
       f_equiv.
       all: unshelve setoid_rewrite IH; [done.. | ].
       all: normalize_dep_rt_goal_prepare.
-      all: generalize (RT_rt (lty_rt lt')) => ?.
+      all: generalize (lty_rt lt') => ?.
       all: normalize_dep_rt_goal.
     - simp lty_own_pre. fold lty_rt.
+      pose proof (lty_core_rt_eq lt) as HeqRT.
       specialize (lty_core_rt_eq' lt) as Heq2.
       do 5 f_equiv.
-      simpl. clear -IH Heq2.
-      move: r Heq Heq2 IH.
+      simpl. clear -IH Heq2 HeqRT.
+      move: r Heq Heq2 HeqRT IH.
       generalize (lty_core lt) as lt' => lt'.
-      intros r Heq Heq2 IH.
+      intros r Heq Heq2 HeqRT IH.
       f_equiv.
       all: unshelve setoid_rewrite IH; [done.. | ].
       all: normalize_dep_rt_goal_prepare.
-      all: generalize (RT_rt (lty_rt lt')) => ?.
+      all: generalize (lty_rt lt') => ?.
       all: normalize_dep_rt_goal.
     - simp lty_own_pre. fold lty_rt.
       do 5 f_equiv.
@@ -1771,11 +1788,19 @@ Section ltype_def.
       all: simpl.
       3: do 2 f_equiv; [ normalize_dep_rt_goal | do 2 f_equiv].
       all: iSplit.
-      all: iIntros "(%r' & Hrfn & Hb)".
+      all: first
+        [ iIntros "(%Hconc & %r' & Hrfn & Hb)";
+          iSplitR; first (iPureIntro; rewrite place_rfn_is_concrete_transport in Hconc |- *; exact Hconc)
+        | iIntros "(%r' & Hrfn & Hb)" ].
 
       all: specialize (struct_core_rt_eq lts) as Heq2.
       all: first [iExists (rew [id] Heq2 in r') | iExists (rew <-[id] Heq2 in r')].
       all: iSplitL "Hrfn"; first normalize_dep_rt_goal.
+      all: try (iDestruct "Hb" as "#Hb"; iModIntro;
+        iMod "Hb" as "(%Hxrfn & Hb)"; iModIntro; iSplitR; [iPureIntro; first
+        [ pose proof (proj1 (is_xrfn_transport_iff (lty_core_rt_eq (StructLty lts sls)) Heq _) Hxrfn) as Hxrfn'
+        | pose proof (proj1 (is_xrfn_transport_iff (eq_sym (lty_core_rt_eq (StructLty lts sls))) (eq_sym Heq) _) Hxrfn) as Hxrfn' ];
+        move: Hxrfn'; normalize_dep_rt_goal | ]).
       all: unshelve rewrite StructLty_own_core_core_lift;
         [ apply Heq2 | | done].
       all: rewrite ?rew_invert'; done.
@@ -1824,7 +1849,7 @@ Section ltype_def.
           generalize (lty_core_rt_eq' v.(elv_lty)) as Heq3.
           normalize_dep_rt_goal.
       + rewrite /transport_rfn /=.
-        do 13 f_equiv.
+        do 15 f_equiv.
         all: destruct (decide (enum_tag en a0 = Some v.(elv_tag))); simpl in *; try done.
         all: try rewrite lty_core_syn_type_eq.
         do 5 f_equiv.
@@ -1966,24 +1991,26 @@ Section ltype_def.
     - rewrite (UIP_refl _ _ Heq). simp lty_own_pre. done.
     - rewrite (UIP_refl _ _ Heq). simp lty_own_pre. done.
     - simp lty_own_pre. fold lty_rt.
+      pose proof (lty_core_rt_eq lt) as HeqRT.
       specialize (lty_core_rt_eq' lt) as Heq2.
       do 5 f_equiv.
-      simpl. clear -IH Heq2.
+      simpl. clear -IH Heq2 HeqRT.
       f_equiv.
       3: unshelve setoid_rewrite (lty_own_core_core' lt); [ done | ].
       all: unshelve setoid_rewrite (IH core); [done.. | ].
       all: normalize_dep_rt_goal_prepare.
-      all: generalize (RT_rt (lty_rt lt)) => ?.
+      all: generalize (lty_rt lt) => ?.
       all: normalize_dep_rt_goal.
     - simp lty_own_pre. fold lty_rt.
+      pose proof (lty_core_rt_eq lt) as HeqRT.
       specialize (lty_core_rt_eq' lt) as Heq2.
       do 5 f_equiv.
-      simpl. clear -IH Heq2.
+      simpl. clear -IH Heq2 HeqRT.
       f_equiv.
       3: unshelve setoid_rewrite (lty_own_core_core' lt); [ done | ].
       all: unshelve setoid_rewrite (IH core); [done.. | ].
       all: normalize_dep_rt_goal_prepare.
-      all: generalize (RT_rt (lty_rt lt)) => ?.
+      all: generalize (lty_rt lt) => ?.
       all: normalize_dep_rt_goal.
     - simp lty_own_pre. fold lty_rt.
       do 5 f_equiv.
@@ -1994,12 +2021,20 @@ Section ltype_def.
       all: setoid_rewrite big_sepL_P_eq.
       3: do 2 f_equiv; [normalize_dep_rt_goal | do 2 f_equiv].
       all: iSplit.
-      all: iIntros "(%r' & Hrfn & Hb)".
+      all: first
+        [ iIntros "(%Hconc & %r' & Hrfn & Hb)";
+          iSplitR; first (iPureIntro; rewrite place_rfn_is_concrete_transport in Hconc |- *; exact Hconc)
+        | iIntros "(%r' & Hrfn & Hb)" ].
 
       all: specialize (struct_core_rt_eq lts) as Heq2.
       all: first [iExists (rew [id] Heq2 in r') | iExists (rew <-[id] Heq2 in r')].
 
       all: iSplitL "Hrfn"; [ by normalize_dep_rt_goal | ].
+      all: try (iDestruct "Hb" as "#Hb"; iModIntro;
+        iMod "Hb" as "(%Hxrfn & Hb)"; iModIntro; iSplitR; [iPureIntro; first
+        [ pose proof (proj1 (is_xrfn_transport_iff (eq_sym (lty_core_rt_eq (StructLty lts sls))) Heq _) Hxrfn) as Hxrfn'
+        | pose proof (proj1 (is_xrfn_transport_iff (lty_core_rt_eq (StructLty lts sls)) (eq_sym Heq) _) Hxrfn) as Hxrfn' ];
+        move: Hxrfn'; normalize_dep_rt_goal | ]).
       all: rewrite -(StructLty_own_core_equiv_lift _ _ _ _ ltac:(done)); [done | intros; apply IH; done | ].
       all: normalize_dep_rt_goal.
     - simp lty_own_pre. fold lty_rt.
@@ -2049,7 +2084,7 @@ Section ltype_def.
           rewrite /transport_rfn.
           normalize_dep_rt_goal.
       + rewrite /transport_rfn /=.
-        do 13 f_equiv.
+        do 15 f_equiv.
         all: destruct (decide (enum_tag en a0 = Some v.(elv_tag))); simpl in *; try done.
         2: repeat f_equiv; destruct core; simp lty_own_pre; done.
         all: try rewrite lty_core_syn_type_eq.
@@ -2124,31 +2159,120 @@ Section ltype_def.
     normalize_dep_rt_goal.
   Qed.
 
+  Lemma lty_own_pre_shared_is_concrete core (lt : lty) κ π
+      (r : place_rfn (RT_rt (lty_rt lt))) l :
+    lty_own_pre core lt (Shared κ) π r l -∗ ⌜place_rfn_is_concrete r⌝.
+  Proof.
+    induction lt as [ | | | | lt IH κ' | lt IH κ' | lts IH sls | rt' def len lts IH
+      | rt' en variant IH | | | ???? IH1 IH2 | ] using lty_induction in core, κ, π, r, l |-*;
+      simp lty_own_pre.
+    all: try iIntros "(% & _ & _ & _ & _ & [])".
+    all: try iIntros "(% & _ & _ & _ & _ & _ & [])".
+    - destruct core; simp lty_own_pre.
+      + iIntros "(%ly & _ & _ & _ & _ & %Hconc & _)". done.
+      + iIntros "(%ly & _ & _ & _ & _ & [])".
+    - destruct core; simp lty_own_pre.
+      + iIntros "(%ly & _ & _ & _ & _ & %Hconc & _)". done.
+      + iIntros "(%ly & _ & _ & _ & _ & %Hconc & %r' & _ & [])".
+    - iIntros "(%ly & _ & _ & _ & _ & %Hconc & _)". done.
+    - iIntros "(%Hconc & _)". done.
+    - iIntros "(%ly & _ & _ & _ & %Hconc & _)". done.
+    - iIntros "(%ly & _ & _ & _ & %Hconc & _)". done.
+    - iIntros "(%sl & _ & _ & _ & _ & %Hconc & _)". done.
+    - iIntros "(%ly & _ & _ & _ & _ & %Hconc & _)". done.
+    - iIntros "(%el & _ & _ & _ & %Hconc & _)". done.
+    - destruct core; simp lty_own_pre.
+      + iIntros "Hl". iApply IHlt. done.
+      + iIntros "(%ly & _ & _ & _ & Hl)". iApply IHlt. done.
+    - destruct core; simp lty_own_pre.
+      + iIntros "Hl". iApply IH2. done.
+      + iIntros "(%Heq & _ & Hl)". iApply IH2. done.
+  Qed.
+
+  Lemma lty_own_pre_shared_is_xrfn core (lt : lty) κ π (r : RT_rt (lty_rt lt)) l :
+    lty_own_pre core lt (Shared κ) π (#r) l -∗ |={lftE}=> ⌜is_xrfn r⌝.
+  Proof.
+    induction lt as [ | | | | lt IH κ' | lt IH κ' | lts IH sls | rt' def len lts IH
+      | rt' en variant IH | | | ???? IH1 IH2 | ] using lty_induction in core, κ, π, r, l |-*;
+      simp lty_own_pre.
+    all: try iIntros "(% & _ & _ & _ & _ & [])".
+    all: try iIntros "(% & _ & _ & _ & _ & % & _ & [])".
+    - destruct core; simp lty_own_pre.
+      + iIntros "(%ly & %Halg & %Hly & Hsc & Hlb & _ & %r' & -> & #Hb)".
+        iMod "Hb". iApply ty_shr_is_xrfn. done.
+      + iIntros "(%ly & _ & _ & _ & _ & [])".
+    - destruct core; simp lty_own_pre.
+      + iIntros "(%ly & %Halg & %Hly & Hsc & Hlb & _ & %r' & -> & #Hb)".
+        iMod "Hb". iApply ty_shr_is_xrfn. done.
+      + iIntros "(%ly & _ & _ & _ & _ & _ & %r' & _ & [])".
+    - iIntros "(%ly & %Halg & %Hly & Hsc & Hlb & _ & %r' & -> & #Hb)".
+      iMod "Hb". iApply ty_shr_is_xrfn. done.
+    - iIntros "(_ & %r' & -> & %Hxr & _)". done.
+    - iIntros "(%ly & %Halg & %Hly & Hlb & _ & %r' & %γ & -> & #Hb)".
+      iMod "Hb" as "(%Hxr & _)". done.
+    - iIntros "(%ly & %Halg & %Hly & Hlb & _ & %r' & -> & #Hb)".
+      iMod "Hb" as "(%Hxr & _)". done.
+    - iIntros "(%sl & %Halg & %Hlen & %Hly & Hlb & _ & %r' & -> & #Hb)".
+      iMod "Hb" as "(%Hxr & _)". done.
+    - iIntros "(%ly & %Halg & %Hly & Hsz & Hlb & _ & %r' & -> & #Hb)".
+      iMod "Hb" as "(%Hxr & _)". done.
+    - iIntros "(%el & %Halg & %Hly & Hlb & _ & %r' & -> & #Hb)".
+      iMod "Hb" as "(%Hxr & _)". done.
+    - iIntros "(%ly & _ & _ & _ & _ & _ & [])".
+    - destruct core; simp lty_own_pre.
+      + iIntros "Hl". iApply IHlt. done.
+      + iIntros "(%ly & _ & _ & _ & Hl)". iApply IHlt. done.
+    - destruct core; simp lty_own_pre.
+      + iIntros "Hl". iApply IH2. done.
+      + iIntros "(%Heq & _ & Hl)". iApply IH2. done.
+  Qed.
+
+  Lemma lty_own_pre_shared_canonical core (lt : lty) κ π
+      (r : place_rfn (RT_rt (lty_rt lt))) l :
+    lty_own_pre core lt (Shared κ) π r l -∗
+      |={lftE}=> ∃ r', ⌜r = PlaceIn r'⌝ ∗ ⌜is_xrfn r'⌝.
+  Proof.
+    iIntros "Hown". destruct r as [r' | γ].
+    - iPoseProof (lty_own_pre_shared_is_xrfn with "Hown") as "Hxrfn".
+      iMod "Hxrfn". iModIntro. iExists r'. auto.
+    - iPoseProof (lty_own_pre_shared_is_concrete with "Hown") as "Hconc".
+      iDestruct "Hconc" as %Hconc.
+      exfalso. exact (place_rfn_is_concrete_ghost γ Hconc).
+  Qed.
+
   Lemma lty_own_shared_to_core lt κ0 π r l Heq :
     lty_own lt (Shared κ0) π r l -∗ lty_own (lty_core lt) (Shared κ0) π (transport_rfn Heq r) l.
   Proof.
     rewrite /lty_own_core /lty_own.
     induction lt as [ | | | | lt IH κ | lt IH κ | lts IH sls | rt def len lts IH  | rt en variant IH | | | ???? IH1 IH2 | ] using lty_induction in κ0, π, r, l, Heq |-*; simpl in *.
     - simp lty_own_pre. iIntros "(% & _ & _ & _ & _ & [])".
-    - simp lty_own_pre. iIntros "(% & _ & _ & _ & _ & % & _ & [])".
+    - simp lty_own_pre. iIntros "(% & _ & _ & _ & _ & % & % & _ & [])".
     - rewrite (UIP_refl _ _ Heq). auto.
     - rewrite (UIP_refl _ _ Heq). auto.
     - simp lty_own_pre. fold lty_rt.
-      iIntros "(%ly & %Halg & %Hly & Hlb & %r' & %γ & Ha & #Hl)".
+      iIntros "(%ly & %Halg & %Hly & Hlb & %Hconc & %r' & %γ & Ha & #Hl)".
       iExists ly. iR. iR. iFrame.
+      iSplitR; first (iPureIntro; rewrite place_rfn_is_concrete_transport in Hconc |- *; exact Hconc).
       specialize (lty_core_rt_eq' lt) as Heq'.
       iExists (rew <-[place_rfn] Heq' in r'), γ.
       iSplitL "Ha".
-      { iClear "Hl".
+      { iClear "Hl". clear Hconc.
         normalize_dep_rt_goal_prepare.
         generalize (RT_rt (lty_rt lt)).
         normalize_dep_rt_goal. }
-      iModIntro. iMod "Hl" as "(%vi & %li & Hf & %Hdec & Hl)". iModIntro. iExists vi, li. iFrame.
+      iModIntro. iMod "Hl" as "(%Hxrfn & %vi & %li & Hf & %Hdec & Hl)". iModIntro.
+      iSplitR.
+      { iPureIntro.
+        pose (HeqRT := eq_sym (lty_core_rt_eq (MutLty lt κ))).
+        pose proof (proj1 (is_xrfn_transport_iff HeqRT (f_equal RT_rt HeqRT) (r', γ)) Hxrfn) as Hxrfn'.
+        move: Hxrfn'. normalize_dep_rt_goal. }
+      iExists vi, li. iFrame.
       iSplitR; first done.
       iNext. iApply IH. done.
     - simp lty_own_pre. fold lty_rt.
-      iIntros "(%ly & %Halg & %Hly & Hlb & %r' & Ha & #Hl)".
+      iIntros "(%ly & %Halg & %Hly & Hlb & %Hconc & %r' & Ha & #Hl)".
       iExists ly. iR. iR. iFrame.
+      iSplitR; first (iPureIntro; rewrite place_rfn_is_concrete_transport in Hconc |- *; exact Hconc).
       specialize (lty_core_rt_eq' lt) as Heq'.
       iExists (rew <-[place_rfn] Heq' in r').
       iSplitL "Ha".
@@ -2156,23 +2280,37 @@ Section ltype_def.
         normalize_dep_rt_goal_prepare.
         generalize (RT_rt (lty_rt lt)).
         normalize_dep_rt_goal. }
-      iModIntro. iMod "Hl" as "(%vi & %li & Hf & %Hdec & Hl)". iModIntro. iExists vi, li. iFrame.
+      iModIntro. iMod "Hl" as "(%Hxrfn & %vi & %li & Hf & %Hdec & Hl)". iModIntro.
+      iSplitR.
+      { iPureIntro.
+        pose (HeqRT := f_equal place_rfnRT (eq_sym (lty_core_rt_eq lt))).
+        pose proof (proj1 (is_xrfn_transport_iff HeqRT (f_equal RT_rt HeqRT) r') Hxrfn) as Hxrfn'.
+        move: Hxrfn'. normalize_dep_rt_goal. }
+      iExists vi, li. iFrame.
       iSplitR; first done.
       iApply IH. done.
     - (* struct *)
       simp lty_own_pre. fold lty_rt.
-      iIntros "(%sl & %Halg & %Hlen & %Hly & Hlb & %r' & Ha & #Hl)".
+      iIntros "(%sl & %Halg & %Hlen & %Hly & Hlb & %Hconc & %r' & Ha & #Hl)".
       rewrite big_sepL_P_eq.
       iExists sl. iR.
       rewrite length_fmap. iR. iR. iFrame.
+      iSplitR; first (iPureIntro; rewrite place_rfn_is_concrete_transport in Hconc |- *; exact Hconc).
       (*set (Heq' := lty_core_rt_eq ).*)
       simpl in r'.
       simpl.
 
       all: specialize (struct_core_rt_eq lts) as Heq2.
       all: first [iExists (rew [id] Heq2 in r') | iExists (rew <-[id] Heq2 in r')].
-      all: iSplitL "Ha"; first normalize_dep_rt_goal.
-      iModIntro. iMod "Hl". iModIntro.
+      all: iSplitL "Ha"; [iClear "Hl"; normalize_dep_rt_goal |].
+      iModIntro. iMod "Hl" as "(%Hxrfn & Hl)". iModIntro.
+      iSplitR.
+      { iPureIntro.
+        pose (HeqRT := eq_sym (lty_core_rt_eq (StructLty lts sls))).
+        pose proof (proj1 (is_xrfn_transport_iff HeqRT (f_equal RT_rt HeqRT) (rew [id] (struct_rfn_eq lts) in r')) Hxrfn) as Hxrfn'.
+        replace (rew [id] (struct_rfn_eq (fmap lty_core lts)) in rew <-[id] Heq2 in r') with
+          (rew [id] (f_equal RT_rt HeqRT) in rew [id] (struct_rfn_eq lts) in r') by normalize_dep_rt_goal.
+        exact Hxrfn'. }
       rewrite big_sepL_P_eq.
       rewrite pzipl_core_map_eq.
       rewrite rew_compose rew_UIP.
@@ -2194,13 +2332,18 @@ Section ltype_def.
         simpl. rewrite rew_UIP'. done.
     - (* array *)
       simp lty_own_pre.
-      iIntros "(%ly & %Halg & %Hsz & %Hly & Hlb & %r' & Ha & #Hl)".
+      iIntros "(%ly & %Halg & %Hsz & %Hly & Hlb & %Hconc & %r' & Ha & #Hl)".
       rewrite big_sepL_P_eq.
       iExists ly. iR. iR. iR. iFrame.
+      iSplitR; first (iPureIntro; rewrite place_rfn_is_concrete_transport in Hconc |- *; exact Hconc).
       (*set (Heq' := lty_core_rt_eq ).*)
       iExists (rew [id]Heq in r').
       iSplitL "Ha". { normalize_dep_rt_goal. }
-      iModIntro. iMod "Hl" as "(%Hlen & Hl)". iModIntro.
+      iModIntro. iMod "Hl" as "(%Hxrfn & %Hlen & Hl)". iModIntro.
+      iSplitR.
+      { iPureIntro.
+        pose (HeqRT := eq_sym (lty_core_rt_eq (ArrayLty def len lts))).
+        exact (proj1 (is_xrfn_transport_iff HeqRT Heq r') Hxrfn). }
       iSplitR. { rewrite -Hlen. iPureIntro. clear. rewrite (UIP_refl _ _ Heq). done. }
       rewrite big_sepL_P_eq.
       assert (OfTyLty def = lty_core $ OfTyLty def) as Hcore_eq. { done. }
@@ -2226,14 +2369,16 @@ Section ltype_def.
     - (* enum *)
       simp lty_own_pre.
       rewrite (UIP_refl _ _ Heq). clear Heq.
-      iIntros "(%el & %Hel & %Hly & Hlb & %r' & Hrfn & #Hown)".
+      iIntros "(%el & %Hel & %Hly & Hlb & %Hconc & %r' & Hrfn & #Hown)".
       iExists el.
       do 2 (iSplitR; first done).
       iSplitL "Hlb"; [iFrame | ].
+      iSplitR; first (iPureIntro; rewrite place_rfn_is_concrete_transport in Hconc |- *; exact Hconc).
       iExists r'. iSplitL "Hrfn"; [done | ].
       destruct variant as [v | ]; simpl in *.
       + destruct (decide (enum_tag en r' = Some v.(elv_tag))); simpl in *.
-        * iModIntro. iMod "Hown" as "(%variant_ly & %Htag & %Hvariant & %Hst & Hdisc & Hpad1 & Hdata & Hpad2)". iModIntro.
+        * iModIntro. iMod "Hown" as "(%Hxrfn & %variant_ly & %Htag & %Hvariant & %Hst & Hdisc & Hpad1 & Hdata & Hpad2)". iModIntro.
+          iSplitR; first done.
           iExists variant_ly. iR. rewrite lty_core_syn_type_eq. iR. iR.
           iFrame "Hdisc Hpad1 Hpad2".
            iDestruct "Hdata" as "(%rv & %Hrfn & %Heq1 & Hdata)".
@@ -2243,12 +2388,14 @@ Section ltype_def.
           iApply (lty_own_pre_rfn_eq with "Hdata").
           rewrite /transport_rfn.
           normalize_dep_rt_goal.
-        * iModIntro. iMod "Hown" as "(%variant_ly & %Htag & %Hvariant & %Hst & Hdisc & Hpad1 & Hdata & Hpad2)". iModIntro.
+        * iModIntro. iMod "Hown" as "(%Hxrfn & %variant_ly & %Htag & %Hvariant & %Hst & Hdisc & Hpad1 & Hdata & Hpad2)". iModIntro.
+          iSplitR; first done.
           iExists variant_ly. iR. iR. iR.
           iFrame "Hdisc Hpad1 Hpad2".
            iDestruct "Hdata" as "(%rv & %Hrfn & %Heq1 & Hdata)".
            iExists rv. iSplit; first done. iExists Heq1. iExact "Hdata".
-      + iModIntro. iMod "Hown" as "(%variant_ly & %Htag & %Hvariant & %Hst & Hdisc & Hpad1 & Hdata & Hpad2)". iModIntro.
+       + iModIntro. iMod "Hown" as "(%Hxrfn & %variant_ly & %Htag & %Hvariant & %Hst & Hdisc & Hpad1 & Hdata & Hpad2)". iModIntro.
+         iSplitR; first done.
         iExists variant_ly. iR. iR. iR.
         iFrame "Hdisc Hpad1 Hpad2".
         iDestruct "Hdata" as "(%Heq1 & Hdata)".

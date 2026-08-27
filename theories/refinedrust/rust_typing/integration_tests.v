@@ -391,7 +391,8 @@ Section test.
 
   (* The subtype of positive integers *)
   Local Definition P_a := λ (x : Z) (y : Z), (∃ z : Z, ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝)%I : iProp Σ.
-  Local Program Definition Pdef := mk_pers_ex_inv_def P_a true _ _.
+  Local Program Definition Pdef := mk_pers_ex_inv_def P_a true _ _ _.
+  Next Obligation. intros. iIntros "$". iPureIntro. intros _. eexists. done. Qed.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. ex_t_solve_timeless. Qed.
   Local Definition Pty := (∃; Pdef, int I32)%I.
@@ -402,17 +403,19 @@ Section test.
   Local Definition P_b := λ (π : thread_id) (x : Z) (y : Z), (∃ (z : Z) (l : loc), ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝ ∗ guarded true (l ◁ₗ[π, Owned] #42%Z @ (◁ int I32)))%I : iProp Σ.
   Local Definition S_b := λ (π : thread_id) (κ : lft) (x : Z) (y : Z), (∃ (z : Z) (l : loc), ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝ ∗ guarded false (l ◁ₗ[π, Shared κ] #42%Z @ (◁ int I32)))%I : iProp Σ.
 
-  Local Program Definition Adef := mk_ex_inv_def_auto_ghost_drop P_b S_b _ false [] [] _ _ _.
+  Local Program Definition Adef := mk_ex_inv_def_auto_ghost_drop P_b S_b _ false _ [] [] _ _ _.
   Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
+  Next Obligation. ex_plain_t_solve_is_xrfn. Qed.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. rewrite /S_b. ex_plain_t_solve_shr_mono. Qed.
   Next Obligation. rewrite /P_b /S_b. ex_plain_t_solve_shr. Qed.
 
-  Local Program Definition Bdef := mk_auto_ex_inv_def P_b false [] [] _ _ _ _.
+  Local Program Definition Bdef := mk_auto_ex_inv_def P_b false _ [] [] _ _ _ _.
+  Next Obligation. ex_plain_t_solve_is_xrfn. Qed.
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
   Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation. ex_t_solve_auto_shr_persistent. Qed.
+  Next Obligation. ex_plain_t_solve_auto_shr_mono. Qed.
 End test.
 
 
@@ -467,6 +470,9 @@ Section std_option_Option_ty.
   Next Obligation.
     solve_inhabited.
   Defined.
+  Next Obligation.
+    solve_enum_is_xrfn_congr.
+  Qed.
   Next Obligation.
     done.
   Qed.
@@ -872,10 +878,12 @@ Section test_box.
       (λ π _ (_rfn_binder : RT_rt ((place_rfn (T_rt))%type : RT)),
               let 'x := _rfn_binder in (∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop T_ty π r) ∗ True)%I
       (false)
+      _
       ([] ++ ty_lfts T_ty)
       ([] ++ ty_wf_E T_ty)
       _ _ _ _
     .
+    Next Obligation. ex_plain_t_solve_is_xrfn. Qed.
     Next Obligation. ex_plain_t_solve_shr_auto. Defined.
     Next Obligation. ex_t_solve_persistent. Qed.
     Next Obligation. intros ?; ex_plain_t_solve_shr_mono. Qed.
@@ -932,14 +940,22 @@ Section test_rectypes.
   Context `{!typeGS Σ}.
 
   Local Program Definition unit_abs_inv {X : RT} : ex_inv_def X unitRT :=
-    mk_ex_inv_def (λ _ _ _, True)%I (λ _ _ _ _, True)%I (λ _ _ _, True)%I
-      true [] [] _ _ _ _.
+    mk_ex_inv_def (λ _ x _, ⌜is_xrfn x⌝)%I (λ _ _ x _, ⌜is_xrfn x⌝)%I (λ _ _ _, True)%I
+      true _ [] [] _ _ _ _.
+  Next Obligation.
+    intros. iIntros "%Hxr". iSplit; first done.
+    iPureIntro. intros _. exact Hxr.
+  Qed.
   Next Obligation. intros. unfold TCNoResolve. apply _. Qed.
   Next Obligation. eauto. Qed.
   Next Obligation.
     simpl. intros X F tid κ x y q ?.
-    iIntros "_ _ Htok _".
+    intros _.
+    iIntros "#CTX _ Htok Hxr". iDestruct "CTX" as "(LFT & LLCTX)".
+    iApply fupd_logical_step. rewrite right_id.
+    iMod (bor_persistent with "LFT Hxr Htok") as "(>Hxr & Htok)"; first done.
     iApply logical_step_intro. iFrame.
+    iModIntro. done.
   Qed.
   Next Obligation.
     simpl. intros X F tid x y ? ?.
@@ -1030,10 +1046,14 @@ Section rectypes_List_ty.
             (λ π inner_rfn (_ty_rfn : RT_rt (((place_rfn (T_rt)) * (list (place_rfn (T_rt))))%type : RT)),
                     let '(x, xs) := _ty_rfn in ⌜(inner_rfn : RT_rt rectypes_List_Cons_rt)  = -[(x); #(#xs)]⌝ ∗ True)%I
             (true)
+            _
             ([])
             ([])
             _ _ _ _
           .
+    Next Obligation.
+      ex_plain_t_solve_is_xrfn.
+    Qed.
     Next Obligation.
       ex_plain_t_solve_shr_auto.
     Defined.
@@ -1084,9 +1104,11 @@ Section rectypes_List_ty.
       solve_inhabited.
     Defined.
     Next Obligation.
+      solve_enum_is_xrfn_congr.
+    Qed.
+    Next Obligation.
       done.
     Qed.
-
     Next Obligation.
       solve_mk_enum_tag_consistent.
     Defined.

@@ -81,7 +81,7 @@ Section int.
   Lemma ty_shr_int_in_range l π κ n m it : l ◁ₗ{π, m, κ} n @ int it -∗ ▷ ⌜n ∈ it⌝.
   Proof.
     rewrite /ty_shr /= int_own_val_unfold.
-    iIntros "(%v & (%ly & -> & Hv & Ha & Halg & Hl))" => /=. iNext. iDestruct "Ha" as "%Hn".
+    iIntros "(_ & %v & (%ly & -> & Hv & Ha & Halg & Hl))" => /=. iNext. iDestruct "Ha" as "%Hn".
     iPureIntro. by eapply val_to_Z_in_range.
   Qed.
 

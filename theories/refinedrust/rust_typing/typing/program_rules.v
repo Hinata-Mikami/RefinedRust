@@ -4713,6 +4713,7 @@ Section subsume.
     iIntros "Ha !> Hcred".
     iMod ("Ha" with "Hcred") as "(%L4 & %ly' & %rt2 & %lt2 & %r2 & %rt3 & %ty3 & %r3 & %upd' & HT)".
     iDestruct "HT" as "(Hshr & %Halg' & Hlb & Hsc & Hblocked & Hcond' & %Hsteq2 & #Hincl & HL & HT)".
+    iPoseProof (ty_shr_is_xrfn with "Hshr") as "%Hxr".
     iPoseProof (typed_place_cond_syn_type_compat with "Hcond'") as "%Hst_compat".
     assert (ly = ly') as <-. {
       move: Halg Halg'.
@@ -4734,14 +4735,17 @@ Section subsume.
     iMod ("Hs" with "HL Hf HT") as (?) "(Hl & Hcond'' & ? & HR' & ? & HL & Hf & HT)".
     iPoseProof ("HT" with "Hl") as "Hfin".
     iMod ("Hfin" with "[] [$] HE HL [$]") as "(%L5 & HL & HT)"; first done.
-    iModIntro. iExists _, _, _, _, _, _. iFrame.
-    iL. done.
+    iModIntro. iExists L5, rt3, ty3, (#r3), r3, ly.
+    iSplitR; first done.
+    iSplitR. { iPureIntro. by apply is_xrfn_place_in. }
+    iFrame "∗ %".
   Qed.
 
   Lemma type_borrow_shr_end_owned E L π κ l orty {rt : RT} (ty : type rt) (r : rt) bmin `{Hint : !TCOrT (CheckConfig rr_config_dont_interpret_shrref_typing_hints) TCTrue} (T : typed_borrow_shr_end_cont_t bmin rt):
 
     (** Interpret the type annotation *)
     interpret_typing_hint E L π (if Hint then None else orty) bmin ty r (λ L2 rt2 ty2 r2 upd,
+      ⌜is_xrfn r2⌝ ∗
       ⌜lctx_place_update_kind_incl E L2 (UpdUniq [κ]) bmin⌝ ∗
       ⌜lctx_lft_alive E L2 κ⌝ ∗
       ⌜Forall (lctx_lft_alive E L2) (ty_lfts ty2)⌝ ∗
@@ -4764,7 +4768,7 @@ Section subsume.
 
     set (upd1 := (mkPUKRes (allowed:=bmin)(rt1:=rt2) (UpdUniq [κ]) eq_refl opt_place_update_eq_refl)).
 
-    iDestruct "HT" as "(%Hincl & %Hal & %Hal' & %E' & Hna & HT)".
+    iDestruct "HT" as "(%Hxr & %Hincl & %Hal & %Hal' & %E' & Hna & HT)".
     iPoseProof (na_own_empty with "Hna") as "#Hna'".
     iSpecialize ("HT" with "Hna").
 
@@ -4786,7 +4790,7 @@ Section subsume.
     { eauto with iFrame. }
     iMod "Hcl_F" as "_".
     (*iPoseProof (place_rfn_interp_owned_share' with "Hrfn") as "#Hrfn'".*)
-    iPoseProof (ty_share _ F with "[$LFT $LLCTX] Hna' Htok [] [//] Hlb Hb") as "Hshr"; first done.
+    iPoseProof (ty_share _ F with "[$LFT $LLCTX] Hna' Htok [] [//] Hlb Hb") as "Hshr"; first done; first exact Hxr.
     { iPureIntro. by apply Hst_compat. }
     iApply logical_step_fupd.
     iApply (logical_step_compose with "Hshr").
@@ -4798,13 +4802,14 @@ Section subsume.
     (*set (upd := (mkPUKRes (UpdUniq [κ]) eq_refl opt_place_update_eq_refl)).*)
     iExists _, ly, _, (ShrBlockedLtype ty2 κ), _, _, ty2, _, _.
     iPoseProof ("Hscincl" with "Hsc") as "#Hsc2".
-    iFrame "Hshr Hlb Hsc2 HL".
+    iFrame "Hshr Hlb Hsc2 HL %".
     iSplitR. { iPureIntro. by apply Hst_compat. }
     iSplitL "Hinh Hcred1".
     { iModIntro. rewrite ltype_own_shrblocked_unfold /shr_blocked_lty_own.
       iExists ly. iFrame "Hlb".
       iSplitR. { iPureIntro. by apply Hst_compat. }
       iR. iR.
+      iSplitR; first (iPureIntro; apply place_rfn_is_concrete_in).
       iExists r2. iSplitR; first done. iFrame "Hshr".
       iIntros "Hdead". iMod ("Hinh" with "Hdead"). iApply (lc_fupd_add_later with "Hcred1").
       iNext. eauto with iFrame. }
@@ -4824,6 +4829,7 @@ Section subsume.
   Global Existing Instance type_borrow_shr_end_owned_inst | 20.
 
   Lemma type_borrow_shr_end_uniq E L π κ l orty {rt : RT} (ty : type rt) (r : rt) bmin κ' γ (T : typed_borrow_shr_end_cont_t bmin rt):
+    ⌜is_xrfn r⌝ ∗
     ⌜lctx_place_update_kind_incl E L (UpdUniq [κ]) bmin⌝ ∗
     ⌜lctx_lft_incl E L κ κ'⌝ ∗
     ⌜lctx_lft_alive E L κ⌝ ∗
@@ -4832,7 +4838,7 @@ Section subsume.
     (T L rt (ShrBlockedLtype ty κ) (#r) rt ty r (mkPUKRes (UpdUniq [κ]) eq_refl opt_place_update_eq_refl)))
     ⊢ typed_borrow_shr_end π E L κ l orty (◁ ty) (#r) (Uniq κ' γ) bmin T.
   Proof.
-    simpl. iIntros "(%Hincl & %Hincl2 & %Hal & %Hal' & %E' & Hna & HT)".
+    simpl. iIntros "(%Hxr & %Hincl & %Hincl2 & %Hal & %Hal' & %E' & Hna & HT)".
     iPoseProof (na_own_empty with "Hna") as "#Hna'".
     iSpecialize ("HT" with "Hna").
     (* basically, we do the same as for creating a mutable reference, but then proceed to do sharing *)
@@ -4863,8 +4869,10 @@ Section subsume.
     iNext. iMod ("Ha") as "(Hl & Htok1)".
 
     iMod (place_rfn_interp_mut_share' with "LFT Hrfn Hauth Htok1") as "(#Hrfn & Hmut & Hauth & Htok1)"; first done.
+    iDestruct "Hrfn" as %<-.
     iPoseProof (ty_share _ F with "[$LFT $LLCTX] Hna' [Htok1 Htok2] [] [] Hlb Hl") as "Hstep".
     { done. }
+    { exact Hxr. }
     { rewrite ty_lfts_unfold -lft_tok_sep. iFrame. }
     { done. }
     { done. }
@@ -4872,8 +4880,6 @@ Section subsume.
     iApply (logical_step_intro_tr with "Hat").
     iModIntro. iIntros "Hat Hcred'". iModIntro.
     iIntros "(#Hshr & Htok) Hcred1".
-    iDestruct "Hrfn" as "<-".
-
     set (upd := (mkPUKRes (UpdUniq [κ]) eq_refl opt_place_update_eq_refl)).
     iExists _, ly, rt, (ShrBlockedLtype ty κ), r, rt, ty, r, upd. iFrame.
     iR. iR. iR.
@@ -4885,8 +4891,10 @@ Section subsume.
     iDestruct "Hmut" as ">Hmut". iR.
     iSplitL "Hauth Hmut Hat Hcred' Hl_cl".
     { rewrite ltype_own_shrblocked_unfold /shr_blocked_lty_own.
-      iExists ly. iR. iR. iR. iR. iExists _. iR.
-      iFrame "∗ #". iModIntro.
+      iExists ly. iR. iR. iR. iR. iModIntro.
+      iSplitR; first (iPureIntro; apply place_rfn_is_concrete_in).
+      iExists _. iR.
+      iFrame "∗ #".
       iApply tr_weaken; last done. simpl. unfold num_laters_per_step; lia. }
     iSplitR.
     { iApply ofty_shr_blocked_place_cond. iApply place_update_kind_incl_refl. }
@@ -4899,6 +4907,7 @@ Section subsume.
   Lemma type_borrow_shr_end_shared E L π κ l orty {rt : RT} (ty : type rt) (r : rt) κ' bmin `{Hint : !TCOrT (CheckConfig rr_config_dont_interpret_shrref_typing_hints) TCTrue} (T : typed_borrow_shr_end_cont_t bmin rt) :
     ⌜lctx_lft_incl E L κ κ'⌝ ∗
     interpret_typing_hint E L π (if Hint then None else orty) UpdWeak ty r (λ L2 rt2 ty2 r2 _,
+      ⌜is_xrfn r2⌝ ∗
       (T L2 rt (◁ ty) (#r) _ ty2 r2 (mkPUKRes UpdBot eq_refl opt_place_update_eq_refl)))
     ⊢ typed_borrow_shr_end π E L κ l orty (◁ ty) (#r) (Shared κ') bmin T.
   Proof.
@@ -4908,10 +4917,12 @@ Section subsume.
     iModIntro. iApply logical_step_intro. iIntros "Hcred".
 
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hl" as "(%ly & %Halg & %Hly & Hsc & Hlb & %r' & <- & #Hl)".
+    iDestruct "Hl" as "(%ly & %Halg & %Hly & Hsc & Hlb & %Hconc & %r' & #Hrfn & #Hl)".
+    iPoseProof (place_rfn_interp_shared_concrete with "[//] Hrfn") as "%Heqrfn".
+    injection Heqrfn as <-.
     iDestruct "Hl" as "-#Hl". iMod (fupd_mask_mono with "Hl") as "#Hl"; first done.
 
-    iMod ("HT" with "[//] [//] [//] [$LFT $LLCTX] HE HL") as "(%L2 & %rt2 & %ty2 & %r2 & %upd2 & HL & (_ & Hincl2) & Hcond & Ha & HT)".
+    iMod ("HT" with "[//] [//] [//] [$LFT $LLCTX] HE HL") as "(%L2 & %rt2 & %ty2 & %r2 & %upd2 & HL & (_ & Hincl2) & Hcond & Ha & %Hxr2 & HT)".
     iDestruct "Hincl2" as "(Hsca & _ & #Hincl2)".
     iPoseProof ("Hincl2" with "Hl") as "Hl'".
     iPoseProof ("Hsca" with "Hsc") as "Hsc'".
@@ -4949,7 +4960,7 @@ Section subsume.
     iApply (logical_step_wand with "Ha").
     iModIntro. iIntros "HT Hcred".
     iMod ("HT" with "Hcred") as "(%L2 & %ly & % & %lt2 & % & %rt2' & %ty2 & %r2' & %res & Hl & %Hst1 & ? & ? & Hl' & Hcond & %Hst2 & ? & HL & HT)".
-    iFrame. iR.  iL.
+    iFrame. iModIntro. iFrame "%".
     iApply (ltype_eq_place_cond_trans with "[//] [//] Hcond").
   Qed.
   Definition typed_borrow_shr_end_fold_inst := [instance @typed_borrow_shr_end_fold].

@@ -376,21 +376,23 @@ Section unfold.
   Proof.
     iModIntro. iIntros (π l) "Hl".
     rewrite ltype_own_array_unfold /array_ltype_own/=.
-    iDestruct "Hl" as "(%ly & %Hst & %Hsz & % & #Hlb & %r' & Hrfn & #Hb)".
+    iDestruct "Hl" as "(%ly & %Hst & %Hsz & % & #Hlb & %Hconc & %r' & Hrfn & #Hb)".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iExists (mk_array_layout ly len). simpl.
     iSplitR. { iPureIntro. eapply syn_type_has_layout_array; done. }
-    iR. iR. iR. iExists _. iFrame.
-    iModIntro. iMod "Hb" as "(%Hlen & Hb)".
+    iR. iR. iR. iR. iExists _. iFrame.
+    iModIntro. iMod "Hb" as "(%Hxr & %Hlen & Hb)".
     rewrite big_sepL2_replicate_l; last done.
-    rewrite /ty_shr/= array_t_shr_unfold.
-    iExists ly. iR. iR. iR. iR. iR. iFrame "#".
-    iApply big_sepL_fupd.
-    iApply (big_sepL_impl with "Hb").
-    iModIntro. iIntros (k r'' Hlook) "(_ & Hl)".
-    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hl" as "(%ly' & %Hst' & %Hloc & Hst & Hlb' & %r2 & Hrfn & #>Ha)".
-    iModIntro. rewrite /array_own_el_shr. eauto with iFrame.
+    iMod (big_sepL_fupd lftE (λ i r, array_own_el_shr π κ i ly ty r l) r' with "[Hb]") as "Hb".
+    { iApply (big_sepL_impl with "Hb").
+      iModIntro. iIntros (k r'' Hlook) "(_ & Hl)".
+      rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+      iDestruct "Hl" as "(%ly' & %Hst' & %Hloc & Hst & Hlb' & %Hconc' & %r2 & Hrfn & #>Ha)".
+      iModIntro. rewrite /array_own_el_shr. iExists r2. iFrame. }
+    iModIntro.
+    rewrite /ty_shr/= array_t_shr_unfold /array_t_shr_def.
+    iSplit. { done. }
+    iExists ly. iR. iR. iR. iR. iR. iFrame "# ∗".
   Qed.
 
   Lemma array_t_unfold_1_uniq {rt} κ γ (ty : type rt) (len : nat) rs :
@@ -502,30 +504,35 @@ Section unfold.
     iModIntro. iIntros (π l) "Hl".
     rewrite ltype_own_array_unfold /array_ltype_own/=.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hl" as "(%ly & %Hst & % & Hsc & #Hlb & %r' & Hrfn & #Hb)".
+    iDestruct "Hl" as "(%ly & %Hst & % & Hsc & #Hlb & %Hconc & %r' & Hrfn & #Hb)".
     apply syn_type_has_layout_array_inv in Hst as (ly' & Hst & -> & Hsz).
     iExists ly'. iR.
     iSplitR. { iPureIntro. move: Hsz. rewrite ly_size_mk_array_layout MaxInt_eq. lia. }
-    iR. rewrite ly_size_mk_array_layout. iR.
+    iR. rewrite ly_size_mk_array_layout. iR. iR.
     iExists _. iFrame.
     iModIntro. iMod "Hb" as "Hb". iModIntro.
     rewrite /ty_shr/= array_t_shr_unfold.
-    iDestruct "Hb" as "(%ly & _ & %Hst' & % & % & % & _ & Hb)".
-    iR.
+    iDestruct "Hb" as "(%Hxr & %ly & _ & %Hst' & % & % & % & _ & Hb)".
+    iR. iR.
     rewrite big_sepL2_replicate_l; last done.
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
     iApply (big_sepL_wand with "Hb"). iApply big_sepL_intro.
     iModIntro. iIntros (k r'' Hlook) "Hl".
     simp_ltypes. iR.
     rewrite /array_own_el_shr.
-    iDestruct "Hl" as "(%r1 & ? & #Hl)".
+    iDestruct "Hl" as "(%r1 & Hrfn & #Hl)".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iExists _. iR.
     iSplitR. { iPureIntro. apply has_layout_loc_offset_loc; last done. by eapply use_layout_alg_wf. }
     iPoseProof (ty_shr_sidecond with "Hl") as "#Hsc".
     iR. iSplitR. { iApply loc_in_bounds_array_offset; last done. apply lookup_lt_Some in Hlook.
       simpl in *. lia. }
-    iExists _. iFrame. eauto.
+    destruct r'' as [r''|γ].
+    - iSplitR; first (iPureIntro; apply place_rfn_is_concrete_in).
+      iExists _. iFrame. eauto.
+    - destruct Hxr as [xrs Hxr]. subst r'.
+      apply list_lookup_fmap_Some in Hlook as (xr & Hxr & _).
+      simpl in Hxr. discriminate Hxr.
   Qed.
 
   Lemma array_t_unfold_2_uniq {rt} κ γ (ty : type rt) (len : nat) rs :

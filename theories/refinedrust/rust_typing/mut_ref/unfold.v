@@ -77,17 +77,19 @@ Section ltype_agree.
   Proof.
     iModIntro. iIntros (π l).
     rewrite ltype_own_mut_ref_unfold /mut_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
-    iIntros "(%ly & %Hst & % & #Hlb & %ri & %γ & Hrfn & #Hb)".
+    iIntros "(%ly & %Hst & % & #Hlb & %Hconc & %ri & %γ & Hrfn & #Hb)".
     apply syn_type_has_layout_ref_inv in Hst as ?. subst.
     iExists _. iFrame "# ∗". iSplitR; first done. iSplitR; first done.
-    iModIntro. iMod "Hb" as "(%vi & %li & Hs & %Hvi & Hb)".
+    iSplitR; first done.
+    iModIntro. iMod "Hb" as "(%Hxr & %vi & %li & Hs & %Hvi & Hb)".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     rewrite /ty_shr/= mut_ref_shr_unfold.
-    iDestruct "Hb" as "(%ly' & >%Hst' & >%Hly' & >Hsc & >Hlb' & %r' & >Hrfn & #Hb)".
+    iDestruct "Hb" as "(%ly' & >%Hst' & >%Hly' & >Hsc & >Hlb' & >%Hconc' & %r' & >Hrfn & #Hb)".
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb'") as "%Hli".
     iModIntro. iExists vi, li, ly', r'.
     iSplitR; first done. iSplitR; first done. iFrame "Hrfn Hs".
     iSplitR; first done. iSplitR; first done. iSplitR; first done.
+    iSplitR; first done.
     iFrame "Hlb Hlb' Hsc". iNext. iFrame "#".
   Qed.
 
@@ -149,14 +151,17 @@ Section ltype_agree.
     ⊢ ltype_incl' (Shared κ') r r (◁ (mut_ref κ ty)) (MutLtype (◁ ty) κ).
   Proof.
     iModIntro. iIntros (π l). rewrite ltype_own_mut_ref_unfold /mut_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
-    iIntros "(%ly & ? & ? & Hsc & Hlb & %r' & Hrfn & #Hb)". destruct r' as [r' γ'].
+    iIntros "(%ly & ? & ? & Hsc & Hlb & %Hconc & %r' & Hrfn & #Hb)". destruct r' as [r' γ'].
     iExists ly. iFrame "∗ #".
+    iSplitR; first done.
     iModIntro. iMod "Hb".
     rewrite /ty_shr/= mut_ref_shr_unfold.
-    iDestruct "Hb" as "(%vi & %li & %ly' & %ri & _ & %Hlyl & Hrfn' & Hs & %Halg & %Hvi & %Hlyli & Hlbl & Hlbli & Hsc & #Hb)".
-    iModIntro. iExists vi, li. iFrame. iSplitR; first done.
+    iDestruct "Hb" as "(%vi & %li & %ly' & %ri & %Hxr & _ & _ & Hrfn' & Hs & %Halg & %Hvi & %Hlyli & Hlbl & Hlbli & Hsc & #Hb)".
+    iModIntro. iSplitR; first done. iExists vi, li. iFrame. iSplitR; first done.
     iNext. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iExists ly'. iFrame "∗ #". done.
+    iExists ly'. iFrame "∗ #". iSplitR; first done. iSplitR; first done.
+    iPureIntro. destruct Hxr as [[xr γx] Hxr].
+    injection Hxr as -> ->. apply place_rfn_is_concrete_in.
   Qed.
 
   Local Lemma mut_ref_unfold_2' κ k r :

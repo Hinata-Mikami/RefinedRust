@@ -7,6 +7,28 @@ From refinedrust.base Require Import options.
 Section subltype.
   Context `{!typeGS Σ}.
 
+  Local Lemma array_ltype_shared_elems_is_xrfn {rt} π (def : type rt) len lts
+      (rs : list (place_rfn rt)) κ (ls : nat → loc) st :
+    length rs = len →
+    ([∗ list] i ↦ lt; r ∈ interpret_iml (◁ def) len lts; rs,
+      ⌜ltype_st lt = st⌝ ∗ ls i ◁ₗ[π, Shared κ] r @ lt) -∗
+    |={lftE}=> ⌜is_xrfn (rt := listRT (place_rfnRT rt)) rs⌝.
+  Proof.
+    iIntros (Hlen) "#Ha".
+    iInduction len as [|len] "IH" forall (rs lts ls Hlen).
+    - destruct rs; last done. iModIntro. iPureIntro. by exists [].
+    - destruct rs as [|r rs]; first done.
+      rewrite interpret_iml_succ. simpl.
+      iDestruct "Ha" as "((_ & Ha1) & Ha)".
+      rewrite ltype_own_unseal.
+      iMod (ltype_own_pre_shared_canonical false with "Ha1") as "(%r' & -> & %Hxr)".
+      iMod ("IH" $! rs _ (λ i, ls (S i)) with "[] [Ha]") as "%Hxrs".
+      { iPureIntro. simpl in Hlen. lia. }
+      { done. }
+      iModIntro. iPureIntro. apply is_xrfn_list_iff. constructor; last by apply is_xrfn_list_iff.
+      destruct Hxr as [xr ->]. by exists xr.
+  Qed.
+
   Local Lemma array_ltype_incl_big_wand_in {rt1 rt2} k π F (def1 : type rt1) (def2 : type rt2) len (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) rs1 rs2 l b ly :
     lftE ⊆ F →
     length rs1 = len → length rs2 = len →
@@ -94,14 +116,16 @@ Section subltype.
     iIntros (Hst) "#Hel".
     iModIntro. iIntros (π l) "Ha".
     rewrite !ltype_own_array_unfold /array_ltype_own.
-    iDestruct "Ha" as "(%ly & %Halg & %Hsz & %Hly & Hlb & %r' & <- & #Ha)".
+    iDestruct "Ha" as "(%ly & %Halg & %Hsz & %Hly & Hlb & %Hconc & %r' & <- & #Ha)".
     iExists ly. iSplitR. { rewrite -Hst. done. }
-    iR. iR. iFrame. iExists rs2. iR.
-    iModIntro. iMod "Ha" as "(%Hlen & Ha)".
+    iR. iR. iFrame. iSplitR; first (iPureIntro; apply place_rfn_is_concrete_in).
+    iExists rs2. iR.
+    iModIntro. iMod "Ha" as "(%Hxr & %Hlen & Ha)".
     iPoseProof ("Hel" with "[//]") as "Hc".
-    iDestruct "Hc" as "(%Hb & Hc)". iR.
-    iMod (array_ltype_incl_big_wand_in 0 with "Hc Ha") as "Ha"; [done.. | ].
-    done.
+    iDestruct "Hc" as "(%Hb & Hc)".
+    iMod (array_ltype_incl_big_wand_in 0 with "Hc Ha") as "#Ha"; [done.. | ].
+    iMod (array_ltype_shared_elems_is_xrfn with "Ha") as "%Hxr2"; first done.
+    iR. iR. done.
   Qed.
   Lemma array_ltype_incl_shared_in {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) κ' rs1 rs2 :
     ty_syn_type def1 MetaNone = ty_syn_type def2 MetaNone →
@@ -135,10 +159,10 @@ Section subltype.
     iIntros (Hst) "#Hel".
     iModIntro. iIntros (π l) "Ha".
     rewrite !ltype_own_array_unfold /array_ltype_own.
-    iDestruct "Ha" as "(%ly & %Halg & %Hsz & %Hly & Hlb & %r' & Hrfn & #Ha)".
+    iDestruct "Ha" as "(%ly & %Halg & %Hsz & %Hly & Hlb & %Hconc & %r' & Hrfn & #Ha)".
     iExists ly. iSplitR. { rewrite -Hst. done. }
-    iR. iR. iFrame "Hlb". iExists r'. iFrame.
-    iModIntro. iMod "Ha" as "(%Hlen & Ha)". iR.
+    iR. iR. iFrame "Hlb". iR. iExists r'. iFrame.
+    iModIntro. iMod "Ha" as "(%Hxr & %Hlen & Ha)". iR. iR.
     iMod (array_ltype_incl_big_wand 0 with "Hel Ha") as "Ha"; [done.. | ].
     done.
   Qed.
@@ -739,15 +763,18 @@ Section accessors.
       ).
   Proof.
     iIntros (?) "Hb". rewrite ltype_own_array_unfold /array_ltype_own.
-    iDestruct "Hb" as "(%ly & %Hst & % & %Hly & #Hlb & %r' & <- & #Hb)".
+    iDestruct "Hb" as "(%ly & %Hst & % & %Hly & #Hlb & %Hconc & %r' & <- & #Hb)".
     iExists ly. iR. iR. iR. iR.
-    iMod (fupd_mask_mono with "Hb") as "(<- & #Hb')"; first done.
+    iMod (fupd_mask_mono with "Hb") as "(%Hxr & <- & #Hb')"; first done.
     iModIntro. iFrame "Hb'".
     iIntros (def' lts' rs') "%Hst' %Hlen #Hb''".
     rewrite ltype_own_array_unfold /array_ltype_own.
     iModIntro.
     iExists ly. rewrite -Hst'. iR. iR. iR. iR.
-    iExists _. iR. iR. iModIntro. by iFrame "Hb''".
+    iSplitR; first (iPureIntro; apply place_rfn_is_concrete_in).
+    iExists _. iR. iModIntro.
+    iMod (array_ltype_shared_elems_is_xrfn with "Hb''") as "$"; first lia.
+    iR. by iFrame "Hb''".
   Qed.
 
 End accessors.

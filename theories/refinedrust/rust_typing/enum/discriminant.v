@@ -97,8 +97,9 @@ Section discriminant.
   Proof.
     intros -> Htag.
     rewrite !ltype_own_enum_unfold /enum_ltype_own.
-    iIntros "(%el & %Halg & %Hly & #Hlb & %r' & -> & #Hb)".
+    iIntros "(%el & %Halg & %Hly & #Hlb & %Hconc & %r' & -> & #Hb)".
     iExists el. do 2 (iSplitR; first done). iSplitR; first iFrame "Hlb".
+    iSplitR; first done.
     iExists r'. iSplitR; first done. iModIntro.
     iEval (rewrite /interp_enum_ltype_variant decide_True //) in "Hb".
     done.
@@ -350,9 +351,11 @@ Section subtype.
     ⊢ type_incl r (els_lookup_tag (enum_els en) tag) (enum_discriminant_t en) (int (els_tag_it (enum_els en))).
   Proof.
     intros Htag.
-    iApply type_incl_simple_type; simpl; last done.
-    iIntros "!>" (??) "(%tag' & %Htag' & (_ & Hv))".
-    assert (tag' = tag) as -> by congruence. done.
+    iApply type_incl_simple_type; simpl.
+    - iIntros "!>" (??) "(%tag' & %Htag' & (_ & Hv))".
+      assert (tag' = tag) as -> by congruence. done.
+    - iPureIntro. by eexists.
+    - done.
   Qed.
 
   Lemma weak_subtype_enum_discriminant_int E L {rt} (en : enum rt) r i it T :

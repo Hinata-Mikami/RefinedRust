@@ -384,7 +384,7 @@ Section place.
     iIntros (Φ F ??) "#(LFT & LLCTX) #HE HL Hf Hl HΦ/=".
     iPoseProof (struct_ltype_acc_shared F with "Hl") as "(%sl & %Halg & %Hly & %Hmem & #Hlb & Hb)"; first done.
     iApply fupd_wpe.
-    iMod (fupd_mask_mono with "Hb") as "(Hb & Hcl)"; first done.
+    iMod (fupd_mask_mono with "Hb") as "(%Hxr & Hb & Hcl)"; first done.
     iPoseProof (lctx_place_update_kind_outlives_use _ _ _ _ Houtl with "HE HL") as "#Houtl".
 
     eapply (sls_field_index_of_lookup) in Hfield as (ly & Hfield).
@@ -419,15 +419,25 @@ Section place.
     iMod ("Hcont" with "Hincl Hl2 [$] Hcond") as "Hs".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
     iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl2 & Hcond & #Hmin & ? & ? & HL & Hf & Hcont)".
+    iPoseProof "Hl2" as "#Hl2'".
+    iEval (rewrite ltype_own_unseal) in "Hl2'".
+    iPoseProof (ltype_own_pre_shared_canonical false with "Hl2'") as "Hcanon".
+    iMod (fupd_mask_mono with "Hcanon") as (r2) "(%Heq2 & %Hxr2)"; first done.
+    assert (is_xrfn (pupd_rfn upd')) as Hxr2'.
+    { destruct Hxr2 as [xr2 ->]. exists xr2. exact Heq2. }
+    iEval (rewrite -ltype_own_unseal) in "Hl2'".
     iFrame. simpl.
     iDestruct "Hc_close" as "[Hc_close _]".
     iPoseProof (typed_place_cond_syn_type_eq with "[] Hcond") as "%Hsteq2".
     { iApply place_update_kind_incl_trans; first done.
       destruct bmin0; done. }
-    iPoseProof ("Hc_close" with "Hl2 []") as "Ha".
+    iPoseProof ("Hc_close" with "Hl2' []") as "Ha".
     { rewrite -Hsteq2. done. }
-    iMod ("Hcl" with "[] Ha") as "Hl".
+    iMod ("Hcl" $! (<[i := upd'.(pupd_rt)]> rts)
+      (hlist_insert rts lts i _ upd'.(pupd_lt))
+      (plist_insert rts r i _ upd'.(pupd_rfn)) with "[] [Ha]") as "Hl".
     { rewrite length_insert//. }
+    { iSplit; last done. iPureIntro. by eapply is_xrfn_plist_insert. }
     iFrame "∗ #".
     iSplitL; first last.
     { iApply place_update_kind_incl_lub; last done.

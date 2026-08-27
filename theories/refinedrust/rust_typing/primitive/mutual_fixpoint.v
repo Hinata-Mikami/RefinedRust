@@ -544,6 +544,15 @@ Section fixpoint.
     - intros. unfold own_shr.
       eapply @limit_preserving_compl.
       + eapply bi.limit_preserving_entails; first apply _.
+        intros ? [] [] Heq. f_equiv. eapply Heq.
+      + intros n. simpl.
+        rewrite Hchain. simpl.
+        remember (tys n) as tyn.
+        dependent destruction tyn.
+        simpl. eapply ty_shr_is_xrfn.
+    - intros E κ l ly π r m q HE Hxr. unfold own_shr.
+      eapply @limit_preserving_compl.
+      + eapply bi.limit_preserving_entails; first apply _.
         intros ? [] [] Heq. do 9 f_equiv.
         { do 2 f_equiv. apply Heq. }
         apply Heq.
@@ -561,8 +570,8 @@ Section fixpoint.
         iMod (lft_incl_acc with "[] Htok") as "(%q' & Htok & Hcl_tok)"; first done.
         { iApply lft_intersect_mono; first iApply lft_incl_refl.
           iApply lft_incl_trans; first iApply "Hagg_incl". iApply Hlfts_incln. }
-        iPoseProof (ty_share with "RUST Hna Htok [] [//] Hlb Hb") as "Hlb"; first done.
-        { rewrite (H0 m). done. }
+        iPoseProof (ty_share with "RUST Hna Htok [] [//] Hlb Hb") as "Hlb"; first done; first done.
+        { rewrite (H m). done. }
         iApply logical_step_fupd.
         iApply (logical_step_compose with "Hlb").
         iApply logical_step_intro.

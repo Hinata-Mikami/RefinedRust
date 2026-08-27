@@ -62,11 +62,8 @@ Section resolve_ghost.
     iIntros "Ha" (???) "#CTX #HE HL Hl".
     iMod ("Ha" with "[//]") as "[(%r' & HObs & Ha) | (_ & Ha)]".
     - rewrite ltype_own_struct_unfold /struct_ltype_own.
-      iDestruct "Hl" as "(%sl & ? & ? & ? & ? & %rs & Hinterp & ?)".
-      iPoseProof (place_rfn_interp_shared_find_observation with "Hinterp HObs") as "Hrfn".
-      iExists _, _, _, _. iFrame. iApply maybe_logical_step_intro.
-      iL. rewrite ltype_own_struct_unfold /struct_ltype_own.
-      iExists _. by iFrame.
+      iDestruct "Hl" as "(%sl & ? & ? & ? & ? & %Hconc & Hl)".
+      destruct (place_rfn_is_concrete_ghost γ Hconc).
     - iExists _, _, _, _. iFrame. iApply maybe_logical_step_intro. by iFrame.
   Qed.
   Definition resolve_ghost_struct_Shared_inst := [instance @resolve_ghost_struct_Shared].

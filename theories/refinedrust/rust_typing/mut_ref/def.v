@@ -26,6 +26,7 @@ Section mut_ref.
   Definition mut_ref_shr_def {rt : RT} κ (inner : type rt) κ' π (rγ : place_rfn rt * gname) m (l : loc) : iProp Σ :=
     let '(r, γ) := rγ in
     (∃ (vi : val) (li : loc) (ly : layout) (r' : rt),
+      ⌜is_xrfn (r, γ)⌝ ∗
       ⌜m = MetaNone⌝ ∗
       ⌜l `has_layout_loc` void*⌝ ∗
       place_rfn_interp_shared r r' ∗
@@ -86,8 +87,11 @@ Section mut_ref.
       rewrite mut_ref_shr_unfold.
       iIntros (κ' π l [r γ]). apply _.
     - rewrite mut_ref_shr_unfold.
-      iIntros (κ' π l [r γ] m) "(%vi & %li & %ly & %r' & -> & % & ? &  _)".
+      iIntros (κ' π l [r γ] m) "(%vi & %li & %ly & %r' & _ & -> & % & ? &  _)".
       iPureIntro. eexists _. split; last by apply syn_type_has_layout_ref.
+      done.
+    - rewrite mut_ref_shr_unfold.
+      iIntros (κ' π [r γ] m l) "(%vi & %li & %ly & %r' & %Hxr & _)".
       done.
     - (* initiate sharing *)
     (*
@@ -108,7 +112,7 @@ Section mut_ref.
 
     *)
 
-    iIntros (E κ' l ly π [r γ] m q ?) "#[LFT TIME] #Hna Htok %Hst %Hly _ Hb".
+    iIntros (E κ' l ly π [r γ] m q ? Hxr) "#[LFT TIME] #Hna Htok %Hst %Hly _ Hb".
     rewrite mut_ref_own_val_unfold mut_ref_shr_unfold.
     iApply fupd_logical_step.
     iMod (bor_exists with "LFT Hb") as (v) "Hb"; first solve_ndisj.
@@ -170,7 +174,10 @@ Section mut_ref.
 
     (* recursively share *)
     iDestruct "Htok" as "(Htok1 & Htok2)".
+    destruct Hxr as [[xr xγ] Hxr]. inversion Hxr; subst r γ; clear Hxr.
+    iDestruct "rfn" as "%Heqr". subst r'.
     iPoseProof (ty_share _ E with "[$LFT $TIME] Hna [Htok2 Htoka] [//] [//] Hlb Hb") as "Hu"; first solve_ndisj.
+    { by eexists xr. }
     { rewrite ty_lfts_unfold. rewrite -!lft_tok_sep. iFrame. }
     iModIntro. iApply (logical_step_compose with "Hu").
     iApply (logical_step_intro_tr with "Hat").
@@ -188,10 +195,12 @@ Section mut_ref.
     iCombine "Htok Htok2" as "Htok".
     rewrite {2}lft_intersect_comm lft_intersect_assoc.
     iFrame "Htok".
-    iExists _, l0, ly0, r'. iR.
+    iExists v, l0, ly0, (RT_xrt rt xr). iSplitR.
+    { iPureIntro. eexists (xr, xγ). done. }
+    iR.
     iFrame "Hl".
     apply syn_type_has_layout_ref_inv in Hst as ->.
-    iR. iSplitR. { destruct r; simpl; eauto. }
+    iR. iSplitR; first done.
     iSplitR; first done. iSplitR; first done. iSplitR; first done.
     iSplitR. { replace (ly_size void*) with (length v); last by eapply val_decodes_to_ref_length.
       iFrame "Hlb'". }
@@ -199,8 +208,8 @@ Section mut_ref.
     iNext. iModIntro. iModIntro. done.
     - iIntros (κ0 κ' π [r γ] m l) "#Hincl".
       rewrite mut_ref_shr_unfold.
-      iIntros "(%vi & %li & %ly & %r' & -> & Hly & Hrfn & Hf & ? & ? & ? & ? & ? & ? & #Hb)".
-      iExists vi, li, ly, r'. iR. iFrame.
+      iIntros "(%vi & %li & %ly & %r' & %Hxr & -> & Hly & Hrfn & Hf & ? & ? & ? & ? & ? & ? & #Hb)".
+      iExists vi, li, ly, r'. iSplitR; first done. iR. iFrame.
       iSplitL "Hf". { iApply frac_bor_shorten; done. }
       iNext. iDestruct "Hb" as "#Hb". iModIntro. iMod "Hb". iModIntro.
       iApply ty_shr_mono; last done.

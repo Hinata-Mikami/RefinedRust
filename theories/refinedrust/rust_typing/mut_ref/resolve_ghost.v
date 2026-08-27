@@ -65,12 +65,11 @@ Section resolve_ghost.
     iIntros "HT". iIntros (F ??) "#CTX #HE HL Hb".
     iMod ("HT" with "[//]") as "HT". iDestruct "HT" as "[(%r & Hobs & HT) | (-> & HT)]".
     - rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
-      iDestruct "Hb" as "(%ly & %Hst & %Hly & ? & %γ0 & %r'& Hrfn & ?)".
-      iPoseProof (place_rfn_interp_shared_find_observation with "Hrfn Hobs") as "Hrfn".
-      iModIntro. iExists _, _, _, _. iFrame. iApply maybe_logical_step_intro.
-      iL. rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
-      iExists _. iFrame. done.
-    - iExists _, _, _, _. iFrame. iApply maybe_logical_step_intro. by iFrame.
+      iDestruct "Hb" as "(%ly & %Hst & %Hly & ? & %Hconc & _)".
+      exfalso. exact (place_rfn_is_concrete_ghost γ Hconc).
+    - rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
+      iDestruct "Hb" as "(%ly & %Hst & %Hly & ? & %Hconc & _)".
+      exfalso. exact (place_rfn_is_concrete_ghost γ Hconc).
   Qed.
   Definition resolve_ghost_mut_shared_inst := [instance @resolve_ghost_mut_shared].
   Global Existing Instance resolve_ghost_mut_shared_inst | 7.

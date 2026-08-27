@@ -36,10 +36,10 @@ Section type.
       ot_layout ot = ly ∧
       ot = UntypedOp ly;
     ty_shr κ π r m l :=
-      match r with
+      (⌜is_xrfn r⌝ ∗ match r with
       | Some r' => ∃ r'', place_rfn_interp_shared r' r'' ∗ T.(ty_shr) κ π r'' m l
       | None => (uninit (T.(ty_syn_type) m)).(ty_shr) κ π () m l
-      end%I;
+      end)%I;
     _ty_ghost_drop π r :=
       match r with
       | None => True
@@ -68,16 +68,18 @@ Section type.
     - iIntros (π r m v) "_". done.
     - iIntros (κ π r m v) "_". done.
     - unfold TCNoResolve. apply _.
-    - iIntros (κ π l r m) "Hl". destruct r as [r | ].
+    - iIntros (κ π l r m) "(_ & Hl)". destruct r as [r | ].
       + iDestruct "Hl" as "(%r'' & Hrfn & Hl)". iPoseProof (ty_shr_aligned with "Hl") as "Ha".
         iDestruct "Ha" as "(%ly & %Hly & %Hst)". iExists _. iR.
         iPureIntro.
         by apply syn_type_has_layout_untyped.
       + iPoseProof (ty_shr_aligned with "Hl") as "Ha".
         done.
-    - iIntros (E κ l ly π [r | ] m ? ?) "#CTX #Hna Htok %Hst %Hly #Hlb Hb".
+    - iIntros (κ π r m l) "($ & _)".
+    - iIntros (E κ l ly π r m ? HE Hxr) "#CTX #Hna Htok %Hst %Hly #Hlb Hb".
+      destruct Hxr as [xr ->]. destruct xr as [xr | ]; simpl.
       +
-      iAssert (&{κ} (∃ r', place_rfn_interp_owned r r' ∗ ∃ v : val, l ↦ v ∗ v ◁ᵥ{π, m} r' @ T))%I with "[Hb]" as "Hb".
+      iAssert (&{κ} (∃ r' : rt, place_rfn_interp_owned (PlaceIn ($#@{rt} xr)) r' ∗ ∃ v : val, l ↦ v ∗ v ◁ᵥ{π, m} r' @ T))%I with "[Hb]" as "Hb".
       { iApply (bor_iff with "[] Hb"). iNext. iModIntro. iSplit.
         - iIntros "(%v & Hl & Hown)".
           rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def.
@@ -88,14 +90,19 @@ Section type.
       iDestruct "CTX" as "(LFT & LLCTX)".
       iApply fupd_logical_step.
       rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok1 & Htok2)".
-      iMod (bor_exists_tok with "LFT Hb Htok1") as "(%r' & Hb & Htok1)"; first done.
+      iMod (bor_exists_tok with "LFT Hb Htok1") as "(%r' & Hb & Htok1)"; first solve_ndisj.
       iMod (bor_sep with "LFT Hb") as "(Hrfn & Hb)"; first done.
       iMod (place_rfn_interp_owned_share with "LFT Hrfn Htok1") as "(Hrfn & Htok1)"; first done.
+      iDestruct "Hrfn" as "<-".
       iCombine ("Htok1 Htok2") as "Htok". rewrite lft_tok_sep.
       apply syn_type_has_layout_untyped_inv in Hst.
-      iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna Htok [//] [//] Hlb Hb") as "Hstep"; first done.
+      iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna Htok [//] [//] Hlb Hb") as "Hstep".
+      { exact HE. }
+      { by eexists xr. }
       iApply (logical_step_wand with "Hstep").
-      iIntros "!> (Hl & $)". eauto with iFrame.
+      iIntros "!> (Hl & $)". iSplitR.
+      { iPureIntro. by eexists (Some xr). }
+      eauto with iFrame.
       + rewrite -lft_tok_sep. iDestruct "Htok" as "[Htok1 Htok2]".
       (*iAssert (&{κ} (ty_sidecond T ∗ ∃ v : val, l ↦ v ∗ v ◁ᵥ{π} .@ uninit (ty_syn_type T)))%I with "[Hb]" as "Hb".*)
       (*{ iApply (bor_iff with "[] Hb"). iNext. iModIntro. iSplit.*)
@@ -104,12 +111,16 @@ Section type.
       (*iDestruct "CTX" as "(LFT & TIME & LLCTX)".*)
       (*iApply fupd_logical_step. iMod (bor_sep with "LFT Hb") as "(_ & Hb)"; first done.*)
       iEval (rewrite maybe_uninit_own_val_unfold /maybe_uninit_own_val_def) in "Hb".
-      iPoseProof (ty_share (uninit _) E κ l ly π () m q with "CTX Hna [Htok1] [] [//] [//] Hb") as "Ha"; simpl; first done.
+      iPoseProof (ty_share (uninit _) E κ l ly π () m q with "CTX Hna [Htok1] [] [//] [//] Hb") as "Ha".
+      { exact HE. }
+      { by eexists. }
       { rewrite ty_lfts_unfold right_id. done. }
       { done. }
       iApply (logical_step_wand with "Ha"). iIntros "(? & Htok1)".
       iEval (rewrite ty_lfts_unfold right_id) in "Htok1". iFrame.
+      iPureIntro. by eexists None.
     - iIntros (κ κ' π r m l) "#Hincl Ha".
+      iDestruct "Ha" as "($ & Ha)".
       destruct r as [r | ]; last by iApply ty_shr_mono.
       iDestruct "Ha" as "(%r'' & ? & Hv)".
       iExists _. iFrame. by iApply ty_shr_mono.
@@ -252,7 +263,11 @@ Section subtype.
     iSplit; iModIntro.
     - iIntros (π m v) "Hv".
       rewrite maybe_uninit_Some_unfold. done.
-    - iIntros (κ π m l) "Hl". iExists x. eauto with iFrame.
+    - iIntros (κ π m l) "Hl".
+      iPoseProof (ty_shr_is_xrfn with "Hl") as "%Hxr".
+      destruct Hxr as [xr ->]. rewrite /ty_shr/=. iSplitR.
+      { iPureIntro. by eexists (Some xr). }
+      iExists _. eauto with iFrame.
   Qed.
 
   Lemma type_incl_Some_maybe_uninit {rt} (ty : type rt) (x : rt) :
@@ -262,7 +277,7 @@ Section subtype.
     iIntros "#Hsc". iSplitR; first iModIntro. { simpl; eauto. }
     iSplit; iModIntro.
     - iIntros (???). iApply ty_own_val_Some_maybe_uninit.
-    - rewrite {1}/ty_shr/=. iIntros (κ π m v) "(% & <- & Hl)". done.
+    - rewrite {1}/ty_shr/=. iIntros (κ π m v) "(_ & % & <- & Hl)". done.
   Qed.
 
   Lemma type_incl_maybe_uninit_None {rt} (ty : type rt) `{!TySized ty} :
@@ -275,6 +290,7 @@ Section subtype.
       done.
     - iIntros (κ π m l) "Hl".
       iEval (rewrite /ty_shr/=).
+      iSplitR. { iPureIntro. by eexists None. }
       rewrite (ty_sized_syn_type_eq _ m). done.
   Qed.
 
@@ -287,6 +303,7 @@ Section subtype.
       rewrite maybe_uninit_None_unfold. done.
     - iIntros (κ π m l) "Hl".
       iEval (rewrite /ty_shr/=).
+      iDestruct "Hl" as "(_ & Hl)".
       rewrite (ty_sized_syn_type_eq _ m). done.
   Qed.
 End subtype.

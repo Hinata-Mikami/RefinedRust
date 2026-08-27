@@ -560,6 +560,22 @@ impl<'def> Abstract<'def> {
         out
     }
 
+    fn generate_enum_is_xrfn(&self, rfn: &str) -> String {
+        let mut out = String::with_capacity(200);
+        let spec = &self.spec;
+
+        write!(out, "match {rfn} with ").unwrap();
+        for ((_, _, _), (pat, apps, rfn)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
+            write!(out, "| {} => is_xrfn ({rfn})", coq::term::App::new(pat, apps.clone())).unwrap();
+        }
+        if spec.is_partial {
+            write!(out, "| _ => True ").unwrap();
+        }
+        write!(out, " end").unwrap();
+
+        out
+    }
+
     /// Generate a function that maps (valid) tags to the corresponding Coq type for the variant.
     fn generate_enum_match(&self) -> String {
         let conditions: Vec<_> = self
@@ -635,22 +651,6 @@ impl<'def> Abstract<'def> {
             let comment = format!("Auto-generated representation of {}", name);
             doc.push(coq::Sentence::Comment(comment));
             doc.push(coq::command::Command::Inductive(ind.clone()));
-            // add the canonical structure declaration for the corresponding RT
-            let rt_name = format!("{name}RT");
-            let defn = coq::command::Definition {
-                program_mode: false,
-                name: rt_name.clone(),
-                params: coq::binder::BinderList::empty(),
-                ty: Some(coq::term::Type::RT),
-                body: coq::command::DefinitionBody::Term(coq::term::RocqTerm::App(Box::new(
-                    coq::term::App::new(coq::term::Term::Ident(coq::Ident::new("directRT")), vec![
-                        coq::term::Term::Ident(coq::Ident::new(name)),
-                    ]),
-                ))),
-            };
-            doc.push(coq::command::CommandAttrs::new(defn));
-            doc.push(coq::command::CommandAttrs::new(coq::command::CanonicalDecl(coq::Ident::new(&rt_name))));
-
             doc.push(
                 coq::command::CommandAttrs::new(coq::command::Instance {
                     name: None,
@@ -677,6 +677,22 @@ impl<'def> Abstract<'def> {
 
         document.push(self.generate_enum_rt());
         document.push(self.generate_enum_ty());
+
+        if let Some(ind) = &self.optional_inductive_def {
+            let name = ind.get_name();
+            let rt_name = format!("{name}RT");
+            let enum_is_xrfn = self.generate_enum_is_xrfn("r");
+            let rt_body = format!("mk_RT {name} ({{ r : {name} | {enum_is_xrfn} }}) (@proj1_sig _ _)");
+            document.push(coq::command::Definition::new(
+                rt_name.clone(),
+                coq::binder::BinderList::empty(),
+                Some(coq::term::Type::RT),
+                coq::command::DefinitionBody::Term(coq::term::Term::Literal(rt_body)),
+            ));
+            document.push(coq::command::CommandAttrs::new(coq::command::CanonicalDecl(coq::Ident::new(
+                &rt_name,
+            ))));
+        }
 
         let scope_inst = self.scope.identity_instantiation().instantiation(true, true);
         let enum_type = self.scope.get_spec_all_type_term(Box::new(coq::term::Type::Literal(format!(
@@ -714,6 +730,10 @@ impl<'def> Abstract<'def> {
         document.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
             coq::ltac::LTac::Literal("solve_inhabited".to_owned()),
             coq::proof::Terminator::Defined,
+        )));
+        document.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
+            coq::ltac::LTac::Literal("solve_enum_is_xrfn_congr".to_owned()),
+            coq::proof::Terminator::Qed,
         )));
         document.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
             coq::ltac::LTac::Literal("done".to_owned()),

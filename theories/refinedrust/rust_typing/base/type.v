@@ -201,6 +201,14 @@ Record RT : Type := mk_RT {
   RT_xrt : RT_xt → RT_rt;
 }.
 
+Definition is_xrfn {rt : RT} (r : rt) :=
+  ∃ xr, r = RT_xrt _ xr.
+
+Class IsXrfn {rt : RT} (r : rt) : Prop := {
+  is_xrfn_proof : is_xrfn r;
+}.
+Global Hint Mode IsXrfn + + : typeclass_instances.
+
 (** metadata for unsized types *)
 Inductive metadata_kind : Set :=
 (* No metadata, i.e. [()] *)
@@ -274,9 +282,14 @@ Record type_props `{!typeGS Σ} (rt : RT)
     ∃ (ly : layout),
       ⌜l `has_layout_loc` ly⌝ ∗ ⌜syn_type_has_layout (ty_syn_type m) ly⌝;
 
+  (** Shared interpretations only expose concrete refinement values. *)
+  _ty_shr_is_xrfn κ π r m l :
+    ty_shr κ π r m l -∗ ⌜is_xrfn r⌝;
+
   (** We need to be able to initiate sharing *)
   _ty_share E κ l ly π r m q:
     lftE ⊆ E →
+    is_xrfn r →
     rrust_ctx -∗
     na_own π ∅ -∗
     (* We get a token not only for κ, but for all that we might need to recursively use to initiate sharing *)
@@ -427,8 +440,17 @@ Definition ty_shr_aligned := ty_shr_aligned_aux.(unseal).
 Definition ty_shr_aligned_unfold : @ty_shr_aligned = @ty_shr_aligned_def := ty_shr_aligned_aux.(seal_eq).
 Arguments ty_shr_aligned {_ _ _}.
 
+Definition ty_shr_is_xrfn_def `{!typeGS Σ} {rt} (ty : type rt) κ π r m l :
+  ty_shr ty κ π r m l -∗ ⌜is_xrfn r⌝.
+Proof. eapply _ty_shr_is_xrfn. apply ty_props. Qed.
+Definition ty_shr_is_xrfn_aux : seal (@ty_shr_is_xrfn_def). Proof. by eexists. Qed.
+Definition ty_shr_is_xrfn := ty_shr_is_xrfn_aux.(unseal).
+Definition ty_shr_is_xrfn_unfold : @ty_shr_is_xrfn = @ty_shr_is_xrfn_def := ty_shr_is_xrfn_aux.(seal_eq).
+Arguments ty_shr_is_xrfn {_ _ _}.
+
 Definition ty_share_def `{!typeGS Σ} {rt} (ty : type rt) E κ l ly π r m q :
   lftE ⊆ E →
+  is_xrfn r →
   rrust_ctx -∗
   na_own π ∅ -∗
   let κ' := lft_intersect_list (ty_lfts ty) in
@@ -457,6 +479,18 @@ Arguments ty_shr_mono {_ _ _}.
 #[export] Instance ty_shr_persistent `{!typeGS Σ} {rt : RT} (ty : type rt) κ π l r m :
   Persistent (ty_shr ty κ π r m l).
 Proof. eapply _ty_shr_persistent. apply ty_props. Qed.
+
+Lemma ty_shr_box_fupd_is_xrfn `{!typeGS Σ} {rt} (ty : type rt) κ π r m l :
+  (□ |={lftE}=> ty_shr ty κ π r m l) -∗
+  □ |={lftE}=> ⌜is_xrfn r⌝ ∗ ty_shr ty κ π r m l.
+Proof.
+  iIntros "#Hty". iModIntro.
+  iApply fupd_trans. iApply (fupd_mono with "Hty").
+  iIntros "#Hty". iPoseProof "Hty" as "#Hkeep".
+  iPoseProof (ty_shr_is_xrfn with "Hty") as "Hxr".
+  iModIntro. iSplitR; first done. iExact "Hkeep".
+Qed.
+
 #[export] Instance ty_sidecond_persistent `{!typeGS Σ} {rt : RT} (ty : type rt) :
   Persistent (ty_sidecond ty).
 Proof. eapply _ty_sidecond_persistent. apply ty_props. Qed.
@@ -575,8 +609,7 @@ Abbreviation st_of ty := (ty_syn_type ty).
 Global Arguments RT_of _ _ _ _ /.
 Global Arguments rt_of _ _ _ _ /.
 
-Definition ty_is_xrfn `{!typeGS Σ} {rt} (ty : type rt) (r : rt) :=
-  ∃ xr, r = RT_xrt _ xr.
+Definition ty_is_xrfn `{!typeGS Σ} {rt} (ty : type rt) (r : rt) := is_xrfn r.
 Arguments ty_is_xrfn : simpl never.
 Global Typeclasses Opaque ty_is_xrfn.
 
@@ -713,7 +746,7 @@ Program Definition ty_of_st `{!typeGS Σ} rt (st : simple_type rt) : type rt :=
     ty_syn_type _ := st.(st_syn_type);
     ty_sidecond := True;
     ty_shr κ tid r m l :=
-      (∃ vl ly, ⌜m = MetaNone⌝ ∗ &frac{κ} (λ q, l ↦{q} vl) ∗
+      (⌜is_xrfn r⌝ ∗ ∃ vl ly, ⌜m = MetaNone⌝ ∗ &frac{κ} (λ q, l ↦{q} vl) ∗
         (* later for contractiveness *)
         ▷ st.(st_own) tid r vl ∗
         ⌜syn_type_has_layout st.(st_syn_type) ly⌝ ∗
@@ -733,10 +766,11 @@ Next Obligation.
   - iIntros (?????) "Hown". done.
   - unfold TCNoResolve. apply _.
   - iIntros (κ π l r m). simpl.
-    iIntros "(%vl & %ly & -> & _ & _ & %Hst & %Hly)".
+    iIntros "(_ & %vl & %ly & -> & _ & _ & %Hst & %Hly)".
     iExists _.
     eauto.
-  - iIntros (E κ l ly π r m ? ?) "#(LFT & TIME) Hna Hκ Hst Hly Hlb Hmt".
+  - iIntros (κ π r m l) "($ & _)".
+  - iIntros (E κ l ly π r m q ? Hxr) "#(LFT & TIME) Hna Hκ Hst Hly Hlb Hmt".
     simpl. rewrite right_id.
     iApply fupd_logical_step.
     iMod (bor_exists with "LFT Hmt") as (vl) "Hmt"; first solve_ndisj.
@@ -744,10 +778,11 @@ Next Obligation.
     iMod (bor_persistent with "LFT Hown Hκ") as "[Hown Hκ]"; first solve_ndisj.
     iDestruct "Hown" as "(>-> & Hown)".
     iMod (bor_fracture (λ q, l ↦{q} vl)%I with "LFT Hmt") as "Hfrac"; [eauto with iFrame.. |].
-    iApply logical_step_intro. eauto 8 with iFrame.
+    iApply logical_step_intro. iModIntro. iSplitR "Hκ"; last done.
+    iSplit; first done. eauto 8 with iFrame.
   - iIntros (κ κ' π r m l) "#Hord H".
-    iDestruct "H" as (vl ly) "(-> & #Hf & #Hown)".
-    iExists vl, ly. iFrame "Hown". iR. by iApply (frac_bor_shorten with "Hord").
+    iDestruct "H" as "(%Hxr & %vl & %ly & -> & #Hf & #Hown)".
+    iSplit; first done. iExists vl, ly. iFrame "Hown". iR. by iApply (frac_bor_shorten with "Hord").
   - intros. iIntros "_". by iApply logical_step_intro.
   - iIntros (ot st' π r v Hot) "(_ & Hown)".
     by iApply (st_decodable with "Hown").
@@ -820,16 +855,16 @@ Qed.
 
 Lemma simple_type_shr_equiv `{!typeGS Σ} {rt} (ty : simple_type rt) l π κ r m :
   (ty_shr ty κ π r m l) ≡
-  (∃ (v : val) (ly : layout),
+  (⌜is_xrfn r⌝ ∗ ∃ (v : val) (ly : layout),
     ⌜m = MetaNone⌝ ∗
     ⌜syn_type_has_layout (ty_sized_syn_type ty) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
     &frac{κ} (λ q : Qp, l ↦{q} v) ∗
     ▷ ty.(ty_own_val) π r MetaNone v)%I.
 Proof.
   iSplit.
-  - iIntros "(%v & %ly & -> & ? & ? & ? & ?)"; simpl.
+  - iIntros "($ & %v & %ly & -> & ? & ? & ? & ?)"; simpl.
     by iFrame.
-  - iIntros "(%v & %ly & -> & ? & ? & ? & (_ & ?))"; iExists _, _.
+  - iIntros "($ & %v & %ly & -> & ? & ? & ? & (_ & ?))"; iExists _, _.
     by iFrame.
 Qed.
 
@@ -920,8 +955,10 @@ Section ofe.
     (∀ κ π r m l, Persistent (x.1.1.1.1.1.1.1.2 κ π r m l)) ∧
     (* ty_shr_aligned *)
     (∀ κ π l r m, x.1.1.1.1.1.1.1.2 κ π r m l -∗ ∃ (ly : layout), ⌜l `has_layout_loc` ly⌝ ∗ ⌜syn_type_has_layout (x.1.1.1.1.2 m) ly⌝) ∧
+    (* ty_shr_is_xrfn *)
+    (∀ κ π r m l, x.1.1.1.1.1.1.1.2 κ π r m l -∗ ⌜is_xrfn r⌝) ∧
     (* ty_share *)
-    (∀ E κ l ly π r m q, lftE ⊆ E → rrust_ctx -∗
+    (∀ E κ l ly π r m q, lftE ⊆ E → is_xrfn r → rrust_ctx -∗
       let κ' := lft_intersect_list x.1.2 in
       q.[κ ⊓ κ'] -∗
       ⌜syn_type_has_layout (x.1.1.1.1.2 m) ly⌝ -∗
@@ -1120,6 +1157,7 @@ Section st_ofe.
     - simpl. intros. unfold ty_own_val; simpl.
       do 2 f_equiv. done.
     - simpl. intros. unfold ty_shr; simpl.
+      f_equiv.
       do 7 f_equiv.
       { f_equiv. apply EQ. }
       do 3 f_equiv. apply EQ.
@@ -2065,27 +2103,30 @@ Section subtyping.
 
   Lemma type_incl_simple_type {rt1} {rt2} r1 r2 (st1 : simple_type rt1) (st2 : simple_type rt2) :
     □ (∀ tid v, st1.(st_own) tid r1 v -∗ st2.(st_own) tid r2 v) -∗
+    ⌜is_xrfn r2⌝ -∗
     ⌜st1.(st_syn_type) = st2.(st_syn_type)⌝ -∗
     type_incl r1 r2 st1 st2.
   Proof.
-    iIntros "#Hst %Hly". iSplit; first done. iSplit; iModIntro.
+    iIntros "#Hst %Hxr2 %Hly". iSplit; first done. iSplit; iModIntro.
     - simpl. iIntros (???) "(-> & Ha)". iR. by iApply "Hst".
     - iIntros (???).
-      iDestruct 1 as (vl ly) "(-> & Hf & Hown & %Hst & %Hly')". iExists vl, ly. iFrame "Hf". iR.
+      iDestruct 1 as "(%Hxr1 & %vl & %ly & -> & Hf & Hown & %Hst & %Hly')". iSplit; first done. iExists vl, ly. iFrame "Hf". iR.
       iSplitL. { by iApply "Hst". } rewrite -Hly. done.
   Qed.
 
   Lemma subtype_simple_type E L {rt1 rt2} r1 r2 (st1 : simple_type rt1) (st2 : simple_type rt2):
     (∀ qL, llctx_interp_noend L qL -∗ (elctx_interp E -∗
        (□ ∀ tid v, st1.(st_own) tid r1 v -∗ st2.(st_own) tid r2 v) ∗
+       ⌜is_xrfn r2⌝ ∗
        ⌜st1.(st_syn_type) = st2.(st_syn_type)⌝)) →
     subtype E L r1 r2 st1 st2.
   Proof.
     intros Hst. iIntros (qL) "HL HE". iDestruct (Hst with "HL HE") as "#Hst".
-    iClear "∗". iDestruct ("Hst") as "[Hst' %Hly]".
+    iClear "∗". iDestruct ("Hst") as "(Hst' & %Hxr2 & %Hly)".
     iR.
     iApply type_incl_simple_type.
     - iIntros "!#" (??) "?". by iApply "Hst'".
+    - done.
     - done.
   Qed.
 
@@ -2319,7 +2360,7 @@ Section copy.
 
   #[export] Program Instance simple_type_copyable `{typeGS Σ} {rt} (st : simple_type rt) : Copyable st.
   Next Obligation.
-    iIntros (??? st κ π E l r m ? ?) "#(LFT & LLCTX) (%v & %ly & -> & Hf & #Hown & %Hst' & Hly) Hlft".
+    iIntros (??? st κ π E l r m ? ?) "#(LFT & LLCTX) (%Hxr & %v & %ly & -> & Hf & #Hown & %Hst' & Hly) Hlft".
     iMod (frac_bor_acc with "LFT Hf Hlft") as (q') "[Hmt Hclose]"; first solve_ndisj.
     iExists ly.
     iModIntro. iFrame "Hly". iR. iExists _. iDestruct "Hmt" as "[Hmt1 Hmt2]".
@@ -2356,6 +2397,15 @@ Section place_rfn.
   Global Arguments PlaceIn {_}.
   Global Arguments PlaceGhost {_}.
 
+  Definition place_rfn_is_concrete {rt} (r : place_rfn rt) : Prop :=
+    ∃ r', r = PlaceIn r'.
+
+  Lemma place_rfn_is_concrete_in {rt} (r : rt) : place_rfn_is_concrete (PlaceIn r).
+  Proof. by exists r. Qed.
+
+  Lemma place_rfn_is_concrete_ghost {rt} (γ : gname) : ¬ place_rfn_is_concrete (rt:=rt) (PlaceGhost γ).
+  Proof. intros [r Heq]. discriminate Heq. Qed.
+
   Global Instance place_rfn_inh rt : Inhabited (place_rfn rt).
   Proof. refine (populate (PlaceGhost inhabitant )). Qed.
   Global Instance place_rfn_mode_inh : Inhabited (place_rfn_mode).
@@ -2384,6 +2434,13 @@ Section place_rfn.
     end.
   Global Instance place_rfn_interp_shared_pers {rt} (r : place_rfn rt) r' : Persistent (place_rfn_interp_shared r r').
   Proof. destruct r; apply _. Qed.
+
+  Lemma place_rfn_interp_shared_concrete {rt} (r : place_rfn rt) r' :
+    ⌜place_rfn_is_concrete r⌝ -∗ place_rfn_interp_shared r r' -∗ ⌜r = PlaceIn r'⌝.
+  Proof.
+    iIntros "%Hconc Hrfn". destruct Hconc as [ri ->].
+    simpl. iDestruct "Hrfn" as %->. done.
+  Qed.
   (* NOTE: It's a bit unlucky that we have to rely on timelessness of this in some cases, in particular for some of the unfolding lemmas. *)
   (* Global Instance place_rfn_interp_shared_timeless {rt} (r : place_rfn rt) r' : Timeless (place_rfn_interp_shared r r'). *)
   (* Proof. destruct r; apply _. Qed. *)
@@ -2579,6 +2636,7 @@ Section enum.
     enum_r : ∀ r, enum_rt r;
     (* convenience function: given the variant name, also project out the type *)
     enum_tag_ty : list (var_name * enum_tag_sem rt);
+    enum_r_is_xrfn : ∀ r, is_xrfn r ↔ is_xrfn (enum_r r);
     enum_tag_tys_complete : enum_tag_ty.*1 = enum_els.(els_variants).*1;
     enum_tag_compat : ∀ (r : rt) (variant : var_name),
       enum_tag r = Some variant →
@@ -2594,6 +2652,7 @@ Section enum.
   Global Arguments enum_tag {_}.
   Global Arguments enum_rt {_}.
   Global Arguments enum_r {_}.
+  Global Arguments enum_r_is_xrfn {_}.
   Global Arguments enum_ty {_}.
   Global Arguments enum_tag_ty {_}.
   Global Arguments enum_tag_inj_roundtrip {_}.
@@ -2819,6 +2878,9 @@ Record ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := mk_ex_inv_def' {
   inv_P_shr : thread_id → lft → X → Y → iProp Σ;
   inv_P_ghost_drop : thread_id → X → Y → iProp Σ;
 
+  inv_P_xrfn : ∀ π x y,
+    inv_P π x y -∗ inv_P π x y ∗ ⌜is_xrfn y → is_xrfn x⌝;
+
   (* extra requirements on E and lfts, e.g. in case that P asserts extra location ownership *)
   inv_P_lfts : list lft;
   inv_P_wf_E : elctx;
@@ -2828,6 +2890,7 @@ Record ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := mk_ex_inv_def' {
   inv_P_share :
     ∀ F π κ x y q,
     lftE ⊆ F →
+    is_xrfn y →
     rrust_ctx -∗
     na_own π ∅ -∗
     let κ' := lft_intersect_list inv_P_lfts in
@@ -2846,18 +2909,20 @@ Definition mk_ex_inv_def `{!typeGS Σ} {X Y : RT} `{!Inhabited (RT_xt Y)}
   (inv_P_shr : thread_id → lft → X → Y → iProp Σ)
   (inv_P_ghost_drop : thread_id → X → Y → iProp Σ)
   (inv_trivial_drop : bool)
+  inv_P_xrfn
   inv_P_lfts
   (inv_P_wf_E : elctx)
   (inv_P_shr_pers : TCNoResolve (∀ (π : thread_id) (κ : lft) (x : X) (y : Y), Persistent (inv_P_shr π κ x y)))
   inv_P_shr_mono
   inv_P_share
   inv_P_drop
-  := mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop true inv_P inv_P_shr inv_P_ghost_drop inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share inv_P_drop.
+  := mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop true inv_P inv_P_shr inv_P_ghost_drop inv_P_xrfn inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share inv_P_drop.
 Global Arguments inv_P {_ _ _ _}.
 Global Arguments inv_trivial_drop {_ _ _ _}.
 Global Arguments inv_manual_ghost_drop {_ _ _ _}.
 Global Arguments inv_P_shr {_ _ _ _}.
 Global Arguments inv_P_ghost_drop {_ _ _ _}.
+Global Arguments inv_P_xrfn {_ _ _ _ _}.
 Global Arguments inv_P : simpl never.
 Global Arguments inv_P_shr : simpl never.
 Global Arguments inv_P_lfts {_ _ _ _}.
@@ -2890,8 +2955,9 @@ Proof. intros. by apply inv_P_drop. Qed.
 (** Smart constructor for persistent and timeless [P] *)
 Program Definition mk_pers_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabited (RT_xt Y)} (P : X → Y → iProp Σ)
   (inv_trivial_drop : bool)
+  (inv_P_xrfn : ∀ x y, P x y -∗ P x y ∗ ⌜is_xrfn y → is_xrfn x⌝)
   (_: TCNoResolve (∀ x y, Persistent (P x y))) (_: TCNoResolve (∀ x y, Timeless (P x y))) : ex_inv_def X Y :=
-  mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop false (λ _, P) (λ _ _, P) (λ _, P) [] [] _ _ _ _.
+  mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop false (λ _, P) (λ _ _, P) (λ _, P) (λ _, inv_P_xrfn) [] [] _ _ _ _.
 Next Obligation.
   rewrite /TCNoResolve.
   eauto with iFrame.
@@ -2902,7 +2968,7 @@ Qed.
 Next Obligation.
   rewrite /TCNoResolve.
   intros ????? P ??? F ? κ x y q ?.
-  iIntros "#CTX Hna Htok Hb".
+  iIntros (??) "#CTX Hna Htok Hb".
   iDestruct "CTX" as "(LFT & LLCTX)".
   iApply fupd_logical_step.
   rewrite right_id. iMod (bor_persistent with "LFT Hb Htok") as "(>HP & Htok)"; first done.
@@ -2910,7 +2976,7 @@ Next Obligation.
 Qed.
 Next Obligation.
   intros ????? P ??? F π x y ? ?.
-  iIntros "HP".
+  iIntros (?) "HP".
   iApply logical_step_intro. done.
 Qed.
 Global Arguments mk_pers_ex_inv_def : simpl never.
@@ -2950,45 +3016,50 @@ Program Definition mk_ex_inv_def_auto_ghost_drop `{!typeGS Σ} {X Y : RT} `{!Inh
   (inv_P_shr : thread_id → lft → X → Y → iProp Σ)
   (Hdrop : ∀ π x y, TCNoResolve (GhostDroppable (inv_P π x y)))
   (inv_trivial_drop : bool)
+  inv_P_xrfn
   inv_P_lfts
   (inv_P_wf_E : elctx)
   (inv_P_shr_pers : TCNoResolve (∀ (π : thread_id) (κ : lft) (x : X) (y : Y), Persistent (inv_P_shr π κ x y)))
   inv_P_shr_mono
   inv_P_share
-  := mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop false inv_P inv_P_shr (λ π x y, (Hdrop π x y).(ghost_droppable_prop)) inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share _.
+  := mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop false inv_P inv_P_shr (λ π x y, (Hdrop π x y).(ghost_droppable_prop)) inv_P_xrfn inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share _.
 Next Obligation.
   simpl.
   intros ??????? Hdrop ?????????? Hsub ?.
-  iIntros "HP".
-  iApply ((Hdrop π x y).(ghost_droppable_proof) with "HP"); first done.
+  iIntros (?) "HP".
+  iApply ((Hdrop π x Hsub).(ghost_droppable_proof) with "HP"); first done.
 Qed.
 
 (** Smart constructor to auto derive the sharing predicate and the ghost drop predicate *)
 Program Definition mk_auto_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabited (RT_xt Y)} (P : thread_id → X → Y → iProp Σ)
   (inv_trivial_drop : bool)
+  inv_P_xrfn
   (inv_P_lfts : list lft)
   (inv_P_wf_E : elctx)
-  (Hshr : ∀ π κ x y, TCNoResolve (Shareable π κ inv_P_lfts (P π x y)))
+  (Hshr : ∀ π κ x y, IsXrfn y → TCNoResolve (Shareable π κ inv_P_lfts (P π x y)))
   (Hdrop : ∀ π x y, TCNoResolve (GhostDroppable (P π x y)))
   inv_P_shr_pers
   inv_P_shr_mono
   : ex_inv_def X Y :=
-  mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop false P (λ π κ x y, (Hshr π κ x y).(shareable_prop)) (λ π x y, (Hdrop π x y).(ghost_droppable_prop)) inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _ _.
+  mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop false P (λ π κ x y, (∃ Hyr : IsXrfn y, (Hshr π κ x y Hyr).(shareable_prop))%I) (λ π x y, (Hdrop π x y).(ghost_droppable_prop)) inv_P_xrfn inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _ _.
 Next Obligation.
   simpl.
-  intros ???????? Hshr ? ? ? ? π κ x y q ?.
-  iIntros (?) "CTX Hna Htok Hb".
+  intros ???????? Hshr ? ? ? ? π κ x y q y'.
+  iIntros (q0 ? Hyr) "CTX Hna Htok Hb".
+  assert (Hshare : IsXrfn y') by (constructor; exact Hyr).
   rewrite -lft_tok_sep.
   iDestruct "Htok" as "(Htok & Htok1)".
-  iApply ((Hshr0 κ x y q).(shareable_proof) with "CTX Hna Htok Htok1 Hb"); first done.
+  iApply ((Hshr0 x y q y' Hshare).(shareable_proof) with "CTX Hna Htok Htok1 Hb"); first done.
   iApply logical_step_intro.
-  eauto.
+  iIntros "(Hshr' & Htok & Htok1)". iSplitL "Hshr'".
+  { iExists Hshare. done. }
+  iFrame.
 Qed.
 Next Obligation.
   simpl.
   intros ???????? ? Hdrop ? ? ? π x y ? ? ?.
-  iIntros "HP".
-  iApply ((Hdrop0 x y y0).(ghost_droppable_proof) with "HP"); first done.
+  iIntros (?) "HP".
+  iApply ((Hdrop0 y x0 y0).(ghost_droppable_proof) with "HP"); first done.
 Qed.
 
 (** Smart constructor to auto derive the sharing predicate *)
@@ -2996,23 +3067,27 @@ Program Definition mk_ex_inv_def_auto_shr `{!typeGS Σ} {X : RT} {Y : RT} `{!Inh
   (P : thread_id → X → Y → iProp Σ)
   (Hdrop : thread_id → X → Y → iProp Σ)
   (inv_trivial_drop : bool)
+  inv_P_xrfn
   (inv_P_lfts : list lft)
   (inv_P_wf_E : elctx)
-  (Hshr : ∀ π κ x y, TCNoResolve (Shareable π κ inv_P_lfts (P π x y)))
+  (Hshr : ∀ π κ x y, IsXrfn y → TCNoResolve (Shareable π κ inv_P_lfts (P π x y)))
   inv_P_shr_pers
   inv_P_shr_mono
   inv_P_ghost_droppable
   : ex_inv_def X Y :=
-  mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop true P (λ π κ x y, (Hshr π κ x y).(shareable_prop)) Hdrop inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _ inv_P_ghost_droppable.
+  mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop true P (λ π κ x y, (∃ Hyr : IsXrfn y, (Hshr π κ x y Hyr).(shareable_prop))%I) Hdrop inv_P_xrfn inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _ inv_P_ghost_droppable.
 Next Obligation.
   simpl.
-  intros ????????? Hshr ? ? ? ? π κ x y q ?.
-  iIntros (?) "CTX Hna Htok Hb".
+  intros ????????? Hshr ? ? ? ? π κ x y q y'.
+  iIntros (q0 ? Hyr) "CTX Hna Htok Hb".
+  assert (Hshare : IsXrfn y') by (constructor; exact Hyr).
   rewrite -lft_tok_sep.
   iDestruct "Htok" as "(Htok & Htok1)".
-  iApply ((Hshr0 κ x y q).(shareable_proof) with "CTX Hna Htok Htok1 Hb"); first done.
+  iApply ((Hshr0 x y q y' Hshare).(shareable_proof) with "CTX Hna Htok Htok1 Hb"); first done.
   iApply logical_step_intro.
-  eauto.
+  iIntros "(Hshr' & Htok & Htok1)". iSplitL "Hshr'".
+  { iExists Hshare. done. }
+  iFrame.
 Qed.
 
 Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y : RT} (F : type rt → ex_inv_def X Y) : Type := {
@@ -3105,17 +3180,94 @@ Canonical Structure gnameRT := directRT (gname : Type).
 Canonical Structure locRT := directRT (loc : Type).
 Canonical Structure valRT := directRT (val : Type).
 
+Global Instance is_xrfn_trivial {rt} (r : RT_xt rt): IsXrfn ($# r).
+Proof.
+  econstructor. unfold is_xrfn. eauto.
+Qed.
+
+Global Instance is_xrfn_direct {rt : Type} (x : rt) :
+  IsXrfn (rt:=directRT rt) (x : directRT rt).
+Proof.
+  econstructor.
+  exists x. done.
+Qed.
+
 Definition prodRT (rt1 rt2 : RT) : RT :=
   mk_RT (RT_rt rt1 * RT_rt rt2)%type (RT_xt rt1 * RT_xt rt2)%type (λ p, (RT_xrt rt1 p.1, RT_xrt rt2 p.2)).
 Canonical Structure prodRT.
+
+Global Instance is_xrfn_prod {rt1 rt2 : RT} (a : rt1) (b : rt2) :
+  IsXrfn a → IsXrfn b → IsXrfn (a, b).
+Proof.
+  intros [[a' Ha]] [[b' Hb]].
+  subst.
+  econstructor.
+  by exists (a', b').
+Qed.
+
+Definition place_rfnRT (rt : RT) : RT :=
+  mk_RT (place_rfn (RT_rt rt))%type (RT_xt rt) (PlaceIn ∘ RT_xrt rt).
+Canonical Structure place_rfnRT.
+
+Lemma is_xrfn_place_in {rt : RT} (r : rt) :
+  is_xrfn r → is_xrfn (rt:=place_rfnRT rt) (PlaceIn r).
+Proof. intros [xr ->]. by exists xr. Qed.
+Lemma is_xrfn_place_in_inv {rt : RT} (r : rt) :
+  is_xrfn (rt:=place_rfnRT rt) (PlaceIn r) → is_xrfn r.
+Proof. intros [xr Heq]. injection Heq as Heq. by exists xr. Qed.
+Lemma is_xrfn_place_rfn_is_concrete {rt : RT} (r : place_rfn rt) :
+  is_xrfn (rt := place_rfnRT rt) r → place_rfn_is_concrete r.
+Proof. intros [xr ->]. by eexists. Qed.
+
+Global Instance is_xrfn_PlaceIn (rt : RT) (x : rt) :
+  IsXrfn x →
+  IsXrfn (#x).
+Proof.
+  intros [Hx].
+  econstructor. by eapply is_xrfn_place_in.
+Qed.
 
 Definition listRT (A : RT) : RT :=
   mk_RT (list (RT_rt A)) (list (RT_xt A)) (fmap (RT_xrt A)).
 Canonical Structure listRT.
 
-Definition propRT : RT :=
-  mk_RT Prop Prop id.
-Canonical Structure propRT.
+Lemma is_xrfn_list_iff {rt : RT} (rs : list rt) :
+  is_xrfn (rt := listRT rt) rs ↔ Forall (λ r, is_xrfn (rt := rt) r) rs.
+Proof.
+  split.
+  - intros [xrs ->]. induction xrs; constructor; first by eexists.
+    apply IHxrs.
+  - intros Hrs. induction Hrs as [|r rs [xr ->] _ [xrs ->]].
+    + by exists [].
+    + by exists (xr :: xrs).
+Qed.
+
+Global Instance is_xrfn_nil {rt : RT} :
+  IsXrfn ([] : list rt).
+Proof.
+  econstructor. exists []. done.
+Qed.
+Global Instance is_xrfn_list_cons {rt : RT} r (rs : list rt) :
+  IsXrfn r →
+  IsXrfn rs →
+  IsXrfn (r :: rs).
+Proof.
+  intros [][].  econstructor.
+  apply is_xrfn_list_iff.
+  econstructor; first done.
+  by apply is_xrfn_list_iff.
+Qed.
+Global Instance is_xrfn_list_fmap_xt {rt : RT} (rs : list (RT_xt rt)) :
+  IsXrfn (fmap (M:=list) (PlaceIn ∘ RT_xrt rt) rs).
+Proof.
+  econstructor.
+  apply is_xrfn_list_iff.
+  apply Forall_forall.
+  intros x Hel. apply list_elem_of_fmap in Hel as (? & -> & ?).
+  apply is_xrfn_proof.
+Qed.
+
+Canonical Structure propRT : RT := directRT Prop.
 
 Canonical Structure funRT (A B : Type) : RT := directRT (A → B).
 
@@ -3133,9 +3285,19 @@ Definition optionRT (A : RT) : RT :=
   mk_RT (option (RT_rt A)) (option (RT_xt A)) (fmap (RT_xrt A)).
 Canonical Structure optionRT.
 
-Definition place_rfnRT (rt : RT) : RT :=
-  mk_RT (place_rfn (RT_rt rt))%type (RT_xt rt) (PlaceIn ∘ RT_xrt rt).
-Canonical Structure place_rfnRT.
+Global Instance is_xrfn_option_Some (rt : RT) (x : rt) :
+  IsXrfn x →
+  IsXrfn (Some x).
+Proof.
+  intros [[x' ->]].
+  econstructor. exists (Some x'). done.
+Qed.
+Global Instance is_xrfn_option_None (rt : RT) :
+  IsXrfn (None : option rt).
+Proof.
+  econstructor. exists None. done.
+Qed.
+
 
 Definition plistRT (l : list RT) : RT :=
   mk_RT (plist (RT_rt ∘ place_rfnRT) l) (plist (RT_xt ∘ place_rfnRT) l)
@@ -3144,5 +3306,39 @@ Definition plistRT (l : list RT) : RT :=
 .
 Canonical Structure plistRT.
 
+Lemma is_xrfn_plist_insert {rts : list RT} (r : plist (RT_rt ∘ place_rfnRT) rts)
+    (i : nat) (rt : RT) (ri : place_rfn rt) :
+  is_xrfn r → is_xrfn ri →
+  is_xrfn (rt := plistRT (<[i := rt]> rts)) (plist_insert rts r i rt ri).
+Proof.
+  intros [xr ->] [xri ->].
+  exists (plist_insert rts xr i rt xri). simpl.
+  rewrite pmap_plist_insert. done.
+Qed.
+
+Global Instance is_xrfn_plist_insert' {rts : list RT} (r : plist (RT_rt ∘ place_rfnRT) rts) (i : nat) (rt : RT) (ri : place_rfn rt) :
+  IsXrfn r →
+  IsXrfn ri →
+  IsXrfn (rt := plistRT (<[i := rt]> rts)) (plist_insert rts r i rt ri) | 10.
+Proof.
+  intros [Hx] [Hy]. econstructor.
+  by apply is_xrfn_plist_insert.
+Qed.
+Global Instance is_xrfn_pnil :
+  IsXrfn ( *[] : plist (RT_rt ∘ place_rfnRT) []).
+Proof.
+  econstructor. eexists *[]. done.
+Qed.
+Global Instance is_xrfn_pcons {rts : list RT} {rt : RT} (r : plist (RT_rt ∘ place_rfnRT) rts) r1 :
+  IsXrfn r1 →
+  IsXrfn r →
+  IsXrfn (r1 *:: r : plist (RT_rt ∘ place_rfnRT) (rt :: rts)) | 11.
+Proof.
+  intros [[r1' Hf1]] [[r2' Hf2]].
+  subst.
+  econstructor.
+  exists (r1' *:: r2').
+  done.
+Qed.
 
 Create HintDb ty_unfold.

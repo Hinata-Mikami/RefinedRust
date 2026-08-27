@@ -600,7 +600,7 @@ Section alias_ltype.
     iDestruct 1 as ((rt2 & (((lt & r''') & b2) & π2))) "(Hl2 & -> & HP)". simpl.
     iIntros (????) "#CTX #HE HL Hf Hl Hcont".
     iEval (rewrite ltype_own_alias_unfold /alias_lty_own) in "Hl".
-    iDestruct "Hl" as "(%ly & % & -> & #? & #?)".
+    iDestruct "Hl" as "(%Hconc & %r' & #Hrfn & %Hxrfn & %ly & %Hst & -> & %Hly & #Hlb)".
 
     iApply ("HP" with "[//] [//] CTX HE HL Hf Hl2").
     iIntros (L' κs l2 b0 bmin rti ltyi ri updcx) "Hl2 Hcl HT HL".
@@ -612,7 +612,9 @@ Section alias_ltype.
     iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & ? & ? & ? & ? & ? & HL & ?)".
     iFrame. simpl.
     iSplitL.
-    { rewrite ltype_own_alias_unfold /alias_lty_own. eauto 8 with iFrame. }
+    { rewrite ltype_own_alias_unfold /alias_lty_own.
+      iSplitR; first done. iExists r'. iModIntro. iFrame "Hrfn".
+      iSplitR; first done. iExists ly. repeat iR. iFrame "Hlb". }
     iSplitL; last iApply upd_bot_min.
     iApply typed_place_cond_refl. iModIntro.
     iApply lft_list_incl_refl.
@@ -678,7 +680,7 @@ Section alias_ltype.
     rewrite ltype_own_alias_unfold /alias_lty_own.
     simp_ltypes.
 
-    iDestruct "Hl" as "(%ly & %Halg & -> & %Hly & Hlb)".
+    iDestruct "Hl" as "(%Hconc & %r' & #Hrfn & %Hxrfn & %ly & %Halg & -> & %Hly & Hlb)".
 
     iMod ("HT" with "[//] [//] [//] CTX HE HL Hl2") as (L3 R rt2' lt2' r2') "(HL & %Hst & Hstep & HT)".
     iModIntro. iExists _, _, _, _, _.
@@ -689,7 +691,8 @@ Section alias_ltype.
     iIntros "($ & $)".
 
     rewrite ltype_own_alias_unfold /alias_lty_own.
-    by iExists ly; iFrame.
+    iSplitR; first done. iExists r'. iFrame "Hrfn".
+    iSplitR; first done. iExists ly. by iFrame.
   Qed.
   Definition stratify_ltype_alias_shared_inst := [instance @stratify_ltype_alias_shared].
   Global Existing Instance stratify_ltype_alias_shared_inst.
@@ -731,7 +734,7 @@ Section alias_ltype.
       iSplitL. { eauto 8 with iFrame. }
       iSplitR. { eauto 8 with iFrame. }
       done.
-    - iDestruct "Hl" as "(%ly & %Hst & -> & %Hly & #Hlb)".
+    - iDestruct "Hl" as "(%Hconc & %r' & #Hrfn & %Hxrfn & %ly & %Hst & -> & %Hly & #Hlb)".
       iSpecialize ("HT" with "[//]").
       iApply logical_step_intro. iExists _, _, _, _, _, _, _, _, _, _. iFrame.
       iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Husize".
@@ -739,7 +742,9 @@ Section alias_ltype.
       iSplitL. { rewrite /ty_own_val/=. iR. iApply l2v_alias_ptr_kind_own_val.
         iPureIntro. destruct pk; simpl; done. }
       rewrite !ltype_own_alias_unfold /alias_lty_own.
-      iSplitL. { eauto 8 with iFrame. }
+      iSplitL.
+      { iSplitR; first done. iExists r'. iFrame "Hrfn".
+        iSplitR; first done. iExists ly. repeat iR. iFrame "Hlb". }
       iSplitR. { eauto 8 with iFrame. }
       done.
   Qed.

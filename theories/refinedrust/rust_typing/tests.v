@@ -1269,10 +1269,15 @@ Section test.
       (λ π κ inner_rfn '(l, cap), ⌜inner_rfn = *[#(l); #(Z.of_nat cap); #(tt)]⌝ ∗ True)%I
       (λ _ _ _, True)%I
       true
+      _
       ([])
       ([])
       _ _ _ _
     .
+    Next Obligation.
+      intros π x [l cap]. iIntros "(%Heq & $)". iSplit; first done.
+      iPureIntro. intros _. subst. exists *[l; Z.of_nat cap; tt]. done.
+    Qed.
     Next Obligation. ex_t_solve_persistent. Qed.
     Next Obligation.
       ex_plain_t_solve_shr_mono.
@@ -1310,10 +1315,16 @@ Section test.
       (λ π κ inner_rfn 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = *[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
       (λ _ _ _, True)%I
       true
+      _
       ([] ++ (ty_lfts T_ty))
       ([] ++ (ty_wf_E T_ty))
       _ _ _ _
     .
+    Next Obligation.
+      intros. iIntros "Hinv". iDestruct "Hinv" as (cap l) "(%Heq & Hcap & Hinv)".
+      iSplitL "Hcap Hinv". { iExists cap, l. by iFrame. }
+      iPureIntro. intros _. subst. exists *[(l, cap); Z.of_nat (length y)]. done.
+    Qed.
     Next Obligation.
       ex_t_solve_persistent.
     Qed.

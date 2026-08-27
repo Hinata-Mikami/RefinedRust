@@ -6,6 +6,54 @@ From refinedrust Require Import options.
 
 Section subltype.
   Context `{!typeGS Σ}.
+  Local Lemma is_xrfn_plist_cons {rt : RT} {rts} (r : place_rfn rt) (rs : plist place_rfnRT rts) :
+    is_xrfn (rt := place_rfnRT rt) r →
+    is_xrfn (rt := plistRT rts) rs →
+    is_xrfn (rt := plistRT (rt :: rts)) (r -:: rs).
+  Proof.
+    intros [xr ->] [xrs ->]. by exists (xr -:: xrs).
+  Qed.
+
+  Local Lemma struct_ltype_shared_hpzipl_is_xrfn {rts} (lts : hlist ltype rts)
+      (rs : plist place_rfnRT rts) fields l κ π :
+    ([∗ list] x ∈ hpzipl rts lts rs,
+      ∃ i, (l +ₗ offset_of_idx fields i) ◁ₗ[π, Shared κ]
+        (projT2 x).2 @ (projT2 x).1) -∗
+    |={lftE}=> ⌜is_xrfn rs⌝.
+  Proof.
+    iIntros "#Hb".
+    iInduction rts as [|rt rts] "IH" forall (lts rs); inv_hlist lts; destruct rs as [r rs]; simpl.
+    - iModIntro. iPureIntro. by exists -[].
+    - intros lt lts.
+      iDestruct "Hb" as "((%i & Hown) & Hb)".
+      rewrite ltype_own_unseal.
+      iMod (ltype_own_pre_shared_canonical false with "Hown") as "(%r' & -> & %Hxr)".
+      iMod ("IH" $! lts rs with "Hb") as "%Hxrs".
+      iModIntro. iPureIntro. apply is_xrfn_plist_cons; last done.
+      by apply is_xrfn_place_in.
+  Qed.
+
+  Local Lemma struct_ltype_shared_fields_is_xrfn {rts} (lts : hlist ltype rts)
+      (rs : plist place_rfnRT rts) fields l κ π :
+    length rts = length (named_fields fields) →
+    NoDup (field_names fields) →
+    ([∗ list] i ↦ ty ∈ pad_struct fields (hpzipl rts lts rs) struct_make_uninit_ltype,
+      ∃ ly, ⌜snd <$> fields !! i = Some ly⌝ ∗
+        ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
+        (l +ₗ offset_of_idx fields i) ◁ₗ[π, Shared κ] (projT2 ty).2 @ (projT2 ty).1) -∗
+    |={lftE}=> ⌜is_xrfn rs⌝.
+  Proof.
+    iIntros (Hlen Hnd) "#Hb".
+    iPoseProof (pad_struct_focus_no_uninit with "Hb") as "(Hfocused & _)".
+    { rewrite length_hpzipl. done. }
+    { done. }
+    iApply (struct_ltype_shared_hpzipl_is_xrfn with "[Hfocused]").
+    iApply (big_sepL_mono with "Hfocused").
+    iIntros (i x Hx) "(%j & %ly & %n & %Hfield & %Hnamed & Hel)".
+    iDestruct "Hel" as "(%ly' & %Hfield' & %Hst & Hown)".
+    iExists j. iFrame.
+  Qed.
+
   Local Lemma pad_struct_hpzipl_2_inv {rts1 rts2} (lts1 : hlist ltype rts1) (lts2 : hlist ltype rts2) (rs1 : plist place_rfnRT rts1) (rs2 : plist place_rfnRT rts2) sl f k lt1 lt2 :
     length rts1 = length rts2 →
     pad_struct (sl_members sl) (hpzipl rts1 lts1 rs1) f !! k = Some lt1 →
@@ -80,10 +128,17 @@ Section subltype.
     rewrite !ltype_own_struct_unfold /struct_ltype_own.
     iIntros "(%sl & %Halg & %Hlen1 & %Hly & Hlb & Hb)".
     iExists sl. iR. rewrite -Hlen. iR. iR. iFrame.
-    iDestruct "Hb" as "(%r' & Hrfn & Hb)". iExists rs2. iFrame.
-    iDestruct "Hb" as "#Hb". iDestruct "Hrfn" as "<-". iSplitR; first done.
-    iModIntro. iMod "Hb". iModIntro.
-    iApply (big_sepL_impl' with "Hb"). { rewrite !pad_struct_length //. }
+    iDestruct "Hb" as "(%Hconc & %r' & Hrfn & Hb)".
+    iSplitR; first (iPureIntro; apply place_rfn_is_concrete_in).
+    iExists rs2. iSplitR; first done.
+    iDestruct "Hb" as "#Hb". iDestruct "Hrfn" as "<-".
+    iModIntro. iMod "Hb" as "(%Hxr1 & Hb)".
+    iAssert ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl rts2 lts2 rs2) struct_make_uninit_ltype,
+      ∃ ly, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗
+        ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
+        (l +ₗ offset_of_idx (sl_members sl) i) ◁ₗ[π, Shared κ'] (projT2 ty).2 @ (projT2 ty).1)%I
+      with "[Hb]" as "#Hb2".
+    { iApply (big_sepL_impl' with "Hb"). { rewrite !pad_struct_length //. }
     iModIntro. iIntros (k lt1 lt2 Hlook1 Hlook2).
     destruct (pad_struct_hpzipl_2_inv _ _ _ _ _ _ _ _ _ Hlen Hlook1 Hlook2) as
       [ (rt1 & rt2 & lt1' & lt2' & r1 & r2 & -> & -> & Hlook1' & Hlook2') | (ly & -> & ->)]; last by eauto.
@@ -91,7 +146,12 @@ Section subltype.
     iDestruct "Hb" as "(%Hst & #Hb)".
     iIntros "(%ly & ? & ? & Hc)". iExists ly. rewrite Hst. iFrame.
     iDestruct "Hb" as "(#Hb & _)".
-    by iApply "Hb".
+    by iApply "Hb". }
+    iMod (struct_ltype_shared_fields_is_xrfn lts2 rs2 with "Hb2") as "%Hxr2".
+    { rewrite named_fields_field_names_length.
+      rewrite -Hlen -Hlen1. symmetry. by apply struct_layout_spec_has_layout_fields_length. }
+    { apply field_names_NoDup. }
+    iModIntro. iSplit; first done. done.
   Qed.
   Lemma struct_ltype_incl_shared_in {rts1 rts2} (lts1 : hlist ltype rts1) (lts2 : hlist ltype rts2) κ' rs1 rs2 sls :
     ([∗ list] lt1; lt2 ∈ hpzipl _ lts1 rs1; hpzipl _ lts2 rs2,
@@ -102,7 +162,7 @@ Section subltype.
     iIntros "#Heq".
     iModIntro.
     simp_ltypes.
-    iSplit; (iApply struct_ltype_incl'_shared_in).
+    iSplit; iApply struct_ltype_incl'_shared_in.
     - done.
     - rewrite !hpzipl_hmap.
       rewrite big_sepL2_fmap_l big_sepL2_fmap_r.
@@ -125,9 +185,10 @@ Section subltype.
     iIntros "(%sl & %Halg & %Hlen & %Hly & Hlb & Hb)".
     iExists sl. iSplitR; first done. iSplitR; first done.
     iSplitR; first done. iFrame.
-    iDestruct "Hb" as "(%r' & Hrfn & Hb)". iExists r'. iFrame.
+    iDestruct "Hb" as "(%Hconc & %r' & Hrfn & Hb)".
+    iSplitR; first done. iExists r'. iFrame.
     iDestruct "Hb" as "#Hb".
-    iModIntro. iMod "Hb". iModIntro.
+    iModIntro. iMod "Hb" as "($ & Hb)". iModIntro.
     iApply (big_sepL_impl' with "Hb"). { rewrite !pad_struct_length //. }
     iModIntro. iIntros (k lt1 lt2 Hlook1 Hlook2).
     destruct (pad_struct_hpzipl_2_inv' _ _ _ _ _ _ _ _ Hlook1 Hlook2) as
@@ -1084,6 +1145,7 @@ Section accessors.
     ∃ sl, ⌜use_struct_layout_alg sls = Some sl⌝ ∗
       ⌜l `has_layout_loc` sl⌝ ∗ ⌜length sls.(sls_fields) = length rts⌝ ∗
       loc_in_bounds l 0 (sl.(ly_size)) ∗ |={F}=>
+      ⌜is_xrfn r⌝ ∗
       ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl rts lts r) struct_make_uninit_ltype,
           ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
             (l +ₗ offset_of_idx sl.(sl_members) i) ◁ₗ[π, Shared κ] (projT2 ty).2 @ (projT2 ty).1) ∗
@@ -1091,17 +1153,22 @@ Section accessors.
         (* the number of fields should remain equal *)
         ⌜length rts' = length rts⌝ -∗
         (* new ownership *)
-        ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl rts' lts' r') struct_make_uninit_ltype,
+        (⌜is_xrfn r'⌝ ∗
+        [∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl rts' lts' r') struct_make_uninit_ltype,
           ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
             (l +ₗ offset_of_idx sl.(sl_members) i) ◁ₗ[π, Shared κ] (projT2 ty).2 @ (projT2 ty).1) ={F}=∗
         l ◁ₗ[π, Shared κ] #r' @ StructLtype lts' sls).
   Proof.
     iIntros (?) "Hb". rewrite ltype_own_struct_unfold /struct_ltype_own.
-    iDestruct "Hb" as "(%sl & %Halg & %Hlen & %Hly & #Hlb & %r' & -> & #Hb)".
+    iDestruct "Hb" as "(%sl & %Halg & %Hlen & %Hly & #Hlb & %Hconc & %r' & -> & #Hb)".
     iExists sl. iFrame "#%". iMod (fupd_mask_mono with "Hb") as "Hb'"; first done.
-    iModIntro. iFrame.
+    iModIntro. iDestruct "Hb'" as "(%Hxr & Hb')".
+    iSplit; first done. iSplitL "Hb'"; first done.
     iIntros (rts' lts' r) "%Hlen_eq #Hb'".
     rewrite ltype_own_struct_unfold /struct_ltype_own.
-    iExists sl. rewrite Hlen_eq. by iFrame "%#∗".
+    iModIntro. iExists sl. rewrite Hlen_eq. iFrame "%#".
+    iSplitR; first (iPureIntro; apply place_rfn_is_concrete_in).
+    iSplitR; first done.
+    iModIntro. iModIntro. done.
   Qed.
 End accessors.

@@ -135,16 +135,15 @@ Section subltype.
     (∃ r2',
       ⌜r2 = #(r2', γ)⌝ ∗
       ⌜lctx_lft_incl E L κ2 κ1⌝ ∗
-      weak_subltype E L (Shared (κ1 ⊓ κ)) r1 r2' lt1 lt2 T)
+      weak_subltype E L (Shared (κ1 ⊓ κ)) r1 r2' lt1 lt2 (⌜is_xrfn (r2', γ)⌝ ∗ T))
     ⊢ weak_subltype E L (Shared κ) (#(r1, γ)) r2 (MutLtype lt1 κ1) (MutLtype lt2 κ2) T.
   Proof.
     iIntros "(%r2' & -> & %Hincl & HT)" (??) "#CTX #HE HL".
-    iMod ("HT" with "[//] CTX HE HL") as "(% & Hincl' & HL & $)".
+    iMod ("HT" with "[//] CTX HE HL") as "(% & Hincl' & HL & %Hxr & $)".
     iPoseProof (lctx_lft_incl_incl with "HL") as "#Hincl"; first done.
     iSpecialize ("Hincl" with "HE"). iFrame.
     iR.
-    iApply (mut_ltype_incl_shared_in with "[Hincl']"); last done.
-    done.
+    iApply (mut_ltype_incl_shared_in with "[Hincl']"); [done | done | done].
   Qed.
   Definition weak_subltype_mut_shared_in_inst := [instance @weak_subltype_mut_shared_in].
   Global Existing Instance weak_subltype_mut_shared_in_inst | 10.

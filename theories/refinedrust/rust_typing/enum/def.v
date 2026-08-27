@@ -647,7 +647,7 @@ Section enum.
   Qed.
 
   Definition enum_shr_def {rt} (e : enum rt) κ π r m l : iProp Σ :=
-    (∃ el variant variant_ly,
+    (⌜is_xrfn r⌝ ∗ ∃ el variant variant_ly,
       ⌜m = MetaNone⌝ ∗
       ⌜use_enum_layout_alg e.(enum_els) = Some el⌝ ∗
       ⌜e.(enum_tag) r = Some variant⌝ ∗
@@ -712,10 +712,11 @@ Section enum.
     - unfold TCNoResolve. rewrite enum_shr_unfold /enum_shr_def. apply _.
     - iIntros (κ π l r m) "Hshr".
       rewrite enum_shr_unfold.
-      iDestruct "Hshr" as "(%el & %variant & %variant_ly & -> & %Halg & %Htag & %Hvariant & %Hst & %Hly & _)".
+      iDestruct "Hshr" as "(_ & %el & %variant & %variant_ly & -> & %Halg & %Htag & %Hvariant & %Hst & %Hly & _)".
       iExists el. iPureIntro. split; first done.
       by eapply use_enum_layout_alg_Some_inv.
-    - iIntros (E κ l ly π r m q ?) "#CTX #Hna Htok %Halg %Hly Hlb Hb".
+    - iIntros (κ π r m l). rewrite enum_shr_unfold /enum_shr_def. iIntros "($ & _)".
+    - iIntros (E κ l ly π r m q ? Hxr) "#CTX #Hna Htok %Halg %Hly Hlb Hb".
     set (bor_contents :=
       (∃ el variant variant_ly,
         ⌜m = MetaNone⌝ ∗
@@ -789,12 +790,14 @@ Section enum.
     iDestruct "Htok1" as "(Htok_variant_κ & Htok_tail)".
 
     iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok_tag] [] [] [] Hb_tag") as "Htag_step"; first done.
+    { by eexists. }
     { simpl. rewrite ty_lfts_unfold. rewrite right_id. iFrame. }
     { simpl. iPureIntro. apply syn_type_has_layout_int. done. }
     { iPureIntro. by apply enum_tag_has_layout_loc. }
     { iApply (loc_in_bounds_enum_tag with "Hlb"). done. }
 
     iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok_tag_pad] [] [] [] Hb_tag_pad") as "Htag_pad_step"; first done.
+    { by eexists. }
     { simpl. rewrite ty_lfts_unfold/=. rewrite right_id. iFrame. }
     { iPureIntro. by apply enum_tag_padding_uninit_syn_type_has_layout with variant variant_ly. }
     { iPureIntro. apply has_layout_loc_1. rewrite /enum_tag_padding_ly /ly_align /=. done. }
@@ -810,12 +813,14 @@ Section enum.
     iPoseProof (Fractional_fractional_le (λ q, q.[lft_intersect_list (ty_lfts (en.(enum_ty) r))])%I q' q0 with "Htok_variant_lfts") as "(Htok_variant_lfts & Hcl_variant_lfts')".
     { apply Qp.le_min_r. }
     iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok_variant_κ Htok_variant_lfts] [] [] [] Hb_variant") as "Hvariant_step"; first done.
+    { exact (proj1 (enum_r_is_xrfn en r) Hxr). }
     { rewrite ty_lfts_unfold -lft_tok_sep. iFrame. }
     { done. }
     { iPureIntro. by eapply enum_payload_has_layout_loc. }
     { iApply (loc_in_bounds_enum_payload with "Hlb"). done. }
 
     iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok_tail] [] [] [] Hb_tail") as "Htail_step"; first done.
+    { by eexists. }
     { simpl. rewrite ty_lfts_unfold/=. rewrite right_id. iFrame. }
     { iPureIntro. by apply enum_tail_padding_uninit_syn_type_has_layout with variant. }
     { iPureIntro. apply has_layout_loc_1. rewrite /enum_tail_padding_ly /ly_align /=. done. }
@@ -838,8 +843,10 @@ Section enum.
     iPoseProof ("Hcl_variant_lfts'" with "[$]") as "Hvariant_lfts'".
     iMod ("Hcl_variant_lfts" with "[$]") as "Htok2".
     rewrite enum_shr_unfold.
+    iModIntro.
     iSplitL "Htag Htag_pad Hvariant Htail".
-    { iExists el, variant, variant_ly. iFrame. done. }
+    { rewrite /enum_shr_def. iSplit; first done.
+      iExists el, variant, variant_ly. iFrame. done. }
     simpl. rewrite ty_lfts_unfold/=. rewrite right_id.
     iCombine "Htok_tag Htok_variant_κ'" as "Htok1".
     iCombine "Htok1 Htok_variant_κ" as "Htok1".
@@ -847,7 +854,7 @@ Section enum.
     by iFrame.
   - iIntros (κ κ' π r m l) "#Hincl Hshr".
     rewrite enum_shr_unfold.
-    iDestruct "Hshr" as "(%el & %variant & %variant_ly & -> & %Halg & %Htag & %Hvariant & %Hst & %Hly & Htag & Htag_pad & Hvariant & Htail)".
+    iDestruct "Hshr" as "($ & %el & %variant & %variant_ly & -> & %Halg & %Htag & %Hvariant & %Hst & %Hly & Htag & Htag_pad & Hvariant & Htail)".
     iExists el, variant, variant_ly. do 6 (iSplit; first done).
     iSplitL "Htag"; first by iApply (ty_shr_mono with "Hincl Htag").
     iSplitL "Htag_pad"; first by iApply (ty_shr_mono with "Hincl Htag_pad").
@@ -1009,7 +1016,7 @@ Section enum.
     iIntros (Hcopy). split; first apply _.
     iIntros (κ π E l r m q ?) "#CTX Hshr Htok".
     rewrite /ty_shr /= enum_shr_unfold /enum_shr_def.
-    iDestruct "Hshr" as "(%el & %variant & %variant_ly & -> & %Halg & %Htag & %Hvariant & %Hst & %Hly & Htag & Htag_pad & Hvariant & Htail)".
+    iDestruct "Hshr" as "(_ & %el & %variant & %variant_ly & -> & %Halg & %Htag & %Hvariant & %Hst & %Hly & Htag & Htag_pad & Hvariant & Htail)".
     set (tag_size := ly_size (it_layout el.(el_tag_it))).
     set (tag_pad_size := el.(el_data_offset) - tag_size).
     set (data_offset := el.(el_data_offset)).
@@ -1446,6 +1453,7 @@ Section ne.
     - intros n ty ty' Hd.
       iIntros (κ π r m l). rewrite /ty_shr/=.
       rewrite enum_shr_unfold /enum_shr_def.
+      f_equiv.
       do 3 f_equiv. intros variant. f_equiv. intros variant_ly. do 5 f_equiv.
       { apply enum_ne_els. apply Hd. }
       { rewrite (enum_ne_tag_consistent ty ty'). done. }
@@ -1518,6 +1526,7 @@ Section ne.
     - intros n ty ty' Hd.
       iIntros (κ π r m l). rewrite /ty_shr/=.
       rewrite enum_shr_unfold /enum_shr_def.
+      f_equiv.
       do 3 f_equiv. intros variant. f_equiv. intros variant_ly. do 5 f_equiv.
       { apply enum_contr_els. }
       { rewrite (enum_contr_tag_consistent ty ty'). done. }

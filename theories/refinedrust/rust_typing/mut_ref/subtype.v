@@ -40,13 +40,16 @@ Section subtype.
     ⌜syn_type_compat (ty1.(ty_syn_type) MetaNone) (ty2.(ty_syn_type) MetaNone)⌝ -∗
     κ1 ⊑ κ2 -∗
     type_incl r1 r2 ty1 ty2 -∗
+    ⌜is_xrfn r2⌝ -∗
     l ◁ₗ{π, m, κ} (#r1, γ) @ mut_ref κ2 ty1 -∗
     l ◁ₗ{π, m, κ} (#r2, γ) @ mut_ref κ1 ty2.
   Proof.
     rewrite /ty_shr/= mut_ref_shr_unfold.
-    iIntros "%Hcomp #Hincl #Ht12 (%vi & %li & %ly & %r' & -> & ? & <- & Hs & %Halg & ? & ? & ? & ? & Hsc & Hb)".
+    iIntros "%Hcomp #Hincl #Ht12 %Hxr2 (%vi & %li & %ly & %r' & %Hxr & -> & ? & <- & Hs & %Halg & ? & ? & ? & ? & Hsc & Hb)".
     iDestruct "Ht12" as "(#Hsceq & #Hv12 & #Hs12)".
-    iExists vi,li, ly, r2. iFrame. iR. iR.
+    iExists vi,li, ly, r2. iSplitR.
+    { iPureIntro. destruct Hxr2 as [xr ->]. by exists (xr, γ). }
+    iFrame. iR. iR.
     iSplitR. { iPureIntro. by apply Hcomp. }
     iFrame.
     iSplitL "Hsc". { by iApply "Hsceq". }
@@ -66,9 +69,9 @@ Section subtype.
   Proof.
     destruct r as [r γ].
     rewrite /ty_shr/= mut_ref_shr_unfold.
-    iIntros "%Hcomp #Hincl #Ht12 (%vi & %li & %ly & %r' & -> & ? & ? & Hs & %Halg & ? & ? & ? & ? & Hsc & Hb)".
+    iIntros "%Hcomp #Hincl #Ht12 (%vi & %li & %ly & %r' & %Hxr & -> & ? & ? & Hs & %Halg & ? & ? & ? & ? & Hsc & Hb)".
     iDestruct ("Ht12" $! inhabitant) as "(#Hsceq & _)".
-    iExists vi, li, ly, r'. iFrame.
+    iExists vi, li, ly, r'. iSplitR; first done. iFrame.
     iR.
     iSplitR. { iPureIntro. by apply Hcomp. }
     iFrame.

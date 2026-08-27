@@ -15,7 +15,8 @@ Proof.
   iIntros "#Hincl". destruct b1, b2; try done; unfold bor_kind_direct_incl.
   + eauto.
   + rewrite /lty_of_ty_own.
-    iIntros "(%ly & Hst & Hly & Hsc & Hlb & % & ? & #Hb)". iExists ly. iFrame.
+    iIntros "(%ly & Hst & Hly & Hsc & Hlb & %Hconc & %r' & Hrfn & #Hb)". iExists ly. iFrame.
+    iSplitR; first done.
     iModIntro. iMod "Hb". iModIntro.
     by iApply ty_shr_mono.
   + rewrite /lty_of_ty_own.
@@ -39,9 +40,10 @@ Proof.
   destruct b1, b2; try done; unfold bor_kind_direct_incl.
   + eauto.
   + rewrite !ltype_own_mut_ref_unfold /mut_ltype_own.
-    iIntros "(%ly & ? & ? & ? & %r' & %γ & ? & #Hb)".
-    iExists ly. iFrame. iModIntro. iMod "Hb".
-    iDestruct "Hb" as "(%vi & %li & Hf & %Hdec & Hb)". iModIntro. iExists vi, li.
+    iIntros "(%ly & ? & ? & ? & %Hconc & %r' & %γ & ? & #Hb)".
+    iExists ly. iFrame. iSplitR; first done. iModIntro.
+    iMod "Hb" as "(%Hxr & %vi & %li & Hf & %Hdec & Hb)". iModIntro.
+    iSplitR; first done. iExists vi, li.
     iSplitL "Hf". { by iApply frac_bor_shorten. }
     iSplitR; first done.
     iNext. iApply IH; last done.
@@ -61,9 +63,10 @@ Proof.
   destruct b1, b2; try done; unfold bor_kind_direct_incl.
   + eauto.
   + rewrite !ltype_own_shr_ref_unfold /shr_ltype_own.
-    iIntros "(%ly & ? & ? & ? & %r' & ? & #Hb)".
-    iExists ly. iFrame. iModIntro. iMod "Hb".
-    iDestruct "Hb" as "(%vi & %li & Hf & %Hdec & Hb)". iModIntro. iExists vi, li.
+    iIntros "(%ly & ? & ? & ? & %Hconc & %r' & ? & #Hb)".
+    iExists ly. iFrame. iSplitR; first done. iModIntro.
+    iMod "Hb" as "(%Hxr & %vi & %li & Hf & %Hdec & Hb)". iModIntro.
+    iSplitR; first done. iExists vi, li.
     iSplitL "Hf". { by iApply frac_bor_shorten. }
     iSplitR; first done.
     done.
@@ -81,10 +84,11 @@ Proof.
   destruct b1, b2; try done; unfold bor_kind_direct_incl.
   + eauto.
   + rewrite !ltype_own_struct_unfold /struct_ltype_own.
-    iIntros "(%sl & ? & ? & ? & ? & %r' & ? & #Hb)".
-    iExists sl. iFrame. iModIntro. iMod "Hb".
+    iIntros "(%sl & ? & ? & ? & ? & %Hconc & %r' & ? & #Hb)".
+    iExists sl. iFrame. iSplitR; first done. iModIntro. iMod "Hb" as "(%Hxr & Hb)". iModIntro.
+    iSplitR; first done.
     iApply (big_sepL_wand with "Hb").
-    iModIntro. iApply big_sepL_intro. iIntros "!>" (k [rt [lt r0]] Hlook).
+    iApply big_sepL_intro. iIntros "!>" (k [rt [lt r0]] Hlook).
     apply pad_struct_lookup_Some_1 in Hlook as (n & ly & ? & [[? Hlook] | [? Heq]]).
     * simpl. specialize (IH (existT rt lt)).
       iIntros "(%ly0 & ? & ? & Hb)".
@@ -111,9 +115,10 @@ Proof.
   destruct b1, b2; try done; unfold bor_kind_direct_incl.
   + eauto.
   + rewrite !ltype_own_array_unfold /array_ltype_own.
-    iIntros "(%ly & Hst & Hly & Hlb & Ha & %r' &  Hrfn & #Hb)".
-    iExists ly. iFrame.
-    iModIntro. iMod "Hb" as "(%Hlen2 & Hb)". iModIntro. iR.
+    iIntros "(%ly & Hst & Hly & Hlb & Ha & %Hconc & %r' & Hrfn & #Hb)".
+    iExists ly. iFrame. iSplitR; first done.
+    iModIntro. iMod "Hb" as "(%Hxr & %Hlen2 & Hb)". iModIntro.
+    iSplitR; first done. iR.
     iApply (big_sepL2_wand with "Hb").
     iApply big_sepL2_intro. { rewrite length_interpret_iml //. }
     iIntros "!>" (?????) "($ & Hb)". iApply IH; last done; [ | done].
@@ -140,10 +145,11 @@ Proof.
   destruct b1, b2; try done; unfold bor_kind_direct_incl.
   + eauto.
   + rewrite !ltype_own_enum_unfold /enum_ltype_own.
-    iIntros "(%el & %Halg & %Hly & Hlb & %r' & Hrfn & #Hown)".
-    iExists el. iR. iR. iFrame "Hlb".
+    iIntros "(%el & %Halg & %Hly & Hlb & %Hconc & %r' & Hrfn & #Hown)".
+    iExists el. iR. iR. iFrame "Hlb". iR.
     iExists r'. iFrame "Hrfn".
-    iModIntro. iMod "Hown" as "(%variant_ly & %Hvariant & %Hst & %Htag & Hdisc & Hpad1 & Hdata & Hpad2)". iModIntro.
+    iModIntro. iMod "Hown" as "(%Hxr & %variant_ly & %Hvariant & %Hst & %Htag & Hdisc & Hpad1 & Hdata & Hpad2)". iModIntro.
+    iSplitR; first done.
     iExists variant_ly. iR. iR.
     iSplitR. { done. }
     iSplitL "Hdisc". { iApply (lty_of_ty_mono with "[] Hdisc"). done. }
@@ -172,10 +178,11 @@ Proof.
   - destruct b1, b2; try done; unfold bor_kind_direct_incl.
     + eauto.
     + rewrite !ltype_own_enum_unfold /enum_ltype_own.
-      iIntros "(%el & %Halg & %Hly & Hlb & %r' & Hrfn & #Hown)".
-      iExists el. iR. iR. iFrame "Hlb".
+      iIntros "(%el & %Halg & %Hly & Hlb & %Hconc & %r' & Hrfn & #Hown)".
+      iExists el. iR. iR. iFrame "Hlb". iR.
       iExists r'. iFrame "Hrfn".
-      iModIntro. iMod "Hown" as "(%variant_ly & %Hvariant & %Hst & %Htag & Hdisc & Hpad1 & Hdata & Hpad2)". iModIntro.
+      iModIntro. iMod "Hown" as "(%Hxr & %variant_ly & %Hvariant & %Hst & %Htag & Hdisc & Hpad1 & Hdata & Hpad2)". iModIntro.
+      iSplitR; first done.
       iExists variant_ly. iR. iR.
       iSplitR; first done.
       iSplitL "Hdisc". { iApply (lty_of_ty_mono with "[] Hdisc"). done. }
@@ -217,14 +224,14 @@ Proof.
     destruct b1, b2; try done; unfold bor_kind_direct_incl.
     + eauto.
     + rewrite !ltype_own_shrblocked_unfold /shr_blocked_lty_own.
-      iIntros "(%ly & ? & ? & ? & ? & %r' & Hrfn & Hb)".
+      iIntros "(%ly & ? & ? & ? & ? & %Hconc & %r' & Hrfn & Hb)".
       done.
       (*iExists ly. iFrame. iExists r'. iSplitR; first done.*)
       (*by iApply ty_shr_mono.*)
     + rewrite !ltype_own_shrblocked_unfold /shr_blocked_lty_own.
       iDestruct "Hincl" as "(Hincl & ->)".
-      iIntros "(%ly & ? & ? & ? & ? & %r' & ? & ? & Hb & Hs & $ & $)".
-      iExists ly. iFrame.
+      iIntros "(%ly & ? & ? & ? & ? & %Hconc & %r' & ? & ? & Hb & Hs & $ & $)".
+      iExists ly. iFrame. iSplitR; first done.
       iIntros "Hdead". iMod ("Hs" with "Hdead") as "Hdead". by iApply pinned_bor_shorten.
   - iIntros (rt ty r l b1 b2) "#Hincl". simp_ltypes.
     iSplitL; rewrite !ltype_own_ofty_unfold; iApply lty_of_ty_mono; done.
@@ -562,7 +569,7 @@ Section accessors.
   Proof.
     iIntros (?) "Hb".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & %r' & <- & #Hb)".
+    iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & %Hconc & %r' & <- & #Hb)".
     iExists ly. iFrame "%#". iApply (fupd_mask_mono with "Hb"). done.
   Qed.
 
@@ -697,8 +704,8 @@ Section open.
   Proof.
     iIntros "Hb".
     rewrite ltype_own_ofty_unfold ltype_own_shrblocked_unfold /shr_blocked_lty_own /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & %Hst & % & #Hsc & #Hlb & %r' & Hrfn & Hb)".
-    iExists ly.  iFrame. iR. iR. iR. iR.
+    iDestruct "Hb" as "(%ly & %Hst & %Hly & #Hsc & #Hlb & %Hconc & %r' & Hrfn & Hb)".
+    iExists ly.  iFrame. iR. iR. iR. iR. iSplitR; first done.
     destruct b.
     - iDestruct "Hb" as "(#Hb & _)". iModIntro. by iFrame.
     - done.
@@ -1096,7 +1103,7 @@ Section ne.
     do 5 f_equiv.
     { apply HT. apply Hd. }
     { apply equiv_dist. apply HT; apply Hd. }
-    do 6 f_equiv.
+    do 7 f_equiv.
     apply HT. apply Hd.
   Qed.
   Lemma ofty_own_contr_uniq {rt rt1} (n : nat) (ty ty' : type rt) (T : type rt → type rt1) :

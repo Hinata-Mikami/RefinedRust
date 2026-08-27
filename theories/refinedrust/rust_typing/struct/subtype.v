@@ -44,6 +44,69 @@ Section subtype.
     apply big_sepL2_persistent. intros ? [? [? []]] [? [? []]]; simpl; apply _.
   Qed.
 
+  Local Lemma is_xrfn_plist_cons {rt : RT} {rts} (r : place_rfn rt) (rs : plist place_rfnRT rts) :
+    is_xrfn (rt := place_rfnRT rt) r →
+    is_xrfn (rt := plistRT rts) rs →
+    is_xrfn (rt := plistRT (rt :: rts)) (r -:: rs).
+  Proof.
+    intros [xr ->] [xrs ->]. by exists (xr -:: xrs).
+  Qed.
+
+  Local Lemma struct_t_shr_hpzipl_is_xrfn {rts1 rts2}
+      (tys1 : hlist type rts1) (tys2 : hlist type rts2)
+      (rs1 : plist place_rfnRT rts1) (rs2 : plist place_rfnRT rts2) fields l κ π :
+    is_xrfn rs1 →
+    struct_t_incl_precond_strong tys1 tys2 rs1 rs2 -∗
+    ([∗ list] x ∈ hpzipl rts2 tys2 rs2,
+      ∃ i r', place_rfn_interp_shared (projT2 x).2 r' ∗
+        (l +ₗ offset_of_idx fields i) ◁ₗ{π, MetaNone, κ} r' @ (projT2 x).1) -∗
+    ⌜is_xrfn rs2⌝.
+  Proof.
+    intros [xrs ->].
+    revert xrs rts2 tys1 tys2 rs2.
+    induction rts1 as [|rt1 rts1 IH]; intros xrs rts2 tys1 tys2 rs2;
+      inv_hlist tys1; destruct xrs; destruct rts2; inv_hlist tys2; destruct rs2; simpl.
+    - iIntros "_ _". iPureIntro. by exists -[].
+    - intros ty2 tys2. iIntros "Hincl _". done.
+    - intros ty1 tys1. iIntros "Hincl _". done.
+    - intros ty1 tys1 ty2 tys2.
+      iIntros "#Hincl #Hb".
+      iEval (rewrite /struct_t_incl_precond_strong /=) in "Hincl".
+      iDestruct "Hincl" as "(Hincl1 & Hincl)".
+      iDestruct "Hb" as "((%i & %r' & Hrfn & Hshr) & Hb)".
+      destruct phd'0 as [r2|].
+      + iPoseProof (ty_shr_is_xrfn with "Hshr") as "%Hxr".
+        iPoseProof (IH ptl' rts2 tys2 tys1 ptl'0 with "Hincl Hb") as "%Hxrs".
+        iDestruct "Hrfn" as "<-".
+        iPureIntro. apply is_xrfn_plist_cons; last done.
+        by apply is_xrfn_place_in.
+      + iDestruct "Hincl1" as "(%Heq & %Heq' & _)".
+        subst. done.
+  Qed.
+
+  Local Lemma struct_t_shr_fields_is_xrfn {rts1 rts2}
+      (tys1 : hlist type rts1) (tys2 : hlist type rts2)
+      (rs1 : plist place_rfnRT rts1) (rs2 : plist place_rfnRT rts2) fields l κ π :
+    is_xrfn rs1 →
+    length rts2 = length (named_fields fields) →
+    NoDup (field_names fields) →
+    struct_t_incl_precond_strong tys1 tys2 rs1 rs2 -∗
+    ([∗ list] i ↦ ty ∈ pad_struct fields (hpzipl rts2 tys2 rs2) struct_make_uninit_type,
+      struct_own_el_shr π κ i fields l (projT2 ty).2 (projT2 ty).1) -∗
+    ⌜is_xrfn rs2⌝.
+  Proof.
+    iIntros (Hxr Hlen Hnd) "#Hincl #Hb".
+    iPoseProof (pad_struct_focus_no_uninit with "Hb") as "(Hfocused & _)".
+    { rewrite length_hpzipl. done. }
+    { done. }
+    iApply (struct_t_shr_hpzipl_is_xrfn tys1 tys2 rs1 rs2 fields l κ π Hxr with "Hincl [Hfocused]").
+    iApply (big_sepL_mono with "Hfocused").
+    iIntros (i x Hx) "(%j & %ly & %n & %Hfield & %Hnamed & Hel)".
+    rewrite /struct_own_el_shr.
+    iDestruct "Hel" as "(%r' & %ly' & Hrfn & %Hfield' & %Hst & Hsc & Hshr)".
+    iExists j, r'. iFrame.
+  Qed.
+
   Lemma struct_t_incl_precond_from_strong π {rts1 rts2 : list RT} (tys1 : hlist type rts1) (tys2 : hlist type rts2) (rs1 : plist place_rfnRT rts1) (rs2 : plist place_rfnRT rts2) :
     struct_t_incl_precond_strong tys1 tys2 rs1 rs2 -∗
     struct_t_incl_precond π true tys1 tys2 rs1 rs2.
@@ -132,9 +195,10 @@ Section subtype.
     iPoseProof (big_sepL2_length with "Hincl") as "%Hlen".
     rewrite !length_hpzipl in Hlen.
     rewrite /ty_shr/= struct_t_shr_unfold.
-    iDestruct "Hl" as "(%sl & -> & %Halg & %Hlen1 & %Hly & #Hlb & Hb)".
-    iExists sl. iR. rewrite -Hlen. iR. iR. iR. iR.
-    iApply (big_sepL_impl' with "Hb").
+    iDestruct "Hl" as "(%Hxr1 & %sl & -> & %Halg & %Hlen1 & %Hly & #Hlb & Hb)".
+    iAssert ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl rts2 tys2 rs2) struct_make_uninit_type,
+      struct_own_el_shr π κ i (sl_members sl) l (projT2 ty).2 (projT2 ty).1)%I with "[Hb]" as "#Hb2".
+    { iApply (big_sepL_impl' with "Hb").
     { rewrite !pad_struct_length //. }
     iModIntro.
     iIntros (k [rt1 [ty1 r1]] [rt2 [ty2 r2]] Hlook_ty1 Hlook_ty2) "Hl".
@@ -166,7 +230,13 @@ Section subtype.
     + iDestruct "Ha" as "(%Heq & %Heq' & %Hst & Ha)". subst. cbn in Heq'. subst.
       iDestruct ("Ha" $! r') as "(#Hsc & _ & #Ha')". iPoseProof ("Ha'" with "Hl") as "Hl".
       iPoseProof ("Hsc" with "Hsc1") as "Hsc2".
-      rewrite Hly'' -Hst. iFrame "#". eauto with iFrame.
+      rewrite Hly'' -Hst. iFrame "#". eauto with iFrame. }
+    iPoseProof (struct_t_shr_fields_is_xrfn tys1 tys2 rs1 rs2 (sl_members sl) l κ π Hxr1 with "Hincl Hb2") as "%Hxr2".
+    { rewrite named_fields_field_names_length.
+      rewrite -Hlen Hlen1. symmetry. by apply struct_layout_spec_has_layout_fields_length. }
+    { apply field_names_NoDup. }
+    iSplit; first done.
+    iExists sl. iR. rewrite -Hlen. iR. iR. iR. iR. done.
   Qed.
 
   Lemma struct_t_type_incl {rts1 rts2} (tys1 : hlist type rts1) (tys2 : hlist type rts2) rs1 rs2 sls :
@@ -180,7 +250,7 @@ Section subtype.
     iSplit; iModIntro.
     - iIntros (???). iApply struct_t_own_val_mono.
       by iApply struct_t_incl_precond_from_strong.
-    - iIntros (????). by iApply struct_t_shr_mono.
+    - iIntros (????). iApply struct_t_shr_mono; done.
   Qed.
 
   Lemma struct_t_full_subtype E L {rts} (tys1 : hlist type rts) (tys2 : hlist type rts) sls :
@@ -208,5 +278,3 @@ Section subtype.
     - iExists eq_refl. iR. iR. done.
   Qed.
 End subtype.
-
-
