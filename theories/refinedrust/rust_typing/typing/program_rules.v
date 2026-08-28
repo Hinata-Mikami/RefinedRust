@@ -3878,63 +3878,12 @@ Section subsume.
     [instance @type_read_move_fold_to_ofty].
   Global Existing Instance type_read_move_fold_to_ofty_inst | 100.
 
-  (*
-  For more generality, maybe have LtypeReadAs lty (λ ty r, ...)
-    that gives us an accessor as a type?
-    => this should work fine.
-     - T ty .. (Shared κ) -∗ LtypeReadAs (ShrBlocked ty) T
-     - T ty .. k -∗ LtypeReadAs (◁ ty) T
-     -
-  How does that work for moves? Well, we cannot move if it isn't an OfTy.
-     so there we should really cast first.
-  Note here: we should only trigger the copy instance if we can LtypeReadAs as something that is copy.
-     So we should really make that a TC and make it a precondition, similar to SimplifyHyp etc.
-
-  And similar for LtypeWriteAs lty (λ ty r, ...)?
-    well, there it is more difficult, because it even needs to hold if there are Blocked things below.
-    I don't think we can nicely solve that part.
-   *)
-
-  (** NOTE instance for moving is defined in value.v *)
-
-  (** Reading products: read each of the components in sequence *)
-  (* TODO check if this is the right thing to do.
-  Lemma type_read_prod E L π {rt1 rt2} `{ghost_varG Σ rt1} `{ghost_varG Σ rt2} `{ghost_varG Σ ((place_rfn rt1) * (place_rfn rt2))} b2 bmin l (lt1 : lty rt1) (lt2: lty rt2) r1 r2 sl ot
-    (T : val → ∀ rt', ghost_varG Σ rt' → lty rt' → place_rfn rt' → type (place_rfn rt1 * place_rfn rt2)%type → (place_rfn rt1 * place_rfn rt2) → iProp Σ) :
-    typed_read_end E L π (GetMemberLoc l sl "0") rt1 lt1 r1 b2 bmin ot (λ v1 rt1' _ lt1' r1' ty1 r1t,
-      typed_read_end E L π (GetMemberLoc l sl "1") rt2 lt2 r2 b2 bmin ot (λ v2 rt2' _ lt2' r2' ty2 r2t,
-        li_tactic (find_gvar_inst_goal (place_rfn rt1' * place_rfn rt2')) (λ _,
-        T (v1 ++ v2) (place_rfn rt1' * place_rfn rt2')%type _ (ProdLty lt1' lt2' sl) (PlaceIn (r1', r2')) (pair_t ty1 ty2 sl) (PlaceIn r1t, PlaceIn r2t)))) -∗
-    typed_read_end E L π l (place_rfn rt1 * place_rfn rt2) (ProdLty lt1 lt2 sl) (PlaceIn (r1, r2)) b2 bmin ot T.
-  Proof.
-  Admitted.
-  Global Instance type_read_prod_inst E L π {rt1 rt2} `{ghost_varG Σ rt1} `{ghost_varG Σ rt2} `{ghost_varG Σ ((place_rfn rt1) * (place_rfn rt2))} b2 bmin l (lt1 : lty rt1) (lt2: lty rt2) r1 r2 sl ot :
-    TypedReadEnd E L π l (ProdLty lt1 lt2 sl) (PlaceIn (r1, r2)) b2 bmin ot | 10 :=
-    λ T, i2p (type_read_prod E L π b2 bmin l lt1 lt2 r1 r2 sl ot T).
-
-  (** We can do copy reads from shr-blocked places *)
-  Lemma type_read_shr_blocked_copy E L π {rt} `{ghost_varG Σ rt} b2 bmin l (ty : type rt) r κ ot `{!Copyable ty} (T : val → ∀ rt', ghost_varG Σ rt' → lty rt' → place_rfn rt' → type rt → rt → iProp _) :
-    (⌜ty.(ty_has_op_type) ot⌝ ∗ ⌜lctx_lft_alive E L κ⌝ ∗ (∀ v, T v rt _ (ShrBlockedLty ty κ) (PlaceIn r) ty r)) -∗
-    typed_read_end E L π l rt (ShrBlockedLty ty κ) (PlaceIn r) b2 bmin ot T.
-  Proof.
-  Admitted.
-  Global Instance type_read_shr_blocked_copy_inst E L π {rt} `{ghost_varG Σ rt} b2 bmin l (ty : type rt) r κ ot `{!Copyable ty} :
-    TypedReadEnd E L π l (ShrBlockedLty ty κ) (PlaceIn r) b2 bmin ot | 10 :=
-    λ T, i2p (type_read_shr_blocked_copy E L π b2 bmin l ty r κ ot T).
-  *)
-
-
-
-  (* TODO: potentially lemmas for reading from mut-ref and box ltypes.
-      (this would be required for full generality, because shr_blocked can be below them)
-   *)
-
   Lemma type_write E L f T T' e ot v rt (ty : type rt) r :
     IntoPlaceCtx E f e T' →
     T' L (λ L' K l, find_in_context (FindLoc l) (λ '(existT rto (lt1, r1, b, π')),
       ⌜π' = f.1⌝ ∗
       typed_place E L' f l lt1 r1 UpdInit b K (λ (L1 : llctx) (κs : list lft) (l2 : loc) (b2 : bor_kind) (bmin : place_update_kind) rti (lt2 : ltype rti) (ri2 : place_rfn rti) (updcx : place_update_ctx rti rto bmin UpdInit),
-        (* unblock etc. TODO: this requirement is too strong. *)
+        (* unblock etc. *)
         stratify_ltype_unblock f.1 E L1 StratRefoldOpened l2 lt2 ri2 b2 (λ L2 R rt3 lt3 ri3,
         (* certify that this stratification is allowed, or otherwise commit to a strong update *)
         prove_place_cond E L2 bmin lt2 lt3 (λ upd,
@@ -4025,7 +3974,6 @@ Section subsume.
   Definition type_write_ofty_init_inst := [instance @type_write_ofty_init].
   Global Existing Instance type_write_ofty_init_inst | 10.
 
-  (* TODO: generalize to other places where we can overwrite, but which can't be folded to an ofty *)
   (** Currently have [ty2], want to write [ty]. This allows updates of the refinement type (from rt to rt2).
      This only works if the path is fully owned ([bmin = Owned]).
      We could in principle allow this also for Uniq paths by suspending the mutable reference's contract with [OpenedLtype], but currently we have decided against that. *)
@@ -4072,13 +4020,12 @@ Section subsume.
   Global Existing Instance type_write_ofty_strong_inst | 10.
 
   (** This does not allow updates to the refinement type, rt stays the same. *)
-  (* TODO: also allow writes here if the place is not an ofty *)
   (* Write v : r1 @ ty to l : #r2 @ ◁ ty2.
      We first need to show that ty is a subtype of ty2.
      Afterwards, we obtain l : #r3 @ ◁ ty2 for some r3, as well as the result of ghost-dropping r2 @ ty2. *)
   Lemma type_write_ofty_weak E L {rt1 rt2} π b2 bmin l (ty : type rt1) (ty2 : type rt2) r1 r2 v ot (T : typed_write_end_cont_t bmin rt2) :
     (∃ r3, owned_subtype π E L false r1 r3 ty ty2 (λ L2,
-      ⌜fast_syntype_eq_hint (ty_syn_type ty = ty_syn_type ty2)⌝ ∗ (* TODO: would be nice to remove this requirement *)
+      ⌜fast_syntype_eq_hint (ty_syn_type ty = ty_syn_type ty2)⌝ ∗
       ⌜ty_has_op_type ty ot⌝ ∗ ⌜lctx_bor_kind_alive E L2 b2⌝ ∗
       ⌜bor_kind_writeable b2⌝ ∗
       (ty_ghost_drop' ty2 π r2 -∗
@@ -4337,90 +4284,6 @@ Section subsume.
   Definition type_write_end_fold_to_ofty_inst := [instance @type_write_end_fold_to_ofty].
   Global Existing Instance type_write_end_fold_to_ofty_inst | 100.
 
-  (* TODO move *)
-  (*
-  Fixpoint try_fold_lty {rt} (lt : lty rt) : option (type rt) :=
-    match lt with
-    | BlockedLty _ _ => None
-    | ShrBlockedLty _ _ => None
-    | OfTy ty => Some ty
-    | MutLty lt κ =>
-        ty ← try_fold_lty lt;
-        Some (mut_ref ty κ)
-    | ShrLty lt κ =>
-        (* TODO *)
-        (*ty ← try_fold_lty lt;*)
-        (*Some (shr_ref ty κ)*)
-        None
-    | BoxLty lt =>
-        (* TODO *)
-        (*ty ← try_fold_lty lt;*)
-        (*Some (box ty)*)
-        None
-    | ProdLty lt1 lt2 sl =>
-        ty1 ← try_fold_lty lt1;
-        ty2 ← try_fold_lty lt2;
-        if decide (sl = pair_layout_spec ty1 ty2) then Some (pair_t ty1 ty2) else None
-    end.
-  Lemma try_fold_lty_correct {rt} (lt : lty rt) (ty : type rt) :
-    try_fold_lty lt = Some ty →
-    ⊢ ltype_eq lt (◁ ty)%I.
-  Proof.
-  Abort.
-
-  (* The following lemmas are really somewhat awkward, because of the whole "pushing down" thing: we are really overwriting the MutLty(etc.) here, not its contents. But still, we need to replicate these lemmas that are really similar, because we can't phrase the ownership generically. *)
-
-  (* Basically for Uniq ownership. We need to take care that we are not disrupting the contract of the mutable reference that may be above it (in the b2=Uniq case). *)
-  Lemma type_write_mutlty E L {rt} π (T : ∀ rt3, type rt3 → rt3 → iProp Σ) b2 bmin l (ty : type (place_rfn rt * gname)) (lt2 : lty rt) r1 r2 v κ ot :
-    (* the core must be equivalent to some type, of which the type we are writing must be a subtype *)
-    ∃ ty2, ⌜try_fold_lty (ltype_core (MutLty lt2 κ)) = Some ty2⌝ ∗
-      (weak_subtype E L ty ty2 (⌜ty.(ty_has_op_type) ot MCCopy⌝ ∗ ⌜lctx_bor_kind_alive E L b2⌝ ∗ ⌜bor_kind_writeable bmin⌝ ∗ T _ ty2 r1)) -∗
-    typed_write_end π E L ot v _ ty r1 b2 bmin l _ (MutLty lt2 κ) (PlaceIn r2) T.
-  Proof.
-  Abort.
-  (* No restrictions if we fully own it *)
-  Lemma type_write_mutlty_strong E L {rt rt2} π (T : ∀ rt3, type rt3 → rt3 → iProp Σ) l (ty : type rt) (lt2 : lty rt2) r1 r2 v κ wl wl' ot :
-    ⌜ty.(ty_has_op_type) ot MCCopy⌝ ∗ ⌜ty_syn_type ty = PtrSynType⌝ ∗ T _ ty r1 -∗
-    typed_write_end π E L ot v _ ty r1 (Owned wl) (Owned wl') l _ (MutLty lt2 κ) (PlaceIn r2) T.
-  Proof.
-  Abort.
-
-  (* Same lemmas for box *)
-  Lemma type_write_boxlty E L {rt} π (T : ∀ rt3, type rt3 → rt3 → iProp Σ) b2 bmin l (ty : type (place_rfn rt)) (lt2 : lty rt) r1 r2 v ot :
-    (* the core must be equivalent to some type, of which the type we are writing must be a subtype *)
-    ∃ ty2, ⌜try_fold_lty (ltype_core (BoxLty lt2)) = Some ty2⌝ ∗
-      (weak_subtype E L ty ty2 (⌜ty.(ty_has_op_type) ot MCCopy⌝ ∗ ⌜lctx_bor_kind_alive E L b2⌝ ∗ ⌜bor_kind_writeable bmin⌝ ∗ T _ ty2 r1)) -∗
-    typed_write_end π E L ot v _ ty r1 b2 bmin l _ (BoxLty lt2) (PlaceIn r2) T.
-  Proof.
-  Abort.
-  (* No restrictions if we fully own it *)
-  Lemma type_write_boxlty_strong E L {rt rt2} π (T : ∀ rt3, type rt3 → rt3 → iProp Σ) l (ty : type rt) (lt2 : lty rt2) r1 r2 v wl wl' ot :
-    ⌜ty.(ty_has_op_type) ot MCCopy⌝ ∗ ⌜ty_syn_type ty = PtrSynType⌝ ∗ T _ ty r1 -∗
-    typed_write_end π E L ot v _ ty r1 (Owned wl) (Owned wl') l _ (BoxLty lt2) (PlaceIn r2) T.
-  Proof.
-  Abort.
-
-  (* Same for sharing. This works, again, because we are writing to the place the shared reference is stored in, not below the shared reference. *)
-  Lemma type_write_shrlty E L {rt} π (T : ∀ rt3, type rt3 → rt3 → iProp Σ) b2 bmin l (ty : type (place_rfn rt)) (lt2 : lty rt) r1 r2 v κ ot :
-    (* the core must be equivalent to some type, of which the type we are writing must be a subtype *)
-    ∃ ty2, ⌜try_fold_lty (ltype_core (ShrLty lt2 κ)) = Some ty2⌝ ∗
-      (weak_subtype E L ty ty2 (⌜ty.(ty_has_op_type) ot MCCopy⌝ ∗ ⌜lctx_bor_kind_alive E L b2⌝ ∗ ⌜bor_kind_writeable bmin⌝ ∗ T _ ty2 r1)) -∗
-    typed_write_end π E L ot v _ ty r1 b2 bmin l _ (ShrLty lt2 κ) (PlaceIn r2) T.
-  Proof.
-  Abort.
-  (* No restrictions if we fully own it *)
-  Lemma type_write_shrlty_strong E L {rt rt2} π (T : ∀ rt3, type rt3 → rt3 → iProp Σ) l (ty : type rt) (lt2 : lty rt2) r1 r2 v κ wl wl' ot :
-    ⌜ty.(ty_has_op_type) ot MCCopy⌝ ∗ ⌜ty_syn_type ty = PtrSynType⌝ ∗ T _ ty r1 -∗
-    typed_write_end π E L ot v _ ty r1 (Owned wl) (Owned wl') l _ (ShrLty lt2 κ) (PlaceIn r2) T.
-  Proof.
-  Abort.
-   *)
-
-  (* TODO: product typing rule.
-    This will be a bit more complicated, as we essentially need to require that directly below the product, nothing is blocked.
-    Of course, with nested products, this gets more complicated...
-   *)
-
   Lemma type_addr_of_mut pk E L f (e : expr) (T : typed_addr_of_mut_cont_t) T' :
     IntoPlaceCtx E f e T' →
     T' L (λ L1 K l, find_in_context (FindLoc l) (λ '(existT rto (lt1, r1, b, π)),
@@ -4534,20 +4397,6 @@ Section subsume.
     iModIntro. iExists _. iFrame.
     iL. done.
   Qed.
-
-
-  (* Problem:
-    - mutrefs will now allow UpdStrong.
-      But we still don't want to allow this, because we don't really want to open the mutref above.
-
-      Maybe I want another level that isn't semantically different from UpdStrong, but still signifies that we shouldn't do tis.
-
-    Maybe I should have another flag that has no semantic meaning but is purely a heuristic.
-    Depending on that flag I can then decide what to actually do.
-
-    Or I dont' emit a typing hint in the frontend if it's below a reference.
-
-   *)
 
   (** Finish a mutable borrow *)
   Lemma type_borrow_mut_end_owned E L π κ l orty (rt : RT) (ty : type rt) (r : rt) bmin
