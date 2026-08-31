@@ -115,6 +115,7 @@ pub(crate) enum Type {
     Uint(ty::UintTy),
     Char,
     Bool,
+    Never,
     Param(u32),
     Tuple(Vec<Self>),
     Ref(u32, #[serde(with = "MutabilityDef")] ast::Mutability, Box<Self>),
@@ -161,6 +162,7 @@ impl Type {
             },
             Self::Bool => Some(tcx.mk_ty_from_kind(ty::TyKind::Bool)),
             Self::Char => Some(tcx.mk_ty_from_kind(ty::TyKind::Char)),
+            Self::Never => Some(tcx.mk_ty_from_kind(ty::TyKind::Never)),
             Self::Int(it) => Some(tcx.mk_ty_from_kind(ty::TyKind::Int(it.to_owned()))),
             Self::Uint(it) => Some(tcx.mk_ty_from_kind(ty::TyKind::Uint(it.to_owned()))),
             Self::Tuple(args) => {
@@ -204,6 +206,7 @@ pub(crate) fn convert_ty_to_flat_type<'tcx>(tcx: ty::TyCtxt<'tcx>, ty: ty::Ty<'t
         },
         ty::TyKind::Bool => Some(Type::Bool),
         ty::TyKind::Char => Some(Type::Char),
+        ty::TyKind::Never => Some(Type::Never),
         ty::TyKind::Int(it) => Some(Type::Int(it.to_owned())),
         ty::TyKind::Uint(it) => Some(Type::Uint(it.to_owned())),
         ty::TyKind::Param(p) => Some(Type::Param(p.index)),

@@ -89,7 +89,7 @@ pub enum SynType {
     #[display("UnitSynType")]
     Unit,
 
-    #[display("UnitSynType")]
+    #[display("NeverSynType")]
     Never,
 
     #[display("(ArraySynType {} {})", _0, _1)]
@@ -124,6 +124,9 @@ pub enum OpType {
     #[display("(StructOp unit_sl [])")]
     Unit,
 
+    #[display("NeverOp")]
+    Never,
+
     #[display("(ArrayOp {} {})", _0, _1)]
     Array(Box<Self>, u128),
 
@@ -157,6 +160,9 @@ pub enum Layout {
     #[display("(layout_of unit_sl)")]
     Unit,
 
+    #[display("zst_layout")]
+    Never,
+
     /// used for variable layout terms, e.g. for struct layouts or generics
     #[display("(use_layout_alg' {})", _0)]
     UseLayoutAlg(coq::term::Term),
@@ -188,7 +194,8 @@ impl From<&SynType> for Layout {
 
             SynType::Array(st, len) => Self::Array(Box::new(st.as_ref().to_owned().into()), *len),
             SynType::Untyped(ly) => ly.clone(),
-            SynType::Unit | SynType::Never => Self::Unit,
+            SynType::Unit => Self::Unit,
+            SynType::Never => Self::Never,
 
             SynType::Literal(rhs) => Self::UseLayoutAlg(coq::term::Term::Literal(rhs.clone())),
         }
@@ -216,7 +223,7 @@ impl From<&SynType> for OpType {
 
             SynType::Untyped(ly) => Self::Untyped(ly.clone()),
             SynType::Unit => Self::Unit,
-            SynType::Never => Self::Untyped(Layout::Unit),
+            SynType::Never => Self::Never,
 
             SynType::Array(st, len) => Self::Array(Box::new((&**st).into()), *len),
 

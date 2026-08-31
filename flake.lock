@@ -17,11 +17,11 @@
         "trakt": "trakt"
       },
       "locked": {
-        "lastModified": 1784280250,
-        "narHash": "sha256-RCzx9UuwLkkfu819x9VU6+OpmcxZxRsbs/GmJ79oqac=",
+        "lastModified": 1787930213,
+        "narHash": "sha256-UoksMQ4YBYx+8PRU2vh7f12s5Zd88qu4wBFqSWfMD3I=",
         "owner": "SMTCoq",
         "repo": "SMTCoq",
-        "rev": "cdddf26c36887d6a06080764187fb6b174b97c8c",
+        "rev": "9caf1dd8b22c88465fe2d989cecbebca20993523",
         "type": "github"
       },
       "original": {
@@ -41,11 +41,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1785181426,
-        "narHash": "sha256-CazBsE3jE+tcj6YVi8Lfh4fEdovNxVSKfDDAuZfXD0s=",
+        "lastModified": 1787931017,
+        "narHash": "sha256-sgOJwwlgVWEoJjWAxl9osgDyy4jllrBDeWDOF9fI/ww=",
         "owner": "SMTCoq",
         "repo": "Sniper",
-        "rev": "e743fadcd9e6da909d3cb7161d612bdcaeb554fb",
+        "rev": "e2e29430ccae838a3e0f08690d6bfd1267678e7e",
         "type": "github"
       },
       "original": {
@@ -56,11 +56,11 @@
     },
     "crane": {
       "locked": {
-        "lastModified": 1785782307,
-        "narHash": "sha256-MPaRdVkf6zZP5fCPxYCi8Dr4pZzgmXzg8T9nVEbp3Mw=",
+        "lastModified": 1787326676,
+        "narHash": "sha256-lWhBbBvC05/xwivKBBiM2YNizpmgqCgyOIzomvRuwxs=",
         "owner": "ipetkov",
         "repo": "crane",
-        "rev": "2c71e194474d13de031d729b729c968ddbe3507f",
+        "rev": "692f7e9ef2ece8125b466f66f2af532b3edaed0d",
         "type": "github"
       },
       "original": {
@@ -92,11 +92,11 @@
         "nixpkgs-lib": "nixpkgs-lib_2"
       },
       "locked": {
-        "lastModified": 1785627969,
-        "narHash": "sha256-4dtXQk/NMePegK/nWp5NSeuZKLATItOq61lpEvmXqGw=",
+        "lastModified": 1787559586,
+        "narHash": "sha256-onL0VLf9vPllmT0H/OlURIU5r5t5WIEl7t4tVNKT0Nw=",
         "owner": "hercules-ci",
         "repo": "flake-parts",
-        "rev": "427bf4bd9435fdf21321c8cc628c24efc14c0f7a",
+        "rev": "9d0d87172c374f89da73c1cfe6d81ae62feac1f1",
         "type": "github"
       },
       "original": {
@@ -152,11 +152,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1786430034,
-        "narHash": "sha256-1MqAfG80fHLnWolvR3ULsMsXwMKFIJaWob8OI9yRcB0=",
-        "rev": "70cc4559b10a6062b05ff1af17e0add065ccaed9",
+        "lastModified": 1787962033,
+        "narHash": "sha256-SYbFPw4Je7tTpsl5qPqmmxPWuQyA9AGddCDieY5QG5A=",
+        "rev": "c5c4a43b0e8056328ec4529f735cabdb8f1942bb",
         "type": "tarball",
-        "url": "https://releases.nixos.org/nixos/26.05/nixos-26.05.7443.70cc4559b10a/nixexprs.tar.xz"
+        "url": "https://releases.nixos.org/nixos/26.05/nixos-26.05.8639.c5c4a43b0e80/nixexprs.tar.xz"
       },
       "original": {
         "id": "nixpkgs",
@@ -180,17 +180,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1783585727,
-        "narHash": "sha256-GRKihDcL+6ySSS2FUHa1cjJnCk8RztXq5TvwYFfb0lY=",
-        "ref": "refs/heads/main",
-        "rev": "f3e509c4fb9f4a0fbc1f3282f5a493e07bb55565",
-        "revCount": 3,
-        "type": "git",
-        "url": "https://codeberg.org/lafeychine/rocq-utils"
+        "lastModified": 1787575763,
+        "narHash": "sha256-15nttb8eIUZynYXDZBuphktiUvlAtSlcMuiUwt1CpZY=",
+        "owner": "lafeychine",
+        "repo": "rocq-utils",
+        "rev": "8c5b523502c83e940cf102f9b7956d738fbd8517",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "https://codeberg.org/lafeychine/rocq-utils"
+        "owner": "lafeychine",
+        "repo": "rocq-utils",
+        "type": "github"
       }
     },
     "root": {
@@ -210,11 +210,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1786507911,
-        "narHash": "sha256-w5aZRLbiu7H6TqsYXVMdRKg0S4DRaJpxyqxx86AwxVk=",
+        "lastModified": 1788165049,
+        "narHash": "sha256-en4IoUeCqvq9F66YhwOrUFw1nc70OBhrJwrzfalezvY=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "39db48099ad16834af7e27485a4babf9c28b3897",
+        "rev": "d03cd474bd97389dcc2e8cd3b3bb6b8c6e346b1a",
         "type": "github"
       },
       "original": {
@@ -230,11 +230,11 @@
         "rocq-utils": "rocq-utils"
       },
       "locked": {
-        "lastModified": 1783668179,
-        "narHash": "sha256-DGQIizTV52DUG7IsQ8QOSB+EgPJkj3+0gP7sMKviDEg=",
+        "lastModified": 1787580542,
+        "narHash": "sha256-1Zsy2of4SupbMjhQTZ3KC1r1zqarf41cdKSlefbWMTc=",
         "owner": "rocq-trakt",
         "repo": "trakt",
-        "rev": "abc90bb42fdb6de022375187d8b0bacd63641c90",
+        "rev": "b245940ea5d942828c6bc00e42155931805d9474",
         "type": "github"
       },
       "original": {

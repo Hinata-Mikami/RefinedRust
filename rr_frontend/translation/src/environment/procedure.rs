@@ -301,13 +301,14 @@ impl<'tcx> Procedure<'tcx> {
                 Self::place_mentions_local(place, local) || Self::rvalue_mentions_local(rvalue, local)
             },
             mir::StatementKind::StorageLive(l) | mir::StatementKind::StorageDead(l) => *l == local,
-            mir::StatementKind::FakeRead(box (_, place))
-            | mir::StatementKind::PlaceMention(box place)
+            mir::StatementKind::FakeRead(deref!((_, place)))
+            | mir::StatementKind::PlaceMention(deref!(place))
             | mir::StatementKind::BackwardIncompatibleDropHint {
-                place: box place, ..
+                place: deref!(place),
+                ..
             } => Self::place_mentions_local(place, local),
             mir::StatementKind::SetDiscriminant { place, .. } => Self::place_mentions_local(place, local),
-            mir::StatementKind::AscribeUserType(box (place, _), _) => {
+            mir::StatementKind::AscribeUserType(deref!((place, _)), _) => {
                 Self::place_mentions_local(place, local)
             },
             mir::StatementKind::Intrinsic(_)

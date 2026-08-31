@@ -184,6 +184,9 @@ pub enum RustType {
     #[display("RSTUnit")]
     Unit,
 
+    #[display("RSTNever")]
+    Never,
+
     #[display("RSTAliasPtr")]
     AliasPtr,
 
@@ -266,9 +269,7 @@ impl RustType {
 
             Type::Unit => Self::Unit,
 
-            Type::Never => {
-                panic!("RustType::of_type: cannot translate Never type");
-            },
+            Type::Never => Self::Never,
 
             Type::RawPtr => Self::AliasPtr,
             Type::AliasRef => Self::AliasRef,

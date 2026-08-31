@@ -12,7 +12,7 @@ use derive_more::{Constructor, Debug};
 use log::{info, trace, warn};
 use radium::{coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::ty::{RegionExt as _, TypeFoldable as _};
+use rr_rustc_interface::middle::ty::{RegionExt as _, TypeFoldable as _, TypeSuperFoldable as _};
 use rr_rustc_interface::middle::{span_bug, ty};
 use rr_rustc_interface::span::{DUMMY_SP, Symbol};
 
@@ -31,6 +31,29 @@ use crate::{environment, regions};
 /// TODO: handle early-bound lifetimes?
 pub(crate) type GenericsKey<'tcx> = Vec<ty::Ty<'tcx>>;
 
+struct GenericKeyFolder<'tcx> {
+    tcx: ty::TyCtxt<'tcx>,
+}
+
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for GenericKeyFolder<'tcx> {
+    fn cx(&self) -> ty::TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_region(&mut self, _: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        ty::Region::new_from_kind(self.tcx, ty::RegionKind::ReErased)
+    }
+
+    fn fold_ty(&mut self, t: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
+        let ty = t.super_fold_with(self);
+        match ty.kind() {
+            // `skip_norm_wip` changes this marker while preserving the same projection.
+            ty::TyKind::Alias(_, alias) => ty::Ty::new_alias(self.tcx, ty::IsRigid::No, *alias),
+            _ => ty,
+        }
+    }
+}
+
 pub(crate) fn erase_regions<'tcx>(tcx: ty::TyCtxt<'tcx>, ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
     ty.fold_with(&mut TyRegionEraseFolder::new(tcx))
 }
@@ -42,7 +65,7 @@ pub(crate) fn generate_args_inst_key<'tcx>(
 ) -> Result<GenericsKey<'tcx>, TranslationError> {
     // erase parameters to their syntactic types
     let mut key = Vec::new();
-    let mut region_eraser = TyRegionEraseFolder::new(tcx);
+    let mut key_folder = GenericKeyFolder { tcx };
     for p in ty_params {
         match p.kind() {
             ty::GenericArgKind::Lifetime(_) => {
@@ -51,7 +74,7 @@ pub(crate) fn generate_args_inst_key<'tcx>(
             ty::GenericArgKind::Type(t) => {
                 // TODO: this should erase to the syntactic type.
                 // Is erasing regions enough for that?
-                let t_erased = t.fold_with(&mut region_eraser);
+                let t_erased = t.fold_with(&mut key_folder);
                 key.push(t_erased);
             },
             ty::GenericArgKind::Const(_c) => {

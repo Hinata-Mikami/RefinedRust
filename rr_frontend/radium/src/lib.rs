@@ -1,4 +1,4 @@
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(stmt_expr_attributes)]
 #![feature(iterator_try_collect)]
 

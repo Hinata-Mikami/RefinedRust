@@ -889,10 +889,9 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         synthetic_ref_local: Local,
     ) -> Option<(usize, NormalizedPlace)> {
         self.de.basic_blocks[bb_t].statements.iter().enumerate().rev().find_map(|(idx, stmt)| {
-            let mir::StatementKind::Assign(box (
-                lhs,
-                mir::Rvalue::Ref(_, mir::BorrowKind::Mut { .. }, place),
-            )) = &stmt.kind
+            let mir::StatementKind::Assign(
+                deref!((lhs, mir::Rvalue::Ref(_, mir::BorrowKind::Mut { .. }, place),)),
+            ) = &stmt.kind
             else {
                 return None;
             };
@@ -928,7 +927,8 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
             return None;
         }
 
-        let mir::StatementKind::Assign(box (lhs_t, mir::Rvalue::Discriminant(place_t))) = &stmt_t.kind else {
+        let mir::StatementKind::Assign(deref!((lhs_t, mir::Rvalue::Discriminant(place_t)))) = &stmt_t.kind
+        else {
             return None;
         };
 
@@ -1297,7 +1297,8 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         local: Local,
     ) -> Option<NormalizedPlace> {
         statements.iter().rev().find_map(|stmt| {
-            let mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(place))) = &stmt.kind else {
+            let mir::StatementKind::Assign(deref!((lhs, mir::Rvalue::Discriminant(place)))) = &stmt.kind
+            else {
                 return None;
             };
             (lhs.projection.is_empty() && lhs.local == local).then(|| self.normalize_place(*place))
@@ -1479,7 +1480,8 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         source_place: &NormalizedPlace,
     ) -> Option<usize> {
         self.de.basic_blocks[bb_t].statements.iter().enumerate().rev().find_map(|(idx, stmt)| {
-            let mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(place))) = &stmt.kind else {
+            let mir::StatementKind::Assign(deref!((lhs, mir::Rvalue::Discriminant(place)))) = &stmt.kind
+            else {
                 return None;
             };
             (lhs.projection.is_empty()

@@ -829,7 +829,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 }
 
                 let assignment = data.statements.iter().enumerate().rev().find_map(|(idx, stmt)| {
-                    let mir::StatementKind::Assign(box (lhs, rvalue)) = &stmt.kind else {
+                    let mir::StatementKind::Assign(deref!((lhs, rvalue))) = &stmt.kind else {
                         return None;
                     };
                     if !lhs.projection.is_empty() || lhs.local != arg_place.local {
@@ -903,7 +903,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let func = func.clone();
             let destination = *destination;
             let target = *target;
-            let mir::Operand::Constant(box func_constant) = &func else {
+            let mir::Operand::Constant(deref!(func_constant)) = &func else {
                 return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
                     Message::UnsupportedFeature(format!(
                         "RefinedRust does currently not support this kind of call operand (got: {func:?})"

@@ -645,11 +645,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
 
         let shim_reg = self.adt_shims.borrow();
-        if shim_reg.contains_key(&ordered_did) {
-            return true;
-        }
-
-        false
+        shim_reg.contains_key(&ordered_did)
     }
 
     /// Register a shim for an ADT.

@@ -123,7 +123,7 @@ impl Type<'_> {
         match self {
             Self::Struct(su) => su.make_raw(),
             Self::Literal(lit) => lit.make_raw(),
-            Self::MutRef(box ty, _) | Self::ShrRef(box ty, _) => ty.make_raw(),
+            Self::MutRef(deref!(ty), _) | Self::ShrRef(deref!(ty), _) => ty.make_raw(),
             _ => (),
         }
     }
@@ -135,12 +135,12 @@ impl Type<'_> {
             Self::Bool => coq::term::Type::Bool,
             Self::Char | Self::Int(_) => coq::term::Type::Z,
 
-            Self::MutRef(box ty, _) => coq::term::Type::Prod(vec![
+            Self::MutRef(deref!(ty), _) => coq::term::Type::Prod(vec![
                 model::Type::PlaceRfn(Box::new(ty.get_rfn_type())).into(),
                 model::Type::Gname.into(),
             ]),
 
-            Self::ShrRef(box ty, _) => model::Type::PlaceRfn(Box::new(ty.get_rfn_type())).into(),
+            Self::ShrRef(deref!(ty), _) => model::Type::PlaceRfn(Box::new(ty.get_rfn_type())).into(),
 
             Self::RawPtr | Self::AliasRef => model::Type::Loc.into(),
 

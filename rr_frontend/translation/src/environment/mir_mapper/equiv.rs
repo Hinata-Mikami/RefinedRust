@@ -18,8 +18,8 @@ impl<'tcx> Mapper<'_, 'tcx> {
     pub(super) fn stmt_equiv(&self, target: &mir::Statement<'tcx>, source: &mir::Statement<'tcx>) -> bool {
         match (&target.kind, &source.kind) {
             (
-                mir::StatementKind::Assign(box (lhs_t, rhs_t)),
-                mir::StatementKind::Assign(box (lhs_s, rhs_s)),
+                mir::StatementKind::Assign(deref!((lhs_t, rhs_t))),
+                mir::StatementKind::Assign(deref!((lhs_s, rhs_s))),
             ) => self.place_equiv(*lhs_t, *lhs_s) && self.rvalue_equiv(rhs_t, rhs_s),
             (mir::StatementKind::StorageLive(local_t), mir::StatementKind::StorageLive(local_s))
             | (mir::StatementKind::StorageDead(local_t), mir::StatementKind::StorageDead(local_s)) => {
@@ -150,7 +150,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
             mir::StatementKind::StorageLive(local) | mir::StatementKind::StorageDead(local) => {
                 self.is_synthetic_local(*local)
             },
-            mir::StatementKind::Assign(box (lhs, _)) => {
+            mir::StatementKind::Assign(deref!((lhs, _))) => {
                 lhs.projection.is_empty() && self.is_synthetic_local(lhs.local)
             },
             _ => false,
@@ -163,7 +163,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         stmt: &mir::Statement<'tcx>,
         source_loc: Option<SourceLoc>,
     ) -> Option<Origin> {
-        let mir::StatementKind::Assign(box (lhs, rhs)) = &stmt.kind else {
+        let mir::StatementKind::Assign(deref!((lhs, rhs))) = &stmt.kind else {
             return None;
         };
 
@@ -228,7 +228,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         box_place: &NormalizedPlace,
     ) -> bool {
         match &stmt.kind {
-            mir::StatementKind::Assign(box (_, rhs)) => self.rvalue_uses_box_deref(rhs, box_place),
+            mir::StatementKind::Assign(deref!((_, rhs))) => self.rvalue_uses_box_deref(rhs, box_place),
             mir::StatementKind::SetDiscriminant { place, .. }
             | mir::StatementKind::PlaceMention(place)
             | mir::StatementKind::BackwardIncompatibleDropHint { place, .. } => {
@@ -248,7 +248,7 @@ impl<'tcx> Mapper<'_, 'tcx> {
         source_loc: SourceLoc,
     ) -> bool {
         match &stmt.kind {
-            mir::StatementKind::Assign(box (lhs, rhs)) => {
+            mir::StatementKind::Assign(deref!((lhs, rhs))) => {
                 self.place_uses_alias_with_origin(*lhs, source_loc)
                     || self.rvalue_uses_alias_with_origin(rhs, source_loc)
             },
@@ -335,9 +335,9 @@ impl<'tcx> Mapper<'_, 'tcx> {
         matches!(
             &stmt.kind,
             mir::StatementKind::AscribeUserType(_, _)
-            | mir::StatementKind::FakeRead(_)
-            | mir::StatementKind::Coverage(_)
-            | mir::StatementKind::Assign(box (_, mir::Rvalue::Ref(_, mir::BorrowKind::Fake(_), _)))
+                | mir::StatementKind::FakeRead(_)
+                | mir::StatementKind::Coverage(_)
+                | mir::StatementKind::Assign(deref!((_, mir::Rvalue::Ref(_, mir::BorrowKind::Fake(_), _))))
         )
     }
 

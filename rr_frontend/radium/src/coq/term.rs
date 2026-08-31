@@ -118,17 +118,17 @@ impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
             Self::RecordProj(rec, component) => {
                 write!(f, "{rec}.({component})")
             },
-            Self::App(box a) => write!(f, "{a}"),
+            Self::App(deref!(a)) => write!(f, "{a}"),
             Self::LetIn(ident, term, term2) => {
                 write!(f, "let {ident} := {term} in {term2}")
             },
-            Self::All(binders, box body) => {
+            Self::All(binders, deref!(body)) => {
                 write!(f, "{}{}", fmt_binders("∀", binders), body)
             },
-            Self::Exists(binders, box body) => {
+            Self::Exists(binders, deref!(body)) => {
                 write!(f, "{}{}", fmt_binders("∃", binders), body)
             },
-            Self::Lambda(binders, box body) => {
+            Self::Lambda(binders, deref!(body)) => {
                 write!(f, "{}{}", fmt_binders_empty("λ", binders, "λ '(), "), body)
             },
             Self::Infix(op, terms) => {

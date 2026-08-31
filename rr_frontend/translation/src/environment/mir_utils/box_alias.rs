@@ -82,7 +82,7 @@ pub(crate) fn collect_box_materialization_aliases<'tcx>(
                 unreachable!();
             };
 
-            let mir::StatementKind::Assign(box (box_lhs, box_rhs)) = &box_copy.kind else {
+            let mir::StatementKind::Assign(deref!((box_lhs, box_rhs))) = &box_copy.kind else {
                 continue;
             };
             let mir::Rvalue::Use(mir::Operand::Copy(box_source), retag) = box_rhs else {
@@ -111,7 +111,7 @@ pub(crate) fn collect_box_materialization_aliases<'tcx>(
                 continue;
             };
 
-            let mir::StatementKind::Assign(box (raw_lhs, raw_rhs)) = &raw_alias.kind else {
+            let mir::StatementKind::Assign(deref!((raw_lhs, raw_rhs))) = &raw_alias.kind else {
                 continue;
             };
             let mir::Rvalue::Cast(
@@ -187,7 +187,7 @@ pub(crate) fn collect_box_deref_aliases<'tcx>(
     let mut aliases = HashMap::new();
     for block in body.basic_blocks.iter() {
         for stmt in &block.statements {
-            let mir::StatementKind::Assign(box (lhs, rhs)) = &stmt.kind else {
+            let mir::StatementKind::Assign(deref!((lhs, rhs))) = &stmt.kind else {
                 continue;
             };
             if !lhs.projection.is_empty() {

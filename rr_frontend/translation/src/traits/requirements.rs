@@ -10,6 +10,7 @@ use log::{info, trace};
 use radium::specs;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
+use rr_rustc_interface::type_ir::ClausePolarity;
 use topological_sort::TopologicalSort;
 
 use crate::{environment, rustcmp, search, traits};
@@ -42,7 +43,7 @@ pub(crate) fn get_trait_requirements_with_origin<'tcx>(
     // Determine whether we are declaring the scope of a trait method or trait impl method
     let in_trait_decl = tcx.trait_of_assoc(did);
 
-    let clauses = typing_env.param_env.caller_bounds();
+    let clauses = typing_env.param_env.caller_bounds().collect::<Vec<_>>();
     info!("Caller bounds: {:?}", clauses);
 
     let in_trait_decl = if is_trait { Some(did) } else { in_trait_decl };
@@ -126,10 +127,10 @@ pub(crate) fn get_clauses_with_origin<'tcx>(
     // determine the origin of this requirement below
     let surrounding_reqs = if let Some(trait_did) = in_trait_decl {
         let trait_param_env = tcx.param_env(trait_did);
-        Some(trait_param_env.caller_bounds().iter().collect())
+        Some(trait_param_env.caller_bounds().collect())
     } else if let Some(impl_did) = in_trait_impl {
         let impl_param_env = tcx.param_env(impl_did);
-        Some(impl_param_env.caller_bounds().iter().collect())
+        Some(impl_param_env.caller_bounds().collect())
     } else {
         None
     };
@@ -183,7 +184,7 @@ pub(crate) fn get_nontrivial<'tcx>(
         // only look for trait predicates for now
         if let ty::ClauseKind::Trait(trait_pred) = cl_kind {
             // We ignore negative polarities for now
-            if trait_pred.polarity == ty::PredicatePolarity::Positive {
+            if trait_pred.polarity == ClausePolarity::Positive {
                 let trait_ref = trait_pred.trait_ref;
 
                 // filter Sized, Copy, Send, Sync?
@@ -246,7 +247,7 @@ fn trait_get_deps(tcx: ty::TyCtxt<'_>, trait_did: DefId) -> Vec<DefId> {
         // only look for trait predicates for now
         if let ty::ClauseKind::Trait(trait_pred) = cl_kind {
             // We ignore negative polarities for now
-            if trait_pred.polarity == ty::PredicatePolarity::Positive {
+            if trait_pred.polarity == ClausePolarity::Positive {
                 let trait_ref = trait_pred.trait_ref;
                 if trait_ref.def_id != trait_did {
                     deps.push(trait_ref.def_id);

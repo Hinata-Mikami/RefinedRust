@@ -4,11 +4,12 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(fn_traits)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
 #![feature(anonymous_lifetime_in_impl_trait)]
+#![recursion_limit = "256"]
 // This is useful to clearly state lifetimes of the global interners.
 #![allow(clippy::needless_lifetimes)]
 #![allow(clippy::elidable_lifetime_names)]

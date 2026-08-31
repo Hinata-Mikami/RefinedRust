@@ -193,7 +193,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
         let statement = &self.mir[location.block].statements[location.statement_index];
 
         match &statement.kind {
-            mir::StatementKind::Assign(box (target, source)) => {
+            mir::StatementKind::Assign(deref!((target, source))) => {
                 match source {
                     mir::Rvalue::Repeat(operand, _)
                     | mir::Rvalue::Cast(_, operand, _)
@@ -201,7 +201,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
                     | mir::Rvalue::Use(operand, _) => {
                         self.apply_operand_effect(operand);
                     },
-                    mir::Rvalue::BinaryOp(_, box (operand1, operand2)) => {
+                    mir::Rvalue::BinaryOp(_, deref!((operand1, operand2))) => {
                         self.apply_operand_effect(operand1);
                         self.apply_operand_effect(operand2);
                     },

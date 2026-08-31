@@ -73,7 +73,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     fn check_call_destination(func: &mir::Operand<'_>, target_did: DefId) -> bool {
-        let mir::Operand::Constant(box c) = func else {
+        let mir::Operand::Constant(deref!(c)) = func else {
             return false;
         };
 

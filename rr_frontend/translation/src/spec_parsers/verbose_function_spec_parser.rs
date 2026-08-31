@@ -1152,7 +1152,7 @@ where
                     ty::UpvarCapture::ByRef(ty::BorrowKind::Immutable) => {
                         // shared borrow
                         // if there's a manually specified type, we need to wrap it in the reference
-                        if let specs::Type::ShrRef(box auto_type, lft) = ty {
+                        if let specs::Type::ShrRef(deref!(auto_type), lft) = ty {
                             let (processed_ty, _) = self.make_type_with_ref(pre, auto_type);
                             // now wrap it in a shared reference again
                             let altered_ty = specs::Type::ShrRef(Box::new(processed_ty.0), lft.clone());
@@ -1168,7 +1168,7 @@ where
                         // we handle ty::BorrowKind::Mutable and ty::BorrowKind::UniqueImmutable
                         // the same way, as they are not really different for RefinedRust's type
                         // system
-                        if let specs::Type::MutRef(box auto_type, lft) = ty {
+                        if let specs::Type::MutRef(deref!(auto_type), lft) = ty {
                             let (processed_ty, _) = self.make_type_with_ref(pre, auto_type);
                             // now wrap it in a mutable reference again
                             // we create a ghost variable
