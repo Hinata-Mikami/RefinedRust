@@ -14,6 +14,7 @@
 #![rr::include("rr_internal")]
 
 #![rr::import("hinata_mikami.extra_proofs.gc", "heap_lemmas")]
+#![rr::import("hinata_mikami.extra_proofs.gc", "gc_defs")]
 
 
 use std::ptr;
@@ -52,7 +53,7 @@ impl Node{
     }
 
 
-    // Heap::mark_one用ヘルパー
+    // ヘルパー
     #[rr::params(
         "node" : "loc",
         "v" : "Z",
@@ -73,7 +74,6 @@ impl Node{
     unsafe fn set_marked(node: *mut Node, new_m: bool) {
         (*node).marked = new_m;
     }
-
 
 }
 
@@ -200,23 +200,80 @@ impl Heap {
         Node::set_marked(node, true);
     }
 
-
-
-    /* マークフェーズ */
-    unsafe fn mark(&self, start_node: *mut Node) {
-        // (ノードがnullか)，またはすでにマークされていれば終了
-        if start_node.is_null() || (*start_node).marked {
-            return;
-        }
-
-        (*start_node).marked = true;
-        self.mark((*start_node).next);  // 再帰的に次のノードもマーク
-    }
-
     // あるノードから reachable であるという rocq 側の述語 (inductive)
     // marked all_nodes
     // mark の事後条件 : start_node から reachable == all_nodes の中で marked
     // Rocq がどう呼ばれているかを理解しなければいけなくなるだろう
+
+
+    // mark の再帰呼び出し部分
+    #[rr::params("h", "i" : "nat", "l" : "loc")]
+    #[rr::args("h", "l")]
+    #[rr::requires("
+        let '(vals, locs, nexts, marks) := h.cur in
+        locs !! i = Some l
+    ")]
+    #[rr::exists("marks_new" : "list bool")]
+    #[rr::observe("h.ghost" : "
+        let '(vals, locs, nexts, marks) := h.cur in
+        (vals, locs, nexts, marks_new)
+    ")]
+    #[rr::ensures("
+        let '(vals, locs, nexts, marks) := h.cur in
+        mark_from_rel locs nexts marks i marks_new
+    ")]
+    #[rr::returns("()")]
+    unsafe fn mark_from(&mut self, start_node: *mut Node) {
+
+        // 一時的な proof-debug 用
+        let _dummy = *vec_index(&self.all_nodes, 0);
+
+        if (*start_node).marked {
+            return;
+        }
+
+        let next = (*start_node).next;
+
+        Node::set_marked(start_node, true);
+
+        if !next.is_null() {
+            self.mark_from(next);
+        }
+
+    }
+
+
+    // #[rr::params("h")]
+    // #[rr::args("h")]
+    // #[rr::requires("
+    //     let '(vals, locs, nexts, marks) := h.cur in
+    //     0 < length locs
+    // ")]
+    // #[rr::requires("
+    //     let '(vals, locs, nexts, marks) := h.cur in
+    //     all_unmarked marks
+    // ")]
+    // #[rr::exists("marks_new" : "list bool")]
+    // #[rr::observe("h.ghost" : "
+    //     let '(vals, locs, nexts, marks) := h.cur in
+    //     (vals, locs, nexts, marks_new)
+    // ")]
+    // #[rr::ensures("
+    //     let '(vals, locs, nexts, marks) := h.cur in
+    //     mark_from_rel locs nexts marks 0%nat marks_new
+    // ")]
+    // #[rr::returns("()")]
+    // // #[rr::ensures("
+    // //     forall i,
+    // //     marks_new !! i = Some true <->
+    // //     reachable locs nexts i
+    // // ")]
+    unsafe fn mark(&mut self) {
+        let root = *vec_index(&self.all_nodes, 0);
+        self.mark_from(root);
+    }
+    
+
 
     /* スイープフェーズ */
     unsafe fn sweep(&mut self) {
@@ -235,17 +292,16 @@ impl Heap {
     }
 
     /* マークアンドスイープGC */
-    unsafe fn collect(&mut self, roots: Vec<*mut Node>) {
+    unsafe fn collect(&mut self) {
         println!("------------------------\nGC msg : Collection started.");
 
-        for root in roots {           // 指定されたノードから走査する
-            self.mark(root);
-        }
+        self.mark();
 
         self.sweep();
+
         println!(
             "GC msg : Collection finished (alive: {}).\n------------------------",
-             self.all_nodes.len()
+            self.all_nodes.len()
         );
     }
 
