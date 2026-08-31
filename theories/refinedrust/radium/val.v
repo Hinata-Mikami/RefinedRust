@@ -14,8 +14,12 @@ Inductive op_type : Set :=
 | EnumOp (el : enum_layout) (variant_ots : list (var_name * op_type))
     (tag_int : list (var_name * Z))
 | UntypedOp (ly : layout)
+| NeverOp
 | CharOp
 | RefOp.
+
+Definition zst_layout : layout :=
+  Layout 0 0.
 
 Fixpoint ot_layout (ot : op_type) : layout :=
   match ot with
@@ -27,6 +31,7 @@ Fixpoint ot_layout (ot : op_type) : layout :=
   | ArrayOp ot len => mk_array_layout (ot_layout ot) len
   | EnumOp el _ _ => el
   | UntypedOp ly => ly
+  | NeverOp => zst_layout
   | CharOp => char_layout
   | RefOp => void*
   end.

@@ -357,7 +357,7 @@ Section array.
     iIntros "Hb".
     iDestruct "Hb" as "(%ly & _ & %Hst & %Hsz & %Hlen & %Hly & Hb)".
     rewrite /is_array_ot in Hot.
-    destruct ot as [ | | | | | ot n | ? ? ? | ly' | | ]; try done.
+    destruct ot as [ | | | | | ot n | ? ? ? | ly' | | | ]; try done.
     + destruct Hot as (-> & Hot & _).
       pose proof (ty_op_type_stable _ _ Hot) as Hot_layout.
       assert (ot_layout ot = ly) as Hotly by by eapply syn_type_has_layout_inj.
@@ -386,7 +386,7 @@ Section array.
       exact Hly.
     - iIntros (ot st π r v v' Hot Hsame) "Hv".
     rewrite /is_array_ot in Hot.
-    destruct ot as [ | | | | | ot n | ? ? ? | ly | | ]; try done.
+    destruct ot as [ | | | | | ot n | ? ? ? | ly | | | ]; try done.
     + destruct Hot as (-> & Hot & _).
       rewrite /array_t_own_val array_t_own_val_aux.(seal_eq) /array_t_own_val_def.
       iDestruct "Hv" as "(%ly & _ & %Hst & %Hsz & %Hlen & %Hly & Hv)".

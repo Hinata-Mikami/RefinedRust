@@ -5,7 +5,7 @@ From lithium Require Export all.
 From lithium Require Import hooks.
 From refinedrust.automation Require Import lookup_definition.
 From refinedrust.base Require Import int programs xmap value.
-From refinedrust.primitive Require Import functions unit alias_ptr mutual_fixpoint.
+From refinedrust.primitive Require Import functions unit never alias_ptr mutual_fixpoint.
 From refinedrust Require Import primitive.existentials_na mut_ref.mut_ref shr_ref struct.struct array.array enum primitive.existentials.
 From refinedrust.typing Require Import program_rules.
 (* Important: import proof_state last as it overrides some Lithium tactics *)
@@ -247,6 +247,8 @@ Ltac interpret_rust_type_core lfts env ty ::=
       exact alias_ref_t
   | RSTUnit =>
       exact unit_t
+  | RSTNever =>
+      exact never_t
   | RSTArray ?len ?ty =>
       refine (array_t len _); interpret_rust_type_core lfts env ty
   | RSTRef ?mut ?κ ?ty =>

@@ -297,6 +297,8 @@ Fixpoint decode_struct_fields
 Equations decode_op_val (v : val) (ot : op_type) (st : (heap_state)) : option op_val by wf ot op_type_size_rel :=
   decode_op_val v BoolOp st := OVBool <$> val_to_bool v;
   decode_op_val v (IntOp it) st := OVInt it <$> val_to_Z v it;
+  (* no valid never values *)
+  decode_op_val v NeverOp st := None;
   decode_op_val v FnPtrOp st :=
     (* don't allow integer-pointer casts here *)
     OVFnPtr <$> val_to_loc v;
@@ -407,6 +409,7 @@ Proof.
     by rewrite /has_layout_val.
   - case_bool_decide as Hly; last done.
     by rewrite /has_layout_val.
+  - done.
   - move: Hdec => /fmap_Some[z[Hz Hov]]. by apply val_to_char_length in Hz.
   - destruct (val_to_loc v) as [l|] eqn:Hl.
     + case_decide; last done. apply val_to_loc_length. eexists. done.
@@ -465,6 +468,7 @@ Proof.
       simpl. eapply enum_variant_ot_smaller. exact (projT2 ots_sig).
   - case_bool_decide as Hly; last done.
     injection Hdec as <-. constructor. by rewrite /has_layout_val.
+  - done.
   - move: Hdec => /fmap_Some[z[Hz Hov]]. simplify_eq. constructor.
     rewrite /val_to_char in Hz.
     move: Hz => /bind_Some[z'[Hz Hvalid]].
@@ -920,6 +924,7 @@ Proof.
     subst ly. lia.
   - rewrite bool_decide_true in Hdec; last by rewrite length_replicate.
     simplify_eq. simpl. done.
+  - done.
   - by destruct (val_to_char (replicate 4 MPoison)) as [z|] eqn:Hz; simpl in Hdec; simplify_eq.
   - done.
 Qed.
@@ -1031,6 +1036,12 @@ Proof.
   - destruct (val_to_bytes v) as [v'|] eqn:Hbytes; simpl; last done.
     destruct (val_to_Z v' USize) as [a|] eqn:Ha; simpl; last done.
     case_decide as Hnonnull; last done. intros [= <-]. split; done.
+Qed.
+
+Lemma decode_never_inv v st :
+  decode_op_val v NeverOp st = None.
+Proof.
+  simp decode_op_val. done.
 Qed.
 
 Lemma decode_ref_no_ptr v st :

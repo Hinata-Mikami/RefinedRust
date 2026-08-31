@@ -27,6 +27,8 @@ Definition is_fnptr_ot (ot : op_type) : Prop :=
   match ot with | FnPtrOp => True | UntypedOp ly => ly = void* | _ => False end.
 Definition is_unit_ot (ot : op_type) : Prop :=
   match ot with | StructOp sl ots => sl = unit_sl ∧ ots = [] | UntypedOp ly => ly = unit_sl | _ => False end.
+Definition is_never_ot (ot : op_type) : Prop :=
+  match ot with | NeverOp => True | UntypedOp ly => ly = zst_layout | _ => False end.
 
 Definition val_decodes_to_loc (v : val) (l : loc) : Prop :=
   ∀ st, decode_op_val v PtrOp st = Some (OVPtr l).
@@ -82,6 +84,12 @@ Proof.
   destruct ot => //=. by intros [-> ->].
 Qed.
 
+Lemma is_never_ot_layout ot :
+  is_never_ot ot → ot_layout ot = zst_layout.
+Proof.
+  destruct ot => //=.
+Qed.
+
 Lemma encode_decode_id_int v ov ot it z st :
   is_int_ot ot it →
   val_to_Z v it = Some z →
@@ -89,7 +97,7 @@ Lemma encode_decode_id_int v ov ot it z st :
   encode_op_val ov = v.
 Proof.
   intros Hot Hz Hdec.
-  destruct ot as [|it'| | | | | |ly| | ]; simpl in Hot; try done.
+  destruct ot as [|it'| | | | | |ly| | | ]; simpl in Hot; try done.
   - subst it'. simp decode_op_val in Hdec.
     move: Hdec => /fmap_Some[z' [Hz' ->]].
     rewrite Hz in Hz'. injection Hz' as ->.
@@ -115,7 +123,7 @@ Lemma encode_decode_id_bool v ov ot b st :
   encode_op_val ov = v.
 Proof.
   intros Hot Hb Hdec.
-  destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
+  destruct ot as [| | | | | | |ly| | | ]; simpl in Hot; try done.
   - simp decode_op_val in Hdec.
     move: Hdec => /fmap_Some[b' [Hb' ->]].
     rewrite Hb in Hb'. injection Hb' as ->.
@@ -141,7 +149,7 @@ Lemma encode_decode_id_char v ov ot z st :
   encode_op_val ov = v.
 Proof.
   intros Hot Hz Hdec.
-  destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
+  destruct ot as [| | | | | | |ly| | | ]; simpl in Hot; try done.
   - subst ly. simp decode_op_val in Hdec.
     case_bool_decide; simplify_eq. done.
   - simp decode_op_val in Hdec.
@@ -167,7 +175,7 @@ Lemma encode_decode_id_loc v ov ot l st :
   encode_op_val ov = v.
 Proof.
   intros Hot Hl Hdec.
-  destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
+  destruct ot as [| | | | | | |ly| | | ]; simpl in Hot; try done.
   - simp decode_op_val in Hdec.
     rewrite Hl in Hdec. injection Hdec as <-.
     by apply l2v_correct'.
@@ -192,7 +200,7 @@ Lemma encode_decode_id_fn_loc v ov ot l st :
   encode_op_val ov = v.
 Proof.
   intros Hot Hl Hdec.
-  destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
+  destruct ot as [| | | | | | |ly| | | ]; simpl in Hot; try done.
   - simp decode_op_val in Hdec.
     rewrite Hl in Hdec. injection Hdec as <-.
     by apply l2v_correct'.
@@ -314,7 +322,7 @@ Lemma encode_decode_id_unit v ov ot st :
   encode_op_val ov = v.
 Proof.
   intros Hot -> Hdec.
-  destruct ot as [| | | |sl ots| | |ly| | ]; simpl in Hot; try done.
+  destruct ot as [| | | |sl ots| | |ly| | | ]; simpl in Hot; try done.
   - destruct Hot as [-> ->]. simp decode_op_val in Hdec.
     simpl in Hdec. simplify_eq. done.
   - subst ly. simp decode_op_val in Hdec.
@@ -488,7 +496,7 @@ Lemma val_decodes_to_loc_same_decoded v ot v' l st :
   val_decodes_to_loc v' l.
 Proof.
   intros Hot Hv Hsame st'.
-  destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
+  destruct ot as [| | | | | | |ly| | | ]; simpl in Hot; try done.
   - destruct Hsame as [Heq _]. specialize (Hv st).
     rewrite Hv in Heq.
     simp decode_op_val in Heq. simp decode_op_val. by symmetry.
@@ -507,7 +515,7 @@ Lemma val_decodes_to_ref_same_decoded v ot v' l st :
   val_decodes_to_ref v' l.
 Proof.
   intros Hot Hv Hsame.
-  destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
+  destruct ot as [| | | | | | |ly| | | ]; simpl in Hot; try done.
   - subst ly.
     pose proof (val_decodes_to_ref_has_layout _ _ Hv) as Hly.
     pose proof (is_same_decoded_val_at_has_layout_r _ _ _ _ Hsame) as Hly'.

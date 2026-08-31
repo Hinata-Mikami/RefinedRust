@@ -613,6 +613,9 @@ Ltac solve_layout_alg_core_step3 :=
   | |- syn_type_has_layout UnitSynType ?ly =>
       notypeclasses refine (syn_type_has_layout_unit _ _);
       [fast_solve_layout_eq ]
+  | |- syn_type_has_layout NeverSynType ?ly =>
+      notypeclasses refine (syn_type_has_layout_never _ _);
+      [fast_solve_layout_eq ]
   | |- syn_type_has_layout (ArraySynType ?st ?len) ?ly =>
       notypeclasses refine (syn_type_has_layout_array st len _ ly _ _ _);
       [ fast_solve_layout_eq | | solve_layout_size; shelve ]
@@ -923,6 +926,9 @@ Ltac solve_op_alg_core_step :=
       notypeclasses refine (@use_op_alg_ref _)
   | |- use_op_alg UnitSynType = Some ?ot =>
       notypeclasses refine (use_op_alg_unit _ _);
+      [solve_ot_eq ]
+  | |- use_op_alg NeverSynType = Some ?ot =>
+      notypeclasses refine (use_op_alg_never _ _);
       [solve_ot_eq ]
   | |- use_op_alg (ArraySynType ?st ?len) = Some ?ot =>
       notypeclasses refine (use_op_alg_array st len _ _ _ _);
@@ -1366,6 +1372,10 @@ Ltac simplify_layout_alg_nonatomic H :=
 
     | use_layout_alg UnitSynType = Some _ =>
         apply syn_type_has_layout_unit_inv in H;
+        subst_with H
+
+    | use_layout_alg NeverSynType = Some _ =>
+        apply syn_type_has_layout_never_inv in H;
         subst_with H
 
     | use_layout_alg (ArraySynType ?st ?len) = Some _ =>

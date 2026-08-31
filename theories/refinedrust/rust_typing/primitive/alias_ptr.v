@@ -160,7 +160,7 @@ Section alias.
     destruct pk; unfold alias_ptr_kind_has_op_type in Hot.
     - iEval (unfold alias_ptr_kind_own_val) in "Hv".
       rewrite alias_ptr_own_val_unfold. iDestruct "Hv" as "%Hdec".
-      iPureIntro. destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
+      iPureIntro. destruct ot as [| | | | | | |ly| | | ]; simpl in Hot; try done.
       + exists (OVPtr l). apply Hdec.
       + subst ly. exists (OVUntyped void* v). simp decode_op_val.
         rewrite bool_decide_true; first done.
@@ -168,7 +168,7 @@ Section alias.
     - iEval (unfold alias_ptr_kind_own_val) in "Hv".
       rewrite alias_ref_own_val_unfold. iDestruct "Hv" as "%Href".
       pose proof (val_decodes_to_ref_to_loc _ _ Href) as Hdec.
-      iPureIntro. destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
+      iPureIntro. destruct ot as [| | | | | | |ly| | | ]; simpl in Hot; try done.
       + exists (OVPtr l). apply Hdec.
       + subst ly. exists (OVUntyped void* v). simp decode_op_val.
         rewrite bool_decide_true; first done.
@@ -183,7 +183,7 @@ Section alias.
       by destruct ot.
     - rewrite alias_ref_own_val_unfold.
       iIntros (ot st π l v v' Hot Hsame) "%Hv".
-      iPureIntro. destruct ot as [| | | | | | |ly| | ]; simpl in Hot; try done.
+      iPureIntro. destruct ot as [| | | | | | |ly| | | ]; simpl in Hot; try done.
       + pose proof (val_decodes_to_loc_same_decoded v PtrOp v' l st I
           (val_decodes_to_ref_to_loc _ _ Hv) Hsame) as Hdec.
         intros st'. apply decode_ptr_nonnull_ref; first apply Hdec.
