@@ -118,70 +118,6 @@ Program Definition Tasconvert_IntoU_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_
 
 End attrs.
 
-Section convert_Infallible_ty.
-  Context `{RRGS : !(refinedrustGS Σ)}.
-  Section components.
-    Definition convert_Infallible_enum_rt  :=
-      λ rfn : (unit), match rfn with | _ => unitRT  end.
-    Definition convert_Infallible_enum_ty  : (spec_with 0 [] (∀ (x: _), (type (convert_Infallible_enum_rt (x))))) :=
-      spec! ( *[]) : 0 | ( *[]) : ([] : list RT), λ rfn, match rfn as x return type (convert_Infallible_enum_rt x) with | _ => unit_t  end.
-    Program Definition convert_Infallible_enum  : (spec_with 0 [] ((enum ((unit))))) :=
-      spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_enum
-        _
-        (convert_Infallible_els)
-        (λ rfn, match rfn with | _ => None end)
-        (convert_Infallible_enum_rt)
-        (convert_Infallible_enum_ty -[] -[])
-        (λ rfn, match rfn with | _ => ()  end)
-        ([])
-        _
-        _.
-    Next Obligation.
-      solve_inhabited.
-    Defined.
-
-    Next Obligation.
-      done.
-    Qed.
-
-    Next Obligation.
-      solve_mk_enum_tag_consistent.
-    Defined.
-
-    #[global] Arguments convert_Infallible_enum : simpl never.
-
-    Definition convert_Infallible_ty_pre  : (spec_with 0 [] ((type _))) :=
-      spec! ( *[]) : 0 | ( *[]) : ([] : list RT), enum_t (convert_Infallible_enum -[] -[]).
-    Definition convert_Infallible_rt_pre  : RT.
-    Proof using  .
-      let __a := (normalized_rt_of_spec_ty (convert_Infallible_ty_pre)) in exact __a.
-    Defined.
-
-    #[global] Typeclasses Transparent convert_Infallible_rt_pre.
-  End components.
-  Arguments enum_ty : simpl never.
-
-  Definition convert_Infallible_ty  : (spec_with 0 [] ((type _))) :=
-    spec! ( *[]) : 0 | ( *[]) : ([] : list RT), enum_t (convert_Infallible_enum -[] -[]).
-  Definition convert_Infallible_rt  : RT.
-  Proof using  .
-    let __a := (normalized_rt_of_spec_ty (convert_Infallible_ty)) in exact __a.
-  Defined.
-
-  #[global] Typeclasses Transparent convert_Infallible_rt.
-End convert_Infallible_ty.
-#[global] Typeclasses Transparent convert_Infallible_ty.
-#[global] Typeclasses Transparent convert_Infallible_rt.
-#[global] Arguments convert_Infallible_enum : simpl never.
-
-#[global] Arguments convert_Infallible_rt : clear implicits.
-
-#[global] Arguments convert_Infallible_ty : clear implicits.
-
-#[global] Arguments convert_Infallible_ty {_ _}  .
-
-Global Hint Unfold convert_Infallible_ty : solve_protected_eq_db.
-
 Section ControlFlow_ty.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Context {B_rt : RT} {C_rt : RT}.
@@ -273,10 +209,10 @@ Global Hint Unfold ControlFlow_ty : solve_protected_eq_db.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
-Program Definition ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec_attrs `{RRGS : !(refinedrustGS Σ)} (B_rt: RT) (C_rt: RT) : ((FromResidual_spec_attrs (((ControlFlow_rt ((B_rt)) ((C_rt))))) (((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt))))))) :=
+Program Definition ControlFlowBCasFromResidualControlFlowB_spec_attrs `{RRGS : !(refinedrustGS Σ)} (B_rt: RT) (C_rt: RT) : ((FromResidual_spec_attrs (((ControlFlow_rt ((B_rt)) ((C_rt))))) (((ControlFlow_rt ((B_rt)) (unit)))))) :=
   {|
     FromResidual_FromResidualFn  :=
-      (λ s, match s with | inl(x) => None | inr(x) => Some (inr x) end) : ((FromResidual_FromResidualFn_sig (((ControlFlow_rt ((B_rt)) ((C_rt))))) (((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt)))))));
+      (λ s, match s with | inl(x) => None | inr(x) => Some (inr x) end) : ((FromResidual_FromResidualFn_sig (((ControlFlow_rt ((B_rt)) ((C_rt))))) (((ControlFlow_rt ((B_rt)) (unit))))));
   |}
 .
 
@@ -285,10 +221,10 @@ End attrs.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
-Program Definition std_option_OptionTasFromResidual_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) : ((FromResidual_spec_attrs (((((Option_rt)) ((T_rt))))) (((((Option_rt)) ((convert_Infallible_rt))))))) :=
+Program Definition std_option_OptionTasFromResidual_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) : ((FromResidual_spec_attrs (((((Option_rt)) ((T_rt))))) (((((Option_rt)) (unit)))))) :=
   {|
     FromResidual_FromResidualFn  :=
-      (λ _, Some None) : ((FromResidual_FromResidualFn_sig (((((Option_rt)) ((T_rt))))) (((((Option_rt)) ((convert_Infallible_rt)))))));
+      (λ _, Some None) : ((FromResidual_FromResidualFn_sig (((((Option_rt)) ((T_rt))))) (((((Option_rt)) (unit))))));
   |}
 .
 
@@ -297,10 +233,10 @@ End attrs.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
-Program Definition std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (E_rt: RT) (F_rt: RT) (convert_From_F_E_spec_attrs: (convert_From_spec_attrs (RRGS:=RRGS) (F_rt) (E_rt) )) : ((FromResidual_spec_attrs (((((Result_rt)) ((T_rt)) ((F_rt))))) (((((Result_rt)) ((convert_Infallible_rt)) ((E_rt))))))) :=
+Program Definition std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (E_rt: RT) (F_rt: RT) (convert_From_F_E_spec_attrs: (convert_From_spec_attrs (RRGS:=RRGS) (F_rt) (E_rt) )) : ((FromResidual_spec_attrs (((((Result_rt)) ((T_rt)) ((F_rt))))) (((((Result_rt)) (unit) ((E_rt))))))) :=
   {|
     FromResidual_FromResidualFn  :=
-      (λ s, match s with | inl(x) => None | inr(x) => Some (inr ((convert_From_F_E_spec_attrs.(convert_From_FromFn) x))) end) : ((FromResidual_FromResidualFn_sig (((((Result_rt)) ((T_rt)) ((F_rt))))) (((((Result_rt)) ((convert_Infallible_rt)) ((E_rt)))))));
+      (λ s, match s with | inl(x) => None | inr(x) => Some (inr ((convert_From_F_E_spec_attrs.(convert_From_FromFn) x))) end) : ((FromResidual_FromResidualFn_sig (((((Result_rt)) ((T_rt)) ((F_rt))))) (((((Result_rt)) (unit) ((E_rt)))))));
   |}
 .
 
@@ -309,20 +245,20 @@ End attrs.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
-Program Definition ControlFlowBCasTry_spec_attrs `{RRGS : !(refinedrustGS Σ)} (B_rt: RT) (C_rt: RT) : ((Try_spec_attrs (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt))))) ((ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec_attrs ((B_rt)) ((C_rt)))))) :=
+Program Definition ControlFlowBCasTry_spec_attrs `{RRGS : !(refinedrustGS Σ)} (B_rt: RT) (C_rt: RT) : ((Try_spec_attrs (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) (unit)))) ((ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt)))))) :=
   {|
     Try_FromOutputFn  :=
-      (λ out, inl (out)) : ((Try_FromOutputFn_sig (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt))))) ((ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec_attrs ((B_rt)) ((C_rt))))));
+      (λ out, inl (out)) : ((Try_FromOutputFn_sig (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) (unit)))) ((ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt))))));
     Try_BranchFn  :=
-      (result_xmap id (inr)) : ((Try_BranchFn_sig (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt))))) ((ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec_attrs ((B_rt)) ((C_rt)))) (_)));
+      (result_xmap id (inr)) : ((Try_BranchFn_sig (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) (unit)))) ((ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt)))) (_)));
     Try_ResidualValid  :=
-      (λ x, is_Err x) : ((Try_ResidualValid_sig (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt))))) ((ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec_attrs ((B_rt)) ((C_rt)))) (_) (_)));
+      (λ x, is_Err x) : ((Try_ResidualValid_sig (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) (unit)))) ((ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt)))) (_) (_)));
     Try_BranchValid  :=
-      (_) : ((Try_BranchValid_sig (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt))))) ((ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec_attrs ((B_rt)) ((C_rt)))) (_) (_) (_)));
+      (_) : ((Try_BranchValid_sig (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) (unit)))) ((ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt)))) (_) (_) (_)));
     Try_BranchLawResidual  :=
-      (_) : ((Try_BranchLawResidual_sig (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt))))) ((ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec_attrs ((B_rt)) ((C_rt)))) (_) (_) (_) (_)));
+      (_) : ((Try_BranchLawResidual_sig (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) (unit)))) ((ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt)))) (_) (_) (_) (_)));
     Try_BranchLawOutput  :=
-      (_) : ((Try_BranchLawOutput_sig (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt))))) ((ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec_attrs ((B_rt)) ((C_rt)))) (_) (_) (_) (_) (_)));
+      (_) : ((Try_BranchLawOutput_sig (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) (unit)))) ((ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt)))) (_) (_) (_) (_) (_)));
   |}
 .
 Next Obligation.
@@ -343,20 +279,20 @@ End attrs.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
-Program Definition std_option_OptionTasTry_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) : ((Try_spec_attrs (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) ((convert_Infallible_rt))))) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))))) :=
+Program Definition std_option_OptionTasTry_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) : ((Try_spec_attrs (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) (unit)))) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))))) :=
   {|
     Try_FromOutputFn  :=
-      (λ out, Some out) : ((Try_FromOutputFn_sig (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) ((convert_Infallible_rt))))) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt))))));
+      (λ out, Some out) : ((Try_FromOutputFn_sig (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) (unit)))) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt))))));
     Try_BranchFn  :=
-      (λ s, match s with | Some(x) => inl(x) | None => inr(None) end) : ((Try_BranchFn_sig (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) ((convert_Infallible_rt))))) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) (_)));
+      (λ s, match s with | Some(x) => inl(x) | None => inr(None) end) : ((Try_BranchFn_sig (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) (unit)))) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) (_)));
     Try_ResidualValid  :=
-      (λ x, x = None) : ((Try_ResidualValid_sig (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) ((convert_Infallible_rt))))) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) (_) (_)));
+      (λ x, x = None) : ((Try_ResidualValid_sig (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) (unit)))) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) (_) (_)));
     Try_BranchValid  :=
-      (_) : ((Try_BranchValid_sig (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) ((convert_Infallible_rt))))) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) (_) (_) (_)));
+      (_) : ((Try_BranchValid_sig (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) (unit)))) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) (_) (_) (_)));
     Try_BranchLawResidual  :=
-      (_) : ((Try_BranchLawResidual_sig (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) ((convert_Infallible_rt))))) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) (_) (_) (_) (_)));
+      (_) : ((Try_BranchLawResidual_sig (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) (unit)))) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) (_) (_) (_) (_)));
     Try_BranchLawOutput  :=
-      (_) : ((Try_BranchLawOutput_sig (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) ((convert_Infallible_rt))))) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) (_) (_) (_) (_) (_)));
+      (_) : ((Try_BranchLawOutput_sig (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) (unit)))) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) (_) (_) (_) (_) (_)));
   |}
 .
 Next Obligation.
@@ -377,20 +313,20 @@ End attrs.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
-Program Definition std_result_ResultTEasTry_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (E_rt: RT) : ((Try_spec_attrs (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) ((convert_Infallible_rt)) ((E_rt))))) ((std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))))) :=
+Program Definition std_result_ResultTEasTry_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (E_rt: RT) : ((Try_spec_attrs (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) (unit) ((E_rt))))) ((std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))))) :=
   {|
     Try_FromOutputFn  :=
-      (λ out, Ok (out)) : ((Try_FromOutputFn_sig (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) ((convert_Infallible_rt)) ((E_rt))))) ((std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt))))))));
+      (λ out, Ok (out)) : ((Try_FromOutputFn_sig (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) (unit) ((E_rt))))) ((std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt))))))));
     Try_BranchFn  :=
-      (result_xmap id (λ x, (Err x))) : ((Try_BranchFn_sig (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) ((convert_Infallible_rt)) ((E_rt))))) ((std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) (_)));
+      (result_xmap id (λ x, (Err x))) : ((Try_BranchFn_sig (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) (unit) ((E_rt))))) ((std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) (_)));
     Try_ResidualValid  :=
-      (λ x, is_Err x) : ((Try_ResidualValid_sig (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) ((convert_Infallible_rt)) ((E_rt))))) ((std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) (_) (_)));
+      (λ x, is_Err x) : ((Try_ResidualValid_sig (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) (unit) ((E_rt))))) ((std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) (_) (_)));
     Try_BranchValid  :=
-      (_) : ((Try_BranchValid_sig (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) ((convert_Infallible_rt)) ((E_rt))))) ((std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) (_) (_) (_)));
+      (_) : ((Try_BranchValid_sig (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) (unit) ((E_rt))))) ((std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) (_) (_) (_)));
     Try_BranchLawResidual  :=
-      (_) : ((Try_BranchLawResidual_sig (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) ((convert_Infallible_rt)) ((E_rt))))) ((std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) (_) (_) (_) (_)));
+      (_) : ((Try_BranchLawResidual_sig (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) (unit) ((E_rt))))) ((std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) (_) (_) (_) (_)));
     Try_BranchLawOutput  :=
-      (_) : ((Try_BranchLawOutput_sig (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) ((convert_Infallible_rt)) ((E_rt))))) ((std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) (_) (_) (_) (_) (_)));
+      (_) : ((Try_BranchLawOutput_sig (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) (unit) ((E_rt))))) ((std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) (_) (_) (_) (_) (_)));
   |}
 .
 Next Obligation.
@@ -848,13 +784,6 @@ End Try_trait_req_incls.
 Section specs.
 Context `{RRGS : !refinedrustGS Σ}.
 
-Definition trait_incl_of_ControlFlowBCasFromResidualControlFlowBconvert_Infallible_from_residual (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) (DropGlue_B_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (B_rt)))) (DropGlue_C_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (C_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_B_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (B_rt) B_st-[] -[B_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_C_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (C_rt) C_st-[] -[C_ty])))).
-
-Definition type_of_ControlFlowBCasFromResidualControlFlowBconvert_Infallible_from_residual (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT),(λ a b, scope_add_typarams _ -[B_ty; C_ty] (scope_add_elctx (λ ϝ, []) (((FromResidual_base_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) (((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt))))) ((ControlFlow_st (B_st) (C_st))) ((ControlFlow_st (B_st) (convert_Infallible_st))) ((ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec_attrs (B_rt) (C_rt))))
-    -[] -[(ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty]); (ControlFlow_ty ((B_rt)) ((convert_Infallible_rt)) -[] -[B_ty; (convert_Infallible_ty  -[] -[])])]).(FromResidual_from_residual_spec)   a b))) <MERGE!>.
-
 Definition trait_incl_of_Tasconvert_FromT_from (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
 
@@ -873,57 +802,64 @@ Definition trait_incl_of_std_option_OptionTasFromResidual_from_residual (T_rt: R
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
 
 Definition type_of_std_option_OptionTasFromResidual_from_residual (T_rt: RT) (T_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((FromResidual_base_spec (((((Option_rt)) ((T_rt))))) (((((Option_rt)) ((convert_Infallible_rt))))) (((Option_els (T_st)) : syn_type)) (((Option_els (convert_Infallible_st)) : syn_type)) ((std_option_OptionTasFromResidual_spec_attrs (T_rt))))
-    -[] -[(Option_ty ((T_rt)) -[] -[T_ty]); (Option_ty ((convert_Infallible_rt)) -[] -[(convert_Infallible_ty  -[] -[])])]).(FromResidual_from_residual_spec)   a b))) <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((FromResidual_base_spec (((((Option_rt)) ((T_rt))))) (((((Option_rt)) (unit)))) (((Option_els (T_st)) : syn_type)) (((Option_els (NeverSynType)) : syn_type)) ((std_option_OptionTasFromResidual_spec_attrs (T_rt))))
+    -[] -[(Option_ty ((T_rt)) -[] -[T_ty]); (Option_ty (unit) -[] -[never_t])]).(FromResidual_from_residual_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_std_option_OptionTasTry_branch (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
 
 Definition type_of_std_option_OptionTasTry_branch (T_rt: RT) (T_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) ((convert_Infallible_rt))))) (((Option_els (T_st)) : syn_type)) (T_st) (((Option_els (convert_Infallible_st)) : syn_type)) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) ((std_option_OptionTasTry_spec_attrs (T_rt))))
-    -[] -[(Option_ty ((T_rt)) -[] -[T_ty]); T_ty; (Option_ty ((convert_Infallible_rt)) -[] -[(convert_Infallible_ty  -[] -[])])]).(Try_branch_spec)   a b))) <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) (unit)))) (((Option_els (T_st)) : syn_type)) (T_st) (((Option_els (NeverSynType)) : syn_type)) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) ((std_option_OptionTasTry_spec_attrs (T_rt))))
+    -[] -[(Option_ty ((T_rt)) -[] -[T_ty]); T_ty; (Option_ty (unit) -[] -[never_t])]).(Try_branch_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_std_option_OptionTasTry_from_output (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
 
 Definition type_of_std_option_OptionTasTry_from_output (T_rt: RT) (T_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) ((convert_Infallible_rt))))) (((Option_els (T_st)) : syn_type)) (T_st) (((Option_els (convert_Infallible_st)) : syn_type)) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) ((std_option_OptionTasTry_spec_attrs (T_rt))))
-    -[] -[(Option_ty ((T_rt)) -[] -[T_ty]); T_ty; (Option_ty ((convert_Infallible_rt)) -[] -[(convert_Infallible_ty  -[] -[])])]).(Try_from_output_spec)   a b))) <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) (unit)))) (((Option_els (T_st)) : syn_type)) (T_st) (((Option_els (NeverSynType)) : syn_type)) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) ((std_option_OptionTasTry_spec_attrs (T_rt))))
+    -[] -[(Option_ty ((T_rt)) -[] -[T_ty]); T_ty; (Option_ty (unit) -[] -[never_t])]).(Try_from_output_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_std_result_ResultTEasTry_branch (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty])))).
 
 Definition type_of_std_result_ResultTEasTry_branch (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; E_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) ((convert_Infallible_rt)) ((E_rt))))) (((Result_els (T_st) (E_st)) : syn_type)) (T_st) (((Result_els (convert_Infallible_st) (E_st)) : syn_type)) ((std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) ((std_result_ResultTEasTry_spec_attrs (T_rt) (E_rt))))
-    -[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]); T_ty; (Result_ty ((convert_Infallible_rt)) ((E_rt)) -[] -[(convert_Infallible_ty  -[] -[]); E_ty])]).(Try_branch_spec)   a b))) <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; E_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) (unit) ((E_rt))))) (((Result_els (T_st) (E_st)) : syn_type)) (T_st) (((Result_els (NeverSynType) (E_st)) : syn_type)) ((std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) ((std_result_ResultTEasTry_spec_attrs (T_rt) (E_rt))))
+    -[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]); T_ty; (Result_ty (unit) ((E_rt)) -[] -[never_t; E_ty])]).(Try_branch_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_std_result_ResultTEasTry_from_output (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty])))).
 
 Definition type_of_std_result_ResultTEasTry_from_output (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; E_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) ((convert_Infallible_rt)) ((E_rt))))) (((Result_els (T_st) (E_st)) : syn_type)) (T_st) (((Result_els (convert_Infallible_st) (E_st)) : syn_type)) ((std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) ((std_result_ResultTEasTry_spec_attrs (T_rt) (E_rt))))
-    -[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]); T_ty; (Result_ty ((convert_Infallible_rt)) ((E_rt)) -[] -[(convert_Infallible_ty  -[] -[]); E_ty])]).(Try_from_output_spec)   a b))) <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; E_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) (unit) ((E_rt))))) (((Result_els (T_st) (E_st)) : syn_type)) (T_st) (((Result_els (NeverSynType) (E_st)) : syn_type)) ((std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) ((std_result_ResultTEasTry_spec_attrs (T_rt) (E_rt))))
+    -[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]); T_ty; (Result_ty (unit) ((E_rt)) -[] -[never_t; E_ty])]).(Try_from_output_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_from_residual (T_rt: RT) (E_rt: RT) (F_rt: RT) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) (convert_From_F_E_spec_attrs: (convert_From_spec_attrs (RRGS:=RRGS) (F_rt) (E_rt) )) (convert_From_F_E_spec: (spec_with 0 [] (convert_From_spec (RRGS:=RRGS) (F_rt) (E_rt)))) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) (DropGlue_F_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (F_rt)))) : (spec_with _ _ Prop) :=
+Definition trait_incl_of_std_result_ResultTFasFromResidualstd_result_ResultE_from_residual (T_rt: RT) (E_rt: RT) (F_rt: RT) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) (convert_From_F_E_spec_attrs: (convert_From_spec_attrs (RRGS:=RRGS) (F_rt) (E_rt) )) (convert_From_F_E_spec: (spec_with 0 [] (convert_From_spec (RRGS:=RRGS) (F_rt) (E_rt)))) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) (DropGlue_F_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (F_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty]) : ([T_rt; E_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl convert_From_spec_incl convert_From_F_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), convert_From_base_spec (F_rt) (E_rt) F_st E_st convert_From_F_E_spec_attrs-[] -[F_ty; E_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_F_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (F_rt) F_st-[] -[F_ty])))).
 
-Definition type_of_std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_from_residual (T_rt: RT) (E_rt: RT) (F_rt: RT) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) (convert_From_F_E_spec_attrs: (convert_From_spec_attrs (RRGS:=RRGS) (F_rt) (E_rt) )) :=
-  spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty]) : ([T_rt; E_rt; F_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; E_ty; F_ty] (scope_add_elctx (λ ϝ, []) (((FromResidual_base_spec (((((Result_rt)) ((T_rt)) ((F_rt))))) (((((Result_rt)) ((convert_Infallible_rt)) ((E_rt))))) (((Result_els (T_st) (F_st)) : syn_type)) (((Result_els (convert_Infallible_st) (E_st)) : syn_type)) ((std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec_attrs (T_rt) (E_rt) (F_rt) (convert_From_F_E_spec_attrs))))
-    -[] -[(Result_ty ((T_rt)) ((F_rt)) -[] -[T_ty; F_ty]); (Result_ty ((convert_Infallible_rt)) ((E_rt)) -[] -[(convert_Infallible_ty  -[] -[]); E_ty])]).(FromResidual_from_residual_spec)   a b))) <MERGE!>.
+Definition type_of_std_result_ResultTFasFromResidualstd_result_ResultE_from_residual (T_rt: RT) (E_rt: RT) (F_rt: RT) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) (convert_From_F_E_spec_attrs: (convert_From_spec_attrs (RRGS:=RRGS) (F_rt) (E_rt) )) :=
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty]) : ([T_rt; E_rt; F_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; E_ty; F_ty] (scope_add_elctx (λ ϝ, []) (((FromResidual_base_spec (((((Result_rt)) ((T_rt)) ((F_rt))))) (((((Result_rt)) (unit) ((E_rt))))) (((Result_els (T_st) (F_st)) : syn_type)) (((Result_els (NeverSynType) (E_st)) : syn_type)) ((std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs (T_rt) (E_rt) (F_rt) (convert_From_F_E_spec_attrs))))
+    -[] -[(Result_ty ((T_rt)) ((F_rt)) -[] -[T_ty; F_ty]); (Result_ty (unit) ((E_rt)) -[] -[never_t; E_ty])]).(FromResidual_from_residual_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_ControlFlowBCasTry_branch (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) (DropGlue_B_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (B_rt)))) (DropGlue_C_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (C_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_B_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (B_rt) B_st-[] -[B_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_C_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (C_rt) C_st-[] -[C_ty])))).
 
 Definition type_of_ControlFlowBCasTry_branch (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT),(λ a b, scope_add_typarams _ -[B_ty; C_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt))))) ((ControlFlow_st (B_st) (C_st))) (C_st) ((ControlFlow_st (B_st) (convert_Infallible_st))) ((ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec_attrs ((B_rt)) ((C_rt)))) ((ControlFlowBCasTry_spec_attrs (B_rt) (C_rt))))
-    -[] -[(ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty]); C_ty; (ControlFlow_ty ((B_rt)) ((convert_Infallible_rt)) -[] -[B_ty; (convert_Infallible_ty  -[] -[])])]).(Try_branch_spec)   a b))) <MERGE!>.
+  spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT),(λ a b, scope_add_typarams _ -[B_ty; C_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) (unit)))) ((ControlFlow_st (B_st) (C_st))) (C_st) ((ControlFlow_st (B_st) (NeverSynType))) ((ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt)))) ((ControlFlowBCasTry_spec_attrs (B_rt) (C_rt))))
+    -[] -[(ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty]); C_ty; (ControlFlow_ty ((B_rt)) (unit) -[] -[B_ty; never_t])]).(Try_branch_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_ControlFlowBCasTry_from_output (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) (DropGlue_B_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (B_rt)))) (DropGlue_C_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (C_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_B_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (B_rt) B_st-[] -[B_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_C_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (C_rt) C_st-[] -[C_ty])))).
 
 Definition type_of_ControlFlowBCasTry_from_output (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT),(λ a b, scope_add_typarams _ -[B_ty; C_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt))))) ((ControlFlow_st (B_st) (C_st))) (C_st) ((ControlFlow_st (B_st) (convert_Infallible_st))) ((ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec_attrs ((B_rt)) ((C_rt)))) ((ControlFlowBCasTry_spec_attrs (B_rt) (C_rt))))
-    -[] -[(ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty]); C_ty; (ControlFlow_ty ((B_rt)) ((convert_Infallible_rt)) -[] -[B_ty; (convert_Infallible_ty  -[] -[])])]).(Try_from_output_spec)   a b))) <MERGE!>.
+  spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT),(λ a b, scope_add_typarams _ -[B_ty; C_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) (unit)))) ((ControlFlow_st (B_st) (C_st))) (C_st) ((ControlFlow_st (B_st) (NeverSynType))) ((ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt)))) ((ControlFlowBCasTry_spec_attrs (B_rt) (C_rt))))
+    -[] -[(ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty]); C_ty; (ControlFlow_ty ((B_rt)) (unit) -[] -[B_ty; never_t])]).(Try_from_output_spec)   a b))) <MERGE!>.
+
+Definition trait_incl_of_ControlFlowBCasFromResidualControlFlowB_from_residual (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) (DropGlue_B_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (B_rt)))) (DropGlue_C_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (C_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_B_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (B_rt) B_st-[] -[B_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_C_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (C_rt) C_st-[] -[C_ty])))).
+
+Definition type_of_ControlFlowBCasFromResidualControlFlowB_from_residual (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) :=
+  spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT),(λ a b, scope_add_typarams _ -[B_ty; C_ty] (scope_add_elctx (λ ϝ, []) (((FromResidual_base_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) (((ControlFlow_rt ((B_rt)) (unit)))) ((ControlFlow_st (B_st) (C_st))) ((ControlFlow_st (B_st) (NeverSynType))) ((ControlFlowBCasFromResidualControlFlowB_spec_attrs (B_rt) (C_rt))))
+    -[] -[(ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty]); (ControlFlow_ty ((B_rt)) (unit) -[] -[B_ty; never_t])]).(FromResidual_from_residual_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_ControlFlow_BC_break_value (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) (DropGlue_B_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (B_rt)))) (DropGlue_C_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (C_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_B_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (B_rt) B_st-[] -[B_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_C_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (C_rt) C_st-[] -[C_ty])))).
@@ -950,10 +886,23 @@ Definition type_of_drop_glue_ControlFlow (B_rt: RT) (C_rt: RT) (B_st: syn_type) 
 
 
 End specs.
+Section ControlFlowBCasFromResidualControlFlowB_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition ControlFlowBCasFromResidualControlFlowB_spec (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) : (spec_with _ _ (FromResidual_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) (((ControlFlow_rt ((B_rt)) (unit)))))) :=
+    spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), {|
+        FromResidual_from_residual_spec  :=
+          (type_of_ControlFlowBCasFromResidualControlFlowB_from_residual ((B_rt)) ((C_rt)) (B_st) (C_st)) 
+             <TY> B_ty <TY> C_ty : (spec_with 0 [] fn_spec);
+      |}
+  .
+  Definition ControlFlowBCasFromResidualControlFlowB_spec_subsumption  :=
+    ∀ `(B_rt : !RT) `(C_rt : !RT) `(B_st : !syn_type) `(C_st : !syn_type), trait_incl_marker (lift_trait_incl FromResidual_spec_incl (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), (ControlFlowBCasFromResidualControlFlowB_spec (B_rt) (C_rt) (B_st) (C_st))-[] -[B_ty; C_ty]) (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), scope_add_typarams _ -[B_ty; C_ty] ((FromResidual_base_spec ((ControlFlow_rt ((B_rt)) ((C_rt)))) ((ControlFlow_rt ((B_rt)) (unit))) (ControlFlow_st (B_st) (C_st)) (ControlFlow_st (B_st) (NeverSynType)) (ControlFlowBCasFromResidualControlFlowB_spec_attrs (B_rt) (C_rt))-[] -[(ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty]); (ControlFlow_ty ((B_rt)) (unit) -[] -[B_ty; never_t])])))).
+End ControlFlowBCasFromResidualControlFlowB_spec.
+
 Section ControlFlowBCasTry_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition ControlFlowBCasTry_spec (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) : (spec_with _ _ (Try_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt))))))) :=
-    spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), let Residual_rt := ((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt)))) in let Output_rt := (C_rt) in {|
+  Definition ControlFlowBCasTry_spec (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) : (spec_with _ _ (Try_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) (unit)))))) :=
+    spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), let Residual_rt := ((ControlFlow_rt ((B_rt)) (unit))) in let Output_rt := (C_rt) in {|
         Try_branch_spec  :=
           (type_of_ControlFlowBCasTry_branch ((B_rt)) ((C_rt)) (B_st) (C_st)) 
              <TY> B_ty <TY> C_ty : (spec_with 0 [] fn_spec);
@@ -963,21 +912,8 @@ Section ControlFlowBCasTry_spec.
       |}
   .
   Definition ControlFlowBCasTry_spec_subsumption  :=
-    ∀ `(B_rt : !RT) `(C_rt : !RT) `(B_st : !syn_type) `(C_st : !syn_type), trait_incl_marker (lift_trait_incl Try_spec_incl (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), (ControlFlowBCasTry_spec (B_rt) (C_rt) (B_st) (C_st))-[] -[B_ty; C_ty]) (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), scope_add_typarams _ -[B_ty; C_ty] ((Try_base_spec ((ControlFlow_rt ((B_rt)) ((C_rt)))) (C_rt) ((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt)))) (ControlFlow_st (B_st) (C_st)) C_st (ControlFlow_st (B_st) (convert_Infallible_st)) (ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec_attrs ((B_rt)) ((C_rt))) (ControlFlowBCasTry_spec_attrs (B_rt) (C_rt))-[] -[(ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty]); C_ty; (ControlFlow_ty ((B_rt)) ((convert_Infallible_rt)) -[] -[B_ty; (convert_Infallible_ty  -[] -[])])])))).
+    ∀ `(B_rt : !RT) `(C_rt : !RT) `(B_st : !syn_type) `(C_st : !syn_type), trait_incl_marker (lift_trait_incl Try_spec_incl (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), (ControlFlowBCasTry_spec (B_rt) (C_rt) (B_st) (C_st))-[] -[B_ty; C_ty]) (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), scope_add_typarams _ -[B_ty; C_ty] ((Try_base_spec ((ControlFlow_rt ((B_rt)) ((C_rt)))) (C_rt) ((ControlFlow_rt ((B_rt)) (unit))) (ControlFlow_st (B_st) (C_st)) C_st (ControlFlow_st (B_st) (NeverSynType)) (ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt))) (ControlFlowBCasTry_spec_attrs (B_rt) (C_rt))-[] -[(ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty]); C_ty; (ControlFlow_ty ((B_rt)) (unit) -[] -[B_ty; never_t])])))).
 End ControlFlowBCasTry_spec.
-
-Section ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec.
-  Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) : (spec_with _ _ (FromResidual_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) (((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt))))))) :=
-    spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), {|
-        FromResidual_from_residual_spec  :=
-          (type_of_ControlFlowBCasFromResidualControlFlowBconvert_Infallible_from_residual ((B_rt)) ((C_rt)) (B_st) (C_st)) 
-             <TY> B_ty <TY> C_ty : (spec_with 0 [] fn_spec);
-      |}
-  .
-  Definition ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec_subsumption  :=
-    ∀ `(B_rt : !RT) `(C_rt : !RT) `(B_st : !syn_type) `(C_st : !syn_type), trait_incl_marker (lift_trait_incl FromResidual_spec_incl (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), (ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec (B_rt) (C_rt) (B_st) (C_st))-[] -[B_ty; C_ty]) (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), scope_add_typarams _ -[B_ty; C_ty] ((FromResidual_base_spec ((ControlFlow_rt ((B_rt)) ((C_rt)))) ((ControlFlow_rt ((B_rt)) ((convert_Infallible_rt)))) (ControlFlow_st (B_st) (C_st)) (ControlFlow_st (B_st) (convert_Infallible_st)) (ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec_attrs (B_rt) (C_rt))-[] -[(ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty]); (ControlFlow_ty ((B_rt)) ((convert_Infallible_rt)) -[] -[B_ty; (convert_Infallible_ty  -[] -[])])])))).
-End ControlFlowBCasFromResidualControlFlowBconvert_Infallible_spec.
 
 Section Tasconvert_FromT_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
@@ -1007,7 +943,7 @@ End Tasconvert_IntoU_spec.
 
 Section std_option_OptionTasFromResidual_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition std_option_OptionTasFromResidual_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (FromResidual_spec (((((Option_rt)) ((T_rt))))) (((((Option_rt)) ((convert_Infallible_rt))))))) :=
+  Definition std_option_OptionTasFromResidual_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (FromResidual_spec (((((Option_rt)) ((T_rt))))) (((((Option_rt)) (unit)))))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), {|
         FromResidual_from_residual_spec  :=
           (type_of_std_option_OptionTasFromResidual_from_residual ((T_rt)) (T_st)) 
@@ -1015,13 +951,13 @@ Section std_option_OptionTasFromResidual_spec.
       |}
   .
   Definition std_option_OptionTasFromResidual_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl FromResidual_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (std_option_OptionTasFromResidual_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((FromResidual_base_spec ((((Option_rt)) ((T_rt)))) ((((Option_rt)) ((convert_Infallible_rt)))) ((Option_els (T_st)) : syn_type) ((Option_els (convert_Infallible_st)) : syn_type) (std_option_OptionTasFromResidual_spec_attrs (T_rt))-[] -[(Option_ty ((T_rt)) -[] -[T_ty]); (Option_ty ((convert_Infallible_rt)) -[] -[(convert_Infallible_ty  -[] -[])])])))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl FromResidual_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (std_option_OptionTasFromResidual_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((FromResidual_base_spec ((((Option_rt)) ((T_rt)))) ((((Option_rt)) (unit))) ((Option_els (T_st)) : syn_type) ((Option_els (NeverSynType)) : syn_type) (std_option_OptionTasFromResidual_spec_attrs (T_rt))-[] -[(Option_ty ((T_rt)) -[] -[T_ty]); (Option_ty (unit) -[] -[never_t])])))).
 End std_option_OptionTasFromResidual_spec.
 
 Section std_option_OptionTasTry_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition std_option_OptionTasTry_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (Try_spec (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) ((convert_Infallible_rt))))))) :=
-    spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), let Residual_rt := ((((Option_rt)) ((convert_Infallible_rt)))) in let Output_rt := (T_rt) in {|
+  Definition std_option_OptionTasTry_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (Try_spec (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) (unit)))))) :=
+    spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), let Residual_rt := ((((Option_rt)) (unit))) in let Output_rt := (T_rt) in {|
         Try_branch_spec  :=
           (type_of_std_option_OptionTasTry_branch ((T_rt)) (T_st)) 
              <TY> T_ty : (spec_with 0 [] fn_spec);
@@ -1031,13 +967,13 @@ Section std_option_OptionTasTry_spec.
       |}
   .
   Definition std_option_OptionTasTry_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Try_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (std_option_OptionTasTry_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Try_base_spec ((((Option_rt)) ((T_rt)))) (T_rt) ((((Option_rt)) ((convert_Infallible_rt)))) ((Option_els (T_st)) : syn_type) T_st ((Option_els (convert_Infallible_st)) : syn_type) (std_option_OptionTasFromResidual_spec_attrs ((T_rt))) (std_option_OptionTasTry_spec_attrs (T_rt))-[] -[(Option_ty ((T_rt)) -[] -[T_ty]); T_ty; (Option_ty ((convert_Infallible_rt)) -[] -[(convert_Infallible_ty  -[] -[])])])))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Try_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (std_option_OptionTasTry_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Try_base_spec ((((Option_rt)) ((T_rt)))) (T_rt) ((((Option_rt)) (unit))) ((Option_els (T_st)) : syn_type) T_st ((Option_els (NeverSynType)) : syn_type) (std_option_OptionTasFromResidual_spec_attrs ((T_rt))) (std_option_OptionTasTry_spec_attrs (T_rt))-[] -[(Option_ty ((T_rt)) -[] -[T_ty]); T_ty; (Option_ty (unit) -[] -[never_t])])))).
 End std_option_OptionTasTry_spec.
 
 Section std_result_ResultTEasTry_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition std_result_ResultTEasTry_spec (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) : (spec_with _ _ (Try_spec (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) ((convert_Infallible_rt)) ((E_rt))))))) :=
-    spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), let Residual_rt := ((((Result_rt)) ((convert_Infallible_rt)) ((E_rt)))) in let Output_rt := (T_rt) in {|
+  Definition std_result_ResultTEasTry_spec (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) : (spec_with _ _ (Try_spec (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) (unit) ((E_rt))))))) :=
+    spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), let Residual_rt := ((((Result_rt)) (unit) ((E_rt)))) in let Output_rt := (T_rt) in {|
         Try_branch_spec  :=
           (type_of_std_result_ResultTEasTry_branch ((T_rt)) ((E_rt)) (T_st) (E_st)) 
              <TY> T_ty <TY> E_ty : (spec_with 0 [] fn_spec);
@@ -1047,21 +983,21 @@ Section std_result_ResultTEasTry_spec.
       |}
   .
   Definition std_result_ResultTEasTry_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(E_rt : !RT) `(T_st : !syn_type) `(E_st : !syn_type), trait_incl_marker (lift_trait_incl Try_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (std_result_ResultTEasTry_spec (T_rt) (E_rt) (T_st) (E_st))-[] -[T_ty; E_ty]) (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), scope_add_typarams _ -[T_ty; E_ty] ((Try_base_spec ((((Result_rt)) ((T_rt)) ((E_rt)))) (T_rt) ((((Result_rt)) ((convert_Infallible_rt)) ((E_rt)))) ((Result_els (T_st) (E_st)) : syn_type) T_st ((Result_els (convert_Infallible_st) (E_st)) : syn_type) (std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt))))) (std_result_ResultTEasTry_spec_attrs (T_rt) (E_rt))-[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]); T_ty; (Result_ty ((convert_Infallible_rt)) ((E_rt)) -[] -[(convert_Infallible_ty  -[] -[]); E_ty])])))).
+    ∀ `(T_rt : !RT) `(E_rt : !RT) `(T_st : !syn_type) `(E_st : !syn_type), trait_incl_marker (lift_trait_incl Try_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (std_result_ResultTEasTry_spec (T_rt) (E_rt) (T_st) (E_st))-[] -[T_ty; E_ty]) (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), scope_add_typarams _ -[T_ty; E_ty] ((Try_base_spec ((((Result_rt)) ((T_rt)) ((E_rt)))) (T_rt) ((((Result_rt)) (unit) ((E_rt)))) ((Result_els (T_st) (E_st)) : syn_type) T_st ((Result_els (NeverSynType) (E_st)) : syn_type) (std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt))))) (std_result_ResultTEasTry_spec_attrs (T_rt) (E_rt))-[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]); T_ty; (Result_ty (unit) ((E_rt)) -[] -[never_t; E_ty])])))).
 End std_result_ResultTEasTry_spec.
 
-Section std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec.
+Section std_result_ResultTFasFromResidualstd_result_ResultE_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec (T_rt: RT) (E_rt: RT) (F_rt: RT) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) (convert_From_F_E_spec_attrs: (convert_From_spec_attrs (RRGS:=RRGS) (F_rt) (E_rt) )) : (spec_with _ _ (FromResidual_spec (((((Result_rt)) ((T_rt)) ((F_rt))))) (((((Result_rt)) ((convert_Infallible_rt)) ((E_rt))))))) :=
+  Definition std_result_ResultTFasFromResidualstd_result_ResultE_spec (T_rt: RT) (E_rt: RT) (F_rt: RT) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) (convert_From_F_E_spec_attrs: (convert_From_spec_attrs (RRGS:=RRGS) (F_rt) (E_rt) )) : (spec_with _ _ (FromResidual_spec (((((Result_rt)) ((T_rt)) ((F_rt))))) (((((Result_rt)) (unit) ((E_rt))))))) :=
     spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty]) : ([T_rt; E_rt; F_rt] : list RT), {|
         FromResidual_from_residual_spec  :=
-          (type_of_std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_from_residual ((T_rt)) ((E_rt)) ((F_rt)) (T_st) (E_st) (F_st)) convert_From_F_E_spec_attrs 
+          (type_of_std_result_ResultTFasFromResidualstd_result_ResultE_from_residual ((T_rt)) ((E_rt)) ((F_rt)) (T_st) (E_st) (F_st)) convert_From_F_E_spec_attrs 
              <TY> T_ty <TY> E_ty <TY> F_ty : (spec_with 0 [] fn_spec);
       |}
   .
-  Definition std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(E_rt : !RT) `(F_rt : !RT) `(T_st : !syn_type) `(E_st : !syn_type) `(F_st : !syn_type) `(convert_From_F_E_spec_attrs : !(convert_From_spec_attrs (RRGS:=RRGS) (F_rt) (E_rt) )), trait_incl_marker (lift_trait_incl FromResidual_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty]) : ([T_rt; E_rt; F_rt] : list RT), (std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec (T_rt) (E_rt) (F_rt) (T_st) (E_st) (F_st) (convert_From_F_E_spec_attrs))-[] -[T_ty; E_ty; F_ty]) (spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty]) : ([T_rt; E_rt; F_rt] : list RT), scope_add_typarams _ -[T_ty; E_ty; F_ty] ((FromResidual_base_spec ((((Result_rt)) ((T_rt)) ((F_rt)))) ((((Result_rt)) ((convert_Infallible_rt)) ((E_rt)))) ((Result_els (T_st) (F_st)) : syn_type) ((Result_els (convert_Infallible_st) (E_st)) : syn_type) (std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec_attrs (T_rt) (E_rt) (F_rt) (convert_From_F_E_spec_attrs))-[] -[(Result_ty ((T_rt)) ((F_rt)) -[] -[T_ty; F_ty]); (Result_ty ((convert_Infallible_rt)) ((E_rt)) -[] -[(convert_Infallible_ty  -[] -[]); E_ty])])))).
-End std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_spec.
+  Definition std_result_ResultTFasFromResidualstd_result_ResultE_spec_subsumption  :=
+    ∀ `(T_rt : !RT) `(E_rt : !RT) `(F_rt : !RT) `(T_st : !syn_type) `(E_st : !syn_type) `(F_st : !syn_type) `(convert_From_F_E_spec_attrs : !(convert_From_spec_attrs (RRGS:=RRGS) (F_rt) (E_rt) )), trait_incl_marker (lift_trait_incl FromResidual_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty]) : ([T_rt; E_rt; F_rt] : list RT), (std_result_ResultTFasFromResidualstd_result_ResultE_spec (T_rt) (E_rt) (F_rt) (T_st) (E_st) (F_st) (convert_From_F_E_spec_attrs))-[] -[T_ty; E_ty; F_ty]) (spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty]) : ([T_rt; E_rt; F_rt] : list RT), scope_add_typarams _ -[T_ty; E_ty; F_ty] ((FromResidual_base_spec ((((Result_rt)) ((T_rt)) ((F_rt)))) ((((Result_rt)) (unit) ((E_rt)))) ((Result_els (T_st) (F_st)) : syn_type) ((Result_els (NeverSynType) (E_st)) : syn_type) (std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs (T_rt) (E_rt) (F_rt) (convert_From_F_E_spec_attrs))-[] -[(Result_ty ((T_rt)) ((F_rt)) -[] -[T_ty; F_ty]); (Result_ty (unit) ((E_rt)) -[] -[never_t; E_ty])])))).
+End std_result_ResultTFasFromResidualstd_result_ResultE_spec.
 
 Section drop_glue_ControlFlow_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.

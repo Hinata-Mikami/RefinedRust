@@ -73,8 +73,8 @@ Program Definition Ord_clamp_def (DropGlue_Self_drop_glue_loc: loc) (panic_shim_
       <[
      "_bb0" :=
       local_live{ Self_st } "__0";
-      local_live{ UnitSynType } "__4";
-      local_live{ UnitSynType } "__5";
+      local_live{ NeverSynType } "__4";
+      local_live{ NeverSynType } "__5";
       CallS panic_shim_loc [] [] [@{expr} ] None
       ( StuckS)
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)

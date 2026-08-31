@@ -43,25 +43,6 @@
     },
     {
       "info": {
-        "enum_name": "convert_Infallible_enum",
-        "needs_trait_attrs": false
-      },
-      "kind": "adt",
-      "path": [
-        "core",
-        "convert",
-        "Infallible"
-      ],
-      "raw_type": {
-        "rtype": "(convert_Infallible_rt)",
-        "semtype": "convert_Infallible_ty"
-      },
-      "rtype": "(convert_Infallible_rt)",
-      "semtype": "convert_Infallible_ty",
-      "syntype": "convert_Infallible_els"
-    },
-    {
-      "info": {
         "enum_name": "ControlFlow_enum",
         "needs_trait_attrs": false
       },
@@ -231,24 +212,35 @@
       "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "branch": {
-          "name": "ControlFlowBCasTry_branch",
-          "spec": "type_of_ControlFlowBCasTry_branch",
-          "trait_req_incl": "trait_incl_of_ControlFlowBCasTry_branch"
-        },
-        "from_output": {
-          "name": "ControlFlowBCasTry_from_output",
-          "spec": "type_of_ControlFlowBCasTry_from_output",
-          "trait_req_incl": "trait_incl_of_ControlFlowBCasTry_from_output"
+        "from_residual": {
+          "name": "ControlFlowBCasFromResidualControlFlowB_from_residual",
+          "spec": "type_of_ControlFlowBCasFromResidualControlFlowB_from_residual",
+          "trait_req_incl": "trait_incl_of_ControlFlowBCasFromResidualControlFlowB_from_residual"
         }
       },
-      "name": "ControlFlowBCasTry",
+      "name": "ControlFlowBCasFromResidualControlFlowB",
       "trait_path": {
-        "args": [],
+        "args": [
+          {
+            "Adt": {
+              "args": [
+                {
+                  "Param": 0
+                },
+                "Never"
+              ],
+              "path": [
+                "core",
+                "ops",
+                "ControlFlow"
+              ]
+            }
+          }
+        ],
         "path": [
           "core",
           "ops",
-          "Try"
+          "FromResidual"
         ]
       }
     },
@@ -274,44 +266,24 @@
       "impl_kind": "rust",
       "kind": "trait_impl",
       "method_specs": {
-        "from_residual": {
-          "name": "ControlFlowBCasFromResidualControlFlowBconvert_Infallible_from_residual",
-          "spec": "type_of_ControlFlowBCasFromResidualControlFlowBconvert_Infallible_from_residual",
-          "trait_req_incl": "trait_incl_of_ControlFlowBCasFromResidualControlFlowBconvert_Infallible_from_residual"
+        "branch": {
+          "name": "ControlFlowBCasTry_branch",
+          "spec": "type_of_ControlFlowBCasTry_branch",
+          "trait_req_incl": "trait_incl_of_ControlFlowBCasTry_branch"
+        },
+        "from_output": {
+          "name": "ControlFlowBCasTry_from_output",
+          "spec": "type_of_ControlFlowBCasTry_from_output",
+          "trait_req_incl": "trait_incl_of_ControlFlowBCasTry_from_output"
         }
       },
-      "name": "ControlFlowBCasFromResidualControlFlowBconvert_Infallible",
+      "name": "ControlFlowBCasTry",
       "trait_path": {
-        "args": [
-          {
-            "Adt": {
-              "args": [
-                {
-                  "Param": 0
-                },
-                {
-                  "Adt": {
-                    "args": [],
-                    "path": [
-                      "core",
-                      "convert",
-                      "Infallible"
-                    ]
-                  }
-                }
-              ],
-              "path": [
-                "core",
-                "ops",
-                "ControlFlow"
-              ]
-            }
-          }
-        ],
+        "args": [],
         "path": [
           "core",
           "ops",
-          "FromResidual"
+          "Try"
         ]
       }
     },
@@ -402,16 +374,7 @@
           {
             "Adt": {
               "args": [
-                {
-                  "Adt": {
-                    "args": [],
-                    "path": [
-                      "core",
-                      "convert",
-                      "Infallible"
-                    ]
-                  }
-                }
+                "Never"
               ],
               "path": [
                 "std",
@@ -534,27 +497,18 @@
       "kind": "trait_impl",
       "method_specs": {
         "from_residual": {
-          "name": "std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_from_residual",
-          "spec": "type_of_std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_from_residual",
-          "trait_req_incl": "trait_incl_of_std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE_from_residual"
+          "name": "std_result_ResultTFasFromResidualstd_result_ResultE_from_residual",
+          "spec": "type_of_std_result_ResultTFasFromResidualstd_result_ResultE_from_residual",
+          "trait_req_incl": "trait_incl_of_std_result_ResultTFasFromResidualstd_result_ResultE_from_residual"
         }
       },
-      "name": "std_result_ResultTFasFromResidualstd_result_Resultconvert_InfallibleE",
+      "name": "std_result_ResultTFasFromResidualstd_result_ResultE",
       "trait_path": {
         "args": [
           {
             "Adt": {
               "args": [
-                {
-                  "Adt": {
-                    "args": [],
-                    "path": [
-                      "core",
-                      "convert",
-                      "Infallible"
-                    ]
-                  }
-                },
+                "Never",
                 {
                   "Param": 1
                 }

@@ -154,7 +154,7 @@ Program Definition Option_T_filter_def (DropGlue_P_drop_glue_loc: loc) (DropGlue
      "_bb0" :=
       local_live{ (Option_st (T_st)) } "__0";
       local_live{ (IntSynType ISize) } "__4";
-      local_live{ UnitSynType } "__11";
+      local_live{ NeverSynType } "__11";
       local_live{ BoolSynType } "__13";
       local_live{ BoolSynType } "__14";
       "__13" <-{ BoolOp } val_of_bool false;
@@ -455,7 +455,7 @@ Program Definition Option_T_unwrap_def (panic_shim_loc: loc) (T_st: syn_type) : 
      ]>%E $
      <[
      "_bb2" :=
-      local_live{ UnitSynType } "__4";
+      local_live{ NeverSynType } "__4";
       CallS panic_shim_loc [] [] [@{expr} ] None
       ( StuckS)
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)

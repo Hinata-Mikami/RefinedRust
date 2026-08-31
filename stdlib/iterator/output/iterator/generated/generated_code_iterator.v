@@ -407,7 +407,7 @@ Program Definition adapters_step_by_StepBy_I_new_def (DropGlue_I_drop_glue_loc: 
      <[
      "_bb2" :=
       local_dead "__5";
-      local_live{ UnitSynType } "__6";
+      local_live{ NeverSynType } "__6";
       CallS panic_shim_loc [] [] [@{expr} ] None
       ( StuckS)
       ( Goto "_bb7")
@@ -732,9 +732,9 @@ Program Definition step_impltraits_iterator_Iteratorforstd_ops_RangeA_next_def (
       <[
      "_bb0" :=
       local_live{ ((Option_els (A_st)) : syn_type) } "__0";
-      local_live{ UnitSynType } "__2";
+      local_live{ NeverSynType } "__2";
       annot{ 1 }: CopyLftNameAnnot "plft4" "ulft_1"; (* initialization *)
-      local_live{ UnitSynType } "__3";
+      local_live{ NeverSynType } "__3";
       CallS panic_shim_loc [] [] [@{expr} ] None
       ( StuckS)
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
@@ -965,8 +965,8 @@ Program Definition traits_iterator_Iterator_fold_def (DropGlue_B_drop_glue_loc: 
       local_live{ B_st } "__0";
       local_live{ UnitSynType } "__6";
       local_live{ (IntSynType ISize) } "__9";
-      local_live{ UnitSynType } "__17";
-      local_live{ UnitSynType } "__19";
+      local_live{ NeverSynType } "__17";
+      local_live{ NeverSynType } "__19";
       local_live{ BoolSynType } "__20";
       "__20" <-{ BoolOp } val_of_bool false;
       local_live{ B_st } "accum";
@@ -1542,10 +1542,10 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
      "_bb0" :=
       local_live{ ((Option_els (Item_st)) : syn_type) } "__0";
       local_live{ UnitSynType } "__5";
-      local_live{ UnitSynType } "__15";
+      local_live{ NeverSynType } "__15";
       local_live{ ((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type) } "__16";
-      local_live{ UnitSynType } "__17";
-      local_live{ UnitSynType } "__19";
+      local_live{ NeverSynType } "__17";
+      local_live{ NeverSynType } "__19";
       annot{ 1 }: CopyLftNameAnnot "plft6" "ulft_1"; (* initialization *)
       local_live{ (IntSynType USize) } "i";
       "i" <-{ (IntOp USize) } i2v (0) USize;
@@ -1817,7 +1817,7 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
      "_bb0" :=
       local_live{ ((Option_els (Item_st)) : syn_type) } "__0";
       local_live{ (IntSynType ISize) } "__7";
-      local_live{ UnitSynType } "__9";
+      local_live{ NeverSynType } "__9";
       local_live{ BoolSynType } "__16";
       local_live{ BoolSynType } "__17";
       local_live{ BoolSynType } "__18";
@@ -1827,7 +1827,7 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
       "__18" <-{ BoolOp } val_of_bool true;
       "__17" <-{ BoolOp } val_of_bool true;
       local_live{ Item_st } "first";
-      local_live{ ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st)) : syn_type) } "__4";
+      local_live{ ((ControlFlow_els (((Option_els (NeverSynType)) : syn_type)) (Item_st)) : syn_type) } "__4";
       local_live{ ((Option_els (Item_st)) : syn_type) } "__5";
       local_live{ RefSynType } "__6";
       annot{ 1 }: StartLftAnnot "llft2" ["_flft"]; (* borrow *)
@@ -1844,7 +1844,7 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
      <[
      "_bb1" :=
       local_dead "__6";
-      CallS std_option_OptionTasTry_branch_Selfastraits_iterator_Iterator_Item_loc [] [RSTTyVar "Item"] [@{expr} move{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } ("__5")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st)) : syn_type)), "__4"))
+      CallS std_option_OptionTasTry_branch_Selfastraits_iterator_Iterator_Item_loc [] [RSTTyVar "Item"] [@{expr} move{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } ("__5")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els (((Option_els (NeverSynType)) : syn_type)) (Item_st)) : syn_type)), "__4"))
       ( Goto "_bb2")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Goto "_bb15")
@@ -1852,7 +1852,7 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
      <[
      "_bb2" :=
       local_dead "__5";
-      "__7" <-{ (IntOp ISize) } EnumDiscriminant ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st))) ("__4");
+      "__7" <-{ (IntOp ISize) } EnumDiscriminant ((ControlFlow_els (((Option_els (NeverSynType)) : syn_type)) (Item_st))) ("__4");
       Switch (ISize: int_type) (move{ (IntOp ISize) } ("__7")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb4"; Goto "_bb5"]) (Goto "_bb3")
      ]>%E $
      <[
@@ -1862,7 +1862,7 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
      <[
      "_bb4" :=
       local_live{ Item_st } "val";
-      "val" <-{ (use_op_alg' Item_st) } move{ (use_op_alg' Item_st) } ((EnumData ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st))) "Continue" ("__4")) at{ (ControlFlow_Continue_sls (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st)) } "0");
+      "val" <-{ (use_op_alg' Item_st) } move{ (use_op_alg' Item_st) } ((EnumData ((ControlFlow_els (((Option_els (NeverSynType)) : syn_type)) (Item_st))) "Continue" ("__4")) at{ (ControlFlow_Continue_sls (((Option_els (NeverSynType)) : syn_type)) (Item_st)) } "0");
       "__16" <-{ BoolOp } val_of_bool true;
       "first" <-{ (use_op_alg' Item_st) } move{ (use_op_alg' Item_st) } ("val");
       local_dead "val";
@@ -1884,11 +1884,11 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
      ]>%E $
      <[
      "_bb5" :=
-      local_live{ ((Option_els ((convert_Infallible_els : syn_type))) : syn_type) } "residual";
-      "residual" <-{ (use_op_alg' ((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) } copy{ (use_op_alg' ((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) } ((EnumData ((ControlFlow_els (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st))) "Break" ("__4")) at{ (ControlFlow_Break_sls (((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) (Item_st)) } "0");
-      local_live{ ((Option_els ((convert_Infallible_els : syn_type))) : syn_type) } "__10";
-      "__10" <-{ (use_op_alg' ((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) } copy{ (use_op_alg' ((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) } ("residual");
-      CallS std_option_OptionTasFromResidual_from_residual_Selfastraits_iterator_Iterator_Item_loc [] [RSTTyVar "Item"] [@{expr} move{ (use_op_alg' ((Option_els ((convert_Infallible_els : syn_type))) : syn_type)) } ("__10")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
+      local_live{ ((Option_els (NeverSynType)) : syn_type) } "residual";
+      "residual" <-{ (use_op_alg' ((Option_els (NeverSynType)) : syn_type)) } copy{ (use_op_alg' ((Option_els (NeverSynType)) : syn_type)) } ((EnumData ((ControlFlow_els (((Option_els (NeverSynType)) : syn_type)) (Item_st))) "Break" ("__4")) at{ (ControlFlow_Break_sls (((Option_els (NeverSynType)) : syn_type)) (Item_st)) } "0");
+      local_live{ ((Option_els (NeverSynType)) : syn_type) } "__10";
+      "__10" <-{ (use_op_alg' ((Option_els (NeverSynType)) : syn_type)) } copy{ (use_op_alg' ((Option_els (NeverSynType)) : syn_type)) } ("residual");
+      CallS std_option_OptionTasFromResidual_from_residual_Selfastraits_iterator_Iterator_Item_loc [] [RSTTyVar "Item"] [@{expr} move{ (use_op_alg' ((Option_els (NeverSynType)) : syn_type)) } ("__10")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
       ( Goto "_bb6")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Goto "_bb15")
@@ -2110,9 +2110,9 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_B_drop_glue_l
       local_live{ UnitSynType } "__6";
       local_live{ (IntSynType ISize) } "__9";
       local_live{ (IntSynType ISize) } "__19";
-      local_live{ UnitSynType } "__21";
-      local_live{ UnitSynType } "__24";
-      local_live{ UnitSynType } "__26";
+      local_live{ NeverSynType } "__21";
+      local_live{ NeverSynType } "__24";
+      local_live{ NeverSynType } "__26";
       local_live{ BoolSynType } "__28";
       annot{ 1 }: CopyLftNameAnnot "plft5" "ulft_1"; (* initialization *)
       "__28" <-{ BoolOp } val_of_bool false;
