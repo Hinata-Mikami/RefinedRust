@@ -2,6 +2,53 @@ From caesium Require Import lang notation.
 From refinedrust Require Import typing.
 
 
+(*
+  locs, nexts で表されるヒープにおいて， 
+  index i のノードから mark_from を実行（再帰呼び出し）したときに
+  marks が実行後に marks_new になる
+*)
+Inductive mark_from_rel
+    (locs nexts : list loc) :
+    list bool -> nat -> list bool -> Prop :=
+
+(* marked ならなにもしない *)
+| mark_from_rel_marked
+    (marks : list bool) (i : nat) :
+    marks !! i = Some true ->
+    mark_from_rel locs nexts marks i marks
+
+(* false で，next が null なら自分だけmark *)
+| mark_from_rel_null
+    (marks : list bool) (i : nat) (l : loc) :
+    marks !! i = Some false ->
+    nexts !! i = Some l ->
+    loc_a l = 0 ->
+    mark_from_rel
+      locs nexts
+      marks i
+      (<[i := true]> marks)
+
+(* false で，next も存在するとき再帰 *)
+| mark_from_rel_next
+    (marks marks_new : list bool)
+    (i j : nat) (l : loc) :
+    marks !! i = Some false ->
+    nexts !! i = Some l ->
+    l <> NULL_loc ->
+    locs !! j = Some l ->
+    mark_from_rel
+      locs nexts
+      (<[i := true]> marks)
+      j
+      marks_new ->
+    mark_from_rel
+      locs nexts
+      marks
+      i
+      marks_new.
+
+
+
 (* start 番目から i 番目へ next を0回以上辿って到達できる *)
 Inductive reachable_from
     (locs nexts : list loc)
@@ -30,43 +77,3 @@ Definition reachable
 Definition all_unmarked (marks : list bool) : Prop :=
   Forall (fun m => m = false) marks.
 
-
-(*
-  mark_from を1回実行したときに
-  marks が marks_new にどう変化するかを表す関係
-*)
-Inductive mark_from_rel
-    (locs nexts : list loc) :
-    list bool -> nat -> list bool -> Prop :=
-| mark_from_rel_marked
-    (marks : list bool) (i : nat) :
-    marks !! i = Some true ->
-    mark_from_rel locs nexts marks i marks
-
-| mark_from_rel_null
-    (marks : list bool) (i : nat) (l : loc) :
-    marks !! i = Some false ->
-    nexts !! i = Some l ->
-    loc_a l = 0 ->
-    mark_from_rel
-      locs nexts
-      marks i
-      (<[i := true]> marks)
-
-| mark_from_rel_next
-    (marks marks_new : list bool)
-    (i j : nat) (l : loc) :
-    marks !! i = Some false ->
-    nexts !! i = Some l ->
-    l <> NULL_loc ->
-    locs !! j = Some l ->
-    mark_from_rel
-      locs nexts
-      (<[i := true]> marks)
-      j
-      marks_new ->
-    mark_from_rel
-      locs nexts
-      marks
-      i
-      marks_new.
