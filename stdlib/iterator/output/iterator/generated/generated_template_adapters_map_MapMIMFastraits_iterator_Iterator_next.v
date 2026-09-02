@@ -19,6 +19,7 @@ Definition adapters_map_MapMIMFastraits_iterator_Iterator_next_lemma (π : threa
   syn_type_is_layoutable (MB_st) →
   syn_type_is_layoutable (MI_st) →
   syn_type_is_layoutable (MF_st) →
+  syn_type_is_layoutable (traits_iterator_Iterator_MI_Item_st) →
   syn_type_is_layoutable (((adapters_map_Map_sls (MI_st) (MF_st)) : syn_type)) →
   syn_type_is_layoutable (((Option_els (MB_st)) : syn_type)) →
   syn_type_is_layoutable (((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)) →

@@ -164,6 +164,22 @@
       ]
     },
     {
+      "allowed_attrs": [],
+      "assoc_tys": [
+        "TryType"
+      ],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {},
+      "name": "Residual",
+      "path": [
+        "core",
+        "ops",
+        "Residual"
+      ]
+    },
+    {
       "allowed_attrs": [
         "FromOutputFn",
         "BranchFn",
@@ -189,6 +205,40 @@
         "ops",
         "Try"
       ]
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            {
+              "Param": 0
+            },
+            "Never"
+          ],
+          "path": [
+            "core",
+            "ops",
+            "ControlFlow"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "ControlFlowBasResidualC",
+      "trait_path": {
+        "args": [
+          {
+            "Param": 1
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Residual"
+        ]
+      }
     },
     {
       "for_type": {
@@ -347,6 +397,37 @@
       "for_type": {
         "Adt": {
           "args": [
+            "Never"
+          ],
+          "path": [
+            "std",
+            "option",
+            "Option"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "std_option_OptionasResidualT",
+      "trait_path": {
+        "args": [
+          {
+            "Param": 0
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Residual"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
             {
               "Param": 0
             }
@@ -428,6 +509,40 @@
           "core",
           "ops",
           "Try"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Adt": {
+          "args": [
+            "Never",
+            {
+              "Param": 1
+            }
+          ],
+          "path": [
+            "std",
+            "result",
+            "Result"
+          ]
+        }
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "std_result_ResultEasResidualT",
+      "trait_path": {
+        "args": [
+          {
+            "Param": 0
+          }
+        ],
+        "path": [
+          "core",
+          "ops",
+          "Residual"
         ]
       }
     },

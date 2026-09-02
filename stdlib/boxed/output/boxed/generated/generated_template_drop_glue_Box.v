@@ -18,7 +18,6 @@ Definition drop_glue_Box_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (T_st) →
   syn_type_is_layoutable (A_st) →
   syn_type_is_layoutable (((Box_sls (T_st) (A_st)) : syn_type)) →
-  syn_type_is_layoutable (((Box_sls (T_st) (A_st)) : syn_type)) →
   syn_type_is_layoutable (((nonnull_NonNull_sls (T_st)) : syn_type)) →
   syn_type_is_layoutable (((unique_Unique_sls (T_st)) : syn_type)) →
   BoxTAasstd_ops_Drop_drop_T_A_loc ◁ᵥ{π, MetaNone} BoxTAasstd_ops_Drop_drop_T_A_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), fn_spec_add_late_pre (type_of_BoxTAasstd_ops_Drop_drop (RRGS:=RRGS) ((T_rt)) ((A_rt)) (T_st) (A_st) Allocator_A_spec_attrs -[late_lft_0] -[T_ty; A_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)

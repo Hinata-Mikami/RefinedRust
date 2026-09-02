@@ -2096,7 +2096,7 @@ Qed.
 
 
 
-Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_B_drop_glue_loc: loc) (DropGlue_F_drop_glue_loc: loc) (FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc: loc) (FromResidual_R_Rasstd_ops_Try_Residual_from_residual_loc: loc) (Try_R_branch_loc: loc) (Try_R_from_output_loc: loc) (traits_iterator_Iterator_Self_next_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (B_st: syn_type) (F_st: syn_type) (R_st: syn_type) (Try_R_Residual_st: syn_type) : function :=
+Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_B_drop_glue_loc: loc) (DropGlue_F_drop_glue_loc: loc) (FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc: loc) (FromResidual_R_Rasstd_ops_Try_Residual_from_residual_loc: loc) (Try_R_branch_loc: loc) (Try_R_from_output_loc: loc) (traits_iterator_Iterator_Self_next_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (B_st: syn_type) (F_st: syn_type) (R_st: syn_type) (Try_R_Residual_st: syn_type) (Residual_Rasstd_ops_Try_Residual_Rasstd_ops_Try_Output_TryType_st: syn_type) : function :=
   {|
      f_args := [
       ("self", void* : layout);
@@ -2176,7 +2176,7 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_B_drop_glue_l
       local_dead "__17";
       local_dead "__16";
       local_dead "__15";
-      CallS Try_R_branch_loc [] [RSTTyVar "R"; RSTTyVar "Try_R_Residual"] [@{expr} move{ (use_op_alg' R_st) } ("__14")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els (Try_R_Residual_st) (B_st)) : syn_type)), "__13"))
+      CallS Try_R_branch_loc [] [RSTTyVar "B"; RSTTyVar "R"; RSTTyVar "Residual_Rasstd_ops_Try_Residual_Rasstd_ops_Try_Output_TryType"; RSTTyVar "Residual_Rasstd_ops_Try_Residual_Rasstd_ops_Try_Output_TryType"; RSTTyVar "Try_R_Residual"] [@{expr} move{ (use_op_alg' R_st) } ("__14")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els (Try_R_Residual_st) (B_st)) : syn_type)), "__13"))
       ( Goto "_bb5")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Goto "_bb16")
@@ -2244,7 +2244,7 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_B_drop_glue_l
       local_live{ B_st } "__27";
       "__28" <-{ BoolOp } val_of_bool false;
       "__27" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("accum");
-      CallS Try_R_from_output_loc [] [RSTTyVar "R"; RSTTyVar "Try_R_Residual"] [@{expr} move{ (use_op_alg' B_st) } ("__27")] (Some (Na1Ord, (use_op_alg' R_st), "__0"))
+      CallS Try_R_from_output_loc [] [RSTTyVar "B"; RSTTyVar "R"; RSTTyVar "Residual_Rasstd_ops_Try_Residual_Rasstd_ops_Try_Output_TryType"; RSTTyVar "Residual_Rasstd_ops_Try_Residual_Rasstd_ops_Try_Output_TryType"; RSTTyVar "Try_R_Residual"] [@{expr} move{ (use_op_alg' B_st) } ("__27")] (Some (Na1Ord, (use_op_alg' R_st), "__0"))
       ( Goto "_bb11")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Goto "_bb16")

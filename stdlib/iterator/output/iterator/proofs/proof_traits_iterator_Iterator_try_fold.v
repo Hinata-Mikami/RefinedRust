@@ -26,10 +26,10 @@ Proof.
     rep <-! liRStep; liShow.
     rep  liRStep; liShow.
     liInst Hevar_x1 seq.
-    liInst Hevar_x2 x7.
+    liInst Hevar_x2 x8.
     rep liRStep; liShow.
     rewrite branchfn_from_output_eq.
-    liInst Hevar_x3  x9.
+    liInst Hevar_x3 x10.
     rep liRStep.
   }
 

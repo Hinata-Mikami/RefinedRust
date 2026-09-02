@@ -17,6 +17,7 @@ Context `{RRGS : !refinedrustGS Σ}.
 Definition traits_iterator_Iterator_nth_lemma (π : thread_id) : Prop :=
   ∀ `(Self_rt : !RT) `(Item_rt : !RT) `(Self_st : !syn_type) `(Item_st : !syn_type) `(traits_iterator_Iterator_Self_spec_attrs : !(traits_iterator_Iterator_spec_attrs (RRGS:=RRGS) (Self_rt) (Item_rt) )) `(traits_iterator_Iterator_Self_spec : !(spec_with 0 [] (traits_iterator_Iterator_spec (RRGS:=RRGS) (Self_rt) (Item_rt)))) `(DropGlue_Self_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) `(DropGlue_Selfastraits_iterator_Iterator_Item_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Item_rt)))) (Option_T_is_none_Selfastraits_iterator_Iterator_Item_loc : loc) (drop_glue_Option_Selfastraits_iterator_Iterator_Item_loc : loc) (panic_shim_loc : loc) (traits_iterator_Iterator_Self_next_loc : loc) , 
   syn_type_is_layoutable (Self_st) →
+  syn_type_is_layoutable (Item_st) →
   syn_type_is_layoutable (((Option_els (Item_st)) : syn_type)) →
   syn_type_is_layoutable (((Option_None_sls (Item_st)) : syn_type)) →
   syn_type_is_layoutable (((tuple2_sls ((IntSynType USize)) (BoolSynType)) : syn_type)) →

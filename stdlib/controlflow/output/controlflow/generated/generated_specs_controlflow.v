@@ -67,6 +67,15 @@ Record FromResidual_spec_attrs `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} `{
 #[global] Arguments mk_FromResidual_spec_attrs  {_} {_} {_} {_}.
 
 
+Record Residual_spec_attrs `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} `{O_rt : !RT} `{TryType_rt : !RT} : Type := mk_Residual_spec_attrs {
+}.
+#[global] Arguments Residual_spec_attrs : clear implicits.
+
+#[global] Arguments Residual_spec_attrs {_ _}.
+
+#[global] Arguments mk_Residual_spec_attrs  {_} {_} {_} {_} {_}.
+
+
 Definition Try_FromOutputFn_sig `{RRGS : !(refinedrustGS Σ)} (Self_rt: RT) (Output_rt: RT) (Residual_rt: RT) (FromResidual_Self_SelfasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Self_rt) (Residual_rt) )) :=
   ((RT_xt (Output_rt)) → (RT_xt (Self_rt))).
 Definition Try_BranchFn_sig `{RRGS : !(refinedrustGS Σ)} (Self_rt: RT) (Output_rt: RT) (Residual_rt: RT) (FromResidual_Self_SelfasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Self_rt) (Residual_rt) )) (Try_FromOutputFn: (Try_FromOutputFn_sig (Self_rt) (Output_rt) (Residual_rt) (FromResidual_Self_SelfasTry_Residual_spec_attrs))) :=
@@ -209,6 +218,14 @@ Global Hint Unfold ControlFlow_ty : solve_protected_eq_db.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
+Program Definition ControlFlowBasResidualC_spec_attrs `{RRGS : !(refinedrustGS Σ)} (B_rt: RT) (C_rt: RT) : ((Residual_spec_attrs (((ControlFlow_rt ((B_rt)) (unit)))) ((C_rt)) (((ControlFlow_rt ((B_rt)) ((C_rt))))))) :=
+  mk_Residual_spec_attrs.
+
+
+End attrs.
+
+Section attrs.
+Context `{RRGS : !refinedrustGS Σ}.
 Program Definition ControlFlowBCasFromResidualControlFlowB_spec_attrs `{RRGS : !(refinedrustGS Σ)} (B_rt: RT) (C_rt: RT) : ((FromResidual_spec_attrs (((ControlFlow_rt ((B_rt)) ((C_rt))))) (((ControlFlow_rt ((B_rt)) (unit)))))) :=
   {|
     FromResidual_FromResidualFn  :=
@@ -221,12 +238,28 @@ End attrs.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
+Program Definition std_option_OptionasResidualT_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) : ((Residual_spec_attrs (((((Option_rt)) (unit)))) ((T_rt)) (((((Option_rt)) ((T_rt))))))) :=
+  mk_Residual_spec_attrs.
+
+
+End attrs.
+
+Section attrs.
+Context `{RRGS : !refinedrustGS Σ}.
 Program Definition std_option_OptionTasFromResidual_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) : ((FromResidual_spec_attrs (((((Option_rt)) ((T_rt))))) (((((Option_rt)) (unit)))))) :=
   {|
     FromResidual_FromResidualFn  :=
       (λ _, Some None) : ((FromResidual_FromResidualFn_sig (((((Option_rt)) ((T_rt))))) (((((Option_rt)) (unit))))));
   |}
 .
+
+
+End attrs.
+
+Section attrs.
+Context `{RRGS : !refinedrustGS Σ}.
+Program Definition std_result_ResultEasResidualT_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (E_rt: RT) : ((Residual_spec_attrs (((((Result_rt)) (unit) ((E_rt))))) ((T_rt)) (((((Result_rt)) ((T_rt)) ((E_rt))))))) :=
+  mk_Residual_spec_attrs.
 
 
 End attrs.
@@ -422,7 +455,14 @@ Record FromResidual_spec `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} `{R_rt :
 #[global] Arguments FromResidual_spec {_ _}.
 
 
-Record Try_spec `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} `{Output_rt : !RT} `{Residual_rt : !RT} : Type := mk_Try_spec {
+Record Residual_spec `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} `{O_rt : !RT} `{TryType_rt : !RT} : Type := mk_Residual_spec {
+}.
+#[global] Arguments Residual_spec : clear implicits.
+
+#[global] Arguments Residual_spec {_ _}.
+
+
+Record Try_spec `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} `{Output_rt : !RT} `{Residual_rt : !RT} `{Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt : !RT} : Type := mk_Try_spec {
   Try_branch_spec  : (spec_with 0 [] fn_spec);
   Try_from_output_spec  : (spec_with 0 [] fn_spec);
 }.
@@ -676,19 +716,44 @@ Definition FromResidual_base_spec (Self_rt: RT) (R_rt: RT) (Self_st: syn_type) (
 
 End FromResidual.
 
-Section Try.
+Section Residual.
 Context `{RRGS : !refinedrustGS Σ}.
-Definition Try_spec_incl `{Self_rt : !RT} `{Output_rt : !RT} `{Residual_rt : !RT} (spec1: ((Try_spec (Self_rt) (Output_rt) (Residual_rt)))) (spec2: ((Try_spec (Self_rt) (Output_rt) (Residual_rt)))) : Prop :=
-  ((function_subtype (spec1.(Try_branch_spec)) (spec2.(Try_branch_spec)))) ∧ ((function_subtype (spec1.(Try_from_output_spec)) (spec2.(Try_from_output_spec)))).
-Instance Try_spec_incl_preorder `{Self_rt : !RT} `{Output_rt : !RT} `{Residual_rt : !RT} : (PreOrder (Try_spec_incl (Self_rt := Self_rt) (Output_rt := Output_rt) (Residual_rt := Residual_rt))).
+Definition Residual_spec_incl `{Self_rt : !RT} `{O_rt : !RT} `{TryType_rt : !RT} (spec1: ((Residual_spec (Self_rt) (O_rt) (TryType_rt)))) (spec2: ((Residual_spec (Self_rt) (O_rt) (TryType_rt)))) : Prop :=
+  True.
+Instance Residual_spec_incl_preorder `{Self_rt : !RT} `{O_rt : !RT} `{TryType_rt : !RT} : (PreOrder (Residual_spec_incl (Self_rt := Self_rt) (O_rt := O_rt) (TryType_rt := TryType_rt))).
 Proof.
   split.
   all: apply _.
 Qed.
 
-Definition scope_bindable_Try_spec `{Self_rt : !RT} `{Output_rt : !RT} `{Residual_rt : !RT} : (ScopeBindable ((Try_spec (Self_rt) (Output_rt) (Residual_rt)))) :=
+Definition scope_bindable_Residual_spec `{Self_rt : !RT} `{O_rt : !RT} `{TryType_rt : !RT} : (ScopeBindable ((Residual_spec (Self_rt) (O_rt) (TryType_rt)))) :=
   {|
-    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((Try_spec (Self_rt) (Output_rt) (Residual_rt)))) :=
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((Residual_spec (Self_rt) (O_rt) (TryType_rt)))) :=
+      s;
+    scope_add_elctx (E: (lft → elctx)) (s: ((Residual_spec (Self_rt) (O_rt) (TryType_rt)))) :=
+      s;
+  |}
+.
+#[global] Existing Instance scope_bindable_Residual_spec.
+
+Definition Residual_base_spec (Self_rt: RT) (O_rt: RT) (TryType_rt: RT) (Self_st: syn_type) (O_st: syn_type) (TryType_st: syn_type) (FromResidual_SelfasResidualO_TryType_SelfasResidualO_TryTypeasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (TryType_rt) (Self_rt) )) (Try_SelfasResidualO_TryType_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (TryType_rt) (O_rt) (Self_rt) FromResidual_SelfasResidualO_TryType_SelfasResidualO_TryTypeasTry_Residual_spec_attrs)) (_ATTRS: ((Residual_spec_attrs ((Self_rt)) ((O_rt)) ((TryType_rt))))) : (spec_with _ _ (Residual_spec ((Self_rt)) ((O_rt)) ((TryType_rt)))) :=
+  spec! ( *[]) : 0 | ( *[Self_ty; O_ty; TryType_ty]) : ([Self_rt; O_rt; TryType_rt] : list RT), (@mk_Residual_spec _ _ ((Self_rt)) ((O_rt)) ((TryType_rt))).
+
+End Residual.
+
+Section Try.
+Context `{RRGS : !refinedrustGS Σ}.
+Definition Try_spec_incl `{Self_rt : !RT} `{Output_rt : !RT} `{Residual_rt : !RT} `{Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt : !RT} (spec1: ((Try_spec (Self_rt) (Output_rt) (Residual_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt)))) (spec2: ((Try_spec (Self_rt) (Output_rt) (Residual_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt)))) : Prop :=
+  ((function_subtype (spec1.(Try_branch_spec)) (spec2.(Try_branch_spec)))) ∧ ((function_subtype (spec1.(Try_from_output_spec)) (spec2.(Try_from_output_spec)))).
+Instance Try_spec_incl_preorder `{Self_rt : !RT} `{Output_rt : !RT} `{Residual_rt : !RT} `{Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt : !RT} : (PreOrder (Try_spec_incl (Self_rt := Self_rt) (Output_rt := Output_rt) (Residual_rt := Residual_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt := Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt))).
+Proof.
+  split.
+  all: apply _.
+Qed.
+
+Definition scope_bindable_Try_spec `{Self_rt : !RT} `{Output_rt : !RT} `{Residual_rt : !RT} `{Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt : !RT} : (ScopeBindable ((Try_spec (Self_rt) (Output_rt) (Residual_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((Try_spec (Self_rt) (Output_rt) (Residual_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt)))) :=
       {|
         Try_branch_spec  :=
           (scope_add_typarams (rts) (tys) (s.(Try_branch_spec)));
@@ -696,7 +761,7 @@ Definition scope_bindable_Try_spec `{Self_rt : !RT} `{Output_rt : !RT} `{Residua
           (scope_add_typarams (rts) (tys) (s.(Try_from_output_spec)));
       |}
       ;
-    scope_add_elctx (E: (lft → elctx)) (s: ((Try_spec (Self_rt) (Output_rt) (Residual_rt)))) :=
+    scope_add_elctx (E: (lft → elctx)) (s: ((Try_spec (Self_rt) (Output_rt) (Residual_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt)))) :=
       {|
         Try_branch_spec  :=
           (scope_add_elctx (E) (s.(Try_branch_spec)));
@@ -708,8 +773,8 @@ Definition scope_bindable_Try_spec `{Self_rt : !RT} `{Output_rt : !RT} `{Residua
 .
 #[global] Existing Instance scope_bindable_Try_spec.
 
-Definition Try_branch_base_spec (Self_rt: RT) (Output_rt: RT) (Residual_rt: RT) (Self_st: syn_type) (Output_st: syn_type) (Residual_st: syn_type) (FromResidual_Self_SelfasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Self_rt) (Residual_rt) )) (Try_Self_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (Self_rt) (Output_rt) (Residual_rt) FromResidual_Self_SelfasTry_Residual_spec_attrs)) :=
-  fn(∀ ( *[]) : 0 | ( *[Self_ty; Output_ty; Residual_ty]) : ([(Self_rt, Self_st); (Output_rt, Output_st); (Residual_rt, Residual_st)] : list (RT * syn_type)%type) | 
+Definition Try_branch_base_spec (Self_rt: RT) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt: RT) (Output_rt: RT) (Residual_rt: RT) (Self_st: syn_type) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st: syn_type) (Output_st: syn_type) (Residual_st: syn_type) (FromResidual_Self_SelfasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Self_rt) (Residual_rt) )) (FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Residual_rt) )) (Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Output_rt) (Residual_rt) FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs)) (Residual_SelfasTry_Residual_SelfasTry_Output_spec_attrs: (Residual_spec_attrs (RRGS:=RRGS) (Residual_rt) (Output_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) )) (Try_Self_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (Self_rt) (Output_rt) (Residual_rt) FromResidual_Self_SelfasTry_Residual_spec_attrs)) :=
+  fn(∀ ( *[]) : 0 | ( *[Self_ty; Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty; Output_ty; Residual_ty]) : ([(Self_rt, Self_st); (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt, Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st); (Output_rt, Output_st); (Residual_rt, Residual_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, []);
       (* args......... *) self :@: Self_ty;
@@ -719,8 +784,8 @@ Definition Try_branch_base_spec (Self_rt: RT) (Output_rt: RT) (Residual_rt: RT) 
       (* postcondition *) (λ π : thread_id, True) |
       (* unwind post... *) False.
 
-Definition Try_from_output_base_spec (Self_rt: RT) (Output_rt: RT) (Residual_rt: RT) (Self_st: syn_type) (Output_st: syn_type) (Residual_st: syn_type) (FromResidual_Self_SelfasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Self_rt) (Residual_rt) )) (Try_Self_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (Self_rt) (Output_rt) (Residual_rt) FromResidual_Self_SelfasTry_Residual_spec_attrs)) :=
-  fn(∀ ( *[]) : 0 | ( *[Self_ty; Output_ty; Residual_ty]) : ([(Self_rt, Self_st); (Output_rt, Output_st); (Residual_rt, Residual_st)] : list (RT * syn_type)%type) | 
+Definition Try_from_output_base_spec (Self_rt: RT) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt: RT) (Output_rt: RT) (Residual_rt: RT) (Self_st: syn_type) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st: syn_type) (Output_st: syn_type) (Residual_st: syn_type) (FromResidual_Self_SelfasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Self_rt) (Residual_rt) )) (FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Residual_rt) )) (Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Output_rt) (Residual_rt) FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs)) (Residual_SelfasTry_Residual_SelfasTry_Output_spec_attrs: (Residual_spec_attrs (RRGS:=RRGS) (Residual_rt) (Output_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) )) (Try_Self_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (Self_rt) (Output_rt) (Residual_rt) FromResidual_Self_SelfasTry_Residual_spec_attrs)) :=
+  fn(∀ ( *[]) : 0 | ( *[Self_ty; Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty; Output_ty; Residual_ty]) : ([(Self_rt, Self_st); (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt, Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st); (Output_rt, Output_st); (Residual_rt, Residual_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (output) : ((_)),
       (* elctx........ *) (λ ϝ, []);
       (* args......... *) output :@: Output_ty;
@@ -730,14 +795,14 @@ Definition Try_from_output_base_spec (Self_rt: RT) (Output_rt: RT) (Residual_rt:
       (* postcondition *) (λ π : thread_id, True) |
       (* unwind post... *) False.
 
-Definition Try_base_spec (Self_rt: RT) (Output_rt: RT) (Residual_rt: RT) (Self_st: syn_type) (Output_st: syn_type) (Residual_st: syn_type) (FromResidual_Self_SelfasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Self_rt) (Residual_rt) )) (_ATTRS: ((Try_spec_attrs ((Self_rt)) ((Output_rt)) ((Residual_rt)) (FromResidual_Self_SelfasTry_Residual_spec_attrs)))) : (spec_with _ _ (Try_spec ((Self_rt)) ((Output_rt)) ((Residual_rt)))) :=
-  spec! ( *[]) : 0 | ( *[Self_ty; Output_ty; Residual_ty]) : ([Self_rt; Output_rt; Residual_rt] : list RT), {|
+Definition Try_base_spec (Self_rt: RT) (Output_rt: RT) (Residual_rt: RT) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt: RT) (Self_st: syn_type) (Output_st: syn_type) (Residual_st: syn_type) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st: syn_type) (FromResidual_Self_SelfasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Self_rt) (Residual_rt) )) (FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Residual_rt) )) (Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Output_rt) (Residual_rt) FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs)) (Residual_SelfasTry_Residual_SelfasTry_Output_spec_attrs: (Residual_spec_attrs (RRGS:=RRGS) (Residual_rt) (Output_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) )) (_ATTRS: ((Try_spec_attrs ((Self_rt)) ((Output_rt)) ((Residual_rt)) (FromResidual_Self_SelfasTry_Residual_spec_attrs)))) : (spec_with _ _ (Try_spec ((Self_rt)) ((Output_rt)) ((Residual_rt)) ((Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt)))) :=
+  spec! ( *[]) : 0 | ( *[Self_ty; Output_ty; Residual_ty; Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty]) : ([Self_rt; Output_rt; Residual_rt; Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt] : list RT), {|
       Try_branch_spec  :=
-        (Try_branch_base_spec ((Self_rt)) ((Output_rt)) ((Residual_rt)) (Self_st) (Output_st) (Residual_st)) FromResidual_Self_SelfasTry_Residual_spec_attrs _ATTRS 
-           <TY> Self_ty <TY> Output_ty <TY> Residual_ty : (spec_with 0 [] fn_spec);
+        (Try_branch_base_spec ((Self_rt)) ((Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt)) ((Output_rt)) ((Residual_rt)) (Self_st) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st) (Output_st) (Residual_st)) FromResidual_Self_SelfasTry_Residual_spec_attrs FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec_attrs Residual_SelfasTry_Residual_SelfasTry_Output_spec_attrs _ATTRS 
+           <TY> Self_ty <TY> Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty <TY> Output_ty <TY> Residual_ty : (spec_with 0 [] fn_spec);
       Try_from_output_spec  :=
-        (Try_from_output_base_spec ((Self_rt)) ((Output_rt)) ((Residual_rt)) (Self_st) (Output_st) (Residual_st)) FromResidual_Self_SelfasTry_Residual_spec_attrs _ATTRS 
-           <TY> Self_ty <TY> Output_ty <TY> Residual_ty : (spec_with 0 [] fn_spec);
+        (Try_from_output_base_spec ((Self_rt)) ((Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt)) ((Output_rt)) ((Residual_rt)) (Self_st) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st) (Output_st) (Residual_st)) FromResidual_Self_SelfasTry_Residual_spec_attrs FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec_attrs Residual_SelfasTry_Residual_SelfasTry_Output_spec_attrs _ATTRS 
+           <TY> Self_ty <TY> Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty <TY> Output_ty <TY> Residual_ty : (spec_with 0 [] fn_spec);
     |}
 .
 
@@ -773,12 +838,16 @@ Section FromResidual_trait_req_incls.
     spec! ( *[]) : 0 | ( *[Self_ty; R_ty]) : ([Self_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl FromResidual_spec_incl FromResidual_Self_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FromResidual_base_spec (Self_rt) (R_rt) Self_st R_st FromResidual_Self_R_spec_attrs-[] -[Self_ty; R_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st-[] -[R_ty])))).
 End FromResidual_trait_req_incls.
 
+Section Residual_trait_req_incls.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+End Residual_trait_req_incls.
+
 Section Try_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition trait_incl_of_Try_branch (Self_rt: RT) (Output_rt: RT) (Residual_rt: RT) (Self_st: syn_type) (Output_st: syn_type) (Residual_st: syn_type) (FromResidual_Self_SelfasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Self_rt) (Residual_rt) )) (FromResidual_Self_SelfasTry_Residual_spec: (spec_with 0 [] (FromResidual_spec (RRGS:=RRGS) (Self_rt) (Residual_rt)))) (Try_Self_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (Self_rt) (Output_rt) (Residual_rt) FromResidual_Self_SelfasTry_Residual_spec_attrs)) (Try_Self_spec: (spec_with 0 [] (Try_spec (RRGS:=RRGS) (Self_rt) (Output_rt) (Residual_rt)))) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) (DropGlue_SelfasTry_Output_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Output_rt)))) (DropGlue_SelfasTry_Residual_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Residual_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[]) : 0 | ( *[Self_ty; Output_ty; Residual_ty]) : ([Self_rt; Output_rt; Residual_rt] : list RT), ((trait_incl_marker (lift_trait_incl FromResidual_spec_incl FromResidual_Self_SelfasTry_Residual_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FromResidual_base_spec (Self_rt) (Residual_rt) Self_st Residual_st FromResidual_Self_SelfasTry_Residual_spec_attrs-[] -[Self_ty; Residual_ty]))) ∧ (trait_incl_marker (lift_trait_incl Try_spec_incl Try_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Try_base_spec (Self_rt) (Output_rt) (Residual_rt) Self_st Output_st Residual_st FromResidual_Self_SelfasTry_Residual_spec_attrs Try_Self_spec_attrs-[] -[Self_ty; Output_ty; Residual_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_SelfasTry_Output_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Output_rt) Output_st-[] -[Output_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_SelfasTry_Residual_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Residual_rt) Residual_st-[] -[Residual_ty])))).
-  Definition trait_incl_of_Try_from_output (Self_rt: RT) (Output_rt: RT) (Residual_rt: RT) (Self_st: syn_type) (Output_st: syn_type) (Residual_st: syn_type) (FromResidual_Self_SelfasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Self_rt) (Residual_rt) )) (FromResidual_Self_SelfasTry_Residual_spec: (spec_with 0 [] (FromResidual_spec (RRGS:=RRGS) (Self_rt) (Residual_rt)))) (Try_Self_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (Self_rt) (Output_rt) (Residual_rt) FromResidual_Self_SelfasTry_Residual_spec_attrs)) (Try_Self_spec: (spec_with 0 [] (Try_spec (RRGS:=RRGS) (Self_rt) (Output_rt) (Residual_rt)))) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) (DropGlue_SelfasTry_Output_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Output_rt)))) (DropGlue_SelfasTry_Residual_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Residual_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[]) : 0 | ( *[Self_ty; Output_ty; Residual_ty]) : ([Self_rt; Output_rt; Residual_rt] : list RT), ((trait_incl_marker (lift_trait_incl FromResidual_spec_incl FromResidual_Self_SelfasTry_Residual_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FromResidual_base_spec (Self_rt) (Residual_rt) Self_st Residual_st FromResidual_Self_SelfasTry_Residual_spec_attrs-[] -[Self_ty; Residual_ty]))) ∧ (trait_incl_marker (lift_trait_incl Try_spec_incl Try_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Try_base_spec (Self_rt) (Output_rt) (Residual_rt) Self_st Output_st Residual_st FromResidual_Self_SelfasTry_Residual_spec_attrs Try_Self_spec_attrs-[] -[Self_ty; Output_ty; Residual_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_SelfasTry_Output_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Output_rt) Output_st-[] -[Output_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_SelfasTry_Residual_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Residual_rt) Residual_st-[] -[Residual_ty])))).
+  Definition trait_incl_of_Try_branch (Self_rt: RT) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt: RT) (Output_rt: RT) (Residual_rt: RT) (Self_st: syn_type) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st: syn_type) (Output_st: syn_type) (Residual_st: syn_type) (FromResidual_Self_SelfasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Self_rt) (Residual_rt) )) (FromResidual_Self_SelfasTry_Residual_spec: (spec_with 0 [] (FromResidual_spec (RRGS:=RRGS) (Self_rt) (Residual_rt)))) (FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Residual_rt) )) (FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec: (spec_with 0 [] (FromResidual_spec (RRGS:=RRGS) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Residual_rt)))) (Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Output_rt) (Residual_rt) FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs)) (Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec: (spec_with 0 [] (Try_spec (RRGS:=RRGS) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Output_rt) (Residual_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt)))) (Residual_SelfasTry_Residual_SelfasTry_Output_spec_attrs: (Residual_spec_attrs (RRGS:=RRGS) (Residual_rt) (Output_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) )) (Residual_SelfasTry_Residual_SelfasTry_Output_spec: (spec_with 0 [] (Residual_spec (RRGS:=RRGS) (Residual_rt) (Output_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt)))) (Try_Self_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (Self_rt) (Output_rt) (Residual_rt) FromResidual_Self_SelfasTry_Residual_spec_attrs)) (Try_Self_spec: (spec_with 0 [] (Try_spec (RRGS:=RRGS) (Self_rt) (Output_rt) (Residual_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt)))) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) (DropGlue_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt)))) (DropGlue_SelfasTry_Output_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Output_rt)))) (DropGlue_SelfasTry_Residual_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Residual_rt)))) : (spec_with _ _ Prop) :=
+    spec! ( *[]) : 0 | ( *[Self_ty; Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty; Output_ty; Residual_ty]) : ([Self_rt; Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt; Output_rt; Residual_rt] : list RT), ((trait_incl_marker (lift_trait_incl FromResidual_spec_incl FromResidual_Self_SelfasTry_Residual_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FromResidual_base_spec (Self_rt) (Residual_rt) Self_st Residual_st FromResidual_Self_SelfasTry_Residual_spec_attrs-[] -[Self_ty; Residual_ty]))) ∧ (trait_incl_marker (lift_trait_incl FromResidual_spec_incl FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FromResidual_base_spec (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Residual_rt) Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st Residual_st FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs-[] -[Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty; Residual_ty]))) ∧ (trait_incl_marker (lift_trait_incl Try_spec_incl Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Try_base_spec (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Output_rt) (Residual_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st Output_st Residual_st Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec_attrs Residual_SelfasTry_Residual_SelfasTry_Output_spec_attrs Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec_attrs-[] -[Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty; Output_ty; Residual_ty; Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty]))) ∧ (trait_incl_marker (lift_trait_incl Residual_spec_incl Residual_SelfasTry_Residual_SelfasTry_Output_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Residual_base_spec (Residual_rt) (Output_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) Residual_st Output_st Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec_attrs Residual_SelfasTry_Residual_SelfasTry_Output_spec_attrs-[] -[Residual_ty; Output_ty; Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty]))) ∧ (trait_incl_marker (lift_trait_incl Try_spec_incl Try_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Try_base_spec (Self_rt) (Output_rt) (Residual_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) Self_st Output_st Residual_st Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st FromResidual_Self_SelfasTry_Residual_spec_attrs FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec_attrs Residual_SelfasTry_Residual_SelfasTry_Output_spec_attrs Try_Self_spec_attrs-[] -[Self_ty; Output_ty; Residual_ty; Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st-[] -[Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_SelfasTry_Output_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Output_rt) Output_st-[] -[Output_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_SelfasTry_Residual_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Residual_rt) Residual_st-[] -[Residual_ty])))).
+  Definition trait_incl_of_Try_from_output (Self_rt: RT) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt: RT) (Output_rt: RT) (Residual_rt: RT) (Self_st: syn_type) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st: syn_type) (Output_st: syn_type) (Residual_st: syn_type) (FromResidual_Self_SelfasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Self_rt) (Residual_rt) )) (FromResidual_Self_SelfasTry_Residual_spec: (spec_with 0 [] (FromResidual_spec (RRGS:=RRGS) (Self_rt) (Residual_rt)))) (FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs: (FromResidual_spec_attrs (RRGS:=RRGS) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Residual_rt) )) (FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec: (spec_with 0 [] (FromResidual_spec (RRGS:=RRGS) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Residual_rt)))) (Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Output_rt) (Residual_rt) FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs)) (Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec: (spec_with 0 [] (Try_spec (RRGS:=RRGS) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Output_rt) (Residual_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt)))) (Residual_SelfasTry_Residual_SelfasTry_Output_spec_attrs: (Residual_spec_attrs (RRGS:=RRGS) (Residual_rt) (Output_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) )) (Residual_SelfasTry_Residual_SelfasTry_Output_spec: (spec_with 0 [] (Residual_spec (RRGS:=RRGS) (Residual_rt) (Output_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt)))) (Try_Self_spec_attrs: (Try_spec_attrs (RRGS:=RRGS) (Self_rt) (Output_rt) (Residual_rt) FromResidual_Self_SelfasTry_Residual_spec_attrs)) (Try_Self_spec: (spec_with 0 [] (Try_spec (RRGS:=RRGS) (Self_rt) (Output_rt) (Residual_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt)))) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) (DropGlue_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt)))) (DropGlue_SelfasTry_Output_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Output_rt)))) (DropGlue_SelfasTry_Residual_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Residual_rt)))) : (spec_with _ _ Prop) :=
+    spec! ( *[]) : 0 | ( *[Self_ty; Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty; Output_ty; Residual_ty]) : ([Self_rt; Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt; Output_rt; Residual_rt] : list RT), ((trait_incl_marker (lift_trait_incl FromResidual_spec_incl FromResidual_Self_SelfasTry_Residual_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FromResidual_base_spec (Self_rt) (Residual_rt) Self_st Residual_st FromResidual_Self_SelfasTry_Residual_spec_attrs-[] -[Self_ty; Residual_ty]))) ∧ (trait_incl_marker (lift_trait_incl FromResidual_spec_incl FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FromResidual_base_spec (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Residual_rt) Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st Residual_st FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs-[] -[Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty; Residual_ty]))) ∧ (trait_incl_marker (lift_trait_incl Try_spec_incl Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Try_base_spec (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) (Output_rt) (Residual_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st Output_st Residual_st Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec_attrs Residual_SelfasTry_Residual_SelfasTry_Output_spec_attrs Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec_attrs-[] -[Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty; Output_ty; Residual_ty; Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty]))) ∧ (trait_incl_marker (lift_trait_incl Residual_spec_incl Residual_SelfasTry_Residual_SelfasTry_Output_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Residual_base_spec (Residual_rt) (Output_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) Residual_st Output_st Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec_attrs Residual_SelfasTry_Residual_SelfasTry_Output_spec_attrs-[] -[Residual_ty; Output_ty; Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty]))) ∧ (trait_incl_marker (lift_trait_incl Try_spec_incl Try_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Try_base_spec (Self_rt) (Output_rt) (Residual_rt) (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) Self_st Output_st Residual_st Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st FromResidual_Self_SelfasTry_Residual_spec_attrs FromResidual_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_SelfasTry_ResidualasResidualSelfasTry_Output_TryTypeasTry_Residual_spec_attrs Try_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec_attrs Residual_SelfasTry_Residual_SelfasTry_Output_spec_attrs Try_Self_spec_attrs-[] -[Self_ty; Output_ty; Residual_ty; Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_SelfasTry_ResidualasResidualSelfasTry_Output_TryType_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Residual_SelfasTry_Residual_SelfasTry_Output_TryType_rt) Residual_SelfasTry_Residual_SelfasTry_Output_TryType_st-[] -[Residual_SelfasTry_Residual_SelfasTry_Output_TryType_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_SelfasTry_Output_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Output_rt) Output_st-[] -[Output_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_SelfasTry_Residual_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Residual_rt) Residual_st-[] -[Residual_ty])))).
 End Try_trait_req_incls.
 
 Section specs.
@@ -809,29 +878,29 @@ Definition trait_incl_of_std_option_OptionTasTry_branch (T_rt: RT) (T_st: syn_ty
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
 
 Definition type_of_std_option_OptionTasTry_branch (T_rt: RT) (T_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) (unit)))) (((Option_els (T_st)) : syn_type)) (T_st) (((Option_els (NeverSynType)) : syn_type)) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) ((std_option_OptionTasTry_spec_attrs (T_rt))))
-    -[] -[(Option_ty ((T_rt)) -[] -[T_ty]); T_ty; (Option_ty (unit) -[] -[never_t])]).(Try_branch_spec)   a b))) <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) (unit)))) (((((Option_rt)) ((T_rt))))) (((Option_els (T_st)) : syn_type)) (T_st) (((Option_els (NeverSynType)) : syn_type)) (((Option_els (T_st)) : syn_type)) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) ((std_option_OptionTasTry_spec_attrs ((T_rt)))) ((std_option_OptionasResidualT_spec_attrs ((T_rt)))) ((std_option_OptionTasTry_spec_attrs (T_rt))))
+    -[] -[(Option_ty ((T_rt)) -[] -[T_ty]); T_ty; (Option_ty (unit) -[] -[never_t]); (Option_ty ((T_rt)) -[] -[T_ty])]).(Try_branch_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_std_option_OptionTasTry_from_output (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
 
 Definition type_of_std_option_OptionTasTry_from_output (T_rt: RT) (T_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) (unit)))) (((Option_els (T_st)) : syn_type)) (T_st) (((Option_els (NeverSynType)) : syn_type)) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) ((std_option_OptionTasTry_spec_attrs (T_rt))))
-    -[] -[(Option_ty ((T_rt)) -[] -[T_ty]); T_ty; (Option_ty (unit) -[] -[never_t])]).(Try_from_output_spec)   a b))) <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) (unit)))) (((((Option_rt)) ((T_rt))))) (((Option_els (T_st)) : syn_type)) (T_st) (((Option_els (NeverSynType)) : syn_type)) (((Option_els (T_st)) : syn_type)) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) ((std_option_OptionTasFromResidual_spec_attrs ((T_rt)))) ((std_option_OptionTasTry_spec_attrs ((T_rt)))) ((std_option_OptionasResidualT_spec_attrs ((T_rt)))) ((std_option_OptionTasTry_spec_attrs (T_rt))))
+    -[] -[(Option_ty ((T_rt)) -[] -[T_ty]); T_ty; (Option_ty (unit) -[] -[never_t]); (Option_ty ((T_rt)) -[] -[T_ty])]).(Try_from_output_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_std_result_ResultTEasTry_branch (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty])))).
 
 Definition type_of_std_result_ResultTEasTry_branch (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; E_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) (unit) ((E_rt))))) (((Result_els (T_st) (E_st)) : syn_type)) (T_st) (((Result_els (NeverSynType) (E_st)) : syn_type)) ((std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) ((std_result_ResultTEasTry_spec_attrs (T_rt) (E_rt))))
-    -[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]); T_ty; (Result_ty (unit) ((E_rt)) -[] -[never_t; E_ty])]).(Try_branch_spec)   a b))) <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; E_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) (unit) ((E_rt))))) (((((Result_rt)) ((T_rt)) ((E_rt))))) (((Result_els (T_st) (E_st)) : syn_type)) (T_st) (((Result_els (NeverSynType) (E_st)) : syn_type)) (((Result_els (T_st) (E_st)) : syn_type)) ((std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) ((std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) ((std_result_ResultTEasTry_spec_attrs ((T_rt)) ((E_rt)))) ((std_result_ResultEasResidualT_spec_attrs ((T_rt)) ((E_rt)))) ((std_result_ResultTEasTry_spec_attrs (T_rt) (E_rt))))
+    -[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]); T_ty; (Result_ty (unit) ((E_rt)) -[] -[never_t; E_ty]); (Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty])]).(Try_branch_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_std_result_ResultTEasTry_from_output (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty])))).
 
 Definition type_of_std_result_ResultTEasTry_from_output (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; E_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) (unit) ((E_rt))))) (((Result_els (T_st) (E_st)) : syn_type)) (T_st) (((Result_els (NeverSynType) (E_st)) : syn_type)) ((std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) ((std_result_ResultTEasTry_spec_attrs (T_rt) (E_rt))))
-    -[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]); T_ty; (Result_ty (unit) ((E_rt)) -[] -[never_t; E_ty])]).(Try_from_output_spec)   a b))) <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; E_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) (unit) ((E_rt))))) (((((Result_rt)) ((T_rt)) ((E_rt))))) (((Result_els (T_st) (E_st)) : syn_type)) (T_st) (((Result_els (NeverSynType) (E_st)) : syn_type)) (((Result_els (T_st) (E_st)) : syn_type)) ((std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) ((std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt)))))) ((std_result_ResultTEasTry_spec_attrs ((T_rt)) ((E_rt)))) ((std_result_ResultEasResidualT_spec_attrs ((T_rt)) ((E_rt)))) ((std_result_ResultTEasTry_spec_attrs (T_rt) (E_rt))))
+    -[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]); T_ty; (Result_ty (unit) ((E_rt)) -[] -[never_t; E_ty]); (Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty])]).(Try_from_output_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_std_result_ResultTFasFromResidualstd_result_ResultE_from_residual (T_rt: RT) (E_rt: RT) (F_rt: RT) (T_st: syn_type) (E_st: syn_type) (F_st: syn_type) (convert_From_F_E_spec_attrs: (convert_From_spec_attrs (RRGS:=RRGS) (F_rt) (E_rt) )) (convert_From_F_E_spec: (spec_with 0 [] (convert_From_spec (RRGS:=RRGS) (F_rt) (E_rt)))) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_E_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) (DropGlue_F_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (F_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty]) : ([T_rt; E_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl convert_From_spec_incl convert_From_F_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), convert_From_base_spec (F_rt) (E_rt) F_st E_st convert_From_F_E_spec_attrs-[] -[F_ty; E_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_E_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (E_rt) E_st-[] -[E_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_F_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (F_rt) F_st-[] -[F_ty])))).
@@ -844,15 +913,15 @@ Definition trait_incl_of_ControlFlowBCasTry_branch (B_rt: RT) (C_rt: RT) (B_st: 
   spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_B_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (B_rt) B_st-[] -[B_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_C_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (C_rt) C_st-[] -[C_ty])))).
 
 Definition type_of_ControlFlowBCasTry_branch (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT),(λ a b, scope_add_typarams _ -[B_ty; C_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) (unit)))) ((ControlFlow_st (B_st) (C_st))) (C_st) ((ControlFlow_st (B_st) (NeverSynType))) ((ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt)))) ((ControlFlowBCasTry_spec_attrs (B_rt) (C_rt))))
-    -[] -[(ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty]); C_ty; (ControlFlow_ty ((B_rt)) (unit) -[] -[B_ty; never_t])]).(Try_branch_spec)   a b))) <MERGE!>.
+  spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT),(λ a b, scope_add_typarams _ -[B_ty; C_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) (unit)))) (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((ControlFlow_st (B_st) (C_st))) (C_st) ((ControlFlow_st (B_st) (NeverSynType))) ((ControlFlow_st (B_st) (C_st))) ((ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt)))) ((ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt)))) ((ControlFlowBCasTry_spec_attrs ((B_rt)) ((C_rt)))) ((ControlFlowBasResidualC_spec_attrs ((B_rt)) ((C_rt)))) ((ControlFlowBCasTry_spec_attrs (B_rt) (C_rt))))
+    -[] -[(ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty]); C_ty; (ControlFlow_ty ((B_rt)) (unit) -[] -[B_ty; never_t]); (ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty])]).(Try_branch_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_ControlFlowBCasTry_from_output (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) (DropGlue_B_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (B_rt)))) (DropGlue_C_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (C_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_B_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (B_rt) B_st-[] -[B_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_C_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (C_rt) C_st-[] -[C_ty])))).
 
 Definition type_of_ControlFlowBCasTry_from_output (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT),(λ a b, scope_add_typarams _ -[B_ty; C_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) (unit)))) ((ControlFlow_st (B_st) (C_st))) (C_st) ((ControlFlow_st (B_st) (NeverSynType))) ((ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt)))) ((ControlFlowBCasTry_spec_attrs (B_rt) (C_rt))))
-    -[] -[(ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty]); C_ty; (ControlFlow_ty ((B_rt)) (unit) -[] -[B_ty; never_t])]).(Try_from_output_spec)   a b))) <MERGE!>.
+  spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT),(λ a b, scope_add_typarams _ -[B_ty; C_ty] (scope_add_elctx (λ ϝ, []) (((Try_base_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) (unit)))) (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((ControlFlow_st (B_st) (C_st))) (C_st) ((ControlFlow_st (B_st) (NeverSynType))) ((ControlFlow_st (B_st) (C_st))) ((ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt)))) ((ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt)))) ((ControlFlowBCasTry_spec_attrs ((B_rt)) ((C_rt)))) ((ControlFlowBasResidualC_spec_attrs ((B_rt)) ((C_rt)))) ((ControlFlowBCasTry_spec_attrs (B_rt) (C_rt))))
+    -[] -[(ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty]); C_ty; (ControlFlow_ty ((B_rt)) (unit) -[] -[B_ty; never_t]); (ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty])]).(Try_from_output_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_ControlFlowBCasFromResidualControlFlowB_from_residual (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) (DropGlue_B_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (B_rt)))) (DropGlue_C_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (C_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_B_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (B_rt) B_st-[] -[B_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_C_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (C_rt) C_st-[] -[C_ty])))).
@@ -886,6 +955,14 @@ Definition type_of_drop_glue_ControlFlow (B_rt: RT) (C_rt: RT) (B_st: syn_type) 
 
 
 End specs.
+Section ControlFlowBasResidualC_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition ControlFlowBasResidualC_spec (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) : (spec_with _ _ (Residual_spec (((ControlFlow_rt ((B_rt)) (unit)))) ((C_rt)) (((ControlFlow_rt ((B_rt)) ((C_rt))))))) :=
+    spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), (@mk_Residual_spec _ _ (((ControlFlow_rt ((B_rt)) (unit)))) ((C_rt)) (((ControlFlow_rt ((B_rt)) ((C_rt)))))).
+  Definition ControlFlowBasResidualC_spec_subsumption  :=
+    ∀ `(B_rt : !RT) `(C_rt : !RT) `(B_st : !syn_type) `(C_st : !syn_type), trait_incl_marker (lift_trait_incl Residual_spec_incl (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), (ControlFlowBasResidualC_spec (B_rt) (C_rt) (B_st) (C_st))-[] -[B_ty; C_ty]) (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), scope_add_typarams _ -[B_ty; C_ty] ((Residual_base_spec ((ControlFlow_rt ((B_rt)) (unit))) (C_rt) ((ControlFlow_rt ((B_rt)) ((C_rt)))) (ControlFlow_st (B_st) (NeverSynType)) C_st (ControlFlow_st (B_st) (C_st)) (ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt))) (ControlFlowBCasTry_spec_attrs ((B_rt)) ((C_rt))) (ControlFlowBasResidualC_spec_attrs (B_rt) (C_rt))-[] -[(ControlFlow_ty ((B_rt)) (unit) -[] -[B_ty; never_t]); C_ty; (ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty])])))).
+End ControlFlowBasResidualC_spec.
+
 Section ControlFlowBCasFromResidualControlFlowB_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition ControlFlowBCasFromResidualControlFlowB_spec (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) : (spec_with _ _ (FromResidual_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) (((ControlFlow_rt ((B_rt)) (unit)))))) :=
@@ -901,7 +978,7 @@ End ControlFlowBCasFromResidualControlFlowB_spec.
 
 Section ControlFlowBCasTry_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition ControlFlowBCasTry_spec (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) : (spec_with _ _ (Try_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) (unit)))))) :=
+  Definition ControlFlowBCasTry_spec (B_rt: RT) (C_rt: RT) (B_st: syn_type) (C_st: syn_type) : (spec_with _ _ (Try_spec (((ControlFlow_rt ((B_rt)) ((C_rt))))) ((C_rt)) (((ControlFlow_rt ((B_rt)) (unit)))) (((ControlFlow_rt ((B_rt)) ((C_rt))))))) :=
     spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), let Residual_rt := ((ControlFlow_rt ((B_rt)) (unit))) in let Output_rt := (C_rt) in {|
         Try_branch_spec  :=
           (type_of_ControlFlowBCasTry_branch ((B_rt)) ((C_rt)) (B_st) (C_st)) 
@@ -912,7 +989,7 @@ Section ControlFlowBCasTry_spec.
       |}
   .
   Definition ControlFlowBCasTry_spec_subsumption  :=
-    ∀ `(B_rt : !RT) `(C_rt : !RT) `(B_st : !syn_type) `(C_st : !syn_type), trait_incl_marker (lift_trait_incl Try_spec_incl (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), (ControlFlowBCasTry_spec (B_rt) (C_rt) (B_st) (C_st))-[] -[B_ty; C_ty]) (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), scope_add_typarams _ -[B_ty; C_ty] ((Try_base_spec ((ControlFlow_rt ((B_rt)) ((C_rt)))) (C_rt) ((ControlFlow_rt ((B_rt)) (unit))) (ControlFlow_st (B_st) (C_st)) C_st (ControlFlow_st (B_st) (NeverSynType)) (ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt))) (ControlFlowBCasTry_spec_attrs (B_rt) (C_rt))-[] -[(ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty]); C_ty; (ControlFlow_ty ((B_rt)) (unit) -[] -[B_ty; never_t])])))).
+    ∀ `(B_rt : !RT) `(C_rt : !RT) `(B_st : !syn_type) `(C_st : !syn_type), trait_incl_marker (lift_trait_incl Try_spec_incl (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), (ControlFlowBCasTry_spec (B_rt) (C_rt) (B_st) (C_st))-[] -[B_ty; C_ty]) (spec! ( *[]) : 0 | ( *[B_ty; C_ty]) : ([B_rt; C_rt] : list RT), scope_add_typarams _ -[B_ty; C_ty] ((Try_base_spec ((ControlFlow_rt ((B_rt)) ((C_rt)))) (C_rt) ((ControlFlow_rt ((B_rt)) (unit))) ((ControlFlow_rt ((B_rt)) ((C_rt)))) (ControlFlow_st (B_st) (C_st)) C_st (ControlFlow_st (B_st) (NeverSynType)) (ControlFlow_st (B_st) (C_st)) (ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt))) (ControlFlowBCasFromResidualControlFlowB_spec_attrs ((B_rt)) ((C_rt))) (ControlFlowBCasTry_spec_attrs ((B_rt)) ((C_rt))) (ControlFlowBasResidualC_spec_attrs ((B_rt)) ((C_rt))) (ControlFlowBCasTry_spec_attrs (B_rt) (C_rt))-[] -[(ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty]); C_ty; (ControlFlow_ty ((B_rt)) (unit) -[] -[B_ty; never_t]); (ControlFlow_ty ((B_rt)) ((C_rt)) -[] -[B_ty; C_ty])])))).
 End ControlFlowBCasTry_spec.
 
 Section Tasconvert_FromT_spec.
@@ -941,6 +1018,14 @@ Section Tasconvert_IntoU_spec.
     ∀ `(T_rt : !RT) `(U_rt : !RT) `(T_st : !syn_type) `(U_st : !syn_type) `(convert_From_U_T_spec_attrs : !(convert_From_spec_attrs (RRGS:=RRGS) (U_rt) (T_rt) )), trait_incl_marker (lift_trait_incl convert_Into_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; U_ty]) : ([T_rt; U_rt] : list RT), (Tasconvert_IntoU_spec (T_rt) (U_rt) (T_st) (U_st) (convert_From_U_T_spec_attrs))-[] -[T_ty; U_ty]) (spec! ( *[]) : 0 | ( *[T_ty; U_ty]) : ([T_rt; U_rt] : list RT), scope_add_typarams _ -[T_ty; U_ty] ((convert_Into_base_spec (T_rt) (U_rt) T_st U_st (Tasconvert_IntoU_spec_attrs (T_rt) (U_rt) (convert_From_U_T_spec_attrs))-[] -[T_ty; U_ty])))).
 End Tasconvert_IntoU_spec.
 
+Section std_option_OptionasResidualT_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition std_option_OptionasResidualT_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (Residual_spec (((((Option_rt)) (unit)))) ((T_rt)) (((((Option_rt)) ((T_rt))))))) :=
+    spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (@mk_Residual_spec _ _ (((((Option_rt)) (unit)))) ((T_rt)) (((((Option_rt)) ((T_rt)))))).
+  Definition std_option_OptionasResidualT_spec_subsumption  :=
+    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Residual_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (std_option_OptionasResidualT_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Residual_base_spec ((((Option_rt)) (unit))) (T_rt) ((((Option_rt)) ((T_rt)))) ((Option_els (NeverSynType)) : syn_type) T_st ((Option_els (T_st)) : syn_type) (std_option_OptionTasFromResidual_spec_attrs ((T_rt))) (std_option_OptionTasTry_spec_attrs ((T_rt))) (std_option_OptionasResidualT_spec_attrs (T_rt))-[] -[(Option_ty (unit) -[] -[never_t]); T_ty; (Option_ty ((T_rt)) -[] -[T_ty])])))).
+End std_option_OptionasResidualT_spec.
+
 Section std_option_OptionTasFromResidual_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition std_option_OptionTasFromResidual_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (FromResidual_spec (((((Option_rt)) ((T_rt))))) (((((Option_rt)) (unit)))))) :=
@@ -956,7 +1041,7 @@ End std_option_OptionTasFromResidual_spec.
 
 Section std_option_OptionTasTry_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition std_option_OptionTasTry_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (Try_spec (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) (unit)))))) :=
+  Definition std_option_OptionTasTry_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (Try_spec (((((Option_rt)) ((T_rt))))) ((T_rt)) (((((Option_rt)) (unit)))) (((((Option_rt)) ((T_rt))))))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), let Residual_rt := ((((Option_rt)) (unit))) in let Output_rt := (T_rt) in {|
         Try_branch_spec  :=
           (type_of_std_option_OptionTasTry_branch ((T_rt)) (T_st)) 
@@ -967,12 +1052,20 @@ Section std_option_OptionTasTry_spec.
       |}
   .
   Definition std_option_OptionTasTry_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Try_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (std_option_OptionTasTry_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Try_base_spec ((((Option_rt)) ((T_rt)))) (T_rt) ((((Option_rt)) (unit))) ((Option_els (T_st)) : syn_type) T_st ((Option_els (NeverSynType)) : syn_type) (std_option_OptionTasFromResidual_spec_attrs ((T_rt))) (std_option_OptionTasTry_spec_attrs (T_rt))-[] -[(Option_ty ((T_rt)) -[] -[T_ty]); T_ty; (Option_ty (unit) -[] -[never_t])])))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Try_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (std_option_OptionTasTry_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Try_base_spec ((((Option_rt)) ((T_rt)))) (T_rt) ((((Option_rt)) (unit))) ((((Option_rt)) ((T_rt)))) ((Option_els (T_st)) : syn_type) T_st ((Option_els (NeverSynType)) : syn_type) ((Option_els (T_st)) : syn_type) (std_option_OptionTasFromResidual_spec_attrs ((T_rt))) (std_option_OptionTasFromResidual_spec_attrs ((T_rt))) (std_option_OptionTasTry_spec_attrs ((T_rt))) (std_option_OptionasResidualT_spec_attrs ((T_rt))) (std_option_OptionTasTry_spec_attrs (T_rt))-[] -[(Option_ty ((T_rt)) -[] -[T_ty]); T_ty; (Option_ty (unit) -[] -[never_t]); (Option_ty ((T_rt)) -[] -[T_ty])])))).
 End std_option_OptionTasTry_spec.
+
+Section std_result_ResultEasResidualT_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition std_result_ResultEasResidualT_spec (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) : (spec_with _ _ (Residual_spec (((((Result_rt)) (unit) ((E_rt))))) ((T_rt)) (((((Result_rt)) ((T_rt)) ((E_rt))))))) :=
+    spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (@mk_Residual_spec _ _ (((((Result_rt)) (unit) ((E_rt))))) ((T_rt)) (((((Result_rt)) ((T_rt)) ((E_rt)))))).
+  Definition std_result_ResultEasResidualT_spec_subsumption  :=
+    ∀ `(T_rt : !RT) `(E_rt : !RT) `(T_st : !syn_type) `(E_st : !syn_type), trait_incl_marker (lift_trait_incl Residual_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (std_result_ResultEasResidualT_spec (T_rt) (E_rt) (T_st) (E_st))-[] -[T_ty; E_ty]) (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), scope_add_typarams _ -[T_ty; E_ty] ((Residual_base_spec ((((Result_rt)) (unit) ((E_rt)))) (T_rt) ((((Result_rt)) ((T_rt)) ((E_rt)))) ((Result_els (NeverSynType) (E_st)) : syn_type) T_st ((Result_els (T_st) (E_st)) : syn_type) (std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt))))) (std_result_ResultTEasTry_spec_attrs ((T_rt)) ((E_rt))) (std_result_ResultEasResidualT_spec_attrs (T_rt) (E_rt))-[] -[(Result_ty (unit) ((E_rt)) -[] -[never_t; E_ty]); T_ty; (Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty])])))).
+End std_result_ResultEasResidualT_spec.
 
 Section std_result_ResultTEasTry_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition std_result_ResultTEasTry_spec (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) : (spec_with _ _ (Try_spec (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) (unit) ((E_rt))))))) :=
+  Definition std_result_ResultTEasTry_spec (T_rt: RT) (E_rt: RT) (T_st: syn_type) (E_st: syn_type) : (spec_with _ _ (Try_spec (((((Result_rt)) ((T_rt)) ((E_rt))))) ((T_rt)) (((((Result_rt)) (unit) ((E_rt))))) (((((Result_rt)) ((T_rt)) ((E_rt))))))) :=
     spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), let Residual_rt := ((((Result_rt)) (unit) ((E_rt)))) in let Output_rt := (T_rt) in {|
         Try_branch_spec  :=
           (type_of_std_result_ResultTEasTry_branch ((T_rt)) ((E_rt)) (T_st) (E_st)) 
@@ -983,7 +1076,7 @@ Section std_result_ResultTEasTry_spec.
       |}
   .
   Definition std_result_ResultTEasTry_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(E_rt : !RT) `(T_st : !syn_type) `(E_st : !syn_type), trait_incl_marker (lift_trait_incl Try_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (std_result_ResultTEasTry_spec (T_rt) (E_rt) (T_st) (E_st))-[] -[T_ty; E_ty]) (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), scope_add_typarams _ -[T_ty; E_ty] ((Try_base_spec ((((Result_rt)) ((T_rt)) ((E_rt)))) (T_rt) ((((Result_rt)) (unit) ((E_rt)))) ((Result_els (T_st) (E_st)) : syn_type) T_st ((Result_els (NeverSynType) (E_st)) : syn_type) (std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt))))) (std_result_ResultTEasTry_spec_attrs (T_rt) (E_rt))-[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]); T_ty; (Result_ty (unit) ((E_rt)) -[] -[never_t; E_ty])])))).
+    ∀ `(T_rt : !RT) `(E_rt : !RT) `(T_st : !syn_type) `(E_st : !syn_type), trait_incl_marker (lift_trait_incl Try_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), (std_result_ResultTEasTry_spec (T_rt) (E_rt) (T_st) (E_st))-[] -[T_ty; E_ty]) (spec! ( *[]) : 0 | ( *[T_ty; E_ty]) : ([T_rt; E_rt] : list RT), scope_add_typarams _ -[T_ty; E_ty] ((Try_base_spec ((((Result_rt)) ((T_rt)) ((E_rt)))) (T_rt) ((((Result_rt)) (unit) ((E_rt)))) ((((Result_rt)) ((T_rt)) ((E_rt)))) ((Result_els (T_st) (E_st)) : syn_type) T_st ((Result_els (NeverSynType) (E_st)) : syn_type) ((Result_els (T_st) (E_st)) : syn_type) (std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt))))) (std_result_ResultTFasFromResidualstd_result_ResultE_spec_attrs ((T_rt)) ((E_rt)) ((E_rt)) ((Tasconvert_FromT_spec_attrs ((E_rt))))) (std_result_ResultTEasTry_spec_attrs ((T_rt)) ((E_rt))) (std_result_ResultEasResidualT_spec_attrs ((T_rt)) ((E_rt))) (std_result_ResultTEasTry_spec_attrs (T_rt) (E_rt))-[] -[(Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty]); T_ty; (Result_ty (unit) ((E_rt)) -[] -[never_t; E_ty]); (Result_ty ((T_rt)) ((E_rt)) -[] -[T_ty; E_ty])])))).
 End std_result_ResultTEasTry_spec.
 
 Section std_result_ResultTFasFromResidualstd_result_ResultE_spec.

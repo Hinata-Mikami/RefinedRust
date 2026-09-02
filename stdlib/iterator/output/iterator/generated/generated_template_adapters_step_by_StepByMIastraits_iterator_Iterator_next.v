@@ -17,6 +17,7 @@ Context `{RRGS : !refinedrustGS Σ}.
 Definition adapters_step_by_StepByMIastraits_iterator_Iterator_next_lemma (π : thread_id) : Prop :=
   ∀ `(MI_rt : !RT) `(traits_iterator_Iterator_MI_Item_rt : !RT) `(MI_st : !syn_type) `(traits_iterator_Iterator_MI_Item_st : !syn_type) `(traits_iterator_Iterator_MI_spec_attrs : !(traits_iterator_Iterator_spec_attrs (RRGS:=RRGS) (MI_rt) (traits_iterator_Iterator_MI_Item_rt) )) `(traits_iterator_Iterator_MI_spec : !(spec_with 0 [] (traits_iterator_Iterator_spec (RRGS:=RRGS) (MI_rt) (traits_iterator_Iterator_MI_Item_rt)))) `(DropGlue_MI_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (MI_rt)))) `(DropGlue_MIastraits_iterator_Iterator_Item_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (traits_iterator_Iterator_MI_Item_rt)))) (traits_iterator_Iterator_MI_next_loc : loc) (traits_iterator_Iterator_MI_nth_loc : loc) , 
   syn_type_is_layoutable (MI_st) →
+  syn_type_is_layoutable (traits_iterator_Iterator_MI_Item_st) →
   syn_type_is_layoutable (((adapters_step_by_StepBy_sls (MI_st)) : syn_type)) →
   syn_type_is_layoutable (((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)) →
   traits_iterator_Iterator_MI_next_loc ◁ᵥ{π, MetaNone} traits_iterator_Iterator_MI_next_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[late_lft_0]) : 1 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((traits_iterator_Iterator_next_spec (RRGS:=RRGS) (traits_iterator_Iterator_MI_spec-[] -[]))  -[late_lft_0] -[]) (λ π, (True))%I) -∗
