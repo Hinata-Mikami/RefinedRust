@@ -380,9 +380,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
     ) -> Result<TranslatedDropGlue<'def>, TranslationError> {
         self.translate_basic_blocks()?;
 
-        for ty in self.generic_scope.tyvars() {
-            self.translated_fn.assume_synty_layoutable(lang::SynType::Literal(ty.syn_type()));
-        }
         for literal_use in self.used_literals.borrow().values() {
             self.translated_fn.assume_synty_layoutable(literal_use.generate_syn_type_term());
         }

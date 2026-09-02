@@ -305,13 +305,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             self.translated_fn.code.add_basic_block(bb_idx.as_usize(), translated_bb);
         }
 
-        // assume that all generics are layoutable
-        {
-            let scope = self.ty_translator.scope.borrow();
-            for ty in scope.generic_scope.tyvars() {
-                self.translated_fn.assume_synty_layoutable(lang::SynType::Literal(ty.syn_type()));
-            }
-        }
         // assume that all used literals are layoutable
         for g in self.ty_translator.scope.borrow().shim_uses.values() {
             self.translated_fn.assume_synty_layoutable(g.generate_syn_type_term());

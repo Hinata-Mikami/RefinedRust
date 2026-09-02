@@ -1629,7 +1629,9 @@ impl<'def> FunctionBuilder<'def> {
 
     /// Add the assumption that a particular syntype is layoutable to the typing proof.
     pub fn assume_synty_layoutable(&mut self, st: lang::SynType) {
-        self.layoutable_syntys.push(st);
+        if !self.layoutable_syntys.contains(&st) {
+            self.layoutable_syntys.push(st);
+        }
     }
 
     /// Register a loop invariant for the basic block `bb`.
@@ -1654,6 +1656,9 @@ impl<'def> FunctionBuilder<'def> {
     pub fn provide_generic_scope(&mut self, scope: GenericScope<'def, traits::LiteralSpecUseRef<'def>>) {
         if self.has_generic_scope {
             panic!("Logic error: Function's generic scope has been initialized twice!");
+        }
+        for ty in scope.get_all_ty_params_with_assocs().params {
+            self.assume_synty_layoutable(lang::SynType::Literal(ty.syn_type()));
         }
         self.spec.generics = scope;
         self.has_generic_scope = true;

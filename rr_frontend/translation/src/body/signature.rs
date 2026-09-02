@@ -9,7 +9,7 @@
 use std::collections::HashMap;
 
 use log::{info, trace};
-use radium::{code, coq, lang, specs};
+use radium::{code, coq, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::target::spec::PanicStrategy;
@@ -587,12 +587,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         for (name, ty) in arg_names.iter().zip(self.inputs.iter().copied()) {
             let translated_ty = self.ty_translator.translate_type(ty)?;
             self.translated_fn.code.add_argument(name, (&translated_ty).into());
-        }
-
-        // Handwritten shim code may inspect the layout of any generic type parameter. Ordinary
-        // body translation adds these assumptions during finalization; code shims have no body.
-        for ty in self.ty_translator.scope.borrow().generic_scope.tyvars() {
-            self.translated_fn.assume_synty_layoutable(lang::SynType::Literal(ty.syn_type()));
         }
 
         Ok(self.translated_fn.into_function(spec_arena))

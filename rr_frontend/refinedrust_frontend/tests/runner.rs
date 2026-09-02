@@ -169,6 +169,7 @@ mod tests {
         .expect("missing symbolic-projection proof template");
         assert!(symbolic_template.contains("Assoc_T_spec :"));
         assert!(symbolic_template.contains("( *[Assoc_T_Output_ty])"));
+        assert!(symbolic_template.contains("syn_type_is_layoutable (Assoc_T_Output_st)"));
 
         let associated_bound_template = fs::read_to_string(
             output
@@ -217,6 +218,15 @@ mod tests {
         assert!(nested_bound_template.contains("NestedSource_T_spec :"));
         assert!(nested_bound_template.contains("IntoSource_TasNestedSource_Inner_spec :"));
         assert!(nested_bound_template.contains("ItemSource_TasNestedSource_InnerasIntoSource_Source_spec :"));
+        assert!(nested_bound_template.contains("syn_type_is_layoutable (NestedSource_T_Inner_st)"));
+        assert!(
+            nested_bound_template
+                .contains("syn_type_is_layoutable (IntoSource_TasNestedSource_Inner_Source_st)")
+        );
+        assert!(
+            nested_bound_template
+                .contains("syn_type_is_layoutable (IntoSource_TasNestedSource_Inner_Item_st)")
+        );
 
         output.cleanup();
     }

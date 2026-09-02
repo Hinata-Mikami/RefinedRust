@@ -317,18 +317,6 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         Some(lft)
     }
 
-    /// Get all type parameters in scope.
-    #[must_use]
-    pub(crate) fn tyvars(&self) -> Vec<specs::LiteralTyParam> {
-        let mut tyvars = Vec::new();
-        for x in &self.scope {
-            if let Param::Ty(ty) = x {
-                tyvars.push(ty.to_owned());
-            }
-        }
-        tyvars
-    }
-
     /// Add bound regions when descending under a for<...> binder.
     #[must_use]
     pub(crate) fn translate_bound_regions(
