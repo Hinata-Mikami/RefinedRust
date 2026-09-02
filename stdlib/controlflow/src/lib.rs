@@ -52,6 +52,11 @@ pub trait FromResidual<R = <Self as Try>::Residual> {
     fn from_residual(residual: R) -> Self;
 }
 
+#[rr::export_as(core::ops::Residual)]
+pub trait Residual<O> {
+    type TryType: Try<Output = O, Residual = Self>;
+}
+
 #[rr::export_as(core::ops::Try)]
 #[rr::exists("FromOutputFn" : "{xt_of Output} → {xt_of Self}")]
 #[rr::exists("BranchFn" : "{xt_of Self} → sum ({xt_of Output}) ({xt_of Residual})")]
@@ -68,7 +73,7 @@ pub trait Try: FromResidual {
     ///
     /// This represents the possible values of the `Self` type which are *not*
     /// represented by the `Output` type.
-    type Residual;
+    type Residual: Residual<Self::Output>;
 
     /// Constructs the type from its `Output` type.
     ///
@@ -84,6 +89,10 @@ pub trait Try: FromResidual {
     /// (because this returned [`ControlFlow::Break`]).
     #[rr::returns("{BranchFn} (self)")]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
+}
+
+impl<T> Residual<T> for Option<Infallible> {
+    type TryType = Option<T>;
 }
 
 #[rr::instantiate("FromOutputFn" := "λ out, Some out")]
@@ -145,6 +154,10 @@ impl<B, C> Try for ControlFlow<B, C> {
     }
 }
 
+impl<B, C> Residual<C> for ControlFlow<B, Infallible> {
+    type TryType = ControlFlow<B, C>;
+}
+
 #[rr::instantiate("FromResidualFn" := "λ s, match s with | inl(x) => None | inr(x) => Some (inr x) end")]
 // Note: manually specifying the residual type instead of using the default to work around
 // https://github.com/rust-lang/rust/issues/99940
@@ -184,6 +197,10 @@ impl<T, E> Try for Result<T, E> {
             Err(e) => ControlFlow::Break(Err(e)),
         }
     }
+}
+
+impl<T, E> Residual<T> for Result<Infallible, E> {
+    type TryType = Result<T, E>;
 }
 
 #[rr::instantiate("FromResidualFn" := "λ s, match s with | inl(x) => None | inr(x) => Some (inr (({F::FromFn} x))) end")]

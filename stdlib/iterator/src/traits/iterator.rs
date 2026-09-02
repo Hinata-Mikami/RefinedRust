@@ -541,8 +541,6 @@ impl<I> IntoIterator for I where I: Iterator {
 pub trait FromIterator<A> {
     #[rr::verify]
     //#[rr::exists("seq", "s2", "s2'")]
-    // Problem: RefinedRust currently does not translate the Iterator requirement on T::IntoIter. 
-    // Maybe let's do a hacky wrapper solution for that for now. 
     //#[rr::ensures(#iris "IteratorNextFusedTrans {attrs_of T::IntoIter} ({T::IntoIter} iter) seq s2")]
     //#[rr::ensures(#iris "{T::Next} s2 None s2'")]
     //#[rr::returns("{FromSequence} seq")]
