@@ -223,6 +223,9 @@ pub struct LiteralSpecUse<'def> {
     /// whether this is a usage in the scope of a trait decl of the same trait
     pub is_used_in_self_trait: bool,
 
+    /// whether this requirement was introduced by an associated type bound
+    pub is_assoc_bound: bool,
+
     /// optional constraints for each associated type
     pub assoc_ty_constraints: Vec<Option<Type<'def>>>,
 
@@ -257,7 +260,7 @@ impl ReqInfo for LiteralSpecUseRef<'_> {
 }
 
 impl<'def> LiteralSpecUse<'def> {
-    fn get_assoc_ty_params(&self) -> Vec<LiteralTyParam> {
+    pub(crate) fn get_assoc_ty_params(&self) -> Vec<LiteralTyParam> {
         let mut assoc_tys = Vec::new();
 
         for (idx, _) in self.trait_ref.assoc_tys.iter().enumerate() {
@@ -320,6 +323,18 @@ impl<'def> LiteralSpecUse<'def> {
         params
     }
 
+    #[must_use]
+    fn get_attr_ordered_params_inst(&self) -> Vec<Type<'def>> {
+        let mut params = self.trait_inst.get_direct_ty_params().to_vec();
+        params.append(&mut self.get_assoc_ty_inst());
+        for requirement in self.trait_inst.get_direct_trait_requirements() {
+            if !requirement.is_assoc_bound {
+                params.extend(requirement.get_assoc_ty_inst().iter().cloned());
+            }
+        }
+        params
+    }
+
     /// Get the binder for the attribute parameter.
     #[must_use]
     pub(crate) fn get_attr_param(&self) -> Option<coq::binder::Binder> {
@@ -327,14 +342,16 @@ impl<'def> LiteralSpecUse<'def> {
             return None;
         }
 
-        let ordered_params = self.get_ordered_params_inst();
+        let ordered_params = self.get_attr_ordered_params_inst();
         let all_args: Vec<_> = ordered_params.iter().map(Type::get_rfn_type).collect();
 
         // also attrs of trait deps
         let mut attr_args = Vec::new();
         if self.trait_ref.attrs_dependent {
             for x in self.trait_inst.get_direct_trait_requirements() {
-                if let Some(attr_term) = x.get_attr_term() {
+                if !x.is_assoc_bound
+                    && let Some(attr_term) = x.get_attr_term()
+                {
                     attr_args.push(attr_term);
                 }
             }
@@ -585,6 +602,8 @@ pub struct ReqInst<'def, T = Type<'def>> {
     pub spec: ReqInstSpec<'def>,
     /// the origin of the trait requirement
     pub origin: TyParamOrigin,
+    /// whether this requirement was introduced by an associated type bound
+    pub is_assoc_bound: bool,
     /// instantiation of associated types, excluding the associated types which are already
     /// determined by constraints between associated types at the declaration site of this
     /// requirement
@@ -638,12 +657,14 @@ impl<T> ReqInst<'_, T> {
             ReqInstSpec::Specialized(s) => {
                 // instantiate the attrs suitably
                 let mut args = Vec::new();
-                for ty in s.impl_inst.get_direct_ty_params_with_assocs() {
+                for ty in s.impl_inst.get_non_assoc_direct_ty_params_with_assocs() {
                     args.push(format!("{}", ty.get_rfn_type()));
                 }
                 // get the attr terms this depends on
                 for req in s.impl_inst.get_direct_trait_requirements() {
-                    if let Some(attr_term) = req.get_attr_term() {
+                    if !req.is_assoc_bound
+                        && let Some(attr_term) = req.get_attr_term()
+                    {
                         args.push(attr_term);
                     }
                 }
@@ -676,7 +697,14 @@ impl<'def> ReqInst<'def, Type<'def>> {
 
         let assoc_ty_inst = trait_use.get_assoc_ty_params().into_iter().map(Type::LiteralParam).collect();
 
-        Self::new(spec, trait_use.origin, assoc_ty_inst, trait_use.trait_ref, hrtb_scope.to_owned())
+        Self::new(
+            spec,
+            trait_use.origin,
+            trait_use.is_assoc_bound,
+            assoc_ty_inst,
+            trait_use.trait_ref,
+            hrtb_scope.to_owned(),
+        )
     }
 }
 
@@ -733,7 +761,7 @@ fn make_trait_instance<'def>(
 
     let param_inst_rts: Vec<_> = param_inst.iter().map(Type::get_rfn_type).collect();
 
-    // also quantify over all trait deps
+    // Associated-bound attrs are semantic parameters, but the enclosing attrs record cannot depend on them.
     let mut trait_params = scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
     def_params.append(&mut trait_params.0);
 
@@ -743,12 +771,21 @@ fn make_trait_instance<'def>(
     if is_base_spec && of_trait.has_spec_attrs {
         // assemble the type
         // TODO: for trait deps, also instantiate with deps?
-        let mut attrs_params: Vec<_> =
-            param_inst_rts.iter().map(|x| coq::term::Term::Type(Box::new(x.to_owned()))).collect();
+        let attr_assoc_params = scope.get_non_assoc_direct_assoc_ty_params();
+        let mut attrs_params: Vec<_> = ty_params
+            .params
+            .iter()
+            .chain(assoc_types)
+            .chain(&attr_assoc_params.params)
+            .map(|param| {
+                let rt = Type::LiteralParam(param.clone()).get_rfn_type();
+                coq::term::Term::Type(Box::new(rt))
+            })
+            .collect();
 
         if of_trait.attrs_dependent {
             attrs_params
-                .append(&mut scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont).make_using_terms());
+                .append(&mut scope.get_attr_record_trait_parameters(IncludeSelfReq::Dont).make_using_terms());
         }
         let attrs_type = coq::term::App::new(of_trait.spec_attrs_record(), attrs_params);
         let attrs_type = coq::term::Type::Literal(format!("{attrs_type}"));
@@ -809,14 +846,14 @@ fn make_trait_instance<'def>(
             write!(body, "{app_body}")?;
 
             // instantiate with surrounding trait specs
-            for x in surrounding_inst.get_direct_trait_requirements() {
-                if let Some(attr_term) = x.get_attr_term() {
+            for requirement in surrounding_inst.get_direct_trait_requirements() {
+                if let Some(attr_term) = requirement.get_attr_term() {
                     write!(body, " {attr_term}")?;
                 }
             }
 
             // This comes after other surrounding trait requirement's attrs, as the Self requirement is always
-            // shuffled last
+            // shuffled last.
             if is_base_spec && of_trait.has_spec_attrs {
                 write!(body, " _ATTRS")?;
             } else if let Some(inst) = spec.self_trait_attr_inst() {
@@ -914,6 +951,13 @@ impl SpecDecl<'_> {
         params
     }
 
+    fn get_attr_ordered_params(&self) -> TyParamList {
+        let mut params = self.generics.get_direct_ty_params().to_owned();
+        params.append(self.assoc_types.clone());
+        params.append(self.generics.get_non_assoc_direct_assoc_ty_params().params);
+        params
+    }
+
     #[must_use]
     pub fn make_attr_record_decl(&self) -> coq::Document {
         if !self.lit.has_spec_attrs {
@@ -925,12 +969,12 @@ impl SpecDecl<'_> {
         };
 
         // this is parametric in the params and associated types
-        let ordered_params = self.get_ordered_params();
+        let ordered_params = self.get_attr_ordered_params();
         let mut params = ordered_params.get_coq_ty_rt_params();
 
         let dependent_attr_params = if self.lit.attrs_dependent {
             // also depend on other attrs
-            self.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0
+            self.generics.get_attr_record_trait_parameters(IncludeSelfReq::Dont).0
         } else {
             Vec::new()
         };
@@ -1010,7 +1054,7 @@ impl SpecDecl<'_> {
 
         let mut attrs_string = String::new();
         // first two are for refinedrustGS, then all the RT + st parameters, then attrs for trait deps
-        let attr_param_count = 2 + self.get_ordered_params().params.len() + dependent_attr_param_count;
+        let attr_param_count = 2 + self.get_attr_ordered_params().params.len() + dependent_attr_param_count;
         for _ in 0..attr_param_count {
             write!(attrs_string, " {{_}}").unwrap();
         }
@@ -1515,6 +1559,24 @@ pub struct RefInst<'def> {
 }
 
 impl<'def> RefInst<'def> {
+    #[must_use]
+    fn get_attr_ordered_params_inst(&self) -> Vec<Type<'def>> {
+        let mut params: Vec<_> = self
+            .trait_inst
+            .get_direct_ty_params()
+            .iter()
+            .chain(&self.assoc_types_inst)
+            .cloned()
+            .collect();
+
+        for req_inst in self.trait_inst.get_direct_trait_requirements() {
+            if !req_inst.is_assoc_bound {
+                params.extend(req_inst.get_assoc_ty_inst().iter().cloned());
+            }
+        }
+        params
+    }
+
     /// Get the instantiation of the trait's parameters in the same order as the trait's declaration
     /// (`get_ordered_params`).
     #[must_use]
@@ -1538,10 +1600,9 @@ impl<'def> RefInst<'def> {
     fn get_attr_record_term(&self) -> coq::term::App<coq::term::Term, coq::term::Term> {
         let attr_record = &self.impl_ref.spec_attrs_record();
 
-        // get all type parameters
-        let mut binders = self.generics.get_all_ty_params_with_assocs().get_coq_ty_rt_params();
-        // add all dependent attrs
-        binders.append(self.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
+        // Associated-type requirements cannot contribute to attribute definitions.
+        let mut binders = self.generics.get_non_assoc_ty_params_with_assocs().get_coq_ty_rt_params();
+        binders.append(self.generics.get_attr_record_trait_parameters(IncludeSelfReq::Dont).0);
         let args = binders.make_using_terms();
 
         coq::term::App::new(coq::term::Term::Literal(attr_record.to_owned()), args)
@@ -1644,21 +1705,24 @@ impl ImplSpec<'_> {
 
         // get all type parameters + assoc types
         def_rts_params
-            .append(self.trait_ref.generics.get_all_ty_params_with_assocs().get_coq_ty_rt_params().0);
+            .append(self.trait_ref.generics.get_non_assoc_ty_params_with_assocs().get_coq_ty_rt_params().0);
 
-        // add other attrs
-        def_rts_params.append(self.trait_ref.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
+        // Ordinary requirement attrs remain in scope even for `#[rr::nondependent]` traits.
+        def_rts_params
+            .append(self.trait_ref.generics.get_attr_record_trait_parameters(IncludeSelfReq::Dont).0);
 
         // instantiate the type of the attr record
         let attrs_type_rts: Vec<coq::term::Type> =
-            self.trait_ref.get_ordered_params_inst().iter().map(Type::get_rfn_type).collect();
+            self.trait_ref.get_attr_ordered_params_inst().iter().map(Type::get_rfn_type).collect();
         let mut attrs_type_terms: Vec<_> =
             attrs_type_rts.iter().map(|x| coq::term::Term::Type(Box::new(x.to_owned()))).collect();
 
         // also add dependent attrs
         if self.trait_ref.of_trait.attrs_dependent {
             for x in self.trait_ref.trait_inst.get_direct_trait_requirements() {
-                if let Some(attr_term) = x.get_attr_term() {
+                if !x.is_assoc_bound
+                    && let Some(attr_term) = x.get_attr_term()
+                {
                     attrs_type_terms.push(coq::term::Term::Literal(attr_term));
                 }
             }

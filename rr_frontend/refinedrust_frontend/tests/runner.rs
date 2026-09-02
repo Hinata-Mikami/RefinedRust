@@ -170,6 +170,54 @@ mod tests {
         assert!(symbolic_template.contains("Assoc_T_spec :"));
         assert!(symbolic_template.contains("( *[Assoc_T_Output_ty])"));
 
+        let associated_bound_template = fs::read_to_string(
+            output
+                .path()
+                .join("projection_deps/generated/generated_template_call_with_associated_bound.v"),
+        )
+        .expect("missing associated-bound proof template");
+        assert!(associated_bound_template.contains("IntoSource_T_spec :"));
+        assert!(associated_bound_template.contains("ItemSource_TasIntoSource_Source_spec :"));
+        assert!(
+            associated_bound_template
+                .contains("ItemSource_spec (RRGS:=RRGS) (IntoSource_T_Source_rt) (IntoSource_T_Item_rt)")
+        );
+
+        let associated_bound_attrs_template = fs::read_to_string(
+            output
+                .path()
+                .join("projection_deps/generated/generated_template_call_with_associated_bound_attrs.v"),
+        )
+        .expect("missing associated-bound attrs proof template");
+        assert!(associated_bound_attrs_template.contains("IntoSource_T_spec_attrs :"));
+        assert!(associated_bound_attrs_template.contains("ItemSource_TasIntoSource_Source_spec_attrs :"));
+        let into_source_attrs = associated_bound_attrs_template
+            .lines()
+            .find(|line| line.contains("IntoSource_T_spec_attrs :"))
+            .expect("missing IntoSource attrs parameter");
+        assert!(
+            into_source_attrs.contains(
+                "IntoSource_spec_attrs (RRGS:=RRGS) (T_rt) (IntoSource_T_Item_rt) (IntoSource_T_Source_rt)"
+            ),
+            "IntoSource attrs record has unexpected parameters: {into_source_attrs}"
+        );
+        let consume_source_call = associated_bound_attrs_template
+            .lines()
+            .find(|line| line.contains("consume_source") && line.contains("spec"))
+            .unwrap_or_else(|| panic!("missing consume_source call:\n{associated_bound_attrs_template}"));
+        assert!(consume_source_call.contains("ItemSource_TasIntoSource_Source_spec_attrs"));
+        assert!(consume_source_call.contains("IntoSource_T_spec_attrs"));
+
+        let nested_bound_template = fs::read_to_string(
+            output
+                .path()
+                .join("projection_deps/generated/generated_template_call_with_nested_associated_bound.v"),
+        )
+        .expect("missing nested associated-bound proof template");
+        assert!(nested_bound_template.contains("NestedSource_T_spec :"));
+        assert!(nested_bound_template.contains("IntoSource_TasNestedSource_Inner_spec :"));
+        assert!(nested_bound_template.contains("ItemSource_TasNestedSource_InnerasIntoSource_Source_spec :"));
+
         output.cleanup();
     }
 }

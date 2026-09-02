@@ -663,7 +663,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut state = STInner::InFunction(&mut scope);
         // NB: include the `Self` requirement to handle trait default fns
         self.trait_registry
-            .resolve_trait_requirements_in_state(&mut state, did, params, include_self)
+            .resolve_trait_requirements_in_state(&mut state, did, params, include_self, true)
     }
 
     /// Translate the use of an `FnDef`, registering that the current function needs to link against

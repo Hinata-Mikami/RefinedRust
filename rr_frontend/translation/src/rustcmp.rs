@@ -31,11 +31,12 @@ pub(crate) fn cmp_trait_ref<'tcx>(
 ) -> Ordering {
     // Put the current trait after its dependencies.
     if let Some(trait_did) = in_trait_decl {
-        if a.def_id == trait_did && a.args[0].expect_ty().is_param(0) {
-            return Ordering::Greater;
-        }
-        if b.def_id == trait_did && b.args[0].expect_ty().is_param(0) {
-            return Ordering::Less;
+        let a_is_self = a.def_id == trait_did && a.args[0].expect_ty().is_param(0);
+        let b_is_self = b.def_id == trait_did && b.args[0].expect_ty().is_param(0);
+        match (a_is_self, b_is_self) {
+            (true, false) => return Ordering::Greater,
+            (false, true) => return Ordering::Less,
+            _ => {},
         }
     }
 

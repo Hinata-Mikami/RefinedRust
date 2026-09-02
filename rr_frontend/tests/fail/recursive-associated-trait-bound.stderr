@@ -1,0 +1,8 @@
+error: [RefinedRust] Unsupported feature: cyclic associated type trait requirements do not have a finite unfolding
+ --> fail/recursive-associated-trait-bound.rs:7:1
+  |
+7 | trait Recursive {
+  | ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

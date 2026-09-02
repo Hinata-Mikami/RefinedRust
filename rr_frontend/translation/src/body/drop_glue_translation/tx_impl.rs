@@ -149,6 +149,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             did,
             args,
             include_self,
+            true,
         )
     }
 
@@ -406,6 +407,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             let trait_req = specs::traits::ReqInst::new(
                 req.req_inst.spec,
                 req.req_inst.origin,
+                req.req_inst.is_assoc_bound,
                 assoc_inst,
                 req.req_inst.of_trait,
                 req.req_inst.scope,
@@ -466,7 +468,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for DropGlueTX<'a,
         let mut state = self.shim_state();
         self.ty_translator
             .trait_registry()
-            .resolve_trait_requirements_in_state(&mut state, owner_did, args, true)
+            .resolve_trait_requirements_in_state(&mut state, owner_did, args, true, true)
     }
 
     fn make_virtual_drop_glue_method_for_param(&self, dropped_ty: ty::Ty<'tcx>) -> TraitMethodUseData<'def> {

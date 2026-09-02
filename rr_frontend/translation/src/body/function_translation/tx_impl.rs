@@ -79,7 +79,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for TX<'a, 'def, '
     ) -> Result<Vec<ResolvedTraitReq<'tcx, 'def>>, TranslationError> {
         let mut scope = self.ty_translator.scope.borrow_mut();
         let mut state = types::STInner::InFunction(&mut scope);
-        self.trait_registry.resolve_trait_requirements_in_state(&mut state, owner_did, args, true)
+        self.trait_registry
+            .resolve_trait_requirements_in_state(&mut state, owner_did, args, true, true)
     }
 
     fn get_tuple_drop_glue_generic_abstraction(

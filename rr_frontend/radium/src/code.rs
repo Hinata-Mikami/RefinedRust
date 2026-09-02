@@ -84,13 +84,15 @@ impl LitTerm {
             traits::ReqInstSpec::Specialized(s) => {
                 let mut args = Vec::new();
 
-                for ty in s.impl_inst.get_direct_ty_params_with_assocs() {
+                for ty in s.impl_inst.get_non_assoc_direct_ty_params_with_assocs() {
                     let t = Self::TypeRt(RustType::of_type(&ty));
                     args.push(t);
                 }
                 // get the attr terms this depends on
                 for req in s.impl_inst.get_direct_trait_requirements() {
-                    if let Some(attr) = Self::from_trait_req_inst(req) {
+                    if !req.is_assoc_bound
+                        && let Some(attr) = Self::from_trait_req_inst(req)
+                    {
                         args.push(attr);
                     }
                 }

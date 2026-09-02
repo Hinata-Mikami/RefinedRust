@@ -18,13 +18,11 @@ pub(crate) mod resolution;
 /// Given a particular reference to a trait, get the associated type constraints for this trait reference.
 pub(crate) fn get_trait_assoc_constraints<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
-    typing_env: ty::TypingEnv<'tcx>,
+    clauses: impl IntoIterator<Item = ty::Clause<'tcx>>,
     trait_ref: ty::TraitRef<'tcx>,
 ) -> Vec<Option<ty::Ty<'tcx>>> {
     let mut assoc_ty_map = HashMap::new();
 
-    // TODO: check if caller_bounds does the right thing for implied bounds
-    let clauses = typing_env.param_env.caller_bounds();
     for cl in clauses {
         let cl_kind = cl.kind();
         let cl_kind = cl_kind.skip_binder();

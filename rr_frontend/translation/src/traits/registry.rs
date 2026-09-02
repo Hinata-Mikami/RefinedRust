@@ -134,6 +134,7 @@ pub(crate) struct GenericTraitUse<'tcx, 'def> {
     pub trait_use: specs::traits::LiteralSpecUseRef<'def>,
     /// quantifiers for HRTBs
     pub bound_regions: Vec<ty::BoundRegionKind<'tcx>>,
+    pub assoc_constraints: Vec<Option<ty::Ty<'tcx>>>,
     /// this is a trait use of the trait itself in a trait declaration
     pub is_self_use: bool,
 }
@@ -883,6 +884,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         below_binders: ty::Binder<'tcx, ()>,
         bound_regions: &[ty::BoundRegionKind<'tcx>],
         origin: specs::TyParamOrigin,
+        is_assoc_bound: bool,
         assoc_constraints: &[Option<ty::Ty<'tcx>>],
     ) -> Result<ResolvedTraitReq<'tcx, 'def>, TranslationError> {
         let current_typing_env: ty::TypingEnv<'tcx> = state.get_typing_env(self.tcx);
@@ -936,6 +938,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     specs::traits::ReqInst::new(
                         specs::traits::ReqInstSpec::Specialized(spec_term),
                         origin,
+                        is_assoc_bound,
                         assoc_tys,
                         trait_spec,
                         binders,
@@ -975,10 +978,14 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
                     // compute the instantiation of the quantified trait assumption in terms
                     // of the variables introduced by the trait assumption we are proving.
-                    let mut unifier =
-                        LateBoundUnifier::new(self.tcx, current_typing_env, &trait_use.bound_regions);
-                    unifier.map_generic_args(quantified_trait_ref.args, trait_args);
-                    let (inst, _) = unifier.get_result();
+                    let inst = if trait_use.bound_regions.is_empty() {
+                        Vec::new()
+                    } else {
+                        let mut unifier =
+                            LateBoundUnifier::new(self.tcx, current_typing_env, &trait_use.bound_regions);
+                        unifier.map_generic_args(quantified_trait_ref.args, trait_args);
+                        unifier.get_result().0
+                    };
                     trace!("computed instantiation: {inst:?}");
                     trace!("mapping instantiation now in state={quantified_state:?}");
 
@@ -995,6 +1002,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     specs::traits::ReqInst::new(
                         specs::traits::ReqInstSpec::Quantified(trait_impl),
                         origin,
+                        is_assoc_bound,
                         assoc_types,
                         trait_spec,
                         binders,
@@ -1023,6 +1031,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     specs::traits::ReqInst::new(
                         specs::traits::ReqInstSpec::Specialized(spec_term),
                         origin,
+                        is_assoc_bound,
                         assoc_tys,
                         trait_spec,
                         binders,
@@ -1054,6 +1063,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         did: DefId,
         params: ty::GenericArgsRef<'tcx>,
         include_self: bool,
+        include_assoc_bounds: bool,
     ) -> Result<Vec<ResolvedTraitReq<'tcx, 'def>>, TranslationError> {
         trace!(
             "Enter resolve_trait_requirements_in_state with did={did:?} and params={params:?}, in state={state:?}"
@@ -1066,7 +1076,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trace!("target typing env {target_typing_env:?}");
 
         // Get the trait requirements of the target
-        let target_requirements = requirements::get_trait_requirements_with_origin(self.tcx, did);
+        let target_requirements = requirements::get_trait_requirements_with_origin(self.tcx, did)?;
         trace!("non-trivial target requirements: {target_requirements:?}");
         trace!("substituting with args {:?}", params);
 
@@ -1079,6 +1089,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let mut indirect_trait_spec_terms = Vec::new();
 
         for req in &target_requirements {
+            if req.is_assoc_bound && !include_assoc_bounds {
+                continue;
+            }
             if req.is_self_in_trait_decl && !include_self {
                 continue;
             }
@@ -1114,7 +1127,30 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             }
 
             // build the new args
-            let trait_args = self.tcx.mk_args(subst_args.as_slice());
+            let original_trait_args = self.tcx.mk_args(subst_args.as_slice());
+            let mut trait_args = original_trait_args;
+            if req.bound_regions.is_empty() {
+                let trait_ref = ty::TraitRef::new(self.tcx, req.trait_ref.def_id, trait_args);
+                if let Ok(normalized) = resolution::normalize_type(self.tcx, current_typing_env, trait_ref) {
+                    trait_args = normalized.args;
+                }
+            }
+            if state
+                .try_lookup_trait_use(self.tcx, req.trait_ref.def_id, original_trait_args.as_slice())
+                .is_some()
+            {
+                trait_args = original_trait_args;
+            }
+
+            // Projection normalization can make an indirect cycle edge point back to the trait
+            // declaration's own self assumption. That assumption is not a quantified parameter.
+            if !include_self
+                && state
+                    .try_lookup_trait_use(self.tcx, req.trait_ref.def_id, trait_args.as_slice())
+                    .is_some_and(|trait_use| trait_use.is_self_use)
+            {
+                continue;
+            }
 
             // try to infer an instance for this
             trace!(
@@ -1128,6 +1164,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 req.binders,
                 req.bound_regions.as_slice(),
                 req.origin,
+                req.is_assoc_bound,
                 req.assoc_constraints.as_slice(),
             )?;
 
@@ -1181,6 +1218,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         Ok(specs::traits::ReqInst::new(
             trait_req.spec,
             trait_req.origin,
+            trait_req.is_assoc_bound,
             assoc_inst,
             trait_req.of_trait,
             trait_req.scope,
@@ -1192,9 +1230,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         state: types::ST<'_, '_, 'def, 'tcx>,
         did: DefId,
         params_inst: ty::GenericArgsRef<'tcx>,
+        include_assoc_bounds: bool,
     ) -> Result<Vec<specs::traits::ReqInst<'def, specs::Type<'def>>>, TranslationError> {
         let mut trait_reqs = Vec::new();
-        for trait_req in self.resolve_trait_requirements_in_state(state, did, params_inst, false)? {
+        for trait_req in
+            self.resolve_trait_requirements_in_state(state, did, params_inst, false, include_assoc_bounds)?
+        {
             // compute the new scope including the bound regions.
             let mut scope = state.get_param_scope();
             scope.add_trait_req_scope(&trait_req.req_inst.scope);
@@ -1217,7 +1258,22 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     ) -> Result<specs::GenericScopeInst<'def>, TranslationError> {
         let mut scope_inst = self.compute_scope_inst_in_state_without_traits(state, params_inst)?;
 
-        for trait_req in self.resolve_radium_trait_requirements_in_state(state, did, params_inst)? {
+        for trait_req in self.resolve_radium_trait_requirements_in_state(state, did, params_inst, true)? {
+            scope_inst.add_trait_requirement(trait_req);
+        }
+
+        Ok(scope_inst)
+    }
+
+    fn compute_attr_scope_inst_in_state(
+        &self,
+        state: types::ST<'_, '_, 'def, 'tcx>,
+        did: DefId,
+        params_inst: ty::GenericArgsRef<'tcx>,
+    ) -> Result<specs::GenericScopeInst<'def>, TranslationError> {
+        let mut scope_inst = self.compute_scope_inst_in_state_without_traits(state, params_inst)?;
+
+        for trait_req in self.resolve_radium_trait_requirements_in_state(state, did, params_inst, false)? {
             scope_inst.add_trait_requirement(trait_req);
         }
 
@@ -1521,7 +1577,16 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let state = types::AdtState::new(&mut deps, &param_scope, &typing_env);
         let mut state = types::STInner::TranslateAdt(state);
 
-        let scope_inst = self.compute_scope_inst_in_state(&mut state, trait_ref.def_id, trait_ref.args)?;
+        self.compute_attr_scope_inst_in_state(&mut state, trait_ref.def_id, trait_ref.args)?;
+
+        // Keep the complete trait scope for specification generation, but do not let
+        // associated-type requirements introduce dependencies between attrs definitions.
+        let scope_inst = {
+            let mut ignored_deps = BTreeSet::new();
+            let state = types::AdtState::new(&mut ignored_deps, &param_scope, &typing_env);
+            let mut state = types::STInner::TranslateAdt(state);
+            self.compute_scope_inst_in_state(&mut state, trait_ref.def_id, trait_ref.args)?
+        };
         //trace!("Determined trait requirements in impl: {trait_reqs:?}");
         //trace!("get_trait_impl_info: have deps={deps:?}");
 
@@ -1591,6 +1656,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         &self,
         trait_ref: ty::TraitRef<'tcx>,
         bound_regions: &[ty::BoundRegionKind<'tcx>],
+        assoc_constraints: &[Option<ty::Ty<'tcx>>],
     ) -> GenericTraitUse<'tcx, 'def> {
         let dummy_trait_use = RefCell::new(None);
         let trait_use = self.trait_use_arena.alloc(dummy_trait_use);
@@ -1600,6 +1666,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             trait_ref: TraitUseRef::Rust(trait_ref),
             trait_use,
             bound_regions: bound_regions.to_vec(),
+            assoc_constraints: assoc_constraints.to_vec(),
             is_self_use: false,
         }
     }
@@ -1614,6 +1681,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             trait_ref: TraitUseRef::Rust(trait_ref),
             trait_use,
             bound_regions: vec![],
+            assoc_constraints: Vec::new(),
             is_self_use: true,
         }
     }
@@ -1635,6 +1703,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             trait_ref,
             trait_use,
             bound_regions: vec![],
+            assoc_constraints: Vec::new(),
             is_self_use: false,
         }
     }
@@ -1647,6 +1716,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trait_ref: ty::TraitRef<'tcx>,
         spec_ref: specs::traits::LiteralSpecRef<'def>,
         is_used_in_self_trait: bool,
+        is_assoc_bound: bool,
         assoc_ty_constraints: Vec<Option<specs::Type<'def>>>,
         origin: specs::TyParamOrigin,
     ) {
@@ -1665,6 +1735,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             specs::GenericScopeInst::empty(),
             mangled_base,
             is_used_in_self_trait,
+            is_assoc_bound,
             assoc_ty_constraints,
             origin,
         );
@@ -1691,6 +1762,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             specs::traits::ReqScope::empty(),
             specs::GenericScopeInst::empty(),
             mangled_base,
+            false,
             false,
             Vec::new(),
             origin,
@@ -1723,8 +1795,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         let mut scope_inst = self.compute_scope_inst_in_state_without_traits(&mut state, trait_ref.args)?;
 
-        let trait_reqs =
-            self.resolve_radium_trait_requirements_in_state(&mut state, trait_ref.def_id, trait_ref.args)?;
+        let trait_reqs = self.resolve_radium_trait_requirements_in_state(
+            &mut state,
+            trait_ref.def_id,
+            trait_ref.args,
+            true,
+        )?;
         trace!("finalize_trait_use for {:?}: determined trait requirements: {trait_reqs:?}", trait_use.key);
 
         for trait_req in trait_reqs {

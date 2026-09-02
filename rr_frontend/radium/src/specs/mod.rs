@@ -547,7 +547,7 @@ impl<'def> GenericScopeInst<'def> {
     }
 
     #[must_use]
-    fn get_direct_assoc_ty_params(&self) -> Vec<Type<'def>> {
+    pub(crate) fn get_direct_assoc_ty_params(&self) -> Vec<Type<'def>> {
         let ty_params = self.direct_trait_requirements.iter().map(|x| x.get_assoc_ty_inst().to_vec());
 
         ty_params.flatten().collect()
@@ -564,6 +564,17 @@ impl<'def> GenericScopeInst<'def> {
     pub fn get_direct_ty_params_with_assocs(&self) -> Vec<Type<'def>> {
         let mut direct = self.get_direct_ty_params().to_vec();
         direct.append(&mut self.get_direct_assoc_ty_params());
+        direct
+    }
+
+    #[must_use]
+    pub(crate) fn get_non_assoc_direct_ty_params_with_assocs(&self) -> Vec<Type<'def>> {
+        let mut direct = self.get_direct_ty_params().to_vec();
+        for requirement in &self.direct_trait_requirements {
+            if !requirement.is_assoc_bound {
+                direct.extend(requirement.get_assoc_ty_inst().iter().cloned());
+            }
+        }
         direct
     }
 
@@ -1027,6 +1038,31 @@ impl<T: traits::ReqInfo> fmt::Display for GenericScope<'_, T> {
 
 impl<'def> GenericScope<'def, traits::LiteralSpecUseRef<'def>> {
     #[must_use]
+    fn get_non_assoc_direct_assoc_ty_params(&self) -> TyParamList {
+        let params = self.direct_trait_requirements.iter().filter_map(|trait_use| {
+            let trait_use = trait_use.borrow();
+            let trait_use = trait_use.as_ref().unwrap();
+            (!trait_use.is_assoc_bound).then(|| trait_use.get_assoc_ty_params())
+        });
+        TyParamList::new(params.flatten().collect())
+    }
+
+    #[must_use]
+    fn get_non_assoc_ty_params_with_assocs(&self) -> TyParamList {
+        let mut params = self.surrounding_tys.clone();
+        params.merge(self.direct_tys.clone());
+
+        for trait_use in self.surrounding_trait_requirements.iter().chain(&self.direct_trait_requirements) {
+            let trait_use = trait_use.borrow();
+            let trait_use = trait_use.as_ref().unwrap();
+            if !trait_use.is_assoc_bound {
+                params.append(trait_use.get_assoc_ty_params());
+            }
+        }
+        params
+    }
+
+    #[must_use]
     fn get_direct_attr_trait_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
         self.get_trait_req_parameters(false, true, include_self, false)
     }
@@ -1041,6 +1077,27 @@ impl<'def> GenericScope<'def, traits::LiteralSpecUseRef<'def>> {
         self.get_trait_req_parameters(true, true, include_self, false)
     }
 
+    #[must_use]
+    fn get_attr_record_trait_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
+        let mut params = Vec::new();
+        for trait_use in self
+            .get_surrounding_trait_requirements()
+            .iter()
+            .chain(self.get_direct_trait_requirements())
+        {
+            let trait_use = trait_use.borrow();
+            let trait_use = trait_use.as_ref().unwrap();
+            if !trait_use.is_assoc_bound
+                && (!trait_use.is_used_in_self_trait || include_self.include_attrs())
+                && let Some(attr_param) = trait_use.get_attr_param()
+            {
+                params.push(attr_param);
+            }
+        }
+        coq::binder::BinderList::new(params)
+    }
+
+    #[must_use]
     fn get_trait_req_parameters(
         &self,
         include_surrounding: bool,
