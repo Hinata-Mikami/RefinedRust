@@ -27,36 +27,64 @@ Ltac destruct_product_hypothesis name H :=
   |           |- _ => idtac
   end.
 
-Local Ltac prepare_initial_coq_context :=
+Local Ltac prepare_initial_coq_context_weak :=
   (* The automation assumes that all products in the context are destructed, see liForall *)
-  repeat lazymatch goal with
+  repeat match goal with
   | H : (_ * _)%type |- _ => destruct_product_hypothesis H H
   | H : unit |- _ => destruct H
   end.
+
+Ltac prepare_initial_coq_context :=
+  (* The automation assumes that all products in the context are destructed, see liForall *)
+  repeat match goal with
+  | H : plist _ _ |- _ => destruct_product_hypothesis H H
+  | H : (_ * _)%type |- _ => destruct_product_hypothesis H H
+  | H : unit |- _ => destruct H
+  | H : RT_xt _ |- _ => progress (simpl in H)
+  end.
+
+(** Xrfn automation *)
+Ltac invert_is_xrfn_assumptions :=
+  repeat match goal with
+  | H : IsXrfn _ |- _ => destruct H as [H]
+  | H : is_xrfn _ |- _ =>
+      let xr := fresh "xr" in
+      let Heq := fresh "Heq" in
+      destruct H as [xr Heq]; simpl in Heq; simplify_eq/=
+  end;
+  prepare_initial_coq_context;
+  simpl in *; simplify_eq/=;
+  repeat match goal with
+  | H : _ = _ |- _ => injection H; clear H; intros; subst
+  end.
+
+Ltac solve_is_xrfn_with_instances :=
+  lazymatch goal with
+  | |- IsXrfn _ => solve [apply _]
+  | |- is_xrfn _ => solve [apply is_xrfn_proof]
+  end.
+Ltac solve_is_xrfn :=
+  first
+    [ solve_is_xrfn_with_instances
+    | progress invert_is_xrfn_assumptions; solve_is_xrfn_with_instances
+    ].
 
 (** ** Solve [Persistent]/[Timeless] assumptions. *)
 Ltac ex_t_solve_persistent ::=
   unfold inv_P;
   simpl;
   intro_adt_params;
-  rewrite /TCNoResolve; intros; prepare_initial_coq_context; apply _.
+  rewrite /TCNoResolve; intros; prepare_initial_coq_context_weak; apply _.
 Ltac ex_t_solve_timeless :=
   unfold inv_P;
   simpl;
   intro_adt_params;
-  rewrite /TCNoResolve; intros; prepare_initial_coq_context; apply _.
-
-Ltac ex_t_solve_auto_shr_persistent :=
-  unfold inv_P;
-  simpl;
-  intro_adt_params;
-  rewrite /TCNoResolve; intros; prepare_initial_coq_context;
-  apply bi.exist_persistent => Hyr; apply _.
+  rewrite /TCNoResolve; intros; prepare_initial_coq_context_weak; apply _.
 
 Ltac ex_t_solve_shr_eq ::=
   simpl;
   intro_adt_params;
-  intros; prepare_initial_coq_context; done.
+  intros; prepare_initial_coq_context_weak; done.
 
 (** Solve the monotonicity assumption. *)
 Class AsShared `{!typeGS Σ} (κ : lft) (P : iProp Σ) := {
@@ -83,7 +111,7 @@ Ltac ex_plain_t_solve_shr_mono :=
   let κ := fresh "κ" in
   let κ' := fresh "κ'" in
   iIntros (? κ κ' ??);
-  prepare_initial_coq_context;
+  prepare_initial_coq_context_weak;
   simpl;
   iIntros "#Hincl"; iIntros "Ha";
   repeat match goal with
@@ -99,31 +127,6 @@ Ltac ex_plain_t_solve_shr_mono :=
       done
   end
 .
-
-Ltac ex_plain_t_solve_auto_shr_mono :=
-  simpl;
-  intro_adt_params;
-  let κ := fresh "κ" in
-  let κ' := fresh "κ'" in
-  iIntros (? κ κ' ??);
-  prepare_initial_coq_context;
-  simpl;
-  iIntros "#Hincl"; iIntros "Ha";
-  let Hyr := fresh "Hyr" in
-  iDestruct "Ha" as (Hyr) "Ha";
-  iExists Hyr;
-  rewrite -?bi.sep_assoc;
-  let ty := iTypeOf' "Ha" in
-  lazymatch ty with
-  | ?P =>
-      let as_shr := constr:(_ : AsShared κ P) in
-      iApply (share_mono (Φ := as_shr.(as_shared_pred)) with "[]");
-      [ | iApply "Ha"];
-      done
-  end
-.
-
-
 
 (** ** Solve the sharing assumption *)
 Ltac iTypeOfGoal := match goal with |- envs_entails _ ?Δ => Δ end.
@@ -152,15 +155,15 @@ Proof. set_solver; solve[fail]. Abort.
   Transforms to a new goal of the shape
     q.[κ] -∗ q.[lft_intersect_list κs] -∗ logical_step ...
 *)
-Ltac ex_t_destruct_bor π κ κs iH :=
+Ltac ex_t_destruct_bor π κ κs outer Houter iH :=
   let ty := iTypeOf' iH in
   iRename iH into "__H0";
   lazymatch ty with
   | (&{_} (?P))%I =>
     first
     [ (* check if we have declared how to share it *)
-      let SHR := constr:(_ : Shareable π κ κs P) in
-      iApply (SHR.(shareable_proof) with "[$] [$] Htok1 Htok __H0");
+      let SHR := constr:(_ : Shareable π κ κs outer P) in
+      iApply (SHR.(shareable_proof) Houter with "[$] [$] Htok1 Htok __H0");
       [ done | ]
     | (* otherwise discard (putting a wrapper so we don't consider it again) *)
       fail "solve_shr: do not know how to share " P
@@ -169,9 +172,9 @@ Ltac ex_t_destruct_bor π κ κs iH :=
   .
 
 (** Hook for proving the shared predicate after having shared all the assumptions *)
-Ltac ex_plain_t_solve_shr_solve_hook :=
+Ltac ex_plain_t_solve_shr_solve_hook iH :=
   (* rewrite with right_id in order to remove True from extra discarded assumptions *)
-  rewrite ?right_id; done
+  rewrite ?right_id; iExact iH
 .
 
 Ltac ex_plain_t_solve_shr :=
@@ -179,9 +182,11 @@ Ltac ex_plain_t_solve_shr :=
   intro_adt_params;
   let π := fresh "π" in
   let κ := fresh "κ" in
-  iIntros (? π κ ?????);
+  let outer := fresh "outer" in
+  let Houter := fresh "Houter" in
+  iIntros (? π κ ? outer ? ? Houter);
   simpl in *;
-  prepare_initial_coq_context;
+  prepare_initial_coq_context_weak;
   iIntros "#(LFT & LLCTX) #Hna Htok Hb";
   iEval (rewrite -lft_tok_sep) in "Htok";
   iDestruct "Htok" as "(Htok1 & Htok)";
@@ -196,21 +201,22 @@ Ltac ex_plain_t_solve_shr :=
     end
   in
   iApply fupd_logical_step;
-  ex_t_destruct_bor π κ κs "Hb";
+  let outer' := match type of Houter with is_xrfn ?outer' => outer' end in
+  ex_t_destruct_bor π κ κs outer' Houter "Hb";
   unfold SHELVED_ASSUM;
   iApply logical_step_intro;
   iIntros "!>";
-  iIntros "(? & Htok1 & Htok)";
+  iIntros "(Hshr & Htok1 & Htok)";
   simpl;
   iSplitR "Htok1 Htok";
-  [ ex_plain_t_solve_shr_solve_hook
+  [ ex_plain_t_solve_shr_solve_hook "Hshr"
   | iCombine "Htok1 Htok" as "Htok"; iEval (rewrite lft_tok_sep) in "Htok"; iApply "Htok"
   ].
 
 Ltac ex_plain_t_solve_shr_auto :=
   simpl; intro_adt_params;
   rewrite /TCNoResolve;
-  intros; prepare_initial_coq_context;
+  intros; prepare_initial_coq_context_weak;
   apply _.
 
 Ltac ex_t_destruct_hyp iH :=
@@ -240,7 +246,7 @@ Ltac ex_plain_t_solve_ghost_drop :=
   iIntros (? π ????);
   simpl in *;
   try done;
-  prepare_initial_coq_context;
+  prepare_initial_coq_context_weak;
   iIntros "Hb";
   let ty := iTypeOf' "Hb" in
   lazymatch ty with
@@ -264,26 +270,20 @@ Ltac ex_plain_t_solve_is_xrfn :=
   intro_adt_params;
   iIntros (? x y);
   simpl in *;
-  prepare_initial_coq_context;
+  prepare_initial_coq_context_weak;
   iIntros "Ha";
   ex_t_destruct_hyp "Ha";
   iFrame "%∗#";
   repeat iR;
   iPureIntro;
-  intros [??];
-  simpl in *;
-  prepare_initial_coq_context;
-  simplify_eq/=;
-  repeat match goal with
-  | H : _ = _ |- _ =>
-    injection H; clear H; intros; subst
-  end;
-  apply is_xrfn_proof.
+  intros Hxr;
+  invert_is_xrfn_assumptions;
+  solve_is_xrfn.
 
 Ltac ex_plain_t_solve_ghost_drop_auto :=
   simpl; intro_adt_params;
   rewrite /TCNoResolve;
-  intros; prepare_initial_coq_context;
+  intros; prepare_initial_coq_context_weak;
   apply _.
 
 (** Instances *)
@@ -306,19 +306,19 @@ Next Obligation.
   iPoseProof (Hmono1 with "Hincl H1") as "$".
   iApply (Hmono2 with "Hincl H2").
 Qed.
-Global Program Instance sep_shareable `{!typeGS Σ} π κ κs (P1 P2 : iProp Σ) :
-  Shareable π κ κs P1 →
-  Shareable π κ κs P2 →
-  Shareable π κ κs (P1 ∗ P2)%I := λ Shr1 Shr2, {|
+Global Program Instance sep_shareable `{!typeGS Σ} {rt : RT} π κ κs (outer : rt) (P1 P2 : iProp Σ) :
+  Shareable π κ κs outer P1 →
+  Shareable π κ κs outer P2 →
+  Shareable π κ κs outer (P1 ∗ P2)%I := λ Shr1 Shr2, {|
     shareable_prop := (Shr1.(shareable_prop) ∗ Shr2.(shareable_prop))%I
   |}.
 Next Obligation.
-  iIntros (??????? [? Hshr1] [? Hshr2]).
+  iIntros (????????? [? Hshr1] [? Hshr2] Houter).
   iIntros (?? q ?) "[#LFT #LLCTX] #Hna [Htok11 Htok12] [Htok1 Htok2] Hb HT".
   iApply fupd_logical_step.
   iMod (bor_sep with "LFT Hb") as "(Hb1 & Hb2)"; first done.
-  iApply (Hshr1 with "[$LFT $LLCTX] Hna Htok11 Htok1 Hb1"); first done.
-  iApply (Hshr2 with "[$LFT $LLCTX] Hna Htok12 Htok2 Hb2"); first done.
+  iApply (Hshr1 Houter with "[$LFT $LLCTX] Hna Htok11 Htok1 Hb1"); first done.
+  iApply (Hshr2 Houter with "[$LFT $LLCTX] Hna Htok12 Htok2 Hb2"); first done.
   iApply (logical_step_wand with "HT").
   iModIntro.
   iIntros "HT (? & ? & ?) (?& ? & ?)".
@@ -357,16 +357,16 @@ Next Obligation.
   destruct (Hshr x) as [Hshr'].
   iApply (Hshr' with "Hincl Ha").
 Qed.
-Global Program Instance exist_shareable `{!typeGS Σ} π κ κs {A} (Φ : A → iProp Σ) :
-  (∀ x, Shareable π κ κs (Φ x)) →
-  Shareable π κ κs (∃ x : A, Φ x) := λ Shr, {|
+Global Program Instance exist_shareable `{!typeGS Σ} {rt : RT} π κ κs (outer : rt) {A} (Φ : A → iProp Σ) :
+  (∀ x, Shareable π κ κs outer (Φ x)) →
+  Shareable π κ κs outer (∃ x : A, Φ x) := λ Shr, {|
     shareable_prop := (∃ x : A, (Shr x).(shareable_prop))%I
   |}.
 Next Obligation.
-  iIntros (??????? Shr ????) "[#LFT #LCTX] #Hna Htok Htok1 Hb HT".
+  iIntros (????????? Shr Houter ????) "[#LFT #LCTX] #Hna Htok Htok1 Hb HT".
   iApply fupd_logical_step.
   iMod (bor_exists_tok with "LFT Hb Htok") as "(%x & Hb & Htok)"; first done.
-  iApply ((Shr x).(shareable_proof) with "[$LFT $LCTX] Hna Htok Htok1 Hb"); first done.
+  iApply ((Shr x).(shareable_proof) Houter with "[$LFT $LCTX] Hna Htok Htok1 Hb"); first done.
   iApply (logical_step_wand with "HT").
   iModIntro. iIntros "HT (? & ? & ?)".
   iApply "HT". iFrame.
@@ -394,10 +394,10 @@ Global Program Instance share_mono_trivial `{!typeGS Σ} (P : iProp Σ) :
 Next Obligation.
   intros. eauto.
 Qed.
-Global Program Instance persistent_shareable `{!typeGS Σ} π κ κs (P : iProp Σ) `{!Persistent P} :
-  Shareable π κ κs P | 100 := {| shareable_prop := P |}.
+Global Program Instance persistent_shareable `{!typeGS Σ} {rt : RT} π κ κs (outer : rt) (P : iProp Σ) `{!Persistent P} :
+  Shareable π κ κs outer P | 100 := {| shareable_prop := P |}.
 Next Obligation.
-  iIntros (???????????) "[#LFT #LCTX] #Hna Htok Htok1 Hb HT".
+  iIntros (????????? Houter F G q Hsub) "[#LFT #LCTX] #Hna Htok Htok1 Hb HT".
   iApply fupd_logical_step.
   iMod (bor_persistent with "LFT Hb Htok") as "(HP & Htok)"; first done.
   iApply (logical_step_compose with "HT").
@@ -412,18 +412,18 @@ Next Obligation.
 Qed.
 
 (** Can be declared as instances to discard unshareable props *)
-Program Definition shareable_discard `{!typeGS Σ} (P : iProp Σ) π κ κs :
-  Shareable π κ κs P := {| shareable_prop := True |}.
+Program Definition shareable_discard `{!typeGS Σ} {rt : RT} (outer : rt) (P : iProp Σ) π κ κs :
+  Shareable π κ κs outer P := {| shareable_prop := True |}.
 Next Obligation.
-  iIntros (??????????) "#CTX #Hna Htok Htok1 Hb HT".
+  iIntros (???????? Houter F G q ?) "#CTX #Hna Htok Htok1 Hb HT".
   iApply (logical_step_wand with "HT").
   iIntros "HT". iApply "HT".
   iFrame.
 Qed.
-Global Instance shareable_discard_freeable `{!typeGS Σ} π κ κs l n q al :
-  Shareable π κ κs (freeable l n q al) := shareable_discard _ _ _ _.
-Global Instance shareable_discard_freeable_nz `{!typeGS Σ} π κ κs l n q al :
-  Shareable π κ κs (freeable_nz l n q al) := shareable_discard _ _ _ _.
+Global Instance shareable_discard_freeable `{!typeGS Σ} {rt : RT} π κ κs (outer : rt) l n q al :
+  Shareable π κ κs outer (freeable l n q al) := shareable_discard outer _ _ _ _.
+Global Instance shareable_discard_freeable_nz `{!typeGS Σ} {rt : RT} π κ κs (outer : rt) l n q al :
+  Shareable π κ κs outer (freeable_nz l n q al) := shareable_discard outer _ _ _ _.
 
 (** Can be declared as instances to discard props which won't survive drop *)
 Program Definition ghost_droppable_discard `{!typeGS Σ} (P : iProp Σ) :
@@ -486,13 +486,13 @@ Next Obligation.
   iModIntro. iIntros (i x Hlook).
   iApply ((Hshr i x).(share_mono) with "Hincl").
 Qed.
-Global Program Instance big_sepL_shareable `{!typeGS Σ} π κ κs {A} (xs : list A) (Φ : nat → A → iProp Σ) :
-  (∀ i x, Shareable π κ κs (Φ i x)) →
-  Shareable π κ κs ([∗ list] i ↦ x ∈ xs, Φ i x) := λ Shr, {|
+Global Program Instance big_sepL_shareable `{!typeGS Σ} {rt : RT} π κ κs (outer : rt) {A} (xs : list A) (Φ : nat → A → iProp Σ) :
+  (∀ i x, Shareable π κ κs outer (Φ i x)) →
+  Shareable π κ κs outer ([∗ list] i ↦ x ∈ xs, Φ i x) := λ Shr, {|
     shareable_prop := ([∗ list] i ↦ x ∈ xs, (Shr i x).(shareable_prop))%I;
   |}.
 Next Obligation.
-  iIntros (?????? xs Φ Shr F G q ?) "#[LFT LLCTX] #Hna Htok Htok1 Hb HT".
+  iIntros (??????????? Houter F G q ?) "#[LFT LLCTX] #Hna Htok Htok1 Hb HT".
   (* fracture the tokens *)
   set (len := length xs).
   iCombine ("Htok Htok1") as "Htok".
@@ -510,7 +510,7 @@ Next Obligation.
     iModIntro. iIntros (k x q0 Hlook1 Hlook2) "(Hb & Htok)".
     subst κ'.
     rewrite -{1}lft_tok_sep. iDestruct "Htok" as "(Htok1 & Htok2)".
-    iApply (shareable_proof with "[$LFT $LLCTX] Hna Htok1 Htok2 Hb"); first done.
+    iApply (shareable_proof Houter with "[$LFT $LLCTX] Hna Htok1 Htok2 Hb"); first done.
     iApply logical_step_intro.
     rewrite lft_tok_sep. eauto. }
   iPoseProof (logical_step_big_sepL2 with "Hb") as "Hb".
@@ -663,17 +663,17 @@ Hint Extern 1 (SolveTyLftIncl ?ty ?κs) =>
 .
 Global Hint Mode SolveTyLftIncl + + + + + : typeclass_instances.
 
-Global Program Instance shareable_ltype_own `{!typeGS Σ} π κ κs l {rt} (ty : type rt) r
-    `{!SolveTyLftIncl ty κs} `{!IsXrfn r} :
-  Shareable π κ κs (guarded true (l ◁ₗ[π, Owned] r @ (◁ ty)))%I := {|
+Global Program Instance shareable_ltype_own `{!typeGS Σ} {outer_rt : RT} π κ κs (outer : outer_rt) l
+    {rt} (ty : type rt) r `{!SolveTyLftIncl ty κs} `{!IsXrfnImplies outer r} :
+  Shareable π κ κs outer (guarded true (l ◁ₗ[π, Owned] r @ (◁ ty)))%I := {|
     shareable_prop := guarded false (l ◁ₗ[π, Shared κ] r @ (◁ ty))%I
   |}.
 Next Obligation.
-  iIntros (?? π κ κs l ? ty r Hincl Hxr F G q ?) "#CTX Hna Htok1 Htok2 Hl HT".
+  iIntros (??????????? Hincl Hxr Houter F G q ?) "#CTX Hna Htok1 Htok2 Hl HT".
   unfold SolveTyLftIncl in Hincl.
   iPoseProof (ltype_own_ofty_share' with "CTX Hna Htok1 Htok2 Hl") as "Hstep'".
   { done. }
-  { exact (is_xrfn_proof (r := r)). }
+  { exact (is_xrfn_implies Houter). }
   { done. }
   iApply (logical_step_compose with "HT").
   iApply (logical_step_wand with "Hstep'").

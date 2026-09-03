@@ -414,8 +414,8 @@ Section test.
   Next Obligation. ex_plain_t_solve_is_xrfn. Qed.
   Next Obligation. ex_plain_t_solve_shr_auto. Defined.
   Next Obligation. ex_plain_t_solve_ghost_drop_auto. Defined.
-  Next Obligation. ex_t_solve_auto_shr_persistent. Qed.
-  Next Obligation. ex_plain_t_solve_auto_shr_mono. Qed.
+  Next Obligation. ex_t_solve_persistent. Qed.
+  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
 End test.
 
 

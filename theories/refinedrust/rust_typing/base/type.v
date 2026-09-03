@@ -209,6 +209,11 @@ Class IsXrfn {rt : RT} (r : rt) : Prop := {
 }.
 Global Hint Mode IsXrfn + + : typeclass_instances.
 
+Class IsXrfnImplies {rt1 rt2 : RT} (outer : rt1) (inner : rt2) : Prop := {
+  is_xrfn_implies : is_xrfn outer → is_xrfn inner;
+}.
+Global Hint Mode IsXrfnImplies + + + + : typeclass_instances.
+
 (** metadata for unsized types *)
 Inductive metadata_kind : Set :=
 (* No metadata, i.e. [()] *)
@@ -2982,9 +2987,11 @@ Qed.
 Global Arguments mk_pers_ex_inv_def : simpl never.
 
 (** Typeclass to customize how a prop is shared *)
-Class Shareable `{!typeGS Σ} (π : thread_id) (κ : lft) (κs : list lft) (P : iProp Σ) := {
+Class Shareable `{!typeGS Σ} {rt : RT} (π : thread_id) (κ : lft) (κs : list lft)
+    (outer : rt) (P : iProp Σ) := {
   shareable_prop : iProp Σ;
   shareable_proof :
+    is_xrfn outer →
     ∀ F G q,
     lftE ⊆ F →
     rrust_ctx -∗
@@ -2997,7 +3004,7 @@ Class Shareable `{!typeGS Σ} (π : thread_id) (κ : lft) (κs : list lft) (P : 
        G)) -∗
    logical_step F G;
 }.
-Global Hint Mode Shareable + + + + + + : typeclass_instances.
+Global Hint Mode Shareable + + + + + + + + : typeclass_instances.
 
 (** Typeclass to customize how a prop is ghost-dropped *)
 Class GhostDroppable `{!typeGS Σ} (P : iProp Σ) := {
@@ -3036,24 +3043,21 @@ Program Definition mk_auto_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabit
   inv_P_xrfn
   (inv_P_lfts : list lft)
   (inv_P_wf_E : elctx)
-  (Hshr : ∀ π κ x y, IsXrfn y → TCNoResolve (Shareable π κ inv_P_lfts (P π x y)))
+  (Hshr : ∀ π κ x y, TCNoResolve (Shareable π κ inv_P_lfts y (P π x y)))
   (Hdrop : ∀ π x y, TCNoResolve (GhostDroppable (P π x y)))
   inv_P_shr_pers
   inv_P_shr_mono
   : ex_inv_def X Y :=
-  mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop false P (λ π κ x y, (∃ Hyr : IsXrfn y, (Hshr π κ x y Hyr).(shareable_prop))%I) (λ π x y, (Hdrop π x y).(ghost_droppable_prop)) inv_P_xrfn inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _ _.
+  mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop false P (λ π κ x y, (Hshr π κ x y).(shareable_prop)) (λ π x y, (Hdrop π x y).(ghost_droppable_prop)) inv_P_xrfn inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _ _.
 Next Obligation.
   simpl.
   intros ???????? Hshr ? ? ? ? π κ x y q y'.
   iIntros (q0 ? Hyr) "CTX Hna Htok Hb".
-  assert (Hshare : IsXrfn y') by (constructor; exact Hyr).
   rewrite -lft_tok_sep.
   iDestruct "Htok" as "(Htok & Htok1)".
-  iApply ((Hshr0 x y q y' Hshare).(shareable_proof) with "CTX Hna Htok Htok1 Hb"); first done.
+  iApply ((Hshr0 x y q y').(shareable_proof) Hyr with "CTX Hna Htok Htok1 Hb"); first done.
   iApply logical_step_intro.
-  iIntros "(Hshr' & Htok & Htok1)". iSplitL "Hshr'".
-  { iExists Hshare. done. }
-  iFrame.
+  iIntros "(Hshr' & Htok & Htok1)". iFrame.
 Qed.
 Next Obligation.
   simpl.
@@ -3070,24 +3074,21 @@ Program Definition mk_ex_inv_def_auto_shr `{!typeGS Σ} {X : RT} {Y : RT} `{!Inh
   inv_P_xrfn
   (inv_P_lfts : list lft)
   (inv_P_wf_E : elctx)
-  (Hshr : ∀ π κ x y, IsXrfn y → TCNoResolve (Shareable π κ inv_P_lfts (P π x y)))
+  (Hshr : ∀ π κ x y, TCNoResolve (Shareable π κ inv_P_lfts y (P π x y)))
   inv_P_shr_pers
   inv_P_shr_mono
   inv_P_ghost_droppable
   : ex_inv_def X Y :=
-  mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop true P (λ π κ x y, (∃ Hyr : IsXrfn y, (Hshr π κ x y Hyr).(shareable_prop))%I) Hdrop inv_P_xrfn inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _ inv_P_ghost_droppable.
+  mk_ex_inv_def' _ _ _ _ _ inv_trivial_drop true P (λ π κ x y, (Hshr π κ x y).(shareable_prop)) Hdrop inv_P_xrfn inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _ inv_P_ghost_droppable.
 Next Obligation.
   simpl.
   intros ????????? Hshr ? ? ? ? π κ x y q y'.
   iIntros (q0 ? Hyr) "CTX Hna Htok Hb".
-  assert (Hshare : IsXrfn y') by (constructor; exact Hyr).
   rewrite -lft_tok_sep.
   iDestruct "Htok" as "(Htok & Htok1)".
-  iApply ((Hshr0 x y q y' Hshare).(shareable_proof) with "CTX Hna Htok Htok1 Hb"); first done.
+  iApply ((Hshr0 x y q y').(shareable_proof) Hyr with "CTX Hna Htok Htok1 Hb"); first done.
   iApply logical_step_intro.
-  iIntros "(Hshr' & Htok & Htok1)". iSplitL "Hshr'".
-  { iExists Hshare. done. }
-  iFrame.
+  iIntros "(Hshr' & Htok & Htok1)". iFrame.
 Qed.
 
 Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y : RT} (F : type rt → ex_inv_def X Y) : Type := {
@@ -3298,6 +3299,12 @@ Proof.
   econstructor. exists None. done.
 Qed.
 
+Global Instance is_xrfn_option_fmap_xt {rt : RT} (rs : option (RT_xt rt)) :
+  IsXrfn (fmap (M:=option) (PlaceIn ∘ RT_xrt rt) rs).
+Proof.
+  econstructor.
+  destruct rs; apply is_xrfn_proof.
+Qed.
 
 Definition plistRT (l : list RT) : RT :=
   mk_RT (plist (RT_rt ∘ place_rfnRT) l) (plist (RT_xt ∘ place_rfnRT) l)
