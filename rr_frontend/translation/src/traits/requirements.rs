@@ -16,13 +16,23 @@ use crate::base::TranslationError;
 use crate::error::Message;
 use crate::{environment, rustcmp, search, traits};
 
-type TraitRequirement<'tcx> =
-    (ty::TraitRef<'tcx>, Vec<ty::BoundRegionKind<'tcx>>, ty::Binder<'tcx, ()>, specs::TyParamOrigin, bool);
+#[derive(Clone, Debug)]
+struct TraitRequirement<'tcx> {
+    trait_ref: ty::TraitRef<'tcx>,
+    bound_regions: Vec<ty::BoundRegionKind<'tcx>>,
+    binders: ty::Binder<'tcx, ()>,
+    origin: specs::TyParamOrigin,
+    /// Whether this requirement was reached through an associated-type bound.
+    /// This remains true for requirements reached transitively from such a bound.
+    is_assoc_bound: bool,
+}
 
 pub(crate) type ProjectionEquality<'tcx> = (DefId, ty::GenericArgsRef<'tcx>, ty::Ty<'tcx>);
 
 struct CollectedRequirements<'tcx> {
+    /// Requirements in deterministic, dependency-first DFS postorder.
     requirements: Vec<TraitRequirement<'tcx>>,
+    /// Caller clauses plus clauses discovered while expanding associated-type bounds.
     clauses: Vec<ty::Clause<'tcx>>,
 }
 
@@ -36,7 +46,7 @@ pub(crate) struct TraitReqMeta<'tcx> {
     pub is_used_in_self_trait: bool,
     pub is_self_in_trait_decl: bool,
     pub is_assoc_bound: bool,
-    // for the ordered associated types, an optional constraint
+    /// One entry per associated type in `environment::get_trait_assoc_types` order.
     pub assoc_constraints: Vec<Option<ty::Ty<'tcx>>>,
 }
 
@@ -62,7 +72,14 @@ pub(crate) fn get_trait_requirements_with_origin<'tcx>(
     let collected = get_nontrivial(tcx, did, typing_env.param_env, in_trait_decl)?;
     let mut annotated_requirements = Vec::new();
 
-    for (trait_ref, bound_regions, binders, origin, is_assoc_bound) in collected.requirements {
+    for requirement in collected.requirements {
+        let TraitRequirement {
+            trait_ref,
+            bound_regions,
+            binders,
+            origin,
+            is_assoc_bound,
+        } = requirement;
         // check if we are in the process of translating a trait decl
         let is_self = trait_ref.args[0].as_type().unwrap().is_param(0);
         let mut is_used_in_self_trait = false;
@@ -160,8 +177,10 @@ pub(crate) fn get_clauses_with_origin<'tcx>(
     clauses_with_origin
 }
 
-/// Get non-trivial trait requirements of a `ParamEnv`,
-/// ordered deterministically.
+/// Collect non-trivial requirements and requirements implied by associated-type bounds.
+///
+/// Collection uses a forward-growing work list. Dependency ordering is a separate final step;
+/// indices used while collecting do not survive into the returned vector.
 fn get_nontrivial<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     for_did: DefId,
@@ -170,9 +189,11 @@ fn get_nontrivial<'tcx>(
 ) -> Result<CollectedRequirements<'tcx>, TranslationError> {
     let clauses_with_origin = get_clauses_with_origin(tcx, for_did, param_env);
     let mut clauses: Vec<_> = clauses_with_origin.iter().map(|(clause, _)| *clause).collect();
-    let mut trait_refs = Vec::new();
-    let mut canonical_trait_refs = Vec::new();
-    let mut parents = Vec::new();
+    // These vectors are positionally aligned. `discovery_parents[i]` identifies the requirement
+    // that first discovered `collected_requirements[i]`; it is not a complete dependency graph.
+    let mut collected_requirements = Vec::new();
+    let mut canonical_requirements = Vec::new();
+    let mut discovery_parents = Vec::new();
     trace!(
         "Enter get_nontrivial_trait_requirements with for_did={for_did:?}, param_env = {param_env:?}, in_trait_decl = {in_trait_decl:?}"
     );
@@ -180,11 +201,11 @@ fn get_nontrivial<'tcx>(
     for (cl, origin) in clauses_with_origin {
         if let Some(requirement) = trait_requirement_from_clause(tcx, cl, origin, false) {
             let canonical_trait_ref =
-                normalize_trait_ref_with_projection_equalities(tcx, requirement.0, &clauses);
+                normalize_trait_ref_with_projection_equalities(tcx, requirement.trait_ref, &clauses);
             push_requirement_if_new(
-                &mut trait_refs,
-                &mut canonical_trait_refs,
-                &mut parents,
+                &mut collected_requirements,
+                &mut canonical_requirements,
+                &mut discovery_parents,
                 requirement,
                 canonical_trait_ref,
                 None,
@@ -192,13 +213,21 @@ fn get_nontrivial<'tcx>(
         }
     }
 
-    let mut current = 0;
-    while current < trait_refs.len() {
-        let (trait_ref, _, binders, origin, is_assoc_bound) = trait_refs[current].clone();
-        let trait_clauses = instantiated_trait_clauses(tcx, trait_ref, binders, is_assoc_bound);
+    let mut collection_idx = 0;
+    while collection_idx < collected_requirements.len() {
+        let requirement = &collected_requirements[collection_idx];
+        let trait_clauses = instantiated_trait_clauses(
+            tcx,
+            requirement.trait_ref,
+            requirement.binders,
+            requirement.is_assoc_bound,
+        );
+        let origin = requirement.origin;
+        let is_assoc_bound = requirement.is_assoc_bound;
         clauses.extend(trait_clauses.iter().map(|(clause, _)| *clause));
-        for requirement in &mut canonical_trait_refs {
-            requirement.0 = normalize_trait_ref_with_projection_equalities(tcx, requirement.0, &clauses);
+        for requirement in &mut canonical_requirements {
+            requirement.trait_ref =
+                normalize_trait_ref_with_projection_equalities(tcx, requirement.trait_ref, &clauses);
         }
 
         for (clause, clause_is_assoc_bound) in trait_clauses {
@@ -208,21 +237,21 @@ fn get_nontrivial<'tcx>(
                 continue;
             };
             let canonical_trait_ref =
-                normalize_trait_ref_with_projection_equalities(tcx, requirement.0, &clauses);
-            if contains_requirement(&canonical_trait_refs, canonical_trait_ref, requirement.2) {
+                normalize_trait_ref_with_projection_equalities(tcx, requirement.trait_ref, &clauses);
+            if contains_requirement(&canonical_requirements, canonical_trait_ref, requirement.binders) {
                 continue;
             }
-            let mut ancestor = Some(current);
+            let mut ancestor = Some(collection_idx);
             let mut matching_ancestors = 0;
-            while let Some(idx) = ancestor {
-                if canonical_trait_refs[idx].0.def_id == canonical_trait_ref.def_id {
+            while let Some(ancestor_idx) = ancestor {
+                if canonical_requirements[ancestor_idx].trait_ref.def_id == canonical_trait_ref.def_id {
                     matching_ancestors += 1;
                 }
-                ancestor = parents[idx];
+                ancestor = discovery_parents[ancestor_idx];
             }
-            // Permit one repeated trait constructor so projection equalities can close finite
-            // fixed points such as `Try`/`Residual`. A third occurrence on the active path means
-            // unfolding is still growing and cannot produce a finite encoding.
+            // This is a bounded-unfolding guard, not a proof that no finite fixed point exists.
+            // Permit one repeated trait constructor so projection equalities can close examples
+            // such as `Try`/`Residual`; reject another expansion on the same discovery path.
             if matching_ancestors >= 2 {
                 return Err(TranslationError::ErrorReported(tcx.dcx().span_err(
                     tcx.def_span(for_did),
@@ -232,23 +261,25 @@ fn get_nontrivial<'tcx>(
                 )));
             }
             push_requirement_if_new(
-                &mut trait_refs,
-                &mut canonical_trait_refs,
-                &mut parents,
+                &mut collected_requirements,
+                &mut canonical_requirements,
+                &mut discovery_parents,
                 requirement,
                 canonical_trait_ref,
-                Some(current),
+                Some(collection_idx),
             );
         }
-        current += 1;
+        collection_idx += 1;
     }
 
-    let defn_order = order_requirements(tcx, in_trait_decl, &trait_refs);
+    let dependency_order = order_requirements(tcx, in_trait_decl, &collected_requirements);
 
-    trace!("Leave get_nontrivial_trait_requirements with for_did={for_did:?}, trait_refs = {defn_order:?}");
+    trace!(
+        "Leave get_nontrivial_trait_requirements with for_did={for_did:?}, trait_refs = {dependency_order:?}"
+    );
 
     Ok(CollectedRequirements {
-        requirements: defn_order,
+        requirements: dependency_order,
         clauses,
     })
 }
@@ -270,8 +301,8 @@ fn instantiated_trait_clauses<'tcx>(
 
     for assoc_did in environment::get_trait_assoc_types(tcx, trait_ref.def_id) {
         for &(bound, _) in tcx.explicit_item_bounds(assoc_did).skip_binder() {
-            // `instantiate_supertrait` composes the outer requirement binder with binders
-            // introduced by the associated bound and shifts their indices accordingly.
+            // `instantiate_supertrait` composes the requirement's binder with binders introduced
+            // by the associated bound and shifts bound-variable indices accordingly.
             let bound = bound.instantiate_supertrait(tcx, binders.rebind(trait_ref));
             clauses.push((bound, true));
         }
@@ -373,10 +404,10 @@ fn trait_requirement_from_clause<'tcx>(
         }
     }
 
-    // keep the binders around
+    // Keep the binder alongside the skipped trait reference: any `ReBound` regions in the trait
+    // reference are interpreted under this binder by later consumers.
     let binders = cl_kind.rebind(());
 
-    // TODO: maybe problematic
     let cl_kind = cl_kind.skip_binder();
 
     // only look for trait predicates for now
@@ -390,7 +421,13 @@ fn trait_requirement_from_clause<'tcx>(
                 return None;
             }
 
-            return Some((trait_ref, bound_regions, binders, origin, is_assoc_bound));
+            return Some(TraitRequirement {
+                trait_ref,
+                bound_regions,
+                binders,
+                origin,
+                is_assoc_bound,
+            });
         }
     }
     None
@@ -401,28 +438,40 @@ fn contains_requirement<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
     binders: ty::Binder<'tcx, ()>,
 ) -> bool {
-    requirements.iter().any(|(existing_trait_ref, _, existing_binders, _, _)| {
-        existing_trait_ref == &trait_ref && *existing_binders == binders
-    })
+    requirements
+        .iter()
+        .any(|requirement| requirement.trait_ref == trait_ref && requirement.binders == binders)
 }
 
+/// Append one position to all three collection vectors.
+///
+/// `requirements[i]`, `canonical_requirements[i]`, and `discovery_parents[i]` always describe the
+/// same collected occurrence. The parent is used only for the bounded-unfolding guard above.
 fn push_requirement_if_new<'tcx>(
     requirements: &mut Vec<TraitRequirement<'tcx>>,
     canonical_requirements: &mut Vec<TraitRequirement<'tcx>>,
-    parents: &mut Vec<Option<usize>>,
+    discovery_parents: &mut Vec<Option<usize>>,
     requirement: TraitRequirement<'tcx>,
     canonical_trait_ref: ty::TraitRef<'tcx>,
     parent: Option<usize>,
 ) {
-    if !contains_requirement(canonical_requirements, canonical_trait_ref, requirement.2) {
+    if !contains_requirement(canonical_requirements, canonical_trait_ref, requirement.binders) {
         let mut canonical_requirement = requirement.clone();
-        canonical_requirement.0 = canonical_trait_ref;
+        canonical_requirement.trait_ref = canonical_trait_ref;
         requirements.push(requirement);
         canonical_requirements.push(canonical_requirement);
-        parents.push(parent);
+        discovery_parents.push(parent);
+        debug_assert_eq!(requirements.len(), canonical_requirements.len());
+        debug_assert_eq!(requirements.len(), discovery_parents.len());
     }
 }
 
+/// Return deterministic dependency-first DFS postorder.
+///
+/// Dependencies are approximated by trait constructor (`DefId`), rather than by a particular
+/// instantiation. Encountering a cycle breaks that DFS edge; all requirements are pre-registered
+/// before translation, so the result need not be a topological order. The current trait's `Self`
+/// requirement is visited last because it is represented specially by its declaration.
 fn order_requirements<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     in_trait_decl: Option<DefId>,
@@ -433,7 +482,7 @@ fn order_requirements<'tcx>(
         requirement: &TraitRequirement<'_>,
     ) -> bool {
         in_trait_decl.is_some_and(|trait_did| {
-            requirement.0.def_id == trait_did && requirement.0.args[0].expect_ty().is_param(0)
+            requirement.trait_ref.def_id == trait_did && requirement.trait_ref.args[0].expect_ty().is_param(0)
         })
     }
 
@@ -449,25 +498,30 @@ fn order_requirements<'tcx>(
         if visited[idx] {
             return;
         }
-        // Canonically finite requirement cycles are supported by pre-registering all trait-use
-        // cells before they are filled. Growing cycles are rejected during collection above.
+        // Break cycles deterministically. The collector's bounded-unfolding guard rejects the
+        // repeatedly growing cases that it recognizes.
         if visiting[idx] {
             return;
         }
         visiting[idx] = true;
 
-        let deps = trait_get_deps(tcx, requirements[idx].0.def_id);
+        let deps = trait_get_deps(tcx, requirements[idx].trait_ref.def_id);
         let mut dep_indices: Vec<_> = requirements
             .iter()
             .enumerate()
             .filter_map(|(dep_idx, requirement)| {
-                (deps.contains(&requirement.0.def_id)
+                (deps.contains(&requirement.trait_ref.def_id)
                     && !is_current_trait_self_requirement(in_trait_decl, requirement))
                 .then_some(dep_idx)
             })
             .collect();
         dep_indices.sort_by(|a, b| {
-            rustcmp::cmp_trait_ref(tcx, in_trait_decl, &requirements[*a].0, &requirements[*b].0)
+            rustcmp::cmp_trait_ref(
+                tcx,
+                in_trait_decl,
+                &requirements[*a].trait_ref,
+                &requirements[*b].trait_ref,
+            )
         });
         for dep_idx in dep_indices {
             visit(tcx, in_trait_decl, requirements, dep_idx, visiting, visited, ordered);
@@ -479,8 +533,9 @@ fn order_requirements<'tcx>(
     }
 
     let mut indices: Vec<_> = (0..requirements.len()).collect();
-    indices
-        .sort_by(|a, b| rustcmp::cmp_trait_ref(tcx, in_trait_decl, &requirements[*a].0, &requirements[*b].0));
+    indices.sort_by(|a, b| {
+        rustcmp::cmp_trait_ref(tcx, in_trait_decl, &requirements[*a].trait_ref, &requirements[*b].trait_ref)
+    });
     let (indices, self_indices): (Vec<_>, Vec<_>) = indices
         .into_iter()
         .partition(|idx| !is_current_trait_self_requirement(in_trait_decl, &requirements[*idx]));

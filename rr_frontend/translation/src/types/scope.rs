@@ -7,6 +7,7 @@
 //! Defines scopes for maintaining generics and trait requirements.
 
 use std::collections::{HashMap, hash_map};
+use std::hash::Hash;
 
 use derive_more::{Constructor, Debug};
 use log::{info, trace, warn};
@@ -25,14 +26,141 @@ use crate::types::translator::TX;
 use crate::types::tyvars::TyRegionEraseFolder;
 use crate::{environment, regions};
 
-/// Key used for resolving early-bound parameters for function calls.
-/// Invariant: All regions contained in these types should be erased, as type parameter instantiation is
-/// independent of lifetimes.
+/// Coarse key used to find trait-use and generic-argument candidates.
+///
+/// All lifetime arguments and regions nested in types are erased. Consequently, this key is not a
+/// unique trait-use identity: distinct HRTBs can intentionally have the same key.
 /// TODO: handle early-bound lifetimes?
 pub(crate) type GenericsKey<'tcx> = Vec<ty::Ty<'tcx>>;
 
 struct GenericKeyFolder<'tcx> {
     tcx: ty::TyCtxt<'tcx>,
+}
+
+struct RegionOccurrenceCollector<'tcx> {
+    tcx: ty::TyCtxt<'tcx>,
+    regions: Vec<ty::Region<'tcx>>,
+}
+
+fn region_instantiation_is_consistent<K, V>(occurrences: impl IntoIterator<Item = (Option<K>, V)>) -> bool
+where
+    K: Copy + Eq + Hash,
+    V: Copy + Eq,
+{
+    let mut instantiation = HashMap::new();
+    for (variable, requested) in occurrences {
+        let Some(variable) = variable else {
+            continue;
+        };
+        match instantiation.entry(variable) {
+            hash_map::Entry::Occupied(entry) if *entry.get() != requested => return false,
+            hash_map::Entry::Occupied(_) => {},
+            hash_map::Entry::Vacant(entry) => {
+                entry.insert(requested);
+            },
+        }
+    }
+    true
+}
+
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RegionOccurrenceCollector<'tcx> {
+    fn cx(&self) -> ty::TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        self.regions.push(r);
+        ty::Region::new_from_kind(self.tcx, ty::RegionKind::ReErased)
+    }
+
+    fn fold_ty(&mut self, t: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
+        let t = t.super_fold_with(self);
+        match t.kind() {
+            ty::TyKind::Alias(_, alias) => ty::Ty::new_alias(self.tcx, ty::IsRigid::No, *alias),
+            _ => t,
+        }
+    }
+}
+
+/// Check whether the regions in `candidate_args` can be instantiated to those in `args`.
+///
+/// The erased type shapes must agree. For regions that `LateBoundUnifier` treats as variables, all
+/// occurrences of the same variable must map to the same requested region. Different variables may
+/// map to the same region.
+fn trait_args_match_region_pattern<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    candidate_args: &[ty::GenericArg<'tcx>],
+    args: &[ty::GenericArg<'tcx>],
+    bound_region_count: usize,
+) -> bool {
+    if candidate_args.len() != args.len() {
+        return false;
+    }
+
+    // The boolean distinguishes late-bound variables from early parameter indices.
+    let mut region_occurrences = Vec::new();
+    let mut record_region = |candidate: ty::Region<'tcx>, requested: ty::Region<'tcx>| {
+        let variable = match candidate.kind() {
+            ty::RegionKind::ReBound(_, bound) if bound.var.index() < bound_region_count => {
+                Some((true, bound.var.index()))
+            },
+            ty::RegionKind::ReEarlyParam(early) => Some((false, early.index as usize)),
+            _ => None,
+        };
+        region_occurrences.push((variable, requested));
+    };
+
+    for (candidate, requested) in candidate_args.iter().zip(args) {
+        match (candidate.kind(), requested.kind()) {
+            (ty::GenericArgKind::Lifetime(candidate), ty::GenericArgKind::Lifetime(requested)) => {
+                record_region(candidate, requested);
+            },
+            (ty::GenericArgKind::Type(candidate), ty::GenericArgKind::Type(requested)) => {
+                let mut candidate_collector = RegionOccurrenceCollector {
+                    tcx,
+                    regions: Vec::new(),
+                };
+                let mut requested_collector = RegionOccurrenceCollector {
+                    tcx,
+                    regions: Vec::new(),
+                };
+                let candidate_shape = candidate.fold_with(&mut candidate_collector);
+                let requested_shape = requested.fold_with(&mut requested_collector);
+                if candidate_shape != requested_shape
+                    || candidate_collector.regions.len() != requested_collector.regions.len()
+                {
+                    return false;
+                }
+                for (candidate, requested) in
+                    candidate_collector.regions.into_iter().zip(requested_collector.regions)
+                {
+                    record_region(candidate, requested);
+                }
+            },
+            (ty::GenericArgKind::Const(candidate), ty::GenericArgKind::Const(requested)) => {
+                if candidate != requested {
+                    return false;
+                }
+            },
+            _ => return false,
+        }
+    }
+    region_instantiation_is_consistent(region_occurrences)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::region_instantiation_is_consistent;
+
+    #[test]
+    fn repeated_region_variable_rejects_distinct_regions() {
+        assert!(!region_instantiation_is_consistent([(Some(0), 10), (Some(0), 11),]));
+    }
+
+    #[test]
+    fn independent_region_variables_accept_distinct_regions() {
+        assert!(region_instantiation_is_consistent([(Some(0), 10), (Some(1), 11),]));
+    }
 }
 
 impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for GenericKeyFolder<'tcx> {
@@ -178,7 +306,7 @@ impl<'tcx, 'def> From<Params<'tcx, 'def>>
         for lft in x.external_scope {
             scope.add_lft_param(lft);
         }
-        for trait_use in x.trait_scope.used_traits {
+        for trait_use in x.trait_scope.trait_use_entries {
             if !trait_use.is_self_use {
                 scope.add_trait_requirement(trait_use.trait_use);
             }
@@ -505,9 +633,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         let typing_env = ty::TypingEnv::post_analysis(tcx, did);
         let is_trait = tcx.is_trait(did);
 
-        // Pre-register all requirements so dependencies can resolve them. Keep their stable
-        // indices because multiple HRTBs may intentionally share an erased lookup key.
-        let mut requirement_indices = Vec::with_capacity(requirements.len());
+        // Pre-register in dependency order so every dependency and cycle edge can resolve a cell.
+        // The saved values are indices into the append-only `trait_use_entries` vector, not
+        // requirement positions. They remain unambiguous when several HRTBs share an erased key.
+        let mut trait_use_entry_indices = Vec::with_capacity(requirements.len());
         for req in requirements {
             let key = (
                 TraitKey::rust(tcx, req.trait_ref.def_id),
@@ -516,24 +645,31 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             if req.is_self_in_trait_decl {
                 assert!(req.bound_regions.is_empty());
                 let dummy_trait_use = trait_registry.make_trait_self_use(req.trait_ref);
-                requirement_indices.push(self.trait_scope.insert_trait_use(key, dummy_trait_use));
+                trait_use_entry_indices.push(self.trait_scope.insert_trait_use(key, dummy_trait_use));
             } else {
+                debug_assert_eq!(
+                    req.assoc_constraints.len(),
+                    environment::get_trait_assoc_types(tcx, req.trait_ref.def_id).len()
+                );
                 let dummy_trait_use = trait_registry.make_empty_trait_use(
                     req.trait_ref,
                     req.bound_regions.as_slice(),
                     &req.assoc_constraints,
                 );
-                requirement_indices.push(self.trait_scope.insert_trait_use(key, dummy_trait_use));
+                trait_use_entry_indices.push(self.trait_scope.insert_trait_use(key, dummy_trait_use));
             }
         }
+        debug_assert_eq!(requirements.len(), trait_use_entry_indices.len());
 
-        for (req, &entry_idx) in requirements.iter().zip(&requirement_indices).rev() {
+        // The next three passes run from dependents to dependencies. All cells already exist, so
+        // references may point to entries that have not yet been finalized. This also permits the
+        // finite cycles retained by requirement collection.
+        for (req, &entry_idx) in requirements.iter().zip(&trait_use_entry_indices).rev() {
             if req.is_self_in_trait_decl {
                 continue;
             }
 
-            // TODO: do we get into trouble with recursive trait requirements somewhere?
-            // lookup the trait in the trait registry
+            // Look up the trait declaration in the registry.
             let Some(trait_spec) = trait_registry.lookup_trait(req.trait_ref.def_id) else {
                 return Err(TranslationError::ErrorReported(tcx.dcx().span_err(
                     tcx.def_span(req.trait_ref.def_id),
@@ -541,7 +677,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 )));
             };
 
-            let entry = &self.trait_scope.used_traits[entry_idx];
+            let entry = &self.trait_scope.trait_use_entries[entry_idx];
 
             registry::TR::fill_trait_use(
                 entry,
@@ -556,15 +692,13 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             );
         }
 
-        // make a second pass to specify constraints on associated types
-        // We do this in a second pass so that we can refer to the other associated types
-        for (req, &entry_idx) in requirements.iter().zip(&requirement_indices).rev() {
+        // Install associated-type constraints only after all trait-use shells are initialized, so
+        // translating a constraint can refer to another trait use.
+        for (req, &entry_idx) in requirements.iter().zip(&trait_use_entry_indices).rev() {
             if req.is_self_in_trait_decl {
                 continue;
             }
 
-            // TODO: does that always work? Or do we get potentially cyclic problems because we
-            // don't process requirements according to some dependency ordering?
             let translated_constraints: Vec<_> = req
                 .assoc_constraints
                 .iter()
@@ -573,8 +707,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 })
                 .collect::<Result<_, _>>()?;
 
-            // lookup the trait use
-            let entry = &self.trait_scope.used_traits[entry_idx];
+            let entry = &self.trait_scope.trait_use_entries[entry_idx];
 
             {
                 let mut trait_use_ref = entry.trait_use.borrow_mut();
@@ -584,26 +717,25 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             }
         }
 
-        // we make a third pass to finally resolve the scope of the trait, i.e. translate its args
-        // and trait requirements
-        for (req, &entry_idx) in requirements.iter().zip(&requirement_indices).rev() {
+        // Finally resolve each trait use's arguments and requirements.
+        for (req, &entry_idx) in requirements.iter().zip(&trait_use_entry_indices).rev() {
             if req.is_self_in_trait_decl {
                 continue;
             }
 
-            let entry = &self.trait_scope.used_traits[entry_idx];
+            let entry = &self.trait_scope.trait_use_entries[entry_idx];
 
             // finalize the entry by adding dependencies on other trait parameters
             trait_registry.finalize_trait_use(entry, &*self, typing_env, req.trait_ref)?;
         }
 
-        // make a final pass to precompute the paths to associated types and attributes
-        for (req, &entry_idx) in requirements.iter().zip(&requirement_indices) {
+        // Restore dependency order for externally visible assumptions and path-collision priority.
+        for (req, &entry_idx) in requirements.iter().zip(&trait_use_entry_indices) {
             if req.is_self_in_trait_decl {
                 continue;
             }
 
-            let entry = &self.trait_scope.used_traits[entry_idx];
+            let entry = &self.trait_scope.trait_use_entries[entry_idx];
 
             let assoc_tys = entry.get_associated_types(tcx);
 
@@ -838,13 +970,13 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             VirtualTrait::DropGlue => registry::TraitUseRef::VirtualDropGlue { self_ty },
         };
         let key = (trait_ref.trait_key(tcx), trait_ref.args_for_key(tcx)?);
-        if self.trait_scope.used_trait_indices.contains_key(&key) {
+        if self.trait_scope.entry_indices_by_erased_key.contains_key(&key) {
             return Ok(());
         }
 
         let trait_use = trait_registry.make_empty_virtual_trait_use(virtual_trait, self_ty);
         let entry_idx = self.trait_scope.insert_trait_use(key, trait_use);
-        let entry = &self.trait_scope.used_traits[entry_idx];
+        let entry = &self.trait_scope.trait_use_entries[entry_idx];
         registry::TR::fill_virtual_trait_use(entry, self_ty, spec_ref, origin);
         trait_registry.finalize_virtual_trait_use(entry, self, typing_env, self_ty)
     }
@@ -993,10 +1125,14 @@ impl From<&[ty::GenericParamDef]> for Params<'_, '_> {
 }
 
 /// A scope for translated trait requirements from `where` clauses.
+///
+/// `trait_use_entries` is the authoritative append-only sequence of requirement occurrences.
+/// `entry_indices_by_erased_key` is a secondary, non-unique index into that sequence. Its values
+/// remain valid because entries are never removed or reordered.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Traits<'tcx, 'def> {
-    used_traits: Vec<GenericTraitUse<'tcx, 'def>>,
-    used_trait_indices: HashMap<(TraitKey, GenericsKey<'tcx>), Vec<usize>>,
+    trait_use_entries: Vec<GenericTraitUse<'tcx, 'def>>,
+    entry_indices_by_erased_key: HashMap<(TraitKey, GenericsKey<'tcx>), Vec<usize>>,
 
     /// mapping of associated type paths in scope
     assoc_ty_names: HashMap<RustPath, specs::Type<'def>>,
@@ -1011,10 +1147,32 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
         key: (TraitKey, GenericsKey<'tcx>),
         trait_use: GenericTraitUse<'tcx, 'def>,
     ) -> usize {
-        let idx = self.used_traits.len();
-        self.used_traits.push(trait_use);
-        self.used_trait_indices.entry(key).or_default().push(idx);
-        idx
+        let entry_idx = self.trait_use_entries.len();
+        self.trait_use_entries.push(trait_use);
+        self.entry_indices_by_erased_key.entry(key).or_default().push(entry_idx);
+        entry_idx
+    }
+
+    /// Select among entries sharing an erased key without losing region-equality constraints.
+    fn find_matching_rust_trait_use(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+        entry_indices: &[usize],
+        args: &[ty::GenericArg<'tcx>],
+    ) -> Option<&GenericTraitUse<'tcx, 'def>> {
+        // Prefer literal equality so non-region details do not depend on the coarser matcher.
+        for &entry_idx in entry_indices {
+            let entry = self.trait_use_entries.get(entry_idx)?;
+            if entry.rust_trait_ref().is_some_and(|trait_ref| trait_ref.args.as_slice() == args) {
+                return Some(entry);
+            }
+        }
+        entry_indices.iter().find_map(|&entry_idx| {
+            let entry = self.trait_use_entries.get(entry_idx)?;
+            let trait_ref = entry.rust_trait_ref()?;
+            trait_args_match_region_pattern(tcx, trait_ref.args, args, entry.bound_regions.len())
+                .then_some(entry)
+        })
     }
 
     /// Lookup the trait use for a specific trait with given parameters.
@@ -1045,13 +1203,15 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
         }
 
         let key = (TraitKey::rust(tcx, trait_did), generate_args_inst_key(tcx, args).unwrap());
-        trace!("looking up trait use {key:?} in {:?}", self.used_traits);
-        if let Some(idx) = self.used_trait_indices.get(&key).and_then(|indices| indices.first()) {
-            return self.used_traits.get(*idx);
+        trace!("looking up trait use {key:?} in {:?}", self.trait_use_entries);
+        if let Some(indices) = self.entry_indices_by_erased_key.get(&key)
+            && let Some(trait_use) = self.find_matching_rust_trait_use(tcx, indices, args)
+        {
+            return Some(trait_use);
         }
 
         let equalities = self
-            .used_traits
+            .trait_use_entries
             .iter()
             .filter_map(|trait_use| Some((trait_use.rust_trait_ref()?, trait_use)))
             .flat_map(|(trait_ref, trait_use)| {
@@ -1067,10 +1227,12 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
         let normalized = requirements::normalize_trait_ref(tcx, trait_ref, &equalities);
         let normalized_key =
             (TraitKey::rust(tcx, trait_did), generate_args_inst_key(tcx, normalized.args).unwrap());
-        if let Some(idx) = self.used_trait_indices.get(&normalized_key).and_then(|indices| indices.first()) {
-            return self.used_traits.get(*idx);
+        if let Some(indices) = self.entry_indices_by_erased_key.get(&normalized_key)
+            && let Some(trait_use) = self.find_matching_rust_trait_use(tcx, indices, normalized.args)
+        {
+            return Some(trait_use);
         }
-        if let Some(trait_use) = self.used_traits.iter().find(|trait_use| {
+        if let Some(trait_use) = self.trait_use_entries.iter().find(|trait_use| {
             if trait_use.key != TraitKey::rust(tcx, trait_did) {
                 return false;
             }
@@ -1079,6 +1241,12 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
             };
             let normalized_candidate = requirements::normalize_trait_ref(tcx, candidate_ref, &equalities);
             generate_args_inst_key(tcx, normalized_candidate.args).unwrap() == normalized_key.1
+                && trait_args_match_region_pattern(
+                    tcx,
+                    normalized_candidate.args,
+                    normalized.args,
+                    trait_use.bound_regions.len(),
+                )
         }) {
             return Some(trait_use);
         }
@@ -1092,11 +1260,11 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
         args: &[ty::GenericArg<'tcx>],
     ) -> &GenericTraitUse<'tcx, 'def> {
         let key = (TraitKey::Virtual(trait_key), generate_args_inst_key(tcx, args).unwrap());
-        trace!("looking up virtual trait use {key:?} in {:?}", self.used_traits);
-        self.used_trait_indices
+        trace!("looking up virtual trait use {key:?} in {:?}", self.trait_use_entries);
+        self.entry_indices_by_erased_key
             .get(&key)
             .and_then(|indices| indices.first())
-            .and_then(|idx| self.used_traits.get(*idx))
+            .and_then(|idx| self.trait_use_entries.get(*idx))
             .unwrap_or_else(|| {
                 span_bug!(
                     DUMMY_SP,
@@ -1108,7 +1276,7 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
 
     /// Within a trait declaration, get the Self trait use.
     pub(crate) fn get_self_trait_use(&self) -> Option<&GenericTraitUse<'tcx, 'def>> {
-        for trait_use in &self.used_traits {
+        for trait_use in &self.trait_use_entries {
             // check if this is the Self trait use
             {
                 let spec_use_ref = trait_use.trait_use.borrow();
