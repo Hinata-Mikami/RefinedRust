@@ -979,11 +979,32 @@ Ltac liRStepCore :=
   | lazymatch goal with | |- BACKTRACK_POINT ?P => change_no_check P end
  ].
 
+Ltac liRUpdateProgramPoint :=
+  lazymatch goal with
+  | |- envs_entails _ ?P =>
+      lazymatch P with
+      | typed_stmt _ _ _ ?s _ _ _ _ =>
+          set_last_rust_program_point (RustProgramPointStmt s)
+      | typed_val_expr _ _ _ ?e _ =>
+          set_last_rust_expression_program_point e
+      | typed_call _ _ _ _ _ ?v _ ?vl _ ?destination ?normal ?unwind _ _ =>
+          set_last_rust_program_point
+            (RustProgramPointCall v vl destination normal unwind)
+      end
+  end.
+
 Ltac liRStep :=
   liEnsureInvariant;
   try liRIntroduceLetInGoal;
-  first [liRStepCore | simpl; liRStepCore ]
+  first [liRStepCore | simpl; liRStepCore ];
+  try liRUpdateProgramPoint
 .
+
+Ltac liExplain :=
+  liShow;
+  print_case_distinction_info;
+  print_last_rust_program_point;
+  print_open_lithium_evars.
 
 Tactic Notation "liRStepUntil" open_constr(id) :=
   repeat lazymatch goal with
@@ -2050,7 +2071,8 @@ Ltac print_remaining_goal :=
   match goal with
   | H := FUNCTION_NAME ?s |- _ =>
     print_typesystem_goal s
-  end.
+  end;
+  fail.
 Ltac print_remaining_sidecond :=
   try done; try apply: inhabitant;
   match goal with

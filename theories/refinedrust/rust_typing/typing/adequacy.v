@@ -372,11 +372,11 @@ Proof.
        initial_caller (λ v _, ⌜v = []⌝)%I (λ _, False%I) static)
       with "[Hstore Hna Hmain HP Hlocals Hlive Hl Hnamed]" as "Hs".
     { destruct policy; simpl.
-      all: rep <-! liRStep; liShow.
+      all: rep <-? 1 liRStep; liShow.
       all: try iFrame. all: try done.
-      Unshelve. all: rep <-! liRStep.
+       Unshelve. all: rep <-? 1 liRStep.
       all: try iFrame. all: try done.
-      all: try (rep <-! liRStep; liShow).
+       all: try (rep <-? 1 liRStep; liShow).
       all: try iFrame. all: try done.
       1: iApply type_unwind_terminate.
       1: solve_initial_return_value.

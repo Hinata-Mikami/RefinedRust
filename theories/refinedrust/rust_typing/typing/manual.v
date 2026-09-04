@@ -420,7 +420,8 @@ Ltac add_updateable :=
       [ apply _ | apply _ | ]
   end.
 Tactic Notation "apply_update" uconstr(H) :=
-  refine (tac_fast_apply H _).
+  unshelve refine (tac_fast_apply H _);
+  [apply _ .. | ].
 
 Section test.
   Context `{!typeGS Σ}.

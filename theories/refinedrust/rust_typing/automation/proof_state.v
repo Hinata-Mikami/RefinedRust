@@ -22,6 +22,15 @@ Arguments BLOCK_PRECOND : simpl never.
 Definition CASE_DISTINCTION_INFO {B} (info : B) (* (i : list location_info) *) : Set := unit.
 Arguments CASE_DISTINCTION_INFO : simpl never.
 
+Inductive RUST_PROGRAM_POINT : Set :=
+| RustProgramPointStmt (s : stmt)
+| RustProgramPointExpr (s : stmt) (e : expr)
+| RustProgramPointCall (v : val) (vl : list val)
+    (destination : option (lang.order * op_type * expr)) (normal unwind : stmt).
+
+Definition LAST_RUST_PROGRAM_POINT (point : RUST_PROGRAM_POINT) : Set := unit.
+Arguments LAST_RUST_PROGRAM_POINT : simpl never.
+
 Definition ELCTX (E : elctx) : elctx := E.
 Arguments ELCTX : simpl never.
 Ltac unfold_elctx :=
@@ -187,6 +196,25 @@ Ltac add_case_distinction_info info :=
   (*have Hcase := (() : (CASE_DISTINCTION_INFO hint info icur)))*)
 .
 
+Ltac set_last_rust_program_point point :=
+  repeat match goal with
+  | H : LAST_RUST_PROGRAM_POINT _ |- _ => clear H
+  end;
+  let Hpoint := fresh "HLAST" in
+  have Hpoint := (() : LAST_RUST_PROGRAM_POINT point).
+
+Ltac set_last_rust_expression_program_point e :=
+  lazymatch reverse goal with
+  | H : LAST_RUST_PROGRAM_POINT (RustProgramPointStmt ?s) |- _ =>
+      set_last_rust_program_point (RustProgramPointExpr s e)
+  | H : LAST_RUST_PROGRAM_POINT (RustProgramPointExpr ?s _) |- _ =>
+      set_last_rust_program_point (RustProgramPointExpr s e)
+  | H : LAST_RUST_PROGRAM_POINT
+      (RustProgramPointCall ?v ?vl ?destination ?normal ?unwind) |- _ =>
+      let s := constr:(Call (Val v) (Val <$> vl) destination normal unwind) in
+      set_last_rust_program_point (RustProgramPointExpr s e)
+  end.
+
 (** * Tactics cleaning the proof state *)
 Ltac clear_unused_vars :=
   repeat match goal with
@@ -239,31 +267,57 @@ end.
       (*end.*)
 
 Ltac print_case_distinction_info :=
-  repeat lazymatch reverse goal with
-  | H : CASE_DISTINCTION_INFO ?hint ?i (* ?l *) |- _ =>
-    lazymatch i with
-    | (?a, ?b) => idtac "Case distinction" a "->" b
-    | ?a => idtac "Case distinction" a
-    end;
-    (*
-    lazymatch l with
-    | ?i :: ?l =>
-      lazymatch eval unfold i in i with
-      | LocationInfo ?f ?ls ?cs ?le ?ce =>
-        let f := eval unfold f in f in
-        idtac "at" f "[" ls ":" cs "-" le ":" ce "]"
-      end
-    | [] => idtac
-    end;
-     *)
-    clear H
+  tryif lazymatch goal with
+        | H : CASE_DISTINCTION_INFO _ |- _ => idtac
+        end
+  then (
+    idtac "Case distinctions:";
+    try match reverse goal with
+    | H : CASE_DISTINCTION_INFO ?i (* ?l *) |- _ =>
+      lazymatch i with
+      | (?a, ?b) => idtac " " a "->" b
+      | ?a => idtac " " a
+      end;
+      fail
+    end)
+  else idtac "Case distinctions: none".
+
+Ltac print_last_rust_program_point :=
+  lazymatch reverse goal with
+  | H : LAST_RUST_PROGRAM_POINT (RustProgramPointStmt ?s) |- _ =>
+      idtac "Last backtracking point (statement):" s
+  | H : LAST_RUST_PROGRAM_POINT (RustProgramPointExpr ?s ?e) |- _ =>
+      idtac "Last backtracking point (expression):" e;
+      idtac "In statement:" s
+  | H : LAST_RUST_PROGRAM_POINT
+      (RustProgramPointCall ?v ?vl ?destination ?normal ?unwind) |- _ =>
+      let s := constr:(Call (Val v) (Val <$> vl) destination normal unwind) in
+      idtac "Last backtracking point (call):" s
+  | _ => idtac "Last backtracking point: none"
   end.
+
+Ltac print_open_lithium_evars :=
+  tryif multimatch goal with
+        | H := EVAR_ID ?x |- _ => is_evar x; idtac
+        end
+  then (
+    idtac "Open Lithium evars:";
+    try match reverse goal with
+    | H := EVAR_ID ?x |- _ =>
+      is_evar x;
+      let A := type of H in
+      idtac " " H ":" A;
+      fail
+    end)
+  else idtac "Open Lithium evars: none".
 
 Ltac print_rocq_hyps :=
   try match reverse goal with
   | H : ?X |- _ =>
     lazymatch X with
     | BLOCK_PRECOND _ _ => fail
+    | CASE_DISTINCTION_INFO _ => fail
+    | LAST_RUST_PROGRAM_POINT _ => fail
     | gFunctors => fail
     | typeGS _ => fail
     | ghost_varG _ _ => fail
@@ -300,11 +354,10 @@ Ltac print_typesystem_goal fn :=
     (* idtac "Continuation:"; *)
     (* idtac Q; *)
     idtac "";
-    idtac "";
-    admit
+    idtac ""
   | |- _ =>
     idtac "Type system got stuck in function" fn  "!";
-    print_goal; admit
+    print_goal
   end.
 
 Ltac print_sidecondition_goal fn :=
