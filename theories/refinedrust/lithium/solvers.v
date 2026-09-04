@@ -357,15 +357,18 @@ Module Rep.
   (* Backtracking mode:
      - NoBacktrack: don't backtrack
      - BacktrackSteps n: backtrack to n steps before failure
-     - BacktrackPoint n: go back to the n-th last goal for which [rep_check_backtrack_point] succeeded *)
-  Ltac2 Type backtrack_mode := [ NoBacktrack | BacktrackSteps (int) | BacktrackPoint (int) ].
+     - BacktrackPoint n: go back to the n-th last goal for which [rep_check_backtrack_point] succeeded
+     - BacktrackLast: go back to the last backtracking point, or keep the current state if none exists *)
+  Ltac2 Type backtrack_mode :=
+    [ NoBacktrack | BacktrackSteps (int) | BacktrackPoint (int) | BacktrackLast ].
 
   (* Exception to signal how many more steps should be backtracked*)
   Ltac2 Type exn ::= [ RepBacktrack (backtrack_mode) ].
 
   (* calls [tac] [n] times (n = None means infinite) on the first goal
   under focus, stops on failure of [tac] and then backtracks according to [nback]. *)
-  Ltac2 rec rep (n : int option) (nback : backtrack_mode) (tac : (unit -> unit)) : int :=
+  Ltac2 rec rep_aux (n : int option) (nback : backtrack_mode)
+      (npoints : int) (tac : (unit -> unit)) : int :=
     (* if there are no goals left, we are done *)
     match Control.case (fun _ => Control.focus 1 1 (fun _ => ())) with
     | Err _ => 0
@@ -377,6 +380,11 @@ Module Rep.
       | true =>
         (* maybe we should match on the goal here *)
         let is_backtrack_point := Control.focus 1 1 (fun _ => rep_check_backtrack_point ()) in
+        let new_npoints :=
+          match is_backtrack_point with
+          | true => Int.add npoints 1
+          | false => npoints
+          end in
         (* backtracking point *)
         let res := Control.case (fun _ =>
           (* run tac on the first goal *)
@@ -384,12 +392,21 @@ Module Rep.
           match tac_res  with
           | Err _ =>
               (* if tac failed, start the backtracking *)
-              Control.zero (RepBacktrack nback)
+              match nback with
+              | BacktrackLast =>
+                  match Int.gt new_npoints 0 with
+                  | true => Control.zero (RepBacktrack (BacktrackPoint 1))
+                  | false =>
+                      printf "Warning: rep <-! found no backtracking point; keeping the current proof state.";
+                      0
+                  end
+              | _ => Control.zero (RepBacktrack nback)
+              end
           | Val _ =>
               (* compute new n and recurse *)
               let new_n :=
                 match n with | None => None | Some n => Some (Int.sub n 1) end in
-              let n_steps := rep new_n nback tac in
+              let n_steps := rep_aux new_n nback new_npoints tac in
               Int.add n_steps 1
           end) in
         match res with
@@ -419,6 +436,7 @@ Module Rep.
                       end
                     | false => 0
                     end
+                | BacktrackLast => Control.throw Assertion_failure
                 | NoBacktrack => 0
                 end
             | _ => Control.zero e
@@ -427,6 +445,9 @@ Module Rep.
         end
       end
     end.
+
+  Ltac2 rep (n : int option) (nback : backtrack_mode) (tac : unit -> unit) : int :=
+    rep_aux n nback 0 tac.
 
   Ltac2 print_steps (n : int) :=
     printf "Did %i steps." n.
@@ -515,7 +536,7 @@ Tactic Notation "rep" "<-" int(n) tactic3(tac) :=
 
 Tactic Notation "rep" "<-!" tactic3(tac) :=
   let r := ltac2:(tac |-
-    Rep.print_steps (Rep.rep Rep.none (Rep.BacktrackPoint 1) (fun _ => Ltac1.run tac))) in
+    Rep.print_steps (Rep.rep Rep.none Rep.BacktrackLast (fun _ => Ltac1.run tac))) in
   r tac.
 
 Tactic Notation "rep" "<-?" int(n) tactic3(tac) :=
@@ -589,6 +610,19 @@ Module RepTest.
     1: lazymatch goal with | |- 1 = 2 => idtac | |- _ => fail "unexpected goal" end.
   Abort.
 
+  Goal Nat.iter 10 DELAY (1 = 2). simpl.
+    rep <-! DELAY_test_tac.
+    lazymatch goal with | |- 1 = 2 => idtac | |- _ => fail "unexpected goal" end.
+  Abort.
+
+  Goal Nat.iter 10 DELAY (1 = 2). simpl.
+    Fail rep <-? 1 DELAY_test_tac.
+    lazymatch goal with
+    | |- DELAY _ => idtac
+    | |- _ => fail "unexpected goal"
+    end.
+  Abort.
+
   Goal BACKTRACK_POINT (Nat.iter 10 DELAY (BACKTRACK_POINT (BACKTRACK_POINT (Nat.iter 10 DELAY (1 = 2))))). simpl.
     all: rep <-? 3 DELAY_test_tac.
     all: do 23 DELAY_test_tac.
@@ -596,4 +630,3 @@ Module RepTest.
   Abort.
 
 End RepTest.
-
