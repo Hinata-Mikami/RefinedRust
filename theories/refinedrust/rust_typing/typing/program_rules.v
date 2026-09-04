@@ -330,6 +330,7 @@ Section find.
   |}.
   Next Obligation.
     iIntros (????). iIntros "Hf".
+    unfold freeable_nz.
     destruct n; done.
   Qed.
 
@@ -645,6 +646,15 @@ Section introduce.
   Context `{!typeGS Σ}.
 
   (** Introduce with Hooks *)
+  Lemma introduce_with_hooks_true E L T :
+    T L ⊢ introduce_with_hooks E L True T.
+  Proof.
+    iIntros "HT" (??) "#CTX #HE HL _".
+    by iFrame.
+  Qed.
+  Definition introduce_with_hooks_true_inst := [instance @introduce_with_hooks_true].
+  Global Existing Instance introduce_with_hooks_true_inst.
+
   Lemma introduce_with_hooks_sep E L P1 P2 T :
     introduce_with_hooks E L P1 (λ L', introduce_with_hooks E L' P2 T) ⊢
     introduce_with_hooks E L (P1 ∗ P2) T.
@@ -963,6 +973,18 @@ Section prove_subtype.
     iApply maybe_logical_step_intro. iIntros "($ & $)".
     destruct pm; eauto with iFrame.
   Qed.
+
+  Lemma prove_with_subtype_true E L step pm A T :
+    T L [] A ⊢ prove_with_subtype E L step pm True A T.
+  Proof.
+    iIntros "HT" (?????) "#CTX #HE HL HA".
+    iFrame.
+    iModIntro. iApply (maybe_logical_step_wand with "[] HA").
+    iIntros "($ & $)". destruct pm; first done.
+    eauto.
+  Qed.
+  Definition prove_with_subtype_true_inst := [instance @prove_with_subtype_true].
+  Global Existing Instance prove_with_subtype_true_inst.
 
   Lemma prove_with_subtype_sep E L step pm P1 P2 A T :
     prove_with_subtype E L step pm P1 A (λ L' κs R1,

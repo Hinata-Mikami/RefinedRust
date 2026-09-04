@@ -247,7 +247,7 @@ End definitions.
 
 Global Typeclasses Opaque alloc_meta loc_in_bounds alloc_alive alloc_global
   fntbl_entry heap_pointsto_mbyte heap_pointsto alloc_alive_loc
-  freeable.
+  freeable freeable_nz.
 
 Notation "l ↦{ q } v" := (heap_pointsto l q v)
   (at level 20, q at level 50, format "l  ↦{ q }  v") : bi_scope.
