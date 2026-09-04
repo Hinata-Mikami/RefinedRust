@@ -14,7 +14,9 @@ Proof.
 
   rep <-! liRStep; liShow.
   rep liRStep; liShow.
+  (* A fresh forward iterator starts before the physical head. *)
   liInst Hevar_locs locs.
+  liInst Hevar_prev_ptr NULL_loc.
   rep liRStep; liShow.
 
   all: print_remaining_goal.

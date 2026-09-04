@@ -14,7 +14,9 @@ Proof.
 
   rep <-! liRStep; liShow.
   rep liRStep; liShow.
+  (* Cloning preserves both the remaining nodes and predecessor cursor. *)
   liInst Hevar_locs locs.
+  liInst Hevar_prev_ptr prev_ptr.
   rep liRStep; liShow.
 
   all: print_remaining_goal.

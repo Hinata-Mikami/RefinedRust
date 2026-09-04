@@ -16,7 +16,7 @@ Proof.
   rep <-! liRStep; liShow.
   move: Hlocs.
   rep <-! liRStep.
-  (* access to the head of the list *)
+  (* Expose the current node and the remaining shared suffix. *)
   rename select (head locs = _) into Hhead.
   rewrite head_lookup in Hhead.
   match type of Hlen_eq with length _ = length ?x => rename x into xs end.
@@ -31,9 +31,11 @@ Proof.
   apply_update updateable_strip_guards.
   rep <-! liRStep; liShow.
   rep liRStep; liShow.
+  (* The consumed node becomes the predecessor cursor for the suffix. *)
   liInst Hevar_rf (<$#> xs).
   liInst Hevar_locs locs.
-  rep <-! liRStep; liShow.
+  liInst Hevar_prev_ptr l.
+  rep liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
@@ -44,7 +46,7 @@ Proof.
     + case_bool_decide.
       * exfalso. destruct locs as [ | lh locs]; first done.
         simpl in *. simplify_eq. 
-        apply Forall_cons in Hlocs as [? ?]. done.
+        apply Forall_cons in Hlocs as [Hhead_nonnull Htail_nonnull]. done.
       * simplify_eq. split; last done.
         destruct locs; simpl in *; last lia.
         destruct xs; last done. done.
