@@ -366,6 +366,11 @@ Module Rep.
   Ltac2 Type last_segment_result :=
     [ LastSegmentDone (int) | LastSegmentNextPoint (int * int option) ].
 
+  Ltac2 Type point_status := [ PointUnknown | PointAbsent | PointPresent ].
+
+  Ltac2 Type last_iteration_result :=
+    [ LastIterationAtPoint | LastIterationFailed | LastIterationStepped (point_status) ].
+
   Ltac2 has_goals (_ : unit) : bool := Int.gt (Control.numgoals ()) 0.
 
   Ltac2 run_on_first_goal (tac : unit -> unit) : bool :=
@@ -393,9 +398,44 @@ Module Rep.
         end
     end.
 
+  (* Inspect the current goal, run one step, and inspect its replacement goal
+     without leaving the focus in between. If the focused goal is solved, the
+     status of the next global goal is unknown because it is outside the focus. *)
+  Ltac2 rep_last_iteration (current_status : point_status)
+      (inspect_result : bool) (tac : unit -> unit) : last_iteration_result :=
+    Control.focus 1 1 (fun _ =>
+      let is_current_point :=
+        match current_status with
+        | PointPresent => true
+        | PointAbsent => false
+        | PointUnknown => rep_check_backtrack_point ()
+        end in
+      match is_current_point with
+      | true => LastIterationAtPoint
+      | false =>
+          Control.once_plus
+            (fun _ =>
+              tac ();
+              let result_status :=
+                match inspect_result with
+                | false => PointUnknown
+                | true =>
+                    match has_goals () with
+                    | false => PointUnknown
+                    | true =>
+                        match rep_check_backtrack_point () with
+                        | true => PointPresent
+                        | false => PointAbsent
+                        end
+                    end
+                end in
+              LastIterationStepped result_status)
+            (fun _ => LastIterationFailed)
+      end).
+
   (* Run from one backtracking point up to completion, failure, or the next
      point. Returning at the next point commits the previous checkpoint. *)
-  Ltac2 rec rep_last_segment (n : int option) (at_initial_point : bool)
+  Ltac2 rec rep_last_segment (n : int option) (current_status : point_status)
       (steps : int) (tac : unit -> unit) : last_segment_result :=
     match has_goals () with
     | false => LastSegmentDone steps
@@ -404,28 +444,24 @@ Module Rep.
         match do_rep with
         | false => LastSegmentDone steps
         | true =>
-            let is_next_point :=
-              match at_initial_point with
-              | true => false
-              | false => Control.focus 1 1 (fun _ => rep_check_backtrack_point ())
-              end in
-            match is_next_point with
-            | true => LastSegmentNextPoint (steps, n)
-            | false =>
-                match run_on_first_goal tac with
-                | false => Control.zero (RepBacktrack BacktrackLast)
-                | true =>
-                    let new_n :=
-                      match n with | None => None | Some n => Some (Int.sub n 1) end in
-                    rep_last_segment new_n false (Int.add steps 1) tac
-                end
+            let new_n :=
+              match n with | None => None | Some n => Some (Int.sub n 1) end in
+            let inspect_result :=
+              match new_n with | None => true | Some n => Int.gt n 0 end in
+            match rep_last_iteration current_status inspect_result tac with
+            | LastIterationAtPoint => LastSegmentNextPoint (steps, n)
+            | LastIterationFailed => Control.zero (RepBacktrack BacktrackLast)
+            | LastIterationStepped PointPresent =>
+                LastSegmentNextPoint (Int.add steps 1, new_n)
+            | LastIterationStepped status =>
+                rep_last_segment new_n status (Int.add steps 1) tac
             end
         end
     end.
 
   Ltac2 rec rep_last_from_point (n : int option) (steps : int)
       (tac : unit -> unit) : int :=
-    let res := Control.case (fun _ => rep_last_segment n true 0 tac) in
+    let res := Control.case (fun _ => rep_last_segment n PointAbsent 0 tac) in
     match res with
     | Err e =>
         match e with
@@ -440,7 +476,8 @@ Module Rep.
         end
     end.
 
-  Ltac2 rec rep_last_before_point (n : int option) (steps : int)
+  Ltac2 rec rep_last_before_point (n : int option) (current_status : point_status)
+      (steps : int)
       (tac : unit -> unit) : int :=
     match has_goals () with
     | false => steps
@@ -449,26 +486,25 @@ Module Rep.
         match do_rep with
         | false => steps
         | true =>
-            let is_backtrack_point :=
-              Control.focus 1 1 (fun _ => rep_check_backtrack_point ()) in
-            match is_backtrack_point with
-            | true => rep_last_from_point n steps tac
-            | false =>
-                match run_on_first_goal tac with
-                | false =>
-                    printf "Warning: rep <-! found no backtracking point; keeping the current proof state.";
-                    steps
-                | true =>
-                    let new_n :=
-                      match n with | None => None | Some n => Some (Int.sub n 1) end in
-                    rep_last_before_point new_n (Int.add steps 1) tac
-                end
+            let new_n :=
+              match n with | None => None | Some n => Some (Int.sub n 1) end in
+            let inspect_result :=
+              match new_n with | None => true | Some n => Int.gt n 0 end in
+            match rep_last_iteration current_status inspect_result tac with
+            | LastIterationAtPoint => rep_last_from_point n steps tac
+            | LastIterationFailed =>
+                printf "Warning: rep <-! found no backtracking point; keeping the current proof state.";
+                steps
+            | LastIterationStepped PointPresent =>
+                rep_last_from_point new_n (Int.add steps 1) tac
+            | LastIterationStepped status =>
+                rep_last_before_point new_n status (Int.add steps 1) tac
             end
         end
     end.
 
   Ltac2 rep_last (n : int option) (tac : unit -> unit) : int :=
-    rep_last_before_point n 0 tac.
+    rep_last_before_point n PointUnknown 0 tac.
 
   (* calls [tac] [n] times (n = None means infinite) on the first goal
   under focus, stops on failure of [tac] and then backtracks according to [nback]. *)
@@ -655,6 +691,7 @@ Module RepTest.
         split |
         lazymatch goal with | |- BACKTRACK_POINT ?P => change P end
       ].
+  Ltac DELAY_test_tac_with_true := first [exact I | DELAY_test_tac].
   Local Ltac rep_check_backtrack_point_hook ::=
     match goal with
     | |- BACKTRACK_POINT ?P =>
@@ -709,9 +746,29 @@ Module RepTest.
     1: lazymatch goal with | |- 1 = 2 => idtac | |- _ => fail "unexpected goal" end.
   Abort.
 
+  (* Detect a point among the replacement goals created by one step. *)
+  Goal BACKTRACK_POINT (BACKTRACK_POINT False ∧ BACKTRACK_POINT True).
+    rep <-! DELAY_test_tac.
+    1: lazymatch goal with | |- BACKTRACK_POINT False => idtac | |- _ => fail "unexpected goal" end.
+    2: lazymatch goal with | |- BACKTRACK_POINT True => idtac | |- _ => fail "unexpected goal" end.
+  Abort.
+
+  (* Reinspect the remaining replacement goal after the first is solved. *)
+  Goal BACKTRACK_POINT (BACKTRACK_POINT True ∧ BACKTRACK_POINT False).
+    rep <-! DELAY_test_tac_with_true.
+    lazymatch goal with | |- BACKTRACK_POINT False => idtac | |- _ => fail "unexpected goal" end.
+  Abort.
+
   Goal Nat.iter 10 DELAY (1 = 2). simpl.
     rep <-! DELAY_test_tac.
     lazymatch goal with | |- 1 = 2 => idtac | |- _ => fail "unexpected goal" end.
+  Abort.
+
+  Goal BACKTRACK_POINT (DELAY False).
+    let r := ltac2:(tac |-
+      Rep.print_steps (Rep.rep (Rep.some 1) Rep.BacktrackLast (fun _ => Ltac1.run tac))) in
+    r DELAY_test_tac.
+    lazymatch goal with | |- DELAY False => idtac | |- _ => fail "unexpected goal" end.
   Abort.
 
   Goal Nat.iter 10 DELAY (1 = 2). simpl.
