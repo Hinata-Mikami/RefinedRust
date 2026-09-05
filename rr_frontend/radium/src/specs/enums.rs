@@ -695,6 +695,7 @@ impl<'def> Abstract<'def> {
                ({})\n\
                ({})\n\
                _\n\
+               _\n\
                _",
             self.scope,
             self.generate_enum_tag(),
@@ -720,6 +721,10 @@ impl<'def> Abstract<'def> {
         )));
         document.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
             coq::ltac::LTac::Literal("solve_mk_enum_tag_consistent".to_owned()),
+            coq::proof::Terminator::Defined,
+        )));
+        document.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
+            coq::ltac::LTac::Literal("solve_mk_enum_tag_inj_roundtrip".to_owned()),
             coq::proof::Terminator::Defined,
         )));
 

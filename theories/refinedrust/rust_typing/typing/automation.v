@@ -1423,6 +1423,31 @@ Ltac solve_mk_enum_tag_consistent :=
   simpl; intro_adt_params;
   intros [] ? [=<-]; eexists _; done.
 
+Ltac solve_mk_enum_tag_inj_roundtrip_case Hmem variant sem :=
+  let Hvariant := fresh "Hvariant" in
+  let Hsem := fresh "Hsem" in
+  pose proof (f_equal fst Hmem) as Hvariant;
+  pose proof (f_equal snd Hmem) as Hsem;
+  cbn in Hvariant, Hsem;
+  subst variant; subst sem; clear Hmem;
+  cbn in *;
+  prepare_initial_coq_context; 
+  lazymatch goal with
+  | |- enum_tag_inj_spec ?get_tag ?get_rt ?get_r ?variant ?sem ?x =>
+      refine (Build_enum_tag_inj_spec _ get_tag get_rt get_r variant sem x
+        eq_refl eq_refl _)
+  end;
+  reflexivity.
+
+Ltac solve_mk_enum_tag_inj_roundtrip :=
+  simpl; intro_adt_params;
+  intros variant sem Hmem x;
+  repeat rewrite elem_of_cons in Hmem;
+  rewrite elem_of_nil in Hmem;
+  repeat (destruct Hmem as [Hmem | Hmem];
+    [solve_mk_enum_tag_inj_roundtrip_case Hmem variant sem |]);
+  exfalso; exact Hmem.
+
 Ltac enum_contractive_solve_eq := intros; simpl; done.
 Ltac enum_contractive_solve_dist :=
     repeat match goal with

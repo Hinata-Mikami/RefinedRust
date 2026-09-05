@@ -24,11 +24,7 @@ Section init.
         ⌜fast_syntype_eq_hint ((lookup_iml (els_variants els) variant) = Some (st_of sem.(enum_tag_sem_ty) MetaNone))⌝ ∗
           ∃ ri', owned_subtype f.1 E L2 false ri ri' tyi sem.(enum_tag_sem_ty) (λ L3,
             ⌜ty_has_op_type sem.(enum_tag_sem_ty) (use_op_alg' (st_of (sem.(enum_tag_sem_ty)) MetaNone))⌝ ∗
-            (* could try to remove this by strengthening enum *)
-            ⌜e.(enum_tag) (sem.(enum_tag_rt_inj) ri') = Some variant⌝ ∗
-            ∃ (Heq : enum_tag_sem_rt sem = enum_rt e (enum_tag_rt_inj sem ri')),
-            ⌜e.(enum_r) (sem.(enum_tag_rt_inj) ri') = (rew [RT_rt] Heq in ri')⌝ ∗
-              ∀ v', T L3 v' MetaNone _ (enum_t e) (sem.(enum_tag_rt_inj) ri'))))))))
+            ∀ v', T L3 v' MetaNone _ (enum_t e) (sem.(enum_tag_rt_inj) ri'))))))))
     ⊢ typed_val_expr E L f (EnumInit els variant rsen e) T.
   Proof.
     rewrite /compute_enum_layout_goal.
@@ -53,7 +49,9 @@ Section init.
     iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L3 & Hincl & HL & HT)"; [done.. | ].
     iDestruct "Hincl" as "(%Hst_eq & Hsc & Hincl)".
     iPoseProof ("Hincl" with "Hv") as "Hv".
-    iDestruct "HT" as "(%Hty_ot & %Htagr & %Heq & %Htag_rfn & HT)".
+    iDestruct "HT" as "(%Hty_ot & HT)".
+    pose proof (enum_tag_ty_find_elem _ _ _ Hinj) as Hsem_elem.
+    destruct (enum_tag_inj_roundtrip en variant sem Hsem_elem ri') as [Htagr Heq Htag_rfn].
 
     iPoseProof (ty_decodable _ _ _ inhabitant with "Hv") as "(%payload & %Hdecode)"; first done.
     iModIntro. iExists payload. iSplitR.

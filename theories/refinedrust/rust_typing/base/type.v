@@ -2552,6 +2552,23 @@ Section enum.
   Definition enum_tag_ty_find {rt} (tag_tys : list (var_name * enum_tag_sem rt)) (tag : var_name) : option (enum_tag_sem rt) :=
     (λ x, x.2.2) <$> (list_find (λ x, x.1 = tag) tag_tys).
 
+  Import EqNotations.
+  Record enum_tag_inj_spec {rt : RT}
+      (get_tag : rt → option var_name)
+      (get_rt : rt → RT)
+      (get_r : ∀ r, get_rt r)
+      (variant : var_name)
+      (sem : enum_tag_sem rt)
+      (x : sem.(enum_tag_sem_rt)) : Prop := {
+    enum_tag_inj_tag :
+      get_tag (sem.(enum_tag_rt_inj) x) = Some variant;
+    enum_tag_inj_rt :
+      sem.(enum_tag_sem_rt) = get_rt (sem.(enum_tag_rt_inj) x);
+    enum_tag_inj_r :
+      get_r (sem.(enum_tag_rt_inj) x) =
+        rew [RT_rt] enum_tag_inj_rt in x;
+  }.
+
   Record enum (rt : RT) : Type := _mk_enum {
     enum_xt_inhabited : Inhabited (RT_xt rt);
     (* the layout spec *)
@@ -2567,7 +2584,11 @@ Section enum.
     enum_tag_tys_complete : enum_tag_ty.*1 = enum_els.(els_variants).*1;
     enum_tag_compat : ∀ (r : rt) (variant : var_name),
       enum_tag r = Some variant →
-      sigT (λ vinj, enum_tag_ty_find enum_tag_ty variant = Some (mk_enum_tag_sem (enum_rt r) (enum_ty r) vinj))
+      sigT (λ vinj, enum_tag_ty_find enum_tag_ty variant = Some (mk_enum_tag_sem (enum_rt r) (enum_ty r) vinj));
+    enum_tag_inj_roundtrip : ∀ (variant : var_name) (sem : enum_tag_sem rt),
+      (variant, sem) ∈ enum_tag_ty →
+      ∀ x : sem.(enum_tag_sem_rt),
+        enum_tag_inj_spec enum_tag enum_rt enum_r variant sem x
   }.
   Global Arguments _mk_enum {_}.
   Global Arguments enum_xt_inhabited {_}.
@@ -2577,6 +2598,7 @@ Section enum.
   Global Arguments enum_r {_}.
   Global Arguments enum_ty {_}.
   Global Arguments enum_tag_ty {_}.
+  Global Arguments enum_tag_inj_roundtrip {_}.
   Global Instance enum_rt_inhabited {rt} (e : enum rt) : Inhabited rt :=
     populate (RT_xrt rt e.(enum_xt_inhabited).(inhabitant)).
 
@@ -2593,7 +2615,6 @@ Section enum.
   Definition enum_lookup_tag {rt} (e : enum rt) (r : rt) : option Z :=
     fmap (els_lookup_tag e.(enum_els)) (e.(enum_tag) r).
 
-  Import EqNotations.
   Lemma enum_tag_rt_eq {rt} (en : enum rt) r tag sem :
     enum_tag en r = Some tag →
     enum_tag_ty_inj en tag = Some sem →
