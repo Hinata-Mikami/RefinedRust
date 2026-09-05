@@ -17,7 +17,7 @@ Proof.
     iRename select (traits_iterator_Iterator_Inv _ _ _ _) into "Hinv".
     iEval (rewrite /traits_iterator_Iterator_Inv/=) in "Hinv".
     rep <-! liRStep; liShow.
-    rep <- 10 liRStep; liShow.
+    rep <- 8 liRStep; liShow.
     { iEval (rewrite /traits_iterator_Iterator_Inv/=).
       rep liRStep; liShow. }
     { iEval (rewrite /traits_iterator_Iterator_Inv/=).

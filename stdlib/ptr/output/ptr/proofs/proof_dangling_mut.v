@@ -12,8 +12,9 @@ Lemma dangling_mut_proof (π : thread_id) :
 Proof.
   dangling_mut_prelude.
 
+  Typeclasses Transparent freeable_nz.
   repeat liRStep; liShow.
-  specialize (ly_align_ge_1 T_st_ly) as ?. 
+  specialize (ly_align_ge_1 T_st_ly) as ?.
   rewrite decide_True; last lia.
   rep liRStep.
 
