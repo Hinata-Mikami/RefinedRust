@@ -88,6 +88,146 @@ Section test.
   Abort.
 End test.
 
+(** liExplainGoal *)
+Section test.
+  Context `{!typeGS Σ}.
+
+  Lemma li_explain_goal_sidecondition (P Q : Prop) : P ∧ Q.
+  Proof.
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_evar_sidecondition : ∃ x : nat, x = 0 ∧ True.
+  Proof.
+    eexists.
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_find_loc (l : loc) :
+    ⊢ find_in_context (FindLoc l) (λ _, True).
+  Proof.
+    iStartProof.
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_guarded_find_loc {rt} (lt : ltype rt)
+      (r : place_rfn rt) (l : loc) (π : thread_id) :
+    guarded true (l ◁ₗ[π, Owned] r @ lt) ⊢
+      find_in_context (FindLoc l) (λ _, True).
+  Proof.
+    iIntros "Hl".
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_prove_with_subtype E L :
+    ⊢ prove_with_subtype E L false ProveDirect
+      (∀ x : nat, ⌜x = x⌝) True (λ _ _ _, True).
+  Proof.
+    iStartProof.
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_stratify E L {rt} (ty : type rt) (κ : lft)
+      (r : place_rfn rt) (l : loc) (π : thread_id) :
+    l ◁ₗ[π, Owned] r @ BlockedLtype ty κ ⊢
+      prove_with_subtype E L true ProveDirect True True (λ _ _ _, True).
+  Proof.
+    iIntros "Hl".
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_acquire_credits :
+    credit_store 10 2 ⊢ have_creds.
+  Proof.
+    iIntros "Hstore".
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_acquire_credits_for_guard E L :
+    credit_store 10 2 ⊢
+      prove_with_subtype E L false ProveDirect
+        (guarded true True) True (λ _ _ _, True).
+  Proof.
+    iIntros "Hstore".
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_no_nested_guard_credit_hint E L :
+    credit_store 10 2 ⊢
+      prove_with_subtype E L false ProveDirect
+        (True ∗ guarded true True) True (λ _ _ _, True).
+  Proof.
+    iIntros "Hstore".
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_extract_typed E L {rt} (ty : type rt) (r : rt)
+      (v : val) (l : loc) (π : thread_id) :
+    ⊢ subsume_full false
+      (l ◁ₗ[π, Owned] #r @ (◁ ty))
+      (l ◁ₗ[π, Owned] #v @ (◁ value_t true (st_of ty MetaNone)))
+      E L (λ _ _, True).
+  Proof.
+    iStartProof.
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_extract_untyped E L {rt} (ty : type rt) (r : rt)
+      (v : val) (l : loc) (π : thread_id) :
+    ⊢ subsume_full false
+      (l ◁ₗ[π, Owned] #r @ (◁ ty))
+      (l ◁ₗ[π, Owned] #v @ (◁ value_t false (st_of ty MetaNone)))
+      E L (λ _ _, True).
+  Proof.
+    iStartProof.
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_extract_value E L {rt} (ty : type rt) (r : rt)
+      (v : val) (l : loc) (π : thread_id) :
+    ⊢ subsume_full false
+      (l ◁ₗ[π, Owned] #r @ (◁ ty))
+      (v ◁ᵥ{π, MetaNone} r @ ty)
+      E L (λ _ _, True).
+  Proof.
+    iStartProof.
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_array_access {rt} (lt : ltype rt) (r : place_rfn rt)
+      (base : loc) (off : Z) (st : syn_type) (π : thread_id) :
+    base ◁ₗ[π, Owned] r @ lt ⊢
+      find_in_context (FindLoc (base offsetst{st}ₗ off)) (λ _, True).
+  Proof.
+    iIntros "Hbase".
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_array_access_no_base
+      (base : loc) (off : Z) (st : syn_type) :
+    ⊢ find_in_context (FindLoc (base offsetst{st}ₗ off)) (λ _, True).
+  Proof.
+    iStartProof.
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_guarded_array_access {rt} (lt : ltype rt)
+      (rbase r : place_rfn rt) (base : loc) (off : Z) (st : syn_type)
+      (π : thread_id) :
+    base ◁ₗ[π, Owned] rbase @ lt -∗
+    guarded true ((base offsetst{st}ₗ off) ◁ₗ[π, Owned] r @ lt) -∗
+      find_in_context (FindLoc (base offsetst{st}ₗ off)) (λ _, True).
+  Proof.
+    iIntros "Hbase Hguarded".
+    liExplainGoal.
+  Abort.
+
+  Lemma li_explain_goal_rocq : True.
+  Proof.
+    liExplainGoal.
+  Abort.
+End test.
+
 (** simplify_gmap *)
 Section test.
   Context `{!typeGS Σ}.

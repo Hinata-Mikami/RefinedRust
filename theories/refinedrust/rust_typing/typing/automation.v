@@ -1000,12 +1000,6 @@ Ltac liRStep :=
   try liRUpdateProgramPoint
 .
 
-Ltac liExplain :=
-  liShow;
-  print_case_distinction_info;
-  print_last_rust_program_point;
-  print_open_lithium_evars.
-
 Tactic Notation "liRStepUntil" open_constr(id) :=
   repeat lazymatch goal with
          | |- @environments.envs_entails _ _ ?P =>
