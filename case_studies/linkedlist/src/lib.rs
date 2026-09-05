@@ -7,6 +7,8 @@
 
 #![rr::package("linkedlist")]
 #![rr::include("stdlib")]
+#![rr::include("mem")]
+#![rr::include("sized")]
 
 use std::marker::PhantomData;
 
@@ -36,6 +38,7 @@ struct Link<T> {
     guarded true (l ◁ₗ[π, Owned] #( *[#x; #lnext; #lprev]) @ ◁(Link_ty {rt_of T} <TY> {T} <INST!>)) ∗
     freeable_nz l (ly_size (use_struct_layout_alg' (Link_sls {st_of T}))) 1 HeapAlloc
     )")]
+#[rr::ghost_drop(#iris "[∗ list] x ∈ xs, ty_ghost_drop {T} π x")]
 #[rr::ty_lfts("ty_lfts {T}")]
 #[rr::ty_wf_E("ty_wf_E {T}")]
 pub struct List<T> {
@@ -146,6 +149,31 @@ impl<T> List<T> {
         ListIter {
             current_link: self.first,
             phantom: PhantomData,
+        }
+    }
+}
+
+impl<T> Drop for List<T> {
+
+    // Add a lifetime wellformedness constraint for &'a self;
+    // this is not added automatically via RefinedRust's usual mechanism as 
+    // we override the semantic type.
+    #[rr::unsafe_elctx("ty_outlives_E {T} ulft_1")]
+    #[rr::params("l", "xs")]
+    #[rr::args("l" @ "alias_ref_t")]
+    #[rr::requires(#type "l" : "$# xs" @ "List_inv_t T_rt -[] -[T_ty]")]
+    #[rr::ensures(#iris "[∗ list] x ∈ xs, ty_ghost_drop {T} π ($# x)")]
+    #[rr::ensures(#type "l" : "$# []" @ "List_inv_t T_rt -[] -[T_ty]")]
+    fn drop(&mut self) {
+        while let Some(value) = self.pop_front() {
+            let _ =
+            #[rr::exists("dropped", "remaining")]
+            #[rr::inv(#type "l" : "$# remaining" @ "List_inv_t T_rt -[] -[T_ty]")]
+            #[rr::inv(#iris "[∗ list] x ∈ dropped, ty_ghost_drop {T} π ($# x)")]
+            #[rr::inv("xs = dropped ++ remaining")]
+            #[rr::ignore] || {};
+
+            std::mem::drop(value);
         }
     }
 }
