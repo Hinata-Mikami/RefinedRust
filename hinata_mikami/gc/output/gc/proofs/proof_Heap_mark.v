@@ -75,6 +75,12 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
+  
+  exact
+    (mark_from_rel_exact_root
+      h0 h1 h2 x'
+      Hnodup_locs H0 H11 i).
+
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

@@ -35,7 +35,7 @@ Inductive mark_from_rel
     (i j : nat) (l : loc) :
     marks !! i = Some false ->
     nexts !! i = Some l ->
-    l <> NULL_loc ->
+    loc_a l <> 0 ->
     locs !! j = Some l ->
     mark_from_rel
       locs nexts

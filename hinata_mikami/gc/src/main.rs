@@ -267,11 +267,12 @@ impl Heap {
         mark_from_rel locs nexts marks 0%nat marks_new
     ")]
     #[rr::returns("()")]
-    // #[rr::ensures("
-    //     forall i,
-    //     marks_new !! i = Some true <->
-    //     reachable locs nexts i
-    // ")]
+    #[rr::ensures("
+        let '(vals, locs, nexts, marks) := h.cur in
+        forall i,
+        marks_new !! i = Some true <->
+        reachable locs nexts i
+    ")]
     unsafe fn mark(&mut self) {
         let root = *vec_index(&self.all_nodes, 0);
         self.mark_from(root);
