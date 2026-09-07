@@ -17,6 +17,9 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
+
+  apply NoDup_nil_2.
+  
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

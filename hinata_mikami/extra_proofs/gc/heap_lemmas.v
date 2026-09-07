@@ -1,5 +1,6 @@
 From caesium Require Import lang notation.
 From refinedrust Require Import typing.
+From iris.base_logic.lib Require Import ghost_map.
 
 Section heap_lemmas.
 
@@ -70,5 +71,123 @@ Proof.
     iExact "Hi".
 Qed.
 
+Lemma NoDup_snoc_local {A}
+    (xs : list A) (x : A) :
+  NoDup xs ->
+  x ∉ xs ->
+  NoDup (xs ++ [x]).
+Proof.
+  intros Hnd.
+  revert x.
+
+  induction Hnd as
+      [| a xs Ha Hnd IH];
+    intros x Hfresh.
+
+  - simpl.
+    constructor.
+    + set_solver.
+    + constructor.
+
+  - simpl.
+    constructor.
+    + intro Hin.
+      apply elem_of_app in Hin.
+      destruct Hin as [Hin | Hin].
+      * exact (Ha Hin).
+      * simpl in Hin.
+        apply list_elem_of_singleton in Hin.
+        subst x.
+        apply Hfresh.
+        apply elem_of_cons.
+        left.
+        reflexivity.
+
+    + apply IH.
+      intro Hin.
+      apply Hfresh.
+      right.
+      exact Hin.
+Qed.
+
+Lemma freeable_full_ne
+    (l1 l2 : loc)
+    (n1 n2 : nat)
+    (k1 k2 : alloc_kind) :
+  freeable l1 n1 1 k1 -∗
+  freeable l2 n2 1 k2 -∗
+  ⌜l1 ≠ l2⌝.
+Proof.
+  rewrite !freeable_eq.
+
+  iIntros "H1 H2".
+
+  iDestruct "H1" as
+    (id1)
+    "(%Hp1 & #Hmeta1 & Halive1)".
+
+  iDestruct "H2" as
+    (id2)
+    "(%Hp2 & #Hmeta2 & Halive2)".
+
+  rewrite !alloc_alive_eq.
+
+  iDestruct
+    (ghost_map_elem_ne with "Halive1 Halive2")
+    as %Hid_ne.
+
+  iPureIntro.
+  intro Heq.
+  subst l2.
+
+  apply Hid_ne.
+  congruence.
+Qed.
+
+Lemma freeable_nz_full_ne
+    (l1 l2 : loc)
+    (n : nat)
+    (k1 k2 : alloc_kind) :
+  (0 < n)%nat ->
+  freeable_nz l1 n 1 k1 -∗
+  freeable_nz l2 n 1 k2 -∗
+  ⌜l1 ≠ l2⌝.
+Proof.
+  intros Hn.
+  iIntros "H1 H2".
+
+  iPoseProof
+    (freeable_nz_to_freeable
+       l1 n 1 k1 Hn
+       with "H1")
+    as "H1f".
+
+  iPoseProof
+    (freeable_nz_to_freeable
+       l2 n 1 k2 Hn
+       with "H2")
+    as "H2f".
+
+  iApply
+    (freeable_full_ne
+       with "H1f H2f").
+Qed.
+
+Global Instance freeable_full_ne_gives
+    (l1 l2 : loc)
+    (n1 n2 : nat)
+    (k1 k2 : alloc_kind) :
+  CombineSepGives
+    (freeable l1 n1 1 k1)
+    (freeable l2 n2 1 k2)
+    ⌜l1 ≠ l2⌝.
+Proof.
+  rewrite /CombineSepGives.
+  iIntros "[H1 H2]".
+  iDestruct
+    (freeable_full_ne with "H1 H2")
+    as %Hne.
+  eauto.
+Qed.
 
 End heap_lemmas.

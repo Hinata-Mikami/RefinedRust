@@ -20,7 +20,7 @@
 use std::ptr;
 
 
-use wrappers::vec_index;
+use wrappers::*;
 
 mod wrappers {
     #[rr::only_spec]
@@ -29,7 +29,10 @@ mod wrappers {
     pub fn vec_index<T>(x: &Vec<T>, index: usize) -> &T {
         &x[index]
     }
+
 }
+
+
 
 
 // 本質的には同じはずなのにNode側に書けないことは欠点
@@ -99,6 +102,7 @@ impl Node{
         (ly_size (use_layout_alg' Node_sls))
         1 HeapAlloc)
 ")]
+#[rr::inv("Hnodup_locs" : "NoDup locs")]
 struct Heap {
     #[rr::field("<#> locs")]
     all_nodes: Vec<*mut Node>,
@@ -243,31 +247,31 @@ impl Heap {
     }
 
 
-    // #[rr::params("h")]
-    // #[rr::args("h")]
-    // #[rr::requires("
-    //     let '(vals, locs, nexts, marks) := h.cur in
-    //     0 < length locs
-    // ")]
-    // #[rr::requires("
-    //     let '(vals, locs, nexts, marks) := h.cur in
-    //     all_unmarked marks
-    // ")]
-    // #[rr::exists("marks_new" : "list bool")]
-    // #[rr::observe("h.ghost" : "
-    //     let '(vals, locs, nexts, marks) := h.cur in
-    //     (vals, locs, nexts, marks_new)
-    // ")]
+    #[rr::params("h")]
+    #[rr::args("h")]
+    #[rr::requires("
+        let '(vals, locs, nexts, marks) := h.cur in
+        0 < length locs
+    ")]
+    #[rr::requires("
+        let '(vals, locs, nexts, marks) := h.cur in
+        all_unmarked marks
+    ")]
+    #[rr::exists("marks_new" : "list bool")]
+    #[rr::observe("h.ghost" : "
+        let '(vals, locs, nexts, marks) := h.cur in
+        (vals, locs, nexts, marks_new)
+    ")]
+    #[rr::ensures("
+        let '(vals, locs, nexts, marks) := h.cur in
+        mark_from_rel locs nexts marks 0%nat marks_new
+    ")]
+    #[rr::returns("()")]
     // #[rr::ensures("
-    //     let '(vals, locs, nexts, marks) := h.cur in
-    //     mark_from_rel locs nexts marks 0%nat marks_new
+    //     forall i,
+    //     marks_new !! i = Some true <->
+    //     reachable locs nexts i
     // ")]
-    // #[rr::returns("()")]
-    // // #[rr::ensures("
-    // //     forall i,
-    // //     marks_new !! i = Some true <->
-    // //     reachable locs nexts i
-    // // ")]
     unsafe fn mark(&mut self) {
         let root = *vec_index(&self.all_nodes, 0);
         self.mark_from(root);

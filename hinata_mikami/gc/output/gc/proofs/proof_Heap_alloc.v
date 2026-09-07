@@ -393,6 +393,14 @@ Proof.
   Unshelve.
   all: sidecond_hammer.
 
+  {
+    constructor.
+    - set_solver.
+    - constructor.
+  }
+  {
+    
+  }
   Unshelve.
   all: print_remaining_sidecond.
 Qed.
