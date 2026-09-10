@@ -506,6 +506,107 @@ Module Rep.
   Ltac2 rep_last (n : int option) (tac : unit -> unit) : int :=
     rep_last_before_point n PointUnknown 0 tac.
 
+  Ltac2 print_bound_exceeded (bound : int) (steps : int) :=
+    printf
+      "Warning: rep <-! step bound of %i exceeded after %i steps; stopping at the next backtracking point."
+      bound steps.
+
+  (* The bound is checked only at backtracking points, so a segment is always
+     committed or rolled back as a whole. *)
+  Ltac2 rec rep_last_bounded_from_point (bound : int) (steps : int)
+      (tac : unit -> unit) : int :=
+    match Int.gt steps bound with
+    | true =>
+        print_bound_exceeded bound steps;
+        steps
+    | false =>
+        let res := Control.case (fun _ => rep_last_segment None PointAbsent 0 tac) in
+        match res with
+        | Err e =>
+            match e with
+            | RepBacktrack BacktrackLast => steps
+            | _ => Control.zero e
+            end
+        | Val (result, _) =>
+            match result with
+            | LastSegmentDone segment_steps => Int.add steps segment_steps
+            | LastSegmentNextPoint (segment_steps, _) =>
+                rep_last_bounded_from_point bound (Int.add steps segment_steps) tac
+            end
+        end
+    end.
+
+  Ltac2 rec rep_last_bounded_before_point (bound : int)
+      (current_status : point_status) (steps : int)
+      (tac : unit -> unit) : int :=
+    match has_goals () with
+    | false => steps
+    | true =>
+        match rep_last_iteration current_status true tac with
+        | LastIterationAtPoint => rep_last_bounded_from_point bound steps tac
+        | LastIterationFailed =>
+            printf "Warning: rep <-! found no backtracking point; keeping the current proof state.";
+            steps
+        | LastIterationStepped PointPresent =>
+            rep_last_bounded_from_point bound (Int.add steps 1) tac
+        | LastIterationStepped status =>
+            rep_last_bounded_before_point bound status (Int.add steps 1) tac
+        end
+    end.
+
+  Ltac2 rep_last_bounded (bound : int) (tac : unit -> unit) : int :=
+    rep_last_bounded_before_point bound PointUnknown 0 tac.
+
+  Ltac2 rec rep_last_bounded_on_failure_from_point (bound : int) (steps : int)
+      (tac : unit -> unit) (on_failure : unit -> unit) : int :=
+    match Int.gt steps bound with
+    | true =>
+        print_bound_exceeded bound steps;
+        steps
+    | false =>
+        let res := Control.case (fun _ => rep_last_segment None PointAbsent 0 tac) in
+        match res with
+        | Err e =>
+            match e with
+            | RepBacktrack BacktrackLast =>
+                Control.focus 1 1 on_failure;
+                steps
+            | _ => Control.zero e
+            end
+        | Val (result, _) =>
+            match result with
+            | LastSegmentDone segment_steps => Int.add steps segment_steps
+            | LastSegmentNextPoint (segment_steps, _) =>
+                rep_last_bounded_on_failure_from_point bound
+                  (Int.add steps segment_steps) tac on_failure
+            end
+        end
+    end.
+
+  Ltac2 rec rep_last_bounded_on_failure_before_point (bound : int)
+      (current_status : point_status) (steps : int)
+      (tac : unit -> unit) (on_failure : unit -> unit) : int :=
+    match has_goals () with
+    | false => steps
+    | true =>
+        match rep_last_iteration current_status true tac with
+        | LastIterationAtPoint =>
+            rep_last_bounded_on_failure_from_point bound steps tac on_failure
+        | LastIterationFailed =>
+            printf "Warning: rep <-! found no backtracking point; keeping the current proof state.";
+            steps
+        | LastIterationStepped PointPresent =>
+            rep_last_bounded_on_failure_from_point bound (Int.add steps 1) tac on_failure
+        | LastIterationStepped status =>
+            rep_last_bounded_on_failure_before_point bound status
+              (Int.add steps 1) tac on_failure
+        end
+    end.
+
+  Ltac2 rep_last_bounded_on_failure (bound : int) (tac : unit -> unit)
+      (on_failure : unit -> unit) : int :=
+    rep_last_bounded_on_failure_before_point bound PointUnknown 0 tac on_failure.
+
   (* calls [tac] [n] times (n = None means infinite) on the first goal
   under focus, stops on failure of [tac] and then backtracks according to [nback]. *)
   Ltac2 rec rep_aux (n : int option) (nback : backtrack_mode)
@@ -642,6 +743,9 @@ with other subgoals).
 [rep n tac] iterates this process at most n times.
 [rep <- n tac] backtracks n steps on failure.
 [rep <-! tac] backtracks to the last backtracking point on failure.
+[rep <-! <n tac] stops at the first backtracking point reached after exceeding n steps.
+[rep <-! <n tac | on_failure hook] additionally runs [hook] at the retained
+ backtracking point when [tac] fails, but not when the step bound is exceeded.
  (See the comment on [rep_check_backtrack_point] above to see what a backtracking point is)
 [rep <-? n tac] backtracks to the n-th last backtracking point on failure.
 *)
@@ -674,6 +778,23 @@ Tactic Notation "rep" "<-!" tactic3(tac) :=
     Rep.print_steps (Rep.rep Rep.none Rep.BacktrackLast (fun _ => Ltac1.run tac))) in
   r tac.
 
+Tactic Notation "rep" "<-!" "<" int(n) tactic3(tac) :=
+  let ntac := do n (refine (1 + _)%Z); refine 0%Z in
+  let r := ltac2:(ntac tac |-
+    let n := Rep.int_from_z_subgoal (fun _ => Ltac1.run ntac) in
+    Rep.print_steps (Rep.rep_last_bounded n (fun _ => Ltac1.run tac))) in
+  r ntac tac.
+
+Tactic Notation "rep" "<-!" "<" int(n) tactic3(tac)
+    "|" "on_failure" tactic3(on_failure) :=
+  let ntac := do n (refine (1 + _)%Z); refine 0%Z in
+  let r := ltac2:(ntac tac on_failure |-
+    let n := Rep.int_from_z_subgoal (fun _ => Ltac1.run ntac) in
+    Rep.print_steps
+      (Rep.rep_last_bounded_on_failure n
+        (fun _ => Ltac1.run tac) (fun _ => Ltac1.run on_failure))) in
+  r ntac tac on_failure.
+
 Tactic Notation "rep" "<-?" int(n) tactic3(tac) :=
   let ntac := do n (refine (1 + _)%Z); refine 0%Z in
   let r := ltac2:(ntac tac |-
@@ -692,6 +813,10 @@ Module RepTest.
         lazymatch goal with | |- BACKTRACK_POINT ?P => change P end
       ].
   Ltac DELAY_test_tac_with_true := first [exact I | DELAY_test_tac].
+  Ltac DELAY_test_tac_fail_on_true := first [
+    lazymatch goal with | |- DELAY ?P => change P end |
+    lazymatch goal with | |- BACKTRACK_POINT ?P => change P end
+  ].
   Local Ltac rep_check_backtrack_point_hook ::=
     match goal with
     | |- BACKTRACK_POINT ?P =>
@@ -744,6 +869,30 @@ Module RepTest.
     all: rep <-! DELAY_test_tac.
     all: do 11 DELAY_test_tac.
     1: lazymatch goal with | |- 1 = 2 => idtac | |- _ => fail "unexpected goal" end.
+  Abort.
+
+  Goal BACKTRACK_POINT (DELAY (DELAY (DELAY (BACKTRACK_POINT False)))).
+    rep <-! <2 DELAY_test_tac.
+    lazymatch goal with
+    | |- BACKTRACK_POINT False => idtac
+    | |- _ => fail "unexpected goal"
+    end.
+  Abort.
+
+  Goal BACKTRACK_POINT (DELAY True).
+    rep <-! <100 DELAY_test_tac_fail_on_true | on_failure
+      lazymatch goal with
+      | |- BACKTRACK_POINT (DELAY True) => unfold BACKTRACK_POINT, DELAY; exact I
+      | |- _ => fail "failure hook did not run at the retained point"
+      end.
+  Qed.
+
+  Goal BACKTRACK_POINT (DELAY (DELAY (DELAY (BACKTRACK_POINT False)))).
+    rep <-! <2 DELAY_test_tac | on_failure fail "unexpected failure hook".
+    lazymatch goal with
+    | |- BACKTRACK_POINT False => idtac
+    | |- _ => fail "unexpected goal"
+    end.
   Abort.
 
   (* Detect a point among the replacement goals created by one step. *)
