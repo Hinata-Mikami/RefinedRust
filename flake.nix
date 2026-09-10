@@ -313,6 +313,10 @@
           pname = "smtcoq";
           src = ./case_studies/smtcoq;
         }
+        {
+          pname = "verifythis2026";
+          src = ./case_studies/verifythis2026;
+        }
       ];
     in
     flake-parts.lib.mkFlake { inherit inputs; } {
