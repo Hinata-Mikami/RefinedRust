@@ -6,7 +6,19 @@ Lemma Option_ty_mut_subtype E L {T_rt} (T_ty1 : type T_rt) (T_ty2 : type T_rt) T
   mut_subtype E L T_ty1 T_ty2 T
   ⊢ mut_subtype E L (Option_ty T_rt <TY> T_ty1 <INST!>) (Option_ty T_rt <TY> T_ty2 <INST!>) T.
 Proof.
-Admitted.
+  rewrite /mut_subtype. iIntros "(%Hsub & $)". iPureIntro.
+  apply enum_full_subtype. iIntros (qL) "HL #HE".
+  iPoseProof (full_subtype_acc_noend with "HE HL") as "(%Hst & #Hincl)"; first exact Hsub.
+  iApply (full_enum_incl_intro E L (Option_enum -[] -[T_ty1])
+    (Option_enum -[] -[T_ty2]) (λ _, eq_refl) with "HL HE").
+  - simpl. by rewrite Hst.
+  - done.
+  - done.
+  - intros [r|]; simpl; rewrite /Option_Some_ty /Option_None_ty /= Hst;
+      apply struct_t_full_subtype; rewrite /hzipl2 /=.
+    + constructor; [exact Hsub | constructor].
+    + constructor.
+Qed.
 Definition Option_ty_mut_subtype_inst := [instance @Option_ty_mut_subtype].
 Global Existing Instance Option_ty_mut_subtype_inst.
 
@@ -17,25 +29,12 @@ Lemma Option_ty_weak_subtype_None E L {T_rt1 T_rt2} (T_ty1 : type T_rt1) (T_ty2 
   (⌜r2 = None⌝ ∗ ⌜st_of T_ty1 MetaNone = st_of T_ty2 MetaNone⌝ ∗ T) ⊢
   weak_subtype E L (None) r2 (Option_ty T_rt1 <TY> T_ty1 <INST!>) (Option_ty T_rt2 <TY> T_ty2 <INST!>) T.
 Proof.
-  iIntros "(-> & %Hst & HT)". subst. 
-  rewrite /weak_subtype.
-  iIntros (??) "#CTX HE HL". iFrame.
-  iModIntro. iSplitR. { simpl. rewrite Hst//. } 
-  simpl. iSplitR; first eauto.
-  iSplitR. { iModIntro. 
-    iIntros (???). simpl. 
-    iIntros "Ha". unfold Option_ty.
-    rewrite /ty_own_val/=. 
-    rewrite enum_own_val_unfold/=/enum_own_val_def.
-    simpl. 
-    rewrite Hst. done. }
-  iModIntro. 
-  iIntros (????). simpl. 
-  iIntros "Ha". unfold Option_ty.
-  rewrite /ty_shr/=. simpl. 
-  rewrite enum_shr_unfold/=/enum_shr_def.
-  simpl.
-  rewrite Hst. done.
+  iIntros "(-> & %Hst & HT)".
+  iApply weak_subtype_enum.
+  iSplitR. { simpl. by rewrite Hst. }
+  iSplitR; first done.
+  simpl. rewrite /Option_None_ty /= Hst.
+  by iApply weak_subtype_id.
 Qed.
 Definition Option_ty_weak_subtype_None_inst := [instance Option_ty_weak_subtype_None].
 #[export] Existing Instance Option_ty_weak_subtype_None_inst.

@@ -169,20 +169,103 @@ End accessors.
 Section subltype.
   Context `{!typeGS Σ}.
 
-  (* How do we formulate ltype_eq compatibility? 
+  Local Lemma enum_ltype_incl'_owned_in {rt1 rt2}
+      (en1 : enum rt1) (en2 : enum rt2) variant1 variant2 r1 r2 :
+    enum_els en1 = enum_els en2 →
+    let v1 := interp_enum_ltype_variant en1 variant1 r1 in
+    let v2 := interp_enum_ltype_variant en2 variant2 r2 in
+    v1.(eltv_tag) = v2.(eltv_tag) →
+    enum_ltype_variant_tag_compat en2 r2 v2 →
+    ltype_st v1.(eltv_ltype) = ltype_st v2.(eltv_ltype) →
+    ltype_incl' Owned (#v1.(eltv_rfn)) (#v2.(eltv_rfn)) v1.(eltv_ltype) v2.(eltv_ltype) -∗
+    ltype_incl' Owned (#r1) (#r2) (EnumLtype en1 variant1) (EnumLtype en2 variant2).
+  Proof.
+    intros Hels v1 v2 Htag Hcompat Hst. iIntros "#Hincl !>" (π l).
+    rewrite !ltype_own_enum_unfold /enum_ltype_own.
+    iIntros "(%el & %Halg & %Hly & Hlb & %r & -> & Hb)".
+    iExists el. rewrite -Hels. iR. iR. iFrame "Hlb".
+    iExists r2. iR.
+    iMod "Hb" as "(%ly & %Hcompat1 & %Hlook & %Hst1 & Htag & Hpad & Hb & Htail)".
+    fold v1 in Hlook, Hst1 |- *. fold v2.
+    iMod ("Hincl" with "Hb") as "Hb". iModIntro. iModIntro.
+    iExists ly. rewrite -Htag -Hst. do 3 (iSplitR; first done). iFrame.
+  Qed.
 
-  *)
+  Local Lemma interp_enum_ltype_variant_core {rt} (en : enum rt) variant r :
+    interp_enum_ltype_variant en (enum_ltype_variant_core <$> variant) r =
+    enum_ltype_variant_core (interp_enum_ltype_variant en variant r).
+  Proof.
+    destruct variant as [v|]; simpl; unfold interp_enum_ltype_variant; simpl.
+    - destruct (decide (enum_tag en r = Some (eltv_tag v))); first done.
+      unfold canonical_enum_ltype_variant, enum_ltype_variant_core. f_equal. simp_ltypes. done.
+    - unfold canonical_enum_ltype_variant, enum_ltype_variant_core. f_equal. simp_ltypes. done.
+  Qed.
 
-  (*
-  Definition enum_ltype_variant_incl (v1 v2 : enum_ltype_variant) :=
-    v1.(eltv_tag) = v2.(eltv_tag) ∗ 
-    ∃ (Heq : v1.(eltv_rt) = v2.(eltv_rt)), 
-      ltype_incl 
-
-  Lemma array_ltype_incl'_shared : 
-    
-    ltype_incl' (Shared κ) r r (EnumLtype en variant1) (EnumLtype en variant2).
-    *)
-
-
+  Lemma enum_ltype_incl_owned_in {rt1 rt2}
+      (en1 : enum rt1) (en2 : enum rt2) variant1 variant2 r1 r2 :
+    enum_els en1 = enum_els en2 →
+    let v1 := interp_enum_ltype_variant en1 variant1 r1 in
+    let v2 := interp_enum_ltype_variant en2 variant2 r2 in
+    v1.(eltv_tag) = v2.(eltv_tag) →
+    enum_ltype_variant_tag_compat en2 r2 v2 →
+    ltype_st v1.(eltv_ltype) = ltype_st v2.(eltv_ltype) →
+    ltype_incl Owned (#v1.(eltv_rfn)) (#v2.(eltv_rfn)) v1.(eltv_ltype) v2.(eltv_ltype) -∗
+    ltype_incl Owned (#r1) (#r2) (EnumLtype en1 variant1) (EnumLtype en2 variant2).
+  Proof.
+    intros Hels v1 v2 Htag Hcompat Hst. iIntros "#Hincl".
+    iDestruct "Hincl" as "[Hincl Hcore]". iModIntro. iSplit.
+    - by iApply enum_ltype_incl'_owned_in.
+    - rewrite !ltype_core_enum.
+      iApply enum_ltype_incl'_owned_in; first done;
+        rewrite !interp_enum_ltype_variant_core /enum_ltype_variant_core /=.
+      + done.
+      + done.
+      + rewrite !ltype_core_syn_type_eq. done.
+      + done.
+  Qed.
 End subltype.
+
+Section uniform_subltype.
+  Context `{!typeGS Σ}.
+
+  Local Lemma enum_ltype_incl'_owned {rt} (en1 en2 : enum rt) variant1 variant2 r :
+    enum_els en1 = enum_els en2 →
+    (∀ r', let v1 := interp_enum_ltype_variant en1 variant1 r' in
+      let v2 := interp_enum_ltype_variant en2 variant2 r' in
+      ⌜enum_ltype_variant_tag_compat en1 r' v1 →
+        v1.(eltv_tag) = v2.(eltv_tag) ∧ enum_ltype_variant_tag_compat en2 r' v2⌝ ∗
+      ⌜ltype_st v1.(eltv_ltype) = ltype_st v2.(eltv_ltype)⌝ ∗
+      ltype_incl' Owned (#v1.(eltv_rfn)) (#v2.(eltv_rfn)) v1.(eltv_ltype) v2.(eltv_ltype)) -∗
+    ltype_incl' Owned r r (EnumLtype en1 variant1) (EnumLtype en2 variant2).
+  Proof.
+    intros Hels. iIntros "#Hincl !>" (π l).
+    rewrite !ltype_own_enum_unfold /enum_ltype_own.
+    iIntros "(%el & %Halg & %Hly & Hlb & %r' & Hr & Hb)".
+    iExists el. rewrite -Hels. iR. iR. iFrame "Hlb".
+    iExists r'. iFrame "Hr".
+    iDestruct ("Hincl" $! r') as "(%Hcompat & %Hst & Hincl')".
+    iMod "Hb" as "(%ly & %Hcompat1 & %Hlook & %Hst1 & Htag & Hpad & Hb & Htail)".
+    destruct (Hcompat Hcompat1) as [Htag Hcompat2].
+    iMod ("Hincl'" with "Hb") as "Hb". iModIntro. iModIntro.
+    iExists ly. rewrite -Htag -Hst. do 3 (iSplitR; first done). iFrame.
+  Qed.
+
+  Lemma enum_ltype_incl_owned {rt} (en1 en2 : enum rt) variant1 variant2 r :
+    enum_els en1 = enum_els en2 →
+    (∀ r', let v1 := interp_enum_ltype_variant en1 variant1 r' in
+      let v2 := interp_enum_ltype_variant en2 variant2 r' in
+      ⌜enum_ltype_variant_tag_compat en1 r' v1 →
+        v1.(eltv_tag) = v2.(eltv_tag) ∧ enum_ltype_variant_tag_compat en2 r' v2⌝ ∗
+      ⌜ltype_st v1.(eltv_ltype) = ltype_st v2.(eltv_ltype)⌝ ∗
+      ltype_incl Owned (#v1.(eltv_rfn)) (#v2.(eltv_rfn)) v1.(eltv_ltype) v2.(eltv_ltype)) -∗
+    ltype_incl Owned r r (EnumLtype en1 variant1) (EnumLtype en2 variant2).
+  Proof.
+    intros Hels. iIntros "#Hincl". iModIntro. iSplit.
+    - iApply enum_ltype_incl'_owned; first done.
+      iIntros (r'). iDestruct ("Hincl" $! r') as "($ & $ & Hincl' & _)". done.
+    - rewrite !ltype_core_enum. iApply enum_ltype_incl'_owned; first done.
+      iIntros (r'). rewrite !interp_enum_ltype_variant_core /enum_ltype_variant_core /=.
+      rewrite !ltype_core_syn_type_eq.
+      iDestruct ("Hincl" $! r') as "($ & $ & _ & Hcore)". done.
+  Qed.
+End uniform_subltype.
