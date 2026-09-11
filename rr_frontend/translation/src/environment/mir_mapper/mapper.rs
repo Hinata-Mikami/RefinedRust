@@ -875,9 +875,58 @@ impl<'a, 'tcx> Mapper<'a, 'tcx> {
         self.mark_origin_with_phase(borrow_loc, Origin::Inserted, PointPhase::PreEffect(src_drop));
         self.mark_origin_with_phase(drop_call_loc, Origin::SplitFrom(src_drop), PointPhase::Direct(src_drop));
 
-        self.align_blocks(target_t, target_s);
-        if let (Some(bb_t), Some(bb_s)) = (unwind_target(*unwind_t), unwind_target(unwind_s)) {
+        if !self.align_post_drop_subgraph(
+            target_t,
+            &source_place,
+            src_drop,
+            target_s,
+            unwind_target(unwind_s),
+        ) {
+            self.align_blocks(target_t, target_s);
+        }
+        if let (Some(bb_t), Some(bb_s)) = (unwind_target(*unwind_t), unwind_target(unwind_s))
+            && !self.align_post_drop_subgraph(bb_t, &source_place, src_drop, bb_s, None)
+        {
             self.align_blocks(bb_t, bb_s);
+        }
+        true
+    }
+
+    /// Align target-only field drops that run after an explicit destructor call.
+    fn align_post_drop_subgraph(
+        &mut self,
+        entry_t: BasicBlock,
+        source_place: &NormalizedPlace,
+        src_drop: SourceLoc,
+        continuation_s: BasicBlock,
+        unwind_s: Option<BasicBlock>,
+    ) -> bool {
+        let Some(open_drop_match) = self.match_open_drop_target(entry_t) else {
+            return false;
+        };
+        if !same_or_subplace(source_place, &open_drop_match.root_place)
+            || (!open_drop_match.unwind_exits.is_empty() && unwind_s.is_none())
+        {
+            return false;
+        }
+
+        for block in open_drop_match.blocks {
+            if block.mark_statements {
+                self.mark_block_statements_with_phase(
+                    block.bb,
+                    Origin::SplitFrom(src_drop),
+                    PointPhase::PostEffect(src_drop),
+                );
+            }
+            let loc_t = (block.bb, self.de.basic_blocks[block.bb].statements.len());
+            self.mark_origin_with_phase(loc_t, Origin::SplitFrom(src_drop), PointPhase::PostEffect(src_drop));
+        }
+
+        for exit_t in open_drop_match.normal_exits {
+            self.align_blocks(exit_t, continuation_s);
+        }
+        for exit_t in open_drop_match.unwind_exits {
+            self.align_blocks(exit_t, unwind_s.unwrap());
         }
         true
     }
