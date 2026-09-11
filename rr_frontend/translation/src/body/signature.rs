@@ -176,10 +176,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         clos_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         closure_arg: &mir::LocalDecl<'tcx>,
         input_tuple_ty: ty::Ty<'tcx>,
+        output: ty::Ty<'tcx>,
         region_substitution: &mut regions::EarlyLateRegionMap<'def>,
         body_regions: &regions::BodyRegionContext<'def, 'tcx>,
         tcx: ty::TyCtxt<'tcx>,
-    ) -> (ty::Ty<'tcx>, Vec<ty::Ty<'tcx>>, ty::Ty<'tcx>, Option<specs::LftParam>) {
+    ) -> (ty::Ty<'tcx>, Vec<ty::Ty<'tcx>>, ty::Ty<'tcx>, ty::Ty<'tcx>, Option<specs::LftParam>) {
         // Process the lifetime parameters that come from the captures
         // Sideeffect: adds the regions that come from the captures (which may be local to the
         // surrounding function) to the region map, so that they appear as region parameters of the
@@ -195,6 +196,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // regions in lieu of early bounds.
         let fixed_closure_args =
             body_regions.rename_closure_capture_regions(input_tuple_ty, tcx, region_substitution);
+
+        // Closure outputs can borrow from captures, so normalize and register those regions too.
+        let fixed_output = body_regions.rename_closure_capture_regions(output, tcx, region_substitution);
 
         // Do the same to the whole closure arg, which will add the optional lifetime for the
         // capture reference
@@ -213,7 +217,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             }
         }
 
-        (fixed_closure_arg_ty, fixed_upvars_tys, fixed_closure_args, maybe_outer_lifetime)
+        (fixed_closure_arg_ty, fixed_upvars_tys, fixed_closure_args, fixed_output, maybe_outer_lifetime)
     }
 
     /// Create a translation instance for a closure.
@@ -298,11 +302,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // fix the regions in the closure args (esp the captures) and add the regions for the
         // captures to the region map (i.e., external regions).
-        let (fixed_closure_arg_ty, upvars_tys, input_tuple_ty, maybe_outer_lifetime) =
+        let (fixed_closure_arg_ty, upvars_tys, input_tuple_ty, output, maybe_outer_lifetime) =
             Self::compute_closure_meta(
                 clos_args,
                 closure_arg,
                 input_tuple_ty,
+                output,
                 &mut region_substitution,
                 &body_regions,
                 tcx,

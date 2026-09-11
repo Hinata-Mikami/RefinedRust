@@ -530,7 +530,7 @@ impl<'def> Abstract<'def> {
     /// Make a literal type.
     #[must_use]
     pub fn make_literal_type(&self) -> types::Literal {
-        let info = types::AdtShimInfo::new(None, self.has_invariant());
+        let info = types::AdtShimInfo::new(None, true);
 
         types::Literal {
             rust_name: Some(self.name().to_owned()),
@@ -705,22 +705,30 @@ impl<'def> AbstractUse<'def> {
 
         let def = def.borrow();
         let def = def.as_ref().unwrap();
+        let attrs = if self.is_raw() {
+            String::new()
+        } else {
+            fmt_list!(
+                self.scope_inst
+                    .get_surrounding_trait_requirements()
+                    .iter()
+                    .chain(self.scope_inst.get_direct_trait_requirements())
+                    .filter_map(traits::ReqInst::get_attr_term),
+                " "
+            )
+        };
         if !self.is_raw() && def.invariant.is_some() {
             let Some(inv) = &def.invariant else {
                 unreachable!();
             };
 
-            let attrs = fmt_list!(
-                self.scope_inst
-                    .get_direct_trait_requirements()
-                    .iter()
-                    .filter_map(traits::ReqInst::get_attr_term),
-                " "
-            );
-
             format!("({} {rt_inst} {attrs} {})", inv.type_name(), self.scope_inst.instantiation(true, true))
         } else {
-            format!("({} {rt_inst} {})", def.plain_ty_name(), self.scope_inst.instantiation(true, true))
+            format!(
+                "({} {rt_inst} {attrs} {})",
+                def.plain_ty_name(),
+                self.scope_inst.instantiation(true, true)
+            )
         }
     }
 }

@@ -179,21 +179,21 @@ impl<'def> LiteralUse<'def> {
     #[must_use]
     pub(crate) fn generate_type_term(&self) -> String {
         if let Some(scope_inst) = self.scope_inst.as_ref() {
-            let rt_inst = scope_inst
+            let mut rt_inst = scope_inst
                 .get_all_ty_params_with_assocs()
                 .iter()
                 .map(|ty| format!("({})", ty.get_rfn_type()))
-                .chain(
-                    (if self.def.info.needs_trait_attrs && !self.uses_raw_type() {
-                        scope_inst.get_direct_trait_requirements()
-                    } else {
-                        &[]
-                    })
-                    .iter()
-                    .filter_map(traits::ReqInst::get_attr_term),
-                )
-                .collect::<Vec<_>>()
-                .join(" ");
+                .collect::<Vec<_>>();
+            if self.def.info.needs_trait_attrs && !self.uses_raw_type() {
+                rt_inst.extend(
+                    scope_inst
+                        .get_surrounding_trait_requirements()
+                        .iter()
+                        .chain(scope_inst.get_direct_trait_requirements())
+                        .filter_map(traits::ReqInst::get_attr_term),
+                );
+            }
+            let rt_inst = rt_inst.join(" ");
             format!("({} {rt_inst} {})", self.type_term(), scope_inst.instantiation(true, true))
         } else {
             self.type_term().to_owned()

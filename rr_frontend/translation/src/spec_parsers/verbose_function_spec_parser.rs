@@ -1141,6 +1141,12 @@ where
         for (capture, ty) in meta.captures.iter().zip(meta.capture_tys.iter()) {
             let projections = compute_projection(&capture.place);
             let base = capture.var_ident.name.as_str();
+            let projection_suffix = projections.to_string();
+            let capture_ghost_name = if projection_suffix.is_empty() {
+                format!("_γcapture_{base}_g")
+            } else {
+                format!("_γcapture_{base}_{projection_suffix}_g")
+            };
             let place = RustPlace {
                 base: base.to_owned(),
                 proj: projections,
@@ -1191,7 +1197,7 @@ where
                             let (processed_ty, _) = self.make_type_with_ref(pre, auto_type);
                             // now wrap it in a mutable reference again
                             // we create a ghost variable
-                            let ghost_var = format!("_γ{base}");
+                            let ghost_var = capture_ghost_name;
                             new_ghost_vars.push(ghost_var.clone());
                             let altered_ty = specs::Type::MutRef(Box::new(processed_ty.0), lft.clone());
                             let altered_rfn = format!("(({}), {ghost_var})", processed_ty.1);
