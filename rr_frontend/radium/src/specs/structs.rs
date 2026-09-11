@@ -530,7 +530,7 @@ impl<'def> Abstract<'def> {
     /// Make a literal type.
     #[must_use]
     pub fn make_literal_type(&self) -> types::Literal {
-        let info = types::AdtShimInfo::new(None, true);
+        let info = types::AdtShimInfo::new(None, self.has_invariant());
 
         types::Literal {
             rust_name: Some(self.name().to_owned()),

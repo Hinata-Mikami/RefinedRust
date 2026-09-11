@@ -68,7 +68,7 @@ fn make_lft_map_string(els: &Vec<(coq::Ident, coq::Ident)>) -> String {
 
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum LitTerm {
-    #[display("TypeRt {}", _0)]
+    #[display("TypeRt ({})", _0)]
     TypeRt(RustType),
     #[display("AppDef [{}] [{}]", fmt_list!(_0, "; "), fmt_list!(_1, "; "))]
     AppDef(Vec<String>, Vec<Self>),
