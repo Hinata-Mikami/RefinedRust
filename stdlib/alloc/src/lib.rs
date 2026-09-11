@@ -44,6 +44,13 @@ pub unsafe trait Allocator {
     //unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout);
 }
 
+#[rr::instantiate("FreeablePerm" := "{A::FreeablePerm}")]
+unsafe impl<A> Allocator for &A
+where
+    A: Allocator + ?Sized,
+{
+}
+
 
 /// Allocation functions using the global allocator 
 

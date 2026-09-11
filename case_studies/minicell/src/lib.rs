@@ -22,7 +22,7 @@ mod evencell;
 #[rr::refined_by("x" : "{rt_of T}")]
 #[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 pub struct UnsafeCell<T> {
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     value: T,
 }
 
@@ -73,7 +73,7 @@ impl<T> UnsafeCell<T> {
 #[rr::mode(na)]
 #[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 pub struct Cell<T> {
-    #[rr::field("$# x")]
+    #[rr::field("#($# x)")]
     value: UnsafeCell<T>,
 }
 

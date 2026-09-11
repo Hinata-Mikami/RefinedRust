@@ -19,9 +19,9 @@ use std::marker::PhantomData;
 //#[rr::exists("o" : "option {rt_of T}")]
 //#[rr::invariant(#own "once_status_tok η o")]
 pub struct Once<T = (), R = Spin> {
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     _r: PhantomData<R>,
-    #[rr::field("y")]
+    #[rr::field("#(y)")]
     _d: PhantomData<T>,
 }
 

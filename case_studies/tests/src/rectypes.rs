@@ -4,9 +4,9 @@
 #[rr::exists("c" : "list unit")]
 #[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 struct Tree<T: Eq> {
-    #[rr::field("$# d")]
+    #[rr::field("#($# d)")]
     data: T,
-    #[rr::field("<#> c")]
+    #[rr::field("#(<#> c)")]
     children: Vec<Tree<T>>,
 }
 
@@ -26,13 +26,13 @@ impl<T: Eq> Tree<T> {
 #[rr::exists("x")]
 #[rr::only_spec(drop_glue)]
 struct Foo {
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     x: Option<Bar>,
 }
 
 #[rr::refined_by("()" : "unitRT")]
 struct Bar {
-    #[rr::field("(#tt, tt)")]
+    #[rr::field("#(#tt, tt)")]
     x : Box<Foo>,
 }
 
@@ -63,14 +63,14 @@ enum Bla {
     #[rr::pattern("Some" $ "x")]
     #[rr::refinement("x")]
     #[rr::refined_by("x" : "unitRT")]
-    BlaW(#[rr::field("(#x, tt)")] Box<Blub>),
+    BlaW(#[rr::field("#(#x, tt)")] Box<Blub>),
 }
 
 #[rr::refined_by("()" : "unitRT")]
 #[rr::context("EqDecision Z")]
 #[rr::exists("x")]
 struct Blub {
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     x : Bla, 
 }
 

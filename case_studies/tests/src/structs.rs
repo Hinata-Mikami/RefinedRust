@@ -106,7 +106,7 @@ fn mutref_reborrow_overwrite_nested(b : bool) {
 #[rr::refined_by("x" : "Z")]
 #[rr::invariant("Zeven x")]
 struct EvenInt {
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     num: i32,
 }
 
@@ -156,4 +156,16 @@ impl Foo {
     pub fn b(&mut self) {
         assert!(true);
     }
+}
+
+#[rr::refined_by("x" : "place_rfn Z")]
+#[rr::invariant("True")]
+struct BorrowableFoo {
+    #[rr::field("x")]
+    x: i32,
+}
+
+#[rr::verify]
+fn borrow_x(foo: &mut BorrowableFoo) -> &mut i32 {
+    &mut foo.x
 }

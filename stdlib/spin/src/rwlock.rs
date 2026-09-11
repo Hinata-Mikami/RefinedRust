@@ -11,9 +11,9 @@ use core::marker::PhantomData;
 #[rr::exists("x", "y")]
 #[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 pub struct RwLock<T : ?Sized, R = Spin> {
-    #[rr::field("y")]
+    #[rr::field("#(y)")]
     phantom: PhantomData<R>,
-    #[rr::field("x")]
+    #[rr::field("#x")]
     data: UnsafeCell<T>,
 }
 
@@ -21,7 +21,7 @@ pub struct RwLock<T : ?Sized, R = Spin> {
 #[rr::export_as(spin::rwlock::RwLockReadGuard)]
 #[rr::refined_by("x" : "{rt_of T}")]
 pub struct RwLockReadGuard<'a, T: 'a + ?Sized> {
-    #[rr::field("#x")]
+    #[rr::field("#(#x)")]
     _t: &'a T,
 }
 
@@ -30,9 +30,9 @@ pub struct RwLockReadGuard<'a, T: 'a + ?Sized> {
 #[rr::refined_by("x" : "place_rfn {rt_of T}")]
 #[rr::exists("y")]
 pub struct RwLockWriteGuard<'a, T: 'a + ?Sized, R = Spin> {
-    #[rr::field("#tt")]
+    #[rr::field("#(#tt)")]
     _l: &'a RwLock<T>,
-    #[rr::field("y")]
+    #[rr::field("#(y)")]
     _r: R,
 }
 

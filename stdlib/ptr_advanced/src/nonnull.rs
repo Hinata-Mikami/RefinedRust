@@ -9,7 +9,7 @@ use core::ptr;
 pub struct NonNull<T: ?Sized> {
     // Remember to use `.as_ptr()` instead of `.pointer`, as field projecting to
     // this is banned by <https://github.com/rust-lang/compiler-team/issues/807>.
-    #[rr::field("l")]
+    #[rr::field("#(l)")]
     pointer: *const T,
 }
 
@@ -65,6 +65,14 @@ impl<T: ?Sized> NonNull<T> {
     pub const fn as_ptr(self) -> *mut T {
         // stdlib is doing a transmute, but that is hard.
         self.pointer as *mut T
+    }
+
+    #[rr::params("x" : "{xt_of T}")]
+    #[rr::requires(#iris "self.cur ◁ₗ[π, Owned] # ($# x) @ ◁ {ty_of T}")]
+    #[rr::exists("γ")]
+    #[rr::returns("(x, γ)")]
+    pub const unsafe fn as_mut<'a>(&mut self) -> &'a mut T {
+        &mut *self.as_ptr()
     }
 
     #[rr::returns("self")]

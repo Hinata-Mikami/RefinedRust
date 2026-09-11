@@ -37,11 +37,11 @@ use wrappers::*;
 // !end spec
 struct Point {
     // !start spec(knights_tour.point)
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     // !end spec
     pub x: isize,
     // !start spec(knights_tour.point)
-    #[rr::field("y")]
+    #[rr::field("#(y)")]
     // !end spec
     pub y: isize,
 }
@@ -80,11 +80,11 @@ impl Point {
 // !end spec
 pub struct Board {
     // !start spec(knights_tour.board)
-    #[rr::field("Z.of_nat s")]
+    #[rr::field("#(Z.of_nat s)")]
     // !end spec
     pub size: usize,
     // !start spec(knights_tour.board)
-    #[rr::field("field")]
+    #[rr::field("#(field)")]
     // !end spec
     pub field: Vec<Vec<usize>>,
 }
@@ -276,5 +276,4 @@ fn main() {
          //None => println!("Fail!"),
      //}
 }
-
 

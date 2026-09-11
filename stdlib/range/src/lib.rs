@@ -15,10 +15,10 @@
 #[rr::derive_instantiate("DropGlueUnwind" := "{Idx::DropGlueUnwind}")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
-    #[rr::field("rstart")]
+    #[rr::field("#(rstart)")]
     pub start: Idx,
     /// The upper bound of the range (exclusive).
-    #[rr::field("rend")]
+    #[rr::field("#(rend)")]
     pub end: Idx,
 }
 

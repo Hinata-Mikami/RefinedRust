@@ -44,9 +44,9 @@ struct Link<T> {
 #[rr::ty_wf_E("ty_wf_E {T}")]
 #[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 pub struct List<T> {
-    #[rr::field("hd_ptr")]
+    #[rr::field("#(hd_ptr)")]
     first: *const Link<T>,
-    #[rr::field("tl_ptr")]
+    #[rr::field("#(tl_ptr)")]
     last: *const Link<T>,
 }
 
@@ -202,9 +202,9 @@ impl<T> Drop for List<T> {
 #[rr::ty_wf_E("ty_wf_E {T}")]
 #[derive(Copy, Clone)]
 pub struct ListIter<'a, T> {
-    #[rr::field("hd_ptr")]
+    #[rr::field("#(hd_ptr)")]
     current_link: *const Link<T>,
-    #[rr::field("tt")]
+    #[rr::field("#(tt)")]
     phantom: PhantomData<&'a T>,
 }
 

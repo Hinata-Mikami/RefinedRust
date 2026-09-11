@@ -64,9 +64,9 @@ fn loop3() {
 #[rr::refined_by("(start, last)" : "Z * Z")]
 #[rr::invariant("(start ≤ last)%Z")]
 struct MyRange {
-    #[rr::field("start")]
+    #[rr::field("#(start)")]
     start: usize,
-    #[rr::field("last")]
+    #[rr::field("#(last)")]
     end: usize,
 }
 

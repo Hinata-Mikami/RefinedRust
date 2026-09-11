@@ -11,7 +11,8 @@
 #![rr::import("rrstd.vec.theories", "vec")]
 
 #![rr::package("refinedrust-stdlib")]
-#![rr::coq_prefix("rrstd.alloc")]
+#![rr::coq_prefix("rrstd.vec")]
+
 #![rr::include("alloc")]
 #![rr::include("iterator")]
 #![rr::include("option")]
@@ -45,11 +46,11 @@ type Cap = usize;
 #[rr::trust_me(drop_glue)]
 #[rr::derive_instantiate("DropGlueUnwind" := "{A::DropGlueUnwind}")]
 struct RawVecInner<A: Allocator = Global> {
-    #[rr::field("l")]
+    #[rr::field("#(l)")]
     ptr: Unique<u8>,
-    #[rr::field("Z.of_nat cap")]
+    #[rr::field("#(Z.of_nat cap)")]
     cap: Cap,
-    #[rr::field("alloc")]
+    #[rr::field("#(alloc)")]
     alloc: A,
 }
 
@@ -99,9 +100,9 @@ impl<A: Allocator> RawVecInner<A> {
 // Ownership needs to be here in order to allow drop glue to safely call Drop
 #[rr::invariant(#type "l" : "els" @ "array_t cap (maybe_uninit {T})")]
 pub(crate) struct RawVec<T, A: Allocator = Global> {
-    #[rr::field("(l, cap, $# a)")]
+    #[rr::field("#((l, cap, $# a))")]
     inner: RawVecInner<A>,
-    #[rr::field("tt")]
+    #[rr::field("#(tt)")]
     _marker: PhantomData<T>,
 }
 
@@ -139,9 +140,9 @@ impl<T, A: Allocator> Drop for RawVec<T, A> {
 // elementwise ghost-drop
 #[rr::ghost_drop(#iris "[∗ list] x ∈ xs, ∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop {T} π r")]
 pub struct Vec<T, A: Allocator = Global> {
-    #[rr::field("(l, cap, els)")]
+    #[rr::field("#((l, cap, els))")]
     buf: RawVec<T, A>,
-    #[rr::field("Z.of_nat len")]
+    #[rr::field("#(Z.of_nat len)")]
     len: usize,
 }
 
@@ -291,9 +292,9 @@ pub struct IntoIter<
     T,
     A: Allocator = Global,
 > {
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     _x: PhantomData<T>,
-    #[rr::field("y")]
+    #[rr::field("#(y)")]
     _y: A,
 }
 
@@ -576,9 +577,9 @@ pub struct Iter<'a, T: 'a> {
     /// For non-ZSTs, the non-null pointer to the past-the-end element.
     ///
     /// For ZSTs, this is `ptr::without_provenance_mut(len)`.
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     end_or_len: *const T,
-    #[rr::field("y")]
+    #[rr::field("#(y)")]
     _marker: PhantomData<&'a T>,
 }
 
@@ -624,14 +625,14 @@ pub struct IterMut<'a, T: 'a> {
     /// if the iterator is empty.
     ///
     /// This address will be used for all ZST elements, never changed.
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     ptr: NonNull<T>,
     /// For non-ZSTs, the non-null pointer to the past-the-end element.
     ///
     /// For ZSTs, this is `ptr::without_provenance_mut(len)`.
-    #[rr::field("y")]
+    #[rr::field("#(y)")]
     end_or_len: *mut T,
-    #[rr::field("tt")]
+    #[rr::field("#(tt)")]
     _marker: PhantomData<&'a mut T>,
 }
 

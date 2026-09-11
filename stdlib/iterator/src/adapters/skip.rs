@@ -4,9 +4,9 @@ use crate::traits::iterator::Iterator;
 #[rr::refined_by("(it, n)" : "(_ * nat)")]
 #[rr::derive_instantiate("DropGlueUnwind" := "{I::DropGlueUnwind}")]
 pub struct Skip<I> {
-    #[rr::field("it")]
+    #[rr::field("#(it)")]
     iter: I,
-    #[rr::field("Z.of_nat n")]
+    #[rr::field("#(Z.of_nat n)")]
     n: usize,
 }
 

@@ -16,9 +16,9 @@ use crate::traits::iterator::Iterator;
 #[rr::derive_instantiate("DropGlueUnwind" := "{I::DropGlueUnwind} ∨ {F::DropGlueUnwind}")]
 pub struct Map<I, F> 
 {
-    #[rr::field("$# x.(map_it)")]
+    #[rr::field("#($# x.(map_it))")]
     pub(crate) iter: I,
-    #[rr::field("$# x.(map_clos)")]
+    #[rr::field("#($# x.(map_clos))")]
     f: F,
 }
 

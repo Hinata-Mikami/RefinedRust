@@ -6,11 +6,11 @@ use crate::traits::iterator::Iterator;
 #[rr::refined_by("x" : "StepByXRT {rt_of I}")]
 #[rr::derive_instantiate("DropGlueUnwind" := "{I::DropGlueUnwind}")]
 pub struct StepBy<I> {
-    #[rr::field("$# x.(step_by_it)")]
+    #[rr::field("#($# x.(step_by_it))")]
     iter: I,
-    #[rr::field("Z.of_nat x.(step_by_n)")]
+    #[rr::field("#(Z.of_nat x.(step_by_n))")]
     step_minus_one: usize,
-    #[rr::field("x.(step_by_first)")]
+    #[rr::field("#(x.(step_by_first))")]
     first_take: bool,
 }
 

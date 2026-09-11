@@ -5,7 +5,7 @@
 #[rr::invariant("Zeven x")]
 #[rr::mode(na)]
 pub struct EvenCell {
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     value: i32,
 }
 

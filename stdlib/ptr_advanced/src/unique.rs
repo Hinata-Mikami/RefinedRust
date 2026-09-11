@@ -9,14 +9,14 @@ use core::mem;
 #[rr::export_as(core::ptr::Unique)]
 #[rr::refined_by("l" : "loc")]
 pub struct Unique<T: ?Sized> {
-    #[rr::field("l")]
+    #[rr::field("#(l)")]
     pointer: NonNull<T>,
     // NOTE: this marker has no consequences for variance, but is necessary
     // for dropck to understand that we logically own a `T`.
     //
     // For details, see:
     // https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md#phantom-data
-    #[rr::field("tt")]
+    #[rr::field("#(tt)")]
     _marker: PhantomData<T>,
 }
 
@@ -58,5 +58,4 @@ impl<T: ?Sized> Unique<T> {
 //impl<T: ?Sized> From<NonNull<T>> for Unique<T> {
     //fn from(ptr: NonNull<T>) -> Self { Self { ptr, _marker: PhantomData } }
 //}
-
 

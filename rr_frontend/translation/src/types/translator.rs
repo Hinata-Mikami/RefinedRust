@@ -1315,7 +1315,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let mut rfn = String::with_capacity(100);
 
             rfn.push_str("-[");
-            push_str_list!(rfn, &field_refinements, "; ", "#({})");
+            push_str_list!(rfn, &field_refinements, "; ", "{}");
             rfn.push(']');
 
             invariant_spec.provide_abstracted_refinement(rfn);

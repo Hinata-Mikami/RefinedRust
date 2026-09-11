@@ -41,7 +41,7 @@ fn get_even_int_from_user() -> Option<EvenInt> {
 #[rr::refined_by("x" : "Z")]
 #[rr::invariant("Zeven x")]
 struct EvenInt {
-    #[rr::field("x")]
+    #[rr::field("#(x)")]
     num: i32,
 }
 

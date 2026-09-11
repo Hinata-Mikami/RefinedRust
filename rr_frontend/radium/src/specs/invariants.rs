@@ -109,13 +109,13 @@ impl Spec {
     }
 
     /// Assemble the owned invariant predicate for the plain mode.
-    fn assemble_plain_owned_invariant(&self) -> String {
+    fn assemble_plain_owned_invariant(&self, base_rfn_type: &str) -> String {
         let mut out = String::with_capacity(200);
 
         let ex = self.make_existential_binders();
         write!(
             out,
-            "λ π inner_rfn (_ty_rfn : RT_rt ({}%type : RT)),
+            "λ π (inner_rfn : {base_rfn_type}) (_ty_rfn : RT_rt ({}%type : RT)),
             let '{} := _ty_rfn in {}⌜inner_rfn = {}⌝ ∗ ",
             self.rfn_type,
             self.rfn_pat,
@@ -142,13 +142,13 @@ impl Spec {
     }
 
     /// Assemble the sharing invariant predicate for the plain mode.
-    fn assemble_plain_shared_invariant(&self) -> String {
+    fn assemble_plain_shared_invariant(&self, base_rfn_type: &str) -> String {
         let mut out = String::with_capacity(200);
 
         let ex = self.make_existential_binders();
         write!(
             out,
-            "λ π κ inner_rfn (_ty_rfn : RT_rt ({}%type : RT)),
+            "λ π κ (inner_rfn : {base_rfn_type}) (_ty_rfn : RT_rt ({}%type : RT)),
             let '{} := _ty_rfn in {}⌜inner_rfn = {}⌝ ∗ ",
             self.rfn_type,
             self.rfn_pat,
@@ -213,7 +213,7 @@ impl Spec {
     }
 
     /// Assemble the invariant for the persistent mode.
-    fn assemble_pers_invariant(&self) -> String {
+    fn assemble_pers_invariant(&self, base_rfn_type: &str) -> String {
         let mut out = String::with_capacity(200);
 
         let ex = self.make_existential_binders();
@@ -221,7 +221,7 @@ impl Spec {
         // persistence/timeless inference go nuts.
         write!(
             out,
-            "λ inner_rfn (_rfn_binder : RT_rt ({}%type : RT)),
+            "λ (inner_rfn : {base_rfn_type}) (_rfn_binder : RT_rt ({}%type : RT)),
             let '{} := _rfn_binder in {}⌜inner_rfn = {}⌝ ∗ ",
             self.rfn_type,
             self.rfn_pat,
@@ -280,7 +280,7 @@ impl Spec {
         let mut body = String::with_capacity(200);
         match self.flags {
             SpecFlags::Persistent => {
-                let inv = self.assemble_pers_invariant();
+                let inv = self.assemble_pers_invariant(base_rfn_type);
                 write!(
                     body,
                     "{scope} mk_pers_ex_inv_def\n\
@@ -290,8 +290,8 @@ impl Spec {
                 .unwrap();
             },
             SpecFlags::Plain => {
-                let own_inv = self.assemble_plain_owned_invariant();
-                let shr_inv = self.assemble_plain_shared_invariant();
+                let own_inv = self.assemble_plain_owned_invariant(base_rfn_type);
+                let shr_inv = self.assemble_plain_shared_invariant(base_rfn_type);
                 let lft_outlives = self.assemble_ty_lfts();
                 let lft_wf_elctx = self.assemble_ty_wf_elctx();
 
@@ -356,7 +356,7 @@ impl Spec {
                 }
             },
             SpecFlags::NonAtomic => {
-                let own_inv = self.assemble_plain_owned_invariant();
+                let own_inv = self.assemble_plain_owned_invariant(base_rfn_type);
                 let lft_outlives = self.assemble_ty_lfts();
                 let lft_wf_elctx = self.assemble_ty_wf_elctx();
 

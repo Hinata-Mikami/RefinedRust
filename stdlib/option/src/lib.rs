@@ -11,6 +11,7 @@
 #![rr::include("result")]
 
 use core::mem;
+use std::hint;
 
 #[rr::refined_by("option (place_rfn {rt_of T})")]
 #[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
@@ -43,6 +44,18 @@ impl<T> Option<T> {
     #[rr::returns("bool_decide (¬ is_Some x)")]
     pub fn is_none(&self) -> bool {
         unimplemented!()
+    }
+
+    /// # Safety
+    /// See stdlib
+    #[rr::requires("destruct_hint self is_Some")]
+    #[rr::ensures("match self with | Some x => ret = x | None => False end")]
+    pub unsafe fn unwrap_unchecked(self) -> T {
+        match self {
+            Some(val) => val,
+            // SAFETY: the safety contract must be upheld by the caller.
+            None => unsafe { hint::unreachable_unchecked() },
+        }
     }
 }
 

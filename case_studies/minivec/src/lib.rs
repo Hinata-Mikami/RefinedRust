@@ -173,11 +173,11 @@ mod rrptr {
 #[rr::invariant(#iris "freeable_nz l (size_of_array_in_bytes {st_of T} cap) 1 HeapAlloc")]
 pub struct RawVec<T> {
     // *const T because it is covariant in T
-    #[rr::field("l")]
+    #[rr::field("#(l)")]
     ptr: *const T,
-    #[rr::field("Z.of_nat cap")]
+    #[rr::field("#(Z.of_nat cap)")]
     cap: usize,
-    #[rr::field("tt")]
+    #[rr::field("#(tt)")]
     _marker: PhantomData<T>,
 }
 
@@ -193,9 +193,9 @@ pub struct RawVec<T> {
 // we need the ZST case to know that we never call grow except when we have reached the capacity limit
 #[rr::invariant("if decide (size_of_st {st_of T} = 0%nat) then cap = Z.to_nat (MaxInt USize) else (size_of_array_in_bytes {st_of T} cap ≤ MaxInt ISize)%Z")]
 pub struct Vec<T> {
-    #[rr::field("(l, cap)")]
+    #[rr::field("#((l, cap))")]
     buf: RawVec<T>,
-    #[rr::field("Z.of_nat $ len")]
+    #[rr::field("#(Z.of_nat $ len)")]
     len: usize,
 }
 
@@ -204,9 +204,9 @@ pub struct Vec<T> {
 #[rr::invariant("remaining = (drop index xs)")]
 #[rr::invariant("index ≤ length xs")]
 pub struct Iter<'a, T: 'a> {
-    #[rr::field("#(<#> <$#> xs)")]
+    #[rr::field("# #(<#> <$#> xs)")]
     vec: &'a Vec<T>,
-    #[rr::field("Z.of_nat index")]
+    #[rr::field("# Z.of_nat index")]
     index: usize,
 }
 

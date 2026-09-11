@@ -12,6 +12,6 @@
 #[rr::refined_by("x" : "{rt_of T}")]
 #[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 pub struct UnsafeCell<T: ?Sized> {
-    #[rr::field("x")]
+    #[rr::field("#x")]
     value: T,
 }

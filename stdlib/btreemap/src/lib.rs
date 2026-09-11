@@ -28,11 +28,11 @@ pub struct BTreeMap<
     V,
     A: Allocator + Clone = Global,
 > {
-    #[rr::field("k")]
+    #[rr::field("#(k)")]
     _k: K,
-    #[rr::field("v")]
+    #[rr::field("#(v)")]
     _v: V,
-    #[rr::field("a")]
+    #[rr::field("#(a)")]
     _a: A,
 }
 

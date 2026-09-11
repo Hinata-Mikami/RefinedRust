@@ -20,7 +20,7 @@ use core::mem;
 #[rr::inv("Z.of_nat l.(layout_sz) ∈ isize")]
 pub struct Layout {
     // size of the requested block of memory, measured in bytes.
-    #[rr::field("Z.of_nat l.(layout_sz)")]
+    #[rr::field("#(Z.of_nat l.(layout_sz))")]
     size: usize,
 
     // alignment of the requested block of memory, measured in bytes.
@@ -30,7 +30,7 @@ pub struct Layout {
     //
     // (However, we do not analogously require `align >= sizeof(void*)`,
     //  even though that is *also* a requirement of `posix_memalign`.)
-    #[rr::field("l.(layout_alignment)")]
+    #[rr::field("#(l.(layout_alignment))")]
     align: Alignment,
 }
 

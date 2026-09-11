@@ -7,7 +7,7 @@ use core::mem;
 #[rr::export_as(core::mem::Alignment)]
 #[rr::refined_by("x" : "alignment_enum")]
 #[derive(Copy, Clone)]
-pub struct Alignment(#[rr::field("x")] AlignmentEnum);
+pub struct Alignment(#[rr::field("#(x)")] AlignmentEnum);
 
 /// Radium works with a 64-bit pointer representation.
 #[repr(u64)]
