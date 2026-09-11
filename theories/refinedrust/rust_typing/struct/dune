@@ -1,6 +1,0 @@
-(rocq.theory
- (name refinedrust.struct)
- (package refinedrust)
- (synopsis "RefinedRust struct types")
- (generate_project_file)
- (theories stdpp iris Ltac2 radium refinedrust lithium refinedrust.base))

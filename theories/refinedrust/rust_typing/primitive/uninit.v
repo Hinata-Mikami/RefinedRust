@@ -1,5 +1,5 @@
 From refinedrust Require Export type uninit_def.
-From refinedrust Require Import programs ltype_rules value.
+From refinedrust.base Require Import programs ltype_rules value.
 From refinedrust Require Import options.
 
 (** * Typing rules for the uninit type *)

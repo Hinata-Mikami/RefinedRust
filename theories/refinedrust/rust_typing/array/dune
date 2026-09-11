@@ -1,6 +1,0 @@
-(rocq.theory
- (name refinedrust.array)
- (package refinedrust)
- (synopsis "RefinedRust arrays")
- (generate_project_file)
- (theories stdpp iris Ltac2 radium refinedrust lithium refinedrust.base))

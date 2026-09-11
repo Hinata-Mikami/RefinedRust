@@ -1,6 +1,0 @@
-(rocq.theory
- (name refinedrust.enum)
- (package refinedrust)
- (synopsis "RefinedRust enums")
- (generate_project_file)
- (theories stdpp iris Ltac2 radium refinedrust lithium refinedrust.base))

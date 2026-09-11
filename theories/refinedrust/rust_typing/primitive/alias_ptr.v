@@ -1,5 +1,6 @@
 From refinedrust Require Export type ltypes programs.
-From refinedrust Require Import memcasts ltype_rules value int unit.
+From refinedrust.base Require Import memcasts ltype_rules value int.
+From refinedrust Require Import unit.
 From refinedrust Require Import options.
 
 (** * Raw pointers *)

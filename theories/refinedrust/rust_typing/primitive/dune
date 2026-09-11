@@ -1,6 +1,0 @@
-(rocq.theory
- (name refinedrust.primitive)
- (package refinedrust)
- (synopsis "RefinedRust Primitive Types")
- (generate_project_file)
- (theories stdpp iris iris_contrib Ltac2 radium lithium lrust Equations refinedrust.base))
