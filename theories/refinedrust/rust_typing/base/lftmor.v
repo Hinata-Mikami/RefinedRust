@@ -44,6 +44,7 @@ Section dep_lft_mor.
   Definition full_deps (rts : list RT) : gset nat := full_deps_from 0 rts.
 
   Class DepsFull (rts : list RT) (deps : gset nat) : Prop := deps_full_proof : deps = full_deps rts.
+  Class DepsEmpty (deps : gset nat) : Prop := deps_empty_proof : deps = ∅.
 
   Fixpoint dep_lfts_aux {rts : list RT} (deps : gset nat) (i : nat)
       (tys : mut_types rts) : list lft :=
@@ -337,6 +338,9 @@ Section dep_lft_mor.
   Class DepLftMorphismBetaFull {rts B} `{!Lifecycle B} {deps : gset nat}
       {F : mut_types rts → B} (Hm : DepLftMorphism deps F) : Type :=
     dep_lft_morphism_beta_full : DepBetaFull (rts:=rts) (@dep_lft_morph_βdeps rts B _ deps F Hm).
+  Class DepLftMorphismBetaEmpty {rts B} `{!Lifecycle B} {deps : gset nat}
+      {F : mut_types rts → B} (Hm : DepLftMorphism deps F) : Prop :=
+    dep_lft_morphism_beta_empty : @dep_lft_morph_βdeps rts B _ deps F Hm = [].
 
   Global Arguments mk_dep_lft_morph {_ _ _ _ _}.
   Global Arguments dep_lft_morph_α {_ _ _ _ _} _.
@@ -551,6 +555,8 @@ End dep_lft_mor.
 
 Global Hint Mode DepsFull + + : typeclass_instances.
 Global Hint Extern 3 (DepsFull _ _) => unfold DepsFull; simpl; set_solver : typeclass_instances.
+Global Hint Mode DepsEmpty + : typeclass_instances.
+Global Hint Extern 3 (DepsEmpty _) => unfold DepsEmpty; simpl; set_solver : typeclass_instances.
 
 Global Hint Mode DepLftMorphismBetaFull + + + + + + + + : typeclass_instances.
 (* TODO generalize *)
@@ -561,6 +567,11 @@ Global Hint Extern 3 (DepLftMorphismBetaFull _) =>
   unfold DepLftMorphismBetaFull;
   simpl;
   solve_dep_beta_full : typeclass_instances.
+Global Hint Mode DepLftMorphismBetaEmpty + + + + + + + + : typeclass_instances.
+Global Hint Extern 3 (DepLftMorphismBetaEmpty _) =>
+  unfold DepLftMorphismBetaEmpty;
+  simpl;
+  reflexivity : typeclass_instances.
 
 Section projection.
   Context `{!typeGS Σ}.
@@ -750,6 +761,28 @@ Section lft_morph.
     apply (LftMorphism_wf_E_idempotent F (HF := HF)).
   Qed.
 
+  Lemma DepLftMorphism_empty_to_LftMorphismConst {rts B} `{!Lifecycle B}
+      (deps : gset nat) (F : mut_types rts → B) :
+    ∀ Hm : DepLftMorphism deps F,
+    DepsEmpty deps →
+    DepLftMorphismBetaEmpty Hm →
+    LftMorphismConst F.
+  Proof.
+    intros Hm Hdeps Hβ.
+    rewrite (deps_empty_proof (deps:=deps)) in Hm, Hβ |- *.
+    pose proof (dep_lft_morphism_beta_empty (Hm:=Hm)) as Hβempty.
+    refine (mk_lft_morph_const (dep_lft_morph_α Hm) (dep_lft_morph_E Hm) _ _).
+    - iIntros (tys). iApply lft_equiv_trans.
+      { iApply (dep_lft_morph_lfts Hm). }
+      rewrite dep_lfts_empty /= lft_intersect_right_id.
+      iApply lft_equiv_refl.
+    - intros tys. rewrite (dep_lft_morph_wf_E Hm tys).
+      rewrite dep_wf_E_empty Hβempty /dep_beta_interp /= elctx_interp_nil.
+      iSplit.
+      + iIntros "(HE & _ & _)". iFrame.
+      + iIntros "HE". iFrame. done.
+  Qed.
+
   Lemma DepLftMorphism_to_LftMorphism {rts B} `{!Lifecycle B}
       (deps : gset nat) (F : mut_types rts → B) :
     ∀ Hm : DepLftMorphism deps F,
@@ -803,6 +836,9 @@ End lft_morph.
 (* needs [eapply], so declaring it an instance does not suffice *)
 Global Hint Extern 3 (LftMorphism _) => simple eapply DepLftMorphism_to_LftMorphism : typeclass_instances.
 Global Hint Extern 3 (TyLftMorphism _) => simple eapply DepLftMorphism_to_TyLftMorphism : typeclass_instances.
+Global Hint Extern 2 (LftMorphism _) =>
+  apply lft_morph_const; simple eapply DepLftMorphism_empty_to_LftMorphismConst
+  : typeclass_instances.
 
 (** Lft morphisms lifted to hlist *)
 Section hlist_mor.

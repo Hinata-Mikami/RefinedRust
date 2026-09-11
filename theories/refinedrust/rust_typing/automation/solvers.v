@@ -2824,8 +2824,8 @@ Ltac solve_ty_allows :=
 (** Solver for syn_type equalities *)
 Ltac solve_syn_type_eq_step :=
   first [
-  f_equiv
-  | reflexivity
+    reflexivity
+  | f_equiv
   | progress simp_ltypes; simpl
   | rewrite mut_fixpoint_project_ty_syn_type/=
   | lia].

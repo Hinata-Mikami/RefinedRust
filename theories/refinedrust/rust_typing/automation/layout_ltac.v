@@ -521,6 +521,9 @@ Section tac.
 End tac.
 
 Ltac solve_layout_alg_prepare :=
+  repeat match goal with
+  | |- context[mut_type_project _ _ _] => rewrite mut_fixpoint_project_ty_syn_type; simpl
+  end;
   try match goal with
   | |- syn_type_has_layout ?st ?ly =>
       simplify_layout ly
@@ -549,9 +552,6 @@ Ltac solve_layout_alg_prepare :=
 
 Ltac solve_layout_alg_core_step1 :=
   (* For primitive goals for which we have an assumption in the context *)
-  repeat match goal with
-  | |- context[mut_type_project _ _ _] => rewrite mut_fixpoint_project_ty_syn_type; simpl
-  end;
   try eassumption.
 Ltac solve_layout_alg_core_step2 :=
   (* Simplify *)
@@ -1268,7 +1268,7 @@ Ltac simplify_layout_alg_simpl_step H :=
       first [
         assert_is_atomic_st spec
       (* we don't want to hnf this as it doesn't unfold well *)
-      | match spec with ltype_st (◁ mut_type_project _ _ _)%I  => simp_ltypes in H end
+      | match spec with | ltype_st (◁ mut_type_project _ _ _)%I  => simp_ltypes in H | st_of (mut_type_project _ _ _) _ => idtac end
       | let spec_eval := eval hnf in spec in
         change_no_check spec with spec_eval in H ]
   end.
