@@ -2027,6 +2027,14 @@ Section rules.
     - apply mut_type_project_fixpoint_subtype_2.
   Qed.
 
+  Lemma mut_type_project_fixpoint_unfold_eqltype E L :
+    full_eqltype E L (◁ mut_fixpoint_project)%I (◁ mut_fixpoint_project_unfolded)%I.
+  Proof.
+    apply full_eqtype_eqltype.
+    intros ?.
+    apply mut_type_project_fixpoint_unfold_eqtype.
+  Qed.
+
   (* on place access, unfold *)
   Lemma typed_place_mut_fixpoint_unfold π E L l r k1 bmin P (T : place_cont_t rt bmin) :
     typed_place π E L l (◁ mut_fixpoint_project) r bmin k1 P T :-
@@ -2061,6 +2069,38 @@ Section rules.
   Definition owned_subtype_mut_fixpoint_r_inst := [instance @owned_subtype_mut_fixpoint_r].
   Global Existing Instance owned_subtype_mut_fixpoint_r_inst | 6.
 
+  Lemma owned_subltype_step_mut_fixpoint_id π E L step l r1 r2 T :
+    owned_subltype_step π E L step l r1 r2 (◁ mut_fixpoint_project) (◁ mut_fixpoint_project) T :-
+    exhale (⌜r1 = r2⌝);
+    return T L True%I.
+  Proof.
+    iIntros "(-> & HT)".
+    iIntros (????) "CTX HE HL Hl".
+    iExists L, True%I. iFrame.
+    iApply maybe_logical_step_intro. by iFrame.
+  Qed.
+  Definition owned_subltype_step_mut_fixpoint_id_inst := [instance @owned_subltype_step_mut_fixpoint_id].
+  Global Existing Instance owned_subltype_step_mut_fixpoint_id_inst | 5.
+
+  Lemma owned_subltype_step_mut_fixpoint_r {rt1} (lt1 : ltype rt1) π E L step l r1 r2 T :
+    owned_subltype_step π E L step l r1 r2 lt1 (◁ mut_fixpoint_project) T :-
+    return (owned_subltype_step π E L step l r1 r2 lt1 (◁ mut_fixpoint_project_unfolded) T).
+  Proof.
+    iIntros "HT" (F' ???) "#CTX #HE HL Hl".
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Heq)".
+    { apply mut_type_project_fixpoint_unfold_eqltype. }
+    iDestruct ("Heq" $! Owned r2) as "[_ #Hincl]".
+    iMod ("HT" with "[] [] [] CTX HE HL Hl") as "(%L' & %R & Hstep & HL & HT)"; [done.. | ].
+    iExists L', R. iFrame "HL HT".
+    iApply maybe_logical_step_fupd.
+    iApply (maybe_logical_step_wand with "[] Hstep").
+    iIntros "(Hl & $)".
+    iDestruct "Hincl" as "(#Hincl & _)".
+    iApply (fupd_mask_mono with "(Hincl Hl)"); done.
+  Qed.
+  Definition owned_subltype_step_mut_fixpoint_r_inst := [instance @owned_subltype_step_mut_fixpoint_r].
+  Global Existing Instance owned_subltype_step_mut_fixpoint_r_inst | 6.
+
   Lemma weak_subtype_mut_fixpoint_id E L r1 r2 T :
     weak_subtype E L r1 r2 mut_fixpoint_project mut_fixpoint_project T :-
     exhale (⌜r1 = r2⌝); return T.
@@ -2080,6 +2120,34 @@ Section rules.
   Qed.
   Definition weak_subtype_mut_fixpoint_r_inst := [instance @weak_subtype_mut_fixpoint_r].
   Global Existing Instance weak_subtype_mut_fixpoint_r_inst | 6.
+
+  Lemma weak_subltype_mut_fixpoint_id E L b r1 r2 T :
+    weak_subltype E L b r1 r2 (◁ mut_fixpoint_project) (◁ mut_fixpoint_project) T :-
+    exhale (⌜r1 = r2⌝);
+    return T.
+  Proof.
+    iIntros "(-> & HT)".
+    by iApply weak_subltype_id.
+  Qed.
+  Definition weak_subltype_mut_fixpoint_id_inst := [instance @weak_subltype_mut_fixpoint_id].
+  Global Existing Instance weak_subltype_mut_fixpoint_id_inst | 5.
+
+  Lemma weak_subltype_mut_fixpoint_r {rt1} (lt1 : ltype rt1) E L b r1 r2 T :
+    weak_subltype E L b r1 r2 lt1 (◁ mut_fixpoint_project) T :-
+    return (weak_subltype E L b r1 r2 lt1 (◁ mut_fixpoint_project_unfolded) T).
+  Proof.
+    iIntros "HT" (F' ?) "#CTX #HE HL".
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Heq)".
+    { apply mut_type_project_fixpoint_unfold_eqltype. }
+    iMod ("HT" with "[] CTX HE HL") as "(%Hst' & Hincl & HL & $)"; first done.
+    iFrame. iModIntro. iSplit.
+    { iPureIntro. rewrite Hst. done. }
+    iApply (ltype_incl_trans with "Hincl").
+    iApply ltype_eq_ltype_incl_r.
+    iApply "Heq".
+  Qed.
+  Definition weak_subltype_mut_fixpoint_r_inst := [instance @weak_subltype_mut_fixpoint_r].
+  Global Existing Instance weak_subltype_mut_fixpoint_r_inst | 6.
 
   Lemma mut_subtype_mut_fixpoint_id E L T :
     mut_subtype E L mut_fixpoint_project mut_fixpoint_project T :-
@@ -2129,6 +2197,30 @@ Section rules.
   Qed.
   Definition mut_eqtype_mut_fixpoint_r_inst := [instance @mut_eqtype_mut_fixpoint_r].
   Global Existing Instance mut_eqtype_mut_fixpoint_r_inst | 6.
+
+  Lemma mut_eqltype_mut_fixpoint_id E L T :
+    mut_eqltype E L (◁ mut_fixpoint_project) (◁ mut_fixpoint_project) T :-
+    return T.
+  Proof.
+    unfold mut_eqltype.
+    iIntros "$". iPureIntro.
+    reflexivity.
+  Qed.
+  Definition mut_eqltype_mut_fixpoint_id_inst := [instance @mut_eqltype_mut_fixpoint_id].
+  Global Existing Instance mut_eqltype_mut_fixpoint_id_inst | 5.
+
+  Lemma mut_eqltype_mut_fixpoint_r (lt1 : ltype rt) E L T :
+    mut_eqltype E L lt1 (◁ mut_fixpoint_project) T :-
+    return (mut_eqltype E L lt1 (◁ mut_fixpoint_project_unfolded) T).
+  Proof.
+    unfold mut_eqltype.
+    iIntros "(%Heq & $)". iPureIntro.
+    etrans; first apply Heq.
+    symmetry.
+    apply mut_type_project_fixpoint_unfold_eqltype.
+  Qed.
+  Definition mut_eqltype_mut_fixpoint_r_inst := [instance @mut_eqltype_mut_fixpoint_r].
+  Global Existing Instance mut_eqltype_mut_fixpoint_r_inst | 6.
 End rules.
 
 Section decompose_mut_type_contractive.

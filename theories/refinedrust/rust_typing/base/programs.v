@@ -2229,6 +2229,28 @@ Section laws.
     eauto.
   Qed.
 
+  Lemma owned_subltype_step_to_ofty π E L step l {rt1 rt2 : RT} r1
+      (r2 : place_rfn rt2) (lt1 : ltype rt1) (ty2 : type rt2) T :
+    (∃ r2', ⌜r2 = #r2'⌝ ∗
+      cast_ltype_to_type E L lt1 (λ ty1,
+        owned_subtype π E L false r1 r2' ty1 ty2 (λ L2,
+        ⌜syn_type_compat (st_of ty1 MetaNone) (st_of ty2 MetaNone)⌝ ∗
+        T L2 True%I)))
+    ⊢ owned_subltype_step π E L step l (#r1) r2 lt1 (◁ ty2) T.
+  Proof.
+    iIntros "(%r2' & -> & HT)".
+    iIntros (????) "#CTX #HE HL Hl".
+    iDestruct "HT" as "(%ty1 & %Heqt & HT)".
+    iPoseProof (full_eqltype_use with "CTX HE HL") as "(Hincl & HL)"; [ | done | ]; first done.
+    iMod ("Hincl" with "Hl") as "Hl".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & Hincl & $ & %Hst & $)".
+    iDestruct "Hincl" as "(_ & Hsc & Hv)".
+    iPoseProof (type_ltype_incl_owned_in_strong with "Hv Hsc") as "Hincl".
+    { done. }
+    iPoseProof ("Hincl" with "Hl") as "Hl".
+    iApply maybe_logical_step_intro. by iFrame.
+  Qed.
+
   Lemma typed_place_eqltype {rto} E L f (lt1 lt2 : ltype rto) bmin0 b r l P T :
     full_eqltype E L lt1 lt2 →
     typed_place E L f l lt2 r bmin0 b P T -∗

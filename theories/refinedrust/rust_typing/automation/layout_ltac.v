@@ -1265,10 +1265,16 @@ Ltac simplify_layout_alg_simpl_step H :=
   (* simplify head *)
   try lazymatch type of H with
   | use_layout_alg ?spec = Some _ =>
+      match spec with
+      | ltype_st _ => simp_ltypes in H
+      end
+  end;
+  try lazymatch type of H with
+  | use_layout_alg ?spec = Some _ =>
       first [
         assert_is_atomic_st spec
       (* we don't want to hnf this as it doesn't unfold well *)
-      | match spec with | ltype_st (◁ mut_type_project _ _ _)%I  => simp_ltypes in H | st_of (mut_type_project _ _ _) _ => idtac end
+      | match spec with | st_of (mut_type_project _ _ _) _ => idtac end
       | let spec_eval := eval hnf in spec in
         change_no_check spec with spec_eval in H ]
   end.

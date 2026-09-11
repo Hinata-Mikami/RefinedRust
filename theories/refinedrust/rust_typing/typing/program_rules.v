@@ -1760,25 +1760,6 @@ Section subsume.
   Global Existing Instance mut_eqltype_ofty_inst | 5.
 
   (** ** Subtyping instances: [owned_subltype_step] *)
-  Lemma owned_subltype_step_to_ofty π E L step l {rt1 rt2} r1 r2 (lt1 : ltype rt1) (ty2 : type rt2) T :
-    cast_ltype_to_type E L lt1 (λ ty1,
-      owned_subtype π E L false r1 r2 ty1 ty2 (λ L2,
-      ⌜syn_type_compat (st_of ty1 MetaNone) (st_of ty2 MetaNone)⌝ ∗
-      T L2 True%I))
-    ⊢ owned_subltype_step π E L step l (#r1) (#r2) lt1 (◁ ty2) T.
-  Proof.
-    iIntros "HT".
-    iIntros (????) "#CTX #HE HL Hl".
-    iDestruct "HT" as "(%ty1 & %Heqt & HT)".
-    iPoseProof (full_eqltype_use with "CTX HE HL") as "(Hincl & HL)"; [ | done | ]; first done.
-    iMod ("Hincl" with "Hl") as "Hl".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & Hincl & $ & %Hst & $)".
-    iDestruct "Hincl" as "(_ & Hsc & Hv)".
-    iPoseProof (type_ltype_incl_owned_in_strong with "Hv Hsc") as "Hincl".
-    { done. }
-    iPoseProof ("Hincl" with "Hl") as "Hl".
-    iApply maybe_logical_step_intro. by iFrame.
-  Qed.
   Definition owned_subltype_step_to_ofty_inst := [instance @owned_subltype_step_to_ofty].
   Global Existing Instance owned_subltype_step_to_ofty_inst | 999.
 

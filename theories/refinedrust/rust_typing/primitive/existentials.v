@@ -682,6 +682,20 @@ Section stratify.
   Definition owned_subtype_ex_plain_t_strong_inst := [instance @owned_subtype_ex_plain_t_strong].
   Global Existing Instance owned_subtype_ex_plain_t_strong_inst | 40.
 
+  Lemma owned_subltype_step_to_ex_plain_t {rt0 : RT} π E L step l
+      (lt : ltype rt0) (ty2 : type rt) (r : rt0) (r' : place_rfn X) T :
+    (∃ r2', ⌜r' = #r2'⌝ ∗
+      cast_ltype_to_type E L lt (λ ty1,
+        owned_subtype π E L false r r2' ty1 (∃; P, ty2) (λ L2,
+        ⌜syn_type_compat (st_of ty1 MetaNone) (st_of (∃; P, ty2) MetaNone)⌝ ∗
+        T L2 True%I)))
+    ⊢ owned_subltype_step π E L step l (#r) r' lt (◁ (∃; P, ty2)) T.
+  Proof.
+    apply owned_subltype_step_to_ofty.
+  Qed.
+  Definition owned_subltype_step_to_ex_plain_t_inst := [instance @owned_subltype_step_to_ex_plain_t].
+  Global Existing Instance owned_subltype_step_to_ex_plain_t_inst | 20.
+
   (*
   Lemma owned_subtype_unfold_ex_plain_t π E L (ty : type rt) (r : rt) (r' : X) T :
     (∀ r2 : rt, introduce_with_hooks E L (P.(inv_P) π r2 r') (λ L1,
