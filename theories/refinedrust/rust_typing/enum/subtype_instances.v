@@ -267,6 +267,27 @@ Section subltype.
   Definition weak_subltype_enum_owned_some_none_inst := [instance @weak_subltype_enum_owned_some_none].
   Global Existing Instance weak_subltype_enum_owned_some_none_inst | 10.
 
+  (* Infer the payload first, then reconstruct a protected outer refinement. *)
+  Lemma weak_subltype_enum_owned_inj E L {rt1 rt2}
+      (en1 : enum rt1) (en2 : enum rt2) variant1 r1 r2
+      `{!ContainsProtected r2} T :
+    (let v1 := interp_enum_ltype_variant en1 variant1 r1 in
+    ⌜enum_els en1 = enum_els en2⌝ ∗
+    ∃ sem, ⌜enum_tag_ty_inj en2 v1.(eltv_tag) = Some sem⌝ ∗
+    ∃ rp, weak_subltype E L Owned (#v1.(eltv_rfn)) (#rp)
+      v1.(eltv_ltype) (OfTy sem.(enum_tag_sem_ty))
+      (⌜r2 = #(sem.(enum_tag_rt_inj) rp)⌝ ∗ T))
+    ⊢ weak_subltype E L Owned (#r1) r2
+      (EnumLtype en1 variant1) (EnumLtype en2 None) T.
+  Proof.
+    iIntros "(%Hels & %sem & %Hsem & %rp & HT)" (??) "#CTX #HE HL".
+    iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & -> & $)".
+    iModIntro. iSplitR. { simp_ltypes. by rewrite Hels. }
+    by iApply enum_ltype_incl_owned_in_inj.
+  Qed.
+  Definition weak_subltype_enum_owned_inj_inst := [instance @weak_subltype_enum_owned_inj].
+  Global Existing Instance weak_subltype_enum_owned_inj_inst | 9.
+
   (* Unknown outer refinements must be preserved, including ghost refinements.
      The payload conversion therefore has to hold uniformly. *)
   Lemma weak_subltype_enum_owned E L {rt} (en1 en2 : enum rt)
