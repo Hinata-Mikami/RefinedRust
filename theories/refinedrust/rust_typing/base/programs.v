@@ -263,6 +263,9 @@ Section simp_ltype.
     slis_proof : lts1 = lts2;
   }.
 
+  Lemma simp_ltype_id {rt} (lt : ltype rt) : SimpLtype lt lt.
+  Proof. by constructor. Qed.
+
   Global Instance simp_ltypes_nil :
     SimpLtypes +[] +[].
   Proof. by econstructor. Qed.
@@ -374,6 +377,14 @@ End simp_ltype.
 Global Hint Mode SimpLtypes + + + + - : typeclass_instances.
 Global Hint Mode SimpLtypeIds + + + + - : typeclass_instances.
 Global Hint Mode SimpLtype + + + + - : typeclass_instances.
+
+(** Leave types without a leading [ltype_core] unchanged. Do not use identity
+    as a fallback for a core whose simplification could not be resolved. *)
+Global Hint Extern 1000 (SimpLtype ?lt _) =>
+  lazymatch lt with
+  | ltype_core _ => fail
+  | _ => apply simp_ltype_id
+  end : typeclass_instances.
 
 (** Agreement-style propositions *)
 Class LiAgree {Σ} {A} (P : iProp Σ) (P' : A → iProp Σ) := {
