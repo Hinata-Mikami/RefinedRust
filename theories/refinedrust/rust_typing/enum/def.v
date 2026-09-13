@@ -671,7 +671,7 @@ Section enum.
   Program Definition enum_t {rt} (e : enum rt) : type rt := {|
     ty_xt_inhabited := enum_xt_inhabited e;
     ty_metadata_kind := MetadataNone;
-    ty_trivial_drop := true;
+    ty_trivial_drop := forallb (λ tag_ty, tag_ty.2.(enum_tag_sem_ty).(ty_trivial_drop)) e.(enum_tag_ty);
     ty_own_val π r m v :=
       enum_own_val e π r m v;
     ty_shr κ π r m l :=
@@ -681,8 +681,7 @@ Section enum.
       is_enum_ot e ot ;
     ty_sidecond := True%I;
     _ty_ghost_drop π r :=
-      (* TODO *)
-      True%I;
+      ty_ghost_drop (e.(enum_ty) r) π (e.(enum_r) r);
     _ty_lfts := enum_tag_ty_lfts e.(enum_tag_ty);
     _ty_wf_E := enum_tag_ty_wf_E e.(enum_tag_ty);
   |}.
@@ -854,7 +853,18 @@ Section enum.
     iSplitL "Htag_pad"; first by iApply (ty_shr_mono with "Hincl Htag_pad").
     iSplitL "Hvariant"; first by iApply (ty_shr_mono with "Hincl Hvariant").
     by iApply (ty_shr_mono with "Hincl Htail").
-  - intros. iIntros "_". by iApply logical_step_intro.
+    - rewrite enum_own_val_unfold.
+      iIntros (π r m v F ? Hdrop) "(%el & %variant & %variant_ly & -> & %Halg & %Htag & %Hvariant & %Hst & Htag & Htag_pad & Hpayload & Htail)".
+      destruct (enum_tag_compat _ en r variant Htag) as [vinj Hfind].
+      apply enum_tag_ty_find_elem in Hfind.
+      apply Is_true_eq_left in Hdrop.
+      apply forallb_True in Hdrop.
+      eapply Forall_forall in Hdrop; last exact Hfind.
+      simpl in Hdrop.
+      apply Is_true_eq_true in Hdrop.
+      iPoseProof (ty_own_ghost_drop_trivial _ _ _ _ _ F with "Hpayload") as "Hpayload"; [done | done |].
+      iApply (logical_step_wand with "Hpayload").
+      iIntros "$".
   - intros ot st π r v Hot.
     rewrite /is_enum_ot in Hot.
     destruct ot as [ | | | | ? ? | | ? ? ? | el | | | ]; try done.
