@@ -718,11 +718,9 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
             .is_some_and(|regions| regions.contains(&region))
     }
 
-    pub(crate) fn is_region_known_before_shared_reborrow(
-        &mut self,
-        region: Region,
-        point: PointIndex,
-    ) -> bool {
+    /// Whether `region` has a semantic lifetime name after point barriers and ordinary effects,
+    /// but before structural shared-reborrow and dynamic effects.
+    pub(crate) fn is_region_known_after_ordinary_effects(&mut self, region: Region, point: PointIndex) -> bool {
         if self.full_states.is_none() {
             self.recompute();
         }

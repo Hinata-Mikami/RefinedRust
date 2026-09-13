@@ -144,6 +144,31 @@ mod tests {
     }
 
     #[test]
+    fn mutable_field_reborrow_uses_known_loan_support() {
+        let project = path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/loan_supports");
+        let output = GeneratedOutput::new(project.join("target/verify"));
+
+        build_refinedrust();
+        build_subproject("./tests/loan_supports/");
+
+        let generated = fs::read_to_string(
+            output
+                .path()
+                .join("loan_supports/generated/generated_code_loan_supports.v"),
+        )
+        .expect("missing generated loan-support code");
+        let starts: Vec<_> = generated.lines().filter(|line| line.contains("StartLftAnnot")).collect();
+        assert_eq!(starts.len(), 1, "unexpected loan initializations: {starts:?}");
+        assert!(
+            !starts[0].contains("\"_flft\""),
+            "mutable field reborrow fell back to the function lifetime: {}",
+            starts[0]
+        );
+
+        output.cleanup();
+    }
+
+    #[test]
     fn concrete_projection_preserves_type_dependencies() {
         let project = path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/projection_deps");
         let output = GeneratedOutput::new(project.join("target/verify"));

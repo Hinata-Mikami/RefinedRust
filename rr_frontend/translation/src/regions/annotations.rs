@@ -445,7 +445,39 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
     /// Resolve loan supports after all name definitions, barriers, and future weak-write
     /// requirements have been registered.
     pub(crate) fn resolve_assignment_loan_supports(&mut self) {
-        let pending: Vec<_> = self.pending_loans.iter().map(|(loc, loan)| (*loc, loan.clone())).collect();
+        let mut pending: Vec<_> = self.pending_loans.iter().map(|(loc, loan)| (*loc, loan.clone())).collect();
+
+        // Borrowck may route a loan through unnamed temporary origins. Walk back to the first
+        // semantic regions that can serve as `StartLft` supports.
+        for (loc, loan) in &mut pending {
+            let midpoint = self.mid_point_for_target(*loc);
+            let mut worklist: Vec<_> = loan.immediate_supports.iter().copied().collect();
+            let mut visited = BTreeSet::new();
+            let mut known_supports = BTreeSet::new();
+
+            while let Some(region) = worklist.pop() {
+                if !visited.insert(region) {
+                    continue;
+                }
+                if region != loan.region
+                    && self
+                        .inclusion_tracker
+                        .is_region_known_after_ordinary_effects(region, loan.startpoint)
+                {
+                    known_supports.insert(region);
+                    continue;
+                }
+
+                worklist.extend(
+                    self.info
+                        .subset_base_at(midpoint)
+                        .filter_map(|(source, destination)| (destination == region).then_some(source)),
+                );
+            }
+
+            loan.immediate_supports = known_supports;
+        }
+
         let dynamic_requirements: Vec<_> = self.inclusion_tracker.dynamic_inclusions().collect();
         let mut future_requirements = Vec::new();
 
@@ -514,7 +546,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
 
             candidates.retain(|source| {
                 *source != loan.region
-                    && self.inclusion_tracker.is_region_known_before_shared_reborrow(*source, loan.startpoint)
+                    && self.inclusion_tracker.is_region_known_after_ordinary_effects(*source, loan.startpoint)
             });
             resolved.insert(loc, candidates.into_iter().collect::<Vec<_>>());
         }

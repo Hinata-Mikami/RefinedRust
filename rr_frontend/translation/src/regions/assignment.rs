@@ -615,7 +615,7 @@ pub(crate) fn resolve_shared_reborrow<'tcx>(
     };
     let access_region = source.into();
 
-    if inclusion_tracker.is_region_known_before_shared_reborrow(target, effect_point) {
+    if inclusion_tracker.is_region_known_after_ordinary_effects(target, effect_point) {
         return Ok(None);
     }
 
@@ -628,7 +628,7 @@ pub(crate) fn resolve_shared_reborrow<'tcx>(
         if !visited.insert(region) {
             continue;
         }
-        if inclusion_tracker.is_region_known_before_shared_reborrow(region, effect_point) {
+        if inclusion_tracker.is_region_known_after_ordinary_effects(region, effect_point) {
             known_sources.insert(region);
             continue;
         }
