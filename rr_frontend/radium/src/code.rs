@@ -888,7 +888,7 @@ impl fmt::Display for FunctionCode {
             content: coq::ProofDocument::new(vec![coq::Vernac::LTac(proof.into())]),
             terminator: coq::proof::Terminator::Qed,
         };
-        doc.push(coq::command::Command::NextObligation(obligation_proof));
+        doc.push(coq::command::Command::FinalObligation(obligation_proof));
 
         write!(f, "{doc}\n")
     }

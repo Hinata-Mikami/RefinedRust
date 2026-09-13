@@ -77,6 +77,15 @@ impl Spec {
         out.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(ltac, terminator)));
     }
 
+    fn push_final_obligation<I>(out: &mut coq::Document, ltac: I, terminator: coq::proof::Terminator)
+    where
+        I: Into<coq::ltac::LTac>,
+    {
+        out.push(coq::command::Command::FinalObligation(coq::command::ObligationProof::new(
+            ltac, terminator,
+        )));
+    }
+
     #[must_use]
     pub(crate) fn type_name(&self) -> String {
         format!("{}_inv_t", self.name)
@@ -390,7 +399,7 @@ impl Spec {
                     coq::ltac::LTac::Literal("ex_t_solve_persistent".to_owned()),
                     coq::proof::Terminator::Qed,
                 );
-                Self::push_obligation(
+                Self::push_final_obligation(
                     &mut out,
                     coq::ltac::LTac::Literal("ex_t_solve_timeless".to_owned()),
                     coq::proof::Terminator::Qed,
@@ -421,7 +430,7 @@ impl Spec {
                             coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_shr_mono")),
                             coq::proof::Terminator::Qed,
                         );
-                        Self::push_obligation(
+                        Self::push_final_obligation(
                             &mut out,
                             coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_ghost_drop")),
                             coq::proof::Terminator::Qed,
@@ -437,7 +446,7 @@ impl Spec {
                             coq::ltac::LTac::Literal("ex_t_solve_persistent".to_owned()),
                             coq::proof::Terminator::Qed,
                         );
-                        Self::push_obligation(
+                        Self::push_final_obligation(
                             &mut out,
                             coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_shr_mono")),
                             coq::proof::Terminator::Qed,
@@ -459,7 +468,7 @@ impl Spec {
                         coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_shr")),
                         coq::proof::Terminator::Qed,
                     );
-                    Self::push_obligation(
+                    Self::push_final_obligation(
                         &mut out,
                         coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_ghost_drop")),
                         coq::proof::Terminator::Qed,
@@ -480,7 +489,7 @@ impl Spec {
                         coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_shr_mono")),
                         coq::proof::Terminator::Qed,
                     );
-                    Self::push_obligation(
+                    Self::push_final_obligation(
                         &mut out,
                         coq::ltac::LTac::Literal(format!("{attr_intro}ex_plain_t_solve_shr")),
                         coq::proof::Terminator::Qed,

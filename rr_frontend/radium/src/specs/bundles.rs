@@ -541,7 +541,7 @@ impl<'def> Bundle<'def> {
             coq::ltac::LTac::Literal("solve_fixpoint_ne".to_owned()),
             coq::proof::Terminator::Qed,
         )));
-        section_context.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
+        section_context.push(coq::command::Command::FinalObligation(coq::command::ObligationProof::new(
             coq::ltac::LTac::Literal("solve_fixpoint_contr".to_owned()),
             coq::proof::Terminator::Qed,
         )));

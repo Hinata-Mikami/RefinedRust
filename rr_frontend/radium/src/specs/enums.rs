@@ -415,7 +415,7 @@ impl<'def> Abstract<'def> {
         out.push_str(&format!("{indent}Next Obligation. solve_enum_layout_spec_variants_eq. Qed.\n"));
         out.push_str(&format!("{indent}Next Obligation. solve_enum_layout_spec_discriminant_nodup. Qed.\n"));
         out.push_str(&format!(
-            "{indent}Next Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.\n"
+            "{indent}Final Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.\n"
         ));
         out.push_str(&format!("{indent}Global Typeclasses Opaque {}.\n", self.els_def_name));
 
@@ -723,7 +723,7 @@ impl<'def> Abstract<'def> {
             coq::ltac::LTac::Literal("solve_mk_enum_tag_consistent".to_owned()),
             coq::proof::Terminator::Defined,
         )));
-        document.push(coq::command::Command::NextObligation(coq::command::ObligationProof::new(
+        document.push(coq::command::Command::FinalObligation(coq::command::ObligationProof::new(
             coq::ltac::LTac::Literal("solve_mk_enum_tag_inj_roundtrip".to_owned()),
             coq::proof::Terminator::Defined,
         )));

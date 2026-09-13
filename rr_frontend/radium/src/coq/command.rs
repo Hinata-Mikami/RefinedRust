@@ -176,8 +176,15 @@ pub enum Command {
     /// The [`Next Obligation`] command.
     ///
     /// [`Next Obligation`]: https://rocq-prover.org/doc/v8.20/refman/addendum/program.html?highlight=next%20obligation#coq:cmd.Next-Obligation
-    #[display("{}", _0)]
+    #[display("Next {}", _0)]
     NextObligation(ObligationProof),
+
+    /// The [`Final Obligation`] command.
+    ///
+    /// [`Final Obligation`]: https://rocq-prover.org/doc/v8.20/refman/addendum/program.html#coq:cmd.Final-Obligation
+    #[display("Final {}", _0)]
+    #[from(ignore)]
+    FinalObligation(ObligationProof),
 
     /// The [`Section`] command.
     ///
@@ -367,7 +374,7 @@ impl ObligationProof {
 
 impl fmt::Display for ObligationProof {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Next Obligation.")?;
+        writeln!(f, "Obligation.")?;
         write!(f, "{}", (&self.content).indented(BASE_INDENT))?;
         writeln!(f, "{}.", self.terminator)
     }
@@ -408,4 +415,17 @@ pub struct CanonicalDecl(pub Ident);
 pub struct Arguments {
     pub name: String,
     pub arguments_string: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn formats_obligation_commands() {
+        let proof = ObligationProof::new(coq::ltac::LTac::Literal("done".to_owned()), proof::Terminator::Qed);
+
+        assert_eq!(Command::NextObligation(proof.clone()).to_string(), "Next Obligation.\n  done.\nQed.\n");
+        assert_eq!(Command::FinalObligation(proof).to_string(), "Final Obligation.\n  done.\nQed.\n");
+    }
 }

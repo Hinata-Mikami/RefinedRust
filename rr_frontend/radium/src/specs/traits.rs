@@ -1750,7 +1750,7 @@ impl ImplSpec<'_> {
                 }
             }
         }
-        let mut obligation_terms = Vec::new();
+        let mut obligation_proofs = Vec::new();
 
         let attrs_type = coq::term::App::new(of_trait.spec_attrs_record(), attrs_type_terms.clone());
         let attrs_type = coq::term::Type::Literal(format!("{attrs_type}"));
@@ -1780,12 +1780,10 @@ impl ImplSpec<'_> {
                     SpecAttrInst::Proof(proof) => {
                         let lit = coq::ltac::RocqLTac::Literal(proof.to_owned());
                         let proof = coq::ProofDocument::new(vec![lit]);
-                        obligation_terms.push(coq::command::Command::NextObligation(
-                            coq::command::ObligationProof {
-                                content: proof,
-                                terminator: coq::proof::Terminator::Qed,
-                            },
-                        ));
+                        obligation_proofs.push(coq::command::ObligationProof {
+                            content: proof,
+                            terminator: coq::proof::Terminator::Qed,
+                        });
                         coq::term::Term::Infer
                     },
                 };
@@ -1813,7 +1811,15 @@ impl ImplSpec<'_> {
             ty: Some(attrs_type),
             body: coq::command::DefinitionBody::Term(attr_record_term),
         };
-        obligation_terms.insert(0, coq::command::Command::Definition(def));
+        let obligation_count = obligation_proofs.len();
+        let mut obligation_terms = vec![coq::command::Command::Definition(def)];
+        obligation_terms.extend(obligation_proofs.into_iter().enumerate().map(|(index, proof)| {
+            if index + 1 == obligation_count {
+                coq::command::Command::FinalObligation(proof)
+            } else {
+                coq::command::Command::NextObligation(proof)
+            }
+        }));
         coq::Document::new(obligation_terms)
     }
 
