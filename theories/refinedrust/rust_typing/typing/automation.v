@@ -2010,8 +2010,14 @@ Ltac hooks.liAfterSidecond_hook P ::=
   refine (cache_sidecond _ _ _ _ _); [simpl; reflexivity | ].
 
 Ltac sidecond_solver :=
+  (* Make sure this fails on something that isn't actually a shelved sidecond *)
+  idtac;
+  lazymatch goal with
+  | |- SHELVED_SIDECOND ?G => change_no_check G
+  | |- context[envs_entails _ _] => fail "sidecond_solver called on Iris goal"
+  | |- _ => shelve
+  end;
   (* These simplifications stay around even if this doesn't solve the goal. *)
-  unshelve_sidecond;
   prepare_sideconditions;
   liSimpl;
   (* This should not stay around for unsolved goals. *)
