@@ -445,8 +445,51 @@ Section test.
   Abort.
 End test.
 
+From refinedrust.primitive Require Import mutual_fixpoint existentials.
+
 Section extra_rules.
   Context `{!typeGS Σ}.
+
+  Lemma ltype_own_mut_fixpoint_unfold {rts : list RT} (F : mut_type_fun rts)
+      `{Hne : !TCNoResolve (MutTypeNonExpansive F)}
+      `{Hcontr : !TCNoResolve (MutTypeContractive (mut_iter F (length rts)))}
+      `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
+      {rt : RT} `{!Inhabited (RT_xt rt)} (i : nat)
+      (Hlook : rts !! i = Some rt) π l (r : rt) :
+    l ◁ₗ[π, Owned] #r @ ◁ (mut_type_project_simpl
+      (F (mut_fixpoint F (Hne := Hne) (Hcontr := Hcontr))) i Hlook) -∗
+    l ◁ₗ[π, Owned] #r @ ◁
+      (mut_type_project (mut_fixpoint F (Hne := Hne) (Hcontr := Hcontr)) i Hlook).
+  Proof.
+    iIntros "Hl".
+    iPoseProof (mut_type_project_fixpoint_subtype_2 F i Hlook [] [] r 1%Qp) as "Hsub".
+    iSpecialize ("Hsub" with "[]").
+    { rewrite /llctx_interp_noend. done. }
+    iSpecialize ("Hsub" with "[]").
+    { rewrite /elctx_interp. done. }
+    iDestruct "Hsub" as "(%Hst & #Hincl)".
+    iDestruct "Hincl" as "(#Hsc & #Hown & _)".
+    iApply (type_ltype_incl_owned_in_strong with "Hown Hsc Hl").
+    rewrite Hst. apply syn_type_compat_refl.
+  Qed.
+
+  Lemma ltype_own_ex_plain_t_intro {X Y : RT} (P : ex_inv_def X Y)
+      (ty : type X) π l (x : Y) :
+    (∃ r, P.(inv_P) π r x ∗ l ◁ₗ[π, Owned] #r @ ◁ ty) -∗
+    l ◁ₗ[π, Owned] #x @ ◁ (ex_plain_t X Y P ty).
+  Proof.
+    iIntros "(%r & Hinv & Hl)".
+    rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
+    iDestruct "Hl" as (ly Hst) "(Hly & Hsc & Hlb & %r' & -> & Hl)".
+    iExists ly. iSplitR.
+    { iPureIntro. exact Hst. }
+    iFrame.
+    iExists x. iSplitR; first done.
+    iMod "Hl" as (v) "(Hl & Hv)".
+    iModIntro. iExists v. iFrame "Hl".
+    rewrite ex_plain_t_unfold_val.
+    iExists r'. iFrame.
+  Qed.
 
   (* TODO: ideally, we could do this anytime, not just at prove_with_subtype, by using logical_step receipts. *)
   Lemma prove_with_subtype_stratify l E L pm Q A T :
