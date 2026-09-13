@@ -78,6 +78,7 @@ Section Result_ty.
         (λ rfn, match rfn with | (Ok (x)) => *[x]| (Err (x)) => *[x] end)
         ([("Ok", mk_enum_tag_sem _ (Result_Ok_ty -[] -[T_ty; E_ty]) (λ '( *[x]), (Ok (x)))); ("Err", mk_enum_tag_sem _ (Result_Err_ty -[] -[T_ty; E_ty]) (λ '( *[x]), (Err (x))))])
         _
+        _
         _.
     Next Obligation.
       solve_inhabited.
@@ -89,6 +90,10 @@ Section Result_ty.
 
     Next Obligation.
       solve_mk_enum_tag_consistent.
+    Defined.
+
+    Next Obligation.
+      solve_mk_enum_tag_inj_roundtrip.
     Defined.
 
     #[global] Arguments Result_enum : simpl never.

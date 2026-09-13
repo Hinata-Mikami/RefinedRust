@@ -349,6 +349,7 @@ Section Ordering_ty.
         (λ rfn, match rfn with | Less => *[]| Equal => *[]| Greater => *[] end)
         ([("Less", mk_enum_tag_sem _ (Ordering_Less_ty -[] -[]) (λ '( *[]), Less)); ("Equal", mk_enum_tag_sem _ (Ordering_Equal_ty -[] -[]) (λ '( *[]), Equal)); ("Greater", mk_enum_tag_sem _ (Ordering_Greater_ty -[] -[]) (λ '( *[]), Greater))])
         _
+        _
         _.
     Next Obligation.
       solve_inhabited.
@@ -360,6 +361,10 @@ Section Ordering_ty.
 
     Next Obligation.
       solve_mk_enum_tag_consistent.
+    Defined.
+
+    Next Obligation.
+      solve_mk_enum_tag_inj_roundtrip.
     Defined.
 
     #[global] Arguments Ordering_enum : simpl never.

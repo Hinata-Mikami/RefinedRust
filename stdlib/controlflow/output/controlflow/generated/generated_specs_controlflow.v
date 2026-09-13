@@ -169,6 +169,7 @@ Section ControlFlow_ty.
         (λ rfn, match rfn with | (inl (x)) => *[x]| (inr (x)) => *[x] end)
         ([("Continue", mk_enum_tag_sem _ (ControlFlow_Continue_ty -[] -[B_ty; C_ty]) (λ '( *[x]), (inl (x)))); ("Break", mk_enum_tag_sem _ (ControlFlow_Break_ty -[] -[B_ty; C_ty]) (λ '( *[x]), (inr (x))))])
         _
+        _
         _.
     Next Obligation.
       solve_inhabited.
@@ -180,6 +181,10 @@ Section ControlFlow_ty.
 
     Next Obligation.
       solve_mk_enum_tag_consistent.
+    Defined.
+
+    Next Obligation.
+      solve_mk_enum_tag_inj_roundtrip.
     Defined.
 
     #[global] Arguments ControlFlow_enum : simpl never.

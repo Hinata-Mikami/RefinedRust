@@ -47,6 +47,7 @@ Section Option_ty.
         (λ rfn, match rfn with | None => *[]| (Some (x)) => *[x] end)
         ([("None", mk_enum_tag_sem _ (Option_None_ty -[] -[T_ty]) (λ '( *[]), None)); ("Some", mk_enum_tag_sem _ (Option_Some_ty -[] -[T_ty]) (λ '( *[x]), (Some (x))))])
         _
+        _
         _.
     Next Obligation.
       solve_inhabited.
@@ -58,6 +59,10 @@ Section Option_ty.
 
     Next Obligation.
       solve_mk_enum_tag_consistent.
+    Defined.
+
+    Next Obligation.
+      solve_mk_enum_tag_inj_roundtrip.
     Defined.
 
     #[global] Arguments Option_enum : simpl never.
@@ -131,7 +136,19 @@ Lemma Option_ty_mut_subtype E L {T_rt} (T_ty1 : type T_rt) (T_ty2 : type T_rt) T
   mut_subtype E L T_ty1 T_ty2 T
   ⊢ mut_subtype E L (Option_ty T_rt <TY> T_ty1 <INST!>) (Option_ty T_rt <TY> T_ty2 <INST!>) T.
 Proof.
-Admitted.
+  rewrite /mut_subtype. iIntros "(%Hsub & $)". iPureIntro.
+  apply enum_full_subtype. iIntros (qL) "HL #HE".
+  iPoseProof (full_subtype_acc_noend with "HE HL") as "(%Hst & #Hincl)"; first exact Hsub.
+  iApply (full_enum_incl_intro E L (Option_enum -[] -[T_ty1])
+    (Option_enum -[] -[T_ty2]) (λ _, eq_refl) with "HL HE").
+  - simpl. by rewrite Hst.
+  - done.
+  - done.
+  - intros [r|]; simpl; rewrite /Option_Some_ty /Option_None_ty /= Hst;
+      apply struct_t_full_subtype; rewrite /hzipl2 /=.
+    + constructor; [exact Hsub | constructor].
+    + constructor.
+Qed.
 Definition Option_ty_mut_subtype_inst := [instance @Option_ty_mut_subtype].
 Global Existing Instance Option_ty_mut_subtype_inst.
 
@@ -142,47 +159,42 @@ Lemma Option_ty_weak_subtype_None E L {T_rt1 T_rt2} (T_ty1 : type T_rt1) (T_ty2 
   (⌜r2 = None⌝ ∗ ⌜st_of T_ty1 MetaNone = st_of T_ty2 MetaNone⌝ ∗ T) ⊢
   weak_subtype E L (None) r2 (Option_ty T_rt1 <TY> T_ty1 <INST!>) (Option_ty T_rt2 <TY> T_ty2 <INST!>) T.
 Proof.
-  iIntros "(-> & %Hst & HT)". subst. 
-  rewrite /weak_subtype.
-  iIntros (??) "#CTX HE HL". iFrame.
-  iModIntro. iSplitR. { simpl. rewrite Hst//. } 
-  simpl. iSplitR; first eauto.
-  iSplitR. { iModIntro. 
-    iIntros (???). simpl. 
-    iIntros "Ha". unfold Option_ty.
-    rewrite /ty_own_val/=. 
-    rewrite enum_own_val_unfold/=/enum_own_val_def.
-    simpl. 
-    rewrite Hst. done. }
-  iModIntro. 
-  iIntros (????). simpl. 
-  iIntros "Ha". unfold Option_ty.
-  rewrite /ty_shr/=. simpl. 
-  rewrite enum_shr_unfold/=/enum_shr_def.
-  simpl.
-  rewrite Hst. done.
+  iIntros "(-> & %Hst & HT)".
+  iApply weak_subtype_enum_inj.
+  rep liRStep. liShow. done.
+  Unshelve. rewrite Hst. done.
 Qed.
 Definition Option_ty_weak_subtype_None_inst := [instance Option_ty_weak_subtype_None].
 #[export] Existing Instance Option_ty_weak_subtype_None_inst.
+Lemma Option_ty_owned_subtype_None π E L {T_rt1 T_rt2} (T_ty1 : type T_rt1) (T_ty2 : type T_rt2) r2 T :
+  (⌜r2 = None⌝ ∗ ⌜st_of T_ty1 MetaNone = st_of T_ty2 MetaNone⌝ ∗ T L) ⊢
+  owned_subtype π E L false (None) r2 (Option_ty T_rt1 <TY> T_ty1 <INST!>) (Option_ty T_rt2 <TY> T_ty2 <INST!>) T.
+Proof.
+  iIntros "(-> & %Hst & HT)".
+  iApply owned_subtype_strong_subtype.
+  repeat liRStep. liShow. done.
+Qed.
+Definition Option_ty_owned_subtype_None_inst := [instance @Option_ty_owned_subtype_None].
+Global Existing Instance Option_ty_owned_subtype_None_inst.
 
-Global Instance option_contr {rt1 T_rt} (T : type rt1 → type T_rt) : 
-  TypeContractive T → 
+Global Instance option_contr {rt1 T_rt} (T : type rt1 → type T_rt) :
+  TypeContractive T →
   TypeContractive (λ ty, Option_ty T_rt *[] *[T ty]).
 Proof.
-  intros ?. 
+  intros ?.
   apply enum_t_contr.
   unshelve econstructor.
   - enum_contractive_solve_eq.
   - intros. simpl. by erewrite type_ctr_syn_type.
   - enum_contractive_solve_eq.
   - enum_contractive_solve_eq.
-  - intros. simpl. 
+  - intros. simpl.
     eapply (type_contractive_dist _ _ (λ ty, enum_ty (Option_enum -[] -[T ty]) r)); last done.
     destruct r; simpl.
     + apply struct_t_contr; last apply _.
       intros. by erewrite type_ctr_syn_type.
     + apply _.
-  - intros. simpl. 
+  - intros. simpl.
     eapply (type_contractive_dist2 _ _ (λ ty, enum_ty (Option_enum -[] -[T ty]) r)); last done.
     destruct r; simpl.
     + apply struct_t_contr; last apply _.
@@ -190,24 +202,24 @@ Proof.
     + apply _.
   - solve_enum_t_contr_op_type.
 Qed.
-Global Instance option_ne {rt1 T_rt} (T : type rt1 → type T_rt) : 
-  TypeNonExpansive T → 
+Global Instance option_ne {rt1 T_rt} (T : type rt1 → type T_rt) :
+  TypeNonExpansive T →
   TypeNonExpansive (λ ty, Option_ty T_rt *[] *[T ty]).
 Proof.
-  intros ?. 
+  intros ?.
   apply enum_t_ne.
   unshelve econstructor.
   - enum_contractive_solve_eq.
   - intros. simpl. by erewrite type_ne_syn_type.
   - enum_contractive_solve_eq.
   - enum_contractive_solve_eq.
-  - intros. simpl. 
+  - intros. simpl.
     eapply (type_dist_use_ne _ _ _ (λ ty, enum_ty (Option_enum -[] -[T ty]) r)); last done.
     destruct r; simpl.
     + apply struct_t_ne; last apply _.
       intros. by erewrite type_ne_syn_type.
     + apply _.
-  - intros. simpl. 
+  - intros. simpl.
     eapply (type_dist2_use_ne _ _ _ (λ ty, enum_ty (Option_enum -[] -[T ty]) r)); last done.
     destruct r; simpl.
     + apply struct_t_ne; last apply _.
