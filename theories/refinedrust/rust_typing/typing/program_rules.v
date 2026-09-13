@@ -1600,14 +1600,6 @@ Section subsume.
   Definition weak_subtype_evar2_inst := [instance @weak_subtype_evar2].
   Global Existing Instance weak_subtype_evar2_inst | 1000.
 
-  Lemma weak_subtype_default E L {rt} (ty1 ty2 : type rt) r1 r2 T :
-    ⌜r1 = r2⌝ ∗ mut_subtype E L ty1 ty2 T
-    ⊢ weak_subtype E L r1 r2 ty1 ty2 T.
-  Proof.
-    iIntros "(<- & %Heq & ?)".
-    iApply weak_subtype_subtype_l; first done.
-    by iApply weak_subtype_id.
-  Qed.
   Definition weak_subtype_default_inst := [instance @weak_subtype_default].
   Global Existing Instance weak_subtype_default_inst | 1001.
 
@@ -6035,6 +6027,8 @@ Global Typeclasses Opaque strong_subtype.
 Global Typeclasses Opaque weak_subtype.
 Global Typeclasses Opaque mut_subtype.
 Global Typeclasses Opaque mut_eqtype.
+
+Global Typeclasses Opaque prove_full_enum_incl mut_subtype_enum_tag_tys.
 
 Global Typeclasses Opaque owned_subltype_step.
 Global Typeclasses Opaque strong_subltype.

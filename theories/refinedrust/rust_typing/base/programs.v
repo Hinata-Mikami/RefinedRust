@@ -1405,6 +1405,15 @@ Section judgments.
   Class MutSubtype (E : elctx) (L : llctx) {rt} (ty1 ty2 : type rt) : Type :=
     mut_subtype_proof T : iProp_to_Prop (mut_subtype E L ty1 ty2 T).
 
+  Lemma weak_subtype_default E L {rt} (ty1 ty2 : type rt) r1 r2 T :
+    ⌜r1 = r2⌝ ∗ mut_subtype E L ty1 ty2 T
+    ⊢ weak_subtype E L r1 r2 ty1 ty2 T.
+  Proof.
+    iIntros "(<- & %Heq & ?)".
+    iApply weak_subtype_subtype_l; first done.
+    by iApply weak_subtype_id.
+  Qed.
+
   Definition mut_eqtype E L {rt} (ty1 ty2 : type rt) (T : iProp Σ) : iProp Σ :=
     ⌜full_eqtype E L ty1 ty2⌝ ∗ T.
   Class MutEqtype (E : elctx) (L : llctx) {rt} (ty1 ty2 : type rt) : Type :=
@@ -1420,6 +1429,22 @@ Section judgments.
     ⌜ex_inv_def_sub E L P1 P2⌝ ∗ T.
   Class SubtypeADT (E : elctx) (L : llctx) {X Y} (P1 P2 : ex_inv_def X Y) : Type :=
     subtype_adt_proof T : iProp_to_Prop (subtype_adt E L P1 P2 T).
+
+  (** Subtyping for enums *)
+  (* Full inclusion of enums, corresponding to [mut_subtype] *)
+  Definition prove_full_enum_incl E L {rt} (e1 e2 : enum rt) (T : iProp Σ) : iProp Σ :=
+    ⌜full_enum_incl E L e1 e2⌝ ∗ T.
+  Class ProveFullEnumIncl E L {rt} (e1 e2 : enum rt) : Type :=
+    prove_full_enum_incl_proof T : iProp_to_Prop (prove_full_enum_incl E L e1 e2 T).
+
+  (* Helper judgment for [prove_full_enum_incl], showing variant-wise inclusion *)
+  Definition mut_subtype_enum_tag_tys E L {rt : Type}
+      (tys1 tys2 : list (var_name * enum_tag_sem rt)) (T : iProp Σ) : iProp Σ :=
+    ⌜enum_tag_tys_full_subtype E L tys1 tys2⌝ ∗ T.
+  Class MutSubtypeEnumTagTys E L {rt : Type}
+      (tys1 tys2 : list (var_name * enum_tag_sem rt)) : Type :=
+    mut_subtype_enum_tag_tys_proof T :
+      iProp_to_Prop (mut_subtype_enum_tag_tys E L tys1 tys2 T).
 
   (** ** Prove a proposition using subtyping *)
   Inductive ProofMode :=
@@ -2499,6 +2524,9 @@ Global Hint Mode MutEqtype + + + + + + ! : typeclass_instances.
 Global Hint Mode MutEqLtype + + + + + + ! : typeclass_instances.
 Global Hint Mode SubtypeADT + + + + + + + ! : typeclass_instances.
 
+Global Hint Mode ProveFullEnumIncl + + + + + + + : typeclass_instances.
+Global Hint Mode MutSubtypeEnumTagTys + + + + + + + : typeclass_instances.
+
 Global Hint Mode InterpretTypingHint + + + + + + + + + + : typeclass_instances.
 
 Global Hint Mode LtypeReadAs + + + + + + + + + + + + : typeclass_instances.
@@ -3176,7 +3204,7 @@ Section folding.
       match res with
       | None => typed_context_fold E L m tctx acc T
       | Some (existT rt' (lt', r', bk', π)) =>
-          ⌜bk' = Owned⌝ ∗ (typed_context_fold_step π E L m l lt' r' acc (λ L2 m2 acc2, 
+          ⌜bk' = Owned⌝ ∗ (typed_context_fold_step π E L m l lt' r' acc (λ L2 m2 acc2,
             typed_context_fold E L2 m2 tctx acc2 T))
       end)
     ⊢ typed_context_fold E L m (l :: tctx) acc T.
@@ -3964,6 +3992,8 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | mut_eqtype ?E ?L ?ty1 ?ty2 => constr:(MutEqtype E L ty1 ty2)
   | subtype_adt ?E ?L ?P1 ?P2 => constr:(SubtypeADT E L P1 P2)
   | owned_subtype ?π ?E ?L ?wl ?r1 ?r2 ?ty1 ?ty2 => constr:(OwnedSubtype π E L wl r1 r2 ty1 ty2)
+  | mut_subtype_enum_tag_tys ?E ?L ?e1 ?e2 => constr:(MutSubtypeEnumTagTys E L e1 e2)
+  | prove_full_enum_incl ?E ?L ?e1 ?e2 => constr:(ProveFullEnumIncl E L e1 e2)
   | strong_subltype ?E ?L ?k ?r1 ?r2 ?lt1 ?lt2 => constr:(StrongSubLtype E L k r1 r2 lt1 lt2)
   | weak_subltype ?E ?L ?k ?r1 ?r2 ?lt1 ?lt2 => constr:(SubLtype E L k r1 r2 lt1 lt2)
   | mut_eqltype ?E ?L ?lt1 ?lt2 => constr:(MutEqLtype E L lt1 lt2)

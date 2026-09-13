@@ -161,6 +161,10 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:((_ : StrongSubLtype E L k r1 r2 lt1 lt2) T)
   | mut_subtype ?E ?L ?ty1 ?ty2 ?T =>
       cont uconstr:((_ : MutSubtype E L ty1 ty2) T)
+  | prove_full_enum_incl ?E ?L ?en1 ?en2 ?T =>
+      cont uconstr:((_ : ProveFullEnumIncl E L en1 en2) T)
+  | mut_subtype_enum_tag_tys ?E ?L ?tys1 ?tys2 ?T =>
+      cont uconstr:((_ : MutSubtypeEnumTagTys E L tys1 tys2) T)
   | mut_eqtype ?E ?L ?ty1 ?ty2 ?T =>
       cont uconstr:((_ : MutEqtype E L ty1 ty2) T)
   | subtype_adt ?E ?L ?P1 ?P2 ?T =>

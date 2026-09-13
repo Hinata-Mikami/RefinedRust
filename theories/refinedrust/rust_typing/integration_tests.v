@@ -481,6 +481,50 @@ Section std_option_Option_ty.
   Global Typeclasses Transparent std_option_Option_ty.
 End std_option_Option_ty.
 
+  Lemma option_owned_subtype_none_infer π E L {rt1 rt2}
+      (ty1 : type rt1) (ty2 : type rt2) :
+    ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone →
+    ⊢ ∃ r2 : option (place_rfnRT rt2),
+      owned_subtype π E L false None r2
+        (std_option_Option_ty ty1) (std_option_Option_ty ty2)
+        (λ _, ⌜r2 = None⌝ ∗ True).
+  Proof.
+    intros Hst. iStartProof. repeat liRStep.
+    Unshelve. all: unfold fast_syntype_eq_hint; by rewrite Hst.
+  Qed.
+
+  Lemma option_weak_subtype_some_infer E L {rt} (ty : type rt)
+      (x : rt) :
+    ⊢ ∃ r2 : option (place_rfnRT rt),
+      weak_subtype E L (Some (#x)) r2
+        (std_option_Option_ty ty) (std_option_Option_ty ty)
+        (⌜r2 = Some (#x)⌝ ∗ True).
+  Proof.
+    iStartProof. repeat liRStep.
+    Unshelve. all: sidecond_solver.
+  Qed.
+
+  Lemma option_weak_subtype_symbolic_infer E L {rt} (ty : type rt)
+      (r : option (place_rfnRT rt)) :
+    ⊢ ∃ r2 : option (place_rfnRT rt),
+      weak_subtype E L r r2
+        (std_option_Option_ty ty) (std_option_Option_ty ty)
+        (⌜r2 = r⌝ ∗ True).
+  Proof.
+    iStartProof. repeat liRStep.
+    Unshelve. all: sidecond_solver.
+  Qed.
+
+  Lemma option_mut_subtype_shared E L {rt} (ty : type rt) κ1 κ2 :
+    ⌜lctx_lft_incl E L κ2 κ1⌝ ⊢
+      mut_subtype E L
+        (std_option_Option_ty (shr_ref κ1 ty))
+        (std_option_Option_ty (shr_ref κ2 ty)) True.
+  Proof.
+    iIntros "%Hincl". repeat liRStep.
+    Unshelve. all: intros []; eexists; done.
+  Qed.
+
   Instance option_contr {rt1 T_rt} (T : type rt1 → type T_rt) :
     TypeContractive T →
     TypeContractive (λ ty, std_option_Option_ty (T ty)).

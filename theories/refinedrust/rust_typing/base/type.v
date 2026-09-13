@@ -2650,7 +2650,159 @@ Section enum.
     generalize (enum_tag_rt_eq en r tag _ Heq Hsem) as Heq2.
     simpl. intros Heq2. rewrite (UIP_refl _ _ Heq2); done.
   Qed.
+
+  Lemma enum_type_rew_uip {rt1 rt2 : RT} (Heq1 Heq2 : rt1 = rt2)
+      (ty : type rt1) :
+    rew [type] Heq1 in ty = rew [type] Heq2 in ty.
+  Proof.
+    destruct Heq1. rewrite (UIP_refl _ _ Heq2). done.
+  Qed.
 End enum.
+
+(** Enum subtyping *)
+Section subtype.
+  Context `{!typeGS Σ}.
+
+ (* homogeneous subtyping.
+     We basically only want this for type parameters of an enum.
+     If T <: U, then option T <: option U.
+     otherwise, don't need anything.
+  *)
+  Import EqNotations.
+  Definition enum_incl {rt} (e1 e2 : enum rt) : iProp Σ :=
+    ⌜e1.(enum_els) = e2.(enum_els)⌝ ∗
+    ⌜e1.(enum_tag) = e2.(enum_tag)⌝ ∗
+    (∀ r, ∃ (Heq : e1.(enum_rt) r = e2.(enum_rt) r),
+      ⌜(st_of (enum_ty e1 r) MetaNone) = (st_of (enum_ty e2 r) MetaNone)⌝ ∗
+      type_incl (rew [RT_rt]Heq in e1.(enum_r) r) (e2.(enum_r) r) (rew Heq in e1.(enum_ty) r) (e2.(enum_ty) r))
+  .
+  Global Instance enum_incl_pers {rt} (e1 e2 : enum rt) : Persistent (enum_incl e1 e2).
+  Proof. apply _. Qed.
+
+  Definition full_enum_incl E L {rt} (e1 e2 : enum rt) : Prop :=
+    ∀ qL : Qp, llctx_interp_noend L qL -∗ elctx_interp E -∗ enum_incl e1 e2.
+
+  Definition enum_tag_sem_full_subtype E L {rt}
+      (x1 x2 : var_name * enum_tag_sem rt) : Prop :=
+    x1.1 = x2.1 ∧ ∃ Heq : x1.2.(enum_tag_sem_rt) = x2.2.(enum_tag_sem_rt),
+      full_subtype E L (rew [type] Heq in x1.2.(enum_tag_sem_ty))
+        x2.2.(enum_tag_sem_ty).
+
+  Definition enum_tag_tys_full_subtype E L {rt}
+      (tys1 tys2 : list (var_name * enum_tag_sem rt)) : Prop :=
+    Forall2 (enum_tag_sem_full_subtype E L) tys1 tys2.
+
+  Lemma enum_incl_refl {rt} (e : enum rt) : ⊢ enum_incl e e.
+  Proof.
+    iR. iR. iIntros (r). iExists eq_refl. iR. iApply type_incl_refl.
+  Qed.
+
+  Lemma enum_incl_trans {rt} (e1 e2 e3 : enum rt) :
+    enum_incl e1 e2 -∗ enum_incl e2 e3 -∗ enum_incl e1 e3.
+  Proof.
+    iIntros "(%Hels1 & %Htag1 & #H12) (%Hels2 & %Htag2 & #H23)".
+    iSplitR; first (iPureIntro; congruence).
+    iSplitR; first (iPureIntro; congruence).
+    iIntros (r).
+    iDestruct ("H12" $! r) as "(%H12 & %Hst12 & H12')".
+    iDestruct ("H23" $! r) as "(%H23 & %Hst23 & H23')".
+    iExists (eq_trans H12 H23). iSplitR; first (iPureIntro; congruence).
+    iClear "H12 H23". iRevert "H12' H23'".
+    generalize (enum_r e3 r), (enum_ty e3 r), (enum_r e2 r), (enum_ty e2 r),
+      (enum_r e1 r), (enum_ty e1 r).
+    generalize H12, H23.
+    generalize (enum_rt e1 r), (enum_rt e2 r), (enum_rt e3 r).
+    intros rt1 rt2 rt3 -> -> r3 ty3 r2 ty2 r1 ty1. simpl.
+    iIntros "H12 H23". iApply (type_incl_trans with "H12 H23").
+  Qed.
+
+  Global Instance full_enum_incl_refl E L {rt} : Reflexive (full_enum_incl E L (rt:=rt)).
+  Proof. intros e. iIntros (?) "_ _". iApply enum_incl_refl. Qed.
+
+  Lemma full_enum_incl_trans E L {rt} (e1 e2 e3 : enum rt) :
+    full_enum_incl E L e1 e2 → full_enum_incl E L e2 e3 → full_enum_incl E L e1 e3.
+  Proof.
+    intros H12 H23. iIntros (?) "HL HE".
+    iPoseProof (H12 with "HL HE") as "#H12".
+    iPoseProof (H23 with "HL HE") as "#H23".
+    iApply (enum_incl_trans with "H12 H23").
+  Qed.
+
+  Lemma full_enum_incl_acc E L {rt} (e1 e2 : enum rt) :
+    full_enum_incl E L e1 e2 →
+    elctx_interp E -∗ llctx_interp L -∗ enum_incl e1 e2.
+  Proof.
+    intros Hincl. iIntros "HE HL".
+    iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & _)".
+    iApply (Hincl with "HL HE").
+  Qed.
+
+  (** Structural parameter subtyping preserves the refinement projection. *)
+  Lemma full_enum_incl_intro E L {rt} (e1 e2 : enum rt)
+      (Heq : ∀ r, enum_rt e1 r = enum_rt e2 r) :
+    enum_els e1 = enum_els e2 →
+    enum_tag e1 = enum_tag e2 →
+    (∀ r, rew [RT_rt] (Heq r) in enum_r e1 r = enum_r e2 r) →
+    (∀ r, full_subtype E L (rew [type] (Heq r) in enum_ty e1 r) (enum_ty e2 r)) →
+    full_enum_incl E L e1 e2.
+  Proof.
+    intros Hels Htag Hr Hsub. iIntros (qL) "HL #HE".
+    iR. iR. iIntros (r). iExists (Heq r).
+    iPoseProof (full_subtype_acc_noend with "HE HL") as "(%Hst & #Hincl)"; first apply (Hsub r).
+    iSplitR.
+    { iPureIntro. specialize (Hst MetaNone). revert Hst.
+      generalize (Heq r). intros H. destruct H. done. }
+    rewrite Hr. iApply "Hincl".
+  Qed.
+
+  Lemma enum_tag_tys_full_subtype_find E L {rt : RT}
+      (tys1 tys2 : list (var_name * enum_tag_sem rt)) tag sem1 sem2 :
+    enum_tag_tys_full_subtype E L tys1 tys2 →
+    enum_tag_ty_find tys1 tag = Some sem1 →
+    enum_tag_ty_find tys2 tag = Some sem2 →
+    ∃ Heq : sem1.(enum_tag_sem_rt) = sem2.(enum_tag_sem_rt),
+      full_subtype E L (rew [type] Heq in sem1.(enum_tag_sem_ty))
+        sem2.(enum_tag_sem_ty).
+  Proof.
+    intros Hsub. unfold enum_tag_tys_full_subtype in Hsub.
+    induction Hsub as [|x1 x2 tys1 tys2 Hhead Htail IH]; first done.
+    destruct x1 as [tag1 sem1']; destruct x2 as [tag2 sem2'].
+    unfold enum_tag_sem_full_subtype in Hhead. simpl in Hhead.
+    destruct Hhead as [-> Hhead].
+    rewrite /enum_tag_ty_find /=.
+    destruct (decide (tag2 = tag)) as [-> | Hne].
+    - simpl. intros [= ->] [= ->]. exact Hhead.
+    - intros Hfind1 Hfind2. apply IH.
+      + rewrite /enum_tag_ty_find. revert Hfind1.
+        destruct (list_find (λ x : var_name * enum_tag_sem rt, x.1 = tag) tys1)
+          as [[i [tag' sem]] |]; done.
+      + rewrite /enum_tag_ty_find. revert Hfind2.
+        destruct (list_find (λ x : var_name * enum_tag_sem rt, x.1 = tag) tys2)
+          as [[i [tag' sem]] |]; done.
+  Qed.
+
+  (** Top-level proof principle for [full_enum_incl] *)
+  Lemma full_enum_incl_intro_tag_tys E L {rt} (e1 e2 : enum rt)
+      (Heq : ∀ r, enum_rt e1 r = enum_rt e2 r) :
+    enum_els e1 = enum_els e2 →
+    enum_tag e1 = enum_tag e2 →
+    (∀ r, is_Some (enum_tag e1 r)) →
+    (∀ r, rew [RT_rt] (Heq r) in enum_r e1 r = enum_r e2 r) →
+    enum_tag_tys_full_subtype E L e1.(enum_tag_ty) e2.(enum_tag_ty) →
+    full_enum_incl E L e1 e2.
+  Proof.
+    intros Hels Htag Htotal Hr Htys.
+    eapply full_enum_incl_intro; [done.. |].
+    intros r. destruct (Htotal r) as [tag Htag1].
+    pose proof Htag1 as Htag2. rewrite Htag in Htag2.
+    destruct (enum_tag_compat _ e1 r tag Htag1) as [inj1 Hfind1].
+    destruct (enum_tag_compat _ e2 r tag Htag2) as [inj2 Hfind2].
+    destruct (enum_tag_tys_full_subtype_find E L _ _ tag _ _ Htys Hfind1 Hfind2)
+      as [Heq' Hsub].
+    simpl in Heq', Hsub.
+    rewrite (enum_type_rew_uip (Heq r) Heq'). exact Hsub.
+  Qed.
+End subtype.
 
 (** ** Basic plain ADT infrastructure *)
 (** Existential types with "simple" invariants that are tacked on via a separating conjunction *)
