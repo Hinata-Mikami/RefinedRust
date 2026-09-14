@@ -24,7 +24,7 @@ Section subtype.
       (en1 : enum rt1) (en2 : enum rt2) r1 r2 tag
       `{Htag1 : !TCDone (enum_tag en1 r1 = Some tag)}
       `{!IsConcreteEnumTag tag}
-      `{!ContainsProtected r2} T :
+      T :
     (⌜fast_syntype_eq_hint (enum_els en1 = enum_els en2)⌝ ∗
     ∃ sem, ⌜enum_tag_ty_inj en2 tag = Some sem⌝ ∗
     ⌜fast_syntype_eq_hint (ty_syn_type (enum_ty en1 r1) MetaNone =
@@ -84,38 +84,11 @@ Section subtype.
   Definition owned_subtype_enum_mut_inst := [instance @owned_subtype_enum_mut].
   Global Existing Instance owned_subtype_enum_mut_inst | 10.
 
-  Lemma owned_subtype_enum π E L pers {rt1 rt2}
-      (en1 : enum rt1) (en2 : enum rt2) r1 r2 T :
-    ⌜fast_syntype_eq_hint (enum_els en1 = enum_els en2)⌝ ∗
-    ⌜enum_tag en1 r1 = enum_tag en2 r2⌝ ∗
-    ⌜fast_syntype_eq_hint (ty_syn_type (enum_ty en1 r1) MetaNone = ty_syn_type (enum_ty en2 r2) MetaNone)⌝ ∗
-    owned_subtype π E L pers (enum_r en1 r1) (enum_r en2 r2)
-      (enum_ty en1 r1) (enum_ty en2 r2) T
-    ⊢ owned_subtype π E L pers r1 r2 (enum_t en1) (enum_t en2) T.
-  Proof.
-    iIntros "(%Hels & %Htag & %Hst & HT)" (????) "#CTX #HE HL".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & Hincl & $ & $)".
-    destruct pers; simpl.
-    - iDestruct "Hincl" as "#Hincl". iModIntro. iModIntro.
-      iSplitR; last iSplitR.
-      + iPureIntro. simpl. rewrite Hels. apply syn_type_size_eq_refl.
-      + done.
-      + iIntros (v). iApply (enum_t_own_val_mono _ true).
-        rewrite /enum_t_incl_precond /=. iR. iR. iR. done.
-    - iModIntro. iSplitR; last iSplitR.
-      + iPureIntro. simpl. rewrite Hels. apply syn_type_size_eq_refl.
-      + done.
-      + iIntros (v). iApply (enum_t_own_val_mono _ false).
-        rewrite /enum_t_incl_precond /=. iR. iR. iR. done.
-  Qed.
-  Definition owned_subtype_enum_inst := [instance @owned_subtype_enum].
-  Global Existing Instance owned_subtype_enum_inst | 20.
-
   Lemma weak_subtype_enum_inj E L {rt1 rt2}
       (en1 : enum rt1) (en2 : enum rt2) r1 r2 tag
       `{Htag1 : !TCDone (enum_tag en1 r1 = Some tag)}
       `{!IsConcreteEnumTag tag}
-      `{!ContainsProtected r2} T :
+      T :
     (⌜enum_els en1 = enum_els en2⌝ ∗
     ∃ sem, ⌜enum_tag_ty_inj en2 tag = Some sem⌝ ∗
     ∃ rp, weak_subtype E L (enum_r en1 r1) rp
@@ -155,23 +128,6 @@ Section subtype.
   Definition weak_subtype_enum_mut_inst := [instance @weak_subtype_enum_mut].
   Global Existing Instance weak_subtype_enum_mut_inst | 10.
 
-  Lemma weak_subtype_enum E L {rt1 rt2}
-      (en1 : enum rt1) (en2 : enum rt2) r1 r2 T :
-    ⌜enum_els en1 = enum_els en2⌝ ∗
-    ⌜enum_tag en1 r1 = enum_tag en2 r2⌝ ∗
-    weak_subtype E L (enum_r en1 r1) (enum_r en2 r2)
-      (enum_ty en1 r1) (enum_ty en2 r2) T
-    ⊢ weak_subtype E L r1 r2 (enum_t en1) (enum_t en2) T.
-  Proof.
-    iIntros "(%Hels & %Htag & HT)" (??) "#CTX #HE HL".
-    iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & $)".
-    iModIntro. iSplitR.
-    { iPureIntro. intros m. simpl. by rewrite Hels. }
-    iApply enum_t_type_incl. iR. iR. iR. done.
-  Qed.
-  Definition weak_subtype_enum_inst := [instance @weak_subtype_enum].
-  Global Existing Instance weak_subtype_enum_inst | 20.
-
   Lemma mut_subtype_enum E L {rt} (en1 en2 : enum rt) T :
     prove_full_enum_incl E L en1 en2 T
     ⊢ mut_subtype E L (enum_t en1) (enum_t en2) T.
@@ -181,14 +137,12 @@ Section subtype.
 
   Lemma prove_full_enum_incl_structural E L {rt} (en1 en2 : enum rt)
       `{Hrt : !TCDone (enum_rt en1 = enum_rt en2)} T :
-    (mut_subtype_enum_tag_tys E L en1.(enum_tag_ty) en2.(enum_tag_ty) (
-        ⌜enum_els en1 = enum_els en2⌝ ∗
-        ⌜enum_tag en1 = enum_tag en2⌝ ∗
-        ⌜∀ r, is_Some (enum_tag en1 r)⌝ ∗
-        ⌜∀ r, rew [RT_rt] (f_equal (λ f, f r) Hrt) in enum_r en1 r = enum_r en2 r⌝ ∗ T))
+    (⌜enum_els en1 = enum_els en2⌝ ∗ ⌜enum_tag en1 = enum_tag en2⌝ ∗ ⌜∀ r, is_Some (enum_tag en1 r)⌝ ∗
+     ⌜∀ r, rew [RT_rt] (f_equal (λ f, f r) Hrt) in enum_r en1 r = enum_r en2 r⌝ ∗
+    mut_subtype_enum_tag_tys E L en1.(enum_tag_ty) en2.(enum_tag_ty) T)
     ⊢ prove_full_enum_incl E L en1 en2 T.
   Proof.
-    iIntros "(%Htys & %Hels & %Htag & %Htotal & %Hr & $)".
+    iIntros "(%Hels & %Htag & %Htotal & %Hr & %Htys & $)".
     iPureIntro. by eapply (full_enum_incl_intro_tag_tys E L en1 en2
       (λ r, f_equal (λ f, f r) Hrt)).
   Qed.
