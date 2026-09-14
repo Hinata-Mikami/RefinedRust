@@ -1269,13 +1269,25 @@ Proof.
   intros ??. eauto.
 Qed.
 
-(** Unfold [ty_ghost_drop] if necessary *)
-Class TyIsNotVar `{!typeGS Σ} {rt} (ty : type rt) := {}.
-Global Hint Mode TyIsNotVar + + + + : typeclass_instances.
-Global Hint Extern 10 (TyIsNotVar ?ty) =>
-  ty_is_not_var ty; constructor : typeclass_instances.
+(** Unfold [ty_ghost_drop] unless an enum's concrete variant is unknown. *)
+Class TyGhostDropCanSimplify `{!typeGS Σ} {rt} (ty : type rt) (r : rt) := {}.
+Global Hint Mode TyGhostDropCanSimplify + + + + + : typeclass_instances.
+Global Hint Extern 10 (TyGhostDropCanSimplify ?ty ?r) =>
+  ty_is_not_var ty;
+  (* goes via the syn_type because unifying the type directly is difficult with type parameters etc. *)
+  let st := eval hnf in (ty_syn_type ty MetaNone) in
+  lazymatch st with
+  | EnumSynType (enum_layout_spec_raw (enum_els ?en)) =>
+      let tag := eval hnf in (enum_tag en r) in
+      lazymatch tag with
+      | Some ?variant =>
+          let _ := constr:(_ : IsConcreteEnumTag variant) in
+          constructor
+      end
+  | _ => constructor
+  end : typeclass_instances.
 
-Global Program Instance simplify_hyp_ty_ghost_drop `{!typeGS Σ} {rt} (ty : type rt) `{!TyIsNotVar ty} π r :
+Global Program Instance simplify_hyp_ty_ghost_drop `{!typeGS Σ} {rt} (ty : type rt) π r `{!TyGhostDropCanSimplify ty r} :
   SimplifyHyp (ty_ghost_drop ty π r) (Some 0%N) := {|
   simplify_hyp_Q := _ty_ghost_drop ty π r;
 |}.
@@ -1283,6 +1295,24 @@ Next Obligation.
   iIntros (???????) "?".
   rewrite ty_ghost_drop_unfold. done.
 Qed.
+
+(** Simplify [_ty_ghost_drop] for recursive type projections *)
+Global Program Instance simplify_hyp_mut_fixpoint_project_ty_ghost_drop `{!typeGS Σ}
+    {rts : list RT} (F : mut_type_fun rts) {Hne : MutTypeNonExpansive F}
+    {Hctr : MutTypeContractive (mut_iter F (length rts))}
+    {Hrts : base.TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
+    {rt : RT} {Hinh : Inhabited (RT_xt rt)} i
+    (Hlook : rts !! i = Some rt) π r :
+  SimplifyHyp (_ty_ghost_drop
+    (@mut_type_project _ _ rts (@mut_fixpoint _ _ rts F Hne Hctr Hrts) rt Hinh i Hlook) π r) (Some 0%N) | 1 := {|
+  simplify_hyp_Q := True%I;
+|}.
+Next Obligation.
+  iIntros (?????????????). rewrite mut_fixpoint_project_ty_ghost_drop.
+  iIntros "?"; done.
+Qed.
+
+(** Unfold [ty_ghost_drop'] *)
 Global Program Instance simplify_hyp_ty_ghost_drop'_1 `{!typeGS Σ} {rt} (ty : type rt) π r `{!TCFastDone (ty.(ty_trivial_drop) = false)} :
   SimplifyHyp (ty_ghost_drop' ty π r) (Some 0%N) := {|
   simplify_hyp_Q := True%I;
@@ -1299,20 +1329,6 @@ Next Obligation.
   iIntros (???????) "?".
   rewrite /ty_ghost_drop' Heq.
   done.
-Qed.
-Global Program Instance simplify_hyp_mut_fixpoint_project_ty_ghost_drop `{!typeGS Σ}
-    {rts : list RT} (F : mut_type_fun rts) {Hne : MutTypeNonExpansive F}
-    {Hctr : MutTypeContractive (mut_iter F (length rts))}
-    {Hrts : base.TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
-    {rt : RT} {Hinh : Inhabited (RT_xt rt)} i
-    (Hlook : rts !! i = Some rt) π r :
-  SimplifyHyp (_ty_ghost_drop
-    (@mut_type_project _ _ rts (@mut_fixpoint _ _ rts F Hne Hctr Hrts) rt Hinh i Hlook) π r) (Some 0%N) := {|
-  simplify_hyp_Q := True%I;
-|}.
-Next Obligation.
-  iIntros (?????????????). rewrite mut_fixpoint_project_ty_ghost_drop.
-  iIntros "?"; done.
 Qed.
 Lemma simplify_goal_ty_ghost_drop_concrete `{!typeGS Σ} {rt} (ty : type rt) π r `{!IsNotVar ty} T :
   (_ty_ghost_drop ty π r) ∗ T ⊢
@@ -1435,7 +1451,7 @@ Ltac solve_mk_enum_tag_inj_roundtrip_case Hmem variant sem :=
   cbn in Hvariant, Hsem;
   subst variant; subst sem; clear Hmem;
   cbn in *;
-  prepare_initial_coq_context; 
+  prepare_initial_coq_context;
   lazymatch goal with
   | |- enum_tag_inj_spec ?get_tag ?get_rt ?get_r ?variant ?sem ?x =>
       refine (Build_enum_tag_inj_spec _ get_tag get_rt get_r variant sem x

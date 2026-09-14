@@ -481,6 +481,25 @@ Section std_option_Option_ty.
   Global Typeclasses Transparent std_option_Option_ty.
 End std_option_Option_ty.
 
+  Example option_none_ghost_drop_can_simplify {T_rt : RT} (T_ty : type T_rt) :
+    TyGhostDropCanSimplify (std_option_Option_ty T_ty) None.
+  Proof. apply _. Qed.
+
+  Example option_some_ghost_drop_can_simplify {T_rt : RT} (T_ty : type T_rt) (x : T_rt) :
+    TyGhostDropCanSimplify (std_option_Option_ty T_ty) (Some (#x)).
+  Proof. apply _. Qed.
+
+  Goal ∀ {T_rt : RT} (T_ty : type T_rt) (r : option (place_rfnRT T_rt)),
+    TyGhostDropCanSimplify (std_option_Option_ty T_ty) r.
+  Proof.
+    intros. Fail apply _.
+  Abort.
+
+  Goal ∀ b : bool, IsConcreteEnumTag (if b then "Some" else "None").
+  Proof.
+    intros. Fail apply _.
+  Abort.
+
   Lemma option_owned_subtype_none_infer π E L {rt1 rt2}
       (ty1 : type rt1) (ty2 : type rt2) :
     ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone →
