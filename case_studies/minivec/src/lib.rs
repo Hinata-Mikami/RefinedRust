@@ -10,6 +10,11 @@
 #![rr::include("mem")]
 #![rr::include("sized")]
 #![rr::include("rr_internal")]
+#![rr::include("closures")]
+#![rr::include("result")]
+#![rr::include("controlflow")]
+#![rr::include("cmp")]
+#![rr::include("iterator")]
 
 /// Vec implementation from https://doc.rust-lang.org/nomicon/vec/vec-final.html
 
@@ -193,6 +198,48 @@ pub struct Vec<T> {
     len: usize,
 }
 
+#[rr::refined_by("remaining" : "(listRT (directRT {xt_of T}))")]
+#[rr::exists("xs" : "list {xt_of T}", "index" : "nat")]
+#[rr::invariant("remaining = (drop index xs)")]
+#[rr::invariant("index ≤ length xs")]
+pub struct Iter<'a, T: 'a> {
+    #[rr::field("#(<#> <$#> xs)")]
+    vec: &'a Vec<T>,
+    #[rr::field("Z.of_nat index")]
+    index: usize,
+}
+
+#[rr::instantiate("Params" := "unit")]
+#[rr::instantiate("Inv" := "λ π _ self, True%I")]
+#[rr::instantiate("Next" := "λ π _ xs ret xs',
+    (⌜if_None ret (xs = [] ∧ xs' = [])⌝ ∗
+     ⌜if_Some ret (λ x, xs = x :: xs')⌝)%I")]
+impl<'a, T: 'a> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let vec = self.vec;
+        if self.index < vec.len() {
+            let value = unsafe { vec.get_unchecked(self.index) };
+            self.index += 1;
+            Some(value)
+        } else {
+            None
+        }
+    }
+}
+
+#[rr::instantiate("IntoIter" := "λ x, x")]
+impl<'a, T> IntoIterator for &'a Vec<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+
+    #[rr::default_spec]
+    fn into_iter(self: &'a Vec<T>) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
 impl<T> RawVec<T> {
     // needed for VecDeque
     #[rr::params("l", "cap")]
@@ -294,6 +341,14 @@ impl<T> Vec<T> {
     #[rr::returns("length self")]
     pub fn len(&self) -> usize {
         self.len
+    }
+
+    #[rr::returns("self")]
+    pub fn iter(&self) -> Iter<'_, T> {
+        Iter {
+            vec: self,
+            index: 0,
+        }
     }
 
     #[rr::returns("[]")]

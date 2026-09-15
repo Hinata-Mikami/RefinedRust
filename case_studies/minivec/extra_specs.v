@@ -1,6 +1,21 @@
 Section extra_specs.
 Context `{RRGS : !refinedrustGS Σ}.
 
+(* Learn that the emitted history followed by the remaining iterator state is
+   the initial vector. *)
+Global Program Instance iterator_learn_minivec_iter T_rt p :
+  IteratorLearnInductive (IteraTasstd_iter_Iterator_spec_attrs T_rt) p :=
+  {| iterator_learn_inductive_Q s1 hist s2 := s1 = hist ++ s2 |}.
+Next Obligation.
+  iIntros (? [] ????) "Hx".
+  iPoseProof (boringly_persistent_elim with "Hx") as "Hx".
+  iInduction hist as [ | x hist] "IH" forall (s1 s2); simpl.
+  { iDestruct "Hx" as "->". iPureIntro. done. }
+  iDestruct "Hx" as "(%s1' & (_ & ->) & Hx)".
+  iPoseProof ("IH" with "Hx") as "->".
+  done.
+Qed.
+
 Section resolve_ghost.
   Context {T_rt : RT}.
   Context (T_ty : type (T_rt)).
