@@ -803,7 +803,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         Some(&func_constant.const_)
     }
 
-    pub(super) fn prepare_inline_call_reborrows(
+    /// Finds temporary reborrows whose calls deliberately do not create semantic mutable
+    /// references. Inline calls retain their existing permissive behavior. For
+    /// `rr::raw_mut_self`, only argument zero of a direct call to a marked local method is
+    /// eligible; an unexpected MIR shape is rejected rather than silently restoring the usual
+    /// mutable-reference semantics.
+    pub(super) fn prepare_permissive_call_reborrows(
         &mut self,
         reachable_blocks: &BTreeSet<mir::BasicBlock>,
     ) -> Result<(), TranslationError> {
@@ -816,10 +821,24 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 continue;
             };
             let (did, ..) = self.call_expr_op_split_inst(&func_constant.const_)?;
-            if !self.procedure_registry.lookup_function_mode(did).is_some_and(procedures::Mode::is_inline) {
+            let is_inline =
+                self.procedure_registry.lookup_function_mode(did).is_some_and(procedures::Mode::is_inline);
+            let has_raw_mut_self = self.procedure_registry.has_raw_mut_self(did);
+            if !is_inline && !has_raw_mut_self {
                 continue;
             }
 
+            let args = if has_raw_mut_self {
+                args.get(..1).ok_or_else(|| {
+                    TranslationError::ErrorReported(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                        "direct call to rr::raw_mut_self method has no receiver argument: {:?}",
+                        data.terminator()
+                    ))))
+                })?
+            } else {
+                args
+            };
+            let mut found_raw_mut_self_receiver = false;
             for arg in args {
                 let (mir::Operand::Move(arg_place) | mir::Operand::Copy(arg_place)) = &arg.node else {
                     continue;
@@ -848,11 +867,24 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     mir::BorrowKind::Mut { .. } => code::Mutability::Mut,
                     mir::BorrowKind::Fake(_) => continue,
                 };
+                if has_raw_mut_self && mt != code::Mutability::Mut {
+                    continue;
+                }
                 let loc = mir::Location {
                     block: *bb,
                     statement_index,
                 };
-                self.inline_call_reborrows.insert(loc, mt);
+                self.permissive_call_reborrows.insert(loc, mt);
+                found_raw_mut_self_receiver = true;
+            }
+
+            if has_raw_mut_self && !found_raw_mut_self_receiver {
+                return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                    Message::UnsupportedFeature(format!(
+                        "direct call to rr::raw_mut_self method does not use a mutable receiver reborrow: {:?}",
+                        data.terminator()
+                    )),
+                )));
             }
         }
         Ok(())

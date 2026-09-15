@@ -76,12 +76,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     continue;
                 }
 
-                // Adjust borrows that are passed to rr::inline functions to not enforce the type's
-                // safety invariant
-                if let Some(mt) = self.inline_call_reborrows.get(&loc).copied() {
+                // Some direct calls explicitly take ownership without creating a semantic mutable reference.
+                if let Some(mt) = self.permissive_call_reborrows.get(&loc).copied() {
                     let plc_ty = self.shape_type_of_place(plc);
                     let mir::Rvalue::Ref(region, borrow_kind, borrowed_place) = val else {
-                        bug!("inline call reborrow is not a reference at {loc:?}: {stmt:?}");
+                        bug!("permissive call reborrow is not a reference at {loc:?}: {stmt:?}");
                     };
                     let borrowed_place = self.translate_place(borrowed_place)?;
                     let adjusted_reborrow = match (mt, borrow_kind) {
@@ -103,17 +102,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                                 e: Box::new(borrowed_place),
                             }
                         },
-                        _ => bug!("inline call reborrow has unexpected kind at {loc:?}: {stmt:?}"),
+                        _ => bug!("permissive call reborrow has unexpected kind at {loc:?}: {stmt:?}"),
                     };
                     let mut annotation_plan = self
                         .prepared_assignments
                         .remove(&loc)
-                        .unwrap_or_else(|| bug!("missing prepared inline reborrow at {loc:?}: {stmt:?}"));
+                        .unwrap_or_else(|| bug!("missing prepared permissive reborrow at {loc:?}: {stmt:?}"));
                     annotation_plan.push_pre_stmts(&mut prim_stmts);
                     let adjusted_reborrow = code::Expr::with_optional_annotation(
                         adjusted_reborrow,
                         annotation_plan.expr.take(),
-                        Some("inline call reborrow".to_owned()),
+                        Some("permissive call reborrow".to_owned()),
                     );
                     let translated_place = self.translate_place(plc)?;
                     let synty = self.translate_type_to_syn_type(plc_ty.ty)?;

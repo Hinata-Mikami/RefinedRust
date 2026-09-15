@@ -5,11 +5,11 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, btree_map};
+use std::collections::{BTreeMap, BTreeSet, btree_map};
 
 use derive_more::{Constructor, Display};
 use radium::{code, coq, specs};
-use rr_rustc_interface::hir::def_id::DefId;
+use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::ty;
 
 use crate::base::*;
@@ -255,6 +255,8 @@ pub(crate) struct Scope<'tcx, 'def> {
     tcx: ty::TyCtxt<'tcx>,
     /// maps procedure keys to meta data
     procedure_meta: BTreeMap<ProcedureKey, Meta>,
+    /// Local inherent methods whose direct-call receiver should be lowered as a pointer.
+    raw_mut_self_functions: BTreeSet<OrderedDefId>,
     /// track the actually translated procedures
     translated_procedures: BTreeMap<ProcedureKey, code::Function<'def>>,
     /// Dependencies that need to be forwarded when an inline function is called.
@@ -272,6 +274,7 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
         Self {
             tcx,
             procedure_meta: BTreeMap::new(),
+            raw_mut_self_functions: BTreeSet::new(),
             translated_procedures: BTreeMap::new(),
             inline_function_dependencies: BTreeMap::new(),
             specced_procedures: BTreeMap::new(),
@@ -334,6 +337,14 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     /// Lookup the mode for a function.
     pub(crate) fn lookup_function_mode(&self, did: DefId) -> Option<Mode> {
         self.lookup_function(did).map(|meta| meta.get_mode())
+    }
+
+    pub(crate) fn has_raw_mut_self(&self, did: DefId) -> bool {
+        did.is_local() && self.raw_mut_self_functions.contains(&self.get_ordered_did(did))
+    }
+
+    pub(crate) fn register_raw_mut_self(&mut self, did: LocalDefId) {
+        self.raw_mut_self_functions.insert(self.get_ordered_did(did.to_def_id()));
     }
 
     /// Register a function.

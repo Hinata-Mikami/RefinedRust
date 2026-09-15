@@ -88,10 +88,12 @@ impl EvenInt {
     }
 
     /// Internal function. Unsafely add 1, making the integer odd.
-    #[rr::params("i", "γ")]
-    #[rr::args(#raw "((-[i]), γ)")]
+    #[rr::raw_mut_self]
+    #[rr::params("l", "i" : "Z")]
+    #[rr::args("l" @ "alias_ref_t")]
+    #[rr::requires(#type "l" : "-[ #i]" @ "EvenInt_ty -[] -[]")]
     #[rr::requires("(i+1 ≤ MaxInt i32)%Z")]
-    #[rr::observe("γ": "-[ #(i+1)] : plistRT [_]")]
+    #[rr::ensures(#type "l" : "-[ #(i+1)]" @ "EvenInt_ty -[] -[]")]
     unsafe fn add(&mut self) {
         self.num += 1;
     }

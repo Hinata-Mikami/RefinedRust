@@ -1563,6 +1563,51 @@ fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipeline
         let mut mode = get_most_restrictive_function_mode(vcx, f.to_def_id());
         let did = f.to_def_id();
         let item_attrs = environment::get_attributes(vcx.tcx, did);
+        let mut has_raw_mut_self = false;
+
+        if attrs::has_tool_attr(item_attrs, "raw_mut_self") {
+            let attr_span =
+                find_tool_attr_span(vcx.tcx, did, "raw_mut_self").unwrap_or_else(|| vcx.tcx.def_span(did));
+            let impl_did = vcx.tcx.impl_of_assoc(did);
+            let is_inherent_method = impl_did.is_some_and(|impl_did| !vcx.tcx.impl_is_of_trait(impl_did));
+            let has_self_parameter = match vcx.tcx.hir_node_by_def_id(*f) {
+                hir::Node::ImplItem(item) => match item.kind {
+                    hir::ImplItemKind::Fn(sig, _) => sig.decl.implicit_self() != hir::ImplicitSelfKind::None,
+                    _ => false,
+                },
+                _ => false,
+            };
+            let sig = vcx.tcx.fn_sig(did).instantiate_identity().skip_binder();
+            let has_mut_ref_receiver = has_self_parameter
+                && matches!(
+                    sig.inputs().first().map(|ty| ty.kind()),
+                    Some(ty::TyKind::Ref(_, _, hir::Mutability::Mut))
+                );
+            let is_unsafe = sig.safety() == hir::Safety::Unsafe;
+
+            let error = if !attrs::has_bare_tool_attr(item_attrs, "raw_mut_self") {
+                Some("rr::raw_mut_self does not accept arguments")
+            } else if is_closure {
+                Some("rr::raw_mut_self is not allowed on closures")
+            } else if !is_inherent_method {
+                Some("rr::raw_mut_self is only allowed on inherent methods")
+            } else if !has_mut_ref_receiver {
+                Some("rr::raw_mut_self requires a &mut self receiver")
+            } else if !is_unsafe {
+                Some("rr::raw_mut_self requires an unsafe method")
+            } else if mode == procedures::Mode::Inline {
+                Some("rr::raw_mut_self cannot be combined with rr::inline")
+            } else {
+                None
+            };
+
+            if let Some(error) = error {
+                vcx.tcx.dcx().span_err(attr_span, error::Message::AttributeError(error.to_owned()));
+                mode = procedures::Mode::Ignore;
+            } else {
+                has_raw_mut_self = true;
+            }
+        }
 
         if attrs::has_tool_attr(item_attrs, "inline") {
             let inline_span =
@@ -1635,6 +1680,9 @@ fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipeline
                 is_closure,
             );
             vcx.procedure_registry.register_function(f.to_def_id(), meta);
+            if has_raw_mut_self {
+                vcx.procedure_registry.register_raw_mut_self(*f);
+            }
 
             continue;
         }
@@ -1655,6 +1703,9 @@ fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipeline
                 is_closure,
             );
             vcx.procedure_registry.register_function(f.to_def_id(), meta);
+            if has_raw_mut_self {
+                vcx.procedure_registry.register_raw_mut_self(*f);
+            }
 
             continue;
         }
@@ -1691,6 +1742,9 @@ fn register_functions(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipeline
         );
 
         vcx.procedure_registry.register_function(f.to_def_id(), meta);
+        if has_raw_mut_self {
+            vcx.procedure_registry.register_raw_mut_self(*f);
+        }
     }
 
     Ok(())

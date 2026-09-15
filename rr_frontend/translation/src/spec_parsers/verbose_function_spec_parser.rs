@@ -40,8 +40,16 @@ pub(crate) const COMMON_FUNCTION_SPEC_ATTRS: &[&str] = &[
     "may_unwind_if",
 ];
 
-pub(crate) const FUNCTION_SPEC_ATTRS: &[&str] =
-    &["code_shim", "export_as", "inline", "only_spec", "verify", "trust_me", "use_panic_abort"];
+pub(crate) const FUNCTION_SPEC_ATTRS: &[&str] = &[
+    "code_shim",
+    "export_as",
+    "inline",
+    "only_spec",
+    "raw_mut_self",
+    "verify",
+    "trust_me",
+    "use_panic_abort",
+];
 
 pub(crate) const CLOSURE_SPEC_ATTRS: &[&str] =
     &["capture", "only_spec", "verify", "trust_me", "use_panic_abort"];
@@ -1560,6 +1568,7 @@ where
                         && name != "export_as"
                         && name != "inline"
                         && name != "only_spec"
+                        && name != "raw_mut_self"
                         && name != "verify"
                         && name != "trust_me"
                         && name != "use_panic_abort"
