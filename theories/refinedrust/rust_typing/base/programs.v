@@ -473,7 +473,7 @@ Global Typeclasses Opaque FindOptNaOwn.
 
 (** attempt to find an observation, or give up if there is none *)
 Definition FindOptGvarPobs `{!typeGS Σ} (γ : gname) :=
-  {| fic_A := (@sigT RT (λ rt, rt) + unit)%type;
+  {| fic_A := (@sigT Type (λ rt, rt) + unit)%type;
     fic_Prop a :=
       match a with
       | inl (existT rt r) => (gvar_pobs γ r)%I
@@ -500,7 +500,7 @@ Global Typeclasses Opaque FindObsList.
 
 (** attempt to find an inheritance for an observation, or give up *)
 Definition FindOptInheritGvarPobs `{!typeGS Σ} (γ : gname) :=
-  {| fic_A := ((list lft * @sigT RT (λ rt, rt))%type + unit)%type;
+  {| fic_A := ((list lft * @sigT Type (λ rt, rt))%type + unit)%type;
     fic_Prop a :=
       match a with
       | inl (κs, existT rt r) => Inherit κs (gvar_pobs γ r)%I
@@ -511,7 +511,7 @@ Global Typeclasses Opaque FindOptInheritGvarPobs.
 
 (** attempt to find an inheritance for an observation, or give up *)
 Definition FindOptInheritGvarRelEq `{!typeGS Σ} (γ : gname) :=
-  {| fic_A := ((list lft * RT * gname) + unit)%type;
+  {| fic_A := ((list lft * Type * gname) + unit)%type;
     fic_Prop a :=
       match a with
       | inl (κs, rt, γ') => Inherit κs (RelEq (T:=rt) γ' γ)%I
@@ -525,14 +525,14 @@ Global Typeclasses Opaque FindOptInheritGvarRelEq.
   However, that leads to universe trouble when using the definition that I have not yet figured out.
 *)
 Definition FindGvarPobs `{!typeGS Σ} (γ : gname) :=
-  {| fic_A := (@sigT RT (λ rt, rt))%type;
+  {| fic_A := (@sigT Type (λ rt, rt))%type;
     fic_Prop '(existT rt r) := (gvar_pobs γ r)%I
   |}.
 Global Typeclasses Opaque FindGvarPobs.
 
 (** Find a relation with the given gvar on the right hand side. *)
 Definition FindOptGvarRelEq `{!typeGS Σ} (γ : gname) :=
-  {| fic_A := ((RT * gname) + unit)%type;
+  {| fic_A := ((Type * gname) + unit)%type;
     fic_Prop a :=
       match a with
       | inl (rt, γ') => (RelEq (T:=rt) γ' γ)%I

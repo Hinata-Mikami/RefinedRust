@@ -113,80 +113,80 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedCheckUnOp E L f v ty o ot) T))
   | typed_call ?E ?L ?f ?eκs ?etys ?v ?P ?vl ?tys ?destination ?normal ?unwind ?T ?U =>
       cont uconstr:(((_ : TypedCall E L f eκs etys v P vl tys destination normal unwind) T U))
-  | typed_place ?E ?L ?f ?l ?lt ?r ?bmin0 ?b ?P ?T =>
-      cont uconstr:(((_ : TypedPlace E L f l lt r bmin0 b P) T))
+  | @typed_place _ _ ?E ?L ?f ?l ?rt ?lt ?r ?bmin0 ?b ?P ?T =>
+      cont uconstr:(((_ : @TypedPlace _ _ E L f l rt lt r bmin0 b P) T))
   | typed_if ?E ?L ?π ?v ?P ?T1 ?T2 =>
       cont uconstr:(((_ : TypedIf E L π v P) T1 T2))
   | typed_annot_stmt ?π ?n ?a ?E ?L ?T =>
       cont uconstr:(((_ : TypedAnnotStmt π n a) E L T))
-  | typed_switch ?E ?L ?f ?v ?ty ?r ?it ?m ?ss ?def ?fn ?R ?U ?ϝ =>
-      cont uconstr:(((_ : TypedSwitch E L f v ty r it) m ss def fn R U ϝ))
-  | typed_assert ?E ?L ?f ?v ?ty ?r ?s ?fn ?R ?U ?ϝ =>
-      cont uconstr:(((_ : TypedAssert E L f v ty r) s fn R U ϝ))
-  | ltype_read_as ?π ?E ?L ?l ?lt ?r ?b ?bmin ?ot ?T =>
-      cont uconstr:(((_ : LtypeReadAs π E L l lt r b bmin ot) T))
-  | typed_read_end ?π ?E ?L ?l ?ty ?r ?b2 ?bmin ?ot ?m ?T =>
-      cont uconstr:(((_ : TypedReadEnd π E L l ty r b2 bmin ot m) T))
-  | typed_write_end ?π ?E ?L ?ot ?v1 ?ty1 ?r1 ?b2 ?bmin ?l2 ?lt2 ?r2 ?T =>
-      cont uconstr:(((_ : TypedWriteEnd π E L ot v1 ty1 r1 b2 bmin l2 lt2 r2) T))
-  | typed_borrow_mut_end ?π ?E ?L ?κ ?l ?orty ?lt ?r ?b2 ?bmin ?T =>
-      cont uconstr:(((_ : TypedBorrowMutEnd π E L κ l orty lt r b2 bmin) T))
-  | typed_borrow_shr_end ?π ?E ?L ?κ ?l ?orty ?lt ?r ?b2 ?bmin ?T =>
-      cont uconstr:(((_ : TypedBorrowShrEnd π E L κ l orty lt r b2 bmin) T))
-  | typed_addr_of_mut_end ?pk ?π ?E ?L ?l ?lt ?r ?b2 ?bmin ?T =>
-      cont uconstr:(((_ : TypedAddrOfMutEnd pk π E L l lt r b2 bmin) T))
-  | cast_ltype_to_type ?E ?L ?lt ?T =>
-      cont uconstr:(((_ : CastLtypeToType E L lt) T))
+  | @typed_switch _ _ ?E ?L ?f ?v ?rt ?ty ?r ?it ?m ?ss ?def ?fn ?R ?U ?ϝ =>
+      cont uconstr:(((_ : @TypedSwitch _ _ E L f v rt ty r it) m ss def fn R U ϝ))
+  | @typed_assert _ _ ?E ?L ?f ?v ?rt ?ty ?r ?s ?fn ?R ?U ?ϝ =>
+      cont uconstr:(((_ : @TypedAssert _ _ E L f v rt ty r) s fn R U ϝ))
+  | @ltype_read_as _ _ ?π ?E ?L ?l ?rt ?lt ?r ?b ?bmin ?ot ?T =>
+      cont uconstr:(((_ : @LtypeReadAs _ _ π E L l rt lt r b bmin ot) T))
+  | @typed_read_end _ _ ?π ?E ?L ?l ?rt ?lt ?r ?b2 ?bmin ?ot ?m ?T =>
+      cont uconstr:(((_ : @TypedReadEnd _ _ π E L l rt lt r b2 bmin ot m) T))
+  | @typed_write_end _ _ ?π ?E ?L ?ot ?v1 ?rt1 ?ty1 ?r1 ?b2 ?bmin ?l2 ?rt2 ?lt2 ?r2 ?T =>
+      cont uconstr:(((_ : @TypedWriteEnd _ _ π E L ot v1 rt1 ty1 r1 b2 bmin l2 rt2 lt2 r2) T))
+  | @typed_borrow_mut_end _ _ ?f ?E ?L ?κ ?l ?orty ?rt ?lt ?r ?b2 ?bmin ?T =>
+      cont uconstr:(((_ : @TypedBorrowMutEnd _ _ f E L κ l orty rt lt r b2 bmin) T))
+  | @typed_borrow_shr_end _ _ ?f ?E ?L ?κ ?l ?orty ?rt ?lt ?r ?b2 ?bmin ?T =>
+      cont uconstr:(((_ : @TypedBorrowShrEnd _ _ f E L κ l orty rt lt r b2 bmin) T))
+  | @typed_addr_of_mut_end _ _ ?pk ?π ?E ?L ?l ?rt ?lt ?r ?b2 ?bmin ?T =>
+      cont uconstr:(((_ : @TypedAddrOfMutEnd _ _ pk π E L l rt lt r b2 bmin) T))
+  | @cast_ltype_to_type _ _ ?E ?L ?rt ?lt ?T =>
+      cont uconstr:(((_ : @CastLtypeToType _ _ rt E L lt) T))
   | typed_pre_context_fold ?π ?E ?L ?m ?T =>
       cont uconstr:(((_ : TypedPreContextFold π E L m) T))
   | typed_context_fold ?AI ?E ?L ?m ?tctx ?acc ?T =>
       cont uconstr:(((_ : TypedContextFold AI E L m tctx acc) T))
-  | typed_context_fold_step ?AI ?π ?E ?L ?m ?l ?lt ?r ?acc ?T =>
-      cont uconstr:(((_ : TypedContextFoldStep AI π E L m l lt r acc) T))
-  | typed_annot_expr ?E ?L ?n ?a ?v ?P ?T =>
-      cont uconstr:(((_ : TypedAnnotExpr E L n a v P) T))
+  | @typed_context_fold_step _ _ ?Acc ?AI ?M ?π ?E ?L ?m ?l ?rt ?lt ?r ?acc ?T =>
+      cont uconstr:(((_ : @TypedContextFoldStep _ _ Acc AI M π E L m l rt lt r acc) T))
+  | @typed_annot_expr _ _ ?E ?L ?f ?n ?A ?a ?v ?P ?T =>
+      cont uconstr:(((_ : @TypedAnnotExpr _ _ E L f n A a v P) T))
   | prove_with_subtype ?E ?L ?step ?pm ?P ?A ?T =>
       cont uconstr:(((_ : ProveWithSubtype E L step pm P A) T))
   | @owned_subtype _ _ ?π ?E ?L ?pers ?rt1 ?rt2 ?r1 ?r2 ?ty1 ?ty2 ?T =>
       cont uconstr:((_ : @OwnedSubtype _ _ π E L pers rt1 rt2 r1 r2 ty1 ty2) T)
-  | owned_subltype_step ?π ?E ?L ?step ?l ?r1 ?r2 ?lt1 ?lt2 ?T =>
-      cont uconstr:((_ : OwnedSubltypeStep π E L step l r1 r2 lt1 lt2) T)
+  | @owned_subltype_step _ _ ?π ?E ?L ?step ?l ?rt1 ?rt2 ?r1 ?r2 ?lt1 ?lt2 ?T =>
+      cont uconstr:((_ : @OwnedSubltypeStep _ _ π E L step l rt1 rt2 r1 r2 lt1 lt2) T)
   | @weak_subtype _ _ ?E ?L ?rt1 ?rt2 ?r1 ?r2 ?ty1 ?ty2 ?T =>
       cont uconstr:((_ : @Subtype _ _ E L rt1 rt2 r1 r2 ty1 ty2) T)
-  | weak_subltype ?E ?L ?k ?r1 ?r2 ?lt1 ?lt2 ?T =>
-      cont uconstr:((_ : SubLtype E L k r1 r2 lt1 lt2) T)
+  | @weak_subltype _ _ ?E ?L ?rt1 ?rt2 ?k ?r1 ?r2 ?lt1 ?lt2 ?T =>
+      cont uconstr:((_ : @SubLtype _ _ E L rt1 rt2 k r1 r2 lt1 lt2) T)
   | @strong_subtype _ _ ?E ?L ?rt1 ?rt2 ?r1 ?r2 ?ty1 ?ty2 ?T =>
       cont uconstr:((_ : @StrongSubtype _ _ E L rt1 rt2 r1 r2 ty1 ty2) T)
-  | strong_subltype ?E ?L ?k ?r1 ?r2 ?lt1 ?lt2 ?T =>
-      cont uconstr:((_ : StrongSubLtype E L k r1 r2 lt1 lt2) T)
-  | mut_subtype ?E ?L ?ty1 ?ty2 ?T =>
-      cont uconstr:((_ : MutSubtype E L ty1 ty2) T)
-  | prove_full_enum_incl ?E ?L ?en1 ?en2 ?T =>
-      cont uconstr:((_ : ProveFullEnumIncl E L en1 en2) T)
+  | @strong_subltype _ _ ?E ?L ?rt1 ?rt2 ?k ?r1 ?r2 ?lt1 ?lt2 ?T =>
+      cont uconstr:((_ : @StrongSubLtype _ _ E L rt1 rt2 k r1 r2 lt1 lt2) T)
+  | @mut_subtype _ _ ?E ?L ?rt ?ty1 ?ty2 ?T =>
+      cont uconstr:((_ : @MutSubtype _ _ E L rt ty1 ty2) T)
+  | @prove_full_enum_incl _ _ ?E ?L ?rt ?en1 ?en2 ?T =>
+      cont uconstr:((_ : @ProveFullEnumIncl _ _ E L rt en1 en2) T)
   | mut_subtype_enum_tag_tys ?E ?L ?tys1 ?tys2 ?T =>
       cont uconstr:((_ : MutSubtypeEnumTagTys E L tys1 tys2) T)
-  | mut_eqtype ?E ?L ?ty1 ?ty2 ?T =>
-      cont uconstr:((_ : MutEqtype E L ty1 ty2) T)
-  | subtype_adt ?E ?L ?P1 ?P2 ?T =>
-      cont uconstr:((_ : SubtypeADT E L P1 P2) T)
-  | mut_eqltype ?E ?L ?lt1 ?lt2 ?T =>
-      cont uconstr:((_ : MutEqLtype E L lt1 lt2) T)
-  | stratify_ltype ?π ?E ?L ?mdu ?ma ?ml ?l ?lt ?r ?b ?T =>
-      cont uconstr:(((_ : StratifyLtype π E L mdu ma ml l lt r b) T))
-  | stratify_ltype_unblock ?π ?E ?L ?ma ?l ?lt ?r ?b ?T =>
-      cont uconstr:(((_ : StratifyLtype π E L _ _ StratifyUnblockOp l lt r b) T))
-  | stratify_ltype_extract ?π ?E ?L ?Ma ?l ?lt ?r ?b ?κ ?T =>
-      cont uconstr:(((_ : StratifyLtype π E L _ _ (StratifyExtractOp κ) l lt r b) T))
-  | stratify_ltype_resolve ?π ?E ?L ?Ma ?l ?lt ?r ?b ?T =>
-      cont uconstr:(((_ : StratifyLtype π E L _ _ (StratifyResolveOp) l lt r b) T))
-  | stratify_ltype_close_inv ?κs ?π ?E ?L ?l ?lt ?r ?b ?T =>
-      cont uconstr:(((_ : StratifyLtype π E L _ _ (StratifyCloseOp κs) l lt r b) T))
-  | stratify_ltype_post_hook ?π ?E ?L ?ml ?l ?lt ?r ?b ?T =>
-      cont uconstr:(((_ : StratifyLtypePostHook π E L ml l lt r b) T))
-  | resolve_ghost ?π ?E ?L ?m ?lb ?l ?lt ?b ?r ?T =>
-      cont uconstr:(((_ : ResolveGhost π E L m lb l lt b r) T))
-  | resolve_ghost_adt ?π ?E ?L ?m ?r ?ty ?T =>
-      cont uconstr:(((_ : ResolveGhostADT π E L m r ty) T))
+  | @mut_eqtype _ _ ?E ?L ?rt ?ty1 ?ty2 ?T =>
+      cont uconstr:((_ : @MutEqtype _ _ E L rt ty1 ty2) T)
+  | @subtype_adt _ _ ?E ?L ?X ?Y ?P1 ?P2 ?T =>
+      cont uconstr:((_ : @SubtypeADT _ _ E L X Y P1 P2) T)
+  | @mut_eqltype _ _ ?E ?L ?rt ?lt1 ?lt2 ?T =>
+      cont uconstr:((_ : @MutEqLtype _ _ E L rt lt1 lt2) T)
+  | @stratify_ltype _ _ ?rt ?π ?E ?L ?mdu ?ma ?M ?ml ?l ?lt ?r ?b ?T =>
+      cont uconstr:(((_ : @StratifyLtype _ _ rt π E L mdu ma M ml l lt r b) T))
+  | @stratify_ltype_unblock _ _ ?rt ?π ?E ?L ?ma ?l ?lt ?r ?b ?T =>
+      cont uconstr:(((_ : @StratifyLtype _ _ rt π E L _ ma _ StratifyUnblockOp l lt r b) T))
+  | @stratify_ltype_extract _ _ ?rt ?π ?E ?L ?ma ?l ?lt ?r ?b ?κ ?T =>
+      cont uconstr:(((_ : @StratifyLtype _ _ rt π E L _ ma _ (StratifyExtractOp κ) l lt r b) T))
+  | @stratify_ltype_resolve _ _ ?rt ?π ?E ?L ?ma ?l ?lt ?r ?b ?T =>
+      cont uconstr:(((_ : @StratifyLtype _ _ rt π E L _ ma _ StratifyResolveOp l lt r b) T))
+  | @stratify_ltype_close_inv _ _ ?κs ?rt ?π ?E ?L ?l ?lt ?r ?b ?T =>
+      cont uconstr:(((_ : @StratifyLtype _ _ rt π E L _ _ _ (StratifyCloseOp κs) l lt r b) T))
+  | @stratify_ltype_post_hook _ _ ?rt ?π ?E ?L ?M ?ml ?l ?lt ?r ?b ?T =>
+      cont uconstr:(((_ : @StratifyLtypePostHook _ _ rt π E L M ml l lt r b) T))
+  | @resolve_ghost _ _ ?rt ?π ?E ?L ?m ?lb ?l ?lt ?b ?r ?T =>
+      cont uconstr:(((_ : @ResolveGhost _ _ rt π E L m lb l lt b r) T))
+  | @resolve_ghost_adt _ _ ?π ?E ?L ?m ?rt ?r ?ty ?T =>
+      cont uconstr:(((_ : @ResolveGhostADT _ _ rt π E L m r ty) T))
   | find_observation ?rt ?γ ?mode ?T =>
       cont uconstr:(((_ : FindObservation rt γ mode) T))
   | find_delayed_observation ?E ?L ?rt ?γ ?mode ?κ ?T =>
@@ -195,18 +195,18 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : IntroduceWithHooks E L P) T))
   | iterate_with_hooks ?E ?L ?m ?T =>
       cont uconstr:(((_ : IterateWithHooks E L m) T))
-  | prove_place_cond ?E ?L ?b ?lt1 ?lt2 ?T =>
-      cont uconstr:(((_ : ProvePlaceCond E L b lt1 lt2) T))
-  | stratify_ltype_array_iter ?π ?E ?L ?mdu ?ma ?ml ?l ?ig ?def ?len ?iml ?rs ?bk ?T =>
-      cont uconstr:(((_ : StratifyLtypeArrayIter π E L mdu ma ml l ig def len iml rs bk) T))
-  | typed_array_access ?π ?E ?L ?base ?offset ?st ?lt ?r ?k ?T =>
-      cont uconstr:(((_ : TypedArrayAccess π E L base offset st lt r k) T))
-  | resolve_ghost_iter ?π ?E ?L ?rm ?lb ?l ?st ?lts ?b ?rs ?ig ?i0 ?T =>
-      cont uconstr:(((_ : ResolveGhostIter π E L rm lb l st lts b rs ig i0) T))
-  | typed_discriminant_end ?π ?E ?L ?l ?lt ?r ?b2 ?els ?T =>
-      cont uconstr:(((_ : TypedDiscriminantEnd π E L l lt r b2 els) T))
-  | interpret_typing_hint ?E ?L ?π ?orty ?bmin ?ty ?r ?T =>
-      cont uconstr:(((_ : InterpretTypingHint E L π orty bmin ty r) T))
+  | @prove_place_cond _ _ ?E ?L ?rt1 ?rt2 ?b ?lt1 ?lt2 ?T =>
+      cont uconstr:(((_ : @ProvePlaceCond _ _ E L rt1 rt2 b lt1 lt2) T))
+  | @stratify_ltype_array_iter _ _ ?π ?E ?L ?mdu ?ma ?M ?ml ?l ?ig ?rt ?def ?len ?iml ?rs ?bk ?T =>
+      cont uconstr:(((_ : @StratifyLtypeArrayIter _ _ π E L mdu ma M ml l ig rt def len iml rs bk) T))
+  | @typed_array_access _ _ ?π ?E ?L ?base ?offset ?st ?rt ?lt ?r ?k ?T =>
+      cont uconstr:(((_ : @TypedArrayAccess _ _ π E L base offset st rt lt r k) T))
+  | @resolve_ghost_iter _ _ ?rt ?π ?E ?L ?rm ?lb ?l ?st ?lts ?b ?rs ?ig ?i0 ?T =>
+      cont uconstr:(((_ : @ResolveGhostIter _ _ rt π E L rm lb l st lts b rs ig i0) T))
+  | @typed_discriminant_end _ _ ?π ?E ?L ?l ?rt ?lt ?r ?b2 ?els ?T =>
+      cont uconstr:(((_ : @TypedDiscriminantEnd _ _ π E L l rt lt r b2 els) T))
+  | @interpret_typing_hint _ _ ?E ?L ?f ?orty ?bmin ?rt ?ty ?r ?T =>
+      cont uconstr:(((_ : @InterpretTypingHint _ _ E L f orty bmin rt ty r) T))
   | simplify_hyp_value ?E ?L ?π ?P ?T =>
       cont uconstr:(((_ : SimplifyHypValue E L π P) T))
   end.

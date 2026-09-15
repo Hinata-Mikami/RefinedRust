@@ -28,7 +28,7 @@ Section find.
   Global Instance related_to_named_lfts f M : RelatedTo (named_lfts f M) | 100 :=
     {| rt_fic:= FindNamedLfts f |}.
 
-  Global Instance related_to_gvar_pobs {rt} γ (r : rt) : RelatedTo (gvar_pobs γ r) | 100 :=
+  Global Instance related_to_gvar_pobs {rt : Type} γ (r : rt) : RelatedTo (gvar_pobs γ r) | 100 :=
     {| rt_fic := FindGvarPobs γ |}.
 
   Global Instance related_to_credit_store n m : RelatedTo (credit_store n m) | 100 :=
@@ -49,7 +49,7 @@ Section find.
   Global Instance related_to_alloc_locals f locals : RelatedTo (allocated_locals f locals) | 100 :=
     {| rt_fic := FindFrameLocals f |}.
 
-  Global Instance related_to_obslist {rt} γs (rs rs' : list rt) `{!CheckOwnInContext (ObsList γs rs')} :
+  Global Instance related_to_obslist {rt : Type} γs (rs rs' : list rt) `{!CheckOwnInContext (ObsList γs rs')} :
     RelatedTo (ObsList γs rs) | 100 := {| rt_fic := FindObsList γs |}.
 
   (** Value ownership *)
@@ -336,7 +336,7 @@ Section find.
 
   (** FindOptGvarRel *)
   Lemma find_in_context_opt_gvar_rel γ T :
-    (∃ rt (γ' : gname), RelEq (T:=rt) γ' γ ∗ T (inl (rt, γ')))
+    (∃ (rt : Type) (γ' : gname), RelEq (T:=rt) γ' γ ∗ T (inl (rt, γ')))
     ⊢ find_in_context (FindOptGvarRelEq γ) T.
   Proof.
     iIntros "(%rt & %γ' & Hobs & HT)".
@@ -366,7 +366,7 @@ Section find.
 
   (** FindOptInheritGvarRel *)
   Lemma find_in_context_opt_inherit_gvar_rel γ T :
-    (∃ rt (γ' : gname) κs, Inherit κs (RelEq (T:=rt) γ' γ) ∗ T (inl (κs, rt, γ')))
+    (∃ (rt : Type) (γ' : gname) κs, Inherit κs (RelEq (T:=rt) γ' γ) ∗ T (inl (κs, rt, γ')))
     ⊢ find_in_context (FindOptInheritGvarRelEq γ) T.
   Proof.
     iIntros "(%rt & %γ' & %κs & Hobs & HT)".
@@ -386,7 +386,7 @@ Section find.
 
   (** FindOptGvarPobs *)
   Lemma find_in_context_opt_gvar_pobs γ T :
-    (∃ rt (r : rt), gvar_pobs γ r ∗ T (inl (existT rt r)))
+    (∃ (rt : Type) (r : rt), gvar_pobs γ r ∗ T (inl (existT rt r)))
     ⊢ find_in_context (FindOptGvarPobs γ) T.
   Proof.
     iIntros "(%rt & %r & Hobs & HT)".
@@ -406,7 +406,7 @@ Section find.
 
   (** FindOptObsList *)
   Lemma find_in_context_opt_obs_list γs T :
-    (∃ rt (rs : list rt), ObsList γs rs ∗ T (inl (existT rt rs)))
+    (∃ (rt : RT) (rs : list rt), ObsList γs rs ∗ T (inl (existT rt rs)))
     ⊢ find_in_context (FindOptObsList γs) T.
   Proof.
     iIntros "(%rt & %r & Hobs & HT)".
@@ -446,7 +446,7 @@ Section find.
 
   (** FindOptInheritGvarPobs *)
   Lemma find_in_context_opt_inherit_gvar_pobs γ T :
-    (∃ rt (r : rt) κs, Inherit κs (gvar_pobs γ r) ∗ T (inl (κs, existT rt r)))
+    (∃ (rt : Type) (r : rt) κs, Inherit κs (gvar_pobs γ r) ∗ T (inl (κs, existT rt r)))
     ⊢ find_in_context (FindOptInheritGvarPobs γ) T.
   Proof.
     iIntros "(%rt & %r & %κs & Hobs & HT)".
@@ -466,7 +466,7 @@ Section find.
 
   (** FindGvarPobs *)
   Lemma find_in_context_gvar_pobs γ T :
-    (∃ rt (r : rt), gvar_pobs γ r ∗ T ((existT rt r)))
+    (∃ (rt : Type) (r : rt), gvar_pobs γ r ∗ T ((existT rt r)))
     ⊢ find_in_context (FindGvarPobs γ) T.
   Proof.
     iIntros "(%rt & %r & Hobs & HT)".
@@ -476,11 +476,11 @@ Section find.
     FindInContext (FindGvarPobs γ) FICSyntactic | 1 :=
     λ T, i2p (find_in_context_gvar_pobs γ T).
 
-  Lemma subsume_gvar_pobs {rt} γ (r1 r2 : rt) T :
+  Lemma subsume_gvar_pobs {rt : Type} γ (r1 r2 : rt) T :
     ⌜r1 = r2⌝ ∗ T ⊢ subsume (Σ := Σ) (gvar_pobs γ r1) (gvar_pobs γ r2) T.
   Proof. iIntros "(-> & $) $". Qed.
-  Global Instance subsume_gvar_pobs_inst {rt} γ (r1 r2 : rt) : Subsume (gvar_pobs γ r1) (gvar_pobs γ r2) :=
-    λ T, i2p (subsume_gvar_pobs γ r1 r2 T).
+  Definition subsume_gvar_pobs_inst := [instance @subsume_gvar_pobs].
+  Global Existing Instance subsume_gvar_pobs_inst.
 
   (** FindInherit *)
   Lemma find_in_context_inherit κ P T :
@@ -914,7 +914,7 @@ Section introduce.
     | inr _ =>
         RelEq (T:=rt) γ1 γ2 -∗ T L
     | inl (existT rt' r) =>
-        ∃ (Heq : RT_rt rt' = RT_rt rt),
+        ∃ (Heq : rt' = rt),
         introduce_with_hooks E L (gvar_pobs γ2 (rew [id] Heq in r)) T
     end)
     ⊢ introduce_with_hooks E L (RelEq (T:=rt) γ1 γ2) T.
@@ -937,7 +937,7 @@ Section introduce.
     | inr _ =>
         Rel2 (T1:=rt1)(T2:=rt2) γ1 γ2 R -∗ T L
     | inl (existT rt' r) =>
-        ∃ (Heq : RT_rt rt' = rt1),
+        ∃ (Heq : rt' = rt1),
         ∀ r2,
         introduce_with_hooks E L (⌜R (rew [id] Heq in r) r2⌝ ∗ gvar_pobs γ2 ( r2)) T
     end)
@@ -2041,7 +2041,7 @@ Section subsume.
       match res with
       | inr _ => T None
       | inl (rt', γ') =>
-          ∃ (Heq : RT_rt rt' = RT_rt rt), T (Some (PlaceGhost γ'))
+          ∃ (Heq : rt' = rt), T (Some (PlaceGhost γ'))
       end)%I
     ⊢ find_observation rt γ FindObsModeRel T.
   Proof.
@@ -2080,7 +2080,7 @@ Section subsume.
       iPoseProof (Hincl with "HL HE") as "#Hincl".
       iPoseProof ("HLcl" with "HL") as "HL".
       iFrame "HL".
-      iLeft. unfold find_observation_result. destruct Heq.
+      iLeft. unfold find_observation_result. subst.
       iPoseProof (Inherit_mono with "[] Hobs") as "Hobs"; last by iFrame.
       simpl. rewrite right_id. done.
     - iIntros (??). by iApply "HT".
@@ -2095,7 +2095,7 @@ Section subsume.
       | inl (κs, rt', γ') =>
           li_tactic (check_lctx_lft_incl_goal E L (lft_intersect_list κs) κ) (λ b,
             if b then
-              ∃ (Heq : RT_rt rt' = RT_rt rt), T (Some (PlaceGhost γ'))
+              ∃ (Heq : rt' = rt), T (Some (PlaceGhost γ'))
             else False)
       end)%I
     ⊢ find_delayed_observation E L rt γ FindObsModeRel κ T.
