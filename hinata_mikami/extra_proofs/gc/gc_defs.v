@@ -727,3 +727,14 @@ Proof.
     + exact Hrel.
     + exact Hreachable.
 Qed.
+
+
+Fixpoint keep_marked {A}
+    (xs : list A) (marks : list bool) : list A :=
+  match xs, marks with
+  | x :: xs', true :: marks' =>
+      x :: keep_marked xs' marks'
+  | _ :: xs', false :: marks' =>
+      keep_marked xs' marks'
+  | _, _ => []
+  end.

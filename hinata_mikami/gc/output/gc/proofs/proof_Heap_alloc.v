@@ -435,6 +435,37 @@ Proof.
       - constructor.
     }
 
+    assert (Hold_not_null :
+      loc_a old_l ≠ 0).
+    {
+      inversion Hnot_null.
+      assumption.
+    }
+
+    assert (Htail_not_null :
+      Forall
+        (λ l : loc, loc_a l ≠ 0)
+        locs_tail).
+    {
+      inversion Hnot_null.
+      assumption.
+    }
+
+    assert (Htail_not_null_new :
+      Forall
+        (λ l : loc, loc_a l ≠ 0)
+        (locs_tail ++ [x'])).
+    {
+      apply Forall_app.
+      split.
+
+      - exact Htail_not_null.
+
+      - constructor.
+        + exact H11.
+        + constructor.
+    }
+
     iSplitL
       "Hfirst Htail_ext Hcred_new Hfree_new".
     {
@@ -555,6 +586,15 @@ Proof.
     constructor.
     - set_solver.
     - constructor.
+  }
+
+  {
+    exact
+      (proj1
+        (Forall_Forall_cb
+          (λ l : loc, loc_a l ≠ 0)
+          (locs_tail ++ [x']))
+        Htail_not_null_new).
   }
   
 

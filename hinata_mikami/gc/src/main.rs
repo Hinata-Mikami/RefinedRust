@@ -103,6 +103,8 @@ impl Node{
         1 HeapAlloc)
 ")]
 #[rr::inv("Hnodup_locs" : "NoDup locs")]
+// Needed to ensure we can turn ownership into a Box again for deallocation.
+#[rr::inv("Hnot_null" : "Forall (λ l, l.(loc_a) ≠ 0) locs")]
 struct Heap {
     #[rr::field("<#> locs")]
     all_nodes: Vec<*mut Node>,
@@ -266,6 +268,10 @@ impl Heap {
         let '(vals, locs, nexts, marks) := h.cur in
         mark_from_rel locs nexts marks 0%nat marks_new
     ")]
+    #[rr::ensures("
+        let '(vals, locs, nexts, marks) := h.cur in
+        marks_closed locs nexts marks_new
+    ")]
     #[rr::returns("()")]
     #[rr::ensures("
         let '(vals, locs, nexts, marks) := h.cur in
@@ -279,22 +285,81 @@ impl Heap {
     }
     
 
-
+    #[rr::params("h")]
+    #[rr::args("h")]
+    #[rr::requires("
+        let '(vals, locs, nexts, marks) := h.cur in
+        marks_closed locs nexts marks
+    ")]
+    #[rr::observe("h.ghost" : "
+        let '(vals, locs, nexts, marks) := h.cur in
+        let vals' := keep_marked vals marks in
+        let locs' := keep_marked locs marks in
+        let nexts' := keep_marked nexts marks in
+        (vals',
+        locs',
+        nexts',
+        replicate (length locs') false)
+    ")]
+    #[rr::returns("()")]
     /* スイープフェーズ */
     unsafe fn sweep(&mut self) {
-        // all_nodesを走査
-        // Vec::retain(|&p| {b}) : ベクタの各要素pに対し，b==trueのものを取り出す
-        self.all_nodes.retain(|&node_ptr| {
-            if (*node_ptr).marked {                 // marked==true -> 参照されているノード
-                (*node_ptr).marked = false;         // リセット
-                true                                // all_nodesに残す
-            } else {
-                println!("GC msg : Node [{}] collected.", (*node_ptr).value);
-                let _ = Box::from_raw(node_ptr);    // Boxに管理させる 所有者がいないため解放される
-                false                               // all_nodesにも残らない 
+        // Phase 1:
+        // dead node からの辺をすべて切る
+        let len = self.all_nodes.len();
+        let mut i = 0;
+
+        while i < len {
+            let node_ptr = *vec_index(&self.all_nodes, i);
+
+            if !(*node_ptr).marked {
+                Node::set_next(node_ptr, ptr::null_mut());
             }
-        });
+
+            i += 1;
+        }
+
+        // Phase 2:
+        // dead node を後ろから削除・解放
+        let mut i = self.all_nodes.len();
+
+        while i > 0 {
+            i -= 1;
+
+            let node_ptr = *vec_index(&self.all_nodes, i);
+
+            if !(*node_ptr).marked {
+                let node_ptr = self.all_nodes.remove(i);
+                let _ = Box::from_raw(node_ptr);
+            }
+        }
+
+        // Phase 3:
+        // survivor の mark を false に戻す
+        let len = self.all_nodes.len();
+        let mut i = 0;
+
+        while i < len {
+            let node_ptr = *vec_index(&self.all_nodes, i);
+            Node::set_marked(node_ptr, false);
+            i += 1;
+        }
     }
+
+    // unsafe fn sweep(&mut self) {
+    //     // all_nodesを走査
+    //     // Vec::retain(|&p| {b}) : ベクタの各要素pに対し，b==trueのものを取り出す
+    //     self.all_nodes.retain(|&node_ptr| {
+    //         if (*node_ptr).marked {                 // marked==true -> 参照されているノード
+    //             (*node_ptr).marked = false;         // リセット
+    //             true                                // all_nodesに残す
+    //         } else {
+    //             println!("GC msg : Node [{}] collected.", (*node_ptr).value);
+    //             let _ = Box::from_raw(node_ptr);    // Boxに管理させる 所有者がいないため解放される
+    //             false                               // all_nodesにも残らない 
+    //         }
+    //     });
+    // }
 
     /* マークアンドスイープGC */
     unsafe fn collect(&mut self) {
