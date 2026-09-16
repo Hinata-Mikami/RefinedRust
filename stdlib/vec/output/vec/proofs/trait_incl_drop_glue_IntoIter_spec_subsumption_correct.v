@@ -1,6 +1,6 @@
 From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
-From rrstd.alloc.vec.generated Require Import generated_specs_vec.
+From rrstd.vec.vec.generated Require Import generated_specs_vec.
 
 Set Default Proof Using "Type".
 

@@ -68,11 +68,26 @@ impl<T: ?Sized> NonNull<T> {
     }
 
     #[rr::params("x" : "{xt_of T}")]
+    #[rr::requires(#iris "self ◁ₗ[π, Owned] # ($# x) @ ◁ {ty_of T}")]
+    #[rr::ensures(#iris "self ◁ₗ[π, Owned] # ($# x) @ ShrBlockedLtype {ty_of T} {'a}")]
+    #[rr::returns("x")]
+    pub const unsafe fn as_ref<'a>(&self) -> &'a T {
+        // SAFETY: the caller must guarantee that `self` meets all the
+        // requirements for a reference.
+        // `cast_const` avoids a mutable raw pointer deref.
+        unsafe { &*self.as_ptr().cast_const() }
+    }
+
+    #[rr::params("x" : "{xt_of T}")]
     #[rr::requires(#iris "self.cur ◁ₗ[π, Owned] # ($# x) @ ◁ {ty_of T}")]
     #[rr::exists("γ")]
+    #[rr::ensures(#iris "self.cur ◁ₗ[π, Owned] PlaceGhost γ @ BlockedLtype {ty_of T} {'a}")]
+    #[rr::observe("self.ghost" : "self.cur")] 
     #[rr::returns("(x, γ)")]
     pub const unsafe fn as_mut<'a>(&mut self) -> &'a mut T {
-        &mut *self.as_ptr()
+        unsafe {
+            &mut *self.as_ptr()
+        }
     }
 
     #[rr::returns("self")]
