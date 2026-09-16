@@ -1633,6 +1633,7 @@ Section subsume.
   Global Existing Instance mut_eqtype_default_inst | 1001.
 
 
+
   (** ** Subtyping instances: [weak_subltype] *)
   (* Instances for [weak_subltype] include:
       - identity
@@ -1759,6 +1760,30 @@ Section subsume.
   Definition mut_eqltype_ofty_inst := [instance @mut_eqltype_ofty].
   Global Existing Instance mut_eqltype_ofty_inst | 5.
 
+  Lemma mut_eqltype_shrblocked E L {rt} (ty1 ty2 : type rt) κ1 κ2 T :
+    ⌜lctx_lft_incl E L κ1 κ2⌝ ∗
+    ⌜lctx_lft_incl E L κ2 κ1⌝ ∗
+    mut_eqtype E L ty1 ty2 T
+    ⊢ mut_eqltype E L (ShrBlockedLtype ty1 κ1) (ShrBlockedLtype ty2 κ2) T.
+  Proof.
+    iIntros "(%Hκ12 & %Hκ21 & %Heq & $)".
+    iPureIntro. by eapply shrblocked_full_eqltype.
+  Qed.
+  Definition mut_eqltype_shrblocked_inst := [instance @mut_eqltype_shrblocked].
+  Global Existing Instance mut_eqltype_shrblocked_inst.
+
+  Lemma mut_eqltype_blocked E L {rt} (ty1 ty2 : type rt) κ1 κ2 T :
+    ⌜lctx_lft_incl E L κ1 κ2⌝ ∗
+    ⌜lctx_lft_incl E L κ2 κ1⌝ ∗
+    mut_eqtype E L ty1 ty2 T
+    ⊢ mut_eqltype E L (BlockedLtype ty1 κ1) (BlockedLtype ty2 κ2) T.
+  Proof.
+    iIntros "(%Hκ12 & %Hκ21 & %Heq & $)".
+    iPureIntro. by eapply blocked_full_eqltype.
+  Qed.
+  Definition mut_eqltype_blocked_inst := [instance @mut_eqltype_blocked].
+  Global Existing Instance mut_eqltype_blocked_inst.
+
   (** ** Subtyping instances: [owned_subltype_step] *)
   Definition owned_subltype_step_to_ofty_inst := [instance @owned_subltype_step_to_ofty].
   Global Existing Instance owned_subltype_step_to_ofty_inst | 999.
@@ -1769,6 +1794,7 @@ Section subsume.
   Lemma owned_subltype_step_resolve_ghost π E L step l {rt1 rt2 : RT} γ1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) T :
     resolve_ghost π E L ResolveAll false l lt1 Owned (👻 γ1) (λ L2 r1' R progress,
       R -∗
+      (* TODO better behavior if progress = false *)
       owned_subltype_step π E L2 step l r1' r2 lt1 lt2 T) ⊢
     owned_subltype_step π E L step l (👻 γ1) r2 lt1 lt2 T.
   Proof.
@@ -1778,7 +1804,19 @@ Section subsume.
     by iApply ("HT" with "[$] [//] [//] [//] CTX HE HL").
   Qed.
   Definition owned_subltype_step_resolve_ghost_inst := [instance @owned_subltype_step_resolve_ghost].
-  Global Existing Instance owned_subltype_step_resolve_ghost_inst | 100.
+  Global Existing Instance owned_subltype_step_resolve_ghost_inst | 500.
+
+  (* NOTE Fallback so we don't loop in case resolution cannot make progress *)
+  Lemma owned_subltype_step_ghost_base π step E L l {rt1 rt2 : RT} γ1 (lt1 : ltype rt1) (lt2 : ltype rt2) T :
+    strong_subltype E L Owned (👻 γ1) (👻 γ1) lt1 lt2 (T L True%I)
+    ⊢ owned_subltype_step π E L step l (👻 γ1) (👻 γ1) lt1 lt2 T.
+  Proof.
+    iIntros "Hsub".
+    iApply owned_subltype_step_strong_subltype.
+    done.
+  Qed.
+  Definition owned_subltype_step_ghost_base_inst := [instance @owned_subltype_step_ghost_base].
+  Global Existing Instance owned_subltype_step_ghost_base_inst | 499.
 
   (** ** casts *)
   Lemma cast_ltype_to_type_id E L {rt} (ty : type rt) T :

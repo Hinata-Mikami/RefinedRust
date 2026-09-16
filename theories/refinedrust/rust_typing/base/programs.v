@@ -381,6 +381,7 @@ Global Hint Mode SimpLtype + + + + - : typeclass_instances.
 (** Leave types without a leading [ltype_core] unchanged. Do not use identity
     as a fallback for a core whose simplification could not be resolved. *)
 Global Hint Extern 1000 (SimpLtype ?lt _) =>
+  let lt := eval simpl in lt in
   lazymatch lt with
   | ltype_core _ => fail
   | _ => apply simp_ltype_id
@@ -1474,6 +1475,15 @@ Section judgments.
   Class ProveWithSubtype (E : elctx) (L : llctx) (step : bool) (pm : ProofMode) (P : iProp Σ) (Acc : iProp Σ) : Type :=
     prove_with_subtype_proof T : iProp_to_Prop (prove_with_subtype E L step pm P Acc T).
 
+  Global Instance prove_with_subtype_proper :
+    Proper (eq ==> eq ==> eq ==> eq ==> (≡) ==> (≡) ==> eq ==> (≡)) prove_with_subtype.
+  Proof.
+    intros ?? <- ?? <- ?? <- pm ? <- P1 P2 Heq1 A1 A2 Heq2 ?? <-.
+    unfold prove_with_subtype.
+    do 5 f_equiv. rewrite Heq2.
+    destruct pm. { by setoid_rewrite Heq1. }
+    by setoid_rewrite Heq1.
+  Qed.
 
   (** Extensible judgment for simplifying a value prop as a fallback for value-based judgments like [typed_un_op] *)
   Definition simplify_hyp_value_cont_t := val → ∀ rt : RT, rt → type rt → iProp Σ.

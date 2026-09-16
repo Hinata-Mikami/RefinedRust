@@ -82,6 +82,14 @@ Section logical_steps.
 
   Definition maybe_logical_step (b : bool) F (P : iProp Σ) : iProp Σ :=
     if b then logical_step F P else (|={F}=> P)%I.
+
+  Global Instance maybe_logical_step_proper :
+    Proper (eq ==> eq ==> (≡) ==> (≡)) maybe_logical_step.
+  Proof.
+    intros b? <- ?? <- P1 P2 Heq.
+    unfold maybe_logical_step. destruct b; by rewrite Heq.
+  Qed.
+
   Lemma maybe_logical_step_wand (b : bool) F P Q :
     (P -∗ Q) -∗
     maybe_logical_step b F P -∗ maybe_logical_step b F Q.

@@ -902,6 +902,171 @@ Section array.
   Qed.
 End array.
 
+Section blocked_subtyping.
+  Context `{!typeGS Σ}.
+
+  Lemma blocked_ltype_incl {rt} (ty1 ty2 : type rt) b r κ1 κ2 :
+    ⌜ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone⌝ -∗
+    κ1 ⊑ κ2 -∗
+    (∀ r, type_incl r r ty1 ty2) -∗
+    (∀ r, type_incl r r ty2 ty1) -∗
+    ltype_incl b r r (BlockedLtype ty1 κ1) (BlockedLtype ty2 κ2).
+  Proof.
+    iIntros "%Hst #Hκ #H12 #H21".
+    rewrite /ltype_incl. iModIntro. simp_ltypes. iSplit.
+    - rewrite /ltype_incl'. iModIntro. destruct b.
+      + iIntros (π l) "Hb".
+        rewrite !ltype_own_blocked_unfold /blocked_lty_own.
+        iDestruct "Hb" as (ly) "(%Hly & %Hloc & Hsc & Hlb & Hinh)".
+        iPoseProof ("H12" $! inhabitant) as "(#Hsc12 & _ & _)".
+        iModIntro.
+        iExists ly. rewrite -Hst. iFrame "%".
+        iSplitL "Hsc Hsc12"; first by iApply "Hsc12".
+        iFrame "Hlb". iIntros "Hdead".
+        iMod (lft_incl_dead with "Hκ Hdead") as "Hdead'"; first done.
+        iMod ("Hinh" with "Hdead'") as (r') "(Hrfn & Hown)".
+        iExists r'. iFrame "Hrfn".
+        iMod "Hown" as (v) "(Hl & Hv)". iModIntro. iExists v. iFrame "Hl".
+        iDestruct ("H12" $! r') as "(_ & Hown12 & _)". by iApply "Hown12".
+      + iIntros (π l) "Hb".
+        iEval (rewrite !ltype_own_blocked_unfold /blocked_lty_own) in "Hb".
+        iDestruct "Hb" as (ly) "(_ & _ & _ & _ & [])".
+      + iIntros (π l) "Hb".
+        rewrite !ltype_own_blocked_unfold /blocked_lty_own.
+        iDestruct "Hb" as (ly) "(%Hly & %Hloc & Hsc & Hlb & Hinh & Hcred)".
+        iPoseProof ("H12" $! inhabitant) as "(#Hsc12 & _ & _)".
+        iExists ly. rewrite -Hst. iFrame "%".
+        iSplitL "Hsc Hsc12"; first by iApply "Hsc12".
+        iFrame "Hlb Hcred". iIntros "Hdead".
+        iMod (lft_incl_dead with "Hκ Hdead") as "Hdead'"; first done.
+        iMod ("Hinh" with "Hdead'") as "($ & Hb)". iModIntro.
+        iApply (pinned_bor_iff' with "[] Hb").
+        iNext. iModIntro. iSplit.
+        * iIntros "(%r' & Hauth & Hown)". iExists r'. iFrame "Hauth".
+          iMod "Hown" as (v) "(Hl & Hv)". iModIntro. iExists v. iFrame "Hl".
+          iDestruct ("H12" $! r') as "(_ & Hown12 & _)". by iApply "Hown12".
+        * iIntros "(%r' & Hauth & Hown)". iExists r'. iFrame "Hauth".
+          iMod "Hown" as (v) "(Hl & Hv)". iModIntro. iExists v. iFrame "Hl".
+          iDestruct ("H21" $! r') as "(_ & Hown21 & _)". by iApply "Hown21".
+    - destruct b.
+      + iPoseProof (type_ltype_incl_owned ty1 ty2 with "[] H12") as "Hcore".
+        { iPureIntro. rewrite Hst. apply syn_type_compat_refl. }
+        iDestruct ("Hcore" $! r) as "(#Hcore' & _)". iApply "Hcore'".
+      + iPoseProof (type_ltype_incl_shared _ ty1 ty2 with "[] H12") as "Hcore".
+        { iPureIntro. rewrite Hst. apply syn_type_compat_refl. }
+        iDestruct ("Hcore" $! r) as "(#Hcore' & _)". iApply "Hcore'".
+      + iPoseProof (type_eq_ltype_incl_uniq _ _ ty1 ty2 with "[] H12 H21") as "Hcore".
+        { iPureIntro. rewrite Hst. apply syn_type_compat_refl. }
+        iDestruct ("Hcore" $! r) as "(#Hcore' & _)". iApply "Hcore'".
+  Qed.
+
+  Lemma shrblocked_ltype_incl {rt} (ty1 ty2 : type rt) b r κ1 κ2 :
+    ⌜ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone⌝ -∗
+    κ1 ⊑ κ2 -∗ κ2 ⊑ κ1 -∗
+    (∀ r, type_incl r r ty1 ty2) -∗
+    (∀ r, type_incl r r ty2 ty1) -∗
+    ltype_incl b r r (ShrBlockedLtype ty1 κ1) (ShrBlockedLtype ty2 κ2).
+  Proof.
+    iIntros "%Hst #Hκ12 #Hκ21 #H12 #H21".
+    rewrite /ltype_incl. iModIntro. simp_ltypes. iSplit.
+    - rewrite /ltype_incl'. iModIntro. destruct b.
+      + iIntros (π l) "Hb".
+        rewrite !ltype_own_shrblocked_unfold /shr_blocked_lty_own.
+        iDestruct "Hb" as (ly) "(%Hly & %Hloc & Hsc & Hlb & %r' & Hrfn & Hshr & Hinh)".
+        iPoseProof ("H12" $! inhabitant) as "(#Hsc12 & _ & _)".
+        iModIntro.
+        iExists ly. rewrite -Hst. iFrame "%".
+        iSplitL "Hsc Hsc12"; first by iApply "Hsc12".
+        iFrame "Hlb". iExists r'. iFrame "Hrfn". iSplitL "Hshr".
+        { iDestruct ("H12" $! r') as "(_ & _ & Hshr12)".
+          iApply "Hshr12". by iApply (ty_shr_mono with "Hκ21 Hshr"). }
+        iIntros "Hdead".
+        iMod (lft_incl_dead with "Hκ12 Hdead") as "Hdead'"; first done.
+        iMod ("Hinh" with "Hdead'") as (v) "(Hl & Hv)".
+        iModIntro. iExists v. iFrame "Hl".
+        iDestruct ("H12" $! r') as "(_ & Hown12 & _)". by iApply "Hown12".
+      + iIntros (π l) "Hb".
+        iEval (rewrite !ltype_own_shrblocked_unfold /shr_blocked_lty_own) in "Hb".
+        iDestruct "Hb" as (ly) "(_ & _ & _ & _ & %r' & _ & [])".
+      + iIntros (π l) "Hb".
+        rewrite !ltype_own_shrblocked_unfold /shr_blocked_lty_own.
+        iDestruct "Hb" as (ly) "(%Hly & %Hloc & Hsc & Hlb & %r' & Hrfn & Hrfnmut & Hshr & Hinh & Hcred)".
+        iPoseProof ("H12" $! inhabitant) as "(#Hsc12 & _ & _)".
+        iExists ly. rewrite -Hst. iFrame "%".
+        iSplitL "Hsc Hsc12"; first by iApply "Hsc12".
+        iFrame "Hlb". iExists r'. iFrame "Hrfn Hrfnmut Hcred". iSplitL "Hshr".
+        { iDestruct ("H12" $! r') as "(_ & _ & Hshr12)".
+          iApply "Hshr12". by iApply (ty_shr_mono with "Hκ21 Hshr"). }
+        iIntros "Hdead".
+        iMod (lft_incl_dead with "Hκ12 Hdead") as "Hdead'"; first done.
+        iMod ("Hinh" with "Hdead'") as "Hb". iModIntro.
+        iApply (pinned_bor_iff' with "[] Hb").
+        iNext. iModIntro. iSplit.
+        * iIntros "(%r'' & Hauth & Hown)". iExists r''. iFrame "Hauth".
+          iMod "Hown" as (v) "(Hl & Hv)". iModIntro. iExists v. iFrame "Hl".
+          iDestruct ("H12" $! r'') as "(_ & Hown12 & _)". by iApply "Hown12".
+        * iIntros "(%r'' & Hauth & Hown)". iExists r''. iFrame "Hauth".
+          iMod "Hown" as (v) "(Hl & Hv)". iModIntro. iExists v. iFrame "Hl".
+          iDestruct ("H21" $! r'') as "(_ & Hown21 & _)". by iApply "Hown21".
+    - destruct b.
+      + iPoseProof (type_ltype_incl_owned ty1 ty2 with "[] H12") as "Hcore".
+        { iPureIntro. rewrite Hst. apply syn_type_compat_refl. }
+        iDestruct ("Hcore" $! r) as "(#Hcore' & _)". iApply "Hcore'".
+      + iPoseProof (type_ltype_incl_shared _ ty1 ty2 with "[] H12") as "Hcore".
+        { iPureIntro. rewrite Hst. apply syn_type_compat_refl. }
+        iDestruct ("Hcore" $! r) as "(#Hcore' & _)". iApply "Hcore'".
+      + iPoseProof (type_eq_ltype_incl_uniq _ _ ty1 ty2 with "[] H12 H21") as "Hcore".
+        { iPureIntro. rewrite Hst. apply syn_type_compat_refl. }
+        iDestruct ("Hcore" $! r) as "(#Hcore' & _)". iApply "Hcore'".
+  Qed.
+
+  Lemma blocked_full_eqltype E L {rt} (ty1 ty2 : type rt) κ1 κ2 :
+    full_eqtype E L ty1 ty2 →
+    lctx_lft_incl E L κ1 κ2 →
+    lctx_lft_incl E L κ2 κ1 →
+    full_eqltype E L (BlockedLtype ty1 κ1) (BlockedLtype ty2 κ2).
+  Proof.
+    intros Heq Hκ12 Hκ21 qL. iIntros "HL #CTX #HE".
+    destruct (proj1 (all_eqtype_alt _ _ _ _) Heq) as [Hsub12 Hsub21].
+    iDestruct "HL" as "[HL1 HL2]".
+    iDestruct "HL1" as "[HL11 HL12]".
+    iDestruct "HL2" as "[HL21 HL22]".
+    iPoseProof (Hsub12 _ with "HL11 HE") as "(%Hst & H12)".
+    iPoseProof (Hsub21 _ with "HL12 HE") as "(%Hst' & H21)".
+    iPoseProof (lctx_lft_incl_incl_noend with "HL21 HE") as "Hκ12"; first exact Hκ12.
+    iPoseProof (lctx_lft_incl_incl_noend with "HL22 HE") as "Hκ21"; first exact Hκ21.
+    iDestruct "H12" as "#H12". iDestruct "H21" as "#H21".
+    iDestruct "Hκ12" as "#Hκ12". iDestruct "Hκ21" as "#Hκ21".
+    iSplit; first by iPureIntro; exact (Hst MetaNone).
+    iIntros (b r). iSplit.
+    - iApply blocked_ltype_incl; done.
+    - iApply blocked_ltype_incl; done.
+  Qed.
+
+  Lemma shrblocked_full_eqltype E L {rt} (ty1 ty2 : type rt) κ1 κ2 :
+    full_eqtype E L ty1 ty2 →
+    lctx_lft_incl E L κ1 κ2 →
+    lctx_lft_incl E L κ2 κ1 →
+    full_eqltype E L (ShrBlockedLtype ty1 κ1) (ShrBlockedLtype ty2 κ2).
+  Proof.
+    intros Heq Hκ12 Hκ21 qL. iIntros "HL #CTX #HE".
+    destruct (proj1 (all_eqtype_alt _ _ _ _) Heq) as [Hsub12 Hsub21].
+    iDestruct "HL" as "[HL1 HL2]".
+    iDestruct "HL1" as "[HL11 HL12]".
+    iDestruct "HL2" as "[HL21 HL22]".
+    iPoseProof (Hsub12 _ with "HL11 HE") as "(%Hst & H12)".
+    iPoseProof (Hsub21 _ with "HL12 HE") as "(%Hst' & H21)".
+    iPoseProof (lctx_lft_incl_incl_noend with "HL21 HE") as "Hκ12"; first exact Hκ12.
+    iPoseProof (lctx_lft_incl_incl_noend with "HL22 HE") as "Hκ21"; first exact Hκ21.
+    iDestruct "H12" as "#H12". iDestruct "H21" as "#H21".
+    iDestruct "Hκ12" as "#Hκ12". iDestruct "Hκ21" as "#Hκ21".
+    iSplit; first by iPureIntro; exact (Hst MetaNone).
+    iIntros (b r). iSplit.
+    - iApply shrblocked_ltype_incl; done.
+    - iApply shrblocked_ltype_incl; done.
+  Qed.
+End blocked_subtyping.
+
 Section ne.
   Context `{!typeGS Σ}.
 
