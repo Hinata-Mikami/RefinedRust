@@ -31,7 +31,7 @@ Section ltype_def.
     eltv_tag : var_name;
     eltv_rt : RT;
     eltv_ltype : ltype eltv_rt;
-    eltv_rfn : eltv_rt;
+    eltv_rfn : option eltv_rt;
   }.
 
   Definition enum_ltype_variant_lty (v : enum_ltype_variant) : enum_lty_variant :=
@@ -45,10 +45,31 @@ Section ltype_def.
       (r : rt) (v : enum_ltype_variant) : Prop :=
     enum_tag en r = Some v.(eltv_tag).
 
+  Definition enum_ltype_variant_rfn {rt : RT} (en : enum rt) (r : rt)
+      (v : enum_ltype_variant) (rv : v.(eltv_rt)) : Prop :=
+    match v.(eltv_rfn) with
+    | Some rv' => rv = rv'
+    | None => ∃ Heq : RT_rt (enum_rt en r) = RT_rt v.(eltv_rt),
+        rv = rew [id] Heq in enum_r en r
+    end.
+
+  Lemma enum_ltype_variant_rfn_unique {rt : RT} (en : enum rt) (r : rt)
+      (v : enum_ltype_variant) rv1 rv2 :
+    enum_ltype_variant_rfn en r v rv1 →
+    enum_ltype_variant_rfn en r v rv2 →
+    rv1 = rv2.
+  Proof.
+    rewrite /enum_ltype_variant_rfn. destruct (eltv_rfn v) as [rv |].
+    - intros -> ->. done.
+    - intros [Heq1 ->] [Heq2 ->].
+      rewrite (proof_irrelevance _ Heq2 Heq1). done.
+  Qed.
+
   Definition enum_ltype_variant_payload_compat {rt : RT} (en : enum rt)
       (r : rt) (v : enum_ltype_variant) : Prop :=
-    ∃ Heq : RT_rt (enum_rt en r) = RT_rt v.(eltv_rt),
-      rew [id] Heq in enum_r en r = v.(eltv_rfn).
+    ∃ rv Heq,
+      enum_ltype_variant_rfn en r v rv ∧
+      rew [id] Heq in enum_r en r = rv.
 
   Definition enum_ltype_variant_compat {rt : RT} (en : enum rt)
       (r : rt) (v : enum_ltype_variant) : Prop :=
@@ -87,7 +108,7 @@ Section ltype_def.
       (enum_tag' en r)
       (enum_rt en r)
       (OfTy (enum_ty en r))
-      (enum_r en r).
+      (Some (enum_r en r)).
 
   Definition interp_enum_ltype_variant {rt : RT} (en : enum rt)
       (ov : option enum_ltype_variant) (r : rt) : enum_ltype_variant :=
@@ -660,7 +681,8 @@ Section ltype_def.
             (PlaceIn (els_lookup_tag en.(enum_els) v.(eltv_tag))) l ∗
           lty_of_ty_own (uninit (LiteralSynType (Layout (data_offset - tag_size) 0))) Owned π
             (PlaceIn ()) (l +ₗ tag_size) ∗
-          rec _ v.(eltv_ltype) Owned π (PlaceIn v.(eltv_rfn)) (l +ₗ data_offset) ∗
+          (∃ rv : v.(eltv_rt), ⌜enum_ltype_variant_rfn en r' v rv⌝ ∗
+            rec _ v.(eltv_ltype) Owned π (PlaceIn rv) (l +ₗ data_offset)) ∗
           lty_of_ty_own (uninit (LiteralSynType (Layout (el.(el_size) - data_offset - ly_size variant_ly) 0))) Owned π
             (PlaceIn ()) (l +ₗ data_offset +ₗ ly_size variant_ly)
       | Shared κ =>
@@ -674,7 +696,8 @@ Section ltype_def.
             (PlaceIn (els_lookup_tag en.(enum_els) v.(eltv_tag))) l ∗
           lty_of_ty_own (uninit (LiteralSynType (Layout (data_offset - tag_size) 0))) (Shared κ) π
             (PlaceIn ()) (l +ₗ tag_size) ∗
-          rec _ v.(eltv_ltype) (Shared κ) π (PlaceIn v.(eltv_rfn)) (l +ₗ data_offset) ∗
+          (∃ rv : v.(eltv_rt), ⌜enum_ltype_variant_rfn en r' v rv⌝ ∗
+            rec _ v.(eltv_ltype) (Shared κ) π (PlaceIn rv) (l +ₗ data_offset)) ∗
           lty_of_ty_own (uninit (LiteralSynType (Layout (el.(el_size) - data_offset - ly_size variant_ly) 0))) (Shared κ) π
             (PlaceIn ()) (l +ₗ data_offset +ₗ ly_size variant_ly)
       | Uniq κ γ =>
@@ -688,7 +711,8 @@ Section ltype_def.
             (PlaceIn (els_lookup_tag en.(enum_els) v.(eltv_tag))) l ∗
           lty_of_ty_own (uninit (LiteralSynType (Layout (data_offset - tag_size) 0))) Owned π
             (PlaceIn ()) (l +ₗ tag_size) ∗
-          rec' _ v.(eltv_ltype) Owned π (PlaceIn v.(eltv_rfn)) (l +ₗ data_offset) ∗
+          (∃ rv : v.(eltv_rt), ⌜enum_ltype_variant_rfn en r' v rv⌝ ∗
+            rec' _ v.(eltv_ltype) Owned π (PlaceIn rv) (l +ₗ data_offset)) ∗
           lty_of_ty_own (uninit (LiteralSynType (Layout (el.(el_size) - data_offset - ly_size variant_ly) 0))) Owned π
             (PlaceIn ()) (l +ₗ data_offset +ₗ ly_size variant_ly))%I in
         have_creds ∗
@@ -3008,15 +3032,17 @@ Section blocked.
           -- iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame "Hauth".
              iMod "Hb" as "(%variant_ly & %Hcompat & %Hlookup & %Hst & Htag & Hpad & Hpayload & Htail)".
              iDestruct "Hub" as "(_ & Hub)".
-             unfold interp_enum_ltype_variant. simpl.
-             simpl in *.
-             destruct (decide (enum_tag en r' = Some tag)); simpl; last by iFrame.
-             iMod ("Hub" with "Hdead Hpayload") as "Hpayload".
-             iModIntro. iExists variant_ly. iR.
-             iSplitR; first done.
-             iEval (rewrite ltype_own_core_equiv) in "Hpayload".
-             iFrame "Htag Hpad Htail Hpayload". simpl in *.
-             rewrite ltype_core_syn_type_eq//.
+              unfold interp_enum_ltype_variant. simpl.
+              simpl in *.
+              destruct (decide (enum_tag en r' = Some tag)); simpl; last by iFrame.
+              iDestruct "Hpayload" as "(%rv & %Hrfn & Hpayload)".
+              iMod ("Hub" with "Hdead Hpayload") as "Hpayload".
+              iModIntro. iExists variant_ly. iR.
+              iSplitR; first done.
+              iEval (rewrite ltype_own_core_equiv) in "Hpayload".
+              iFrame "Htag Hpad Htail".
+              iSplitR; first (iPureIntro; rewrite ltype_core_syn_type_eq; done).
+              iExists rv. iSplit; first (iPureIntro; exact Hrfn). iExact "Hpayload".
           -- iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame "Hauth".
              iMod "Hb" as "(%variant_ly & %Hcompat & %Hlookup & %Hst & Htag & Hpad & Hpayload & Htail)".
              setoid_rewrite ltype_own_core_equiv.
@@ -3055,15 +3081,15 @@ Section blocked.
         iMod "Hb" as "(%variant_ly & %Hcompat & %Hlookup & %Hst & Htag & Hpad & Hpayload & Htail)".
         iDestruct "Hub" as "(_ & #Hub_own)".
         iModIntro. iExists el. iR. iR. iFrame "Hlb". iExists r'. iFrame "Hr".
-        simpl in *.
-        destruct (decide (enum_tag en r' = Some tag)); simpl in *.
-        2: { iFrame. simp_ltypes. iR. iR. done. }
-        iMod ("Hub_own" with "Hdead Hpayload") as "Hpayload".
+         simpl in *.
+         destruct (decide (enum_tag en r' = Some tag)); simpl in *.
+         2: { iFrame. simp_ltypes. iR. iR. done. }
+         iDestruct "Hpayload" as "(%rv & %Hrfn & Hpayload)".
+         iMod ("Hub_own" with "Hdead Hpayload") as "Hpayload".
         iEval (rewrite ltype_own_core_equiv) in "Hpayload".
-        iModIntro. iExists variant_ly. iR.
-        simpl in *. iFrame.
-        iR.
-        iPureIntro. rewrite ltype_core_syn_type_eq. done.
+         iModIntro. iExists variant_ly. iR. iR.
+         iSplitR; first (iPureIntro; rewrite ltype_core_syn_type_eq; done).
+         simpl in *. iFrame. iPureIntro. exact Hrfn.
     - iIntros "_". rewrite -(ltype_core_enum en None). iApply core_imp_unblockable.
   Qed.
 

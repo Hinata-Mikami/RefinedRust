@@ -2,6 +2,7 @@ From refinedrust Require Export type ltypes.
 From refinedrust Require Import uninit int int_rules.
 From refinedrust Require Import programs.
 From refinedrust.enum Require Import def.
+From refinedrust.enum Require Import subltype.
 From refinedrust Require Import options.
 
 Section unfold.
@@ -144,7 +145,8 @@ Section unfold.
       - apply enum_tag_padding_has_layout_loc.
       - iApply (loc_in_bounds_enum_tag_padding with "Hlb"). done. }
     iSplitL "Hl_payload Hpayload".
-    { iEval (rewrite /canonical_enum_ltype_variant /OfTy /=).
+    { iExists (enum_r en r'). iSplit; first done.
+      iEval (rewrite /canonical_enum_ltype_variant /OfTy /=).
       rewrite ltype_own_ofty_unfold.
       iApply (owned_ofty_from_pointsto_val with "[] Hpayload Hl_payload").
       - done.
@@ -195,7 +197,8 @@ Section unfold.
       - apply enum_tag_padding_has_layout_loc.
       - iApply (loc_in_bounds_enum_tag_padding with "Hlb"). done. }
     iSplitL "Hpayload".
-    { iEval (rewrite /canonical_enum_ltype_variant /OfTy /=).
+    { iExists (enum_r en r'). iSplit; first done.
+      iEval (rewrite /canonical_enum_ltype_variant /OfTy /=).
       rewrite ltype_own_ofty_unfold.
       iApply (shared_ofty_from_ty_shr with "[] Hpayload").
       - done.
@@ -221,6 +224,8 @@ Section unfold.
     set (variant_size := ly_size variant_ly).
     iMod (ofty_owned_to_pointsto_val with "Htag") as "(%vtag & Hl_tag & Htag)".
     iMod (ofty_owned_to_pointsto_val with "Htag_pad") as "(%vtag_pad & Hl_tag_pad & Htag_pad)".
+    iDestruct "Hpayload" as "(%rv & %Hrfn_payload & Hpayload)".
+    change (rv = enum_r en r') in Hrfn_payload. subst rv.
     iEval (rewrite /interp_enum_ltype_variant /OfTy /=) in "Hpayload".
     iEval (rewrite ltype_own_ofty_unfold) in "Hpayload".
     iMod (ofty_owned_to_pointsto_val with "Hpayload") as "(%vpayload & Hl_payload & Hpayload)".
@@ -276,6 +281,8 @@ Section unfold.
     iMod "Hb" as "(%variant_ly & %Htagcompat & %Hvariant & %Hst & Htag & Htag_pad & Hpayload & Htail)".
     iMod (ofty_shared_to_ty_shr with "Htag") as "Htag".
     iMod (ofty_shared_to_ty_shr with "Htag_pad") as "Htag_pad".
+    iDestruct "Hpayload" as "(%rv & %Hrfn_payload & Hpayload)".
+    change (rv = enum_r en r') in Hrfn_payload. subst rv.
     iEval (rewrite /interp_enum_ltype_variant /OfTy /=) in "Hpayload".
     iEval (rewrite ltype_own_ofty_unfold) in "Hpayload".
     iMod (ofty_shared_to_ty_shr with "Hpayload") as "Hpayload".
@@ -310,12 +317,13 @@ Section unfold.
         lty_of_ty_own (uninit (LiteralSynType
           (Layout (el.(el_data_offset) - ly_size (it_layout el.(el_tag_it))) 0))) Owned π
           (PlaceIn ()) (l +ₗ ly_size (it_layout el.(el_tag_it))) ∗
-        (match b with
-         | true => ltype_own_core v.(eltv_ltype) Owned π
-             (PlaceIn v.(eltv_rfn)) (l +ₗ el.(el_data_offset))
-         | false => ltype_own v.(eltv_ltype) Owned π
-             (PlaceIn v.(eltv_rfn)) (l +ₗ el.(el_data_offset))
-         end) ∗
+        (∃ rv, ⌜enum_ltype_variant_rfn en r' v rv⌝ ∗
+          match b with
+          | true => ltype_own_core v.(eltv_ltype) Owned π
+              (PlaceIn rv) (l +ₗ el.(el_data_offset))
+          | false => ltype_own v.(eltv_ltype) Owned π
+              (PlaceIn rv) (l +ₗ el.(el_data_offset))
+          end) ∗
         lty_of_ty_own (uninit (LiteralSynType
           (Layout (el.(el_size) - el.(el_data_offset) - ly_size variant_ly) 0))) Owned π
           (PlaceIn ()) (l +ₗ el.(el_data_offset) +ₗ ly_size variant_ly)))%I.
@@ -339,7 +347,8 @@ Section unfold.
       iModIntro. iExists variant_ly.
       iEval (rewrite /canonical_enum_ltype_variant /=).
       iSplitR.
-      { iPureIntro. rewrite Htag'. split; [done | ]. exists eq_refl. done. }
+      { iPureIntro. rewrite Htag'. split; [done | ].
+        exists (enum_r en r'), eq_refl. split; done. }
       iSplitR; first done.
       iSplitR; first done.
       iAssert (((∃ vtag : val, l ↦ vtag ∗
@@ -370,7 +379,7 @@ Section unfold.
         - apply enum_tag_padding_has_layout_loc.
         - iApply (loc_in_bounds_enum_tag_padding with "Hlb"). done. }
       iSplitL "Hl_payload Hpayload".
-      { destruct b; simpl.
+      { iExists (enum_r en r'). iSplit; first done. destruct b; simpl.
         - rewrite ltype_own_core_equiv ltype_core_ofty ltype_own_ofty_unfold.
           iApply (owned_ofty_from_pointsto_val with "[] Hpayload Hl_payload").
           { done. }
@@ -392,6 +401,8 @@ Section unfold.
       iMod "Hb" as "(%variant_ly & %Hcompat & %Hvariant & %Hst & Htag & Htag_pad & Hpayload & Htail)".
       rewrite /canonical_enum_ltype_variant /= in Hcompat Hst.
       destruct Hcompat as (Htagcompat & _).
+      iDestruct "Hpayload" as "(%rv & %Hrfn_payload & Hpayload)".
+      change (rv = enum_r en r') in Hrfn_payload. subst rv.
       iAssert ((l +ₗ el.(el_data_offset)) ◁ₗ[π, Owned]
         (PlaceIn (enum_r en r')) @ (◁ enum_ty en r'))%I
         with "[Hpayload]" as "Hpayload".
@@ -532,6 +543,75 @@ Section unfold.
     iIntros (??). iApply enum_t_unfold.
   Qed.
 
+  Lemma enum_ltype_some_none_full_eqltype E L {rt rte} (en : enum rt) tag
+      (sem : enum_tag_sem rt) (Heq : sem.(enum_tag_sem_rt) = rte)
+      (lte : ltype rte) :
+    enum_tag_ty_inj en tag = Some sem →
+    full_eqltype E L lte (OfTy (rew [type] Heq in sem.(enum_tag_sem_ty))) →
+    full_eqltype E L
+      (EnumLtype en (Some (mk_enum_ltype_variant tag rte lte None)))
+      (EnumLtype en None).
+  Proof.
+    destruct Heq. simpl. intros Hsem Heq.
+    apply full_eqltype_alt. intros b r. iIntros (qL) "HL CTX HE".
+    iDestruct (Heq qL with "HL CTX HE") as "(%Hst_payload & #Heq_payload)". iR.
+    iApply enum_ltype_eq. iIntros (r').
+    destruct (decide (enum_tag en r' = Some tag)) as [Htag | Htag].
+    - rewrite interp_enum_ltype_variant_Some_match; last done.
+      rewrite /interp_enum_ltype_variant /=.
+      destruct (decide (enum_tag en r' = Some tag)); last done.
+      pose proof (enum_tag_rt_eq en r' tag sem Htag Hsem) as Hrt.
+      pose proof (enum_tag_type_eq' en r' tag sem Htag Hsem) as Hty.
+      iSplit; first (iPureIntro; symmetry; apply enum_tag'_Some; done). iSplit.
+      { iPureIntro. intros _. split.
+        - split; first done.
+          eexists (rew [id] (f_equal RT_rt (eq_sym Hrt)) in enum_r en r').
+          eexists (f_equal RT_rt (eq_sym Hrt)). split; last done.
+          simpl. eexists (f_equal RT_rt (eq_sym Hrt)). done.
+        - split.
+          + rewrite /enum_ltype_variant_tag_compat /canonical_enum_ltype_variant /=.
+            rewrite (enum_tag'_Some _ _ _ Htag). exact Htag.
+          + eexists (enum_r en r'), eq_refl. split; done. }
+      iSplit.
+      { iPureIntro. simpl. rewrite -Hty.
+        generalize (enum_tag_rt_eq en r' tag sem Htag Hsem). intros Heq'. destruct Heq'.
+        exact Hst_payload. }
+      iIntros (b' rv1 rv2) "%Hrfn1 %Hrfn2".
+      change (rv2 = enum_r en r') in Hrfn2. subst rv2.
+      set (rp := rew [id] (f_equal RT_rt (eq_sym Hrt)) in enum_r en r').
+      have -> : rv1 = rp.
+      { eapply enum_ltype_variant_rfn_unique; first exact Hrfn1.
+        simpl. eexists (f_equal RT_rt (eq_sym Hrt)). exact (eq_refl rp). }
+      have Hr : enum_r en r' = rew [id] (f_equal RT_rt Hrt) in rp.
+      { subst rp. rewrite rew_compose rew_UIP. done. }
+      rewrite Hr.
+      simpl. rewrite -Hty.
+      replace (enum_tag_rt_eq en r' tag sem Htag Hsem) with Hrt by apply proof_irrelevance.
+      generalize Hrt. intros []. simpl.
+      iApply "Heq_payload".
+    - rewrite interp_enum_ltype_variant_Some_mismatch; last done.
+      iSplit; first done. iSplit.
+      { iPureIntro. intros Htag'. split;
+          (split; first exact Htag'; eexists (enum_r en r'), eq_refl; split; done). }
+      iSplit; first done. iIntros (b' rv1 rv2) "%Hrfn1 %Hrfn2".
+      have -> : rv1 = rv2 by eapply enum_ltype_variant_rfn_unique.
+      iApply ltype_eq_refl.
+  Qed.
+
+  Lemma enum_ltype_some_none_enum_t_full_eqltype E L {rt rte} (en : enum rt) tag
+      (sem : enum_tag_sem rt) (Heq : sem.(enum_tag_sem_rt) = rte)
+      (lte : ltype rte) :
+    enum_tag_ty_inj en tag = Some sem →
+    full_eqltype E L lte (OfTy (rew [type] Heq in sem.(enum_tag_sem_ty))) →
+    full_eqltype E L
+      (EnumLtype en (Some (mk_enum_ltype_variant tag rte lte None)))
+      (OfTy (enum_t en)).
+  Proof.
+    intros Hsem Heq_payload. etransitivity.
+    - by eapply enum_ltype_some_none_full_eqltype.
+    - symmetry. apply enum_t_unfold_full_eqltype.
+  Qed.
+
 End unfold.
 
 Section cast.
@@ -548,6 +628,27 @@ Section cast.
   Qed.
   Definition cast_ltype_enum_none_inst := [instance @cast_ltype_enum_none].
   Global Existing Instance cast_ltype_enum_none_inst.
+
+  Lemma cast_ltype_enum_some_none {rt rte} E L (en : enum rt) tag
+      (lte : ltype rte) T :
+    (∃ sem, ⌜enum_tag_ty_inj en tag = Some sem⌝ ∗
+    ∃ (Heq : sem.(enum_tag_sem_rt) = rte),
+      cast_ltype_to_type E L lte (λ tye,
+        mut_eqtype E L (rew <- Heq in tye) sem.(enum_tag_sem_ty) (T (enum_t en))))
+    ⊢ cast_ltype_to_type E L
+      (EnumLtype en (Some (mk_enum_ltype_variant tag rte lte None))) T.
+  Proof.
+    iIntros "(%sem & %Hsem & %Heq & HT)". destruct Heq. simpl.
+    iDestruct "HT" as "(%tye & %Heq_lte & %Heq_ty & HT)".
+    simpl in Heq_ty.
+    iExists (enum_t en). iFrame. iPureIntro.
+    eapply (enum_ltype_some_none_enum_t_full_eqltype _ _ _ _ _ eq_refl);
+      first exact Hsem.
+    etransitivity; first exact Heq_lte.
+    by apply full_eqtype_eqltype.
+  Qed.
+  Definition cast_ltype_enum_some_none_inst := [instance @cast_ltype_enum_some_none].
+  Global Existing Instance cast_ltype_enum_some_none_inst.
 
   (* TODO: can we get a reasonable instance for the other direction? *)
 
@@ -568,6 +669,19 @@ End cast.
 Section place.
   Context `{!typeGS Σ}.
 
+  Lemma prove_place_cond_enum_l E L bmin {rt rt2} (en : enum rt)
+      variant (lt2 : ltype rt2) T :
+    cast_ltype_to_type E L (EnumLtype en variant) (λ ty,
+      prove_place_cond E L bmin (OfTy ty) lt2 T)
+    ⊢ prove_place_cond E L bmin (EnumLtype en variant) lt2 T.
+  Proof.
+    iIntros "(%ty & %Heqt & HT)".
+    iApply prove_place_cond_eqltype_l; done.
+  Qed.
+  Definition prove_place_cond_enum_l_inst :=
+    [instance @prove_place_cond_enum_l].
+  Global Existing Instance prove_place_cond_enum_l_inst | 1020.
+
   Lemma typed_place_enum_unfold E L f l {rt} (en : enum rt) r bmin k P T :
     typed_place E L f l (EnumLtype en None) r bmin k P T
     ⊢ typed_place E L f l (◁ enum_t en) r bmin k P T.
@@ -578,3 +692,20 @@ Section place.
   Definition typed_place_enum_unfold_inst := [instance @typed_place_enum_unfold].
   Global Existing Instance typed_place_enum_unfold_inst | 20.
 End place.
+
+Section stratify.
+  Context `{!typeGS Σ}.
+
+  Lemma stratify_ltype_ofty_enum π E L ma {M} (m : M) l {rt} (en : enum rt) r b
+    tag
+    `{Htag1 : !TCDone (enum_tag en r = Some tag)}
+    `{!IsConcreteEnumTag tag} T :
+    stratify_ltype π E L StratDoUnfold ma m l (EnumLtype en None) (#r) b T
+    ⊢ stratify_ltype π E L StratDoUnfold ma m l (OfTy (enum_t en)) (#r) b T.
+  Proof.
+    iIntros "HT". iApply stratify_ltype_eqltype. iFrame. iPureIntro.
+    apply full_eqltype_alt. apply enum_t_unfold_full_eqltype.
+  Qed.
+  Definition stratify_ltype_ofty_enum_inst := [instance @stratify_ltype_ofty_enum].
+  Global Existing Instance stratify_ltype_ofty_enum_inst | 30.
+End stratify.

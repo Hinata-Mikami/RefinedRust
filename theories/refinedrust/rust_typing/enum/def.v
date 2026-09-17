@@ -1538,3 +1538,13 @@ Section ne.
   Qed.
 
 End ne.
+
+(* Certain automation only works well if we know the concrete variant we are in *)
+Class IsConcreteEnumTag (tag : var_name) : Set := {}.
+Global Hint Mode IsConcreteEnumTag + : typeclass_instances.
+Global Hint Extern 0 (IsConcreteEnumTag _) =>
+  simpl;
+  lazymatch goal with
+  | |- IsConcreteEnumTag EmptyString => constructor
+  | |- IsConcreteEnumTag (String.String _ _) => constructor
+  end : typeclass_instances.

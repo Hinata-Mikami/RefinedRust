@@ -1393,16 +1393,20 @@ Section move_value.
     *)
 
 
-  Lemma type_read_ofty_move_owned_value E L {rt} π l (ty : type rt) r ot bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} (T : typed_read_end_cont_t bmin rt) :
-    (⌜use_op_alg (ty_syn_type ty MetaNone) = Some ot⌝ ∗
+  Lemma type_read_ofty_move_owned_value E L {rt} π l (lt : ltype rt) r ot bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} (T : typed_read_end_cont_t bmin rt) :
+    cast_ltype_to_type E L lt (λ ty,
+      ⌜use_op_alg (ty_syn_type ty MetaNone) = Some ot⌝ ∗
       ⌜ty_has_op_type ty ot⌝ ∗
       ∀ v v', v ◁ᵥ{π, MetaNone} r @ ty -∗
       T L v' _ (value_t true (ty.(ty_syn_type) MetaNone)) v val
       (◁ value_t true (ty.(ty_syn_type) MetaNone)) (#v)
       (mkPUKRes (allowed:=bmin) UpdStrong I (opt_place_update_eq_strong _ Hstrong)))
-    ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned) bmin ot ReadDoMove T.
+    ⊢ typed_read_end π E L l lt (#r) (Owned) bmin ot ReadDoMove T.
   Proof.
-    iIntros "(%Hotalg & %Hot & Hs)" (F ????) "#CTX #HE HL Hb".
+    iIntros "(%ty & %Heqt & %Hotalg & %Hot & Hs)" (F ????) "#CTX #HE HL Hb".
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Heq)"; first apply Heqt.
+    iDestruct ("Heq" $! Owned (#r)) as "(#Hincl & _)".
+    iMod (ltype_incl_use with "Hincl Hb") as "Hb"; first done.
     iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
     iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as (ov0) "%Hdec0"; first done.
@@ -1433,22 +1437,26 @@ Section move_value.
     iPoseProof (ty_encode_compat valRT (value_t true (ty.(ty_syn_type) MetaNone)) ot st with "Hv1") as "Hv2".
     { rewrite ty_has_op_type_unfold. exists ot. split_and!; first done; last done. by apply is_value_ot_core_refl. }
     { done. }
-    iR. iR. iL. destruct bmin; done.
+    rewrite Hst. iR. iR. iL. destruct bmin; done.
   Qed.
   (*Definition type_read_ofty_move_owned_value_inst := [instance @type_read_ofty_move_owned_value].*)
   (*Global Existing Instance type_read_ofty_move_owned_value_inst | 21.*)
 
   (* We have a more specialized instance for [Untyped] *)
-  Lemma type_read_ofty_move_owned_value_untyped E L {rt} π l (ty : type rt) r ly bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} (T : typed_read_end_cont_t bmin rt) :
-    (⌜use_layout_alg (ty_syn_type ty MetaNone) = Some ly⌝ ∗
+  Lemma type_read_ofty_move_owned_value_untyped E L {rt} π l (lt : ltype rt) r ly bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} (T : typed_read_end_cont_t bmin rt) :
+    cast_ltype_to_type E L lt (λ ty,
+      ⌜use_layout_alg (ty_syn_type ty MetaNone) = Some ly⌝ ∗
       ⌜ty_has_op_type ty (use_op_alg' (ty_syn_type ty MetaNone))⌝ ∗
       ∀ v v', v ◁ᵥ{π, MetaNone} r @ ty -∗
       T L v' _ (value_t false (ty_syn_type ty MetaNone)) v val
       (◁ value_t true (ty.(ty_syn_type) MetaNone)) (#v)
       (mkPUKRes (allowed:=bmin) UpdStrong I (opt_place_update_eq_strong _ Hstrong)))
-    ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned) bmin (UntypedOp ly) ReadDoMove T.
+    ⊢ typed_read_end π E L l lt (#r) (Owned) bmin (UntypedOp ly) ReadDoMove T.
   Proof.
-    iIntros "(%Halg & %Htyot & Hs)" (F ????) "#CTX #HE HL Hb".
+    iIntros "(%ty & %Heqt & %Halg & %Htyot & Hs)" (F ????) "#CTX #HE HL Hb".
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Heq)"; first apply Heqt.
+    iDestruct ("Heq" $! Owned (#r)) as "(#Hincl & _)".
+    iMod (ltype_incl_use with "Hincl Hb") as "Hb"; first done.
     iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly' & %Halg' & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
     assert (ly' = ly) as ->. { by eapply syn_type_has_layout_inj. }
@@ -1476,7 +1484,7 @@ Section move_value.
     rewrite bool_decide_true in Hdec; last done.
     injection Hdec as <-. simpl.
     iFrame.
-    iR. iL.
+    rewrite Hst. iR. iL.
     destruct bmin; done.
   Qed.
   Definition type_read_ofty_move_owned_value_untyped_inst := [instance @type_read_ofty_move_owned_value_untyped].
@@ -1490,16 +1498,20 @@ Section move_uninit.
 
     We don't have a corresponding rule for Untyped reads right now, but could add one. *)
 
-  Lemma type_read_ofty_move_owned_typed_value E L {rt} π l (ty : type rt) r ot bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} (T : typed_read_end_cont_t bmin rt) :
-    (⌜use_op_alg (ty_syn_type ty MetaNone) = Some ot⌝ ∗
+  Lemma type_read_ofty_move_owned_typed_value E L {rt} π l (lt : ltype rt) r ot bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} (T : typed_read_end_cont_t bmin rt) :
+    cast_ltype_to_type E L lt (λ ty,
+      ⌜use_op_alg (ty_syn_type ty MetaNone) = Some ot⌝ ∗
       ⌜ty_has_op_type ty ot⌝ ∗
       ∀ v,
       T L v _ ty r _
       (◁ typed_value_t (ty.(ty_syn_type) MetaNone)) (#())
       (mkPUKRes (allowed:=bmin) UpdStrong I (opt_place_update_eq_strong _ Hstrong)))
-    ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned) bmin ot ReadDoMove T.
+    ⊢ typed_read_end π E L l lt (#r) (Owned) bmin ot ReadDoMove T.
   Proof.
-    iIntros "(%Hotalg & %Hot & Hs)" (F ????) "#CTX #HE HL Hb".
+    iIntros "(%ty & %Heqt & %Hotalg & %Hot & Hs)" (F ????) "#CTX #HE HL Hb".
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Heq)"; first apply Heqt.
+    iDestruct ("Heq" $! Owned (#r)) as "(#Hincl & _)".
+    iMod (ltype_incl_use with "Hincl Hb") as "Hb"; first done.
     iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
     iPoseProof (ty_decodable _ ty ot inhabitant with "Hv") as (ov0) "%Hdec0"; first done.
@@ -1535,27 +1547,33 @@ Section move_uninit.
     { done. }
     iPoseProof (own_val_merge_value_typed with "Hv2 Hv") as "$".
     { rewrite /use_op_alg' Hotalg//. }
-    iR. iL. destruct bmin; done.
+    rewrite Hst. iR. iL. destruct bmin; done.
   Qed.
   Definition type_read_ofty_move_owned_typed_value_inst := [instance @type_read_ofty_move_owned_typed_value].
   Global Existing Instance type_read_ofty_move_owned_typed_value_inst | 21.
 
   (* We also have a corresponding rule for Uniq ownership that leaves [Opened].
     This allows us to move out of mutable references, as long as another object is moved in at a later point. *)
-  Lemma type_read_ofty_move_uniq_typed_value E L {rt} π l (ty : type rt) κ γ r ot bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} (T : typed_read_end_cont_t bmin rt) :
+  Lemma type_read_ofty_move_uniq_typed_value E L {rt} π l (lt : ltype rt) κ γ r ot bmin `{Hstrong : !TCDone (place_update_kind_allows_strong_updates bmin)} (T : typed_read_end_cont_t bmin rt) :
+    cast_ltype_to_type E L lt (λ ty,
     li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
-    (⌜use_op_alg (ty_syn_type ty MetaNone) = Some ot⌝ ∗
+      ⌜use_op_alg (ty_syn_type ty MetaNone) = Some ot⌝ ∗
       ⌜ty_has_op_type ty ot⌝ ∗
       ∀ v,
       T L2 v _ ty r _
       (OpenedLtype (◁ typed_value_t (ty.(ty_syn_type) MetaNone)) (◁ ty) (◁ ty) (λ r1 r2, ⌜r1 = r2⌝) (λ _ _, llft_elt_toks κs))
       (#())
       (mkPUKRes (allowed:=bmin) UpdStrong I (opt_place_update_eq_strong _ Hstrong))))
-    ⊢ typed_read_end π E L l (◁ ty) (#r) (Uniq κ γ) bmin ot ReadDoMove T.
+    ⊢ typed_read_end π E L l lt (#r) (Uniq κ γ) bmin ot ReadDoMove T.
   Proof.
     iIntros "HT" (F ????) "#CTX #HE HL Hb".
+    iDestruct "HT" as (ty) "(%Heqt & HT)".
     rewrite /lctx_lft_alive_count_goal.
     iDestruct "HT" as (κs L2) "(%Hal & %Hotalg & %Hot & HT)".
+
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Heq)"; first apply Heqt.
+    iDestruct ("Heq" $! (Uniq κ γ) (#r)) as "(#Hincl & _)".
+    iMod (ltype_incl_use with "Hincl Hb") as "Hb"; first done.
 
     iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
     iMod (lctx_lft_alive_count_tok with "HE HL") as (q) "(Htok & Hcl_tok & HL)"; [done.. | ].
@@ -1601,7 +1619,7 @@ Section move_uninit.
     iPoseProof (own_val_merge_value_typed with "Hv2 Hv") as "$".
     { rewrite /use_op_alg' Hotalg//. }
     iFrame.
-    iR. iL. destruct bmin; done.
+    rewrite Hst. iR. iL. destruct bmin; done.
   Qed.
   Definition type_read_ofty_move_uniq_typed_value_inst := [instance @type_read_ofty_move_uniq_typed_value].
   Global Existing Instance type_read_ofty_move_uniq_typed_value_inst | 21.

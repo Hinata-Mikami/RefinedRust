@@ -136,7 +136,9 @@ Section discriminant.
       { iNext. iFrame "Hv'". }
       iApply logical_step_intro.
       iIntros "Hl".
-      iMod ("Hclose" $! _ _ _ r with "[] [] [Hl] Hpayload") as "Hb".
+      iDestruct "Hpayload" as "(%rv & %Hrfn_payload & Hpayload)".
+      iMod ("Hclose" $! _ _ (interp_enum_ltype_variant en variant r).(eltv_rfn) rv r with "[] [] [] [Hl] Hpayload") as "Hb".
+      { done. }
       { done. }
       { done. }
       { rewrite /lty_of_ty_own. iExists (it_layout en.(enum_els).(els_tag_it)).
@@ -181,7 +183,9 @@ Section discriminant.
       { iNext. iFrame "Hl". }
       iMod ("Htok_cl" with "Htok HL") as "HL".
       iPoseProof ("HL_cl" with "HL") as "HL".
-      iMod ("Hclose" $! _ _ _ r with "[] [] Htag_direct Hpayload") as "Hb".
+      iDestruct "Hpayload" as "(%rv & %Hrfn_payload & Hpayload)".
+      iMod ("Hclose" $! _ _ (interp_enum_ltype_variant en variant r).(eltv_rfn) rv r with "[] [] [] Htag_direct Hpayload") as "Hb".
+      { done. }
       { done. }
       { done. }
       iModIntro. iExists L, rt, (enum_discriminant_t en), r.
@@ -198,7 +202,7 @@ Section discriminant.
       iMod (fupd_mask_subseteq lftE) as "HF_cl"; first done.
       iMod (Hal with "HE HL") as (q) "(Htok & Htok_cl)"; [solve_ndisj | ].
       iPoseProof (enum_ltype_acc_uniq lftE with "CTX Htok Htok_cl Hb") as
-        "(%el & %Halg & %Hly & #Hlb & >(%variant_ly & %Hcompat & %Hvariant & %Hst & Htag & Hpayload & Hclose))"; first done.
+        "(%el & %Halg & %Hly & #Hlb & >(%variant_ly & %Hcompat & %Hvariant & %Hst & Htag & (%rv & %Hrfn_payload & Hpayload & Hclose)))"; first done.
       destruct Hcompat as (Hcompat & _).
       iMod "HF_cl" as "_".
       iEval (rewrite /lty_of_ty_own) in "Htag".

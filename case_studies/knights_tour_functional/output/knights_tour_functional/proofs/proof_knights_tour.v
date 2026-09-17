@@ -62,7 +62,10 @@ Proof.
       specialize Hlookup with (Z.to_nat i) (Z.to_nat j).
       replace (Z.to_nat (Z.to_nat i)) with (Z.to_nat i) in Hlookup by lia.
       replace (Z.to_nat (Z.to_nat j)) with (Z.to_nat j) in Hlookup by lia.
-      replace (S (S (Z.to_nat x'1 - Z.to_nat 2))) with (Z.to_nat x'1) by lia.
+      match goal with
+      |- context[S (S (Z.to_nat ?x - Z.to_nat 2))] =>
+        replace (S (S (Z.to_nat x - Z.to_nat 2))) with (Z.to_nat x) by lia
+      end.
       rewrite Z2Nat.id; try lia.
       rewrite! Z2Nat.id in Hlookup; try lia. done.
     + rename select (_ ∈ candidates) into Hincand.

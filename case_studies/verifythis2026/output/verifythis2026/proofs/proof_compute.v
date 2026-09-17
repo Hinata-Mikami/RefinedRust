@@ -16,7 +16,6 @@ Proof.
   1: rep <-! <3000 liRStep.
   1: rep <-! <3000 liRStep.
   1: rep <-! <3000 liRStep.
-  1: rep <-! <3000 liRStep.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

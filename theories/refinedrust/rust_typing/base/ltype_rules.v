@@ -152,11 +152,15 @@ Proof.
     { destruct (decide (enum_tag en r' = Some tag)) as [Htag_match | Htag_mismatch].
       - iEval (rewrite /interp_enum_ltype_variant decide_True //) in "Hdata".
         iEval (rewrite /interp_enum_ltype_variant decide_True //).
+        iDestruct "Hdata" as "(%rv & %Hrfn_payload & Hdata)".
+        iExists rv. iSplit; first done.
         iApply (IH with "[] Hdata"). done.
       - iEval (rewrite /interp_enum_ltype_variant decide_False //
           /canonical_enum_ltype_variant /OfTy /=) in "Hdata".
         iEval (rewrite /interp_enum_ltype_variant decide_False //
           /canonical_enum_ltype_variant /OfTy /=).
+        iDestruct "Hdata" as "(%rv & %Hrfn_payload & Hdata)".
+        iExists rv. iSplit; first done.
         rewrite !ltype_own_ofty_unfold.
         iApply (lty_of_ty_mono with "[] Hdata"). done. }
     iApply (lty_of_ty_mono with "[] Hpad2"). done.
@@ -179,6 +183,8 @@ Proof.
       iSplitL "Hdata".
       { iEval (rewrite /interp_enum_ltype_variant /OfTy /=) in "Hdata".
         iEval (rewrite /interp_enum_ltype_variant /OfTy /=).
+        iDestruct "Hdata" as "(%rv & %Hrfn_payload & Hdata)".
+        iExists rv. iSplit; first done.
         rewrite !ltype_own_ofty_unfold.
         iApply (lty_of_ty_mono with "[] Hdata"). done. }
       iApply (lty_of_ty_mono with "[] Hpad2"). done.

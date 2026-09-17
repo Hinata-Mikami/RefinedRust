@@ -5,15 +5,6 @@ From refinedrust.enum Require Import def subtype subltype unfold.
 From refinedrust Require Import programs.
 From refinedrust Require Import options.
 
-(* Certain automation only works well if we know the concrete variant we are in *)
-Class IsConcreteEnumTag (tag : var_name) : Set := {}.
-Global Hint Mode IsConcreteEnumTag + : typeclass_instances.
-Global Hint Extern 0 (IsConcreteEnumTag _) =>
-  simpl;
-  lazymatch goal with
-  | |- IsConcreteEnumTag EmptyString => constructor
-  | |- IsConcreteEnumTag (String.String _ _) => constructor
-  end : typeclass_instances.
 
 Section subtype.
   Context `{!typeGS Σ}.
@@ -186,16 +177,23 @@ Section subltype.
     let v2 := interp_enum_ltype_variant en2 variant2 r2' in
     ⌜enum_els en1 = enum_els en2⌝ ∗
     ⌜v1.(eltv_tag) = v2.(eltv_tag)⌝ ∗
-    ⌜enum_ltype_variant_tag_compat en2 r2' v2⌝ ∗
-    weak_subltype E L Owned (#v1.(eltv_rfn)) (#v2.(eltv_rfn))
-      v1.(eltv_ltype) v2.(eltv_ltype) T)
+    ⌜enum_ltype_variant_compat en2 r2' v2⌝ ∗
+    ∃ rv1 rv2,
+    ⌜enum_ltype_variant_rfn en1 r1 v1 rv1⌝ ∗
+    ⌜enum_ltype_variant_rfn en2 r2' v2 rv2⌝ ∗
+    weak_subltype E L Owned (#rv1) (#rv2) v1.(eltv_ltype) v2.(eltv_ltype) T)
     ⊢ weak_subltype E L Owned (#r1) r2
       (EnumLtype en1 variant1) (EnumLtype en2 variant2) T.
   Proof.
-    iIntros "(%r2' & -> & %Hels & %Htag & %Hcompat & HT)" (??) "#CTX #HE HL".
+    iIntros "(%r2' & -> & %Hels & %Htag & %Hcompat & %rv1 & %rv2 & %Hrfn1 & %Hrfn2 & HT)" (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & $)".
     iModIntro. iSplitR. { simp_ltypes. by rewrite Hels. }
-    by iApply enum_ltype_incl_owned_in.
+    iApply enum_ltype_incl_owned_in;
+      [exact Hels | exact Htag | exact Hcompat | exact Hst |].
+    iIntros (rv1' rv2') "%Hrfn1' %Hrfn2'".
+    have -> : rv1' = rv1 by eapply enum_ltype_variant_rfn_unique.
+    have -> : rv2' = rv2 by eapply enum_ltype_variant_rfn_unique.
+    done.
   Qed.
   Definition weak_subltype_enum_owned_in_inst := [instance @weak_subltype_enum_owned_in].
   Global Existing Instance weak_subltype_enum_owned_in_inst | 20.
@@ -208,7 +206,7 @@ Section subltype.
     ⌜enum_tag en2 r2' = Some tag⌝ ∗
     weak_subltype E L Owned (#re) (#(enum_r en2 r2')) lt (◁ enum_ty en2 r2') T)
     ⊢ weak_subltype E L Owned (#r1) r2
-      (EnumLtype en1 (Some (mk_enum_ltype_variant tag rte lt re))) (EnumLtype en2 None) T.
+      (EnumLtype en1 (Some (mk_enum_ltype_variant tag rte lt (Some re)))) (EnumLtype en2 None) T.
   Proof.
     iIntros "(%r2' & -> & %Hels & %Ht2 & HT)".
     iApply weak_subltype_enum_owned_in.
@@ -216,7 +214,10 @@ Section subltype.
     rewrite interp_enum_ltype_variant_Some_match; last done.
     rewrite /interp_enum_ltype_variant /canonical_enum_ltype_variant /=.
     rewrite (enum_tag'_Some en2 r2' tag Ht2).
-    iFrame. done.
+    iSplit; first done. iSplit; first done. iSplit.
+    { iPureIntro. split; first done.
+      exists (enum_r en2 r2'), eq_refl. split; done. }
+    iExists re, (enum_r en2 r2'). iFrame. done.
   Qed.
   Definition weak_subltype_enum_owned_some_none_inst := [instance @weak_subltype_enum_owned_some_none].
   Global Existing Instance weak_subltype_enum_owned_some_none_inst | 10.
@@ -228,19 +229,73 @@ Section subltype.
     (let v1 := interp_enum_ltype_variant en1 variant1 r1 in
     ⌜enum_els en1 = enum_els en2⌝ ∗
     ∃ sem, ⌜enum_tag_ty_inj en2 v1.(eltv_tag) = Some sem⌝ ∗
-    ∃ rp, weak_subltype E L Owned (#v1.(eltv_rfn)) (#rp)
+    ∃ rv, ⌜enum_ltype_variant_rfn en1 r1 v1 rv⌝ ∗
+    ∃ rp, weak_subltype E L Owned (#rv) (#rp)
       v1.(eltv_ltype) (OfTy sem.(enum_tag_sem_ty))
       (⌜r2 = #(sem.(enum_tag_rt_inj) rp)⌝ ∗ T))
     ⊢ weak_subltype E L Owned (#r1) r2
       (EnumLtype en1 variant1) (EnumLtype en2 None) T.
   Proof.
-    iIntros "(%Hels & %sem & %Hsem & %rp & HT)" (??) "#CTX #HE HL".
+    iIntros "(%Hels & %sem & %Hsem & %rv & %Hrfn & %rp & HT)" (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & -> & $)".
     iModIntro. iSplitR. { simp_ltypes. by rewrite Hels. }
-    by iApply enum_ltype_incl_owned_in_inj.
+    iApply enum_ltype_incl_owned_in_inj;
+      [exact Hels | exact Hsem | exact Hst | exact Hrfn |].
+    done.
   Qed.
   Definition weak_subltype_enum_owned_inj_inst := [instance @weak_subltype_enum_owned_inj].
   Global Existing Instance weak_subltype_enum_owned_inj_inst | 9.
+
+  Lemma weak_subltype_enum_owned_inj_none E L {rt1 rt2 rte}
+      (en1 : enum rt1) (en2 : enum rt2) variant1 r1 r2 tag
+      (lt : ltype rte) `{!ContainsProtected r2} T :
+    (let v1 := interp_enum_ltype_variant en1 variant1 r1 in
+    ⌜enum_els en1 = enum_els en2⌝ ∗
+    ⌜v1.(eltv_tag) = tag⌝ ∗
+    ∃ sem, ⌜enum_tag_ty_inj en2 tag = Some sem⌝ ∗
+    ∃ (Heq : sem.(enum_tag_sem_rt) = rte),
+    ∃ rv, ⌜enum_ltype_variant_rfn en1 r1 v1 rv⌝ ∗
+    ∃ rp, weak_subltype E L Owned (#rv)
+      (#(eq_rect _ RT_rt rp _ Heq)) v1.(eltv_ltype) lt
+      (⌜r2 = #(sem.(enum_tag_rt_inj) rp)⌝ ∗ T))
+    ⊢ weak_subltype E L Owned (#r1) r2
+      (EnumLtype en1 variant1)
+      (EnumLtype en2 (Some (mk_enum_ltype_variant tag rte lt None))) T.
+  Proof.
+    iIntros "(%Hels & %Htag & %sem & %Hsem & %Heq & %rv & %Hrfn & %rp & HT)" (??) "#CTX #HE HL".
+    iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & -> & $)".
+    iModIntro. iSplitR. { simp_ltypes. by rewrite Hels. }
+    iApply enum_ltype_incl_owned_in_inj_none;
+      [exact Hels | exact Htag | exact Hsem | exact Hst | exact Hrfn |].
+    done.
+  Qed.
+  Definition weak_subltype_enum_owned_inj_none_inst := [instance @weak_subltype_enum_owned_inj_none].
+  Global Existing Instance weak_subltype_enum_owned_inj_none_inst | 9.
+
+  Lemma weak_subltype_enum_owned_inj_some E L {rt1 rt2 rte}
+      (en1 : enum rt1) (en2 : enum rt2) variant1 r1 r2 tag
+      (lt : ltype rte) (re : rte) `{!ContainsProtected r2} T :
+    (let v1 := interp_enum_ltype_variant en1 variant1 r1 in
+    ⌜enum_els en1 = enum_els en2⌝ ∗
+    ⌜v1.(eltv_tag) = tag⌝ ∗
+    ∃ sem, ⌜enum_tag_ty_inj en2 tag = Some sem⌝ ∗
+    ∃ (Heq : sem.(enum_tag_sem_rt) = rte),
+    ∃ rv, ⌜enum_ltype_variant_rfn en1 r1 v1 rv⌝ ∗
+    weak_subltype E L Owned (#rv) (#re) v1.(eltv_ltype) lt
+      (⌜r2 = #(sem.(enum_tag_rt_inj) (eq_rect _ RT_rt re _ (eq_sym Heq)))⌝ ∗ T))
+    ⊢ weak_subltype E L Owned (#r1) r2
+      (EnumLtype en1 variant1)
+      (EnumLtype en2 (Some (mk_enum_ltype_variant tag rte lt (Some re)))) T.
+  Proof.
+    iIntros "(%Hels & %Htag & %sem & %Hsem & %Heq & %rv & %Hrfn & HT)" (??) "#CTX #HE HL".
+    iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & -> & $)".
+    iModIntro. iSplitR. { simp_ltypes. by rewrite Hels. }
+    iApply enum_ltype_incl_owned_in_inj_some;
+      [exact Hels | exact Htag | exact Hsem | exact Hst | exact Hrfn |].
+    done.
+  Qed.
+  Definition weak_subltype_enum_owned_inj_some_inst := [instance @weak_subltype_enum_owned_inj_some].
+  Global Existing Instance weak_subltype_enum_owned_inj_some_inst | 9.
 
   (* Unknown outer refinements must be preserved, including ghost refinements.
      The payload conversion therefore has to hold uniformly. *)
@@ -250,17 +305,25 @@ Section subltype.
     (* TODO: have dedicated sidecond solver for this *)
     ⌜∀ r, let v1 := interp_enum_ltype_variant en1 variant1 r in
       let v2 := interp_enum_ltype_variant en2 variant2 r in
-      (enum_ltype_variant_tag_compat en1 r v1 →
-        v1.(eltv_tag) = v2.(eltv_tag) ∧ enum_ltype_variant_tag_compat en2 r v2) ∧
-      subltype E L Owned (#v1.(eltv_rfn)) (#v2.(eltv_rfn)) v1.(eltv_ltype) v2.(eltv_ltype)⌝ ∗ T
+       (enum_ltype_variant_tag_compat en1 r v1 →
+         v1.(eltv_tag) = v2.(eltv_tag) ∧ enum_ltype_variant_compat en2 r v2) ∧
+       ltype_st v1.(eltv_ltype) = ltype_st v2.(eltv_ltype) ∧
+       ∀ rv1 rv2, enum_ltype_variant_rfn en1 r v1 rv1 →
+         enum_ltype_variant_rfn en2 r v2 rv2 →
+         subltype E L Owned (#rv1) (#rv2) v1.(eltv_ltype) v2.(eltv_ltype)⌝ ∗ T
     ⊢ weak_subltype E L Owned r1 r2 (EnumLtype en1 variant1) (EnumLtype en2 variant2) T.
   Proof.
     iIntros "(-> & %Hels & %Hsub & HT)" (??) "#CTX #HE HL".
     iAssert (∀ r, let v1 := interp_enum_ltype_variant en1 variant1 r in
       let v2 := interp_enum_ltype_variant en2 variant2 r in
-      ⌜ltype_st v1.(eltv_ltype) = ltype_st v2.(eltv_ltype)⌝ ∗
-      ltype_incl Owned (#v1.(eltv_rfn)) (#v2.(eltv_rfn)) v1.(eltv_ltype) v2.(eltv_ltype))%I as "#Hu".
-    { iIntros (r). iApply (subltype_acc with "CTX HE HL"). exact (proj2 (Hsub r)). }
+       ⌜ltype_st v1.(eltv_ltype) = ltype_st v2.(eltv_ltype)⌝ ∗
+       enum_ltype_variant_ltype_incl Owned en1 r v1 en2 r v2)%I as "#Hu".
+    { iIntros (r). iSplit.
+      - iPureIntro. exact (proj1 (proj2 (Hsub r))).
+      - iIntros (rv1 rv2) "%Hrfn1 %Hrfn2".
+        iPoseProof (subltype_acc with "CTX HE HL") as "Hu".
+        { exact (proj2 (proj2 (Hsub r)) rv1 rv2 Hrfn1 Hrfn2). }
+        iDestruct "Hu" as "(_ & $)". }
     iFrame. iModIntro. iSplitR. { simp_ltypes. by rewrite Hels. }
     iApply enum_ltype_incl_owned; first done.
     iIntros (r). destruct (Hsub r) as [Hcompat Hpayload]. iSplitR; first done.
@@ -292,16 +355,23 @@ Section subltype.
     let v2 := interp_enum_ltype_variant en2 variant2 r2' in
     ⌜enum_els en1 = enum_els en2⌝ ∗
     ⌜v1.(eltv_tag) = v2.(eltv_tag)⌝ ∗
-    ⌜enum_ltype_variant_tag_compat en2 r2' v2⌝ ∗
-    weak_subltype E L (Shared κ) (#v1.(eltv_rfn)) (#v2.(eltv_rfn))
-      v1.(eltv_ltype) v2.(eltv_ltype) T)
+    ⌜enum_ltype_variant_compat en2 r2' v2⌝ ∗
+    ∃ rv1 rv2,
+    ⌜enum_ltype_variant_rfn en1 r1 v1 rv1⌝ ∗
+    ⌜enum_ltype_variant_rfn en2 r2' v2 rv2⌝ ∗
+    weak_subltype E L (Shared κ) (#rv1) (#rv2) v1.(eltv_ltype) v2.(eltv_ltype) T)
     ⊢ weak_subltype E L (Shared κ) (#r1) r2
       (EnumLtype en1 variant1) (EnumLtype en2 variant2) T.
   Proof.
-    iIntros "(%r2' & -> & %Hels & %Htag & %Hcompat & HT)" (??) "#CTX #HE HL".
+    iIntros "(%r2' & -> & %Hels & %Htag & %Hcompat & %rv1 & %rv2 & %Hrfn1 & %Hrfn2 & HT)" (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & $)".
     iModIntro. iSplitR. { simp_ltypes. by rewrite Hels. }
-    by iApply enum_ltype_incl_shared_in.
+    iApply enum_ltype_incl_shared_in;
+      [exact Hels | exact Htag | exact Hcompat | exact Hst |].
+    iIntros (rv1' rv2') "%Hrfn1' %Hrfn2'".
+    have -> : rv1' = rv1 by eapply enum_ltype_variant_rfn_unique.
+    have -> : rv2' = rv2 by eapply enum_ltype_variant_rfn_unique.
+    done.
   Qed.
   Definition weak_subltype_enum_shared_in_inst := [instance @weak_subltype_enum_shared_in].
   Global Existing Instance weak_subltype_enum_shared_in_inst | 20.
@@ -314,14 +384,18 @@ Section subltype.
     ⌜enum_tag en2 r2' = Some tag⌝ ∗
     weak_subltype E L (Shared κ) (#re) (#(enum_r en2 r2')) lt (◁ enum_ty en2 r2') T)
     ⊢ weak_subltype E L (Shared κ) (#r1) r2
-      (EnumLtype en1 (Some (mk_enum_ltype_variant tag rte lt re))) (EnumLtype en2 None) T.
+      (EnumLtype en1 (Some (mk_enum_ltype_variant tag rte lt (Some re)))) (EnumLtype en2 None) T.
   Proof.
     iIntros "(%r2' & -> & %Hels & %Ht2 & HT)".
     iApply weak_subltype_enum_shared_in.
     iExists r2'. iSplitR; first done.
     rewrite interp_enum_ltype_variant_Some_match; last done.
     rewrite /interp_enum_ltype_variant /canonical_enum_ltype_variant /=.
-    rewrite (enum_tag'_Some en2 r2' tag Ht2). iFrame. done.
+    rewrite (enum_tag'_Some en2 r2' tag Ht2).
+    iSplit; first done. iSplit; first done. iSplit.
+    { iPureIntro. split; first done.
+      exists (enum_r en2 r2'), eq_refl. split; done. }
+    iExists re, (enum_r en2 r2'). iFrame. done.
   Qed.
   Definition weak_subltype_enum_shared_some_none_inst := [instance @weak_subltype_enum_shared_some_none].
   Global Existing Instance weak_subltype_enum_shared_some_none_inst | 10.
@@ -332,19 +406,73 @@ Section subltype.
     (let v1 := interp_enum_ltype_variant en1 variant1 r1 in
     ⌜enum_els en1 = enum_els en2⌝ ∗
     ∃ sem, ⌜enum_tag_ty_inj en2 v1.(eltv_tag) = Some sem⌝ ∗
-    ∃ rp, weak_subltype E L (Shared κ) (#v1.(eltv_rfn)) (#rp)
+    ∃ rv, ⌜enum_ltype_variant_rfn en1 r1 v1 rv⌝ ∗
+    ∃ rp, weak_subltype E L (Shared κ) (#rv) (#rp)
       v1.(eltv_ltype) (OfTy sem.(enum_tag_sem_ty))
       (⌜r2 = #(sem.(enum_tag_rt_inj) rp)⌝ ∗ T))
     ⊢ weak_subltype E L (Shared κ) (#r1) r2
       (EnumLtype en1 variant1) (EnumLtype en2 None) T.
   Proof.
-    iIntros "(%Hels & %sem & %Hsem & %rp & HT)" (??) "#CTX #HE HL".
+    iIntros "(%Hels & %sem & %Hsem & %rv & %Hrfn & %rp & HT)" (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & -> & $)".
     iModIntro. iSplitR. { simp_ltypes. by rewrite Hels. }
-    by iApply enum_ltype_incl_shared_in_inj.
+    iApply enum_ltype_incl_shared_in_inj;
+      [exact Hels | exact Hsem | exact Hst | exact Hrfn |].
+    done.
   Qed.
   Definition weak_subltype_enum_shared_inj_inst := [instance @weak_subltype_enum_shared_inj].
   Global Existing Instance weak_subltype_enum_shared_inj_inst | 9.
+
+  Lemma weak_subltype_enum_shared_inj_none E L {rt1 rt2 rte}
+      (en1 : enum rt1) (en2 : enum rt2) variant1 r1 r2 tag κ
+      (lt : ltype rte) `{!ContainsProtected r2} T :
+    (let v1 := interp_enum_ltype_variant en1 variant1 r1 in
+    ⌜enum_els en1 = enum_els en2⌝ ∗
+    ⌜v1.(eltv_tag) = tag⌝ ∗
+    ∃ sem, ⌜enum_tag_ty_inj en2 tag = Some sem⌝ ∗
+    ∃ (Heq : sem.(enum_tag_sem_rt) = rte),
+    ∃ rv, ⌜enum_ltype_variant_rfn en1 r1 v1 rv⌝ ∗
+    ∃ rp, weak_subltype E L (Shared κ) (#rv)
+      (#(eq_rect _ RT_rt rp _ Heq)) v1.(eltv_ltype) lt
+      (⌜r2 = #(sem.(enum_tag_rt_inj) rp)⌝ ∗ T))
+    ⊢ weak_subltype E L (Shared κ) (#r1) r2
+      (EnumLtype en1 variant1)
+      (EnumLtype en2 (Some (mk_enum_ltype_variant tag rte lt None))) T.
+  Proof.
+    iIntros "(%Hels & %Htag & %sem & %Hsem & %Heq & %rv & %Hrfn & %rp & HT)" (??) "#CTX #HE HL".
+    iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & -> & $)".
+    iModIntro. iSplitR. { simp_ltypes. by rewrite Hels. }
+    iApply enum_ltype_incl_shared_in_inj_none;
+      [exact Hels | exact Htag | exact Hsem | exact Hst | exact Hrfn |].
+    done.
+  Qed.
+  Definition weak_subltype_enum_shared_inj_none_inst := [instance @weak_subltype_enum_shared_inj_none].
+  Global Existing Instance weak_subltype_enum_shared_inj_none_inst | 9.
+
+  Lemma weak_subltype_enum_shared_inj_some E L {rt1 rt2 rte}
+      (en1 : enum rt1) (en2 : enum rt2) variant1 r1 r2 tag κ
+      (lt : ltype rte) (re : rte) `{!ContainsProtected r2} T :
+    (let v1 := interp_enum_ltype_variant en1 variant1 r1 in
+    ⌜enum_els en1 = enum_els en2⌝ ∗
+    ⌜v1.(eltv_tag) = tag⌝ ∗
+    ∃ sem, ⌜enum_tag_ty_inj en2 tag = Some sem⌝ ∗
+    ∃ (Heq : sem.(enum_tag_sem_rt) = rte),
+    ∃ rv, ⌜enum_ltype_variant_rfn en1 r1 v1 rv⌝ ∗
+    weak_subltype E L (Shared κ) (#rv) (#re) v1.(eltv_ltype) lt
+      (⌜r2 = #(sem.(enum_tag_rt_inj) (eq_rect _ RT_rt re _ (eq_sym Heq)))⌝ ∗ T))
+    ⊢ weak_subltype E L (Shared κ) (#r1) r2
+      (EnumLtype en1 variant1)
+      (EnumLtype en2 (Some (mk_enum_ltype_variant tag rte lt (Some re)))) T.
+  Proof.
+    iIntros "(%Hels & %Htag & %sem & %Hsem & %Heq & %rv & %Hrfn & HT)" (??) "#CTX #HE HL".
+    iMod ("HT" with "[//] CTX HE HL") as "(%Hst & Hincl & $ & -> & $)".
+    iModIntro. iSplitR. { simp_ltypes. by rewrite Hels. }
+    iApply enum_ltype_incl_shared_in_inj_some;
+      [exact Hels | exact Htag | exact Hsem | exact Hst | exact Hrfn |].
+    done.
+  Qed.
+  Definition weak_subltype_enum_shared_inj_some_inst := [instance @weak_subltype_enum_shared_inj_some].
+  Global Existing Instance weak_subltype_enum_shared_inj_some_inst | 9.
 
   Lemma weak_subltype_enum_shared E L {rt} (en1 en2 : enum rt)
       variant1 variant2 r1 r2 κ T :
@@ -352,17 +480,25 @@ Section subltype.
     (* TODO: have dedicated sidecond solver for this *)
     ⌜∀ r, let v1 := interp_enum_ltype_variant en1 variant1 r in
       let v2 := interp_enum_ltype_variant en2 variant2 r in
-      (enum_ltype_variant_tag_compat en1 r v1 →
-        v1.(eltv_tag) = v2.(eltv_tag) ∧ enum_ltype_variant_tag_compat en2 r v2) ∧
-      subltype E L (Shared κ) (#v1.(eltv_rfn)) (#v2.(eltv_rfn)) v1.(eltv_ltype) v2.(eltv_ltype)⌝ ∗ T
+       (enum_ltype_variant_tag_compat en1 r v1 →
+         v1.(eltv_tag) = v2.(eltv_tag) ∧ enum_ltype_variant_compat en2 r v2) ∧
+       ltype_st v1.(eltv_ltype) = ltype_st v2.(eltv_ltype) ∧
+       ∀ rv1 rv2, enum_ltype_variant_rfn en1 r v1 rv1 →
+         enum_ltype_variant_rfn en2 r v2 rv2 →
+         subltype E L (Shared κ) (#rv1) (#rv2) v1.(eltv_ltype) v2.(eltv_ltype)⌝ ∗ T
     ⊢ weak_subltype E L (Shared κ) r1 r2 (EnumLtype en1 variant1) (EnumLtype en2 variant2) T.
   Proof.
     iIntros "(-> & %Hels & %Hsub & HT)" (??) "#CTX #HE HL".
     iAssert (∀ r, let v1 := interp_enum_ltype_variant en1 variant1 r in
       let v2 := interp_enum_ltype_variant en2 variant2 r in
-      ⌜ltype_st v1.(eltv_ltype) = ltype_st v2.(eltv_ltype)⌝ ∗
-      ltype_incl (Shared κ) (#v1.(eltv_rfn)) (#v2.(eltv_rfn)) v1.(eltv_ltype) v2.(eltv_ltype))%I as "#Hu".
-    { iIntros (r). iApply (subltype_acc with "CTX HE HL"). exact (proj2 (Hsub r)). }
+       ⌜ltype_st v1.(eltv_ltype) = ltype_st v2.(eltv_ltype)⌝ ∗
+       enum_ltype_variant_ltype_incl (Shared κ) en1 r v1 en2 r v2)%I as "#Hu".
+    { iIntros (r). iSplit.
+      - iPureIntro. exact (proj1 (proj2 (Hsub r))).
+      - iIntros (rv1 rv2) "%Hrfn1 %Hrfn2".
+        iPoseProof (subltype_acc with "CTX HE HL") as "Hu".
+        { exact (proj2 (proj2 (Hsub r)) rv1 rv2 Hrfn1 Hrfn2). }
+        iDestruct "Hu" as "(_ & $)". }
     iFrame. iModIntro. iSplitR. { simp_ltypes. by rewrite Hels. }
     iApply enum_ltype_incl_shared; first done.
     iIntros (r). destruct (Hsub r) as [Hcompat Hpayload]. iSplitR; first done.
@@ -395,8 +531,10 @@ Section subltype.
       let v2 := interp_enum_ltype_variant en2 variant2 r in
       v1.(eltv_tag) = v2.(eltv_tag) ∧
       (enum_ltype_variant_compat en1 r v1 ↔ enum_ltype_variant_compat en2 r v2) ∧
-      subltype E L Owned (#v1.(eltv_rfn)) (#v2.(eltv_rfn)) v1.(eltv_ltype) v2.(eltv_ltype) ∧
-      subltype E L Owned (#v2.(eltv_rfn)) (#v1.(eltv_rfn)) v2.(eltv_ltype) v1.(eltv_ltype)⌝ ∗ T
+      ltype_st v1.(eltv_ltype) = ltype_st v2.(eltv_ltype) ∧
+      ∀ rv1 rv2, enum_ltype_variant_rfn en1 r v1 rv1 →
+        enum_ltype_variant_rfn en2 r v2 rv2 →
+        eqltype E L Owned (#rv1) (#rv2) v1.(eltv_ltype) v2.(eltv_ltype)⌝ ∗ T
     ⊢ weak_subltype E L (Uniq κ γ) r1 r2 (EnumLtype en1 variant1) (EnumLtype en2 variant2) T.
   Proof.
     iIntros "(-> & %Hels & %Hsub & HT)" (??) "#CTX #HE HL".
@@ -405,11 +543,11 @@ Section subltype.
       ⌜v1.(eltv_tag) = v2.(eltv_tag)⌝ ∗
       ⌜enum_ltype_variant_compat en1 r v1 ↔ enum_ltype_variant_compat en2 r v2⌝ ∗
       ⌜ltype_st v1.(eltv_ltype) = ltype_st v2.(eltv_ltype)⌝ ∗
-      ltype_eq Owned (#v1.(eltv_rfn)) (#v2.(eltv_rfn)) v1.(eltv_ltype) v2.(eltv_ltype))%I as "#Hu".
-    { iIntros (r). destruct (Hsub r) as (Htag & Hcompat & H12 & H21).
-      iPoseProof (subltype_acc with "CTX HE HL") as "(%Hst & #H12)"; first exact H12.
-      iPoseProof (subltype_acc with "CTX HE HL") as "(%Hst2 & #H21)"; first exact H21.
-      iR. iR. iR. iFrame "#". }
+      enum_ltype_variant_ltype_eq Owned en1 r v1 en2 r v2)%I as "#Hu".
+    { iIntros (r). destruct (Hsub r) as (Htag & Hcompat & Hst & Hpayload).
+      iR. iR. iR. iIntros (rv1 rv2) "%Hrfn1 %Hrfn2".
+      iPoseProof (eqltype_acc with "CTX HE HL") as "(_ & $)".
+      exact (Hpayload rv1 rv2 Hrfn1 Hrfn2). }
     iFrame. iModIntro. iSplitR. { simp_ltypes. by rewrite Hels. }
     by iApply enum_ltype_incl_uniq.
   Qed.

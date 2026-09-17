@@ -413,6 +413,12 @@ Ltac liRInstantiateEvars :=
         If [b] or [c] contains another evar, the let-definition for that will not be in scope, which can create trouble at Qed. time *)
   | |- (protected ?a = ?b -:: ?c) ∧ _ =>
     instantiate_protected a (protected (EVAR_ID _) -:: protected (EVAR_ID _))
+  | |- (@eq (place_rfn _) (PlaceIn (protected ?a -:: ?c))
+        (PlaceIn (?b -:: ?d))) ∧ _ =>
+    instantiate_protected a b
+  | |- (@eq (place_rfn _) (PlaceIn (?b -:: ?d))
+        (PlaceIn (protected ?a -:: ?c))) ∧ _ =>
+    instantiate_protected a b
   (* in this case, we do not want it to instantiate the evar for [a], but rather directly instantiate it with the only possible candidate.
      (if the other side also contains an evar, we would be instantiating less than we could otherwise) *)
   | |- (@eq (hlist _ []) _ (protected ?a)) ∧ _ =>
@@ -1230,6 +1236,8 @@ Global Hint Extern 0 (LayoutSizeEq _ _) => rewrite /LayoutSizeEq; solve_layout_s
 Global Hint Extern 0 (LayoutSizeLe _ _) => rewrite /LayoutSizeLe; solve_layout_size : typeclass_instances.
 
 Global Hint Unfold size_of_array_in_bytes : solve_goal_unfold.
+
+Global Hint Unfold enum_ltype_variant_rfn : lithium_rewrite.
 
 (* This should instead be solved by [solve_ty_has_op_type]. *)
 Global Arguments ty_has_op_type : simpl never.

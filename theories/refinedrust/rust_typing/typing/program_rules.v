@@ -3864,34 +3864,6 @@ Section subsume.
   Definition type_read_copy_inst := [instance @type_read_copy].
   Global Existing Instance type_read_copy_inst | 10.
 
-  (** Moving remains restricted to value ltypes.  This low-priority rule keeps
-      the previous behavior for ltypes that can be folded to an [OfTy]. *)
-  Lemma type_read_move_fold_to_ofty E L {rt} π b bmin l (lt : ltype rt) r ot
-      (T : typed_read_end_cont_t bmin rt) :
-    cast_ltype_to_type E L lt (λ ty,
-      typed_read_end π E L l (◁ ty) r b bmin ot ReadDoMove T)
-    ⊢ typed_read_end π E L l lt r b bmin ot ReadDoMove T.
-  Proof.
-    iIntros "(%ty & %Heqt & HT)" (F ????) "#CTX #HE HL Hl".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Heq)"; first apply Heqt.
-    iDestruct ("Heq" $! b r) as "(#Hincl & _)".
-    iMod (ltype_incl_use with "Hincl Hl") as "Hl"; first done.
-    iMod ("HT" with "[//] [//] [//] [//] CTX HE HL Hl") as
-      (q v rt' ty' r') "(%Hlyl & %Hlyv & %Hdec & Hpt & Hv & Hcl)".
-    iModIntro. iExists q, v, rt', ty', r'. iR. iR. iR. iFrame "Hpt Hv".
-    iApply (logical_step_wand with "Hcl").
-    iIntros "Hcl" (st ov) "%Hdecode Hpt Hv".
-    iMod ("Hcl" $! st ov with "[//] Hpt Hv") as
-      (L' rt3 ty3 r3) "(Hv & HL & %rt2 & %lt2 & %r2 & %res & Hl & %Hst2 & Hincl2 & Hcond & HT)".
-    iModIntro. iExists L', rt3, ty3, r3. iFrame "Hv HL".
-    iExists rt2, lt2, r2, res. iFrame.
-    iSplitR. { simpl in Hst. by rewrite Hst Hst2. }
-    iApply ltype_eq_place_cond_trans; [done | iApply "Heq" | done].
-  Qed.
-  Definition type_read_move_fold_to_ofty_inst :=
-    [instance @type_read_move_fold_to_ofty].
-  Global Existing Instance type_read_move_fold_to_ofty_inst | 100.
-
   Lemma type_write E L f T T' e ot v rt (ty : type rt) r :
     IntoPlaceCtx E f e T' →
     T' L (λ L' K l, find_in_context (FindLoc l) (λ '(existT rto (lt1, r1, b, π')),

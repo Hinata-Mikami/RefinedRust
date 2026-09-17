@@ -544,6 +544,175 @@ End std_option_Option_ty.
     Unshelve. all: intros []; eexists; done.
   Qed.
 
+  (* The unique place condition permits a blocked payload, although that
+     payload cannot yet be fully folded back to its type. *)
+  Lemma option_prove_uniq_blocked_payload E L {rt} (ty : type rt) κ :
+    lctx_place_update_kind_outlives E L (UpdUniq [κ]) [κ] →
+    ⊢ prove_place_cond E L (UpdUniq [κ])
+      (EnumLtype (std_option_Option_enum ty)
+        (Some (mk_enum_ltype_variant "Some" _ (OfTy (std_option_Option_Some_ty ty)) None)))
+      (EnumLtype (std_option_Option_enum ty)
+        (Some (mk_enum_ltype_variant "Some" _
+          (BlockedLtype (std_option_Option_Some_ty ty) κ) None)))
+      (λ upd, ⌜upd.(puk_res_k) = UpdUniq [κ]⌝ ∗ True).
+  Proof.
+    intros Hout. iStartProof. repeat liRStep.
+  Qed.
+
+  Lemma option_prove_uniq_blocked_payload_canonical E L {rt} (ty : type rt) κ :
+    lctx_place_update_kind_outlives E L (UpdUniq [κ]) [κ] →
+    ⊢ prove_place_cond E L (UpdUniq [κ])
+      (EnumLtype (std_option_Option_enum ty) None)
+      (EnumLtype (std_option_Option_enum ty)
+        (Some (mk_enum_ltype_variant "Some" _
+          (BlockedLtype (std_option_Option_Some_ty ty) κ) None)))
+      (λ upd, ⌜upd.(puk_res_k) = UpdUniq [κ]⌝ ∗ True).
+  Proof.
+    intros Hout. iStartProof. repeat liRStep.
+  Qed.
+
+  Lemma option_prove_uniq_blocked_payload_ofty E L {rt} (ty : type rt) κ :
+    lctx_place_update_kind_outlives E L (UpdUniq [κ]) [κ] →
+    ⊢ prove_place_cond E L (UpdUniq [κ])
+      (OfTy (std_option_Option_ty ty))
+      (EnumLtype (std_option_Option_enum ty)
+        (Some (mk_enum_ltype_variant "Some" _
+          (BlockedLtype (std_option_Option_Some_ty ty) κ) None)))
+      (λ upd, ⌜upd.(puk_res_k) = UpdUniq [κ]⌝ ∗ True).
+  Proof.
+    intros Hout. iStartProof. repeat liRStep.
+  Qed.
+
+  (* Exercise rule selection and closing with a different payload refinement,
+     then fold the resulting enum through the registered cast rule. *)
+  Definition option_uniq_update_cont {rt} (ty : type rt) (y : rt) κ :
+      place_cont_t (option (place_rfnRT rt)) UpdStrong :=
+    (λ L' _ _ _ bmin rti lti _ updcx,
+      ∃ Heq : std_option_Option_Some_rt ty = rti,
+      updcx L' (mkPUpd _ bmin rti lti
+        (eq_rect (std_option_Option_Some_rt ty) (λ rt : RT, place_rfn rt) (#(-[#y])) _ Heq)
+        True (UpdUniq [κ]) opt_place_update_eq_refl opt_place_update_eq_refl)
+        (λ upd, ∃ Hout : (option (place_rfnRT rt) : RT) = upd.(pupd_rt),
+          ⌜upd.(pupd_rfn) = eq_rect _ (λ rt : RT, place_rfn rt) (#(Some (#y))) _ Hout⌝ ∗
+          ⌜upd.(pupd_performed) = UpdUniq [κ]⌝ ∗
+          cast_ltype_to_type [] [] upd.(pupd_lt) (λ _, True)))%I.
+  Arguments option_uniq_update_cont _ _ _ /.
+
+  Lemma option_uniq_override_update E L L' κs f l {rt} (ty : type rt) (x y : rt) κ γ :
+    lctx_lft_alive_count E L κ κs L' →
+    ⊢ typed_place E L f l
+      (EnumLtype (std_option_Option_enum ty)
+        (Some (mk_enum_ltype_variant "Some" _ (OfTy (std_option_Option_Some_ty ty)) None)))
+      (#(Some (#x))) UpdStrong (Uniq κ γ)
+      [EnumDataPCtx (std_option_Option_els (ty_syn_type ty MetaNone)) "Some"]
+      (option_uniq_update_cont ty y κ).
+  Proof.
+    intros Hal. iStartProof. repeat liRStep.
+  Qed.
+
+  Lemma option_uniq_canonical_update E L L' κs f l {rt} (ty : type rt) (x y : rt) κ γ :
+    lctx_lft_alive_count E L κ κs L' →
+    ⊢ typed_place E L f l (EnumLtype (std_option_Option_enum ty) None)
+      (#(Some (#x))) UpdStrong (Uniq κ γ)
+      [EnumDataPCtx (std_option_Option_els (ty_syn_type ty MetaNone)) "Some"]
+      (option_uniq_update_cont ty y κ).
+  Proof.
+    intros Hal. iStartProof. repeat liRStep.
+  Qed.
+
+  (* A strong payload update cannot be reflected through the unique enum
+     contract, so the enum is returned as an OpenedLtype at its old outer
+     refinement. *)
+  Definition option_uniq_open_cont {rt} (ty : type rt) (x y : rt) :
+      place_cont_t (option (place_rfnRT rt)) UpdStrong :=
+    (λ L' _ _ _ bmin rti lti _ updcx,
+      ∃ Heq : std_option_Option_Some_rt ty = rti,
+      updcx L' (mkPUpd _ bmin rti lti
+        (eq_rect (std_option_Option_Some_rt ty) (λ rt : RT, place_rfn rt) (#(-[#y])) _ Heq)
+        True UpdStrong I opt_place_update_eq_refl)
+        (λ upd, ∃ Hout : (option (place_rfnRT rt) : RT) = upd.(pupd_rt),
+          ⌜upd.(pupd_rfn) = eq_rect _ (λ rt : RT, place_rfn rt) (#(Some (#x))) _ Hout⌝ ∗
+          ⌜upd.(pupd_performed) = UpdStrong⌝ ∗ True))%I.
+  Arguments option_uniq_open_cont _ _ _ /.
+
+  Lemma option_uniq_override_open E L L' κs f l {rt} (ty : type rt) (x y : rt) κ γ :
+    lctx_lft_alive_count E L κ κs L' →
+    ⊢ typed_place E L f l
+      (EnumLtype (std_option_Option_enum ty)
+        (Some (mk_enum_ltype_variant "Some" _ (OfTy (std_option_Option_Some_ty ty)) None)))
+      (#(Some (#x))) UpdStrong (Uniq κ γ)
+      [EnumDataPCtx (std_option_Option_els (ty_syn_type ty MetaNone)) "Some"]
+      (option_uniq_open_cont ty x y).
+  Proof.
+    intros Hal. iStartProof. repeat liRStep.
+  Qed.
+
+  Lemma option_uniq_canonical_open E L L' κs f l {rt} (ty : type rt) (x y : rt) κ γ :
+    lctx_lft_alive_count E L κ κs L' →
+    ⊢ typed_place E L f l (EnumLtype (std_option_Option_enum ty) None)
+      (#(Some (#x))) UpdStrong (Uniq κ γ)
+      [EnumDataPCtx (std_option_Option_els (ty_syn_type ty MetaNone)) "Some"]
+      (option_uniq_open_cont ty x y).
+  Proof.
+    intros Hal. iStartProof. repeat liRStep.
+  Qed.
+
+  Lemma option_stratify_owned_explicit_normalize π E L l {rt}
+      (ty : type rt) (x y : rt) :
+    ⊢ stratify_ltype π E L StratNoUnfold StratNoRefold StratifyUnblockOp l
+      (EnumLtype (std_option_Option_enum ty)
+        (Some (mk_enum_ltype_variant "Some" _
+          (OfTy (std_option_Option_Some_ty ty)) (Some (-[#y])))))
+      (#(Some (#x))) Owned
+      (λ L2 _ rt2 lt2 r2,
+        cast_ltype_to_type E L2 lt2 (λ ty2,
+          ∃ Hout : (option (place_rfnRT rt) : RT) = rt2,
+            ⌜ty2 = eq_rect _ type (std_option_Option_ty ty) _ Hout⌝ ∗
+            ⌜r2 = eq_rect _ (λ rt : RT, place_rfn rt)
+              (#(Some (#y))) _ Hout⌝ ∗ True)).
+  Proof.
+    iStartProof. repeat liRStep.
+  Qed.
+
+  Lemma option_stratify_owned_ofty π E L l {rt}
+      (ty : type rt) (x : rt) :
+    ⊢ stratify_ltype π E L StratDoUnfold StratNoRefold StratifyUnblockOp l
+      (OfTy (std_option_Option_ty ty)) (#(Some (#x))) Owned
+      (λ L2 _ rt2 lt2 r2,
+        cast_ltype_to_type E L2 lt2 (λ ty2,
+          ∃ Hout : (option (place_rfnRT rt) : RT) = rt2,
+            ⌜ty2 = eq_rect _ type (std_option_Option_ty ty) _ Hout⌝ ∗
+            ⌜r2 = eq_rect _ (λ rt : RT, place_rfn rt)
+              (#(Some (#x))) _ Hout⌝ ∗ True)).
+  Proof.
+    iStartProof.
+    rep liRStep.
+  Qed.
+
+  Lemma option_stratify_uniq_refold π E L L' κs l {rt}
+      (ty : type rt) (x : rt) κ γ :
+    lctx_lft_alive_count E L κ κs L' →
+    ⊢ stratify_ltype π E L StratNoUnfold StratRefoldFull StratifyUnblockOp l
+      (EnumLtype (std_option_Option_enum ty)
+        (Some (mk_enum_ltype_variant "Some" _
+          (OfTy (std_option_Option_Some_ty ty)) None)))
+      (#(Some (#x))) (Uniq κ γ)
+      (λ _ _ _ _ _, True).
+  Proof.
+    intros Hal. iStartProof. repeat liRStep.
+  Qed.
+
+  Lemma option_stratify_uniq_canonical π E L L' κs l {rt}
+      (ty : type rt) (x : rt) κ γ :
+    lctx_lft_alive_count E L κ κs L' →
+    ⊢ stratify_ltype π E L StratNoUnfold StratNoRefold StratifyUnblockOp l
+      (EnumLtype (std_option_Option_enum ty) None)
+      (#(Some (#x))) (Uniq κ γ)
+      (λ _ _ _ _ _, True).
+  Proof.
+    intros Hal. iStartProof. rep liRStep.
+  Qed.
+
   Instance option_contr {rt1 T_rt} (T : type rt1 → type T_rt) :
     TypeContractive T →
     TypeContractive (λ ty, std_option_Option_ty (T ty)).

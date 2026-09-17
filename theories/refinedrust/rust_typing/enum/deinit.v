@@ -22,7 +22,7 @@ Section deinit.
     ((list_to_map (en.(enum_els).(els_variants)) : gmap _ _)) !! tag = Some variant_st →
     l ◁ₗ[π, Owned] #r @
       EnumLtype en (Some (mk_enum_ltype_variant tag unitRT
-        (◁ typed_value_t variant_st) ())) ={F}=∗
+        (◁ typed_value_t variant_st) (Some ()))) ={F}=∗
     l ◁ₗ[π, Owned] #() @ (◁ typed_value_t en.(enum_els)).
   Proof.
     iIntros (Hincl Htag Hlookup) "Hl".
@@ -32,12 +32,14 @@ Section deinit.
     iMod (fupd_mask_subseteq lftE) as "Hcl"; first done.
     iMod "Hl" as "(%variant_ly & %Htagcompat & %Hvariant & %Hst & Htag & Htag_pad & Hpayload & Htail)".
     assert (interp_enum_ltype_variant en
-      (Some (mk_enum_ltype_variant tag unitRT (◁ typed_value_t variant_st)%I ())) r =
-      mk_enum_ltype_variant tag unitRT (◁ typed_value_t variant_st)%I ()) as Hinterp.
+      (Some (mk_enum_ltype_variant tag unitRT (◁ typed_value_t variant_st)%I (Some ()))) r =
+      mk_enum_ltype_variant tag unitRT (◁ typed_value_t variant_st)%I (Some ())) as Hinterp.
     { apply interp_enum_ltype_variant_Some_match. done. }
     rewrite Hinterp in Hvariant, Hst |-*.
     iMod (ofty_owned_to_pointsto_val with "Htag") as "(%vtag & Hl_tag & Htag)".
     iMod (ofty_owned_to_pointsto_val with "Htag_pad") as "(%vtag_pad & Hl_tag_pad & Htag_pad)".
+    iDestruct "Hpayload" as "(%rv & %Hrfn_payload & Hpayload)".
+    change (rv = ()) in Hrfn_payload. subst rv.
     iEval (rewrite /interp_enum_ltype_variant /OfTy /= ltype_own_ofty_unfold) in "Hpayload".
     iMod (ofty_owned_to_pointsto_val with "Hpayload") as "(%vpayload & Hl_payload & Hpayload)".
     iMod (ofty_owned_to_pointsto_val with "Htail") as "(%vtail & Hl_tail & Htail)".
@@ -162,7 +164,7 @@ Section rules.
 
   Lemma owned_subltype_step_enum_uninit π E L step l {rt rte} (en : enum rt) (lte : ltype rte) rs tag re st T  :
      owned_subltype_step π E L step l (#rs) (#())
-      (EnumLtype en (Some (mk_enum_ltype_variant tag rte lte re)))
+       (EnumLtype en (Some (mk_enum_ltype_variant tag rte lte (Some re))))
       (◁ typed_value_t st) T :-
     exhale (⌜st = en.(enum_els)⌝);
     exhale (⌜enum_tag en rs = Some tag⌝);
@@ -179,10 +181,12 @@ Section rules.
     iPoseProof (enum_ltype_acc_owned F with "Hl") as
       "(%el & %Halg & %Hly & #Hlb & >(%variant_ly & %Htagcompat & %Hvariant & %Hst & Htag & Hpayload & Hclose))"; first done.
     assert (interp_enum_ltype_variant en
-      (Some (mk_enum_ltype_variant tag rte lte re)) rs =
-      mk_enum_ltype_variant tag rte lte re) as Hinterp.
+      (Some (mk_enum_ltype_variant tag rte lte (Some re))) rs =
+      mk_enum_ltype_variant tag rte lte (Some re)) as Hinterp.
     { apply interp_enum_ltype_variant_Some_match. done. }
     rewrite Hinterp /= in Htagcompat, Hvariant, Hst |-*.
+    iDestruct "Hpayload" as "(%rv & %Hrfn_payload & Hpayload)".
+    change (rv = re) in Hrfn_payload. subst rv.
     iSpecialize ("Hsub" $! (l +ₗ el.(el_data_offset))).
     iMod ("Hsub" with "[] [] [] CTX HE HL Hpayload") as
       "(%L2 & %R2 & Hstep & HL & HT)"; [done.. | ].
@@ -192,8 +196,8 @@ Section rules.
     iApply (maybe_logical_step_compose with "Hstep").
     iApply maybe_logical_step_intro.
     iIntros "(Hpayload & HR)".
-    iMod ("Hclose" $! unitRT (◁ typed_value_t (ltype_st lte))%I () rs with
-      "[] [] Htag Hpayload") as "Hl"; [done.. | ].
+    iMod ("Hclose" $! unitRT (◁ typed_value_t (ltype_st lte))%I (Some ()) () rs with
+      "[] [] [] Htag Hpayload") as "Hl"; [done.. | ].
     rewrite lookup_iml_list_to_map_eq in Hlookup; first last.
     { apply els_variants_nodup. }
     iMod (ltype_deinit_enum F π en rs tag (ltype_st lte) l with "Hl") as "Hl"; [done.. | ].
