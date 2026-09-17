@@ -198,6 +198,37 @@ mod tests {
             "nested mutable reborrow did not use the intersection of both lifetimes:\n{mutable_definition}"
         );
 
+        let call_definition = definition("call_choose_mut_lifetime");
+        let unconstrained_line = call_definition
+            .lines()
+            .find(|line| line.contains("UnconstrainedLftAnnot"))
+            .unwrap_or_else(|| panic!("missing unconstrained call lifetime annotation:\n{call_definition}"));
+        let unconstrained_lft =
+            unconstrained_line.split('"').nth(1).expect("malformed unconstrained lifetime annotation");
+        let annotation_position = call_definition
+            .find(unconstrained_line)
+            .expect("unconstrained lifetime annotation disappeared");
+        let call_position = call_definition
+            .find("CallS")
+            .unwrap_or_else(|| panic!("missing generated call:\n{call_definition}"));
+        assert!(annotation_position < call_position, "unconstrained lifetime was initialized after the call");
+        let call_line = call_definition[call_position..].lines().next().expect("missing generated call line");
+        assert!(
+            call_line.contains(&format!("\"{unconstrained_lft}\"")),
+            "unconstrained lifetime is absent from the call instantiation: {call_line}"
+        );
+
+        let call_template = fs::read_to_string(
+            output
+                .path()
+                .join("loan_supports/generated/generated_template_call_choose_mut_lifetime.v"),
+        )
+        .expect("missing unconstrained-call proof template");
+        assert!(
+            call_template.contains(&format!("check_unconstrained_lft \"{unconstrained_lft}\";")),
+            "proof prelude does not check the unconstrained call lifetime:\n{call_template}"
+        );
+
         output.cleanup();
     }
 

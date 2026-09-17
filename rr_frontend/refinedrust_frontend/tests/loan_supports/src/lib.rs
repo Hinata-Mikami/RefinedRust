@@ -23,3 +23,18 @@ pub fn nested_shared_reborrow<'a, 'b>(value: &'b &'a u32, _use_b: &'b ()) -> &'a
 pub fn nested_mut_reborrow<'a, 'b>(value: &'b &'a mut u32, _use_a: &'a ()) -> &'b u32 {
     &**value
 }
+
+pub struct RawMut(*mut u32);
+
+impl RawMut {
+    #[rr::verify]
+    pub unsafe fn choose_mut_lifetime<'a>(&mut self) -> &'a mut u32 {
+        unsafe { &mut *self.0 }
+    }
+}
+
+#[rr::verify]
+pub unsafe fn call_choose_mut_lifetime(ptr: &mut RawMut) {
+    let value = unsafe { ptr.choose_mut_lifetime() };
+    *value = 0;
+}

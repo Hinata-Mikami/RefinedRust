@@ -730,7 +730,7 @@ pub(crate) fn preregister_unconstrained_regions(
     }
 }
 
-/// Make annotations for unconstrained regions introduced by the current assignment.
+/// Make annotations for unconstrained regions introduced by the current assignment or call.
 pub(crate) fn make_unconstrained_region_annotations<'tcx>(
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
@@ -743,6 +743,12 @@ pub(crate) fn make_unconstrained_region_annotations<'tcx>(
     let mut unconstrained_hints = Vec::new();
     for r in unconstrained_regions {
         if inclusion_tracker.is_region_known_before_effects(r, effect_point) {
+            continue;
+        }
+        if rhs.is_none() {
+            let lft = ty_translator.translate_region_var(r);
+            annotations.push(code::Annotation::UnconstrainedLft(lft.clone()));
+            unconstrained_hints.push(lft);
             continue;
         }
         if let Some(rhs) = rhs {
