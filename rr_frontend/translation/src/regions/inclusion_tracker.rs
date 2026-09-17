@@ -720,7 +720,11 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
 
     /// Whether `region` has a semantic lifetime name after point barriers and ordinary effects,
     /// but before structural shared-reborrow and dynamic effects.
-    pub(crate) fn is_region_known_after_ordinary_effects(&mut self, region: Region, point: PointIndex) -> bool {
+    pub(crate) fn is_region_known_after_ordinary_effects(
+        &mut self,
+        region: Region,
+        point: PointIndex,
+    ) -> bool {
         if self.full_states.is_none() {
             self.recompute();
         }
@@ -753,25 +757,6 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
 
     pub(crate) fn dynamic_inclusions(&self) -> impl Iterator<Item = (Region, Region, PointIndex)> + '_ {
         self.dynamic_incl_base.iter().copied()
-    }
-
-    pub(crate) fn check_inclusion_before_shared_reborrow(
-        &mut self,
-        r1: Region,
-        r2: Region,
-        point: PointIndex,
-    ) -> bool {
-        // Inclusion is reflexive, but tracker states do not materialize reflexive edges.
-        if r1 == r2 {
-            return true;
-        }
-        if self.full_states.is_none() {
-            self.recompute();
-        }
-        self.full_states
-            .as_ref()
-            .and_then(|states| states.pre_shared_reborrow_inclusions.get(&point))
-            .is_some_and(|inclusions| inclusions.contains(&(r1, r2)))
     }
 
     pub(crate) fn regions_included_in_before_dynamic(

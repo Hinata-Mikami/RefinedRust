@@ -572,15 +572,22 @@ pub(crate) fn get_assignment_loan_annots<'tcx>(
 pub(crate) fn get_shared_reborrow_annots<'tcx>(
     inclusion_tracker: &InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
-    resolved: Option<(Region, Region)>,
+    resolved: Option<(BTreeSet<Region>, Region)>,
 ) -> Vec<code::Annotation> {
-    let Some((source, target)) = resolved else {
+    let Some((sources, target)) = resolved else {
         return Vec::new();
     };
-    vec![code::Annotation::CopyLftName(
-        ty_translator.format_atomic_region(inclusion_tracker.info().mk_atomic_region(source)),
-        ty_translator.translate_region_var(target),
-    )]
+    let target = ty_translator.translate_region_var(target);
+    let mut sources = sources
+        .into_iter()
+        .map(|source| ty_translator.format_atomic_region(inclusion_tracker.info().mk_atomic_region(source)));
+    let Some(first) = sources.next() else {
+        return Vec::new();
+    };
+    let Some(second) = sources.next() else {
+        return vec![code::Annotation::CopyLftName(first, target)];
+    };
+    vec![code::Annotation::AliasLftIntersection(target, [first, second].into_iter().chain(sources).collect())]
 }
 
 pub(crate) fn resolve_shared_reborrow<'tcx>(
@@ -589,8 +596,8 @@ pub(crate) fn resolve_shared_reborrow<'tcx>(
     rhs: &mir::Rvalue<'tcx>,
     constraint_point: facts::PointIndex,
     effect_point: facts::PointIndex,
-    access_region: Option<ty::Region<'tcx>>,
-) -> Result<Option<(Region, Region)>, TranslationError> {
+    access_regions: &[ty::Region<'tcx>],
+) -> Result<Option<(BTreeSet<Region>, Region)>, TranslationError> {
     let mir::Rvalue::Ref(region, mir::BorrowKind::Shared, _) = rhs else {
         return Ok(None);
     };
@@ -605,23 +612,25 @@ pub(crate) fn resolve_shared_reborrow<'tcx>(
     if inclusion_tracker.info().mk_atomic_region(target).is_unconstrained() {
         return Ok(None);
     }
-    let Some(access_region) = access_region else {
+    if access_regions.is_empty() {
         return Ok(None);
-    };
-    let ty::RegionKind::ReVar(source) = access_region.kind() else {
-        return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
-            "shared reborrow dereferences non-variable access region {access_region:?}"
-        )))));
-    };
-    let access_region = source.into();
+    }
 
     if inclusion_tracker.is_region_known_after_ordinary_effects(target, effect_point) {
         return Ok(None);
     }
 
-    // Borrowck may introduce intermediate origins for the place access. Follow only the
-    // structurally selected access origin back to its unique known semantic lifetime.
-    let mut pending = vec![access_region];
+    // Borrowck may introduce intermediate origins for the place access. Follow the structurally
+    // selected access origins back to their known semantic lifetime supports.
+    let mut pending = Vec::with_capacity(access_regions.len());
+    for access_region in access_regions {
+        let ty::RegionKind::ReVar(source) = access_region.kind() else {
+            return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(
+                format!("shared reborrow dereferences non-variable access region {access_region:?}"),
+            ))));
+        };
+        pending.push(source.into());
+    }
     let mut visited = BTreeSet::new();
     let mut known_sources = BTreeSet::new();
     while let Some(region) = pending.pop() {
@@ -641,22 +650,13 @@ pub(crate) fn resolve_shared_reborrow<'tcx>(
         pending.extend(inclusion_tracker.regions_included_in_before_dynamic(region, effect_point));
     }
 
-    let Some(source) = known_sources.first().copied() else {
+    if known_sources.is_empty() {
         return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
-            "shared reborrow access region {access_region:?} resolves to no known source"
-        )))));
-    };
-    let all_equivalent = known_sources.iter().copied().all(|other| {
-        inclusion_tracker.check_inclusion_before_shared_reborrow(source, other, effect_point)
-            && inclusion_tracker.check_inclusion_before_shared_reborrow(other, source, effect_point)
-    });
-    if !all_equivalent {
-        return Err(TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
-            "shared reborrow access region {access_region:?} resolves to distinct known sources {known_sources:?}"
+            "shared reborrow access regions {access_regions:?} resolve to no known source"
         )))));
     }
 
-    Ok(Some((source, target)))
+    Ok(Some((known_sources, target)))
 }
 
 /// Register that a constrained shared reborrow initializes its result region. Source selection is
@@ -665,23 +665,36 @@ pub(crate) fn preregister_shared_reborrow<'tcx>(
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     rhs: &mir::Rvalue<'tcx>,
     effect_point: facts::PointIndex,
-    access_region: Option<ty::Region<'tcx>>,
+    access_regions: &[ty::Region<'tcx>],
 ) {
     let mir::Rvalue::Ref(region, mir::BorrowKind::Shared, _) = rhs else {
         return;
     };
     let target = region.as_var();
     let target: Region = target.into();
-    let Some(ty::RegionKind::ReVar(source)) = access_region.map(ty::Region::kind) else {
-        return;
-    };
     if inclusion_tracker.info().mk_atomic_region(target).is_unconstrained() {
         return;
     }
 
-    let source = source.into();
-    inclusion_tracker.add_shared_reborrow_static_inclusion(source, target, effect_point);
-    inclusion_tracker.add_shared_reborrow_static_inclusion(target, source, effect_point);
+    let Some(sources): Option<BTreeSet<Region>> = access_regions
+        .iter()
+        .map(|region| match region.kind() {
+            ty::RegionKind::ReVar(source) => Some(source.into()),
+            _ => None,
+        })
+        .collect()
+    else {
+        return;
+    };
+    if sources.is_empty() {
+        return;
+    }
+    for source in &sources {
+        inclusion_tracker.add_shared_reborrow_static_inclusion(*source, target, effect_point);
+    }
+    if let Some(source) = sources.iter().next().filter(|_| sources.len() == 1) {
+        inclusion_tracker.add_shared_reborrow_static_inclusion(target, *source, effect_point);
+    }
     inclusion_tracker.add_shared_reborrow_known_region(target, effect_point);
 }
 

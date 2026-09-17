@@ -30,7 +30,7 @@ struct PendingAssignment<'tcx> {
     rhs_ty: ty::Ty<'tcx>,
     rvalue_operand_tys: Vec<ty::Ty<'tcx>>,
     is_strong_update: bool,
-    shared_borrow_access_region: Option<ty::Region<'tcx>>,
+    shared_borrow_access_regions: Vec<ty::Region<'tcx>>,
 }
 
 #[expect(clippy::multiple_inherent_impl)]
@@ -118,8 +118,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let rhs_ty = self.proc.region_type_of_rvalue(loc, rvalue);
                 let annotation_rhs = self.proc.source_rvalue_for_target(loc).unwrap_or(rvalue).clone();
                 let rvalue_operand_tys = self.proc.region_types_of_rvalue_operands_for_target(loc, rvalue);
-                let shared_borrow_access_region =
-                    self.proc.shared_borrow_access_region_for_target(loc, rvalue);
+                let shared_borrow_access_regions =
+                    self.proc.shared_borrow_access_regions_for_target(loc, rvalue);
                 let is_strong_update = !self.check_place_below_reference(place);
                 pending_assignments.push(PendingAssignment {
                     loc,
@@ -128,7 +128,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     rhs_ty,
                     rvalue_operand_tys,
                     is_strong_update,
-                    shared_borrow_access_region,
+                    shared_borrow_access_regions,
                 });
             }
         }
@@ -141,7 +141,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 &assignment.rhs,
                 assignment.rhs_ty,
                 &assignment.rvalue_operand_tys,
-                assignment.shared_borrow_access_region,
+                &assignment.shared_borrow_access_regions,
                 assignment.lhs_ty,
                 assignment.is_strong_update,
             )?;
@@ -163,10 +163,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             if let Some(effect) = self.annotations.resolve_assignment_shared_reborrow(
                 assignment.loc,
                 &assignment.rhs,
-                assignment.shared_borrow_access_region,
+                &assignment.shared_borrow_access_regions,
             )? {
-                let (source, target, _) = effect;
-                assert!(shared_reborrow_aliases.insert(assignment.loc, (source, target)).is_none());
+                let (sources, target, _) = &effect;
+                assert!(shared_reborrow_aliases.insert(assignment.loc, (sources.clone(), *target)).is_none());
                 shared_reborrow_effects.push(effect);
             }
         }

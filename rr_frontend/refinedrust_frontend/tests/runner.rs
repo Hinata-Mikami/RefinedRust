@@ -151,18 +151,51 @@ mod tests {
         build_refinedrust();
         build_subproject("./tests/loan_supports/");
 
-        let generated = fs::read_to_string(
-            output
-                .path()
-                .join("loan_supports/generated/generated_code_loan_supports.v"),
-        )
-        .expect("missing generated loan-support code");
-        let starts: Vec<_> = generated.lines().filter(|line| line.contains("StartLftAnnot")).collect();
-        assert_eq!(starts.len(), 1, "unexpected loan initializations: {starts:?}");
+        let generated =
+            fs::read_to_string(output.path().join("loan_supports/generated/generated_code_loan_supports.v"))
+                .expect("missing generated loan-support code");
+        let definition = |name: &str| {
+            let marker = format!("Program Definition {name}_def");
+            let start = generated.find(&marker).unwrap_or_else(|| panic!("missing {marker}"));
+            let body = &generated[start..];
+            let end = body[marker.len()..]
+                .find("\nProgram Definition")
+                .map_or(body.len(), |offset| marker.len() + offset);
+            &body[..end]
+        };
+        let lifetime_initialized_from = |body: &str, source: &str| {
+            let source = format!("\"{source}\"");
+            body.lines()
+                .find(|line| line.contains("CopyLftNameAnnot") && line.contains(&source))
+                .and_then(|line| line.split('"').nth(1))
+                .unwrap_or_else(|| panic!("missing lifetime initialized from {source} in:\n{body}"))
+                .to_owned()
+        };
+
+        let loop_definition = definition("reborrow_in_loop");
+        let starts: Vec<_> = loop_definition.lines().filter(|line| line.contains("StartLftAnnot")).collect();
+        assert!(!starts.is_empty(), "missing loan initializations");
         assert!(
-            !starts[0].contains("\"_flft\""),
-            "mutable field reborrow fell back to the function lifetime: {}",
-            starts[0]
+            starts.iter().all(|line| !line.contains("\"_flft\"")),
+            "mutable reborrows fell back to the function lifetime: {starts:?}"
+        );
+
+        let shared_definition = definition("nested_shared_reborrow");
+        let shared_inner = lifetime_initialized_from(shared_definition, "ulft_a");
+        assert!(
+            shared_definition
+                .contains(&format!("CopyLftNameAnnot \"vlft4\" \"{shared_inner}\"; (* borrow *)")),
+            "nested shared reborrow did not use the inner shared lifetime:\n{shared_definition}"
+        );
+
+        let mutable_definition = definition("nested_mut_reborrow");
+        let mutable_outer = lifetime_initialized_from(mutable_definition, "ulft_b");
+        let mutable_inner = lifetime_initialized_from(mutable_definition, "ulft_a");
+        assert!(
+            mutable_definition.contains(&format!(
+                "AliasLftAnnot \"vlft4\" [\"{mutable_outer}\"; \"{mutable_inner}\"]; (* borrow *)"
+            )),
+            "nested mutable reborrow did not use the intersection of both lifetimes:\n{mutable_definition}"
         );
 
         output.cleanup();

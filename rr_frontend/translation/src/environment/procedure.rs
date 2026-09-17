@@ -473,7 +473,7 @@ impl<'tcx> Procedure<'tcx> {
         &self,
         pl: &mir::Place<'tcx>,
         normalize_aliases: bool,
-    ) -> (mir::PlaceTy<'tcx>, Option<ty::Region<'tcx>>) {
+    ) -> (mir::PlaceTy<'tcx>, Vec<ty::Region<'tcx>>) {
         let normalized;
         let pl = if normalize_aliases {
             normalized = self.normalize_box_deref_alias_place(pl);
@@ -493,18 +493,28 @@ impl<'tcx> Procedure<'tcx> {
             self.ensure_region_type(ty, || format!("source place {pl:?}"))
         };
         let mut cur_ty = mir::PlaceTy::from_ty(base_ty);
-        let mut access_region = None;
+        let mut access_regions = Vec::new();
 
         for elem in pl.projection {
             cur_ty = match elem {
                 mir::ProjectionElem::Deref => {
                     match cur_ty.ty.kind() {
-                        ty::TyKind::Ref(region, _, _) if access_region.is_none() => {
-                            access_region = Some(*region);
+                        // A shared reference can be copied out of the access path, so its own
+                        // lifetime supersedes the lifetimes needed to reach it.
+                        ty::TyKind::Ref(region, _, ty::Mutability::Not) => {
+                            access_regions.clear();
+                            access_regions.push(*region);
+                        },
+                        // A mutable reference cannot be copied out. Reborrowing through it remains
+                        // constrained by both its lifetime and the path used to reach it.
+                        ty::TyKind::Ref(region, _, ty::Mutability::Mut) => {
+                            if !access_regions.contains(region) {
+                                access_regions.push(*region);
+                            }
                         },
                         // Access through a raw pointer is not governed by an earlier safe-reference
                         // lifetime. A later reference dereference may establish a new one.
-                        ty::TyKind::RawPtr(..) => access_region = None,
+                        ty::TyKind::RawPtr(..) => access_regions.clear(),
                         _ => {},
                     }
                     let ty = cur_ty.ty.builtin_deref(true).unwrap_or_else(|| {
@@ -552,7 +562,7 @@ impl<'tcx> Procedure<'tcx> {
             self.ensure_region_type(cur_ty.ty, || format!("place {pl:?}"));
         }
 
-        (cur_ty, access_region)
+        (cur_ty, access_regions)
     }
 
     /// Get the region-sensitive borrowck type of a target/dropck place.
@@ -560,19 +570,20 @@ impl<'tcx> Procedure<'tcx> {
         self.region_type_of_place_with_access_region(pl, true).0
     }
 
-    /// Get the lifetime governing access to the place borrowed by a shared-reference rvalue.
+    /// Get the lifetime supports governing access to the place borrowed by a shared-reference rvalue.
     ///
-    /// This is the lifetime of the first semantic reference dereferenced by the place. Inner
-    /// references only constrain validity of the referent and do not govern the reborrow itself.
-    pub(crate) fn shared_borrow_access_region_for_target(
+    /// Shared references replace earlier access supports because they can be copied out. Mutable
+    /// references add their lifetime to the supports because reborrowing them remains constrained by
+    /// the path used to reach them. Raw-pointer dereferences clear all earlier safe-reference supports.
+    pub(crate) fn shared_borrow_access_regions_for_target(
         &self,
         loc: mir::Location,
         fallback: &mir::Rvalue<'tcx>,
-    ) -> Option<ty::Region<'tcx>> {
+    ) -> Vec<ty::Region<'tcx>> {
         let (rvalue, normalize_aliases) =
             self.source_rvalue_for_target(loc).map_or((fallback, true), |source| (source, false));
         let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, place) = rvalue else {
-            return None;
+            return Vec::new();
         };
         self.region_type_of_place_with_access_region(place, normalize_aliases).1
     }

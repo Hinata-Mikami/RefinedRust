@@ -69,7 +69,7 @@
 //! 4. Classify every call using one stable state, batch-register all classifications, and prepare the call
 //!    plans.
 //! 5. Resolve every assignment shared reborrow using one stable state, then batch-register all resolved
-//!    source-to-target equalities.
+//!    source-to-target aliases and intersections.
 //! 6. Prepare and cache every ordinary assignment plan.
 //! 7. Finalize the dynamic annotations in all cached assignment and call plans.
 //! 8. Render MIR blocks by consuming cached plans. Block traversal performs no tracker-dependent annotation
@@ -460,9 +460,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
                     continue;
                 }
                 if region != loan.region
-                    && self
-                        .inclusion_tracker
-                        .is_region_known_after_ordinary_effects(region, loan.startpoint)
+                    && self.inclusion_tracker.is_region_known_after_ordinary_effects(region, loan.startpoint)
                 {
                     known_supports.insert(region);
                     continue;
@@ -567,7 +565,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         rhs: &mir::Rvalue<'tcx>,
         rhs_ty: ty::Ty<'tcx>,
         rvalue_operand_tys: &[ty::Ty<'tcx>],
-        shared_borrow_access_region: Option<ty::Region<'tcx>>,
+        shared_borrow_access_regions: &[ty::Region<'tcx>],
         lhs_ty: mir::PlaceTy<'tcx>,
         is_strong_update: bool,
     ) -> Result<(), TranslationError> {
@@ -586,7 +584,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             &mut self.inclusion_tracker,
             rhs,
             startpoint,
-            shared_borrow_access_region,
+            shared_borrow_access_regions,
         );
         let unconstrained = assignment::get_new_unconstrained_regions(&self.inclusion_tracker, midpoint);
         assignment::preregister_unconstrained_regions(
@@ -752,8 +750,8 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         &mut self,
         loc: mir::Location,
         rhs: &mir::Rvalue<'tcx>,
-        access_region: Option<ty::Region<'tcx>>,
-    ) -> Result<Option<(Region, Region, PointIndex)>, TranslationError> {
+        access_regions: &[ty::Region<'tcx>],
+    ) -> Result<Option<(BTreeSet<Region>, Region, PointIndex)>, TranslationError> {
         let startpoint = self.start_point_for_target(loc);
         Ok(assignment::resolve_shared_reborrow(
             self.tcx,
@@ -761,18 +759,22 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
             rhs,
             startpoint,
             startpoint,
-            access_region,
+            access_regions,
         )?
-        .map(|(source, target)| (source, target, startpoint)))
+        .map(|(sources, target)| (sources, target, startpoint)))
     }
 
     pub(crate) fn register_assignment_shared_reborrows(
         &mut self,
-        effects: impl IntoIterator<Item = (Region, Region, PointIndex)>,
+        effects: impl IntoIterator<Item = (BTreeSet<Region>, Region, PointIndex)>,
     ) {
-        for (source, target, point) in effects {
-            self.inclusion_tracker.add_static_inclusion(source, target, point);
-            self.inclusion_tracker.add_static_inclusion(target, source, point);
+        for (sources, target, point) in effects {
+            for source in &sources {
+                self.inclusion_tracker.add_static_inclusion(*source, target, point);
+            }
+            if let Some(source) = sources.iter().next().filter(|_| sources.len() == 1) {
+                self.inclusion_tracker.add_static_inclusion(target, *source, point);
+            }
         }
     }
 
@@ -851,7 +853,7 @@ impl<'a, 'tcx: 'a> AnnotationGenerator<'a, 'tcx> {
         rhs_ty: ty::Ty<'tcx>,
         rvalue_operand_tys: &[ty::Ty<'tcx>],
         is_strong_update: bool,
-        shared_reborrow: Option<(Region, Region)>,
+        shared_reborrow: Option<(BTreeSet<Region>, Region)>,
     ) -> Result<LocationAnnotationPlan, TranslationError> {
         let startpoint = self.start_point_for_target(loc);
         let midpoint = self.mid_point_for_target(loc);
