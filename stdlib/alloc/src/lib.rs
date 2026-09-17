@@ -9,6 +9,7 @@
 #![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.alloc")]
 #![rr::import("rrstd.alloc.theories", "shims")]
+#![rr::include("clone")]
 
 
 mod layout;
@@ -25,8 +26,11 @@ impl Global {
     
 }
 
+// This uses Radium's built-in freeable permissions.
 #[rr::instantiate("FreeablePerm" := "λ _ l sz, freeable_nz l sz 1 HeapAlloc")]
 unsafe impl Allocator for Global {
+    // No methods in our model right now.
+
     //fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         //unimplemented!();
     //}
@@ -50,6 +54,17 @@ where
     A: Allocator + ?Sized,
 {
 }
+
+// This should always be satisfied by allocators with a verified allocator impl according to the
+// Allocator contract above: the contract says that freeable permissions are only determined by the
+// allocator's refinement, which transfers along Clone
+//
+// TODO: once we handle safety of traits properly, this should have an obligation like
+// Allocator::TraitCorrect = true
+#[rr::export_as(alloc::alloc::AllocatorClone)]
+pub unsafe trait AllocatorClone: Allocator + Clone {}
+
+unsafe impl<A: Allocator + ?Sized> AllocatorClone for &A {}
 
 
 /// Allocation functions using the global allocator 
