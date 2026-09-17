@@ -81,6 +81,13 @@ impl<T: ?Sized> Clone for *mut T {
     }
 }
 
+#[rr::verify]
+impl<T: ?Sized> Clone for &T {
+    fn clone(&self) -> Self {
+        self
+    }
+}
+
 impl<T: ?Sized> Copy for *mut T { }
 impl<T: ?Sized> Copy for *const T { }
 
