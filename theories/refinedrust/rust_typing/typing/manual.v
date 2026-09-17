@@ -389,6 +389,54 @@ Section updateable_rules.
     iFrame. iApply ("Hs" with "Hnamed").
   Qed.
 
+  Lemma updateable_start_lft n sup_lfts :
+    (∃ M, named_lfts updateable_f M ∗
+      li_tactic (compute_list_map_lookups_nofail_goal M sup_lfts) (λ κs,
+        ∀ κ, named_lfts updateable_f ((n, κ) :: M) -∗
+          updateable_core updateable_E ((κ ⊑ₗ{0%nat} κs) :: updateable_L)))
+    ⊢ P.
+  Proof.
+    rewrite /compute_list_map_lookups_nofail_goal.
+    iIntros "(%M & Hnamed & %κs & %Hlook & HT)".
+    unshelve iApply add_updateable; first apply _.
+    iIntros "#(LFT & LLCTX) #HE HL".
+    iMod (llctx_startlft _ _ κs with "LFT LLCTX HL") as (κ) "HL"; [solve_ndisj.. | ].
+    iModIntro. iExists _. iFrame.
+    iApply ("HT" $! κ with "[Hnamed]").
+    iApply named_lfts_update. done.
+  Qed.
+
+  Lemma updateable_end_lft n :
+    (∃ M, named_lfts updateable_f M ∗
+      li_tactic (compute_list_map_lookup_nofail_goal M n) (λ κ,
+      li_tactic (llctx_find_llft_goal updateable_L κ LlctxFindLftFull) (λ '(_, L'),
+      li_tactic (simplify_lft_map_goal (map_list_delete M n)) (λ M',
+      find_in_context FindCreditStore (λ '(c, a),
+        ⌜fast_lia_hint (1 ≤ c)⌝ ∗
+        (credit_store (c - 1) a -∗
+         named_lfts updateable_f M' -∗
+         updateable_core updateable_E ((†ₗ κ) :: L')))))))
+    ⊢ P.
+  Proof.
+    rewrite /compute_list_map_lookup_nofail_goal /llctx_find_llft_goal
+      /simplify_lft_map_goal /FindCreditStore /find_in_context.
+    iIntros "(%M & Hnamed & %κ & %Hlook & %L' & %κs & %Hfind & %M' & _ & %ca & Hstore & HT)".
+    destruct ca as [c a]. simpl.
+    unfold fast_lia_hint.
+    iDestruct "HT" as "(%Hcredit & HT)".
+    iPoseProof (credit_store_scrounge 1 with "Hstore") as "(Hcredit & Hstore)"; first lia.
+    unshelve iApply add_updateable; first apply _.
+    iIntros "#CTX #HE HL".
+    iPoseProof (llctx_end_llft ⊤ with "HL") as "Hend"; [done | done | exact Hfind | ].
+    iMod "Hend". iApply (lc_fupd_add_later with "Hcredit"). iNext.
+    iMod "Hend" as "(#Hdead & HL)".
+    iModIntro. iExists ((†ₗ κ) :: L').
+    rewrite /llctx_interp/=. iFrame.
+    iSplitR; first done.
+    iApply ("HT" with "Hstore").
+    iApply named_lfts_update. done.
+  Qed.
+
   Lemma updateable_strip_guards :
     iterate_with_hooks updateable_E updateable_L StripGuarded (λ L _,
       updateable_core updateable_E L)

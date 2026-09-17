@@ -5,6 +5,43 @@ From refinedrust Require Import enum.
 From refinedrust Require Import array.array.
 From refinedrust Require Import options.
 
+(** * Local-dead stratification guard *)
+Section local_dead_stratification_test.
+  Context `{!typeGS Σ}.
+  Context {rt : RT} (ty : type rt) (κ : lft) (sls : struct_layout_spec).
+
+  Goal LocalDeadNeedsStratification (BlockedLtype ty κ).
+  Proof. typeclasses eauto. Qed.
+
+  Goal LocalDeadNeedsStratification (ShrBlockedLtype ty κ).
+  Proof. typeclasses eauto. Qed.
+
+  Goal LocalDeadNeedsStratification (MutLtype (BlockedLtype ty κ) κ).
+  Proof. typeclasses eauto. Qed.
+
+  Goal LocalDeadNeedsStratification
+      (StructLtype ((BlockedLtype ty κ) +:: +[]) sls).
+  Proof. typeclasses eauto. Qed.
+
+  Goal LocalDeadNeedsStratification
+      (ArrayLtype ty 1 [(0, BlockedLtype ty κ)]).
+  Proof. typeclasses eauto. Qed.
+
+  Goal LocalDeadNeedsStratification
+      (OpenedLtype (OfTy ty) (OfTy ty) (OfTy ty) (λ _ _, True%I) (λ _ _, True%I)).
+  Proof. typeclasses eauto. Qed.
+
+  Goal LocalDeadNeedsStratification
+      (OpenedNaLtype (OfTy ty) (OfTy ty) (λ _, True%I) (λ _, True%I)).
+  Proof. typeclasses eauto. Qed.
+
+  Goal LocalDeadNeedsStratification (CoreableLtype [κ] (OfTy ty)).
+  Proof. typeclasses eauto. Qed.
+
+  Goal TCOrT (LocalDeadNeedsStratification (OfTy ty)) TCTrue.
+  Proof. typeclasses eauto. Qed.
+End local_dead_stratification_test.
+
 (** * Test cases for sidecondition solvers declared in [automation/solvers.v] *)
 
 (** compute_map_lookup *)

@@ -9,6 +9,9 @@ From refinedrust Require Import options.
 (** Marker we emit if the program is unwinding. *)
 Inductive UnwindTrace := ProgramIsUnwinding.
 
+(** Marker for ltypes that should be stratified before killing a local. *)
+Class LocalDeadNeedsStratification `{!typeGS Σ} {rt} (lt : ltype rt) : Type := {}.
+
 Section find.
   Context `{typeGS Σ}.
 
@@ -5079,9 +5082,20 @@ Section subsume.
     if decide (x ∈ locals) then
       find_in_context (FindLocal f x) (λ '(st, l),
       li_tactic (simplify_local_list_goal (remove_local locals x)) (λ locals',
-        prove_with_subtype E L true ProveDirect (l ◁ₗ[f.1, Owned] .@ ◁ uninit st) True%I (λ L2 κs R2,
-          introduce_with_hooks E L2 R2 (λ L3,
-          li_clear l ((allocated_locals f locals' -∗ typed_stmt E L3 f s fn R U ϝ))))))
+        find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
+          ⌜π = f.1⌝ ∗ ⌜bk = Owned⌝ ∗
+          find_tc_inst (TCOrT (LocalDeadNeedsStratification lt) TCTrue) (λ guard,
+            match guard with
+            | TCOrT_l _ _ _ =>
+                stratify_ltype_unblock f.1 E L StratRefoldFull l lt r Owned (λ L2 R2 rt2 lt2 r2,
+                  owned_subltype_step f.1 E L2 true l r2 (#()) lt2 (◁ uninit st) (λ L3 R3,
+                    introduce_with_hooks E L3 (R2 ∗ R3) (λ L4,
+                    li_clear l ((allocated_locals f locals' -∗ typed_stmt E L4 f s fn R U ϝ)))))
+            | TCOrT_r _ _ _ =>
+                owned_subltype_step f.1 E L true l r (#()) lt (◁ uninit st) (λ L2 R2,
+                  introduce_with_hooks E L2 (True ∗ R2) (λ L3,
+                  li_clear l ((allocated_locals f locals' -∗ typed_stmt E L3 f s fn R U ϝ))))
+            end))))
     else (allocated_locals f locals -∗ typed_stmt E L f s fn R U ϝ))
     ⊢ typed_stmt E L f (local_dead x; s) fn R U ϝ.
   Proof.
@@ -5094,30 +5108,61 @@ Section subsume.
       iIntros (Φ Φunwind) "#CTX #HE HL Hf Hpost".
       unfold simplify_local_list_goal.
       iDestruct "HT" as "(%locals' & <- & HT)".
-      iSpecialize ("HT" $! ⊤ True%I).
-      iMod ("HT" with "[] [] [] CTX HE HL []") as "(%L2 & %κs & %R2 & Hstep & HL & HT)";
-        [set_solver.. | iApply maybe_logical_step_intro; iSplit; done | ].
-      simpl.
-      iApply wps_skip.
-      iApply (physical_step_logical_step with "Hstep").
-      iApply physical_step_intro. iNext.
-      iIntros "(HR & Hl & _)".
-      rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-      iDestruct "Hl" as "(%ly & %Hst & %Hlyl & _ & _ & % & <- & Ha)".
-      iMod (fupd_mask_mono with "Ha") as "Ha"; first done.
-      iDestruct "Ha" as "(%v & Hl & Hv)".
-      iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
-      apply syn_type_has_layout_untyped_inv in Hst.
-      iApply (wps_local_dead with "Hf Hlocals Hx [Hl]").
-      { simpl in Hst. done. }
-      { iExists _. iFrame. done. }
-      iApply physical_step_intro. iNext.
-      iIntros "Hf Hlocals".
-      iMod ("HT" with "[] CTX HE HL HR") as "(%L3 & HL & HT)"; first done.
-      iApply ("HT" with "Hlocals CTX HE HL Hf Hpost").
+      iEval (rewrite /FindLoc) in "HT".
+      iDestruct "HT" as ([rt [[[lt r] bk] π']]) "(Hl & <- & -> & HT)". simpl.
+      iDestruct "HT" as "(%guard & HT)".
+      destruct guard.
+      + iMod ("HT" $! ⊤ with "[] [] [] CTX HE HL Hl") as
+          "(%L2 & %R2 & %rt2 & %lt2 & %r2 & HL & %Hsteq & Hstep & HT)"; [set_solver.. | ].
+        simpl.
+        iApply wps_skip.
+        iApply (physical_step_logical_step with "Hstep").
+        iApply physical_step_intro. iNext.
+        iIntros "(Hl & HR2)".
+        iMod ("HT" with "[] [] [] CTX HE HL Hl") as "(%L3 & %R3 & Hstep & HL & HT)"; [set_solver.. | ].
+        iApply wps_skip.
+        iApply (physical_step_logical_step with "Hstep").
+        iApply physical_step_intro. iNext.
+        iIntros "(Hl & HR3)".
+        rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+        iDestruct "Hl" as "(%ly & %Hst & %Hlyl & _ & _ & % & <- & Ha)".
+        iMod (fupd_mask_mono with "Ha") as "Ha"; first done.
+        iDestruct "Ha" as "(%v & Hl & Hv)".
+        iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+        apply syn_type_has_layout_untyped_inv in Hst.
+        iApply (wps_local_dead with "Hf Hlocals Hx [Hl]").
+        { simpl in Hst. done. }
+        { iExists _. iFrame. done. }
+        iApply physical_step_intro. iNext.
+        iIntros "Hf Hlocals".
+        iMod ("HT" with "[] CTX HE HL [HR2 HR3]") as "(%L4 & HL & HT)"; first done.
+        { iFrame. }
+        iApply ("HT" with "Hlocals CTX HE HL Hf Hpost").
+      + simpl.
+        iApply wps_skip. iApply physical_step_intro. iNext.
+        iMod ("HT" with "[] [] [] CTX HE HL Hl") as "(%L2 & %R2 & Hstep & HL & HT)"; [set_solver.. | ].
+        iApply wps_skip.
+        iApply (physical_step_logical_step with "Hstep").
+        iApply physical_step_intro. iNext.
+        iIntros "(Hl & HR2)".
+        rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+        iDestruct "Hl" as "(%ly & %Hst & %Hlyl & _ & _ & % & <- & Ha)".
+        iMod (fupd_mask_mono with "Ha") as "Ha"; first done.
+        iDestruct "Ha" as "(%v & Hl & Hv)".
+        iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+        apply syn_type_has_layout_untyped_inv in Hst.
+        iApply (wps_local_dead with "Hf Hlocals Hx [Hl]").
+        { simpl in Hst. done. }
+        { iExists _. iFrame. done. }
+        iApply physical_step_intro. iNext.
+        iIntros "Hf Hlocals".
+        iMod ("HT" with "[] CTX HE HL [HR2]") as "(%L3 & HL & HT)"; first done.
+        { iFrame. }
+        iApply ("HT" with "Hlocals CTX HE HL Hf Hpost").
     - unfold LocalDeadSt.
       iIntros (Φ Φunwind) "#CTX #HE HL Hf Hpost".
       simpl.
+      iApply wps_skip. iApply physical_step_intro. iNext.
       iApply wps_skip. iApply physical_step_intro. iNext.
       iApply (wps_local_dead_nop with "Hf Hlocals").
       { done. }

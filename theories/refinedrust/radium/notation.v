@@ -130,9 +130,9 @@ Arguments LocalLiveSt : simpl never.
 Global Typeclasses Opaque LocalLiveSt.
 Notation "'local_live{' st '}' x ';' s" := (LocalLiveSt x st s%E) (at level 80, s at level 200, format "'[v' 'local_live{' st '}' x ';' '/' s ']'") : expr_scope.
 
-(* Adding a skip here. *)
+(* Adding skips for stratification and subtyping. *)
 Definition LocalDeadSt (x : var_name) (s : stmt) :=
-  SkipS (LocalDead x s).
+  SkipS (SkipS (LocalDead x s)).
 Arguments LocalDeadSt : simpl never.
 Global Typeclasses Opaque LocalDeadSt.
 Notation "'local_dead' x ';' s" := (LocalDeadSt x s%E) (at level 80, s at level 200, format "'[v' 'local_dead'  x ';' '/' s ']'") : expr_scope.

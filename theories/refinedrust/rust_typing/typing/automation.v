@@ -925,6 +925,44 @@ Ltac gather_location_list_stratify_filter_rec ltype :=
 Ltac gather_location_list_stratify_filter rt ltype r :=
   gather_location_list_stratify_filter_rec ltype.
 
+(** Decide whether killing a local should first stratify its ltype. *)
+Ltac local_dead_needs_stratification_rec ltype :=
+  idtac.
+Ltac local_dead_needs_stratification_hlist ltypes :=
+  lazymatch ltypes with
+  | +[] => fail
+  | ?ltype +:: ?ltypes =>
+      first [local_dead_needs_stratification_rec ltype |
+             local_dead_needs_stratification_hlist ltypes]
+  end.
+Ltac local_dead_needs_stratification_array ltypes :=
+  lazymatch ltypes with
+  | [] => fail
+  | (_, ?ltype) :: ?ltypes =>
+      first [local_dead_needs_stratification_rec ltype |
+             local_dead_needs_stratification_array ltypes]
+  end.
+Ltac local_dead_needs_stratification_rec ltype ::=
+  lazymatch ltype with
+  | BlockedLtype _ _ => idtac
+  | ShrBlockedLtype _ _ => idtac
+  | OpenedLtype _ _ _ _ _ => idtac
+  | CoreableLtype _ _ => idtac
+  | OpenedNaLtype _ _ _ _ => idtac
+  | MutLtype ?ltype _ => local_dead_needs_stratification_rec ltype
+  | ShrLtype ?ltype _ => local_dead_needs_stratification_rec ltype
+  | StructLtype ?ltypes _ => local_dead_needs_stratification_hlist ltypes
+  | ArrayLtype _ _ ?ltypes => local_dead_needs_stratification_array ltypes
+  | EnumLtype _ (Some (mk_enum_ltype_variant _ _ ?ltype _)) =>
+      local_dead_needs_stratification_rec ltype
+  | ShadowedLtype ?ltype_cur _ ?ltype_full =>
+      first [local_dead_needs_stratification_rec ltype_cur |
+             local_dead_needs_stratification_rec ltype_full]
+  | _ => fail
+  end.
+Global Hint Extern 5 (LocalDeadNeedsStratification ?ltype) =>
+  (local_dead_needs_stratification_rec ltype; constructor) : typeclass_instances.
+
 Ltac gather_location_list_get_filter m ::=
   lazymatch m with
   | CtxFoldExtractAllInit ?κ =>

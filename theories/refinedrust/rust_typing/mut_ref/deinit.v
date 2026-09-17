@@ -96,10 +96,13 @@ End extract.
 Section rule.
   Context `{!typeGS Σ}.
 
+  Inductive LtypeIsNotExtractableError :=
+    | ltype_is_not_uniq_extractable_error {rt} (lt : ltype rt).
+
   Lemma owned_subltype_step_mutltype_uninit π E L step {rt} (lt : ltype rt) r γ st κ l T :
     owned_subltype_step π E L step l (#(r, γ)) (#()) (MutLtype lt κ) (◁ typed_value_t st) T :-
     return match ltype_uniq_extractable lt with
-    | None => False
+    | None => ⌜unprovable_hint (ltype_is_not_uniq_extractable_error lt) (False)⌝
     | Some κm =>
         [{ exhale (⌜st = RefSynType⌝);
         return T L (MaybeInherit κm (place_rfn_interp_mut_extracted r γ)) }]
