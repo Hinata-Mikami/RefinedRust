@@ -592,6 +592,12 @@ Section extra_rules.
     iModIntro. iIntros "($ & $)".
     destruct pm; iFrame. eauto.
   Qed.
+
+  (* add another location to stratify *)
+  Lemma typed_context_fold_add_loc (l : loc) (Acc : Type) (Acc_interp : Acc → iProp Σ) {M} (E : elctx) (L : llctx) (m : M) (tctx : list loc) (acc : Acc) T :
+    typed_context_fold Acc_interp E L m (l :: tctx) acc T
+    ⊢ typed_context_fold Acc_interp E L m tctx acc T.
+  Proof. done. Qed.
 End extra_rules.
 
 Section credits.

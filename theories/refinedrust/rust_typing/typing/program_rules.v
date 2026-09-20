@@ -5087,7 +5087,7 @@ Section subsume.
           find_tc_inst (TCOrT (LocalDeadNeedsStratification lt) TCTrue) (λ guard,
             match guard with
             | TCOrT_l _ _ _ =>
-                stratify_ltype_unblock f.1 E L StratRefoldFull l lt r Owned (λ L2 R2 rt2 lt2 r2,
+                stratify_ltype_unblock f.1 E L StratRefoldOpened l lt r Owned (λ L2 R2 rt2 lt2 r2,
                   owned_subltype_step f.1 E L2 true l r2 (#()) lt2 (◁ uninit st) (λ L3 R3,
                     introduce_with_hooks E L3 (R2 ∗ R3) (λ L4,
                     li_clear l ((allocated_locals f locals' -∗ typed_stmt E L4 f s fn R U ϝ)))))
