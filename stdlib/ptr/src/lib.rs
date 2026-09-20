@@ -518,7 +518,7 @@ where
 #[rr::only_spec]
 #[rr::export_as(core::mem::replace)]
 #[rr::returns("dest.cur")]
-#[rr::observe("dest.ghost": "src")]
+#[rr::observe("dest.ghost": "$# src")]
 pub fn mem_replace<T>(dest: &mut T, src: T) -> T {
     let x = read(dest as *mut T);
     write(dest as *mut T, src);
