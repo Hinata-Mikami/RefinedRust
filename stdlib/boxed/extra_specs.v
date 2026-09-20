@@ -10,7 +10,7 @@ Section contractive.
     - constructor.
       + solve_proper_prepare.
         repeat solve_proper_step.
-      + solve_proper_prepare.
+      + solve_proper_prepare. simpl in *. prepare_initial_coq_context. simpl.
         repeat solve_proper_step.
     - cbn; apply _.
   Qed.
@@ -40,14 +40,16 @@ Section contractive.
 
   (** Resolve ghost: Resolve observations on the contained value. *)
   Lemma resolve_ghost_box {T_rt A_rt} A_attrs (T_ty : type T_rt) (A_ty : type A_rt) π E L r rm T :
-    (∀ l', resolve_ghost π E L rm true l' (◁ T_ty) Owned r T)
+    (∀ l', resolve_ghost π E L rm true l' (◁ T_ty) Owned r.1 (λ L2 r2 R prog,
+      T L2 (r2, r.2) R prog))
     ⊢ resolve_ghost_adt π E L rm r (Box_inv_t T_rt A_rt A_attrs <TY> T_ty <TY> A_ty <INST!>) T.
   Proof.
     rewrite /resolve_ghost_adt /resolve_ghost.
     iIntros "HT" (????) "#CTX #HE HL Hv".
     rewrite ex_plain_t_unfold_val.
-    iDestruct "Hv" as ((l' & a & [])) "(Hinv & Hv)". simpl in *.
-    iDestruct "Hinv" as "(%l'' & %a'' & %Heq & Hl' & Halloc & _)".
+    destruct r as [r a].
+    iDestruct "Hv" as ((l' & [])) "(Hinv & Hv)". simpl in *.
+    iDestruct "Hinv" as "(%l'' & %Heq & Hl' & Halloc & _)".
     inversion Heq. subst.
     unfold guarded. iDestruct "Hl'" as "(Hc & Hl')".
     iDestruct "Hc" as "((Hc1 & Hc) & Ht)".
@@ -74,16 +76,16 @@ Section contractive.
     iPoseProof (full_subtype_acc_noend with "HE HL") as "(%HstT & #HinclT)"; first apply HsubT.
     iPoseProof (full_subtype_acc_noend with "HE HL") as "(%HstA & #HinclA)"; first apply HsubA.
     iSplit; iModIntro.
-    - iIntros (? x r). simpl.
-      iIntros "(%l & %a & -> & Hl & Hperm)".
-      iExists _, _. iR.
+    - iIntros (? x [r a]). simpl.
+      iIntros "(%l & -> & Hl & Hperm)".
+      iExists _. iR.
       rewrite HstT. iFrame.
       iApply (guarded_mono with "[] Hl").
       iIntros "Hl". iApply type_incl_ltype_owned_wand; [ | done..].
       rewrite HstT//.
-    - iIntros (? ? x r). simpl.
-      iIntros "(%l & %a & -> & Hl & Hperm)".
-      iExists _, _. iR. iL.
+    - iIntros (? ? x [r a]). simpl.
+      iIntros "(%l &  -> & Hl & Hperm)".
+      iExists _. iR. iL.
       iApply (guarded_mono with "[] Hl").
       iIntros "Hl". iApply type_incl_ltype_shared_wand; [ | done..].
       rewrite HstT//.

@@ -31,7 +31,7 @@ struct Foo {
 
 #[rr::refined_by("()" : "unitRT")]
 struct Bar {
-    #[rr::field("#tt")]
+    #[rr::field("(#tt, tt)")]
     x : Box<Foo>,
 }
 
@@ -62,7 +62,7 @@ enum Bla {
     #[rr::pattern("Some" $ "x")]
     #[rr::refinement("x")]
     #[rr::refined_by("x" : "unitRT")]
-    BlaW(#[rr::field("#x")] Box<Blub>),
+    BlaW(#[rr::field("(#x, tt)")] Box<Blub>),
 }
 
 #[rr::refined_by("()" : "unitRT")]

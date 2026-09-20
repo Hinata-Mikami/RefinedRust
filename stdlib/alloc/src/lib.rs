@@ -18,15 +18,11 @@ use std::ptr::{NonNull, copy_nonoverlapping};
 use std::alloc::{AllocError};
 
 #[rr::export_as(alloc::alloc::Global)]
-pub struct Global {
-
-}
+#[rr::refined_by("()" : "unit")]
+pub struct Global;
 
 impl Global {
-    #[rr::skip]
-    fn foo(&self) {
-
-    }
+    
 }
 
 #[rr::instantiate("FreeablePerm" := "λ _ l sz, freeable_nz l sz 1 HeapAlloc")]

@@ -31,8 +31,8 @@ use std::mem;
 // the definition details leaking?
 
 #[rr::export_as(alloc::boxed::Box)]
-#[rr::refined_by("x" : "place_rfn {rt_of T}")]
-#[rr::exists("l" : "loc", "a" : "{xt_of A}")]
+#[rr::refined_by("(x, a)" : "(place_rfn {rt_of T}) * (directRT {xt_of A})")]
+#[rr::exists("l" : "loc")]
 #[rr::inv(#iris "guarded true (l ◁ₗ[π, Owned] x @ ◁ {T})")]
 // TODO: for unsized T, will need to use pointer metadata to determine the size.
 #[rr::inv(#iris "{A::FreeablePerm} a l (ly_size {ly_of T})")]
@@ -49,18 +49,18 @@ impl<T, A: Allocator> Box<T, A> {
     #[rr::requires(#type "raw" : "($#@{{ {rt_of T} }} b)" @ "{T}")]
     #[rr::requires(#iris "{A::FreeablePerm} alloc raw (ly_size {ly_of T})")]
     #[rr::requires("raw.(loc_a) ≠ 0")]
-    #[rr::returns("b")]
+    #[rr::returns("(b, alloc)")]
     pub unsafe fn from_raw_in(raw: *mut T, alloc: A) -> Self {
         Box(unsafe { Unique::new_unchecked(raw) }, alloc)
     }
 
     #[rr::only_spec]
-    #[rr::exists("l" : "loc", "a")]
-    #[rr::ensures(#type "l" : "($#@{{ {rt_of T} }} b)" @ "{T}")]
-    #[rr::ensures(#iris "{A::FreeablePerm} a l (ly_size {ly_of T})")]
+    #[rr::exists("l" : "loc")]
+    #[rr::ensures(#type "l" : "($#@{{ {rt_of T} }} b.1)" @ "{T}")]
+    #[rr::ensures(#iris "{A::FreeablePerm} b.2 l (ly_size {ly_of T})")]
     // This holds true even for ZSTs.
     #[rr::ensures("l.(loc_a) ≠ 0")]
-    #[rr::returns("*[l; a]")]
+    #[rr::returns("*[l; b.2]")]
     pub fn into_raw_with_allocator(b: Self) -> (*mut T, A) {
         // TODO: not sure how to implement since we cannot use the magic box deref here.
         unimplemented!();
@@ -77,7 +77,7 @@ impl<T, A: Allocator> Box<T, A> {
 }
 
 // NB: Only works for sized T.
-#[rr::returns("x")]
+#[rr::returns("(x, tt)")]
 fn box_new<T>(x: T) -> Box<T> {
     if core::mem::size_of::<T>() == 0 {
         let ptr = std::ptr::dangling::<T>() as *mut T;
@@ -98,7 +98,7 @@ fn box_new<T>(x: T) -> Box<T> {
 
 #[rr::export_as(alloc::boxed::Box)]
 impl<T> Box<T> {
-    #[rr::returns("x")]
+    #[rr::returns("(x, tt)")]
     pub fn new(x: T) -> Self {
         box_new(x)
     }
@@ -135,7 +135,7 @@ impl<T> Box<T> {
 
     #[rr::only_spec]
     #[rr::exists("l" : "loc")]
-    #[rr::ensures(#type "l" : "($#@{{ {rt_of T} }} b)" @ "{T}")]
+    #[rr::ensures(#type "l" : "($#@{{ {rt_of T} }} (b.1))" @ "{T}")]
     #[rr::ensures(#iris "freeable_nz l (ly_size {ly_of T}) 1 HeapAlloc")]
     // This holds true even for ZSTs.
     #[rr::ensures("l.(loc_a) ≠ 0")]
@@ -154,7 +154,7 @@ impl<T> Box<T> {
     #[rr::requires(#type "raw" : "($#@{{ {rt_of T} }} b)" @ "{T}")]
     #[rr::requires(#iris "freeable_nz raw (ly_size {ly_of T}) 1 HeapAlloc")]
     #[rr::requires("raw.(loc_a) ≠ 0")]
-    #[rr::returns("b")]
+    #[rr::returns("(b, tt)")]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
         unsafe {
             Box::from_raw_in(raw, Global)

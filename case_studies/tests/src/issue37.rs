@@ -12,7 +12,7 @@ impl Payload {
 
 enum Entry {
     #[rr::refined_by("x" : "Z")]
-    Data(#[rr::field("#(-[ #x])")] Box<Payload>),
+    Data(#[rr::field("(#-[ #x], tt)")] Box<Payload>),
 }
 
 impl Entry {
