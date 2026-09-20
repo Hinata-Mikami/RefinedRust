@@ -12,6 +12,11 @@ pub trait Tuple { }
 
 #[rr::export_as(core::ops::FnOnce)]
 #[rr::external_attrs("Params", "Pre", "Post", "PostMut", "UnwindCondition")]
+//#[rr::exists("Params" : "Type")]
+//#[rr::exists("Pre" : "thread_id → {Params} → {xt_of Self} → {xt_of Args} → iProp Σ")]
+//#[rr::exists("Post" : "thread_id → {Params} → {xt_of Self} → {xt_of Args} → {xt_of Output} → iProp Σ")]
+//#[rr::exists("PostMut" : "thread_id → {Params} → {xt_of Self} → {xt_of Args} → {xt_of Self} → {xt_of Output} → iProp Σ")]
+//#[rr::exists("UnwindCondition" : "{xt_of Self} → {Params} → {xt_of Args} → Prop")]
 pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
     type Output;

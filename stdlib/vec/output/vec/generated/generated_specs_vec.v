@@ -582,12 +582,12 @@ End attrs.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
-Program Definition VecTasstd_iter_FromIteratorT_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) : ((traits_iterator_FromIterator_spec_attrs (((Vec_inv_t_rt ((T_rt)) ((((Global_rt))))))) ((T_rt)))) :=
+Program Definition VecTasstd_iter_FromIteratorT_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) : ((traits_iterator_FromIterator_spec_attrs (((Vec_inv_t_rt ((T_rt)) ((((Global_inv_t_rt))))))) ((T_rt)))) :=
   {|
     traits_iterator_FromIterator_FromSequence  :=
-      (λ x, x) : ((traits_iterator_FromIterator_FromSequence_sig (((Vec_inv_t_rt ((T_rt)) ((((Global_rt))))))) ((T_rt))));
+      (λ x, x) : ((traits_iterator_FromIterator_FromSequence_sig (((Vec_inv_t_rt ((T_rt)) ((((Global_inv_t_rt))))))) ((T_rt))));
     traits_iterator_FromIterator_FromSequenceStatus  :=
-      (λ _ status, status = IteratorCollectFinished) : ((traits_iterator_FromIterator_FromSequenceStatus_sig (((Vec_inv_t_rt ((T_rt)) ((((Global_rt))))))) ((T_rt)) (_)));
+      (λ _ status, status = IteratorCollectFinished) : ((traits_iterator_FromIterator_FromSequenceStatus_sig (((Vec_inv_t_rt ((T_rt)) ((((Global_inv_t_rt))))))) ((T_rt)) (_)));
   |}
 .
 
@@ -1241,7 +1241,7 @@ Definition type_of_Vec_T_new (T_rt: RT) (T_st: syn_type) :=
       (* elctx........ *) (λ ϝ, []);
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, [] @ (Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]);
+      (* existential.. *) ∃ _ : unit, [] @ (Vec_inv_t ((T_rt)) ((((Global_inv_t_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_inv_t  -[] -[])]);
       (* postcondition *) (λ π : thread_id, True) |
       (* unwind post... *) False.
 
@@ -1314,7 +1314,7 @@ Definition type_of_Vec_T_with_capacity (T_rt: RT) (T_st: syn_type) :=
       (* args......... *) cap :@: (int USize);
       (* precondition. *) (λ π : thread_id, (⌜((size_of_array_in_bytes (ty_syn_type T_ty MetaNone) (Z.to_nat cap) ≤ MaxInt ISize)%Z)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, [] @ (Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]);
+      (* existential.. *) ∃ _ : unit, [] @ (Vec_inv_t ((T_rt)) ((((Global_inv_t_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_inv_t  -[] -[])]);
       (* postcondition *) (λ π : thread_id, True) |
       (* unwind post... *) False.
 
@@ -1328,7 +1328,7 @@ Definition type_of_vec_from_elem (T_rt: RT) (T_st: syn_type) (Clone_T_spec_attrs
       (* args......... *) elem :@: T_ty, n :@: (int USize);
       (* precondition. *) (λ π : thread_id, (⌜((size_of_array_in_bytes (ty_syn_type T_ty MetaNone) (2 * (Z.to_nat n)) ≤ MaxInt ISize)%Z)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, replicate (Z.to_nat n) elem @ (Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]);
+      (* existential.. *) ∃ _ : unit, replicate (Z.to_nat n) elem @ (Vec_inv_t ((T_rt)) ((((Global_inv_t_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_inv_t  -[] -[])]);
       (* postcondition *) (λ π : thread_id, True) |
       (* unwind post... *) False.
 
@@ -1407,8 +1407,8 @@ Definition trait_incl_of_VecTasstd_iter_FromIteratorT_from_iter (T_rt: RT) (I_rt
   spec! ( *[]) : 0 | ( *[T_ty; I_ty; traits_iterator_IntoIterator_I_IntoIter_ty]) : ([T_rt; I_rt; traits_iterator_IntoIterator_I_IntoIter_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl traits_iterator_Iterator_spec_incl traits_iterator_Iterator_Iasstd_iter_IntoIterator_IntoIter_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), traits_iterator_Iterator_base_spec (traits_iterator_IntoIterator_I_IntoIter_rt) (T_rt) traits_iterator_IntoIterator_I_IntoIter_st T_st traits_iterator_Iterator_Iasstd_iter_IntoIterator_IntoIter_spec_attrs-[] -[traits_iterator_IntoIterator_I_IntoIter_ty; T_ty]))) ∧ (trait_incl_marker (lift_trait_incl traits_iterator_IntoIterator_spec_incl traits_iterator_IntoIterator_I_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), traits_iterator_IntoIterator_base_spec (I_rt) (traits_iterator_IntoIterator_I_IntoIter_rt) (T_rt) I_st traits_iterator_IntoIterator_I_IntoIter_st T_st traits_iterator_Iterator_Iasstd_iter_IntoIterator_IntoIter_spec_attrs traits_iterator_IntoIterator_I_spec_attrs-[] -[I_ty; traits_iterator_IntoIterator_I_IntoIter_ty; T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_I_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (I_rt) I_st-[] -[I_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Iasstd_iter_IntoIterator_IntoIter_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (traits_iterator_IntoIterator_I_IntoIter_rt) traits_iterator_IntoIterator_I_IntoIter_st-[] -[traits_iterator_IntoIterator_I_IntoIter_ty])))).
 
 Definition type_of_VecTasstd_iter_FromIteratorT_from_iter (T_rt: RT) (I_rt: RT) (traits_iterator_IntoIterator_I_IntoIter_rt: RT) (T_st: syn_type) (I_st: syn_type) (traits_iterator_IntoIterator_I_IntoIter_st: syn_type) (traits_iterator_Iterator_Iasstd_iter_IntoIterator_IntoIter_spec_attrs: (traits_iterator_Iterator_spec_attrs (RRGS:=RRGS) (traits_iterator_IntoIterator_I_IntoIter_rt) (T_rt) )) (traits_iterator_IntoIterator_I_spec_attrs: (traits_iterator_IntoIterator_spec_attrs (RRGS:=RRGS) (I_rt) (traits_iterator_IntoIterator_I_IntoIter_rt) (T_rt) )) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((traits_iterator_FromIterator_base_spec (((Vec_inv_t_rt ((T_rt)) ((((Global_rt))))))) ((T_rt)) ((Vec_st (T_st) ((Global_sls : syn_type)))) (T_st) ((VecTasstd_iter_FromIteratorT_spec_attrs (T_rt))))
-    -[] -[(Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]); T_ty]).(traits_iterator_FromIterator_from_iter_spec) I_rt traits_iterator_IntoIterator_I_IntoIter_rt I_st traits_iterator_IntoIterator_I_IntoIter_st traits_iterator_Iterator_Iasstd_iter_IntoIterator_IntoIter_spec_attrs traits_iterator_IntoIterator_I_spec_attrs a b))) <MERGE!>.
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((traits_iterator_FromIterator_base_spec (((Vec_inv_t_rt ((T_rt)) ((((Global_inv_t_rt))))))) ((T_rt)) ((Vec_st (T_st) ((Global_sls : syn_type)))) (T_st) ((VecTasstd_iter_FromIteratorT_spec_attrs (T_rt))))
+    -[] -[(Vec_inv_t ((T_rt)) ((((Global_inv_t_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_inv_t  -[] -[])]); T_ty]).(traits_iterator_FromIterator_from_iter_spec) I_rt traits_iterator_IntoIterator_I_IntoIter_rt I_st traits_iterator_IntoIterator_I_IntoIter_st traits_iterator_Iterator_Iasstd_iter_IntoIterator_IntoIter_spec_attrs traits_iterator_IntoIterator_I_spec_attrs a b))) <MERGE!>.
 
 Definition trait_incl_of_vec_iter_mut (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
@@ -1417,7 +1417,7 @@ Definition type_of_vec_iter_mut (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (x) : ((_)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) x :@: (mut_ref ulft_1 (Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]));
+      (* args......... *) x :@: (mut_ref ulft_1 (Vec_inv_t ((T_rt)) ((((Global_inv_t_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_inv_t  -[] -[])]));
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (γs) : ((_)), zip x.cur γs @ (IterMut_inv_t ((T_rt))  -[ulft_1] -[T_ty]);
@@ -1657,7 +1657,7 @@ End VecTAasstd_ops_Drop_spec.
 
 Section VecTasstd_iter_FromIteratorT_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition VecTasstd_iter_FromIteratorT_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (traits_iterator_FromIterator_spec (((Vec_inv_t_rt ((T_rt)) ((((Global_rt))))))) ((T_rt)))) :=
+  Definition VecTasstd_iter_FromIteratorT_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (traits_iterator_FromIterator_spec (((Vec_inv_t_rt ((T_rt)) ((((Global_inv_t_rt))))))) ((T_rt)))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), {|
         traits_iterator_FromIterator_from_iter_spec (I_rt: RT) (traits_iterator_IntoIterator_I_IntoIter_rt: RT) (I_st: syn_type) (traits_iterator_IntoIterator_I_IntoIter_st: syn_type) (traits_iterator_Iterator_Iasstd_iter_IntoIterator_IntoIter_spec_attrs: (traits_iterator_Iterator_spec_attrs (RRGS:=RRGS) (traits_iterator_IntoIterator_I_IntoIter_rt) (T_rt) )) (traits_iterator_IntoIterator_I_spec_attrs: (traits_iterator_IntoIterator_spec_attrs (RRGS:=RRGS) (I_rt) (traits_iterator_IntoIterator_I_IntoIter_rt) (T_rt) )) :=
           (type_of_VecTasstd_iter_FromIteratorT_from_iter ((T_rt)) ((I_rt)) ((traits_iterator_IntoIterator_I_IntoIter_rt)) (T_st) (I_st) (traits_iterator_IntoIterator_I_IntoIter_st)) traits_iterator_Iterator_Iasstd_iter_IntoIterator_IntoIter_spec_attrs traits_iterator_IntoIterator_I_spec_attrs
@@ -1665,7 +1665,7 @@ Section VecTasstd_iter_FromIteratorT_spec.
       |}
   .
   Definition VecTasstd_iter_FromIteratorT_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl traits_iterator_FromIterator_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (VecTasstd_iter_FromIteratorT_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((traits_iterator_FromIterator_base_spec ((Vec_inv_t_rt ((T_rt)) ((((Global_rt)))))) (T_rt) (Vec_st (T_st) ((Global_sls : syn_type))) T_st (VecTasstd_iter_FromIteratorT_spec_attrs (T_rt))-[] -[(Vec_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]); T_ty])))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl traits_iterator_FromIterator_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (VecTasstd_iter_FromIteratorT_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((traits_iterator_FromIterator_base_spec ((Vec_inv_t_rt ((T_rt)) ((((Global_inv_t_rt)))))) (T_rt) (Vec_st (T_st) ((Global_sls : syn_type))) T_st (VecTasstd_iter_FromIteratorT_spec_attrs (T_rt))-[] -[(Vec_inv_t ((T_rt)) ((((Global_inv_t_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_inv_t  -[] -[])]); T_ty])))).
 End VecTasstd_iter_FromIteratorT_spec.
 
 Section usizeasprivate_slice_index_Sealed_spec.

@@ -39,6 +39,57 @@ End Global_ty.
 
 #[global] Arguments Global_ty {_ _}  .
 
+Section Global_inv_t.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Program Definition Global_inv_t_inv_spec  : (spec_with 0 [] ((ex_inv_def (Global_rt)%type ((unit))%type))) :=
+    spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
+          (λ π inner_rfn (_ty_rfn : RT_rt ((unit)%type : RT)),
+                  let '() := _ty_rfn in ⌜inner_rfn = -[]⌝ ∗ True)%I
+          (true)
+          ([])
+          ([])
+          _ _ _ _
+        .
+  Next Obligation.
+    ex_plain_t_solve_shr_auto.
+  Defined.
+
+  Next Obligation.
+    ex_plain_t_solve_ghost_drop_auto.
+  Defined.
+
+  Next Obligation.
+    ex_t_solve_persistent.
+  Qed.
+
+  Next Obligation.
+    ex_plain_t_solve_shr_mono.
+  Qed.
+
+  Definition Global_inv_t  : (spec_with 0 [] ((type (((unit))%type)))) :=
+    spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ex_plain_t _ _ (Global_inv_t_inv_spec  -[] -[]) (Global_ty -[] -[]).
+  #[global] Arguments Global_inv_t_inv_spec : simpl never.
+
+  #[global] Arguments Global_inv_t : simpl never.
+
+  #[global] Typeclasses Transparent Global_inv_t.
+  Definition Global_inv_t_rt  : RT.
+  Proof using  .
+    let __a := (normalized_rt_of_spec_ty (Global_inv_t)) in exact __a.
+  Defined.
+
+  #[global] Typeclasses Transparent Global_inv_t_rt.
+End Global_inv_t.
+#[global] Arguments Global_inv_t_rt : clear implicits.
+
+#[global] Arguments Global_inv_t : clear implicits.
+
+#[global] Arguments Global_inv_t {_ _}  .
+
+#[global] Arguments Global_inv_t_inv_spec : clear implicits.
+
+#[global] Arguments Global_inv_t_inv_spec {_ _}  .
+
 
 Section layout_LayoutError_ty.
   Context `{RRGS : !(refinedrustGS Σ)}.
@@ -64,10 +115,10 @@ End layout_LayoutError_ty.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
-Program Definition GlobalasAllocator_spec_attrs `{RRGS : !(refinedrustGS Σ)} : ((Allocator_spec_attrs ((Global_rt)))) :=
+Program Definition GlobalasAllocator_spec_attrs `{RRGS : !(refinedrustGS Σ)} : ((Allocator_spec_attrs ((Global_inv_t_rt)))) :=
   {|
     Allocator_FreeablePerm  :=
-      (λ _ l sz, freeable_nz l sz 1 HeapAlloc) : ((Allocator_FreeablePerm_sig ((Global_rt))));
+      (λ _ l sz, freeable_nz l sz 1 HeapAlloc) : ((Allocator_FreeablePerm_sig ((Global_inv_t_rt))));
   |}
 .
 
@@ -417,9 +468,9 @@ Definition type_of_alloc_realloc_internal  :=
 End specs.
 Section GlobalasAllocator_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition GlobalasAllocator_spec  : (spec_with _ _ (Allocator_spec ((Global_rt)))) :=
-    spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Allocator_spec _ _ ((Global_rt))).
+  Definition GlobalasAllocator_spec  : (spec_with _ _ (Allocator_spec ((Global_inv_t_rt)))) :=
+    spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (@mk_Allocator_spec _ _ ((Global_inv_t_rt))).
   Definition GlobalasAllocator_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl Allocator_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), GlobalasAllocator_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Allocator_base_spec (Global_rt) Global_st GlobalasAllocator_spec_attrs-[] -[(Global_ty  -[] -[])])))).
+    trait_incl_marker (lift_trait_incl Allocator_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), GlobalasAllocator_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((Allocator_base_spec (Global_inv_t_rt) Global_st GlobalasAllocator_spec_attrs-[] -[(Global_inv_t   -[] -[])])))).
 End GlobalasAllocator_spec.
 

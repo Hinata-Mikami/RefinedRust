@@ -70,6 +70,71 @@ Qed.
 
 
 
+Program Definition Box_TA_into_non_null_with_allocator_def (Box_TA_into_raw_with_allocator_T_A_loc: loc) (DropGlue_A_drop_glue_loc: loc) (nonnull_NonNull_T_new_unchecked_T_loc: loc) (T_st: syn_type) (A_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("b", (use_layout_alg' (Box_st (T_st) (A_st))) : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ ((tuple2_sls (((nonnull_NonNull_sls (T_st)) : syn_type)) (A_st)) : syn_type) } "__0";
+      local_live{ ((tuple2_sls (PtrSynType) (A_st)) : syn_type) } "__4";
+      local_live{ (Box_st (T_st) (A_st)) } "__5";
+      "__5" <-{ (use_op_alg' (Box_st (T_st) (A_st))) } move{ (use_op_alg' (Box_st (T_st) (A_st))) } ("b");
+      CallS Box_TA_into_raw_with_allocator_T_A_loc [] [RSTTyVar "T"; RSTTyVar "A"] [@{expr} move{ (use_op_alg' (Box_st (T_st) (A_st))) } ("__5")] (Some (Na1Ord, (use_op_alg' ((tuple2_sls (PtrSynType) (A_st)) : syn_type)), "__4"))
+      ( Goto "_bb1")
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb4")
+     ]>%E $
+     <[
+     "_bb1" :=
+      local_dead "__5";
+      local_live{ PtrSynType } "ptr";
+      "ptr" <-{ PtrOp } copy{ PtrOp } (("__4") at{ (tuple2_sls (PtrSynType) (A_st)) } "0");
+      local_live{ A_st } "alloc";
+      "alloc" <-{ (use_op_alg' A_st) } move{ (use_op_alg' A_st) } (("__4") at{ (tuple2_sls (PtrSynType) (A_st)) } "1");
+      local_dead "__4";
+      local_live{ ((nonnull_NonNull_sls (T_st)) : syn_type) } "__6";
+      local_live{ PtrSynType } "__7";
+      "__7" <-{ PtrOp } copy{ PtrOp } ("ptr");
+      CallS nonnull_NonNull_T_new_unchecked_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__7")] (Some (Na1Ord, (use_op_alg' ((nonnull_NonNull_sls (T_st)) : syn_type)), "__6"))
+      ( Goto "_bb2")
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb3")
+     ]>%E $
+     <[
+     "_bb2" :=
+      local_dead "__7";
+      local_live{ A_st } "__8";
+      "__8" <-{ (use_op_alg' A_st) } move{ (use_op_alg' A_st) } ("alloc");
+      "__0" <-{ (use_op_alg' ((tuple2_sls (((nonnull_NonNull_sls (T_st)) : syn_type)) (A_st)) : syn_type)) } StructInit (tuple2_sls (((nonnull_NonNull_sls (T_st)) : syn_type)) (A_st)) [("0", move{ (use_op_alg' ((nonnull_NonNull_sls (T_st)) : syn_type)) } ("__6") : expr); ("1", move{ (use_op_alg' A_st) } ("__8") : expr)];
+      local_dead "__8";
+      local_dead "__6";
+      local_dead "alloc";
+      local_dead "ptr";
+      return (move{ (use_op_alg' ((tuple2_sls (((nonnull_NonNull_sls (T_st)) : syn_type)) (A_st)) : syn_type)) } ("__0"))
+     ]>%E $
+     <[
+     "_bb3" :=
+      CallS DropGlue_A_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("alloc")] None
+      ( Goto "_bb4")
+      ( UnwindTerminate)
+     ]>%E $
+     <[
+     "_bb4" :=
+      Unwind
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
 Program Definition Box_T_from_raw_def (Box_TA_from_raw_in_T_std_alloc_Global_loc: loc) (T_st: syn_type) : function :=
   {|
      f_args := [
@@ -93,6 +158,50 @@ Program Definition Box_T_from_raw_def (Box_TA_from_raw_in_T_std_alloc_Global_loc
       local_dead "__3";
       local_dead "__2";
       return (move{ (use_op_alg' (Box_st (T_st) ((Global_sls : syn_type)))) } ("__0"))
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition Box_T_into_non_null_def (Box_T_into_raw_T_loc: loc) (nonnull_NonNull_T_new_unchecked_T_loc: loc) (T_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("b", (use_layout_alg' (Box_st (T_st) ((Global_sls : syn_type)))) : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ ((nonnull_NonNull_sls (T_st)) : syn_type) } "__0";
+      local_live{ PtrSynType } "__2";
+      local_live{ (Box_st (T_st) ((Global_sls : syn_type))) } "__3";
+      "__3" <-{ (use_op_alg' (Box_st (T_st) ((Global_sls : syn_type)))) } move{ (use_op_alg' (Box_st (T_st) ((Global_sls : syn_type)))) } ("b");
+      CallS Box_T_into_raw_T_loc [] [RSTTyVar "T"] [@{expr} move{ (use_op_alg' (Box_st (T_st) ((Global_sls : syn_type)))) } ("__3")] (Some (Na1Ord, PtrOp, "__2"))
+      ( Goto "_bb1")
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb3")
+     ]>%E $
+     <[
+     "_bb1" :=
+      local_dead "__3";
+      CallS nonnull_NonNull_T_new_unchecked_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__2")] (Some (Na1Ord, (use_op_alg' ((nonnull_NonNull_sls (T_st)) : syn_type)), "__0"))
+      ( Goto "_bb2")
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Goto "_bb3")
+     ]>%E $
+     <[
+     "_bb2" :=
+      local_dead "__2";
+      return (move{ (use_op_alg' ((nonnull_NonNull_sls (T_st)) : syn_type)) } ("__0"))
+     ]>%E $
+     <[
+     "_bb3" :=
+      Unwind
      ]>%E $
       ∅;
      f_init := "_bb0";

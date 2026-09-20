@@ -4,7 +4,7 @@
     {
       "info": {
         "enum_name": null,
-        "needs_trait_attrs": false
+        "needs_trait_attrs": true
       },
       "kind": "adt",
       "path": [
@@ -16,8 +16,8 @@
         "rtype": "(Global_rt)",
         "semtype": "Global_ty"
       },
-      "rtype": "(Global_rt)",
-      "semtype": "Global_ty",
+      "rtype": "(Global_inv_t_rt)",
+      "semtype": "Global_inv_t",
       "syntype": "Global_sls"
     },
     {

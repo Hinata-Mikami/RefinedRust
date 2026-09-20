@@ -46,6 +46,30 @@
     },
     {
       "kind": "method",
+      "name": "Box_T_into_non_null",
+      "path": [
+        "alloc",
+        "boxed",
+        "Box",
+        "into_non_null"
+      ],
+      "spec": "type_of_Box_T_into_non_null",
+      "trait_req_incl": "trait_incl_of_Box_T_into_non_null"
+    },
+    {
+      "kind": "method",
+      "name": "Box_TA_into_non_null_with_allocator",
+      "path": [
+        "alloc",
+        "boxed",
+        "Box",
+        "into_non_null_with_allocator"
+      ],
+      "spec": "type_of_Box_TA_into_non_null_with_allocator",
+      "trait_req_incl": "trait_incl_of_Box_TA_into_non_null_with_allocator"
+    },
+    {
+      "kind": "method",
       "name": "Box_T_into_raw",
       "path": [
         "alloc",
@@ -79,6 +103,18 @@
       ],
       "spec": "type_of_Box_T_new",
       "trait_req_incl": "trait_incl_of_Box_T_new"
+    },
+    {
+      "kind": "method",
+      "name": "Box_TA_new_in",
+      "path": [
+        "alloc",
+        "boxed",
+        "Box",
+        "new_in"
+      ],
+      "spec": "type_of_Box_TA_new_in",
+      "trait_req_incl": "trait_incl_of_Box_TA_new_in"
     },
     {
       "for_type": {

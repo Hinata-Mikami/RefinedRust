@@ -34,12 +34,12 @@ End Box_ty.
 Section Box_inv_t.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Context {T_rt : RT} {A_rt : RT}.
-  Program Definition Box_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((ex_inv_def ((Box_rt (T_rt) (A_rt)))%type ((place_rfn (T_rt)))%type))) :=
+  Program Definition Box_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((ex_inv_def ((Box_rt (T_rt) (A_rt)))%type (((place_rfn (T_rt)) * (directRT (RT_xt (A_rt)))))%type))) :=
     spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), mk_ex_inv_def_auto_shr
-          (λ π inner_rfn (_ty_rfn : RT_rt ((place_rfn (T_rt))%type : RT)),
-                  let 'x := _ty_rfn in ∃ (l: name_hint_ty "l" ((loc))%Z) (a: name_hint_ty "a" (((RT_xt (A_rt))))%Z), ⌜inner_rfn = -[#(l); #($# a)]⌝ ∗ guarded true (l ◁ₗ[π, Owned] x @ ◁ T_ty) ∗ Allocator_A_spec_attrs.(Allocator_FreeablePerm) a l (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))) ∗ True)%I
-          (λ π _ (_rfn_binder : RT_rt ((place_rfn (T_rt))%type : RT)),
-                  let 'x := _rfn_binder in (∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop T_ty π r) ∗ True)%I
+          (λ π inner_rfn (_ty_rfn : RT_rt (((place_rfn (T_rt)) * (directRT (RT_xt (A_rt))))%type : RT)),
+                  let '(x, a) := _ty_rfn in ∃ (l: name_hint_ty "l" ((loc))%Z), ⌜inner_rfn = -[#(l); #($# a)]⌝ ∗ guarded true (l ◁ₗ[π, Owned] x @ ◁ T_ty) ∗ Allocator_A_spec_attrs.(Allocator_FreeablePerm) a l (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))) ∗ True)%I
+          (λ π _ (_rfn_binder : RT_rt (((place_rfn (T_rt)) * (directRT (RT_xt (A_rt))))%type : RT)),
+                  let '(x, a) := _rfn_binder in (∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop T_ty π r) ∗ True)%I
           (false)
           ([] ++ ty_lfts T_ty)
           ([] ++ ty_wf_E T_ty)
@@ -61,7 +61,7 @@ Section Box_inv_t.
     intros ?; ex_plain_t_solve_ghost_drop.
   Qed.
 
-  Definition Box_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type (((place_rfn (T_rt)))%type)))) :=
+  Definition Box_inv_t (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((type ((((place_rfn (T_rt)) * (directRT (RT_xt (A_rt)))))%type)))) :=
     spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ex_plain_t _ _ (Box_inv_t_inv_spec Allocator_A_spec_attrs -[] -[T_ty; A_ty]) (((Box_ty (T_rt) (A_rt)) (Allocator_A_spec_attrs)) -[] -[T_ty; A_ty]).
   #[global] Arguments Box_inv_t_inv_spec : simpl never.
 
@@ -111,7 +111,7 @@ Section contractive.
     - constructor.
       + solve_proper_prepare.
         repeat solve_proper_step.
-      + solve_proper_prepare.
+      + solve_proper_prepare. simpl in *. prepare_initial_coq_context. simpl.
         repeat solve_proper_step.
     - cbn; apply _.
   Qed.
@@ -141,14 +141,16 @@ Section contractive.
 
   (** Resolve ghost: Resolve observations on the contained value. *)
   Lemma resolve_ghost_box {T_rt A_rt} A_attrs (T_ty : type T_rt) (A_ty : type A_rt) π E L r rm T :
-    (∀ l', resolve_ghost π E L rm true l' (◁ T_ty) Owned r T)
+    (∀ l', resolve_ghost π E L rm true l' (◁ T_ty) Owned r.1 (λ L2 r2 R prog,
+      T L2 (r2, r.2) R prog))
     ⊢ resolve_ghost_adt π E L rm r (Box_inv_t T_rt A_rt A_attrs <TY> T_ty <TY> A_ty <INST!>) T.
   Proof.
     rewrite /resolve_ghost_adt /resolve_ghost.
     iIntros "HT" (????) "#CTX #HE HL Hv".
     rewrite ex_plain_t_unfold_val.
-    iDestruct "Hv" as ((l' & a & [])) "(Hinv & Hv)". simpl in *.
-    iDestruct "Hinv" as "(%l'' & %a'' & %Heq & Hl' & Halloc & _)".
+    destruct r as [r a].
+    iDestruct "Hv" as ((l' & [])) "(Hinv & Hv)". simpl in *.
+    iDestruct "Hinv" as "(%l'' & %Heq & Hl' & Halloc & _)".
     inversion Heq. subst.
     unfold guarded. iDestruct "Hl'" as "(Hc & Hl')".
     iDestruct "Hc" as "((Hc1 & Hc) & Ht)".
@@ -175,16 +177,16 @@ Section contractive.
     iPoseProof (full_subtype_acc_noend with "HE HL") as "(%HstT & #HinclT)"; first apply HsubT.
     iPoseProof (full_subtype_acc_noend with "HE HL") as "(%HstA & #HinclA)"; first apply HsubA.
     iSplit; iModIntro.
-    - iIntros (? x r). simpl.
-      iIntros "(%l & %a & -> & Hl & Hperm)".
-      iExists _, _. iR.
+    - iIntros (? x [r a]). simpl.
+      iIntros "(%l & -> & Hl & Hperm)".
+      iExists _. iR.
       rewrite HstT. iFrame.
       iApply (guarded_mono with "[] Hl").
       iIntros "Hl". iApply type_incl_ltype_owned_wand; [ | done..].
       rewrite HstT//.
-    - iIntros (? ? x r). simpl.
-      iIntros "(%l & %a & -> & Hl & Hperm)".
-      iExists _, _. iR. iL.
+    - iIntros (? ? x [r a]). simpl.
+      iIntros "(%l &  -> & Hl & Hperm)".
+      iExists _. iR. iL.
       iApply (guarded_mono with "[] Hl").
       iIntros "Hl". iApply type_incl_ltype_shared_wand; [ | done..].
       rewrite HstT//.
@@ -205,7 +207,7 @@ Definition type_of_box_new (T_rt: RT) (T_st: syn_type) :=
       (* args......... *) x :@: T_ty;
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, x @ (Box_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]);
+      (* existential.. *) ∃ _ : unit, (x, tt) @ (Box_inv_t ((T_rt)) ((((Global_inv_t_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_inv_t  -[] -[])]);
       (* postcondition *) (λ π : thread_id, True) |
       (* unwind post... *) False.
 
@@ -221,7 +223,7 @@ Definition type_of_Box_T_from_raw (T_rt: RT) (T_st: syn_type) :=
         ∗ (freeable_nz raw (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))) 1 HeapAlloc)
         ∗ (⌜(raw.(loc_a) ≠ 0)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, b @ (Box_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]);
+      (* existential.. *) ∃ _ : unit, (b, tt) @ (Box_inv_t ((T_rt)) ((((Global_inv_t_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_inv_t  -[] -[])]);
       (* postcondition *) (λ π : thread_id, True) |
       (* unwind post... *) False.
 
@@ -237,8 +239,40 @@ Definition type_of_Box_TA_from_raw_in (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_
         ∗ (Allocator_A_spec_attrs.(Allocator_FreeablePerm) alloc raw (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))))
         ∗ (⌜(raw.(loc_a) ≠ 0)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, b @ (Box_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]);
+      (* existential.. *) ∃ _ : unit, (b, alloc) @ (Box_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]);
       (* postcondition *) (λ π : thread_id, True) |
+      (* unwind post... *) False.
+
+Definition trait_incl_of_Box_T_into_non_null (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
+
+Definition type_of_Box_T_into_non_null (T_rt: RT) (T_st: syn_type) :=
+  fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
+      (* params....... *) (b) : ((_)),
+      (* elctx........ *) (λ ϝ, []);
+      (* args......... *) b :@: (Box_inv_t ((T_rt)) ((((Global_inv_t_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_inv_t  -[] -[])]);
+      (* precondition. *) (λ π : thread_id, True) |
+      (* trait reqs... *) (λ π : thread_id, True)) →
+      (* existential.. *) ∃ (l) : (((loc))), l @ (nonnull_NonNull_inv_t ((T_rt)) -[] -[T_ty]);
+      (* postcondition *) (λ π : thread_id, (l ◁ₗ[π, Owned] #(($#@{ (T_rt) } b.1)) @ (◁ T_ty))
+      ∗ (freeable_nz l (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))) 1 HeapAlloc)
+      ∗ (⌜(l.(loc_a) ≠ 0)%Z⌝)) |
+      (* unwind post... *) False.
+
+Definition trait_incl_of_Box_TA_into_non_null_with_allocator (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_A_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (A_rt)))) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_spec: (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (A_rt) A_st-[] -[A_ty]))) ∧ (trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs-[] -[A_ty])))).
+
+Definition type_of_Box_TA_into_non_null_with_allocator (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) :=
+  fn(∀ ( *[]) : 0 | ( *[T_ty; A_ty]) : ([(T_rt, T_st); (A_rt, A_st)] : list (RT * syn_type)%type) | 
+      (* params....... *) (b) : ((_)),
+      (* elctx........ *) (λ ϝ, []);
+      (* args......... *) b :@: (Box_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]);
+      (* precondition. *) (λ π : thread_id, True) |
+      (* trait reqs... *) (λ π : thread_id, True)) →
+      (* existential.. *) ∃ (l) : (((loc))), *[l; b.2] @ (tuple2_ty (((((nonnull_NonNull_inv_t_rt)) ((T_rt))))) ((A_rt)) -[] -[(nonnull_NonNull_inv_t ((T_rt)) -[] -[T_ty]); A_ty]);
+      (* postcondition *) (λ π : thread_id, (l ◁ₗ[π, Owned] #(($#@{ (T_rt) } b.1)) @ (◁ T_ty))
+      ∗ (Allocator_A_spec_attrs.(Allocator_FreeablePerm) b.2 l (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))))
+      ∗ (⌜(l.(loc_a) ≠ 0)%Z⌝)) |
       (* unwind post... *) False.
 
 Definition trait_incl_of_Box_T_new (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
@@ -251,7 +285,7 @@ Definition type_of_Box_T_new (T_rt: RT) (T_st: syn_type) :=
       (* args......... *) x :@: T_ty;
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, x @ (Box_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]);
+      (* existential.. *) ∃ _ : unit, (x, tt) @ (Box_inv_t ((T_rt)) ((((Global_inv_t_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_inv_t  -[] -[])]);
       (* postcondition *) (λ π : thread_id, True) |
       (* unwind post... *) False.
 
@@ -286,11 +320,11 @@ Definition type_of_Box_T_into_raw (T_rt: RT) (T_st: syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (b) : ((_)),
       (* elctx........ *) (λ ϝ, []);
-      (* args......... *) b :@: (Box_inv_t ((T_rt)) ((((Global_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_ty  -[] -[])]);
+      (* args......... *) b :@: (Box_inv_t ((T_rt)) ((((Global_inv_t_rt)))) GlobalasAllocator_spec_attrs -[] -[T_ty; (Global_inv_t  -[] -[])]);
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (l) : (((loc))), l @ alias_ptr_t;
-      (* postcondition *) (λ π : thread_id, (l ◁ₗ[π, Owned] #(($#@{ (T_rt) } b)) @ (◁ T_ty))
+      (* postcondition *) (λ π : thread_id, (l ◁ₗ[π, Owned] #(($#@{ (T_rt) } (b.1))) @ (◁ T_ty))
       ∗ (freeable_nz l (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))) 1 HeapAlloc)
       ∗ (⌜(l.(loc_a) ≠ 0)%Z⌝)) |
       (* unwind post... *) False.
@@ -305,10 +339,24 @@ Definition type_of_Box_TA_into_raw_with_allocator (T_rt: RT) (A_rt: RT) (T_st: s
       (* args......... *) b :@: (Box_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]);
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ (l, a) : (((loc) * _)), *[l; a] @ (tuple2_ty (loc) ((A_rt)) -[] -[alias_ptr_t; A_ty]);
-      (* postcondition *) (λ π : thread_id, (l ◁ₗ[π, Owned] #(($#@{ (T_rt) } b)) @ (◁ T_ty))
-      ∗ (Allocator_A_spec_attrs.(Allocator_FreeablePerm) a l (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))))
+      (* existential.. *) ∃ (l) : (((loc))), *[l; b.2] @ (tuple2_ty (loc) ((A_rt)) -[] -[alias_ptr_t; A_ty]);
+      (* postcondition *) (λ π : thread_id, (l ◁ₗ[π, Owned] #(($#@{ (T_rt) } b.1)) @ (◁ T_ty))
+      ∗ (Allocator_A_spec_attrs.(Allocator_FreeablePerm) b.2 l (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))))
       ∗ (⌜(l.(loc_a) ≠ 0)%Z⌝)) |
+      (* unwind post... *) False.
+
+Definition trait_incl_of_Box_TA_new_in (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_A_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (A_rt)))) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_spec: (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (A_rt) A_st-[] -[A_ty]))) ∧ (trait_incl_marker (lift_trait_incl Allocator_spec_incl Allocator_A_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Allocator_base_spec (A_rt) A_st Allocator_A_spec_attrs-[] -[A_ty])))).
+
+Definition type_of_Box_TA_new_in (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) :=
+  fn(∀ ( *[]) : 0 | ( *[T_ty; A_ty]) : ([(T_rt, T_st); (A_rt, A_st)] : list (RT * syn_type)%type) | 
+      (* params....... *) (x, alloc) : ((_ * _)),
+      (* elctx........ *) (λ ϝ, []);
+      (* args......... *) x :@: T_ty, alloc :@: A_ty;
+      (* precondition. *) (λ π : thread_id, True) |
+      (* trait reqs... *) (λ π : thread_id, True)) →
+      (* existential.. *) ∃ _ : unit, (x, alloc) @ (Box_inv_t ((T_rt)) ((A_rt)) Allocator_A_spec_attrs -[] -[T_ty; A_ty]);
+      (* postcondition *) (λ π : thread_id, True) |
       (* unwind post... *) False.
 
 
