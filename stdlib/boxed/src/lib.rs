@@ -23,7 +23,7 @@
 use std::alloc::{self, Allocator, Global, Layout};
 use std::marker::PhantomData;
 use std::ptr::dangling;
-use core::ptr::{self, Unique};
+use core::ptr::{self, Unique, NonNull};
 use std::mem;
 
 
@@ -39,7 +39,6 @@ use std::mem;
 #[rr::ty_lfts("ty_lfts {T}")]
 #[rr::ty_wf_E("ty_wf_E {T}")]
 #[rr::ghost_drop(#iris "∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop {T} π r")]
-//#[rr::only_spec(drop_glue)]
 pub struct Box<T, A: Allocator = Global, >(#[rr::field("l")] Unique<T>, #[rr::field("$# a")] A);
 
 // TODO: should be T: ?Sized
@@ -74,6 +73,72 @@ impl<T, A: Allocator> Box<T, A> {
         //let alloc = unsafe { ptr::read(&b.1) };
         //(ptr, alloc)
     }
+
+    #[rr::exists("l" : "loc")]
+    #[rr::ensures(#type "l" : "($#@{{ {rt_of T} }} b.1)" @ "{T}")]
+    #[rr::ensures(#iris "{A::FreeablePerm} b.2 l (ly_size {ly_of T})")]
+    #[rr::ensures("l.(loc_a) ≠ 0")]
+    #[rr::returns("*[l; b.2]")]
+    pub fn into_non_null_with_allocator(b: Self) -> (NonNull<T>, A) {
+        let (ptr, alloc) = Box::into_raw_with_allocator(b);
+        // SAFETY: `Box` is guaranteed to be non-null.
+        unsafe { (NonNull::new_unchecked(ptr), alloc) }
+    }
+
+}
+
+    
+#[rr::export_as(alloc::boxed::Box)]
+#[rr::only_spec]
+impl<T, A: Allocator> Box<T, A> {
+
+    #[rr::returns("(x, alloc)")]
+    pub fn new_in(x: T, alloc: A) -> Self
+    where
+        A: Allocator,
+    {
+        unimplemented!();
+        //let mut boxed = Self::new_uninit_in(alloc);
+        //boxed.write(x);
+        //unsafe { boxed.assume_init() }
+    }
+
+    /*
+    pub fn try_new_in(x: T, alloc: A) -> Result<Self, AllocError>
+    where
+        A: Allocator,
+    {
+        let mut boxed = Self::try_new_uninit_in(alloc)?;
+        boxed.write(x);
+        unsafe { Ok(boxed.assume_init()) }
+    }
+
+    pub fn new_uninit_in(alloc: A) -> Box<mem::MaybeUninit<T>, A>
+    where
+        A: Allocator,
+    {
+        let layout = Layout::new::<mem::MaybeUninit<T>>();
+        // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
+        // That would make code size bigger.
+        match Box::try_new_uninit_in(alloc) {
+            Ok(m) => m,
+            Err(_) => handle_alloc_error(layout),
+        }
+    }
+
+    pub fn try_new_uninit_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError>
+    where
+        A: Allocator,
+    {
+        let ptr = if T::IS_ZST {
+            NonNull::dangling()
+        } else {
+            let layout = Layout::new::<mem::MaybeUninit<T>>();
+            alloc.allocate(layout)?.cast()
+        };
+        unsafe { Ok(Box::from_raw_in(ptr.as_ptr(), alloc)) }
+    }
+    */
 }
 
 // NB: Only works for sized T.
@@ -159,6 +224,16 @@ impl<T> Box<T> {
         unsafe {
             Box::from_raw_in(raw, Global)
         }
+    }
+    
+    #[rr::exists("l" : "loc")]
+    #[rr::ensures(#type "l" : "($#@{{ {rt_of T} }} b.1)" @ "{T}")]
+    #[rr::ensures(#iris "freeable_nz l (ly_size {ly_of T}) 1 HeapAlloc")]
+    #[rr::ensures("l.(loc_a) ≠ 0")]
+    #[rr::returns("l")]
+    pub fn into_non_null(b: Self) -> NonNull<T> {
+        // SAFETY: `Box` is guaranteed to be non-null.
+        unsafe { NonNull::new_unchecked(Self::into_raw(b)) }
     }
 }
 
