@@ -1,6 +1,7 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
+#![feature(stmt_expr_attributes)]
 #![allow(dead_code)]
 
 #![rr::package("minivec")]
