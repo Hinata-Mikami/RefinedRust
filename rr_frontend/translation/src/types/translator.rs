@@ -439,6 +439,29 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         self.param_scope().trait_scope().lookup_virtual_trait_use(tcx, trait_key, args)
     }
 
+    pub(crate) fn try_lookup_virtual_trait_use(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+        trait_key: registry::VirtualTrait,
+        args: &[ty::GenericArg<'tcx>],
+    ) -> Option<&registry::GenericTraitUse<'tcx, 'def>> {
+        self.param_scope().trait_scope().try_lookup_virtual_trait_use(tcx, trait_key, args)
+    }
+
+    pub(crate) fn try_lookup_normalized_virtual_trait_use(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+        trait_key: registry::VirtualTrait,
+        self_ty: ty::Ty<'tcx>,
+    ) -> Option<&registry::GenericTraitUse<'tcx, 'def>> {
+        self.param_scope().trait_scope().try_lookup_normalized_virtual_trait_use(
+            tcx,
+            self.get_typing_env(tcx),
+            trait_key,
+            self_ty,
+        )
+    }
+
     /// Lookup a type parameter in the current state
     fn lookup_ty_param(&self, param_ty: ty::ParamTy) -> specs::Type<'def> {
         let ty = self
@@ -944,7 +967,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         self.register_adt(adt_def)?;
 
         let (enum_ref, lit_ref) = self.lookup_enum(adt_def.did())?;
-        let params = self.trait_registry().compute_scope_inst_in_state(state, adt_def.did(), args)?;
+        let params = self.trait_registry().compute_scope_inst_for_purpose(
+            state,
+            adt_def.did(),
+            args,
+            registry::ScopePurpose::TypeDefinition,
+        )?;
 
         state.register_adt_use(self.tcx, adt_def.did(), lit_ref, &params);
 
@@ -963,7 +991,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         let (struct_ref, lit_ref) = self.lookup_adt_variant(variant_id)?;
 
-        let params = self.trait_registry().compute_scope_inst_in_state(state, variant_id, args)?;
+        let params = self.trait_registry().compute_scope_inst_for_purpose(
+            state,
+            variant_id,
+            args,
+            registry::ScopePurpose::TypeDefinition,
+        )?;
         info!("struct use has params: {params:?}");
 
         state.register_adt_use(self.tcx, variant_id, lit_ref, &params);
@@ -991,7 +1024,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let (_, struct_ref, _) = en.get_variant(variant_idx).unwrap();
         let struct_ref: specs::structs::AbstractRef<'def> = *struct_ref;
 
-        let params = self.trait_registry().compute_scope_inst_in_state(state, adt_id, args)?;
+        let params = self.trait_registry().compute_scope_inst_for_purpose(
+            state,
+            adt_id,
+            args,
+            registry::ScopePurpose::TypeDefinition,
+        )?;
 
         state.register_adt_use(self.tcx, adt_id, lit_ref, &params);
 
@@ -1110,7 +1148,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 &mut STInner::TranslateAdt(AdtState::new(&mut deps, &scope, &typing_env)),
             )?;
 
-            let mut struct_def = specs::structs::Abstract::new(variant_def, scope.into());
+            let mut struct_def = specs::structs::Abstract::new(
+                variant_def,
+                scope.into_radium_scope(registry::ScopePurpose::TypeDefinition),
+            );
             if let Some(invariant_def) = invariant_def {
                 struct_def.add_invariant(invariant_def);
             }
@@ -1201,8 +1242,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         let expect_refinement;
         let mut invariant_spec;
+        let annotation_scope =
+            state.param_scope().annotation_scope_for_purpose(registry::ScopePurpose::TypeDefinition);
         if attrs::has_tool_attr_filtered(&outer_attrs, "refined_by") {
-            let mut spec_parser = struct_spec_parser::VerboseInvariantSpecParser::new(state.param_scope());
+            let mut spec_parser = struct_spec_parser::VerboseInvariantSpecParser::new(&annotation_scope);
             let res = spec_parser
                 .parse_invariant_spec(
                     struct_name,
@@ -1236,7 +1279,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
             let mut parser = struct_spec_parser::VerboseStructFieldSpecParser::new(
                 &ty,
-                state.param_scope(),
+                &annotation_scope,
                 expect_refinement,
                 |lit| self.intern_literal(lit),
             );
@@ -1490,7 +1533,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     &mut STInner::TranslateAdt(AdtState::new(&mut deps, &scope, &typing_env)),
                 )?;
 
-                let mut struct_def = specs::structs::Abstract::new(variant_def, scope.clone().into());
+                let mut struct_def = specs::structs::Abstract::new(
+                    variant_def,
+                    scope.clone().into_radium_scope(registry::ScopePurpose::TypeDefinition),
+                );
                 if let Some(invariant_def) = invariant_def {
                     struct_def.add_invariant(invariant_def);
                 }
@@ -1552,7 +1598,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 })?;
 
             if environment::has_tool_attribute(self.tcx, def.did(), "refined_by") {
-                let mut parser = VerboseEnumSpecParser::new(&scope);
+                let annotation_scope =
+                    scope.annotation_scope_for_purpose(registry::ScopePurpose::TypeDefinition);
+                let mut parser = VerboseEnumSpecParser::new(&annotation_scope);
 
                 enum_spec = match parser.parse_enum_spec(&enum_name, &attributes, &variant_attrs) {
                     Ok(spec) => spec,
@@ -1590,7 +1638,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 inductive_decl = Some(decl);
             }
 
-            let mut enum_builder = specs::enums::Builder::new(enum_name, scope.into(), translated_it, repr);
+            let mut enum_builder = specs::enums::Builder::new(
+                enum_name,
+                scope.into_radium_scope(registry::ScopePurpose::TypeDefinition),
+                translated_it,
+                repr,
+            );
 
             // now build the enum itself
             for v in def.variants() {
@@ -1636,7 +1689,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             ));
         };
 
-        let params = self.trait_registry().compute_scope_inst_in_state(state, adt.did(), substs)?;
+        let params = self.trait_registry().compute_scope_inst_for_purpose(
+            state,
+            adt.did(),
+            substs,
+            registry::ScopePurpose::TypeDefinition,
+        )?;
 
         state.register_adt_use(self.tcx, adt.did(), Some(shim), &params);
         let shim_use = specs::types::LiteralUse::new(shim, params);
@@ -2058,7 +2116,12 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
                     self.tcx.dcx().span_err(self.tcx().def_span(adt_def.did()), error::Message::UnknownAdt),
                 )
             })?;
-        let params = self.trait_registry().compute_scope_inst_in_state(state, adt_def.did(), args)?;
+        let params = self.trait_registry().compute_scope_inst_for_purpose(
+            state,
+            adt_def.did(),
+            args,
+            registry::ScopePurpose::TypeDefinition,
+        )?;
         let enum_use = specs::types::LiteralUse::new(enum_ref, params.clone());
 
         // track this enum use for the current function
@@ -2079,7 +2142,12 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
     ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         info!("generating struct use for {:?}", variant_id);
 
-        let params = self.trait_registry().compute_scope_inst_in_state(state, variant_id, args)?;
+        let params = self.trait_registry().compute_scope_inst_for_purpose(
+            state,
+            variant_id,
+            args,
+            registry::ScopePurpose::TypeDefinition,
+        )?;
 
         let struct_ref: specs::types::LiteralRef<'def> =
             self.lookup_adt_shim(variant_id).ok_or_else(|| {
@@ -2103,7 +2171,12 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
     ) -> Result<specs::types::LiteralUse<'def>, TranslationError> {
         info!("generating enum variant use for {:?}", variant_id);
 
-        let params = self.trait_registry().compute_scope_inst_in_state(state, variant_id, args)?;
+        let params = self.trait_registry().compute_scope_inst_for_purpose(
+            state,
+            variant_id,
+            args,
+            registry::ScopePurpose::TypeDefinition,
+        )?;
         //let _key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 
         let struct_ref: specs::types::LiteralRef<'def> =

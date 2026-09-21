@@ -273,6 +273,8 @@ pub struct LiteralSpec<'def> {
     post: coq::iris::IProp,
     /// pure condition under which the function may unwind
     unwind_post: coq::term::Term,
+    /// resources returned when the function unwinds
+    unwind_ownership: coq::iris::IProp,
 
     // TODO remove
     has_spec: bool,
@@ -363,7 +365,8 @@ impl<'def> LiteralSpec<'def> {
             existential.0, existential.1, self.ret.1, self.ret.0
         )?;
         write!(f2, "(* postcondition *) (λ π : thread_id, {}) |\n", self.post)?;
-        write!(f2, "(* unwind post... *) {}", self.unwind_post)?;
+        write!(f2, "(* unwind cond... *) {} |\n", self.unwind_post)?;
+        write!(f2, "(* unwind post... *) (λ π : thread_id, {})", self.unwind_ownership)?;
 
         Ok(())
     }
@@ -381,6 +384,7 @@ pub struct LiteralSpecBuilder<'def> {
     ret: Option<TypeWithRef<'def>>,
     post: coq::iris::IProp,
     unwind_conditions: Vec<coq::term::Term>,
+    unwind_ownership: coq::iris::IProp,
 
     coq_names: HashSet<String>,
 
@@ -400,6 +404,7 @@ impl<'def> LiteralSpecBuilder<'def> {
             ret: None,
             post: coq::iris::IProp::Sep(Vec::new()),
             unwind_conditions: Vec::new(),
+            unwind_ownership: coq::iris::IProp::Sep(Vec::new()),
             coq_names: HashSet::new(),
             has_spec: false,
         }
@@ -468,6 +473,17 @@ impl<'def> LiteralSpecBuilder<'def> {
         self.unwind_conditions.push(condition);
     }
 
+    /// Add a new separating conjunct to the resources returned on unwind.
+    pub fn add_unwind_postcondition(&mut self, post: coq::iris::IProp) {
+        assert!(matches!(self.unwind_ownership, coq::iris::IProp::Sep(_)));
+
+        let coq::iris::IProp::Sep(v) = &mut self.unwind_ownership else {
+            unreachable!("An incorrect parameter has been given");
+        };
+
+        v.push(post);
+    }
+
     /// Set the return type of the function
     pub fn set_ret_type(&mut self, ret: TypeWithRef<'def>) -> Result<(), String> {
         if self.ret.is_some() {
@@ -513,6 +529,7 @@ impl<'def> LiteralSpecBuilder<'def> {
             ret: self.ret.unwrap_or_else(TypeWithRef::make_unit),
             post: self.post,
             unwind_post,
+            unwind_ownership: self.unwind_ownership,
             has_spec: self.has_spec,
         }
     }

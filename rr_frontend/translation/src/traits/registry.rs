@@ -5,7 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use std::cell::{Cell, RefCell};
-use std::collections::{BTreeMap, BTreeSet, HashMap, btree_map};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, btree_map};
 
 use log::{info, trace};
 use radium::{coq, specs};
@@ -110,7 +110,6 @@ impl<'tcx> TraitUseRef<'tcx> {
         }
     }
 
-    #[expect(dead_code)]
     pub(crate) fn self_ty(&self) -> ty::Ty<'tcx> {
         match self {
             Self::Rust(trait_ref) => trait_ref.self_ty(),
@@ -214,7 +213,105 @@ pub(crate) struct TR<'tcx, 'def> {
     fn_spec_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
 }
 
+/// Put the enclosing trait's own assumption after its dependencies.
+pub(crate) fn order_scope_requirements(entries: &mut [GenericTraitUse<'_, '_>]) {
+    entries.sort_by_key(|entry| {
+        entry.is_self_use || entry.trait_use.borrow().as_ref().unwrap().is_used_in_self_trait
+    });
+}
+
+/// Which requirements become parameters of an emitted definition.
+/// Translation itself always retains the complete working scope.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ScopePurpose {
+    TypeDefinition,
+    Specification,
+}
+
+impl ScopePurpose {
+    pub(crate) fn includes(self, key: &TraitKey) -> bool {
+        self == Self::Specification || !matches!(key, TraitKey::Virtual(VirtualTrait::DropGlue))
+    }
+}
+
 impl<'tcx, 'def> TR<'tcx, 'def> {
+    /// The same ordered ambient requirements are used for declarations and instantiations.
+    fn implicit_drop_glue_requirements(
+        &self,
+        did: DefId,
+        requirements: &[requirements::TraitReqMeta<'tcx>],
+    ) -> Vec<(ty::Ty<'tcx>, specs::TyParamOrigin)> {
+        let mut result = Vec::new();
+        let args = ty::GenericArgs::identity_for_item(self.tcx, did);
+        // Closure signature/capture parameters are rustc implementation details;
+        // only the enclosing item's generics occur in our closure scope.
+        let args =
+            if self.tcx.is_closure_like(did) { args.as_closure().parent_args() } else { args.as_slice() };
+        for arg in args {
+            if let Some(ty) = arg.as_type()
+                && let ty::TyKind::Param(param) = ty.kind()
+            {
+                result.push((ty, scope::Params::determine_origin_of_param(did, self.tcx, *param)));
+            }
+        }
+        for req in requirements.iter().filter(|req| !req.is_used_in_self_trait) {
+            for (assoc_did, constraint) in environment::get_trait_assoc_types(self.tcx, req.trait_ref.def_id)
+                .into_iter()
+                .zip(&req.assoc_constraints)
+            {
+                if constraint.is_none() {
+                    let alias = ty::AliasTy::new(
+                        self.tcx,
+                        ty::AliasTyKind::Projection { def_id: assoc_did },
+                        req.trait_ref.args,
+                    );
+                    result.push((ty::Ty::new_alias(self.tcx, ty::IsRigid::No, alias), req.origin));
+                }
+            }
+        }
+        // These requirements belong to the enclosing trait's scope. In a method
+        // they must remain surrounding parameters, rather than being quantified
+        // again by the method's spec-record field.
+        for req in requirements.iter().filter(|req| req.is_used_in_self_trait) {
+            let origin = if req.is_self_in_trait_decl {
+                specs::TyParamOrigin::Direct
+            } else {
+                specs::TyParamOrigin::SurroundingTrait
+            };
+            for assoc_did in environment::get_trait_assoc_types(self.tcx, req.trait_ref.def_id) {
+                let alias = ty::AliasTy::new(
+                    self.tcx,
+                    ty::AliasTyKind::Projection { def_id: assoc_did },
+                    req.trait_ref.args,
+                );
+                result.push((ty::Ty::new_alias(self.tcx, ty::IsRigid::No, alias), origin));
+            }
+        }
+        let mut seen = HashSet::new();
+        result.retain(|(ty, _)| seen.insert(scope::erase_regions(self.tcx, *ty)));
+        result
+    }
+
+    pub(crate) fn add_implicit_drop_glue_assumptions(
+        &self,
+        scope: &mut scope::Params<'tcx, 'def>,
+        did: DefId,
+        typing_env: ty::TypingEnv<'tcx>,
+        requirements: &[requirements::TraitReqMeta<'tcx>],
+    ) -> Result<(), TranslationError> {
+        for (ty, origin) in self.implicit_drop_glue_requirements(did, requirements) {
+            scope.add_virtual_trait_assumption(
+                self.tcx,
+                typing_env,
+                self,
+                VirtualTrait::DropGlue,
+                ty,
+                origin,
+            )?;
+        }
+        Ok(())
+    }
+
     pub(crate) const fn type_translator(&self) -> &'def types::TX<'def, 'tcx> {
         self.type_translator.get().unwrap()
     }
@@ -440,8 +537,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             // As different attributes of the spec may depend on each other, we need to pass a closure
             // determining under which Coq name we are going to introduce them
             // Note: This needs to match up with `specs::LiteralTraitSpec.make_spec_attr_name`!
-            let mut attr_parser =
-                VerboseTraitAttrParser::new(&param_scope, |id| format!("{trait_name}_{id}"));
+            let attr_scope = param_scope.attribute_scope(specs::traits::AttrDependency::in_attr_type);
+            let mut attr_parser = VerboseTraitAttrParser::new(&attr_scope, |id| format!("{trait_name}_{id}"));
             let trait_spec = attr_parser.parse_trait_attrs(&trait_attrs).map_err(|e| {
                 let SpannedError { err, span } = e;
                 let err = self.tcx.dcx().span_err(span, error::Message::TraitSpecParse(err));
@@ -887,6 +984,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         is_assoc_bound: bool,
         assoc_constraints: &[Option<ty::Ty<'tcx>>],
     ) -> Result<ResolvedTraitReq<'tcx, 'def>, TranslationError> {
+        let attr_dependency = Self::rust_bound_attr_dependency(is_assoc_bound);
         let current_typing_env: ty::TypingEnv<'tcx> = state.get_typing_env(self.tcx);
 
         let trait_spec =
@@ -938,7 +1036,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     specs::traits::ReqInst::new(
                         specs::traits::ReqInstSpec::Specialized(spec_term),
                         origin,
-                        is_assoc_bound,
+                        attr_dependency,
                         assoc_tys,
                         trait_spec,
                         binders,
@@ -1002,7 +1100,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     specs::traits::ReqInst::new(
                         specs::traits::ReqInstSpec::Quantified(trait_impl),
                         origin,
-                        is_assoc_bound,
+                        attr_dependency,
                         assoc_types,
                         trait_spec,
                         binders,
@@ -1031,7 +1129,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     specs::traits::ReqInst::new(
                         specs::traits::ReqInstSpec::Specialized(spec_term),
                         origin,
-                        is_assoc_bound,
+                        attr_dependency,
                         assoc_tys,
                         trait_spec,
                         binders,
@@ -1065,6 +1163,25 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         include_self: bool,
         include_assoc_bounds: bool,
     ) -> Result<Vec<ResolvedTraitReq<'tcx, 'def>>, TranslationError> {
+        self.resolve_requirements_for_purpose(
+            state,
+            did,
+            params,
+            include_self,
+            include_assoc_bounds,
+            ScopePurpose::Specification,
+        )
+    }
+
+    fn resolve_requirements_for_purpose(
+        &self,
+        state: types::ST<'_, '_, 'def, 'tcx>,
+        did: DefId,
+        params: ty::GenericArgsRef<'tcx>,
+        include_self: bool,
+        include_assoc_bounds: bool,
+        purpose: ScopePurpose,
+    ) -> Result<Vec<ResolvedTraitReq<'tcx, 'def>>, TranslationError> {
         trace!(
             "Enter resolve_trait_requirements_in_state with did={did:?} and params={params:?}, in state={state:?}"
         );
@@ -1087,6 +1204,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // (direct = directly on this item)
         let mut direct_trait_spec_terms = Vec::new();
         let mut indirect_trait_spec_terms = Vec::new();
+        let mut self_trait_spec_terms = Vec::new();
 
         for req in &target_requirements {
             if req.is_assoc_bound && !include_assoc_bounds {
@@ -1168,10 +1286,31 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 req.assoc_constraints.as_slice(),
             )?;
 
-            if resolved.req_inst.origin == specs::TyParamOrigin::Direct {
+            if req.is_used_in_self_trait {
+                self_trait_spec_terms.push(resolved);
+            } else if !resolved.req_inst.origin.is_surrounding() {
                 direct_trait_spec_terms.push(resolved);
             } else {
                 indirect_trait_spec_terms.push(resolved);
+            }
+        }
+        for (ty, origin) in self.implicit_drop_glue_requirements(did, &target_requirements) {
+            if !purpose.includes(&TraitKey::Virtual(VirtualTrait::DropGlue)) {
+                continue;
+            }
+            let ty = ty::EarlyBinder::bind(self.tcx, ty).instantiate(self.tcx, params).skip_norm_wip();
+            let resolved = self.resolve_drop_glue_requirement(state, ty, origin)?;
+            if origin.is_surrounding() {
+                indirect_trait_spec_terms.push(resolved);
+            } else {
+                direct_trait_spec_terms.push(resolved);
+            }
+        }
+        for resolved in self_trait_spec_terms {
+            if resolved.req_inst.origin.is_surrounding() {
+                indirect_trait_spec_terms.push(resolved);
+            } else {
+                direct_trait_spec_terms.push(resolved);
             }
         }
         indirect_trait_spec_terms.extend(direct_trait_spec_terms);
@@ -1181,6 +1320,111 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         trace!("Leave resolve_trait_requirements_in_state with trait_spec_terms={trait_spec_terms:?}");
         Ok(trait_spec_terms)
+    }
+
+    fn resolve_drop_glue_requirement(
+        &self,
+        state: types::ST<'_, '_, 'def, 'tcx>,
+        self_ty: ty::Ty<'tcx>,
+        origin: specs::TyParamOrigin,
+    ) -> Result<ResolvedTraitReq<'tcx, 'def>, TranslationError> {
+        let args = self.tcx.mk_args(&[self_ty.into()]);
+        let spec = self.lookup_virtual_trait(VirtualTrait::DropGlue).unwrap();
+        if let Some(entry) =
+            state.try_lookup_virtual_trait_use(self.tcx, VirtualTrait::DropGlue, args).or_else(|| {
+                state.try_lookup_normalized_virtual_trait_use(self.tcx, VirtualTrait::DropGlue, self_ty)
+            })
+        {
+            return Ok(ResolvedTraitReq {
+                req_inst: specs::traits::ReqInst::new(
+                    specs::traits::ReqInstSpec::Quantified(specs::traits::QuantifiedImpl::new(
+                        entry.trait_use,
+                        specs::traits::ReqScopeInst::new(Vec::new()),
+                    )),
+                    origin,
+                    specs::traits::AttrDependency::ValueOnly,
+                    Vec::new(),
+                    spec,
+                    specs::traits::ReqScope::empty(),
+                ),
+                args,
+            });
+        }
+        // Preserve abstract projection assumptions above; concrete projections must
+        // be normalized before choosing a concrete drop-glue implementation.
+        let normalized =
+            resolution::normalize_type(self.tcx, state.get_typing_env(self.tcx), self_ty).unwrap_or(self_ty);
+        if normalized != self_ty {
+            return self.resolve_drop_glue_requirement(state, normalized, origin);
+        }
+        let req_spec = match self_ty.kind() {
+            ty::TyKind::Closure(_, closure_args) => {
+                return self.resolve_drop_glue_requirement(
+                    state,
+                    closure_args.as_closure().tupled_upvars_ty(),
+                    origin,
+                );
+            },
+            ty::TyKind::Adt(adt, adt_args)
+                if self
+                    .lookup_virtual_impl(VirtualImpl::DropGlueForAdt(OrderedDefId::new(self.tcx, adt.did())))
+                    .is_some() =>
+            {
+                let key = VirtualImpl::DropGlueForAdt(OrderedDefId::new(self.tcx, adt.did()));
+                let impl_ref = self.lookup_virtual_impl(key).ok_or_else(|| {
+                    TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::TraitResolution(
+                        format!("drop glue not registered for {self_ty:?}"),
+                    )))
+                })?;
+                let inst = self.compute_scope_inst_in_state(state, adt.did(), adt_args)?;
+                specs::traits::ReqInstSpec::Specialized(specs::traits::SpecializedImpl::new(impl_ref, inst))
+            },
+            ty::TyKind::Tuple(tys) if !tys.is_empty() && tys.len() <= 5 => {
+                let impl_ref = self.lookup_virtual_impl(VirtualImpl::DropGlueForTuple(tys.len())).unwrap();
+                let mut inst = specs::GenericScopeInst::empty();
+                for ty in *tys {
+                    inst.add_direct_ty_param(self.type_translator().translate_type_in_state(ty, state)?);
+                    let req = self.resolve_drop_glue_requirement(state, ty, specs::TyParamOrigin::Direct)?;
+                    inst.add_trait_requirement(self.translate_trait_req_inst_in_state(state, req.req_inst)?);
+                }
+                specs::traits::ReqInstSpec::Specialized(specs::traits::SpecializedImpl::new(impl_ref, inst))
+            },
+            _ if !self_ty.needs_drop(self.tcx, state.get_typing_env(self.tcx)) => {
+                let impl_ref = self
+                    .impl_arena
+                    .alloc(specs::traits::LiteralImpl::new("drop_glue_trivial".to_owned(), false));
+                let mut inst = specs::GenericScopeInst::empty();
+                inst.add_direct_ty_param(self.type_translator().translate_type_in_state(self_ty, state)?);
+                specs::traits::ReqInstSpec::Specialized(specs::traits::SpecializedImpl::new(impl_ref, inst))
+            },
+            _ => {
+                return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                    error::Message::UnsupportedFeature(format!("drop-glue requirement for {self_ty:?}")),
+                )));
+            },
+        };
+        Ok(ResolvedTraitReq {
+            req_inst: specs::traits::ReqInst::new(
+                req_spec,
+                origin,
+                specs::traits::AttrDependency::ValueOnly,
+                Vec::new(),
+                spec,
+                specs::traits::ReqScope::empty(),
+            ),
+            args,
+        })
+    }
+
+    pub(crate) fn resolve_drop_glue_requirements_for_args(
+        &self,
+        state: types::ST<'_, '_, 'def, 'tcx>,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Result<Vec<ResolvedTraitReq<'tcx, 'def>>, TranslationError> {
+        args.iter()
+            .filter_map(ty::GenericArg::as_type)
+            .map(|ty| self.resolve_drop_glue_requirement(state, ty, specs::TyParamOrigin::Direct))
+            .collect()
     }
 
     /// TODO: handle surrounding params
@@ -1218,7 +1462,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         Ok(specs::traits::ReqInst::new(
             trait_req.spec,
             trait_req.origin,
-            trait_req.is_assoc_bound,
+            trait_req.attr_dependency,
             assoc_inst,
             trait_req.of_trait,
             trait_req.scope,
@@ -1231,11 +1475,17 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         did: DefId,
         params_inst: ty::GenericArgsRef<'tcx>,
         include_assoc_bounds: bool,
+        purpose: ScopePurpose,
     ) -> Result<Vec<specs::traits::ReqInst<'def, specs::Type<'def>>>, TranslationError> {
         let mut trait_reqs = Vec::new();
-        for trait_req in
-            self.resolve_trait_requirements_in_state(state, did, params_inst, false, include_assoc_bounds)?
-        {
+        for trait_req in self.resolve_requirements_for_purpose(
+            state,
+            did,
+            params_inst,
+            false,
+            include_assoc_bounds,
+            purpose,
+        )? {
             // compute the new scope including the bound regions.
             let mut scope = state.get_param_scope();
             scope.add_trait_req_scope(&trait_req.req_inst.scope);
@@ -1256,9 +1506,21 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         did: DefId,
         params_inst: ty::GenericArgsRef<'tcx>,
     ) -> Result<specs::GenericScopeInst<'def>, TranslationError> {
+        self.compute_scope_inst_for_purpose(state, did, params_inst, ScopePurpose::Specification)
+    }
+
+    pub(crate) fn compute_scope_inst_for_purpose(
+        &self,
+        state: types::ST<'_, '_, 'def, 'tcx>,
+        did: DefId,
+        params_inst: ty::GenericArgsRef<'tcx>,
+        purpose: ScopePurpose,
+    ) -> Result<specs::GenericScopeInst<'def>, TranslationError> {
         let mut scope_inst = self.compute_scope_inst_in_state_without_traits(state, params_inst)?;
 
-        for trait_req in self.resolve_radium_trait_requirements_in_state(state, did, params_inst, true)? {
+        for trait_req in
+            self.resolve_radium_trait_requirements_in_state(state, did, params_inst, true, purpose)?
+        {
             scope_inst.add_trait_requirement(trait_req);
         }
 
@@ -1273,7 +1535,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     ) -> Result<specs::GenericScopeInst<'def>, TranslationError> {
         let mut scope_inst = self.compute_scope_inst_in_state_without_traits(state, params_inst)?;
 
-        for trait_req in self.resolve_radium_trait_requirements_in_state(state, did, params_inst, false)? {
+        for trait_req in self.resolve_radium_trait_requirements_in_state(
+            state,
+            did,
+            params_inst,
+            false,
+            ScopePurpose::Specification,
+        )? {
             scope_inst.add_trait_requirement(trait_req);
         }
 
@@ -1540,7 +1808,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // parse specification
         let trait_impl_attrs = self.get_trait_impl_attrs(trait_impl_did)?;
         let (impl_spec, context_items) = if !trait_impl_attrs.is_empty() {
-            let mut attr_parser = VerboseTraitImplAttrParser::new(&param_scope);
+            let attr_scope = param_scope.attribute_scope(specs::traits::AttrDependency::in_attr_value);
+            let mut attr_parser = VerboseTraitImplAttrParser::new(&attr_scope);
             let res = attr_parser.parse_trait_impl_attrs(&trait_impl_attrs).map_err(|e| {
                 let SpannedError { err, span } = e;
                 let err = self.tcx.dcx().span_err(span, error::Message::TraitImplSpecParse(err));
@@ -1708,6 +1977,16 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         }
     }
 
+    /// Associated bounds participate in semantic specs, but not attribute types or values.
+    /// Ordinary Rust bounds are available in both attribute types and values.
+    const fn rust_bound_attr_dependency(is_assoc_bound: bool) -> specs::traits::AttrDependency {
+        if is_assoc_bound {
+            specs::traits::AttrDependency::SemanticOnly
+        } else {
+            specs::traits::AttrDependency::TypeAndValue
+        }
+    }
+
     /// Fills an existing trait use.
     /// Does not compute the dependencies on other traits yet,
     /// these have to be filled later.
@@ -1735,7 +2014,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             specs::GenericScopeInst::empty(),
             mangled_base,
             is_used_in_self_trait,
-            is_assoc_bound,
+            Self::rust_bound_attr_dependency(is_assoc_bound),
             assoc_ty_constraints,
             origin,
         );
@@ -1757,13 +2036,19 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trace!("Enter fill_virtual_trait_use with key = {:?}, spec_ref = {spec_ref:?}", trait_use.key);
 
         let mangled_base = types::mangle_name_with_args(&spec_ref.name, &[ty::GenericArg::from(self_ty)]);
+        // Implicit DropGlue assumptions can instantiate attributes, but must not
+        // become dependencies of other traits' attribute type declarations.
+        let attr_dependency = match trait_use.key {
+            TraitKey::Virtual(VirtualTrait::DropGlue) => specs::traits::AttrDependency::ValueOnly,
+            TraitKey::Rust(_) => unreachable!("Rust trait passed to fill_virtual_trait_use"),
+        };
         let spec_use = specs::traits::LiteralSpecUse::new(
             spec_ref,
             specs::traits::ReqScope::empty(),
             specs::GenericScopeInst::empty(),
             mangled_base,
             false,
-            false,
+            attr_dependency,
             Vec::new(),
             origin,
         );
@@ -1800,6 +2085,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             trait_ref.def_id,
             trait_ref.args,
             true,
+            ScopePurpose::Specification,
         )?;
         trace!("finalize_trait_use for {:?}: determined trait requirements: {trait_reqs:?}", trait_use.key);
 

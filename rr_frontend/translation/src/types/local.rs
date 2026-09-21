@@ -576,7 +576,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             let trait_req = specs::traits::ReqInst::new(
                 req.req_inst.spec,
                 req.req_inst.origin,
-                req.req_inst.is_assoc_bound,
+                req.req_inst.attr_dependency,
                 assoc_inst,
                 req.req_inst.of_trait,
                 req.req_inst.scope,

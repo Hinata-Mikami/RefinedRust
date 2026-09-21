@@ -378,7 +378,6 @@ Proof.
       all: try iFrame. all: try done.
        all: try (rep <-? 1 liRStep; liShow).
       all: try iFrame. all: try done.
-      1: iApply type_unwind_terminate.
       1: solve_initial_return_value.
       1: solve_initial_return_value.
       1: {

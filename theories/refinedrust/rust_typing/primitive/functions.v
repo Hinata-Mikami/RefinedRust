@@ -53,13 +53,17 @@ Section function.
     fp_fr: fp_extype → fn_ret;
     (* pure condition under which the function may unwind *)
     fp_unwind : Prop;
+    (* resources provided when the function unwinds *)
+    fp_unwind_post : thread_id → iProp Σ;
   }.
   Definition fn_params_add_pre (pre : iProp Σ) (F : fn_params) : fn_params :=
-    FP F.(fp_atys) (λ π, pre ∗ F.(fp_Pa) π)%I F.(fp_Sc) F.(fp_elctx) F.(fp_extype) F.(fp_fr) F.(fp_unwind).
+    FP F.(fp_atys) (λ π, pre ∗ F.(fp_Pa) π)%I F.(fp_Sc) F.(fp_elctx) F.(fp_extype) F.(fp_fr) F.(fp_unwind) F.(fp_unwind_post).
   Definition fn_params_add_elctx (E : lft → elctx) (F : fn_params) : fn_params :=
-    FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) (λ ϝ, E ϝ ++ F.(fp_elctx) ϝ) F.(fp_extype) F.(fp_fr) F.(fp_unwind).
+    FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) (λ ϝ, E ϝ ++ F.(fp_elctx) ϝ) F.(fp_extype) F.(fp_fr) F.(fp_unwind) F.(fp_unwind_post).
   Definition fn_params_set_unwind (unwind : Prop) (F : fn_params) : fn_params :=
-    FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) F.(fp_elctx) F.(fp_extype) F.(fp_fr) unwind.
+    FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) F.(fp_elctx) F.(fp_extype) F.(fp_fr) unwind F.(fp_unwind_post).
+  Definition fn_unwind_prop `{!RadiumConfig} (F : fn_params) (π : thread_id) : iProp Σ :=
+    (⌜effective_unwind_condition F.(fp_unwind)⌝ ∗ F.(fp_unwind_post) π)%I.
 
  (**
      Compute a [fn_params] definition that includes the required lifetime constraints for the
@@ -80,7 +84,8 @@ Section function.
       (retty : type retrt)
       (fr_ref : exty → retrt)
       (fr_R : exty → thread_id → iProp Σ)
-      (panic : Prop) :=
+      (unwind : Prop)
+      (unwind_post : thread_id → iProp Σ) :=
     FP
       atys
       pa
@@ -92,7 +97,8 @@ Section function.
           ty_outlives_E retty ϝ)
       exty
       (λ e, mk_FR retrt retty (fr_ref e) (fr_R e))
-      panic.
+      unwind
+      unwind_post.
 
   (* TODO: move elctx into this? *)
   Record fn_spec := mk_fn_spec {
@@ -169,7 +175,8 @@ Section function.
            fn_init_context fn fps π f lsa sta -∗
            introduce_typed_stmt E L (π, f) ϝ fn
              (λ v L2, fn_body_end_prop E L2 ϝ π (fn_ret_prop π fps.(fp_fr) v))
-              (λ L2, fn_body_end_prop E L2 ϝ π ⌜effective_unwind_condition fps.(fp_unwind)⌝)))%I.
+              (λ L2, fn_body_end_prop E L2 ϝ π
+                (fn_unwind_prop fps π))))%I.
 
   Global Instance typed_function_persistent {lfts : nat} {rts : list (RT)} π fn fp : Persistent (typed_function (lfts:=lfts) (rts := rts) π fn fp) := _.
 
@@ -286,7 +293,8 @@ Section call.
 
       (* postconditions *)
       (
-       introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ ⌜effective_unwind_condition fps.(fp_unwind)⌝) Tunwind ∧
+       introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗
+         fn_unwind_prop fps π) Tunwind ∧
        (∀ v x', (* v = retval, x' = post existential *)
         (* also donate some credits we are generating here *)
         introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ (fps.(fp_fr) x').(fr_R) π ∗ v ◁ᵥ{π, MetaNone} (fps.(fp_fr) x').(fr_ref) @ (fps.(fp_fr) x').(fr_ty)) (λ L3,
@@ -387,7 +395,7 @@ Section call.
         na_own f.1 ⊤ ∗
         ([∗ list] x0 ∈ locals,
           ∃ (ly : layout) (l : loc) (st : syn_type), ⌜syn_type_has_layout st ly⌝ ∗ x0 is_live{ (f.1, S f.2), st} l ∗ l ↦|ly|) ∗
-        ⌜effective_unwind_condition (fp_unwind fps)⌝)%I).
+        fn_unwind_prop fps f.1)%I).
     unfold fn_init_context.
     (* prove the initial context *)
     iSpecialize ("Hm" with "[Hcred Hc $Hna $Halloc $Hsc $HP Ha Hvl $Hx]").
@@ -464,7 +472,7 @@ Section call.
         iModIntro.
         iApply logical_step_fupd.
         iApply (logical_step_wand with "Hp").
-        iIntros "(HR & %Hpanic & _)".
+        iIntros "(HR & Hpanic & _)".
         iMod ("HT" with "[] [$] HE' HL HR") as "(%L6 & HL & HT)"; first done.
         rewrite /llctx_find_llft_goal.
         iDestruct "HT" as "(%HL6 & %κs' & %Hfind & HT)".
@@ -474,10 +482,9 @@ Section call.
         iDestruct "HL" as "(_ & Hϝ & _)".
         iDestruct "HT" as ([n' m']) "(Hstore & HT)"; simpl.
         iDestruct "HT" as (mask) "(Hna & -> & _)"; simpl.
-        subst UNWIND_PROP; simpl.
-        iModIntro. iExists κs', locals. iFrame.
-        iSplitL "Hstore"; last done.
-        iApply (credit_store_mono with "Hstore"); lia.
+         subst UNWIND_PROP; simpl.
+         iModIntro. iExists κs', locals. iFrame.
+         iApply (credit_store_mono with "Hstore"); lia.
     - (* recover the caller after either result *)
       iModIntro. iSplit.
       + iDestruct "Hr" as "[_ Hr]". iDestruct "Hcont" as "[Hcont _]".
@@ -502,7 +509,7 @@ Section call.
         iModIntro. iIntros "Hf".
         iApply ("Hcont" with "HL Hf Hr").
       + iDestruct "Hr" as "[Hr _]". iDestruct "Hcont" as "[_ Hcont]".
-        iDestruct 1 as (κs' locals) "(Hϝ & Hstore & Hf & Hlocals & Hna & Hls & %Hpanic)".
+        iDestruct 1 as (κs' locals) "(Hϝ & Hstore & Hf & Hlocals & Hna & Hls & Hpanic)".
         iFrame.
         iPoseProof (credit_store_borrow with "Hstore") as "(Hcred1 & Hat & _)".
         iApply (physical_step_intro_tr with "Hat").
@@ -510,8 +517,8 @@ Section call.
         iPoseProof ("Hkill" with "Hϝ") as "(Htok & Hkill)".
         iMod ("HL_cl'" with "Htok HL") as "HL".
         iPoseProof ("HL_cl" with "HL") as "HL".
-        iMod ("Hr" with "[] [$] HE HL [Hat Hcred Hna HR]") as "(%L3 & HL & Hr)"; first done.
-        { iFrame "%". simpl. unfold num_laters_per_step.
+        iMod ("Hr" with "[] [$] HE HL [Hat Hcred Hna HR Hpanic]") as "(%L3 & HL & Hr)"; first done.
+        { iFrame. simpl. unfold num_laters_per_step.
           iSplitL "Hcred".
           - iApply lc_weaken; last done. unfold num_cred. lia.
           - iFrame. iApply tr_weaken; last done. lia. }
@@ -565,9 +572,22 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa ')' '→' 
     Pa%I
     (λ π, (* typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys*) True)%I
     B _
-    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I) Pp))
+    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I) Pp (λ _, True)%I))
     : spec_with n (fmap (A := RT * syn_type) fst rts) fn_spec)
   (at level 99, Pr at level 200, Pp at level 200, tys pattern, κs pattern, x pattern, y pattern) : stdpp_scope.
+
+Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr '|' Pp '|' Pu" :=
+  ((fun κs tys =>
+    mk_fn_spec (A : Type) (fun x =>
+    FP_wf
+    (λ ϝ, typarams_elctx ϝ (fmap (A := RT * syn_type) fst rts) tys ++ E ϝ)
+    (@nil _)
+    Pa%I
+    (λ π, True)%I
+    B _
+    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I) Pp Pu%I))
+    : spec_with n (fmap (A := RT * syn_type) fst rts) fn_spec)
+  (at level 99, Pr at level 200, Pp at level 200, Pu at level 200, tys pattern, κs pattern, x pattern, y pattern) : stdpp_scope.
 
 Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ',' xn ';' Pa ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr '|' Pp" :=
   ((fun κs tys =>
@@ -578,9 +598,23 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ','
     Pa%I
     (λ π, (* typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys *) True)%I
     B _
-    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I) Pp) : A → fn_params)))
+    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I) Pp (λ _, True)%I) : A → fn_params)))
     : spec_with n (fmap (A := RT * syn_type) fst rts) fn_spec)
   (at level 99, Pr at level 200, Pp at level 200, κs pattern, tys pattern, x pattern, y pattern) : stdpp_scope.
+
+Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ',' xn ';' Pa ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr '|' Pp '|' Pu" :=
+  ((fun κs tys =>
+    (mk_fn_spec (A : Type) ((fun x =>
+    FP_wf
+    (λ ϝ, typarams_elctx ϝ (fmap (A := RT * syn_type) fst rts) tys ++ E ϝ)
+    (@cons (@sigT RT _) x1%F .. (@cons (@sigT RT _) xn%F (@nil (@sigT RT _))) ..)
+    Pa%I
+    (λ π, True)%I
+    B _
+    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I) Pp Pu%I) : A → fn_params)))
+    : spec_with n (fmap (A := RT * syn_type) fst rts) fn_spec)
+  (at level 99, Pr at level 200, Pp at level 200, Pu at level 200, κs pattern, tys pattern, x pattern, y pattern) : stdpp_scope.
+
 (** With a late precondition Pb *)
 Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa '|' Pb ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr '|' Pp" :=
   ((fun κs tys =>
@@ -591,9 +625,22 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa '|' Pb ')'
     Pa%I
     (λ π, (*typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys ∗ *) Pb%I π)%I
     B _
-    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I) Pp) : A → fn_params))
+    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I) Pp (λ _, True)%I) : A → fn_params))
     : spec_with n (fmap (A := RT * syn_type) fst rts) fn_spec)
   (at level 99, Pr at level 200, Pp at level 200, tys pattern, κs pattern, x pattern, y pattern) : stdpp_scope.
+
+Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa '|' Pb ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr '|' Pp '|' Pu" :=
+  ((fun κs tys =>
+    mk_fn_spec (A : Type) ((fun x =>
+    FP_wf
+    (λ ϝ, typarams_elctx ϝ (fmap (A := RT * syn_type) fst rts) tys ++ E ϝ)
+    (@nil _)
+    Pa%I
+    (λ π, Pb%I π)%I
+    B _
+    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I) Pp Pu%I) : A → fn_params))
+    : spec_with n (fmap (A := RT * syn_type) fst rts) fn_spec)
+  (at level 99, Pr at level 200, Pp at level 200, Pu at level 200, tys pattern, κs pattern, x pattern, y pattern) : stdpp_scope.
 Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ',' xn ';' Pa '|' Pb ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr '|' Pp" :=
   ((fun κs tys =>
     mk_fn_spec (A : Type) ((fun x =>
@@ -603,9 +650,22 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ','
     Pa%I
     (λ π, (* typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys ∗ *) Pb%I π)%I
     B _
-    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I) Pp) : A → fn_params))
+    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I) Pp (λ _, True)%I) : A → fn_params))
     : spec_with n (fmap (A := RT * syn_type) fst rts) fn_spec)
   (at level 99, Pr at level 200, Pp at level 200, κs pattern, tys pattern, x pattern, y pattern) : stdpp_scope.
+
+Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ',' xn ';' Pa '|' Pb ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr '|' Pp '|' Pu" :=
+  ((fun κs tys =>
+    mk_fn_spec (A : Type) ((fun x =>
+    FP_wf
+    (λ ϝ, typarams_elctx ϝ (fmap (A := RT * syn_type) fst rts) tys ++ E ϝ)
+    (@cons (@sigT RT _) x1%F .. (@cons (@sigT RT _) xn%F (@nil (@sigT RT _))) ..)
+    Pa%I
+    (λ π, Pb%I π)%I
+    B _
+    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I) Pp Pu%I) : A → fn_params))
+    : spec_with n (fmap (A := RT * syn_type) fst rts) fn_spec)
+  (at level 99, Pr at level 200, Pp at level 200, Pu at level 200, κs pattern, tys pattern, x pattern, y pattern) : stdpp_scope.
 
 (** Add a new type parameter *)
 (*
@@ -648,7 +708,7 @@ Global Instance fn_spec_scope_bindable `{!typeGS Σ} :
 
 (** Add a new late precondition to a fn specification *)
 Definition fn_params_add_late_pre `{!typeGS Σ} (S : fn_params) (pre : thread_id → iProp Σ) : fn_params :=
-  FP S.(fp_atys) S.(fp_Pa) (λ π, S.(fp_Sc) π ∗ pre π)%I S.(fp_elctx) S.(fp_extype) S.(fp_fr) S.(fp_unwind).
+  FP S.(fp_atys) S.(fp_Pa) (λ π, S.(fp_Sc) π ∗ pre π)%I S.(fp_elctx) S.(fp_extype) S.(fp_fr) S.(fp_unwind) S.(fp_unwind_post).
 Definition fn_spec_add_late_pre `{!typeGS Σ} (S : fn_spec) (pre : thread_id → iProp Σ) : fn_spec :=
   mk_fn_spec S.(fn_A) (λ a, fn_params_add_late_pre (S.(fn_p) a) pre).
 
@@ -708,15 +768,22 @@ Section function_subsume.
       iterate: zip ls (fp_atys ((F1 κs tys).(fn_p) a)) {{ e T, exhale (e.1 ◁ₗ[π, Owned] #(projT2 e.2).2 @ ◁ (projT2 e.2).1); return T }};
       exhale (fp_Pa ((F1 κs tys).(fn_p) a) π);
       exhale (fp_Sc ((F1 κs tys).(fn_p) a) π);
-      exhale ⌜fp_unwind ((F1 κs tys).(fn_p) a) → fp_unwind ((F2 κs tys).(fn_p) b)⌝;
-      (* show that F1.ret implies F2.ret *)
-      ∀ (vr : val) a2,
-      inhale (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_R) π;
-      inhale (vr ◁ᵥ{π, MetaNone} (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_ref) @ (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_ty));
-      ∃ b2,
-      exhale (vr ◁ᵥ{π, MetaNone} (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_ref) @ (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_ty));
-      exhale (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_R) π;
-      done }])%LI
+      and:
+      | drop_spatial;
+        ∀ π,
+        inhale ⌜fp_unwind ((F1 κs tys).(fn_p) a)⌝;
+        inhale fp_unwind_post ((F1 κs tys).(fn_p) a) π;
+        exhale ⌜fp_unwind ((F2 κs tys).(fn_p) b)⌝;
+        exhale fp_unwind_post ((F2 κs tys).(fn_p) b) π;
+        done
+      | (* show that F1.ret implies F2.ret *)
+        ∀ (vr : val) a2,
+        inhale (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_R) π;
+        inhale (vr ◁ᵥ{π, MetaNone} (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_ref) @ (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_ty));
+        ∃ b2,
+        exhale (vr ◁ᵥ{π, MetaNone} (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_ref) @ (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_ty));
+        exhale (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_R) π;
+        done }])%LI
     ⊢ (typed_function π fn (eqp2, F2)).
   Proof.
     iIntros "(#Hf & #Ha)".
@@ -787,7 +854,7 @@ Section function_subsume.
       { rewrite decide_False; first done. lia. }
     }
     subst INV. simpl.
-    iDestruct "Hb" as "(Hargs & Hpre & Hsc & %Hpanic & HT)".
+    iDestruct "Hb" as "(Hargs & Hpre & Hsc & #Hunwind & HT)".
 
     assert ((fn_arg_syntys (fp_atys (fn_p (F1 κs tys) a))) = (fn_arg_syntys (fp_atys (fn_p (F2 κs tys) b)))) as Heq_st.
     { apply Forall2_eq. apply Forall2_fmap_2. eapply Forall2_impl; first apply Hsts.
@@ -849,10 +916,13 @@ Section function_subsume.
         iMod ("Hintro" with "[//] CTX HE2 HL HP") as "(%L3 & HL & %L4 & %κs3 & % & % & Hc & HT)".
         simpl. iModIntro. iExists L3. iFrame. by iExists _, _. }
       iApply (logical_step_wand with "Hs").
-      iIntros "!> (HR & %HP & HAcc)". iFrame.
-       iPureIntro.
-       unfold effective_unwind_condition in *.
-       destruct radium_panic_strategy_of; simpl in *; [exact (Hpanic HP) | contradiction].
+      iIntros "!> (HR & (%HP & Hpost) & HAcc)".
+      iFrame "HR HAcc".
+      unfold fn_unwind_prop.
+      unfold effective_unwind_condition in *.
+      destruct radium_panic_strategy_of; simpl in *; last done.
+      iPoseProof ("Hunwind" with "[//] Hpost") as "(% & Hpost & _)".
+      iR. done.
   Qed.
 
   Lemma subsume_typed_function π fn {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) T :
@@ -872,8 +942,15 @@ Section function_subsume.
         iterate: zip ls (fp_atys ((F1 κs tys).(fn_p) a)) {{ e T, exhale (e.1 ◁ₗ[π, Owned] #(projT2 e.2).2 @ ◁ (projT2 e.2).1); return T }};
         exhale (fp_Pa ((F1 κs tys).(fn_p) a) π);
         exhale (fp_Sc ((F1 κs tys).(fn_p) a) π);
-        exhale ⌜fp_unwind ((F1 κs tys).(fn_p) a) → fp_unwind ((F2 κs tys).(fn_p) b)⌝;
-        (* show that F1.ret implies F2.ret *)
+        and:
+        | drop_spatial;
+          ∀ π,
+          inhale ⌜fp_unwind ((F1 κs tys).(fn_p) a)⌝;
+          inhale fp_unwind_post ((F1 κs tys).(fn_p) a) π;
+          exhale ⌜fp_unwind ((F2 κs tys).(fn_p) b)⌝;
+          exhale fp_unwind_post ((F2 κs tys).(fn_p) b) π;
+          done
+        | (* show that F1.ret implies F2.ret *)
         ∀ (vr : val) a2,
         inhale (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_R) π;
         inhale (vr ◁ᵥ{π, MetaNone} (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_ref) @ (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_ty));
@@ -907,6 +984,7 @@ Section function_subsume.
       F1.(fp_Pa) = F2.(fp_Pa) ∧
       F1.(fp_Sc) = F2.(fp_Sc) ∧
       F1.(fp_unwind) = F2.(fp_unwind) ∧
+      F1.(fp_unwind_post) = F2.(fp_unwind_post) ∧
       ∃ (Heq2 : F1.(fp_extype) = F2.(fp_extype)),
       ∀ (r : F1.(fp_extype)),
       F1.(fp_fr) r = F2.(fp_fr) (rew [id] Heq2 in r)
@@ -928,7 +1006,7 @@ Section function_subsume.
     iIntros (? lsa) "Hinit".
 
     destruct (Heq tys κs) as (Heq1 & Heq').
-    destruct (Heq' p) as (Heq2 & Heq3 & Heq4 & Heq5 & Heq6 & Heq7).
+    destruct (Heq' p) as (Heq2 & Heq3 & Heq4 & Heq5 & Heq6 & Heq7 & Heq8).
     iDestruct ("Hf" $! κs tys (rew [id] Heq1 in p) ϝ f) as "#Hf'".
     iClear "Hf".
     iSpecialize ("Hf'" with "[]").
@@ -957,7 +1035,7 @@ Section function_subsume.
       by iApply ("HT" with "[] CTX HE2 HL HP"). }
       iModIntro. iApply (logical_step_wand with "Hstep").
       iIntros "(? & (%x & ? & ? & _) & ?)".
-      rewrite Heq7. iFrame.
+      rewrite Heq8. iFrame.
     - iDestruct "Hpost" as "[_ Hpost]".
       iIntros (??) "HL Hf Halloc Hx HR".
       iApply ("Hpost" with "HL Hf Halloc Hx").
@@ -967,7 +1045,7 @@ Section function_subsume.
       iSplitL "Hstep"; first last.
       { iModIntro. iIntros (??) "_ _ HL HP".
         by iApply ("HT" with "[] CTX HE2 HL HP"). }
-      rewrite Heq5. done.
+      unfold fn_unwind_prop. rewrite Heq5 Heq6. done.
   Qed.
   (* NOTE: Don't use the instance generation, as it will instantiate the equalities with [eq_refl]. *)
   Global Instance subsume_typed_function_fast_inst π fn {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) `{Heq : !FastFunctionSpecEq F1 F2} :
@@ -1532,7 +1610,6 @@ Section inline.
   Definition type_call_inline_fnptr_inst := [instance type_call_inline_fnptr].
   Global Existing Instance type_call_inline_fnptr_inst.
 End inline.
-
 
 Global Instance simpl_both_effective_unwind_condition_unwind `{!RadiumConfig}
     (P : Prop) `{Hunwind : !TCDone (radium_panic_strategy_of = PanicUnwind)} :

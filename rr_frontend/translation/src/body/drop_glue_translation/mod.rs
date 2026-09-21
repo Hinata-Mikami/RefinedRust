@@ -26,6 +26,7 @@ use crate::body::panic;
 use crate::environment::mir_utils::box_alias;
 use crate::error::Message;
 use crate::spec_parsers::parse_utils;
+use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser as _, VerboseTraitImplAttrParser};
 use crate::traits::registry;
 use crate::{attrs, environment, procedures, types};
 
@@ -273,11 +274,25 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         let impl_key = registry::VirtualImpl::DropGlueForAdt(OrderedDefId::new(tcx, adt_did));
         let trait_inst = Self::make_drop_glue_trait_inst(translated_adt_ty);
 
+        let adt_attrs = attrs::filter_for_tool(environment::get_attributes(tcx, adt_did));
+        let attr_scope = generic_scope.attribute_scope(specs::traits::AttrDependency::in_attr_value);
+        let mut attr_parser = VerboseTraitImplAttrParser::new(&attr_scope);
+        let parsed_attrs = attr_parser.parse_trait_impl_attrs(&adt_attrs).map_err(|err| {
+            TranslationError::ErrorReported(
+                tcx.dcx().span_err(err.span, Message::AttributeError(err.err.to_string())),
+            )
+        })?;
+        let unwind = parsed_attrs.attrs.attrs.get("DropGlueUnwind").cloned().unwrap_or_else(|| {
+            specs::traits::SpecAttrInst::Term(coq::term::Term::Literal("False".to_owned()))
+        });
+        let attrs =
+            specs::traits::SpecAttrsInst::new(BTreeMap::from([("DropGlueUnwind".to_owned(), unwind)]));
+
         let ref_inst = trait_registry.get_virtual_impl_info(
             impl_key,
             trait_inst,
             generic_scope.clone().into(),
-            specs::traits::SpecAttrsInst::new(BTreeMap::new()),
+            attrs,
         )?;
 
         translated_fn.add_trait_function_spec(specs::traits::InstantiatedFunctionSpec::new(

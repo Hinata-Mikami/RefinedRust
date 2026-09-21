@@ -15,13 +15,13 @@ use radium::{coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty::{RegionExt as _, TypeFoldable as _, TypeSuperFoldable as _};
 use rr_rustc_interface::middle::{span_bug, ty};
-use rr_rustc_interface::span::{DUMMY_SP, Symbol};
+use rr_rustc_interface::span::DUMMY_SP;
 
 use crate::base::*;
 use crate::error::Message;
 use crate::spec_parsers::parse_utils::{ParamLookup, RustPath, RustPathElem};
 use crate::traits::registry::{GenericTraitUse, TraitKey, VirtualTrait};
-use crate::traits::{registry, requirements};
+use crate::traits::{registry, requirements, resolution};
 use crate::types::translator::TX;
 use crate::types::tyvars::TyRegionEraseFolder;
 use crate::{environment, regions};
@@ -286,7 +286,14 @@ impl<'tcx, 'def> From<Params<'tcx, 'def>>
     for specs::GenericScope<'def, specs::traits::LiteralSpecUseRef<'def>>
 {
     fn from(x: Params<'tcx, 'def>) -> Self {
-        let mut scope = Self::empty();
+        x.into_radium_scope(registry::ScopePurpose::Specification)
+    }
+}
+
+impl<'def> Params<'_, 'def> {
+    pub(crate) fn into_radium_scope(self, purpose: registry::ScopePurpose) -> specs::GenericScope<'def> {
+        let x = self;
+        let mut scope = specs::GenericScope::empty();
         for x in x.scope {
             match x {
                 Param::Region(lft) => {
@@ -306,8 +313,10 @@ impl<'tcx, 'def> From<Params<'tcx, 'def>>
         for lft in x.external_scope {
             scope.add_lft_param(lft);
         }
-        for trait_use in x.trait_scope.trait_use_entries {
-            if !trait_use.is_self_use {
+        let mut requirements = x.trait_scope.trait_use_entries;
+        registry::order_scope_requirements(&mut requirements);
+        for trait_use in requirements {
+            if !trait_use.is_self_use && purpose.includes(&trait_use.key) {
                 scope.add_trait_requirement(trait_use.trait_use);
             }
         }
@@ -346,6 +355,87 @@ impl<'def> ParamLookup<'def> for Params<'_, 'def> {
 }
 
 impl<'tcx, 'def> Params<'tcx, 'def> {
+    /// Restrict annotation lookup to dependencies available in this kind of attribute.
+    pub(crate) fn attribute_scope(&self, include: impl Fn(specs::traits::AttrDependency) -> bool) -> Self {
+        self.restrict_annotation_scope(|_, dependency| include(dependency))
+    }
+
+    pub(crate) fn annotation_scope_for_purpose(&self, purpose: registry::ScopePurpose) -> Self {
+        self.restrict_annotation_scope(|key, _| purpose.includes(&key))
+    }
+
+    fn restrict_annotation_scope(
+        &self,
+        include: impl Fn(TraitKey, specs::traits::AttrDependency) -> bool,
+    ) -> Self {
+        let mut result = self.clone();
+
+        // Remove all non-self requirement shorthands before replaying the included entries below.
+        // This lets an included entry become visible when the original winner is filtered out.
+        for entry in &self.trait_scope.trait_use_entries {
+            if entry.is_self_use {
+                continue;
+            }
+            let borrowed = entry.trait_use.borrow();
+            let requirement = borrowed.as_ref().unwrap();
+            let self_ty = &requirement.trait_inst.get_direct_ty_params()[0];
+            let specs::Type::LiteralParam(self_param) = self_ty else {
+                continue;
+            };
+
+            for attr in &requirement.trait_ref.declared_attrs {
+                let path = vec![
+                    RustPathElem::AssocItem(self_param.rust_name.clone()),
+                    RustPathElem::AssocItem(attr.to_owned()),
+                ];
+                result.trait_scope.attribute_names.remove(&path);
+            }
+            for assoc_ty in &requirement.trait_ref.assoc_tys {
+                let path = vec![
+                    RustPathElem::AssocItem(self_param.rust_name.clone()),
+                    RustPathElem::AssocItem(assoc_ty.to_owned()),
+                ];
+                result.trait_scope.assoc_ty_names.remove(&path);
+            }
+        }
+
+        for entry in &self.trait_scope.trait_use_entries {
+            if entry.is_self_use {
+                continue;
+            }
+            let borrowed = entry.trait_use.borrow();
+            let requirement = borrowed.as_ref().unwrap();
+            if !include(entry.key.clone(), requirement.attr_dependency) {
+                continue;
+            }
+            let self_ty = &requirement.trait_inst.get_direct_ty_params()[0];
+            let specs::Type::LiteralParam(self_param) = self_ty else {
+                continue;
+            };
+
+            for (idx, assoc_ty) in requirement.trait_ref.assoc_tys.iter().enumerate() {
+                let path = vec![
+                    RustPathElem::AssocItem(self_param.rust_name.clone()),
+                    RustPathElem::AssocItem(assoc_ty.to_owned()),
+                ];
+                if let hash_map::Entry::Vacant(entry) = result.trait_scope.assoc_ty_names.entry(path) {
+                    entry.insert(requirement.make_assoc_type_use(idx));
+                }
+            }
+            for attr in &requirement.trait_ref.declared_attrs {
+                let path = vec![
+                    RustPathElem::AssocItem(self_param.rust_name.clone()),
+                    RustPathElem::AssocItem(attr.to_owned()),
+                ];
+                result
+                    .trait_scope
+                    .attribute_names
+                    .insert(path, requirement.make_attr_item_term_in_spec(attr).to_string());
+            }
+        }
+        result
+    }
+
     pub(crate) const fn trait_scope(&self) -> &Traits<'tcx, 'def> {
         &self.trait_scope
     }
@@ -692,6 +782,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             );
         }
 
+        // Constraint types can themselves instantiate ADTs with ambient requirements
+        // (e.g. Item = Result<A, E>), so these must exist before translating constraints.
+        trait_registry.add_implicit_drop_glue_assumptions(self, did, typing_env, requirements)?;
+
         // Install associated-type constraints only after all trait-use shells are initialized, so
         // translating a constraint can refer to another trait use.
         for (req, &entry_idx) in requirements.iter().zip(&trait_use_entry_indices).rev() {
@@ -847,107 +941,8 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
         self.add_lifetime_constraints(did, tcx, typing_env, type_translator)?;
         self.add_trait_requirements(did, tcx, type_translator, trait_registry, &requirements)?;
-        self.add_implicit_drop_glue_assumptions(did, tcx, typing_env, trait_registry, &requirements)?;
 
         trace!("Leave add_param_env for did = {did:?} with trait scope {:?}", self.trait_scope);
-        Ok(())
-    }
-
-    fn add_implicit_drop_glue_assumptions(
-        &mut self,
-        did: DefId,
-        tcx: ty::TyCtxt<'tcx>,
-        typing_env: ty::TypingEnv<'tcx>,
-        trait_registry: &registry::TR<'tcx, 'def>,
-        requirements: &[requirements::TraitReqMeta<'tcx>],
-    ) -> Result<(), TranslationError> {
-        let mut ty_params = Vec::new();
-        for (idx, param) in self.scope.iter().enumerate() {
-            let Some(lit) = param.as_type() else { continue };
-            let idx = u32::try_from(idx).map_err(|_err| {
-                TranslationError::ErrorReported(tcx.dcx().err(Message::UnsupportedFeature(format!(
-                    "generic parameter index does not fit into u32: {idx}"
-                ))))
-            })?;
-            ty_params.push((idx, Symbol::intern(&lit.rust_name)));
-        }
-
-        for (idx, name) in ty_params {
-            let param_ty = ty::ParamTy::new(idx, name);
-            let self_ty = tcx.mk_ty_from_kind(ty::TyKind::Param(param_ty));
-            let origin = Self::determine_origin_of_param(did, tcx, param_ty);
-            self.add_virtual_trait_assumption(
-                tcx,
-                typing_env,
-                trait_registry,
-                VirtualTrait::DropGlue,
-                self_ty,
-                origin,
-            )?;
-        }
-
-        let mut assoc_tys = Vec::new();
-        for req in requirements {
-            if req.is_used_in_self_trait {
-                continue;
-            }
-
-            let assoc_ty_dids = environment::get_trait_assoc_types(tcx, req.trait_ref.def_id);
-            for (assoc_did, constraint) in assoc_ty_dids.into_iter().zip(&req.assoc_constraints) {
-                if constraint.is_some() {
-                    continue;
-                }
-
-                let alias = ty::AliasTy::new(
-                    tcx,
-                    ty::AliasTyKind::Projection { def_id: assoc_did },
-                    req.trait_ref.args,
-                );
-                let self_ty = ty::Ty::new_alias(tcx, ty::IsRigid::No, alias);
-                assoc_tys.push((self_ty, req.origin));
-            }
-        }
-
-        for (self_ty, origin) in assoc_tys {
-            self.add_virtual_trait_assumption(
-                tcx,
-                typing_env,
-                trait_registry,
-                VirtualTrait::DropGlue,
-                self_ty,
-                origin,
-            )?;
-        }
-
-        let mut self_trait_assoc_tys = Vec::new();
-        for req in requirements {
-            if !req.is_used_in_self_trait {
-                continue;
-            }
-
-            let assoc_ty_dids = environment::get_trait_assoc_types(tcx, req.trait_ref.def_id);
-            for assoc_did in assoc_ty_dids {
-                let alias = ty::AliasTy::new(
-                    tcx,
-                    ty::AliasTyKind::Projection { def_id: assoc_did },
-                    req.trait_ref.args,
-                );
-                let self_ty = ty::Ty::new_alias(tcx, ty::IsRigid::No, alias);
-                self_trait_assoc_tys.push(self_ty);
-            }
-        }
-
-        for self_ty in self_trait_assoc_tys {
-            self.add_virtual_trait_assumption(
-                tcx,
-                typing_env,
-                trait_registry,
-                VirtualTrait::DropGlue,
-                self_ty,
-                specs::TyParamOrigin::AssocInDecl,
-            )?;
-        }
-
         Ok(())
     }
 
@@ -978,7 +973,38 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         let entry_idx = self.trait_scope.insert_trait_use(key, trait_use);
         let entry = &self.trait_scope.trait_use_entries[entry_idx];
         registry::TR::fill_virtual_trait_use(entry, self_ty, spec_ref, origin);
-        trait_registry.finalize_virtual_trait_use(entry, self, typing_env, self_ty)
+        trait_registry.finalize_virtual_trait_use(entry, self, typing_env, self_ty)?;
+
+        let attribute_names = {
+            let entry = &self.trait_scope.trait_use_entries[entry_idx];
+            let trait_use_ref = entry.trait_use.borrow();
+            let trait_use = trait_use_ref.as_ref().unwrap();
+            let self_ty = &trait_use.trait_inst.get_direct_ty_params()[0];
+
+            if let specs::Type::LiteralParam(self_param) = self_ty {
+                trait_use
+                    .trait_ref
+                    .declared_attrs
+                    .iter()
+                    .map(|attr| {
+                        let path = vec![
+                            RustPathElem::AssocItem(self_param.rust_name.clone()),
+                            RustPathElem::AssocItem(attr.to_owned()),
+                        ];
+                        let term = trait_use.make_attr_item_term_in_spec(attr).to_string();
+                        (path, term)
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            }
+        };
+
+        for (path, term) in attribute_names {
+            self.trait_scope.attribute_names.insert(path, term);
+        }
+
+        Ok(())
     }
 }
 
@@ -1019,7 +1045,7 @@ pub(crate) fn determine_origin_of_lft_param<'tcx>(
 
 impl<'tcx> Params<'tcx, '_> {
     /// Determine the declaration origin of a type parameter of a function.
-    fn determine_origin_of_param(
+    pub(crate) fn determine_origin_of_param(
         did: DefId,
         tcx: ty::TyCtxt<'tcx>,
         param: ty::ParamTy,
@@ -1259,19 +1285,40 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
         trait_key: VirtualTrait,
         args: &[ty::GenericArg<'tcx>],
     ) -> &GenericTraitUse<'tcx, 'def> {
+        self.try_lookup_virtual_trait_use(tcx, trait_key, args).unwrap_or_else(|| {
+            span_bug!(
+                DUMMY_SP,
+                "could not find local instance for virtual trait with generic args {:?}",
+                tcx.mk_args(args)
+            )
+        })
+    }
+
+    pub(crate) fn try_lookup_virtual_trait_use(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+        trait_key: VirtualTrait,
+        args: &[ty::GenericArg<'tcx>],
+    ) -> Option<&GenericTraitUse<'tcx, 'def>> {
         let key = (TraitKey::Virtual(trait_key), generate_args_inst_key(tcx, args).unwrap());
         trace!("looking up virtual trait use {key:?} in {:?}", self.trait_use_entries);
-        self.entry_indices_by_erased_key
-            .get(&key)
-            .and_then(|indices| indices.first())
-            .and_then(|idx| self.trait_use_entries.get(*idx))
-            .unwrap_or_else(|| {
-                span_bug!(
-                    DUMMY_SP,
-                    "could not find local instance for virtual trait with generic args {:?}",
-                    tcx.mk_args(args)
-                )
-            })
+        let idx = self.entry_indices_by_erased_key.get(&key).and_then(|indices| indices.first())?;
+        self.trait_use_entries.get(*idx)
+    }
+
+    pub(crate) fn try_lookup_normalized_virtual_trait_use(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        trait_key: VirtualTrait,
+        self_ty: ty::Ty<'tcx>,
+    ) -> Option<&GenericTraitUse<'tcx, 'def>> {
+        let target = resolution::normalize_type(tcx, typing_env, self_ty).ok()?;
+        self.trait_use_entries.iter().find(|entry| {
+            entry.key == TraitKey::Virtual(trait_key)
+                && resolution::normalize_type(tcx, typing_env, entry.trait_ref.self_ty())
+                    .is_ok_and(|candidate| erase_regions(tcx, candidate) == erase_regions(tcx, target))
+        })
     }
 
     /// Within a trait declaration, get the Self trait use.

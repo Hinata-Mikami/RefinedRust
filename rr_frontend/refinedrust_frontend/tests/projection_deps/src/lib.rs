@@ -7,17 +7,17 @@ pub trait Assoc {
     type Output;
 }
 
-struct Wrapper<T>(T);
+pub struct Wrapper<T>(T);
 
 impl<T> Assoc for Wrapper<T> {
-    type Output = Option<T>;
+    type Output = Wrapper<T>;
 }
 
 #[rr::only_spec]
 fn consume<T>(_value: T) {}
 
 #[rr::verify]
-pub fn call<T>(value: Option<T>) {
+pub fn call<T>(value: Wrapper<T>) {
     consume::<<Wrapper<T> as Assoc>::Output>(value);
 }
 

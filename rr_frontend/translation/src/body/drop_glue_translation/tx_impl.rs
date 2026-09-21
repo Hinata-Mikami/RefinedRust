@@ -407,7 +407,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             let trait_req = specs::traits::ReqInst::new(
                 req.req_inst.spec,
                 req.req_inst.origin,
-                req.req_inst.is_assoc_bound,
+                req.req_inst.attr_dependency,
                 assoc_inst,
                 req.req_inst.of_trait,
                 req.req_inst.scope,
@@ -448,10 +448,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for DropGlueTX<'a,
         &self,
         args: ty::GenericArgsRef<'tcx>,
     ) -> Result<types::AbstractedGenerics<'def>, TranslationError> {
+        let trait_reqs = {
+            let mut state = self.shim_state();
+            self.ty_translator
+                .trait_registry()
+                .resolve_drop_glue_requirements_for_args(&mut state, args)?
+        };
         self.get_drop_glue_generic_abstraction_with_mode(
             args,
             &[],
-            Vec::new(),
+            trait_reqs,
             types::GenericAbstractionMode::AllDirect,
         )
     }

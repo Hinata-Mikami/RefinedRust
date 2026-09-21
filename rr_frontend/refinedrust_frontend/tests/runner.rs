@@ -156,11 +156,11 @@ mod tests {
                 .expect("missing concrete-projection proof template");
         let specialized_call = template
             .lines()
-            .find(|line| line.contains("consume_std_option_OptionT_loc ◁"))
+            .find(|line| line.contains("consume_WrapperT_loc ◁"))
             .expect("missing specialized consume call");
         assert!(
-            specialized_call.contains("( *[T_ty])"),
-            "normalized Option<T> call did not retain its T dependency: {specialized_call}"
+            specialized_call.contains("(Wrapper_ty ((T_rt)) -[] -[T_ty])"),
+            "normalized Wrapper<T> call did not retain its T dependency: {specialized_call}"
         );
 
         let symbolic_template = fs::read_to_string(

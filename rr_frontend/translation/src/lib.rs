@@ -624,6 +624,18 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         // write tuples up to the necessary size
         // TODO
 
+        // Drop-glue impl attributes depend on the ADT type definitions emitted above.
+        {
+            writeln!(spec_file, "Section drop_glue_attrs.").unwrap();
+            writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
+            for (key, spec) in &self.trait_impls {
+                if matches!(key, registry::ImplKey::Virtual(registry::VirtualImpl::DropGlueForAdt(_))) {
+                    writeln!(spec_file, "{}\n", spec.generate_attr_decl()).unwrap();
+                }
+            }
+            writeln!(spec_file, "End drop_glue_attrs.\n").unwrap();
+        }
+
         // write the attribute spec declarations of closure trait impls
         {
             writeln!(spec_file, "Section closure_attrs.").unwrap();
@@ -3303,9 +3315,9 @@ fn register_builtin_virtual_traits(vcx: &VerificationCtxt<'_, '_>) {
         assoc_tys: Vec::new(),
         name: "DropGlue".to_owned(),
         has_semantic_interp: false,
-        has_spec_attrs: false,
+        has_spec_attrs: true,
         attrs_dependent: false,
-        declared_attrs: Vec::new(),
+        declared_attrs: vec!["DropGlueUnwind".to_owned()],
         method_trait_incl_decls,
     };
 

@@ -87,7 +87,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for TX<'a, 'def, '
         &self,
         args: ty::GenericArgsRef<'tcx>,
     ) -> Result<types::AbstractedGenerics<'def>, TranslationError> {
-        self.ty_translator.get_generic_abstraction_for_args_all_direct(args, &[], Vec::new())
+        let trait_reqs = {
+            let mut scope = self.ty_translator.scope.borrow_mut();
+            let mut state = types::STInner::InFunction(&mut scope);
+            self.trait_registry.resolve_drop_glue_requirements_for_args(&mut state, args)?
+        };
+        self.ty_translator.get_generic_abstraction_for_args_all_direct(args, &[], trait_reqs)
     }
 
     fn translate_drop_glue_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError> {

@@ -49,6 +49,7 @@ pub(crate) const FUNCTION_SPEC_ATTRS: &[&str] = &[
     "verify",
     "trust_me",
     "use_panic_abort",
+    "ensures_on_unwind",
 ];
 
 pub(crate) const CLOSURE_SPEC_ATTRS: &[&str] =
@@ -705,6 +706,7 @@ struct ParsedSpecInfo<'def> {
     preconditions: Vec<MetaIProp>,
     postconditions: Vec<MetaIProp>,
     unwind_conditions: Vec<coq::term::Term>,
+    unwind_postconditions: Vec<MetaIProp>,
     existentials: Vec<RRParam>,
     ret: Option<specs::TypeWithRef<'def>>,
     unsafe_lifetime_constraints: Vec<String>,
@@ -722,6 +724,7 @@ impl<'def> ParsedSpecInfo<'def> {
             preconditions: Vec::new(),
             postconditions: Vec::new(),
             unwind_conditions: Vec::new(),
+            unwind_postconditions: Vec::new(),
             existentials: Vec::new(),
             ret: None,
             unsafe_lifetime_constraints: Vec::new(),
@@ -754,6 +757,10 @@ impl<'def> ParsedSpecInfo<'def> {
 
         for condition in &self.unwind_conditions {
             builder.add_unwind_condition(condition.to_owned());
+        }
+
+        for post in &self.unwind_postconditions {
+            builder.add_unwind_postcondition(post.to_owned().into());
         }
 
         for ex in &self.existentials {
@@ -1076,6 +1083,10 @@ where
                     .process_coq_literal(span, &condition.value())
                     .map_err(|err| spanned_error(span, ParserError::AntiQuotation(err)))?;
                 builder.unwind_conditions.push(coq::term::Term::Literal(condition));
+            },
+            "ensures_on_unwind" => {
+                let iprop = MetaIProp::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
+                builder.unwind_postconditions.push(iprop);
             },
             _ => {
                 return Ok(false);

@@ -185,7 +185,9 @@ Ltac normalize_and_simpl_impl handle_exist :=
   dependent variables to distinguish between dependent and non
   dependent forall *)
   | |- ?P -> ?Q =>
-    lazymatch type of P with
+    let T := type of P in
+    let T := eval simpl in T in
+    lazymatch T with
     | Prop => first [
         (* first check if the hyp is trivial *)
         assert_is_trivial P; intros _

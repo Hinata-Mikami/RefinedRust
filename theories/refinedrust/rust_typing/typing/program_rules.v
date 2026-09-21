@@ -5916,15 +5916,18 @@ Section subsume.
   Qed.
 
   Lemma type_unwind_terminate E L f fn (R : typed_stmt_R_t) (U : typed_stmt_U_t) ϝ :
-    ⊢ typed_stmt E L f UnwindTerminate fn R U ϝ.
+    True ⊢ typed_stmt E L f UnwindTerminate fn R U ϝ.
   Proof.
+    iIntros "_".
     iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont".
     iApply (wps_unwind_terminate f.1 fn.(f_code) Φ Φunwind).
   Qed.
 
   Lemma type_abort E L f fn (R : typed_stmt_R_t) (U : typed_stmt_U_t) ϝ :
+    True
     ⊢ typed_stmt E L f AbortS fn R U ϝ.
   Proof.
+    iIntros "_".
     iIntros (Φ Φunwind) "#CTX #HE HL Hf Hcont".
     iApply (wps_abort f.1 fn.(f_code) Φ Φunwind).
   Qed.
