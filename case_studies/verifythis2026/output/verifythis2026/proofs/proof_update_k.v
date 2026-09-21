@@ -26,8 +26,8 @@ Proof.
   1: rep <-! <3000 liRStep.
   1: rep <-! <3000 liRStep.
   1: rep liRStep.
-  1: rep <-! <3000 liRStep.
   1: rep liRStep.
+
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   - unfold citation_update_k, add_at. reflexivity.
