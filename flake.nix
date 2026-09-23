@@ -236,10 +236,18 @@
           src = ./stdlib/num;
         }
         {
+          pname = "stdlib-cell";
+          src = ./stdlib/cell;
+          libDeps = with stdlibPkgs; [
+            stdlib-sized
+          ];
+        }
+        {
           pname = "stdlib-spin";
           src = ./stdlib/spin;
           libDeps = with stdlibPkgs; [
             stdlib-option
+            stdlib-cell
             stdlib-closures
             stdlib-arithops
           ];

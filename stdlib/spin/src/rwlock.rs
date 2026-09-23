@@ -1,5 +1,6 @@
 use std::ops::{Deref, DerefMut};
 use crate::relax::*;
+use core::cell::UnsafeCell;
 use core::marker::PhantomData;
 
 
@@ -8,11 +9,12 @@ use core::marker::PhantomData;
 #[rr::export_as(spin::rwlock::RwLock)]
 #[rr::refined_by("()" : "unit")]
 #[rr::exists("x", "y")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 pub struct RwLock<T : ?Sized, R = Spin> {
     #[rr::field("y")]
     phantom: PhantomData<R>,
     #[rr::field("x")]
-    data: PhantomData<T>,
+    data: UnsafeCell<T>,
 }
 
 #[rr::trust_me(drop_glue)]

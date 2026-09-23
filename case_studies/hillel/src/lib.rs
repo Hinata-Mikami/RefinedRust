@@ -86,6 +86,7 @@ fn left_pad<T: Copy>(str: &mut Vec<T>, len: usize, pad: T) {
 #[rr::ensures("elem ∈ new")]
 #[rr::ensures("vec.cur ⊆ new")]
 #[rr::ensures("new ⊆ elem :: vec.cur")]
+#[rr::may_unwind_if("{T::DropGlueUnwind}")]
 // !end spec
 // !start code(hillel.unique)
 fn insert_unique<T: Eq>(vec: &mut Vec<T>, elem: T) {
@@ -111,6 +112,7 @@ fn insert_unique<T: Eq>(vec: &mut Vec<T>, elem: T) {
 #[rr::ensures("NoDup ret")]
 #[rr::ensures("str ⊆ ret")]
 #[rr::ensures("ret ⊆ str")]
+#[rr::requires("{T::DropGlueUnwind} → False")]
 // !end spec
 // !start code(hillel.unique)
 fn unique<T: Eq + Copy>(str: &Vec<T>) -> Vec<T> {

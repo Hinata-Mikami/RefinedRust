@@ -9,6 +9,7 @@
 #![rr::include("closures")]
 #![rr::include("option")]
 #![rr::include("arithops")]
+#![rr::include("cell")]
 
 extern crate spin;
 

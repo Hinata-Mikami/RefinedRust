@@ -1,0 +1,48 @@
+{
+  "export_libs": [],
+  "items": [
+    {
+      "info": {
+        "enum_name": null,
+        "needs_trait_attrs": true
+      },
+      "kind": "adt",
+      "path": [
+        "core",
+        "cell",
+        "UnsafeCell"
+      ],
+      "raw_type": {
+        "rtype": "(UnsafeCell_rt)",
+        "semtype": "UnsafeCell_ty"
+      },
+      "rtype": "(UnsafeCell_inv_t_rt)",
+      "semtype": "UnsafeCell_inv_t",
+      "syntype": "UnsafeCell_sls"
+    },
+    {
+      "has_semantic_interp": false,
+      "impl_kind": "virtual_drop_glue_for_adt",
+      "kind": "trait_impl",
+      "method_specs": {
+        "drop_glue": {
+          "name": "drop_glue_UnsafeCell",
+          "spec": "type_of_drop_glue_UnsafeCell",
+          "trait_req_incl": "trait_incl_of_drop_glue_UnsafeCell"
+        }
+      },
+      "name": "drop_glue_UnsafeCell",
+      "path": [
+        "core",
+        "cell",
+        "UnsafeCell"
+      ]
+    }
+  ],
+  "module_dependencies": [
+    "rrstd.sized.sized.generated"
+  ],
+  "refinedrust_module": "generated_specs_cell",
+  "refinedrust_name": "cell",
+  "refinedrust_path": "rrstd.cell.cell.generated"
+}

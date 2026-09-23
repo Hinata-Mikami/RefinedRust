@@ -1,0 +1,3 @@
+generate_dune_project = false
+lib_load_paths = ["../sized",]
+output_dir = "output"
