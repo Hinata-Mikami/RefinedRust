@@ -1848,19 +1848,21 @@ Section judgments.
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗ current_frame f.1 f.2 -∗
     (* for any location provided to the client *)
     (∀ (l : loc),
-      logical_step F (
+      logical_step F (logical_step F (
         ∃ L' (rt : RT) (ty : type rt) (r : rt),
         l ◁ᵥ{f.1, MetaNone} r @ ty ∗
         llctx_interp L' ∗
         current_frame f.1 f.2 ∗
-        T L' (l2v l) rt ty r) -∗
+        T L' (l2v l) rt ty r)) -∗
         Φ (l2v l)) -∗
     WPe{f.1} e {{ Φ }})%I.
 
   (** This does not work below shared references, as we cannot get a full fraction out of the sharing predicate.
      This does not seem that terrible, because we should not take *mut references from shared borrows anyways.
      (Note: we are really using here that the difference between *mut and *const have the role of providing some intent by the programmer.) *)
-  Definition typed_addr_of_mut_end_cont_t := llctx → ∀ rt0, type rt0 → rt0 → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ.
+  Definition typed_addr_of_mut_end_cont_t := llctx → ∀ rt0, type rt0 → rt0 →
+    ∀ rt', ltype rt' → place_rfn rt' →
+    ∀ rt_moved, ltype rt_moved → place_rfn rt_moved → iProp Σ.
   Definition typed_addr_of_mut_end (pk : ptr_kind) (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (T : typed_addr_of_mut_end_cont_t) : iProp Σ :=
     (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
@@ -1871,18 +1873,19 @@ Section judgments.
     logical_step F (
     ∃ (L' : llctx)
       (rt0 : RT) (ty0 : type rt0) (r0 : rt0)
-      (rt' : RT) (lt' : ltype rt') (r' : place_rfn rt'),
+      (rt' : RT) (lt' : ltype rt') (r' : place_rfn rt')
+      (rt_moved : RT) (lt_moved : ltype rt_moved) (r_moved : place_rfn rt_moved),
     (* provide ownership of some ty0, the result of the operation -- usually will be alias_ptr_t *)
     l ◁ᵥ{π, MetaNone} r0 @ ty0 ∗
     (* and blocked ownership of the borrowed location (where the notion of blocking is not fixed, and determined by the existentially-quantified lt');
        usually it will be AliasLtype l or OpenedLtype (AliasLtype l) .. *)
     l ◁ₗ[π, b2] r' @ lt' ∗
-    (* and the ownership to move out *)
-    l ◁ₗ[π, Owned] r @ lt ∗
+    (* and the ownership to move out, which can differ from the input for an already-opened place *)
+    l ◁ₗ[π, Owned] r_moved @ lt_moved ∗
     ⌜ltype_st lt' = ltype_st lt⌝ ∗
     (* and the context and postco *)
     llctx_interp L' ∗
-    T L' rt0 ty0 r0 rt' lt' r')).
+    T L' rt0 ty0 r0 rt' lt' r' rt_moved lt_moved r_moved)).
   Class TypedAddrOfMutEnd (pk : ptr_kind) (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) : Type :=
     typed_addr_of_mut_end_proof T : iProp_to_Prop (typed_addr_of_mut_end pk π E L l lt r b2 bmin T).
 

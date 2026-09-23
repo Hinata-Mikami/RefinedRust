@@ -3624,7 +3624,12 @@ Section subsume.
     rewrite /Raw. wpe_bind.
     iApply ("HT" $! _ ⊤ with "[//] [//] [//] CTX HE HL Hf").
     iIntros (l) "HT".
+    wpe_bind.
     iDestruct "CTX" as "(LFT & LLCTX)".
+    iApply wpe_fupd.
+    iApply (wpe_logical_step with "HT"); [done.. | ].
+    iApply wp_skip. iApply physical_step_intro. iNext. iIntros "HT !>".
+    iApply wpe_fupd.
     iApply (wpe_logical_step with "HT"); [done.. | ].
     iApply wp_skip. iApply physical_step_intro. iNext.
     iDestruct 1 as (L' rt ty r) "(Hl & HL & Hf & HT)".
@@ -4300,36 +4305,47 @@ Section subsume.
       typed_place E L1 f l lt1 r1 UpdStrong b K (λ L2 κs (l2 : loc) (b2 : bor_kind) (bmin : place_update_kind) rti (lt2 : ltype rti) (ri2 : place_rfn rti) updcx,
         (* We need to be able to do a strong update *)
         ∃ (Heqmin : place_update_kind_allows_strong_updates bmin),
-        typed_addr_of_mut_end pk f.1 E L2 l2 lt2 ri2 b2 bmin (λ L3 rtb tyb rb rt' lt' r',
-          typed_place_finish f.1 E L3 updcx (mkPUKRes UpdStrong I (opt_place_update_eq_strong bmin Heqmin)) (llft_elt_toks κs) l b lt' r' (λ L4,
-            (* in case lt2 is already an AliasLtype, the simplify_hyp instance for it will make sure that we don't actually introduce that assignment into the context *)
-            l2 ◁ₗ[π, Owned] ri2 @ lt2 -∗
-            T L4 l2 rtb tyb rb)))))
+        (* Do not refold here: in particular, an existing AliasLtype must stay moved out. *)
+        stratify_ltype_unblock f.1 E L2 StratNoRefold l2 lt2 ri2 b2 (λ L3 R rt3 lt3 ri3,
+        prove_place_cond E L3 bmin lt2 lt3 (λ upd,
+        typed_addr_of_mut_end pk f.1 E L3 l2 lt3 ri3 b2 bmin (λ L4 rtb tyb rb rt' lt' r' rt_moved lt_moved r_moved,
+          typed_place_finish f.1 E L4 updcx (place_update_kind_res_trans upd (mkPUKRes UpdStrong I (opt_place_update_eq_strong bmin Heqmin))) (R ∗ llft_elt_toks κs) l b lt' r' (λ L5,
+            (* An AliasLtype is simplified instead of being reintroduced into the context. *)
+            l2 ◁ₗ[π, Owned] r_moved @ lt_moved -∗
+            T L5 l2 rtb tyb rb)))))))
     ⊢ typed_addr_of_mut pk E L f e T.
   Proof.
     iIntros (HT') "HT'". iIntros (Φ F ???) "#CTX #HE HL Hf HΦ".
     iApply (HT' with "CTX HE HL Hf HT'").
     iIntros (L1 K l) "HL Hf". iDestruct 1 as ([rto [[[lt1 r1] b] π]]) "(Hl & -> & Hplace)" => /=.
-    iApply ("Hplace" with "[//] [//] CTX HE HL Hf Hl").
+    iApply ("Hplace" $! _ F with "[//] [//] CTX HE HL Hf Hl").
     iIntros (L2 κs l2 bmin b2 rti ltyi ri updcx) "Hl2 Hs (%Heqmin & Hcont) HL Hf".
     iApply "HΦ".
+    iPoseProof ("Hcont" with "[//] [//] [] CTX HE HL Hl2") as "Hb"; first solve_ndisj.
+    iApply fupd_logical_step.
+    iMod "Hb" as "(%L3 & %R & %rt3 & %lt3 & %ri3 & HL & %Hst & Hstep & Hcont)".
+    iMod ("Hcont" with "[] CTX HE HL") as "(HL & %upd & #Hincl & Hcond & %Hsteq & Hcont)"; first done.
+    iApply (logical_step_wand with "Hstep").
+    iIntros "!> (Hl3 & HR)".
+    iPoseProof ("Hcont" with "[//] [//] [//] CTX HE HL Hl3") as "Hcont".
     iApply logical_step_fupd.
-    iSpecialize ("Hcont" with "[//] [//] [//] CTX HE HL Hl2").
-
     iApply (logical_step_wand with "Hcont").
-    iDestruct 1 as (L3 rtb tyb rb rt' lt' r') "(Htyb & Hl2 & Hl2' & %Hst & HL & HT)".
+    iDestruct 1 as (L4 rtb tyb rb rt' lt' r' rt_moved lt_moved r_moved) "(Htyb & Hl3 & Hl3' & %Hst' & HL & HT)".
 
     set (upd_strong := (mkPUKRes UpdStrong I (opt_place_update_eq_strong bmin Heqmin))).
-    set (upd_inner := typed_place_finish_upd upd_strong lt' r').
-    iMod ("Hs" $! upd_inner with "[] Hl2 [] []") as "Hs".
-    { simpl. destruct bmin; done. }
+    set (upd_final := place_update_kind_res_trans upd upd_strong).
+    set (upd_inner := typed_place_finish_upd upd_final lt' r').
+    iMod ("Hs" $! upd_inner with "[] Hl3 [] []") as "Hs".
+    { simpl. iApply place_update_kind_incl_lub; first done.
+      destruct bmin; done. }
     { simpl. done. }
-    { rewrite /typed_place_cond/=. done. }
-    iMod ("Hs" with "HL Hf HT") as (upd') "(Hl & Hcond & ? & ? & ? & HL & Hf & HT)".
+    { rewrite /typed_place_cond/=. rewrite Hst' -Hsteq.
+      destruct upd as [updk ? ?]. simpl. destruct updk; done. }
+    iMod ("Hs" with "HL Hf HT") as (upd') "(Hl & Hcond' & ? & HR' & ? & HL & Hf & HT)".
     iDestruct ("HT" with "Hl") as "HT".
-    iMod ("HT" with "[//] [$] HE HL [$]") as "(%L4 & HL & HT)".
+    iMod ("HT" with "[//] [$] HE HL [$]") as "(%L5 & HL & HT)".
     iModIntro.
-    iExists L4, _, tyb, rb. iFrame.
+    iExists L5, _, tyb, rb. iFrame.
     by iApply "HT".
   Qed.
   (* NOTE: instances for [typed_addr_of_mut_end] are in alias_ptr.v *)

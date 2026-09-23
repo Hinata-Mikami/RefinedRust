@@ -359,7 +359,7 @@ Proof.
     apply: [lang.SkipECtx]|
     apply: [lang.SkipECtx; lang.DerefCtx _ _]|
     apply: [lang.SkipECtx; lang.DerefCtx _ _]|
-    apply: [lang.SkipECtx]|
+    apply: [lang.SkipECtx; lang.SkipECtx]|
     apply: (replicate n lang.SkipECtx)|
     apply: []|
     apply: [lang.SkipECtx; lang.SkipECtx]|

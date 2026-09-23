@@ -195,7 +195,8 @@ Inductive rust_enum_def : Type :=
   There's no inherent other step we could use, except for possibly the step for the assignment to the LHS
     (but that would kill modularity). *)
 Definition Ref (m : mutability) (κ : string) (ty : option rust_type) (e : expr) := SkipE (SkipE e).
-Definition Raw (pk : ptr_kind) (m : mutability) (e : expr) := SkipE e.
+(* Raw mutable borrows also need one step for stratification and one for creating the alias. *)
+Definition Raw (pk : ptr_kind) (m : mutability) (e : expr) := SkipE (SkipE e).
 Notation "'&ref{' mut , ty , κ '}' e" := (Ref mut κ ty e) (at level 9, format "&ref{ mut , ty , κ }  e") : expr_scope.
 Notation "'&raw{' pk , mut '}' e" := (Raw pk mut e) (at level 9, format "&raw{ pk , mut }  e") : expr_scope.
 Notation "'&raw{' mut '}' e" := (Raw PRaw mut e) (at level 9, format "&raw{ mut }  e") : expr_scope.

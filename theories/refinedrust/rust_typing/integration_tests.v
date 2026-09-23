@@ -713,6 +713,33 @@ End std_option_Option_ty.
     intros Hal. iStartProof. rep liRStep.
   Qed.
 
+  Lemma alias_stratify_owned_no_refold π E L l l2 rt st r :
+    ⊢ stratify_ltype π E L StratNoUnfold StratNoRefold StratifyUnblockOp l
+      (AliasLtype rt st l2) r Owned
+      (λ _ _ rt' lt' _, ∃ Heq : rt = rt',
+        ⌜lt' = eq_rect rt ltype (AliasLtype rt st l2) rt' Heq⌝).
+  Proof.
+    iStartProof. liRStep. iExists eq_refl. done.
+  Qed.
+
+  Lemma addr_of_mut_opened_uniq_keeps_alias_current π E L l
+      {rt_cur rt_inner rt_full}
+      (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full)
+      (Cpre Cpost : rt_inner → rt_full → iProp Σ) r κ γ :
+    ⊢ typed_addr_of_mut_end PRaw π E L l
+      (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost) r (Uniq κ γ) UpdStrong
+      (λ _ _ _ _ rt' lt' _ rt_moved lt_moved _,
+        ∃ Heq : rt_cur = rt',
+          ⌜lt' = eq_rect rt_cur ltype
+            (OpenedLtype (AliasLtype rt_cur (ltype_st lt_cur) l)
+              lt_inner lt_full Cpre Cpost) rt' Heq⌝ ∗
+        ∃ Heq_moved : rt_cur = rt_moved,
+          ⌜lt_moved = eq_rect rt_cur ltype lt_cur rt_moved Heq_moved⌝).
+  Proof.
+    iStartProof. liRStep.
+    iExists eq_refl. iSplit; first done. iExists eq_refl. done.
+  Qed.
+
   Instance option_contr {rt1 T_rt} (T : type rt1 → type T_rt) :
     TypeContractive T →
     TypeContractive (λ ty, std_option_Option_ty (T ty)).
