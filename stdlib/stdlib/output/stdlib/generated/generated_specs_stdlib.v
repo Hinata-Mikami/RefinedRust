@@ -20,6 +20,10 @@ From rrstd.result.result.generated Require Export generated_specs_result.
 From rrstd.rr_internal.rr_internal.generated Require Export generated_specs_rr_internal.
 From rrstd.stdlib.stdlib Require Export generated_code_stdlib.
 
+Section drop_glue_attrs.
+Context `{RRGS : !refinedrustGS Σ}.
+End drop_glue_attrs.
+
 Section closure_attrs.
 Context `{RRGS : !refinedrustGS Σ}.
 End closure_attrs.

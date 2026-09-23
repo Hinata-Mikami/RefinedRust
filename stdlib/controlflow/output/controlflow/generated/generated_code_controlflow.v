@@ -222,8 +222,7 @@ Program Definition ControlFlow_BC_break_value_def (drop_glue_ControlFlow_B_C_loc
      "_bb6" :=
       CallS drop_glue_ControlFlow_B_C_loc [] [RSTTyVar "B"; RSTTyVar "C"] [@{expr} &raw{ PRef, Mut } ("self")] None
       ( Goto "_bb4")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb5")
+      ( Goto "_bb5")
      ]>%E $
      <[
      "_bb7" :=
@@ -273,7 +272,7 @@ Program Definition Tasconvert_IntoU_into_def (convert_From_U_T_from_loc: loc) (T
       local_live{ U_st } "__0";
       local_live{ T_st } "__2";
       "__2" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("self");
-      CallS convert_From_U_T_from_loc [] [] [@{expr} move{ (use_op_alg' T_st) } ("__2")] (Some (Na1Ord, (use_op_alg' U_st), "__0"))
+      CallS convert_From_U_T_from_loc [] [RSTTyVar "T"; RSTTyVar "U"] [@{expr} move{ (use_op_alg' T_st) } ("__2")] (Some (Na1Ord, (use_op_alg' U_st), "__0"))
       ( Goto "_bb1")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Goto "_bb2")
@@ -559,7 +558,7 @@ Program Definition std_result_ResultTFasFromResidualstd_result_ResultE_from_resi
       local_live{ F_st } "__4";
       local_live{ E_st } "__5";
       "__5" <-{ (use_op_alg' E_st) } move{ (use_op_alg' E_st) } ("e");
-      CallS convert_From_F_E_from_loc [] [] [@{expr} move{ (use_op_alg' E_st) } ("__5")] (Some (Na1Ord, (use_op_alg' F_st), "__4"))
+      CallS convert_From_F_E_from_loc [] [RSTTyVar "E"; RSTTyVar "F"] [@{expr} move{ (use_op_alg' E_st) } ("__5")] (Some (Na1Ord, (use_op_alg' F_st), "__4"))
       ( Goto "_bb4")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Goto "_bb5")

@@ -16,6 +16,7 @@ Proof.
   { (* unfold invariant *)
     iRename select (traits_iterator_Iterator_Inv _ _ _ _) into "Hinv".
     iEval (rewrite /traits_iterator_Iterator_Inv/=) in "Hinv".
+    iDestruct "Hinv" as "(%Hdrop & Hinv)".
     rep <-! liRStep; liShow.
     rep <- 20 liRStep; liShow.
     { liRStep; liShow. liRStep; liShow.
@@ -32,6 +33,7 @@ Proof.
   { (* unfold invariant *)
     iRename select (traits_iterator_Iterator_Inv _ _ _ _) into "Hinv".
     iEval (rewrite /traits_iterator_Iterator_Inv/=) in "Hinv".
+    iDestruct "Hinv" as "(%Hdrop & Hinv)".
     rep <-! liRStep; liShow.
     rep <- 1 liRStep; liShow.
     { iEval (rewrite /traits_iterator_Iterator_Inv/=).

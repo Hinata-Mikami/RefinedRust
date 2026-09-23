@@ -27,6 +27,10 @@ Record IndexMut_spec_attrs `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} `{Idx_
 #[global] Arguments mk_IndexMut_spec_attrs  {_} {_} {_} {_} {_} {_}.
 
 
+Section drop_glue_attrs.
+Context `{RRGS : !refinedrustGS Σ}.
+End drop_glue_attrs.
+
 Section closure_attrs.
 Context `{RRGS : !refinedrustGS Σ}.
 End closure_attrs.
@@ -75,7 +79,7 @@ Definition scope_bindable_Index_spec `{Self_rt : !RT} `{Idx_rt : !RT} `{Output_r
 .
 #[global] Existing Instance scope_bindable_Index_spec.
 
-Definition Index_index_base_spec (Self_rt: RT) (Idx_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Output_st: syn_type) (Index_Self_Idx_spec_attrs: (Index_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Output_rt) )) :=
+Definition Index_index_base_spec (Self_rt: RT) (Idx_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Output_st: syn_type) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (DropGlue_Idx_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Idx_rt) )) (DropGlue_SelfasIndexIdx_Output_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Output_rt) )) (Index_Self_Idx_spec_attrs: (Index_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Output_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[Self_ty; Idx_ty; Output_ty]) : ([(Self_rt, Self_st); (Idx_rt, Idx_st); (Output_rt, Output_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, index) : ((_ * _)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
@@ -84,12 +88,13 @@ Definition Index_index_base_spec (Self_rt: RT) (Idx_rt: RT) (Output_rt: RT) (Sel
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ (shr_ref ulft_1 Output_ty);
       (* postcondition *) (λ π : thread_id, (⌜(Index_Self_Idx_spec_attrs.(Index_IndexProj) self index ret)%Z⌝)) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition Index_base_spec (Self_rt: RT) (Idx_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Output_st: syn_type) (_ATTRS: ((Index_spec_attrs ((Self_rt)) ((Idx_rt)) ((Output_rt))))) : (spec_with _ _ (Index_spec ((Self_rt)) ((Idx_rt)) ((Output_rt)))) :=
+Definition Index_base_spec (Self_rt: RT) (Idx_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Output_st: syn_type) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (DropGlue_Idx_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Idx_rt) )) (DropGlue_SelfasIndexIdx_Output_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Output_rt) )) (_ATTRS: ((Index_spec_attrs ((Self_rt)) ((Idx_rt)) ((Output_rt))))) : (spec_with _ _ (Index_spec ((Self_rt)) ((Idx_rt)) ((Output_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Idx_ty; Output_ty]) : ([Self_rt; Idx_rt; Output_rt] : list RT), {|
       Index_index_spec  :=
-        (Index_index_base_spec ((Self_rt)) ((Idx_rt)) ((Output_rt)) (Self_st) (Idx_st) (Output_st)) _ATTRS 
+        (Index_index_base_spec ((Self_rt)) ((Idx_rt)) ((Output_rt)) (Self_st) (Idx_st) (Output_st)) DropGlue_Self_spec_attrs DropGlue_Idx_spec_attrs DropGlue_SelfasIndexIdx_Output_spec_attrs _ATTRS 
            <TY> Self_ty <TY> Idx_ty <TY> Output_ty : (spec_with 1 [] fn_spec);
     |}
 .
@@ -124,7 +129,7 @@ Definition scope_bindable_IndexMut_spec `{Self_rt : !RT} `{Idx_rt : !RT} `{Index
 .
 #[global] Existing Instance scope_bindable_IndexMut_spec.
 
-Definition IndexMut_index_mut_base_spec (Self_rt: RT) (Idx_rt: RT) (Index_Self_Idx_Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Index_Self_Idx_Output_st: syn_type) (Index_Self_Idx_spec_attrs: (Index_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) )) (IndexMut_Self_Idx_spec_attrs: (IndexMut_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) Index_Self_Idx_spec_attrs)) :=
+Definition IndexMut_index_mut_base_spec (Self_rt: RT) (Idx_rt: RT) (Index_Self_Idx_Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Index_Self_Idx_Output_st: syn_type) (Index_Self_Idx_spec_attrs: (Index_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) )) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (DropGlue_Idx_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Idx_rt) )) (DropGlue_SelfasIndexIdx_Output_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Index_Self_Idx_Output_rt) )) (IndexMut_Self_Idx_spec_attrs: (IndexMut_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) Index_Self_Idx_spec_attrs)) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[Self_ty; Idx_ty; Index_Self_Idx_Output_ty]) : ([(Self_rt, Self_st); (Idx_rt, Idx_st); (Index_Self_Idx_Output_rt, Index_Self_Idx_Output_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, index) : ((_ * _)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
@@ -134,12 +139,13 @@ Definition IndexMut_index_mut_base_spec (Self_rt: RT) (Idx_rt: RT) (Index_Self_I
       (* existential.. *) ∃ (γi, ret) : ((_ * _)), (ret, γi) @ (mut_ref ulft_1 Index_Self_Idx_Output_ty);
       (* postcondition *) (λ π : thread_id, (⌜(Index_Self_Idx_spec_attrs.(Index_IndexProj) self.cur index ret)%Z⌝)
       ∗ (gvar_pobs self.ghost (#(IndexMut_Self_Idx_spec_attrs.(IndexMut_IndexMutInj) self.cur index γi)))) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition IndexMut_base_spec (Self_rt: RT) (Idx_rt: RT) (Index_Self_Idx_Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Index_Self_Idx_Output_st: syn_type) (Index_Self_Idx_spec_attrs: (Index_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) )) (_ATTRS: ((IndexMut_spec_attrs ((Self_rt)) ((Idx_rt)) ((Index_Self_Idx_Output_rt)) (Index_Self_Idx_spec_attrs)))) : (spec_with _ _ (IndexMut_spec ((Self_rt)) ((Idx_rt)) ((Index_Self_Idx_Output_rt)))) :=
+Definition IndexMut_base_spec (Self_rt: RT) (Idx_rt: RT) (Index_Self_Idx_Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Index_Self_Idx_Output_st: syn_type) (Index_Self_Idx_spec_attrs: (Index_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) )) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (DropGlue_Idx_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Idx_rt) )) (DropGlue_SelfasIndexIdx_Output_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Index_Self_Idx_Output_rt) )) (_ATTRS: ((IndexMut_spec_attrs ((Self_rt)) ((Idx_rt)) ((Index_Self_Idx_Output_rt)) (Index_Self_Idx_spec_attrs)))) : (spec_with _ _ (IndexMut_spec ((Self_rt)) ((Idx_rt)) ((Index_Self_Idx_Output_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty; Idx_ty; Index_Self_Idx_Output_ty]) : ([Self_rt; Idx_rt; Index_Self_Idx_Output_rt] : list RT), {|
       IndexMut_index_mut_spec  :=
-        (IndexMut_index_mut_base_spec ((Self_rt)) ((Idx_rt)) ((Index_Self_Idx_Output_rt)) (Self_st) (Idx_st) (Index_Self_Idx_Output_st)) Index_Self_Idx_spec_attrs _ATTRS 
+        (IndexMut_index_mut_base_spec ((Self_rt)) ((Idx_rt)) ((Index_Self_Idx_Output_rt)) (Self_st) (Idx_st) (Index_Self_Idx_Output_st)) Index_Self_Idx_spec_attrs DropGlue_Self_spec_attrs DropGlue_Idx_spec_attrs DropGlue_SelfasIndexIdx_Output_spec_attrs _ATTRS 
            <TY> Self_ty <TY> Idx_ty <TY> Index_Self_Idx_Output_ty : (spec_with 1 [] fn_spec);
     |}
 .
@@ -148,14 +154,14 @@ End IndexMut.
 
 Section Index_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition trait_incl_of_Index_index (Self_rt: RT) (Idx_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Output_st: syn_type) (Index_Self_Idx_spec_attrs: (Index_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Output_rt) )) (Index_Self_Idx_spec: (spec_with 0 [] (Index_spec (RRGS:=RRGS) (Self_rt) (Idx_rt) (Output_rt)))) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) (DropGlue_Idx_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Idx_rt)))) (DropGlue_SelfasIndexIdx_Output_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Output_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Idx_ty; Output_ty]) : ([Self_rt; Idx_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl Index_spec_incl Index_Self_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Index_base_spec (Self_rt) (Idx_rt) (Output_rt) Self_st Idx_st Output_st Index_Self_Idx_spec_attrs-[] -[Self_ty; Idx_ty; Output_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Idx_rt) Idx_st-[] -[Idx_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_SelfasIndexIdx_Output_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Output_rt) Output_st-[] -[Output_ty])))).
+  Definition trait_incl_of_Index_index (Self_rt: RT) (Idx_rt: RT) (Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Output_st: syn_type) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) (DropGlue_Idx_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Idx_rt) )) (DropGlue_Idx_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Idx_rt)))) (DropGlue_SelfasIndexIdx_Output_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Output_rt) )) (DropGlue_SelfasIndexIdx_Output_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Output_rt)))) (Index_Self_Idx_spec_attrs: (Index_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Output_rt) )) (Index_Self_Idx_spec: (spec_with 0 [] (Index_spec (RRGS:=RRGS) (Self_rt) (Idx_rt) (Output_rt)))) : (spec_with _ _ Prop) :=
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Idx_ty; Output_ty]) : ([Self_rt; Idx_rt; Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st DropGlue_Self_spec_attrs-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Idx_rt) Idx_st DropGlue_Idx_spec_attrs-[] -[Idx_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_SelfasIndexIdx_Output_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Output_rt) Output_st DropGlue_SelfasIndexIdx_Output_spec_attrs-[] -[Output_ty]))) ∧ (trait_incl_marker (lift_trait_incl Index_spec_incl Index_Self_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Index_base_spec (Self_rt) (Idx_rt) (Output_rt) Self_st Idx_st Output_st DropGlue_Self_spec_attrs DropGlue_Idx_spec_attrs DropGlue_SelfasIndexIdx_Output_spec_attrs Index_Self_Idx_spec_attrs-[] -[Self_ty; Idx_ty; Output_ty])))).
 End Index_trait_req_incls.
 
 Section IndexMut_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition trait_incl_of_IndexMut_index_mut (Self_rt: RT) (Idx_rt: RT) (Index_Self_Idx_Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Index_Self_Idx_Output_st: syn_type) (Index_Self_Idx_spec_attrs: (Index_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) )) (Index_Self_Idx_spec: (spec_with 0 [] (Index_spec (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt)))) (IndexMut_Self_Idx_spec_attrs: (IndexMut_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) Index_Self_Idx_spec_attrs)) (IndexMut_Self_Idx_spec: (spec_with 0 [] (IndexMut_spec (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt)))) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) (DropGlue_Idx_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Idx_rt)))) (DropGlue_SelfasIndexIdx_Output_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Index_Self_Idx_Output_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Idx_ty; Index_Self_Idx_Output_ty]) : ([Self_rt; Idx_rt; Index_Self_Idx_Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl Index_spec_incl Index_Self_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Index_base_spec (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) Self_st Idx_st Index_Self_Idx_Output_st Index_Self_Idx_spec_attrs-[] -[Self_ty; Idx_ty; Index_Self_Idx_Output_ty]))) ∧ (trait_incl_marker (lift_trait_incl IndexMut_spec_incl IndexMut_Self_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), IndexMut_base_spec (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) Self_st Idx_st Index_Self_Idx_Output_st Index_Self_Idx_spec_attrs IndexMut_Self_Idx_spec_attrs-[] -[Self_ty; Idx_ty; Index_Self_Idx_Output_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Idx_rt) Idx_st-[] -[Idx_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_SelfasIndexIdx_Output_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Index_Self_Idx_Output_rt) Index_Self_Idx_Output_st-[] -[Index_Self_Idx_Output_ty])))).
+  Definition trait_incl_of_IndexMut_index_mut (Self_rt: RT) (Idx_rt: RT) (Index_Self_Idx_Output_rt: RT) (Self_st: syn_type) (Idx_st: syn_type) (Index_Self_Idx_Output_st: syn_type) (Index_Self_Idx_spec_attrs: (Index_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) )) (Index_Self_Idx_spec: (spec_with 0 [] (Index_spec (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt)))) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) (DropGlue_Idx_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Idx_rt) )) (DropGlue_Idx_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Idx_rt)))) (DropGlue_SelfasIndexIdx_Output_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Index_Self_Idx_Output_rt) )) (DropGlue_SelfasIndexIdx_Output_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Index_Self_Idx_Output_rt)))) (IndexMut_Self_Idx_spec_attrs: (IndexMut_spec_attrs (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) Index_Self_Idx_spec_attrs)) (IndexMut_Self_Idx_spec: (spec_with 0 [] (IndexMut_spec (RRGS:=RRGS) (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt)))) : (spec_with _ _ Prop) :=
+    spec! ( *[ulft_1]) : 1 | ( *[Self_ty; Idx_ty; Index_Self_Idx_Output_ty]) : ([Self_rt; Idx_rt; Index_Self_Idx_Output_rt] : list RT), ((trait_incl_marker (lift_trait_incl Index_spec_incl Index_Self_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), Index_base_spec (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) Self_st Idx_st Index_Self_Idx_Output_st DropGlue_Self_spec_attrs DropGlue_Idx_spec_attrs DropGlue_SelfasIndexIdx_Output_spec_attrs Index_Self_Idx_spec_attrs-[] -[Self_ty; Idx_ty; Index_Self_Idx_Output_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st DropGlue_Self_spec_attrs-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Idx_rt) Idx_st DropGlue_Idx_spec_attrs-[] -[Idx_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_SelfasIndexIdx_Output_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Index_Self_Idx_Output_rt) Index_Self_Idx_Output_st DropGlue_SelfasIndexIdx_Output_spec_attrs-[] -[Index_Self_Idx_Output_ty]))) ∧ (trait_incl_marker (lift_trait_incl IndexMut_spec_incl IndexMut_Self_Idx_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), IndexMut_base_spec (Self_rt) (Idx_rt) (Index_Self_Idx_Output_rt) Self_st Idx_st Index_Self_Idx_Output_st Index_Self_Idx_spec_attrs DropGlue_Self_spec_attrs DropGlue_Idx_spec_attrs DropGlue_SelfasIndexIdx_Output_spec_attrs IndexMut_Self_Idx_spec_attrs-[] -[Self_ty; Idx_ty; Index_Self_Idx_Output_ty])))).
 End IndexMut_trait_req_incls.
 
 Section specs.

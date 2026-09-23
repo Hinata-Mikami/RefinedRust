@@ -16,8 +16,7 @@ Program Definition drop_def (DropGlue_T_drop_glue_loc: loc) (T_st: syn_type) : f
       "__0" <-{ (StructOp unit_sl []) } zst_val;
       CallS DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("x")] None
       ( Goto "_bb1")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb2")
+      ( Goto "_bb2")
      ]>%E $
      <[
      "_bb1" :=

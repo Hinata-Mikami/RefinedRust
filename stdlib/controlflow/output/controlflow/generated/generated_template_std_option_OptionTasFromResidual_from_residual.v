@@ -9,19 +9,19 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition std_option_OptionTasFromResidual_from_residual_lemma (π : thread_id) : Prop :=
-  ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) , 
+  ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) , 
   syn_type_is_layoutable (T_st) →
   syn_type_is_layoutable (((Option_els (NeverSynType)) : syn_type)) →
   syn_type_is_layoutable (((Option_els (T_st)) : syn_type)) →
   syn_type_is_layoutable (((Option_None_sls (T_st)) : syn_type)) →
-  ⊢ typed_function π (std_option_OptionTasFromResidual_from_residual_def T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_std_option_OptionTasFromResidual_from_residual T_rt T_st -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
-  ∗ (⌜((trait_incl_of_std_option_OptionTasFromResidual_from_residual (T_rt) (T_st) (DropGlue_T_spec))-[] -[T_ty])%Z⌝))).
+  ⊢ typed_function π (std_option_OptionTasFromResidual_from_residual_def T_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), fn_spec_add_late_pre (type_of_std_option_OptionTasFromResidual_from_residual T_rt T_st DropGlue_T_spec_attrs -[] -[T_ty]) (λ π, ((typaram_wf T_rt T_st T_ty))
+  ∗ (⌜((trait_incl_of_std_option_OptionTasFromResidual_from_residual (T_rt) (T_st) (DropGlue_T_spec_attrs) (DropGlue_T_spec))-[] -[T_ty])%Z⌝))).
 End proof.
 
 Ltac std_option_OptionTasFromResidual_from_residual_prelude :=
   unfold std_option_OptionTasFromResidual_from_residual_lemma;
   set (FN_NAME := FUNCTION_NAME "std_option_OptionTasFromResidual_from_residual");
-  intros T_rt T_st DropGlue_T_spec;
+  intros T_rt T_st DropGlue_T_spec_attrs DropGlue_T_spec;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

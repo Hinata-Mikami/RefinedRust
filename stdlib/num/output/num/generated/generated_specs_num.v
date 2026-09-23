@@ -2,6 +2,10 @@ From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.num.num Require Export generated_code_num.
 
+Section drop_glue_attrs.
+Context `{RRGS : !refinedrustGS Σ}.
+End drop_glue_attrs.
+
 Section closure_attrs.
 Context `{RRGS : !refinedrustGS Σ}.
 End closure_attrs.
@@ -21,7 +25,8 @@ Definition type_of_i128_is_negative  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (x < 0) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_i128_is_positive  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -35,7 +40,8 @@ Definition type_of_i128_is_positive  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (x > 0) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_i16_is_negative  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -49,7 +55,8 @@ Definition type_of_i16_is_negative  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (x < 0) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_i16_is_positive  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -63,7 +70,8 @@ Definition type_of_i16_is_positive  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (x > 0) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_i32_is_negative  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -77,7 +85,8 @@ Definition type_of_i32_is_negative  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (x < 0) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_i32_is_positive  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -91,7 +100,8 @@ Definition type_of_i32_is_positive  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (x > 0) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_i64_is_negative  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -105,7 +115,8 @@ Definition type_of_i64_is_negative  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (x < 0) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_i64_is_positive  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -119,7 +130,8 @@ Definition type_of_i64_is_positive  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (x > 0) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_i8_is_negative  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -133,7 +145,8 @@ Definition type_of_i8_is_negative  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (x < 0) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_i8_is_positive  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -147,7 +160,8 @@ Definition type_of_i8_is_positive  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (x > 0) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_isize_is_negative  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -161,7 +175,8 @@ Definition type_of_isize_is_negative  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (x < 0) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_isize_is_positive  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -175,7 +190,8 @@ Definition type_of_isize_is_positive  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (x > 0) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_u128_abs_diff  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -189,7 +205,8 @@ Definition type_of_u128_abs_diff  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Z.abs (x - other) @ (int U128);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_u16_abs_diff  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -203,7 +220,8 @@ Definition type_of_u16_abs_diff  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Z.abs (x - other) @ (int U16);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_u32_abs_diff  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -217,7 +235,8 @@ Definition type_of_u32_abs_diff  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Z.abs (x - other) @ (int U32);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_u64_abs_diff  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -231,7 +250,8 @@ Definition type_of_u64_abs_diff  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Z.abs (x - other) @ (int U64);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_u8_abs_diff  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -245,7 +265,8 @@ Definition type_of_u8_abs_diff  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Z.abs (x - other) @ (int U8);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_usize_abs_diff  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -259,7 +280,8 @@ Definition type_of_usize_abs_diff  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Z.abs (x - other) @ (int USize);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 
 Definition trait_incl_of_i128_abs_diff  : (spec_with _ _ Prop) :=
@@ -274,7 +296,8 @@ Definition type_of_i128_abs_diff  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Z.abs (x - other) @ (int U128);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_i16_abs_diff  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -288,7 +311,8 @@ Definition type_of_i16_abs_diff  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Z.abs (x - other) @ (int U16);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_i32_abs_diff  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -302,7 +326,8 @@ Definition type_of_i32_abs_diff  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Z.abs (x - other) @ (int U32);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_i64_abs_diff  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -316,7 +341,8 @@ Definition type_of_i64_abs_diff  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Z.abs (x - other) @ (int U64);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_i8_abs_diff  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -330,7 +356,8 @@ Definition type_of_i8_abs_diff  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Z.abs (x - other) @ (int U8);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_isize_abs_diff  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -344,7 +371,8 @@ Definition type_of_isize_abs_diff  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, Z.abs (x - other) @ (int USize);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_u128_is_power_of_two  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -358,7 +386,8 @@ Definition type_of_u128_is_power_of_two  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (is_power_of_two (Z.to_nat x)) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_u16_is_power_of_two  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -372,7 +401,8 @@ Definition type_of_u16_is_power_of_two  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (is_power_of_two (Z.to_nat x)) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_u32_is_power_of_two  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -386,7 +416,8 @@ Definition type_of_u32_is_power_of_two  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (is_power_of_two (Z.to_nat x)) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_u64_is_power_of_two  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -400,7 +431,8 @@ Definition type_of_u64_is_power_of_two  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (is_power_of_two (Z.to_nat x)) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_u8_is_power_of_two  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -414,7 +446,8 @@ Definition type_of_u8_is_power_of_two  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (is_power_of_two (Z.to_nat x)) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 Definition trait_incl_of_usize_is_power_of_two  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
@@ -428,7 +461,8 @@ Definition type_of_usize_is_power_of_two  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (is_power_of_two (Z.to_nat x)) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 
 

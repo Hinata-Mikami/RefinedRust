@@ -112,7 +112,7 @@ Qed.
 
 
 
-Program Definition Ord_max_def (max_by_Self_closuresrclibrs1488014886_loc: loc) (Self_st: syn_type) : function :=
+Program Definition Ord_max_def (max_by_Self_closuresrclibrs1498014986_loc: loc) (Self_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' Self_st) : layout);
@@ -128,10 +128,9 @@ Program Definition Ord_max_def (max_by_Self_closuresrclibrs1488014886_loc: loc) 
       "__4" <-{ (use_op_alg' Self_st) } move{ (use_op_alg' Self_st) } ("other");
       local_live{ UnitSynType } "__5";
       "__5" <-{ (StructOp unit_sl []) } zst_val;
-      CallS max_by_Self_closuresrclibrs1488014886_loc [] [RSTTyVar "Self"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ (use_op_alg' Self_st) } ("__4"); move{ (StructOp unit_sl []) } ("__5")] (Some (Na1Ord, (use_op_alg' Self_st), "__0"))
+      CallS max_by_Self_closuresrclibrs1498014986_loc [] [RSTTyVar "Self"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ (use_op_alg' Self_st) } ("__4"); move{ (StructOp unit_sl []) } ("__5")] (Some (Na1Ord, (use_op_alg' Self_st), "__0"))
       ( Goto "_bb1")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb2")
+      ( Goto "_bb2")
      ]>%E $
      <[
      "_bb1" :=
@@ -154,7 +153,7 @@ Qed.
 
 
 
-Program Definition Ord_min_def (min_by_Self_closuresrclibrs1558015586_loc: loc) (Self_st: syn_type) : function :=
+Program Definition Ord_min_def (min_by_Self_closuresrclibrs1578015786_loc: loc) (Self_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' Self_st) : layout);
@@ -170,10 +169,9 @@ Program Definition Ord_min_def (min_by_Self_closuresrclibrs1558015586_loc: loc) 
       "__4" <-{ (use_op_alg' Self_st) } move{ (use_op_alg' Self_st) } ("other");
       local_live{ UnitSynType } "__5";
       "__5" <-{ (StructOp unit_sl []) } zst_val;
-      CallS min_by_Self_closuresrclibrs1558015586_loc [] [RSTTyVar "Self"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ (use_op_alg' Self_st) } ("__4"); move{ (StructOp unit_sl []) } ("__5")] (Some (Na1Ord, (use_op_alg' Self_st), "__0"))
+      CallS min_by_Self_closuresrclibrs1578015786_loc [] [RSTTyVar "Self"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ (use_op_alg' Self_st) } ("__4"); move{ (StructOp unit_sl []) } ("__5")] (Some (Na1Ord, (use_op_alg' Self_st), "__0"))
       ( Goto "_bb1")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb2")
+      ( Goto "_bb2")
      ]>%E $
      <[
      "_bb1" :=
@@ -456,7 +454,7 @@ Program Definition PartialEq_ne_def (PartialEq_Self_Rhs_eq_loc: loc) (Self_st: s
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft9"; (* function_call *)
-      CallS PartialEq_Self_Rhs_eq_loc ["vlft10"; "vlft11"] [] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, BoolOp, "__3"))
+      CallS PartialEq_Self_Rhs_eq_loc ["vlft10"; "vlft11"] [RSTTyVar "Self"; RSTTyVar "Rhs"] [@{expr} move{ RefOp } ("__4"); move{ RefOp } ("__5")] (Some (Na1Ord, BoolOp, "__3"))
       ( Goto "_bb1")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Unwind)
@@ -816,7 +814,7 @@ Program Definition REFAasPartialEqREFB_eq_def (PartialEq_A_B_eq_loc: loc) (A_st:
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      CallS PartialEq_A_B_eq_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      CallS PartialEq_A_B_eq_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
       ( Goto "_bb1")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Unwind)
@@ -861,7 +859,7 @@ Program Definition REFAasPartialEqREFB_ne_def (PartialEq_A_B_ne_loc: loc) (A_st:
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      CallS PartialEq_A_B_ne_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      CallS PartialEq_A_B_ne_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
       ( Goto "_bb1")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Unwind)
@@ -906,7 +904,7 @@ Program Definition REFAasPartialEqREFmutB_eq_def (PartialEq_A_B_eq_loc: loc) (A_
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      CallS PartialEq_A_B_eq_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      CallS PartialEq_A_B_eq_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
       ( Goto "_bb1")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Unwind)
@@ -951,7 +949,7 @@ Program Definition REFAasPartialEqREFmutB_ne_def (PartialEq_A_B_ne_loc: loc) (A_
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      CallS PartialEq_A_B_ne_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      CallS PartialEq_A_B_ne_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
       ( Goto "_bb1")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Unwind)
@@ -1221,7 +1219,7 @@ Program Definition REFmutAasPartialEqREFB_eq_def (PartialEq_A_B_eq_loc: loc) (A_
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      CallS PartialEq_A_B_eq_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      CallS PartialEq_A_B_eq_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
       ( Goto "_bb1")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Unwind)
@@ -1266,7 +1264,7 @@ Program Definition REFmutAasPartialEqREFB_ne_def (PartialEq_A_B_ne_loc: loc) (A_
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      CallS PartialEq_A_B_ne_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      CallS PartialEq_A_B_ne_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
       ( Goto "_bb1")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Unwind)
@@ -1311,7 +1309,7 @@ Program Definition REFmutAasPartialEqREFmutB_eq_def (PartialEq_A_B_eq_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      CallS PartialEq_A_B_eq_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      CallS PartialEq_A_B_eq_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
       ( Goto "_bb1")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Unwind)
@@ -1356,7 +1354,7 @@ Program Definition REFmutAasPartialEqREFmutB_ne_def (PartialEq_A_B_ne_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft16" "plft14"; (* function_call *)
-      CallS PartialEq_A_B_ne_loc ["vlft15"; "vlft16"] [] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
+      CallS PartialEq_A_B_ne_loc ["vlft15"; "vlft16"] [RSTTyVar "A"; RSTTyVar "B"] [@{expr} move{ RefOp } ("__3"); move{ RefOp } ("__4")] (Some (Na1Ord, BoolOp, "__0"))
       ( Goto "_bb1")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Unwind)
@@ -3321,8 +3319,7 @@ Program Definition max_def (Ord_T_max_loc: loc) (T_st: syn_type) : function :=
       "__4" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("v2");
       CallS Ord_T_max_loc [] [RSTTyVar "T"] [@{expr} move{ (use_op_alg' T_st) } ("__3"); move{ (use_op_alg' T_st) } ("__4")] (Some (Na1Ord, (use_op_alg' T_st), "__0"))
       ( Goto "_bb1")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb2")
+      ( Goto "_bb2")
      ]>%E $
      <[
      "_bb1" :=
@@ -3387,7 +3384,7 @@ Program Definition max_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT
       annot{ 1 }: CopyLftNameAnnot "plft9" "plft12"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft6" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* function_call *)
-      CallS FnOnce_F_REFTREFT_call_once_loc ["vlft6"; "vlft7"] [] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } ("__7")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__5"))
+      CallS FnOnce_F_REFTREFT_call_once_loc ["vlft6"; "vlft7"; "vlft6"; "vlft7"] [RSTTyVar "T"; RSTTyVar "F"] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } ("__7")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__5"))
       ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
        Goto "_bb1")
@@ -3510,8 +3507,7 @@ Program Definition min_def (Ord_T_min_loc: loc) (T_st: syn_type) : function :=
       "__4" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("v2");
       CallS Ord_T_min_loc [] [RSTTyVar "T"] [@{expr} move{ (use_op_alg' T_st) } ("__3"); move{ (use_op_alg' T_st) } ("__4")] (Some (Na1Ord, (use_op_alg' T_st), "__0"))
       ( Goto "_bb1")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb2")
+      ( Goto "_bb2")
      ]>%E $
      <[
      "_bb1" :=
@@ -3576,7 +3572,7 @@ Program Definition min_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT
       annot{ 1 }: CopyLftNameAnnot "plft9" "plft12"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft6" "plft8"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* function_call *)
-      CallS FnOnce_F_REFTREFT_call_once_loc ["vlft6"; "vlft7"] [] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } ("__7")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__5"))
+      CallS FnOnce_F_REFTREFT_call_once_loc ["vlft6"; "vlft7"; "vlft6"; "vlft7"] [RSTTyVar "T"; RSTTyVar "F"] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } ("__7")] (Some (Na1Ord, (use_op_alg' Ordering_st), "__5"))
       ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
        Goto "_bb1")
@@ -3869,7 +3865,7 @@ Program Definition std_option_OptionTasPartialEq_eq_def (PartialEq_T_T_eq_loc: l
       annot{ 1 }: CopyLftNameAnnot "plft22" "vlft12"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft23" "plft21"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft24" "plft22"; (* function_call *)
-      CallS PartialEq_T_T_eq_loc ["vlft23"; "vlft24"] [] [@{expr} move{ RefOp } ("__11"); move{ RefOp } ("__12")] (Some (Na1Ord, BoolOp, "__0"))
+      CallS PartialEq_T_T_eq_loc ["vlft23"; "vlft24"] [RSTTyVar "T"] [@{expr} move{ RefOp } ("__11"); move{ RefOp } ("__12")] (Some (Na1Ord, BoolOp, "__0"))
       ( Goto "_bb8")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Unwind)

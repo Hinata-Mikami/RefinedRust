@@ -64,7 +64,7 @@ Program Definition OptionTasstd_clone_Clone_clone_def (Clone_T_clone_loc: loc) (
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft4" } (!{ RefOp } ( "__self_0" ));
       annot{ 1 }: CopyLftNameAnnot "plft7" "vlft4"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft7"; (* function_call *)
-      CallS Clone_T_clone_loc ["vlft8"] [] [@{expr} move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' T_st), "__4"))
+      CallS Clone_T_clone_loc ["vlft8"] [RSTTyVar "T"] [@{expr} move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' T_st), "__4"))
       ( Goto "_bb4")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Unwind)
@@ -185,7 +185,7 @@ Program Definition Option_T_filter_def (DropGlue_P_drop_glue_loc: loc) (DropGlue
       "__8" <-{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } StructInit (tuple1_sls (RefSynType)) [("0", move{ RefOp } ("__9") : expr)];
       annot{ 1 }: CopyLftNameAnnot "plft5" "plft6"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft4" "plft5"; (* function_call *)
-      CallS FnOnce_P_REFT_call_once_loc ["vlft4"] [] [@{expr} move{ (use_op_alg' P_st) } ("__7"); move{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } ("__8")] (Some (Na1Ord, BoolOp, "__6"))
+      CallS FnOnce_P_REFT_call_once_loc ["vlft4"; "vlft4"] [RSTTyVar "T"; RSTTyVar "P"] [@{expr} move{ (use_op_alg' P_st) } ("__7"); move{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } ("__8")] (Some (Na1Ord, BoolOp, "__6"))
       ( annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
        Goto "_bb2")
       ( annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
@@ -315,7 +315,7 @@ Program Definition Option_T_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T_
       local_live{ T_st } "__8";
       "__8" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("x");
       "__7" <-{ (use_op_alg' ((tuple1_sls (T_st)) : syn_type)) } StructInit (tuple1_sls (T_st)) [("0", move{ (use_op_alg' T_st) } ("__8") : expr)];
-      CallS FnOnce_F_T_call_once_loc [] [] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple1_sls (T_st)) : syn_type)) } ("__7")] (Some (Na1Ord, (use_op_alg' U_st), "__5"))
+      CallS FnOnce_F_T_call_once_loc [] [RSTTyVar "T"; RSTTyVar "U"; RSTTyVar "F"] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple1_sls (T_st)) : syn_type)) } ("__7")] (Some (Na1Ord, (use_op_alg' U_st), "__5"))
       ( Goto "_bb4")
       ( Goto "_bb6")
      ]>%E $
@@ -423,8 +423,7 @@ Program Definition Option_T_ok_or_def (DropGlue_E_drop_glue_loc: loc) (T_st: syn
      "_bb7" :=
       CallS DropGlue_E_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("err")] None
       ( Goto "_bb5")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb6")
+      ( Goto "_bb6")
      ]>%E $
       ∅;
      f_init := "_bb0";
@@ -533,8 +532,7 @@ Program Definition Option_T_unwrap_or_def (DropGlue_T_drop_glue_loc: loc) (T_st:
      "_bb6" :=
       CallS DropGlue_T_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("def")] None
       ( Goto "_bb4")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb5")
+      ( Goto "_bb5")
      ]>%E $
      <[
      "_bb7" :=

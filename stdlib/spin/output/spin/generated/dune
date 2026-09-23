@@ -4,4 +4,4 @@
 (package refinedrust-stdlib)
 (name rrstd.spin.spin.generated)
 (generate_project_file)
-(theories stdpp iris iris_contrib Ltac2 Equations lrust radium lithium refinedrust Stdlib rrstd.arithops.arithops.generated rrstd.clone.clone.generated rrstd.closures.closures.generated rrstd.closures.theories rrstd.option.option.generated rrstd.result.result.generated rrstd.result.theories rrstd.sized.sized.generated rrstd.spin.theories.once))
+(theories stdpp iris iris_contrib Ltac2 Equations lrust radium lithium refinedrust Stdlib rrstd.arithops.arithops.generated rrstd.cell.cell.generated rrstd.clone.clone.generated rrstd.closures.closures.generated rrstd.closures.theories rrstd.option.option.generated rrstd.result.result.generated rrstd.result.theories rrstd.sized.sized.generated rrstd.spin.theories.once))

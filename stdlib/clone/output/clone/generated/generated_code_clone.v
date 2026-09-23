@@ -23,18 +23,16 @@ Program Definition Clone_clone_from_def (Clone_Self_clone_loc: loc) (DropGlue_Se
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "Self"), "vlft4" } (!{ RefOp } ( "source" ));
       annot{ 1 }: CopyLftNameAnnot "plft7" "vlft4"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft7"; (* function_call *)
-      CallS Clone_Self_clone_loc ["vlft8"] [] [@{expr} move{ RefOp } ("__4")] (Some (Na1Ord, (use_op_alg' Self_st), "__3"))
+      CallS Clone_Self_clone_loc ["vlft8"] [RSTTyVar "Self"] [@{expr} move{ RefOp } ("__4")] (Some (Na1Ord, (use_op_alg' Self_st), "__3"))
       ( Goto "_bb1")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Unwind)
+      ( Unwind)
      ]>%E $
      <[
      "_bb1" :=
       local_dead "__4";
       CallS DropGlue_Self_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } (!{ RefOp } ( "self" ))] None
       ( Goto "_bb2")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb3")
+      ( Goto "_bb3")
      ]>%E $
      <[
      "_bb2" :=

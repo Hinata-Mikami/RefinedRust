@@ -1,6 +1,7 @@
 From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.arithops.arithops.generated Require Export generated_specs_arithops.
+From rrstd.cell.cell.generated Require Export generated_specs_cell.
 From rrstd.closures.closures.generated Require Export generated_specs_closures.
 From rrstd.option.option.generated Require Export generated_specs_option.
 Section relax_Spin_sls.
@@ -40,7 +41,7 @@ Section rwlock_RwLock_sls.
     let rwlock_RwLock_st (T_st: syn_type) (R_st: syn_type) := UnitSynType in
     mk_sls "rwlock_RwLock" [
     ("phantom", ((core_marker_PhantomData_sls (R_st)) : syn_type));
-    ("data", ((core_marker_PhantomData_sls (T_st)) : syn_type))] StructReprRust.
+    ("data", ((UnsafeCell_sls (T_st)) : syn_type))] StructReprRust.
   Definition rwlock_RwLock_st (T_st: syn_type) (R_st: syn_type) : syn_type := rwlock_RwLock_sls T_st R_st.
 End rwlock_RwLock_sls.
 
@@ -58,6 +59,33 @@ End rwlock_RwLockWriteGuard_sls.
 Section code.
 Context `{!LayoutAlg}.
 Open Scope printing_sugar.
+
+Program Definition drop_glue_rwlock_RwLock_def (drop_glue_UnsafeCell_T_loc: loc) (T_st: syn_type) (R_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("ptr", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ UnitSynType } "ret";
+      CallS drop_glue_UnsafeCell_T_loc [] [RSTTyVar "T"] [@{expr} &raw{ PRef, Mut } ((!{ RefOp } ( "ptr" )) at{ (rwlock_RwLock_sls (T_st) (R_st)) } "data")] None
+      ( Goto "_bb1")
+      ( Unwind)
+     ]>%E $
+     <[
+     "_bb1" :=
+      return (zst_val)
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
 
 Program Definition drop_glue_rwlock_RwLockWriteGuard_def (DropGlue_R_drop_glue_loc: loc) (T_st: syn_type) (R_st: syn_type) : function :=
   {|

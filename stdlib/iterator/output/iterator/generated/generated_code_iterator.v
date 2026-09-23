@@ -105,7 +105,7 @@ Program Definition adapters_map_MapMIMFastraits_iterator_Iterator_next_def (Opti
       "__3" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "MI"), "llft3" } ((!{ RefOp } ( "self" )) at{ (adapters_map_Map_sls (MI_st) (MF_st)) } "iter");
       annot{ 1 }: CopyLftNameAnnot "plft7" "llft3"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft7"; (* function_call *)
-      CallS traits_iterator_Iterator_MI_next_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__3")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__2"))
+      CallS traits_iterator_Iterator_MI_next_loc ["vlft9"] [RSTTyVar "MI"; RSTTyVar "traits_iterator_Iterator_MI_Item"] [@{expr} move{ RefOp } ("__3")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__2"))
       ( annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb1")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
@@ -208,7 +208,7 @@ Program Definition adapters_skip_SkipMIastraits_iterator_Iterator_next_def (trai
       local_live{ (IntSynType USize) } "__6";
       "__6" <-{ (IntOp USize) } copy{ (IntOp USize) } ("n");
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft6"; (* function_call *)
-      CallS traits_iterator_Iterator_MI_nth_loc ["vlft8"] [] [@{expr} move{ RefOp } ("__5"); move{ (IntOp USize) } ("__6")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__0"))
+      CallS traits_iterator_Iterator_MI_nth_loc ["vlft8"] [RSTTyVar "MI"; RSTTyVar "traits_iterator_Iterator_MI_Item"] [@{expr} move{ RefOp } ("__5"); move{ (IntOp USize) } ("__6")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__0"))
       ( annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb2")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
@@ -230,7 +230,7 @@ Program Definition adapters_skip_SkipMIastraits_iterator_Iterator_next_def (trai
       "__7" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "MI"), "llft4" } ((!{ RefOp } ( "self" )) at{ (adapters_skip_Skip_sls (MI_st)) } "iter");
       annot{ 1 }: CopyLftNameAnnot "plft7" "llft4"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft7"; (* function_call *)
-      CallS traits_iterator_Iterator_MI_next_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__7")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__0"))
+      CallS traits_iterator_Iterator_MI_next_loc ["vlft9"] [RSTTyVar "MI"; RSTTyVar "traits_iterator_Iterator_MI_Item"] [@{expr} move{ RefOp } ("__7")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__0"))
       ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        Goto "_bb4")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
@@ -311,7 +311,7 @@ Program Definition adapters_step_by_StepByMIastraits_iterator_Iterator_next_def 
       "__3" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "MI"), "llft3" } ((!{ RefOp } ( "self" )) at{ (adapters_step_by_StepBy_sls (MI_st)) } "iter");
       annot{ 1 }: CopyLftNameAnnot "plft6" "llft3"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft6"; (* function_call *)
-      CallS traits_iterator_Iterator_MI_next_loc ["vlft8"] [] [@{expr} move{ RefOp } ("__3")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__0"))
+      CallS traits_iterator_Iterator_MI_next_loc ["vlft8"] [RSTTyVar "MI"; RSTTyVar "traits_iterator_Iterator_MI_Item"] [@{expr} move{ RefOp } ("__3")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__0"))
       ( annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb2")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
@@ -332,7 +332,7 @@ Program Definition adapters_step_by_StepByMIastraits_iterator_Iterator_next_def 
       local_live{ (IntSynType USize) } "__5";
       "__5" <-{ (IntOp USize) } copy{ (IntOp USize) } ((!{ RefOp } ( "self" )) at{ (adapters_step_by_StepBy_sls (MI_st)) } "step_minus_one");
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft7"; (* function_call *)
-      CallS traits_iterator_Iterator_MI_nth_loc ["vlft9"] [] [@{expr} move{ RefOp } ("__4"); move{ (IntOp USize) } ("__5")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__0"))
+      CallS traits_iterator_Iterator_MI_nth_loc ["vlft9"] [RSTTyVar "MI"; RSTTyVar "traits_iterator_Iterator_MI_Item"] [@{expr} move{ RefOp } ("__4"); move{ (IntOp USize) } ("__5")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__0"))
       ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        Goto "_bb4")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
@@ -494,7 +494,7 @@ Program Definition adapters_take_TakeMIastraits_iterator_Iterator_next_def (pani
       "__5" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "MI"), "llft3" } ((!{ RefOp } ( "self" )) at{ (adapters_take_Take_sls (MI_st)) } "iter");
       annot{ 1 }: CopyLftNameAnnot "plft5" "llft3"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft6" "plft5"; (* function_call *)
-      CallS traits_iterator_Iterator_MI_next_loc ["vlft6"] [] [@{expr} move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__0"))
+      CallS traits_iterator_Iterator_MI_next_loc ["vlft6"] [RSTTyVar "MI"; RSTTyVar "traits_iterator_Iterator_MI_Item"] [@{expr} move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' ((Option_els (traits_iterator_Iterator_MI_Item_st)) : syn_type)), "__0"))
       ( annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb3")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
@@ -750,7 +750,7 @@ Qed.
 
 
 
-Program Definition traits_iterator_Iterator_all_def (DropGlue_F_drop_glue_loc: loc) (traits_iterator_Iterator_Self_try_fold_unit_closuresrctraitsiteratorrs1421314219_std_ops_ControlFlowunit_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
+Program Definition traits_iterator_Iterator_all_def (DropGlue_F_drop_glue_loc: loc) (traits_iterator_Iterator_Self_try_fold_unit_closuresrctraitsiteratorrs1431314319_std_ops_ControlFlowunit_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
   {|
      f_args := [
       ("self", void* : layout);
@@ -780,12 +780,11 @@ Program Definition traits_iterator_Iterator_all_def (DropGlue_F_drop_glue_loc: l
       local_dead "__7";
       annot{ 1 }: CopyLftNameAnnot "vlft6" "plft9"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft11" "plft8"; (* function_call *)
-      CallS traits_iterator_Iterator_Self_try_fold_unit_closuresrctraitsiteratorrs1421314219_std_ops_ControlFlowunit_loc ["vlft6"; "vlft11"] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__4"); move{ (StructOp unit_sl []) } ("__5"); move{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } ("__6")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)), "__3"))
+      CallS traits_iterator_Iterator_Self_try_fold_unit_closuresrctraitsiteratorrs1431314319_std_ops_ControlFlowunit_loc ["vlft6"; "vlft11"] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__4"); move{ (StructOp unit_sl []) } ("__5"); move{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } ("__6")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els (UnitSynType) (UnitSynType)) : syn_type)), "__3"))
       ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb1")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
+      ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb6")
      ]>%E $
@@ -812,8 +811,7 @@ Program Definition traits_iterator_Iterator_all_def (DropGlue_F_drop_glue_loc: l
       local_dead "__3";
       CallS DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("f")] None
       ( Goto "_bb5")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb7")
+      ( Goto "_bb7")
      ]>%E $
      <[
      "_bb5" :=
@@ -928,7 +926,7 @@ Program Definition traits_iterator_Iterator_collect_def (traits_iterator_FromIte
       local_live{ B_st } "__0";
       local_live{ Self_st } "__2";
       "__2" <-{ (use_op_alg' Self_st) } move{ (use_op_alg' Self_st) } ("self");
-      CallS traits_iterator_FromIterator_B_Selfastraits_iterator_Iterator_Item_from_iter_Self_loc [] [RSTTyVar "Self"; RSTTyVar "Self"] [@{expr} move{ (use_op_alg' Self_st) } ("__2")] (Some (Na1Ord, (use_op_alg' B_st), "__0"))
+      CallS traits_iterator_FromIterator_B_Selfastraits_iterator_Iterator_Item_from_iter_Self_loc [] [RSTTyVar "Self"; RSTTyVar "B"; RSTTyVar "Self"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__2")] (Some (Na1Ord, (use_op_alg' B_st), "__0"))
       ( Goto "_bb1")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Goto "_bb2")
@@ -984,11 +982,10 @@ Program Definition traits_iterator_Iterator_fold_def (DropGlue_B_drop_glue_loc: 
       "__8" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "Self"), "llft2" } ("self");
       annot{ 1 }: CopyLftNameAnnot "plft4" "llft2"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft6" "plft4"; (* function_call *)
-      CallS traits_iterator_Iterator_Self_next_loc ["vlft6"] [] [@{expr} move{ RefOp } ("__8")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__7"))
+      CallS traits_iterator_Iterator_Self_next_loc ["vlft6"] [RSTTyVar "Self"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__8")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__7"))
       ( annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
        Goto "_bb2")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
+      ( annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
        Goto "_bb12")
      ]>%E $
      <[
@@ -1017,8 +1014,7 @@ Program Definition traits_iterator_Iterator_fold_def (DropGlue_B_drop_glue_loc: 
       CallS FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc ["vlft7"] [RSTTyVar "B"; RSTTyVar "F"; RSTTyVar "B"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__13"); move{ (use_op_alg' ((tuple2_sls (B_st) (Item_st)) : syn_type)) } ("__14")] (Some (Na1Ord, (use_op_alg' B_st), "__12"))
       ( annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb4")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
+      ( annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb12")
      ]>%E $
      <[
@@ -1049,15 +1045,13 @@ Program Definition traits_iterator_Iterator_fold_def (DropGlue_B_drop_glue_loc: 
       local_dead "accum";
       CallS DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("f")] None
       ( Goto "_bb6")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb9")
+      ( Goto "_bb9")
      ]>%E $
      <[
      "_bb6" :=
       CallS DropGlue_Self_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("self")] None
       ( Goto "_bb7")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb10")
+      ( Goto "_bb10")
      ]>%E $
      <[
      "_bb7" :=
@@ -1141,7 +1135,7 @@ Qed.
 
 
 
-Program Definition traits_iterator_Iterator_max_def (traits_iterator_Iterator_Self_max_by_closuresrctraitsiteratorrs2131321319_loc: loc) (Self_st: syn_type) (Item_st: syn_type) : function :=
+Program Definition traits_iterator_Iterator_max_def (traits_iterator_Iterator_Self_max_by_closuresrctraitsiteratorrs2181321819_loc: loc) (Self_st: syn_type) (Item_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' Self_st) : layout)
@@ -1154,10 +1148,9 @@ Program Definition traits_iterator_Iterator_max_def (traits_iterator_Iterator_Se
       "__2" <-{ (use_op_alg' Self_st) } move{ (use_op_alg' Self_st) } ("self");
       local_live{ UnitSynType } "__3";
       "__3" <-{ (StructOp unit_sl []) } zst_val;
-      CallS traits_iterator_Iterator_Self_max_by_closuresrctraitsiteratorrs2131321319_loc [] [RSTTyVar "Self"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__2"); move{ (StructOp unit_sl []) } ("__3")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
+      CallS traits_iterator_Iterator_Self_max_by_closuresrctraitsiteratorrs2181321819_loc [] [RSTTyVar "Self"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__2"); move{ (StructOp unit_sl []) } ("__3")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
       ( Goto "_bb1")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb2")
+      ( Goto "_bb2")
      ]>%E $
      <[
      "_bb1" :=
@@ -1179,7 +1172,7 @@ Qed.
 
 
 
-Program Definition traits_iterator_Iterator_max_by_def (DropGlue_F_drop_glue_loc: loc) (traits_iterator_Iterator_Self_reduce_closuresrctraitsiteratorrs2531325319_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
+Program Definition traits_iterator_Iterator_max_by_def (DropGlue_F_drop_glue_loc: loc) (traits_iterator_Iterator_Self_reduce_closuresrctraitsiteratorrs2631326319_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' Self_st) : layout);
@@ -1201,11 +1194,10 @@ Program Definition traits_iterator_Iterator_max_by_def (DropGlue_F_drop_glue_loc
       annot{ 1 }: CopyLftNameAnnot "plft5" "vlft3"; (* post-assignment *)
       local_dead "__5";
       annot{ 1 }: CopyLftNameAnnot "vlft4" "plft5"; (* function_call *)
-      CallS traits_iterator_Iterator_Self_reduce_closuresrctraitsiteratorrs2531325319_loc ["vlft4"] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } ("__4")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
+      CallS traits_iterator_Iterator_Self_reduce_closuresrctraitsiteratorrs2631326319_loc ["vlft4"] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } ("__4")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
       ( annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
        Goto "_bb1")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
+      ( annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
        Goto "_bb3")
      ]>%E $
      <[
@@ -1214,8 +1206,7 @@ Program Definition traits_iterator_Iterator_max_by_def (DropGlue_F_drop_glue_loc
       local_dead "__3";
       CallS DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("compare")] None
       ( Goto "_bb2")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb4")
+      ( Goto "_bb4")
      ]>%E $
      <[
      "_bb2" :=
@@ -1266,8 +1257,7 @@ Program Definition traits_iterator_Iterator_max_by_closure0_def (max_by_Selfastr
       CallS max_by_Selfastraits_iterator_Iterator_Item_REFmutF_loc ["vlft7"] [RSTTyVar "F"; RSTTyVar "traits_iterator_Iterator_Self_Item"] [@{expr} move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } ("__4"); move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } ("__5"); move{ RefOp } ("__6")] (Some (Na1Ord, (use_op_alg' traits_iterator_Iterator_Self_Item_st), "__0"))
       ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
        Goto "_bb1")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
        Goto "_bb2")
      ]>%E $
      <[
@@ -1336,7 +1326,7 @@ Qed.
 
 
 
-Program Definition traits_iterator_Iterator_min_def (traits_iterator_Iterator_Self_min_by_closuresrctraitsiteratorrs2711327119_loc: loc) (Self_st: syn_type) (Item_st: syn_type) : function :=
+Program Definition traits_iterator_Iterator_min_def (traits_iterator_Iterator_Self_min_by_closuresrctraitsiteratorrs2841328419_loc: loc) (Self_st: syn_type) (Item_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' Self_st) : layout)
@@ -1349,10 +1339,9 @@ Program Definition traits_iterator_Iterator_min_def (traits_iterator_Iterator_Se
       "__2" <-{ (use_op_alg' Self_st) } move{ (use_op_alg' Self_st) } ("self");
       local_live{ UnitSynType } "__3";
       "__3" <-{ (StructOp unit_sl []) } zst_val;
-      CallS traits_iterator_Iterator_Self_min_by_closuresrctraitsiteratorrs2711327119_loc [] [RSTTyVar "Self"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__2"); move{ (StructOp unit_sl []) } ("__3")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
+      CallS traits_iterator_Iterator_Self_min_by_closuresrctraitsiteratorrs2841328419_loc [] [RSTTyVar "Self"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__2"); move{ (StructOp unit_sl []) } ("__3")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
       ( Goto "_bb1")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb2")
+      ( Goto "_bb2")
      ]>%E $
      <[
      "_bb1" :=
@@ -1374,7 +1363,7 @@ Qed.
 
 
 
-Program Definition traits_iterator_Iterator_min_by_def (DropGlue_F_drop_glue_loc: loc) (traits_iterator_Iterator_Self_reduce_closuresrctraitsiteratorrs3111331119_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
+Program Definition traits_iterator_Iterator_min_by_def (DropGlue_F_drop_glue_loc: loc) (traits_iterator_Iterator_Self_reduce_closuresrctraitsiteratorrs3291332919_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
   {|
      f_args := [
       ("self", (use_layout_alg' Self_st) : layout);
@@ -1396,11 +1385,10 @@ Program Definition traits_iterator_Iterator_min_by_def (DropGlue_F_drop_glue_loc
       annot{ 1 }: CopyLftNameAnnot "plft5" "vlft3"; (* post-assignment *)
       local_dead "__5";
       annot{ 1 }: CopyLftNameAnnot "vlft4" "plft5"; (* function_call *)
-      CallS traits_iterator_Iterator_Self_reduce_closuresrctraitsiteratorrs3111331119_loc ["vlft4"] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } ("__4")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
+      CallS traits_iterator_Iterator_Self_reduce_closuresrctraitsiteratorrs3291332919_loc ["vlft4"] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__3"); move{ (use_op_alg' ((tuple1_sls (RefSynType)) : syn_type)) } ("__4")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
       ( annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
        Goto "_bb1")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
+      ( annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
        Goto "_bb3")
      ]>%E $
      <[
@@ -1409,8 +1397,7 @@ Program Definition traits_iterator_Iterator_min_by_def (DropGlue_F_drop_glue_loc
       local_dead "__3";
       CallS DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("compare")] None
       ( Goto "_bb2")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb4")
+      ( Goto "_bb4")
      ]>%E $
      <[
      "_bb2" :=
@@ -1461,8 +1448,7 @@ Program Definition traits_iterator_Iterator_min_by_closure0_def (min_by_Selfastr
       CallS min_by_Selfastraits_iterator_Iterator_Item_REFmutF_loc ["vlft7"] [RSTTyVar "F"; RSTTyVar "traits_iterator_Iterator_Self_Item"] [@{expr} move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } ("__4"); move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } ("__5"); move{ RefOp } ("__6")] (Some (Na1Ord, (use_op_alg' traits_iterator_Iterator_Self_Item_st), "__0"))
       ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
        Goto "_bb1")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
        Goto "_bb2")
      ]>%E $
      <[
@@ -1579,11 +1565,10 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
       "__14" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "Self"), "llft3" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft8" "llft3"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft10" "plft8"; (* function_call *)
-      CallS traits_iterator_Iterator_Self_next_loc ["vlft10"] [] [@{expr} move{ RefOp } ("__14")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__13"))
+      CallS traits_iterator_Iterator_Self_next_loc ["vlft10"] [RSTTyVar "Self"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__14")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__13"))
       ( annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb3")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
+      ( annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Unwind)
      ]>%E $
      <[
@@ -1596,8 +1581,7 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
       CallS Option_T_is_none_Selfastraits_iterator_Iterator_Item_loc ["vlft11"] [RSTTyVar "Item"] [@{expr} move{ RefOp } ("__12")] (Some (Na1Ord, BoolOp, "__11"))
       ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        Goto "_bb4")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
+      ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        Goto "_bb13")
      ]>%E $
      <[
@@ -1611,8 +1595,7 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
      "_bb5" :=
       CallS drop_glue_Option_Selfastraits_iterator_Iterator_Item_loc [] [RSTTyVar "Item"] [@{expr} &raw{ PRef, Mut } ("__13")] None
       ( Goto "_bb6")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb14")
+      ( Goto "_bb14")
      ]>%E $
      <[
      "_bb6" :=
@@ -1630,8 +1613,7 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
      "_bb7" :=
       CallS drop_glue_Option_Selfastraits_iterator_Iterator_Item_loc [] [RSTTyVar "Item"] [@{expr} &raw{ PRef, Mut } ("__13")] None
       ( Goto "_bb8")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb14")
+      ( Goto "_bb14")
      ]>%E $
      <[
      "_bb8" :=
@@ -1646,8 +1628,7 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
       else
        CallS panic_shim_loc [] [] [@{expr} ] None
        ( StuckS)
-       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-        Unwind)
+       ( Unwind)
      ]>%E $
      <[
      "_bb9" :=
@@ -1671,11 +1652,10 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
       "__20" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "Self"), "llft5" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "llft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft12" "plft9"; (* function_call *)
-      CallS traits_iterator_Iterator_Self_next_loc ["vlft12"] [] [@{expr} move{ RefOp } ("__20")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
+      CallS traits_iterator_Iterator_Self_next_loc ["vlft12"] [RSTTyVar "Self"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__20")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
       ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
        Goto "_bb11")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
+      ( annot{ 2 }: EndLftAnnot "llft5"; (* endlft *)
        Unwind)
      ]>%E $
      <[
@@ -1708,7 +1688,7 @@ Qed.
 
 
 
-Program Definition traits_iterator_Iterator_position_def (ControlFlow_BC_break_value_usize_unit_loc: loc) (DropGlue_F_drop_glue_loc: loc) (traits_iterator_Iterator_Self_try_fold_unit_closuresrctraitsiteratorrs1851318519_std_ops_ControlFlowusize_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
+Program Definition traits_iterator_Iterator_position_def (ControlFlow_BC_break_value_usize_unit_loc: loc) (DropGlue_F_drop_glue_loc: loc) (traits_iterator_Iterator_Self_try_fold_unit_closuresrctraitsiteratorrs1871318719_std_ops_ControlFlowusize_loc: loc) (Self_st: syn_type) (Item_st: syn_type) (F_st: syn_type) : function :=
   {|
      f_args := [
       ("self", void* : layout);
@@ -1751,13 +1731,12 @@ Program Definition traits_iterator_Iterator_position_def (ControlFlow_BC_break_v
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft16"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft9" "plft17"; (* function_call *)
       annot{ 1 }: CopyLftNameAnnot "vlft18" "plft15"; (* function_call *)
-      CallS traits_iterator_Iterator_Self_try_fold_unit_closuresrctraitsiteratorrs1851318519_std_ops_ControlFlowusize_loc ["vlft8"; "vlft9"; "vlft18"] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__8"); move{ (StructOp unit_sl []) } ("__9"); move{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } ("__10")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els ((IntSynType USize)) (UnitSynType)) : syn_type)), "__7"))
+      CallS traits_iterator_Iterator_Self_try_fold_unit_closuresrctraitsiteratorrs1871318719_std_ops_ControlFlowusize_loc ["vlft8"; "vlft9"; "vlft18"] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__8"); move{ (StructOp unit_sl []) } ("__9"); move{ (use_op_alg' ((tuple2_sls (RefSynType) (RefSynType)) : syn_type)) } ("__10")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els ((IntSynType USize)) (UnitSynType)) : syn_type)), "__7"))
       ( annot{ 2 }: EndLftAnnot "llft7"; (* endlft *)
        annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb1")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       annot{ 2 }: EndLftAnnot "llft7"; (* endlft *)
+      ( annot{ 2 }: EndLftAnnot "llft7"; (* endlft *)
        annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb4")
@@ -1769,8 +1748,7 @@ Program Definition traits_iterator_Iterator_position_def (ControlFlow_BC_break_v
       local_dead "__8";
       CallS ControlFlow_BC_break_value_usize_unit_loc [] [] [@{expr} move{ (use_op_alg' ((ControlFlow_els ((IntSynType USize)) (UnitSynType)) : syn_type)) } ("__7")] (Some (Na1Ord, (use_op_alg' ((Option_els ((IntSynType USize))) : syn_type)), "__0"))
       ( Goto "_bb2")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb4")
+      ( Goto "_bb4")
      ]>%E $
      <[
      "_bb2" :=
@@ -1779,8 +1757,7 @@ Program Definition traits_iterator_Iterator_position_def (ControlFlow_BC_break_v
       local_dead "acc";
       CallS DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("f")] None
       ( Goto "_bb3")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb5")
+      ( Goto "_bb5")
      ]>%E $
      <[
      "_bb3" :=
@@ -1834,11 +1811,10 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
       "__6" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "Self"), "llft2" } ("self");
       annot{ 1 }: CopyLftNameAnnot "plft3" "llft2"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft4" "plft3"; (* function_call *)
-      CallS traits_iterator_Iterator_Self_next_loc ["vlft4"] [] [@{expr} move{ RefOp } ("__6")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__5"))
+      CallS traits_iterator_Iterator_Self_next_loc ["vlft4"] [RSTTyVar "Self"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__6")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__5"))
       ( annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
        Goto "_bb1")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
+      ( annot{ 2 }: EndLftAnnot "llft2"; (* endlft *)
        Goto "_bb15")
      ]>%E $
      <[
@@ -1846,8 +1822,7 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
       local_dead "__6";
       CallS std_option_OptionTasTry_branch_Selfastraits_iterator_Iterator_Item_loc [] [RSTTyVar "Item"] [@{expr} move{ (use_op_alg' ((Option_els (Item_st)) : syn_type)) } ("__5")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els (((Option_els (NeverSynType)) : syn_type)) (Item_st)) : syn_type)), "__4"))
       ( Goto "_bb2")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb15")
+      ( Goto "_bb15")
      ]>%E $
      <[
      "_bb2" :=
@@ -1877,10 +1852,9 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
       local_live{ F_st } "__15";
       "__17" <-{ BoolOp } val_of_bool false;
       "__15" <-{ (use_op_alg' F_st) } move{ (use_op_alg' F_st) } ("f");
-      CallS traits_iterator_Iterator_Self_fold_Selfastraits_iterator_Iterator_Item_F_loc [] [RSTTyVar "F"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__13"); move{ (use_op_alg' Item_st) } ("__14"); move{ (use_op_alg' F_st) } ("__15")] (Some (Na1Ord, (use_op_alg' Item_st), "__12"))
+      CallS traits_iterator_Iterator_Self_fold_Selfastraits_iterator_Iterator_Item_F_loc [] [RSTTyVar "Self"; RSTTyVar "F"; RSTTyVar "Item"] [@{expr} move{ (use_op_alg' Self_st) } ("__13"); move{ (use_op_alg' Item_st) } ("__14"); move{ (use_op_alg' F_st) } ("__15")] (Some (Na1Ord, (use_op_alg' Item_st), "__12"))
       ( Goto "_bb7")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb10")
+      ( Goto "_bb10")
      ]>%E $
      <[
      "_bb5" :=
@@ -1890,8 +1864,7 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
       "__10" <-{ (use_op_alg' ((Option_els (NeverSynType)) : syn_type)) } copy{ (use_op_alg' ((Option_els (NeverSynType)) : syn_type)) } ("residual");
       CallS std_option_OptionTasFromResidual_from_residual_Selfastraits_iterator_Iterator_Item_loc [] [RSTTyVar "Item"] [@{expr} move{ (use_op_alg' ((Option_els (NeverSynType)) : syn_type)) } ("__10")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__0"))
       ( Goto "_bb6")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb15")
+      ( Goto "_bb15")
      ]>%E $
      <[
      "_bb6" :=
@@ -1902,8 +1875,7 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
       local_dead "first";
       CallS DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("f")] None
       ( Goto "_bb8")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb11")
+      ( Goto "_bb11")
      ]>%E $
      <[
      "_bb7" :=
@@ -1920,8 +1892,7 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
      "_bb8" :=
       CallS DropGlue_Self_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("self")] None
       ( Goto "_bb9")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb12")
+      ( Goto "_bb12")
      ]>%E $
      <[
      "_bb9" :=
@@ -2131,11 +2102,10 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_B_drop_glue_l
       "__8" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "Self"), "llft3" } (!{ RefOp } ( "self" ));
       annot{ 1 }: CopyLftNameAnnot "plft6" "llft3"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft8" "plft6"; (* function_call *)
-      CallS traits_iterator_Iterator_Self_next_loc ["vlft8"] [] [@{expr} move{ RefOp } ("__8")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__7"))
+      CallS traits_iterator_Iterator_Self_next_loc ["vlft8"] [RSTTyVar "Self"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__8")] (Some (Na1Ord, (use_op_alg' ((Option_els (Item_st)) : syn_type)), "__7"))
       ( annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb2")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
+      ( annot{ 2 }: EndLftAnnot "llft3"; (* endlft *)
        Goto "_bb16")
      ]>%E $
      <[
@@ -2166,8 +2136,7 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_B_drop_glue_l
       CallS FnMut_F_BSelfastraits_iterator_Iterator_Item_call_mut_loc ["vlft9"] [RSTTyVar "B"; RSTTyVar "F"; RSTTyVar "R"; RSTTyVar "R"; RSTTyVar "Item"] [@{expr} move{ RefOp } ("__15"); move{ (use_op_alg' ((tuple2_sls (B_st) (Item_st)) : syn_type)) } ("__16")] (Some (Na1Ord, (use_op_alg' R_st), "__14"))
       ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        Goto "_bb4")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
+      ( annot{ 2 }: EndLftAnnot "llft4"; (* endlft *)
        Goto "_bb16")
      ]>%E $
      <[
@@ -2178,8 +2147,7 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_B_drop_glue_l
       local_dead "__15";
       CallS Try_R_branch_loc [] [RSTTyVar "B"; RSTTyVar "R"; RSTTyVar "Residual_Rasstd_ops_Try_Residual_Rasstd_ops_Try_Output_TryType"; RSTTyVar "Residual_Rasstd_ops_Try_Residual_Rasstd_ops_Try_Output_TryType"; RSTTyVar "Try_R_Residual"] [@{expr} move{ (use_op_alg' R_st) } ("__14")] (Some (Na1Ord, (use_op_alg' ((ControlFlow_els (Try_R_Residual_st) (B_st)) : syn_type)), "__13"))
       ( Goto "_bb5")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb16")
+      ( Goto "_bb16")
      ]>%E $
      <[
      "_bb5" :=
@@ -2213,10 +2181,9 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_B_drop_glue_l
       "residual" <-{ (use_op_alg' Try_R_Residual_st) } move{ (use_op_alg' Try_R_Residual_st) } ((EnumData ((ControlFlow_els (Try_R_Residual_st) (B_st))) "Break" ("__13")) at{ (ControlFlow_Break_sls (Try_R_Residual_st) (B_st)) } "0");
       local_live{ Try_R_Residual_st } "__22";
       "__22" <-{ (use_op_alg' Try_R_Residual_st) } move{ (use_op_alg' Try_R_Residual_st) } ("residual");
-      CallS FromResidual_R_Rasstd_ops_Try_Residual_from_residual_loc [] [] [@{expr} move{ (use_op_alg' Try_R_Residual_st) } ("__22")] (Some (Na1Ord, (use_op_alg' R_st), "__0"))
+      CallS FromResidual_R_Rasstd_ops_Try_Residual_from_residual_loc [] [RSTTyVar "R"; RSTTyVar "Try_R_Residual"] [@{expr} move{ (use_op_alg' Try_R_Residual_st) } ("__22")] (Some (Na1Ord, (use_op_alg' R_st), "__0"))
       ( Goto "_bb9")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb16")
+      ( Goto "_bb16")
      ]>%E $
      <[
      "_bb9" :=
@@ -2231,8 +2198,7 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_B_drop_glue_l
       local_dead "accum";
       CallS DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("f")] None
       ( Goto "_bb12")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb14")
+      ( Goto "_bb14")
      ]>%E $
      <[
      "_bb10" :=
@@ -2246,8 +2212,7 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_B_drop_glue_l
       "__27" <-{ (use_op_alg' B_st) } move{ (use_op_alg' B_st) } ("accum");
       CallS Try_R_from_output_loc [] [RSTTyVar "B"; RSTTyVar "R"; RSTTyVar "Residual_Rasstd_ops_Try_Residual_Rasstd_ops_Try_Output_TryType"; RSTTyVar "Residual_Rasstd_ops_Try_Residual_Rasstd_ops_Try_Output_TryType"; RSTTyVar "Try_R_Residual"] [@{expr} move{ (use_op_alg' B_st) } ("__27")] (Some (Na1Ord, (use_op_alg' R_st), "__0"))
       ( Goto "_bb11")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb16")
+      ( Goto "_bb16")
      ]>%E $
      <[
      "_bb11" :=
@@ -2256,8 +2221,7 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_B_drop_glue_l
       local_dead "accum";
       CallS DropGlue_F_drop_glue_loc [] [] [@{expr} &raw{ PRef, Mut } ("f")] None
       ( Goto "_bb12")
-      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
-       Goto "_bb14")
+      ( Goto "_bb14")
      ]>%E $
      <[
      "_bb12" :=

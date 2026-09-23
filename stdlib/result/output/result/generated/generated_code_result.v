@@ -83,7 +83,7 @@ Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) 
       "__8" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "E"), "vlft4" } (!{ RefOp } ( "__6" ));
       annot{ 1 }: CopyLftNameAnnot "plft11" "vlft4"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft12" "plft11"; (* function_call *)
-      CallS Clone_E_clone_loc ["vlft12"] [] [@{expr} move{ RefOp } ("__8")] (Some (Na1Ord, (use_op_alg' E_st), "__7"))
+      CallS Clone_E_clone_loc ["vlft12"] [RSTTyVar "E"] [@{expr} move{ RefOp } ("__8")] (Some (Na1Ord, (use_op_alg' E_st), "__7"))
       ( Goto "_bb5")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Unwind)
@@ -100,7 +100,7 @@ Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) 
       "__5" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft6" } (!{ RefOp } ( "__self_0" ));
       annot{ 1 }: CopyLftNameAnnot "plft9" "vlft6"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft13" "plft9"; (* function_call *)
-      CallS Clone_T_clone_loc ["vlft13"] [] [@{expr} move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' T_st), "__4"))
+      CallS Clone_T_clone_loc ["vlft13"] [RSTTyVar "T"] [@{expr} move{ RefOp } ("__5")] (Some (Na1Ord, (use_op_alg' T_st), "__4"))
       ( Goto "_bb4")
       ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
        Unwind)
@@ -185,7 +185,7 @@ Program Definition Result_TE_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T
       local_live{ T_st } "__8";
       "__8" <-{ (use_op_alg' T_st) } move{ (use_op_alg' T_st) } ("t");
       "__7" <-{ (use_op_alg' ((tuple1_sls (T_st)) : syn_type)) } StructInit (tuple1_sls (T_st)) [("0", move{ (use_op_alg' T_st) } ("__8") : expr)];
-      CallS FnOnce_F_T_call_once_loc [] [] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple1_sls (T_st)) : syn_type)) } ("__7")] (Some (Na1Ord, (use_op_alg' U_st), "__5"))
+      CallS FnOnce_F_T_call_once_loc [] [RSTTyVar "T"; RSTTyVar "U"; RSTTyVar "F"] [@{expr} move{ (use_op_alg' F_st) } ("__6"); move{ (use_op_alg' ((tuple1_sls (T_st)) : syn_type)) } ("__7")] (Some (Na1Ord, (use_op_alg' U_st), "__5"))
       ( Goto "_bb4")
       ( Goto "_bb7")
      ]>%E $
@@ -269,7 +269,7 @@ Program Definition Result_TE_map_err_def (DropGlue_O_drop_glue_loc: loc) (FnOnce
       local_live{ E_st } "__10";
       "__10" <-{ (use_op_alg' E_st) } move{ (use_op_alg' E_st) } ("e");
       "__9" <-{ (use_op_alg' ((tuple1_sls (E_st)) : syn_type)) } StructInit (tuple1_sls (E_st)) [("0", move{ (use_op_alg' E_st) } ("__10") : expr)];
-      CallS FnOnce_O_E_call_once_loc [] [] [@{expr} move{ (use_op_alg' O_st) } ("__8"); move{ (use_op_alg' ((tuple1_sls (E_st)) : syn_type)) } ("__9")] (Some (Na1Ord, (use_op_alg' F_st), "__7"))
+      CallS FnOnce_O_E_call_once_loc [] [RSTTyVar "E"; RSTTyVar "F"; RSTTyVar "O"] [@{expr} move{ (use_op_alg' O_st) } ("__8"); move{ (use_op_alg' ((tuple1_sls (E_st)) : syn_type)) } ("__9")] (Some (Na1Ord, (use_op_alg' F_st), "__7"))
       ( Goto "_bb4")
       ( Goto "_bb7")
      ]>%E $

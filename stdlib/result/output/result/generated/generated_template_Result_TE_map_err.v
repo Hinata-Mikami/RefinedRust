@@ -10,7 +10,7 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition Result_TE_map_err_lemma (π : thread_id) : Prop :=
-  ∀ `(T_rt : !RT) `(E_rt : !RT) `(F_rt : !RT) `(O_rt : !RT) `(T_st : !syn_type) `(E_st : !syn_type) `(F_st : !syn_type) `(O_st : !syn_type) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) `(DropGlue_E_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) `(FnOnce_O_E_spec_attrs : !(FnOnce_spec_attrs (RRGS:=RRGS) (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt) )) `(FnOnce_O_E_spec : !(spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt)))) `(DropGlue_F_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (F_rt)))) `(DropGlue_O_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (O_rt)))) (DropGlue_O_drop_glue_loc : loc) (FnOnce_O_E_call_once_loc : loc) , 
+  ∀ `(T_rt : !RT) `(E_rt : !RT) `(F_rt : !RT) `(O_rt : !RT) `(T_st : !syn_type) `(E_st : !syn_type) `(F_st : !syn_type) `(O_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) `(DropGlue_T_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) `(DropGlue_E_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (E_rt) )) `(DropGlue_E_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (E_rt)))) `(FnOnce_O_E_spec_attrs : !(FnOnce_spec_attrs (RRGS:=RRGS) (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt) )) `(FnOnce_O_E_spec : !(spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (O_rt) (((tuple1_rt) ((E_rt)))) (F_rt)))) `(DropGlue_F_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (F_rt) )) `(DropGlue_F_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (F_rt)))) `(DropGlue_O_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (O_rt) )) `(DropGlue_O_spec : !(spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (O_rt)))) (DropGlue_O_drop_glue_loc : loc) (FnOnce_O_E_call_once_loc : loc) , 
   syn_type_is_layoutable (T_st) →
   syn_type_is_layoutable (E_st) →
   syn_type_is_layoutable (F_st) →
@@ -23,18 +23,20 @@ Definition Result_TE_map_err_lemma (π : thread_id) : Prop :=
   syn_type_is_layoutable (((Result_Ok_sls (T_st) (F_st)) : syn_type)) →
   syn_type_is_layoutable (((tuple1_sls (E_st)) : syn_type)) →
   DropGlue_O_drop_glue_loc ◁ᵥ{π, MetaNone} DropGlue_O_drop_glue_loc @ function_ptr [RefSynType] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((DropGlue_drop_glue_spec (RRGS:=RRGS) (DropGlue_O_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-  FnOnce_O_E_call_once_loc ◁ᵥ{π, MetaNone} FnOnce_O_E_call_once_loc @ function_ptr [O_st; ((tuple1_sls (E_st)) : syn_type)] (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre ((FnOnce_call_once_spec (RRGS:=RRGS) (FnOnce_O_E_spec-[] -[]))  -[] -[]) (λ π, (True))%I) -∗
-  typed_function π (Result_TE_map_err_def DropGlue_O_drop_glue_loc  FnOnce_O_E_call_once_loc  T_st  E_st  F_st  O_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty; O_ty]) : ([T_rt; E_rt; F_rt; O_rt] : list RT), fn_spec_add_late_pre (type_of_Result_TE_map_err T_rt E_rt F_rt O_rt T_st E_st F_st O_st FnOnce_O_E_spec_attrs -[] -[T_ty; E_ty; F_ty; O_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
+  FnOnce_O_E_call_once_loc ◁ᵥ{π, MetaNone} FnOnce_O_E_call_once_loc @ function_ptr [O_st; ((tuple1_sls (E_st)) : syn_type)] (<tag_type> spec! ( *[]) : 0 | ( *[E_ty; F_ty; O_ty]) : ([E_rt; F_rt; O_rt] : list RT), fn_spec_add_late_pre ((FnOnce_call_once_spec (RRGS:=RRGS) (FnOnce_O_E_spec-[] -[]))  -[] -[]) (λ π, ((typaram_wf E_rt E_st E_ty)
+  ∗ (typaram_wf F_rt F_st F_ty)
+  ∗ (typaram_wf O_rt O_st O_ty)))%I) -∗
+  typed_function π (Result_TE_map_err_def DropGlue_O_drop_glue_loc  FnOnce_O_E_call_once_loc  T_st  E_st  F_st  O_st  ) (<tag_type> spec! ( *[]) : 0 | ( *[T_ty; E_ty; F_ty; O_ty]) : ([T_rt; E_rt; F_rt; O_rt] : list RT), fn_spec_add_late_pre (type_of_Result_TE_map_err T_rt E_rt F_rt O_rt T_st E_st F_st O_st DropGlue_T_spec_attrs DropGlue_E_spec_attrs FnOnce_O_E_spec_attrs DropGlue_F_spec_attrs DropGlue_O_spec_attrs -[] -[T_ty; E_ty; F_ty; O_ty]) (λ π, ((typaram_wf T_rt T_st T_ty)
   ∗ (typaram_wf E_rt E_st E_ty)
   ∗ (typaram_wf F_rt F_st F_ty)
   ∗ (typaram_wf O_rt O_st O_ty))
-  ∗ (⌜((trait_incl_of_Result_TE_map_err (T_rt) (E_rt) (F_rt) (O_rt) (T_st) (E_st) (F_st) (O_st) (DropGlue_T_spec) (DropGlue_E_spec) (FnOnce_O_E_spec_attrs) (FnOnce_O_E_spec) (DropGlue_F_spec) (DropGlue_O_spec))-[] -[T_ty; E_ty; F_ty; O_ty])%Z⌝))).
+  ∗ (⌜((trait_incl_of_Result_TE_map_err (T_rt) (E_rt) (F_rt) (O_rt) (T_st) (E_st) (F_st) (O_st) (DropGlue_T_spec_attrs) (DropGlue_T_spec) (DropGlue_E_spec_attrs) (DropGlue_E_spec) (FnOnce_O_E_spec_attrs) (FnOnce_O_E_spec) (DropGlue_F_spec_attrs) (DropGlue_F_spec) (DropGlue_O_spec_attrs) (DropGlue_O_spec))-[] -[T_ty; E_ty; F_ty; O_ty])%Z⌝))).
 End proof.
 
 Ltac Result_TE_map_err_prelude :=
   unfold Result_TE_map_err_lemma;
   set (FN_NAME := FUNCTION_NAME "Result_TE_map_err");
-  intros T_rt E_rt F_rt O_rt T_st E_st F_st O_st DropGlue_T_spec DropGlue_E_spec FnOnce_O_E_spec_attrs FnOnce_O_E_spec DropGlue_F_spec DropGlue_O_spec;
+  intros T_rt E_rt F_rt O_rt T_st E_st F_st O_st DropGlue_T_spec_attrs DropGlue_T_spec DropGlue_E_spec_attrs DropGlue_E_spec FnOnce_O_E_spec_attrs FnOnce_O_E_spec DropGlue_F_spec_attrs DropGlue_F_spec DropGlue_O_spec_attrs DropGlue_O_spec;
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in

@@ -83,7 +83,7 @@ End nonnull_NonNull_inv_t.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
-Program Definition nonnull_NonNullTasstd_clone_Clone_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) : ((Clone_spec_attrs (((nonnull_NonNull_inv_t_rt ((T_rt))))))) :=
+Program Definition nonnull_NonNullTasstd_clone_Clone_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) : ((Clone_spec_attrs (((nonnull_NonNull_inv_t_rt ((T_rt))))))) :=
   mk_Clone_spec_attrs.
 
 
@@ -166,7 +166,7 @@ End unique_Unique_inv_t.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
-Program Definition nonnull_NonNullTasstd_marker_Copy_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) : ((Copy_spec_attrs (((nonnull_NonNull_inv_t_rt ((T_rt))))) ((nonnull_NonNullTasstd_clone_Clone_spec_attrs ((T_rt)))))) :=
+Program Definition nonnull_NonNullTasstd_marker_Copy_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) : ((Copy_spec_attrs (((nonnull_NonNull_inv_t_rt ((T_rt))))) ((nonnull_NonNullTasstd_clone_Clone_spec_attrs ((T_rt)) (DropGlue_T_spec_attrs))))) :=
   mk_Copy_spec_attrs.
 
 
@@ -174,7 +174,7 @@ End attrs.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
-Program Definition unique_UniqueTasstd_clone_Clone_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) : ((Clone_spec_attrs (((unique_Unique_inv_t_rt ((T_rt))))))) :=
+Program Definition unique_UniqueTasstd_clone_Clone_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) : ((Clone_spec_attrs (((unique_Unique_inv_t_rt ((T_rt))))))) :=
   mk_Clone_spec_attrs.
 
 
@@ -182,11 +182,15 @@ End attrs.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
-Program Definition unique_UniqueTasstd_marker_Copy_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) : ((Copy_spec_attrs (((unique_Unique_inv_t_rt ((T_rt))))) ((unique_UniqueTasstd_clone_Clone_spec_attrs ((T_rt)))))) :=
+Program Definition unique_UniqueTasstd_marker_Copy_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) : ((Copy_spec_attrs (((unique_Unique_inv_t_rt ((T_rt))))) ((unique_UniqueTasstd_clone_Clone_spec_attrs ((T_rt)) (DropGlue_T_spec_attrs))))) :=
   mk_Copy_spec_attrs.
 
 
 End attrs.
+
+Section drop_glue_attrs.
+Context `{RRGS : !refinedrustGS Σ}.
+End drop_glue_attrs.
 
 Section closure_attrs.
 Context `{RRGS : !refinedrustGS Σ}.
@@ -262,24 +266,24 @@ End contractive.
 Section specs.
 Context `{RRGS : !refinedrustGS Σ}.
 
-Definition trait_incl_of_nonnull_NonNullTasstd_clone_Clone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
+Definition trait_incl_of_nonnull_NonNullTasstd_clone_Clone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
-Definition type_of_nonnull_NonNullTasstd_clone_Clone_clone (T_rt: RT) (T_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (((nonnull_NonNull_inv_t_rt ((T_rt))))) ((nonnull_NonNull_st (T_st))) ((nonnull_NonNullTasstd_clone_Clone_spec_attrs (T_rt))))
+Definition type_of_nonnull_NonNullTasstd_clone_Clone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (((nonnull_NonNull_inv_t_rt ((T_rt))))) ((nonnull_NonNull_st (T_st))) ((drop_glue_trivial_spec_attrs (((nonnull_NonNull_inv_t_rt ((T_rt))))))) ((nonnull_NonNullTasstd_clone_Clone_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
     -[] -[(nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty])]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_unique_UniqueTasstd_clone_Clone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
+Definition trait_incl_of_unique_UniqueTasstd_clone_Clone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
-Definition type_of_unique_UniqueTasstd_clone_Clone_clone (T_rt: RT) (T_st: syn_type) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (((unique_Unique_inv_t_rt ((T_rt))))) ((unique_Unique_st (T_st))) ((unique_UniqueTasstd_clone_Clone_spec_attrs (T_rt))))
+Definition type_of_unique_UniqueTasstd_clone_Clone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (((unique_Unique_inv_t_rt ((T_rt))))) ((unique_Unique_st (T_st))) ((drop_glue_trivial_spec_attrs (((unique_Unique_inv_t_rt ((T_rt))))))) ((unique_UniqueTasstd_clone_Clone_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
     -[] -[(unique_Unique_inv_t ((T_rt))  -[] -[T_ty])]).(Clone_clone_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_nonnull_NonNull_T_as_ptr (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
+Definition trait_incl_of_nonnull_NonNull_T_as_ptr (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
-Definition type_of_nonnull_NonNull_T_as_ptr (T_rt: RT) (T_st: syn_type) :=
+Definition type_of_nonnull_NonNull_T_as_ptr (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, []);
@@ -288,12 +292,13 @@ Definition type_of_nonnull_NonNull_T_as_ptr (T_rt: RT) (T_st: syn_type) :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, self @ alias_ptr_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_nonnull_NonNull_T_cast (T_rt: RT) (U_rt: RT) (T_st: syn_type) (U_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_U_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (U_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; U_ty]) : ([T_rt; U_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_U_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (U_rt) U_st-[] -[U_ty])))).
+Definition trait_incl_of_nonnull_NonNull_T_cast (T_rt: RT) (U_rt: RT) (T_st: syn_type) (U_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_U_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (U_rt) )) (DropGlue_U_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (U_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty; U_ty]) : ([T_rt; U_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_U_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (U_rt) U_st DropGlue_U_spec_attrs-[] -[U_ty])))).
 
-Definition type_of_nonnull_NonNull_T_cast (T_rt: RT) (U_rt: RT) (T_st: syn_type) (U_st: syn_type) :=
+Definition type_of_nonnull_NonNull_T_cast (T_rt: RT) (U_rt: RT) (T_st: syn_type) (U_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_U_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (U_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty; U_ty]) : ([(T_rt, T_st); (U_rt, U_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, []);
@@ -302,12 +307,13 @@ Definition type_of_nonnull_NonNull_T_cast (T_rt: RT) (U_rt: RT) (T_st: syn_type)
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, self @ (nonnull_NonNull_inv_t ((U_rt))  -[] -[U_ty]);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_nonnull_NonNull_T_is_aligned (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
+Definition trait_incl_of_nonnull_NonNull_T_is_aligned (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
-Definition type_of_nonnull_NonNull_T_is_aligned (T_rt: RT) (T_st: syn_type) :=
+Definition type_of_nonnull_NonNull_T_is_aligned (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, []);
@@ -316,12 +322,13 @@ Definition type_of_nonnull_NonNull_T_is_aligned (T_rt: RT) (T_st: syn_type) :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (self `aligned_to` (ly_align (use_layout_alg' (ty_syn_type T_ty MetaNone)))) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_nonnull_NonNull_T_is_aligned_to (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
+Definition trait_incl_of_nonnull_NonNull_T_is_aligned_to (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
-Definition type_of_nonnull_NonNull_T_is_aligned_to (T_rt: RT) (T_st: syn_type) :=
+Definition type_of_nonnull_NonNull_T_is_aligned_to (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, align) : ((_ * _)),
       (* elctx........ *) (λ ϝ, []);
@@ -330,12 +337,13 @@ Definition type_of_nonnull_NonNull_T_is_aligned_to (T_rt: RT) (T_st: syn_type) :
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (self `aligned_to` Z.to_nat align) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_nonnull_NonNull_T_new (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
+Definition trait_incl_of_nonnull_NonNull_T_new (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
-Definition type_of_nonnull_NonNull_T_new (T_rt: RT) (T_st: syn_type) :=
+Definition type_of_nonnull_NonNull_T_new (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (ptr) : ((_)),
       (* elctx........ *) (λ ϝ, []);
@@ -344,12 +352,13 @@ Definition type_of_nonnull_NonNull_T_new (T_rt: RT) (T_st: syn_type) :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, if decide (ptr.(loc_a) = 0) then None else Some ptr @ (Option_ty (((nonnull_NonNull_inv_t_rt ((T_rt))))) -[] -[(nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty])]);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_nonnull_NonNull_T_new_unchecked (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
+Definition trait_incl_of_nonnull_NonNull_T_new_unchecked (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
-Definition type_of_nonnull_NonNull_T_new_unchecked (T_rt: RT) (T_st: syn_type) :=
+Definition type_of_nonnull_NonNull_T_new_unchecked (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (ptr) : ((_)),
       (* elctx........ *) (λ ϝ, []);
@@ -358,12 +367,13 @@ Definition type_of_nonnull_NonNull_T_new_unchecked (T_rt: RT) (T_st: syn_type) :
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, ptr @ (nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty]);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_nonnull_NonNull_T_read (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
+Definition trait_incl_of_nonnull_NonNull_T_read (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
-Definition type_of_nonnull_NonNull_T_read (T_rt: RT) (T_st: syn_type) :=
+Definition type_of_nonnull_NonNull_T_read (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (k, ty, self) : ((_ * (xtype) * _)),
       (* elctx........ *) (λ ϝ, [] ++ bor_kind_outlives_elctx k ϝ);
@@ -376,12 +386,13 @@ Definition type_of_nonnull_NonNull_T_read (T_rt: RT) (T_st: syn_type) :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, ty.(xtype_rfn) @ ty.(xtype_ty);
       (* postcondition *) (λ π : thread_id, (self ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty))) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_nonnull_NonNull_T_read_volatile (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
+Definition trait_incl_of_nonnull_NonNull_T_read_volatile (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
-Definition type_of_nonnull_NonNull_T_read_volatile (T_rt: RT) (T_st: syn_type) :=
+Definition type_of_nonnull_NonNull_T_read_volatile (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (k, ty, self) : ((_ * (xtype) * _)),
       (* elctx........ *) (λ ϝ, [] ++ bor_kind_outlives_elctx k ϝ);
@@ -394,12 +405,13 @@ Definition type_of_nonnull_NonNull_T_read_volatile (T_rt: RT) (T_st: syn_type) :
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, ty.(xtype_rfn) @ ty.(xtype_ty);
       (* postcondition *) (λ π : thread_id, (self ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty))) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_nonnull_NonNull_T_write (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
+Definition trait_incl_of_nonnull_NonNull_T_write (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
-Definition type_of_nonnull_NonNull_T_write (T_rt: RT) (T_st: syn_type) :=
+Definition type_of_nonnull_NonNull_T_write (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, val) : ((_ * _)),
       (* elctx........ *) (λ ϝ, []);
@@ -408,12 +420,13 @@ Definition type_of_nonnull_NonNull_T_write (T_rt: RT) (T_st: syn_type) :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
       (* postcondition *) (λ π : thread_id, (self ◁ₗ[π, Owned] #($# val) @ (◁ T_ty))) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_nonnull_NonNull_T_write_volatile (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
+Definition trait_incl_of_nonnull_NonNull_T_write_volatile (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
-Definition type_of_nonnull_NonNull_T_write_volatile (T_rt: RT) (T_st: syn_type) :=
+Definition type_of_nonnull_NonNull_T_write_volatile (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self, val) : ((_ * _)),
       (* elctx........ *) (λ ϝ, []);
@@ -422,12 +435,13 @@ Definition type_of_nonnull_NonNull_T_write_volatile (T_rt: RT) (T_st: syn_type) 
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
       (* postcondition *) (λ π : thread_id, (self ◁ₗ[π, Owned] #($# val) @ (◁ T_ty))) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_unique_Unique_T_as_ptr (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
+Definition trait_incl_of_unique_Unique_T_as_ptr (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
-Definition type_of_unique_Unique_T_as_ptr (T_rt: RT) (T_st: syn_type) :=
+Definition type_of_unique_Unique_T_as_ptr (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, []);
@@ -436,12 +450,13 @@ Definition type_of_unique_Unique_T_as_ptr (T_rt: RT) (T_st: syn_type) :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, self @ (nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty]);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_unique_Unique_T_dangling (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
+Definition trait_incl_of_unique_Unique_T_dangling (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
-Definition type_of_unique_Unique_T_dangling (T_rt: RT) (T_st: syn_type) :=
+Definition type_of_unique_Unique_T_dangling (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) _ : unit,
       (* elctx........ *) (λ ϝ, []);
@@ -451,12 +466,13 @@ Definition type_of_unique_Unique_T_dangling (T_rt: RT) (T_st: syn_type) :=
       (* postcondition *) (λ π : thread_id, (⌜(l `has_layout_loc` (use_layout_alg' (ty_syn_type T_ty MetaNone)))%Z⌝)
       ∗ (l ◁ₗ[π, Owned] #(()) @ (◁ uninit UnitSynType))
       ∗ (freeable_nz l 0 1 HeapAlloc)) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_unique_Unique_T_new_unchecked (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty])))).
+Definition trait_incl_of_unique_Unique_T_new_unchecked (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
-Definition type_of_unique_Unique_T_new_unchecked (T_rt: RT) (T_st: syn_type) :=
+Definition type_of_unique_Unique_T_new_unchecked (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (ptr) : ((_)),
       (* elctx........ *) (λ ϝ, []);
@@ -465,7 +481,8 @@ Definition type_of_unique_Unique_T_new_unchecked (T_rt: RT) (T_st: syn_type) :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, ptr @ (unique_Unique_inv_t ((T_rt))  -[] -[T_ty]);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 
 
@@ -473,26 +490,26 @@ Definition type_of_unique_Unique_T_new_unchecked (T_rt: RT) (T_st: syn_type) :=
 End specs.
 Section nonnull_NonNullTasstd_clone_Clone_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition nonnull_NonNullTasstd_clone_Clone_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (Clone_spec (((nonnull_NonNull_inv_t_rt ((T_rt))))))) :=
+  Definition nonnull_NonNullTasstd_clone_Clone_spec (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) : (spec_with _ _ (Clone_spec (((nonnull_NonNull_inv_t_rt ((T_rt))))))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), {|
         Clone_clone_spec  :=
-          (type_of_nonnull_NonNullTasstd_clone_Clone_clone ((T_rt)) (T_st)) 
+          (type_of_nonnull_NonNullTasstd_clone_Clone_clone ((T_rt)) (T_st)) DropGlue_T_spec_attrs 
              <TY> T_ty : (spec_with 1 [] fn_spec);
         Clone_clone_from_spec  :=
-          (Clone_clone_from_base_spec (((nonnull_NonNull_inv_t_rt ((T_rt))))) ((nonnull_NonNull_st (T_st)))) (nonnull_NonNullTasstd_clone_Clone_spec_attrs (T_rt)) 
+          (Clone_clone_from_base_spec (((nonnull_NonNull_inv_t_rt ((T_rt))))) ((nonnull_NonNull_st (T_st)))) (drop_glue_trivial_spec_attrs (((nonnull_NonNull_inv_t_rt ((T_rt)))))) (nonnull_NonNullTasstd_clone_Clone_spec_attrs (T_rt) (DropGlue_T_spec_attrs)) 
              <TY> (nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty]) : (spec_with 2 [] fn_spec);
       |}
   .
   Definition nonnull_NonNullTasstd_clone_Clone_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (nonnull_NonNullTasstd_clone_Clone_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Clone_base_spec ((nonnull_NonNull_inv_t_rt ((T_rt)))) (nonnull_NonNull_st (T_st)) (nonnull_NonNullTasstd_clone_Clone_spec_attrs (T_rt))-[] -[(nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty])])))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (nonnull_NonNullTasstd_clone_Clone_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Clone_base_spec ((nonnull_NonNull_inv_t_rt ((T_rt)))) (nonnull_NonNull_st (T_st)) (drop_glue_trivial_spec_attrs (((nonnull_NonNull_inv_t_rt ((T_rt)))))) (nonnull_NonNullTasstd_clone_Clone_spec_attrs (T_rt) (DropGlue_T_spec_attrs))-[] -[(nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty])])))).
 End nonnull_NonNullTasstd_clone_Clone_spec.
 
 Section nonnull_NonNullTasstd_marker_Copy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition nonnull_NonNullTasstd_marker_Copy_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (Copy_spec (((nonnull_NonNull_inv_t_rt ((T_rt))))))) :=
+  Definition nonnull_NonNullTasstd_marker_Copy_spec (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) : (spec_with _ _ (Copy_spec (((nonnull_NonNull_inv_t_rt ((T_rt))))))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (@mk_Copy_spec _ _ (((nonnull_NonNull_inv_t_rt ((T_rt)))))).
   Definition nonnull_NonNullTasstd_marker_Copy_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (nonnull_NonNullTasstd_marker_Copy_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Copy_base_spec ((nonnull_NonNull_inv_t_rt ((T_rt)))) (nonnull_NonNull_st (T_st)) (nonnull_NonNullTasstd_clone_Clone_spec_attrs ((T_rt))) (nonnull_NonNullTasstd_marker_Copy_spec_attrs (T_rt))-[] -[(nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty])])))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )), trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (nonnull_NonNullTasstd_marker_Copy_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Copy_base_spec ((nonnull_NonNull_inv_t_rt ((T_rt)))) (nonnull_NonNull_st (T_st)) (nonnull_NonNullTasstd_clone_Clone_spec_attrs ((T_rt)) (DropGlue_T_spec_attrs)) (drop_glue_trivial_spec_attrs (((nonnull_NonNull_inv_t_rt ((T_rt)))))) (nonnull_NonNullTasstd_marker_Copy_spec_attrs (T_rt) (DropGlue_T_spec_attrs))-[] -[(nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty])])))).
   Lemma nonnull_NonNullTasstd_marker_Copy_semantic_interp (T_rt: RT) (T_ty: (type (T_rt))) : (Copy_semantic_interp ((nonnull_NonNull_inv_t_rt ((T_rt)))) (nonnull_NonNull_inv_t ((T_rt))  -[] -[T_ty])).
   Proof.
     unfold Copy_semantic_interp in *; apply _.
@@ -502,26 +519,26 @@ End nonnull_NonNullTasstd_marker_Copy_spec.
 
 Section unique_UniqueTasstd_clone_Clone_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition unique_UniqueTasstd_clone_Clone_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (Clone_spec (((unique_Unique_inv_t_rt ((T_rt))))))) :=
+  Definition unique_UniqueTasstd_clone_Clone_spec (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) : (spec_with _ _ (Clone_spec (((unique_Unique_inv_t_rt ((T_rt))))))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), {|
         Clone_clone_spec  :=
-          (type_of_unique_UniqueTasstd_clone_Clone_clone ((T_rt)) (T_st)) 
+          (type_of_unique_UniqueTasstd_clone_Clone_clone ((T_rt)) (T_st)) DropGlue_T_spec_attrs 
              <TY> T_ty : (spec_with 1 [] fn_spec);
         Clone_clone_from_spec  :=
-          (Clone_clone_from_base_spec (((unique_Unique_inv_t_rt ((T_rt))))) ((unique_Unique_st (T_st)))) (unique_UniqueTasstd_clone_Clone_spec_attrs (T_rt)) 
+          (Clone_clone_from_base_spec (((unique_Unique_inv_t_rt ((T_rt))))) ((unique_Unique_st (T_st)))) (drop_glue_trivial_spec_attrs (((unique_Unique_inv_t_rt ((T_rt)))))) (unique_UniqueTasstd_clone_Clone_spec_attrs (T_rt) (DropGlue_T_spec_attrs)) 
              <TY> (unique_Unique_inv_t ((T_rt))  -[] -[T_ty]) : (spec_with 2 [] fn_spec);
       |}
   .
   Definition unique_UniqueTasstd_clone_Clone_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (unique_UniqueTasstd_clone_Clone_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Clone_base_spec ((unique_Unique_inv_t_rt ((T_rt)))) (unique_Unique_st (T_st)) (unique_UniqueTasstd_clone_Clone_spec_attrs (T_rt))-[] -[(unique_Unique_inv_t ((T_rt))  -[] -[T_ty])])))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (unique_UniqueTasstd_clone_Clone_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Clone_base_spec ((unique_Unique_inv_t_rt ((T_rt)))) (unique_Unique_st (T_st)) (drop_glue_trivial_spec_attrs (((unique_Unique_inv_t_rt ((T_rt)))))) (unique_UniqueTasstd_clone_Clone_spec_attrs (T_rt) (DropGlue_T_spec_attrs))-[] -[(unique_Unique_inv_t ((T_rt))  -[] -[T_ty])])))).
 End unique_UniqueTasstd_clone_Clone_spec.
 
 Section unique_UniqueTasstd_marker_Copy_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition unique_UniqueTasstd_marker_Copy_spec (T_rt: RT) (T_st: syn_type) : (spec_with _ _ (Copy_spec (((unique_Unique_inv_t_rt ((T_rt))))))) :=
+  Definition unique_UniqueTasstd_marker_Copy_spec (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) : (spec_with _ _ (Copy_spec (((unique_Unique_inv_t_rt ((T_rt))))))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (@mk_Copy_spec _ _ (((unique_Unique_inv_t_rt ((T_rt)))))).
   Definition unique_UniqueTasstd_marker_Copy_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(T_st : !syn_type), trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (unique_UniqueTasstd_marker_Copy_spec (T_rt) (T_st))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Copy_base_spec ((unique_Unique_inv_t_rt ((T_rt)))) (unique_Unique_st (T_st)) (unique_UniqueTasstd_clone_Clone_spec_attrs ((T_rt))) (unique_UniqueTasstd_marker_Copy_spec_attrs (T_rt))-[] -[(unique_Unique_inv_t ((T_rt))  -[] -[T_ty])])))).
+    ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )), trait_incl_marker (lift_trait_incl Copy_spec_incl (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (unique_UniqueTasstd_marker_Copy_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[] -[T_ty]) (spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Copy_base_spec ((unique_Unique_inv_t_rt ((T_rt)))) (unique_Unique_st (T_st)) (unique_UniqueTasstd_clone_Clone_spec_attrs ((T_rt)) (DropGlue_T_spec_attrs)) (drop_glue_trivial_spec_attrs (((unique_Unique_inv_t_rt ((T_rt)))))) (unique_UniqueTasstd_marker_Copy_spec_attrs (T_rt) (DropGlue_T_spec_attrs))-[] -[(unique_Unique_inv_t ((T_rt))  -[] -[T_ty])])))).
   Lemma unique_UniqueTasstd_marker_Copy_semantic_interp (T_rt: RT) (T_ty: (type (T_rt))) : (Copy_semantic_interp ((unique_Unique_inv_t_rt ((T_rt)))) (unique_Unique_inv_t ((T_rt))  -[] -[T_ty])).
   Proof.
     unfold Copy_semantic_interp in *; apply _.

@@ -1,6 +1,7 @@
 From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.arithops.arithops.generated Require Export generated_specs_arithops.
+From rrstd.cell.cell.generated Require Export generated_specs_cell.
 From rrstd.closures.closures.generated Require Export generated_specs_closures.
 From rrstd.option.option.generated Require Export generated_specs_option.
 From rrstd.spin.theories.once Require Export once_ghost_state.
@@ -202,9 +203,9 @@ End once_Once_inv_t.
 Section rwlock_RwLock_ty.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Context {T_rt : RT} {R_rt : RT}.
-  Definition rwlock_RwLock_ty  : (spec_with 0 [(T_rt); (R_rt)] ((type (plist place_rfnRT [(((core_marker_PhantomData_rt) ((R_rt)))) : RT; (((core_marker_PhantomData_rt) ((T_rt)))) : RT])))).
+  Definition rwlock_RwLock_ty  : (spec_with 0 [(T_rt); (R_rt)] ((type (plist place_rfnRT [(((core_marker_PhantomData_rt) ((R_rt)))) : RT; ((((UnsafeCell_inv_t_rt)) ((T_rt)))) : RT])))).
   Proof.
-    exact (spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), (struct_t (rwlock_RwLock_sls ((ty_syn_type T_ty MetaNone)) ((ty_syn_type R_ty MetaNone))) +[((core_marker_PhantomData_ty ((R_rt)) -[] -[R_ty])); ((core_marker_PhantomData_ty ((T_rt)) -[] -[T_ty]))])).
+    exact (spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), (struct_t (rwlock_RwLock_sls ((ty_syn_type T_ty MetaNone)) ((ty_syn_type R_ty MetaNone))) +[((core_marker_PhantomData_ty ((R_rt)) -[] -[R_ty])); ((UnsafeCell_inv_t ((T_rt)) -[] -[T_ty]))])).
   Defined.
 
   Definition rwlock_RwLock_rt  : RT.
@@ -228,7 +229,7 @@ Section rwlock_RwLock_inv_t.
     spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), mk_auto_ex_inv_def
           (λ π inner_rfn (_ty_rfn : RT_rt ((unit)%type : RT)),
                   let '() := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z) (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(y); #(x)]⌝ ∗ True)%I
-          (true)
+          (false)
           ([])
           ([])
           _ _ _ _
@@ -351,7 +352,7 @@ End rwlock_RwLockWriteGuard_inv_t.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
-Program Definition rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (R_rt: RT) : ((Deref_spec_attrs (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((T_rt)))) :=
+Program Definition rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (R_rt: RT) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) : ((Deref_spec_attrs (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((T_rt)))) :=
   {|
     Deref_DerefInto  :=
       (id) : ((Deref_DerefInto_sig (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((T_rt))));
@@ -363,15 +364,35 @@ End attrs.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
-Program Definition rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (R_rt: RT) : ((DerefMut_spec_attrs (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((T_rt)) ((rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec_attrs ((T_rt)) ((R_rt)))))) :=
+Program Definition rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (R_rt: RT) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) : ((DerefMut_spec_attrs (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((T_rt)) ((rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec_attrs ((T_rt)) ((R_rt)) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs))))) :=
   {|
     DerefMut_DerefMutInject  :=
-      (λ old γ, 👻 γ) : ((DerefMut_DerefMutInject_sig (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((T_rt)) ((rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec_attrs ((T_rt)) ((R_rt))))));
+      (λ old γ, 👻 γ) : ((DerefMut_DerefMutInject_sig (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((T_rt)) ((rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec_attrs ((T_rt)) ((R_rt)) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs)))));
   |}
 .
 
 
 End attrs.
+
+Section drop_glue_attrs.
+Context `{RRGS : !refinedrustGS Σ}.
+Program Definition drop_glue_rwlock_RwLock_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (R_rt: RT) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) : ((DropGlue_spec_attrs (((rwlock_RwLock_inv_t_rt ((T_rt)) ((R_rt))))))) :=
+  {|
+    DropGlue_DropGlueUnwind  :=
+      (DropGlue_T_spec_attrs.(DropGlue_DropGlueUnwind)) : ((DropGlue_DropGlueUnwind_sig (((rwlock_RwLock_inv_t_rt ((T_rt)) ((R_rt)))))));
+  |}
+.
+
+
+Program Definition drop_glue_rwlock_RwLockWriteGuard_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (R_rt: RT) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) : ((DropGlue_spec_attrs (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))))) :=
+  {|
+    DropGlue_DropGlueUnwind  :=
+      (False) : ((DropGlue_DropGlueUnwind_sig (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt)))))));
+  |}
+.
+
+
+End drop_glue_attrs.
 
 Section closure_attrs.
 Context `{RRGS : !refinedrustGS Σ}.
@@ -428,7 +449,7 @@ Definition scope_bindable_relax_RelaxStrategy_spec `{Self_rt : !RT} : (ScopeBind
 .
 #[global] Existing Instance scope_bindable_relax_RelaxStrategy_spec.
 
-Definition relax_RelaxStrategy_relax_base_spec (Self_rt: RT) (Self_st: syn_type) (relax_RelaxStrategy_Self_spec_attrs: (relax_RelaxStrategy_spec_attrs (RRGS:=RRGS) (Self_rt) )) :=
+Definition relax_RelaxStrategy_relax_base_spec (Self_rt: RT) (Self_st: syn_type) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (relax_RelaxStrategy_Self_spec_attrs: (relax_RelaxStrategy_spec_attrs (RRGS:=RRGS) (Self_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[Self_ty]) : ([(Self_rt, Self_st)] : list (RT * syn_type)%type) | 
       (* params....... *) _ : unit,
       (* elctx........ *) (λ ϝ, []);
@@ -436,12 +457,13 @@ Definition relax_RelaxStrategy_relax_base_spec (Self_rt: RT) (Self_st: syn_type)
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, () @ unit_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition relax_RelaxStrategy_base_spec (Self_rt: RT) (Self_st: syn_type) (_ATTRS: ((relax_RelaxStrategy_spec_attrs ((Self_rt))))) : (spec_with _ _ (relax_RelaxStrategy_spec ((Self_rt)))) :=
+Definition relax_RelaxStrategy_base_spec (Self_rt: RT) (Self_st: syn_type) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (_ATTRS: ((relax_RelaxStrategy_spec_attrs ((Self_rt))))) : (spec_with _ _ (relax_RelaxStrategy_spec ((Self_rt)))) :=
   spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), {|
       relax_RelaxStrategy_relax_spec  :=
-        (relax_RelaxStrategy_relax_base_spec ((Self_rt)) (Self_st)) _ATTRS 
+        (relax_RelaxStrategy_relax_base_spec ((Self_rt)) (Self_st)) DropGlue_Self_spec_attrs _ATTRS 
            <TY> Self_ty : (spec_with 0 [] fn_spec);
     |}
 .
@@ -450,18 +472,25 @@ End relax_RelaxStrategy.
 
 Section relax_RelaxStrategy_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition trait_incl_of_relax_RelaxStrategy_relax (Self_rt: RT) (Self_st: syn_type) (relax_RelaxStrategy_Self_spec_attrs: (relax_RelaxStrategy_spec_attrs (RRGS:=RRGS) (Self_rt) )) (relax_RelaxStrategy_Self_spec: (spec_with 0 [] (relax_RelaxStrategy_spec (RRGS:=RRGS) (Self_rt)))) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) : (spec_with _ _ Prop) :=
-    spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), ((trait_incl_marker (lift_trait_incl relax_RelaxStrategy_spec_incl relax_RelaxStrategy_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), relax_RelaxStrategy_base_spec (Self_rt) Self_st relax_RelaxStrategy_Self_spec_attrs-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st-[] -[Self_ty])))).
+  Definition trait_incl_of_relax_RelaxStrategy_relax (Self_rt: RT) (Self_st: syn_type) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (DropGlue_Self_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (Self_rt)))) (relax_RelaxStrategy_Self_spec_attrs: (relax_RelaxStrategy_spec_attrs (RRGS:=RRGS) (Self_rt) )) (relax_RelaxStrategy_Self_spec: (spec_with 0 [] (relax_RelaxStrategy_spec (RRGS:=RRGS) (Self_rt)))) : (spec_with _ _ Prop) :=
+    spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (Self_rt) Self_st DropGlue_Self_spec_attrs-[] -[Self_ty]))) ∧ (trait_incl_marker (lift_trait_incl relax_RelaxStrategy_spec_incl relax_RelaxStrategy_Self_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), relax_RelaxStrategy_base_spec (Self_rt) Self_st DropGlue_Self_spec_attrs relax_RelaxStrategy_Self_spec_attrs-[] -[Self_ty])))).
 End relax_RelaxStrategy_trait_req_incls.
 
 Section specs.
 Context `{RRGS : !refinedrustGS Σ}.
 
-Definition trait_incl_of_drop_glue_rwlock_RwLockWriteGuard (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_a]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st-[] -[R_ty])))).
+Definition trait_incl_of_drop_glue_rwlock_RwLock (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st DropGlue_R_spec_attrs-[] -[R_ty])))).
 
-Definition type_of_drop_glue_rwlock_RwLockWriteGuard (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) :=
-  spec! ( *[ulft_a]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; R_ty] (scope_add_elctx (λ ϝ, []) (((DropGlue_base_spec (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((rwlock_RwLockWriteGuard_st (T_st) (R_st))))
+Definition type_of_drop_glue_rwlock_RwLock (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) :=
+  spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; R_ty] (scope_add_elctx (λ ϝ, []) (((DropGlue_base_spec (((rwlock_RwLock_inv_t_rt ((T_rt)) ((R_rt))))) ((rwlock_RwLock_st (T_st) (R_st))) ((drop_glue_rwlock_RwLock_spec_attrs (T_rt) (R_rt) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs))))
+    -[] -[(rwlock_RwLock_inv_t ((T_rt)) ((R_rt))  -[] -[T_ty; R_ty])]).(DropGlue_drop_glue_spec)   a b))) <MERGE!>.
+
+Definition trait_incl_of_drop_glue_rwlock_RwLockWriteGuard (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_a]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st DropGlue_R_spec_attrs-[] -[R_ty])))).
+
+Definition type_of_drop_glue_rwlock_RwLockWriteGuard (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) :=
+  spec! ( *[ulft_a]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; R_ty] (scope_add_elctx (λ ϝ, []) (((DropGlue_base_spec (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((rwlock_RwLockWriteGuard_st (T_st) (R_st))) ((drop_glue_rwlock_RwLockWriteGuard_spec_attrs (T_rt) (R_rt) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs))))
     -[] -[(rwlock_RwLockWriteGuard_inv_t ((T_rt)) ((R_rt))  -[ulft_a] -[T_ty; R_ty])]).(DropGlue_drop_glue_spec)   a b))) <MERGE!>.
 
 
@@ -476,26 +505,27 @@ Definition type_of_relax_Spinasrelax_RelaxStrategy_relax  :=
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, () @ unit_t;
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_deref (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_rwlock; ulft_2]) : 2 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st-[] -[R_ty])))).
+Definition trait_incl_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_deref (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_rwlock; ulft_2]) : 2 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st DropGlue_R_spec_attrs-[] -[R_ty])))).
 
-Definition type_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_deref (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) :=
-  spec! ( *[ulft_rwlock]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; R_ty] (scope_add_elctx (λ ϝ, []) (((Deref_base_spec (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((T_rt)) ((rwlock_RwLockWriteGuard_st (T_st) (R_st))) (T_st) ((rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec_attrs (T_rt) (R_rt))))
+Definition type_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_deref (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) :=
+  spec! ( *[ulft_rwlock]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; R_ty] (scope_add_elctx (λ ϝ, []) (((Deref_base_spec (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((T_rt)) ((rwlock_RwLockWriteGuard_st (T_st) (R_st))) (T_st) ((drop_glue_rwlock_RwLockWriteGuard_spec_attrs ((T_rt)) ((R_rt)) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs))) (DropGlue_T_spec_attrs) ((rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec_attrs (T_rt) (R_rt) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs))))
     -[] -[(rwlock_RwLockWriteGuard_inv_t ((T_rt)) ((R_rt))  -[ulft_rwlock] -[T_ty; R_ty]); T_ty]).(Deref_deref_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_deref_mut (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_rwlock; ulft_2]) : 2 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st-[] -[R_ty])))).
+Definition trait_incl_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_deref_mut (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_rwlock; ulft_2]) : 2 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st DropGlue_R_spec_attrs-[] -[R_ty])))).
 
-Definition type_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_deref_mut (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) :=
-  spec! ( *[ulft_rwlock]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; R_ty] (scope_add_elctx (λ ϝ, []) (((DerefMut_base_spec (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((T_rt)) ((rwlock_RwLockWriteGuard_st (T_st) (R_st))) (T_st) ((rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec_attrs ((T_rt)) ((R_rt)))) ((rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_spec_attrs (T_rt) (R_rt))))
+Definition type_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_deref_mut (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) :=
+  spec! ( *[ulft_rwlock]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty; R_ty] (scope_add_elctx (λ ϝ, []) (((DerefMut_base_spec (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((T_rt)) ((rwlock_RwLockWriteGuard_st (T_st) (R_st))) (T_st) ((rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec_attrs ((T_rt)) ((R_rt)) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs))) ((drop_glue_rwlock_RwLockWriteGuard_spec_attrs ((T_rt)) ((R_rt)) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs))) (DropGlue_T_spec_attrs) ((rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_spec_attrs (T_rt) (R_rt) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs))))
     -[] -[(rwlock_RwLockWriteGuard_inv_t ((T_rt)) ((R_rt))  -[ulft_rwlock] -[T_ty; R_ty]); T_ty]).(DerefMut_deref_mut_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_once_Once_TR_call_once (T_rt: RT) (R_rt: RT) (F_rt: RT) (T_st: syn_type) (R_st: syn_type) (F_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) (relax_RelaxStrategy_R_spec_attrs: (relax_RelaxStrategy_spec_attrs (RRGS:=RRGS) (R_rt) )) (relax_RelaxStrategy_R_spec: (spec_with 0 [] (relax_RelaxStrategy_spec (RRGS:=RRGS) (R_rt)))) (FnOnce_F_unit_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) unit (T_rt) )) (FnOnce_F_unit_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (F_rt) unit (T_rt)))) (DropGlue_F_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (F_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; R_ty; F_ty]) : ([T_rt; R_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st-[] -[R_ty]))) ∧ (trait_incl_marker (lift_trait_incl relax_RelaxStrategy_spec_incl relax_RelaxStrategy_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), relax_RelaxStrategy_base_spec (R_rt) R_st relax_RelaxStrategy_R_spec_attrs-[] -[R_ty]))) ∧ (trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_unit_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) unit (T_rt) F_st UnitSynType T_st FnOnce_F_unit_spec_attrs-[] -[F_ty; unit_t; T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_F_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (F_rt) F_st-[] -[F_ty])))).
+Definition trait_incl_of_once_Once_TR_call_once (T_rt: RT) (R_rt: RT) (F_rt: RT) (T_st: syn_type) (R_st: syn_type) (F_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) (relax_RelaxStrategy_R_spec_attrs: (relax_RelaxStrategy_spec_attrs (RRGS:=RRGS) (R_rt) )) (relax_RelaxStrategy_R_spec: (spec_with 0 [] (relax_RelaxStrategy_spec (RRGS:=RRGS) (R_rt)))) (FnOnce_F_unit_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) unit (T_rt) )) (FnOnce_F_unit_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (F_rt) unit (T_rt)))) (DropGlue_F_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (F_rt) )) (DropGlue_F_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (F_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; R_ty; F_ty]) : ([T_rt; R_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st DropGlue_R_spec_attrs-[] -[R_ty]))) ∧ (trait_incl_marker (lift_trait_incl relax_RelaxStrategy_spec_incl relax_RelaxStrategy_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), relax_RelaxStrategy_base_spec (R_rt) R_st DropGlue_R_spec_attrs relax_RelaxStrategy_R_spec_attrs-[] -[R_ty]))) ∧ (trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_unit_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) unit (T_rt) F_st UnitSynType T_st DropGlue_F_spec_attrs (drop_glue_trivial_spec_attrs (unit)) DropGlue_T_spec_attrs FnOnce_F_unit_spec_attrs-[] -[F_ty; unit_t; T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_F_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (F_rt) F_st DropGlue_F_spec_attrs-[] -[F_ty])))).
 
-Definition type_of_once_Once_TR_call_once (T_rt: RT) (R_rt: RT) (F_rt: RT) (T_st: syn_type) (R_st: syn_type) (F_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} (relax_RelaxStrategy_R_spec_attrs: (relax_RelaxStrategy_spec_attrs (RRGS:=RRGS) (R_rt) )) (FnOnce_F_unit_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) unit (T_rt) )) :=
+Definition type_of_once_Once_TR_call_once (T_rt: RT) (R_rt: RT) (F_rt: RT) (T_st: syn_type) (R_st: syn_type) (F_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) (relax_RelaxStrategy_R_spec_attrs: (relax_RelaxStrategy_spec_attrs (RRGS:=RRGS) (R_rt) )) (FnOnce_F_unit_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) unit (T_rt) )) (DropGlue_F_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (F_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; R_ty; F_ty]) : ([(T_rt, T_st); (R_rt, R_st); (F_rt, F_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (p, self, f) : ((_ * _ * _)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
@@ -506,12 +536,13 @@ Definition type_of_once_Once_TR_call_once (T_rt: RT) (R_rt: RT) (F_rt: RT) (T_st
       (* existential.. *) ∃ (x) : ((_)), x @ (shr_ref ulft_1 T_ty);
       (* postcondition *) (λ π : thread_id, (FnOnce_F_unit_spec_attrs.(FnOnce_Post) π p f () x)
       ∗ (once_status_tok self (Some x))) |
-      (* unwind post... *) FnOnce_F_unit_spec_attrs.(FnOnce_UnwindCondition) f p tt.
+      (* unwind cond... *) FnOnce_F_unit_spec_attrs.(FnOnce_UnwindCondition) f p tt |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_once_Once_TR_get (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st-[] -[R_ty])))).
+Definition trait_incl_of_once_Once_TR_get (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st DropGlue_R_spec_attrs-[] -[R_ty])))).
 
-Definition type_of_once_Once_TR_get (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} :=
+Definition type_of_once_Once_TR_get (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; R_ty]) : ([(T_rt, T_st); (R_rt, R_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (o, self) : ((_ * _)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
@@ -520,12 +551,13 @@ Definition type_of_once_Once_TR_get (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, o @ (Option_ty ((place_rfnRT (T_rt))) -[] -[(shr_ref ulft_1 T_ty)]);
       (* postcondition *) (λ π : thread_id, (once_status_tok self o)) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_once_Once_TR_initialized (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st-[] -[R_ty])))).
+Definition trait_incl_of_once_Once_TR_initialized (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st DropGlue_R_spec_attrs-[] -[R_ty])))).
 
-Definition type_of_once_Once_TR_initialized (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} :=
+Definition type_of_once_Once_TR_initialized (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty; R_ty]) : ([(T_rt, T_st); (R_rt, R_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (data) : ((_)),
       (* elctx........ *) (λ ϝ, []);
@@ -534,12 +566,13 @@ Definition type_of_once_Once_TR_initialized (T_rt: RT) (R_rt: RT) (T_st: syn_typ
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (η) : ((_)), η @ (once_Once_inv_t ((T_rt)) ((R_rt))  -[] -[T_ty; R_ty]);
       (* postcondition *) (λ π : thread_id, (once_status_tok η (Some data))) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_once_Once_TR_is_completed (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st-[] -[R_ty])))).
+Definition trait_incl_of_once_Once_TR_is_completed (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st DropGlue_R_spec_attrs-[] -[R_ty])))).
 
-Definition type_of_once_Once_TR_is_completed (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} :=
+Definition type_of_once_Once_TR_is_completed (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; R_ty]) : ([(T_rt, T_st); (R_rt, R_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (o, self) : ((_ * _)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
@@ -548,12 +581,13 @@ Definition type_of_once_Once_TR_is_completed (T_rt: RT) (R_rt: RT) (T_st: syn_ty
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, bool_decide (is_Some o) @ bool_t;
       (* postcondition *) (λ π : thread_id, (once_status_tok self o)) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_once_Once_TR_new (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st-[] -[R_ty])))).
+Definition trait_incl_of_once_Once_TR_new (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st DropGlue_R_spec_attrs-[] -[R_ty])))).
 
-Definition type_of_once_Once_TR_new (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} :=
+Definition type_of_once_Once_TR_new (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) `{!(onceG Σ ((RT_xt (T_rt))))} (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty; R_ty]) : ([(T_rt, T_st); (R_rt, R_st)] : list (RT * syn_type)%type) | 
       (* params....... *) _ : unit,
       (* elctx........ *) (λ ϝ, []);
@@ -561,12 +595,13 @@ Definition type_of_once_Once_TR_new (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ (once_Once_inv_t ((T_rt)) ((R_rt))  -[] -[T_ty; R_ty]);
       (* postcondition *) (λ π : thread_id, (once_status_tok ret None)) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_rwlock_RwLock_TR_new (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st-[] -[R_ty])))).
+Definition trait_incl_of_rwlock_RwLock_TR_new (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st DropGlue_R_spec_attrs-[] -[R_ty])))).
 
-Definition type_of_rwlock_RwLock_TR_new (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) :=
+Definition type_of_rwlock_RwLock_TR_new (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty; R_ty]) : ([(T_rt, T_st); (R_rt, R_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (t) : ((_)),
       (* elctx........ *) (λ ϝ, []);
@@ -575,12 +610,13 @@ Definition type_of_rwlock_RwLock_TR_new (T_rt: RT) (R_rt: RT) (T_st: syn_type) (
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, () @ (rwlock_RwLock_inv_t ((T_rt)) ((R_rt))  -[] -[T_ty; R_ty]);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_rwlock_RwLock_TR_read (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) (relax_RelaxStrategy_R_spec_attrs: (relax_RelaxStrategy_spec_attrs (RRGS:=RRGS) (R_rt) )) (relax_RelaxStrategy_R_spec: (spec_with 0 [] (relax_RelaxStrategy_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st-[] -[R_ty]))) ∧ (trait_incl_marker (lift_trait_incl relax_RelaxStrategy_spec_incl relax_RelaxStrategy_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), relax_RelaxStrategy_base_spec (R_rt) R_st relax_RelaxStrategy_R_spec_attrs-[] -[R_ty])))).
+Definition trait_incl_of_rwlock_RwLock_TR_read (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) (relax_RelaxStrategy_R_spec_attrs: (relax_RelaxStrategy_spec_attrs (RRGS:=RRGS) (R_rt) )) (relax_RelaxStrategy_R_spec: (spec_with 0 [] (relax_RelaxStrategy_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st DropGlue_R_spec_attrs-[] -[R_ty]))) ∧ (trait_incl_marker (lift_trait_incl relax_RelaxStrategy_spec_incl relax_RelaxStrategy_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), relax_RelaxStrategy_base_spec (R_rt) R_st DropGlue_R_spec_attrs relax_RelaxStrategy_R_spec_attrs-[] -[R_ty])))).
 
-Definition type_of_rwlock_RwLock_TR_read (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (relax_RelaxStrategy_R_spec_attrs: (relax_RelaxStrategy_spec_attrs (RRGS:=RRGS) (R_rt) )) :=
+Definition type_of_rwlock_RwLock_TR_read (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) (relax_RelaxStrategy_R_spec_attrs: (relax_RelaxStrategy_spec_attrs (RRGS:=RRGS) (R_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; R_ty]) : ([(T_rt, T_st); (R_rt, R_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
@@ -589,12 +625,13 @@ Definition type_of_rwlock_RwLock_TR_read (T_rt: RT) (R_rt: RT) (T_st: syn_type) 
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ (rwlock_RwLockReadGuard_inv_t ((T_rt))  -[ulft_1] -[T_ty]);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
-Definition trait_incl_of_rwlock_RwLock_TR_write (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) (relax_RelaxStrategy_R_spec_attrs: (relax_RelaxStrategy_spec_attrs (RRGS:=RRGS) (R_rt) )) (relax_RelaxStrategy_R_spec: (spec_with 0 [] (relax_RelaxStrategy_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st-[] -[R_ty]))) ∧ (trait_incl_marker (lift_trait_incl relax_RelaxStrategy_spec_incl relax_RelaxStrategy_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), relax_RelaxStrategy_base_spec (R_rt) R_st relax_RelaxStrategy_R_spec_attrs-[] -[R_ty])))).
+Definition trait_incl_of_rwlock_RwLock_TR_write (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) (DropGlue_R_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (R_rt)))) (relax_RelaxStrategy_R_spec_attrs: (relax_RelaxStrategy_spec_attrs (RRGS:=RRGS) (R_rt) )) (relax_RelaxStrategy_R_spec: (spec_with 0 [] (relax_RelaxStrategy_spec (RRGS:=RRGS) (R_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (R_rt) R_st DropGlue_R_spec_attrs-[] -[R_ty]))) ∧ (trait_incl_marker (lift_trait_incl relax_RelaxStrategy_spec_incl relax_RelaxStrategy_R_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), relax_RelaxStrategy_base_spec (R_rt) R_st DropGlue_R_spec_attrs relax_RelaxStrategy_R_spec_attrs-[] -[R_ty])))).
 
-Definition type_of_rwlock_RwLock_TR_write (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (relax_RelaxStrategy_R_spec_attrs: (relax_RelaxStrategy_spec_attrs (RRGS:=RRGS) (R_rt) )) :=
+Definition type_of_rwlock_RwLock_TR_write (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) (relax_RelaxStrategy_R_spec_attrs: (relax_RelaxStrategy_spec_attrs (RRGS:=RRGS) (R_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty; R_ty]) : ([(T_rt, T_st); (R_rt, R_st)] : list (RT * syn_type)%type) | 
       (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
@@ -603,7 +640,8 @@ Definition type_of_rwlock_RwLock_TR_write (T_rt: RT) (R_rt: RT) (T_st: syn_type)
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ (rwlock_RwLockWriteGuard_inv_t ((T_rt)) ((R_rt))  -[ulft_1] -[T_ty; R_ty]);
       (* postcondition *) (λ π : thread_id, True) |
-      (* unwind post... *) False.
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
 
 
 
@@ -618,45 +656,58 @@ Section relax_Spinasrelax_RelaxStrategy_spec.
       |}
   .
   Definition relax_Spinasrelax_RelaxStrategy_spec_subsumption  :=
-    trait_incl_marker (lift_trait_incl relax_RelaxStrategy_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), relax_Spinasrelax_RelaxStrategy_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((relax_RelaxStrategy_base_spec (relax_Spin_rt) relax_Spin_st relax_Spinasrelax_RelaxStrategy_spec_attrs-[] -[(relax_Spin_ty  -[] -[])])))).
+    trait_incl_marker (lift_trait_incl relax_RelaxStrategy_spec_incl (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), relax_Spinasrelax_RelaxStrategy_spec-[] -[]) (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), scope_add_typarams _ -[] ((relax_RelaxStrategy_base_spec (relax_Spin_rt) relax_Spin_st (drop_glue_trivial_spec_attrs ((relax_Spin_rt))) relax_Spinasrelax_RelaxStrategy_spec_attrs-[] -[(relax_Spin_ty  -[] -[])])))).
 End relax_Spinasrelax_RelaxStrategy_spec.
 
 Section rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) : (spec_with _ _ (Deref_spec (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((T_rt)))) :=
+  Definition rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) : (spec_with _ _ (Deref_spec (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((T_rt)))) :=
     spec! ( *[ulft_rwlock]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), let Target_rt := (T_rt) in {|
         Deref_deref_spec  :=
-          (type_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_deref ((T_rt)) ((R_rt)) (T_st) (R_st)) 
+          (type_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_deref ((T_rt)) ((R_rt)) (T_st) (R_st)) DropGlue_T_spec_attrs DropGlue_R_spec_attrs 
              <TY> T_ty <TY> R_ty <LFT> ulft_rwlock : (spec_with 1 [] fn_spec);
       |}
   .
   Definition rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(R_rt : !RT) `(T_st : !syn_type) `(R_st : !syn_type), trait_incl_marker (lift_trait_incl Deref_spec_incl (spec! ( *[ulft_rwlock]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), (rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec (T_rt) (R_rt) (T_st) (R_st))-[ulft_rwlock] -[T_ty; R_ty]) (spec! ( *[ulft_rwlock]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), scope_add_typarams _ -[T_ty; R_ty] ((Deref_base_spec ((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt)))) (T_rt) (rwlock_RwLockWriteGuard_st (T_st) (R_st)) T_st (rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec_attrs (T_rt) (R_rt))-[] -[(rwlock_RwLockWriteGuard_inv_t ((T_rt)) ((R_rt))  -[ulft_rwlock] -[T_ty; R_ty]); T_ty])))).
+    ∀ `(T_rt : !RT) `(R_rt : !RT) `(T_st : !syn_type) `(R_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) `(DropGlue_R_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )), trait_incl_marker (lift_trait_incl Deref_spec_incl (spec! ( *[ulft_rwlock]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), (rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec (T_rt) (R_rt) (T_st) (R_st) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs))-[ulft_rwlock] -[T_ty; R_ty]) (spec! ( *[ulft_rwlock]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), scope_add_typarams _ -[T_ty; R_ty] ((Deref_base_spec ((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt)))) (T_rt) (rwlock_RwLockWriteGuard_st (T_st) (R_st)) T_st (drop_glue_rwlock_RwLockWriteGuard_spec_attrs ((T_rt)) ((R_rt)) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs)) DropGlue_T_spec_attrs (rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec_attrs (T_rt) (R_rt) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs))-[] -[(rwlock_RwLockWriteGuard_inv_t ((T_rt)) ((R_rt))  -[ulft_rwlock] -[T_ty; R_ty]); T_ty])))).
 End rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec.
 
 Section rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_spec (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) : (spec_with _ _ (DerefMut_spec (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((T_rt)))) :=
+  Definition rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_spec (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) : (spec_with _ _ (DerefMut_spec (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))) ((T_rt)))) :=
     spec! ( *[ulft_rwlock]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), {|
         DerefMut_deref_mut_spec  :=
-          (type_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_deref_mut ((T_rt)) ((R_rt)) (T_st) (R_st)) 
+          (type_of_rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_deref_mut ((T_rt)) ((R_rt)) (T_st) (R_st)) DropGlue_T_spec_attrs DropGlue_R_spec_attrs 
              <TY> T_ty <TY> R_ty <LFT> ulft_rwlock : (spec_with 1 [] fn_spec);
       |}
   .
   Definition rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(R_rt : !RT) `(T_st : !syn_type) `(R_st : !syn_type), trait_incl_marker (lift_trait_incl DerefMut_spec_incl (spec! ( *[ulft_rwlock]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), (rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_spec (T_rt) (R_rt) (T_st) (R_st))-[ulft_rwlock] -[T_ty; R_ty]) (spec! ( *[ulft_rwlock]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), scope_add_typarams _ -[T_ty; R_ty] ((DerefMut_base_spec ((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt)))) (T_rt) (rwlock_RwLockWriteGuard_st (T_st) (R_st)) T_st (rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec_attrs ((T_rt)) ((R_rt))) (rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_spec_attrs (T_rt) (R_rt))-[] -[(rwlock_RwLockWriteGuard_inv_t ((T_rt)) ((R_rt))  -[ulft_rwlock] -[T_ty; R_ty]); T_ty])))).
+    ∀ `(T_rt : !RT) `(R_rt : !RT) `(T_st : !syn_type) `(R_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) `(DropGlue_R_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )), trait_incl_marker (lift_trait_incl DerefMut_spec_incl (spec! ( *[ulft_rwlock]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), (rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_spec (T_rt) (R_rt) (T_st) (R_st) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs))-[ulft_rwlock] -[T_ty; R_ty]) (spec! ( *[ulft_rwlock]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), scope_add_typarams _ -[T_ty; R_ty] ((DerefMut_base_spec ((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt)))) (T_rt) (rwlock_RwLockWriteGuard_st (T_st) (R_st)) T_st (rwlock_RwLockWriteGuardrwlockTRasstd_ops_Deref_spec_attrs ((T_rt)) ((R_rt)) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs)) (drop_glue_rwlock_RwLockWriteGuard_spec_attrs ((T_rt)) ((R_rt)) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs)) DropGlue_T_spec_attrs (rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_spec_attrs (T_rt) (R_rt) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs))-[] -[(rwlock_RwLockWriteGuard_inv_t ((T_rt)) ((R_rt))  -[ulft_rwlock] -[T_ty; R_ty]); T_ty])))).
 End rwlock_RwLockWriteGuardrwlockTRasstd_ops_DerefMut_spec.
+
+Section drop_glue_rwlock_RwLock_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition drop_glue_rwlock_RwLock_spec (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) : (spec_with _ _ (DropGlue_spec (((rwlock_RwLock_inv_t_rt ((T_rt)) ((R_rt))))))) :=
+    spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), {|
+        DropGlue_drop_glue_spec  :=
+          (type_of_drop_glue_rwlock_RwLock ((T_rt)) ((R_rt)) (T_st) (R_st)) DropGlue_T_spec_attrs DropGlue_R_spec_attrs 
+             <TY> T_ty <TY> R_ty : (spec_with 0 [] fn_spec);
+      |}
+  .
+  Definition drop_glue_rwlock_RwLock_spec_subsumption  :=
+    ∀ `(T_rt : !RT) `(R_rt : !RT) `(T_st : !syn_type) `(R_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) `(DropGlue_R_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )), trait_incl_marker (lift_trait_incl DropGlue_spec_incl (spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), (drop_glue_rwlock_RwLock_spec (T_rt) (R_rt) (T_st) (R_st) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs))-[] -[T_ty; R_ty]) (spec! ( *[]) : 0 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), scope_add_typarams _ -[T_ty; R_ty] ((DropGlue_base_spec ((rwlock_RwLock_inv_t_rt ((T_rt)) ((R_rt)))) (rwlock_RwLock_st (T_st) (R_st)) (drop_glue_rwlock_RwLock_spec_attrs (T_rt) (R_rt) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs))-[] -[(rwlock_RwLock_inv_t ((T_rt)) ((R_rt))  -[] -[T_ty; R_ty])])))).
+End drop_glue_rwlock_RwLock_spec.
 
 Section drop_glue_rwlock_RwLockWriteGuard_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
-  Definition drop_glue_rwlock_RwLockWriteGuard_spec (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) : (spec_with _ _ (DropGlue_spec (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))))) :=
+  Definition drop_glue_rwlock_RwLockWriteGuard_spec (T_rt: RT) (R_rt: RT) (T_st: syn_type) (R_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_R_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )) : (spec_with _ _ (DropGlue_spec (((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt))))))) :=
     spec! ( *[ulft_a]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), {|
         DropGlue_drop_glue_spec  :=
-          (type_of_drop_glue_rwlock_RwLockWriteGuard ((T_rt)) ((R_rt)) (T_st) (R_st)) 
+          (type_of_drop_glue_rwlock_RwLockWriteGuard ((T_rt)) ((R_rt)) (T_st) (R_st)) DropGlue_T_spec_attrs DropGlue_R_spec_attrs 
              <TY> T_ty <TY> R_ty <LFT> ulft_a : (spec_with 0 [] fn_spec);
       |}
   .
   Definition drop_glue_rwlock_RwLockWriteGuard_spec_subsumption  :=
-    ∀ `(T_rt : !RT) `(R_rt : !RT) `(T_st : !syn_type) `(R_st : !syn_type), trait_incl_marker (lift_trait_incl DropGlue_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), (drop_glue_rwlock_RwLockWriteGuard_spec (T_rt) (R_rt) (T_st) (R_st))-[ulft_a] -[T_ty; R_ty]) (spec! ( *[ulft_a]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), scope_add_typarams _ -[T_ty; R_ty] ((DropGlue_base_spec ((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt)))) (rwlock_RwLockWriteGuard_st (T_st) (R_st))-[] -[(rwlock_RwLockWriteGuard_inv_t ((T_rt)) ((R_rt))  -[ulft_a] -[T_ty; R_ty])])))).
+    ∀ `(T_rt : !RT) `(R_rt : !RT) `(T_st : !syn_type) `(R_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) `(DropGlue_R_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (R_rt) )), trait_incl_marker (lift_trait_incl DropGlue_spec_incl (spec! ( *[ulft_a]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), (drop_glue_rwlock_RwLockWriteGuard_spec (T_rt) (R_rt) (T_st) (R_st) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs))-[ulft_a] -[T_ty; R_ty]) (spec! ( *[ulft_a]) : 1 | ( *[T_ty; R_ty]) : ([T_rt; R_rt] : list RT), scope_add_typarams _ -[T_ty; R_ty] ((DropGlue_base_spec ((rwlock_RwLockWriteGuard_inv_t_rt ((T_rt)) ((R_rt)))) (rwlock_RwLockWriteGuard_st (T_st) (R_st)) (drop_glue_rwlock_RwLockWriteGuard_spec_attrs (T_rt) (R_rt) (DropGlue_T_spec_attrs) (DropGlue_R_spec_attrs))-[] -[(rwlock_RwLockWriteGuard_inv_t ((T_rt)) ((R_rt))  -[ulft_a] -[T_ty; R_ty])])))).
 End drop_glue_rwlock_RwLockWriteGuard_spec.
 
