@@ -174,6 +174,8 @@ pub fn decuple_range() -> Vec<u32> {
 // !start spec(skip_take)
 #[rr::params("p")] 
 #[rr::requires(#iris "{I::Inv} π p iter")] 
+#[rr::requires("DropGlue_Iasstd_iter_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
+#[rr::may_unwind_if("{I::DropGlueUnwind}")]
 // !end spec
 // !start code(skip_take)
 pub fn skip_take<I: Iterator>(iter: I, n: usize) {

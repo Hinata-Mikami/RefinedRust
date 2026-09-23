@@ -12,6 +12,7 @@
 
 #[rr::export_as(core::ops::Range)]
 #[rr::refined_by("(rstart, rend)" : "{rt_of Idx} * {rt_of Idx}")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{Idx::DropGlueUnwind}")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
     #[rr::field("rstart")]

@@ -24,7 +24,7 @@ fn closure_test_arg_fnonce_2<T>(x: T)
 #[rr::verify]
 #[rr::params("p")]
 #[rr::requires(#iris "{T::Pre} π p x ()")]
-#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition}")]
+#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition} ∨ {W::DropGlueUnwind}")]
 fn closure_test_arg_fnonce_3<T, W>(x: T)
     where T: FnOnce() -> W
 {
@@ -34,7 +34,7 @@ fn closure_test_arg_fnonce_3<T, W>(x: T)
 #[rr::verify]
 #[rr::params("p")]
 #[rr::requires(#iris "{T::Pre} π p x ()")]
-#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition}")]
+#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition} ∨ {T::DropGlueUnwind}")]
 fn closure_test_arg_fn_1<T>(x: T)
     where T: Fn()
 {
@@ -44,7 +44,7 @@ fn closure_test_arg_fn_1<T>(x: T)
 #[rr::verify]
 #[rr::params("p")]
 #[rr::requires(#iris "{T::Pre} π p x ()")]
-#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition}")]
+#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition} ∨ {T::DropGlueUnwind}")]
 fn closure_test_arg_fn_2<T>(x: T)
     where T: Fn() -> i32
 {
@@ -55,6 +55,7 @@ fn closure_test_arg_fn_2<T>(x: T)
 #[rr::params("p")]
 #[rr::requires(#iris "{T::Pre} π p x ()")]
 #[rr::requires("{T::UnwindCondition} x p tt → False")]
+#[rr::requires("{T::DropGlueUnwind} → False")]
 //#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition}")]
 fn closure_test_arg_fnmut_1<T>(mut x: T)
     where T: FnMut()
@@ -74,36 +75,44 @@ fn closure_test_call_fnonce_0<T>(x: T)
 }
 
 #[rr::verify]
+#[rr::may_unwind_if("{T::DropGlueUnwind}")]
 fn closure_test_call_fnonce_1_0<T>(x: T) {
     let clos =
         #[rr::verify]
+        #[rr::may_unwind_if("{T::DropGlueUnwind}")]
         || { x; 42 };
     closure_test_arg_fnonce_1(clos);
 }
 
 
 #[rr::verify]
+#[rr::may_unwind_if("{T::DropGlueUnwind}")]
 fn closure_test_call_fnonce_3_0<T>(x: T) {
     let clos =
         #[rr::verify]
+        #[rr::may_unwind_if("{T::DropGlueUnwind}")]
         || { x; 42 };
     closure_test_arg_fnonce_3(clos);
 }
 
 #[rr::verify]
+#[rr::may_unwind_if("{T::DropGlueUnwind} ∨ {W::DropGlueUnwind}")]
 fn closure_test_call_fnonce_3_1<T, W>(x: T, y: W) {
     let clos =
         #[rr::verify]
+        #[rr::may_unwind_if("{T::DropGlueUnwind}")]
         || { x; y };
     closure_test_arg_fnonce_3(clos);
 }
 
 #[rr::verify]
+#[rr::may_unwind_if("{T::DropGlueUnwind}")]
 fn closure_test_call_fnonce_1_1<T>(x: T) {
     // Point: we're doing a shared capture of y
     let y = 42;
     let clos =
         #[rr::verify]
+        #[rr::may_unwind_if("{T::DropGlueUnwind}")]
         || { x; y };
     closure_test_arg_fnonce_1(clos);
 }
@@ -234,6 +243,7 @@ fn closure_test12() {
 }
 
 #[rr::verify]
+#[rr::may_unwind_if("{T::DropGlueUnwind}")]
 fn closure_test6<T>(x: T) {
     let cls =
         #[rr::returns("a")]
@@ -341,6 +351,7 @@ fn closure_test7<T, U>(x: T, y: U)
 // This test demonstrates the case where even the arguments of a closure may use external
 // lifetimes, in lieu of early bounds.
 #[rr::verify]
+#[rr::may_unwind_if("{T::DropGlueUnwind}")]
 fn closure_test10_helper<'a, T>(x: T, v: &'a i32) 
     where T: FnMut(&'a i32)
 {
@@ -363,7 +374,7 @@ fn closure_test10() {
 #[rr::verify]
 #[rr::params("p")]
 #[rr::requires(#iris "□ ∀ a, {T::Pre} π p x *[a]")]
-#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition}")]
+#[rr::may_unwind_if("closure_may_unwind {T::UnwindCondition} ∨ {T::DropGlueUnwind}")]
 fn closure_test_call_hrtb_1<T>(x: T)
     where T: for<'a> Fn(&'a i32) -> i32
 {
@@ -483,4 +494,3 @@ mod fncoercion {
 
 // Note: probably I could try to have a more creusot-like language that compiles down to this
 // representation
-

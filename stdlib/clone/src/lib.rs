@@ -18,6 +18,7 @@ pub trait Clone: Sized {
     fn clone(&self) -> Self;
 
     #[rr::observe("self.ghost": "($#@{{ {rt_of Self} }} source)")]
+    #[rr::may_unwind_if("{Self::DropGlueUnwind}")]
     fn clone_from(&mut self, source: &Self)
     {
         *self = source.clone();
@@ -92,4 +93,3 @@ impl<T: ?Sized> Clone for PhantomData<T> {
         Self
     }
 }
-

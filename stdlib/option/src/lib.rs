@@ -13,6 +13,7 @@
 use core::mem;
 
 #[rr::refined_by("option (place_rfn {rt_of T})")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 #[rr::export_as(core::option::Option)]
 #[derive(Copy, Clone, Debug)]
 pub enum Option<T> {
@@ -57,6 +58,7 @@ impl<T> Option<T> {
     }
 
     #[rr::returns("default def self")]
+    #[rr::may_unwind_if("is_Some self ∧ {T::DropGlueUnwind}")]
     pub fn unwrap_or(self, def: T) -> T {
         match self {
             Some(x) => x,
@@ -65,6 +67,7 @@ impl<T> Option<T> {
     }
 
     #[rr::returns("match self with | Some x => Ok x | None => Err err end")]
+    #[rr::may_unwind_if("is_Some self ∧ {E::DropGlueUnwind}")]
     pub fn ok_or<E>(self, err: E) -> Result<T, E> {
         match self {
             Some(x) => Ok(x),
@@ -77,7 +80,7 @@ impl<T> Option<T> {
     #[rr::ensures(#iris "if_iNone self (⌜ret = None⌝ ∗ ty_ghost_drop {F} π ($# f))")]
     #[rr::requires(#iris "if_iSome self (λ self, ∃ p, ⌜op = Some p⌝ ∗ {F::Pre} π p f *[self])")]
     #[rr::ensures(#iris "if_iSome self (λ self, ∃ p x, ⌜op = Some p⌝ ∗ ⌜ret = Some x⌝ ∗ {F::Post} π p f *[self] x)")]
-    #[rr::may_unwind_if("if_None self False ∧ if_Some self (λ x, ∃ p, op = Some p ∧ {F::UnwindCondition} f p *[x])")]
+    #[rr::may_unwind_if("if_None self {F::DropGlueUnwind} ∧ if_Some self (λ x, ∃ p, op = Some p ∧ {F::UnwindCondition} f p *[x])")]
     pub fn map<U, F>(self, f: F) -> Option<U>
     where
         F: FnOnce(T) -> U,
@@ -102,7 +105,7 @@ impl<T> Option<T> {
     #[rr::ensures(#iris "if_iSome ret (λ ret, ⌜self = Some ret⌝ ∗ ∃ p, ⌜op = Some p⌝ ∗ {P::Post} π p predicate *[ret] true)")]
     #[rr::ensures(#iris "if_iNone ret (if_iNone self (ty_ghost_drop {P} π ($# predicate)) ∗ 
                             if_iSome self (λ x, ∃ p, ⌜op = Some p⌝ ∗ {P::Post} π p predicate *[x] false))")]
-    #[rr::may_unwind_if("if_None self False ∧ if_Some self (λ x, ∃ p, op = Some p ∧ {P::UnwindCondition} predicate p *[x])")]
+    #[rr::may_unwind_if("if_None self {P::DropGlueUnwind} ∧ if_Some self (λ x, {T::DropGlueUnwind} ∨ ∃ p, op = Some p ∧ {P::UnwindCondition} predicate p *[x])")]
     pub fn filter<P>(self, predicate: P) -> Self
     where
         P: FnOnce(&T) -> bool,

@@ -1,6 +1,7 @@
 #![rr::import("refinedrust.extra_proofs.tests", "enums")]
 
 #[rr::refined_by("option (place_rfn {rt_of T})")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 enum Option<T> {
     #[rr::pattern("None")]
     None,
@@ -44,6 +45,7 @@ impl<T> Option<T> {
 
 
 #[rr::refined_by("result (place_rfn {rt_of T}) (place_rfn {rt_of U})")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind} ∨ {U::DropGlueUnwind}")]
 enum Result<T, U> {
     #[rr::pattern("Ok" $ "x")]
     #[rr::refinement("*[x]")]

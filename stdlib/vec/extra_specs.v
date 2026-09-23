@@ -344,11 +344,14 @@ Proof.
   iFrame. rewrite big_sepL2_flip. done.
 Qed.
 
-Global Program Instance iterator_learn_vec_intoiter_it T_rt A_rt A_attrs p :
-  IteratorLearnInductive (IntoIterTAasstd_iter_Iterator_spec_attrs T_rt A_rt A_attrs) p :=
+Global Program Instance iterator_learn_vec_intoiter_it T_rt A_rt A_attrs
+    DropGlue_T_attrs DropGlue_A_attrs p :
+  IteratorLearnInductive
+    (IntoIterTAasstd_iter_Iterator_spec_attrs T_rt A_rt A_attrs
+      DropGlue_T_attrs DropGlue_A_attrs) p :=
   {| iterator_learn_inductive_Q s1 hist s2 := s1 = hist ++ s2 |}.
 Next Obligation.
-  iIntros (??? [] ????) "Hx".
+  iIntros (????? [] ????) "Hx".
   iPoseProof (boringly_persistent_elim with "Hx") as "Hx".
   iInduction hist as [ | x hist] "IH" forall (s1 s2); simpl.
   { iDestruct "Hx" as "->". iPureIntro. done. }
@@ -357,11 +360,12 @@ Next Obligation.
   done.
 Qed.
 
-Global Program Instance iterator_learn_learn_slice_iter T_rt p :
-  IteratorLearnInductive (IteraTasstd_iter_Iterator_spec_attrs T_rt) p :=
+Global Program Instance iterator_learn_learn_slice_iter T_rt DropGlue_T_attrs p :
+  IteratorLearnInductive
+    (IteraTasstd_iter_Iterator_spec_attrs T_rt DropGlue_T_attrs) p :=
   {| iterator_learn_inductive_Q s1 hist s2 := s1 = hist ++ s2 |}.
 Next Obligation.
-  iIntros (? [] ????) "Hx".
+  iIntros (?? [] ????) "Hx".
   iPoseProof (boringly_persistent_elim with "Hx") as "Hx".
   iInduction hist as [ | x hist] "IH" forall (s1 s2); simpl.
   { iDestruct "Hx" as "->". iPureIntro. done. }
@@ -370,11 +374,12 @@ Next Obligation.
   done.
 Qed.
 
-Global Program Instance iterator_learn_learn_slice_iter_mut T_rt p :
-  IteratorLearnInductive (IterMutaTasstd_iter_Iterator_spec_attrs T_rt) p :=
+Global Program Instance iterator_learn_learn_slice_iter_mut T_rt DropGlue_T_attrs p :
+  IteratorLearnInductive
+    (IterMutaTasstd_iter_Iterator_spec_attrs T_rt DropGlue_T_attrs) p :=
   {| iterator_learn_inductive_Q s1 hist s2 := s1 = hist ++ s2 |}.
 Next Obligation.
-  iIntros (? [] ????) "Hx".
+  iIntros (?? [] ????) "Hx".
   iPoseProof (boringly_persistent_elim with "Hx") as "Hx".
   iInduction hist as [ | x hist] "IH" forall (s1 s2); simpl.
   { iDestruct "Hx" as "->". iPureIntro. done. }
@@ -383,9 +388,11 @@ Next Obligation.
   done.
 Qed.
 
-Lemma simplify_goal_slice_iter_inv T_rt π b p T :
+Lemma simplify_goal_slice_iter_inv T_rt DropGlue_T_attrs π b p T :
   T
-  ⊢ simplify_goal (traits_iterator_Iterator_Inv (IteraTasstd_iter_Iterator_spec_attrs T_rt) π p b) T.
+  ⊢ simplify_goal
+      (traits_iterator_Iterator_Inv
+        (IteraTasstd_iter_Iterator_spec_attrs T_rt DropGlue_T_attrs) π p b) T.
 Proof.
   unfold traits_iterator_Iterator_Inv; simpl.
   iIntros "$".
@@ -393,9 +400,13 @@ Qed.
 Definition simplify_goal_slice_iter_inv_inst := [instance @simplify_goal_slice_iter_inv with 0%N].
 Global Existing Instance simplify_goal_slice_iter_inv_inst.
 
-Lemma simplify_goal_vec_intoiter_inv T_rt A_rt A_attrs π b p T :
+Lemma simplify_goal_vec_intoiter_inv T_rt A_rt A_attrs
+    DropGlue_T_attrs DropGlue_A_attrs π b p T :
   T
-  ⊢ simplify_goal (traits_iterator_Iterator_Inv (IntoIterTAasstd_iter_Iterator_spec_attrs T_rt A_rt A_attrs) π p b) T.
+  ⊢ simplify_goal
+      (traits_iterator_Iterator_Inv
+        (IntoIterTAasstd_iter_Iterator_spec_attrs T_rt A_rt A_attrs
+          DropGlue_T_attrs DropGlue_A_attrs) π p b) T.
 Proof.
   unfold traits_iterator_Iterator_Inv; simpl.
   iIntros "$".

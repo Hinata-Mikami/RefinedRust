@@ -2,6 +2,7 @@ use crate::traits::iterator::Iterator;
 
 #[rr::export_as(core::iter::adapters::Take)]
 #[rr::refined_by("(it, n)" : "(_ * nat)")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{I::DropGlueUnwind}")]
 pub struct Take<I> {
     #[rr::field("it")]
     iter: I,

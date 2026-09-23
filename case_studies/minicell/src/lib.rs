@@ -20,6 +20,7 @@ mod evencell;
 // We make UnsafeCell behave the same (in terms of refinements) as a value of T.
 #[repr(transparent)]
 #[rr::refined_by("x" : "{rt_of T}")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 pub struct UnsafeCell<T> {
     #[rr::field("x")]
     value: T,
@@ -70,6 +71,7 @@ impl<T> UnsafeCell<T> {
 #[rr::exists("x" : "{xt_of T}")]
 #[rr::invariant("P x")]
 #[rr::mode(na)]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 pub struct Cell<T> {
     #[rr::field("$# x")]
     value: UnsafeCell<T>,
@@ -88,6 +90,7 @@ impl<T> Cell<T> {
 
     #[rr::only_spec]
     #[rr::requires("self (val)")]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     pub fn set(&self, val: T) {
         let old = self.replace(val);
         drop(old);

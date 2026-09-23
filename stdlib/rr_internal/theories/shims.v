@@ -69,7 +69,7 @@ Definition type_of_alloc_realloc `{RRGS : !refinedrustGS Σ} :=
 #[global] Typeclasses Opaque Z.divide.
 Lemma alloc_realloc_typed `{RRGS : !refinedrustGS Σ} π (alloc_alloc_loc copy_nonoverlapping_loc alloc_dealloc_loc : loc) :
   alloc_alloc_loc ◁ᵥ{π, MetaNone} alloc_alloc_loc @ function_ptr [IntSynType USize; IntSynType USize] (<tag_type> type_of_alloc_alloc_internal) -∗
-  copy_nonoverlapping_loc ◁ᵥ{π, MetaNone} copy_nonoverlapping_loc @ function_ptr [PtrSynType; PtrSynType; IntSynType USize] (<tag_type> type_of_copy_nonoverlapping Z (IntSynType U8)) -∗
+   copy_nonoverlapping_loc ◁ᵥ{π, MetaNone} copy_nonoverlapping_loc @ function_ptr [PtrSynType; PtrSynType; IntSynType USize] (<tag_type> type_of_copy_nonoverlapping Z (IntSynType U8) (drop_glue_trivial_spec_attrs Z)) -∗
   alloc_dealloc_loc ◁ᵥ{π, MetaNone} alloc_dealloc_loc @ function_ptr [IntSynType USize; IntSynType USize; PtrSynType] (<tag_type> type_of_alloc_dealloc_internal) -∗
   typed_function π (alloc_realloc_def alloc_alloc_loc copy_nonoverlapping_loc alloc_dealloc_loc) (<tag_type> type_of_alloc_realloc).
 Proof.
@@ -160,9 +160,9 @@ Program Definition alloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_of
 Next Obligation. solve_fn_vars_nodup. Qed.
 
 
-Definition trait_incl_of_alloc_array `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) : spec_with _ _ Prop :=
+Definition trait_incl_of_alloc_array `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs : DropGlue_spec_attrs T_rt) (DropGlue_T_spec : spec_with 0 [] (DropGlue_spec T_rt)) : spec_with _ _ Prop :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (True).
-Definition type_of_alloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) :=
+Definition type_of_alloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) (DropGlue_T_spec_attrs : DropGlue_spec_attrs T_rt) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (size) : (Z), (λ ϝ, []); size :@: int USize; λ π,
     ⌜Z.of_nat (size_of_array_in_bytes T_st (Z.to_nat size)) ∈ ISize⌝ ∗
     ⌜(size > 0)%Z⌝ ∗
@@ -184,26 +184,26 @@ Proof.
   simpl. rewrite {1}/ly_align {1}/ly_align_log. simpl.
   fold (ly_align T_st_ly). lia.
 Qed.
-Lemma alloc_array_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) (mem_align_log_of_T_loc mem_size_of_T_loc alloc_alloc_loc : loc) :
+Lemma alloc_array_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) (DropGlue_T_spec_attrs : DropGlue_spec_attrs T_rt) (mem_align_log_of_T_loc mem_size_of_T_loc alloc_alloc_loc : loc) :
   syn_type_is_layoutable T_st →
   mem_align_log_of_T_loc ◁ᵥ{π, MetaNone} mem_align_log_of_T_loc @ function_ptr [] (<tag_type>
       spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
-        (type_of_mem_align_log_of T_rt T_st <TY> T_ty <INST!>)
+        (type_of_mem_align_log_of T_rt T_st DropGlue_T_spec_attrs <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)) -∗
 
 
   mem_size_of_T_loc ◁ᵥ{π, MetaNone} mem_size_of_T_loc @ function_ptr [] (<tag_type>
     spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
-        (type_of_mem_size_of T_rt T_st <TY> T_ty <INST!>)
+        (type_of_mem_size_of T_rt T_st DropGlue_T_spec_attrs <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)) -∗
 
   alloc_alloc_loc ◁ᵥ{π, MetaNone} alloc_alloc_loc @ function_ptr [IntSynType USize; IntSynType USize] (<tag_type> type_of_alloc_alloc_internal) -∗
   typed_function π (alloc_array T_st mem_align_log_of_T_loc mem_size_of_T_loc alloc_alloc_loc) (<tag_type>
     spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
-        (type_of_alloc_array T_rt T_st <TY> T_ty <INST!>)
+        (type_of_alloc_array T_rt T_st DropGlue_T_spec_attrs <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)).
 Proof.
   start_function "alloc_array" ϝ fid ( () ) ( [T_ty []] ) ( size ) ( ) => arg_len.
@@ -248,10 +248,10 @@ Program Definition realloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_
 Next Obligation. solve_fn_vars_nodup. Qed.
 
 
-Definition trait_incl_of_realloc_array `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) : spec_with _ _ Prop :=
+Definition trait_incl_of_realloc_array `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs : DropGlue_spec_attrs T_rt) (DropGlue_T_spec : spec_with 0 [] (DropGlue_spec T_rt)) : spec_with _ _ Prop :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (True).
 (* Spec is using UntypedSynType (instead of ArraySynType) because this is using untyped copies *)
-Definition type_of_realloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) :=
+Definition type_of_realloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) (DropGlue_T_spec_attrs : DropGlue_spec_attrs T_rt) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (old_size, new_size, l, v) : (Z * Z * loc * val), (λ ϝ, []);
     old_size :@: int USize, l :@: alias_ptr_t, new_size :@: int USize; λ π,
     freeable_nz l (size_of_array_in_bytes T_st (Z.to_nat old_size)) 1 HeapAlloc ∗
@@ -265,25 +265,25 @@ Definition type_of_realloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st :
     v' ◁ᵥ{π, MetaNone} .@ uninit (ArraySynType T_st (Z.to_nat (new_size - old_size))) ∗
       freeable_nz l' ((size_of_array_in_bytes T_st (Z.to_nat new_size))) 1 HeapAlloc | False.
 
-Lemma realloc_array_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) (mem_align_log_of_T_loc mem_size_of_T_loc alloc_realloc_loc : loc) :
+Lemma realloc_array_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) (DropGlue_T_spec_attrs : DropGlue_spec_attrs T_rt) (mem_align_log_of_T_loc mem_size_of_T_loc alloc_realloc_loc : loc) :
   syn_type_is_layoutable T_st →
   mem_align_log_of_T_loc ◁ᵥ{π, MetaNone} mem_align_log_of_T_loc @ function_ptr [] (<tag_type>
       spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
-        (type_of_mem_align_log_of T_rt T_st <TY> T_ty <INST!>)
+        (type_of_mem_align_log_of T_rt T_st DropGlue_T_spec_attrs <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)) -∗
 
   mem_size_of_T_loc ◁ᵥ{π, MetaNone} mem_size_of_T_loc @ function_ptr [] (<tag_type>
     spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
-        (type_of_mem_size_of T_rt T_st <TY> T_ty <INST!>)
+        (type_of_mem_size_of T_rt T_st DropGlue_T_spec_attrs <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)) -∗
 
   alloc_realloc_loc ◁ᵥ{π, MetaNone} alloc_realloc_loc @ function_ptr [IntSynType USize; IntSynType USize; IntSynType USize; PtrSynType] (<tag_type> type_of_alloc_realloc_internal) -∗
   typed_function π (realloc_array T_st mem_align_log_of_T_loc mem_size_of_T_loc alloc_realloc_loc) (<tag_type>
     spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
-        (type_of_realloc_array T_rt T_st <TY> T_ty <INST!>)
+        (type_of_realloc_array T_rt T_st DropGlue_T_spec_attrs <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)).
 Proof.
   start_function "realloc_array" ϝ fid ( () ) ( [T_ty []] ) ( [[[old_size new_size] l] v] ) ( ) => arg_old_len arg_ptr arg_new_len.
@@ -348,9 +348,9 @@ Program Definition dealloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_
 Next Obligation. solve_fn_vars_nodup. Qed.
 
 
-Definition trait_incl_of_dealloc_array `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) : spec_with _ _ Prop :=
+Definition trait_incl_of_dealloc_array `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs : DropGlue_spec_attrs T_rt) (DropGlue_T_spec : spec_with 0 [] (DropGlue_spec T_rt)) : spec_with _ _ Prop :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (True).
-Definition type_of_dealloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) :=
+Definition type_of_dealloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) (DropGlue_T_spec_attrs : DropGlue_spec_attrs T_rt) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (size, l) : (Z * loc), (λ ϝ, []);
     size :@: int USize, l :@: alias_ptr_t; λ π,
     freeable_nz l (size_of_array_in_bytes T_st (Z.to_nat size)) 1 HeapAlloc ∗
@@ -361,26 +361,26 @@ Definition type_of_dealloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st :
   ∃ () : unit, () @ unit_t; λ π, True | False.
 
 
-Lemma dealloc_array_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) (mem_align_log_of_T_loc mem_size_of_T_loc alloc_dealloc_loc : loc) :
+Lemma dealloc_array_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) (DropGlue_T_spec_attrs : DropGlue_spec_attrs T_rt) (mem_align_log_of_T_loc mem_size_of_T_loc alloc_dealloc_loc : loc) :
   syn_type_is_layoutable T_st →
 
   mem_align_log_of_T_loc ◁ᵥ{π, MetaNone} mem_align_log_of_T_loc @ function_ptr [] (<tag_type>
     spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
-        (type_of_mem_align_log_of T_rt T_st <TY> T_ty <INST!>)
+        (type_of_mem_align_log_of T_rt T_st DropGlue_T_spec_attrs <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)) -∗
 
   mem_size_of_T_loc ◁ᵥ{π, MetaNone} mem_size_of_T_loc @ function_ptr [] (<tag_type>
     spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
-        (type_of_mem_size_of T_rt T_st <TY> T_ty <INST!>)
+        (type_of_mem_size_of T_rt T_st DropGlue_T_spec_attrs <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)) -∗
 
   alloc_dealloc_loc ◁ᵥ{π, MetaNone} alloc_dealloc_loc @ function_ptr [IntSynType USize; IntSynType USize; PtrSynType] (<tag_type> type_of_alloc_dealloc_internal) -∗
   typed_function π (dealloc_array T_st mem_align_log_of_T_loc mem_size_of_T_loc alloc_dealloc_loc) (<tag_type>
     spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
-        (type_of_dealloc_array T_rt T_st <TY> T_ty <INST!>)
+        (type_of_dealloc_array T_rt T_st DropGlue_T_spec_attrs <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)).
 Proof.
   start_function "dealloc_array" ϝ fid ( () ) ( [T_ty []] ) ( [size l] ) ( ) => arg_len arg_ptr.
@@ -427,28 +427,28 @@ Program Definition check_array_layoutable `{!LayoutAlg} (T_st : syn_type) (mem_a
 Next Obligation. solve_fn_vars_nodup. Qed.
 
 
-Definition trait_incl_of_check_array_layoutable `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) : spec_with _ _ Prop :=
+Definition trait_incl_of_check_array_layoutable `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs : DropGlue_spec_attrs T_rt) (DropGlue_T_spec : spec_with 0 [] (DropGlue_spec T_rt)) : spec_with _ _ Prop :=
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (True).
-Definition type_of_check_array_layoutable `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) :=
+Definition type_of_check_array_layoutable `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) (DropGlue_T_spec_attrs : DropGlue_spec_attrs T_rt) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (size) : (Z), (λ ϝ, []); size :@: int USize; λ π, True) →
   ∃ () : unit, (bool_decide (size_of_array_in_bytes T_st (Z.to_nat size) ≤ MaxInt ISize)%Z) @ bool_t; λ π, True | False.
 
-Lemma check_array_layoutable_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) (mem_align_log_of_T_loc mem_size_of_T_loc : loc) :
+Lemma check_array_layoutable_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) (DropGlue_T_spec_attrs : DropGlue_spec_attrs T_rt) (mem_align_log_of_T_loc mem_size_of_T_loc : loc) :
   syn_type_is_layoutable T_st →
   mem_align_log_of_T_loc ◁ᵥ{π, MetaNone} mem_align_log_of_T_loc @ function_ptr [] (<tag_type>
     spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
-        (type_of_mem_align_log_of T_rt T_st <TY> T_ty <INST!>)
+        (type_of_mem_align_log_of T_rt T_st DropGlue_T_spec_attrs <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)) -∗
   mem_size_of_T_loc ◁ᵥ{π, MetaNone} mem_size_of_T_loc @ function_ptr [] (<tag_type>
     spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
-        (type_of_mem_size_of T_rt T_st <TY> T_ty <INST!>)
+        (type_of_mem_size_of T_rt T_st DropGlue_T_spec_attrs <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)) -∗
   typed_function π (check_array_layoutable T_st mem_align_log_of_T_loc mem_size_of_T_loc) (<tag_type>
     spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
-        (type_of_check_array_layoutable T_rt T_st <TY> T_ty <INST!>)
+        (type_of_check_array_layoutable T_rt T_st DropGlue_T_spec_attrs <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)).
 Proof.
   start_function "check_array_layoutable" ϝ fid ( () ) ( [T_ty []] ) ( size ) ( ) => arg_len.

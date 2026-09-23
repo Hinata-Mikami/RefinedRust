@@ -1,5 +1,6 @@
 
 #[repr(C)]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind} ∨ {U::DropGlueUnwind}")]
 struct Pair<T, U> {
     x: T,
     y: U,

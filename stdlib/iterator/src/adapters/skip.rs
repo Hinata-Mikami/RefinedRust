@@ -2,6 +2,7 @@ use crate::traits::iterator::Iterator;
 
 #[rr::export_as(core::iter::adapters::Skip)]
 #[rr::refined_by("(it, n)" : "(_ * nat)")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{I::DropGlueUnwind}")]
 pub struct Skip<I> {
     #[rr::field("it")]
     iter: I,
@@ -18,7 +19,7 @@ impl<I> Skip<I> {
 }
 
 #[rr::instantiate("Params" := "{MI::Params}")]
-#[rr::instantiate("Inv" := "λ π p s, {MI::Inv} π p s.1")]
+#[rr::instantiate("Inv" := "(λ π p s, ⌜DropGlue_MIastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False⌝ ∗ {MI::Inv} π p s.1)%I")]
 #[rr::instantiate("Next" := "(λ π p_inner s1 e s2, 
         if_iNone e (
              ∃ seq s2_inner, 

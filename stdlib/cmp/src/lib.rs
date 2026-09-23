@@ -142,6 +142,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     fn cmp(&self, other: &Self) -> Ordering;
 
     #[rr::returns("if bool_decide ({Ord} self other = Less) then other else self")]
+    #[rr::may_unwind_if("{Self::DropGlueUnwind}")]
     fn max(self, other: Self) -> Self
         where Self: Sized,
     {
@@ -149,6 +150,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     }
 
     #[rr::returns("if bool_decide ({Ord} self other = Less) then self else other")]
+    #[rr::may_unwind_if("{Self::DropGlueUnwind}")]
     fn min(self, other: Self) -> Self
         where Self: Sized,
     {
@@ -173,6 +175,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
 
 #[rr::export_as(core::cmp::max)]
 #[rr::returns("if bool_decide ({T::Ord} v1 v2 = Less) then v2 else v1")]
+#[rr::may_unwind_if("{T::DropGlueUnwind}")]
 pub fn max<T: Ord>(v1: T, v2: T) -> T {
     v1.max(v2)
 }
@@ -183,13 +186,14 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 #[rr::exists("ord")]
 #[rr::ensures(#iris "{F::Post} π p compare *[v2; v1] ord")]
 #[rr::ensures("ret = if bool_decide(ord = Less) then v1 else v2")]
-#[rr::may_unwind_if("{F::UnwindCondition} compare p *[v2; v1]")]
+#[rr::may_unwind_if("{F::UnwindCondition} compare p *[v2; v1] ∨ {T::DropGlueUnwind}")]
 pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     if compare(&v2, &v1).is_lt() { v1 } else { v2 }
 }
 
 #[rr::export_as(core::cmp::min)]
 #[rr::returns("if bool_decide ({T::Ord} v1 v2 = Less) then v1 else v2")]
+#[rr::may_unwind_if("{T::DropGlueUnwind}")]
 pub fn min<T: Ord>(v1: T, v2: T) -> T {
     v1.min(v2)
 }
@@ -200,7 +204,7 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 #[rr::exists("ord")]
 #[rr::ensures(#iris "{F::Post} π p compare *[v2; v1] ord")]
 #[rr::returns("if bool_decide(ord = Less) then v2 else v1")]
-#[rr::may_unwind_if("{F::UnwindCondition} compare p *[v2; v1]")]
+#[rr::may_unwind_if("{F::UnwindCondition} compare p *[v2; v1] ∨ {T::DropGlueUnwind}")]
 pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     if compare(&v2, &v1).is_lt() { v2 } else { v1 }
 }
@@ -397,14 +401,14 @@ where A: PartialEq<B>,
 }
 
 
-#[rr::instantiate("PEq_refl" := #proof "intros ??? ??; simpl; by apply Eq_PEq_refl")]
-#[rr::instantiate("PEq_sym" := #proof "intros ??? ??; simpl; by apply Eq_PEq_sym")]
-#[rr::instantiate("PEq_trans" := #proof "intros ??? ??; simpl; by apply Eq_PEq_trans")]
-#[rr::instantiate("PEq_leibniz" := #proof "intros ??? ??; simpl; by apply Eq_PEq_leibniz")]
+#[rr::instantiate("PEq_refl" := #proof "intros ??? ???; simpl; by apply Eq_PEq_refl")]
+#[rr::instantiate("PEq_sym" := #proof "intros ??? ???; simpl; by apply Eq_PEq_sym")]
+#[rr::instantiate("PEq_trans" := #proof "intros ??? ???; simpl; by apply Eq_PEq_trans")]
+#[rr::instantiate("PEq_leibniz" := #proof "intros ??? ???; simpl; by apply Eq_PEq_leibniz")]
 impl<A: ?Sized> Eq for &A where A: Eq {}
 
 #[rr::instantiate("POrd" := "λ a b, {A::POrd} a b")]
-#[rr::instantiate("POrd_eq_cons" := #proof "intros ??? ????; simpl; apply PartialOrd_POrd_eq_cons")]
+#[rr::instantiate("POrd_eq_cons" := #proof "intros ??? ??????; simpl; apply PartialOrd_POrd_eq_cons")]
 impl<A: ?Sized, B: ?Sized> PartialOrd<&B> for &A
 where
     A: PartialOrd<B>,
@@ -427,11 +431,11 @@ where
 }
 
 #[rr::instantiate("Ord" := "λ a b, {A::Ord} a b")]
-#[rr::instantiate("Ord_POrd" := #proof "intros ??? ????; simpl; by apply Ord_Ord_POrd")]
-#[rr::instantiate("Ord_lt_trans" := #proof "intros ???? ????; simpl; by apply Ord_Ord_lt_trans")]
-#[rr::instantiate("Ord_eq_trans" := #proof "intros ???? ????; simpl; by apply Ord_Ord_eq_trans")]
-#[rr::instantiate("Ord_gt_trans" := #proof "intros ???? ????; simpl; by apply Ord_Ord_gt_trans")]
-#[rr::instantiate("Ord_antisym" := #proof "intros ??? ????; simpl; by apply Ord_Ord_antisym")]
+#[rr::instantiate("Ord_POrd" := #proof "intros ??? ?????; simpl; by apply Ord_Ord_POrd")]
+#[rr::instantiate("Ord_lt_trans" := #proof "intros ???? ?????; simpl; by apply Ord_Ord_lt_trans")]
+#[rr::instantiate("Ord_eq_trans" := #proof "intros ???? ?????; simpl; by apply Ord_Ord_eq_trans")]
+#[rr::instantiate("Ord_gt_trans" := #proof "intros ???? ?????; simpl; by apply Ord_Ord_gt_trans")]
+#[rr::instantiate("Ord_antisym" := #proof "intros ??? ?????; simpl; by apply Ord_Ord_antisym")]
 impl<A: ?Sized> Ord for &A
 where
     A: Ord,
@@ -540,14 +544,14 @@ impl<T: PartialEq> PartialEq for Option<T> {
     }
 }
 
-#[rr::instantiate("PEq_refl" := #proof "intros ??? ?[]; simpl; by try apply Eq_PEq_refl")]
-#[rr::instantiate("PEq_sym" := #proof "intros ??? ? [] []; simpl; by try apply Eq_PEq_sym")]
-#[rr::instantiate("PEq_trans" := #proof "intros ??? ? [] [] []; simpl; by try apply Eq_PEq_trans")]
-#[rr::instantiate("PEq_leibniz" := #proof "intros ??? ? [a | ] [b | ]; simpl; [etrans; first apply Eq_PEq_leibniz | ..]; naive_solver")]
+#[rr::instantiate("PEq_refl" := #proof "intros ??? ?? []; simpl; by try apply Eq_PEq_refl")]
+#[rr::instantiate("PEq_sym" := #proof "intros ??? ?? [] []; simpl; by try apply Eq_PEq_sym")]
+#[rr::instantiate("PEq_trans" := #proof "intros ??? ?? [] [] []; simpl; by try apply Eq_PEq_trans")]
+#[rr::instantiate("PEq_leibniz" := #proof "intros ??? ?? [a | ] [b | ]; simpl; [etrans; first apply Eq_PEq_leibniz | ..]; naive_solver")]
 impl<T: Eq> Eq for Option<T> { }
 
 #[rr::instantiate("POrd" := "option_partial_cmp {T::POrd}")]
-#[rr::instantiate("POrd_eq_cons" := #proof "intros ??? ? [] []; simpl; by try apply PartialOrd_POrd_eq_cons")]
+#[rr::instantiate("POrd_eq_cons" := #proof "intros ??? ?? [] []; simpl; by try apply PartialOrd_POrd_eq_cons")]
 impl<T: PartialOrd> PartialOrd for Option<T> {
     // TODO lifetime encoding
     #[rr::trust_me]
@@ -563,11 +567,11 @@ impl<T: PartialOrd> PartialOrd for Option<T> {
 
 
 #[rr::instantiate("Ord" := "option_cmp {T::Ord}")]
-#[rr::instantiate("Ord_POrd" := #proof "intros ?????? [] []; simpl; by try apply Ord_Ord_POrd")]
-#[rr::instantiate("Ord_lt_trans" := #proof "intros ?????? [] [] []; simpl; by try apply Ord_Ord_lt_trans")]
-#[rr::instantiate("Ord_eq_trans" := #proof "intros ?????? [] [] []; simpl; by try apply Ord_Ord_eq_trans")]
-#[rr::instantiate("Ord_gt_trans" := #proof "intros ?????? [] [] []; simpl; by try apply Ord_Ord_gt_trans")]
-#[rr::instantiate("Ord_antisym" := #proof "intros ?????? [] []; simpl; by try apply Ord_Ord_antisym")]
+#[rr::instantiate("Ord_POrd" := #proof "intros ??????? [] []; simpl; by try apply Ord_Ord_POrd")]
+#[rr::instantiate("Ord_lt_trans" := #proof "intros ??????? [] [] []; simpl; by try apply Ord_Ord_lt_trans")]
+#[rr::instantiate("Ord_eq_trans" := #proof "intros ??????? [] [] []; simpl; by try apply Ord_Ord_eq_trans")]
+#[rr::instantiate("Ord_gt_trans" := #proof "intros ??????? [] [] []; simpl; by try apply Ord_Ord_gt_trans")]
+#[rr::instantiate("Ord_antisym" := #proof "intros ??????? [] []; simpl; by try apply Ord_Ord_antisym")]
 impl<T: Ord> Ord for Option<T> {
     #[rr::trust_me]
     fn cmp(&self, other: &Self) -> Ordering {

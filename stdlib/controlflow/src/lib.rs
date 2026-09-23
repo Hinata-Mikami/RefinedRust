@@ -12,6 +12,7 @@ mod convert;
 use convert::*;
 
 #[rr::refined_by("sum (place_rfn {rt_of C}) (place_rfn {rt_of B})")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{B::DropGlueUnwind} ∨ {C::DropGlueUnwind}")]
 #[rr::export_as(core::ops::ControlFlow)]
 pub enum ControlFlow<B, C = ()> {
     #[rr::pattern("inl" $ "x")]
@@ -28,6 +29,7 @@ pub enum ControlFlow<B, C = ()> {
 #[rr::export_as(core::ops::ControlFlow)]
 impl<B, C> ControlFlow<B, C> {
     #[rr::returns("match self with | Ok _ => None | Err x => Some x end")]
+    #[rr::may_unwind_if("is_Ok self ∧ ({B::DropGlueUnwind} ∨ {C::DropGlueUnwind})")]
     pub fn break_value(self) -> Option<B>
     {
         match self {
@@ -98,9 +100,9 @@ impl<T> Residual<T> for Option<Infallible> {
 #[rr::instantiate("FromOutputFn" := "λ out, Some out")]
 #[rr::instantiate("BranchFn" := "λ s, match s with | Some(x) => inl(x) | None => inr(None) end")]
 #[rr::instantiate("ResidualValid" := "λ x, x = None")]
-#[rr::instantiate("BranchValid" := #proof "intros ?? [] ?; simpl; solve_goal")]
-#[rr::instantiate("BranchLawResidual" := #proof "intros ?? [] ?; simpl; solve_goal")]
-#[rr::instantiate("BranchLawOutput" := #proof "intros ?? [] ?; simpl; solve_goal")]
+#[rr::instantiate("BranchValid" := #proof "intros ??? [] ?; simpl; solve_goal")]
+#[rr::instantiate("BranchLawResidual" := #proof "intros ??? [] ?; simpl; solve_goal")]
+#[rr::instantiate("BranchLawOutput" := #proof "intros ??? [] ?; simpl; solve_goal")]
 impl<T> Try for Option<T> {
     type Output = T;
     type Residual = Option<Infallible>;
@@ -132,9 +134,9 @@ impl<T> FromResidual for Option<T> {
 #[rr::instantiate("FromOutputFn" := "λ out, inl (out)")]
 #[rr::instantiate("BranchFn" := "result_xmap id (inr)")]
 #[rr::instantiate("ResidualValid" := "λ x, is_Err x")]
-#[rr::instantiate("BranchValid" := #proof "intros ??? [] ?; simpl; solve_goal")]
-#[rr::instantiate("BranchLawResidual" := #proof "intros ??? [] ?; simpl; solve_goal")]
-#[rr::instantiate("BranchLawOutput" := #proof "intros ??? [] ?; simpl; solve_goal")]
+#[rr::instantiate("BranchValid" := #proof "intros ????? [] ?; simpl; solve_goal")]
+#[rr::instantiate("BranchLawResidual" := #proof "intros ????? [] ?; simpl; solve_goal")]
+#[rr::instantiate("BranchLawOutput" := #proof "intros ????? [] ?; simpl; solve_goal")]
 impl<B, C> Try for ControlFlow<B, C> {
     type Output = C;
     type Residual = ControlFlow<B, Infallible>;
@@ -177,9 +179,9 @@ impl<B, C> FromResidual<ControlFlow<B, Infallible>> for ControlFlow<B, C> {
 #[rr::instantiate("FromOutputFn" := "λ out, Ok (out)")]
 #[rr::instantiate("BranchFn" := "result_xmap id (λ x, (Err x))")]
 #[rr::instantiate("ResidualValid" := "λ x, is_Err x")]
-#[rr::instantiate("BranchValid" := #proof "intros ??? [] ?; simpl; solve_goal")]
-#[rr::instantiate("BranchLawResidual" := #proof "intros ??? [] ?; simpl; solve_goal")]
-#[rr::instantiate("BranchLawOutput" := #proof "intros ??? [] ?; simpl; solve_goal")]
+#[rr::instantiate("BranchValid" := #proof "intros ????? [] ?; simpl; solve_goal")]
+#[rr::instantiate("BranchLawResidual" := #proof "intros ????? [] ?; simpl; solve_goal")]
+#[rr::instantiate("BranchLawOutput" := #proof "intros ????? [] ?; simpl; solve_goal")]
 impl<T, E> Try for Result<T, E> {
     type Output = T;
     type Residual = Result<Infallible, E>;

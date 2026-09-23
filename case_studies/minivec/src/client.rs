@@ -35,7 +35,7 @@ fn max_list_i32(v: &Vec<i32>) -> i32 {
 #[rr::requires(#iris "□ ∀ a b, {F::Pre} π p combine *[a; b]")]
 #[rr::requires(#iris "□ (∀ a b c, {F::Post} π p combine *[a; b] c -∗ ⌜c = op a b⌝ ∗ True)")]
 #[rr::returns("fold_left op values init")]
-#[rr::may_unwind_if("∃ a b, {F::UnwindCondition} combine p *[a; b]")]
+#[rr::may_unwind_if("(∃ a b, {F::UnwindCondition} combine p *[a; b]) ∨ {F::DropGlueUnwind}")]
 fn fold_i32<F>(
     values: &Vec<i32>,
     init: i32,

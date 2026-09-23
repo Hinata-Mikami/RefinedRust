@@ -25,6 +25,7 @@ trait Min : Ord {
 }
 
 #[rr::returns("max_list_cmp_def {T::Ord} {T::MIN} v")]
+#[rr::may_unwind_if("{T::DropGlueUnwind}")]
 fn max_list<T>(v: &List<T>) -> T 
     where T: Ord + Min + Copy
 {

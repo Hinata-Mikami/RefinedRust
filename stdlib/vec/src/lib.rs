@@ -43,6 +43,7 @@ type Cap = usize;
 /// as most operations don't need the actual type, just its layout.
 #[rr::refined_by("(l, cap, alloc)" : "(loc * nat * {rt_of A} : RT)%type")]
 #[rr::trust_me(drop_glue)]
+#[rr::derive_instantiate("DropGlueUnwind" := "{A::DropGlueUnwind}")]
 struct RawVecInner<A: Allocator = Global> {
     #[rr::field("l")]
     ptr: Unique<u8>,
@@ -90,6 +91,7 @@ impl<A: Allocator> RawVecInner<A> {
 
 // TODO: maybe expose a value interface instead
 #[rr::only_spec(drop_glue)]
+#[rr::derive_instantiate("DropGlueUnwind" := "{A::DropGlueUnwind}")]
 #[rr::export_as(alloc::raw_vec::RawVec)]
 #[rr::refined_by("(l, cap, els)" : "(loc * nat * list (place_rfn (option (place_rfn {rt_of T}))))")]
 #[rr::exists("a")]
@@ -121,6 +123,7 @@ impl<T, A: Allocator> Drop for RawVec<T, A> {
 
 // Uses the invariant from our "MiniVec" case study.
 #[rr::only_spec(drop_glue)]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind} ∨ {A::DropGlueUnwind}")]
 #[rr::export_as(alloc::vec::Vec)]
 #[rr::refined_by("xs" : "list (place_rfn {rt_of T})")]
 #[rr::exists("cap" : "nat", "l" : "loc", "len" : "nat", "els")]
@@ -172,6 +175,7 @@ impl<T, A: Allocator> Drop for Vec<T, A> {
     // Postcondition: vector without its safety invariant. All the elements of the RawVec are in the
     // uninit state.
     #[rr::ensures(#type "l" : "-[ #(lmem, cap, replicate cap (#None)); #(Z.of_nat $ length xs)]" @ "Vec_ty T_rt A_rt Allocator_A_spec_attrs -[] -[T_ty; A_ty]")]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     fn drop(&mut self) {
         /*
         unsafe {
@@ -279,6 +283,7 @@ impl<T> FromIterator<T> for Vec<T> {
 }
 
 #[rr::trust_me(drop_glue)]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind} ∨ {A::DropGlueUnwind}")]
 #[rr::refined_by("xs" : "list ({rt_of T})")]
 #[rr::exists("x", "y")]
 #[rr::export_as(alloc::vec::into_iter::IntoIter)]

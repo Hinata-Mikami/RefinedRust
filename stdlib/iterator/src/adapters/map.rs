@@ -13,6 +13,7 @@ use crate::traits::iterator::Iterator;
 
 #[rr::export_as(core::iter::adapters::Map)]
 #[rr::refined_by("x" : "MapXRT {rt_of I} {rt_of F}")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{I::DropGlueUnwind} ∨ {F::DropGlueUnwind}")]
 pub struct Map<I, F> 
 {
     #[rr::field("$# x.(map_it)")]

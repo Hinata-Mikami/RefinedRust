@@ -4,8 +4,12 @@ Section extra.
   Lemma iterator_next_fused_trans_map_inv {MB_rt MI_rt MF_rt Item_rt}
   (It_attrs : traits_iterator_Iterator_spec_attrs MI_rt Item_rt)
   (FnOnce_attrs : FnOnce_spec_attrs MF_rt (tuple1_rt Item_rt) MB_rt)
-  (FnMut_attrs : FnMut_spec_attrs MF_rt (tuple1_rt Item_rt) MB_rt) π p ParamPred s1 hist s2 :
-    IteratorNextFusedTrans (adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs MB_rt MI_rt MF_rt Item_rt It_attrs FnOnce_attrs FnMut_attrs) π (p, ParamPred) s1 hist s2 -∗
+  (FnMut_attrs : FnMut_spec_attrs MF_rt (tuple1_rt Item_rt) MB_rt)
+  (DropGlue_MB_attrs : DropGlue_spec_attrs MB_rt)
+  (DropGlue_MI_attrs : DropGlue_spec_attrs MI_rt)
+  (DropGlue_MF_attrs : DropGlue_spec_attrs MF_rt)
+  (DropGlue_Item_attrs : DropGlue_spec_attrs Item_rt) π p ParamPred s1 hist s2 :
+    IteratorNextFusedTrans (adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs MB_rt MI_rt MF_rt Item_rt It_attrs FnOnce_attrs FnMut_attrs DropGlue_MB_attrs DropGlue_MI_attrs DropGlue_MF_attrs DropGlue_Item_attrs) π (p, ParamPred) s1 hist s2 -∗
     ∃ hist' states,
       ⌜states !! 0%nat = Some s1.(map_clos)⌝ ∗
       ⌜states !! (length hist) = Some s2.(map_clos)⌝ ∗
@@ -32,12 +36,16 @@ Section extra.
   (It_attrs : traits_iterator_Iterator_spec_attrs MI_rt Item_rt)
   (FnOnce_attrs : FnOnce_spec_attrs MF_rt (tuple1_rt Item_rt) MB_rt)
   (FnMut_attrs : FnMut_spec_attrs MF_rt (tuple1_rt Item_rt) MB_rt)
+  (DropGlue_MB_attrs : DropGlue_spec_attrs MB_rt)
+  (DropGlue_MI_attrs : DropGlue_spec_attrs MI_rt)
+  (DropGlue_MF_attrs : DropGlue_spec_attrs MF_rt)
+  (DropGlue_Item_attrs : DropGlue_spec_attrs Item_rt)
   p ParamPred
   (It_learn : IteratorLearnInductive It_attrs p)
   (FnOnce_pre_learn : ∀ π p self args, SimplifyBoringlyImpl (FnOnce_attrs.(FnOnce_Pre) π p self args))
   (FnMut_postmut_learn : ∀ π p self args self' out, SimplifyBoringlyImpl (FnOnce_attrs.(FnOnce_PostMut) π p self args self' out))
   :
-    IteratorLearnInductive (adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs MB_rt MI_rt MF_rt Item_rt It_attrs FnOnce_attrs FnMut_attrs) (p, ParamPred) := {|
+    IteratorLearnInductive (adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs MB_rt MI_rt MF_rt Item_rt It_attrs FnOnce_attrs FnMut_attrs DropGlue_MB_attrs DropGlue_MI_attrs DropGlue_MF_attrs DropGlue_Item_attrs) (p, ParamPred) := {|
       iterator_learn_inductive_Q s1 hist s2 :=
         ∃ π hist' clos_states,
           It_learn.(iterator_learn_inductive_Q) s1.(map_it) hist' s2.(map_it) ∧
@@ -49,7 +57,7 @@ Section extra.
           ) (zip (seq 0 (length hist')) hist') hist
     |}.
   Next Obligation.
-    intros ???? It_attrs FnOnce_attrs FnMut_attrs p ParamPred It_learn FnOnce_pure FnMut_pure.
+    intros ???? It_attrs FnOnce_attrs FnMut_attrs DropGlue_MB_attrs DropGlue_MI_attrs DropGlue_MF_attrs DropGlue_Item_attrs p ParamPred It_learn FnOnce_pure FnMut_pure.
     simpl. iIntros (? s1 hist s2) "Hnext".
     iPoseProof (boringly_mono with "Hnext") as "Ha".
     { iApply iterator_next_fused_trans_map_inv. }
@@ -96,13 +104,17 @@ Section extra.
   (It_attrs : traits_iterator_Iterator_spec_attrs MI_rt Item_rt)
   (FnOnce_attrs : FnOnce_spec_attrs MF_rt (tuple1_rt Item_rt) MB_rt)
   (FnMut_attrs : FnMut_spec_attrs MF_rt (tuple1_rt Item_rt) MB_rt)
+  (DropGlue_MB_attrs : DropGlue_spec_attrs MB_rt)
+  (DropGlue_MI_attrs : DropGlue_spec_attrs MI_rt)
+  (DropGlue_MF_attrs : DropGlue_spec_attrs MF_rt)
+  (DropGlue_Item_attrs : DropGlue_spec_attrs Item_rt)
   p ParamPred
   (It_learn : IteratorLearnInductive It_attrs p)
   (FnOnce_pre_learn : ∀ π p self args, SimplifyBoringlyImpl (FnOnce_attrs.(FnOnce_Pre) π p self args))
   (FnMut_postmut_learn : ∀ π p self args self' out, SimplifyBoringlyImpl (FnOnce_attrs.(FnOnce_PostMut) π p self args self' out))
   (FnMut_postmut_stateless : ∀ π p args out, RelationIsIdentity (λ self self', (FnMut_postmut_learn π p self args self' out).(simplify_boringly_impl_q _)))
   :
-    IteratorLearnInductive (adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs MB_rt MI_rt MF_rt Item_rt It_attrs FnOnce_attrs FnMut_attrs) (p, ParamPred) := {|
+    IteratorLearnInductive (adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs MB_rt MI_rt MF_rt Item_rt It_attrs FnOnce_attrs FnMut_attrs DropGlue_MB_attrs DropGlue_MI_attrs DropGlue_MF_attrs DropGlue_Item_attrs) (p, ParamPred) := {|
       iterator_learn_inductive_Q s1 hist s2 :=
         ∃ π hist',
           It_learn.(iterator_learn_inductive_Q) s1.(map_it) hist' s2.(map_it) ∧
@@ -111,7 +123,7 @@ Section extra.
         ;
     |}.
   Next Obligation.
-    intros ???? It_attrs FnOnce_attrs FnMut_attrs p ParamPred It_learn FnOnce_pure FnMut_pure FnMut_stateless.
+    intros ???? It_attrs FnOnce_attrs FnMut_attrs DropGlue_MB_attrs DropGlue_MI_attrs DropGlue_MF_attrs DropGlue_Item_attrs p ParamPred It_learn FnOnce_pure FnMut_pure FnMut_stateless.
     simpl. iIntros (? s1 hist s2) "Hnext".
     iPoseProof (boringly_mono with "Hnext") as "Ha".
     { iApply iterator_next_fused_trans_map_inv. }
@@ -174,8 +186,10 @@ Section extra.
 
   (** Take *)
   Lemma iterator_next_fused_trans_take_inv {MI_rt Item_rt}
-  (It_attrs : traits_iterator_Iterator_spec_attrs MI_rt Item_rt) π p s1 hist s2 :
-    IteratorNextFusedTrans (adapters_take_TakeMIastraits_iterator_Iterator_spec_attrs MI_rt Item_rt It_attrs) π p s1 hist s2 -∗
+  (It_attrs : traits_iterator_Iterator_spec_attrs MI_rt Item_rt)
+  (DropGlue_MI_attrs : DropGlue_spec_attrs MI_rt)
+  (DropGlue_Item_attrs : DropGlue_spec_attrs Item_rt) π p s1 hist s2 :
+    IteratorNextFusedTrans (adapters_take_TakeMIastraits_iterator_Iterator_spec_attrs MI_rt Item_rt It_attrs DropGlue_MI_attrs DropGlue_Item_attrs) π p s1 hist s2 -∗
       IteratorNextFusedTrans It_attrs π p s1.1 hist s2.1 ∗
       ⌜length hist ≤ s1.2⌝ ∗ ⌜s2.2 = (s1.2 - length hist)%nat⌝
   .
@@ -190,10 +204,12 @@ Section extra.
 
   Program Definition iterator_learn_take {MI_rt Item_rt}
   (It_attrs : traits_iterator_Iterator_spec_attrs MI_rt Item_rt)
+  (DropGlue_MI_attrs : DropGlue_spec_attrs MI_rt)
+  (DropGlue_Item_attrs : DropGlue_spec_attrs Item_rt)
   p
   (It_learn : IteratorLearnInductive It_attrs p)
   :
-    IteratorLearnInductive (adapters_take_TakeMIastraits_iterator_Iterator_spec_attrs MI_rt Item_rt It_attrs) p := {|
+    IteratorLearnInductive (adapters_take_TakeMIastraits_iterator_Iterator_spec_attrs MI_rt Item_rt It_attrs DropGlue_MI_attrs DropGlue_Item_attrs) p := {|
       iterator_learn_inductive_Q s1 hist s2 :=
           It_learn.(iterator_learn_inductive_Q) s1.1 hist s2.1 ∧
           length hist ≤ s1.2 ∧
@@ -201,7 +217,7 @@ Section extra.
         ;
     |}.
   Next Obligation.
-    iIntros (??? p It_learn π s1 hist s2).
+    iIntros (????? p It_learn π s1 hist s2).
     iIntros "Hit".
     iPoseProof (boringly_mono with "Hit") as "Ha".
     { iApply iterator_next_fused_trans_take_inv. }
@@ -215,8 +231,10 @@ Section extra.
 
   (** Skip *)
   Lemma iterator_next_fused_trans_skip_inv {MI_rt Item_rt}
-  (It_attrs : traits_iterator_Iterator_spec_attrs MI_rt Item_rt) π p s1 hist s2 :
-    IteratorNextFusedTrans (adapters_skip_SkipMIastraits_iterator_Iterator_spec_attrs MI_rt Item_rt It_attrs) π p s1 hist s2 -∗
+  (It_attrs : traits_iterator_Iterator_spec_attrs MI_rt Item_rt)
+  (DropGlue_MI_attrs : DropGlue_spec_attrs MI_rt)
+  (DropGlue_Item_attrs : DropGlue_spec_attrs Item_rt) π p s1 hist s2 :
+    IteratorNextFusedTrans (adapters_skip_SkipMIastraits_iterator_Iterator_spec_attrs MI_rt Item_rt It_attrs DropGlue_MI_attrs DropGlue_Item_attrs) π p s1 hist s2 -∗
       ∃ pref,
         IteratorNextFusedTrans It_attrs π p s1.1 (pref ++ hist) s2.1 ∗
         ⌜length pref ≤ s1.2⌝ ∗
@@ -244,10 +262,12 @@ Section extra.
 
   Program Definition iterator_learn_skip {MI_rt Item_rt}
   (It_attrs : traits_iterator_Iterator_spec_attrs MI_rt Item_rt)
+  (DropGlue_MI_attrs : DropGlue_spec_attrs MI_rt)
+  (DropGlue_Item_attrs : DropGlue_spec_attrs Item_rt)
   p
   (It_learn : IteratorLearnInductive It_attrs p)
   :
-    IteratorLearnInductive (adapters_skip_SkipMIastraits_iterator_Iterator_spec_attrs MI_rt Item_rt It_attrs) p := {|
+    IteratorLearnInductive (adapters_skip_SkipMIastraits_iterator_Iterator_spec_attrs MI_rt Item_rt It_attrs DropGlue_MI_attrs DropGlue_Item_attrs) p := {|
       iterator_learn_inductive_Q s1 hist s2 :=
           ∃ pref,
           It_learn.(iterator_learn_inductive_Q) s1.1 (pref ++ hist) s2.1 ∧
@@ -258,7 +278,7 @@ Section extra.
         ;
     |}.
   Next Obligation.
-    iIntros (??? p It_learn π s1 hist s2).
+    iIntros (????? p It_learn π s1 hist s2).
     iIntros "Hit".
     iPoseProof (boringly_mono with "Hit") as "Ha".
     { iApply iterator_next_fused_trans_skip_inv. }
@@ -281,7 +301,7 @@ Section extra.
     (∀ a b z, Step_attrs.(step_Step_Forward) a b = Some z → z = a + b) →
     (∀ a b, PartialOrd_attrs.(PartialOrd_POrd) a b = Some (Z.compare a b)) →
     ∀ p, IteratorLearnInductive (step_impltraits_iterator_Iteratorforstd_ops_RangeA_spec_attrs (Z)
-      Clone_attrs PartialEq_attrs PartialOrd_attrs Step_attrs) p :=
+      Clone_attrs PartialEq_attrs PartialOrd_attrs Step_attrs (drop_glue_trivial_spec_attrs Z)) p :=
     λ _ _ _, {| iterator_learn_inductive_Q s1 hist s2 :=
         s1.2 = s2.2 ∧ s1.1 ≤ s2.1 ∧ hist = seqZ s1.1 (s2.1 - s1.1) |}.
   Next Obligation.
@@ -379,9 +399,9 @@ Section extra.
   Next Obligation. done. Qed.
   Global Existing Instance iterator_learn_range_it_usize.
 
-  Lemma simplify_goal_range_iter_inv Clone_attrs PEq_attrs POrd_attrs Step_attrs π p b T :
+  Lemma simplify_goal_range_iter_inv Clone_attrs PEq_attrs POrd_attrs Step_attrs DropGlue_attrs π p b T :
     T
-    ⊢ simplify_goal (traits_iterator_Iterator_Inv (step_impltraits_iterator_Iteratorforstd_ops_RangeA_spec_attrs Z Clone_attrs PEq_attrs POrd_attrs Step_attrs) π p b) T.
+    ⊢ simplify_goal (traits_iterator_Iterator_Inv (step_impltraits_iterator_Iteratorforstd_ops_RangeA_spec_attrs Z Clone_attrs PEq_attrs POrd_attrs Step_attrs DropGlue_attrs) π p b) T.
   Proof.
     unfold traits_iterator_Iterator_Inv; simpl.
     iIntros "$".
@@ -397,7 +417,7 @@ Section extra.
     iIntros (????????) "_". done.
   Qed.
 End extra.
-Global Hint Extern 100 (IteratorLearnInductive (adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs _ _ _ _ _ _ _) _ ) =>
-  unshelve notypeclasses refine (iterator_learn_map_stateless _ _ _ _ _ _ _ _ _); [ tc_solve | tc_solve | tc_solve | tc_solve] : typeclass_instances.
-Global Hint Extern 101 (IteratorLearnInductive (adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs _ _ _ _ _ _ _) _) =>
-  unshelve notypeclasses refine (iterator_learn_map_stateful _ _ _ _ _ _ _ _); [ tc_solve | tc_solve | tc_solve] : typeclass_instances.
+Global Hint Extern 100 (IteratorLearnInductive (adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs _ _ _ _ _ _ _ _ _ _ _) _ ) =>
+  unshelve notypeclasses refine (iterator_learn_map_stateless _ _ _ _ _ _ _ _ _ _ _ _ _); [ tc_solve | tc_solve | tc_solve | tc_solve] : typeclass_instances.
+Global Hint Extern 101 (IteratorLearnInductive (adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs _ _ _ _ _ _ _ _ _ _ _) _) =>
+  unshelve notypeclasses refine (iterator_learn_map_stateful _ _ _ _ _ _ _ _ _ _ _ _); [ tc_solve | tc_solve | tc_solve] : typeclass_instances.

@@ -15,6 +15,7 @@ use std::marker::PhantomData;
 mod examples;
 mod demo;
 
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 struct Link<T> {
     value: T,
     next: *const Link<T>,
@@ -41,6 +42,7 @@ struct Link<T> {
 #[rr::ghost_drop(#iris "[∗ list] x ∈ xs, ty_ghost_drop {T} π x")]
 #[rr::ty_lfts("ty_lfts {T}")]
 #[rr::ty_wf_E("ty_wf_E {T}")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 pub struct List<T> {
     #[rr::field("hd_ptr")]
     first: *const Link<T>,
@@ -164,6 +166,8 @@ impl<T> Drop for List<T> {
     #[rr::requires(#type "l" : "$# xs" @ "List_inv_t T_rt -[] -[T_ty]")]
     #[rr::ensures(#iris "[∗ list] x ∈ xs, ty_ghost_drop {T} π ($# x)")]
     #[rr::ensures(#type "l" : "$# []" @ "List_inv_t T_rt -[] -[T_ty]")]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
+    #[rr::ensures_on_unwind(#iris "∃ remaining, l ◁ₗ[π, Owned] #($# remaining) @ (◁ List_inv_t T_rt -[] -[T_ty])")]
     fn drop(&mut self) {
         while let Some(value) = self.pop_front() {
             let _ =

@@ -4,6 +4,7 @@ use crate::traits::iterator::Iterator;
 
 #[rr::export_as(core::iter::adapters::StepBy)]
 #[rr::refined_by("x" : "StepByXRT {rt_of I}")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{I::DropGlueUnwind}")]
 pub struct StepBy<I> {
     #[rr::field("$# x.(step_by_it)")]
     iter: I,
@@ -24,7 +25,7 @@ impl<I> StepBy<I> {
 }
 
 #[rr::instantiate("Params" := "{MI::Params}")]
-#[rr::instantiate("Inv" := "λ π p s, {MI::Inv} π p s.(step_by_it)")]
+#[rr::instantiate("Inv" := "(λ π p s, ⌜DropGlue_MIastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False⌝ ∗ {MI::Inv} π p s.(step_by_it))%I")]
 #[rr::instantiate("Next" := "(λ π p_inner s1 e s2,
         ⌜s2.(step_by_n) = s1.(step_by_n)⌝ ∗
         ⌜s2.(step_by_first) = false⌝ ∗

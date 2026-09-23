@@ -66,6 +66,7 @@ fn assert_with_cleanup<T>(x: T, b: bool) {
 #[rr::params("p" : "{F::Params}")]
 #[rr::requires(#iris "{F::Pre} π p x tt")]
 #[rr::may_unwind_if("{F::UnwindCondition} x p tt")]
+#[rr::may_unwind_if("{F::DropGlueUnwind}")]
 fn call_clos<F>(x: F)
 where
     F: Fn(),
@@ -108,6 +109,7 @@ fn does_not_panic() {}
 // The original panic path resumes unwinding after dropping `x`. A panic from that drop would
 // terminate, but must not let this panic-free function avoid proving the assertion cannot fail.
 #[rr::verify]
+#[rr::requires("{T::DropGlueUnwind} → False")]
 fn panic_free_with_cleanup<T>(x: T, b: bool) {
     assert!(b || !b);
     drop(x);

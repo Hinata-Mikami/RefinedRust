@@ -2,6 +2,7 @@
 #[rr::refined_by("()" : "unit")]
 #[rr::exists("d" : "{xt_of T}")]
 #[rr::exists("c" : "list unit")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 struct Tree<T: Eq> {
     #[rr::field("$# d")]
     data: T,

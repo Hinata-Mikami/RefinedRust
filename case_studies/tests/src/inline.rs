@@ -80,6 +80,7 @@ fn fct_inlined_calls_ref_dependency_generic<T>(x: &T) -> &T {
     fct_inlined_calls_ref_dependency(x)
 }
 
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 struct InlineGenericMethods<T>(T);
 
 impl<T> InlineGenericMethods<T> {
@@ -99,6 +100,7 @@ fn fct_inlined_calls_same_impl_dependency<T>(x: T) -> T {
     InlineGenericMethods::<T>::inline_dependency(x)
 }
 
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind}")]
 struct InlineBodyLayout<T>(T);
 
 #[rr::inline]

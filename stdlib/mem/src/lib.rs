@@ -33,6 +33,7 @@ const fn mem_align_log_of<T>() -> usize {
 
 #[rr::export_as(core::mem::drop)]
 #[rr::ensures(#iris "ty_ghost_drop {T} π ($# x)")]
+#[rr::may_unwind_if("{T::DropGlueUnwind}")]
 pub fn drop<T>(x: T)
 {
 }

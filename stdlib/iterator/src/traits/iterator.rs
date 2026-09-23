@@ -52,7 +52,7 @@ pub trait Iterator {
         Inv π it_state' clos_state ∗ True)")]
     #[rr::ensures("ret = mk_map_x self f")]
     // TODO: spec shortcut to refer to attrs of Self
-    #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs _ _ _ _ traits_iterator_Iterator_Self_spec_attrs FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs) π (p_inner, ParamPred) ret")]
+    #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs _ _ _ _ traits_iterator_Iterator_Self_spec_attrs FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs DropGlue_B_spec_attrs DropGlue_Self_spec_attrs DropGlue_F_spec_attrs DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs) π (p_inner, ParamPred) ret")]
     fn map<B, F>(self, f: F) -> Map<Self, F>
     where
         Self: Sized,
@@ -127,6 +127,7 @@ pub trait Iterator {
     #[rr::ensures(#iris "{Inv} π p s2'")]
     // Postcondition: the iterator is updated to the new state
     #[rr::observe("self.ghost": "$# s2'")]
+    #[rr::may_unwind_if("{F::DropGlueUnwind}")]
     fn all<F>(&mut self, mut f: F) -> bool
     where
         Self: Sized,
@@ -167,6 +168,7 @@ pub trait Iterator {
     // Postcondition: the iterator is updated to the new state
     #[rr::observe("self.ghost": "$# s2'")]
     #[rr::ensures(#iris "ty_ghost_drop {F} π ($# clos_state')")]
+    #[rr::may_unwind_if("{F::DropGlueUnwind}")]
     fn position<F>(&mut self, mut f: F) -> Option<usize>
     where
         Self: Sized,
@@ -196,6 +198,8 @@ pub trait Iterator {
 
     #[rr::params("p")]
     #[rr::requires(#iris "{Inv} π p self")]
+    #[rr::requires("{Self::DropGlueUnwind} → False")]
+    #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
     #[rr::exists("seq", "s2", "s2'")]
     // first: gain knowledge that iterator has ended (better for simplification)
     #[rr::ensures(#iris "{Next} π p s2 None s2'")]
@@ -203,6 +207,7 @@ pub trait Iterator {
     #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq s2")]
     // TODO: fix: reference {Self::Item::Ord}
     #[rr::returns("max_list_cmp Ord_Selfastraits_iterator_Iterator_Item_spec_attrs.(Ord_Ord) seq None")]
+    #[rr::may_unwind_if("{Self::DropGlueUnwind} ∨ DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind)")]
     fn max(self) -> Option<Self::Item>
     where
         Self: Sized,
@@ -231,6 +236,8 @@ pub trait Iterator {
             True)
         ))")]
     #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
+    #[rr::requires("{Self::DropGlueUnwind} → False")]
+    #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
     #[rr::exists("seq", "s2", "s2'", "clos_state'")]
     #[rr::ensures(#iris "{Next} π p s2 None s2'")]
     #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq s2")]
@@ -238,6 +245,7 @@ pub trait Iterator {
     #[rr::ensures(#iris "ClosInv π ret seq s2 clos_state'")]
     #[rr::ensures(#iris "ty_ghost_drop {Self} π ($# s2')")]
     #[rr::ensures(#iris "ty_ghost_drop {F} π ($# clos_state')")]
+    #[rr::may_unwind_if("{Self::DropGlueUnwind} ∨ DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) ∨ {F::DropGlueUnwind}")]
     fn max_by<F>(self, mut compare: F) -> Option<Self::Item>
     where
         Self: Sized,
@@ -247,20 +255,25 @@ pub trait Iterator {
             #[rr::params("pclos")]
             #[rr::requires(#iris "{F::Pre} π pclos {compare} *[b; a]")]
             #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
+            #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
             #[rr::exists("ord")]
             #[rr::ensures(#iris "{F::PostMut} π pclos {compare} *[b; a] {compare.*new} ord")]
             #[rr::returns("if bool_decide(ord = Less) then a else b")]
+            #[rr::may_unwind_if("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind)")]
             |a, b| cmp::max_by(a, b, &mut compare))
     }
 
     #[rr::params("p")]
     #[rr::requires(#iris "{Inv} π p self")]
+    #[rr::requires("{Self::DropGlueUnwind} → False")]
+    #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
     #[rr::exists("seq", "s2", "s2'")]
     #[rr::ensures(#iris "{Next} π p s2 None s2'")]
     // TODO: have an escape to refer to the attrs record instead
     #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq s2")]
     // TODO: fix: reference {Self::Item::Ord}
     #[rr::returns("min_list_cmp Ord_Selfastraits_iterator_Iterator_Item_spec_attrs.(Ord_Ord) seq None")]
+    #[rr::may_unwind_if("{Self::DropGlueUnwind} ∨ DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind)")]
     fn min(self) -> Option<Self::Item>
     where
         Self: Sized,
@@ -289,6 +302,8 @@ pub trait Iterator {
             True)
         ))")]
     #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
+    #[rr::requires("{Self::DropGlueUnwind} → False")]
+    #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
     #[rr::exists("seq", "s2", "s2'", "clos_state'")]
     #[rr::ensures(#iris "{Next} π p s2 None s2'")]
     #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π p self seq s2")]
@@ -296,6 +311,7 @@ pub trait Iterator {
     #[rr::ensures(#iris "ClosInv π ret seq s2 clos_state'")]
     #[rr::ensures(#iris "ty_ghost_drop {Self} π ($# s2')")]
     #[rr::ensures(#iris "ty_ghost_drop {F} π ($# clos_state')")]
+    #[rr::may_unwind_if("{Self::DropGlueUnwind} ∨ DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) ∨ {F::DropGlueUnwind}")]
     fn min_by<F>(self, mut compare: F) -> Option<Self::Item>
     where
         Self: Sized,
@@ -305,9 +321,11 @@ pub trait Iterator {
             #[rr::params("pclos")]
             #[rr::requires(#iris "{F::Pre} π pclos {compare} *[b; a]")]
             #[rr::requires("closure_may_unwind {F::UnwindCondition} → False")]
+            #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
             #[rr::exists("ord")]
             #[rr::ensures(#iris "{F::PostMut} π pclos {compare} *[b; a] {compare.*new} ord")]
             #[rr::returns("if bool_decide(ord = Less) then b else a")]
+            #[rr::may_unwind_if("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind)")]
             |a, b| cmp::min_by(a, b, &mut compare))
     }
 
@@ -335,6 +353,7 @@ pub trait Iterator {
     #[rr::ensures(#iris "if_iOk ({R::BranchFn} ret) (λ ret, {Next} π p s2 None s2' ∗ True)")]
     #[rr::ensures(#iris "if_iErr ({R::BranchFn} ret) (λ err, ⌜s2 = s2'⌝ ∗ True)")]
     #[rr::ensures(#iris "ty_ghost_drop {F} π ($# clos_state')")]
+    #[rr::may_unwind_if("{F::DropGlueUnwind}")]
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
@@ -379,6 +398,7 @@ pub trait Iterator {
     #[rr::ensures(#iris "ClosInv π ret seq s2 clos_state'")]
     #[rr::ensures(#iris "ty_ghost_drop {Self} π ($# s2')")]
     #[rr::ensures(#iris "ty_ghost_drop {F} π ($# clos_state')")]
+    #[rr::may_unwind_if("{Self::DropGlueUnwind} ∨ {F::DropGlueUnwind}")]
     fn fold<B, F>(mut self, init: B, mut f: F) -> B
     where
         Self: Sized,
@@ -427,6 +447,7 @@ pub trait Iterator {
     #[rr::ensures(#iris "ClosInv π ret seq s2 clos_state'")]
     #[rr::ensures(#iris "ty_ghost_drop {Self} π ($# s2')")]
     #[rr::ensures(#iris "ty_ghost_drop {F} π ($# clos_state')")]
+    #[rr::may_unwind_if("{Self::DropGlueUnwind} ∨ {F::DropGlueUnwind}")]
     fn reduce<F>(mut self, f: F) -> Option<Self::Item>
     where
         Self: Sized,
@@ -451,6 +472,7 @@ pub trait Iterator {
     // Postcondition if we return `Some e`, then we observed `Some e` from the iterator after n
     // elements
     #[rr::ensures(#iris "if_iSome ret (λ ret, {Next} π p s2 (Some ret) s2' ∗ ⌜length seq = Z.to_nat n⌝)")]
+    #[rr::may_unwind_if("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind)")]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let mut i = 0;
         while i < n {
@@ -474,7 +496,8 @@ pub trait Iterator {
     #[rr::params("p")]
     #[rr::requires(#iris "{Inv} π p self")]
     #[rr::ensures("ret = (self, Z.to_nat n)")]
-    #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_skip_SkipMIastraits_iterator_Iterator_spec_attrs _ _ traits_iterator_Iterator_Self_spec_attrs) π p ret")]
+    #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_skip_SkipMIastraits_iterator_Iterator_spec_attrs _ _ traits_iterator_Iterator_Self_spec_attrs DropGlue_Self_spec_attrs DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs) π p ret")]
+    #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
     fn skip(self, n: usize) -> Skip<Self>
         where Self: Sized,
     {
@@ -485,7 +508,8 @@ pub trait Iterator {
     #[rr::requires(#iris "{Inv} π p self")]
     #[rr::may_unwind_if("step = 0%Z")]
     #[rr::ensures("ret = mk_step_by_x self (Z.to_nat (step - 1)) true")]
-    #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs _ _ traits_iterator_Iterator_Self_spec_attrs) π p ret")]
+    #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_step_by_StepByMIastraits_iterator_Iterator_spec_attrs _ _ traits_iterator_Iterator_Self_spec_attrs DropGlue_Self_spec_attrs DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs) π p ret")]
+    #[rr::requires("DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs.(DropGlue_DropGlueUnwind) → False")]
     fn step_by(self, step: usize) -> StepBy<Self>
     where
         Self: Sized,
@@ -496,7 +520,7 @@ pub trait Iterator {
     #[rr::params("p")]
     #[rr::requires(#iris "{Inv} π p self")]
     #[rr::ensures("ret = (self, Z.to_nat n)")]
-    #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_take_TakeMIastraits_iterator_Iterator_spec_attrs _ _ traits_iterator_Iterator_Self_spec_attrs) π p ret")]
+    #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_take_TakeMIastraits_iterator_Iterator_spec_attrs _ _ traits_iterator_Iterator_Self_spec_attrs DropGlue_Self_spec_attrs DropGlue_Selfastraits_iterator_Iterator_Item_spec_attrs) π p ret")]
     fn take(self, n: usize) -> Take<Self>
     where
         Self: Sized,

@@ -1,3 +1,36 @@
+/// Ambient DropGlue attributes may instantiate an attribute value without
+/// becoming indices of the trait's attribute record type.
+mod drop_glue_attributes {
+    #[rr::exists("MayUnwind" : "Prop")]
+    trait Consume<T> {
+        #[rr::params("x")]
+        #[rr::args("x")]
+        #[rr::may_unwind_if("{T::DropGlueUnwind}")]
+        fn consume(value: T);
+    }
+
+    #[rr::instantiate("MayUnwind" := "{T::DropGlueUnwind}")]
+    impl<T> Consume<T> for () {
+        #[rr::params("x")]
+        #[rr::args("x")]
+        #[rr::may_unwind_if("{T::DropGlueUnwind}")]
+        fn consume(value: T) {
+            drop(value);
+        }
+    }
+
+    #[rr::params("x")]
+    #[rr::args("x")]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
+    fn call_generic<T, C: Consume<T>>(value: T) {
+        C::consume(value);
+    }
+
+    fn call_concrete() {
+        <() as Consume<i32>>::consume(42);
+    }
+}
+
 /// Trait requirements on associated types are unfolded transitively.
 mod bla {
     trait Bupsed {}
@@ -34,16 +67,19 @@ mod dep {
         // We should also be able to use their attributes, I think.
         #[rr::params("x")]
         #[rr::args("x")]
+        #[rr::may_unwind_if("{U::DropGlueUnwind}")]
         fn foofoo<U: Bar>(x: U);
     }
 
 
     #[rr::verify]
+    #[rr::may_unwind_if("{U::DropGlueUnwind}")]
     fn foo<T, U>(x: U) where U : Foo<T>, T: Bar {
 
     }
 
     #[rr::verify]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     fn bar<T, U>(x: T) where T: Bar {
 
     }
@@ -56,6 +92,7 @@ mod dep {
         type FT = usize;
 
         #[rr::verify]
+        #[rr::may_unwind_if("{U::DropGlueUnwind}")]
         fn foofoo<U: Bar>(x: U) {
 
         }
@@ -90,10 +127,12 @@ mod dep6 {
 
 
     #[rr::verify]
+    #[rr::may_unwind_if("{U::DropGlueUnwind}")]
     fn foo<U: Foo>(x: U) {
     }
 
     #[rr::verify]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     fn call_foo<T>(x: T) {
         foo(&x);
     }
@@ -116,6 +155,7 @@ mod dep5 {
 
 
     #[rr::verify]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     fn bla<T>(x : T) where for<'a> T: Foo<&'a i32> {
 
     }
@@ -134,17 +174,20 @@ mod dep5 {
 
 
     #[rr::verify]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     fn blub<T>(x : T) where for<'a> T: Foo<&'a &'a i32> {
 
     }
 
     #[rr::verify]
     // need to pass down the quantified trait requirement and specialize it
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     fn call_blub<T>(x: T) where for<'a, 'b> T: Foo<&'a &'b i32> {
         blub(x)
     }
 
     #[rr::verify]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     fn call_inst<T>(x: T) where for<'a, 'b> T: Foo<&'a &'b i32> {
         let y = 42;
         let y_ref = &y;
@@ -160,6 +203,7 @@ mod dep7 {
     }
 
     #[rr::verify]
+    #[rr::may_unwind_if("{T::DropGlueUnwind}")]
     fn bla<T : Foo>(x: T) {
 
     }
@@ -196,6 +240,7 @@ mod dep3 {
 
     trait Foo<T: Bar> {
         #[rr::verify]
+        #[rr::may_unwind_if("{T::DropGlueUnwind}")]
         fn foofoo(x: T);
     }
 
@@ -219,6 +264,7 @@ mod dep3 {
     #[rr::verify]
     impl<T: Bar> Foo<T> for u32 {
 
+        #[rr::may_unwind_if("{T::DropGlueUnwind}")]
         fn foofoo(x: T) {
 
         }

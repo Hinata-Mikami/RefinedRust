@@ -32,6 +32,7 @@ use std::mem;
 
 #[rr::export_as(alloc::boxed::Box)]
 #[rr::refined_by("(x, a)" : "(place_rfn {rt_of T}) * (directRT {xt_of A})")]
+#[rr::derive_instantiate("DropGlueUnwind" := "{T::DropGlueUnwind} ∨ {A::DropGlueUnwind}")]
 #[rr::exists("l" : "loc")]
 #[rr::inv(#iris "guarded true (l ◁ₗ[π, Owned] x @ ◁ {T})")]
 // TODO: for unsized T, will need to use pointer metadata to determine the size.
@@ -236,4 +237,3 @@ impl<T> Box<T> {
         unsafe { NonNull::new_unchecked(Self::into_raw(b)) }
     }
 }
-
