@@ -508,19 +508,23 @@ where
         }
     }
 
-    fn make_type(&self, lit: &LiteralType, ty: &specs::Type<'def>) -> specs::Type<'def> {
+    fn make_type(
+        &self,
+        lit: &LiteralType,
+        ty: &specs::Type<'def>,
+        rfn_type: Option<coq::term::Type>,
+    ) -> specs::Type<'def> {
         // literal type given, we use this literal type as the RR semantic type
         // just use the syntype from the Rust type
 
-        // TODO: get CoqType for refinement.
-        // maybe have it as an annotation? the Infer is currently a placeholder.
-        // we need this in order to be able to specify the invariant spec separately.
+        // An overridden field type may have a different refinement type from
+        // the translated Rust field (e.g. alias_ref_t instead of mut_ref).
 
         info!("making type: {:?}, {:?}", lit, ty);
         let lit_ty = specs::types::Literal {
             rust_name: None,
             type_term: lit.ty.clone(),
-            refinement_type: coq::term::Type::Infer,
+            refinement_type: rfn_type.unwrap_or(coq::term::Type::Infer),
             syn_type: ty.into(),
             raw_type: None,
             info: specs::types::AdtShimInfo::empty(),
@@ -580,12 +584,24 @@ where
             }
 
             let ty = LiteralType::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
+            let rfn_type = if parse::Colon::peek(&buffer) {
+                buffer.parse::<_, MToken![:]>(self.scope).map_err(|e| parse_err(attr_span, e))?;
+                let rfn_type: parse::LitStr =
+                    buffer.parse(self.scope).map_err(|e| parse_err(attr_span, e))?;
+                let (rfn_type, _) = self
+                    .scope
+                    .process_coq_literal(attr_span, &rfn_type.value())
+                    .map_err(|err| spanned_error(attr_span, ParserError::AntiQuotation(err)))?;
+                Some(coq::term::Type::Literal(rfn_type))
+            } else {
+                None
+            };
 
             if field_type.is_some() {
                 return Err(spanned_error(span, ParserError::DuplicateFieldAttribute(field_name.to_owned())));
             }
 
-            field_type = Some(self.make_type(&ty, self.field_type));
+            field_type = Some(self.make_type(&ty, self.field_type, rfn_type));
         }
 
         let ty = match field_type {

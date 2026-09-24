@@ -157,11 +157,13 @@ mod tests {
         let definition = |name: &str| {
             let marker = format!("Program Definition {name}_def");
             let start = generated.find(&marker).unwrap_or_else(|| panic!("missing {marker}"));
-            let body = &generated[start..];
-            let end = body[marker.len()..]
+            let body = generated.get(start..).expect("definition starts at a character boundary");
+            let end = body
+                .get(marker.len()..)
+                .expect("definition marker ends at a character boundary")
                 .find("\nProgram Definition")
                 .map_or(body.len(), |offset| marker.len() + offset);
-            &body[..end]
+            body.get(..end).expect("definition ends at a character boundary")
         };
         let lifetime_initialized_from = |body: &str, source: &str| {
             let source = format!("\"{source}\"");
@@ -212,7 +214,12 @@ mod tests {
             .find("CallS")
             .unwrap_or_else(|| panic!("missing generated call:\n{call_definition}"));
         assert!(annotation_position < call_position, "unconstrained lifetime was initialized after the call");
-        let call_line = call_definition[call_position..].lines().next().expect("missing generated call line");
+        let call_line = call_definition
+            .get(call_position..)
+            .expect("call starts at a character boundary")
+            .lines()
+            .next()
+            .expect("missing generated call line");
         assert!(
             call_line.contains(&format!("\"{unconstrained_lft}\"")),
             "unconstrained lifetime is absent from the call instantiation: {call_line}"
@@ -247,8 +254,9 @@ mod tests {
             .lines()
             .find(|line| line.contains("consume_WrapperT_loc ◁"))
             .expect("missing specialized consume call");
+        let normalized_call = specialized_call.split_whitespace().collect::<Vec<_>>().join(" ");
         assert!(
-            specialized_call.contains("(Wrapper_ty ((T_rt)) -[] -[T_ty])"),
+            normalized_call.contains("(Wrapper_ty ((T_rt)) -[] -[T_ty])"),
             "normalized Wrapper<T> call did not retain its T dependency: {specialized_call}"
         );
 

@@ -2083,13 +2083,12 @@ impl<'def> InstantiatedFunctionSpec<'def> {
         let trait_params_inst =
             scope.get_direct_attr_trait_parameters(IncludeSelfReq::Dont).make_using_terms();
 
-        // bind the surrounding elctx
-        let elctx = scope.get_surrounding_elctx();
+        // Bind the impl's elctx using the same scope as the outer spec! binders.
+        // The method scope can give impl lifetimes different names (e.g. for elided lifetimes).
         let surrounding_tys = scope.get_surrounding_ty_params_with_assocs();
         let surrounding_tys =
             fmt_list!(&surrounding_tys.params, "; ", |x| { Type::LiteralParam(x.to_owned()).to_string() });
-        let mut scope_elctx = String::with_capacity(100);
-        elctx.format(&mut scope_elctx, &[], &[]).unwrap();
+        let scope_elctx = self.trait_ref.generics.format_elctx();
         write!(
             f,
             "(λ a b, scope_add_typarams _ -[{surrounding_tys}] (scope_add_elctx ({scope_elctx}) (({applied_base_spec}).({}) {} {} a b))) <MERGE!>",

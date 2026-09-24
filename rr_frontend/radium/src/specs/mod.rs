@@ -771,18 +771,6 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
         }
     }
 
-    #[must_use]
-    fn get_surrounding_elctx(&self) -> Elctx<'def> {
-        let constrs = self
-            .lft_constraints
-            .constrs
-            .iter()
-            .filter(|x| x.origin.is_surrounding())
-            .cloned()
-            .collect();
-        Elctx { constrs }
-    }
-
     fn format_elctx(&self) -> String {
         let mut out = String::with_capacity(100);
         self.lft_constraints.format(&mut out, &self.lfts, &[]).unwrap();
@@ -941,6 +929,11 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
                 LftParamOrigin::LocalEarlyBound | LftParamOrigin::LocalLateBound | LftParamOrigin::ForBinder
             ) {
                 lft.origin = LftParamOrigin::SurroundingImpl;
+            }
+        }
+        for constr in &mut self.lft_constraints.constrs {
+            if constr.origin == TyParamOrigin::Direct {
+                constr.origin = TyParamOrigin::SurroundingImpl;
             }
         }
         self.surrounding_trait_requirements.append(&mut self.direct_trait_requirements);
