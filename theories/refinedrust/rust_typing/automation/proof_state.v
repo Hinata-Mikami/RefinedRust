@@ -202,7 +202,7 @@ Ltac set_last_rust_program_point point :=
   | H : LAST_RUST_PROGRAM_POINT _ |- _ => clear H
   end;
   let Hpoint := fresh "HLAST" in
-  have Hpoint := (() : LAST_RUST_PROGRAM_POINT point).
+  assert (Hpoint : LAST_RUST_PROGRAM_POINT point) by exact tt.
 
 Ltac set_last_rust_expression_program_point e :=
   lazymatch reverse goal with

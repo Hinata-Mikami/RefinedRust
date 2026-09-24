@@ -1038,6 +1038,44 @@ Section rules.
     by iApply ("HT" with "[//] [//] [//] CTX HE HL").
   Qed.
 
+  (** For value ownership, the physical value is already known, so splitting can
+      instantiate the refinement of the resulting [value_t]. Keep the original
+      ownership in the residual resource. *)
+  Lemma subsume_full_split_typed_value π step {rt} v r vs st (ty : type rt) E L T :
+    li_tactic (compute_layout_goal (ty_syn_type ty MetaNone)) (λ ly,
+      ⌜vs = v⌝ ∗ ⌜st = ty_syn_type ty MetaNone⌝ ∗
+      ⌜ty_has_op_type ty (use_op_alg' (ty_syn_type ty MetaNone))⌝ ∗
+      T L (v ◁ᵥ{π, MetaNone} r @ ty))
+    ⊢ subsume_full step (v ◁ᵥ{π, MetaNone} r @ ty)
+        (v ◁ᵥ{π, MetaNone} vs @ value_t true st) E L T.
+  Proof.
+    rewrite /compute_layout_goal.
+    iIntros "(%ly & %Hly & -> & -> & %Hot & HT)" (????) "#CTX #HE HL Hv".
+    iPoseProof (own_val_split_value with "Hv") as "(Hvalue & Hv)"; [done.. | ].
+    iExists L, (v ◁ᵥ{π, MetaNone} r @ ty)%I. iFrame "HL HT".
+    iApply maybe_logical_step_intro. iFrame. by iModIntro.
+  Qed.
+  Definition subsume_full_split_typed_value_inst := [instance @subsume_full_split_typed_value].
+  Global Existing Instance subsume_full_split_typed_value_inst | 99.
+
+  Lemma subsume_full_split_untyped_value π step {rt} v r vs st (ty : type rt) E L T :
+    li_tactic (compute_layout_goal (ty_syn_type ty MetaNone)) (λ ly,
+      ⌜syn_type_has_layout st ly⌝ ∗ ⌜vs = v⌝ ∗
+      T L (v ◁ᵥ{π, MetaNone} r @ ty))
+    ⊢ subsume_full step (v ◁ᵥ{π, MetaNone} r @ ty)
+        (v ◁ᵥ{π, MetaNone} vs @ value_t false st) E L T.
+  Proof.
+    rewrite /compute_layout_goal.
+    iIntros "(%ly & %Hly & %Hst & -> & HT)" (????) "#CTX #HE HL Hv".
+    iPoseProof (own_val_split_value_untyped _ _ _ _ with "Hv") as "(Hvalue & Hv)"; first done.
+    iPoseProof (value_untyped_to_literal with "Hvalue") as "Hvalue"; first done.
+    iPoseProof (value_untyped_from_literal with "Hvalue") as "Hvalue"; first done.
+    iExists L, (v ◁ᵥ{π, MetaNone} r @ ty)%I. iFrame "HL HT".
+    iApply maybe_logical_step_intro. iFrame. by iModIntro.
+  Qed.
+  Definition subsume_full_split_untyped_value_inst := [instance @subsume_full_split_untyped_value].
+  Global Existing Instance subsume_full_split_untyped_value_inst | 99.
+
   Definition owned_subtype_value_id π E L step st r1 r2 typed := owned_subtype_id π E L step r1 r2 (value_t typed st).
   Definition owned_subtype_value_id_inst := [instance @owned_subtype_value_id].
   Global Existing Instance owned_subtype_value_id_inst | 10.

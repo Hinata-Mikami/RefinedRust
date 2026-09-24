@@ -79,7 +79,10 @@ Ltac ex_plain_t_solve_shr_mono :=
   prepare_initial_coq_context;
   simpl;
   iIntros "#Hincl"; iIntros "Ha";
-  rewrite -?bi.sep_assoc;
+  repeat match goal with
+  | |- context[((?P ∗ ?Q) ∗ ?R)%I] =>
+    rewrite -(bi.sep_assoc P Q R)
+  end;
   let ty := iTypeOf' "Ha" in
   lazymatch ty with
   | ?P =>
