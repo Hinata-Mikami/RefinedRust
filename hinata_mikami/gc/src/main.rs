@@ -283,7 +283,7 @@ impl Heap {
         self.mark_from(root);
     }
 
-
+    // 実行時オーバーヘッドがある場合も実行して比較できればベスト（case_study）
     /* sweep annotation */
     #[rr::params(
         "vals"  : "list Z",
@@ -293,7 +293,7 @@ impl Heap {
         "γ"
     )]
     // &mut xのrefinementは (-[x], γ)
-    #[rr::args(#raw "((-[locs]), γ)")]
+    #[rr::args(#raw "((-[locs]), γ)")] // ここを変えるとなぜHeap_invが適用されなくなるか？という確認も欲しい
 
     /* 開始時：Heap invariant 成立 */
     #[rr::requires("length locs = length vals")]
@@ -399,6 +399,7 @@ impl Heap {
             // keep_marked_suffix :=
             // take i xs ++ keep_marked (drop i xs) (drop i marks).
             let _ =
+                // この辺の理解
                 #[rr::exists("ic" : "Z")]
                 #[rr::inv_var("i": "#ic")]
                 #[rr::inv_vars("self")]
