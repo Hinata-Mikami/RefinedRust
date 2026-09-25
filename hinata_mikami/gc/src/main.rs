@@ -6,6 +6,8 @@
 #![allow(non_camel_case_types)]
 #![allow(unsafe_op_in_unsafe_fn)]
 
+#![feature(stmt_expr_attributes)]
+
 #![rr::include("stdlib")]
 #![rr::include("vec")]
 #![rr::include("option")]
@@ -31,9 +33,6 @@ mod wrappers {
     }
 
 }
-
-
-
 
 // 本質的には同じはずなのにNode側に書けないことは欠点
 // 記録しておくべき
@@ -283,47 +282,138 @@ impl Heap {
         let root = *vec_index(&self.all_nodes, 0);
         self.mark_from(root);
     }
-    
 
-    #[rr::params("h")]
-    #[rr::args("h")]
-    #[rr::requires("
-        let '(vals, locs, nexts, marks) := h.cur in
-        marks_closed locs nexts marks
+
+    /* sweep annotation */
+    #[rr::params(
+        "vals"  : "list Z",
+        "locs"  : "list loc",
+        "nexts" : "list loc",
+        "marks" : "list bool",
+        "γ"
+    )]
+    // &mut xのrefinementは (-[x], γ)
+    #[rr::args(#raw "((-[locs]), γ)")]
+
+    /* 開始時：Heap invariant 成立 */
+    #[rr::requires("length locs = length vals")]
+    #[rr::requires("length nexts = length vals")]
+    #[rr::requires("length marks = length vals")]
+    #[rr::requires("Forall (λ n, n = NULL_loc ∨ n ∈ locs) nexts")]
+    #[rr::requires("NoDup locs")]
+    #[rr::requires("Forall (λ l, l.(loc_a) ≠ 0) locs")]
+    #[rr::requires(#iris "
+    ([∗ list] i ↦ v ∈ vals,
+        ∃ l n : loc, ∃ m : bool,
+        ⌜locs !! i = Some l⌝ ∗
+        ⌜nexts !! i = Some n⌝ ∗
+        ⌜marks !! i = Some m⌝ ∗
+        guarded true
+            (l ◁ₗ[π, Owned]
+            # -[#v; #n; #m]
+            @ ◁(Node_ty <INST!>)) ∗
+        freeable_nz l
+            (ly_size (use_layout_alg' Node_sls))
+            1 HeapAlloc)
     ")]
-    #[rr::observe("h.ghost" : "
-        let '(vals, locs, nexts, marks) := h.cur in
-        let vals' := keep_marked vals marks in
-        let locs' := keep_marked locs marks in
-        let nexts' := keep_marked nexts marks in
-        (vals',
-        locs',
-        nexts',
-        replicate (length locs') false)
+    // mark : true かつ next が存在するなら next も mark : true
+    // A[true] → B[false] でBを解放するとdangling pointerになる
+    #[rr::requires("marks_closed locs nexts marks")]
+
+    /* 事後条件 */
+    // keep_marked xs marks ... xs のうち marks が true のものだけを残す 
+    #[rr::observe("γ": "
+    let locs' := keep_marked locs marks in
+    (-[# (<#> locs')] : plistRT [_])
     ")]
+
+    // 保持される invariant : locs'/nexts' と vals' の長さは同じ
+    #[rr::ensures("
+    let vals' := keep_marked vals marks in
+    let locs' := keep_marked locs marks in
+    length locs' = length vals'
+    ")]
+    #[rr::ensures("
+    let vals' := keep_marked vals marks in
+    let nexts' := keep_marked nexts marks in
+    length nexts' = length vals'
+    ")]
+    #[rr::ensures("
+    let locs' := keep_marked locs marks in
+    NoDup locs'
+    ")]
+    #[rr::ensures("
+    let locs' := keep_marked locs marks in
+    Forall (λ l, l.(loc_a) ≠ 0) locs'
+    ")]
+    // 更新後の所有権
+    #[rr::ensures(#iris "
+    let vals' := keep_marked vals marks in
+    let locs' := keep_marked locs marks in
+    let nexts' := keep_marked nexts marks in
+    let marks' := replicate (length locs') false in
+
+    ([∗ list] i ↦ v ∈ vals',
+        ∃ l n : loc, ∃ m : bool,
+        ⌜locs' !! i = Some l⌝ ∗
+        ⌜nexts' !! i = Some n⌝ ∗
+        ⌜marks' !! i = Some m⌝ ∗
+        guarded true
+            (l ◁ₗ[π, Owned]
+            # -[#v; #n; #m]
+            @ ◁(Node_ty <INST!>)) ∗
+        freeable_nz l
+            (ly_size (use_layout_alg' Node_sls))
+            1 HeapAlloc)
+    ")]
+    /*
+    * sweep 中は壊してよいが、終了時には
+    * live node だけに絞った locs'/nexts' について
+    * Hnext_valid が再成立する。
+    */
+    #[rr::ensures("
+    let locs' := keep_marked locs marks in
+    let nexts' := keep_marked nexts marks in
+    Forall
+        (λ n, n = NULL_loc ∨ n ∈ locs')
+        nexts'
+    ")]
+
     #[rr::returns("()")]
-    /* スイープフェーズ */
     unsafe fn sweep(&mut self) {
-        // Phase 1:
-        // dead node からの辺をすべて切る
-        let len = self.all_nodes.len();
-        let mut i = 0;
-
-        while i < len {
-            let node_ptr = *vec_index(&self.all_nodes, i);
-
-            if !(*node_ptr).marked {
-                Node::set_next(node_ptr, ptr::null_mut());
-            }
-
-            i += 1;
-        }
-
-        // Phase 2:
-        // dead node を後ろから削除・解放
         let mut i = self.all_nodes.len();
 
         while i > 0 {
+
+            /* 
+               i = length locs に固定されてしまっていたので
+               ループ時に動ける i を用意する：ループ不変条件
+            */
+            /*
+               current self.all_nodes
+               =
+               まだ処理していない部分(先頭i個)
+               +
+               処理済み部分のうち marked=true のもの（それ以降）
+             */
+            // keep_marked_suffix :=
+            // take i xs ++ keep_marked (drop i xs) (drop i marks).
+            let _ =
+                #[rr::exists("ic" : "Z")]
+                #[rr::inv_var("i": "#ic")]
+                #[rr::inv_vars("self")]
+                #[rr::inv("(0 ≤ ic ≤ length locs)%Z")]
+                #[rr::inv("
+                    self =
+                    ((-[
+                        keep_marked_suffix
+                        (Z.to_nat ic)
+                        locs
+                        marks
+                    ]), γ)
+                ")]
+                #[rr::ignore] || {};
+
             i -= 1;
 
             let node_ptr = *vec_index(&self.all_nodes, i);
@@ -334,8 +424,6 @@ impl Heap {
             }
         }
 
-        // Phase 3:
-        // survivor の mark を false に戻す
         let len = self.all_nodes.len();
         let mut i = 0;
 
@@ -345,21 +433,69 @@ impl Heap {
             i += 1;
         }
     }
+    
 
+    // #[rr::params("h")]
+    // #[rr::args("h")]
+    // #[rr::requires("
+    //     let '(vals, locs, nexts, marks) := h.cur in
+    //     marks_closed locs nexts marks
+    // ")]
+    // #[rr::observe("h.ghost" : "
+    //     let '(vals, locs, nexts, marks) := h.cur in
+    //     let vals' := keep_marked vals marks in
+    //     let locs' := keep_marked locs marks in
+    //     let nexts' := keep_marked nexts marks in
+    //     (vals',
+    //     locs',
+    //     nexts',
+    //     replicate (length locs') false)
+    // ")]
+    // #[rr::returns("()")]
+    // /* スイープフェーズ */
     // unsafe fn sweep(&mut self) {
-    //     // all_nodesを走査
-    //     // Vec::retain(|&p| {b}) : ベクタの各要素pに対し，b==trueのものを取り出す
-    //     self.all_nodes.retain(|&node_ptr| {
-    //         if (*node_ptr).marked {                 // marked==true -> 参照されているノード
-    //             (*node_ptr).marked = false;         // リセット
-    //             true                                // all_nodesに残す
-    //         } else {
-    //             println!("GC msg : Node [{}] collected.", (*node_ptr).value);
-    //             let _ = Box::from_raw(node_ptr);    // Boxに管理させる 所有者がいないため解放される
-    //             false                               // all_nodesにも残らない 
+    //     // Phase 1:
+    //     // dead node からの辺をすべて切る
+    //     let len = self.all_nodes.len();
+    //     let mut i = 0;
+
+    //     while i < len {
+    //         let node_ptr = *vec_index(&self.all_nodes, i);
+
+    //         if !(*node_ptr).marked {
+    //             Node::set_next(node_ptr, ptr::null_mut());
     //         }
-    //     });
+
+    //         i += 1;
+    //     }
+
+    //     // Phase 2:
+    //     // dead node を後ろから削除・解放
+    //     let mut i = self.all_nodes.len();
+
+    //     while i > 0 {
+    //         i -= 1;
+
+    //         let node_ptr = *vec_index(&self.all_nodes, i);
+
+    //         if !(*node_ptr).marked {
+    //             let node_ptr = self.all_nodes.remove(i);
+    //             let _ = Box::from_raw(node_ptr);
+    //         }
+    //     }
+
+    //     // Phase 3:
+    //     // survivor の mark を false に戻す
+    //     let len = self.all_nodes.len();
+    //     let mut i = 0;
+
+    //     while i < len {
+    //         let node_ptr = *vec_index(&self.all_nodes, i);
+    //         Node::set_marked(node_ptr, false);
+    //         i += 1;
+    //     }
     // }
+
 
     /* マークアンドスイープGC */
     unsafe fn collect(&mut self) {

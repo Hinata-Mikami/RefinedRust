@@ -738,3 +738,40 @@ Fixpoint keep_marked {A}
       keep_marked xs' marks'
   | _, _ => []
   end.
+
+
+Definition keep_marked_suffix {A}
+    (i : nat)
+    (xs : list A)
+    (marks : list bool) : list A :=
+  take i xs ++
+  keep_marked (drop i xs) (drop i marks).
+
+
+Lemma keep_marked_suffix_0 {A}
+    (xs : list A) (marks : list bool) :
+  keep_marked_suffix 0 xs marks =
+  keep_marked xs marks.
+Proof.
+  unfold keep_marked_suffix.
+  simpl.
+  done.
+Qed.
+
+
+Lemma keep_marked_suffix_length {A}
+    (xs : list A) (marks : list bool) :
+  keep_marked_suffix (length xs) xs marks = xs.
+Proof.
+  unfold keep_marked_suffix.
+
+  rewrite take_ge.
+  2: lia.
+
+  rewrite drop_ge.
+  2: lia.
+
+  simpl.
+  rewrite app_nil_r.
+  done.
+Qed.
