@@ -980,6 +980,13 @@ Ltac gather_location_list_get_filter m ::=
   end
 .
 
+(** Tactic to instantiate [trait_ctx_wf] assumptions *)
+Ltac liRTraitCtxWf :=
+    lazymatch goal with
+    | |- environments.envs_entails ?H (bi_sep (trait_ctx_wf _ _ _ _) _) =>
+      iSplitR; [unfold H; clear H; done | ]
+    end.
+
 (** ** Main stepping tactics *)
 
 (* TODO Maybe this should rather be a part of Lithium? *)
@@ -1025,6 +1032,7 @@ Ltac liRStepCore :=
     | |- envs_entails _ (fn_body_end_prop _ _ _ _ _) => unfold fn_body_end_prop
     end
   | liRJudgement
+  | liRTraitCtxWf
   | liFastStep
   | lazymatch goal with | |- BACKTRACK_POINT ?P => change_no_check P end
  ].
@@ -1080,13 +1088,26 @@ Ltac prepare_initial_coq_context :=
   (* The automation assumes that all products in the context are destructed, see liForall *)
   repeat match goal with
   (*| H : struct_xt _ |- _ => unfold struct_xt in H; simpl in H*)
-  | H : plist _ _ |- _ => destruct_product_hypothesis H H
+  | H : plist _ ?x |- _ =>
+    lazymatch x with
+    | trait_ctx_tys _ => fail
+    | _ => idtac
+    end;
+    assert_fails (is_var x);
+    destruct_product_hypothesis H H
+  | H : prod_vec _ ?n |- _ =>
+    lazymatch n with
+    | trait_ctx_lfts _ => fail
+    | _ => idtac
+    end;
+    assert_fails (is_var n);
+    destruct_product_hypothesis H H
   | H : (_ * _)%type |- _ => destruct_product_hypothesis H H
   (*| H : named_binder ?n |- _ =>*)
                       (*let temp := fresh "tmp" in*)
                       (*destruct H as [tmp];*)
                       (*rename_by_string tmp n*)
-  | H : unit |- _ => destruct H
+  | H : unit |- _ => progress destruct H
   | H : fn_A _ |- _ => progress (simpl in H)
   | H : RT_xt _ |- _ => progress (simpl in H)
   end.
@@ -1409,6 +1430,10 @@ Global Existing Instance simplify_goal_mut_fixpoint_project_ty_ghost_drop_inst.
 Ltac hooks.normalize_hook ::=
   (* also simpl *)
   rewrite /size_of_st/=;
+  repeat lazymatch goal with
+  | |- context[st_of (mut_type_project (mut_fixpoint _) _ _) MetaNone] =>
+    rewrite mut_fixpoint_project_ty_syn_type
+  end;
   simplify_layout_normalize;
   autounfold with lithium_rewrite;
   match goal with
@@ -1484,6 +1509,10 @@ Proof. rewrite ty_lfts_unfold. done. Qed.
 Lemma ty_wf_E_unfold_lem `{!typeGS Σ} {rt} (ty : type rt) :
   ty_wf_E ty = _ty_wf_E _ ty.
 Proof. rewrite ty_wf_E_unfold. done. Qed.
+
+(** Trait-related tactic calls *)
+Ltac solve_trait_realization_pers :=
+  intros; prepare_initial_coq_context; apply _.
 
 (** Enum-related tactic calls *)
 Ltac solve_mk_enum_tag_consistent :=
@@ -1756,8 +1785,10 @@ Ltac solve_ty_has_op_type_cases ::=
   | |- ty_has_op_type (array_t ?len ?ty) (ArrayOp ?element_ot _) =>
         refine (ty_has_op_type_array_canonical ty len element_ot _ _ _ _);
         [ solve_op_alg | solve_ot_eq |]
+  | |- ty_has_op_type (mut_type_project _ _ _) (use_op_alg' (st_of (mut_type_project _ _ _) _)) =>
+        refine (mut_fixpoint_project_ty_has_op_type_1_canonical _ _ _ _); simpl
   | |- ty_has_op_type (mut_type_project _ _ _) _ =>
-        refine (mut_fixpoint_project_ty_has_op_type_1 _ _ _ _ _)
+        refine (mut_fixpoint_project_ty_has_op_type_1 _ _ _ _ _); simpl
   | |- ty_has_op_type _ (use_op_alg' (st_of (mut_type_project (mut_fixpoint _) _ _) _)) =>
         refine (mut_fixpoint_project_ty_has_op_type_2 _ _ _ _ _ _)
   | |- _ =>
@@ -1782,6 +1813,8 @@ Ltac solve_ty_has_op_type_cases ::=
       | solve_ot_eq
       | solve_ty_has_op_type_enum_variants]
       *)
+    | rewrite mut_type_project_cons_head_eq/=
+    | rewrite -mut_type_project_cons_tail_eq/=
     ]
   end.
 
@@ -1851,9 +1884,7 @@ Ltac sidecond_hook_core :=
       solve_ly_align_ib
   | |- syn_type_compat _ _ =>
       solve_syn_type_compat
-  | |- ty_allows_reads _ =>
-      solve_ty_allows
-  | |- ty_allows_writes _ =>
+  | |- ty_allows_ops _ =>
       solve_ty_allows
   | |- Copyable _ =>
       apply _
@@ -1924,9 +1955,7 @@ Ltac is_builtin_sidecond P :=
       idtac
   | syn_type_compat _ _ =>
       idtac
-  | ty_allows_reads _ =>
-      idtac
-  | ty_allows_writes _ =>
+  | ty_allows_ops _ =>
       idtac
   | Copyable _ =>
       idtac
@@ -1979,9 +2008,7 @@ Ltac is_fast_builtin_sidecond P :=
       idtac
   | ty_has_op_type _ _ =>
       idtac
-  | ty_allows_reads _ =>
-      idtac
-  | ty_allows_writes _ =>
+  | ty_allows_ops _ =>
       idtac
   end.
 

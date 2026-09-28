@@ -527,6 +527,67 @@ impl<'def> GenericScopeInst<'def> {
         self.lfts.push(lft);
     }
 
+    /// Replace only the lifetime instantiation, preserving types and trait requirements.
+    #[must_use]
+    pub fn with_lfts(mut self, lfts: Vec<Lft>) -> Self {
+        self.lfts = lfts;
+        self
+    }
+
+    /// Select the surrounding implementation context and make it direct in the nested realization.
+    #[must_use]
+    pub fn realization_context(&self, lfts: Vec<Lft>) -> Self {
+        Self {
+            direct_tys: self.surrounding_tys.clone(),
+            surrounding_tys: Vec::new(),
+            direct_trait_requirements: self.surrounding_trait_requirements.clone(),
+            surrounding_trait_requirements: Vec::new(),
+            lfts,
+        }
+    }
+
+    /// Treat the complete generic instantiation as one realization context.
+    #[must_use]
+    pub fn all_as_realization_context(&self, lfts: Vec<Lft>) -> Self {
+        let mut direct_tys = self.surrounding_tys.clone();
+        direct_tys.extend(self.direct_tys.iter().cloned());
+        let mut direct_trait_requirements = self.surrounding_trait_requirements.clone();
+        direct_trait_requirements.extend(self.direct_trait_requirements.iter().cloned());
+        Self {
+            direct_tys,
+            surrounding_tys: Vec::new(),
+            direct_trait_requirements,
+            surrounding_trait_requirements: Vec::new(),
+            lfts,
+        }
+    }
+
+    /// Select the generics introduced directly by a method.
+    #[must_use]
+    pub fn method_context(&self, lfts: Vec<Lft>) -> Self {
+        Self {
+            direct_tys: self.direct_tys.clone(),
+            surrounding_tys: Vec::new(),
+            direct_trait_requirements: self.direct_trait_requirements.clone(),
+            surrounding_trait_requirements: Vec::new(),
+            lfts,
+        }
+    }
+
+    /// Compose an implementation realization context with the method nested inside it.
+    #[must_use]
+    pub fn nest(realization: &Self, method: &Self) -> Self {
+        let mut lfts = realization.lfts.clone();
+        lfts.extend(method.lfts.iter().cloned());
+        Self {
+            direct_tys: method.direct_tys.clone(),
+            surrounding_tys: realization.direct_tys.clone(),
+            direct_trait_requirements: method.direct_trait_requirements.clone(),
+            surrounding_trait_requirements: realization.direct_trait_requirements.clone(),
+            lfts,
+        }
+    }
+
     /// Add a trait requirement.
     pub fn add_trait_requirement(&mut self, req: traits::ReqInst<'def, Type<'def>>) {
         if req.get_origin() == TyParamOrigin::Direct {
@@ -534,6 +595,12 @@ impl<'def> GenericScopeInst<'def> {
         } else {
             self.surrounding_trait_requirements.push(req);
         }
+    }
+
+    /// Reclassify all direct instantiations as belonging to a surrounding implementation.
+    pub fn make_direct_params_surrounding(&mut self) {
+        self.surrounding_tys.append(&mut self.direct_tys);
+        self.surrounding_trait_requirements.append(&mut self.direct_trait_requirements);
     }
 
     #[must_use]
@@ -626,14 +693,20 @@ impl<'def> GenericScopeInst<'def> {
     }
 
     pub(crate) fn format_full_instantiation(typarams: &[Type<'def>], lfts: &[Lft]) -> String {
-        let mut out = String::new();
+        format!("{} {}", Self::format_lft_instantiation(lfts), Self::format_ty_instantiation(typarams))
+    }
 
-        out.push_str("-[");
+    pub(crate) fn format_lft_instantiation(lfts: &[Lft]) -> String {
+        let mut out = String::from("-[");
         push_str_list!(out, lfts, "; ");
-        out.push_str("] -[");
+        out.push(']');
+        out
+    }
+
+    pub(crate) fn format_ty_instantiation(typarams: &[Type<'def>]) -> String {
+        let mut out = String::from("-[");
         push_str_list!(out, typarams, "; ");
         out.push(']');
-
         out
     }
 
@@ -788,6 +861,16 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
         coq::iris::IProp::Sep(props)
     }
 
+    /// Get the validity term for generics introduced directly by a function or method.
+    #[must_use]
+    pub(crate) fn generate_validity_term_for_direct_generics(&self) -> coq::iris::IProp {
+        let mut params = self.get_direct_ty_params().clone();
+        params.append(self.get_direct_assoc_ty_params().params);
+
+        let props = params.params.iter().map(Self::generate_validity_term_for_typaram).collect();
+        coq::iris::IProp::Sep(props)
+    }
+
     #[must_use]
     fn generate_validity_term_for_typaram(ty: &LiteralTyParam) -> coq::iris::IProp {
         let prop = format!("typaram_wf {} {} {}", ty.refinement_type(), ty.syn_type(), ty.type_term());
@@ -939,6 +1022,22 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
         self.surrounding_trait_requirements.append(&mut self.direct_trait_requirements);
     }
 
+    /// Reclassify selected direct type parameters as belonging to a surrounding implementation.
+    pub fn make_ty_params_surrounding(&mut self, names: &BTreeSet<String>) {
+        let mut direct = Vec::new();
+        let mut surrounding = Vec::new();
+        for mut ty in self.direct_tys.params.drain(..) {
+            if names.contains(&ty.rust_name) {
+                ty.set_origin(TyParamOrigin::SurroundingImpl);
+                surrounding.push(ty);
+            } else {
+                direct.push(ty);
+            }
+        }
+        self.direct_tys.params = direct;
+        self.surrounding_tys.append(surrounding);
+    }
+
     #[must_use]
     pub(crate) const fn get_num_lifetimes(&self) -> usize {
         self.lfts.len()
@@ -1066,6 +1165,11 @@ impl<'def> GenericScope<'def, traits::LiteralSpecUseRef<'def>> {
     }
 
     #[must_use]
+    fn get_all_trait_incl_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
+        self.get_trait_req_parameters(true, true, include_self, true)
+    }
+
+    #[must_use]
     fn get_all_attr_trait_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
         self.get_trait_req_parameters(true, true, include_self, false)
     }
@@ -1135,7 +1239,7 @@ impl<'def> GenericScope<'def, traits::LiteralSpecUseRef<'def>> {
 
             // if we're not in the same trait declaration, add the spec
             if include_spec && (!trait_use.is_used_in_self_trait || include_self.include_spec()) {
-                params.push(trait_use.get_spec_param());
+                params.extend(trait_use.get_spec_params());
             }
         }
 
@@ -1167,5 +1271,51 @@ impl<'def> GenericScope<'def, traits::LiteralSpecUseRef<'def>> {
             surrounding_trait_requirements,
             lfts: self.lfts.iter().map(|x| x.lft().to_owned()).collect(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn selected_type_parameters_become_surrounding() {
+        let mut scope: GenericScope<'_> = GenericScope::empty();
+        scope.add_ty_param(LiteralTyParam::new("ImplT"));
+        scope.add_ty_param(LiteralTyParam::new("MethodT"));
+
+        scope.make_ty_params_surrounding(&BTreeSet::from(["ImplT".to_owned()]));
+
+        assert_eq!(scope.get_surrounding_ty_params().params[0].rust_name, "ImplT");
+        assert_eq!(scope.get_surrounding_ty_params().params[0].origin, TyParamOrigin::SurroundingImpl);
+        assert_eq!(scope.get_direct_ty_params().params[0].rust_name, "MethodT");
+    }
+
+    #[test]
+    fn direct_instantiations_become_surrounding() {
+        let mut inst = GenericScopeInst::empty();
+        inst.add_direct_ty_param(Type::Bool);
+
+        inst.make_direct_params_surrounding();
+
+        assert!(inst.get_direct_ty_params().is_empty());
+        assert_eq!(inst.get_surrounding_ty_params(), &[Type::Bool]);
+    }
+
+    #[test]
+    fn nested_contexts_separate_realization_and_method_generics() {
+        let mut full = GenericScopeInst::empty();
+        full.add_surrounding_ty_param(Type::Bool);
+        full.add_direct_ty_param(Type::Int(lang::IntType::I32));
+
+        let realization = full.realization_context(vec![coq::Ident::new("impl_lft")]);
+        let method = full.method_context(vec![coq::Ident::new("method_lft")]);
+        let nested = GenericScopeInst::nest(&realization, &method);
+
+        assert_eq!(realization.get_direct_ty_params(), &[Type::Bool]);
+        assert_eq!(method.get_direct_ty_params(), &[Type::Int(lang::IntType::I32)]);
+        assert_eq!(nested.get_surrounding_ty_params(), &[Type::Bool]);
+        assert_eq!(nested.get_direct_ty_params(), &[Type::Int(lang::IntType::I32)]);
+        assert_eq!(nested.get_lfts(), &[coq::Ident::new("impl_lft"), coq::Ident::new("method_lft")]);
     }
 }

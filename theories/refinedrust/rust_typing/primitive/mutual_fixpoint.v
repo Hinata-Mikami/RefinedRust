@@ -1097,6 +1097,47 @@ Section fixpoint.
     eapply mut_type_fixpoint_from_chain_HTypeHasOpTypeEq.
   Qed.
 
+  Local Lemma mut_type_fixpoint_from_chain_metadata_kind {rts : list RT}
+      (agg_lfts : list lft) (agg_wf_E : elctx)
+      (tys0 tys1 : mut_types rts)
+      (tys : nat → mut_types rts)
+      (approx_lfts : nat → list lft) (approx_wf_E : nat → elctx)
+      (own_chain : chain (mut_ty_own_shrO rts))
+      (Hchain : ∀ n, own_chain n = mut_own_shr_of_types (tys n))
+      (Hsyn : ∀ n, HTypeSynTypeEq (tys n) tys0)
+      (Hside : ∀ n, HTypeSidecondEq (tys n) tys1)
+      (Hlfts : ∀ n, ⊢ lft_equiv (lft_intersect_list (approx_lfts n))
+          (lft_intersect_list agg_lfts))
+      (Hlfts_incl : HMutLftsIncl approx_lfts tys)
+      (Hwf : ∀ n, elctx_interp (approx_wf_E n) ≡ elctx_interp agg_wf_E)
+      (Hop : ∀ n, HTypeHasOpTypeEq tys0 (tys n))
+      (default_rt : RT) (default : type default_rt) i :
+    ty_metadata_kind
+      (mut_component default_rt default
+        (mut_type_fixpoint_from_chain agg_lfts agg_wf_E tys0 tys1 tys
+          approx_lfts approx_wf_E own_chain Hchain Hsyn Hside Hlfts Hlfts_incl Hwf Hop) i) =
+    ty_metadata_kind (mut_component default_rt default tys0 i).
+  Proof.
+    revert agg_lfts agg_wf_E tys0 tys1 tys approx_lfts approx_wf_E own_chain
+      Hchain Hsyn Hside Hlfts Hlfts_incl Hwf Hop i.
+    induction rts as [|rt rts IH]; intros.
+    - dependent destruction tys0. done.
+    - dependent destruction tys0. dependent destruction tys1.
+      destruct i; first done. eapply IH.
+  Qed.
+
+  Lemma mut_type_fixpoint_metadata_kind {rts : list RT} (F : mut_type_fun rts)
+      `{!MutTypeContractive F}
+      `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
+      (default_rt : RT) (default : type default_rt) i :
+    ty_metadata_kind (mut_component default_rt default (mut_type_fixpoint F) i) =
+    ty_metadata_kind
+      (mut_component default_rt default (mut_Fn_canon F TCTForall0 0) i).
+  Proof.
+    rewrite /mut_type_fixpoint.
+    eapply mut_type_fixpoint_from_chain_metadata_kind.
+  Qed.
+
   Local Lemma mut_type_fixpoint_from_chain_HTypeSynTypeEq {rts : list RT}
       (agg_lfts : list lft) (agg_wf_E : elctx)
       (tys0 tys1 : mut_types rts)
@@ -1701,6 +1742,14 @@ Lemma ty_wf_E_rew `{!typeGS Σ} {rt rt'} (H : rt = rt') (ty : type rt) :
   ty_wf_E (rew [type] H in ty) = ty_wf_E ty.
 Proof. destruct H. done. Qed.
 
+Lemma ty_metadata_kind_rew `{!typeGS Σ} {rt rt'} (H : rt = rt') (ty : type rt) :
+  ty_metadata_kind (rew [type] H in ty) = ty_metadata_kind ty.
+Proof. destruct H. done. Qed.
+
+Lemma ty_sidecond_rew `{!typeGS Σ} {rt rt'} (H : rt = rt') (ty : type rt) :
+  ty_sidecond (rew [type] H in ty) ≡ ty_sidecond ty.
+Proof. destruct H. done. Qed.
+
 Lemma ty_syn_type_rew `{!typeGS Σ} {rt rt'} (H : rt = rt') (ty : type rt) m :
   ty_syn_type (rew [type] H in ty) m = ty_syn_type ty m.
 Proof. destruct H. done. Qed.
@@ -1813,6 +1862,25 @@ Proof.
     + rewrite mut_type_project_simpl_tail_eq.
       rewrite -(mut_type_project_cons_tail_eq (ty +:: tys) i Hlook Hlook).
       apply IH.
+Qed.
+
+Lemma mut_fixpoint_project_ty_sidecond `{!typeGS Σ} {rts : list RT}
+    (F : mut_type_fun rts)
+    `{Hne : !MutTypeNonExpansive F}
+    `{Hcontr : !MutTypeContractive (mut_iter F (length rts))}
+    `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
+    {rt : RT} `{!Inhabited (RT_xt rt)} i
+    (Hlook : rts !! i = Some rt) :
+  ty_sidecond (mut_type_project (mut_fixpoint F (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook) ≡
+  ty_sidecond
+    (mut_type_project_simpl
+      (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 1) i Hlook).
+Proof.
+  rewrite mut_type_project_simpl_eq.
+  rewrite mut_fixpoint_unfold /mut_fixpoint_def.
+  rewrite !mut_type_project_unfold /mut_type_project_def.
+  rewrite !ty_sidecond_rew.
+  eapply mut_type_fixpoint_sidecond.
 Qed.
 
 Global Instance type_dist_mut_type_project_cons_head `{!typeGS Σ} {rt rts} n
@@ -1970,6 +2038,51 @@ Lemma mut_fixpoint_project_ty_has_op_type_1 `{!typeGS Σ} {rts : list RT}
 Proof.
   apply mut_fixpoint_project_ty_has_op_type.
 Qed.
+Lemma mut_fixpoint_project_ty_has_op_type_1_canonical `{!typeGS Σ} {rts : list RT}
+    (F : mut_type_fun rts)
+    `{Hne : !MutTypeNonExpansive F}
+    `{Hcontr : !MutTypeContractive (mut_iter F (length rts))}
+    `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
+    {rt : RT} `{!Inhabited (RT_xt rt)} i
+    (Hlook : rts !! i = Some rt) :
+  ty_has_op_type
+    (mut_type_project_simpl
+      (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 0) i Hlook) (use_op_alg' (st_of (mut_type_project_simpl (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 0) i Hlook) MetaNone)) →
+  ty_has_op_type (mut_type_project (mut_fixpoint F (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook) (use_op_alg' (st_of (mut_type_project (mut_fixpoint F (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook) MetaNone)).
+Proof.
+  intros Ha.
+  apply mut_fixpoint_project_ty_has_op_type_1.
+  rewrite mut_fixpoint_project_ty_syn_type//.
+Qed.
+
+Lemma mut_fixpoint_project_sized `{!typeGS Σ} {rts : list RT}
+    (F : mut_type_fun rts)
+    `{Hne : !MutTypeNonExpansive F}
+    `{Hcontr : !MutTypeContractive (mut_iter F (length rts))}
+    `{!TCTForall (λ rt, Inhabited (RT_xt rt)) rts}
+    {rt : RT} `{!Inhabited (RT_xt rt)} i
+    (Hlook : rts !! i = Some rt)
+    `{!TySized (mut_type_project_simpl
+      (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 0) i Hlook)} :
+  TySized (mut_type_project (mut_fixpoint F (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook).
+Proof.
+  constructor.
+  - rewrite mut_fixpoint_unfold /mut_fixpoint_def.
+    rewrite mut_type_project_unfold /mut_type_project_def.
+    rewrite ty_metadata_kind_rew.
+    rewrite /mut_type_fixpoint_iter.
+    rewrite mut_type_fixpoint_metadata_kind.
+    pose proof (ty_sized_metadata_none (ty := mut_type_project_simpl
+      (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 0) i Hlook)) as Hsized.
+    rewrite mut_type_project_simpl_eq in Hsized.
+    rewrite mut_type_project_unfold /mut_type_project_def ty_metadata_kind_rew in Hsized.
+    exact Hsized.
+  - intros m1 m2.
+    rewrite !mut_fixpoint_project_ty_syn_type.
+    apply ty_sized_syn_type_eq.
+Qed.
+Global Hint Extern 10 (TySized (mut_type_project _ _ _)) =>
+  apply mut_fixpoint_project_sized; simpl : typeclass_instances.
 
 Section rules.
   Context `{!typeGS Σ}.
@@ -2244,6 +2357,16 @@ Section rules.
   Qed.
   Definition mut_eqltype_mut_fixpoint_r_inst := [instance @mut_eqltype_mut_fixpoint_r].
   Global Existing Instance mut_eqltype_mut_fixpoint_r_inst | 6.
+
+  Lemma simplify_goal_mut_fixpoint_project_sidecond T :
+    ty_sidecond (mut_type_project_simpl (mut_Fn_canon (mut_iter F (length rts)) TCTForall0 1) i Hlook) ∗ T
+    ⊢ simplify_goal (ty_sidecond (mut_type_project (mut_fixpoint F (Hne:=Hne) (Hcontr:=Hcontr)) i Hlook)) T.
+  Proof.
+    unfold simplify_goal. rewrite mut_fixpoint_project_ty_sidecond.
+    done.
+  Qed.
+  Definition simplify_goal_mut_fixpoint_project_sidecond_inst := [instance @simplify_goal_mut_fixpoint_project_sidecond with 0%N].
+  Global Existing Instance simplify_goal_mut_fixpoint_project_sidecond_inst.
 End rules.
 
 Section decompose_mut_type_contractive.

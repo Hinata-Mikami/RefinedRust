@@ -34,6 +34,9 @@ mod remote {
 
         #[serde(getter = "Self::has_semantic_interp")]
         has_semantic_interp: bool,
+
+        #[serde(getter = "Self::realization")]
+        realization: String,
     }
 
     impl LiteralImpl {
@@ -48,11 +51,15 @@ mod remote {
         fn has_semantic_interp(literal_impl: &specs::traits::LiteralImpl) -> bool {
             Option::is_some(&literal_impl.spec_semantic())
         }
+
+        fn realization(literal_impl: &specs::traits::LiteralImpl) -> String {
+            literal_impl.spec_realization().to_owned()
+        }
     }
 
     impl From<LiteralImpl> for specs::traits::LiteralImpl {
         fn from(literal_impl: LiteralImpl) -> Self {
-            Self::new(literal_impl.name, literal_impl.has_semantic_interp)
+            Self::new(literal_impl.name, literal_impl.has_semantic_interp, literal_impl.realization)
         }
     }
 

@@ -151,7 +151,7 @@ impl<'def> Spec<'def, InnerSpec<'def>> {
         params.append(self.late_coq_params.0.clone());
 
         // finally, the trait spec parameters
-        let trait_params = self.generics.get_all_trait_parameters(IncludeSelfReq::AttrsSpec);
+        let trait_params = self.generics.get_all_trait_incl_parameters(IncludeSelfReq::AttrsSpec);
 
         params.append(trait_params.0);
 
@@ -206,23 +206,22 @@ impl<'def> Spec<'def, InnerSpec<'def>> {
             let trait_use = trait_use.as_ref().unwrap();
             // TODO?
             //if !trait_use.is_used_in_self_trait {
-            let spec_precond = trait_use.make_spec_param_precond();
-            late_pre.push(spec_precond);
+            late_pre.push(trait_use.make_spec_param_precond());
             //}
         }
-        let term = coq::term::Term::Infix("∧".to_owned(), late_pre);
+        let term = coq::iris::IProp::Sep(late_pre);
 
         // quantify over the generic scope
         let mut quantified_term = String::new();
         self.generics.format(&mut quantified_term, false, &[]).unwrap();
-        quantified_term.push_str(&format!(" ({term})"));
+        quantified_term.push_str(&format!(" (λ π, ({term})%I)"));
 
         let name = self.trait_req_incl_name.clone();
         doc.push(coq::command::Definition {
             program_mode: false,
             name,
             params,
-            ty: Some(coq::term::Type::Literal("spec_with _ _ Prop".to_owned())),
+            ty: Some(coq::term::Type::Literal("spec_with _ _ (thread_id → iProp Σ)".to_owned())),
             body: coq::command::DefinitionBody::Term(coq::term::Term::Literal(quantified_term)),
         });
 

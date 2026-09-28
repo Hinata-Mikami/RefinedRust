@@ -128,9 +128,9 @@ Section function.
 
   Definition typaram_wf rt st (ty : type rt) : iProp Σ :=
     (∃ _ : TySized ty,
-      ⌜ty_allows_writes ty⌝ ∗ ⌜ty_allows_reads ty⌝ ∗ ⌜ty_syn_type ty MetaNone = st⌝ ∗ ty_sidecond ty)%I.
-  (*Definition typarams_wf rts (sts : list syn_type) (tys : plist type rts) : iProp Σ :=*)
-    (*[∗ list] x ∈ zip sts (pzipl _ tys), typaram_wf _ x.1 (projT2 x.2).*)
+      ⌜ty_allows_ops ty⌝ ∗ ⌜ty_syn_type ty MetaNone = st⌝ ∗ ty_sidecond ty)%I.
+  Definition typarams_wf rts (sts : list syn_type) (tys : plist type rts) : iProp Σ :=
+    [∗ list] x ∈ zip sts (pzipl _ tys), typaram_wf _ x.1 (projT2 x.2).
 
   Definition typaram_elctx ϝ rt : type rt → elctx :=
     λ ty, ty_outlives_E ty ϝ ++ ty_wf_E ty.
@@ -725,12 +725,25 @@ Section function_subsume.
   (** Given a function typing proof, we can always specialize it to more specific generics *)
   Lemma typed_function_specialize {lfts lfts2 : nat} {rts rts2 : list RT} (S1 : spec_with lfts rts fn_spec) π fn eqp1 eqp2 Fκ Fty :
     typed_function π fn (eqp1, S1) -∗
-    typed_function π fn (eqp2, spec! κs : lfts | tys : rts, S1 (Fκ κs) (Fty κs tys)).
+    typed_function π fn (eqp2, spec! κs : lfts2 | tys : rts2, S1 (Fκ κs) (Fty κs tys)).
   Proof.
     iIntros "Ha".
     rewrite /typed_function.
     iIntros (κs tys). simpl.
     iApply "Ha".
+  Qed.
+  Lemma function_ptr_specialize {lfts lfts2 : nat} {rts rts2 : list RT} (S1 : spec_with lfts rts fn_spec) eqp1 eqp2 Fκ Fty π m v l sts :
+    v ◁ᵥ{π, m} l @ function_ptr sts (eqp1, S1) -∗
+    v ◁ᵥ{π, m} l @ function_ptr sts (eqp2, spec! κs : lfts2 | tys : rts2, S1 (Fκ κs) (Fty κs tys)).
+  Proof.
+    iIntros "Ha".
+    rewrite /ty_own_val/=.
+    iDestruct "Ha" as "(-> & %fn & -> & Hfn & %Ha & Hf)".
+    iR.
+    iExists fn. iFrame.
+    iR. iR.
+    iNext.
+    by iApply typed_function_specialize.
   Qed.
 
 
@@ -1347,7 +1360,43 @@ Section function_subsume.
     iApply ("Ha" with "Hs").
   Qed.
   Definition type_call_fnptr_simplify_inst := [instance type_call_fnptr_simplify].
-  Global Existing Instance type_call_fnptr_simplify_inst | 1.
+  Global Existing Instance type_call_fnptr_simplify_inst | 3.
+
+
+  (** Simplify a call by instantiating a level of nested generic application *)
+  Lemma type_call_fnptr_instantiate_parametric {lfts_params : nat} {ty_params : list RT} (lfts_inst : prod_vec lft lfts_params) (ty_inst : plist type ty_params) E L π f κs etys v l sta {lfts : nat} {rts : list RT} eqp2 (S : spec_with lfts_params ty_params (spec_with lfts rts fn_spec)) vs args m destination normal unwind T U :
+    typed_call E L f κs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eq_refl, S lfts_inst ty_inst)) vs args destination normal unwind T U
+    ⊢ typed_call E L f κs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp2, spec_collapse_params _ _ (λ a b, S a b))) vs args destination normal unwind T U.
+  Proof.
+    iIntros "Ha". rewrite /typed_call.
+    iIntros "Hs".
+
+    iPoseProof (function_ptr_specialize _ _ eq_refl (λ a, rew <- (replicate_add_transparent lfts_params lfts _) in papp lfts_inst a) (λ a b, papp ty_inst b) with "Hs") as "Hs".
+    iPoseProof (use_function_subtype with "Hs") as "Hs".
+    2: { iApply ("Ha" with "Hs"). }
+
+    iIntros (π' fn eqp1 eqp2' lfts' tys').
+    unfold spec_collapse_params. simpl.
+    rewrite ptake_replicate_papp pdrop_replicate_papp ptake_papp pdrop_papp.
+    rewrite (UIP_refl _ _ eqp1) (UIP_refl _ _ eqp2').
+    iIntros "Hf". iFrame.
+  Qed.
+
+  (** Class for finding a singleton in the context, as is for abstract trait spec parameter instantiations *)
+  Class FindSingleton (T : Type) := find_singleton_inh : T.
+
+  Lemma type_call_fnptr_instantiate_parametric_find {lfts_params : nat} {ty_params : list RT}
+    {lfts_inst : FindSingleton (prod_vec lft lfts_params)}
+    {ty_inst : FindSingleton (plist type ty_params)}
+    E L π f κs etys v l sta {lfts : nat} {rts : list RT} eqp2 (S : spec_with lfts_params ty_params (spec_with lfts rts fn_spec)) vs args m destination normal unwind T U :
+    typed_call E L f κs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eq_refl, S lfts_inst ty_inst)) vs args destination normal unwind T U
+    ⊢ typed_call E L f κs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp2, spec_collapse_params _ _ (λ a b, S a b))) vs args destination normal unwind T U.
+  Proof.
+    iApply type_call_fnptr_instantiate_parametric.
+  Qed.
+  Definition type_call_fnptr_instantiate_parametric_find_inst := [instance @type_call_fnptr_instantiate_parametric_find].
+  Global Existing Instance type_call_fnptr_instantiate_parametric_find_inst | 1.
+
 
   (** Marker for automation to find trait inclusions *)
   Definition trait_incl_def (P : Prop) := P.
@@ -1367,7 +1416,6 @@ Global Arguments function_subtype : simpl never.
 
 
 Global Hint Mode FastFunctionSpecEq + + + + + + : typeclass_instances.
-
 
 Section inline.
   Context `{!typeGS Σ}.
@@ -1634,3 +1682,9 @@ Proof.
   rewrite /SimplBoth/effective_unwind_condition.
   destruct radium_panic_strategy_of; naive_solver.
 Qed.
+Global Hint Mode FindSingleton + : typeclass_instances.
+Global Hint Extern 1 (FindSingleton ?T) =>
+    match goal with
+    | H : T |- _ =>
+      exact H
+    end : typeclass_instances.

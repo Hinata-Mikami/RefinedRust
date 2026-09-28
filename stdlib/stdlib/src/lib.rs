@@ -27,3 +27,4 @@
 #![rr::export_include("num")]
 #![rr::export_include("cmp")]
 #![rr::export_include("range")]
+#![rr::export_include("sized")]

@@ -9,6 +9,30 @@ use std::collections::BTreeMap;
 use radium::{code, specs};
 use rr_rustc_interface::middle::ty;
 
+/// Project a method specification from a concretely selected implementation realization.
+pub(crate) fn make_realized_method_spec<'def>(
+    impl_: &specs::traits::SpecializedImpl<'def>,
+    trait_spec: specs::traits::LiteralSpecRef<'def>,
+    method_name: &str,
+    method_scope_inst: specs::traits::ReqScopeInst,
+) -> code::UsedProcedureSpec<'def> {
+    code::UsedProcedureSpec::RealizedMethod(specs::traits::RealizedMethodSpecUse::from_specialized_impl(
+        impl_,
+        trait_spec,
+        method_name.to_owned(),
+        method_scope_inst,
+    ))
+}
+
+/// Use a realized method specification when available, retaining the literal specification as a
+/// fallback while realization metadata is rolled out.
+pub(crate) fn realized_method_or_literal<'def>(
+    realized: Option<code::UsedProcedureSpec<'def>>,
+    literal_spec: &str,
+) -> code::UsedProcedureSpec<'def> {
+    realized.unwrap_or_else(|| code::UsedProcedureSpec::Literal(literal_spec.to_owned()))
+}
+
 pub(crate) struct TraitMethodUseData<'def> {
     pub loc_name: String,
     pub spec_term: code::UsedProcedureSpec<'def>,

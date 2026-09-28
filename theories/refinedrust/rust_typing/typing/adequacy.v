@@ -629,12 +629,19 @@ Ltac adequacy_solve_typed_function lemma :=
     | rep liRStep
     ].
 
-Ltac adequacy_solve_function_ptr :=
+Ltac adequacy_solve_function_ptr spec_lfts spec_tys :=
   rewrite /ty_own_val/=; iR;
   iExists _;
   iSplitR; [ iPureIntro; by apply val_to_loc_Some_l2v| ];
   iSplitR; [ done | ];
   iSplitR; [ iPureIntro; simpl; repeat first [by apply Forall2_nil | apply Forall2_cons; split; [shelve_sidecond | ]] | ];
   iNext; simpl;
-  iApply typed_function_equiv; iSplit; first done;
-  rep liRStep.
+  iApply typed_function_equiv; iSplit;
+  [ match goal with
+    | |- environments.envs_entails _ (typed_function _ ?fn _) =>
+      let iH := iFresh in
+      iRename select (typed_function _ fn _) into iH;
+      iApply (typed_function_specialize _ _ _ _ _ spec_lfts spec_tys);
+      iApply iH
+    end
+  | rep liRStep].

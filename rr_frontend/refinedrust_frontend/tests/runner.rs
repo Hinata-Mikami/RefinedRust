@@ -264,7 +264,7 @@ mod tests {
             output.path().join("projection_deps/generated/generated_template_call_symbolic.v"),
         )
         .expect("missing symbolic-projection proof template");
-        assert!(symbolic_template.contains("Assoc_T_spec :"));
+        assert!(symbolic_template.contains("Assoc_T_realization :"));
         assert!(symbolic_template.contains("( *[Assoc_T_Output_ty])"));
         assert!(symbolic_template.contains("syn_type_is_layoutable (Assoc_T_Output_st)"));
 
@@ -274,8 +274,8 @@ mod tests {
                 .join("projection_deps/generated/generated_template_call_with_associated_bound.v"),
         )
         .expect("missing associated-bound proof template");
-        assert!(associated_bound_template.contains("IntoSource_T_spec :"));
-        assert!(associated_bound_template.contains("ItemSource_TasIntoSource_Source_spec :"));
+        assert!(associated_bound_template.contains("IntoSource_T_realization :"));
+        assert!(associated_bound_template.contains("ItemSource_TasIntoSource_Source_realization :"));
         assert!(
             associated_bound_template
                 .contains("ItemSource_spec (RRGS:=RRGS) (IntoSource_T_Source_rt) (IntoSource_T_Item_rt)")
@@ -312,9 +312,9 @@ mod tests {
                 .join("projection_deps/generated/generated_template_call_with_nested_associated_bound.v"),
         )
         .expect("missing nested associated-bound proof template");
-        assert!(nested_bound_template.contains("NestedSource_T_spec :"));
-        assert!(nested_bound_template.contains("IntoSource_TasNestedSource_Inner_spec :"));
-        assert!(nested_bound_template.contains("ItemSource_TasNestedSource_InnerasIntoSource_Source_spec :"));
+        assert!(nested_bound_template.contains("NestedSource_T_realization :"));
+        assert!(nested_bound_template.contains("IntoSource_TasNestedSource_Inner_realization :"));
+        assert!(nested_bound_template.contains("ItemSource_TasNestedSource_InnerasIntoSource_Source_realization :"));
         assert!(nested_bound_template.contains("syn_type_is_layoutable (NestedSource_T_Inner_st)"));
         assert!(
             nested_bound_template

@@ -1856,6 +1856,26 @@ Section deinit.
   (** ** Instances for deinitializing a type *)
   (** Types have more specific instances that we generally prefer in [.../deinit.v] *)
 
+  Lemma ltype_own_ofty_to_typed_value π F l {rt} (ty : type rt) r :
+    lftE ⊆ F →
+    ty_has_op_type ty (use_op_alg' (st_of ty MetaNone)) →
+    l ◁ₗ[π, Owned] (#r) @ (◁ ty) -∗
+    logical_step F (l ◁ₗ[ π, Owned] .@ (◁ typed_value_t (st_of ty MetaNone)) ∗ ty_ghost_drop' ty π r).
+  Proof.
+    intros ??. iIntros "Hl".
+    iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Hst' & %)".
+    simp_ltypes in Hst'.
+    iApply fupd_logical_step.
+    iMod (ofty_own_split_value_typed with "Hl") as "(%v & Hv & Hl)"; [done.. | ].
+    iPoseProof (ty_own_ghost_drop with "Hv") as "Hb"; first done.
+    iModIntro.
+    iApply (logical_step_wand with "Hb"). iIntros "$".
+    iApply (ofty_owned_subtype_aligned with "[] Hl").
+    { simpl. done. }
+    { done. }
+    iApply owned_type_incl_value_typed_value.
+  Qed.
+
   Lemma owned_subltype_step_ofty_val_eq π E L {rt} (lt : ltype rt) r st l `{Hst : !SynTypeEq (ltype_st lt) st} T :
     owned_subltype_step π E L true l (#r) (#()) lt (◁ typed_value_t st) T :-
     return cast_ltype_to_type E L lt (λ ty,
@@ -1871,17 +1891,8 @@ Section deinit.
     iDestruct "Hincl" as "(Hincl & _)". iDestruct "Hincl" as "(Hincl & _)".
     iMod (ltype_incl'_use with "Hincl Hl") as "Hl"; first done.
     iExists _, _. iFrame.
-    iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Hst' & %)".
-    simp_ltypes in Hst'.
-    iMod (ofty_own_split_value_typed with "Hl") as "(%v & Hv & Hl)"; [done.. | ].
-    iPoseProof (ty_own_ghost_drop with "Hv") as "Hb"; first done.
-    iModIntro.
-    iApply (logical_step_wand with "Hb"). iIntros "$".
-    iApply (ofty_owned_subtype_aligned with "[] Hl").
-    { simpl. rewrite Hst. done. }
-    { done. }
-    rewrite Hst.
-    iApply owned_type_incl_value_typed_value.
+    iPoseProof (ltype_own_ofty_to_typed_value _ F with "Hl") as "Hl"; [done | done | ].
+    rewrite Hst. done.
   Qed.
   Definition owned_subltype_step_ofty_val_eq_inst := [instance owned_subltype_step_ofty_val_eq].
   Global Existing Instance owned_subltype_step_ofty_val_eq_inst | 100.

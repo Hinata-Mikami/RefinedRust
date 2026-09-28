@@ -12,7 +12,10 @@ use radium::{code, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
-use super::{MirTranslationCtx, MirTypeTranslation, ProcedureInst, TraitMethodUseData, TranslationKey};
+use super::{
+    MirTranslationCtx, MirTypeTranslation, ProcedureInst, TraitMethodUseData, TranslationKey,
+    realized_method_or_literal,
+};
 use crate::base::*;
 use crate::error::Message;
 use crate::traits::registry::{self, ResolvedTraitReq};
@@ -43,6 +46,11 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
 
     fn make_virtual_drop_glue_method_for_param(&self, dropped_ty: ty::Ty<'tcx>) -> TraitMethodUseData<'def>;
 
+    fn get_realized_drop_glue_spec(
+        &self,
+        dropped_ty: ty::Ty<'tcx>,
+    ) -> Result<Option<code::UsedProcedureSpec<'def>>, TranslationError>;
+
     /// Internally register that we have used ADT drop glue for a concrete dropped type, and return
     /// the code parameter and call instantiation.
     fn register_use_drop_glue(
@@ -55,8 +63,10 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
         let dropped_ty = types::normalize_in_function(function_did, self.tcx(), dropped_ty)?;
 
         match dropped_ty.kind() {
-            ty::TyKind::Adt(adt_def, adt_args) => self.register_use_adt_drop_glue(*adt_def, adt_args),
-            ty::TyKind::Tuple(args) => self.register_use_tuple_drop_glue(args),
+            ty::TyKind::Adt(adt_def, adt_args) => {
+                self.register_use_adt_drop_glue(dropped_ty, *adt_def, adt_args)
+            },
+            ty::TyKind::Tuple(args) => self.register_use_tuple_drop_glue(dropped_ty, args),
             ty::TyKind::Param(_) => self.register_use_assumed_drop_glue(dropped_ty),
             ty::TyKind::Alias(_, alias_ty) if matches!(alias_ty.kind, ty::AliasTyKind::Projection { .. }) => {
                 self.register_use_assumed_drop_glue(dropped_ty)
@@ -69,6 +79,7 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
 
     fn register_use_adt_drop_glue(
         &mut self,
+        dropped_ty: ty::Ty<'tcx>,
         adt_def: ty::AdtDef<'tcx>,
         adt_args: ty::GenericArgsRef<'tcx>,
     ) -> Result<(code::Expr, ProcedureInst<'tcx, 'def>), TranslationError> {
@@ -77,11 +88,12 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
         let trait_reqs = self.resolve_drop_glue_trait_requirements(adt_def.did(), adt_args)?;
         let quantified_args = self.get_drop_glue_generic_abstraction(adt_def.did(), adt_args, trait_reqs)?;
 
-        self.register_use_concrete_drop_glue(key, generics_key, adt_args, quantified_args)
+        self.register_use_concrete_drop_glue(dropped_ty, key, generics_key, adt_args, quantified_args)
     }
 
     fn register_use_tuple_drop_glue(
         &mut self,
+        dropped_ty: ty::Ty<'tcx>,
         args: &'tcx ty::List<ty::Ty<'tcx>>,
     ) -> Result<(code::Expr, ProcedureInst<'tcx, 'def>), TranslationError> {
         let arity = args.len();
@@ -105,6 +117,7 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
         let quantified_args = self.get_tuple_drop_glue_generic_abstraction(method_params)?;
 
         self.register_use_concrete_drop_glue(
+            dropped_ty,
             procedures::DropGlueKey::Tuple(arity),
             generics_key,
             method_params,
@@ -114,10 +127,11 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
 
     fn register_use_concrete_drop_glue(
         &mut self,
+        dropped_ty: ty::Ty<'tcx>,
         key: procedures::DropGlueKey,
         generics_key: types::GenericsKey<'tcx>,
         method_params: ty::GenericArgsRef<'tcx>,
-        quantified_args: types::AbstractedGenerics<'def>,
+        mut quantified_args: types::AbstractedGenerics<'def>,
     ) -> Result<(code::Expr, ProcedureInst<'tcx, 'def>), TranslationError> {
         let used_key = TranslationKey::DropGlue(key.clone(), generics_key.clone());
         let res;
@@ -130,11 +144,21 @@ pub(crate) trait MirDropTranslation<'def, 'tcx: 'def>:
                 )
             })?;
 
-            let spec_term = code::UsedProcedureSpec::Literal(meta.get_spec_name().to_owned());
+            let realized_spec = self.get_realized_drop_glue_spec(dropped_ty)?.map(|spec| {
+                spec.with_realization_context_inst(quantified_args.realization_context_inst.clone())
+            });
+            if realized_spec.is_some() {
+                quantified_args.scope.make_direct_params_surrounding();
+            }
+            let spec_term = realized_method_or_literal(realized_spec, meta.get_spec_name());
             let loc_name =
                 format!("{}_loc", types::mangle_name_with_tys(meta.get_name(), generics_key.as_slice()));
             let syntypes = vec![lang::SynType::Ref];
-            let fn_inst = quantified_args.fn_scope_inst;
+            let fn_inst = if matches!(&spec_term, code::UsedProcedureSpec::RealizedMethod(_)) {
+                quantified_args.method_scope_inst.clone()
+            } else {
+                quantified_args.procedure_scope_inst.clone()
+            };
 
             info!(
                 "Registered drop-glue instance {} for {:?} with {:?} and layouts {:?}",

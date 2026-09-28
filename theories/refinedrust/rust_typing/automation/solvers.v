@@ -2810,13 +2810,11 @@ Ltac solve_ty_has_op_type ::=
   repeat solve_ty_has_op_type_step.
 
 
-(** Solver for goals of the form [ty_allows_reads ?ty] and [ty_allows_writes ?ty] *)
+(** Solver for goals of the form [ty_allows_ops ?ty] *)
 Ltac solve_ty_allows :=
   lazymatch goal with
-  | |- ty_allows_reads ?ty =>
-      unfold ty_allows_reads
-  | |- ty_allows_writes ?ty =>
-      unfold ty_allows_writes
+  | |- ty_allows_ops ?ty =>
+      unfold ty_allows_ops
   end;
   solve_ty_has_op_type.
 
@@ -2908,7 +2906,7 @@ Ltac destruct_product_hypothesis name H :=
                       destruct H as [tmp1 tmp2];
                       destruct_product_hypothesis name tmp1;
                       destruct_product_hypothesis name tmp2
-  | nil_unit => destruct H
+  | nil_unit => progress destruct H
   | cons_prod _ _ =>
       let tmp1 := fresh "tmp" in
       let tmp2 := fresh "tmp" in
@@ -2924,7 +2922,7 @@ Ltac destruct_product_hypothesis name H :=
                       destruct H as [tmp1 tmp2];
                       destruct_product_hypothesis name tmp1;
                       destruct_product_hypothesis name tmp2
-      | 0%nat => destruct H
+      | 0%nat => progress destruct H
       end
   | plist _ ?xs =>
       let ys := eval simpl in xs in
@@ -2935,7 +2933,7 @@ Ltac destruct_product_hypothesis name H :=
                       destruct H as [tmp1 tmp2];
                       destruct_product_hypothesis name tmp1;
                       destruct_product_hypothesis name tmp2
-      | [] => destruct H
+      | [] => progress destruct H
       end
   |    _ =>
       simpl in H;
@@ -2958,7 +2956,7 @@ Ltac is_applied_spec t :=
       | prod_vec _ _ → plist _ _ → _ => idtac
       end
   end.
-Local Ltac strip_applied_params a acc cont :=
+Ltac strip_applied_params a acc cont :=
   match a with
   | ?a1 ?a2 =>
       let a2 := eval unfold reverse_coercion in a2 in
@@ -3133,8 +3131,12 @@ Ltac function_subtype_find_trait_spec cont :=
               | ?c1 ?d =>
                   (* now decompose d into the instantiation *)
                   decompose_instantiated_spec d ltac:(fun d ty lft =>
-                    is_var d;
-                    cont c1 d ty lft acc
+                    (* [d] is applied to the abstract generic instantiation *)
+                     first [is_var d
+                       | match d with
+                         | (trait_ctx_spec ?d2) ?typ ?lftp => is_var d2
+                         end];
+                     cont c1 d ty lft acc
                   )
               end
               )
@@ -3146,7 +3148,7 @@ Ltac function_subtype_solve_trait :=
   lazymatch goal with
   | |- FunctionSubtype ?a ?b =>
       is_evar b;
-      unfold a;
+      try unfold a;
       rewrite /FunctionSubtype;
 
       (* we lift out all the generics *)
@@ -3236,6 +3238,7 @@ Ltac solve_trait_incl_fn :=
   first [solve_function_subtype | done ].
 
 Ltac solve_trait_incl :=
+  (try assumption);
   solve_trait_incl_prepare;
   solve_trait_incl_core;
   try solve_trait_incl_fn.

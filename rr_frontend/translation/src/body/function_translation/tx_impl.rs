@@ -15,11 +15,11 @@ use super::{ExprInfo, ExprWithInfo, TX};
 use crate::base::*;
 use crate::body::mir_lowering::{
     MirConstantTranslation, MirDropTranslation, MirPlaceTranslation as _, MirRvalueTranslation,
-    MirTranslationCtx, MirTypeTranslation, TraitMethodUseData, TranslationKey,
+    MirTranslationCtx, MirTypeTranslation, TraitMethodUseData, TranslationKey, make_realized_method_spec,
     make_virtual_drop_glue_method_for_param_from_scope,
 };
-use crate::traits::registry::ResolvedTraitReq;
-use crate::{procedures, types};
+use crate::traits::registry::{self, ResolvedTraitReq};
+use crate::{error, procedures, types};
 
 impl<'a, 'def: 'a, 'tcx: 'def> MirTranslationCtx<'def, 'tcx> for TX<'a, 'def, 'tcx> {
     type ExprInfo = ExprInfo<'tcx, 'def>;
@@ -70,6 +70,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for TX<'a, 'def, '
     ) -> Result<types::AbstractedGenerics<'def>, TranslationError> {
         self.ty_translator
             .get_generic_abstraction_for_item(owner_did, args, &[], trait_reqs, true)
+            .map(types::AbstractedGenerics::all_as_realization_context)
     }
 
     fn resolve_drop_glue_trait_requirements(
@@ -92,7 +93,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for TX<'a, 'def, '
             let mut state = types::STInner::InFunction(&mut scope);
             self.trait_registry.resolve_drop_glue_requirements_for_args(&mut state, args)?
         };
-        self.ty_translator.get_generic_abstraction_for_args_all_direct(args, &[], trait_reqs)
+        self.ty_translator
+            .get_generic_abstraction_for_args_all_direct(args, &[], trait_reqs)
+            .map(types::AbstractedGenerics::all_as_realization_context)
     }
 
     fn translate_drop_glue_type(&self, ty: ty::Ty<'tcx>) -> Result<specs::Type<'def>, TranslationError> {
@@ -102,6 +105,34 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for TX<'a, 'def, '
     fn make_virtual_drop_glue_method_for_param(&self, dropped_ty: ty::Ty<'tcx>) -> TraitMethodUseData<'def> {
         let scope = self.ty_translator.scope.borrow();
         make_virtual_drop_glue_method_for_param_from_scope(self.tcx, &scope.generic_scope, dropped_ty)
+    }
+
+    fn get_realized_drop_glue_spec(
+        &self,
+        dropped_ty: ty::Ty<'tcx>,
+    ) -> Result<Option<code::UsedProcedureSpec<'def>>, TranslationError> {
+        let Some(impl_) = ({
+            let mut scope = self.ty_translator.scope.borrow_mut();
+            let mut state = types::STInner::InFunction(&mut scope);
+            self.trait_registry.get_drop_glue_impl_spec_term_in_state(&mut state, dropped_ty)?
+        }) else {
+            return Ok(None);
+        };
+        let trait_spec = self
+            .trait_registry
+            .lookup_virtual_trait(registry::VirtualTrait::DropGlue)
+            .ok_or_else(|| {
+                TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::TraitResolution(
+                    "virtual DropGlue trait is not registered with RefinedRust".to_owned(),
+                )))
+            })?;
+
+        Ok(Some(make_realized_method_spec(
+            &impl_,
+            trait_spec,
+            "drop_glue",
+            specs::traits::ReqScopeInst::new(Vec::new()),
+        )))
     }
 }
 

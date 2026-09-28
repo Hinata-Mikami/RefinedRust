@@ -228,3 +228,173 @@ Notation "<SIMPL> x" := (ltac:(let __x := eval simpl in (x) in refine __x)) (rig
 Notation "x '<INST!>'" := (@spec_instantiated _ ltac:(apply _) _ x) (left associativity, at level 81, only parsing) : stdpp_scope.
 #[warnings="-postfix-notation-not-level-1"]
 Notation "x '<MERGE!>'" := (@spec_collapse_params _ ltac:(apply _) _ _ _ _ _ x) (left associativity, at level 181, only parsing) : stdpp_scope.
+
+Lemma replicate_add_transparent {A} (n m : nat) (x : A) :
+  replicate (n + m) x = replicate n x ++ replicate m x.
+Proof.
+  induction n as [ | ? IH]; simpl; first done.
+  f_equiv. apply IH.
+Defined.
+
+Lemma rew_pcons {A : Type} {F : A → Type} {x : A} {xs ys : list A}
+    (H : xs = ys) (fx : F x) (xl : plist F xs) :
+  rew [plist F] f_equal (cons x) H in (fx -:: xl) =
+    fx -:: (rew [plist F] H in xl).
+Proof. destruct H. reflexivity. Qed.
+Lemma rew_pcons_rev {A : Type} {F : A → Type} {x : A} {xs ys : list A}
+    (H : xs = ys) (fx : F x) (xl : plist F ys) :
+  rew <-[plist F] f_equal (cons x) H in (fx -:: xl) =
+    fx -:: (rew <-[plist F] H in xl).
+Proof. destruct H. reflexivity. Qed.
+
+Lemma ptake_papp {A : Type} {F : A → Type} {xs ys : list A}
+    (xl : plist F xs) (yl : plist F ys) :
+  rew (take_app_transparent xs ys) in
+    ptake _ (papp xl yl) (length xs) = xl.
+Proof.
+  induction xs as [ | x xs IH] in xl |-*; destruct xl.
+  - destruct ys; destruct yl; cbn [ptake papp].
+    all: match goal with
+         | |- context[rew ?H in _] => rewrite (UIP_refl _ _ H)
+         end; reflexivity.
+  - rewrite (proof_irrelevance _ (take_app_transparent (x :: xs) ys)
+      (f_equal (cons x) (take_app_transparent xs ys))).
+    cbn [ptake papp]. rewrite rew_pcons. f_equal. apply IH.
+Defined.
+Lemma pdrop_papp {A : Type} {F : A → Type} {xs ys : list A}
+    (xl : plist F xs) (yl : plist F ys) :
+  rew (drop_app_transparent xs ys) in
+    pdrop _ (papp xl yl) (length xs) = yl.
+Proof.
+  induction xs as [ | x xs IH] in xl |-*; destruct xl.
+  - destruct ys; destruct yl; cbn [pdrop papp].
+    all: match goal with
+         | |- context[rew ?H in _] => rewrite (UIP_refl _ _ H)
+         end; reflexivity.
+  - rewrite (proof_irrelevance _ (drop_app_transparent (x :: xs) ys)
+      (drop_app_transparent xs ys)).
+    cbn [pdrop papp]. apply IH.
+Defined.
+Lemma ptake_replicate_papp {A : Type} n m
+    (xl : prod_vec A n) (yl : prod_vec A m) :
+  rew (take_replicate_add_transparent A n m) in
+    ptake _
+      (rew <-[plist id] (replicate_add_transparent n m A) in papp xl yl) n = xl.
+Proof.
+  induction n as [ | n IH] in xl |-*; destruct xl.
+  - destruct m; destruct yl; cbn [ptake papp].
+    all: repeat match goal with
+         | |- context[rew ?H in _] => rewrite (UIP_refl _ _ H)
+         end; reflexivity.
+  - rewrite (proof_irrelevance _ (replicate_add_transparent (S n) m A)
+      (f_equal (cons A) (replicate_add_transparent n m A))).
+    rewrite rew_pcons_rev. cbn [ptake papp].
+    rewrite (proof_irrelevance _ (take_replicate_add_transparent A (S n) m)
+      (f_equal (cons A) (take_replicate_add_transparent A n m))).
+    rewrite rew_pcons. f_equal. apply IH.
+Defined.
+Lemma pdrop_replicate_papp {A : Type} n m
+    (xl : prod_vec A n) (yl : prod_vec A m) :
+  rew (drop_replicate_add_transparent A n m) in
+    pdrop _
+      (rew <-[plist id] (replicate_add_transparent n m A) in papp xl yl) n = yl.
+Proof.
+  induction n as [ | n IH] in xl |-*; destruct xl.
+  - destruct m; destruct yl; cbn [pdrop papp].
+    all: repeat match goal with
+         | |- context[rew ?H in _] => rewrite (UIP_refl _ _ H)
+         end; reflexivity.
+  - rewrite (proof_irrelevance _ (replicate_add_transparent (S n) m A)
+      (f_equal (cons A) (replicate_add_transparent n m A))).
+    rewrite rew_pcons_rev. cbn [pdrop papp].
+    rewrite (proof_irrelevance _ (drop_replicate_add_transparent A (S n) m)
+      (drop_replicate_add_transparent A n m)).
+    apply IH.
+Defined.
+
+
+Record trait_spec_realization `{!typeGS Σ} (SPEC : Type) := mk_trait_spec_realization {
+  trait_ctx_lfts : nat;
+  trait_ctx_tys : list RT;
+
+  trait_ctx_wf :
+    prod_vec lft trait_ctx_lfts →
+    plist type trait_ctx_tys →
+    thread_id →
+    iProp Σ;
+
+  trait_ctx_wf_persistent :
+    ∀ κs tys π, Persistent (trait_ctx_wf κs tys π);
+
+  trait_ctx_spec :
+    spec_with trait_ctx_lfts trait_ctx_tys SPEC;
+}.
+Global Arguments trait_ctx_lfts {_ _ _}.
+Global Arguments trait_ctx_tys {_ _ _}.
+Global Arguments trait_ctx_wf {_ _ _}.
+Global Arguments trait_ctx_spec {_ _ _}.
+Global Existing Instance trait_ctx_wf_persistent.
+
+(* We don't want this to be simplify but stay symbolic *)
+Global Arguments trait_ctx_wf : simpl never.
+
+
+Program Definition trait_spec_realization_instantiate
+    `{!typeGS Σ} {SPEC}
+    (R : trait_spec_realization SPEC)
+    (κs : prod_vec lft R.(trait_ctx_lfts))
+    (tys : plist type R.(trait_ctx_tys)) :
+    trait_spec_realization SPEC :=
+  {|
+    trait_ctx_lfts := 0;
+    trait_ctx_tys := [];
+
+    trait_ctx_wf :=
+      λ _ _ π, R.(trait_ctx_wf) κs tys π;
+
+    trait_ctx_spec :=
+      λ _ _, R.(trait_ctx_spec) κs tys;
+  |}.
+
+
+Class TCInContext (T : Type) : Type := tc_in_context_witness : T.
+Global Hint Mode TCInContext + : typeclass_instances.
+Hint Extern 1 (TCInContext ?T) =>
+  simpl;
+  match goal with
+  | H : ?T |- TCInContext ?T => exact H
+  end : typeclass_instances.
+
+(** These are singletons, so we can instantiate it *)
+Global Instance simpl_exist_trait_spec_realization_lfts `{!typeGS Σ} SPEC (R : trait_spec_realization SPEC) `{Hlfts : !TCInContext (prod_vec lft R.(trait_ctx_lfts))}:
+  SimplExist (prod_vec lft (trait_ctx_lfts R)) (λ T, T Hlfts).
+Proof.
+  intros e He. eauto.
+Qed.
+Global Instance simpl_exist_trait_spec_realization_tys `{!typeGS Σ} SPEC (R : trait_spec_realization SPEC) `{Hlfts : !TCInContext (plist type R.(trait_ctx_tys))}:
+  SimplExist (plist type (trait_ctx_tys R)) (λ T, T Hlfts).
+Proof.
+  intros e He. eauto.
+Qed.
+
+(* Abstract over P for better unification *)
+Global Instance trait_ctx_wf_intro_persistent' `{!typeGS Σ} SPEC (R : trait_spec_realization SPEC) κs tys π P :
+  TCFastDone (P = (R.(trait_ctx_wf) κs tys π)) →
+  IntroPersistent (R.(trait_ctx_wf) κs tys π) P.
+Proof.
+  intros ->.
+  econstructor.
+  iIntros "#Ha". done.
+Qed.
+
+
+
+Global Instance intro_persistent_all `{!typeGS Σ} {A} (Φ Ψ : A → iProp Σ) :
+  (∀ x : A, IntroPersistent (Φ x) (Ψ x)) →
+  IntroPersistent (∀ x : A, Φ x) (∀ x : A, Ψ x).
+Proof.
+  intros Ha.
+  econstructor. iIntros "Ha" (x).
+  destruct (Ha x) as [Hb].
+  by iApply Hb.
+Qed.

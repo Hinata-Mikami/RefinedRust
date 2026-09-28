@@ -589,9 +589,7 @@ Proof.
   have ?: ly' = ly by eapply syn_type_has_layout_inj. subst ly'. done.
 Qed.
 
-Definition ty_allows_writes `{!typeGS Σ} {rt} (ty : type rt) `{!TySized ty} :=
-  ty_has_op_type ty (use_op_alg' (ty_sized_syn_type ty)).
-Definition ty_allows_reads `{!typeGS Σ} {rt} (ty : type rt) `{!TySized ty} :=
+Definition ty_allows_ops `{!typeGS Σ} {rt} (ty : type rt) `{!TySized ty} :=
   ty_has_op_type ty (use_op_alg' (ty_sized_syn_type ty)).
 
 #[universes(polymorphic)]

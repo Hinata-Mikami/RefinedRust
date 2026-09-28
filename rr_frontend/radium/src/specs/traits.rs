@@ -295,10 +295,20 @@ impl<'def> LiteralSpecUse<'def> {
         assoc_tys
     }
 
-    /// Get the name for a spec parameter for this trait instance.
+    /// Get the name for a spec realization parameter for this trait instance.
     #[must_use]
-    fn make_spec_param_name(&self) -> String {
-        format!("{}_spec", self.mangled_base)
+    pub(crate) fn make_spec_realization_param_name(&self) -> String {
+        format!("{}_realization", self.mangled_base)
+    }
+
+    #[must_use]
+    pub(crate) fn make_spec_lfts_inst_name(&self) -> String {
+        format!("{}_lfts_inst", self.mangled_base)
+    }
+
+    #[must_use]
+    pub(crate) fn make_spec_tys_inst_name(&self) -> String {
+        format!("{}_tys_inst", self.mangled_base)
     }
 
     /// Get the name for a spec attrs parameter for this trait instance.
@@ -393,21 +403,24 @@ impl<'def> LiteralSpecUse<'def> {
         ))
     }
 
-    /// Get the binder for the spec record parameter.
+    /// Get the binder for the spec realization and its abstract context.
     #[must_use]
-    pub(crate) fn get_spec_param(&self) -> coq::binder::Binder {
+    pub(crate) fn get_spec_params(&self) -> Vec<coq::binder::Binder> {
         let ordered_params = self.get_ordered_params_inst();
         let all_args: Vec<_> = ordered_params.iter().map(Type::get_rfn_type).collect();
 
         let mut spec_param_ty = format!(
-            "spec_with {} [] ({} (RRGS:=RRGS) ",
+            "trait_spec_realization (spec_with {} [] ({} (RRGS:=RRGS) ",
             self.scope.quantified_lfts.len(),
             self.trait_ref.spec_record()
         );
         push_str_list!(spec_param_ty, &all_args, " ");
-        spec_param_ty.push(')');
+        spec_param_ty.push_str("))");
 
-        coq::binder::Binder::new(Some(self.make_spec_param_name()), coq::term::Type::Literal(spec_param_ty))
+        vec![coq::binder::Binder::new(
+            Some(self.make_spec_realization_param_name()),
+            coq::term::Type::Literal(spec_param_ty),
+        )]
     }
 
     /// Get the optional specialized semantic term for this trait assumption.
@@ -432,7 +445,7 @@ impl<'def> LiteralSpecUse<'def> {
 
     /// Make the precondition on the spec parameter we need to require.
     #[must_use]
-    pub(crate) fn make_spec_param_precond(&self) -> coq::term::Term {
+    pub(crate) fn make_spec_param_precond(&self) -> coq::iris::IProp {
         // the spec we have to require for this verification
         let spec_to_require = self.trait_ref.base_spec();
 
@@ -463,13 +476,15 @@ impl<'def> LiteralSpecUse<'def> {
             .push_str(&GenericScopeInst::format_full_instantiation(&all_args, self.trait_inst.get_lfts()));
         specialized_spec.push(')');
 
+        let realization = self.make_spec_realization_param_name();
+        let lfts_inst = self.make_spec_lfts_inst_name();
+        let tys_inst = self.make_spec_tys_inst_name();
         let spec = format!(
-            "trait_incl_marker (lift_trait_incl {} {} {specialized_spec})",
+            "∃ ({lfts_inst} : prod_vec lft {realization}.(trait_ctx_lfts)) ({tys_inst} : plist type {realization}.(trait_ctx_tys)), ⌜trait_incl_marker (lift_trait_incl {} ({realization}.(trait_ctx_spec) {lfts_inst} {tys_inst}) {specialized_spec})⌝ ∗ {realization}.(trait_ctx_wf) {lfts_inst} {tys_inst} π",
             self.trait_ref.spec_incl_name(),
-            self.make_spec_param_name(),
         );
 
-        coq::term::Term::Literal(spec)
+        coq::iris::IProp::Atom(spec)
     }
 
     /// Make the name for the location parameter of a use of a method of this trait parameter.
@@ -545,6 +560,138 @@ pub struct ReqScopeInst {
     pub lft_insts: Vec<Lft>,
 }
 
+/// A use of a bundled trait specification realization at a particular context instantiation.
+#[derive(Clone, Eq, PartialEq, Debug, Constructor)]
+pub struct SpecRealizationUse<'def> {
+    realization: coq::term::Term,
+    context_inst: GenericScopeInst<'def>,
+}
+
+impl<'def> SpecRealizationUse<'def> {
+    #[must_use]
+    pub const fn get_realization_term(&self) -> &coq::term::Term {
+        &self.realization
+    }
+
+    /// Replace the complete implementation realization context.
+    #[must_use]
+    pub fn with_context_inst(&self, context_inst: GenericScopeInst<'def>) -> Self {
+        Self::new(self.realization.clone(), context_inst)
+    }
+
+    /// Use the same context instantiation with a different realization term.
+    #[must_use]
+    pub fn with_realization_term(&self, realization: coq::term::Term) -> Self {
+        Self::new(realization, self.context_inst.clone())
+    }
+
+    /// Close the realization at this context instantiation.
+    #[must_use]
+    pub fn get_closed_realization_term(&self) -> coq::term::Term {
+        coq::term::Term::Literal(format!(
+            "(trait_spec_realization_instantiate {} {} {})",
+            self.realization,
+            GenericScopeInst::format_lft_instantiation(self.context_inst.get_lfts()),
+            GenericScopeInst::format_ty_instantiation(&self.context_inst.get_direct_ty_params_with_assocs()),
+        ))
+    }
+
+    /// Project the trait specification and instantiate its inner HRTB scope.
+    #[must_use]
+    pub fn get_trait_spec_term(&self, scope_inst: &ReqScopeInst) -> String {
+        format!(
+            "{}.(trait_ctx_spec) {} {} {}",
+            self.realization,
+            GenericScopeInst::format_lft_instantiation(self.context_inst.get_lfts()),
+            GenericScopeInst::format_ty_instantiation(&self.context_inst.get_direct_ty_params_with_assocs()),
+            GenericScopeInst::format_full_instantiation(&[], &scope_inst.lft_insts),
+        )
+    }
+
+    /// Project the linking condition at the same surrounding context instantiation.
+    #[must_use]
+    pub fn get_wf_term(&self, thread_id: &str) -> String {
+        format!(
+            "{}.(trait_ctx_wf) {} {} {thread_id}",
+            self.realization,
+            GenericScopeInst::format_lft_instantiation(self.context_inst.get_lfts()),
+            GenericScopeInst::format_ty_instantiation(&self.context_inst.get_direct_ty_params_with_assocs()),
+        )
+    }
+}
+
+/// A trait method projected from a particular bundled realization.
+#[derive(Clone, Eq, PartialEq, Debug, Constructor)]
+pub struct RealizedMethodSpecUse<'def> {
+    realization: SpecRealizationUse<'def>,
+    of_trait: LiteralSpecRef<'def>,
+    method_name: String,
+    scope_inst: ReqScopeInst,
+}
+
+impl<'def> RealizedMethodSpecUse<'def> {
+    #[must_use]
+    pub const fn realization(&self) -> &SpecRealizationUse<'def> {
+        &self.realization
+    }
+
+    #[must_use]
+    pub fn get_spec_term(&self) -> String {
+        format!(
+            "({} (RRGS:=RRGS) ({}))",
+            self.of_trait.make_spec_method_name(&self.method_name),
+            self.realization.get_trait_spec_term(&self.scope_inst),
+        )
+    }
+
+    #[must_use]
+    pub fn get_wf_term(&self, thread_id: &str) -> String {
+        self.realization.get_wf_term(thread_id)
+    }
+
+    /// Project this method from a different term denoting the same realization.
+    #[must_use]
+    pub fn with_realization_term(&self, realization: coq::term::Term) -> Self {
+        Self::new(
+            self.realization.with_realization_term(realization),
+            self.of_trait,
+            self.method_name.clone(),
+            self.scope_inst.clone(),
+        )
+    }
+
+    /// Replace the implementation realization's complete generic context.
+    #[must_use]
+    pub fn with_realization_context_inst(&self, context_inst: GenericScopeInst<'def>) -> Self {
+        Self::new(
+            self.realization.with_context_inst(context_inst),
+            self.of_trait,
+            self.method_name.clone(),
+            self.scope_inst.clone(),
+        )
+    }
+
+    /// Rebind realization lifetimes without replacing its implementation type context.
+    #[must_use]
+    pub fn with_realization_lfts(&self, lfts: Vec<Lft>) -> Self {
+        let num_lfts = self.realization.context_inst.get_lfts().len();
+        let context_inst =
+            self.realization.context_inst.clone().with_lfts(lfts.into_iter().take(num_lfts).collect());
+        self.with_realization_context_inst(context_inst)
+    }
+
+    /// Project a method from a specialized trait implementation realization.
+    #[must_use]
+    pub fn from_specialized_impl(
+        impl_: &SpecializedImpl<'def>,
+        of_trait: LiteralSpecRef<'def>,
+        method_name: String,
+        scope_inst: ReqScopeInst,
+    ) -> Self {
+        Self::new(impl_.get_realization_use(), of_trait, method_name, scope_inst)
+    }
+}
+
 /// Instantiation of a trait requirement by specializing an impl.
 #[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 pub struct SpecializedImpl<'def> {
@@ -552,7 +699,48 @@ pub struct SpecializedImpl<'def> {
     pub(crate) impl_inst: GenericScopeInst<'def>,
 }
 
-impl SpecializedImpl<'_> {
+impl<'def> SpecializedImpl<'def> {
+    #[must_use]
+    fn get_open_realization_term(&self) -> coq::term::Term {
+        let realization_name = self.impl_ref.spec_realization();
+        let tys = self.impl_inst.get_direct_ty_params_with_assocs();
+        let mut out = realization_name.to_owned();
+
+        // Realization constructors quantify first over refinement types, then syntactic types.
+        for ty in &tys {
+            write!(out, " {}", ty.get_rfn_type()).unwrap();
+        }
+        for ty in &tys {
+            write!(out, " {}", lang::SynType::from(ty)).unwrap();
+        }
+
+        // Implementation requirements are bundled realization arguments themselves.
+        for req in self.impl_inst.get_direct_trait_requirements() {
+            if let Some(attr_term) = req.get_attr_term() {
+                write!(out, " {attr_term}").unwrap();
+            }
+            write!(out, " {}", req.get_realization_term()).unwrap();
+        }
+
+        coq::term::Term::Literal(out)
+    }
+
+    /// Get the open realization of this implementation at its implementation context.
+    ///
+    /// Realizations of implementation requirements are constructor arguments. The selected
+    /// implementation itself remains open so its context can provide the method linking condition.
+    #[must_use]
+    pub fn get_realization_use(&self) -> SpecRealizationUse<'def> {
+        let realization = self.get_open_realization_term();
+        let realization = coq::term::Term::Literal(format!("({realization})"));
+        SpecRealizationUse::new(realization, self.impl_inst.clone())
+    }
+
+    #[must_use]
+    fn get_realization_term(&self) -> coq::term::Term {
+        self.get_realization_use().get_closed_realization_term()
+    }
+
     #[must_use]
     fn get_spec_term(&self) -> String {
         let mut out = String::new();
@@ -598,15 +786,29 @@ pub struct QuantifiedImpl<'def> {
 
 impl QuantifiedImpl<'_> {
     #[must_use]
-    pub(crate) fn get_spec_term(&self) -> String {
-        let mut out = String::new();
+    fn get_realization_term(&self) -> coq::term::Term {
         let spec = self.trait_ref.borrow();
         let spec = spec.as_ref().unwrap();
-        out.push_str(&spec.make_spec_param_name());
-        // instantiate
-        out.push_str(&GenericScopeInst::format_full_instantiation(&[], &self.scope_inst.lft_insts));
+        coq::term::Term::Literal(spec.make_spec_realization_param_name())
+    }
 
-        out
+    #[must_use]
+    pub(crate) fn get_spec_term_with_context_inst(&self, lfts_inst: &str, tys_inst: &str) -> String {
+        format!(
+            "{}.(trait_ctx_spec) {lfts_inst} {tys_inst} {}",
+            self.get_realization_term(),
+            GenericScopeInst::format_full_instantiation(&[], &self.scope_inst.lft_insts),
+        )
+    }
+
+    #[must_use]
+    pub(crate) fn get_spec_term(&self) -> String {
+        let spec = self.trait_ref.borrow();
+        let spec = spec.as_ref().unwrap();
+        self.get_spec_term_with_context_inst(
+            &spec.make_spec_lfts_inst_name(),
+            &spec.make_spec_tys_inst_name(),
+        )
     }
 }
 
@@ -706,6 +908,18 @@ impl<T> ReqInst<'_, T> {
 }
 
 impl<'def> ReqInst<'def, Type<'def>> {
+    /// Get the bundled realization satisfying this trait requirement.
+    ///
+    /// Specialized realizations are closed at their implementation context. Quantified
+    /// realizations are forwarded unchanged.
+    #[must_use]
+    pub fn get_realization_term(&self) -> coq::term::Term {
+        match &self.spec {
+            ReqInstSpec::Specialized(impl_) => impl_.get_realization_term(),
+            ReqInstSpec::Quantified(impl_) => impl_.get_realization_term(),
+        }
+    }
+
     pub(crate) fn new_as_identity(req: LiteralSpecUseRef<'def>) -> Self {
         let trait_use = req.borrow();
         let trait_use = trait_use.as_ref().unwrap();
@@ -941,6 +1155,10 @@ fn make_trait_instance<'def>(
         params: def_params,
         ty: Some(coq::term::Type::Literal(ty_annot)),
         body: coq::command::DefinitionBody::Term(coq::term::Term::Literal(term_with_specs)),
+    });
+    document.push(coq::command::Arguments {
+        name: spec_record_name.to_owned(),
+        arguments_string: ": simpl never".to_owned(),
     });
 
     Ok(document)
@@ -1522,6 +1740,9 @@ pub struct LiteralImpl {
 
     /// Whether is there a Rocq definition name for the trait's semantic interpretation.
     has_semantic_interp: bool,
+
+    /// The optional Rocq definition name of the bundled trait realization.
+    realization: String,
 }
 
 pub type LiteralImplRef<'def> = &'def LiteralImpl;
@@ -1543,6 +1764,12 @@ impl LiteralImpl {
     #[must_use]
     pub fn spec_semantic(&self) -> Option<String> {
         self.has_semantic_interp.then(|| format!("{}_semantic_interp", self.name))
+    }
+
+    /// The optional Rocq definition name of the bundled trait realization.
+    #[must_use]
+    pub fn spec_realization(&self) -> &str {
+        &self.realization
     }
 
     /// The Rocq lemma name of the proof that the base spec is implied by the more specific spec
@@ -1712,6 +1939,49 @@ pub struct ImplSpec<'def> {
 }
 
 impl ImplSpec<'_> {
+    #[must_use]
+    fn generate_realization_decl(&self) -> coq::Document {
+        let realization_name = self.trait_ref.impl_ref.spec_realization();
+
+        let generics = &self.trait_ref.generics;
+        let all_tys = generics.get_all_ty_params_with_assocs();
+
+        let mut params = all_tys.get_coq_ty_params();
+        params.append(generics.get_all_trait_parameters(IncludeSelfReq::Dont).0);
+        let mut extra_context_items = self.extra_context_items.clone();
+        extra_context_items.make_implicit(coq::binder::Kind::MaxImplicit);
+        params.append(extra_context_items.0);
+
+        let result_args = self.trait_ref.get_ordered_params_inst();
+        let mut result_spec = format!(
+            "trait_spec_realization (spec_with 0 [] ({} (RRGS:=RRGS)",
+            self.trait_ref.of_trait.spec_record()
+        );
+        for ty in &result_args {
+            write!(result_spec, " {}", ty.get_rfn_type()).unwrap();
+        }
+        result_spec.push_str("))");
+
+        let lfts = fmt_list!(generics.get_lfts(), "; ");
+        let ty_names = fmt_list!(&all_tys.params, "; ", LiteralTyParam::type_term);
+        let ty_rts = fmt_list!(&all_tys.params, "; ", LiteralTyParam::refinement_type);
+
+        let mut wf_parts = vec![generics.generate_validity_term_for_generics()];
+        for req in generics.get_direct_trait_requirements() {
+            let req = req.borrow();
+            wf_parts.push(req.as_ref().unwrap().make_spec_param_precond());
+        }
+        let wf = coq::iris::IProp::Sep(wf_parts);
+        let spec_term = self.trait_ref.get_spec_record_term();
+
+        let definition = format!(
+            "Program Definition {realization_name} {params} : {result_spec} :=\n{{|\n  trait_ctx_lfts := {};\n  trait_ctx_tys := [{ty_rts}];\n  trait_ctx_wf := λ '( *[{lfts}]) '( *[{ty_names}]) π, ({wf})%I;\n  trait_ctx_spec := λ '( *[{lfts}]) '( *[{ty_names}]) _ _, {spec_term};\n|}}.\nNext Obligation.\n  solve_trait_realization_pers.\nQed.",
+            generics.get_num_lifetimes(),
+        );
+
+        coq::Document::new(vec![coq::command::Command::Literal(definition)])
+    }
+
     /// Generate the definition of the attribute record of this trait impl.
     #[must_use]
     pub fn generate_attr_decl(&self) -> coq::Document {
@@ -1996,6 +2266,8 @@ impl fmt::Display for ImplSpec<'_> {
 
             section.append(&mut instance.0);
 
+            section.append(&mut self.generate_realization_decl().0);
+
             section.append(&mut self.generate_lemma_statement().0);
 
             if let Some(mut doc) = self.make_semantic_decl() {
@@ -2161,5 +2433,321 @@ mod tests {
         }
         assert_eq!(inst.get_attr_value_direct_ty_params_with_assocs().len(), 2);
         assert_eq!(inst.get_direct_trait_requirements()[1].attr_dependency, AttrDependency::ValueOnly);
+    }
+
+    fn literal_drop_glue_spec() -> LiteralSpec {
+        LiteralSpec {
+            name: "DropGlue".to_owned(),
+            assoc_tys: vec![],
+            has_semantic_interp: false,
+            attrs_dependent: false,
+            has_spec_attrs: false,
+            declared_attrs: vec![],
+            method_trait_incl_decls: BTreeMap::new(),
+        }
+    }
+
+    fn quantified_drop_glue_use<'def>(trait_spec: &'def LiteralSpec) -> LiteralSpecUseCell<'def> {
+        RefCell::new(Some(LiteralSpecUse::new(
+            trait_spec,
+            ReqScope::empty(),
+            GenericScopeInst::empty(),
+            "DropGlue_T".to_owned(),
+            false,
+            AttrDependency::ValueOnly,
+            vec![],
+            TyParamOrigin::Direct,
+        )))
+    }
+
+    #[test]
+    fn literal_impl_realization_is_shared_by_clones() {
+        let impl_ =
+            LiteralImpl::new("ordinary_impl".to_owned(), false, "ordinary_impl_realization".to_owned());
+        let alias = impl_.clone();
+
+        assert_eq!(impl_.spec_realization(), "ordinary_impl_realization");
+        assert_eq!(alias.spec_realization(), "ordinary_impl_realization");
+    }
+
+    #[test]
+    fn impl_spec_emits_published_realization_with_implicit_context() {
+        let trait_spec = literal_drop_glue_spec();
+        let impl_literal =
+            LiteralImpl::new("ordinary_impl".to_owned(), false, "ordinary_impl_realization".to_owned());
+        let mut trait_inst = GenericScopeInst::empty();
+        trait_inst.add_direct_ty_param(Type::Int(lang::IntType::I32));
+        let trait_ref = RefInst::new(
+            &trait_spec,
+            &impl_literal,
+            GenericScope::empty(),
+            trait_inst,
+            vec![],
+            SpecAttrsInst::new(BTreeMap::new()),
+        );
+        let extra_context = coq::binder::Binder::new(
+            Some("context".to_owned()),
+            coq::term::Type::Literal("ContextType".to_owned()),
+        );
+        let impl_spec = ImplSpec::new(
+            trait_ref,
+            InstanceSpec::new(BTreeMap::new()),
+            coq::binder::BinderList::new(vec![extra_context]),
+        );
+
+        let rendered = impl_spec.to_string();
+        assert!(rendered.contains("Program Definition ordinary_impl_realization"));
+        assert!(rendered.contains("`{context : !(ContextType)}"));
+        assert!(rendered.contains("trait_ctx_lfts := 0"));
+        assert!(rendered.contains("trait_ctx_tys := []"));
+        assert!(rendered.contains("trait_ctx_wf := λ '( *[]) '( *[]) π, ((True))%I"));
+        assert!(rendered.contains("trait_ctx_spec := λ '( *[]) '( *[]) _ _, ordinary_impl_spec-[] -[]"));
+        assert!(rendered.contains("solve_trait_realization_pers"));
+    }
+
+    #[test]
+    fn specialized_realization_passes_requirement_attrs_before_realization() {
+        let dependency_trait = LiteralSpec {
+            name: "Dependency".to_owned(),
+            has_spec_attrs: true,
+            ..literal_drop_glue_spec()
+        };
+        let mut dependency_inst = GenericScopeInst::empty();
+        dependency_inst.add_direct_ty_param(Type::Int(lang::IntType::I32));
+        let dependency_use = RefCell::new(Some(LiteralSpecUse::new(
+            &dependency_trait,
+            ReqScope::empty(),
+            dependency_inst,
+            "Dependency_i32".to_owned(),
+            false,
+            AttrDependency::ValueOnly,
+            vec![],
+            TyParamOrigin::Direct,
+        )));
+        let dependency_req = ReqInst::new_as_identity(&dependency_use);
+
+        let impl_literal =
+            LiteralImpl::new("ordinary_impl".to_owned(), false, "ordinary_impl_realization".to_owned());
+        let mut impl_inst = GenericScopeInst::empty();
+        impl_inst.add_trait_requirement(dependency_req);
+        let impl_ = SpecializedImpl::new(&impl_literal, impl_inst);
+
+        assert_eq!(
+            impl_.get_realization_use().get_realization_term().to_string(),
+            "(ordinary_impl_realization Dependency_i32_spec_attrs Dependency_i32_realization)"
+        );
+    }
+
+    #[test]
+    fn realization_use_formats_concrete_context() {
+        let mut context_inst = GenericScopeInst::empty();
+        context_inst.add_direct_ty_param(Type::Int(lang::IntType::I32));
+        let realization = SpecRealizationUse::new(coq::term::Term::Literal("R".to_owned()), context_inst);
+
+        assert_eq!(
+            realization.get_trait_spec_term(&ReqScopeInst::new(vec![])),
+            "R.(trait_ctx_spec) -[] -[(int I32)] -[] -[]"
+        );
+    }
+
+    #[test]
+    fn realized_method_use_formats_method_projection() {
+        let trait_spec = literal_drop_glue_spec();
+        let mut context_inst = GenericScopeInst::empty();
+        context_inst.add_direct_ty_param(Type::LiteralParam(LiteralTyParam::new("T")));
+        context_inst.add_direct_ty_param(Type::Int(lang::IntType::I32));
+        let realization = SpecRealizationUse::new(coq::term::Term::Literal("R".to_owned()), context_inst);
+        let method = RealizedMethodSpecUse::new(
+            realization,
+            &trait_spec,
+            "drop_glue".to_owned(),
+            ReqScopeInst::new(vec![]),
+        );
+
+        assert_eq!(
+            method.get_spec_term(),
+            "(DropGlue_drop_glue_spec (RRGS:=RRGS) (R.(trait_ctx_spec) -[] -[T_ty; (int I32)] -[] -[]))"
+        );
+        assert_eq!(method.get_wf_term("π"), "R.(trait_ctx_wf) -[] -[T_ty; (int I32)] π");
+    }
+
+    #[test]
+    fn realized_method_use_can_rebind_its_realization() {
+        let trait_spec = literal_drop_glue_spec();
+        let mut context_inst = GenericScopeInst::empty();
+        context_inst.add_lft_param(coq::Ident::new("κ"));
+        context_inst.add_direct_ty_param(Type::LiteralParam(LiteralTyParam::new("T")));
+        let realization =
+            SpecRealizationUse::new(coq::term::Term::Literal("constructor".to_owned()), context_inst);
+        let method = RealizedMethodSpecUse::new(
+            realization,
+            &trait_spec,
+            "drop_glue".to_owned(),
+            ReqScopeInst::new(vec![coq::Ident::new("method_κ")]),
+        );
+
+        let rebound = method.with_realization_term(coq::term::Term::Literal("realization".to_owned()));
+        assert_eq!(
+            rebound.get_spec_term(),
+            "(DropGlue_drop_glue_spec (RRGS:=RRGS) (realization.(trait_ctx_spec) -[κ] -[T_ty] -[method_κ] -[]))"
+        );
+        assert_eq!(rebound.get_wf_term("π"), "realization.(trait_ctx_wf) -[κ] -[T_ty] π");
+        assert_eq!(method.realization().get_realization_term().to_string(), "constructor");
+    }
+
+    #[test]
+    fn realized_method_replaces_complete_context_instantiation() {
+        let trait_spec = literal_drop_glue_spec();
+        let mut context_inst = GenericScopeInst::empty();
+        context_inst.add_lft_param(coq::Ident::new("vlft5"));
+        context_inst.add_lft_param(coq::Ident::new("vlft5"));
+        context_inst.add_direct_ty_param(Type::LiteralParam(LiteralTyParam::new("T")));
+        let realization =
+            SpecRealizationUse::new(coq::term::Term::Literal("constructor".to_owned()), context_inst);
+        let method = RealizedMethodSpecUse::new(
+            realization,
+            &trait_spec,
+            "drop_glue".to_owned(),
+            ReqScopeInst::new(vec![coq::Ident::new("method_lft")]),
+        );
+
+        let mut rebound_context = GenericScopeInst::empty();
+        rebound_context.add_lft_param(coq::Ident::new("ulft_0"));
+        rebound_context.add_lft_param(coq::Ident::new("ulft_1"));
+        rebound_context.add_direct_ty_param(Type::LiteralParam(LiteralTyParam::new("U")));
+        let rebound = method.with_realization_context_inst(rebound_context);
+
+        assert_eq!(
+            rebound.get_spec_term(),
+            "(DropGlue_drop_glue_spec (RRGS:=RRGS) (constructor.(trait_ctx_spec) -[ulft_0; ulft_1] -[U_ty] -[method_lft] -[]))"
+        );
+        assert_eq!(rebound.get_wf_term("π"), "constructor.(trait_ctx_wf) -[ulft_0; ulft_1] -[U_ty] π");
+    }
+
+    #[test]
+    fn quantified_requirement_forwards_realization_unchanged() {
+        let trait_spec = literal_drop_glue_spec();
+        let trait_use = quantified_drop_glue_use(&trait_spec);
+        let quantified =
+            QuantifiedImpl::new(&trait_use, ReqScopeInst::new(vec![coq::Ident::new("ignored_hrtb_inst")]));
+        let req = ReqInst::new(
+            ReqInstSpec::Quantified(quantified),
+            TyParamOrigin::Direct,
+            AttrDependency::ValueOnly,
+            vec![],
+            &trait_spec,
+            ReqScope::empty(),
+        );
+
+        assert_eq!(req.get_realization_term().to_string(), "DropGlue_T_realization");
+    }
+
+    #[test]
+    fn specialized_requirement_closes_realization_context() {
+        let trait_spec = literal_drop_glue_spec();
+        let impl_spec = LiteralImpl::new(
+            "drop_glue_trivial".to_owned(),
+            false,
+            "drop_glue_trivial_realization".to_owned(),
+        );
+        let mut impl_inst = GenericScopeInst::empty();
+        impl_inst.add_direct_ty_param(Type::Int(lang::IntType::I32));
+        let req = ReqInst::new(
+            ReqInstSpec::Specialized(SpecializedImpl::new(&impl_spec, impl_inst)),
+            TyParamOrigin::Direct,
+            AttrDependency::ValueOnly,
+            vec![],
+            &trait_spec,
+            ReqScope::empty(),
+        );
+
+        assert_eq!(
+            req.get_realization_term().to_string(),
+            "(trait_spec_realization_instantiate (drop_glue_trivial_realization Z (IntSynType I32)) -[] -[(int I32)])"
+        );
+    }
+
+    #[test]
+    fn specialized_impl_exposes_open_realization_use() {
+        let trait_spec = literal_drop_glue_spec();
+        let impl_spec = LiteralImpl::new(
+            "drop_glue_trivial".to_owned(),
+            false,
+            "drop_glue_trivial_realization".to_owned(),
+        );
+        let mut impl_inst = GenericScopeInst::empty();
+        impl_inst.add_direct_ty_param(Type::Int(lang::IntType::I32));
+        let impl_ = SpecializedImpl::new(&impl_spec, impl_inst);
+
+        let realization = impl_.get_realization_use();
+        assert_eq!(
+            realization.get_realization_term().to_string(),
+            "(drop_glue_trivial_realization Z (IntSynType I32))"
+        );
+        assert_eq!(
+            realization.get_trait_spec_term(&ReqScopeInst::new(vec![])),
+            "(drop_glue_trivial_realization Z (IntSynType I32)).(trait_ctx_spec) -[] -[(int I32)] -[] -[]"
+        );
+        assert_eq!(
+            realization.get_wf_term("π"),
+            "(drop_glue_trivial_realization Z (IntSynType I32)).(trait_ctx_wf) -[] -[(int I32)] π"
+        );
+
+        let method = RealizedMethodSpecUse::from_specialized_impl(
+            &impl_,
+            &trait_spec,
+            "drop_glue".to_owned(),
+            ReqScopeInst::new(vec![]),
+        );
+        assert_eq!(
+            method.get_spec_term(),
+            "(DropGlue_drop_glue_spec (RRGS:=RRGS) ((drop_glue_trivial_realization Z (IntSynType I32)).(trait_ctx_spec) -[] -[(int I32)] -[] -[]))"
+        );
+    }
+
+    #[test]
+    fn specialized_requirement_includes_dependency_realizations() {
+        let trait_spec = literal_drop_glue_spec();
+        let component_impl = LiteralImpl::new(
+            "drop_glue_trivial".to_owned(),
+            false,
+            "drop_glue_trivial_realization".to_owned(),
+        );
+        let mut component_inst = GenericScopeInst::empty();
+        component_inst.add_direct_ty_param(Type::Int(lang::IntType::I32));
+        let component_req = ReqInst::new(
+            ReqInstSpec::Specialized(SpecializedImpl::new(&component_impl, component_inst)),
+            TyParamOrigin::Direct,
+            AttrDependency::ValueOnly,
+            vec![],
+            &trait_spec,
+            ReqScope::empty(),
+        );
+
+        let tuple_impl =
+            LiteralImpl::new("drop_glue_tuple1".to_owned(), false, "drop_glue_tuple1_realization".to_owned());
+        let mut tuple_inst = GenericScopeInst::empty();
+        tuple_inst.add_direct_ty_param(Type::Int(lang::IntType::I32));
+        tuple_inst.add_trait_requirement(component_req);
+        let tuple_req = ReqInst::new(
+            ReqInstSpec::Specialized(SpecializedImpl::new(&tuple_impl, tuple_inst)),
+            TyParamOrigin::Direct,
+            AttrDependency::ValueOnly,
+            vec![],
+            &trait_spec,
+            ReqScope::empty(),
+        );
+
+        let ReqInstSpec::Specialized(tuple_impl) = &tuple_req.spec else {
+            unreachable!();
+        };
+        assert_eq!(
+            tuple_impl.get_realization_use().get_realization_term().to_string(),
+            "(drop_glue_tuple1_realization Z (IntSynType I32) (trait_spec_realization_instantiate (drop_glue_trivial_realization Z (IntSynType I32)) -[] -[(int I32)]))"
+        );
+        assert_eq!(
+            tuple_req.get_realization_term().to_string(),
+            "(trait_spec_realization_instantiate (drop_glue_tuple1_realization Z (IntSynType I32) (trait_spec_realization_instantiate (drop_glue_trivial_realization Z (IntSynType I32)) -[] -[(int I32)])) -[] -[(int I32)])"
+        );
     }
 }

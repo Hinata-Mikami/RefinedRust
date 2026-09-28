@@ -19,10 +19,11 @@ use crate::base::*;
 use crate::body::function_translation::get_arg_syntypes_for_procedure_call;
 use crate::body::mir_lowering::{
     MirConstantTranslation, MirDropTranslation, MirRvalueTranslation, MirTranslationCtx, MirTypeTranslation,
-    ProcedureInst, TraitMethodUseData, TranslationKey, make_virtual_drop_glue_method_for_param_from_scope,
+    ProcedureInst, TraitMethodUseData, TranslationKey, make_realized_method_spec,
+    make_virtual_drop_glue_method_for_param_from_scope,
 };
 use crate::error::Message;
-use crate::traits::registry::ResolvedTraitReq;
+use crate::traits::registry::{self, ResolvedTraitReq};
 use crate::traits::resolution;
 use crate::{procedures, rustcmp, types};
 
@@ -191,7 +192,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
                 callee_did,
                 args.as_slice(),
             )?;
-            let fn_inst = quantified_args.fn_scope_inst;
+            let fn_inst = quantified_args.procedure_scope_inst.clone();
 
             info!(
                 "Registered drop-glue destructor call instance {} of {:?} with {:?} and layouts {:?}",
@@ -232,7 +233,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         };
 
         let typing_env = ty::TypingEnv::post_analysis(self.tcx, self.adt_did);
-        let Some((resolved_did, resolved_args, kind)) =
+        let Some(resolved) =
             resolution::resolve_assoc_item(self.tcx, typing_env, *defid, args, ty::Binder::dummy(()))
         else {
             return Err(TranslationError::ErrorReported(self.tcx.dcx().err(Message::TraitResolution(
@@ -240,26 +241,30 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             ))));
         };
 
+        let resolved_did = resolved.callable_did;
+        let resolved_args = resolved.callable_args;
+
         info!(
             "Resolved drop-glue destructor call {:?} as {:?} with args {:?} and kind {:?}",
-            defid, resolved_did, resolved_args, kind
+            defid, resolved_did, resolved_args, resolved.kind
         );
 
-        let (func_expr, call_info) = match kind {
-            resolution::TraitResolutionKind::UserDefined => {
+        let (func_expr, call_info) = match resolved.kind {
+            resolution::AssocItemResolutionKind::UserDefined(_)
+            | resolution::AssocItemResolutionKind::FurtherSpecializable => {
                 let late_bounds = self.get_drop_call_late_bounds(resolved_did, resolved_args);
                 let trait_reqs =
                     self.resolve_trait_requirements_of_call(resolved_did, resolved_args, true)?;
                 self.register_use_drop_call_procedure(resolved_did, resolved_args, late_bounds, trait_reqs)?
             },
-            resolution::TraitResolutionKind::Param => {
+            resolution::AssocItemResolutionKind::Param => {
                 return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
                     Message::UnsupportedFeature(format!(
                         "drop-glue destructor calls are expected to resolve to concrete Drop impls, got generic trait resolution for {defid:?} as {resolved_did:?} with args {resolved_args:?}"
                     )),
                 )));
             },
-            resolution::TraitResolutionKind::Closure => {
+            resolution::AssocItemResolutionKind::Closure => {
                 return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
                     Message::UnsupportedFeature(format!(
                         "drop-glue destructor calls do not support closure resolution: {defid:?}"
@@ -339,7 +344,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
             }
             callee_lft_param_inst.push(lft_name);
         }
+        let realization_lft_binders = bound_lfts.clone();
 
+        let mut method_lft_binders = Vec::new();
         for (late_bound_idx, late_bound) in late_bounds.iter().enumerate() {
             let ty::BoundVariableKind::Region(region) = late_bound else {
                 return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
@@ -356,7 +363,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
                 lft_name.clone(),
                 specs::LftParamOrigin::FunctionRebound,
             ));
-            fn_inst.add_lft_param(lft_name);
+            fn_inst.add_lft_param(lft_name.clone());
+            method_lft_binders.push(lft_name);
         }
 
         let mut callee_ty_param_inst = Vec::new();
@@ -419,12 +427,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> DropGlueTX<'a, 'def, 'tcx> {
         info!("Drop-glue fn instantiation: {fn_inst:?}");
         info!("Drop-glue callee instantiation: {:?}, {:?}", callee_lft_param_inst, callee_ty_param_inst);
 
+        let realization_context_inst = fn_inst.all_as_realization_context(realization_lft_binders);
+        let mut method_scope_inst = specs::GenericScopeInst::empty();
+        for lft in method_lft_binders {
+            method_scope_inst.add_lft_param(lft);
+        }
+        let procedure_scope_inst = fn_inst;
         Ok(types::AbstractedGenerics {
             scope,
             callee_lft_param_inst,
             callee_ty_param_inst,
             num_of_latebounds: late_bounds.len(),
-            fn_scope_inst: fn_inst,
+            realization_context_inst,
+            method_scope_inst,
+            procedure_scope_inst,
         })
     }
 }
@@ -479,6 +495,31 @@ impl<'a, 'def: 'a, 'tcx: 'def> MirDropTranslation<'def, 'tcx> for DropGlueTX<'a,
 
     fn make_virtual_drop_glue_method_for_param(&self, dropped_ty: ty::Ty<'tcx>) -> TraitMethodUseData<'def> {
         make_virtual_drop_glue_method_for_param_from_scope(self.tcx, &self.generic_scope, dropped_ty)
+    }
+
+    fn get_realized_drop_glue_spec(
+        &self,
+        dropped_ty: ty::Ty<'tcx>,
+    ) -> Result<Option<code::UsedProcedureSpec<'def>>, TranslationError> {
+        let trait_registry = self.ty_translator.trait_registry();
+        let Some(impl_) =
+            trait_registry.get_drop_glue_impl_spec_term_in_state(&mut self.shim_state(), dropped_ty)?
+        else {
+            return Ok(None);
+        };
+        let trait_spec =
+            trait_registry.lookup_virtual_trait(registry::VirtualTrait::DropGlue).ok_or_else(|| {
+                TranslationError::ErrorReported(self.tcx.dcx().err(Message::TraitResolution(
+                    "virtual DropGlue trait is not registered with RefinedRust".to_owned(),
+                )))
+            })?;
+
+        Ok(Some(make_realized_method_spec(
+            &impl_,
+            trait_spec,
+            "drop_glue",
+            specs::traits::ReqScopeInst::new(Vec::new()),
+        )))
     }
 }
 

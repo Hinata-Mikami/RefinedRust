@@ -842,32 +842,32 @@ Section test.
   Proof. apply _. Abort.
 End test.
 
-(** ty_allows_reads / ty_allows_writes *)
+(** ty_allows_ops *)
 Section test.
   Context `{!typeGS Σ}.
 
-  Lemma ty_allows_reads_int :
-    ty_allows_reads (int I32).
+  Lemma ty_allows_ops_int :
+    ty_allows_ops (int I32).
   Proof.
     solve [unshelve solve_ty_allows; init_cache; solve_goal].
   Abort.
-  Lemma ty_allows_reads_struct_1 ly :
+  Lemma ty_allows_ops_struct_1 ly :
     struct_layout_spec_has_layout (s1_spec (IntSynType I32)) ly →
-    ty_allows_reads (struct_t (s1_spec (IntSynType I32)) +[int I32; int I32]).
+    ty_allows_ops (struct_t (s1_spec (IntSynType I32)) +[int I32; int I32]).
   Proof.
     intros. inv_layout_alg.
     solve_ty_allows; solve_goal.
     all: solve [fail].
   Abort.
 
-  Lemma ty_allows_reads_struct_2 {T_rt} (T_ty : type T_rt) `{!TySized T_ty} ly :
-    ty_allows_reads T_ty →
+  Lemma ty_allows_ops_struct_2 {T_rt} (T_ty : type T_rt) `{!TySized T_ty} ly :
+    ty_allows_ops T_ty →
     struct_layout_spec_has_layout (s1_spec (ty_syn_type T_ty MetaNone)) ly →
     syn_type_has_layout (ty_syn_type T_ty MetaNone) ly →
-    ty_allows_reads (struct_t (s1_spec (ty_syn_type T_ty MetaNone)) +[T_ty; int I32]).
+    ty_allows_ops (struct_t (s1_spec (ty_syn_type T_ty MetaNone)) +[T_ty; int I32]).
   Proof.
     intros. inv_layout_alg.
-    unfold ty_allows_reads.
+    unfold ty_allows_ops.
     solve_ty_has_op_type.
     Unshelve.
     all: solve [fail].

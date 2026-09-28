@@ -93,6 +93,8 @@ Ltac set_function_types :=
 (* Trait incl assumptions *)
 Notation "'HIDDEN_TRAIT_INCL'" := (trait_incl_marker _) (only printing, at level 0) : rr_hidden.
 
+Notation "'HIDDEN_TRAIT_CTX'" := (trait_ctx_wf _ _ _ _) (only printing, at level 100) : rr_hidden.
+
 (** Sidecondition caching *)
 
 (** Single cache *)

@@ -18,9 +18,10 @@ use crate::base::*;
 use crate::body::function_translation::{ExprInfo, ExprWithInfo};
 use crate::body::mir_lowering::{
     MirConstantTranslation as _, MirPlaceTranslation as _, MirRvalueTranslation as _, MirTranslationCtx as _,
-    MirTypeTranslation as _, ProcedureInst, TranslationKey,
+    MirTypeTranslation as _, ProcedureInst, TranslationKey, make_realized_method_spec,
 };
 use crate::environment::borrowck::facts;
+use crate::environment::get_assoc_item_name;
 use crate::error::Message;
 use crate::regions::{CallAssignmentInputs, CallEffectDiscovery, CallRegionInputs};
 use crate::traits::registry::ResolvedTraitReq;
@@ -237,15 +238,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         trait_specs: Vec<ResolvedTraitReq<'tcx, 'def>>,
     ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
         trace!("enter register_use_procedure callee_did={callee_did:?} ty_params={ty_params:?}");
-        // The key does not include the associated types, as the resolution of the associated types
-        // should always be unique for one combination of type parameters, as long as we remain in
-        // the same environment (which is the case within this procedure).
-        // Therefore, already the type parameters are sufficient to distinguish different
-        // instantiations.
-        let key = types::generate_args_inst_key(self.tcx, ty_params)?;
-
         let tcx = self.tcx;
-
         let late_bounds = if let Some(impl_did) = tcx.impl_of_assoc(callee_did)
             && tcx.impl_is_of_trait(impl_did)
         {
@@ -261,7 +254,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             fnsig.bound_vars().as_slice()
         };
 
-        // re-quantify
         let quantified_args = self.ty_translator.get_generic_abstraction_for_procedure(
             callee_did,
             ty_params,
@@ -269,20 +261,40 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             trait_specs,
             true,
         )?;
-        let expected_num_lft_hints = quantified_args.scope.get_lfts().len();
 
+        let meta = self.procedure_registry().lookup_function(callee_did).ok_or_else(|| {
+            TranslationError::ErrorReported(
+                self.tcx.dcx().err(Message::UnknownProcedure(format!("{:?}", callee_did))),
+            )
+        })?;
+        let spec_term = code::UsedProcedureSpec::Literal(meta.get_spec_name().to_owned());
+
+        let result =
+            self.register_use_procedure_with_spec(callee_did, ty_params, quantified_args, &meta, spec_term);
+        trace!("leave register_use_procedure");
+        result
+    }
+
+    /// Register a procedure use after its specification and generic abstraction have been selected.
+    fn register_use_procedure_with_spec(
+        &mut self,
+        callee_did: DefId,
+        ty_params: ty::GenericArgsRef<'tcx>,
+        quantified_args: types::AbstractedGenerics<'def>,
+        meta: &procedures::Meta,
+        spec_term: code::UsedProcedureSpec<'def>,
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+        let expected_num_lft_hints = quantified_args.scope.get_lfts().len();
+        // The key does not include associated types: their resolution is unique for one combination
+        // of type parameters within a procedure's fixed typing environment.
+        let key = types::generate_args_inst_key(self.tcx, ty_params)?;
+        let tcx = self.tcx;
         let loc_key = key.clone();
         let tup = TranslationKey::Function(OrderedDefId::new(tcx, callee_did), key);
         let res;
         if let Some(proc_use) = self.collected_procedures().get(&tup) {
             res = proc_use.loc_name.clone();
         } else {
-            let meta = self.procedure_registry().lookup_function(callee_did).ok_or_else(|| {
-                TranslationError::ErrorReported(
-                    self.tcx.dcx().err(Message::UnknownProcedure(format!("{:?}", callee_did))),
-                )
-            })?;
-            // explicit instantiation is needed sometimes
             let spec_term = if meta.get_mode().is_inline() {
                 if self
                     .procedure_registry()
@@ -301,7 +313,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let callee_spec =
                     self.procedure_registry().lookup_function_spec(callee_did).ok_or_else(|| {
                         TranslationError::ErrorReported(
-                            self.tcx.dcx().err(Message::UnknownProcedure(format!("{:?}", callee_did))),
+                            self.tcx.dcx().err(Message::UnknownProcedure(format!("{callee_did:?}"))),
                         )
                     })?;
                 let lifetime_names = callee_spec
@@ -317,7 +329,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     static_locations,
                 }
             } else {
-                code::UsedProcedureSpec::Literal(meta.get_spec_name().to_owned())
+                spec_term
             };
 
             let code_name = meta.get_name();
@@ -337,7 +349,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 )?
             };
 
-            let fn_inst = quantified_args.fn_scope_inst;
+            let fn_inst = if matches!(&spec_term, code::UsedProcedureSpec::RealizedMethod(_)) {
+                quantified_args.method_scope_inst.clone()
+            } else {
+                quantified_args.procedure_scope_inst.clone()
+            };
 
             info!(
                 "Registered procedure instance {} of {:?} with {:?} and layouts {:?}",
@@ -357,7 +373,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             }
             self.collected_procedures_mut().insert(tup, proc_use);
         }
-        trace!("leave register_use_procedure");
+
         let inst = ProcedureInst {
             method_params: ty_params,
             type_hint: quantified_args.callee_ty_param_inst,
@@ -367,6 +383,92 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mapped_early_regions: BTreeMap::new(),
         };
         Ok((code::Expr::MetaParam(res), Some(ExprInfo::Call(inst))))
+    }
+
+    /// Register a concrete trait method, projecting its specification from the selected
+    /// implementation realization when realization metadata is available.
+    fn register_use_realized_trait_method(
+        &mut self,
+        trait_method_did: DefId,
+        trait_method_args: ty::GenericArgsRef<'tcx>,
+        callee_did: DefId,
+        callee_args: ty::GenericArgsRef<'tcx>,
+        selected_impl: resolution::ResolvedImpl<'tcx>,
+        trait_specs: Vec<ResolvedTraitReq<'tcx, 'def>>,
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError> {
+        trace!(
+            "enter register_use_realized_trait_method trait_method_did={trait_method_did:?} callee_did={callee_did:?} selected_impl={selected_impl:?}"
+        );
+
+        let tcx = self.tcx;
+        let late_bounds = if tcx.impl_of_assoc(callee_did).is_some_and(|did| tcx.impl_is_of_trait(did)) {
+            self.trait_registry.get_expected_sig_for_impl_fn(callee_did).bound_vars().as_slice()
+        } else {
+            let fn_ty = tcx.type_of(callee_did).instantiate(tcx, callee_args).skip_norm_wip();
+            fn_ty.fn_sig(tcx).bound_vars().as_slice()
+        };
+        let mut quantified_args = self.ty_translator.get_generic_abstraction_for_procedure(
+            callee_did,
+            callee_args,
+            late_bounds,
+            trait_specs,
+            true,
+        )?;
+
+        let meta = self.procedure_registry().lookup_function(callee_did).ok_or_else(|| {
+            TranslationError::ErrorReported(
+                tcx.dcx().err(Message::UnknownProcedure(format!("{:?}", callee_did))),
+            )
+        })?;
+
+        let Some(trait_did) = tcx.trait_of_assoc(trait_method_did) else {
+            tcx.dcx().span_bug(
+                tcx.def_span(trait_method_did),
+                format!("expected trait method, found non-trait associated item: {trait_method_did:?}"),
+            )
+        };
+        let Some(method_name) = get_assoc_item_name(tcx, trait_method_did) else {
+            tcx.dcx().span_bug(
+                tcx.def_span(trait_method_did),
+                format!("trait method has no associated item name: {trait_method_did:?}"),
+            )
+        };
+        let trait_args = types::LocalTX::split_trait_method_args(tcx, trait_did, trait_method_args).0;
+
+        let specialized_impl = {
+            let mut scope = self.ty_translator.scope.borrow_mut();
+            let mut state = STInner::InFunction(&mut scope);
+            state.register_dep_on(OrderedDefId::new(tcx, selected_impl.impl_did));
+            self.trait_registry
+                .get_impl_spec_term(
+                    &mut state,
+                    selected_impl.impl_did,
+                    selected_impl.impl_args.as_slice(),
+                    trait_args.as_slice(),
+                )?
+                .0
+        };
+        let trait_spec = self.trait_registry.lookup_trait(trait_did).ok_or_else(|| {
+            TranslationError::ErrorReported(
+                tcx.dcx().span_err(tcx.def_span(trait_did), Message::TraitNotRegisteredWithRefinedRust),
+            )
+        })?;
+
+        let spec_term = make_realized_method_spec(
+            &specialized_impl,
+            trait_spec,
+            &method_name,
+            specs::traits::ReqScopeInst::new(Vec::new()),
+        );
+        let spec_term =
+            spec_term.with_realization_lfts(quantified_args.realization_context_inst.get_lfts().to_vec());
+        self.ty_translator
+            .mark_impl_params_surrounding(&mut quantified_args.scope, selected_impl.impl_args)?;
+
+        let result =
+            self.register_use_procedure_with_spec(callee_did, callee_args, quantified_args, &meta, spec_term);
+        trace!("leave register_use_realized_trait_method");
+        result
     }
 
     /// Internally register that we have used a trait method with a particular instantiation of
@@ -427,7 +529,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 )?
             };
 
-            let fn_inst = quantified_args.fn_scope_inst;
+            let fn_inst = quantified_args.procedure_scope_inst;
 
             info!(
                 "Registered procedure instance {} of {:?} with {:?} and layouts {:?}",
@@ -489,6 +591,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         for lft in info.scope.get_lfts() {
             new_scope.add_lft_param(lft.to_owned());
         }
+        let realization_lft_binders = new_scope.get_lfts().iter().map(|lft| lft.lft().to_owned()).collect();
         // also add the lifetime for the call function itself as a dummy
         if kind == ty::ClosureKind::Fn || kind == ty::ClosureKind::FnMut {
             new_scope.add_lft_param(specs::LftParam::new(
@@ -497,6 +600,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             ));
             // this does not have an instantiation hint
         }
+        let method_lft_binders = if kind == ty::ClosureKind::Fn || kind == ty::ClosureKind::FnMut {
+            vec![coq::Ident::new("_ref_lft")]
+        } else {
+            Vec::new()
+        };
         trace!("new_scope={new_scope:?}");
 
         // for the instantiation hints, we proceed as follows:
@@ -525,19 +633,30 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let external_inst = {
             let mut scope = self.ty_translator.scope.borrow_mut();
             let mut state = STInner::InFunction(&mut scope);
-            self.trait_registry.compute_closure_extern_inst(&mut state, closure_did, closure_args)
+            self.trait_registry.compute_closure_extern_inst(
+                &mut state,
+                closure_did,
+                closure_args,
+                params,
+                ty::Binder::dummy(()),
+            )
         };
         for r in external_inst {
             let lft = self.ty_translator.translate_region(r);
             lft_param_inst_hint.push(lft);
         }
 
-        // we just requantify all the generics and directly instantiate
-        let fn_scope_inst: specs::GenericScopeInst<'def> = new_scope.identity_instantiation();
+        // Requantify implementation and call-method generics in their respective nested contexts.
+        let full_scope_inst: specs::GenericScopeInst<'def> = new_scope.identity_instantiation();
+        let realization_context_inst = full_scope_inst.realization_context(realization_lft_binders);
+        let method_scope_inst = full_scope_inst.method_context(method_lft_binders);
+        let procedure_scope_inst = full_scope_inst;
 
         let res = types::AbstractedGenerics {
             scope: new_scope,
-            fn_scope_inst,
+            realization_context_inst,
+            method_scope_inst,
+            procedure_scope_inst,
             num_of_latebounds: 0,
             callee_lft_param_inst: lft_param_inst_hint,
             callee_ty_param_inst: ty_param_inst_hint,
@@ -602,8 +721,46 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     ))
                 })?;
 
-            // explicit instantiation is needed sometimes
-            let spec_term = code::UsedProcedureSpec::Literal(meta.get_spec_name().to_owned());
+            let spec_term = {
+                let Some(method_name) = get_assoc_item_name(self.tcx, call_fn_did) else {
+                    self.tcx.dcx().span_bug(
+                        self.tcx.def_span(call_fn_did),
+                        format!("closure trait method has no associated item name: {call_fn_did:?}"),
+                    )
+                };
+                let specialized_impl = {
+                    let mut scope = self.ty_translator.scope.borrow_mut();
+                    let mut state = STInner::InFunction(&mut scope);
+                    state.register_dep_on(OrderedDefId::new(self.tcx, closure_did));
+                    self.trait_registry
+                        .get_closure_impl_spec_term(
+                            &mut state,
+                            closure_did,
+                            trait_did,
+                            closure_args,
+                            ty_params,
+                            ty::Binder::dummy(()),
+                        )?
+                        .0
+                };
+                let trait_spec =
+                    self.trait_registry.lookup_trait(trait_did).ok_or_else(|| {
+                        TranslationError::ErrorReported(self.tcx.dcx().span_err(
+                            self.tcx.def_span(trait_did),
+                            Message::TraitNotRegisteredWithRefinedRust,
+                        ))
+                    })?;
+
+                let spec_term = make_realized_method_spec(
+                    &specialized_impl,
+                    trait_spec,
+                    &method_name,
+                    specs::traits::ReqScopeInst::new(Vec::new()),
+                );
+                // The closure receiver lifetime belongs to the call method's scope, not to the
+                // implementation realization context captured before `_ref_lft` was added.
+                spec_term.with_realization_context_inst(quantified_scope.realization_context_inst.clone())
+            };
 
             let code_name = meta.get_name();
             let loc_name = format!("{}_loc", types::mangle_name_with_tys(code_name, loc_key.as_slice()));
@@ -624,14 +781,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             info!(
                 "Registered procedure instance of closure impl {loc_name} of ({closure_did:?}, {closure_kind:?}) with {:?} and layouts {:?}",
-                quantified_scope.fn_scope_inst, syntypes
+                quantified_scope.method_scope_inst, syntypes
             );
 
             let proc_use = code::UsedProcedure::new(
                 loc_name,
                 spec_term,
                 quantified_scope.scope,
-                quantified_scope.fn_scope_inst,
+                quantified_scope.method_scope_inst,
                 syntypes,
             );
 
@@ -695,7 +852,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // Otherwise, we are calling a trait method
         // Resolve the trait instance using trait selection
-        let Some((resolved_did, resolved_params, kind)) = resolution::resolve_assoc_item(
+        let Some(resolved) = resolution::resolve_assoc_item(
             self.tcx,
             current_typing_env,
             *defid,
@@ -709,13 +866,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             ));
         };
 
+        let resolved_did = resolved.callable_did;
+        let resolved_params = resolved.callable_args;
+
         info!(
             "Resolved trait method {:?} as {:?} with substs {:?} and kind {:?}",
-            defid, resolved_did, resolved_params, kind
+            defid, resolved_did, resolved_params, resolved.kind
         );
 
-        match kind {
-            resolution::TraitResolutionKind::UserDefined => {
+        match resolved.kind {
+            resolution::AssocItemResolutionKind::UserDefined(selected_impl) => {
                 // We can statically resolve the particular trait instance,
                 // but need to apply the spec to the instance's spec attributes
 
@@ -723,10 +883,24 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let trait_spec_terms =
                     self.resolve_trait_requirements_of_call(resolved_did, resolved_params, true)?;
 
+                self.register_use_realized_trait_method(
+                    *defid,
+                    params,
+                    resolved_did,
+                    resolved_params,
+                    selected_impl,
+                    trait_spec_terms,
+                )
+            },
+
+            resolution::AssocItemResolutionKind::FurtherSpecializable => {
+                let trait_spec_terms =
+                    self.resolve_trait_requirements_of_call(resolved_did, resolved_params, true)?;
+
                 self.register_use_procedure(resolved_did, resolved_params, trait_spec_terms)
             },
 
-            resolution::TraitResolutionKind::Param => {
+            resolution::AssocItemResolutionKind::Param => {
                 // In this case, we have already applied it to the spec attribute
 
                 // resolve the trait requirements
@@ -735,7 +909,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 self.register_use_trait_method(resolved_did, resolved_params, trait_spec_terms)
             },
 
-            resolution::TraitResolutionKind::Closure => {
+            resolution::AssocItemResolutionKind::Closure => {
                 // Here, we are calling a concretely known and defined closure.
                 // We are calling one of the impl shims that we generate!
 

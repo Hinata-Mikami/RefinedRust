@@ -72,7 +72,9 @@ impl ImplKey {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[expect(clippy::enum_variant_names)]
 pub(crate) enum VirtualImpl {
+    DropGlueTrivial,
     DropGlueForAdt(OrderedDefId),
     DropGlueForTuple(usize),
 }
@@ -822,7 +824,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // check if there's a more specific impl spec
         let term = if let Some(impl_spec) = self.lookup_impl(impl_did) {
             let scope_inst =
-                self.compute_scope_inst_in_state(state, impl_did, self.tcx.mk_args(impl_args))?;
+                self.compute_scope_inst_in_state(&mut *state, impl_did, self.tcx.mk_args(impl_args))?;
 
             specs::traits::SpecializedImpl::new(impl_spec, scope_inst)
         } else {
@@ -835,6 +837,163 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         trace!("leave TR::get_impl_spec_term");
         Ok((term, assoc_args))
+    }
+
+    /// Specialize the virtual `DropGlue` implementation selected for a concrete type.
+    pub(crate) fn get_drop_glue_impl_spec_term_in_state(
+        &self,
+        state: types::ST<'_, '_, 'def, 'tcx>,
+        self_ty: ty::Ty<'tcx>,
+    ) -> Result<Option<specs::traits::SpecializedImpl<'def>>, TranslationError> {
+        // Closures are represented by their tuple of captures in RefinedRust, so their drop-glue
+        // realization must be selected for that tuple rather than from rustc's closure type.
+        if let ty::TyKind::Closure(_, args) = self_ty.kind() {
+            return self.get_drop_glue_impl_spec_term_in_state(state, args.as_closure().tupled_upvars_ty());
+        }
+
+        if matches!(self_ty.kind(), ty::TyKind::Param(_))
+            || matches!(
+                self_ty.kind(),
+                ty::TyKind::Alias(_, alias) if matches!(alias.kind, ty::AliasTyKind::Projection { .. })
+            )
+        {
+            return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                error::Message::TraitResolution(format!(
+                    "cannot select a concrete DropGlue implementation for abstract type {self_ty:?}"
+                )),
+            )));
+        }
+
+        let typing_env = state.get_typing_env(self.tcx);
+        // Explicit ADT and tuple drop-glue realizations describe the RefinedRust model and take
+        // precedence over rustc's operational `needs_drop` result for a concrete instantiation.
+        let has_registered_drop_glue = match self_ty.kind() {
+            ty::TyKind::Adt(def, _) => self
+                .lookup_virtual_impl(VirtualImpl::DropGlueForAdt(OrderedDefId::new(self.tcx, def.did())))
+                .is_some(),
+            ty::TyKind::Tuple(components) if (1..=5).contains(&components.len()) => {
+                self.lookup_virtual_impl(VirtualImpl::DropGlueForTuple(components.len())).is_some()
+            },
+            _ => false,
+        };
+        let (impl_key, impl_inst) = if !has_registered_drop_glue
+            && !self.tcx.needs_drop_raw(typing_env.as_query_input(self_ty))
+        {
+            let mut impl_inst = specs::GenericScopeInst::empty();
+            let translated_ty = self.type_translator().translate_type_in_state(self_ty, state)?;
+            impl_inst.add_direct_ty_param(translated_ty);
+            (VirtualImpl::DropGlueTrivial, impl_inst)
+        } else {
+            match self_ty.kind() {
+                ty::TyKind::Adt(def, args) => {
+                    let impl_inst = self.compute_scope_inst_in_state(&mut *state, def.did(), args)?;
+
+                    (VirtualImpl::DropGlueForAdt(OrderedDefId::new(self.tcx, def.did())), impl_inst)
+                },
+                ty::TyKind::Tuple(components) => {
+                    let arity = components.len();
+                    if !(1..=5).contains(&arity) {
+                        return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                            error::Message::UnsupportedFeature(format!(
+                                "drop-glue realizations for tuples are only supported up to arity 5, got arity {arity}"
+                            )),
+                        )));
+                    }
+
+                    let mut impl_inst = specs::GenericScopeInst::empty();
+                    for component in *components {
+                        let translated_ty =
+                            self.type_translator().translate_type_in_state(component, &mut *state)?;
+                        impl_inst.add_direct_ty_param(translated_ty);
+                    }
+                    for component in *components {
+                        let Some(requirement) = self.resolve_drop_glue_requirement_in_state(
+                            &mut *state,
+                            component,
+                            specs::TyParamOrigin::Direct,
+                        )?
+                        else {
+                            return Ok(None);
+                        };
+                        impl_inst.add_trait_requirement(requirement);
+                    }
+
+                    (VirtualImpl::DropGlueForTuple(arity), impl_inst)
+                },
+                _ => {
+                    return Err(TranslationError::ErrorReported(self.tcx.dcx().err(
+                        error::Message::UnsupportedFeature(format!(
+                            "cannot select a DropGlue realization for type {self_ty:?}"
+                        )),
+                    )));
+                },
+            }
+        };
+
+        let impl_key_message = format!("{impl_key:?}");
+        let impl_ref = self.lookup_virtual_impl(impl_key).ok_or_else(|| {
+            TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::TraitResolution(format!(
+                "virtual implementation not registered with RefinedRust: {impl_key_message}"
+            ))))
+        })?;
+
+        Ok(Some(specs::traits::SpecializedImpl::new(impl_ref, impl_inst)))
+    }
+
+    /// Resolve a `DropGlue` requirement, forwarding abstract assumptions and recursively
+    /// specializing concrete implementations.
+    pub(crate) fn resolve_drop_glue_requirement_in_state(
+        &self,
+        state: types::ST<'_, '_, 'def, 'tcx>,
+        mut self_ty: ty::Ty<'tcx>,
+        origin: specs::TyParamOrigin,
+    ) -> Result<Option<specs::traits::ReqInst<'def>>, TranslationError> {
+        let trait_spec = self.lookup_virtual_trait(VirtualTrait::DropGlue).ok_or_else(|| {
+            TranslationError::ErrorReported(self.tcx.dcx().err(error::Message::TraitResolution(
+                "virtual DropGlue trait is not registered with RefinedRust".to_owned(),
+            )))
+        })?;
+
+        if let ty::TyKind::Alias(_, alias) = self_ty.kind()
+            && matches!(alias.kind, ty::AliasTyKind::Projection { .. })
+        {
+            self_ty = ty::Ty::new_alias(self.tcx, ty::IsRigid::No, *alias);
+        }
+
+        let spec = if matches!(self_ty.kind(), ty::TyKind::Param(_))
+            || matches!(
+                self_ty.kind(),
+                ty::TyKind::Alias(_, alias) if matches!(alias.kind, ty::AliasTyKind::Projection { .. })
+            ) {
+            let arg = ty::GenericArg::from(self_ty);
+            let Some(trait_use) =
+                state.try_lookup_virtual_trait_use(self.tcx, VirtualTrait::DropGlue, &[arg])
+            else {
+                return Ok(None);
+            };
+            let scope_inst = {
+                let trait_use_ref = trait_use.trait_use.borrow();
+                trait_use_ref.as_ref().unwrap().scope.identity_instantiation()
+            };
+            specs::traits::ReqInstSpec::Quantified(specs::traits::QuantifiedImpl::new(
+                trait_use.trait_use,
+                scope_inst,
+            ))
+        } else {
+            let Some(impl_) = self.get_drop_glue_impl_spec_term_in_state(state, self_ty)? else {
+                return Ok(None);
+            };
+            specs::traits::ReqInstSpec::Specialized(impl_)
+        };
+
+        Ok(Some(specs::traits::ReqInst::new(
+            spec,
+            origin,
+            specs::traits::AttrDependency::ValueOnly,
+            Vec::new(),
+            trait_spec,
+            specs::traits::ReqScope::empty(),
+        )))
     }
 
     pub(crate) fn compute_closure_late_bound_inst(
@@ -876,6 +1035,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         state: types::ST<'_, '_, 'def, 'tcx>,
         closure_did: DefId,
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
+        trait_args: ty::GenericArgsRef<'tcx>,
+        below_binders: ty::Binder<'tcx, ()>,
     ) -> Vec<ty::Region<'tcx>> {
         // Also instantiate the external regions for the upvars and closure inputs
         // Important: needs to be in the same order as in `compute_closure_meta`!
@@ -891,10 +1052,14 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let decl_sig = decl_args.sig();
         let decl_inputs = decl_sig.inputs();
         let decl_inputs = decl_inputs.skip_binder();
-        let sig = closure_args.sig();
-        let inputs = sig.inputs();
-        let inputs = inputs.skip_binder();
-        unifier.map_ty_slices(decl_inputs, inputs);
+        assert_eq!(decl_inputs.len(), 1);
+        let input_tuple = trait_args[1].as_type().unwrap();
+        let bound_input_tuple = below_binders.rebind(input_tuple);
+        let input_tuple =
+            resolution::normalize_type(self.tcx, state.get_typing_env(self.tcx), bound_input_tuple)
+                .unwrap_or(bound_input_tuple)
+                .skip_binder();
+        unifier.map_tys(decl_inputs[0], input_tuple);
 
         let (regions, map) = unifier.get_result();
         let mut scope_inst = Vec::new();
@@ -915,6 +1080,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trait_did: DefId,
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         trait_args: ty::GenericArgsRef<'tcx>,
+        below_binders: ty::Binder<'tcx, ()>,
     ) -> Result<(specs::traits::SpecializedImpl<'def>, Vec<ty::Ty<'tcx>>), TranslationError> {
         let closure_kind = search::get_closure_kind_of_trait_did(self.tcx, trait_did).unwrap_or_else(|| {
             span_bug!(self.tcx.def_span(trait_did), "expected closure trait, found non-closure trait item")
@@ -959,7 +1125,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             scope_inst.add_lft_param(translated_region);
         }
 
-        let extern_inst = self.compute_closure_extern_inst(state, closure_did, closure_args);
+        let extern_inst =
+            self.compute_closure_extern_inst(state, closure_did, closure_args, trait_args, below_binders);
         for r in extern_inst {
             let lft = types::TX::translate_region(state, r);
             scope_inst.add_lft_param(lft);
@@ -1116,6 +1283,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         trait_did,
                         closure_args,
                         trait_args,
+                        below_binders,
                     )?;
 
                     // filter out the associated types which are constrained -- these are
@@ -1390,9 +1558,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 specs::traits::ReqInstSpec::Specialized(specs::traits::SpecializedImpl::new(impl_ref, inst))
             },
             _ if !self_ty.needs_drop(self.tcx, state.get_typing_env(self.tcx)) => {
-                let impl_ref = self
-                    .impl_arena
-                    .alloc(specs::traits::LiteralImpl::new("drop_glue_trivial".to_owned(), false));
+                let impl_ref = self.impl_arena.alloc(specs::traits::LiteralImpl::new(
+                    "drop_glue_trivial".to_owned(),
+                    false,
+                    "drop_glue_trivial_realization".to_owned(),
+                ));
                 let mut inst = specs::GenericScopeInst::empty();
                 inst.add_direct_ty_param(self.type_translator().translate_type_in_state(self_ty, state)?);
                 specs::traits::ReqInstSpec::Specialized(specs::traits::SpecializedImpl::new(impl_ref, inst))
@@ -1903,7 +2073,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         attrs: specs::traits::SpecAttrsInst,
     ) -> Result<specs::traits::RefInst<'def>, TranslationError> {
         let trait_key = match &impl_key {
-            VirtualImpl::DropGlueForAdt(_) | VirtualImpl::DropGlueForTuple(_) => VirtualTrait::DropGlue,
+            VirtualImpl::DropGlueTrivial
+            | VirtualImpl::DropGlueForAdt(_)
+            | VirtualImpl::DropGlueForTuple(_) => VirtualTrait::DropGlue,
         };
         let impl_key_msg = format!("{impl_key:?}");
         let trait_spec_ref = self.lookup_virtual_trait(trait_key).ok_or_else(|| {

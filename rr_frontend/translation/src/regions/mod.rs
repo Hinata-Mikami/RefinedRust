@@ -214,8 +214,8 @@ impl<'tcx> TyRegionCollectFolder<'tcx> {
         self.regions
     }
 
-    pub(crate) const fn ignore_closure_args(&mut self, b: bool) {
-        self.ignore_closure_args = b;
+    pub(crate) const fn ignore_closure_args(&mut self, ignore: bool) {
+        self.ignore_closure_args = ignore;
     }
 }
 
@@ -225,13 +225,10 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyRegionCollectFolder<'tcx> {
     }
 
     fn fold_ty(&mut self, t: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
-        if let ty::TyKind::Closure(_, args) = t.kind() {
-            if self.ignore_closure_args {
-                let closure_args = args.as_closure();
-                closure_args.tupled_upvars_ty().super_fold_with(self)
-            } else {
-                t.super_fold_with(self)
-            }
+        if self.ignore_closure_args
+            && let ty::TyKind::Closure(_, args) = t.kind()
+        {
+            args.as_closure().tupled_upvars_ty().super_fold_with(self)
         } else {
             t.super_fold_with(self)
         }

@@ -329,6 +329,28 @@ pub(crate) enum TraitResolutionKind {
     Closure,
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub(crate) struct ResolvedImpl<'tcx> {
+    pub impl_did: DefId,
+    pub impl_args: ty::GenericArgsRef<'tcx>,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub(crate) enum AssocItemResolutionKind<'tcx> {
+    Param,
+    UserDefined(ResolvedImpl<'tcx>),
+    Closure,
+    /// Codegen selected an implementation, but a downstream specialization may still replace it.
+    FurtherSpecializable,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub(crate) struct ResolvedAssocItem<'tcx> {
+    pub callable_did: DefId,
+    pub callable_args: ty::GenericArgsRef<'tcx>,
+    pub kind: AssocItemResolutionKind<'tcx>,
+}
+
 /// Resolve a reference to a trait item using codegen trait selection.
 /// `did` should be the id of a trait item.
 pub(crate) fn resolve_assoc_item<'tcx>(
@@ -337,7 +359,7 @@ pub(crate) fn resolve_assoc_item<'tcx>(
     did: DefId,
     substs: ty::GenericArgsRef<'tcx>,
     below_binders: ty::Binder<'tcx, ()>,
-) -> Option<(DefId, ty::GenericArgsRef<'tcx>, TraitResolutionKind)> {
+) -> Option<ResolvedAssocItem<'tcx>> {
     let assoc = tcx.opt_associated_item(did)?;
 
     /*
@@ -372,7 +394,11 @@ pub(crate) fn resolve_assoc_item<'tcx>(
 
             if !leaf_def.is_final() && trait_ref.still_further_specializable() {
                 // return the original id to call
-                return Some((did, substs, TraitResolutionKind::UserDefined));
+                return Some(ResolvedAssocItem {
+                    callable_did: did,
+                    callable_args: substs,
+                    kind: AssocItemResolutionKind::FurtherSpecializable,
+                });
             }
 
             // Translate the original substitution into one on the selected impl method
@@ -391,18 +417,31 @@ pub(crate) fn resolve_assoc_item<'tcx>(
             let leaf_substs = substs;
             //let leaf_substs = infcx.tcx.erase_regions(substs);
 
-            Some((leaf_def.item.def_id, leaf_substs, TraitResolutionKind::UserDefined))
+            Some(ResolvedAssocItem {
+                callable_did: leaf_def.item.def_id,
+                callable_args: leaf_substs,
+                kind: AssocItemResolutionKind::UserDefined(ResolvedImpl {
+                    impl_did: impl_data.impl_def_id,
+                    impl_args: impl_data.args,
+                }),
+            })
         },
-        trait_selection::traits::ImplSource::Param(_) => Some((did, substs, TraitResolutionKind::Param)),
+        trait_selection::traits::ImplSource::Param(_) => Some(ResolvedAssocItem {
+            callable_did: did,
+            callable_args: substs,
+            kind: AssocItemResolutionKind::Param,
+        }),
         trait_selection::traits::ImplSource::Builtin(_, _) =>
         // the 0-th parameter should be self
         // if this is a closure, we want to call that closure
         {
             match *substs[0].as_type().unwrap().kind() {
                 // try to get the body
-                ty::Closure(closure_def_id, closure_substs) => {
-                    Some((closure_def_id, closure_substs, TraitResolutionKind::Closure))
-                },
+                ty::Closure(closure_def_id, closure_substs) => Some(ResolvedAssocItem {
+                    callable_did: closure_def_id,
+                    callable_args: closure_substs,
+                    kind: AssocItemResolutionKind::Closure,
+                }),
                 _ => unimplemented!(),
             }
         },

@@ -339,7 +339,9 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                         info!("Creating virtual drop-glue trait impl shim entry failed for {did:?}");
                     }
                 },
-                registry::ImplKey::Virtual(registry::VirtualImpl::DropGlueForTuple(_)) => {},
+                registry::ImplKey::Virtual(
+                    registry::VirtualImpl::DropGlueTrivial | registry::VirtualImpl::DropGlueForTuple(_),
+                ) => {},
             }
         }
 
@@ -1780,7 +1782,7 @@ fn register_tuple_drop_glue_shims(vcx: &mut VerificationCtxt<'_, '_>) {
         }
 
         let name = format!("drop_glue_tuple{arity}");
-        let impl_lit = specs::traits::LiteralImpl::new(name.clone(), false);
+        let impl_lit = specs::traits::LiteralImpl::new(name.clone(), false, format!("{name}_realization"));
         let meta = procedures::Meta::new(
             format!("type_of_{name}"),
             format!("{name}_def"),
@@ -1860,7 +1862,7 @@ fn register_drop_glues(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), Pipelin
         }
 
         let name = base::strip_coq_ident(&format!("drop_glue_{}", environment::get_item_name(vcx.tcx, did)));
-        let impl_lit = specs::traits::LiteralImpl::new(name.clone(), false);
+        let impl_lit = specs::traits::LiteralImpl::new(name.clone(), false, format!("{name}_realization"));
         let spec_name = format!("type_of_{name}");
         let code_name = format!("{name}_def");
         let trait_req_incl_name = format!("trait_incl_of_{name}");
@@ -2488,9 +2490,11 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), PipelineEr
             }
 
             // make names for the spec and inclusion proof
+            let name = base::strip_coq_ident(&environment::get_item_name(vcx.tcx, did));
             let impl_lit = specs::traits::LiteralImpl::new(
-                base::strip_coq_ident(&environment::get_item_name(vcx.tcx, did)),
+                name.clone(),
                 registered.has_semantic_interp,
+                format!("{name}_realization"),
             );
 
             vcx.trait_registry.register_impl_shim(did, impl_lit);
@@ -2961,10 +2965,10 @@ fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) {
 
         let make_impl = |kind| {
             // make names for the spec and inclusion proof
-            let impl_lit = specs::traits::LiteralImpl::new(
-                base::strip_coq_ident(&format!("{}_{kind:?}", environment::get_item_name(vcx.tcx, did))),
-                false,
-            );
+            let name =
+                base::strip_coq_ident(&format!("{}_{kind:?}", environment::get_item_name(vcx.tcx, did)));
+            let impl_lit =
+                specs::traits::LiteralImpl::new(name.clone(), false, format!("{name}_realization"));
 
             // create function meta
             let method_name = match kind {
@@ -3323,6 +3327,14 @@ fn register_builtin_virtual_traits(vcx: &VerificationCtxt<'_, '_>) {
 
     vcx.trait_registry
         .register_virtual_trait(registry::VirtualTrait::DropGlue, drop_glue_spec);
+
+    let trivial_drop_glue = specs::traits::LiteralImpl::new(
+        "drop_glue_trivial".to_owned(),
+        false,
+        "drop_glue_trivial_realization".to_owned(),
+    );
+    vcx.trait_registry
+        .register_virtual_impl(registry::VirtualImpl::DropGlueTrivial, trivial_drop_glue);
 }
 
 /// Translate a crate, creating a `VerificationCtxt` in the process.

@@ -8,5 +8,11 @@
 
 #[rr::verify]
 fn main() {
+    callee(42);
+}
 
+#[rr::verify]
+#[rr::may_unwind_if("DropGlue_DropGlueUnwind DropGlue_T_spec_attrs")]
+fn callee<T>(x: T) {
+    let x = (x, 2);
 }

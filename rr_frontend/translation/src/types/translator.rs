@@ -429,16 +429,6 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         self.param_scope().trait_scope().try_lookup_trait_use(tcx, trait_did, args)
     }
 
-    #[expect(dead_code)]
-    pub(crate) fn lookup_virtual_trait_use(
-        &self,
-        tcx: ty::TyCtxt<'tcx>,
-        trait_key: registry::VirtualTrait,
-        args: &[ty::GenericArg<'tcx>],
-    ) -> &registry::GenericTraitUse<'tcx, 'def> {
-        self.param_scope().trait_scope().lookup_virtual_trait_use(tcx, trait_key, args)
-    }
-
     pub(crate) fn try_lookup_virtual_trait_use(
         &self,
         tcx: ty::TyCtxt<'tcx>,

@@ -1114,7 +1114,9 @@ impl Function<'_> {
                         }
                         writeln!(f, ") -∗")?;
                     },
-                    UsedProcedureSpec::Literal(_) | UsedProcedureSpec::TraitMethod(_, _) => {
+                    UsedProcedureSpec::Literal(_)
+                    | UsedProcedureSpec::TraitMethod(_, _)
+                    | UsedProcedureSpec::RealizedMethod(_) => {
                         writeln!(f, "function_ptr [{}] {} -∗", arg_syntys.join("; "), proc_use)?;
                     },
                 }
@@ -1174,10 +1176,9 @@ impl Function<'_> {
         };
         let params_late_pre = self.spec.generics.generate_validity_term_for_generics();
 
-        let prop = coq::iris::IProp::Sep(vec![
-            params_late_pre,
-            coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(trait_late_pre))),
-        ]);
+        let mut late_pre = vec![params_late_pre, coq::iris::IProp::Atom(format!("({trait_late_pre}) π"))];
+        late_pre.extend(self.other_functions.iter().filter_map(|used| used.call_linking_requirement("π")));
+        let prop = coq::iris::IProp::Sep(late_pre);
         // TODO: don't require that _all_ of them are sized
         //let prop = coq::iris::IProp::Exists(self.spec.generics.generate_sized_requirements(),
         // Box::new(prop));
@@ -1425,15 +1426,43 @@ pub enum UsedProcedureSpec<'def> {
     },
     /// A method of a trait impl we quantify over, the string is the method name.
     TraitMethod(traits::QuantifiedImpl<'def>, String),
+    /// A method projected from a concretely selected trait implementation realization.
+    RealizedMethod(traits::RealizedMethodSpecUse<'def>),
 }
 
-impl UsedProcedureSpec<'_> {
+impl<'def> UsedProcedureSpec<'def> {
+    #[must_use]
+    pub fn with_realization_context_inst(self, context_inst: GenericScopeInst<'def>) -> Self {
+        match self {
+            Self::RealizedMethod(method) => {
+                Self::RealizedMethod(method.with_realization_context_inst(context_inst))
+            },
+            other => other,
+        }
+    }
+
+    #[must_use]
+    pub fn with_realization_lfts(self, lfts: Vec<Lft>) -> Self {
+        match self {
+            Self::RealizedMethod(method) => Self::RealizedMethod(method.with_realization_lfts(lfts)),
+            other => other,
+        }
+    }
+
     const fn needs_surrounding_trait_reqs(&self) -> bool {
         match *self {
             Self::Literal(_) => true,
-            // symbolic trait method uses don't need the surrounding trait requirements
-            Self::InlineCode { .. } | Self::TraitMethod(_, _) => false,
+            // Trait method realizations already account for their implementation requirements.
+            Self::InlineCode { .. } | Self::TraitMethod(_, _) | Self::RealizedMethod(_) => false,
         }
+    }
+
+    const fn needs_abstract_context_collapse(&self) -> bool {
+        matches!(self, Self::TraitMethod(_, _))
+    }
+
+    const fn generic_validity_includes_surrounding(&self) -> bool {
+        !matches!(self, Self::RealizedMethod(_))
     }
 }
 
@@ -1455,7 +1484,140 @@ impl fmt::Display for UsedProcedureSpec<'_> {
                     spec_use.get_spec_term(),
                 )
             },
+            Self::RealizedMethod(method) => write!(f, "{}", method.get_spec_term()),
         }
+    }
+}
+
+#[cfg(test)]
+mod used_procedure_spec_tests {
+    use super::*;
+
+    fn literal_trait_spec() -> traits::LiteralSpec {
+        traits::LiteralSpec {
+            name: "Trait".to_owned(),
+            assoc_tys: vec![],
+            has_semantic_interp: false,
+            attrs_dependent: false,
+            has_spec_attrs: false,
+            declared_attrs: vec![],
+            method_trait_incl_decls: BTreeMap::new(),
+        }
+    }
+
+    #[test]
+    fn realized_method_classification_is_trait_generic() {
+        let trait_spec = literal_trait_spec();
+        let mut context_inst = GenericScopeInst::empty();
+        context_inst.add_lft_param(coq::Ident::new("κ"));
+        context_inst.add_direct_ty_param(Type::LiteralParam(LiteralTyParam::new("T")));
+        let realization =
+            traits::SpecRealizationUse::new(coq::term::Term::Literal("R".to_owned()), context_inst);
+        let method = traits::RealizedMethodSpecUse::new(
+            realization,
+            &trait_spec,
+            "method".to_owned(),
+            traits::ReqScopeInst::new(vec![]),
+        );
+        let spec = UsedProcedureSpec::RealizedMethod(method);
+
+        assert!(!spec.needs_surrounding_trait_reqs());
+        assert!(!spec.needs_abstract_context_collapse());
+        assert!(!spec.generic_validity_includes_surrounding());
+        assert_eq!(
+            spec.to_string(),
+            "(Trait_method_spec (RRGS:=RRGS) (R.(trait_ctx_spec) -[κ] -[T_ty] -[] -[]))"
+        );
+    }
+
+    #[test]
+    fn direct_generic_validity_excludes_implementation_parameters() {
+        let mut scope: GenericScope<'_, traits::LiteralSpecUseRef<'_>> = GenericScope::empty();
+        scope.add_ty_param(LiteralTyParam::new_with_origin("Impl", TyParamOrigin::SurroundingImpl));
+        scope.add_ty_param(LiteralTyParam::new("Method"));
+
+        let validity = scope.generate_validity_term_for_direct_generics().to_string();
+        assert!(validity.contains("Method_rt"));
+        assert!(!validity.contains("Impl_rt"));
+    }
+
+    #[test]
+    fn rocq_identifier_scan_does_not_match_prefixes() {
+        assert!(rocq_text_mentions_ident("-[ulft_01]", "ulft_01"));
+        assert!(!rocq_text_mentions_ident("-[ulft_01]", "ulft_0"));
+    }
+
+    #[test]
+    fn call_linking_requirement_omits_unused_lifetime_binders() {
+        let trait_spec = literal_trait_spec();
+        let mut context_inst = GenericScopeInst::empty();
+        context_inst.add_lft_param(coq::Ident::new("ulft_0"));
+        let realization = traits::SpecRealizationUse::new(
+            coq::term::Term::Literal("impl_realization".to_owned()),
+            context_inst,
+        );
+        let method = traits::RealizedMethodSpecUse::new(
+            realization,
+            &trait_spec,
+            "method".to_owned(),
+            traits::ReqScopeInst::new(vec![]),
+        );
+
+        let mut quantified_scope: GenericScope<'_, traits::LiteralSpecUseRef<'_>> = GenericScope::empty();
+        quantified_scope
+            .add_lft_param(LftParam::new(coq::Ident::new("ulft_0"), LftParamOrigin::LocalEarlyBound));
+        quantified_scope
+            .add_lft_param(LftParam::new(coq::Ident::new("late_lft_0"), LftParamOrigin::LocalLateBound));
+        let procedure = UsedProcedure::new(
+            "method_loc".to_owned(),
+            UsedProcedureSpec::RealizedMethod(method),
+            quantified_scope,
+            GenericScopeInst::empty(),
+            vec![],
+        );
+
+        let requirement = procedure.call_linking_requirement("π").unwrap().to_string();
+        assert!(requirement.contains("(ulft_0: (lft))"));
+        assert!(!requirement.contains("late_lft_0"));
+    }
+
+    #[test]
+    fn realized_method_binds_constructor_and_uses_its_linking_condition() {
+        let trait_spec = literal_trait_spec();
+        let mut context_inst = GenericScopeInst::empty();
+        context_inst.add_direct_ty_param(Type::LiteralParam(LiteralTyParam::new("Impl")));
+        let realization = traits::SpecRealizationUse::new(
+            coq::term::Term::Literal("(impl_realization)".to_owned()),
+            context_inst,
+        );
+        let method = traits::RealizedMethodSpecUse::new(
+            realization,
+            &trait_spec,
+            "method".to_owned(),
+            traits::ReqScopeInst::new(vec![]),
+        );
+        let spec = UsedProcedureSpec::RealizedMethod(method);
+
+        let mut quantified_scope: GenericScope<'_, traits::LiteralSpecUseRef<'_>> = GenericScope::empty();
+        quantified_scope
+            .add_ty_param(LiteralTyParam::new_with_origin("Impl", TyParamOrigin::SurroundingImpl));
+        let procedure = UsedProcedure::new(
+            "method_loc".to_owned(),
+            spec,
+            quantified_scope,
+            GenericScopeInst::empty(),
+            vec![],
+        );
+
+        let rendered = procedure.to_string();
+        assert!(rendered.contains("let realization := (impl_realization) in fn_spec_add_late_pre"));
+        assert!(rendered.contains(
+            "Trait_method_spec (RRGS:=RRGS) (realization.(trait_ctx_spec) -[] -[Impl_ty] -[] -[])"
+        ));
+        assert!(rendered.contains("λ π, (realization.(trait_ctx_wf) -[] -[Impl_ty] π)"));
+        assert_eq!(rendered.matches("impl_realization").count(), 1);
+        assert!(!rendered.contains("spec_collapse_params"));
+        assert!(!rendered.contains("typaram_wf Impl_rt"));
     }
 }
 
@@ -1483,10 +1645,106 @@ pub struct UsedProcedure<'def> {
     syntype_of_all_args: Vec<lang::SynType>,
 }
 
+fn rocq_text_mentions_ident(text: &str, ident: &str) -> bool {
+    text.split(|c: char| !(c.is_alphanumeric() || c == '_')).any(|token| token == ident)
+}
+
+impl UsedProcedure<'_> {
+    fn generic_validity_requirement(&self) -> coq::iris::IProp {
+        if self.spec_term.generic_validity_includes_surrounding() {
+            self.quantified_scope.generate_validity_term_for_generics()
+        } else {
+            self.quantified_scope.generate_validity_term_for_direct_generics()
+        }
+    }
+
+    fn bound_realized_method_wf_requirement(
+        method: &traits::RealizedMethodSpecUse<'_>,
+        thread_id: &str,
+    ) -> coq::iris::IProp {
+        let realization_term = method.realization().get_realization_term();
+        let bound_method = method.with_realization_term(coq::term::Term::Literal("realization".to_owned()));
+        coq::iris::IProp::Atom(format!(
+            "(let realization := {realization_term} in {})",
+            bound_method.get_wf_term(thread_id)
+        ))
+    }
+
+    /// Get the body-specific linking requirement of a concretely resolved call.
+    ///
+    /// Abstract trait methods retain their context witnesses below `spec_collapse_params`, while
+    /// literal procedures have no selected realization to propagate.
+    fn call_linking_requirement(&self, thread_id: &str) -> Option<coq::iris::IProp> {
+        let UsedProcedureSpec::RealizedMethod(method) = &self.spec_term else {
+            return None;
+        };
+
+        let mut requirements = Vec::new();
+        let generic_validity = self.generic_validity_requirement();
+        if !matches!(&generic_validity, coq::iris::IProp::Sep(props) if props.is_empty()) {
+            requirements.push(generic_validity);
+        }
+        let realization_wf = Self::bound_realized_method_wf_requirement(method, thread_id);
+        let rendered_realization_wf = realization_wf.to_string();
+        let lft_binders = self
+            .quantified_scope
+            .get_lfts()
+            .iter()
+            // HACK: `IProp::Atom` makes the generated Rocq proposition opaque here, so we
+            // approximate free-variable analysis by scanning its identifier tokens.
+            .filter(|lft| rocq_text_mentions_ident(&rendered_realization_wf, &lft.lft().to_string()))
+            .map(|lft| {
+                coq::binder::Binder::new(
+                    Some(lft.lft().to_string()),
+                    coq::term::Type::Literal("lft".to_owned()),
+                )
+            })
+            .collect();
+        let lft_binders = coq::binder::BinderList::new(lft_binders);
+
+        let realization_wf = if lft_binders.0.is_empty() {
+            realization_wf
+        } else {
+            coq::iris::IProp::All(lft_binders, Box::new(realization_wf))
+        };
+        requirements.push(coq::iris::IProp::Atom(format!("introduce_direct ({realization_wf})")));
+
+        Some(coq::iris::IProp::Sep(requirements))
+    }
+}
+
 impl fmt::Display for UsedProcedure<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let trait_context_inst = if self.spec_term.needs_abstract_context_collapse()
+            && let UsedProcedureSpec::TraitMethod(spec_use, _) = &self.spec_term
+        {
+            let spec = spec_use.trait_ref.borrow();
+            let spec = spec.as_ref().unwrap();
+            Some((
+                spec.make_spec_realization_param_name(),
+                spec.make_spec_lfts_inst_name(),
+                spec.make_spec_tys_inst_name(),
+            ))
+        } else {
+            None
+        };
+
         // quantify
-        write!(f, "(<tag_type> {} ", self.quantified_scope)?;
+        write!(f, "(<tag_type> ")?;
+        if let Some((realization, lfts_inst, tys_inst)) = &trait_context_inst {
+            write!(
+                f,
+                "spec_collapse_params _ _ (λ ({lfts_inst} : prod_vec lft {realization}.(trait_ctx_lfts)) ({tys_inst} : plist type {realization}.(trait_ctx_tys)), "
+            )?;
+        }
+        write!(f, "{} ", self.quantified_scope)?;
+
+        let realized_method = if let UsedProcedureSpec::RealizedMethod(method) = &self.spec_term {
+            write!(f, "let realization := {} in ", method.realization().get_realization_term())?;
+            Some(method.with_realization_term(coq::term::Term::Literal("realization".to_owned())))
+        } else {
+            None
+        };
 
         let spec_needs_surrounding_trait_reqs = self.spec_term.needs_surrounding_trait_reqs();
 
@@ -1513,7 +1771,24 @@ impl fmt::Display for UsedProcedure<'_> {
             self.loc_name, self.scope_inst
         );
 
-        write!(f, "fn_spec_add_late_pre ({} {} ", self.spec_term, gen_rfn_type_inst.join(" "))?;
+        write!(f, "fn_spec_add_late_pre (")?;
+        match (&self.spec_term, &trait_context_inst) {
+            (UsedProcedureSpec::TraitMethod(spec_use, method_name), Some((_, lfts_inst, tys_inst))) => {
+                let spec = spec_use.trait_ref.borrow();
+                let spec = spec.as_ref().unwrap();
+                write!(
+                    f,
+                    "({} (RRGS:=RRGS) ({}))",
+                    spec.trait_ref.make_spec_method_name(method_name),
+                    spec_use.get_spec_term_with_context_inst(lfts_inst, tys_inst),
+                )?;
+            },
+            (UsedProcedureSpec::RealizedMethod(_), None) => {
+                write!(f, "{}", realized_method.as_ref().unwrap().get_spec_term())?;
+            },
+            _ => write!(f, "{}", self.spec_term)?,
+        }
+        write!(f, " {} ", gen_rfn_type_inst.join(" "))?;
 
         let surrounding_trait_reqs = if spec_needs_surrounding_trait_reqs {
             self.scope_inst.get_surrounding_trait_requirements()
@@ -1532,13 +1807,31 @@ impl fmt::Display for UsedProcedure<'_> {
         // instantiate semantic terms
         write!(f, "{})", self.scope_inst.instantiation(spec_needs_surrounding_trait_reqs, true))?;
 
-        let generics_term = self.quantified_scope.generate_validity_term_for_generics();
+        let generics_term = self.generic_validity_requirement();
+        let mut late_pre = Vec::new();
+        if !matches!(&generics_term, coq::iris::IProp::Sep(props) if props.is_empty()) {
+            late_pre.push(generics_term);
+        }
+        if let (UsedProcedureSpec::TraitMethod(_, _), Some((realization, lfts_inst, tys_inst))) =
+            (&self.spec_term, &trait_context_inst)
+        {
+            late_pre.push(coq::iris::IProp::Atom(format!(
+                "{realization}.(trait_ctx_wf) {lfts_inst} {tys_inst} π"
+            )));
+        }
+        if let Some(method) = &realized_method {
+            late_pre.push(coq::iris::IProp::Atom(method.get_wf_term("π")));
+        }
 
-        let prop = coq::iris::IProp::Sep(vec![generics_term]);
+        let prop = coq::iris::IProp::Sep(late_pre);
         // TODO: don't require that _all_ of them are sized
         //let prop = coq::iris::IProp::Exists(self.quantified_scope.generate_sized_requirements(),
         // Box::new(prop));
-        write!(f, " (λ π, {prop})%I)")
+        write!(f, " (λ π, {prop})%I")?;
+        if trait_context_inst.is_some() {
+            write!(f, ")")?;
+        }
+        write!(f, ")")
     }
 }
 

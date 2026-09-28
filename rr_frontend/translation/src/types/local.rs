@@ -7,7 +7,7 @@
 //! A wrapper around a `translator::TX` for the case we are translating the body of a function.
 
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use log::{info, trace};
 use radium::{code, coq, lang, specs};
@@ -41,8 +41,25 @@ pub(crate) struct AbstractedGenerics<'def> {
     pub callee_ty_param_inst: Vec<specs::Type<'def>>,
     /// num latebounds
     pub num_of_latebounds: usize,
-    /// instantiations for the function use
-    pub fn_scope_inst: specs::GenericScopeInst<'def>,
+    /// Instantiation of the selected implementation realization's generic context.
+    pub realization_context_inst: specs::GenericScopeInst<'def>,
+    /// Instantiation of generics introduced by the selected method.
+    pub method_scope_inst: specs::GenericScopeInst<'def>,
+    /// Formal generic instantiation of a direct, abstract, or literal procedure call.
+    pub procedure_scope_inst: specs::GenericScopeInst<'def>,
+}
+
+impl AbstractedGenerics<'_> {
+    /// Treat every abstracted generic as part of one concrete implementation realization.
+    #[must_use]
+    pub(crate) fn all_as_realization_context(mut self) -> Self {
+        let full_inst =
+            specs::GenericScopeInst::nest(&self.realization_context_inst, &self.method_scope_inst);
+        let lfts = full_inst.get_lfts().to_vec();
+        self.realization_context_inst = full_inst.all_as_realization_context(lfts);
+        self.method_scope_inst = specs::GenericScopeInst::empty();
+        self
+    }
 }
 
 /// Determines how a callee's type parameters are split when building a specialized use.
@@ -219,6 +236,33 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         (tcx.mk_args(trait_args), tcx.mk_args(method_args))
     }
 
+    /// Mark the re-quantified type parameters used by a selected implementation as surrounding.
+    pub(crate) fn mark_impl_params_surrounding(
+        &self,
+        scope: &mut specs::GenericScope<'def>,
+        impl_args: ty::GenericArgsRef<'tcx>,
+    ) -> Result<(), TranslationError> {
+        let tcx = self.translator.tcx();
+        let mut folder = TyVarFolder::new(tcx, ty::TypingEnv::post_analysis(tcx, self.scope.borrow().did));
+        for arg in impl_args {
+            if let Some(ty) = arg.as_type() {
+                folder.fold_ty(ty);
+            }
+        }
+        let (tyvars, projections) = folder.get_result();
+        let mut names: BTreeSet<_> = tyvars.iter().map(|param| param.name.as_str().to_owned()).collect();
+
+        for alias in projections {
+            let ty = ty::Ty::new_alias(tcx, ty::IsRigid::No, alias);
+            if let specs::Type::LiteralParam(param) = self.translate_type(ty)? {
+                names.insert(param.rust_name);
+            }
+        }
+
+        scope.make_ty_params_surrounding(&names);
+        Ok(())
+    }
+
     /// Register a procedure use of a trait method.
     /// The given `ty_params` need to include the args to both the trait and the method.
     /// Returns:
@@ -368,15 +412,15 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         let typing_env = ty::TypingEnv::post_analysis(tcx, self.scope.borrow().did);
         let mut tyvar_folder = TyVarFolder::new(tcx, typing_env);
         let mut lft_folder = TyRegionCollectFolder::new(self.translator.tcx());
-        // HACK(see #32): We typically don't want lifetimes which just appear in the closure input/output
-        // signature, but not in the closure upvars, since these lifetimes often are locally
-        // universally quantified.
+        // Closure input regions are instantiated through the Fn trait arguments. Only regions
+        // from the closure's captures belong to the surrounding procedure abstraction.
         lft_folder.ignore_closure_args(true);
         // also count the number of (early) regions of the function itself
         let mut num_param_regions = 0;
 
         let mut callee_lft_param_inst: Vec<specs::Lft> = Vec::new();
         let mut callee_ty_param_inst = Vec::new();
+        let mut realization_lft_binders = Vec::new();
         for v in args {
             if let Some(ty) = v.as_type() {
                 tyvar_folder.fold_ty(ty);
@@ -423,7 +467,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
                 lft_name.clone(),
                 specs::LftParamOrigin::FunctionRebound,
             ));
-            fn_inst.add_lft_param(lft_name);
+            fn_inst.add_lft_param(lft_name.clone());
+            realization_lft_binders.push(lft_name);
         }
 
         // Bind the additional lifetime parameters which are mentioned as part of the instantiation
@@ -437,6 +482,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
                 lft_name.clone(),
                 specs::LftParamOrigin::FunctionRebound,
             ));
+            realization_lft_binders.push(lft_name.clone());
 
             // Note: since these are not formal parameters of the function, we do not add them to
             // `fn_inst`.
@@ -445,6 +491,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         }
 
         // Also need to re-bind late bound regions of the function.
+        let mut method_lft_binders = Vec::new();
         for (late_bound_idx, late_bound) in late_bounds.iter().enumerate() {
             match late_bound {
                 ty::BoundVariableKind::Region(r) => {
@@ -458,7 +505,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
                         name.clone(),
                         specs::LftParamOrigin::FunctionRebound,
                     ));
-                    fn_inst.add_lft_param(name);
+                    fn_inst.add_lft_param(name.clone());
+                    method_lft_binders.push(name);
 
                     // Note: we cannot add an instantiation for the callee_lft_param_inst.
                     // We do not know the concrete instantiation by just looking at the
@@ -588,12 +636,17 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         info!("Fn instantiation: {fn_inst:?}");
         info!("Callee instantiation: {:?}, {:?}", callee_lft_param_inst, callee_ty_param_inst);
 
+        let realization_context_inst = fn_inst.realization_context(realization_lft_binders);
+        let method_scope_inst = fn_inst.method_context(method_lft_binders);
+        let procedure_scope_inst = fn_inst;
         let res = AbstractedGenerics {
             scope,
             callee_lft_param_inst,
             callee_ty_param_inst,
             num_of_latebounds: late_bounds.len(),
-            fn_scope_inst: fn_inst,
+            realization_context_inst,
+            method_scope_inst,
+            procedure_scope_inst,
         };
 
         Ok(res)
