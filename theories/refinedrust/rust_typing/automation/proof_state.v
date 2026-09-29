@@ -61,11 +61,11 @@ Ltac unfold_code_marker_and_compute_map_lookup :=
 Definition RETURN_MARKER `{!typeGS Σ} (R : @typed_stmt_R_t Σ) : @typed_stmt_R_t Σ := R.
 Notation "'HIDDEN'" := (RETURN_MARKER _) (only printing).
 (* simplify RETURN_MARKER as soon as it is applied enough in the goal *)
-Arguments RETURN_MARKER _ _ /.
+Arguments RETURN_MARKER _ _ _ _ /.
 
 Definition UNWIND_MARKER `{!typeGS Σ} (U : @typed_stmt_U_t Σ) : @typed_stmt_U_t Σ := U.
 Notation "'HIDDEN_UNWIND'" := (UNWIND_MARKER _) (only printing).
-Arguments UNWIND_MARKER _ /.
+Arguments UNWIND_MARKER _ _ _ _ /.
 
 (* Function name marker *)
 Definition FUNCTION_NAME (s : string) := s.
