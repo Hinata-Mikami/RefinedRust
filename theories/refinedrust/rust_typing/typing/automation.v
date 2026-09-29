@@ -147,6 +147,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : @TypedAnnotExpr _ _ E L f n A a v P) T))
   | prove_with_subtype ?E ?L ?step ?pm ?P ?A ?T =>
       cont uconstr:(((_ : ProveWithSubtype E L step pm P A) T))
+  | @introduce_owned_invariant _ _ ?π ?E ?L ?l ?rt1 ?rt2 ?lt ?r1 ?ty ?r2 ?T =>
+      cont uconstr:(((_ : @IntroduceOwnedInvariant _ _ π E L l rt1 rt2 lt r1 ty r2) T))
   | @owned_subtype _ _ ?π ?E ?L ?pers ?rt1 ?rt2 ?r1 ?r2 ?ty1 ?ty2 ?T =>
       cont uconstr:((_ : @OwnedSubtype _ _ π E L pers rt1 rt2 r1 r2 ty1 ty2) T)
   | @owned_subltype_step _ _ ?π ?E ?L ?step ?l ?rt1 ?rt2 ?r1 ?r2 ?lt1 ?lt2 ?T =>

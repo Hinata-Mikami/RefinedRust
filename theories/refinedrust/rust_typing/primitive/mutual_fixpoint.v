@@ -2101,32 +2101,28 @@ Section rules.
   Definition owned_subltype_step_mut_fixpoint_r_inst := [instance @owned_subltype_step_mut_fixpoint_r].
   Global Existing Instance owned_subltype_step_mut_fixpoint_r_inst | 6.
 
-  (** Expose the outer invariant of an owned mutual-fixpoint projection before
-      choosing a [prove_with_subtype] rule. In particular, this lets
-      [prove_with_subtype_ex_plain_t_owned] stratify and unblock the representation
-      and restore its existential invariant. Fold the target back afterwards,
-      preserving the delayed lifetimes and without taking another logical step. *)
-  Lemma prove_with_subtype_mut_fixpoint_owned π E L l r A T :
-    prove_with_subtype E L true ProveWithStratify
-      (l ◁ₗ[π, Owned] r @ (◁ mut_fixpoint_project_unfolded))%I A T
-    ⊢ prove_with_subtype E L true ProveWithStratify
-      (l ◁ₗ[π, Owned] r @ (◁ mut_fixpoint_project))%I A T.
+  (** Unfold the target after stratification, and use the same source ownership
+      to introduce its outer invariant. *)
+  Lemma introduce_owned_invariant_mut_fixpoint π E L l {rt1}
+      (lt : ltype rt1) (r1 : place_rfn rt1) (r : place_rfn rt) T :
+    introduce_owned_invariant π E L l lt r1 mut_fixpoint_project_unfolded r T
+    ⊢ introduce_owned_invariant π E L l lt r1 mut_fixpoint_project r T.
   Proof.
-    iIntros "HT" (F' ????) "#CTX #HE HL HA".
+    iIntros "HT" (F' ???) "#CTX #HE HL".
     iPoseProof (full_eqltype_acc with "CTX HE HL") as "(%Hst & #Heq)".
     { apply mut_type_project_fixpoint_unfold_eqltype. }
     iDestruct ("Heq" $! Owned r) as "[_ #Hincl]".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL HA")
+    iMod ("HT" with "[//] [//] [//] CTX HE HL")
       as "(%L' & %κs & %R & Hstep & HL & HT)".
     iExists L', κs, R. iFrame "HL HT".
     iModIntro.
     iApply (logical_step_wand with "Hstep").
-    iIntros "($ & Hl & $) Hdead".
-    iMod ("Hl" with "Hdead") as "Hl".
+    iIntros "($ & Hconvert) Hdead Hl".
+    iMod ("Hconvert" with "Hdead Hl") as "Hl".
     by iApply (ltype_incl_use with "Hincl Hl").
   Qed.
-  Definition prove_with_subtype_mut_fixpoint_owned_inst := [instance @prove_with_subtype_mut_fixpoint_owned].
-  Global Existing Instance prove_with_subtype_mut_fixpoint_owned_inst | 498.
+  Definition introduce_owned_invariant_mut_fixpoint_inst := [instance @introduce_owned_invariant_mut_fixpoint].
+  Global Existing Instance introduce_owned_invariant_mut_fixpoint_inst | 10.
 
   Lemma weak_subtype_mut_fixpoint_id E L r1 r2 T :
     weak_subtype E L r1 r2 mut_fixpoint_project mut_fixpoint_project T :-

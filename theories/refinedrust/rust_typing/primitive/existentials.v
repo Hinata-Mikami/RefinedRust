@@ -696,57 +696,40 @@ Section stratify.
   Definition owned_subltype_step_to_ex_plain_t_inst := [instance @owned_subltype_step_to_ex_plain_t].
   Global Existing Instance owned_subltype_step_to_ex_plain_t_inst | 20.
 
-  (** Specialized version of [prove_with_subtype_ofty_step] for restoring an
-      owned existential invariant after stratifying its representation.
-      For mutual-fixpoint projections, [prove_with_subtype_mut_fixpoint_owned]
-      first exposes this outer existential and folds the target back afterwards.
-      Representation subtyping remains strong: restoring nested invariants that
-      consume resources requires a more general delayed owned-subtyping rule. *)
-  Lemma prove_with_subtype_ex_plain_t_owned π E L (l : loc) (ty : type rt)
-      (r : place_rfn X) A T :
-    find_in_context (FindLoc l) (λ '(existT rt' (lt', r', bk', π')),
-      ⌜π = π'⌝ ∗ ⌜bk' = Owned⌝ ∗
-      stratify_ltype_unblock π E L StratRefoldFull l lt' r' Owned (λ L2 R2 rt2 lt2 r2,
-        trigger_tc (SimpLtype (match ltype_blocked_lfts lt2 with
-          | [] => lt2
-          | _ => ltype_core lt2
-          end)) (λ lt2',
-        ∃ ri x, ⌜r = #x⌝ ∗
-        strong_subltype E L2 Owned r2 (#ri) lt2' (◁ ty) (
-          prove_with_subtype E L2 true ProveWithStratify (P.(inv_P) π ri x) True%I
-            (λ L3 κs R3, T L3 (ltype_blocked_lfts lt2 ++ κs) (A ∗ R2 ∗ R3))))))
-    ⊢ prove_with_subtype E L true ProveWithStratify
-        (l ◁ₗ[π, Owned] r @ (◁ (∃; P, ty)))%I A T.
+  (** Introduce the invariant only after the caller has stratified the source.
+      In particular, this rule does not compete with reusing a blocked copy of
+      the complete existential type. *)
+  Lemma introduce_owned_invariant_ex_plain_t π E L l {rt1}
+      (lt : ltype rt1) (r1 : place_rfn rt1) (r : place_rfn X) (ty : type rt) T :
+    trigger_tc (SimpLtype (match ltype_blocked_lfts lt with
+      | [] => lt | _ => ltype_core lt end)) (λ lt',
+      ∃ ri x, ⌜r = #x⌝ ∗
+      strong_subltype E L Owned r1 (#ri) lt' (◁ ty) (
+        prove_with_subtype E L true ProveWithStratify (P.(inv_P) π ri x) True%I
+          (λ L3 κs R3, T L3 (ltype_blocked_lfts lt ++ κs) R3)))
+    ⊢ introduce_owned_invariant π E L l lt r1 (∃; P, ty) r T.
   Proof.
-    rewrite /FindLoc.
-    iIntros "Ha".
-    iDestruct "Ha" as ([rt' [[[lt' r'] bk'] π']]) "(Hl & <- & -> & Ha)". simpl.
-    iIntros (F ????) "#CTX #HE HL HA".
-    iMod ("Ha" with "[//] [//] [//] CTX HE HL Hl")
-      as "(%L2 & %R2 & %rt2 & %lt2 & %r2 & HL & %Hst & Hstep & HT)".
-    iDestruct "HT" as "(%lt2' & %Heq & %ri & %x & -> & HT)".
+    iIntros "HT".
+    iDestruct "HT" as "(%lt' & %Heq & %ri & %x & -> & HT)".
     destruct Heq as [<-].
+    iIntros (F ???) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(_ & #Hincl & HL & HT)".
     iMod ("HT" $! F True%I with "[//] [//] [//] CTX HE HL []")
       as "(%L3 & %κs & %R3 & Hinv & HL & HT)".
     { iApply maybe_logical_step_intro. done. }
-    iExists L3, (ltype_blocked_lfts lt2 ++ κs), (A ∗ R2 ∗ R3)%I. iFrame.
+    iExists L3, κs, R3. iFrame "HL HT".
     iModIntro.
-    iApply (logical_step_compose with "Hstep").
-    iApply (logical_step_compose with "HA").
-    iApply (logical_step_compose with "Hinv").
-    iApply logical_step_intro.
-    iIntros "(HR3 & Hinv & _) (HA & Hacc) (Hl & HR2)".
-    iFrame "HA HR2 HR3 Hacc".
-    iIntros "Hdead". rewrite lft_dead_list_app.
+    iApply (logical_step_wand with "Hinv").
+    iIntros "($ & Hinv & _)".
+    iIntros "Hdead Hl". rewrite lft_dead_list_app.
     iDestruct "Hdead" as "(Hdead & Hdead_inv)".
     iMod ("Hinv" with "Hdead_inv") as "Hinv".
     iAssert (|={lftE}=> l ◁ₗ[π, Owned] #ri @ (◁ ty))%I
       with "[Hl Hdead]" as ">Hl".
     {
-      destruct (ltype_blocked_lfts lt2) as [|κ κs'] eqn:Hblocked.
+      destruct (ltype_blocked_lfts lt) as [|κ κs'] eqn:Hblocked.
       - by iApply (ltype_incl_use with "Hincl Hl").
-      - iPoseProof (imp_unblockable_blocked_dead lt2) as "Hunblock".
+      - iPoseProof (imp_unblockable_blocked_dead lt) as "Hunblock".
         iEval (rewrite -Hblocked) in "Hdead".
         iMod (imp_unblockable_use with "Hunblock Hdead Hl") as "Hl"; first done.
         by iApply (ltype_incl_use with "Hincl Hl"). }
@@ -758,8 +741,8 @@ Section stratify.
     iModIntro. iExists v. iFrame.
     rewrite ex_plain_t_unfold_val. eauto with iFrame.
   Qed.
-  Definition prove_with_subtype_ex_plain_t_owned_inst := [instance @prove_with_subtype_ex_plain_t_owned].
-  Global Existing Instance prove_with_subtype_ex_plain_t_owned_inst | 499.
+  Definition introduce_owned_invariant_ex_plain_t_inst := [instance @introduce_owned_invariant_ex_plain_t].
+  Global Existing Instance introduce_owned_invariant_ex_plain_t_inst | 20.
 
   (*
   Lemma owned_subtype_unfold_ex_plain_t π E L (ty : type rt) (r : rt) (r' : X) T :

@@ -1480,6 +1480,38 @@ Section judgments.
   Class ProveWithSubtype (E : elctx) (L : llctx) (step : bool) (pm : ProofMode) (P : iProp Σ) (Acc : iProp Σ) : Type :=
     prove_with_subtype_proof T : iProp_to_Prop (prove_with_subtype E L step pm P Acc T).
 
+  (** A post-stratification conversion of owned location ownership.  The source
+      remains blocked until the lifetimes returned by the judgment have died. *)
+  Definition introduce_owned_invariant π E L (l : loc)
+      {rt1 rt2} (lt : ltype rt1) (r1 : place_rfn rt1)
+      (ty : type rt2) (r2 : place_rfn rt2)
+      (T : llctx → list lft → iProp Σ → iProp Σ) : iProp Σ :=
+    ∀ F, ⌜lftE ⊆ F⌝ -∗ ⌜lft_userE ⊆ F⌝ -∗ ⌜shrE ⊆ F⌝ -∗ rrust_ctx -∗ elctx_interp E -∗ llctx_interp L ={F}=∗
+      ∃ L' κextra R,
+        maybe_logical_step true F
+          (R ∗ (lft_dead_list (ltype_blocked_lfts lt ++ κextra) -∗
+            (l ◁ₗ[π, Owned] r1 @ lt ={lftE}=∗ l ◁ₗ[π, Owned] r2 @ (◁ ty)))) ∗
+        llctx_interp L' ∗ T L' (ltype_blocked_lfts lt ++ κextra) R.
+  Class IntroduceOwnedInvariant π E L l {rt1 rt2}
+      (lt : ltype rt1) (r1 : place_rfn rt1)
+      (ty : type rt2) (r2 : place_rfn rt2) : Type :=
+    introduce_owned_invariant_proof T :
+      iProp_to_Prop (introduce_owned_invariant π E L l lt r1 ty r2 T).
+
+  (** A positive, syntactic indication that stratification left the complete
+      target type in the source (possibly blocked). *)
+  Class ReuseOwnedInvariant {rt1 rt2} (lt : ltype rt1) (ty : type rt2) : Type :=
+    reuse_owned_invariant_marker : unit.
+  Global Instance reuse_owned_invariant_ofty {rt} (ty : type rt) :
+    ReuseOwnedInvariant (◁ ty)%I ty := tt.
+  Global Instance reuse_owned_invariant_blocked {rt} (ty : type rt) κ :
+    ReuseOwnedInvariant (BlockedLtype ty κ) ty := tt.
+  Global Instance reuse_owned_invariant_shrblocked {rt} (ty : type rt) κ :
+    ReuseOwnedInvariant (ShrBlockedLtype ty κ) ty := tt.
+  Global Instance reuse_owned_invariant_coreable {rt1 rt2} κs
+      (lt : ltype rt1) (ty : type rt2) `{!ReuseOwnedInvariant lt ty} :
+    ReuseOwnedInvariant (CoreableLtype κs lt) ty := tt.
+
   Global Instance prove_with_subtype_proper :
     Proper (eq ==> eq ==> eq ==> eq ==> (≡) ==> (≡) ==> eq ==> (≡)) prove_with_subtype.
   Proof.
@@ -4037,6 +4069,8 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | prove_place_cond ?E ?L ?bk ?lt1 ?lt2 => constr:(ProvePlaceCond E L bk lt1 lt2)
   | simplify_hyp_value ?E ?L ?π ?P => constr:(SimplifyHypValue E L π P)
   | prove_with_subtype ?E ?L ?wl ?pm ?P ?Acc => constr:(ProveWithSubtype E L wl pm P Acc)
+  | introduce_owned_invariant ?π ?E ?L ?l ?lt ?r1 ?ty ?r2 =>
+      constr:(IntroduceOwnedInvariant π E L l lt r1 ty r2)
   | weak_subtype ?E ?L ?r1 ?r2 ?ty1 ?ty2 => constr:(Subtype E L r1 r2 ty1 ty2)
   | strong_subtype ?E ?L ?r1 ?r2 ?ty1 ?ty2 => constr:(StrongSubtype E L r1 r2 ty1 ty2)
   | mut_subtype ?E ?L ?ty1 ?ty2 => constr:(MutSubtype E L ty1 ty2)

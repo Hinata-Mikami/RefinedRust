@@ -1090,7 +1090,103 @@ Section prove_subtype.
       by iMod (ltype_incl'_use with "Hincl Hl") as "$".
   Qed.
   Definition prove_with_subtype_ofty_step_inst := [instance @prove_with_subtype_ofty_step].
-  Global Existing Instance prove_with_subtype_ofty_step_inst | 500.
+  (* Owned goals use [prove_with_subtype_ofty_owned_step] below. *)
+  Global Existing Instance prove_with_subtype_ofty_step_inst | 501.
+
+  (** After stratification, reusing the complete owned type takes precedence over
+      opening the target invariant.  The latter is extensible through
+      [IntroduceOwnedInvariant]. *)
+  Lemma prove_with_subtype_ofty_owned_step π E L (l : loc) {rt}
+      (ty : type rt) (r : place_rfn rt) A T :
+    find_in_context (FindLoc l) (λ '(existT rt' (lt', r', bk', π')),
+      ⌜π = π'⌝ ∗ ⌜bk' = Owned⌝ ∗
+      stratify_ltype_unblock π E L StratRefoldFull l lt' r' Owned (λ L2 R2 rt2 lt2 r2,
+        find_tc_inst (TCOrT (ReuseOwnedInvariant lt2 ty) TCTrue) (λ guard,
+          match guard with
+          | TCOrT_l _ _ _ =>
+              trigger_tc (SimpLtype (match ltype_blocked_lfts lt2 with
+                | [] => lt2 | _ => ltype_core lt2 end)) (λ lt2',
+                strong_subltype E L2 Owned r2 r lt2' (◁ ty)
+                  (T L2 (ltype_blocked_lfts lt2) (A ∗ R2)))
+          | TCOrT_r _ _ _ =>
+              introduce_owned_invariant π E L2 l lt2 r2 ty r
+                (λ L3 κs R3, T L3 κs (A ∗ R2 ∗ R3))
+          end)))
+    ⊢ prove_with_subtype E L true ProveWithStratify
+        (l ◁ₗ[π, Owned] r @ (◁ ty))%I A T.
+  Proof.
+    rewrite /FindLoc.
+    iIntros "Ha".
+    iDestruct "Ha" as ([rt' [[[lt' r'] bk'] π']]) "(Hl & <- & -> & Ha)". simpl.
+    iIntros (F ????) "#CTX #HE HL HA".
+    iMod ("Ha" with "[//] [//] [//] CTX HE HL Hl")
+      as "(%L2 & %R2 & %rt2 & %lt2 & %r2 & HL & %Hst & Hstep & HT)".
+    iDestruct "HT" as "(%guard & HT)".
+    destruct guard as [Hreuse | _].
+    - iDestruct "HT" as "(%lt2' & %Heq & HT)".
+      destruct Heq as [<-].
+      iMod ("HT" with "[//] CTX HE HL") as "(_ & #Hincl & HL & HT)".
+      iExists L2, (ltype_blocked_lfts lt2), (A ∗ R2)%I. iFrame "HL HT".
+      iModIntro.
+      iApply (logical_step_compose with "Hstep").
+      iApply (logical_step_compose with "HA").
+      iApply logical_step_intro.
+      iIntros "(HA & Hacc) (Hl & HR2)".
+      iFrame "HA HR2 Hacc".
+      iIntros "Hdead".
+      destruct (ltype_blocked_lfts lt2) as [|κ κs] eqn:Hblocked.
+      + iDestruct "Hincl" as "(Hincl & _)".
+        by iMod (ltype_incl'_use with "Hincl Hl") as "$".
+      + iPoseProof (imp_unblockable_blocked_dead lt2) as "Hunblock".
+        iEval (rewrite -Hblocked) in "Hdead".
+        iMod (imp_unblockable_use with "Hunblock Hdead Hl") as "Hl"; first done.
+        iDestruct "Hincl" as "(Hincl & _)".
+        by iMod (ltype_incl'_use with "Hincl Hl") as "$".
+    - iMod ("HT" with "[//] [//] [//] CTX HE HL")
+        as "(%L3 & %κextra & %R3 & Hconv & HL & HT)".
+      iExists L3, (ltype_blocked_lfts lt2 ++ κextra), (A ∗ R2 ∗ R3)%I.
+      iFrame "HL HT". iModIntro.
+      iApply (logical_step_compose with "Hstep").
+      iApply (logical_step_compose with "HA").
+      iApply (logical_step_compose with "Hconv").
+      iApply logical_step_intro.
+      iIntros "(HR3 & Hconvert) (HA & Hacc) (Hl & HR2)".
+      iFrame "HA HR2 HR3 Hacc".
+      iIntros "Hdead".
+      by iMod ("Hconvert" with "Hdead Hl") as "$".
+  Qed.
+  Definition prove_with_subtype_ofty_owned_step_inst := [instance @prove_with_subtype_ofty_owned_step].
+  Global Existing Instance prove_with_subtype_ofty_owned_step_inst | 499.
+
+  (** Fallback for targets without a dedicated invariant-introduction rule. *)
+  Lemma introduce_owned_invariant_default π E L l {rt1 rt2}
+      (lt : ltype rt1) (r1 : place_rfn rt1) (ty : type rt2)
+      (r2 : place_rfn rt2) T :
+    trigger_tc (SimpLtype (match ltype_blocked_lfts lt with
+      | [] => lt | _ => ltype_core lt end)) (λ lt',
+      strong_subltype E L Owned r1 r2 lt' (◁ ty)
+        (T L (ltype_blocked_lfts lt ++ []) True%I))
+    ⊢ introduce_owned_invariant π E L l lt r1 ty r2 T.
+  Proof.
+    iIntros "HT".
+    iDestruct "HT" as "(%lt' & %Heq & HT)".
+    destruct Heq as [<-].
+    iIntros (F ???) "#CTX #HE HL".
+    iMod ("HT" with "[//] CTX HE HL") as "(_ & #Hincl & HL & HT)".
+    iExists L, [], True%I. iFrame "HL HT".
+    iModIntro. iApply logical_step_intro.
+    iSplitR; first done.
+    iIntros "Hdead Hl".
+    iEval (rewrite app_nil_r) in "Hdead".
+    destruct (ltype_blocked_lfts lt) as [|κ κs] eqn:Hblocked.
+    - by iApply (ltype_incl_use with "Hincl Hl").
+    - iPoseProof (imp_unblockable_blocked_dead lt) as "Hunblock".
+      iEval (rewrite -Hblocked) in "Hdead".
+      iMod (imp_unblockable_use with "Hunblock Hdead Hl") as "Hl"; first done.
+      by iApply (ltype_incl_use with "Hincl Hl").
+  Qed.
+  Definition introduce_owned_invariant_default_inst := [instance @introduce_owned_invariant_default].
+  Global Existing Instance introduce_owned_invariant_default_inst | 100.
 
   Lemma prove_with_subtype_pure E L step pm (P : Prop) A T :
     ⌜P⌝ ∗ T L [] A ⊢ prove_with_subtype E L step pm (⌜P⌝) A T.
