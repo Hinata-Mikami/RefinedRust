@@ -2447,7 +2447,7 @@ mod tests {
         }
     }
 
-    fn quantified_drop_glue_use<'def>(trait_spec: &'def LiteralSpec) -> LiteralSpecUseCell<'def> {
+    fn quantified_drop_glue_use(trait_spec: &LiteralSpec) -> LiteralSpecUseCell<'_> {
         RefCell::new(Some(LiteralSpecUse::new(
             trait_spec,
             ReqScope::empty(),

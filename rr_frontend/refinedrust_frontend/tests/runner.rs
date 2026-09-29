@@ -314,7 +314,10 @@ mod tests {
         .expect("missing nested associated-bound proof template");
         assert!(nested_bound_template.contains("NestedSource_T_realization :"));
         assert!(nested_bound_template.contains("IntoSource_TasNestedSource_Inner_realization :"));
-        assert!(nested_bound_template.contains("ItemSource_TasNestedSource_InnerasIntoSource_Source_realization :"));
+        assert!(
+            nested_bound_template
+                .contains("ItemSource_TasNestedSource_InnerasIntoSource_Source_realization :")
+        );
         assert!(nested_bound_template.contains("syn_type_is_layoutable (NestedSource_T_Inner_st)"));
         assert!(
             nested_bound_template
