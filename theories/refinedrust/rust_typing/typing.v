@@ -12,6 +12,7 @@ From refinedrust Require Export options.
 Global Open Scope rr_hidden.
 
 (* For some reason, we need to declare this instance here for stuff to work, despite exporting [simpl] as the last thing above! So weird! *)
+#[universes(polymorphic)]
 Global Instance simpl_exist_plist_cons' {X : Type} (F : X → Type) (x : X) xs  :
 SimplExist (plist F (x :: xs)) (λ (Q : plist F (x :: xs) → Prop), ∃ p : F x, ∃ ps : plist F xs, Q (p -:: ps)).
 Proof.

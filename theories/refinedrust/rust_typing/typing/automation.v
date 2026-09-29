@@ -980,11 +980,13 @@ Ltac gather_location_list_get_filter m ::=
   end
 .
 
-(** Tactic to instantiate [trait_ctx_wf] assumptions *)
-Ltac liRTraitCtxWf :=
+(** Instantiate persistent linking assumptions using proof-mode unification. *)
+Ltac liRLinkingWf :=
     lazymatch goal with
     | |- environments.envs_entails ?H (bi_sep (trait_ctx_wf _ _ _ _) _) =>
       iSplitR; [unfold H; clear H; done | ]
+    | |- environments.envs_entails ?H (bi_sep (from_assumption_hint _) _) =>
+      iSplitR; [unfold H; clear H; unfold from_assumption_hint; done | ]
     end.
 
 (** ** Main stepping tactics *)
@@ -1032,7 +1034,7 @@ Ltac liRStepCore :=
     | |- envs_entails _ (fn_body_end_prop _ _ _ _ _) => unfold fn_body_end_prop
     end
   | liRJudgement
-  | liRTraitCtxWf
+   | liRLinkingWf
   | liFastStep
   | lazymatch goal with | |- BACKTRACK_POINT ?P => change_no_check P end
  ].

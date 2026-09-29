@@ -159,7 +159,8 @@ Section adequate.
         all: liInst Hevar_p DropGlue_T_tys_inst.
         all: rep liRStep.
       - (* main *)
-        adequacy_solve_typed_function (main_proof (RRGS:=RRGS)).
+        adequacy_solve_typed_function (main_proof (RRGS:=RRGS) 0 (fn_loc addr_callee)
+          (spec! ( *[]) : 0 | ( *[]) : [], λ _, True%I)).
         1: adequacy_solve_function_ptr uconstr:(λ _, -[] : prod_vec lft 0) uconstr:(λ _ _, -[int i32]).
         all: try (liInst Hevar_p (int i32)).
         all: rep liRStep.

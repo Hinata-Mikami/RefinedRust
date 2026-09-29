@@ -122,6 +122,11 @@ Definition introduce_direct {Σ} (P : iProp Σ) := P.
 Global Arguments introduce_direct : simpl never.
 Global Typeclasses Opaque introduce_direct.
 
+(* Discharge a marked requirement by proof-mode assumption matching. *)
+Definition from_assumption_hint {Σ} (P : iProp Σ) := P.
+Global Arguments from_assumption_hint : simpl never.
+Global Typeclasses Opaque from_assumption_hint.
+
 (* We override the lifetime logic's version with a direct fixpoint version for nicer unfolding + computation. *)
 Fixpoint lft_intersect_list (κs : list lft) : lft :=
     match κs with

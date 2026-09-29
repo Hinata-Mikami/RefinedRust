@@ -1051,6 +1051,11 @@ impl Function<'_> {
             for s in &self.used_statics {
                 write!(f, "({} : loc) ", s.loc_name)?;
             }
+            for proc_use in &self.other_functions {
+                if let Some(param) = proc_use.linking_parameter() {
+                    write!(f, "{param} ")?;
+                }
+            }
             writeln!(f, ", ")?;
         }
 
@@ -1178,6 +1183,11 @@ impl Function<'_> {
 
         let mut late_pre = vec![params_late_pre, coq::iris::IProp::Atom(format!("({trait_late_pre}) π"))];
         late_pre.extend(self.other_functions.iter().filter_map(|used| used.call_linking_requirement("π")));
+        late_pre.extend(
+            self.other_functions
+                .iter()
+                .filter_map(|used| used.literal_linking_requirement(&self.spec.generics, "π")),
+        );
         let prop = coq::iris::IProp::Sep(late_pre);
         // TODO: don't require that _all_ of them are sized
         //let prop = coq::iris::IProp::Exists(self.spec.generics.generate_sized_requirements(),
@@ -1493,6 +1503,52 @@ impl fmt::Display for UsedProcedureSpec<'_> {
 mod used_procedure_spec_tests {
     use super::*;
 
+    #[test]
+    fn literal_linking_preserves_caller_parameters() {
+        let mut caller = GenericScope::empty();
+        caller.add_ty_param(LiteralTyParam::new("W"));
+        caller.add_lft_param(LftParam::new(coq::Ident::new("outer"), LftParamOrigin::LocalEarlyBound));
+        let mut scope = caller.clone();
+        scope.add_lft_param(LftParam::new(coq::Ident::new("borrow"), LftParamOrigin::LocalLateBound));
+        let procedure = UsedProcedure::new(
+            "foo_REFW_loc".to_owned(),
+            UsedProcedureSpec::Literal("type_of_foo".to_owned()),
+            scope,
+            GenericScopeInst::empty(),
+            vec![],
+        );
+        assert_eq!(
+            procedure.linking_parameter().unwrap(),
+            "(foo_REFW_loc_linking : spec_with 2 [W_rt] (thread_id → iProp Σ))"
+        );
+        let requirement = procedure.literal_linking_requirement(&caller, "π").unwrap().to_string();
+        assert!(requirement.contains("∀ (borrow : lft),"));
+        assert!(!requirement.contains("(outer : lft)"));
+        assert!(!requirement.contains("(W_ty :"));
+        assert!(requirement.contains("-[outer; borrow] -[W_ty] π"));
+        assert!(procedure.to_string().contains("from_assumption_hint (foo_REFW_loc_linking"));
+    }
+
+    #[test]
+    fn literal_linking_empty_context_and_distinct_instances() {
+        let scope = GenericScope::empty();
+        let mut procedure = UsedProcedure::new(
+            "f_i32_loc".to_owned(),
+            UsedProcedureSpec::Literal("type_of_f".to_owned()),
+            scope.clone(),
+            GenericScopeInst::empty(),
+            vec![],
+        );
+        assert_eq!(
+            procedure.linking_parameter().unwrap(),
+            "(f_i32_loc_linking : spec_with 0 [] (thread_id → iProp Σ))"
+        );
+        let requirement = procedure.literal_linking_requirement(&scope, "π").unwrap().to_string();
+        assert!(requirement.contains("□ (f_i32_loc_linking -[] -[] π)"));
+        procedure.loc_name = "f_bool_loc".to_owned();
+        assert_eq!(procedure.linking_parameter_name().unwrap(), "f_bool_loc_linking");
+    }
+
     fn literal_trait_spec() -> traits::LiteralSpec {
         traits::LiteralSpec {
             name: "Trait".to_owned(),
@@ -1650,6 +1706,61 @@ fn rocq_text_mentions_ident(text: &str, ident: &str) -> bool {
 }
 
 impl UsedProcedure<'_> {
+    fn linking_parameter_name(&self) -> Option<String> {
+        matches!(self.spec_term, UsedProcedureSpec::Literal(_)).then(|| format!("{}_linking", self.loc_name))
+    }
+
+    fn linking_parameter(&self) -> Option<String> {
+        let name = self.linking_parameter_name()?;
+        let scope = &self.quantified_scope;
+        let rts: Vec<_> = scope
+            .get_all_ty_params_with_assocs()
+            .params
+            .iter()
+            .map(LiteralTyParam::refinement_type)
+            .collect();
+        Some(format!(
+            "({name} : spec_with {} [{}] (thread_id → iProp Σ))",
+            scope.get_num_lifetimes(),
+            rts.join("; ")
+        ))
+    }
+
+    fn linking_application(&self, thread_id: &str) -> Option<String> {
+        Some(format!(
+            "{} {} {thread_id}",
+            self.linking_parameter_name()?,
+            self.quantified_scope.identity_instantiation_term()
+        ))
+    }
+
+    /// Close only the procedure-use parameters not bound by the caller's specification.
+    fn literal_linking_requirement(
+        &self,
+        caller: &GenericScope<'_, traits::LiteralSpecUseRef<'_>>,
+        thread_id: &str,
+    ) -> Option<coq::iris::IProp> {
+        let application = self.linking_application(thread_id)?;
+        let mut binders = Vec::new();
+        for lft in self.quantified_scope.get_lfts() {
+            if !caller.get_lfts().iter().any(|p| p.lft() == lft.lft()) {
+                binders.push(format!("({} : lft)", lft.lft()));
+            }
+        }
+        let caller_tys = caller.get_all_ty_params_with_assocs();
+        for ty in &self.quantified_scope.get_all_ty_params_with_assocs().params {
+            if !caller_tys.params.iter().any(|p| p.rust_name == ty.rust_name) {
+                binders.push(format!("({} : type {})", ty.type_term(), ty.refinement_type()));
+            }
+        }
+        let requirement = if binders.is_empty() {
+            application
+        } else {
+            format!("∀ {}, {application}", binders.join(" "))
+        };
+        Some(coq::iris::IProp::Atom(format!("□ ({requirement})")))
+    }
+
     fn generic_validity_requirement(&self) -> coq::iris::IProp {
         if self.spec_term.generic_validity_includes_surrounding() {
             self.quantified_scope.generate_validity_term_for_generics()
@@ -1821,6 +1932,9 @@ impl fmt::Display for UsedProcedure<'_> {
         }
         if let Some(method) = &realized_method {
             late_pre.push(coq::iris::IProp::Atom(method.get_wf_term("π")));
+        }
+        if let Some(application) = self.linking_application("π") {
+            late_pre.push(coq::iris::IProp::Atom(format!("from_assumption_hint ({application})")));
         }
 
         let prop = coq::iris::IProp::Sep(late_pre);
