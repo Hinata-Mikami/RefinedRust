@@ -61,7 +61,7 @@ Section Option_ty.
       solve_mk_enum_tag_consistent.
     Defined.
 
-    Next Obligation.
+    Final Obligation.
       solve_mk_enum_tag_inj_roundtrip.
     Defined.
 
@@ -251,6 +251,21 @@ Definition type_of_OptionTasstd_clone_Clone_clone (T_rt: RT) (T_st: syn_type) (C
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Clone_base_spec (((Option_rt ((T_rt))))) ((Option_st (T_st))) ((drop_glue_Option_spec_attrs ((T_rt)) (DropGlue_T_spec_attrs))) ((OptionTasstd_clone_Clone_spec_attrs (T_rt) (Clone_T_spec_attrs) (DropGlue_T_spec_attrs))))
     -[] -[(Option_ty ((T_rt)) -[] -[T_ty])]).(Clone_clone_spec)   a b))) <MERGE!>.
 
+Definition trait_incl_of_Option_T_as_ref (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
+
+Definition type_of_Option_T_as_ref (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
+  fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
+      (* params....... *) (self) : ((_)),
+      (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
+      (* args......... *) self :@: (shr_ref ulft_1 (Option_ty ((T_rt)) -[] -[T_ty]));
+      (* precondition. *) (λ π : thread_id, True) |
+      (* trait reqs... *) (λ π : thread_id, True)) →
+      (* existential.. *) ∃ _ : unit, self @ (Option_ty ((place_rfnRT (T_rt))) -[] -[(shr_ref ulft_1 T_ty)]);
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
+
 Definition trait_incl_of_Option_T_filter (T_rt: RT) (P_rt: RT) (T_st: syn_type) (P_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (FnOnce_P_REFT_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (P_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) (FnOnce_P_REFT_spec: (spec_with 1 [] (FnOnce_spec (RRGS:=RRGS) (P_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool))) (DropGlue_P_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (P_rt) )) (DropGlue_P_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (P_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[T_ty; P_ty]) : ([T_rt; P_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_P_REFT_spec (spec! ( *[_lft_for_0]) : 1 | ( *[]) : ([] : list RT), FnOnce_base_spec (P_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool P_st ((tuple1_sls (RefSynType)) : syn_type) BoolSynType DropGlue_P_spec_attrs (drop_glue_tuple1_spec_attrs ((place_rfnRT (T_rt))) ((drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt)))))) (drop_glue_trivial_spec_attrs (bool)) FnOnce_P_REFT_spec_attrs-[] -[P_ty; (tuple1_ty ((place_rfnRT (T_rt))) -[] -[(shr_ref _lft_for_0 T_ty)]); bool_t]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_P_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (P_rt) P_st DropGlue_P_spec_attrs-[] -[P_ty])))).
 
@@ -263,7 +278,7 @@ Definition type_of_Option_T_filter (T_rt: RT) (P_rt: RT) (T_st: syn_type) (P_st:
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ (ret) : ((_)), ret @ (Option_ty ((T_rt)) -[] -[T_ty]);
       (* postcondition *) (λ π : thread_id, (if_iSome ret (λ ret, ⌜self = Some ret⌝ ∗ ∃ p, ⌜op = Some p⌝ ∗ FnOnce_P_REFT_spec_attrs.(FnOnce_Post) π p predicate *[ret] true))
-      ∗ (if_iNone ret (if_iNone self (ty_ghost_drop P_ty π ($# predicate)) ∗ 
+      ∗ (if_iNone ret (if_iNone self (ty_ghost_drop P_ty π ($# predicate)) ∗
                                   if_iSome self (λ x, ∃ p, ⌜op = Some p⌝ ∗ FnOnce_P_REFT_spec_attrs.(FnOnce_Post) π p predicate *[x] false)))) |
       (* unwind cond... *) if_None self DropGlue_P_spec_attrs.(DropGlue_DropGlueUnwind) ∧ if_Some self (λ x, DropGlue_T_spec_attrs.(DropGlue_DropGlueUnwind) ∨ ∃ p, op = Some p ∧ FnOnce_P_REFT_spec_attrs.(FnOnce_UnwindCondition) predicate p *[x]) |
       (* unwind post... *) (λ π : thread_id, True).
@@ -279,6 +294,36 @@ Definition type_of_Option_OptionT_flatten (T_rt: RT) (T_st: syn_type) (DropGlue_
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, self ≫= id @ (Option_ty ((T_rt)) -[] -[T_ty]);
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
+
+Definition trait_incl_of_Option_T_is_none (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
+
+Definition type_of_Option_T_is_none (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
+  fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
+      (* params....... *) (self) : ((_)),
+      (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
+      (* args......... *) self :@: (shr_ref ulft_1 (Option_ty ((T_rt)) -[] -[T_ty]));
+      (* precondition. *) (λ π : thread_id, True) |
+      (* trait reqs... *) (λ π : thread_id, True)) →
+      (* existential.. *) ∃ _ : unit, bool_decide (¬ is_Some self) @ bool_t;
+      (* postcondition *) (λ π : thread_id, True) |
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
+
+Definition trait_incl_of_Option_T_is_some (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
+
+Definition type_of_Option_T_is_some (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
+  fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
+      (* params....... *) (self) : ((_)),
+      (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
+      (* args......... *) self :@: (shr_ref ulft_1 (Option_ty ((T_rt)) -[] -[T_ty]));
+      (* precondition. *) (λ π : thread_id, True) |
+      (* trait reqs... *) (λ π : thread_id, True)) →
+      (* existential.. *) ∃ _ : unit, bool_decide (is_Some self) @ bool_t;
       (* postcondition *) (λ π : thread_id, True) |
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
@@ -360,33 +405,18 @@ Definition type_of_OptionTasstd_fmt_Debug_fmt (T_rt: RT) (T_st: syn_type) (Debug
   spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Debug_base_spec (((Option_rt ((T_rt))))) ((Option_st (T_st))) ((drop_glue_Option_spec_attrs ((T_rt)) (DropGlue_T_spec_attrs))) ((OptionTasstd_fmt_Debug_spec_attrs (T_rt) (Debug_T_spec_attrs) (DropGlue_T_spec_attrs))))
     -[] -[(Option_ty ((T_rt)) -[] -[T_ty])]).(Debug_fmt_spec)   a b))) <MERGE!>.
 
-Definition trait_incl_of_Option_T_is_none (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+Definition trait_incl_of_Option_T_as_mut (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
-Definition type_of_Option_T_is_none (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
+Definition type_of_Option_T_as_mut (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
   fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
-      (* params....... *) (x) : ((_)),
+      (* params....... *) (self) : ((_)),
       (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) x :@: (shr_ref ulft_1 (Option_ty ((T_rt)) -[] -[T_ty]));
+      (* args......... *) self :@: (mut_ref ulft_1 (Option_ty ((T_rt)) -[] -[T_ty]));
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, bool_decide (¬ is_Some x) @ bool_t;
-      (* postcondition *) (λ π : thread_id, True) |
-      (* unwind cond... *) False |
-      (* unwind post... *) (λ π : thread_id, True).
-
-Definition trait_incl_of_Option_T_is_some (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
-  spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
-
-Definition type_of_Option_T_is_some (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
-  fn(∀ ( *[ulft_1]) : 1 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
-      (* params....... *) (x) : ((_)),
-      (* elctx........ *) (λ ϝ, [(ϝ, ulft_1)]);
-      (* args......... *) x :@: (shr_ref ulft_1 (Option_ty ((T_rt)) -[] -[T_ty]));
-      (* precondition. *) (λ π : thread_id, True) |
-      (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, bool_decide (is_Some x) @ bool_t;
-      (* postcondition *) (λ π : thread_id, True) |
+      (* existential.. *) ∃ (γ) : ((_)), match self.cur with Some x => Some (x, γ) | None => None end @ (Option_ty (((place_rfnRT (T_rt)) * gname)%type) -[] -[(mut_ref ulft_1 T_ty)]);
+      (* postcondition *) (λ π : thread_id, (gvar_pobs self.ghost (match self.cur with Some _ => Some (PlaceGhost (rt := (T_rt)) γ) | None => None end))) |
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 
@@ -402,6 +432,21 @@ Definition type_of_Option_T_take (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_at
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, self.cur @ (Option_ty ((T_rt)) -[] -[T_ty]);
       (* postcondition *) (λ π : thread_id, (gvar_pobs self.ghost ((None : option (place_rfn (T_rt)))))) |
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
+
+Definition trait_incl_of_Option_T_unwrap_unchecked (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
+
+Definition type_of_Option_T_unwrap_unchecked (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
+  fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
+      (* params....... *) (self) : ((_)),
+      (* elctx........ *) (λ ϝ, []);
+      (* args......... *) self :@: (Option_ty ((T_rt)) -[] -[T_ty]);
+      (* precondition. *) (λ π : thread_id, (⌜(destruct_hint self is_Some)%Z⌝)) |
+      (* trait reqs... *) (λ π : thread_id, True)) →
+      (* existential.. *) ∃ (ret) : ((_)), ret @ T_ty;
+      (* postcondition *) (λ π : thread_id, (⌜(match self with | Some x => ret = x | None => False end)%Z⌝)) |
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 

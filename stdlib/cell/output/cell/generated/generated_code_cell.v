@@ -35,7 +35,7 @@ Program Definition drop_glue_UnsafeCell_def (DropGlue_T_drop_glue_loc: loc) (T_s
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 

@@ -92,7 +92,7 @@ Section Result_ty.
       solve_mk_enum_tag_consistent.
     Defined.
 
-    Next Obligation.
+    Final Obligation.
       solve_mk_enum_tag_inj_roundtrip.
     Defined.
 
@@ -163,7 +163,7 @@ Section Formatter_inv_t.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Program Definition Formatter_inv_t_inv_spec  : (spec_with 1 [] ((ex_inv_def (Formatter_rt)%type ((unit))%type))) :=
     spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
-          (λ π inner_rfn (_ty_rfn : RT_rt ((unit)%type : RT)),
+          (λ π (inner_rfn : Formatter_rt) (_ty_rfn : RT_rt ((unit)%type : RT)),
                   let '() := _ty_rfn in ⌜inner_rfn = -[#(tt)]⌝ ∗ True)%I
           (true)
           ([])
@@ -182,7 +182,7 @@ Section Formatter_inv_t.
     ex_t_solve_persistent.
   Qed.
 
-  Next Obligation.
+  Final Obligation.
     ex_plain_t_solve_shr_mono.
   Qed.
 
@@ -301,7 +301,7 @@ Definition Debug_fmt_base_spec (Self_rt: RT) (Self_st: syn_type) (DropGlue_Self_
       (* args......... *) self :@: (shr_ref ulft_1 Self_ty), f :@: (mut_ref ulft_2 (Formatter_inv_t   -[ulft_3] -[]));
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ (ret) : ((_)), ret @ (Result_ty (unit) ((Error_rt)) -[] -[unit_t; (Error_ty  -[] -[])]);
+      (* existential.. *) ∃ (ret) : ((_)), ret @ (Result_ty (unit) ((Error_rt)) -[] -[unit_t; (Error_ty   -[] -[])]);
       (* postcondition *) (λ π : thread_id, (gvar_pobs f.ghost (tt))) |
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).

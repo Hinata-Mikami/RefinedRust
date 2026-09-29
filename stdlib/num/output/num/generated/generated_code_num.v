@@ -22,7 +22,7 @@ Program Definition i128_is_negative_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -47,7 +47,7 @@ Program Definition i128_is_positive_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -72,7 +72,7 @@ Program Definition i16_is_negative_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -97,7 +97,7 @@ Program Definition i16_is_positive_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -122,7 +122,7 @@ Program Definition i32_is_negative_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -147,7 +147,7 @@ Program Definition i32_is_positive_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -172,7 +172,7 @@ Program Definition i64_is_negative_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -197,7 +197,7 @@ Program Definition i64_is_positive_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -222,7 +222,7 @@ Program Definition i8_is_negative_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -247,7 +247,7 @@ Program Definition i8_is_positive_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -272,7 +272,7 @@ Program Definition isize_is_negative_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -297,7 +297,7 @@ Program Definition isize_is_positive_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -383,7 +383,7 @@ Program Definition u128_abs_diff_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -469,7 +469,7 @@ Program Definition u16_abs_diff_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -555,7 +555,7 @@ Program Definition u32_abs_diff_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -641,7 +641,7 @@ Program Definition u64_abs_diff_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -727,7 +727,7 @@ Program Definition u8_abs_diff_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -813,7 +813,7 @@ Program Definition usize_abs_diff_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 

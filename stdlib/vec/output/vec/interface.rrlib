@@ -648,5 +648,5 @@
   ],
   "refinedrust_module": "generated_specs_vec",
   "refinedrust_name": "vec",
-  "refinedrust_path": "rrstd.alloc.vec.generated"
+  "refinedrust_path": "rrstd.vec.vec.generated"
 }

@@ -41,6 +41,18 @@
     },
     {
       "kind": "method",
+      "name": "nonnull_NonNull_T_as_mut",
+      "path": [
+        "core",
+        "ptr",
+        "NonNull",
+        "as_mut"
+      ],
+      "spec": "type_of_nonnull_NonNull_T_as_mut",
+      "trait_req_incl": "trait_incl_of_nonnull_NonNull_T_as_mut"
+    },
+    {
+      "kind": "method",
       "name": "nonnull_NonNull_T_as_ptr",
       "path": [
         "core",
@@ -50,6 +62,18 @@
       ],
       "spec": "type_of_nonnull_NonNull_T_as_ptr",
       "trait_req_incl": "trait_incl_of_nonnull_NonNull_T_as_ptr"
+    },
+    {
+      "kind": "method",
+      "name": "nonnull_NonNull_T_as_ref",
+      "path": [
+        "core",
+        "ptr",
+        "NonNull",
+        "as_ref"
+      ],
+      "spec": "type_of_nonnull_NonNull_T_as_ref",
+      "trait_req_incl": "trait_incl_of_nonnull_NonNull_T_as_ref"
     },
     {
       "kind": "method",

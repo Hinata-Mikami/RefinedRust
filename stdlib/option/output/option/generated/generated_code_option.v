@@ -25,7 +25,7 @@ Section Option_els.
   Next Obligation. solve_enum_layout_spec_variants_nodup. Qed.
   Next Obligation. solve_enum_layout_spec_variants_eq. Qed.
   Next Obligation. solve_enum_layout_spec_discriminant_nodup. Qed.
-  Next Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.
+  Final Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.
   Global Typeclasses Opaque Option_els.
   Definition Option_st (T_st: syn_type) : syn_type := Option_els T_st.
 End Option_els.
@@ -89,7 +89,7 @@ Program Definition OptionTasstd_clone_Clone_clone_def (Clone_T_clone_loc: loc) (
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -136,7 +136,64 @@ Program Definition Option_OptionT_flatten_def (T_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition Option_T_as_ref_def (T_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("self", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ (Option_st (RefSynType)) } "__0";
+      local_live{ (IntSynType ISize) } "__2";
+      annot{ 1 }: CopyLftNameAnnot "plft8" "ulft_1"; (* initialization *)
+      "__2" <-{ (IntOp ISize) } EnumDiscriminant ((Option_els (T_st))) (!{ RefOp } ( "self" ));
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__2")) (<[ 0%Z := 0%nat ]> $ <[ 1%Z := 1%nat ]> $ ∅) ([Goto "_bb2"; Goto "_bb3"]) (Goto "_bb1")
+     ]>%E $
+     <[
+     "_bb1" :=
+      StuckS
+     ]>%E $
+     <[
+     "_bb2" :=
+      annot{ 1 }: CopyLftNameAnnot "vuclft3" "static"; (* assignment (unconstrained) *)
+      "__0" <-{ (use_op_alg' (Option_st (RefSynType))) } EnumInit (Option_els (RefSynType)) "None" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTRef Shr "vuclft3" (RSTTyVar "T")] [])) (StructInit (Option_None_sls (RefSynType)) []);
+      annot{ 1 }: CopyLftNameAnnot "plft7" "vuclft3"; (* post-assignment *)
+      Goto "_bb4"
+     ]>%E $
+     <[
+     "_bb3" :=
+      local_live{ RefSynType } "x";
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft8"; (* borrow *)
+      "x" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft4" } ((EnumData ((Option_els (T_st))) "Some" (!{ RefOp } ( "self" ))) at{ (Option_Some_sls (T_st)) } "0");
+      annot{ 1 }: CopyLftNameAnnot "plft9" "vlft4"; (* post-assignment *)
+      local_live{ RefSynType } "__4";
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft9"; (* borrow *)
+      "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft5" } (!{ RefOp } ( "x" ));
+      annot{ 1 }: CopyLftNameAnnot "plft10" "vlft5"; (* post-assignment *)
+      annot{ 1 }: CopyLftNameAnnot "vlft6" "plft10"; (* rvalue *)
+      "__0" <-{ (use_op_alg' (Option_st (RefSynType))) } EnumInit (Option_els (RefSynType)) "Some" (RSTEnumDef ["Option_enum"] (RSTScopeInst [] [RSTRef Shr "vlft6" (RSTTyVar "T")] [])) (StructInit (Option_Some_sls (RefSynType)) [("0", move{ RefOp } ("__4") : expr)]);
+      annot{ 1 }: CopyLftNameAnnot "plft7" "vlft6"; (* post-assignment *)
+      local_dead "__4";
+      local_dead "x";
+      Goto "_bb4"
+     ]>%E $
+     <[
+     "_bb4" :=
+      annot{ 1 }: ExtendLftAnnot "plft7"; (* return *)
+      return (move{ (use_op_alg' (Option_st (RefSynType))) } ("__0"))
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -267,7 +324,83 @@ Program Definition Option_T_filter_def (DropGlue_P_drop_glue_loc: loc) (DropGlue
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition Option_T_is_none_def (Option_T_is_some_T_loc: loc) (T_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("self", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ BoolSynType } "__0";
+      annot{ 1 }: CopyLftNameAnnot "plft4" "ulft_1"; (* initialization *)
+      local_live{ BoolSynType } "__2";
+      local_live{ RefSynType } "__3";
+      annot{ 1 }: CopyLftNameAnnot "vlft3" "plft4"; (* borrow *)
+      "__3" <-{ RefOp } &ref{ Shr, Some (RSTLitType ["Option_ty"] (RSTScopeInst [] [RSTTyVar "T"] [])), "vlft3" } (!{ RefOp } ( "self" ));
+      annot{ 1 }: CopyLftNameAnnot "plft5" "vlft3"; (* post-assignment *)
+      annot{ 1 }: CopyLftNameAnnot "vlft6" "plft5"; (* function_call *)
+      CallS Option_T_is_some_T_loc ["vlft6"] [RSTTyVar "T"] [@{expr} move{ RefOp } ("__3")] (Some (Na1Ord, BoolOp, "__2"))
+      ( Goto "_bb1")
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
+     ]>%E $
+     <[
+     "_bb1" :=
+      local_dead "__3";
+      "__0" <-{ BoolOp } UnOp (NotBoolOp) (BoolOp) (move{ BoolOp } ("__2"));
+      local_dead "__2";
+      return (move{ BoolOp } ("__0"))
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Final Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition Option_T_is_some_def (T_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("self", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ BoolSynType } "__0";
+      local_live{ (IntSynType ISize) } "__2";
+      annot{ 1 }: CopyLftNameAnnot "plft3" "ulft_1"; (* initialization *)
+      "__2" <-{ (IntOp ISize) } EnumDiscriminant ((Option_els (T_st))) (!{ RefOp } ( "self" ));
+      Switch (ISize: int_type) (move{ (IntOp ISize) } ("__2")) (<[ 1%Z := 0%nat ]> $ ∅) ([Goto "_bb2"]) (Goto "_bb1")
+     ]>%E $
+     <[
+     "_bb1" :=
+      "__0" <-{ BoolOp } val_of_bool false;
+      Goto "_bb3"
+     ]>%E $
+     <[
+     "_bb2" :=
+      "__0" <-{ BoolOp } val_of_bool true;
+      Goto "_bb3"
+     ]>%E $
+     <[
+     "_bb3" :=
+      return (move{ BoolOp } ("__0"))
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -353,7 +486,7 @@ Program Definition Option_T_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T_
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -428,7 +561,7 @@ Program Definition Option_T_ok_or_def (DropGlue_E_drop_glue_loc: loc) (T_st: syn
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -475,7 +608,7 @@ Program Definition Option_T_unwrap_def (panic_shim_loc: loc) (T_st: syn_type) : 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -544,7 +677,7 @@ Program Definition Option_T_unwrap_or_def (DropGlue_T_drop_glue_loc: loc) (T_st:
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -578,7 +711,7 @@ Program Definition drop_glue_Option_def (DropGlue_T_drop_glue_loc: loc) (T_st: s
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 

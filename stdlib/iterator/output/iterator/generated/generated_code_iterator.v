@@ -82,7 +82,7 @@ Program Definition Iastraits_iterator_IntoIterator_into_iter_def (I_st: syn_type
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -140,7 +140,7 @@ Program Definition adapters_map_MapMIMFastraits_iterator_Iterator_next_def (Opti
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -169,7 +169,7 @@ Program Definition adapters_map_Map_IF_new_def (I_st: syn_type) (F_st: syn_type)
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -250,7 +250,7 @@ Program Definition adapters_skip_SkipMIastraits_iterator_Iterator_next_def (trai
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -279,7 +279,7 @@ Program Definition adapters_skip_Skip_I_new_def (I_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -353,7 +353,7 @@ Program Definition adapters_step_by_StepByMIastraits_iterator_Iterator_next_def 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -447,7 +447,7 @@ Program Definition adapters_step_by_StepBy_I_new_def (DropGlue_I_drop_glue_loc: 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -520,7 +520,7 @@ Program Definition adapters_take_TakeMIastraits_iterator_Iterator_next_def (pani
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -549,7 +549,7 @@ Program Definition adapters_take_Take_I_new_def (I_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -592,7 +592,7 @@ Program Definition drop_glue_adapters_map_Map_def (DropGlue_F_drop_glue_loc: loc
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -619,7 +619,7 @@ Program Definition drop_glue_adapters_skip_Skip_def (DropGlue_I_drop_glue_loc: l
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -646,7 +646,7 @@ Program Definition drop_glue_adapters_step_by_StepBy_def (DropGlue_I_drop_glue_l
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -673,7 +673,7 @@ Program Definition drop_glue_adapters_take_Take_def (DropGlue_I_drop_glue_loc: l
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -716,7 +716,7 @@ Program Definition drop_glue_adapters_zip_Zip_def (DropGlue_A_drop_glue_loc: loc
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -743,7 +743,7 @@ Program Definition step_impltraits_iterator_Iteratorforstd_ops_RangeA_next_def (
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -830,7 +830,7 @@ Program Definition traits_iterator_Iterator_all_def (DropGlue_F_drop_glue_loc: l
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -852,7 +852,7 @@ Program Definition traits_iterator_Iterator_all_closure0_def (FnMut_F_Selfastrai
       annot{ 1 }: CopyLftNameAnnot "plft9" "ulft1"; (* initialization *)
       local_live{ BoolSynType } "__4";
       local_live{ RefSynType } "__5";
-      annot{ 1 }: StartLftAnnot "llft6" ["plft8"]; (* borrow *)
+      annot{ 1 }: StartLftAnnot "llft6" ["plft8"; "plft9"]; (* borrow *)
       "__5" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "F"), "llft6" } (!{ RefOp } ( (!{ RefOp } ( "__1" )) at{ (tuple1_sls (RefSynType)) } "0" ));
       annot{ 1 }: CopyLftNameAnnot "plft10" "llft6"; (* post-assignment *)
       local_live{ ((tuple1_sls (traits_iterator_Iterator_Self_Item_st)) : syn_type) } "__6";
@@ -908,7 +908,7 @@ Program Definition traits_iterator_Iterator_all_closure0_def (FnMut_F_Selfastrai
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -943,7 +943,7 @@ Program Definition traits_iterator_Iterator_collect_def (traits_iterator_FromIte
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1089,7 +1089,7 @@ Program Definition traits_iterator_Iterator_fold_def (DropGlue_B_drop_glue_loc: 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1128,7 +1128,7 @@ Program Definition traits_iterator_Iterator_map_def (adapters_map_Map_IF_new_Sel
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1165,7 +1165,7 @@ Program Definition traits_iterator_Iterator_max_def (traits_iterator_Iterator_Se
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1225,7 +1225,7 @@ Program Definition traits_iterator_Iterator_max_by_def (DropGlue_F_drop_glue_loc
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1250,7 +1250,7 @@ Program Definition traits_iterator_Iterator_max_by_closure0_def (max_by_Selfastr
       local_live{ traits_iterator_Iterator_Self_Item_st } "__5";
       "__5" <-{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } ("b");
       local_live{ RefSynType } "__6";
-      annot{ 1 }: StartLftAnnot "llft5" ["plft8"]; (* borrow *)
+      annot{ 1 }: StartLftAnnot "llft5" ["plft8"; "plft9"]; (* borrow *)
       "__6" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "F"), "llft5" } (!{ RefOp } ( (!{ RefOp } ( "__1" )) at{ (tuple1_sls (RefSynType)) } "0" ));
       annot{ 1 }: CopyLftNameAnnot "plft10" "llft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* function_call *)
@@ -1274,7 +1274,7 @@ Program Definition traits_iterator_Iterator_max_by_closure0_def (max_by_Selfastr
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1319,7 +1319,7 @@ Program Definition traits_iterator_Iterator_max_closure0_def (Ord_Selfastraits_i
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1356,7 +1356,7 @@ Program Definition traits_iterator_Iterator_min_def (traits_iterator_Iterator_Se
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1416,7 +1416,7 @@ Program Definition traits_iterator_Iterator_min_by_def (DropGlue_F_drop_glue_loc
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1441,7 +1441,7 @@ Program Definition traits_iterator_Iterator_min_by_closure0_def (min_by_Selfastr
       local_live{ traits_iterator_Iterator_Self_Item_st } "__5";
       "__5" <-{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } move{ (use_op_alg' traits_iterator_Iterator_Self_Item_st) } ("b");
       local_live{ RefSynType } "__6";
-      annot{ 1 }: StartLftAnnot "llft5" ["plft8"]; (* borrow *)
+      annot{ 1 }: StartLftAnnot "llft5" ["plft8"; "plft9"]; (* borrow *)
       "__6" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "F"), "llft5" } (!{ RefOp } ( (!{ RefOp } ( "__1" )) at{ (tuple1_sls (RefSynType)) } "0" ));
       annot{ 1 }: CopyLftNameAnnot "plft10" "llft5"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* function_call *)
@@ -1465,7 +1465,7 @@ Program Definition traits_iterator_Iterator_min_by_closure0_def (min_by_Selfastr
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1510,7 +1510,7 @@ Program Definition traits_iterator_Iterator_min_closure0_def (Ord_Selfastraits_i
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1681,7 +1681,7 @@ Program Definition traits_iterator_Iterator_nth_def (Option_T_is_none_Selfastrai
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1776,7 +1776,7 @@ Program Definition traits_iterator_Iterator_position_def (ControlFlow_BC_break_v
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1944,7 +1944,7 @@ Program Definition traits_iterator_Iterator_reduce_def (DropGlue_F_drop_glue_loc
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1983,7 +1983,7 @@ Program Definition traits_iterator_Iterator_skip_def (adapters_skip_Skip_I_new_S
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2021,7 +2021,7 @@ Program Definition traits_iterator_Iterator_step_by_def (adapters_step_by_StepBy
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2060,7 +2060,7 @@ Program Definition traits_iterator_Iterator_take_def (adapters_take_Take_I_new_S
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2253,7 +2253,7 @@ Program Definition traits_iterator_Iterator_try_fold_def (DropGlue_B_drop_glue_l
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2341,7 +2341,7 @@ Program Definition u16asstep_Step_steps_between_def (panic_shim_loc: loc) : func
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2429,7 +2429,7 @@ Program Definition u32asstep_Step_steps_between_def (panic_shim_loc: loc) : func
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2517,7 +2517,7 @@ Program Definition u64asstep_Step_steps_between_def (panic_shim_loc: loc) : func
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2605,7 +2605,7 @@ Program Definition u8asstep_Step_steps_between_def (panic_shim_loc: loc) : funct
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2690,7 +2690,7 @@ Program Definition usizeasstep_Step_steps_between_def (panic_shim_loc: loc) : fu
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2720,7 +2720,7 @@ Program Definition traits_iterator_Iterator_all_closure0_call_once_code (traits_
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2746,7 +2746,7 @@ Program Definition traits_iterator_Iterator_all_closure0_call_mut_code (traits_i
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2775,7 +2775,7 @@ Program Definition traits_iterator_Iterator_max_closure0_call_once_code (traits_
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2801,7 +2801,7 @@ Program Definition traits_iterator_Iterator_max_closure0_call_mut_code (traits_i
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2830,7 +2830,7 @@ Program Definition traits_iterator_Iterator_max_by_closure0_call_once_code (trai
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2856,7 +2856,7 @@ Program Definition traits_iterator_Iterator_max_by_closure0_call_mut_code (trait
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2885,7 +2885,7 @@ Program Definition traits_iterator_Iterator_min_closure0_call_once_code (traits_
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2911,7 +2911,7 @@ Program Definition traits_iterator_Iterator_min_closure0_call_mut_code (traits_i
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2940,7 +2940,7 @@ Program Definition traits_iterator_Iterator_min_by_closure0_call_once_code (trai
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2966,7 +2966,7 @@ Program Definition traits_iterator_Iterator_min_by_closure0_call_mut_code (trait
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 

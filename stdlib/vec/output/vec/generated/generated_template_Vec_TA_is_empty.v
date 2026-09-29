@@ -12,7 +12,7 @@ From rrstd.ptr_advanced.ptr_advanced.generated Require Export generated_specs_pt
 From rrstd.rr_internal.rr_internal.generated Require Export generated_specs_rr_internal.
 From rrstd.sized.sized.generated Require Export generated_specs_sized.
 From rrstd.vec.theories Require Export vec.
-From rrstd.alloc.vec Require Export generated_code_vec generated_specs_vec.
+From rrstd.vec.vec Require Export generated_code_vec generated_specs_vec.
 
 Set Default Proof Using "Type".
 

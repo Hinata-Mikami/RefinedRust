@@ -3,6 +3,6 @@
 (flags -w -notation-overridden -w -redundant-canonical-projection)
 (package refinedrust-stdlib)
 (name rrstd.alloc.alloc.proofs)
-(modules proof_layout_Layout_align proof_layout_Layout_from_size_align proof_layout_Layout_from_size_align_unchecked proof_layout_Layout_new proof_layout_Layout_size proof_alloc_alloc_internal proof_alloc_dealloc_internal trait_incl_REFAasAllocator_spec_subsumption_correct trait_incl_GlobalasAllocator_spec_subsumption_correct)
+(modules proof_layout_Layout_align proof_layout_Layout_from_size_align proof_layout_Layout_from_size_align_unchecked proof_layout_Layout_new proof_layout_Layout_size proof_alloc_alloc_internal proof_alloc_dealloc_internal trait_incl_REFAasAllocator_spec_subsumption_correct trait_incl_REFAasAllocatorClone_spec_subsumption_correct trait_incl_GlobalasAllocator_spec_subsumption_correct)
 (generate_project_file)
 (theories stdpp iris iris_contrib Ltac2 Equations lrust radium lithium refinedrust Stdlib rrstd.alloc.theories rrstd.clone.clone.generated rrstd.closures.closures.generated rrstd.closures.theories rrstd.mem.mem.generated rrstd.mem.theories rrstd.num.num.generated rrstd.option.option.generated rrstd.ptr.ptr.generated rrstd.ptr.theories rrstd.result.result.generated rrstd.result.theories rrstd.sized.sized.generated rrstd.alloc.alloc.generated))

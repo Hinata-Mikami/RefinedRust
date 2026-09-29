@@ -459,7 +459,7 @@ Section alignment_AlignmentEnum_els.
   Next Obligation. solve_enum_layout_spec_variants_nodup. Qed.
   Next Obligation. solve_enum_layout_spec_variants_eq. Qed.
   Next Obligation. solve_enum_layout_spec_discriminant_nodup. Qed.
-  Next Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.
+  Final Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.
   Global Typeclasses Opaque alignment_AlignmentEnum_els.
   Definition alignment_AlignmentEnum_st  : syn_type := alignment_AlignmentEnum_els .
 End alignment_AlignmentEnum_els.
@@ -494,7 +494,7 @@ Program Definition alignment_AlignmentEnumasstd_clone_Clone_clone_def  : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -521,7 +521,7 @@ Program Definition alignment_Alignment_as_usize_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -584,7 +584,7 @@ Program Definition alignment_Alignment_new_def (alignment_Alignment_new_unchecke
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -630,7 +630,7 @@ Program Definition alignment_Alignment_of_def (Option_T_unwrap_alignment_Alignme
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -653,7 +653,7 @@ Program Definition alignment_Alignmentasstd_clone_Clone_clone_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -691,7 +691,7 @@ Program Definition const_ptr_add_def (const_ptr_offset_T_loc: loc) (T_st: syn_ty
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -716,7 +716,7 @@ Program Definition const_ptr_addr_def (T_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -744,7 +744,7 @@ Program Definition const_ptr_cast_def (T_st: syn_type) (U_st: syn_type) : functi
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -772,7 +772,7 @@ Program Definition const_ptr_cast_mut_def (T_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -806,7 +806,7 @@ Program Definition const_ptr_is_null_def (const_ptr_addr_T_loc: loc) (T_st: syn_
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -837,7 +837,7 @@ Program Definition const_ptr_read_def (read_T_loc: loc) (T_st: syn_type) : funct
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -868,7 +868,7 @@ Program Definition const_ptr_read_volatile_def (read_volatile_T_loc: loc) (T_st:
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -921,7 +921,7 @@ Program Definition const_ptr_wrapping_byte_add_def (const_ptr_cast_T_u8_loc: loc
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -974,7 +974,7 @@ Program Definition const_ptr_wrapping_byte_offset_def (const_ptr_cast_T_u8_loc: 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1027,7 +1027,7 @@ Program Definition const_ptr_wrapping_byte_sub_def (const_ptr_cast_T_u8_loc: loc
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1064,7 +1064,7 @@ Program Definition dangling_def (mem_align_of_T_loc: loc) (without_provenance_T_
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1101,7 +1101,7 @@ Program Definition dangling_mut_def (mem_align_of_T_loc: loc) (without_provenanc
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1139,7 +1139,7 @@ Program Definition mut_ptr_add_def (mut_ptr_offset_T_loc: loc) (T_st: syn_type) 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1164,7 +1164,7 @@ Program Definition mut_ptr_addr_def (T_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1192,7 +1192,7 @@ Program Definition mut_ptr_cast_def (T_st: syn_type) (U_st: syn_type) : function
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1223,7 +1223,7 @@ Program Definition mut_ptr_cast_const_def (T_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1260,7 +1260,7 @@ Program Definition mut_ptr_is_null_def (mut_ptr_addr_T_loc: loc) (T_st: syn_type
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1294,7 +1294,7 @@ Program Definition mut_ptr_read_def (read_T_loc: loc) (T_st: syn_type) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1328,7 +1328,7 @@ Program Definition mut_ptr_read_volatile_def (read_volatile_T_loc: loc) (T_st: s
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1381,7 +1381,7 @@ Program Definition mut_ptr_wrapping_byte_add_def (mut_ptr_cast_T_u8_loc: loc) (m
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1434,7 +1434,7 @@ Program Definition mut_ptr_wrapping_byte_offset_def (mut_ptr_cast_T_u8_loc: loc)
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1487,7 +1487,7 @@ Program Definition mut_ptr_wrapping_byte_sub_def (mut_ptr_cast_T_u8_loc: loc) (m
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1526,7 +1526,7 @@ Program Definition mut_ptr_write_def (write_T_loc: loc) (T_st: syn_type) : funct
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1565,7 +1565,7 @@ Program Definition mut_ptr_write_volatile_def (write_volatile_T_loc: loc) (T_st:
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1596,7 +1596,7 @@ Program Definition read_volatile_def (read_T_loc: loc) (T_st: syn_type) : functi
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1635,7 +1635,7 @@ Program Definition write_volatile_def (write_T_loc: loc) (T_st: syn_type) : func
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 

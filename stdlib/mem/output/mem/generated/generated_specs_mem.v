@@ -72,6 +72,21 @@ Definition type_of_mem_size_of (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attr
       (* unwind post... *) (λ π : thread_id, True).
 
 
+Definition trait_incl_of_forget (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
+
+Definition type_of_forget (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
+  fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) | 
+      (* params....... *) (v, r) : ((_ * _)),
+      (* elctx........ *) (λ ϝ, []);
+      (* args......... *) v :@: value_t true (ty_syn_type T_ty MetaNone);
+      (* precondition. *) (λ π : thread_id, (v ◁ᵥ{π, MetaNone} r @ T_ty)) |
+      (* trait reqs... *) (λ π : thread_id, True)) →
+      (* existential.. *) ∃ (ret) : ((_)), ret @ unit_t;
+      (* postcondition *) (λ π : thread_id, (v ◁ᵥ{π, MetaNone} r @ T_ty)) |
+      (* unwind cond... *) False |
+      (* unwind post... *) (λ π : thread_id, True).
+
 
 
 End specs.

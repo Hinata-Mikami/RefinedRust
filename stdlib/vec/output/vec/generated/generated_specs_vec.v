@@ -12,7 +12,7 @@ From rrstd.ptr_advanced.ptr_advanced.generated Require Export generated_specs_pt
 From rrstd.rr_internal.rr_internal.generated Require Export generated_specs_rr_internal.
 From rrstd.sized.sized.generated Require Export generated_specs_sized.
 From rrstd.vec.theories Require Export vec.
-From rrstd.alloc.vec Require Export generated_code_vec.
+From rrstd.vec.vec Require Export generated_code_vec.
 
 Record private_slice_index_Sealed_spec_attrs `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} : Type := mk_private_slice_index_Sealed_spec_attrs {
 }.
@@ -73,7 +73,7 @@ Section Iter_inv_t.
   Context {T_rt : RT}.
   Program Definition Iter_inv_t_inv_spec  : (spec_with 1 [(T_rt)] ((ex_inv_def ((Iter_rt (T_rt)))%type ((list ((T_rt))))%type))) :=
     spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
-          (λ π inner_rfn (_ty_rfn : RT_rt ((list ((T_rt)))%type : RT)),
+          (λ π (inner_rfn : (Iter_rt (T_rt))) (_ty_rfn : RT_rt ((list ((T_rt)))%type : RT)),
                   let 'xs := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z) (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(x); #(y)]⌝ ∗ True)%I
           (true)
           ([])
@@ -92,7 +92,7 @@ Section Iter_inv_t.
     ex_t_solve_persistent.
   Qed.
 
-  Next Obligation.
+  Final Obligation.
     ex_plain_t_solve_shr_mono.
   Qed.
 
@@ -148,7 +148,7 @@ Section IterMut_inv_t.
   Context {T_rt : RT}.
   Program Definition IterMut_inv_t_inv_spec  : (spec_with 1 [(T_rt)] ((ex_inv_def ((IterMut_rt (T_rt)))%type (((list ((T_rt) * gname))%type))%type))) :=
     spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
-          (λ π inner_rfn (_ty_rfn : RT_rt (((list ((T_rt) * gname))%type)%type : RT)),
+          (λ π (inner_rfn : (IterMut_rt (T_rt))) (_ty_rfn : RT_rt (((list ((T_rt) * gname))%type)%type : RT)),
                   let 'xs := _ty_rfn in ∃ (x: name_hint_ty "x" ((loc))%Z) (y: name_hint_ty "y" ((loc))%Z), ⌜inner_rfn = -[#(x); #(y); #(tt)]⌝ ∗ True)%I
           (true)
           ([])
@@ -167,7 +167,7 @@ Section IterMut_inv_t.
     ex_t_solve_persistent.
   Qed.
 
-  Next Obligation.
+  Final Obligation.
     ex_plain_t_solve_shr_mono.
   Qed.
 
@@ -223,7 +223,7 @@ Section IntoIter_inv_t.
   Context {T_rt : RT} {A_rt : RT}.
   Program Definition IntoIter_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((ex_inv_def ((IntoIter_rt (T_rt) (A_rt)))%type ((list ((T_rt))))%type))) :=
     spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), mk_auto_ex_inv_def
-          (λ π inner_rfn (_ty_rfn : RT_rt ((list ((T_rt)))%type : RT)),
+          (λ π (inner_rfn : (IntoIter_rt (T_rt) (A_rt))) (_ty_rfn : RT_rt ((list ((T_rt)))%type : RT)),
                   let 'xs := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z) (y: name_hint_ty "y" (_)%Z), ⌜inner_rfn = -[#(x); #(y)]⌝ ∗ True)%I
           (false)
           ([])
@@ -242,7 +242,7 @@ Section IntoIter_inv_t.
     ex_t_solve_persistent.
   Qed.
 
-  Next Obligation.
+  Final Obligation.
     intros ?; ex_plain_t_solve_shr_mono.
   Qed.
 
@@ -298,7 +298,7 @@ Section RawVecInner_inv_t.
   Context {A_rt : RT}.
   Program Definition RawVecInner_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(A_rt)] ((ex_inv_def ((RawVecInner_rt (A_rt)))%type (((loc * nat * (A_rt) : RT)%type))%type))) :=
     spec! ( *[]) : 0 | ( *[A_ty]) : ([A_rt] : list RT), mk_auto_ex_inv_def
-          (λ π inner_rfn (_ty_rfn : RT_rt (((loc * nat * (A_rt) : RT)%type)%type : RT)),
+          (λ π (inner_rfn : (RawVecInner_rt (A_rt))) (_ty_rfn : RT_rt (((loc * nat * (A_rt) : RT)%type)%type : RT)),
                   let '(l, cap, alloc) := _ty_rfn in ⌜inner_rfn = -[#(l); #(Z.of_nat cap); #(alloc)]⌝ ∗ True)%I
           (false)
           ([])
@@ -317,7 +317,7 @@ Section RawVecInner_inv_t.
     ex_t_solve_persistent.
   Qed.
 
-  Next Obligation.
+  Final Obligation.
     intros ?; ex_plain_t_solve_shr_mono.
   Qed.
 
@@ -373,7 +373,7 @@ Section RawVec_inv_t.
   Context {T_rt : RT} {A_rt : RT}.
   Program Definition RawVec_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((ex_inv_def ((RawVec_rt (T_rt) (A_rt)))%type (((loc * nat * list (place_rfn (option (place_rfn (T_rt)))))))%type))) :=
     spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), mk_auto_ex_inv_def
-          (λ π inner_rfn (_ty_rfn : RT_rt (((loc * nat * list (place_rfn (option (place_rfn (T_rt))))))%type : RT)),
+          (λ π (inner_rfn : (RawVec_rt (T_rt) (A_rt))) (_ty_rfn : RT_rt (((loc * nat * list (place_rfn (option (place_rfn (T_rt))))))%type : RT)),
                   let '(l, cap, els) := _ty_rfn in ∃ (a: name_hint_ty "a" (_)%Z), ⌜inner_rfn = -[#((l, cap, $# a)); #(tt)]⌝ ∗ guarded true (l ◁ₗ[π, Owned] #(els) @ (◁ array_t cap (maybe_uninit T_ty))) ∗ Allocator_A_spec_attrs.(Allocator_FreeablePerm) a l (size_of_array_in_bytes (ty_syn_type T_ty MetaNone) cap) ∗ True)%I
           (false)
           ([] ++ (ty_lfts (T_ty)))
@@ -392,7 +392,7 @@ Section RawVec_inv_t.
     ex_t_solve_persistent.
   Qed.
 
-  Next Obligation.
+  Final Obligation.
     intros ?; ex_plain_t_solve_shr_mono.
   Qed.
 
@@ -502,7 +502,7 @@ Section Vec_inv_t.
   Context {T_rt : RT} {A_rt : RT}.
   Program Definition Vec_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((ex_inv_def ((Vec_rt (T_rt) (A_rt)))%type ((list (place_rfn (T_rt))))%type))) :=
     spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), mk_ex_inv_def_auto_shr
-          (λ π inner_rfn (_ty_rfn : RT_rt ((list (place_rfn (T_rt)))%type : RT)),
+          (λ π (inner_rfn : (Vec_rt (T_rt) (A_rt))) (_ty_rfn : RT_rt ((list (place_rfn (T_rt)))%type : RT)),
                   let 'xs := _ty_rfn in ∃ (cap: name_hint_ty "cap" ((nat))%Z) (l: name_hint_ty "l" ((loc))%Z) (len: name_hint_ty "len" ((nat))%Z) (els: name_hint_ty "els" (_)%Z), ⌜inner_rfn = -[#((l, cap, els)); #(Z.of_nat len)]⌝ ∗ ⌜(name_hint "Hxs" (xs = project_vec_els len els)%Z)%Z⌝ ∗ ⌜(name_hint "Hlook_1" (∀ i, (0 ≤ i < len)%nat → els !! i = Some (#(Some (xs !!! i))))%Z)%Z⌝ ∗ ⌜(name_hint "Hlook_2" (∀ i, (len ≤ i < cap)%nat → els !! i = Some (#None))%Z)%Z⌝ ∗ ⌜(name_hint "Hlen_eq" (len = length xs)%Z)%Z⌝ ∗ ⌜(name_hint "Hcap" (len ≤ cap)%Z)%Z⌝ ∗ ⌜(name_hint "Hbound" (len ≤ MaxInt usize)%Z)%Z⌝ ∗ ⌜(if decide (size_of_st (ty_syn_type T_ty MetaNone) = 0%nat) then cap = Z.to_nat (MaxInt USize) else (size_of_array_in_bytes (ty_syn_type T_ty MetaNone) cap ≤ MaxInt ISize)%Z)%Z⌝ ∗ True)%I
           (λ π _ (_rfn_binder : RT_rt ((list (place_rfn (T_rt)))%type : RT)),
                   let 'xs := _rfn_binder in ([∗ list] x ∈ xs, ∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop T_ty π r) ∗ True)%I
@@ -523,7 +523,7 @@ Section Vec_inv_t.
     intros ?; ex_plain_t_solve_shr_mono.
   Qed.
 
-  Next Obligation.
+  Final Obligation.
     intros ?; ex_plain_t_solve_ghost_drop.
   Qed.
 
@@ -1404,28 +1404,28 @@ Definition trait_incl_of_IteraTasstd_iter_Iterator_all (T_rt: RT) (F_rt: RT) (T_
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[T_ty; F_ty]) : ([T_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_REFaT_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool F_st ((tuple1_sls (RefSynType)) : syn_type) BoolSynType DropGlue_F_spec_attrs (drop_glue_tuple1_spec_attrs ((place_rfnRT (T_rt))) ((drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt)))))) (drop_glue_trivial_spec_attrs (bool)) FnOnce_F_REFaT_spec_attrs-[] -[F_ty; (tuple1_ty ((place_rfnRT (T_rt))) -[] -[(shr_ref ulft_a T_ty)]); bool_t]))) ∧ (trait_incl_marker (lift_trait_incl FnMut_spec_incl FnMut_F_REFaT_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnMut_base_spec (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool F_st ((tuple1_sls (RefSynType)) : syn_type) BoolSynType FnOnce_F_REFaT_spec_attrs DropGlue_F_spec_attrs (drop_glue_tuple1_spec_attrs ((place_rfnRT (T_rt))) ((drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt)))))) (drop_glue_trivial_spec_attrs (bool)) FnMut_F_REFaT_spec_attrs-[] -[F_ty; (tuple1_ty ((place_rfnRT (T_rt))) -[] -[(shr_ref ulft_a T_ty)]); bool_t]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_F_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (F_rt) F_st DropGlue_F_spec_attrs-[] -[F_ty])))).
 
 Definition type_of_IteraTasstd_iter_Iterator_all (T_rt: RT) (F_rt: RT) (T_st: syn_type) (F_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (FnOnce_F_REFaT_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) (FnMut_F_REFaT_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) (DropGlue_F_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (F_rt) )) :=
-  spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [] ++ ty_outlives_E (T_ty) ulft_a) (((traits_iterator_Iterator_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (RefSynType) ((drop_glue_trivial_spec_attrs (((Iter_inv_t_rt ((T_rt))))))) ((drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt))))) ((IteraTasstd_iter_Iterator_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
+  spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)] ++ ty_outlives_E (T_ty) ulft_a) (((traits_iterator_Iterator_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (RefSynType) ((drop_glue_trivial_spec_attrs (((Iter_inv_t_rt ((T_rt))))))) ((drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt))))) ((IteraTasstd_iter_Iterator_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
     -[] -[(Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]); (shr_ref ulft_a T_ty)]).(traits_iterator_Iterator_all_spec) F_rt F_st FnOnce_F_REFaT_spec_attrs FnMut_F_REFaT_spec_attrs DropGlue_F_spec_attrs a b))) <MERGE!>.
 
 Definition trait_incl_of_IteraTasstd_iter_Iterator_next (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
 Definition type_of_IteraTasstd_iter_Iterator_next (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
-  spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [] ++ ty_outlives_E (T_ty) ulft_a) (((traits_iterator_Iterator_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (RefSynType) ((drop_glue_trivial_spec_attrs (((Iter_inv_t_rt ((T_rt))))))) ((drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt))))) ((IteraTasstd_iter_Iterator_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
+  spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)] ++ ty_outlives_E (T_ty) ulft_a) (((traits_iterator_Iterator_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (RefSynType) ((drop_glue_trivial_spec_attrs (((Iter_inv_t_rt ((T_rt))))))) ((drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt))))) ((IteraTasstd_iter_Iterator_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
     -[] -[(Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]); (shr_ref ulft_a T_ty)]).(traits_iterator_Iterator_next_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_IteraTasstd_iter_Iterator_position (T_rt: RT) (F_rt: RT) (T_st: syn_type) (F_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (FnOnce_F_REFaT_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) (FnOnce_F_REFaT_spec: (spec_with 0 [] (FnOnce_spec (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool))) (FnMut_F_REFaT_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) (FnMut_F_REFaT_spec: (spec_with 0 [] (FnMut_spec (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool))) (DropGlue_F_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (F_rt) )) (DropGlue_F_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (F_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[T_ty; F_ty]) : ([T_rt; F_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty]))) ∧ (trait_incl_marker (lift_trait_incl FnOnce_spec_incl FnOnce_F_REFaT_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnOnce_base_spec (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool F_st ((tuple1_sls (RefSynType)) : syn_type) BoolSynType DropGlue_F_spec_attrs (drop_glue_tuple1_spec_attrs ((place_rfnRT (T_rt))) ((drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt)))))) (drop_glue_trivial_spec_attrs (bool)) FnOnce_F_REFaT_spec_attrs-[] -[F_ty; (tuple1_ty ((place_rfnRT (T_rt))) -[] -[(shr_ref ulft_a T_ty)]); bool_t]))) ∧ (trait_incl_marker (lift_trait_incl FnMut_spec_incl FnMut_F_REFaT_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), FnMut_base_spec (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool F_st ((tuple1_sls (RefSynType)) : syn_type) BoolSynType FnOnce_F_REFaT_spec_attrs DropGlue_F_spec_attrs (drop_glue_tuple1_spec_attrs ((place_rfnRT (T_rt))) ((drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt)))))) (drop_glue_trivial_spec_attrs (bool)) FnMut_F_REFaT_spec_attrs-[] -[F_ty; (tuple1_ty ((place_rfnRT (T_rt))) -[] -[(shr_ref ulft_a T_ty)]); bool_t]))) ∧ (trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_F_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (F_rt) F_st DropGlue_F_spec_attrs-[] -[F_ty])))).
 
 Definition type_of_IteraTasstd_iter_Iterator_position (T_rt: RT) (F_rt: RT) (T_st: syn_type) (F_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (FnOnce_F_REFaT_spec_attrs: (FnOnce_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) (FnMut_F_REFaT_spec_attrs: (FnMut_spec_attrs (RRGS:=RRGS) (F_rt) (((tuple1_rt) ((place_rfnRT (T_rt))))) bool )) (DropGlue_F_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (F_rt) )) :=
-  spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [] ++ ty_outlives_E (T_ty) ulft_a) (((traits_iterator_Iterator_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (RefSynType) ((drop_glue_trivial_spec_attrs (((Iter_inv_t_rt ((T_rt))))))) ((drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt))))) ((IteraTasstd_iter_Iterator_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
+  spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)] ++ ty_outlives_E (T_ty) ulft_a) (((traits_iterator_Iterator_base_spec (((Iter_inv_t_rt ((T_rt))))) ((place_rfnRT (T_rt))) ((Iter_st (T_st))) (RefSynType) ((drop_glue_trivial_spec_attrs (((Iter_inv_t_rt ((T_rt))))))) ((drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt))))) ((IteraTasstd_iter_Iterator_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
     -[] -[(Iter_inv_t ((T_rt))  -[ulft_a] -[T_ty]); (shr_ref ulft_a T_ty)]).(traits_iterator_Iterator_position_spec) F_rt F_st FnOnce_F_REFaT_spec_attrs FnMut_F_REFaT_spec_attrs DropGlue_F_spec_attrs a b))) <MERGE!>.
 
 Definition trait_incl_of_IterMutaTasstd_iter_Iterator_next (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
 Definition type_of_IterMutaTasstd_iter_Iterator_next (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
-  spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [] ++ ty_outlives_E (T_ty) ulft_a) (((traits_iterator_Iterator_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((IterMut_st (T_st))) (RefSynType) ((drop_glue_trivial_spec_attrs (((IterMut_inv_t_rt ((T_rt))))))) ((drop_glue_trivial_spec_attrs (((place_rfnRT (T_rt)) * gname)%type))) ((IterMutaTasstd_iter_Iterator_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
+  spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)] ++ ty_outlives_E (T_ty) ulft_a) (((traits_iterator_Iterator_base_spec (((IterMut_inv_t_rt ((T_rt))))) (((place_rfnRT (T_rt)) * gname)%type) ((IterMut_st (T_st))) (RefSynType) ((drop_glue_trivial_spec_attrs (((IterMut_inv_t_rt ((T_rt))))))) ((drop_glue_trivial_spec_attrs (((place_rfnRT (T_rt)) * gname)%type))) ((IterMutaTasstd_iter_Iterator_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
     -[] -[(IterMut_inv_t ((T_rt))  -[ulft_a] -[T_ty]); (mut_ref ulft_a T_ty)]).(traits_iterator_Iterator_next_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_RawVecTAasstd_ops_Drop_drop (T_rt: RT) (A_rt: RT) (T_st: syn_type) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (Allocator_A_spec: (spec_with 0 [] (Allocator_spec (RRGS:=RRGS) (A_rt)))) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) (DropGlue_A_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )) (DropGlue_A_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (A_rt)))) : (spec_with _ _ Prop) :=

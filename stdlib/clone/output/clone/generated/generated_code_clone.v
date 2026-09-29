@@ -49,7 +49,34 @@ Program Definition Clone_clone_from_def (Clone_Self_clone_loc: loc) (DropGlue_Se
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition REFTasClone_clone_def (T_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("self", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ RefSynType } "__0";
+      annot{ 1 }: CopyLftNameAnnot "plft6" "ulft_2"; (* initialization *)
+      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* initialization *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft7"; (* borrow *)
+      "__0" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft4" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
+      annot{ 1 }: CopyLftNameAnnot "plft5" "vlft4"; (* post-assignment *)
+      annot{ 1 }: ExtendLftAnnot "plft5"; (* return *)
+      return (move{ RefOp } ("__0"))
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -72,7 +99,7 @@ Program Definition boolasClone_clone_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -95,7 +122,7 @@ Program Definition charasClone_clone_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -118,7 +145,7 @@ Program Definition constTasClone_clone_def (T_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -141,7 +168,7 @@ Program Definition i128asClone_clone_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -164,7 +191,7 @@ Program Definition i16asClone_clone_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -187,7 +214,7 @@ Program Definition i32asClone_clone_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -210,7 +237,7 @@ Program Definition i64asClone_clone_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -233,7 +260,7 @@ Program Definition i8asClone_clone_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -256,7 +283,7 @@ Program Definition isizeasClone_clone_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -279,7 +306,7 @@ Program Definition mutTasClone_clone_def (T_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -302,7 +329,7 @@ Program Definition u128asClone_clone_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -325,7 +352,7 @@ Program Definition u16asClone_clone_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -348,7 +375,7 @@ Program Definition u32asClone_clone_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -371,7 +398,7 @@ Program Definition u64asClone_clone_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -394,7 +421,7 @@ Program Definition u8asClone_clone_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -417,7 +444,7 @@ Program Definition usizeasClone_clone_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 

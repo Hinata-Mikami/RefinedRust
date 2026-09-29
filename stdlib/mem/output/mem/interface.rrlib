@@ -25,6 +25,17 @@
     },
     {
       "kind": "function",
+      "name": "forget",
+      "path": [
+        "core",
+        "mem",
+        "forget"
+      ],
+      "spec": "type_of_forget",
+      "trait_req_incl": "trait_incl_of_forget"
+    },
+    {
+      "kind": "function",
       "name": "mem_size_of",
       "path": [
         "core",

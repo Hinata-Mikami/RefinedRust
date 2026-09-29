@@ -46,6 +46,36 @@
     },
     {
       "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Param": 1
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {
+        "clone": {
+          "name": "REFTasClone_clone",
+          "spec": "type_of_REFTasClone_clone",
+          "trait_req_incl": "trait_incl_of_REFTasClone_clone"
+        }
+      },
+      "name": "REFTasClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "core",
+          "clone",
+          "Clone"
+        ]
+      }
+    },
+    {
+      "for_type": {
         "RawPtr": [
           "Not",
           {

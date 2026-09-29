@@ -15,7 +15,7 @@ Program Definition REFTasDeref_deref_def (T_st: syn_type) : function :=
       local_live{ RefSynType } "__0";
       annot{ 1 }: CopyLftNameAnnot "plft6" "ulft_2"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* initialization *)
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft7"; (* borrow *)
       "__0" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft4" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft5" "vlft4"; (* post-assignment *)
       annot{ 1 }: ExtendLftAnnot "plft5"; (* return *)
@@ -24,7 +24,7 @@ Program Definition REFTasDeref_deref_def (T_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -67,7 +67,7 @@ Program Definition REFi128asAddREFai128_add_def (panic_shim_loc: loc) : function
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -109,7 +109,7 @@ Program Definition REFi128asAddi128_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -152,7 +152,7 @@ Program Definition REFi128asMulREFai128_mul_def (panic_shim_loc: loc) : function
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -194,7 +194,7 @@ Program Definition REFi128asMuli128_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -237,7 +237,7 @@ Program Definition REFi128asSubREFai128_sub_def (panic_shim_loc: loc) : function
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -279,7 +279,7 @@ Program Definition REFi128asSubi128_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -322,7 +322,7 @@ Program Definition REFi16asAddREFai16_add_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -364,7 +364,7 @@ Program Definition REFi16asAddi16_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -407,7 +407,7 @@ Program Definition REFi16asMulREFai16_mul_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -449,7 +449,7 @@ Program Definition REFi16asMuli16_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -492,7 +492,7 @@ Program Definition REFi16asSubREFai16_sub_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -534,7 +534,7 @@ Program Definition REFi16asSubi16_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -577,7 +577,7 @@ Program Definition REFi32asAddREFai32_add_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -619,7 +619,7 @@ Program Definition REFi32asAddi32_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -662,7 +662,7 @@ Program Definition REFi32asMulREFai32_mul_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -704,7 +704,7 @@ Program Definition REFi32asMuli32_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -747,7 +747,7 @@ Program Definition REFi32asSubREFai32_sub_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -789,7 +789,7 @@ Program Definition REFi32asSubi32_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -832,7 +832,7 @@ Program Definition REFi64asAddREFai64_add_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -874,7 +874,7 @@ Program Definition REFi64asAddi64_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -917,7 +917,7 @@ Program Definition REFi64asMulREFai64_mul_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -959,7 +959,7 @@ Program Definition REFi64asMuli64_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1002,7 +1002,7 @@ Program Definition REFi64asSubREFai64_sub_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1044,7 +1044,7 @@ Program Definition REFi64asSubi64_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1087,7 +1087,7 @@ Program Definition REFi8asAddREFai8_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1129,7 +1129,7 @@ Program Definition REFi8asAddi8_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1172,7 +1172,7 @@ Program Definition REFi8asMulREFai8_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1214,7 +1214,7 @@ Program Definition REFi8asMuli8_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1257,7 +1257,7 @@ Program Definition REFi8asSubREFai8_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1299,7 +1299,7 @@ Program Definition REFi8asSubi8_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1342,7 +1342,7 @@ Program Definition REFisizeasAddREFaisize_add_def (panic_shim_loc: loc) : functi
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1384,7 +1384,7 @@ Program Definition REFisizeasAddisize_add_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1427,7 +1427,7 @@ Program Definition REFisizeasMulREFaisize_mul_def (panic_shim_loc: loc) : functi
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1469,7 +1469,7 @@ Program Definition REFisizeasMulisize_mul_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1512,7 +1512,7 @@ Program Definition REFisizeasSubREFaisize_sub_def (panic_shim_loc: loc) : functi
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1554,7 +1554,7 @@ Program Definition REFisizeasSubisize_sub_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1572,7 +1572,7 @@ Program Definition REFmutTasDeref_deref_def (T_st: syn_type) : function :=
       local_live{ RefSynType } "__0";
       annot{ 1 }: CopyLftNameAnnot "plft6" "ulft_2"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_1"; (* initialization *)
-      annot{ 1 }: CopyLftNameAnnot "vlft4" "plft6"; (* borrow *)
+      annot{ 1 }: AliasLftAnnot "vlft4" ["plft6"; "plft7"]; (* borrow *)
       "__0" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft4" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft5" "vlft4"; (* post-assignment *)
       annot{ 1 }: ExtendLftAnnot "plft5"; (* return *)
@@ -1581,7 +1581,7 @@ Program Definition REFmutTasDeref_deref_def (T_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1624,7 +1624,7 @@ Program Definition REFu128asAddREFau128_add_def (panic_shim_loc: loc) : function
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1666,7 +1666,7 @@ Program Definition REFu128asAddu128_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1709,7 +1709,7 @@ Program Definition REFu128asMulREFau128_mul_def (panic_shim_loc: loc) : function
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1751,7 +1751,7 @@ Program Definition REFu128asMulu128_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1794,7 +1794,7 @@ Program Definition REFu128asSubREFau128_sub_def (panic_shim_loc: loc) : function
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1836,7 +1836,7 @@ Program Definition REFu128asSubu128_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1879,7 +1879,7 @@ Program Definition REFu16asAddREFau16_add_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1921,7 +1921,7 @@ Program Definition REFu16asAddu16_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1964,7 +1964,7 @@ Program Definition REFu16asMulREFau16_mul_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2006,7 +2006,7 @@ Program Definition REFu16asMulu16_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2049,7 +2049,7 @@ Program Definition REFu16asSubREFau16_sub_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2091,7 +2091,7 @@ Program Definition REFu16asSubu16_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2134,7 +2134,7 @@ Program Definition REFu32asAddREFau32_add_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2176,7 +2176,7 @@ Program Definition REFu32asAddu32_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2219,7 +2219,7 @@ Program Definition REFu32asMulREFau32_mul_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2261,7 +2261,7 @@ Program Definition REFu32asMulu32_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2304,7 +2304,7 @@ Program Definition REFu32asSubREFau32_sub_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2346,7 +2346,7 @@ Program Definition REFu32asSubu32_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2389,7 +2389,7 @@ Program Definition REFu64asAddREFau64_add_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2431,7 +2431,7 @@ Program Definition REFu64asAddu64_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2474,7 +2474,7 @@ Program Definition REFu64asMulREFau64_mul_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2516,7 +2516,7 @@ Program Definition REFu64asMulu64_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2559,7 +2559,7 @@ Program Definition REFu64asSubREFau64_sub_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2601,7 +2601,7 @@ Program Definition REFu64asSubu64_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2644,7 +2644,7 @@ Program Definition REFu8asAddREFau8_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2686,7 +2686,7 @@ Program Definition REFu8asAddu8_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2729,7 +2729,7 @@ Program Definition REFu8asMulREFau8_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2771,7 +2771,7 @@ Program Definition REFu8asMulu8_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2814,7 +2814,7 @@ Program Definition REFu8asSubREFau8_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2856,7 +2856,7 @@ Program Definition REFu8asSubu8_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2899,7 +2899,7 @@ Program Definition REFusizeasAddREFausize_add_def (panic_shim_loc: loc) : functi
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2941,7 +2941,7 @@ Program Definition REFusizeasAddusize_add_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2984,7 +2984,7 @@ Program Definition REFusizeasMulREFausize_mul_def (panic_shim_loc: loc) : functi
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3026,7 +3026,7 @@ Program Definition REFusizeasMulusize_mul_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3069,7 +3069,7 @@ Program Definition REFusizeasSubREFausize_sub_def (panic_shim_loc: loc) : functi
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3111,7 +3111,7 @@ Program Definition REFusizeasSubusize_sub_def (panic_shim_loc: loc) : function :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3156,7 +3156,7 @@ Program Definition i128asAddAssignREFi128_add_assign_def (i128asAddAssign_add_as
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3196,7 +3196,7 @@ Program Definition i128asAddAssign_add_assign_def (panic_shim_loc: loc) : functi
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3238,7 +3238,7 @@ Program Definition i128asAddREFai128_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3279,7 +3279,7 @@ Program Definition i128asAdd_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3324,7 +3324,7 @@ Program Definition i128asMulAssignREFi128_mul_assign_def (i128asMulAssign_mul_as
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3364,7 +3364,7 @@ Program Definition i128asMulAssign_mul_assign_def (panic_shim_loc: loc) : functi
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3406,7 +3406,7 @@ Program Definition i128asMulREFai128_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3447,7 +3447,7 @@ Program Definition i128asMul_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3492,7 +3492,7 @@ Program Definition i128asSubAssignREFi128_sub_assign_def (i128asSubAssign_sub_as
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3532,7 +3532,7 @@ Program Definition i128asSubAssign_sub_assign_def (panic_shim_loc: loc) : functi
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3574,7 +3574,7 @@ Program Definition i128asSubREFai128_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3615,7 +3615,7 @@ Program Definition i128asSub_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3660,7 +3660,7 @@ Program Definition i16asAddAssignREFi16_add_assign_def (i16asAddAssign_add_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3700,7 +3700,7 @@ Program Definition i16asAddAssign_add_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3742,7 +3742,7 @@ Program Definition i16asAddREFai16_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3783,7 +3783,7 @@ Program Definition i16asAdd_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3828,7 +3828,7 @@ Program Definition i16asMulAssignREFi16_mul_assign_def (i16asMulAssign_mul_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3868,7 +3868,7 @@ Program Definition i16asMulAssign_mul_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3910,7 +3910,7 @@ Program Definition i16asMulREFai16_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3951,7 +3951,7 @@ Program Definition i16asMul_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3996,7 +3996,7 @@ Program Definition i16asSubAssignREFi16_sub_assign_def (i16asSubAssign_sub_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4036,7 +4036,7 @@ Program Definition i16asSubAssign_sub_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4078,7 +4078,7 @@ Program Definition i16asSubREFai16_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4119,7 +4119,7 @@ Program Definition i16asSub_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4164,7 +4164,7 @@ Program Definition i32asAddAssignREFi32_add_assign_def (i32asAddAssign_add_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4204,7 +4204,7 @@ Program Definition i32asAddAssign_add_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4246,7 +4246,7 @@ Program Definition i32asAddREFai32_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4287,7 +4287,7 @@ Program Definition i32asAdd_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4332,7 +4332,7 @@ Program Definition i32asMulAssignREFi32_mul_assign_def (i32asMulAssign_mul_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4372,7 +4372,7 @@ Program Definition i32asMulAssign_mul_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4414,7 +4414,7 @@ Program Definition i32asMulREFai32_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4455,7 +4455,7 @@ Program Definition i32asMul_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4500,7 +4500,7 @@ Program Definition i32asSubAssignREFi32_sub_assign_def (i32asSubAssign_sub_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4540,7 +4540,7 @@ Program Definition i32asSubAssign_sub_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4582,7 +4582,7 @@ Program Definition i32asSubREFai32_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4623,7 +4623,7 @@ Program Definition i32asSub_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4668,7 +4668,7 @@ Program Definition i64asAddAssignREFi64_add_assign_def (i64asAddAssign_add_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4708,7 +4708,7 @@ Program Definition i64asAddAssign_add_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4750,7 +4750,7 @@ Program Definition i64asAddREFai64_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4791,7 +4791,7 @@ Program Definition i64asAdd_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4836,7 +4836,7 @@ Program Definition i64asMulAssignREFi64_mul_assign_def (i64asMulAssign_mul_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4876,7 +4876,7 @@ Program Definition i64asMulAssign_mul_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4918,7 +4918,7 @@ Program Definition i64asMulREFai64_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4959,7 +4959,7 @@ Program Definition i64asMul_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5004,7 +5004,7 @@ Program Definition i64asSubAssignREFi64_sub_assign_def (i64asSubAssign_sub_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5044,7 +5044,7 @@ Program Definition i64asSubAssign_sub_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5086,7 +5086,7 @@ Program Definition i64asSubREFai64_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5127,7 +5127,7 @@ Program Definition i64asSub_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5172,7 +5172,7 @@ Program Definition i8asAddAssignREFi8_add_assign_def (i8asAddAssign_add_assign_l
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5212,7 +5212,7 @@ Program Definition i8asAddAssign_add_assign_def (panic_shim_loc: loc) : function
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5254,7 +5254,7 @@ Program Definition i8asAddREFai8_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5295,7 +5295,7 @@ Program Definition i8asAdd_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5340,7 +5340,7 @@ Program Definition i8asMulAssignREFi8_mul_assign_def (i8asMulAssign_mul_assign_l
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5380,7 +5380,7 @@ Program Definition i8asMulAssign_mul_assign_def (panic_shim_loc: loc) : function
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5422,7 +5422,7 @@ Program Definition i8asMulREFai8_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5463,7 +5463,7 @@ Program Definition i8asMul_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5508,7 +5508,7 @@ Program Definition i8asSubAssignREFi8_sub_assign_def (i8asSubAssign_sub_assign_l
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5548,7 +5548,7 @@ Program Definition i8asSubAssign_sub_assign_def (panic_shim_loc: loc) : function
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5590,7 +5590,7 @@ Program Definition i8asSubREFai8_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5631,7 +5631,7 @@ Program Definition i8asSub_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5676,7 +5676,7 @@ Program Definition isizeasAddAssignREFisize_add_assign_def (isizeasAddAssign_add
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5716,7 +5716,7 @@ Program Definition isizeasAddAssign_add_assign_def (panic_shim_loc: loc) : funct
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5758,7 +5758,7 @@ Program Definition isizeasAddREFaisize_add_def (panic_shim_loc: loc) : function 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5799,7 +5799,7 @@ Program Definition isizeasAdd_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5844,7 +5844,7 @@ Program Definition isizeasMulAssignREFisize_mul_assign_def (isizeasMulAssign_mul
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5884,7 +5884,7 @@ Program Definition isizeasMulAssign_mul_assign_def (panic_shim_loc: loc) : funct
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5926,7 +5926,7 @@ Program Definition isizeasMulREFaisize_mul_def (panic_shim_loc: loc) : function 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5967,7 +5967,7 @@ Program Definition isizeasMul_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6012,7 +6012,7 @@ Program Definition isizeasSubAssignREFisize_sub_assign_def (isizeasSubAssign_sub
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6052,7 +6052,7 @@ Program Definition isizeasSubAssign_sub_assign_def (panic_shim_loc: loc) : funct
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6094,7 +6094,7 @@ Program Definition isizeasSubREFaisize_sub_def (panic_shim_loc: loc) : function 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6135,7 +6135,7 @@ Program Definition isizeasSub_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6180,7 +6180,7 @@ Program Definition u128asAddAssignREFu128_add_assign_def (u128asAddAssign_add_as
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6220,7 +6220,7 @@ Program Definition u128asAddAssign_add_assign_def (panic_shim_loc: loc) : functi
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6262,7 +6262,7 @@ Program Definition u128asAddREFau128_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6303,7 +6303,7 @@ Program Definition u128asAdd_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6348,7 +6348,7 @@ Program Definition u128asMulAssignREFu128_mul_assign_def (u128asMulAssign_mul_as
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6388,7 +6388,7 @@ Program Definition u128asMulAssign_mul_assign_def (panic_shim_loc: loc) : functi
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6430,7 +6430,7 @@ Program Definition u128asMulREFau128_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6471,7 +6471,7 @@ Program Definition u128asMul_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6516,7 +6516,7 @@ Program Definition u128asSubAssignREFu128_sub_assign_def (u128asSubAssign_sub_as
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6556,7 +6556,7 @@ Program Definition u128asSubAssign_sub_assign_def (panic_shim_loc: loc) : functi
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6598,7 +6598,7 @@ Program Definition u128asSubREFau128_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6639,7 +6639,7 @@ Program Definition u128asSub_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6684,7 +6684,7 @@ Program Definition u16asAddAssignREFu16_add_assign_def (u16asAddAssign_add_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6724,7 +6724,7 @@ Program Definition u16asAddAssign_add_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6766,7 +6766,7 @@ Program Definition u16asAddREFau16_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6807,7 +6807,7 @@ Program Definition u16asAdd_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6852,7 +6852,7 @@ Program Definition u16asMulAssignREFu16_mul_assign_def (u16asMulAssign_mul_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6892,7 +6892,7 @@ Program Definition u16asMulAssign_mul_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6934,7 +6934,7 @@ Program Definition u16asMulREFau16_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -6975,7 +6975,7 @@ Program Definition u16asMul_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7020,7 +7020,7 @@ Program Definition u16asSubAssignREFu16_sub_assign_def (u16asSubAssign_sub_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7060,7 +7060,7 @@ Program Definition u16asSubAssign_sub_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7102,7 +7102,7 @@ Program Definition u16asSubREFau16_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7143,7 +7143,7 @@ Program Definition u16asSub_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7188,7 +7188,7 @@ Program Definition u32asAddAssignREFu32_add_assign_def (u32asAddAssign_add_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7228,7 +7228,7 @@ Program Definition u32asAddAssign_add_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7270,7 +7270,7 @@ Program Definition u32asAddREFau32_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7311,7 +7311,7 @@ Program Definition u32asAdd_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7356,7 +7356,7 @@ Program Definition u32asMulAssignREFu32_mul_assign_def (u32asMulAssign_mul_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7396,7 +7396,7 @@ Program Definition u32asMulAssign_mul_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7438,7 +7438,7 @@ Program Definition u32asMulREFau32_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7479,7 +7479,7 @@ Program Definition u32asMul_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7524,7 +7524,7 @@ Program Definition u32asSubAssignREFu32_sub_assign_def (u32asSubAssign_sub_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7564,7 +7564,7 @@ Program Definition u32asSubAssign_sub_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7606,7 +7606,7 @@ Program Definition u32asSubREFau32_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7647,7 +7647,7 @@ Program Definition u32asSub_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7692,7 +7692,7 @@ Program Definition u64asAddAssignREFu64_add_assign_def (u64asAddAssign_add_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7732,7 +7732,7 @@ Program Definition u64asAddAssign_add_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7774,7 +7774,7 @@ Program Definition u64asAddREFau64_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7815,7 +7815,7 @@ Program Definition u64asAdd_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7860,7 +7860,7 @@ Program Definition u64asMulAssignREFu64_mul_assign_def (u64asMulAssign_mul_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7900,7 +7900,7 @@ Program Definition u64asMulAssign_mul_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7942,7 +7942,7 @@ Program Definition u64asMulREFau64_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -7983,7 +7983,7 @@ Program Definition u64asMul_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8028,7 +8028,7 @@ Program Definition u64asSubAssignREFu64_sub_assign_def (u64asSubAssign_sub_assig
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8068,7 +8068,7 @@ Program Definition u64asSubAssign_sub_assign_def (panic_shim_loc: loc) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8110,7 +8110,7 @@ Program Definition u64asSubREFau64_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8151,7 +8151,7 @@ Program Definition u64asSub_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8196,7 +8196,7 @@ Program Definition u8asAddAssignREFu8_add_assign_def (u8asAddAssign_add_assign_l
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8236,7 +8236,7 @@ Program Definition u8asAddAssign_add_assign_def (panic_shim_loc: loc) : function
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8278,7 +8278,7 @@ Program Definition u8asAddREFau8_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8319,7 +8319,7 @@ Program Definition u8asAdd_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8364,7 +8364,7 @@ Program Definition u8asMulAssignREFu8_mul_assign_def (u8asMulAssign_mul_assign_l
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8404,7 +8404,7 @@ Program Definition u8asMulAssign_mul_assign_def (panic_shim_loc: loc) : function
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8446,7 +8446,7 @@ Program Definition u8asMulREFau8_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8487,7 +8487,7 @@ Program Definition u8asMul_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8532,7 +8532,7 @@ Program Definition u8asSubAssignREFu8_sub_assign_def (u8asSubAssign_sub_assign_l
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8572,7 +8572,7 @@ Program Definition u8asSubAssign_sub_assign_def (panic_shim_loc: loc) : function
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8614,7 +8614,7 @@ Program Definition u8asSubREFau8_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8655,7 +8655,7 @@ Program Definition u8asSub_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8700,7 +8700,7 @@ Program Definition usizeasAddAssignREFusize_add_assign_def (usizeasAddAssign_add
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8740,7 +8740,7 @@ Program Definition usizeasAddAssign_add_assign_def (panic_shim_loc: loc) : funct
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8782,7 +8782,7 @@ Program Definition usizeasAddREFausize_add_def (panic_shim_loc: loc) : function 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8823,7 +8823,7 @@ Program Definition usizeasAdd_add_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8868,7 +8868,7 @@ Program Definition usizeasMulAssignREFusize_mul_assign_def (usizeasMulAssign_mul
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8908,7 +8908,7 @@ Program Definition usizeasMulAssign_mul_assign_def (panic_shim_loc: loc) : funct
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8950,7 +8950,7 @@ Program Definition usizeasMulREFausize_mul_def (panic_shim_loc: loc) : function 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -8991,7 +8991,7 @@ Program Definition usizeasMul_mul_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -9036,7 +9036,7 @@ Program Definition usizeasSubAssignREFusize_sub_assign_def (usizeasSubAssign_sub
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -9076,7 +9076,7 @@ Program Definition usizeasSubAssign_sub_assign_def (panic_shim_loc: loc) : funct
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -9118,7 +9118,7 @@ Program Definition usizeasSubREFausize_sub_def (panic_shim_loc: loc) : function 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -9159,7 +9159,7 @@ Program Definition usizeasSub_sub_def (panic_shim_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 

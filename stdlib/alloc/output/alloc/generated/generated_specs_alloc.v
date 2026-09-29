@@ -1,6 +1,7 @@
 From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.alloc.theories Require Export layout shims.
+From rrstd.clone.clone.generated Require Export generated_specs_clone.
 From rrstd.mem.mem.generated Require Export generated_specs_mem.
 From rrstd.ptr.ptr.generated Require Export generated_specs_ptr.
 From rrstd.result.result.generated Require Export generated_specs_result.
@@ -17,6 +18,27 @@ Record Allocator_spec_attrs `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} : Typ
 
 #[global] Arguments mk_Allocator_spec_attrs  {_} {_} {_}.
 
+
+Record AllocatorClone_spec_attrs `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} `{Allocator_Self_spec_attrs : !(Allocator_spec_attrs (RRGS:=RRGS) (Self_rt) )} `{Clone_Self_spec_attrs : !(Clone_spec_attrs (RRGS:=RRGS) (Self_rt) )} : Type := mk_AllocatorClone_spec_attrs {
+}.
+#[global] Arguments AllocatorClone_spec_attrs : clear implicits.
+
+#[global] Arguments AllocatorClone_spec_attrs {_ _}.
+
+#[global] Arguments mk_AllocatorClone_spec_attrs  {_} {_} {_} {_} {_}.
+
+
+Section attrs.
+Context `{RRGS : !refinedrustGS Σ}.
+Program Definition REFAasAllocator_spec_attrs `{RRGS : !(refinedrustGS Σ)} (A_rt: RT) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (DropGlue_A_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )) : ((Allocator_spec_attrs ((place_rfnRT (A_rt))))) :=
+  {|
+    Allocator_FreeablePerm  :=
+      (Allocator_A_spec_attrs.(Allocator_FreeablePerm)) : ((Allocator_FreeablePerm_sig ((place_rfnRT (A_rt)))));
+  |}
+.
+
+
+End attrs.
 
 Section Global_ty.
   Context `{RRGS : !(refinedrustGS Σ)}.
@@ -43,7 +65,7 @@ Section Global_inv_t.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Program Definition Global_inv_t_inv_spec  : (spec_with 0 [] ((ex_inv_def (Global_rt)%type ((unit))%type))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
-          (λ π inner_rfn (_ty_rfn : RT_rt ((unit)%type : RT)),
+          (λ π (inner_rfn : Global_rt) (_ty_rfn : RT_rt ((unit)%type : RT)),
                   let '() := _ty_rfn in ⌜inner_rfn = -[]⌝ ∗ True)%I
           (true)
           ([])
@@ -62,7 +84,7 @@ Section Global_inv_t.
     ex_t_solve_persistent.
   Qed.
 
-  Next Obligation.
+  Final Obligation.
     ex_plain_t_solve_shr_mono.
   Qed.
 
@@ -115,6 +137,14 @@ End layout_LayoutError_ty.
 
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
+Program Definition REFAasAllocatorClone_spec_attrs `{RRGS : !(refinedrustGS Σ)} (A_rt: RT) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (DropGlue_A_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )) : ((AllocatorClone_spec_attrs ((place_rfnRT (A_rt))) ((REFAasAllocator_spec_attrs ((A_rt)) (Allocator_A_spec_attrs) (DropGlue_A_spec_attrs))) ((REFTasClone_spec_attrs ((A_rt)) (DropGlue_A_spec_attrs))))) :=
+  mk_AllocatorClone_spec_attrs.
+
+
+End attrs.
+
+Section attrs.
+Context `{RRGS : !refinedrustGS Σ}.
 Program Definition GlobalasAllocator_spec_attrs `{RRGS : !(refinedrustGS Σ)} : ((Allocator_spec_attrs ((Global_inv_t_rt)))) :=
   {|
     Allocator_FreeablePerm  :=
@@ -150,7 +180,7 @@ Section layout_Layout_inv_t.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Program Definition layout_Layout_inv_t_inv_spec  : (spec_with 0 [] ((ex_inv_def (layout_Layout_rt)%type ((rust_layout))%type))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
-          (λ π inner_rfn (_ty_rfn : RT_rt ((rust_layout)%type : RT)),
+          (λ π (inner_rfn : layout_Layout_rt) (_ty_rfn : RT_rt ((rust_layout)%type : RT)),
                   let 'l := _ty_rfn in ⌜inner_rfn = -[#(Z.of_nat l.(layout_sz)); #(l.(layout_alignment))]⌝ ∗ ⌜(layout_wf l)%Z⌝ ∗ ⌜(Z.of_nat l.(layout_sz) ∈ isize)%Z⌝ ∗ True)%I
           (true)
           ([])
@@ -169,7 +199,7 @@ Section layout_Layout_inv_t.
     ex_t_solve_persistent.
   Qed.
 
-  Next Obligation.
+  Final Obligation.
     ex_plain_t_solve_shr_mono.
   Qed.
 
@@ -250,6 +280,13 @@ Record Allocator_spec `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} : Type := m
 #[global] Arguments Allocator_spec {_ _}.
 
 
+Record AllocatorClone_spec `{RRGS : !(refinedrustGS Σ)} `{Self_rt : !RT} : Type := mk_AllocatorClone_spec {
+}.
+#[global] Arguments AllocatorClone_spec : clear implicits.
+
+#[global] Arguments AllocatorClone_spec {_ _}.
+
+
 Section Allocator.
 Context `{RRGS : !refinedrustGS Σ}.
 Definition Allocator_spec_incl `{Self_rt : !RT} (spec1: ((Allocator_spec (Self_rt)))) (spec2: ((Allocator_spec (Self_rt)))) : Prop :=
@@ -275,9 +312,38 @@ Definition Allocator_base_spec (Self_rt: RT) (Self_st: syn_type) (DropGlue_Self_
 
 End Allocator.
 
+Section AllocatorClone.
+Context `{RRGS : !refinedrustGS Σ}.
+Definition AllocatorClone_spec_incl `{Self_rt : !RT} (spec1: ((AllocatorClone_spec (Self_rt)))) (spec2: ((AllocatorClone_spec (Self_rt)))) : Prop :=
+  True.
+Instance AllocatorClone_spec_incl_preorder `{Self_rt : !RT} : (PreOrder (AllocatorClone_spec_incl (Self_rt := Self_rt))).
+Proof.
+  split.
+  all: apply _.
+Qed.
+
+Definition scope_bindable_AllocatorClone_spec `{Self_rt : !RT} : (ScopeBindable ((AllocatorClone_spec (Self_rt)))) :=
+  {|
+    scope_add_typarams (rts: (list RT)) (tys: (plist type rts)) (s: ((AllocatorClone_spec (Self_rt)))) :=
+      s;
+    scope_add_elctx (E: (lft → elctx)) (s: ((AllocatorClone_spec (Self_rt)))) :=
+      s;
+  |}
+.
+#[global] Existing Instance scope_bindable_AllocatorClone_spec.
+
+Definition AllocatorClone_base_spec (Self_rt: RT) (Self_st: syn_type) (Allocator_Self_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (Self_rt) )) (Clone_Self_spec_attrs: (Clone_spec_attrs (RRGS:=RRGS) (Self_rt) )) (DropGlue_Self_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (Self_rt) )) (_ATTRS: ((AllocatorClone_spec_attrs ((Self_rt)) (Allocator_Self_spec_attrs) (Clone_Self_spec_attrs)))) : (spec_with _ _ (AllocatorClone_spec ((Self_rt)))) :=
+  spec! ( *[]) : 0 | ( *[Self_ty]) : ([Self_rt] : list RT), (@mk_AllocatorClone_spec _ _ ((Self_rt))).
+
+End AllocatorClone.
+
 Section Allocator_trait_req_incls.
   Context `{RRGS : !(refinedrustGS Σ)}.
 End Allocator_trait_req_incls.
+
+Section AllocatorClone_trait_req_incls.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+End AllocatorClone_trait_req_incls.
 
 Section specs.
 Context `{RRGS : !refinedrustGS Σ}.
@@ -309,7 +375,7 @@ Definition type_of_layout_Layout_from_size_align  :=
         ∗ (⌜(size ∈ isize)%Z⌝)
         ∗ (⌜(Z.divide align size)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
-      (* existential.. *) ∃ _ : unit, Ok (mk_rust_layout (Z.to_nat size) (alignment_of_align align)) @ (Result_ty ((layout_Layout_inv_t_rt)) ((layout_LayoutError_rt)) -[] -[(layout_Layout_inv_t   -[] -[]); (layout_LayoutError_ty  -[] -[])]);
+      (* existential.. *) ∃ _ : unit, Ok (mk_rust_layout (Z.to_nat size) (alignment_of_align align)) @ (Result_ty ((layout_Layout_inv_t_rt)) ((layout_LayoutError_rt)) -[] -[(layout_Layout_inv_t   -[] -[]); (layout_LayoutError_ty   -[] -[])]);
       (* postcondition *) (λ π : thread_id, True) |
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
@@ -481,6 +547,22 @@ Definition type_of_alloc_realloc_internal  :=
 
 
 End specs.
+Section REFAasAllocator_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition REFAasAllocator_spec (A_rt: RT) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (DropGlue_A_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with _ _ (Allocator_spec ((place_rfnRT (A_rt))))) :=
+    spec! ( *[ulft_0]) : 1 | ( *[A_ty]) : ([A_rt] : list RT), (@mk_Allocator_spec _ _ ((place_rfnRT (A_rt)))).
+  Definition REFAasAllocator_spec_subsumption  :=
+    ∀ `(A_rt : !RT) `(A_st : !syn_type) `(Allocator_A_spec_attrs : !(Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) `(DropGlue_A_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )), trait_incl_marker (lift_trait_incl Allocator_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[A_ty]) : ([A_rt] : list RT), (REFAasAllocator_spec (A_rt) (A_st) (Allocator_A_spec_attrs) (DropGlue_A_spec_attrs))-[ulft_0] -[A_ty]) (spec! ( *[ulft_0]) : 1 | ( *[A_ty]) : ([A_rt] : list RT), scope_add_typarams _ -[A_ty] ((Allocator_base_spec (place_rfnRT (A_rt)) RefSynType (drop_glue_trivial_spec_attrs ((place_rfnRT (A_rt)))) (REFAasAllocator_spec_attrs (A_rt) (Allocator_A_spec_attrs) (DropGlue_A_spec_attrs))-[] -[(shr_ref ulft_0 A_ty)])))).
+End REFAasAllocator_spec.
+
+Section REFAasAllocatorClone_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition REFAasAllocatorClone_spec (A_rt: RT) (A_st: syn_type) (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) (DropGlue_A_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with _ _ (AllocatorClone_spec ((place_rfnRT (A_rt))))) :=
+    spec! ( *[ulft_0]) : 1 | ( *[A_ty]) : ([A_rt] : list RT), (@mk_AllocatorClone_spec _ _ ((place_rfnRT (A_rt)))).
+  Definition REFAasAllocatorClone_spec_subsumption  :=
+    ∀ `(A_rt : !RT) `(A_st : !syn_type) `(Allocator_A_spec_attrs : !(Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) `(DropGlue_A_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (A_rt) )), trait_incl_marker (lift_trait_incl AllocatorClone_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[A_ty]) : ([A_rt] : list RT), (REFAasAllocatorClone_spec (A_rt) (A_st) (Allocator_A_spec_attrs) (DropGlue_A_spec_attrs))-[ulft_0] -[A_ty]) (spec! ( *[ulft_0]) : 1 | ( *[A_ty]) : ([A_rt] : list RT), scope_add_typarams _ -[A_ty] ((AllocatorClone_base_spec (place_rfnRT (A_rt)) RefSynType (REFAasAllocator_spec_attrs ((A_rt)) (Allocator_A_spec_attrs) (DropGlue_A_spec_attrs)) (REFTasClone_spec_attrs ((A_rt)) (DropGlue_A_spec_attrs)) (drop_glue_trivial_spec_attrs ((place_rfnRT (A_rt)))) (REFAasAllocatorClone_spec_attrs (A_rt) (Allocator_A_spec_attrs) (DropGlue_A_spec_attrs))-[] -[(shr_ref ulft_0 A_ty)])))).
+End REFAasAllocatorClone_spec.
+
 Section GlobalasAllocator_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition GlobalasAllocator_spec  : (spec_with _ _ (Allocator_spec ((Global_inv_t_rt)))) :=

@@ -1,6 +1,7 @@
 From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.alloc.theories Require Export layout shims.
+From rrstd.clone.clone.generated Require Export generated_specs_clone.
 From rrstd.mem.mem.generated Require Export generated_specs_mem.
 From rrstd.ptr.ptr.generated Require Export generated_specs_ptr.
 From rrstd.result.result.generated Require Export generated_specs_result.

@@ -47,12 +47,12 @@ Ltac traits_iterator_Iterator_all_closure0_prelude :=
   let F_ty := fresh "F_ty" in
   let traits_iterator_Iterator_Self_Item_ty := fresh "traits_iterator_Iterator_Self_Item_ty" in
   let capture_f_ := fresh "capture_f_" in
-  let _γf := fresh "_γf" in
+  let _γcapture_f_g := fresh "_γcapture_f_g" in
   let __γclos := fresh "__γclos" in
   let pclos := fresh "pclos" in
   let _arg_0 := fresh "_arg_0" in
   let b := fresh "b" in
-  start_function "traits_iterator_Iterator_all_closure0" ϝ fid ( [ulft1 [ulft3 [] ] ] ) ( [Self_ty [F_ty [traits_iterator_Iterator_Self_Item_ty [] ] ] ] ) ( [ [ [ [ [  capture_f_ _γf ] __γclos ] pclos ] _arg_0 ] b ] ) ( capture_f_ _γf __γclos pclos _arg_0 b );
+  start_function "traits_iterator_Iterator_all_closure0" ϝ fid ( [ulft1 [ulft3 [] ] ] ) ( [Self_ty [F_ty [traits_iterator_Iterator_Self_Item_ty [] ] ] ] ) ( [ [ [ [ [  capture_f_ _γcapture_f_g ] __γclos ] pclos ] _arg_0 ] b ] ) ( capture_f_ _γcapture_f_g __γclos pclos _arg_0 b );
   intros arg___1 arg___2 arg_b;
   let π := get_π in
   let Σ := get_Σ in

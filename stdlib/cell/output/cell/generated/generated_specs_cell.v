@@ -30,8 +30,8 @@ Section UnsafeCell_inv_t.
   Context {T_rt : RT}.
   Program Definition UnsafeCell_inv_t_inv_spec  : (spec_with 0 [(T_rt)] ((ex_inv_def ((UnsafeCell_rt (T_rt)))%type (((T_rt)))%type))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
-          (λ π inner_rfn (_ty_rfn : RT_rt (((T_rt))%type : RT)),
-                  let 'x := _ty_rfn in ⌜inner_rfn = -[#(x)]⌝ ∗ True)%I
+          (λ π (inner_rfn : (UnsafeCell_rt (T_rt))) (_ty_rfn : RT_rt (((T_rt))%type : RT)),
+                  let 'x := _ty_rfn in ⌜inner_rfn = -[#x]⌝ ∗ True)%I
           (false)
           ([])
           ([])
@@ -49,7 +49,7 @@ Section UnsafeCell_inv_t.
     ex_t_solve_persistent.
   Qed.
 
-  Next Obligation.
+  Final Obligation.
     ex_plain_t_solve_shr_mono.
   Qed.
 

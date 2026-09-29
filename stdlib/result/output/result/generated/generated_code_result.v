@@ -34,7 +34,7 @@ Section Result_els.
   Next Obligation. solve_enum_layout_spec_variants_nodup. Qed.
   Next Obligation. solve_enum_layout_spec_variants_eq. Qed.
   Next Obligation. solve_enum_layout_spec_discriminant_nodup. Qed.
-  Next Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.
+  Final Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.
   Global Typeclasses Opaque Result_els.
   Definition Result_st (T_st: syn_type) (E_st: syn_type) : syn_type := Result_els T_st E_st.
 End Result_els.
@@ -128,7 +128,7 @@ Program Definition ResultTEasstd_clone_Clone_clone_def (Clone_E_clone_loc: loc) 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -223,7 +223,7 @@ Program Definition Result_TE_map_def (DropGlue_F_drop_glue_loc: loc) (FnOnce_F_T
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -318,7 +318,7 @@ Program Definition Result_TE_map_err_def (DropGlue_O_drop_glue_loc: loc) (FnOnce
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -358,7 +358,7 @@ Program Definition drop_glue_Result_def (DropGlue_E_drop_glue_loc: loc) (DropGlu
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 

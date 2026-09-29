@@ -168,6 +168,68 @@
       ]
     },
     {
+      "allowed_attrs": [],
+      "assoc_tys": [],
+      "attrs_dependent": true,
+      "has_semantic_interp": false,
+      "kind": "trait",
+      "method_trait_incl_decls": {},
+      "name": "AllocatorClone",
+      "path": [
+        "alloc",
+        "alloc",
+        "AllocatorClone"
+      ]
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Param": 1
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "REFAasAllocator",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "alloc",
+          "alloc",
+          "Allocator"
+        ]
+      }
+    },
+    {
+      "for_type": {
+        "Ref": [
+          0,
+          "Not",
+          {
+            "Param": 1
+          }
+        ]
+      },
+      "has_semantic_interp": false,
+      "impl_kind": "rust",
+      "kind": "trait_impl",
+      "method_specs": {},
+      "name": "REFAasAllocatorClone",
+      "trait_path": {
+        "args": [],
+        "path": [
+          "alloc",
+          "alloc",
+          "AllocatorClone"
+        ]
+      }
+    },
+    {
       "for_type": {
         "Adt": {
           "args": [],

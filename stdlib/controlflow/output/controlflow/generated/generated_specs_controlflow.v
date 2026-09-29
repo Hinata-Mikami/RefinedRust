@@ -183,7 +183,7 @@ Section ControlFlow_ty.
       solve_mk_enum_tag_consistent.
     Defined.
 
-    Next Obligation.
+    Final Obligation.
       solve_mk_enum_tag_inj_roundtrip.
     Defined.
 
@@ -307,7 +307,7 @@ Next Obligation.
   intros ????? [] ?; simpl; solve_goal.
 Qed.
 
-Next Obligation.
+Final Obligation.
   intros ????? [] ?; simpl; solve_goal.
 Qed.
 
@@ -341,7 +341,7 @@ Next Obligation.
   intros ??? [] ?; simpl; solve_goal.
 Qed.
 
-Next Obligation.
+Final Obligation.
   intros ??? [] ?; simpl; solve_goal.
 Qed.
 
@@ -375,7 +375,7 @@ Next Obligation.
   intros ????? [] ?; simpl; solve_goal.
 Qed.
 
-Next Obligation.
+Final Obligation.
   intros ????? [] ?; simpl; solve_goal.
 Qed.
 

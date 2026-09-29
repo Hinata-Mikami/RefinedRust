@@ -3703,175 +3703,175 @@ Definition trait_incl_of_REFi128asAddREFai128_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi128asAddREFai128_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi128asAddREFai128_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi128asAddREFai128_spec_attrs))
     -[] -[(shr_ref ulft_1 (int I128)); (shr_ref ulft_a (int I128)); (int I128)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi128asAddi128_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi128asAddi128_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I128)) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi128asAddi128_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I128)) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi128asAddi128_spec_attrs))
     -[] -[(shr_ref ulft_0 (int I128)); (int I128); (int I128)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi16asAddREFai16_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi16asAddREFai16_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi16asAddREFai16_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi16asAddREFai16_spec_attrs))
     -[] -[(shr_ref ulft_1 (int I16)); (shr_ref ulft_a (int I16)); (int I16)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi16asAddi16_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi16asAddi16_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I16)) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi16asAddi16_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I16)) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi16asAddi16_spec_attrs))
     -[] -[(shr_ref ulft_0 (int I16)); (int I16); (int I16)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi32asAddREFai32_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi32asAddREFai32_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi32asAddREFai32_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi32asAddREFai32_spec_attrs))
     -[] -[(shr_ref ulft_1 (int I32)); (shr_ref ulft_a (int I32)); (int I32)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi32asAddi32_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi32asAddi32_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I32)) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi32asAddi32_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I32)) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi32asAddi32_spec_attrs))
     -[] -[(shr_ref ulft_0 (int I32)); (int I32); (int I32)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi64asAddREFai64_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi64asAddREFai64_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi64asAddREFai64_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi64asAddREFai64_spec_attrs))
     -[] -[(shr_ref ulft_1 (int I64)); (shr_ref ulft_a (int I64)); (int I64)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi64asAddi64_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi64asAddi64_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I64)) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi64asAddi64_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I64)) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi64asAddi64_spec_attrs))
     -[] -[(shr_ref ulft_0 (int I64)); (int I64); (int I64)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi8asAddREFai8_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi8asAddREFai8_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi8asAddREFai8_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi8asAddREFai8_spec_attrs))
     -[] -[(shr_ref ulft_1 (int I8)); (shr_ref ulft_a (int I8)); (int I8)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi8asAddi8_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi8asAddi8_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I8)) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi8asAddi8_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I8)) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi8asAddi8_spec_attrs))
     -[] -[(shr_ref ulft_0 (int I8)); (int I8); (int I8)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFisizeasAddREFaisize_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFisizeasAddREFaisize_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFisizeasAddREFaisize_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFisizeasAddREFaisize_spec_attrs))
     -[] -[(shr_ref ulft_1 (int ISize)); (shr_ref ulft_a (int ISize)); (int ISize)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFisizeasAddisize_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFisizeasAddisize_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType ISize)) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFisizeasAddisize_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType ISize)) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFisizeasAddisize_spec_attrs))
     -[] -[(shr_ref ulft_0 (int ISize)); (int ISize); (int ISize)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu128asAddREFau128_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu128asAddREFau128_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu128asAddREFau128_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu128asAddREFau128_spec_attrs))
     -[] -[(shr_ref ulft_1 (int U128)); (shr_ref ulft_a (int U128)); (int U128)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu128asAddu128_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu128asAddu128_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U128)) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu128asAddu128_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U128)) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu128asAddu128_spec_attrs))
     -[] -[(shr_ref ulft_0 (int U128)); (int U128); (int U128)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu16asAddREFau16_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu16asAddREFau16_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu16asAddREFau16_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu16asAddREFau16_spec_attrs))
     -[] -[(shr_ref ulft_1 (int U16)); (shr_ref ulft_a (int U16)); (int U16)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu16asAddu16_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu16asAddu16_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U16)) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu16asAddu16_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U16)) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu16asAddu16_spec_attrs))
     -[] -[(shr_ref ulft_0 (int U16)); (int U16); (int U16)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu32asAddREFau32_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu32asAddREFau32_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu32asAddREFau32_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu32asAddREFau32_spec_attrs))
     -[] -[(shr_ref ulft_1 (int U32)); (shr_ref ulft_a (int U32)); (int U32)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu32asAddu32_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu32asAddu32_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U32)) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu32asAddu32_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U32)) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu32asAddu32_spec_attrs))
     -[] -[(shr_ref ulft_0 (int U32)); (int U32); (int U32)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu64asAddREFau64_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu64asAddREFau64_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu64asAddREFau64_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu64asAddREFau64_spec_attrs))
     -[] -[(shr_ref ulft_1 (int U64)); (shr_ref ulft_a (int U64)); (int U64)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu64asAddu64_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu64asAddu64_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U64)) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu64asAddu64_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U64)) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu64asAddu64_spec_attrs))
     -[] -[(shr_ref ulft_0 (int U64)); (int U64); (int U64)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu8asAddREFau8_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu8asAddREFau8_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu8asAddREFau8_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu8asAddREFau8_spec_attrs))
     -[] -[(shr_ref ulft_1 (int U8)); (shr_ref ulft_a (int U8)); (int U8)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu8asAddu8_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu8asAddu8_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U8)) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu8asAddu8_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U8)) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu8asAddu8_spec_attrs))
     -[] -[(shr_ref ulft_0 (int U8)); (int U8); (int U8)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFusizeasAddREFausize_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFusizeasAddREFausize_add  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFusizeasAddREFausize_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Add_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFusizeasAddREFausize_spec_attrs))
     -[] -[(shr_ref ulft_1 (int USize)); (shr_ref ulft_a (int USize)); (int USize)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFusizeasAddusize_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFusizeasAddusize_add  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType USize)) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFusizeasAddusize_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Add_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType USize)) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFusizeasAddusize_spec_attrs))
     -[] -[(shr_ref ulft_0 (int USize)); (int USize); (int USize)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asAddREFai128_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asAddREFai128_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I128)) (RefSynType) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i128asAddREFai128_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I128)) (RefSynType) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i128asAddREFai128_spec_attrs))
     -[] -[(int I128); (shr_ref ulft_a (int I128)); (int I128)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asAdd_add  : (spec_with _ _ Prop) :=
@@ -3885,7 +3885,7 @@ Definition trait_incl_of_i16asAddREFai16_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asAddREFai16_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I16)) (RefSynType) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i16asAddREFai16_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I16)) (RefSynType) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i16asAddREFai16_spec_attrs))
     -[] -[(int I16); (shr_ref ulft_a (int I16)); (int I16)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asAdd_add  : (spec_with _ _ Prop) :=
@@ -3899,7 +3899,7 @@ Definition trait_incl_of_i32asAddREFai32_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asAddREFai32_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I32)) (RefSynType) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i32asAddREFai32_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I32)) (RefSynType) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i32asAddREFai32_spec_attrs))
     -[] -[(int I32); (shr_ref ulft_a (int I32)); (int I32)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asAdd_add  : (spec_with _ _ Prop) :=
@@ -3913,7 +3913,7 @@ Definition trait_incl_of_i64asAddREFai64_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asAddREFai64_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I64)) (RefSynType) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i64asAddREFai64_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I64)) (RefSynType) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i64asAddREFai64_spec_attrs))
     -[] -[(int I64); (shr_ref ulft_a (int I64)); (int I64)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asAdd_add  : (spec_with _ _ Prop) :=
@@ -3927,7 +3927,7 @@ Definition trait_incl_of_i8asAddREFai8_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asAddREFai8_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I8)) (RefSynType) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i8asAddREFai8_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I8)) (RefSynType) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i8asAddREFai8_spec_attrs))
     -[] -[(int I8); (shr_ref ulft_a (int I8)); (int I8)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asAdd_add  : (spec_with _ _ Prop) :=
@@ -3941,7 +3941,7 @@ Definition trait_incl_of_isizeasAddREFaisize_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasAddREFaisize_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType ISize)) (RefSynType) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (isizeasAddREFaisize_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType ISize)) (RefSynType) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (isizeasAddREFaisize_spec_attrs))
     -[] -[(int ISize); (shr_ref ulft_a (int ISize)); (int ISize)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasAdd_add  : (spec_with _ _ Prop) :=
@@ -3955,7 +3955,7 @@ Definition trait_incl_of_u128asAddREFau128_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asAddREFau128_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U128)) (RefSynType) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u128asAddREFau128_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U128)) (RefSynType) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u128asAddREFau128_spec_attrs))
     -[] -[(int U128); (shr_ref ulft_a (int U128)); (int U128)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asAdd_add  : (spec_with _ _ Prop) :=
@@ -3969,7 +3969,7 @@ Definition trait_incl_of_u16asAddREFau16_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asAddREFau16_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U16)) (RefSynType) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u16asAddREFau16_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U16)) (RefSynType) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u16asAddREFau16_spec_attrs))
     -[] -[(int U16); (shr_ref ulft_a (int U16)); (int U16)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asAdd_add  : (spec_with _ _ Prop) :=
@@ -3983,7 +3983,7 @@ Definition trait_incl_of_u32asAddREFau32_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asAddREFau32_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U32)) (RefSynType) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u32asAddREFau32_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U32)) (RefSynType) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u32asAddREFau32_spec_attrs))
     -[] -[(int U32); (shr_ref ulft_a (int U32)); (int U32)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asAdd_add  : (spec_with _ _ Prop) :=
@@ -3997,7 +3997,7 @@ Definition trait_incl_of_u64asAddREFau64_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asAddREFau64_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U64)) (RefSynType) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u64asAddREFau64_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U64)) (RefSynType) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u64asAddREFau64_spec_attrs))
     -[] -[(int U64); (shr_ref ulft_a (int U64)); (int U64)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asAdd_add  : (spec_with _ _ Prop) :=
@@ -4011,7 +4011,7 @@ Definition trait_incl_of_u8asAddREFau8_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asAddREFau8_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U8)) (RefSynType) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u8asAddREFau8_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U8)) (RefSynType) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u8asAddREFau8_spec_attrs))
     -[] -[(int U8); (shr_ref ulft_a (int U8)); (int U8)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asAdd_add  : (spec_with _ _ Prop) :=
@@ -4025,7 +4025,7 @@ Definition trait_incl_of_usizeasAddREFausize_add  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasAddREFausize_add  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType USize)) (RefSynType) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (usizeasAddREFausize_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Add_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType USize)) (RefSynType) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (usizeasAddREFausize_spec_attrs))
     -[] -[(int USize); (shr_ref ulft_a (int USize)); (int USize)]).(Add_add_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasAdd_add  : (spec_with _ _ Prop) :=
@@ -4039,7 +4039,7 @@ Definition trait_incl_of_i128asAddAssignREFi128_add_assign  : (spec_with _ _ Pro
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asAddAssignREFi128_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I128)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i128asAddAssignREFi128_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I128)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i128asAddAssignREFi128_spec_attrs))
     -[] -[(int I128); (shr_ref ulft_0 (int I128))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asAddAssign_add_assign  : (spec_with _ _ Prop) :=
@@ -4053,7 +4053,7 @@ Definition trait_incl_of_i16asAddAssignREFi16_add_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asAddAssignREFi16_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I16)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i16asAddAssignREFi16_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I16)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i16asAddAssignREFi16_spec_attrs))
     -[] -[(int I16); (shr_ref ulft_0 (int I16))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asAddAssign_add_assign  : (spec_with _ _ Prop) :=
@@ -4067,7 +4067,7 @@ Definition trait_incl_of_i32asAddAssignREFi32_add_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asAddAssignREFi32_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I32)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i32asAddAssignREFi32_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I32)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i32asAddAssignREFi32_spec_attrs))
     -[] -[(int I32); (shr_ref ulft_0 (int I32))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asAddAssign_add_assign  : (spec_with _ _ Prop) :=
@@ -4081,7 +4081,7 @@ Definition trait_incl_of_i64asAddAssignREFi64_add_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asAddAssignREFi64_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I64)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i64asAddAssignREFi64_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I64)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i64asAddAssignREFi64_spec_attrs))
     -[] -[(int I64); (shr_ref ulft_0 (int I64))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asAddAssign_add_assign  : (spec_with _ _ Prop) :=
@@ -4095,7 +4095,7 @@ Definition trait_incl_of_i8asAddAssignREFi8_add_assign  : (spec_with _ _ Prop) :
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asAddAssignREFi8_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I8)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i8asAddAssignREFi8_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I8)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i8asAddAssignREFi8_spec_attrs))
     -[] -[(int I8); (shr_ref ulft_0 (int I8))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asAddAssign_add_assign  : (spec_with _ _ Prop) :=
@@ -4109,7 +4109,7 @@ Definition trait_incl_of_isizeasAddAssignREFisize_add_assign  : (spec_with _ _ P
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasAddAssignREFisize_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType ISize)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (isizeasAddAssignREFisize_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType ISize)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (isizeasAddAssignREFisize_spec_attrs))
     -[] -[(int ISize); (shr_ref ulft_0 (int ISize))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasAddAssign_add_assign  : (spec_with _ _ Prop) :=
@@ -4123,7 +4123,7 @@ Definition trait_incl_of_u128asAddAssignREFu128_add_assign  : (spec_with _ _ Pro
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asAddAssignREFu128_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U128)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u128asAddAssignREFu128_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U128)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u128asAddAssignREFu128_spec_attrs))
     -[] -[(int U128); (shr_ref ulft_0 (int U128))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asAddAssign_add_assign  : (spec_with _ _ Prop) :=
@@ -4137,7 +4137,7 @@ Definition trait_incl_of_u16asAddAssignREFu16_add_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asAddAssignREFu16_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U16)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u16asAddAssignREFu16_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U16)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u16asAddAssignREFu16_spec_attrs))
     -[] -[(int U16); (shr_ref ulft_0 (int U16))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asAddAssign_add_assign  : (spec_with _ _ Prop) :=
@@ -4151,7 +4151,7 @@ Definition trait_incl_of_u32asAddAssignREFu32_add_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asAddAssignREFu32_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U32)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u32asAddAssignREFu32_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U32)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u32asAddAssignREFu32_spec_attrs))
     -[] -[(int U32); (shr_ref ulft_0 (int U32))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asAddAssign_add_assign  : (spec_with _ _ Prop) :=
@@ -4165,7 +4165,7 @@ Definition trait_incl_of_u64asAddAssignREFu64_add_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asAddAssignREFu64_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U64)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u64asAddAssignREFu64_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U64)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u64asAddAssignREFu64_spec_attrs))
     -[] -[(int U64); (shr_ref ulft_0 (int U64))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asAddAssign_add_assign  : (spec_with _ _ Prop) :=
@@ -4179,7 +4179,7 @@ Definition trait_incl_of_u8asAddAssignREFu8_add_assign  : (spec_with _ _ Prop) :
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asAddAssignREFu8_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U8)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u8asAddAssignREFu8_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U8)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u8asAddAssignREFu8_spec_attrs))
     -[] -[(int U8); (shr_ref ulft_0 (int U8))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asAddAssign_add_assign  : (spec_with _ _ Prop) :=
@@ -4193,7 +4193,7 @@ Definition trait_incl_of_usizeasAddAssignREFusize_add_assign  : (spec_with _ _ P
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasAddAssignREFusize_add_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType USize)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (usizeasAddAssignREFusize_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((AddAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType USize)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (usizeasAddAssignREFusize_spec_attrs))
     -[] -[(int USize); (shr_ref ulft_0 (int USize))]).(AddAssign_add_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasAddAssign_add_assign  : (spec_with _ _ Prop) :=
@@ -4207,189 +4207,189 @@ Definition trait_incl_of_REFTasDeref_deref (T_rt: RT) (T_st: syn_type) (DropGlue
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
 Definition type_of_REFTasDeref_deref (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
-  spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Deref_base_spec ((place_rfnRT (T_rt))) ((T_rt)) (RefSynType) (T_st) ((drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt))))) (DropGlue_T_spec_attrs) ((REFTasDeref_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
+  spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Deref_base_spec ((place_rfnRT (T_rt))) ((T_rt)) (RefSynType) (T_st) ((drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt))))) (DropGlue_T_spec_attrs) ((REFTasDeref_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
     -[] -[(shr_ref ulft_0 T_ty); T_ty]).(Deref_deref_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFmutTasDeref_deref (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
 Definition type_of_REFmutTasDeref_deref (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
-  spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((Deref_base_spec (((place_rfnRT (T_rt)) * gname)%type) ((T_rt)) (RefSynType) (T_st) ((drop_glue_trivial_spec_attrs (((place_rfnRT (T_rt)) * gname)%type))) (DropGlue_T_spec_attrs) ((REFmutTasDeref_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
+  spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Deref_base_spec (((place_rfnRT (T_rt)) * gname)%type) ((T_rt)) (RefSynType) (T_st) ((drop_glue_trivial_spec_attrs (((place_rfnRT (T_rt)) * gname)%type))) (DropGlue_T_spec_attrs) ((REFmutTasDeref_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
     -[] -[(mut_ref ulft_0 T_ty); T_ty]).(Deref_deref_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi128asMulREFai128_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi128asMulREFai128_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi128asMulREFai128_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi128asMulREFai128_spec_attrs))
     -[] -[(shr_ref ulft_1 (int I128)); (shr_ref ulft_a (int I128)); (int I128)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi128asMuli128_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi128asMuli128_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I128)) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi128asMuli128_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I128)) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi128asMuli128_spec_attrs))
     -[] -[(shr_ref ulft_0 (int I128)); (int I128); (int I128)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi16asMulREFai16_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi16asMulREFai16_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi16asMulREFai16_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi16asMulREFai16_spec_attrs))
     -[] -[(shr_ref ulft_1 (int I16)); (shr_ref ulft_a (int I16)); (int I16)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi16asMuli16_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi16asMuli16_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I16)) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi16asMuli16_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I16)) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi16asMuli16_spec_attrs))
     -[] -[(shr_ref ulft_0 (int I16)); (int I16); (int I16)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi32asMulREFai32_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi32asMulREFai32_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi32asMulREFai32_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi32asMulREFai32_spec_attrs))
     -[] -[(shr_ref ulft_1 (int I32)); (shr_ref ulft_a (int I32)); (int I32)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi32asMuli32_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi32asMuli32_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I32)) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi32asMuli32_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I32)) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi32asMuli32_spec_attrs))
     -[] -[(shr_ref ulft_0 (int I32)); (int I32); (int I32)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi64asMulREFai64_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi64asMulREFai64_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi64asMulREFai64_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi64asMulREFai64_spec_attrs))
     -[] -[(shr_ref ulft_1 (int I64)); (shr_ref ulft_a (int I64)); (int I64)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi64asMuli64_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi64asMuli64_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I64)) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi64asMuli64_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I64)) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi64asMuli64_spec_attrs))
     -[] -[(shr_ref ulft_0 (int I64)); (int I64); (int I64)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi8asMulREFai8_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi8asMulREFai8_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi8asMulREFai8_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi8asMulREFai8_spec_attrs))
     -[] -[(shr_ref ulft_1 (int I8)); (shr_ref ulft_a (int I8)); (int I8)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi8asMuli8_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi8asMuli8_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I8)) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi8asMuli8_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I8)) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi8asMuli8_spec_attrs))
     -[] -[(shr_ref ulft_0 (int I8)); (int I8); (int I8)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFisizeasMulREFaisize_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFisizeasMulREFaisize_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFisizeasMulREFaisize_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFisizeasMulREFaisize_spec_attrs))
     -[] -[(shr_ref ulft_1 (int ISize)); (shr_ref ulft_a (int ISize)); (int ISize)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFisizeasMulisize_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFisizeasMulisize_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType ISize)) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFisizeasMulisize_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType ISize)) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFisizeasMulisize_spec_attrs))
     -[] -[(shr_ref ulft_0 (int ISize)); (int ISize); (int ISize)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu128asMulREFau128_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu128asMulREFau128_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu128asMulREFau128_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu128asMulREFau128_spec_attrs))
     -[] -[(shr_ref ulft_1 (int U128)); (shr_ref ulft_a (int U128)); (int U128)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu128asMulu128_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu128asMulu128_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U128)) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu128asMulu128_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U128)) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu128asMulu128_spec_attrs))
     -[] -[(shr_ref ulft_0 (int U128)); (int U128); (int U128)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu16asMulREFau16_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu16asMulREFau16_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu16asMulREFau16_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu16asMulREFau16_spec_attrs))
     -[] -[(shr_ref ulft_1 (int U16)); (shr_ref ulft_a (int U16)); (int U16)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu16asMulu16_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu16asMulu16_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U16)) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu16asMulu16_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U16)) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu16asMulu16_spec_attrs))
     -[] -[(shr_ref ulft_0 (int U16)); (int U16); (int U16)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu32asMulREFau32_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu32asMulREFau32_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu32asMulREFau32_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu32asMulREFau32_spec_attrs))
     -[] -[(shr_ref ulft_1 (int U32)); (shr_ref ulft_a (int U32)); (int U32)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu32asMulu32_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu32asMulu32_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U32)) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu32asMulu32_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U32)) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu32asMulu32_spec_attrs))
     -[] -[(shr_ref ulft_0 (int U32)); (int U32); (int U32)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu64asMulREFau64_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu64asMulREFau64_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu64asMulREFau64_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu64asMulREFau64_spec_attrs))
     -[] -[(shr_ref ulft_1 (int U64)); (shr_ref ulft_a (int U64)); (int U64)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu64asMulu64_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu64asMulu64_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U64)) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu64asMulu64_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U64)) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu64asMulu64_spec_attrs))
     -[] -[(shr_ref ulft_0 (int U64)); (int U64); (int U64)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu8asMulREFau8_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu8asMulREFau8_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu8asMulREFau8_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu8asMulREFau8_spec_attrs))
     -[] -[(shr_ref ulft_1 (int U8)); (shr_ref ulft_a (int U8)); (int U8)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu8asMulu8_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu8asMulu8_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U8)) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu8asMulu8_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U8)) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu8asMulu8_spec_attrs))
     -[] -[(shr_ref ulft_0 (int U8)); (int U8); (int U8)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFusizeasMulREFausize_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFusizeasMulREFausize_mul  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFusizeasMulREFausize_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Mul_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFusizeasMulREFausize_spec_attrs))
     -[] -[(shr_ref ulft_1 (int USize)); (shr_ref ulft_a (int USize)); (int USize)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFusizeasMulusize_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFusizeasMulusize_mul  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType USize)) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFusizeasMulusize_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Mul_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType USize)) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFusizeasMulusize_spec_attrs))
     -[] -[(shr_ref ulft_0 (int USize)); (int USize); (int USize)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asMulREFai128_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asMulREFai128_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I128)) (RefSynType) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i128asMulREFai128_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I128)) (RefSynType) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i128asMulREFai128_spec_attrs))
     -[] -[(int I128); (shr_ref ulft_a (int I128)); (int I128)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asMul_mul  : (spec_with _ _ Prop) :=
@@ -4403,7 +4403,7 @@ Definition trait_incl_of_i16asMulREFai16_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asMulREFai16_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I16)) (RefSynType) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i16asMulREFai16_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I16)) (RefSynType) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i16asMulREFai16_spec_attrs))
     -[] -[(int I16); (shr_ref ulft_a (int I16)); (int I16)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asMul_mul  : (spec_with _ _ Prop) :=
@@ -4417,7 +4417,7 @@ Definition trait_incl_of_i32asMulREFai32_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asMulREFai32_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I32)) (RefSynType) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i32asMulREFai32_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I32)) (RefSynType) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i32asMulREFai32_spec_attrs))
     -[] -[(int I32); (shr_ref ulft_a (int I32)); (int I32)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asMul_mul  : (spec_with _ _ Prop) :=
@@ -4431,7 +4431,7 @@ Definition trait_incl_of_i64asMulREFai64_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asMulREFai64_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I64)) (RefSynType) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i64asMulREFai64_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I64)) (RefSynType) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i64asMulREFai64_spec_attrs))
     -[] -[(int I64); (shr_ref ulft_a (int I64)); (int I64)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asMul_mul  : (spec_with _ _ Prop) :=
@@ -4445,7 +4445,7 @@ Definition trait_incl_of_i8asMulREFai8_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asMulREFai8_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I8)) (RefSynType) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i8asMulREFai8_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I8)) (RefSynType) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i8asMulREFai8_spec_attrs))
     -[] -[(int I8); (shr_ref ulft_a (int I8)); (int I8)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asMul_mul  : (spec_with _ _ Prop) :=
@@ -4459,7 +4459,7 @@ Definition trait_incl_of_isizeasMulREFaisize_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasMulREFaisize_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType ISize)) (RefSynType) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (isizeasMulREFaisize_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType ISize)) (RefSynType) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (isizeasMulREFaisize_spec_attrs))
     -[] -[(int ISize); (shr_ref ulft_a (int ISize)); (int ISize)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasMul_mul  : (spec_with _ _ Prop) :=
@@ -4473,7 +4473,7 @@ Definition trait_incl_of_u128asMulREFau128_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asMulREFau128_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U128)) (RefSynType) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u128asMulREFau128_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U128)) (RefSynType) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u128asMulREFau128_spec_attrs))
     -[] -[(int U128); (shr_ref ulft_a (int U128)); (int U128)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asMul_mul  : (spec_with _ _ Prop) :=
@@ -4487,7 +4487,7 @@ Definition trait_incl_of_u16asMulREFau16_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asMulREFau16_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U16)) (RefSynType) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u16asMulREFau16_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U16)) (RefSynType) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u16asMulREFau16_spec_attrs))
     -[] -[(int U16); (shr_ref ulft_a (int U16)); (int U16)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asMul_mul  : (spec_with _ _ Prop) :=
@@ -4501,7 +4501,7 @@ Definition trait_incl_of_u32asMulREFau32_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asMulREFau32_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U32)) (RefSynType) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u32asMulREFau32_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U32)) (RefSynType) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u32asMulREFau32_spec_attrs))
     -[] -[(int U32); (shr_ref ulft_a (int U32)); (int U32)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asMul_mul  : (spec_with _ _ Prop) :=
@@ -4515,7 +4515,7 @@ Definition trait_incl_of_u64asMulREFau64_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asMulREFau64_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U64)) (RefSynType) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u64asMulREFau64_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U64)) (RefSynType) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u64asMulREFau64_spec_attrs))
     -[] -[(int U64); (shr_ref ulft_a (int U64)); (int U64)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asMul_mul  : (spec_with _ _ Prop) :=
@@ -4529,7 +4529,7 @@ Definition trait_incl_of_u8asMulREFau8_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asMulREFau8_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U8)) (RefSynType) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u8asMulREFau8_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U8)) (RefSynType) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u8asMulREFau8_spec_attrs))
     -[] -[(int U8); (shr_ref ulft_a (int U8)); (int U8)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asMul_mul  : (spec_with _ _ Prop) :=
@@ -4543,7 +4543,7 @@ Definition trait_incl_of_usizeasMulREFausize_mul  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasMulREFausize_mul  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType USize)) (RefSynType) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (usizeasMulREFausize_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Mul_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType USize)) (RefSynType) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (usizeasMulREFausize_spec_attrs))
     -[] -[(int USize); (shr_ref ulft_a (int USize)); (int USize)]).(Mul_mul_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasMul_mul  : (spec_with _ _ Prop) :=
@@ -4557,7 +4557,7 @@ Definition trait_incl_of_i128asMulAssignREFi128_mul_assign  : (spec_with _ _ Pro
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asMulAssignREFi128_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I128)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i128asMulAssignREFi128_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I128)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i128asMulAssignREFi128_spec_attrs))
     -[] -[(int I128); (shr_ref ulft_0 (int I128))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
@@ -4571,7 +4571,7 @@ Definition trait_incl_of_i16asMulAssignREFi16_mul_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asMulAssignREFi16_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I16)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i16asMulAssignREFi16_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I16)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i16asMulAssignREFi16_spec_attrs))
     -[] -[(int I16); (shr_ref ulft_0 (int I16))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
@@ -4585,7 +4585,7 @@ Definition trait_incl_of_i32asMulAssignREFi32_mul_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asMulAssignREFi32_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I32)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i32asMulAssignREFi32_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I32)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i32asMulAssignREFi32_spec_attrs))
     -[] -[(int I32); (shr_ref ulft_0 (int I32))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
@@ -4599,7 +4599,7 @@ Definition trait_incl_of_i64asMulAssignREFi64_mul_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asMulAssignREFi64_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I64)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i64asMulAssignREFi64_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I64)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i64asMulAssignREFi64_spec_attrs))
     -[] -[(int I64); (shr_ref ulft_0 (int I64))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
@@ -4613,7 +4613,7 @@ Definition trait_incl_of_i8asMulAssignREFi8_mul_assign  : (spec_with _ _ Prop) :
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asMulAssignREFi8_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I8)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i8asMulAssignREFi8_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I8)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i8asMulAssignREFi8_spec_attrs))
     -[] -[(int I8); (shr_ref ulft_0 (int I8))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
@@ -4627,7 +4627,7 @@ Definition trait_incl_of_isizeasMulAssignREFisize_mul_assign  : (spec_with _ _ P
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasMulAssignREFisize_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType ISize)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (isizeasMulAssignREFisize_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType ISize)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (isizeasMulAssignREFisize_spec_attrs))
     -[] -[(int ISize); (shr_ref ulft_0 (int ISize))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasMulAssign_mul_assign  : (spec_with _ _ Prop) :=
@@ -4641,7 +4641,7 @@ Definition trait_incl_of_u128asMulAssignREFu128_mul_assign  : (spec_with _ _ Pro
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asMulAssignREFu128_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U128)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u128asMulAssignREFu128_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U128)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u128asMulAssignREFu128_spec_attrs))
     -[] -[(int U128); (shr_ref ulft_0 (int U128))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
@@ -4655,7 +4655,7 @@ Definition trait_incl_of_u16asMulAssignREFu16_mul_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asMulAssignREFu16_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U16)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u16asMulAssignREFu16_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U16)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u16asMulAssignREFu16_spec_attrs))
     -[] -[(int U16); (shr_ref ulft_0 (int U16))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
@@ -4669,7 +4669,7 @@ Definition trait_incl_of_u32asMulAssignREFu32_mul_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asMulAssignREFu32_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U32)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u32asMulAssignREFu32_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U32)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u32asMulAssignREFu32_spec_attrs))
     -[] -[(int U32); (shr_ref ulft_0 (int U32))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
@@ -4683,7 +4683,7 @@ Definition trait_incl_of_u64asMulAssignREFu64_mul_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asMulAssignREFu64_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U64)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u64asMulAssignREFu64_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U64)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u64asMulAssignREFu64_spec_attrs))
     -[] -[(int U64); (shr_ref ulft_0 (int U64))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
@@ -4697,7 +4697,7 @@ Definition trait_incl_of_u8asMulAssignREFu8_mul_assign  : (spec_with _ _ Prop) :
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asMulAssignREFu8_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U8)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u8asMulAssignREFu8_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U8)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u8asMulAssignREFu8_spec_attrs))
     -[] -[(int U8); (shr_ref ulft_0 (int U8))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asMulAssign_mul_assign  : (spec_with _ _ Prop) :=
@@ -4711,7 +4711,7 @@ Definition trait_incl_of_usizeasMulAssignREFusize_mul_assign  : (spec_with _ _ P
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasMulAssignREFusize_mul_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType USize)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (usizeasMulAssignREFusize_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((MulAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType USize)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (usizeasMulAssignREFusize_spec_attrs))
     -[] -[(int USize); (shr_ref ulft_0 (int USize))]).(MulAssign_mul_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasMulAssign_mul_assign  : (spec_with _ _ Prop) :=
@@ -4725,175 +4725,175 @@ Definition trait_incl_of_REFi128asSubREFai128_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi128asSubREFai128_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi128asSubREFai128_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi128asSubREFai128_spec_attrs))
     -[] -[(shr_ref ulft_1 (int I128)); (shr_ref ulft_a (int I128)); (int I128)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi128asSubi128_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi128asSubi128_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I128)) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi128asSubi128_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I128)) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi128asSubi128_spec_attrs))
     -[] -[(shr_ref ulft_0 (int I128)); (int I128); (int I128)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi16asSubREFai16_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi16asSubREFai16_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi16asSubREFai16_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi16asSubREFai16_spec_attrs))
     -[] -[(shr_ref ulft_1 (int I16)); (shr_ref ulft_a (int I16)); (int I16)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi16asSubi16_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi16asSubi16_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I16)) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi16asSubi16_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I16)) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi16asSubi16_spec_attrs))
     -[] -[(shr_ref ulft_0 (int I16)); (int I16); (int I16)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi32asSubREFai32_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi32asSubREFai32_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi32asSubREFai32_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi32asSubREFai32_spec_attrs))
     -[] -[(shr_ref ulft_1 (int I32)); (shr_ref ulft_a (int I32)); (int I32)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi32asSubi32_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi32asSubi32_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I32)) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi32asSubi32_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I32)) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi32asSubi32_spec_attrs))
     -[] -[(shr_ref ulft_0 (int I32)); (int I32); (int I32)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi64asSubREFai64_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi64asSubREFai64_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi64asSubREFai64_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi64asSubREFai64_spec_attrs))
     -[] -[(shr_ref ulft_1 (int I64)); (shr_ref ulft_a (int I64)); (int I64)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi64asSubi64_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi64asSubi64_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I64)) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi64asSubi64_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I64)) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi64asSubi64_spec_attrs))
     -[] -[(shr_ref ulft_0 (int I64)); (int I64); (int I64)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi8asSubREFai8_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi8asSubREFai8_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi8asSubREFai8_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFi8asSubREFai8_spec_attrs))
     -[] -[(shr_ref ulft_1 (int I8)); (shr_ref ulft_a (int I8)); (int I8)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFi8asSubi8_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFi8asSubi8_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I8)) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi8asSubi8_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType I8)) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFi8asSubi8_spec_attrs))
     -[] -[(shr_ref ulft_0 (int I8)); (int I8); (int I8)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFisizeasSubREFaisize_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFisizeasSubREFaisize_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFisizeasSubREFaisize_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFisizeasSubREFaisize_spec_attrs))
     -[] -[(shr_ref ulft_1 (int ISize)); (shr_ref ulft_a (int ISize)); (int ISize)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFisizeasSubisize_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFisizeasSubisize_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType ISize)) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFisizeasSubisize_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType ISize)) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFisizeasSubisize_spec_attrs))
     -[] -[(shr_ref ulft_0 (int ISize)); (int ISize); (int ISize)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu128asSubREFau128_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu128asSubREFau128_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu128asSubREFau128_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu128asSubREFau128_spec_attrs))
     -[] -[(shr_ref ulft_1 (int U128)); (shr_ref ulft_a (int U128)); (int U128)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu128asSubu128_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu128asSubu128_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U128)) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu128asSubu128_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U128)) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu128asSubu128_spec_attrs))
     -[] -[(shr_ref ulft_0 (int U128)); (int U128); (int U128)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu16asSubREFau16_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu16asSubREFau16_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu16asSubREFau16_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu16asSubREFau16_spec_attrs))
     -[] -[(shr_ref ulft_1 (int U16)); (shr_ref ulft_a (int U16)); (int U16)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu16asSubu16_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu16asSubu16_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U16)) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu16asSubu16_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U16)) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu16asSubu16_spec_attrs))
     -[] -[(shr_ref ulft_0 (int U16)); (int U16); (int U16)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu32asSubREFau32_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu32asSubREFau32_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu32asSubREFau32_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu32asSubREFau32_spec_attrs))
     -[] -[(shr_ref ulft_1 (int U32)); (shr_ref ulft_a (int U32)); (int U32)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu32asSubu32_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu32asSubu32_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U32)) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu32asSubu32_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U32)) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu32asSubu32_spec_attrs))
     -[] -[(shr_ref ulft_0 (int U32)); (int U32); (int U32)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu64asSubREFau64_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu64asSubREFau64_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu64asSubREFau64_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu64asSubREFau64_spec_attrs))
     -[] -[(shr_ref ulft_1 (int U64)); (shr_ref ulft_a (int U64)); (int U64)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu64asSubu64_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu64asSubu64_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U64)) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu64asSubu64_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U64)) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu64asSubu64_spec_attrs))
     -[] -[(shr_ref ulft_0 (int U64)); (int U64); (int U64)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu8asSubREFau8_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu8asSubREFau8_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu8asSubREFau8_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFu8asSubREFau8_spec_attrs))
     -[] -[(shr_ref ulft_1 (int U8)); (shr_ref ulft_a (int U8)); (int U8)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFu8asSubu8_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFu8asSubu8_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U8)) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu8asSubu8_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType U8)) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFu8asSubu8_spec_attrs))
     -[] -[(shr_ref ulft_0 (int U8)); (int U8); (int U8)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFusizeasSubREFausize_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFusizeasSubREFausize_sub  :=
-  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFusizeasSubREFausize_spec_attrs))
+  spec! ( *[ulft_a; ulft_1]) : 2 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a); (ϝ, ulft_1)]) (((Sub_base_spec ((place_rfnRT Z)) ((place_rfnRT Z)) (Z) (RefSynType) (RefSynType) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (REFusizeasSubREFausize_spec_attrs))
     -[] -[(shr_ref ulft_1 (int USize)); (shr_ref ulft_a (int USize)); (int USize)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_REFusizeasSubusize_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_REFusizeasSubusize_sub  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType USize)) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFusizeasSubusize_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Sub_base_spec ((place_rfnRT Z)) (Z) (Z) (RefSynType) ((IntSynType USize)) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs (Z))) (REFusizeasSubusize_spec_attrs))
     -[] -[(shr_ref ulft_0 (int USize)); (int USize); (int USize)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asSubREFai128_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asSubREFai128_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I128)) (RefSynType) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i128asSubREFai128_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I128)) (RefSynType) ((IntSynType I128)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i128asSubREFai128_spec_attrs))
     -[] -[(int I128); (shr_ref ulft_a (int I128)); (int I128)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asSub_sub  : (spec_with _ _ Prop) :=
@@ -4907,7 +4907,7 @@ Definition trait_incl_of_i16asSubREFai16_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asSubREFai16_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I16)) (RefSynType) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i16asSubREFai16_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I16)) (RefSynType) ((IntSynType I16)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i16asSubREFai16_spec_attrs))
     -[] -[(int I16); (shr_ref ulft_a (int I16)); (int I16)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asSub_sub  : (spec_with _ _ Prop) :=
@@ -4921,7 +4921,7 @@ Definition trait_incl_of_i32asSubREFai32_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asSubREFai32_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I32)) (RefSynType) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i32asSubREFai32_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I32)) (RefSynType) ((IntSynType I32)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i32asSubREFai32_spec_attrs))
     -[] -[(int I32); (shr_ref ulft_a (int I32)); (int I32)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asSub_sub  : (spec_with _ _ Prop) :=
@@ -4935,7 +4935,7 @@ Definition trait_incl_of_i64asSubREFai64_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asSubREFai64_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I64)) (RefSynType) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i64asSubREFai64_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I64)) (RefSynType) ((IntSynType I64)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i64asSubREFai64_spec_attrs))
     -[] -[(int I64); (shr_ref ulft_a (int I64)); (int I64)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asSub_sub  : (spec_with _ _ Prop) :=
@@ -4949,7 +4949,7 @@ Definition trait_incl_of_i8asSubREFai8_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asSubREFai8_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I8)) (RefSynType) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i8asSubREFai8_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType I8)) (RefSynType) ((IntSynType I8)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (i8asSubREFai8_spec_attrs))
     -[] -[(int I8); (shr_ref ulft_a (int I8)); (int I8)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asSub_sub  : (spec_with _ _ Prop) :=
@@ -4963,7 +4963,7 @@ Definition trait_incl_of_isizeasSubREFaisize_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasSubREFaisize_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType ISize)) (RefSynType) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (isizeasSubREFaisize_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType ISize)) (RefSynType) ((IntSynType ISize)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (isizeasSubREFaisize_spec_attrs))
     -[] -[(int ISize); (shr_ref ulft_a (int ISize)); (int ISize)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasSub_sub  : (spec_with _ _ Prop) :=
@@ -4977,7 +4977,7 @@ Definition trait_incl_of_u128asSubREFau128_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asSubREFau128_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U128)) (RefSynType) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u128asSubREFau128_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U128)) (RefSynType) ((IntSynType U128)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u128asSubREFau128_spec_attrs))
     -[] -[(int U128); (shr_ref ulft_a (int U128)); (int U128)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asSub_sub  : (spec_with _ _ Prop) :=
@@ -4991,7 +4991,7 @@ Definition trait_incl_of_u16asSubREFau16_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asSubREFau16_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U16)) (RefSynType) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u16asSubREFau16_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U16)) (RefSynType) ((IntSynType U16)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u16asSubREFau16_spec_attrs))
     -[] -[(int U16); (shr_ref ulft_a (int U16)); (int U16)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asSub_sub  : (spec_with _ _ Prop) :=
@@ -5005,7 +5005,7 @@ Definition trait_incl_of_u32asSubREFau32_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asSubREFau32_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U32)) (RefSynType) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u32asSubREFau32_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U32)) (RefSynType) ((IntSynType U32)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u32asSubREFau32_spec_attrs))
     -[] -[(int U32); (shr_ref ulft_a (int U32)); (int U32)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asSub_sub  : (spec_with _ _ Prop) :=
@@ -5019,7 +5019,7 @@ Definition trait_incl_of_u64asSubREFau64_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asSubREFau64_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U64)) (RefSynType) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u64asSubREFau64_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U64)) (RefSynType) ((IntSynType U64)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u64asSubREFau64_spec_attrs))
     -[] -[(int U64); (shr_ref ulft_a (int U64)); (int U64)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asSub_sub  : (spec_with _ _ Prop) :=
@@ -5033,7 +5033,7 @@ Definition trait_incl_of_u8asSubREFau8_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asSubREFau8_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U8)) (RefSynType) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u8asSubREFau8_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType U8)) (RefSynType) ((IntSynType U8)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (u8asSubREFau8_spec_attrs))
     -[] -[(int U8); (shr_ref ulft_a (int U8)); (int U8)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asSub_sub  : (spec_with _ _ Prop) :=
@@ -5047,7 +5047,7 @@ Definition trait_incl_of_usizeasSubREFausize_sub  : (spec_with _ _ Prop) :=
   spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasSubREFausize_sub  :=
-  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType USize)) (RefSynType) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (usizeasSubREFausize_spec_attrs))
+  spec! ( *[ulft_a]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_a)]) (((Sub_base_spec (Z) ((place_rfnRT Z)) (Z) ((IntSynType USize)) (RefSynType) ((IntSynType USize)) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) ((drop_glue_trivial_spec_attrs (Z))) (usizeasSubREFausize_spec_attrs))
     -[] -[(int USize); (shr_ref ulft_a (int USize)); (int USize)]).(Sub_sub_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasSub_sub  : (spec_with _ _ Prop) :=
@@ -5061,7 +5061,7 @@ Definition trait_incl_of_i128asSubAssignREFi128_sub_assign  : (spec_with _ _ Pro
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i128asSubAssignREFi128_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I128)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i128asSubAssignREFi128_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I128)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i128asSubAssignREFi128_spec_attrs))
     -[] -[(int I128); (shr_ref ulft_0 (int I128))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i128asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
@@ -5075,7 +5075,7 @@ Definition trait_incl_of_i16asSubAssignREFi16_sub_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i16asSubAssignREFi16_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I16)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i16asSubAssignREFi16_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I16)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i16asSubAssignREFi16_spec_attrs))
     -[] -[(int I16); (shr_ref ulft_0 (int I16))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i16asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
@@ -5089,7 +5089,7 @@ Definition trait_incl_of_i32asSubAssignREFi32_sub_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i32asSubAssignREFi32_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I32)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i32asSubAssignREFi32_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I32)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i32asSubAssignREFi32_spec_attrs))
     -[] -[(int I32); (shr_ref ulft_0 (int I32))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i32asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
@@ -5103,7 +5103,7 @@ Definition trait_incl_of_i64asSubAssignREFi64_sub_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i64asSubAssignREFi64_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I64)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i64asSubAssignREFi64_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I64)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i64asSubAssignREFi64_spec_attrs))
     -[] -[(int I64); (shr_ref ulft_0 (int I64))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i64asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
@@ -5117,7 +5117,7 @@ Definition trait_incl_of_i8asSubAssignREFi8_sub_assign  : (spec_with _ _ Prop) :
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_i8asSubAssignREFi8_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I8)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i8asSubAssignREFi8_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType I8)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (i8asSubAssignREFi8_spec_attrs))
     -[] -[(int I8); (shr_ref ulft_0 (int I8))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_i8asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
@@ -5131,7 +5131,7 @@ Definition trait_incl_of_isizeasSubAssignREFisize_sub_assign  : (spec_with _ _ P
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_isizeasSubAssignREFisize_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType ISize)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (isizeasSubAssignREFisize_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType ISize)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (isizeasSubAssignREFisize_spec_attrs))
     -[] -[(int ISize); (shr_ref ulft_0 (int ISize))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_isizeasSubAssign_sub_assign  : (spec_with _ _ Prop) :=
@@ -5145,7 +5145,7 @@ Definition trait_incl_of_u128asSubAssignREFu128_sub_assign  : (spec_with _ _ Pro
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u128asSubAssignREFu128_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U128)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u128asSubAssignREFu128_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U128)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u128asSubAssignREFu128_spec_attrs))
     -[] -[(int U128); (shr_ref ulft_0 (int U128))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u128asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
@@ -5159,7 +5159,7 @@ Definition trait_incl_of_u16asSubAssignREFu16_sub_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u16asSubAssignREFu16_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U16)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u16asSubAssignREFu16_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U16)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u16asSubAssignREFu16_spec_attrs))
     -[] -[(int U16); (shr_ref ulft_0 (int U16))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u16asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
@@ -5173,7 +5173,7 @@ Definition trait_incl_of_u32asSubAssignREFu32_sub_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u32asSubAssignREFu32_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U32)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u32asSubAssignREFu32_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U32)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u32asSubAssignREFu32_spec_attrs))
     -[] -[(int U32); (shr_ref ulft_0 (int U32))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u32asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
@@ -5187,7 +5187,7 @@ Definition trait_incl_of_u64asSubAssignREFu64_sub_assign  : (spec_with _ _ Prop)
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u64asSubAssignREFu64_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U64)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u64asSubAssignREFu64_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U64)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u64asSubAssignREFu64_spec_attrs))
     -[] -[(int U64); (shr_ref ulft_0 (int U64))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u64asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
@@ -5201,7 +5201,7 @@ Definition trait_incl_of_u8asSubAssignREFu8_sub_assign  : (spec_with _ _ Prop) :
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_u8asSubAssignREFu8_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U8)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u8asSubAssignREFu8_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType U8)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (u8asSubAssignREFu8_spec_attrs))
     -[] -[(int U8); (shr_ref ulft_0 (int U8))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_u8asSubAssign_sub_assign  : (spec_with _ _ Prop) :=
@@ -5215,7 +5215,7 @@ Definition trait_incl_of_usizeasSubAssignREFusize_sub_assign  : (spec_with _ _ P
   spec! ( *[ulft_1; ulft_2]) : 2 | ( *[]) : ([] : list RT), (True).
 
 Definition type_of_usizeasSubAssignREFusize_sub_assign  :=
-  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, []) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType USize)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (usizeasSubAssignREFusize_spec_attrs))
+  spec! ( *[ulft_0]) : 1 | ( *[]) : ([] : list RT),(λ a b, scope_add_typarams _ -[] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((SubAssign_base_spec (Z) ((place_rfnRT Z)) ((IntSynType USize)) (RefSynType) ((drop_glue_trivial_spec_attrs (Z))) ((drop_glue_trivial_spec_attrs ((place_rfnRT Z)))) (usizeasSubAssignREFusize_spec_attrs))
     -[] -[(int USize); (shr_ref ulft_0 (int USize))]).(SubAssign_sub_assign_spec)   a b))) <MERGE!>.
 
 Definition trait_incl_of_usizeasSubAssign_sub_assign  : (spec_with _ _ Prop) :=
@@ -5230,7 +5230,7 @@ Definition trait_incl_of_REFmutTasDerefMut_deref_mut (T_rt: RT) (T_st: syn_type)
   spec! ( *[ulft_1; ulft_a]) : 2 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
 Definition type_of_REFmutTasDerefMut_deref_mut (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
-  spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, []) (((DerefMut_base_spec (((place_rfnRT (T_rt)) * gname)%type) ((T_rt)) (RefSynType) (T_st) ((REFmutTasDeref_spec_attrs ((T_rt)) (DropGlue_T_spec_attrs))) ((drop_glue_trivial_spec_attrs (((place_rfnRT (T_rt)) * gname)%type))) (DropGlue_T_spec_attrs) ((REFmutTasDerefMut_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
+  spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((DerefMut_base_spec (((place_rfnRT (T_rt)) * gname)%type) ((T_rt)) (RefSynType) (T_st) ((REFmutTasDeref_spec_attrs ((T_rt)) (DropGlue_T_spec_attrs))) ((drop_glue_trivial_spec_attrs (((place_rfnRT (T_rt)) * gname)%type))) (DropGlue_T_spec_attrs) ((REFmutTasDerefMut_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
     -[] -[(mut_ref ulft_0 T_ty); T_ty]).(DerefMut_deref_mut_spec)   a b))) <MERGE!>.
 
 

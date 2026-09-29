@@ -62,6 +62,30 @@
     },
     {
       "kind": "method",
+      "name": "Option_T_as_mut",
+      "path": [
+        "core",
+        "option",
+        "Option",
+        "as_mut"
+      ],
+      "spec": "type_of_Option_T_as_mut",
+      "trait_req_incl": "trait_incl_of_Option_T_as_mut"
+    },
+    {
+      "kind": "method",
+      "name": "Option_T_as_ref",
+      "path": [
+        "core",
+        "option",
+        "Option",
+        "as_ref"
+      ],
+      "spec": "type_of_Option_T_as_ref",
+      "trait_req_incl": "trait_incl_of_Option_T_as_ref"
+    },
+    {
+      "kind": "method",
       "name": "Option_T_filter",
       "path": [
         "core",
@@ -167,6 +191,18 @@
       ],
       "spec": "type_of_Option_T_unwrap_or",
       "trait_req_incl": "trait_incl_of_Option_T_unwrap_or"
+    },
+    {
+      "kind": "method",
+      "name": "Option_T_unwrap_unchecked",
+      "path": [
+        "core",
+        "option",
+        "Option",
+        "unwrap_unchecked"
+      ],
+      "spec": "type_of_Option_T_unwrap_unchecked",
+      "trait_req_incl": "trait_incl_of_Option_T_unwrap_unchecked"
     },
     {
       "for_type": {

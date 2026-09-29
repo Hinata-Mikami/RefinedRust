@@ -80,7 +80,7 @@ Program Definition drop_glue_rwlock_RwLock_def (drop_glue_UnsafeCell_T_loc: loc)
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -107,7 +107,7 @@ Program Definition drop_glue_rwlock_RwLockWriteGuard_def (DropGlue_R_drop_glue_l
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 

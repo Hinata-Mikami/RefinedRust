@@ -45,7 +45,60 @@ Program Definition nonnull_NonNullTasstd_clone_Clone_clone_def (T_st: syn_type) 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition nonnull_NonNull_T_as_mut_def (nonnull_NonNull_T_as_ptr_T_loc: loc) (T_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("self", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ RefSynType } "__0";
+      annot{ 1 }: CopyLftNameAnnot "plft9" "ulft_2"; (* initialization *)
+      local_live{ RefSynType } "__2";
+      local_live{ RefSynType } "__3";
+      local_live{ RefSynType } "__4";
+      local_live{ PtrSynType } "__5";
+      local_live{ (nonnull_NonNull_st (T_st)) } "__6";
+      "__6" <-{ (use_op_alg' (nonnull_NonNull_st (T_st))) } copy{ (use_op_alg' (nonnull_NonNull_st (T_st))) } (!{ RefOp } ( "self" ));
+      CallS nonnull_NonNull_T_as_ptr_T_loc [] [RSTTyVar "T"] [@{expr} move{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("__6")] (Some (Na1Ord, PtrOp, "__5"))
+      ( Goto "_bb1")
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
+     ]>%E $
+     <[
+     "_bb1" :=
+      local_dead "__6";
+      annot{ 1 }: UnconstrainedLftAnnot "vuclft4"; (* assignment (unconstrained) *)
+      "__4" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "T"), "vuclft4" } (!{ PtrOp } ( "__5" ));
+      annot{ 1 }: CopyLftNameAnnot "plft12" "vuclft4"; (* post-assignment *)
+      annot{ 1 }: StartLftAnnot "llft5" ["plft12"]; (* borrow *)
+      "__3" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "T"), "llft5" } (!{ RefOp } ( "__4" ));
+      annot{ 1 }: CopyLftNameAnnot "plft11" "llft5"; (* post-assignment *)
+      local_dead "__5";
+      local_dead "__4";
+      annot{ 1 }: StartLftAnnot "llft6" ["plft11"]; (* borrow *)
+      "__2" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "T"), "llft6" } (!{ RefOp } ( "__3" ));
+      annot{ 1 }: CopyLftNameAnnot "plft10" "llft6"; (* post-assignment *)
+      local_dead "__3";
+      annot{ 1 }: StartLftAnnot "llft7" ["plft10"]; (* borrow *)
+      "__0" <-{ RefOp } &ref{ Mut, Some (RSTTyVar "T"), "llft7" } (!{ RefOp } ( "__2" ));
+      annot{ 1 }: CopyLftNameAnnot "plft8" "llft7"; (* post-assignment *)
+      local_dead "__2";
+      annot{ 1 }: ExtendLftAnnot "plft8"; (* return *)
+      return (move{ RefOp } ("__0"))
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -73,7 +126,59 @@ Program Definition nonnull_NonNull_T_as_ptr_def (T_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+
+
+
+Program Definition nonnull_NonNull_T_as_ref_def (mut_ptr_cast_const_T_loc: loc) (nonnull_NonNull_T_as_ptr_T_loc: loc) (T_st: syn_type) : function :=
+  {|
+     f_args := [
+      ("self", void* : layout)
+     ];
+     f_code :=
+      <[
+     "_bb0" :=
+      local_live{ RefSynType } "__0";
+      annot{ 1 }: CopyLftNameAnnot "plft7" "ulft_2"; (* initialization *)
+      local_live{ RefSynType } "__2";
+      local_live{ PtrSynType } "__3";
+      local_live{ PtrSynType } "__4";
+      local_live{ (nonnull_NonNull_st (T_st)) } "__5";
+      "__5" <-{ (use_op_alg' (nonnull_NonNull_st (T_st))) } copy{ (use_op_alg' (nonnull_NonNull_st (T_st))) } (!{ RefOp } ( "self" ));
+      CallS nonnull_NonNull_T_as_ptr_T_loc [] [RSTTyVar "T"] [@{expr} move{ (use_op_alg' (nonnull_NonNull_st (T_st))) } ("__5")] (Some (Na1Ord, PtrOp, "__4"))
+      ( Goto "_bb1")
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
+     ]>%E $
+     <[
+     "_bb1" :=
+      local_dead "__5";
+      CallS mut_ptr_cast_const_T_loc [] [RSTTyVar "T"] [@{expr} move{ PtrOp } ("__4")] (Some (Na1Ord, PtrOp, "__3"))
+      ( Goto "_bb2")
+      ( annot{ 1 }: UnwindFreeAnnot; (* unwind condition is False *)
+       Unwind)
+     ]>%E $
+     <[
+     "_bb2" :=
+      local_dead "__4";
+      annot{ 1 }: UnconstrainedLftAnnot "vuclft4"; (* assignment (unconstrained) *)
+      "__2" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vuclft4" } (!{ PtrOp } ( "__3" ));
+      annot{ 1 }: CopyLftNameAnnot "plft8" "vuclft4"; (* post-assignment *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft8"; (* borrow *)
+      "__0" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "T"), "vlft5" } (!{ RefOp } ( "__2" ));
+      annot{ 1 }: CopyLftNameAnnot "plft6" "vlft5"; (* post-assignment *)
+      local_dead "__3";
+      local_dead "__2";
+      annot{ 1 }: ExtendLftAnnot "plft6"; (* return *)
+      return (move{ RefOp } ("__0"))
+     ]>%E $
+      ∅;
+     f_init := "_bb0";
+    |}.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -116,7 +221,7 @@ Program Definition nonnull_NonNull_T_cast_def (nonnull_NonNull_T_as_ptr_T_loc: l
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -156,7 +261,7 @@ Program Definition nonnull_NonNull_T_is_aligned_def (mut_ptr_is_aligned_T_loc: l
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -200,7 +305,7 @@ Program Definition nonnull_NonNull_T_is_aligned_to_def (mut_ptr_is_aligned_to_T_
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -263,7 +368,7 @@ Program Definition nonnull_NonNull_T_new_def (mut_ptr_is_null_T_loc: loc) (nonnu
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -297,7 +402,7 @@ Program Definition nonnull_NonNull_T_new_unchecked_def (T_st: syn_type) : functi
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -340,7 +445,7 @@ Program Definition nonnull_NonNull_T_read_def (nonnull_NonNull_T_as_ptr_T_loc: l
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -383,7 +488,7 @@ Program Definition nonnull_NonNull_T_read_volatile_def (nonnull_NonNull_T_as_ptr
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -448,7 +553,7 @@ Program Definition nonnull_NonNull_T_write_def (DropGlue_T_drop_glue_loc: loc) (
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -513,7 +618,7 @@ Program Definition nonnull_NonNull_T_write_volatile_def (DropGlue_T_drop_glue_lo
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -536,7 +641,7 @@ Program Definition unique_UniqueTasstd_clone_Clone_clone_def (T_st: syn_type) : 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -558,7 +663,7 @@ Program Definition unique_Unique_T_as_ptr_def (T_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -595,7 +700,7 @@ Program Definition unique_Unique_T_dangling_def (dangling_mut_T_loc: loc) (uniqu
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -632,7 +737,7 @@ Program Definition unique_Unique_T_new_unchecked_def (nonnull_NonNull_T_new_unch
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 

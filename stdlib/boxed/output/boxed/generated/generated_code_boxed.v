@@ -63,7 +63,7 @@ Program Definition Box_TA_from_raw_in_def (DropGlue_A_drop_glue_loc: loc) (uniqu
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -128,7 +128,7 @@ Program Definition Box_TA_into_non_null_with_allocator_def (Box_TA_into_raw_with
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -162,7 +162,7 @@ Program Definition Box_T_from_raw_def (Box_TA_from_raw_in_T_std_alloc_Global_loc
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -206,7 +206,7 @@ Program Definition Box_T_into_non_null_def (Box_T_into_raw_T_loc: loc) (nonnull_
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -241,7 +241,7 @@ Program Definition Box_T_new_def (box_new_T_loc: loc) (T_st: syn_type) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -425,7 +425,7 @@ Program Definition box_new_def (DropGlue_T_drop_glue_loc: loc) (alloc_alloc_loc:
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -492,7 +492,7 @@ Program Definition drop_glue_Box_def (BoxTAasstd_ops_Drop_drop_T_A_loc: loc) (Dr
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 

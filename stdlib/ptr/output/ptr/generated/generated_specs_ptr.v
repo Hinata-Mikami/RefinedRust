@@ -806,7 +806,7 @@ Section alignment_AlignmentEnum_ty.
       solve_mk_enum_tag_consistent.
     Defined.
 
-    Next Obligation.
+    Final Obligation.
       solve_mk_enum_tag_inj_roundtrip.
     Defined.
 
@@ -877,7 +877,7 @@ Section alignment_Alignment_inv_t.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Program Definition alignment_Alignment_inv_t_inv_spec  : (spec_with 0 [] ((ex_inv_def (alignment_Alignment_rt)%type ((alignment_enum))%type))) :=
     spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
-          (λ π inner_rfn (_ty_rfn : RT_rt ((alignment_enum)%type : RT)),
+          (λ π (inner_rfn : alignment_Alignment_rt) (_ty_rfn : RT_rt ((alignment_enum)%type : RT)),
                   let 'x := _ty_rfn in ⌜inner_rfn = -[#(x)]⌝ ∗ True)%I
           (true)
           ([])
@@ -896,7 +896,7 @@ Section alignment_Alignment_inv_t.
     ex_t_solve_persistent.
   Qed.
 
-  Next Obligation.
+  Final Obligation.
     ex_plain_t_solve_shr_mono.
   Qed.
 
@@ -1763,7 +1763,7 @@ Definition type_of_mem_replace (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attr
       (* precondition. *) (λ π : thread_id, True) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, dest.cur @ T_ty;
-      (* postcondition *) (λ π : thread_id, (gvar_pobs dest.ghost (src))) |
+      (* postcondition *) (λ π : thread_id, (gvar_pobs dest.ghost ($# src))) |
       (* unwind cond... *) False |
       (* unwind post... *) (λ π : thread_id, True).
 

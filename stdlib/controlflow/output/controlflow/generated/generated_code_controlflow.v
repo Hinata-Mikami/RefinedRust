@@ -25,7 +25,7 @@ Section ControlFlow_els.
   Next Obligation. solve_enum_layout_spec_variants_nodup. Qed.
   Next Obligation. solve_enum_layout_spec_variants_eq. Qed.
   Next Obligation. solve_enum_layout_spec_discriminant_nodup. Qed.
-  Next Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.
+  Final Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.
   Global Typeclasses Opaque ControlFlow_els.
   Definition ControlFlow_st (B_st: syn_type) (C_st: syn_type) : syn_type := ControlFlow_els B_st C_st.
 End ControlFlow_els.
@@ -79,7 +79,7 @@ Program Definition ControlFlowBCasFromResidualControlFlowB_from_residual_def (pa
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -141,7 +141,7 @@ Program Definition ControlFlowBCasTry_branch_def (B_st: syn_type) (C_st: syn_typ
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -166,7 +166,7 @@ Program Definition ControlFlowBCasTry_from_output_def (B_st: syn_type) (C_st: sy
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -232,7 +232,7 @@ Program Definition ControlFlow_BC_break_value_def (drop_glue_ControlFlow_B_C_loc
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -254,7 +254,7 @@ Program Definition Tasconvert_FromT_from_def (T_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -289,7 +289,7 @@ Program Definition Tasconvert_IntoU_into_def (convert_From_U_T_from_loc: loc) (T
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -329,7 +329,7 @@ Program Definition drop_glue_ControlFlow_def (DropGlue_B_drop_glue_loc: loc) (Dr
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -351,7 +351,7 @@ Program Definition std_option_OptionTasFromResidual_from_residual_def (T_st: syn
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -404,7 +404,7 @@ Program Definition std_option_OptionTasTry_branch_def (T_st: syn_type) : functio
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -429,7 +429,7 @@ Program Definition std_option_OptionTasTry_from_output_def (T_st: syn_type) : fu
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -491,7 +491,7 @@ Program Definition std_result_ResultTEasTry_branch_def (T_st: syn_type) (E_st: s
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -516,7 +516,7 @@ Program Definition std_result_ResultTEasTry_from_output_def (T_st: syn_type) (E_
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -578,7 +578,7 @@ Program Definition std_result_ResultTFasFromResidualstd_result_ResultE_from_resi
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 

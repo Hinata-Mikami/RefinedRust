@@ -25,6 +25,14 @@ Definition Copy_semantic_interp `{RRGS : !(refinedrustGS Σ)} (Self_rt: RT) (Sel
   Copyable Self_ty.
 Section attrs.
 Context `{RRGS : !refinedrustGS Σ}.
+Program Definition REFTasClone_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) : ((Clone_spec_attrs ((place_rfnRT (T_rt))))) :=
+  mk_Clone_spec_attrs.
+
+
+End attrs.
+
+Section attrs.
+Context `{RRGS : !refinedrustGS Σ}.
 Program Definition constTasClone_spec_attrs `{RRGS : !(refinedrustGS Σ)} (T_rt: RT) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) : ((Clone_spec_attrs (loc))) :=
   mk_Clone_spec_attrs.
 
@@ -437,6 +445,13 @@ End Copy_trait_req_incls.
 Section specs.
 Context `{RRGS : !refinedrustGS Σ}.
 
+Definition trait_incl_of_REFTasClone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
+  spec! ( *[ulft_1; ulft_2]) : 2 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
+
+Definition type_of_REFTasClone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) :=
+  spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT),(λ a b, scope_add_typarams _ -[T_ty] (scope_add_elctx (λ ϝ, [(ϝ, ulft_0)]) (((Clone_base_spec ((place_rfnRT (T_rt))) (RefSynType) ((drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt))))) ((REFTasClone_spec_attrs (T_rt) (DropGlue_T_spec_attrs))))
+    -[] -[(shr_ref ulft_0 T_ty)]).(Clone_clone_spec)   a b))) <MERGE!>.
+
 Definition trait_incl_of_constTasClone_clone (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) (DropGlue_T_spec: (spec_with 0 [] (DropGlue_spec (RRGS:=RRGS) (T_rt)))) : (spec_with _ _ Prop) :=
   spec! ( *[ulft_1]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), ((trait_incl_marker (lift_trait_incl DropGlue_spec_incl DropGlue_T_spec (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), DropGlue_base_spec (T_rt) T_st DropGlue_T_spec_attrs-[] -[T_ty])))).
 
@@ -560,6 +575,22 @@ Definition type_of_std_marker_PhantomDataTasClone_clone (T_rt: RT) (T_st: syn_ty
 
 
 End specs.
+Section REFTasClone_spec.
+  Context `{RRGS : !(refinedrustGS Σ)}.
+  Definition REFTasClone_spec (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) : (spec_with _ _ (Clone_spec ((place_rfnRT (T_rt))))) :=
+    spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), {|
+        Clone_clone_spec  :=
+          (type_of_REFTasClone_clone ((T_rt)) (T_st)) DropGlue_T_spec_attrs 
+             <TY> T_ty <LFT> ulft_0 : (spec_with 1 [] fn_spec);
+        Clone_clone_from_spec  :=
+          (Clone_clone_from_base_spec ((place_rfnRT (T_rt))) (RefSynType)) (drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt)))) (REFTasClone_spec_attrs (T_rt) (DropGlue_T_spec_attrs)) 
+             <TY> (shr_ref ulft_0 T_ty) : (spec_with 2 [] fn_spec);
+      |}
+  .
+  Definition REFTasClone_spec_subsumption  :=
+    ∀ `(T_rt : !RT) `(T_st : !syn_type) `(DropGlue_T_spec_attrs : !(DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )), trait_incl_marker (lift_trait_incl Clone_spec_incl (spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), (REFTasClone_spec (T_rt) (T_st) (DropGlue_T_spec_attrs))-[ulft_0] -[T_ty]) (spec! ( *[ulft_0]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), scope_add_typarams _ -[T_ty] ((Clone_base_spec (place_rfnRT (T_rt)) RefSynType (drop_glue_trivial_spec_attrs ((place_rfnRT (T_rt)))) (REFTasClone_spec_attrs (T_rt) (DropGlue_T_spec_attrs))-[] -[(shr_ref ulft_0 T_ty)])))).
+End REFTasClone_spec.
+
 Section constTasClone_spec.
   Context `{RRGS : !(refinedrustGS Σ)}.
   Definition constTasClone_spec (T_rt: RT) (T_st: syn_type) (DropGlue_T_spec_attrs: (DropGlue_spec_attrs (RRGS:=RRGS) (T_rt) )) : (spec_with _ _ (Clone_spec (loc))) :=

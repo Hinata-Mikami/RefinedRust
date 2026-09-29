@@ -29,7 +29,7 @@ Section RwLock_inv_t.
   Context {T_rt : RT}.
   Program Definition RwLock_inv_t_inv_spec  : (spec_with 0 [(T_rt)] ((ex_inv_def ((RwLock_rt (T_rt)))%type ((unit))%type))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
-          (λ π inner_rfn (_ty_rfn : RT_rt ((unit)%type : RT)),
+          (λ π (inner_rfn : (RwLock_rt (T_rt))) (_ty_rfn : RT_rt ((unit)%type : RT)),
                   let '() := _ty_rfn in ⌜inner_rfn = -[#(tt)]⌝ ∗ True)%I
           (true)
           ([])
@@ -48,7 +48,7 @@ Section RwLock_inv_t.
     ex_t_solve_persistent.
   Qed.
 
-  Next Obligation.
+  Final Obligation.
     ex_plain_t_solve_shr_mono.
   Qed.
 
@@ -104,7 +104,7 @@ Section RwLockReadGuard_inv_t.
   Context {T_rt : RT}.
   Program Definition RwLockReadGuard_inv_t_inv_spec  : (spec_with 1 [(T_rt)] ((ex_inv_def ((RwLockReadGuard_rt (T_rt)))%type (((T_rt)))%type))) :=
     spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
-          (λ π inner_rfn (_ty_rfn : RT_rt (((T_rt))%type : RT)),
+          (λ π (inner_rfn : (RwLockReadGuard_rt (T_rt))) (_ty_rfn : RT_rt (((T_rt))%type : RT)),
                   let 'x := _ty_rfn in ⌜inner_rfn = -[#(tt)]⌝ ∗ True)%I
           (true)
           ([])
@@ -123,7 +123,7 @@ Section RwLockReadGuard_inv_t.
     ex_t_solve_persistent.
   Qed.
 
-  Next Obligation.
+  Final Obligation.
     ex_plain_t_solve_shr_mono.
   Qed.
 
@@ -179,7 +179,7 @@ Section PoisonError_inv_t.
   Context {T_rt : RT}.
   Program Definition PoisonError_inv_t_inv_spec  : (spec_with 0 [(T_rt)] ((ex_inv_def ((PoisonError_rt (T_rt)))%type ((unit))%type))) :=
     spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
-          (λ π inner_rfn (_ty_rfn : RT_rt ((unit)%type : RT)),
+          (λ π (inner_rfn : (PoisonError_rt (T_rt))) (_ty_rfn : RT_rt ((unit)%type : RT)),
                   let '() := _ty_rfn in ∃ (x: name_hint_ty "x" (_)%Z), ⌜inner_rfn = -[#(x)]⌝ ∗ True)%I
           (true)
           ([])
@@ -198,7 +198,7 @@ Section PoisonError_inv_t.
     ex_t_solve_persistent.
   Qed.
 
-  Next Obligation.
+  Final Obligation.
     ex_plain_t_solve_shr_mono.
   Qed.
 
@@ -254,7 +254,7 @@ Section RwLockWriteGuard_inv_t.
   Context {T_rt : RT}.
   Program Definition RwLockWriteGuard_inv_t_inv_spec  : (spec_with 1 [(T_rt)] ((ex_inv_def ((RwLockWriteGuard_rt (T_rt)))%type ((place_rfn (T_rt)))%type))) :=
     spec! ( *[ulft_a]) : 1 | ( *[T_ty]) : ([T_rt] : list RT), mk_auto_ex_inv_def
-          (λ π inner_rfn (_ty_rfn : RT_rt ((place_rfn (T_rt))%type : RT)),
+          (λ π (inner_rfn : (RwLockWriteGuard_rt (T_rt))) (_ty_rfn : RT_rt ((place_rfn (T_rt))%type : RT)),
                   let 'x := _ty_rfn in ⌜inner_rfn = -[#(#tt)]⌝ ∗ True)%I
           (true)
           ([])
@@ -273,7 +273,7 @@ Section RwLockWriteGuard_inv_t.
     ex_t_solve_persistent.
   Qed.
 
-  Next Obligation.
+  Final Obligation.
     ex_plain_t_solve_shr_mono.
   Qed.
 

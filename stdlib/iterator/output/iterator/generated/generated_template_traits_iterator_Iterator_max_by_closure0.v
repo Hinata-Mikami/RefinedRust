@@ -43,12 +43,12 @@ Ltac traits_iterator_Iterator_max_by_closure0_prelude :=
   let F_ty := fresh "F_ty" in
   let traits_iterator_Iterator_Self_Item_ty := fresh "traits_iterator_Iterator_Self_Item_ty" in
   let capture_compare_ := fresh "capture_compare_" in
-  let _γcompare := fresh "_γcompare" in
+  let _γcapture_compare_g := fresh "_γcapture_compare_g" in
   let __γclos := fresh "__γclos" in
   let pclos := fresh "pclos" in
   let a := fresh "a" in
   let b := fresh "b" in
-  start_function "traits_iterator_Iterator_max_by_closure0" ϝ fid ( [ulft1 [ulft2 [] ] ] ) ( [Self_ty [F_ty [traits_iterator_Iterator_Self_Item_ty [] ] ] ] ) ( [ [ [ [ [  capture_compare_ _γcompare ] __γclos ] pclos ] a ] b ] ) ( capture_compare_ _γcompare __γclos pclos a b );
+  start_function "traits_iterator_Iterator_max_by_closure0" ϝ fid ( [ulft1 [ulft2 [] ] ] ) ( [Self_ty [F_ty [traits_iterator_Iterator_Self_Item_ty [] ] ] ] ) ( [ [ [ [ [  capture_compare_ _γcapture_compare_g ] __γclos ] pclos ] a ] b ] ) ( capture_compare_ _γcapture_compare_g __γclos pclos a b );
   intros arg___1 arg_a arg_b;
   let π := get_π in
   let Σ := get_Σ in

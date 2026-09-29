@@ -1,5 +1,6 @@
 From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
+From rrstd.clone.clone.generated Require Export generated_specs_clone.
 From rrstd.mem.mem.generated Require Export generated_specs_mem.
 From rrstd.ptr.ptr.generated Require Export generated_specs_ptr.
 From rrstd.result.result.generated Require Export generated_specs_result.
@@ -61,7 +62,7 @@ Program Definition layout_Layout_align_def (alignment_Alignment_as_usize_loc: lo
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -99,7 +100,7 @@ Program Definition layout_Layout_from_size_align_def (layout_Layout_from_size_al
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -137,7 +138,7 @@ Program Definition layout_Layout_from_size_align_unchecked_def (alignment_Alignm
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -183,7 +184,7 @@ Program Definition layout_Layout_new_def (layout_Layout_from_size_align_unchecke
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -206,7 +207,7 @@ Program Definition layout_Layout_size_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 

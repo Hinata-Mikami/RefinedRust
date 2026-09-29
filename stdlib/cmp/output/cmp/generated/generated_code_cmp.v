@@ -30,7 +30,7 @@ Section Ordering_els.
   Next Obligation. solve_enum_layout_spec_variants_nodup. Qed.
   Next Obligation. solve_enum_layout_spec_variants_eq. Qed.
   Next Obligation. solve_enum_layout_spec_discriminant_nodup. Qed.
-  Next Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.
+  Final Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.
   Global Typeclasses Opaque Ordering_els.
   Definition Ordering_st  : syn_type := Ordering_els .
 End Ordering_els.
@@ -55,7 +55,7 @@ Program Definition Eq_assert_fields_are_eq_def (Self_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -105,7 +105,7 @@ Program Definition Ord_clamp_def (DropGlue_Self_drop_glue_loc: loc) (panic_shim_
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -146,7 +146,7 @@ Program Definition Ord_max_def (max_by_Self_closuresrclibrs1498014986_loc: loc) 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -187,7 +187,7 @@ Program Definition Ord_min_def (min_by_Self_closuresrclibrs1578015786_loc: loc) 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -220,7 +220,7 @@ Program Definition Ordering_as_raw_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -254,7 +254,7 @@ Program Definition Ordering_is_eq_def (Ordering_as_raw_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -288,7 +288,7 @@ Program Definition Ordering_is_ge_def (Ordering_as_raw_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -322,7 +322,7 @@ Program Definition Ordering_is_gt_def (Ordering_as_raw_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -356,7 +356,7 @@ Program Definition Ordering_is_le_def (Ordering_as_raw_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -390,7 +390,7 @@ Program Definition Ordering_is_lt_def (Ordering_as_raw_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -424,7 +424,7 @@ Program Definition Ordering_is_ne_def (Ordering_as_raw_loc: loc) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -470,7 +470,7 @@ Program Definition PartialEq_ne_def (PartialEq_Self_Rhs_eq_loc: loc) (Self_st: s
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -537,7 +537,7 @@ Program Definition PartialOrd_ge_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -604,7 +604,7 @@ Program Definition PartialOrd_gt_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -671,7 +671,7 @@ Program Definition PartialOrd_le_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -738,7 +738,7 @@ Program Definition PartialOrd_lt_def (PartialOrd_Self_Rhs_partial_cmp_loc: loc) 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -760,11 +760,11 @@ Program Definition REFAasOrd_cmp_def (Ord_A_cmp_loc: loc) (A_st: syn_type) : fun
       annot{ 1 }: CopyLftNameAnnot "plft9" "ulft_3"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft10" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft7"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft5" "plft8"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft5" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft11" "vlft5"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft6" "plft9"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft6" "plft10"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft6" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft12" "vlft6"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft13" "plft11"; (* function_call *)
@@ -783,7 +783,7 @@ Program Definition REFAasOrd_cmp_def (Ord_A_cmp_loc: loc) (A_st: syn_type) : fun
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -805,11 +805,11 @@ Program Definition REFAasPartialEqREFB_eq_def (PartialEq_A_B_eq_loc: loc) (A_st:
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -828,7 +828,7 @@ Program Definition REFAasPartialEqREFB_eq_def (PartialEq_A_B_eq_loc: loc) (A_st:
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -850,11 +850,11 @@ Program Definition REFAasPartialEqREFB_ne_def (PartialEq_A_B_ne_loc: loc) (A_st:
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -873,7 +873,7 @@ Program Definition REFAasPartialEqREFB_ne_def (PartialEq_A_B_ne_loc: loc) (A_st:
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -895,11 +895,11 @@ Program Definition REFAasPartialEqREFmutB_eq_def (PartialEq_A_B_eq_loc: loc) (A_
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
+      annot{ 1 }: AliasLftAnnot "vlft8" ["plft11"; "plft12"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -918,7 +918,7 @@ Program Definition REFAasPartialEqREFmutB_eq_def (PartialEq_A_B_eq_loc: loc) (A_
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -940,11 +940,11 @@ Program Definition REFAasPartialEqREFmutB_ne_def (PartialEq_A_B_ne_loc: loc) (A_
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
+      annot{ 1 }: AliasLftAnnot "vlft8" ["plft11"; "plft12"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -963,7 +963,7 @@ Program Definition REFAasPartialEqREFmutB_ne_def (PartialEq_A_B_ne_loc: loc) (A_
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -985,11 +985,11 @@ Program Definition REFAasPartialOrdREFB_ge_def (PartialOrd_A_B_ge_loc: loc) (A_s
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1008,7 +1008,7 @@ Program Definition REFAasPartialOrdREFB_ge_def (PartialOrd_A_B_ge_loc: loc) (A_s
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1030,11 +1030,11 @@ Program Definition REFAasPartialOrdREFB_gt_def (PartialOrd_A_B_gt_loc: loc) (A_s
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1053,7 +1053,7 @@ Program Definition REFAasPartialOrdREFB_gt_def (PartialOrd_A_B_gt_loc: loc) (A_s
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1075,11 +1075,11 @@ Program Definition REFAasPartialOrdREFB_le_def (PartialOrd_A_B_le_loc: loc) (A_s
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1098,7 +1098,7 @@ Program Definition REFAasPartialOrdREFB_le_def (PartialOrd_A_B_le_loc: loc) (A_s
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1120,11 +1120,11 @@ Program Definition REFAasPartialOrdREFB_lt_def (PartialOrd_A_B_lt_loc: loc) (A_s
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1143,7 +1143,7 @@ Program Definition REFAasPartialOrdREFB_lt_def (PartialOrd_A_B_lt_loc: loc) (A_s
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1165,11 +1165,11 @@ Program Definition REFAasPartialOrdREFB_partial_cmp_def (PartialOrd_A_B_partial_
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft10"; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1188,7 +1188,7 @@ Program Definition REFAasPartialOrdREFB_partial_cmp_def (PartialOrd_A_B_partial_
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1210,11 +1210,11 @@ Program Definition REFmutAasPartialEqREFB_eq_def (PartialEq_A_B_eq_loc: loc) (A_
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
+      annot{ 1 }: AliasLftAnnot "vlft7" ["plft9"; "plft10"]; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1233,7 +1233,7 @@ Program Definition REFmutAasPartialEqREFB_eq_def (PartialEq_A_B_eq_loc: loc) (A_
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1255,11 +1255,11 @@ Program Definition REFmutAasPartialEqREFB_ne_def (PartialEq_A_B_ne_loc: loc) (A_
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
+      annot{ 1 }: AliasLftAnnot "vlft7" ["plft9"; "plft10"]; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
+      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft12"; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1278,7 +1278,7 @@ Program Definition REFmutAasPartialEqREFB_ne_def (PartialEq_A_B_ne_loc: loc) (A_
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1300,11 +1300,11 @@ Program Definition REFmutAasPartialEqREFmutB_eq_def (PartialEq_A_B_eq_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
+      annot{ 1 }: AliasLftAnnot "vlft7" ["plft9"; "plft10"]; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
+      annot{ 1 }: AliasLftAnnot "vlft8" ["plft11"; "plft12"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1323,7 +1323,7 @@ Program Definition REFmutAasPartialEqREFmutB_eq_def (PartialEq_A_B_eq_loc: loc) 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1345,11 +1345,11 @@ Program Definition REFmutAasPartialEqREFmutB_ne_def (PartialEq_A_B_ne_loc: loc) 
       annot{ 1 }: CopyLftNameAnnot "plft11" "ulft_4"; (* initialization *)
       annot{ 1 }: CopyLftNameAnnot "plft12" "ulft_1"; (* initialization *)
       local_live{ RefSynType } "__3";
-      annot{ 1 }: CopyLftNameAnnot "vlft7" "plft9"; (* borrow *)
+      annot{ 1 }: AliasLftAnnot "vlft7" ["plft9"; "plft10"]; (* borrow *)
       "__3" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "A"), "vlft7" } (!{ RefOp } ( !{ RefOp } ( "self" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft13" "vlft7"; (* post-assignment *)
       local_live{ RefSynType } "__4";
-      annot{ 1 }: CopyLftNameAnnot "vlft8" "plft11"; (* borrow *)
+      annot{ 1 }: AliasLftAnnot "vlft8" ["plft11"; "plft12"]; (* borrow *)
       "__4" <-{ RefOp } &ref{ Shr, Some (RSTTyVar "B"), "vlft8" } (!{ RefOp } ( !{ RefOp } ( "other" ) ));
       annot{ 1 }: CopyLftNameAnnot "plft14" "vlft8"; (* post-assignment *)
       annot{ 1 }: CopyLftNameAnnot "vlft15" "plft13"; (* function_call *)
@@ -1368,7 +1368,7 @@ Program Definition REFmutAasPartialEqREFmutB_ne_def (PartialEq_A_B_ne_loc: loc) 
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1399,7 +1399,7 @@ Program Definition boolasPartialEq_eq_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1430,7 +1430,7 @@ Program Definition boolasPartialEq_ne_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1509,7 +1509,7 @@ Program Definition i128asOrd_cmp_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1540,7 +1540,7 @@ Program Definition i128asPartialEq_eq_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1571,7 +1571,7 @@ Program Definition i128asPartialEq_ne_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1602,7 +1602,7 @@ Program Definition i128asPartialOrd_ge_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1633,7 +1633,7 @@ Program Definition i128asPartialOrd_gt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1664,7 +1664,7 @@ Program Definition i128asPartialOrd_le_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1695,7 +1695,7 @@ Program Definition i128asPartialOrd_lt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1741,7 +1741,7 @@ Program Definition i128asPartialOrd_partial_cmp_def (i128asOrd_cmp_loc: loc) : f
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1820,7 +1820,7 @@ Program Definition i16asOrd_cmp_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1851,7 +1851,7 @@ Program Definition i16asPartialEq_eq_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1882,7 +1882,7 @@ Program Definition i16asPartialEq_ne_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1913,7 +1913,7 @@ Program Definition i16asPartialOrd_ge_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1944,7 +1944,7 @@ Program Definition i16asPartialOrd_gt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -1975,7 +1975,7 @@ Program Definition i16asPartialOrd_le_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2006,7 +2006,7 @@ Program Definition i16asPartialOrd_lt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2052,7 +2052,7 @@ Program Definition i16asPartialOrd_partial_cmp_def (i16asOrd_cmp_loc: loc) : fun
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2131,7 +2131,7 @@ Program Definition i32asOrd_cmp_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2162,7 +2162,7 @@ Program Definition i32asPartialEq_eq_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2193,7 +2193,7 @@ Program Definition i32asPartialEq_ne_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2224,7 +2224,7 @@ Program Definition i32asPartialOrd_ge_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2255,7 +2255,7 @@ Program Definition i32asPartialOrd_gt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2286,7 +2286,7 @@ Program Definition i32asPartialOrd_le_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2317,7 +2317,7 @@ Program Definition i32asPartialOrd_lt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2363,7 +2363,7 @@ Program Definition i32asPartialOrd_partial_cmp_def (i32asOrd_cmp_loc: loc) : fun
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2442,7 +2442,7 @@ Program Definition i64asOrd_cmp_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2473,7 +2473,7 @@ Program Definition i64asPartialEq_eq_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2504,7 +2504,7 @@ Program Definition i64asPartialEq_ne_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2535,7 +2535,7 @@ Program Definition i64asPartialOrd_ge_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2566,7 +2566,7 @@ Program Definition i64asPartialOrd_gt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2597,7 +2597,7 @@ Program Definition i64asPartialOrd_le_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2628,7 +2628,7 @@ Program Definition i64asPartialOrd_lt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2674,7 +2674,7 @@ Program Definition i64asPartialOrd_partial_cmp_def (i64asOrd_cmp_loc: loc) : fun
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2753,7 +2753,7 @@ Program Definition i8asOrd_cmp_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2784,7 +2784,7 @@ Program Definition i8asPartialEq_eq_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2815,7 +2815,7 @@ Program Definition i8asPartialEq_ne_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2846,7 +2846,7 @@ Program Definition i8asPartialOrd_ge_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2877,7 +2877,7 @@ Program Definition i8asPartialOrd_gt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2908,7 +2908,7 @@ Program Definition i8asPartialOrd_le_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2939,7 +2939,7 @@ Program Definition i8asPartialOrd_lt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -2985,7 +2985,7 @@ Program Definition i8asPartialOrd_partial_cmp_def (i8asOrd_cmp_loc: loc) : funct
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3064,7 +3064,7 @@ Program Definition isizeasOrd_cmp_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3095,7 +3095,7 @@ Program Definition isizeasPartialEq_eq_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3126,7 +3126,7 @@ Program Definition isizeasPartialEq_ne_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3157,7 +3157,7 @@ Program Definition isizeasPartialOrd_ge_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3188,7 +3188,7 @@ Program Definition isizeasPartialOrd_gt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3219,7 +3219,7 @@ Program Definition isizeasPartialOrd_le_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3250,7 +3250,7 @@ Program Definition isizeasPartialOrd_lt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3296,7 +3296,7 @@ Program Definition isizeasPartialOrd_partial_cmp_def (isizeasOrd_cmp_loc: loc) :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3334,7 +3334,7 @@ Program Definition max_def (Ord_T_max_loc: loc) (T_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3484,7 +3484,7 @@ Program Definition max_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3522,7 +3522,7 @@ Program Definition min_def (Ord_T_min_loc: loc) (T_st: syn_type) : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3672,7 +3672,7 @@ Program Definition min_by_def (DropGlue_T_drop_glue_loc: loc) (FnOnce_F_REFTREFT
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3779,7 +3779,7 @@ Program Definition std_option_OptionTasOrd_cmp_def (Ord_T_cmp_loc: loc) (T_st: s
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -3886,7 +3886,7 @@ Program Definition std_option_OptionTasPartialEq_eq_def (PartialEq_T_T_eq_loc: l
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4002,7 +4002,7 @@ Program Definition std_option_OptionTasPartialOrd_partial_cmp_def (PartialOrd_T_
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4081,7 +4081,7 @@ Program Definition u128asOrd_cmp_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4112,7 +4112,7 @@ Program Definition u128asPartialEq_eq_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4143,7 +4143,7 @@ Program Definition u128asPartialEq_ne_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4174,7 +4174,7 @@ Program Definition u128asPartialOrd_ge_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4205,7 +4205,7 @@ Program Definition u128asPartialOrd_gt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4236,7 +4236,7 @@ Program Definition u128asPartialOrd_le_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4267,7 +4267,7 @@ Program Definition u128asPartialOrd_lt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4313,7 +4313,7 @@ Program Definition u128asPartialOrd_partial_cmp_def (u128asOrd_cmp_loc: loc) : f
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4392,7 +4392,7 @@ Program Definition u16asOrd_cmp_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4423,7 +4423,7 @@ Program Definition u16asPartialEq_eq_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4454,7 +4454,7 @@ Program Definition u16asPartialEq_ne_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4485,7 +4485,7 @@ Program Definition u16asPartialOrd_ge_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4516,7 +4516,7 @@ Program Definition u16asPartialOrd_gt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4547,7 +4547,7 @@ Program Definition u16asPartialOrd_le_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4578,7 +4578,7 @@ Program Definition u16asPartialOrd_lt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4624,7 +4624,7 @@ Program Definition u16asPartialOrd_partial_cmp_def (u16asOrd_cmp_loc: loc) : fun
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4703,7 +4703,7 @@ Program Definition u32asOrd_cmp_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4734,7 +4734,7 @@ Program Definition u32asPartialEq_eq_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4765,7 +4765,7 @@ Program Definition u32asPartialEq_ne_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4796,7 +4796,7 @@ Program Definition u32asPartialOrd_ge_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4827,7 +4827,7 @@ Program Definition u32asPartialOrd_gt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4858,7 +4858,7 @@ Program Definition u32asPartialOrd_le_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4889,7 +4889,7 @@ Program Definition u32asPartialOrd_lt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -4935,7 +4935,7 @@ Program Definition u32asPartialOrd_partial_cmp_def (u32asOrd_cmp_loc: loc) : fun
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5014,7 +5014,7 @@ Program Definition u64asOrd_cmp_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5045,7 +5045,7 @@ Program Definition u64asPartialEq_eq_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5076,7 +5076,7 @@ Program Definition u64asPartialEq_ne_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5107,7 +5107,7 @@ Program Definition u64asPartialOrd_ge_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5138,7 +5138,7 @@ Program Definition u64asPartialOrd_gt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5169,7 +5169,7 @@ Program Definition u64asPartialOrd_le_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5200,7 +5200,7 @@ Program Definition u64asPartialOrd_lt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5246,7 +5246,7 @@ Program Definition u64asPartialOrd_partial_cmp_def (u64asOrd_cmp_loc: loc) : fun
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5325,7 +5325,7 @@ Program Definition u8asOrd_cmp_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5356,7 +5356,7 @@ Program Definition u8asPartialEq_eq_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5387,7 +5387,7 @@ Program Definition u8asPartialEq_ne_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5418,7 +5418,7 @@ Program Definition u8asPartialOrd_ge_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5449,7 +5449,7 @@ Program Definition u8asPartialOrd_gt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5480,7 +5480,7 @@ Program Definition u8asPartialOrd_le_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5511,7 +5511,7 @@ Program Definition u8asPartialOrd_lt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5557,7 +5557,7 @@ Program Definition u8asPartialOrd_partial_cmp_def (u8asOrd_cmp_loc: loc) : funct
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5582,7 +5582,7 @@ Program Definition unitasOrd_cmp_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5607,7 +5607,7 @@ Program Definition unitasPartialEq_eq_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5632,7 +5632,7 @@ Program Definition unitasPartialEq_ne_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5660,7 +5660,7 @@ Program Definition unitasPartialOrd_partial_cmp_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5739,7 +5739,7 @@ Program Definition usizeasOrd_cmp_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5770,7 +5770,7 @@ Program Definition usizeasPartialEq_eq_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5801,7 +5801,7 @@ Program Definition usizeasPartialEq_ne_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5832,7 +5832,7 @@ Program Definition usizeasPartialOrd_ge_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5863,7 +5863,7 @@ Program Definition usizeasPartialOrd_gt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5894,7 +5894,7 @@ Program Definition usizeasPartialOrd_le_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5925,7 +5925,7 @@ Program Definition usizeasPartialOrd_lt_def  : function :=
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
@@ -5971,7 +5971,7 @@ Program Definition usizeasPartialOrd_partial_cmp_def (usizeasOrd_cmp_loc: loc) :
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 

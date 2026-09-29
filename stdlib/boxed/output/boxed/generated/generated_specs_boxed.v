@@ -36,7 +36,7 @@ Section Box_inv_t.
   Context {T_rt : RT} {A_rt : RT}.
   Program Definition Box_inv_t_inv_spec (Allocator_A_spec_attrs: (Allocator_spec_attrs (RRGS:=RRGS) (A_rt) )) : (spec_with 0 [(T_rt); (A_rt)] ((ex_inv_def ((Box_rt (T_rt) (A_rt)))%type (((place_rfn (T_rt)) * (directRT (RT_xt (A_rt)))))%type))) :=
     spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : ([T_rt; A_rt] : list RT), mk_ex_inv_def_auto_shr
-          (λ π inner_rfn (_ty_rfn : RT_rt (((place_rfn (T_rt)) * (directRT (RT_xt (A_rt))))%type : RT)),
+          (λ π (inner_rfn : (Box_rt (T_rt) (A_rt))) (_ty_rfn : RT_rt (((place_rfn (T_rt)) * (directRT (RT_xt (A_rt))))%type : RT)),
                   let '(x, a) := _ty_rfn in ∃ (l: name_hint_ty "l" ((loc))%Z), ⌜inner_rfn = -[#(l); #($# a)]⌝ ∗ guarded true (l ◁ₗ[π, Owned] x @ ◁ T_ty) ∗ Allocator_A_spec_attrs.(Allocator_FreeablePerm) a l (ly_size (use_layout_alg' (ty_syn_type T_ty MetaNone))) ∗ True)%I
           (λ π _ (_rfn_binder : RT_rt (((place_rfn (T_rt)) * (directRT (RT_xt (A_rt))))%type : RT)),
                   let '(x, a) := _rfn_binder in (∃ r, place_rfn_interp_owned x r ∗ ty_ghost_drop T_ty π r) ∗ True)%I
@@ -57,7 +57,7 @@ Section Box_inv_t.
     intros ?; ex_plain_t_solve_shr_mono.
   Qed.
 
-  Next Obligation.
+  Final Obligation.
     intros ?; ex_plain_t_solve_ghost_drop.
   Qed.
 

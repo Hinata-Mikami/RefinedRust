@@ -29,7 +29,7 @@ Program Definition drop_def (DropGlue_T_drop_glue_loc: loc) (T_st: syn_type) : f
       ∅;
      f_init := "_bb0";
     |}.
-Next Obligation.
+Final Obligation.
   solve_fn_vars_nodup.
 Qed.
 
